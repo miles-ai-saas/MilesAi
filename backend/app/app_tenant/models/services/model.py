@@ -7,6 +7,7 @@ from app.common.exceptions import BadRequestError, NotFoundError
 from app.core.tenant import TenantContext, assert_tenant_access
 from app.app_tenant.models.repositories.model import ModelConfigRepository
 from app.app_tenant.models.schemas.model import ModelConfigCreate, ModelConfigOut, ModelConfigUpdate
+from app.core.soft_delete import is_marked_deleted, mark_deleted, not_deleted
 from app.core.service import BaseService
 from app.models.model import ModelConfig
 
@@ -18,7 +19,7 @@ class ModelService(BaseService):
 
     async def _get_or_raise(self, config_id: UUID) -> ModelConfig:
         model = await self.repo.get_by_id(config_id)
-        if not model:
+        if not model or is_marked_deleted(model):
             raise NotFoundError("模型配置不存在")
         if model.tenant_id is not None:
             assert_tenant_access(self.ctx, model.tenant_id)
@@ -26,7 +27,8 @@ class ModelService(BaseService):
 
     async def list_configs(self) -> list[ModelConfigOut]:
         stmt = select(ModelConfig).where(
-            (ModelConfig.tenant_id == self.ctx.tenant_id) | (ModelConfig.tenant_id.is_(None))
+            (ModelConfig.tenant_id == self.ctx.tenant_id) | (ModelConfig.tenant_id.is_(None)),
+            not_deleted(ModelConfig),
         )
         rows = (await self.db.execute(stmt)).scalars().all()
         return [ModelConfigOut.model_validate(m) for m in rows]
@@ -60,4 +62,4 @@ class ModelService(BaseService):
         model = await self._get_or_raise(config_id)
         if model.tenant_id is None:
             raise BadRequestError("系统内置模型不可删除")
-        await self.db.delete(model)
+        await mark_deleted(self.db, model)

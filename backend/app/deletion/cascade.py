@@ -3,6 +3,8 @@
 from uuid import UUID
 
 from sqlalchemy import and_, delete, update
+
+from app.core.soft_delete import mark_deleted_where, not_deleted
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.app_tenant.hooks.models import HookBinding, HookScope
@@ -68,16 +70,17 @@ async def delete_hook_bindings_for_target(
     scope: HookScope,
     target_id: UUID,
 ) -> None:
-    await db.execute(
-        delete(HookBinding).where(
-            HookBinding.scope == scope,
-            HookBinding.target_id == target_id,
-        )
+    await mark_deleted_where(
+        db,
+        HookBinding,
+        HookBinding.scope == scope,
+        HookBinding.target_id == target_id,
+        not_deleted(HookBinding),
     )
 
 
 async def delete_flow_versions(db: AsyncSession, flow_id: UUID) -> None:
-    await db.execute(delete(FlowVersion).where(FlowVersion.flow_id == flow_id))
+    await mark_deleted_where(db, FlowVersion, FlowVersion.flow_id == flow_id)
 
 
 async def before_delete_agent(db: AsyncSession, agent_id: UUID) -> None:

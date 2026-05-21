@@ -12,6 +12,7 @@ from app.app_tenant.compliance.schemas.compliance import (
     SensitiveWordCreate,
     SensitiveWordOut,
 )
+from app.core.soft_delete import append_not_deleted, is_marked_deleted, mark_deleted, not_deleted
 from app.core.service import BaseService
 from app.app_tenant.compliance.services.pipeline import CompliancePipeline
 
@@ -24,6 +25,7 @@ class ComplianceService(BaseService):
         filters = tenant_filters(self.ctx, SensitiveWord.tenant_id)
         stmt = select(SensitiveWord).where(
             SensitiveWord.is_active.is_(True),
+            not_deleted(SensitiveWord),
             *filters,
         )
         rows = (await self.db.execute(stmt)).scalars().all()
@@ -82,7 +84,7 @@ class ComplianceService(BaseService):
         return text
 
     async def list_words(self, params: PageParams) -> PageResult[SensitiveWordOut]:
-        filters = tenant_filters(self.ctx, SensitiveWord.tenant_id)
+        filters = append_not_deleted(tenant_filters(self.ctx, SensitiveWord.tenant_id), SensitiveWord)
         total = await self.db.scalar(
             select(func.count()).select_from(SensitiveWord).where(*filters)
         )
@@ -115,10 +117,10 @@ class ComplianceService(BaseService):
 
     async def delete_word(self, word_id: UUID) -> None:
         row = await self.db.get(SensitiveWord, word_id)
-        if not row:
+        if not row or is_marked_deleted(row):
             raise NotFoundError("敏感词不存在")
         assert_tenant_access(self.ctx, row.tenant_id)
-        await self.db.delete(row)
+        await mark_deleted(self.db, row)
 
     async def list_logs(self, params: PageParams) -> PageResult[InterceptLogOut]:
         filters = tenant_filters(self.ctx, InterceptLog.tenant_id)

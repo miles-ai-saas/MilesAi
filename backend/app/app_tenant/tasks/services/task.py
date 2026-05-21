@@ -123,8 +123,10 @@ class TaskService(BaseService):
         from app.workers.tasks.ingest import ingest_document
         from app.models.kb import Document, DocumentStatus
 
+        from app.core.soft_delete import is_marked_deleted
+
         doc = await self.db.get(Document, record.resource_id)
-        if not doc:
+        if not doc or is_marked_deleted(doc):
             raise NotFoundError("关联文档不存在")
 
         new_task = ingest_document.delay(str(doc.id))

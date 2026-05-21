@@ -3,8 +3,7 @@ from uuid import UUID
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.common.exceptions import NotFoundError
-from app.core.tenant import TenantContext, tenant_filters
+from app.core.tenant import TenantContext, assert_tenant_access, tenant_filters
 from app.app_tenant.hooks.models import HookBinding, HookDefinition
 from app.app_tenant.hooks.schemas.hook import (
     HookBindingCreate,
@@ -14,6 +13,8 @@ from app.app_tenant.hooks.schemas.hook import (
     HookDefinitionUpdate,
 )
 from app.common.schema import PageParams, PageResult
+from app.common.exceptions import NotFoundError
+from app.core.soft_delete import append_not_deleted, is_marked_deleted, mark_deleted, mark_deleted_where, not_deleted
 from app.core.service import BaseService
 
 
@@ -22,16 +23,14 @@ class HookService(BaseService):
         super().__init__(db, ctx)
 
     async def _get_hook_or_raise(self, hook_id: UUID) -> HookDefinition:
-        from app.core.tenant import assert_tenant_access
-
         hook = await self.db.get(HookDefinition, hook_id)
-        if not hook:
+        if not hook or is_marked_deleted(hook):
             raise NotFoundError("钩子不存在")
         assert_tenant_access(self.ctx, hook.tenant_id)
         return hook
 
     async def list_hooks(self, params: PageParams) -> PageResult[HookDefinitionOut]:
-        filters = tenant_filters(self.ctx, HookDefinition.tenant_id)
+        filters = append_not_deleted(tenant_filters(self.ctx, HookDefinition.tenant_id), HookDefinition)
         total = await self.db.scalar(
             select(func.count()).select_from(HookDefinition).where(*filters)
         )
@@ -74,30 +73,32 @@ class HookService(BaseService):
 
     async def update_hook(self, hook_id: UUID, body: HookDefinitionUpdate) -> HookDefinitionOut:
         hook = await self._get_hook_or_raise(hook_id)
-        await self.repo_update(hook, body.model_dump(exclude_unset=True))
+        for k, v in body.model_dump(exclude_unset=True).items():
+            setattr(hook, k, v)
+        await self.db.flush()
         await self.db.refresh(hook)
         return HookDefinitionOut.model_validate(hook)
 
-    async def repo_update(self, hook: HookDefinition, data: dict) -> None:
-        for k, v in data.items():
-            setattr(hook, k, v)
-        await self.db.flush()
-
     async def delete_hook(self, hook_id: UUID) -> None:
         hook = await self._get_hook_or_raise(hook_id)
-        bindings = (
-            await self.db.execute(select(HookBinding).where(HookBinding.hook_id == hook.id))
-        ).scalars().all()
-        for b in bindings:
-            await self.db.delete(b)
-        await self.db.delete(hook)
+        await mark_deleted_where(
+            self.db,
+            HookBinding,
+            HookBinding.hook_id == hook.id,
+            HookBinding.tenant_id == self.ctx.tenant_id,
+        )
+        await mark_deleted(self.db, hook)
 
     async def list_bindings(self, hook_id: UUID) -> list[HookBindingOut]:
         await self._get_hook_or_raise(hook_id)
         rows = (
             await self.db.execute(
                 select(HookBinding)
-                .where(HookBinding.hook_id == hook_id, HookBinding.tenant_id == self.ctx.tenant_id)
+                .where(
+                    HookBinding.hook_id == hook_id,
+                    HookBinding.tenant_id == self.ctx.tenant_id,
+                    not_deleted(HookBinding),
+                )
                 .order_by(HookBinding.priority.asc())
             )
         ).scalars().all()
@@ -120,6 +121,6 @@ class HookService(BaseService):
 
     async def delete_binding(self, binding_id: UUID) -> None:
         binding = await self.db.get(HookBinding, binding_id)
-        if not binding or binding.tenant_id != self.ctx.tenant_id:
+        if not binding or binding.tenant_id != self.ctx.tenant_id or is_marked_deleted(binding):
             raise NotFoundError("绑定不存在")
-        await self.db.delete(binding)
+        await mark_deleted(self.db, binding)

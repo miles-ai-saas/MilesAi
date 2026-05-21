@@ -15,10 +15,10 @@ from app.models.kb import Document, DocumentChunk, DocumentStatus, KnowledgeBase
 def run_ingest(document_id: str) -> None:
     with get_sync_db() as db:
         doc = db.get(Document, UUID(document_id))
-        if not doc:
+        if not doc or doc.deleted_at is not None:
             return
         kb = db.get(KnowledgeBase, doc.kb_id)
-        if not kb:
+        if not kb or kb.deleted_at is not None:
             return
 
         current_phase = DocumentStatus.PARSING

@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.app_tenant.hooks.models import HookBinding, HookDefinition, HookScope, HookTrigger, HookType
+from app.core.soft_delete import not_deleted
 
 logger = logging.getLogger(__name__)
 
@@ -49,6 +50,8 @@ class HookExecutor:
                 HookBinding.tenant_id == self.tenant_id,
                 HookBinding.is_active.is_(True),
                 HookDefinition.is_active.is_(True),
+                not_deleted(HookBinding),
+                not_deleted(HookDefinition),
                 HookBinding.trigger == trigger,
             )
             .options(selectinload(HookBinding.hook))

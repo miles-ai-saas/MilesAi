@@ -59,7 +59,7 @@ export default function SystemUsersPage() {
   };
 
   const onDeactivate = async (u: TenantUser) => {
-    if (!confirm(`确定禁用用户「${u.username}」？`)) return;
+    if (!confirm(`确定删除用户「${u.username}」？（软删除，可保留审计数据）`)) return;
     await api.deactivateUser(u.id);
     await list.reload();
   };
@@ -128,7 +128,7 @@ export default function SystemUsersPage() {
                           className="text-xs text-red-600 hover:underline"
                           onClick={() => onDeactivate(u)}
                         >
-                          禁用
+                          删除
                         </button>
                       )}
                     </td>

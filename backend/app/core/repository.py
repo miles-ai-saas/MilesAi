@@ -10,6 +10,7 @@ from sqlalchemy.sql.elements import ColumnElement
 from app.common.exceptions import ConflictError, NotFoundError
 from app.common.pagination import paginate
 from app.common.schema import PageResult
+from app.core.soft_delete import append_not_deleted, has_soft_delete, is_marked_deleted, mark_deleted, not_deleted
 
 T = TypeVar("T")
 
@@ -19,8 +20,16 @@ class BaseRepository(Generic[T]):
         self.db = db
         self.model = model
 
-    async def get_by_id(self, entity_id: UUID) -> T | None:
-        return await self.db.get(self.model, entity_id)
+    def _apply_not_deleted(self, filters: list[ColumnElement[bool]] | None) -> list[ColumnElement[bool]]:
+        return append_not_deleted(filters or [], self.model)
+
+    async def get_by_id(self, entity_id: UUID, *, include_deleted: bool = False) -> T | None:
+        entity = await self.db.get(self.model, entity_id)
+        if entity is None:
+            return None
+        if not include_deleted and has_soft_delete(self.model) and is_marked_deleted(entity):
+            return None
+        return entity
 
     async def get_by_id_or_raise(self, entity_id: UUID, *, label: str | None = None) -> T:
         entity = await self.get_by_id(entity_id)
@@ -28,10 +37,13 @@ class BaseRepository(Generic[T]):
             raise NotFoundError(label or "资源不存在")
         return entity
 
-    async def get_one(self, *filters: ColumnElement[bool]) -> T | None:
+    async def get_one(self, *filters: ColumnElement[bool], include_deleted: bool = False) -> T | None:
+        where = list(filters)
+        if not include_deleted:
+            where = self._apply_not_deleted(where)
         stmt = select(self.model)
-        if filters:
-            stmt = stmt.where(*filters)
+        if where:
+            stmt = stmt.where(*where)
         return (await self.db.execute(stmt)).scalar_one_or_none()
 
     async def exists(self, *filters: ColumnElement[bool]) -> bool:
@@ -45,6 +57,7 @@ class BaseRepository(Generic[T]):
         filters: list[ColumnElement[bool]] | None = None,
         order_by: Any | None = None,
         options: list[Any] | None = None,
+        include_deleted: bool = False,
     ) -> PageResult[T]:
         return await paginate(
             self.db,
@@ -54,6 +67,7 @@ class BaseRepository(Generic[T]):
             filters=filters,
             order_by=order_by,
             options=options,
+            skip_soft_delete_filter=include_deleted,
         )
 
     async def create(self, **fields: Any) -> T:
@@ -68,6 +82,11 @@ class BaseRepository(Generic[T]):
         await self.db.flush()
         return entity
 
+    async def soft_delete(self, entity: T) -> None:
+        if is_marked_deleted(entity):
+            return
+        await mark_deleted(self.db, entity)
+
     async def ensure_unique(
         self,
         field: ColumnElement,
@@ -77,6 +96,8 @@ class BaseRepository(Generic[T]):
         exclude_id: UUID | None = None,
     ) -> None:
         stmt = select(self.model).where(field == value)
+        if has_soft_delete(self.model):
+            stmt = stmt.where(not_deleted(self.model))
         if exclude_id is not None:
             stmt = stmt.where(self.model.id != exclude_id)  # type: ignore[attr-defined]
         if (await self.db.execute(stmt)).scalar_one_or_none():

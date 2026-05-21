@@ -9,6 +9,7 @@ from app.models.user import User
 from app.app_tenant.system.repositories.user import UserRepository
 from app.common.schema import PageParams, PageResult
 from app.app_tenant.system.schemas.user import UserCreate, UserOut, UserUpdate
+from app.core.soft_delete import is_marked_deleted, mark_deleted, not_deleted
 from app.core.service import BaseService
 
 
@@ -72,7 +73,7 @@ class UserService(BaseService):
 
     async def update_user(self, user_id: UUID, body: UserUpdate) -> UserOut:
         user = await self.repo.get_with_roles(user_id)
-        if not user:
+        if not user or is_marked_deleted(user):
             raise NotFoundError("用户不存在")
         assert_tenant_access(self.ctx, user.tenant_id)
 
@@ -86,12 +87,15 @@ class UserService(BaseService):
 
     async def deactivate_user(self, user_id: UUID) -> UserOut:
         user = await self.repo.get_with_roles(user_id)
-        if not user:
+        if not user or is_marked_deleted(user):
             raise NotFoundError("用户不存在")
         assert_tenant_access(self.ctx, user.tenant_id)
         if user.id == self.ctx.user_id:
-            raise BadRequestError("不能禁用当前登录用户")
+            raise BadRequestError("不能删除当前登录用户")
         user.is_active = False
-        await self.db.flush()
+        suffix = user.id.hex[:8]
+        user.username = f"{user.username}__deleted__{suffix}"
+        user.email = f"deleted+{suffix}+{user.email}"
+        await mark_deleted(self.db, user)
         await self.db.refresh(user, ["roles"])
         return to_user_out(user)

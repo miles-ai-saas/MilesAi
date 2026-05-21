@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.repository import BaseRepository
+from app.core.soft_delete import not_deleted
 from app.models.flow import Flow, FlowVersion
 
 
@@ -24,6 +25,7 @@ class FlowRepository(BaseRepository[Flow]):
         stmt = select(FlowVersion).where(
             FlowVersion.flow_id == flow_id,
             FlowVersion.version == version,
+            not_deleted(FlowVersion),
         )
         return (await self.db.execute(stmt)).scalar_one_or_none()
 

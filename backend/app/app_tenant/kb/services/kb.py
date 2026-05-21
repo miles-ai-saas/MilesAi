@@ -29,6 +29,7 @@ from app.app_tenant.kb.schemas.kb import (
     SearchRequest,
     SearchResponse,
 )
+from app.core.soft_delete import is_marked_deleted, mark_deleted, not_deleted
 from app.core.service import BaseService
 
 settings = get_settings()
@@ -50,7 +51,7 @@ class KnowledgeBaseService(BaseService):
 
     async def _get_kb_or_raise(self, kb_id: UUID) -> KnowledgeBase:
         kb = await self.kb_repo.get_by_id(kb_id)
-        if not kb:
+        if not kb or is_marked_deleted(kb):
             raise NotFoundError("知识库不存在")
         assert_tenant_access(self.ctx, kb.tenant_id)
         return kb
@@ -96,12 +97,14 @@ class KnowledgeBaseService(BaseService):
     async def delete_kb(self, kb_id: UUID) -> None:
         kb = await self._get_kb_or_raise(kb_id)
         docs = (
-            await self.db.execute(select(Document).where(Document.kb_id == kb.id))
+            await self.db.execute(
+                select(Document).where(Document.kb_id == kb.id, not_deleted(Document))
+            )
         ).scalars().all()
         for doc in docs:
             await self.delete_document(kb_id, doc.id)
         await before_delete_kb(self.db, kb.id)
-        await self.db.delete(kb)
+        await mark_deleted(self.db, kb)
 
     async def list_documents(self, kb_id: UUID, params: PageParams) -> PageResult[DocumentOut]:
         await self._get_kb_or_raise(kb_id)
@@ -168,7 +171,7 @@ class KnowledgeBaseService(BaseService):
     async def retry_document(self, kb_id: UUID, document_id: UUID) -> DocumentOut:
         await self._get_kb_or_raise(kb_id)
         doc = await self.doc_repo.get_by_id_or_raise(document_id, label="文档不存在")
-        if doc.kb_id != kb_id:
+        if doc.kb_id != kb_id or is_marked_deleted(doc):
             raise NotFoundError("文档不存在")
         if doc.status not in (
             DocumentStatus.PARSE_FAILED,
@@ -199,11 +202,9 @@ class KnowledgeBaseService(BaseService):
     async def delete_document(self, kb_id: UUID, document_id: UUID) -> None:
         await self._get_kb_or_raise(kb_id)
         doc = await self.doc_repo.get_by_id_or_raise(document_id, label="文档不存在")
-        if doc.kb_id != kb_id:
+        if doc.kb_id != kb_id or is_marked_deleted(doc):
             raise NotFoundError("文档不存在")
-        await clear_document_derived_data_async(self.db, doc.id)
-        delete_object(doc.minio_key, doc.minio_bucket)
-        await self.db.delete(doc)
+        await mark_deleted(self.db, doc)
 
     async def search(self, kb_id: UUID, body: SearchRequest) -> SearchResponse:
         await self._get_kb_or_raise(kb_id)
@@ -223,6 +224,8 @@ class KnowledgeBaseService(BaseService):
             if not chunk:
                 continue
             doc = await self.doc_repo.get_by_id(UUID(h["document_id"]))
+            if not doc or is_marked_deleted(doc):
+                continue
             hits.append(
                 SearchHit(
                     chunk_id=chunk.id,

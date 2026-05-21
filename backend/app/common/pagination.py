@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.elements import ColumnElement
 
 from app.common.schema import PageParams, PageResult
+from app.core.soft_delete import append_not_deleted
 
 T = TypeVar("T")
 
@@ -20,10 +21,13 @@ async def paginate(
     filters: list[ColumnElement[bool]] | None = None,
     order_by: Any | None = None,
     options: list[Any] | None = None,
+    skip_soft_delete_filter: bool = False,
 ) -> PageResult[T]:
     """对单表执行 count + 分页查询。"""
     params = PageParams(page=page, size=size)
-    where = filters or []
+    where = list(filters or [])
+    if not skip_soft_delete_filter:
+        where = append_not_deleted(where, model)
 
     count_stmt = select(func.count(model.id))
     if where:

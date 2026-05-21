@@ -17,6 +17,7 @@ from app.models.system import SystemConfig
 from app.models.task import CeleryTaskRecord, TaskStatus
 from app.app_tenant.monitor.schemas.monitor import AlertConfig, MonitorReport, MonitorStats
 from app.app_tenant.tasks.schemas.task import TaskSummary
+from app.core.soft_delete import append_not_deleted
 from app.core.service import BaseService
 
 ALERT_CONFIG_KEY = "monitor.alert"
@@ -54,10 +55,10 @@ class MonitorService(BaseService):
         return summary
 
     async def report(self) -> MonitorReport:
-        kb_f = tenant_filters(self.ctx, KnowledgeBase.tenant_id)
-        doc_f = tenant_filters(self.ctx, Document.tenant_id)
-        agent_f = tenant_filters(self.ctx, Agent.tenant_id)
-        flow_f = tenant_filters(self.ctx, Flow.tenant_id)
+        kb_f = append_not_deleted(tenant_filters(self.ctx, KnowledgeBase.tenant_id), KnowledgeBase)
+        doc_f = append_not_deleted(tenant_filters(self.ctx, Document.tenant_id), Document)
+        agent_f = append_not_deleted(tenant_filters(self.ctx, Agent.tenant_id), Agent)
+        flow_f = append_not_deleted(tenant_filters(self.ctx, Flow.tenant_id), Flow)
         log_f = tenant_filters(self.ctx, InterceptLog.tenant_id)
         install_f = tenant_filters(self.ctx, AppInstall.tenant_id)
 

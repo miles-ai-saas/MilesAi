@@ -18,6 +18,7 @@ from app.app_tenant.flows.schemas.flow import (
     FlowUpdate,
     FlowVersionOut,
 )
+from app.core.soft_delete import is_marked_deleted, mark_deleted
 from app.core.service import BaseService
 from app.deletion.cascade import before_delete_flow
 
@@ -30,7 +31,7 @@ class FlowService(BaseService):
 
     async def _get_flow_or_raise(self, flow_id: UUID) -> Flow:
         flow = await self.repo.get_by_id(flow_id)
-        if not flow:
+        if not flow or is_marked_deleted(flow):
             raise NotFoundError("流程不存在")
         assert_tenant_access(self.ctx, flow.tenant_id)
         return flow
@@ -103,7 +104,7 @@ class FlowService(BaseService):
     async def delete_flow(self, flow_id: UUID) -> None:
         flow = await self._get_flow_or_raise(flow_id)
         await before_delete_flow(self.db, flow.id)
-        await self.db.delete(flow)
+        await mark_deleted(self.db, flow)
 
     async def publish(self, flow_id: UUID) -> FlowOut:
         flow = await self._get_flow_or_raise(flow_id)

@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.repository import BaseRepository
+from app.core.soft_delete import not_deleted
 from app.models.agent import Agent
 from app.models.kb import KnowledgeBase
 
@@ -20,11 +21,17 @@ class AgentRepository(BaseRepository[Agent]):
     ]
 
     async def get_detail(self, agent_id: UUID) -> Agent | None:
-        stmt = select(Agent).where(Agent.id == agent_id).options(*self._eager)
+        stmt = (
+            select(Agent)
+            .where(Agent.id == agent_id, not_deleted(Agent))
+            .options(*self._eager)
+        )
         return (await self.db.execute(stmt)).scalar_one_or_none()
 
     async def load_kbs(self, kb_ids: list[UUID]) -> list[KnowledgeBase]:
         if not kb_ids:
             return []
-        result = await self.db.execute(select(KnowledgeBase).where(KnowledgeBase.id.in_(kb_ids)))
+        result = await self.db.execute(
+            select(KnowledgeBase).where(KnowledgeBase.id.in_(kb_ids), not_deleted(KnowledgeBase))
+        )
         return list(result.scalars().all())

@@ -27,6 +27,8 @@ class AuthService(BaseService):
         user = await self.users.get_by_username(body.username)
         if not user or not verify_password(body.password, user.hashed_password):
             raise UnauthorizedError("用户名或密码错误")
+        if getattr(user, "deleted_at", None) is not None:
+            raise UnauthorizedError("用户已删除")
         if not user.is_active:
             raise UnauthorizedError("用户已禁用")
         access, refresh = issue_tokens_for_user(user)
@@ -46,7 +48,7 @@ class AuthService(BaseService):
         user = await self.users.get_one(
             User.id == UUID(str(user_id)),
             User.is_active.is_(True),
-        )
+        )  # get_one 已排除 deleted_at
         if not user:
             raise UnauthorizedError("用户不存在")
         access, new_refresh = issue_tokens_for_user(user)

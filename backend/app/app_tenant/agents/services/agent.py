@@ -17,6 +17,7 @@ from app.app_tenant.hooks.services.runner import HookRunner
 from app.app_tenant.flows.repositories.flow import FlowRepository
 from app.app_tenant.agents.schemas.agent import AgentCreate, AgentOut, AgentUpdate, ChatRequest, ChatResponse
 from app.common.schema import PageParams, PageResult
+from app.core.soft_delete import is_marked_deleted, mark_deleted, not_deleted
 from app.core.service import BaseService
 from app.app_tenant.compliance.services.compliance import ComplianceService
 from app.deletion.cascade import before_delete_agent
@@ -50,13 +51,13 @@ class AgentService(BaseService):
             return agent.system_prompt.strip()
         if agent.prompt_template_id:
             tpl = await self.db.get(PromptTemplate, agent.prompt_template_id)
-            if tpl and tpl.is_active:
+            if tpl and tpl.is_active and not is_marked_deleted(tpl):
                 return tpl.content
         return "你是企业智能助手，请准确、简洁地回答用户问题。"
 
     async def _get_agent_or_raise(self, agent_id: UUID) -> Agent:
         agent = await self.repo.get_detail(agent_id)
-        if not agent:
+        if not agent or is_marked_deleted(agent):
             raise NotFoundError("智能体不存在")
         assert_tenant_access(self.ctx, agent.tenant_id)
         return agent
@@ -116,7 +117,7 @@ class AgentService(BaseService):
     async def delete_agent(self, agent_id: UUID) -> None:
         agent = await self._get_agent_or_raise(agent_id)
         await before_delete_agent(self.db, agent.id)
-        await self.db.delete(agent)
+        await mark_deleted(self.db, agent)
 
     async def chat(self, agent_id: UUID, body: ChatRequest) -> ChatResponse:
         agent = await self._get_agent_or_raise(agent_id)

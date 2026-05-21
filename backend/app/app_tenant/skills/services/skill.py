@@ -8,6 +8,7 @@ from app.core.tenant import TenantContext, assert_tenant_access, tenant_filters
 from app.app_tenant.skills.models import SkillPackage
 from app.app_tenant.skills.schemas.skill import SkillPackageCreate, SkillPackageOut, SkillPackageUpdate
 from app.common.schema import PageParams, PageResult
+from app.core.soft_delete import is_marked_deleted, mark_deleted
 from app.core.service import BaseService
 
 
@@ -59,11 +60,11 @@ class SkillService(BaseService):
 
     async def delete_skill(self, skill_id: UUID) -> None:
         row = await self._get_or_raise(skill_id)
-        await self.db.delete(row)
+        await mark_deleted(self.db, row)
 
     async def _get_or_raise(self, skill_id: UUID) -> SkillPackage:
         row = await self.db.get(SkillPackage, skill_id)
-        if not row:
+        if not row or is_marked_deleted(row):
             raise NotFoundError("技能包不存在")
         assert_tenant_access(self.ctx, row.tenant_id)
         return row

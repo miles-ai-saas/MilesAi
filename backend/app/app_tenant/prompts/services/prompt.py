@@ -12,6 +12,7 @@ from app.app_tenant.prompts.schemas.prompt import (
     PromptTemplateUpdate,
 )
 from app.common.schema import PageParams, PageResult
+from app.core.soft_delete import is_marked_deleted, mark_deleted
 from app.core.service import BaseService
 
 
@@ -61,11 +62,11 @@ class PromptService(BaseService):
 
     async def delete_template(self, template_id: UUID) -> None:
         row = await self._get_or_raise(template_id)
-        await self.db.delete(row)
+        await mark_deleted(self.db, row)
 
     async def _get_or_raise(self, template_id: UUID) -> PromptTemplate:
         row = await self.db.get(PromptTemplate, template_id)
-        if not row:
+        if not row or is_marked_deleted(row):
             raise NotFoundError("提示词模版不存在")
         assert_tenant_access(self.ctx, row.tenant_id)
         return row

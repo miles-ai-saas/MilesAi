@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.repository import BaseRepository
+from app.core.soft_delete import not_deleted
 from app.models.role import Role
 from app.models.user import User
 
@@ -18,7 +19,7 @@ class UserRepository(BaseRepository[User]):
     async def get_with_roles(self, user_id: UUID) -> User | None:
         stmt = (
             select(User)
-            .where(User.id == user_id)
+            .where(User.id == user_id, not_deleted(User))
             .options(*self._with_roles)
         )
         return (await self.db.execute(stmt)).scalar_one_or_none()
