@@ -7,6 +7,7 @@ from app.core.tenant import TenantContext, assert_tenant_access, tenant_filters
 from app.app_tenant.compliance.services.compliance import ComplianceService
 from app.app_tenant.hooks.models import HookScope, HookTrigger
 from app.app_tenant.hooks.services.runner import HookRunner
+from app.ai_stack.langgraph.compiler import validate_graph_for_compile
 from app.flow_runtime.runtime_factory import get_flow_runtime
 from app.flow_runtime.types import RunContext
 from app.models.flow import Flow, FlowStatus, FlowVersion
@@ -150,8 +151,7 @@ class FlowService(BaseService):
         )
         if "query" not in ctx.inputs and body.inputs:
             ctx.inputs.setdefault("query", body.inputs.get("message", ""))
-        runtime = get_flow_runtime()
-        result = await runtime.run(version.graph_json, ctx)
+        result = await get_flow_runtime().run(version.graph_json, ctx)
         output = result.output
         if not isinstance(output, (str, dict, list)):
             output = str(output)
@@ -164,3 +164,10 @@ class FlowService(BaseService):
             {**hook_payload, "direction": "out", "output": output},
         )
         return FlowRunResponse(output=output, steps=result.steps)
+
+    async def compile_preview(self, flow_id: UUID) -> dict:
+        flow = await self._get_flow_or_raise(flow_id)
+        version = await self.repo.get_version(flow.id, flow.current_version)
+        if not version:
+            raise BadRequestError("流程无可用版本")
+        return validate_graph_for_compile(version.graph_json).to_dict()

@@ -21,6 +21,7 @@ export default function FlowEditPage() {
   const [flowName, setFlowName] = useState("");
   const [testQuery, setTestQuery] = useState("你好");
   const [runResult, setRunResult] = useState("");
+  const [compileInfo, setCompileInfo] = useState("");
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -62,6 +63,30 @@ export default function FlowEditPage() {
       setMsg("已发布");
     } catch (e) {
       setMsg(e instanceof Error ? e.message : "发布失败");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const checkCompile = async () => {
+    setBusy(true);
+    setCompileInfo("");
+    try {
+      await api.saveFlowGraph(id, graphRef.current);
+      const r = await api.compileFlow(id);
+      const parallel =
+        r.parallel_groups?.length > 0
+          ? `；并行层 ${r.parallel_groups.map((g) => g.join("+")).join(" | ")}`
+          : "";
+      const cond =
+        r.conditional_nodes?.length > 0 ? `；条件节点 ${r.conditional_nodes.join(", ")}` : "";
+      setCompileInfo(
+        r.compilable
+          ? `可编译为 LangGraph（${r.node_types.join(" → ")}${parallel}${cond}）`
+          : `不可编译：${r.errors.join("; ")}`,
+      );
+    } catch (e) {
+      setCompileInfo(e instanceof Error ? e.message : "编译检查失败");
     } finally {
       setBusy(false);
     }
@@ -111,12 +136,21 @@ export default function FlowEditPage() {
         />
         <button
           type="button"
+          onClick={checkCompile}
+          disabled={busy}
+          className="rounded border border-line px-3 py-1 text-sm hover:bg-surface-muted"
+        >
+          编译检查
+        </button>
+        <button
+          type="button"
           onClick={runTest}
           disabled={busy}
           className="rounded bg-brand px-3 py-1 text-sm text-white"
         >
           调试运行
         </button>
+        {compileInfo && <span className="text-xs text-ink-muted">{compileInfo}</span>}
         {msg && <span className="text-sm text-emerald-600">{msg}</span>}
       </div>
       <div className="min-h-0 flex-1">

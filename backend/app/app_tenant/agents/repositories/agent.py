@@ -6,7 +6,7 @@ from sqlalchemy.orm import selectinload
 
 from app.core.repository import BaseRepository
 from app.core.soft_delete import not_deleted
-from app.models.agent import Agent
+from app.models.agent import Agent, AgentSubAgentBinding
 from app.models.kb import KnowledgeBase
 
 
@@ -18,6 +18,7 @@ class AgentRepository(BaseRepository[Agent]):
         selectinload(Agent.knowledge_bases),
         selectinload(Agent.model_config),
         selectinload(Agent.published_flow),
+        selectinload(Agent.sub_agent_bindings).selectinload(AgentSubAgentBinding.child_agent),
     ]
 
     async def get_detail(self, agent_id: UUID) -> Agent | None:

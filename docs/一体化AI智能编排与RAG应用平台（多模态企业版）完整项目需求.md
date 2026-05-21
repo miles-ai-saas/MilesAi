@@ -1,7 +1,7 @@
 # 一体化AI智能编排与RAG应用平台（多模态企业版）完整项目需求
 
 > **与代码实现对齐说明（2026-05）**  
-> 需求原文中的「Langflow 内嵌」「@langflow/flow-builder」为立项选型表述。当前仓库实现为：后端 **`app/flow_runtime/`**（Builtin DAG 执行器）、前端 **React Flow** 画布；第三方 Langflow 仅作可选扩展。详见 [docs/flow-runtime.md](docs/flow-runtime.md) 与 [docs/技术方案.md](docs/技术方案.md) §10。
+> 需求原文中的「Langflow 内嵌」「@langflow/flow-builder」为立项选型表述。当前仓库实现为：后端 **`app/flow_runtime/`**（Builtin DAG 执行器）、前端 **React Flow** 画布；第三方 Langflow 仅作可选扩展。详见 [docs/flow-runtime.md](flow-runtime.md) 与 [docs/技术方案.md](技术方案.md) §10。
 
 # 一、项目基础信息
 

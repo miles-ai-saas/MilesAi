@@ -11,6 +11,7 @@ from app.common.schema import ApiResponse, PageParams, PageResult
 from app.app_tenant.flows.schemas.flow import (
     FlowCreate,
     FlowOut,
+    FlowCompileReport,
     FlowRunRequest,
     FlowRunResponse,
     FlowSaveGraph,
@@ -110,3 +111,13 @@ async def run_flow(
     db: AsyncSession = Depends(get_db),
 ):
     return ok(await _svc(db, ctx).run(flow_id, body))
+
+
+@router.post("/{flow_id}/compile", response_model=ApiResponse[FlowCompileReport])
+async def compile_flow(
+    flow_id: UUID,
+    ctx: TenantContext = Depends(require_permissions("flow:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    data = await _svc(db, ctx).compile_preview(flow_id)
+    return ok(FlowCompileReport.model_validate(data))

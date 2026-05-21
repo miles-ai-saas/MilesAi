@@ -17,6 +17,8 @@ from app.core.database import AsyncSessionLocal
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    from app.ai_stack.langgraph.checkpointer import init_langgraph_checkpointer, shutdown_langgraph_checkpointer
+
     run_migrations()
     async with AsyncSessionLocal() as session:
         await seed_database(session)
@@ -24,7 +26,9 @@ async def lifespan(app: FastAPI):
         await seed_marketplace(session)
         await seed_admin_ops(session)
         await session.commit()
+    app.state.langgraph_checkpoint = await init_langgraph_checkpointer()
     yield
+    await shutdown_langgraph_checkpointer()
 
 
 def create_app() -> FastAPI:

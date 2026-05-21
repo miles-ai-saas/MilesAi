@@ -140,12 +140,26 @@ export interface FlowEdge {
   targetHandle?: string;
 }
 
+export interface SubAgentRef {
+  id: string;
+  name: string;
+  role_hint?: string | null;
+  status: string;
+  description?: string | null;
+}
+
+export interface SubAgentBindingInput {
+  child_agent_id: string;
+  role_hint?: string | null;
+}
+
 export interface Agent {
   id: string;
   name: string;
   description?: string | null;
   status: string;
   kb_ids: string[];
+  sub_agents?: SubAgentRef[];
   published_flow_id?: string | null;
   model_config_id?: string | null;
   prompt_template_id?: string | null;

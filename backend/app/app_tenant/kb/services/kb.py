@@ -4,14 +4,13 @@ from fastapi import UploadFile
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.ai.embedding import embed_query
+from app.ai_stack.langchain.vectorstores import search_kb
 from app.core.config import get_settings
 from app.common.exceptions import BadRequestError, NotFoundError
 from app.core.minio_client import build_object_key, delete_object, upload_bytes
 from app.core.tenant import TenantContext, assert_tenant_access, tenant_filters
 from app.deletion.cascade import before_delete_kb
 from app.deletion.document import clear_document_derived_data_async
-from app.core.weaviate_store import search_vectors
 from app.models.kb import Document, DocumentChunk, DocumentStatus, KnowledgeBase
 from app.app_tenant.kb.repositories.kb import (
     DocumentChunkRepository,
@@ -245,9 +244,8 @@ class KnowledgeBaseService(BaseService):
 
     async def search(self, kb_id: UUID, body: SearchRequest) -> SearchResponse:
         await self._get_kb_or_raise(kb_id)
-        query_vector = embed_query(body.query)
-        raw_hits = search_vectors(
-            query_vector,
+        raw_hits = search_kb(
+            body.query,
             tenant_id=self.ctx.tenant_id,
             kb_id=kb_id,
             limit=body.top_k,

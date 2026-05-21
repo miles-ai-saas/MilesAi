@@ -222,8 +222,26 @@ export const api = {
   saveFlowGraph: (flowId: string, graph_json: FlowGraph, remark?: string) =>
     put<FlowVersion>(`/flows/${flowId}/graph`, { graph_json, remark }),
   publishFlow: (flowId: string) => post<Flow>(`/flows/${flowId}/publish`),
-  runFlow: (flowId: string, inputs: Record<string, string>) =>
-    post<{ output: unknown; steps: unknown[] }>(`/flows/${flowId}/run`, { inputs }),
+  compileFlow: (flowId: string) =>
+    post<{
+      compilable: boolean;
+      engine: string;
+      node_order: string[];
+      node_types: string[];
+      execution_layers: string[][];
+      parallel_groups: string[][];
+      conditional_nodes: string[];
+      errors: string[];
+    }>(`/flows/${flowId}/compile`),
+  runFlow: (
+    flowId: string,
+    inputs: Record<string, string>,
+    opts?: { useLanggraph?: boolean },
+  ) =>
+    post<{ output: unknown; steps: unknown[] }>(`/flows/${flowId}/run`, {
+      inputs,
+      ...(opts?.useLanggraph ? { use_langgraph: true } : {}),
+    }),
 
   listKbs: (page = 1, size = DEFAULT_PAGE_SIZE) =>
     getPage<KnowledgeBase>(`/kb?${buildPageQuery(page, size)}`),
@@ -237,27 +255,38 @@ export const api = {
     name: string;
     description?: string;
     kb_ids?: string[];
+    sub_agents?: import("./types").SubAgentBindingInput[];
     published_flow_id?: string;
     system_prompt?: string;
     prompt_template_id?: string;
     model_config_id?: string;
-  }) => post<Agent>("/agents", { kb_ids: [], ...payload }),
+    config?: Record<string, unknown>;
+  }) => post<Agent>("/agents", { kb_ids: [], sub_agents: [], ...payload }),
   updateAgent: (
     agentId: string,
     payload: {
       name?: string;
       description?: string;
       kb_ids?: string[];
+      sub_agents?: import("./types").SubAgentBindingInput[];
       published_flow_id?: string | null;
       system_prompt?: string;
       prompt_template_id?: string | null;
       model_config_id?: string | null;
+      config?: Record<string, unknown>;
     },
   ) => patch<Agent>(`/agents/${agentId}`, payload),
   deleteAgent: (agentId: string) =>
     http.delete(`/agents/${agentId}`).then(() => undefined),
-  chatAgent: (agentId: string, query: string) =>
-    post<ChatResponse>(`/agents/${agentId}/chat`, { query }),
+  chatAgent: (
+    agentId: string,
+    query: string,
+    opts?: { conversationId?: string },
+  ) =>
+    post<ChatResponse>(`/agents/${agentId}/chat`, {
+      query,
+      ...(opts?.conversationId ? { conversation_id: opts.conversationId } : {}),
+    }),
 
   getKb: (kbId: string) => get<KnowledgeBase>(`/kb/${kbId}`),
   listDocuments: (kbId: string, page = 1, size = DEFAULT_PAGE_SIZE) =>

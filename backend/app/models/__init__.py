@@ -1,4 +1,4 @@
-from app.models.agent import Agent, AgentStatus, agent_kb_bindings
+from app.models.agent import Agent, AgentStatus, AgentSubAgentBinding, agent_kb_bindings
 from app.app_tenant.compliance.models import InterceptLog, SensitiveAction, SensitiveWord
 from app.app_tenant.hooks.models import (
     HookBinding,
@@ -41,6 +41,7 @@ __all__ = [
     "VectorRef",
     "Agent",
     "AgentStatus",
+    "AgentSubAgentBinding",
     "ModelConfig",
     "agent_kb_bindings",
     "Flow",

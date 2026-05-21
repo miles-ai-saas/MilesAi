@@ -8,10 +8,9 @@ from uuid import UUID
 import httpx
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.ai.embedding import embed_query
+from app.ai_stack.langchain.vectorstores import search_kb
 from app.common.exceptions import BadRequestError, NotFoundError
 from app.core.tenant import TenantContext
-from app.core.weaviate_store import search_vectors
 from app.app_tenant.tools.models import Tool, ToolType
 from app.core.soft_delete import is_marked_deleted
 
@@ -71,9 +70,8 @@ async def invoke_builtin(
             raise BadRequestError("knowledge_search 需要 query 参数")
         if not kb_id:
             raise BadRequestError("knowledge_search 需要 kb_id 参数")
-        vector = embed_query(str(query))
-        hits = search_vectors(
-            vector,
+        hits = search_kb(
+            str(query),
             tenant_id=ctx.tenant_id,
             kb_id=UUID(str(kb_id)),
             limit=int(params.get("limit", 5)),

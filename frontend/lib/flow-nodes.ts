@@ -1,10 +1,12 @@
 import type { Node, Edge } from "@xyflow/react";
 import type { FlowEdge, FlowGraph, FlowNode } from "./types";
 
-/** 后端 BuiltinFlowRuntime 支持的节点类型 */
+/** 后端 LangGraph 画布编译支持的节点类型 */
 export const NODE_PALETTE = [
   { type: "TextInput", label: "文本输入", color: "#3b82f6" },
   { type: "KnowledgeSearch", label: "知识库检索", color: "#10b981" },
+  { type: "ConditionBranch", label: "条件分支", color: "#ec4899" },
+  { type: "ParallelJoin", label: "并行汇合", color: "#06b6d4" },
   { type: "PromptTemplate", label: "提示词模板", color: "#8b5cf6" },
   { type: "LLMCall", label: "大模型", color: "#f59e0b" },
   { type: "TextOutput", label: "文本输出", color: "#64748b" },
@@ -15,6 +17,13 @@ export type NodeType = (typeof NODE_PALETTE)[number]["type"];
 const DEFAULT_DATA: Record<NodeType, Record<string, unknown>> = {
   TextInput: { input_key: "query", label: "用户输入" },
   KnowledgeSearch: { top_k: 5, label: "知识库检索" },
+  ConditionBranch: {
+    label: "条件分支",
+    mode: "has_hits",
+    threshold: 0.35,
+    keyword: "",
+  },
+  ParallelJoin: { label: "并行汇合", merge_strategy: "dict" },
   PromptTemplate: {
     label: "提示词",
     template:

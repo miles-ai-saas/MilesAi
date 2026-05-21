@@ -48,6 +48,21 @@ class FlowOut(BaseModel):
 
 class FlowRunRequest(BaseModel):
     inputs: dict = Field(default_factory=dict)
+    use_langgraph: bool = Field(
+        True,
+        description="已废弃：画布统一由 LangGraph 执行，保留字段仅为兼容旧客户端",
+    )
+
+
+class FlowCompileReport(BaseModel):
+    compilable: bool
+    engine: str
+    node_order: list[str] = []
+    node_types: list[str] = []
+    execution_layers: list[list[str]] = []
+    parallel_groups: list[list[str]] = []
+    conditional_nodes: list[str] = []
+    errors: list[str] = []
 
 
 class FlowRunResponse(BaseModel):

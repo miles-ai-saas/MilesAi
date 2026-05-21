@@ -1,17 +1,16 @@
 # 流程运行时（flow_runtime）
 
-> 本文说明 AiEngine **实际落地**的流程编排实现，避免与第三方 [Langflow](https://github.com/langflow-ai/langflow) 产品混淆。
+> 画布 `graph_json` **仅由 LangGraph 编译执行**；`flow_runtime` 提供节点 handler 与类型，不依赖第三方 Langflow 产品。
 
 ## 命名对照
 
-| 名称 | 是什么 | 路径 / 包 |
-|------|--------|-----------|
-| **flow_runtime** | 本仓库内置的 DAG 执行引擎 | `backend/app/flow_runtime/` |
-| **BuiltinFlowRuntime** | 默认运行时，按 `graph_json` 拓扑执行节点 | `builtin_runtime.py` |
-| **OptionalLangflowAdapter** | 可选：检测到 PyPI 已安装 `langflow` 时的适配层（当前仍委托 Builtin） | `optional_langflow_adapter.py` |
-| **Langflow（第三方）** | 开源 Python 产品，**非**本仓库模块 | `pip install langflow`（可选） |
-| **@langflow/flow-builder** | 官方前端画布 npm 包（**未采用**，npm 未发布） | — |
-| **React Flow** | 当前前端画布 | `@xyflow/react`，`frontend/components/flow/` |
+| 名称 | 是什么 | 路径 |
+|------|--------|------|
+| **flow_runtime** | 流程节点注册表 + `get_flow_runtime()` | `backend/app/flow_runtime/` |
+| **LangGraph** | `graph_json` → `StateGraph` → `ainvoke` | `ai_stack/langgraph/` |
+| **React Flow** | 前端画布 | `@xyflow/react` |
+
+需求文档中的「Langflow」指可视化编排能力；本仓库落地为 **React Flow + LangGraph**，非 PyPI `langflow` 包。
 
 ## 数据流
 
@@ -21,43 +20,54 @@
     → PostgreSQL flow_versions
 
 调试 / 智能体执行
-    → get_flow_runtime()  →  BuiltinFlowRuntime（默认）
-    → app/flow_runtime/nodes/registry.py 执行各节点类型
+    → get_flow_runtime().run(graph_json, ctx)
+    → LangGraph（并行 / 条件分支 / 扇入）
+    → flow_runtime.nodes.registry
 ```
 
 ## 目录结构
 
 ```
 backend/app/flow_runtime/
-├── builtin_runtime.py          # 默认 DAG 执行器
-├── runtime_factory.py          # get_flow_runtime()
-├── optional_langflow_adapter.py # 可选第三方 langflow 包
-├── types.py                    # FlowGraph, RunContext, RunResult
-├── templates/rag_flow.json     # RAG 默认模板
+├── runtime_factory.py      # get_flow_runtime() → LangGraphFlowRuntime
+├── types.py                # FlowGraph, RunContext, RunResult
+├── templates/rag_flow.json
 └── nodes/
-    ├── registry.py             # 节点注册表（扩展入口）
+    ├── registry.py
     ├── io_nodes.py
     ├── rag_nodes.py
-    └── llm_nodes.py
+    ├── llm_nodes.py
+    └── control_nodes.py    # ConditionBranch, ParallelJoin
+
+backend/app/ai_stack/langgraph/
+├── compiler.py
+├── flow_runner.py          # run_flow_graph()
+└── graph_analysis.py
 ```
 
-业务 API（CRUD、发布、run）在 `app/app_tenant/flows/`，**不要**与 `flow_runtime` 混为一谈。
+## 编译与运行
+
+- DAG 校验（无环、节点类型、条件节点 true/false 出边）
+- 不可编译 → `400` + `errors`
+- 预览：`POST /api/v1/flows/{id}/compile`
+- 详见 [flow-langgraph-compiler.md](./flow-langgraph-compiler.md)
 
 ## 扩展节点
 
-在 `nodes/registry.py` 的 `NODE_REGISTRY` 中注册 handler，并在前端 `frontend/lib/flow-nodes.ts` 增加对应节点类型（若需在画布展示）。
+1. `nodes/registry.py` 注册 handler  
+2. 前端 `frontend/lib/flow-nodes.ts` 增加调色板项  
 
-## 可选对接 Langflow 产品
+## 与智能体
 
-若未来需要复用 Langflow 生态组件：
+| 场景 | 路径 |
+|------|------|
+| 绑定 `published_flow_id` | LangGraph 画布 |
+| 仅绑知识库 | RAG LangGraph 或 `legacy` 线性 RAG |
+| 绑子智能体 | DeepAgents 规划 |
 
-1. `pip install langflow==<锁定版本>`
-2. 在 `optional_langflow_adapter.py` 的 `run()` 中接入官方 API
-3. `flows.external_flow_id` 字段用于与外部 Flow ID 映射（迁移 `006`）
+## 历史说明
 
-**当前无需安装 Langflow 即可完成 P2 联调。**
+- 曾存在 `BuiltinFlowRuntime` 自研调度器 → 已移除，统一 LangGraph  
+- 曾存在 `OptionalLangflowAdapter` 对接第三方产品 → 已移除，无 `langflow` 依赖  
 
-## 相关文档
-
-- [README.md](../README.md) — 快速启动与 API
-- [技术方案.md](./技术方案.md) §10 — 架构级说明
+`flow_flows.external_flow_id` 字段仍保留于数据库，当前运行时未使用，仅作预留（迁移 `008` 补齐；`006` 曾误用旧表名 `flows`）。

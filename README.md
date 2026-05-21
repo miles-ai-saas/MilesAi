@@ -108,6 +108,7 @@ AiEngine/
 - [x] P3 安全与工具：敏感词/拦截日志/检测试、钩子、工具目录与调用、MCP、技能包、流程/智能体合规
 - [x] P4 应用市场：上架审核（待审/通过/驳回）、安装后评分、广场按评分排序
 - [ ] P5 运维增强
+- [ ] P6 智能体增强：LangChain / LangGraph / DeepAgents（见 [docs/agent-enhancement-langchain-stack.md](docs/agent-enhancement-langchain-stack.md)）
 
 ## 智能体与流程 API（P2）
 
@@ -121,14 +122,14 @@ AiEngine/
 | POST | `/api/v1/agents/{id}/chat` | 对话 |
 | POST | `/api/v1/models` | 配置大模型（OpenAI 兼容） |
 
-流程编排详见 **[docs/flow-runtime.md](docs/flow-runtime.md)**（命名说明：`flow_runtime` ≠ Langflow 产品）。
+流程编排详见 **[docs/flow-runtime.md](docs/flow-runtime.md)**；LangChain 底座见 **[docs/langchain-integration.md](docs/langchain-integration.md)**。
 
 - RAG 模板：`backend/app/flow_runtime/templates/rag_flow.json`
 - 节点扩展：`app/flow_runtime/nodes/registry.py`
 
 ## 前端画布（P2）
 
-编排画布使用 **React Flow**（`@xyflow/react`），`graph_json` 与后端 `BuiltinFlowRuntime` 对齐。需求文档中的 `@langflow/flow-builder` 暂未发布到 npm，故未采用；可选对接第三方 Langflow 见 `optional_langflow_adapter.py`。
+编排画布使用 **React Flow**（`@xyflow/react`），`graph_json` 由后端 **LangGraph** 编译执行（`flow_runtime` 节点 registry）。
 
 ```bash
 # 终端 1：中间件 + 应用

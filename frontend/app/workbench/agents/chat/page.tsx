@@ -34,6 +34,8 @@ function AgentsChatContent() {
   const [selectedAgent, setSelectedAgent] = useState<string>(agentFromUrl ?? "");
   const [query, setQuery] = useState("");
   const [answer, setAnswer] = useState("");
+  const [steps, setSteps] = useState<Record<string, unknown>[]>([]);
+  const [conversationId, setConversationId] = useState(() => crypto.randomUUID());
   const [chatting, setChatting] = useState(false);
 
   const list = usePagedList(useCallback((p, s) => api.listAgents(p, s), []), { enabled: ready });
@@ -76,9 +78,11 @@ function AgentsChatContent() {
     if (!selectedAgent || !query.trim()) return;
     setChatting(true);
     setAnswer("");
+    setSteps([]);
     try {
-      const res = await api.chatAgent(selectedAgent, query.trim());
+      const res = await api.chatAgent(selectedAgent, query.trim(), { conversationId });
       setAnswer(res.answer);
+      setSteps(res.steps ?? []);
     } catch (e) {
       setAnswer(e instanceof Error ? e.message : "对话失败");
     } finally {
@@ -135,16 +139,41 @@ function AgentsChatContent() {
       </aside>
 
       <section className="flex min-w-0 flex-1 flex-col bg-surface-subtle">
-        <div className="border-b border-line bg-surface px-6 py-4">
-          <h2 className="text-lg font-semibold text-ink">{selected?.name ?? "选择智能体"}</h2>
-          <p className="mt-0.5 text-sm text-ink-muted">在此与智能体对话，结果经合规检测后返回</p>
+        <div className="flex items-start justify-between gap-4 border-b border-line bg-surface px-6 py-4">
+          <div>
+            <h2 className="text-lg font-semibold text-ink">{selected?.name ?? "选择智能体"}</h2>
+            <p className="mt-0.5 text-sm text-ink-muted">在此与智能体对话，结果经合规检测后返回</p>
+          </div>
+          <button
+            type="button"
+            className="btn-ghost shrink-0 text-xs"
+            onClick={() => {
+              setConversationId(crypto.randomUUID());
+              setAnswer("");
+              setSteps([]);
+            }}
+          >
+            新会话
+          </button>
         </div>
 
         <div className="flex-1 overflow-y-auto px-6 py-4">
           {answer ? (
-            <div className="card max-w-3xl p-4">
-              <p className="mb-2 text-xs font-medium text-brand">助手</p>
-              <div className="whitespace-pre-wrap text-sm leading-relaxed text-ink">{answer}</div>
+            <div className="max-w-3xl space-y-3">
+              {steps.length > 0 && (
+                <details className="card p-3 text-xs text-ink-muted">
+                  <summary className="cursor-pointer font-medium text-ink">
+                    执行步骤（{steps.length}）
+                  </summary>
+                  <pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap font-mono text-[11px]">
+                    {JSON.stringify(steps, null, 2)}
+                  </pre>
+                </details>
+              )}
+              <div className="card p-4">
+                <p className="mb-2 text-xs font-medium text-brand">助手</p>
+                <div className="whitespace-pre-wrap text-sm leading-relaxed text-ink">{answer}</div>
+              </div>
             </div>
           ) : (
             <div className="flex h-full min-h-[200px] flex-col items-center justify-center text-center">
@@ -152,7 +181,9 @@ function AgentsChatContent() {
                 <span className="text-2xl text-brand">◇</span>
               </div>
               <p className="text-sm text-ink-muted">输入问题开始对话</p>
-              <p className="mt-1 text-xs text-ink-faint">支持直连、RAG 检索与已发布流程</p>
+              <p className="mt-1 text-xs text-ink-faint">
+                支持直连、RAG、流程；绑定子智能体时由规划器协同回答
+              </p>
             </div>
           )}
         </div>

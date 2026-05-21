@@ -40,6 +40,8 @@ class Settings(BaseSettings):
     redis_port: int = 6379
     redis_password: str = ""
     redis_db: int = 0
+    langgraph_redis_db: int = 0
+    langgraph_redis_checkpoint: bool = True
 
     minio_endpoint: str = "localhost:9000"
     minio_access_key: str = "minioadmin"
@@ -90,6 +92,15 @@ class Settings(BaseSettings):
         if self.redis_password:
             return f"redis://:{self.redis_password}@{self.redis_host}:{self.redis_port}/{self.redis_db}"
         return f"redis://{self.redis_host}:{self.redis_port}/{self.redis_db}"
+
+    @property
+    def langgraph_redis_url(self) -> str:
+        if self.redis_password:
+            return (
+                f"redis://:{self.redis_password}@{self.redis_host}:"
+                f"{self.redis_port}/{self.langgraph_redis_db}"
+            )
+        return f"redis://{self.redis_host}:{self.redis_port}/{self.langgraph_redis_db}"
 
     @property
     def cors_origin_list(self) -> list[str]:
