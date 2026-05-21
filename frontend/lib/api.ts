@@ -267,6 +267,7 @@ export const api = {
     payload: {
       name?: string;
       description?: string;
+      status?: "enabled" | "disabled";
       kb_ids?: string[];
       sub_agents?: import("./types").SubAgentBindingInput[];
       published_flow_id?: string | null;

@@ -2,6 +2,7 @@
 
 import { useCallback, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { AgentDetailDialog } from "@/components/agent/AgentDetailDialog";
 import { AgentFormDialog } from "@/components/agent/AgentFormDialog";
 import { AddResourceCard } from "@/components/resource/AddResourceCard";
 import { CardActions } from "@/components/resource/CardActions";
@@ -9,7 +10,7 @@ import { ResourceItemCard } from "@/components/resource/ResourceItemCard";
 import { ResourceListFooter } from "@/components/resource/ResourceListFooter";
 import { ResourceListLayout } from "@/components/resource/ResourceListLayout";
 import { usePagedList } from "@/hooks/use-paged-list";
-import { agentModeLabel } from "@/lib/agent-utils";
+import { agentModeLabel, agentStatusLabel } from "@/lib/agent-utils";
 import { useRequireAuth } from "@/lib/auth-store";
 import { filterBySearch } from "@/lib/filter-search";
 import { api } from "@/lib/api";
@@ -21,6 +22,7 @@ export default function AgentsPage() {
   const [search, setSearch] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Agent | null>(null);
+  const [viewingId, setViewingId] = useState<string | null>(null);
 
   const list = usePagedList(useCallback((p, s) => api.listAgents(p, s), []), { enabled: ready });
 
@@ -44,6 +46,32 @@ export default function AgentsPage() {
     await api.deleteAgent(agent.id);
     await list.reload();
   };
+
+  const onToggleStatus = async (agent: Agent) => {
+    const next = agent.status === "enabled" ? "disabled" : "enabled";
+    const verb = next === "disabled" ? "禁用" : "启用";
+    if (!confirm(`确定${verb}智能体「${agent.name}」？`)) return;
+    await api.updateAgent(agent.id, { status: next });
+    await list.reload();
+  };
+
+  const onDesign = (agent: Agent) => {
+    if (agent.published_flow_id) {
+      router.push(`/workbench/flows/${agent.published_flow_id}/edit`);
+      return;
+    }
+    openEdit(agent);
+  };
+
+  const onChat = (agent: Agent) => {
+    router.push(`/workbench/agents/chat?agent=${agent.id}`);
+  };
+
+  const onView = (agent: Agent) => {
+    setViewingId(agent.id);
+  };
+
+  const closeView = () => setViewingId(null);
 
   return (
     <>
@@ -79,26 +107,52 @@ export default function AgentsPage() {
           hint="配置模型、知识库与提示词"
           onClick={openCreate}
         />
-        {filtered.map((a) => (
-          <ResourceItemCard
-            key={a.id}
-            title={a.name}
-            description={a.description ?? "未填写描述"}
-            badge={a.status}
-            meta={
-              <span>
-                {a.kb_ids.length > 0 ? `知识库 ${a.kb_ids.length} 个` : "未绑知识库"} ·{" "}
-                {agentModeLabel(a)}
-              </span>
-            }
-            actions={
-              <CardActions
-                onEdit={() => openEdit(a)}
-                onDelete={() => onDelete(a)}
-              />
-            }
-          />
-        ))}
+        {filtered.map((a) => {
+          const disabled = a.status !== "enabled";
+          return (
+            <ResourceItemCard
+              key={a.id}
+              title={a.name}
+              description={a.description ?? "未填写描述"}
+              badge={agentStatusLabel(a.status)}
+              muted={disabled}
+              meta={
+                <span>
+                  {a.kb_ids.length > 0 ? `知识库 ${a.kb_ids.length} 个` : "未绑知识库"} ·{" "}
+                  {agentModeLabel(a)}
+                  {a.published_flow_id ? " · 已绑流程" : ""}
+                </span>
+              }
+              actions={
+                <CardActions
+                  actions={[
+                    {
+                      label: "查看",
+                      onClick: () => onView(a),
+                    },
+                    {
+                      label: "对话",
+                      variant: "primary",
+                      disabled,
+                      onClick: () => onChat(a),
+                    },
+                    {
+                      label: "设计",
+                      onClick: () => onDesign(a),
+                    },
+                    {
+                      label: disabled ? "启用" : "禁用",
+                      variant: disabled ? "primary" : "danger",
+                      onClick: () => onToggleStatus(a),
+                    },
+                  ]}
+                  onEdit={() => openEdit(a)}
+                  onDelete={() => onDelete(a)}
+                />
+              }
+            />
+          );
+        })}
       </ResourceListLayout>
 
       <div className="mt-4 flex justify-end">
@@ -110,6 +164,24 @@ export default function AgentsPage() {
           进入对话工作台
         </button>
       </div>
+
+      <AgentDetailDialog
+        open={Boolean(viewingId)}
+        agentId={viewingId}
+        onClose={closeView}
+        onEdit={(a) => {
+          closeView();
+          openEdit(a);
+        }}
+        onChat={(a) => {
+          closeView();
+          onChat(a);
+        }}
+        onDesign={(a) => {
+          closeView();
+          onDesign(a);
+        }}
+      />
 
       <AgentFormDialog
         open={dialogOpen}

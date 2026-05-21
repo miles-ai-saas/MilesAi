@@ -11,6 +11,7 @@ type Props = {
   onClick?: () => void;
   actions?: ReactNode;
   badge?: string;
+  muted?: boolean;
 };
 
 export function ResourceItemCard({
@@ -21,6 +22,7 @@ export function ResourceItemCard({
   onClick,
   actions,
   badge,
+  muted = false,
 }: Props) {
   const body = (
     <>
@@ -44,7 +46,9 @@ export function ResourceItemCard({
     </>
   );
 
-  const className = "resource-card";
+  const className = muted
+    ? "resource-card opacity-60 saturate-50"
+    : "resource-card";
 
   if (href) {
     return (

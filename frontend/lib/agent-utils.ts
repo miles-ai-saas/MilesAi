@@ -2,12 +2,21 @@ import type { Agent, Flow, ModelConfig, PromptTemplate } from "@/lib/types";
 
 const DEFAULT_SYSTEM_PROMPT = "你是企业智能助手，请准确、简洁地回答用户问题。";
 
+export function agentStatusLabel(status: string): string {
+  return status === "enabled" ? "启用" : "禁用";
+}
+
 export function agentModeLabel(agent: Agent): string {
   const subs = agent.sub_agents?.length ?? 0;
   if (subs > 0) return `协同 · ${subs} 子智能体`;
   if (agent.published_flow_id) return "流程";
   if (agent.kb_ids.length > 0) return `RAG · ${agent.kb_ids.length} KB`;
   return "直连";
+}
+
+export function subAgentRoleLabel(roleHint?: string | null): string {
+  const hit = SUB_AGENT_ROLE_OPTIONS.find((o) => o.value === (roleHint ?? ""));
+  return hit?.label ?? roleHint ?? "未指定";
 }
 
 export const SUB_AGENT_ROLE_OPTIONS = [
