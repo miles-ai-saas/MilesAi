@@ -102,8 +102,10 @@ AiEngine/
 - [x] P0 基础设施：Compose、JWT+RBAC、租户/用户 API、健康检查、Celery 骨架
 - [x] P1 RAG 核心：知识库 CRUD、文档上传、Celery 入库、向量检索
 - [x] P2 编排与智能体：流程版本、内置/Langflow 运行时、智能体对话
+- [x] P2 多模态知识库：图片/音频上传、OCR/转写（可选依赖降级）
+- [x] P2 应用市场：广场安装、租户打包上架/发布
 - [ ] P3 安全与工具
-- [ ] P4 应用市场
+- [ ] P4 应用市场增强（审核、评分等）
 - [ ] P5 运维增强
 
 ## 智能体与流程 API（P2）
@@ -155,6 +157,24 @@ chmod +x scripts/p2-e2e.sh && ./scripts/p2-e2e.sh
 | 登录 | `/login` | JWT |
 | 流程列表/画布 | `/flows`, `/flows/{id}/edit` | 拖拽编排、保存、发布、调试 run |
 | 智能体联调 | `/agents` | 创建智能体、对话测试 |
-| 知识库 | `/kb` | 列表与新建 |
+| 知识库 | `/kb` | 列表与新建；详情支持 TXT/PDF/图片/音频 |
+| 应用市场 | `/workbench/marketplace` | 安装、打包上架、发布到广场 |
+
+### 多模态入库（可选 Worker 依赖）
+
+```bash
+cd backend && pip install -e ".[multimodal]"   # pytesseract + openai-whisper
+# 图片 OCR 还需系统安装 tesseract（macOS: brew install tesseract tesseract-lang）
+```
+
+未安装时仍可上传图片/音频，解析结果为可检索的占位说明文本。
+
+### 应用市场上架 API
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| POST | `/api/v1/marketplace/apps/from-resources` | 从 KB/流程/智能体打包草稿 |
+| POST | `/api/v1/marketplace/apps/{id}/publish` | 发布到应用广场 |
+| GET | `/api/v1/marketplace/apps/mine` | 我的上架（含草稿） |
 
 详见 [docs/技术方案.md](docs/技术方案.md)。

@@ -46,6 +46,28 @@ class MarketplaceAppCreate(BaseModel):
     status: MarketplaceAppStatus = MarketplaceAppStatus.DRAFT
 
 
+class MarketplaceAppUpdate(BaseModel):
+    name: str | None = Field(None, min_length=1, max_length=128)
+    description: str | None = None
+    icon: str | None = None
+    version: str | None = None
+    category_slug: str | None = None
+    manifest: dict | None = None
+    status: MarketplaceAppStatus | None = None
+
+
+class MarketplaceAppCreateFromResources(BaseModel):
+    """从当前租户已有资源打包上架（草稿）。"""
+
+    name: str = Field(..., min_length=1, max_length=128)
+    description: str | None = None
+    icon: str | None = "📦"
+    category_slug: str | None = "rag"
+    flow_id: UUID | None = None
+    agent_id: UUID | None = None
+    kb_id: UUID | None = None
+
+
 class AppInstallOut(BaseModel):
     id: UUID
     app_id: UUID

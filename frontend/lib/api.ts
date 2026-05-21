@@ -341,9 +341,22 @@ export const api = {
     getPage<MarketplaceApp>(
       `/marketplace/apps?${buildPageQuery(page, size)}${category ? `&category=${category}` : ""}`
     ),
+  listMyMarketplaceApps: (page = 1, size = DEFAULT_PAGE_SIZE) =>
+    getPage<MarketplaceApp>(`/marketplace/apps/mine?${buildPageQuery(page, size)}`),
   getMarketplaceApp: (appId: string) => get<MarketplaceApp & { manifest: Record<string, unknown> }>(
     `/marketplace/apps/${appId}`
   ),
+  createMarketplaceAppFromResources: (body: {
+    name: string;
+    description?: string;
+    icon?: string;
+    category_slug?: string;
+    flow_id?: string;
+    agent_id?: string;
+    kb_id?: string;
+  }) => post<MarketplaceApp>("/marketplace/apps/from-resources", body),
+  publishMarketplaceApp: (appId: string) =>
+    post<MarketplaceApp>(`/marketplace/apps/${appId}/publish`),
   installMarketplaceApp: (appId: string) =>
     post<AppInstallResult>(`/marketplace/apps/${appId}/install`),
   listAppInstalls: (page = 1, size = DEFAULT_PAGE_SIZE) =>

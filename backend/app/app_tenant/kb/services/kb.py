@@ -29,6 +29,7 @@ from app.app_tenant.kb.schemas.kb import (
     SearchRequest,
     SearchResponse,
 )
+from app.ai.media import file_extension, is_audio_file, is_image_file
 from app.core.soft_delete import is_marked_deleted, mark_deleted, not_deleted
 from app.core.service import BaseService
 
@@ -38,7 +39,40 @@ ALLOWED_MIMES = {
     "text/markdown",
     "application/pdf",
     "application/octet-stream",
+    "image/jpeg",
+    "image/jpg",
+    "image/png",
+    "image/webp",
+    "audio/mpeg",
+    "audio/mp3",
+    "audio/wav",
+    "audio/x-wav",
+    "audio/webm",
+    "audio/ogg",
 }
+
+_ALLOWED_EXTENSIONS = {
+    ".txt",
+    ".md",
+    ".markdown",
+    ".pdf",
+    ".jpg",
+    ".jpeg",
+    ".png",
+    ".webp",
+    ".mp3",
+    ".wav",
+    ".m4a",
+    ".ogg",
+    ".webm",
+}
+
+
+def _is_allowed_upload(filename: str, mime: str) -> bool:
+    ext = file_extension(filename)
+    if mime in ALLOWED_MIMES or ext in _ALLOWED_EXTENSIONS:
+        return True
+    return is_image_file(filename, mime) or is_audio_file(filename, mime)
 
 
 class KnowledgeBaseService(BaseService):
@@ -133,8 +167,11 @@ class KnowledgeBaseService(BaseService):
         if not content:
             raise BadRequestError("文件内容为空")
         mime = file.content_type or "application/octet-stream"
-        if mime not in ALLOWED_MIMES and not file.filename.endswith((".txt", ".md", ".pdf")):
-            raise BadRequestError(f"不支持的文件类型: {mime}")
+        if not _is_allowed_upload(file.filename, mime):
+            raise BadRequestError(
+                f"不支持的文件类型: {mime}。"
+                "支持 TXT/MD/PDF、图片（JPG/PNG/WebP）、音频（MP3/WAV）"
+            )
 
         doc = await self.doc_repo.create(
             tenant_id=kb.tenant_id,

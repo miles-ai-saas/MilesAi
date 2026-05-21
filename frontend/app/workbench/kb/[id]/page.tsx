@@ -99,9 +99,18 @@ export default function KbDetailPage() {
         <h1 className="text-lg font-bold">{kb.name}</h1>
         <p className="text-sm text-ink-muted">{kb.description || "无描述"}</p>
         <label className="mt-4 inline-block cursor-pointer rounded bg-brand px-4 py-2 text-sm text-white">
-          {uploading ? "上传中…" : "上传文档"}
-          <input type="file" className="hidden" onChange={onUpload} disabled={uploading} />
+          {uploading ? "上传中…" : "上传文档 / 多模态"}
+          <input
+            type="file"
+            className="hidden"
+            accept=".txt,.md,.pdf,.jpg,.jpeg,.png,.webp,.mp3,.wav,.m4a,.ogg"
+            onChange={onUpload}
+            disabled={uploading}
+          />
         </label>
+        <p className="mt-2 text-xs text-ink-faint">
+          支持 TXT/MD/PDF、图片（JPG/PNG/WebP，OCR 可选）、音频（MP3/WAV，Whisper 可选）
+        </p>
         {msg && <p className="mt-2 text-sm text-ink-muted">{msg}</p>}
       </section>
 

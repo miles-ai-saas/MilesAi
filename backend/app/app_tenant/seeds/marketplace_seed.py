@@ -24,6 +24,7 @@ async def seed_marketplace(session: AsyncSession) -> None:
         ("RAG 应用", "rag", 10),
         ("智能体", "agent", 20),
         ("流程模板", "flow", 30),
+        ("多模态", "multimodal", 40),
     ]
     cat_map: dict[str, AppCategory] = {}
     for name, slug, order in categories:
@@ -72,6 +73,27 @@ async def seed_marketplace(session: AsyncSession) -> None:
                         "name": "RAG 标准流程",
                         "graph_json": graph,
                         "auto_publish": False,
+                    },
+                },
+            },
+        },
+        {
+            "name": "多模态知识库套件",
+            "description": "安装支持图片 OCR、音频转写的知识库，适合票据、课件、会议录音等场景。",
+            "icon": "🖼️",
+            "category_slug": "multimodal",
+            "manifest": {
+                "version": "1.0.0",
+                "resources": {
+                    "knowledge_base": {
+                        "name": "多模态知识库",
+                        "description": "支持上传 JPG/PNG 图片与 MP3/WAV 音频，自动解析后入库检索",
+                    },
+                    "agent": {
+                        "name": "多模态问答助手",
+                        "system_prompt": "你是多模态知识库助手，请结合 OCR/转写后的文本内容回答，并说明信息来源类型。",
+                        "bind_kb": True,
+                        "bind_flow": False,
                     },
                 },
             },

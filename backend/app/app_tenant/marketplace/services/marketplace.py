@@ -1,4 +1,3 @@
-from pathlib import Path
 from uuid import UUID
 
 from sqlalchemy import func, or_, select
@@ -11,6 +10,9 @@ from app.app_tenant.marketplace.models import AppCategory, AppInstall, Marketpla
 from app.app_tenant.agents.repositories.agent import AgentRepository
 from app.app_tenant.flows.repositories.flow import FlowRepository
 from app.app_tenant.kb.repositories.kb import KnowledgeBaseRepository
+from app.models.agent import Agent
+from app.models.flow import Flow
+from app.models.kb import KnowledgeBase
 from app.app_tenant.agents.schemas.agent import AgentCreate
 from app.common.schema import PageParams, PageResult
 from app.app_tenant.flows.schemas.flow import FlowCreate
@@ -20,20 +22,16 @@ from app.app_tenant.marketplace.schemas.marketplace import (
     AppInstallOut,
     AppInstallResult,
     MarketplaceAppCreate,
+    MarketplaceAppCreateFromResources,
     MarketplaceAppDetail,
     MarketplaceAppOut,
+    MarketplaceAppUpdate,
 )
+from app.app_tenant.marketplace.util import load_rag_graph_template
 from app.app_tenant.agents.services.agent import AgentService
 from app.core.service import BaseService
 from app.app_tenant.flows.services.flow import FlowService
 from app.app_tenant.kb.services.kb import KnowledgeBaseService
-
-
-def _load_rag_graph() -> dict:
-    path = Path(__file__).resolve().parent.parent / "langflow" / "templates" / "rag_flow.json"
-    import json
-
-    return json.loads(path.read_text(encoding="utf-8"))
 
 
 class MarketplaceService(BaseService):
@@ -77,22 +75,10 @@ class MarketplaceService(BaseService):
         installed_ids = await self._installed_app_ids()
         stmt = (
             select(MarketplaceApp)
-            .where(
-                MarketplaceApp.status == MarketplaceAppStatus.PUBLISHED,
-                or_(
-                    MarketplaceApp.is_official.is_(True),
-                    MarketplaceApp.publisher_tenant_id == self.ctx.tenant_id,
-                ),
-            )
+            .where(MarketplaceApp.status == MarketplaceAppStatus.PUBLISHED)
             .options(selectinload(MarketplaceApp.category))
         )
-        count_filters = [
-            MarketplaceApp.status == MarketplaceAppStatus.PUBLISHED,
-            or_(
-                MarketplaceApp.is_official.is_(True),
-                MarketplaceApp.publisher_tenant_id == self.ctx.tenant_id,
-            ),
-        ]
+        count_filters = [MarketplaceApp.status == MarketplaceAppStatus.PUBLISHED]
         if category_slug:
             stmt = stmt.join(AppCategory, MarketplaceApp.category_id == AppCategory.id).where(
                 AppCategory.slug == category_slug
@@ -139,6 +125,92 @@ class MarketplaceService(BaseService):
             raise NotFoundError("应用不存在")
         return app
 
+    async def list_my_apps(self, params: PageParams) -> PageResult[MarketplaceAppOut]:
+        installed_ids = await self._installed_app_ids()
+        filters = [MarketplaceApp.publisher_tenant_id == self.ctx.tenant_id]
+        stmt = (
+            select(MarketplaceApp)
+            .where(*filters)
+            .options(selectinload(MarketplaceApp.category))
+            .order_by(MarketplaceApp.updated_at.desc())
+        )
+        count_stmt = select(func.count(MarketplaceApp.id)).where(*filters)
+        total = await self.db.scalar(count_stmt)
+        stmt = stmt.offset((params.page - 1) * params.size).limit(params.size)
+        apps = (await self.db.execute(stmt)).scalars().all()
+        items = [
+            self._app_out(
+                a,
+                installed=a.id in installed_ids,
+                category_name=a.category.name if a.category else None,
+            )
+            for a in apps
+        ]
+        return PageResult(items=items, total=total or 0, page=params.page, size=params.size)
+
+    async def _get_own_app_or_raise(self, app_id: UUID) -> MarketplaceApp:
+        app = await self._get_app_or_raise(app_id)
+        if app.publisher_tenant_id != self.ctx.tenant_id:
+            raise NotFoundError("应用不存在")
+        return app
+
+    async def _build_manifest_from_resources(
+        self, body: MarketplaceAppCreateFromResources
+    ) -> dict:
+        resources: dict = {}
+        if body.kb_id:
+            kb = await self.db.get(KnowledgeBase, body.kb_id)
+            if not kb or kb.tenant_id != self.ctx.tenant_id:
+                raise NotFoundError("知识库不存在")
+            resources["knowledge_base"] = {
+                "name": kb.name,
+                "description": kb.description or body.description,
+            }
+        if body.flow_id:
+            flow = await self.db.get(Flow, body.flow_id)
+            if not flow or flow.tenant_id != self.ctx.tenant_id:
+                raise NotFoundError("流程不存在")
+            graph_json = load_rag_graph_template()
+            if flow.current_version > 0:
+                version = await self.flow_repo.get_version(body.flow_id, flow.current_version)
+                if version and version.graph_json:
+                    graph_json = version.graph_json
+            resources["flow"] = {
+                "name": flow.name,
+                "description": flow.description,
+                "graph_json": graph_json,
+                "auto_publish": False,
+            }
+        if body.agent_id:
+            agent = await self.db.get(Agent, body.agent_id)
+            if not agent or agent.tenant_id != self.ctx.tenant_id:
+                raise NotFoundError("智能体不存在")
+            resources["agent"] = {
+                "name": agent.name,
+                "description": agent.description,
+                "system_prompt": agent.system_prompt,
+                "bind_kb": body.kb_id is not None,
+                "bind_flow": body.flow_id is not None,
+            }
+        if not resources:
+            raise BadRequestError("请至少选择知识库、流程或智能体之一")
+        return {"version": "1.0.0", "resources": resources}
+
+    async def create_app_from_resources(
+        self, body: MarketplaceAppCreateFromResources
+    ) -> MarketplaceAppOut:
+        manifest = await self._build_manifest_from_resources(body)
+        return await self.create_app(
+            MarketplaceAppCreate(
+                name=body.name,
+                description=body.description,
+                icon=body.icon,
+                category_slug=body.category_slug,
+                manifest=manifest,
+                status=MarketplaceAppStatus.DRAFT,
+            )
+        )
+
     async def create_app(self, body: MarketplaceAppCreate) -> MarketplaceAppOut:
         category_id = None
         if body.category_slug:
@@ -164,6 +236,48 @@ class MarketplaceService(BaseService):
         return self._app_out(
             app,
             installed=False,
+            category_name=app.category.name if app.category else None,
+        )
+
+    async def update_app(self, app_id: UUID, body: MarketplaceAppUpdate) -> MarketplaceAppOut:
+        app = await self._get_own_app_or_raise(app_id)
+        if app.is_official:
+            raise BadRequestError("官方应用不可编辑")
+        data = body.model_dump(exclude_unset=True)
+        category_slug = data.pop("category_slug", None)
+        if category_slug is not None:
+            cat = await self.db.scalar(
+                select(AppCategory).where(AppCategory.slug == category_slug)
+            )
+            app.category_id = cat.id if cat else None
+        for key, value in data.items():
+            setattr(app, key, value)
+        await self.db.flush()
+        await self.db.refresh(app, ["category"])
+        installed_ids = await self._installed_app_ids()
+        return self._app_out(
+            app,
+            installed=app.id in installed_ids,
+            category_name=app.category.name if app.category else None,
+        )
+
+    def _validate_manifest(self, manifest: dict) -> None:
+        resources = manifest.get("resources") or manifest
+        if not any(resources.get(k) for k in ("flow", "agent", "knowledge_base")):
+            raise BadRequestError("manifest 需包含 flow、agent 或 knowledge_base 至少一项")
+
+    async def publish_app(self, app_id: UUID) -> MarketplaceAppOut:
+        app = await self._get_own_app_or_raise(app_id)
+        if app.is_official:
+            raise BadRequestError("官方应用无需发布")
+        self._validate_manifest(app.manifest or {})
+        app.status = MarketplaceAppStatus.PUBLISHED
+        await self.db.flush()
+        await self.db.refresh(app, ["category"])
+        installed_ids = await self._installed_app_ids()
+        return self._app_out(
+            app,
+            installed=app.id in installed_ids,
             category_name=app.category.name if app.category else None,
         )
 
@@ -204,7 +318,7 @@ class MarketplaceService(BaseService):
 
         flow_spec = resources.get("flow")
         if flow_spec:
-            graph = flow_spec.get("graph_json") or _load_rag_graph()
+            graph = flow_spec.get("graph_json") or load_rag_graph_template()
             flow = await flow_svc.create_flow(
                 FlowCreate(
                     name=flow_spec.get("name", f"{app.name} 流程"),

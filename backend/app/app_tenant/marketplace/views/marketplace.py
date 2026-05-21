@@ -13,8 +13,10 @@ from app.app_tenant.marketplace.schemas.marketplace import (
     AppInstallOut,
     AppInstallResult,
     MarketplaceAppCreate,
+    MarketplaceAppCreateFromResources,
     MarketplaceAppDetail,
     MarketplaceAppOut,
+    MarketplaceAppUpdate,
 )
 from app.app_tenant.marketplace.services.marketplace import MarketplaceService
 
@@ -44,6 +46,16 @@ async def list_apps(
     return page_ok(result.items, result.total, result.page, result.size)
 
 
+@router.get("/apps/mine", response_model=ApiResponse[PageResult[MarketplaceAppOut]])
+async def list_my_apps(
+    params: PageParams = Depends(get_page_params),
+    ctx: TenantContext = Depends(require_permissions("marketplace:write")),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await _svc(db, ctx).list_my_apps(params)
+    return page_ok(result.items, result.total, result.page, result.size)
+
+
 @router.get("/apps/{app_id}", response_model=ApiResponse[MarketplaceAppDetail])
 async def get_app(
     app_id: UUID,
@@ -60,6 +72,34 @@ async def create_app(
     db: AsyncSession = Depends(get_db),
 ):
     return ok(await _svc(db, ctx).create_app(body))
+
+
+@router.post("/apps/from-resources", response_model=ApiResponse[MarketplaceAppOut])
+async def create_app_from_resources(
+    body: MarketplaceAppCreateFromResources,
+    ctx: TenantContext = Depends(require_permissions("marketplace:write")),
+    db: AsyncSession = Depends(get_db),
+):
+    return ok(await _svc(db, ctx).create_app_from_resources(body))
+
+
+@router.patch("/apps/{app_id}", response_model=ApiResponse[MarketplaceAppOut])
+async def update_app(
+    app_id: UUID,
+    body: MarketplaceAppUpdate,
+    ctx: TenantContext = Depends(require_permissions("marketplace:write")),
+    db: AsyncSession = Depends(get_db),
+):
+    return ok(await _svc(db, ctx).update_app(app_id, body))
+
+
+@router.post("/apps/{app_id}/publish", response_model=ApiResponse[MarketplaceAppOut])
+async def publish_app(
+    app_id: UUID,
+    ctx: TenantContext = Depends(require_permissions("marketplace:write")),
+    db: AsyncSession = Depends(get_db),
+):
+    return ok(await _svc(db, ctx).publish_app(app_id))
 
 
 @router.post("/apps/{app_id}/install", response_model=ApiResponse[AppInstallResult])

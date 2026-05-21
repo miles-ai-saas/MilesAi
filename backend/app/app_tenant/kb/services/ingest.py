@@ -4,6 +4,7 @@ from uuid import UUID
 
 from app.ai.chunking import split_text
 from app.ai.embedding import embed_texts
+from app.ai.media import vector_type_for_document
 from app.ai.parsers import parse_file
 from app.deletion.document import clear_document_derived_data_sync
 from app.core.database_sync import get_sync_db
@@ -39,6 +40,7 @@ def run_ingest(document_id: str) -> None:
 
             clear_document_derived_data_sync(db, doc.id)
             vectors = embed_texts(chunks_text)
+            vector_type = vector_type_for_document(doc.filename, doc.mime_type)
 
             for idx, (content, vector) in enumerate(zip(chunks_text, vectors)):
                 chunk = DocumentChunk(
@@ -65,7 +67,7 @@ def run_ingest(document_id: str) -> None:
                         tenant_id=doc.tenant_id,
                         chunk_id=chunk.id,
                         weaviate_uuid=wv_id,
-                        vector_type="text",
+                        vector_type=vector_type,
                     )
                 )
 
