@@ -1,0 +1,38 @@
+{
+  "nodes": [
+    {
+      "id": "input_1",
+      "type": "TextInput",
+      "data": { "input_key": "query" }
+    },
+    {
+      "id": "search_1",
+      "type": "KnowledgeSearch",
+      "data": { "top_k": 5 }
+    },
+    {
+      "id": "prompt_1",
+      "type": "PromptTemplate",
+      "data": {
+        "template": "基于以下资料回答用户问题。\n\n资料：\n{{检索结果}}\n\n问题：{{用户提问}}"
+      }
+    },
+    {
+      "id": "llm_1",
+      "type": "LLMCall",
+      "data": { "temperature": 0.7 }
+    },
+    {
+      "id": "output_1",
+      "type": "TextOutput",
+      "data": {}
+    }
+  ],
+  "edges": [
+    { "source": "input_1", "target": "search_1", "sourceHandle": "output", "targetHandle": "query" },
+    { "source": "input_1", "target": "prompt_1", "sourceHandle": "output", "targetHandle": "query" },
+    { "source": "search_1", "target": "prompt_1", "sourceHandle": "output", "targetHandle": "hits" },
+    { "source": "prompt_1", "target": "llm_1", "sourceHandle": "output", "targetHandle": "prompt" },
+    { "source": "llm_1", "target": "output_1", "sourceHandle": "output", "targetHandle": "input" }
+  ]
+}

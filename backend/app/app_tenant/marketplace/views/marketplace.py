@@ -1,0 +1,81 @@
+from uuid import UUID
+
+from fastapi import APIRouter, Depends, Query
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.database import get_db
+from app.core.deps import get_page_params, require_permissions
+from app.common.response import ok, page_ok
+from app.core.tenant import TenantContext
+from app.common.schema import ApiResponse, PageParams, PageResult
+from app.app_tenant.marketplace.schemas.marketplace import (
+    AppCategoryOut,
+    AppInstallOut,
+    AppInstallResult,
+    MarketplaceAppCreate,
+    MarketplaceAppDetail,
+    MarketplaceAppOut,
+)
+from app.app_tenant.marketplace.services.marketplace import MarketplaceService
+
+router = APIRouter()
+
+
+def _svc(db: AsyncSession, ctx: TenantContext) -> MarketplaceService:
+    return MarketplaceService(db, ctx)
+
+
+@router.get("/categories", response_model=ApiResponse[list[AppCategoryOut]])
+async def list_categories(
+    ctx: TenantContext = Depends(require_permissions("marketplace:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    return ok(await _svc(db, ctx).list_categories())
+
+
+@router.get("/apps", response_model=ApiResponse[PageResult[MarketplaceAppOut]])
+async def list_apps(
+    category: str | None = Query(None, description="分类 slug"),
+    params: PageParams = Depends(get_page_params),
+    ctx: TenantContext = Depends(require_permissions("marketplace:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await _svc(db, ctx).list_apps(params, category_slug=category)
+    return page_ok(result.items, result.total, result.page, result.size)
+
+
+@router.get("/apps/{app_id}", response_model=ApiResponse[MarketplaceAppDetail])
+async def get_app(
+    app_id: UUID,
+    ctx: TenantContext = Depends(require_permissions("marketplace:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    return ok(await _svc(db, ctx).get_app(app_id))
+
+
+@router.post("/apps", response_model=ApiResponse[MarketplaceAppOut])
+async def create_app(
+    body: MarketplaceAppCreate,
+    ctx: TenantContext = Depends(require_permissions("marketplace:write")),
+    db: AsyncSession = Depends(get_db),
+):
+    return ok(await _svc(db, ctx).create_app(body))
+
+
+@router.post("/apps/{app_id}/install", response_model=ApiResponse[AppInstallResult])
+async def install_app(
+    app_id: UUID,
+    ctx: TenantContext = Depends(require_permissions("marketplace:install")),
+    db: AsyncSession = Depends(get_db),
+):
+    return ok(await _svc(db, ctx).install_app(app_id))
+
+
+@router.get("/installs", response_model=ApiResponse[PageResult[AppInstallOut]])
+async def list_installs(
+    params: PageParams = Depends(get_page_params),
+    ctx: TenantContext = Depends(require_permissions("marketplace:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await _svc(db, ctx).list_installs(params)
+    return page_ok(result.items, result.total, result.page, result.size)

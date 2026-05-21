@@ -1,0 +1,91 @@
+# 应用栈：API / Celery Worker / 前端 / Flower
+# 前置：先启动中间件
+#   docker compose -f docker-compose.middleware.yml up -d
+# 启动：
+#   docker compose up -d --build
+# 全量构建启动：
+#   docker compose -f docker-compose.middleware.yml -f docker-compose.yml up -d --build
+
+name: aiengine-app
+
+services:
+  api:
+    build:
+      context: ..
+      dockerfile: docker/images/api/Dockerfile
+    container_name: aiengine-api
+    env_file:
+      - ../.env
+    environment:
+      POSTGRES_HOST: postgres
+      REDIS_HOST: redis
+      MINIO_ENDPOINT: minio:9000
+      WEAVIATE_HOST: weaviate
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+    ports:
+      - "${API_PORT:-8000}:8000"
+    networks:
+      - aiengine-net
+    volumes:
+      - ../backend:/app/backend:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 45s
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: ..
+      dockerfile: docker/images/worker/Dockerfile
+    container_name: aiengine-worker
+    env_file:
+      - ../.env
+    environment:
+      POSTGRES_HOST: postgres
+      REDIS_HOST: redis
+      MINIO_ENDPOINT: minio:9000
+      WEAVIATE_HOST: weaviate
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+    networks:
+      - aiengine-net
+    command: celery -A app.workers.app worker -l info -Q default,parse,ocr,asr,embed
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ..
+      dockerfile: docker/images/web/Dockerfile
+    container_name: aiengine-web
+    environment:
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000/api/v1}
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+    networks:
+      - aiengine-net
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+  flower:
+    image: mher/flower:2.0
+    container_name: aiengine-flower
+    environment:
+      CELERY_BROKER_URL: redis://redis:6379/1
+    ports:
+      - "${FLOWER_PORT:-5555}:5555"
+    networks:
+      - aiengine-net
+    depends_on:
+      - worker
+    restart: unless-stopped
+
+networks:
+  aiengine-net:
+    external: true
+    name: aiengine-net

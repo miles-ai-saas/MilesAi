@@ -1,0 +1,138 @@
+from uuid import UUID
+
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.workers.app import celery_app
+from app.common.exceptions import BadRequestError, NotFoundError
+from app.core.tenant import TenantContext, assert_tenant_access, tenant_filters
+from app.models.task import CeleryTaskRecord, TaskStatus
+from app.common.schema import PageParams, PageResult
+from app.app_tenant.tasks.schemas.task import TaskRecordOut
+from app.core.service import BaseService
+
+
+class TaskService(BaseService):
+    def __init__(self, db: AsyncSession, ctx: TenantContext) -> None:
+        super().__init__(db, ctx)
+
+    async def create_record(
+        self,
+        *,
+        celery_task_id: str,
+        task_name: str,
+        resource_type: str | None = None,
+        resource_id: UUID | None = None,
+    ) -> CeleryTaskRecord:
+        record = CeleryTaskRecord(
+            tenant_id=self.ctx.tenant_id,
+            celery_task_id=celery_task_id,
+            task_name=task_name,
+            status=TaskStatus.PENDING,
+            resource_type=resource_type,
+            resource_id=resource_id,
+            created_by=self.ctx.user_id,
+        )
+        self.db.add(record)
+        await self.db.flush()
+        return record
+
+    async def _get_record_or_raise(self, task_id: str) -> CeleryTaskRecord:
+        record = None
+        try:
+            record = await self.db.get(CeleryTaskRecord, UUID(task_id))
+        except ValueError:
+            pass
+        if not record:
+            record = await self.db.scalar(
+                select(CeleryTaskRecord).where(CeleryTaskRecord.celery_task_id == task_id)
+            )
+        if not record:
+            raise NotFoundError("任务不存在")
+        assert_tenant_access(self.ctx, record.tenant_id)
+        return record
+
+    async def list_tasks(
+        self,
+        params: PageParams,
+        *,
+        status: TaskStatus | None = None,
+    ) -> PageResult[TaskRecordOut]:
+        filters = list(tenant_filters(self.ctx, CeleryTaskRecord.tenant_id))
+        if status:
+            filters.append(CeleryTaskRecord.status == status)
+        count_stmt = select(func.count(CeleryTaskRecord.id)).where(*filters)
+        total = await self.db.scalar(count_stmt)
+        stmt = (
+            select(CeleryTaskRecord)
+            .where(*filters)
+            .order_by(CeleryTaskRecord.created_at.desc())
+            .offset((params.page - 1) * params.size)
+            .limit(params.size)
+        )
+        rows = (await self.db.execute(stmt)).scalars().all()
+        return PageResult(
+            items=[TaskRecordOut.model_validate(r) for r in rows],
+            total=total or 0,
+            page=params.page,
+            size=params.size,
+        )
+
+    async def get_task(self, task_id: str) -> TaskRecordOut:
+        record = await self._get_record_or_raise(task_id)
+        out = TaskRecordOut.model_validate(record)
+        try:
+            from celery.result import AsyncResult
+
+            ar = AsyncResult(record.celery_task_id, app=celery_app)
+            if ar.state and record.status in (TaskStatus.PENDING, TaskStatus.RUNNING):
+                state_map = {
+                    "PENDING": TaskStatus.PENDING,
+                    "STARTED": TaskStatus.RUNNING,
+                    "SUCCESS": TaskStatus.SUCCESS,
+                    "FAILURE": TaskStatus.FAILED,
+                    "REVOKED": TaskStatus.CANCELLED,
+                }
+                mapped = state_map.get(ar.state)
+                if mapped and mapped != record.status:
+                    record.status = mapped
+                    if ar.failed() and ar.result:
+                        record.fail_reason = str(ar.result)[:2000]
+                    await self.db.flush()
+                    out = TaskRecordOut.model_validate(record)
+        except Exception:
+            pass
+        return out
+
+    async def cancel_task(self, task_id: str) -> TaskRecordOut:
+        record = await self._get_record_or_raise(task_id)
+        if record.status in (TaskStatus.SUCCESS, TaskStatus.CANCELLED):
+            raise BadRequestError("任务已结束，无法取消")
+        celery_app.control.revoke(record.celery_task_id, terminate=True)
+        record.status = TaskStatus.CANCELLED
+        await self.db.flush()
+        return TaskRecordOut.model_validate(record)
+
+    async def retry_task(self, task_id: str) -> TaskRecordOut:
+        record = await self._get_record_or_raise(task_id)
+        if record.resource_type != "document" or not record.resource_id:
+            raise BadRequestError("仅支持文档入库任务重试")
+        if record.status == TaskStatus.RUNNING:
+            raise BadRequestError("任务运行中，请稍后再试")
+
+        from app.workers.tasks.ingest import ingest_document
+        from app.models.kb import Document, DocumentStatus
+
+        doc = await self.db.get(Document, record.resource_id)
+        if not doc:
+            raise NotFoundError("关联文档不存在")
+
+        new_task = ingest_document.delay(str(doc.id))
+        record.celery_task_id = new_task.id
+        record.status = TaskStatus.PENDING
+        record.fail_reason = None
+        doc.status = DocumentStatus.PENDING
+        doc.celery_task_id = new_task.id
+        doc.fail_reason = None
+        await self.db.flush()
+        return TaskRecordOut.model_validate(record)

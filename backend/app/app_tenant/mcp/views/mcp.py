@@ -1,0 +1,42 @@
+from uuid import UUID
+
+from fastapi import APIRouter, Depends
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.database import get_db
+from app.core.deps import get_page_params, require_permissions
+from app.common.response import ok, page_ok
+from app.core.tenant import TenantContext
+from app.common.schema import ApiResponse, PageParams, PageResult
+from app.app_tenant.mcp.schemas.mcp import McpServiceCreate, McpServiceOut, McpSyncResult
+from app.app_tenant.mcp.services.mcp import McpServiceManager
+
+router = APIRouter()
+
+
+@router.get("", response_model=ApiResponse[PageResult[McpServiceOut]])
+async def list_mcp(
+    params: PageParams = Depends(get_page_params),
+    ctx: TenantContext = Depends(require_permissions("mcp:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await McpServiceManager(db, ctx).list_services(params)
+    return page_ok(result.items, result.total, result.page, result.size)
+
+
+@router.post("", response_model=ApiResponse[McpServiceOut])
+async def create_mcp(
+    body: McpServiceCreate,
+    ctx: TenantContext = Depends(require_permissions("mcp:write")),
+    db: AsyncSession = Depends(get_db),
+):
+    return ok(await McpServiceManager(db, ctx).create_service(body))
+
+
+@router.post("/{service_id}/sync", response_model=ApiResponse[McpSyncResult])
+async def sync_mcp(
+    service_id: UUID,
+    ctx: TenantContext = Depends(require_permissions("mcp:write")),
+    db: AsyncSession = Depends(get_db),
+):
+    return ok(await McpServiceManager(db, ctx).sync_service(service_id))

@@ -1,0 +1,13 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+COPY backend/pyproject.toml backend/README.md /app/backend/
+RUN pip install --no-cache-dir -e /app/backend/
+
+COPY backend /app/backend/
+
+ENV PYTHONPATH=/app/backend
+WORKDIR /app/backend
+
+CMD ["celery", "-A", "app.workers.app", "worker", "-l", "info", "-Q", "default,parse,ocr,asr,embed"]

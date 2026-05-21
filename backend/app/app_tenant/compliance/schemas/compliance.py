@@ -1,0 +1,38 @@
+from datetime import datetime
+from uuid import UUID
+
+from pydantic import BaseModel, Field
+
+from app.app_tenant.compliance.models import SensitiveAction
+
+
+class SensitiveWordCreate(BaseModel):
+    word: str = Field(..., min_length=1, max_length=128)
+    category: str | None = None
+    action: SensitiveAction = SensitiveAction.WARN
+
+
+class SensitiveWordOut(BaseModel):
+    id: UUID
+    tenant_id: UUID
+    word: str
+    category: str | None
+    action: SensitiveAction
+    is_active: bool
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class InterceptLogOut(BaseModel):
+    id: UUID
+    tenant_id: UUID
+    user_id: UUID | None
+    module: str
+    direction: str
+    matched_word: str | None
+    action: SensitiveAction
+    content_snippet: str | None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}

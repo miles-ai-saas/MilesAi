@@ -1,0 +1,96 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --brand: #e11d48;
+    --brand-light: #fff1f2;
+    --brand-soft: #fecdd3;
+    --surface: #ffffff;
+    --surface-muted: #f5f5f5;
+    --ink: #404040;
+    --ink-muted: #737373;
+    --line: #e5e5e5;
+  }
+
+  html,
+  body {
+    height: 100%;
+  }
+
+  body {
+    margin: 0;
+    color: var(--ink);
+    background: var(--surface-muted);
+    font-family:
+      system-ui,
+      -apple-system,
+      "PingFang SC",
+      "Segoe UI",
+      Roboto,
+      sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
+@layer components {
+  .card {
+    @apply rounded-xl border border-line bg-surface shadow-card;
+  }
+
+  .card-header {
+    @apply border-b border-line-soft px-4 py-3;
+  }
+
+  .card-body {
+    @apply p-4;
+  }
+
+  .input-field {
+    @apply w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink outline-none transition
+      placeholder:text-ink-faint focus:border-brand focus:ring-2 focus:ring-brand/15;
+  }
+
+  .btn-primary {
+    @apply rounded-lg bg-brand px-4 py-2 text-sm font-medium text-brand-foreground shadow-sm transition
+      hover:bg-brand-dark disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .btn-ghost {
+    @apply rounded-lg px-3 py-1.5 text-sm text-ink-muted transition hover:bg-brand-light hover:text-brand;
+  }
+
+  .nav-item {
+    @apply flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-ink-muted transition;
+  }
+
+  .nav-item-active {
+    @apply bg-brand-light font-medium text-brand;
+  }
+
+  .header-nav-item {
+    @apply rounded-md px-2.5 py-1.5 text-sm text-ink-muted transition whitespace-nowrap;
+  }
+
+  .header-nav-item-active {
+    @apply bg-brand-light font-medium text-brand;
+  }
+
+  /* AI 工作台卡片列表页 */
+  .resource-page-shell {
+    @apply mx-auto w-full max-w-7xl;
+  }
+
+  .resource-card-grid {
+    @apply grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4;
+  }
+
+  .resource-card {
+    @apply flex min-h-[176px] flex-col rounded-xl border border-line bg-surface p-4 text-left shadow-card transition hover:border-brand/25 hover:shadow-panel;
+  }
+
+  .resource-add-card {
+    @apply flex min-h-[176px] flex-col items-center justify-center rounded-xl border-2 border-dashed border-line bg-surface p-5 text-center transition hover:border-brand/40 hover:bg-brand-light/30;
+  }
+}
