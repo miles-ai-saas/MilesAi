@@ -10,8 +10,7 @@ from app.app_tenant.marketplace.models import AppCategory, MarketplaceApp, Marke
 
 
 def _rag_graph() -> dict:
-    # langflow 模板在 app/langflow/templates/，不在 app_tenant 下
-    path = Path(__file__).resolve().parents[2] / "langflow" / "templates" / "rag_flow.json"
+    path = Path(__file__).resolve().parents[2] / "flow_runtime" / "templates" / "rag_flow.json"
     return json.loads(path.read_text(encoding="utf-8"))
 
 

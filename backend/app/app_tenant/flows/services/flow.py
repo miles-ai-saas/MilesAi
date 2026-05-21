@@ -7,8 +7,8 @@ from app.core.tenant import TenantContext, assert_tenant_access, tenant_filters
 from app.app_tenant.compliance.services.compliance import ComplianceService
 from app.app_tenant.hooks.models import HookScope, HookTrigger
 from app.app_tenant.hooks.services.runner import HookRunner
-from app.langflow.runtime_factory import get_flow_runtime
-from app.langflow.types import RunContext
+from app.flow_runtime.runtime_factory import get_flow_runtime
+from app.flow_runtime.types import RunContext
 from app.models.flow import Flow, FlowStatus, FlowVersion
 from app.app_tenant.flows.repositories.flow import FlowRepository, FlowVersionRepository
 from app.common.schema import PageParams, PageResult

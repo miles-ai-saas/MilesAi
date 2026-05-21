@@ -34,7 +34,7 @@ export function LoginHero() {
           </li>
           <li className="flex items-center gap-2">
             <span className="h-1.5 w-1.5 rounded-full bg-brand" />
-            Langflow 流程 · 应用市场一键安装
+            可视化流程编排 · 应用市场一键安装
           </li>
         </ul>
       </div>

@@ -3,8 +3,8 @@
 from collections.abc import Awaitable, Callable
 from typing import Any
 
-from app.langflow.nodes import rag_nodes, io_nodes, llm_nodes
-from app.langflow.types import RunContext
+from app.flow_runtime.nodes import rag_nodes, io_nodes, llm_nodes
+from app.flow_runtime.types import RunContext
 
 NodeHandler = Callable[[dict[str, Any], dict[str, Any], RunContext], Awaitable[Any]]
 
@@ -14,7 +14,7 @@ NODE_REGISTRY: dict[str, NodeHandler] = {
     "KnowledgeSearch": rag_nodes.knowledge_search,
     "PromptTemplate": rag_nodes.prompt_template,
     "LLMCall": llm_nodes.llm_call,
-    # Langflow 别名
+    # 兼容历史 graph 中的节点类型别名
     "ChatInput": io_nodes.text_input,
     "ChatOutput": io_nodes.text_output,
 }

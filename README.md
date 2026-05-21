@@ -39,7 +39,7 @@ docker compose up -d --build                            # API / Worker / Web / F
 
 ## 数据库创建
 
-PostgreSQL 负责业务表；**建库 + 迁表**说明见 **[docs/数据库初始化.md](docs/数据库初始化.md)**。
+PostgreSQL 负责业务表；**建库 + 迁表**说明见 **[docs/数据库初始化.md](docs/数据库初始化.md)**。流程编排命名与实现见 **[docs/flow-runtime.md](docs/flow-runtime.md)**。
 
 | 场景 | 建库 | 建表 |
 |------|------|------|
@@ -79,8 +79,9 @@ AiEngine/
 │   │   ├── api/v1/       # 薄路由，仅参数解析与调用 Service
 │   │   ├── core/         # 公共核心（异常、响应、分页、仓储、认证、租户）
 │   │   ├── repositories/ # 数据访问层
-│   │   ├── services/     # 业务逻辑层
-│   │   └── models/       # ORM 模型
+│   │   ├── app_tenant/   # 租户业务（flows、agents、kb…）
+│   │   ├── flow_runtime/ # 流程 DAG 执行引擎（非 Langflow 产品）
+│   │   └── models/       # 核心 ORM
 │   └── alembic/
 ├── docker/
 ├── docs/
@@ -101,7 +102,7 @@ AiEngine/
 
 - [x] P0 基础设施：Compose、JWT+RBAC、租户/用户 API、健康检查、Celery 骨架
 - [x] P1 RAG 核心：知识库 CRUD、文档上传、Celery 入库、向量检索
-- [x] P2 编排与智能体：流程版本、内置/Langflow 运行时、智能体对话
+- [x] P2 编排与智能体：流程版本、`flow_runtime` 内置运行时、智能体对话
 - [x] P2 多模态知识库：图片/音频上传、OCR/转写（可选依赖降级）
 - [x] P2 应用市场：广场安装、租户打包上架（P4 起改为审核后上架）
 - [x] P3 安全与工具：敏感词/拦截日志/检测试、钩子、工具目录与调用、MCP、技能包、流程/智能体合规
@@ -120,13 +121,14 @@ AiEngine/
 | POST | `/api/v1/agents/{id}/chat` | 对话 |
 | POST | `/api/v1/models` | 配置大模型（OpenAI 兼容） |
 
-RAG 流程模板：`backend/app/langflow/templates/rag_flow.json`
+流程编排详见 **[docs/flow-runtime.md](docs/flow-runtime.md)**（命名说明：`flow_runtime` ≠ Langflow 产品）。
 
-节点扩展：在 `app/langflow/nodes/registry.py` 注册新 handler 即可。
+- RAG 模板：`backend/app/flow_runtime/templates/rag_flow.json`
+- 节点扩展：`app/flow_runtime/nodes/registry.py`
 
-## 前端画布 + P2 联调
+## 前端画布（P2）
 
-`@langflow/flow-builder` 暂未发布到 npm，前端使用 **React Flow**（`@xyflow/react`），`graph_json` 与后端 Builtin 运行时兼容。
+编排画布使用 **React Flow**（`@xyflow/react`），`graph_json` 与后端 `BuiltinFlowRuntime` 对齐。需求文档中的 `@langflow/flow-builder` 暂未发布到 npm，故未采用；可选对接第三方 Langflow 见 `optional_langflow_adapter.py`。
 
 ```bash
 # 终端 1：中间件 + 应用

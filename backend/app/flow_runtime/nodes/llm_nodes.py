@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import AsyncSessionLocal
 from app.common.exceptions import BadRequestError
 from app.core.llm_client import chat_completion
-from app.langflow.types import RunContext
+from app.flow_runtime.types import RunContext
 from app.models.model import ModelConfig
 
 

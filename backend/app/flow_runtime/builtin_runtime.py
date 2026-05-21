@@ -1,9 +1,9 @@
-"""内置流程执行器（Langflow 未安装或调试时使用）。"""
+"""内置流程 DAG 执行器（默认运行时）。"""
 
 from typing import Any
 
-from app.langflow.nodes.registry import execute_node
-from app.langflow.types import FlowGraph, RunContext, RunResult
+from app.flow_runtime.nodes.registry import execute_node
+from app.flow_runtime.types import FlowGraph, RunContext, RunResult
 
 
 def _build_adjacency(graph: FlowGraph) -> dict[str, list[tuple[str, str, str]]]:

@@ -7,8 +7,8 @@ from app.common.exceptions import BadRequestError, NotFoundError
 from app.core.llm_client import chat_completion
 from app.core.tenant import TenantContext, assert_tenant_access, tenant_filters
 from app.core.weaviate_store import search_vectors
-from app.langflow.runtime_factory import get_flow_runtime
-from app.langflow.types import RunContext
+from app.flow_runtime.runtime_factory import get_flow_runtime
+from app.flow_runtime.types import RunContext
 from app.app_tenant.prompts.models import PromptTemplate
 from app.models.agent import Agent, AgentStatus
 from app.app_tenant.agents.repositories.agent import AgentRepository

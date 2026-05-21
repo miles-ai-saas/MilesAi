@@ -3,7 +3,7 @@ from uuid import UUID
 
 from app.ai.embedding import embed_query
 from app.core.weaviate_store import search_vectors
-from app.langflow.types import RunContext
+from app.flow_runtime.types import RunContext
 
 
 async def knowledge_search(

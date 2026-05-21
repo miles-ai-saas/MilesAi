@@ -37,7 +37,7 @@ app/
 ├── core/                   # 基础设施：配置、DB、Redis、安全、依赖注入
 ├── models/                 # 核心 ORM（用户、租户、KB、Flow、Agent…）
 ├── ai/                     # 解析、分块、Embedding
-├── langflow/               # 流程运行时与节点
+├── flow_runtime/           # 流程 DAG 执行引擎与节点（非 Langflow 产品）
 ├── workers/                # Celery 应用与任务
 │   ├── app.py
 │   └── tasks/
@@ -89,7 +89,18 @@ app/
 
 **Alembic 模型登记**：勿在 `models/__init__.py` 反向导入 `admin`（会循环引用）。新增 ORM 模块后，在 `app/models/registry.py` 的 `load_all_models()` 中补一行 import。
 
-**包 `__init__.py`**：各层目录均已补齐；`langflow/templates/` 仅存放 JSON 模板，无需 `__init__.py`。顶层 `admin/`、`app_tenant/` 的 `__init__.py` 仅作文档，不在此 eager import 路由，避免循环依赖。
+**包 `__init__.py`**：各层目录均已补齐；`flow_runtime/templates/` 仅存放 JSON 模板，无需 `__init__.py`。顶层 `admin/`、`app_tenant/` 的 `__init__.py` 仅作文档，不在此 eager import 路由，避免循环依赖。
+
+### 流程运行时（`flow_runtime/`）
+
+| 模块 | 说明 |
+|------|------|
+| `builtin_runtime.py` | 默认：按 `graph_json` DAG 执行 |
+| `runtime_factory.get_flow_runtime()` | 入口；可选启用 `OptionalLangflowAdapter` |
+| `optional_langflow_adapter.py` | 仅当 **PyPI 已安装 `langflow` 包** 时探测；当前仍委托 Builtin |
+| `nodes/registry.py` | 节点注册（RAG / LLM / IO 等） |
+
+业务 CRUD 与 `POST /flows/{id}/run` 在 `app_tenant/flows/`。完整说明见仓库根目录 [docs/flow-runtime.md](../docs/flow-runtime.md)。
 
 ### Admin 布局
 
