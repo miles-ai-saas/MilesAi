@@ -4,53 +4,55 @@ export type NavItem = { href: string; label: string };
 
 export type NavGroup = { title: string; items: NavItem[] };
 
+export const WORKBENCH_PREFIX = "/workbench";
+
 export const APP_SECTIONS: { id: AppSection; label: string; home: string }[] = [
-  { id: "workbench", label: "AI 工作台", home: "/workbench" },
+  { id: "workbench", label: "AI 工作台", home: "/workbench/dashboard" },
   { id: "system", label: "系统管理", home: "/system/users" },
 ];
 
 export const WORKBENCH_NAV: NavGroup[] = [
   {
     title: "工作台",
-    items: [{ href: "/workbench", label: "概览" }],
+    items: [{ href: "/workbench/dashboard", label: "概览" }],
   },
   {
     title: "智能体",
     items: [
-      { href: "/agents", label: "智能体" },
-      { href: "/agents/chat", label: "对话工作台" },
+      { href: "/workbench/agents", label: "智能体" },
+      { href: "/workbench/agents/chat", label: "对话工作台" },
     ],
   },
   {
     title: "配置",
     items: [
-      { href: "/compliance", label: "合规" },
-      { href: "/prompts", label: "提示词模板" },
-      { href: "/models", label: "模型供应商" },
-      { href: "/hooks", label: "钩子" },
+      { href: "/workbench/compliance", label: "合规" },
+      { href: "/workbench/prompts", label: "提示词模板" },
+      { href: "/workbench/models", label: "模型供应商" },
+      { href: "/workbench/hooks", label: "钩子" },
     ],
   },
   {
     title: "能力",
     items: [
-      { href: "/tools", label: "工具" },
-      { href: "/skills", label: "技能包" },
-      { href: "/mcp", label: "MCP" },
+      { href: "/workbench/tools", label: "工具" },
+      { href: "/workbench/skills", label: "技能包" },
+      { href: "/workbench/mcp", label: "MCP" },
     ],
   },
   {
     title: "编排",
     items: [
-      { href: "/kb", label: "知识库" },
-      { href: "/flows", label: "流程编排" },
+      { href: "/workbench/kb", label: "知识库" },
+      { href: "/workbench/flows", label: "流程编排" },
     ],
   },
   {
     title: "运营",
     items: [
-      { href: "/tasks", label: "任务" },
-      { href: "/monitor", label: "监控" },
-      { href: "/marketplace", label: "应用市场" },
+      { href: "/workbench/tasks", label: "任务" },
+      { href: "/workbench/monitor", label: "监控" },
+      { href: "/workbench/marketplace", label: "应用市场" },
     ],
   },
 ];
@@ -79,14 +81,17 @@ export function getOtherSection(current: AppSection) {
 }
 
 export function isNavActive(pathname: string, href: string): boolean {
-  if (href === "/workbench") {
-    return pathname === "/workbench";
+  if (href === "/workbench/dashboard") {
+    return pathname === "/workbench/dashboard" || pathname === "/workbench";
   }
-  if (href === "/agents") {
-    return pathname === "/agents";
+  if (href === "/workbench/agents") {
+    return pathname === "/workbench/agents";
   }
-  if (href === "/agents/chat") {
-    return pathname === "/agents/chat" || pathname.startsWith("/agents/chat/");
+  if (href === "/workbench/agents/chat") {
+    return (
+      pathname === "/workbench/agents/chat" ||
+      pathname.startsWith("/workbench/agents/chat/")
+    );
   }
   return pathname === href || pathname.startsWith(`${href}/`);
 }
@@ -103,5 +108,8 @@ export function getPageTitle(pathname: string): string {
 
 /** 对话工作台等全屏页无需 main 内边距 */
 export function isFullBleedPage(pathname: string): boolean {
-  return pathname === "/agents/chat" || pathname.startsWith("/agents/chat/");
+  return (
+    pathname === "/workbench/agents/chat" ||
+    pathname.startsWith("/workbench/agents/chat/")
+  );
 }

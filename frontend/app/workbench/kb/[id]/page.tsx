@@ -62,7 +62,7 @@ export default function KbDetailPage() {
   return (
     <div className="mx-auto max-w-4xl space-y-6">
       <div className="flex items-center gap-2 text-sm text-ink-muted">
-        <Link href="/kb" className="text-brand hover:underline">
+        <Link href="/workbench/kb" className="text-brand hover:underline">
           知识库
         </Link>
         <span>/</span>

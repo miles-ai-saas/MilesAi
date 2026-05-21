@@ -61,7 +61,7 @@ export default function KbPage() {
         {filtered.map((kb) => (
           <ResourceItemCard
             key={kb.id}
-            href={`/kb/${kb.id}`}
+            href={`/workbench/kb/${kb.id}`}
             title={kb.name}
             description={kb.description || "点击进入管理文档与切片"}
             meta={<span className="text-brand">管理文档 →</span>}

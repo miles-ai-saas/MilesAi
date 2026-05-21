@@ -29,7 +29,7 @@ export default function FlowsPage() {
     setCreating(true);
     try {
       const flow = await api.createFlow("RAG 问答流程", RAG_TEMPLATE);
-      router.push(`/flows/${flow.id}/edit`);
+      router.push(`/workbench/flows/${flow.id}/edit`);
     } finally {
       setCreating(false);
     }
@@ -62,7 +62,7 @@ export default function FlowsPage() {
       {filtered.map((flow) => (
         <ResourceItemCard
           key={flow.id}
-          href={`/flows/${flow.id}/edit`}
+          href={`/workbench/flows/${flow.id}/edit`}
           title={flow.name}
           description={flow.description ?? "点击进入画布编辑"}
           badge={flow.status === "published" ? "已发布" : "草稿"}

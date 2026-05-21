@@ -44,7 +44,7 @@ export default function AgentsPage() {
       buildCreateAgentPayload(list.total, { flows, prompts, models }),
     );
     await list.reload();
-    router.push(`/agents/chat?agent=${agent.id}`);
+    router.push(`/workbench/agents/chat?agent=${agent.id}`);
   };
 
   return (
@@ -56,7 +56,7 @@ export default function AgentsPage() {
       onSearchChange={setSearch}
       loading={list.loading}
       headerAction={
-        <button type="button" onClick={() => router.push("/agents/chat")} className="btn-ghost shrink-0">
+        <button type="button" onClick={() => router.push("/workbench/agents/chat")} className="btn-ghost shrink-0">
           对话工作台
         </button>
       }
@@ -79,7 +79,7 @@ export default function AgentsPage() {
       {filtered.map((a) => (
         <ResourceItemCard
           key={a.id}
-          href={`/agents/chat?agent=${a.id}`}
+          href={`/workbench/agents/chat?agent=${a.id}`}
           title={a.name}
           description={a.description ?? "未填写描述"}
           badge={a.status}

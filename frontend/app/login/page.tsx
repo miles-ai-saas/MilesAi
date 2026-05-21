@@ -18,7 +18,7 @@ export default function LoginPage() {
     setError("");
     try {
       await api.login(username, password);
-      router.push("/workbench");
+      router.push("/workbench/dashboard");
     } catch (err) {
       setError(err instanceof Error ? err.message : "登录失败");
     } finally {

@@ -120,7 +120,7 @@ export default function MarketplacePage() {
             {lastResult.kb_id && (
               <li>
                 知识库 →{" "}
-                <Link href={`/kb/${lastResult.kb_id}`} className="underline">
+                <Link href={`/workbench/kb/${lastResult.kb_id}`} className="underline">
                   管理文档
                 </Link>
               </li>
@@ -128,7 +128,7 @@ export default function MarketplacePage() {
             {lastResult.flow_id && (
               <li>
                 流程 →{" "}
-                <Link href={`/flows/${lastResult.flow_id}/edit`} className="underline">
+                <Link href={`/workbench/flows/${lastResult.flow_id}/edit`} className="underline">
                   编辑画布
                 </Link>
               </li>
@@ -136,7 +136,7 @@ export default function MarketplacePage() {
             {lastResult.agent_id && (
               <li>
                 智能体 →{" "}
-                <Link href="/agents/chat" className="underline">
+                <Link href="/workbench/agents/chat" className="underline">
                   去对话
                 </Link>
               </li>
@@ -160,17 +160,17 @@ export default function MarketplacePage() {
               actions={
                 <span className="flex flex-wrap gap-2 text-xs text-brand">
                   {ins.kb_id && (
-                    <Link href={`/kb/${ins.kb_id}`} className="hover:underline">
+                    <Link href={`/workbench/kb/${ins.kb_id}`} className="hover:underline">
                       知识库
                     </Link>
                   )}
                   {ins.flow_id && (
-                    <Link href={`/flows/${ins.flow_id}/edit`} className="hover:underline">
+                    <Link href={`/workbench/flows/${ins.flow_id}/edit`} className="hover:underline">
                       流程
                     </Link>
                   )}
                   {ins.agent_id && (
-                    <Link href="/agents/chat" className="hover:underline">
+                    <Link href="/workbench/agents/chat" className="hover:underline">
                       智能体
                     </Link>
                   )}

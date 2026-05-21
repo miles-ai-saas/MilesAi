@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 export default function SensitiveWordsRedirectPage() {
   const router = useRouter();
   useEffect(() => {
-    router.replace("/compliance");
+    router.replace("/workbench/compliance");
   }, [router]);
   return <p className="text-ink-muted">正在跳转…</p>;
 }

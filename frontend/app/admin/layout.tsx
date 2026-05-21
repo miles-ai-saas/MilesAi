@@ -53,7 +53,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           ))}
         </nav>
         <div className="border-t border-slate-700 p-4">
-          <Link href="/flows" className="text-xs text-slate-400 hover:text-white">
+          <Link href="/workbench/flows" className="text-xs text-slate-400 hover:text-white">
             ← 租户前台
           </Link>
         </div>
