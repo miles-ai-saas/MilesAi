@@ -22,6 +22,7 @@ export default function CompliancePage() {
   const [newWord, setNewWord] = useState("");
   const [category, setCategory] = useState("");
   const [action, setAction] = useState<"warn" | "block">("block");
+  const [batchText, setBatchText] = useState("");
   const [testText, setTestText] = useState("");
   const [scanResult, setScanResult] = useState<{
     blocked: boolean;
@@ -40,6 +41,25 @@ export default function CompliancePage() {
     () => filterBySearch(words.items, search, (w) => `${w.word} ${w.category ?? ""}`),
     [words.items, search],
   );
+
+  const onBatchImport = async () => {
+    const lines = batchText
+      .split("\n")
+      .map((l) => l.trim())
+      .filter(Boolean);
+    if (!lines.length) return;
+    const batch = lines.map((line) => {
+      const [word, act, cat] = line.split(",").map((s) => s.trim());
+      return {
+        word,
+        action: (act === "warn" ? "warn" : "block") as "warn" | "block",
+        category: cat || undefined,
+      };
+    });
+    await api.batchCreateSensitiveWords(batch);
+    setBatchText("");
+    await words.reload();
+  };
 
   const onCreate = async () => {
     if (!newWord.trim()) return;
@@ -112,6 +132,21 @@ export default function CompliancePage() {
               hint="配置敏感词规则用于内容审核"
               onClick={() => setDialogOpen(true)}
             />
+            <div className="card col-span-full p-4">
+              <p className="text-sm font-medium text-ink">批量导入</p>
+              <p className="mt-1 text-xs text-ink-muted">
+                每行一个词，格式：词语,block,分类 或 词语,warn
+              </p>
+              <textarea
+                className="input-field mt-2 min-h-[80px] w-full font-mono text-xs"
+                placeholder={"违禁品,block,安全\n内部资料,warn"}
+                value={batchText}
+                onChange={(e) => setBatchText(e.target.value)}
+              />
+              <button type="button" className="btn-ghost mt-2" onClick={onBatchImport}>
+                导入
+              </button>
+            </div>
             {filtered.map((w: SensitiveWord) => (
               <ResourceItemCard
                 key={w.id}

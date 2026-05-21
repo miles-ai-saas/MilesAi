@@ -149,6 +149,17 @@ export default function HooksPage() {
             meta={<span>{h.is_active ? "已启用" : "已停用"}</span>}
             actions={
               <div className="flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  className="text-xs text-ink-muted hover:underline"
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    await api.updateHook(h.id, { is_active: !h.is_active });
+                    await list.reload();
+                  }}
+                >
+                  {h.is_active ? "停用" : "启用"}
+                </button>
                 <CardActions onEdit={() => openEdit(h)} onDelete={() => onDeleteHook(h)} />
                 <button
                   type="button"

@@ -12,6 +12,9 @@ from app.app_tenant.marketplace.schemas.marketplace import (
     AppCategoryOut,
     AppInstallOut,
     AppInstallResult,
+    AppRatingCreate,
+    AppRatingOut,
+    AppReviewBody,
     MarketplaceAppCreate,
     MarketplaceAppCreateFromResources,
     MarketplaceAppDetail,
@@ -38,11 +41,12 @@ async def list_categories(
 @router.get("/apps", response_model=ApiResponse[PageResult[MarketplaceAppOut]])
 async def list_apps(
     category: str | None = Query(None, description="分类 slug"),
+    sort: str = Query("installs", description="installs | rating"),
     params: PageParams = Depends(get_page_params),
     ctx: TenantContext = Depends(require_permissions("marketplace:read")),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await _svc(db, ctx).list_apps(params, category_slug=category)
+    result = await _svc(db, ctx).list_apps(params, category_slug=category, sort=sort)
     return page_ok(result.items, result.total, result.page, result.size)
 
 
@@ -56,6 +60,16 @@ async def list_my_apps(
     return page_ok(result.items, result.total, result.page, result.size)
 
 
+@router.get("/apps/pending", response_model=ApiResponse[PageResult[MarketplaceAppOut]])
+async def list_pending_apps(
+    params: PageParams = Depends(get_page_params),
+    ctx: TenantContext = Depends(require_permissions("marketplace:review")),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await _svc(db, ctx).list_pending_apps(params)
+    return page_ok(result.items, result.total, result.page, result.size)
+
+
 @router.get("/apps/{app_id}", response_model=ApiResponse[MarketplaceAppDetail])
 async def get_app(
     app_id: UUID,
@@ -63,6 +77,17 @@ async def get_app(
     db: AsyncSession = Depends(get_db),
 ):
     return ok(await _svc(db, ctx).get_app(app_id))
+
+
+@router.get("/apps/{app_id}/ratings", response_model=ApiResponse[PageResult[AppRatingOut]])
+async def list_app_ratings(
+    app_id: UUID,
+    params: PageParams = Depends(get_page_params),
+    ctx: TenantContext = Depends(require_permissions("marketplace:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await _svc(db, ctx).list_app_ratings(app_id, params)
+    return page_ok(result.items, result.total, result.page, result.size)
 
 
 @router.post("/apps", response_model=ApiResponse[MarketplaceAppOut])
@@ -100,6 +125,45 @@ async def publish_app(
     db: AsyncSession = Depends(get_db),
 ):
     return ok(await _svc(db, ctx).publish_app(app_id))
+
+
+@router.post("/apps/{app_id}/approve", response_model=ApiResponse[MarketplaceAppOut])
+async def approve_app(
+    app_id: UUID,
+    ctx: TenantContext = Depends(require_permissions("marketplace:review")),
+    db: AsyncSession = Depends(get_db),
+):
+    return ok(await _svc(db, ctx).approve_app(app_id))
+
+
+@router.post("/apps/{app_id}/reject", response_model=ApiResponse[MarketplaceAppOut])
+async def reject_app(
+    app_id: UUID,
+    body: AppReviewBody,
+    ctx: TenantContext = Depends(require_permissions("marketplace:review")),
+    db: AsyncSession = Depends(get_db),
+):
+    return ok(await _svc(db, ctx).reject_app(app_id, note=body.note))
+
+
+@router.post("/apps/{app_id}/ratings", response_model=ApiResponse[AppRatingOut])
+async def upsert_rating(
+    app_id: UUID,
+    body: AppRatingCreate,
+    ctx: TenantContext = Depends(require_permissions("marketplace:rate")),
+    db: AsyncSession = Depends(get_db),
+):
+    return ok(await _svc(db, ctx).upsert_rating(app_id, body))
+
+
+@router.delete("/apps/{app_id}/ratings/mine", response_model=ApiResponse[None])
+async def delete_my_rating(
+    app_id: UUID,
+    ctx: TenantContext = Depends(require_permissions("marketplace:rate")),
+    db: AsyncSession = Depends(get_db),
+):
+    await _svc(db, ctx).delete_my_rating(app_id)
+    return ok(None)
 
 
 @router.post("/apps/{app_id}/install", response_model=ApiResponse[AppInstallResult])

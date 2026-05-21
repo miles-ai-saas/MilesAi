@@ -7,7 +7,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.common.exceptions import NotFoundError
 from app.core.tenant import TenantContext, assert_tenant_access, tenant_filters
 from app.app_tenant.mcp.models import McpService, McpStatus
-from app.app_tenant.mcp.schemas.mcp import McpServiceCreate, McpServiceOut, McpSyncResult
+from app.app_tenant.mcp.schemas.mcp import (
+    McpServiceCreate,
+    McpServiceOut,
+    McpSyncResult,
+    McpToolInvokeRequest,
+    McpToolInvokeResult,
+)
 from app.app_tenant.mcp.sync import fetch_mcp_tools
 from app.common.schema import PageParams, PageResult
 from app.core.soft_delete import is_marked_deleted, mark_deleted, not_deleted
@@ -83,3 +89,30 @@ class McpServiceManager(BaseService):
         row.status = McpStatus.ACTIVE
         await self.db.flush()
         return McpSyncResult(tools=tools, synced_at=now)
+
+    async def invoke_tool(
+        self,
+        service_id: UUID,
+        tool_name: str,
+        body: McpToolInvokeRequest,
+    ) -> McpToolInvokeResult:
+        row = await self.db.get(McpService, service_id)
+        if not row or is_marked_deleted(row):
+            raise NotFoundError("MCP 服务不存在")
+        assert_tenant_access(self.ctx, row.tenant_id)
+        matched = next(
+            (t for t in (row.tools_cache or []) if str(t.get("name")) == tool_name),
+            None,
+        )
+        if not matched:
+            raise NotFoundError(f"MCP 工具不存在: {tool_name}")
+        return McpToolInvokeResult(
+            service_id=service_id,
+            tool_name=tool_name,
+            output={
+                "status": "mock",
+                "message": "MCP 远程调用占位，已记录工具与参数",
+                "tool": matched,
+                "params": body.params,
+            },
+        )

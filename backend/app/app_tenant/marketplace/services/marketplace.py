@@ -1,12 +1,20 @@
+from datetime import datetime, timezone
 from uuid import UUID
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.common.exceptions import BadRequestError, ConflictError, NotFoundError
 from app.core.tenant import TenantContext, tenant_filters
-from app.app_tenant.marketplace.models import AppCategory, AppInstall, MarketplaceApp, MarketplaceAppStatus
+from app.app_tenant.marketplace.models import (
+    AppCategory,
+    AppInstall,
+    AppRating,
+    MarketplaceApp,
+    MarketplaceAppStatus,
+)
+from app.core.soft_delete import mark_deleted, not_deleted
 from app.app_tenant.agents.repositories.agent import AgentRepository
 from app.app_tenant.flows.repositories.flow import FlowRepository
 from app.app_tenant.kb.repositories.kb import KnowledgeBaseRepository
@@ -21,6 +29,8 @@ from app.app_tenant.marketplace.schemas.marketplace import (
     AppCategoryOut,
     AppInstallOut,
     AppInstallResult,
+    AppRatingCreate,
+    AppRatingOut,
     MarketplaceAppCreate,
     MarketplaceAppCreateFromResources,
     MarketplaceAppDetail,
@@ -60,17 +70,44 @@ class MarketplaceService(BaseService):
             status=app.status,
             is_official=app.is_official,
             install_count=app.install_count,
+            rating_avg=round(float(app.rating_avg or 0), 2),
+            rating_count=int(app.rating_count or 0),
             category_id=app.category_id,
             category_name=category_name,
             installed=installed,
+            review_note=app.review_note,
+            submitted_at=app.submitted_at,
+            reviewed_at=app.reviewed_at,
             created_at=app.created_at,
         )
+
+    async def _refresh_rating_stats(self, app_id: UUID) -> None:
+        stmt = select(
+            func.avg(AppRating.score),
+            func.count(AppRating.id),
+        ).where(AppRating.app_id == app_id, not_deleted(AppRating))
+        avg_score, count = (await self.db.execute(stmt)).one()
+        app = await self._get_app_or_raise(app_id)
+        app.rating_avg = round(float(avg_score or 0), 2)
+        app.rating_count = int(count or 0)
+        await self.db.flush()
+
+    async def _require_installed(self, app_id: UUID) -> None:
+        installed = await self.db.scalar(
+            select(AppInstall.id).where(
+                AppInstall.tenant_id == self.ctx.tenant_id,
+                AppInstall.app_id == app_id,
+            )
+        )
+        if not installed:
+            raise BadRequestError("安装该应用后才可评分")
 
     async def list_apps(
         self,
         params: PageParams,
         *,
         category_slug: str | None = None,
+        sort: str = "installs",
     ) -> PageResult[MarketplaceAppOut]:
         installed_ids = await self._installed_app_ids()
         stmt = (
@@ -90,7 +127,15 @@ class MarketplaceService(BaseService):
                 AppCategory, MarketplaceApp.category_id == AppCategory.id
             )
         total = await self.db.scalar(count_stmt)
-        stmt = stmt.order_by(MarketplaceApp.install_count.desc()).offset(
+        if sort == "rating":
+            stmt = stmt.order_by(
+                MarketplaceApp.rating_avg.desc(),
+                MarketplaceApp.rating_count.desc(),
+                MarketplaceApp.install_count.desc(),
+            )
+        else:
+            stmt = stmt.order_by(MarketplaceApp.install_count.desc())
+        stmt = stmt.offset(
             (params.page - 1) * params.size
         ).limit(params.size)
         apps = (await self.db.execute(stmt)).scalars().all()
@@ -106,13 +151,25 @@ class MarketplaceService(BaseService):
 
     async def get_app(self, app_id: UUID) -> MarketplaceAppDetail:
         app = await self._get_app_or_raise(app_id)
-        if app.status != MarketplaceAppStatus.PUBLISHED and not app.is_official:
+        if app.status != MarketplaceAppStatus.PUBLISHED:
             if app.publisher_tenant_id != self.ctx.tenant_id:
                 raise NotFoundError("应用不存在或未发布")
         installed_ids = await self._installed_app_ids()
         cat_name = app.category.name if app.category else None
         base = self._app_out(app, installed=app.id in installed_ids, category_name=cat_name)
-        return MarketplaceAppDetail(**base.model_dump(), manifest=app.manifest or {})
+        my_rating = await self.db.scalar(
+            select(AppRating).where(
+                AppRating.app_id == app_id,
+                AppRating.tenant_id == self.ctx.tenant_id,
+                AppRating.user_id == self.ctx.user_id,
+                not_deleted(AppRating),
+            )
+        )
+        return MarketplaceAppDetail(
+            **base.model_dump(),
+            manifest=app.manifest or {},
+            my_rating=AppRatingOut.model_validate(my_rating) if my_rating else None,
+        )
 
     async def _get_app_or_raise(self, app_id: UUID) -> MarketplaceApp:
         stmt = (
@@ -244,6 +301,12 @@ class MarketplaceService(BaseService):
         if app.is_official:
             raise BadRequestError("官方应用不可编辑")
         data = body.model_dump(exclude_unset=True)
+        new_status = data.get("status")
+        if new_status in (
+            MarketplaceAppStatus.PUBLISHED,
+            MarketplaceAppStatus.PENDING_REVIEW,
+        ):
+            raise BadRequestError("请使用「提交审核」上架，不可直接修改为上架或待审状态")
         category_slug = data.pop("category_slug", None)
         if category_slug is not None:
             cat = await self.db.scalar(
@@ -267,11 +330,21 @@ class MarketplaceService(BaseService):
             raise BadRequestError("manifest 需包含 flow、agent 或 knowledge_base 至少一项")
 
     async def publish_app(self, app_id: UUID) -> MarketplaceAppOut:
+        """提交审核（原 publish 路径保留）。"""
         app = await self._get_own_app_or_raise(app_id)
         if app.is_official:
             raise BadRequestError("官方应用无需发布")
+        if app.status not in (
+            MarketplaceAppStatus.DRAFT,
+            MarketplaceAppStatus.REJECTED,
+        ):
+            raise BadRequestError("仅草稿或已驳回的应用可提交审核")
         self._validate_manifest(app.manifest or {})
-        app.status = MarketplaceAppStatus.PUBLISHED
+        app.status = MarketplaceAppStatus.PENDING_REVIEW
+        app.submitted_at = datetime.now(timezone.utc)
+        app.review_note = None
+        app.reviewed_at = None
+        app.reviewed_by = None
         await self.db.flush()
         await self.db.refresh(app, ["category"])
         installed_ids = await self._installed_app_ids()
@@ -409,3 +482,129 @@ class MarketplaceService(BaseService):
             for r in rows
         ]
         return PageResult(items=items, total=total or 0, page=params.page, size=params.size)
+
+    async def list_pending_apps(self, params: PageParams) -> PageResult[MarketplaceAppOut]:
+        filters = [MarketplaceApp.status == MarketplaceAppStatus.PENDING_REVIEW]
+        stmt = (
+            select(MarketplaceApp)
+            .where(*filters)
+            .options(selectinload(MarketplaceApp.category))
+            .order_by(MarketplaceApp.submitted_at.asc().nulls_last())
+        )
+        count_stmt = select(func.count(MarketplaceApp.id)).where(*filters)
+        total = await self.db.scalar(count_stmt)
+        stmt = stmt.offset((params.page - 1) * params.size).limit(params.size)
+        apps = (await self.db.execute(stmt)).scalars().all()
+        installed_ids = await self._installed_app_ids()
+        items = [
+            self._app_out(
+                a,
+                installed=a.id in installed_ids,
+                category_name=a.category.name if a.category else None,
+            )
+            for a in apps
+        ]
+        return PageResult(items=items, total=total or 0, page=params.page, size=params.size)
+
+    async def approve_app(self, app_id: UUID) -> MarketplaceAppOut:
+        app = await self._get_app_or_raise(app_id)
+        if app.status != MarketplaceAppStatus.PENDING_REVIEW:
+            raise BadRequestError("仅待审核应用可通过")
+        app.status = MarketplaceAppStatus.PUBLISHED
+        app.reviewed_at = datetime.now(timezone.utc)
+        app.reviewed_by = self.ctx.user_id
+        app.review_note = None
+        await self.db.flush()
+        await self.db.refresh(app, ["category"])
+        installed_ids = await self._installed_app_ids()
+        return self._app_out(
+            app,
+            installed=app.id in installed_ids,
+            category_name=app.category.name if app.category else None,
+        )
+
+    async def reject_app(self, app_id: UUID, *, note: str | None) -> MarketplaceAppOut:
+        app = await self._get_app_or_raise(app_id)
+        if app.status != MarketplaceAppStatus.PENDING_REVIEW:
+            raise BadRequestError("仅待审核应用可驳回")
+        app.status = MarketplaceAppStatus.REJECTED
+        app.reviewed_at = datetime.now(timezone.utc)
+        app.reviewed_by = self.ctx.user_id
+        app.review_note = (note or "").strip() or "未填写驳回原因"
+        await self.db.flush()
+        await self.db.refresh(app, ["category"])
+        installed_ids = await self._installed_app_ids()
+        return self._app_out(
+            app,
+            installed=app.id in installed_ids,
+            category_name=app.category.name if app.category else None,
+        )
+
+    async def list_app_ratings(
+        self, app_id: UUID, params: PageParams
+    ) -> PageResult[AppRatingOut]:
+        app = await self._get_app_or_raise(app_id)
+        if app.status != MarketplaceAppStatus.PUBLISHED:
+            raise NotFoundError("应用未上架")
+        filters = [AppRating.app_id == app_id, not_deleted(AppRating)]
+        stmt = (
+            select(AppRating)
+            .where(*filters)
+            .order_by(AppRating.created_at.desc())
+            .offset((params.page - 1) * params.size)
+            .limit(params.size)
+        )
+        count_stmt = select(func.count(AppRating.id)).where(*filters)
+        total = await self.db.scalar(count_stmt)
+        rows = (await self.db.execute(stmt)).scalars().all()
+        return PageResult(
+            items=[AppRatingOut.model_validate(r) for r in rows],
+            total=total or 0,
+            page=params.page,
+            size=params.size,
+        )
+
+    async def upsert_rating(self, app_id: UUID, body: AppRatingCreate) -> AppRatingOut:
+        app = await self._get_app_or_raise(app_id)
+        if app.status != MarketplaceAppStatus.PUBLISHED:
+            raise BadRequestError("仅已上架应用可评分")
+        await self._require_installed(app_id)
+        existing = await self.db.scalar(
+            select(AppRating).where(
+                AppRating.app_id == app_id,
+                AppRating.tenant_id == self.ctx.tenant_id,
+                AppRating.user_id == self.ctx.user_id,
+                not_deleted(AppRating),
+            )
+        )
+        if existing:
+            existing.score = body.score
+            existing.comment = body.comment
+            rating = existing
+        else:
+            rating = AppRating(
+                app_id=app_id,
+                tenant_id=self.ctx.tenant_id,
+                user_id=self.ctx.user_id,
+                score=body.score,
+                comment=body.comment,
+            )
+            self.db.add(rating)
+        await self.db.flush()
+        await self._refresh_rating_stats(app_id)
+        return AppRatingOut.model_validate(rating)
+
+    async def delete_my_rating(self, app_id: UUID) -> None:
+        rating = await self.db.scalar(
+            select(AppRating).where(
+                AppRating.app_id == app_id,
+                AppRating.tenant_id == self.ctx.tenant_id,
+                AppRating.user_id == self.ctx.user_id,
+                not_deleted(AppRating),
+            )
+        )
+        if not rating:
+            raise NotFoundError("评分不存在")
+        mark_deleted(rating)
+        await self.db.flush()
+        await self._refresh_rating_stats(app_id)

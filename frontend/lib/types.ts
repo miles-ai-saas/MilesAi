@@ -323,10 +323,30 @@ export interface MarketplaceApp {
   status: string;
   is_official: boolean;
   install_count: number;
+  rating_avg: number;
+  rating_count: number;
   category_id?: string | null;
   category_name?: string | null;
   installed: boolean;
+  review_note?: string | null;
+  submitted_at?: string | null;
+  reviewed_at?: string | null;
   created_at: string;
+}
+
+export interface AppRating {
+  id: string;
+  app_id: string;
+  user_id: string;
+  score: number;
+  comment?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MarketplaceAppDetail extends MarketplaceApp {
+  manifest: Record<string, unknown>;
+  my_rating?: AppRating | null;
 }
 
 export interface AppInstallResult {

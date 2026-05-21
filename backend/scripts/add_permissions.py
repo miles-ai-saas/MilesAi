@@ -19,6 +19,8 @@ async def main() -> None:
         "marketplace:read",
         "marketplace:write",
         "marketplace:install",
+        "marketplace:review",
+        "marketplace:rate",
         "task:write",
         "monitor:write",
     }

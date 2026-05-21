@@ -12,6 +12,7 @@ from app.app_tenant.compliance.schemas.compliance import (
     ComplianceScanRequest,
     ComplianceScanResult,
     InterceptLogOut,
+    SensitiveWordBatchCreate,
     SensitiveWordCreate,
     SensitiveWordOut,
     SensitiveWordUpdate,
@@ -42,6 +43,15 @@ async def create_word(
     db: AsyncSession = Depends(get_db),
 ):
     return ok(await _svc(db, ctx).create_word(body))
+
+
+@router.post("/words/batch", response_model=ApiResponse[list[SensitiveWordOut]])
+async def batch_create_words(
+    body: SensitiveWordBatchCreate,
+    ctx: TenantContext = Depends(require_permissions("compliance:write")),
+    db: AsyncSession = Depends(get_db),
+):
+    return ok(await _svc(db, ctx).batch_create_words(body))
 
 
 @router.patch("/words/{word_id}", response_model=ApiResponse[SensitiveWordOut])

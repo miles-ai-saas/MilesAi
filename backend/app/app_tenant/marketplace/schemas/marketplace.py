@@ -24,9 +24,14 @@ class MarketplaceAppOut(BaseModel):
     status: MarketplaceAppStatus
     is_official: bool
     install_count: int
+    rating_avg: float = 0.0
+    rating_count: int = 0
     category_id: UUID | None
     category_name: str | None = None
     installed: bool = False
+    review_note: str | None = None
+    submitted_at: datetime | None = None
+    reviewed_at: datetime | None = None
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -34,6 +39,31 @@ class MarketplaceAppOut(BaseModel):
 
 class MarketplaceAppDetail(MarketplaceAppOut):
     manifest: dict
+    my_rating: "AppRatingOut | None" = None
+
+
+class AppReviewBody(BaseModel):
+    note: str | None = Field(None, max_length=2000)
+
+
+class AppRatingCreate(BaseModel):
+    score: int = Field(..., ge=1, le=5)
+    comment: str | None = Field(None, max_length=2000)
+
+
+class AppRatingOut(BaseModel):
+    id: UUID
+    app_id: UUID
+    user_id: UUID
+    score: int
+    comment: str | None
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+MarketplaceAppDetail.model_rebuild()
 
 
 class MarketplaceAppCreate(BaseModel):

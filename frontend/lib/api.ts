@@ -6,6 +6,7 @@ import type {
   AppCategory,
   AppInstall,
   AppInstallResult,
+  AppRating,
   ChatResponse,
   ConfigDefinition,
   CustomTool,
@@ -18,6 +19,7 @@ import type {
   InterceptLog,
   KnowledgeBase,
   MarketplaceApp,
+  MarketplaceAppDetail,
   ModelConfig,
   MonitorReport,
   MonitorStats,
@@ -162,6 +164,9 @@ export const api = {
     getPage<SensitiveWord>(`/compliance/words?${buildPageQuery(page, size)}`),
   createSensitiveWord: (word: string, action: "warn" | "block", category?: string) =>
     post<SensitiveWord>("/compliance/words", { word, action, category }),
+  batchCreateSensitiveWords: (
+    words: { word: string; action: "warn" | "block"; category?: string }[],
+  ) => post<SensitiveWord[]>("/compliance/words/batch", { words }),
   updateSensitiveWord: (
     wordId: string,
     payload: { action?: "warn" | "block"; category?: string; is_active?: boolean },
@@ -301,10 +306,31 @@ export const api = {
   deleteHookBinding: (bindingId: string) =>
     http.delete(`/hooks/bindings/${bindingId}`).then(() => undefined),
 
+  listToolCatalog: () =>
+    get<
+      {
+        source: string;
+        name: string;
+        description?: string | null;
+        tool_id?: string | null;
+        mcp_service_id?: string | null;
+        mcp_service_name?: string | null;
+      }[]
+    >("/tools/catalog"),
   listCustomTools: (page = 1, size = DEFAULT_PAGE_SIZE) =>
     getPage<CustomTool>(`/tools?${buildPageQuery(page, size)}`),
   createCustomTool: (name: string, description: string, config: Record<string, unknown>) =>
     post<CustomTool>("/tools", { name, description, tool_type: "http", config }),
+  updateCustomTool: (
+    id: string,
+    payload: { name?: string; description?: string; config?: Record<string, unknown>; is_active?: boolean },
+  ) => patch<CustomTool>(`/tools/${id}`, payload),
+  deleteCustomTool: (id: string) => http.delete(`/tools/${id}`).then(() => undefined),
+  invokeTool: (name: string, params: Record<string, unknown>, toolId?: string) =>
+    post<{ tool: string; source: string; output: Record<string, unknown> }>(
+      `/tools/${encodeURIComponent(name)}/invoke`,
+      { params, tool_id: toolId || null },
+    ),
   listBuiltinTools: () => get<Record<string, string>[]>("/tools/builtin"),
 
   listSkillPackages: (page = 1, size = DEFAULT_PAGE_SIZE) =>
@@ -335,6 +361,11 @@ export const api = {
   deleteMcpService: (id: string) => http.delete(`/mcp/${id}`).then(() => undefined),
   syncMcpService: (serviceId: string) =>
     post<{ tools: Record<string, unknown>[]; synced_at: string }>(`/mcp/${serviceId}/sync`),
+  invokeMcpTool: (serviceId: string, toolName: string, params: Record<string, unknown>) =>
+    post<{ service_id: string; tool_name: string; output: Record<string, unknown> }>(
+      `/mcp/${serviceId}/tools/${encodeURIComponent(toolName)}/invoke`,
+      { params },
+    ),
 
   getMonitorStats: () => get<MonitorStats>("/monitor/stats"),
   getMonitorReport: () => get<MonitorReport>("/monitor/report"),
@@ -357,15 +388,22 @@ export const api = {
   retryTask: (taskId: string) => post<TaskRecord>(`/tasks/${taskId}/retry`),
 
   listMarketplaceCategories: () => get<AppCategory[]>("/marketplace/categories"),
-  listMarketplaceApps: (page = 1, size = DEFAULT_PAGE_SIZE, category?: string) =>
+  listMarketplaceApps: (
+    page = 1,
+    size = DEFAULT_PAGE_SIZE,
+    category?: string,
+    sort: "installs" | "rating" = "installs",
+  ) =>
     getPage<MarketplaceApp>(
-      `/marketplace/apps?${buildPageQuery(page, size)}${category ? `&category=${category}` : ""}`
+      `/marketplace/apps?${buildPageQuery(page, size)}${category ? `&category=${category}` : ""}&sort=${sort}`,
     ),
+  listPendingMarketplaceApps: (page = 1, size = DEFAULT_PAGE_SIZE) =>
+    getPage<MarketplaceApp>(`/marketplace/apps/pending?${buildPageQuery(page, size)}`),
   listMyMarketplaceApps: (page = 1, size = DEFAULT_PAGE_SIZE) =>
     getPage<MarketplaceApp>(`/marketplace/apps/mine?${buildPageQuery(page, size)}`),
-  getMarketplaceApp: (appId: string) => get<MarketplaceApp & { manifest: Record<string, unknown> }>(
-    `/marketplace/apps/${appId}`
-  ),
+  getMarketplaceApp: (appId: string) => get<MarketplaceAppDetail>(`/marketplace/apps/${appId}`),
+  listMarketplaceAppRatings: (appId: string, page = 1, size = 10) =>
+    getPage<AppRating>(`/marketplace/apps/${appId}/ratings?${buildPageQuery(page, size)}`),
   createMarketplaceAppFromResources: (body: {
     name: string;
     description?: string;
@@ -377,6 +415,14 @@ export const api = {
   }) => post<MarketplaceApp>("/marketplace/apps/from-resources", body),
   publishMarketplaceApp: (appId: string) =>
     post<MarketplaceApp>(`/marketplace/apps/${appId}/publish`),
+  approveMarketplaceApp: (appId: string) =>
+    post<MarketplaceApp>(`/marketplace/apps/${appId}/approve`),
+  rejectMarketplaceApp: (appId: string, note?: string) =>
+    post<MarketplaceApp>(`/marketplace/apps/${appId}/reject`, { note }),
+  rateMarketplaceApp: (appId: string, body: { score: number; comment?: string }) =>
+    post<AppRating>(`/marketplace/apps/${appId}/ratings`, body),
+  deleteMyMarketplaceRating: (appId: string) =>
+    http.delete(`/marketplace/apps/${appId}/ratings/mine`).then(() => undefined),
   installMarketplaceApp: (appId: string) =>
     post<AppInstallResult>(`/marketplace/apps/${appId}/install`),
   listAppInstalls: (page = 1, size = DEFAULT_PAGE_SIZE) =>

@@ -41,6 +41,8 @@ DEFAULT_PERMISSIONS = [
     ("marketplace:read", "查看应用市场", "marketplace"),
     ("marketplace:write", "发布应用", "marketplace"),
     ("marketplace:install", "安装应用", "marketplace"),
+    ("marketplace:review", "审核应用上架", "marketplace"),
+    ("marketplace:rate", "评价应用", "marketplace"),
     ("audit:read", "查看审计日志", "audit"),
 ]
 

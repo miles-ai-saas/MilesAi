@@ -12,6 +12,7 @@ from app.app_tenant.compliance.schemas.compliance import (
     ComplianceScanRequest,
     ComplianceScanResult,
     InterceptLogOut,
+    SensitiveWordBatchCreate,
     SensitiveWordCreate,
     SensitiveWordOut,
     SensitiveWordUpdate,
@@ -158,6 +159,21 @@ class ComplianceService(BaseService):
         await self.db.flush()
         await self.db.refresh(row)
         return SensitiveWordOut.model_validate(row)
+
+    async def batch_create_words(self, body: SensitiveWordBatchCreate) -> list[SensitiveWordOut]:
+        out: list[SensitiveWordOut] = []
+        for item in body.words:
+            row = SensitiveWord(
+                tenant_id=self.ctx.tenant_id,
+                word=item.word.strip(),
+                category=item.category,
+                action=item.action,
+            )
+            self.db.add(row)
+            await self.db.flush()
+            await self.db.refresh(row)
+            out.append(SensitiveWordOut.model_validate(row))
+        return out
 
     async def delete_word(self, word_id: UUID) -> None:
         row = await self.db.get(SensitiveWord, word_id)

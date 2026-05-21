@@ -29,3 +29,13 @@ class McpServiceOut(BaseModel):
 class McpSyncResult(BaseModel):
     tools: list[dict]
     synced_at: datetime
+
+
+class McpToolInvokeRequest(BaseModel):
+    params: dict = Field(default_factory=dict)
+
+
+class McpToolInvokeResult(BaseModel):
+    service_id: UUID
+    tool_name: str
+    output: dict

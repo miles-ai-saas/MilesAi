@@ -12,7 +12,13 @@ from app.app_tenant.prompts.models import PromptTemplate
 from app.app_tenant.skills.models import SkillPackage
 from app.models.flow import Flow, FlowStatus, FlowVersion
 from app.models.kb import Document, DocumentChunk, DocumentStatus, KnowledgeBase, VectorRef
-from app.app_tenant.marketplace.models import AppCategory, AppInstall, MarketplaceApp, MarketplaceAppStatus
+from app.app_tenant.marketplace.models import (
+    AppCategory,
+    AppInstall,
+    AppRating,
+    MarketplaceApp,
+    MarketplaceAppStatus,
+)
 from app.models.model import ModelConfig
 from app.models.permission import Permission
 from app.models.role import Role, role_permissions, user_roles
@@ -60,6 +66,7 @@ __all__ = [
     "MarketplaceApp",
     "MarketplaceAppStatus",
     "AppInstall",
+    "AppRating",
     "user_roles",
     "role_permissions",
 ]

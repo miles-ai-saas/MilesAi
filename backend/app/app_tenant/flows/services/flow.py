@@ -4,6 +4,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.common.exceptions import BadRequestError, NotFoundError
 from app.core.tenant import TenantContext, assert_tenant_access, tenant_filters
+from app.app_tenant.compliance.services.compliance import ComplianceService
+from app.app_tenant.hooks.models import HookScope, HookTrigger
+from app.app_tenant.hooks.services.runner import HookRunner
 from app.langflow.runtime_factory import get_flow_runtime
 from app.langflow.types import RunContext
 from app.models.flow import Flow, FlowStatus, FlowVersion
@@ -120,6 +123,26 @@ class FlowService(BaseService):
         version = await self.repo.get_version(flow.id, flow.current_version)
         if not version:
             raise BadRequestError("流程无可用版本")
+
+        query_text = str(
+            body.inputs.get("query") or body.inputs.get("message") or body.inputs.get("input") or ""
+        )
+        compliance = ComplianceService(self.db, self.ctx)
+        hooks = HookRunner(self.db, self.ctx.tenant_id)
+        hook_payload = {
+            "module": "flow_run",
+            "flow_id": str(flow_id),
+            "inputs": body.inputs,
+        }
+        if query_text:
+            await compliance.check_input(query_text, module="flow_run")
+        await hooks.run(
+            HookTrigger.BEFORE_CALL,
+            HookScope.FLOW,
+            flow_id,
+            {**hook_payload, "direction": "in", "query": query_text},
+        )
+
         ctx = RunContext(
             tenant_id=str(self.ctx.tenant_id),
             inputs=body.inputs,
@@ -132,4 +155,12 @@ class FlowService(BaseService):
         output = result.output
         if not isinstance(output, (str, dict, list)):
             output = str(output)
+        if isinstance(output, str) and output:
+            await compliance.check_output(output, module="flow_run")
+        await hooks.run(
+            HookTrigger.AFTER_CALL,
+            HookScope.FLOW,
+            flow_id,
+            {**hook_payload, "direction": "out", "output": output},
+        )
         return FlowRunResponse(output=output, steps=result.steps)

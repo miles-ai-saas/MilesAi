@@ -8,7 +8,13 @@ from app.core.deps import get_page_params, require_permissions
 from app.common.response import ok, page_ok
 from app.core.tenant import TenantContext
 from app.common.schema import ApiResponse, PageParams, PageResult
-from app.app_tenant.mcp.schemas.mcp import McpServiceCreate, McpServiceOut, McpSyncResult
+from app.app_tenant.mcp.schemas.mcp import (
+    McpServiceCreate,
+    McpServiceOut,
+    McpSyncResult,
+    McpToolInvokeRequest,
+    McpToolInvokeResult,
+)
 from app.app_tenant.mcp.services.mcp import McpServiceManager
 
 router = APIRouter()
@@ -59,3 +65,17 @@ async def sync_mcp(
     db: AsyncSession = Depends(get_db),
 ):
     return ok(await McpServiceManager(db, ctx).sync_service(service_id))
+
+
+@router.post(
+    "/{service_id}/tools/{tool_name}/invoke",
+    response_model=ApiResponse[McpToolInvokeResult],
+)
+async def invoke_mcp_tool(
+    service_id: UUID,
+    tool_name: str,
+    body: McpToolInvokeRequest,
+    ctx: TenantContext = Depends(require_permissions("mcp:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    return ok(await McpServiceManager(db, ctx).invoke_tool(service_id, tool_name, body))

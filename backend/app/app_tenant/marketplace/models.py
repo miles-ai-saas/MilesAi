@@ -1,7 +1,8 @@
 import enum
 import uuid
+from datetime import datetime
 
-from sqlalchemy import Boolean, Index, Integer, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, DateTime, Float, Index, Integer, String, Text, UniqueConstraint
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -12,7 +13,9 @@ from app.models.base import TimestampMixin, UUIDPrimaryKeyMixin
 
 class MarketplaceAppStatus(str, enum.Enum):
     DRAFT = "draft"
+    PENDING_REVIEW = "pending_review"
     PUBLISHED = "published"
+    REJECTED = "rejected"
     ARCHIVED = "archived"
 
 
@@ -30,6 +33,7 @@ class MarketplaceApp(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __table_args__ = (
         Index("idx_mkt_apps_publisher_tenant_id", "publisher_tenant_id"),
         Index("idx_mkt_apps_category_id", "category_id"),
+        Index("idx_mkt_apps_status", "status"),
     )
 
     publisher_tenant_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
@@ -50,6 +54,12 @@ class MarketplaceApp(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     is_official: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     install_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     manifest: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
+    rating_avg: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
+    rating_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    submitted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    reviewed_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    review_note: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     category: Mapped["AppCategory | None"] = relationship(
         "AppCategory",
@@ -61,6 +71,34 @@ class MarketplaceApp(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         back_populates="app",
         foreign_keys="AppInstall.app_id",
         primaryjoin="MarketplaceApp.id == AppInstall.app_id",
+    )
+    ratings: Mapped[list["AppRating"]] = relationship(
+        "AppRating",
+        back_populates="app",
+        foreign_keys="AppRating.app_id",
+        primaryjoin="MarketplaceApp.id == AppRating.app_id",
+    )
+
+
+class AppRating(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    __tablename__ = "mkt_ratings"
+    __table_args__ = (
+        Index("idx_mkt_ratings_app_id", "app_id"),
+        Index("idx_mkt_ratings_tenant_id", "tenant_id"),
+        UniqueConstraint("tenant_id", "app_id", "user_id", name="uk_mkt_ratings_tenant_app_user"),
+    )
+
+    app_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    score: Mapped[int] = mapped_column(Integer, nullable=False)
+    comment: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    app: Mapped["MarketplaceApp"] = relationship(
+        "MarketplaceApp",
+        back_populates="ratings",
+        foreign_keys=[app_id],
+        primaryjoin="AppRating.app_id == MarketplaceApp.id",
     )
 
 

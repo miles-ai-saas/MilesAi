@@ -12,6 +12,10 @@ class SensitiveWordCreate(BaseModel):
     action: SensitiveAction = SensitiveAction.WARN
 
 
+class SensitiveWordBatchCreate(BaseModel):
+    words: list[SensitiveWordCreate] = Field(..., min_length=1, max_length=200)
+
+
 class SensitiveWordUpdate(BaseModel):
     category: str | None = None
     action: SensitiveAction | None = None

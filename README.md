@@ -103,9 +103,9 @@ AiEngine/
 - [x] P1 RAG 核心：知识库 CRUD、文档上传、Celery 入库、向量检索
 - [x] P2 编排与智能体：流程版本、内置/Langflow 运行时、智能体对话
 - [x] P2 多模态知识库：图片/音频上传、OCR/转写（可选依赖降级）
-- [x] P2 应用市场：广场安装、租户打包上架/发布
-- [x] P3 安全与工具：敏感词/拦截日志/检测试、MCP 同步与删除、技能包、智能体绑定
-- [ ] P4 应用市场增强（审核、评分等）
+- [x] P2 应用市场：广场安装、租户打包上架（P4 起改为审核后上架）
+- [x] P3 安全与工具：敏感词/拦截日志/检测试、钩子、工具目录与调用、MCP、技能包、流程/智能体合规
+- [x] P4 应用市场：上架审核（待审/通过/驳回）、安装后评分、广场按评分排序
 - [ ] P5 运维增强
 
 ## 智能体与流程 API（P2）
@@ -158,7 +158,7 @@ chmod +x scripts/p2-e2e.sh && ./scripts/p2-e2e.sh
 | 流程列表/画布 | `/flows`, `/flows/{id}/edit` | 拖拽编排、保存、发布、调试 run |
 | 智能体联调 | `/agents` | 创建智能体、对话测试 |
 | 知识库 | `/kb` | 列表与新建；详情支持 TXT/PDF/图片/音频 |
-| 应用市场 | `/workbench/marketplace` | 安装、打包上架、发布到广场 |
+| 应用市场 | `/workbench/marketplace` | 安装、打包上架、提交审核、评分、审核 Tab |
 
 ### 多模态入库（可选 Worker 依赖）
 
@@ -179,15 +179,27 @@ cd backend && pip install -e ".[multimodal]"   # pytesseract + openai-whisper
 | MCP | `/mcp` | 注册、JSON-RPC `tools/list` 同步、删除 |
 | 技能包 | `/skill-packages` | 工具名 + 提示词片段 |
 | 智能体 | `config.skill_package_id` / `config.mcp_service_ids` | 对话时注入系统提示 |
+| 工具目录 | `GET /tools/catalog` | 内置 + 自定义 HTTP + MCP 工具 |
+| 工具调用 | `POST /tools/{name}/invoke` | calculator / http / knowledge_search 等 |
+| 流程调试 | `POST /flows/{id}/run` | 同样走敏感词与 flow 钩子 |
+| 钩子 | `/hooks` | HTTP Webhook，绑定 global/agent/flow |
 
-工作台页面：`/workbench/compliance`、`/workbench/mcp`、`/workbench/skills`
+工作台页面：`/workbench/compliance`、`/workbench/hooks`、`/workbench/tools`、`/workbench/mcp`、`/workbench/skills`
 
-### 应用市场上架 API
+### 应用市场 API（P2 + P4）
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
 | POST | `/api/v1/marketplace/apps/from-resources` | 从 KB/流程/智能体打包草稿 |
-| POST | `/api/v1/marketplace/apps/{id}/publish` | 发布到应用广场 |
-| GET | `/api/v1/marketplace/apps/mine` | 我的上架（含草稿） |
+| POST | `/api/v1/marketplace/apps/{id}/publish` | 提交审核（`pending_review`） |
+| GET | `/api/v1/marketplace/apps/pending` | 待审核列表（`marketplace:review`） |
+| POST | `/api/v1/marketplace/apps/{id}/approve` | 通过并上架 |
+| POST | `/api/v1/marketplace/apps/{id}/reject` | 驳回（body: `note`） |
+| GET | `/api/v1/marketplace/apps?sort=installs\|rating` | 广场列表 |
+| GET/POST | `/api/v1/marketplace/apps/{id}/ratings` | 评价列表 / 提交评分（需已安装） |
+| DELETE | `/api/v1/marketplace/apps/{id}/ratings/mine` | 删除自己的评分 |
+| GET | `/api/v1/marketplace/apps/mine` | 我的上架（含草稿/待审/驳回） |
+
+已有库补充权限：`cd backend && python scripts/add_permissions.py`
 
 详见 [docs/技术方案.md](docs/技术方案.md)。

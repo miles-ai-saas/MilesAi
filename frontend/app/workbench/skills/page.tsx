@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth-store";
 import { usePagedList } from "@/hooks/use-paged-list";
@@ -19,10 +19,18 @@ export default function SkillsPage() {
   const [editing, setEditing] = useState<SkillPackage | null>(null);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [tools, setTools] = useState("knowledge_search");
+  const [selectedTools, setSelectedTools] = useState<string[]>(["knowledge_search"]);
+  const [catalog, setCatalog] = useState<
+    { source: string; name: string; description?: string | null }[]
+  >([]);
   const [snippet, setSnippet] = useState("");
 
   const list = usePagedList(useCallback((p, s) => api.listSkillPackages(p, s), []), { enabled: ready });
+
+  useEffect(() => {
+    if (!ready) return;
+    api.listToolCatalog().then(setCatalog);
+  }, [ready]);
 
   const filtered = useMemo(
     () => filterBySearch(list.items, search, (s) => `${s.name} ${s.tool_names.join(" ")}`),
@@ -33,7 +41,7 @@ export default function SkillsPage() {
     setEditing(null);
     setName("");
     setDescription("");
-    setTools("knowledge_search");
+    setSelectedTools(["knowledge_search"]);
     setSnippet("");
     setDialogOpen(true);
   };
@@ -42,17 +50,20 @@ export default function SkillsPage() {
     setEditing(s);
     setName(s.name);
     setDescription(s.description ?? "");
-    setTools(s.tool_names.join(", "));
+    setSelectedTools(s.tool_names.length ? s.tool_names : []);
     setSnippet(s.prompt_snippet ?? "");
     setDialogOpen(true);
   };
 
+  const toggleTool = (toolName: string) => {
+    setSelectedTools((prev) =>
+      prev.includes(toolName) ? prev.filter((t) => t !== toolName) : [...prev, toolName],
+    );
+  };
+
   const onSave = async () => {
     if (!name.trim()) return;
-    const tool_names = tools
-      .split(",")
-      .map((x) => x.trim())
-      .filter(Boolean);
+    const tool_names = selectedTools;
     if (editing) {
       await api.updateSkillPackage(editing.id, {
         name: name.trim(),
@@ -171,12 +182,23 @@ export default function SkillsPage() {
           value={description}
           onChange={(e) => setDescription(e.target.value)}
         />
-        <input
-          className="input-field w-full"
-          placeholder="工具列表（逗号分隔，如 knowledge_search, web_search）"
-          value={tools}
-          onChange={(e) => setTools(e.target.value)}
-        />
+        <div className="max-h-40 overflow-y-auto rounded border border-line-soft p-2">
+          <p className="mb-2 text-xs font-medium text-ink-muted">从工具目录选择</p>
+          {catalog.length === 0 && <p className="text-xs text-ink-faint">加载中…</p>}
+          {catalog.map((t) => (
+            <label key={`${t.source}-${t.name}`} className="flex cursor-pointer items-center gap-2 py-1 text-xs">
+              <input
+                type="checkbox"
+                checked={selectedTools.includes(t.name)}
+                onChange={() => toggleTool(t.name)}
+              />
+              <span>
+                {t.name}
+                <span className="text-ink-faint"> ({t.source})</span>
+              </span>
+            </label>
+          ))}
+        </div>
         <textarea
           className="input-field h-24 w-full"
           placeholder="提示词片段（注入智能体系统提示）"
