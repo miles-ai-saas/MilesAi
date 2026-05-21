@@ -94,6 +94,16 @@ async def upload_document(
     return ok(await _svc(db, ctx).upload_document(kb_id, file))
 
 
+@router.post("/{kb_id}/documents/{document_id}/retry", response_model=ApiResponse[DocumentOut])
+async def retry_document(
+    kb_id: UUID,
+    document_id: UUID,
+    ctx: TenantContext = Depends(require_permissions("kb:write")),
+    db: AsyncSession = Depends(get_db),
+):
+    return ok(await _svc(db, ctx).retry_document(kb_id, document_id))
+
+
 @router.delete("/{kb_id}/documents/{document_id}", response_model=ApiResponse[None])
 async def delete_document(
     kb_id: UUID,

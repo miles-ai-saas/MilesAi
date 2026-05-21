@@ -165,6 +165,37 @@ class KnowledgeBaseService(BaseService):
         await self.db.refresh(doc)
         return DocumentOut.model_validate(doc)
 
+    async def retry_document(self, kb_id: UUID, document_id: UUID) -> DocumentOut:
+        await self._get_kb_or_raise(kb_id)
+        doc = await self.doc_repo.get_by_id_or_raise(document_id, label="文档不存在")
+        if doc.kb_id != kb_id:
+            raise NotFoundError("文档不存在")
+        if doc.status not in (
+            DocumentStatus.PARSE_FAILED,
+            DocumentStatus.EMBED_FAILED,
+            DocumentStatus.READY,
+        ):
+            raise BadRequestError("仅失败或已完成的文档可重新入库")
+        if not doc.minio_key or doc.minio_key == "pending":
+            raise BadRequestError("文档文件不可用，请重新上传")
+
+        from app.workers.tasks.ingest import ingest_document
+        from app.app_tenant.tasks.services.task import TaskService
+
+        doc.status = DocumentStatus.PENDING
+        doc.fail_reason = None
+        task = ingest_document.delay(str(doc.id))
+        doc.celery_task_id = task.id
+        await TaskService(self.db, self.ctx).create_record(
+            celery_task_id=task.id,
+            task_name="ingest_document",
+            resource_type="document",
+            resource_id=doc.id,
+        )
+        await self.db.flush()
+        await self.db.refresh(doc)
+        return DocumentOut.model_validate(doc)
+
     async def delete_document(self, kb_id: UUID, document_id: UUID) -> None:
         await self._get_kb_or_raise(kb_id)
         doc = await self.doc_repo.get_by_id_or_raise(document_id, label="文档不存在")

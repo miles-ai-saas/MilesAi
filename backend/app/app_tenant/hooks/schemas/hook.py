@@ -16,12 +16,38 @@ class HookDefinitionCreate(BaseModel):
     priority: int = 100
 
 
+class HookDefinitionUpdate(BaseModel):
+    name: str | None = None
+    config: dict | None = None
+    is_active: bool | None = None
+
+
 class HookDefinitionOut(BaseModel):
     id: UUID
     tenant_id: UUID
     name: str
     hook_type: HookType
     config: dict
+    is_active: bool
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class HookBindingCreate(BaseModel):
+    scope: HookScope = HookScope.GLOBAL
+    target_id: UUID | None = None
+    trigger: HookTrigger = HookTrigger.BEFORE_CALL
+    priority: int = 100
+
+
+class HookBindingOut(BaseModel):
+    id: UUID
+    hook_id: UUID
+    scope: HookScope
+    target_id: UUID | None
+    trigger: HookTrigger
+    priority: int
     is_active: bool
     created_at: datetime
 

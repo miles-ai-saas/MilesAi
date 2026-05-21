@@ -17,7 +17,6 @@ frontend/.env.local
 frontend/node_modules/
 .next/
 out/
-models/
 *.log
 .DS_Store
 .idea/

@@ -12,6 +12,7 @@ import type {
   Flow,
   FlowGraph,
   FlowVersion,
+  HookBinding,
   HookDefinition,
   InterceptLog,
   KnowledgeBase,
@@ -89,6 +90,11 @@ async function put<T>(url: string, data?: unknown): Promise<T> {
   return unwrap(res.data);
 }
 
+async function patch<T>(url: string, data?: unknown): Promise<T> {
+  const res = await http.patch<ApiResponse<T>>(url, data);
+  return unwrap(res.data);
+}
+
 export const api = {
   login: async (username: string, password: string) => {
     const data = await post<TokenPair>("/auth/login", { username, password });
@@ -104,6 +110,18 @@ export const api = {
 
   listUsers: (page = 1, size = DEFAULT_PAGE_SIZE) =>
     getPage<TenantUser>(`/users?${buildPageQuery(page, size)}`),
+  createUser: (payload: {
+    username: string;
+    email: string;
+    password: string;
+    phone?: string;
+  }) => post<TenantUser>("/users", payload),
+  updateUser: (
+    userId: string,
+    payload: { email?: string; phone?: string; is_active?: boolean },
+  ) => patch<TenantUser>(`/users/${userId}`, payload),
+  deactivateUser: (userId: string) =>
+    http.delete<ApiResponse<TenantUser>>(`/users/${userId}`).then((res) => unwrap(res.data)),
 
   listAuditLogs: (page = 1, size = DEFAULT_PAGE_SIZE) =>
     getPage<TenantAuditLog>(`/audit/logs?${buildPageQuery(page, size)}`),
@@ -121,6 +139,10 @@ export const api = {
     getPage<PromptTemplate>(`/prompt-templates?${buildPageQuery(page, size)}`),
   createPromptTemplate: (name: string, content: string, description?: string) =>
     post<PromptTemplate>("/prompt-templates", { name, content, description }),
+  updatePromptTemplate: (
+    id: string,
+    payload: { name?: string; content?: string; description?: string; is_active?: boolean },
+  ) => patch<PromptTemplate>(`/prompt-templates/${id}`, payload),
   deletePromptTemplate: (id: string) =>
     http.delete(`/prompt-templates/${id}`).then(() => undefined),
 
@@ -132,6 +154,19 @@ export const api = {
     api_base?: string;
     api_key?: string;
   }) => post<ModelConfig>("/models", payload),
+  updateModelConfig: (
+    id: string,
+    payload: {
+      name?: string;
+      provider?: string;
+      model_name?: string;
+      api_base?: string;
+      api_key?: string;
+      is_active?: boolean;
+    },
+  ) => patch<ModelConfig>(`/models/${id}`, payload),
+  deleteModelConfig: (id: string) =>
+    http.delete(`/models/${id}`).then(() => undefined),
 
   listFlows: (page = 1, size = DEFAULT_PAGE_SIZE) =>
     getPage<Flow>(`/flows?${buildPageQuery(page, size)}`),
@@ -151,14 +186,30 @@ export const api = {
 
   listAgents: (page = 1, size = DEFAULT_PAGE_SIZE) =>
     getPage<Agent>(`/agents?${buildPageQuery(page, size)}`),
+  getAgent: (agentId: string) => get<Agent>(`/agents/${agentId}`),
   createAgent: (payload: {
     name: string;
+    description?: string;
     kb_ids?: string[];
     published_flow_id?: string;
     system_prompt?: string;
     prompt_template_id?: string;
     model_config_id?: string;
   }) => post<Agent>("/agents", { kb_ids: [], ...payload }),
+  updateAgent: (
+    agentId: string,
+    payload: {
+      name?: string;
+      description?: string;
+      kb_ids?: string[];
+      published_flow_id?: string | null;
+      system_prompt?: string;
+      prompt_template_id?: string | null;
+      model_config_id?: string | null;
+    },
+  ) => patch<Agent>(`/agents/${agentId}`, payload),
+  deleteAgent: (agentId: string) =>
+    http.delete(`/agents/${agentId}`).then(() => undefined),
   chatAgent: (agentId: string, query: string) =>
     post<ChatResponse>(`/agents/${agentId}/chat`, { query }),
 
@@ -177,6 +228,8 @@ export const api = {
     const res = await http.delete<ApiResponse<null>>(`/kb/${kbId}/documents/${documentId}`);
     return unwrap(res.data);
   },
+  retryDocument: (kbId: string, documentId: string) =>
+    post<Document>(`/kb/${kbId}/documents/${documentId}/retry`),
   searchKb: (kbId: string, query: string, top_k = 5) =>
     post<{ query: string; hits: { content: string; score: number; filename?: string }[] }>(
       `/kb/${kbId}/search`,
@@ -191,7 +244,21 @@ export const api = {
     config: Record<string, unknown>;
     trigger?: string;
     scope?: string;
+    target_id?: string;
+    priority?: number;
   }) => post<HookDefinition>("/hooks", payload),
+  updateHook: (
+    id: string,
+    payload: { name?: string; config?: Record<string, unknown>; is_active?: boolean },
+  ) => patch<HookDefinition>(`/hooks/${id}`, payload),
+  deleteHook: (id: string) => http.delete(`/hooks/${id}`).then(() => undefined),
+  listHookBindings: (hookId: string) => get<HookBinding[]>(`/hooks/${hookId}/bindings`),
+  createHookBinding: (
+    hookId: string,
+    payload: { scope?: string; target_id?: string; trigger?: string; priority?: number },
+  ) => post<HookBinding>(`/hooks/${hookId}/bindings`, payload),
+  deleteHookBinding: (bindingId: string) =>
+    http.delete(`/hooks/bindings/${bindingId}`).then(() => undefined),
 
   listCustomTools: (page = 1, size = DEFAULT_PAGE_SIZE) =>
     getPage<CustomTool>(`/tools?${buildPageQuery(page, size)}`),

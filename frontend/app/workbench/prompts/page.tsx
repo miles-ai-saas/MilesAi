@@ -6,15 +6,18 @@ import { useRequireAuth } from "@/lib/auth-store";
 import { usePagedList } from "@/hooks/use-paged-list";
 import { ResourceListFooter } from "@/components/resource/ResourceListFooter";
 import { AddResourceCard } from "@/components/resource/AddResourceCard";
+import { CardActions } from "@/components/resource/CardActions";
 import { ResourceDialog } from "@/components/resource/ResourceDialog";
 import { ResourceItemCard } from "@/components/resource/ResourceItemCard";
 import { ResourceListLayout } from "@/components/resource/ResourceListLayout";
 import { filterBySearch } from "@/lib/filter-search";
+import type { PromptTemplate } from "@/lib/types";
 
 export default function PromptsPage() {
   const { ready } = useRequireAuth();
   const [search, setSearch] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editing, setEditing] = useState<PromptTemplate | null>(null);
   const [name, setName] = useState("");
   const [content, setContent] = useState("你是企业智能助手，请准确、简洁地回答用户问题。");
 
@@ -27,11 +30,34 @@ export default function PromptsPage() {
     [list.items, search],
   );
 
-  const onCreate = async () => {
-    if (!name.trim()) return;
-    await api.createPromptTemplate(name.trim(), content);
+  const openCreate = () => {
+    setEditing(null);
     setName("");
+    setContent("你是企业智能助手，请准确、简洁地回答用户问题。");
+    setDialogOpen(true);
+  };
+
+  const openEdit = (t: PromptTemplate) => {
+    setEditing(t);
+    setName(t.name);
+    setContent(t.content);
+    setDialogOpen(true);
+  };
+
+  const onSave = async () => {
+    if (!name.trim()) return;
+    if (editing) {
+      await api.updatePromptTemplate(editing.id, { name: name.trim(), content });
+    } else {
+      await api.createPromptTemplate(name.trim(), content);
+    }
     setDialogOpen(false);
+    await list.reload();
+  };
+
+  const onDelete = async (t: PromptTemplate) => {
+    if (!confirm(`确定删除模板「${t.name}」？`)) return;
+    await api.deletePromptTemplate(t.id);
     await list.reload();
   };
 
@@ -39,7 +65,7 @@ export default function PromptsPage() {
     <>
       <ResourceListLayout
         title="提示词模板"
-        description="管理系统提示词模板，供智能体与流程编排复用，统一对话风格与业务指令。"
+        description="管理系统提示词模板，供智能体与流程编排复用。"
         searchPlaceholder="搜索模板名称"
         search={search}
         onSearchChange={setSearch}
@@ -55,11 +81,7 @@ export default function PromptsPage() {
           ) : null
         }
       >
-        <AddResourceCard
-          label="添加新模板"
-          hint="创建可复用的系统提示词配置"
-          onClick={() => setDialogOpen(true)}
-        />
+        <AddResourceCard label="添加新模板" hint="创建可复用的系统提示词" onClick={openCreate} />
         {filtered.map((t) => (
           <ResourceItemCard
             key={t.id}
@@ -67,17 +89,7 @@ export default function PromptsPage() {
             description={t.content}
             badge={t.is_active ? "启用" : "停用"}
             actions={
-              <button
-                type="button"
-                className="text-xs text-red-600 hover:underline"
-                onClick={async (e) => {
-                  e.stopPropagation();
-                  await api.deletePromptTemplate(t.id);
-                  await list.reload();
-                }}
-              >
-                删除
-              </button>
+              <CardActions onEdit={() => openEdit(t)} onDelete={() => onDelete(t)} />
             }
           />
         ))}
@@ -85,15 +97,15 @@ export default function PromptsPage() {
 
       <ResourceDialog
         open={dialogOpen}
-        title="新建提示词模板"
+        title={editing ? "编辑提示词模板" : "新建提示词模板"}
         onClose={() => setDialogOpen(false)}
         footer={
           <>
             <button type="button" className="btn-ghost" onClick={() => setDialogOpen(false)}>
               取消
             </button>
-            <button type="button" className="btn-primary" onClick={onCreate}>
-              创建
+            <button type="button" className="btn-primary" onClick={onSave}>
+              保存
             </button>
           </>
         }

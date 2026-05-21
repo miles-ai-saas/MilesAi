@@ -42,3 +42,12 @@ async def update_user(
     db: AsyncSession = Depends(get_db),
 ) -> ApiResponse[UserOut]:
     return ok(await UserService(db, ctx).update_user(user_id, body))
+
+
+@router.delete("/{user_id}", response_model=ApiResponse[UserOut])
+async def deactivate_user(
+    user_id: UUID,
+    ctx: TenantContext = Depends(require_permissions("system:user:write")),
+    db: AsyncSession = Depends(get_db),
+) -> ApiResponse[UserOut]:
+    return ok(await UserService(db, ctx).deactivate_user(user_id))

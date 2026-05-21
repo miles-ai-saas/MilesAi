@@ -128,6 +128,17 @@ export interface HookDefinition {
   created_at: string;
 }
 
+export interface HookBinding {
+  id: string;
+  hook_id: string;
+  scope: string;
+  target_id?: string | null;
+  trigger: string;
+  priority: number;
+  is_active: boolean;
+  created_at: string;
+}
+
 export interface CustomTool {
   id: string;
   name: string;

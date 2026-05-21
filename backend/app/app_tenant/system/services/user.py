@@ -2,7 +2,7 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.common.exceptions import NotFoundError
+from app.common.exceptions import BadRequestError, NotFoundError
 from app.core.security import hash_password
 from app.core.tenant import TenantContext, assert_tenant_access, resolve_tenant_id, tenant_filters
 from app.models.user import User
@@ -81,5 +81,17 @@ class UserService(BaseService):
         await self.repo.update_fields(user, data)
         if role_ids is not None:
             user.roles = await self.repo.load_roles(role_ids)
+        await self.db.refresh(user, ["roles"])
+        return to_user_out(user)
+
+    async def deactivate_user(self, user_id: UUID) -> UserOut:
+        user = await self.repo.get_with_roles(user_id)
+        if not user:
+            raise NotFoundError("用户不存在")
+        assert_tenant_access(self.ctx, user.tenant_id)
+        if user.id == self.ctx.user_id:
+            raise BadRequestError("不能禁用当前登录用户")
+        user.is_active = False
+        await self.db.flush()
         await self.db.refresh(user, ["roles"])
         return to_user_out(user)
