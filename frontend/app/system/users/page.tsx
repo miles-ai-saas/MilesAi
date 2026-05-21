@@ -1,18 +1,19 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth-store";
 import { usePagedList } from "@/hooks/use-paged-list";
 import { ResourceListFooter } from "@/components/resource/ResourceListFooter";
 import { ResourceDialog } from "@/components/resource/ResourceDialog";
 import { PageHeader } from "@/components/layout/PageHeader";
-import type { TenantUser } from "@/lib/types";
+import type { Role, TenantUser } from "@/lib/types";
 
 export default function SystemUsersPage() {
   const { ready } = useRequireAuth();
   const list = usePagedList(useCallback((p, s) => api.listUsers(p, s), []), { enabled: ready });
 
+  const [roles, setRoles] = useState<Role[]>([]);
   const [createOpen, setCreateOpen] = useState(false);
   const [editUser, setEditUser] = useState<TenantUser | null>(null);
   const [username, setUsername] = useState("");
@@ -20,6 +21,12 @@ export default function SystemUsersPage() {
   const [password, setPassword] = useState("");
   const [phone, setPhone] = useState("");
   const [isActive, setIsActive] = useState(true);
+  const [roleIds, setRoleIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (!ready) return;
+    api.listAssignableRoles().then(setRoles);
+  }, [ready]);
 
   const openCreate = () => {
     setEditUser(null);
@@ -27,6 +34,7 @@ export default function SystemUsersPage() {
     setEmail("");
     setPassword("");
     setPhone("");
+    setRoleIds(roles[0] ? [roles[0].id] : []);
     setCreateOpen(true);
   };
 
@@ -35,7 +43,15 @@ export default function SystemUsersPage() {
     setEmail(u.email);
     setPhone(u.phone ?? "");
     setIsActive(u.is_active);
+    const ids = roles.filter((r) => u.role_codes?.includes(r.code)).map((r) => r.id);
+    setRoleIds(ids);
     setCreateOpen(true);
+  };
+
+  const toggleRole = (id: string) => {
+    setRoleIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
   };
 
   const onSave = async () => {
@@ -44,6 +60,7 @@ export default function SystemUsersPage() {
         email,
         phone: phone || undefined,
         is_active: isActive,
+        role_ids: roleIds,
       });
     } else {
       if (!username.trim() || !email.trim() || password.length < 6) return;
@@ -52,6 +69,7 @@ export default function SystemUsersPage() {
         email: email.trim(),
         password,
         phone: phone || undefined,
+        role_ids: roleIds,
       });
     }
     setCreateOpen(false);
@@ -59,7 +77,7 @@ export default function SystemUsersPage() {
   };
 
   const onDeactivate = async (u: TenantUser) => {
-    if (!confirm(`确定删除用户「${u.username}」？（软删除，可保留审计数据）`)) return;
+    if (!confirm(`确定删除用户「${u.username}」？`)) return;
     await api.deactivateUser(u.id);
     await list.reload();
   };
@@ -68,7 +86,7 @@ export default function SystemUsersPage() {
     <div className="mx-auto max-w-5xl">
       <PageHeader
         title="用户管理"
-        description="管理当前租户下的用户账号"
+        description="管理当前租户下的用户账号与角色分配"
         action={
           <button type="button" className="btn-primary" onClick={openCreate}>
             新建用户
@@ -198,6 +216,21 @@ export default function SystemUsersPage() {
             账号启用
           </label>
         )}
+        <div className="rounded border border-line-soft p-3">
+          <p className="mb-2 text-xs font-medium text-ink-muted">角色</p>
+          <div className="flex flex-wrap gap-3">
+            {roles.map((r) => (
+              <label key={r.id} className="flex cursor-pointer items-center gap-1 text-xs">
+                <input
+                  type="checkbox"
+                  checked={roleIds.includes(r.id)}
+                  onChange={() => toggleRole(r.id)}
+                />
+                {r.name}
+              </label>
+            ))}
+          </div>
+        </div>
       </ResourceDialog>
     </div>
   );

@@ -13,7 +13,7 @@ from app.app_tenant.models.views import models as model_views
 from app.app_tenant.monitor.views import monitor
 from app.app_tenant.prompts.views import prompts
 from app.app_tenant.skills.views import skills
-from app.app_tenant.system.views import health, tenants, users
+from app.app_tenant.system.views import configs, health, roles, tenants, users
 from app.app_tenant.tasks.views import tasks
 from app.app_tenant.tools.views import tools
 
@@ -22,6 +22,8 @@ api_router.include_router(health.router, tags=["health"])
 api_router.include_router(auth.router, prefix="/auth", tags=["auth"])
 api_router.include_router(tenants.router, prefix="/tenants", tags=["tenants"])
 api_router.include_router(users.router, prefix="/users", tags=["users"])
+api_router.include_router(roles.router, prefix="/roles", tags=["roles"])
+api_router.include_router(configs.router, prefix="/system/configs", tags=["system-config"])
 
 # 13 项产品能力（按配置 → 编排 → 运行 → 分发）
 api_router.include_router(compliance.router, prefix="/compliance", tags=["compliance"])

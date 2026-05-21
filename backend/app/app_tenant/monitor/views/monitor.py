@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from fastapi.responses import PlainTextResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -7,7 +7,7 @@ from app.core.deps import require_permissions
 from app.common.response import ok
 from app.core.tenant import TenantContext
 from app.common.schema import ApiResponse
-from app.app_tenant.monitor.schemas.monitor import AlertConfig, MonitorReport, MonitorStats
+from app.app_tenant.monitor.schemas.monitor import AlertConfig, MonitorReport, MonitorStats, MonitorTrends
 from app.app_tenant.monitor.services.monitor import MonitorService
 
 router = APIRouter()
@@ -19,6 +19,15 @@ async def monitor_stats(
     db: AsyncSession = Depends(get_db),
 ):
     return ok(await MonitorService(db, ctx).stats())
+
+
+@router.get("/trends", response_model=ApiResponse[MonitorTrends])
+async def monitor_trends(
+    days: int = Query(7, ge=1, le=30),
+    ctx: TenantContext = Depends(require_permissions("monitor:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    return ok(await MonitorService(db, ctx).trends(days=days))
 
 
 @router.get("/report", response_model=ApiResponse[MonitorReport])

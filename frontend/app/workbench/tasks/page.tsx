@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth-store";
@@ -106,6 +107,12 @@ export default function TasksPage() {
           }
           actions={
             <>
+              <Link
+                href={`/workbench/tasks/${t.id}`}
+                className="text-xs text-brand hover:underline"
+              >
+                详情
+              </Link>
               {["pending", "running"].includes(t.status) && (
                 <button
                   type="button"

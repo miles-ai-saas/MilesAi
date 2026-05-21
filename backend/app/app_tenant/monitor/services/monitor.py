@@ -3,7 +3,9 @@ import io
 from datetime import datetime, timezone
 
 import httpx
-from sqlalchemy import func, select
+from datetime import timedelta
+
+from sqlalchemy import Date, cast, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.utils.health_checks import collect_health_status
@@ -14,8 +16,15 @@ from app.models.flow import Flow
 from app.models.kb import Document, DocumentStatus, KnowledgeBase
 from app.app_tenant.marketplace.models import AppInstall
 from app.models.system import SystemConfig
+from app.core.soft_delete import append_not_deleted
 from app.models.task import CeleryTaskRecord, TaskStatus
-from app.app_tenant.monitor.schemas.monitor import AlertConfig, MonitorReport, MonitorStats
+from app.app_tenant.monitor.schemas.monitor import (
+    AlertConfig,
+    MonitorReport,
+    MonitorStats,
+    MonitorTrends,
+    TaskTrendPoint,
+)
 from app.app_tenant.tasks.schemas.task import TaskSummary
 from app.core.soft_delete import append_not_deleted
 from app.core.service import BaseService
@@ -173,6 +182,61 @@ class MonitorService(BaseService):
             return {"ok": resp.is_success, "status": resp.status_code}
         except Exception as exc:
             return {"ok": False, "message": str(exc)}
+
+    async def trends(self, *, days: int = 7) -> MonitorTrends:
+        days = max(1, min(days, 30))
+        start = datetime.now(timezone.utc) - timedelta(days=days - 1)
+        task_f = append_not_deleted(
+            tenant_filters(self.ctx, CeleryTaskRecord.tenant_id),
+            CeleryTaskRecord,
+        )
+        task_f.append(CeleryTaskRecord.created_at >= start)
+
+        rows = await self.db.execute(
+            select(
+                cast(CeleryTaskRecord.created_at, Date).label("day"),
+                CeleryTaskRecord.status,
+                func.count(CeleryTaskRecord.id),
+            )
+            .where(*task_f)
+            .group_by(cast(CeleryTaskRecord.created_at, Date), CeleryTaskRecord.status)
+        )
+        by_day: dict[str, TaskTrendPoint] = {}
+        for day, status, cnt in rows.all():
+            key = day.isoformat() if hasattr(day, "isoformat") else str(day)
+            if key not in by_day:
+                by_day[key] = TaskTrendPoint(date=key)
+            p = by_day[key]
+            n = int(cnt)
+            p.total += n
+            st = status.value if hasattr(status, "value") else str(status)
+            if st == "pending":
+                p.pending += n
+            elif st == "running":
+                p.running += n
+            elif st == "success":
+                p.success += n
+            elif st == "failed":
+                p.failed += n
+            elif st == "cancelled":
+                p.cancelled += n
+
+        log_f = append_not_deleted(tenant_filters(self.ctx, InterceptLog.tenant_id), InterceptLog)
+        log_f.append(InterceptLog.created_at >= start)
+        log_rows = await self.db.execute(
+            select(cast(InterceptLog.created_at, Date).label("day"), func.count(InterceptLog.id))
+            .where(*log_f)
+            .group_by(cast(InterceptLog.created_at, Date))
+        )
+        intercept_by_day = [
+            {"date": (d.isoformat() if hasattr(d, "isoformat") else str(d)), "count": int(c)}
+            for d, c in log_rows.all()
+        ]
+
+        return MonitorTrends(
+            task_by_day=sorted(by_day.values(), key=lambda x: x.date),
+            intercept_by_day=sorted(intercept_by_day, key=lambda x: str(x["date"])),
+        )
 
     async def notify_task_failed(self, task_name: str, fail_reason: str) -> None:
         cfg = await self.get_alert_config()

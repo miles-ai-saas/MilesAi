@@ -5,11 +5,14 @@ import { api } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth-store";
 import { ResourceItemCard } from "@/components/resource/ResourceItemCard";
 import { ResourceListLayout } from "@/components/resource/ResourceListLayout";
-import type { AlertConfig, MonitorReport } from "@/lib/types";
+import { SimpleBarChart } from "@/components/charts/SimpleBarChart";
+import { documentStatusLabel } from "@/lib/document-status";
+import type { AlertConfig, MonitorReport, MonitorTrends } from "@/lib/types";
 
 export default function MonitorPage() {
   const { ready } = useRequireAuth();
   const [report, setReport] = useState<MonitorReport | null>(null);
+  const [trends, setTrends] = useState<MonitorTrends | null>(null);
   const [health, setHealth] = useState<Record<string, unknown> | null>(null);
   const [alerts, setAlerts] = useState<AlertConfig>({
     enabled: false,
@@ -20,12 +23,14 @@ export default function MonitorPage() {
   const [alertMsg, setAlertMsg] = useState("");
 
   const reload = async () => {
-    const [r, h, a] = await Promise.all([
+    const [r, t, h, a] = await Promise.all([
       api.getMonitorReport(),
+      api.getMonitorTrends(7),
       api.getMonitorHealth(),
       api.getAlertConfig(),
     ]);
     setReport(r);
+    setTrends(t);
     setHealth(h);
     setAlerts(a);
   };
@@ -97,20 +102,62 @@ export default function MonitorPage() {
         ))}
       </ResourceListLayout>
 
-      {report && (
+      {report && trends && (
         <div className="resource-page-shell space-y-5">
           <section className="card p-4">
-            <h2 className="text-sm font-semibold text-ink">文档状态分布</h2>
-            <div className="mt-3 flex flex-wrap gap-3 text-xs text-ink-muted">
-              {Object.entries(report.documents_by_status).map(([k, v]) => (
-                <span key={k} className="rounded bg-surface-muted px-2 py-1">
-                  {k}: {v}
-                </span>
-              ))}
-              {Object.keys(report.documents_by_status).length === 0 && (
-                <span className="text-ink-faint">暂无文档</span>
-              )}
+            <h2 className="text-sm font-semibold text-ink">任务趋势（近 7 天）</h2>
+            {trends.task_by_day.length === 0 ? (
+              <p className="mt-3 text-xs text-ink-faint">暂无任务数据</p>
+            ) : (
+              <SimpleBarChart
+                className="mt-4"
+                items={trends.task_by_day.map((d) => ({
+                  label: d.date.slice(5),
+                  value: d.total,
+                }))}
+              />
+            )}
+            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+              <div>
+                <p className="mb-2 text-xs font-medium text-ink-muted">按状态（累计）</p>
+                <SimpleBarChart
+                  items={[
+                    { label: "成功", value: report.tasks.success, color: "#059669" },
+                    { label: "失败", value: report.tasks.failed, color: "#dc2626" },
+                    { label: "运行", value: report.tasks.running, color: "#d97706" },
+                    { label: "等待", value: report.tasks.pending, color: "#6b7280" },
+                  ]}
+                />
+              </div>
+              <div>
+                <p className="mb-2 text-xs font-medium text-ink-muted">合规拦截（按日）</p>
+                {trends.intercept_by_day.length === 0 ? (
+                  <p className="text-xs text-ink-faint">暂无数据</p>
+                ) : (
+                  <SimpleBarChart
+                    items={trends.intercept_by_day.map((d) => ({
+                      label: String(d.date).slice(5),
+                      value: d.count,
+                    }))}
+                  />
+                )}
+              </div>
             </div>
+          </section>
+
+          <section className="card p-4">
+            <h2 className="text-sm font-semibold text-ink">文档状态分布</h2>
+            {Object.keys(report.documents_by_status).length === 0 ? (
+              <p className="mt-3 text-xs text-ink-faint">暂无文档</p>
+            ) : (
+              <SimpleBarChart
+                className="mt-4"
+                items={Object.entries(report.documents_by_status).map(([k, v]) => ({
+                  label: documentStatusLabel(k),
+                  value: v,
+                }))}
+              />
+            )}
           </section>
 
           {health && (

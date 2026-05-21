@@ -92,3 +92,26 @@ async def seed_database(session: AsyncSession) -> None:
     await session.execute(
         user_roles.insert().values(user_id=admin_user.id, role_id=admin_role.id)
     )
+
+    tenant_admin = Role(
+        tenant_id=tenant.id,
+        name="租户管理员",
+        code="tenant_admin",
+        description="本租户内管理与配置权限",
+        is_system=False,
+    )
+    session.add(tenant_admin)
+    await session.flush()
+    tenant_perm_codes = {
+        c
+        for c, _, _ in DEFAULT_PERMISSIONS
+        if not c.startswith("system:tenant:")
+    }
+    for perm in permissions:
+        if perm.code in tenant_perm_codes:
+            await session.execute(
+                role_permissions.insert().values(role_id=tenant_admin.id, permission_id=perm.id)
+            )
+    await session.execute(
+        user_roles.insert().values(user_id=admin_user.id, role_id=tenant_admin.id)
+    )

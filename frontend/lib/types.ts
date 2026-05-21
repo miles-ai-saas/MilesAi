@@ -38,6 +38,58 @@ export interface TenantUser {
   role_codes: string[];
 }
 
+export interface Permission {
+  id: string;
+  code: string;
+  name: string;
+  module: string;
+  description?: string | null;
+}
+
+export interface PermissionGroup {
+  module: string;
+  permissions: Permission[];
+}
+
+export interface Role {
+  id: string;
+  tenant_id?: string | null;
+  name: string;
+  code: string;
+  description?: string | null;
+  is_system: boolean;
+  permission_codes: string[];
+}
+
+export interface ConfigDefinition {
+  key: string;
+  label: string;
+  category: string;
+  description: string;
+  value_type: string;
+  default_value: unknown;
+}
+
+export interface RuntimeInfo {
+  components: Record<string, string>;
+  settings_preview: Record<string, string | number | boolean | null>;
+}
+
+export interface TaskTrendPoint {
+  date: string;
+  pending: number;
+  running: number;
+  success: number;
+  failed: number;
+  cancelled: number;
+  total: number;
+}
+
+export interface MonitorTrends {
+  task_by_day: TaskTrendPoint[];
+  intercept_by_day: { date: string; count: number }[];
+}
+
 export interface TenantAuditLog {
   id: string;
   tenant_id: string;

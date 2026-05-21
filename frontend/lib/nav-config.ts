@@ -62,6 +62,8 @@ export const SYSTEM_NAV: NavGroup[] = [
     title: "系统管理",
     items: [
       { href: "/system/users", label: "用户管理" },
+      { href: "/system/roles", label: "角色权限" },
+      { href: "/system/config", label: "系统配置" },
       { href: "/system/audit", label: "审计日志" },
     ],
   },

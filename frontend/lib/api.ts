@@ -7,6 +7,7 @@ import type {
   AppInstall,
   AppInstallResult,
   ChatResponse,
+  ConfigDefinition,
   CustomTool,
   Document,
   Flow,
@@ -20,6 +21,10 @@ import type {
   ModelConfig,
   MonitorReport,
   MonitorStats,
+  MonitorTrends,
+  PermissionGroup,
+  Role,
+  RuntimeInfo,
   McpService,
   PageResult,
   PromptTemplate,
@@ -115,13 +120,40 @@ export const api = {
     email: string;
     password: string;
     phone?: string;
+    role_ids?: string[];
   }) => post<TenantUser>("/users", payload),
   updateUser: (
     userId: string,
-    payload: { email?: string; phone?: string; is_active?: boolean },
+    payload: { email?: string; phone?: string; is_active?: boolean; role_ids?: string[] },
   ) => patch<TenantUser>(`/users/${userId}`, payload),
   deactivateUser: (userId: string) =>
     http.delete<ApiResponse<TenantUser>>(`/users/${userId}`).then((res) => unwrap(res.data)),
+
+  listPermissionGroups: () => get<PermissionGroup[]>("/roles/permissions"),
+  listAssignableRoles: () => get<Role[]>("/roles/assignable"),
+  listRoles: (page = 1, size = DEFAULT_PAGE_SIZE) =>
+    getPage<Role>(`/roles?${buildPageQuery(page, size)}`),
+  createRole: (payload: {
+    name: string;
+    code: string;
+    description?: string;
+    permission_ids: string[];
+  }) => post<Role>("/roles", payload),
+  updateRole: (
+    roleId: string,
+    payload: { name?: string; description?: string; permission_ids?: string[] },
+  ) => patch<Role>(`/roles/${roleId}`, payload),
+  deleteRole: (roleId: string) => http.delete(`/roles/${roleId}`).then(() => undefined),
+
+  listConfigDefinitions: () => get<ConfigDefinition[]>("/system/configs/definitions"),
+  getRuntimeInfo: () => get<RuntimeInfo>("/system/configs/runtime"),
+  upsertSystemConfig: (key: string, value: unknown, description?: string) =>
+    put<{ key: string; value: Record<string, unknown> }>(`/system/configs/${encodeURIComponent(key)}`, {
+      value: typeof value === "object" && value !== null ? value : { value },
+      description,
+    }),
+
+  getMonitorTrends: (days = 7) => get<MonitorTrends>(`/monitor/trends?days=${days}`),
 
   listAuditLogs: (page = 1, size = DEFAULT_PAGE_SIZE) =>
     getPage<TenantAuditLog>(`/audit/logs?${buildPageQuery(page, size)}`),
