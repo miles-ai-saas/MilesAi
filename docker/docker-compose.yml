@@ -72,6 +72,23 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  admin-web:
+    build:
+      context: ..
+      dockerfile: docker/images/admin-web/Dockerfile
+      args:
+        NEXT_PUBLIC_ADMIN_API_URL: ${NEXT_PUBLIC_ADMIN_API_URL:-http://localhost:8000/api/admin/v1}
+        NEXT_PUBLIC_TENANT_WEB_URL: ${NEXT_PUBLIC_TENANT_WEB_URL:-http://localhost:3000}
+    container_name: aiengine-admin-web
+    ports:
+      - "${ADMIN_WEB_PORT:-3001}:3001"
+    networks:
+      - aiengine-net
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
   flower:
     image: mher/flower:2.0
     container_name: aiengine-flower

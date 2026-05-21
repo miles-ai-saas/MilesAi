@@ -6,7 +6,9 @@ const STORAGE_KEY = "aiengine-admin-auth";
 
 interface AdminAuthState {
   accessToken: string | null;
+  admin: { id: string; username: string; role: string } | null;
   setToken: (token: string | null) => void;
+  setAdmin: (admin: AdminAuthState["admin"]) => void;
   logout: () => void;
 }
 
@@ -14,11 +16,13 @@ export const useAdminAuthStore = create<AdminAuthState>()(
   persist(
     (set) => ({
       accessToken: null,
+      admin: null,
       setToken: (token) => set({ accessToken: token }),
-      logout: () => set({ accessToken: null }),
+      setAdmin: (admin) => set({ admin }),
+      logout: () => set({ accessToken: null, admin: null }),
     }),
-    { name: STORAGE_KEY }
-  )
+    { name: STORAGE_KEY },
+  ),
 );
 
 export function getAdminToken(): string | null {

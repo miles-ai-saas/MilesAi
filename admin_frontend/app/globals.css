@@ -1,0 +1,68 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --brand: #e11d48;
+    --brand-light: #fff1f2;
+    --brand-soft: #fecdd3;
+    --surface: #ffffff;
+    --surface-muted: #f5f5f5;
+    --ink: #404040;
+    --ink-muted: #737373;
+    --line: #e5e5e5;
+  }
+
+  html,
+  body {
+    height: 100%;
+  }
+
+  body {
+    margin: 0;
+    color: var(--ink);
+    background: var(--surface-muted);
+    font-family:
+      system-ui,
+      -apple-system,
+      "PingFang SC",
+      "Segoe UI",
+      Roboto,
+      sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
+@layer components {
+  .card {
+    @apply rounded-xl border border-line bg-surface shadow-card;
+  }
+
+  .input-field {
+    @apply w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink outline-none transition
+      placeholder:text-ink-faint focus:border-brand focus:ring-2 focus:ring-brand/15;
+  }
+
+  .btn-primary {
+    @apply rounded-lg bg-brand px-4 py-2 text-sm font-medium text-brand-foreground shadow-sm transition
+      hover:bg-brand-dark disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .btn-ghost {
+    @apply rounded-lg border border-line bg-surface px-4 py-2 text-sm text-ink-muted transition
+      hover:border-brand/30 hover:bg-brand-light hover:text-brand;
+  }
+
+  .badge {
+    @apply inline-block rounded-full px-2 py-0.5 text-xs font-medium;
+  }
+
+  .nav-item {
+    @apply block rounded-lg px-3 py-2 text-sm text-ink-muted transition;
+  }
+
+  .nav-item-active {
+    @apply bg-brand-light font-medium text-brand;
+  }
+}

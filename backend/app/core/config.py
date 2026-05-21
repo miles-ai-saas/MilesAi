@@ -54,7 +54,11 @@ class Settings(BaseSettings):
     celery_broker_url: str = "redis://localhost:6379/1"
     celery_result_backend: str = "redis://localhost:6379/2"
 
-    cors_origins: str = "http://localhost:3000"
+    cors_origins: str = (
+        "http://localhost:3000,http://127.0.0.1:3000,"
+        "http://localhost:3001,http://127.0.0.1:3001,"
+        "http://localhost:3002,http://127.0.0.1:3002"
+    )
 
     seed_admin_username: str = "admin"
     seed_admin_password: str = "admin123"

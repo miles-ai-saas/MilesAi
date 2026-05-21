@@ -27,7 +27,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     api.fetchMe().then(setUser).catch(() => {});
   }, [hydrated, token, user, setUser]);
 
-  if (pathname === "/login" || pathname.startsWith("/admin")) {
+  if (pathname === "/login") {
     return <>{children}</>;
   }
 

@@ -26,11 +26,16 @@ docker compose up -d --build                            # API / Worker / Web / F
 |------|------|
 | API | http://localhost:8000 |
 | API 文档 | http://localhost:8000/docs |
+| 租户 AI 工作台 | http://localhost:3000 |
+| 平台运营后台 | http://localhost:3001 |
 | Flower | http://localhost:5555 |
 | MinIO Console | http://localhost:9001 |
 | Weaviate | http://localhost:8080 |
 
-默认管理员（首次启动自动种子）：`admin` / `admin123`
+默认账号（首次启动自动种子）：
+
+- 租户工作台：`admin` / `admin123`
+- 平台运营后台：`platform` / `admin123`（`/api/admin/v1`）
 
 ## 数据库创建
 
@@ -79,7 +84,8 @@ AiEngine/
 │   └── alembic/
 ├── docker/
 ├── docs/
-└── frontend/         # Next.js（P1 后）
+├── frontend/         # 租户 AI 工作台（:3000）
+└── admin_frontend/   # 平台运营后台（:3001）
 ```
 
 ### 分层约定
@@ -126,12 +132,19 @@ cd docker
 docker compose -f docker-compose.middleware.yml up -d
 docker compose up -d api worker
 
-# 终端 2：前端
+# 终端 2：租户工作台
 cd frontend
 cp .env.local.example .env.local
 npm install
 npm run dev
-# 打开 http://localhost:3000 → 登录 admin/admin123 → 流程编排 → 新建 RAG 流程 → 保存/发布/调试
+# http://localhost:3000 → admin/admin123
+
+# 终端 3（可选）：运营后台
+cd admin_frontend
+cp .env.local.example .env.local
+npm install
+npm run dev
+# http://localhost:3001 → platform/admin123
 
 # 可选：命令行 E2E
 chmod +x scripts/p2-e2e.sh && ./scripts/p2-e2e.sh

@@ -7,7 +7,7 @@ Compose 已拆分为 **中间件** 与 **应用** 两个文件，通过共享网
 | 文件 | 服务 | 说明 |
 |------|------|------|
 | `docker-compose.middleware.yml` | postgres, redis, minio, weaviate | 数据与基础设施 |
-| `docker-compose.yml` | api, worker, web, flower | 业务应用 |
+| `docker-compose.yml` | api, worker, web, admin-web, flower | 业务应用 |
 
 ## 环境变量
 
@@ -74,7 +74,8 @@ docker compose -f docker-compose.middleware.yml down -v
 | `MINIO_CONSOLE_PORT` | 9001 | MinIO Console |
 | `WEAVIATE_PORT` | 8080 | Weaviate |
 | `API_PORT` | 8000 | FastAPI |
-| `WEB_PORT` | 3000 | Next.js |
+| `WEB_PORT` | 3000 | 租户 AI 工作台 |
+| `ADMIN_WEB_PORT` | 3001 | 平台运营后台 |
 | `FLOWER_PORT` | 5555 | Celery Flower |
 
 ## 数据库

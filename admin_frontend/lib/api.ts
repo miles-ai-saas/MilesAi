@@ -1,12 +1,9 @@
 import axios from "axios";
 import type { ApiResponse, PageResult } from "./types";
-import { getAdminToken, useAdminAuthStore } from "./admin-auth-store";
+import { getAdminToken, useAdminAuthStore } from "./auth-store";
 
 const baseURL =
-  (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1").replace(
-    "/api/v1",
-    "/api/admin/v1"
-  );
+  process.env.NEXT_PUBLIC_ADMIN_API_URL || "http://localhost:8000/api/admin/v1";
 
 const http = axios.create({ baseURL, timeout: 120000 });
 
@@ -22,15 +19,17 @@ http.interceptors.response.use(
     if (err.response?.status === 401 && typeof window !== "undefined") {
       if (getAdminToken()) {
         useAdminAuthStore.getState().logout();
-        window.location.href = "/admin/login";
+        window.location.href = "/login";
       }
     }
     return Promise.reject(err);
-  }
+  },
 );
 
 function unwrap<T>(body: ApiResponse<T>): T {
-  if (body.code !== 0 || body.data === null) throw new Error(body.message || "请求失败");
+  if (body.code !== 0 || body.data === null) {
+    throw new Error(body.message || "请求失败");
+  }
   return body.data;
 }
 
@@ -54,6 +53,8 @@ export const adminApi = {
   login: async (username: string, password: string) => {
     const data = await post<{ access_token: string }>("/auth/login", { username, password });
     useAdminAuthStore.getState().setToken(data.access_token);
+    const me = await get<{ id: string; username: string; role: string }>("/auth/me");
+    useAdminAuthStore.getState().setAdmin(me);
     return data;
   },
   logout: () => useAdminAuthStore.getState().logout(),
@@ -62,21 +63,28 @@ export const adminApi = {
     post<null>("/auth/change-password", { old_password, new_password }),
   listSessions: () => get<{ admin_id: string; username: string; role: string }[]>("/auth/sessions"),
 
-  listTenants: (q = "") => get<PageResult<AdminTenant>>(`/tenants?page=1&size=50${q}`),
+  listTenants: (page = 1, size = 50, status?: string) =>
+    get<PageResult<AdminTenant>>(
+      `/tenants?page=${page}&size=${size}${status ? `&status=${status}` : ""}`,
+    ),
   getTenant: (id: string) => get<AdminTenantDetail>(`/tenants/${id}`),
   createTenant: (body: Record<string, unknown>) => post<AdminTenant>("/tenants", body),
-  updateTenant: (id: string, body: Record<string, unknown>) => patch<AdminTenant>(`/tenants/${id}`, body),
+  updateTenant: (id: string, body: Record<string, unknown>) =>
+    patch<AdminTenant>(`/tenants/${id}`, body),
   updateQuota: (id: string, body: Record<string, unknown>) =>
     patch<AdminTenant>(`/tenants/${id}/quota`, body),
+  deleteTenant: (id: string) => del<null>(`/tenants/${id}`),
 
   listPlans: () => get<BillingPlan[]>("/billing/plans"),
   createPlan: (body: Record<string, unknown>) => post<BillingPlan>("/billing/plans", body),
   listBills: (tenantId?: string) =>
-    get<PageResult<TenantBill>>(`/billing/bills?page=1&size=50${tenantId ? `&tenant_id=${tenantId}` : ""}`),
+    get<PageResult<TenantBill>>(
+      `/billing/bills?page=1&size=50${tenantId ? `&tenant_id=${tenantId}` : ""}`,
+    ),
   getBill: (id: string) => get<TenantBillDetail>(`/billing/bills/${id}`),
   generateBill: (tenantId: string, period_start: string, period_end: string) =>
     post<TenantBillDetail>(
-      `/billing/bills/generate?tenant_id=${tenantId}&period_start=${period_start}&period_end=${period_end}`
+      `/billing/bills/generate?tenant_id=${tenantId}&period_start=${period_start}&period_end=${period_end}`,
     ),
 
   listRiskEvents: () => get<PageResult<RiskEvent>>("/risk/events?page=1&size=50"),
