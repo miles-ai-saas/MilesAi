@@ -33,6 +33,25 @@ async def create_mcp(
     return ok(await McpServiceManager(db, ctx).create_service(body))
 
 
+@router.get("/{service_id}", response_model=ApiResponse[McpServiceOut])
+async def get_mcp(
+    service_id: UUID,
+    ctx: TenantContext = Depends(require_permissions("mcp:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    return ok(await McpServiceManager(db, ctx).get_service(service_id))
+
+
+@router.delete("/{service_id}", response_model=ApiResponse[None])
+async def delete_mcp(
+    service_id: UUID,
+    ctx: TenantContext = Depends(require_permissions("mcp:write")),
+    db: AsyncSession = Depends(get_db),
+):
+    await McpServiceManager(db, ctx).delete_service(service_id)
+    return ok(message="已删除")
+
+
 @router.post("/{service_id}/sync", response_model=ApiResponse[McpSyncResult])
 async def sync_mcp(
     service_id: UUID,

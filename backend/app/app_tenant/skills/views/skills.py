@@ -33,6 +33,15 @@ async def create_skill(
     return ok(await SkillService(db, ctx).create_skill(body))
 
 
+@router.get("/{skill_id}", response_model=ApiResponse[SkillPackageOut])
+async def get_skill(
+    skill_id: UUID,
+    ctx: TenantContext = Depends(require_permissions("skill:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    return ok(await SkillService(db, ctx).get_skill(skill_id))
+
+
 @router.patch("/{skill_id}", response_model=ApiResponse[SkillPackageOut])
 async def update_skill(
     skill_id: UUID,

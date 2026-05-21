@@ -9,9 +9,12 @@ from app.common.response import ok, page_ok
 from app.core.tenant import TenantContext
 from app.common.schema import ApiResponse, PageParams, PageResult
 from app.app_tenant.compliance.schemas.compliance import (
+    ComplianceScanRequest,
+    ComplianceScanResult,
     InterceptLogOut,
     SensitiveWordCreate,
     SensitiveWordOut,
+    SensitiveWordUpdate,
 )
 from app.app_tenant.compliance.services.compliance import ComplianceService
 
@@ -39,6 +42,25 @@ async def create_word(
     db: AsyncSession = Depends(get_db),
 ):
     return ok(await _svc(db, ctx).create_word(body))
+
+
+@router.patch("/words/{word_id}", response_model=ApiResponse[SensitiveWordOut])
+async def update_word(
+    word_id: UUID,
+    body: SensitiveWordUpdate,
+    ctx: TenantContext = Depends(require_permissions("compliance:write")),
+    db: AsyncSession = Depends(get_db),
+):
+    return ok(await _svc(db, ctx).update_word(word_id, body))
+
+
+@router.post("/scan", response_model=ApiResponse[ComplianceScanResult])
+async def scan_text(
+    body: ComplianceScanRequest,
+    ctx: TenantContext = Depends(require_permissions("compliance:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    return ok(await _svc(db, ctx).scan_text(body))
 
 
 @router.delete("/words/{word_id}", response_model=ApiResponse[None])

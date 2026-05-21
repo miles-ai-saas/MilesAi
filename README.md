@@ -104,7 +104,7 @@ AiEngine/
 - [x] P2 编排与智能体：流程版本、内置/Langflow 运行时、智能体对话
 - [x] P2 多模态知识库：图片/音频上传、OCR/转写（可选依赖降级）
 - [x] P2 应用市场：广场安装、租户打包上架/发布
-- [ ] P3 安全与工具
+- [x] P3 安全与工具：敏感词/拦截日志/检测试、MCP 同步与删除、技能包、智能体绑定
 - [ ] P4 应用市场增强（审核、评分等）
 - [ ] P5 运维增强
 
@@ -168,6 +168,19 @@ cd backend && pip install -e ".[multimodal]"   # pytesseract + openai-whisper
 ```
 
 未安装时仍可上传图片/音频，解析结果为可检索的占位说明文本。
+
+### P3 合规 / MCP / 技能包
+
+| 能力 | 路径 | 说明 |
+|------|------|------|
+| 敏感词 | `/compliance/words` | CRUD、启用/停用 |
+| 检测试 | `POST /compliance/scan` | 试跑敏感词并写日志 |
+| 拦截日志 | `/compliance/logs` | 智能体对话等命中记录 |
+| MCP | `/mcp` | 注册、JSON-RPC `tools/list` 同步、删除 |
+| 技能包 | `/skill-packages` | 工具名 + 提示词片段 |
+| 智能体 | `config.skill_package_id` / `config.mcp_service_ids` | 对话时注入系统提示 |
+
+工作台页面：`/workbench/compliance`、`/workbench/mcp`、`/workbench/skills`
 
 ### 应用市场上架 API
 

@@ -12,6 +12,28 @@ class SensitiveWordCreate(BaseModel):
     action: SensitiveAction = SensitiveAction.WARN
 
 
+class SensitiveWordUpdate(BaseModel):
+    category: str | None = None
+    action: SensitiveAction | None = None
+    is_active: bool | None = None
+
+
+class ComplianceScanRequest(BaseModel):
+    text: str = Field(..., min_length=1)
+    module: str = "manual_test"
+
+
+class ComplianceScanMatch(BaseModel):
+    word: str
+    action: SensitiveAction
+
+
+class ComplianceScanResult(BaseModel):
+    blocked: bool
+    warned: bool
+    matches: list[ComplianceScanMatch]
+
+
 class SensitiveWordOut(BaseModel):
     id: UUID
     tenant_id: UUID

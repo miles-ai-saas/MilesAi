@@ -8,7 +8,7 @@ from app.core.tenant import TenantContext, assert_tenant_access, tenant_filters
 from app.app_tenant.skills.models import SkillPackage
 from app.app_tenant.skills.schemas.skill import SkillPackageCreate, SkillPackageOut, SkillPackageUpdate
 from app.common.schema import PageParams, PageResult
-from app.core.soft_delete import is_marked_deleted, mark_deleted
+from app.core.soft_delete import append_not_deleted, is_marked_deleted, mark_deleted, not_deleted
 from app.core.service import BaseService
 
 
@@ -16,8 +16,14 @@ class SkillService(BaseService):
     def __init__(self, db: AsyncSession, ctx: TenantContext) -> None:
         super().__init__(db, ctx)
 
+    async def get_skill(self, skill_id: UUID) -> SkillPackageOut:
+        return SkillPackageOut.model_validate(await self._get_or_raise(skill_id))
+
     async def list_skills(self, params: PageParams) -> PageResult[SkillPackageOut]:
-        filters = tenant_filters(self.ctx, SkillPackage.tenant_id)
+        filters = append_not_deleted(
+            tenant_filters(self.ctx, SkillPackage.tenant_id),
+            SkillPackage,
+        )
         total = await self.db.scalar(
             select(func.count()).select_from(SkillPackage).where(*filters)
         )

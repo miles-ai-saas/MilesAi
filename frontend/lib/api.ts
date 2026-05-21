@@ -162,8 +162,17 @@ export const api = {
     getPage<SensitiveWord>(`/compliance/words?${buildPageQuery(page, size)}`),
   createSensitiveWord: (word: string, action: "warn" | "block", category?: string) =>
     post<SensitiveWord>("/compliance/words", { word, action, category }),
+  updateSensitiveWord: (
+    wordId: string,
+    payload: { action?: "warn" | "block"; category?: string; is_active?: boolean },
+  ) => patch<SensitiveWord>(`/compliance/words/${wordId}`, payload),
   deleteSensitiveWord: (wordId: string) =>
     http.delete(`/compliance/words/${wordId}`).then(() => undefined),
+  scanCompliance: (text: string, module = "manual_test") =>
+    post<{ blocked: boolean; warned: boolean; matches: { word: string; action: string }[] }>(
+      "/compliance/scan",
+      { text, module },
+    ),
   listInterceptLogs: (page = 1, size = DEFAULT_PAGE_SIZE) =>
     getPage<InterceptLog>(`/compliance/logs?${buildPageQuery(page, size)}`),
 
@@ -306,13 +315,24 @@ export const api = {
     tool_names?: string[];
     prompt_snippet?: string;
   }) => post<SkillPackage>("/skill-packages", payload),
+  updateSkillPackage: (
+    id: string,
+    payload: {
+      name?: string;
+      description?: string;
+      tool_names?: string[];
+      prompt_snippet?: string;
+      is_active?: boolean;
+    },
+  ) => patch<SkillPackage>(`/skill-packages/${id}`, payload),
   deleteSkillPackage: (id: string) =>
     http.delete(`/skill-packages/${id}`).then(() => undefined),
 
   listMcpServices: (page = 1, size = DEFAULT_PAGE_SIZE) =>
     getPage<McpService>(`/mcp?${buildPageQuery(page, size)}`),
-  createMcpService: (name: string, endpoint_url: string) =>
-    post<McpService>("/mcp", { name, endpoint_url }),
+  createMcpService: (name: string, endpoint_url: string, transport = "sse") =>
+    post<McpService>("/mcp", { name, endpoint_url, transport }),
+  deleteMcpService: (id: string) => http.delete(`/mcp/${id}`).then(() => undefined),
   syncMcpService: (serviceId: string) =>
     post<{ tools: Record<string, unknown>[]; synced_at: string }>(`/mcp/${serviceId}/sync`),
 

@@ -150,6 +150,7 @@ export interface Agent {
   model_config_id?: string | null;
   prompt_template_id?: string | null;
   system_prompt?: string | null;
+  config?: Record<string, unknown>;
 }
 
 export interface PromptTemplate {
@@ -300,6 +301,7 @@ export interface McpService {
   id: string;
   name: string;
   endpoint_url: string;
+  transport?: string;
   status: string;
   tools_cache: Record<string, unknown>[];
   last_sync_at?: string | null;

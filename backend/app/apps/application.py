@@ -5,6 +5,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.admin.seeds.admin_seed import seed_admin_ops
+from app.app_tenant.seeds.compliance_seed import seed_compliance
 from app.app_tenant.seeds.marketplace_seed import seed_marketplace
 from app.app_tenant.seeds.seed import seed_database
 from app.apps.migrate import run_migrations
@@ -19,6 +20,7 @@ async def lifespan(app: FastAPI):
     run_migrations()
     async with AsyncSessionLocal() as session:
         await seed_database(session)
+        await seed_compliance(session)
         await seed_marketplace(session)
         await seed_admin_ops(session)
         await session.commit()

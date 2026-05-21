@@ -19,6 +19,7 @@ from app.app_tenant.agents.schemas.agent import AgentCreate, AgentOut, AgentUpda
 from app.common.schema import PageParams, PageResult
 from app.core.soft_delete import is_marked_deleted, mark_deleted, not_deleted
 from app.core.service import BaseService
+from app.app_tenant.agents.services.context import build_skill_mcp_prompt_block
 from app.app_tenant.compliance.services.compliance import ComplianceService
 from app.deletion.cascade import before_delete_agent
 
@@ -48,12 +49,19 @@ class AgentService(BaseService):
 
     async def _resolve_system_prompt(self, agent: Agent) -> str:
         if agent.system_prompt and agent.system_prompt.strip():
-            return agent.system_prompt.strip()
-        if agent.prompt_template_id:
+            base = agent.system_prompt.strip()
+        elif agent.prompt_template_id:
             tpl = await self.db.get(PromptTemplate, agent.prompt_template_id)
             if tpl and tpl.is_active and not is_marked_deleted(tpl):
-                return tpl.content
-        return "你是企业智能助手，请准确、简洁地回答用户问题。"
+                base = tpl.content
+            else:
+                base = "你是企业智能助手，请准确、简洁地回答用户问题。"
+        else:
+            base = "你是企业智能助手，请准确、简洁地回答用户问题。"
+        extras = await build_skill_mcp_prompt_block(self.db, self.ctx, agent.config or {})
+        if extras:
+            return f"{base}\n\n{extras}"
+        return base
 
     async def _get_agent_or_raise(self, agent_id: UUID) -> Agent:
         agent = await self.repo.get_detail(agent_id)

@@ -3,7 +3,15 @@
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { ResourceDialog } from "@/components/resource/ResourceDialog";
-import type { Agent, Flow, KnowledgeBase, ModelConfig, PromptTemplate } from "@/lib/types";
+import type {
+  Agent,
+  Flow,
+  KnowledgeBase,
+  McpService,
+  ModelConfig,
+  PromptTemplate,
+  SkillPackage,
+} from "@/lib/types";
 
 export type AgentFormValues = {
   name: string;
@@ -13,6 +21,8 @@ export type AgentFormValues = {
   published_flow_id: string;
   prompt_template_id: string;
   model_config_id: string;
+  skill_package_id: string;
+  mcp_service_ids: string[];
 };
 
 const emptyForm = (): AgentFormValues => ({
@@ -23,6 +33,8 @@ const emptyForm = (): AgentFormValues => ({
   published_flow_id: "",
   prompt_template_id: "",
   model_config_id: "",
+  skill_package_id: "",
+  mcp_service_ids: [],
 });
 
 type Props = {
@@ -39,6 +51,8 @@ export function AgentFormDialog({ open, title, agent, onClose, onSaved }: Props)
   const [flows, setFlows] = useState<Flow[]>([]);
   const [prompts, setPrompts] = useState<PromptTemplate[]>([]);
   const [models, setModels] = useState<ModelConfig[]>([]);
+  const [skills, setSkills] = useState<SkillPackage[]>([]);
+  const [mcps, setMcps] = useState<McpService[]>([]);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -48,11 +62,15 @@ export function AgentFormDialog({ open, title, agent, onClose, onSaved }: Props)
       api.listFlows(1, 100),
       api.listPromptTemplates(1, 100),
       api.listModelConfigs(),
-    ]).then(([kbRes, flowRes, promptRes, modelRes]) => {
+      api.listSkillPackages(1, 100),
+      api.listMcpServices(1, 100),
+    ]).then(([kbRes, flowRes, promptRes, modelRes, skillRes, mcpRes]) => {
       setKbs(kbRes.items);
       setFlows(flowRes.items.filter((f) => f.status === "published"));
       setPrompts(promptRes.items);
       setModels(modelRes);
+      setSkills(skillRes.items.filter((s) => s.is_active));
+      setMcps(mcpRes.items);
     });
   }, [open]);
 
@@ -67,11 +85,24 @@ export function AgentFormDialog({ open, title, agent, onClose, onSaved }: Props)
         published_flow_id: agent.published_flow_id ?? "",
         prompt_template_id: agent.prompt_template_id ?? "",
         model_config_id: agent.model_config_id ?? "",
+        skill_package_id: String((agent.config as Record<string, unknown>)?.skill_package_id ?? ""),
+        mcp_service_ids: (
+          ((agent.config as Record<string, unknown>)?.mcp_service_ids as string[]) ?? []
+        ).map(String),
       });
     } else {
       setForm(emptyForm());
     }
   }, [open, agent]);
+
+  const toggleMcp = (id: string) => {
+    setForm((f) => ({
+      ...f,
+      mcp_service_ids: f.mcp_service_ids.includes(id)
+        ? f.mcp_service_ids.filter((x) => x !== id)
+        : [...f.mcp_service_ids, id],
+    }));
+  };
 
   const toggleKb = (id: string) => {
     setForm((f) => ({
@@ -84,6 +115,14 @@ export function AgentFormDialog({ open, title, agent, onClose, onSaved }: Props)
     if (!form.name.trim()) return;
     setBusy(true);
     try {
+      const config: Record<string, unknown> = {
+        ...((agent?.config as Record<string, unknown>) ?? {}),
+      };
+      if (form.skill_package_id) config.skill_package_id = form.skill_package_id;
+      else delete config.skill_package_id;
+      if (form.mcp_service_ids.length) config.mcp_service_ids = form.mcp_service_ids;
+      else delete config.mcp_service_ids;
+
       const payload = {
         name: form.name.trim(),
         description: form.description.trim() || undefined,
@@ -92,6 +131,7 @@ export function AgentFormDialog({ open, title, agent, onClose, onSaved }: Props)
         published_flow_id: form.published_flow_id || null,
         prompt_template_id: form.prompt_template_id || null,
         model_config_id: form.model_config_id || null,
+        config,
       };
       if (agent) {
         await api.updateAgent(agent.id, payload);
@@ -180,6 +220,34 @@ export function AgentFormDialog({ open, title, agent, onClose, onSaved }: Props)
           </option>
         ))}
       </select>
+      <select
+        className="input-field w-full"
+        value={form.skill_package_id}
+        onChange={(e) => setForm((f) => ({ ...f, skill_package_id: e.target.value }))}
+      >
+        <option value="">无技能包</option>
+        {skills.map((s) => (
+          <option key={s.id} value={s.id}>
+            {s.name}
+          </option>
+        ))}
+      </select>
+      <div className="rounded border border-line-soft p-3">
+        <p className="mb-2 text-xs font-medium text-ink-muted">MCP 服务（可多选，需已同步工具）</p>
+        <div className="flex max-h-24 flex-wrap gap-2 overflow-y-auto">
+          {mcps.length === 0 && <span className="text-xs text-ink-faint">暂无 MCP 服务</span>}
+          {mcps.map((m) => (
+            <label key={m.id} className="flex cursor-pointer items-center gap-1 text-xs">
+              <input
+                type="checkbox"
+                checked={form.mcp_service_ids.includes(m.id)}
+                onChange={() => toggleMcp(m.id)}
+              />
+              {m.name} ({m.tools_cache?.length ?? 0})
+            </label>
+          ))}
+        </div>
+      </div>
       <div className="rounded border border-line-soft p-3">
         <p className="mb-2 text-xs font-medium text-ink-muted">知识库（可多选，可选）</p>
         <div className="flex max-h-32 flex-wrap gap-2 overflow-y-auto">

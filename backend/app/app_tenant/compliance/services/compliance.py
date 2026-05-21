@@ -8,9 +8,13 @@ from app.core.tenant import TenantContext, assert_tenant_access, tenant_filters
 from app.app_tenant.compliance.models import InterceptLog, SensitiveAction, SensitiveWord
 from app.common.schema import PageParams, PageResult
 from app.app_tenant.compliance.schemas.compliance import (
+    ComplianceScanMatch,
+    ComplianceScanRequest,
+    ComplianceScanResult,
     InterceptLogOut,
     SensitiveWordCreate,
     SensitiveWordOut,
+    SensitiveWordUpdate,
 )
 from app.core.soft_delete import append_not_deleted, is_marked_deleted, mark_deleted, not_deleted
 from app.core.service import BaseService
@@ -102,6 +106,46 @@ class ComplianceService(BaseService):
             page=params.page,
             size=params.size,
         )
+
+    async def scan_text(self, body: ComplianceScanRequest) -> ComplianceScanResult:
+        result = (await self._pipeline()).scan(body.text)
+        matches = [
+            ComplianceScanMatch(word=m.word, action=m.action) for m in result.matches
+        ]
+        if result.has_block:
+            first = result.matches[0]
+            await self._log_intercept(
+                module=body.module,
+                direction="in",
+                matched_word=first.word,
+                action=first.action,
+                content=body.text,
+            )
+        elif result.has_warn:
+            first = result.matches[0]
+            await self._log_intercept(
+                module=body.module,
+                direction="in",
+                matched_word=first.word,
+                action=SensitiveAction.WARN,
+                content=body.text,
+            )
+        return ComplianceScanResult(
+            blocked=result.has_block,
+            warned=result.has_warn,
+            matches=matches,
+        )
+
+    async def update_word(self, word_id: UUID, body: SensitiveWordUpdate) -> SensitiveWordOut:
+        row = await self.db.get(SensitiveWord, word_id)
+        if not row or is_marked_deleted(row):
+            raise NotFoundError("敏感词不存在")
+        assert_tenant_access(self.ctx, row.tenant_id)
+        for k, v in body.model_dump(exclude_unset=True).items():
+            setattr(row, k, v)
+        await self.db.flush()
+        await self.db.refresh(row)
+        return SensitiveWordOut.model_validate(row)
 
     async def create_word(self, body: SensitiveWordCreate) -> SensitiveWordOut:
         row = SensitiveWord(
