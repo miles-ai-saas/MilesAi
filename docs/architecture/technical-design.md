@@ -136,7 +136,7 @@ MilesAi/
 │   │   ├── ai/                     # 遗留解析/RAG 门面（新代码优先 ai_stack）
 │   │   ├── workers/                # Celery
 │   │   └── deletion/               # 级联删除
-│   ├── alembic/versions/           # 001 … 012
+│   ├── alembic/versions/           # 001_initial_schema（唯一迁移）
 │   └── pyproject.toml
 ├── frontend/                       # 租户 Next.js 14
 ├── admin_frontend/                 # 运营 Next.js 14
@@ -198,7 +198,7 @@ MilesAi/
 
 ### 6.1 PostgreSQL 核心表
 
-迁移链：`001_initial_schema` → … → `012_a2a_host_binding_keywords`。
+迁移：仅 `001_initial_schema`（`metadata.create_all` 按当前 ORM 建全库）。
 
 | 分组 | 表名 | 说明 |
 |------|------|------|

@@ -50,6 +50,7 @@ export const WORKBENCH_NAV: NavGroup[] = [
     title: "编排",
     items: [
       { href: "/workbench/kb", label: "知识库" },
+      { href: "/workbench/attachments", label: "附件" },
       { href: "/workbench/flows", label: "流程编排" },
     ],
   },

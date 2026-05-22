@@ -48,7 +48,7 @@ api_base, api_key_encrypted, is_active, extra (JSONB), deleted_at
 | 目录元数据 | 无 `model_type`、简介、标签、`model_code`、是否「最新」等 |
 | 内置鉴权 | 内置记录若未配平台 Key，租户无法「填自己的 Key」覆盖 |
 | 租户 UI | 仍为简单列表卡片，无截图中的 **分类 + 来源** |
-| 种子数据 | 执行 `python scripts/init_db.py` 或 `scripts/seed_model_catalog.py` 预置内置模型目录 |
+| 种子数据 | 执行 `python cli.py init-db` 或 `python cli.py seed model-catalog` 预置内置模型目录 |
 
 ### 2.4 运行时（LiteLLM）
 
@@ -123,7 +123,7 @@ flowchart LR
 
 ### 4.1 扩展 `agt_model_configs`（内置与自定义共用）
 
-在现有表上增加字段（迁移 `013_model_catalog_fields.py`）：
+模型目录字段见 `agt_model_configs` ORM（由 `001_initial_schema` 建表）：
 
 | 字段 | 类型 | 内置 | 自定义 | 说明 |
 |------|------|------|--------|------|
@@ -284,7 +284,7 @@ effective_api_base  = tenant_credentials.api_base ?? model_config.api_base
 
 ### 8.3 种子
 
-`scripts/seed/model_catalog.py`（通过 `init_db.py` 或 `seed_model_catalog.py` 执行）：预置主流内置条目（**无 Key**，`credential_status=missing`），由部署方在运营后台补 Key。
+`scripts/seed/model_catalog.py`（通过 `python cli.py init-db` 或 `python cli.py seed model-catalog` 执行）：预置主流内置条目（**无 Key**，`credential_status=missing`），由部署方在运营后台补 Key。
 
 ---
 

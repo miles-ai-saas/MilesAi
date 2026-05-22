@@ -15,6 +15,7 @@ const nextConfig = {
       { source: "/mcp", destination: "/workbench/mcp", permanent: false },
       { source: "/kb", destination: "/workbench/kb", permanent: false },
       { source: "/kb/:id", destination: "/workbench/kb/:id", permanent: false },
+      { source: "/attachments", destination: "/workbench/attachments", permanent: false },
       { source: "/flows", destination: "/workbench/flows", permanent: false },
       { source: "/flows/:id/edit", destination: "/workbench/flows/:id/edit", permanent: false },
       { source: "/tasks", destination: "/workbench/tasks", permanent: false },

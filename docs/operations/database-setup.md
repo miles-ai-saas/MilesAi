@@ -104,9 +104,7 @@ POSTGRES_PORT=5432
 
 | 版本 | 文件 | 内容 |
 |------|------|------|
-| 001 | `001_initial_schema.py` | 租户、用户、角色、权限、系统配置 |
-| 002 | `002_kb_schema.py` | 知识库、文档、分片、向量关联、任务记录 |
-| 003 | `003_agent_flow_schema.py` | 智能体、流程、模型配置 |
+| 001 | `001_initial_schema.py` | **唯一迁移**：按当前 ORM `metadata.create_all` 创建全部业务表（含知识库、智能体、附件、检索日志等） |
 
 ```bash
 cd backend
@@ -120,7 +118,7 @@ alembic upgrade head
 # python -m alembic -c alembic.ini upgrade head
 ```
 
-成功时可看到当前版本为 `003`。
+成功时可看到当前版本为 `001`。
 
 查看当前版本：
 
@@ -136,7 +134,13 @@ alembic history --verbose
 
 > **说明：** 启动 API 时（`uvicorn app.main:app`）也会在 lifespan 中自动执行 `alembic upgrade head`。手动执行一遍更便于排错；生产环境建议部署流程中 **显式跑迁移**，不 sole 依赖启动时迁移。
 
+**从旧多文件迁移（002–021）升级到此版本：**
+
+- 若表结构已与当前代码一致：`cd backend && alembic stamp 001`
+- 若需干净库：删库重建后 `alembic upgrade head`，再 `python cli.py init-db --seed-only`
+
 ---
+
 
 ## 四、种子数据（默认管理员）
 
@@ -156,7 +160,7 @@ python cli.py seed all             # 仅种子，等价于 init-db --seed-only
 | `SEED_ADMIN_EMAIL` | admin@local.dev |
 | `SEED_TENANT_NAME` | 默认租户 |
 
-种子实现位于 `backend/scripts/seed/`（租户、合规、应用市场、运营账号、内置模型目录等）。可按域单独执行：`scripts/seed_tenant.py`、`seed_compliance.py` 等。
+种子实现位于 `backend/scripts/seed/`（租户、合规、应用市场、运营账号、内置模型目录等）。可按域单独执行：`python cli.py seed tenant` 等。
 
 ```bash
 uvicorn app.main:app --reload --port 8000
@@ -237,8 +241,8 @@ cd backend && python cli.py init-db
 | `relation "users" does not exist` | 执行 `alembic upgrade head` |
 | `No 'script_location' key found` | 先 `cd backend` 再执行，或 `python -m alembic -c alembic.ini upgrade head`（根目录 ini） |
 | `password authentication failed` | 检查 `backend/.env` 是否为 `postgres` / `postgres` |
-| `upgrade head` 无 `Running upgrade` 且没有表 | 运行 `python scripts/verify_db.py`；缺表则 `cd backend && ./scripts/reset_db.sh` |
-| 迁移报 enum 已存在 | 多为重复执行，检查 `alembic current` 是否已是 `003` |
+| `upgrade head` 无 `Running upgrade` 且没有表 | 运行 `python cli.py verify-db`；缺表则按「重建库」清 schema 后 `python cli.py init-db` |
+| 迁移报 enum 已存在 | 多为重复执行，检查 `alembic current` 是否已是 `001` |
 
 ---
 

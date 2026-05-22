@@ -11,8 +11,10 @@ import { ResourceDialog } from "@/components/resource/ResourceDialog";
 import { ResourceItemCard } from "@/components/resource/ResourceItemCard";
 import { ResourceListLayout } from "@/components/resource/ResourceListLayout";
 import { CardActions } from "@/components/resource/CardActions";
+import { KbQuotaBar } from "@/components/kb/KbQuotaBar";
 import { filterBySearch } from "@/lib/filter-search";
-import type { KnowledgeBase, ModelConfig } from "@/lib/types";
+import { retrievalModeLabel } from "@/lib/kb-labels";
+import type { KnowledgeBase, KbQuota, ModelConfig } from "@/lib/types";
 
 const DEFAULT_CHUNK_SIZE = 500;
 const DEFAULT_CHUNK_OVERLAP = 50;
@@ -36,8 +38,24 @@ export default function KbPage() {
   const [embeddingModelId, setEmbeddingModelId] = useState("");
   const [retrievalMode, setRetrievalMode] = useState<"vector" | "hybrid">("vector");
   const [hybridAlpha, setHybridAlpha] = useState(0.5);
+  const [quota, setQuota] = useState<KbQuota | null>(null);
+  const [quotaLoading, setQuotaLoading] = useState(true);
 
   const list = usePagedList(useCallback((p, s) => api.listKbs(p, s), []), { enabled: ready });
+
+  const reloadQuota = useCallback(() => {
+    if (!ready) return Promise.resolve();
+    setQuotaLoading(true);
+    return api
+      .getKbQuota()
+      .then(setQuota)
+      .catch(() => setQuota(null))
+      .finally(() => setQuotaLoading(false));
+  }, [ready]);
+
+  useEffect(() => {
+    reloadQuota();
+  }, [reloadQuota]);
 
   useEffect(() => {
     if (!ready) return;
@@ -100,17 +118,18 @@ export default function KbPage() {
       });
     }
     setDialogOpen(false);
-    await list.reload();
+    await Promise.all([list.reload(), reloadQuota()]);
   };
 
   const onDelete = async (kb: KnowledgeBase) => {
     if (!confirm(`确定删除知识库「${kb.name}」？将删除其下全部文档与向量数据。`)) return;
     await api.deleteKb(kb.id);
-    await list.reload();
+    await Promise.all([list.reload(), reloadQuota()]);
   };
 
   return (
     <>
+      <KbQuotaBar quota={quota} loading={quotaLoading} className="mb-6" />
       <ResourceListLayout
         title="知识库"
         description="管理企业知识库与文档，为智能体 RAG 检索与流程节点提供知识来源。"
@@ -142,8 +161,9 @@ export default function KbPage() {
             description={kb.description || "点击进入管理文档与切片"}
             meta={
               <span className="text-ink-faint">
-                {kb.embedding_model_name ?? "向量化模型"} · {kb.embedding_dimension} 维 · 分片{" "}
-                {kb.chunk_size ?? DEFAULT_CHUNK_SIZE}/{kb.chunk_overlap ?? DEFAULT_CHUNK_OVERLAP}
+                {kb.embedding_model_name ?? "向量化模型"} · {kb.embedding_dimension} 维 ·{" "}
+                {retrievalModeLabel(kb.retrieval_mode)} · 分片 {kb.chunk_size ?? DEFAULT_CHUNK_SIZE}/
+                {kb.chunk_overlap ?? DEFAULT_CHUNK_OVERLAP}
               </span>
             }
             actions={

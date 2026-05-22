@@ -49,8 +49,7 @@ async def main() -> int:
     if missing:
         print(f"缺少核心表: {sorted(missing)}")
         print("\n建议执行:")
-        print("  alembic downgrade base   # 若仅有版本号无表")
-        print("  alembic upgrade head")
+        print("  python cli.py init-db")
         return 1
 
     print("核心表齐全，迁移已生效。")

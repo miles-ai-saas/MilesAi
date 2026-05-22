@@ -30,7 +30,7 @@ app/
 │   ├── models/             # 运营 ORM（sys / billing / risk / audit）
 │   ├── app_sys/            # 平台管理员认证（views / services / repositories）
 │   └── app_ops/            # 租户、计费、风控、审计（views / services / repositories）
-scripts/                    # 初始化 CLI（init_db、seed/*，与 app 解耦）
+scripts/                    # db_ops、verify_db、seed/*（由 cli.py 调用）
 ├── common/                 # 跨模块：响应封装、异常、分页、全局 Handler
 ├── deletion/               # 删除编排（文档/Agent/KB/Flow/租户级联）
 ├── utils/                  # 通用工具：idgen、redis_keys、health_checks、orm 索引辅助
@@ -163,8 +163,6 @@ python cli.py verify-db          # 检查核心表
 ```
 
 `pip install -e .` 后可使用全局命令 `milesai serve`。
-
-兼容旧路径：`scripts/init_db.py`、`scripts/seed_*.py`（内部转发至 `cli`）。
 
 ## 常用命令
 
