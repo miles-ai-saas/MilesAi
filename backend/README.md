@@ -99,6 +99,19 @@ scripts/                    # db_ops、verify_db、seed/*（由 cli.py 调用）
 
 **包 `__init__.py`**：各层目录均已补齐；`flow_runtime/templates/` 仅存放 JSON 模板，无需 `__init__.py`。顶层 `admin/`、`tenant/` 的 `__init__.py` 仅作文档，不在此 eager import 路由，避免循环依赖。
 
+### RAG（`app/rag/`）
+
+| 模块 | 说明 |
+|------|------|
+| `parse/loaders.py` | 入库解析入口：TXT/MD、PDF（pypdf/docling）、图片、音频 |
+| `chunk/splitter.py` | `chunk_documents` → `TextChunk`（含 `page_no`） |
+| `pipeline/ingest.py` | `run_ingest_pipeline`（Parse → Chunk → Embed → Index） |
+| `index/gateway.py` | 向量 upsert/search 门面 |
+| `retrieve/` | `search_kb_chunks`、hybrid、多 KB |
+| `generate/` | RAG 上下文与回答 |
+
+可选依赖：`pip install -e ".[parse-docling]"`、`pip install -e ".[multimodal]"`。详见 [docs/guides/knowledge-base.md](../docs/guides/knowledge-base.md)、[docs/architecture/layering.md](../docs/architecture/layering.md)。
+
 ### 流程运行时（`flow_runtime/`）
 
 | 模块 | 说明 |

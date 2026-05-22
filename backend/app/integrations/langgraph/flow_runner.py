@@ -1,4 +1,7 @@
-"""画布流程统一由 LangGraph 执行。"""
+"""画布流程统一由 LangGraph 执行（L3）。
+
+编译与并行/条件分支见 compiler.py；节点实现注册在 flow_runtime.nodes.registry。
+"""
 
 from __future__ import annotations
 

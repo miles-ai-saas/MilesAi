@@ -1,4 +1,7 @@
-"""多知识库检索（无租户侧日志依赖）。"""
+"""多知识库检索（Agent / 工具用）。
+
+每个 KB 单独 embed_query（维度/模型可能不同），合并后按 score 全局排序截断 top_k。
+"""
 
 from __future__ import annotations
 
@@ -62,6 +65,7 @@ def search_multi_kb(
         return []
     all_hits: list[dict[str, Any]] = []
     for kb in kbs:
+        # 各库使用各自 embedding 配置生成 query_vector
         all_hits.extend(
             search_kb(
                 query,

@@ -9,8 +9,7 @@ from langchain_core.runnables import RunnableConfig
 from langgraph.graph import END, START, StateGraph
 
 from app.integrations.langchain.chat_models import ainvoke_chat
-from app.integrations.langchain.rag import build_rag_user_prompt, format_hits_context
-from app.integrations.langchain.rag import retrieve_hits
+from app.rag.generate import build_rag_user_prompt, format_hits_context, retrieve_hits
 from app.infra.db import AsyncSessionLocal
 from app.integrations.langgraph.constants import RELEVANCE_GOOD, RELEVANCE_NONE, RELEVANCE_POOR
 from app.integrations.langgraph.grading import _score_grade, llm_grade_relevance
@@ -90,6 +89,7 @@ async def grade_documents(state: RAGGraphState, config: RunnableConfig) -> dict[
 
 
 def route_after_grade(state: RAGGraphState) -> Literal["generate", "retry", "fallback"]:
+    """poor 且未超重试次数 → 扩大 top_k 再检索；none → 无依据兜底话术。"""
     relevance = state.get("relevance", RELEVANCE_NONE)
     retry_count = int(state.get("retry_count", 0))
     max_retries = int(state.get("max_retries", 1))

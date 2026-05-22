@@ -4,7 +4,7 @@
 > 状态：**规范已定稿**；目录迁移见 [rag-module-migration.md](./rag-module-migration.md)  
 > 关联：[technical-design.md](./technical-design.md)、[guides/knowledge-base.md](../guides/knowledge-base.md)、[guides/ai-stack.md](../guides/ai-stack.md)
 
-本文定义 MilesAI 后端 **包职责、依赖方向、命名约定**。Parse 路线为 **LangChain Loader + pypdf**（TXT/MD/PDF），图片/音频可选 multimodal；**不包含** RAG-Anything / MinerU / 知识图谱旁路。
+本文定义 MilesAI 后端 **包职责、依赖方向、命名约定**。RAG 入库：**LangChain Document** + **pypdf / Docling（可选）** + **图/音 multimodal（可选）**；**不包含** RAG-Anything / MinerU / 知识图谱旁路。
 
 ---
 
@@ -108,12 +108,13 @@ backend/app/
 │       └── repositories/
 │
 ├── rag/                         # L2 RAG 能力（核心）
-│   ├── parse/                   # 文件 → 纯文本（+ 后续结构化块）
-│   ├── chunk/                   # 文本 → chunk 列表
-│   ├── index/                   # chunk + 向量 → PG + 向量库
-│   ├── retrieve/                # 检索模式、RRF、关键词、search_kb_chunks
-│   ├── generate/                # context 拼装、retrieve_hits、rag_answer
-│   └── pipeline/                #（后续）ingest 管道对象化
+│   ├── parse/                   # loaders + backends（pypdf / docling / 图 / 音）
+│   ├── chunk/                   # chunk_documents、TextChunk、page_no
+│   ├── index/                   # upsert_chunk_vector、search_vectors 门面
+│   ├── retrieve/                # search_kb_chunks、hybrid、RRF、multi_kb
+│   ├── generate/                # context、retrieve_hits、rag_answer
+│   ├── load/                    # 按租户加载 KB（供 Agent/流程）
+│   └── pipeline/                # run_ingest_pipeline（Parse → Chunk → Index）
 │
 ├── integrations/                # L3
 │   ├── langchain/
@@ -133,13 +134,15 @@ backend/app/
 
 ### 3.1 `app/rag/` 子模块
 
-| 子包 | 职责 | 当前实现来源 |
-|------|------|----------------|
-| `rag.parse` | `parse_file`、MIME 路由、PDF/TXT/图/音 | 原 `app/ai/parsers`、`app/ai/media` |
-| `rag.chunk` | `split_text`（RecursiveCharacterTextSplitter） | 原 `integrations.langchain.chunking` |
-| `rag.index` | `upsert_chunk_vector`、`search_vectors` 门面 | 原 `infra.vector_store.__init__` 部分 |
-| `rag.retrieve` | `resolve_retrieval_mode`、`search_kb_chunks`、RRF | 原 `tenant.kb.retrieval`、`infra.hybrid` |
-| `rag.generate` | `format_hits_context`、`build_rag_user_prompt`、`rag_answer` | 原 `integrations.langchain.rag` 部分 |
+| 子包 | 职责 | 要点 |
+|------|------|------|
+| `rag.parse` | `load_documents_from_bytes`（`loaders.py`） | `backends/pypdf`、`backends/docling`；`image_parser` / `audio_parser` |
+| `rag.chunk` | `chunk_documents`、`split_text` | Docling→MarkdownHeader+Recursive；pypdf 按页；`TextChunk.page_no` |
+| `rag.index` | `upsert_chunk_vector`、`search_vectors` | 门面；业务代码直引 `app.rag.index.gateway` |
+| `rag.retrieve` | `search_kb_chunks`、`multi_kb`、RRF | vector / hybrid；PG 关键词回退 |
+| `rag.generate` | `format_hits_context`、`rag_answer` | Agent / 流程 RAG 上下文 |
+| `rag.pipeline` | `run_ingest_pipeline` | L1 `tenant.kb.ingest` 调用 |
+| `rag.load` | `load_knowledge_bases_for_tenant` | 解耦 `tenant.kb` 加载逻辑 |
 
 ### 3.2 `infra/vector_store/` 瘦身目标
 
@@ -147,12 +150,12 @@ backend/app/
 
 - `base.py`：`VectorStore` Protocol、`ChunkVectorRecord`（存储 DTO，带 tenant/kb/chunk 主键）
 - `weaviate.py` / `milvus.py` / `pgvector.py`：后端适配
-- `langchain_base.py`、`documents.py`、`precomputed.py`：LC 与向量库桥接（属 L3/L4 交界，后续可迁至 `integrations.langchain.vector`）
+- `langchain_base.py`、`precomputed.py`：LC 向量库桥接；Document 映射在 `integrations.langchain.vector.documents`
 - `get_vector_store()` 工厂
 
 **迁出到 `rag/`**（已完成或进行中，见迁移文档）：
 
-- `upsert_chunk_vector` / `search_vectors` → `rag.index.gateway`
+- `upsert_chunk_vector` / `search_vectors` → `rag.index.gateway`（勿从 `infra.vector_store` 导入）
 - `hybrid.rrf_fuse` → `rag.retrieve.hybrid`
 
 **不放入 infra**：
@@ -168,10 +171,10 @@ backend/app/
 
 ```
 OSS bytes
-  → rag.parse.parse_file
-  → rag.chunk.split_text(kb.chunk_size, kb.chunk_overlap)
+  → rag.parse.load_documents_from_bytes（pypdf | docling | text | image | audio）
+  → rag.chunk.chunk_documents(kb.chunk_size, kb.chunk_overlap)
   → integrations: embed_texts_for_kb（KB 绑定向量模型）
-  → rag.index.upsert_chunk_vector
+  → rag.index.upsert_chunk_vector（含 page_no）
   → PG: kb_document_chunks + kb_vector_refs
 ```
 
@@ -189,13 +192,19 @@ query
 
 入口：`KbService.search`（L1）、`AgentService.chat`、`flow_runtime.rag_nodes`。
 
-### 4.3 Parse / Chunk 扩展（无 MinerU）
+### 4.3 Parse / Chunk（当前能力）
 
-| 阶段 | 内容 | 落点 |
+| 能力 | 落点 | 依赖 |
 |------|------|------|
-| 现状 | TXT/MD/PDF（pypdf）、图 OCR、音 Whisper | `rag.parse` |
-| P1 | Markdown 标题分片、`page_no` 写入 chunk/向量 | `rag.chunk` + `ingest`（已实现） |
-| 可选 | Office、更强 PDF 版式 | `rag.parse.backends.*` 插件注册，**不**放回 `infra` |
+| TXT/MD | `loaders` + `text_parser` | 内置 |
+| PDF | `backends/pypdf`（默认） | `langchain-community` PyPDFLoader |
+| PDF/Office 版式 | `backends/docling` | `[parse-docling]` + `PARSE_PDF_BACKEND=docling` |
+| 图片 / 音频 | `image_parser` / `audio_parser` | 入库已接入；OCR/ASR 需 `[multimodal]` |
+| 分片 + 页码 | `chunk_documents`、`page_no` | Docling Markdown 标题切分 + pypdf 按页 |
+
+**上传白名单**（L1）：见 [knowledge-base.md](../guides/knowledge-base.md) §6.4。Office 扩展名需同步放开上传白名单后才可入库。
+
+**后续插件**（独立立项）：PaddleOCR、MinerU 等仅增 `rag/parse/backends/*`，不改 `pipeline/ingest` 主链。
 
 ---
 
@@ -207,24 +216,28 @@ query
 |------|------|------|
 | 基础设施客户端 | `*Store`、`*Client` | `WeaviateVectorStore` |
 | 领域服务 | `*Service` | `KbIngestService`（L1） |
-| 管道步骤 | 动词短语 | `parse_file`、`split_text` |
+| 管道步骤 | 动词短语 | `load_documents_from_bytes`、`chunk_documents` |
 | 模块级常量 | `UPPER_SNAKE` | `RETRIEVAL_HYBRID` |
-| 禁止 | 无逻辑 re-export 包 | ~~`app/ai/chunking.py` 仅转发~~ |
+| 禁止 | 无逻辑 re-export 包 | 业务代码应 `import app.rag.*`，勿在 `tenant`/`integrations` 再套一层转发 |
 
 ### 5.2 Import 示例
 
 ```python
-# L1 用例
-from app.rag.parse import parse_file
-from app.rag.chunk import split_text
-from app.rag.index.gateway import upsert_chunk_vector
+# L1 入库
+from app.rag.pipeline import run_ingest_pipeline, IngestInput
+
+# L2 RAG
+from app.rag.parse.loaders import load_documents_from_bytes
+from app.rag.chunk import chunk_documents
+from app.rag.index.gateway import upsert_chunk_vector, search_vectors
 from app.rag.retrieve import search_kb_chunks, resolve_retrieval_mode
 from app.rag.generate import format_hits_context, rag_answer
 
-# L3 集成
+# L3 集成（检索封装仍在此，内部调 rag.retrieve.multi_kb）
 from app.integrations.langchain.embeddings import embed_query_for_kb
+from app.integrations.langchain.vectorstores import search_kb
 
-# L4
+# L4（仅向量库客户端，不含 upsert/search 门面）
 from app.infra.vector_store import get_vector_store
 ```
 
@@ -265,3 +278,4 @@ tests/
 | 日期 | 说明 |
 |------|------|
 | 2026-05-22 | 初版：分层定义、rag 目录、infra 瘦身、无 MinerU/图谱 |
+| 2026-05-22 | 入库链：`pipeline/ingest`、Docling/pypdf、multimodal 接入、`chunk_documents` + `page_no` |

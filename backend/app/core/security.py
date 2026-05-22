@@ -1,3 +1,5 @@
+"""租户 JWT 与密码哈希（bcrypt）；运营端管理员令牌见 admin.app_sys.security。"""
+
 from datetime import datetime, timedelta, timezone
 from typing import Any
 from uuid import UUID, uuid4

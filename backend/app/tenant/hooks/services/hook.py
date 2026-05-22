@@ -1,3 +1,5 @@
+"""钩子定义与绑定 CRUD（执行由 HookRunner / HookExecutor 负责）。"""
+
 from uuid import UUID
 
 from sqlalchemy import func, select

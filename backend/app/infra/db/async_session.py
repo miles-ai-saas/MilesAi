@@ -18,6 +18,7 @@ AsyncSessionLocal = async_sessionmaker(engine, class_=AsyncSession, expire_on_co
 
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
+    """请求级会话：正常结束自动 commit，异常 rollback。"""
     async with AsyncSessionLocal() as session:
         try:
             yield session

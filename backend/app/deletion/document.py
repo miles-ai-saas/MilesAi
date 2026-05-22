@@ -18,7 +18,10 @@ async def _chunk_ids_for_document_async(db: AsyncSession, document_id: UUID) -> 
 
 
 def clear_document_derived_data_sync(db: Session, document_id: UUID) -> None:
-    """同步会话（Celery ingest）清理 chunk / vector_ref / 向量库。"""
+    """同步会话（Celery ingest）清理 chunk / vector_ref / 向量库。
+
+    顺序：先 PG 关联表，再向量库按 document_id 删除（避免孤儿向量）。
+    """
     chunk_ids = list(
         db.scalars(
             select(DocumentChunk.id).where(DocumentChunk.document_id == document_id)

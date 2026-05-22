@@ -1,4 +1,7 @@
-"""对象存储工厂。"""
+"""对象存储工厂（L4）。
+
+部署级 OBJECT_STORAGE_BACKEND；租户级独立 bucket 为二期规划。
+"""
 
 from __future__ import annotations
 

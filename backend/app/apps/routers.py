@@ -1,4 +1,4 @@
-"""汇总租户端与运营端路由。"""
+"""汇总租户端（/api/v1）与运营端（/api/admin/v1）路由。"""
 
 from app.admin.router import admin_router
 from app.tenant.router import api_router

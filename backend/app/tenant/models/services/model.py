@@ -1,3 +1,5 @@
+"""租户模型配置：选用平台内置模型、自定义模型与 BYOK 凭证绑定。"""
+
 from uuid import UUID
 
 from sqlalchemy import or_, select

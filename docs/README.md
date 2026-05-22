@@ -32,15 +32,15 @@ docs/
 
 | 文档 | 说明 |
 |------|------|
-| [prd.md](./product/prd.md) | 立项需求原文（只读参考） |
+| [prd.md](./product/prd.md) | 立项需求原文 + **模块6 实现对照**（只读参考） |
 
 ## 架构 (`architecture/`)
 
 | 文档 | 说明 |
 |------|------|
 | [technical-design.md](./architecture/technical-design.md) | 架构、分层、库表、API、**对象/向量存储与配置策略（§6.5）**（**主文档**） |
-| [layering.md](./architecture/layering.md) | 后端分层、`app/rag` 目录、infra 瘦身、import 规范 |
-| [rag-module-migration.md](./architecture/rag-module-migration.md) | RAG 模块迁移清单与验收 |
+| [layering.md](./architecture/layering.md) | 后端分层、`app/rag` 目录与入库/检索流水线、import 规范 |
+| [rag-module-migration.md](./architecture/rag-module-migration.md) | RAG 模块迁移清单（已完成）与后续插件位 |
 | [vector-database-selection.md](./architecture/vector-database-selection.md) | 向量数据库选型：pgvector / Weaviate / Milvus / Qdrant / OpenSearch / ES |
 
 ## 前端 (`frontend/`)
@@ -64,9 +64,9 @@ docs/
 | [a2a.md](./guides/a2a.md) | A2A 外部登记、互联宿主、custom 引用 |
 | [ai-stack.md](./guides/ai-stack.md) | LangChain / LangGraph / DeepAgents 模块与调用链 |
 | [model-providers.md](./guides/model-providers.md) | 模型供应商：内置目录 + 租户自定义 |
-| [knowledge-base.md](./guides/knowledge-base.md) | 知识库 RAG：入库流水线、检索、删除编排、API |
+| [knowledge-base.md](./guides/knowledge-base.md) | **知识库 RAG 主文档**：入库、支持格式、检索 hybrid、API |
 
-运维 Compose 另见 [../docker/README.md](../docker/README.md)、后端 [../backend/README.md](../backend/README.md)。
+运维 Compose 与 **Worker / RAG 可选依赖** 见 [../docker/README.md](../docker/README.md)；后端 [../backend/README.md](../backend/README.md)。
 
 ---
 
@@ -94,7 +94,8 @@ docs/
 | 智能体对话 | `tenant/agents/services/agent.py` |
 | A2A | `tenant/a2a/` |
 | 流程 | `app/flow_runtime/`（节点）、`app/integrations/langgraph/`（编译、RAG 图） |
-| RAG | `app/rag/`（parse / chunk / index / retrieve / generate） |
+| RAG 入库 | `app/rag/pipeline/ingest.py` ← `tenant/kb/services/ingest.py` |
+| RAG 能力 | `app/rag/`（parse / chunk / index / retrieve / generate / load） |
 | AI 集成 | `app/integrations/langchain/`、`app/integrations/deepagents/` |
 
 REST 以运行中 OpenAPI（`/docs`）为准。

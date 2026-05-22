@@ -1,3 +1,5 @@
+"""MCP 服务注册、tools/list 同步与工具试调用。"""
+
 from datetime import datetime, timezone
 from uuid import UUID
 
@@ -21,6 +23,8 @@ from app.core.service import BaseService
 
 
 class McpServiceManager(BaseService):
+    """endpoint 变更后需 sync_tools 刷新缓存的工具列表。"""
+
     def __init__(self, db: AsyncSession, ctx: TenantContext) -> None:
         super().__init__(db, ctx)
 

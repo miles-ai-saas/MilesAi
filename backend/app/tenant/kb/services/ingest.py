@@ -1,4 +1,7 @@
-"""文档入库（Celery）：状态机 + 调用 rag.pipeline。"""
+"""文档入库（Celery）：状态机 + 调用 rag.pipeline。
+
+PARSING/EMBEDDING 在 Worker 内顺序执行；失败时按 current_phase 区分 parse_failed / embed_failed。
+"""
 
 from uuid import UUID
 
@@ -25,6 +28,7 @@ def run_ingest(document_id: str) -> None:
             doc.fail_reason = None
             db.flush()
 
+            # 实际 parse+chunk+embed 均在 pipeline 内同步完成；EMBEDDING 表示向量化阶段
             current_phase = DocumentStatus.EMBEDDING
             doc.status = DocumentStatus.EMBEDDING
             db.flush()

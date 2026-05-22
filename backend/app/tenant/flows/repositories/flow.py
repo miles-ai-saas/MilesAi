@@ -1,3 +1,5 @@
+"""流程与版本仓储（Flow / FlowVersion）。"""
+
 from uuid import UUID
 
 from sqlalchemy import select

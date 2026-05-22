@@ -2,24 +2,50 @@
 
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth-store";
 import { usePagedList } from "@/hooks/use-paged-list";
+import { DocumentStatusBadge } from "@/components/kb/DocumentStatusBadge";
+import { KbMetaChips } from "@/components/kb/KbMetaChips";
+import { KbPageAlert } from "@/components/kb/KbPageAlert";
 import { KbQuotaBar } from "@/components/kb/KbQuotaBar";
+import { KbUploadZone } from "@/components/kb/KbUploadZone";
 import { ResourceListFooter } from "@/components/resource/ResourceListFooter";
 import { ResourceDialog } from "@/components/resource/ResourceDialog";
-import { canRetryDocument, documentStatusLabel } from "@/lib/document-status";
+import {
+  canRetryDocument,
+  isDocumentProcessing,
+} from "@/lib/document-status";
+import { formatFileSize } from "@/lib/format-bytes";
+import { kbFileIcon } from "@/lib/kb-file-icon";
 import { retrievalModeLabel, SEARCH_SOURCE_LABEL } from "@/lib/kb-labels";
-import type { KnowledgeBase, KbQuota } from "@/lib/types";
+import type { Document, KnowledgeBase, KbQuota } from "@/lib/types";
 
 type TabKey = "documents" | "search" | "logs";
+type DocFilter = "all" | "ready" | "processing" | "failed";
+type AlertState = { tone: "success" | "error" | "info"; message: string } | null;
 
 const TABS: { key: TabKey; label: string }[] = [
   { key: "documents", label: "文档" },
   { key: "search", label: "检索测试" },
   { key: "logs", label: "检索记录" },
 ];
+
+const DOC_FILTERS: { key: DocFilter; label: string }[] = [
+  { key: "all", label: "全部" },
+  { key: "ready", label: "可检索" },
+  { key: "processing", label: "处理中" },
+  { key: "failed", label: "失败" },
+];
+
+function matchDocFilter(status: string, filter: DocFilter): boolean {
+  if (filter === "all") return true;
+  if (filter === "ready") return status === "ready";
+  if (filter === "processing") return isDocumentProcessing(status);
+  if (filter === "failed") return status.includes("failed");
+  return true;
+}
 
 export default function KbDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -38,6 +64,8 @@ export default function KbDetailPage() {
   const [editHybridAlpha, setEditHybridAlpha] = useState(0.5);
   const [uploading, setUploading] = useState(false);
   const [retryingId, setRetryingId] = useState<string | null>(null);
+  const [docFilter, setDocFilter] = useState<DocFilter>("all");
+  const [expandedFailId, setExpandedFailId] = useState<string | null>(null);
   const [searchQ, setSearchQ] = useState("");
   const [searchTopK, setSearchTopK] = useState(5);
   const [searchMode, setSearchMode] = useState<"default" | "vector" | "hybrid">("default");
@@ -52,7 +80,7 @@ export default function KbDetailPage() {
       filename?: string;
     }[]
   >([]);
-  const [msg, setMsg] = useState("");
+  const [alert, setAlert] = useState<AlertState>(null);
 
   const docs = usePagedList(useCallback((p, s) => api.listDocuments(id, p, s), [id]), {
     enabled: ready && !!id,
@@ -63,6 +91,13 @@ export default function KbDetailPage() {
     useCallback((p, s) => api.listKbSearchLogs(id, p, s), [id]),
     { enabled: ready && !!id && tab === "logs", resetKey: `${id}-${tab}` },
   );
+
+  const filteredDocs = useMemo(
+    () => docs.items.filter((d) => matchDocFilter(d.status, docFilter)),
+    [docs.items, docFilter],
+  );
+
+  const hasProcessing = docs.items.some((d) => isDocumentProcessing(d.status));
 
   const reloadQuota = useCallback(() => {
     return api
@@ -81,13 +116,9 @@ export default function KbDetailPage() {
     if (!ready || !id) return;
     setQuotaLoading(true);
     Promise.all([reloadKb(), reloadQuota()]).catch((e) =>
-      setMsg(e instanceof Error ? e.message : "加载失败"),
+      setAlert({ tone: "error", message: e instanceof Error ? e.message : "加载失败" }),
     );
   }, [ready, id, reloadKb, reloadQuota]);
-
-  const hasProcessing = docs.items.some((d) =>
-    ["pending", "parsing", "embedding"].includes(d.status),
-  );
 
   useEffect(() => {
     if (!hasProcessing || !ready) return;
@@ -118,7 +149,10 @@ export default function KbDetailPage() {
     });
     setKb(updated);
     setSettingsOpen(false);
-    setMsg("设置已保存（分片参数仅影响之后上传/重试的文档）");
+    setAlert({
+      tone: "info",
+      message: "设置已保存；分片参数仅影响之后上传或重试的文档。",
+    });
   };
 
   const onDeleteKb = async () => {
@@ -128,32 +162,30 @@ export default function KbDetailPage() {
     router.push("/workbench/kb");
   };
 
-  const onUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const onUploadFile = async (file: File) => {
     setUploading(true);
-    setMsg("");
+    setAlert(null);
     try {
       await api.uploadDocument(id, file);
       await Promise.all([docs.reload(), reloadQuota()]);
-      setMsg("上传成功，文档已进入解析队列");
+      setAlert({ tone: "success", message: `「${file.name}」已上传，正在后台解析入库。` });
+      setTab("documents");
     } catch (err) {
-      setMsg(err instanceof Error ? err.message : "上传失败");
+      setAlert({ tone: "error", message: err instanceof Error ? err.message : "上传失败" });
     } finally {
       setUploading(false);
-      e.target.value = "";
     }
   };
 
   const onRetry = async (docId: string) => {
     setRetryingId(docId);
-    setMsg("");
+    setAlert(null);
     try {
       await api.retryDocument(id, docId);
       await docs.reload();
-      setMsg("已重新提交入库任务");
+      setAlert({ tone: "success", message: "已重新提交入库任务。" });
     } catch (err) {
-      setMsg(err instanceof Error ? err.message : "重试失败");
+      setAlert({ tone: "error", message: err instanceof Error ? err.message : "重试失败" });
     } finally {
       setRetryingId(null);
     }
@@ -162,7 +194,7 @@ export default function KbDetailPage() {
   const onSearch = async () => {
     if (!searchQ.trim()) return;
     setSearching(true);
-    setMsg("");
+    setAlert(null);
     try {
       const res = await api.searchKb(id, searchQ.trim(), {
         mode: searchMode,
@@ -172,43 +204,58 @@ export default function KbDetailPage() {
       setSearchHits(res.hits);
       if (tab === "logs") await logs.reload();
     } catch (err) {
-      setMsg(err instanceof Error ? err.message : "检索失败");
+      setAlert({ tone: "error", message: err instanceof Error ? err.message : "检索失败" });
     } finally {
       setSearching(false);
     }
   };
 
   const onDelete = async (docId: string) => {
-    if (!confirm("确定删除该文档？")) return;
+    if (!confirm("确定删除该文档？向量索引将一并清除。")) return;
     await api.deleteDocument(id, docId);
     await Promise.all([docs.reload(), reloadQuota()]);
-    setMsg("文档已删除");
+    setAlert({ tone: "success", message: "文档已删除。" });
   };
 
-  if (!kb) return <p className="text-ink-muted">加载中…</p>;
+  if (!kb) {
+    return (
+      <div className="mx-auto max-w-5xl space-y-4">
+        <div className="h-8 w-48 animate-pulse rounded bg-surface-muted" />
+        <div className="h-32 animate-pulse rounded-xl bg-surface-muted" />
+      </div>
+    );
+  }
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6">
-      <div className="flex items-center gap-2 text-sm text-ink-muted">
+    <div className="mx-auto max-w-5xl space-y-5">
+      <nav className="flex items-center gap-2 text-sm text-ink-muted">
         <Link href="/workbench/kb" className="text-brand hover:underline">
           知识库
         </Link>
-        <span>/</span>
-        <span className="text-ink">{kb.name}</span>
-      </div>
+        <span aria-hidden>/</span>
+        <span className="truncate font-medium text-ink">{kb.name}</span>
+      </nav>
 
-      <KbQuotaBar quota={quota} loading={quotaLoading} />
+      {alert && (
+        <KbPageAlert
+          tone={alert.tone}
+          message={alert.message}
+          onDismiss={() => setAlert(null)}
+        />
+      )}
 
-      <section className="rounded-xl border border-line bg-surface p-4 shadow-card">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h1 className="text-lg font-bold">{kb.name}</h1>
-            <p className="text-sm text-ink-muted">{kb.description || "无描述"}</p>
-            <p className="mt-2 text-xs text-ink-faint">
-              向量：{kb.embedding_model_name ?? "—"} · {kb.embedding_dimension} 维 · 分片{" "}
-              {kb.chunk_size}/{kb.chunk_overlap} · {retrievalModeLabel(kb.retrieval_mode)}
-              {kb.retrieval_mode === "hybrid" ? ` · α=${kb.hybrid_alpha ?? 0.5}` : ""}
-            </p>
+      <header className="rounded-xl border border-line bg-surface p-5 shadow-card">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="min-w-0 flex-1">
+            <h1 className="text-xl font-bold tracking-tight text-ink">{kb.name}</h1>
+            <p className="mt-1 text-sm text-ink-muted">{kb.description || "暂无描述"}</p>
+            <KbMetaChips kb={kb} />
+            <KbQuotaBar
+              quota={quota}
+              loading={quotaLoading}
+              variant="detail"
+              className="mt-2"
+            />
           </div>
           <div className="flex shrink-0 gap-2">
             <button type="button" className="btn-ghost text-sm" onClick={openSettings}>
@@ -216,178 +263,178 @@ export default function KbDetailPage() {
             </button>
             <button
               type="button"
-              className="text-sm text-red-600 hover:underline"
+              className="btn-ghost text-sm text-red-600 hover:bg-red-50"
               onClick={onDeleteKb}
             >
-              删除知识库
+              删除
             </button>
           </div>
         </div>
-        {tab === "documents" && (
-          <>
-            <label className="mt-4 inline-block cursor-pointer rounded bg-brand px-4 py-2 text-sm text-white">
-              {uploading ? "上传中…" : "上传文档"}
-              <input
-                type="file"
-                className="hidden"
-                accept=".txt,.md,.pdf,.jpg,.jpeg,.png,.webp,.mp3,.wav,.m4a,.ogg"
-                onChange={onUpload}
-                disabled={uploading}
-              />
-            </label>
-            <p className="mt-2 text-xs text-ink-faint">
-              支持 TXT/MD/PDF、图片、音频；入库后可在「检索测试」验证
-            </p>
-          </>
+        {hasProcessing && (
+          <p className="mt-4 flex items-center gap-2 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-900">
+            <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-sky-500" />
+            有文档正在入库，列表每 4 秒自动刷新
+          </p>
         )}
-        {msg && <p className="mt-2 text-sm text-ink-muted">{msg}</p>}
-      </section>
+      </header>
 
-      <div className="flex gap-6 border-b border-line">
+      <div className="flex gap-1 border-b border-line">
         {TABS.map((t) => (
           <button
             key={t.key}
             type="button"
             onClick={() => setTab(t.key)}
-            className={`border-b-2 pb-2 text-sm transition ${
+            className={`rounded-t-lg px-4 py-2.5 text-sm transition ${
               tab === t.key
-                ? "border-brand font-medium text-brand"
-                : "border-transparent text-ink-muted hover:text-ink"
+                ? "bg-surface font-medium text-brand shadow-card ring-1 ring-line ring-b-0"
+                : "text-ink-muted hover:bg-surface-muted/50 hover:text-ink"
             }`}
           >
             {t.label}
+            {t.key === "documents" && docs.total > 0 && (
+              <span className="ml-1.5 text-xs text-ink-faint">({docs.total})</span>
+            )}
           </button>
         ))}
       </div>
 
       {tab === "documents" && (
-        <section className="rounded-xl border border-line bg-surface p-4 shadow-card">
-          <h2 className="text-sm font-semibold">文档列表</h2>
-          {docs.loading ? (
-            <p className="mt-3 text-sm text-ink-muted">加载中…</p>
-          ) : docs.items.length === 0 ? (
-            <p className="mt-3 text-sm text-ink-muted">暂无文档，请上传文件开始入库。</p>
-          ) : (
-            <>
-              <ul className="mt-3 divide-y text-sm">
-                {docs.items.map((d) => (
-                  <li key={d.id} className="flex items-center justify-between gap-3 py-2">
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate font-medium">{d.filename}</p>
-                      <p className="text-xs text-ink-muted">
-                        <span
-                          className={
-                            d.status.includes("failed")
-                              ? "text-red-600"
-                              : d.status === "ready"
-                                ? "text-emerald-700"
-                                : ""
-                          }
-                        >
-                          {documentStatusLabel(d.status)}
-                        </span>
-                        {" · "}
-                        {(d.file_size / 1024).toFixed(1)} KB
-                      </p>
-                      {d.fail_reason && (
-                        <p className="line-clamp-2 text-xs text-red-600">{d.fail_reason}</p>
-                      )}
-                    </div>
-                    <div className="flex shrink-0 gap-2">
-                      {canRetryDocument(d.status) && (
-                        <button
-                          type="button"
-                          className="text-xs text-brand hover:underline"
-                          disabled={retryingId === d.id}
-                          onClick={() => onRetry(d.id)}
-                        >
-                          {retryingId === d.id ? "提交中…" : "重试"}
-                        </button>
-                      )}
-                      <button
-                        type="button"
-                        className="text-xs text-red-600 hover:underline"
-                        onClick={() => onDelete(d.id)}
-                      >
-                        删除
-                      </button>
-                    </div>
-                  </li>
+        <section className="space-y-4">
+          <KbUploadZone uploading={uploading} onFile={onUploadFile} />
+
+          <div className="rounded-xl border border-line bg-surface p-4 shadow-card">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h2 className="text-sm font-semibold text-ink">文档列表</h2>
+              <div className="flex flex-wrap gap-1">
+                {DOC_FILTERS.map((f) => (
+                  <button
+                    key={f.key}
+                    type="button"
+                    onClick={() => setDocFilter(f.key)}
+                    className={`rounded-full px-2.5 py-1 text-xs transition ${
+                      docFilter === f.key
+                        ? "bg-brand text-white"
+                        : "bg-surface-muted text-ink-muted hover:text-ink"
+                    }`}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {docFilter !== "all" && (
+              <p className="mt-2 text-xs text-ink-faint">筛选仅作用于当前页；切换页码可查看更多。</p>
+            )}
+
+            {docs.loading ? (
+              <ul className="mt-4 space-y-2">
+                {[1, 2, 3].map((i) => (
+                  <li key={i} className="h-14 animate-pulse rounded-lg bg-surface-muted" />
                 ))}
               </ul>
-              <ResourceListFooter
-                className="mt-3"
-                page={docs.page}
-                size={docs.size}
-                total={docs.total}
-                onPageChange={docs.setPage}
-              />
-            </>
-          )}
+            ) : docs.items.length === 0 ? (
+              <p className="mt-6 text-center text-sm text-ink-muted">
+                暂无文档。上传文件后将自动解析、分片并写入向量库。
+              </p>
+            ) : filteredDocs.length === 0 ? (
+              <p className="mt-6 text-center text-sm text-ink-muted">当前筛选下无文档。</p>
+            ) : (
+              <>
+                <ul className="mt-4 space-y-2">
+                  {filteredDocs.map((d) => (
+                    <DocumentRow
+                      key={d.id}
+                      doc={d}
+                      retrying={retryingId === d.id}
+                      expanded={expandedFailId === d.id}
+                      onToggleFail={() =>
+                        setExpandedFailId((prev) => (prev === d.id ? null : d.id))
+                      }
+                      onRetry={() => onRetry(d.id)}
+                      onDelete={() => onDelete(d.id)}
+                    />
+                  ))}
+                </ul>
+                <ResourceListFooter
+                  className="mt-4 border-t border-line pt-3"
+                  page={docs.page}
+                  size={docs.size}
+                  total={docs.total}
+                  onPageChange={docs.setPage}
+                />
+              </>
+            )}
+          </div>
         </section>
       )}
 
       {tab === "search" && (
-        <section className="rounded-xl border border-line bg-surface p-4 shadow-card">
-          <h2 className="text-sm font-semibold">检索测试</h2>
+        <section className="rounded-xl border border-line bg-surface p-5 shadow-card">
+          <h2 className="text-sm font-semibold text-ink">检索测试</h2>
           <p className="mt-1 text-xs text-ink-faint">
-            库默认：{retrievalModeLabel(kb.retrieval_mode)}。专有名词可试「混合」模式。
+            默认使用本库配置（{retrievalModeLabel(kb.retrieval_mode)}）。专有名词、编号可尝试「混合」。
           </p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <input
-              className="input-field min-w-[12rem] flex-1"
-              value={searchQ}
-              onChange={(e) => setSearchQ(e.target.value)}
-              placeholder="输入问题或关键词"
-              onKeyDown={(e) => e.key === "Enter" && onSearch()}
-            />
-            <select
-              className="input-field w-auto"
-              value={searchMode}
-              onChange={(e) => setSearchMode(e.target.value as typeof searchMode)}
-            >
-              <option value="default">按库配置</option>
-              <option value="vector">纯语义</option>
-              <option value="hybrid">混合</option>
-            </select>
-            <label className="flex items-center gap-1 text-xs text-ink-muted">
-              Top
+          <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end">
+            <label className="min-w-0 flex-1">
+              <span className="sr-only">检索问题</span>
               <input
-                type="number"
-                min={1}
-                max={50}
-                className="input-field w-14"
-                value={searchTopK}
-                onChange={(e) => setSearchTopK(Number(e.target.value))}
+                className="input-field w-full"
+                value={searchQ}
+                onChange={(e) => setSearchQ(e.target.value)}
+                placeholder="输入问题或关键词"
+                onKeyDown={(e) => e.key === "Enter" && onSearch()}
               />
             </label>
-            <button type="button" onClick={onSearch} className="btn-primary" disabled={searching}>
-              {searching ? "检索中…" : "检索"}
-            </button>
+            <div className="flex flex-wrap items-center gap-2">
+              <select
+                className="input-field w-auto min-w-[7rem]"
+                value={searchMode}
+                onChange={(e) => setSearchMode(e.target.value as typeof searchMode)}
+              >
+                <option value="default">按库配置</option>
+                <option value="vector">纯语义</option>
+                <option value="hybrid">混合</option>
+              </select>
+              <label className="flex items-center gap-1 text-xs text-ink-muted">
+                Top
+                <input
+                  type="number"
+                  min={1}
+                  max={50}
+                  className="input-field w-14"
+                  value={searchTopK}
+                  onChange={(e) => setSearchTopK(Number(e.target.value))}
+                />
+              </label>
+              <button type="button" onClick={onSearch} className="btn-primary" disabled={searching}>
+                {searching ? "检索中…" : "检索"}
+              </button>
+            </div>
           </div>
           {searchResultMode && (
-            <p className="mt-2 text-xs text-ink-faint">
-              实际模式：<span className="font-medium text-ink">{searchResultMode}</span>
-              {searchHits.length === 0 ? " · 无命中" : ` · ${searchHits.length} 条`}
+            <p className="mt-3 text-xs text-ink-faint">
+              模式 <span className="font-medium text-ink">{searchResultMode}</span>
+              {searchHits.length === 0 ? " · 无命中" : ` · ${searchHits.length} 条结果`}
             </p>
           )}
-          <ul className="mt-3 space-y-2 text-xs text-ink-muted">
+          <ul className="mt-4 space-y-3">
             {searchHits.length === 0 && searchResultMode && (
-              <li className="text-ink-faint">调整问法或切换混合检索后重试</li>
+              <li className="rounded-lg border border-dashed border-line px-4 py-6 text-center text-sm text-ink-muted">
+                无命中结果，可调整问法或切换混合检索后重试
+              </li>
             )}
             {searchHits.map((h, i) => (
-              <li key={i} className="rounded bg-surface-muted p-3">
-                <div className="mb-1 text-ink-faint">
-                  <span className="font-mono">[{h.score.toFixed(3)}]</span>
-                  {h.score_vector != null && (
-                    <span className="ml-2">向量 {h.score_vector.toFixed(2)}</span>
-                  )}
-                  {h.score_keyword != null && (
-                    <span className="ml-2">关键词 {h.score_keyword.toFixed(2)}</span>
-                  )}
-                  {h.filename && <span className="ml-2">· {h.filename}</span>}
+              <li key={i} className="rounded-lg border border-line bg-surface-muted/40 p-4">
+                <div className="mb-2 flex flex-wrap items-center gap-2 text-xs text-ink-faint">
+                  <span className="rounded bg-surface px-1.5 py-0.5 font-mono text-ink">
+                    #{i + 1}
+                  </span>
+                  <span className="font-mono font-medium text-brand">{h.score.toFixed(3)}</span>
+                  {h.score_vector != null && <span>向量 {h.score_vector.toFixed(2)}</span>}
+                  {h.score_keyword != null && <span>关键词 {h.score_keyword.toFixed(2)}</span>}
+                  {h.filename && <span className="truncate">· {h.filename}</span>}
                 </div>
-                <p className="whitespace-pre-wrap text-ink">{h.content}</p>
+                <p className="whitespace-pre-wrap text-sm leading-relaxed text-ink">{h.content}</p>
               </li>
             ))}
           </ul>
@@ -395,21 +442,27 @@ export default function KbDetailPage() {
       )}
 
       {tab === "logs" && (
-        <section className="rounded-xl border border-line bg-surface p-4 shadow-card">
-          <h2 className="text-sm font-semibold">检索记录</h2>
-          <p className="mt-1 text-xs text-ink-faint">API 调试与智能体 RAG 检索均会记录（仅本租户可见）</p>
+        <section className="rounded-xl border border-line bg-surface p-5 shadow-card">
+          <h2 className="text-sm font-semibold text-ink">检索记录</h2>
+          <p className="mt-1 text-xs text-ink-faint">
+            记录本库的 API 调试、智能体 RAG 与流程检索（仅本租户可见）
+          </p>
           {logs.loading ? (
-            <p className="mt-3 text-sm text-ink-muted">加载中…</p>
+            <p className="mt-4 text-sm text-ink-muted">加载中…</p>
           ) : logs.items.length === 0 ? (
-            <p className="mt-3 text-sm text-ink-muted">暂无记录，可在「检索测试」或智能体对话后查看。</p>
+            <p className="mt-6 text-center text-sm text-ink-muted">
+              暂无记录。在「检索测试」或绑定本库的智能体对话后会出现。
+            </p>
           ) : (
             <>
-              <ul className="mt-3 divide-y text-sm">
+              <ul className="mt-4 divide-y divide-line">
                 {logs.items.map((log) => (
-                  <li key={log.id} className="py-3">
+                  <li key={log.id} className="py-3 first:pt-0">
                     <div className="flex flex-wrap items-center gap-2 text-xs text-ink-faint">
-                      <span>{new Date(log.created_at).toLocaleString()}</span>
-                      <span className="rounded bg-surface-muted px-1.5 py-0.5">
+                      <time dateTime={log.created_at}>
+                        {new Date(log.created_at).toLocaleString()}
+                      </time>
+                      <span className="rounded-md bg-surface-muted px-1.5 py-0.5">
                         {log.retrieval_mode}
                       </span>
                       <span>{SEARCH_SOURCE_LABEL[log.source] ?? log.source}</span>
@@ -417,12 +470,12 @@ export default function KbDetailPage() {
                         {log.hit_count} 命中 · {log.latency_ms} ms
                       </span>
                     </div>
-                    <p className="mt-1 line-clamp-2 text-ink">{log.query}</p>
+                    <p className="mt-1.5 text-sm text-ink">{log.query}</p>
                   </li>
                 ))}
               </ul>
               <ResourceListFooter
-                className="mt-3"
+                className="mt-4 border-t border-line pt-3"
                 page={logs.page}
                 size={logs.size}
                 total={logs.total}
@@ -497,7 +550,7 @@ export default function KbDetailPage() {
         </label>
         {editRetrievalMode === "hybrid" && (
           <label className="block text-xs text-ink-muted">
-            混合权重 α（Weaviate：1=偏向量，0=偏关键词）
+            混合权重 α（1=偏向量，0=偏关键词）
             <input
               type="number"
               min={0}
@@ -514,5 +567,79 @@ export default function KbDetailPage() {
         </p>
       </ResourceDialog>
     </div>
+  );
+}
+
+function DocumentRow({
+  doc,
+  retrying,
+  expanded,
+  onToggleFail,
+  onRetry,
+  onDelete,
+}: {
+  doc: Document;
+  retrying: boolean;
+  expanded: boolean;
+  onToggleFail: () => void;
+  onRetry: () => void;
+  onDelete: () => void;
+}) {
+  const icon = kbFileIcon(doc.filename);
+  const hasFail = Boolean(doc.fail_reason);
+
+  return (
+    <li className="flex gap-3 rounded-lg border border-line bg-surface-muted/20 px-3 py-3 transition hover:bg-surface-muted/40">
+      <div
+        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-surface text-[10px] font-bold text-ink-muted ring-1 ring-line"
+        aria-hidden
+      >
+        {icon}
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="truncate font-medium text-ink">{doc.filename}</p>
+          <DocumentStatusBadge status={doc.status} pulse={isDocumentProcessing(doc.status)} />
+        </div>
+        <p className="mt-0.5 text-xs text-ink-faint">
+          {formatFileSize(doc.file_size)} · {new Date(doc.created_at).toLocaleString()}
+        </p>
+        {hasFail && (
+          <div className="mt-2">
+            <button
+              type="button"
+              className="text-left text-xs text-red-700 hover:underline"
+              onClick={onToggleFail}
+            >
+              {expanded ? "收起失败原因" : "查看失败原因"}
+            </button>
+            {expanded && (
+              <p className="mt-1 whitespace-pre-wrap rounded-md bg-red-50 px-2 py-1.5 text-xs text-red-900">
+                {doc.fail_reason}
+              </p>
+            )}
+          </div>
+        )}
+      </div>
+      <div className="flex shrink-0 flex-col items-end justify-center gap-1 sm:flex-row sm:items-center">
+        {canRetryDocument(doc.status) && (
+          <button
+            type="button"
+            className="btn-ghost px-2 py-1 text-xs"
+            disabled={retrying}
+            onClick={onRetry}
+          >
+            {retrying ? "提交中…" : "重试"}
+          </button>
+        )}
+        <button
+          type="button"
+          className="btn-ghost px-2 py-1 text-xs text-red-600 hover:bg-red-50"
+          onClick={onDelete}
+        >
+          删除
+        </button>
+      </div>
+    </li>
   );
 }

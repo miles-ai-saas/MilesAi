@@ -1,3 +1,9 @@
+"""知识库 L1 用例：CRUD、上传、检索、删除编排。
+
+上传仅写对象存储并投递 Celery；解析/分片/向量在 app.rag.pipeline。
+embedding 维度在创建 KB 时固化，之后不可通过 API 修改。
+"""
+
 import time
 from uuid import UUID
 
@@ -10,7 +16,7 @@ from app.integrations.langchain.embeddings import embed_query_for_kb
 from app.core.config import get_settings
 from app.common.exceptions import BadRequestError, NotFoundError
 from app.infra.storage import build_object_key, delete_object, upload_bytes
-from app.tenant.kb.services.retrieval import resolve_retrieval_mode, search_kb_chunks
+from app.rag.retrieve import resolve_retrieval_mode, search_kb_chunks
 from app.core.tenant import TenantContext, assert_tenant_access, tenant_filters
 from app.deletion.cascade import before_delete_kb
 from app.deletion.document import clear_document_derived_data_async
@@ -47,52 +53,15 @@ from app.tenant.kb.services.quota import (
 from app.tenant.kb.services.search_log import write_kb_search_log
 from app.models.kb_search_log import KbSearchLog
 from app.rag.parse import file_extension, is_audio_file, is_image_file
+from app.rag.parse.upload_policy import is_kb_upload_allowed, kb_upload_allowed_hint
 from app.core.soft_delete import is_marked_deleted, mark_deleted, not_deleted
 from app.core.service import BaseService
 
 settings = get_settings()
-ALLOWED_MIMES = {
-    "text/plain",
-    "text/markdown",
-    "application/pdf",
-    "application/octet-stream",
-    "image/jpeg",
-    "image/jpg",
-    "image/png",
-    "image/webp",
-    "audio/mpeg",
-    "audio/mp3",
-    "audio/wav",
-    "audio/x-wav",
-    "audio/webm",
-    "audio/ogg",
-}
-
-_ALLOWED_EXTENSIONS = {
-    ".txt",
-    ".md",
-    ".markdown",
-    ".pdf",
-    ".jpg",
-    ".jpeg",
-    ".png",
-    ".webp",
-    ".mp3",
-    ".wav",
-    ".m4a",
-    ".ogg",
-    ".webm",
-}
-
-
-def _is_allowed_upload(filename: str, mime: str) -> bool:
-    ext = file_extension(filename)
-    if mime in ALLOWED_MIMES or ext in _ALLOWED_EXTENSIONS:
-        return True
-    return is_image_file(filename, mime) or is_audio_file(filename, mime)
-
 
 class KnowledgeBaseService(BaseService):
+    """上传后仅落 OSS + 建 Document 行并投递 Celery；解析索引见 rag.pipeline。"""
+
     def __init__(self, db: AsyncSession, ctx: TenantContext) -> None:
         super().__init__(db, ctx)
         self.kb_repo = KnowledgeBaseRepository(db)
@@ -181,6 +150,7 @@ class KnowledgeBaseService(BaseService):
         if not model_id:
             model_id = (await get_default_embedding_model(self.db)).id
         model = await resolve_embedding_model_by_id(self.db, model_id, self.ctx.tenant_id)
+        # 维度写入 kb_bases，与向量库 collection / 入库向量长度绑定
         dimension = embedding_dimension_from_model(model)
         kb = await self.kb_repo.create(
             tenant_id=self.ctx.tenant_id,
@@ -244,10 +214,9 @@ class KnowledgeBaseService(BaseService):
         content = await file.read()
         await assert_can_upload_bytes(self.db, kb.tenant_id, len(content))
         mime = file.content_type or "application/octet-stream"
-        if not _is_allowed_upload(file.filename, mime):
+        if not is_kb_upload_allowed(file.filename, mime):
             raise BadRequestError(
-                f"不支持的文件类型: {mime}。"
-                "支持 TXT/MD/PDF、图片（JPG/PNG/WebP）、音频（MP3/WAV）"
+                f"不支持的文件类型: {mime}。{kb_upload_allowed_hint()}"
             )
 
         doc = await self.doc_repo.create(
@@ -267,6 +236,7 @@ class KnowledgeBaseService(BaseService):
         upload_bytes(content, object_key, mime)
         await self.db.flush()
 
+        # 异步 ingest；失败状态见 doc.status / fail_reason
         from app.workers.tasks.ingest import ingest_document
         from app.tenant.tasks.services.task import TaskService
 
@@ -319,6 +289,7 @@ class KnowledgeBaseService(BaseService):
         doc = await self.doc_repo.get_by_id_or_raise(document_id, label="文档不存在")
         if doc.kb_id != kb_id or is_marked_deleted(doc):
             raise NotFoundError("文档不存在")
+        # 先清 PG 分片与向量库，再删 OSS、软删文档行
         await clear_document_derived_data_async(self.db, doc.id)
         if doc.object_key and doc.object_key != "pending":
             try:
@@ -335,6 +306,7 @@ class KnowledgeBaseService(BaseService):
         effective_mode = resolve_retrieval_mode(kb, body.mode)
         started = time.perf_counter()
         vector = await embed_query_for_kb(self.db, self.ctx.tenant_id, kb, body.query)
+        # 向量/混合检索在 rag 层；此处回表补全 chunk 正文与文件名
         raw_hits = await search_kb_chunks(
             self.db,
             kb=kb,

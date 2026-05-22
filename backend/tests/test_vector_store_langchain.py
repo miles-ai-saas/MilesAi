@@ -3,7 +3,7 @@
 from uuid import uuid4
 
 from app.infra.vector_store.base import ChunkVectorRecord
-from app.infra.vector_store.documents import (
+from app.integrations.langchain.vector.documents import (
     METADATA_CHUNK_ID,
     METADATA_KB_ID,
     METADATA_TENANT_ID,

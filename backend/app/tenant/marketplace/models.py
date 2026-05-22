@@ -1,3 +1,5 @@
+"""应用市场 ORM：分类、应用包、安装记录与评分。"""
+
 import enum
 import uuid
 from datetime import datetime

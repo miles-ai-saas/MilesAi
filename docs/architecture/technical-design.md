@@ -124,18 +124,13 @@ MilesAi/
 │   │   │   ├── agents/ a2a/ kb/ flows/ marketplace/ compliance/ …
 │   │   │   └── router.py           # /api/v1
 │   │   ├── admin/                  # 运营 API /api/admin/v1
-│   │   ├── integrations/           # langchain / langgraph / deepagents（L3）
-│   │   ├── rag/                    # parse / chunk / index / retrieve / generate（L2）
+│   │   ├── rag/                    # L2：parse / chunk / index / retrieve / generate / pipeline
+│   │   ├── integrations/           # L3：langchain / langgraph / litellm / deepagents
 │   │   ├── flow_runtime/           # 画布节点 registry、执行入口
 │   │   ├── models/                 # 核心 ORM（Agent、Flow、KB、Task…）
-│   │   ├── infra/                  # 外部中间件连接
-│   │   │   ├── db/                 # PostgreSQL
-│   │   │   ├── redis/
-│   │   │   ├── storage/            # 对象存储（S3 兼容）
-│   │   │   └── vector_store/       # 向量库（Weaviate / Milvus / pgvector）
+│   │   ├── infra/                  # L4：db / redis / storage / vector_store 客户端
 │   │   ├── core/                   # config、deps、security、tenant
-│   │   ├── integrations/               # 兼容转发 → integrations（可废弃）
-│   │   ├── workers/                # Celery
+│   │   ├── workers/                # Celery（ingest_document 等）
 │   │   └── deletion/               # 级联删除
 │   ├── alembic/versions/           # 001_initial_schema（唯一迁移）
 │   └── pyproject.toml
@@ -157,9 +152,11 @@ MilesAi/
 | 层 | 路径 | 职责 |
 |----|------|------|
 | 路由 | `tenant/*/views/` | 参数校验、依赖注入、调用 Service |
-| 业务 | `tenant/*/services/` | 租户校验、编排、调用 AI/存储 |
+| 业务 | `tenant/*/services/` | 租户校验、编排、调用 `rag.*` / `integrations.*` |
+| RAG | `rag/` | 解析、分片、索引门面、检索、生成、入库管道（见 [layering.md](./layering.md)） |
+| 集成 | `integrations/` | LangChain Embedding/检索封装、LangGraph、LiteLLM |
 | 仓储 | `tenant/*/repositories/`、`models/` | CRUD、分页 |
-| 基础设施 | `infra/`（db、redis、storage、vector_store）、`core/`（config、deps、security）、`common/` | 外部系统连接、应用配置与鉴权 |
+| 基础设施 | `infra/`、`core/`、`common/` | DB、Redis、对象存储、向量库客户端 |
 
 **租户业务域**（均有独立 `router`）：
 
@@ -254,8 +251,8 @@ tenant/kb、workers/ingest、deletion
 ```
 ingest / kb 检索 / deletion
         │
-        ▼
- app.infra.vector_store.get_vector_store()
+        ├─ 写向量：app.rag.index.upsert_chunk_vector / search_vectors（推荐）
+        └─ 读工厂：app.infra.vector_store.get_vector_store()
         │
         ├── weaviate  → WeaviateVectorStore（已实现）
         ├── pgvector  → PgVectorStore（占位，未实现）
@@ -270,8 +267,9 @@ ingest / kb 检索 / deletion
 | Milvus | Collection `document_chunk_{dimension}`；COSINE；Filter `tenant_id` / `kb_id` / `document_id`；`MILVUS_URI` |
 | Embedding | 调用见 §6.6；与向量库类型解耦，与 KB 维度强绑定 |
 | PG 引用 | `kb_vector_refs.vector_id` 为向量库中的外部记录 ID |
-| LangChain | `integrations/langchain/vectorstores.py` 调用 `vector_store.search_vectors` |
-| 入口 | `from app.infra.vector_store import get_vector_store, upsert_chunk_vector, search_vectors, …` |
+| 检索门面 | `rag.retrieve.search_kb_chunks`；混合检索 RRF 在 `rag.retrieve.hybrid` |
+| LangChain 封装 | `integrations/langchain/vectorstores.py` → `rag.retrieve.multi_kb` |
+| 索引门面 | `app.rag.index.gateway`（`upsert_chunk_vector` / `search_vectors` / 删除） |
 
 ### 6.5 存储与向量化配置策略
 
@@ -412,8 +410,9 @@ ingest / search / delete
 |------|------|
 | Broker | `CELERY_BROKER_URL`（通常 Redis） |
 | Worker 命令 | `celery -A app.workers.app worker -Q default,parse,ocr,asr,embed` |
-| 主任务 | `ingest_document`：对象存储下载 → 解析/分片 → embedding → 向量库 upsert → 更新 PG 状态 |
-| 可选依赖 | `[multimodal]`：`pytesseract`、`openai-whisper`；未安装时多模态文件仍可入库占位文本 |
+| 主任务 | `ingest_document` → `tenant.kb.ingest.run_ingest` → `rag.pipeline.run_ingest_pipeline` |
+| 解析链 | `load_documents_from_bytes` → `chunk_documents` → `embed_texts_for_kb` → `upsert_chunk_vector` |
+| 可选依赖 | `[parse-docling]`：PDF/Office 版式；`[multimodal]`：图 OCR / 音 Whisper（未装则占位文本仍可入库） |
 
 任务记录表：`task_records`；API：`GET /tasks`、`POST /tasks/{id}/cancel|retry`。
 
@@ -579,6 +578,7 @@ flowchart TD
 | 向量存储 | `VECTOR_STORE_BACKEND`, `WEAVIATE_*` 或 `MILVUS_URI` / `MILVUS_TOKEN` / `MILVUS_DB_NAME` | L1 |
 | 向量化默认 | `EMBEDDING_BACKEND`, `EMBEDDING_MODEL_NAME`, `EMBEDDING_LITELLM_*`, `EMBEDDING_VECTOR_DIMENSION` | L1 默认 / L3 KB |
 | RAG 分片 | `DEFAULT_CHUNK_SIZE`, `DEFAULT_CHUNK_OVERLAP` | L3 KB 可覆盖 |
+| RAG 解析 | `PARSE_PDF_BACKEND`（`pypdf` \| `docling`）、`PARSE_DOCLING_FALLBACK_PYPDF` | L1；详见 [knowledge-base.md](../guides/knowledge-base.md) §6.4 |
 | 种子 | `SEED_ADMIN_USERNAME`, `SEED_PLATFORM_ADMIN_USERNAME` | — |
 
 **大模型 API Key** 存在 `agt_model_configs.api_key_encrypted`，由工作台「模型供应商」配置（租户 BYOK），非环境变量。
@@ -594,7 +594,7 @@ flowchart TD
 | 能力 | 状态 | 备注 |
 |------|------|------|
 | 多租户 / RBAC / JWT | ✅ | |
-| 知识库入库与检索 | ✅ | Celery + 向量库门面；存储/向量 **L1 环境变量**（§6.5） |
+| 知识库入库与检索 | ✅ | `rag.pipeline` + hybrid；可选 `[parse-docling]` / `[multimodal]` |
 | 存储配置分层（L1/L2/L3）文档 | ✅ | §6.5；L3 embedding 已落地；L2 待开发 |
 | 流程画布与 LangGraph 执行 | ✅ | 见 [flows.md](../guides/flows.md) |
 | 智能体 RAG / 画布 / 直连 LLM | ✅ | |

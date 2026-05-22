@@ -86,8 +86,10 @@ class S3CompatibleObjectStorage:
 
 
 def build_object_key(tenant_id: str, kb_id: str, document_id: str, filename: str) -> str:
+    """知识库文档对象 key，与向量 metadata object_key 一致便于溯源。"""
     return f"{tenant_id}/{kb_id}/{document_id}/{filename}"
 
 
 def build_attachment_object_key(tenant_id: str, attachment_id: str, filename: str) -> str:
+    """会话附件对象 key（与 KB 文档路径前缀分离）。"""
     return f"{tenant_id}/attachments/{attachment_id}/{filename}"

@@ -1,4 +1,7 @@
-"""向量库客户端工厂。"""
+"""向量库客户端工厂（L4）。
+
+进程内单例；VECTOR_STORE_BACKEND 变更需重启。索引写删请走 app.rag.index.gateway。
+"""
 
 from __future__ import annotations
 

@@ -22,7 +22,7 @@ warnings.filterwarnings(
 )
 
 _checkpointer: Any = None
-_compiled_rag_graph: Any = None
+_compiled_rag_graph: Any = None  # 进程内单例，随 checkpointer 后端初始化
 _exit_stack: AsyncExitStack | None = None
 _backend: str = "memory"
 

@@ -1,3 +1,5 @@
+"""API 启动时自动执行 Alembic upgrade head（种子数据不在此执行）。"""
+
 import subprocess
 import sys
 from pathlib import Path

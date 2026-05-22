@@ -22,6 +22,7 @@ def rrf_fuse(
     fused: dict[str, dict[str, Any]] = {}
     scores: dict[str, float] = {}
 
+    # source_idx=0 视为向量路，其余视为关键词路（用于 hit 上 score_vector / score_keyword）
     for source_idx, hits in enumerate(ranked_lists):
         for rank, hit in enumerate(hits):
             chunk_id = hit.get("chunk_id")

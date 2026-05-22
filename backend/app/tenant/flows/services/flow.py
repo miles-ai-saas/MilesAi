@@ -1,3 +1,5 @@
+"""流程 L1：版本化 graph_json、发布、试运行与 LangGraph 编译预览。"""
+
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -28,6 +30,8 @@ from app.deletion.cascade import before_delete_flow
 
 
 class FlowService(BaseService):
+    """保存画布即新版本；智能体绑定 published_flow_id 后由 AgentService 执行。"""
+
     def __init__(self, db: AsyncSession, ctx: TenantContext) -> None:
         super().__init__(db, ctx)
         self.repo = FlowRepository(db)
@@ -92,6 +96,7 @@ class FlowService(BaseService):
         return FlowOut.model_validate(flow)
 
     async def save_graph(self, flow_id: UUID, body: FlowSaveGraph) -> FlowVersionOut:
+        """每次保存递增版本号并更新 flow.current_version。"""
         flow = await self._get_flow_or_raise(flow_id)
         version = await self._save_version(flow, body.graph_json, body.remark)
         return FlowVersionOut.model_validate(version)
@@ -120,6 +125,7 @@ class FlowService(BaseService):
         return FlowOut.model_validate(flow)
 
     async def run(self, flow_id: UUID, body: FlowRunRequest, kb_ids: list[str] | None = None) -> FlowRunResponse:
+        """调试运行：合规 + Hook + flow_runtime（与智能体挂流程时共用 RunContext）。"""
         flow = await self._get_flow_or_raise(flow_id)
         version = await self.repo.get_version(flow.id, flow.current_version)
         if not version:

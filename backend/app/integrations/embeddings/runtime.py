@@ -1,4 +1,7 @@
-"""向量化运行时：从 ModelConfig 构建 Embeddings。"""
+"""向量化运行时：从 ModelConfig 构建 Embeddings（local BGE / LiteLLM）。
+
+创建 KB 时用 embedding_dimension_from_model 固化维度；与 rag 入库/检索共用 build_embeddings。
+"""
 
 from __future__ import annotations
 

@@ -1,3 +1,5 @@
+"""运行监控 HTTP API：统计、趋势、健康报告与告警配置。"""
+
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import PlainTextResponse
 from sqlalchemy.ext.asyncio import AsyncSession

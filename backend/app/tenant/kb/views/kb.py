@@ -1,3 +1,5 @@
+"""知识库 HTTP API：KB/文档 CRUD、上传（异步 ingest）、检索与配额。"""
+
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, UploadFile

@@ -1,3 +1,5 @@
+"""租户用户 CRUD 与角色绑定。"""
+
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession

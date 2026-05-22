@@ -1,4 +1,4 @@
-"""音频解析：优先 Whisper 转写，未安装时返回占位说明。"""
+"""音频解析：优先 Whisper 转写，未安装时返回占位说明（仍可入库）。"""
 
 import tempfile
 from pathlib import Path

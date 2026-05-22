@@ -9,6 +9,7 @@ import { ResourceListFooter } from "@/components/resource/ResourceListFooter";
 import { ResourceListLayout } from "@/components/resource/ResourceListLayout";
 import { filterBySearch } from "@/lib/filter-search";
 import { ATTACHMENT_PURPOSE_LABEL } from "@/lib/kb-labels";
+import { KB_UPLOAD_ACCEPT } from "@/lib/upload-accept";
 import type { Attachment, KbQuota } from "@/lib/types";
 
 const PURPOSE_OPTIONS = [
@@ -89,7 +90,6 @@ export default function AttachmentsPage() {
 
   return (
     <>
-      <KbQuotaBar quota={quota} loading={quotaLoading} className="mb-6" />
       <ResourceListLayout
         title="附件"
         description="租户级通用文件存储，可用于对话、智能体等场景；占用与知识库文档合计的存储配额。"
@@ -98,7 +98,9 @@ export default function AttachmentsPage() {
         onSearchChange={setSearch}
         loading={list.loading}
         headerAction={
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-3">
+            <KbQuotaBar quota={quota} loading={quotaLoading} variant="inline" />
+            <div className="flex flex-wrap items-center gap-2">
             <select
               className="input-field w-auto text-sm"
               value={purpose}
@@ -127,11 +129,12 @@ export default function AttachmentsPage() {
               <input
                 type="file"
                 className="hidden"
-                accept=".txt,.md,.pdf,.jpg,.jpeg,.png,.webp,.mp3,.wav,.m4a,.ogg"
+                accept={KB_UPLOAD_ACCEPT}
                 onChange={onUpload}
                 disabled={uploading}
               />
             </label>
+            </div>
           </div>
         }
         footer={

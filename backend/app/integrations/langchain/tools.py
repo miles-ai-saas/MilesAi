@@ -63,7 +63,7 @@ def make_knowledge_search_tool(ctx: TenantContext) -> StructuredTool:
 
     def _run(query: str, kb_id: str, limit: int = 5) -> dict:
         from app.infra.db import get_sync_db
-        from app.tenant.kb.services.kb_load import load_kb_sync
+        from app.rag.load import load_kb_sync
 
         with get_sync_db() as db:
             kb = load_kb_sync(db, tenant_id, UUID(kb_id))

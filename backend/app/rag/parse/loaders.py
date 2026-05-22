@@ -1,4 +1,8 @@
-"""LangChain Document 加载与解析后端路由。"""
+"""LangChain Document 加载与解析后端路由。
+
+入库唯一 Parse 入口：`load_documents_from_bytes`（Celery ingest → pipeline）。
+路由顺序：图/音 → 文本 → Docling（可失败回退 pypdf）→ pypdf → Office 无 docling 报错。
+"""
 
 from __future__ import annotations
 
@@ -14,10 +18,28 @@ from app.rag.parse.backends.pypdf import load_pdf_documents
 from app.rag.parse.image_parser import parse_image
 from app.rag.parse.media import is_audio_file, is_image_file
 from app.rag.parse.text_parser import parse_text
+from app.rag.parse.upload_policy import OFFICE_EXTENSIONS
 
 logger = logging.getLogger(__name__)
 
 _TEXT_EXTENSIONS = {".txt", ".md", ".markdown"}
+
+
+def _raise_if_office_unparseable(ext: str) -> None:
+    """Office 仅 docling 路径；pypdf 默认或缺依赖时给出可操作的 fail_reason 文案。"""
+    if ext not in OFFICE_EXTENSIONS:
+        return
+    backend = get_settings().parse_pdf_backend.strip().lower()
+    if backend != "docling":
+        raise BadRequestError(
+            "Office 文档解析需将 PARSE_PDF_BACKEND 设为 docling（当前为 pypdf）；"
+            "API 与 Celery Worker 均需安装：pip install 'milesai[parse-docling]'"
+        )
+    if not docling_available():
+        raise BadRequestError(
+            f"Office 文档解析需要 docling（{ext}），请在 Worker 执行："
+            "pip install 'milesai[parse-docling]'"
+        )
 
 
 def _file_ext(filename: str) -> str:
@@ -27,6 +49,7 @@ def _file_ext(filename: str) -> str:
 
 
 def _use_docling_for(ext: str, mime_type: str) -> bool:
+    """是否尝试 Docling；由 PARSE_PDF_BACKEND=docling 与扩展名共同决定。"""
     backend = get_settings().parse_pdf_backend.strip().lower()
     if backend != "docling":
         return False
@@ -46,6 +69,7 @@ def load_documents_from_bytes(
     ext = _file_ext(filename)
 
     try:
+        # 多模态：无 OCR/Whisper 时 parse_* 仍返回占位文本，保证流程可走完
         if is_image_file(filename, mime_type):
             text = parse_image(data, filename)
             return [
@@ -68,6 +92,7 @@ def load_documents_from_bytes(
             text = parse_text(data)
             return [Document(page_content=text, metadata={"source": filename, "parser": "text"})]
 
+        # Docling 未安装或失败时，仅 PDF 可继续落到下方 pypdf 分支
         if _use_docling_for(ext, mime_type):
             if not docling_available():
                 logger.warning(
@@ -91,16 +116,14 @@ def load_documents_from_bytes(
                 doc.metadata.setdefault("parser", "pypdf")
             return docs
 
-        if _use_docling_for(ext, mime_type) and ext in DOCLING_EXTENSIONS - {".pdf"}:
-            raise BadRequestError(
-                f"Office/版式文件解析需要 docling：{ext}（请安装 milesai[parse-docling]）"
-            )
+        _raise_if_office_unparseable(ext)
 
     except BadRequestError:
         raise
     except Exception as exc:
         raise BadRequestError(f"文档解析失败: {exc}") from exc
 
+    _raise_if_office_unparseable(ext)
     raise BadRequestError(f"暂不支持该文件类型: {mime_type or ext}")
 
 

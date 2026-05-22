@@ -33,10 +33,22 @@ app/tenant/kb/        # L1 用例（ingest 状态机、配额、API）
 
 ```bash
 cd backend
-pytest -q                    # 72 passed
+pytest -q
 grep -r 'app\.ai_stack\|app/ai_stack\|from app\.ai' app tests || echo OK
 test ! -d app/ai_stack && test ! -d app/ai && echo OK
 ```
+
+---
+
+## 迁移后增量（文档与代码对齐）
+
+| 项 | 说明 |
+|----|------|
+| 入库管道 | `rag/pipeline/ingest.py`：`load_documents_from_bytes` → `chunk_documents` |
+| Parse | `backends/pypdf`、`backends/docling`（`[parse-docling]`）、图/音接入 loaders |
+| Chunk | `chunk_documents`、`TextChunk.page_no`；Docling Markdown 标题分片 |
+| 检索 | `rag/retrieve/*`；`integrations.langchain.vectorstores` 调 `multi_kb` |
+| 文档 | [layering.md](./layering.md)、[knowledge-base.md](../guides/knowledge-base.md)、[ai-stack.md](../guides/ai-stack.md) |
 
 ---
 
@@ -45,5 +57,5 @@ test ! -d app/ai_stack && test ! -d app/ai && echo OK
 | 项 | 说明 |
 |----|------|
 | `embedding_resolve` 边界 | 评估是否从 `tenant.models` 抽到 `integrations` |
-| `technical-design.md` 全文扫尾 | 与仓库目录图完全一致 |
-| Parse P0 | MinerU/插件化在 `rag/parse/backends/` 独立立项 |
+| 上传白名单 | Office（docx/pptx/xlsx）与 `DOCLING_EXTENSIONS` 对齐 |
+| Parse 插件 | PaddleOCR 等仅增 `rag/parse/backends/*`，不含 MinerU/RAG-Anything |

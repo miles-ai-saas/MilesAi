@@ -1,4 +1,8 @@
-"""文档入库管道（Parse → Chunk → Embed → Index）。"""
+"""文档入库管道（Parse → Chunk → Embed → Index）。
+
+L2 同步管道；状态机与 Celery 入口在 tenant.kb.services.ingest。
+每分片：先落 PG（chunk + vector_ref），再 upsert 向量库，保证 chunk_id 可用于向量 external_id。
+"""
 
 from __future__ import annotations
 
@@ -62,6 +66,7 @@ def run_ingest_pipeline(
     if not chunks:
         raise ValueError("未能提取有效文本")
 
+    # 重试/覆盖入库：先删旧 chunk、vector_ref 与向量库记录
     if on_before_index is not None:
         on_before_index(db, doc.id)
 
@@ -79,7 +84,7 @@ def run_ingest_pipeline(
             page_no=piece.page_no,
         )
         db.add(chunk)
-        db.flush()
+        db.flush()  # 需要 chunk.id 再写向量库
 
         ext_vector_id = upsert_chunk_vector(
             vector=vector,

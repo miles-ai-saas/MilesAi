@@ -1,4 +1,7 @@
-"""知识库检索模式解析与统一检索入口。"""
+"""知识库检索模式解析与统一检索入口。
+
+vector：仅语义向量；hybrid：向量库原生 hybrid（若有）否则 向量 + PG 关键词 + RRF。
+"""
 
 from __future__ import annotations
 
@@ -57,6 +60,7 @@ async def search_kb_chunks(
     alpha = float(kb.hybrid_alpha if kb.hybrid_alpha is not None else 0.5)
     alpha = max(0.0, min(1.0, alpha))
 
+    # Weaviate 等后端可实现 search_hybrid（BM25 + 向量）
     if hasattr(store, "search_hybrid"):
         return store.search_hybrid(
             query,
@@ -67,6 +71,7 @@ async def search_kb_chunks(
             alpha=alpha,
         )
 
+    # 回退：分别拉候选再 RRF（Milvus 等）
     fetch_n = min(limit * 3, 50)
     vector_hits = search_vectors(
         query_vector,
@@ -103,6 +108,7 @@ def _hybrid_sync(
     alpha = float(kb.hybrid_alpha if kb.hybrid_alpha is not None else 0.5)
     alpha = max(0.0, min(1.0, alpha))
 
+    # Weaviate 等后端可实现 search_hybrid（BM25 + 向量）
     if hasattr(store, "search_hybrid"):
         return store.search_hybrid(
             query,
@@ -113,6 +119,7 @@ def _hybrid_sync(
             alpha=alpha,
         )
 
+    # 回退：分别拉候选再 RRF（Milvus 等）
     fetch_n = min(limit * 3, 50)
     vector_hits = search_vectors(
         query_vector,

@@ -1,4 +1,4 @@
-"""检索相关性 LLM 评分。"""
+"""检索相关性评分：默认按 top hit 分数；可选 LLM 输出 good/poor/none 驱动 LangGraph 分支。"""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ import re
 from typing import Any
 
 from app.integrations.langchain.chat_models import ainvoke_chat
-from app.integrations.langchain.rag import format_hits_context
+from app.rag.generate import format_hits_context
 from app.integrations.langgraph.constants import RELEVANCE_GOOD, RELEVANCE_NONE, RELEVANCE_POOR
 from app.models.model import ModelConfig
 

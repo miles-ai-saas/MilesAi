@@ -1,3 +1,5 @@
+"""工具注册表：内置 knowledge_search/http/calculator 与租户自定义工具。"""
+
 from uuid import UUID
 
 from sqlalchemy import func, select

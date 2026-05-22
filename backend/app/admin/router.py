@@ -1,3 +1,5 @@
+"""运营后台 API（/api/admin/v1）：与租户 JWT 分离，见 app_sys / app_ops。"""
+
 from fastapi import APIRouter
 
 from app.admin.app_ops.router import router as ops_router

@@ -1,4 +1,7 @@
-"""FastAPI 依赖注入：认证、分页、权限。"""
+"""FastAPI 依赖注入：认证、分页、权限。
+
+租户 API 通过 require_permissions 声明 RBAC；运营端使用 admin.app_sys.deps。
+"""
 
 from fastapi import Depends, Query
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -62,6 +65,7 @@ async def get_tenant_context(user: User = Depends(get_current_user)) -> TenantCo
 
 
 def require_permissions(*required: str):
+    """超级用户绕过具体 permission 校验（见 TenantContext.require_permission）。"""
     async def checker(ctx: TenantContext = Depends(get_tenant_context)) -> TenantContext:
         ctx.require_permission(*required)
         return ctx

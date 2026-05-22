@@ -8,4 +8,5 @@ from dataclasses import dataclass
 @dataclass(frozen=True)
 class TextChunk:
     content: str
+    # 写入 kb_document_chunks.page_no 与向量库 metadata，供引用展示
     page_no: int | None = None

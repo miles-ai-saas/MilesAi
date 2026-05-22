@@ -1,3 +1,5 @@
+"""MCP 服务 HTTP API：注册、同步工具列表与试调用。"""
+
 from uuid import UUID
 
 from fastapi import APIRouter, Depends

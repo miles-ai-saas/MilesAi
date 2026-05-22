@@ -1,3 +1,5 @@
+"""工具 HTTP API：内置工具目录、自定义工具 CRUD 与试调用。"""
+
 from uuid import UUID
 
 from fastapi import APIRouter, Depends

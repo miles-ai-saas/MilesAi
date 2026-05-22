@@ -1,3 +1,5 @@
+"""会话附件 HTTP API（非 KB 文档，仍计存储配额）。"""
+
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Form, UploadFile

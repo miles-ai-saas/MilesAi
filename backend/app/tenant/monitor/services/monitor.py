@@ -1,3 +1,5 @@
+"""租户运行监控：资源统计、任务趋势、依赖健康与告警 Webhook。"""
+
 import csv
 import io
 from datetime import datetime, timezone

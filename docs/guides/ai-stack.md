@@ -15,44 +15,51 @@
 ```bash
 cd backend
 pip install -e ".[dev]"
-pip install -e ".[agent-stack]"      # 可选：deepagents
-pip install -e ".[multimodal]"         # 可选：OCR / Whisper
+pip install -e ".[agent-stack]"       # 可选：deepagents
+pip install -e ".[parse-docling]"     # 可选：Docling PDF/Office
+pip install -e ".[multimodal]"        # 可选：图 OCR / 音 Whisper
 ```
 
 ## 目录（当前）
 
 ```
 app/rag/
-├── parse/           # parse_file、PDF/TXT/图/音
-├── chunk/           # split_text
-├── index/           # upsert_chunk_vector、search_vectors
-├── retrieve/        # search_kb_chunks、RRF、PG 关键词
-└── generate/        # format_hits_context、rag_answer
+├── parse/
+│   ├── loaders.py              # 入库主入口：text / pdf / docling / image / audio
+│   ├── backends/pypdf.py
+│   ├── backends/docling.py
+│   ├── image_parser.py / audio_parser.py
+│   └── media.py
+├── chunk/
+│   ├── splitter.py             # chunk_documents、split_text
+│   └── types.py                # TextChunk(content, page_no)
+├── index/gateway.py
+├── retrieve/                   # retriever、hybrid、multi_kb、keyword
+├── generate/
+├── load/knowledge_bases.py
+└── pipeline/ingest.py          # run_ingest_pipeline
 
-app/integrations/    # 新代码请用此包
+app/integrations/
 ├── langchain/
 │   ├── embeddings.py
-│   ├── vectorstores.py   # 调 rag.retrieve.multi_kb
+│   ├── vectorstores.py         # → rag.retrieve.multi_kb
 │   └── vector/documents.py
 ├── langgraph/
 ├── litellm/
 └── deepagents/
 
-app/rag/pipeline/      # run_ingest_pipeline
-
 app/infra/vector_store/
-├── factory.py       # get_vector_store()
-├── base.py          # Protocol、ChunkVectorRecord
-├── weaviate|milvus|pgvector.py
-└── documents.py     # LangChain Document 映射（L3/L4 交界）
-
+├── factory.py                  # get_vector_store()
+├── base.py
+├── weaviate|milvus|pgvector.py # import integrations.langchain.vector.documents
+└── __init__.py                 # get_vector_store、Store 实现类
 ```
 
 ## 调用链
 
 | 业务 | 入口 | 实现 |
 |------|------|------|
-| 文档入库 | `tenant.kb.ingest` | `rag.parse` → `rag.chunk` → `integrations.langchain.embeddings` → `rag.index` |
+| 文档入库 | `tenant.kb.ingest` | `load_documents_from_bytes` → `chunk_documents` → `embed_texts_for_kb` → `rag.index` |
 | 知识库检索 | `KbService.search` | `rag.retrieve.search_kb_chunks` |
 | 智能体 RAG | `AgentService.chat` | `rag.generate` / LangGraph `rag_qa` |
 | 流程节点 | `rag_nodes` | `rag.generate.retrieve_hits` |

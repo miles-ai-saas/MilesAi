@@ -22,6 +22,7 @@ from app.integrations.langgraph.graph_analysis import topo_order
 from app.flow_runtime.nodes.registry import NODE_REGISTRY, execute_node
 from app.flow_runtime.types import FlowGraph, RunContext
 
+# 与前端调色板、flow_runtime.nodes.registry 保持一致
 SUPPORTED_CANVAS_NODE_TYPES = frozenset(NODE_REGISTRY.keys())
 
 

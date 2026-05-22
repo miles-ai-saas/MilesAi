@@ -1,3 +1,5 @@
+"""合规 HTTP API：敏感词库、拦截日志与文本扫描试跑。"""
+
 from uuid import UUID
 
 from fastapi import APIRouter, Depends

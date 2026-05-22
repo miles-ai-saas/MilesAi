@@ -1,3 +1,5 @@
+"""平台管理员 JWT（type=admin_access），与租户 access token 分离。"""
+
 from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 

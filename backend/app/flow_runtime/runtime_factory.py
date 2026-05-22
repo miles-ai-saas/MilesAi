@@ -1,4 +1,7 @@
-"""流程执行入口：graph_json 统一由 LangGraph 编译运行。"""
+"""流程执行入口：React Flow graph_json → integrations.langgraph.flow_runner。
+
+RAG 节点（KnowledgeSearch）内部调用 app.rag.generate.retrieve_hits。
+"""
 
 from functools import lru_cache
 

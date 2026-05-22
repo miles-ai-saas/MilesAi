@@ -36,6 +36,7 @@ def is_audio_file(filename: str, mime_type: str) -> bool:
 
 
 def vector_type_for_document(filename: str, mime_type: str) -> str:
+    """写入 kb_vector_refs.vector_type，区分文本/图/音入库来源。"""
     if is_image_file(filename, mime_type):
         return "image"
     if is_audio_file(filename, mime_type):

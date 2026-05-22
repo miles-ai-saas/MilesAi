@@ -1,3 +1,5 @@
+"""知识库、文档、分片与向量引用表仓储。"""
+
 from uuid import UUID
 
 from sqlalchemy import select

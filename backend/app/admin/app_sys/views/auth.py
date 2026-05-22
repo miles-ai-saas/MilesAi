@@ -1,3 +1,5 @@
+"""平台管理员登录与会话 HTTP API。"""
+
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Request

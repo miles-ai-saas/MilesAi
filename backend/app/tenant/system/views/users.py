@@ -1,3 +1,5 @@
+"""租户用户管理 HTTP API（RBAC 用户，非平台管理员）。"""
+
 from uuid import UUID
 
 from fastapi import APIRouter, Depends

@@ -12,10 +12,6 @@ __all__ = [
     "MilvusVectorStore",
     "PgVectorStore",
     "get_vector_store",
-    "upsert_chunk_vector",
-    "search_vectors",
-    "delete_by_document",
-    "delete_by_chunk_ids",
 ]
 
 
@@ -32,13 +28,4 @@ def __getattr__(name: str):
         from app.infra.vector_store.pgvector import PgVectorStore
 
         return PgVectorStore
-    if name in (
-        "upsert_chunk_vector",
-        "search_vectors",
-        "delete_by_document",
-        "delete_by_chunk_ids",
-    ):
-        import app.rag.index.gateway as gateway
-
-        return getattr(gateway, name)
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

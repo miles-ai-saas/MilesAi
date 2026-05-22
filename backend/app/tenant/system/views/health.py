@@ -1,3 +1,5 @@
+"""依赖健康检查 HTTP API（DB/Redis/向量库/对象存储）。"""
+
 from fastapi import APIRouter
 
 from app.common.schema import ApiResponse

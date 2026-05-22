@@ -1,3 +1,5 @@
+"""运营端内置模型目录 HTTP API。"""
+
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query

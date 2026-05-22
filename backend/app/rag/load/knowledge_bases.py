@@ -1,4 +1,7 @@
-"""按租户加载知识库实体（RAG 检索 / 生成用）。"""
+"""按租户加载知识库实体（RAG 检索 / 生成用）。
+
+避免 rag 层 import tenant.kb.services；绑定校验（租户、软删）在此集中。
+"""
 
 from __future__ import annotations
 

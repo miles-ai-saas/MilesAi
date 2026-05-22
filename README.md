@@ -89,11 +89,10 @@ curl -s -X POST http://localhost:8000/api/v1/auth/login \
 MilesAi/
 ├── backend/                 # FastAPI
 │   ├── app/
-│   │   ├── api/v1/          # 薄路由
-│   │   ├── tenant/         # 租户业务（agents、kb、flows、marketplace…）
-│   │   ├── tenant/a2a/     # A2A Peer / 宿主调用
-│   │   ├── rag/             # 解析、分片、检索、生成
-│   │   ├── integrations/  # LangChain、LangGraph、DeepAgents
+│   │   ├── tenant/          # 租户 API（kb、agents、flows…）
+│   │   ├── rag/             # L2：parse / chunk / index / retrieve / generate / pipeline
+│   │   ├── integrations/  # L3：LangChain、LangGraph、DeepAgents
+│   │   ├── infra/           # DB、Redis、对象存储、向量库客户端
 │   │   ├── flow_runtime/    # 画布节点 registry
 │   │   └── models/
 │   └── alembic/
@@ -103,7 +102,7 @@ MilesAi/
 └── docs/                    # → docs/README.md（product / architecture / frontend / operations / guides）
 ```
 
-**分层**：`api/` 路由 → `services/` 业务 → `repositories/` 数据访问 → `core/` 基础设施（详见 [docs/architecture/technical-design.md](docs/architecture/technical-design.md) §4）。
+**分层**：`tenant/*/views` → `services` → `app/rag`（RAG）/ `app/integrations`（模型与图）→ `app/infra`（详见 [docs/architecture/layering.md](docs/architecture/layering.md)）。
 
 ---
 

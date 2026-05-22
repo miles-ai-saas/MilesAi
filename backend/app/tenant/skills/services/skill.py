@@ -1,3 +1,5 @@
+"""Skill 包管理：供智能体上下文拼装技能说明（见 agents.context）。"""
+
 from uuid import UUID
 
 from sqlalchemy import func, select

@@ -1,3 +1,5 @@
+"""提示词模板 CRUD（智能体 system_prompt 等可引用）。"""
+
 from uuid import UUID
 
 from sqlalchemy import func, select

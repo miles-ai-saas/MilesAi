@@ -11,7 +11,7 @@ NodeHandler = Callable[[dict[str, Any], dict[str, Any], RunContext], Awaitable[A
 NODE_REGISTRY: dict[str, NodeHandler] = {
     "TextInput": io_nodes.text_input,
     "TextOutput": io_nodes.text_output,
-    "KnowledgeSearch": rag_nodes.knowledge_search,
+    "KnowledgeSearch": rag_nodes.knowledge_search,  # ctx.kb_ids / node_data.kb_id
     "PromptTemplate": rag_nodes.prompt_template,
     "LLMCall": llm_nodes.llm_call,
     "ConditionBranch": control_nodes.condition_branch,

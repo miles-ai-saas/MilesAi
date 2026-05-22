@@ -1,3 +1,5 @@
+"""应用市场 HTTP API：浏览、上架、审核、安装与评分。"""
+
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query

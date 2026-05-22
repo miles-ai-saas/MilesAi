@@ -5,6 +5,7 @@ from unittest.mock import patch
 import pytest
 from langchain_core.documents import Document
 
+from app.common.exceptions import BadRequestError
 from app.core.config import get_settings
 from app.rag.parse.loaders import documents_to_plain_text, load_documents_from_bytes
 
@@ -92,6 +93,12 @@ def test_load_audio_returns_document():
     assert len(docs) == 1
     assert docs[0].metadata.get("parser") == "audio"
     assert "transcript" in docs[0].page_content
+
+
+def test_office_rejected_when_parse_backend_is_pypdf(monkeypatch):
+    monkeypatch.setenv("PARSE_PDF_BACKEND", "pypdf")
+    with pytest.raises(BadRequestError, match="PARSE_PDF_BACKEND"):
+        load_documents_from_bytes(b"PK", "report.docx", "application/octet-stream")
 
 
 def test_documents_to_plain_text_joins():

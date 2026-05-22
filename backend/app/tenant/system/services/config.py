@@ -1,3 +1,5 @@
+"""系统配置项读写与运行时信息（版本、特性开关等）。"""
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 

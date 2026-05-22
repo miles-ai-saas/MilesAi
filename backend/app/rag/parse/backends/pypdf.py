@@ -17,6 +17,7 @@ def load_pdf_documents(data: bytes, filename: str) -> list[Document]:
         docs = PyPDFLoader(tmp_path).load()
         for i, doc in enumerate(docs):
             doc.metadata["source"] = filename
+            # page 为 0-based；入库时由 chunk.page_no_from_metadata 转为 1-based
             doc.metadata.setdefault("page", i)
         return docs
     finally:

@@ -1,3 +1,5 @@
+"""敏感词库与入出站合规扫描（智能体对话等路径调用 CompliancePipeline）。"""
+
 from uuid import UUID
 
 from sqlalchemy import func, select
@@ -59,6 +61,7 @@ class ComplianceService(BaseService):
         self.db.add(log)
 
     async def check_input(self, text: str, *, module: str) -> str:
+        """用户入站文本；命中 BLOCK 时抛 BadRequestError。"""
         result = (await self._pipeline()).scan(text)
         if result.matches:
             first = result.matches[0]
@@ -74,6 +77,7 @@ class ComplianceService(BaseService):
         return text
 
     async def check_output(self, text: str, *, module: str) -> str:
+        """模型出站文本；BLOCK 时同样拦截并记审计。"""
         result = (await self._pipeline()).scan(text)
         if result.matches:
             first = result.matches[0]

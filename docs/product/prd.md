@@ -1,8 +1,25 @@
 # 一体化AI智能编排与RAG应用平台（多模态企业版）完整项目需求
 
 > **与代码实现对齐说明（2026-05）**  
-> 类型：需求基线 | 状态：只读参考  
-> 流程编排实现为 **React Flow + flow_runtime + LangGraph**，见 [flows.md](../guides/flows.md)、[technical-design.md](../architecture/technical-design.md) §9。
+> 类型：需求基线 | 状态：只读参考（下文为立项原文，能力以「实现对照」为准）  
+> - **流程编排**：React Flow + `flow_runtime` + LangGraph → [flows.md](../guides/flows.md)  
+> - **RAG / 知识库**：`app/rag`（parse → chunk → index → retrieve）+ `tenant/kb` → [knowledge-base.md](../guides/knowledge-base.md)、[layering.md](../architecture/layering.md)  
+> - **Docker Worker**：队列与可选依赖 → [docker/README.md](../../docker/README.md) § Celery Worker  
+
+### 模块6（RAG）实现对照（当前代码）
+
+| PRD 表述 | 当前实现 | 备注 |
+|----------|----------|------|
+| Docling 文档解析 | `rag/parse/backends/docling.py` | 需 `[parse-docling]`，`PARSE_PDF_BACKEND=docling` |
+| PDF 解析 | 默认 `pypdf`（PyPDFLoader） | 无 docling 时兜底 |
+| PaddleOCR | 未默认集成 | 图：可选 `pytesseract`（`[multimodal]`）；PRD 级 OCR 待插件 |
+| Whisper 转写 | `rag/parse/audio_parser.py` | 需 `[multimodal]` |
+| 视频解析 | 未实现 | 上传白名单未含视频 |
+| Word/Excel/PPT 上传 | 白名单未含 Office | docling 能力已有，需放开扩展名后入库 |
+| 文本/图/音上传入库 | ✅ | `load_documents_from_bytes` → `chunk_documents` → 向量 |
+| Weaviate 检索 | ✅ | 另支持 Milvus；KB 级 `vector` / `hybrid` |
+| 以图搜图 / 文本搜图 | 未实现 | 当前为文本向量 + 关键词 hybrid |
+| Celery 异步入库 | ✅ | `ingest_document` → `rag.pipeline.ingest` |
 
 # 一、项目基础信息
 
@@ -443,6 +460,8 @@
 - 行业模板：内置办公、客服、数据分析、医疗、金融等多领域技能包模板，适配不同行业场景。
 
 ## 模块6：RAG多模态知识库（核心）
+
+> **运行与排错**以 [knowledge-base.md](../guides/knowledge-base.md) 为准；本节保留立项需求描述。
 
 ### 6\.1 知识库管理
 

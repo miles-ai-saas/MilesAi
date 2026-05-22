@@ -1,3 +1,5 @@
+"""应用市场：上架、审核、安装（克隆 KB/Flow/Agent 到本租户）与评分。"""
+
 from datetime import datetime, timezone
 from uuid import UUID
 
@@ -45,6 +47,8 @@ from app.tenant.kb.services.kb import KnowledgeBaseService
 
 
 class MarketplaceService(BaseService):
+    """安装时按 manifest 深拷贝资源；卸载走 deletion.cascade 解除 AppInstall 引用。"""
+
     def __init__(self, db: AsyncSession, ctx: TenantContext) -> None:
         super().__init__(db, ctx)
         self.flow_repo = FlowRepository(db)
@@ -355,6 +359,7 @@ class MarketplaceService(BaseService):
         )
 
     async def install_app(self, app_id: UUID) -> AppInstallResult:
+        """将已发布应用快照复制到当前租户（KB、流程、智能体等）。"""
         app = await self._get_app_or_raise(app_id)
         if app.status != MarketplaceAppStatus.PUBLISHED:
             raise BadRequestError("应用未发布，无法安装")

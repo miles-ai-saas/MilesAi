@@ -1,3 +1,5 @@
+"""FastAPI 应用工厂：CORS、链路追踪、路由挂载与启动期迁移 / LangGraph checkpoint。"""
+
 import uuid
 from contextlib import asynccontextmanager
 
@@ -13,6 +15,7 @@ from app.core.config import get_settings
 async def lifespan(app: FastAPI):
     from app.integrations.langgraph.checkpointer import init_langgraph_checkpointer, shutdown_langgraph_checkpointer
 
+    # 启动时只做 schema 迁移；业务种子由 cli.py init-db 单独执行
     run_migrations()
     app.state.langgraph_checkpoint = await init_langgraph_checkpointer()
     yield

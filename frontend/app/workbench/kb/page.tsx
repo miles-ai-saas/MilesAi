@@ -129,13 +129,15 @@ export default function KbPage() {
 
   return (
     <>
-      <KbQuotaBar quota={quota} loading={quotaLoading} className="mb-6" />
       <ResourceListLayout
         title="知识库"
         description="管理企业知识库与文档，为智能体 RAG 检索与流程节点提供知识来源。"
         searchPlaceholder="搜索知识库名称"
         search={search}
         onSearchChange={setSearch}
+        headerAction={
+          <KbQuotaBar quota={quota} loading={quotaLoading} variant="inline" />
+        }
         loading={list.loading}
         footer={
           !list.loading ? (
@@ -153,17 +155,32 @@ export default function KbPage() {
           hint="创建知识库并上传文档"
           onClick={openCreate}
         />
+        {!list.loading && search.trim() && filtered.length === 0 && (
+          <div className="col-span-full rounded-xl border border-dashed border-line bg-surface-muted/30 px-6 py-10 text-center">
+            <p className="text-sm font-medium text-ink">没有匹配的知识库</p>
+            <p className="mt-2 text-xs text-ink-faint">试试其他关键词，或清空搜索。</p>
+          </div>
+        )}
         {filtered.map((kb) => (
           <ResourceItemCard
             key={kb.id}
             href={`/workbench/kb/${kb.id}`}
             title={kb.name}
-            description={kb.description || "点击进入管理文档与切片"}
+            description={kb.description || "管理文档、检索测试与入库状态"}
             meta={
-              <span className="text-ink-faint">
-                {kb.embedding_model_name ?? "向量化模型"} · {kb.embedding_dimension} 维 ·{" "}
-                {retrievalModeLabel(kb.retrieval_mode)} · 分片 {kb.chunk_size ?? DEFAULT_CHUNK_SIZE}/
-                {kb.chunk_overlap ?? DEFAULT_CHUNK_OVERLAP}
+              <span className="flex flex-wrap gap-1.5 text-ink-faint">
+                <span className="rounded bg-surface-muted px-1.5 py-0.5 text-[11px]">
+                  {kb.embedding_model_name ?? "向量化"}
+                </span>
+                <span className="rounded bg-surface-muted px-1.5 py-0.5 text-[11px]">
+                  {kb.embedding_dimension} 维
+                </span>
+                <span className="rounded bg-brand/10 px-1.5 py-0.5 text-[11px] text-brand">
+                  {retrievalModeLabel(kb.retrieval_mode)}
+                </span>
+                <span className="text-[11px]">
+                  分片 {kb.chunk_size ?? DEFAULT_CHUNK_SIZE}/{kb.chunk_overlap ?? DEFAULT_CHUNK_OVERLAP}
+                </span>
               </span>
             }
             actions={
@@ -187,6 +204,11 @@ export default function KbPage() {
         open={dialogOpen}
         title={editing ? "编辑知识库" : "新建知识库"}
         onClose={() => setDialogOpen(false)}
+        description={
+          editing
+            ? undefined
+            : "向量化模型创建后不可修改；Office 文档解析需在服务端启用 docling。"
+        }
         footer={
           <>
             <button type="button" className="btn-ghost" onClick={() => setDialogOpen(false)}>

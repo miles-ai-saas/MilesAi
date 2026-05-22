@@ -1,4 +1,7 @@
-"""LangGraph 运行入口。"""
+"""LangGraph 运行入口（Agent RAG 与流程图共用 checkpointer）。
+
+RAG：build_rag_qa_graph 编译后带 Redis/内存 checkpoint；thread_id 按租户+智能体+会话隔离。
+"""
 
 from __future__ import annotations
 
@@ -14,6 +17,7 @@ from app.models.model import ModelConfig
 
 
 def should_use_langgraph_rag(agent: Agent, *, kb_ids: list[str]) -> bool:
+    """agent.config：use_langgraph_rag=false 或 runtime_mode=legacy/autonomous 时走线性 rag_answer。"""
     if not kb_ids:
         return False
     cfg = agent.config or {}

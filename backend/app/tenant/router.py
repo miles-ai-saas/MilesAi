@@ -1,3 +1,5 @@
+"""租户工作台 API 路由汇总（L0）；业务逻辑在各自 services，RAG 调 app.rag。"""
+
 from fastapi import APIRouter
 
 from app.tenant.a2a.views import peers as a2a_peers

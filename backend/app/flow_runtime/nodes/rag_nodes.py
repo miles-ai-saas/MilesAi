@@ -1,3 +1,5 @@
+"""流程画布 RAG 节点：检索与 prompt 拼装（调用 L2 rag.generate）。"""
+
 from typing import Any
 from uuid import UUID
 

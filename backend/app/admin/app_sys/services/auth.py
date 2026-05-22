@@ -1,3 +1,5 @@
+"""平台管理员登录、会话（Redis）与改密。"""
+
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession

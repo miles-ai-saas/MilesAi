@@ -1,3 +1,5 @@
+"""A2A Peer 登记：拉取 Agent Card、探测 RPC 与状态维护。"""
+
 from datetime import datetime, timezone
 from uuid import UUID
 

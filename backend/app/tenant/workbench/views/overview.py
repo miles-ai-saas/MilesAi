@@ -1,3 +1,5 @@
+"""工作台概览 HTTP API（租户资源用量与快捷入口统计）。"""
+
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 

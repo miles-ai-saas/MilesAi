@@ -1,3 +1,5 @@
+"""运营端租户生命周期：创建、套餐配额、用量统计与硬删（purge_tenant_data）。"""
+
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -18,6 +20,8 @@ from app.common.schema import PageParams, PageResult
 
 
 class AdminTenantService:
+    """租户 CRUD；plan_id 变更时同步 max_* 配额字段。"""
+
     def __init__(self, db: AsyncSession) -> None:
         self.db = db
         self.repo = AdminTenantRepository(db)
@@ -128,7 +132,7 @@ class AdminTenantService:
         return self._out(tenant)
 
     async def delete_tenant(self, tenant_id: UUID) -> None:
-        """删除租户：先清理业务数据，再删 tenants 行（账单/风控记录保留）。"""
+        """删除租户：purge_tenant_data 硬删业务数据+OSS，再删 tenants（adm 账单/风控可保留）。"""
         from app.deletion.tenant import purge_tenant_data
 
         tenant = await self.repo.get_by_id_or_raise(tenant_id, label="租户不存在")

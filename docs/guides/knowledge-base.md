@@ -15,7 +15,9 @@
 | 异步入库 | 上传 → Celery `ingest_document` → 解析 → 分片 → 向量化 → 向量库 |
 | 可观测 | 文档状态机 + `fail_reason` + 任务表 `task_records` |
 
-**本期不做（可单独立项）**：混合检索（关键词 + 向量）、以图搜图、租户级 OSS BYOK、文档级权限。
+**本期不做（可单独立项）**：以图搜图、租户级 OSS BYOK、文档级权限。
+
+**已支持**：KB 级 `retrieval_mode`（`vector` / `hybrid`）、检索日志、配额与通用附件 API。
 
 **二期-A 已交付**：创建 KB / 上传文档时校验 `max_knowledge_bases`、`max_storage_mb`、`ingest.max_file_mb`；检索写入 `kb_search_logs`；通用附件见 `/api/v1/attachments`。
 
@@ -114,7 +116,7 @@ sequenceDiagram
     API->>Q: ingest_document(doc_id)
     Q->>W: run_ingest
     W->>OSS: download
-    W->>W: parse + split_text
+    W->>W: load_documents + chunk_documents
     W->>PG: clear old chunks/refs
     W->>W: embed_texts_for_kb(kb)
     loop each chunk
@@ -163,13 +165,15 @@ embed_query_for_kb(kb, query) → search_kb_chunks（Weaviate hybrid 或 向量+
 |----|------|------|
 | API | `app/tenant/kb/views/kb.py` | 路由、权限 `kb:*` |
 | 业务 | `app/tenant/kb/services/kb.py` | CRUD、上传、检索、删除编排 |
-| 入库 | `app/tenant/kb/services/ingest.py` | Worker 同步流水线 |
-| 加载 | `app/tenant/kb/services/kb_load.py` | 按租户加载 KB（RAG 用） |
-| 仓储 | `app/tenant/kb/repositories/kb.py` | 分页 CRUD |
-| RAG | `app.rag.parse` / `app.rag.chunk` / `app.rag.index` / `app.rag.retrieve` | 解析、分片、索引、检索 |
-| 集成 | `app.integrations.langchain` | Embedding、多 KB 检索封装、RAG 生成 |
-| 向量 | `app.integrations.embeddings.runtime` + `langchain/embeddings` | 按 KB 绑定的 ModelConfig 调用 |
-| 检索 | `app.integrations.langchain.vectorstores` | `search_kb` |
+| 入库 | `tenant/kb/services/ingest.py` | Celery 状态机，调 `rag.pipeline.run_ingest_pipeline` |
+| 管道 | `rag/pipeline/ingest.py` | Parse → Chunk → Embed → Index |
+| 解析 | `rag/parse/loaders.py`、`backends/*` | 统一 `load_documents_from_bytes` |
+| 分片 | `rag/chunk/splitter.py` | `chunk_documents` → `TextChunk`（含 `page_no`） |
+| 索引 | `rag/index/gateway.py` | `upsert_chunk_vector`、`search_vectors` |
+| 检索 | `rag/retrieve/retriever.py`、`hybrid.py`、`multi_kb.py` | `search_kb_chunks`、RRF |
+| 生成 | `rag/generate/` | 上下文与 `rag_answer` |
+| 加载 | `rag/load/knowledge_bases.py` | 租户 KB 列表（Agent/流程用） |
+| 集成 | `integrations/langchain/embeddings.py`、`vectorstores.py` | 按 KB 维度 embed；`search_kb` 封装 |
 | 删除 | `app.deletion.document` / `cascade.before_delete_kb` | 衍生数据与引用 |
 | 任务 | `app.workers.tasks.ingest` | Celery 入口 |
 
@@ -241,6 +245,9 @@ OpenAPI：`/docs`（运行实例）。
 | PDF | `.pdf` | 默认 `pypdf`；可选 `docling` |
 | 图片 | `.jpg`、`.jpeg`、`.png`、`.webp` | Pillow 必填；OCR 需 Worker 安装 `[multimodal]` |
 | 音频 | `.mp3`、`.wav`、`.m4a`、`.ogg`、`.webm` | 无 Whisper 时写入占位文本，仍可入库 |
+| Office | `.docx`、`.pptx`、`.xlsx`、`.html`、`.htm` | **可上传**；解析需 `PARSE_PDF_BACKEND=docling` 且安装 `[parse-docling]` |
+
+白名单实现：`app/rag/parse/upload_policy.py`（KB 与通用附件共用）。
 
 | 配置 | 说明 |
 |------|------|
@@ -253,7 +260,7 @@ OpenAPI：`/docs`（运行实例）。
 cd backend && pip install -e ".[parse-docling]"
 ```
 
-`docling` 模式下除 PDF 外还支持常见 Office/图片扩展名（见 `app/rag/parse/loaders.py` 中 `DOCLING_EXTENSIONS`）。扫描件 OCR、PaddleOCR 等列为后续扩展，不在当前 P0。
+`docling` 模式下除 PDF 外还可解析 `DOCLING_EXTENSIONS` 中的版式/图片扩展名；**API 上传白名单**已包含 Office 与多模态常用格式（见 `upload_policy.py`）。扫描件 OCR、PaddleOCR 等列为后续扩展，不在当前 P0。
 
 **分片（P1）**：Docling 导出 Markdown 后由 `MarkdownHeaderTextSplitter`（`#` / `##` / `###`）按标题切分，超长块再 `RecursiveCharacterTextSplitter`；分页通过 Docling `page_break_placeholder` 或按页导出写入 `DocumentChunk.page_no` 与向量 metadata。`pypdf` 多页 PDF 按页保留 `page_no`。
 

@@ -1,3 +1,5 @@
+"""运营端计费套餐与租户账单 HTTP API。"""
+
 from datetime import date
 from uuid import UUID
 

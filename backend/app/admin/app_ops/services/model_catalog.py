@@ -1,3 +1,5 @@
+"""运营端内置模型目录：发布/下架、平台 Key、与租户 ModelConfig 隔离。"""
+
 from uuid import UUID
 
 from sqlalchemy import select
@@ -38,6 +40,8 @@ def _admin_out(m: ModelConfig) -> ModelCatalogOut:
 
 
 class AdminModelCatalogService:
+    """管理 tenant_id IS NULL 的平台 ModelConfig（对话/向量化等能力类型）。"""
+
     def __init__(self, db: AsyncSession) -> None:
         self.db = db
 

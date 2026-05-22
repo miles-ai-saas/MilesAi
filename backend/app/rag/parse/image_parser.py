@@ -19,6 +19,7 @@ def parse_image(data: bytes, filename: str) -> str:
         header = f"[图片 OCR · {filename} · {width}x{height}]"
         return f"{header}\n\n{ocr_text.strip()}"
 
+    # 占位文本仍可分片入库，避免 ingest 失败；检索质量依赖后续安装 [multimodal]
     return (
         f"[图片 · {filename} · {width}x{height} · {mode}]\n"
         "未能识别图中文字。可安装 pytesseract 启用 OCR，或上传含文字层的 PDF/文档。"

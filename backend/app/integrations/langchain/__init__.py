@@ -34,7 +34,7 @@ def __getattr__(name: str):
 
         return getattr(emb, name)
     if name == "split_text":
-        from app.integrations.langchain.chunking import split_text
+        from app.rag.chunk import split_text
 
         return split_text
     if name in (
@@ -52,7 +52,7 @@ def __getattr__(name: str):
         "build_rag_user_prompt",
         "rag_answer",
     ):
-        from app.integrations.langchain import rag as rag_mod
+        from app.rag import generate as rag_gen
 
-        return getattr(rag_mod, name)
+        return getattr(rag_gen, name)
     raise AttributeError(name)

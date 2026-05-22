@@ -1,3 +1,5 @@
+"""运营能力路由：租户、计费、风控、审计、模型目录（挂载于 /api/admin/v1）。"""
+
 from fastapi import APIRouter
 
 from app.admin.app_ops.views import audit, billing, model_catalog, risk, tenants

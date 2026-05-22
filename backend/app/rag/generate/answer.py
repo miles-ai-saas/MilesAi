@@ -1,4 +1,7 @@
-"""RAG 检索增强生成（线性路径）。"""
+"""RAG 检索增强生成（线性路径，无 LangGraph）。
+
+多 KB 检索经 integrations.langchain.vectorstores → rag.retrieve.multi_kb。
+"""
 
 from __future__ import annotations
 

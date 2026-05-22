@@ -1,3 +1,5 @@
+"""全局配置（环境变量 / .env），供 API、Worker、RAG 解析与向量库共用。"""
+
 from functools import lru_cache
 from pathlib import Path
 
@@ -88,8 +90,9 @@ class Settings(BaseSettings):
     default_chunk_size: int = 500
     default_chunk_overlap: int = 50
 
-    # 解析：pypdf（轻量）| docling（PDF/Office 版式；需 milesai[parse-docling]）
+    # 解析：pypdf（默认）| docling（需 milesai[parse-docling]）；见 app.rag.parse.loaders
     parse_pdf_backend: str = "pypdf"
+    # docling 失败或未安装时，PDF 是否回退 pypdf（Office 无 docling 则直接报错）
     parse_docling_fallback_pypdf: bool = True
 
     @property

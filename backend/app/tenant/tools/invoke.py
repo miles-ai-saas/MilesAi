@@ -71,7 +71,7 @@ async def invoke_builtin(
         if not kb_id:
             raise BadRequestError("knowledge_search 需要 kb_id 参数")
         from app.infra.db import get_sync_db
-        from app.tenant.kb.services.kb_load import load_kb_sync
+        from app.rag.load import load_kb_sync
 
         with get_sync_db() as db:
             kb = load_kb_sync(db, ctx.tenant_id, UUID(str(kb_id)))

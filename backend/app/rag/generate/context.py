@@ -6,6 +6,7 @@ from typing import Any
 
 
 def format_hits_context(hits: list[dict[str, Any]]) -> str:
+    """拼进 LLM prompt；content_preview 与向量库字段一致，可能短于 PG chunk 全文。"""
     if not hits:
         return ""
     return "\n\n".join(

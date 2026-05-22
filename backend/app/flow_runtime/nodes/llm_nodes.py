@@ -1,3 +1,5 @@
+"""画布 LLM 节点：解析 ModelConfig 后走 integrations.langchain.chat_models。"""
+
 from typing import Any
 from uuid import UUID
 

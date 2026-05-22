@@ -1,3 +1,5 @@
+"""工作台首页聚合统计（KB/智能体/流程/任务等计数）。"""
+
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 

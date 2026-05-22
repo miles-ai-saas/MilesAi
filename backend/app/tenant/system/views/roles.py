@@ -1,3 +1,5 @@
+"""角色与权限 HTTP API。"""
+
 from uuid import UUID
 
 from fastapi import APIRouter, Depends

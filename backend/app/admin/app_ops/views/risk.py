@@ -1,3 +1,5 @@
+"""运营端风控 HTTP API。"""
+
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Request

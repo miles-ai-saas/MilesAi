@@ -1,3 +1,5 @@
+"""钩子定义与绑定 HTTP API（智能体/流程等 scope 挂载）。"""
+
 from uuid import UUID
 
 from fastapi import APIRouter, Depends

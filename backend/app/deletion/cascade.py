@@ -1,4 +1,7 @@
-"""逻辑外键场景下的级联删除 / 引用解除。"""
+"""逻辑外键场景下的级联删除 / 引用解除（无 DB 外键）。
+
+删 KB/Agent/Flow 前由 L1 服务调用，避免孤儿绑定与市场安装引用。
+"""
 
 from uuid import UUID
 
@@ -107,6 +110,7 @@ async def before_delete_agent(db: AsyncSession, agent_id: UUID) -> None:
 
 
 async def before_delete_kb(db: AsyncSession, kb_id: UUID) -> None:
+    """删库前：文档衍生数据由 delete_document 逐条清理；此处解绑 Agent 与市场引用。"""
     await unlink_agent_kb_bindings(db, kb_id=kb_id)
     await nullify_app_install_refs(db, kb_id=kb_id)
 

@@ -1,3 +1,5 @@
+"""提示词模板 HTTP API。"""
+
 from uuid import UUID
 
 from fastapi import APIRouter, Depends

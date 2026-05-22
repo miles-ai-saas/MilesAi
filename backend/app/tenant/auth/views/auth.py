@@ -1,3 +1,5 @@
+"""租户认证 HTTP API：登录、刷新、登出与当前用户信息。"""
+
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 

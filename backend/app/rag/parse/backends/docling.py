@@ -58,6 +58,7 @@ def markdown_pages_to_documents(
     if not text:
         return []
 
+    # 优先：整篇 export 时带分页占位符（metadata.page 为 0-based）
     if PAGE_BREAK_PLACEHOLDER in text:
         parts = [p.strip() for p in text.split(PAGE_BREAK_PLACEHOLDER) if p.strip()]
         if len(parts) > 1:
@@ -69,6 +70,7 @@ def markdown_pages_to_documents(
                 for idx, part in enumerate(parts)
             ]
 
+    # 次选：按页 export（大 PDF 上 page_no 参数可能有 docling 已知问题，故占位符优先）
     pages = getattr(dl_doc, "pages", None) if dl_doc is not None else None
     page_count = len(pages) if pages else 0
     if page_count > 1 and hasattr(dl_doc, "export_to_markdown"):

@@ -1,3 +1,5 @@
+"""角色与权限 CRUD（RBAC permission code 供 require_permissions 使用）。"""
+
 from uuid import UUID
 
 from sqlalchemy import func, or_, select

@@ -1,3 +1,5 @@
+"""A2A 外部智能体 Peer：登记、Agent Card 同步与连通性探测。"""
+
 from uuid import UUID
 
 from fastapi import APIRouter, Depends

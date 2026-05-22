@@ -1,4 +1,8 @@
-"""文本分片：RecursiveCharacter / Markdown 标题 / LangChain Document 路由。"""
+"""文本分片：RecursiveCharacter / Markdown 标题 / LangChain Document 路由。
+
+按 metadata.parser 选择策略：docling→标题+长度；pypdf 多页→按页再切；其余→合并后 RecursiveCharacter。
+chunk_size/overlap 为字符数（非 token），与 KB 创建时配置一致。
+"""
 
 from __future__ import annotations
 
@@ -124,12 +128,14 @@ def chunk_documents(
         return []
 
     parser = (non_empty[0].metadata or {}).get("parser")
+    # Docling 每页/每段常为 Markdown，先保留标题边界再限制长度
     if parser == "docling":
         pieces: list[TextChunk] = []
         for doc in non_empty:
             pieces.extend(_chunk_markdown_document(doc, chunk_size=size, overlap=ov))
         return pieces
 
+    # PyPDFLoader 一页一个 Document，避免跨页拼接后再切导致页码丢失
     if len(non_empty) > 1 and all((d.metadata or {}).get("parser") == "pypdf" for d in non_empty):
         pieces = []
         for doc in non_empty:

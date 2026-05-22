@@ -1,3 +1,5 @@
+"""Skill 包 HTTP API。"""
+
 from uuid import UUID
 
 from fastapi import APIRouter, Depends

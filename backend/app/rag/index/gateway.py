@@ -1,4 +1,8 @@
-"""知识库分片向量索引门面（tenant/kb/chunk 语义）。"""
+"""知识库分片向量索引门面（L2）。
+
+业务侧 upsert/search/delete 统一由此模块调用；底层客户端为 infra.vector_store（Weaviate/Milvus/pgvector）。
+勿从 infra.vector_store 导入 upsert_chunk_vector / search_vectors。
+"""
 
 from __future__ import annotations
 

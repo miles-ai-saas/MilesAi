@@ -1,3 +1,5 @@
+"""模型供应商 HTTP API：内置目录、租户自定义模型与 BYOK 凭证。"""
+
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query

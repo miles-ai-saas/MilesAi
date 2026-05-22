@@ -1,4 +1,7 @@
-"""ModelConfig → LiteLLM 调用参数与 acompletion 封装。"""
+"""ModelConfig → LiteLLM 调用参数与 acompletion 封装（L3 对话/部分 embedding）。
+
+向量化 local 路径不走 LiteLLM，见 integrations.embeddings.runtime。
+"""
 
 from __future__ import annotations
 

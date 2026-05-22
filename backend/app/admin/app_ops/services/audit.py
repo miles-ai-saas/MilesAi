@@ -1,3 +1,5 @@
+"""运营端审计：管理员操作写库与分页查询。"""
+
 from uuid import UUID
 
 from fastapi import Request
@@ -20,6 +22,7 @@ async def write_audit_log(
     request: Request | None = None,
     detail: dict | None = None,
 ) -> None:
+    """视图层在变更成功后调用，记录操作者与 Request 元数据。"""
     await AuditLogRepository(db).append(
         admin_id=admin_id,
         action=action,
@@ -32,6 +35,8 @@ async def write_audit_log(
 
 
 class AdminAuditService:
+    """运营审计日志只读列表。"""
+
     def __init__(self, db: AsyncSession) -> None:
         self.repo = AuditLogRepository(db)
 

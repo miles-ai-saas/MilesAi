@@ -1,3 +1,5 @@
+"""运营端计费：套餐定义与租户账单生成/查询。"""
+
 from datetime import date
 from decimal import Decimal
 from uuid import UUID
@@ -20,6 +22,8 @@ from app.common.schema import PageParams, PageResult
 
 
 class AdminBillingService:
+    """套餐 CRUD 与按月生成租户账单。"""
+
     def __init__(self, db: AsyncSession) -> None:
         self.db = db
         self.plans = BillingPlanRepository(db)

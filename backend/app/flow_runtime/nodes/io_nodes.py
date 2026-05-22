@@ -1,3 +1,5 @@
+"""画布 I/O 节点：从 RunContext.inputs 读入、向上游汇聚写出。"""
+
 from typing import Any
 
 from app.flow_runtime.types import RunContext

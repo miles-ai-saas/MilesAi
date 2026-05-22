@@ -1,4 +1,7 @@
-"""LangChain Embeddings：知识库绑定 ModelConfig（model_type=embedding）。"""
+"""LangChain Embeddings：知识库绑定 ModelConfig（model_type=embedding）。
+
+向量维度须与 kb.embedding_dimension 一致；入库/检索均通过本模块按 KB 解析模型配置。
+"""
 
 from __future__ import annotations
 

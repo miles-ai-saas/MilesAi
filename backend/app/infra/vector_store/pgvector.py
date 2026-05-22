@@ -8,7 +8,7 @@ from uuid import UUID
 
 from app.core.config import get_settings
 from app.infra.vector_store.base import ChunkVectorRecord, validate_dimension
-from app.infra.vector_store.documents import (
+from app.integrations.langchain.vector.documents import (
     distance_pairs_to_hits,
     pg_metadata_filter,
 )

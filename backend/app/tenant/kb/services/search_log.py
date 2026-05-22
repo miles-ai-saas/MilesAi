@@ -1,4 +1,4 @@
-"""知识库检索日志写入。"""
+"""知识库检索日志写入（工作台检索 API / Agent multi_kb 可选回调）。"""
 
 from __future__ import annotations
 

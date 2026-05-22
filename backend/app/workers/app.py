@@ -1,3 +1,5 @@
+"""Celery 应用：ingest 走 parse 队列，与 API 共享同一套 app 代码与配置。"""
+
 from celery import Celery
 
 from app.core.config import get_settings
@@ -21,6 +23,7 @@ celery_app.conf.update(
     task_acks_late=True,
     worker_prefetch_multiplier=1,
     task_default_queue="default",
+    # ingest_document 实际消费 parse/default；ocr/embed 队列预留扩展
     task_routes={
         "app.workers.tasks.ingest.*": {"queue": "parse"},
         "app.workers.tasks.ocr.*": {"queue": "ocr"},

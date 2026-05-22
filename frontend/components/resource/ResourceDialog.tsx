@@ -6,6 +6,7 @@ import type { ReactNode } from "react";
 type Props = {
   open: boolean;
   title: string;
+  description?: string;
   onClose: () => void;
   children: ReactNode;
   footer?: ReactNode;
@@ -16,6 +17,7 @@ type Props = {
 export function ResourceDialog({
   open,
   title,
+  description,
   onClose,
   children,
   footer,
@@ -69,9 +71,12 @@ export function ResourceDialog({
           size === "lg" ? "max-w-3xl" : "max-w-lg"
         }`}
       >
-        <div className="mb-4 flex shrink-0 items-center justify-between">
-          <h2 className="text-lg font-semibold text-ink">{title}</h2>
-          <button type="button" onClick={onClose} className="btn-ghost text-ink-faint">
+        <div className="mb-4 flex shrink-0 items-start justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold text-ink">{title}</h2>
+            {description && <p className="mt-1 text-sm text-ink-muted">{description}</p>}
+          </div>
+          <button type="button" onClick={onClose} className="btn-ghost shrink-0 text-ink-faint">
             ✕
           </button>
         </div>

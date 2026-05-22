@@ -1,3 +1,8 @@
+"""智能体 CRUD 与对话编排（L2）。
+
+chat 优先级：A2A Host → 子智能体规划 → A2A 增强 → 已发布流程 → RAG（LangGraph 或线性）。
+"""
+
 from __future__ import annotations
 
 from uuid import UUID
@@ -287,6 +292,7 @@ class AgentService(BaseService):
         await mark_deleted(self.db, agent)
 
     async def chat(self, agent_id: UUID, body: ChatRequest) -> ChatResponse:
+        """租户侧智能体对话入口：合规与 Hook 包裹整条调用链。"""
         agent = await self._get_agent_or_raise(agent_id)
         if agent.status != AgentStatus.ENABLED:
             raise BadRequestError("智能体已禁用")
@@ -480,6 +486,7 @@ class AgentService(BaseService):
         agent_id: UUID,
         hooks: HookRunner,
     ) -> ChatResponse:
+        """绑定 KB 时：LangGraph RAG（可配置）或线性 rag_answer。"""
         if not kb_ids:
             return await self._direct_chat(agent, body, agent_id, hooks)
 
@@ -498,6 +505,7 @@ class AgentService(BaseService):
                 },
             )
             temperature = float((agent.config or {}).get("temperature", 0.7))
+            # 默认 LangGraph：检索 → 相关性评分 → 可选重试放大 top_k → 生成/兜底
             if should_use_langgraph_rag(agent, kb_ids=kb_ids):
                 answer, all_hits, steps = await run_rag_workflow(
                     model=agent.model_config,

@@ -1,4 +1,4 @@
-"""LangGraph 状态定义。"""
+"""LangGraph 状态定义（RAG QA 图节点间传递的 TypedDict）。"""
 
 from __future__ import annotations
 
@@ -7,6 +7,8 @@ from typing import Annotated, Any, TypedDict
 
 
 class RAGGraphState(TypedDict, total=False):
+    """retrieve → grade → generate 链路；steps 用 operator.add 累积审计步骤。"""
+
     query: str
     system_prompt: str
     kb_ids: list[str]

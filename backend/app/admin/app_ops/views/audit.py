@@ -1,3 +1,5 @@
+"""运营端管理员操作审计查询 API。"""
+
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 

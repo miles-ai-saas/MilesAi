@@ -1,3 +1,5 @@
+"""Celery 任务记录：与文档 ingest 等异步作业状态同步。"""
+
 from uuid import UUID
 
 from sqlalchemy import func, select

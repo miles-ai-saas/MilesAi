@@ -1,3 +1,5 @@
+"""流程 HTTP API：CRUD、保存画布、发布、试运行与编译诊断。"""
+
 from uuid import UUID
 
 from fastapi import APIRouter, Depends

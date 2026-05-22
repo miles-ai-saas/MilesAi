@@ -1,3 +1,5 @@
+"""智能体 HTTP API：配置 CRUD 与对话（RAG/流程/A2A/子智能体由 Service 编排）。"""
+
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query

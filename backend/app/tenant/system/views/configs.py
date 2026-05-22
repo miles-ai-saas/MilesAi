@@ -1,3 +1,5 @@
+"""系统配置项 HTTP API（如 ingest.max_file_mb）。"""
+
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 

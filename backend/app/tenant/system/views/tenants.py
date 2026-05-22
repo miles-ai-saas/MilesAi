@@ -1,3 +1,5 @@
+"""当前租户信息 HTTP API（超管可切换查看）。"""
+
 from uuid import UUID
 
 from fastapi import APIRouter, Depends

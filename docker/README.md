@@ -99,3 +99,33 @@ cd ../backend && python cli.py init-db
 ```
 
 详见 [docs/operations/database-setup.md](../docs/operations/database-setup.md)。
+
+## Celery Worker（知识库入库）
+
+| 项 | 说明 |
+|----|------|
+| 容器 | `milesai-worker`（`docker-compose.yml` → `worker`） |
+| 命令 | `celery -A app.workers.app worker -Q default,parse,ocr,asr,embed` |
+| 主任务 | `ingest_document`：下载对象 → `app.rag.pipeline.run_ingest_pipeline` |
+| 与 API | **须能访问** PostgreSQL、Redis、MinIO、向量库（`VECTOR_STORE_BACKEND` 与 `.env` 一致） |
+
+队列名 `parse` / `ocr` / `asr` / `embed` 为历史划分，当前入库逻辑集中在 `ingest_document`；消费 `embed`（及 `default`）即可跑通知识库。
+
+### RAG 可选依赖（Worker 镜像）
+
+默认 `docker/images/worker/Dockerfile` 仅 `pip install -e /app/backend`（**pypdf + 文本 + 图/音占位**）。需要下列能力时，在镜像构建阶段安装 extras（**API 与 Worker 应保持一致**）：
+
+| Extra | 安装 | 能力 |
+|-------|------|------|
+| `parse-docling` | `pip install -e "/app/backend[parse-docling]"` | `PARSE_PDF_BACKEND=docling`，PDF/Office 版式 |
+| `multimodal` | `pip install -e "/app/backend[multimodal]"` | 图 OCR（pytesseract）、音 Whisper 转写 |
+
+示例（修改 `docker/images/worker/Dockerfile` 中 pip 行后 `--build`）：
+
+```dockerfile
+RUN pip install --no-cache-dir -e "/app/backend[parse-docling,multimodal]"
+```
+
+`.env` 解析相关变量见 `backend/.env.example`（`PARSE_PDF_BACKEND`、`PARSE_DOCLING_FALLBACK_PYPDF`）。
+
+**实现说明**（非 PRD 全量）：[docs/guides/knowledge-base.md](../docs/guides/knowledge-base.md)、[docs/architecture/layering.md](../docs/architecture/layering.md)。

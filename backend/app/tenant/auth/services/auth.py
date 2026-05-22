@@ -1,3 +1,5 @@
+"""租户用户登录、JWT 签发与 Redis 会话。"""
+
 from uuid import UUID
 
 from sqlalchemy import select
@@ -19,6 +21,8 @@ SESSION_TTL_SECONDS = 60 * 60 * 24 * 7
 
 
 class AuthService(BaseService):
+    """access/refresh 双令牌；登出清除 Redis session。"""
+
     def __init__(self, db: AsyncSession, ctx: TenantContext | None = None) -> None:
         super().__init__(db, ctx)
         self.users = UserRepository(db)

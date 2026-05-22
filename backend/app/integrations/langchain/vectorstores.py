@@ -1,4 +1,7 @@
-"""LangChain 向量检索适配：检索向量按知识库绑定的 ModelConfig 生成。"""
+"""LangChain 向量检索适配（L3）：按 KB 生成 query 向量后委托 rag.retrieve.multi_kb。
+
+Agent/流程/工具应优先本模块或 rag.generate.retrieve_hits，勿直接拼向量库 Filter。
+"""
 
 from __future__ import annotations
 

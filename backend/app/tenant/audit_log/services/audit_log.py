@@ -1,3 +1,5 @@
+"""租户操作审计写库与分页查询（与运营端 admin 审计分离）。"""
+
 from uuid import UUID
 
 from fastapi import Request

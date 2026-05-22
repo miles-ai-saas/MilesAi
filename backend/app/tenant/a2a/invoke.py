@@ -137,6 +137,7 @@ async def execute_a2a_calls(
     *,
     steps: list[dict],
 ) -> list[str]:
+    """按规划项依次 JSON-RPC 调用外部 Peer，返回可拼进 synthesize 的文本块。"""
     blocks: list[str] = []
     ref_by_peer = {str(r.peer_id): r for r in refs if r.peer}
 

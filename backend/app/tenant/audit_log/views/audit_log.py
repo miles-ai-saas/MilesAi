@@ -1,3 +1,5 @@
+"""租户侧操作审计日志查询 API。"""
+
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query

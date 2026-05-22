@@ -1,3 +1,5 @@
+"""运营端风控：风险事件、IP 黑名单与限流规则。"""
+
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -19,6 +21,8 @@ from app.common.schema import PageParams, PageResult
 
 
 class AdminRiskService:
+    """风控事件查询与黑名单/限流规则维护。"""
+
     def __init__(self, db: AsyncSession) -> None:
         self.db = db
         self.risk_events = RiskEventRepository(db)

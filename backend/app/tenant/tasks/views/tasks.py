@@ -1,3 +1,5 @@
+"""异步任务 HTTP API：Celery 任务记录查询、取消与重试。"""
+
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 

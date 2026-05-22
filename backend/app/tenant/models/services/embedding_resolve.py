@@ -39,6 +39,7 @@ def _load_tenant_credential_sync(
 
 
 def _apply_builtin_credential(model: ModelConfig, cred: ModelTenantCredential | None) -> ModelConfig:
+    """内置模型：合并租户 BYOK；local 模式不要求 api_key。"""
     effective = copy(model)
     if cred:
         if cred.api_base:
@@ -103,6 +104,7 @@ async def resolve_embedding_model(
     model: ModelConfig,
     tenant_id: UUID,
 ) -> ModelConfig:
+    """入库/检索前解析「有效」ModelConfig（含密钥与租户权限）。"""
     ensure_embedding_model_type(model)
     if not model.is_active:
         raise BadRequestError("向量化模型已停用")

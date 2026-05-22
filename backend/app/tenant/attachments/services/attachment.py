@@ -1,10 +1,12 @@
+"""通用附件：不占知识库文档表，仍计入租户存储配额；key 与 KB 文档路径分离。"""
+
 from uuid import UUID
 
 from fastapi import UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import ColumnElement
 
-from app.rag.parse import file_extension, is_audio_file, is_image_file
+from app.rag.parse.upload_policy import is_kb_upload_allowed, kb_upload_allowed_hint
 from app.common.exceptions import BadRequestError, NotFoundError
 from app.core.config import get_settings
 from app.core.service import BaseService
@@ -18,47 +20,6 @@ from app.tenant.kb.services.quota import apply_storage_delta, assert_can_upload_
 from app.common.schema import PageParams, PageResult
 
 settings = get_settings()
-
-ALLOWED_MIMES = {
-    "text/plain",
-    "text/markdown",
-    "application/pdf",
-    "application/octet-stream",
-    "image/jpeg",
-    "image/jpg",
-    "image/png",
-    "image/webp",
-    "audio/mpeg",
-    "audio/mp3",
-    "audio/wav",
-    "audio/x-wav",
-    "audio/webm",
-    "audio/ogg",
-}
-
-_ALLOWED_EXTENSIONS = {
-    ".txt",
-    ".md",
-    ".markdown",
-    ".pdf",
-    ".jpg",
-    ".jpeg",
-    ".png",
-    ".webp",
-    ".mp3",
-    ".wav",
-    ".m4a",
-    ".ogg",
-    ".webm",
-}
-
-
-def _is_allowed_upload(filename: str, mime: str) -> bool:
-    ext = file_extension(filename)
-    if mime in ALLOWED_MIMES or ext in _ALLOWED_EXTENSIONS:
-        return True
-    return is_image_file(filename, mime) or is_audio_file(filename, mime)
-
 
 class AttachmentService(BaseService):
     def __init__(self, db: AsyncSession, ctx: TenantContext) -> None:
@@ -106,10 +67,9 @@ class AttachmentService(BaseService):
         content = await file.read()
         await assert_can_upload_bytes(self.db, self.ctx.tenant_id, len(content))
         mime = file.content_type or "application/octet-stream"
-        if not _is_allowed_upload(file.filename, mime):
+        if not is_kb_upload_allowed(file.filename, mime):
             raise BadRequestError(
-                f"不支持的文件类型: {mime}。"
-                "支持 TXT/MD/PDF、图片（JPG/PNG/WebP）、音频（MP3/WAV）"
+                f"不支持的文件类型: {mime}。{kb_upload_allowed_hint()}"
             )
 
         att = await self.repo.create(
