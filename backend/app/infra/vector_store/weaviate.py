@@ -114,6 +114,47 @@ class WeaviateVectorStore:
             )
         return hits
 
+    def search_hybrid(
+        self,
+        query: str,
+        *,
+        query_vector: list[float],
+        tenant_id: UUID,
+        kb_id: UUID | None = None,
+        limit: int = 10,
+        alpha: float = 0.5,
+    ) -> list[dict[str, Any]]:
+        """向量 + BM25 混合检索（alpha：1=纯向量，0=纯关键词）。"""
+        self.ensure_schema(len(query_vector))
+        collection = self._client().collections.get(CLASS_NAME)
+        filters = Filter.by_property("tenant_id").equal(str(tenant_id))
+        if kb_id:
+            filters = filters & Filter.by_property("kb_id").equal(str(kb_id))
+        result = collection.query.hybrid(
+            query=query,
+            vector=query_vector,
+            alpha=max(0.0, min(1.0, alpha)),
+            limit=limit,
+            filters=filters,
+            return_metadata=MetadataQuery(score=True),
+        )
+        hits: list[dict[str, Any]] = []
+        for obj in result.objects:
+            props = obj.properties or {}
+            score = float(obj.metadata.score) if obj.metadata and obj.metadata.score else 0.0
+            hits.append(
+                {
+                    "vector_id": str(obj.uuid),
+                    "chunk_id": props.get("chunk_id"),
+                    "document_id": props.get("document_id"),
+                    "content_preview": props.get("content_preview"),
+                    "score": score,
+                    "score_vector": score,
+                    "score_keyword": None,
+                }
+            )
+        return hits
+
     def delete_by_document(self, document_id: UUID) -> None:
         client = self._client()
         if not client.collections.exists(CLASS_NAME):

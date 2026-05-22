@@ -11,7 +11,9 @@ from app.tenant.mcp.models import McpService, McpStatus
 from app.tenant.prompts.models import PromptTemplate
 from app.tenant.skills.models import SkillPackage
 from app.models.flow import Flow, FlowStatus, FlowVersion
+from app.models.attachment import Attachment
 from app.models.kb import Document, DocumentChunk, DocumentStatus, KnowledgeBase, VectorRef
+from app.models.kb_search_log import KbSearchLog
 from app.tenant.marketplace.models import (
     AppCategory,
     AppInstall,
@@ -40,6 +42,8 @@ __all__ = [
     "DocumentChunk",
     "DocumentStatus",
     "VectorRef",
+    "KbSearchLog",
+    "Attachment",
     "Agent",
     "AgentStatus",
     "AgentSubAgentBinding",

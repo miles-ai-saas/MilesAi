@@ -10,6 +10,7 @@ import type {
   ChatResponse,
   ConfigDefinition,
   CustomTool,
+  Attachment,
   Document,
   Flow,
   FlowGraph,
@@ -18,6 +19,8 @@ import type {
   HookDefinition,
   InterceptLog,
   KnowledgeBase,
+  KbQuota,
+  KbSearchLog,
   MarketplaceApp,
   MarketplaceAppDetail,
   ModelConfig,
@@ -274,6 +277,8 @@ export const api = {
       ...(opts?.useLanggraph ? { use_langgraph: true } : {}),
     }),
 
+  getKbQuota: () => get<KbQuota>("/kb/quota"),
+
   listKbs: (page = 1, size = DEFAULT_PAGE_SIZE) =>
     getPage<KnowledgeBase>(`/kb?${buildPageQuery(page, size)}`),
   createKb: (payload: {
@@ -282,6 +287,8 @@ export const api = {
     embedding_model_config_id?: string;
     chunk_size?: number;
     chunk_overlap?: number;
+    retrieval_mode?: "vector" | "hybrid";
+    hybrid_alpha?: number;
     is_public?: boolean;
   }) => post<KnowledgeBase>("/kb", payload),
   updateKb: (
@@ -291,6 +298,8 @@ export const api = {
       description?: string | null;
       chunk_size?: number;
       chunk_overlap?: number;
+      retrieval_mode?: "vector" | "hybrid";
+      hybrid_alpha?: number;
       is_public?: boolean;
     },
   ) => patch<KnowledgeBase>(`/kb/${kbId}`, payload),
@@ -375,11 +384,58 @@ export const api = {
   },
   retryDocument: (kbId: string, documentId: string) =>
     post<Document>(`/kb/${kbId}/documents/${documentId}/retry`),
-  searchKb: (kbId: string, query: string, top_k = 5) =>
-    post<{ query: string; hits: { content: string; score: number; filename?: string }[] }>(
-      `/kb/${kbId}/search`,
-      { query, top_k }
-    ),
+  searchKb: (
+    kbId: string,
+    query: string,
+    opts?: { top_k?: number; mode?: "default" | "vector" | "hybrid" },
+  ) =>
+    post<{
+      query: string;
+      mode: string;
+      hits: {
+        content: string;
+        score: number;
+        score_vector?: number | null;
+        score_keyword?: number | null;
+        filename?: string;
+      }[];
+    }>(`/kb/${kbId}/search`, {
+      query,
+      top_k: opts?.top_k ?? 5,
+      mode: opts?.mode ?? "default",
+    }),
+
+  listKbSearchLogs: (kbId: string, page = 1, size = DEFAULT_PAGE_SIZE) =>
+    getPage<KbSearchLog>(`/kb/${kbId}/search-logs?${buildPageQuery(page, size)}`),
+
+  listAttachments: (
+    page = 1,
+    size = DEFAULT_PAGE_SIZE,
+    opts?: { purpose?: string; resource_type?: string; resource_id?: string },
+  ) => {
+    const q = new URLSearchParams(buildPageQuery(page, size));
+    if (opts?.purpose) q.set("purpose", opts.purpose);
+    if (opts?.resource_type) q.set("resource_type", opts.resource_type);
+    if (opts?.resource_id) q.set("resource_id", opts.resource_id);
+    return getPage<Attachment>(`/attachments?${q.toString()}`);
+  },
+  uploadAttachment: async (
+    file: File,
+    opts?: { purpose?: string; resource_type?: string; resource_id?: string },
+  ) => {
+    const form = new FormData();
+    form.append("file", file);
+    if (opts?.purpose) form.append("purpose", opts.purpose);
+    if (opts?.resource_type) form.append("resource_type", opts.resource_type);
+    if (opts?.resource_id) form.append("resource_id", opts.resource_id);
+    const res = await http.post<ApiResponse<Attachment>>("/attachments", form, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+    return unwrap(res.data);
+  },
+  getAttachment: (id: string) => get<Attachment>(`/attachments/${id}`),
+  deleteAttachment: (id: string) =>
+    http.delete(`/attachments/${id}`).then(() => undefined),
 
   listHooks: (page = 1, size = DEFAULT_PAGE_SIZE) =>
     getPage<HookDefinition>(`/hooks?${buildPageQuery(page, size)}`),

@@ -34,6 +34,8 @@ export default function KbPage() {
   const [chunkOverlap, setChunkOverlap] = useState(DEFAULT_CHUNK_OVERLAP);
   const [embeddingModels, setEmbeddingModels] = useState<ModelConfig[]>([]);
   const [embeddingModelId, setEmbeddingModelId] = useState("");
+  const [retrievalMode, setRetrievalMode] = useState<"vector" | "hybrid">("vector");
+  const [hybridAlpha, setHybridAlpha] = useState(0.5);
 
   const list = usePagedList(useCallback((p, s) => api.listKbs(p, s), []), { enabled: ready });
 
@@ -60,6 +62,8 @@ export default function KbPage() {
     setChunkSize(DEFAULT_CHUNK_SIZE);
     setChunkOverlap(DEFAULT_CHUNK_OVERLAP);
     setEmbeddingModelId(embeddingModels[0]?.id || "");
+    setRetrievalMode("vector");
+    setHybridAlpha(0.5);
     setDialogOpen(true);
   };
 
@@ -69,6 +73,8 @@ export default function KbPage() {
     setDescription(kb.description ?? "");
     setChunkSize(kb.chunk_size ?? DEFAULT_CHUNK_SIZE);
     setChunkOverlap(kb.chunk_overlap ?? DEFAULT_CHUNK_OVERLAP);
+    setRetrievalMode(kb.retrieval_mode === "hybrid" ? "hybrid" : "vector");
+    setHybridAlpha(kb.hybrid_alpha ?? 0.5);
     setDialogOpen(true);
   };
 
@@ -79,6 +85,8 @@ export default function KbPage() {
         description: description || null,
         chunk_size: chunkSize,
         chunk_overlap: chunkOverlap,
+        retrieval_mode: retrievalMode,
+        hybrid_alpha: hybridAlpha,
       });
     } else {
       await api.createKb({
@@ -87,6 +95,8 @@ export default function KbPage() {
         embedding_model_config_id: embeddingModelId || undefined,
         chunk_size: chunkSize,
         chunk_overlap: chunkOverlap,
+        retrieval_mode: retrievalMode,
+        hybrid_alpha: hybridAlpha,
       });
     }
     setDialogOpen(false);
@@ -231,6 +241,31 @@ export default function KbPage() {
             向量化模型：{editing.embedding_model_name ?? "—"}（{editing.embedding_dimension}{" "}
             维），创建后不可修改。
           </p>
+        )}
+        <label className="block text-xs text-ink-muted">
+          检索策略
+          <select
+            className="input-field mt-1 w-full"
+            value={retrievalMode}
+            onChange={(e) => setRetrievalMode(e.target.value as "vector" | "hybrid")}
+          >
+            <option value="vector">纯语义向量</option>
+            <option value="hybrid">混合（向量 + 关键词）</option>
+          </select>
+        </label>
+        {retrievalMode === "hybrid" && (
+          <label className="block text-xs text-ink-muted">
+            混合权重 α
+            <input
+              type="number"
+              min={0}
+              max={1}
+              step={0.05}
+              className="input-field mt-1 w-full"
+              value={hybridAlpha}
+              onChange={(e) => setHybridAlpha(Number(e.target.value))}
+            />
+          </label>
         )}
       </ResourceDialog>
     </>

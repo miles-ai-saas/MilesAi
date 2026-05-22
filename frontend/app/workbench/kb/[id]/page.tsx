@@ -21,11 +21,21 @@ export default function KbDetailPage() {
   const [editDesc, setEditDesc] = useState("");
   const [editChunkSize, setEditChunkSize] = useState(500);
   const [editChunkOverlap, setEditChunkOverlap] = useState(50);
+  const [editRetrievalMode, setEditRetrievalMode] = useState<"vector" | "hybrid">("vector");
+  const [editHybridAlpha, setEditHybridAlpha] = useState(0.5);
   const [uploading, setUploading] = useState(false);
   const [retryingId, setRetryingId] = useState<string | null>(null);
   const [searchQ, setSearchQ] = useState("");
+  const [searchMode, setSearchMode] = useState<"default" | "vector" | "hybrid">("default");
+  const [searchResultMode, setSearchResultMode] = useState("");
   const [searchHits, setSearchHits] = useState<
-    { content: string; score: number; filename?: string }[]
+    {
+      content: string;
+      score: number;
+      score_vector?: number | null;
+      score_keyword?: number | null;
+      filename?: string;
+    }[]
   >([]);
   const [msg, setMsg] = useState("");
 
@@ -60,6 +70,8 @@ export default function KbDetailPage() {
     setEditDesc(kb.description ?? "");
     setEditChunkSize(kb.chunk_size ?? 500);
     setEditChunkOverlap(kb.chunk_overlap ?? 50);
+    setEditRetrievalMode(kb.retrieval_mode === "hybrid" ? "hybrid" : "vector");
+    setEditHybridAlpha(kb.hybrid_alpha ?? 0.5);
     setSettingsOpen(true);
   };
 
@@ -70,6 +82,8 @@ export default function KbDetailPage() {
       description: editDesc || null,
       chunk_size: editChunkSize,
       chunk_overlap: editChunkOverlap,
+      retrieval_mode: editRetrievalMode,
+      hybrid_alpha: editHybridAlpha,
     });
     setKb(updated);
     setSettingsOpen(false);
@@ -116,14 +130,9 @@ export default function KbDetailPage() {
 
   const onSearch = async () => {
     if (!searchQ.trim()) return;
-    const res = await api.searchKb(id, searchQ.trim());
-    setSearchHits(
-      res.hits.map((h) => ({
-        content: h.content,
-        score: h.score,
-        filename: h.filename,
-      })),
-    );
+    const res = await api.searchKb(id, searchQ.trim(), { mode: searchMode });
+    setSearchResultMode(res.mode);
+    setSearchHits(res.hits);
   };
 
   const onDelete = async (docId: string) => {
@@ -152,7 +161,8 @@ export default function KbDetailPage() {
             <p className="text-sm text-ink-muted">{kb.description || "无描述"}</p>
             <p className="mt-2 text-xs text-ink-faint">
               向量：{kb.embedding_model_name ?? "—"} · {kb.embedding_dimension} 维 · 分片 {kb.chunk_size}/
-              {kb.chunk_overlap}
+              {kb.chunk_overlap} · 检索 {kb.retrieval_mode === "hybrid" ? "混合" : "语义"}
+              {kb.retrieval_mode === "hybrid" ? ` (α=${kb.hybrid_alpha ?? 0.5})` : ""}
             </p>
           </div>
           <div className="flex shrink-0 gap-2">
@@ -247,23 +257,37 @@ export default function KbDetailPage() {
 
       <section className="rounded-xl border border-line bg-surface p-4 shadow-card">
         <h2 className="text-sm font-semibold">检索测试</h2>
-        <div className="mt-2 flex gap-2">
+        <div className="mt-2 flex flex-wrap gap-2">
           <input
-            className="input-field flex-1"
+            className="input-field min-w-[12rem] flex-1"
             value={searchQ}
             onChange={(e) => setSearchQ(e.target.value)}
             placeholder="输入问题"
             onKeyDown={(e) => e.key === "Enter" && onSearch()}
           />
+          <select
+            className="input-field w-auto"
+            value={searchMode}
+            onChange={(e) => setSearchMode(e.target.value as typeof searchMode)}
+          >
+            <option value="default">按库配置</option>
+            <option value="vector">纯语义</option>
+            <option value="hybrid">混合</option>
+          </select>
           <button type="button" onClick={onSearch} className="btn-primary">
             检索
           </button>
         </div>
+        {searchResultMode && (
+          <p className="mt-2 text-xs text-ink-faint">实际模式：{searchResultMode}</p>
+        )}
         <ul className="mt-3 space-y-2 text-xs text-ink-muted">
           {searchHits.map((h, i) => (
             <li key={i} className="rounded bg-surface-muted p-2">
               <span className="text-ink-faint">
-                [{h.score.toFixed(2)}]
+                [{h.score.toFixed(3)}]
+                {h.score_vector != null ? ` V:${h.score_vector.toFixed(2)}` : ""}
+                {h.score_keyword != null ? ` K:${h.score_keyword.toFixed(2)}` : ""}
                 {h.filename ? ` ${h.filename}` : ""}
               </span>{" "}
               {h.content}
@@ -323,6 +347,31 @@ export default function KbDetailPage() {
             />
           </label>
         </div>
+        <label className="block text-xs text-ink-muted">
+          检索策略
+          <select
+            className="input-field mt-1 w-full"
+            value={editRetrievalMode}
+            onChange={(e) => setEditRetrievalMode(e.target.value as "vector" | "hybrid")}
+          >
+            <option value="vector">纯语义向量</option>
+            <option value="hybrid">混合（向量 + 关键词）</option>
+          </select>
+        </label>
+        {editRetrievalMode === "hybrid" && (
+          <label className="block text-xs text-ink-muted">
+            混合权重 α（Weaviate：1=偏向量，0=偏关键词）
+            <input
+              type="number"
+              min={0}
+              max={1}
+              step={0.05}
+              className="input-field mt-1 w-full"
+              value={editHybridAlpha}
+              onChange={(e) => setEditHybridAlpha(Number(e.target.value))}
+            />
+          </label>
+        )}
         <p className="text-xs text-ink-faint">
           向量化模型 {kb.embedding_model_name ?? "—"}（{kb.embedding_dimension} 维）创建后不可修改。
         </p>

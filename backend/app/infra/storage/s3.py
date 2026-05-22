@@ -87,3 +87,7 @@ class S3CompatibleObjectStorage:
 
 def build_object_key(tenant_id: str, kb_id: str, document_id: str, filename: str) -> str:
     return f"{tenant_id}/{kb_id}/{document_id}/{filename}"
+
+
+def build_attachment_object_key(tenant_id: str, attachment_id: str, filename: str) -> str:
+    return f"{tenant_id}/attachments/{attachment_id}/{filename}"

@@ -278,6 +278,8 @@ export interface KnowledgeBase {
   embedding_dimension: number;
   chunk_size?: number;
   chunk_overlap?: number;
+  retrieval_mode?: "vector" | "hybrid";
+  hybrid_alpha?: number;
   created_at?: string;
 }
 
@@ -295,6 +297,44 @@ export interface Document {
   file_size: number;
   status: string;
   fail_reason?: string | null;
+  created_at: string;
+}
+
+export interface KbQuota {
+  used_knowledge_bases: number;
+  max_knowledge_bases: number;
+  used_storage_mb: number;
+  max_storage_mb: number;
+  max_file_mb: number;
+}
+
+export interface KbSearchLog {
+  id: string;
+  tenant_id: string;
+  kb_id: string | null;
+  kb_ids: string[] | null;
+  query: string;
+  top_k: number;
+  hit_count: number;
+  latency_ms: number;
+  retrieval_mode: string;
+  source: string;
+  actor_user_id: string | null;
+  agent_id: string | null;
+  created_at: string;
+}
+
+export interface Attachment {
+  id: string;
+  tenant_id: string;
+  uploaded_by: string;
+  filename: string;
+  mime_type: string;
+  file_size: number;
+  object_bucket: string;
+  purpose: string;
+  resource_type: string | null;
+  resource_id: string | null;
   created_at: string;
 }
 

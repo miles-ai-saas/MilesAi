@@ -17,6 +17,8 @@
 
 **本期不做（可单独立项）**：混合检索（关键词 + 向量）、以图搜图、租户级 OSS BYOK、文档级权限。
 
+**二期-A 已交付**：创建 KB / 上传文档时校验 `max_knowledge_bases`、`max_storage_mb`、`ingest.max_file_mb`；检索写入 `kb_search_logs`；通用附件见 `/api/v1/attachments`。
+
 ---
 
 ## 2. 领域模型
@@ -133,11 +135,11 @@ sequenceDiagram
 ### 3.3 检索
 
 ```
-POST /api/v1/kb/{kb_id}/search  { query, top_k }
+POST /api/v1/kb/{kb_id}/search  { query, top_k, mode? }
         ↓
-embed_query_for_kb(kb, query)
+resolve_retrieval_mode(kb, mode)  → vector | hybrid
         ↓
-vector_store.search(vector, tenant_id, kb_id, limit)
+embed_query_for_kb(kb, query) → search_kb_chunks（Weaviate hybrid 或 向量+PG关键词 RRF）
         ↓
 按 chunk_id 回表 kb_document_chunks + kb_documents → SearchHit[]
 ```
@@ -185,7 +187,20 @@ vector_store.search(vector, tenant_id, kb_id, limit)
 | POST | `/kb/{id}/documents` | `kb:document:upload` | 上传（multipart） |
 | POST | `/kb/{id}/documents/{doc_id}/retry` | `kb:write` | 重新入库 |
 | DELETE | `/kb/{id}/documents/{doc_id}` | `kb:write` | 删除文档 |
-| POST | `/kb/{id}/search` | `kb:read` | 检索测试 |
+| POST | `/kb/{id}/search` | `kb:read` | 检索测试；body 含 `mode`（default/vector/hybrid） |
+| GET | `/kb/quota` | `kb:read` | 租户 KB 数量与存储配额 |
+| GET | `/kb/{id}/search-logs` | `kb:read` | 检索日志分页 |
+
+### 5.1 租户通用附件
+
+| 方法 | 路径 | 权限 | 说明 |
+|------|------|------|------|
+| GET | `/attachments` | `attachment:read` | 分页列表（可选 `purpose` / `resource_type` / `resource_id`） |
+| POST | `/attachments` | `attachment:upload` | multipart：`file` + 可选 `purpose`、`resource_type`、`resource_id` |
+| GET | `/attachments/{id}` | `attachment:read` | 元数据 |
+| DELETE | `/attachments/{id}` | `attachment:write` | 删对象存储并软删 |
+
+对象 key：`{tenant_id}/attachments/{attachment_id}/{filename}`。占用租户 `max_storage_mb` 配额。
 
 OpenAPI：`/docs`（运行实例）。
 
@@ -259,7 +274,8 @@ celery -A app.workers.app worker -l info -Q default,parse,ocr,asr,embed
 | 阶段 | 内容 |
 |------|------|
 | ✅ 当前 | CRUD、上传入库、KB 级 embedding、检索、删除编排、前端详情页 |
-| 二期 | 混合检索、检索日志表、KB 配额（租户 `sys_configs`） |
+| 二期-A ✅ | KB 配额校验、`GET /kb/quota`、`kb_search_logs`、`GET /kb/{id}/search-logs`、租户附件 `sys_attachments` + `/api/v1/attachments` |
+| 二期-B ✅ | 混合检索（`retrieval_mode` / `hybrid_alpha`、Weaviate hybrid / Milvus+PG RRF）、检索 `mode` 覆盖 |
 | 三期 | 多模态向量（图文）、文档预览、批量导入 |
 
 ---

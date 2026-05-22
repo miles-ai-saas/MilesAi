@@ -1,7 +1,7 @@
 import enum
 import uuid
 
-from sqlalchemy import Enum, Index, Integer, String, Text, UniqueConstraint
+from sqlalchemy import Enum, Float, Index, Integer, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -32,6 +32,8 @@ class KnowledgeBase(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     embedding_dimension: Mapped[int] = mapped_column(Integer, default=768, nullable=False)
     chunk_size: Mapped[int] = mapped_column(Integer, default=500, nullable=False)
     chunk_overlap: Mapped[int] = mapped_column(Integer, default=50, nullable=False)
+    retrieval_mode: Mapped[str] = mapped_column(String(16), default="vector", nullable=False)
+    hybrid_alpha: Mapped[float] = mapped_column(Float, default=0.5, nullable=False)
 
     documents: Mapped[list["Document"]] = relationship(
         "Document",

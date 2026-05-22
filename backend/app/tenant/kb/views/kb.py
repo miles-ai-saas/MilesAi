@@ -10,6 +10,8 @@ from app.core.tenant import TenantContext
 from app.common.schema import ApiResponse, PageParams, PageResult
 from app.tenant.kb.schemas.kb import (
     DocumentOut,
+    KbQuotaOut,
+    KbSearchLogOut,
     KnowledgeBaseCreate,
     KnowledgeBaseOut,
     KnowledgeBaseUpdate,
@@ -23,6 +25,14 @@ router = APIRouter()
 
 def _svc(db: AsyncSession, ctx: TenantContext) -> KnowledgeBaseService:
     return KnowledgeBaseService(db, ctx)
+
+
+@router.get("/quota", response_model=ApiResponse[KbQuotaOut])
+async def get_kb_quota(
+    ctx: TenantContext = Depends(require_permissions("kb:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    return ok(await _svc(db, ctx).get_quota())
 
 
 @router.get("", response_model=ApiResponse[PageResult[KnowledgeBaseOut]])
@@ -113,6 +123,17 @@ async def delete_document(
 ):
     await _svc(db, ctx).delete_document(kb_id, document_id)
     return ok(message="已删除")
+
+
+@router.get("/{kb_id}/search-logs", response_model=ApiResponse[PageResult[KbSearchLogOut]])
+async def list_kb_search_logs(
+    kb_id: UUID,
+    params: PageParams = Depends(get_page_params),
+    ctx: TenantContext = Depends(require_permissions("kb:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await _svc(db, ctx).list_search_logs(kb_id, params)
+    return page_ok(result.items, result.total, result.page, result.size)
 
 
 @router.post("/{kb_id}/search", response_model=ApiResponse[SearchResponse])

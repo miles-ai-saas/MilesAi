@@ -1,3 +1,4 @@
+import time
 from uuid import UUID
 
 from fastapi import UploadFile
@@ -9,7 +10,7 @@ from app.ai_stack.langchain.embeddings import embed_query_for_kb
 from app.core.config import get_settings
 from app.common.exceptions import BadRequestError, NotFoundError
 from app.infra.storage import build_object_key, delete_object, upload_bytes
-from app.infra.vector_store import search_vectors
+from app.tenant.kb.services.retrieval import resolve_retrieval_mode, search_kb_chunks
 from app.core.tenant import TenantContext, assert_tenant_access, tenant_filters
 from app.deletion.cascade import before_delete_kb
 from app.deletion.document import clear_document_derived_data_async
@@ -28,6 +29,8 @@ from app.tenant.models.services.embedding_resolve import (
 )
 from app.tenant.kb.schemas.kb import (
     DocumentOut,
+    KbQuotaOut,
+    KbSearchLogOut,
     KnowledgeBaseCreate,
     KnowledgeBaseOut,
     KnowledgeBaseUpdate,
@@ -35,6 +38,14 @@ from app.tenant.kb.schemas.kb import (
     SearchRequest,
     SearchResponse,
 )
+from app.tenant.kb.services.quota import (
+    apply_storage_delta,
+    assert_can_create_kb,
+    assert_can_upload_bytes,
+    get_kb_quota_out,
+)
+from app.tenant.kb.services.search_log import write_kb_search_log
+from app.models.kb_search_log import KbSearchLog
 from app.ai.media import file_extension, is_audio_file, is_image_file
 from app.core.soft_delete import is_marked_deleted, mark_deleted, not_deleted
 from app.core.service import BaseService
@@ -113,6 +124,8 @@ class KnowledgeBaseService(BaseService):
             embedding_dimension=kb.embedding_dimension,
             chunk_size=kb.chunk_size,
             chunk_overlap=kb.chunk_overlap,
+            retrieval_mode=kb.retrieval_mode,
+            hybrid_alpha=kb.hybrid_alpha,
             created_at=kb.created_at,
         )
 
@@ -132,7 +145,38 @@ class KnowledgeBaseService(BaseService):
             size=page.size,
         )
 
+    async def get_quota(self) -> KbQuotaOut:
+        data = await get_kb_quota_out(self.db, self.ctx.tenant_id)
+        return KbQuotaOut(**data)
+
+    async def list_search_logs(
+        self, kb_id: UUID, params: PageParams
+    ) -> PageResult[KbSearchLogOut]:
+        await self._get_kb_or_raise(kb_id)
+        from app.common.pagination import paginate
+
+        page = await paginate(
+            self.db,
+            KbSearchLog,
+            page=params.page,
+            size=params.size,
+            filters=[
+                KbSearchLog.tenant_id == self.ctx.tenant_id,
+                KbSearchLog.kb_id == kb_id,
+            ],
+            order_by=KbSearchLog.created_at.desc(),
+            skip_soft_delete_filter=True,
+        )
+        items = [KbSearchLogOut.model_validate(r) for r in page.items]
+        return PageResult(
+            items=items,
+            total=page.total,
+            page=page.page,
+            size=page.size,
+        )
+
     async def create_kb(self, body: KnowledgeBaseCreate) -> KnowledgeBaseOut:
+        await assert_can_create_kb(self.db, self.ctx.tenant_id)
         model_id = body.embedding_model_config_id
         if not model_id:
             model_id = (await get_default_embedding_model(self.db)).id
@@ -198,8 +242,7 @@ class KnowledgeBaseService(BaseService):
         if not file.filename:
             raise BadRequestError("文件名不能为空")
         content = await file.read()
-        if not content:
-            raise BadRequestError("文件内容为空")
+        await assert_can_upload_bytes(self.db, kb.tenant_id, len(content))
         mime = file.content_type or "application/octet-stream"
         if not _is_allowed_upload(file.filename, mime):
             raise BadRequestError(
@@ -235,6 +278,7 @@ class KnowledgeBaseService(BaseService):
             resource_type="document",
             resource_id=doc.id,
         )
+        await apply_storage_delta(self.db, kb.tenant_id, len(content))
         await self.db.flush()
         await self.db.refresh(doc)
         return DocumentOut.model_validate(doc)
@@ -281,16 +325,23 @@ class KnowledgeBaseService(BaseService):
                 delete_object(doc.object_key, doc.object_bucket)
             except Exception:
                 pass
+        size = doc.file_size or 0
         await mark_deleted(self.db, doc)
+        if size > 0:
+            await apply_storage_delta(self.db, doc.tenant_id, 0)
 
     async def search(self, kb_id: UUID, body: SearchRequest) -> SearchResponse:
         kb = await self._get_kb_or_raise(kb_id)
+        effective_mode = resolve_retrieval_mode(kb, body.mode)
+        started = time.perf_counter()
         vector = await embed_query_for_kb(self.db, self.ctx.tenant_id, kb, body.query)
-        raw_hits = search_vectors(
-            vector,
-            tenant_id=kb.tenant_id,
-            kb_id=kb.id,
+        raw_hits = await search_kb_chunks(
+            self.db,
+            kb=kb,
+            query=body.query,
+            query_vector=vector,
             limit=body.top_k,
+            mode=body.mode,
         )
         hits: list[SearchHit] = []
         for h in raw_hits:
@@ -309,7 +360,22 @@ class KnowledgeBaseService(BaseService):
                     document_id=chunk.document_id,
                     content=chunk.content,
                     score=float(h.get("score", 0)),
+                    score_vector=h.get("score_vector"),
+                    score_keyword=h.get("score_keyword"),
                     filename=doc.filename if doc else None,
                 )
             )
-        return SearchResponse(query=body.query, hits=hits)
+        latency_ms = int((time.perf_counter() - started) * 1000)
+        await write_kb_search_log(
+            self.db,
+            tenant_id=kb.tenant_id,
+            kb_id=kb.id,
+            query=body.query,
+            top_k=body.top_k,
+            hit_count=len(hits),
+            latency_ms=latency_ms,
+            source="api",
+            actor_user_id=self.ctx.user_id,
+            retrieval_mode=effective_mode,
+        )
+        return SearchResponse(query=body.query, mode=effective_mode, hits=hits)

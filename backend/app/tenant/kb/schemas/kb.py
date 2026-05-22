@@ -1,9 +1,13 @@
 from datetime import datetime
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, Field, model_validator
 
 from app.models.kb import DocumentStatus
+
+RetrievalMode = Literal["vector", "hybrid"]
+SearchMode = Literal["default", "vector", "hybrid"]
 
 
 class KnowledgeBaseCreate(BaseModel):
@@ -16,6 +20,16 @@ class KnowledgeBaseCreate(BaseModel):
         None,
         description="向量化模型（model_type=embedding），默认内置 BGE；创建后不可修改",
     )
+    retrieval_mode: RetrievalMode = Field(
+        "vector",
+        description="检索策略：vector=纯语义；hybrid=向量+关键词（Weaviate BM25 / Milvus+PG）",
+    )
+    hybrid_alpha: float = Field(
+        0.5,
+        ge=0.0,
+        le=1.0,
+        description="混合检索权重（仅 hybrid；1=偏向量，0=偏关键词，Weaviate 生效）",
+    )
 
 
 class KnowledgeBaseUpdate(BaseModel):
@@ -24,6 +38,8 @@ class KnowledgeBaseUpdate(BaseModel):
     is_public: bool | None = None
     chunk_size: int | None = Field(None, ge=100, le=4000)
     chunk_overlap: int | None = Field(None, ge=0, le=500)
+    retrieval_mode: RetrievalMode | None = None
+    hybrid_alpha: float | None = Field(None, ge=0.0, le=1.0)
 
     @model_validator(mode="before")
     @classmethod
@@ -53,6 +69,8 @@ class KnowledgeBaseOut(BaseModel):
     embedding_dimension: int
     chunk_size: int
     chunk_overlap: int
+    retrieval_mode: str
+    hybrid_alpha: float
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -76,6 +94,10 @@ class DocumentOut(BaseModel):
 class SearchRequest(BaseModel):
     query: str = Field(..., min_length=1)
     top_k: int = Field(10, ge=1, le=50)
+    mode: SearchMode = Field(
+        "default",
+        description="default=使用知识库 retrieval_mode；可单次覆盖为 vector/hybrid",
+    )
 
 
 class SearchHit(BaseModel):
@@ -83,9 +105,38 @@ class SearchHit(BaseModel):
     document_id: UUID
     content: str
     score: float
+    score_vector: float | None = None
+    score_keyword: float | None = None
     filename: str | None = None
 
 
 class SearchResponse(BaseModel):
     query: str
+    mode: str
     hits: list[SearchHit]
+
+
+class KbQuotaOut(BaseModel):
+    used_knowledge_bases: int
+    max_knowledge_bases: int
+    used_storage_mb: int
+    max_storage_mb: int
+    max_file_mb: int
+
+
+class KbSearchLogOut(BaseModel):
+    id: UUID
+    tenant_id: UUID
+    kb_id: UUID | None
+    kb_ids: list[str] | None
+    query: str
+    top_k: int
+    hit_count: int
+    latency_ms: int
+    retrieval_mode: str
+    source: str
+    actor_user_id: UUID | None
+    agent_id: UUID | None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}

@@ -2,11 +2,16 @@
 
 from app.infra.storage.base import ObjectStorage
 from app.infra.storage.factory import get_object_storage
-from app.infra.storage.s3 import S3CompatibleObjectStorage, build_object_key
+from app.infra.storage.s3 import (
+    S3CompatibleObjectStorage,
+    build_attachment_object_key,
+    build_object_key,
+)
 
 __all__ = [
     "ObjectStorage",
     "S3CompatibleObjectStorage",
+    "build_attachment_object_key",
     "build_object_key",
     "delete_object",
     "download_bytes",
