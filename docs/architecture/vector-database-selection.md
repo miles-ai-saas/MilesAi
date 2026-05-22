@@ -7,7 +7,7 @@
 
 ## 1. 总览对比表
 
-| 对比维度 | pg_vector | Weaviate | Milvus | Qdrant | OpenSearch | Elasticsearch (ES) |
+| 对比维度 | pgvector | Weaviate | Milvus | Qdrant | OpenSearch | Elasticsearch (ES) |
 |----------|-----------|----------|--------|--------|------------|----------------------|
 | **定位** | PostgreSQL 向量扩展（关系 + 向量） | AI 原生：向量 + 轻图 + 内置 Embedding | 分布式专用向量库 | Rust 编写高性能向量引擎 | 全文检索引擎 + 向量插件 | 全文检索为主、向量为扩展 |
 | **开发语言** | C（PG 扩展） | Go + Python | Go + C++ | Rust | Java | Java |

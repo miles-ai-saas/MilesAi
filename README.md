@@ -92,7 +92,8 @@ MilesAi/
 │   │   ├── api/v1/          # 薄路由
 │   │   ├── tenant/         # 租户业务（agents、kb、flows、marketplace…）
 │   │   ├── tenant/a2a/     # A2A Peer / 宿主调用
-│   │   ├── ai_stack/        # LangChain、LangGraph、DeepAgents
+│   │   ├── rag/             # 解析、分片、检索、生成
+│   │   ├── integrations/  # LangChain、LangGraph、DeepAgents
 │   │   ├── flow_runtime/    # 画布节点 registry
 │   │   └── models/
 │   └── alembic/

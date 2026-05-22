@@ -5,8 +5,8 @@ from fastapi import UploadFile
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.ai_stack.embeddings.runtime import embedding_dimension_from_model
-from app.ai_stack.langchain.embeddings import embed_query_for_kb
+from app.integrations.embeddings.runtime import embedding_dimension_from_model
+from app.integrations.langchain.embeddings import embed_query_for_kb
 from app.core.config import get_settings
 from app.common.exceptions import BadRequestError, NotFoundError
 from app.infra.storage import build_object_key, delete_object, upload_bytes
@@ -46,7 +46,7 @@ from app.tenant.kb.services.quota import (
 )
 from app.tenant.kb.services.search_log import write_kb_search_log
 from app.models.kb_search_log import KbSearchLog
-from app.ai.media import file_extension, is_audio_file, is_image_file
+from app.rag.parse import file_extension, is_audio_file, is_image_file
 from app.core.soft_delete import is_marked_deleted, mark_deleted, not_deleted
 from app.core.service import BaseService
 

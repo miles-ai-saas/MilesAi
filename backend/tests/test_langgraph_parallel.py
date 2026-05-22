@@ -1,7 +1,7 @@
 """并行与条件分支编译分析。"""
 
-from app.ai_stack.langgraph.compiler import validate_graph_for_compile
-from app.ai_stack.langgraph.graph_analysis import compute_execution_layers
+from app.integrations.langgraph.compiler import validate_graph_for_compile
+from app.integrations.langgraph.graph_analysis import compute_execution_layers
 from app.flow_runtime.types import FlowGraph
 
 PARALLEL_FANOUT = {

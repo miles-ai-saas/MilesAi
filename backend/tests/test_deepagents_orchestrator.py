@@ -2,7 +2,7 @@
 
 from uuid import uuid4
 
-from app.ai_stack.deepagents.orchestrator import _parse_plan, _should_use_deepagents
+from app.integrations.deepagents.orchestrator import _parse_plan, _should_use_deepagents
 from app.models.agent import Agent
 
 
@@ -24,7 +24,7 @@ def test_should_use_deepagents_without_package():
 
 
 def test_slug_for_binding():
-    from app.ai_stack.deepagents.subagent_graphs import _slug_for_binding
+    from app.integrations.deepagents.subagent_graphs import _slug_for_binding
     from app.models.agent import AgentSubAgentBinding
 
     class Child:
@@ -44,7 +44,7 @@ def test_slug_for_binding():
 
 
 def test_general_purpose_guard_name():
-    from app.ai_stack.deepagents.subagent_graphs import _build_general_purpose_guard
+    from app.integrations.deepagents.subagent_graphs import _build_general_purpose_guard
     from app.models.agent import AgentSubAgentBinding
 
     class Child:

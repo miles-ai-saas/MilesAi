@@ -1,81 +1,8 @@
-"""PostgreSQL 关键词检索（Milvus 等纯向量后端的混合检索补 BM25）。"""
+"""兼容转发 → app.rag.retrieve.keyword。"""
 
-from __future__ import annotations
+from app.rag.retrieve.keyword import (
+    search_chunks_by_keyword,
+    search_chunks_by_keyword_sync,
+)
 
-from uuid import UUID
-
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import Session
-
-from app.core.soft_delete import not_deleted
-from app.models.kb import Document, DocumentChunk
-
-
-def _keyword_stmt(tenant_id: UUID, kb_id: UUID, pattern: str, limit: int):
-    return (
-        select(
-            DocumentChunk.id,
-            DocumentChunk.document_id,
-            DocumentChunk.content,
-        )
-        .join(Document, Document.id == DocumentChunk.document_id)
-        .where(
-            DocumentChunk.tenant_id == tenant_id,
-            DocumentChunk.kb_id == kb_id,
-            not_deleted(Document),
-            DocumentChunk.content.ilike(pattern),
-        )
-        .order_by(DocumentChunk.created_at.desc())
-        .limit(limit)
-    )
-
-
-def _rows_to_hits(rows, limit: int) -> list[dict]:
-    hits: list[dict] = []
-    for rank, row in enumerate(rows):
-        chunk_id, document_id, content = row
-        hits.append(
-            {
-                "chunk_id": str(chunk_id),
-                "document_id": str(document_id),
-                "content_preview": (content or "")[:500],
-                "score": 1.0 - rank / max(limit, 1),
-                "score_keyword": 1.0 - rank / max(limit, 1),
-            }
-        )
-    return hits
-
-
-async def search_chunks_by_keyword(
-    db: AsyncSession,
-    *,
-    tenant_id: UUID,
-    kb_id: UUID,
-    query: str,
-    limit: int = 10,
-) -> list[dict]:
-    """按分片正文子串匹配，返回与向量检索一致的 hit 结构。"""
-    q = query.strip()
-    if not q:
-        return []
-
-    pattern = f"%{q}%"
-    rows = (await db.execute(_keyword_stmt(tenant_id, kb_id, pattern, limit))).all()
-    return _rows_to_hits(rows, limit)
-
-
-def search_chunks_by_keyword_sync(
-    db: Session,
-    *,
-    tenant_id: UUID,
-    kb_id: UUID,
-    query: str,
-    limit: int = 10,
-) -> list[dict]:
-    q = query.strip()
-    if not q:
-        return []
-    pattern = f"%{q}%"
-    rows = db.execute(_keyword_stmt(tenant_id, kb_id, pattern, limit)).all()
-    return _rows_to_hits(rows, limit)
+__all__ = ["search_chunks_by_keyword", "search_chunks_by_keyword_sync"]

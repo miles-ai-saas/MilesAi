@@ -22,6 +22,12 @@ class ChunkVectorRecord:
     external_id: str | None = None
 
 
+def validate_dimension(dimension: int) -> int:
+    if dimension <= 0:
+        raise ValueError(f"无效的向量维度: {dimension}")
+    return dimension
+
+
 @runtime_checkable
 class VectorStore(Protocol):
     """向量检索后端：默认 Weaviate，可扩展 pgvector / Milvus。"""

@@ -52,7 +52,7 @@ class Settings(BaseSettings):
     object_storage_secure: bool = False
     object_storage_region: str | None = None
 
-    # 向量存储：默认 weaviate；可选 pgvector / milvus
+    # 向量存储：weaviate | milvus | pgvector（均经 LangChain 集成）
     vector_store_backend: str = "weaviate"
     weaviate_host: str = "localhost"
     weaviate_port: int = 8080
@@ -87,6 +87,10 @@ class Settings(BaseSettings):
     embedding_vector_dimension: int = 768
     default_chunk_size: int = 500
     default_chunk_overlap: int = 50
+
+    # 解析：pypdf（轻量）| docling（PDF/Office 版式；需 milesai[parse-docling]）
+    parse_pdf_backend: str = "pypdf"
+    parse_docling_fallback_pypdf: bool = True
 
     @property
     def database_url(self) -> str:

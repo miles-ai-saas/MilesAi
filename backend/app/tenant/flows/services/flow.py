@@ -7,7 +7,7 @@ from app.core.tenant import TenantContext, assert_tenant_access, tenant_filters
 from app.tenant.compliance.services.compliance import ComplianceService
 from app.tenant.hooks.models import HookScope, HookTrigger
 from app.tenant.hooks.services.runner import HookRunner
-from app.ai_stack.langgraph.compiler import validate_graph_for_compile
+from app.integrations.langgraph.compiler import validate_graph_for_compile
 from app.flow_runtime.runtime_factory import get_flow_runtime
 from app.flow_runtime.types import RunContext
 from app.models.flow import Flow, FlowStatus, FlowVersion

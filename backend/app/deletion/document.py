@@ -6,7 +6,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
-from app.infra.vector_store import delete_by_document
+from app.rag.index.gateway import delete_by_document
 from app.models.kb import DocumentChunk, VectorRef
 
 

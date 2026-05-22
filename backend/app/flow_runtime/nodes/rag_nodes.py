@@ -1,7 +1,7 @@
 from typing import Any
 from uuid import UUID
 
-from app.ai.rag import format_hits_context, retrieve_hits
+from app.rag.generate import format_hits_context, retrieve_hits
 from app.flow_runtime.types import RunContext
 
 

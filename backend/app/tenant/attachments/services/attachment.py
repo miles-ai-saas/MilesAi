@@ -4,7 +4,7 @@ from fastapi import UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import ColumnElement
 
-from app.ai.media import file_extension, is_audio_file, is_image_file
+from app.rag.parse import file_extension, is_audio_file, is_image_file
 from app.common.exceptions import BadRequestError, NotFoundError
 from app.core.config import get_settings
 from app.core.service import BaseService

@@ -2,14 +2,14 @@
 
 > 类型：流程编排 | 状态：已实现 | 关联：[technical-design.md](../architecture/technical-design.md) §9
 
-画布 `graph_json` **仅由 LangGraph 编译执行**；`flow_runtime` 提供节点 handler，编译与执行在 `ai_stack.langgraph`。
+画布 `graph_json` **仅由 LangGraph 编译执行**；`flow_runtime` 提供节点 handler，编译与执行在 `integrations.langgraph`。
 
 ## 命名与数据流
 
 | 名称 | 路径 |
 |------|------|
 | flow_runtime | `backend/app/flow_runtime/` |
-| LangGraph 编译/执行 | `backend/app/ai_stack/langgraph/` |
+| LangGraph 编译/执行 | `backend/app/integrations/langgraph/` |
 | 前端画布 | `@xyflow/react` |
 
 ```
@@ -72,7 +72,7 @@ flowchart TD
 | `rag_max_retries` | 1 | 重试时 top_k 翻倍（上限 20） |
 | `use_llm_grade` | false | LLM 复核相关性 |
 
-模块：`ai_stack/langgraph/graphs/rag_qa.py`、`runner.py`。合规/钩子仍在 `AgentService.chat` 外层。
+模块：`integrations/langgraph/graphs/rag_qa.py`、`runner.py`。合规/钩子仍在 `AgentService.chat` 外层。
 
 ### Checkpoint
 

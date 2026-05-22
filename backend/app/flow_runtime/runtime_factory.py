@@ -2,7 +2,7 @@
 
 from functools import lru_cache
 
-from app.ai_stack.langgraph.flow_runner import run_flow_graph
+from app.integrations.langgraph.flow_runner import run_flow_graph
 from app.flow_runtime.types import RunContext, RunResult
 
 

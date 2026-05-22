@@ -4,9 +4,9 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.ai.rag import format_hits_context, rag_answer, retrieve_hits
-from app.ai_stack.langgraph.runner import run_rag_workflow, should_use_langgraph_rag
-from app.ai_stack.langchain.chat_models import ainvoke_chat
+from app.rag.generate import format_hits_context, rag_answer, retrieve_hits
+from app.integrations.langgraph.runner import run_rag_workflow, should_use_langgraph_rag
+from app.integrations.langchain.chat_models import ainvoke_chat
 from app.common.exceptions import BadRequestError, NotFoundError
 from app.core.tenant import TenantContext, assert_tenant_access, tenant_filters
 from app.flow_runtime.runtime_factory import get_flow_runtime
@@ -324,7 +324,7 @@ class AgentService(BaseService):
             bindings = await list_sub_agent_bindings(self.db, agent_id)
             peer_refs = await list_agent_a2a_peer_refs(self.db, agent_id)
             if bindings:
-                from app.ai_stack.deepagents.orchestrator import run_subagent_planned_chat
+                from app.integrations.deepagents.orchestrator import run_subagent_planned_chat
 
                 response = await run_subagent_planned_chat(self, agent, bindings, body)
                 if peer_refs:

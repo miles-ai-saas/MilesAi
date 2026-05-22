@@ -5,7 +5,7 @@ from uuid import uuid4
 
 import pytest
 
-from app.ai_stack.litellm.adapter import (
+from app.integrations.litellm.adapter import (
     litellm_chat_completion,
     resolve_litellm_model,
 )
@@ -108,7 +108,7 @@ async def test_litellm_chat_maps_litellm_error():
 
 
 def test_litellm_embed_texts_success():
-    from app.ai_stack.litellm.adapter import litellm_embed_texts
+    from app.integrations.litellm.adapter import litellm_embed_texts
 
     item = MagicMock()
     item.embedding = [0.1, 0.2]

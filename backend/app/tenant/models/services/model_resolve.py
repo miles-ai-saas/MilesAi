@@ -31,7 +31,7 @@ async def load_tenant_credential(
 
 
 def credential_status(model: ModelConfig, cred: ModelTenantCredential | None) -> str:
-    from app.ai_stack.embeddings.runtime import INVOKE_MODE_LOCAL, invoke_mode_from_model
+    from app.integrations.embeddings.runtime import INVOKE_MODE_LOCAL, invoke_mode_from_model
     from app.models.model_catalog import ModelCapabilityType
 
     if model.model_type == ModelCapabilityType.EMBEDDING.value:

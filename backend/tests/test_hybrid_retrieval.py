@@ -3,8 +3,7 @@
 from types import SimpleNamespace
 from uuid import uuid4
 
-from app.infra.vector_store.hybrid import rrf_fuse
-from app.tenant.kb.services.retrieval import resolve_retrieval_mode
+from app.rag.retrieve import resolve_retrieval_mode, rrf_fuse
 
 
 def test_rrf_fuse_merges_two_rankings():

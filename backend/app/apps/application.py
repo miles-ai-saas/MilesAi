@@ -8,9 +8,10 @@ from app.apps.migrate import run_migrations
 from app.apps.routers import admin_router, api_router
 from app.common.handlers import register_exception_handlers
 from app.core.config import get_settings
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    from app.ai_stack.langgraph.checkpointer import init_langgraph_checkpointer, shutdown_langgraph_checkpointer
+    from app.integrations.langgraph.checkpointer import init_langgraph_checkpointer, shutdown_langgraph_checkpointer
 
     run_migrations()
     app.state.langgraph_checkpoint = await init_langgraph_checkpointer()

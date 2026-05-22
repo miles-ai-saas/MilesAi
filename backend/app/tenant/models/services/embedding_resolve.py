@@ -9,7 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
-from app.ai_stack.embeddings.runtime import (
+from app.integrations.embeddings.runtime import (
     INVOKE_MODE_LOCAL,
     ensure_embedding_model_type,
     invoke_mode_from_model,

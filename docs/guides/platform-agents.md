@@ -38,7 +38,7 @@ cd backend && pip install -e ".[agent-stack]"   # deepagents、langgraph>=1.2
 
 `steps` 类型：`planner`、`subagent_dispatch`、`subagent`、`planner_fallback`。
 
-模块：`app/ai_stack/deepagents/orchestrator.py`、`runner.py`、`subagent_graphs.py`。
+模块：`app/integrations/deepagents/orchestrator.py`、`runner.py`、`subagent_graphs.py`。
 
 `ChatRequest.conversation_id` 用于 DeepAgents `thread_id`（前缀 `deep:`，与 RAG checkpoint 隔离）。
 

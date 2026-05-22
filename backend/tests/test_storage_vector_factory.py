@@ -12,41 +12,46 @@ def test_object_storage_default_s3():
     assert isinstance(storage, S3CompatibleObjectStorage)
 
 
-def test_vector_store_default_weaviate():
-    store = get_vector_store()
-    assert isinstance(store, WeaviateVectorStore)
-
-
-def test_vector_store_pgvector_not_implemented(monkeypatch):
+def test_vector_store_default_weaviate(monkeypatch):
     from app.core.config import Settings
-    from app.infra.vector_store import factory as vf
+    from app.infra.vector_store import get_vector_store as gvs
 
-    vf.get_vector_store.cache_clear()
+    gvs.cache_clear()
+    monkeypatch.setattr(
+        "app.infra.vector_store.factory.get_settings",
+        lambda: Settings(vector_store_backend="weaviate"),
+    )
+    store = gvs()
+    assert isinstance(store, WeaviateVectorStore)
+    gvs.cache_clear()
+
+
+def test_vector_store_pgvector_factory(monkeypatch):
+    from app.core.config import Settings
+    from app.infra.vector_store import get_vector_store as gvs
+
+    gvs.cache_clear()
     monkeypatch.setattr(
         "app.infra.vector_store.factory.get_settings",
         lambda: Settings(vector_store_backend="pgvector"),
     )
-    store = vf.get_vector_store()
+    store = gvs()
     assert isinstance(store, PgVectorStore)
-    try:
-        store.ensure_schema(384)
-    except NotImplementedError as exc:
-        assert "pgvector" in str(exc)
-    vf.get_vector_store.cache_clear()
+    gvs.cache_clear()
 
 
 def test_vector_store_milvus_factory(monkeypatch):
     pytest.importorskip("pymilvus")
 
     from app.core.config import Settings
-    from app.infra.vector_store import factory as vf
+    from app.infra.vector_store import get_vector_store as gvs
     from app.infra.vector_store.milvus import MilvusVectorStore
 
-    vf.get_vector_store.cache_clear()
+    gvs.cache_clear()
     monkeypatch.setattr(
         "app.infra.vector_store.factory.get_settings",
         lambda: Settings(vector_store_backend="milvus"),
     )
-    store = vf.get_vector_store()
+    store = gvs()
     assert isinstance(store, MilvusVectorStore)
-    vf.get_vector_store.cache_clear()
+    gvs.cache_clear()

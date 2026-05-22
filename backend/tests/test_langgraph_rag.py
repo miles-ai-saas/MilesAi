@@ -4,10 +4,10 @@ from uuid import uuid4
 
 import pytest
 
-from app.ai_stack.langgraph.constants import RELEVANCE_GOOD, RELEVANCE_NONE, RELEVANCE_POOR
-from app.ai_stack.langgraph.grading import _score_grade, parse_llm_grade_response
-from app.ai_stack.langgraph.graphs.rag_qa import route_after_grade
-from app.ai_stack.langgraph.runner import build_rag_thread_id, should_use_langgraph_rag
+from app.integrations.langgraph.constants import RELEVANCE_GOOD, RELEVANCE_NONE, RELEVANCE_POOR
+from app.integrations.langgraph.grading import _score_grade, parse_llm_grade_response
+from app.integrations.langgraph.graphs.rag_qa import route_after_grade
+from app.integrations.langgraph.runner import build_rag_thread_id, should_use_langgraph_rag
 from app.models.agent import Agent
 
 

@@ -41,11 +41,11 @@ scripts/                    # db_ops、verify_db、seed/*（由 cli.py 调用）
 │   ├── storage/            # 对象存储（S3 兼容）
 │   └── vector_store/       # 向量库（Weaviate / Milvus / pgvector）
 ├── models/                 # 核心 ORM（用户、租户、KB、Flow、Agent…）
-├── ai/                     # 解析、分块、Embedding
-├── ai_stack/               # LangChain / LangGraph / DeepAgents
-│   ├── langchain/          # 统一 AI 底座（已接入）
-│   ├── langgraph/          # RAG 工作流（已接入）
-│   └── deepagents/         # 多子智能体规划
+├── rag/                    # RAG：parse / chunk / index / retrieve / generate / pipeline
+├── integrations/           # LangChain / LangGraph / LiteLLM / DeepAgents（L3）
+│   ├── langchain/
+│   ├── langgraph/
+│   └── deepagents/
 ├── workers/                # Celery 应用与任务
 │   ├── app.py
 │   └── tasks/

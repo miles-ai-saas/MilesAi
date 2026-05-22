@@ -38,7 +38,7 @@
 |------|------|
 | 元数据与文件分离 | PostgreSQL 业务表；MinIO 对象；Weaviate 向量 |
 | 租户隔离 | ORM 查询带 `tenant_id`；向量检索 Filter；删除编排 `deletion/` |
-| 编排同进程 | `flow_runtime` 节点 + `ai_stack.langgraph` 编译执行 |
+| 编排同进程 | `flow_runtime` 节点 + `integrations.langgraph` 编译执行 |
 | 长任务异步 | 文档入库 `workers.tasks.ingest_document`（Celery 队列） |
 | 双端 API | 租户 `/api/v1`；运营 `/api/admin/v1` |
 | AI 栈可降级 | DeepAgents 未安装 → 平台 JSON 规划；MCP invoke 可为 mock |
@@ -76,7 +76,7 @@ flowchart TB
         TOOL[tools / mcp / skills]
     end
 
-    subgraph AI["ai_stack + flow_runtime"]
+    subgraph AI["integrations + rag + flow_runtime"]
         FR[flow_runtime 节点]
         LG[LangGraph 画布 / RAG]
         LC[LangChain 适配]
@@ -124,7 +124,8 @@ MilesAi/
 │   │   │   ├── agents/ a2a/ kb/ flows/ marketplace/ compliance/ …
 │   │   │   └── router.py           # /api/v1
 │   │   ├── admin/                  # 运营 API /api/admin/v1
-│   │   ├── ai_stack/               # langchain / langgraph / deepagents
+│   │   ├── integrations/           # langchain / langgraph / deepagents（L3）
+│   │   ├── rag/                    # parse / chunk / index / retrieve / generate（L2）
 │   │   ├── flow_runtime/           # 画布节点 registry、执行入口
 │   │   ├── models/                 # 核心 ORM（Agent、Flow、KB、Task…）
 │   │   ├── infra/                  # 外部中间件连接
@@ -133,7 +134,7 @@ MilesAi/
 │   │   │   ├── storage/            # 对象存储（S3 兼容）
 │   │   │   └── vector_store/       # 向量库（Weaviate / Milvus / pgvector）
 │   │   ├── core/                   # config、deps、security、tenant
-│   │   ├── ai/                     # 遗留解析/RAG 门面（新代码优先 ai_stack）
+│   │   ├── integrations/               # 兼容转发 → integrations（可废弃）
 │   │   ├── workers/                # Celery
 │   │   └── deletion/               # 级联删除
 │   ├── alembic/versions/           # 001_initial_schema（唯一迁移）
@@ -269,7 +270,7 @@ ingest / kb 检索 / deletion
 | Milvus | Collection `document_chunk_{dimension}`；COSINE；Filter `tenant_id` / `kb_id` / `document_id`；`MILVUS_URI` |
 | Embedding | 调用见 §6.6；与向量库类型解耦，与 KB 维度强绑定 |
 | PG 引用 | `kb_vector_refs.vector_id` 为向量库中的外部记录 ID |
-| LangChain | `ai_stack/langchain/vectorstores.py` 调用 `vector_store.search_vectors` |
+| LangChain | `integrations/langchain/vectorstores.py` 调用 `vector_store.search_vectors` |
 | 入口 | `from app.infra.vector_store import get_vector_store, upsert_chunk_vector, search_vectors, …` |
 
 ### 6.5 存储与向量化配置策略
@@ -360,10 +361,10 @@ ingest / search / delete
 
 | 项 | 说明 |
 |----|------|
-| 包路径 | `app/ai_stack/langchain/embeddings.py`、`app/ai_stack/litellm/`（对话，非向量） |
+| 包路径 | `app/integrations/langchain/embeddings.py`、`app/integrations/litellm/`（对话，非向量） |
 | 全局默认 | `EMBEDDING_BACKEND=local` \| `litellm`；`EMBEDDING_MODEL_NAME` / `EMBEDDING_LITELLM_*` |
 | 新建 KB | 请求体 `embedding_profile`（默认见 `default_embedding_profile_id()`）；目录 `GET /api/v1/kb/embedding-profiles` |
-| 规格目录 | `app/ai_stack/embedding_profiles.py`：`local-bge-zh`（768）、`dashscope-v3`（1024） |
+| 规格目录 | `app/integrations/embedding_profiles.py`：`local-bge-zh`（768）、`dashscope-v3`（1024） |
 | 与向量库关系 | 向量库只存 float[]；**维度必须**与 KB 的 `embedding_dimension` 一致，否则禁止入库或检索 |
 | 切换模型 | 改全局 env 不影响已有 KB；已有库需 **重建索引**（重新 ingest） |
 
@@ -422,7 +423,7 @@ ingest / search / delete
 
 ```
 React Flow 画布 → PUT /flows/{id}/graph → flow_versions.graph_json
-执行：`get_flow_runtime().run()` → `flow_runtime.runtime_factory` → `ai_stack.langgraph.flow_runner`
+执行：`get_flow_runtime().run()` → `flow_runtime.runtime_factory` → `integrations.langgraph.flow_runner`
 节点：`flow_runtime/nodes/registry.py`
 ```
 
@@ -463,7 +464,7 @@ flowchart TD
 | 内部协同 | `agt_sub_agent_bindings` 非空 | DeepAgents 或平台 JSON 规划 → `chat_as_child` |
 | 引用外部 | `agt_agent_a2a_peer_refs` | 先本地 RAG/流程/协同，再 `augment_response_with_a2a` |
 | 画布流程 | `published_flow_id` + 已发布版本 | `get_flow_runtime().run` |
-| RAG Graph | 绑 KB、`use_langgraph_rag` 未关闭 | `ai_stack.langgraph.runner` |
+| RAG Graph | 绑 KB、`use_langgraph_rag` 未关闭 | `integrations.langgraph.runner` |
 | 线性 RAG | 上述否 | `rag_answer` / 直连 LLM |
 
 - 内部协同：[platform-agents.md](../guides/platform-agents.md)

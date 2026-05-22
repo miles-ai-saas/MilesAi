@@ -1,16 +1,13 @@
-"""文档入库流水线（供 Celery Worker 同步调用）。"""
+"""文档入库（Celery）：状态机 + 调用 rag.pipeline。"""
 
 from uuid import UUID
 
-from app.ai.chunking import split_text
-from app.ai_stack.langchain.embeddings import embed_texts_for_kb_sync
-from app.ai.media import vector_type_for_document
-from app.ai.parsers import parse_file
 from app.deletion.document import clear_document_derived_data_sync
 from app.infra.db import get_sync_db
 from app.infra.storage import download_bytes
-from app.infra.vector_store import upsert_chunk_vector
-from app.models.kb import Document, DocumentChunk, DocumentStatus, KnowledgeBase, VectorRef
+from app.integrations.langchain.embeddings import embed_texts_for_kb_sync
+from app.models.kb import Document, DocumentStatus, KnowledgeBase
+from app.rag.pipeline import IngestInput, run_ingest_pipeline
 
 
 def run_ingest(document_id: str) -> None:
@@ -28,48 +25,26 @@ def run_ingest(document_id: str) -> None:
             doc.fail_reason = None
             db.flush()
 
-            raw = download_bytes(doc.object_key, doc.object_bucket)
-            text = parse_file(raw, doc.filename, doc.mime_type)
-            chunks_text = split_text(text, kb.chunk_size, kb.chunk_overlap)
-            if not chunks_text:
-                raise ValueError("未能提取有效文本")
-
             current_phase = DocumentStatus.EMBEDDING
             doc.status = DocumentStatus.EMBEDDING
             db.flush()
 
-            clear_document_derived_data_sync(db, doc.id)
-            vectors = embed_texts_for_kb_sync(db, kb, chunks_text)
-            vector_type = vector_type_for_document(doc.filename, doc.mime_type)
-
-            for idx, (content, vector) in enumerate(zip(chunks_text, vectors)):
-                chunk = DocumentChunk(
-                    tenant_id=doc.tenant_id,
-                    document_id=doc.id,
-                    kb_id=doc.kb_id,
-                    chunk_index=idx,
-                    content=content,
-                )
-                db.add(chunk)
-                db.flush()
-
-                ext_vector_id = upsert_chunk_vector(
-                    vector=vector,
-                    tenant_id=doc.tenant_id,
-                    kb_id=doc.kb_id,
-                    document_id=doc.id,
-                    chunk_id=chunk.id,
-                    content_preview=content,
+            run_ingest_pipeline(
+                db,
+                doc=doc,
+                kb=kb,
+                data=IngestInput(
+                    filename=doc.filename,
+                    mime_type=doc.mime_type,
                     object_key=doc.object_key,
-                )
-                db.add(
-                    VectorRef(
-                        tenant_id=doc.tenant_id,
-                        chunk_id=chunk.id,
-                        vector_id=ext_vector_id,
-                        vector_type=vector_type,
-                    )
-                )
+                    object_bucket=doc.object_bucket,
+                    chunk_size=kb.chunk_size,
+                    chunk_overlap=kb.chunk_overlap,
+                ),
+                embed_texts=embed_texts_for_kb_sync,
+                load_bytes=download_bytes,
+                on_before_index=clear_document_derived_data_sync,
+            )
 
             doc.status = DocumentStatus.READY
             doc.fail_reason = None

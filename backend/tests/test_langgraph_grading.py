@@ -1,7 +1,7 @@
 """LLM 评分解析。"""
 
-from app.ai_stack.langgraph.constants import RELEVANCE_POOR
-from app.ai_stack.langgraph.grading import parse_llm_grade_response
+from app.integrations.langgraph.constants import RELEVANCE_POOR
+from app.integrations.langgraph.grading import parse_llm_grade_response
 
 
 def test_parse_partial_json():

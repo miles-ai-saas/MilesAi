@@ -1,6 +1,6 @@
 """大模型调用 — 委托 LangChain ChatModel 层。"""
 
-from app.ai_stack.langchain.chat_models import ainvoke_chat
+from app.integrations.langchain.chat_models import ainvoke_chat
 from app.models.model import ModelConfig
 
 

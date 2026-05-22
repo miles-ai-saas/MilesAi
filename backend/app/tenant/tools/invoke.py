@@ -8,7 +8,7 @@ from uuid import UUID
 import httpx
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.ai_stack.langchain.vectorstores import search_kb
+from app.integrations.langchain.vectorstores import search_kb
 from app.common.exceptions import BadRequestError, NotFoundError
 from app.core.tenant import TenantContext
 from app.tenant.tools.models import Tool, ToolType

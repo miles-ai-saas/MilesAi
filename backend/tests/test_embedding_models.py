@@ -6,12 +6,12 @@ from uuid import uuid4
 import numpy as np
 import pytest
 
-from app.ai_stack.embeddings.runtime import (
+from app.integrations.embeddings.runtime import (
     EXTRA_EMBEDDING_DIMENSION,
     build_embeddings,
     embedding_dimension_from_model,
 )
-from app.ai_stack.langchain.embeddings import embed_query_for_kb_sync
+from app.integrations.langchain.embeddings import embed_query_for_kb_sync
 from app.models.kb import KnowledgeBase
 from app.models.model import ModelConfig
 from app.models.model_catalog import ModelCapabilityType
@@ -54,7 +54,7 @@ def test_embed_query_for_kb_sync_local():
     db = MagicMock()
     with (
         patch(
-            "app.ai_stack.langchain.embeddings.resolve_embedding_model_sync",
+            "app.integrations.langchain.embeddings.resolve_embedding_model_sync",
             return_value=model,
         ),
         patch(

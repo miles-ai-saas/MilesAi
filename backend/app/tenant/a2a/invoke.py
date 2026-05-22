@@ -13,7 +13,7 @@ from app.tenant.a2a.services.host_bindings import list_host_peer_bindings
 from app.tenant.a2a.services.peer_refs import list_agent_a2a_peer_refs
 from app.models.agent import AgentType
 from app.tenant.agents.schemas.agent import ChatRequest, ChatResponse
-from app.ai_stack.langchain.chat_models import ainvoke_chat
+from app.integrations.langchain.chat_models import ainvoke_chat
 from app.models.agent import Agent
 
 if TYPE_CHECKING:

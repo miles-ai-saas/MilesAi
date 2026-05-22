@@ -11,6 +11,8 @@ docs/
 │   └── prd.md
 ├── architecture/             # 架构与技术方案
 │   ├── technical-design.md
+│   ├── layering.md           # 后端分层与代码规范
+│   ├── rag-module-migration.md
 │   └── vector-database-selection.md
 ├── frontend/                 # 前端
 │   └── design.md
@@ -37,6 +39,8 @@ docs/
 | 文档 | 说明 |
 |------|------|
 | [technical-design.md](./architecture/technical-design.md) | 架构、分层、库表、API、**对象/向量存储与配置策略（§6.5）**（**主文档**） |
+| [layering.md](./architecture/layering.md) | 后端分层、`app/rag` 目录、infra 瘦身、import 规范 |
+| [rag-module-migration.md](./architecture/rag-module-migration.md) | RAG 模块迁移清单与验收 |
 | [vector-database-selection.md](./architecture/vector-database-selection.md) | 向量数据库选型：pgvector / Weaviate / Milvus / Qdrant / OpenSearch / ES |
 
 ## 前端 (`frontend/`)
@@ -80,7 +84,7 @@ docs/
 
 ## 命名约定
 
-画布编排：**React Flow** 编辑 `graph_json`，**flow_runtime** 注册节点，**ai_stack.langgraph** 编译执行。
+画布编排：**React Flow** 编辑 `graph_json`，**flow_runtime** 注册节点，**integrations.langgraph** 编译执行。
 
 ## 代码入口
 
@@ -89,7 +93,8 @@ docs/
 | 租户 API | `backend/app/tenant/` |
 | 智能体对话 | `tenant/agents/services/agent.py` |
 | A2A | `tenant/a2a/` |
-| 流程 | `app/flow_runtime/`（节点）、`app/ai_stack/langgraph/`（编译、RAG 图） |
-| AI 栈 | `app/ai_stack/langchain/`、`app/ai_stack/deepagents/` |
+| 流程 | `app/flow_runtime/`（节点）、`app/integrations/langgraph/`（编译、RAG 图） |
+| RAG | `app/rag/`（parse / chunk / index / retrieve / generate） |
+| AI 集成 | `app/integrations/langchain/`、`app/integrations/deepagents/` |
 
 REST 以运行中 OpenAPI（`/docs`）为准。

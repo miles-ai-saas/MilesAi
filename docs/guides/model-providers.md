@@ -52,7 +52,7 @@ api_base, api_key_encrypted, is_active, extra (JSONB), deleted_at
 
 ### 2.4 运行时（LiteLLM）
 
-`ModelConfig` → `resolve_model_for_invoke`（租户 BYOK）→ `ai_stack.litellm.adapter.litellm_chat_completion`（`litellm.acompletion`）→ `ainvoke_chat` / `core.llm_client`。
+`ModelConfig` → `resolve_model_for_invoke`（租户 BYOK）→ `integrations.litellm.adapter.litellm_chat_completion`（`litellm.acompletion`）→ `ainvoke_chat` / `core.llm_client`。
 
 | 项 | 说明 |
 |----|------|

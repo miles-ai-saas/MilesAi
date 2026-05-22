@@ -1,4 +1,4 @@
-"""向量存储工厂。"""
+"""向量库客户端工厂。"""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from functools import lru_cache
 from app.core.config import get_settings
 from app.infra.vector_store.base import VectorStore
 
-_BACKENDS = frozenset({"weaviate", "pgvector", "pg_vector", "milvus"})
+_BACKENDS = frozenset({"weaviate", "pgvector", "milvus"})
 
 
 @lru_cache
@@ -22,7 +22,7 @@ def get_vector_store() -> VectorStore:
         from app.infra.vector_store.weaviate import WeaviateVectorStore
 
         return WeaviateVectorStore()
-    if name in ("pgvector", "pg_vector"):
+    if name == "pgvector":
         from app.infra.vector_store.pgvector import PgVectorStore
 
         return PgVectorStore()

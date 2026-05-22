@@ -144,7 +144,7 @@ embed_query_for_kb(kb, query) → search_kb_chunks（Weaviate hybrid 或 向量+
 按 chunk_id 回表 kb_document_chunks + kb_documents → SearchHit[]
 ```
 
-智能体 / 流程 RAG：`search_kb` / `search_multi_kb`（`app.ai_stack.langchain.vectorstores`），多库时 **每个 KB 独立生成查询向量** 后合并按 score 排序。
+智能体 / 流程 RAG：`search_kb` / `search_multi_kb`（`app.integrations.langchain.vectorstores`），多库时 **每个 KB 独立生成查询向量** 后合并按 score 排序。
 
 ### 3.4 删除编排
 
@@ -166,9 +166,10 @@ embed_query_for_kb(kb, query) → search_kb_chunks（Weaviate hybrid 或 向量+
 | 入库 | `app/tenant/kb/services/ingest.py` | Worker 同步流水线 |
 | 加载 | `app/tenant/kb/services/kb_load.py` | 按租户加载 KB（RAG 用） |
 | 仓储 | `app/tenant/kb/repositories/kb.py` | 分页 CRUD |
-| AI | `app.ai.parsers` / `app.ai.chunking` | 解析、分片 |
-| 向量 | `app.ai_stack.embeddings.runtime` + `langchain/embeddings` | 按 KB 绑定的 ModelConfig 调用 |
-| 检索 | `app.ai_stack.langchain.vectorstores` | `search_kb` |
+| RAG | `app.rag.parse` / `app.rag.chunk` / `app.rag.index` / `app.rag.retrieve` | 解析、分片、索引、检索 |
+| 集成 | `app.integrations.langchain` | Embedding、多 KB 检索封装、RAG 生成 |
+| 向量 | `app.integrations.embeddings.runtime` + `langchain/embeddings` | 按 KB 绑定的 ModelConfig 调用 |
+| 检索 | `app.integrations.langchain.vectorstores` | `search_kb` |
 | 删除 | `app.deletion.document` / `cascade.before_delete_kb` | 衍生数据与引用 |
 | 任务 | `app.workers.tasks.ingest` | Celery 入口 |
 
@@ -228,6 +229,34 @@ OpenAPI：`/docs`（运行实例）。
 - 创建 KB 时可设 `chunk_size`（100–4000）、`chunk_overlap`（0–500）。
 - 入库使用 **当前 KB** 上的值；修改后仅影响 **之后** 上传/重试的文档。
 
+### 6.4 文档解析（Parse）
+
+入库 **Parse** 在 `app.rag.parse`（`load_documents_from_bytes` → `chunk_documents`），与检索/向量库解耦。
+
+**当前支持上传并入库的格式：**
+
+| 类型 | 扩展名 | 说明 |
+|------|--------|------|
+| 文本 | `.txt`、`.md`、`.markdown` | 直接解析 |
+| PDF | `.pdf` | 默认 `pypdf`；可选 `docling` |
+| 图片 | `.jpg`、`.jpeg`、`.png`、`.webp` | Pillow 必填；OCR 需 Worker 安装 `[multimodal]` |
+| 音频 | `.mp3`、`.wav`、`.m4a`、`.ogg`、`.webm` | 无 Whisper 时写入占位文本，仍可入库 |
+
+| 配置 | 说明 |
+|------|------|
+| `PARSE_PDF_BACKEND` | `pypdf`（默认，CI/轻量部署）或 `docling`（版式/Markdown，需额外依赖） |
+| `PARSE_DOCLING_FALLBACK_PYPDF` | `docling` 失败或未安装时，PDF 是否回退 `pypdf`（默认 `true`） |
+
+**安装 Docling（Worker 与 API 若走 docling 需一致）：**
+
+```bash
+cd backend && pip install -e ".[parse-docling]"
+```
+
+`docling` 模式下除 PDF 外还支持常见 Office/图片扩展名（见 `app/rag/parse/loaders.py` 中 `DOCLING_EXTENSIONS`）。扫描件 OCR、PaddleOCR 等列为后续扩展，不在当前 P0。
+
+**分片（P1）**：Docling 导出 Markdown 后由 `MarkdownHeaderTextSplitter`（`#` / `##` / `###`）按标题切分，超长块再 `RecursiveCharacterTextSplitter`；分页通过 Docling `page_break_placeholder` 或按页导出写入 `DocumentChunk.page_no` 与向量 metadata。`pypdf` 多页 PDF 按页保留 `page_no`。
+
 ---
 
 ## 7. 前端（工作台）
@@ -246,7 +275,8 @@ OpenAPI：`/docs`（运行实例）。
 | 现象 | 排查 |
 |------|------|
 | 长期 `pending` | Celery Worker 是否消费 `embed` 队列；`ingest_document` 任务状态 |
-| `parse_failed` | 文件类型、PDF/多模态依赖是否安装（`[multimodal]`） |
+| `parse_failed` | 文件类型是否在白名单；`PARSE_PDF_BACKEND=docling` 时是否安装 `[parse-docling]` |
+| 图片/音频无内容 | 是否安装 `[multimodal]`（pytesseract / whisper）；无依赖时仅有占位说明，检索质量有限 |
 | `embed_failed` | 向量维度与 KB 是否一致；LiteLLM Key；Weaviate/Milvus 连通 |
 | 检索无结果 | 文档是否 `ready`；`top_k`；查询与入库是否同一 KB |
 | 删文档后仍能搜到 | 向量库 `delete_by_document` 是否成功（Milvus 多 collection 按维度） |
@@ -276,6 +306,7 @@ celery -A app.workers.app worker -l info -Q default,parse,ocr,asr,embed
 | ✅ 当前 | CRUD、上传入库、KB 级 embedding、检索、删除编排、前端详情页 |
 | 二期-A ✅ | KB 配额校验、`GET /kb/quota`、`kb_search_logs`、`GET /kb/{id}/search-logs`、租户附件 `sys_attachments` + `/api/v1/attachments` |
 | 二期-B ✅ | 混合检索（`retrieval_mode` / `hybrid_alpha`、Weaviate hybrid / Milvus+PG RRF）、检索 `mode` 覆盖 |
+| 二期-C ✅ | 向量库统一 LangChain 实现（weaviate / milvus / pgvector） |
 | 三期 | 多模态向量（图文）、文档预览、批量导入 |
 
 ---
