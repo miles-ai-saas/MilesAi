@@ -9,6 +9,7 @@ import {
 import { SUB_AGENT_ROLE_OPTIONS } from "@/lib/agent-utils";
 import type {
   Agent,
+  A2aPeer,
   Flow,
   KnowledgeBase,
   McpService,
@@ -30,6 +31,7 @@ type Props = {
   skills: SkillPackage[];
   mcps: McpService[];
   allAgents: Agent[];
+  a2aPeers: A2aPeer[];
   designMode?: boolean;
   onOpenFlowCanvas?: () => void;
 };
@@ -47,6 +49,7 @@ export function AgentFormStepContent({
   skills,
   mcps,
   allAgents,
+  a2aPeers,
   designMode,
   onOpenFlowCanvas,
 }: Props) {
@@ -75,6 +78,34 @@ export function AgentFormStepContent({
       ...f,
       sub_agents: f.sub_agents.map((s) =>
         s.child_agent_id === id ? { ...s, role_hint: role_hint || undefined } : s,
+      ),
+    }));
+  };
+
+  const toggleA2aPeer = (peerId: string) => {
+    setForm((f) => {
+      const exists = f.a2a_peers.find((p) => p.peer_id === peerId);
+      if (exists) {
+        return { ...f, a2a_peers: f.a2a_peers.filter((p) => p.peer_id !== peerId) };
+      }
+      if (f.a2a_peers.length >= 4) return f;
+      return {
+        ...f,
+        a2a_peers: [...f.a2a_peers, { peer_id: peerId, trigger_keywords: [], enabled: true }],
+      };
+    });
+  };
+
+  const setA2aKeywords = (peerId: string, raw: string) => {
+    const keywords = raw
+      .replace(/，/g, ",")
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    setForm((f) => ({
+      ...f,
+      a2a_peers: f.a2a_peers.map((p) =>
+        p.peer_id === peerId ? { ...p, trigger_keywords: keywords } : p,
       ),
     }));
   };
@@ -275,9 +306,9 @@ export function AgentFormStepContent({
             </div>
           </div>
           <div className="rounded-lg border border-brand/30 bg-brand-light/30 p-4">
-            <p className="mb-1 text-xs font-medium text-ink">子智能体（可选，最多 8 个）</p>
+            <p className="mb-1 text-xs font-medium text-ink">内部协同（可选，最多 8 个）</p>
             <p className="mb-2 text-xs text-ink-muted">
-              绑定后由 DeepAgents 规划委派；未安装时自动降级平台 JSON 规划。
+              绑定同租户其他智能体，由 DeepAgents 做平台内委派；非 A2A 外部协议。
             </p>
             <div className="max-h-48 space-y-2 overflow-y-auto">
               {allAgents
@@ -320,9 +351,70 @@ export function AgentFormStepContent({
           </div>
           {form.sub_agents.length > 0 && form.kb_ids.length > 0 && (
             <p className="text-xs text-ink-muted lg:col-span-2">
-              已绑定子智能体：对话走 DeepAgents 规划，RAG LangGraph 不生效。
+              已启用内部协同：对话走 DeepAgents 规划，RAG LangGraph 不生效。
             </p>
           )}
+          <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-4 lg:col-span-2">
+            <p className="mb-1 text-xs font-medium text-ink">引用外部 A2A（可选，最多 4 个）</p>
+            <p className="mb-2 text-xs text-ink-muted">
+              在保持本地能力的前提下，按规则或规划调用「A2A 互联 → 外部登记」中的 Agent。若需纯外部编排，请创建「A2A 互联宿主」。
+            </p>
+            {form.a2a_peers.length > 0 && (
+              <label className="mb-3 block text-xs">
+                <span className="mb-1 block text-ink-muted">外部调用策略</span>
+                <select
+                  className="input-field w-full max-w-xs py-1.5 text-xs"
+                  value={form.a2a_invoke_policy}
+                  onChange={(e) =>
+                    setForm((f) => ({
+                      ...f,
+                      a2a_invoke_policy: e.target.value as typeof f.a2a_invoke_policy,
+                    }))
+                  }
+                >
+                  <option value="rules_then_plan">规则优先，未命中则自动规划</option>
+                  <option value="rules_only">仅规则触发</option>
+                  <option value="plan_only">仅自动规划</option>
+                </select>
+              </label>
+            )}
+            <div className="max-h-56 space-y-2 overflow-y-auto">
+              {a2aPeers.length === 0 && (
+                <span className="text-xs text-ink-faint">
+                  请先在智能体列表 A2A Tab 登记外部 Agent 并同步 Card。
+                </span>
+              )}
+              {a2aPeers.map((p) => {
+                const bound = form.a2a_peers.find((x) => x.peer_id === p.id);
+                return (
+                  <div
+                    key={p.id}
+                    className="rounded border border-line-soft bg-surface px-2 py-2 text-xs"
+                  >
+                    <label className="flex cursor-pointer items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={Boolean(bound)}
+                        onChange={() => toggleA2aPeer(p.id)}
+                      />
+                      <span className="font-medium text-ink">{p.name}</span>
+                      <span className="text-ink-faint">
+                        {p.card_display_name ?? "已连通"} · {p.skills_count} skills
+                      </span>
+                    </label>
+                    {bound && (
+                      <input
+                        className="input-field mt-2 w-full py-1 text-xs"
+                        placeholder="规则关键词，逗号分隔（命中则必调此外部 Agent）"
+                        value={(bound.trigger_keywords ?? []).join(", ")}
+                        onChange={(e) => setA2aKeywords(p.id, e.target.value)}
+                      />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </div>
       );
     case 4:
@@ -330,7 +422,7 @@ export function AgentFormStepContent({
         <div className={`mx-auto ${formWidth} space-y-5`}>
           {form.sub_agents.length > 0 ? (
             <div className="rounded-lg border border-line-soft p-4">
-              <p className="mb-2 text-xs font-medium text-ink">子智能体规划</p>
+              <p className="mb-2 text-xs font-medium text-ink">内部协同规划</p>
               <label className="mb-2 flex cursor-pointer items-center gap-2 text-xs">
                 <input
                   type="checkbox"

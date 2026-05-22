@@ -153,13 +153,35 @@ export interface SubAgentBindingInput {
   role_hint?: string | null;
 }
 
+export interface A2aPeerRefInput {
+  peer_id: string;
+  role_hint?: string | null;
+  trigger_keywords?: string[];
+  enabled?: boolean;
+}
+
+export interface A2aPeerRef {
+  id: string;
+  name: string;
+  role_hint?: string | null;
+  trigger_keywords: string[];
+  enabled: boolean;
+  status: string;
+  card_display_name?: string | null;
+  agent_card_url?: string | null;
+}
+
+export type AgentType = "custom" | "a2a";
+
 export interface Agent {
   id: string;
+  agent_type?: AgentType;
   name: string;
   description?: string | null;
   status: string;
   kb_ids: string[];
   sub_agents?: SubAgentRef[];
+  a2a_peers?: A2aPeerRef[];
   published_flow_id?: string | null;
   model_config_id?: string | null;
   prompt_template_id?: string | null;
@@ -319,6 +341,34 @@ export interface McpService {
   status: string;
   tools_cache: Record<string, unknown>[];
   last_sync_at?: string | null;
+}
+
+export interface A2aPeer {
+  id: string;
+  name: string;
+  description?: string | null;
+  base_url?: string | null;
+  agent_card_url: string;
+  card_display_name?: string | null;
+  status: string;
+  skills_count: number;
+  last_synced_at?: string | null;
+  last_error?: string | null;
+  created_at: string;
+}
+
+export interface A2aPeerProbeResult {
+  ok: boolean;
+  card_url: string;
+  card_display_name?: string | null;
+  skills_count: number;
+  message: string;
+}
+
+export interface A2aPeerSyncResult {
+  peer: A2aPeer;
+  card_url: string;
+  message: string;
 }
 
 export interface AppCategory {

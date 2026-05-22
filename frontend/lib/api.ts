@@ -248,20 +248,40 @@ export const api = {
   createKb: (name: string, description?: string) =>
     post<KnowledgeBase>("/kb", { name, description: description || "" }),
 
-  listAgents: (page = 1, size = DEFAULT_PAGE_SIZE) =>
-    getPage<Agent>(`/agents?${buildPageQuery(page, size)}`),
+  listAgents: (page = 1, size = DEFAULT_PAGE_SIZE, agentType?: import("./types").AgentType) => {
+    const q = buildPageQuery(page, size);
+    const suffix = agentType ? `${q}&agent_type=${agentType}` : q;
+    return getPage<Agent>(`/agents?${suffix}`);
+  },
+
+  listA2aPeers: (page = 1, size = DEFAULT_PAGE_SIZE) =>
+    getPage<import("./types").A2aPeer>(`/a2a/peers?${buildPageQuery(page, size)}`),
+  createA2aPeer: (payload: {
+    name: string;
+    base_url: string;
+    description?: string;
+    auth_config?: Record<string, unknown>;
+  }) => post<import("./types").A2aPeer>("/a2a/peers", payload),
+  probeA2aPeer: (baseUrl: string) =>
+    post<import("./types").A2aPeerProbeResult>("/a2a/peers/probe", { base_url: baseUrl }),
+  syncA2aPeerCard: (peerId: string) =>
+    post<import("./types").A2aPeerSyncResult>(`/a2a/peers/${peerId}/sync-card`, {}),
+  deleteA2aPeer: (peerId: string) =>
+    http.delete(`/a2a/peers/${peerId}`).then(() => undefined),
   getAgent: (agentId: string) => get<Agent>(`/agents/${agentId}`),
   createAgent: (payload: {
+    agent_type?: import("./types").AgentType;
     name: string;
     description?: string;
     kb_ids?: string[];
     sub_agents?: import("./types").SubAgentBindingInput[];
+    a2a_peers?: import("./types").A2aPeerRefInput[];
     published_flow_id?: string;
     system_prompt?: string;
     prompt_template_id?: string;
     model_config_id?: string;
     config?: Record<string, unknown>;
-  }) => post<Agent>("/agents", { kb_ids: [], sub_agents: [], ...payload }),
+  }) => post<Agent>("/agents", { kb_ids: [], sub_agents: [], a2a_peers: [], ...payload }),
   updateAgent: (
     agentId: string,
     payload: {
@@ -270,6 +290,7 @@ export const api = {
       status?: "enabled" | "disabled";
       kb_ids?: string[];
       sub_agents?: import("./types").SubAgentBindingInput[];
+      a2a_peers?: import("./types").A2aPeerRefInput[];
       published_flow_id?: string | null;
       system_prompt?: string;
       prompt_template_id?: string | null;

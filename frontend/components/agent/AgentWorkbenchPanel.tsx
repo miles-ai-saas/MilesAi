@@ -21,6 +21,7 @@ import type {
   ModelConfig,
   PromptTemplate,
   SkillPackage,
+  A2aPeer,
 } from "@/lib/types";
 
 type Props = {
@@ -41,6 +42,7 @@ export function AgentWorkbenchPanel({ agentId, activeTab, onSaved }: Props) {
   const [skills, setSkills] = useState<SkillPackage[]>([]);
   const [mcps, setMcps] = useState<McpService[]>([]);
   const [allAgents, setAllAgents] = useState<Agent[]>([]);
+  const [a2aPeers, setA2aPeers] = useState<A2aPeer[]>([]);
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -64,8 +66,9 @@ export function AgentWorkbenchPanel({ agentId, activeTab, onSaved }: Props) {
       api.listSkillPackages(1, 100),
       api.listMcpServices(1, 100),
       api.listAgents(1, 100),
+      api.listA2aPeers(1, 100),
     ])
-      .then(([fresh, kbRes, flowRes, promptRes, modelRes, skillRes, mcpRes, agentRes]) => {
+      .then(([fresh, kbRes, flowRes, promptRes, modelRes, skillRes, mcpRes, agentRes, a2aRes]) => {
         setAgent(fresh);
         setForm(agentToFormValues(fresh));
         setKbs(kbRes.items);
@@ -75,6 +78,7 @@ export function AgentWorkbenchPanel({ agentId, activeTab, onSaved }: Props) {
         setSkills(skillRes.items.filter((s) => s.is_active));
         setMcps(mcpRes.items);
         setAllAgents(agentRes.items);
+        setA2aPeers(a2aRes.items.filter((p) => p.status === "active"));
       })
       .finally(() => setLoading(false));
   }, [agentId]);
@@ -89,6 +93,7 @@ export function AgentWorkbenchPanel({ agentId, activeTab, onSaved }: Props) {
         system_prompt: form.system_prompt.trim() || undefined,
         kb_ids: form.kb_ids,
         sub_agents: form.sub_agents,
+        a2a_peers: form.a2a_peers,
         published_flow_id: form.published_flow_id || null,
         prompt_template_id: form.prompt_template_id || null,
         model_config_id: form.model_config_id || null,
@@ -153,6 +158,7 @@ export function AgentWorkbenchPanel({ agentId, activeTab, onSaved }: Props) {
             skills={skills}
             mcps={mcps}
             allAgents={allAgents}
+            a2aPeers={a2aPeers}
             designMode
             onOpenFlowCanvas={openFlowCanvas}
           />

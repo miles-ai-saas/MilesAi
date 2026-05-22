@@ -46,8 +46,8 @@ export default function DashboardPage() {
   return (
     <div>
       <PageHeader
-        title="运营概览"
-        description="平台租户、计费与风控运营数据一览"
+        title="控制台"
+        description="平台租户、计费与风控数据一览"
       />
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {cards.map((c) => (

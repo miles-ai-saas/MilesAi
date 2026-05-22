@@ -9,7 +9,7 @@ from sqlalchemy.orm import selectinload
 from app.common.exceptions import BadRequestError, NotFoundError
 from app.core.soft_delete import is_marked_deleted, not_deleted
 from app.core.tenant import TenantContext
-from app.models.agent import Agent, AgentSubAgentBinding
+from app.models.agent import Agent, AgentSubAgentBinding, AgentType
 
 MAX_SUB_AGENTS = 8
 
@@ -107,12 +107,39 @@ async def _would_create_cycle(
     return False
 
 
+def validate_agent_type_constraints(
+    *,
+    agent_type: AgentType,
+    kb_ids: list | None = None,
+    published_flow_id: UUID | None = None,
+    sub_agents: list | None = None,
+    a2a_peers: list | None = None,
+    model_config_id: UUID | None = None,
+    is_create: bool = False,
+) -> None:
+    """A2A 宿主与内部协同、KB/流程互斥。"""
+    if agent_type != AgentType.A2A:
+        return
+    if sub_agents:
+        raise BadRequestError("A2A 互联宿主不支持绑定平台内子智能体")
+    if kb_ids:
+        raise BadRequestError("A2A 互联宿主不支持绑定知识库")
+    if published_flow_id:
+        raise BadRequestError("A2A 互联宿主不支持绑定可视化流程")
+    if is_create and not model_config_id:
+        raise BadRequestError("A2A 互联宿主须选择编排模型")
+    if is_create and not a2a_peers:
+        raise BadRequestError("A2A 互联宿主须至少绑定 1 个已连通的外部 Agent")
+
+
 async def validate_and_sync_sub_agents(
     db: AsyncSession,
     ctx: TenantContext,
     parent: Agent,
     bindings: list[tuple[UUID, str | None, int]],
 ) -> None:
+    if parent.agent_type == AgentType.A2A:
+        raise BadRequestError("A2A 互联智能体不支持平台内子智能体绑定")
     if not bindings:
         await db.execute(
             delete(AgentSubAgentBinding).where(
@@ -130,6 +157,10 @@ async def validate_and_sync_sub_agents(
 
     for cid in child_ids:
         child = await _load_agent(db, cid, ctx.tenant_id)
+        if child.agent_type != AgentType.CUSTOM:
+            raise BadRequestError(
+                f"「{child.name}」为 A2A 互联智能体，不能作为内部协同子节点"
+            )
         if child.status.value != "enabled":
             raise BadRequestError(f"子智能体「{child.name}」未启用")
         child_as_parent = await db.scalar(

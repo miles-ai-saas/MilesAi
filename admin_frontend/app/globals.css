@@ -65,4 +65,20 @@
   .nav-item-active {
     @apply bg-brand-light font-medium text-brand;
   }
+
+  .admin-nav-item {
+    @apply flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-ink-muted transition;
+  }
+
+  .admin-nav-item:hover {
+    @apply bg-surface-muted text-ink;
+  }
+
+  .admin-nav-item-active {
+    @apply bg-brand-light font-medium text-brand;
+  }
+
+  .admin-nav-item-active:hover {
+    @apply bg-brand-light text-brand;
+  }
 }

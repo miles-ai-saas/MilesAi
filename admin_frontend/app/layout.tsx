@@ -3,7 +3,7 @@ import { AdminShell } from "@/components/layout/AdminShell";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "AiEngine 运营后台",
+  title: "AiEngine 管理后台",
   description: "平台租户、计费与风控管理",
 };
 

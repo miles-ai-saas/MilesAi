@@ -6,6 +6,7 @@ import { api } from "@/lib/api";
 import {
   agentModeLabel,
   agentStatusLabel,
+  agentTypeLabel,
   subAgentRoleLabel,
 } from "@/lib/agent-utils";
 import type {
@@ -45,7 +46,7 @@ function formatConfigSummary(
   if (cfg.runtime_mode) lines.push(`运行模式：${String(cfg.runtime_mode)}`);
   if (subs > 0) {
     lines.push(`规划器：${cfg.planner === "deepagents" ? "DeepAgents" : String(cfg.planner ?? "deepagents")}`);
-    if (cfg.subagent_parallel) lines.push("平台规划：并行调用子智能体");
+    if (cfg.subagent_parallel) lines.push("平台规划：并行调用成员智能体");
     if (cfg.force_platform_planner) lines.push("强制平台 JSON 规划");
     if (cfg.max_plan_iterations) lines.push(`最大规划轮次：${cfg.max_plan_iterations}`);
   } else if (kbCount > 0 || cfg.use_langgraph_rag === false) {
@@ -140,12 +141,18 @@ export function AgentDetailDialog({
               <button type="button" className="btn-ghost border border-line" onClick={onClose}>
                 关闭
               </button>
-              <button type="button" className="btn-ghost" onClick={() => onEdit(agent)}>
-                编辑
-              </button>
-              <button type="button" className="btn-ghost" onClick={() => onDesign(agent)}>
-                设计
-              </button>
+              {agent.agent_type !== "a2a" ? (
+                <>
+                  <button type="button" className="btn-ghost" onClick={() => onEdit(agent)}>
+                    编辑
+                  </button>
+                  <button type="button" className="btn-ghost" onClick={() => onDesign(agent)}>
+                    设计
+                  </button>
+                </>
+              ) : (
+                <span className="text-xs text-ink-muted">A2A 宿主请在「A2A 互联」Tab 中编辑</span>
+              )}
             </div>
             <button
               type="button"
@@ -186,6 +193,7 @@ export function AgentDetailDialog({
               {agentStatusLabel(agent.status)}
             </span>
           </DetailRow>
+          <DetailRow label="类型">{agentTypeLabel(agent)}</DetailRow>
           <DetailRow label="运行方式">{agentModeLabel(agent)}</DetailRow>
           <DetailRow label="描述">
             {agent.description?.trim() ? agent.description : (
@@ -244,7 +252,31 @@ export function AgentDetailDialog({
               <span className="text-ink-muted">未绑定</span>
             )}
           </DetailRow>
-          <DetailRow label="子智能体">
+          <DetailRow label={agent.agent_type === "a2a" ? "成员 Agent" : "引用外部 A2A"}>
+            {(agent.a2a_peers?.length ?? 0) > 0 ? (
+              <ul className="space-y-2">
+                {agent.a2a_peers!.map((p) => (
+                  <li
+                    key={p.id}
+                    className="rounded-lg border border-line-soft bg-surface-muted px-3 py-2 text-xs"
+                  >
+                    <span className="font-medium text-ink">{p.name}</span>
+                    {p.card_display_name && (
+                      <span className="text-ink-muted"> · Card: {p.card_display_name}</span>
+                    )}
+                    {(p.trigger_keywords?.length ?? 0) > 0 && (
+                      <p className="mt-1 text-ink-faint">
+                        规则关键词：{p.trigger_keywords.join("、")}
+                      </p>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <span className="text-ink-muted">无</span>
+            )}
+          </DetailRow>
+          <DetailRow label="内部协同">
             {(agent.sub_agents?.length ?? 0) > 0 ? (
               <ul className="space-y-2">
                 {agent.sub_agents!.map((s) => (

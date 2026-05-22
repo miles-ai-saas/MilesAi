@@ -20,7 +20,6 @@ npm run dev
 | 变量 | 说明 | 默认 |
 |------|------|------|
 | `NEXT_PUBLIC_ADMIN_API_URL` | 运营 API 根路径 | `http://localhost:8000/api/admin/v1` |
-| `NEXT_PUBLIC_TENANT_WEB_URL` | 租户工作台外链（侧栏） | `http://localhost:3000` |
 
 ## 页面路由
 

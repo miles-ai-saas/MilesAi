@@ -33,13 +33,13 @@ export default function LoginPage() {
       <div className="flex flex-1 flex-col justify-center px-6 py-10 sm:px-12 lg:px-16">
         <div className="mx-auto w-full max-w-md">
           <div className="mb-8 lg:hidden">
-            <p className="text-sm font-medium text-brand">AiEngine 运营</p>
+            <p className="text-sm font-medium text-brand">AiEngine 管理后台</p>
             <h1 className="mt-1 text-2xl font-bold text-ink">平台管理员登录</h1>
           </div>
 
           <form onSubmit={onSubmit} className="card p-8">
             <h2 className="text-xl font-semibold text-ink">欢迎回来</h2>
-            <p className="mt-1 text-sm text-ink-muted">使用平台管理员账号登录运营后台</p>
+            <p className="mt-1 text-sm text-ink-muted">使用平台管理员账号登录管理后台</p>
 
             <label className="mb-1 mt-6 block text-sm font-medium text-ink">用户名</label>
             <input
@@ -65,7 +65,7 @@ export default function LoginPage() {
             )}
 
             <button type="submit" disabled={loading} className="btn-primary w-full">
-              {loading ? "登录中…" : "进入运营后台"}
+              {loading ? "登录中…" : "进入管理后台"}
             </button>
 
             <p className="mt-5 text-center text-xs text-ink-faint">默认账号 platform / admin123</p>

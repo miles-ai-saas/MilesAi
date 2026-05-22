@@ -20,11 +20,11 @@ export function AdminLoginHero() {
       </div>
 
       <div className="relative z-10 flex flex-1 flex-col justify-center px-10 xl:px-14">
-        <p className="mb-3 text-sm font-medium tracking-wide text-brand">AiEngine · 运营</p>
+        <p className="mb-3 text-sm font-medium tracking-wide text-brand">AiEngine · 管理后台</p>
         <h1 className="text-3xl font-bold leading-tight text-ink xl:text-4xl">
           平台级
           <br />
-          <span className="text-brand">运营治理中心</span>
+          <span className="text-brand">运营管理控制台</span>
         </h1>
         <p className="mt-5 max-w-md text-base leading-relaxed text-ink-muted">
           统一管理租户生命周期、计费套餐、风控策略与审计轨迹，让多租户 AI 平台可管、可控、可追责。
@@ -42,7 +42,7 @@ export function AdminLoginHero() {
       </div>
 
       <p className="relative z-10 px-10 pb-8 text-xs text-ink-faint xl:px-14">
-        让平台运营有数据、有边界、有留痕
+        让平台管理有数据、有边界、有留痕
       </p>
     </aside>
   );

@@ -10,6 +10,7 @@ def load_all_models() -> None:
     import app.app_tenant.prompts.models  # noqa: F401
     import app.app_tenant.skills.models  # noqa: F401
     import app.app_tenant.mcp.models  # noqa: F401
+    import app.app_tenant.a2a.models  # noqa: F401
     import app.app_tenant.marketplace.models  # noqa: F401
     import app.app_tenant.tools.models  # noqa: F401
     import app.app_tenant.audit_log.models  # noqa: F401

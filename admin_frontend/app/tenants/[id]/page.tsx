@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -53,14 +52,6 @@ export default function TenantDetailPage() {
 
   return (
     <div className="max-w-3xl">
-      <div className="mb-4 text-sm text-ink-muted">
-        <Link href="/tenants" className="text-brand hover:underline">
-          租户管理
-        </Link>
-        <span> / </span>
-        <span>{tenant.name}</span>
-      </div>
-
       <PageHeader
         title={tenant.name}
         description={`创建于 ${tenant.created_at.slice(0, 10)}`}

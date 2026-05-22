@@ -1,4 +1,4 @@
-import type { SubAgentBindingInput } from "@/lib/types";
+import type { A2aPeerRefInput, SubAgentBindingInput } from "@/lib/types";
 import type { Agent } from "@/lib/types";
 
 export type AgentFormValues = {
@@ -13,6 +13,8 @@ export type AgentFormValues = {
   skill_package_id: string;
   mcp_service_ids: string[];
   sub_agents: SubAgentBindingInput[];
+  a2a_peers: A2aPeerRefInput[];
+  a2a_invoke_policy: "rules_then_plan" | "rules_only" | "plan_only";
   use_langgraph_rag: boolean;
   use_llm_grade: boolean;
   relevance_threshold: number;
@@ -35,12 +37,12 @@ export const AGENT_FORM_STEPS = [
     subtitle: "配置技能包、编排流程与 MCP 服务",
   },
   {
-    title: "知识库与子智能体",
-    subtitle: "配置知识库、MCP 服务与子智能体",
+    title: "知识库与内部协同",
+    subtitle: "知识库、内部协同与外部 A2A 引用（规则触发 + 自动规划）",
   },
   {
     title: "高级设置",
-    subtitle: "配置 RAG 工作流与子智能体规划选项",
+    subtitle: "配置 RAG 工作流与内部协同规划选项",
   },
 ] as const;
 
@@ -65,6 +67,8 @@ export function emptyAgentForm(): AgentFormValues {
     skill_package_id: "",
     mcp_service_ids: [],
     sub_agents: [],
+    a2a_peers: [],
+    a2a_invoke_policy: "rules_then_plan",
     use_langgraph_rag: true,
     use_llm_grade: false,
     relevance_threshold: 0.35,
@@ -91,6 +95,14 @@ export function agentToFormValues(agent: Agent): AgentFormValues {
       child_agent_id: s.id,
       role_hint: s.role_hint ?? undefined,
     })),
+    a2a_peers: (agent.a2a_peers ?? []).map((p) => ({
+      peer_id: p.id,
+      role_hint: p.role_hint ?? undefined,
+      trigger_keywords: p.trigger_keywords ?? [],
+      enabled: p.enabled !== false,
+    })),
+    a2a_invoke_policy:
+      (cfg.a2a_invoke_policy as AgentFormValues["a2a_invoke_policy"]) || "rules_then_plan",
     use_langgraph_rag: cfg.use_langgraph_rag !== false,
     relevance_threshold: Number(cfg.relevance_threshold ?? 0.35),
     rag_max_retries: Number(cfg.rag_max_retries ?? 1),
@@ -143,6 +155,15 @@ export function buildAgentConfig(
     delete config.relevance_threshold;
     delete config.rag_max_retries;
     delete config.use_llm_grade;
+  }
+
+  if (form.a2a_peers.length > 0) {
+    config.a2a_invoke_policy = form.a2a_invoke_policy;
+    config.max_a2a_calls_per_turn = Number(config.max_a2a_calls_per_turn ?? 2);
+  } else {
+    delete config.a2a_invoke_policy;
+    delete config.max_a2a_calls_per_turn;
+    delete config.a2a_peer_count;
   }
 
   if (form.published_flow_id) {

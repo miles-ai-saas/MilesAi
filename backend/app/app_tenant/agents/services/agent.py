@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,12 +12,13 @@ from app.core.tenant import TenantContext, assert_tenant_access, tenant_filters
 from app.flow_runtime.runtime_factory import get_flow_runtime
 from app.flow_runtime.types import RunContext
 from app.app_tenant.prompts.models import PromptTemplate
-from app.models.agent import Agent, AgentStatus, AgentSubAgentBinding
+from app.models.agent import Agent, AgentStatus, AgentSubAgentBinding, AgentType
 from app.app_tenant.agents.repositories.agent import AgentRepository
 from app.app_tenant.hooks.models import HookScope, HookTrigger
 from app.app_tenant.hooks.services.runner import HookRunner
 from app.app_tenant.flows.repositories.flow import FlowRepository
 from app.app_tenant.agents.schemas.agent import (
+    A2aPeerRefOut,
     AgentCreate,
     AgentOut,
     AgentUpdate,
@@ -23,10 +26,22 @@ from app.app_tenant.agents.schemas.agent import (
     ChatResponse,
     SubAgentRefOut,
 )
+from app.app_tenant.a2a.services.host_bindings import (
+    list_host_peer_bindings,
+    normalize_host_peers,
+    validate_and_sync_host_peer_bindings,
+)
+from app.app_tenant.a2a.services.peer_refs import (
+    list_agent_a2a_peer_refs,
+    list_all_agent_a2a_peer_refs,
+    normalize_peer_refs,
+    validate_and_sync_agent_a2a_peer_refs,
+)
 from app.app_tenant.agents.services.sub_agents import (
     apply_planner_config,
     list_sub_agent_bindings,
     normalize_bindings,
+    validate_agent_type_constraints,
     validate_and_sync_sub_agents,
 )
 from app.common.schema import PageParams, PageResult
@@ -55,10 +70,43 @@ def _sub_agents_out(agent: Agent) -> list[SubAgentRefOut]:
     return refs
 
 
-def _agent_out(agent: Agent) -> AgentOut:
+def _a2a_peers_out_from_rows(refs: list) -> list[A2aPeerRefOut]:
+    out: list[A2aPeerRefOut] = []
+    for ref in refs:
+        peer = ref.peer
+        if not peer:
+            continue
+        kws = ref.trigger_keywords if isinstance(ref.trigger_keywords, list) else []
+        out.append(
+            A2aPeerRefOut(
+                id=peer.id,
+                name=peer.name,
+                role_hint=ref.role_hint,
+                trigger_keywords=[str(k) for k in kws],
+                enabled=ref.enabled,
+                status=peer.status.value,
+                card_display_name=peer.card_display_name,
+                agent_card_url=peer.agent_card_url,
+            )
+        )
+    return out
+
+
+def _bindings_to_a2a_out(bindings: list) -> list[A2aPeerRefOut]:
+    return _a2a_peers_out_from_rows(bindings)
+
+
+async def _agent_out(svc: AgentService, agent: Agent) -> AgentOut:
+    if agent.agent_type == AgentType.A2A:
+        bindings = await list_host_peer_bindings(svc.db, agent.id)
+        a2a_out = _bindings_to_a2a_out(bindings)
+    else:
+        refs = await list_all_agent_a2a_peer_refs(svc.db, agent.id)
+        a2a_out = _a2a_peers_out_from_rows(refs)
     return AgentOut(
         id=agent.id,
         tenant_id=agent.tenant_id,
+        agent_type=agent.agent_type,
         name=agent.name,
         description=agent.description,
         status=agent.status,
@@ -68,6 +116,7 @@ def _agent_out(agent: Agent) -> AgentOut:
         published_flow_id=agent.published_flow_id,
         kb_ids=[kb.id for kb in agent.knowledge_bases],
         sub_agents=_sub_agents_out(agent),
+        a2a_peers=a2a_out,
         config=agent.config or {},
         created_at=agent.created_at,
     )
@@ -102,11 +151,15 @@ class AgentService(BaseService):
         assert_tenant_access(self.ctx, agent.tenant_id)
         return agent
 
-    async def list_agents(self, params: PageParams) -> PageResult[AgentOut]:
+    async def list_agents(
+        self, params: PageParams, *, agent_type: AgentType | None = None
+    ) -> PageResult[AgentOut]:
         from sqlalchemy.orm import selectinload
         from app.models.agent import Agent as AgentModel
 
         filters = tenant_filters(self.ctx, AgentModel.tenant_id)
+        if agent_type is not None:
+            filters.append(AgentModel.agent_type == agent_type)
         page = await self.repo.list_page(
             page=params.page,
             size=params.size,
@@ -119,16 +172,29 @@ class AgentService(BaseService):
                 ),
             ],
         )
+        items = []
+        for a in page.items:
+            items.append(await _agent_out(self, a))
         return PageResult(
-            items=[_agent_out(a) for a in page.items],
+            items=items,
             total=page.total,
             page=page.page,
             size=page.size,
         )
 
     async def create_agent(self, body: AgentCreate) -> AgentOut:
+        validate_agent_type_constraints(
+            agent_type=body.agent_type,
+            kb_ids=body.kb_ids,
+            published_flow_id=body.published_flow_id,
+            sub_agents=body.sub_agents,
+            a2a_peers=body.a2a_peers,
+            model_config_id=body.model_config_id,
+            is_create=True,
+        )
         agent = await self.repo.create(
             tenant_id=self.ctx.tenant_id,
+            agent_type=body.agent_type,
             name=body.name,
             description=body.description,
             system_prompt=body.system_prompt,
@@ -145,20 +211,39 @@ class AgentService(BaseService):
         )
         agent.config = apply_planner_config(body.config, has_sub_agents=bool(bindings))
         await validate_and_sync_sub_agents(self.db, self.ctx, agent, bindings)
+        a2a_raw_list = [p.model_dump() for p in body.a2a_peers] if body.a2a_peers else None
+        if body.agent_type == AgentType.A2A:
+            host_peers = normalize_host_peers(a2a_raw_list)
+            await validate_and_sync_host_peer_bindings(self.db, self.ctx, agent, host_peers)
+        else:
+            a2a_raw = normalize_peer_refs(a2a_raw_list)
+            await validate_and_sync_agent_a2a_peer_refs(self.db, self.ctx, agent, a2a_raw)
         await self.db.flush()
         await self.db.refresh(agent, ["knowledge_bases", "sub_agent_bindings"])
         agent = await self._get_agent_or_raise(agent.id)
-        return _agent_out(agent)
+        return await _agent_out(self, agent)
 
     async def get_agent(self, agent_id: UUID) -> AgentOut:
         agent = await self._get_agent_or_raise(agent_id)
-        return _agent_out(agent)
+        return await _agent_out(self, agent)
 
     async def update_agent(self, agent_id: UUID, body: AgentUpdate) -> AgentOut:
         agent = await self._get_agent_or_raise(agent_id)
         data = body.model_dump(exclude_unset=True)
         kb_ids = data.pop("kb_ids", None)
         sub_raw = data.pop("sub_agents", None)
+        a2a_raw_in = data.pop("a2a_peers", None)
+        next_type = data.get("agent_type", agent.agent_type)
+        if isinstance(next_type, str):
+            next_type = AgentType(next_type)
+        validate_agent_type_constraints(
+            agent_type=next_type,
+            kb_ids=kb_ids,
+            published_flow_id=data.get("published_flow_id"),
+            sub_agents=sub_raw,
+            a2a_peers=a2a_raw_in,
+            model_config_id=data.get("model_config_id", agent.model_config_id),
+        )
         await self.repo.update_fields(agent, data)
         if kb_ids is not None:
             agent.knowledge_bases = await self.repo.load_kbs(kb_ids)
@@ -172,9 +257,29 @@ class AgentService(BaseService):
         elif "config" in data:
             existing = await list_sub_agent_bindings(self.db, agent_id)
             agent.config = apply_planner_config(data["config"], has_sub_agents=bool(existing))
+        if a2a_raw_in is not None:
+            raw_list = [p.model_dump() if hasattr(p, "model_dump") else p for p in a2a_raw_in]
+            if agent.agent_type == AgentType.A2A:
+                await validate_and_sync_host_peer_bindings(
+                    self.db, self.ctx, agent, normalize_host_peers(raw_list)
+                )
+            else:
+                await validate_and_sync_agent_a2a_peer_refs(
+                    self.db, self.ctx, agent, normalize_peer_refs(raw_list)
+                )
         await self.db.flush()
         agent = await self._get_agent_or_raise(agent_id)
-        return _agent_out(agent)
+        return await _agent_out(self, agent)
+
+    async def _maybe_augment_a2a(
+        self, agent: Agent, body: ChatRequest, response: ChatResponse
+    ) -> ChatResponse:
+        refs = await list_agent_a2a_peer_refs(self.db, agent.id)
+        if not refs:
+            return response
+        from app.app_tenant.a2a.invoke import augment_response_with_a2a
+
+        return await augment_response_with_a2a(self, agent, body, response)
 
     async def delete_agent(self, agent_id: UUID) -> None:
         agent = await self._get_agent_or_raise(agent_id)
@@ -203,11 +308,50 @@ class AgentService(BaseService):
             )
             await compliance.check_input(body.query, module="agent_chat")
 
+            if agent.agent_type == AgentType.A2A:
+                from app.app_tenant.a2a.invoke import run_a2a_host_chat
+
+                response = await run_a2a_host_chat(self, agent, body)
+                await compliance.check_output(response.answer, module="agent_chat")
+                await hooks.run(
+                    HookTrigger.AFTER_CALL,
+                    HookScope.AGENT,
+                    agent_id,
+                    {**hook_payload, "direction": "out", "text": response.answer},
+                )
+                return response
+
             bindings = await list_sub_agent_bindings(self.db, agent_id)
+            peer_refs = await list_agent_a2a_peer_refs(self.db, agent_id)
             if bindings:
                 from app.ai_stack.deepagents.orchestrator import run_subagent_planned_chat
 
                 response = await run_subagent_planned_chat(self, agent, bindings, body)
+                if peer_refs:
+                    response = await self._maybe_augment_a2a(agent, body, response)
+                await compliance.check_output(response.answer, module="agent_chat")
+                await hooks.run(
+                    HookTrigger.AFTER_CALL,
+                    HookScope.AGENT,
+                    agent_id,
+                    {**hook_payload, "direction": "out", "text": response.answer},
+                )
+                return response
+
+            if peer_refs:
+                from app.app_tenant.a2a.invoke import run_a2a_augmented_chat
+
+                kb_ids = [str(kb.id) for kb in agent.knowledge_bases]
+                top_k = int((agent.config or {}).get("top_k", 5))
+                response = await run_a2a_augmented_chat(
+                    self,
+                    agent,
+                    body,
+                    kb_ids=kb_ids,
+                    top_k=top_k,
+                    agent_id=agent_id,
+                    hooks=hooks,
+                )
                 await compliance.check_output(response.answer, module="agent_chat")
                 await hooks.run(
                     HookTrigger.AFTER_CALL,
@@ -233,17 +377,19 @@ class AgentService(BaseService):
                             system_prompt=await self._resolve_system_prompt(agent),
                         )
                         result = await get_flow_runtime().run(version.graph_json, ctx)
-                        answer = str(result.output)
-                        await compliance.check_output(answer, module="agent_chat")
+                        response = ChatResponse(answer=str(result.output), steps=result.steps)
+                        response = await self._maybe_augment_a2a(agent, body, response)
+                        await compliance.check_output(response.answer, module="agent_chat")
                         await hooks.run(
                             HookTrigger.AFTER_CALL,
                             HookScope.AGENT,
                             agent_id,
-                            {**hook_payload, "direction": "out", "text": answer},
+                            {**hook_payload, "direction": "out", "text": response.answer},
                         )
-                        return ChatResponse(answer=answer, steps=result.steps)
+                        return response
 
             response = await self._rag_chat(agent, body, kb_ids, top_k, agent_id, hooks)
+            response = await self._maybe_augment_a2a(agent, body, response)
             await compliance.check_output(response.answer, module="agent_chat")
             await hooks.run(
                 HookTrigger.AFTER_CALL,

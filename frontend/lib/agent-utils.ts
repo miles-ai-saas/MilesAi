@@ -6,9 +6,25 @@ export function agentStatusLabel(status: string): string {
   return status === "enabled" ? "启用" : "禁用";
 }
 
+export function agentTypeLabel(agent: Agent): string {
+  return agent.agent_type === "a2a" ? "A2A 互联宿主" : "平台内";
+}
+
 export function agentModeLabel(agent: Agent): string {
+  if (agent.agent_type === "a2a") {
+    const n =
+      agent.a2a_peers?.filter((p) => p.enabled !== false).length ??
+      Number((agent.config as Record<string, unknown> | undefined)?.a2a_host_peer_count ?? 0);
+    return n > 0 ? `外部编排 · ${n} 个成员` : "外部编排 · 未绑成员";
+  }
+  const a2a =
+    agent.a2a_peers?.filter((p) => p.enabled !== false).length ??
+    Number((agent.config as Record<string, unknown> | undefined)?.a2a_peer_count ?? 0);
   const subs = agent.sub_agents?.length ?? 0;
-  if (subs > 0) return `协同 · ${subs} 子智能体`;
+  const parts: string[] = [];
+  if (subs > 0) parts.push(`内部协同 · ${subs}`);
+  if (a2a > 0) parts.push(`外部引用 · ${a2a}`);
+  if (parts.length) return parts.join(" · ");
   if (agent.published_flow_id) return "流程";
   if (agent.kb_ids.length > 0) return `RAG · ${agent.kb_ids.length} KB`;
   return "直连";

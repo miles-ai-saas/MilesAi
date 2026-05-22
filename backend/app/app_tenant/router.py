@@ -1,5 +1,6 @@
 from fastapi import APIRouter
 
+from app.app_tenant.a2a.views import peers as a2a_peers
 from app.app_tenant.agents.views import agents
 from app.app_tenant.audit_log.views import audit_log
 from app.app_tenant.auth.views import auth
@@ -30,6 +31,7 @@ api_router.include_router(compliance.router, prefix="/compliance", tags=["compli
 api_router.include_router(prompts.router, prefix="/prompt-templates", tags=["prompt-templates"])
 api_router.include_router(model_views.router, prefix="/models", tags=["models"])
 api_router.include_router(agents.router, prefix="/agents", tags=["agents"])
+api_router.include_router(a2a_peers.router, prefix="/a2a/peers", tags=["a2a-peers"])
 api_router.include_router(hooks.router, prefix="/hooks", tags=["hooks"])
 api_router.include_router(tools.router, prefix="/tools", tags=["tools"])
 api_router.include_router(skills.router, prefix="/skill-packages", tags=["skill-packages"])

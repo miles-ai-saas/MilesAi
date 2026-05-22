@@ -14,6 +14,7 @@ import { ResourceDialog } from "@/components/resource/ResourceDialog";
 import { api } from "@/lib/api";
 import type {
   Agent,
+  A2aPeer,
   Flow,
   KnowledgeBase,
   McpService,
@@ -42,6 +43,7 @@ export function AgentFormDialog({ open, title, agent, onClose, onSaved }: Props)
   const [skills, setSkills] = useState<SkillPackage[]>([]);
   const [mcps, setMcps] = useState<McpService[]>([]);
   const [allAgents, setAllAgents] = useState<Agent[]>([]);
+  const [a2aPeers, setA2aPeers] = useState<A2aPeer[]>([]);
   const [busy, setBusy] = useState(false);
 
   const isLastStep = step === AGENT_FORM_STEPS.length - 1;
@@ -58,7 +60,8 @@ export function AgentFormDialog({ open, title, agent, onClose, onSaved }: Props)
       api.listSkillPackages(1, 100),
       api.listMcpServices(1, 100),
       api.listAgents(1, 100),
-    ]).then(([kbRes, flowRes, promptRes, modelRes, skillRes, mcpRes, agentRes]) => {
+      api.listA2aPeers(1, 100),
+    ]).then(([kbRes, flowRes, promptRes, modelRes, skillRes, mcpRes, agentRes, a2aRes]) => {
       setKbs(kbRes.items);
       setFlows(flowRes.items.filter((f) => f.status === "published"));
       setPrompts(promptRes.items);
@@ -66,6 +69,7 @@ export function AgentFormDialog({ open, title, agent, onClose, onSaved }: Props)
       setSkills(skillRes.items.filter((s) => s.is_active));
       setMcps(mcpRes.items);
       setAllAgents(agentRes.items);
+      setA2aPeers(a2aRes.items.filter((p) => p.status === "active"));
     });
   }, [open]);
 
@@ -88,6 +92,7 @@ export function AgentFormDialog({ open, title, agent, onClose, onSaved }: Props)
         system_prompt: form.system_prompt.trim() || undefined,
         kb_ids: form.kb_ids,
         sub_agents: form.sub_agents,
+        a2a_peers: form.a2a_peers,
         published_flow_id: form.published_flow_id || null,
         prompt_template_id: form.prompt_template_id || null,
         model_config_id: form.model_config_id || null,
@@ -168,6 +173,7 @@ export function AgentFormDialog({ open, title, agent, onClose, onSaved }: Props)
           skills={skills}
           mcps={mcps}
           allAgents={allAgents}
+          a2aPeers={a2aPeers}
         />
       </div>
     </ResourceDialog>

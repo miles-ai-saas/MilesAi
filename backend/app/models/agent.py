@@ -22,16 +22,27 @@ class AgentStatus(str, enum.Enum):
     DISABLED = "disabled"
 
 
+class AgentType(str, enum.Enum):
+    CUSTOM = "custom"
+    A2A = "a2a"
+
+
 class Agent(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __tablename__ = "agt_agents"
     __table_args__ = (
         Index("idx_agt_agents_tenant_id", "tenant_id"),
+        Index("idx_agt_agents_tenant_type", "tenant_id", "agent_type"),
         Index("idx_agt_agents_model_config_id", "model_config_id"),
         Index("idx_agt_agents_published_flow_id", "published_flow_id"),
         Index("idx_agt_agents_prompt_template_id", "prompt_template_id"),
     )
 
     tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    agent_type: Mapped[AgentType] = mapped_column(
+        Enum(AgentType, name="agent_type", values_callable=lambda x: [e.value for e in x]),
+        default=AgentType.CUSTOM,
+        nullable=False,
+    )
     name: Mapped[str] = mapped_column(String(128), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     avatar: Mapped[str | None] = mapped_column(String(512), nullable=True)

@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
@@ -10,6 +10,7 @@ from app.core.tenant import TenantContext
 from app.app_tenant.agents.schemas.agent import AgentCreate, AgentOut, AgentUpdate, ChatRequest, ChatResponse
 from app.common.schema import ApiResponse, PageParams, PageResult
 from app.app_tenant.agents.services.agent import AgentService
+from app.models.agent import AgentType
 
 router = APIRouter()
 
@@ -21,10 +22,11 @@ def _svc(db: AsyncSession, ctx: TenantContext) -> AgentService:
 @router.get("", response_model=ApiResponse[PageResult[AgentOut]])
 async def list_agents(
     params: PageParams = Depends(get_page_params),
+    agent_type: AgentType | None = Query(None, description="按类型筛选：custom | a2a"),
     ctx: TenantContext = Depends(require_permissions("agent:read")),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await _svc(db, ctx).list_agents(params)
+    result = await _svc(db, ctx).list_agents(params, agent_type=agent_type)
     return page_ok(result.items, result.total, result.page, result.size)
 
 
