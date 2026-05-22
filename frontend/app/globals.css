@@ -61,6 +61,35 @@
     @apply rounded-lg px-3 py-1.5 text-sm text-ink-muted transition hover:bg-brand-light hover:text-brand;
   }
 
+  .btn-sm {
+    @apply inline-flex items-center justify-center rounded-md px-3 py-1.5 text-xs font-medium transition
+      disabled:cursor-not-allowed disabled:opacity-45;
+  }
+
+  .btn-sm-primary {
+    @apply btn-sm bg-brand text-brand-foreground shadow-sm hover:bg-brand-dark;
+  }
+
+  .btn-sm-ghost {
+    @apply btn-sm text-ink-muted hover:bg-surface-muted hover:text-ink;
+  }
+
+  .btn-sm-outline {
+    @apply btn-sm border border-line bg-surface text-ink-muted hover:border-brand/30 hover:text-brand;
+  }
+
+  .workbench-rail-item {
+    @apply relative flex w-full items-center gap-3 rounded-xl px-3 py-3.5 text-left text-sm transition;
+  }
+
+  .workbench-rail-item-active {
+    @apply bg-brand-light font-medium text-brand;
+  }
+
+  .workbench-rail-item-idle {
+    @apply text-ink-muted hover:bg-brand-light/50 hover:text-ink;
+  }
+
   .nav-item {
     @apply flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-ink-muted transition;
   }

@@ -55,14 +55,6 @@ export default function AgentsPage() {
     await list.reload();
   };
 
-  const onDesign = (agent: Agent) => {
-    if (agent.published_flow_id) {
-      router.push(`/workbench/flows/${agent.published_flow_id}/edit`);
-      return;
-    }
-    openEdit(agent);
-  };
-
   const onChat = (agent: Agent) => {
     router.push(`/workbench/agents/chat?agent=${agent.id}`);
   };
@@ -137,10 +129,6 @@ export default function AgentsPage() {
                       onClick: () => onChat(a),
                     },
                     {
-                      label: "设计",
-                      onClick: () => onDesign(a),
-                    },
-                    {
                       label: disabled ? "启用" : "禁用",
                       variant: disabled ? "primary" : "danger",
                       onClick: () => onToggleStatus(a),
@@ -179,7 +167,7 @@ export default function AgentsPage() {
         }}
         onDesign={(a) => {
           closeView();
-          onDesign(a);
+          router.push(`/workbench/agents/chat?agent=${a.id}&tab=config`);
         }}
       />
 

@@ -1,0 +1,429 @@
+"use client";
+
+import type { Dispatch, SetStateAction } from "react";
+import {
+  AGENT_TAG_OPTIONS,
+  formatAgentCode,
+  type AgentFormValues,
+} from "@/components/agent/agent-form-shared";
+import { SUB_AGENT_ROLE_OPTIONS } from "@/lib/agent-utils";
+import type {
+  Agent,
+  Flow,
+  KnowledgeBase,
+  McpService,
+  ModelConfig,
+  PromptTemplate,
+  SkillPackage,
+} from "@/lib/types";
+
+type Props = {
+  step: number;
+  form: AgentFormValues;
+  setForm: Dispatch<SetStateAction<AgentFormValues>>;
+  agentId?: string;
+  agent?: Agent | null;
+  kbs: KnowledgeBase[];
+  flows: Flow[];
+  prompts: PromptTemplate[];
+  models: ModelConfig[];
+  skills: SkillPackage[];
+  mcps: McpService[];
+  allAgents: Agent[];
+  designMode?: boolean;
+  onOpenFlowCanvas?: () => void;
+};
+
+export function AgentFormStepContent({
+  step,
+  form,
+  setForm,
+  agentId,
+  agent,
+  kbs,
+  flows,
+  prompts,
+  models,
+  skills,
+  mcps,
+  allAgents,
+  designMode,
+  onOpenFlowCanvas,
+}: Props) {
+  const toggleMcp = (id: string) => {
+    setForm((f) => ({
+      ...f,
+      mcp_service_ids: f.mcp_service_ids.includes(id)
+        ? f.mcp_service_ids.filter((x) => x !== id)
+        : [...f.mcp_service_ids, id],
+    }));
+  };
+
+  const toggleSubAgent = (id: string) => {
+    setForm((f) => {
+      const exists = f.sub_agents.find((s) => s.child_agent_id === id);
+      if (exists) {
+        return { ...f, sub_agents: f.sub_agents.filter((s) => s.child_agent_id !== id) };
+      }
+      if (f.sub_agents.length >= 8) return f;
+      return { ...f, sub_agents: [...f.sub_agents, { child_agent_id: id, role_hint: undefined }] };
+    });
+  };
+
+  const setSubRole = (id: string, role_hint: string) => {
+    setForm((f) => ({
+      ...f,
+      sub_agents: f.sub_agents.map((s) =>
+        s.child_agent_id === id ? { ...s, role_hint: role_hint || undefined } : s,
+      ),
+    }));
+  };
+
+  const toggleKb = (id: string) => {
+    setForm((f) => ({
+      ...f,
+      kb_ids: f.kb_ids.includes(id) ? f.kb_ids.filter((x) => x !== id) : [...f.kb_ids, id],
+    }));
+  };
+
+  const formWidth = designMode ? "max-w-3xl" : "max-w-2xl";
+
+  switch (step) {
+    case 0:
+      return (
+        <div className={`mx-auto ${formWidth} space-y-5`}>
+          <label className="block text-sm">
+            <span className="mb-1 block text-ink-muted">标签</span>
+            <select
+              className="input-field w-full"
+              value={form.tag}
+              onChange={(e) => setForm((f) => ({ ...f, tag: e.target.value }))}
+            >
+              {AGENT_TAG_OPTIONS.map((o) => (
+                <option key={o.value || "none"} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="block text-sm">
+            <span className="mb-1 block text-ink-muted">
+              名称 <span className="text-brand">*</span>
+            </span>
+            <input
+              className="input-field w-full"
+              placeholder="请输入智能体名称"
+              value={form.name}
+              onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+            />
+          </label>
+          {agentId && (
+            <label className="block text-sm">
+              <span className="mb-1 flex items-center gap-1 text-ink-muted">
+                智能体编号
+                <span
+                  className="cursor-help text-ink-faint"
+                  title="系统根据 ID 生成的展示编号，不可修改"
+                >
+                  ⓘ
+                </span>
+              </span>
+              <input
+                className="input-field w-full bg-surface-muted text-ink-muted"
+                readOnly
+                value={formatAgentCode(agentId)}
+              />
+            </label>
+          )}
+          <label className="block text-sm">
+            <span className="mb-1 block text-ink-muted">
+              描述 <span className="text-brand">*</span>
+            </span>
+            <textarea
+              className="input-field h-28 w-full"
+              placeholder="请输入智能体描述"
+              value={form.description}
+              onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+            />
+          </label>
+        </div>
+      );
+    case 1:
+      return (
+        <div className={`mx-auto ${formWidth} space-y-5`}>
+          <label className="block text-sm">
+            <span className="mb-1 block text-ink-muted">大模型</span>
+            <select
+              className="input-field w-full"
+              value={form.model_config_id}
+              onChange={(e) => setForm((f) => ({ ...f, model_config_id: e.target.value }))}
+            >
+              <option value="">默认模型</option>
+              {models.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.name} ({m.model_name})
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="block text-sm">
+            <span className="mb-1 block text-ink-muted">提示词模版</span>
+            <select
+              className="input-field w-full"
+              value={form.prompt_template_id}
+              onChange={(e) => setForm((f) => ({ ...f, prompt_template_id: e.target.value }))}
+            >
+              <option value="">无提示词模板</option>
+              {prompts.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="block text-sm">
+            <span className="mb-1 block text-ink-muted">系统提示词</span>
+            <textarea
+              className="input-field h-32 w-full font-mono text-sm"
+              placeholder="可选，留空则使用模版或默认"
+              value={form.system_prompt}
+              onChange={(e) => setForm((f) => ({ ...f, system_prompt: e.target.value }))}
+            />
+          </label>
+        </div>
+      );
+    case 2:
+      return (
+        <div className="grid gap-5 lg:grid-cols-2">
+          <label className="block text-sm lg:col-span-2">
+            <span className="mb-1 block text-ink-muted">技能包</span>
+            <select
+              className="input-field w-full"
+              value={form.skill_package_id}
+              onChange={(e) => setForm((f) => ({ ...f, skill_package_id: e.target.value }))}
+            >
+              <option value="">无技能包</option>
+              {skills.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="block text-sm">
+            <span className="mb-1 block text-ink-muted">已发布编排流程</span>
+            <div className="flex gap-2">
+              <select
+                className="input-field min-w-0 flex-1"
+                value={form.published_flow_id}
+                onChange={(e) => setForm((f) => ({ ...f, published_flow_id: e.target.value }))}
+              >
+                <option value="">无流程（直连 / RAG / 子智能体）</option>
+                {flows.map((fl) => (
+                  <option key={fl.id} value={fl.id}>
+                    {fl.name}
+                  </option>
+                ))}
+              </select>
+              {form.published_flow_id && onOpenFlowCanvas && (
+                <button type="button" className="btn-ghost shrink-0 border border-line" onClick={onOpenFlowCanvas}>
+                  画布
+                </button>
+              )}
+            </div>
+          </label>
+          {form.published_flow_id && form.sub_agents.length === 0 && (
+            <p className="text-xs text-ink-muted lg:col-span-2">
+              已绑定流程：对话将经 LangGraph 编译执行画布（并行 / 条件分支）。
+            </p>
+          )}
+          <div className="rounded-lg border border-line-soft p-4 lg:col-span-2">
+            <p className="mb-2 text-xs font-medium text-ink-muted">MCP 服务（可多选）</p>
+            <div className="flex max-h-32 flex-wrap gap-2 overflow-y-auto">
+              {mcps.length === 0 && <span className="text-xs text-ink-faint">暂无 MCP 服务</span>}
+              {mcps.map((m) => (
+                <label key={m.id} className="flex cursor-pointer items-center gap-1 text-xs">
+                  <input
+                    type="checkbox"
+                    checked={form.mcp_service_ids.includes(m.id)}
+                    onChange={() => toggleMcp(m.id)}
+                  />
+                  {m.name} ({m.tools_cache?.length ?? 0})
+                </label>
+              ))}
+            </div>
+          </div>
+        </div>
+      );
+    case 3:
+      return (
+        <div className="grid gap-5 lg:grid-cols-2">
+          <div className="rounded-lg border border-line-soft p-4">
+            <p className="mb-2 text-xs font-medium text-ink-muted">知识库（可多选）</p>
+            <div className="flex max-h-40 flex-wrap gap-2 overflow-y-auto">
+              {kbs.length === 0 && <span className="text-xs text-ink-faint">暂无知识库</span>}
+              {kbs.map((kb) => (
+                <label key={kb.id} className="flex cursor-pointer items-center gap-1 text-xs">
+                  <input
+                    type="checkbox"
+                    checked={form.kb_ids.includes(kb.id)}
+                    onChange={() => toggleKb(kb.id)}
+                  />
+                  {kb.name}
+                </label>
+              ))}
+            </div>
+          </div>
+          <div className="rounded-lg border border-brand/30 bg-brand-light/30 p-4">
+            <p className="mb-1 text-xs font-medium text-ink">子智能体（可选，最多 8 个）</p>
+            <p className="mb-2 text-xs text-ink-muted">
+              绑定后由 DeepAgents 规划委派；未安装时自动降级平台 JSON 规划。
+            </p>
+            <div className="max-h-48 space-y-2 overflow-y-auto">
+              {allAgents
+                .filter((a) => a.id !== agent?.id)
+                .map((a) => {
+                  const bound = form.sub_agents.find((s) => s.child_agent_id === a.id);
+                  return (
+                    <div
+                      key={a.id}
+                      className="flex flex-wrap items-center gap-2 rounded border border-line-soft bg-surface px-2 py-1.5"
+                    >
+                      <label className="flex cursor-pointer items-center gap-1 text-xs">
+                        <input
+                          type="checkbox"
+                          checked={Boolean(bound)}
+                          onChange={() => toggleSubAgent(a.id)}
+                        />
+                        {a.name}
+                      </label>
+                      {bound && (
+                        <select
+                          className="input-field py-0.5 text-xs"
+                          value={bound.role_hint ?? ""}
+                          onChange={(e) => setSubRole(a.id, e.target.value)}
+                        >
+                          {SUB_AGENT_ROLE_OPTIONS.map((o) => (
+                            <option key={o.value || "none"} value={o.value}>
+                              {o.label}
+                            </option>
+                          ))}
+                        </select>
+                      )}
+                    </div>
+                  );
+                })}
+              {allAgents.filter((a) => a.id !== agent?.id).length === 0 && (
+                <span className="text-xs text-ink-faint">暂无其他智能体可绑定</span>
+              )}
+            </div>
+          </div>
+          {form.sub_agents.length > 0 && form.kb_ids.length > 0 && (
+            <p className="text-xs text-ink-muted lg:col-span-2">
+              已绑定子智能体：对话走 DeepAgents 规划，RAG LangGraph 不生效。
+            </p>
+          )}
+        </div>
+      );
+    case 4:
+      return (
+        <div className={`mx-auto ${formWidth} space-y-5`}>
+          {form.sub_agents.length > 0 ? (
+            <div className="rounded-lg border border-line-soft p-4">
+              <p className="mb-2 text-xs font-medium text-ink">子智能体规划</p>
+              <label className="mb-2 flex cursor-pointer items-center gap-2 text-xs">
+                <input
+                  type="checkbox"
+                  checked={form.subagent_parallel}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, subagent_parallel: e.target.checked }))
+                  }
+                />
+                平台规划路径并行调用子智能体
+              </label>
+              <label className="flex cursor-pointer items-center gap-2 text-xs">
+                <input
+                  type="checkbox"
+                  checked={form.force_platform_planner}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, force_platform_planner: e.target.checked }))
+                  }
+                />
+                强制平台 JSON 规划（跳过 DeepAgents）
+              </label>
+            </div>
+          ) : form.kb_ids.length > 0 ? (
+            <div className="rounded-lg border border-line-soft p-4">
+              <p className="mb-1 text-xs font-medium text-ink">RAG 工作流（LangGraph）</p>
+              <p className="mb-2 text-xs text-ink-muted">
+                检索 → 相关性评估 → 重试或生成；多轮会话可写入 Redis checkpoint。
+              </p>
+              <label className="mb-3 flex cursor-pointer items-center gap-2 text-xs">
+                <input
+                  type="checkbox"
+                  checked={form.use_langgraph_rag}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, use_langgraph_rag: e.target.checked }))
+                  }
+                />
+                启用 LangGraph RAG
+              </label>
+              <label className="mb-3 flex cursor-pointer items-center gap-2 text-xs">
+                <input
+                  type="checkbox"
+                  checked={form.use_llm_grade}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, use_llm_grade: e.target.checked }))
+                  }
+                />
+                LLM 相关性评分（需配置模型）
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                <label className="text-xs text-ink-muted">
+                  相关性阈值
+                  <input
+                    type="number"
+                    min={0}
+                    max={1}
+                    step={0.05}
+                    className="input-field mt-1 w-full"
+                    value={form.relevance_threshold}
+                    onChange={(e) =>
+                      setForm((f) => ({
+                        ...f,
+                        relevance_threshold: Number(e.target.value) || 0.35,
+                      }))
+                    }
+                  />
+                </label>
+                <label className="text-xs text-ink-muted">
+                  低分重试次数
+                  <input
+                    type="number"
+                    min={0}
+                    max={5}
+                    step={1}
+                    className="input-field mt-1 w-full"
+                    value={form.rag_max_retries}
+                    onChange={(e) =>
+                      setForm((f) => ({
+                        ...f,
+                        rag_max_retries: Math.max(0, Number(e.target.value) || 0),
+                      }))
+                    }
+                  />
+                </label>
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-ink-muted">
+              未绑定知识库或子智能体，本步无额外配置。可在上一步添加知识库或子智能体后再调整 RAG /
+              规划选项。
+            </p>
+          )}
+        </div>
+      );
+    default:
+      return null;
+  }
+}
