@@ -2,10 +2,7 @@
 
 import { Suspense, useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import {
-  AgentChatLeftSidebar,
-  type LeftSidebarTab,
-} from "@/components/agent/AgentChatLeftSidebar";
+import { AgentChatLeftSidebar } from "@/components/agent/AgentChatLeftSidebar";
 import { AgentWorkbenchOverlay } from "@/components/agent/AgentWorkbenchOverlay";
 import { AgentWorkbenchSidebar } from "@/components/agent/AgentWorkbenchSidebar";
 import { ChatMessageThread } from "@/components/agent/ChatMessageThread";
@@ -30,7 +27,7 @@ import {
   type ChatMessage,
   type ChatSession,
 } from "@/lib/chat-sessions";
-import { usePagedList } from "@/hooks/use-paged-list";
+import { useInfiniteList } from "@/hooks/use-infinite-list";
 
 export default function AgentsChatPage() {
   return (
@@ -64,12 +61,13 @@ function AgentsChatContent() {
   const [panelOpen, setPanelOpen] = useState(false);
   const [leftCollapsed, setLeftCollapsed] = useState(false);
   const [rightCollapsed, setRightCollapsed] = useState(false);
-  const [leftTab, setLeftTab] = useState<LeftSidebarTab>("agents");
-
   const [query, setQuery] = useState("");
   const [chatting, setChatting] = useState(false);
 
-  const list = usePagedList(useCallback((p, s) => api.listAgents(p, s), []), { enabled: ready });
+  const list = useInfiniteList(useCallback((p, s) => api.listAgents(p, s), []), {
+    enabled: ready,
+    pageSize: 30,
+  });
 
   const refreshSessions = useCallback((agentId: string) => {
     setSessions(listSessions(agentId));
@@ -104,7 +102,6 @@ function AgentsChatContent() {
     const prefs = loadChatSidebarPrefs();
     if (prefs.leftCollapsed) setLeftCollapsed(true);
     if (prefs.rightCollapsed) setRightCollapsed(true);
-    if (prefs.leftTab) setLeftTab(prefs.leftTab);
   }, []);
 
   useEffect(() => {
@@ -142,15 +139,10 @@ function AgentsChatContent() {
 
   const selected = list.items.find((a) => a.id === selectedAgent);
 
-  const persistSidebar = (patch: {
-    left?: boolean;
-    right?: boolean;
-    leftTab?: LeftSidebarTab;
-  }) => {
+  const persistSidebar = (patch: { left?: boolean; right?: boolean }) => {
     saveChatSidebarPrefs({
       leftCollapsed: patch.left ?? leftCollapsed,
       rightCollapsed: patch.right ?? rightCollapsed,
-      leftTab: patch.leftTab ?? leftTab,
     });
   };
 
@@ -160,8 +152,6 @@ function AgentsChatContent() {
     refreshSessions(selectedAgent);
     loadSessionIntoUi(selectedAgent, session.id);
     syncAgentUrl(selectedAgent, session.id);
-    setLeftTab("sessions");
-    persistSidebar({ leftTab: "sessions" });
   };
 
   const handleSelectSession = (sessionId: string) => {
@@ -258,27 +248,22 @@ function AgentsChatContent() {
       <AgentChatLeftSidebar
         agents={list.items}
         total={list.total}
-        page={list.page}
-        size={list.size}
         selectedAgentId={selectedAgent}
         sessions={sessions}
         activeSessionId={conversationId || null}
         collapsed={leftCollapsed}
-        defaultTab={leftTab}
+        hasMoreAgents={list.hasMore}
+        loadingMoreAgents={list.loadingMore}
+        onLoadMoreAgents={() => void list.loadMore()}
         onToggleCollapse={() => {
           const next = !leftCollapsed;
           setLeftCollapsed(next);
           persistSidebar({ left: next });
         }}
         onSelectAgent={onSelectAgent}
-        onPageChange={list.setPage}
         onNewSession={handleNewSession}
         onSelectSession={handleSelectSession}
         onDeleteSession={handleDeleteSession}
-        onTabChange={(t) => {
-          setLeftTab(t);
-          persistSidebar({ leftTab: t });
-        }}
       />
 
       <section className="flex min-w-0 flex-1 flex-col bg-surface-subtle">

@@ -26,7 +26,7 @@ export function AgentChatSessionPanel({
   if (!agentSelected) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center px-4 py-8 text-center text-xs text-ink-muted">
-        请先在「智能体」中选择要对话的智能体
+        请先在左侧选择要对话的智能体
       </div>
     );
   }
