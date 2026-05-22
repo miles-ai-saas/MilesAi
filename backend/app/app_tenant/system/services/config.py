@@ -45,6 +45,14 @@ CONFIG_DEFINITIONS: list[dict] = [
 ]
 
 
+def _format_component_status(value: object) -> str:
+    if isinstance(value, dict):
+        return str(value.get("status", value))
+    if isinstance(value, bool):
+        return "ok" if value else "unavailable"
+    return str(value)
+
+
 class SystemConfigService(BaseService):
     def __init__(self, db: AsyncSession, ctx: TenantContext) -> None:
         super().__init__(db, ctx)
@@ -112,7 +120,9 @@ class SystemConfigService(BaseService):
     async def runtime_info(self) -> RuntimeInfoOut:
         settings = get_settings()
         health = await collect_health_status()
-        components = {k: str(v.get("status", v)) for k, v in health.get("components", {}).items()}
+        components = {
+            k: _format_component_status(v) for k, v in health.get("components", {}).items()
+        }
         preview = {
             "database_url": "***" if settings.database_url else None,
             "redis_url": "***" if settings.redis_url else None,

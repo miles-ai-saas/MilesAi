@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect } from "react";
 import { api } from "@/lib/api";
 import { useAuthHydrated, useAuthStore } from "@/lib/auth-store";
-import { AppSidebar } from "@/components/layout/AppSidebar";
+import { SystemShell } from "@/components/layout/SystemShell";
 import { SectionLink } from "@/components/layout/SectionLink";
 import { UserMenu } from "@/components/layout/UserMenu";
 import { WorkbenchHeaderNav } from "@/components/layout/WorkbenchHeaderNav";
@@ -31,6 +31,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return <>{children}</>;
   }
 
+  if (section === "system") {
+    return <SystemShell>{children}</SystemShell>;
+  }
+
   return (
     <div className="flex min-h-screen flex-col bg-surface-muted">
       <header className="flex h-14 shrink-0 items-center gap-3 border-b border-line bg-surface px-4">
@@ -50,16 +54,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </header>
 
-      {isWorkbench ? (
-        <main className={`min-h-0 flex-1 overflow-auto ${fullBleed ? "" : "p-5 lg:px-8"}`}>
-          {children}
-        </main>
-      ) : (
-        <div className="flex min-h-0 flex-1">
-          <AppSidebar pathname={pathname} />
-          <main className="min-w-0 flex-1 overflow-auto p-5">{children}</main>
-        </div>
-      )}
+      <main className={`min-h-0 flex-1 overflow-auto ${fullBleed ? "" : "p-5 lg:px-8"}`}>
+        {children}
+      </main>
     </div>
   );
 }

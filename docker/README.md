@@ -86,4 +86,4 @@ PostgreSQL 由中间件自动建库（`POSTGRES_DB`）。表结构在 API 首次
 cd ../backend && alembic upgrade head
 ```
 
-详见 [docs/数据库初始化.md](../docs/数据库初始化.md)。
+详见 [docs/database-setup.md](../docs/database-setup.md)。

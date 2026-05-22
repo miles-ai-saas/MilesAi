@@ -103,7 +103,7 @@ app/
 | `runtime_factory.get_flow_runtime()` | 入口 → LangGraph 编译执行画布 |
 | `nodes/registry.py` | 节点注册（RAG / LLM / IO 等） |
 
-业务 CRUD 与 `POST /flows/{id}/run` 在 `app_tenant/flows/`。完整说明见仓库根目录 [docs/flow-runtime.md](../docs/flow-runtime.md)。
+业务 CRUD 与 `POST /flows/{id}/run` 在 `app_tenant/flows/`。完整说明见 [docs/flows.md](../docs/flows.md)。
 
 ### Admin 布局
 

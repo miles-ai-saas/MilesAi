@@ -2,6 +2,12 @@ export type AppSection = "workbench" | "system";
 
 export type NavItem = { href: string; label: string };
 
+export type SystemNavIcon = "users" | "roles" | "config" | "audit";
+
+export type SystemNavItem = NavItem & { icon: SystemNavIcon };
+
+export type BreadcrumbItem = { label: string; href?: string };
+
 export type NavGroup = { title: string; items: NavItem[] };
 
 export const WORKBENCH_PREFIX = "/workbench";
@@ -57,24 +63,44 @@ export const WORKBENCH_NAV: NavGroup[] = [
   },
 ];
 
-export const SYSTEM_NAV: NavGroup[] = [
+export const SYSTEM_NAV: { title: string; items: SystemNavItem[] }[] = [
   {
-    title: "系统管理",
+    title: "权限管理",
     items: [
-      { href: "/system/users", label: "用户管理" },
-      { href: "/system/roles", label: "角色权限" },
-      { href: "/system/config", label: "系统配置" },
-      { href: "/system/audit", label: "审计日志" },
+      { href: "/system/users", label: "用户管理", icon: "users" },
+      { href: "/system/roles", label: "角色权限", icon: "roles" },
+    ],
+  },
+  {
+    title: "系统设置",
+    items: [
+      { href: "/system/config", label: "系统配置", icon: "config" },
+      { href: "/system/audit", label: "审计日志", icon: "audit" },
     ],
   },
 ];
+
+export function getSystemBreadcrumbs(pathname: string): BreadcrumbItem[] {
+  const home: BreadcrumbItem = { label: "用户管理", href: "/system/users" };
+
+  if (pathname === "/system/users" || pathname === "/system") {
+    return [{ label: "用户管理" }];
+  }
+  if (pathname === "/system/roles") return [home, { label: "角色权限" }];
+  if (pathname === "/system/config") return [home, { label: "系统配置" }];
+  if (pathname === "/system/audit") return [home, { label: "审计日志" }];
+
+  return [home];
+}
 
 export function getAppSection(pathname: string): AppSection {
   if (pathname.startsWith("/system")) return "system";
   return "workbench";
 }
 
-export function getNavForSection(section: AppSection): NavGroup[] {
+export function getNavForSection(
+  section: AppSection,
+): { title: string; items: NavItem[] }[] {
   return section === "system" ? SYSTEM_NAV : WORKBENCH_NAV;
 }
 

@@ -1,5 +1,7 @@
 # 数据库创建与初始化
 
+> 类型：运维指南 | 状态：已实现 | 关联：[README.md](./README.md)、[../docker/README.md](../docker/README.md)
+
 AiEngine 业务数据存储在 **PostgreSQL 15+**，表结构由 **Alembic** 管理。向量数据在 Weaviate，文件在 MinIO，不在 PostgreSQL 中建库说明范围内。
 
 ---
