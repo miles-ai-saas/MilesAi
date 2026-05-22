@@ -51,9 +51,9 @@ app/core/llm_client.py → ainvoke_chat
 | 变量 | 默认 | 说明 |
 |------|------|------|
 | `EMBEDDING_BACKEND` | `local` | `local` 或 `litellm` |
-| `EMBEDDING_MODEL_NAME` | `sentence-transformers/all-MiniLM-L6-v2` | 仅 `local` |
+| `EMBEDDING_MODEL_NAME` | `BAAI/bge-base-zh-v1.5` | 仅 `local` |
 | `EMBEDDING_LITELLM_MODEL` | `dashscope/text-embedding-v3` | 仅 `litellm` |
 | `EMBEDDING_LITELLM_API_KEY` | 空 | 也可用厂商环境变量（如 `DASHSCOPE_API_KEY`） |
-| `EMBEDDING_VECTOR_DIMENSION` | `384` | 新建知识库维度；切到 dashscope v3 时建议 `1024` 并重建索引 |
+| `EMBEDDING_VECTOR_DIMENSION` | `768` | 新建知识库维度；切到 dashscope v3 时建议 `1024` 并重建索引 |
 
 扩展内置工具：在 `langchain/tools.py` 增加 `StructuredTool`，并在 `tools/invoke.py` 注册。

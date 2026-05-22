@@ -3,7 +3,7 @@
 from uuid import UUID
 
 from app.ai.chunking import split_text
-from app.ai_stack.langchain.embeddings import embed_texts_for_kb
+from app.ai_stack.langchain.embeddings import embed_texts_for_kb_sync
 from app.ai.media import vector_type_for_document
 from app.ai.parsers import parse_file
 from app.deletion.document import clear_document_derived_data_sync
@@ -39,7 +39,7 @@ def run_ingest(document_id: str) -> None:
             db.flush()
 
             clear_document_derived_data_sync(db, doc.id)
-            vectors = embed_texts_for_kb(kb, chunks_text)
+            vectors = embed_texts_for_kb_sync(db, kb, chunks_text)
             vector_type = vector_type_for_document(doc.filename, doc.mime_type)
 
             for idx, (content, vector) in enumerate(zip(chunks_text, vectors)):

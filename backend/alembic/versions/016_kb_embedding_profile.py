@@ -30,7 +30,7 @@ def upgrade() -> None:
                 "embedding_profile",
                 sa.String(64),
                 nullable=False,
-                server_default="local-minilm",
+                server_default="local-bge-zh",
             ),
         )
     if not _col_exists("kb_bases", "embedding_backend"):
@@ -50,7 +50,7 @@ def upgrade() -> None:
                 "embedding_model_name",
                 sa.String(256),
                 nullable=False,
-                server_default="sentence-transformers/all-MiniLM-L6-v2",
+                server_default="BAAI/bge-base-zh-v1.5",
             ),
         )
 

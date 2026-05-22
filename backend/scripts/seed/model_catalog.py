@@ -21,6 +21,36 @@ from app.models.model_catalog import (
 
 # model_code 与 API model_name 一致，便于租户直接填写调用
 BUILTIN_CATALOG: list[dict] = [
+    # --- 向量化（知识库绑定）---
+    {
+        "model_code": "bge-base-zh-v1.5",
+        "name": "本地 BGE 中文",
+        "vendor": ModelVendor.OTHER.value,
+        "provider": "local",
+        "model_name": "BAAI/bge-base-zh-v1.5",
+        "model_type": ModelCapabilityType.EMBEDDING.value,
+        "description": "离线 Sentence-Transformers，无需 API Key，适合私有化默认知识库。",
+        "context_window": "—",
+        "sort_order": 1,
+        "is_featured": True,
+        "extra": {"invoke_mode": "local", "embedding_dimension": 768},
+    },
+    {
+        "model_code": "qwen-text-embedding-v3",
+        "name": "通义 text-embedding-v3",
+        "vendor": ModelVendor.QWEN.value,
+        "provider": "qwen",
+        "model_name": "text-embedding-v3",
+        "model_type": ModelCapabilityType.EMBEDDING.value,
+        "description": "阿里云 DashScope 文本向量，1024 维；需在模型页配置 API Key。",
+        "context_window": "—",
+        "sort_order": 2,
+        "is_featured": True,
+        "extra": {
+            "litellm_model": "dashscope/text-embedding-v3",
+            "embedding_dimension": 1024,
+        },
+    },
     # --- 深度求索 ---
     {
         "model_code": "deepseek-v4-pro",
@@ -405,13 +435,15 @@ async def seed_model_catalog(session: AsyncSession) -> None:
         if existing:
             for key in _UPDATABLE:
                 setattr(existing, key, values[key])
+            if item.get("extra"):
+                existing.extra = item["extra"]
             continue
         session.add(
             ModelConfig(
                 tenant_id=None,
                 model_code=code,
                 capabilities=[],
-                extra={},
+                extra=item.get("extra") or {},
                 **values,
             )
         )

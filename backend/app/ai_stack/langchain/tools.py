@@ -67,7 +67,7 @@ def make_knowledge_search_tool(ctx: TenantContext) -> StructuredTool:
 
         with get_sync_db() as db:
             kb = load_kb_sync(db, tenant_id, UUID(kb_id))
-        hits = search_kb(query, kb=kb, limit=limit)
+            hits = search_kb(query, kb=kb, db=db, limit=limit)
         return {"hits": hits}
 
     return StructuredTool.from_function(

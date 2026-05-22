@@ -26,12 +26,10 @@ class KnowledgeBase(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     name: Mapped[str] = mapped_column(String(128), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     is_public: Mapped[bool] = mapped_column(default=False, nullable=False)
-    embedding_profile: Mapped[str] = mapped_column(String(64), default="local-minilm", nullable=False)
-    embedding_backend: Mapped[str] = mapped_column(String(32), default="local", nullable=False)
-    embedding_model_name: Mapped[str] = mapped_column(
-        String(256), default="sentence-transformers/all-MiniLM-L6-v2", nullable=False
+    embedding_model_config_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), nullable=False
     )
-    embedding_dimension: Mapped[int] = mapped_column(Integer, default=384, nullable=False)
+    embedding_dimension: Mapped[int] = mapped_column(Integer, default=768, nullable=False)
     chunk_size: Mapped[int] = mapped_column(Integer, default=500, nullable=False)
     chunk_overlap: Mapped[int] = mapped_column(Integer, default=50, nullable=False)
 

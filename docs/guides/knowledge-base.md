@@ -11,7 +11,7 @@
 |------|------|
 | 多租户隔离 | `tenant_id` 贯穿 PG、对象 key、向量 Filter |
 | 可替换基础设施 | 对象存储 `app.infra.storage`；向量库 `app.infra.vector_store` |
-| KB 级向量规格 | 创建时绑定 `embedding_profile`，**创建后不可改** |
+| KB 级向量模型 | 创建时绑定 `embedding_model_config_id`（`model_type=embedding`），**创建后不可改** |
 | 异步入库 | 上传 → Celery `ingest_document` → 解析 → 分片 → 向量化 → 向量库 |
 | 可观测 | 文档状态机 + `fail_reason` + 任务表 `task_records` |
 
@@ -31,9 +31,7 @@ erDiagram
         uuid id PK
         uuid tenant_id
         string name
-        string embedding_profile
-        string embedding_backend
-        string embedding_model_name
+        uuid embedding_model_config_id
         int embedding_dimension
         int chunk_size
         int chunk_overlap
@@ -88,15 +86,15 @@ pending → parsing → embedding → ready
 
 ```
 POST /api/v1/kb
-  body: name, description?, embedding_profile?, chunk_size?, chunk_overlap?
+  body: name, description?, embedding_model_config_id?, chunk_size?, chunk_overlap?
         ↓
-get_embedding_profile(profile_id)  → 固化 backend / model_name / dimension
+resolve_embedding_model_by_id  → 固化 embedding_dimension（来自 ModelConfig.extra）
         ↓
 INSERT kb_bases
 ```
 
-- 默认 `embedding_profile`：见 `default_embedding_profile_id()`（随全局 `EMBEDDING_BACKEND` 倾向 `local-minilm` 或 `dashscope-v3`）。
-- 目录：`GET /api/v1/kb/embedding-profiles`。
+- 未传 `embedding_model_config_id` 时使用内置默认 `bge-base-zh-v1.5`（`model_code`）。
+- 可选模型目录：`GET /api/v1/models?model_type=embedding`（与智能体共用模型供应商页）。
 
 ### 3.2 上传与入库
 
@@ -167,7 +165,7 @@ vector_store.search(vector, tenant_id, kb_id, limit)
 | 加载 | `app/tenant/kb/services/kb_load.py` | 按租户加载 KB（RAG 用） |
 | 仓储 | `app/tenant/kb/repositories/kb.py` | 分页 CRUD |
 | AI | `app.ai.parsers` / `app.ai.chunking` | 解析、分片 |
-| 向量 | `app.ai_stack.langchain.embeddings` | KB 级 embedding |
+| 向量 | `app.ai_stack.embeddings.runtime` + `langchain/embeddings` | 按 KB 绑定的 ModelConfig 调用 |
 | 检索 | `app.ai_stack.langchain.vectorstores` | `search_kb` |
 | 删除 | `app.deletion.document` / `cascade.before_delete_kb` | 衍生数据与引用 |
 | 任务 | `app.workers.tasks.ingest` | Celery 入口 |
@@ -179,8 +177,7 @@ vector_store.search(vector, tenant_id, kb_id, limit)
 | 方法 | 路径 | 权限 | 说明 |
 |------|------|------|------|
 | GET | `/kb` | `kb:read` | 分页列表 |
-| GET | `/kb/embedding-profiles` | `kb:read` | 向量化规格目录 |
-| POST | `/kb` | `kb:write` | 创建（含 `embedding_profile`） |
+| POST | `/kb` | `kb:write` | 创建（含 `embedding_model_config_id`） |
 | GET | `/kb/{id}` | `kb:read` | 详情 |
 | PATCH | `/kb/{id}` | `kb:write` | 更新（**不可**改 embedding 字段） |
 | DELETE | `/kb/{id}` | `kb:write` | 删除库及文档 |
@@ -196,16 +193,16 @@ OpenAPI：`/docs`（运行实例）。
 
 ## 6. 配置与规格
 
-### 6.1 向量化规格目录
+### 6.1 向量化模型（模型目录）
 
-`app/ai_stack/embedding_profiles.py`：
+内置种子（`scripts/seed/model_catalog.py`，`model_type=embedding`）：
 
-| id | 维度 | backend | 说明 |
-|----|------|---------|------|
-| `local-minilm` | 384 | local | 本地 Sentence-Transformers |
-| `dashscope-v3` | 1024 | litellm | 通义 text-embedding-v3 |
+| model_code | 维度 | invoke_mode | 说明 |
+|------------|------|-------------|------|
+| `bge-base-zh-v1.5` | 768 | `local` | `BAAI/bge-base-zh-v1.5`，无需 API Key |
+| `qwen-text-embedding-v3` | 1024 | litellm | 通义，需 BYOK |
 
-切换全局默认 embedding **不影响** 已创建 KB；已入库数据需 **重新 ingest** 方可换模型（应新建 KB）。
+租户可在 **模型供应商** 创建自定义 embedding（`extra.embedding_dimension` 必填）。切换 KB 绑定的模型需 **新建知识库** 并重新入库。
 
 ### 6.2 环境变量（L1）
 
@@ -222,7 +219,7 @@ OpenAPI：`/docs`（运行实例）。
 
 | 路由 | 功能 |
 |------|------|
-| `/workbench/kb` | 列表、新建（选 `embedding_profile`） |
+| `/workbench/kb` | 列表、新建（选向量化模型，来自模型目录） |
 | `/workbench/kb/[id]` | 上传、文档状态轮询、重试、删除、检索测试 |
 
 类型与 API：`frontend/lib/types.ts`、`frontend/lib/api.ts`。
@@ -251,7 +248,7 @@ celery -A app.workers.app worker -l info -Q default,parse,ocr,asr,embed
 
 | 项 | 命令 / 说明 |
 |----|-------------|
-| embedding 规格 | `pytest tests/test_embedding_profiles.py` |
+| 向量化模型 | `pytest tests/test_embedding_models.py` |
 | 删除编排 | `pytest tests/test_kb_document_delete.py`（若已添加） |
 | 手工 | 上传 TXT → 等 `ready` → `/search` 命中 → 删除文档后检索为空 |
 

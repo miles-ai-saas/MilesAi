@@ -10,7 +10,6 @@ from app.core.tenant import TenantContext
 from app.common.schema import ApiResponse, PageParams, PageResult
 from app.tenant.kb.schemas.kb import (
     DocumentOut,
-    EmbeddingProfileOut,
     KnowledgeBaseCreate,
     KnowledgeBaseOut,
     KnowledgeBaseUpdate,
@@ -34,14 +33,6 @@ async def list_kbs(
 ):
     result = await _svc(db, ctx).list_kbs(params)
     return page_ok(result.items, result.total, result.page, result.size)
-
-
-@router.get("/embedding-profiles", response_model=ApiResponse[list[EmbeddingProfileOut]])
-async def list_embedding_profiles(
-    ctx: TenantContext = Depends(require_permissions("kb:read")),
-    db: AsyncSession = Depends(get_db),
-):
-    return ok(KnowledgeBaseService.list_embedding_profiles())
 
 
 @router.post("", response_model=ApiResponse[KnowledgeBaseOut])

@@ -276,16 +276,25 @@ export const api = {
 
   listKbs: (page = 1, size = DEFAULT_PAGE_SIZE) =>
     getPage<KnowledgeBase>(`/kb?${buildPageQuery(page, size)}`),
-  listEmbeddingProfiles: () =>
-    get<import("./types").EmbeddingProfile[]>("/kb/embedding-profiles"),
   createKb: (payload: {
     name: string;
     description?: string;
-    embedding_profile?: string;
+    embedding_model_config_id?: string;
     chunk_size?: number;
     chunk_overlap?: number;
     is_public?: boolean;
   }) => post<KnowledgeBase>("/kb", payload),
+  updateKb: (
+    kbId: string,
+    payload: {
+      name?: string;
+      description?: string | null;
+      chunk_size?: number;
+      chunk_overlap?: number;
+      is_public?: boolean;
+    },
+  ) => patch<KnowledgeBase>(`/kb/${kbId}`, payload),
+  deleteKb: (kbId: string) => http.delete(`/kb/${kbId}`).then(() => undefined),
 
   listAgents: (page = 1, size = DEFAULT_PAGE_SIZE, agentType?: import("./types").AgentType) => {
     const q = buildPageQuery(page, size);

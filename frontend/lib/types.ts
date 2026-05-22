@@ -218,6 +218,7 @@ export interface ModelConfig {
   publish_status?: string | null;
   credential_status: ModelCredentialStatus;
   has_api_key: boolean;
+  extra?: { embedding_dimension?: number; invoke_mode?: string; litellm_model?: string };
   created_at: string;
 }
 
@@ -266,23 +267,14 @@ export interface SkillPackage {
   created_at: string;
 }
 
-export interface EmbeddingProfile {
-  id: string;
-  label: string;
-  backend: string;
-  model_name: string;
-  dimension: number;
-}
-
 export interface KnowledgeBase {
   id: string;
   tenant_id?: string;
   name: string;
   description?: string | null;
   is_public?: boolean;
-  embedding_profile: string;
-  embedding_backend?: string;
-  embedding_model_name?: string;
+  embedding_model_config_id: string;
+  embedding_model_name?: string | null;
   embedding_dimension: number;
   chunk_size?: number;
   chunk_overlap?: number;

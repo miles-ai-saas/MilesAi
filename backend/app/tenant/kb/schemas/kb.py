@@ -3,16 +3,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field, model_validator
 
-from app.ai_stack.embedding_profiles import default_embedding_profile_id
 from app.models.kb import DocumentStatus
-
-
-class EmbeddingProfileOut(BaseModel):
-    id: str
-    label: str
-    backend: str
-    model_name: str
-    dimension: int
 
 
 class KnowledgeBaseCreate(BaseModel):
@@ -21,9 +12,9 @@ class KnowledgeBaseCreate(BaseModel):
     is_public: bool = False
     chunk_size: int = Field(500, ge=100, le=4000)
     chunk_overlap: int = Field(50, ge=0, le=500)
-    embedding_profile: str = Field(
-        default_factory=default_embedding_profile_id,
-        description="向量化规格，创建后不可修改",
+    embedding_model_config_id: UUID | None = Field(
+        None,
+        description="向量化模型（model_type=embedding），默认内置 BGE；创建后不可修改",
     )
 
 
@@ -41,15 +32,13 @@ class KnowledgeBaseUpdate(BaseModel):
             forbidden = {
                 k
                 for k in (
-                    "embedding_profile",
-                    "embedding_backend",
-                    "embedding_model_name",
+                    "embedding_model_config_id",
                     "embedding_dimension",
                 )
                 if k in data and data[k] is not None
             }
             if forbidden:
-                raise ValueError("向量化规格创建后不可修改，请新建知识库")
+                raise ValueError("向量化模型创建后不可修改，请新建知识库")
         return data
 
 
@@ -59,9 +48,8 @@ class KnowledgeBaseOut(BaseModel):
     name: str
     description: str | None
     is_public: bool
-    embedding_profile: str
-    embedding_backend: str
-    embedding_model_name: str
+    embedding_model_config_id: UUID
+    embedding_model_name: str | None = None
     embedding_dimension: int
     chunk_size: int
     chunk_overlap: int

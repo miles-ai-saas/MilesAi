@@ -127,28 +127,3 @@ def test_litellm_embed_texts_success():
     mock_emb.assert_called_once()
     assert mock_emb.call_args.kwargs["model"] == "dashscope/text-embedding-v3"
     assert mock_emb.call_args.kwargs["input"] == ["a", "b"]
-
-
-def test_get_embeddings_uses_litellm_backend(monkeypatch):
-    from app.ai_stack.langchain import embeddings as emb_mod
-    from app.core.config import Settings
-
-    emb_mod.get_embeddings.cache_clear()
-
-    settings = Settings(
-        embedding_backend="litellm",
-        embedding_litellm_model="dashscope/text-embedding-v3",
-        embedding_litellm_api_key="sk-test",
-    )
-    monkeypatch.setattr(emb_mod, "get_settings", lambda: settings)
-
-    inst = emb_mod.get_embeddings()
-    assert inst.__class__.__name__ == "LiteLLMEmbeddings"
-
-    with patch(
-        "app.ai_stack.litellm.adapter.litellm_embed_texts",
-        return_value=[[1.0, 2.0]],
-    ):
-        assert emb_mod.embed_query("hello") == [1.0, 2.0]
-
-    emb_mod.get_embeddings.cache_clear()

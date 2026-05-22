@@ -1,23 +1,32 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth-store";
 import { usePagedList } from "@/hooks/use-paged-list";
 import { ResourceListFooter } from "@/components/resource/ResourceListFooter";
+import { ResourceDialog } from "@/components/resource/ResourceDialog";
 import { canRetryDocument, documentStatusLabel } from "@/lib/document-status";
 import type { KnowledgeBase } from "@/lib/types";
 
 export default function KbDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const router = useRouter();
   const { ready } = useRequireAuth();
   const [kb, setKb] = useState<KnowledgeBase | null>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [editDesc, setEditDesc] = useState("");
+  const [editChunkSize, setEditChunkSize] = useState(500);
+  const [editChunkOverlap, setEditChunkOverlap] = useState(50);
   const [uploading, setUploading] = useState(false);
   const [retryingId, setRetryingId] = useState<string | null>(null);
   const [searchQ, setSearchQ] = useState("");
-  const [searchHits, setSearchHits] = useState<{ content: string; score: number }[]>([]);
+  const [searchHits, setSearchHits] = useState<
+    { content: string; score: number; filename?: string }[]
+  >([]);
   const [msg, setMsg] = useState("");
 
   const docs = usePagedList(useCallback((p, s) => api.listDocuments(id, p, s), [id]), {
@@ -25,10 +34,15 @@ export default function KbDetailPage() {
     resetKey: id,
   });
 
+  const reloadKb = useCallback(() => {
+    if (!id) return;
+    return api.getKb(id).then(setKb);
+  }, [id]);
+
   useEffect(() => {
     if (!ready || !id) return;
-    api.getKb(id).then(setKb).catch((e) => setMsg(e instanceof Error ? e.message : "加载失败"));
-  }, [ready, id]);
+    reloadKb().catch((e) => setMsg(e instanceof Error ? e.message : "加载失败"));
+  }, [ready, id, reloadKb]);
 
   const hasProcessing = docs.items.some((d) =>
     ["pending", "parsing", "embedding"].includes(d.status),
@@ -39,6 +53,35 @@ export default function KbDetailPage() {
     const t = setInterval(() => docs.reload(), 4000);
     return () => clearInterval(t);
   }, [hasProcessing, ready, docs.reload]);
+
+  const openSettings = () => {
+    if (!kb) return;
+    setEditName(kb.name);
+    setEditDesc(kb.description ?? "");
+    setEditChunkSize(kb.chunk_size ?? 500);
+    setEditChunkOverlap(kb.chunk_overlap ?? 50);
+    setSettingsOpen(true);
+  };
+
+  const onSaveSettings = async () => {
+    if (!kb) return;
+    const updated = await api.updateKb(kb.id, {
+      name: editName.trim() || kb.name,
+      description: editDesc || null,
+      chunk_size: editChunkSize,
+      chunk_overlap: editChunkOverlap,
+    });
+    setKb(updated);
+    setSettingsOpen(false);
+    setMsg("设置已保存（分片参数仅影响之后上传/重试的文档）");
+  };
+
+  const onDeleteKb = async () => {
+    if (!kb) return;
+    if (!confirm(`确定删除知识库「${kb.name}」？将删除其下全部文档与向量数据。`)) return;
+    await api.deleteKb(kb.id);
+    router.push("/workbench/kb");
+  };
 
   const onUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -74,13 +117,20 @@ export default function KbDetailPage() {
   const onSearch = async () => {
     if (!searchQ.trim()) return;
     const res = await api.searchKb(id, searchQ.trim());
-    setSearchHits(res.hits.map((h) => ({ content: h.content, score: h.score })));
+    setSearchHits(
+      res.hits.map((h) => ({
+        content: h.content,
+        score: h.score,
+        filename: h.filename,
+      })),
+    );
   };
 
   const onDelete = async (docId: string) => {
     if (!confirm("确定删除该文档？")) return;
     await api.deleteDocument(id, docId);
     await docs.reload();
+    setMsg("文档已删除");
   };
 
   if (!kb) return <p className="text-ink-muted">加载中…</p>;
@@ -96,12 +146,24 @@ export default function KbDetailPage() {
       </div>
 
       <section className="rounded-xl border border-line bg-surface p-4 shadow-card">
-        <h1 className="text-lg font-bold">{kb.name}</h1>
-        <p className="text-sm text-ink-muted">{kb.description || "无描述"}</p>
-        <p className="mt-2 text-xs text-ink-faint">
-          向量：{kb.embedding_profile} · {kb.embedding_dimension} 维 · 分片 {kb.chunk_size}/
-          {kb.chunk_overlap}
-        </p>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h1 className="text-lg font-bold">{kb.name}</h1>
+            <p className="text-sm text-ink-muted">{kb.description || "无描述"}</p>
+            <p className="mt-2 text-xs text-ink-faint">
+              向量：{kb.embedding_model_name ?? "—"} · {kb.embedding_dimension} 维 · 分片 {kb.chunk_size}/
+              {kb.chunk_overlap}
+            </p>
+          </div>
+          <div className="flex shrink-0 gap-2">
+            <button type="button" className="btn-ghost text-sm" onClick={openSettings}>
+              设置
+            </button>
+            <button type="button" className="text-sm text-red-600 hover:underline" onClick={onDeleteKb}>
+              删除知识库
+            </button>
+          </div>
+        </div>
         <label className="mt-4 inline-block cursor-pointer rounded bg-brand px-4 py-2 text-sm text-white">
           {uploading ? "上传中…" : "上传文档 / 多模态"}
           <input
@@ -122,6 +184,8 @@ export default function KbDetailPage() {
         <h2 className="text-sm font-semibold">文档列表</h2>
         {docs.loading ? (
           <p className="mt-3 text-sm text-ink-muted">加载中…</p>
+        ) : docs.items.length === 0 ? (
+          <p className="mt-3 text-sm text-ink-muted">暂无文档，请上传文件开始入库。</p>
         ) : (
           <>
             <ul className="mt-3 divide-y text-sm">
@@ -189,6 +253,7 @@ export default function KbDetailPage() {
             value={searchQ}
             onChange={(e) => setSearchQ(e.target.value)}
             placeholder="输入问题"
+            onKeyDown={(e) => e.key === "Enter" && onSearch()}
           />
           <button type="button" onClick={onSearch} className="btn-primary">
             检索
@@ -197,11 +262,71 @@ export default function KbDetailPage() {
         <ul className="mt-3 space-y-2 text-xs text-ink-muted">
           {searchHits.map((h, i) => (
             <li key={i} className="rounded bg-surface-muted p-2">
-              <span className="text-ink-faint">[{h.score.toFixed(2)}]</span> {h.content}
+              <span className="text-ink-faint">
+                [{h.score.toFixed(2)}]
+                {h.filename ? ` ${h.filename}` : ""}
+              </span>{" "}
+              {h.content}
             </li>
           ))}
         </ul>
       </section>
+
+      <ResourceDialog
+        open={settingsOpen}
+        title="知识库设置"
+        onClose={() => setSettingsOpen(false)}
+        footer={
+          <>
+            <button type="button" className="btn-ghost" onClick={() => setSettingsOpen(false)}>
+              取消
+            </button>
+            <button type="button" className="btn-primary" onClick={onSaveSettings}>
+              保存
+            </button>
+          </>
+        }
+      >
+        <input
+          className="input-field w-full"
+          placeholder="名称"
+          value={editName}
+          onChange={(e) => setEditName(e.target.value)}
+        />
+        <input
+          className="input-field w-full"
+          placeholder="描述（可选）"
+          value={editDesc}
+          onChange={(e) => setEditDesc(e.target.value)}
+        />
+        <div className="grid grid-cols-2 gap-3">
+          <label className="block text-xs text-ink-muted">
+            分片大小
+            <input
+              type="number"
+              min={100}
+              max={4000}
+              className="input-field mt-1 w-full"
+              value={editChunkSize}
+              onChange={(e) => setEditChunkSize(Number(e.target.value))}
+            />
+          </label>
+          <label className="block text-xs text-ink-muted">
+            重叠长度
+            <input
+              type="number"
+              min={0}
+              max={500}
+              className="input-field mt-1 w-full"
+              value={editChunkOverlap}
+              onChange={(e) => setEditChunkOverlap(Number(e.target.value))}
+            />
+          </label>
+        </div>
+        <p className="text-xs text-ink-faint">
+          向量化模型 {kb.embedding_model_name ?? "—"}（{kb.embedding_dimension} 维）创建后不可修改。
+        </p>
+      </ResourceDialog>
     </div>
   );
 }

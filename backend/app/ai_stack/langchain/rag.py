@@ -40,8 +40,12 @@ async def retrieve_hits(
     db: AsyncSession,
     top_k: int = 5,
 ) -> list[dict[str, Any]]:
+    from app.ai_stack.langchain.vectorstores import search_multi_kb_async
+
     kbs = await load_kbs_for_tenant(db, tenant_id, kb_ids)
-    return search_multi_kb(query, kbs=kbs, top_k=top_k)
+    return await search_multi_kb_async(
+        query, kbs=kbs, db=db, tenant_id=tenant_id, top_k=top_k
+    )
 
 
 async def retrieve_hits_with_ctx(

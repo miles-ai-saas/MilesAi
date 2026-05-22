@@ -4,14 +4,17 @@ from fastapi import UploadFile
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.ai_stack.langchain.vectorstores import search_kb
+from app.ai_stack.embeddings.runtime import embedding_dimension_from_model
+from app.ai_stack.langchain.embeddings import embed_query_for_kb
 from app.core.config import get_settings
 from app.common.exceptions import BadRequestError, NotFoundError
 from app.infra.storage import build_object_key, delete_object, upload_bytes
+from app.infra.vector_store import search_vectors
 from app.core.tenant import TenantContext, assert_tenant_access, tenant_filters
 from app.deletion.cascade import before_delete_kb
 from app.deletion.document import clear_document_derived_data_async
 from app.models.kb import Document, DocumentChunk, DocumentStatus, KnowledgeBase
+from app.models.model import ModelConfig
 from app.tenant.kb.repositories.kb import (
     DocumentChunkRepository,
     DocumentRepository,
@@ -19,10 +22,12 @@ from app.tenant.kb.repositories.kb import (
     VectorRefRepository,
 )
 from app.common.schema import PageParams, PageResult
-from app.ai_stack.embedding_profiles import get_embedding_profile, list_embedding_profiles
+from app.tenant.models.services.embedding_resolve import (
+    get_default_embedding_model,
+    resolve_embedding_model_by_id,
+)
 from app.tenant.kb.schemas.kb import (
     DocumentOut,
-    EmbeddingProfileOut,
     KnowledgeBaseCreate,
     KnowledgeBaseOut,
     KnowledgeBaseUpdate,
@@ -91,6 +96,26 @@ class KnowledgeBaseService(BaseService):
         assert_tenant_access(self.ctx, kb.tenant_id)
         return kb
 
+    async def _model_name(self, model_id: UUID) -> str | None:
+        row = await self.db.get(ModelConfig, model_id)
+        return row.name if row else None
+
+    async def _to_kb_out(self, kb: KnowledgeBase) -> KnowledgeBaseOut:
+        name = await self._model_name(kb.embedding_model_config_id)
+        return KnowledgeBaseOut(
+            id=kb.id,
+            tenant_id=kb.tenant_id,
+            name=kb.name,
+            description=kb.description,
+            is_public=kb.is_public,
+            embedding_model_config_id=kb.embedding_model_config_id,
+            embedding_model_name=name,
+            embedding_dimension=kb.embedding_dimension,
+            chunk_size=kb.chunk_size,
+            chunk_overlap=kb.chunk_overlap,
+            created_at=kb.created_at,
+        )
+
     async def list_kbs(self, params: PageParams) -> PageResult[KnowledgeBaseOut]:
         filters = tenant_filters(self.ctx, KnowledgeBase.tenant_id)
         page = await self.kb_repo.list_page(
@@ -99,28 +124,20 @@ class KnowledgeBaseService(BaseService):
             filters=filters,
             order_by=KnowledgeBase.created_at.desc(),
         )
+        items = [await self._to_kb_out(k) for k in page.items]
         return PageResult(
-            items=[KnowledgeBaseOut.model_validate(k) for k in page.items],
+            items=items,
             total=page.total,
             page=page.page,
             size=page.size,
         )
 
-    @staticmethod
-    def list_embedding_profiles() -> list[EmbeddingProfileOut]:
-        return [
-            EmbeddingProfileOut(
-                id=p.id,
-                label=p.label,
-                backend=p.backend,
-                model_name=p.model_name,
-                dimension=p.dimension,
-            )
-            for p in list_embedding_profiles()
-        ]
-
     async def create_kb(self, body: KnowledgeBaseCreate) -> KnowledgeBaseOut:
-        spec = get_embedding_profile(body.embedding_profile)
+        model_id = body.embedding_model_config_id
+        if not model_id:
+            model_id = (await get_default_embedding_model(self.db)).id
+        model = await resolve_embedding_model_by_id(self.db, model_id, self.ctx.tenant_id)
+        dimension = embedding_dimension_from_model(model)
         kb = await self.kb_repo.create(
             tenant_id=self.ctx.tenant_id,
             name=body.name,
@@ -128,24 +145,22 @@ class KnowledgeBaseService(BaseService):
             is_public=body.is_public,
             chunk_size=body.chunk_size,
             chunk_overlap=body.chunk_overlap,
-            embedding_profile=spec.id,
-            embedding_backend=spec.backend,
-            embedding_model_name=spec.model_name,
-            embedding_dimension=spec.dimension,
+            embedding_model_config_id=model.id,
+            embedding_dimension=dimension,
         )
         await self.db.refresh(kb)
-        return KnowledgeBaseOut.model_validate(kb)
+        return await self._to_kb_out(kb)
 
     async def get_kb(self, kb_id: UUID) -> KnowledgeBaseOut:
         kb = await self._get_kb_or_raise(kb_id)
-        return KnowledgeBaseOut.model_validate(kb)
+        return await self._to_kb_out(kb)
 
     async def update_kb(self, kb_id: UUID, body: KnowledgeBaseUpdate) -> KnowledgeBaseOut:
         kb = await self._get_kb_or_raise(kb_id)
         data = body.model_dump(exclude_unset=True)
         await self.kb_repo.update_fields(kb, data)
         await self.db.refresh(kb)
-        return KnowledgeBaseOut.model_validate(kb)
+        return await self._to_kb_out(kb)
 
     async def delete_kb(self, kb_id: UUID) -> None:
         kb = await self._get_kb_or_raise(kb_id)
@@ -270,7 +285,13 @@ class KnowledgeBaseService(BaseService):
 
     async def search(self, kb_id: UUID, body: SearchRequest) -> SearchResponse:
         kb = await self._get_kb_or_raise(kb_id)
-        raw_hits = search_kb(body.query, kb=kb, limit=body.top_k)
+        vector = await embed_query_for_kb(self.db, self.ctx.tenant_id, kb, body.query)
+        raw_hits = search_vectors(
+            vector,
+            tenant_id=kb.tenant_id,
+            kb_id=kb.id,
+            limit=body.top_k,
+        )
         hits: list[SearchHit] = []
         for h in raw_hits:
             chunk_id = h.get("chunk_id")

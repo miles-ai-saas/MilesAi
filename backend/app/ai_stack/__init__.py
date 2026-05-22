@@ -2,8 +2,8 @@
 
 __all__ = [
     "ainvoke_chat",
-    "embed_query",
-    "embed_texts",
+    "embed_query_for_kb_sync",
+    "embed_texts_for_kb_sync",
     "split_text",
     "rag_answer",
     "retrieve_hits",
@@ -15,8 +15,8 @@ __all__ = [
 def __getattr__(name: str):
     if name in (
         "ainvoke_chat",
-        "embed_query",
-        "embed_texts",
+        "embed_query_for_kb_sync",
+        "embed_texts_for_kb_sync",
         "split_text",
         "rag_answer",
         "retrieve_hits",

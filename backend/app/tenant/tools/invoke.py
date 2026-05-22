@@ -75,7 +75,7 @@ async def invoke_builtin(
 
         with get_sync_db() as db:
             kb = load_kb_sync(db, ctx.tenant_id, UUID(str(kb_id)))
-        hits = search_kb(str(query), kb=kb, limit=int(params.get("limit", 5)))
+            hits = search_kb(str(query), kb=kb, db=db, limit=int(params.get("limit", 5)))
         return {"hits": hits}
 
     raise BadRequestError(f"未知内置工具: {name}")

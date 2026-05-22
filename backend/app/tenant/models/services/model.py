@@ -58,6 +58,7 @@ def _to_out(model: ModelConfig, cred: ModelTenantCredential | None) -> ModelConf
         publish_status=model.publish_status if model.is_builtin else None,
         credential_status=cs,
         has_api_key=cs in ("platform", "tenant"),
+        extra=model.extra or {},
         created_at=model.created_at,
     )
 
@@ -139,6 +140,12 @@ class ModelService(BaseService):
     async def create_config(self, body: ModelConfigCreate) -> ModelConfigOut:
         vendor = body.vendor or ModelVendor.OTHER.value
         provider = body.provider or vendor
+        if body.model_type == ModelCapabilityType.EMBEDDING.value:
+            extra = body.extra or {}
+            if not extra.get("embedding_dimension"):
+                raise BadRequestError(
+                    "向量化模型须在 extra 中配置 embedding_dimension（整数）"
+                )
         model = await self.repo.create(
             tenant_id=self.ctx.tenant_id,
             name=body.name,

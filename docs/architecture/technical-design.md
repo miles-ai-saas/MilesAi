@@ -363,7 +363,7 @@ ingest / search / delete
 | 包路径 | `app/ai_stack/langchain/embeddings.py`、`app/ai_stack/litellm/`（对话，非向量） |
 | 全局默认 | `EMBEDDING_BACKEND=local` \| `litellm`；`EMBEDDING_MODEL_NAME` / `EMBEDDING_LITELLM_*` |
 | 新建 KB | 请求体 `embedding_profile`（默认见 `default_embedding_profile_id()`）；目录 `GET /api/v1/kb/embedding-profiles` |
-| 规格目录 | `app/ai_stack/embedding_profiles.py`：`local-minilm`（384）、`dashscope-v3`（1024） |
+| 规格目录 | `app/ai_stack/embedding_profiles.py`：`local-bge-zh`（768）、`dashscope-v3`（1024） |
 | 与向量库关系 | 向量库只存 float[]；**维度必须**与 KB 的 `embedding_dimension` 一致，否则禁止入库或检索 |
 | 切换模型 | 改全局 env 不影响已有 KB；已有库需 **重建索引**（重新 ingest） |
 

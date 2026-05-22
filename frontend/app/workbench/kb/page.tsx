@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth-store";
 import { usePagedList } from "@/hooks/use-paged-list";
@@ -9,27 +10,40 @@ import { AddResourceCard } from "@/components/resource/AddResourceCard";
 import { ResourceDialog } from "@/components/resource/ResourceDialog";
 import { ResourceItemCard } from "@/components/resource/ResourceItemCard";
 import { ResourceListLayout } from "@/components/resource/ResourceListLayout";
+import { CardActions } from "@/components/resource/CardActions";
 import { filterBySearch } from "@/lib/filter-search";
-import type { EmbeddingProfile } from "@/lib/types";
+import type { KnowledgeBase, ModelConfig } from "@/lib/types";
+
+const DEFAULT_CHUNK_SIZE = 500;
+const DEFAULT_CHUNK_OVERLAP = 50;
+
+function embeddingDimension(m: ModelConfig): number {
+  const dim = m.extra?.embedding_dimension;
+  return typeof dim === "number" ? dim : 0;
+}
 
 export default function KbPage() {
+  const router = useRouter();
   const { ready } = useRequireAuth();
   const [search, setSearch] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editing, setEditing] = useState<KnowledgeBase | null>(null);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [profiles, setProfiles] = useState<EmbeddingProfile[]>([]);
-  const [embeddingProfile, setEmbeddingProfile] = useState("");
+  const [chunkSize, setChunkSize] = useState(DEFAULT_CHUNK_SIZE);
+  const [chunkOverlap, setChunkOverlap] = useState(DEFAULT_CHUNK_OVERLAP);
+  const [embeddingModels, setEmbeddingModels] = useState<ModelConfig[]>([]);
+  const [embeddingModelId, setEmbeddingModelId] = useState("");
 
   const list = usePagedList(useCallback((p, s) => api.listKbs(p, s), []), { enabled: ready });
 
   useEffect(() => {
     if (!ready) return;
     api
-      .listEmbeddingProfiles()
+      .listModelConfigs({ model_type: "embedding" })
       .then((items) => {
-        setProfiles(items);
-        setEmbeddingProfile((prev) => prev || items[0]?.id || "");
+        setEmbeddingModels(items);
+        setEmbeddingModelId((prev) => prev || items[0]?.id || "");
       })
       .catch(() => {});
   }, [ready]);
@@ -39,15 +53,49 @@ export default function KbPage() {
     [list.items, search],
   );
 
-  const onCreate = async () => {
-    await api.createKb({
-      name: name.trim() || `知识库 ${list.total + 1}`,
-      description: description || undefined,
-      embedding_profile: embeddingProfile || undefined,
-    });
+  const openCreate = () => {
+    setEditing(null);
     setName("");
     setDescription("");
+    setChunkSize(DEFAULT_CHUNK_SIZE);
+    setChunkOverlap(DEFAULT_CHUNK_OVERLAP);
+    setEmbeddingModelId(embeddingModels[0]?.id || "");
+    setDialogOpen(true);
+  };
+
+  const openEdit = (kb: KnowledgeBase) => {
+    setEditing(kb);
+    setName(kb.name);
+    setDescription(kb.description ?? "");
+    setChunkSize(kb.chunk_size ?? DEFAULT_CHUNK_SIZE);
+    setChunkOverlap(kb.chunk_overlap ?? DEFAULT_CHUNK_OVERLAP);
+    setDialogOpen(true);
+  };
+
+  const onSave = async () => {
+    if (editing) {
+      await api.updateKb(editing.id, {
+        name: name.trim() || editing.name,
+        description: description || null,
+        chunk_size: chunkSize,
+        chunk_overlap: chunkOverlap,
+      });
+    } else {
+      await api.createKb({
+        name: name.trim() || `知识库 ${list.total + 1}`,
+        description: description || undefined,
+        embedding_model_config_id: embeddingModelId || undefined,
+        chunk_size: chunkSize,
+        chunk_overlap: chunkOverlap,
+      });
+    }
     setDialogOpen(false);
+    await list.reload();
+  };
+
+  const onDelete = async (kb: KnowledgeBase) => {
+    if (!confirm(`确定删除知识库「${kb.name}」？将删除其下全部文档与向量数据。`)) return;
+    await api.deleteKb(kb.id);
     await list.reload();
   };
 
@@ -74,7 +122,7 @@ export default function KbPage() {
         <AddResourceCard
           label="添加新知识库"
           hint="创建知识库并上传文档"
-          onClick={() => setDialogOpen(true)}
+          onClick={openCreate}
         />
         {filtered.map((kb) => (
           <ResourceItemCard
@@ -84,8 +132,22 @@ export default function KbPage() {
             description={kb.description || "点击进入管理文档与切片"}
             meta={
               <span className="text-ink-faint">
-                {kb.embedding_profile} · {kb.embedding_dimension} 维
+                {kb.embedding_model_name ?? "向量化模型"} · {kb.embedding_dimension} 维 · 分片{" "}
+                {kb.chunk_size ?? DEFAULT_CHUNK_SIZE}/{kb.chunk_overlap ?? DEFAULT_CHUNK_OVERLAP}
               </span>
+            }
+            actions={
+              <CardActions
+                actions={[
+                  {
+                    label: "管理",
+                    variant: "primary",
+                    onClick: () => router.push(`/workbench/kb/${kb.id}`),
+                  },
+                ]}
+                onEdit={() => openEdit(kb)}
+                onDelete={() => onDelete(kb)}
+              />
             }
           />
         ))}
@@ -93,15 +155,15 @@ export default function KbPage() {
 
       <ResourceDialog
         open={dialogOpen}
-        title="新建知识库"
+        title={editing ? "编辑知识库" : "新建知识库"}
         onClose={() => setDialogOpen(false)}
         footer={
           <>
             <button type="button" className="btn-ghost" onClick={() => setDialogOpen(false)}>
               取消
             </button>
-            <button type="button" className="btn-primary" onClick={onCreate}>
-              创建
+            <button type="button" className="btn-primary" onClick={onSave}>
+              {editing ? "保存" : "创建"}
             </button>
           </>
         }
@@ -118,20 +180,58 @@ export default function KbPage() {
           value={description}
           onChange={(e) => setDescription(e.target.value)}
         />
-        <label className="block text-xs text-ink-muted">
-          向量化规格（创建后不可修改）
-          <select
-            className="input-field mt-1 w-full"
-            value={embeddingProfile}
-            onChange={(e) => setEmbeddingProfile(e.target.value)}
-          >
-            {profiles.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.label}（{p.dimension} 维）
-              </option>
-            ))}
-          </select>
-        </label>
+        <div className="grid grid-cols-2 gap-3">
+          <label className="block text-xs text-ink-muted">
+            分片大小
+            <input
+              type="number"
+              min={100}
+              max={4000}
+              className="input-field mt-1 w-full"
+              value={chunkSize}
+              onChange={(e) => setChunkSize(Number(e.target.value))}
+            />
+          </label>
+          <label className="block text-xs text-ink-muted">
+            重叠长度
+            <input
+              type="number"
+              min={0}
+              max={500}
+              className="input-field mt-1 w-full"
+              value={chunkOverlap}
+              onChange={(e) => setChunkOverlap(Number(e.target.value))}
+            />
+          </label>
+        </div>
+        {!editing && (
+          <label className="block text-xs text-ink-muted">
+            向量化模型（创建后不可修改，来自
+            <a href="/workbench/models" className="text-brand hover:underline">
+              模型供应商
+            </a>
+            ）
+            <select
+              className="input-field mt-1 w-full"
+              value={embeddingModelId}
+              onChange={(e) => setEmbeddingModelId(e.target.value)}
+            >
+              {embeddingModels.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.name}
+                  {embeddingDimension(m) ? `（${embeddingDimension(m)} 维）` : ""}
+                  {m.source === "builtin" ? " · 内置" : ""}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+        {editing && (
+          <p className="text-xs text-ink-faint">
+            向量化模型：{editing.embedding_model_name ?? "—"}（{editing.embedding_dimension}{" "}
+            维），创建后不可修改。
+          </p>
+        )}
       </ResourceDialog>
     </>
   );

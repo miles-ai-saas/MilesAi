@@ -55,6 +55,7 @@ class ModelConfigOut(BaseModel):
     publish_status: str | None = None
     credential_status: str = "missing"
     has_api_key: bool = False
+    extra: dict = {}
     created_at: datetime
 
     model_config = {"from_attributes": True}

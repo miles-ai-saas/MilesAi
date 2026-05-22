@@ -29,18 +29,38 @@ export function CardActions({ actions = [], onEdit, onDelete, deleteLabel = "删
           type="button"
           disabled={a.disabled}
           className={`text-xs disabled:cursor-not-allowed disabled:opacity-40 ${variantClass[a.variant ?? "default"]}`}
-          onClick={a.onClick}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            a.onClick();
+          }}
         >
           {a.label}
         </button>
       ))}
       {onEdit && (
-        <button type="button" className="text-xs text-ink-muted hover:text-ink" onClick={onEdit}>
+        <button
+          type="button"
+          className="text-xs text-ink-muted hover:text-ink"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onEdit();
+          }}
+        >
           编辑
         </button>
       )}
       {onDelete && (
-        <button type="button" className="text-xs text-red-600 hover:underline" onClick={onDelete}>
+        <button
+          type="button"
+          className="text-xs text-red-600 hover:underline"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onDelete();
+          }}
+        >
           {deleteLabel}
         </button>
       )}
