@@ -49,7 +49,7 @@ export function AdminSidebar({
           A
         </div>
         <div className="min-w-0">
-          <p className="truncate text-sm font-semibold text-brand">AiEngine</p>
+          <p className="truncate text-sm font-semibold text-brand">MilesAi</p>
           <p className="truncate text-[11px] text-ink-faint">平台管理后台</p>
         </div>
       </div>

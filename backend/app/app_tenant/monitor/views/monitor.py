@@ -47,7 +47,7 @@ async def export_report(
     return PlainTextResponse(
         csv_text,
         media_type="text/csv; charset=utf-8",
-        headers={"Content-Disposition": "attachment; filename=aiengine-report.csv"},
+        headers={"Content-Disposition": "attachment; filename=milesai-report.csv"},
     )
 
 

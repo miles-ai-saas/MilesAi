@@ -1,3 +1,5 @@
+"""租户、权限、默认管理员账号。"""
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -47,10 +49,12 @@ DEFAULT_PERMISSIONS = [
 ]
 
 
-async def seed_database(session: AsyncSession) -> None:
+async def seed_tenant(session: AsyncSession) -> None:
     settings = get_settings()
 
-    existing = await session.execute(select(User).where(User.username == settings.seed_admin_username))
+    existing = await session.execute(
+        select(User).where(User.username == settings.seed_admin_username)
+    )
     if existing.scalar_one_or_none():
         return
 
@@ -105,14 +109,14 @@ async def seed_database(session: AsyncSession) -> None:
     session.add(tenant_admin)
     await session.flush()
     tenant_perm_codes = {
-        c
-        for c, _, _ in DEFAULT_PERMISSIONS
-        if not c.startswith("system:tenant:")
+        c for c, _, _ in DEFAULT_PERMISSIONS if not c.startswith("system:tenant:")
     }
     for perm in permissions:
         if perm.code in tenant_perm_codes:
             await session.execute(
-                role_permissions.insert().values(role_id=tenant_admin.id, permission_id=perm.id)
+                role_permissions.insert().values(
+                    role_id=tenant_admin.id, permission_id=perm.id
+                )
             )
     await session.execute(
         user_roles.insert().values(user_id=admin_user.id, role_id=tenant_admin.id)

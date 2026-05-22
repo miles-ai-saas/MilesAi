@@ -1,11 +1,10 @@
-"""租户默认敏感词种子（仅当该租户尚无敏感词时写入）。"""
+"""租户默认敏感词。"""
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.app_tenant.compliance.models import SensitiveAction, SensitiveWord
 from app.models.tenant import Tenant
-
 
 DEFAULT_WORDS: list[tuple[str, SensitiveAction, str | None]] = [
     ("违禁品", SensitiveAction.BLOCK, "安全"),
@@ -16,9 +15,7 @@ DEFAULT_WORDS: list[tuple[str, SensitiveAction, str | None]] = [
 
 async def seed_compliance_for_tenant(session: AsyncSession, tenant_id) -> None:
     existing = await session.scalar(
-        select(SensitiveWord.id)
-        .where(SensitiveWord.tenant_id == tenant_id)
-        .limit(1)
+        select(SensitiveWord.id).where(SensitiveWord.tenant_id == tenant_id).limit(1)
     )
     if existing:
         return

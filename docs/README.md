@@ -13,6 +13,7 @@
 | [platform-agents.md](./platform-agents.md) | 平台内智能体、内部协同（DeepAgents） |
 | [a2a.md](./a2a.md) | A2A 外部登记、互联宿主、custom 引用 |
 | [ai-stack.md](./ai-stack.md) | LangChain / LangGraph / DeepAgents 模块与调用链 |
+| [model-providers.md](./model-providers.md) | 模型供应商：内置目录 + 自定义模型（规划） |
 
 运维部署另见 [../docker/README.md](../docker/README.md)、[../backend/README.md](../backend/README.md)。
 

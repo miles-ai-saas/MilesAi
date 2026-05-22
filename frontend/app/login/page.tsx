@@ -33,7 +33,7 @@ export default function LoginPage() {
       <div className="flex flex-1 flex-col justify-center px-6 py-10 sm:px-12 lg:px-16">
         <div className="mx-auto w-full max-w-md">
           <div className="mb-8 lg:hidden">
-            <p className="text-sm font-medium text-brand">AiEngine</p>
+            <p className="text-sm font-medium text-brand">MilesAi</p>
             <h1 className="mt-1 text-2xl font-bold text-ink">登录工作台</h1>
           </div>
 

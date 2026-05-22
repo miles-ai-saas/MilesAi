@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
-const STORAGE_KEY = "aiengine-admin-auth";
+const STORAGE_KEY = "milesai-admin-auth";
 
 interface AdminAuthState {
   accessToken: string | null;

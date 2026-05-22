@@ -19,7 +19,7 @@ CONFIG_DEFINITIONS: list[dict] = [
         "label": "平台显示名称",
         "category": "基础",
         "description": "登录页与顶栏展示名称",
-        "default_value": "AiEngine",
+        "default_value": "MilesAi",
     },
     {
         "key": "rag.default_chunk_size",

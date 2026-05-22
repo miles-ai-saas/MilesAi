@@ -9,7 +9,7 @@ resolution-markers = [
 ]
 
 [[package]]
-name = "aiengine"
+name = "milesai"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [

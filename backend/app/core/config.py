@@ -19,7 +19,7 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    app_name: str = "AiEngine"
+    app_name: str = "MilesAi"
     app_env: str = "development"
     debug: bool = True
     secret_key: str = "change-me"
@@ -34,7 +34,7 @@ class Settings(BaseSettings):
     postgres_port: int = 5432
     postgres_user: str = "postgres"
     postgres_password: str = "postgres"
-    postgres_db: str = "aiengine"
+    postgres_db: str = "milesai"
 
     redis_host: str = "localhost"
     redis_port: int = 6379
@@ -46,7 +46,7 @@ class Settings(BaseSettings):
     minio_endpoint: str = "localhost:9000"
     minio_access_key: str = "minioadmin"
     minio_secret_key: str = "minioadmin"
-    minio_bucket: str = "aiengine"
+    minio_bucket: str = "milesai"
     minio_secure: bool = False
 
     weaviate_host: str = "localhost"

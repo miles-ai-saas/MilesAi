@@ -4,28 +4,15 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.admin.seeds.admin_seed import seed_admin_ops
-from app.app_tenant.seeds.compliance_seed import seed_compliance
-from app.app_tenant.seeds.marketplace_seed import seed_marketplace
-from app.app_tenant.seeds.seed import seed_database
 from app.apps.migrate import run_migrations
 from app.apps.routers import admin_router, api_router
 from app.common.handlers import register_exception_handlers
 from app.core.config import get_settings
-from app.core.database import AsyncSessionLocal
-
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     from app.ai_stack.langgraph.checkpointer import init_langgraph_checkpointer, shutdown_langgraph_checkpointer
 
     run_migrations()
-    async with AsyncSessionLocal() as session:
-        await seed_database(session)
-        await seed_compliance(session)
-        await seed_marketplace(session)
-        await seed_admin_ops(session)
-        await session.commit()
     app.state.langgraph_checkpoint = await init_langgraph_checkpointer()
     yield
     await shutdown_langgraph_checkpointer()

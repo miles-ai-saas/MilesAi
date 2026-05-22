@@ -1,4 +1,4 @@
-# AiEngine 技术方案
+# MilesAi 技术方案
 
 > 版本：v2.0 | 日期：2026-05-21 | 与当前代码库对齐  
 > 需求基线：[prd.md](./prd.md) · 专题文档：[README.md](./README.md)
@@ -30,7 +30,7 @@
 
 ## 1. 概述
 
-**AiEngine** 是企业级私有化 AI 中台：多租户工作台 + 运营后台，提供知识库 RAG、React Flow 流程编排、平台内智能体（含 DeepAgents 内部协同）、A2A 外部互联、合规与工具/MCP、应用市场。
+**MilesAi** 是企业级私有化 AI 中台：多租户工作台 + 运营后台，提供知识库 RAG、React Flow 流程编排、平台内智能体（含 DeepAgents 内部协同）、A2A 外部互联、合规与工具/MCP、应用市场。
 
 ### 1.1 设计原则（代码中的落地）
 
@@ -107,14 +107,14 @@ flowchart TB
     Worker --> PG
 ```
 
-**启动顺序**（`apps/application.py` lifespan）：Alembic `upgrade head` → 租户/合规/市场/运营种子 → LangGraph checkpointer 初始化。
+**启动顺序**（`apps/application.py` lifespan）：Alembic `upgrade head` → LangGraph checkpointer 初始化。种子数据由部署流程显式执行 `backend/cli.py init-db`（或 `cli.py seed <target>`），不在 API 启动时写入。日常开发/API/Worker 亦可通过 `cli.py serve` / `cli.py worker` 启动。
 
 ---
 
 ## 3. 仓库结构
 
 ```
-AiEngine/
+MilesAi/
 ├── backend/
 │   ├── app/
 │   │   ├── main.py                 # uvicorn 入口
@@ -158,7 +158,7 @@ AiEngine/
 | flows | `/flows` | 流程版本、画布、发布、运行、编译预览 |
 | agents | `/agents` | 智能体 CRUD、`POST …/chat` |
 | a2a | `/a2a/peers` | 外部 Peer 登记与 Card 同步 |
-| models | `/models` | 大模型配置（OpenAI 兼容） |
+| models | `/models` | 大模型配置（内置 `tenant_id` 空 + 租户自定义；演进见 [model-providers.md](./model-providers.md)） |
 | compliance | `/compliance` | 敏感词、扫描、拦截日志 |
 | hooks | `/hooks` | Webhook 定义与绑定 |
 | tools / mcp / skills | `/tools` `/mcp` `/skill-packages` | 工具目录、MCP、技能包 |
@@ -179,7 +179,7 @@ AiEngine/
 - 权限：角色-权限表 `sys_roles` / `sys_permissions` / `role_permissions`；路由依赖 `require_permissions`。
 - 软删除：多数业务表 `deleted_at`（迁移 `004`）；删除智能体/KB 等走 `deletion/cascade.py`。
 
-默认种子（`app_tenant/seeds/seed.py`）：租户 `admin` / `admin123`；运营 `platform` / `admin123`（`admin/seeds/admin_seed.py`）。
+默认种子（`backend/scripts/seed/`）：租户 `admin` / `admin123`；运营 `platform` / `admin123`（`scripts/seed/admin_ops.py`）。
 
 ---
 
@@ -347,7 +347,7 @@ flowchart TD
 - 表：`mkt_categories`、`mkt_apps`、`mkt_ratings`、`mkt_installs`。
 - 流程：从 KB/流程/智能体 **打包** → 草稿 → **提交审核**（`pending_review`）→ 运营 **通过/驳回** → 广场列表 → 租户 **安装**（复制 manifest 资源）→ **评分**（需已安装）。
 - 权限：`marketplace:review` 审核待审列表。
-- 种子：`marketplace_seed` 预置分类。
+- 种子：`scripts/seed/marketplace.py` 预置分类。
 
 ---
 
@@ -387,7 +387,7 @@ flowchart TD
 
 ### 14.1 Compose 服务（实际）
 
-**中间件** `docker/docker-compose.middleware.yml`：`postgres:15-alpine`、`redis:7-alpine`、`minio`、`weaviate:1.24.1`，网络 `aiengine-net`。
+**中间件** `docker/docker-compose.middleware.yml`：`postgres:15-alpine`、`redis:7-alpine`、`minio`、`weaviate:1.24.1`，网络 `milesai-net`。
 
 **应用** `docker/docker-compose.yml`：
 
@@ -444,6 +444,7 @@ flowchart TD
 | 应用市场审核与安装 | ✅ | |
 | 监控报表 / 告警 Webhook | 🔶 | 基础聚合 + HTTP 告警 |
 | 运营计费 / 风控 | ✅ | 后台 UI + API |
+| 模型供应商目录（运营发布内置 + 租户自定义） | ✅ | 见 [model-providers.md](./model-providers.md) |
 | 离线 OpenAPI 导出 / 离线部署手册 | ⬜ | 文档待补充 |
 
 **后端测试**（`backend/tests/`）：health、deletion、langgraph、deepagents、a2a 等；无 marketplace/compliance 端到端测试文件。
@@ -461,6 +462,7 @@ flowchart TD
 | [platform-agents.md](./platform-agents.md) | 内部协同 |
 | [a2a.md](./a2a.md) | 外部互联 |
 | [ai-stack.md](./ai-stack.md) | LangChain 模块与依赖 |
+| [model-providers.md](./model-providers.md) | 模型供应商（内置 + 自定义） |
 
 ---
 

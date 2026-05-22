@@ -1,4 +1,4 @@
-# AiEngine
+# MilesAi
 
 企业级私有化 **AI 编排与 RAG 应用平台**（多模态）：多租户工作台、知识库、可视化流程、智能体（平台内协同 + A2A 互联）、合规与工具、应用市场。
 
@@ -37,7 +37,7 @@ docker compose up -d --build
 | 运营后台 | http://localhost:3001 |
 | Flower | http://localhost:5555 |
 
-**默认账号**（首次启动种子）：
+**默认账号**（需先执行数据库初始化脚本写入种子，见下方）：
 
 | 端 | 账号 | 密码 |
 |----|------|------|
@@ -57,11 +57,11 @@ cp backend/.env.example backend/.env   # POSTGRES_HOST=localhost
 cd backend
 python3 -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
-alembic upgrade head
-uvicorn app.main:app --reload --port 8000
+python cli.py init-db              # 迁移 + 种子（API 启动不会自动写种子）
+python cli.py serve                # 启动 API（debug 时默认热重载）
 ```
 
-建库与迁移细节：[docs/database-setup.md](docs/database-setup.md)。
+建库、迁移与种子：[docs/database-setup.md](docs/database-setup.md)。项目根：`./scripts/milesai.sh serve`、`./scripts/init-db.sh`。
 
 ### 前端工作台
 
@@ -86,7 +86,7 @@ curl -s -X POST http://localhost:8000/api/v1/auth/login \
 ## 项目结构
 
 ```
-AiEngine/
+MilesAi/
 ├── backend/                 # FastAPI
 │   ├── app/
 │   │   ├── api/v1/          # 薄路由
@@ -149,6 +149,7 @@ AiEngine/
 | 平台内智能体 | [docs/platform-agents.md](docs/platform-agents.md) |
 | A2A 互联 | [docs/a2a.md](docs/a2a.md) |
 | AI 栈 | [docs/ai-stack.md](docs/ai-stack.md) |
+| 模型供应商 | [docs/model-providers.md](docs/model-providers.md) |
 | 后端说明 | [backend/README.md](backend/README.md) |
 
 REST 接口以运行中的 **OpenAPI**（`/docs`）为准。

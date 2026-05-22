@@ -124,8 +124,16 @@ async def ainvoke_chat(
     *,
     temperature: float = 0.7,
     max_tokens: int = 2048,
+    db: Any | None = None,
+    tenant_id: Any | None = None,
 ) -> str:
     """异步对话（dict messages），供业务层统一调用。"""
+    if db is not None and tenant_id is not None:
+        from uuid import UUID
+
+        from app.app_tenant.models.services.model_resolve import resolve_model_for_invoke
+
+        model = await resolve_model_for_invoke(db, model, UUID(str(tenant_id)))
     llm = get_chat_model(model, temperature=temperature, max_tokens=max_tokens)
     from langchain_core.messages import HumanMessage, SystemMessage
 

@@ -1,6 +1,6 @@
 # Docker Compose 说明
 
-Compose 已拆分为 **中间件** 与 **应用** 两个文件，通过共享网络 `aiengine-net` 通信。
+Compose 已拆分为 **中间件** 与 **应用** 两个文件，通过共享网络 `milesai-net` 通信。
 
 ## 文件
 
@@ -60,7 +60,7 @@ docker compose -f docker-compose.middleware.yml down -v
 
 ## 网络与服务发现
 
-- 中间件创建网络：`aiengine-net`
+- 中间件创建网络：`milesai-net`
 - 应用栈加入同一外部网络后，容器内可通过服务名访问：`postgres`、`redis`、`minio`、`weaviate`
 - 宿主机访问仍用映射端口：`5432`、`6379`、`9000`、`8080` 等
 
@@ -80,10 +80,11 @@ docker compose -f docker-compose.middleware.yml down -v
 
 ## 数据库
 
-PostgreSQL 由中间件自动建库（`POSTGRES_DB`）。表结构在 API 首次启动或手动执行：
+PostgreSQL 由中间件自动建库（`POSTGRES_DB`）。表结构与种子需手动执行（API 启动仅跑迁移，不写种子）：
 
 ```bash
-cd ../backend && alembic upgrade head
+cd ../backend && python cli.py init-db
+# 或：python cli.py migrate && python cli.py init-db --seed-only
 ```
 
 详见 [docs/database-setup.md](../docs/database-setup.md)。

@@ -1,4 +1,5 @@
 from typing import Any
+from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -6,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import AsyncSessionLocal
 from app.common.exceptions import BadRequestError
 from app.ai_stack.langchain.chat_models import ainvoke_chat
+from app.app_tenant.models.services.model_resolve import resolve_model_for_invoke
 from app.flow_runtime.types import RunContext
 from app.models.model import ModelConfig
 
@@ -31,9 +33,9 @@ async def llm_call(
                 )
             )
         ).scalar_one_or_none()
-    if not model:
-        raise BadRequestError("模型配置不存在或已禁用")
-
-    temperature = float(node_data.get("temperature") or 0.7)
-    messages = [{"role": "user", "content": prompt}]
-    return await ainvoke_chat(model, messages, temperature=temperature)
+        if not model:
+            raise BadRequestError("模型配置不存在或已禁用")
+        model = await resolve_model_for_invoke(db, model, UUID(str(ctx.tenant_id)))
+        temperature = float(node_data.get("temperature") or 0.7)
+        messages = [{"role": "user", "content": prompt}]
+        return await ainvoke_chat(model, messages, temperature=temperature)

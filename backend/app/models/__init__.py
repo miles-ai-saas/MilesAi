@@ -20,6 +20,7 @@ from app.app_tenant.marketplace.models import (
     MarketplaceAppStatus,
 )
 from app.models.model import ModelConfig
+from app.models.model_tenant_credential import ModelTenantCredential
 from app.models.permission import Permission
 from app.models.role import Role, role_permissions, user_roles
 from app.models.system import SystemConfig
@@ -43,6 +44,7 @@ __all__ = [
     "AgentStatus",
     "AgentSubAgentBinding",
     "ModelConfig",
+    "ModelTenantCredential",
     "agent_kb_bindings",
     "Flow",
     "FlowStatus",

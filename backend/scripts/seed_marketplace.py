@@ -1,17 +1,13 @@
-"""单独写入应用市场官方模板（已有库可执行）。"""
+#!/usr/bin/env python3
+"""兼容入口：python cli.py seed marketplace"""
 
-import asyncio
+import sys
+from pathlib import Path
 
-from app.core.database import AsyncSessionLocal
-from app.app_tenant.seeds.marketplace_seed import seed_marketplace
+_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(_ROOT))
 
-
-async def main() -> None:
-    async with AsyncSessionLocal() as session:
-        await seed_marketplace(session)
-        await session.commit()
-    print("marketplace seed done")
-
+from scripts.db_ops import run_seed_sync
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    run_seed_sync("marketplace")

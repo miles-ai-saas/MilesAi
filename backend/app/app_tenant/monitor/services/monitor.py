@@ -173,7 +173,7 @@ class MonitorService(BaseService):
         payload = {
             "event": "test",
             "tenant_id": str(self.ctx.tenant_id),
-            "message": "AiEngine 监控告警测试",
+            "message": "MilesAi 监控告警测试",
             "timestamp": datetime.now(timezone.utc).isoformat(),
         }
         try:

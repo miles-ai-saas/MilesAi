@@ -1,12 +1,13 @@
-# AiEngine Backend
+# MilesAi Backend
 
 企业级私有化 AI 编排与 RAG 平台后端（FastAPI）。
 
 ## 目录结构
 
 ```
+cli.py                      # 统一 CLI：serve / worker / migrate / init-db / seed
 app/
-├── main.py                 # ASGI 入口 (uvicorn app.main:app)
+├── main.py                 # ASGI 入口 (由 cli.py serve 或 uvicorn 加载)
 ├── apps/
 │   ├── application.py      # FastAPI 工厂、生命周期、中间件
 │   ├── routers.py          # 路由汇总
@@ -23,14 +24,13 @@ app/
 │   ├── tools/              # 工具与 MCP
 │   ├── monitor/            # 监控报表
 │   ├── tasks/              # Celery 任务管理
-│   ├── audit_log/          # 租户操作审计
-│   └── seeds/              # 租户侧种子数据
+│   └── audit_log/          # 租户操作审计
 ├── admin/                  # 运营后台 (/api/admin/v1)
 │   ├── router.py
 │   ├── models/             # 运营 ORM（sys / billing / risk / audit）
 │   ├── app_sys/            # 平台管理员认证（views / services / repositories）
-│   ├── app_ops/            # 租户、计费、风控、审计（views / services / repositories）
-│   └── seeds/              # 运营侧种子数据
+│   └── app_ops/            # 租户、计费、风控、审计（views / services / repositories）
+scripts/                    # 初始化 CLI（init_db、seed/*，与 app 解耦）
 ├── common/                 # 跨模块：响应封装、异常、分页、全局 Handler
 ├── deletion/               # 删除编排（文档/Agent/KB/Flow/租户级联）
 ├── utils/                  # 通用工具：idgen、redis_keys、health_checks、orm 索引辅助
@@ -143,17 +143,32 @@ app/
 | 中间件落地 | IP 黑名单、限流写入 `middlewares/` 并在 `apps/application.py` 注册 |
 | 运营删租户 | 在 `AdminTenantService` 中调用 `purge_tenant_data` 后再删租户记录 |
 
+## 统一 CLI（`cli.py`）
+
+运维与启动统一入口；种子实现仍在 `scripts/seed/`（与 `app` 解耦）。API lifespan **只跑迁移**，不自动写种子。
+
+```bash
+cd backend
+python cli.py serve              # uvicorn（debug 默认 --reload）
+python cli.py serve --no-reload
+python cli.py worker             # Celery worker
+python cli.py migrate            # alembic upgrade head
+python cli.py init-db            # 迁移 + 全量种子
+python cli.py init-db --seed-only
+python cli.py seed tenant        # 单域种子：tenant | compliance | marketplace | admin | model-catalog | all
+python cli.py verify-db          # 检查核心表
+```
+
+`pip install -e .` 后可使用全局命令 `milesai serve`。
+
+兼容旧路径：`scripts/init_db.py`、`scripts/seed_*.py`（内部转发至 `cli`）。
+
 ## 常用命令
 
 ```bash
-# 开发服务
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-
-# 数据库迁移
-alembic -c alembic.ini upgrade head
-
-# Celery Worker
-celery -A app.workers.app worker -Q parse,default -l info
+python cli.py serve
+python cli.py init-db
+python cli.py worker -Q parse,default
 ```
 
 ## API 前缀

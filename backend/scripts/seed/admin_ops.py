@@ -1,11 +1,13 @@
+"""运营后台：计费套餐、限流规则、平台管理员。"""
+
 from decimal import Decimal
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.admin.models import BillingPlan, PlatformAdmin, RateLimitRule
 from app.core.config import get_settings
 from app.core.security import hash_password
-from app.admin.models import BillingPlan, PlatformAdmin, RateLimitRule
 
 
 async def seed_admin_ops(session: AsyncSession) -> None:
@@ -61,18 +63,17 @@ async def seed_admin_ops(session: AsyncSession) -> None:
             )
         )
 
-    username = getattr(settings, "seed_platform_admin_username", "platform")
+    username = settings.seed_platform_admin_username
     existing = await session.scalar(
         select(PlatformAdmin).where(PlatformAdmin.username == username)
     )
     if not existing:
-        password = getattr(settings, "seed_platform_admin_password", "admin123")
         session.add(
             PlatformAdmin(
                 username=username,
-                email="platform@aiengine.local",
+                email="platform@milesai.local",
                 display_name="平台管理员",
-                hashed_password=hash_password(password),
+                hashed_password=hash_password(settings.seed_platform_admin_password),
                 role="super_admin",
             )
         )

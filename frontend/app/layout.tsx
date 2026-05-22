@@ -3,7 +3,7 @@ import "./globals.css";
 import { AppShell } from "@/components/layout/AppShell";
 
 export const metadata: Metadata = {
-  title: "AiEngine",
+  title: "MilesAi",
   description: "AI 智能编排与 RAG 平台",
 };
 

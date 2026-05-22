@@ -45,7 +45,7 @@ export default function MonitorPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "aiengine-report.csv";
+    a.download = "milesai-report.csv";
     a.click();
     URL.revokeObjectURL(url);
   };

@@ -455,6 +455,8 @@ class AgentService(BaseService):
                     {"role": "user", "content": body.query},
                 ],
                 temperature=float((agent.config or {}).get("temperature", 0.7)),
+                db=self.db,
+                tenant_id=self.ctx.tenant_id,
             )
             await hooks.run(
                 HookTrigger.AFTER_REASONING,

@@ -18,6 +18,7 @@ export const ADMIN_NAV: AdminNavGroup[] = [
     title: "业务运营",
     items: [
       { href: "/tenants", label: "租户管理", icon: "tenants" },
+      { href: "/model-catalog", label: "模型目录", icon: "tenants" },
       { href: "/billing", label: "计费管理", icon: "billing" },
     ],
   },
@@ -48,6 +49,7 @@ export function getAdminBreadcrumbs(pathname: string): BreadcrumbItem[] {
 
   if (pathname === "/") return [{ label: "控制台" }];
 
+  if (pathname === "/model-catalog") return [home, { label: "模型目录" }];
   if (pathname === "/tenants") return [home, { label: "租户管理" }];
   if (pathname.startsWith("/tenants/")) return [home, { label: "租户管理", href: "/tenants" }, { label: "租户详情" }];
 

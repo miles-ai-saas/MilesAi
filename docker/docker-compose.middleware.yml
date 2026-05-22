@@ -2,24 +2,24 @@
 # 启动：docker compose -f docker-compose.middleware.yml up -d
 # 停止：docker compose -f docker-compose.middleware.yml down
 
-name: aiengine-middleware
+name: milesai-middleware
 
 services:
   postgres:
     image: postgres:15-alpine
-    container_name: aiengine-postgres
+    container_name: milesai-postgres
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-      POSTGRES_DB: ${POSTGRES_DB:-aiengine}
+      POSTGRES_DB: ${POSTGRES_DB:-milesai}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     networks:
-      - aiengine-net
+      - milesai-net
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-aiengine}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-milesai}"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -27,11 +27,11 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: aiengine-redis
+    container_name: milesai-redis
     ports:
       - "${REDIS_PORT:-6379}:6379"
     networks:
-      - aiengine-net
+      - milesai-net
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -41,7 +41,7 @@ services:
 
   minio:
     image: minio/minio:latest
-    container_name: aiengine-minio
+    container_name: milesai-minio
     command: server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-minioadmin}
@@ -52,7 +52,7 @@ services:
       - "${MINIO_PORT:-9000}:9000"
       - "${MINIO_CONSOLE_PORT:-9001}:9001"
     networks:
-      - aiengine-net
+      - milesai-net
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
       interval: 10s
@@ -63,7 +63,7 @@ services:
 
   weaviate:
     image: cr.weaviate.io/semitechnologies/weaviate:1.24.1
-    container_name: aiengine-weaviate
+    container_name: milesai-weaviate
     environment:
       QUERY_DEFAULTS_LIMIT: 25
       AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: "true"
@@ -76,7 +76,7 @@ services:
     ports:
       - "${WEAVIATE_PORT:-8080}:8080"
     networks:
-      - aiengine-net
+      - milesai-net
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/v1/.well-known/ready"]
       interval: 10s
@@ -85,14 +85,14 @@ services:
     restart: unless-stopped
 
 networks:
-  aiengine-net:
-    name: aiengine-net
+  milesai-net:
+    name: milesai-net
     driver: bridge
 
 volumes:
   postgres_data:
-    name: aiengine-postgres-data
+    name: milesai-postgres-data
   minio_data:
-    name: aiengine-minio-data
+    name: milesai-minio-data
   weaviate_data:
-    name: aiengine-weaviate-data
+    name: milesai-weaviate-data

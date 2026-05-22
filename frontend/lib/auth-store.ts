@@ -4,7 +4,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { UserInfo } from "./types";
 
-const STORAGE_KEY = "aiengine-auth";
+const STORAGE_KEY = "milesai-auth";
 
 interface AuthState {
   accessToken: string | null;

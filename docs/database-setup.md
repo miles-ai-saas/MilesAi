@@ -2,7 +2,7 @@
 
 > 类型：运维指南 | 状态：已实现 | 关联：[README.md](./README.md)、[../docker/README.md](../docker/README.md)
 
-AiEngine 业务数据存储在 **PostgreSQL 15+**，表结构由 **Alembic** 管理。向量数据在 Weaviate，文件在 MinIO，不在 PostgreSQL 中建库说明范围内。
+MilesAi 业务数据存储在 **PostgreSQL 15+**，表结构由 **Alembic** 管理。向量数据在 Weaviate，文件在 MinIO，不在 PostgreSQL 中建库说明范围内。
 
 ---
 
@@ -16,7 +16,7 @@ POSTGRES_HOST=localhost
 POSTGRES_PORT=5432
 POSTGRES_USER=postgres
 POSTGRES_PASSWORD=postgres
-POSTGRES_DB=aiengine
+POSTGRES_DB=milesai
 ```
 
 3. 后端依赖已安装：`pip install -e ".[dev]"`（在 `backend` 目录下）。
@@ -40,7 +40,7 @@ docker compose -f docker-compose.middleware.yml up -d
 ```yaml
 POSTGRES_USER: postgres
 POSTGRES_PASSWORD: postgres
-POSTGRES_DB: aiengine
+POSTGRES_DB: milesai
 ```
 
 此时 `POSTGRES_HOST` 在 **容器内** 为 `postgres`，在 **宿主机连接** 时为 `localhost`（端口映射 `5432`）。
@@ -57,7 +57,7 @@ psql -U postgres
 
 ```sql
 -- 使用默认超级用户 postgres / postgres 时，仅需创建业务库
-CREATE DATABASE aiengine
+CREATE DATABASE milesai
   ENCODING 'UTF8'
   LC_COLLATE 'en_US.UTF-8'
   LC_CTYPE 'en_US.UTF-8'
@@ -69,13 +69,13 @@ CREATE DATABASE aiengine
 macOS 若 locale 不同，可简化为：
 
 ```sql
-CREATE DATABASE aiengine ENCODING 'UTF8';
+CREATE DATABASE milesai ENCODING 'UTF8';
 ```
 
 验证连接：
 
 ```bash
-psql -h localhost -U postgres -d aiengine -c "SELECT 1;"
+psql -h localhost -U postgres -d milesai -c "SELECT 1;"
 ```
 
 ---
@@ -140,7 +140,14 @@ alembic history --verbose
 
 ## 四、种子数据（默认管理员）
 
-迁移完成后，**首次启动 API** 会自动写入种子数据（若不存在 `admin` 用户）：
+迁移完成后，在 **`backend` 目录** 手动执行初始化脚本（与业务代码解耦，API 启动**不会**自动写种子）：
+
+```bash
+cd backend
+python cli.py init-db              # 迁移 + 全量种子（若已迁移过可 --seed-only）
+python cli.py init-db --seed-only
+python cli.py seed all             # 仅种子，等价于 init-db --seed-only
+```
 
 | 配置项 | 默认值 |
 |--------|--------|
@@ -149,7 +156,7 @@ alembic history --verbose
 | `SEED_ADMIN_EMAIL` | admin@local.dev |
 | `SEED_TENANT_NAME` | 默认租户 |
 
-种子逻辑见 `app/services/seed.py`，包含：默认租户、超级管理员角色、基础权限（`kb:*`、`flow:*`、`agent:*` 等）。
+种子实现位于 `backend/scripts/seed/`（租户、合规、应用市场、运营账号、内置模型目录等）。可按域单独执行：`scripts/seed_tenant.py`、`seed_compliance.py` 等。
 
 ```bash
 uvicorn app.main:app --reload --port 8000
@@ -178,11 +185,11 @@ cd backend && cp .env.example .env
 # 3. 安装依赖
 pip install -e ".[dev]"
 
-# 4. 迁移
-alembic upgrade head
+# 4. 迁移 + 种子
+python cli.py init-db
 
-# 5. 启动 API（写入种子数据）
-uvicorn app.main:app --reload --port 8000
+# 5. 启动 API
+python cli.py serve
 ```
 
 ---
@@ -205,11 +212,10 @@ alembic downgrade base
 
 ```bash
 # 删除并重建数据库
-psql -U postgres -c "DROP DATABASE IF EXISTS aiengine;"
-psql -U postgres -c "CREATE DATABASE aiengine ENCODING 'UTF8';"
+psql -U postgres -c "DROP DATABASE IF EXISTS milesai;"
+psql -U postgres -c "CREATE DATABASE milesai ENCODING 'UTF8';"
 
-cd backend && alembic upgrade head
-# 重启 API 以重新种子
+cd backend && python cli.py init-db
 ```
 
 ### 连接串说明
@@ -226,7 +232,7 @@ cd backend && alembic upgrade head
 | 现象 | 处理 |
 |------|------|
 | `connection refused` | 检查 Postgres 是否启动、`POSTGRES_HOST` / 端口 |
-| `database "aiengine" does not exist` | 按「方式 B」创建库，或检查 Docker `POSTGRES_DB` |
+| `database "milesai" does not exist` | 按「方式 B」创建库，或检查 Docker `POSTGRES_DB` |
 | `password authentication failed` | 核对 `.env` 与建库时密码是否一致 |
 | `relation "users" does not exist` | 执行 `alembic upgrade head` |
 | `No 'script_location' key found` | 先 `cd backend` 再执行，或 `python -m alembic -c alembic.ini upgrade head`（根目录 ini） |

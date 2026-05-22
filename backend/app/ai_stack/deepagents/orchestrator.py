@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import re
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
 from app.app_tenant.agents.schemas.agent import ChatRequest, ChatResponse
@@ -56,6 +56,9 @@ async def _platform_plan(
     parent: Agent,
     bindings: list[AgentSubAgentBinding],
     query: str,
+    *,
+    db: Any = None,
+    tenant_id: Any = None,
 ) -> list[dict]:
     if not parent.model_config:
         return [
@@ -74,6 +77,8 @@ async def _platform_plan(
         parent.model_config,
         [{"role": "user", "content": prompt}],
         temperature=0.2,
+        db=db,
+        tenant_id=tenant_id,
     )
     plan = _parse_plan(raw)
     if plan:
@@ -95,7 +100,9 @@ async def _run_platform_planned(
         }
     ]
     allowed = {str(b.child_agent_id) for b in bindings}
-    plan = await _platform_plan(parent, bindings, body.query)
+    plan = await _platform_plan(
+        parent, bindings, body.query, db=svc.db, tenant_id=svc.ctx.tenant_id
+    )
     steps.append({"type": "plan", "steps": plan})
 
     parallel = bool((parent.config or {}).get("subagent_parallel", False))
@@ -156,6 +163,8 @@ async def _run_platform_planned(
             parent.model_config,
             [{"role": "user", "content": synth_prompt}],
             temperature=float((parent.config or {}).get("temperature", 0.7)),
+            db=svc.db,
+            tenant_id=svc.ctx.tenant_id,
         )
     else:
         final = "\n\n---\n\n".join(sub_answers)

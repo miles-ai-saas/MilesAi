@@ -97,7 +97,42 @@ export const adminApi = {
   listRateLimits: () => get<RateLimitRule[]>("/risk/rate-limits"),
   createRateLimit: (body: Record<string, unknown>) => post<RateLimitRule>("/risk/rate-limits", body),
   listAuditLogs: () => get<PageResult<AuditLog>>("/audit/logs?page=1&size=100"),
+
+  listModelCatalog: (vendor?: string, publish_status?: string) => {
+    const q = new URLSearchParams({ page: "1", size: "100" });
+    if (vendor) q.set("vendor", vendor);
+    if (publish_status) q.set("publish_status", publish_status);
+    return get<PageResult<AdminModelCatalog>>("/model-catalog?" + q.toString());
+  },
+  createModelCatalog: (body: Record<string, unknown>) =>
+    post<AdminModelCatalog>("/model-catalog", body),
+  updateModelCatalog: (id: string, body: Record<string, unknown>) =>
+    patch<AdminModelCatalog>(`/model-catalog/${id}`, body),
+  publishModelCatalog: (id: string) => post<AdminModelCatalog>(`/model-catalog/${id}/publish`),
+  deprecateModelCatalog: (id: string) =>
+    post<AdminModelCatalog>(`/model-catalog/${id}/deprecate`),
+  deleteModelCatalog: (id: string) =>
+    http.delete(`/model-catalog/${id}`).then(() => undefined),
 };
+
+export interface AdminModelCatalog {
+  id: string;
+  name: string;
+  vendor: string;
+  provider: string;
+  model_name: string;
+  model_code: string | null;
+  model_type: string;
+  description: string | null;
+  context_window: string | null;
+  badge: string | null;
+  publish_status: string;
+  is_active: boolean;
+  is_featured: boolean;
+  has_api_key: boolean;
+  api_base: string | null;
+  sort_order: number;
+}
 
 export interface AdminTenant {
   id: string;

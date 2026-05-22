@@ -7,7 +7,7 @@ from sqlalchemy import select
 from app.core.database import AsyncSessionLocal
 from app.models import Permission, Role
 from app.models.role import role_permissions
-from app.app_tenant.seeds.seed import DEFAULT_PERMISSIONS
+from scripts.seed.tenant import DEFAULT_PERMISSIONS
 
 
 async def main() -> None:

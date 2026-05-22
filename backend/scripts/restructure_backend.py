@@ -178,7 +178,7 @@ def patch_file(path: Path):
 
 def patch_tree():
     for py in ROOT.rglob("*.py"):
-        if ".venv" in py.parts or "aiengine.egg-info" in py.parts:
+        if ".venv" in py.parts or "milesai.egg-info" in py.parts:
             continue
         patch_file(py)
 

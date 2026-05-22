@@ -1,1 +1,1 @@
-"""AiEngine backend application."""
+"""MilesAi backend application."""

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import re
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
 from app.app_tenant.a2a.client import invoke_a2a_peer
@@ -101,6 +101,8 @@ async def plan_a2a_peers(
     query: str,
     *,
     exclude_peer_ids: set[str] | None = None,
+    db: Any = None,
+    tenant_id: Any = None,
 ) -> list[dict]:
     """规划层：由主模型选择要调用的外部 peer（未命中规则时）。"""
     if not parent.model_config:
@@ -121,6 +123,8 @@ async def plan_a2a_peers(
         parent.model_config,
         [{"role": "user", "content": prompt}],
         temperature=0.2,
+        db=db,
+        tenant_id=tenant_id,
     )
     plan = _parse_a2a_plan(raw)
     allowed = {str(r.peer.id) for r in candidates if r.peer}
@@ -189,6 +193,9 @@ async def resolve_a2a_plan_items(
     agent: Agent,
     refs: list[AgentA2aPeerRef] | list[A2aPeerBinding],
     query: str,
+    *,
+    db: Any = None,
+    tenant_id: Any = None,
 ) -> tuple[list[dict], list[dict]]:
     """返回 (plan_items, preliminary_steps)。"""
     pre_steps: list[dict] = []
@@ -218,6 +225,8 @@ async def resolve_a2a_plan_items(
             refs,
             query,
             exclude_peer_ids=rule_ids if policy == "rules_then_plan" else None,
+            db=db,
+            tenant_id=tenant_id,
         )
         if planned:
             pre_steps.append({"type": "a2a_plan", "steps": planned})
@@ -242,7 +251,9 @@ async def augment_response_with_a2a(
         return base
 
     steps = list(base.steps)
-    plan_items, pre = await resolve_a2a_plan_items(agent, refs, body.query)
+    plan_items, pre = await resolve_a2a_plan_items(
+        agent, refs, body.query, db=svc.db, tenant_id=svc.ctx.tenant_id
+    )
     steps.extend(pre)
 
     if not plan_items:
@@ -265,6 +276,8 @@ async def augment_response_with_a2a(
             agent.model_config,
             [{"role": "user", "content": synth}],
             temperature=float((agent.config or {}).get("temperature", 0.7)),
+            db=svc.db,
+            tenant_id=svc.ctx.tenant_id,
         )
     else:
         final = base.answer + "\n\n---\n\n" + "\n\n".join(blocks)
@@ -306,7 +319,9 @@ async def run_a2a_host_chat(
         )
 
     steps: list[dict] = [{"type": "a2a_host", "engine": "rules_then_plan"}]
-    plan_items, pre = await resolve_a2a_plan_items(agent, bindings, body.query)
+    plan_items, pre = await resolve_a2a_plan_items(
+        agent, bindings, body.query, db=svc.db, tenant_id=svc.ctx.tenant_id
+    )
     steps.extend(pre)
 
     if not plan_items:
@@ -320,6 +335,8 @@ async def run_a2a_host_chat(
             agent.model_config,
             [{"role": "user", "content": prompt}],
             temperature=float((agent.config or {}).get("temperature", 0.7)),
+            db=svc.db,
+            tenant_id=svc.ctx.tenant_id,
         )
         return ChatResponse(answer=answer, steps=steps)
 
@@ -341,5 +358,7 @@ async def run_a2a_host_chat(
         agent.model_config,
         [{"role": "user", "content": synth}],
         temperature=float((agent.config or {}).get("temperature", 0.7)),
+        db=svc.db,
+        tenant_id=svc.ctx.tenant_id,
     )
     return ChatResponse(answer=final, sources=[], steps=steps)

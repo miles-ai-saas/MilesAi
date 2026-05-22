@@ -1,4 +1,4 @@
-# AiEngine 运营后台（admin_frontend）
+# MilesAi 运营后台（admin_frontend）
 
 独立 Next.js 应用，对接平台运营 API `/api/admin/v1`，与租户 AI 工作台（`frontend`，端口 3000）分离部署。
 

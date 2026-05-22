@@ -39,7 +39,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <div className="flex min-h-screen flex-col bg-surface-muted">
       <header className="flex h-14 shrink-0 items-center gap-3 border-b border-line bg-surface px-4">
         <Link href="/workbench/dashboard" className="shrink-0 text-lg font-bold tracking-tight text-brand">
-          AiEngine
+          MilesAi
         </Link>
 
         {isWorkbench ? (

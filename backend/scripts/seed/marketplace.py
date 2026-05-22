@@ -1,4 +1,4 @@
-"""应用市场官方模板种子数据。"""
+"""应用市场官方模板。"""
 
 import json
 from pathlib import Path
@@ -8,9 +8,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.app_tenant.marketplace.models import AppCategory, MarketplaceApp, MarketplaceAppStatus
 
+_BACKEND_ROOT = Path(__file__).resolve().parents[2]
+
 
 def _rag_graph() -> dict:
-    path = Path(__file__).resolve().parents[2] / "flow_runtime" / "templates" / "rag_flow.json"
+    path = _BACKEND_ROOT / "app" / "flow_runtime" / "templates" / "rag_flow.json"
     return json.loads(path.read_text(encoding="utf-8"))
 
 
@@ -121,17 +123,18 @@ async def seed_marketplace(session: AsyncSession) -> None:
     ]
 
     for spec in apps:
-        app = MarketplaceApp(
-            publisher_tenant_id=None,
-            category_id=cat_map[spec["category_slug"]].id,
-            name=spec["name"],
-            description=spec["description"],
-            icon=spec["icon"],
-            version="1.0.0",
-            status=MarketplaceAppStatus.PUBLISHED,
-            is_official=True,
-            install_count=0,
-            manifest=spec["manifest"],
+        session.add(
+            MarketplaceApp(
+                publisher_tenant_id=None,
+                category_id=cat_map[spec["category_slug"]].id,
+                name=spec["name"],
+                description=spec["description"],
+                icon=spec["icon"],
+                version="1.0.0",
+                status=MarketplaceAppStatus.PUBLISHED,
+                is_official=True,
+                install_count=0,
+                manifest=spec["manifest"],
+            )
         )
-        session.add(app)
     await session.flush()
