@@ -64,6 +64,24 @@ docker compose -f docker-compose.infra.yml down -v
 - 应用栈加入同一外部网络后，容器内可通过服务名访问：`postgres`、`redis`、`minio`、`etcd`、`milvus`、`weaviate`
 - 宿主机访问仍用映射端口：`5432`、`6379`、`9000`、`8080`、`19530`、`19531`（Milvus 指标）等
 
+### Weaviate 版本（默认向量库）
+
+Compose 使用 **Weaviate 1.27.26**（`weaviate-client` 4.x 要求服务端 **≥ 1.27.0**）。若仍报 `Weaviate version 1.24.x is not supported`：
+
+```bash
+cd docker
+docker compose -f docker-compose.infra.yml pull weaviate
+docker compose -f docker-compose.infra.yml up -d weaviate
+```
+
+大版本升级后若 schema 不兼容，可删除卷重建（会清空向量数据，文档需在平台重试入库）：
+
+```bash
+docker compose -f docker-compose.infra.yml down
+docker volume rm milesai-weaviate-data   # 慎用
+docker compose -f docker-compose.infra.yml up -d weaviate
+```
+
 ### 使用 Milvus 作为向量库
 
 Milvus 随 `docker-compose.infra.yml` 默认启动（依赖 `etcd` + `minio`）。`.env` 中设置：
