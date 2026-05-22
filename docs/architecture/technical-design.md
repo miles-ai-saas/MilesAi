@@ -38,7 +38,7 @@
 |------|------|
 | 元数据与文件分离 | PostgreSQL 业务表；MinIO 对象；Weaviate 向量 |
 | 租户隔离 | ORM 查询带 `tenant_id`；向量检索 Filter；删除编排 `deletion/` |
-| 编排同进程 | `flow_runtime` 节点 + `ai_stack.langgraph` 编译执行，无 Langflow 产品依赖 |
+| 编排同进程 | `flow_runtime` 节点 + `ai_stack.langgraph` 编译执行 |
 | 长任务异步 | 文档入库 `workers.tasks.ingest_document`（Celery 队列） |
 | 双端 API | 租户 `/api/v1`；运营 `/api/admin/v1` |
 | AI 栈可降级 | DeepAgents 未安装 → 平台 JSON 规划；MCP invoke 可为 mock |
@@ -47,8 +47,8 @@
 
 | 需求表述 | 当前实现 |
 |----------|----------|
-| Langflow 可视化编排 | **React Flow**（`@xyflow/react`）+ `graph_json` |
-| Langflow 执行引擎 | **`flow_runtime` + LangGraph**（`LangGraphFlowRuntime`） |
+| 可视化流程编排 | **React Flow**（`@xyflow/react`）+ `graph_json` |
+| 画布执行引擎 | **`flow_runtime` + LangGraph**（`get_flow_runtime` → 编译执行） |
 | 独立 OCR/ASR 微服务 | 单 **worker** 容器，队列 `parse,ocr,asr,embed`（可选 multimodal 依赖） |
 
 ---
@@ -77,6 +77,7 @@ flowchart TB
     end
 
     subgraph AI["ai_stack + flow_runtime"]
+        FR[flow_runtime 节点]
         LG[LangGraph 画布 / RAG]
         LC[LangChain 适配]
         DA[DeepAgents 可选]
@@ -124,7 +125,7 @@ MilesAi/
 │   │   │   └── router.py           # /api/v1
 │   │   ├── admin/                  # 运营 API /api/admin/v1
 │   │   ├── ai_stack/               # langchain / langgraph / deepagents
-│   │   ├── flow_runtime/           # 节点 registry + LangGraphFlowRuntime
+│   │   ├── flow_runtime/           # 画布节点 registry、执行入口
 │   │   ├── models/                 # 核心 ORM（Agent、Flow、KB、Task…）
 │   │   ├── infra/                  # 外部中间件连接
 │   │   │   ├── db/                 # PostgreSQL
@@ -164,7 +165,7 @@ MilesAi/
 | 域 | 前缀 | 说明 |
 |----|------|------|
 | system | `/tenants` `/users` `/roles` `/system/configs` | 租户、用户、RBAC、配置 |
-| kb | `/kb` | 知识库、文档、检索 |
+| kb | `/kb` | 知识库、文档、检索（详见 [knowledge-base.md](../guides/knowledge-base.md)） |
 | flows | `/flows` | 流程版本、画布、发布、运行、编译预览 |
 | agents | `/agents` | 智能体 CRUD、`POST …/chat` |
 | a2a | `/a2a/peers` | 外部 Peer 登记与 Card 同步 |
@@ -209,7 +210,7 @@ MilesAi/
 | A2A | `agt_a2a_peers` | 外部登记、Agent Card 缓存 |
 | | `agt_a2a_peer_bindings` | 互联宿主 → peer（含 `trigger_keywords`） |
 | | `agt_agent_a2a_peer_refs` | custom 智能体引用外部 peer |
-| 流程 | `flow_flows`, `flow_versions` | `graph_json`；`external_flow_id` 预留未用 |
+| 流程 | `flow_flows`, `flow_versions` | `graph_json` |
 | 知识库 | `kb_bases`, `kb_documents`, `kb_document_chunks`, `kb_vector_refs` | 文档状态与向量引用；**向量化规格绑在 `kb_bases`**（见 §6.5） |
 | 产品 | `prm_prompt_templates`, `skl_skill_packages`, `tool_tools`, `tool_mcp_services` | |
 | | `hook_definitions`, `hook_bindings`, `cmp_*`, `mkt_*`, `task_records`, `aud_logs` | |
@@ -421,8 +422,8 @@ ingest / search / delete
 
 ```
 React Flow 画布 → PUT /flows/{id}/graph → flow_versions.graph_json
-执行：get_flow_runtime().run() → LangGraphFlowRuntime → ai_stack.langgraph.flow_runner
-节点：flow_runtime/nodes/registry.py
+执行：`get_flow_runtime().run()` → `flow_runtime.runtime_factory` → `ai_stack.langgraph.flow_runner`
+节点：`flow_runtime/nodes/registry.py`
 ```
 
 **已注册节点类型**：`TextInput`、`TextOutput`、`ChatInput`/`ChatOutput`（别名）、`KnowledgeSearch`、`PromptTemplate`、`LLMCall`、`ConditionBranch`、`ParallelJoin`。
@@ -450,7 +451,7 @@ flowchart TD
     SUB -->|否| PEER{仅有 peer_refs?}
     PEER -->|是| AUGCHAT[run_a2a_augmented_chat]
     PEER -->|否| FLOW{published_flow_id?}
-    FLOW -->|是| FR[flow_runtime LangGraph]
+    FLOW -->|是| FR[flow_runtime + LangGraph]
     FLOW -->|否| RAG{LangGraph RAG?}
     RAG -->|是| LGR[run_rag_workflow]
     RAG -->|否| LIN[legacy rag_answer / ainvoke_chat]

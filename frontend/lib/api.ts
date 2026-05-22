@@ -276,8 +276,16 @@ export const api = {
 
   listKbs: (page = 1, size = DEFAULT_PAGE_SIZE) =>
     getPage<KnowledgeBase>(`/kb?${buildPageQuery(page, size)}`),
-  createKb: (name: string, description?: string) =>
-    post<KnowledgeBase>("/kb", { name, description: description || "" }),
+  listEmbeddingProfiles: () =>
+    get<import("./types").EmbeddingProfile[]>("/kb/embedding-profiles"),
+  createKb: (payload: {
+    name: string;
+    description?: string;
+    embedding_profile?: string;
+    chunk_size?: number;
+    chunk_overlap?: number;
+    is_public?: boolean;
+  }) => post<KnowledgeBase>("/kb", payload),
 
   listAgents: (page = 1, size = DEFAULT_PAGE_SIZE, agentType?: import("./types").AgentType) => {
     const q = buildPageQuery(page, size);

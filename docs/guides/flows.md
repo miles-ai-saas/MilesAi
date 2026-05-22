@@ -2,7 +2,7 @@
 
 > 类型：流程编排 | 状态：已实现 | 关联：[technical-design.md](../architecture/technical-design.md) §9
 
-画布 `graph_json` **仅由 LangGraph 编译执行**；`flow_runtime` 提供节点 handler。需求中的「Langflow」= **React Flow + flow_runtime + LangGraph**，非 PyPI `langflow`。
+画布 `graph_json` **仅由 LangGraph 编译执行**；`flow_runtime` 提供节点 handler，编译与执行在 `ai_stack.langgraph`。
 
 ## 命名与数据流
 
@@ -80,5 +80,5 @@ flowchart TD
 
 ## 历史
 
-- 已移除 `BuiltinFlowRuntime`、`OptionalLangflowAdapter`
-- `flow_flows.external_flow_id` 仅数据库预留，运行时未使用
+- 已移除内置 DAG 执行器（`BuiltinFlowRuntime`）及第三方流程产品适配层
+- 已移除 `flow_flows.external_flow_id`（原外部流程 ID 预留列）

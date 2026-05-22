@@ -42,7 +42,6 @@ scripts/                    # 初始化 CLI（init_db、seed/*，与 app 解耦�
 │   └── vector_store/       # 向量库（Weaviate / Milvus / pgvector）
 ├── models/                 # 核心 ORM（用户、租户、KB、Flow、Agent…）
 ├── ai/                     # 解析、分块、Embedding
-├── flow_runtime/           # 流程 DAG 执行引擎与节点（非 Langflow 产品）
 ├── ai_stack/               # LangChain / LangGraph / DeepAgents
 │   ├── langchain/          # 统一 AI 底座（已接入）
 │   ├── langgraph/          # RAG 工作流（已接入）
@@ -104,7 +103,6 @@ scripts/                    # 初始化 CLI（init_db、seed/*，与 app 解耦�
 
 | 模块 | 说明 |
 |------|------|
-| `builtin_runtime.py` | 默认：按 `graph_json` DAG 执行 |
 | `runtime_factory.get_flow_runtime()` | 入口 → LangGraph 编译执行画布 |
 | `nodes/registry.py` | 节点注册（RAG / LLM / IO 等） |
 

@@ -39,7 +39,7 @@ app/core/llm_client.py → ainvoke_chat
 | 智能体对话（默认） | `AgentService.chat` | RAG Graph / 画布 / DeepAgents / A2A 增强 |
 | RAG（默认） | `_rag_chat` | `run_rag_workflow` → [flows.md](./flows.md)#langgraph-rag-对话 |
 | RAG（legacy） | `use_langgraph_rag: false` | `rag.rag_answer` |
-| 知识库检索 | `KbService.search` | `vectorstores.search_kb` |
+| 知识库检索 | `KbService.search` | `vectorstores.search_kb`（方案见 [knowledge-base.md](./knowledge-base.md)） |
 | 流程节点 | `rag_nodes` / `llm_nodes` | `retrieve_hits` / `ainvoke_chat` |
 | 入库分片 | `ai.chunking` | `RecursiveCharacterTextSplitter` |
 | 向量化 | `ai.embedding` | `embed_texts` → `get_embeddings()` |

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth-store";
 import { usePagedList } from "@/hooks/use-paged-list";
@@ -10,6 +10,7 @@ import { ResourceDialog } from "@/components/resource/ResourceDialog";
 import { ResourceItemCard } from "@/components/resource/ResourceItemCard";
 import { ResourceListLayout } from "@/components/resource/ResourceListLayout";
 import { filterBySearch } from "@/lib/filter-search";
+import type { EmbeddingProfile } from "@/lib/types";
 
 export default function KbPage() {
   const { ready } = useRequireAuth();
@@ -17,8 +18,21 @@ export default function KbPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [profiles, setProfiles] = useState<EmbeddingProfile[]>([]);
+  const [embeddingProfile, setEmbeddingProfile] = useState("");
 
   const list = usePagedList(useCallback((p, s) => api.listKbs(p, s), []), { enabled: ready });
+
+  useEffect(() => {
+    if (!ready) return;
+    api
+      .listEmbeddingProfiles()
+      .then((items) => {
+        setProfiles(items);
+        setEmbeddingProfile((prev) => prev || items[0]?.id || "");
+      })
+      .catch(() => {});
+  }, [ready]);
 
   const filtered = useMemo(
     () => filterBySearch(list.items, search, (kb) => `${kb.name} ${kb.description ?? ""}`),
@@ -26,7 +40,11 @@ export default function KbPage() {
   );
 
   const onCreate = async () => {
-    await api.createKb(name.trim() || `知识库 ${list.total + 1}`, description || undefined);
+    await api.createKb({
+      name: name.trim() || `知识库 ${list.total + 1}`,
+      description: description || undefined,
+      embedding_profile: embeddingProfile || undefined,
+    });
     setName("");
     setDescription("");
     setDialogOpen(false);
@@ -64,7 +82,11 @@ export default function KbPage() {
             href={`/workbench/kb/${kb.id}`}
             title={kb.name}
             description={kb.description || "点击进入管理文档与切片"}
-            meta={<span className="text-brand">管理文档 →</span>}
+            meta={
+              <span className="text-ink-faint">
+                {kb.embedding_profile} · {kb.embedding_dimension} 维
+              </span>
+            }
           />
         ))}
       </ResourceListLayout>
@@ -96,6 +118,20 @@ export default function KbPage() {
           value={description}
           onChange={(e) => setDescription(e.target.value)}
         />
+        <label className="block text-xs text-ink-muted">
+          向量化规格（创建后不可修改）
+          <select
+            className="input-field mt-1 w-full"
+            value={embeddingProfile}
+            onChange={(e) => setEmbeddingProfile(e.target.value)}
+          >
+            {profiles.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.label}（{p.dimension} 维）
+              </option>
+            ))}
+          </select>
+        </label>
       </ResourceDialog>
     </>
   );

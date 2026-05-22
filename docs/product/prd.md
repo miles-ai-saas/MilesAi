@@ -2,7 +2,7 @@
 
 > **与代码实现对齐说明（2026-05）**  
 > 类型：需求基线 | 状态：只读参考  
-> 「Langflow」在需求中为立项表述；当前实现为 **React Flow + flow_runtime + LangGraph**，见 [flows.md](../guides/flows.md)、[technical-design.md](../architecture/technical-design.md) §9。
+> 流程编排实现为 **React Flow + flow_runtime + LangGraph**，见 [flows.md](../guides/flows.md)、[technical-design.md](../architecture/technical-design.md) §9。
 
 # 一、项目基础信息
 
@@ -18,7 +18,7 @@
 
 1. 搭建企业级AI能力底座，支持文本、图片、音频、视频多模态处理，基于PaddleOCR实现高精度中文OCR识别，满足多场景内容解析需求。
 
-2. 提供低代码可视化流程编排能力，支持拖拽式搭建 AI 流程（实现：`flow_runtime` + React Flow 画布；可选对接 Langflow 产品），降低技术门槛，实现 AI 流程快速落地。
+2. 提供低代码可视化流程编排能力，支持拖拽式搭建 AI 流程（实现：`flow_runtime` + React Flow 画布），降低技术门槛，实现 AI 流程快速落地。
 
 3. 构建高性能架构，通过Redis缓存提升接口响应速度，通过Celery实现异步任务处理，避免耗时操作阻塞Web服务，保障高并发场景下的稳定性。
 
@@ -49,7 +49,7 @@
 |技术类别|具体技术|核心用途|
 |---|---|---|
 |主体框架|FastAPI|后端接口开发、路由管理、请求处理、鉴权校验，支持异步接口，提升并发性能|
-|编排引擎|flow_runtime（Builtin DAG；可选 Langflow）|可视化流程编排，无 iframe、同进程执行 `graph_json`，`nodes/registry` 扩展节点；可选 `pip install langflow`|
+|编排引擎|flow_runtime + LangGraph|可视化流程编排，无 iframe、同进程执行 `graph_json`，`nodes/registry` 扩展节点|
 |文档解析|Docling|PDF、Word、Excel、PPT等文档的结构化解析，提取文本、表格、图片等内容|
 |OCR引擎|PaddleOCR|高精度中英文识别，支持图片、PDF内嵌图片的文字提取，支持表格、印章、手写体识别，异步执行|
 |音频转写|Whisper|音频文件（MP3、WAV）转文字，支持多语言转写，异步执行|
@@ -68,7 +68,7 @@
 |---|---|---|
 |主体框架|Next\.js 14 \+ TypeScript|前端页面开发、路由管理、类型校验，提升开发效率与代码健壮性|
 |样式框架|TailwindCSS|统一样式主题，实现响应式布局，适配不同设备|
-|编排画布|React Flow（`@xyflow/react`）|无 iframe 画布，拖拽编排；`graph_json` 与 `flow_runtime` 对齐（需求原写 @langflow/flow-builder，npm 未发布故未采用）|
+|编排画布|React Flow（`@xyflow/react`）|无 iframe 画布，拖拽编排；`graph_json` 与 `flow_runtime` 节点类型对齐|
 |请求工具|Axios|后端接口调用、多模态文件上传、异步任务状态查询|
 |多模态组件|自定义上传/预览组件|图片、音频、视频文件的上传、预览、播放，支持多模态交互|
 

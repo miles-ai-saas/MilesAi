@@ -266,10 +266,27 @@ export interface SkillPackage {
   created_at: string;
 }
 
+export interface EmbeddingProfile {
+  id: string;
+  label: string;
+  backend: string;
+  model_name: string;
+  dimension: number;
+}
+
 export interface KnowledgeBase {
   id: string;
+  tenant_id?: string;
   name: string;
   description?: string | null;
+  is_public?: boolean;
+  embedding_profile: string;
+  embedding_backend?: string;
+  embedding_model_name?: string;
+  embedding_dimension: number;
+  chunk_size?: number;
+  chunk_overlap?: number;
+  created_at?: string;
 }
 
 export interface ChatResponse {

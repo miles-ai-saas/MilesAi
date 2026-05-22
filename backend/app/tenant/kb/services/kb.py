@@ -260,6 +260,12 @@ class KnowledgeBaseService(BaseService):
         doc = await self.doc_repo.get_by_id_or_raise(document_id, label="文档不存在")
         if doc.kb_id != kb_id or is_marked_deleted(doc):
             raise NotFoundError("文档不存在")
+        await clear_document_derived_data_async(self.db, doc.id)
+        if doc.object_key and doc.object_key != "pending":
+            try:
+                delete_object(doc.object_key, doc.object_bucket)
+            except Exception:
+                pass
         await mark_deleted(self.db, doc)
 
     async def search(self, kb_id: UUID, body: SearchRequest) -> SearchResponse:

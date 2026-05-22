@@ -98,6 +98,10 @@ export default function KbDetailPage() {
       <section className="rounded-xl border border-line bg-surface p-4 shadow-card">
         <h1 className="text-lg font-bold">{kb.name}</h1>
         <p className="text-sm text-ink-muted">{kb.description || "无描述"}</p>
+        <p className="mt-2 text-xs text-ink-faint">
+          向量：{kb.embedding_profile} · {kb.embedding_dimension} 维 · 分片 {kb.chunk_size}/
+          {kb.chunk_overlap}
+        </p>
         <label className="mt-4 inline-block cursor-pointer rounded bg-brand px-4 py-2 text-sm text-white">
           {uploading ? "上传中…" : "上传文档 / 多模态"}
           <input

@@ -27,7 +27,6 @@ class Flow(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         nullable=False,
     )
     current_version: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
-    external_flow_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
 
     versions: Mapped[list["FlowVersion"]] = relationship(
         "FlowVersion",

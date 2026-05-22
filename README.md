@@ -93,7 +93,7 @@ MilesAi/
 │   │   ├── tenant/         # 租户业务（agents、kb、flows、marketplace…）
 │   │   ├── tenant/a2a/     # A2A Peer / 宿主调用
 │   │   ├── ai_stack/        # LangChain、LangGraph、DeepAgents
-│   │   ├── flow_runtime/    # 流程节点 + LangGraph 编译执行
+│   │   ├── flow_runtime/    # 画布节点 registry
 │   │   └── models/
 │   └── alembic/
 ├── frontend/                # 租户工作台
