@@ -204,11 +204,7 @@ export default function KbPage() {
         open={dialogOpen}
         title={editing ? "编辑知识库" : "新建知识库"}
         onClose={() => setDialogOpen(false)}
-        description={
-          editing
-            ? undefined
-            : "向量化模型创建后不可修改；Office 文档解析需在服务端启用 docling。"
-        }
+        description={editing ? undefined : "向量化模型创建后不可修改。"}
         footer={
           <>
             <button type="button" className="btn-ghost" onClick={() => setDialogOpen(false)}>
