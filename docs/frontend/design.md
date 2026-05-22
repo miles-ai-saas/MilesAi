@@ -88,15 +88,20 @@
 
 ### 3.1 字体栈
 
-两端通过 `lib/fonts.ts` 加载 **Noto Sans SC**（`next/font/google`），并统一 Tailwind `font-sans`：
+两端通过 `lib/fonts.ts` 加载 **Noto Sans SC**（`next/font/google`，字重 **400 / 500 / 600 / 700**），CSS 变量 `--font-sans`；Tailwind `font-sans` 定义在 `lib/font-family.ts`（勿在 Tailwind 配置中直接 import `fonts.ts`）。
 
 ```css
+/* body（globals.css）与 theme.extend.fontFamily.sans 一致 */
 var(--font-sans), "PingFang SC", "Microsoft YaHei", "Segoe UI", system-ui, -apple-system, sans-serif
 ```
 
-- 根布局：`<body className="{appFont.className} font-sans antialiased">`（`frontend` / `admin_frontend` 相同）。
-- Logo SVG 中文：`PingFang SC`, `Noto Sans SC`, `Microsoft YaHei`。
-- Logo 英文标语：与 UI 相同的西文系统栈（不用单独引入 Inter）。
+| 项 | 说明 |
+|----|------|
+| 根布局 | `<html className={appFont.variable}>` + `<body className="{appFont.className} font-sans antialiased">` |
+| 渲染 | `-webkit-font-smoothing: antialiased`、`-moz-osx-font-smoothing: grayscale`、`text-rendering: optimizeLegibility` |
+| Logo 中文 | `PingFang SC`, `Noto Sans SC`, `Microsoft YaHei`（SVG 内嵌） |
+| Logo 英文标语 | `Segoe UI`, `Helvetica Neue`, `system-ui`（与 UI 西文栈一致，**不**单独引入 Inter） |
+| 等宽场景 | 表单 `model_code`、任务 ID 等沿用浏览器默认 `font-mono`，无单独 Web 字体 |
 
 ### 3.2 字号层级（常用）
 
@@ -113,6 +118,23 @@ var(--font-sans), "PingFang SC", "Microsoft YaHei", "Segoe UI", system-ui, -appl
 - 正文：`leading-relaxed`（营销文案）。
 - 导航选中：`font-medium`。
 - 按钮：`font-medium`（`text-sm`）。
+
+### 3.4 等宽字体（代码 / ID / 技术字段）
+
+不单独引入 Web 等宽字体，统一使用 Tailwind **`font-mono`**（系统默认等宽栈，如 SF Mono / Menlo / Consolas）。
+
+| 场景 | 推荐类名 | 示例页面 |
+|------|----------|----------|
+| UUID、任务 ID、Celery ID | `font-mono text-xs` | 任务详情 |
+| API Key、JSON、提示词正文、合规规则 | `font-mono text-xs` ~ `text-sm` | 模型目录、工具配置、提示词编辑 |
+| 对话中的代码块 | `font-mono text-[11px]` + `pre` | 智能体对话 |
+| 快捷键提示 | `font-mono text-[10px]` | 流程画布 |
+
+**约定**
+
+- 等宽仅用于**可复制的技术内容**；普通说明文案仍用 `font-sans`（默认）。
+- 字号比同级正文略小一级（多为 `text-xs`），避免与界面主字体抢视觉重心。
+- 两端（`frontend` / `admin_frontend`）写法保持一致；运营后台模型表单的 `model_code`、`model_name` 等同理。
 
 ---
 
@@ -267,13 +289,15 @@ var(--font-sans), "PingFang SC", "Microsoft YaHei", "Segoe UI", system-ui, -appl
 
 ```
 frontend/
-├── app/globals.css          # CSS 变量 + 组件类
-├── tailwind.config.ts       # 设计 token
+├── lib/fonts.ts             # next/font Noto Sans SC（appFont）
+├── lib/font-family.ts       # Tailwind font-sans 栈（供 tailwind.config 引用）
+├── app/globals.css          # CSS 变量 + body 字体与抗锯齿
+├── tailwind.config.ts       # 设计 token（含 fontFamily.sans）
 ├── components/brand/        # CompanyLogo, BrandHeader
 ├── public/brand/            # logo-full.svg, logo-mark.svg
-└── components/layout/     # AppShell, SystemSidebar, LoginHero
+└── components/layout/       # AppShell, SystemSidebar, LoginHero
 
-admin_frontend/              # 结构对称，token 与 brand 组件保持一致
+admin_frontend/              # 同上：lib/fonts.ts、font-family.ts、globals、tailwind 与租户端保持一致
 ```
 
 相关文档：[technical-design.md](../architecture/technical-design.md)（系统架构）、根目录 [README.md](../README.md)（启动与端口）。

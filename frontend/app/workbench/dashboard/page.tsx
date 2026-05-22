@@ -5,15 +5,7 @@ import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth-store";
 import { PageHeader } from "@/components/layout/PageHeader";
-
-type OverviewStats = {
-  agents: number;
-  kbs: number;
-  flows: number;
-  prompts: number;
-  models: number;
-  tasks: number;
-};
+import type { WorkbenchOverview } from "@/lib/types";
 
 const QUICK_LINKS = [
   { href: "/workbench/agents/chat", label: "对话工作台", desc: "与智能体对话调试" },
@@ -26,27 +18,11 @@ const QUICK_LINKS = [
 
 export default function WorkbenchOverviewPage() {
   const { ready } = useRequireAuth();
-  const [stats, setStats] = useState<OverviewStats | null>(null);
+  const [stats, setStats] = useState<WorkbenchOverview | null>(null);
 
   useEffect(() => {
     if (!ready) return;
-    Promise.all([
-      api.listAgents(1, 1),
-      api.listKbs(1, 1),
-      api.listFlows(1, 1),
-      api.listPromptTemplates(1, 1),
-      api.listModelConfigs(),
-      api.listTasks(1, 1),
-    ]).then(([agents, kbs, flows, prompts, models, tasks]) => {
-      setStats({
-        agents: agents.total,
-        kbs: kbs.total,
-        flows: flows.total,
-        prompts: prompts.total,
-        models: models.length,
-        tasks: tasks.total,
-      });
-    });
+    api.getWorkbenchOverview().then(setStats).catch(() => setStats(null));
   }, [ready]);
 
   if (!stats) {

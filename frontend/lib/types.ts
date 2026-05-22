@@ -307,6 +307,15 @@ export interface InterceptLog {
   created_at: string;
 }
 
+export interface WorkbenchOverview {
+  agents: number;
+  kbs: number;
+  flows: number;
+  prompts: number;
+  models: number;
+  tasks: number;
+}
+
 export interface MonitorStats {
   knowledge_bases: number;
   documents: number;

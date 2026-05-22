@@ -15,11 +15,24 @@ class ModelCapabilityType(str, enum.Enum):
     LLM = "llm"
     REASONING = "reasoning"
     VISION = "vision"
-    ASR = "asr"
-    TTS = "tts"
     IMAGE_GEN = "image_gen"
     VIDEO_GEN = "video_gen"
+    ASR = "asr"
+    TTS = "tts"
     OTHER = "other"
+
+
+# 目录 / 筛选 UI 展示顺序（与 MODEL_TYPE_LABELS 一致）
+CATALOG_MODEL_TYPES: tuple[ModelCapabilityType, ...] = (
+    ModelCapabilityType.LLM,
+    ModelCapabilityType.REASONING,
+    ModelCapabilityType.VISION,
+    ModelCapabilityType.IMAGE_GEN,
+    ModelCapabilityType.VIDEO_GEN,
+    ModelCapabilityType.ASR,
+    ModelCapabilityType.TTS,
+    ModelCapabilityType.OTHER,
+)
 
 
 class ModelPublishStatus(str, enum.Enum):

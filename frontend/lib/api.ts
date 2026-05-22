@@ -37,6 +37,7 @@ import type {
   UserInfo,
   TenantUser,
   TenantAuditLog,
+  WorkbenchOverview,
 } from "./types";
 import { getAccessToken, useAuthStore } from "./auth-store";
 import { buildPageQuery, DEFAULT_PAGE_SIZE, normalizePageResult } from "./pagination";
@@ -447,6 +448,8 @@ export const api = {
       `/mcp/${serviceId}/tools/${encodeURIComponent(toolName)}/invoke`,
       { params },
     ),
+
+  getWorkbenchOverview: () => get<WorkbenchOverview>("/workbench/overview"),
 
   getMonitorStats: () => get<MonitorStats>("/monitor/stats"),
   getMonitorReport: () => get<MonitorReport>("/monitor/report"),

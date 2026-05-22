@@ -23,6 +23,7 @@ from app.core.soft_delete import is_marked_deleted, mark_deleted, not_deleted
 from app.core.service import BaseService
 from app.models.model import ModelConfig
 from app.models.model_catalog import (
+    CATALOG_MODEL_TYPES,
     MODEL_TYPE_LABELS,
     ModelCapabilityType,
     ModelPublishStatus,
@@ -73,11 +74,7 @@ class ModelService(BaseService):
             ],
             model_types=[
                 ModelTypeOption(value=t.value, label=MODEL_TYPE_LABELS[t.value])
-                for t in (
-                    ModelCapabilityType.LLM,
-                    ModelCapabilityType.REASONING,
-                    ModelCapabilityType.VISION,
-                )
+                for t in CATALOG_MODEL_TYPES
             ],
         )
 

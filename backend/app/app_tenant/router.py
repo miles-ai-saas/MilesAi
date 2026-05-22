@@ -17,6 +17,7 @@ from app.app_tenant.skills.views import skills
 from app.app_tenant.system.views import configs, health, roles, tenants, users
 from app.app_tenant.tasks.views import tasks
 from app.app_tenant.tools.views import tools
+from app.app_tenant.workbench.views import overview as workbench_overview
 
 api_router = APIRouter(prefix="/api/v1")
 api_router.include_router(health.router, tags=["health"])
@@ -42,3 +43,4 @@ api_router.include_router(tasks.router, prefix="/tasks", tags=["tasks"])
 api_router.include_router(monitor.router, prefix="/monitor", tags=["monitor"])
 api_router.include_router(marketplace.router, prefix="/marketplace", tags=["marketplace"])
 api_router.include_router(audit_log.router, prefix="/audit", tags=["audit"])
+api_router.include_router(workbench_overview.router, prefix="/workbench", tags=["workbench"])

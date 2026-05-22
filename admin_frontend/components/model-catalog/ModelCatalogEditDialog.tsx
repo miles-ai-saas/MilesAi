@@ -13,6 +13,11 @@ const MODEL_TYPES = [
   { value: "llm", label: "大语言模型" },
   { value: "reasoning", label: "推理模型" },
   { value: "vision", label: "图像理解" },
+  { value: "image_gen", label: "图像生成" },
+  { value: "video_gen", label: "视频生成" },
+  { value: "asr", label: "语音识别" },
+  { value: "tts", label: "语音合成" },
+  { value: "other", label: "其它" },
 ];
 
 const DEFAULT_API_BASE: Record<string, string> = {
