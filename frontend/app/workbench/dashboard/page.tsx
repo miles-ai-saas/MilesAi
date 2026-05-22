@@ -16,7 +16,7 @@ type OverviewStats = {
 };
 
 const QUICK_LINKS = [
-  { href: "/workbench/agents/chat", label: "对话工作台", desc: "与智能体对话调试", accent: true },
+  { href: "/workbench/agents/chat", label: "对话工作台", desc: "与智能体对话调试" },
   { href: "/workbench/agents", label: "智能体", desc: "查看与管理智能体" },
   { href: "/workbench/kb", label: "知识库", desc: "文档与检索能力" },
   { href: "/workbench/flows", label: "流程编排", desc: "可视化编排与发布" },
@@ -67,11 +67,6 @@ export default function WorkbenchOverviewPage() {
       <PageHeader
         title="工作台概览"
         description="AI 能力资源一览，快速进入常用功能"
-        action={
-          <Link href="/workbench/agents/chat" className="btn-primary">
-            进入对话工作台
-          </Link>
-        }
       />
 
       <div className="resource-card-grid mb-8">
@@ -93,7 +88,7 @@ export default function WorkbenchOverviewPage() {
           <Link
             key={item.href}
             href={item.href}
-            className={`resource-card ${item.accent ? "!border-brand/25 !bg-brand-light/40" : ""}`}
+            className="resource-card"
           >
             <p className="font-medium text-ink">{item.label}</p>
             <p className="mt-1 text-xs text-ink-muted">{item.desc}</p>
