@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { BrandHeader } from "@/components/brand/brand-header";
 import {
   ADMIN_ACCOUNT_NAV,
   ADMIN_NAV,
@@ -44,14 +45,8 @@ export function AdminSidebar({
 }) {
   return (
     <aside className="flex h-full w-60 shrink-0 flex-col border-r border-line bg-surface">
-      <div className="flex h-14 shrink-0 items-center gap-2.5 border-b border-line px-4">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-light text-sm font-bold text-brand">
-          A
-        </div>
-        <div className="min-w-0">
-          <p className="truncate text-sm font-semibold text-brand">MilesAi</p>
-          <p className="truncate text-[11px] text-ink-faint">平台管理后台</p>
-        </div>
+      <div className="flex h-14 shrink-0 items-center border-b border-line px-4">
+        <BrandHeader productLine="MilesAi · 管理后台" href="/" />
       </div>
 
       <nav className="flex-1 overflow-y-auto px-3 py-4">

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
+import { CompanyLogo } from "@/components/brand/company-logo";
 import { LoginHero } from "@/components/layout/LoginHero";
 
 export default function LoginPage() {
@@ -33,7 +34,8 @@ export default function LoginPage() {
       <div className="flex flex-1 flex-col justify-center px-6 py-10 sm:px-12 lg:px-16">
         <div className="mx-auto w-full max-w-md">
           <div className="mb-8 lg:hidden">
-            <p className="text-sm font-medium text-brand">MilesAi</p>
+            <CompanyLogo variant="full" size="md" className="mb-3" />
+            <p className="text-sm font-semibold text-brand">MilesAi</p>
             <h1 className="mt-1 text-2xl font-bold text-ink">登录工作台</h1>
           </div>
 

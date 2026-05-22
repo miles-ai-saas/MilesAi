@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect } from "react";
 import { api } from "@/lib/api";
 import { useAuthHydrated, useAuthStore } from "@/lib/auth-store";
+import { BrandHeader } from "@/components/brand/brand-header";
 import { SystemShell } from "@/components/layout/SystemShell";
 import { SectionLink } from "@/components/layout/SectionLink";
 import { UserMenu } from "@/components/layout/UserMenu";
@@ -38,9 +39,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-screen flex-col bg-surface-muted">
       <header className="flex h-14 shrink-0 items-center gap-3 border-b border-line bg-surface px-4">
-        <Link href="/workbench/dashboard" className="shrink-0 text-lg font-bold tracking-tight text-brand">
-          MilesAi
-        </Link>
+        <BrandHeader productLine="MilesAi · 工作台" href="/workbench/dashboard" />
 
         {isWorkbench ? (
           <WorkbenchHeaderNav pathname={pathname} />

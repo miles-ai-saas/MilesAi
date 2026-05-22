@@ -1,7 +1,7 @@
 # 模型供应商（内置模型 + 自定义模型）
 
 > 类型：产品设计 + 技术方案 | 状态：**M1–M3 已实现**（深度求索 / 豆包 / 通义千问种子已内置）  
-> 关联：[technical-design.md](./technical-design.md)、[prd.md](./prd.md)
+> 关联：[technical-design.md](../architecture/technical-design.md)、[prd.md](../product/prd.md)
 
 ---
 
@@ -310,8 +310,8 @@ effective_api_base  = tenant_credentials.api_base ?? model_config.api_base
 
 | 文档 | 更新点 |
 |------|--------|
-| [technical-design.md](./technical-design.md) §6 / §7 | 补充表 `agt_model_tenant_credentials`、运营 API（实施后） |
-| [README.md](./README.md) | 文档列表增加本页 |
+| [technical-design.md](../architecture/technical-design.md) §6 / §7 | 补充表 `agt_model_tenant_credentials`、运营 API（实施后） |
+| [README.md](../README.md) | 文档列表增加本页 |
 
 ---
 

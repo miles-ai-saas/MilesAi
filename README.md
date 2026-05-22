@@ -9,7 +9,7 @@
 | API / Worker | FastAPI + Celery | 8000 / Flower 5555 |
 | 存储 | PostgreSQL · Redis · MinIO · Weaviate | 见 [docker/README.md](docker/README.md) |
 
-**文档**：设计与专题说明见 **[docs/README.md](docs/README.md)**（需求、技术方案、流程、智能体、数据库等）。
+**文档**：设计与专题说明见 **[docs/README.md](docs/README.md)**（需求、技术方案、**前端设计规范**、流程、智能体、数据库等）。
 
 ---
 
@@ -61,7 +61,7 @@ python cli.py init-db              # 迁移 + 种子（API 启动不会自动写
 python cli.py serve                # 启动 API（debug 时默认热重载）
 ```
 
-建库、迁移与种子：[docs/database-setup.md](docs/database-setup.md)。项目根：`./scripts/milesai.sh serve`、`./scripts/init-db.sh`。
+建库、迁移与种子：[docs/operations/database-setup.md](docs/operations/database-setup.md)。项目根：`./scripts/milesai.sh serve`、`./scripts/init-db.sh`。
 
 ### 前端工作台
 
@@ -99,10 +99,10 @@ MilesAi/
 ├── frontend/                # 租户工作台
 ├── admin_frontend/          # 运营后台
 ├── docker/
-└── docs/                    # → docs/README.md
+└── docs/                    # → docs/README.md（product / architecture / frontend / operations / guides）
 ```
 
-**分层**：`api/` 路由 → `services/` 业务 → `repositories/` 数据访问 → `core/` 基础设施（详见 [docs/technical-design.md](docs/technical-design.md) §4）。
+**分层**：`api/` 路由 → `services/` 业务 → `repositories/` 数据访问 → `core/` 基础设施（详见 [docs/architecture/technical-design.md](docs/architecture/technical-design.md) §4）。
 
 ---
 
@@ -120,7 +120,7 @@ MilesAi/
 | 合规 / 钩子 | `/workbench/compliance` 等 | 敏感词与 Webhook |
 | 应用市场 | `/workbench/marketplace` | 打包、审核、安装 |
 
-智能体产品语义（内部协同 vs A2A）：[docs/a2a.md](docs/a2a.md)。
+智能体产品语义（内部协同 vs A2A）：[docs/guides/a2a.md](docs/guides/a2a.md)。
 
 ---
 
@@ -134,7 +134,7 @@ MilesAi/
 | P3 安全与工具 | ✅ | 敏感词、钩子、MCP、技能包、工具目录 |
 | P4 应用市场 | ✅ | 审核上架、评分排序 |
 | P5 运维增强 | ⬜ | 监控报表、任务中心深化 |
-| P6 AI 栈增强 | ✅ | LangChain / LangGraph / DeepAgents 已接入，见 [docs/ai-stack.md](docs/ai-stack.md) |
+| P6 AI 栈增强 | ✅ | LangChain / LangGraph / DeepAgents 已接入，见 [docs/guides/ai-stack.md](docs/guides/ai-stack.md) |
 
 ---
 
@@ -143,13 +143,15 @@ MilesAi/
 | 主题 | 文档 |
 |------|------|
 | 文档索引 | [docs/README.md](docs/README.md) |
-| 架构总纲 | [docs/technical-design.md](docs/technical-design.md) |
-| 数据库 | [docs/database-setup.md](docs/database-setup.md) |
-| 流程编排 | [docs/flows.md](docs/flows.md) |
-| 平台内智能体 | [docs/platform-agents.md](docs/platform-agents.md) |
-| A2A 互联 | [docs/a2a.md](docs/a2a.md) |
-| AI 栈 | [docs/ai-stack.md](docs/ai-stack.md) |
-| 模型供应商 | [docs/model-providers.md](docs/model-providers.md) |
+| 立项需求 | [docs/product/prd.md](docs/product/prd.md) |
+| 架构总纲 | [docs/architecture/technical-design.md](docs/architecture/technical-design.md) |
+| 前端设计 | [docs/frontend/design.md](docs/frontend/design.md) |
+| 数据库 | [docs/operations/database-setup.md](docs/operations/database-setup.md) |
+| 流程编排 | [docs/guides/flows.md](docs/guides/flows.md) |
+| 平台内智能体 | [docs/guides/platform-agents.md](docs/guides/platform-agents.md) |
+| A2A 互联 | [docs/guides/a2a.md](docs/guides/a2a.md) |
+| AI 栈 | [docs/guides/ai-stack.md](docs/guides/ai-stack.md) |
+| 模型供应商 | [docs/guides/model-providers.md](docs/guides/model-providers.md) |
 | 后端说明 | [backend/README.md](backend/README.md) |
 
 REST 接口以运行中的 **OpenAPI**（`/docs`）为准。

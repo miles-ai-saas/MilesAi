@@ -2,30 +2,76 @@
 
 设计与运维说明；快速上手见仓库根目录 [README.md](../README.md)。
 
-## 文档列表
+## 目录结构
+
+```
+docs/
+├── README.md                 # 本索引
+├── product/                  # 产品与需求
+│   └── prd.md
+├── architecture/             # 架构与技术方案
+│   └── technical-design.md
+├── frontend/                 # 前端
+│   └── design.md
+├── operations/               # 运维与部署
+│   └── database-setup.md
+└── guides/                   # 功能专题（实现说明）
+    ├── flows.md
+    ├── platform-agents.md
+    ├── a2a.md
+    ├── ai-stack.md
+    └── model-providers.md
+```
+
+---
+
+## 产品 (`product/`)
 
 | 文档 | 说明 |
 |------|------|
-| [technical-design.md](./technical-design.md) | 架构、分层、库表、API 规范、分阶段计划（主文档） |
-| [prd.md](./prd.md) | 立项需求原文（只读参考） |
-| [database-setup.md](./database-setup.md) | PostgreSQL 建库、Alembic、种子数据 |
-| [flows.md](./flows.md) | 流程编排、LangGraph 画布与 RAG 对话 |
-| [platform-agents.md](./platform-agents.md) | 平台内智能体、内部协同（DeepAgents） |
-| [a2a.md](./a2a.md) | A2A 外部登记、互联宿主、custom 引用 |
-| [ai-stack.md](./ai-stack.md) | LangChain / LangGraph / DeepAgents 模块与调用链 |
-| [model-providers.md](./model-providers.md) | 模型供应商：内置目录 + 自定义模型（规划） |
+| [prd.md](./product/prd.md) | 立项需求原文（只读参考） |
 
-运维部署另见 [../docker/README.md](../docker/README.md)、[../backend/README.md](../backend/README.md)。
+## 架构 (`architecture/`)
+
+| 文档 | 说明 |
+|------|------|
+| [technical-design.md](./architecture/technical-design.md) | 架构、分层、库表、API 规范、分阶段计划（**主文档**） |
+
+## 前端 (`frontend/`)
+
+| 文档 | 说明 |
+|------|------|
+| [design.md](./frontend/design.md) | 设计规范：品牌色、组件类、Logo、布局 |
+
+## 运维 (`operations/`)
+
+| 文档 | 说明 |
+|------|------|
+| [database-setup.md](./operations/database-setup.md) | PostgreSQL 建库、Alembic、种子数据 |
+
+## 专题指南 (`guides/`)
+
+| 文档 | 说明 |
+|------|------|
+| [flows.md](./guides/flows.md) | 流程编排、LangGraph 画布与 RAG 对话 |
+| [platform-agents.md](./guides/platform-agents.md) | 平台内智能体、内部协同（DeepAgents） |
+| [a2a.md](./guides/a2a.md) | A2A 外部登记、互联宿主、custom 引用 |
+| [ai-stack.md](./guides/ai-stack.md) | LangChain / LangGraph / DeepAgents 模块与调用链 |
+| [model-providers.md](./guides/model-providers.md) | 模型供应商：内置目录 + 租户自定义 |
+
+运维 Compose 另见 [../docker/README.md](../docker/README.md)、后端 [../backend/README.md](../backend/README.md)。
+
+---
 
 ## 概念速查
 
 | UI | `agent_type` / 数据 | 文档 |
 |----|---------------------|------|
-| 智能体 Tab | `custom` | [platform-agents.md](./platform-agents.md) |
+| 智能体 Tab | `custom` | [platform-agents.md](./guides/platform-agents.md) |
 | 内部协同 | `agt_sub_agent_bindings` | 同上 |
-| A2A → 外部登记 | `agt_a2a_peers` | [a2a.md](./a2a.md) |
+| A2A → 外部登记 | `agt_a2a_peers` | [a2a.md](./guides/a2a.md) |
 | A2A → 互联宿主 | `a2a` | 同上 |
-| 引用外部 | `agt_agent_a2a_peer_refs` | [a2a.md](./a2a.md) §平台内引用 |
+| 引用外部 | `agt_agent_a2a_peer_refs` | [a2a.md](./guides/a2a.md) §平台内引用 |
 
 **内部协同 ≠ A2A**，分表、分 Tab、互不替代。
 

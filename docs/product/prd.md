@@ -2,7 +2,7 @@
 
 > **与代码实现对齐说明（2026-05）**  
 > 类型：需求基线 | 状态：只读参考  
-> 「Langflow」在需求中为立项表述；当前实现为 **React Flow + flow_runtime + LangGraph**，见 [flows.md](./flows.md)、[technical-design.md](./technical-design.md) §9。
+> 「Langflow」在需求中为立项表述；当前实现为 **React Flow + flow_runtime + LangGraph**，见 [flows.md](../guides/flows.md)、[technical-design.md](../architecture/technical-design.md) §9。
 
 # 一、项目基础信息
 

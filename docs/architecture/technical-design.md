@@ -1,9 +1,9 @@
 # MilesAi 技术方案
 
 > 版本：v2.0 | 日期：2026-05-21 | 与当前代码库对齐  
-> 需求基线：[prd.md](./prd.md) · 专题文档：[README.md](./README.md)
+> 需求基线：[prd.md](../product/prd.md) · 专题文档：[README.md](../README.md)
 
-本文描述**仓库已实现**的架构与行为；细节见 `flows.md`、`platform-agents.md`、`a2a.md`、`ai-stack.md`。
+本文描述**仓库已实现**的架构与行为；专题见 [guides/](../guides/) 目录下各文档。
 
 ---
 
@@ -135,7 +135,12 @@ MilesAi/
 ├── frontend/                       # 租户 Next.js 14
 ├── admin_frontend/                 # 运营 Next.js 14
 ├── docker/                         # middleware + app compose
-└── docs/
+└── docs/                           # → docs/README.md
+    ├── product/                    # 需求
+    ├── architecture/               # 本文件
+    ├── frontend/                   # 设计规范
+    ├── operations/                 # 建库、迁移
+    └── guides/                     # 流程、智能体、A2A、AI 栈…
 ```
 
 ---
@@ -158,7 +163,7 @@ MilesAi/
 | flows | `/flows` | 流程版本、画布、发布、运行、编译预览 |
 | agents | `/agents` | 智能体 CRUD、`POST …/chat` |
 | a2a | `/a2a/peers` | 外部 Peer 登记与 Card 同步 |
-| models | `/models` | 大模型配置（内置 `tenant_id` 空 + 租户自定义；演进见 [model-providers.md](./model-providers.md)） |
+| models | `/models` | 大模型配置（内置 `tenant_id` 空 + 租户自定义；演进见 [model-providers.md](../guides/model-providers.md)） |
 | compliance | `/compliance` | 敏感词、扫描、拦截日志 |
 | hooks | `/hooks` | Webhook 定义与绑定 |
 | tools / mcp / skills | `/tools` `/mcp` `/skill-packages` | 工具目录、MCP、技能包 |
@@ -274,7 +279,7 @@ React Flow 画布 → PUT /flows/{id}/graph → flow_versions.graph_json
 
 - 编译预览：`POST /flows/{id}/compile`（DAG 校验、并行层分析）。
 - 智能体绑定 `published_flow_id` 时，对话走同一 LangGraph 执行链。
-- 详见 [flows.md](./flows.md)。
+- 详见 [flows.md](../guides/flows.md)。
 
 ---
 
@@ -310,9 +315,9 @@ flowchart TD
 | RAG Graph | 绑 KB、`use_langgraph_rag` 未关闭 | `ai_stack.langgraph.runner` |
 | 线性 RAG | 上述否 | `rag_answer` / 直连 LLM |
 
-- 内部协同：[platform-agents.md](./platform-agents.md)
-- A2A：[a2a.md](./a2a.md)
-- LangChain/LangGraph/DeepAgents：[ai-stack.md](./ai-stack.md)
+- 内部协同：[platform-agents.md](../guides/platform-agents.md)
+- A2A：[a2a.md](../guides/a2a.md)
+- LangChain/LangGraph/DeepAgents：[ai-stack.md](../guides/ai-stack.md)
 
 ---
 
@@ -405,7 +410,7 @@ flowchart TD
 
 中间件 Compose + `backend/.env`（`POSTGRES_HOST=localhost`）+ `alembic upgrade head` + `uvicorn app.main:app`。
 
-详见 [database-setup.md](./database-setup.md)、[docker/README.md](../docker/README.md)。
+详见 [database-setup.md](../operations/database-setup.md)、[docker/README.md](../../docker/README.md)。
 
 ---
 
@@ -435,7 +440,7 @@ flowchart TD
 |------|------|------|
 | 多租户 / RBAC / JWT | ✅ | |
 | 知识库入库与检索 | ✅ | Celery + Weaviate |
-| 流程画布与 LangGraph 执行 | ✅ | 见 [flows.md](./flows.md) |
+| 流程画布与 LangGraph 执行 | ✅ | 见 [flows.md](../guides/flows.md) |
 | 智能体 RAG / 画布 / 直连 LLM | ✅ | |
 | DeepAgents 内部协同 | ✅ | 可选依赖，可降级 |
 | A2A Peer / 宿主 / custom 引用 | ✅ | 对外暴露本平台 Card：未做 |
@@ -444,7 +449,7 @@ flowchart TD
 | 应用市场审核与安装 | ✅ | |
 | 监控报表 / 告警 Webhook | 🔶 | 基础聚合 + HTTP 告警 |
 | 运营计费 / 风控 | ✅ | 后台 UI + API |
-| 模型供应商目录（运营发布内置 + 租户自定义） | ✅ | 见 [model-providers.md](./model-providers.md) |
+| 模型供应商目录（运营发布内置 + 租户自定义） | ✅ | 见 [model-providers.md](../guides/model-providers.md) |
 | 离线 OpenAPI 导出 / 离线部署手册 | ⬜ | 文档待补充 |
 
 **后端测试**（`backend/tests/`）：health、deletion、langgraph、deepagents、a2a 等；无 marketplace/compliance 端到端测试文件。
@@ -455,14 +460,15 @@ flowchart TD
 
 | 文档 | 内容 |
 |------|------|
-| [README.md](./README.md) | 文档索引 |
-| [prd.md](./prd.md) | 立项需求 |
-| [database-setup.md](./database-setup.md) | 建库与迁移 |
-| [flows.md](./flows.md) | 流程与 RAG Graph |
-| [platform-agents.md](./platform-agents.md) | 内部协同 |
-| [a2a.md](./a2a.md) | 外部互联 |
-| [ai-stack.md](./ai-stack.md) | LangChain 模块与依赖 |
-| [model-providers.md](./model-providers.md) | 模型供应商（内置 + 自定义） |
+| [README.md](../README.md) | 文档索引与目录树 |
+| [product/prd.md](../product/prd.md) | 立项需求 |
+| [frontend/design.md](../frontend/design.md) | 前端设计规范 |
+| [operations/database-setup.md](../operations/database-setup.md) | 建库与迁移 |
+| [guides/flows.md](../guides/flows.md) | 流程与 RAG Graph |
+| [guides/platform-agents.md](../guides/platform-agents.md) | 内部协同 |
+| [guides/a2a.md](../guides/a2a.md) | 外部互联 |
+| [guides/ai-stack.md](../guides/ai-stack.md) | LangChain 模块与依赖 |
+| [guides/model-providers.md](../guides/model-providers.md) | 模型供应商（内置 + 自定义） |
 
 ---
 

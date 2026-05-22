@@ -4,9 +4,9 @@
 
 @layer base {
   :root {
-    --brand: #e11d48;
-    --brand-light: #fff1f2;
-    --brand-soft: #fecdd3;
+    --brand: #e66432;
+    --brand-light: #fef3ee;
+    --brand-soft: #f9d4c4;
     --surface: #ffffff;
     --surface-muted: #f5f5f5;
     --ink: #404040;
@@ -14,23 +14,20 @@
     --line: #e5e5e5;
   }
 
-  html,
-  body {
+  html {
     height: 100%;
   }
 
   body {
     margin: 0;
+    min-height: 100%;
     color: var(--ink);
     background: var(--surface-muted);
-    font-family:
-      system-ui,
-      -apple-system,
-      "PingFang SC",
-      "Segoe UI",
-      Roboto,
-      sans-serif;
+    font-family: var(--font-sans), "PingFang SC", "Microsoft YaHei", "Segoe UI", system-ui,
+      -apple-system, sans-serif;
     -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
   }
 }
 

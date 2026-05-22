@@ -87,4 +87,4 @@ cd ../backend && python cli.py init-db
 # 或：python cli.py migrate && python cli.py init-db --seed-only
 ```
 
-详见 [docs/database-setup.md](../docs/database-setup.md)。
+详见 [docs/operations/database-setup.md](../docs/operations/database-setup.md)。

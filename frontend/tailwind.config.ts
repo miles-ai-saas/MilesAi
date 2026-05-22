@@ -1,16 +1,25 @@
 import type { Config } from "tailwindcss";
 
+import { fontFamilySans } from "./lib/font-family";
+
 const config: Config = {
   content: ["./app/**/*.{js,ts,jsx,tsx}", "./components/**/*.{js,ts,jsx,tsx}"],
   theme: {
     extend: {
+      fontFamily: {
+        sans: [...fontFamilySans],
+      },
       colors: {
         brand: {
-          DEFAULT: "#e11d48",
-          light: "#fff1f2",
-          soft: "#fecdd3",
-          dark: "#be123c",
+          DEFAULT: "#E66432",
+          light: "#FEF3EE",
+          soft: "#F9D4C4",
+          dark: "#C45228",
           foreground: "#ffffff",
+        },
+        company: {
+          orange: "#E66432",
+          tagline: "#C9A88E",
         },
         surface: {
           DEFAULT: "#ffffff",
@@ -28,7 +37,7 @@ const config: Config = {
         },
       },
       boxShadow: {
-        card: "0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(225,29,72,0.04)",
+        card: "0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(230,100,50,0.06)",
         panel: "0 4px 24px rgba(0,0,0,0.06)",
       },
       borderRadius: {

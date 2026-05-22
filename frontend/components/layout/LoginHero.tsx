@@ -1,3 +1,5 @@
+import { CompanyLogo } from "@/components/brand/company-logo";
+
 export function LoginHero() {
   return (
     <aside className="relative hidden min-h-screen w-[46%] min-w-[320px] overflow-hidden bg-gradient-to-br from-brand-light via-white to-surface-muted lg:flex lg:flex-col lg:justify-between">
@@ -18,7 +20,8 @@ export function LoginHero() {
       </div>
 
       <div className="relative z-10 flex flex-1 flex-col justify-center px-10 xl:px-14">
-        <p className="mb-3 text-sm font-medium tracking-wide text-brand">MilesAi</p>
+        <CompanyLogo variant="full" size="lg" className="mb-6" />
+        <p className="mb-2 text-sm font-semibold tracking-wide text-brand">MilesAi</p>
         <h1 className="text-3xl font-bold leading-tight text-ink xl:text-4xl">
           企业级 AI
           <br />
