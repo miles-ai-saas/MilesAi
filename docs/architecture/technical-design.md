@@ -140,7 +140,7 @@ MilesAi/
 │   └── pyproject.toml
 ├── frontend/                       # 租户 Next.js 14
 ├── admin_frontend/                 # 运营 Next.js 14
-├── docker/                         # middleware + app compose
+├── docker/                         # infra + app compose
 └── docs/                           # → docs/README.md
     ├── product/                    # 需求
     ├── architecture/               # 本文件
@@ -543,7 +543,7 @@ flowchart TD
 
 ### 14.1 Compose 服务（实际）
 
-**中间件** `docker/docker-compose.middleware.yml`：`postgres:15-alpine`、`redis:7-alpine`、`minio`、`weaviate:1.24.1`，网络 `milesai-net`。
+**基础设施** `docker/docker-compose.infra.yml`：`pgvector/pg16`、`redis:8-alpine`、`minio`、`etcd`、`milvus:v2.4.17`、`weaviate:1.24.1`，网络 `milesai-net`。
 
 **应用** `docker/docker-compose.yml`：
 

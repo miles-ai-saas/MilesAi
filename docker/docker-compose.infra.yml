@@ -1,0 +1,161 @@
+# 包含: PostgreSQL (pgvector) / Redis / MinIO / etcd / Milvus / Weaviate
+# 启动方式:
+#   仅基础设施:    docker compose -f docker-compose.infra.yml up -d
+#   基础设施+应用:  docker compose -f docker-compose.infra.yml -f docker-compose.yml up -d
+#   全部(含可观测): docker compose -f docker-compose.infra.yml -f docker-compose.yml -f docker-compose.observability.yml up -d
+
+name: milesai-infra
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: milesai-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-milesai}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./deploy/scripts/init_db.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - milesai-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-milesai}"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  redis:
+    image: redis:8-alpine
+    container_name: milesai-redis
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - milesai-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  minio:
+    image: minio/minio:latest
+    container_name: milesai-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${OBJECT_STORAGE_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${OBJECT_STORAGE_SECRET_KEY:-minioadmin}
+    ports:
+      - "${OBJECT_STORAGE_PORT:-9000}:9000"
+      - "${OBJECT_STORAGE_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - minio_data:/data
+    networks:
+      - milesai-net
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9000/minio/health/live || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  etcd:
+    image: quay.io/coreos/etcd:v3.5.5
+    container_name: milesai-etcd
+    environment:
+      ETCD_AUTO_COMPACTION_MODE: revision
+      ETCD_AUTO_COMPACTION_RETENTION: "1000"
+      ETCD_QUOTA_BACKEND_BYTES: "4294967296"
+    command: >
+      etcd --advertise-client-urls=http://etcd:2379
+           --listen-client-urls=http://0.0.0.0:2379
+           --data-dir=/etcd
+    volumes:
+      - etcd_data:/etcd
+    networks:
+      - milesai-net
+    healthcheck:
+      test: ["CMD-SHELL", "etcdctl endpoint health --endpoints=localhost:2379"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  milvus:
+    image: milvusdb/milvus:v2.4.17
+    container_name: milesai-milvus
+    command: ["milvus", "run", "standalone"]
+    security_opt:
+      - seccomp:unconfined
+    environment:
+      ETCD_ENDPOINTS: etcd:2379
+      MINIO_ADDRESS: minio:9000
+      MINIO_ACCESS_KEY_ID: ${OBJECT_STORAGE_ACCESS_KEY:-minioadmin}
+      MINIO_SECRET_ACCESS_KEY: ${OBJECT_STORAGE_SECRET_KEY:-minioadmin}
+    ports:
+      - "${MILVUS_PORT:-19530}:19530"
+      - "${MILVUS_METRICS_PORT:-19531}:9091"
+    depends_on:
+      etcd:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    volumes:
+      - milvus_data:/var/lib/milvus
+    networks:
+      - milesai-net
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9091/healthz || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+  weaviate:
+    image: semitechnologies/weaviate:1.24.1
+    container_name: milesai-weaviate
+    environment:
+      QUERY_DEFAULTS_LIMIT: 25
+      AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: "true"
+      PERSISTENCE_DATA_PATH: /var/lib/weaviate
+      DEFAULT_VECTORIZER_MODULE: none
+      ENABLE_MODULES: ""
+      CLUSTER_HOSTNAME: node1
+    volumes:
+      - weaviate_data:/var/lib/weaviate
+    ports:
+      - "${WEAVIATE_PORT:-8080}:8080"
+    networks:
+      - milesai-net
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/v1/.well-known/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+networks:
+  milesai-net:
+    name: milesai-net
+    driver: bridge
+
+volumes:
+  postgres_data:
+    name: milesai-postgres-data
+  redis_data:
+    name: milesai-redis-data
+  minio_data:
+    name: milesai-minio-data
+  etcd_data:
+    name: milesai-etcd-data
+  milvus_data:
+    name: milesai-milvus-data
+  weaviate_data:
+    name: milesai-weaviate-data

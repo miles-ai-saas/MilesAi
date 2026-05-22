@@ -1,10 +1,10 @@
 # 应用栈：API / Celery Worker / 前端 / Flower
-# 前置：先启动中间件
-#   docker compose -f docker-compose.middleware.yml up -d
+# 前置：先启动基础设施
+#   docker compose -f docker-compose.infra.yml up -d
 # 启动：
 #   docker compose up -d --build
 # 全量构建启动：
-#   docker compose -f docker-compose.middleware.yml -f docker-compose.yml up -d --build
+#   docker compose -f docker-compose.infra.yml -f docker-compose.yml up -d --build
 
 name: milesai-app
 

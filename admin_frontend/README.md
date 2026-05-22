@@ -40,7 +40,7 @@ npm run dev
 
 ```bash
 cd docker
-docker compose -f docker-compose.middleware.yml -f docker-compose.yml up -d --build
+docker compose -f docker-compose.infra.yml -f docker-compose.yml up -d --build
 ```
 
 运营后台：http://localhost:3001

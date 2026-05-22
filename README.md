@@ -22,10 +22,10 @@ cp .env.example .env
 cd docker
 
 # 一键全栈
-docker compose -f docker-compose.middleware.yml -f docker-compose.yml up -d --build
+docker compose -f docker-compose.infra.yml -f docker-compose.yml up -d --build
 
 # 或分步：先中间件，再应用
-docker compose -f docker-compose.middleware.yml up -d
+docker compose -f docker-compose.infra.yml up -d
 docker compose up -d --build
 ```
 
@@ -51,7 +51,7 @@ docker compose up -d --build
 ### 仅后端
 
 ```bash
-cd docker && docker compose -f docker-compose.middleware.yml up -d   # 或本机 PG/Redis
+cd docker && docker compose -f docker-compose.infra.yml up -d   # 或本机 PG/Redis
 
 cp backend/.env.example backend/.env   # POSTGRES_HOST=localhost
 cd backend

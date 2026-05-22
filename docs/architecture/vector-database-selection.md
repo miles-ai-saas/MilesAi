@@ -37,7 +37,7 @@
 | 阶段 | 建议 | 理由 |
 |------|------|------|
 | **当前（默认）** | Weaviate | AI 原生、混合检索；`WeaviateVectorStore` |
-| **海量 / 高 QPS** | Milvus | `MilvusVectorStore` 已实现；`VECTOR_STORE_BACKEND=milvus`；Docker `--profile milvus` |
+| **海量 / 高 QPS** | Milvus | `MilvusVectorStore` 已实现；`VECTOR_STORE_BACKEND=milvus`；随 `docker-compose.infra.yml` 启动 |
 | **低运维 / 强事务** | pgvector | 与 PostgreSQL 同库，适合中小规模 RAG、需向量与业务表 JOIN；规模受 PG 上限约束 |
 | **成本敏感 / 极致延迟** | Qdrant | Rust 引擎、过滤与实时索引表现好；多模态能力弱于 Weaviate |
 | **已有 ES/OpenSearch 栈** | 复用集群向量能力 | 适合「全文为主 + 向量辅助」；纯向量大规模性价比一般 |

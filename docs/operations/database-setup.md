@@ -32,10 +32,10 @@ POSTGRES_DB=milesai
 ```bash
 cp .env.example .env
 cd docker
-docker compose -f docker-compose.middleware.yml up -d
+docker compose -f docker-compose.infra.yml up -d
 ```
 
-`docker-compose.middleware.yml` 中等价配置：
+`docker-compose.infra.yml` 中等价配置：
 
 ```yaml
 POSTGRES_USER: postgres
@@ -84,7 +84,7 @@ psql -h localhost -U postgres -d milesai -c "SELECT 1;"
 
 ```bash
 cd docker
-docker compose -f docker-compose.middleware.yml up -d
+docker compose -f docker-compose.infra.yml up -d
 ```
 
 `backend/.env` 使用：
@@ -179,7 +179,7 @@ curl -s -X POST http://localhost:8000/api/v1/auth/login \
 cd backend && cp .env.example .env
 
 # 2. 启动中间件（二选一）
-#    docker:  cd ../docker && docker compose -f docker-compose.middleware.yml up -d
+#    docker:  cd ../docker && docker compose -f docker-compose.infra.yml up -d
 #    本机:    按「方式 B」建库
 
 # 3. 安装依赖
