@@ -13,7 +13,7 @@ from app.admin.app_sys.services.auth import AdminAuthService
 from app.admin.app_ops.services.audit import write_audit_log
 from app.common.response import ok
 from app.common.schema import ApiResponse
-from app.core.database import get_db
+from app.infra.db import get_db
 
 router = APIRouter(prefix="/auth", tags=["admin-auth"])
 

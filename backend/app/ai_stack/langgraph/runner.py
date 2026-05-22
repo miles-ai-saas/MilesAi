@@ -51,8 +51,8 @@ async def run_rag_workflow(
     agent_config: dict | None = None,
 ) -> tuple[str, list[dict[str, Any]], list[dict[str, Any]]]:
     """执行 RAG LangGraph，返回 (answer, hits, steps)。"""
-    from app.core.database import AsyncSessionLocal
-    from app.app_tenant.models.services.model_resolve import resolve_model_for_invoke
+    from app.infra.db import AsyncSessionLocal
+    from app.tenant.models.services.model_resolve import resolve_model_for_invoke
 
     async with AsyncSessionLocal() as db:
         model = await resolve_model_for_invoke(db, model, tenant_id)

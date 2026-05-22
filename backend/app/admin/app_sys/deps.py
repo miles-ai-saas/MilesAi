@@ -8,7 +8,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.database import get_db
+from app.infra.db import get_db
 from app.common.exceptions import ForbiddenError, UnauthorizedError
 from app.core.security import safe_decode_token
 from app.admin.models import PlatformAdmin

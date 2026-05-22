@@ -304,9 +304,9 @@ effective_api_base  = tenant_credentials.api_base ?? model_config.api_base
 | 层 | 路径 |
 |----|------|
 | ORM | `app/models/model.py` 扩展；`app/models/model_tenant_credential.py` 新增 |
-| 租户服务 | `app_tenant/models/services/model.py`、`model_resolve.py` |
+| 租户服务 | `tenant/models/services/model.py`、`model_resolve.py` |
 | 运营服务 | `admin/app_ops/services/model_catalog.py`（新建） |
-| 视图 | `app_tenant/models/views/models.py`；`admin/app_ops/views/model_catalog.py` |
+| 视图 | `tenant/models/views/models.py`；`admin/app_ops/views/model_catalog.py` |
 | 前端租户 | `frontend/app/workbench/models/page.tsx` + `components/model/*` |
 | 前端运营 | `admin_frontend/app/catalog/models/` |
 | 调用链改造点 | `chat_models._http_chat_completion` 入口改为 `get_effective_config` |

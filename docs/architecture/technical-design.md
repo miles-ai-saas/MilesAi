@@ -67,7 +67,7 @@ flowchart TB
         ADM_API["/api/admin/v1 运营"]
     end
 
-    subgraph BL["app_tenant 业务域"]
+    subgraph BL["tenant 业务域"]
         AGT[agents / a2a]
         KB[kb]
         FLW[flows]
@@ -89,8 +89,8 @@ flowchart TB
     subgraph Store
         PG[(PostgreSQL)]
         RD[(Redis)]
-        S3[(MinIO)]
-        WV[(Weaviate)]
+        OBJ["对象存储<br/>S3 API · 默认 MinIO"]
+        VEC["向量存储<br/>默认 Weaviate"]
     end
 
     WEB --> V1
@@ -99,11 +99,11 @@ flowchart TB
     BL --> AI
     BL --> PG
     BL --> RD
-    BL --> S3
-    BL --> WV
+    BL --> OBJ
+    BL --> VEC
     BL -->|enqueue| Worker
-    Worker --> S3
-    Worker --> WV
+    Worker --> OBJ
+    Worker --> VEC
     Worker --> PG
 ```
 
@@ -119,14 +119,19 @@ MilesAi/
 │   ├── app/
 │   │   ├── main.py                 # uvicorn 入口
 │   │   ├── apps/                   # FastAPI 工厂、路由汇总、启动迁移
-│   │   ├── app_tenant/             # 租户 API（按域 views/services/models）
+│   │   ├── tenant/             # 租户 API（按域 views/services/models）
 │   │   │   ├── agents/ a2a/ kb/ flows/ marketplace/ compliance/ …
 │   │   │   └── router.py           # /api/v1
 │   │   ├── admin/                  # 运营 API /api/admin/v1
 │   │   ├── ai_stack/               # langchain / langgraph / deepagents
 │   │   ├── flow_runtime/           # 节点 registry + LangGraphFlowRuntime
 │   │   ├── models/                 # 核心 ORM（Agent、Flow、KB、Task…）
-│   │   ├── core/                   # config、DB、deps、weaviate_store
+│   │   ├── infra/                  # 外部中间件连接
+│   │   │   ├── db/                 # PostgreSQL
+│   │   │   ├── redis/
+│   │   │   ├── storage/            # 对象存储（S3 兼容）
+│   │   │   └── vector_store/       # 向量库（Weaviate / Milvus / pgvector）
+│   │   ├── core/                   # config、deps、security、tenant
 │   │   ├── ai/                     # 遗留解析/RAG 门面（新代码优先 ai_stack）
 │   │   ├── workers/                # Celery
 │   │   └── deletion/               # 级联删除
@@ -149,10 +154,10 @@ MilesAi/
 
 | 层 | 路径 | 职责 |
 |----|------|------|
-| 路由 | `app_tenant/*/views/` | 参数校验、依赖注入、调用 Service |
-| 业务 | `app_tenant/*/services/` | 租户校验、编排、调用 AI/存储 |
-| 仓储 | `app_tenant/*/repositories/`、`models/` | CRUD、分页 |
-| 基础设施 | `core/`、`common/` | 配置、JWT、分页响应、异常 |
+| 路由 | `tenant/*/views/` | 参数校验、依赖注入、调用 Service |
+| 业务 | `tenant/*/services/` | 租户校验、编排、调用 AI/存储 |
+| 仓储 | `tenant/*/repositories/`、`models/` | CRUD、分页 |
+| 基础设施 | `infra/`（db、redis、storage、vector_store）、`core/`（config、deps、security）、`common/` | 外部系统连接、应用配置与鉴权 |
 
 **租户业务域**（均有独立 `router`）：
 
@@ -205,24 +210,169 @@ MilesAi/
 | | `agt_a2a_peer_bindings` | 互联宿主 → peer（含 `trigger_keywords`） |
 | | `agt_agent_a2a_peer_refs` | custom 智能体引用外部 peer |
 | 流程 | `flow_flows`, `flow_versions` | `graph_json`；`external_flow_id` 预留未用 |
-| 知识库 | `kb_bases`, `kb_documents`, `kb_document_chunks`, `kb_vector_refs` | 文档状态与向量引用 |
+| 知识库 | `kb_bases`, `kb_documents`, `kb_document_chunks`, `kb_vector_refs` | 文档状态与向量引用；**向量化规格绑在 `kb_bases`**（见 §6.5） |
 | 产品 | `prm_prompt_templates`, `skl_skill_packages`, `tool_tools`, `tool_mcp_services` | |
 | | `hook_definitions`, `hook_bindings`, `cmp_*`, `mkt_*`, `task_records`, `aud_logs` | |
 | 运营 | `adm_admins`, `adm_billing_*`, `adm_risk_*`, `adm_audit_logs` | 仅运营 API 使用 |
 
 ORM **不在库级声明外键**（`001` 使用 `create_all`）；关联由应用层维护。
 
-### 6.2 Weaviate
+### 6.2 对象存储（S3 兼容）
 
-- Collection：`DocumentChunk`（`core/weaviate_store.py` 启动时 `ensure_schema`）。
-- 属性：`tenant_id`, `kb_id`, `document_id`, `chunk_id`, `modality`, `content_preview`, `minio_key`, `page_no`。
-- 向量：客户端自算 embedding（默认 `EMBEDDING_BACKEND=local` + Sentence-Transformers 384 维；可选 `litellm` + 云端模型），`Vectorizer.none()` + HNSW cosine。
-- 检索：按 `tenant_id` + `kb_id` Filter。
+**配置策略**：引擎类型由 **部署级环境变量** 全局决定；租户级仅扩展 **凭证与桶命名空间**（二期），见 §6.5。
 
-### 6.3 MinIO / Redis
+**设计原则**：业务只依赖 `app.infra.storage.ObjectStorage` 门面；实现优先 **MinIO**，协议为 **S3 API**，可切换至阿里云 OSS、AWS S3 等兼容端点（同一 SDK，不同 `endpoint` / `region`）。
 
-- MinIO：文档原文件；路径与 `kb_documents` 记录关联。
-- Redis：JWT 黑名单、Celery broker/result（常用 db `1`/`2`）、LangGraph checkpoint（`LANGGRAPH_REDIS_DB=0`，需 Redis Stack 或 Redis 8+，否则 MemorySaver）。
+```
+tenant/kb、workers/ingest、deletion
+        │
+        ▼
+ app.infra.storage.get_object_storage()
+        │
+        ▼
+ S3CompatibleObjectStorage  ← MinIO Python SDK（put/get/delete）
+```
+
+| 项 | 说明 |
+|----|------|
+| 包路径 | `app/infra/storage/`（`base.py` 协议、`s3.py` 实现、`factory.py`） |
+| 配置 | `OBJECT_STORAGE_BACKEND=s3`；`OBJECT_STORAGE_ENDPOINT` / `ACCESS_KEY` / `SECRET_KEY` / `BUCKET` / `SECURE` |
+| OSS 示例 | `OBJECT_STORAGE_ENDPOINT=oss-cn-hangzhou.aliyuncs.com`，`OBJECT_STORAGE_SECURE=true`，`OBJECT_STORAGE_REGION=cn-hangzhou` |
+| PG 字段 | `kb_documents.object_bucket` / `object_key` |
+| 入口 | `from app.infra.storage import get_object_storage, upload_bytes, …` |
+
+### 6.3 向量存储
+
+**选型参考**：[vector-database-selection.md](./vector-database-selection.md)（pgvector / Weaviate / Milvus / Qdrant / OpenSearch / ES 对比）。
+
+**配置策略**：向量引擎类型（weaviate / pgvector / milvus）由 **部署级环境变量** 全局决定；**不**按租户混用多种引擎。向量化模型与维度绑在 **知识库**，见 §6.5、§6.6。
+
+**设计原则**：业务只依赖 `app.infra.vector_store.VectorStore`；默认 **Weaviate**，预留 **pgvector**（PostgreSQL 扩展）、**Milvus**。
+
+```
+ingest / kb 检索 / deletion
+        │
+        ▼
+ app.infra.vector_store.get_vector_store()
+        │
+        ├── weaviate  → WeaviateVectorStore（已实现）
+        ├── pgvector  → PgVectorStore（占位，未实现）
+        └── milvus    → MilvusVectorStore（已实现，按维度分 Collection）
+```
+
+| 项 | 说明 |
+|----|------|
+| 包路径 | `app/infra/vector_store/`（`ChunkVectorRecord`、`weaviate.py`、`factory.py`） |
+| 配置 | `VECTOR_STORE_BACKEND=weaviate` \| `pgvector` \| `milvus` |
+| Weaviate | Collection `DocumentChunk`；`Vectorizer.none()` + 客户端 embedding；Filter `tenant_id` + `kb_id` |
+| Milvus | Collection `document_chunk_{dimension}`；COSINE；Filter `tenant_id` / `kb_id` / `document_id`；`MILVUS_URI` |
+| Embedding | 调用见 §6.6；与向量库类型解耦，与 KB 维度强绑定 |
+| PG 引用 | `kb_vector_refs.vector_id` 为向量库中的外部记录 ID |
+| LangChain | `ai_stack/langchain/vectorstores.py` 调用 `vector_store.search_vectors` |
+| 入口 | `from app.infra.vector_store import get_vector_store, upsert_chunk_vector, search_vectors, …` |
+
+### 6.5 存储与向量化配置策略
+
+本节约定：**不在租户维度选择「Weaviate 还是 Milvus」** 作为默认产品能力；私有化单实例以 **全局环境变量** 定基础设施，多租户隔离靠 `tenant_id` 与对象 key 前缀；**向量化规格** 在 **知识库** 创建时固化。
+
+#### 6.5.1 为何采用「分层配置」
+
+| 方案 | 优点 | 缺点 | 结论 |
+|------|------|------|------|
+| 仅全局环境变量 | 运维简单，与 Docker/Helm 一致；单进程一种向量引擎 | 无法「租户自带 OSS」 | **当前默认** |
+| 每租户自选引擎类型 | 理论上灵活 | 同实例混跑多种向量库、检索不可跨库、Worker/监控复杂 | **不作为默认** |
+| 租户只配凭证 + KB 绑定向量规格 | 兼顾 BYOK 与维度一致 | 需 `resolve_* (tenant_id)` 与 KB 字段 | **推荐演进路径** |
+
+#### 6.5.2 三层配置模型
+
+```mermaid
+flowchart TB
+    subgraph L1["L1 部署级（环境变量）"]
+        OSB["OBJECT_STORAGE_BACKEND=s3"]
+        VSB["VECTOR_STORE_BACKEND=weaviate"]
+        EMB["EMBEDDING_BACKEND 默认值"]
+    end
+
+    subgraph L2["L2 租户级（二期，可选）"]
+        OSS["对象存储：endpoint / bucket / AK<br/>sys_configs 或租户扩展表"]
+        VSK["向量库：仅连接参数<br/>仍在同一 Weaviate 集群"]
+    end
+
+    subgraph L3["L3 知识库级（推荐绑定）"]
+        KB["kb_bases.embedding_dimension<br/>+ embedding_profile / model"]
+    end
+
+    L1 --> L2
+    L1 --> L3
+    L2 --> Ingest["ingest / search"]
+    L3 --> Ingest
+```
+
+| 层级 | 控制什么 | 不控制什么 | 配置载体 | 状态 |
+|------|----------|------------|----------|------|
+| **L1 部署级** | 对象存储实现（S3 API）、向量引擎种类、默认 embedding 后端 | 单租户 AK、单库维度 | `.env` / `Settings` | ✅ 已实现 |
+| **L2 租户级** | 可选：独立 bucket 前缀、OSS BYOK、向量服务 URL/Key | weaviate vs milvus 二选一 per tenant | `sys_configs` 或 `sys_tenants` 扩展 | 📋 规划 |
+| **L3 知识库级** | `embedding_profile`、`embedding_backend`、`embedding_model_name`、`embedding_dimension` | 创建后禁止改维度/模型 | `kb_bases` | ✅ 已实现 |
+
+**隔离约定**：
+
+- 对象：`object_key` 路径含 `tenant_id/kb_id/document_id/...`（已实现）。
+- 向量：Weaviate 属性 `tenant_id` + `kb_id` Filter（已实现）；`kb_vector_refs.vector_id` 存外部 ID。
+- 同一 KB 内入库与检索必须使用 **相同** `embedding_profile`（含维度与模型）。
+
+#### 6.5.3 运行时解析（目标形态）
+
+```
+ingest / search / delete
+    │
+    ├─ resolve_object_storage(tenant_id?)  → L1 Settings + L2 租户凭证覆盖
+    ├─ resolve_vector_store(tenant_id?)    → L1 VECTOR_STORE_BACKEND（L2 仅覆盖 URL/Key）
+    └─ load_kb_embedding_profile(kb_id)    → L3 kb_bases 维度与模型
+```
+
+当前代码：`get_object_storage()` / `get_vector_store()` **无 tenant 参数**（L1 only）。演进时保持工厂签名，增加可选 `tenant_id`、`kb_id` 上下文。
+
+#### 6.5.4 分阶段实施
+
+| 阶段 | 内容 | 优先级 |
+|------|------|--------|
+| **Phase 1（当前）** | L1 环境变量；`kb_bases.embedding_dimension`；`object_bucket` / `object_key` / `vector_id` 通用字段名 | 已交付 |
+| **Phase 2** | L2 租户对象存储 BYOK（`resolve_object_storage(tenant_id)`）；运营/租户 UI 配置 bucket | 中 |
+| **Phase 3** | L3 `kb_bases` 绑定 `embedding_profile` / `embedding_model_name`；`GET /kb/embedding-profiles`；创建 KB 选规格，**创建后不可改**；ingest/检索 `get_embeddings_for_kb` | ✅ 已交付 |
+| **Phase 4** | pgvector / Milvus 实现；仍通过 L1 切换，不做 per-tenant 混用 | 按需 |
+
+**明确不做（除非单独立项）**：同一部署实例内，租户 A 用 Weaviate、租户 B 用 Milvus 并存。
+
+#### 6.5.5 与「模型供应商」的关系
+
+| 能力 | 配置方式 | 类比 |
+|------|----------|------|
+| 对话大模型 | `agt_model_configs` + 租户 BYOK | 已上线 |
+| 向量化模型 | **KB 级** `embedding_profile` + 全局默认 env | 类似「目录 + 库级绑定」 |
+| 对象存储 | L1 端点 + L2 租户 AK（规划） | 类似 BYOK，但无多引擎 |
+
+对话模型与向量模型 **分开配置**：对话走 LiteLLM `acompletion`；向量走 `get_embeddings_for_kb(kb)`（无 KB 时 `get_embeddings()` 兜底）。
+
+---
+
+### 6.6 向量化（Embedding）
+
+| 项 | 说明 |
+|----|------|
+| 包路径 | `app/ai_stack/langchain/embeddings.py`、`app/ai_stack/litellm/`（对话，非向量） |
+| 全局默认 | `EMBEDDING_BACKEND=local` \| `litellm`；`EMBEDDING_MODEL_NAME` / `EMBEDDING_LITELLM_*` |
+| 新建 KB | 请求体 `embedding_profile`（默认见 `default_embedding_profile_id()`）；目录 `GET /api/v1/kb/embedding-profiles` |
+| 规格目录 | `app/ai_stack/embedding_profiles.py`：`local-minilm`（384）、`dashscope-v3`（1024） |
+| 与向量库关系 | 向量库只存 float[]；**维度必须**与 KB 的 `embedding_dimension` 一致，否则禁止入库或检索 |
+| 切换模型 | 改全局 env 不影响已有 KB；已有库需 **重建索引**（重新 ingest） |
+
+详见 [ai-stack.md](../guides/ai-stack.md) Embedding 配置表。
+
+---
+
+### 6.7 Redis
+
+- JWT 黑名单、Celery broker/result（常用 db `1`/`2`）、LangGraph checkpoint（`LANGGRAPH_REDIS_DB=0`，需 Redis Stack 或 Redis 8+，否则 MemorySaver）。
 
 ---
 
@@ -238,7 +388,7 @@ ORM **不在库级声明外键**（`001` 使用 `create_all`）；关联由应�
 | auth | `POST /login`, `GET /me`, `POST /refresh` |
 | agents | `GET/POST /agents`, `PATCH/DELETE /agents/{id}`, `POST /agents/{id}/chat` |
 | a2a | `GET/POST /a2a/peers`, `POST /a2a/peers/probe`, `POST /a2a/peers/{id}/sync-card` |
-| kb | CRUD + `POST /kb/{id}/documents/upload`, `POST /kb/{id}/search` |
+| kb | CRUD（创建含 `embedding_profile`）+ `GET /kb/embedding-profiles` + `POST /kb/{id}/documents/upload`, `POST /kb/{id}/search` |
 | flows | CRUD + `PUT /flows/{id}/graph`, `POST /flows/{id}/publish`, `/run`, `/compile` |
 | compliance | `/compliance/words`, `POST /compliance/scan`, `GET /compliance/logs` |
 | tools | `GET /tools/catalog`, `POST /tools/{name}/invoke` |
@@ -260,7 +410,7 @@ ORM **不在库级声明外键**（`001` 使用 `create_all`）；关联由应�
 |------|------|
 | Broker | `CELERY_BROKER_URL`（通常 Redis） |
 | Worker 命令 | `celery -A app.workers.app worker -Q default,parse,ocr,asr,embed` |
-| 主任务 | `ingest_document`：拉 MinIO → 解析/分片 → embedding → Weaviate upsert → 更新 PG 状态 |
+| 主任务 | `ingest_document`：对象存储下载 → 解析/分片 → embedding → 向量库 upsert → 更新 PG 状态 |
 | 可选依赖 | `[multimodal]`：`pytesseract`、`openai-whisper`；未安装时多模态文件仍可入库占位文本 |
 
 任务记录表：`task_records`；API：`GET /tasks`、`POST /tasks/{id}/cancel|retry`。
@@ -285,7 +435,7 @@ React Flow 画布 → PUT /flows/{id}/graph → flow_versions.graph_json
 
 ## 10. 智能体对话
 
-`POST /api/v1/agents/{id}/chat` 入口：`AgentService.chat`（`app_tenant/agents/services/agent.py`）。
+`POST /api/v1/agents/{id}/chat` 入口：`AgentService.chat`（`tenant/agents/services/agent.py`）。
 
 执行前：**钩子** `BEFORE_CALL`、**合规** `check_input`；执行后：`check_output`、`AFTER_CALL`。
 
@@ -418,17 +568,20 @@ flowchart TD
 
 定义：`backend/app/core/config.py`、`backend/.env.example`、根 `.env.example`。
 
-| 类别 | 变量示例 |
-|------|----------|
-| 应用 | `APP_ENV`, `SECRET_KEY`, `CORS_ORIGINS` |
-| PostgreSQL | `POSTGRES_HOST`, `POSTGRES_PORT`, `POSTGRES_DB`, … |
-| Redis | `REDIS_HOST`, `CELERY_BROKER_URL`, `LANGGRAPH_REDIS_DB`, `LANGGRAPH_REDIS_CHECKPOINT` |
-| MinIO | `MINIO_ENDPOINT`, `MINIO_ACCESS_KEY`, … |
-| Weaviate | `WEAVIATE_HOST`, `WEAVIATE_PORT` |
-| RAG | `EMBEDDING_MODEL_NAME`, `DEFAULT_CHUNK_SIZE` |
-| 种子 | `SEED_ADMIN_USERNAME`, `SEED_PLATFORM_ADMIN_USERNAME` |
+| 类别 | 变量示例 | 层级（§6.5） |
+|------|----------|--------------|
+| 应用 | `APP_ENV`, `SECRET_KEY`, `CORS_ORIGINS` | — |
+| PostgreSQL | `POSTGRES_HOST`, `POSTGRES_PORT`, `POSTGRES_DB`, … | — |
+| Redis | `REDIS_HOST`, `CELERY_BROKER_URL`, `LANGGRAPH_REDIS_DB`, `LANGGRAPH_REDIS_CHECKPOINT` | L1 |
+| 对象存储 | `OBJECT_STORAGE_BACKEND`, `OBJECT_STORAGE_ENDPOINT`, `OBJECT_STORAGE_ACCESS_KEY`, `OBJECT_STORAGE_SECRET_KEY`, `OBJECT_STORAGE_BUCKET`, `OBJECT_STORAGE_SECURE`, `OBJECT_STORAGE_REGION` | L1 |
+| 向量存储 | `VECTOR_STORE_BACKEND`, `WEAVIATE_*` 或 `MILVUS_URI` / `MILVUS_TOKEN` / `MILVUS_DB_NAME` | L1 |
+| 向量化默认 | `EMBEDDING_BACKEND`, `EMBEDDING_MODEL_NAME`, `EMBEDDING_LITELLM_*`, `EMBEDDING_VECTOR_DIMENSION` | L1 默认 / L3 KB |
+| RAG 分片 | `DEFAULT_CHUNK_SIZE`, `DEFAULT_CHUNK_OVERLAP` | L3 KB 可覆盖 |
+| 种子 | `SEED_ADMIN_USERNAME`, `SEED_PLATFORM_ADMIN_USERNAME` | — |
 
-**大模型 API Key** 存在 `agt_model_configs.api_key_encrypted`，由工作台「模型供应商」配置，非环境变量。
+**大模型 API Key** 存在 `agt_model_configs.api_key_encrypted`，由工作台「模型供应商」配置（租户 BYOK），非环境变量。
+
+**对象/向量引擎类型** 不计划开放为租户自助切换；租户级存储凭证见 §6.5.4 Phase 2。
 
 前端：`NEXT_PUBLIC_API_URL`（租户）、`NEXT_PUBLIC_ADMIN_API_URL`（运营）。
 
@@ -439,7 +592,8 @@ flowchart TD
 | 能力 | 状态 | 备注 |
 |------|------|------|
 | 多租户 / RBAC / JWT | ✅ | |
-| 知识库入库与检索 | ✅ | Celery + Weaviate |
+| 知识库入库与检索 | ✅ | Celery + 向量库门面；存储/向量 **L1 环境变量**（§6.5） |
+| 存储配置分层（L1/L2/L3）文档 | ✅ | §6.5；L3 embedding 已落地；L2 待开发 |
 | 流程画布与 LangGraph 执行 | ✅ | 见 [flows.md](../guides/flows.md) |
 | 智能体 RAG / 画布 / 直连 LLM | ✅ | |
 | DeepAgents 内部协同 | ✅ | 可选依赖，可降级 |

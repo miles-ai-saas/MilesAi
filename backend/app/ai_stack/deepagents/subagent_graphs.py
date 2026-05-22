@@ -9,11 +9,11 @@ from uuid import UUID
 from langchain_core.messages import AIMessage, HumanMessage
 from langgraph.graph import END, START, MessagesState, StateGraph
 
-from app.app_tenant.agents.schemas.agent import ChatRequest
+from app.tenant.agents.schemas.agent import ChatRequest
 from app.models.agent import AgentSubAgentBinding
 
 if TYPE_CHECKING:
-    from app.app_tenant.agents.services.agent import AgentService
+    from app.tenant.agents.services.agent import AgentService
 
 _ROLE_LABELS = {
     "retrieval": "知识检索",

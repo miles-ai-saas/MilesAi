@@ -10,11 +10,11 @@ from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from app.ai_stack.deepagents.subagent_graphs import build_compiled_subagents
 from app.ai_stack.langchain.chat_models import get_chat_model
 from app.ai_stack.langgraph.checkpointer import get_checkpointer
-from app.app_tenant.agents.schemas.agent import ChatRequest, ChatResponse
+from app.tenant.agents.schemas.agent import ChatRequest, ChatResponse
 from app.models.agent import Agent, AgentSubAgentBinding
 
 if TYPE_CHECKING:
-    from app.app_tenant.agents.services.agent import AgentService
+    from app.tenant.agents.services.agent import AgentService
 
 
 def deepagents_importable() -> bool:

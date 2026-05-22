@@ -5,12 +5,12 @@ def load_all_models() -> None:
     """按依赖顺序导入各域 models，避免在 models/__init__ 中循环引用。"""
     import app.models  # noqa: F401
     import app.admin.models  # noqa: F401
-    import app.app_tenant.compliance.models  # noqa: F401
-    import app.app_tenant.hooks.models  # noqa: F401
-    import app.app_tenant.prompts.models  # noqa: F401
-    import app.app_tenant.skills.models  # noqa: F401
-    import app.app_tenant.mcp.models  # noqa: F401
-    import app.app_tenant.a2a.models  # noqa: F401
-    import app.app_tenant.marketplace.models  # noqa: F401
-    import app.app_tenant.tools.models  # noqa: F401
-    import app.app_tenant.audit_log.models  # noqa: F401
+    import app.tenant.compliance.models  # noqa: F401
+    import app.tenant.hooks.models  # noqa: F401
+    import app.tenant.prompts.models  # noqa: F401
+    import app.tenant.skills.models  # noqa: F401
+    import app.tenant.mcp.models  # noqa: F401
+    import app.tenant.a2a.models  # noqa: F401
+    import app.tenant.marketplace.models  # noqa: F401
+    import app.tenant.tools.models  # noqa: F401
+    import app.tenant.audit_log.models  # noqa: F401

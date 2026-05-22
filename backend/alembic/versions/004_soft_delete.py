@@ -17,7 +17,7 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    from app.core.database import Base
+    from app.infra.db import Base
     from app.models.registry import load_all_models
 
     load_all_models()
@@ -33,7 +33,7 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    from app.core.database import Base
+    from app.infra.db import Base
     from app.models.registry import load_all_models
 
     load_all_models()

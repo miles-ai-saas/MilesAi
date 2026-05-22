@@ -3,7 +3,7 @@
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.app_tenant.compliance.models import SensitiveAction, SensitiveWord
+from app.tenant.compliance.models import SensitiveAction, SensitiveWord
 from app.models.tenant import Tenant
 
 DEFAULT_WORDS: list[tuple[str, SensitiveAction, str | None]] = [

@@ -10,7 +10,8 @@ from langgraph.graph import END, START, StateGraph
 
 from app.ai_stack.langchain.chat_models import ainvoke_chat
 from app.ai_stack.langchain.rag import build_rag_user_prompt, format_hits_context
-from app.ai_stack.langchain.vectorstores import search_multi_kb
+from app.ai_stack.langchain.rag import retrieve_hits
+from app.infra.db import AsyncSessionLocal
 from app.ai_stack.langgraph.constants import RELEVANCE_GOOD, RELEVANCE_NONE, RELEVANCE_POOR
 from app.ai_stack.langgraph.grading import _score_grade, llm_grade_relevance
 from app.ai_stack.langgraph.state import RAGGraphState
@@ -28,12 +29,14 @@ def _cfg_model(config: RunnableConfig | None) -> ModelConfig:
 
 async def retrieve(state: RAGGraphState, config: RunnableConfig) -> dict[str, Any]:
     tenant_id = UUID(state["tenant_id"])
-    hits = search_multi_kb(
-        state["query"],
-        tenant_id=tenant_id,
-        kb_ids=state["kb_ids"],
-        top_k=state.get("top_k", 5),
-    )
+    async with AsyncSessionLocal() as db:
+        hits = await retrieve_hits(
+            state["query"],
+            tenant_id=tenant_id,
+            kb_ids=state["kb_ids"],
+            db=db,
+            top_k=state.get("top_k", 5),
+        )
     return {
         "hits": hits,
         "steps": [

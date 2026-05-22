@@ -1,4 +1,4 @@
-from app.app_tenant.a2a.invoke import evaluate_rule_triggered_peers
+from app.tenant.a2a.invoke import evaluate_rule_triggered_peers
 
 
 class _Ref:

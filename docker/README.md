@@ -6,7 +6,7 @@ Compose 已拆分为 **中间件** 与 **应用** 两个文件，通过共享网
 
 | 文件 | 服务 | 说明 |
 |------|------|------|
-| `docker-compose.middleware.yml` | postgres, redis, minio, weaviate | 数据与基础设施 |
+| `docker-compose.middleware.yml` | postgres, redis, minio, weaviate；可选 `milvus`（profile） | 数据与基础设施 |
 | `docker-compose.yml` | api, worker, web, admin-web, flower | 业务应用 |
 
 ## 环境变量
@@ -61,8 +61,22 @@ docker compose -f docker-compose.middleware.yml down -v
 ## 网络与服务发现
 
 - 中间件创建网络：`milesai-net`
-- 应用栈加入同一外部网络后，容器内可通过服务名访问：`postgres`、`redis`、`minio`、`weaviate`
-- 宿主机访问仍用映射端口：`5432`、`6379`、`9000`、`8080` 等
+- 应用栈加入同一外部网络后，容器内可通过服务名访问：`postgres`、`redis`、`minio`、`weaviate`（或 `milvus`）
+- 宿主机访问仍用映射端口：`5432`、`6379`、`9000`、`8080`、`19530`（Milvus）等
+
+### 使用 Milvus 作为向量库
+
+```bash
+cd docker
+docker compose -f docker-compose.middleware.yml --profile milvus up -d
+```
+
+`.env` 中设置：
+
+```env
+VECTOR_STORE_BACKEND=milvus
+MILVUS_URI=http://milvus:19530   # 容器内；本地直连用 http://localhost:19530
+```
 
 ## 端口（可通过 .env 覆盖）
 
@@ -70,9 +84,10 @@ docker compose -f docker-compose.middleware.yml down -v
 |------|------|------|
 | `POSTGRES_PORT` | 5432 | PostgreSQL |
 | `REDIS_PORT` | 6379 | Redis |
-| `MINIO_PORT` | 9000 | MinIO API |
-| `MINIO_CONSOLE_PORT` | 9001 | MinIO Console |
+| `OBJECT_STORAGE_PORT` | 9000 | 对象存储 API（Compose 中 MinIO 服务） |
+| `OBJECT_STORAGE_CONSOLE_PORT` | 9001 | MinIO Console |
 | `WEAVIATE_PORT` | 8080 | Weaviate |
+| `MILVUS_PORT` | 19530 | Milvus gRPC/HTTP |
 | `API_PORT` | 8000 | FastAPI |
 | `WEB_PORT` | 3000 | 租户 AI 工作台 |
 | `ADMIN_WEB_PORT` | 3001 | 平台运营后台 |

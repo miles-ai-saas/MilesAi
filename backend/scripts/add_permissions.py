@@ -4,7 +4,7 @@ import asyncio
 
 from sqlalchemy import select
 
-from app.core.database import AsyncSessionLocal
+from app.infra.db import AsyncSessionLocal
 from app.models import Permission, Role
 from app.models.role import role_permissions
 from scripts.seed.tenant import DEFAULT_PERMISSIONS

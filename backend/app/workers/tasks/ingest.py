@@ -1,7 +1,7 @@
 from app.workers.app import celery_app
 from app.models.task import TaskStatus
-from app.app_tenant.kb.services.ingest import run_ingest
-from app.app_tenant.tasks.services.sync import sync_task_by_celery_id
+from app.tenant.kb.services.ingest import run_ingest
+from app.tenant.tasks.services.sync import sync_task_by_celery_id
 
 
 @celery_app.task(name="app.workers.tasks.ingest.ingest_document", bind=True, max_retries=3)

@@ -1,0 +1,22 @@
+"""对象存储工厂。"""
+
+from __future__ import annotations
+
+from functools import lru_cache
+
+from app.core.config import get_settings
+from app.infra.storage.base import ObjectStorage
+from app.infra.storage.s3 import S3CompatibleObjectStorage
+
+_SUPPORTED = frozenset({"s3"})
+
+
+@lru_cache
+def get_object_storage() -> ObjectStorage:
+    backend = get_settings().object_storage_backend.strip().lower()
+    if backend not in _SUPPORTED:
+        raise ValueError(
+            f"不支持的 OBJECT_STORAGE_BACKEND={backend!r}，"
+            f"当前实现: {', '.join(sorted(_SUPPORTED))}（均为 S3 兼容 API）"
+        )
+    return S3CompatibleObjectStorage()

@@ -1,4 +1,4 @@
-# 中间件栈：PostgreSQL / Redis / MinIO / Weaviate
+# 中间件栈：PostgreSQL / Redis / MinIO / Weaviate（或 Milvus）
 # 启动：docker compose -f docker-compose.middleware.yml up -d
 # 停止：docker compose -f docker-compose.middleware.yml down
 
@@ -44,13 +44,13 @@ services:
     container_name: milesai-minio
     command: server /data --console-address ":9001"
     environment:
-      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-minioadmin}
-      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-minioadmin}
+      MINIO_ROOT_USER: ${OBJECT_STORAGE_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${OBJECT_STORAGE_SECRET_KEY:-minioadmin}
     volumes:
       - minio_data:/data
     ports:
-      - "${MINIO_PORT:-9000}:9000"
-      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+      - "${OBJECT_STORAGE_PORT:-9000}:9000"
+      - "${OBJECT_STORAGE_CONSOLE_PORT:-9001}:9001"
     networks:
       - milesai-net
     healthcheck:
@@ -84,6 +84,33 @@ services:
       retries: 10
     restart: unless-stopped
 
+  # 使用 VECTOR_STORE_BACKEND=milvus 时启用；与 Weaviate 二选一即可
+  milvus:
+    image: milvusdb/milvus:v2.4.15
+    container_name: milesai-milvus
+    command: ["milvus", "run", "standalone"]
+    security_opt:
+      - seccomp:unconfined
+    environment:
+      ETCD_USE_EMBED: "true"
+      COMMON_STORAGETYPE: local
+    volumes:
+      - milvus_data:/var/lib/milvus
+    ports:
+      - "${MILVUS_PORT:-19530}:19530"
+      - "${MILVUS_METRICS_PORT:-9091}:9091"
+    networks:
+      - milesai-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9091/healthz"]
+      interval: 15s
+      timeout: 10s
+      retries: 12
+      start_period: 90s
+    restart: unless-stopped
+    profiles:
+      - milvus
+
 networks:
   milesai-net:
     name: milesai-net
@@ -96,3 +123,5 @@ volumes:
     name: milesai-minio-data
   weaviate_data:
     name: milesai-weaviate-data
+  milvus_data:
+    name: milesai-milvus-data

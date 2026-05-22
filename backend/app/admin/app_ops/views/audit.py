@@ -5,7 +5,7 @@ from app.admin.app_ops.services.audit import AdminAuditService
 from app.admin.app_sys.deps import AdminContext, get_platform_admin
 from app.common.response import page_ok
 from app.common.schema import PageParams
-from app.core.database import get_db
+from app.infra.db import get_db
 from app.core.deps import get_page_params
 
 router = APIRouter()

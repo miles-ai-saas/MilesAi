@@ -8,13 +8,13 @@ import re
 from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
-from app.app_tenant.agents.schemas.agent import ChatRequest, ChatResponse
+from app.tenant.agents.schemas.agent import ChatRequest, ChatResponse
 from app.ai_stack.deepagents.runner import deepagents_importable, run_deepagents_chat
 from app.ai_stack.langchain.chat_models import ainvoke_chat
 from app.models.agent import Agent, AgentSubAgentBinding
 
 if TYPE_CHECKING:
-    from app.app_tenant.agents.services.agent import AgentService
+    from app.tenant.agents.services.agent import AgentService
 
 
 def _catalog_text(bindings: list[AgentSubAgentBinding]) -> str:

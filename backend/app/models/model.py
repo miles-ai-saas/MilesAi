@@ -5,7 +5,7 @@ from sqlalchemy import Boolean, Index, Integer, String, Text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.core.database import Base
+from app.infra.db import Base
 from app.models.base import TimestampMixin, UUIDPrimaryKeyMixin
 from app.models.model_catalog import ModelCapabilityType, ModelPublishStatus, ModelVendor
 

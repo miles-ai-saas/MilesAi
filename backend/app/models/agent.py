@@ -5,7 +5,7 @@ from sqlalchemy import Column, Enum, Index, Integer, String, Table, Text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.core.database import Base
+from app.infra.db import Base
 from app.models.base import TimestampMixin, UUIDPrimaryKeyMixin
 
 agent_kb_bindings = Table(

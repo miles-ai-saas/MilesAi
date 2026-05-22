@@ -10,7 +10,8 @@ docs/
 ├── product/                  # 产品与需求
 │   └── prd.md
 ├── architecture/             # 架构与技术方案
-│   └── technical-design.md
+│   ├── technical-design.md
+│   └── vector-database-selection.md
 ├── frontend/                 # 前端
 │   └── design.md
 ├── operations/               # 运维与部署
@@ -35,7 +36,8 @@ docs/
 
 | 文档 | 说明 |
 |------|------|
-| [technical-design.md](./architecture/technical-design.md) | 架构、分层、库表、API 规范、分阶段计划（**主文档**） |
+| [technical-design.md](./architecture/technical-design.md) | 架构、分层、库表、API、**对象/向量存储与配置策略（§6.5）**（**主文档**） |
+| [vector-database-selection.md](./architecture/vector-database-selection.md) | 向量数据库选型：pgvector / Weaviate / Milvus / Qdrant / OpenSearch / ES |
 
 ## 前端 (`frontend/`)
 
@@ -83,9 +85,9 @@ docs/
 
 | 能力 | 路径 |
 |------|------|
-| 租户 API | `backend/app/app_tenant/` |
-| 智能体对话 | `app_tenant/agents/services/agent.py` |
-| A2A | `app_tenant/a2a/` |
+| 租户 API | `backend/app/tenant/` |
+| 智能体对话 | `tenant/agents/services/agent.py` |
+| A2A | `tenant/a2a/` |
 | 流程 | `app/flow_runtime/`、`app/ai_stack/langgraph/` |
 | AI 栈 | `app/ai_stack/langchain/`、`app/ai_stack/deepagents/` |
 

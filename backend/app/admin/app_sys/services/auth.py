@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.admin.app_sys.repositories.admin import PlatformAdminRepository
 from app.admin.app_sys.security import create_admin_access_token
 from app.common.exceptions import BadRequestError, UnauthorizedError
-from app.core.redis_client import get_redis
+from app.infra.redis import get_redis
 from jose import jwt as jose_jwt
 
 from app.core.config import get_settings

@@ -8,15 +8,15 @@ from uuid import UUID
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.app_tenant.audit_log.models import TenantAuditLog
-from app.app_tenant.compliance.models import InterceptLog, SensitiveWord
-from app.app_tenant.hooks.models import HookBinding, HookDefinition
-from app.app_tenant.marketplace.models import AppInstall
-from app.app_tenant.mcp.models import McpService
-from app.app_tenant.prompts.models import PromptTemplate
-from app.app_tenant.skills.models import SkillPackage
-from app.app_tenant.tools.models import Tool
-from app.core.minio_client import delete_object
+from app.tenant.audit_log.models import TenantAuditLog
+from app.tenant.compliance.models import InterceptLog, SensitiveWord
+from app.tenant.hooks.models import HookBinding, HookDefinition
+from app.tenant.marketplace.models import AppInstall
+from app.tenant.mcp.models import McpService
+from app.tenant.prompts.models import PromptTemplate
+from app.tenant.skills.models import SkillPackage
+from app.tenant.tools.models import Tool
+from app.infra.storage import delete_object
 from app.deletion.cascade import (
     before_delete_agent,
     before_delete_flow,
@@ -45,15 +45,15 @@ async def purge_tenant_data(db: AsyncSession, tenant_id: UUID) -> None:
     for kb_id in kb_ids:
         doc_rows = (
             await db.execute(
-                select(Document.id, Document.minio_key, Document.minio_bucket).where(
+                select(Document.id, Document.object_key, Document.object_bucket).where(
                     Document.kb_id == kb_id
                 )
             )
         ).all()
-        for doc_id, minio_key, minio_bucket in doc_rows:
+        for doc_id, object_key, object_bucket in doc_rows:
             await clear_document_derived_data_async(db, doc_id)
-            if minio_key and minio_key != "pending":
-                delete_object(minio_key, minio_bucket)
+            if object_key and object_key != "pending":
+                delete_object(object_key, object_bucket)
             doc = await db.get(Document, doc_id)
             if doc:
                 await db.delete(doc)

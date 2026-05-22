@@ -12,7 +12,7 @@ app/
 │   ├── application.py      # FastAPI 工厂、生命周期、中间件
 │   ├── routers.py          # 路由汇总
 │   └── migrate.py          # 启动时 Alembic upgrade
-├── app_tenant/             # 租户端业务 (/api/v1)
+├── tenant/                 # 租户端业务 (/api/v1)
 │   ├── router.py
 │   ├── auth/               # 登录、Token
 │   ├── system/             # 用户、租户、模型、健康检查
@@ -34,7 +34,12 @@ scripts/                    # 初始化 CLI（init_db、seed/*，与 app 解耦�
 ├── common/                 # 跨模块：响应封装、异常、分页、全局 Handler
 ├── deletion/               # 删除编排（文档/Agent/KB/Flow/租户级联）
 ├── utils/                  # 通用工具：idgen、redis_keys、health_checks、orm 索引辅助
-├── core/                   # 基础设施：配置、DB、Redis、安全、依赖注入
+├── core/                   # 配置、安全、依赖注入、租户上下文
+├── infra/                  # 外部中间件连接
+│   ├── db/                 # PostgreSQL（async / sync）
+│   ├── redis/
+│   ├── storage/            # 对象存储（S3 兼容）
+│   └── vector_store/       # 向量库（Weaviate / Milvus / pgvector）
 ├── models/                 # 核心 ORM（用户、租户、KB、Flow、Agent…）
 ├── ai/                     # 解析、分块、Embedding
 ├── flow_runtime/           # 流程 DAG 执行引擎与节点（非 Langflow 产品）
@@ -58,7 +63,7 @@ scripts/                    # 初始化 CLI（init_db、seed/*，与 app 解耦�
 | `repositories/` | 该域数据访问（如 `kb/repositories/kb.py`） |
 | `models.py` | 仅该子域拥有的 ORM（如 marketplace、compliance） |
 
-共享 ORM 放在 `app/models/`；租户子域表在 `app_tenant/*/models.py`；运营表在 `admin/models/`（按域拆分文件）。**表名与索引在各模型文件的 `__tablename__` / `__table_args__` 中定义**（无 `common/tables.py`）。
+共享 ORM 放在 `app/models/`；租户子域表在 `tenant/*/models.py`；运营表在 `admin/models/`（按域拆分文件）。**表名与索引在各模型文件的 `__tablename__` / `__table_args__` 中定义**（无 `common/tables.py`）。
 
 **表名域前缀**：
 
@@ -93,7 +98,7 @@ scripts/                    # 初始化 CLI（init_db、seed/*，与 app 解耦�
 
 **Alembic 模型登记**：勿在 `models/__init__.py` 反向导入 `admin`（会循环引用）。新增 ORM 模块后，在 `app/models/registry.py` 的 `load_all_models()` 中补一行 import。
 
-**包 `__init__.py`**：各层目录均已补齐；`flow_runtime/templates/` 仅存放 JSON 模板，无需 `__init__.py`。顶层 `admin/`、`app_tenant/` 的 `__init__.py` 仅作文档，不在此 eager import 路由，避免循环依赖。
+**包 `__init__.py`**：各层目录均已补齐；`flow_runtime/templates/` 仅存放 JSON 模板，无需 `__init__.py`。顶层 `admin/`、`tenant/` 的 `__init__.py` 仅作文档，不在此 eager import 路由，避免循环依赖。
 
 ### 流程运行时（`flow_runtime/`）
 
@@ -103,7 +108,7 @@ scripts/                    # 初始化 CLI（init_db、seed/*，与 app 解耦�
 | `runtime_factory.get_flow_runtime()` | 入口 → LangGraph 编译执行画布 |
 | `nodes/registry.py` | 节点注册（RAG / LLM / IO 等） |
 
-业务 CRUD 与 `POST /flows/{id}/run` 在 `app_tenant/flows/`。完整说明见 [docs/guides/flows.md](../docs/guides/flows.md)。
+业务 CRUD 与 `POST /flows/{id}/run` 在 `tenant/flows/`。完整说明见 [docs/guides/flows.md](../docs/guides/flows.md)。
 
 ### Admin 布局
 

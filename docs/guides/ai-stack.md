@@ -44,6 +44,8 @@ app/core/llm_client.py → ainvoke_chat
 | 入库分片 | `ai.chunking` | `RecursiveCharacterTextSplitter` |
 | 向量化 | `ai.embedding` | `embed_texts` → `get_embeddings()` |
 
+存储与向量 **配置分层**（部署 env / 租户凭证 / 知识库绑定向量模型）见 [technical-design.md §6.5](../architecture/technical-design.md#65-存储与向量化配置策略)。
+
 ### Embedding 配置（`.env`）
 
 | 变量 | 默认 | 说明 |

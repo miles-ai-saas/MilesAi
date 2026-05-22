@@ -134,7 +134,6 @@ def test_get_embeddings_uses_litellm_backend(monkeypatch):
     from app.core.config import Settings
 
     emb_mod.get_embeddings.cache_clear()
-    emb_mod._sentence_transformer.cache_clear()
 
     settings = Settings(
         embedding_backend="litellm",

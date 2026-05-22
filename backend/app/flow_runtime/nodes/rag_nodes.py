@@ -16,12 +16,16 @@ async def knowledge_search(
     kb_id = node_data.get("kb_id")
     top_k = int(node_data.get("top_k") or 5)
     kb_ids = [str(kb_id)] if kb_id else ctx.kb_ids
-    return await retrieve_hits(
-        query,
-        tenant_id=UUID(ctx.tenant_id),
-        kb_ids=kb_ids,
-        top_k=top_k,
-    )
+    from app.infra.db import AsyncSessionLocal
+
+    async with AsyncSessionLocal() as db:
+        return await retrieve_hits(
+            query,
+            tenant_id=UUID(ctx.tenant_id),
+            kb_ids=kb_ids,
+            db=db,
+            top_k=top_k,
+        )
 
 
 async def prompt_template(

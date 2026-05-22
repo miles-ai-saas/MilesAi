@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.admin.models import BillingPlan
-from app.app_tenant.system.repositories.tenant import TenantRepository
+from app.tenant.system.repositories.tenant import TenantRepository
 from app.common.schema import PageParams, PageResult
 from app.models.agent import Agent
 from app.models.flow import Flow

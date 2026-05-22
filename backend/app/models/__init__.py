@@ -1,18 +1,18 @@
 from app.models.agent import Agent, AgentStatus, AgentSubAgentBinding, agent_kb_bindings
-from app.app_tenant.compliance.models import InterceptLog, SensitiveAction, SensitiveWord
-from app.app_tenant.hooks.models import (
+from app.tenant.compliance.models import InterceptLog, SensitiveAction, SensitiveWord
+from app.tenant.hooks.models import (
     HookBinding,
     HookDefinition,
     HookScope,
     HookTrigger,
     HookType,
 )
-from app.app_tenant.mcp.models import McpService, McpStatus
-from app.app_tenant.prompts.models import PromptTemplate
-from app.app_tenant.skills.models import SkillPackage
+from app.tenant.mcp.models import McpService, McpStatus
+from app.tenant.prompts.models import PromptTemplate
+from app.tenant.skills.models import SkillPackage
 from app.models.flow import Flow, FlowStatus, FlowVersion
 from app.models.kb import Document, DocumentChunk, DocumentStatus, KnowledgeBase, VectorRef
-from app.app_tenant.marketplace.models import (
+from app.tenant.marketplace.models import (
     AppCategory,
     AppInstall,
     AppRating,
@@ -25,7 +25,7 @@ from app.models.permission import Permission
 from app.models.role import Role, role_permissions, user_roles
 from app.models.system import SystemConfig
 from app.models.task import CeleryTaskRecord, TaskStatus
-from app.app_tenant.tools.models import Tool, ToolType
+from app.tenant.tools.models import Tool, ToolType
 from app.models.tenant import Tenant
 from app.models.user import User
 

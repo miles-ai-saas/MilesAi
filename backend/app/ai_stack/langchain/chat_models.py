@@ -97,7 +97,7 @@ async def ainvoke_chat(
     if db is not None and tenant_id is not None:
         from uuid import UUID
 
-        from app.app_tenant.models.services.model_resolve import resolve_model_for_invoke
+        from app.tenant.models.services.model_resolve import resolve_model_for_invoke
 
         model = await resolve_model_for_invoke(db, model, UUID(str(tenant_id)))
 

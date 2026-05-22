@@ -32,7 +32,7 @@ def run_migrate() -> None:
 
 
 async def run_seed(target: str = "all") -> None:
-    from app.core.database import AsyncSessionLocal
+    from app.infra.db import AsyncSessionLocal
 
     if target == "all":
         print(">>> seed all")

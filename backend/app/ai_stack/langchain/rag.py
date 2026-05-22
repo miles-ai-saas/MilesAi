@@ -5,9 +5,13 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID
 
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.ai_stack.langchain.chat_models import ainvoke_chat
 from app.ai_stack.langchain.vectorstores import search_multi_kb
+from app.core.tenant import TenantContext
 from app.models.model import ModelConfig
+from app.tenant.kb.services.kb_load import load_kbs_for_tenant
 
 
 def format_hits_context(hits: list[dict[str, Any]]) -> str:
@@ -33,9 +37,24 @@ async def retrieve_hits(
     *,
     tenant_id: UUID,
     kb_ids: list[str],
+    db: AsyncSession,
     top_k: int = 5,
 ) -> list[dict[str, Any]]:
-    return search_multi_kb(query, tenant_id=tenant_id, kb_ids=kb_ids, top_k=top_k)
+    kbs = await load_kbs_for_tenant(db, tenant_id, kb_ids)
+    return search_multi_kb(query, kbs=kbs, top_k=top_k)
+
+
+async def retrieve_hits_with_ctx(
+    query: str,
+    *,
+    ctx: TenantContext,
+    kb_ids: list[str],
+    db: AsyncSession,
+    top_k: int = 5,
+) -> list[dict[str, Any]]:
+    return await retrieve_hits(
+        query, tenant_id=ctx.tenant_id, kb_ids=kb_ids, db=db, top_k=top_k
+    )
 
 
 async def rag_answer(
@@ -45,6 +64,7 @@ async def rag_answer(
     query: str,
     kb_ids: list[str],
     tenant_id: UUID,
+    db: AsyncSession,
     top_k: int = 5,
     temperature: float = 0.7,
 ) -> tuple[str, list[dict[str, Any]]]:
@@ -53,6 +73,7 @@ async def rag_answer(
         query,
         tenant_id=tenant_id,
         kb_ids=kb_ids,
+        db=db,
         top_k=top_k,
     )
     if not hits:

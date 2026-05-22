@@ -10,7 +10,7 @@ from app.admin.app_ops.schemas import IpBlacklistCreate, RateLimitRuleCreate
 from app.admin.app_sys.deps import AdminContext, get_platform_admin
 from app.common.response import ok, page_ok
 from app.common.schema import PageParams
-from app.core.database import get_db
+from app.infra.db import get_db
 from app.core.deps import get_page_params
 
 router = APIRouter()

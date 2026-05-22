@@ -43,15 +43,23 @@ class Settings(BaseSettings):
     langgraph_redis_db: int = 0
     langgraph_redis_checkpoint: bool = True
 
-    minio_endpoint: str = "localhost:9000"
-    minio_access_key: str = "minioadmin"
-    minio_secret_key: str = "minioadmin"
-    minio_bucket: str = "milesai"
-    minio_secure: bool = False
+    # 对象存储：S3 兼容 API（MinIO / OSS / AWS S3 等）
+    object_storage_backend: str = "s3"
+    object_storage_endpoint: str = "localhost:9000"
+    object_storage_access_key: str = "minioadmin"
+    object_storage_secret_key: str = "minioadmin"
+    object_storage_bucket: str = "milesai"
+    object_storage_secure: bool = False
+    object_storage_region: str | None = None
 
+    # 向量存储：默认 weaviate；可选 pgvector / milvus
+    vector_store_backend: str = "weaviate"
     weaviate_host: str = "localhost"
     weaviate_port: int = 8080
     weaviate_scheme: str = "http"
+    milvus_uri: str = "http://localhost:19530"
+    milvus_token: str = ""
+    milvus_db_name: str = "default"
 
     celery_broker_url: str = "redis://localhost:6379/1"
     celery_result_backend: str = "redis://localhost:6379/2"
@@ -116,7 +124,6 @@ class Settings(BaseSettings):
     @property
     def weaviate_url(self) -> str:
         return f"{self.weaviate_scheme}://{self.weaviate_host}:{self.weaviate_port}"
-
 
 @lru_cache
 def get_settings() -> Settings:

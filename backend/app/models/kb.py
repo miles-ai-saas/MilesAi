@@ -5,7 +5,7 @@ from sqlalchemy import Enum, Index, Integer, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.core.database import Base
+from app.infra.db import Base
 from app.models.base import TimestampMixin, UUIDPrimaryKeyMixin
 
 
@@ -26,6 +26,11 @@ class KnowledgeBase(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     name: Mapped[str] = mapped_column(String(128), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     is_public: Mapped[bool] = mapped_column(default=False, nullable=False)
+    embedding_profile: Mapped[str] = mapped_column(String(64), default="local-minilm", nullable=False)
+    embedding_backend: Mapped[str] = mapped_column(String(32), default="local", nullable=False)
+    embedding_model_name: Mapped[str] = mapped_column(
+        String(256), default="sentence-transformers/all-MiniLM-L6-v2", nullable=False
+    )
     embedding_dimension: Mapped[int] = mapped_column(Integer, default=384, nullable=False)
     chunk_size: Mapped[int] = mapped_column(Integer, default=500, nullable=False)
     chunk_overlap: Mapped[int] = mapped_column(Integer, default=50, nullable=False)
@@ -51,8 +56,8 @@ class Document(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     filename: Mapped[str] = mapped_column(String(512), nullable=False)
     mime_type: Mapped[str] = mapped_column(String(128), nullable=False)
     file_size: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
-    minio_bucket: Mapped[str] = mapped_column(String(128), nullable=False)
-    minio_key: Mapped[str] = mapped_column(String(1024), nullable=False)
+    object_bucket: Mapped[str] = mapped_column(String(128), nullable=False)
+    object_key: Mapped[str] = mapped_column(String(1024), nullable=False)
     status: Mapped[DocumentStatus] = mapped_column(
         Enum(DocumentStatus, name="document_status", values_callable=lambda x: [e.value for e in x]),
         default=DocumentStatus.PENDING,
@@ -111,12 +116,12 @@ class VectorRef(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __table_args__ = (
         Index("idx_kb_vector_refs_tenant_id", "tenant_id"),
         UniqueConstraint("chunk_id", name="uk_kb_vector_refs_chunk_id"),
-        Index("idx_kb_vector_refs_weaviate_uuid", "weaviate_uuid"),
+        Index("idx_kb_vector_refs_vector_id", "vector_id"),
     )
 
     tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
     chunk_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
-    weaviate_uuid: Mapped[str] = mapped_column(String(64), nullable=False)
+    vector_id: Mapped[str] = mapped_column(String(64), nullable=False)
     vector_type: Mapped[str] = mapped_column(String(32), default="text", nullable=False)
 
     chunk: Mapped["DocumentChunk"] = relationship(

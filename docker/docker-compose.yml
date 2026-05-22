@@ -19,7 +19,7 @@ services:
     environment:
       POSTGRES_HOST: postgres
       REDIS_HOST: redis
-      MINIO_ENDPOINT: minio:9000
+      OBJECT_STORAGE_ENDPOINT: minio:9000
       WEAVIATE_HOST: weaviate
       CELERY_BROKER_URL: redis://redis:6379/1
       CELERY_RESULT_BACKEND: redis://redis:6379/2
@@ -47,7 +47,7 @@ services:
     environment:
       POSTGRES_HOST: postgres
       REDIS_HOST: redis
-      MINIO_ENDPOINT: minio:9000
+      OBJECT_STORAGE_ENDPOINT: minio:9000
       WEAVIATE_HOST: weaviate
       CELERY_BROKER_URL: redis://redis:6379/1
       CELERY_RESULT_BACKEND: redis://redis:6379/2

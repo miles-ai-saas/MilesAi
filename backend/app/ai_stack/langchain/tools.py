@@ -31,7 +31,7 @@ class KnowledgeSearchInput(BaseModel):
 
 def _make_calculator_tool() -> StructuredTool:
     def _run(expression: str) -> dict:
-        from app.app_tenant.tools.invoke import safe_calculate
+        from app.tenant.tools.invoke import safe_calculate
 
         return {"result": safe_calculate(expression)}
 
@@ -62,12 +62,12 @@ def make_knowledge_search_tool(ctx: TenantContext) -> StructuredTool:
     tenant_id = ctx.tenant_id
 
     def _run(query: str, kb_id: str, limit: int = 5) -> dict:
-        hits = search_kb(
-            query,
-            tenant_id=tenant_id,
-            kb_id=UUID(kb_id),
-            limit=limit,
-        )
+        from app.infra.db import get_sync_db
+        from app.tenant.kb.services.kb_load import load_kb_sync
+
+        with get_sync_db() as db:
+            kb = load_kb_sync(db, tenant_id, UUID(kb_id))
+        hits = search_kb(query, kb=kb, limit=limit)
         return {"hits": hits}
 
     return StructuredTool.from_function(
@@ -95,6 +95,6 @@ async def invoke_platform_tool(
     tool_id: UUID | None = None,
 ) -> dict:
     """兼容原有 invoke_tool_by_name，内置工具走 LangChain 定义。"""
-    from app.app_tenant.tools.invoke import invoke_tool_by_name
+    from app.tenant.tools.invoke import invoke_tool_by_name
 
     return await invoke_tool_by_name(db, ctx, name, params, tool_id=tool_id)

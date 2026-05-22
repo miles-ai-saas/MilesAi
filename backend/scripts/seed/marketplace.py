@@ -6,7 +6,7 @@ from pathlib import Path
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.app_tenant.marketplace.models import AppCategory, MarketplaceApp, MarketplaceAppStatus
+from app.tenant.marketplace.models import AppCategory, MarketplaceApp, MarketplaceAppStatus
 
 _BACKEND_ROOT = Path(__file__).resolve().parents[2]
 

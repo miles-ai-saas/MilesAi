@@ -21,6 +21,7 @@ dependencies = [
     "celery>=5.4.0",
     "minio>=7.2.0",
     "weaviate-client>=4.9.0",
+    "pymilvus>=2.5.0",
     "email-validator>=2.2.0",
     "sentence-transformers>=3.3.0",
     "pypdf>=5.1.0",

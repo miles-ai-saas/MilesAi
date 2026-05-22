@@ -90,8 +90,8 @@ MilesAi/
 ├── backend/                 # FastAPI
 │   ├── app/
 │   │   ├── api/v1/          # 薄路由
-│   │   ├── app_tenant/      # 租户业务（agents、kb、flows、marketplace…）
-│   │   ├── app_tenant/a2a/  # A2A Peer / 宿主调用
+│   │   ├── tenant/         # 租户业务（agents、kb、flows、marketplace…）
+│   │   ├── tenant/a2a/     # A2A Peer / 宿主调用
 │   │   ├── ai_stack/        # LangChain、LangGraph、DeepAgents
 │   │   ├── flow_runtime/    # 流程节点 + LangGraph 编译执行
 │   │   └── models/
