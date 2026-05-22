@@ -105,6 +105,9 @@ class KnowledgeBaseService(BaseService):
         )
 
     async def create_kb(self, body: KnowledgeBaseCreate) -> KnowledgeBaseOut:
+        from app.core.config import get_settings
+
+        dim = get_settings().embedding_vector_dimension
         kb = await self.kb_repo.create(
             tenant_id=self.ctx.tenant_id,
             name=body.name,
@@ -112,7 +115,7 @@ class KnowledgeBaseService(BaseService):
             is_public=body.is_public,
             chunk_size=body.chunk_size,
             chunk_overlap=body.chunk_overlap,
-            embedding_dimension=384,
+            embedding_dimension=dim,
         )
         await self.db.refresh(kb)
         return KnowledgeBaseOut.model_validate(kb)

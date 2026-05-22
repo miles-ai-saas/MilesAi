@@ -69,7 +69,14 @@ class Settings(BaseSettings):
     seed_platform_admin_username: str = "platform"
     seed_platform_admin_password: str = "admin123"
 
+    # local：Sentence-Transformers；litellm：云端 embedding API（如 dashscope/text-embedding-v3）
+    embedding_backend: str = "local"
     embedding_model_name: str = "sentence-transformers/all-MiniLM-L6-v2"
+    embedding_litellm_model: str = "dashscope/text-embedding-v3"
+    embedding_litellm_api_key: str = ""
+    embedding_litellm_api_base: str | None = None
+    # 新建知识库写入的向量维度（local=384；dashscope v3 等常用 1024）
+    embedding_vector_dimension: int = 384
     default_chunk_size: int = 500
     default_chunk_overlap: int = 50
 

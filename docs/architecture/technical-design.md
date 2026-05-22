@@ -216,7 +216,7 @@ ORM **不在库级声明外键**（`001` 使用 `create_all`）；关联由应�
 
 - Collection：`DocumentChunk`（`core/weaviate_store.py` 启动时 `ensure_schema`）。
 - 属性：`tenant_id`, `kb_id`, `document_id`, `chunk_id`, `modality`, `content_preview`, `minio_key`, `page_no`。
-- 向量：客户端自算 embedding（`sentence-transformers`，默认维度 384），`Vectorizer.none()` + HNSW cosine。
+- 向量：客户端自算 embedding（默认 `EMBEDDING_BACKEND=local` + Sentence-Transformers 384 维；可选 `litellm` + 云端模型），`Vectorizer.none()` + HNSW cosine。
 - 检索：按 `tenant_id` + `kb_id` Filter。
 
 ### 6.3 MinIO / Redis

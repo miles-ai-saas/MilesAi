@@ -21,8 +21,8 @@ pip install -e ".[agent-stack]"      # deepagents、langgraph>=1.2
 
 ```
 app/ai_stack/langchain/
-├── embeddings.py    # → Sentence-Transformers
-├── chat_models.py   # → OpenAI 兼容 HTTP
+├── embeddings.py    # local：Sentence-Transformers；litellm：云端 embedding
+├── chat_models.py   # → LiteLLM acompletion
 ├── vectorstores.py  # → Weaviate
 ├── rag.py           # retrieve_hits / rag_answer（legacy）
 ├── chunking.py
@@ -42,5 +42,16 @@ app/core/llm_client.py → ainvoke_chat
 | 知识库检索 | `KbService.search` | `vectorstores.search_kb` |
 | 流程节点 | `rag_nodes` / `llm_nodes` | `retrieve_hits` / `ainvoke_chat` |
 | 入库分片 | `ai.chunking` | `RecursiveCharacterTextSplitter` |
+| 向量化 | `ai.embedding` | `embed_texts` → `get_embeddings()` |
+
+### Embedding 配置（`.env`）
+
+| 变量 | 默认 | 说明 |
+|------|------|------|
+| `EMBEDDING_BACKEND` | `local` | `local` 或 `litellm` |
+| `EMBEDDING_MODEL_NAME` | `sentence-transformers/all-MiniLM-L6-v2` | 仅 `local` |
+| `EMBEDDING_LITELLM_MODEL` | `dashscope/text-embedding-v3` | 仅 `litellm` |
+| `EMBEDDING_LITELLM_API_KEY` | 空 | 也可用厂商环境变量（如 `DASHSCOPE_API_KEY`） |
+| `EMBEDDING_VECTOR_DIMENSION` | `384` | 新建知识库维度；切到 dashscope v3 时建议 `1024` 并重建索引 |
 
 扩展内置工具：在 `langchain/tools.py` 增加 `StructuredTool`，并在 `tools/invoke.py` 注册。

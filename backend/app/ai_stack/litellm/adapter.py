@@ -1,0 +1,184 @@
+"""ModelConfig → LiteLLM 调用参数与 acompletion 封装。"""
+
+from __future__ import annotations
+
+from typing import Any
+
+from app.common.exceptions import AppError, BadRequestError
+from app.models.model import ModelConfig
+from app.models.model_catalog import (
+    DEFAULT_API_BASES,
+    ModelCapabilityType,
+    ModelVendor,
+)
+
+# 一期对话链仅支持以下 model_type（与 PRD / model-providers 一致）
+CHAT_MODEL_TYPES: frozenset[str] = frozenset(
+    {
+        ModelCapabilityType.LLM.value,
+        ModelCapabilityType.REASONING.value,
+        ModelCapabilityType.VISION.value,
+    }
+)
+
+# vendor → LiteLLM provider 前缀（model 形如 {prefix}/{model_name}）
+_VENDOR_LITELLM_PREFIX: dict[str, str] = {
+    ModelVendor.DEEPSEEK.value: "deepseek",
+    ModelVendor.DOUBAO.value: "volcengine",
+    ModelVendor.QWEN.value: "dashscope",
+    ModelVendor.OPENAI.value: "openai",
+}
+
+# provider 字段兜底（租户自定义可能只填 provider）
+_PROVIDER_LITELLM_PREFIX: dict[str, str] = {
+    "deepseek": "deepseek",
+    "doubao": "volcengine",
+    "qwen": "dashscope",
+    "openai": "openai",
+}
+
+
+def _ensure_chat_model_type(model: ModelConfig) -> None:
+    if model.model_type not in CHAT_MODEL_TYPES:
+        label = model.model_type or "unknown"
+        raise BadRequestError(
+            f"模型「{model.name}」类型为 {label}，当前仅支持对话类（llm / reasoning / vision）"
+        )
+
+
+def resolve_litellm_model(model: ModelConfig) -> str:
+    """解析 LiteLLM model 字符串（provider/model_name）。"""
+    extra = model.extra or {}
+    explicit = extra.get("litellm_model")
+    if isinstance(explicit, str) and explicit.strip():
+        return explicit.strip()
+
+    name = (model.model_name or "").strip()
+    if not name:
+        raise BadRequestError(f"模型「{model.name}」未配置 model_name")
+
+    if "/" in name:
+        return name
+
+    prefix = _VENDOR_LITELLM_PREFIX.get(model.vendor) or _PROVIDER_LITELLM_PREFIX.get(
+        model.provider
+    )
+    if prefix:
+        return f"{prefix}/{name}"
+
+    # 自定义 OpenAI 兼容：走 openai/ + 调用方 api_base
+    return f"openai/{name}"
+
+
+def _resolve_api_base(model: ModelConfig) -> str | None:
+    if model.api_base:
+        return model.api_base.rstrip("/")
+    return DEFAULT_API_BASES.get(model.vendor)
+
+
+def _litellm_error_message(exc: BaseException) -> str:
+    msg = getattr(exc, "message", None) or str(exc)
+    return f"模型调用失败: {msg}"
+
+
+async def litellm_chat_completion(
+    model: ModelConfig,
+    messages: list[dict[str, str]],
+    *,
+    temperature: float = 0.7,
+    max_tokens: int = 2048,
+    timeout: float = 120.0,
+) -> str:
+    """通过 LiteLLM 发起异步 Chat Completions。"""
+    import litellm
+
+    _ensure_chat_model_type(model)
+
+    litellm_model = resolve_litellm_model(model)
+    kwargs: dict[str, Any] = {
+        "model": litellm_model,
+        "messages": messages,
+        "temperature": temperature,
+        "max_tokens": max_tokens,
+        "timeout": timeout,
+    }
+    api_key = model.api_key_encrypted
+    if api_key:
+        kwargs["api_key"] = api_key
+    api_base = _resolve_api_base(model)
+    if api_base:
+        kwargs["api_base"] = api_base
+
+    try:
+        response = await litellm.acompletion(**kwargs)
+    except BadRequestError:
+        raise
+    except Exception as exc:
+        raise AppError(_litellm_error_message(exc), status_code=502) from exc
+
+    choices = getattr(response, "choices", None) or []
+    if not choices:
+        raise AppError("模型返回为空", status_code=502)
+
+    first = choices[0]
+    message = getattr(first, "message", None)
+    content = getattr(message, "content", None) if message is not None else None
+    if content is None and isinstance(first, dict):
+        content = (first.get("message") or {}).get("content")
+    if content is None:
+        raise AppError("模型返回为空", status_code=502)
+    return content if isinstance(content, str) else str(content)
+
+
+def _extract_embedding_vectors(response: Any) -> list[list[float]]:
+    data = getattr(response, "data", None) or []
+    vectors: list[list[float]] = []
+    for item in data:
+        emb = getattr(item, "embedding", None)
+        if emb is None and isinstance(item, dict):
+            emb = item.get("embedding")
+        if emb is None:
+            raise AppError("Embedding 返回为空", status_code=502)
+        vectors.append(list(emb))
+    return vectors
+
+
+def litellm_embed_texts(
+    texts: list[str],
+    *,
+    model: str,
+    api_key: str | None = None,
+    api_base: str | None = None,
+    timeout: float = 120.0,
+) -> list[list[float]]:
+    """同步批量 embedding（供 LangChain Embeddings 与入库任务）。"""
+    import litellm
+
+    if not texts:
+        return []
+
+    litellm_model = model.strip()
+    if not litellm_model:
+        raise BadRequestError("未配置 embedding_litellm_model")
+
+    kwargs: dict[str, Any] = {
+        "model": litellm_model,
+        "input": texts,
+        "timeout": timeout,
+    }
+    if api_key:
+        kwargs["api_key"] = api_key
+    if api_base:
+        kwargs["api_base"] = api_base.rstrip("/")
+
+    try:
+        response = litellm.embedding(**kwargs)
+    except BadRequestError:
+        raise
+    except Exception as exc:
+        raise AppError(f"向量化失败: {getattr(exc, 'message', None) or exc}", status_code=502) from exc
+
+    vectors = _extract_embedding_vectors(response)
+    if len(vectors) != len(texts):
+        raise AppError("向量化返回条数与输入不一致", status_code=502)
+    return vectors

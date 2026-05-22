@@ -1,17 +1,16 @@
-"""LangChain ChatModel 适配：OpenAI 兼容 HTTP（复用 ModelConfig）。"""
+"""LangChain ChatModel 适配：LiteLLM 统一调用（复用 ModelConfig）。"""
 
 from __future__ import annotations
 
 from typing import Any
 
-import httpx
-from langchain_core.language_models.chat_models import BaseChatModel
-from langchain_core.messages import AIMessage, BaseMessage
-from langchain_core.outputs import ChatGeneration, ChatResult
 from langchain_core.callbacks import AsyncCallbackManagerForLLMRun, CallbackManagerForLLMRun
+from langchain_core.language_models.chat_models import BaseChatModel
+from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage
+from langchain_core.outputs import ChatGeneration, ChatResult
 from pydantic import ConfigDict
 
-from app.common.exceptions import AppError
+from app.ai_stack.litellm.adapter import litellm_chat_completion
 from app.models.model import ModelConfig
 
 
@@ -28,39 +27,6 @@ def _messages_to_openai(messages: list[BaseMessage]) -> list[dict[str, str]]:
         content = m.content if isinstance(m.content, str) else str(m.content)
         out.append({"role": role, "content": content})
     return out
-
-
-def _dict_messages_to_openai(messages: list[dict[str, str]]) -> list[dict[str, str]]:
-    return [{"role": m["role"], "content": m["content"]} for m in messages]
-
-
-async def _http_chat_completion(
-    model: ModelConfig,
-    messages: list[dict[str, str]],
-    *,
-    temperature: float = 0.7,
-    max_tokens: int = 2048,
-) -> str:
-    api_base = (model.api_base or "https://api.openai.com/v1").rstrip("/")
-    url = f"{api_base}/chat/completions"
-    headers = {"Content-Type": "application/json"}
-    if model.api_key_encrypted:
-        headers["Authorization"] = f"Bearer {model.api_key_encrypted}"
-    payload = {
-        "model": model.model_name,
-        "messages": messages,
-        "temperature": temperature,
-        "max_tokens": max_tokens,
-    }
-    async with httpx.AsyncClient(timeout=120.0) as client:
-        resp = await client.post(url, json=payload, headers=headers)
-        if resp.status_code >= 400:
-            raise AppError(f"模型调用失败: {resp.text}", status_code=502)
-        data = resp.json()
-    choices = data.get("choices") or []
-    if not choices:
-        raise AppError("模型返回为空", status_code=502)
-    return choices[0]["message"]["content"]
 
 
 class PlatformChatModel(BaseChatModel):
@@ -95,7 +61,7 @@ class PlatformChatModel(BaseChatModel):
         **kwargs: Any,
     ) -> ChatResult:
         openai_msgs = _messages_to_openai(messages)
-        content = await _http_chat_completion(
+        content = await litellm_chat_completion(
             self.model_row,
             openai_msgs,
             temperature=self.temperature,
@@ -134,9 +100,20 @@ async def ainvoke_chat(
         from app.app_tenant.models.services.model_resolve import resolve_model_for_invoke
 
         model = await resolve_model_for_invoke(db, model, UUID(str(tenant_id)))
-    llm = get_chat_model(model, temperature=temperature, max_tokens=max_tokens)
-    from langchain_core.messages import HumanMessage, SystemMessage
 
+    openai_msgs = [
+        {"role": m.get("role", "user"), "content": m.get("content", "")} for m in messages
+    ]
+    return await litellm_chat_completion(
+        model,
+        openai_msgs,
+        temperature=temperature,
+        max_tokens=max_tokens,
+    )
+
+
+def dict_messages_to_lc(messages: list[dict[str, str]]) -> list[BaseMessage]:
+    """dict messages → LangChain messages（供需要 LC 对象的调用方）。"""
     lc_messages: list[BaseMessage] = []
     for m in messages:
         role, content = m.get("role", "user"), m.get("content", "")
@@ -146,5 +123,4 @@ async def ainvoke_chat(
             lc_messages.append(AIMessage(content=content))
         else:
             lc_messages.append(HumanMessage(content=content))
-    result = await llm.ainvoke(lc_messages)
-    return result.content if isinstance(result.content, str) else str(result.content)
+    return lc_messages

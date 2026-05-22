@@ -50,9 +50,16 @@ api_base, api_key_encrypted, is_active, extra (JSONB), deleted_at
 | 租户 UI | 仍为简单列表卡片，无截图中的 **分类 + 来源** |
 | 种子数据 | 执行 `python scripts/init_db.py` 或 `scripts/seed_model_catalog.py` 预置内置模型目录 |
 
-### 2.4 运行时（不变）
+### 2.4 运行时（LiteLLM）
 
-`ModelConfig` → `ai_stack.langchain.chat_models.ainvoke_chat` / `core.llm_client`：OpenAI 兼容 `POST {api_base}/chat/completions`，`Authorization` 来自 `api_key_encrypted`（可为空）。
+`ModelConfig` → `resolve_model_for_invoke`（租户 BYOK）→ `ai_stack.litellm.adapter.litellm_chat_completion`（`litellm.acompletion`）→ `ainvoke_chat` / `core.llm_client`。
+
+| 项 | 说明 |
+|----|------|
+| 支持 `model_type` | `llm`、`reasoning`、`vision` |
+| LiteLLM `model` | 默认 `{vendor前缀}/{model_name}`：`deepseek/*`、`dashscope/*`、`volcengine/*`（豆包）、`openai/*`；可在 `extra.litellm_model` 覆盖 |
+| 鉴权 | `api_key_encrypted` + 可选 `api_base`（内置模型未配时用 `DEFAULT_API_BASES`） |
+| 未接入 | `image_gen` / `video_gen` / `asr` / `tts` 调用时返回 400，目录仍可展示 |
 
 ---
 
