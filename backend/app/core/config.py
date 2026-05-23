@@ -22,6 +22,7 @@ class Settings(BaseSettings):
     )
 
     app_name: str = "MilesAi"
+    app_description: str = "一体化 AI 智能编排与 RAG 应用平台 REST API"
     app_env: str = "development"
     debug: bool = True
     secret_key: str = "change-me"
@@ -127,6 +128,14 @@ class Settings(BaseSettings):
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+
+    @property
+    def APP_DESCRIPTION(self) -> str:
+        return self.app_description
+
+    @property
+    def DEBUG(self) -> bool:
+        return self.debug
 
     @property
     def weaviate_url(self) -> str:
