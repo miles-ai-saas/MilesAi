@@ -7,7 +7,7 @@ from typing import Any
 from uuid import UUID
 
 import weaviate
-from weaviate.classes.config import Configure, DataType, Property
+from weaviate.classes.config import Configure, DataType, Property, VectorDistances
 from weaviate.classes.query import Filter
 
 from app.core.config import Settings, get_settings
@@ -66,8 +66,11 @@ def _ensure_collection() -> None:
         return
     client.collections.create(
         name=CLASS_NAME,
-        vectorizer_config=Configure.Vectorizer.none(),
-        vector_index_config=Configure.VectorIndex.hnsw(distance_metric="cosine"),
+        vector_config=Configure.Vectors.self_provided(
+            vector_index_config=Configure.VectorIndex.hnsw(
+                distance_metric=VectorDistances.COSINE,
+            ),
+        ),
         properties=[
             Property(name="tenant_id", data_type=DataType.TEXT),
             Property(name="kb_id", data_type=DataType.TEXT),

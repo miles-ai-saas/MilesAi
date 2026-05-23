@@ -80,10 +80,10 @@ class Settings(BaseSettings):
     seed_platform_admin_username: str = "platform"
     seed_platform_admin_password: str = "admin123"
 
-    # local：Sentence-Transformers；litellm：云端 embedding API（如 dashscope/text-embedding-v3）
+    # local：Sentence-Transformers；litellm：云端 embedding API（如 dashscope/text-embedding-v4）
     embedding_backend: str = "local"
     embedding_model_name: str = "BAAI/bge-base-zh-v1.5"
-    embedding_litellm_model: str = "dashscope/text-embedding-v3"
+    embedding_litellm_model: str = "dashscope/text-embedding-v4"
     embedding_litellm_api_key: str = ""
     embedding_litellm_api_base: str | None = None
     # 新建知识库写入的向量维度（local BGE=768；dashscope v3 等常用 1024）

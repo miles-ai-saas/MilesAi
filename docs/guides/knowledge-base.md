@@ -220,7 +220,7 @@ OpenAPI：`/docs`（运行实例）。
 | model_code | 维度 | invoke_mode | 说明 |
 |------------|------|-------------|------|
 | `bge-base-zh-v1.5` | 768 | `local` | `BAAI/bge-base-zh-v1.5`，无需 API Key |
-| `qwen-text-embedding-v3` | 1024 | litellm | 通义，需 BYOK |
+| `qwen-text-embedding-v4` | 1024 | litellm | 通义，需 BYOK |
 
 租户可在 **模型供应商** 创建自定义 embedding（`extra.embedding_dimension` 必填）。切换 KB 绑定的模型需 **新建知识库** 并重新入库。
 

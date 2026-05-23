@@ -118,12 +118,12 @@ def test_litellm_embed_texts_success():
     with patch("litellm.embedding", return_value=mock_response) as mock_emb:
         out = litellm_embed_texts(
             ["a", "b"],
-            model="dashscope/text-embedding-v3",
+            model="dashscope/text-embedding-v4",
             api_key="sk-x",
         )
 
     assert len(out) == 2
     assert out[0] == [0.1, 0.2]
     mock_emb.assert_called_once()
-    assert mock_emb.call_args.kwargs["model"] == "dashscope/text-embedding-v3"
+    assert mock_emb.call_args.kwargs["model"] == "dashscope/text-embedding-v4"
     assert mock_emb.call_args.kwargs["input"] == ["a", "b"]

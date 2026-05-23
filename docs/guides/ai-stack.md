@@ -73,7 +73,7 @@ app/infra/vector_store/
 |------|------|------|
 | `EMBEDDING_BACKEND` | `local` | `local` 或 `litellm` |
 | `EMBEDDING_MODEL_NAME` | `BAAI/bge-base-zh-v1.5` | 仅 `local` |
-| `EMBEDDING_LITELLM_MODEL` | `dashscope/text-embedding-v3` | 仅 `litellm` |
+| `EMBEDDING_LITELLM_MODEL` | `dashscope/text-embedding-v4` | 仅 `litellm` |
 | `EMBEDDING_VECTOR_DIMENSION` | `768` | 新建 KB 维度 |
 
 扩展内置工具：在 `integrations/langchain/tools.py` 增加 `StructuredTool`，并在 `tools/invoke.py` 注册。
