@@ -9,6 +9,7 @@ import { api } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth-store";
 import { filterBySearch } from "@/lib/filter-search";
 import { usePagedList } from "@/hooks/use-paged-list";
+import { useConfirmAction } from "@/hooks/use-confirm-action";
 import type { A2aPeer } from "@/lib/types";
 
 function peerStatusLabel(status: string): string {
@@ -34,6 +35,7 @@ export function A2aPeersPanel() {
   const list = usePagedList(useCallback((p, s) => api.listA2aPeers(p, s), []), {
     enabled: ready,
   });
+  const { requestConfirm, confirmDialog } = useConfirmAction();
 
   const filtered = useMemo(
     () => filterBySearch(list.items, search, (p) => `${p.name} ${p.description ?? ""} ${p.base_url ?? ""}`),
@@ -88,10 +90,21 @@ export function A2aPeersPanel() {
     }
   };
 
-  const onDelete = async (peer: A2aPeer) => {
-    if (!confirm(`确定删除外部 Agent「${peer.name}」？`)) return;
-    await api.deleteA2aPeer(peer.id);
-    await list.reload();
+  const onDelete = (peer: A2aPeer) => {
+    requestConfirm({
+      title: "删除外部 Agent",
+      message: (
+        <>
+          确定删除外部 Agent <span className="font-medium">{peer.name}</span>？
+        </>
+      ),
+      destructive: true,
+      confirmLabel: "确认删除",
+      onConfirm: async () => {
+        await api.deleteA2aPeer(peer.id);
+        await list.reload();
+      },
+    });
   };
 
   return (
@@ -233,6 +246,7 @@ export function A2aPeersPanel() {
           </p>
         </div>
       </ResourceDialog>
+      {confirmDialog}
     </>
   );
 }

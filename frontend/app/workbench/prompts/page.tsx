@@ -4,6 +4,7 @@ import { useCallback, useMemo, useState } from "react";
 import { api } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth-store";
 import { usePagedList } from "@/hooks/use-paged-list";
+import { useConfirmAction } from "@/hooks/use-confirm-action";
 import { ResourceListFooter } from "@/components/resource/ResourceListFooter";
 import { AddResourceCard } from "@/components/resource/AddResourceCard";
 import { CardActions } from "@/components/resource/CardActions";
@@ -24,6 +25,7 @@ export default function PromptsPage() {
   const list = usePagedList(useCallback((p, s) => api.listPromptTemplates(p, s), []), {
     enabled: ready,
   });
+  const { requestConfirm, confirmDialog } = useConfirmAction();
 
   const filtered = useMemo(
     () => filterBySearch(list.items, search, (t) => `${t.name} ${t.content}`),
@@ -55,10 +57,21 @@ export default function PromptsPage() {
     await list.reload();
   };
 
-  const onDelete = async (t: PromptTemplate) => {
-    if (!confirm(`确定删除模板「${t.name}」？`)) return;
-    await api.deletePromptTemplate(t.id);
-    await list.reload();
+  const onDelete = (t: PromptTemplate) => {
+    requestConfirm({
+      title: "删除模板",
+      message: (
+        <>
+          确定删除模板 <span className="font-medium">{t.name}</span>？
+        </>
+      ),
+      destructive: true,
+      confirmLabel: "确认删除",
+      onConfirm: async () => {
+        await api.deletePromptTemplate(t.id);
+        await list.reload();
+      },
+    });
   };
 
   return (
@@ -122,6 +135,7 @@ export default function PromptsPage() {
           onChange={(e) => setContent(e.target.value)}
         />
       </ResourceDialog>
+      {confirmDialog}
     </>
   );
 }

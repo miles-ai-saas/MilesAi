@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth-store";
 import { usePagedList } from "@/hooks/use-paged-list";
+import { useConfirmAction } from "@/hooks/use-confirm-action";
 import { ResourceListFooter } from "@/components/resource/ResourceListFooter";
 import { ResourceDialog } from "@/components/resource/ResourceDialog";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -12,6 +13,7 @@ import type { Role, TenantUser } from "@/lib/types";
 export default function SystemUsersPage() {
   const { ready } = useRequireAuth();
   const list = usePagedList(useCallback((p, s) => api.listUsers(p, s), []), { enabled: ready });
+  const { requestConfirm, confirmDialog } = useConfirmAction();
 
   const [roles, setRoles] = useState<Role[]>([]);
   const [createOpen, setCreateOpen] = useState(false);
@@ -76,10 +78,21 @@ export default function SystemUsersPage() {
     await list.reload();
   };
 
-  const onDeactivate = async (u: TenantUser) => {
-    if (!confirm(`确定删除用户「${u.username}」？`)) return;
-    await api.deactivateUser(u.id);
-    await list.reload();
+  const onDeactivate = (u: TenantUser) => {
+    requestConfirm({
+      title: "删除用户",
+      message: (
+        <>
+          确定删除用户 <span className="font-medium">{u.username}</span>？
+        </>
+      ),
+      destructive: true,
+      confirmLabel: "确认删除",
+      onConfirm: async () => {
+        await api.deactivateUser(u.id);
+        await list.reload();
+      },
+    });
   };
 
   return (
@@ -232,6 +245,7 @@ export default function SystemUsersPage() {
           </div>
         </div>
       </ResourceDialog>
+      {confirmDialog}
     </div>
   );
 }

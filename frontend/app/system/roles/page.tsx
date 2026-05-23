@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth-store";
 import { usePagedList } from "@/hooks/use-paged-list";
+import { useConfirmAction } from "@/hooks/use-confirm-action";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { ResourceDialog } from "@/components/resource/ResourceDialog";
 import { ResourceListFooter } from "@/components/resource/ResourceListFooter";
@@ -22,6 +23,7 @@ export default function SystemRolesPage() {
   const [selectedPermIds, setSelectedPermIds] = useState<Set<string>>(new Set());
 
   const list = usePagedList(useCallback((p, s) => api.listRoles(p, s), []), { enabled: ready });
+  const { requestConfirm, confirmDialog } = useConfirmAction();
 
   useEffect(() => {
     if (!ready) return;
@@ -77,10 +79,21 @@ export default function SystemRolesPage() {
     await list.reload();
   };
 
-  const onDelete = async (role: Role) => {
-    if (!confirm(`确定删除角色「${role.name}」？`)) return;
-    await api.deleteRole(role.id);
-    await list.reload();
+  const onDelete = (role: Role) => {
+    requestConfirm({
+      title: "删除角色",
+      message: (
+        <>
+          确定删除角色 <span className="font-medium">{role.name}</span>？
+        </>
+      ),
+      destructive: true,
+      confirmLabel: "确认删除",
+      onConfirm: async () => {
+        await api.deleteRole(role.id);
+        await list.reload();
+      },
+    });
   };
 
   return (
@@ -188,6 +201,7 @@ export default function SystemRolesPage() {
           ))}
         </div>
       </ResourceDialog>
+      {confirmDialog}
     </div>
   );
 }

@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth-store";
 import { usePagedList } from "@/hooks/use-paged-list";
+import { useConfirmAction } from "@/hooks/use-confirm-action";
 import { DocumentStatusBadge } from "@/components/kb/DocumentStatusBadge";
 import { KbMetaChips } from "@/components/kb/KbMetaChips";
 import { KbPageAlert } from "@/components/kb/KbPageAlert";
@@ -81,6 +82,8 @@ export default function KbDetailPage() {
     }[]
   >([]);
   const [alert, setAlert] = useState<AlertState>(null);
+  const [docsRefreshing, setDocsRefreshing] = useState(false);
+  const { requestConfirm, confirmDialog } = useConfirmAction();
 
   const docs = usePagedList(useCallback((p, s) => api.listDocuments(id, p, s), [id]), {
     enabled: ready && !!id,
@@ -120,11 +123,14 @@ export default function KbDetailPage() {
     );
   }, [ready, id, reloadKb, reloadQuota]);
 
-  useEffect(() => {
-    if (!hasProcessing || !ready) return;
-    const t = setInterval(() => docs.reload(), 4000);
-    return () => clearInterval(t);
-  }, [hasProcessing, ready, docs.reload]);
+  const onRefreshDocuments = async () => {
+    setDocsRefreshing(true);
+    try {
+      await Promise.all([docs.reload(), reloadQuota()]);
+    } finally {
+      setDocsRefreshing(false);
+    }
+  };
 
   const openSettings = () => {
     if (!kb) return;
@@ -155,11 +161,24 @@ export default function KbDetailPage() {
     });
   };
 
-  const onDeleteKb = async () => {
+  const onDeleteKb = () => {
     if (!kb) return;
-    if (!confirm(`确定删除知识库「${kb.name}」？将删除其下全部文档与向量数据。`)) return;
-    await api.deleteKb(kb.id);
-    router.push("/workbench/kb");
+    requestConfirm({
+      title: "删除知识库",
+      description: "此操作不可撤销。",
+      message: (
+        <>
+          确定删除知识库 <span className="font-medium">{kb.name}</span>
+          ？将删除其下全部文档与向量数据。
+        </>
+      ),
+      destructive: true,
+      confirmLabel: "确认删除",
+      onConfirm: async () => {
+        await api.deleteKb(kb.id);
+        router.push("/workbench/kb");
+      },
+    });
   };
 
   const onUploadFile = async (file: File) => {
@@ -210,11 +229,23 @@ export default function KbDetailPage() {
     }
   };
 
-  const onDelete = async (docId: string) => {
-    if (!confirm("确定删除该文档？向量索引将一并清除。")) return;
-    await api.deleteDocument(id, docId);
-    await Promise.all([docs.reload(), reloadQuota()]);
-    setAlert({ tone: "success", message: "文档已删除。" });
+  const onRequestDeleteDoc = (doc: Document) => {
+    requestConfirm({
+      title: "删除文档",
+      description: "此操作不可撤销，向量索引将一并清除。",
+      message: (
+        <>
+          确定删除文档 <span className="font-medium break-all">{doc.filename}</span>？
+        </>
+      ),
+      destructive: true,
+      confirmLabel: "确认删除",
+      onConfirm: async () => {
+        await api.deleteDocument(id, doc.id);
+        await Promise.all([docs.reload(), reloadQuota()]);
+        setAlert({ tone: "success", message: "文档已删除。" });
+      },
+    });
   };
 
   if (!kb) {
@@ -271,9 +302,8 @@ export default function KbDetailPage() {
           </div>
         </div>
         {hasProcessing && (
-          <p className="mt-4 flex items-center gap-2 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-900">
-            <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-sky-500" />
-            有文档正在入库，列表每 4 秒自动刷新
+          <p className="mt-4 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-900">
+            有文档正在后台入库，请点击文档列表旁的刷新按钮查看最新状态。
           </p>
         )}
       </header>
@@ -305,7 +335,31 @@ export default function KbDetailPage() {
           <div className="rounded-xl border border-line bg-surface p-4 shadow-card">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <h2 className="text-sm font-semibold text-ink">文档列表</h2>
-              <div className="flex flex-wrap gap-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  className="btn-ghost flex h-8 w-8 items-center justify-center p-0"
+                  aria-label="刷新"
+                  title="刷新"
+                  disabled={docsRefreshing || docs.loading}
+                  onClick={onRefreshDocuments}
+                >
+                  <svg
+                    className={`h-4 w-4 ${docsRefreshing ? "animate-spin" : ""}`}
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    aria-hidden
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182"
+                    />
+                  </svg>
+                </button>
+                <div className="flex flex-wrap gap-1">
                 {DOC_FILTERS.map((f) => (
                   <button
                     key={f.key}
@@ -320,6 +374,7 @@ export default function KbDetailPage() {
                     {f.label}
                   </button>
                 ))}
+                </div>
               </div>
             </div>
             {docFilter !== "all" && (
@@ -351,7 +406,7 @@ export default function KbDetailPage() {
                         setExpandedFailId((prev) => (prev === d.id ? null : d.id))
                       }
                       onRetry={() => onRetry(d.id)}
-                      onDelete={() => onDelete(d.id)}
+                      onDelete={() => onRequestDeleteDoc(d)}
                     />
                   ))}
                 </ul>
@@ -485,6 +540,8 @@ export default function KbDetailPage() {
           )}
         </section>
       )}
+
+      {confirmDialog}
 
       <ResourceDialog
         open={settingsOpen}

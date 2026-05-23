@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { api } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth-store";
+import { useConfirmAction } from "@/hooks/use-confirm-action";
 import { ResourceDialog } from "@/components/resource/ResourceDialog";
 import { PageHeader } from "@/components/layout/PageHeader";
 import {
@@ -40,6 +41,8 @@ export default function ModelsPage() {
   const [description, setDescription] = useState("");
   const [apiBase, setApiBase] = useState("");
   const [apiKey, setApiKey] = useState("");
+
+  const { requestConfirm, confirmDialog } = useConfirmAction();
 
   const reload = useCallback(async () => {
     setLoading(true);
@@ -137,11 +140,22 @@ export default function ModelsPage() {
     await reload();
   };
 
-  const onDelete = async (m: ModelConfig) => {
+  const onDelete = (m: ModelConfig) => {
     if (m.source === "builtin") return;
-    if (!confirm(`确定删除自定义模型「${m.name}」？`)) return;
-    await api.deleteModelConfig(m.id);
-    await reload();
+    requestConfirm({
+      title: "删除自定义模型",
+      message: (
+        <>
+          确定删除自定义模型 <span className="font-medium">{m.name}</span>？
+        </>
+      ),
+      destructive: true,
+      confirmLabel: "确认删除",
+      onConfirm: async () => {
+        await api.deleteModelConfig(m.id);
+        await reload();
+      },
+    });
   };
 
   return (
@@ -384,6 +398,7 @@ export default function ModelsPage() {
           onChange={(e) => setApiKey(e.target.value)}
         />
       </ResourceDialog>
+      {confirmDialog}
     </div>
   );
 }

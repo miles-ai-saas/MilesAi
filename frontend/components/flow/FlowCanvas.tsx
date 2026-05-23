@@ -16,6 +16,7 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useConfirmAction } from "@/hooks/use-confirm-action";
 import type { EdgeChange, NodeChange } from "@xyflow/react";
 import {
   NODE_PALETTE,
@@ -55,6 +56,7 @@ function FlowCanvasToolbar({
   onRedo: () => void;
 }) {
   const { getNodes, getEdges, setNodes, setEdges, deleteElements } = useReactFlow();
+  const { requestConfirm, confirmDialog } = useConfirmAction();
 
   const deleteSelected = useCallback(() => {
     const selectedNodes = getNodes().filter((n) => n.selected);
@@ -69,14 +71,22 @@ function FlowCanvasToolbar({
 
   const clearAll = useCallback(() => {
     if (getNodes().length === 0) return;
-    if (!window.confirm("确定清空画布上所有节点和连线？")) return;
-    onPushHistory();
-    setNodes([]);
-    setEdges([]);
-  }, [getNodes, setNodes, setEdges, onPushHistory]);
+    requestConfirm({
+      title: "清空画布",
+      message: "确定清空画布上所有节点和连线？",
+      destructive: true,
+      confirmLabel: "确认清空",
+      onConfirm: () => {
+        onPushHistory();
+        setNodes([]);
+        setEdges([]);
+      },
+    });
+  }, [getNodes, setNodes, setEdges, onPushHistory, requestConfirm]);
 
   return (
-    <div className="flex flex-wrap items-center gap-1 border-b border-slate-200 bg-slate-50 px-2 py-1.5">
+    <>
+      <div className="flex flex-wrap items-center gap-1 border-b border-slate-200 bg-slate-50 px-2 py-1.5">
       <button
         type="button"
         title="撤销 (Ctrl+Z)"
@@ -111,7 +121,9 @@ function FlowCanvasToolbar({
       >
         清空画布
       </button>
-    </div>
+      </div>
+      {confirmDialog}
+    </>
   );
 }
 

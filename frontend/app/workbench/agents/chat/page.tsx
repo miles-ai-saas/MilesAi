@@ -28,6 +28,7 @@ import {
   type ChatSession,
 } from "@/lib/chat-sessions";
 import { useInfiniteList } from "@/hooks/use-infinite-list";
+import { useConfirmAction } from "@/hooks/use-confirm-action";
 
 export default function AgentsChatPage() {
   return (
@@ -63,6 +64,7 @@ function AgentsChatContent() {
   const [rightCollapsed, setRightCollapsed] = useState(false);
   const [query, setQuery] = useState("");
   const [chatting, setChatting] = useState(false);
+  const { requestConfirm, confirmDialog } = useConfirmAction();
 
   const list = useInfiniteList(useCallback((p, s) => api.listAgents(p, s), []), {
     enabled: ready,
@@ -164,12 +166,20 @@ function AgentsChatContent() {
 
   const handleDeleteSession = (sessionId: string) => {
     if (!selectedAgent) return;
-    if (!confirm("确定删除该会话？本地消息记录将无法恢复。")) return;
-    deleteSession(selectedAgent, sessionId);
-    refreshSessions(selectedAgent);
-    const next = ensureActiveSession(selectedAgent);
-    loadSessionIntoUi(selectedAgent, next.id);
-    syncAgentUrl(selectedAgent, next.id);
+    requestConfirm({
+      title: "删除会话",
+      description: "此操作不可撤销。",
+      message: "确定删除该会话？本地消息记录将无法恢复。",
+      destructive: true,
+      confirmLabel: "确认删除",
+      onConfirm: () => {
+        deleteSession(selectedAgent, sessionId);
+        refreshSessions(selectedAgent);
+        const next = ensureActiveSession(selectedAgent);
+        loadSessionIntoUi(selectedAgent, next.id);
+        syncAgentUrl(selectedAgent, next.id);
+      },
+    });
   };
 
   const onSelectAgent = (id: string) => {
@@ -337,6 +347,7 @@ function AgentsChatContent() {
         onClose={closePanel}
         onSaved={() => list.reload()}
       />
+      {confirmDialog}
     </div>
   );
 }

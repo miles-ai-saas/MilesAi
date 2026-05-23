@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth-store";
 import { usePagedList } from "@/hooks/use-paged-list";
+import { useConfirmAction } from "@/hooks/use-confirm-action";
 import { ResourceListFooter } from "@/components/resource/ResourceListFooter";
 import { AddResourceCard } from "@/components/resource/AddResourceCard";
 import { ResourceDialog } from "@/components/resource/ResourceDialog";
@@ -42,6 +43,7 @@ export default function KbPage() {
   const [quotaLoading, setQuotaLoading] = useState(true);
 
   const list = usePagedList(useCallback((p, s) => api.listKbs(p, s), []), { enabled: ready });
+  const { requestConfirm, confirmDialog } = useConfirmAction();
 
   const reloadQuota = useCallback(() => {
     if (!ready) return Promise.resolve();
@@ -121,10 +123,23 @@ export default function KbPage() {
     await Promise.all([list.reload(), reloadQuota()]);
   };
 
-  const onDelete = async (kb: KnowledgeBase) => {
-    if (!confirm(`确定删除知识库「${kb.name}」？将删除其下全部文档与向量数据。`)) return;
-    await api.deleteKb(kb.id);
-    await Promise.all([list.reload(), reloadQuota()]);
+  const onDelete = (kb: KnowledgeBase) => {
+    requestConfirm({
+      title: "删除知识库",
+      description: "此操作不可撤销。",
+      message: (
+        <>
+          确定删除知识库 <span className="font-medium">{kb.name}</span>
+          ？将删除其下全部文档与向量数据。
+        </>
+      ),
+      destructive: true,
+      confirmLabel: "确认删除",
+      onConfirm: async () => {
+        await api.deleteKb(kb.id);
+        await Promise.all([list.reload(), reloadQuota()]);
+      },
+    });
   };
 
   return (
@@ -306,6 +321,7 @@ export default function KbPage() {
           </label>
         )}
       </ResourceDialog>
+      {confirmDialog}
     </>
   );
 }

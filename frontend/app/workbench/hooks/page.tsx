@@ -4,6 +4,7 @@ import { useCallback, useMemo, useState } from "react";
 import { api } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth-store";
 import { usePagedList } from "@/hooks/use-paged-list";
+import { useConfirmAction } from "@/hooks/use-confirm-action";
 import { ResourceListFooter } from "@/components/resource/ResourceListFooter";
 import { AddResourceCard } from "@/components/resource/AddResourceCard";
 import { CardActions } from "@/components/resource/CardActions";
@@ -43,6 +44,7 @@ export default function HooksPage() {
   const [bindTargetId, setBindTargetId] = useState("");
 
   const list = usePagedList(useCallback((p, s) => api.listHooks(p, s), []), { enabled: ready });
+  const { requestConfirm, confirmDialog } = useConfirmAction();
 
   const filtered = useMemo(
     () => filterBySearch(list.items, search, (h) => `${h.name} ${h.hook_type}`),
@@ -86,10 +88,21 @@ export default function HooksPage() {
     await list.reload();
   };
 
-  const onDeleteHook = async (h: HookDefinition) => {
-    if (!confirm(`确定删除钩子「${h.name}」及其全部绑定？`)) return;
-    await api.deleteHook(h.id);
-    await list.reload();
+  const onDeleteHook = (h: HookDefinition) => {
+    requestConfirm({
+      title: "删除钩子",
+      message: (
+        <>
+          确定删除钩子 <span className="font-medium">{h.name}</span> 及其全部绑定？
+        </>
+      ),
+      destructive: true,
+      confirmLabel: "确认删除",
+      onConfirm: async () => {
+        await api.deleteHook(h.id);
+        await list.reload();
+      },
+    });
   };
 
   const openBindings = async (h: HookDefinition) => {
@@ -296,6 +309,7 @@ export default function HooksPage() {
           添加绑定
         </button>
       </ResourceDialog>
+      {confirmDialog}
     </>
   );
 }

@@ -4,6 +4,7 @@ import { useCallback, useMemo, useState } from "react";
 import { api } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth-store";
 import { usePagedList } from "@/hooks/use-paged-list";
+import { useConfirmAction } from "@/hooks/use-confirm-action";
 import { ResourceListFooter } from "@/components/resource/ResourceListFooter";
 import { AddResourceCard } from "@/components/resource/AddResourceCard";
 import { ResourceDialog } from "@/components/resource/ResourceDialog";
@@ -23,6 +24,7 @@ export default function McpPage() {
   const [msg, setMsg] = useState("");
 
   const list = usePagedList(useCallback((p, s) => api.listMcpServices(p, s), []), { enabled: ready });
+  const { requestConfirm, confirmDialog } = useConfirmAction();
 
   const filtered = useMemo(
     () => filterBySearch(list.items, search, (s) => `${s.name} ${s.endpoint_url}`),
@@ -46,6 +48,23 @@ export default function McpPage() {
     } catch (e) {
       setMsg(e instanceof Error ? e.message : "同步失败");
     }
+  };
+
+  const onDelete = (s: McpService) => {
+    requestConfirm({
+      title: "删除 MCP 服务",
+      message: (
+        <>
+          确定删除 MCP 服务 <span className="font-medium">{s.name}</span>？
+        </>
+      ),
+      destructive: true,
+      confirmLabel: "确认删除",
+      onConfirm: async () => {
+        await api.deleteMcpService(s.id);
+        await list.reload();
+      },
+    });
   };
 
   return (
@@ -111,11 +130,9 @@ export default function McpPage() {
                 <button
                   type="button"
                   className="text-xs text-red-600 hover:underline"
-                  onClick={async (e) => {
+                  onClick={(e) => {
                     e.stopPropagation();
-                    if (!confirm(`删除 MCP 服务「${s.name}」？`)) return;
-                    await api.deleteMcpService(s.id);
-                    await list.reload();
+                    onDelete(s);
                   }}
                 >
                   删除
@@ -179,6 +196,7 @@ export default function McpPage() {
           <option value="streamable-http">streamable-http</option>
         </select>
       </ResourceDialog>
+      {confirmDialog}
     </>
   );
 }

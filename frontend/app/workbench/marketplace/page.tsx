@@ -8,6 +8,7 @@ import { usePagedList } from "@/hooks/use-paged-list";
 import { ResourceListFooter } from "@/components/resource/ResourceListFooter";
 import { ResourceItemCard } from "@/components/resource/ResourceItemCard";
 import { ResourceListLayout, type ResourceTab } from "@/components/resource/ResourceListLayout";
+import { PromptDialog } from "@/components/resource/PromptDialog";
 import { filterBySearch } from "@/lib/filter-search";
 import { marketplaceStatusLabel } from "@/lib/marketplace-status";
 import type {
@@ -52,6 +53,8 @@ export default function MarketplacePage() {
   const [installing, setInstalling] = useState<string | null>(null);
   const [publishing, setPublishing] = useState<string | null>(null);
   const [reviewing, setReviewing] = useState<string | null>(null);
+  const [rejectTarget, setRejectTarget] = useState<MarketplaceApp | null>(null);
+  const [rejectLoading, setRejectLoading] = useState(false);
   const [lastResult, setLastResult] = useState<AppInstallResult | null>(null);
   const [msg, setMsg] = useState("");
 
@@ -202,20 +205,24 @@ export default function MarketplacePage() {
     }
   };
 
-  const onReject = async (app: MarketplaceApp) => {
-    const note = window.prompt("驳回原因（将展示给发布方）", "");
-    if (note === null) return;
-    setReviewing(app.id);
+  const onReject = (app: MarketplaceApp) => {
+    setRejectTarget(app);
+  };
+
+  const onConfirmReject = async (note: string) => {
+    if (!rejectTarget) return;
+    setRejectLoading(true);
     setMsg("");
     try {
-      await api.rejectMarketplaceApp(app.id, note || undefined);
+      await api.rejectMarketplaceApp(rejectTarget.id, note || undefined);
       setMsg("已驳回该应用");
+      setRejectTarget(null);
       await pendingApps.reload();
       await myApps.reload();
     } catch (e) {
       setMsg(e instanceof Error ? e.message : "驳回失败");
     } finally {
-      setReviewing(null);
+      setRejectLoading(false);
     }
   };
 
@@ -797,6 +804,21 @@ export default function MarketplacePage() {
           />
         )}
       </div>
+
+      <PromptDialog
+        open={rejectTarget !== null}
+        title="驳回应用"
+        description="驳回原因将展示给发布方。"
+        label="驳回原因（可选）"
+        placeholder="请填写驳回原因"
+        confirmLabel="确认驳回"
+        destructive
+        loading={rejectLoading}
+        onClose={() => {
+          if (!rejectLoading) setRejectTarget(null);
+        }}
+        onConfirm={onConfirmReject}
+      />
     </div>
   );
 }

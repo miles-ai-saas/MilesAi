@@ -11,6 +11,7 @@ import { ResourceItemCard } from "@/components/resource/ResourceItemCard";
 import { ResourceListFooter } from "@/components/resource/ResourceListFooter";
 import { ResourceListLayout } from "@/components/resource/ResourceListLayout";
 import { usePagedList } from "@/hooks/use-paged-list";
+import { useConfirmAction } from "@/hooks/use-confirm-action";
 import { agentModeLabel, agentStatusLabel, agentTypeLabel } from "@/lib/agent-utils";
 import { useRequireAuth } from "@/lib/auth-store";
 import { filterBySearch } from "@/lib/filter-search";
@@ -54,6 +55,7 @@ export default function AgentsPage() {
     ),
     { enabled: ready && tab !== "a2a", resetKey: tab },
   );
+  const { requestConfirm, confirmDialog } = useConfirmAction();
 
   const filtered = useMemo(() => {
     let items = list.items;
@@ -74,18 +76,39 @@ export default function AgentsPage() {
     setDialogOpen(true);
   };
 
-  const onDelete = async (agent: Agent) => {
-    if (!confirm(`确定删除智能体「${agent.name}」？`)) return;
-    await api.deleteAgent(agent.id);
-    await list.reload();
+  const onDelete = (agent: Agent) => {
+    requestConfirm({
+      title: "删除智能体",
+      message: (
+        <>
+          确定删除智能体 <span className="font-medium">{agent.name}</span>？
+        </>
+      ),
+      destructive: true,
+      confirmLabel: "确认删除",
+      onConfirm: async () => {
+        await api.deleteAgent(agent.id);
+        await list.reload();
+      },
+    });
   };
 
-  const onToggleStatus = async (agent: Agent) => {
+  const onToggleStatus = (agent: Agent) => {
     const next = agent.status === "enabled" ? "disabled" : "enabled";
     const verb = next === "disabled" ? "禁用" : "启用";
-    if (!confirm(`确定${verb}智能体「${agent.name}」？`)) return;
-    await api.updateAgent(agent.id, { status: next });
-    await list.reload();
+    requestConfirm({
+      title: `${verb}智能体`,
+      message: (
+        <>
+          确定{verb}智能体 <span className="font-medium">{agent.name}</span>？
+        </>
+      ),
+      confirmLabel: `确认${verb}`,
+      onConfirm: async () => {
+        await api.updateAgent(agent.id, { status: next });
+        await list.reload();
+      },
+    });
   };
 
   const onChat = (agent: Agent) => {
@@ -193,6 +216,7 @@ export default function AgentsPage() {
         onClose={() => setDialogOpen(false)}
         onSaved={() => list.reload()}
       />
+      {confirmDialog}
     </>
   );
 }

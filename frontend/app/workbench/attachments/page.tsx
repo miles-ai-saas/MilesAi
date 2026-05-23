@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth-store";
 import { usePagedList } from "@/hooks/use-paged-list";
+import { useConfirmAction } from "@/hooks/use-confirm-action";
 import { KbQuotaBar } from "@/components/kb/KbQuotaBar";
 import { ResourceListFooter } from "@/components/resource/ResourceListFooter";
 import { ResourceListLayout } from "@/components/resource/ResourceListLayout";
@@ -43,6 +44,7 @@ export default function AttachmentsPage() {
     ),
     { enabled: ready, resetKey: purpose },
   );
+  const { requestConfirm, confirmDialog } = useConfirmAction();
 
   useEffect(() => {
     if (!ready) return;
@@ -79,13 +81,24 @@ export default function AttachmentsPage() {
     }
   };
 
-  const onDelete = async (a: Attachment) => {
-    if (!confirm(`确定删除附件「${a.filename}」？`)) return;
-    await api.deleteAttachment(a.id);
-    await list.reload();
-    const q = await api.getKbQuota();
-    setQuota(q);
-    setMsg("已删除");
+  const onDelete = (a: Attachment) => {
+    requestConfirm({
+      title: "删除附件",
+      message: (
+        <>
+          确定删除附件 <span className="font-medium">{a.filename}</span>？
+        </>
+      ),
+      destructive: true,
+      confirmLabel: "确认删除",
+      onConfirm: async () => {
+        await api.deleteAttachment(a.id);
+        await list.reload();
+        const q = await api.getKbQuota();
+        setQuota(q);
+        setMsg("已删除");
+      },
+    });
   };
 
   return (
@@ -192,6 +205,7 @@ export default function AttachmentsPage() {
           </div>
         )}
       </ResourceListLayout>
+      {confirmDialog}
     </>
   );
 }

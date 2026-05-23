@@ -119,8 +119,8 @@ services:
     restart: unless-stopped
 
   weaviate:
-    # 与 backend weaviate-client>=4.9（当前 4.21）对齐，服务端需 >= 1.27.0
-    image: semitechnologies/weaviate:1.27.26
+    # 与 backend weaviate-client>=4.9（当前 4.21）对齐，服务端需 >= 1.37.4
+    image: semitechnologies/weaviate:1.37.4
     container_name: milesai-weaviate
     environment:
       QUERY_DEFAULTS_LIMIT: 25

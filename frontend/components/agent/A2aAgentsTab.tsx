@@ -9,6 +9,7 @@ import { CardActions } from "@/components/resource/CardActions";
 import { ResourceItemCard } from "@/components/resource/ResourceItemCard";
 import { ResourceListFooter } from "@/components/resource/ResourceListFooter";
 import { usePagedList } from "@/hooks/use-paged-list";
+import { useConfirmAction } from "@/hooks/use-confirm-action";
 import { agentModeLabel, agentStatusLabel, agentTypeLabel } from "@/lib/agent-utils";
 import { useRequireAuth } from "@/lib/auth-store";
 import { filterBySearch } from "@/lib/filter-search";
@@ -42,6 +43,7 @@ export function A2aAgentsTab() {
     useCallback((p, s) => api.listAgents(p, s, "a2a"), []),
     { enabled: ready && subTab === "hosts", resetKey: subTab },
   );
+  const { requestConfirm, confirmDialog } = useConfirmAction();
 
   const filteredHosts = useMemo(
     () => filterBySearch(hosts.items, search, (a) => `${a.name} ${a.description ?? ""}`),
@@ -111,21 +113,43 @@ export function A2aAgentsTab() {
                   <CardActions
                     actions={[
                       { label: "对话", variant: "primary", disabled, onClick: () => router.push(`/workbench/agents/chat?agent=${a.id}`) },
-                      { label: disabled ? "启用" : "禁用", variant: disabled ? "primary" : "danger", onClick: async () => {
+                      { label: disabled ? "启用" : "禁用", variant: disabled ? "primary" : "danger", onClick: () => {
                         const next = a.status === "enabled" ? "disabled" : "enabled";
-                        if (!confirm(`确定${next === "disabled" ? "禁用" : "启用"}「${a.name}」？`)) return;
-                        await api.updateAgent(a.id, { status: next });
-                        await hosts.reload();
+                        const verb = next === "disabled" ? "禁用" : "启用";
+                        requestConfirm({
+                          title: `${verb}互联宿主`,
+                          message: (
+                            <>
+                              确定{verb} <span className="font-medium">{a.name}</span>？
+                            </>
+                          ),
+                          confirmLabel: `确认${verb}`,
+                          onConfirm: async () => {
+                            await api.updateAgent(a.id, { status: next });
+                            await hosts.reload();
+                          },
+                        });
                       }},
                     ]}
                     onEdit={() => {
                       setEditingHost(a);
                       setHostDialogOpen(true);
                     }}
-                    onDelete={async () => {
-                      if (!confirm(`确定删除「${a.name}」？`)) return;
-                      await api.deleteAgent(a.id);
-                      await hosts.reload();
+                    onDelete={() => {
+                      requestConfirm({
+                        title: "删除互联宿主",
+                        message: (
+                          <>
+                            确定删除 <span className="font-medium">{a.name}</span>？
+                          </>
+                        ),
+                        destructive: true,
+                        confirmLabel: "确认删除",
+                        onConfirm: async () => {
+                          await api.deleteAgent(a.id);
+                          await hosts.reload();
+                        },
+                      });
                     }}
                   />
                 }
@@ -157,6 +181,7 @@ export function A2aAgentsTab() {
         onClose={() => setHostDialogOpen(false)}
         onSaved={() => hosts.reload()}
       />
+      {confirmDialog}
     </>
   );
 }
