@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.apps.migrate import run_migrations
 from app.apps.routers import admin_router, api_router
 from app.common.handlers import exception_handlers
+from app.common.trace import reset_trace_id, set_trace_id
 from app.core.config import get_settings
 
 
@@ -44,15 +45,20 @@ def create_app() -> FastAPI:
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
+        expose_headers=["X-Trace-Id"],
     )
 
     @app.middleware("http")
     async def add_trace_id(request: Request, call_next):
-        trace_id = request.headers.get("X-Trace-Id", str(uuid.uuid4()))
+        trace_id = request.headers.get("X-Trace-Id") or str(uuid.uuid4())
         request.state.trace_id = trace_id
-        response = await call_next(request)
-        response.headers["X-Trace-Id"] = trace_id
-        return response
+        token = set_trace_id(trace_id)
+        try:
+            response = await call_next(request)
+            response.headers["X-Trace-Id"] = trace_id
+            return response
+        finally:
+            reset_trace_id(token)
 
     app.include_router(api_router)
     app.include_router(admin_router)
