@@ -33,6 +33,8 @@ npm run dev
 | `/risk` | 风险事件、IP 黑名单、限流 |
 | `/audit` | 审计日志 |
 | `/profile` | 改密、会话列表 |
+| `/marketplace-categories` | 应用市场分类（mkt_categories） |
+| `/sys-categories` | 工作台分类（全平台全局字典） |
 
 ## Docker
 

@@ -492,8 +492,8 @@ flowchart TD
 |------|------|
 | 内置工具 | `calculator`、`http_request`、`knowledge_search`（`tools/invoke.py`） |
 | 自定义 HTTP 工具 | `tool_tools` 表配置 |
-| MCP | `tools/list` 同步；无工具时占位名；**invoke 可能返回 `status: mock`** |
-| 技能包 | `skl_skill_packages`：对话时注入系统提示片段 |
+| MCP | `tools/list` 同步；HTTP/SSE **`tools/call` 真 invoke**；STDIO 待沙箱，见 [mcp.md](../guides/mcp.md)、[mcp-sandbox.md](./mcp-sandbox.md) |
+| 技能包 | `skl_skill_packages` + 磁盘 `SKILL.md`；导入与注入见 [skill-packages.md](../guides/skill-packages.md) |
 | 智能体配置 | `config.skill_package_id`、`config.mcp_service_ids` |
 
 ---
@@ -524,7 +524,7 @@ flowchart TD
 | `/workbench/models` | 模型供应商 |
 | `/workbench/hooks` | 钩子 |
 | `/workbench/tools` | 工具 |
-| `/workbench/skills` | 技能包 |
+| `/workbench/skills`, `/workbench/skills/[id]` | 技能包列表与 SKILL.md 编辑器 |
 | `/workbench/mcp` | MCP |
 | `/workbench/tasks` | 任务中心 |
 | `/workbench/monitor` | 监控统计 |
@@ -601,7 +601,7 @@ flowchart TD
 | DeepAgents 内部协同 | ✅ | 可选依赖，可降级 |
 | A2A Peer / 宿主 / custom 引用 | ✅ | 对外暴露本平台 Card：未做 |
 | 合规 / HTTP 钩子 | ✅ | Python 钩子未实现 |
-| 工具 / MCP / 技能包 | 🔶 | MCP invoke 可能 mock |
+| 工具 / MCP / 技能包 | 🔶 | MCP HTTP/SSE invoke 已接通；STDIO 待沙箱 |
 | 应用市场审核与安装 | ✅ | |
 | 监控报表 / 告警 Webhook | 🔶 | 基础聚合 + HTTP 告警 |
 | 运营计费 / 风控 | ✅ | 后台 UI + API |

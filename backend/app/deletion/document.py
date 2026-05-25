@@ -1,6 +1,12 @@
-"""文档衍生数据清理：vector_refs、document_chunks、向量库记录。
+"""
+文档衍生数据清理：vector_refs、document_chunks、向量库记录。
 
-入库重试与 API 删除均调用；同步版供 Celery pipeline，异步版供 HTTP。
+调用方
+------
+- **同步** ``clear_document_derived_data_sync``：Celery ``run_ingest`` 的 ``on_before_index``（覆盖入库）
+- **异步** ``clear_document_derived_data_async``：API 删除文档
+
+顺序：先删 PG 关联表，再 ``gateway.delete_by_document`` 按 document_id 删向量库。
 """
 
 from uuid import UUID

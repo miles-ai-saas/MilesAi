@@ -1,7 +1,19 @@
-"""LangChain Document 加载与解析后端路由。
+"""
+LangChain Document 加载与解析后端路由。
 
-入库唯一 Parse 入口：`load_documents_from_bytes`（Celery ingest → pipeline）。
-路由顺序：图/音 → 文本 → Docling（可失败回退 pypdf）→ pypdf → Office 无 docling 报错。
+入库唯一 Parse 入口
+------------------
+``load_documents_from_bytes`` ← ``pipeline.run_ingest_pipeline`` ← Celery/上传。
+
+路由顺序（自上而下命中即返回）
+----------------------------
+1. 图片 / 音频 → ``parse_image`` / ``parse_audio``（可选 OCR/Whisper，无依赖时占位文本）
+2. 纯文本 .txt/.md 或 text/* → ``parse_text``
+3. Docling（``PARSE_PDF_BACKEND=docling`` 且扩展名支持）→ 失败可 ``parse_docling_fallback_pypdf`` 回退
+4. PDF → ``load_pdf_documents``（PyPDFLoader，按页 Document）
+5. Office 等 → 必须 docling；未配置则 ``BadRequestError`` 提示安装 parse-docling
+
+输出 metadata.parser 供 ``chunk.chunk_documents`` 选择分片策略（docling/pypdf/...）。
 """
 
 from __future__ import annotations

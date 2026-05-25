@@ -1,6 +1,15 @@
-"""OpenAI 兼容 /v1/embeddings（DashScope compatible-mode 等）。
+"""
+OpenAI 兼容 ``POST {api_base}/embeddings``（``invoke_mode=openai_compatible``）。
 
-按 embedding_batch_size_from_model 分片请求，避免通义等接口 batch>10 报错。
+典型场景
+--------
+- 阿里云 DashScope compatible-mode
+- 自建 vLLM / TEI 等 OpenAI 形状网关
+
+分批
+----
+``embedding_batch_size_from_model``；通义 DashScope 端点强制单次 input ≤10 条。
+请求体带 ``dimensions``，须与 KB 固化维度一致。
 """
 
 from __future__ import annotations

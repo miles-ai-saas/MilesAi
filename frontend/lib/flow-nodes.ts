@@ -1,3 +1,16 @@
+/**
+ * 流程画布节点类型与 graph_json 互转。
+ *
+ * 须与后端保持一致：
+ * - ``flow_runtime.nodes.registry.NODE_REGISTRY``
+ * - ``integrations.langgraph.compiler.SUPPORTED_CANVAS_NODE_TYPES``
+ *
+ * Handle 约定（与 compiler._gather_node_inputs 对齐）：
+ * - TextInput output → query / input
+ * - KnowledgeSearch output → hits（targetHandle）
+ * - PromptTemplate output → prompt
+ * - ConditionBranch sourceHandle → true | false
+ */
 import type { Node, Edge } from "@xyflow/react";
 import type { FlowEdge, FlowGraph, FlowNode } from "./types";
 

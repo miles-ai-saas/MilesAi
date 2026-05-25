@@ -1,5 +1,9 @@
 "use client";
 
+/**
+ * React Flow 节点卡片：Handle id 须与导出 graph_json 的 sourceHandle/targetHandle 一致。
+ * 见 lib/flow-nodes.ts 与 backend flow_runtime/templates/README.md（RAG 模板边示例）。
+ */
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 import { NODE_PALETTE } from "@/lib/flow-nodes";
 

@@ -1,4 +1,9 @@
-"""智能体 HTTP API：配置 CRUD 与对话（RAG/流程/A2A/子智能体由 Service 编排）。"""
+"""
+智能体 HTTP API。
+
+``POST /{id}/chat`` 委托 ``AgentService.chat``，内部按 A2A/子 Agent/流程/RAG 优先级编排；
+知识库检索细节见 ``tenant.agents.services.agent._rag_chat`` 与 ``integrations.langgraph``。
+"""
 
 from uuid import UUID
 
@@ -25,10 +30,14 @@ def _svc(db: AsyncSession, ctx: TenantContext) -> AgentService:
 async def list_agents(
     params: PageParams = Depends(get_page_params),
     agent_type: AgentType | None = Query(None, description="按类型筛选：custom | a2a"),
+    category_id: UUID | None = Query(None, description="按分类 ID 筛选"),
+    tag_ids: list[UUID] | None = Query(None, description="按标签筛选（任一匹配）"),
     ctx: TenantContext = Depends(require_permissions("agent:read")),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await _svc(db, ctx).list_agents(params, agent_type=agent_type)
+    result = await _svc(db, ctx).list_agents(
+        params, agent_type=agent_type, category_id=category_id, tag_ids=tag_ids
+    )
     return page_ok(result.items, result.total, result.page, result.size)
 
 

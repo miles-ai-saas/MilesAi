@@ -15,6 +15,10 @@ import { useConfirmAction } from "@/hooks/use-confirm-action";
 import { agentModeLabel, agentStatusLabel, agentTypeLabel } from "@/lib/agent-utils";
 import { useRequireAuth } from "@/lib/auth-store";
 import { filterBySearch } from "@/lib/filter-search";
+import { useCategoryTabs } from "@/components/category/useCategoryTabs";
+import { TagChips } from "@/components/tag/TagChips";
+import { TagFilterSelect } from "@/components/tag/TagFilterSelect";
+import { TagManageDialog } from "@/components/tag/TagManageDialog";
 import { api } from "@/lib/api";
 import type { Agent, AgentType } from "@/lib/types";
 
@@ -47,13 +51,23 @@ export default function AgentsPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Agent | null>(null);
   const [viewingId, setViewingId] = useState<string | null>(null);
+  const cat = useCategoryTabs("agent");
+  const [tagFilterIds, setTagFilterIds] = useState<string[]>([]);
+  const [tagManageOpen, setTagManageOpen] = useState(false);
 
   const list = usePagedList(
     useCallback(
-      (p, s) => api.listAgents(p, s, tab === "all" ? undefined : tabToApiType(tab)),
-      [tab],
+      (p, s) =>
+        api.listAgents(
+          p,
+          s,
+          tab === "all" ? undefined : tabToApiType(tab),
+          cat.activeCategoryId,
+          tagFilterIds.length ? tagFilterIds : undefined,
+        ),
+      [tab, cat.activeCategoryId, tagFilterIds],
     ),
-    { enabled: ready && tab !== "a2a", resetKey: tab },
+    { enabled: ready && tab !== "a2a", resetKey: `${tab}-${cat.activeId}-${tagFilterIds.join(",")}` },
   );
   const { requestConfirm, confirmDialog } = useConfirmAction();
 
@@ -128,6 +142,32 @@ export default function AgentsPage() {
         tabs={TAB_ITEMS.map((t) => ({ key: t.id, label: t.label }))}
         activeTab={tab}
         onTabChange={(key) => setTab(key as AgentsTab)}
+        headerAction={
+          tab !== "a2a" ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <select
+                className="input-field text-sm"
+                value={cat.activeId}
+                onChange={(e) => cat.setActiveId(e.target.value)}
+                aria-label="按分类筛选"
+              >
+                {cat.tabs.map((t) => (
+                  <option key={t.key || "all"} value={t.key}>
+                    {t.label}
+                  </option>
+                ))}
+              </select>
+              <TagFilterSelect value={tagFilterIds} onChange={setTagFilterIds} />
+              <button
+                type="button"
+                className="btn-ghost border border-line text-sm"
+                onClick={() => setTagManageOpen(true)}
+              >
+                管理标签
+              </button>
+            </div>
+          ) : undefined
+        }
         footer={
           tab !== "a2a" && !list.loading ? (
             <ResourceListFooter
@@ -158,11 +198,15 @@ export default function AgentsPage() {
                   badge={agentStatusLabel(a.status)}
                   muted={disabled}
                   meta={
-                    <span>
-                      {agentTypeLabel(a)} ·{" "}
-                      {a.kb_ids.length > 0 ? `知识库 ${a.kb_ids.length}` : "未绑知识库"} ·{" "}
-                      {agentModeLabel(a)}
-                    </span>
+                    <>
+                      <span>
+                        {a.category_name ? `${a.category_name} · ` : ""}
+                        {agentTypeLabel(a)} ·{" "}
+                        {a.kb_ids.length > 0 ? `知识库 ${a.kb_ids.length}` : "未绑知识库"} ·{" "}
+                        {agentModeLabel(a)}
+                      </span>
+                      <TagChips tags={a.tags} />
+                    </>
                   }
                   actions={
                     <CardActions
@@ -216,6 +260,7 @@ export default function AgentsPage() {
         onClose={() => setDialogOpen(false)}
         onSaved={() => list.reload()}
       />
+      <TagManageDialog open={tagManageOpen} onClose={() => setTagManageOpen(false)} />
       {confirmDialog}
     </>
   );

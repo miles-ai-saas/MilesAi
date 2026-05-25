@@ -1,4 +1,14 @@
-"""流程 L1：版本化 graph_json、发布、试运行与 LangGraph 编译预览。"""
+"""
+流程 L1：版本化 graph_json、发布、试运行与 LangGraph 编译预览。
+
+与知识库
+--------
+``run(..., kb_ids=...)`` 将 id 列表注入 ``RunContext``，画布 **KnowledgeSearch** 在未配置
+节点级 ``kb_id`` 时使用该列表（与 Agent 发布流程对话行为一致）。
+
+智能体绑定 ``published_flow_id`` 后由 ``AgentService.chat`` 构造 ``RunContext`` 并执行，
+不经过本 Service 的调试 API。
+"""
 
 from uuid import UUID
 
@@ -125,7 +135,11 @@ class FlowService(BaseService):
         return FlowOut.model_validate(flow)
 
     async def run(self, flow_id: UUID, body: FlowRunRequest, kb_ids: list[str] | None = None) -> FlowRunResponse:
-        """调试运行：合规 + Hook + flow_runtime（与智能体挂流程时共用 RunContext）。"""
+        """
+        工作台调试运行：合规 + Hook + ``get_flow_runtime().run``。
+
+        ``kb_ids`` 可选；用于测试带 KnowledgeSearch 节点的画布。
+        """
         flow = await self._get_flow_or_raise(flow_id)
         version = await self.repo.get_version(flow.id, flow.current_version)
         if not version:
@@ -172,7 +186,11 @@ class FlowService(BaseService):
         return FlowRunResponse(output=output, steps=result.steps)
 
     async def compile_preview(self, flow_id: UUID) -> dict:
-        """校验 graph_json 能否被 LangGraph 编译（不执行）。"""
+        """
+        校验当前版本 ``graph_json`` 能否被 LangGraph 编译（不执行）。
+
+        返回 ``FlowCompileReport.to_dict()``：``compilable``、``errors``、``execution_layers`` 等。
+        """
         flow = await self._get_flow_or_raise(flow_id)
         version = await self.repo.get_version(flow.id, flow.current_version)
         if not version:

@@ -4,6 +4,7 @@
 逻辑外键无 DB FK，删除见 app.deletion.cascade。
 """
 
+from app.models.category import CategoryDomain, SysCategory
 from app.models.agent import Agent, AgentStatus, AgentSubAgentBinding, agent_kb_bindings
 from app.tenant.compliance.models import InterceptLog, SensitiveAction, SensitiveWord
 from app.tenant.hooks.models import (
@@ -33,11 +34,13 @@ from app.models.permission import Permission
 from app.models.role import Role, role_permissions, user_roles
 from app.models.system import SystemConfig
 from app.models.task import CeleryTaskRecord, TaskStatus
-from app.tenant.tools.models import Tool, ToolType
+from app.tenant.tools.models import Tool, ToolInvocationLog, ToolType
 from app.models.tenant import Tenant
 from app.models.user import User
 
 __all__ = [
+    "CategoryDomain",
+    "SysCategory",
     "Tenant",
     "User",
     "Role",
@@ -73,6 +76,7 @@ __all__ = [
     "SkillPackage",
     "Tool",
     "ToolType",
+    "ToolInvocationLog",
     "McpService",
     "McpStatus",
     "AppCategory",

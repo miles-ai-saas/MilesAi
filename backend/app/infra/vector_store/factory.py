@@ -22,6 +22,7 @@ def get_vector_store() -> VectorStore:
             f"不支持的 VECTOR_STORE_BACKEND={name!r}，"
             f"可选: {', '.join(sorted(_BACKENDS))}"
         )
+    # 延迟 import，避免未启用后端时加载对应客户端 SDK
     if name == "weaviate":
         from app.infra.vector_store.weaviate import WeaviateVectorStore
 
@@ -30,6 +31,7 @@ def get_vector_store() -> VectorStore:
         from app.infra.vector_store.pgvector import PgVectorStore
 
         return PgVectorStore()
+    # 默认 milvus：MilvusClient 直连，不经 LangChain ORM
     from app.infra.vector_store.milvus import MilvusVectorStore
 
     return MilvusVectorStore()

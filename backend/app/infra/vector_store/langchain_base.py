@@ -17,7 +17,11 @@ from app.infra.vector_store.precomputed import PrecomputedEmbeddings
 
 
 def upsert_add_texts(store: Any, record: ChunkVectorRecord, *, embedding_attr: str) -> str:
-    """Milvus / Weaviate：预计算向量 + add_texts。"""
+    """
+    Weaviate（及历史 Milvus LC 路径）：add_texts + 临时替换 store 的 embedding 实现。
+
+    embedding_attr 多为 ``_embedding``；单次写入只绑定向量列表 [record.vector]。
+    """
     validate_dimension(len(record.vector))
     doc = chunk_record_to_document(record)
     setattr(store, embedding_attr, PrecomputedEmbeddings([record.vector]))
@@ -30,7 +34,7 @@ def upsert_add_texts(store: Any, record: ChunkVectorRecord, *, embedding_attr: s
 
 
 def upsert_add_embeddings(store: Any, record: ChunkVectorRecord) -> str:
-    """pgvector：add_embeddings。"""
+    """pgvector：直接 add_embeddings，不经过 embed_documents 调模型。"""
     validate_dimension(len(record.vector))
     doc = chunk_record_to_document(record)
     obj_id = doc.id or str(record.chunk_id)

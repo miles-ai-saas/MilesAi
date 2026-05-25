@@ -1,6 +1,15 @@
-"""RAG 检索增强生成（线性路径，无 LangGraph）。
+"""
+RAG 检索增强生成（线性路径，无 LangGraph）。
 
-多 KB 检索经 integrations.langchain.vectorstores → rag.retrieve.multi_kb。
+适用场景
+--------
+- 简单「多 KB 问答」API 或脚本：retrieve → 拼 prompt → ``ainvoke_chat``。
+- 复杂 Agent / 流程画布走 ``integrations.langchain`` / LangGraph，不经过本模块。
+
+依赖
+----
+- 检索：``integrations.langchain.vectorstores.search_multi_kb_async`` → ``rag.retrieve.multi_kb``。
+- 上下文：``generate.context.build_rag_user_prompt``。
 """
 
 from __future__ import annotations
@@ -26,7 +35,12 @@ async def retrieve_hits(
     db: AsyncSession,
     top_k: int = 5,
 ) -> list[dict[str, Any]]:
-    """多 KB 检索命中（无租户上下文，不写 actor）。"""
+    """
+    多 KB 检索（LangGraph retrieve 节点、线性 RAG 共用）。
+
+    ``write_log=False`` 等价路径：不记 actor/agent，不写 ``kb_search_logs``。
+    需审计时请用 ``retrieve_hits_with_ctx``。
+    """
     kbs = await load_kbs_for_tenant(db, tenant_id, kb_ids)
     return await search_multi_kb_async(
         query, kbs=kbs, db=db, tenant_id=tenant_id, top_k=top_k
@@ -42,7 +56,7 @@ async def retrieve_hits_with_ctx(
     top_k: int = 5,
     agent_id: UUID | None = None,
 ) -> list[dict[str, Any]]:
-    """带用户/agent 上下文的检索（写 search_log）。"""
+    """带租户用户/agent 的检索；完成后可写 search_log（由 vectorstores 回调）。"""
     kbs = await load_kbs_for_tenant(db, ctx.tenant_id, kb_ids)
     return await search_multi_kb_async(
         query,
@@ -66,7 +80,11 @@ async def rag_answer(
     top_k: int = 5,
     temperature: float = 0.7,
 ) -> tuple[str, list[dict[str, Any]]]:
-    """检索增强问答，返回 (answer, hits)。"""
+    """
+    端到端 RAG：检索 → 拼 prompt → LLM 生成。
+
+    返回 (answer 文本, hits) 便于调用方展示引用来源。
+    """
     hits = await retrieve_hits(
         query,
         tenant_id=tenant_id,

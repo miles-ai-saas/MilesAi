@@ -25,6 +25,19 @@ React Flow → PUT /flows/{id}/graph → flow_versions
 
 `POST /flows/{id}/compile` 预览编译结果；不可编译返回 `400` + `errors`。要求 **DAG**（无环）。
 
+### 内置 RAG 画布模板
+
+线性模板（无 `ConditionBranch`）：`TextInput → KnowledgeSearch → PromptTemplate → LLMCall → TextOutput`。
+
+| 位置 | 说明 |
+|------|------|
+| 后端 JSON | [`flow_runtime/templates/rag_flow.json`](../backend/app/flow_runtime/templates/rag_flow.json) |
+| 结构说明 | [`templates/README.md`](../backend/app/flow_runtime/templates/README.md) |
+| 前端初始化 | `frontend/lib/flow-nodes.ts` → `RAG_TEMPLATE` |
+| 市场种子 | `tenant.marketplace.util.load_rag_graph_template()` |
+
+编译执行见 `integrations.langgraph.compiler`（`build_canvas_graph` / `run_compiled_canvas`），**不同于**下文 Agent LangGraph RAG 图。
+
 ### ConditionBranch（`data.mode`）
 
 | mode | 说明 |

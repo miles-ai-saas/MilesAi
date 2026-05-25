@@ -1,11 +1,8 @@
 "use client";
 
 import type { Dispatch, SetStateAction } from "react";
-import {
-  AGENT_TAG_OPTIONS,
-  formatAgentCode,
-  type AgentFormValues,
-} from "@/components/agent/agent-form-shared";
+import { formatAgentCode, type AgentFormValues } from "@/components/agent/agent-form-shared";
+import { TagPicker } from "@/components/tag/TagPicker";
 import { SUB_AGENT_ROLE_OPTIONS } from "@/lib/agent-utils";
 import type {
   Agent,
@@ -16,6 +13,7 @@ import type {
   ModelConfig,
   PromptTemplate,
   SkillPackage,
+  SysCategory,
 } from "@/lib/types";
 
 type Props = {
@@ -24,6 +22,7 @@ type Props = {
   setForm: Dispatch<SetStateAction<AgentFormValues>>;
   agentId?: string;
   agent?: Agent | null;
+  categories: SysCategory[];
   kbs: KnowledgeBase[];
   flows: Flow[];
   prompts: PromptTemplate[];
@@ -42,6 +41,7 @@ export function AgentFormStepContent({
   setForm,
   agentId,
   agent,
+  categories,
   kbs,
   flows,
   prompts,
@@ -124,18 +124,26 @@ export function AgentFormStepContent({
       return (
         <div className={`mx-auto ${formWidth} space-y-5`}>
           <label className="block text-sm">
-            <span className="mb-1 block text-ink-muted">标签</span>
+            <span className="mb-1 block text-ink-muted">分类</span>
             <select
               className="input-field w-full"
-              value={form.tag}
-              onChange={(e) => setForm((f) => ({ ...f, tag: e.target.value }))}
+              value={form.category_id}
+              onChange={(e) => setForm((f) => ({ ...f, category_id: e.target.value }))}
             >
-              {AGENT_TAG_OPTIONS.map((o) => (
-                <option key={o.value || "none"} value={o.value}>
-                  {o.label}
+              <option value="">未分类</option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
                 </option>
               ))}
             </select>
+          </label>
+          <label className="block text-sm">
+            <span className="mb-1 block text-ink-muted">标签</span>
+            <TagPicker
+              value={form.tag_ids}
+              onChange={(tag_ids) => setForm((f) => ({ ...f, tag_ids }))}
+            />
           </label>
           <label className="block text-sm">
             <span className="mb-1 block text-ink-muted">

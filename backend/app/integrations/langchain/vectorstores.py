@@ -1,6 +1,16 @@
-"""LangChain 向量检索适配（L3）：按 KB 生成 query 向量后委托 rag.retrieve.multi_kb。
+"""
+LangChain 向量检索适配层（L3）。
 
-Agent/流程/工具应优先本模块或 rag.generate.retrieve_hits，勿直接拼向量库 Filter。
+职责
+----
+- 将 **query 文本** 转为向量（``embed_query_for_kb*``，按 KB 的 embedding 模型）。
+- 委托 **L2** ``rag.retrieve.multi_kb`` 做 vector/hybrid/rerank 召回。
+- 可选写 ``kb_search_logs``（Agent 路径默认开启）。
+
+使用约定
+--------
+Agent、流程节点、内置工具应 import 本模块或 ``rag.generate``，
+勿直接操作 ``infra.vector_store`` 或手写 Filter 表达式。
 """
 
 from __future__ import annotations
@@ -26,7 +36,7 @@ from app.tenant.models.services.rerank_resolve import (
 
 
 def _resolve_rerank_sync(db: Session, kb: KnowledgeBase, tenant_id: UUID) -> ModelConfig | None:
-    """KB 未配置 rerank 时返回 None。"""
+    """解析 KB 绑定的 rerank 模型；未配置则跳过重排。"""
     if not kb.rerank_model_config_id:
         return None
     return resolve_rerank_model_sync(db, kb.rerank_model_config_id, tenant_id)
@@ -35,7 +45,7 @@ def _resolve_rerank_sync(db: Session, kb: KnowledgeBase, tenant_id: UUID) -> Mod
 async def _resolve_rerank_async(
     db: AsyncSession, kb: KnowledgeBase, tenant_id: UUID
 ) -> ModelConfig | None:
-    """异步解析 KB 绑定的 rerank 模型。"""
+    """异步解析 rerank 模型（multi_kb_async 使用）。"""
     if not kb.rerank_model_config_id:
         return None
     return await resolve_rerank_model_by_id(db, kb.rerank_model_config_id, tenant_id)
@@ -49,7 +59,7 @@ def search_kb(
     limit: int = 10,
     mode: str = "default",
 ) -> list[dict[str, Any]]:
-    """单 KB 检索（默认注入 embed_query_for_kb_sync）。"""
+    """单 KB 同步检索（注入 embed + rerank 解析）。"""
     return _search_kb(
         query,
         kb=kb,
@@ -69,7 +79,7 @@ def search_multi_kb(
     top_k: int = 5,
     mode: str = "default",
 ) -> list[dict[str, Any]]:
-    """多 KB 同步检索。"""
+    """多 KB 同步检索后全局按 score 排序截断。"""
     return _search_multi_kb(
         query,
         kbs=kbs,
@@ -82,7 +92,7 @@ def search_multi_kb(
 
 
 async def _write_search_log(db: AsyncSession, payload: dict[str, Any]) -> None:
-    """multi_kb 检索完成后的审计日志回调。"""
+    """``search_multi_kb_async`` 完成后的审计回调。"""
     from app.tenant.kb.services.search_log import write_kb_search_log
 
     kbs: list[KnowledgeBase] = payload["kbs"]
@@ -115,7 +125,11 @@ async def search_multi_kb_async(
     agent_id: UUID | None = None,
     write_log: bool = True,
 ) -> list[dict[str, Any]]:
-    """Agent/RAG 主入口：多 KB 异步检索，默认写 search_log。"""
+    """
+    Agent / 多 KB RAG 主入口。
+
+    ``write_log=False`` 可用于内部探测；默认写 search_log 便于审计与监控。
+    """
     return await _search_multi_kb_async(
         query,
         kbs=kbs,
@@ -139,5 +153,5 @@ def search_as_documents(
     db: Session,
     top_k: int = 5,
 ) -> list[Document]:
-    """检索结果转为 LangChain Document 列表。"""
+    """检索 hit 转为 LangChain Document，供工具链/Retriever 使用。"""
     return [hit_to_document(h) for h in search_multi_kb(query, kbs=kbs, db=db, top_k=top_k)]

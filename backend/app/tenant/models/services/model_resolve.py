@@ -1,6 +1,12 @@
-"""解析租户可用的有效模型配置（平台 Key + BYOK 覆盖）。
+"""
+解析租户可用的有效 **对话/多模态** ModelConfig（平台 Key + BYOK）。
 
-对话/RAG 调用前：resolve_model_for_invoke 合并租户凭证。
+与 embedding/rerank 解析的分工
+------------------------------
+- 本模块：``ainvoke_chat``、LangGraph ``run_rag_workflow``、画布 ``llm_call``
+- ``embedding_resolve`` / ``rerank_resolve``：知识库向量化与检索精排
+
+``resolve_model_for_invoke`` 返回副本，合并 ``ModelTenantCredential`` 中的 api_key/api_base。
 """
 
 from __future__ import annotations

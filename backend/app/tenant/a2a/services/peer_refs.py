@@ -1,6 +1,13 @@
-"""自定义智能体 ↔ 外部 A2A Peer 引用（agt_agent_a2a_peer_refs）。
+"""
+CUSTOM 智能体 ↔ 外部 A2A Peer 引用（表 ``agt_agent_a2a_peer_refs``）。
 
-创建/更新 Agent 时 validate_and_sync；对话时 list_agent_a2a_peer_refs。
+字段
+----
+- ``trigger_keywords``：规则层强制调用（``invoke.evaluate_rule_triggered_peers``）
+- ``role_hint``：规划 LLM 选 Peer 时的说明
+- 每 Agent 最多 ``MAX_A2A_PEER_REFS``（4）个
+
+对话：``list_agent_a2a_peer_refs`` 仅返回 enabled；与本地 KB 绑定（``agt_kb_bindings``）独立。
 """
 
 from uuid import UUID

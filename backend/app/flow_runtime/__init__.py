@@ -1,6 +1,12 @@
-"""流程节点与执行入口（画布由 LangGraph 编译运行）。
+"""
+流程运行时对外门面（惰性 ``__getattr__``）。
 
-Agent.published_flow_id → get_flow_runtime().run(graph_json, ctx)。
+典型调用
+--------
+- 智能体：``Agent.published_flow_id`` → ``get_flow_runtime().run(graph_json, RunContext)``
+- 工作台调试：``FlowService.run``（可传入 ``kb_ids`` 供 KnowledgeSearch）
+
+与 RAG 关系：画布内检索走 ``nodes.rag_nodes``，不经过 Agent ``rag_qa`` LangGraph。
 """
 
 __all__ = ["get_flow_runtime", "RunContext", "RunResult", "FlowGraph"]

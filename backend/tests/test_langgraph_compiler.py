@@ -1,4 +1,8 @@
-"""画布 graph_json → LangGraph 编译。"""
+"""
+画布 ``graph_json`` → LangGraph 编译单测。
+
+覆盖 ``rag_flow.json`` 模板可编译、内置 RAG_GRAPH 拓扑序与并行层诊断。
+"""
 
 from app.integrations.langgraph.compiler import can_compile_flow_graph, validate_graph_for_compile
 RAG_GRAPH = {

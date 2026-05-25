@@ -6,6 +6,7 @@ import { api } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth-store";
 import { usePagedList } from "@/hooks/use-paged-list";
 import { ResourceListFooter } from "@/components/resource/ResourceListFooter";
+import { ResourceDialog } from "@/components/resource/ResourceDialog";
 import { ResourceItemCard } from "@/components/resource/ResourceItemCard";
 import { ResourceListLayout, type ResourceTab } from "@/components/resource/ResourceListLayout";
 import { PromptDialog } from "@/components/resource/PromptDialog";
@@ -22,7 +23,10 @@ import type {
   MarketplaceAppDetail,
 } from "@/lib/types";
 
-type MainView = "plaza" | "mine" | "publish" | "review";
+type MainView = "plaza" | "installs" | "mine" | "publish" | "review";
+
+const PAGE_DESC =
+  "浏览并安装已审核上架的应用；可将本租户知识库、流程或智能体打包为应用，审核通过后供其他租户安装。";
 
 function StarDisplay({ value, count }: { value: number; count?: number }) {
   const full = Math.round(value);
@@ -33,10 +37,70 @@ function StarDisplay({ value, count }: { value: number; count?: number }) {
           ★
         </span>
       ))}
-      {count !== undefined && (
-        <span className="ml-1 text-xs text-ink-faint">({count})</span>
-      )}
+      {count !== undefined && <span className="ml-1 text-xs text-ink-faint">({count})</span>}
     </span>
+  );
+}
+
+function StatChip({ label, value, hint }: { label: string; value: string; hint?: string }) {
+  return (
+    <div className="rounded-xl border border-line bg-surface px-4 py-3 shadow-card">
+      <p className="text-xs text-ink-muted">{label}</p>
+      <p className="mt-0.5 text-2xl font-bold tabular-nums text-brand">{value}</p>
+      {hint ? <p className="mt-1 text-xs text-ink-faint">{hint}</p> : null}
+    </div>
+  );
+}
+
+function PageMessage({ message, onDismiss }: { message: string; onDismiss?: () => void }) {
+  return (
+    <div className="col-span-full flex items-start justify-between gap-3 rounded-xl border border-line bg-brand-light/40 px-4 py-3 text-sm text-ink">
+      <p className="min-w-0 flex-1">{message}</p>
+      {onDismiss && (
+        <button type="button" className="shrink-0 text-xs text-ink-muted hover:text-ink" onClick={onDismiss}>
+          关闭
+        </button>
+      )}
+    </div>
+  );
+}
+
+function InstallSuccessBanner({ result, onDismiss }: { result: AppInstallResult; onDismiss: () => void }) {
+  return (
+    <div className="col-span-full rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
+      <div className="flex items-start justify-between gap-3">
+        <p className="font-medium">{result.message || "安装完成"}</p>
+        <button type="button" className="text-xs opacity-70 hover:opacity-100" onClick={onDismiss}>
+          关闭
+        </button>
+      </div>
+      <ul className="mt-2 space-y-1 text-xs">
+        {result.kb_id && (
+          <li>
+            知识库 →{" "}
+            <Link href={`/workbench/kb/${result.kb_id}`} className="underline">
+              管理文档
+            </Link>
+          </li>
+        )}
+        {result.flow_id && (
+          <li>
+            流程 →{" "}
+            <Link href={`/workbench/flows/${result.flow_id}/edit`} className="underline">
+              编辑画布
+            </Link>
+          </li>
+        )}
+        {result.agent_id && (
+          <li>
+            智能体 →{" "}
+            <Link href="/workbench/agents/chat" className="underline">
+              去对话
+            </Link>
+          </li>
+        )}
+      </ul>
+    </div>
   );
 }
 
@@ -80,6 +144,23 @@ export default function MarketplacePage() {
     agents: Agent[];
   }>({ kbs: [], flows: [], agents: [] });
 
+  const mainTabs: ResourceTab[] = useMemo(
+    () => [
+      { key: "plaza", label: "应用广场" },
+      { key: "installs", label: "我的安装" },
+      { key: "mine", label: "我的上架" },
+      { key: "publish", label: "打包上架" },
+      ...(canReview ? [{ key: "review", label: "上架审核" }] : []),
+    ],
+    [canReview],
+  );
+
+  const switchView = (view: MainView) => {
+    setMainView(view);
+    setSearch("");
+    setMsg("");
+  };
+
   const apps = usePagedList(
     useCallback(
       (p, s) => api.listMarketplaceApps(p, s, activeCategory || undefined, plazaSort),
@@ -87,6 +168,10 @@ export default function MarketplacePage() {
     ),
     { enabled: ready && mainView === "plaza", resetKey: `${activeCategory}-${plazaSort}-plaza` },
   );
+  const installs = usePagedList(useCallback((p, s) => api.listAppInstalls(p, s), []), {
+    enabled: ready && mainView === "installs",
+    resetKey: "installs",
+  });
   const myApps = usePagedList(useCallback((p, s) => api.listMyMarketplaceApps(p, s), []), {
     enabled: ready && mainView === "mine",
     resetKey: "mine",
@@ -95,9 +180,6 @@ export default function MarketplacePage() {
     useCallback((p, s) => api.listPendingMarketplaceApps(p, s), []),
     { enabled: ready && mainView === "review" && canReview, resetKey: "pending" },
   );
-  const installs = usePagedList(useCallback((p, s) => api.listAppInstalls(p, s), []), {
-    enabled: ready,
-  });
 
   useEffect(() => {
     if (!ready) return;
@@ -153,6 +235,23 @@ export default function MarketplacePage() {
     () => filterBySearch(apps.items, search, (a) => `${a.name} ${a.description ?? ""}`),
     [apps.items, search],
   );
+  const installsFiltered = useMemo(
+    () => filterBySearch(installs.items, search, (i) => i.app_name),
+    [installs.items, search],
+  );
+  const myFiltered = useMemo(
+    () => filterBySearch(myApps.items, search, (a) => `${a.name} ${a.description ?? ""}`),
+    [myApps.items, search],
+  );
+  const pendingFiltered = useMemo(
+    () => filterBySearch(pendingApps.items, search, (a) => `${a.name} ${a.description ?? ""}`),
+    [pendingApps.items, search],
+  );
+
+  const plazaInstalledOnPage = useMemo(
+    () => plazaFiltered.filter((a) => a.installed).length,
+    [plazaFiltered],
+  );
 
   const onInstall = async (app: MarketplaceApp) => {
     if (app.installed) {
@@ -166,7 +265,7 @@ export default function MarketplacePage() {
       setLastResult(res);
       setMsg(res.message);
       await apps.reload();
-      await installs.reload();
+      if (mainView === "installs") await installs.reload();
       if (detailAppId === app.id) await loadDetail(app.id);
     } catch (e) {
       setMsg(e instanceof Error ? e.message : "安装失败");
@@ -205,9 +304,7 @@ export default function MarketplacePage() {
     }
   };
 
-  const onReject = (app: MarketplaceApp) => {
-    setRejectTarget(app);
-  };
+  const onReject = (app: MarketplaceApp) => setRejectTarget(app);
 
   const onConfirmReject = async (note: string) => {
     if (!rejectTarget) return;
@@ -253,7 +350,7 @@ export default function MarketplacePage() {
       setPublishKbId("");
       setPublishFlowId("");
       setPublishAgentId("");
-      setMainView("mine");
+      switchView("mine");
       await myApps.reload();
     } catch (e) {
       setMsg(e instanceof Error ? e.message : "创建失败");
@@ -295,75 +392,200 @@ export default function MarketplacePage() {
     }
   };
 
-  const mainTabs: { key: MainView; label: string }[] = [
-    { key: "plaza", label: "应用广场" },
-    { key: "mine", label: "我的上架" },
-    { key: "publish", label: "打包上架" },
-    ...(canReview ? [{ key: "review" as const, label: "上架审核" }] : []),
-  ];
-
   const renderRatingMeta = (app: MarketplaceApp) => (
-    <span className="flex flex-wrap items-center gap-2">
+    <span className="flex flex-wrap items-center gap-2 text-xs">
       <StarDisplay value={app.rating_avg} count={app.rating_count} />
-      <span>
+      <span className="text-ink-muted">
         v{app.version}
         {app.category_name && ` · ${app.category_name}`} · {app.install_count} 次安装
       </span>
     </span>
   );
 
-  return (
-    <div className="space-y-8">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-bold text-ink">应用市场</h1>
-          <p className="mt-1 text-sm text-ink-muted">
-            安装已审核上架的应用；租户打包后需审核通过方可进入广场；安装后可评分。
-          </p>
+  const renderAppActions = (app: MarketplaceApp, mode: "plaza" | "mine" | "review") => {
+    if (mode === "plaza") {
+      return (
+        <div className="flex flex-col gap-2">
+          <button
+            type="button"
+            onClick={() => loadDetail(app.id)}
+            className="btn-secondary w-full py-1.5 text-xs"
+          >
+            详情与评价
+          </button>
+          <button
+            type="button"
+            disabled={app.installed || installing === app.id}
+            onClick={() => onInstall(app)}
+            className="btn-primary w-full py-1.5 text-xs disabled:opacity-50"
+          >
+            {app.installed ? "已安装" : installing === app.id ? "安装中…" : "一键安装"}
+          </button>
         </div>
-        <div className="flex rounded-lg border border-line bg-surface p-0.5">
-          {mainTabs.map((t) => (
-            <button
-              key={t.key}
-              type="button"
-              onClick={() => {
-                setMainView(t.key);
-                setMsg("");
-              }}
-              className={`rounded-md px-3 py-1.5 text-sm transition ${
-                mainView === t.key
-                  ? "bg-brand-light font-medium text-brand"
-                  : "text-ink-muted hover:text-ink"
-              }`}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
+      );
+    }
+    if (mode === "mine") {
+      if (app.status === "draft" || app.status === "rejected") {
+        return (
+          <button
+            type="button"
+            disabled={publishing === app.id}
+            onClick={() => onSubmitReview(app.id)}
+            className="btn-primary w-full py-1.5 text-xs"
+          >
+            {publishing === app.id
+              ? "提交中…"
+              : app.status === "rejected"
+                ? "重新提交审核"
+                : "提交审核"}
+          </button>
+        );
+      }
+      if (app.status === "pending_review") {
+        return <span className="text-xs text-ink-faint">等待平台审核</span>;
+      }
+      if (app.status === "published") {
+        return <span className="text-xs text-ink-faint">已在应用广场展示</span>;
+      }
+      return <span className="text-xs text-ink-faint">{marketplaceStatusLabel(app.status)}</span>;
+    }
+    return (
+      <div className="flex gap-2">
+        <button
+          type="button"
+          disabled={reviewing === app.id}
+          onClick={() => onApprove(app.id)}
+          className="btn-primary flex-1 py-1.5 text-xs"
+        >
+          通过
+        </button>
+        <button
+          type="button"
+          disabled={reviewing === app.id}
+          onClick={() => onReject(app)}
+          className="btn-secondary flex-1 py-1.5 text-xs"
+        >
+          驳回
+        </button>
       </div>
+    );
+  };
 
-      {msg && (
-        <p className="rounded-lg border border-line bg-brand-light/50 px-4 py-2 text-sm text-ink">
-          {msg}
-        </p>
+  const layoutCommon = {
+    title: "应用市场",
+    description: PAGE_DESC,
+    tabs: mainTabs,
+    activeTab: mainView,
+    onTabChange: (k: string) => switchView(k as MainView),
+  };
+
+  const detailDialog = (
+    <ResourceDialog
+      open={detailAppId !== null}
+      title={
+        detailLoading
+          ? "加载中…"
+          : detail
+            ? `${detail.icon || "📦"} ${detail.name}`
+            : "应用详情"
+      }
+      size="lg"
+      onClose={() => {
+        setDetailAppId(null);
+        setDetail(null);
+      }}
+    >
+      {detail && !detailLoading && (
+        <>
+          <p className="text-sm leading-relaxed text-ink-muted">{detail.description ?? "无描述"}</p>
+          <div className="mt-2">
+            <StarDisplay value={detail.rating_avg} count={detail.rating_count} />
+          </div>
+          {detail.installed ? (
+            <div className="mt-4 rounded-xl border border-line bg-surface-muted p-4">
+              <p className="text-sm font-medium text-ink">我的评分</p>
+              <div className="mt-2 flex gap-1">
+                {[1, 2, 3, 4, 5].map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => setRateScore(s)}
+                    className={`text-xl transition ${s <= rateScore ? "text-amber-500" : "text-ink-faint"}`}
+                  >
+                    ★
+                  </button>
+                ))}
+              </div>
+              <textarea
+                className="input-field mt-2 min-h-[72px] w-full text-sm"
+                placeholder="可选评价内容"
+                value={rateComment}
+                onChange={(e) => setRateComment(e.target.value)}
+              />
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button type="button" disabled={rateSaving} onClick={onSaveRating} className="btn-primary text-xs">
+                  {rateSaving ? "保存中…" : "保存评分"}
+                </button>
+                {detail.my_rating && (
+                  <button
+                    type="button"
+                    disabled={rateSaving}
+                    onClick={onDeleteRating}
+                    className="btn-secondary text-xs"
+                  >
+                    删除评分
+                  </button>
+                )}
+              </div>
+            </div>
+          ) : (
+            <p className="mt-4 text-sm text-ink-faint">安装后可对该应用评分</p>
+          )}
+          {!detail.installed && detail.status === "published" && (
+            <button
+              type="button"
+              className="btn-primary mt-4 w-full"
+              disabled={installing === detail.id}
+              onClick={() => onInstall(detail)}
+            >
+              {installing === detail.id ? "安装中…" : "一键安装"}
+            </button>
+          )}
+          {detailRatings.length > 0 && (
+            <div className="mt-5">
+              <p className="text-sm font-medium text-ink">用户评价</p>
+              <ul className="mt-2 max-h-48 space-y-2 overflow-y-auto text-sm">
+                {detailRatings.map((r) => (
+                  <li key={r.id} className="rounded-lg border border-line px-3 py-2">
+                    <StarDisplay value={r.score} />
+                    {r.comment && <p className="mt-1 text-ink-muted">{r.comment}</p>}
+                    <p className="mt-1 text-xs text-ink-faint">{r.created_at.slice(0, 10)}</p>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </>
       )}
+      {detailLoading && <p className="py-8 text-center text-sm text-ink-muted">加载应用详情…</p>}
+    </ResourceDialog>
+  );
 
-      {mainView === "plaza" && (
+  if (mainView === "plaza") {
+    return (
+      <>
         <ResourceListLayout
-          title="应用广场"
-          description="浏览已上架应用，一键安装到当前租户。"
-          searchPlaceholder="搜索应用名称"
+          {...layoutCommon}
+          searchPlaceholder="搜索应用名称或描述"
           search={search}
           onSearchChange={setSearch}
-          tabs={categoryTabs}
-          activeTab={activeCategory}
-          onTabChange={setActiveCategory}
           loading={apps.loading}
           headerAction={
             <select
-              className="input-field w-auto text-sm"
+              className="input-field w-auto shrink-0 text-sm"
               value={plazaSort}
               onChange={(e) => setPlazaSort(e.target.value as "installs" | "rating")}
+              aria-label="排序方式"
             >
               <option value="installs">按安装量</option>
               <option value="rating">按评分</option>
@@ -380,400 +602,110 @@ export default function MarketplacePage() {
             ) : null
           }
         >
+          {msg && <PageMessage message={msg} onDismiss={() => setMsg("")} />}
+          {lastResult && <InstallSuccessBanner result={lastResult} onDismiss={() => setLastResult(null)} />}
+          <div className="col-span-full grid gap-3 sm:grid-cols-3">
+            <StatChip label="广场应用" value={String(apps.total)} hint="已上架可安装" />
+            <StatChip
+              label="本页已安装"
+              value={String(plazaInstalledOnPage)}
+              hint={`本页共 ${plazaFiltered.length} 个`}
+            />
+            <StatChip
+              label="排序"
+              value={plazaSort === "installs" ? "安装量" : "评分"}
+              hint="可在右上角切换"
+            />
+          </div>
+          <div className="col-span-full flex flex-wrap gap-2 border-b border-line pb-4">
+            {categoryTabs.map((tab) => (
+              <button
+                key={tab.key || "all"}
+                type="button"
+                onClick={() => setActiveCategory(tab.key)}
+                className={`rounded-lg px-3 py-1.5 text-xs transition ${
+                  activeCategory === tab.key
+                    ? "bg-brand-light font-medium text-brand"
+                    : "text-ink-muted hover:bg-surface-muted hover:text-ink"
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+          {!apps.loading && plazaFiltered.length === 0 && (
+            <p className="col-span-full py-12 text-center text-sm text-ink-faint">暂无匹配的应用</p>
+          )}
           {plazaFiltered.map((app) => (
             <ResourceItemCard
               key={app.id}
               title={`${app.icon || "📦"} ${app.name}`}
               description={app.description ?? "应用模板"}
               badge={
-                app.installed
-                  ? "已安装"
-                  : app.is_official
-                    ? "官方"
-                    : app.category_name || undefined
+                app.installed ? "已安装" : app.is_official ? "官方" : app.category_name || undefined
               }
               meta={renderRatingMeta(app)}
-              actions={
-                <div className="flex flex-col gap-2">
-                  <button
-                    type="button"
-                    onClick={() => loadDetail(app.id)}
-                    className="btn-secondary w-full py-1.5 text-xs"
-                  >
-                    详情与评价
-                  </button>
-                  <button
-                    type="button"
-                    disabled={app.installed || installing === app.id}
-                    onClick={() => onInstall(app)}
-                    className="btn-primary w-full py-1.5 text-xs disabled:opacity-50"
-                  >
-                    {app.installed ? "已安装" : installing === app.id ? "安装中…" : "一键安装"}
-                  </button>
-                </div>
-              }
+              actions={renderAppActions(app, "plaza")}
             />
           ))}
         </ResourceListLayout>
-      )}
+        {detailDialog}
+        <PromptDialog
+          open={rejectTarget !== null}
+          title="驳回应用"
+          description="驳回原因将展示给发布方。"
+          label="驳回原因（可选）"
+          placeholder="请填写驳回原因"
+          confirmLabel="确认驳回"
+          destructive
+          loading={rejectLoading}
+          onClose={() => {
+            if (!rejectLoading) setRejectTarget(null);
+          }}
+          onConfirm={onConfirmReject}
+        />
+      </>
+    );
+  }
 
-      {mainView === "mine" && (
-        <div className="resource-page-shell">
-          <h2 className="mb-4 text-lg font-semibold text-ink">我的上架</h2>
-          <div className="resource-card-grid">
-            {myApps.loading && <p className="text-sm text-ink-muted">加载中…</p>}
-            {!myApps.loading && myApps.items.length === 0 && (
-              <p className="col-span-full py-8 text-center text-sm text-ink-faint">
-                暂无草稿，前往「打包上架」创建
-              </p>
-            )}
-            {myApps.items.map((app) => (
-              <ResourceItemCard
-                key={app.id}
-                title={`${app.icon || "📦"} ${app.name}`}
-                description={
-                  app.status === "rejected" && app.review_note
-                    ? `驳回：${app.review_note}`
-                    : app.description ?? "租户应用"
-                }
-                badge={marketplaceStatusLabel(app.status)}
-                meta={renderRatingMeta(app)}
-                actions={
-                  app.status === "draft" || app.status === "rejected" ? (
-                    <button
-                      type="button"
-                      disabled={publishing === app.id}
-                      onClick={() => onSubmitReview(app.id)}
-                      className="btn-primary w-full py-1.5 text-xs"
-                    >
-                      {publishing === app.id
-                        ? "提交中…"
-                        : app.status === "rejected"
-                          ? "重新提交审核"
-                          : "提交审核"}
-                    </button>
-                  ) : app.status === "pending_review" ? (
-                    <span className="text-xs text-ink-faint">等待平台审核</span>
-                  ) : app.status === "published" ? (
-                    <span className="text-xs text-ink-faint">已在应用广场展示</span>
-                  ) : (
-                    <span className="text-xs text-ink-faint">{marketplaceStatusLabel(app.status)}</span>
-                  )
-                }
+  if (mainView === "installs") {
+    return (
+      <>
+        <ResourceListLayout
+          {...layoutCommon}
+          searchPlaceholder="搜索已安装应用"
+          search={search}
+          onSearchChange={setSearch}
+          loading={installs.loading}
+          footer={
+            !installs.loading ? (
+              <ResourceListFooter
+                page={installs.page}
+                size={installs.size}
+                total={installs.total}
+                onPageChange={installs.setPage}
               />
-            ))}
-          </div>
-          {!myApps.loading && (
-            <ResourceListFooter
-              className="mt-4"
-              page={myApps.page}
-              size={myApps.size}
-              total={myApps.total}
-              onPageChange={myApps.setPage}
-            />
-          )}
-        </div>
-      )}
-
-      {mainView === "review" && canReview && (
-        <div className="resource-page-shell">
-          <h2 className="mb-1 text-lg font-semibold text-ink">上架审核</h2>
-          <p className="mb-4 text-sm text-ink-muted">审核租户提交的应用，通过后将在广场展示。</p>
-          <div className="resource-card-grid">
-            {pendingApps.loading && <p className="text-sm text-ink-muted">加载中…</p>}
-            {!pendingApps.loading && pendingApps.items.length === 0 && (
-              <p className="col-span-full py-8 text-center text-sm text-ink-faint">暂无待审核应用</p>
-            )}
-            {pendingApps.items.map((app) => (
-              <ResourceItemCard
-                key={app.id}
-                title={`${app.icon || "📦"} ${app.name}`}
-                description={app.description ?? "待审核应用"}
-                badge="待审核"
-                meta={
-                  <span>
-                    提交于 {app.submitted_at?.slice(0, 16) ?? "—"}
-                    {app.category_name && ` · ${app.category_name}`}
-                  </span>
-                }
-                actions={
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      disabled={reviewing === app.id}
-                      onClick={() => onApprove(app.id)}
-                      className="btn-primary flex-1 py-1.5 text-xs"
-                    >
-                      通过
-                    </button>
-                    <button
-                      type="button"
-                      disabled={reviewing === app.id}
-                      onClick={() => onReject(app)}
-                      className="btn-secondary flex-1 py-1.5 text-xs"
-                    >
-                      驳回
-                    </button>
-                  </div>
-                }
-              />
-            ))}
-          </div>
-          {!pendingApps.loading && (
-            <ResourceListFooter
-              className="mt-4"
-              page={pendingApps.page}
-              size={pendingApps.size}
-              total={pendingApps.total}
-              onPageChange={pendingApps.setPage}
-            />
-          )}
-        </div>
-      )}
-
-      {mainView === "publish" && (
-        <section className="card mx-auto max-w-xl p-6">
-          <h2 className="text-lg font-semibold text-ink">打包上架</h2>
-          <p className="mt-1 text-sm text-ink-muted">
-            选择本租户已有资源生成安装包（草稿），提交审核通过后即可被其他租户安装。
-          </p>
-          <label className="mb-1 mt-5 block text-sm font-medium text-ink">应用名称</label>
-          <input
-            className="input-field"
-            value={publishName}
-            onChange={(e) => setPublishName(e.target.value)}
-            placeholder="例如：客服 RAG 套件"
-          />
-          <label className="mb-1 mt-3 block text-sm font-medium text-ink">描述</label>
-          <textarea
-            className="input-field min-h-[72px]"
-            value={publishDesc}
-            onChange={(e) => setPublishDesc(e.target.value)}
-            placeholder="简要说明适用场景"
-          />
-          <div className="mt-3 grid gap-3 sm:grid-cols-2">
-            <label className="text-sm text-ink-muted">
-              图标
-              <input
-                className="input-field mt-1"
-                value={publishIcon}
-                onChange={(e) => setPublishIcon(e.target.value)}
-              />
-            </label>
-            <label className="text-sm text-ink-muted">
-              分类
-              <select
-                className="input-field mt-1"
-                value={publishCategory}
-                onChange={(e) => setPublishCategory(e.target.value)}
-              >
-                {categories.map((c) => (
-                  <option key={c.id} value={c.slug}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-          <label className="mb-1 mt-4 block text-sm font-medium text-ink">关联资源（至少一项）</label>
-          <div className="space-y-2">
-            <select
-              className="input-field"
-              value={publishKbId}
-              onChange={(e) => setPublishKbId(e.target.value)}
-            >
-              <option value="">不打包知识库</option>
-              {resourceOptions.kbs.map((k) => (
-                <option key={k.id} value={k.id}>
-                  知识库 · {k.name}
-                </option>
-              ))}
-            </select>
-            <select
-              className="input-field"
-              value={publishFlowId}
-              onChange={(e) => setPublishFlowId(e.target.value)}
-            >
-              <option value="">不打包流程</option>
-              {resourceOptions.flows.map((f) => (
-                <option key={f.id} value={f.id}>
-                  流程 · {f.name}
-                </option>
-              ))}
-            </select>
-            <select
-              className="input-field"
-              value={publishAgentId}
-              onChange={(e) => setPublishAgentId(e.target.value)}
-            >
-              <option value="">不打包智能体</option>
-              {resourceOptions.agents.map((a) => (
-                <option key={a.id} value={a.id}>
-                  智能体 · {a.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <button
-            type="button"
-            disabled={publishLoading}
-            onClick={onCreateDraft}
-            className="btn-primary mt-5 w-full"
-          >
-            {publishLoading ? "创建中…" : "保存为草稿"}
-          </button>
-        </section>
-      )}
-
-      {detailAppId && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-          role="dialog"
-          aria-modal
+            ) : null
+          }
         >
-          <div className="card max-h-[90vh] w-full max-w-lg overflow-y-auto p-6">
-            <div className="flex items-start justify-between gap-3">
-              <h2 className="text-lg font-semibold text-ink">
-                {detailLoading ? "加载中…" : detail ? `${detail.icon || "📦"} ${detail.name}` : "应用详情"}
-              </h2>
-              <button
-                type="button"
-                className="text-ink-muted hover:text-ink"
-                onClick={() => {
-                  setDetailAppId(null);
-                  setDetail(null);
-                }}
-              >
-                关闭
-              </button>
-            </div>
-            {detail && !detailLoading && (
-              <>
-                <p className="mt-2 text-sm text-ink-muted">{detail.description ?? "无描述"}</p>
-                <div className="mt-3">
-                  <StarDisplay value={detail.rating_avg} count={detail.rating_count} />
-                </div>
-                {detail.installed ? (
-                  <div className="mt-4 rounded-lg border border-line p-4">
-                    <p className="text-sm font-medium text-ink">我的评分</p>
-                    <div className="mt-2 flex gap-1">
-                      {[1, 2, 3, 4, 5].map((s) => (
-                        <button
-                          key={s}
-                          type="button"
-                          onClick={() => setRateScore(s)}
-                          className={`text-xl ${s <= rateScore ? "text-amber-500" : "text-ink-faint"}`}
-                        >
-                          ★
-                        </button>
-                      ))}
-                    </div>
-                    <textarea
-                      className="input-field mt-2 min-h-[60px] text-sm"
-                      placeholder="可选评价内容"
-                      value={rateComment}
-                      onChange={(e) => setRateComment(e.target.value)}
-                    />
-                    <div className="mt-2 flex gap-2">
-                      <button
-                        type="button"
-                        disabled={rateSaving}
-                        onClick={onSaveRating}
-                        className="btn-primary text-xs"
-                      >
-                        {rateSaving ? "保存中…" : "保存评分"}
-                      </button>
-                      {detail.my_rating && (
-                        <button
-                          type="button"
-                          disabled={rateSaving}
-                          onClick={onDeleteRating}
-                          className="btn-secondary text-xs"
-                        >
-                          删除评分
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                ) : (
-                  <p className="mt-4 text-sm text-ink-faint">安装后可对该应用评分</p>
-                )}
-                {!detail.installed && detail.status === "published" && (
-                  <button
-                    type="button"
-                    className="btn-primary mt-4 w-full"
-                    disabled={installing === detail.id}
-                    onClick={() => onInstall(detail)}
-                  >
-                    {installing === detail.id ? "安装中…" : "一键安装"}
-                  </button>
-                )}
-                {detailRatings.length > 0 && (
-                  <div className="mt-4">
-                    <p className="text-sm font-medium text-ink">用户评价</p>
-                    <ul className="mt-2 space-y-2 text-sm">
-                      {detailRatings.map((r) => (
-                        <li key={r.id} className="rounded border border-line px-3 py-2">
-                          <StarDisplay value={r.score} />
-                          {r.comment && <p className="mt-1 text-ink-muted">{r.comment}</p>}
-                          <p className="mt-1 text-xs text-ink-faint">{r.created_at.slice(0, 10)}</p>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </>
-            )}
+          {msg && <PageMessage message={msg} onDismiss={() => setMsg("")} />}
+          <div className="col-span-full grid gap-3 sm:grid-cols-2">
+            <StatChip label="安装记录" value={String(installs.total)} hint="当前租户历史安装" />
+            <StatChip label="本页展示" value={String(installsFiltered.length)} hint="受搜索筛选影响" />
           </div>
-        </div>
-      )}
-
-      {lastResult && mainView === "plaza" && (
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-5 text-sm text-emerald-900">
-          <p className="font-medium">安装完成</p>
-          <ul className="mt-2 space-y-1 text-xs">
-            {lastResult.kb_id && (
-              <li>
-                知识库 →{" "}
-                <Link href={`/workbench/kb/${lastResult.kb_id}`} className="underline">
-                  管理文档
-                </Link>
-              </li>
-            )}
-            {lastResult.flow_id && (
-              <li>
-                流程 →{" "}
-                <Link href={`/workbench/flows/${lastResult.flow_id}/edit`} className="underline">
-                  编辑画布
-                </Link>
-              </li>
-            )}
-            {lastResult.agent_id && (
-              <li>
-                智能体 →{" "}
-                <Link href="/workbench/agents/chat" className="underline">
-                  去对话
-                </Link>
-              </li>
-            )}
-          </ul>
-        </div>
-      )}
-
-      <div className="resource-page-shell">
-        <h2 className="mb-4 text-lg font-semibold text-ink">我的安装</h2>
-        <div className="resource-card-grid">
-          {installs.loading && <p className="text-sm text-ink-muted">加载中…</p>}
-          {!installs.loading && installs.items.length === 0 && (
-            <p className="col-span-full py-8 text-center text-sm text-ink-faint">尚未安装任何应用</p>
+          {!installs.loading && installsFiltered.length === 0 && (
+            <p className="col-span-full py-12 text-center text-sm text-ink-faint">
+              尚未安装任何应用，请前往「应用广场」浏览
+            </p>
           )}
-          {installs.items.map((ins) => (
+          {installsFiltered.map((ins) => (
             <ResourceItemCard
               key={ins.id}
               title={ins.app_name}
-              description={`安装于 ${ins.created_at.slice(0, 10)}`}
+              description={`安装于 ${new Date(ins.created_at).toLocaleDateString("zh-CN")}`}
+              badge="已安装"
               actions={
-                <span className="flex flex-wrap gap-2 text-xs text-brand">
+                <span className="flex flex-wrap gap-3 text-xs text-brand">
                   {ins.kb_id && (
                     <Link href={`/workbench/kb/${ins.kb_id}`} className="hover:underline">
                       知识库
@@ -793,32 +725,264 @@ export default function MarketplacePage() {
               }
             />
           ))}
-        </div>
-        {!installs.loading && (
-          <ResourceListFooter
-            className="mt-4"
-            page={installs.page}
-            size={installs.size}
-            total={installs.total}
-            onPageChange={installs.setPage}
-          />
-        )}
-      </div>
+        </ResourceListLayout>
+        {detailDialog}
+      </>
+    );
+  }
 
-      <PromptDialog
-        open={rejectTarget !== null}
-        title="驳回应用"
-        description="驳回原因将展示给发布方。"
-        label="驳回原因（可选）"
-        placeholder="请填写驳回原因"
-        confirmLabel="确认驳回"
-        destructive
-        loading={rejectLoading}
-        onClose={() => {
-          if (!rejectLoading) setRejectTarget(null);
-        }}
-        onConfirm={onConfirmReject}
-      />
-    </div>
+  if (mainView === "mine") {
+    return (
+      <>
+        <ResourceListLayout
+          {...layoutCommon}
+          searchPlaceholder="搜索我的应用"
+          search={search}
+          onSearchChange={setSearch}
+          loading={myApps.loading}
+          headerAction={
+            <button type="button" className="btn-ghost shrink-0 text-sm" onClick={() => switchView("publish")}>
+              新建打包
+            </button>
+          }
+          footer={
+            !myApps.loading ? (
+              <ResourceListFooter
+                page={myApps.page}
+                size={myApps.size}
+                total={myApps.total}
+                onPageChange={myApps.setPage}
+              />
+            ) : null
+          }
+        >
+          {msg && <PageMessage message={msg} onDismiss={() => setMsg("")} />}
+          {!myApps.loading && myFiltered.length === 0 && (
+            <p className="col-span-full py-12 text-center text-sm text-ink-faint">
+              暂无草稿或上架记录，点击「新建打包」创建应用
+            </p>
+          )}
+          {myFiltered.map((app) => (
+            <ResourceItemCard
+              key={app.id}
+              title={`${app.icon || "📦"} ${app.name}`}
+              description={
+                app.status === "rejected" && app.review_note
+                  ? `驳回：${app.review_note}`
+                  : app.description ?? "租户应用"
+              }
+              badge={marketplaceStatusLabel(app.status)}
+              meta={renderRatingMeta(app)}
+              actions={renderAppActions(app, "mine")}
+            />
+          ))}
+        </ResourceListLayout>
+        {detailDialog}
+        <PromptDialog
+          open={rejectTarget !== null}
+          title="驳回应用"
+          description="驳回原因将展示给发布方。"
+          label="驳回原因（可选）"
+          placeholder="请填写驳回原因"
+          confirmLabel="确认驳回"
+          destructive
+          loading={rejectLoading}
+          onClose={() => {
+            if (!rejectLoading) setRejectTarget(null);
+          }}
+          onConfirm={onConfirmReject}
+        />
+      </>
+    );
+  }
+
+  if (mainView === "review" && canReview) {
+    return (
+      <>
+        <ResourceListLayout
+          {...layoutCommon}
+          searchPlaceholder="搜索待审核应用"
+          search={search}
+          onSearchChange={setSearch}
+          loading={pendingApps.loading}
+          footer={
+            !pendingApps.loading ? (
+              <ResourceListFooter
+                page={pendingApps.page}
+                size={pendingApps.size}
+                total={pendingApps.total}
+                onPageChange={pendingApps.setPage}
+              />
+            ) : null
+          }
+        >
+          {msg && <PageMessage message={msg} onDismiss={() => setMsg("")} />}
+          <div className="col-span-full">
+            <StatChip
+              label="待审核"
+              value={String(pendingApps.total)}
+              hint="通过后将在应用广场展示"
+            />
+          </div>
+          <div className="col-span-full space-y-3">
+            {!pendingApps.loading && pendingFiltered.length === 0 && (
+              <p className="rounded-xl border border-dashed border-line py-12 text-center text-sm text-ink-faint">
+                暂无待审核应用
+              </p>
+            )}
+            {pendingFiltered.map((app) => (
+              <article
+                key={app.id}
+                className="flex flex-col gap-4 rounded-xl border border-line bg-surface p-4 shadow-card sm:flex-row sm:items-center sm:justify-between"
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="text-base font-semibold text-ink">
+                      {app.icon || "📦"} {app.name}
+                    </h3>
+                    <span className="badge bg-amber-50 text-amber-800">待审核</span>
+                    {app.category_name && (
+                      <span className="text-xs text-ink-muted">{app.category_name}</span>
+                    )}
+                  </div>
+                  <p className="mt-2 text-sm text-ink-muted line-clamp-2">
+                    {app.description ?? "无描述"}
+                  </p>
+                  <p className="mt-2 text-xs text-ink-faint">
+                    提交于 {app.submitted_at ? new Date(app.submitted_at).toLocaleString("zh-CN") : "—"}
+                  </p>
+                </div>
+                <div className="flex shrink-0 gap-2 sm:w-48">{renderAppActions(app, "review")}</div>
+              </article>
+            ))}
+          </div>
+        </ResourceListLayout>
+        <PromptDialog
+          open={rejectTarget !== null}
+          title="驳回应用"
+          description="驳回原因将展示给发布方。"
+          label="驳回原因（可选）"
+          placeholder="请填写驳回原因"
+          confirmLabel="确认驳回"
+          destructive
+          loading={rejectLoading}
+          onClose={() => {
+            if (!rejectLoading) setRejectTarget(null);
+          }}
+          onConfirm={onConfirmReject}
+        />
+      </>
+    );
+  }
+
+  return (
+    <>
+      <ResourceListLayout
+        {...layoutCommon}
+        search=""
+        onSearchChange={() => {}}
+        showSearch={false}
+      >
+        {msg && <PageMessage message={msg} onDismiss={() => setMsg("")} />}
+        <div className="col-span-full mx-auto w-full max-w-2xl">
+          <section className="rounded-xl border border-line bg-surface p-6 shadow-panel">
+            <h2 className="text-base font-semibold text-ink">从资源打包应用</h2>
+            <p className="mt-1 text-sm text-ink-muted">
+              选择本租户已有资源生成安装包草稿，提交审核通过后即可被其他租户安装。
+            </p>
+            <label className="mt-5 block space-y-1">
+              <span className="text-xs text-ink-muted">应用名称</span>
+              <input
+                className="input-field w-full"
+                value={publishName}
+                onChange={(e) => setPublishName(e.target.value)}
+                placeholder="例如：客服 RAG 套件"
+              />
+            </label>
+            <label className="mt-3 block space-y-1">
+              <span className="text-xs text-ink-muted">描述</span>
+              <textarea
+                className="input-field min-h-[88px] w-full resize-y"
+                value={publishDesc}
+                onChange={(e) => setPublishDesc(e.target.value)}
+                placeholder="简要说明适用场景"
+              />
+            </label>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <label className="block space-y-1">
+                <span className="text-xs text-ink-muted">图标</span>
+                <input
+                  className="input-field w-full"
+                  value={publishIcon}
+                  onChange={(e) => setPublishIcon(e.target.value)}
+                />
+              </label>
+              <label className="block space-y-1">
+                <span className="text-xs text-ink-muted">分类</span>
+                <select
+                  className="input-field w-full"
+                  value={publishCategory}
+                  onChange={(e) => setPublishCategory(e.target.value)}
+                >
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.slug}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <p className="mt-5 text-xs font-medium text-ink-muted">关联资源（至少一项）</p>
+            <div className="mt-2 space-y-2">
+              <select
+                className="input-field w-full"
+                value={publishKbId}
+                onChange={(e) => setPublishKbId(e.target.value)}
+              >
+                <option value="">不打包知识库</option>
+                {resourceOptions.kbs.map((k) => (
+                  <option key={k.id} value={k.id}>
+                    知识库 · {k.name}
+                  </option>
+                ))}
+              </select>
+              <select
+                className="input-field w-full"
+                value={publishFlowId}
+                onChange={(e) => setPublishFlowId(e.target.value)}
+              >
+                <option value="">不打包流程</option>
+                {resourceOptions.flows.map((f) => (
+                  <option key={f.id} value={f.id}>
+                    流程 · {f.name}
+                  </option>
+                ))}
+              </select>
+              <select
+                className="input-field w-full"
+                value={publishAgentId}
+                onChange={(e) => setPublishAgentId(e.target.value)}
+              >
+                <option value="">不打包智能体</option>
+                {resourceOptions.agents.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    智能体 · {a.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <button
+              type="button"
+              disabled={publishLoading}
+              onClick={onCreateDraft}
+              className="btn-primary mt-6 w-full"
+            >
+              {publishLoading ? "创建中…" : "保存为草稿"}
+            </button>
+          </section>
+        </div>
+      </ResourceListLayout>
+      {detailDialog}
+    </>
   );
 }

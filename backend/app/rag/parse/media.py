@@ -1,4 +1,8 @@
-"""多模态文件类型判定（图片/音频路由与 vector_type）。"""
+"""
+多模态文件类型判定。
+
+用于 loaders 路由（image/audio）与 ``vector_type_for_document``（写入 VectorRef.vector_type）。
+"""
 
 _IMAGE_MIMES = {
     "image/jpeg",

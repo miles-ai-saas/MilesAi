@@ -1,7 +1,16 @@
-"""向量化 invoke_mode 与 ModelConfig.extra 键名。
+"""
+向量化 ``invoke_mode`` 与 ``ModelConfig.extra`` 键名常量。
 
-invoke_mode：local | litellm | openai_compatible
-extra：embedding_dimension、embedding_batch_size（通义默认上限 10）
+invoke_mode
+-----------
+- ``local``：本地/内网 embedding 服务，无需 API Key
+- ``openai_compatible``：OpenAI 兼容 REST（含 DashScope 兼容端点）
+- ``litellm``：经 LiteLLM 统一多厂商
+
+extra 键
+--------
+- ``embedding_dimension``：向量维度，创建 KB 时固化
+- ``embedding_batch_size``：批量 embed 条数上限；通义见 ``DASHSCOPE_EMBEDDING_BATCH_SIZE_MAX``
 """
 
 INVOKE_MODE_LOCAL = "local"

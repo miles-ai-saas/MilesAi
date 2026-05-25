@@ -1,6 +1,12 @@
-"""A2A Peer 登记：拉取 Agent Card、探测 RPC 与状态维护。
+"""
+A2A Peer 登记用例（L2）：拉取 Agent Card、探测 RPC 与状态维护。
 
-HTTP API 见 tenant.a2a.views.peers；对话调用见 tenant.a2a.invoke + client。
+状态机
+------
+``PENDING`` → 同步 Card 成功 → ``ACTIVE``；失败记 ``last_error`` 为 ``ERROR``。
+
+下游：CUSTOM Agent 通过 ``peer_refs`` 引用；A2A 宿主通过 ``host_bindings`` 绑定。
+对话 HTTP 不在本 Service，见 ``tenant.a2a.invoke`` + ``client.invoke_a2a_peer``。
 """
 
 from datetime import datetime, timezone

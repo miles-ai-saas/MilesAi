@@ -1,4 +1,9 @@
-"""A2A 外部智能体 Peer：登记、Agent Card 同步与连通性探测。"""
+"""
+A2A 外部智能体 Peer HTTP API（``/a2a/peers``）。
+
+同步 Card 后 ``status=active`` 方可被 Agent 引用；``probe`` 可在登记前探测 URL。
+对话调用不在此路由，见 ``AgentService.chat`` → ``tenant.a2a.invoke``。
+"""
 
 from uuid import UUID
 

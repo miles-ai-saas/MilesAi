@@ -1,7 +1,9 @@
-"""知识库与附件的租户配额校验与存储用量回写。
+"""
+租户知识库配额与存储用量。
 
-上传前：assert_can_upload_bytes；创建 KB：assert_can_create_kb。
-上传成功：apply_storage_delta；删除文档：delta=0 触发重算 storage_used_mb。
+- ``assert_can_create_kb`` / ``assert_can_upload_bytes``：上传前校验
+- ``apply_storage_delta``：上传成功后增加 ``storage_used_mb``；删除文档传 delta=0 触发重算
+- ``get_max_file_mb``：单文件上限，来自 system_config ``ingest.max_file_mb``
 """
 
 from __future__ import annotations

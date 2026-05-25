@@ -1,3 +1,9 @@
+"""
+A2A Peer HTTP 请求/响应模型。
+
+``base_url`` 可为 Agent 根地址或完整 Card URL；同步后 ``agent_card_url`` 规范化。
+"""
+
 from datetime import datetime
 from uuid import UUID
 

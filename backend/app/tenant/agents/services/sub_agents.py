@@ -1,6 +1,17 @@
-"""子智能体绑定：校验、同步、环检测。
+"""
+子智能体绑定（表 ``agt_sub_agent_bindings``）：校验、同步、环检测。
 
-有绑定时 agent.config 启用 DeepAgents 规划；对话见 integrations.deepagents.orchestrator。
+创建/更新 Agent 时
+------------------
+- ``validate_and_sync_sub_agents``：最多 8 个、禁止自引用与 DAG 成环
+- ``apply_planner_config``：写入 ``runtime_mode=autonomous``、``planner=deepagents``
+
+对话
+----
+``AgentService.chat`` 有绑定时走 ``integrations.deepagents.orchestrator``，
+**不**与父 Agent 的 ``published_flow_id`` / 单 Agent ``_rag_chat`` 同轮并存（先命中子 Agent 分支）。
+
+子智能体 ``chat_as_child`` 仍可绑定 ``knowledge_bases``，检索链路与父 Agent RAG 相同。
 """
 
 from uuid import UUID

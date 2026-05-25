@@ -1,4 +1,9 @@
-"""应用市场官方模板。"""
+"""
+应用市场官方模板种子数据。
+
+``_rag_graph()`` 加载 ``flow_runtime/templates/rag_flow.json`` 作为上架应用的默认画布；
+与 ``tenant.marketplace.util.load_rag_graph_template`` 同源。结构说明见 ``templates/README.md``。
+"""
 
 import json
 from pathlib import Path
@@ -16,11 +21,8 @@ def _rag_graph() -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-async def seed_marketplace(session: AsyncSession) -> None:
-    existing = await session.scalar(select(MarketplaceApp.id).limit(1))
-    if existing:
-        return
-
+async def seed_marketplace_categories(session: AsyncSession) -> dict[str, AppCategory]:
+    """幂等写入市场分类；返回 slug -> 行。"""
     categories = [
         ("RAG 应用", "rag", 10),
         ("智能体", "agent", 20),
@@ -29,10 +31,25 @@ async def seed_marketplace(session: AsyncSession) -> None:
     ]
     cat_map: dict[str, AppCategory] = {}
     for name, slug, order in categories:
+        exists = await session.scalar(select(AppCategory.id).where(AppCategory.slug == slug))
+        if exists:
+            row = await session.get(AppCategory, exists)
+            if row:
+                cat_map[slug] = row
+            continue
         cat = AppCategory(name=name, slug=slug, sort_order=order)
         session.add(cat)
         cat_map[slug] = cat
     await session.flush()
+    return cat_map
+
+
+async def seed_marketplace(session: AsyncSession) -> None:
+    cat_map = await seed_marketplace_categories(session)
+
+    existing = await session.scalar(select(MarketplaceApp.id).limit(1))
+    if existing:
+        return
 
     graph = _rag_graph()
     apps = [

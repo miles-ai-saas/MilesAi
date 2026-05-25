@@ -1,4 +1,14 @@
-"""从 ModelConfig 解析向量化元数据（维度、invoke_mode、API base）。"""
+"""
+从 ModelConfig 解析向量化元数据。
+
+关键字段（``ModelConfig.extra``）
+--------------------------------
+- ``embedding_dimension``：创建 KB 时写入 ``KnowledgeBase.embedding_dimension``
+- ``invoke_mode``：registry 分发键（local / openai_compatible / litellm）
+- ``embedding_batch_size``：单次 API 条数；通义 DashScope 强制 ≤10
+
+未配置 ``invoke_mode`` 时按 ``vendor`` 默认（如 Qwen → openai_compatible）。
+"""
 
 from __future__ import annotations
 

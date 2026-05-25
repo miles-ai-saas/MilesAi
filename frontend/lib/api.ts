@@ -36,7 +36,9 @@ import type {
   PromptTemplate,
   SensitiveWord,
   SkillPackage,
+  TagRef,
   TaskRecord,
+  TenantTag,
   TokenPair,
   UserInfo,
   TenantUser,
@@ -48,6 +50,11 @@ import { getApiErrorMessage } from "./api-error";
 import { buildPageQuery, DEFAULT_PAGE_SIZE, normalizePageResult } from "./pagination";
 
 export { getApiErrorMessage } from "./api-error";
+
+function appendTagIds(base: string, tagIds?: string[]): string {
+  if (!tagIds?.length) return base;
+  return tagIds.reduce((s, id) => `${s}&tag_ids=${encodeURIComponent(id)}`, base);
+}
 
 const baseURL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 
@@ -189,13 +196,51 @@ export const api = {
   listInterceptLogs: (page = 1, size = DEFAULT_PAGE_SIZE) =>
     getPage<InterceptLog>(`/compliance/logs?${buildPageQuery(page, size)}`),
 
-  listPromptTemplates: (page = 1, size = DEFAULT_PAGE_SIZE) =>
-    getPage<PromptTemplate>(`/prompt-templates?${buildPageQuery(page, size)}`),
-  createPromptTemplate: (name: string, content: string, description?: string) =>
-    post<PromptTemplate>("/prompt-templates", { name, content, description }),
+  listCategories: async (domain: import("./types").CategoryDomain) => {
+    const raw = await get<import("./types").SysCategory[] | null>(
+      `/categories?domain=${domain}`,
+    );
+    return Array.isArray(raw) ? raw : [];
+  },
+  listTags: () => get<TenantTag[]>("/tags"),
+  createTag: (name: string) => post<TenantTag>("/tags", { name }),
+  deleteTag: (id: string) => http.delete(`/tags/${id}`).then(() => undefined),
+
+  listPromptTemplates: (
+    page = 1,
+    size = DEFAULT_PAGE_SIZE,
+    categoryId?: string,
+    tagIds?: string[],
+  ) => {
+    let q = buildPageQuery(page, size);
+    if (categoryId) q += `&category_id=${categoryId}`;
+    q = appendTagIds(q, tagIds);
+    return getPage<PromptTemplate>(`/prompt-templates?${q}`);
+  },
+  createPromptTemplate: (
+    name: string,
+    content: string,
+    description?: string,
+    categoryId?: string,
+    tagIds?: string[],
+  ) =>
+    post<PromptTemplate>("/prompt-templates", {
+      name,
+      content,
+      description,
+      category_id: categoryId || null,
+      tag_ids: tagIds ?? [],
+    }),
   updatePromptTemplate: (
     id: string,
-    payload: { name?: string; content?: string; description?: string; is_active?: boolean },
+    payload: {
+      name?: string;
+      content?: string;
+      description?: string;
+      is_active?: boolean;
+      category_id?: string | null;
+      tag_ids?: string[];
+    },
   ) => patch<PromptTemplate>(`/prompt-templates/${id}`, payload),
   deletePromptTemplate: (id: string) =>
     http.delete(`/prompt-templates/${id}`).then(() => undefined),
@@ -313,10 +358,18 @@ export const api = {
   ) => patch<KnowledgeBase>(`/kb/${kbId}`, payload),
   deleteKb: (kbId: string) => http.delete(`/kb/${kbId}`).then(() => undefined),
 
-  listAgents: (page = 1, size = DEFAULT_PAGE_SIZE, agentType?: import("./types").AgentType) => {
-    const q = buildPageQuery(page, size);
-    const suffix = agentType ? `${q}&agent_type=${agentType}` : q;
-    return getPage<Agent>(`/agents?${suffix}`);
+  listAgents: (
+    page = 1,
+    size = DEFAULT_PAGE_SIZE,
+    agentType?: import("./types").AgentType,
+    categoryId?: string,
+    tagIds?: string[],
+  ) => {
+    let q = buildPageQuery(page, size);
+    if (agentType) q += `&agent_type=${agentType}`;
+    if (categoryId) q += `&category_id=${categoryId}`;
+    q = appendTagIds(q, tagIds);
+    return getPage<Agent>(`/agents?${q}`);
   },
 
   listA2aPeers: (page = 1, size = DEFAULT_PAGE_SIZE) =>
@@ -336,6 +389,8 @@ export const api = {
   getAgent: (agentId: string) => get<Agent>(`/agents/${agentId}`),
   createAgent: (payload: {
     agent_type?: import("./types").AgentType;
+    category_id?: string | null;
+    tag_ids?: string[];
     name: string;
     description?: string;
     kb_ids?: string[];
@@ -350,6 +405,8 @@ export const api = {
   updateAgent: (
     agentId: string,
     payload: {
+      category_id?: string | null;
+      tag_ids?: string[];
       name?: string;
       description?: string;
       status?: "enabled" | "disabled";
@@ -368,11 +425,19 @@ export const api = {
   chatAgent: (
     agentId: string,
     query: string,
-    opts?: { conversationId?: string },
+    opts?: {
+      conversationId?: string;
+      toolConfirmed?: boolean;
+      pendingToolSlug?: string;
+      pendingToolParams?: Record<string, unknown>;
+    },
   ) =>
     post<ChatResponse>(`/agents/${agentId}/chat`, {
       query,
       ...(opts?.conversationId ? { conversation_id: opts.conversationId } : {}),
+      ...(opts?.toolConfirmed ? { tool_confirmed: true } : {}),
+      ...(opts?.pendingToolSlug ? { pending_tool_slug: opts.pendingToolSlug } : {}),
+      ...(opts?.pendingToolParams ? { pending_tool_params: opts.pendingToolParams } : {}),
     }),
 
   getKb: (kbId: string) => get<KnowledgeBase>(`/kb/${kbId}`),
@@ -475,38 +540,68 @@ export const api = {
   deleteHookBinding: (bindingId: string) =>
     http.delete(`/hooks/bindings/${bindingId}`).then(() => undefined),
 
-  listToolCatalog: () =>
-    get<
-      {
-        source: string;
-        name: string;
-        description?: string | null;
-        tool_id?: string | null;
-        mcp_service_id?: string | null;
-        mcp_service_name?: string | null;
-      }[]
-    >("/tools/catalog"),
-  listCustomTools: (page = 1, size = DEFAULT_PAGE_SIZE) =>
-    getPage<CustomTool>(`/tools?${buildPageQuery(page, size)}`),
-  createCustomTool: (name: string, description: string, config: Record<string, unknown>) =>
-    post<CustomTool>("/tools", { name, description, tool_type: "http", config }),
-  updateCustomTool: (
-    id: string,
-    payload: { name?: string; description?: string; config?: Record<string, unknown>; is_active?: boolean },
-  ) => patch<CustomTool>(`/tools/${id}`, payload),
+  listToolCatalog: (source?: string, categoryId?: string, tagIds?: string[]) => {
+    const q = new URLSearchParams();
+    if (source) q.set("source", source);
+    if (categoryId) q.set("category_id", categoryId);
+    tagIds?.forEach((id) => q.append("tag_ids", id));
+    const qs = q.toString();
+    return get<import("./types").ToolCatalogItem[]>(`/tools/catalog${qs ? `?${qs}` : ""}`);
+  },
+  listCustomTools: (page = 1, size = DEFAULT_PAGE_SIZE, categoryId?: string, tagIds?: string[]) => {
+    let qs = buildPageQuery(page, size);
+    if (categoryId) qs += `&category_id=${categoryId}`;
+    qs = appendTagIds(qs, tagIds);
+    return getPage<import("./types").CustomTool>(`/tools?${qs}`);
+  },
+  createCustomTool: (payload: import("./types").ToolCreatePayload) =>
+    post<import("./types").CustomTool>("/tools", { tool_type: "http", ...payload }),
+  updateCustomTool: (id: string, payload: Partial<import("./types").ToolCreatePayload & { is_active?: boolean }>) =>
+    patch<import("./types").CustomTool>(`/tools/${id}`, payload),
   deleteCustomTool: (id: string) => http.delete(`/tools/${id}`).then(() => undefined),
-  invokeTool: (name: string, params: Record<string, unknown>, toolId?: string) =>
-    post<{ tool: string; source: string; output: Record<string, unknown> }>(
-      `/tools/${encodeURIComponent(name)}/invoke`,
-      { params, tool_id: toolId || null },
-    ),
+  invokeTool: (
+    name: string,
+    params: Record<string, unknown>,
+    toolId?: string,
+    confirmed = false,
+  ) =>
+    post<{
+      tool: string;
+      source: string;
+      status: string;
+      output: Record<string, unknown>;
+      pending?: import("./types").PendingToolCall | null;
+    }>(`/tools/${encodeURIComponent(name)}/invoke`, {
+      params,
+      tool_id: toolId || null,
+      confirmed,
+    }),
+  listToolInvocationLogs: (page = 1, size = DEFAULT_PAGE_SIZE, toolSlug?: string) => {
+    const q = new URLSearchParams(buildPageQuery(page, size));
+    if (toolSlug) q.set("tool_slug", toolSlug);
+    return getPage<import("./types").ToolInvocationLog>(`/tools/invocation-logs?${q.toString()}`);
+  },
   listBuiltinTools: () => get<Record<string, string>[]>("/tools/builtin"),
 
-  listSkillPackages: (page = 1, size = DEFAULT_PAGE_SIZE) =>
-    getPage<SkillPackage>(`/skill-packages?${buildPageQuery(page, size)}`),
+  // --- 技能包（SKILL.md 落盘，见 docs/guides/skill-packages.md）---
+  listSkillPackages: (page = 1, size = DEFAULT_PAGE_SIZE, categoryId?: string, tagIds?: string[]) => {
+    let q = buildPageQuery(page, size);
+    if (categoryId) q += `&category_id=${encodeURIComponent(categoryId)}`;
+    q = appendTagIds(q, tagIds);
+    return getPage<SkillPackage>(`/skill-packages?${q}`);
+  },
+  getSkillPackage: (id: string) => get<SkillPackage>(`/skill-packages/${id}`),
+  createSkillPackageBlank: (payload: {
+    name: string;
+    description?: string;
+    category_id: string;
+    tag_ids?: string[];
+  }) => post<SkillPackage>("/skill-packages/blank", payload),
   createSkillPackage: (payload: {
     name: string;
     description?: string;
+    category_id?: string;
+    tag_ids?: string[];
     tool_names?: string[];
     prompt_snippet?: string;
   }) => post<SkillPackage>("/skill-packages", payload),
@@ -515,6 +610,8 @@ export const api = {
     payload: {
       name?: string;
       description?: string;
+      category_id?: string | null;
+      tag_ids?: string[];
       tool_names?: string[];
       prompt_snippet?: string;
       is_active?: boolean;
@@ -522,11 +619,61 @@ export const api = {
   ) => patch<SkillPackage>(`/skill-packages/${id}`, payload),
   deleteSkillPackage: (id: string) =>
     http.delete(`/skill-packages/${id}`).then(() => undefined),
+  listSkillFiles: (id: string) => get<import("./types").SkillFileNode[]>(`/skill-packages/${id}/files`),
+  getSkillFile: (id: string, path: string) =>
+    get<{ path: string; content: string }>(
+      `/skill-packages/${id}/file?path=${encodeURIComponent(path)}`,
+    ),
+  putSkillFile: (id: string, payload: { path: string; content: string }) =>
+    put<{ path: string; content: string }>(`/skill-packages/${id}/file`, payload),
+  importSkillLocal: (payload: {
+    category_id: string;
+    local_path: string;
+    overwrite_existing?: boolean;
+  }) => post<import("./types").SkillImportResult>("/skill-packages/import/local", payload),
+  importSkillGit: (payload: {
+    category_id: string;
+    repo_url: string;
+    overwrite_existing?: boolean;
+  }) => post<import("./types").SkillImportResult>("/skill-packages/import/git", payload),
+  importSkillZip: async (
+    categoryId: string,
+    file: File,
+    overwriteExisting = false,
+  ) => {
+    const form = new FormData();
+    form.append("file", file);
+    const q = `category_id=${encodeURIComponent(categoryId)}&overwrite_existing=${overwriteExisting}`;
+    const res = await http.post<ApiResponse<import("./types").SkillImportResult>>(
+      `/skill-packages/import/zip?${q}`,
+      form,
+      { headers: { "Content-Type": "multipart/form-data" } },
+    );
+    return unwrap(res.data);
+  },
 
-  listMcpServices: (page = 1, size = DEFAULT_PAGE_SIZE) =>
-    getPage<McpService>(`/mcp?${buildPageQuery(page, size)}`),
-  createMcpService: (name: string, endpoint_url: string, transport = "sse") =>
-    post<McpService>("/mcp", { name, endpoint_url, transport }),
+  listMcpServices: (page = 1, size = DEFAULT_PAGE_SIZE, transport?: string) => {
+    const q = buildPageQuery(page, size);
+    const extra = transport ? `&transport=${encodeURIComponent(transport)}` : "";
+    return getPage<McpService>(`/mcp?${q}${extra}`);
+  },
+  createMcpService: (payload: {
+    name: string;
+    transport: string;
+    endpoint_url?: string;
+    description?: string;
+    connection_config?: Record<string, unknown>;
+  }) => post<McpService>("/mcp", payload),
+  updateMcpService: (
+    id: string,
+    payload: {
+      name?: string;
+      transport?: string;
+      endpoint_url?: string;
+      description?: string;
+      connection_config?: Record<string, unknown>;
+    },
+  ) => patch<McpService>(`/mcp/${id}`, payload),
   deleteMcpService: (id: string) => http.delete(`/mcp/${id}`).then(() => undefined),
   syncMcpService: (serviceId: string) =>
     post<{ tools: Record<string, unknown>[]; synced_at: string }>(`/mcp/${serviceId}/sync`),
@@ -542,7 +689,8 @@ export const api = {
   getMonitorReport: () => get<MonitorReport>("/monitor/report"),
   exportMonitorReport: () =>
     http.get("/monitor/report/export", { responseType: "blob" }).then((res) => res.data as Blob),
-  getMonitorHealth: () => get<{ status: string; components: Record<string, unknown> }>("/monitor/health"),
+  getMonitorHealth: () =>
+    get<{ healthy: boolean; status: string; components: Record<string, unknown> }>("/monitor/health"),
   getAlertConfig: () => get<AlertConfig>("/monitor/alerts"),
   saveAlertConfig: (body: AlertConfig) => put<AlertConfig>("/monitor/alerts", body),
   testAlertConfig: (body: AlertConfig) => post<{ ok: boolean; message?: string; status?: number }>(

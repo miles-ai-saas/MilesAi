@@ -1,4 +1,14 @@
-"""智能体 ORM：对话配置、KB 多对多、子 Agent 与发布流程绑定。"""
+"""
+智能体 ORM：对话配置、KB 多对多、子 Agent 与发布流程绑定。
+
+``agt_kb_bindings``
+-----------------
+逻辑多对多，无 DB 外键。删 KB 前 ``deletion.cascade.unlink_agent_kb_bindings``；
+删 Agent 前 ``before_delete_agent`` 解绑。
+
+``config`` JSON 常用键：``top_k``、``use_langgraph_rag``、``runtime_mode``、
+``skill_ids``、``enable_tool_calling``、``rag_max_retries``、``relevance_threshold``。
+"""
 
 import enum
 import uuid
@@ -40,6 +50,7 @@ class Agent(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         Index("idx_agt_agents_model_config_id", "model_config_id"),
         Index("idx_agt_agents_published_flow_id", "published_flow_id"),
         Index("idx_agt_agents_prompt_template_id", "prompt_template_id"),
+        Index("idx_agt_agents_category_id", "category_id"),
     )
 
     tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
@@ -60,6 +71,7 @@ class Agent(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     prompt_template_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     model_config_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     published_flow_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    category_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     config: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
 
     model_config: Mapped["ModelConfig | None"] = relationship(

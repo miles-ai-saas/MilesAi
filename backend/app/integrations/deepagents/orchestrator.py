@@ -1,6 +1,17 @@
-"""主智能体 + 多子智能体：DeepAgents 规划或平台 JSON 规划降级。
+"""
+主智能体 + 多子智能体编排（L3）。
 
-Agent.chat 有 sub_agent_bindings 时进入；config.planner=deepagents 且已安装包则优先 DeepAgents。
+决策（``AgentService.chat`` 有 ``sub_agent_bindings`` 时）
+-------------------------------------------------
+1. ``_should_use_deepagents``：``config.planner=deepagents`` 且已安装 ``deepagents`` 包
+   → ``run_deepagents_chat``（task 工具委派，共用 ``get_checkpointer()``）
+2. 失败或未安装 → ``_run_platform_planned``：主模型输出 JSON ``steps``，依次 ``chat_as_child``
+
+与 A2A / 发布流程
+-----------------
+子智能体路径优先于 ``published_flow`` 与单 Agent ``_rag_chat``；A2A 增强在子 Agent 返回之后另分支处理。
+
+``config`` 常用键：``subagent_parallel``、``max_subagent_calls``、``force_platform_planner``。
 """
 
 from __future__ import annotations

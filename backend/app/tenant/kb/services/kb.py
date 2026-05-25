@@ -1,9 +1,23 @@
-"""知识库 L1 用例：CRUD、上传、检索、删除编排。
+"""
+知识库 L1 用例：CRUD、上传、检索、删除编排。
 
-上传：OSS + Document(PENDING) + ingest_document.delay → run_ingest → pipeline。
-检索：embed_query_for_kb → search_kb_chunks（vector/hybrid/rerank）→ PG 回填正文。
-删除：clear_document_derived_data_async → OSS → 软删。
-embedding 维度在创建 KB 时固化，之后不可通过 API 修改。
+上传（异步）
+------------
+校验配额/类型 → 写 OSS → 建 ``Document(PENDING)`` → ``ingest_document.delay``
+→ Worker ``run_ingest`` → ``rag.pipeline``（详见各层模块注释）。
+
+检索（同步 HTTP）
+-----------------
+``embed_query_for_kb`` → ``search_kb_chunks`` → 从 PG 取 **完整** chunk.content 组装响应
+（向量库 hit 仅含 content_preview 截断）。
+
+删除
+----
+``clear_document_derived_data_async``（PG 分片 + vector_ref + 向量库）→ 删 OSS → 软删文档。
+
+约束
+----
+``embedding_model_config_id`` / ``embedding_dimension`` 在 **创建 KB 时固化**，后续不可改。
 """
 
 import time
@@ -208,7 +222,11 @@ class KnowledgeBaseService(BaseService):
         return await self._to_kb_out(kb)
 
     async def delete_kb(self, kb_id: UUID) -> None:
-        """级联删除文档后软删知识库。"""
+        """
+        删除知识库：逐文档清理衍生数据与 OSS，解绑 Agent/市场引用后软删 KB。
+
+        向量库按 document_id 删除；不单独按 kb_id 扫全库（依赖文档级清理）。
+        """
         kb = await self._get_kb_or_raise(kb_id)
         docs = (
             await self.db.execute(
@@ -373,7 +391,12 @@ class KnowledgeBaseService(BaseService):
             await apply_storage_delta(self.db, doc.tenant_id, 0)
 
     async def search(self, kb_id: UUID, body: SearchRequest) -> SearchResponse:
-        """检索并写审计日志；命中后从 PG 取完整分片内容与文件名。"""
+        """
+        工作台 KB 检索 API。
+
+        召回走 ``search_kb_chunks``（与 Agent 共用 L2 逻辑）；
+        展示用正文来自 PG ``document_chunks``，非向量库 preview 字段。
+        """
         kb = await self._get_kb_or_raise(kb_id)
         effective_mode = resolve_retrieval_mode(kb, body.mode)
         started = time.perf_counter()

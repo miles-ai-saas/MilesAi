@@ -1,6 +1,16 @@
-"""知识库检索模式解析与统一检索入口。
+"""
+知识库检索模式解析与统一检索入口。
 
-vector：仅语义向量；hybrid：向量库原生 hybrid（若有）否则 向量 + PG 关键词 + RRF。
+模式（``KnowledgeBase.retrieval_mode`` / 请求参数）
+-------------------------------------------------
+- **vector**：``gateway.search_vectors``，纯语义向量。
+- **hybrid**：
+  - Weaviate：``store.search_hybrid``（BM25 + 向量，``hybrid_alpha`` 调节）
+  - Milvus/pgvector：``search_vectors`` + ``keyword`` + ``hybrid.rrf_fuse``
+
+可选 **rerank**：见 ``rerank.compute_rerank_fetch_limit`` / ``apply_rerank_to_hits``。
+
+Agent 多 KB 场景见 ``multi_kb.search_kb`` / ``search_kb_async``。
 """
 
 from __future__ import annotations
@@ -46,13 +56,18 @@ async def search_kb_chunks(
     mode: str,
     rerank_model: ModelConfig | None = None,
 ) -> list[dict[str, Any]]:
-    """按检索模式查询分片 hit（含 chunk_id / document_id / score）。"""
+    """
+    按检索模式查询分片 hit（含 chunk_id / document_id / score）。
+
+    流程：解析 mode → 向量/混合召回 → 可选 rerank 截断到 limit。
+    """
     fetch_limit = compute_rerank_fetch_limit(
         limit,
         rerank_model=rerank_model,
         candidate_k=kb.rerank_candidate_k,
     )
     effective = resolve_retrieval_mode(kb, mode)
+    # 纯向量：gateway.search_vectors，各 VECTOR_STORE_BACKEND 行为一致
     if effective == RETRIEVAL_VECTOR:
         hits = search_vectors(
             query_vector,
@@ -62,6 +77,7 @@ async def search_kb_chunks(
         )
         for h in hits:
             h.setdefault("score_vector", h.get("score"))
+    # --- 混合：Weaviate 原生 BM25+向量；alpha 来自 kb.hybrid_alpha ---
     elif hasattr(get_vector_store(), "search_hybrid"):
         store = get_vector_store()
         alpha = float(kb.hybrid_alpha if kb.hybrid_alpha is not None else 0.5)
@@ -74,6 +90,7 @@ async def search_kb_chunks(
             limit=fetch_limit,
             alpha=alpha,
         )
+    # --- 混合：Milvus/pgvector 无 search_hybrid → 向量 + PG 关键词 RRF ---
     else:
         hits = await _hybrid_rrf(
             db,

@@ -1,3 +1,10 @@
+"""
+智能体仓储（L3）。
+
+``load_kbs`` 仅按 id 加载行，**不**校验是否同属当前租户（由 Service 层在绑定前校验）。
+``get_detail`` 预加载 knowledge_bases / model_config / published_flow，供 ``AgentService.chat`` 使用。
+"""
+
 from uuid import UUID
 
 from sqlalchemy import select

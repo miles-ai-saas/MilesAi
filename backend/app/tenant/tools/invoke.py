@@ -1,21 +1,30 @@
-"""内置与自定义工具执行。
+"""
+内置与自定义工具执行（含确认策略与调用日志）。
 
-flow_runtime TOOL 节点、ToolsService.invoke、LangChain tools 均经 invoke_tool_by_name 分发。
-内置 knowledge_search 走同步 DB + search_kb（Celery 外勿在 async 路径长时间阻塞）。
+内置 ``knowledge_search`` 与 RAG 关系
+----------------------------------
+同步 ``search_kb`` → 单 KB 向量/混合检索（与 Agent ``_rag_chat`` 多 KB 路径独立）。
+
+MCP 工具真调用在 ``tenant.mcp.client``；本模块不实现 MCP 协议。
 """
 
 import ast
 import operator as op
-import re
+import time
 from uuid import UUID
 
 import httpx
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.common.url_security import validate_outbound_url
 from app.integrations.langchain.vectorstores import search_kb
 from app.common.exceptions import BadRequestError, NotFoundError
 from app.core.tenant import TenantContext
+from app.tenant.tools.builtin_registry import BUILTIN_SLUGS
+from app.tenant.tools.confirmation import ToolConfirmationRequired, resolve_tool_meta
+from app.tenant.tools.invocation_log import write_tool_invocation_log
 from app.tenant.tools.models import Tool, ToolType
+from app.tenant.tools.parameters import validate_tool_params
 from app.core.soft_delete import is_marked_deleted
 
 
@@ -40,9 +49,15 @@ def _eval_expr(node: ast.AST):
 
 
 def safe_calculate(expression: str) -> float:
-    """AST 白名单求值，仅支持四则运算与一元负号。"""
     tree = ast.parse(expression.strip(), mode="eval")
     return float(_eval_expr(tree.body))
+
+
+def _apply_template(template: str, params: dict) -> str:
+    out = template
+    for k, v in params.items():
+        out = out.replace(f"{{{{{k}}}}}", str(v))
+    return out
 
 
 async def invoke_builtin(
@@ -52,7 +67,6 @@ async def invoke_builtin(
     db: AsyncSession,
     ctx: TenantContext,
 ) -> dict:
-    """执行 calculator / http_request / knowledge_search。"""
     if name == "calculator":
         expr = params.get("expression") or params.get("expr") or params.get("query", "")
         if not expr:
@@ -63,11 +77,13 @@ async def invoke_builtin(
         url = params.get("url")
         if not url:
             raise BadRequestError("http_request 需要 url 参数")
+        validate_outbound_url(str(url))
         method = str(params.get("method", "GET")).upper()
         async with httpx.AsyncClient(timeout=float(params.get("timeout", 10))) as client:
-            resp = await client.request(method, url, json=params.get("json"), params=params.get("params"))
-        text = resp.text[:4000]
-        return {"status_code": resp.status_code, "body": text}
+            resp = await client.request(
+                method, url, json=params.get("json"), params=params.get("params")
+            )
+        return {"status_code": resp.status_code, "body": resp.text[:4000]}
 
     if name == "knowledge_search":
         query = params.get("query") or params.get("q", "")
@@ -79,28 +95,59 @@ async def invoke_builtin(
         from app.infra.db import get_sync_db
         from app.rag.load import load_kb_sync
 
-        with get_sync_db() as db:
-            kb = load_kb_sync(db, ctx.tenant_id, UUID(str(kb_id)))
-            hits = search_kb(str(query), kb=kb, db=db, limit=int(params.get("limit", 5)))
+        with get_sync_db() as sync_db:
+            kb = load_kb_sync(sync_db, ctx.tenant_id, UUID(str(kb_id)))
+            hits = search_kb(str(query), kb=kb, db=sync_db, limit=int(params.get("limit", 5)))
         return {"hits": hits}
+
+    if name == "get_current_datetime":
+        from datetime import datetime
+        from zoneinfo import ZoneInfo
+
+        tz_name = params.get("timezone") or "UTC"
+        try:
+            tz = ZoneInfo(str(tz_name))
+        except Exception as exc:
+            raise BadRequestError(f"无效时区: {tz_name}") from exc
+        now = datetime.now(tz)
+        return {"datetime": now.isoformat(), "timezone": tz_name}
 
     raise BadRequestError(f"未知内置工具: {name}")
 
 
 async def invoke_custom_http(tool: Tool, params: dict) -> dict:
-    """租户 HTTP 型工具：config.url/method/headers 与 params 合并请求。"""
+    validated = validate_tool_params(tool.parameters or [], params)
     cfg = tool.config or {}
-    url = cfg.get("url") or params.get("url")
+    url = _apply_template(str(cfg.get("url", "")), validated)
     if not url:
         raise BadRequestError("HTTP 工具未配置 url")
-    method = str(cfg.get("method", params.get("method", "POST"))).upper()
-    headers = cfg.get("headers") or {}
-    async with httpx.AsyncClient(timeout=float(cfg.get("timeout", 15))) as client:
-        resp = await client.request(method, url, json=params, headers=headers)
-    return {
-        "status_code": resp.status_code,
-        "body": resp.text[:4000],
+    validate_outbound_url(url)
+    method = str(cfg.get("method", "POST")).upper()
+    headers = {
+        k: _apply_template(str(v), validated) for k, v in (cfg.get("headers") or {}).items()
     }
+    timeout = float(cfg.get("timeout_sec", cfg.get("timeout", 15)))
+    async with httpx.AsyncClient(timeout=timeout) as client:
+        if method == "GET":
+            resp = await client.get(url, params=validated, headers=headers)
+        else:
+            body_mode = cfg.get("body_mode", "json")
+            kwargs: dict = {"headers": headers}
+            if body_mode == "json":
+                kwargs["json"] = validated
+            resp = await client.request(method, url, **kwargs)
+    text = resp.text[:4000]
+    result: dict = {"status_code": resp.status_code, "body": text}
+    path = cfg.get("response_path")
+    if path and "application/json" in resp.headers.get("content-type", ""):
+        try:
+            data = resp.json()
+            for part in str(path).split("."):
+                data = data[part]
+            result["extracted"] = data
+        except Exception:
+            pass
+    return result
 
 
 async def invoke_tool_by_name(
@@ -111,9 +158,8 @@ async def invoke_tool_by_name(
     *,
     tool_id: UUID | None = None,
 ) -> dict:
-    """按名称或 tool_id 解析 Tool 行；内置名无 tool_id 时走 invoke_builtin。"""
-    builtin_names = {"calculator", "http_request", "knowledge_search"}
-    if name in builtin_names and not tool_id:
+    """按 slug 执行；不含确认与日志（内部用）。"""
+    if name in BUILTIN_SLUGS and not tool_id:
         return await invoke_builtin(name, params, db=db, ctx=ctx)
 
     if tool_id:
@@ -124,7 +170,7 @@ async def invoke_tool_by_name(
         tool = await db.scalar(
             select(Tool).where(
                 Tool.tenant_id == ctx.tenant_id,
-                Tool.name == name,
+                Tool.slug == name,
                 Tool.is_active.is_(True),
             )
         )
@@ -133,3 +179,79 @@ async def invoke_tool_by_name(
     if tool.tool_type == ToolType.HTTP:
         return await invoke_custom_http(tool, params)
     raise BadRequestError(f"暂不支持执行工具类型: {tool.tool_type}")
+
+
+async def invoke_tool_with_context(
+    db: AsyncSession,
+    ctx: TenantContext,
+    name: str,
+    params: dict,
+    *,
+    tool_id: UUID | None = None,
+    confirmed: bool = False,
+    actor_user_id: UUID | None = None,
+    agent_id: UUID | None = None,
+    invoke_source: str = "api",
+) -> dict:
+    """带确认策略与审计日志的工具调用入口。"""
+    meta = await resolve_tool_meta(db, ctx, name, tool_id=tool_id)
+    slug = meta["slug"]
+    resolved_tool_id = meta.get("tool_id") or tool_id
+
+    if meta["require_confirmation"] and not confirmed:
+        await write_tool_invocation_log(
+            db,
+            tenant_id=ctx.tenant_id,
+            tool_slug=slug,
+            tool_id=resolved_tool_id,
+            source=meta["source"],
+            status="confirmation_required",
+            params=params,
+            actor_user_id=actor_user_id,
+            agent_id=agent_id,
+            invoke_source=invoke_source,
+        )
+        raise ToolConfirmationRequired(
+            slug, meta["name"], meta.get("description"), params
+        )
+
+    started = time.monotonic()
+    try:
+        output = await invoke_tool_by_name(
+            db, ctx, slug, params, tool_id=resolved_tool_id
+        )
+        latency_ms = int((time.monotonic() - started) * 1000)
+        await write_tool_invocation_log(
+            db,
+            tenant_id=ctx.tenant_id,
+            tool_slug=slug,
+            tool_id=resolved_tool_id,
+            source=meta["source"],
+            status="success",
+            params=params,
+            output=output,
+            latency_ms=latency_ms,
+            actor_user_id=actor_user_id,
+            agent_id=agent_id,
+            invoke_source=invoke_source,
+        )
+        return output
+    except ToolConfirmationRequired:
+        raise
+    except Exception as exc:
+        latency_ms = int((time.monotonic() - started) * 1000)
+        await write_tool_invocation_log(
+            db,
+            tenant_id=ctx.tenant_id,
+            tool_slug=slug,
+            tool_id=resolved_tool_id,
+            source=meta["source"],
+            status="error",
+            params=params,
+            error_message=str(exc)[:2000],
+            latency_ms=latency_ms,
+            actor_user_id=actor_user_id,
+            agent_id=agent_id,
+            invoke_source=invoke_source,
+        )
+        raise

@@ -1,0 +1,25 @@
+{
+  "description": "工作台系统预置分类（全平台全局字典；租户只读）",
+  "agent": [
+    { "name": "客服", "slug": "customer_service", "sort_order": 10, "is_system": true },
+    { "name": "通用", "slug": "general", "sort_order": 20, "is_system": true },
+    { "name": "合规", "slug": "compliance", "sort_order": 30, "is_system": true },
+    { "name": "内部", "slug": "internal", "sort_order": 40, "is_system": true }
+  ],
+  "prompt": [
+    { "name": "通用", "slug": "general", "sort_order": 10, "is_system": true },
+    { "name": "营销", "slug": "marketing", "sort_order": 20, "is_system": true },
+    { "name": "研发", "slug": "engineering", "sort_order": 30, "is_system": true }
+  ],
+  "skill": [
+    { "name": "通用", "slug": "general", "sort_order": 10, "is_system": true },
+    { "name": "本地导入", "slug": "local_import", "sort_order": 20, "is_system": true },
+    { "name": "Git导入", "slug": "git_import", "sort_order": 30, "is_system": true },
+    { "name": "ZIP导入", "slug": "zip_import", "sort_order": 40, "is_system": true }
+  ],
+  "tool": [
+    { "name": "通用", "slug": "general", "sort_order": 10, "is_system": true },
+    { "name": "集成", "slug": "integration", "sort_order": 20, "is_system": true },
+    { "name": "数据", "slug": "data", "sort_order": 30, "is_system": true }
+  ]
+}

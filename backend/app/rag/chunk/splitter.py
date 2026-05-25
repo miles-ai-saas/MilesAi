@@ -121,7 +121,14 @@ def chunk_documents(
     chunk_size: int | None = None,
     overlap: int | None = None,
 ) -> list[TextChunk]:
-    """将解析得到的 LangChain Document 列表分片为带页码的 TextChunk。"""
+    """
+    将 Parse 输出的 Document 列表分片为 ``TextChunk``（入库管道下一步 embed）。
+
+    策略分支（见 metadata.parser）：
+    - docling：Markdown 先按 #/##/### 标题切，超长再 RecursiveCharacter
+    - pypdf 多页：每页单独切，保留 page_no
+    - 其他：合并全文后 RecursiveCharacter（单页或纯文本）
+    """
     if not docs:
         return []
 

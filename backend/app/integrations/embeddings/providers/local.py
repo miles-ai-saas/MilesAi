@@ -1,6 +1,14 @@
-"""本地 Sentence-Transformers 向量化（invoke_mode=local）。
+"""
+本地 Sentence-Transformers 向量化（``invoke_mode=local``）。
 
-无需 API Key；model_name 为 HuggingFace 模型 id。进程内 LRU 缓存 encoder。
+特点
+----
+- 无需 API Key；``ModelConfig.model_name`` 为 HuggingFace 模型 id
+- Worker 进程内 ``lru_cache`` 最多缓存 4 个 encoder（注意内存占用）
+
+与入库链路
+----------
+Celery ``run_ingest`` → ``embed_texts_for_kb_sync`` → registry → 本 Provider。
 """
 
 from __future__ import annotations

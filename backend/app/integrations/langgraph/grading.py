@@ -1,4 +1,14 @@
-"""检索相关性评分：默认按 top hit 分数；可选 LLM 输出 good/poor/none 驱动 LangGraph 分支。"""
+"""
+RAG LangGraph 检索相关性评分（``grade_documents`` 节点）。
+
+策略
+----
+1. **默认**：``_score_grade`` — 取 hits 最高 ``score`` 与 ``relevance_threshold``（默认 0.35）比较
+2. **可选**：``agent.config.use_llm_grade=true`` 时 ``llm_grade_relevance`` 让 LLM 输出 JSON
+   ``{"relevance":"good"|"poor"|"none","reason":"..."}``
+
+输出驱动 ``route_after_grade``：good → generate；poor → retry；none → fallback。
+"""
 
 from __future__ import annotations
 

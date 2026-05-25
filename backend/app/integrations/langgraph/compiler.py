@@ -1,6 +1,30 @@
-"""将 flow_runtime 画布 graph_json 编译为 LangGraph（并行扇出 / 扇入 / 条件分支）。
+"""
+React Flow ``graph_json`` → LangGraph ``StateGraph`` 编译器（画布流程 L3）。
 
-节点执行统一走 flow_runtime.nodes.registry.execute_node。
+与 Agent RAG 图的区别
+--------------------
+- **本模块**：``build_canvas_graph`` / ``run_compiled_canvas``，状态 ``outputs`` 按 node_id 合并
+- **rag_qa**：固定 retrieve→grade→generate 图，带 checkpointer 多轮（见 ``graphs/rag_qa``）
+
+编译策略
+--------
+1. ``validate_graph_for_compile``：无环、入口、条件边 true/false、节点类型在 registry 内
+2. ``build_canvas_graph``：每个画布 id 一个 LangGraph node；普通边 ``add_edge``；
+   ``ConditionBranch`` 用 ``add_conditional_edges``（读 ``branch`` 字段）
+3. 并行：同 ``execution_layers`` 一层多节点由 LangGraph 按无依赖边自然扇出（非显式 Send API）
+
+RAG 相关 handle（``_gather_node_inputs``）
+---------------------------------------
+- ``query`` → KnowledgeSearch / PromptTemplate
+- ``hits`` → 上游 KnowledgeSearch 输出列表
+- ``prompt`` → LLMCall
+
+``SUPPORTED_CANVAS_NODE_TYPES`` 与 ``flow_runtime.nodes.registry`` 键名必须一致。
+
+文档
+----
+- 内置 RAG 模板边示例：``flow_runtime/templates/README.md``
+- 用户文档：``docs/guides/flows.md``
 """
 
 from __future__ import annotations
@@ -41,6 +65,8 @@ def resolve_node_type(node: dict[str, Any]) -> str:
 
 
 class FlowCompileReport:
+    """画布编译诊断结果（工作台「编译预览」/ ``FlowService`` 校验用）。"""
+
     __slots__ = (
         "compilable",
         "engine",
@@ -87,7 +113,12 @@ class FlowCompileReport:
 
 
 def validate_graph_for_compile(graph: dict[str, Any]) -> FlowCompileReport:
-    """分析画布是否可编译为 LangGraph（环、条件边、节点类型）。"""
+    """
+    分析画布是否可编译为 LangGraph。
+
+    ``execution_layers``：同层可并行；``parallel_groups`` 为层内节点数 >1 的子集。
+    ``engine``：可编译时为 ``langgraph``，否则 ``builtin``（仅诊断，不执行）。
+    """
     fg = FlowGraph.from_dict(graph)
     errors: list[str] = []
     if not fg.nodes:
@@ -161,7 +192,11 @@ def _gather_node_inputs(
     incoming: dict[str, list[tuple[str, str, str]]],
     outputs: dict[str, Any],
 ) -> dict[str, Any]:
-    """按入边 targetHandle 聚合上游节点输出。"""
+    """
+    按入边 ``targetHandle`` 聚合上游 ``outputs[node_id]``。
+
+    同时设置 ``input`` 为首个入边值；``rag_flow.json`` 典型：search→prompt 的 handle 为 ``hits``。
+    """
     node_inputs: dict[str, Any] = {}
     for src, _sh, th in incoming.get(node_id, []):
         if src not in outputs:
@@ -201,7 +236,12 @@ def _resolve_final_output(fg: FlowGraph, outputs: dict[str, Any]) -> Any:
 
 
 def _make_condition_router(condition_node_id: str):
-    """条件节点路由：读取 ConditionBranch 输出的 branch 字段。"""
+    """
+    条件节点路由：读取 ``ConditionBranch`` 输出的 ``branch`` 字段（``true``/``false``）。
+
+    画布须从该节点拉出两条边，``sourceHandle`` 分别为 ``true`` 与 ``false``，例如：
+    ``search_1`` → ``cond_1`` → (true) ``llm_ok`` / (false) ``fallback_prompt``。
+    """
     def router(state: dict[str, Any]) -> str:
         raw = (state.get("outputs") or {}).get(condition_node_id, {})
         if isinstance(raw, dict):
@@ -212,7 +252,13 @@ def _make_condition_router(condition_node_id: str):
 
 
 def build_canvas_graph(graph_json: dict[str, Any]):
-    """按画布边拓扑编译：扇出并行、扇入汇合、条件分支。"""
+    """
+    将 ``graph_json`` 编译为未 compile 的 ``StateGraph``。
+
+    状态字段：``tenant_id``、``inputs``、``kb_ids``（供 KnowledgeSearch）、
+    ``outputs``（reducer 合并）、``steps``（operator.add 累积审计）。
+    调用方需 ``.compile()`` 后 ``ainvoke``（见 ``run_compiled_canvas``）。
+    """
     report = validate_graph_for_compile(graph_json)
     if not report.compilable:
         raise ValueError("; ".join(report.errors) or "流程图不可编译")
@@ -224,6 +270,8 @@ def build_canvas_graph(graph_json: dict[str, Any]):
     condition_ids = {nid for nid in report.conditional_nodes}
 
     def _make_node_runner(node_id: str):
+        """闭包：单画布节点 → ``execute_node``，写入 ``outputs[node_id]`` 与 ``steps``。"""
+
         async def run_node(state: dict[str, Any], config: RunnableConfig) -> dict[str, Any]:
             node = node_map[node_id]
             node_data = node.get("data") or {}
@@ -306,7 +354,12 @@ async def run_compiled_canvas(
     graph_json: dict[str, Any],
     ctx: RunContext,
 ) -> tuple[Any, list[dict[str, Any]]]:
-    """执行编译后的画布图，返回 (output, steps)。"""
+    """
+    执行编译后的画布图，返回 ``(output, steps)``。
+
+    ``output`` 优先 ``TextOutput`` 节点；``ctx.kb_ids`` 传入 state 供 KnowledgeSearch。
+    **不使用** RAG checkpointer（单次 run，无 ``thread_id`` 恢复）。
+    """
     fg = FlowGraph.from_dict(graph_json)
     report = validate_graph_for_compile(graph_json)
     compiled = build_canvas_graph(graph_json).compile()

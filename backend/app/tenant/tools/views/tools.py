@@ -2,7 +2,7 @@
 
 from uuid import UUID
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.infra.db import get_db
@@ -15,6 +15,7 @@ from app.tenant.tools.schemas.tools import (
     ToolCreate,
     ToolInvokeRequest,
     ToolInvokeResult,
+    ToolInvocationLogOut,
     ToolOut,
     ToolUpdate,
 )
@@ -27,21 +28,43 @@ def _svc(db: AsyncSession, ctx: TenantContext) -> ToolsService:
     return ToolsService(db, ctx)
 
 
-@router.get("/catalog", response_model=ApiResponse[list[ToolCatalogItem]])
-async def tool_catalog(
+@router.get("/invocation-logs", response_model=ApiResponse[PageResult[ToolInvocationLogOut]])
+async def list_invocation_logs(
+    params: PageParams = Depends(get_page_params),
+    tool_slug: str | None = Query(None),
     ctx: TenantContext = Depends(require_permissions("tools:read")),
     db: AsyncSession = Depends(get_db),
 ):
-    return ok(await _svc(db, ctx).list_catalog())
+    result = await _svc(db, ctx).list_invocation_logs(params, tool_slug=tool_slug)
+    return page_ok(result.items, result.total, result.page, result.size)
+
+
+@router.get("/catalog", response_model=ApiResponse[list[ToolCatalogItem]])
+async def tool_catalog(
+    source: str | None = Query(None, description="builtin | custom | mcp"),
+    category_id: UUID | None = Query(None),
+    tag_ids: list[UUID] | None = Query(None),
+    ctx: TenantContext = Depends(require_permissions("tools:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    return ok(
+        await _svc(db, ctx).list_catalog(
+            source=source, category_id=category_id, tag_ids=tag_ids
+        )
+    )
 
 
 @router.get("", response_model=ApiResponse[PageResult[ToolOut]])
 async def list_tools(
     params: PageParams = Depends(get_page_params),
+    category_id: UUID | None = Query(None),
+    tag_ids: list[UUID] | None = Query(None, description="按标签筛选（任一匹配）"),
     ctx: TenantContext = Depends(require_permissions("tools:read")),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await _svc(db, ctx).list_tools(params)
+    result = await _svc(db, ctx).list_tools(
+        params, category_id=category_id, tag_ids=tag_ids
+    )
     return page_ok(result.items, result.total, result.page, result.size)
 
 

@@ -1,4 +1,9 @@
-"""Rerank 运行时入口（对外统一调用 rerank_documents）。"""
+"""
+Rerank 运行时入口。
+
+``retriever.apply_rerank_to_hits`` 在解析好 ``ModelConfig`` 后调用 ``rerank_documents``，
+再经 ``registry`` 分发至 DashScope / OpenAI 兼容等 Provider。
+"""
 
 from __future__ import annotations
 

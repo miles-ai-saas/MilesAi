@@ -29,6 +29,7 @@ import {
 } from "@/lib/chat-sessions";
 import { useInfiniteList } from "@/hooks/use-infinite-list";
 import { useConfirmAction } from "@/hooks/use-confirm-action";
+import type { PendingToolCall } from "@/lib/types";
 
 export default function AgentsChatPage() {
   return (
@@ -64,6 +65,7 @@ function AgentsChatContent() {
   const [rightCollapsed, setRightCollapsed] = useState(false);
   const [query, setQuery] = useState("");
   const [chatting, setChatting] = useState(false);
+  const [pendingTool, setPendingTool] = useState<PendingToolCall | null>(null);
   const { requestConfirm, confirmDialog } = useConfirmAction();
 
   const list = useInfiniteList(useCallback((p, s) => api.listAgents(p, s), []), {
@@ -221,6 +223,7 @@ function AgentsChatContent() {
 
     try {
       const res = await api.chatAgent(selectedAgent, userText, { conversationId });
+      setPendingTool(res.pending_tool ?? null);
       const nextMessages: ChatMessage[] = [
         ...optimistic,
         {
@@ -240,6 +243,29 @@ function AgentsChatContent() {
         ...optimistic,
         { role: "assistant", content: err },
       ]);
+    } finally {
+      setChatting(false);
+    }
+  };
+
+  const confirmPendingTool = async () => {
+    if (!selectedAgent || !conversationId || !pendingTool) return;
+    setChatting(true);
+    try {
+      const res = await api.chatAgent(selectedAgent, "确认执行工具", {
+        conversationId,
+        toolConfirmed: true,
+        pendingToolSlug: pendingTool.slug,
+        pendingToolParams: pendingTool.params,
+      });
+      setPendingTool(res.pending_tool ?? null);
+      setMessages((prev) => [
+        ...prev,
+        { role: "assistant", content: res.answer, steps: res.steps?.length ? res.steps : undefined },
+      ]);
+    } catch (e) {
+      const err = e instanceof Error ? e.message : "工具确认失败";
+      setMessages((prev) => [...prev, { role: "assistant", content: err }]);
     } finally {
       setChatting(false);
     }
@@ -296,6 +322,21 @@ function AgentsChatContent() {
         </div>
 
         <div className="border-t border-line bg-surface p-4">
+          {pendingTool && (
+            <div className="mx-auto mb-3 flex max-w-3xl items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm">
+              <span>
+                待确认工具：<strong>{pendingTool.name}</strong>（{pendingTool.slug}）
+              </span>
+              <button
+                type="button"
+                className="btn-primary shrink-0 px-3 py-1 text-xs"
+                disabled={chatting}
+                onClick={() => void confirmPendingTool()}
+              >
+                确认执行
+              </button>
+            </div>
+          )}
           <div className="mx-auto flex max-w-3xl gap-2">
             <textarea
               className="input-field min-h-[44px] flex-1 resize-none py-2.5"

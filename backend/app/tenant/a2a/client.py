@@ -1,4 +1,19 @@
-"""A2A 协议最小 Client：向外部 Agent 发送任务消息。"""
+"""
+A2A 协议最小 HTTP Client（JSON-RPC 2.0）。
+
+调用链
+------
+``tenant.a2a.invoke.execute_a2a_calls`` → ``invoke_a2a_peer``
+→ 从 ``A2aPeer.agent_card_json`` 解析 RPC URL → ``message/send``
+
+前置条件
+--------
+Peer ``status=active`` 且已同步 Agent Card；否则 ``BadRequestError`` 或返回任务预览占位文本。
+
+响应解析
+--------
+``_extract_text_from_response`` 兼容多种 JSON-RPC result 形状（text/artifacts/parts 等）。
+"""
 
 from __future__ import annotations
 

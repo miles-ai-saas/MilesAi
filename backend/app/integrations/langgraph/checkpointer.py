@@ -1,6 +1,12 @@
-"""LangGraph Checkpointer：优先 Redis，不可用时回退内存。
+"""
+LangGraph Checkpointer：优先 Redis，不可用时回退内存。
 
-RAG 工作流与 DeepAgents 多轮对话共用 thread_id 持久化状态。
+用途
+----
+- Agent RAG 图（``get_compiled_rag_graph``）：``thread_id = tenant:agent:conversation_id``
+- DeepAgents / 其它需多轮状态恢复的 LangGraph 应用
+
+应用启动时 ``init_checkpointer``；未初始化时 ``get_checkpointer()`` 回退 ``MemorySaver``。
 """
 
 from __future__ import annotations
@@ -51,7 +57,12 @@ def get_checkpointer() -> Any:
 
 
 def get_compiled_rag_graph() -> Any:
-    """带 checkpointer 的 RAG QA 编译图单例。"""
+    """
+    带 checkpointer 的 RAG QA 编译图单例。
+
+    由 ``init_langgraph_checkpointer`` 在启动时绑定 Redis/Memory；
+    未 init 时回退 ``build_rag_qa_graph().compile(MemorySaver())``。
+    """
     if _compiled_rag_graph is None:
         from app.integrations.langgraph.graphs.rag_qa import build_rag_qa_graph
 
@@ -65,7 +76,12 @@ def checkpoint_backend() -> str:
 
 
 async def init_langgraph_checkpointer() -> str:
-    """应用启动时初始化；返回实际后端标识 redis | memory。"""
+    """
+    应用 lifespan 启动时调用；返回实际后端 ``redis`` | ``memory``。
+
+    受 ``Settings.langgraph_redis_checkpoint`` 与 Redis 健康检查控制；
+    失败时降级 MemorySaver 并打日志，不阻塞进程启动。
+    """
     global _checkpointer, _compiled_rag_graph, _exit_stack, _backend
 
     from app.integrations.langgraph.graphs.rag_qa import build_rag_qa_graph

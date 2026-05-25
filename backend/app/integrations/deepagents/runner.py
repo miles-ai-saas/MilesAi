@@ -1,6 +1,13 @@
-"""DeepAgents 原生规划与 task 委派。
+"""
+DeepAgents 原生规划与 ``task`` 工具委派。
 
-create_deep_agent + CompiledSubAgent，子工位内调用 AgentService.chat_as_child。
+组件
+----
+- ``create_deep_agent`` + 主模型 ``PlatformChatModel``（LangChain）
+- ``build_compiled_subagents``：每个 binding 一个 CompiledSubAgent runnable
+- ``checkpointer``：与 RAG 图共用 ``integrations.langgraph.checkpointer``（``thread_id`` 前缀 ``deep:``）
+
+子工位内仅调用 ``AgentService.chat_as_child``（可含 KB RAG / 子流程，不再嵌套子 Agent 规划）。
 """
 
 from __future__ import annotations
@@ -99,7 +106,11 @@ async def run_deepagents_chat(
     bindings: list[AgentSubAgentBinding],
     body: ChatRequest,
 ) -> ChatResponse:
-    """DeepAgents 主循环：task 工具委派子智能体图。"""
+    """
+    DeepAgents 主循环：主模型通过 ``task`` 工具委派 ``CompiledSubAgent``。
+
+    ``recursion_limit`` 来自 ``config.max_plan_iterations``（默认 12）。
+    """
     from deepagents import create_deep_agent
 
     if not parent.model_config:

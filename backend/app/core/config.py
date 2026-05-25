@@ -74,6 +74,9 @@ class Settings(BaseSettings):
         "http://localhost:3002,http://127.0.0.1:3002"
     )
 
+    # MCP 出站：生产建议 false，禁止连接本机/内网（防 SSRF）
+    mcp_allow_private_hosts: bool = True
+
     seed_admin_username: str = "admin"
     seed_admin_password: str = "admin123"
     seed_admin_email: str = "admin@local.dev"
@@ -93,6 +96,9 @@ class Settings(BaseSettings):
     embedding_vector_dimension: int = 768
     default_chunk_size: int = 500
     default_chunk_overlap: int = 50
+
+    # 技能包文件根目录（相对 backend 目录或绝对路径）
+    skills_data_root: str = ".data/skills"
 
     # 解析：pypdf（默认）| docling（需 milesai[parse-docling]）；见 app.rag.parse.loaders
     parse_pdf_backend: str = "pypdf"

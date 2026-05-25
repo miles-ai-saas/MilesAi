@@ -1,6 +1,10 @@
-"""流程执行入口：React Flow graph_json → integrations.langgraph.flow_runner。
+"""
+流程执行门面（L2 → L3）。
 
-RAG 节点（KnowledgeSearch）内部调用 app.rag.generate.retrieve_hits。
+``LangGraphFlowRuntime.run`` 委托 ``integrations.langgraph.flow_runner.run_flow_graph``，
+编译与节点分发见 ``integrations.langgraph.compiler`` + ``flow_runtime.nodes.registry``。
+
+典型调用方：智能体 ``published_flow_id`` 对话、流程调试 API。
 """
 
 from functools import lru_cache

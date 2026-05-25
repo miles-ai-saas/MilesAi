@@ -1,4 +1,15 @@
-"""LangChain 统一 AI 能力层（惰性导出，避免 import 子模块时拉全链）。"""
+"""
+LangChain 统一 AI 能力层（L3，惰性 ``__getattr__`` 导出）。
+
+分层对应
+--------
+- embeddings：真实调用 embedding API（入库/检索 query）
+- vectorstores：检索 → rag.retrieve
+- chat_models：对话生成
+- generate.*：简单 RAG 问答（re-export）
+
+避免在业务代码中深层 import 未使用的子模块，缩短冷启动。
+"""
 
 __all__ = [
     "ainvoke_chat",

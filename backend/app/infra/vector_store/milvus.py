@@ -1,7 +1,16 @@
-"""Milvus（MilvusClient 直连，与 LangChain 建表 schema 兼容）。
+"""
+Milvus 向量库实现（``VectorStore`` 协议）。
 
-避免 langchain_milvus 在已有 collection 上通过 ORM ``Collection(using=alias)``
-访问索引，alias 与 ``connections`` 池不一致时会触发 ``ConnectionNotExistException``。
+设计要点
+--------
+- 使用 ``pymilvus.MilvusClient`` **直连** insert/search/delete，不经过 LangChain ORM。
+  原因：langchain_milvus 在已有 collection 上用 ``Collection(using=alias)`` 时，
+  alias 与全局 ``connections`` 池不一致会触发 ``ConnectionNotExistException``。
+- 向量在 RAG pipeline 中已算好，**不使用** ``PrecomputedEmbeddings``，直接写 ``FLOAT_VECTOR``。
+- 按 embedding **维度** 拆分 collection（``document_chunk_{dim}``），禁止不同维度混写同一表。
+- 检索度量：L2 + AUTOINDEX；过滤表达式见 ``milvus_filter_expr``（tenant_id / kb_id）。
+
+配置：``MILVUS_URI``、``MILVUS_TOKEN``、``MILVUS_DB_NAME``（见 Settings）。
 """
 
 from __future__ import annotations
@@ -30,10 +39,12 @@ from app.integrations.langchain.vector.documents import (
 )
 from langchain_core.documents import Document
 
+# 与 langchain_milvus 默认 collection 命名习惯对齐，后缀为维度整数
 COLLECTION_PREFIX = "document_chunk_"
-PRIMARY_FIELD = "id"
+PRIMARY_FIELD = "id"  # 主键，默认 chunk_id，可与 kb_vector_refs.vector_id 对应
 VECTOR_FIELD = "vector"
 
+# search 时拉回的标量字段（用于组装 retriever hit）
 _SEARCH_OUTPUT_FIELDS = [
     TEXT_KEY,
     METADATA_CHUNK_ID,
@@ -112,6 +123,7 @@ def _ensure_collection(client: MilvusClient, dimension: int) -> str:
     """确保 collection 存在、已建索引并 load（与 langchain_milvus 字段一致）。"""
     name = collection_name_for_dimension(dimension)
     if not client.has_collection(name):
+        # 关闭 dynamic_field，字段集与 integrations.langchain.vector.documents 常量一致
         schema = client.create_schema(auto_id=False, enable_dynamic_field=False)
         schema.add_field(
             field_name=TEXT_KEY,
@@ -146,6 +158,7 @@ def _ensure_collection(client: MilvusClient, dimension: int) -> str:
 
         client.create_collection(collection_name=name, schema=schema)
 
+    # 新 collection 或迁移后无索引时创建向量索引并 load（检索前必须 load）
     if not client.list_indexes(name):
         index_params = client.prepare_index_params()
         index_params.add_index(
@@ -181,7 +194,11 @@ def _search_hit_rows(raw: list[list[dict[str, Any]]]) -> list[tuple[Document, fl
 
 
 class MilvusVectorStore:
-    """Milvus 向量库实现（VectorStore 协议）。"""
+    """
+    Milvus 后端；业务经 ``app.rag.index.gateway`` 调用，不直接 import 本类。
+
+    实现 ``VectorStore`` 协议全部方法；**无** ``search_hybrid``（混合检索走 PG 关键词 + RRF）。
+    """
 
     def ensure_schema(self, dimension: int) -> None:
         """确保对应维度的 collection、索引已创建并 load。"""
@@ -220,7 +237,11 @@ class MilvusVectorStore:
         return distance_pairs_to_hits(_search_hit_rows(raw))
 
     def delete_by_document(self, document_id: UUID) -> None:
-        """遍历已知维度 collection，按 document_id 元数据删除。"""
+        """
+        文档删除时清理向量。
+
+        遍历 ``known_embedding_dimensions()`` 中配置的维度，避免漏删历史 collection。
+        """
         client = _client()
         expr = f'{METADATA_DOCUMENT_ID} == "{document_id}"'
         for dim in known_embedding_dimensions():

@@ -1,7 +1,20 @@
-"""文档入库管道（Parse → Chunk → Embed → Index）。
+"""
+文档入库管道：Parse → Chunk → Embed → Index。
 
-L2 同步管道；状态机与 Celery 入口在 tenant.kb.services.ingest。
-每分片：先落 PG（chunk + vector_ref），再 upsert 向量库，保证 chunk_id 可用于向量 external_id。
+层级
+----
+- 本模块为 **L2 同步管道**（``run_ingest_pipeline``），不含文档状态机。
+- Celery 任务、配额、失败重试在 ``app.tenant.kb.services.ingest`` 调用本管道。
+
+顺序与一致性
+------------
+1. 从对象存储读字节 → ``load_documents_from_bytes``（按 mime/扩展名选 parser）
+2. ``chunk_documents`` 分片（chunk_size/overlap 来自 KB）
+3. 可选 ``on_before_index``：删旧 PG chunk、vector_ref 及向量库记录（覆盖入库）
+4. ``embed_texts``：按 KB 绑定的 embedding 模型批量算向量（**唯一**调 embedding API 的环节）
+5. 每个分片：**先 flush PG 拿 chunk.id** → ``gateway.upsert_chunk_vector`` → 写 ``VectorRef``
+
+向量库侧不再重复 embedding（见 ``PrecomputedEmbeddings``）。
 """
 
 from __future__ import annotations
@@ -82,6 +95,7 @@ def run_ingest_pipeline(
     vectors = embed_texts(db, kb, chunks_text)
     vector_type = vector_type_for_document(data.filename, data.mime_type)
 
+    # 逐分片事务：chunk.id 作为 Milvus/Weaviate 主键与 vector_ref 外键
     for idx, (piece, vector) in enumerate(zip(chunks, vectors)):
         chunk = DocumentChunk(
             tenant_id=doc.tenant_id,

@@ -12,15 +12,20 @@ from uuid import UUID
 
 @dataclass(frozen=True)
 class ChunkVectorRecord:
-    """写入向量库的一条分片记录。"""
+    """
+    写入向量库的一条分片记录（由 RAG gateway / ingest 构造）。
+
+    vector 已在 pipeline 中算好；各后端负责落库与元数据过滤检索。
+    external_id 可选，默认与 chunk_id 一致，写入 Milvus/pgvector 主键。
+    """
 
     vector: list[float]
     tenant_id: UUID
     kb_id: UUID
     document_id: UUID
     chunk_id: UUID
-    content_preview: str
-    object_key: str
+    content_preview: str  # 写入向量库文本字段，通常截断预览
+    object_key: str  # 对象存储 key，便于回溯原文
     page_no: int | None = None
     external_id: str | None = None
 

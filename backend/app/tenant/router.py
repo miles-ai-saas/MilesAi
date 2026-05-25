@@ -6,6 +6,8 @@ from app.tenant.a2a.views import peers as a2a_peers
 from app.tenant.agents.views import agents
 from app.tenant.audit_log.views import audit_log
 from app.tenant.auth.views import auth
+from app.tenant.categories.views import categories
+from app.tenant.tags.views import tags
 from app.tenant.compliance.views import compliance
 from app.tenant.flows.views import flows
 from app.tenant.hooks.views import hooks
@@ -31,6 +33,8 @@ api_router.include_router(roles.router, prefix="/roles", tags=["roles"])
 api_router.include_router(configs.router, prefix="/system/configs", tags=["system-config"])
 
 # 13 项产品能力（按配置 → 编排 → 运行 → 分发）
+api_router.include_router(categories.router, prefix="/categories", tags=["categories"])
+api_router.include_router(tags.router, prefix="/tags", tags=["tags"])
 api_router.include_router(compliance.router, prefix="/compliance", tags=["compliance"])
 api_router.include_router(prompts.router, prefix="/prompt-templates", tags=["prompt-templates"])
 api_router.include_router(model_views.router, prefix="/models", tags=["models"])

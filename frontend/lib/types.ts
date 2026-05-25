@@ -173,9 +173,39 @@ export interface A2aPeerRef {
 
 export type AgentType = "custom" | "a2a";
 
+export type CategoryDomain = "agent" | "prompt" | "skill" | "tool";
+
+export interface SysCategory {
+  id: string;
+  domain: CategoryDomain;
+  parent_id?: string | null;
+  name: string;
+  slug: string;
+  sort_order: number;
+  is_system: boolean;
+  created_at: string;
+}
+
+export interface TagRef {
+  id: string;
+  name: string;
+  slug: string;
+}
+
+export interface TenantTag {
+  id: string;
+  tenant_id: string;
+  name: string;
+  slug: string;
+  created_at: string;
+}
+
 export interface Agent {
   id: string;
   agent_type?: AgentType;
+  category_id?: string | null;
+  category_name?: string | null;
+  tags?: TagRef[];
   name: string;
   description?: string | null;
   status: string;
@@ -191,6 +221,9 @@ export interface Agent {
 
 export interface PromptTemplate {
   id: string;
+  category_id?: string | null;
+  category_name?: string | null;
+  tags?: TagRef[];
   name: string;
   description?: string | null;
   content: string;
@@ -247,24 +280,92 @@ export interface HookBinding {
   created_at: string;
 }
 
+export interface ToolParameterSpec {
+  name: string;
+  type: "string" | "number" | "integer" | "boolean";
+  description?: string | null;
+  required?: boolean;
+  default?: unknown;
+  enum?: string[];
+}
+
+export interface ToolCatalogItem {
+  source: "builtin" | "custom" | "mcp" | string;
+  slug: string;
+  name: string;
+  description?: string | null;
+  category_id?: string | null;
+  category_name?: string | null;
+  parameters?: ToolParameterSpec[];
+  version?: string | null;
+  require_confirmation?: boolean;
+  tool_id?: string | null;
+  mcp_service_id?: string | null;
+  mcp_service_name?: string | null;
+  updated_at?: string | null;
+}
+
 export interface CustomTool {
   id: string;
+  slug: string;
   name: string;
   description?: string | null;
   tool_type: string;
+  category_id?: string | null;
+  category_name?: string | null;
+  tags?: TagRef[];
+  version: string;
+  require_confirmation: boolean;
+  parameters: ToolParameterSpec[];
   config: Record<string, unknown>;
   is_active: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
-export interface SkillPackage {
-  id: string;
+export interface ToolCreatePayload {
+  slug: string;
   name: string;
   description?: string | null;
+  tool_type?: "http";
+  category_id?: string | null;
+  tag_ids?: string[];
+  version?: string;
+  require_confirmation?: boolean;
+  parameters?: ToolParameterSpec[];
+  config: Record<string, unknown>;
+}
+
+/** 技能包元数据；正文在服务端磁盘 SKILL.md（slug 为目录名）。 */
+export interface SkillPackage {
+  id: string;
+  tenant_id?: string;
+  category_id?: string | null;
+  category_name?: string | null;
+  tags?: TagRef[];
+  slug: string;
+  name: string;
+  description?: string | null;
+  source_type: string;
   tool_names: string[];
   prompt_snippet?: string | null;
   config: Record<string, unknown>;
   is_active: boolean;
   created_at: string;
+  updated_at: string;
+}
+
+export interface SkillFileNode {
+  name: string;
+  path: string;
+  type: "file" | "dir";
+  children?: SkillFileNode[];
+}
+
+export interface SkillImportResult {
+  imported: number;
+  skipped: number;
+  errors: string[];
 }
 
 export interface KnowledgeBase {
@@ -286,10 +387,32 @@ export interface KnowledgeBase {
   created_at?: string;
 }
 
+export interface PendingToolCall {
+  slug: string;
+  name: string;
+  description?: string | null;
+  params: Record<string, unknown>;
+}
+
+export interface ToolInvocationLog {
+  id: string;
+  tool_slug: string;
+  tool_id?: string | null;
+  source: string;
+  status: string;
+  params: Record<string, unknown>;
+  output?: Record<string, unknown> | null;
+  error_message?: string | null;
+  latency_ms: number;
+  invoke_source: string;
+  created_at: string;
+}
+
 export interface ChatResponse {
   answer: string;
   sources: Record<string, unknown>[];
   steps: Record<string, unknown>[];
+  pending_tool?: PendingToolCall | null;
 }
 
 export interface Document {
@@ -428,9 +551,14 @@ export interface McpService {
   name: string;
   endpoint_url: string;
   transport?: string;
+  description?: string | null;
+  connection_config?: Record<string, unknown>;
+  sync_error?: string | null;
   status: string;
   tools_cache: Record<string, unknown>[];
   last_sync_at?: string | null;
+  updated_at?: string;
+  created_at?: string;
 }
 
 export interface A2aPeer {

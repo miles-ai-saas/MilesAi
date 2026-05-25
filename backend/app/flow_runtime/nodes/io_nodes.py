@@ -1,6 +1,14 @@
-"""画布 I/O 节点：从 RunContext.inputs 读入、向上游汇聚写出。
+"""
+画布 I/O 节点。
 
-TextInput 为流程入口；TextOutput 取首个非空上游值作为 run 终点（FlowService.run 的 output）。
+TextInput
+---------
+流程入口，从 ``RunContext.inputs`` 或节点 ``input_value`` 读取（常用 key ``query``）。
+
+TextOutput
+----------
+取上游汇聚的第一个非空值作为 ``RunResult.output``；
+典型链：TextInput → KnowledgeSearch → PromptTemplate → LLMCall → TextOutput。
 """
 
 from typing import Any

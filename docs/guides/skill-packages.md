@@ -1,0 +1,337 @@
+# 技能包技术方案
+
+技能包（Skill Package）在 MilesAI 中用于管理 **Cursor 风格的 `SKILL.md` 技能目录**：元数据入库、文件落盘、分类筛选，并在智能体对话时通过 `config.skill_package_id` 将技能说明注入系统提示（System Prompt）。
+
+与 **MCP**（远程工具服务）互补：技能包侧重「提示词/流程说明」类知识；MCP 侧重可调用远程工具。二者可同时绑定在同一智能体上。
+
+## 1. 能力范围
+
+| 能力 | 状态 | 说明 |
+|------|------|------|
+| 列表与分类 Tab | ✅ | `sys_categories`，`domain=skill` |
+| 创建空白技能包 | ✅ | 生成默认 `SKILL.md`，跳转编辑器 |
+| 在线编辑 `SKILL.md` | ✅ | 文件树 + 读写 API |
+| 本地目录导入 | ✅ | 服务端可访问路径扫描 |
+| ZIP 导入 | ✅ | 须含 `skills/` 目录，≤100MB |
+| Git 克隆导入 | ✅ | `git clone --depth 1`，优先 `skills/` 子目录 |
+| 智能体绑定注入 | ✅ | 优先磁盘 `SKILL.md`，回退 `prompt_snippet` |
+| 导出 ZIP / 打包发布 | 规划 | 编辑器「创建技能包」占位 |
+| 兼容旧版「工具勾选 + 片段」 | ✅ | `POST /skill-packages` 仍保留 |
+
+## 2. SKILL.md 规范
+
+每个技能对应**一个目录**，根目录下必须包含 **`SKILL.md`**（文件名全大写）。
+
+### 2.1 Frontmatter
+
+文件开头为 YAML frontmatter（`---` 分隔），至少包含：
+
+| 键 | 必填 | 说明 |
+|----|------|------|
+| `name` | 是 | 展示名称；导入/保存时同步到 DB `name` |
+| `description` | 否 | 简短描述；同步到 DB `description` |
+
+示例：
+
+```markdown
+---
+name: doGetCurrentTime
+description: 通过技能你可以获取当前时间
+---
+
+## 使用说明
+
+在需要当前时间时，按以下步骤……
+```
+
+### 2.2 解析实现
+
+- 模块：`app/tenant/skills/skill_md.py`
+- `parse_skill_md`：提取 frontmatter 与正文（行级 `key: value`，无 PyYAML 依赖）
+- `build_skill_md`：创建空白包时生成模板
+- 保存 `SKILL.md` 时：`SkillService.write_file_content` 调用 `sync_meta_from_skill_md` 回写 DB
+
+### 2.3 附属文件
+
+目录内可放置任意文本文件（脚本说明、示例等）。编辑器通过文件 API 读写；路径禁止 `..` 穿越（`storage.write_file` / `read_file` 做 resolve 校验）。
+
+## 3. 数据模型
+
+### 3.1 表 `skl_skill_packages`
+
+模型：`app/tenant/skills/models.py`  
+迁移：`alembic/versions/005_skill_packages_v2.py`
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `id` | UUID | 主键 |
+| `tenant_id` | UUID | 租户隔离 |
+| `category_id` | UUID? | 逻辑外键 → `sys_categories`（`domain=skill`） |
+| `slug` | string(128) | **租户内唯一**；对应磁盘子目录名 |
+| `name` | string(128) | 展示名（通常来自 frontmatter） |
+| `description` | text? | 描述 |
+| `source_type` | string(32) | `manual` \| `local` \| `zip` \| `git` |
+| `storage_path` | string(512)? | 存储相对标识，默认等于 `slug` |
+| `tool_names` | JSONB | 遗留字段：工具名列表（可选） |
+| `prompt_snippet` | text? | 遗留字段；无 `SKILL.md` 时注入回退 |
+| `config` | JSONB | 扩展配置 |
+| `is_active` | bool | 停用后不注入智能体 |
+| `created_at` / `updated_at` / `deleted_at` | timestamptz | 软删 |
+
+约束：
+
+- `uk_skl_skill_packages_tenant_slug`：`(tenant_id, slug)` 唯一
+- 已移除旧版 `(tenant_id, name)` 唯一索引，改为普通索引 `idx_skl_skill_packages_tenant_name`
+
+### 3.2 分类 `sys_categories`
+
+| 项 | 值 |
+|----|-----|
+| `CategoryDomain.SKILL` | `"skill"` |
+| 权限 | `skill:read` / `skill:write`（分类 API 与技能包 API 共用分类域权限映射） |
+| 默认种子 | 未分类、通用、本地导入、Git导入（`scripts/seed/categories.py`） |
+
+分类 API：`GET/POST/PATCH/DELETE /api/v1/categories?domain=skill`  
+详见统一分类设计（智能体/提示词同表不同 `domain`）。
+
+## 4. 文件存储
+
+### 4.1 目录布局
+
+```
+{skills_data_root}/
+  {tenant_id}/
+    {slug}/
+      SKILL.md
+      ... 其它文件
+```
+
+| 配置项 | 环境变量 | 默认值 |
+|--------|----------|--------|
+| 根目录 | `SKILLS_DATA_ROOT` | `.data/skills`（相对 **backend** 目录） |
+
+实现：`app/tenant/skills/storage.py`
+
+- `skills_data_root()`：解析绝对/相对路径并 `mkdir`
+- `skill_package_dir(tenant_id, slug)`：单技能根路径
+- 删除技能包 / 清空租户：同步 `shutil.rmtree`（`purge_tenant_data` 调用 `remove_tenant_skills`）
+
+### 4.2 Slug 规则
+
+- 导入：目录名经 `skill_slug_from_folder` 规范化（保留 `[a-zA-Z0-9_-]`）
+- 手动创建：由 `name` 经同样规则生成；冲突返回 `409`「技能标识已存在」
+
+## 5. HTTP API
+
+前缀：`/api/v1/skill-packages`（租户 JWT + `skill:read` / `skill:write`）  
+路由：`app/tenant/skills/views/skills.py`
+
+### 5.1 CRUD 与列表
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/skill-packages?page=&size=&category_id=` | 分页列表；`category_id` 可选筛选 |
+| GET | `/skill-packages/{id}` | 详情（含 `category_name`） |
+| POST | `/skill-packages` | 遗留创建（可带 `tool_names`、`prompt_snippet`） |
+| POST | `/skill-packages/blank` | **推荐**：空白包 + 初始 `SKILL.md` |
+| PATCH | `/skill-packages/{id}` | 更新元数据 / 启停 |
+| DELETE | `/skill-packages/{id}` | 软删 + 删除磁盘目录 |
+
+**`POST /blank` 请求体**
+
+```json
+{
+  "name": "测试1",
+  "description": "可选描述",
+  "category_id": "uuid-of-category"
+}
+```
+
+**`SkillPackageOut` 主要字段**：`id`, `slug`, `name`, `description`, `category_id`, `category_name`, `source_type`, `is_active`, `created_at`, `updated_at`
+
+### 5.2 文件工作区
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/{id}/files` | 目录树 `SkillFileNode[]` |
+| GET | `/{id}/file?path=SKILL.md` | 读文件内容 |
+| PUT | `/{id}/file` | 写文件；body: `{ "path", "content" }` |
+
+保存 `SKILL.md` 时自动同步 DB 的 `name`、`description`，并将全文写入 `prompt_snippet` 字段（便于检索/回退）。
+
+### 5.3 批量导入
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| POST | `/import/local` | JSON 体见下 |
+| POST | `/import/git` | JSON 体见下 |
+| POST | `/import/zip?category_id=&overwrite_existing=` | `multipart/form-data`，字段 `file` |
+
+**本地 / Git 请求体**
+
+```json
+{
+  "category_id": "uuid",
+  "local_path": ".data/skills",
+  "overwrite_existing": false
+}
+```
+
+```json
+{
+  "category_id": "uuid",
+  "repo_url": "https://github.com/user/repo.git",
+  "overwrite_existing": false
+}
+```
+
+**`SkillImportResult`**
+
+```json
+{
+  "imported": 2,
+  "skipped": 1,
+  "errors": ["bad_dir: 缺少 SKILL.md"]
+}
+```
+
+| 字段 | 含义 |
+|------|------|
+| `overwrite_existing=true` | 同名 `slug` 已存在则**覆盖**磁盘与 DB 元数据 |
+| `overwrite_existing=false` | 同名则**跳过**（`skipped++`） |
+
+### 5.4 导入目录约定
+
+#### 本地目录
+
+1. 解析 `local_path`：绝对路径，或相对 **backend** 目录。
+2. 对目标目录执行 `discover_skill_dirs`：
+   - 若根目录有 `SKILL.md` → 视根为单个技能；
+   - 否则扫描**一级子目录**，子目录内须有 `SKILL.md`。
+
+#### ZIP
+
+1. 仅 `.zip`，大小 ≤ **100MB**。
+2. 解压后**必须**存在 `skills/` 目录。
+3. 对 `skills/` 执行与本地相同的 `discover_skill_dirs`。
+
+目录结构示例：
+
+```
+your-skills.zip
+└── skills/
+    ├── cust_query/
+    │   └── SKILL.md
+    └── doGetCurrentTime/
+        └── SKILL.md
+```
+
+#### Git
+
+1. `git clone --depth 1 <repo_url>`（需运行环境安装 `git`）。
+2. 若仓库存在 `skills/` 目录 → 从该目录扫描；否则从**仓库根**扫描。
+3. 超时 300s；失败返回 `400` 及 stderr 摘要。
+
+## 6. 运行时：智能体注入
+
+```
+Agent.config.skill_package_id
+  → build_skill_mcp_prompt_block (agents/services/context.py)
+  → 读取 SkillPackage（租户、未软删、is_active）
+  → read_skill_md(tenant_id, slug) 优先
+  → 否则 prompt_snippet
+  → 可选追加 tool_names 行
+  → 与 MCP 块拼接进 system prompt
+```
+
+绑定入口：工作台智能体表单 `skill_package_id`（`frontend/components/agent/AgentFormStepContent.tsx`）。
+
+注入块示例：
+
+```text
+【技能包 · doGetCurrentTime】
+---
+name: doGetCurrentTime
+description: ...
+---
+（正文）
+```
+
+## 7. 前端
+
+| 路由 | 说明 |
+|------|------|
+| `/workbench/skills` | 分类 Tab、添加卡片、技能卡片、导入弹窗 |
+| `/workbench/skills/[id]` | 文件树 + `SKILL.md` 编辑器 |
+
+主要文件：
+
+| 路径 | 职责 |
+|------|------|
+| `frontend/app/workbench/skills/page.tsx` | 列表与导入入口 |
+| `frontend/app/workbench/skills/[id]/page.tsx` | 编辑器 |
+| `frontend/components/skills/SkillImportDialogs.tsx` | 本地 / ZIP / Git 弹窗 |
+| `frontend/components/skills/SkillCreateBlankDialog.tsx` | 空白创建 |
+| `frontend/lib/api.ts` | `listSkillPackages`、`importSkill*`、`putSkillFile` 等 |
+| `frontend/components/category/useCategoryTabs.tsx` | `domain="skill"` |
+
+## 8. 代码结构（后端）
+
+```
+backend/app/tenant/skills/
+├── models.py              # ORM
+├── skill_md.py            # SKILL.md 解析/生成
+├── storage.py             # 磁盘读写、扫描、导入路径
+├── schemas/skill.py       # Pydantic
+├── services/
+│   ├── skill.py           # CRUD、文件、空白创建
+│   └── import_service.py  # local / zip / git
+└── views/skills.py        # HTTP 路由
+```
+
+关联：
+
+| 模块 | 路径 |
+|------|------|
+| 分类域扩展 | `app/models/category.py`（`CategoryDomain.SKILL`） |
+| 分类清空引用 | `tenant/categories/services/category.py` |
+| 租户硬删 | `app/deletion/tenant.py` |
+| 种子 | `scripts/seed/categories.py` |
+
+## 9. 运维与初始化
+
+```bash
+cd backend
+python cli.py migrate          # 含 005_skill_packages_v2
+python cli.py seed categories  # 写入 skill 域默认分类
+```
+
+生产建议：
+
+- 将 `SKILLS_DATA_ROOT` 挂载为持久卷（与 API 容器同机或共享存储）。
+- Git 导入需镜像内安装 `git`；出站网络需能访问目标仓库。
+- 本地导入路径必须在 API 进程可读范围内（容器部署时注意 volume 映射）。
+
+单元测试：`backend/tests/test_skill_md.py`（frontmatter 解析与同步）。
+
+## 10. 与 MCP / 工具目录的关系
+
+| 机制 | 用途 | 智能体配置键 |
+|------|------|----------------|
+| 技能包 | `SKILL.md` 说明注入 | `skill_package_id` |
+| MCP 服务 | 远程 `tools/list` / `tools/call` | `mcp_service_ids` |
+| 内置/自定义工具 | 平台工具目录与 invoke | `tool_names` 等（技能包 `tool_names` 为遗留展示） |
+
+详见 [mcp.md](./mcp.md)、[platform-agents.md](./platform-agents.md)。
+
+## 11. 已知限制与后续
+
+| 项 | 说明 |
+|----|------|
+| ZIP 导出 | 编辑器「创建技能包」尚未接后端打包 API |
+| Git SSH | 依赖系统 `git` 与宿主机 SSH 配置，未内置 Deploy Key 管理 |
+| 本地路径安全 | 当前允许配置任意可读路径，生产可加白名单（仅允许 `skills_data_root` 下） |
+| 多技能绑定 | 智能体仅支持单个 `skill_package_id`；多技能需后续改为 ID 列表 |
+| Streamable Skill 协议 | 若对齐 Cursor Agent Skills 全量规范，可扩展 frontmatter 字段与校验 |
+
+REST 字段以运行中 OpenAPI（`/docs`）为准。

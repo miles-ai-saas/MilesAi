@@ -2,7 +2,7 @@
 
 from uuid import UUID
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.infra.db import get_db
@@ -23,10 +23,14 @@ router = APIRouter()
 @router.get("", response_model=ApiResponse[PageResult[PromptTemplateOut]])
 async def list_prompts(
     params: PageParams = Depends(get_page_params),
+    category_id: UUID | None = Query(None, description="按分类 ID 筛选"),
+    tag_ids: list[UUID] | None = Query(None, description="按标签筛选（任一匹配）"),
     ctx: TenantContext = Depends(require_permissions("prompt:read")),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await PromptService(db, ctx).list_templates(params)
+    result = await PromptService(db, ctx).list_templates(
+        params, category_id=category_id, tag_ids=tag_ids
+    )
     return page_ok(result.items, result.total, result.page, result.size)
 
 

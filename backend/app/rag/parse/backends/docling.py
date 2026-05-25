@@ -1,4 +1,9 @@
-"""PDF / Office 解析：Docling → LangChain Document（Markdown 导出）。"""
+"""
+PDF / Office / 部分图片：Docling → LangChain Document（Markdown 导出）。
+
+需安装 ``milesai[parse-docling]``；``PARSE_PDF_BACKEND=docling`` 时 PDF 也走此路径。
+分页通过 ``PAGE_BREAK_PLACEHOLDER`` 插入标记，供后续拆分 page_no。
+"""
 
 from __future__ import annotations
 

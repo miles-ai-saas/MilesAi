@@ -1,6 +1,13 @@
-"""知识库 ORM：库配置、文档入库状态机、分片与向量引用。
+"""
+知识库 ORM：库配置、文档入库状态机、分片与向量引用。
 
-Document.status 由 tenant.kb.ingest 驱动；VectorRef.vector_id 对应 Milvus/pgvector 外部 ID。
+数据分工
+--------
+- ``DocumentChunk.content``：检索展示与 rerank 的**完整正文**（PG）
+- 向量库 ``content_preview``：仅预览截断，供相似度检索与 hit 初筛
+- ``VectorRef.vector_id``：Milvus/Weaviate/pgvector 外部主键，与 ``chunk_id`` 一对一
+
+``Document.status`` 由 ``tenant.kb.services.ingest`` + Celery 驱动。
 """
 
 import enum

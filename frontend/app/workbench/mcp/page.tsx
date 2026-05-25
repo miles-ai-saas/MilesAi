@@ -1,42 +1,135 @@
 "use client";
 
+/**
+ * MCP 服务管理页：Tab 筛选传输类型、卡片列表、同步/编辑/删除。
+ * SSE 类型 endpoint 应填 GET 长连接地址（如 /sse），由后端 legacy_sse 客户端处理。
+ */
+
 import { useCallback, useMemo, useState } from "react";
+import { McpCreateCard } from "@/components/mcp/McpCreateCard";
+import { McpServiceCard } from "@/components/mcp/McpServiceCard";
+import { McpServiceDialog } from "@/components/mcp/McpServiceDialog";
+import { ResourceListFooter } from "@/components/resource/ResourceListFooter";
+import { ResourceListLayout } from "@/components/resource/ResourceListLayout";
+import { useConfirmAction } from "@/hooks/use-confirm-action";
+import { usePagedList } from "@/hooks/use-paged-list";
 import { api } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth-store";
-import { usePagedList } from "@/hooks/use-paged-list";
-import { useConfirmAction } from "@/hooks/use-confirm-action";
-import { ResourceListFooter } from "@/components/resource/ResourceListFooter";
-import { AddResourceCard } from "@/components/resource/AddResourceCard";
-import { ResourceDialog } from "@/components/resource/ResourceDialog";
-import { ResourceItemCard } from "@/components/resource/ResourceItemCard";
-import { ResourceListLayout } from "@/components/resource/ResourceListLayout";
 import { filterBySearch } from "@/lib/filter-search";
+import { MCP_TRANSPORT_TABS, normalizeMcpTransport, type McpTransportTab } from "@/lib/mcp-labels";
 import type { McpService } from "@/lib/types";
+
+function parseStdioArgs(text: string): string[] {
+  return text
+    .split("\n")
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
 
 export default function McpPage() {
   const { ready } = useRequireAuth();
+  const [activeTab, setActiveTab] = useState<McpTransportTab>("");
   const [search, setSearch] = useState("");
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [name, setName] = useState("");
-  const [endpoint, setEndpoint] = useState("http://127.0.0.1:3001/mcp");
-  const [transport, setTransport] = useState("sse");
-  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [msg, setMsg] = useState("");
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogMode, setDialogMode] = useState<"create" | "edit">("create");
+  const [dialogTransport, setDialogTransport] = useState<Exclude<McpTransportTab, "">>("http");
+  const [editing, setEditing] = useState<McpService | null>(null);
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [endpointUrl, setEndpointUrl] = useState("http://127.0.0.1:3001/mcp");
+  const [stdioCommand, setStdioCommand] = useState("npx");
+  const [stdioArgs, setStdioArgs] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  const list = usePagedList(useCallback((p, s) => api.listMcpServices(p, s), []), { enabled: ready });
+  const list = usePagedList(
+    useCallback(
+      (p, s) => api.listMcpServices(p, s, activeTab || undefined),
+      [activeTab],
+    ),
+    { enabled: ready, resetKey: activeTab },
+  );
   const { requestConfirm, confirmDialog } = useConfirmAction();
 
   const filtered = useMemo(
-    () => filterBySearch(list.items, search, (s) => `${s.name} ${s.endpoint_url}`),
+    () => filterBySearch(list.items, search, (s) => `${s.name} ${s.description ?? ""} ${s.endpoint_url}`),
     [list.items, search],
   );
 
-  const onCreate = async () => {
-    await api.createMcpService(name || "MCP", endpoint, transport);
+  const resetForm = (transport: Exclude<McpTransportTab, "">) => {
     setName("");
-    setDialogOpen(false);
-    setMsg("已注册，请点击「同步工具」拉取 tools/list");
-    await list.reload();
+    setDescription("");
+    setDialogTransport(transport);
+    setEndpointUrl(transport === "http" ? "https://" : "http://127.0.0.1:3001/mcp");
+    setStdioCommand("npx");
+    setStdioArgs("");
+  };
+
+  const openCreate = (transport: Exclude<McpTransportTab, "">) => {
+    setDialogMode("create");
+    setEditing(null);
+    resetForm(transport);
+    setDialogOpen(true);
+  };
+
+  const openEdit = (s: McpService) => {
+    const t = normalizeMcpTransport(s.transport);
+    setDialogMode("edit");
+    setEditing(s);
+    setDialogTransport(t);
+    setName(s.name);
+    setDescription(s.description ?? "");
+    setEndpointUrl(s.endpoint_url.startsWith("stdio://") ? "" : s.endpoint_url);
+    setStdioCommand(String(s.connection_config?.command ?? ""));
+    const args = s.connection_config?.args;
+    setStdioArgs(Array.isArray(args) ? args.map(String).join("\n") : "");
+    setDialogOpen(true);
+  };
+
+  /** 按传输类型组装 create/update 请求体。 */
+  const buildPayload = () => {
+    const t = editing ? normalizeMcpTransport(editing.transport) : dialogTransport;
+    const trimmedName = name.trim() || "MCP";
+    if (t === "stdio") {
+      return {
+        name: trimmedName,
+        transport: "stdio",
+        description: description.trim() || undefined,
+        connection_config: {
+          command: stdioCommand.trim(),
+          args: parseStdioArgs(stdioArgs),
+        },
+      };
+    }
+    return {
+      name: trimmedName,
+      transport: t,
+      endpoint_url: endpointUrl.trim(),
+      description: description.trim() || undefined,
+      connection_config: { endpoint_url: endpointUrl.trim() },
+    };
+  };
+
+  const onSubmit = async () => {
+    setBusy(true);
+    setMsg("");
+    try {
+      const payload = buildPayload();
+      if (dialogMode === "create") {
+        await api.createMcpService(payload);
+        setMsg("已创建，请点击「同步工具」拉取 tools/list");
+      } else if (editing) {
+        await api.updateMcpService(editing.id, payload);
+        setMsg("已保存");
+      }
+      setDialogOpen(false);
+      await list.reload();
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : "保存失败");
+    } finally {
+      setBusy(false);
+    }
   };
 
   const onSync = async (id: string) => {
@@ -47,6 +140,7 @@ export default function McpPage() {
       await list.reload();
     } catch (e) {
       setMsg(e instanceof Error ? e.message : "同步失败");
+      await list.reload();
     }
   };
 
@@ -62,6 +156,7 @@ export default function McpPage() {
       confirmLabel: "确认删除",
       onConfirm: async () => {
         await api.deleteMcpService(s.id);
+        if (expandedId === s.id) setExpandedId(null);
         await list.reload();
       },
     });
@@ -71,10 +166,13 @@ export default function McpPage() {
     <>
       <ResourceListLayout
         title="MCP 服务"
-        description="注册 Model Context Protocol 端点，同步远程工具列表；绑定到智能体后注入系统提示。"
-        searchPlaceholder="搜索 MCP 服务名称"
+        description="注册 Model Context Protocol 端点（HTTP / SSE / STDIO），同步远程工具列表；绑定到智能体后注入系统提示。"
+        searchPlaceholder="搜索 MCP 服务名称或描述"
         search={search}
         onSearchChange={setSearch}
+        tabs={MCP_TRANSPORT_TABS}
+        activeTab={activeTab}
+        onTabChange={(key) => setActiveTab(key as McpTransportTab)}
         loading={list.loading}
         headerAction={msg ? <span className="text-xs text-ink-muted">{msg}</span> : undefined}
         footer={
@@ -88,114 +186,39 @@ export default function McpPage() {
           ) : null
         }
       >
-        <AddResourceCard
-          label="注册 MCP 服务"
-          hint="填写服务端点 URL（支持 JSON-RPC tools/list）"
-          onClick={() => setDialogOpen(true)}
-        />
-        {filtered.map((s: McpService) => (
-          <ResourceItemCard
+        <McpCreateCard onAdd={openCreate} />
+        {filtered.map((s) => (
+          <McpServiceCard
             key={s.id}
-            title={s.name}
-            description={s.endpoint_url}
-            badge={s.status}
-            meta={
-              <span>
-                {s.transport} · 工具 {s.tools_cache?.length ?? 0} 个
-                {s.last_sync_at ? ` · 已同步` : ""}
-              </span>
-            }
-            actions={
-              <span className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  className="text-xs text-brand hover:underline"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onSync(s.id);
-                  }}
-                >
-                  同步工具
-                </button>
-                <button
-                  type="button"
-                  className="text-xs text-ink-muted hover:underline"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setExpandedId(expandedId === s.id ? null : s.id);
-                  }}
-                >
-                  {expandedId === s.id ? "收起" : "工具列表"}
-                </button>
-                <button
-                  type="button"
-                  className="text-xs text-red-600 hover:underline"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onDelete(s);
-                  }}
-                >
-                  删除
-                </button>
-              </span>
-            }
+            service={s}
+            toolsExpanded={expandedId === s.id}
+            onSync={() => onSync(s.id)}
+            onEdit={() => openEdit(s)}
+            onDelete={() => onDelete(s)}
+            onToggleTools={() => setExpandedId(expandedId === s.id ? null : s.id)}
           />
         ))}
       </ResourceListLayout>
 
-      {expandedId && (
-        <section className="card p-4 text-sm">
-          <h3 className="font-medium text-ink">工具缓存</h3>
-          <ul className="mt-2 space-y-1 text-xs text-ink-muted">
-            {(filtered.find((x) => x.id === expandedId)?.tools_cache ?? []).map(
-              (t: Record<string, unknown>, i) => (
-                <li key={i}>
-                  <span className="font-medium text-ink">{String(t.name)}</span>
-                  {t.description ? ` — ${String(t.description)}` : ""}
-                </li>
-              ),
-            )}
-          </ul>
-        </section>
-      )}
-
-      <ResourceDialog
+      <McpServiceDialog
         open={dialogOpen}
-        title="注册 MCP 服务"
+        mode={dialogMode}
+        transport={dialogTransport}
+        editing={editing}
+        name={name}
+        description={description}
+        endpointUrl={endpointUrl}
+        stdioCommand={stdioCommand}
+        stdioArgs={stdioArgs}
+        busy={busy}
         onClose={() => setDialogOpen(false)}
-        footer={
-          <>
-            <button type="button" className="btn-ghost" onClick={() => setDialogOpen(false)}>
-              取消
-            </button>
-            <button type="button" className="btn-primary" onClick={onCreate}>
-              注册
-            </button>
-          </>
-        }
-      >
-        <input
-          className="input-field w-full"
-          placeholder="名称"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-        />
-        <input
-          className="input-field w-full"
-          placeholder="端点 URL"
-          value={endpoint}
-          onChange={(e) => setEndpoint(e.target.value)}
-        />
-        <select
-          className="input-field w-full"
-          value={transport}
-          onChange={(e) => setTransport(e.target.value)}
-        >
-          <option value="sse">sse</option>
-          <option value="http">http</option>
-          <option value="streamable-http">streamable-http</option>
-        </select>
-      </ResourceDialog>
+        onSubmit={onSubmit}
+        onNameChange={setName}
+        onDescriptionChange={setDescription}
+        onEndpointUrlChange={setEndpointUrl}
+        onStdioCommandChange={setStdioCommand}
+        onStdioArgsChange={setStdioArgs}
+      />
       {confirmDialog}
     </>
   );

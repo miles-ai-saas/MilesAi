@@ -21,6 +21,7 @@ import type {
   ModelConfig,
   PromptTemplate,
   SkillPackage,
+  SysCategory,
 } from "@/lib/types";
 
 export type { AgentFormValues } from "@/components/agent/agent-form-shared";
@@ -44,6 +45,7 @@ export function AgentFormDialog({ open, title, agent, onClose, onSaved }: Props)
   const [mcps, setMcps] = useState<McpService[]>([]);
   const [allAgents, setAllAgents] = useState<Agent[]>([]);
   const [a2aPeers, setA2aPeers] = useState<A2aPeer[]>([]);
+  const [categories, setCategories] = useState<SysCategory[]>([]);
   const [busy, setBusy] = useState(false);
 
   const isLastStep = step === AGENT_FORM_STEPS.length - 1;
@@ -61,7 +63,8 @@ export function AgentFormDialog({ open, title, agent, onClose, onSaved }: Props)
       api.listMcpServices(1, 100),
       api.listAgents(1, 100),
       api.listA2aPeers(1, 100),
-    ]).then(([kbRes, flowRes, promptRes, modelRes, skillRes, mcpRes, agentRes, a2aRes]) => {
+      api.listCategories("agent"),
+    ]).then(([kbRes, flowRes, promptRes, modelRes, skillRes, mcpRes, agentRes, a2aRes, catRes]) => {
       setKbs(kbRes.items);
       setFlows(flowRes.items.filter((f) => f.status === "published"));
       setPrompts(promptRes.items);
@@ -70,6 +73,7 @@ export function AgentFormDialog({ open, title, agent, onClose, onSaved }: Props)
       setMcps(mcpRes.items);
       setAllAgents(agentRes.items);
       setA2aPeers(a2aRes.items.filter((p) => p.status === "active"));
+      setCategories(catRes);
     });
   }, [open]);
 
@@ -89,6 +93,8 @@ export function AgentFormDialog({ open, title, agent, onClose, onSaved }: Props)
       const payload = {
         name: form.name.trim(),
         description: form.description.trim() || undefined,
+        category_id: form.category_id || null,
+        tag_ids: form.tag_ids,
         system_prompt: form.system_prompt.trim() || undefined,
         kb_ids: form.kb_ids,
         sub_agents: form.sub_agents,
@@ -166,6 +172,7 @@ export function AgentFormDialog({ open, title, agent, onClose, onSaved }: Props)
           form={form}
           setForm={setForm}
           agent={agent}
+          categories={categories}
           kbs={kbs}
           flows={flows}
           prompts={prompts}

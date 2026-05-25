@@ -1,7 +1,15 @@
-"""文档入库失败状态落库（须在 Celery 重试 rollback 前 commit）。
+"""
+文档入库失败状态落库。
 
-run_ingest 异常 → persist_document_ingest_failure（立即 commit）；
-Celery max_retries 耗尽 → ensure_document_failure_if_still_processing 兜底 PENDING/PARSING/EMBEDDING。
+背景
+----
+Celery 任务在 ``get_sync_db()`` 上下文内抛异常时会 rollback；
+若仅 flush 失败状态而不 commit，前端会一直看到 PARSING/EMBEDDING 卡住。
+
+两阶段保障
+----------
+1. ``persist_document_ingest_failure``：``run_ingest`` 捕获异常后立即 commit。
+2. ``ensure_document_failure_if_still_processing``：Celery 重试耗尽后兜底仍处理中的文档。
 """
 
 from __future__ import annotations
@@ -21,7 +29,11 @@ def persist_document_ingest_failure(
     phase: DocumentStatus,
     exc: Exception,
 ) -> None:
-    """写入失败状态并立即 commit，避免 get_sync_db 异常 rollback 吞掉状态。"""
+    """
+    按阶段写入 PARSE_FAILED 或 EMBED_FAILED，并 **立即 commit**。
+
+    EMBEDDING 阶段失败标 EMBED_FAILED，其余（含 PARSING）标 PARSE_FAILED。
+    """
     doc.status = (
         DocumentStatus.EMBED_FAILED
         if phase == DocumentStatus.EMBEDDING
@@ -37,7 +49,11 @@ def ensure_document_failure_if_still_processing(
     *,
     reason: str,
 ) -> None:
-    """Celery 重试耗尽后兜底：仍在排队/处理中的文档标记为失败。"""
+    """
+    Celery ``max_retries`` 用尽后的兜底。
+
+    若文档仍处于 PENDING/PARSING/EMBEDDING，强制标为 EMBED_FAILED 并写入 fail_reason。
+    """
     with get_sync_db() as db:
         doc = db.get(Document, UUID(document_id))
         if not doc or doc.deleted_at is not None:

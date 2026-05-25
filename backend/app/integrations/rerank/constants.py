@@ -1,6 +1,14 @@
-"""Rerank invoke_mode 与 ModelConfig.extra 键名。
+"""
+Rerank ``invoke_mode`` 与 ``ModelConfig.extra`` 键名。
 
-request_format：flat（qwen3-rerank）或 nested（经典 DashScope input/parameters）。
+invoke_mode
+-----------
+- ``dashscope``：阿里云原生 text-rerank
+- ``openai_compatible``：``/reranks`` 形状网关
+
+``rerank_request_format``（仅 DashScope）
+---------------------------------------
+- ``flat`` / ``nested``，见 ``providers/dashscope._build_payload``
 """
 
 INVOKE_MODE_DASHSCOPE = "dashscope"

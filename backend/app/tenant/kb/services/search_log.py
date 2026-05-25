@@ -1,4 +1,13 @@
-"""知识库检索日志写入（工作台检索 API / Agent multi_kb 可选回调）。"""
+"""
+知识库检索审计日志（表 ``kb_search_logs``）。
+
+写入方
+------
+- 本服务 ``KnowledgeBaseService.search``（source=api）
+- ``integrations.langchain.vectorstores._write_search_log``（source=agent 等）
+
+用于监控检索延迟、命中数、实际 retrieval_mode（含 +rerank 后缀）。
+"""
 
 from __future__ import annotations
 

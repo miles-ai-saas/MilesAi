@@ -1,6 +1,17 @@
-"""流程画布 RAG 节点：检索与 prompt 拼装（调用 L2 rag.retrieve / format_hits_context）。
+"""
+流程画布 RAG 节点（L2 能力复用）。
 
-KnowledgeSearch 在节点内开独立 AsyncSession；kb_id 优先于 ctx.kb_ids。
+节点类型
+--------
+- **KnowledgeSearch**：``retrieve_hits`` → hit 列表（与 Agent RAG 同检索链，不写 search_log）
+- **PromptTemplate**：``format_hits_context`` + 占位符模板 → 下游 **LLMCall** 的 prompt 字符串
+
+知识库来源
+----------
+1. 节点 ``data.kb_id`` 指定单库（优先）
+2. 否则使用 ``RunContext.kb_ids``（Agent 发布流程对话时由 ``AgentService`` 注入）
+
+会话：节点内 ``AsyncSessionLocal`` 独立开库，避免与外层 HTTP 事务纠缠。
 """
 
 from typing import Any

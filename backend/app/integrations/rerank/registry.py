@@ -1,7 +1,13 @@
-"""Rerank provider 注册表与分发。
+"""
+Rerank Provider 注册表与分发。
 
-链路：search_kb_chunks → apply_rerank_to_hits → rerank_documents_for_model
-     → invoke_mode → DashScope / OpenAICompatible。
+链路
+----
+``search_kb_chunks``（扩大 fetch limit）
+→ ``apply_rerank_to_hits``
+→ ``rerank_documents_for_model`` → ``get_rerank_provider(invoke_mode)``
+
+扩展：实现 ``RerankProvider`` 并 ``register_rerank_provider``。
 """
 
 from __future__ import annotations

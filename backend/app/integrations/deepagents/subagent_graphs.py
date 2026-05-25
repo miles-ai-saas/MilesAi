@@ -1,6 +1,12 @@
-"""将租户子智能体编译为 DeepAgents CompiledSubAgent（runnable 内调用 chat_as_child）。
+"""
+子智能体 → DeepAgents ``CompiledSubAgent`` 适配。
 
-每个 binding 对应一个 LangGraph MessagesState 子图，slug 供 task 工具 subagent_type 引用。
+每个 ``AgentSubAgentBinding``：
+- 编译为单节点 LangGraph：``HumanMessage`` → ``chat_as_child`` → ``AIMessage``
+- ``_slug_for_binding``：``role_hint`` + child_id 前缀，作为 ``task(subagent_type=...)`` 名
+- ``role_hint`` 可选：retrieval / ocr / summary / compliance / custom（见 ``_ROLE_LABELS``）
+
+``_build_general_purpose_guard``：禁用库内置 general-purpose，强制走租户子智能体列表。
 """
 
 from __future__ import annotations

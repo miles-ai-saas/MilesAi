@@ -1,97 +1,125 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+/**
+ * 技能包列表：分类 Tab、标签筛选、添加/导入入口、卡片跳转编辑器。
+ */
+
+import { useCallback, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth-store";
 import { usePagedList } from "@/hooks/use-paged-list";
 import { ResourceListFooter } from "@/components/resource/ResourceListFooter";
-import { AddResourceCard } from "@/components/resource/AddResourceCard";
-import { ResourceDialog } from "@/components/resource/ResourceDialog";
 import { ResourceItemCard } from "@/components/resource/ResourceItemCard";
 import { ResourceListLayout } from "@/components/resource/ResourceListLayout";
+import { CardActions } from "@/components/resource/CardActions";
 import { filterBySearch } from "@/lib/filter-search";
-import type { SkillPackage } from "@/lib/types";
+import { useCategoryTabs } from "@/components/category/useCategoryTabs";
+import { TagChips } from "@/components/tag/TagChips";
+import { TagFilterSelect } from "@/components/tag/TagFilterSelect";
+import { TagManageDialog } from "@/components/tag/TagManageDialog";
+import { SkillCreateBlankDialog } from "@/components/skills/SkillCreateBlankDialog";
+import {
+  SkillImportGitDialog,
+  SkillImportLocalDialog,
+  SkillImportZipDialog,
+} from "@/components/skills/SkillImportDialogs";
+import type { SkillImportResult, SkillPackage } from "@/lib/types";
+
+function formatUpdated(iso: string) {
+  try {
+    const d = new Date(iso);
+    return d.toLocaleString("zh-CN", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  } catch {
+    return iso;
+  }
+}
 
 export default function SkillsPage() {
+  const router = useRouter();
   const { ready } = useRequireAuth();
   const [search, setSearch] = useState("");
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [editing, setEditing] = useState<SkillPackage | null>(null);
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
-  const [selectedTools, setSelectedTools] = useState<string[]>(["knowledge_search"]);
-  const [catalog, setCatalog] = useState<
-    { source: string; name: string; description?: string | null }[]
-  >([]);
-  const [snippet, setSnippet] = useState("");
+  const cat = useCategoryTabs("skill");
+  const [tagFilterIds, setTagFilterIds] = useState<string[]>([]);
+  const [tagManageOpen, setTagManageOpen] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [importLocal, setImportLocal] = useState(false);
+  const [importZip, setImportZip] = useState(false);
+  const [importGit, setImportGit] = useState(false);
+  const [importMsg, setImportMsg] = useState<string | null>(null);
 
-  const list = usePagedList(useCallback((p, s) => api.listSkillPackages(p, s), []), { enabled: ready });
-
-  useEffect(() => {
-    if (!ready) return;
-    api.listToolCatalog().then(setCatalog);
-  }, [ready]);
+  const list = usePagedList(
+    useCallback(
+      (p, s) =>
+        api.listSkillPackages(
+          p,
+          s,
+          cat.activeCategoryId,
+          tagFilterIds.length ? tagFilterIds : undefined,
+        ),
+      [cat.activeCategoryId, tagFilterIds],
+    ),
+    { enabled: ready, resetKey: `${cat.activeId}-${tagFilterIds.join(",")}` },
+  );
 
   const filtered = useMemo(
-    () => filterBySearch(list.items, search, (s) => `${s.name} ${s.tool_names.join(" ")}`),
+    () => filterBySearch(list.items, search, (s) => `${s.name} ${s.slug} ${s.description ?? ""}`),
     [list.items, search],
   );
 
-  const openCreate = () => {
-    setEditing(null);
-    setName("");
-    setDescription("");
-    setSelectedTools(["knowledge_search"]);
-    setSnippet("");
-    setDialogOpen(true);
+  const onImportDone = (result: SkillImportResult) => {
+    const parts = [`导入 ${result.imported} 个`, `跳过 ${result.skipped} 个`];
+    if (result.errors.length) parts.push(`错误: ${result.errors.join("; ")}`);
+    setImportMsg(parts.join("，"));
+    void list.reload();
+    void cat.reload();
   };
 
-  const openEdit = (s: SkillPackage) => {
-    setEditing(s);
-    setName(s.name);
-    setDescription(s.description ?? "");
-    setSelectedTools(s.tool_names.length ? s.tool_names : []);
-    setSnippet(s.prompt_snippet ?? "");
-    setDialogOpen(true);
-  };
-
-  const toggleTool = (toolName: string) => {
-    setSelectedTools((prev) =>
-      prev.includes(toolName) ? prev.filter((t) => t !== toolName) : [...prev, toolName],
-    );
-  };
-
-  const onSave = async () => {
-    if (!name.trim()) return;
-    const tool_names = selectedTools;
-    if (editing) {
-      await api.updateSkillPackage(editing.id, {
-        name: name.trim(),
-        description: description.trim() || undefined,
-        tool_names,
-        prompt_snippet: snippet.trim() || undefined,
-      });
-    } else {
-      await api.createSkillPackage({
-        name: name.trim(),
-        description: description.trim() || undefined,
-        tool_names,
-        prompt_snippet: snippet.trim() || undefined,
-      });
-    }
-    setDialogOpen(false);
-    await list.reload();
+  const onCreateBlank = async (
+    name: string,
+    description: string,
+    categoryId: string,
+    tagIds: string[],
+  ) => {
+    const row = await api.createSkillPackageBlank({
+      name,
+      description: description || undefined,
+      category_id: categoryId,
+      tag_ids: tagIds,
+    });
+    router.push(`/workbench/skills/${row.id}`);
   };
 
   return (
     <>
       <ResourceListLayout
         title="技能包"
-        description="将工具名与提示词片段打包；在智能体表单中绑定后自动注入系统提示。"
-        searchPlaceholder="搜索技能包名称"
+        description="管理 Cursor 风格 SKILL.md 技能目录；支持本地目录、ZIP 与 Git 导入，在智能体中绑定后注入系统提示。"
+        searchPlaceholder="搜索技能包"
         search={search}
         onSearchChange={setSearch}
+        tabs={cat.tabs}
+        activeTab={cat.activeId}
+        onTabChange={cat.setActiveId}
         loading={list.loading}
+        headerAction={
+          <div className="flex flex-wrap items-center gap-2">
+            <TagFilterSelect value={tagFilterIds} onChange={setTagFilterIds} />
+            <button
+              type="button"
+              className="text-sm text-brand hover:underline"
+              onClick={() => setTagManageOpen(true)}
+            >
+              管理标签
+            </button>
+          </div>
+        }
         footer={
           !list.loading ? (
             <ResourceListFooter
@@ -103,109 +131,119 @@ export default function SkillsPage() {
           ) : null
         }
       >
-        <AddResourceCard
-          label="添加新技能包"
-          hint="组合工具与提示词片段"
-          onClick={openCreate}
-        />
+        <div className="resource-card border border-dashed border-line-soft bg-surface-elevated/50 p-5">
+          <p className="mb-3 text-sm font-medium text-ink">添加技能包</p>
+          <ul className="space-y-2 text-sm text-brand">
+            <li>
+              <button type="button" className="hover:underline" onClick={() => setCreateOpen(true)}>
+                创建空白技能包
+              </button>
+            </li>
+            <li>
+              <button type="button" className="hover:underline" onClick={() => setImportLocal(true)}>
+                装载本地技能包
+              </button>
+            </li>
+            <li>
+              <button type="button" className="hover:underline" onClick={() => setImportZip(true)}>
+                导入技能压缩包
+              </button>
+            </li>
+            <li>
+              <button type="button" className="hover:underline" onClick={() => setImportGit(true)}>
+                下载 Git 技能包
+              </button>
+            </li>
+          </ul>
+        </div>
+
+        {importMsg ? (
+          <p className="col-span-full rounded-md bg-brand/10 px-3 py-2 text-sm text-brand">{importMsg}</p>
+        ) : null}
+
         {filtered.map((s) => (
-          <ResourceItemCard
+          <SkillCard
             key={s.id}
-            title={s.name}
-            description={s.prompt_snippet || s.description || "未配置提示词片段"}
-            badge={s.is_active ? undefined : "已停用"}
-            meta={<span>工具: {s.tool_names.join(", ") || "无"}</span>}
-            actions={
-              <span className="flex gap-3">
-                <button
-                  type="button"
-                  className="text-xs text-brand hover:underline"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    openEdit(s);
-                  }}
-                >
-                  编辑
-                </button>
-                <button
-                  type="button"
-                  className="text-xs text-ink-muted hover:underline"
-                  onClick={async (e) => {
-                    e.stopPropagation();
-                    await api.updateSkillPackage(s.id, { is_active: !s.is_active });
-                    await list.reload();
-                  }}
-                >
-                  {s.is_active ? "停用" : "启用"}
-                </button>
-                <button
-                  type="button"
-                  className="text-xs text-red-600 hover:underline"
-                  onClick={async (e) => {
-                    e.stopPropagation();
-                    await api.deleteSkillPackage(s.id);
-                    await list.reload();
-                  }}
-                >
-                  删除
-                </button>
-              </span>
-            }
+            skill={s}
+            onOpen={() => router.push(`/workbench/skills/${s.id}`)}
+            onDelete={async () => {
+              await api.deleteSkillPackage(s.id);
+              await list.reload();
+            }}
+            onToggle={async () => {
+              await api.updateSkillPackage(s.id, { is_active: !s.is_active });
+              await list.reload();
+            }}
           />
         ))}
       </ResourceListLayout>
 
-      <ResourceDialog
-        open={dialogOpen}
-        title={editing ? "编辑技能包" : "创建技能包"}
-        onClose={() => setDialogOpen(false)}
-        footer={
-          <>
-            <button type="button" className="btn-ghost" onClick={() => setDialogOpen(false)}>
-              取消
-            </button>
-            <button type="button" className="btn-primary" onClick={onSave}>
-              保存
-            </button>
-          </>
-        }
-      >
-        <input
-          className="input-field w-full"
-          placeholder="技能包名称"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-        />
-        <input
-          className="input-field w-full"
-          placeholder="描述（可选）"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-        />
-        <div className="max-h-40 overflow-y-auto rounded border border-line-soft p-2">
-          <p className="mb-2 text-xs font-medium text-ink-muted">从工具目录选择</p>
-          {catalog.length === 0 && <p className="text-xs text-ink-faint">加载中…</p>}
-          {catalog.map((t) => (
-            <label key={`${t.source}-${t.name}`} className="flex cursor-pointer items-center gap-2 py-1 text-xs">
-              <input
-                type="checkbox"
-                checked={selectedTools.includes(t.name)}
-                onChange={() => toggleTool(t.name)}
-              />
-              <span>
-                {t.name}
-                <span className="text-ink-faint"> ({t.source})</span>
-              </span>
-            </label>
-          ))}
-        </div>
-        <textarea
-          className="input-field h-24 w-full"
-          placeholder="提示词片段（注入智能体系统提示）"
-          value={snippet}
-          onChange={(e) => setSnippet(e.target.value)}
-        />
-      </ResourceDialog>
+      <SkillCreateBlankDialog
+        open={createOpen}
+        categories={cat.categories}
+        onClose={() => setCreateOpen(false)}
+        onSubmit={onCreateBlank}
+      />
+      <SkillImportLocalDialog
+        open={importLocal}
+        categories={cat.categories}
+        onClose={() => setImportLocal(false)}
+        onDone={onImportDone}
+      />
+      <SkillImportZipDialog
+        open={importZip}
+        categories={cat.categories}
+        onClose={() => setImportZip(false)}
+        onDone={onImportDone}
+      />
+      <SkillImportGitDialog
+        open={importGit}
+        categories={cat.categories}
+        onClose={() => setImportGit(false)}
+        onDone={onImportDone}
+      />
+      <TagManageDialog open={tagManageOpen} onClose={() => setTagManageOpen(false)} />
     </>
+  );
+}
+
+function SkillCard({
+  skill,
+  onOpen,
+  onDelete,
+  onToggle,
+}: {
+  skill: SkillPackage;
+  onOpen: () => void;
+  onDelete: () => Promise<void>;
+  onToggle: () => Promise<void>;
+}) {
+  return (
+    <ResourceItemCard
+      title={skill.name}
+      description={skill.description || "暂无描述"}
+      badge={skill.is_active ? undefined : "已停用"}
+      onClick={onOpen}
+      meta={
+        <>
+          <span className="flex flex-wrap items-center gap-2 text-xs text-ink-muted">
+            {skill.category_name ? (
+              <span className="rounded bg-surface-muted px-1.5 py-0.5">{skill.category_name}</span>
+            ) : null}
+            <span>更新于 {formatUpdated(skill.updated_at)}</span>
+          </span>
+          <TagChips tags={skill.tags} />
+        </>
+      }
+      actions={
+        <CardActions
+          actions={[
+            { label: "编辑", onClick: onOpen, variant: "primary" },
+            { label: skill.is_active ? "停用" : "启用", onClick: onToggle },
+            { label: "删除", onClick: onDelete, variant: "danger" },
+          ]}
+        />
+      }
+    />
   );
 }

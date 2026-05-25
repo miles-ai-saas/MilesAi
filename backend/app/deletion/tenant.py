@@ -15,7 +15,8 @@ from app.tenant.marketplace.models import AppInstall
 from app.tenant.mcp.models import McpService
 from app.tenant.prompts.models import PromptTemplate
 from app.tenant.skills.models import SkillPackage
-from app.tenant.tools.models import Tool
+from app.tenant.skills.storage import remove_tenant_skills
+from app.tenant.tools.models import Tool, ToolInvocationLog
 from app.infra.storage import delete_object
 from app.deletion.cascade import (
     before_delete_agent,
@@ -81,14 +82,17 @@ async def purge_tenant_data(db: AsyncSession, tenant_id: UUID) -> None:
         if flow:
             await db.delete(flow)
 
+    # sys_categories 为全平台全局字典，删除租户时不删分类行
     await db.execute(delete(TenantAuditLog).where(TenantAuditLog.tenant_id == tenant_id))
     await db.execute(delete(AppInstall).where(AppInstall.tenant_id == tenant_id))
     await db.execute(delete(HookBinding).where(HookBinding.tenant_id == tenant_id))
     await db.execute(delete(HookDefinition).where(HookDefinition.tenant_id == tenant_id))
     await db.execute(delete(PromptTemplate).where(PromptTemplate.tenant_id == tenant_id))
     await db.execute(delete(SkillPackage).where(SkillPackage.tenant_id == tenant_id))
+    remove_tenant_skills(tenant_id)
     await db.execute(delete(SensitiveWord).where(SensitiveWord.tenant_id == tenant_id))
     await db.execute(delete(InterceptLog).where(InterceptLog.tenant_id == tenant_id))
+    await db.execute(delete(ToolInvocationLog).where(ToolInvocationLog.tenant_id == tenant_id))
     await db.execute(delete(Tool).where(Tool.tenant_id == tenant_id))
     await db.execute(delete(McpService).where(McpService.tenant_id == tenant_id))
     await db.execute(delete(CeleryTaskRecord).where(CeleryTaskRecord.tenant_id == tenant_id))

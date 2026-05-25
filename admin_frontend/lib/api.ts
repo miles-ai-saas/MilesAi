@@ -113,7 +113,52 @@ export const adminApi = {
     post<AdminModelCatalog>(`/model-catalog/${id}/deprecate`),
   deleteModelCatalog: (id: string) =>
     http.delete(`/model-catalog/${id}`).then(() => undefined),
+
+  listMarketplaceCategories: () => get<AdminMarketplaceCategory[]>("/marketplace-categories"),
+  createMarketplaceCategory: (body: {
+    name: string;
+    slug?: string;
+    sort_order?: number;
+  }) => post<AdminMarketplaceCategory>("/marketplace-categories", body),
+  updateMarketplaceCategory: (
+    id: string,
+    body: { name?: string; slug?: string; sort_order?: number },
+  ) => patch<AdminMarketplaceCategory>(`/marketplace-categories/${id}`, body),
+  deleteMarketplaceCategory: (id: string) =>
+    http.delete(`/marketplace-categories/${id}`).then(() => undefined),
+
+  listSysCategories: (domain: string) =>
+    get<AdminSysCategory[]>(`/sys-categories?domain=${encodeURIComponent(domain)}`),
+  createSysCategory: (
+    domain: string,
+    body: { name: string; slug?: string; sort_order?: number },
+  ) =>
+    post<AdminSysCategory>(`/sys-categories?domain=${encodeURIComponent(domain)}`, body),
+  updateSysCategory: (
+    id: string,
+    body: { name?: string; slug?: string; sort_order?: number },
+  ) => patch<AdminSysCategory>(`/sys-categories/${id}`, body),
+  deleteSysCategory: (id: string) => http.delete(`/sys-categories/${id}`).then(() => undefined),
 };
+
+export interface AdminSysCategory {
+  id: string;
+  domain: string;
+  name: string;
+  slug: string;
+  sort_order: number;
+  is_system: boolean;
+  created_at: string;
+  updated_at?: string | null;
+}
+
+export interface AdminMarketplaceCategory {
+  id: string;
+  name: string;
+  slug: string;
+  sort_order: number;
+  app_count: number;
+}
 
 export interface AdminModelCatalog {
   id: string;

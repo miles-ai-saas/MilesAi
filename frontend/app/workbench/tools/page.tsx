@@ -1,307 +1,398 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCategoryTabs } from "@/components/category/useCategoryTabs";
+import { TagFilterSelect } from "@/components/tag/TagFilterSelect";
+import { TagManageDialog } from "@/components/tag/TagManageDialog";
+import { AddResourceCard } from "@/components/resource/AddResourceCard";
+import { ResourceListFooter } from "@/components/resource/ResourceListFooter";
+import { ResourceListLayout } from "@/components/resource/ResourceListLayout";
+import { ToolCard } from "@/components/tool/ToolCard";
+import { ToolCreateDialog, type ToolDialogMode } from "@/components/tool/ToolCreateDialog";
+import { ToolTestDialog } from "@/components/tool/ToolTestDialog";
+import { useConfirmAction } from "@/hooks/use-confirm-action";
+import { usePagedList } from "@/hooks/use-paged-list";
 import { api } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth-store";
-import { usePagedList } from "@/hooks/use-paged-list";
-import { ResourceListFooter } from "@/components/resource/ResourceListFooter";
-import { AddResourceCard } from "@/components/resource/AddResourceCard";
-import { ResourceDialog } from "@/components/resource/ResourceDialog";
-import { ResourceItemCard } from "@/components/resource/ResourceItemCard";
-import { ResourceListLayout } from "@/components/resource/ResourceListLayout";
 import { filterBySearch } from "@/lib/filter-search";
-import type { CustomTool } from "@/lib/types";
+import {
+  TOOL_PAGE_TABS,
+  TOOL_SOURCE_TABS,
+  type ToolPageTab,
+  type ToolSourceTab,
+} from "@/lib/tool-labels";
+import type { CustomTool, ToolCatalogItem, ToolParameterSpec } from "@/lib/types";
 
-type CatalogItem = {
-  source: string;
-  name: string;
-  description?: string | null;
-  tool_id?: string | null;
-  mcp_service_name?: string | null;
-};
+function slugFromName(name: string): string {
+  return name
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 63);
+}
+
+const defaultParams = (): ToolParameterSpec[] => [];
 
 export default function ToolsPage() {
   const { ready } = useRequireAuth();
-  const [tab, setTab] = useState<"all" | "custom">("all");
+  const [pageTab, setPageTab] = useState<ToolPageTab>("catalog");
+  const [sourceTab, setSourceTab] = useState<ToolSourceTab>("");
   const [search, setSearch] = useState("");
-  const [catalog, setCatalog] = useState<CatalogItem[]>([]);
+  const [catalog, setCatalog] = useState<ToolCatalogItem[]>([]);
+  const [loading, setLoading] = useState(false);
+  const cat = useCategoryTabs("tool");
+  const [tagFilterIds, setTagFilterIds] = useState<string[]>([]);
+  const [tagManageOpen, setTagManageOpen] = useState(false);
+
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [testOpen, setTestOpen] = useState(false);
-  const [testTool, setTestTool] = useState<CatalogItem | null>(null);
-  const [testParams, setTestParams] = useState('{"expression": "1+2*3"}');
-  const [testResult, setTestResult] = useState("");
+  const [dialogMode, setDialogMode] = useState<ToolDialogMode>("create");
+  const [editing, setEditing] = useState<CustomTool | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const [slug, setSlug] = useState("");
   const [name, setName] = useState("");
-  const [desc, setDesc] = useState("");
+  const [description, setDescription] = useState("");
+  const [categoryId, setCategoryId] = useState("");
+  const [tagIds, setTagIds] = useState<string[]>([]);
+  const [version, setVersion] = useState("1.0.0");
+  const [requireConfirmation, setRequireConfirmation] = useState(false);
+  const [parameters, setParameters] = useState<ToolParameterSpec[]>(defaultParams());
   const [url, setUrl] = useState("");
   const [method, setMethod] = useState("POST");
+  const [headersJson, setHeadersJson] = useState("{}");
 
-  const list = usePagedList(useCallback((p, s) => api.listCustomTools(p, s), []), {
-    enabled: ready && tab === "custom",
-  });
+  const [testOpen, setTestOpen] = useState(false);
+  const [testTool, setTestTool] = useState<ToolCatalogItem | null>(null);
+
+  const { requestConfirm, confirmDialog } = useConfirmAction();
+
+  const logList = usePagedList(
+    useCallback((p, s) => api.listToolInvocationLogs(p, s), []),
+    { enabled: ready && pageTab === "logs" },
+  );
+
+  const reloadCatalog = useCallback(async () => {
+    setLoading(true);
+    try {
+      const rows = await api.listToolCatalog(
+        sourceTab || undefined,
+        cat.activeCategoryId,
+        tagFilterIds.length ? tagFilterIds : undefined,
+      );
+      setCatalog(rows);
+    } finally {
+      setLoading(false);
+    }
+  }, [sourceTab, cat.activeCategoryId, tagFilterIds]);
 
   useEffect(() => {
     if (!ready) return;
-    api.listToolCatalog().then(setCatalog);
-  }, [ready]);
+    void reloadCatalog();
+  }, [ready, reloadCatalog]);
 
-  const filteredCatalog = useMemo(
-    () => filterBySearch(catalog, search, (t) => `${t.name} ${t.description ?? ""} ${t.source}`),
+  const filtered = useMemo(
+    () =>
+      filterBySearch(
+        catalog,
+        search,
+        (t) =>
+          `${t.name} ${t.slug} ${t.description ?? ""} ${t.category_name ?? ""} ${t.source}`,
+      ),
     [catalog, search],
   );
-  const filteredCustom = useMemo(
-    () => filterBySearch(list.items, search, (t) => `${t.name} ${t.description ?? ""}`),
-    [list.items, search],
-  );
 
-  const onCreate = async () => {
-    if (!name.trim()) return;
-    await api.createCustomTool(name.trim(), desc, {
-      url: url.trim(),
-      method,
-    });
+  const resetForm = () => {
+    setSlug("");
     setName("");
-    setDesc("");
+    setDescription("");
+    setCategoryId(cat.activeId || "");
+    setVersion("1.0.0");
+    setRequireConfirmation(false);
+    setParameters(defaultParams());
     setUrl("");
-    setDialogOpen(false);
-    await list.reload();
-    setCatalog(await api.listToolCatalog());
+    setMethod("POST");
+    setHeadersJson("{}");
+    setTagIds([]);
   };
 
-  const runTest = async () => {
-    if (!testTool) return;
-    let params: Record<string, unknown> = {};
+  const openCreate = () => {
+    setDialogMode("create");
+    setEditing(null);
+    resetForm();
+    setDialogOpen(true);
+  };
+
+  const openEdit = async (item: ToolCatalogItem) => {
+    if (!item.tool_id) return;
+    const detail = (await api.listCustomTools(1, 100)).items.find((t) => t.id === item.tool_id);
+    if (!detail) return;
+    setDialogMode("edit");
+    setEditing(detail);
+    setSlug(detail.slug);
+    setName(detail.name);
+    setDescription(detail.description ?? "");
+    setCategoryId(detail.category_id ?? "");
+    setTagIds((detail.tags ?? []).map((t) => t.id));
+    setVersion(detail.version);
+    setRequireConfirmation(detail.require_confirmation);
+    setParameters(detail.parameters ?? []);
+    setUrl(String((detail.config as { url?: string })?.url ?? ""));
+    setMethod(String((detail.config as { method?: string })?.method ?? "POST"));
+    setHeadersJson(JSON.stringify((detail.config as { headers?: object })?.headers ?? {}, null, 2));
+    setDialogOpen(true);
+  };
+
+  const onSave = async () => {
+    if (!name.trim() || !slug.trim() || !url.trim()) return;
+    let headers: Record<string, string> = {};
     try {
-      params = JSON.parse(testParams || "{}");
+      headers = headersJson.trim() ? JSON.parse(headersJson) : {};
     } catch {
-      setTestResult("参数 JSON 格式错误");
+      alert("Headers JSON 格式错误");
       return;
     }
+    const payload = {
+      slug: slug.trim(),
+      name: name.trim(),
+      description: description.trim() || null,
+      category_id: categoryId || null,
+      tag_ids: tagIds,
+      version: version.trim() || "1.0.0",
+      require_confirmation: requireConfirmation,
+      parameters: parameters.filter((p) => p.name.trim()),
+      config: { url: url.trim(), method, headers, body_mode: "json", timeout_sec: 15 },
+    };
+    setBusy(true);
     try {
-      if (testTool.source === "mcp" && testTool.mcp_service_name) {
-        const mcpList = await api.listMcpServices(1, 100);
-        const svc = mcpList.items.find((s) => s.name === testTool.mcp_service_name);
-        if (!svc) {
-          setTestResult("未找到 MCP 服务");
-          return;
-        }
-        const res = await api.invokeMcpTool(svc.id, testTool.name, params);
-        setTestResult(JSON.stringify(res.output, null, 2));
+      if (dialogMode === "edit" && editing) {
+        await api.updateCustomTool(editing.id, payload);
       } else {
-        const res = await api.invokeTool(
-          testTool.name,
-          params,
-          testTool.tool_id || undefined,
-        );
-        setTestResult(JSON.stringify(res.output, null, 2));
+        await api.createCustomTool(payload);
       }
-    } catch (e) {
-      setTestResult(e instanceof Error ? e.message : "调用失败");
+      setDialogOpen(false);
+      await reloadCatalog();
+    } finally {
+      setBusy(false);
     }
   };
 
-  return (
-    <>
-      <div className="mb-4 flex gap-2">
-        <button
-          type="button"
-          onClick={() => setTab("all")}
-          className={`rounded-lg px-3 py-1.5 text-sm ${
-            tab === "all" ? "bg-brand-light font-medium text-brand" : "text-ink-muted"
-          }`}
-        >
-          工具目录
-        </button>
-        <button
-          type="button"
-          onClick={() => setTab("custom")}
-          className={`rounded-lg px-3 py-1.5 text-sm ${
-            tab === "custom" ? "bg-brand-light font-medium text-brand" : "text-ink-muted"
-          }`}
-        >
-          自定义 HTTP
-        </button>
-      </div>
+  const onDelete = (item: ToolCatalogItem) => {
+    if (!item.tool_id) return;
+    requestConfirm({
+      title: "删除工具",
+      message: (
+        <>
+          确定删除工具 <span className="font-medium">{item.name}</span>？
+        </>
+      ),
+      destructive: true,
+      confirmLabel: "确认删除",
+      onConfirm: async () => {
+        await api.deleteCustomTool(item.tool_id!);
+        await reloadCatalog();
+      },
+    });
+  };
 
-      {tab === "all" && (
+  const runTest = async (params: Record<string, unknown>, confirmed: boolean) => {
+    if (!testTool) return "";
+    if (testTool.source === "mcp" && testTool.mcp_service_name) {
+      const mcpList = await api.listMcpServices(1, 100);
+      const svc = mcpList.items.find((s) => s.name === testTool.mcp_service_name);
+      if (!svc) throw new Error("未找到 MCP 服务");
+      const res = await api.invokeMcpTool(svc.id, testTool.slug, params);
+      return JSON.stringify(res.output, null, 2);
+    }
+    const res = await api.invokeTool(
+      testTool.slug,
+      params,
+      testTool.tool_id || undefined,
+      confirmed,
+    );
+    if (res.status === "confirmation_required" && res.pending) {
+      return `__CONFIRM__:工具「${res.pending.name}」需要确认。\n参数：${JSON.stringify(res.pending.params, null, 2)}`;
+    }
+    return JSON.stringify(res.output, null, 2);
+  };
+
+  const sourceTabs = TOOL_SOURCE_TABS.map((t) => ({ key: t.key, label: t.label }));
+  const mainTabs = TOOL_PAGE_TABS.map((t) => ({ key: t.key, label: t.label }));
+  const categoryTabs = cat.tabs.map((t) => ({ key: t.key, label: t.label }));
+
+  if (pageTab === "logs") {
+    return (
+      <>
         <ResourceListLayout
           title="工具"
-          description="内置工具、自定义 HTTP 与 MCP 同步工具的统一目录，可供技能包引用。"
-          searchPlaceholder="搜索工具"
+          description="查看工具试调用与智能体执行的审计记录。"
+          searchPlaceholder="搜索工具编号"
           search={search}
           onSearchChange={setSearch}
-          loading={false}
-        >
-          {filteredCatalog.map((t) => (
-            <ResourceItemCard
-              key={`${t.source}-${t.name}-${t.tool_id ?? ""}`}
-              title={t.name}
-              description={t.description ?? "—"}
-              badge={t.source === "builtin" ? "内置" : t.source === "mcp" ? "MCP" : "自定义"}
-              meta={
-                t.mcp_service_name ? <span>来自 {t.mcp_service_name}</span> : undefined
-              }
-              actions={
-                <button
-                  type="button"
-                  className="text-xs text-brand hover:underline"
-                  onClick={() => {
-                    setTestTool(t);
-                    setTestParams(
-                      t.name === "calculator"
-                        ? '{"expression": "1+2*3"}'
-                        : t.name === "knowledge_search"
-                          ? '{"query": "示例", "kb_id": ""}'
-                          : "{}",
-                    );
-                    setTestResult("");
-                    setTestOpen(true);
-                  }}
-                >
-                  试调用
-                </button>
-              }
-            />
-          ))}
-        </ResourceListLayout>
-      )}
-
-      {tab === "custom" && (
-        <ResourceListLayout
-          title="自定义 HTTP 工具"
-          description="注册 HTTP 端点，在流程或试调用中通过工具名执行。"
-          searchPlaceholder="搜索工具"
-          search={search}
-          onSearchChange={setSearch}
-          loading={list.loading}
+          tabs={mainTabs}
+          activeTab={pageTab}
+          onTabChange={(k) => setPageTab(k as ToolPageTab)}
+          loading={logList.loading}
           footer={
-            !list.loading ? (
+            !logList.loading ? (
               <ResourceListFooter
-                page={list.page}
-                size={list.size}
-                total={list.total}
-                onPageChange={list.setPage}
+                page={logList.page}
+                size={logList.size}
+                total={logList.total}
+                onPageChange={logList.setPage}
               />
             ) : null
           }
         >
-          <AddResourceCard
-            label="添加自定义工具"
-            hint="配置 URL 与 HTTP 方法"
-            onClick={() => setDialogOpen(true)}
-          />
-          {filteredCustom.map((t: CustomTool) => (
-            <ResourceItemCard
-              key={t.id}
-              title={t.name}
-              description={
-                (t.config as { url?: string })?.url || t.description || "自定义 HTTP 工具"
-              }
-              badge={t.is_active ? "启用" : "停用"}
-              actions={
-                <span className="flex gap-2">
-                  <button
-                    type="button"
-                    className="text-xs text-brand hover:underline"
-                    onClick={() => {
-                      setTestTool({
-                        source: "custom",
-                        name: t.name,
-                        tool_id: t.id,
-                      });
-                      setTestParams("{}");
-                      setTestOpen(true);
-                    }}
-                  >
-                    试调用
-                  </button>
-                  <button
-                    type="button"
-                    className="text-xs text-red-600 hover:underline"
-                    onClick={async () => {
-                      await api.deleteCustomTool(t.id);
-                      await list.reload();
-                      setCatalog(await api.listToolCatalog());
-                    }}
-                  >
-                    删除
-                  </button>
+          {filterBySearch(logList.items, search, (l) => l.tool_slug).map((log) => (
+            <article key={log.id} className="resource-card text-xs">
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <h3 className="font-medium text-ink">{log.tool_slug}</h3>
+                  <p className="mt-1 text-ink-muted">
+                    {log.status} · {log.source} · {log.invoke_source}
+                    {log.latency_ms ? ` · ${log.latency_ms}ms` : ""}
+                  </p>
+                </div>
+                <span className="text-ink-faint">
+                  {new Date(log.created_at).toLocaleString("zh-CN")}
                 </span>
-              }
-            />
+              </div>
+              {log.error_message && (
+                <p className="mt-2 text-red-600 line-clamp-2">{log.error_message}</p>
+              )}
+            </article>
           ))}
         </ResourceListLayout>
-      )}
+      </>
+    );
+  }
 
-      <ResourceDialog
-        open={dialogOpen}
-        title="添加自定义 HTTP 工具"
-        onClose={() => setDialogOpen(false)}
-        footer={
-          <>
-            <button type="button" className="btn-ghost" onClick={() => setDialogOpen(false)}>
-              取消
+  return (
+    <>
+      <ResourceListLayout
+        title="工具"
+        description="内置工具、自定义 HTTP 与 MCP 同步工具的统一目录，可供技能包与智能体引用。"
+        searchPlaceholder="搜索工具名称或编号"
+        search={search}
+        onSearchChange={setSearch}
+        tabs={mainTabs}
+        activeTab={pageTab}
+        onTabChange={(k) => setPageTab(k as ToolPageTab)}
+        loading={loading}
+        headerAction={
+          <div className="flex items-center gap-4">
+            <div className="flex gap-2 text-xs">
+              {sourceTabs.map((tab) => (
+                <button
+                  key={tab.key || "all"}
+                  type="button"
+                  onClick={() => setSourceTab(tab.key as ToolSourceTab)}
+                  className={`rounded-lg px-2 py-1 ${
+                    sourceTab === tab.key
+                      ? "bg-brand-light font-medium text-brand"
+                      : "text-ink-muted"
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+            <TagFilterSelect value={tagFilterIds} onChange={setTagFilterIds} />
+            <button
+              type="button"
+              className="text-sm text-brand hover:underline"
+              onClick={() => setTagManageOpen(true)}
+            >
+              管理标签
             </button>
-            <button type="button" className="btn-primary" onClick={onCreate}>
-              添加
-            </button>
-          </>
+          </div>
         }
       >
-        <input
-          className="input-field w-full"
-          placeholder="名称"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-        />
-        <input
-          className="input-field w-full"
-          placeholder="描述"
-          value={desc}
-          onChange={(e) => setDesc(e.target.value)}
-        />
-        <input
-          className="input-field w-full"
-          placeholder="URL"
-          value={url}
-          onChange={(e) => setUrl(e.target.value)}
-        />
-        <select
-          className="input-field w-full"
-          value={method}
-          onChange={(e) => setMethod(e.target.value)}
-        >
-          <option value="GET">GET</option>
-          <option value="POST">POST</option>
-          <option value="PUT">PUT</option>
-        </select>
-      </ResourceDialog>
+        <div className="col-span-full mb-2 flex flex-wrap gap-2">
+          {categoryTabs.map((tab) => (
+            <button
+              key={tab.key || "all"}
+              type="button"
+              onClick={() => cat.setActiveId(tab.key)}
+              className={`rounded-lg px-3 py-1 text-xs ${
+                cat.activeId === tab.key
+                  ? "bg-brand-light font-medium text-brand"
+                  : "text-ink-muted hover:bg-surface-muted"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
 
-      <ResourceDialog
-        open={testOpen}
-        title={testTool ? `试调用 · ${testTool.name}` : "试调用"}
-        onClose={() => setTestOpen(false)}
-        footer={
-          <>
-            <button type="button" className="btn-ghost" onClick={() => setTestOpen(false)}>
-              关闭
-            </button>
-            <button type="button" className="btn-primary" onClick={runTest}>
-              执行
-            </button>
-          </>
-        }
-      >
-        <textarea
-          className="input-field min-h-[100px] w-full font-mono text-xs"
-          value={testParams}
-          onChange={(e) => setTestParams(e.target.value)}
-        />
-        {testResult && (
-          <pre className="mt-3 max-h-48 overflow-auto rounded bg-surface-muted p-3 text-xs">
-            {testResult}
-          </pre>
+        {sourceTab !== "builtin" && (
+          <AddResourceCard
+            label="添加新工具"
+            hint="创建 HTTP 工具扩展智能体能力"
+            onClick={openCreate}
+          />
         )}
-      </ResourceDialog>
+
+        {filtered.map((t) => (
+          <ToolCard
+            key={`${t.source}-${t.slug}-${t.tool_id ?? ""}`}
+            tool={t}
+            onTest={() => {
+              setTestTool(t);
+              setTestOpen(true);
+            }}
+            onEdit={t.source === "custom" ? () => void openEdit(t) : undefined}
+            onDelete={t.source === "custom" ? () => onDelete(t) : undefined}
+          />
+        ))}
+      </ResourceListLayout>
+
+      <ToolCreateDialog
+        open={dialogOpen}
+        mode={dialogMode}
+        editing={editing}
+        categories={cat.categories}
+        slug={slug}
+        name={name}
+        description={description}
+        categoryId={categoryId}
+        tagIds={tagIds}
+        version={version}
+        requireConfirmation={requireConfirmation}
+        parameters={parameters}
+        url={url}
+        method={method}
+        headersJson={headersJson}
+        busy={busy}
+        onClose={() => setDialogOpen(false)}
+        onSubmit={onSave}
+        onSlugChange={setSlug}
+        onNameChange={(v) => {
+          setName(v);
+          if (dialogMode === "create") setSlug(slugFromName(v));
+        }}
+        onDescriptionChange={setDescription}
+        onCategoryIdChange={setCategoryId}
+        onTagIdsChange={setTagIds}
+        onVersionChange={setVersion}
+        onRequireConfirmationChange={setRequireConfirmation}
+        onParametersChange={setParameters}
+        onUrlChange={setUrl}
+        onMethodChange={setMethod}
+        onHeadersJsonChange={setHeadersJson}
+      />
+
+      <ToolTestDialog
+        open={testOpen}
+        tool={testTool}
+        onClose={() => setTestOpen(false)}
+        onRun={runTest}
+      />
+
+      <TagManageDialog open={tagManageOpen} onClose={() => setTagManageOpen(false)} />
+
+      {confirmDialog}
     </>
   );
 }

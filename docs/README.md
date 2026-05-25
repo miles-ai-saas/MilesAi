@@ -13,7 +13,8 @@ docs/
 │   ├── technical-design.md
 │   ├── layering.md           # 后端分层与代码规范
 │   ├── rag-module-migration.md
-│   └── vector-database-selection.md
+│   ├── vector-database-selection.md
+│   └── mcp-sandbox.md
 ├── frontend/                 # 前端
 │   └── design.md
 ├── operations/               # 运维与部署
@@ -23,7 +24,10 @@ docs/
     ├── platform-agents.md
     ├── a2a.md
     ├── ai-stack.md
-    └── model-providers.md
+    ├── model-providers.md
+    ├── knowledge-base.md
+    ├── mcp.md
+    └── skill-packages.md
 ```
 
 ---
@@ -42,6 +46,7 @@ docs/
 | [layering.md](./architecture/layering.md) | 后端分层、`app/rag` 目录与入库/检索流水线、import 规范 |
 | [rag-module-migration.md](./architecture/rag-module-migration.md) | RAG 模块迁移清单（已完成）与后续插件位 |
 | [vector-database-selection.md](./architecture/vector-database-selection.md) | 向量数据库选型：pgvector / Weaviate / Milvus / Qdrant / OpenSearch / ES |
+| [mcp-sandbox.md](./architecture/mcp-sandbox.md) | MCP STDIO / 平台执行：沙箱与 Runner 隔离方案 |
 
 ## 前端 (`frontend/`)
 
@@ -65,6 +70,8 @@ docs/
 | [ai-stack.md](./guides/ai-stack.md) | LangChain / LangGraph / DeepAgents 模块与调用链 |
 | [model-providers.md](./guides/model-providers.md) | 模型供应商：内置目录 + 租户自定义 |
 | [knowledge-base.md](./guides/knowledge-base.md) | **知识库 RAG 主文档**：入库、支持格式、检索 hybrid、API |
+| [mcp.md](./guides/mcp.md) | **MCP 服务**：注册、同步、HTTP/SSE invoke、连接安全 |
+| [skill-packages.md](./guides/skill-packages.md) | **技能包**：SKILL.md、导入（本地/ZIP/Git）、分类、智能体注入 |
 
 运维 Compose 与 **Worker / RAG 可选依赖** 见 [../docker/README.md](../docker/README.md)；后端 [../backend/README.md](../backend/README.md)。
 
@@ -93,9 +100,10 @@ docs/
 | 租户 API | `backend/app/tenant/` |
 | 智能体对话 | `tenant/agents/services/agent.py` |
 | A2A | `tenant/a2a/` |
-| 流程 | `app/flow_runtime/`（节点）、`app/integrations/langgraph/`（编译、RAG 图） |
+| 流程 | `app/flow_runtime/`（节点、[templates/rag_flow.json](../backend/app/flow_runtime/templates/rag_flow.json)）、`app/integrations/langgraph/`（画布 compiler、Agent RAG 图） |
 | RAG 入库 | `app/rag/pipeline/ingest.py` ← `tenant/kb/services/ingest.py` |
 | RAG 能力 | `app/rag/`（parse / chunk / index / retrieve / generate / load） |
+| 技能包 | `tenant/skills/`（存储 `storage.py`、导入 `import_service.py`） |
 | AI 集成 | `app/integrations/langchain/`、`app/integrations/deepagents/` |
 
 REST 以运行中 OpenAPI（`/docs`）为准。

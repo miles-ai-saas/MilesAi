@@ -1,6 +1,12 @@
-"""按租户加载知识库实体（RAG 检索 / 生成用）。
+"""
+按租户加载 ``KnowledgeBase`` ORM（RAG 检索 / 生成用）。
 
-避免 rag 层 import tenant.kb.services；绑定校验（租户、软删）在此集中。
+职责
+----
+- 校验 kb_id 属于 tenant_id 且未软删。
+- 多 KB 时保持请求 ``kb_ids`` 顺序（Agent 展示与日志一致）。
+
+避免 rag 子包直接依赖 ``tenant.kb.services``，减少循环 import。
 """
 
 from __future__ import annotations

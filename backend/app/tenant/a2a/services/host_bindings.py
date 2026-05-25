@@ -1,6 +1,9 @@
-"""A2A 宿主智能体 ↔ 外部 Peer（agt_a2a_peer_bindings）。
+"""
+A2A 宿主智能体 ↔ 外部 Peer（表 ``agt_a2a_peer_bindings``）。
 
-AgentType.A2A 专用；至少 1 个 ACTIVE peer；对话走 run_a2a_host_chat。
+``AgentType.A2A`` 专用：不绑本地 KB/流程，``chat`` 走 ``run_a2a_host_chat``。
+``apply_host_config`` 注入 ``runtime_mode=autonomous``、``planner=a2a_orchestrator``，
+与 CUSTOM 智能体的 LangGraph RAG（``should_use_langgraph_rag``）互斥。
 """
 
 from uuid import UUID

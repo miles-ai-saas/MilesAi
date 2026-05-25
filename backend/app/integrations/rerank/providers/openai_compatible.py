@@ -1,4 +1,9 @@
-"""OpenAI 兼容 /v1/reranks（invoke_mode=openai_compatible）。"""
+"""
+OpenAI 兼容 Rerank API（``invoke_mode=openai_compatible``）。
+
+``POST {api_base}/reranks``，请求体含 ``model``、``query``、``documents``、可选 ``top_n`` / ``instruct``。
+解析 ``results`` 或 ``data`` 数组中的 ``index`` + ``relevance_score``。
+"""
 
 from __future__ import annotations
 

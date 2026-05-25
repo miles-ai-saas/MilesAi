@@ -1,4 +1,11 @@
-"""PostgreSQL 关键词检索（Milvus 等纯向量后端的混合检索补 BM25）。"""
+"""
+PostgreSQL 关键词检索（混合检索的「关键词路」）。
+
+当向量库无原生 hybrid（Milvus/pgvector）时，用 PG ``DocumentChunk.content`` 的
+ILIKE 子串匹配补关键词召回，再与向量路做 ``hybrid.rrf_fuse``。
+
+注意：非全文 BM25，score_keyword 为按返回顺序递减的启发式分数。
+"""
 
 from __future__ import annotations
 

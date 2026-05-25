@@ -1,4 +1,19 @@
-"""流程控制节点：条件分支、并行汇合。"""
+"""
+流程控制节点（由 LangGraph 编译器接条件边 / 并行层）。
+
+ConditionBranch
+---------------
+上游常接 **KnowledgeSearch** 的 ``hits`` 列表，``mode`` 支持：
+- ``has_hits``：是否有检索命中
+- ``score_above``：top score ≥ threshold（默认 0.35，与 RAG 图阈值一致）
+- ``text_contains`` / ``not_empty``：对文本输入做简单判断
+
+返回 ``branch`` 为 ``"true"`` / ``"false"``，compiler 映射为条件边 handle。
+
+ParallelJoin
+------------
+合并并行扇出分支；``merge_strategy``：``dict`` | ``concat_text`` | ``first``。
+"""
 
 from __future__ import annotations
 

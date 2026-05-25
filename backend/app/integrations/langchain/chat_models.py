@@ -1,6 +1,15 @@
-"""LangChain ChatModel 适配：LiteLLM 统一调用（复用 ModelConfig）。
+"""
+LangChain ChatModel 适配：平台 ModelConfig → LiteLLM 对话。
 
-链路：Agent.chat / rag_answer / LangGraph generate → ainvoke_chat → litellm_chat_completion。
+业务入口（优先 ``ainvoke_chat``）
+-------------------------------
+- ``AgentService._direct_chat`` / ``_rag_chat`` / LangGraph ``generate`` / ``fallback``
+- ``rag.generate.rag_answer``
+- ``flow_runtime.nodes.llm_nodes.llm_call``
+- ``tool_agent`` 多轮 function calling
+
+``ainvoke_chat`` 在传入 ``db`` + ``tenant_id`` 时会 ``resolve_model_for_invoke`` 合并 BYOK。
+``PlatformChatModel`` 供需要 LangChain Runnable 链的场景；多数路径直接用 ``ainvoke_chat``。
 """
 
 from __future__ import annotations
@@ -100,7 +109,11 @@ async def ainvoke_chat(
     db: Any | None = None,
     tenant_id: Any | None = None,
 ) -> str:
-    """异步对话（dict messages），供业务层统一调用。"""
+    """
+    异步对话（OpenAI 形状 ``{"role","content"}`` 列表）。
+
+    RAG 路径常将 system+参考+问题拼成单条 user message 传入（见 ``build_rag_user_prompt``）。
+    """
     if db is not None and tenant_id is not None:
         from uuid import UUID
 

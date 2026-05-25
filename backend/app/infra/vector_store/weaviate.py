@@ -1,7 +1,16 @@
-"""Weaviate（langchain-weaviate）。
+"""
+Weaviate 向量库实现（``VectorStore`` 协议 + ``search_hybrid``）。
 
-支持原生 hybrid（BM25 + 向量）；VECTOR_STORE_BACKEND=weaviate 时检索可走 search_hybrid。
-向量由 PrecomputedEmbeddings 注入，不在 Weaviate 侧再调 embedding API。
+设计要点
+--------
+- 使用 Weaviate v4 客户端 + ``langchain_weaviate.WeaviateVectorStore`` 写入。
+- Collection ``DocumentChunk`` 配置为 **self_provided** 向量（Cosine/HNSW），
+  入库用 ``PrecomputedEmbeddings`` 注入 pipeline 已算向量，不在 Weaviate 内调 embedding API。
+- **hybrid 检索**：``search_hybrid`` 走 Weaviate 原生 BM25+向量（``alpha`` 混合系数）；
+  ``retriever.search_kb_chunks`` 在 ``retrieval_mode=hybrid`` 且 backend=weaviate 时优先调用。
+- 纯向量检索：``search`` 委托 ``search_hybrid(..., alpha=1.0)``。
+
+配置：``WEAVIATE_HOST`` / ``PORT`` / ``SCHEME``；gRPC 固定 50051（与 docker compose 一致）。
 """
 
 from __future__ import annotations
@@ -30,8 +39,10 @@ from app.integrations.langchain.vector.documents import (
 from app.infra.vector_store.langchain_base import upsert_add_texts
 from app.infra.vector_store.precomputed import PrecomputedEmbeddings
 
+# 全租户共用一个 collection，靠 tenant_id / kb_id 属性过滤（与 Milvus 分表策略不同）
 CLASS_NAME = "DocumentChunk"
 
+# langchain WeaviateVectorStore 需要声明的可筛选属性列表
 _LC_ATTRS = (
     METADATA_TENANT_ID,
     METADATA_KB_ID,
@@ -71,6 +82,7 @@ def _ensure_collection() -> None:
     client = _client()
     if client.collections.exists(CLASS_NAME):
         return
+    # self_provided：向量由客户端 insert 时传入，非 Weaviate 内置 embedding 模块
     client.collections.create(
         name=CLASS_NAME,
         vector_config=Configure.Vectors.self_provided(
@@ -104,7 +116,12 @@ class WeaviateVectorStore:
     @staticmethod
     @lru_cache
     def _store(_dimension: int):
-        """按维度缓存 langchain WeaviateVectorStore（维度仅用于 cache key）。"""
+        """
+        按维度缓存 LangChain store 实例。
+
+        Weaviate 单 collection 可存多维度向量，但 cache key 仍用 dimension，
+        以便与 pgvector/Milvus「按维分表」的 factory 用法一致。
+        """
         from langchain_weaviate import WeaviateVectorStore as Lc
 
         return Lc(
@@ -159,6 +176,7 @@ class WeaviateVectorStore:
         dim = validate_dimension(len(query_vector))
         self.ensure_schema(dim)
         store = self._store(dim)
+        # 检索前替换 embedding：LangChain 会调 embed_query，此处注入已算好的 query 向量
         store._embedding = PrecomputedEmbeddings(query_vector=query_vector)  # noqa: SLF001
         pairs = store.similarity_search_with_score(
             query=query or "",
@@ -168,6 +186,7 @@ class WeaviateVectorStore:
             filters=_tenant_kb_filter(tenant_id, kb_id),
         )
         hits = scored_pairs_to_hits(pairs)
+        # 混合检索时复制 score 到 score_keyword，便于与纯向量 hit 字段对齐
         if alpha < 1.0:
             for h in hits:
                 h["score_keyword"] = h.get("score")
@@ -183,7 +202,11 @@ class WeaviateVectorStore:
         )
 
     def delete_by_chunk_ids(self, chunk_ids: list[str]) -> None:
-        """按主键删除；LangChain delete 失败时回退 data.delete_by_id。"""
+        """
+        按 chunk 主键删除（重试入库前清理旧向量）。
+
+        优先 LangChain ``delete(ids=...)``；失败则逐条 ``data.delete_by_id`` 兜底。
+        """
         if not chunk_ids:
             return
         try:

@@ -1,4 +1,8 @@
-"""Rerank 结果项。"""
+"""
+Rerank API 单条结果（TypedDict）。
+
+``apply_rerank_to_hits`` 用 ``index`` 映射回原始 hit 列表并写入 ``score_rerank``。
+"""
 
 from __future__ import annotations
 

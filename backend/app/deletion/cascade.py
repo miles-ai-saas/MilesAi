@@ -1,6 +1,12 @@
-"""逻辑外键场景下的级联删除 / 引用解除（无 DB 外键）。
+"""
+逻辑外键场景下的级联删除 / 引用解除（无 DB 物理外键）。
 
-删 KB/Agent/Flow 前由 L1 服务调用，避免孤儿绑定与市场安装引用。
+删 KB 时
+--------
+``KnowledgeBaseService.delete_kb`` 先逐文档 ``delete_document``（清分片/向量/OSS），
+再 ``before_delete_kb`` 解绑 ``agt_kb_bindings`` 与市场 ``AppInstall.kb_id``，最后软删 KB 行。
+
+删 Agent/Flow 时同理，避免工作台与市场出现悬空引用。
 """
 
 from uuid import UUID

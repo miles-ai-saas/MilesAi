@@ -1,4 +1,4 @@
-"""纯文本文件解码（TXT/MD）。"""
+"""纯文本文件解码（TXT/MD/Markdown），供 loaders 文本分支调用。"""
 
 
 def parse_text(data: bytes) -> str:

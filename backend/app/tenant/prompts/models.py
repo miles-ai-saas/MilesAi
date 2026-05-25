@@ -17,9 +17,11 @@ class PromptTemplate(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __table_args__ = (
         Index("idx_prm_prompt_templates_tenant_id", "tenant_id"),
         Index("un_prm_prompt_templates_tenant_id_name", "tenant_id", "name"),
+        Index("idx_prm_prompt_templates_category_id", "category_id"),
     )
 
     tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    category_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     name: Mapped[str] = mapped_column(String(128), nullable=False)
     description: Mapped[str | None] = mapped_column(String(256), nullable=True)
     content: Mapped[str] = mapped_column(Text, nullable=False)

@@ -1,4 +1,12 @@
-"""从 ModelConfig 解析 rerank 元数据（invoke_mode、端点、请求体格式）。"""
+"""
+从 ModelConfig 解析 rerank 元数据。
+
+``KnowledgeBase.rerank_model_config_id`` 绑定后，检索在扩大候选池（``rerank_candidate_k``）
+之后调用本模块解析的 Provider。
+
+``extra`` 常用键：``invoke_mode``、``rerank_request_format``、``rerank_instruct``。
+未配置 ``invoke_mode`` 时 Qwen vendor 默认 ``dashscope``。
+"""
 
 from __future__ import annotations
 

@@ -1,5 +1,9 @@
 "use client";
 
+/**
+ * 流程画布编辑器：拖拽 NODE_PALETTE、连线、撤销/重做，经 reactFlowToGraph 提交后端 graph_json。
+ * 保存后由 FlowService / Agent published_flow 经 LangGraph compiler 执行（见 backend integrations.langgraph.compiler）。
+ */
 import {
   Background,
   Controls,

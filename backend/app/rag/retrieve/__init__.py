@@ -1,4 +1,12 @@
-"""检索：单库 search_kb_chunks、多库 multi_kb、RRF 融合。"""
+"""
+检索子包导出（L2）。
+
+- ``search_kb_chunks*``：单 KB，内部 ``gateway.search_vectors`` + 可选 hybrid/rerank
+- ``search_multi_kb*``：多 KB（``__getattr__`` 延迟导出，避免循环 import）
+- ``rrf_fuse``：Milvus/pgvector 无原生 hybrid 时的向量+关键词融合
+
+向量写入不在此包，见 ``rag.index.gateway`` / ``rag.pipeline``。
+"""
 
 from app.rag.retrieve.hybrid import rrf_fuse
 from app.rag.retrieve.retriever import (

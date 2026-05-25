@@ -13,6 +13,7 @@ from langchain_core.documents import Document
 from app.core.config import get_settings
 from app.infra.vector_store.base import ChunkVectorRecord
 
+# 以下字段名在 Milvus collection / Weaviate properties / PGVector cmetadata 中必须一致
 METADATA_TENANT_ID = "tenant_id"
 METADATA_KB_ID = "kb_id"
 METADATA_DOCUMENT_ID = "document_id"
@@ -21,6 +22,7 @@ METADATA_OBJECT_KEY = "object_key"
 METADATA_PAGE_NO = "page_no"
 METADATA_MODALITY = "modality"
 
+# LangChain Document.page_content 与 Milvus TEXT_KEY 列对应
 TEXT_KEY = "content_preview"
 
 
@@ -134,6 +136,10 @@ def pg_metadata_filter(tenant_id: UUID, kb_id: UUID | None) -> dict[str, str]:
 
 
 def known_embedding_dimensions() -> list[int]:
-    """删除向量时遍历的维度列表（配置默认 + 常见备选）。"""
+    """
+    删除向量时遍历的维度列表。
+
+    Milvus/pgvector 按维分 collection；删除文档时需扫可能存在的历史维度，避免 orphan 向量。
+    """
     base = [get_settings().embedding_vector_dimension, 768, 1024]
     return list(dict.fromkeys(base))

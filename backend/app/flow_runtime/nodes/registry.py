@@ -1,4 +1,13 @@
-"""节点类型注册表 — 新增节点只需在此注册 handler。"""
+"""
+画布节点类型 → 异步 handler 注册表。
+
+RAG 相关
+--------
+- ``KnowledgeSearch`` / ``PromptTemplate`` → ``rag_nodes``（检索 + 模板）
+- 常接在 ``TextInput`` 与 ``LLMCall`` 之间，等价于简化版 Agent 线性 RAG
+
+新增节点：实现 ``(node_data, inputs, ctx) -> Any`` 并写入 ``NODE_REGISTRY``。
+"""
 
 from collections.abc import Awaitable, Callable
 from typing import Any

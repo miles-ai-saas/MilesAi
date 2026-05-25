@@ -1,9 +1,26 @@
-"""文档入库（Celery）：状态机 + 调用 rag.pipeline。
+"""
+文档入库编排（Celery Worker 同步执行）。
 
-链路：ingest_document → run_ingest → run_ingest_pipeline
-     （download → parse → chunk → embed → PG chunk + 向量库 upsert）。
-PARSING/EMBEDDING 在 Worker 内顺序推进；失败按 current_phase 写 PARSE_FAILED / EMBED_FAILED。
-异常时 persist_document_ingest_failure 须先 commit，避免 get_sync_db rollback 吞状态。
+分层
+----
+- **L1 本模块**：文档状态机（PENDING → PARSING → EMBEDDING → READY/失败）、
+  注入存储/embedding 回调、调用 ``rag.pipeline.run_ingest_pipeline``。
+- **L2 pipeline**：Parse → Chunk → Embed → ``gateway.upsert_chunk_vector``（见 rag 注释）。
+
+调用链
+------
+``KnowledgeBaseService.upload_document`` → ``ingest_document.delay``
+  → ``run_ingest``（本模块）→ ``run_ingest_pipeline``
+
+状态说明
+--------
+PARSING/EMBEDDING 在 Worker 内顺序更新，便于前端展示进度；
+实际 parse+chunk+embed 均在 pipeline 一次调用内完成，并非两个独立 Celery 子任务。
+
+失败处理
+----------
+异常时 ``persist_document_ingest_failure`` **必须先 commit**，否则 ``get_sync_db``
+上下文退出 rollback 会吞掉 PARSE_FAILED/EMBED_FAILED 状态。
 """
 
 from uuid import UUID
@@ -18,7 +35,11 @@ from app.tenant.kb.services.ingest_failure import persist_document_ingest_failur
 
 
 def run_ingest(document_id: str) -> None:
-    """同步执行单文档入库（由 Celery Worker 调用，非 HTTP 直连）。"""
+    """
+    同步执行单文档入库（仅由 Celery Worker 调用，HTTP 不直连）。
+
+    ``on_before_index=clear_document_derived_data_sync``：覆盖/重试入库前删除旧分片与向量。
+    """
     with get_sync_db() as db:
         doc = db.get(Document, UUID(document_id))
         if not doc or doc.deleted_at is not None:
@@ -33,7 +54,7 @@ def run_ingest(document_id: str) -> None:
             doc.fail_reason = None
             db.flush()
 
-            # 实际 parse+chunk+embed 均在 pipeline 内同步完成；EMBEDDING 表示向量化阶段
+            # 进入 EMBEDDING 阶段（向量化+写向量库均在 pipeline 内完成）
             current_phase = DocumentStatus.EMBEDDING
             doc.status = DocumentStatus.EMBEDDING
             db.flush()

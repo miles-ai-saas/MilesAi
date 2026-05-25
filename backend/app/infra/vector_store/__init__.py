@@ -1,6 +1,11 @@
-"""向量存储客户端（LangChain：weaviate / milvus / pgvector）。
+"""
+向量存储客户端（L4：weaviate / milvus / pgvector）。
 
-业务写入/检索请使用 app.rag.index.gateway，勿直接 import 具体 Store。
+分层
+----
+- 业务 **只** 经 ``app.rag.index.gateway`` 读写
+- LangChain 路径使用 ``precomputed.PrecomputedEmbeddings`` 避免二次 embed
+- ``get_vector_store()`` 进程单例，切换 ``VECTOR_STORE_BACKEND`` 需重启 Worker/API
 """
 
 from __future__ import annotations

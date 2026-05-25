@@ -1,6 +1,19 @@
-"""智能体 CRUD 与对话编排（L2）。
+"""
+智能体 CRUD 与对话编排（L2）。
 
-chat 优先级：A2A Host → 子智能体规划 → A2A 增强 → 已发布流程 → RAG（LangGraph 或线性）。
+``chat`` 决策顺序（自上而下命中即返回）
+-------------------------------------
+1. A2A Host 模式（``agent_type=a2a`` 等）
+2. 子智能体绑定 → DeepAgents 规划
+3. A2A Peer 增强（有 peer 且无子 Agent 时）
+4. ``published_flow_id`` → 流程画布运行时（``RunContext.kb_ids`` 传入节点）
+5. 默认 **RAG**：``_rag_chat`` → LangGraph 或线性 ``rag_answer``
+
+RAG 与知识库
+------------
+- ``agent.knowledge_bases`` 经 ``agt_kb_bindings`` 多对多关联
+- 检索走 ``integrations.langchain.vectorstores.search_multi_kb_async``（各 KB 独立 embed）
+- ``config.top_k``、``use_langgraph_rag``、``runtime_mode`` 等控制检索与生成路径
 """
 
 from __future__ import annotations
@@ -18,6 +31,10 @@ from app.flow_runtime.runtime_factory import get_flow_runtime
 from app.flow_runtime.types import RunContext
 from app.tenant.prompts.models import PromptTemplate
 from app.models.agent import Agent, AgentStatus, AgentSubAgentBinding, AgentType
+from app.models.category import CategoryDomain
+from app.tenant.categories.services.category import CategoryService
+from app.models.tag import TagEntityType
+from app.tenant.tags.services.tag import TagService
 from app.tenant.agents.repositories.agent import AgentRepository
 from app.tenant.hooks.models import HookScope, HookTrigger
 from app.tenant.hooks.services.runner import HookRunner
@@ -50,7 +67,7 @@ from app.tenant.agents.services.sub_agents import (
     validate_and_sync_sub_agents,
 )
 from app.common.schema import PageParams, PageResult
-from app.core.soft_delete import is_marked_deleted, mark_deleted, not_deleted
+from app.core.soft_delete import append_not_deleted, is_marked_deleted, mark_deleted, not_deleted
 from app.core.service import BaseService
 from app.tenant.agents.services.context import build_skill_mcp_prompt_block
 from app.tenant.compliance.services.compliance import ComplianceService
@@ -101,17 +118,29 @@ def _bindings_to_a2a_out(bindings: list) -> list[A2aPeerRefOut]:
     return _a2a_peers_out_from_rows(bindings)
 
 
-async def _agent_out(svc: AgentService, agent: Agent) -> AgentOut:
+async def _agent_out(
+    svc: AgentService,
+    agent: Agent,
+    *,
+    category_names: dict[UUID, str] | None = None,
+    tag_refs: list | None = None,
+) -> AgentOut:
     if agent.agent_type == AgentType.A2A:
         bindings = await list_host_peer_bindings(svc.db, agent.id)
         a2a_out = _bindings_to_a2a_out(bindings)
     else:
         refs = await list_all_agent_a2a_peer_refs(svc.db, agent.id)
         a2a_out = _a2a_peers_out_from_rows(refs)
+    cat_name = None
+    if agent.category_id and category_names:
+        cat_name = category_names.get(agent.category_id)
     return AgentOut(
         id=agent.id,
         tenant_id=agent.tenant_id,
         agent_type=agent.agent_type,
+        category_id=agent.category_id,
+        category_name=cat_name,
+        tags=tag_refs or [],
         name=agent.name,
         description=agent.description,
         status=agent.status,
@@ -161,15 +190,30 @@ class AgentService(BaseService):
         return agent
 
     async def list_agents(
-        self, params: PageParams, *, agent_type: AgentType | None = None
+        self,
+        params: PageParams,
+        *,
+        agent_type: AgentType | None = None,
+        category_id: UUID | None = None,
+        tag_ids: list[UUID] | None = None,
     ) -> PageResult[AgentOut]:
-        """分页列出智能体，可按 agent_type 过滤。"""
+        """分页列出智能体，可按 agent_type、category_id 过滤。"""
         from sqlalchemy.orm import selectinload
         from app.models.agent import Agent as AgentModel
 
-        filters = tenant_filters(self.ctx, AgentModel.tenant_id)
+        filters = append_not_deleted(
+            tenant_filters(self.ctx, AgentModel.tenant_id),
+            AgentModel,
+        )
         if agent_type is not None:
             filters.append(AgentModel.agent_type == agent_type)
+        if category_id is not None:
+            filters.append(AgentModel.category_id == category_id)
+        tag_subq = TagService(self.db, self.ctx).entity_id_filter(
+            TagEntityType.AGENT, tag_ids or []
+        )
+        if tag_subq is not None:
+            filters.append(AgentModel.id.in_(tag_subq))
         page = await self.repo.list_page(
             page=params.page,
             size=params.size,
@@ -182,9 +226,24 @@ class AgentService(BaseService):
                 ),
             ],
         )
+        cat_ids = {a.category_id for a in page.items if a.category_id}
+        cat_names = await CategoryService(self.db, self.ctx).get_category_name_map(
+            CategoryDomain.AGENT, cat_ids
+        )
+        entity_ids = {a.id for a in page.items}
+        tags_map = await TagService(self.db, self.ctx).get_refs_map(
+            TagEntityType.AGENT, entity_ids
+        )
         items = []
         for a in page.items:
-            items.append(await _agent_out(self, a))
+            items.append(
+                await _agent_out(
+                    self,
+                    a,
+                    category_names=cat_names,
+                    tag_refs=tags_map.get(a.id, []),
+                )
+            )
         return PageResult(
             items=items,
             total=page.total,
@@ -194,6 +253,9 @@ class AgentService(BaseService):
 
     async def create_agent(self, body: AgentCreate) -> AgentOut:
         """创建智能体并同步 KB/子 Agent/A2A 绑定。"""
+        await CategoryService(self.db, self.ctx).validate_category_for_domain(
+            body.category_id, CategoryDomain.AGENT
+        )
         validate_agent_type_constraints(
             agent_type=body.agent_type,
             kb_ids=body.kb_ids,
@@ -206,6 +268,7 @@ class AgentService(BaseService):
         agent = await self.repo.create(
             tenant_id=self.ctx.tenant_id,
             agent_type=body.agent_type,
+            category_id=body.category_id,
             name=body.name,
             description=body.description,
             system_prompt=body.system_prompt,
@@ -230,18 +293,39 @@ class AgentService(BaseService):
             a2a_raw = normalize_peer_refs(a2a_raw_list)
             await validate_and_sync_agent_a2a_peer_refs(self.db, self.ctx, agent, a2a_raw)
         await self.db.flush()
+        if body.tag_ids:
+            await TagService(self.db, self.ctx).replace_entity_tags(
+                TagEntityType.AGENT, agent.id, body.tag_ids
+            )
         await self.db.refresh(agent, ["knowledge_bases", "sub_agent_bindings"])
         agent = await self._get_agent_or_raise(agent.id)
-        return await _agent_out(self, agent)
+        tags_map = await TagService(self.db, self.ctx).get_refs_map(
+            TagEntityType.AGENT, {agent.id}
+        )
+        return await _agent_out(self, agent, tag_refs=tags_map.get(agent.id, []))
 
     async def get_agent(self, agent_id: UUID) -> AgentOut:
         agent = await self._get_agent_or_raise(agent_id)
-        return await _agent_out(self, agent)
+        cat_names = await CategoryService(self.db, self.ctx).get_category_name_map(
+            CategoryDomain.AGENT,
+            {agent.category_id} if agent.category_id else set(),
+        )
+        tags_map = await TagService(self.db, self.ctx).get_refs_map(
+            TagEntityType.AGENT, {agent.id}
+        )
+        return await _agent_out(
+            self, agent, category_names=cat_names, tag_refs=tags_map.get(agent.id, [])
+        )
 
     async def update_agent(self, agent_id: UUID, body: AgentUpdate) -> AgentOut:
         agent = await self._get_agent_or_raise(agent_id)
         data = body.model_dump(exclude_unset=True)
+        if "category_id" in data:
+            await CategoryService(self.db, self.ctx).validate_category_for_domain(
+                data.get("category_id"), CategoryDomain.AGENT
+            )
         kb_ids = data.pop("kb_ids", None)
+        tag_ids = data.pop("tag_ids", None)
         sub_raw = data.pop("sub_agents", None)
         a2a_raw_in = data.pop("a2a_peers", None)
         next_type = data.get("agent_type", agent.agent_type)
@@ -279,8 +363,15 @@ class AgentService(BaseService):
                     self.db, self.ctx, agent, normalize_peer_refs(raw_list)
                 )
         await self.db.flush()
+        if tag_ids is not None:
+            await TagService(self.db, self.ctx).replace_entity_tags(
+                TagEntityType.AGENT, agent_id, tag_ids
+            )
         agent = await self._get_agent_or_raise(agent_id)
-        return await _agent_out(self, agent)
+        tags_map = await TagService(self.db, self.ctx).get_refs_map(
+            TagEntityType.AGENT, {agent_id}
+        )
+        return await _agent_out(self, agent, tag_refs=tags_map.get(agent_id, []))
 
     async def _maybe_augment_a2a(
         self, agent: Agent, body: ChatRequest, response: ChatResponse
@@ -296,6 +387,7 @@ class AgentService(BaseService):
     async def delete_agent(self, agent_id: UUID) -> None:
         """级联解绑后软删智能体。"""
         agent = await self._get_agent_or_raise(agent_id)
+        await TagService(self.db, self.ctx).clear_entity_tags(TagEntityType.AGENT, agent.id)
         await before_delete_agent(self.db, agent.id)
         await mark_deleted(self.db, agent)
 
@@ -494,8 +586,26 @@ class AgentService(BaseService):
         agent_id: UUID,
         hooks: HookRunner,
     ) -> ChatResponse:
-        """绑定 KB 时：LangGraph RAG（可配置）或线性 rag_answer。"""
+        """
+        知识库增强对话。
+
+        - 无 ``kb_ids``：可选 tool calling，否则 ``_direct_chat``
+        - 有 KB + 大模型：``should_use_langgraph_rag`` 选 LangGraph 或 ``rag_answer``
+        - 有 KB 无大模型：仅 ``retrieve_hits`` + 摘要文本（无生成）
+        """
         if not kb_ids:
+            if (agent.config or {}).get("enable_tool_calling") and agent.model_config_id:
+                from app.integrations.langchain.tool_agent import run_tool_calling_chat
+
+                base = await self._resolve_system_prompt(agent)
+                return await run_tool_calling_chat(
+                    self.db,
+                    self.ctx,
+                    agent,
+                    body,
+                    agent_id=agent_id,
+                    system_prompt=base,
+                )
             return await self._direct_chat(agent, body, agent_id, hooks)
 
         base = await self._resolve_system_prompt(agent)

@@ -18,6 +18,7 @@ async def lifespan(app: FastAPI):
 
     # 启动时只做 schema 迁移；业务种子由 cli.py init-db 单独执行
     run_migrations()
+    # 初始化 RAG / DeepAgents 共用 checkpointer（redis | memory），见 langgraph.checkpointer
     app.state.langgraph_checkpoint = await init_langgraph_checkpointer()
     yield
     await shutdown_langgraph_checkpointer()

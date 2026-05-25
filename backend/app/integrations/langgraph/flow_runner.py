@@ -1,6 +1,12 @@
-"""画布流程统一由 LangGraph 执行（L3）。
+"""
+画布流程 LangGraph 执行入口（L3）。
 
-编译与并行/条件分支见 compiler.py；节点实现注册在 flow_runtime.nodes.registry。
+流程
+----
+``graph_json`` → ``validate_graph_for_compile`` → ``run_compiled_canvas``
+→ 各层并行/条件边 → ``execute_node`` → ``NODE_REGISTRY`` handler。
+
+RAG 节点不经过 Agent LangGraph RAG 图（``graphs/rag_qa``），仅在画布内 ``retrieve_hits``。
 """
 
 from __future__ import annotations

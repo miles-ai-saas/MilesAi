@@ -1,4 +1,9 @@
-"""PDF 解析：LangChain PyPDFLoader（轻量兜底）。"""
+"""
+PDF 解析：LangChain PyPDFLoader（轻量、无 docling 依赖）。
+
+当 ``PARSE_PDF_BACKEND`` 非 docling，或 docling 失败且 ``parse_docling_fallback_pypdf=true`` 时使用。
+每页一个 Document，metadata.page 为 0-based。
+"""
 
 from __future__ import annotations
 

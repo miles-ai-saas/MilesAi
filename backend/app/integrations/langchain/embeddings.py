@@ -1,6 +1,14 @@
-"""LangChain Embeddings：知识库绑定 ModelConfig（model_type=embedding）。
+"""
+LangChain Embeddings 适配：按知识库绑定的 ModelConfig 调用远程 embedding API。
 
-向量维度须与 kb.embedding_dimension 一致；入库/检索均通过本模块按 KB 解析模型配置。
+与 PrecomputedEmbeddings 的区别
+------------------------------
+- **本模块**：入库/检索时**真正调用** embedding 模型（``build_embeddings`` → LiteLLM 等）。
+- **PrecomputedEmbeddings**（infra.vector_store）：向量已算好，仅满足 LangChain VectorStore API 形状。
+
+维度
+----
+须与 ``KnowledgeBase.embedding_dimension`` 一致（创建 KB 时固化）；切换模型需新建 KB。
 """
 
 from __future__ import annotations
@@ -23,13 +31,13 @@ if TYPE_CHECKING:
 
 
 def embed_texts_for_kb_sync(db: Session, kb: KnowledgeBase, texts: list[str]) -> list[list[float]]:
-    """Celery 入库：按 KB 解析 embedding 模型并批量向量化分片。"""
+    """Celery 入库 pipeline 注入：批量 embed 分片文本。"""
     model = resolve_embedding_model_sync(db, kb.embedding_model_config_id, kb.tenant_id)
     return build_embeddings(model).embed_documents(texts)
 
 
 def embed_query_for_kb_sync(db: Session, kb: KnowledgeBase, query: str) -> list[float]:
-    """同步单条 query 向量化（脚本或同步检索路径）。"""
+    """同步检索路径（脚本或多 KB sync）。"""
     model = resolve_embedding_model_sync(db, kb.embedding_model_config_id, kb.tenant_id)
     return build_embeddings(model).embed_query(query)
 
@@ -37,7 +45,7 @@ def embed_query_for_kb_sync(db: Session, kb: KnowledgeBase, query: str) -> list[
 async def embed_texts_for_kb(
     db: AsyncSession, tenant_id: UUID, kb: KnowledgeBase, texts: list[str]
 ) -> list[list[float]]:
-    """异步批量向量化（非入库主路径）。"""
+    """异步批量 embed（非入库主路径）。"""
     model = await resolve_embedding_model_by_id(
         db, kb.embedding_model_config_id, tenant_id
     )
@@ -47,16 +55,15 @@ async def embed_texts_for_kb(
 async def embed_query_for_kb(
     db: AsyncSession, tenant_id: UUID, kb: KnowledgeBase, query: str
 ) -> list[float]:
-    """API 检索：将用户 query 转为与 KB 维度一致的向量。"""
+    """HTTP API 检索、Agent async 检索：query → 与 KB 同维度的向量。"""
     model = await resolve_embedding_model_by_id(
         db, kb.embedding_model_config_id, tenant_id
     )
     return build_embeddings(model).embed_query(query)
 
 
-# 兼容旧名：同步入库路径
 def embed_texts_for_kb_legacy(db: Session, kb: KnowledgeBase, texts: list[str]) -> list[list[float]]:
-    """兼容旧 import，等同 embed_texts_for_kb_sync。"""
+    """兼容旧 import 名，等同 ``embed_texts_for_kb_sync``。"""
     return embed_texts_for_kb_sync(db, kb, texts)
 
 

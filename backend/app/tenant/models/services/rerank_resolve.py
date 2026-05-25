@@ -1,6 +1,13 @@
-"""解析知识库绑定的 rerank ModelConfig（含 BYOK）。
+"""
+解析知识库绑定的 rerank ModelConfig（含 BYOK）。
 
-链路：KnowledgeBaseService.search → resolve_rerank_model_by_id → apply_rerank_to_hits。
+与 embedding 解析对称；rerank **无 local 免 Key** 例外（内置模型仍需租户或平台 Key）。
+
+链路
+----
+``search_kb_chunks`` / ``search_multi_kb_async``
+→ ``resolve_rerank_model_*`` → ``rag.retrieve.rerank.apply_rerank_to_hits``
+→ ``integrations.rerank.registry``
 """
 
 from __future__ import annotations

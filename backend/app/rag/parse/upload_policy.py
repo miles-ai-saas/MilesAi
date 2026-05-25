@@ -1,6 +1,8 @@
-"""知识库/附件上传白名单，与 app.rag.parse.loaders 解析能力对齐。
+"""
+知识库/附件上传白名单，与 ``parse.loaders`` 解析能力对齐。
 
-Office（docx/pptx/xlsx/html）允许上传；实际解析需 PARSE_PDF_BACKEND=docling 且安装 parse-docling。
+允许上传 ≠ 一定能解析：Office 允许进库，但解析需 ``PARSE_PDF_BACKEND=docling`` 且 Worker 安装 parse-docling。
+前端 ``accept`` / 失败提示由本模块统一生成，避免与后端路由不一致。
 """
 
 from __future__ import annotations

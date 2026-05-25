@@ -1,6 +1,13 @@
-"""ModelConfig → LiteLLM 调用参数与 acompletion 封装（L3 对话）。
+"""
+ModelConfig → LiteLLM 调用封装（L3）。
 
-向量化见 integrations.embeddings.providers（local / openai_compatible / litellm）。
+能力拆分
+--------
+- **对话**：``litellm_chat_completion`` → ``litellm.acompletion``（llm / reasoning / vision）
+- **向量化**：``litellm_embed_texts`` → ``litellm.embedding``（由 ``LiteLLMEmbeddingProvider`` 调用）
+
+``resolve_litellm_model`` 将 vendor/provider 映射为 ``{prefix}/{model_name}``；
+租户可在 ``extra.litellm_model`` 覆盖完整 model 字符串。
 """
 
 from __future__ import annotations

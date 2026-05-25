@@ -1,4 +1,8 @@
-"""图片解析：优先 OCR 提取文本，未安装依赖时返回可检索的占位说明。"""
+"""
+图片解析：Pillow 读图 + 可选 pytesseract OCR。
+
+无 OCR 时仍返回占位文本，保证 ingest 不失败（检索质量依赖后续安装 multimodal 依赖）。
+"""
 
 from io import BytesIO
 

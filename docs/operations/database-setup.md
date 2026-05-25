@@ -157,6 +157,26 @@ python cli.py seed all             # 仅种子，等价于 init-db --seed-only
 
 种子实现位于 `backend/scripts/seed/`（租户、合规、应用市场、运营账号、内置模型目录等）。可按域单独执行：`python cli.py seed tenant` 等。
 
+### 工作台分类（`sys_categories`）
+
+默认定义见 [`backend/scripts/seed/data/sys_categories_defaults.json`](../../backend/scripts/seed/data/sys_categories_defaults.json)：
+
+| domain | 默认分类（slug） |
+|--------|------------------|
+| `agent` | 未分类、客服、通用、合规、内部 |
+| `prompt` | 未分类、通用、营销、研发 |
+| `skill` | 未分类、通用、本地导入、Git导入、ZIP导入 |
+
+写入命令（幂等，已存在 slug 不重复插入）：
+
+```bash
+cd backend
+python cli.py seed categories   # 为所有租户补齐三域分类
+python cli.py seed tenant       # 新建租户时也会调用 seed_categories_for_tenant
+```
+
+`seed all` / `init-db` 已包含 `seed_categories`。
+
 ```bash
 uvicorn app.main:app --reload --port 8000
 ```

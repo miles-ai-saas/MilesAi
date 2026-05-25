@@ -1,6 +1,10 @@
-"""画布 LLM 节点：解析 ModelConfig 后走 integrations.langchain.chat_models。
+"""
+画布 LLM 节点（``LLMCall``）。
 
-未配置 model_config_id 时返回占位文本（仅展示检索上下文），不调用远程 API。
+典型上游：``PromptTemplate`` 输出已嵌入检索结果的 prompt。
+``model_config_id`` 优先取节点配置，否则 ``RunContext.model_config_id``（Agent 对话注入）。
+
+未配置模型时返回占位字符串，便于调试「仅检索、不生成」的画布。
 """
 
 from typing import Any

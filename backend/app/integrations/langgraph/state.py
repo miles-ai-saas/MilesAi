@@ -1,4 +1,8 @@
-"""LangGraph 状态定义（RAG QA 图节点间传递的 TypedDict）。"""
+"""
+LangGraph RAG QA 图状态（节点间 TypedDict）。
+
+``steps`` 使用 ``Annotated[..., operator.add]`` 累积各节点审计信息，供 ``ChatResponse.steps`` 展示。
+"""
 
 from __future__ import annotations
 

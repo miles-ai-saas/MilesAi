@@ -1,4 +1,9 @@
-"""Rerank provider 注册表。"""
+"""
+Rerank 集成包对外导出。
+
+业务检索精排应经 ``rag.retrieve.rerank.apply_rerank_to_hits``，
+勿直接调用 Provider，以保证失败回退与 score 字段一致。
+"""
 
 from app.integrations.rerank.constants import (
     INVOKE_MODE_DASHSCOPE,

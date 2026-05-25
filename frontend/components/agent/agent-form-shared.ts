@@ -4,7 +4,8 @@ import type { Agent } from "@/lib/types";
 export type AgentFormValues = {
   name: string;
   description: string;
-  tag: string;
+  category_id: string;
+  tag_ids: string[];
   system_prompt: string;
   kb_ids: string[];
   published_flow_id: string;
@@ -46,19 +47,12 @@ export const AGENT_FORM_STEPS = [
   },
 ] as const;
 
-export const AGENT_TAG_OPTIONS = [
-  { value: "", label: "未分类" },
-  { value: "customer_service", label: "客服" },
-  { value: "general", label: "通用" },
-  { value: "compliance", label: "合规" },
-  { value: "internal", label: "内部" },
-] as const;
-
 export function emptyAgentForm(): AgentFormValues {
   return {
     name: "",
     description: "",
-    tag: "",
+    category_id: "",
+    tag_ids: [],
     system_prompt: "",
     kb_ids: [],
     published_flow_id: "",
@@ -83,7 +77,8 @@ export function agentToFormValues(agent: Agent): AgentFormValues {
   return {
     name: agent.name,
     description: agent.description ?? "",
-    tag: String(cfg.agent_tag ?? ""),
+    category_id: agent.category_id ?? "",
+    tag_ids: (agent.tags ?? []).map((t) => t.id),
     system_prompt: agent.system_prompt ?? "",
     kb_ids: agent.kb_ids ?? [],
     published_flow_id: agent.published_flow_id ?? "",
@@ -123,8 +118,7 @@ export function buildAgentConfig(
   baseConfig: Record<string, unknown> | undefined,
 ): Record<string, unknown> {
   const config: Record<string, unknown> = { ...(baseConfig ?? {}) };
-  if (form.tag) config.agent_tag = form.tag;
-  else delete config.agent_tag;
+  delete config.agent_tag;
   if (form.skill_package_id) config.skill_package_id = form.skill_package_id;
   else delete config.skill_package_id;
   if (form.mcp_service_ids.length) config.mcp_service_ids = form.mcp_service_ids;

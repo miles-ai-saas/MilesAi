@@ -1,3 +1,18 @@
+"""
+知识库 HTTP 请求/响应模型（Pydantic）。
+
+与 ORM 的对应关系
+----------------
+- ``KnowledgeBaseCreate/Update`` → ``models.kb.KnowledgeBase``
+- ``DocumentOut`` → ``Document`` + 列表接口可选 ``chunk_count``
+- ``SearchRequest/SearchHit`` → 检索 API；命中 ``content`` 来自 PG 分片，非向量库 preview
+
+业务约束（校验在 schema 层）
+----------------------------
+- 创建 KB 时可指定 ``embedding_model_config_id``；**更新禁止**改 embedding 维度/模型（见 ``KnowledgeBaseUpdate`` validator）
+- ``SearchMode.default`` 表示使用 KB 上配置的 ``retrieval_mode``
+"""
+
 from datetime import datetime
 from typing import Literal
 from uuid import UUID
@@ -11,6 +26,8 @@ SearchMode = Literal["default", "vector", "hybrid"]
 
 
 class KnowledgeBaseCreate(BaseModel):
+    """创建知识库；未指定 embedding 时使用内置默认 BGE 并固化 ``embedding_dimension``。"""
+
     name: str = Field(..., min_length=1, max_length=128)
     description: str | None = None
     is_public: bool = False
@@ -123,6 +140,8 @@ class DocumentChunkOut(BaseModel):
 
 
 class SearchRequest(BaseModel):
+    """工作台 KB 检索入参；``mode=default`` 沿用 KB 的 retrieval_mode。"""
+
     query: str = Field(..., min_length=1)
     top_k: int = Field(10, ge=1, le=50)
     mode: SearchMode = Field(

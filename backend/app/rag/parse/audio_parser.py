@@ -1,4 +1,8 @@
-"""音频解析：优先 Whisper 转写，未安装时返回占位说明（仍可入库）。"""
+"""
+音频解析：可选 openai-whisper 转写。
+
+无 Whisper 时返回占位说明，流程可继续；与 image_parser 策略一致。
+"""
 
 import tempfile
 from pathlib import Path

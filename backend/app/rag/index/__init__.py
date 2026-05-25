@@ -1,4 +1,9 @@
-"""向量索引门面导出（业务请用 gateway，勿直连接 vector_store）。"""
+"""
+向量索引门面 re-export。
+
+业务代码应 ``from app.rag.index import upsert_chunk_vector, search_vectors``，
+勿 ``from app.infra.vector_store import get_vector_store``。
+"""
 
 from app.rag.index.gateway import (
     delete_by_chunk_ids,

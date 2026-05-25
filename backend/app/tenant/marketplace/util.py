@@ -1,4 +1,9 @@
-"""市场打包用内置 RAG 流程模板加载。"""
+"""
+市场打包用内置 RAG 流程模板加载。
+
+``load_rag_graph_template`` 读取 ``flow_runtime/templates/rag_flow.json``；
+结构说明见同目录 ``templates/README.md``。
+"""
 
 import json
 from pathlib import Path

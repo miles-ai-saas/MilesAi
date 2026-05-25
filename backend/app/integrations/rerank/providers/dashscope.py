@@ -1,4 +1,12 @@
-"""DashScope 原生 text-rerank API（invoke_mode=dashscope）。"""
+"""
+DashScope 原生 text-rerank（``invoke_mode=dashscope``）。
+
+请求体格式由 ``rerank_request_format_from_model`` 决定：
+- **flat**：顶层 ``query`` + ``documents``（qwen3-rerank 等）
+- **nested**：``input`` + ``parameters``（经典 DashScope 结构）
+
+端点见 ``resolve_rerank_endpoint`` 或 ``ModelConfig.api_base``。
+"""
 
 from __future__ import annotations
 

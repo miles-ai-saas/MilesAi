@@ -1,7 +1,13 @@
-"""向量化 provider 注册表与分发。
+"""
+向量化 Provider 注册表与分发。
 
-链路：build_embeddings → ModelConfigEmbeddings → embed_texts_for_model
-     → invoke_mode → OpenAICompatible / LiteLLM / Local。
+链路
+----
+``build_embeddings`` → ``ModelConfigEmbeddings.embed_documents``
+→ ``embed_texts_for_model`` → ``get_embedding_provider(invoke_mode)``
+
+模块 import 时 ``_register_builtin_providers()`` 注册 local / openai_compatible / litellm。
+扩展新后端：实现 ``EmbeddingProvider`` 并 ``register_embedding_provider``。
 """
 
 from __future__ import annotations

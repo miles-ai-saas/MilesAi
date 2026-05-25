@@ -1,7 +1,13 @@
-"""多知识库检索（Agent / 工具用）。
+"""
+多知识库检索（Agent 工具链、``generate.answer`` 等）。
 
-每个 KB 单独 embed_query（维度/模型可能不同），合并后按 score 全局排序截断 top_k。
-启用 rerank 的 KB 在合并前先按各自 rerank 模型精排。
+行为
+----
+- 每个 KB **独立** ``embed_query``（embedding 模型/维度可能不同，不可共用一条 query 向量）。
+- 每个 KB 调用 ``search_kb_chunks``（vector/hybrid/rerank 按 KB 配置）。
+- 合并所有 hit 后按 ``score`` 全局降序，截断 ``top_k``。
+
+同步版 ``search_multi_kb`` 供 Worker/脚本；异步版可挂 ``on_complete`` 写 ``kb_search_log``。
 """
 
 from __future__ import annotations

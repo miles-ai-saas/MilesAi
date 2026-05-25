@@ -1,7 +1,14 @@
-"""自定义智能体调用外部 A2A：规则触发 + 自动规划（rules_then_plan）。
+"""
+自定义智能体调用外部 A2A Peer（与本地 RAG 可组合）。
 
-策略 config.a2a_invoke_policy：rules_only | rules_then_plan | plan_only。
-Agent.chat / augment_response_with_a2a / run_a2a_host_chat 入口。
+入口与 RAG 关系
+---------------
+- ``run_a2a_augmented_chat``：**先** ``AgentService._rag_chat``（本地 KB 检索+生成），
+  **再** ``augment_response_with_a2a`` 调外部 Peer 并可选 LLM 综合
+- ``augment_response_with_a2a``：已有 ``ChatResponse`` 时仅做 A2A 增强（子 Agent 路径后）
+- ``run_a2a_host_chat``：``agent_type=a2a`` 宿主，**不走**本地 KB/流程，仅编排外部 Peer
+
+策略 ``config.a2a_invoke_policy``：``rules_only`` | ``rules_then_plan`` | ``plan_only``。
 """
 
 from __future__ import annotations
@@ -114,7 +121,11 @@ async def plan_a2a_peers(
     db: Any = None,
     tenant_id: Any = None,
 ) -> list[dict]:
-    """规划层：由主模型选择要调用的外部 peer（未命中规则时）。"""
+    """
+    规划层：编排模型输出 ``{"a2a_steps":[{"peer_id","task"},...]}``。
+
+    ``rules_then_plan`` 时已规则命中的 peer 会从候选排除，避免重复调用。
+    """
     if not parent.model_config:
         return []
     exclude = exclude_peer_ids or set()
@@ -147,7 +158,11 @@ async def execute_a2a_calls(
     *,
     steps: list[dict],
 ) -> list[str]:
-    """按规划项依次 JSON-RPC 调用外部 Peer，返回可拼进 synthesize 的文本块。"""
+    """
+    按 plan 依次 ``invoke_a2a_peer``，收集外部回答文本块。
+
+    失败项记入 ``steps``（``a2a_error``），不中断后续 peer；供 ``augment_response_with_a2a`` 综合。
+    """
     blocks: list[str] = []
     ref_by_peer = {str(r.peer_id): r for r in refs if r.peer}
 
@@ -208,7 +223,11 @@ async def resolve_a2a_plan_items(
     db: Any = None,
     tenant_id: Any = None,
 ) -> tuple[list[dict], list[dict]]:
-    """返回 (plan_items, preliminary_steps)。"""
+    """
+    合并规则层与规划层，得到本轮外部调用计划。
+
+    返回 ``(plan_items, preliminary_steps)``，受 ``max_a2a_calls_per_turn`` 截断。
+    """
     pre_steps: list[dict] = []
     policy = _policy(agent)
     max_calls = _max_calls(agent)
@@ -256,7 +275,12 @@ async def augment_response_with_a2a(
     body: ChatRequest,
     base: ChatResponse,
 ) -> ChatResponse:
-    """在已有回答上按规则/规划追加外部 A2A 调用并综合。"""
+    """
+    在本地回答（含 RAG ``sources``）之上追加外部 A2A 结果。
+
+    ``base`` 通常来自 ``_rag_chat`` 或子 Agent 规划；无 peer 时原样返回。
+    有编排模型时用 LLM 综合，否则拼接文本块。
+    """
     refs = await list_agent_a2a_peer_refs(svc.db, agent.id)
     if not refs:
         return base
@@ -306,7 +330,11 @@ async def run_a2a_augmented_chat(
     agent_id: UUID,
     hooks,
 ) -> ChatResponse:
-    """无内部子智能体时：先走 RAG/直连，再 rules_then_plan 调外部 A2A。"""
+    """
+    有 A2A Peer、无子智能体时的对话路径。
+
+    ``kb_ids`` 来自 ``agent.knowledge_bases``；本地答案由 RAG/直连产生后再调外部 Agent。
+    """
     base = await svc._rag_chat(agent, body, kb_ids, top_k, agent_id, hooks)
     return await augment_response_with_a2a(svc, agent, body, base)
 

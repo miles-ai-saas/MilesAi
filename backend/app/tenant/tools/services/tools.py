@@ -1,6 +1,15 @@
-"""工具注册表：内置 knowledge_search/http/calculator 与租户自定义工具。
+"""
+工具注册表（L2）：内置 registry、租户自定义 HTTP 工具、MCP 目录聚合。
 
-catalog 合并 BUILTIN_TOOLS 与 DB 行；invoke 委托 tenant.tools.invoke。
+catalog
+-------
+合并 ``BUILTIN_REGISTRY``、DB ``Tool`` 行、已同步的 ``McpService.tools_cache``（只读展示）。
+
+执行
+----
+``invoke_tool_with_context`` → ``tenant.tools.invoke``（内置含 ``knowledge_search`` → ``search_kb``）。
+
+与 Agent：``enable_tool_calling`` 时走 ``integrations.langchain.tool_agent``，非本 Service 直连。
 """
 
 from uuid import UUID
@@ -8,28 +17,33 @@ from uuid import UUID
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.common.exceptions import NotFoundError
+from app.common.exceptions import BadRequestError, ConflictError, NotFoundError
+from app.common.url_security import validate_outbound_url
 from app.core.tenant import TenantContext, assert_tenant_access, tenant_filters
+from app.models.category import CategoryDomain
+from app.tenant.categories.services.category import CategoryService
+from app.models.tag import TagEntityType
+from app.tenant.tags.schemas.tag import TagRefOut
+from app.tenant.tags.services.tag import TagService
 from app.tenant.mcp.models import McpService
-from app.tenant.tools.invoke import invoke_tool_by_name
-from app.tenant.tools.models import Tool
+from app.tenant.tools.builtin_registry import BUILTIN_REGISTRY, BUILTIN_SLUGS
+from app.tenant.tools.confirmation import ToolConfirmationRequired
+from app.tenant.tools.invoke import invoke_tool_with_context
+from app.tenant.tools.models import Tool, ToolInvocationLog, ToolType
+from app.tenant.tools.parameters import normalize_parameters
 from app.common.schema import PageParams, PageResult
 from app.tenant.tools.schemas.tools import (
     ToolCatalogItem,
     ToolCreate,
     ToolInvokeRequest,
     ToolInvokeResult,
+    ToolInvocationLogOut,
     ToolOut,
     ToolUpdate,
+    PendingToolCall,
 )
 from app.core.soft_delete import append_not_deleted, is_marked_deleted, mark_deleted, not_deleted
 from app.core.service import BaseService
-
-BUILTIN_TOOLS = [
-    {"name": "knowledge_search", "description": "检索租户知识库（params: query, kb_id）"},
-    {"name": "http_request", "description": "发起 HTTP 请求（params: url, method）"},
-    {"name": "calculator", "description": "安全计算表达式（params: expression）"},
-]
 
 
 class ToolsService(BaseService):
@@ -38,8 +52,21 @@ class ToolsService(BaseService):
     def __init__(self, db: AsyncSession, ctx: TenantContext) -> None:
         super().__init__(db, ctx)
 
-    async def list_tools(self, params: PageParams) -> PageResult[ToolOut]:
+    async def list_tools(
+        self,
+        params: PageParams,
+        *,
+        category_id: UUID | None = None,
+        tag_ids: list[UUID] | None = None,
+    ) -> PageResult[ToolOut]:
         filters = append_not_deleted(tenant_filters(self.ctx, Tool.tenant_id), Tool)
+        if category_id:
+            filters.append(Tool.category_id == category_id)
+        tag_subq = TagService(self.db, self.ctx).entity_id_filter(
+            TagEntityType.TOOL, tag_ids or []
+        )
+        if tag_subq is not None:
+            filters.append(Tool.id.in_(tag_subq))
         total = await self.db.scalar(select(func.count(Tool.id)).where(*filters))
         stmt = (
             select(Tool)
@@ -49,94 +76,257 @@ class ToolsService(BaseService):
             .limit(params.size)
         )
         items = (await self.db.execute(stmt)).scalars().all()
+        names = await self._category_names({t.category_id for t in items if t.category_id})
+        tags_map = await TagService(self.db, self.ctx).get_refs_map(
+            TagEntityType.TOOL, {t.id for t in items}
+        )
         return PageResult(
-            items=[ToolOut.model_validate(i) for i in items],
+            items=[
+                self._to_out(t, names.get(t.category_id), tags_map.get(t.id, []))
+                for t in items
+            ],
             total=total or 0,
             page=params.page,
             size=params.size,
         )
 
     async def create_tool(self, body: ToolCreate) -> ToolOut:
+        if body.tool_type == ToolType.SCRIPT:
+            raise BadRequestError("脚本工具尚未开放，请使用 HTTP 工具或 MCP")
+        if body.slug in BUILTIN_SLUGS:
+            raise BadRequestError(f"slug「{body.slug}」与内置工具冲突")
+        await self._ensure_slug_unique(body.slug)
+        params = normalize_parameters([p.model_dump() for p in body.parameters])
+        if body.tool_type == ToolType.HTTP:
+            url = (body.config or {}).get("url")
+            if not url:
+                raise BadRequestError("HTTP 工具须配置 config.url")
+            validate_outbound_url(str(url))
+        if body.category_id:
+            await CategoryService(self.db, self.ctx).validate_category_for_domain(
+                body.category_id, CategoryDomain.TOOL
+            )
         row = Tool(
             tenant_id=self.ctx.tenant_id,
+            slug=body.slug.strip(),
             name=body.name.strip(),
             description=body.description,
             tool_type=body.tool_type,
+            category_id=body.category_id,
+            version=body.version,
+            require_confirmation=body.require_confirmation,
+            parameters=params,
             config=body.config,
         )
         self.db.add(row)
         await self.db.flush()
+        if body.tag_ids:
+            await TagService(self.db, self.ctx).replace_entity_tags(
+                TagEntityType.TOOL, row.id, body.tag_ids
+            )
         await self.db.refresh(row)
-        return ToolOut.model_validate(row)
+        cat_name = await self._category_name(row.category_id)
+        tags_map = await TagService(self.db, self.ctx).get_refs_map(
+            TagEntityType.TOOL, {row.id}
+        )
+        return self._to_out(row, cat_name, tags_map.get(row.id, []))
 
     async def update_tool(self, tool_id: UUID, body: ToolUpdate) -> ToolOut:
         row = await self._get_or_raise(tool_id)
-        for k, v in body.model_dump(exclude_unset=True).items():
+        data = body.model_dump(exclude_unset=True)
+        tag_ids = data.pop("tag_ids", None)
+        if "slug" in data and data["slug"]:
+            if data["slug"] in BUILTIN_SLUGS:
+                raise BadRequestError(f"slug「{data['slug']}」与内置工具冲突")
+            await self._ensure_slug_unique(data["slug"], exclude_id=tool_id)
+        if "parameters" in data and data["parameters"] is not None:
+            data["parameters"] = normalize_parameters(data["parameters"])
+        if "category_id" in data and data["category_id"]:
+            await CategoryService(self.db, self.ctx).validate_category_for_domain(
+                data["category_id"], CategoryDomain.TOOL
+            )
+        if "config" in data and data["config"]:
+            url = data["config"].get("url")
+            if url:
+                validate_outbound_url(str(url))
+        for k, v in data.items():
             setattr(row, k, v)
         await self.db.flush()
+        if tag_ids is not None:
+            await TagService(self.db, self.ctx).replace_entity_tags(
+                TagEntityType.TOOL, row.id, tag_ids
+            )
         await self.db.refresh(row)
-        return ToolOut.model_validate(row)
+        cat_name = await self._category_name(row.category_id)
+        tags_map = await TagService(self.db, self.ctx).get_refs_map(
+            TagEntityType.TOOL, {row.id}
+        )
+        return self._to_out(row, cat_name, tags_map.get(row.id, []))
 
     async def delete_tool(self, tool_id: UUID) -> None:
         row = await self._get_or_raise(tool_id)
+        await TagService(self.db, self.ctx).clear_entity_tags(TagEntityType.TOOL, row.id)
         await mark_deleted(self.db, row)
 
     async def invoke(self, name: str, body: ToolInvokeRequest) -> ToolInvokeResult:
-        output = await invoke_tool_by_name(
-            self.db,
-            self.ctx,
-            name,
-            body.params,
-            tool_id=body.tool_id,
-        )
-        source = "custom" if body.tool_id else "builtin"
-        return ToolInvokeResult(tool=name, source=source, output=output)
+        try:
+            output = await invoke_tool_with_context(
+                self.db,
+                self.ctx,
+                name,
+                body.params,
+                tool_id=body.tool_id,
+                confirmed=body.confirmed,
+                actor_user_id=self.ctx.user_id,
+                invoke_source="api",
+            )
+        except ToolConfirmationRequired as exc:
+            source = "builtin" if exc.slug in BUILTIN_SLUGS else "custom"
+            return ToolInvokeResult(
+                tool=exc.slug,
+                source=source,
+                status="confirmation_required",
+                pending=PendingToolCall(
+                    slug=exc.slug,
+                    name=exc.tool_name,
+                    description=exc.tool_description,
+                    params=exc.params,
+                ),
+            )
+        source = "custom" if body.tool_id else ("builtin" if name in BUILTIN_SLUGS else "custom")
+        return ToolInvokeResult(tool=name, source=source, status="success", output=output)
 
-    async def list_catalog(self) -> list[ToolCatalogItem]:
-        catalog: list[ToolCatalogItem] = [
-            ToolCatalogItem(
-                source="builtin",
-                name=t["name"],
-                description=t.get("description"),
-            )
-            for t in BUILTIN_TOOLS
-        ]
-        filters = append_not_deleted(
-            tenant_filters(self.ctx, Tool.tenant_id),
-            Tool,
+    async def list_invocation_logs(
+        self, params: PageParams, *, tool_slug: str | None = None
+    ) -> PageResult[ToolInvocationLogOut]:
+        filters = [ToolInvocationLog.tenant_id == self.ctx.tenant_id]
+        if tool_slug:
+            filters.append(ToolInvocationLog.tool_slug == tool_slug)
+        total = await self.db.scalar(select(func.count(ToolInvocationLog.id)).where(*filters))
+        stmt = (
+            select(ToolInvocationLog)
+            .where(*filters)
+            .order_by(ToolInvocationLog.created_at.desc())
+            .offset((params.page - 1) * params.size)
+            .limit(params.size)
         )
-        custom = (
+        items = (await self.db.execute(stmt)).scalars().all()
+        return PageResult(
+            items=[ToolInvocationLogOut.model_validate(i) for i in items],
+            total=total or 0,
+            page=params.page,
+            size=params.size,
+        )
+
+    async def list_catalog(
+        self,
+        *,
+        source: str | None = None,
+        category_id: UUID | None = None,
+        tag_ids: list[UUID] | None = None,
+    ) -> list[ToolCatalogItem]:
+        from app.models.category import SysCategory
+
+        cat_rows = (
             await self.db.execute(
-                select(Tool).where(*filters, Tool.is_active.is_(True)).order_by(Tool.name)
-            )
-        ).scalars().all()
-        for t in custom:
-            catalog.append(
-                ToolCatalogItem(
-                    source="custom",
-                    name=t.name,
-                    description=t.description,
-                    tool_id=t.id,
+                select(SysCategory.id, SysCategory.slug, SysCategory.name).where(
+                    SysCategory.domain == CategoryDomain.TOOL.value,
+                    not_deleted(SysCategory),
                 )
             )
-        mcp_filters = [*tenant_filters(self.ctx, McpService.tenant_id), not_deleted(McpService)]
-        mcps = (await self.db.execute(select(McpService).where(*mcp_filters))).scalars().all()
-        for svc in mcps:
-            for tool in svc.tools_cache or []:
-                if isinstance(tool, dict):
-                    catalog.append(
-                        ToolCatalogItem(
-                            source="mcp",
-                            name=str(tool.get("name", "tool")),
-                            description=str(tool.get("description") or "") or None,
-                            mcp_service_id=svc.id,
-                            mcp_service_name=svc.name,
-                        )
+        ).all()
+        slug_to_id = {r[1]: r[0] for r in cat_rows}
+        id_to_name = {r[0]: r[2] for r in cat_rows}
+        category_slug: str | None = None
+        if category_id:
+            for cid, slug, _ in cat_rows:
+                if cid == category_id:
+                    category_slug = slug
+                    break
+
+        catalog: list[ToolCatalogItem] = []
+        src = (source or "").strip().lower()
+
+        if not src or src == "builtin":
+            for t in BUILTIN_REGISTRY:
+                cat_slug = t.get("category_slug", "general")
+                if category_slug and cat_slug != category_slug:
+                    continue
+                cat_id = slug_to_id.get(cat_slug)
+                catalog.append(
+                    ToolCatalogItem(
+                        source="builtin",
+                        slug=t["slug"],
+                        name=t["name"],
+                        description=t.get("description"),
+                        category_id=cat_id,
+                        category_name=id_to_name.get(cat_id) if cat_id else None,
+                        parameters=t.get("parameters") or [],
+                        version=t.get("version"),
+                        require_confirmation=bool(t.get("require_confirmation")),
                     )
+                )
+
+        if not src or src == "custom":
+            filters = append_not_deleted(
+                tenant_filters(self.ctx, Tool.tenant_id),
+                Tool,
+            )
+            if category_id:
+                filters.append(Tool.category_id == category_id)
+            tag_subq = TagService(self.db, self.ctx).entity_id_filter(
+                TagEntityType.TOOL, tag_ids or []
+            )
+            if tag_subq is not None:
+                filters.append(Tool.id.in_(tag_subq))
+            custom = (
+                await self.db.execute(
+                    select(Tool).where(*filters, Tool.is_active.is_(True)).order_by(Tool.slug)
+                )
+            ).scalars().all()
+            for t in custom:
+                catalog.append(
+                    ToolCatalogItem(
+                        source="custom",
+                        slug=t.slug,
+                        name=t.name,
+                        description=t.description,
+                        category_id=t.category_id,
+                        category_name=id_to_name.get(t.category_id) if t.category_id else None,
+                        parameters=t.parameters or [],
+                        version=t.version,
+                        require_confirmation=t.require_confirmation,
+                        tool_id=t.id,
+                        updated_at=t.updated_at,
+                    )
+                )
+
+        if not src or src == "mcp":
+            mcp_filters = [*tenant_filters(self.ctx, McpService.tenant_id), not_deleted(McpService)]
+            mcps = (await self.db.execute(select(McpService).where(*mcp_filters))).scalars().all()
+            for svc in mcps:
+                for tool in svc.tools_cache or []:
+                    if isinstance(tool, dict):
+                        slug = str(tool.get("name", "tool"))
+                        catalog.append(
+                            ToolCatalogItem(
+                                source="mcp",
+                                slug=slug,
+                                name=slug,
+                                description=str(tool.get("description") or "") or None,
+                                mcp_service_id=svc.id,
+                                mcp_service_name=svc.name,
+                                updated_at=svc.updated_at,
+                            )
+                        )
+
+        if src and src not in ("builtin", "custom", "mcp"):
+            raise BadRequestError("source 须为 builtin、custom 或 mcp")
+
         return catalog
 
     async def list_builtin(self) -> list[dict]:
-        return BUILTIN_TOOLS
+        return BUILTIN_REGISTRY
 
     async def _get_or_raise(self, tool_id: UUID) -> Tool:
         row = await self.db.get(Tool, tool_id)
@@ -144,3 +334,34 @@ class ToolsService(BaseService):
             raise NotFoundError("工具不存在")
         assert_tenant_access(self.ctx, row.tenant_id)
         return row
+
+    async def _ensure_slug_unique(self, slug: str, *, exclude_id: UUID | None = None) -> None:
+        filters = [
+            Tool.tenant_id == self.ctx.tenant_id,
+            Tool.slug == slug,
+            not_deleted(Tool),
+        ]
+        if exclude_id:
+            filters.append(Tool.id != exclude_id)
+        exists = await self.db.scalar(select(Tool.id).where(*filters).limit(1))
+        if exists:
+            raise ConflictError(f"工具编号「{slug}」已存在")
+
+    async def _category_names(self, ids: set[UUID]) -> dict[UUID, str]:
+        return await CategoryService(self.db, self.ctx).get_category_name_map(
+            CategoryDomain.TOOL, ids
+        )
+
+    async def _category_name(self, category_id: UUID | None) -> str | None:
+        if not category_id:
+            return None
+        return (await self._category_names({category_id})).get(category_id)
+
+    @staticmethod
+    def _to_out(
+        row: Tool,
+        category_name: str | None,
+        tags: list[TagRefOut] | None = None,
+    ) -> ToolOut:
+        data = ToolOut.model_validate(row)
+        return data.model_copy(update={"category_name": category_name, "tags": tags or []})

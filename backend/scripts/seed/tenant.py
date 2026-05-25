@@ -29,6 +29,8 @@ DEFAULT_PERMISSIONS = [
     ("tools:write", "管理工具", "tools"),
     ("skill:read", "查看技能包", "skill"),
     ("skill:write", "管理技能包", "skill"),
+    ("tag:read", "查看标签", "tag"),
+    ("tag:write", "管理标签", "tag"),
     ("mcp:read", "查看 MCP", "mcp"),
     ("mcp:write", "管理 MCP", "mcp"),
     ("kb:read", "查看知识库", "kb"),
@@ -124,3 +126,5 @@ async def seed_tenant(session: AsyncSession) -> None:
     await session.execute(
         user_roles.insert().values(user_id=admin_user.id, role_id=tenant_admin.id)
     )
+
+    # 分类为全平台全局字典，新租户无需 provision

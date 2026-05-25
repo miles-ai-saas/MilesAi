@@ -1,4 +1,18 @@
-"""RAG 问答 LangGraph：检索 → 质量评估 → 重试 / 生成 / 兜底。"""
+"""
+RAG 问答 LangGraph（Agent 默认 RAG 引擎）。
+
+节点流
+------
+START → retrieve（``retrieve_hits`` 多 KB）
+     → grade_documents（分数阈值或 LLM 评判 good/poor/none）
+     → route_after_grade
+         - good → generate（``build_rag_user_prompt`` + ``ainvoke_chat``）
+         - poor → prepare_retry（top_k×2，≤20）→ retrieve
+         - none / 重试耗尽 → fallback（低相关或无命中话术）
+
+状态字段见 ``integrations.langgraph.state.RAGGraphState``；
+``agent.config`` 可设 ``rag_max_retries``、``relevance_threshold``、``use_llm_grade``。
+"""
 
 from __future__ import annotations
 

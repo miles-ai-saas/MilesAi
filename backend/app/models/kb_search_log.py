@@ -1,4 +1,13 @@
-"""知识库检索审计（retrieve_hits / search_log 服务写入）。"""
+"""
+知识库检索审计表 ``kb_search_logs`` ORM。
+
+写入方
+------
+- ``tenant.kb.services.search_log.write_kb_search_log``
+- Agent 路径经 ``integrations.langchain.vectorstores._write_search_log``
+
+``retrieval_mode`` 可能带 ``+rerank`` 后缀；``source`` 区分 api / agent 等。
+"""
 
 import uuid
 from datetime import datetime

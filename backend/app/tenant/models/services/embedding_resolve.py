@@ -1,6 +1,16 @@
-"""解析知识库绑定的向量化 ModelConfig（含本地模型免 Key）。
+"""
+解析知识库绑定的向量化 ModelConfig（含 BYOK 与权限）。
 
-链路：embed_*_for_kb → resolve_embedding_model_* → build_embeddings → registry Provider。
+职责
+----
+- 内置模型：合并 ``ModelTenantCredential``；``invoke_mode=local`` 不要求 API Key
+- 租户自定义：校验 ``tenant_id`` 归属与 Key
+- ``get_default_embedding_model*``：创建 KB 未指定 embedding 时的内置 BGE
+
+链路
+----
+``integrations.langchain.embeddings.embed_*_for_kb``
+→ ``resolve_embedding_model_*`` → ``build_embeddings`` → ``registry`` Provider
 """
 
 from __future__ import annotations
