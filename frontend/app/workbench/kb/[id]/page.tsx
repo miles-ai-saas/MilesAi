@@ -78,6 +78,7 @@ export default function KbDetailPage() {
       score: number;
       score_vector?: number | null;
       score_keyword?: number | null;
+      score_rerank?: number | null;
       filename?: string;
     }[]
   >([]);
@@ -485,6 +486,7 @@ export default function KbDetailPage() {
                     #{i + 1}
                   </span>
                   <span className="font-mono font-medium text-brand">{h.score.toFixed(3)}</span>
+                  {h.score_rerank != null && <span>重排 {h.score_rerank.toFixed(3)}</span>}
                   {h.score_vector != null && <span>向量 {h.score_vector.toFixed(2)}</span>}
                   {h.score_keyword != null && <span>关键词 {h.score_keyword.toFixed(2)}</span>}
                   {h.filename && <span className="truncate">· {h.filename}</span>}

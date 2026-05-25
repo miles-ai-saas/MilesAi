@@ -289,6 +289,8 @@ export const api = {
     chunk_overlap?: number;
     retrieval_mode?: "vector" | "hybrid";
     hybrid_alpha?: number;
+    rerank_model_config_id?: string | null;
+    rerank_candidate_k?: number;
     is_public?: boolean;
   }) => post<KnowledgeBase>("/kb", payload),
   updateKb: (
@@ -300,6 +302,8 @@ export const api = {
       chunk_overlap?: number;
       retrieval_mode?: "vector" | "hybrid";
       hybrid_alpha?: number;
+      rerank_model_config_id?: string | null;
+      rerank_candidate_k?: number;
       is_public?: boolean;
     },
   ) => patch<KnowledgeBase>(`/kb/${kbId}`, payload),

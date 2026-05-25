@@ -20,7 +20,8 @@ services:
       POSTGRES_HOST: postgres
       REDIS_HOST: redis
       OBJECT_STORAGE_ENDPOINT: minio:9000
-      WEAVIATE_HOST: weaviate
+      VECTOR_STORE_BACKEND: milvus
+      MILVUS_URI: http://milvus:19530
       CELERY_BROKER_URL: redis://redis:6379/1
       CELERY_RESULT_BACKEND: redis://redis:6379/2
     ports:
@@ -48,7 +49,8 @@ services:
       POSTGRES_HOST: postgres
       REDIS_HOST: redis
       OBJECT_STORAGE_ENDPOINT: minio:9000
-      WEAVIATE_HOST: weaviate
+      VECTOR_STORE_BACKEND: milvus
+      MILVUS_URI: http://milvus:19530
       CELERY_BROKER_URL: redis://redis:6379/1
       CELERY_RESULT_BACKEND: redis://redis:6379/2
     networks:

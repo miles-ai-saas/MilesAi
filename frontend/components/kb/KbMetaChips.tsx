@@ -17,6 +17,11 @@ export function KbMetaChips({ kb }: { kb: KnowledgeBase }) {
         {retrievalModeLabel(kb.retrieval_mode)}
         {kb.retrieval_mode === "hybrid" ? ` · α ${kb.hybrid_alpha ?? 0.5}` : ""}
       </span>
+      {kb.rerank_model_name ? (
+        <span className="rounded-md bg-surface-muted px-2 py-1 text-xs text-ink-muted">
+          重排 {kb.rerank_model_name}
+        </span>
+      ) : null}
     </div>
   );
 }

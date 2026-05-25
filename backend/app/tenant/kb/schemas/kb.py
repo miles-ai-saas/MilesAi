@@ -30,6 +30,16 @@ class KnowledgeBaseCreate(BaseModel):
         le=1.0,
         description="混合检索权重（仅 hybrid；1=偏向量，0=偏关键词，Weaviate 生效）",
     )
+    rerank_model_config_id: UUID | None = Field(
+        None,
+        description="重排模型（model_type=rerank）；为空则不启用精排",
+    )
+    rerank_candidate_k: int = Field(
+        50,
+        ge=5,
+        le=100,
+        description="启用重排时，首轮召回候选数上限（再精排截断 top_k）",
+    )
 
 
 class KnowledgeBaseUpdate(BaseModel):
@@ -40,6 +50,8 @@ class KnowledgeBaseUpdate(BaseModel):
     chunk_overlap: int | None = Field(None, ge=0, le=500)
     retrieval_mode: RetrievalMode | None = None
     hybrid_alpha: float | None = Field(None, ge=0.0, le=1.0)
+    rerank_model_config_id: UUID | None = None
+    rerank_candidate_k: int | None = Field(None, ge=5, le=100)
 
     @model_validator(mode="before")
     @classmethod
@@ -71,6 +83,9 @@ class KnowledgeBaseOut(BaseModel):
     chunk_overlap: int
     retrieval_mode: str
     hybrid_alpha: float
+    rerank_model_config_id: UUID | None = None
+    rerank_model_name: str | None = None
+    rerank_candidate_k: int = 50
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -107,6 +122,7 @@ class SearchHit(BaseModel):
     score: float
     score_vector: float | None = None
     score_keyword: float | None = None
+    score_rerank: float | None = None
     filename: str | None = None
 
 

@@ -148,6 +148,26 @@ class ModelService(BaseService):
                 raise BadRequestError(
                     "向量化模型须在 extra 中配置 embedding_dimension（整数）"
                 )
+            from app.integrations.embeddings import known_invoke_modes
+            from app.integrations.embeddings.constants import EXTRA_INVOKE_MODE
+
+            mode = extra.get(EXTRA_INVOKE_MODE)
+            if isinstance(mode, str) and mode.strip():
+                if mode.strip().lower() not in known_invoke_modes():
+                    raise BadRequestError(
+                        f"不支持的 invoke_mode: {mode}，可选: {', '.join(sorted(known_invoke_modes()))}"
+                    )
+        if body.model_type == ModelCapabilityType.RERANK.value:
+            extra = body.extra or {}
+            from app.integrations.rerank import known_invoke_modes as rerank_invoke_modes
+            from app.integrations.rerank.constants import EXTRA_INVOKE_MODE
+
+            mode = extra.get(EXTRA_INVOKE_MODE)
+            if isinstance(mode, str) and mode.strip():
+                if mode.strip().lower() not in rerank_invoke_modes():
+                    raise BadRequestError(
+                        f"不支持的 rerank invoke_mode: {mode}，可选: {', '.join(sorted(rerank_invoke_modes()))}"
+                    )
         model = await self.repo.create(
             tenant_id=self.ctx.tenant_id,
             name=body.name,

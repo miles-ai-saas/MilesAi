@@ -1,6 +1,6 @@
-"""ModelConfig → LiteLLM 调用参数与 acompletion 封装（L3 对话/部分 embedding）。
+"""ModelConfig → LiteLLM 调用参数与 acompletion 封装（L3 对话）。
 
-向量化 local 路径不走 LiteLLM，见 integrations.embeddings.runtime。
+向量化见 integrations.embeddings.providers（local / openai_compatible / litellm）。
 """
 
 from __future__ import annotations
@@ -84,6 +84,18 @@ def _litellm_error_message(exc: BaseException) -> str:
     return f"模型调用失败: {msg}"
 
 
+def _import_litellm():
+    """延迟导入 litellm，并在首次导入前设置日志级别。"""
+    import os
+
+    from app.core.config import get_settings
+
+    os.environ.setdefault("LITELLM_LOG", get_settings().litellm_log.upper())
+    import litellm
+
+    return litellm
+
+
 async def litellm_chat_completion(
     model: ModelConfig,
     messages: list[dict[str, str]],
@@ -93,7 +105,7 @@ async def litellm_chat_completion(
     timeout: float = 120.0,
 ) -> str:
     """通过 LiteLLM 发起异步 Chat Completions。"""
-    import litellm
+    litellm = _import_litellm()
 
     _ensure_chat_model_type(model)
 
@@ -155,7 +167,7 @@ def litellm_embed_texts(
     timeout: float = 120.0,
 ) -> list[list[float]]:
     """同步批量 embedding（供 LangChain Embeddings 与入库任务）。"""
-    import litellm
+    litellm = _import_litellm()
 
     if not texts:
         return []

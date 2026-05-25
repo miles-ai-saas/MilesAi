@@ -16,6 +16,7 @@ class ModelCapabilityType(str, enum.Enum):
     REASONING = "reasoning"
     VISION = "vision"
     EMBEDDING = "embedding"
+    RERANK = "rerank"
     IMAGE_GEN = "image_gen"
     VIDEO_GEN = "video_gen"
     ASR = "asr"
@@ -29,6 +30,7 @@ CATALOG_MODEL_TYPES: tuple[ModelCapabilityType, ...] = (
     ModelCapabilityType.REASONING,
     ModelCapabilityType.VISION,
     ModelCapabilityType.EMBEDDING,
+    ModelCapabilityType.RERANK,
     ModelCapabilityType.IMAGE_GEN,
     ModelCapabilityType.VIDEO_GEN,
     ModelCapabilityType.ASR,
@@ -57,13 +59,26 @@ DEFAULT_API_BASES: dict[str, str] = {
     ModelVendor.QWEN.value: "https://dashscope.aliyuncs.com/compatible-mode/v1",
 }
 
+# DashScope 文本重排（与 chat/embedding 的 compatible-mode 不同）
+DEFAULT_RERANK_API_ENDPOINTS: dict[str, str] = {
+    ModelVendor.QWEN.value: (
+        "https://dashscope.aliyuncs.com/api/v1/services/rerank/text-rerank/text-rerank"
+    ),
+}
+
+DEFAULT_RERANK_OPENAI_COMPAT_BASES: dict[str, str] = {
+    ModelVendor.QWEN.value: "https://dashscope.aliyuncs.com/compatible-api/v1",
+}
+
 BUILTIN_EMBEDDING_DEFAULT_CODE = "bge-base-zh-v1.5"
+BUILTIN_RERANK_DEFAULT_CODE = "qwen3-rerank"
 
 MODEL_TYPE_LABELS: dict[str, str] = {
     ModelCapabilityType.LLM.value: "大语言模型",
     ModelCapabilityType.REASONING.value: "推理模型",
     ModelCapabilityType.VISION.value: "图像理解",
     ModelCapabilityType.EMBEDDING.value: "向量化",
+    ModelCapabilityType.RERANK.value: "重排序",
     ModelCapabilityType.ASR.value: "语音识别",
     ModelCapabilityType.TTS.value: "语音合成",
     ModelCapabilityType.IMAGE_GEN.value: "图像生成",

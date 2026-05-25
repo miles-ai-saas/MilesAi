@@ -15,9 +15,28 @@ from sqlalchemy.orm import Session
 from app.integrations.langchain.embeddings import embed_query_for_kb, embed_query_for_kb_sync
 from app.integrations.langchain.vector.documents import hit_to_document
 from app.models.kb import KnowledgeBase
+from app.models.model import ModelConfig
 from app.rag.retrieve.multi_kb import search_kb as _search_kb
 from app.rag.retrieve.multi_kb import search_multi_kb as _search_multi_kb
 from app.rag.retrieve.multi_kb import search_multi_kb_async as _search_multi_kb_async
+from app.tenant.models.services.rerank_resolve import (
+    resolve_rerank_model_by_id,
+    resolve_rerank_model_sync,
+)
+
+
+def _resolve_rerank_sync(db: Session, kb: KnowledgeBase, tenant_id: UUID) -> ModelConfig | None:
+    if not kb.rerank_model_config_id:
+        return None
+    return resolve_rerank_model_sync(db, kb.rerank_model_config_id, tenant_id)
+
+
+async def _resolve_rerank_async(
+    db: AsyncSession, kb: KnowledgeBase, tenant_id: UUID
+) -> ModelConfig | None:
+    if not kb.rerank_model_config_id:
+        return None
+    return await resolve_rerank_model_by_id(db, kb.rerank_model_config_id, tenant_id)
 
 
 def search_kb(
@@ -35,6 +54,7 @@ def search_kb(
         limit=limit,
         mode=mode,
         embed_query_sync=embed_query_for_kb_sync,
+        resolve_rerank_sync=_resolve_rerank_sync,
     )
 
 
@@ -53,6 +73,7 @@ def search_multi_kb(
         top_k=top_k,
         mode=mode,
         embed_query_sync=embed_query_for_kb_sync,
+        resolve_rerank_sync=_resolve_rerank_sync,
     )
 
 
@@ -97,6 +118,7 @@ async def search_multi_kb_async(
         top_k=top_k,
         mode=mode,
         embed_query=embed_query_for_kb,
+        resolve_rerank=_resolve_rerank_async,
         on_complete=_write_search_log if write_log else None,
         source=source,
         actor_user_id=actor_user_id,

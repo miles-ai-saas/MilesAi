@@ -12,12 +12,14 @@ from sqlalchemy.orm import Session
 
 from app.infra.vector_store.factory import get_vector_store
 from app.models.kb import KnowledgeBase
+from app.models.model import ModelConfig
 from app.rag.index.gateway import search_vectors
 from app.rag.retrieve.hybrid import rrf_fuse
 from app.rag.retrieve.keyword import (
     search_chunks_by_keyword,
     search_chunks_by_keyword_sync,
 )
+from app.rag.retrieve.rerank import apply_rerank_to_hits, compute_rerank_fetch_limit
 
 RETRIEVAL_VECTOR = "vector"
 RETRIEVAL_HYBRID = "hybrid"
@@ -42,42 +44,68 @@ async def search_kb_chunks(
     query_vector: list[float],
     limit: int,
     mode: str,
+    rerank_model: ModelConfig | None = None,
 ) -> list[dict[str, Any]]:
     """按检索模式查询分片 hit（含 chunk_id / document_id / score）。"""
+    fetch_limit = compute_rerank_fetch_limit(
+        limit,
+        rerank_model=rerank_model,
+        candidate_k=kb.rerank_candidate_k,
+    )
     effective = resolve_retrieval_mode(kb, mode)
     if effective == RETRIEVAL_VECTOR:
         hits = search_vectors(
             query_vector,
             tenant_id=kb.tenant_id,
             kb_id=kb.id,
-            limit=limit,
+            limit=fetch_limit,
         )
         for h in hits:
             h.setdefault("score_vector", h.get("score"))
-        return hits
-
-    store = get_vector_store()
-    alpha = float(kb.hybrid_alpha if kb.hybrid_alpha is not None else 0.5)
-    alpha = max(0.0, min(1.0, alpha))
-
-    # Weaviate 等后端可实现 search_hybrid（BM25 + 向量）
-    if hasattr(store, "search_hybrid"):
-        return store.search_hybrid(
+    elif hasattr(get_vector_store(), "search_hybrid"):
+        store = get_vector_store()
+        alpha = float(kb.hybrid_alpha if kb.hybrid_alpha is not None else 0.5)
+        alpha = max(0.0, min(1.0, alpha))
+        hits = store.search_hybrid(
             query,
             query_vector=query_vector,
             tenant_id=kb.tenant_id,
             kb_id=kb.id,
-            limit=limit,
+            limit=fetch_limit,
             alpha=alpha,
         )
+    else:
+        hits = await _hybrid_rrf(
+            db,
+            kb=kb,
+            query=query,
+            query_vector=query_vector,
+            fetch_limit=fetch_limit,
+        )
 
-    # 回退：分别拉候选再 RRF（Milvus 等）
-    fetch_n = min(limit * 3, 50)
+    if rerank_model is not None:
+        return apply_rerank_to_hits(
+            hits,
+            query=query,
+            rerank_model=rerank_model,
+            top_n=limit,
+        )
+    return hits[:limit]
+
+
+async def _hybrid_rrf(
+    db: AsyncSession,
+    *,
+    kb: KnowledgeBase,
+    query: str,
+    query_vector: list[float],
+    fetch_limit: int,
+) -> list[dict[str, Any]]:
     vector_hits = search_vectors(
         query_vector,
         tenant_id=kb.tenant_id,
         kb_id=kb.id,
-        limit=fetch_n,
+        limit=fetch_limit,
     )
     for h in vector_hits:
         h["score_vector"] = h.get("score")
@@ -87,13 +115,13 @@ async def search_kb_chunks(
         tenant_id=kb.tenant_id,
         kb_id=kb.id,
         query=query,
-        limit=fetch_n,
+        limit=fetch_limit,
     )
     if not keyword_hits:
-        return vector_hits[:limit]
+        return vector_hits
     if not vector_hits:
-        return keyword_hits[:limit]
-    return rrf_fuse([vector_hits, keyword_hits], limit=limit)
+        return keyword_hits
+    return rrf_fuse([vector_hits, keyword_hits], limit=fetch_limit)
 
 
 def _hybrid_sync(
@@ -102,30 +130,27 @@ def _hybrid_sync(
     kb: KnowledgeBase,
     query: str,
     query_vector: list[float],
-    limit: int,
+    fetch_limit: int,
 ) -> list[dict[str, Any]]:
     store = get_vector_store()
     alpha = float(kb.hybrid_alpha if kb.hybrid_alpha is not None else 0.5)
     alpha = max(0.0, min(1.0, alpha))
 
-    # Weaviate 等后端可实现 search_hybrid（BM25 + 向量）
     if hasattr(store, "search_hybrid"):
         return store.search_hybrid(
             query,
             query_vector=query_vector,
             tenant_id=kb.tenant_id,
             kb_id=kb.id,
-            limit=limit,
+            limit=fetch_limit,
             alpha=alpha,
         )
 
-    # 回退：分别拉候选再 RRF（Milvus 等）
-    fetch_n = min(limit * 3, 50)
     vector_hits = search_vectors(
         query_vector,
         tenant_id=kb.tenant_id,
         kb_id=kb.id,
-        limit=fetch_n,
+        limit=fetch_limit,
     )
     for h in vector_hits:
         h["score_vector"] = h.get("score")
@@ -134,13 +159,13 @@ def _hybrid_sync(
         tenant_id=kb.tenant_id,
         kb_id=kb.id,
         query=query,
-        limit=fetch_n,
+        limit=fetch_limit,
     )
     if not keyword_hits:
-        return vector_hits[:limit]
+        return vector_hits
     if not vector_hits:
-        return keyword_hits[:limit]
-    return rrf_fuse([vector_hits, keyword_hits], limit=limit)
+        return keyword_hits
+    return rrf_fuse([vector_hits, keyword_hits], limit=fetch_limit)
 
 
 def search_kb_chunks_sync(
@@ -151,18 +176,37 @@ def search_kb_chunks_sync(
     query_vector: list[float],
     limit: int,
     mode: str = "default",
+    rerank_model: ModelConfig | None = None,
 ) -> list[dict[str, Any]]:
+    fetch_limit = compute_rerank_fetch_limit(
+        limit,
+        rerank_model=rerank_model,
+        candidate_k=kb.rerank_candidate_k,
+    )
     effective = resolve_retrieval_mode(kb, mode)
     if effective == RETRIEVAL_VECTOR:
         hits = search_vectors(
             query_vector,
             tenant_id=kb.tenant_id,
             kb_id=kb.id,
-            limit=limit,
+            limit=fetch_limit,
         )
         for h in hits:
             h.setdefault("score_vector", h.get("score"))
-        return hits
-    return _hybrid_sync(
-        db, kb=kb, query=query, query_vector=query_vector, limit=limit
-    )
+    else:
+        hits = _hybrid_sync(
+            db,
+            kb=kb,
+            query=query,
+            query_vector=query_vector,
+            fetch_limit=fetch_limit,
+        )
+
+    if rerank_model is not None:
+        return apply_rerank_to_hits(
+            hits,
+            query=query,
+            rerank_model=rerank_model,
+            top_n=limit,
+        )
+    return hits[:limit]

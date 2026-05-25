@@ -1,5 +1,6 @@
 """全局配置（环境变量 / .env），供 API、Worker、RAG 解析与向量库共用。"""
 
+import os
 from functools import lru_cache
 from pathlib import Path
 
@@ -86,6 +87,8 @@ class Settings(BaseSettings):
     embedding_litellm_model: str = "dashscope/text-embedding-v4"
     embedding_litellm_api_key: str = ""
     embedding_litellm_api_base: str | None = None
+    # LiteLLM 日志级别（默认 ERROR，避免未安装 botocore 时的 Bedrock/SageMaker 预加载警告）
+    litellm_log: str = "ERROR"
     # 新建知识库写入的向量维度（local BGE=768；dashscope v3 等常用 1024）
     embedding_vector_dimension: int = 768
     default_chunk_size: int = 500
@@ -143,4 +146,6 @@ class Settings(BaseSettings):
 
 @lru_cache
 def get_settings() -> Settings:
-    return Settings()
+    settings = Settings()
+    os.environ.setdefault("LITELLM_LOG", settings.litellm_log.upper())
+    return settings

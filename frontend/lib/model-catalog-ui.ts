@@ -5,6 +5,7 @@ export const MODEL_TYPE_LABELS: Record<string, string> = {
   reasoning: "推理模型",
   vision: "图像理解",
   embedding: "向量化",
+  rerank: "重排序",
   image_gen: "图像生成",
   video_gen: "视频生成",
   asr: "语音识别",

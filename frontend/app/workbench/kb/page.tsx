@@ -19,6 +19,7 @@ import type { KnowledgeBase, KbQuota, ModelConfig } from "@/lib/types";
 
 const DEFAULT_CHUNK_SIZE = 500;
 const DEFAULT_CHUNK_OVERLAP = 50;
+const DEFAULT_RERANK_CANDIDATE_K = 50;
 
 function embeddingDimension(m: ModelConfig): number {
   const dim = m.extra?.embedding_dimension;
@@ -36,7 +37,10 @@ export default function KbPage() {
   const [chunkSize, setChunkSize] = useState(DEFAULT_CHUNK_SIZE);
   const [chunkOverlap, setChunkOverlap] = useState(DEFAULT_CHUNK_OVERLAP);
   const [embeddingModels, setEmbeddingModels] = useState<ModelConfig[]>([]);
+  const [rerankModels, setRerankModels] = useState<ModelConfig[]>([]);
   const [embeddingModelId, setEmbeddingModelId] = useState("");
+  const [rerankModelId, setRerankModelId] = useState("");
+  const [rerankCandidateK, setRerankCandidateK] = useState(DEFAULT_RERANK_CANDIDATE_K);
   const [retrievalMode, setRetrievalMode] = useState<"vector" | "hybrid">("vector");
   const [hybridAlpha, setHybridAlpha] = useState(0.5);
   const [quota, setQuota] = useState<KbQuota | null>(null);
@@ -68,6 +72,10 @@ export default function KbPage() {
         setEmbeddingModelId((prev) => prev || items[0]?.id || "");
       })
       .catch(() => {});
+    api
+      .listModelConfigs({ model_type: "rerank" })
+      .then(setRerankModels)
+      .catch(() => {});
   }, [ready]);
 
   const filtered = useMemo(
@@ -82,6 +90,8 @@ export default function KbPage() {
     setChunkSize(DEFAULT_CHUNK_SIZE);
     setChunkOverlap(DEFAULT_CHUNK_OVERLAP);
     setEmbeddingModelId(embeddingModels[0]?.id || "");
+    setRerankModelId("");
+    setRerankCandidateK(DEFAULT_RERANK_CANDIDATE_K);
     setRetrievalMode("vector");
     setHybridAlpha(0.5);
     setDialogOpen(true);
@@ -95,6 +105,8 @@ export default function KbPage() {
     setChunkOverlap(kb.chunk_overlap ?? DEFAULT_CHUNK_OVERLAP);
     setRetrievalMode(kb.retrieval_mode === "hybrid" ? "hybrid" : "vector");
     setHybridAlpha(kb.hybrid_alpha ?? 0.5);
+    setRerankModelId(kb.rerank_model_config_id ?? "");
+    setRerankCandidateK(kb.rerank_candidate_k ?? DEFAULT_RERANK_CANDIDATE_K);
     setDialogOpen(true);
   };
 
@@ -107,6 +119,8 @@ export default function KbPage() {
         chunk_overlap: chunkOverlap,
         retrieval_mode: retrievalMode,
         hybrid_alpha: hybridAlpha,
+        rerank_model_config_id: rerankModelId || null,
+        rerank_candidate_k: rerankModelId ? rerankCandidateK : undefined,
       });
     } else {
       await api.createKb({
@@ -117,6 +131,8 @@ export default function KbPage() {
         chunk_overlap: chunkOverlap,
         retrieval_mode: retrievalMode,
         hybrid_alpha: hybridAlpha,
+        rerank_model_config_id: rerankModelId || null,
+        rerank_candidate_k: rerankModelId ? rerankCandidateK : undefined,
       });
     }
     setDialogOpen(false);
@@ -193,6 +209,11 @@ export default function KbPage() {
                 <span className="rounded bg-brand/10 px-1.5 py-0.5 text-[11px] text-brand">
                   {retrievalModeLabel(kb.retrieval_mode)}
                 </span>
+                {kb.rerank_model_name ? (
+                  <span className="rounded bg-surface-muted px-1.5 py-0.5 text-[11px]">
+                    重排 {kb.rerank_model_name}
+                  </span>
+                ) : null}
                 <span className="text-[11px]">
                   分片 {kb.chunk_size ?? DEFAULT_CHUNK_SIZE}/{kb.chunk_overlap ?? DEFAULT_CHUNK_OVERLAP}
                 </span>
@@ -317,6 +338,35 @@ export default function KbPage() {
               className="input-field mt-1 w-full"
               value={hybridAlpha}
               onChange={(e) => setHybridAlpha(Number(e.target.value))}
+            />
+          </label>
+        )}
+        <label className="block text-xs text-ink-muted">
+          重排模型（可选，RAG 精排）
+          <select
+            className="input-field mt-1 w-full"
+            value={rerankModelId}
+            onChange={(e) => setRerankModelId(e.target.value)}
+          >
+            <option value="">不启用</option>
+            {rerankModels.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.name}
+                {m.source === "builtin" ? " · 内置" : ""}
+              </option>
+            ))}
+          </select>
+        </label>
+        {rerankModelId && (
+          <label className="block text-xs text-ink-muted">
+            重排候选数（首轮召回上限）
+            <input
+              type="number"
+              min={5}
+              max={100}
+              className="input-field mt-1 w-full"
+              value={rerankCandidateK}
+              onChange={(e) => setRerankCandidateK(Number(e.target.value))}
             />
           </label>
         )}

@@ -33,6 +33,7 @@ from app.tenant.models.services.embedding_resolve import (
     get_default_embedding_model,
     resolve_embedding_model_by_id,
 )
+from app.tenant.models.services.rerank_resolve import resolve_rerank_model_by_id
 from app.tenant.kb.schemas.kb import (
     DocumentOut,
     KbQuotaOut,
@@ -81,7 +82,12 @@ class KnowledgeBaseService(BaseService):
         return row.name if row else None
 
     async def _to_kb_out(self, kb: KnowledgeBase) -> KnowledgeBaseOut:
-        name = await self._model_name(kb.embedding_model_config_id)
+        embed_name = await self._model_name(kb.embedding_model_config_id)
+        rerank_name = (
+            await self._model_name(kb.rerank_model_config_id)
+            if kb.rerank_model_config_id
+            else None
+        )
         return KnowledgeBaseOut(
             id=kb.id,
             tenant_id=kb.tenant_id,
@@ -89,12 +95,15 @@ class KnowledgeBaseService(BaseService):
             description=kb.description,
             is_public=kb.is_public,
             embedding_model_config_id=kb.embedding_model_config_id,
-            embedding_model_name=name,
+            embedding_model_name=embed_name,
             embedding_dimension=kb.embedding_dimension,
             chunk_size=kb.chunk_size,
             chunk_overlap=kb.chunk_overlap,
             retrieval_mode=kb.retrieval_mode,
             hybrid_alpha=kb.hybrid_alpha,
+            rerank_model_config_id=kb.rerank_model_config_id,
+            rerank_model_name=rerank_name,
+            rerank_candidate_k=kb.rerank_candidate_k,
             created_at=kb.created_at,
         )
 
@@ -150,8 +159,10 @@ class KnowledgeBaseService(BaseService):
         if not model_id:
             model_id = (await get_default_embedding_model(self.db)).id
         model = await resolve_embedding_model_by_id(self.db, model_id, self.ctx.tenant_id)
-        # 维度写入 kb_bases，与向量库 collection / 入库向量长度绑定
         dimension = embedding_dimension_from_model(model)
+        rerank_model_id = body.rerank_model_config_id
+        if rerank_model_id:
+            await resolve_rerank_model_by_id(self.db, rerank_model_id, self.ctx.tenant_id)
         kb = await self.kb_repo.create(
             tenant_id=self.ctx.tenant_id,
             name=body.name,
@@ -161,6 +172,8 @@ class KnowledgeBaseService(BaseService):
             chunk_overlap=body.chunk_overlap,
             embedding_model_config_id=model.id,
             embedding_dimension=dimension,
+            rerank_model_config_id=rerank_model_id,
+            rerank_candidate_k=body.rerank_candidate_k,
         )
         await self.db.refresh(kb)
         return await self._to_kb_out(kb)
@@ -172,6 +185,11 @@ class KnowledgeBaseService(BaseService):
     async def update_kb(self, kb_id: UUID, body: KnowledgeBaseUpdate) -> KnowledgeBaseOut:
         kb = await self._get_kb_or_raise(kb_id)
         data = body.model_dump(exclude_unset=True)
+        rerank_id = data.get("rerank_model_config_id")
+        if rerank_id:
+            await resolve_rerank_model_by_id(self.db, rerank_id, self.ctx.tenant_id)
+        elif "rerank_model_config_id" in data and data["rerank_model_config_id"] is None:
+            data["rerank_model_config_id"] = None
         await self.kb_repo.update_fields(kb, data)
         await self.db.refresh(kb)
         return await self._to_kb_out(kb)
@@ -306,7 +324,11 @@ class KnowledgeBaseService(BaseService):
         effective_mode = resolve_retrieval_mode(kb, body.mode)
         started = time.perf_counter()
         vector = await embed_query_for_kb(self.db, self.ctx.tenant_id, kb, body.query)
-        # 向量/混合检索在 rag 层；此处回表补全 chunk 正文与文件名
+        rerank_model = None
+        if kb.rerank_model_config_id:
+            rerank_model = await resolve_rerank_model_by_id(
+                self.db, kb.rerank_model_config_id, self.ctx.tenant_id
+            )
         raw_hits = await search_kb_chunks(
             self.db,
             kb=kb,
@@ -314,6 +336,7 @@ class KnowledgeBaseService(BaseService):
             query_vector=vector,
             limit=body.top_k,
             mode=body.mode,
+            rerank_model=rerank_model,
         )
         hits: list[SearchHit] = []
         for h in raw_hits:
@@ -334,9 +357,13 @@ class KnowledgeBaseService(BaseService):
                     score=float(h.get("score", 0)),
                     score_vector=h.get("score_vector"),
                     score_keyword=h.get("score_keyword"),
+                    score_rerank=h.get("score_rerank"),
                     filename=doc.filename if doc else None,
                 )
             )
+        log_mode = effective_mode
+        if rerank_model is not None:
+            log_mode = f"{effective_mode}+rerank"
         latency_ms = int((time.perf_counter() - started) * 1000)
         await write_kb_search_log(
             self.db,
@@ -348,6 +375,6 @@ class KnowledgeBaseService(BaseService):
             latency_ms=latency_ms,
             source="api",
             actor_user_id=self.ctx.user_id,
-            retrieval_mode=effective_mode,
+            retrieval_mode=log_mode,
         )
-        return SearchResponse(query=body.query, mode=effective_mode, hits=hits)
+        return SearchResponse(query=body.query, mode=log_mode, hits=hits)

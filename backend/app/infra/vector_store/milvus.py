@@ -1,4 +1,4 @@
-"""Milvus（langchain_community.Milvus）。"""
+"""Milvus（langchain-milvus，MilvusClient API）。"""
 
 from __future__ import annotations
 
@@ -19,20 +19,24 @@ def collection_name_for_dimension(dimension: int) -> str:
     return f"{COLLECTION_PREFIX}{dimension}"
 
 
+def _connection_args() -> dict[str, Any]:
+    settings = get_settings()
+    args: dict[str, Any] = {"uri": settings.milvus_uri}
+    if settings.milvus_token:
+        args["token"] = settings.milvus_token
+    return args
+
+
 class MilvusVectorStore:
     @staticmethod
     @lru_cache
     def _store(dimension: int):
-        from langchain_community.vectorstores import Milvus
+        from langchain_milvus import Milvus
 
-        settings = get_settings()
-        connection_args: dict[str, Any] = {"uri": settings.milvus_uri}
-        if settings.milvus_token:
-            connection_args["token"] = settings.milvus_token
         return Milvus(
             embedding_function=PrecomputedEmbeddings(),
             collection_name=collection_name_for_dimension(dimension),
-            connection_args=connection_args,
+            connection_args=_connection_args(),
             primary_field="id",
             text_field="content_preview",
             vector_field="vector",
@@ -70,7 +74,7 @@ class MilvusVectorStore:
         expr = f'document_id == "{document_id}"'
 
         def _delete(store: Any) -> None:
-            if store.col is not None:
+            if store.client.has_collection(store.collection_name):
                 store.delete(expr=expr)
 
         foreach_dimension(self._store, _delete)
@@ -80,7 +84,7 @@ class MilvusVectorStore:
             return
 
         def _delete(store: Any) -> None:
-            if store.col is not None:
+            if store.client.has_collection(store.collection_name):
                 store.delete(ids=chunk_ids)
 
         foreach_dimension(self._store, _delete)
@@ -89,11 +93,7 @@ class MilvusVectorStore:
         try:
             from pymilvus import MilvusClient
 
-            settings = get_settings()
-            kwargs: dict[str, Any] = {"uri": settings.milvus_uri}
-            if settings.milvus_token:
-                kwargs["token"] = settings.milvus_token
-            MilvusClient(**kwargs).list_collections()
+            MilvusClient(**_connection_args()).list_collections()
             return True
         except Exception:
             return False

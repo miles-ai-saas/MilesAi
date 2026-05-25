@@ -280,6 +280,9 @@ export interface KnowledgeBase {
   chunk_overlap?: number;
   retrieval_mode?: "vector" | "hybrid";
   hybrid_alpha?: number;
+  rerank_model_config_id?: string | null;
+  rerank_model_name?: string | null;
+  rerank_candidate_k?: number;
   created_at?: string;
 }
 

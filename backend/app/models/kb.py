@@ -34,6 +34,10 @@ class KnowledgeBase(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     chunk_overlap: Mapped[int] = mapped_column(Integer, default=50, nullable=False)
     retrieval_mode: Mapped[str] = mapped_column(String(16), default="vector", nullable=False)
     hybrid_alpha: Mapped[float] = mapped_column(Float, default=0.5, nullable=False)
+    rerank_model_config_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), nullable=True
+    )
+    rerank_candidate_k: Mapped[int] = mapped_column(Integer, default=50, nullable=False)
 
     documents: Mapped[list["Document"]] = relationship(
         "Document",

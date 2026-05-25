@@ -1,4 +1,4 @@
-"""Milvus 向量存储（Mock langchain_community.Milvus）。"""
+"""Milvus 向量存储（Mock langchain_milvus.Milvus）。"""
 
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
@@ -74,7 +74,7 @@ def test_search_maps_hits(mock_lc_store):
 @patch("app.infra.vector_store.milvus.MilvusVectorStore._store")
 def test_delete_by_document(mock_lc_store):
     store = MagicMock()
-    store.col = MagicMock()
+    store.client.has_collection.return_value = True
     mock_lc_store.return_value = store
 
     MilvusVectorStore().delete_by_document(uuid4())
