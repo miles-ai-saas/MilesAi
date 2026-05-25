@@ -24,10 +24,10 @@ import type { Agent, AgentType } from "@/lib/types";
 
 type AgentsTab = "all" | "custom" | "a2a";
 
-const TAB_ITEMS: { id: AgentsTab; label: string }[] = [
-  { id: "all", label: "全部" },
-  { id: "custom", label: "智能体" },
-  { id: "a2a", label: "A2A 互联" },
+const TAB_ITEMS = [
+  { key: "all" as const, label: "全部" },
+  { key: "custom" as const, label: "智能体" },
+  { key: "a2a" as const, label: "A2A 互联" },
 ];
 
 const TAB_DESCRIPTIONS: Record<AgentsTab, string> = {
@@ -41,6 +41,40 @@ function tabToApiType(tab: AgentsTab): AgentType | undefined {
   if (tab === "custom") return "custom";
   if (tab === "a2a") return "a2a";
   return undefined;
+}
+
+function StatChip({ label, value, hint }: { label: string; value: string; hint?: string }) {
+  return (
+    <div className="rounded-xl border border-line bg-surface px-4 py-3 shadow-card">
+      <p className="text-xs text-ink-muted">{label}</p>
+      <p className="mt-0.5 text-2xl font-bold tabular-nums text-brand">{value}</p>
+      {hint ? <p className="mt-1 text-xs text-ink-faint line-clamp-2">{hint}</p> : null}
+    </div>
+  );
+}
+
+function FilterChip({
+  active,
+  label,
+  onClick,
+}: {
+  active: boolean;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`rounded-lg px-3 py-1.5 text-xs transition ${
+        active
+          ? "bg-brand-light font-medium text-brand"
+          : "text-ink-muted hover:bg-surface hover:text-ink"
+      }`}
+    >
+      {label}
+    </button>
+  );
 }
 
 export default function AgentsPage() {
@@ -78,6 +112,21 @@ export default function AgentsPage() {
     }
     return filterBySearch(items, search, (a) => `${a.name} ${a.description ?? ""}`);
   }, [list.items, search, tab]);
+
+  const pageStats = useMemo(() => {
+    let enabled = 0;
+    let withKb = 0;
+    for (const a of filtered) {
+      if (a.status === "enabled") enabled += 1;
+      if (a.kb_ids.length > 0) withKb += 1;
+    }
+    return { enabled, withKb };
+  }, [filtered]);
+
+  const onTabChange = (key: string) => {
+    setTab(key as AgentsTab);
+    setSearch("");
+  };
 
   const openCreate = () => {
     setEditing(null);
@@ -134,29 +183,25 @@ export default function AgentsPage() {
       <ResourceListLayout
         title="智能体"
         description={TAB_DESCRIPTIONS[tab]}
-        searchPlaceholder={tab === "a2a" ? undefined : "搜索智能体名称"}
+        searchPlaceholder={tab === "a2a" ? undefined : "搜索智能体名称或描述"}
         search={search}
         onSearchChange={setSearch}
         showSearch={tab !== "a2a"}
         loading={tab !== "a2a" && list.loading}
-        tabs={TAB_ITEMS.map((t) => ({ key: t.id, label: t.label }))}
+        tabs={TAB_ITEMS}
         activeTab={tab}
-        onTabChange={(key) => setTab(key as AgentsTab)}
+        onTabChange={onTabChange}
         headerAction={
           tab !== "a2a" ? (
             <div className="flex flex-wrap items-center gap-2">
-              <select
-                className="input-field text-sm"
-                value={cat.activeId}
-                onChange={(e) => cat.setActiveId(e.target.value)}
-                aria-label="按分类筛选"
+              <button
+                type="button"
+                className="btn-ghost shrink-0 text-sm"
+                disabled={list.loading}
+                onClick={() => void list.reload()}
               >
-                {cat.tabs.map((t) => (
-                  <option key={t.key || "all"} value={t.key}>
-                    {t.label}
-                  </option>
-                ))}
-              </select>
+                {list.loading ? "刷新中…" : "刷新"}
+              </button>
               <TagFilterSelect value={tagFilterIds} onChange={setTagFilterIds} />
               <button
                 type="button"
@@ -183,11 +228,47 @@ export default function AgentsPage() {
           <A2aAgentsTab />
         ) : (
           <>
+            <div className="col-span-full grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <StatChip label="智能体总数" value={String(list.total)} hint={TAB_ITEMS.find((t) => t.key === tab)?.label} />
+              <StatChip
+                label="本页已启用"
+                value={String(pageStats.enabled)}
+                hint={`已绑知识库 ${pageStats.withKb}（当前筛选）`}
+              />
+              <StatChip label="本页展示" value={String(filtered.length)} hint="受搜索与分类影响" />
+              <StatChip
+                label="快捷入口"
+                value="对话"
+                hint="卡片内可查看、对话、编排配置"
+              />
+            </div>
+
+            <div className="col-span-full rounded-xl border border-line bg-surface-muted/40 p-4">
+              <p className="mb-2 text-xs font-medium text-ink-muted">分类</p>
+              <div className="flex flex-wrap gap-2">
+                {cat.tabs.map((t) => (
+                  <FilterChip
+                    key={t.key || "all"}
+                    active={cat.activeId === t.key}
+                    label={t.label}
+                    onClick={() => cat.setActiveId(t.key)}
+                  />
+                ))}
+              </div>
+            </div>
+
             <AddResourceCard
               label="添加智能体"
               hint="配置模型、知识库、工具；可选内部协同或引用外部 A2A"
               onClick={openCreate}
             />
+
+            {!list.loading && filtered.length === 0 && (
+              <p className="col-span-full py-12 text-center text-sm text-ink-faint">
+                暂无匹配的智能体，可调整筛选或新建
+              </p>
+            )}
+
             {filtered.map((a) => {
               const disabled = a.status !== "enabled";
               return (
@@ -199,7 +280,7 @@ export default function AgentsPage() {
                   muted={disabled}
                   meta={
                     <>
-                      <span>
+                      <span className="text-xs text-ink-muted">
                         {a.category_name ? `${a.category_name} · ` : ""}
                         {agentTypeLabel(a)} ·{" "}
                         {a.kb_ids.length > 0 ? `知识库 ${a.kb_ids.length}` : "未绑知识库"} ·{" "}

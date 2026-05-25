@@ -5,15 +5,8 @@ import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth-store";
+import { taskStatusLabel } from "@/lib/task-labels";
 import type { TaskRecord } from "@/lib/types";
-
-const STATUS_LABEL: Record<string, string> = {
-  pending: "等待中",
-  running: "运行中",
-  success: "成功",
-  failed: "失败",
-  cancelled: "已取消",
-};
 
 export default function TaskDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -75,7 +68,7 @@ export default function TaskDetailPage() {
           <div>
             <h1 className="text-lg font-bold text-ink">{task.task_name}</h1>
             <p className="mt-1 text-sm text-ink-muted">
-              状态：{STATUS_LABEL[task.status] || task.status}
+              状态：{taskStatusLabel(task.status)}
             </p>
           </div>
           <div className="flex gap-2">

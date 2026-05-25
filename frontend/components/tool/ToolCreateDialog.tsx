@@ -4,7 +4,6 @@ import { ResourceDialog } from "@/components/resource/ResourceDialog";
 import { ToolParameterEditor } from "@/components/tool/ToolParameterEditor";
 import { TagPicker } from "@/components/tag/TagPicker";
 import type { CustomTool, ToolParameterSpec } from "@/lib/types";
-import type { SysCategory } from "@/lib/types";
 
 export type ToolDialogMode = "create" | "edit";
 
@@ -12,11 +11,9 @@ type Props = {
   open: boolean;
   mode: ToolDialogMode;
   editing: CustomTool | null;
-  categories: SysCategory[];
   slug: string;
   name: string;
   description: string;
-  categoryId: string;
   tagIds: string[];
   version: string;
   requireConfirmation: boolean;
@@ -30,7 +27,6 @@ type Props = {
   onSlugChange: (v: string) => void;
   onNameChange: (v: string) => void;
   onDescriptionChange: (v: string) => void;
-  onCategoryIdChange: (v: string) => void;
   onTagIdsChange: (v: string[]) => void;
   onVersionChange: (v: string) => void;
   onRequireConfirmationChange: (v: boolean) => void;
@@ -44,11 +40,9 @@ export function ToolCreateDialog({
   open,
   mode,
   editing,
-  categories,
   slug,
   name,
   description,
-  categoryId,
   tagIds,
   version,
   requireConfirmation,
@@ -62,7 +56,6 @@ export function ToolCreateDialog({
   onSlugChange,
   onNameChange,
   onDescriptionChange,
-  onCategoryIdChange,
   onTagIdsChange,
   onVersionChange,
   onRequireConfirmationChange,
@@ -92,22 +85,6 @@ export function ToolCreateDialog({
       </div>
 
       <div className="space-y-4">
-        <label className="block text-xs">
-          <span className="mb-1 block text-ink-muted">分类</span>
-          <select
-            className="input-field w-full"
-            value={categoryId}
-            onChange={(e) => onCategoryIdChange(e.target.value)}
-          >
-            <option value="">未分类</option>
-            {categories.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-        </label>
-
         <label className="block text-xs">
           <span className="mb-1 block text-ink-muted">标签</span>
           <TagPicker value={tagIds} onChange={onTagIdsChange} />

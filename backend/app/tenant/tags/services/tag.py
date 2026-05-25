@@ -17,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.common.exceptions import BadRequestError, ConflictError, NotFoundError
 from app.core.service import BaseService
+from app.core.soft_delete import is_marked_deleted, mark_deleted, not_deleted
 from app.core.tenant import TenantContext, assert_tenant_access, tenant_filters
 from app.models.tag import EntityTagBinding, TagEntityType, TenantTag
 from app.tenant.categories.services.category import slugify
@@ -42,7 +43,7 @@ class TagService(BaseService):
         """本租户标签库全量列表。"""
         stmt = (
             select(TenantTag)
-            .where(*tenant_filters(self.ctx, TenantTag.tenant_id))
+            .where(*tenant_filters(self.ctx, TenantTag.tenant_id), not_deleted(TenantTag))
             .order_by(TenantTag.name.asc())
         )
         rows = (await self.db.execute(stmt)).scalars().all()
@@ -57,6 +58,7 @@ class TagService(BaseService):
             .where(
                 TenantTag.tenant_id == self.ctx.tenant_id,
                 TenantTag.slug == slug,
+                not_deleted(TenantTag),
             )
             .limit(1)
         )
@@ -77,11 +79,11 @@ class TagService(BaseService):
                 EntityTagBinding.tag_id == row.id,
             )
         )
-        await self.db.delete(row)
+        await mark_deleted(self.db, row)
 
     async def _get_tag_or_raise(self, tag_id: UUID) -> TenantTag:
         row = await self.db.get(TenantTag, tag_id)
-        if not row:
+        if not row or is_marked_deleted(row):
             raise NotFoundError("标签不存在")
         assert_tenant_access(self.ctx, row.tenant_id)
         return row
@@ -93,6 +95,7 @@ class TagService(BaseService):
         stmt = select(TenantTag).where(
             TenantTag.id.in_(tag_ids),
             *tenant_filters(self.ctx, TenantTag.tenant_id),
+            not_deleted(TenantTag),
         )
         rows = (await self.db.execute(stmt)).scalars().all()
         found = {r.id for r in rows}
@@ -160,6 +163,7 @@ class TagService(BaseService):
                 EntityTagBinding.tenant_id == self.ctx.tenant_id,
                 EntityTagBinding.entity_type == et,
                 EntityTagBinding.entity_id.in_(entity_ids),
+                not_deleted(TenantTag),
             )
             .order_by(TenantTag.name.asc())
         )

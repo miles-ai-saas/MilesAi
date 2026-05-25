@@ -12,7 +12,6 @@ import { ResourceDialog } from "@/components/resource/ResourceDialog";
 import { ResourceItemCard } from "@/components/resource/ResourceItemCard";
 import { ResourceListLayout } from "@/components/resource/ResourceListLayout";
 import { filterBySearch } from "@/lib/filter-search";
-import { useCategoryTabs } from "@/components/category/useCategoryTabs";
 import { TagChips } from "@/components/tag/TagChips";
 import { TagFilterSelect } from "@/components/tag/TagFilterSelect";
 import { TagManageDialog } from "@/components/tag/TagManageDialog";
@@ -26,24 +25,17 @@ export default function PromptsPage() {
   const [editing, setEditing] = useState<PromptTemplate | null>(null);
   const [name, setName] = useState("");
   const [content, setContent] = useState("你是企业智能助手，请准确、简洁地回答用户问题。");
-  const [categoryId, setCategoryId] = useState("");
   const [tagIds, setTagIds] = useState<string[]>([]);
   const [tagFilterIds, setTagFilterIds] = useState<string[]>([]);
   const [tagManageOpen, setTagManageOpen] = useState(false);
-  const cat = useCategoryTabs("prompt");
 
   const list = usePagedList(
     useCallback(
       (p, s) =>
-        api.listPromptTemplates(
-          p,
-          s,
-          cat.activeCategoryId,
-          tagFilterIds.length ? tagFilterIds : undefined,
-        ),
-      [cat.activeCategoryId, tagFilterIds],
+        api.listPromptTemplates(p, s, undefined, tagFilterIds.length ? tagFilterIds : undefined),
+      [tagFilterIds],
     ),
-    { enabled: ready, resetKey: `${cat.activeId}-${tagFilterIds.join(",")}` },
+    { enabled: ready, resetKey: tagFilterIds.join(",") },
   );
   const { requestConfirm, confirmDialog } = useConfirmAction();
 
@@ -56,7 +48,6 @@ export default function PromptsPage() {
     setEditing(null);
     setName("");
     setContent("你是企业智能助手，请准确、简洁地回答用户问题。");
-    setCategoryId(cat.activeId || "");
     setTagIds([]);
     setDialogOpen(true);
   };
@@ -65,7 +56,6 @@ export default function PromptsPage() {
     setEditing(t);
     setName(t.name);
     setContent(t.content);
-    setCategoryId(t.category_id ?? "");
     setTagIds((t.tags ?? []).map((x) => x.id));
     setDialogOpen(true);
   };
@@ -76,17 +66,11 @@ export default function PromptsPage() {
       await api.updatePromptTemplate(editing.id, {
         name: name.trim(),
         content,
-        category_id: categoryId || null,
+        category_id: null,
         tag_ids: tagIds,
       });
     } else {
-      await api.createPromptTemplate(
-        name.trim(),
-        content,
-        undefined,
-        categoryId || undefined,
-        tagIds,
-      );
+      await api.createPromptTemplate(name.trim(), content, undefined, undefined, tagIds);
     }
     setDialogOpen(false);
     await list.reload();
@@ -113,13 +97,10 @@ export default function PromptsPage() {
     <>
       <ResourceListLayout
         title="提示词模板"
-        description="管理系统提示词模板，供智能体与流程编排复用。"
-        searchPlaceholder="搜索模板名称"
+        description="管理系统提示词模板，供智能体与流程编排复用；支持按名称或正文搜索。"
+        searchPlaceholder="搜索模板名称或内容"
         search={search}
         onSearchChange={setSearch}
-        tabs={cat.tabs}
-        activeTab={cat.activeId}
-        onTabChange={cat.setActiveId}
         headerAction={
           <div className="flex flex-wrap items-center gap-2">
             <TagFilterSelect value={tagFilterIds} onChange={setTagFilterIds} />
@@ -151,15 +132,8 @@ export default function PromptsPage() {
             title={t.name}
             description={t.content}
             badge={t.is_active ? "启用" : "停用"}
-            meta={
-              <>
-                {t.category_name ? <span>{t.category_name}</span> : null}
-                <TagChips tags={t.tags} />
-              </>
-            }
-            actions={
-              <CardActions onEdit={() => openEdit(t)} onDelete={() => onDelete(t)} />
-            }
+            meta={<TagChips tags={t.tags} />}
+            actions={<CardActions onEdit={() => openEdit(t)} onDelete={() => onDelete(t)} />}
           />
         ))}
       </ResourceListLayout>
@@ -179,21 +153,6 @@ export default function PromptsPage() {
           </>
         }
       >
-        <label className="block text-sm">
-          <span className="mb-1 block text-ink-muted">分类</span>
-          <select
-            className="input-field w-full"
-            value={categoryId}
-            onChange={(e) => setCategoryId(e.target.value)}
-          >
-            <option value="">未分类</option>
-            {cat.categories.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-        </label>
         <label className="block text-sm">
           <span className="mb-1 block text-ink-muted">标签</span>
           <TagPicker value={tagIds} onChange={setTagIds} />

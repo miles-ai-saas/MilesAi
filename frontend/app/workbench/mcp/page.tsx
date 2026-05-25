@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * MCP 服务管理页：Tab 筛选传输类型、卡片列表、同步/编辑/删除。
+ * MCP 服务管理页：传输类型筛选、卡片列表、同步/编辑/删除。
  * SSE 类型 endpoint 应填 GET 长连接地址（如 /sse），由后端 legacy_sse 客户端处理。
  */
 
@@ -16,7 +16,12 @@ import { usePagedList } from "@/hooks/use-paged-list";
 import { api } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth-store";
 import { filterBySearch } from "@/lib/filter-search";
-import { MCP_TRANSPORT_TABS, normalizeMcpTransport, type McpTransportTab } from "@/lib/mcp-labels";
+import {
+  MCP_TRANSPORT_TABS,
+  mcpTransportLabel,
+  normalizeMcpTransport,
+  type McpTransportTab,
+} from "@/lib/mcp-labels";
 import type { McpService } from "@/lib/types";
 
 function parseStdioArgs(text: string): string[] {
@@ -24,6 +29,32 @@ function parseStdioArgs(text: string): string[] {
     .split("\n")
     .map((s) => s.trim())
     .filter(Boolean);
+}
+
+const PAGE_DESC =
+  "注册 Model Context Protocol 端点（HTTP / SSE / STDIO），同步远程工具列表；绑定到智能体后注入系统提示。SSE 请填写 GET 长连接地址。";
+
+function StatChip({ label, value, hint }: { label: string; value: string; hint?: string }) {
+  return (
+    <div className="rounded-xl border border-line bg-surface px-4 py-3 shadow-card">
+      <p className="text-xs text-ink-muted">{label}</p>
+      <p className="mt-0.5 text-2xl font-bold tabular-nums text-brand">{value}</p>
+      {hint ? <p className="mt-1 text-xs text-ink-faint line-clamp-2">{hint}</p> : null}
+    </div>
+  );
+}
+
+function PageMessage({ message, onDismiss }: { message: string; onDismiss?: () => void }) {
+  return (
+    <div className="col-span-full flex items-start justify-between gap-3 rounded-xl border border-line bg-brand-light/40 px-4 py-3 text-sm text-ink">
+      <p className="min-w-0 flex-1">{message}</p>
+      {onDismiss && (
+        <button type="button" className="shrink-0 text-xs text-ink-muted hover:text-ink" onClick={onDismiss}>
+          关闭
+        </button>
+      )}
+    </div>
+  );
 }
 
 export default function McpPage() {
@@ -53,9 +84,32 @@ export default function McpPage() {
   const { requestConfirm, confirmDialog } = useConfirmAction();
 
   const filtered = useMemo(
-    () => filterBySearch(list.items, search, (s) => `${s.name} ${s.description ?? ""} ${s.endpoint_url}`),
+    () =>
+      filterBySearch(
+        list.items,
+        search,
+        (s) =>
+          `${s.name} ${s.description ?? ""} ${s.endpoint_url} ${mcpTransportLabel(s.transport)}`,
+      ),
     [list.items, search],
   );
+
+  const pageStats = useMemo(() => {
+    let synced = 0;
+    let warn = 0;
+    let tools = 0;
+    for (const s of list.items) {
+      if (s.sync_error) warn += 1;
+      else if (s.last_sync_at && (s.tools_cache?.length ?? 0) > 0) synced += 1;
+      tools += s.tools_cache?.length ?? 0;
+    }
+    return { synced, warn, tools };
+  }, [list.items]);
+
+  const onTabChange = (key: string) => {
+    setActiveTab(key as McpTransportTab);
+    setSearch("");
+  };
 
   const resetForm = (transport: Exclude<McpTransportTab, "">) => {
     setName("");
@@ -87,7 +141,6 @@ export default function McpPage() {
     setDialogOpen(true);
   };
 
-  /** 按传输类型组装 create/update 请求体。 */
   const buildPayload = () => {
     const t = editing ? normalizeMcpTransport(editing.transport) : dialogTransport;
     const trimmedName = name.trim() || "MCP";
@@ -162,19 +215,31 @@ export default function McpPage() {
     });
   };
 
+  const activeTabLabel =
+    MCP_TRANSPORT_TABS.find((t) => t.key === activeTab)?.label ?? "全部";
+
   return (
     <>
       <ResourceListLayout
         title="MCP 服务"
-        description="注册 Model Context Protocol 端点（HTTP / SSE / STDIO），同步远程工具列表；绑定到智能体后注入系统提示。"
-        searchPlaceholder="搜索 MCP 服务名称或描述"
+        description={PAGE_DESC}
+        searchPlaceholder="搜索服务名称、描述或端点"
         search={search}
         onSearchChange={setSearch}
         tabs={MCP_TRANSPORT_TABS}
         activeTab={activeTab}
-        onTabChange={(key) => setActiveTab(key as McpTransportTab)}
+        onTabChange={onTabChange}
         loading={list.loading}
-        headerAction={msg ? <span className="text-xs text-ink-muted">{msg}</span> : undefined}
+        headerAction={
+          <button
+            type="button"
+            className="btn-ghost shrink-0 text-sm"
+            disabled={list.loading}
+            onClick={() => void list.reload()}
+          >
+            {list.loading ? "刷新中…" : "刷新"}
+          </button>
+        }
         footer={
           !list.loading ? (
             <ResourceListFooter
@@ -186,7 +251,27 @@ export default function McpPage() {
           ) : null
         }
       >
+        {msg && <PageMessage message={msg} onDismiss={() => setMsg("")} />}
+
+        <div className="col-span-full grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <StatChip label="服务总数" value={String(list.total)} hint={`当前筛选：${activeTabLabel}`} />
+          <StatChip
+            label="本页已同步"
+            value={String(pageStats.synced)}
+            hint={`同步失败 ${pageStats.warn}（当前页）`}
+          />
+          <StatChip label="本页工具数" value={String(pageStats.tools)} hint="已缓存 tools/list" />
+          <StatChip label="本页展示" value={String(filtered.length)} hint="受搜索筛选影响" />
+        </div>
+
         <McpCreateCard onAdd={openCreate} />
+
+        {!list.loading && filtered.length === 0 && (
+          <p className="col-span-full py-12 text-center text-sm text-ink-faint">
+            暂无匹配的 MCP 服务，可通过左侧卡片添加 HTTP / SSE / STDIO
+          </p>
+        )}
+
         {filtered.map((s) => (
           <McpServiceCard
             key={s.id}
