@@ -341,3 +341,5 @@ export function FlowCanvas(props: FlowCanvasProps) {
     </ReactFlowProvider>
   );
 }
+
+export default FlowCanvas;

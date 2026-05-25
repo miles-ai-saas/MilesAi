@@ -7,10 +7,9 @@ import { api } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth-store";
 import type { FlowGraph } from "@/lib/types";
 
-const FlowCanvas = dynamic(
-  () => import("@/components/flow/FlowCanvas").then((m) => m.FlowCanvas),
-  { ssr: false }
-);
+const FlowCanvas = dynamic(() => import("@/components/flow/FlowCanvas"), {
+  ssr: false,
+});
 
 export default function FlowEditPage() {
   const { id } = useParams<{ id: string }>();
