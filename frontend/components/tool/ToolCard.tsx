@@ -6,15 +6,19 @@ import type { ToolCatalogItem } from "@/lib/types";
 
 type Props = {
   tool: ToolCatalogItem;
+  onDetail: () => void;
   onTest: () => void;
   onEdit?: () => void;
   onDelete?: () => void;
 };
 
-export function ToolCard({ tool, onTest, onEdit, onDelete }: Props) {
+export function ToolCard({ tool, onDetail, onTest, onEdit, onDelete }: Props) {
   const readonly = tool.source !== "custom";
 
-  const menuItems: OverflowMenuItem[] = [{ label: "试调用", onClick: onTest }];
+  const menuItems: OverflowMenuItem[] = [
+    { label: "查看详情", onClick: onDetail },
+    { label: "试调用", onClick: onTest },
+  ];
   if (!readonly && onEdit) {
     menuItems.push({ label: "编辑", onClick: onEdit });
   }
@@ -23,7 +27,18 @@ export function ToolCard({ tool, onTest, onEdit, onDelete }: Props) {
   }
 
   return (
-    <article className="resource-card relative !min-h-[176px]">
+    <article
+      className="resource-card relative !min-h-[176px] cursor-pointer transition hover:border-brand/30"
+      role="button"
+      tabIndex={0}
+      onClick={onDetail}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onDetail();
+        }
+      }}
+    >
       <div className="flex items-start gap-3">
         <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-brand-light text-lg">
           🔧

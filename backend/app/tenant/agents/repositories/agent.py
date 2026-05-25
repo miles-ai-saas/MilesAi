@@ -7,13 +7,15 @@
 
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import insert, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.common.exceptions import NotFoundError
 from app.core.repository import BaseRepository
 from app.core.soft_delete import not_deleted
-from app.models.agent import Agent, AgentSubAgentBinding
+from app.deletion.cascade import unlink_agent_kb_bindings
+from app.models.agent import Agent, AgentSubAgentBinding, agent_kb_bindings
 from app.models.kb import KnowledgeBase
 
 
@@ -47,3 +49,31 @@ class AgentRepository(BaseRepository[Agent]):
             select(KnowledgeBase).where(KnowledgeBase.id.in_(kb_ids), not_deleted(KnowledgeBase))
         )
         return list(result.scalars().all())
+
+    async def replace_kb_bindings(
+        self,
+        agent_id: UUID,
+        kb_ids: list[UUID],
+        *,
+        tenant_id: UUID,
+    ) -> None:
+        """全量替换 Agent↔KB 关联（直接写关联表，避免 async 下 ORM 懒加载）。"""
+        await unlink_agent_kb_bindings(self.db, agent_id=agent_id)
+        if not kb_ids:
+            return
+        rows = (
+            await self.db.execute(
+                select(KnowledgeBase.id).where(
+                    KnowledgeBase.id.in_(kb_ids),
+                    KnowledgeBase.tenant_id == tenant_id,
+                    not_deleted(KnowledgeBase),
+                )
+            )
+        ).scalars().all()
+        found = set(rows)
+        if len(found) != len(set(kb_ids)):
+            raise NotFoundError("知识库不存在或无权访问")
+        await self.db.execute(
+            insert(agent_kb_bindings),
+            [{"agent_id": agent_id, "kb_id": kb_id} for kb_id in kb_ids],
+        )

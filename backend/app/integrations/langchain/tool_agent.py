@@ -75,6 +75,10 @@ async def run_tool_calling_chat(
     if not agent.model_config:
         raise ValueError("工具调用需要配置大模型")
 
+    from app.tenant.models.services.model_resolve import resolve_model_for_invoke
+
+    model = await resolve_model_for_invoke(db, agent.model_config, ctx.tenant_id)
+
     all_tools = await get_all_platform_tools(db, ctx)
     allowed = agent.config.get("tool_slugs") if isinstance(agent.config, dict) else None
     if allowed:
@@ -129,7 +133,7 @@ async def run_tool_calling_chat(
 
     for _ in range(max_iter):
         response = await _litellm_with_tools(
-            agent.model_config, messages, openai_tools, temperature=temperature
+            model, messages, openai_tools, temperature=temperature
         )
         choice = response.choices[0]
         message = choice.message

@@ -90,6 +90,12 @@ def _resolve_api_base(model: ModelConfig) -> str | None:
 
 def _litellm_error_message(exc: BaseException) -> str:
     msg = getattr(exc, "message", None) or str(exc)
+    lower = msg.lower()
+    if "authenticationerror" in lower or "incorrect api key" in lower or "invalid api key" in lower:
+        return (
+            "模型 API Key 鉴权失败，请检查密钥是否正确、未过期，"
+            "并在「模型供应商」为对应模型配置有效的 DashScope / 厂商密钥"
+        )
     return f"模型调用失败: {msg}"
 
 

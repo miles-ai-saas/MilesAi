@@ -1,5 +1,7 @@
 "use client";
 
+import { KbPageAlert } from "@/components/kb/KbPageAlert";
+import { CodeEditor } from "@/components/editor/CodeEditor";
 import { ResourceDialog } from "@/components/resource/ResourceDialog";
 import { ToolParameterEditor } from "@/components/tool/ToolParameterEditor";
 import { TagPicker } from "@/components/tag/TagPicker";
@@ -32,7 +34,9 @@ type Props = {
   timeoutSec: number;
   scriptSource: string;
   busy: boolean;
+  saveError?: string;
   onClose: () => void;
+  onDismissError?: () => void;
   onSubmit: () => void;
   onToolKindChange: (v: ToolKindTab) => void;
   onSlugChange: (v: string) => void;
@@ -50,12 +54,65 @@ type Props = {
   onScriptSourceChange: (v: string) => void;
 };
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({
+  title,
+  hint,
+  children,
+  className = "",
+}: {
+  title: string;
+  hint?: string;
+  children: React.ReactNode;
+  className?: string;
+}) {
   return (
-    <section className="rounded-xl border border-line bg-surface-muted/30 p-4">
-      <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-ink-muted">{title}</h3>
+    <section
+      className={`rounded-xl border border-line bg-surface-muted/30 p-4 ${className}`}
+    >
+      <div className="mb-3">
+        <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-muted">{title}</h3>
+        {hint ? <p className="mt-1 text-xs leading-relaxed text-ink-faint">{hint}</p> : null}
+      </div>
       <div className="space-y-3">{children}</div>
     </section>
+  );
+}
+
+function KindSelector({
+  toolKind,
+  kindLocked,
+  onToolKindChange,
+}: {
+  toolKind: ToolKindTab;
+  kindLocked: boolean;
+  onToolKindChange: (v: ToolKindTab) => void;
+}) {
+  if (kindLocked) return null;
+
+  return (
+    <div className="inline-flex flex-wrap gap-1 rounded-xl border border-line bg-surface p-1">
+      {TOOL_KIND_TABS.map((tab) => {
+        const active = toolKind === tab.key;
+        return (
+          <button
+            key={tab.key}
+            type="button"
+            disabled={!tab.available}
+            title={tab.hint}
+            onClick={() => tab.available && onToolKindChange(tab.key)}
+            className={`rounded-lg px-4 py-2 text-left transition ${
+              active
+                ? "bg-brand-light text-brand shadow-sm ring-1 ring-brand/20"
+                : tab.available
+                  ? "text-ink-muted hover:bg-surface-muted hover:text-ink"
+                  : "cursor-not-allowed opacity-50"
+            }`}
+          >
+            <span className="text-sm font-medium">{tab.label}</span>
+          </button>
+        );
+      })}
+    </div>
   );
 }
 
@@ -95,7 +152,7 @@ function BasicFields({
         <span className="mb-1 block text-ink-muted">名称 *</span>
         <input
           className="input-field w-full"
-          placeholder="例如：文本处理"
+          placeholder="例如：天气查询"
           value={name}
           onChange={(e) => onNameChange(e.target.value)}
         />
@@ -104,7 +161,7 @@ function BasicFields({
         <span className="mb-1 block text-ink-muted">编号 *</span>
         <input
           className="input-field w-full font-mono"
-          placeholder="text_transform"
+          placeholder="weather_query"
           value={slug}
           disabled={mode === "edit"}
           onChange={(e) => onSlugChange(e.target.value.toLowerCase())}
@@ -113,8 +170,8 @@ function BasicFields({
       <label className="block text-xs">
         <span className="mb-1 block text-ink-muted">描述</span>
         <textarea
-          className="input-field min-h-[64px] w-full"
-          placeholder="供 LLM 与使用者理解工具用途"
+          className="input-field min-h-[72px] w-full resize-y"
+          placeholder="供 LLM 理解工具用途"
           value={description}
           onChange={(e) => onDescriptionChange(e.target.value)}
         />
@@ -132,7 +189,7 @@ function BasicFields({
             onChange={(e) => onVersionChange(e.target.value)}
           />
         </label>
-        <label className="flex items-end justify-between rounded-lg border border-line-soft bg-surface px-3 py-2 text-xs">
+        <label className="flex min-h-[42px] items-center justify-between rounded-lg border border-line-soft bg-surface px-3 text-xs">
           <span className="text-ink-muted">执行前需确认</span>
           <input
             type="checkbox"
@@ -145,156 +202,167 @@ function BasicFields({
   );
 }
 
+function HttpConfigFields({
+  url,
+  method,
+  headersJson,
+  bodyMode,
+  timeoutSec,
+  onUrlChange,
+  onMethodChange,
+  onHeadersJsonChange,
+  onBodyModeChange,
+  onTimeoutSecChange,
+}: Pick<
+  Props,
+  | "url"
+  | "method"
+  | "headersJson"
+  | "bodyMode"
+  | "timeoutSec"
+  | "onUrlChange"
+  | "onMethodChange"
+  | "onHeadersJsonChange"
+  | "onBodyModeChange"
+  | "onTimeoutSecChange"
+>) {
+  return (
+  <>
+    <label className="block text-xs">
+      <span className="mb-1 block text-ink-muted">URL *</span>
+      <input
+        className="input-field w-full font-mono text-sm"
+        placeholder="https://api.example.com/weather?city={{city}}"
+        value={url}
+        onChange={(e) => onUrlChange(e.target.value)}
+      />
+    </label>
+    <div className="grid gap-3 sm:grid-cols-3">
+      <label className="block text-xs">
+        <span className="mb-1 block text-ink-muted">方法</span>
+        <select
+          className="input-field w-full"
+          value={method}
+          onChange={(e) => onMethodChange(e.target.value)}
+        >
+          <option value="GET">GET</option>
+          <option value="POST">POST</option>
+          <option value="PUT">PUT</option>
+          <option value="PATCH">PATCH</option>
+        </select>
+      </label>
+      <label className="block text-xs">
+        <span className="mb-1 block text-ink-muted">Body</span>
+        <select
+          className="input-field w-full"
+          value={bodyMode}
+          onChange={(e) => onBodyModeChange(e.target.value as "json" | "none")}
+        >
+          <option value="json">JSON</option>
+          <option value="none">无 Body</option>
+        </select>
+      </label>
+      <label className="block text-xs">
+        <span className="mb-1 block text-ink-muted">超时（秒）</span>
+        <input
+          type="number"
+          min={1}
+          max={120}
+          className="input-field w-full"
+          value={timeoutSec}
+          onChange={(e) => onTimeoutSecChange(Number(e.target.value) || 15)}
+        />
+      </label>
+    </div>
+    <label className="block text-xs">
+      <span className="mb-1 block text-ink-muted">Headers（JSON）</span>
+      <textarea
+        className="input-field min-h-[88px] w-full resize-y font-mono text-xs"
+        placeholder='{"Authorization": "Bearer xxx"}'
+        value={headersJson}
+        onChange={(e) => onHeadersJsonChange(e.target.value)}
+      />
+    </label>
+  </>
+  );
+}
+
+function ScriptConfigFields({
+  scriptSource,
+  timeoutSec,
+  onScriptSourceChange,
+  onTimeoutSecChange,
+}: Pick<Props, "scriptSource" | "timeoutSec" | "onScriptSourceChange" | "onTimeoutSecChange">) {
+  return (
+    <>
+      <label className="block min-h-0 flex-1 text-xs">
+        <span className="mb-1 block text-ink-muted">源码 *</span>
+        <CodeEditor
+          language="python"
+          value={scriptSource}
+          onChange={onScriptSourceChange}
+          height="min(420px, calc(100vh - 22rem))"
+          aria-label="Python 脚本源码"
+        />
+      </label>
+      <label className="block max-w-xs text-xs">
+        <span className="mb-1 block text-ink-muted">超时（秒）</span>
+        <input
+          type="number"
+          min={1}
+          max={120}
+          className="input-field w-full"
+          value={timeoutSec}
+          onChange={(e) => onTimeoutSecChange(Number(e.target.value) || 30)}
+        />
+      </label>
+    </>
+  );
+}
+
 function ToolEntityFields(props: Omit<
   Props,
   "open" | "editing" | "busy" | "onClose" | "onSubmit" | "onToolKindChange"
 >) {
-  const {
-    mode,
-    toolKind,
-    slug,
-    name,
-    description,
-    tagIds,
-    version,
-    requireConfirmation,
-    parameters,
-    url,
-    method,
-    headersJson,
-    bodyMode,
-    timeoutSec,
-    scriptSource,
-    onSlugChange,
-    onNameChange,
-    onDescriptionChange,
-    onTagIdsChange,
-    onVersionChange,
-    onRequireConfirmationChange,
-    onParametersChange,
-    onUrlChange,
-    onMethodChange,
-    onHeadersJsonChange,
-    onBodyModeChange,
-    onTimeoutSecChange,
-    onScriptSourceChange,
-  } = props;
+  const { toolKind, ...rest } = props;
   const isScript = toolKind === "script";
+  const paramHint = isScript
+    ? "传入 run(params) 的字典；试调用与 Agent 共用。"
+    : "URL 可用 {{参数名}} 占位；试调用与 Agent 共用。";
+  const execHint = isScript
+    ? "MCP Runner 沙箱执行；须定义 run(params: dict) -> dict，禁止 import。"
+    : "REST 调用配置；支持 URL 模板与 JSON Body。";
 
   return (
-    <div className="space-y-4">
-      <Section title="基本信息">
-        <BasicFields
-          mode={mode}
-          slug={slug}
-          name={name}
-          description={description}
-          tagIds={tagIds}
-          version={version}
-          requireConfirmation={requireConfirmation}
-          onSlugChange={onSlugChange}
-          onNameChange={onNameChange}
-          onDescriptionChange={onDescriptionChange}
-          onTagIdsChange={onTagIdsChange}
-          onVersionChange={onVersionChange}
-          onRequireConfirmationChange={onRequireConfirmationChange}
-        />
-      </Section>
-
-      <Section title="输入参数">
-        <p className="-mt-1 mb-2 text-xs text-ink-faint">
-          试调用与 Agent function calling 共用
-          {!isScript ? "；URL 中可用 {{参数名}} 占位" : "；传入 run(params) 的 params 字典"}。
-        </p>
-        <ToolParameterEditor value={parameters} onChange={onParametersChange} />
-      </Section>
-
-      {isScript ? (
-        <Section title="Python 脚本">
-          <p className="-mt-1 mb-2 text-xs text-ink-faint">
-            在 MCP Runner 沙箱内执行；须定义{" "}
-            <code className="font-mono">run(params: dict) -&gt; dict</code>，禁止 import 与危险内置调用。
-          </p>
-          <label className="block text-xs">
-            <span className="mb-1 block text-ink-muted">源码 *</span>
-            <textarea
-              className="input-field min-h-[200px] w-full font-mono text-xs"
-              spellCheck={false}
-              value={scriptSource}
-              onChange={(e) => onScriptSourceChange(e.target.value)}
-            />
-          </label>
-          <label className="block text-xs sm:max-w-xs">
-            <span className="mb-1 block text-ink-muted">超时（秒）</span>
-            <input
-              type="number"
-              min={1}
-              max={120}
-              className="input-field w-full"
-              value={timeoutSec}
-              onChange={(e) => onTimeoutSecChange(Number(e.target.value) || 30)}
-            />
-          </label>
+    <div className="grid gap-5 lg:grid-cols-[minmax(260px,300px)_minmax(0,1fr)] lg:items-start">
+      <aside className="space-y-4 lg:sticky lg:top-0">
+        <Section title="基本信息">
+          <BasicFields {...rest} />
         </Section>
-      ) : (
-        <Section title="HTTP 配置">
-          <label className="block text-xs">
-            <span className="mb-1 block text-ink-muted">URL *</span>
-            <input
-              className="input-field w-full font-mono text-sm"
-              placeholder="https://api.example.com/weather?city={{city}}"
-              value={url}
-              onChange={(e) => onUrlChange(e.target.value)}
-            />
-          </label>
-          <div className="grid gap-3 sm:grid-cols-3">
-            <label className="block text-xs sm:col-span-1">
-              <span className="mb-1 block text-ink-muted">方法</span>
-              <select
-                className="input-field w-full"
-                value={method}
-                onChange={(e) => onMethodChange(e.target.value)}
-              >
-                <option value="GET">GET</option>
-                <option value="POST">POST</option>
-                <option value="PUT">PUT</option>
-                <option value="PATCH">PATCH</option>
-              </select>
-            </label>
-            <label className="block text-xs sm:col-span-1">
-              <span className="mb-1 block text-ink-muted">Body</span>
-              <select
-                className="input-field w-full"
-                value={bodyMode}
-                onChange={(e) => onBodyModeChange(e.target.value as "json" | "none")}
-              >
-                <option value="json">JSON（默认）</option>
-                <option value="none">无 Body</option>
-              </select>
-            </label>
-            <label className="block text-xs sm:col-span-1">
-              <span className="mb-1 block text-ink-muted">超时（秒）</span>
-              <input
-                type="number"
-                min={1}
-                max={120}
-                className="input-field w-full"
-                value={timeoutSec}
-                onChange={(e) => onTimeoutSecChange(Number(e.target.value) || 15)}
-              />
-            </label>
-          </div>
-          <label className="block text-xs">
-            <span className="mb-1 block text-ink-muted">Headers（JSON）</span>
-            <textarea
-              className="input-field min-h-[72px] w-full font-mono text-xs"
-              placeholder='{"Authorization": "Bearer xxx"}'
-              value={headersJson}
-              onChange={(e) => onHeadersJsonChange(e.target.value)}
-            />
-          </label>
+      </aside>
+
+      <div className="flex min-w-0 flex-col gap-5">
+        <Section title="输入参数" hint={paramHint}>
+          <ToolParameterEditor value={rest.parameters} onChange={rest.onParametersChange} />
         </Section>
-      )}
+
+        <Section
+          title={isScript ? "Python 脚本" : "HTTP 配置"}
+          hint={execHint}
+          className={isScript ? "flex flex-col" : undefined}
+        >
+          {isScript ? (
+            <ScriptConfigFields
+              scriptSource={rest.scriptSource}
+              timeoutSec={rest.timeoutSec}
+              onScriptSourceChange={rest.onScriptSourceChange}
+              onTimeoutSecChange={rest.onTimeoutSecChange}
+            />
+          ) : (
+            <HttpConfigFields {...rest} />
+          )}
+        </Section>
+      </div>
     </div>
   );
 }
@@ -318,7 +386,9 @@ export function ToolCreateDialog({
   timeoutSec,
   scriptSource,
   busy,
+  saveError = "",
   onClose,
+  onDismissError,
   onSubmit,
   onToolKindChange,
   onSlugChange,
@@ -346,7 +416,13 @@ export function ToolCreateDialog({
     <ResourceDialog
       open={open}
       size="sheet"
+      contentMaxWidth="max-w-6xl"
       title={mode === "create" ? "新增工具" : `编辑 · ${editing?.name ?? ""}`}
+      description={
+        mode === "create"
+          ? "左侧填写元数据，右侧配置参数与 HTTP / 脚本执行方式。"
+          : undefined
+      }
       onClose={onClose}
       footer={
         <>
@@ -359,62 +435,46 @@ export function ToolCreateDialog({
         </>
       }
     >
-      {!kindLocked && (
-        <div className="mb-5 grid gap-2 sm:grid-cols-2">
-          {TOOL_KIND_TABS.map((tab) => {
-            const active = toolKind === tab.key;
-            return (
-              <button
-                key={tab.key}
-                type="button"
-                disabled={!tab.available}
-                onClick={() => tab.available && onToolKindChange(tab.key)}
-                className={`rounded-xl border px-4 py-3 text-left transition ${
-                  active
-                    ? "border-brand bg-brand-light/40 ring-1 ring-brand/30"
-                    : tab.available
-                      ? "border-line bg-surface hover:border-brand/40"
-                      : "cursor-not-allowed border-line bg-surface-muted/50 opacity-75"
-                }`}
-              >
-                <span className="text-sm font-medium text-ink">{tab.label}</span>
-                <p className="mt-1 text-xs text-ink-muted">{tab.hint}</p>
-              </button>
-            );
-          })}
-        </div>
-      )}
-
-      <ToolEntityFields
-        mode={mode}
-        toolKind={toolKind}
-        slug={slug}
-        name={name}
-        description={description}
-        tagIds={tagIds}
-        version={version}
-        requireConfirmation={requireConfirmation}
-        parameters={parameters}
-        url={url}
-        method={method}
-        headersJson={headersJson}
-        bodyMode={bodyMode}
-        timeoutSec={timeoutSec}
-        scriptSource={scriptSource}
-        onSlugChange={onSlugChange}
-        onNameChange={onNameChange}
-        onDescriptionChange={onDescriptionChange}
-        onTagIdsChange={onTagIdsChange}
-        onVersionChange={onVersionChange}
-        onRequireConfirmationChange={onRequireConfirmationChange}
-        onParametersChange={onParametersChange}
-        onUrlChange={onUrlChange}
-        onMethodChange={onMethodChange}
-        onHeadersJsonChange={onHeadersJsonChange}
-        onBodyModeChange={onBodyModeChange}
-        onTimeoutSecChange={onTimeoutSecChange}
-        onScriptSourceChange={onScriptSourceChange}
-      />
+      <div className="space-y-5">
+        {saveError ? (
+          <KbPageAlert tone="error" message={saveError} onDismiss={onDismissError} />
+        ) : null}
+        <KindSelector
+          toolKind={toolKind}
+          kindLocked={kindLocked}
+          onToolKindChange={onToolKindChange}
+        />
+        <ToolEntityFields
+          mode={mode}
+          toolKind={toolKind}
+          slug={slug}
+          name={name}
+          description={description}
+          tagIds={tagIds}
+          version={version}
+          requireConfirmation={requireConfirmation}
+          parameters={parameters}
+          url={url}
+          method={method}
+          headersJson={headersJson}
+          bodyMode={bodyMode}
+          timeoutSec={timeoutSec}
+          scriptSource={scriptSource}
+          onSlugChange={onSlugChange}
+          onNameChange={onNameChange}
+          onDescriptionChange={onDescriptionChange}
+          onTagIdsChange={onTagIdsChange}
+          onVersionChange={onVersionChange}
+          onRequireConfirmationChange={onRequireConfirmationChange}
+          onParametersChange={onParametersChange}
+          onUrlChange={onUrlChange}
+          onMethodChange={onMethodChange}
+          onHeadersJsonChange={onHeadersJsonChange}
+          onBodyModeChange={onBodyModeChange}
+          onTimeoutSecChange={onTimeoutSecChange}
+          onScriptSourceChange={onScriptSourceChange}
+        />
+      </div>
     </ResourceDialog>
   );
 }

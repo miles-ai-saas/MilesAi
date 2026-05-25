@@ -15,6 +15,7 @@ from app.common.schema import PageParams, PageResult
 from app.core.soft_delete import is_marked_deleted, mark_deleted, not_deleted
 from app.models.model import ModelConfig
 from app.models.model_catalog import ModelPublishStatus
+from app.tenant.models.services.api_key_validation import normalize_api_key, validate_api_key
 
 
 def _admin_out(m: ModelConfig) -> ModelCatalogOut:
@@ -120,7 +121,7 @@ class AdminModelCatalogService:
             description=body.description,
             context_window=body.context_window,
             api_base=body.api_base,
-            api_key_encrypted=body.api_key,
+            api_key_encrypted=validate_api_key(body.api_key, vendor=vendor) if body.api_key else None,
             publish_status=ModelPublishStatus.DRAFT.value,
             badge=body.badge,
             sort_order=body.sort_order,
@@ -141,7 +142,7 @@ class AdminModelCatalogService:
         if clear_key:
             m.api_key_encrypted = None
         elif api_key:
-            m.api_key_encrypted = api_key
+            m.api_key_encrypted = validate_api_key(api_key, vendor=m.vendor)
         for k, v in data.items():
             setattr(m, k, v)
         if "vendor" in data and "provider" not in data:

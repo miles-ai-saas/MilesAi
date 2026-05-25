@@ -100,10 +100,12 @@ export function ModelCatalogEditDialog({
 }: Props) {
   const [form, setForm] = useState<ModelCatalogFormValues>(emptyForm);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
 
   useEffect(() => {
     if (!open) return;
     setForm(initial ? fromRow(initial) : emptyForm());
+    setSaveError("");
   }, [open, initial]);
 
   if (!open) return null;
@@ -121,9 +123,12 @@ export function ModelCatalogEditDialog({
 
   const submit = async () => {
     setSaving(true);
+    setSaveError("");
     try {
       await onSave(form);
       onClose();
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : "保存失败");
     } finally {
       setSaving(false);
     }
@@ -284,13 +289,18 @@ export function ModelCatalogEditDialog({
             )}
           </div>
         </div>
-        <footer className="flex justify-end gap-2 border-t border-line px-5 py-4">
-          <button type="button" className="btn-ghost" onClick={onClose} disabled={saving}>
-            取消
-          </button>
-          <button type="button" className="btn-primary" onClick={submit} disabled={saving}>
-            {saving ? "保存中…" : "保存"}
-          </button>
+        <footer className="border-t border-line px-5 py-4">
+          {saveError ? (
+            <p className="mb-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{saveError}</p>
+          ) : null}
+          <div className="flex justify-end gap-2">
+            <button type="button" className="btn-ghost" onClick={onClose} disabled={saving}>
+              取消
+            </button>
+            <button type="button" className="btn-primary" onClick={submit} disabled={saving}>
+              {saving ? "保存中…" : "保存"}
+            </button>
+          </div>
         </footer>
       </div>
     </div>

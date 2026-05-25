@@ -92,6 +92,14 @@ class ToolsService(BaseService):
             size=params.size,
         )
 
+    async def get_tool(self, tool_id: UUID) -> ToolOut:
+        row = await self._get_or_raise(tool_id)
+        cat_name = await self._category_name(row.category_id)
+        tags_map = await TagService(self.db, self.ctx).get_refs_map(
+            TagEntityType.TOOL, {row.id}
+        )
+        return self._to_out(row, cat_name, tags_map.get(row.id, []))
+
     def _normalize_script_config(self, config: dict | None) -> dict:
         cfg = dict(config or {})
         source = validate_script_source(str(cfg.get("source") or ""))

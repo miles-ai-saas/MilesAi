@@ -414,6 +414,11 @@ export interface ChatResponse {
   pending_tool?: PendingToolCall | null;
 }
 
+/** chatAgent 返回值：业务数据 + 响应头/信封中的 trace_id。 */
+export interface ChatAgentResult extends ChatResponse {
+  trace_id?: string;
+}
+
 export interface Document {
   id: string;
   kb_id: string;

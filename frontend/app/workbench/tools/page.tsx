@@ -7,11 +7,13 @@ import { AddResourceCard } from "@/components/resource/AddResourceCard";
 import { ResourceListFooter } from "@/components/resource/ResourceListFooter";
 import { ResourceListLayout } from "@/components/resource/ResourceListLayout";
 import { ToolCard } from "@/components/tool/ToolCard";
+import { KbPageAlert } from "@/components/kb/KbPageAlert";
 import { ToolCreateDialog, DEFAULT_SCRIPT, type ToolDialogMode } from "@/components/tool/ToolCreateDialog";
+import { ToolDetailDialog } from "@/components/tool/ToolDetailDialog";
 import { ToolTestDialog } from "@/components/tool/ToolTestDialog";
 import { useConfirmAction } from "@/hooks/use-confirm-action";
 import { usePagedList } from "@/hooks/use-paged-list";
-import { api } from "@/lib/api";
+import { api, getApiErrorMessage } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth-store";
 import { filterBySearch } from "@/lib/filter-search";
 import {
@@ -134,6 +136,7 @@ export default function ToolsPage() {
   const [dialogMode, setDialogMode] = useState<ToolDialogMode>("create");
   const [editing, setEditing] = useState<CustomTool | null>(null);
   const [busy, setBusy] = useState(false);
+  const [saveError, setSaveError] = useState("");
 
   const [toolKind, setToolKind] = useState<ToolKindTab>("http");
   const [slug, setSlug] = useState("");
@@ -152,6 +155,9 @@ export default function ToolsPage() {
 
   const [testOpen, setTestOpen] = useState(false);
   const [testTool, setTestTool] = useState<ToolCatalogItem | null>(null);
+
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [detailTool, setDetailTool] = useState<ToolCatalogItem | null>(null);
 
   const { requestConfirm, confirmDialog } = useConfirmAction();
 
@@ -244,7 +250,13 @@ export default function ToolsPage() {
     setDialogMode("create");
     setEditing(null);
     resetForm();
+    setSaveError("");
     setDialogOpen(true);
+  };
+
+  const openDetail = (item: ToolCatalogItem) => {
+    setDetailTool(item);
+    setDetailOpen(true);
   };
 
   const openEdit = async (item: ToolCatalogItem) => {
@@ -252,6 +264,7 @@ export default function ToolsPage() {
     const detail = (await api.listCustomTools(1, 100)).items.find((t) => t.id === item.tool_id);
     if (!detail) return;
     setDialogMode("edit");
+    setSaveError("");
     setEditing(detail);
     setSlug(detail.slug);
     setName(detail.name);
@@ -311,6 +324,7 @@ export default function ToolsPage() {
             },
     };
     setBusy(true);
+    setSaveError("");
     try {
       if (dialogMode === "edit" && editing) {
         await api.updateCustomTool(editing.id, payload);
@@ -319,6 +333,8 @@ export default function ToolsPage() {
       }
       setDialogOpen(false);
       await reloadCatalog();
+    } catch (e) {
+      setSaveError(getApiErrorMessage(e, "保存失败"));
     } finally {
       setBusy(false);
     }
@@ -377,7 +393,9 @@ export default function ToolsPage() {
         timeoutSec={timeoutSec}
         scriptSource={scriptSource}
         busy={busy}
+        saveError={saveError}
         onClose={() => setDialogOpen(false)}
+        onDismissError={() => setSaveError("")}
         onSubmit={onSave}
         onToolKindChange={setToolKind}
         onSlugChange={setSlug}
@@ -396,6 +414,27 @@ export default function ToolsPage() {
         onBodyModeChange={setBodyMode}
         onTimeoutSecChange={setTimeoutSec}
         onScriptSourceChange={setScriptSource}
+      />
+      <ToolDetailDialog
+        open={detailOpen}
+        item={detailTool}
+        onClose={() => setDetailOpen(false)}
+        onTest={
+          detailTool
+            ? () => {
+                setTestTool(detailTool);
+                setTestOpen(true);
+              }
+            : undefined
+        }
+        onEdit={
+          detailTool?.source === "custom"
+            ? () => {
+                setDetailOpen(false);
+                void openEdit(detailTool);
+              }
+            : undefined
+        }
       />
       <ToolTestDialog
         open={testOpen}
@@ -482,7 +521,7 @@ export default function ToolsPage() {
           <a href="/workbench/mcp" className="font-medium underline">
             MCP 工作台
           </a>
-          。详见文档 docs/guides/tools.md。
+          。
         </div>
 
         <div className="col-span-full grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -527,6 +566,7 @@ export default function ToolsPage() {
           <ToolCard
             key={`${t.source}-${t.slug}-${t.tool_id ?? ""}`}
             tool={t}
+            onDetail={() => openDetail(t)}
             onTest={() => {
               setTestTool(t);
               setTestOpen(true);

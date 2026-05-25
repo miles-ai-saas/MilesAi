@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { AgentChatLeftSidebar } from "@/components/agent/AgentChatLeftSidebar";
 import { AgentWorkbenchOverlay } from "@/components/agent/AgentWorkbenchOverlay";
 import { AgentWorkbenchSidebar } from "@/components/agent/AgentWorkbenchSidebar";
+import { useTraceTurnSelection } from "@/components/agent/AgentTracePanel";
 import { ChatMessageThread } from "@/components/agent/ChatMessageThread";
 import {
   loadChatSidebarPrefs,
@@ -66,6 +67,7 @@ function AgentsChatContent() {
   const [query, setQuery] = useState("");
   const [chatting, setChatting] = useState(false);
   const [pendingTool, setPendingTool] = useState<PendingToolCall | null>(null);
+  const { selectedTurnIndex, setSelectedTurnIndex } = useTraceTurnSelection(messages, conversationId);
   const { requestConfirm, confirmDialog } = useConfirmAction();
 
   const list = useInfiniteList(useCallback((p, s) => api.listAgents(p, s), []), {
@@ -230,10 +232,18 @@ function AgentsChatContent() {
           role: "assistant",
           content: res.answer,
           steps: res.steps?.length ? res.steps : undefined,
+          traceId: res.trace_id,
         },
       ];
       setMessages(nextMessages);
-      appendTurn(selectedAgent, conversationId, userText, res.answer, res.steps ?? []);
+      appendTurn(
+        selectedAgent,
+        conversationId,
+        userText,
+        res.answer,
+        res.steps ?? [],
+        res.trace_id,
+      );
       refreshSessions(selectedAgent);
       const updated = getSession(selectedAgent, conversationId);
       if (updated) setSessionTitle(updated.title);
@@ -261,7 +271,12 @@ function AgentsChatContent() {
       setPendingTool(res.pending_tool ?? null);
       setMessages((prev) => [
         ...prev,
-        { role: "assistant", content: res.answer, steps: res.steps?.length ? res.steps : undefined },
+        {
+          role: "assistant",
+          content: res.answer,
+          steps: res.steps?.length ? res.steps : undefined,
+          traceId: res.trace_id,
+        },
       ]);
     } catch (e) {
       const err = e instanceof Error ? e.message : "工具确认失败";
@@ -318,25 +333,16 @@ function AgentsChatContent() {
         </div>
 
         <div className="flex-1 overflow-y-auto px-6 py-4">
-          <ChatMessageThread messages={messages} chatting={chatting} />
+          <ChatMessageThread
+            messages={messages}
+            chatting={chatting}
+            pendingTool={pendingTool}
+            onConfirmPendingTool={() => void confirmPendingTool()}
+            confirmPendingToolDisabled={chatting}
+          />
         </div>
 
         <div className="border-t border-line bg-surface p-4">
-          {pendingTool && (
-            <div className="mx-auto mb-3 flex max-w-3xl items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm">
-              <span>
-                待确认工具：<strong>{pendingTool.name}</strong>（{pendingTool.slug}）
-              </span>
-              <button
-                type="button"
-                className="btn-primary shrink-0 px-3 py-1 text-xs"
-                disabled={chatting}
-                onClick={() => void confirmPendingTool()}
-              >
-                确认执行
-              </button>
-            </div>
-          )}
           <div className="mx-auto flex max-w-3xl gap-2">
             <textarea
               className="input-field min-h-[44px] flex-1 resize-none py-2.5"
@@ -385,6 +391,9 @@ function AgentsChatContent() {
         agentId={selectedAgent || null}
         activeTab={workbenchTab}
         rightRailCollapsed={rightCollapsed}
+        chatMessages={messages}
+        traceTurnIndex={selectedTurnIndex}
+        onTraceTurnIndexChange={setSelectedTurnIndex}
         onClose={closePanel}
         onSaved={() => list.reload()}
       />

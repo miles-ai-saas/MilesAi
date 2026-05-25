@@ -8,6 +8,7 @@ import type {
   AppInstallResult,
   AppRating,
   ChatResponse,
+  ChatAgentResult,
   ConfigDefinition,
   CustomTool,
   Attachment,
@@ -105,6 +106,23 @@ async function getPage<T>(url: string): Promise<PageResult<T>> {
 async function post<T>(url: string, data?: unknown): Promise<T> {
   const res = await http.post<ApiResponse<T>>(url, data);
   return unwrap(res.data);
+}
+
+function readTraceId(headers: Record<string, unknown>, body: ApiResponse<unknown>): string | undefined {
+  const fromHeader = headers["x-trace-id"];
+  if (typeof fromHeader === "string" && fromHeader.trim()) return fromHeader.trim();
+  if (typeof body.trace_id === "string" && body.trace_id.trim()) return body.trace_id.trim();
+  return undefined;
+}
+
+async function postWithTrace<T extends object>(
+  url: string,
+  data?: unknown,
+): Promise<T & { trace_id?: string }> {
+  const res = await http.post<ApiResponse<T>>(url, data);
+  const payload = unwrap(res.data);
+  const trace_id = readTraceId(res.headers as Record<string, unknown>, res.data);
+  return trace_id ? { ...payload, trace_id } : payload;
 }
 
 async function put<T>(url: string, data?: unknown): Promise<T> {
@@ -432,13 +450,13 @@ export const api = {
       pendingToolParams?: Record<string, unknown>;
     },
   ) =>
-    post<ChatResponse>(`/agents/${agentId}/chat`, {
+    postWithTrace<ChatResponse>(`/agents/${agentId}/chat`, {
       query,
       ...(opts?.conversationId ? { conversation_id: opts.conversationId } : {}),
       ...(opts?.toolConfirmed ? { tool_confirmed: true } : {}),
       ...(opts?.pendingToolSlug ? { pending_tool_slug: opts.pendingToolSlug } : {}),
       ...(opts?.pendingToolParams ? { pending_tool_params: opts.pendingToolParams } : {}),
-    }),
+    }) as Promise<ChatAgentResult>,
 
   getKb: (kbId: string) => get<KnowledgeBase>(`/kb/${kbId}`),
   listDocuments: (kbId: string, page = 1, size = DEFAULT_PAGE_SIZE) =>
@@ -554,6 +572,7 @@ export const api = {
     qs = appendTagIds(qs, tagIds);
     return getPage<import("./types").CustomTool>(`/tools?${qs}`);
   },
+  getCustomTool: (id: string) => get<import("./types").CustomTool>(`/tools/${id}`),
   createCustomTool: (payload: import("./types").ToolCreatePayload) =>
     post<import("./types").CustomTool>("/tools", { tool_type: "http", ...payload }),
   updateCustomTool: (id: string, payload: Partial<import("./types").ToolCreatePayload & { is_active?: boolean }>) =>

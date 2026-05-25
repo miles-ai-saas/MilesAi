@@ -8,8 +8,11 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
+import { CodeEditor, codeLanguageFromPath } from "@/components/editor/CodeEditor";
+import { SkillMarkdownSplitEditor } from "@/components/skills/SkillMarkdownSplitEditor";
 import { api, getApiErrorMessage } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth-store";
+import { isMarkdownPath } from "@/lib/skill-md";
 import type { SkillFileNode, SkillPackage } from "@/lib/types";
 
 const DEFAULT_PATH = "SKILL.md";
@@ -157,17 +160,31 @@ export default function SkillEditorPage() {
           </button>
         </aside>
 
-        <main className="flex min-w-0 flex-1 flex-col p-4">
-          <p className="mb-2 text-xs text-ink-muted">{activePath}</p>
-          <textarea
-            className="input-field min-h-0 flex-1 font-mono text-sm leading-relaxed"
-            value={content}
-            onChange={(e) => {
-              setContent(e.target.value);
-              setSaved(false);
-            }}
-            spellCheck={false}
-          />
+        <main className="flex min-h-0 min-w-0 flex-1 flex-col p-4">
+          {isMarkdownPath(activePath) ? (
+            <SkillMarkdownSplitEditor
+              path={activePath}
+              value={content}
+              onChange={(v) => {
+                setContent(v);
+                setSaved(false);
+              }}
+            />
+          ) : (
+            <>
+              <p className="mb-2 text-xs text-ink-muted">{activePath}</p>
+              <CodeEditor
+                fill
+                language={codeLanguageFromPath(activePath)}
+                value={content}
+                onChange={(v) => {
+                  setContent(v);
+                  setSaved(false);
+                }}
+                aria-label={`编辑 ${activePath}`}
+              />
+            </>
+          )}
           {err && <p className="mt-2 text-xs text-red-600">{err}</p>}
         </main>
       </div>

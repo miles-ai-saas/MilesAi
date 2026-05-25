@@ -105,11 +105,15 @@
 
   /* AI 工作台卡片列表页 */
   .resource-page-shell {
-    @apply mx-auto w-full max-w-7xl;
+    @apply mx-auto w-full max-w-screen-2xl;
   }
 
   .resource-card-grid {
     @apply grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4;
+  }
+
+  .resource-page-shell .resource-card-grid {
+    @apply 2xl:grid-cols-5;
   }
 
   .resource-card {
@@ -118,5 +122,73 @@
 
   .resource-add-card {
     @apply flex min-h-[176px] flex-col items-center justify-center rounded-xl border-2 border-dashed border-line bg-surface p-5 text-center transition hover:border-brand/40 hover:bg-brand-light/30;
+  }
+
+  .markdown-preview {
+    @apply text-sm leading-relaxed text-ink;
+  }
+
+  .markdown-preview :where(h1, h2, h3, h4) {
+    @apply font-semibold text-ink;
+  }
+
+  .markdown-preview h1 {
+    @apply mb-4 mt-2 text-xl;
+  }
+
+  .markdown-preview h2 {
+    @apply mb-3 mt-5 text-lg;
+  }
+
+  .markdown-preview h3 {
+    @apply mb-2 mt-4 text-base;
+  }
+
+  .markdown-preview :where(p, ul, ol, pre, blockquote) {
+    @apply my-3;
+  }
+
+  .markdown-preview :where(ul, ol) {
+    @apply list-inside pl-1;
+  }
+
+  .markdown-preview ul {
+    @apply list-disc;
+  }
+
+  .markdown-preview ol {
+    @apply list-decimal;
+  }
+
+  .markdown-preview a {
+    @apply text-brand underline underline-offset-2 hover:text-brand-dark;
+  }
+
+  .markdown-preview code {
+    @apply rounded bg-surface-muted px-1 py-0.5 font-mono text-xs text-ink;
+  }
+
+  .markdown-preview pre {
+    @apply overflow-x-auto rounded-lg border border-line bg-surface-muted/60 p-3;
+  }
+
+  .markdown-preview pre code {
+    @apply bg-transparent p-0;
+  }
+
+  .markdown-preview blockquote {
+    @apply border-l-4 border-brand/30 pl-3 text-ink-muted;
+  }
+
+  .markdown-preview table {
+    @apply w-full border-collapse text-xs;
+  }
+
+  .markdown-preview :where(th, td) {
+    @apply border border-line px-2 py-1 text-left;
+  }
+
+  .markdown-preview th {
+    @apply bg-surface-muted font-medium;
   }
 }

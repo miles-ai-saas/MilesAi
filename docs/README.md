@@ -14,7 +14,8 @@ docs/
 │   ├── layering.md           # 后端分层与代码规范
 │   ├── rag-module-migration.md
 │   ├── vector-database-selection.md
-│   └── mcp-sandbox.md
+│   ├── mcp-sandbox.md
+│   └── tools-runtime.md      # 工具统一执行平面（目标架构）
 ├── frontend/                 # 前端
 │   └── design.md
 ├── operations/               # 运维与部署
@@ -47,6 +48,7 @@ docs/
 | [rag-module-migration.md](./architecture/rag-module-migration.md) | RAG 模块迁移清单（已完成）与后续插件位 |
 | [vector-database-selection.md](./architecture/vector-database-selection.md) | 向量数据库选型：pgvector / Weaviate / Milvus / Qdrant / OpenSearch / ES |
 | [mcp-sandbox.md](./architecture/mcp-sandbox.md) | MCP STDIO / 平台执行：沙箱与 Runner 隔离方案 |
+| [tools-runtime.md](./architecture/tools-runtime.md) | **工具运行时**：内置 / HTTP / 脚本 / MCP 统一执行平面（目标架构） |
 
 ## 前端 (`frontend/`)
 
@@ -71,6 +73,7 @@ docs/
 | [model-providers.md](./guides/model-providers.md) | 模型供应商：内置目录 + 租户自定义 |
 | [knowledge-base.md](./guides/knowledge-base.md) | **知识库 RAG 主文档**：入库、支持格式、检索 hybrid、API |
 | [mcp.md](./guides/mcp.md) | **MCP 服务**：注册、同步、HTTP/SSE invoke、连接安全 |
+| [tools.md](./guides/tools.md) | **工具**：内置 / HTTP / 变换脚本、API、与 MCP 关系（现网） |
 | [skill-packages.md](./guides/skill-packages.md) | **技能包**：SKILL.md、导入（本地/ZIP/Git）、分类、智能体注入 |
 
 运维 Compose 与 **Worker / RAG 可选依赖** 见 [../docker/README.md](../docker/README.md)；后端 [../backend/README.md](../backend/README.md)。

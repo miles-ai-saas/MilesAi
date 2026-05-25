@@ -11,6 +11,13 @@ const paths: Record<AgentWorkbenchTab, ReactNode> = {
       d="M10.3 4.2h3.4M12 3v2.4M6.8 8.2l1.7-1M6.8 15.8l1.7 1M17.2 8.2l-1.7-1M17.2 15.8l-1.7 1M4.2 10.3v3.4M3 12h2.4M19.8 10.3v3.4M21 12h-2.4M8.2 12a3.8 3.8 0 107.6 0 3.8 3.8 0 00-7.6 0z"
     />
   ),
+  trace: (
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      d="M4 6h16M4 10h10M4 14h14M4 18h8M17 16l2 2 4-4"
+    />
+  ),
   schedule: (
     <path strokeLinecap="round" strokeLinejoin="round" d="M12 7v5l3 2M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
   ),

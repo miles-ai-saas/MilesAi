@@ -22,6 +22,7 @@ from app.core.soft_delete import not_deleted
 from app.models.model import ModelConfig
 from app.models.model_catalog import ModelPublishStatus
 from app.models.model_tenant_credential import ModelTenantCredential
+from app.tenant.models.services.api_key_validation import assert_usable_api_key
 
 
 async def load_tenant_credential(
@@ -85,6 +86,11 @@ async def resolve_model_for_invoke(
         raise BadRequestError(
             f"模型「{model.name}」未配置 API Key，请在模型供应商页配置密钥"
         )
+    assert_usable_api_key(
+        effective.api_key_encrypted,
+        model_name=model.name,
+        vendor=model.vendor,
+    )
     return effective
 
 

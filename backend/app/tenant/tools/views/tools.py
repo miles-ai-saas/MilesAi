@@ -77,6 +77,15 @@ async def create_tool(
     return ok(await _svc(db, ctx).create_tool(body))
 
 
+@router.get("/{tool_id}", response_model=ApiResponse[ToolOut])
+async def get_tool(
+    tool_id: UUID,
+    ctx: TenantContext = Depends(require_permissions("tools:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    return ok(await _svc(db, ctx).get_tool(tool_id))
+
+
 @router.patch("/{tool_id}", response_model=ApiResponse[ToolOut])
 async def update_tool(
     tool_id: UUID,

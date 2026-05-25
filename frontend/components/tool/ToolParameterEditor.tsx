@@ -25,10 +25,18 @@ export function ToolParameterEditor({ value, onChange }: Props) {
 
   return (
     <div className="space-y-2">
+      {value.length > 0 && (
+        <div className="hidden grid-cols-[1fr_120px_72px_56px] gap-2 px-3 text-[10px] font-medium uppercase tracking-wide text-ink-faint md:grid">
+          <span>参数名</span>
+          <span>类型</span>
+          <span>必填</span>
+          <span />
+        </div>
+      )}
       {value.map((row, idx) => (
         <div
           key={idx}
-          className="grid gap-2 rounded-lg border border-line-soft p-3 sm:grid-cols-2"
+          className="grid gap-2 rounded-lg border border-line-soft bg-surface p-3 md:grid-cols-[1fr_120px_72px_56px] md:items-center"
         >
           <input
             className="input-field w-full"
@@ -48,32 +56,33 @@ export function ToolParameterEditor({ value, onChange }: Props) {
             <option value="number">number</option>
             <option value="boolean">boolean</option>
           </select>
-          <input
-            className="input-field w-full sm:col-span-2"
-            placeholder="描述"
-            value={row.description ?? ""}
-            onChange={(e) => update(idx, { description: e.target.value })}
-          />
-          <label className="flex items-center gap-2 text-xs text-ink-muted">
+          <label className="flex items-center gap-2 text-xs text-ink-muted md:justify-center">
             <input
               type="checkbox"
               checked={Boolean(row.required)}
               onChange={(e) => update(idx, { required: e.target.checked })}
             />
-            必填
+            <span className="md:sr-only">必填</span>
+            <span className="md:hidden">必填</span>
           </label>
           <button
             type="button"
-            className="text-xs text-red-600 hover:underline"
+            className="text-xs text-red-600 hover:underline md:text-center"
             onClick={() => remove(idx)}
           >
             删除
           </button>
+          <input
+            className="input-field w-full md:col-span-4"
+            placeholder="描述（供 LLM 理解参数含义）"
+            value={row.description ?? ""}
+            onChange={(e) => update(idx, { description: e.target.value })}
+          />
         </div>
       ))}
       <button
         type="button"
-        className="w-full rounded-lg border border-dashed border-line py-2 text-sm text-ink-muted hover:border-brand hover:text-brand"
+        className="w-full rounded-lg border border-dashed border-line py-2.5 text-sm text-ink-muted transition hover:border-brand hover:text-brand"
         onClick={() => onChange([...value, emptyRow()])}
       >
         + 添加参数

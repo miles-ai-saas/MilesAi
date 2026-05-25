@@ -1,6 +1,9 @@
 import axios from "axios";
 import type { ApiResponse, PageResult } from "./types";
 import { getAdminToken, useAdminAuthStore } from "./auth-store";
+import { getApiErrorMessage } from "./api-error";
+
+export { getApiErrorMessage } from "./api-error";
 
 const baseURL =
   process.env.NEXT_PUBLIC_ADMIN_API_URL || "http://localhost:8000/api/admin/v1";
@@ -22,15 +25,15 @@ http.interceptors.response.use(
         window.location.href = "/login";
       }
     }
-    return Promise.reject(err);
+    return Promise.reject(new Error(getApiErrorMessage(err)));
   },
 );
 
 function unwrap<T>(body: ApiResponse<T>): T {
-  if (body.code !== 0 || body.data === null) {
+  if (body.code !== 0) {
     throw new Error(body.message || "请求失败");
   }
-  return body.data;
+  return body.data as T;
 }
 
 async function get<T>(url: string) {

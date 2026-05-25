@@ -14,6 +14,8 @@ type Props = {
   footer?: ReactNode;
   /** md: 居中小窗；lg: 居中宽窗；sheet: 顶栏下铺满；fullscreen: 铺满视口（慎用，会盖住 App Header） */
   size?: PanelSize;
+  /** sheet / fullscreen 内容区最大宽度，默认 max-w-5xl */
+  contentMaxWidth?: string;
 };
 
 function PanelChrome({
@@ -86,6 +88,7 @@ export function ResourceDialog({
   children,
   footer,
   size = "md",
+  contentMaxWidth = "max-w-5xl",
 }: Props) {
   useDialogEffects(open, size, onClose);
 
@@ -98,7 +101,13 @@ export function ResourceDialog({
         aria-modal="true"
         className="fixed inset-x-0 bottom-0 top-14 z-40 flex flex-col border-t border-line bg-surface shadow-panel"
       >
-        <PanelChrome title={title} description={description} onClose={onClose} footer={footer}>
+        <PanelChrome
+          title={title}
+          description={description}
+          onClose={onClose}
+          footer={footer}
+          contentMaxWidth={contentMaxWidth}
+        >
           {children}
         </PanelChrome>
       </div>
@@ -108,7 +117,12 @@ export function ResourceDialog({
   if (size === "fullscreen") {
     return (
       <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex flex-col bg-surface">
-        <PanelChrome title={title} onClose={onClose} footer={footer}>
+        <PanelChrome
+          title={title}
+          onClose={onClose}
+          footer={footer}
+          contentMaxWidth={contentMaxWidth}
+        >
           {children}
         </PanelChrome>
       </div>

@@ -1,6 +1,4 @@
 import { isAxiosError } from "axios";
-import type { ApiResponse } from "./types";
-
 type ErrorBody = {
   message?: unknown;
   detail?: unknown;
@@ -52,7 +50,7 @@ function messageFromResponseData(data: unknown): string | null {
 function networkFallback(err: { message?: string; code?: string }): string | null {
   const msg = err.message?.trim() ?? "";
   if (msg === "Network Error" || err.code === "ERR_NETWORK") {
-    return "无法连接 API 服务，请确认后端已启动且 NEXT_PUBLIC_API_URL 配置正确";
+    return "无法连接 API 服务，请确认后端已启动且 NEXT_PUBLIC_ADMIN_API_URL 配置正确";
   }
   if (err.code === "ECONNABORTED" || msg.toLowerCase().includes("timeout")) {
     return "请求超时，请稍后重试";

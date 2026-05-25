@@ -2,6 +2,7 @@ export type ChatMessage = {
   role: "user" | "assistant";
   content: string;
   steps?: Record<string, unknown>[];
+  traceId?: string;
 };
 
 export type ChatSession = {
@@ -126,6 +127,7 @@ export function appendTurn(
   userText: string,
   assistantText: string,
   steps: Record<string, unknown>[] = [],
+  traceId?: string,
 ) {
   const store = loadStore();
   const b = bucket(agentId, store);
@@ -135,7 +137,12 @@ export function appendTurn(
   const messages = [
     ...session.messages,
     { role: "user" as const, content: userText },
-    { role: "assistant" as const, content: assistantText, steps: steps.length ? steps : undefined },
+    {
+      role: "assistant" as const,
+      content: assistantText,
+      steps: steps.length ? steps : undefined,
+      traceId: traceId || undefined,
+    },
   ];
   let title = session.title;
   if (title === "新对话" && userText.trim()) {

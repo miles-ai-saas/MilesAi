@@ -279,7 +279,9 @@ class AgentService(BaseService):
             status=AgentStatus.ENABLED,
         )
         if body.kb_ids:
-            agent.knowledge_bases = await self.repo.load_kbs(body.kb_ids)
+            await self.repo.replace_kb_bindings(
+                agent.id, body.kb_ids, tenant_id=self.ctx.tenant_id
+            )
         bindings = normalize_bindings(
             [b.model_dump() for b in body.sub_agents] if body.sub_agents else None
         )
@@ -341,7 +343,9 @@ class AgentService(BaseService):
         )
         await self.repo.update_fields(agent, data)
         if kb_ids is not None:
-            agent.knowledge_bases = await self.repo.load_kbs(kb_ids)
+            await self.repo.replace_kb_bindings(
+                agent.id, kb_ids, tenant_id=self.ctx.tenant_id
+            )
         if sub_raw is not None:
             bindings = normalize_bindings([b.model_dump() if hasattr(b, "model_dump") else b for b in sub_raw])
             agent.config = apply_planner_config(

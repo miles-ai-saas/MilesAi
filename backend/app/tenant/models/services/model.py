@@ -24,6 +24,7 @@ from app.tenant.models.services.model_resolve import (
 from app.core.soft_delete import is_marked_deleted, mark_deleted, not_deleted
 from app.core.service import BaseService
 from app.models.model import ModelConfig
+from app.models.model_tenant_credential import ModelTenantCredential
 from app.models.model_catalog import (
     CATALOG_MODEL_TYPES,
     MODEL_TYPE_LABELS,
@@ -32,7 +33,7 @@ from app.models.model_catalog import (
     ModelVendor,
     VENDOR_LABELS,
 )
-from app.models.model_tenant_credential import ModelTenantCredential
+from app.tenant.models.services.api_key_validation import normalize_api_key, validate_api_key
 
 SUPPORTED_VENDORS = (
     ModelVendor.DEEPSEEK,
@@ -178,7 +179,7 @@ class ModelService(BaseService):
             model_type=body.model_type,
             description=body.description,
             api_base=body.api_base,
-            api_key_encrypted=body.api_key,
+            api_key_encrypted=validate_api_key(body.api_key, vendor=vendor) if body.api_key else None,
             publish_status=ModelPublishStatus.PUBLISHED.value,
             extra=body.extra,
         )
@@ -192,7 +193,10 @@ class ModelService(BaseService):
         data = body.model_dump(exclude_unset=True)
         api_key = data.pop("api_key", None)
         if api_key is not None:
-            model.api_key_encrypted = api_key
+            normalized = normalize_api_key(api_key)
+            model.api_key_encrypted = (
+                validate_api_key(normalized, vendor=model.vendor) if normalized else None
+            )
         if "vendor" in data and data.get("provider") is None:
             data["provider"] = data["vendor"]
         await self.repo.update_fields(model, data)
@@ -212,8 +216,9 @@ class ModelService(BaseService):
         if not model.is_builtin:
             raise BadRequestError("仅内置模型可配置租户密钥")
         cred = await load_tenant_credential(self.db, self.ctx.tenant_id, model.id)
+        validated_key = validate_api_key(body.api_key, vendor=model.vendor)
         if cred:
-            cred.api_key_encrypted = body.api_key
+            cred.api_key_encrypted = validated_key
             if body.api_base is not None:
                 cred.api_base = body.api_base
             cred.is_active = True
@@ -222,7 +227,7 @@ class ModelService(BaseService):
                 ModelTenantCredential(
                     tenant_id=self.ctx.tenant_id,
                     model_config_id=model.id,
-                    api_key_encrypted=body.api_key,
+                    api_key_encrypted=validated_key,
                     api_base=body.api_base,
                     is_active=True,
                 )

@@ -1,4 +1,11 @@
-export type AgentWorkbenchTab = "config" | "schedule" | "architecture" | "api" | "logs" | "stats";
+export type AgentWorkbenchTab =
+  | "config"
+  | "trace"
+  | "schedule"
+  | "architecture"
+  | "api"
+  | "logs"
+  | "stats";
 
 export const AGENT_WORKBENCH_TABS: {
   id: AgentWorkbenchTab;
@@ -6,6 +13,7 @@ export const AGENT_WORKBENCH_TABS: {
   ready: boolean;
 }[] = [
   { id: "config", label: "配置", ready: true },
+  { id: "trace", label: "Trace", ready: true },
   { id: "schedule", label: "定时", ready: false },
   { id: "architecture", label: "架构", ready: true },
   { id: "api", label: "API", ready: false },

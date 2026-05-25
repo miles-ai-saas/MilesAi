@@ -1,7 +1,9 @@
 "use client";
 
 import { AGENT_WORKBENCH_TABS, type AgentWorkbenchTab } from "@/components/agent/agent-workbench-tabs";
+import { AgentTracePanel } from "@/components/agent/AgentTracePanel";
 import { AgentWorkbenchPanel } from "@/components/agent/AgentWorkbenchPanel";
+import type { ChatMessage } from "@/lib/chat-sessions";
 import type { Agent } from "@/lib/types";
 
 type Props = {
@@ -10,6 +12,9 @@ type Props = {
   agentId: string | null;
   activeTab: AgentWorkbenchTab;
   rightRailCollapsed: boolean;
+  chatMessages: ChatMessage[];
+  traceTurnIndex: number;
+  onTraceTurnIndexChange: (index: number) => void;
   onClose: () => void;
   onSaved?: () => void;
 };
@@ -20,6 +25,9 @@ export function AgentWorkbenchOverlay({
   agentId,
   activeTab,
   rightRailCollapsed,
+  chatMessages,
+  traceTurnIndex,
+  onTraceTurnIndexChange,
   onClose,
   onSaved,
 }: Props) {
@@ -31,9 +39,11 @@ export function AgentWorkbenchOverlay({
   const subtitle =
     activeTab === "config"
       ? "模型、知识库、子智能体与工作流"
-      : activeTab === "architecture"
-        ? "编排流程与画布"
-        : "功能开发中";
+      : activeTab === "trace"
+        ? "当前会话执行步骤 JSON 与 trace_id"
+        : activeTab === "architecture"
+          ? "编排流程与画布"
+          : "功能开发中";
 
   return (
     <div
@@ -71,7 +81,15 @@ export function AgentWorkbenchOverlay({
         </button>
       </header>
       <div className="flex min-h-0 flex-1 flex-col bg-surface">
-        <AgentWorkbenchPanel agentId={agentId} activeTab={activeTab} onSaved={onSaved} />
+        {activeTab === "trace" ? (
+          <AgentTracePanel
+            messages={chatMessages}
+            selectedTurnIndex={traceTurnIndex}
+            onSelectTurnIndex={onTraceTurnIndexChange}
+          />
+        ) : (
+          <AgentWorkbenchPanel agentId={agentId} activeTab={activeTab} onSaved={onSaved} />
+        )}
       </div>
     </div>
   );

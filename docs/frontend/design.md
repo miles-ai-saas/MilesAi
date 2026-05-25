@@ -146,8 +146,9 @@ var(--font-sans), "PingFang SC", "Microsoft YaHei", "Segoe UI", system-ui, -appl
 ┌─────────────────────────────────────────────────────────┐
 │ 顶栏 h-14：BrandHeader · WorkbenchHeaderNav · UserMenu   │
 ├─────────────────────────────────────────────────────────┤
-│ 主内容区 bg-surface-muted                                │
-│   · 资源列表页：resource-page-shell (max-w-7xl)          │
+│ 主内容区 bg-surface-muted（p-4 lg:px-6）                 │
+│   · 资源列表页：resource-page-shell (max-w-screen-2xl)   │
+│   · 卡片网格：1→2→3→4 列；`resource-page-shell` 内 2xl 为 5 列 │
 │   · 全屏页（对话/画布）：full-bleed，无 max-width        │
 └─────────────────────────────────────────────────────────┘
 ```
@@ -237,8 +238,8 @@ var(--font-sans), "PingFang SC", "Microsoft YaHei", "Segoe UI", system-ui, -appl
 
 | 类名 | 说明 |
 |------|------|
-| `.resource-page-shell` | 列表页最大宽度容器 |
-| `.resource-card-grid` | 响应式网格 1→4 列 |
+| `.resource-page-shell` | 列表页最大宽度容器（`max-w-screen-2xl`） |
+| `.resource-card-grid` | 响应式网格 1→2→3→4 列；`resource-page-shell` 内 `2xl` 为 5 列 |
 | `.resource-card` | 实体卡片；hover `border-brand/25` |
 | `.resource-add-card` | 虚线「新建」卡片 |
 

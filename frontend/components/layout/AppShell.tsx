@@ -53,7 +53,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </header>
 
-      <main className={`min-h-0 flex-1 overflow-auto ${fullBleed ? "" : "p-5 lg:px-8"}`}>
+      <main className={`min-h-0 flex-1 overflow-auto ${fullBleed ? "" : "p-4 lg:px-6"}`}>
         {children}
       </main>
     </div>

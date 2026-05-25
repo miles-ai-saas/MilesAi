@@ -1,13 +1,38 @@
 "use client";
 
+import {
+  AgentExecutionSkeleton,
+  AgentExecutionTimeline,
+} from "@/components/agent/AgentExecutionTimeline";
 import type { ChatMessage } from "@/lib/chat-sessions";
+import type { PendingToolCall } from "@/lib/types";
 
 type Props = {
   messages: ChatMessage[];
   chatting: boolean;
+  pendingTool?: PendingToolCall | null;
+  onConfirmPendingTool?: () => void;
+  confirmPendingToolDisabled?: boolean;
 };
 
-export function ChatMessageThread({ messages, chatting }: Props) {
+function hasPendingConfirmationStep(steps?: Record<string, unknown>[]) {
+  return steps?.some((s) => s.type === "tool_confirmation_required") ?? false;
+}
+
+export function ChatMessageThread({
+  messages,
+  chatting,
+  pendingTool,
+  onConfirmPendingTool,
+  confirmPendingToolDisabled,
+}: Props) {
+  const lastAssistantIndex = (() => {
+    for (let i = messages.length - 1; i >= 0; i -= 1) {
+      if (messages[i].role === "assistant") return i;
+    }
+    return -1;
+  })();
+
   if (messages.length === 0 && !chatting) {
     return (
       <div className="flex h-full min-h-[200px] flex-col items-center justify-center text-center">
@@ -35,14 +60,24 @@ export function ChatMessageThread({ messages, chatting }: Props) {
           ) : (
             <div className="card p-4">
               {msg.steps && msg.steps.length > 0 && (
-                <details className="mb-3 text-xs text-ink-muted">
-                  <summary className="cursor-pointer font-medium text-ink">
-                    执行步骤（{msg.steps.length}）
-                  </summary>
-                  <pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap font-mono text-[11px]">
-                    {JSON.stringify(msg.steps, null, 2)}
-                  </pre>
-                </details>
+                <AgentExecutionTimeline
+                  steps={msg.steps}
+                  pendingTool={
+                    i === lastAssistantIndex &&
+                    pendingTool &&
+                    hasPendingConfirmationStep(msg.steps)
+                      ? pendingTool
+                      : null
+                  }
+                  onConfirmTool={
+                    i === lastAssistantIndex &&
+                    pendingTool &&
+                    hasPendingConfirmationStep(msg.steps)
+                      ? onConfirmPendingTool
+                      : undefined
+                  }
+                  confirmToolDisabled={confirmPendingToolDisabled}
+                />
               )}
               <p className="mb-1 text-xs font-medium text-brand">助手</p>
               <div className="whitespace-pre-wrap text-sm leading-relaxed text-ink">{msg.content}</div>
@@ -51,9 +86,10 @@ export function ChatMessageThread({ messages, chatting }: Props) {
         </div>
       ))}
       {chatting && (
-        <div className="card flex items-center gap-2 p-4 text-sm text-ink-muted">
-          <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-brand" />
-          思考中…
+        <div className="card p-4">
+          <AgentExecutionSkeleton />
+          <p className="text-xs font-medium text-brand">助手</p>
+          <p className="mt-1 text-sm text-ink-muted">思考中…</p>
         </div>
       )}
     </div>

@@ -11,6 +11,21 @@ from app.core.config import get_settings
 from app.common.exceptions import AppError
 
 
+def _format_validation_message(exc: RequestValidationError) -> str:
+    if not exc.errors():
+        return "参数校验失败"
+    err = exc.errors()[0]
+    msg = str(err.get("msg") or "参数校验失败")
+    for prefix in ("Value error, ", "Assertion failed, "):
+        if msg.startswith(prefix):
+            msg = msg[len(prefix) :]
+    loc = err.get("loc") or ()
+    parts = [str(x) for x in loc if x not in ("body", "query", "path")]
+    if parts:
+        return f"{'.'.join(parts)}: {msg}"
+    return msg
+
+
 def _cors_headers(request: Request) -> dict[str, str]:
     origin = request.headers.get("origin")
     if origin and origin in get_settings().cors_origin_list:
@@ -26,7 +41,7 @@ async def validation_error_handler(
     request: Request, exc: RequestValidationError
 ) -> JSONResponse:
     trace_id = getattr(request.state, "trace_id", None)
-    detail = exc.errors()[0].get("msg", "参数校验失败") if exc.errors() else "参数校验失败"
+    detail = _format_validation_message(exc)
     return JSONResponse(
         status_code=422,
         headers=_cors_headers(request),

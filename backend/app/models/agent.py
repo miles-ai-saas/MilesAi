@@ -89,6 +89,7 @@ class Agent(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         secondary=agent_kb_bindings,
         primaryjoin="Agent.id == agt_kb_bindings.c.agent_id",
         secondaryjoin="KnowledgeBase.id == agt_kb_bindings.c.kb_id",
+        lazy="selectin",
     )
     sub_agent_bindings: Mapped[list["AgentSubAgentBinding"]] = relationship(
         "AgentSubAgentBinding",
