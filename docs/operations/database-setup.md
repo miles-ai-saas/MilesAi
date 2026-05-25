@@ -271,4 +271,4 @@ cd backend && python cli.py init-db
 
 ---
 
-*文档随迁移版本更新；当前最新 revision：`003`。*
+*文档随迁移版本更新；当前唯一 revision：`001`（ORM create_all）。*

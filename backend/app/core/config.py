@@ -77,6 +77,13 @@ class Settings(BaseSettings):
     # MCP 出站：生产建议 false，禁止连接本机/内网（防 SSRF）
     mcp_allow_private_hosts: bool = True
 
+    # MCP Runner（STDIO 沙箱）：独立服务，API 不 subprocess 用户命令
+    mcp_runner_enabled: bool = False
+    mcp_runner_url: str = "http://localhost:8090"
+    mcp_runner_token: str = ""
+    mcp_runner_max_concurrent_per_tenant: int = 3
+    mcp_runner_command_whitelist: str = "npx,node,python,python3"
+
     seed_admin_username: str = "admin"
     seed_admin_password: str = "admin123"
     seed_admin_email: str = "admin@local.dev"
@@ -149,6 +156,12 @@ class Settings(BaseSettings):
     @property
     def weaviate_url(self) -> str:
         return f"{self.weaviate_scheme}://{self.weaviate_host}:{self.weaviate_port}"
+
+    @property
+    def mcp_runner_command_whitelist_set(self) -> frozenset[str]:
+        return frozenset(
+            c.strip() for c in self.mcp_runner_command_whitelist.split(",") if c.strip()
+        )
 
 @lru_cache
 def get_settings() -> Settings:

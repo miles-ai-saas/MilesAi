@@ -60,7 +60,7 @@ description: 通过技能你可以获取当前时间
 ### 3.1 表 `skl_skill_packages`
 
 模型：`app/tenant/skills/models.py`  
-迁移：`alembic/versions/005_skill_packages_v2.py`
+迁移：表结构由 ORM 定义，唯一 Alembic 文件 `alembic/versions/001_initial_schema.py`（`create_all`）。
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
@@ -302,7 +302,7 @@ backend/app/tenant/skills/
 
 ```bash
 cd backend
-python cli.py migrate          # 含 005_skill_packages_v2
+python cli.py migrate          # alembic upgrade head（001）
 python cli.py seed categories  # 写入 skill 域默认分类
 ```
 

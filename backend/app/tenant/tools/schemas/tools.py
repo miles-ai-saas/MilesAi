@@ -133,6 +133,5 @@ class ToolCatalogItem(BaseModel):
     version: str | None = None
     require_confirmation: bool = False
     tool_id: UUID | None = None
-    mcp_service_id: UUID | None = None
-    mcp_service_name: str | None = None
+    tool_type: str | None = None
     updated_at: datetime | None = None

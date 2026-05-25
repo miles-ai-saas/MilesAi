@@ -17,10 +17,32 @@ export const TOOL_PAGE_TABS: { key: ToolPageTab; label: string }[] = [
   { key: "logs", label: "调用日志" },
 ];
 
+export type ToolKindTab = "http" | "script";
+
+export const TOOL_KIND_TABS: { key: ToolKindTab; label: string; hint: string; available: boolean }[] = [
+  {
+    key: "http",
+    label: "HTTP",
+    hint: "调用 REST API，支持 URL 模板与参数映射",
+    available: true,
+  },
+  {
+    key: "script",
+    label: "Python 脚本",
+    hint: "在 MCP Runner 沙箱内运行，须定义 run(params) 函数",
+    available: true,
+  },
+];
+
+export function toolKindLabel(kind: string): string {
+  if (kind === "http") return "HTTP";
+  if (kind === "script") return "脚本";
+  return kind;
+}
+
 export function toolSourceLabel(source: string): string {
   if (source === "builtin") return "内置";
   if (source === "custom") return "自定义";
-  if (source === "mcp") return "MCP";
   return source;
 }
 

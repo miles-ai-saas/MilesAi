@@ -22,6 +22,7 @@ import type {
   PromptTemplate,
   SkillPackage,
   SysCategory,
+  ToolCatalogItem,
 } from "@/lib/types";
 
 export type { AgentFormValues } from "@/components/agent/agent-form-shared";
@@ -43,6 +44,7 @@ export function AgentFormDialog({ open, title, agent, onClose, onSaved }: Props)
   const [models, setModels] = useState<ModelConfig[]>([]);
   const [skills, setSkills] = useState<SkillPackage[]>([]);
   const [mcps, setMcps] = useState<McpService[]>([]);
+  const [toolCatalog, setToolCatalog] = useState<ToolCatalogItem[]>([]);
   const [allAgents, setAllAgents] = useState<Agent[]>([]);
   const [a2aPeers, setA2aPeers] = useState<A2aPeer[]>([]);
   const [categories, setCategories] = useState<SysCategory[]>([]);
@@ -61,16 +63,18 @@ export function AgentFormDialog({ open, title, agent, onClose, onSaved }: Props)
       api.listModelConfigs(),
       api.listSkillPackages(1, 100),
       api.listMcpServices(1, 100),
+      api.listToolCatalog(),
       api.listAgents(1, 100),
       api.listA2aPeers(1, 100),
       api.listCategories("agent"),
-    ]).then(([kbRes, flowRes, promptRes, modelRes, skillRes, mcpRes, agentRes, a2aRes, catRes]) => {
+    ]).then(([kbRes, flowRes, promptRes, modelRes, skillRes, mcpRes, catalogRes, agentRes, a2aRes, catRes]) => {
       setKbs(kbRes.items);
       setFlows(flowRes.items.filter((f) => f.status === "published"));
       setPrompts(promptRes.items);
       setModels(modelRes);
       setSkills(skillRes.items.filter((s) => s.is_active));
       setMcps(mcpRes.items);
+      setToolCatalog(catalogRes);
       setAllAgents(agentRes.items);
       setA2aPeers(a2aRes.items.filter((p) => p.status === "active"));
       setCategories(catRes);
@@ -131,7 +135,7 @@ export function AgentFormDialog({ open, title, agent, onClose, onSaved }: Props)
     <ResourceDialog
       open={open}
       title={title}
-      size="fullscreen"
+      size="sheet"
       onClose={onClose}
       footer={
         <div className="flex w-full flex-wrap items-center justify-between gap-3">
@@ -166,7 +170,7 @@ export function AgentFormDialog({ open, title, agent, onClose, onSaved }: Props)
         <h3 className="text-base font-semibold text-ink">{AGENT_FORM_STEPS[step].title}</h3>
         <p className="text-xs text-ink-muted">{AGENT_FORM_STEPS[step].subtitle}</p>
       </div>
-      <div className="min-h-[min(50vh,420px)]">
+      <div className="min-h-[min(55vh,480px)]">
         <AgentFormStepContent
           step={step}
           form={form}
@@ -179,6 +183,7 @@ export function AgentFormDialog({ open, title, agent, onClose, onSaved }: Props)
           models={models}
           skills={skills}
           mcps={mcps}
+          toolCatalog={toolCatalog}
           allAgents={allAgents}
           a2aPeers={a2aPeers}
         />

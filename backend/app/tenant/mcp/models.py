@@ -4,7 +4,7 @@ import enum
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, Index, String
+from sqlalchemy import DateTime, Index, String, func
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
@@ -49,5 +49,29 @@ class McpService(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     status: Mapped[McpStatus] = mapped_column(
         SAEnum(McpStatus, name="mcp_status", values_callable=lambda x: [e.value for e in x]),
         default=McpStatus.INACTIVE,
+        nullable=False,
+    )
+
+
+class McpRunnerSession(UUIDPrimaryKeyMixin, Base):
+    """MCP Runner 短会话审计（STDIO sync/invoke）。"""
+
+    __tablename__ = "mcp_runner_sessions"
+    __table_args__ = (Index("idx_mcp_runner_sessions_tenant_created", "tenant_id", "created_at"),)
+
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    service_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    actor_user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    purpose: Mapped[str] = mapped_column(String(32), nullable=False)
+    command: Mapped[str] = mapped_column(String(64), nullable=False)
+    args_digest: Mapped[str] = mapped_column(String(64), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False)
+    exit_code: Mapped[int | None] = mapped_column(nullable=True)
+    duration_ms: Mapped[int] = mapped_column(nullable=False, default=0)
+    error_message: Mapped[str | None] = mapped_column(String(2000), nullable=True)
+    tool_name: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
         nullable=False,
     )

@@ -148,21 +148,55 @@ def make_custom_http_tool(tool: Tool) -> StructuredTool:
     )
 
 
-async def load_tenant_http_tools(db: AsyncSession, ctx: TenantContext) -> list[StructuredTool]:
-    """加载租户启用的自定义 HTTP 工具。"""
+def make_custom_script_tool(tool: Tool) -> StructuredTool:
+    """将租户 Python 脚本工具转为 StructuredTool（schema 供 LLM；执行走 invoke）。"""
+    schema = parameters_to_pydantic(tool.parameters or [])
+    description = tool.description or tool.name
+    slug = tool.slug
+
+    async def _arun(**kwargs: Any) -> dict:
+        from app.tenant.tools.invoke import invoke_custom_script
+
+        raise RuntimeError("请通过 invoke_tool_with_context 执行脚本工具")
+
+    return StructuredTool.from_function(
+        coroutine=_arun,
+        name=slug,
+        description=description,
+        args_schema=schema,
+    )
+
+
+async def load_tenant_custom_tools(db: AsyncSession, ctx: TenantContext) -> list[StructuredTool]:
+    """加载租户启用的自定义 HTTP / 脚本工具。"""
     filters = append_not_deleted(tenant_filters(ctx, Tool.tenant_id), Tool)
     rows = (
         await db.execute(
-            select(Tool).where(*filters, Tool.is_active.is_(True), Tool.tool_type == ToolType.HTTP)
+            select(Tool).where(
+                *filters,
+                Tool.is_active.is_(True),
+                Tool.tool_type.in_([ToolType.HTTP, ToolType.SCRIPT]),
+            )
         )
     ).scalars().all()
-    return [make_custom_http_tool(t) for t in rows]
+    out: list[StructuredTool] = []
+    for t in rows:
+        if t.tool_type == ToolType.HTTP:
+            out.append(make_custom_http_tool(t))
+        elif t.tool_type == ToolType.SCRIPT:
+            out.append(make_custom_script_tool(t))
+    return out
+
+
+async def load_tenant_http_tools(db: AsyncSession, ctx: TenantContext) -> list[StructuredTool]:
+    """兼容旧名；等价于 load_tenant_custom_tools 的 HTTP 子集。"""
+    return await load_tenant_custom_tools(db, ctx)
 
 
 async def get_all_platform_tools(db: AsyncSession, ctx: TenantContext) -> list[StructuredTool]:
-    """内置 + 租户自定义 HTTP 工具。"""
+    """内置 + 租户自定义 HTTP / 脚本工具。"""
     tools = get_platform_tools(ctx)
-    tools.extend(await load_tenant_http_tools(db, ctx))
+    tools.extend(await load_tenant_custom_tools(db, ctx))
     return tools
 
 

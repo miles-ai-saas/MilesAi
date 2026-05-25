@@ -3,13 +3,14 @@ MCP 服务租户侧业务（L2）：CRUD、同步 tools_cache、试调用。
 
 状态
 ----
-- ``sync_service``：HTTP/SSE 调 ``fetch_mcp_tools`` → 写 ``tools_cache``、``ACTIVE``
-- ``invoke_tool``：工作台试调用；**Agent 对话内自动 MCP tool 执行尚未默认开启**
-- ``stdio``：可创建记录，sync/invoke 拒绝并提示沙箱规划中
+- ``sync_service``：HTTP/SSE 调 ``fetch_mcp_tools``；STDIO 调 ``RunnerClient``
+- ``invoke_tool``：工作台试调用；STDIO 经 Runner 沙箱
+- ``stdio``：需 ``MCP_RUNNER_ENABLED=true`` 且 Runner 服务可达
 
-远程协议在 ``tenant.mcp.client`` / ``sse_transport``；出站 URL 校验见 ``security``。
+远程协议在 ``tenant.mcp.client`` / ``sse_transport``；STDIO 在 ``runner.client``。
 """
 
+import time
 from datetime import datetime, timezone
 from uuid import UUID
 
@@ -17,6 +18,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.common.exceptions import BadRequestError, NotFoundError
+from app.core.config import get_settings
 from app.core.tenant import TenantContext, assert_tenant_access, tenant_filters
 from app.tenant.mcp.models import McpService, McpStatus
 from app.tenant.mcp.schemas.mcp import (
@@ -28,13 +30,15 @@ from app.tenant.mcp.schemas.mcp import (
     McpToolInvokeResult,
 )
 from app.tenant.mcp.client import fetch_mcp_tools, invoke_mcp_tool as remote_invoke_mcp_tool
+from app.tenant.mcp.runner.audit import write_mcp_runner_session
+from app.tenant.mcp.runner.client import RunnerClient
+from app.tenant.mcp.runner.spec import build_run_spec
 from app.tenant.mcp.transport import normalize_transport, transport_filter_values
 from app.common.schema import PageParams, PageResult
 from app.core.soft_delete import is_marked_deleted, mark_deleted, not_deleted
 from app.core.service import BaseService
 
-# STDIO 需子进程沙箱，见 docs/architecture/mcp-sandbox.md
-STDIO_SYNC_MESSAGE = "STDIO 工具同步将在后续版本支持，请暂时使用 HTTP 或 SSE"
+STDIO_RUNNER_DISABLED = "STDIO 需要启用 MCP Runner（MCP_RUNNER_ENABLED=true），请联系管理员"
 
 
 class McpServiceManager(BaseService):
@@ -152,10 +156,7 @@ class McpServiceManager(BaseService):
 
         transport = normalize_transport(row.transport)
         if transport == "stdio":
-            row.sync_error = STDIO_SYNC_MESSAGE
-            row.status = McpStatus.ERROR
-            await self.db.flush()
-            raise BadRequestError(STDIO_SYNC_MESSAGE)
+            return await self._sync_stdio_service(row)
 
         try:
             tools = await fetch_mcp_tools(
@@ -188,6 +189,57 @@ class McpServiceManager(BaseService):
         await self.db.flush()
         return McpSyncResult(tools=tools, synced_at=now)
 
+    async def _sync_stdio_service(self, row: McpService) -> McpSyncResult:
+        settings = get_settings()
+        if not settings.mcp_runner_enabled:
+            row.sync_error = STDIO_RUNNER_DISABLED
+            row.status = McpStatus.ERROR
+            await self.db.flush()
+            raise BadRequestError(STDIO_RUNNER_DISABLED)
+
+        spec = build_run_spec(row, self.ctx, purpose="mcp_sync")
+        started = time.monotonic()
+        try:
+            tools = await RunnerClient().list_tools(spec, row.connection_config or {})
+            duration_ms = int((time.monotonic() - started) * 1000)
+            await write_mcp_runner_session(
+                self.db,
+                spec=spec,
+                status="success",
+                duration_ms=duration_ms,
+            )
+        except BadRequestError as e:
+            duration_ms = int((time.monotonic() - started) * 1000)
+            await write_mcp_runner_session(
+                self.db,
+                spec=spec,
+                status="error",
+                duration_ms=duration_ms,
+                error_message=e.message,
+            )
+            row.sync_error = e.message
+            row.status = McpStatus.ERROR
+            await self.db.flush()
+            raise
+
+        now = datetime.now(timezone.utc)
+        if not tools:
+            row.sync_error = "STDIO MCP 未返回工具列表"
+            row.status = McpStatus.ERROR
+            row.tools_cache = [
+                {"name": f"{row.name}_placeholder", "description": row.sync_error},
+            ]
+            row.last_sync_at = now
+            await self.db.flush()
+            return McpSyncResult(tools=row.tools_cache, synced_at=now)
+
+        row.tools_cache = tools
+        row.last_sync_at = now
+        row.status = McpStatus.ACTIVE
+        row.sync_error = None
+        await self.db.flush()
+        return McpSyncResult(tools=tools, synced_at=now)
+
     async def invoke_tool(
         self,
         service_id: UUID,
@@ -208,7 +260,42 @@ class McpServiceManager(BaseService):
 
         transport = normalize_transport(row.transport)
         if transport == "stdio":
-            raise BadRequestError(STDIO_SYNC_MESSAGE)
+            settings = get_settings()
+            if not settings.mcp_runner_enabled:
+                raise BadRequestError(STDIO_RUNNER_DISABLED)
+            spec = build_run_spec(row, self.ctx, purpose="mcp_invoke")
+            started = time.monotonic()
+            try:
+                output = await RunnerClient().call_tool(
+                    spec,
+                    tool_name,
+                    body.params or {},
+                    row.connection_config or {},
+                )
+                duration_ms = int((time.monotonic() - started) * 1000)
+                await write_mcp_runner_session(
+                    self.db,
+                    spec=spec,
+                    status="success",
+                    duration_ms=duration_ms,
+                    tool_name=tool_name,
+                )
+            except BadRequestError as e:
+                duration_ms = int((time.monotonic() - started) * 1000)
+                await write_mcp_runner_session(
+                    self.db,
+                    spec=spec,
+                    status="error",
+                    duration_ms=duration_ms,
+                    error_message=e.message,
+                    tool_name=tool_name,
+                )
+                raise
+            return McpToolInvokeResult(
+                service_id=service_id,
+                tool_name=tool_name,
+                output=output,
+            )
 
         output = await remote_invoke_mcp_tool(
             row.endpoint_url,

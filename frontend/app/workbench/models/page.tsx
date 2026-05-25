@@ -292,6 +292,7 @@ export default function ModelsPage() {
       <ResourceDialog
         open={dialogOpen}
         title={editing ? "编辑自定义模型" : "添加自定义模型"}
+        size="lg"
         onClose={() => setDialogOpen(false)}
         footer={
           <>

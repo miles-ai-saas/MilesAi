@@ -132,7 +132,7 @@ export function AgentDetailDialog({
     <ResourceDialog
       open={open}
       title={agent ? `查看智能体 · ${agent.name}` : "查看智能体"}
-      size="lg"
+      size="sheet"
       onClose={onClose}
       footer={
         agent ? (

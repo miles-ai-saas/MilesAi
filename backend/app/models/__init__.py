@@ -14,7 +14,7 @@ from app.tenant.hooks.models import (
     HookTrigger,
     HookType,
 )
-from app.tenant.mcp.models import McpService, McpStatus
+from app.tenant.mcp.models import McpService, McpRunnerSession, McpStatus
 from app.tenant.prompts.models import PromptTemplate
 from app.tenant.skills.models import SkillPackage
 from app.models.flow import Flow, FlowStatus, FlowVersion
@@ -78,6 +78,7 @@ __all__ = [
     "ToolType",
     "ToolInvocationLog",
     "McpService",
+    "McpRunnerSession",
     "McpStatus",
     "AppCategory",
     "MarketplaceApp",

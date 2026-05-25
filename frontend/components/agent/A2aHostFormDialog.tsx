@@ -117,7 +117,7 @@ export function A2aHostFormDialog({ open, title, agent, onClose, onSaved }: Prop
     <ResourceDialog
       open={open}
       title={title}
-      size="fullscreen"
+      size="sheet"
       onClose={onClose}
       footer={
         <div className="flex w-full flex-wrap items-center justify-between gap-3">

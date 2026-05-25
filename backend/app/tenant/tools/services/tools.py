@@ -1,15 +1,16 @@
 """
-工具注册表（L2）：内置 registry、租户自定义 HTTP 工具、MCP 目录聚合。
+工具注册表（L2）：内置 registry、租户自定义 HTTP 工具。
 
 catalog
 -------
-合并 ``BUILTIN_REGISTRY``、DB ``Tool`` 行、已同步的 ``McpService.tools_cache``（只读展示）。
+合并 ``BUILTIN_REGISTRY`` 与 DB ``Tool`` 行（**不含 MCP**，MCP 见 ``tenant.mcp``）。
 
 执行
 ----
 ``invoke_tool_with_context`` → ``tenant.tools.invoke``（内置含 ``knowledge_search`` → ``search_kb``）。
 
 与 Agent：``enable_tool_calling`` 时走 ``integrations.langchain.tool_agent``，非本 Service 直连。
+与 MCP：独立模块；关系见 ``docs/guides/tools.md`` §6。
 """
 
 from uuid import UUID
@@ -25,12 +26,13 @@ from app.tenant.categories.services.category import CategoryService
 from app.models.tag import TagEntityType
 from app.tenant.tags.schemas.tag import TagRefOut
 from app.tenant.tags.services.tag import TagService
-from app.tenant.mcp.models import McpService
 from app.tenant.tools.builtin_registry import BUILTIN_REGISTRY, BUILTIN_SLUGS
 from app.tenant.tools.confirmation import ToolConfirmationRequired
 from app.tenant.tools.invoke import invoke_tool_with_context
 from app.tenant.tools.models import Tool, ToolInvocationLog, ToolType
+from app.core.config import get_settings
 from app.tenant.tools.parameters import normalize_parameters
+from app.tenant.tools.script_validate import validate_script_source
 from app.common.schema import PageParams, PageResult
 from app.tenant.tools.schemas.tools import (
     ToolCatalogItem,
@@ -90,18 +92,36 @@ class ToolsService(BaseService):
             size=params.size,
         )
 
+    def _normalize_script_config(self, config: dict | None) -> dict:
+        cfg = dict(config or {})
+        source = validate_script_source(str(cfg.get("source") or ""))
+        timeout = min(max(int(cfg.get("timeout_sec") or 30), 1), 120)
+        memory = min(max(int(cfg.get("max_memory_mb") or 512), 128), 2048)
+        return {
+            "language": "python",
+            "source": source,
+            "timeout_sec": timeout,
+            "max_memory_mb": memory,
+        }
+
     async def create_tool(self, body: ToolCreate) -> ToolOut:
         if body.tool_type == ToolType.SCRIPT:
-            raise BadRequestError("脚本工具尚未开放，请使用 HTTP 工具或 MCP")
+            if not get_settings().mcp_runner_enabled:
+                raise BadRequestError(
+                    "脚本工具需要启用 MCP Runner（MCP_RUNNER_ENABLED=true）"
+                )
         if body.slug in BUILTIN_SLUGS:
             raise BadRequestError(f"slug「{body.slug}」与内置工具冲突")
         await self._ensure_slug_unique(body.slug)
         params = normalize_parameters([p.model_dump() for p in body.parameters])
+        config = body.config
         if body.tool_type == ToolType.HTTP:
-            url = (body.config or {}).get("url")
+            url = (config or {}).get("url")
             if not url:
                 raise BadRequestError("HTTP 工具须配置 config.url")
             validate_outbound_url(str(url))
+        elif body.tool_type == ToolType.SCRIPT:
+            config = self._normalize_script_config(config)
         if body.category_id:
             await CategoryService(self.db, self.ctx).validate_category_for_domain(
                 body.category_id, CategoryDomain.TOOL
@@ -116,7 +136,7 @@ class ToolsService(BaseService):
             version=body.version,
             require_confirmation=body.require_confirmation,
             parameters=params,
-            config=body.config,
+            config=config,
         )
         self.db.add(row)
         await self.db.flush()
@@ -145,10 +165,17 @@ class ToolsService(BaseService):
             await CategoryService(self.db, self.ctx).validate_category_for_domain(
                 data["category_id"], CategoryDomain.TOOL
             )
-        if "config" in data and data["config"]:
-            url = data["config"].get("url")
-            if url:
-                validate_outbound_url(str(url))
+        if "config" in data and data["config"] is not None:
+            if row.tool_type == ToolType.SCRIPT or data.get("tool_type") == ToolType.SCRIPT:
+                if not get_settings().mcp_runner_enabled:
+                    raise BadRequestError(
+                        "脚本工具需要启用 MCP Runner（MCP_RUNNER_ENABLED=true）"
+                    )
+                data["config"] = self._normalize_script_config(data["config"])
+            else:
+                url = data["config"].get("url")
+                if url:
+                    validate_outbound_url(str(url))
         for k, v in data.items():
             setattr(row, k, v)
         await self.db.flush()
@@ -297,31 +324,13 @@ class ToolsService(BaseService):
                         version=t.version,
                         require_confirmation=t.require_confirmation,
                         tool_id=t.id,
+                        tool_type=t.tool_type.value if hasattr(t.tool_type, "value") else str(t.tool_type),
                         updated_at=t.updated_at,
                     )
                 )
 
-        if not src or src == "mcp":
-            mcp_filters = [*tenant_filters(self.ctx, McpService.tenant_id), not_deleted(McpService)]
-            mcps = (await self.db.execute(select(McpService).where(*mcp_filters))).scalars().all()
-            for svc in mcps:
-                for tool in svc.tools_cache or []:
-                    if isinstance(tool, dict):
-                        slug = str(tool.get("name", "tool"))
-                        catalog.append(
-                            ToolCatalogItem(
-                                source="mcp",
-                                slug=slug,
-                                name=slug,
-                                description=str(tool.get("description") or "") or None,
-                                mcp_service_id=svc.id,
-                                mcp_service_name=svc.name,
-                                updated_at=svc.updated_at,
-                            )
-                        )
-
-        if src and src not in ("builtin", "custom", "mcp"):
-            raise BadRequestError("source 须为 builtin、custom 或 mcp")
+        if src and src not in ("builtin", "custom"):
+            raise BadRequestError("source 须为 builtin 或 custom")
 
         return catalog
 

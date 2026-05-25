@@ -1,7 +1,7 @@
 "use client";
 
 import { CardOverflowMenu, type OverflowMenuItem } from "@/components/resource/CardOverflowMenu";
-import { formatToolUpdatedAt, toolSourceLabel } from "@/lib/tool-labels";
+import { formatToolUpdatedAt, toolKindLabel, toolSourceLabel } from "@/lib/tool-labels";
 import type { ToolCatalogItem } from "@/lib/types";
 
 type Props = {
@@ -46,16 +46,22 @@ export function ToolCard({ tool, onTest, onEdit, onDelete }: Props) {
         <span className="rounded border border-brand/20 bg-brand-light/30 px-2 py-0.5 text-[10px] font-medium text-brand">
           {toolSourceLabel(tool.source)}
         </span>
+        {tool.source === "custom" && tool.tool_type && (
+          <span className="rounded border border-line bg-surface-muted px-2 py-0.5 text-[10px] text-ink-muted">
+            {toolKindLabel(tool.tool_type)}
+          </span>
+        )}
         {tool.version && (
           <span className="rounded border border-line bg-surface-muted px-2 py-0.5 text-[10px] text-ink-muted">
             v{tool.version}
           </span>
         )}
+        {tool.require_confirmation && (
+          <span className="rounded border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] text-amber-800">
+            需确认
+          </span>
+        )}
       </div>
-
-      {tool.mcp_service_name && (
-        <p className="mt-2 text-xs text-ink-faint">来自 {tool.mcp_service_name}</p>
-      )}
 
       <p className="mt-auto pt-3 text-xs text-ink-faint">
         {formatToolUpdatedAt(tool) ? `更新于 ${formatToolUpdatedAt(tool)}` : ""}

@@ -15,8 +15,74 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.tenant.mcp.models import McpService
 from app.tenant.skills.models import SkillPackage
 from app.tenant.skills.storage import read_skill_md
+from app.tenant.tools.builtin_registry import BUILTIN_REGISTRY
+from app.tenant.tools.models import Tool
 from app.core.soft_delete import is_marked_deleted, not_deleted
 from app.core.tenant import TenantContext, tenant_filters
+
+
+def _format_param_summary(parameters: list | None) -> str:
+    if not parameters:
+        return ""
+    parts: list[str] = []
+    for p in parameters[:8]:
+        if not isinstance(p, dict):
+            continue
+        name = p.get("name", "?")
+        req = "必填" if p.get("required") else "可选"
+        parts.append(f"{name}({req})")
+    return ", ".join(parts)
+
+
+async def _append_platform_tools_block(
+    db: AsyncSession,
+    ctx: TenantContext,
+    config: dict,
+    parts: list[str],
+) -> None:
+    """enable_tool_calling 时，将可选平台工具摘要写入 prompt（与 function schema 互补）。"""
+    if not config.get("enable_tool_calling"):
+        return
+    raw_slugs = config.get("tool_slugs") or []
+    if isinstance(raw_slugs, str):
+        raw_slugs = [raw_slugs]
+    slug_filter = {str(s) for s in raw_slugs if s}
+
+    lines: list[str] = []
+    for t in BUILTIN_REGISTRY:
+        slug = t["slug"]
+        if slug_filter and slug not in slug_filter:
+            continue
+        params = _format_param_summary(t.get("parameters"))
+        suffix = f" 参数: {params}" if params else ""
+        lines.append(f"- {slug}: {t.get('description', t.get('name', slug))}{suffix}")
+
+    if slug_filter:
+        custom_filters = [
+            *tenant_filters(ctx, Tool.tenant_id),
+            not_deleted(Tool),
+            Tool.is_active.is_(True),
+            Tool.slug.in_(slug_filter),
+        ]
+        custom_rows = (await db.execute(select(Tool).where(*custom_filters))).scalars().all()
+        for row in custom_rows:
+            params = _format_param_summary(row.parameters)
+            suffix = f" 参数: {params}" if params else ""
+            lines.append(f"- {row.slug}: {row.description or row.name}{suffix}")
+    elif not slug_filter:
+        custom_filters = [
+            *tenant_filters(ctx, Tool.tenant_id),
+            not_deleted(Tool),
+            Tool.is_active.is_(True),
+        ]
+        custom_rows = (await db.execute(select(Tool).where(*custom_filters).limit(20))).scalars().all()
+        for row in custom_rows:
+            params = _format_param_summary(row.parameters)
+            suffix = f" 参数: {params}" if params else ""
+            lines.append(f"- {row.slug}: {row.description or row.name}{suffix}")
+
+    if lines:
+        parts.append("【平台工具 · 可 function calling 执行】\n" + "\n".join(lines[:24]))
 
 
 async def build_skill_mcp_prompt_block(
@@ -67,7 +133,9 @@ async def build_skill_mcp_prompt_block(
                 parts.append(f"【MCP · {svc.name}】尚未同步工具，请先在市场/MCP 页同步。")
                 continue
             lines = [f"- {t.get('name', 'tool')}: {t.get('description', '')}" for t in tools[:12]]
-            parts.append(f"【MCP · {svc.name}】\n" + "\n".join(lines))
+            parts.append(f"【MCP · {svc.name}】（仅说明，对话内不自动调用；试调用请用 MCP 页）\n" + "\n".join(lines))
+
+    await _append_platform_tools_block(db, ctx, config, parts)
 
     if not parts:
         return ""

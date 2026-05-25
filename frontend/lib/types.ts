@@ -290,7 +290,7 @@ export interface ToolParameterSpec {
 }
 
 export interface ToolCatalogItem {
-  source: "builtin" | "custom" | "mcp" | string;
+  source: "builtin" | "custom" | string;
   slug: string;
   name: string;
   description?: string | null;
@@ -300,8 +300,7 @@ export interface ToolCatalogItem {
   version?: string | null;
   require_confirmation?: boolean;
   tool_id?: string | null;
-  mcp_service_id?: string | null;
-  mcp_service_name?: string | null;
+  tool_type?: string | null;
   updated_at?: string | null;
 }
 
@@ -327,7 +326,7 @@ export interface ToolCreatePayload {
   slug: string;
   name: string;
   description?: string | null;
-  tool_type?: "http";
+  tool_type?: "http" | "script";
   category_id?: string | null;
   tag_ids?: string[];
   version?: string;

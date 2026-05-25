@@ -1,6 +1,6 @@
 "use client";
 
-/** 创建/编辑弹窗：HTTP·SSE 填 URL；STDIO 填 command 与 args（同步能力后端暂未开放）。 */
+/** 创建/编辑弹窗：HTTP·SSE 填 URL；STDIO 填 command 与 args（经 MCP Runner 沙箱同步/调用）。 */
 
 import { ResourceDialog } from "@/components/resource/ResourceDialog";
 import type { McpTransportTab } from "@/lib/mcp-labels";
@@ -59,6 +59,7 @@ export function McpServiceDialog({
           ? `添加 ${mcpTransportLabel(t)} MCP 服务`
           : `编辑 MCP 服务`
       }
+      size="lg"
       onClose={onClose}
       footer={
         <>
@@ -110,7 +111,8 @@ export function McpServiceDialog({
             />
           </label>
           <p className="text-xs text-amber-700">
-            STDIO 服务可先创建入库；工具同步将在后续版本开放。
+            STDIO 经平台 MCP Runner 沙箱执行；需管理员启用 Runner。预装 MCP 可用
+            <code className="text-xs">mcp-server-everything</code>，npx 拉包需配置 network_mode=allow。
           </p>
         </>
       ) : (

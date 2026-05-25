@@ -14,6 +14,7 @@ import type {
   PromptTemplate,
   SkillPackage,
   SysCategory,
+  ToolCatalogItem,
 } from "@/lib/types";
 
 type Props = {
@@ -29,6 +30,7 @@ type Props = {
   models: ModelConfig[];
   skills: SkillPackage[];
   mcps: McpService[];
+  toolCatalog: ToolCatalogItem[];
   allAgents: Agent[];
   a2aPeers: A2aPeer[];
   designMode?: boolean;
@@ -48,6 +50,7 @@ export function AgentFormStepContent({
   models,
   skills,
   mcps,
+  toolCatalog,
   allAgents,
   a2aPeers,
   designMode,
@@ -59,6 +62,15 @@ export function AgentFormStepContent({
       mcp_service_ids: f.mcp_service_ids.includes(id)
         ? f.mcp_service_ids.filter((x) => x !== id)
         : [...f.mcp_service_ids, id],
+    }));
+  };
+
+  const toggleToolSlug = (slug: string) => {
+    setForm((f) => ({
+      ...f,
+      tool_slugs: f.tool_slugs.includes(slug)
+        ? f.tool_slugs.filter((x) => x !== slug)
+        : [...f.tool_slugs, slug],
     }));
   };
 
@@ -276,8 +288,47 @@ export function AgentFormStepContent({
               已绑定流程：对话将经 LangGraph 编译执行画布（并行 / 条件分支）。
             </p>
           )}
+          <div className="rounded-lg border border-brand/30 bg-brand-light/20 p-4 lg:col-span-2">
+            <label className="flex cursor-pointer items-center gap-2 text-sm font-medium text-ink">
+              <input
+                type="checkbox"
+                checked={form.enable_tool_calling}
+                onChange={(e) =>
+                  setForm((f) => ({
+                    ...f,
+                    enable_tool_calling: e.target.checked,
+                    tool_slugs: e.target.checked ? f.tool_slugs : [],
+                  }))
+                }
+              />
+              启用平台工具自动调用（function calling）
+            </label>
+            <p className="mt-1 text-xs text-ink-muted">
+              仅在不绑定知识库时生效；与 MCP 独立。未勾选下方工具则允许全部内置 + 自定义 HTTP。
+            </p>
+            {form.enable_tool_calling && (
+              <div className="mt-3 flex max-h-36 flex-wrap gap-2 overflow-y-auto">
+                {toolCatalog.length === 0 && (
+                  <span className="text-xs text-ink-faint">暂无平台工具，请先在工具页创建</span>
+                )}
+                {toolCatalog.map((t) => (
+                  <label key={`${t.source}-${t.slug}`} className="flex cursor-pointer items-center gap-1 text-xs">
+                    <input
+                      type="checkbox"
+                      checked={form.tool_slugs.includes(t.slug)}
+                      onChange={() => toggleToolSlug(t.slug)}
+                    />
+                    {t.name} ({t.slug})
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
           <div className="rounded-lg border border-line-soft p-4 lg:col-span-2">
-            <p className="mb-2 text-xs font-medium text-ink-muted">MCP 服务（可多选）</p>
+            <p className="mb-1 text-xs font-medium text-ink-muted">MCP 服务（可多选，仅注入提示词）</p>
+            <p className="mb-2 text-xs text-ink-faint">
+              MCP 与平台工具分离；绑定后写入系统提示，对话内暂不自动调用。
+            </p>
             <div className="flex max-h-32 flex-wrap gap-2 overflow-y-auto">
               {mcps.length === 0 && <span className="text-xs text-ink-faint">暂无 MCP 服务</span>}
               {mcps.map((m) => (

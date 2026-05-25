@@ -24,8 +24,16 @@ from app.tenant.tools.builtin_registry import BUILTIN_SLUGS
 from app.tenant.tools.confirmation import ToolConfirmationRequired, resolve_tool_meta
 from app.tenant.tools.invocation_log import write_tool_invocation_log
 from app.tenant.tools.models import Tool, ToolType
+from app.core.config import get_settings
+from app.tenant.mcp.runner.audit import write_script_runner_session
+from app.tenant.mcp.runner.client import RunnerClient
 from app.tenant.tools.parameters import validate_tool_params
+from app.tenant.tools.script_validate import validate_script_source
 from app.core.soft_delete import is_marked_deleted
+
+SCRIPT_RUNNER_DISABLED = (
+    "脚本工具需要启用 MCP Runner（MCP_RUNNER_ENABLED=true），请联系管理员"
+)
 
 
 _SAFE_OPS = {
@@ -150,6 +158,63 @@ async def invoke_custom_http(tool: Tool, params: dict) -> dict:
     return result
 
 
+async def invoke_custom_script(
+    db: AsyncSession,
+    tool: Tool,
+    params: dict,
+    *,
+    ctx: TenantContext,
+    actor_user_id: UUID | None = None,
+) -> dict:
+    settings = get_settings()
+    if not settings.mcp_runner_enabled:
+        raise BadRequestError(SCRIPT_RUNNER_DISABLED)
+
+    validated = validate_tool_params(tool.parameters or [], params)
+    cfg = tool.config or {}
+    source = validate_script_source(str(cfg.get("source") or ""))
+    timeout_sec = min(max(int(cfg.get("timeout_sec") or 30), 1), 120)
+    memory_mb = min(max(int(cfg.get("max_memory_mb") or 512), 128), 2048)
+
+    started = time.monotonic()
+    try:
+        output = await RunnerClient().exec_script(
+            tenant_id=ctx.tenant_id,
+            source=source,
+            params=validated,
+            tool_id=tool.id,
+            actor_user_id=actor_user_id,
+            max_runtime_sec=timeout_sec,
+            max_memory_mb=memory_mb,
+        )
+        duration_ms = int((time.monotonic() - started) * 1000)
+        await write_script_runner_session(
+            db,
+            tenant_id=ctx.tenant_id,
+            tool_id=tool.id,
+            actor_user_id=actor_user_id,
+            source=source,
+            status="success",
+            duration_ms=duration_ms,
+            tool_name=tool.slug,
+        )
+        return output
+    except BadRequestError as e:
+        duration_ms = int((time.monotonic() - started) * 1000)
+        await write_script_runner_session(
+            db,
+            tenant_id=ctx.tenant_id,
+            tool_id=tool.id,
+            actor_user_id=actor_user_id,
+            source=source,
+            status="error",
+            duration_ms=duration_ms,
+            error_message=e.message,
+            tool_name=tool.slug,
+        )
+        raise
+
+
 async def invoke_tool_by_name(
     db: AsyncSession,
     ctx: TenantContext,
@@ -178,6 +243,10 @@ async def invoke_tool_by_name(
         raise NotFoundError("工具不存在")
     if tool.tool_type == ToolType.HTTP:
         return await invoke_custom_http(tool, params)
+    if tool.tool_type == ToolType.SCRIPT:
+        return await invoke_custom_script(
+            db, tool, params, ctx=ctx, actor_user_id=ctx.user_id
+        )
     raise BadRequestError(f"暂不支持执行工具类型: {tool.tool_type}")
 
 

@@ -81,34 +81,73 @@
 
 ## 6. 分阶段落地
 
-| 阶段 | 内容 | 依赖 |
+| 阶段 | 内容 | 状态 |
 |------|------|------|
-| **Phase 2（已完成）** | HTTP/SSE `tools/call` + `security.py` | 无沙箱 |
-| **Phase 3a** | Runner 独立服务 + STDIO `tools/list` 同步 | 容器或 systemd 降权 |
-| **Phase 3b** | STDIO `tools/call` + 会话级复用（可选） | 3a + 资源配额 |
-| **Phase 4** | 预置市场 MCP 模板（高德等） | 模板审批流 |
+| **Phase 2** | HTTP/SSE `tools/call` + `security.py` | 已完成 |
+| **Phase 3** | Runner 独立服务 + STDIO sync + invoke | **已完成** |
+| **Phase 4** | 预置市场 MCP 模板、npx 域名白名单、script v2 | 规划中 |
 
-## 7. 配置建议（生产）
+部署与运行详见 [guides/mcp.md §8](../guides/mcp.md#8-mcp-runner-部署stdio-沙箱)。
+
+## 7. 运行方式
+
+### 7.1 本地开发
+
+```text
+终端 1: uvicorn app.runner.main:app --port 8090
+终端 2: uvicorn app.main:app --port 8000  (MCP_RUNNER_URL=http://localhost:8090)
+```
+
+- Runner 与 API 同机，隔离弱于容器，适合日常开发。
+- 本机需自行安装或通过 `npm install -g` 提供 MCP 可执行文件。
+
+### 7.2 Docker Compose
+
+```text
+docker compose -f docker-compose.infra.yml up -d
+docker compose up -d --build    # 含 milesai-api + milesai-mcp-runner
+```
+
+- `mcp-runner` 不暴露 host 端口，仅 `milesai-net` 内网访问。
+- 镜像 `docker/images/mcp-runner/Dockerfile` 预装 Node 与 `@modelcontextprotocol/server-everything`。
+- API 环境变量：`MCP_RUNNER_URL=http://mcp-runner:8090`。
+
+### 7.3 生产建议
+
+```bash
+MCP_ALLOW_PRIVATE_HOSTS=false
+MCP_RUNNER_ENABLED=true
+MCP_RUNNER_TOKEN=<random-32-bytes>   # api 与 mcp-runner 相同
+MCP_RUNNER_MAX_CONCURRENT=20
+MCP_RUNNER_MAX_CONCURRENT_PER_TENANT=3
+```
+
+- Runner 不对公网映射端口；仅 API 容器可访问。
+- 定期查看 `mcp_runner_sessions` 审计表。
+
+## 8. 配置建议（生产）
 
 ```bash
 # 禁止 MCP 访问本机/内网（与 guides/mcp.md 一致）
 MCP_ALLOW_PRIVATE_HOSTS=false
 
-# 规划：Runner 专用
-# MCP_RUNNER_ENABLED=true
-# MCP_RUNNER_MAX_CONCURRENT=10
-# MCP_RUNNER_DEFAULT_TIMEOUT_SEC=30
+# Runner（详见 guides/mcp.md §8）
+MCP_RUNNER_ENABLED=true
+MCP_RUNNER_URL=http://mcp-runner:8090
+MCP_RUNNER_TOKEN=<secret>
+MCP_RUNNER_MAX_CONCURRENT=20
+MCP_RUNNER_MAX_CONCURRENT_PER_TENANT=3
 ```
 
-## 8. 审计与合规
+## 9. 审计与合规
 
-建议写入 `tenant_audit_log`（或专用 `mcp_invoke_log`）：
+建议写入 `mcp_runner_sessions` 及 `tenant_audit_log`（表结构见 ORM，随 `001` 迁移创建）：
 
-- `action`: `mcp.sync` \| `mcp.invoke`
-- `resource_id`: `service_id`
-- `detail`: `tool_name`、耗时、HTTP status / 退出码（不含密钥）
+- `purpose`: `mcp_sync` \| `mcp_invoke` \| `script_exec`
+- `command` / `args_digest`：不含完整 env 秘密
+- `status` / `exit_code` / `duration_ms` / `error_message`
 
-## 9. 威胁模型摘要
+## 10. 威胁模型摘要
 
 | 威胁 | HTTP/SSE 缓解 | STDIO 缓解 |
 |------|----------------|------------|
@@ -118,15 +157,19 @@ MCP_ALLOW_PRIVATE_HOSTS=false
 | 数据泄露 | TLS、租户隔离 | 进程级文件系统只读根 |
 | 供应链恶意包 | 不适用 | 模板审批 + 可选镜像固定版本 |
 
-## 10. 参考实现入口（规划）
+## 11. 代码入口
 
-| 组件 | 建议路径 |
-|------|----------|
-| Runner 协议 | `app/tenant/mcp/runner/`（待建） |
+| 组件 | 路径 |
+|------|------|
+| Runner HTTP 服务 | `app/runner/main.py` |
+| 子进程会话 | `app/runner/session.py`、`app/runner/mcp_stdio.py` |
 | RunSpec 校验 | `app/tenant/mcp/runner/spec.py` |
+| API 侧客户端 | `app/tenant/mcp/runner/client.py` |
+| 业务接入 | `app/tenant/mcp/services/mcp.py`（stdio 分支） |
+| Docker 镜像 | `docker/images/mcp-runner/Dockerfile` |
 | 现有 HTTP 客户端 | `app/tenant/mcp/client.py` |
 | 连接安全 | `app/tenant/mcp/security.py` |
 
 ---
 
-**状态**：HTTP/SSE invoke 已按 Phase 2 实现；STDIO 沙箱为**设计基线**，实现前请勿在生产开启 STDIO 同步/调用。
+**状态**：HTTP/SSE invoke（Phase 2）与 STDIO Runner 沙箱（Phase 3）均已实现。部署步骤见 [guides/mcp.md §8](../guides/mcp.md#8-mcp-runner-部署stdio-沙箱)。

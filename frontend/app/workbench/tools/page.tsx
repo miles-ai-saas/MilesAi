@@ -7,7 +7,7 @@ import { AddResourceCard } from "@/components/resource/AddResourceCard";
 import { ResourceListFooter } from "@/components/resource/ResourceListFooter";
 import { ResourceListLayout } from "@/components/resource/ResourceListLayout";
 import { ToolCard } from "@/components/tool/ToolCard";
-import { ToolCreateDialog, type ToolDialogMode } from "@/components/tool/ToolCreateDialog";
+import { ToolCreateDialog, DEFAULT_SCRIPT, type ToolDialogMode } from "@/components/tool/ToolCreateDialog";
 import { ToolTestDialog } from "@/components/tool/ToolTestDialog";
 import { useConfirmAction } from "@/hooks/use-confirm-action";
 import { usePagedList } from "@/hooks/use-paged-list";
@@ -18,6 +18,7 @@ import {
   TOOL_PAGE_TABS,
   TOOL_SOURCE_TABS,
   toolSourceLabel,
+  type ToolKindTab,
   type ToolPageTab,
   type ToolSourceTab,
 } from "@/lib/tool-labels";
@@ -35,7 +36,7 @@ function slugFromName(name: string): string {
 const defaultParams = (): ToolParameterSpec[] => [];
 
 const PAGE_DESC =
-  "内置工具、自定义 HTTP 与 MCP 同步工具的统一目录，可供技能包与智能体引用；支持试调用与审计日志查看。";
+  "平台内置与自定义 HTTP / Python 脚本工具；供技能包引用与智能体 function calling。外部 MCP 服务请前往 MCP 工作台。";
 
 const MAIN_TABS = TOOL_PAGE_TABS.map((t) => ({ key: t.key, label: t.label }));
 
@@ -134,6 +135,7 @@ export default function ToolsPage() {
   const [editing, setEditing] = useState<CustomTool | null>(null);
   const [busy, setBusy] = useState(false);
 
+  const [toolKind, setToolKind] = useState<ToolKindTab>("http");
   const [slug, setSlug] = useState("");
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -144,6 +146,9 @@ export default function ToolsPage() {
   const [url, setUrl] = useState("");
   const [method, setMethod] = useState("POST");
   const [headersJson, setHeadersJson] = useState("{}");
+  const [bodyMode, setBodyMode] = useState<"json" | "none">("json");
+  const [timeoutSec, setTimeoutSec] = useState(15);
+  const [scriptSource, setScriptSource] = useState(DEFAULT_SCRIPT);
 
   const [testOpen, setTestOpen] = useState(false);
   const [testTool, setTestTool] = useState<ToolCatalogItem | null>(null);
@@ -184,8 +189,7 @@ export default function ToolsPage() {
       filterBySearch(
         catalog,
         search,
-        (t) =>
-          `${t.name} ${t.slug} ${t.description ?? ""} ${t.source} ${t.mcp_service_name ?? ""}`,
+        (t) => `${t.name} ${t.slug} ${t.description ?? ""} ${t.source}`,
       ),
     [catalog, search],
   );
@@ -204,13 +208,11 @@ export default function ToolsPage() {
   const catalogStats = useMemo(() => {
     let builtin = 0;
     let custom = 0;
-    let mcp = 0;
     for (const t of catalog) {
       if (t.source === "builtin") builtin += 1;
       else if (t.source === "custom") custom += 1;
-      else if (t.source === "mcp") mcp += 1;
     }
-    return { total: catalog.length, builtin, custom, mcp };
+    return { total: catalog.length, builtin, custom };
   }, [catalog]);
 
   const layoutCommon = {
@@ -231,6 +233,10 @@ export default function ToolsPage() {
     setUrl("");
     setMethod("POST");
     setHeadersJson("{}");
+    setBodyMode("json");
+    setTimeoutSec(15);
+    setScriptSource(DEFAULT_SCRIPT);
+    setToolKind("http");
     setTagIds([]);
   };
 
@@ -257,28 +263,52 @@ export default function ToolsPage() {
     setUrl(String((detail.config as { url?: string })?.url ?? ""));
     setMethod(String((detail.config as { method?: string })?.method ?? "POST"));
     setHeadersJson(JSON.stringify((detail.config as { headers?: object })?.headers ?? {}, null, 2));
+    setBodyMode((detail.config as { body_mode?: string })?.body_mode === "none" ? "none" : "json");
+    setTimeoutSec(Number((detail.config as { timeout_sec?: number })?.timeout_sec) || 15);
+    setScriptSource(String((detail.config as { source?: string })?.source ?? DEFAULT_SCRIPT));
+    setToolKind(detail.tool_type === "script" ? "script" : "http");
     setDialogOpen(true);
   };
 
   const onSave = async () => {
-    if (!name.trim() || !slug.trim() || !url.trim()) return;
+    if (!name.trim() || !slug.trim()) return;
+    if (toolKind === "http" && !url.trim()) return;
+    if (toolKind === "script" && !scriptSource.trim()) return;
+
     let headers: Record<string, string> = {};
-    try {
-      headers = headersJson.trim() ? JSON.parse(headersJson) : {};
-    } catch {
-      alert("Headers JSON 格式错误");
-      return;
+    if (toolKind === "http") {
+      try {
+        headers = headersJson.trim() ? JSON.parse(headersJson) : {};
+      } catch {
+        alert("Headers JSON 格式错误");
+        return;
+      }
     }
+
     const payload = {
       slug: slug.trim(),
       name: name.trim(),
       description: description.trim() || null,
+      tool_type: toolKind,
       category_id: null,
       tag_ids: tagIds,
       version: version.trim() || "1.0.0",
       require_confirmation: requireConfirmation,
       parameters: parameters.filter((p) => p.name.trim()),
-      config: { url: url.trim(), method, headers, body_mode: "json", timeout_sec: 15 },
+      config:
+        toolKind === "script"
+          ? {
+              language: "python",
+              source: scriptSource,
+              timeout_sec: timeoutSec,
+            }
+          : {
+              url: url.trim(),
+              method,
+              headers,
+              body_mode: bodyMode,
+              timeout_sec: timeoutSec,
+            },
     };
     setBusy(true);
     try {
@@ -314,13 +344,6 @@ export default function ToolsPage() {
 
   const runTest = async (params: Record<string, unknown>, confirmed: boolean) => {
     if (!testTool) return "";
-    if (testTool.source === "mcp" && testTool.mcp_service_name) {
-      const mcpList = await api.listMcpServices(1, 100);
-      const svc = mcpList.items.find((s) => s.name === testTool.mcp_service_name);
-      if (!svc) throw new Error("未找到 MCP 服务");
-      const res = await api.invokeMcpTool(svc.id, testTool.slug, params);
-      return JSON.stringify(res.output, null, 2);
-    }
     const res = await api.invokeTool(
       testTool.slug,
       params,
@@ -338,6 +361,7 @@ export default function ToolsPage() {
       <ToolCreateDialog
         open={dialogOpen}
         mode={dialogMode}
+        toolKind={toolKind}
         editing={editing}
         slug={slug}
         name={name}
@@ -349,9 +373,13 @@ export default function ToolsPage() {
         url={url}
         method={method}
         headersJson={headersJson}
+        bodyMode={bodyMode}
+        timeoutSec={timeoutSec}
+        scriptSource={scriptSource}
         busy={busy}
         onClose={() => setDialogOpen(false)}
         onSubmit={onSave}
+        onToolKindChange={setToolKind}
         onSlugChange={setSlug}
         onNameChange={(v) => {
           setName(v);
@@ -365,6 +393,9 @@ export default function ToolsPage() {
         onUrlChange={setUrl}
         onMethodChange={setMethod}
         onHeadersJsonChange={setHeadersJson}
+        onBodyModeChange={setBodyMode}
+        onTimeoutSecChange={setTimeoutSec}
+        onScriptSourceChange={setScriptSource}
       />
       <ToolTestDialog
         open={testOpen}
@@ -446,13 +477,20 @@ export default function ToolsPage() {
           </div>
         }
       >
-        <div className="col-span-full grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="col-span-full rounded-xl border border-brand/20 bg-brand-light/30 px-4 py-3 text-xs text-brand">
+          外部 MCP 工具不在此列表展示，请前往{" "}
+          <a href="/workbench/mcp" className="font-medium underline">
+            MCP 工作台
+          </a>
+          。详见文档 docs/guides/tools.md。
+        </div>
+
+        <div className="col-span-full grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <StatChip label="工具总数" value={String(catalogStats.total)} hint="当前筛选条件下" />
           <StatChip label="内置" value={String(catalogStats.builtin)} />
-          <StatChip label="自定义" value={String(catalogStats.custom)} />
           <StatChip
-            label="MCP"
-            value={String(catalogStats.mcp)}
+            label="自定义"
+            value={String(catalogStats.custom)}
             hint={`本页展示 ${filtered.length} 个`}
           />
         </div>

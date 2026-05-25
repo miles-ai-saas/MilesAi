@@ -17,7 +17,7 @@ v1 目标：对齐参考 UI，交付可用的 HTTP 自定义工具管理，并�
 - 统一工具工作台 UI（全部 / 内置 / 自定义 Tab + 分类筛选）
 - 内置工具注册表（含参数 schema、新增 `get_current_datetime`）
 - 自定义 HTTP 工具 CRUD：slug、分类、版本、参数 schema、试调用
-- catalog API 合并 builtin + custom + mcp
+- catalog API 合并 builtin + custom（**不含 MCP**，见 [tools.md](../guides/tools.md) §6）
 - Agent LangChain 动态 StructuredTool（自定义 HTTP）
 
 ### 1.2 v1 不做
@@ -227,9 +227,11 @@ Agent / 流程 / 试调用
 
 | Tab | 内容 | 操作 |
 |-----|------|------|
-| 全部 | builtin + custom + mcp | MCP 只读；试调用 |
+| 全部 | builtin + custom | 试调用 |
 | 内置 | 仅 builtin | 只读 + 试调用 |
 | 自定义 | custom HTTP | CRUD + 试调用 |
+
+MCP 工具在 [MCP 工作台](/workbench/mcp) 管理，不在工具页展示。
 
 ---
 
@@ -239,7 +241,7 @@ Agent / 流程 / 试调用
 |------|------|
 | 技能包 `tool_names` | 继续存 slug |
 | Agent `context.py` | 展示 parameters 摘要 |
-| MCP | 无变更；catalog 只读展示 |
+| MCP | 无变更；**不在**工具 catalog 合并，见 [tools.md](../../guides/tools.md) |
 | 租户删除 | 已有 Tool 硬删，无需改 |
 | 前端 `CategoryDomain` | 增加 `"tool"` |
 
@@ -247,12 +249,13 @@ Agent / 流程 / 试调用
 
 ## 8. Migration
 
-文件：`006_tool_v2_fields.py`
+表结构由 ORM 定义；唯一迁移文件 `alembic/versions/001_initial_schema.py`（`Base.metadata.create_all`）。
 
-- 加列：`slug`, `category_id`, `version`, `require_confirmation`, `parameters`
-- 回填 slug（从 name 规范化）
-- 改 unique index：`tenant_id + slug`
-- enum 移除 `builtin`（若存在）
+```bash
+cd backend && alembic upgrade head
+```
+
+旧库若曾使用 002–012 增量 revision 且表结构已与当前 ORM 一致：`alembic stamp 001`。
 
 ---
 

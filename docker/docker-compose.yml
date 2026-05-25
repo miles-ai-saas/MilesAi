@@ -24,6 +24,9 @@ services:
       MILVUS_URI: http://milvus:19530
       CELERY_BROKER_URL: redis://redis:6379/1
       CELERY_RESULT_BACKEND: redis://redis:6379/2
+      MCP_RUNNER_ENABLED: ${MCP_RUNNER_ENABLED:-true}
+      MCP_RUNNER_URL: http://mcp-runner:8090
+      MCP_RUNNER_TOKEN: ${MCP_RUNNER_TOKEN:-dev-runner-token-change-me}
     ports:
       - "${API_PORT:-8000}:8000"
     networks:
@@ -56,6 +59,26 @@ services:
     networks:
       - milesai-net
     command: celery -A app.workers.app worker -l info -Q default,parse,ocr,asr,embed
+    restart: unless-stopped
+
+  mcp-runner:
+    build:
+      context: ..
+      dockerfile: docker/images/mcp-runner/Dockerfile
+    container_name: milesai-mcp-runner
+    environment:
+      MCP_RUNNER_TOKEN: ${MCP_RUNNER_TOKEN:-dev-runner-token-change-me}
+      MCP_RUNNER_MAX_CONCURRENT: ${MCP_RUNNER_MAX_CONCURRENT:-20}
+      MCP_RUNNER_WORK_DIR: /tmp
+    networks:
+      - milesai-net
+    read_only: true
+    tmpfs:
+      - /tmp:size=512M
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
     restart: unless-stopped
 
   web:

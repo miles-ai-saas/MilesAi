@@ -41,7 +41,7 @@ async def list_invocation_logs(
 
 @router.get("/catalog", response_model=ApiResponse[list[ToolCatalogItem]])
 async def tool_catalog(
-    source: str | None = Query(None, description="builtin | custom | mcp"),
+    source: str | None = Query(None, description="builtin | custom"),
     category_id: UUID | None = Query(None),
     tag_ids: list[UUID] | None = Query(None),
     ctx: TenantContext = Depends(require_permissions("tools:read")),

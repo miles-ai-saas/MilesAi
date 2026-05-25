@@ -12,7 +12,7 @@ from app.tenant.audit_log.models import TenantAuditLog
 from app.tenant.compliance.models import InterceptLog, SensitiveWord
 from app.tenant.hooks.models import HookBinding, HookDefinition
 from app.tenant.marketplace.models import AppInstall
-from app.tenant.mcp.models import McpService
+from app.tenant.mcp.models import McpRunnerSession, McpService
 from app.tenant.prompts.models import PromptTemplate
 from app.tenant.skills.models import SkillPackage
 from app.tenant.skills.storage import remove_tenant_skills
@@ -94,6 +94,7 @@ async def purge_tenant_data(db: AsyncSession, tenant_id: UUID) -> None:
     await db.execute(delete(InterceptLog).where(InterceptLog.tenant_id == tenant_id))
     await db.execute(delete(ToolInvocationLog).where(ToolInvocationLog.tenant_id == tenant_id))
     await db.execute(delete(Tool).where(Tool.tenant_id == tenant_id))
+    await db.execute(delete(McpRunnerSession).where(McpRunnerSession.tenant_id == tenant_id))
     await db.execute(delete(McpService).where(McpService.tenant_id == tenant_id))
     await db.execute(delete(CeleryTaskRecord).where(CeleryTaskRecord.tenant_id == tenant_id))
     await db.execute(delete(ModelConfig).where(ModelConfig.tenant_id == tenant_id))

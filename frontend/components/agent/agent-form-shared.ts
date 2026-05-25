@@ -22,6 +22,8 @@ export type AgentFormValues = {
   rag_max_retries: number;
   subagent_parallel: boolean;
   force_platform_planner: boolean;
+  enable_tool_calling: boolean;
+  tool_slugs: string[];
 };
 
 export const AGENT_FORM_STEPS = [
@@ -35,7 +37,7 @@ export const AGENT_FORM_STEPS = [
   },
   {
     title: "工具与能力",
-    subtitle: "配置技能包、编排流程与 MCP 服务",
+    subtitle: "配置技能包、平台工具、编排流程与 MCP 服务",
   },
   {
     title: "知识库与内部协同",
@@ -69,6 +71,8 @@ export function emptyAgentForm(): AgentFormValues {
     rag_max_retries: 1,
     subagent_parallel: false,
     force_platform_planner: false,
+    enable_tool_calling: false,
+    tool_slugs: [],
   };
 }
 
@@ -104,6 +108,8 @@ export function agentToFormValues(agent: Agent): AgentFormValues {
     use_llm_grade: Boolean(cfg.use_llm_grade),
     subagent_parallel: Boolean(cfg.subagent_parallel),
     force_platform_planner: Boolean(cfg.force_platform_planner),
+    enable_tool_calling: Boolean(cfg.enable_tool_calling),
+    tool_slugs: ((cfg.tool_slugs as string[]) ?? []).map(String),
   };
 }
 
@@ -123,6 +129,11 @@ export function buildAgentConfig(
   else delete config.skill_package_id;
   if (form.mcp_service_ids.length) config.mcp_service_ids = form.mcp_service_ids;
   else delete config.mcp_service_ids;
+
+  if (form.enable_tool_calling) config.enable_tool_calling = true;
+  else delete config.enable_tool_calling;
+  if (form.tool_slugs.length) config.tool_slugs = form.tool_slugs;
+  else delete config.tool_slugs;
 
   if (form.sub_agents.length > 0) {
     config.runtime_mode = "autonomous";

@@ -242,6 +242,127 @@ var(--font-sans), "PingFang SC", "Microsoft YaHei", "Segoe UI", system-ui, -appl
 | `.resource-card` | 实体卡片；hover `border-brand/25` |
 | `.resource-add-card` | 虚线「新建」卡片 |
 
+### 5.7 弹窗与面板（Dialog / Sheet）
+
+工作台 CRUD 的创建、编辑、确认统一走 `components/resource/ResourceDialog.tsx`；语义化包装见 `ConfirmDialog`、`PromptDialog`。
+
+**权威实现**：`ResourceDialog` · 规范本文 §5.7 · `AppShell` 顶栏高度 `h-14`（`top-14` 与 sheet 对齐）。
+
+#### 5.7.1 设计原则
+
+| 原则 | 说明 |
+|------|------|
+| **分级而非一刀切** | 按任务复杂度选档位；简单打断用居中弹窗，复杂配置用 sheet |
+| **保留全局上下文** | 默认保留 App Header（品牌、模块 Tab、用户菜单）；避免无故 `fullscreen` 盖住顶栏 |
+| **单一滚动容器** | 内容区内部滚动，标题栏 / 底栏固定；禁止整页与弹窗双滚动 |
+| **可预期退出** | 关闭按钮、Esc、（`md`/`lg`）点击遮罩；有未保存改动时二次确认 |
+| **footer 右对齐** | 取消 `btn-ghost` + 主操作 `btn-primary`；destructive 用 ConfirmDialog |
+
+#### 5.7.2 尺寸档位（`size`）
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ App Header  h-14  （sheet 保留；fullscreen 会盖住 — 不推荐）   │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│   sheet：fixed top-14 inset-x-0 bottom-0                    │
+│   · 主内容区全高 · max-w-5xl 居中 · 无遮罩                    │
+│                                                             │
+│   md / lg：居中浮层 + bg-ink/30 遮罩 · max-h-[90vh]          │
+│   · md max-w-lg  · lg max-w-3xl                             │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+| `size` | 布局 | 最大宽度 | 遮罩 | 典型场景 |
+|--------|------|----------|------|----------|
+| `md` | 居中浮层 | `max-w-lg` | ✅ `bg-ink/30` | 确认框、标签管理、2–4 字段短表单 |
+| `lg` | 居中浮层 | `max-w-3xl` | ✅ | 试调用、文档分块预览、中等表单 |
+| **`sheet`** | **顶栏下铺满** | 内容 `max-w-5xl` 居中 | ❌ | **多 Section / 多步 / 大段可编辑内容** |
+| `fullscreen` | `inset-0` 全视口 | `max-w-5xl` | ❌ | **仅**无 App Shell 的独立页；新功能勿用 |
+
+#### 5.7.3 选型表（工作台）
+
+| 场景 | 推荐 `size` | 说明 |
+|------|-------------|------|
+| 删除 / 驳回 / 二次确认 | `md`（`ConfirmDialog`） | 强打断、秒级完成 |
+| 标签管理、技能空白创建 | `md` | 字段少 |
+| 工具试调用、KB 文档分块 | `lg` | 只读或单次操作 |
+| **工具创建/编辑**（HTTP + 参数 + 脚本） | **`sheet`** | 多 Section、脚本编辑区 |
+| **智能体表单**（多步 Stepper） | **`sheet`** | 步骤多、绑定项多 |
+| **智能体详情**（只读） | **`sheet`** 或 `lg` | 信息块多时可 sheet |
+| **MCP 服务**、**模型**、**KB** 等短表单 | **`lg`** 或 **`md`** | 字段少、无大段代码，居中即可 |
+| 登录 / 无顶栏页 | `fullscreen` 或独立路由 | 例外 |
+
+**反模式**
+
+- 复杂表单用 `lg` 导致小窗内长距滚动
+- 新页面默认 `fullscreen` 隐藏模块导航
+- 在 `sheet` 内再嵌套 `md`/`lg` 弹窗超过一层（确认框除外）
+
+#### 5.7.4 布局结构
+
+**居中弹窗（`md` / `lg`）**
+
+```
+┌─ 遮罩 ─────────────────────────┐
+│  ┌─ dialog ──────────────────┐  │
+│  │ 标题 + 关闭               │  │
+│  │ 可滚动内容 (space-y-3)    │  │
+│  │ footer（可选，右对齐）     │  │
+│  └───────────────────────────┘  │
+└─────────────────────────────────┘
+```
+
+**面板（`sheet` / `fullscreen`）— `PanelChrome`**
+
+```
+┌─ header：标题 + 关闭 ─────────────────────┐
+├─ 可滚动 body（px-6 py-6，max-w-5xl 居中）─┤
+├─ footer（可选，border-t，按钮右对齐）──────┤
+└──────────────────────────────────────────┘
+```
+
+- 多步表单：步骤条放在 **body 顶部**，不另加一层 header
+- 表单分区：用 `rounded-xl border border-line` 的 `Section` 卡片（见 `ToolCreateDialog`）
+- 长列表 / 代码：占满 body 剩余高度，`textarea` 用 `min-h-[200px]`
+
+#### 5.7.5 交互行为
+
+| 行为 | `md` / `lg` | `sheet` / `fullscreen` |
+|------|-------------|-------------------------|
+| Esc 关闭 | ✅ | ✅ |
+| 点击遮罩关闭 | ✅ | —（无遮罩） |
+| `body` 滚动锁定 | — | ✅ |
+| 打开时焦点 | 对话框内 | 对话框内 |
+| 关闭后 | 列表滚动位置 / 筛选保持不变 | 同左 |
+| 未保存离开 | 业务层 `ConfirmDialog` | 同左 |
+
+#### 5.7.6 包装组件
+
+| 组件 | 路径 | 用途 |
+|------|------|------|
+| `ResourceDialog` | `components/resource/ResourceDialog.tsx` | 通用壳层 |
+| `ConfirmDialog` | `components/resource/ConfirmDialog.tsx` | 确认 / 删除（`destructive`） |
+| `PromptDialog` | `components/resource/PromptDialog.tsx` | 单行/短文本输入 |
+
+```tsx
+// 复杂创建/编辑（推荐）
+<ResourceDialog open={open} title="新增工具" size="sheet" onClose={onClose} footer={footer}>
+  {formContent}
+</ResourceDialog>
+
+// 轻量确认
+<ConfirmDialog open={open} title="删除工具" destructive onConfirm={onDelete} onClose={onClose} />
+```
+
+#### 5.7.7 迁移约定
+
+1. 新增复杂表单 **默认 `sheet`**，不再新增 `fullscreen`
+2. **`sheet`**：`AgentFormDialog`、`A2aHostFormDialog`、`ToolCreateDialog` 等（多步 / 多 Section / 脚本）
+3. **`lg` / `md`**：MCP、模型、KB 等字段有限的短表单，保持居中弹窗
+4. 修改 `ResourceDialog` 时同步更新本节与组件 JSDoc
+
 ---
 
 ## 6. 图标与插图
@@ -258,6 +379,7 @@ var(--font-sans), "PingFang SC", "Microsoft YaHei", "Segoe UI", system-ui, -appl
 - 导航/卡片 hover：浅色背景或边框提亮，避免 scale 动画干扰密集后台操作。
 - 加载：对话区 `animate-pulse` 圆点（`text-brand`）。
 - 焦点：表单 `ring-2 ring-brand/15`，保证键盘可访问性。
+- **弹窗**：档位与行为见 [§5.7 弹窗与面板](#57-弹窗与面板dialog--sheet)。
 
 ---
 
@@ -281,7 +403,8 @@ var(--font-sans), "PingFang SC", "Microsoft YaHei", "Segoe UI", system-ui, -appl
 2. **新页面**：列表型 CRUD 复用 `resource-*` 类；表单页用 `card` + `input-field` + `btn-primary`。
 3. **新强调色**：先在本规范 §2 登记，再写入 Tailwind。
 4. **Logo**：导航只用 `BrandHeader`；不要并排 `mark` + `compact` 重复「行千里」。
-5. **Lint**：组件目录 `components/brand/`、`components/layout/` 为布局与品牌权威实现。
+5. **弹窗**：按 §5.7 选型；复杂表单用 `size="sheet"`，禁止新功能使用 `fullscreen` 盖住 App Header。
+6. **Lint**：组件目录 `components/brand/`、`components/layout/` 为布局与品牌权威实现。
 
 ---
 
@@ -295,7 +418,8 @@ frontend/
 ├── tailwind.config.ts       # 设计 token（含 fontFamily.sans）
 ├── components/brand/        # CompanyLogo, BrandHeader
 ├── public/brand/            # logo-full.svg, logo-mark.svg
-└── components/layout/       # AppShell, SystemSidebar, LoginHero
+├── components/layout/       # AppShell, SystemSidebar, LoginHero
+└── components/resource/   # ResourceDialog, ConfirmDialog（§5.7）
 
 admin_frontend/              # 同上：lib/fonts.ts、font-family.ts、globals、tailwind 与租户端保持一致
 ```

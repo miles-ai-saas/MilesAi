@@ -52,7 +52,7 @@ docs/
 
 | 文档 | 说明 |
 |------|------|
-| [design.md](./frontend/design.md) | 设计规范：品牌色、组件类、Logo、布局 |
+| [design.md](./frontend/design.md) | 设计规范：品牌色、组件类、Logo、布局、**弹窗/Sheet（§5.7）** |
 
 ## 运维 (`operations/`)
 

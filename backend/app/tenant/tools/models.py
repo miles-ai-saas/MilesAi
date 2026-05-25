@@ -13,7 +13,7 @@ from app.models.base import TimestampMixin, UUIDPrimaryKeyMixin
 
 class ToolType(str, enum.Enum):
     HTTP = "http"
-    SCRIPT = "script"  # v1 禁创建，v2 沙箱执行
+    SCRIPT = "script"  # v2：MCP Runner 沙箱执行
 
 
 class Tool(UUIDPrimaryKeyMixin, TimestampMixin, Base):

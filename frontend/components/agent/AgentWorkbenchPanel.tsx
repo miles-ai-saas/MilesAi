@@ -22,6 +22,8 @@ import type {
   PromptTemplate,
   SkillPackage,
   A2aPeer,
+  SysCategory,
+  ToolCatalogItem,
 } from "@/lib/types";
 
 type Props = {
@@ -43,6 +45,8 @@ export function AgentWorkbenchPanel({ agentId, activeTab, onSaved }: Props) {
   const [mcps, setMcps] = useState<McpService[]>([]);
   const [allAgents, setAllAgents] = useState<Agent[]>([]);
   const [a2aPeers, setA2aPeers] = useState<A2aPeer[]>([]);
+  const [categories, setCategories] = useState<SysCategory[]>([]);
+  const [toolCatalog, setToolCatalog] = useState<ToolCatalogItem[]>([]);
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -67,8 +71,10 @@ export function AgentWorkbenchPanel({ agentId, activeTab, onSaved }: Props) {
       api.listMcpServices(1, 100),
       api.listAgents(1, 100),
       api.listA2aPeers(1, 100),
+      api.listCategories("agent"),
+      api.listToolCatalog(),
     ])
-      .then(([fresh, kbRes, flowRes, promptRes, modelRes, skillRes, mcpRes, agentRes, a2aRes]) => {
+      .then(([fresh, kbRes, flowRes, promptRes, modelRes, skillRes, mcpRes, agentRes, a2aRes, catRes, catalogRes]) => {
         setAgent(fresh);
         setForm(agentToFormValues(fresh));
         setKbs(kbRes.items);
@@ -79,6 +85,8 @@ export function AgentWorkbenchPanel({ agentId, activeTab, onSaved }: Props) {
         setMcps(mcpRes.items);
         setAllAgents(agentRes.items);
         setA2aPeers(a2aRes.items.filter((p) => p.status === "active"));
+        setCategories(catRes);
+        setToolCatalog(catalogRes);
       })
       .finally(() => setLoading(false));
   }, [agentId]);
@@ -151,12 +159,14 @@ export function AgentWorkbenchPanel({ agentId, activeTab, onSaved }: Props) {
             setForm={setForm}
             agentId={agentId}
             agent={agent}
+            categories={categories}
             kbs={kbs}
             flows={flows}
             prompts={prompts}
             models={models}
             skills={skills}
             mcps={mcps}
+            toolCatalog={toolCatalog}
             allAgents={allAgents}
             a2aPeers={a2aPeers}
             designMode
