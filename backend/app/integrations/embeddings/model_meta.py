@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from app.common.exceptions import BadRequestError
 from app.integrations.embeddings.constants import (
+    DASHSCOPE_EMBEDDING_BATCH_SIZE_MAX,
     EXTRA_EMBEDDING_BATCH_SIZE,
     EXTRA_EMBEDDING_DIMENSION,
     EXTRA_INVOKE_MODE,
@@ -17,6 +18,15 @@ from app.models.model_catalog import DEFAULT_API_BASES, ModelCapabilityType, Mod
 _VENDOR_DEFAULT_INVOKE_MODE: dict[str, str] = {
     ModelVendor.QWEN.value: INVOKE_MODE_OPENAI_COMPATIBLE,
 }
+
+_VENDOR_DEFAULT_EMBEDDING_BATCH_SIZE: dict[str, int] = {
+    ModelVendor.QWEN.value: DASHSCOPE_EMBEDDING_BATCH_SIZE_MAX,
+}
+
+
+def _is_dashscope_embedding_endpoint(model: ModelConfig) -> bool:
+    base = (model.api_base or DEFAULT_API_BASES.get(model.vendor or "") or "").lower()
+    return "dashscope.aliyuncs.com" in base
 
 
 def embedding_dimension_from_model(model: ModelConfig) -> int:
@@ -33,8 +43,12 @@ def embedding_batch_size_from_model(model: ModelConfig, *, default: int = 25) ->
     extra = model.extra or {}
     size = extra.get(EXTRA_EMBEDDING_BATCH_SIZE)
     if isinstance(size, int) and size > 0:
-        return size
-    return default
+        resolved = size
+    else:
+        resolved = _VENDOR_DEFAULT_EMBEDDING_BATCH_SIZE.get(model.vendor or "", default)
+    if model.vendor == ModelVendor.QWEN.value or _is_dashscope_embedding_endpoint(model):
+        resolved = min(resolved, DASHSCOPE_EMBEDDING_BATCH_SIZE_MAX)
+    return resolved
 
 
 def invoke_mode_from_model(model: ModelConfig) -> str:

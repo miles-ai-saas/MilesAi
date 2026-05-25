@@ -62,8 +62,6 @@ CREATE DATABASE milesai
   LC_COLLATE 'en_US.UTF-8'
   LC_CTYPE 'en_US.UTF-8'
   TEMPLATE template0;
-
-\q
 ```
 
 macOS 若 locale 不同，可简化为：
@@ -110,12 +108,9 @@ POSTGRES_PORT=5432
 cd backend
 source .venv/bin/activate   # Windows: .venv\Scripts\activate
 
-# 务必在 backend 目录执行（或 -c 指定 ini）
+# 务必在 backend 目录执行
 alembic upgrade head
 # 等价：python -m alembic -c alembic.ini upgrade head
-
-# 若当前目录是项目根目录：
-# python -m alembic -c alembic.ini upgrade head
 ```
 
 成功时可看到当前版本为 `001`。
@@ -239,7 +234,7 @@ cd backend && python cli.py init-db
 | `database "milesai" does not exist` | 按「方式 B」创建库，或检查 Docker `POSTGRES_DB` |
 | `password authentication failed` | 核对 `.env` 与建库时密码是否一致 |
 | `relation "users" does not exist` | 执行 `alembic upgrade head` |
-| `No 'script_location' key found` | 先 `cd backend` 再执行，或 `python -m alembic -c alembic.ini upgrade head`（根目录 ini） |
+| `No 'script_location' key found` | 先 `cd backend` 再执行，或 `python -m alembic -c alembic.ini upgrade head` |
 | `password authentication failed` | 检查 `backend/.env` 是否为 `postgres` / `postgres` |
 | `upgrade head` 无 `Running upgrade` 且没有表 | 运行 `python cli.py verify-db`；缺表则按「重建库」清 schema 后 `python cli.py init-db` |
 | 迁移报 enum 已存在 | 多为重复执行，检查 `alembic current` 是否已是 `001` |

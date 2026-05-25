@@ -11,6 +11,7 @@ from app.infra.storage import download_bytes
 from app.integrations.langchain.embeddings import embed_texts_for_kb_sync
 from app.models.kb import Document, DocumentStatus, KnowledgeBase
 from app.rag.pipeline import IngestInput, run_ingest_pipeline
+from app.tenant.kb.services.ingest_failure import persist_document_ingest_failure
 
 
 def run_ingest(document_id: str) -> None:
@@ -54,11 +55,5 @@ def run_ingest(document_id: str) -> None:
             doc.fail_reason = None
             db.flush()
         except Exception as exc:
-            doc.status = (
-                DocumentStatus.EMBED_FAILED
-                if current_phase == DocumentStatus.EMBEDDING
-                else DocumentStatus.PARSE_FAILED
-            )
-            doc.fail_reason = str(exc)[:2000]
-            db.flush()
+            persist_document_ingest_failure(db, doc, phase=current_phase, exc=exc)
             raise

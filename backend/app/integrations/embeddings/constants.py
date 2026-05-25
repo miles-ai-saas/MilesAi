@@ -7,3 +7,6 @@ INVOKE_MODE_OPENAI_COMPATIBLE = "openai_compatible"
 EXTRA_EMBEDDING_DIMENSION = "embedding_dimension"
 EXTRA_INVOKE_MODE = "invoke_mode"
 EXTRA_EMBEDDING_BATCH_SIZE = "embedding_batch_size"
+
+# DashScope OpenAI 兼容 embeddings：单次 input 条数上限（见官方 InvalidParameter batch size）
+DASHSCOPE_EMBEDDING_BATCH_SIZE_MAX = 10

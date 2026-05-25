@@ -32,6 +32,11 @@ def add_column_if_missing(table: str, column: sa.Column) -> None:
         op.add_column(table, column)
 
 
+def drop_column_if_exists(table: str, column: str) -> None:
+    if column_exists(table, column):
+        op.drop_column(table, column)
+
+
 def create_index_if_missing(name: str, table: str, columns: list[str], **kw) -> None:
     if not index_exists(table, name):
         op.create_index(name, table, columns, **kw)

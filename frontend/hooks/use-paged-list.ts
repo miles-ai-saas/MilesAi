@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { getApiErrorMessage } from "@/lib/api-error";
 import type { PageResult } from "@/lib/types";
 import { DEFAULT_PAGE_SIZE, normalizePageResult } from "@/lib/pagination";
 
@@ -19,6 +20,7 @@ export function usePagedList<T>(
   const [items, setItems] = useState<T[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     setPage(1);
@@ -29,12 +31,19 @@ export function usePagedList<T>(
     let cancelled = false;
     (async () => {
       setLoading(true);
+      setError(null);
       try {
         const raw = await fetcherRef.current(page, pageSize);
         const res = normalizePageResult<T>(raw);
         if (!cancelled) {
           setItems(res.items);
           setTotal(res.total);
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setError(getApiErrorMessage(e, "加载失败"));
+          setItems([]);
+          setTotal(0);
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -46,10 +55,18 @@ export function usePagedList<T>(
   }, [page, pageSize, enabled, resetKey]);
 
   const reload = useCallback(async () => {
-    const res = normalizePageResult<T>(await fetcherRef.current(page, pageSize));
-    setItems(res.items);
-    setTotal(res.total);
+    setError(null);
+    try {
+      const res = normalizePageResult<T>(await fetcherRef.current(page, pageSize));
+      setItems(res.items);
+      setTotal(res.total);
+    } catch (e) {
+      setError(getApiErrorMessage(e, "加载失败"));
+      throw e;
+    }
   }, [page, pageSize]);
+
+  const clearError = useCallback(() => setError(null), []);
 
   return {
     items,
@@ -57,6 +74,8 @@ export function usePagedList<T>(
     page,
     size: pageSize,
     loading,
+    error,
+    clearError,
     setPage,
     reload,
   };

@@ -16,6 +16,7 @@ import { ResourceListFooter } from "@/components/resource/ResourceListFooter";
 import { ResourceDialog } from "@/components/resource/ResourceDialog";
 import {
   canRetryDocument,
+  isDocumentFailed,
   isDocumentProcessing,
 } from "@/lib/document-status";
 import { formatFileSize } from "@/lib/format-bytes";
@@ -663,7 +664,7 @@ function DocumentRow({
         <p className="mt-0.5 text-xs text-ink-faint">
           {formatFileSize(doc.file_size)} · {new Date(doc.created_at).toLocaleString()}
         </p>
-        {hasFail && (
+        {(hasFail || isDocumentFailed(doc.status)) && (
           <div className="mt-2">
             <button
               type="button"
@@ -684,11 +685,11 @@ function DocumentRow({
         {canRetryDocument(doc.status) && (
           <button
             type="button"
-            className="btn-ghost px-2 py-1 text-xs"
+            className="btn-primary px-2 py-1 text-xs"
             disabled={retrying}
             onClick={onRetry}
           >
-            {retrying ? "提交中…" : "重试"}
+            {retrying ? "提交中…" : "重试入库"}
           </button>
         )}
         <button

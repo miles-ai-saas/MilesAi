@@ -49,6 +49,7 @@ BUILTIN_CATALOG: list[dict] = [
         "extra": {
             "invoke_mode": "openai_compatible",
             "embedding_dimension": 1024,
+            "embedding_batch_size": 10,
         },
     },
     # --- 重排序（RAG 精排，模型页配置 API Key 后可用于测试）---

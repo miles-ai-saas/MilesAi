@@ -43,7 +43,10 @@ import type {
   WorkbenchOverview,
 } from "./types";
 import { getAccessToken, useAuthStore } from "./auth-store";
+import { getApiErrorMessage } from "./api-error";
 import { buildPageQuery, DEFAULT_PAGE_SIZE, normalizePageResult } from "./pagination";
+
+export { getApiErrorMessage } from "./api-error";
 
 const baseURL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 
@@ -66,7 +69,7 @@ function createClient(): AxiosInstance {
           window.location.href = "/login";
         }
       }
-      return Promise.reject(err);
+      return Promise.reject(new Error(getApiErrorMessage(err)));
     }
   );
   return client;
@@ -75,10 +78,10 @@ function createClient(): AxiosInstance {
 const http = createClient();
 
 function unwrap<T>(body: ApiResponse<T>): T {
-  if (body.code !== 0 || body.data === null) {
+  if (body.code !== 0) {
     throw new Error(body.message || "请求失败");
   }
-  return body.data;
+  return body.data as T;
 }
 
 async function get<T>(url: string): Promise<T> {
@@ -382,10 +385,12 @@ export const api = {
     });
     return unwrap(res.data);
   },
-  deleteDocument: async (kbId: string, documentId: string) => {
-    const res = await http.delete<ApiResponse<null>>(`/kb/${kbId}/documents/${documentId}`);
-    return unwrap(res.data);
-  },
+  deleteDocument: (kbId: string, documentId: string) =>
+    http
+      .delete<ApiResponse<null>>(`/kb/${kbId}/documents/${documentId}`)
+      .then((res) => {
+        unwrap(res.data);
+      }),
   retryDocument: (kbId: string, documentId: string) =>
     post<Document>(`/kb/${kbId}/documents/${documentId}/retry`),
   searchKb: (

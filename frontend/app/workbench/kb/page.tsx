@@ -12,6 +12,7 @@ import { ResourceDialog } from "@/components/resource/ResourceDialog";
 import { ResourceItemCard } from "@/components/resource/ResourceItemCard";
 import { ResourceListLayout } from "@/components/resource/ResourceListLayout";
 import { CardActions } from "@/components/resource/CardActions";
+import { KbPageAlert } from "@/components/kb/KbPageAlert";
 import { KbQuotaBar } from "@/components/kb/KbQuotaBar";
 import { filterBySearch } from "@/lib/filter-search";
 import { retrievalModeLabel } from "@/lib/kb-labels";
@@ -45,6 +46,7 @@ export default function KbPage() {
   const [hybridAlpha, setHybridAlpha] = useState(0.5);
   const [quota, setQuota] = useState<KbQuota | null>(null);
   const [quotaLoading, setQuotaLoading] = useState(true);
+  const [saveError, setSaveError] = useState("");
 
   const list = usePagedList(useCallback((p, s) => api.listKbs(p, s), []), { enabled: ready });
   const { requestConfirm, confirmDialog } = useConfirmAction();
@@ -111,32 +113,37 @@ export default function KbPage() {
   };
 
   const onSave = async () => {
-    if (editing) {
-      await api.updateKb(editing.id, {
-        name: name.trim() || editing.name,
-        description: description || null,
-        chunk_size: chunkSize,
-        chunk_overlap: chunkOverlap,
-        retrieval_mode: retrievalMode,
-        hybrid_alpha: hybridAlpha,
-        rerank_model_config_id: rerankModelId || null,
-        rerank_candidate_k: rerankModelId ? rerankCandidateK : undefined,
-      });
-    } else {
-      await api.createKb({
-        name: name.trim() || `知识库 ${list.total + 1}`,
-        description: description || undefined,
-        embedding_model_config_id: embeddingModelId || undefined,
-        chunk_size: chunkSize,
-        chunk_overlap: chunkOverlap,
-        retrieval_mode: retrievalMode,
-        hybrid_alpha: hybridAlpha,
-        rerank_model_config_id: rerankModelId || null,
-        rerank_candidate_k: rerankModelId ? rerankCandidateK : undefined,
-      });
+    setSaveError("");
+    try {
+      if (editing) {
+        await api.updateKb(editing.id, {
+          name: name.trim() || editing.name,
+          description: description || null,
+          chunk_size: chunkSize,
+          chunk_overlap: chunkOverlap,
+          retrieval_mode: retrievalMode,
+          hybrid_alpha: hybridAlpha,
+          rerank_model_config_id: rerankModelId || null,
+          rerank_candidate_k: rerankModelId ? rerankCandidateK : undefined,
+        });
+      } else {
+        await api.createKb({
+          name: name.trim() || `知识库 ${list.total + 1}`,
+          description: description || undefined,
+          embedding_model_config_id: embeddingModelId || undefined,
+          chunk_size: chunkSize,
+          chunk_overlap: chunkOverlap,
+          retrieval_mode: retrievalMode,
+          hybrid_alpha: hybridAlpha,
+          rerank_model_config_id: rerankModelId || null,
+          rerank_candidate_k: rerankModelId ? rerankCandidateK : undefined,
+        });
+      }
+      setDialogOpen(false);
+      await Promise.all([list.reload(), reloadQuota()]);
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : "保存失败");
     }
-    setDialogOpen(false);
-    await Promise.all([list.reload(), reloadQuota()]);
   };
 
   const onDelete = (kb: KnowledgeBase) => {
@@ -158,8 +165,22 @@ export default function KbPage() {
     });
   };
 
+  const listError = list.error ?? "";
+
   return (
     <>
+      {(listError || saveError) && (
+        <div className="resource-page-shell mb-4">
+          {listError && (
+            <KbPageAlert tone="error" message={listError} onDismiss={list.clearError} />
+          )}
+          {saveError && (
+            <div className={listError ? "mt-3" : ""}>
+              <KbPageAlert tone="error" message={saveError} onDismiss={() => setSaveError("")} />
+            </div>
+          )}
+        </div>
+      )}
       <ResourceListLayout
         title="知识库"
         description="管理企业知识库与文档，为智能体 RAG 检索与流程节点提供知识来源。"
@@ -239,11 +260,21 @@ export default function KbPage() {
       <ResourceDialog
         open={dialogOpen}
         title={editing ? "编辑知识库" : "新建知识库"}
-        onClose={() => setDialogOpen(false)}
+        onClose={() => {
+          setDialogOpen(false);
+          setSaveError("");
+        }}
         description={editing ? undefined : "向量化模型创建后不可修改。"}
         footer={
           <>
-            <button type="button" className="btn-ghost" onClick={() => setDialogOpen(false)}>
+            <button
+              type="button"
+              className="btn-ghost"
+              onClick={() => {
+                setDialogOpen(false);
+                setSaveError("");
+              }}
+            >
               取消
             </button>
             <button type="button" className="btn-primary" onClick={onSave}>
@@ -252,6 +283,9 @@ export default function KbPage() {
           </>
         }
       >
+        {saveError && (
+          <KbPageAlert tone="error" message={saveError} onDismiss={() => setSaveError("")} />
+        )}
         <input
           className="input-field w-full"
           placeholder="知识库名称"

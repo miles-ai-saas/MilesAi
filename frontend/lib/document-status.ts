@@ -30,6 +30,11 @@ export function isDocumentProcessing(status: string): boolean {
   return status === "pending" || status === "parsing" || status === "embedding";
 }
 
+/** 入库失败后可重新提交 Celery 任务 */
 export function canRetryDocument(status: string): boolean {
-  return status === "parse_failed" || status === "embed_failed" || status === "ready";
+  return status === "parse_failed" || status === "embed_failed";
+}
+
+export function isDocumentFailed(status: string): boolean {
+  return status === "parse_failed" || status === "embed_failed";
 }
