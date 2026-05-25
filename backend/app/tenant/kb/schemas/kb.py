@@ -101,6 +101,22 @@ class DocumentOut(BaseModel):
     status: DocumentStatus
     fail_reason: str | None
     celery_task_id: str | None
+    chunk_count: int | None = Field(
+        None,
+        description="已入库分片数（仅列表接口填充；非 ready 或未统计时为 null）",
+    )
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class DocumentChunkOut(BaseModel):
+    id: UUID
+    document_id: UUID
+    kb_id: UUID
+    chunk_index: int
+    content: str
+    page_no: int | None = None
     created_at: datetime
 
     model_config = {"from_attributes": True}

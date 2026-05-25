@@ -300,6 +300,17 @@ export interface Document {
   file_size: number;
   status: string;
   fail_reason?: string | null;
+  chunk_count?: number | null;
+  created_at: string;
+}
+
+export interface DocumentChunk {
+  id: string;
+  document_id: string;
+  kb_id: string;
+  chunk_index: number;
+  content: string;
+  page_no?: number | null;
   created_at: string;
 }
 

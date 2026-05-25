@@ -35,6 +35,7 @@ from app.tenant.models.services.embedding_resolve import (
 )
 from app.tenant.models.services.rerank_resolve import resolve_rerank_model_by_id
 from app.tenant.kb.schemas.kb import (
+    DocumentChunkOut,
     DocumentOut,
     KbQuotaOut,
     KbSearchLogOut,
@@ -214,8 +215,42 @@ class KnowledgeBaseService(BaseService):
             filters=[Document.kb_id == kb_id],
             order_by=Document.created_at.desc(),
         )
+        ready_ids = [d.id for d in page.items if d.status == DocumentStatus.READY]
+        chunk_counts = await self.chunk_repo.count_by_document_ids(ready_ids)
+        items = []
+        for doc in page.items:
+            out = DocumentOut.model_validate(doc)
+            count = chunk_counts.get(doc.id) if doc.status == DocumentStatus.READY else None
+            items.append(out.model_copy(update={"chunk_count": count}))
         return PageResult(
-            items=[DocumentOut.model_validate(d) for d in page.items],
+            items=items,
+            total=page.total,
+            page=page.page,
+            size=page.size,
+        )
+
+    async def list_document_chunks(
+        self,
+        kb_id: UUID,
+        document_id: UUID,
+        params: PageParams,
+    ) -> PageResult[DocumentChunkOut]:
+        await self._get_kb_or_raise(kb_id)
+        doc = await self.doc_repo.get_by_id_or_raise(document_id, label="文档不存在")
+        if doc.kb_id != kb_id or is_marked_deleted(doc):
+            raise NotFoundError("文档不存在")
+        assert_tenant_access(self.ctx, doc.tenant_id)
+        page = await self.chunk_repo.list_page(
+            page=params.page,
+            size=params.size,
+            filters=[
+                DocumentChunk.document_id == document_id,
+                DocumentChunk.kb_id == kb_id,
+            ],
+            order_by=DocumentChunk.chunk_index.asc(),
+        )
+        return PageResult(
+            items=[DocumentChunkOut.model_validate(c) for c in page.items],
             total=page.total,
             page=page.page,
             size=page.size,

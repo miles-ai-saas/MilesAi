@@ -11,6 +11,7 @@ from app.common.response import ok, page_ok
 from app.core.tenant import TenantContext
 from app.common.schema import ApiResponse, PageParams, PageResult
 from app.tenant.kb.schemas.kb import (
+    DocumentChunkOut,
     DocumentOut,
     KbQuotaOut,
     KbSearchLogOut,
@@ -114,6 +115,21 @@ async def retry_document(
     db: AsyncSession = Depends(get_db),
 ):
     return ok(await _svc(db, ctx).retry_document(kb_id, document_id))
+
+
+@router.get(
+    "/{kb_id}/documents/{document_id}/chunks",
+    response_model=ApiResponse[PageResult[DocumentChunkOut]],
+)
+async def list_document_chunks(
+    kb_id: UUID,
+    document_id: UUID,
+    params: PageParams = Depends(get_page_params),
+    ctx: TenantContext = Depends(require_permissions("kb:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await _svc(db, ctx).list_document_chunks(kb_id, document_id, params)
+    return page_ok(result.items, result.total, result.page, result.size)
 
 
 @router.delete("/{kb_id}/documents/{document_id}", response_model=ApiResponse[None])

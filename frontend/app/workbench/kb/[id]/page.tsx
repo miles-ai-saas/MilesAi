@@ -7,6 +7,7 @@ import { api } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth-store";
 import { usePagedList } from "@/hooks/use-paged-list";
 import { useConfirmAction } from "@/hooks/use-confirm-action";
+import { DocumentChunksDrawer } from "@/components/kb/DocumentChunksDrawer";
 import { DocumentStatusBadge } from "@/components/kb/DocumentStatusBadge";
 import { KbMetaChips } from "@/components/kb/KbMetaChips";
 import { KbPageAlert } from "@/components/kb/KbPageAlert";
@@ -66,6 +67,7 @@ export default function KbDetailPage() {
   const [editHybridAlpha, setEditHybridAlpha] = useState(0.5);
   const [uploading, setUploading] = useState(false);
   const [retryingId, setRetryingId] = useState<string | null>(null);
+  const [chunksDoc, setChunksDoc] = useState<Document | null>(null);
   const [docFilter, setDocFilter] = useState<DocFilter>("all");
   const [expandedFailId, setExpandedFailId] = useState<string | null>(null);
   const [searchQ, setSearchQ] = useState("");
@@ -408,6 +410,7 @@ export default function KbDetailPage() {
                         setExpandedFailId((prev) => (prev === d.id ? null : d.id))
                       }
                       onRetry={() => onRetry(d.id)}
+                      onViewChunks={() => setChunksDoc(d)}
                       onDelete={() => onRequestDeleteDoc(d)}
                     />
                   ))}
@@ -546,6 +549,13 @@ export default function KbDetailPage() {
 
       {confirmDialog}
 
+      <DocumentChunksDrawer
+        kbId={id}
+        doc={chunksDoc}
+        open={!!chunksDoc}
+        onClose={() => setChunksDoc(null)}
+      />
+
       <ResourceDialog
         open={settingsOpen}
         title="知识库设置"
@@ -636,6 +646,7 @@ function DocumentRow({
   expanded,
   onToggleFail,
   onRetry,
+  onViewChunks,
   onDelete,
 }: {
   doc: Document;
@@ -643,6 +654,7 @@ function DocumentRow({
   expanded: boolean;
   onToggleFail: () => void;
   onRetry: () => void;
+  onViewChunks: () => void;
   onDelete: () => void;
 }) {
   const icon = kbFileIcon(doc.filename);
@@ -663,6 +675,9 @@ function DocumentRow({
         </div>
         <p className="mt-0.5 text-xs text-ink-faint">
           {formatFileSize(doc.file_size)} · {new Date(doc.created_at).toLocaleString()}
+          {doc.status === "ready" && doc.chunk_count != null && doc.chunk_count > 0 && (
+            <> · {doc.chunk_count} 个分片</>
+          )}
         </p>
         {(hasFail || isDocumentFailed(doc.status)) && (
           <div className="mt-2">
@@ -682,6 +697,15 @@ function DocumentRow({
         )}
       </div>
       <div className="flex shrink-0 flex-col items-end justify-center gap-1 sm:flex-row sm:items-center">
+        {doc.status === "ready" && (doc.chunk_count ?? 0) > 0 && (
+          <button
+            type="button"
+            className="btn-ghost px-2 py-1 text-xs"
+            onClick={onViewChunks}
+          >
+            查看分片
+          </button>
+        )}
         {canRetryDocument(doc.status) && (
           <button
             type="button"

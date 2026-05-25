@@ -12,6 +12,7 @@ import type {
   CustomTool,
   Attachment,
   Document,
+  DocumentChunk,
   Flow,
   FlowGraph,
   FlowVersion,
@@ -377,6 +378,10 @@ export const api = {
   getKb: (kbId: string) => get<KnowledgeBase>(`/kb/${kbId}`),
   listDocuments: (kbId: string, page = 1, size = DEFAULT_PAGE_SIZE) =>
     getPage<Document>(`/kb/${kbId}/documents?${buildPageQuery(page, size)}`),
+  listDocumentChunks: (kbId: string, documentId: string, page = 1, size = 20) =>
+    getPage<DocumentChunk>(
+      `/kb/${kbId}/documents/${documentId}/chunks?${buildPageQuery(page, size)}`,
+    ),
   uploadDocument: async (kbId: string, file: File) => {
     const form = new FormData();
     form.append("file", file);

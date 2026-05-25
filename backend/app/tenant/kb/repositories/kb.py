@@ -2,7 +2,7 @@
 
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.repository import BaseRepository
@@ -22,6 +22,17 @@ class DocumentRepository(BaseRepository[Document]):
 class DocumentChunkRepository(BaseRepository[DocumentChunk]):
     def __init__(self, db: AsyncSession) -> None:
         super().__init__(db, DocumentChunk)
+
+    async def count_by_document_ids(self, document_ids: list[UUID]) -> dict[UUID, int]:
+        if not document_ids:
+            return {}
+        stmt = (
+            select(DocumentChunk.document_id, func.count())
+            .where(DocumentChunk.document_id.in_(document_ids))
+            .group_by(DocumentChunk.document_id)
+        )
+        rows = (await self.db.execute(stmt)).all()
+        return {doc_id: int(count) for doc_id, count in rows}
 
 
 class VectorRefRepository(BaseRepository[VectorRef]):
