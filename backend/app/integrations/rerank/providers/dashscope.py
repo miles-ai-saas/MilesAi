@@ -1,4 +1,4 @@
-"""DashScope 原生 text-rerank API。"""
+"""DashScope 原生 text-rerank API（invoke_mode=dashscope）。"""
 
 from __future__ import annotations
 
@@ -30,6 +30,7 @@ def _build_payload(
     documents: list[str],
     top_n: int | None,
 ) -> dict[str, Any]:
+    """按 flat/nested 格式组装 DashScope 请求体。"""
     model_name = (model.model_name or "").strip()
     if not model_name:
         raise BadRequestError(f"重排模型「{model.name}」未配置 model_name")
@@ -61,6 +62,7 @@ def _build_payload(
 
 
 def _parse_response(payload: dict[str, Any]) -> list[RerankHit]:
+    """解析 output.results 为 index + relevance_score。"""
     if payload.get("code"):
         message = payload.get("message") or payload.get("code")
         raise AppError(f"重排失败: {message}", status_code=502)
@@ -94,6 +96,8 @@ def _parse_response(payload: dict[str, Any]) -> list[RerankHit]:
 
 
 class DashScopeRerankProvider:
+    """调用 DashScope text-rerank 端点。"""
+
     def rerank(
         self,
         model: ModelConfig,
@@ -102,6 +106,7 @@ class DashScopeRerankProvider:
         documents: list[str],
         top_n: int | None = None,
     ) -> list[RerankHit]:
+        """POST 重排 API 并返回按相关度排序的命中列表。"""
         if not documents:
             return []
 

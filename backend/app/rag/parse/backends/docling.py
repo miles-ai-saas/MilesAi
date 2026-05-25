@@ -109,6 +109,7 @@ def markdown_pages_to_documents(
 
 
 def docling_available() -> bool:
+    """运行时检测 docling 是否已安装。"""
     try:
         import docling  # noqa: F401
 

@@ -1,4 +1,4 @@
-"""从 ModelConfig 解析 rerank 元数据。"""
+"""从 ModelConfig 解析 rerank 元数据（invoke_mode、端点、请求体格式）。"""
 
 from __future__ import annotations
 
@@ -28,6 +28,7 @@ _FLAT_FORMAT_MODELS = frozenset({"qwen3-rerank"})
 
 
 def invoke_mode_from_model(model: ModelConfig) -> str:
+    """解析 provider：dashscope 或 openai_compatible。"""
     extra = model.extra or {}
     mode = extra.get(EXTRA_INVOKE_MODE)
     if isinstance(mode, str) and mode.strip():
@@ -36,6 +37,7 @@ def invoke_mode_from_model(model: ModelConfig) -> str:
 
 
 def rerank_instruct_from_model(model: ModelConfig) -> str | None:
+    """可选 rerank 指令（如 qwen3-rerank 的 instruct 字段）。"""
     extra = model.extra or {}
     instruct = extra.get(EXTRA_RERANK_INSTRUCT)
     if isinstance(instruct, str) and instruct.strip():
@@ -44,6 +46,7 @@ def rerank_instruct_from_model(model: ModelConfig) -> str | None:
 
 
 def rerank_request_format_from_model(model: ModelConfig) -> str:
+    """DashScope 请求体：flat（顶层 query/documents）或 nested（input/parameters）。"""
     extra = model.extra or {}
     fmt = extra.get(EXTRA_RERANK_REQUEST_FORMAT)
     if isinstance(fmt, str) and fmt.strip():
@@ -55,6 +58,7 @@ def rerank_request_format_from_model(model: ModelConfig) -> str:
 
 
 def resolve_rerank_endpoint(model: ModelConfig) -> str:
+    """DashScope 原生 text-rerank 完整 URL。"""
     if model.api_base:
         return model.api_base.rstrip("/")
     endpoint = DEFAULT_RERANK_API_ENDPOINTS.get(model.vendor or "")
@@ -64,6 +68,7 @@ def resolve_rerank_endpoint(model: ModelConfig) -> str:
 
 
 def resolve_rerank_openai_compat_base(model: ModelConfig) -> str:
+    """OpenAI 兼容 rerank API 的 base（拼接 /reranks）。"""
     if model.api_base:
         return model.api_base.rstrip("/")
     base = DEFAULT_RERANK_OPENAI_COMPAT_BASES.get(model.vendor or "")
@@ -73,6 +78,7 @@ def resolve_rerank_openai_compat_base(model: ModelConfig) -> str:
 
 
 def ensure_rerank_model_type(model: ModelConfig) -> None:
+    """校验模型类型为 rerank。"""
     if model.model_type != ModelCapabilityType.RERANK.value:
         raise BadRequestError(
             f"模型「{model.name}」类型为 {model.model_type}，须为 rerank 重排模型"

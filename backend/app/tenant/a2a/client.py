@@ -15,11 +15,13 @@ JSONRPC_HEADERS = {"Content-Type": "application/json", "Accept": "application/js
 
 
 def _base_from_card_url(card_url: str) -> str:
+    """从 Agent Card URL 提取 scheme://host。"""
     parsed = urlparse(card_url)
     return f"{parsed.scheme}://{parsed.netloc}"
 
 
 def _pick_rpc_url(peer: A2aPeer) -> str | None:
+    """从 Card supportedInterfaces 或 base_url 解析 JSON-RPC 端点。"""
     card = peer.agent_card_json or {}
     interfaces = card.get("supportedInterfaces") or card.get("supported_interfaces")
     if isinstance(interfaces, list):
@@ -34,6 +36,7 @@ def _pick_rpc_url(peer: A2aPeer) -> str | None:
 
 
 def _extract_text_from_response(data: Any) -> str:
+    """从 JSON-RPC / HTTP 响应中提取可读文本。"""
     if isinstance(data, str):
         return data.strip()
     if not isinstance(data, dict):

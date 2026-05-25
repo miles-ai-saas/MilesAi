@@ -1,4 +1,7 @@
-"""S3 兼容对象存储实现（MinIO SDK，适用于 MinIO / 阿里云 OSS / AWS S3 等）。"""
+"""S3 兼容对象存储实现（MinIO SDK，适用于 MinIO / 阿里云 OSS / AWS S3 等）。
+
+KB 文档路径：{tenant_id}/{kb_id}/{document_id}/{filename}（见 build_object_key）。
+"""
 
 from __future__ import annotations
 
@@ -15,6 +18,7 @@ class S3CompatibleObjectStorage:
     """基于 MinIO Python SDK 的 S3 API 客户端。"""
 
     def __init__(self, settings: Settings | None = None) -> None:
+        """从 Settings 读取 endpoint、密钥与默认 bucket。"""
         s = settings or get_settings()
         self._endpoint = s.object_storage_endpoint
         self._access_key = s.object_storage_access_key
@@ -28,6 +32,7 @@ class S3CompatibleObjectStorage:
         return self._default_bucket
 
     def _get_client(self) -> Minio:
+        """每次调用新建 Minio 客户端（轻量，无长连接池）。"""
         return Minio(
             self._endpoint,
             access_key=self._access_key,
@@ -37,6 +42,7 @@ class S3CompatibleObjectStorage:
         )
 
     def ensure_bucket(self, bucket: str | None = None) -> None:
+        """上传前确保 bucket 存在（不存在则创建）。"""
         client = self._get_client()
         name = bucket or self._default_bucket
         if not client.bucket_exists(name):
@@ -49,6 +55,7 @@ class S3CompatibleObjectStorage:
         content_type: str,
         bucket: str | None = None,
     ) -> None:
+        """put_object 上传字节流。"""
         client = self._get_client()
         name = bucket or self._default_bucket
         self.ensure_bucket(name)
@@ -61,6 +68,7 @@ class S3CompatibleObjectStorage:
         )
 
     def download_bytes(self, object_key: str, bucket: str | None = None) -> bytes:
+        """get_object 读取全文；S3Error 转为 AppError。"""
         client = self._get_client()
         name = bucket or self._default_bucket
         try:
@@ -74,11 +82,13 @@ class S3CompatibleObjectStorage:
             raise AppError(f"对象存储读取失败: {exc.message}", status_code=500) from exc
 
     def delete_object(self, object_key: str, bucket: str | None = None) -> None:
+        """remove_object 删除单个对象。"""
         client = self._get_client()
         name = bucket or self._default_bucket
         client.remove_object(name, object_key)
 
     def health_check(self) -> bool:
+        """探测默认 bucket 是否可访问。"""
         try:
             return self._get_client().bucket_exists(self._default_bucket)
         except Exception:

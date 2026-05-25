@@ -1,4 +1,7 @@
-"""子智能体绑定：校验、同步、环检测。"""
+"""子智能体绑定：校验、同步、环检测。
+
+有绑定时 agent.config 启用 DeepAgents 规划；对话见 integrations.deepagents.orchestrator。
+"""
 
 from uuid import UUID
 
@@ -17,6 +20,7 @@ ROLE_HINTS = frozenset({"retrieval", "ocr", "summary", "compliance", "custom"})
 
 
 def apply_planner_config(config: dict | None, *, has_sub_agents: bool) -> dict:
+    """有子智能体时写入 planner=deepagents 等默认项。"""
     cfg = dict(config or {})
     if has_sub_agents:
         cfg["runtime_mode"] = "autonomous"
@@ -33,6 +37,7 @@ def apply_planner_config(config: dict | None, *, has_sub_agents: bool) -> dict:
 def normalize_bindings(
     raw: list[dict] | None,
 ) -> list[tuple[UUID, str | None, int]]:
+    """解析 child_agent_id + role_hint（最多 8 个）。"""
     if not raw:
         return []
     seen: set[UUID] = set()
@@ -138,6 +143,7 @@ async def validate_and_sync_sub_agents(
     parent: Agent,
     bindings: list[tuple[UUID, str | None, int]],
 ) -> None:
+    """全量替换子智能体绑定；禁止环与二层嵌套。"""
     if parent.agent_type == AgentType.A2A:
         raise BadRequestError("A2A 互联智能体不支持平台内子智能体绑定")
     if not bindings:
@@ -191,6 +197,7 @@ async def list_sub_agent_bindings(
     db: AsyncSession,
     parent_id: UUID,
 ) -> list[AgentSubAgentBinding]:
+    """加载父智能体的子绑定（含 child_agent）。"""
     stmt = (
         select(AgentSubAgentBinding)
         .where(AgentSubAgentBinding.parent_agent_id == parent_id)

@@ -1,6 +1,9 @@
 """文档入库（Celery）：状态机 + 调用 rag.pipeline。
 
-PARSING/EMBEDDING 在 Worker 内顺序执行；失败时按 current_phase 区分 parse_failed / embed_failed。
+链路：ingest_document → run_ingest → run_ingest_pipeline
+     （download → parse → chunk → embed → PG chunk + 向量库 upsert）。
+PARSING/EMBEDDING 在 Worker 内顺序推进；失败按 current_phase 写 PARSE_FAILED / EMBED_FAILED。
+异常时 persist_document_ingest_failure 须先 commit，避免 get_sync_db rollback 吞状态。
 """
 
 from uuid import UUID
@@ -15,6 +18,7 @@ from app.tenant.kb.services.ingest_failure import persist_document_ingest_failur
 
 
 def run_ingest(document_id: str) -> None:
+    """同步执行单文档入库（由 Celery Worker 调用，非 HTTP 直连）。"""
     with get_sync_db() as db:
         doc = db.get(Document, UUID(document_id))
         if not doc or doc.deleted_at is not None:

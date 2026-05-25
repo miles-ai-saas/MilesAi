@@ -15,6 +15,7 @@ _BACKENDS = frozenset({"weaviate", "pgvector", "milvus"})
 
 @lru_cache
 def get_vector_store() -> VectorStore:
+    """按 VECTOR_STORE_BACKEND 返回单例向量库客户端（weaviate/pgvector/milvus）。"""
     name = get_settings().vector_store_backend.strip().lower()
     if name not in _BACKENDS:
         raise ValueError(

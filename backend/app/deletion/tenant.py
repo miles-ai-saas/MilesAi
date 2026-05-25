@@ -33,9 +33,10 @@ from app.models.user import User
 
 
 async def purge_tenant_data(db: AsyncSession, tenant_id: UUID) -> None:
-    """
-    按子资源顺序清理租户下全部业务数据（不删除 tenants 行本身）。
-    调用方在删除或归档租户记录前执行。
+    """硬删租户下 KB/文档/OSS、Agent、Flow 及附属表（不删 tenants 行本身）。
+
+    顺序：文档衍生数据 → before_delete_kb → Agent/Flow 级联 → 审计/市场/合规等。
+    运营 AdminTenantService 停用/删租户前调用；日常 API 用软删除。
     """
     kb_ids = list(
         (await db.execute(select(KnowledgeBase.id).where(KnowledgeBase.tenant_id == tenant_id)))

@@ -25,6 +25,7 @@ SEED_TARGETS: dict[str, SeedFn] = {
 
 
 def run_migrate() -> None:
+    """子进程执行 alembic upgrade head（与 API lifespan 相同）。"""
     from app.apps.migrate import run_migrations
 
     print(">>> alembic upgrade head")
@@ -54,6 +55,7 @@ async def run_seed(target: str = "all") -> None:
 
 
 async def run_init_db(*, migrate: bool, seed: bool) -> None:
+    """本地/CI 初始化：先迁移再 seed_all。"""
     if migrate:
         run_migrate()
     if seed:

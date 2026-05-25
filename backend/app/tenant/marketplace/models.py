@@ -31,6 +31,8 @@ class AppCategory(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
 
 class MarketplaceApp(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    """市场应用包；manifest JSON 描述可安装的 KB/Flow/Agent 快照。"""
+
     __tablename__ = "mkt_apps"
     __table_args__ = (
         Index("idx_mkt_apps_publisher_tenant_id", "publisher_tenant_id"),
@@ -105,6 +107,8 @@ class AppRating(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
 
 class AppInstall(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    """租户安装记录；指向本租户克隆出的 flow_id/agent_id/kb_id。"""
+
     __tablename__ = "mkt_installs"
     __table_args__ = (
         Index("idx_mkt_installs_tenant_id", "tenant_id"),

@@ -20,5 +20,6 @@ def build_rag_user_prompt(
     query: str,
     hits: list[dict[str, Any]],
 ) -> str:
+    """组装带参考片段的用户消息（system + 参考内容 + 问题）。"""
     context = format_hits_context(hits)
     return f"{system_prompt}\n\n参考内容：\n{context}\n\n用户问题：{query}"

@@ -11,7 +11,7 @@ from app.flow_runtime.types import RunContext, RunResult
 
 
 async def run_flow_graph(graph_json: dict, ctx: RunContext) -> RunResult:
-    """执行 graph_json；不可编译时抛出 BadRequestError。"""
+    """校验并编译画布 → LangGraph 执行 → RunResult(output, steps)。"""
     report = validate_graph_for_compile(graph_json)
     if not report.compilable:
         detail = "; ".join(report.errors) or "流程图无法编译为 LangGraph"

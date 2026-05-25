@@ -1,3 +1,5 @@
+"""租户审计日志仓储。"""
+
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -7,6 +9,8 @@ from app.core.repository import BaseRepository
 
 
 class TenantAuditLogRepository(BaseRepository[TenantAuditLog]):
+    """append-only 风格；create 由 write_tenant_audit_log 调用。"""
+
     def __init__(self, db: AsyncSession) -> None:
         super().__init__(db, TenantAuditLog)
 

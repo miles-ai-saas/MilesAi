@@ -22,6 +22,7 @@ async def write_tenant_audit_log(
     detail: dict | None = None,
     user_id: UUID | None = None,
 ) -> None:
+    """业务变更成功后异步写入；不 commit（由调用方会话收尾）。"""
     ip = None
     ua = None
     if request:
@@ -40,6 +41,8 @@ async def write_tenant_audit_log(
 
 
 class TenantAuditLogService:
+    """租户内操作审计只读列表（写入用 write_tenant_audit_log）。"""
+
     def __init__(self, db: AsyncSession, ctx: TenantContext) -> None:
         self.db = db
         self.ctx = ctx

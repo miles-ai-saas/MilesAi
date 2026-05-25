@@ -35,6 +35,8 @@ def _role_out(role: Role) -> RoleOut:
 
 
 class RoleService(BaseService):
+    """租户角色与全局 Permission 目录；系统内置角色 is_system 不可删。"""
+
     def __init__(self, db: AsyncSession, ctx: TenantContext) -> None:
         super().__init__(db, ctx)
         self.repo = RoleRepository(db)

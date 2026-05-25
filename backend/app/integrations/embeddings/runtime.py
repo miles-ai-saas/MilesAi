@@ -43,13 +43,16 @@ class ModelConfigEmbeddings(Embeddings):
         self._model = model
 
     def embed_documents(self, texts: list[str]) -> list[list[float]]:
+        """批量文本向量化（入库分片）。"""
         return embed_texts_for_model(self._model, texts)
 
     def embed_query(self, text: str) -> list[float]:
+        """单条 query 向量化（检索）。"""
         return self.embed_documents([text])[0]
 
 
 def build_embeddings(model: ModelConfig) -> Embeddings:
+    """从 ModelConfig 构建 LangChain Embeddings 门面。"""
     ensure_embedding_model_type(model)
     return ModelConfigEmbeddings(model)
 

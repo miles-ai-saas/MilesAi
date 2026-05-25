@@ -12,6 +12,7 @@ settings = get_settings()
 
 
 def create_admin_access_token(admin: PlatformAdmin) -> str:
+    """签发 type=admin_access JWT（含 role/username）。"""
     expire = datetime.now(timezone.utc) + timedelta(minutes=settings.access_token_expire_minutes)
     payload = {
         "sub": str(admin.id),

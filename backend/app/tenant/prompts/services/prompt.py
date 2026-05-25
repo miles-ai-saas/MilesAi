@@ -1,4 +1,7 @@
-"""提示词模板 CRUD（智能体 system_prompt 等可引用）。"""
+"""提示词模板 CRUD（智能体 system_prompt 等可引用）。
+
+与 Agent.config 内联 prompt 并存；工作台按 prompt:read 统计数量。
+"""
 
 from uuid import UUID
 
@@ -19,10 +22,13 @@ from app.core.service import BaseService
 
 
 class PromptService(BaseService):
+    """租户级 PromptTemplate 管理。"""
+
     def __init__(self, db: AsyncSession, ctx: TenantContext) -> None:
         super().__init__(db, ctx)
 
     async def list_templates(self, params: PageParams) -> PageResult[PromptTemplateOut]:
+        """分页列表（tenant_filters）。"""
         filters = tenant_filters(self.ctx, PromptTemplate.tenant_id)
         total = await self.db.scalar(
             select(func.count()).select_from(PromptTemplate).where(*filters)
@@ -67,6 +73,7 @@ class PromptService(BaseService):
         await mark_deleted(self.db, row)
 
     async def _get_or_raise(self, template_id: UUID) -> PromptTemplate:
+        """校验存在、未删、租户归属。"""
         row = await self.db.get(PromptTemplate, template_id)
         if not row or is_marked_deleted(row):
             raise NotFoundError("提示词模版不存在")

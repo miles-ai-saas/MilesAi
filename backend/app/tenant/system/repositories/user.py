@@ -11,6 +11,8 @@ from app.models.user import User
 
 
 class UserRepository(BaseRepository[User]):
+    """用户表；登录与 RBAC 预加载 roles。"""
+
     def __init__(self, db: AsyncSession) -> None:
         super().__init__(db, User)
 
@@ -25,6 +27,7 @@ class UserRepository(BaseRepository[User]):
         return (await self.db.execute(stmt)).scalar_one_or_none()
 
     async def get_by_username(self, username: str) -> User | None:
+        """AuthService.login 按用户名查找（含已删用户需上层再判）。"""
         return await self.get_one(User.username == username)
 
     async def ensure_username_unique(self, username: str) -> None:

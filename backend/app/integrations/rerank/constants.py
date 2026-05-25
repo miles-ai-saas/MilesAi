@@ -1,4 +1,7 @@
-"""Rerank invoke_mode 与 ModelConfig.extra 键名。"""
+"""Rerank invoke_mode 与 ModelConfig.extra 键名。
+
+request_format：flat（qwen3-rerank）或 nested（经典 DashScope input/parameters）。
+"""
 
 INVOKE_MODE_DASHSCOPE = "dashscope"
 INVOKE_MODE_OPENAI_COMPATIBLE = "openai_compatible"

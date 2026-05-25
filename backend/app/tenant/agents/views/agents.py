@@ -77,4 +77,5 @@ async def chat_agent(
     ctx: TenantContext = Depends(require_permissions("agent:read")),
     db: AsyncSession = Depends(get_db),
 ):
+    """主对话入口：合规 → 钩子 → A2A/子 Agent/流程/RAG 路由（见 AgentService.chat）。"""
     return ok(await _svc(db, ctx).chat(agent_id, body))

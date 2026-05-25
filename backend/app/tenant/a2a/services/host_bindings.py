@@ -1,4 +1,7 @@
-"""A2A 宿主智能体 ↔ 外部 Peer（agt_a2a_peer_bindings）。"""
+"""A2A 宿主智能体 ↔ 外部 Peer（agt_a2a_peer_bindings）。
+
+AgentType.A2A 专用；至少 1 个 ACTIVE peer；对话走 run_a2a_host_chat。
+"""
 
 from uuid import UUID
 
@@ -18,6 +21,7 @@ MIN_HOST_PEERS = 1
 
 
 def apply_host_config(config: dict | None, *, has_peers: bool) -> dict:
+    """A2A 宿主 config：runtime_mode=autonomous、planner=a2a_orchestrator。"""
     cfg = dict(config or {})
     if has_peers:
         cfg["runtime_mode"] = "autonomous"
@@ -42,6 +46,7 @@ async def list_host_peer_bindings(
     *,
     enabled_only: bool = False,
 ) -> list[A2aPeerBinding]:
+    """查询 A2A 宿主绑定的外部 peer 列表。"""
     stmt = (
         select(A2aPeerBinding)
         .where(A2aPeerBinding.parent_agent_id == parent_agent_id)
@@ -59,6 +64,7 @@ async def validate_and_sync_host_peer_bindings(
     host: Agent,
     refs: list[tuple[UUID, str | None, list[str], int, bool]],
 ) -> None:
+    """全量替换宿主绑定；peer 须为 ACTIVE。"""
     if host.agent_type != AgentType.A2A:
         raise BadRequestError("仅 A2A 互联宿主可绑定外部 Peer")
 
@@ -92,6 +98,7 @@ async def validate_and_sync_host_peer_bindings(
 
 
 def normalize_host_peers(raw: list[dict] | None) -> list[tuple[UUID, str | None, list[str], int, bool]]:
+    """宿主绑定解析，上限 MAX_HOST_PEERS=8。"""
     out = normalize_peer_refs(raw)
     if len(out) > MAX_HOST_PEERS:
         raise BadRequestError(f"A2A 宿主最多绑定 {MAX_HOST_PEERS} 个外部 Agent")

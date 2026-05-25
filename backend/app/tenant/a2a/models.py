@@ -1,3 +1,8 @@
+"""A2A 数据模型：外部 Peer 登记、自定义 Agent 引用、A2A 宿主绑定。
+
+对话链路：ACTIVE peer + agent_card_json → invoke_a2a_peer (JSON-RPC message/send)。
+"""
+
 import enum
 import uuid
 from datetime import datetime

@@ -10,6 +10,7 @@ from langchain_community.document_loaders import PyPDFLoader
 
 
 def load_pdf_documents(data: bytes, filename: str) -> list[Document]:
+    """PyPDF 按页加载 PDF，metadata.parser=pypdf（PARSE_PDF_BACKEND 非 docling 或回退）。"""
     with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
         tmp.write(data)
         tmp_path = tmp.name

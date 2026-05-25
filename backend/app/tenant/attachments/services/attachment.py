@@ -22,6 +22,8 @@ from app.common.schema import PageParams, PageResult
 settings = get_settings()
 
 class AttachmentService(BaseService):
+    """通用附件上传/列表/删除；object_key 与 KB 文档路径分离，仍扣 storage 配额。"""
+
     def __init__(self, db: AsyncSession, ctx: TenantContext) -> None:
         super().__init__(db, ctx)
         self.repo = AttachmentRepository(db)
@@ -62,6 +64,7 @@ class AttachmentService(BaseService):
         file: UploadFile,
         meta: AttachmentUploadMeta,
     ) -> AttachmentOut:
+        """校验类型与配额 → OSS → apply_storage_delta。"""
         if not file.filename:
             raise BadRequestError("文件名不能为空")
         content = await file.read()
@@ -99,6 +102,7 @@ class AttachmentService(BaseService):
         return AttachmentOut.model_validate(att)
 
     async def delete(self, attachment_id: UUID) -> None:
+        """软删并尝试删除 OSS 对象（存储回退由 quota 层处理）。"""
         att = await self._get_or_raise(attachment_id)
         if att.object_key and att.object_key != "pending":
             try:

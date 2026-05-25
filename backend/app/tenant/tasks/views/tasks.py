@@ -54,4 +54,5 @@ async def retry_task(
     ctx: TenantContext = Depends(require_permissions("task:write")),
     db: AsyncSession = Depends(get_db),
 ):
+    """仅 document 入库任务：重新 delay ingest_document。"""
     return ok(await _svc(db, ctx).retry_task(task_id))

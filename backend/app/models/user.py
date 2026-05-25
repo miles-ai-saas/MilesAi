@@ -1,3 +1,5 @@
+"""租户用户 ORM（JWT sub、RBAC 经 user_roles）。"""
+
 import uuid
 
 from sqlalchemy import Boolean, Index, String, UniqueConstraint
@@ -10,6 +12,8 @@ from app.models.role import user_roles
 
 
 class User(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    """username 全局唯一；软删后不可登录。"""
+
     __tablename__ = "sys_users"
     __table_args__ = (
         Index("idx_sys_users_tenant_id", "tenant_id"),

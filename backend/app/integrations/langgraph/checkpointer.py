@@ -1,4 +1,7 @@
-"""LangGraph Checkpointer：优先 Redis，不可用时回退内存。"""
+"""LangGraph Checkpointer：优先 Redis，不可用时回退内存。
+
+RAG 工作流与 DeepAgents 多轮对话共用 thread_id 持久化状态。
+"""
 
 from __future__ import annotations
 
@@ -41,12 +44,14 @@ def _import_async_redis_saver():
 
 
 def get_checkpointer() -> Any:
+    """返回已初始化的 checkpointer，未 init 时回退 MemorySaver。"""
     if _checkpointer is None:
         return MemorySaver()
     return _checkpointer
 
 
 def get_compiled_rag_graph() -> Any:
+    """带 checkpointer 的 RAG QA 编译图单例。"""
     if _compiled_rag_graph is None:
         from app.integrations.langgraph.graphs.rag_qa import build_rag_qa_graph
 
@@ -55,6 +60,7 @@ def get_compiled_rag_graph() -> Any:
 
 
 def checkpoint_backend() -> str:
+    """当前后端：redis 或 memory。"""
     return _backend
 
 
@@ -100,6 +106,7 @@ async def init_langgraph_checkpointer() -> str:
 
 
 async def shutdown_langgraph_checkpointer() -> None:
+    """应用关闭时释放 Redis checkpointer 连接。"""
     global _checkpointer, _compiled_rag_graph, _exit_stack, _backend
     if _exit_stack is not None:
         await _exit_stack.aclose()

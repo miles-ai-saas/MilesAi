@@ -18,6 +18,7 @@ _GRADE_JSON_RE = re.compile(
 
 
 def _score_grade(hits: list[dict[str, Any]], threshold: float) -> tuple[str, float]:
+    """按 top hit 分数与阈值映射 good/poor/none。"""
     if not hits:
         return RELEVANCE_NONE, 0.0
     top_score = max(h.get("score", 0) for h in hits)

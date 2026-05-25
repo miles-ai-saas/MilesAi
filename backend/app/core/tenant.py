@@ -1,4 +1,7 @@
-"""租户上下文与数据隔离工具。"""
+"""租户上下文与数据隔离工具。
+
+由 core.deps.get_tenant_context 从 JWT 用户与 RBAC 权限构建；各 Service 通过 tenant_filters 限制列表查询。
+"""
 
 from dataclasses import dataclass
 from uuid import UUID
@@ -10,6 +13,8 @@ from app.common.exceptions import ForbiddenError
 
 @dataclass(frozen=True)
 class TenantContext:
+    """请求级租户身份；is_superuser 时 has_permission 恒为 True。"""
+
     user_id: UUID
     tenant_id: UUID
     username: str
@@ -17,11 +22,13 @@ class TenantContext:
     permissions: frozenset[str]
 
     def has_permission(self, *codes: str) -> bool:
+        """是否拥有全部给定 permission code。"""
         if self.is_superuser:
             return True
         return all(c in self.permissions for c in codes)
 
     def require_permission(self, *codes: str) -> None:
+        """不满足时抛 ForbiddenError（require_permissions 依赖注入用）。"""
         if not self.has_permission(*codes):
             missing = [c for c in codes if c not in self.permissions]
             raise ForbiddenError(f"缺少权限: {', '.join(missing)}")

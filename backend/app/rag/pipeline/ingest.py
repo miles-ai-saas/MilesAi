@@ -20,17 +20,23 @@ from app.rag.parse.loaders import load_documents_from_bytes
 
 
 class EmbedTextsForKb(Protocol):
+    """按 KB 绑定的 embedding 模型批量向量化分片文本。"""
+
     def __call__(
         self, db: Session, kb: KnowledgeBase, texts: list[str]
     ) -> list[list[float]]: ...
 
 
 class LoadObjectBytes(Protocol):
+    """从对象存储读取原始文件字节。"""
+
     def __call__(self, object_key: str, object_bucket: str) -> bytes: ...
 
 
 @dataclass(frozen=True)
 class IngestInput:
+    """入库管道输入：文件元数据与分片参数。"""
+
     filename: str
     mime_type: str
     object_key: str
@@ -41,6 +47,8 @@ class IngestInput:
 
 @dataclass
 class IngestResult:
+    """入库管道输出摘要（不含状态机）。"""
+
     chunks_text: list[str]
     chunk_count: int
 

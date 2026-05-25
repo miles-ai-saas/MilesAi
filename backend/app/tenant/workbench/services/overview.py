@@ -17,10 +17,13 @@ from app.models.task import CeleryTaskRecord
 
 
 class WorkbenchOverviewService(BaseService):
+    """按当前用户权限仅统计其有读权限的模块数量。"""
+
     def __init__(self, db: AsyncSession, ctx: TenantContext) -> None:
         super().__init__(db, ctx)
 
     async def _scalar_count(self, model, *where) -> int:
+        """单表 count 查询。"""
         return int(
             await self.db.scalar(select(func.count()).select_from(model).where(*where)) or 0
         )
@@ -39,6 +42,7 @@ class WorkbenchOverviewService(BaseService):
         )
 
     async def overview(self) -> WorkbenchOverviewOut:
+        """首页卡片数字；无权限的字段保持默认 0。"""
         ctx = self.ctx
         out = WorkbenchOverviewOut()
 

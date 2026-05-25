@@ -1,4 +1,7 @@
-"""拉取 A2A Agent Card（/.well-known/agent-card.json）。"""
+"""拉取 A2A Agent Card（/.well-known/agent-card.json）。
+
+登记/同步 Peer 前调用；解析展示名与 skill 数量。
+"""
 
 from urllib.parse import urljoin, urlparse
 
@@ -28,6 +31,7 @@ def resolve_agent_card_url(base_or_card_url: str) -> str:
 
 
 def card_display_name(card: dict) -> str | None:
+    """从 Card JSON 提取展示名称。"""
     for key in ("name", "agentName", "title"):
         val = card.get(key)
         if isinstance(val, str) and val.strip():
@@ -36,6 +40,7 @@ def card_display_name(card: dict) -> str | None:
 
 
 def count_card_skills(card: dict) -> int:
+    """统计 Card 中 skills 数组长度。"""
     skills = card.get("skills")
     if isinstance(skills, list):
         return len(skills)
@@ -43,6 +48,7 @@ def count_card_skills(card: dict) -> int:
 
 
 async def fetch_agent_card(base_or_card_url: str) -> tuple[dict, str]:
+    """HTTP GET Agent Card，返回 (card_json, 最终 card_url)。"""
     card_url = resolve_agent_card_url(base_or_card_url)
     try:
         async with httpx.AsyncClient(timeout=20.0, follow_redirects=True) as client:

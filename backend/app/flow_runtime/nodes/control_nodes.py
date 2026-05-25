@@ -8,6 +8,7 @@ from app.flow_runtime.types import RunContext
 
 
 def _norm_branch(value: str) -> str:
+    """将条件边返回值规范为 true/false 字符串。"""
     v = (value or "").strip().lower()
     if v in ("true", "yes", "1", "branch_true"):
         return "true"

@@ -1,4 +1,4 @@
-"""DeepAgents 多子智能体规划与委派。"""
+"""DeepAgents 多子智能体规划与委派（Agent.chat 子智能体分支）。"""
 
 from app.integrations.deepagents.orchestrator import run_subagent_planned_chat
 from app.integrations.deepagents.runner import deepagents_importable

@@ -1,6 +1,8 @@
 """知识库 L1 用例：CRUD、上传、检索、删除编排。
 
-上传仅写对象存储并投递 Celery；解析/分片/向量在 app.rag.pipeline。
+上传：OSS + Document(PENDING) + ingest_document.delay → run_ingest → pipeline。
+检索：embed_query_for_kb → search_kb_chunks（vector/hybrid/rerank）→ PG 回填正文。
+删除：clear_document_derived_data_async → OSS → 软删。
 embedding 维度在创建 KB 时固化，之后不可通过 API 修改。
 """
 
@@ -65,6 +67,7 @@ class KnowledgeBaseService(BaseService):
     """上传后仅落 OSS + 建 Document 行并投递 Celery；解析索引见 rag.pipeline。"""
 
     def __init__(self, db: AsyncSession, ctx: TenantContext) -> None:
+        """注入异步 DB 会话与租户上下文。"""
         super().__init__(db, ctx)
         self.kb_repo = KnowledgeBaseRepository(db)
         self.doc_repo = DocumentRepository(db)
@@ -72,6 +75,7 @@ class KnowledgeBaseService(BaseService):
         self.vector_repo = VectorRefRepository(db)
 
     async def _get_kb_or_raise(self, kb_id: UUID) -> KnowledgeBase:
+        """加载 KB 并校验租户与未删除。"""
         kb = await self.kb_repo.get_by_id(kb_id)
         if not kb or is_marked_deleted(kb):
             raise NotFoundError("知识库不存在")
@@ -79,10 +83,12 @@ class KnowledgeBaseService(BaseService):
         return kb
 
     async def _model_name(self, model_id: UUID) -> str | None:
+        """解析模型配置 ID 对应的展示名。"""
         row = await self.db.get(ModelConfig, model_id)
         return row.name if row else None
 
     async def _to_kb_out(self, kb: KnowledgeBase) -> KnowledgeBaseOut:
+        """ORM → API 出参，附带 embedding/rerank 模型名。"""
         embed_name = await self._model_name(kb.embedding_model_config_id)
         rerank_name = (
             await self._model_name(kb.rerank_model_config_id)
@@ -109,6 +115,7 @@ class KnowledgeBaseService(BaseService):
         )
 
     async def list_kbs(self, params: PageParams) -> PageResult[KnowledgeBaseOut]:
+        """分页列出当前租户知识库。"""
         filters = tenant_filters(self.ctx, KnowledgeBase.tenant_id)
         page = await self.kb_repo.list_page(
             page=params.page,
@@ -125,12 +132,14 @@ class KnowledgeBaseService(BaseService):
         )
 
     async def get_quota(self) -> KbQuotaOut:
+        """返回租户 KB 配额使用情况。"""
         data = await get_kb_quota_out(self.db, self.ctx.tenant_id)
         return KbQuotaOut(**data)
 
     async def list_search_logs(
         self, kb_id: UUID, params: PageParams
     ) -> PageResult[KbSearchLogOut]:
+        """分页列出该知识库的检索日志。"""
         await self._get_kb_or_raise(kb_id)
         from app.common.pagination import paginate
 
@@ -155,6 +164,7 @@ class KnowledgeBaseService(BaseService):
         )
 
     async def create_kb(self, body: KnowledgeBaseCreate) -> KnowledgeBaseOut:
+        """创建 KB：解析 embedding 维度，可选校验 rerank 模型。"""
         await assert_can_create_kb(self.db, self.ctx.tenant_id)
         model_id = body.embedding_model_config_id
         if not model_id:
@@ -180,10 +190,12 @@ class KnowledgeBaseService(BaseService):
         return await self._to_kb_out(kb)
 
     async def get_kb(self, kb_id: UUID) -> KnowledgeBaseOut:
+        """按 ID 获取知识库详情。"""
         kb = await self._get_kb_or_raise(kb_id)
         return await self._to_kb_out(kb)
 
     async def update_kb(self, kb_id: UUID, body: KnowledgeBaseUpdate) -> KnowledgeBaseOut:
+        """部分更新 KB 字段（rerank 配置变更时校验模型存在）。"""
         kb = await self._get_kb_or_raise(kb_id)
         data = body.model_dump(exclude_unset=True)
         rerank_id = data.get("rerank_model_config_id")
@@ -196,6 +208,7 @@ class KnowledgeBaseService(BaseService):
         return await self._to_kb_out(kb)
 
     async def delete_kb(self, kb_id: UUID) -> None:
+        """级联删除文档后软删知识库。"""
         kb = await self._get_kb_or_raise(kb_id)
         docs = (
             await self.db.execute(
@@ -208,6 +221,7 @@ class KnowledgeBaseService(BaseService):
         await mark_deleted(self.db, kb)
 
     async def list_documents(self, kb_id: UUID, params: PageParams) -> PageResult[DocumentOut]:
+        """分页列出文档；READY 文档附带分片数量。"""
         await self._get_kb_or_raise(kb_id)
         page = await self.doc_repo.list_page(
             page=params.page,
@@ -235,6 +249,7 @@ class KnowledgeBaseService(BaseService):
         document_id: UUID,
         params: PageParams,
     ) -> PageResult[DocumentChunkOut]:
+        """分页列出文档在 PG 中的分片正文（chunk_index 升序）。"""
         await self._get_kb_or_raise(kb_id)
         doc = await self.doc_repo.get_by_id_or_raise(document_id, label="文档不存在")
         if doc.kb_id != kb_id or is_marked_deleted(doc):
@@ -261,6 +276,7 @@ class KnowledgeBaseService(BaseService):
         kb_id: UUID,
         file: UploadFile,
     ) -> DocumentOut:
+        """校验类型与配额 → OSS → 建 Document → 投递 Celery ingest。"""
         kb = await self._get_kb_or_raise(kb_id)
         if not file.filename:
             raise BadRequestError("文件名不能为空")
@@ -307,6 +323,7 @@ class KnowledgeBaseService(BaseService):
         return DocumentOut.model_validate(doc)
 
     async def retry_document(self, kb_id: UUID, document_id: UUID) -> DocumentOut:
+        """失败或已完成文档重新入库（pipeline 内会先清旧分片/向量）。"""
         await self._get_kb_or_raise(kb_id)
         doc = await self.doc_repo.get_by_id_or_raise(document_id, label="文档不存在")
         if doc.kb_id != kb_id or is_marked_deleted(doc):
@@ -338,6 +355,7 @@ class KnowledgeBaseService(BaseService):
         return DocumentOut.model_validate(doc)
 
     async def delete_document(self, kb_id: UUID, document_id: UUID) -> None:
+        """删除衍生数据、OSS 对象并软删文档行。"""
         await self._get_kb_or_raise(kb_id)
         doc = await self.doc_repo.get_by_id_or_raise(document_id, label="文档不存在")
         if doc.kb_id != kb_id or is_marked_deleted(doc):
@@ -355,6 +373,7 @@ class KnowledgeBaseService(BaseService):
             await apply_storage_delta(self.db, doc.tenant_id, 0)
 
     async def search(self, kb_id: UUID, body: SearchRequest) -> SearchResponse:
+        """检索并写审计日志；命中后从 PG 取完整分片内容与文件名。"""
         kb = await self._get_kb_or_raise(kb_id)
         effective_mode = resolve_retrieval_mode(kb, body.mode)
         started = time.perf_counter()

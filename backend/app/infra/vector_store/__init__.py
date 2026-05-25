@@ -1,4 +1,7 @@
-"""向量存储客户端（LangChain：weaviate / milvus / pgvector）。"""
+"""向量存储客户端（LangChain：weaviate / milvus / pgvector）。
+
+业务写入/检索请使用 app.rag.index.gateway，勿直接 import 具体 Store。
+"""
 
 from __future__ import annotations
 
@@ -16,6 +19,7 @@ __all__ = [
 
 
 def __getattr__(name: str):
+    """延迟加载具体 Store 实现，避免未安装依赖时 import 失败。"""
     if name == "WeaviateVectorStore":
         from app.infra.vector_store.weaviate import WeaviateVectorStore
 

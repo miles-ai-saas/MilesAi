@@ -9,6 +9,8 @@ from app.models.model import ModelConfig
 
 
 class RerankProvider(Protocol):
+    """Rerank 后端实现协议。"""
+
     def rerank(
         self,
         model: ModelConfig,

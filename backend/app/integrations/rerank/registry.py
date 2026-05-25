@@ -1,4 +1,8 @@
-"""Rerank provider 注册表与分发。"""
+"""Rerank provider 注册表与分发。
+
+链路：search_kb_chunks → apply_rerank_to_hits → rerank_documents_for_model
+     → invoke_mode → DashScope / OpenAICompatible。
+"""
 
 from __future__ import annotations
 
@@ -16,14 +20,17 @@ _PROVIDERS: dict[str, RerankProvider] = {}
 
 
 def register_rerank_provider(mode: str, provider: RerankProvider) -> None:
+    """注册 invoke_mode → RerankProvider。"""
     _PROVIDERS[mode.strip().lower()] = provider
 
 
 def known_invoke_modes() -> frozenset[str]:
+    """已注册的 rerank invoke_mode。"""
     return frozenset(_PROVIDERS)
 
 
 def get_rerank_provider(mode: str) -> RerankProvider:
+    """按 mode 获取 Provider。"""
     key = mode.strip().lower()
     provider = _PROVIDERS.get(key)
     if provider is None:
@@ -38,6 +45,7 @@ def rerank_documents_for_model(
     documents: list[str],
     top_n: int | None = None,
 ) -> list[RerankHit]:
+    """根据 ModelConfig 选择 Provider 对候选文档重排。"""
     if not documents:
         return []
     mode = invoke_mode_from_model(model)
@@ -50,6 +58,7 @@ def rerank_documents_for_model(
 
 
 def _register_builtin_providers() -> None:
+    """模块加载时注册 DashScope 与 OpenAI 兼容 rerank。"""
     from app.integrations.rerank.constants import (
         INVOKE_MODE_DASHSCOPE,
         INVOKE_MODE_OPENAI_COMPATIBLE,

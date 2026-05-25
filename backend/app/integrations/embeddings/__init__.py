@@ -1,4 +1,7 @@
-"""向量化运行时（ModelConfig + provider 注册表）。"""
+"""向量化包对外导出（build_embeddings、embed_texts_for_model 等）。
+
+入库/检索请用 integrations.langchain.embeddings，勿直接绕过 registry。
+"""
 
 from app.integrations.embeddings.constants import (
     EXTRA_EMBEDDING_DIMENSION,

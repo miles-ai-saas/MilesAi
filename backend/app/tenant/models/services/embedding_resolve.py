@@ -1,4 +1,7 @@
-"""解析知识库绑定的向量化 ModelConfig（含本地模型免 Key）。"""
+"""解析知识库绑定的向量化 ModelConfig（含本地模型免 Key）。
+
+链路：embed_*_for_kb → resolve_embedding_model_* → build_embeddings → registry Provider。
+"""
 
 from __future__ import annotations
 
@@ -64,6 +67,7 @@ def _ensure_tenant_custom(model: ModelConfig, tenant_id: UUID) -> ModelConfig:
 
 
 async def get_default_embedding_model(db: AsyncSession) -> ModelConfig:
+    """创建 KB 未指定 embedding 时使用的内置默认模型。"""
     model = (
         await db.execute(
             select(ModelConfig).where(
@@ -83,6 +87,7 @@ async def get_default_embedding_model(db: AsyncSession) -> ModelConfig:
 
 
 def get_default_embedding_model_sync(db: Session) -> ModelConfig:
+    """同步版默认 embedding 模型（Worker/脚本）。"""
     model = db.execute(
         select(ModelConfig).where(
             ModelConfig.tenant_id.is_(None),
@@ -119,6 +124,7 @@ async def resolve_embedding_model(
 async def resolve_embedding_model_by_id(
     db: AsyncSession, model_id: UUID, tenant_id: UUID
 ) -> ModelConfig:
+    """按 ID 加载并解析有效 embedding 配置（API 检索/向量化）。"""
     model = (
         await db.execute(
             select(ModelConfig).where(ModelConfig.id == model_id, not_deleted(ModelConfig))
@@ -132,6 +138,7 @@ async def resolve_embedding_model_by_id(
 def resolve_embedding_model_sync(
     db: Session, model_id: UUID, tenant_id: UUID
 ) -> ModelConfig:
+    """按 ID 同步解析 embedding 配置（Celery ingest）。"""
     model = db.execute(
         select(ModelConfig).where(ModelConfig.id == model_id, not_deleted(ModelConfig))
     ).scalar_one_or_none()

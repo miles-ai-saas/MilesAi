@@ -17,7 +17,7 @@ from app.models.model import ModelConfig
 
 
 def should_use_langgraph_rag(agent: Agent, *, kb_ids: list[str]) -> bool:
-    """agent.config：use_langgraph_rag=false 或 runtime_mode=legacy/autonomous 时走线性 rag_answer。"""
+    """判断是否走 LangGraph RAG 图（否则线性 rag_answer）。"""
     if not kb_ids:
         return False
     cfg = agent.config or {}
@@ -36,6 +36,7 @@ def build_rag_thread_id(
     agent_id: UUID,
     conversation_id: str | None = None,
 ) -> str:
+    """LangGraph checkpointer 线程 id，隔离租户/智能体/会话。"""
     suffix = (conversation_id or "default").strip()[:128] or "default"
     return f"{tenant_id}:{agent_id}:{suffix}"
 
@@ -104,5 +105,5 @@ async def run_rag_workflow(
 
 
 def compile_rag_graph_for_tests():
-    """测试环境未走 lifespan 时编译图。"""
+    """测试环境未走 lifespan init_checkpointer 时编译内存图。"""
     return build_rag_qa_graph().compile(checkpointer=MemorySaver())

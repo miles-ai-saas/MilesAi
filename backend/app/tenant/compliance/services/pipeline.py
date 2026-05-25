@@ -1,4 +1,4 @@
-"""敏感词检测流水线。"""
+"""敏感词检测流水线（子串匹配，大小写不敏感）。"""
 
 from dataclasses import dataclass
 
@@ -33,10 +33,13 @@ class ScanResult:
 
 
 class CompliancePipeline:
+    """内存词表扫描；BLOCK 优先于 WARN。"""
+
     def __init__(self, words: list[tuple[str, SensitiveAction]]) -> None:
         self._words = [(w.strip().lower(), a) for w, a in words if w.strip()]
 
     def scan(self, text: str) -> ScanResult:
+        """扫描文本，返回所有命中词及动作。"""
         if not text or not self._words:
             return ScanResult(matches=())
         lower = text.lower()

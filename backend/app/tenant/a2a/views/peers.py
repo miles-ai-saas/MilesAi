@@ -28,6 +28,7 @@ class A2aProbeRequest(BaseModel):
 
 
 def _svc(db: AsyncSession, ctx: TenantContext) -> A2aPeerService:
+    """构造 A2A Peer 用例服务。"""
     return A2aPeerService(db, ctx)
 
 
@@ -37,6 +38,7 @@ async def list_a2a_peers(
     ctx: TenantContext = Depends(require_permissions("agent:read")),
     db: AsyncSession = Depends(get_db),
 ):
+    """分页列出外部 A2A Agent。"""
     result = await _svc(db, ctx).list_peers(params)
     return page_ok(result.items, result.total, result.page, result.size)
 
@@ -47,6 +49,7 @@ async def create_a2a_peer(
     ctx: TenantContext = Depends(require_permissions("agent:write")),
     db: AsyncSession = Depends(get_db),
 ):
+    """登记外部 Agent（初始 PENDING）。"""
     return ok(await _svc(db, ctx).create_peer(body))
 
 
@@ -56,6 +59,7 @@ async def probe_a2a_peer(
     ctx: TenantContext = Depends(require_permissions("agent:read")),
     db: AsyncSession = Depends(get_db),
 ):
+    """登记前探测 Card 是否可访问。"""
     return ok(await _svc(db, ctx).probe_url(body.base_url))
 
 
@@ -65,6 +69,7 @@ async def get_a2a_peer(
     ctx: TenantContext = Depends(require_permissions("agent:read")),
     db: AsyncSession = Depends(get_db),
 ):
+    """获取 Peer 详情。"""
     return ok(await _svc(db, ctx).get_peer(peer_id))
 
 
@@ -75,6 +80,7 @@ async def update_a2a_peer(
     ctx: TenantContext = Depends(require_permissions("agent:write")),
     db: AsyncSession = Depends(get_db),
 ):
+    """更新 Peer 元数据。"""
     return ok(await _svc(db, ctx).update_peer(peer_id, body))
 
 
@@ -84,6 +90,7 @@ async def delete_a2a_peer(
     ctx: TenantContext = Depends(require_permissions("agent:write")),
     db: AsyncSession = Depends(get_db),
 ):
+    """软删 Peer。"""
     await _svc(db, ctx).delete_peer(peer_id)
     return ok(message="已删除")
 
@@ -94,4 +101,5 @@ async def sync_a2a_peer_card(
     ctx: TenantContext = Depends(require_permissions("agent:write")),
     db: AsyncSession = Depends(get_db),
 ):
+    """拉取 Agent Card 并更新 ACTIVE/ERROR 状态。"""
     return ok(await _svc(db, ctx).sync_peer_card(peer_id))

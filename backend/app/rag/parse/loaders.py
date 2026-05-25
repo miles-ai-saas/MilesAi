@@ -43,6 +43,7 @@ def _raise_if_office_unparseable(ext: str) -> None:
 
 
 def _file_ext(filename: str) -> str:
+    """提取小写扩展名（含点）。"""
     if "." not in filename:
         return ""
     return filename[filename.rfind(".") :].lower()
@@ -128,7 +129,7 @@ def load_documents_from_bytes(
 
 
 def documents_to_plain_text(docs: list[Document]) -> str:
-    """合并 Document 为入库用单文本。"""
+    """合并多页 Document 为单字符串（调试或简易路径；pipeline 用 chunk_documents）。"""
     parts = [d.page_content.strip() for d in docs if (d.page_content or "").strip()]
     if not parts:
         return ""

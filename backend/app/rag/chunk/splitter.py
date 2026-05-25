@@ -23,6 +23,7 @@ def _resolve_chunk_params(
     chunk_size: int | None,
     overlap: int | None,
 ) -> tuple[int, int]:
+    """KB 未传参时使用全局默认 chunk_size / chunk_overlap。"""
     settings = get_settings()
     size = chunk_size if chunk_size is not None else settings.default_chunk_size
     ov = overlap if overlap is not None else settings.default_chunk_overlap
@@ -43,6 +44,7 @@ def page_no_from_metadata(meta: dict | None) -> int | None:
 
 
 def split_text(text: str, chunk_size: int | None = None, overlap: int | None = None) -> list[str]:
+    """纯文本 RecursiveCharacter 分片（无 Document 元数据）。"""
     text = (text or "").strip()
     if not text:
         return []
@@ -61,6 +63,7 @@ def _recursive_split_document(
     chunk_size: int,
     overlap: int,
 ) -> list[Document]:
+    """单 Document 按字符长度递归切分。"""
     splitter = RecursiveCharacterTextSplitter(
         chunk_size=chunk_size,
         chunk_overlap=overlap,

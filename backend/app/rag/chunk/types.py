@@ -7,6 +7,7 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class TextChunk:
+    """分片后单条文本；page_no 来自 pypdf/docling metadata。"""
+
     content: str
-    # 写入 kb_document_chunks.page_no 与向量库 metadata，供引用展示
     page_no: int | None = None

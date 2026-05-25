@@ -1,3 +1,5 @@
+"""流程画布 ORM：Flow 主表 + 版本化 graph_json（FlowVersion）。"""
+
 import enum
 import uuid
 
@@ -38,6 +40,8 @@ class Flow(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
 
 class FlowVersion(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    """每次 save_graph 递增 version；LangGraph 编译 graph_json 执行。"""
+
     __tablename__ = "flow_versions"
     __table_args__ = (
         Index("idx_flow_versions_flow_id", "flow_id"),

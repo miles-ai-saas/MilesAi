@@ -1,4 +1,7 @@
-"""向量存储抽象。"""
+"""向量存储抽象（L4）。
+
+业务代码请经 app.rag.index.gateway 读写，勿直接依赖具体 Milvus/pgvector 实现。
+"""
 
 from __future__ import annotations
 
@@ -23,6 +26,7 @@ class ChunkVectorRecord:
 
 
 def validate_dimension(dimension: int) -> int:
+    """校验向量维度为正整数。"""
     if dimension <= 0:
         raise ValueError(f"无效的向量维度: {dimension}")
     return dimension

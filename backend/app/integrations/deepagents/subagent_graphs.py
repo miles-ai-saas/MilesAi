@@ -1,4 +1,7 @@
-"""将租户子智能体编译为 DeepAgents CompiledSubAgent（runnable 内调用 chat_as_child）。"""
+"""将租户子智能体编译为 DeepAgents CompiledSubAgent（runnable 内调用 chat_as_child）。
+
+每个 binding 对应一个 LangGraph MessagesState 子图，slug 供 task 工具 subagent_type 引用。
+"""
 
 from __future__ import annotations
 
@@ -25,6 +28,7 @@ _ROLE_LABELS = {
 
 
 def _slug_for_binding(binding: AgentSubAgentBinding) -> str:
+    """生成 DeepAgents task 工具可识别的子智能体 slug。"""
     if binding.role_hint and binding.role_hint in _ROLE_LABELS:
         base = binding.role_hint
     else:
@@ -34,6 +38,7 @@ def _slug_for_binding(binding: AgentSubAgentBinding) -> str:
 
 
 def _description(binding: AgentSubAgentBinding) -> str:
+    """子智能体说明（写入 CompiledSubAgent.description）。"""
     child = binding.child_agent
     if not child:
         return "子智能体工位"
@@ -47,6 +52,7 @@ def _description(binding: AgentSubAgentBinding) -> str:
 
 
 def _make_child_node(svc: AgentService, child_id: UUID):
+    """单节点图：HumanMessage → chat_as_child → AIMessage。"""
     async def _run(state: MessagesState) -> dict[str, Any]:
         query = ""
         for msg in reversed(state.get("messages") or []):

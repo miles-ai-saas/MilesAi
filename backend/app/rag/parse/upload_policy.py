@@ -43,6 +43,7 @@ KB_ALLOWED_EXTENSIONS = (
 
 
 def is_kb_upload_allowed(filename: str, mime: str) -> bool:
+    """校验扩展名/MIME 是否在 KB 白名单内。"""
     ext = file_extension(filename)
     if mime in KB_ALLOWED_MIMES or ext in KB_ALLOWED_EXTENSIONS:
         return True
@@ -55,6 +56,7 @@ def kb_upload_accept_attribute() -> str:
 
 
 def kb_upload_allowed_hint() -> str:
+    """上传失败时返回给前端的友好提示文案。"""
     return (
         "支持 TXT/MD/PDF、Office（DOCX/PPTX/XLSX/HTML，解析需 docling）、"
         "图片（JPG/PNG/WebP）、音频（MP3/WAV 等）"

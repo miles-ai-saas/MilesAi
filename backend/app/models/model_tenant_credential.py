@@ -1,3 +1,5 @@
+"""租户对平台内置模型的 BYOK 凭证覆盖（model_resolve 合并调用参数）。"""
+
 import uuid
 
 from sqlalchemy import Boolean, ForeignKey, Index, String, UniqueConstraint

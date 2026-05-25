@@ -16,6 +16,7 @@ from app.core.service import BaseService
 
 
 def to_user_out(user: User) -> UserOut:
+    """ORM User（含 roles）转 API 输出。"""
     return UserOut(
         id=user.id,
         username=user.username,
@@ -29,6 +30,8 @@ def to_user_out(user: User) -> UserOut:
 
 
 class UserService(BaseService):
+    """租户用户管理；create 时 resolve_tenant_id 限制非超管只能建本租户用户。"""
+
     def __init__(self, db: AsyncSession, ctx: TenantContext) -> None:
         super().__init__(db, ctx)
         self.repo = UserRepository(db)

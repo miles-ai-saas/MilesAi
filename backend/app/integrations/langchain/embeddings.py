@@ -23,11 +23,13 @@ if TYPE_CHECKING:
 
 
 def embed_texts_for_kb_sync(db: Session, kb: KnowledgeBase, texts: list[str]) -> list[list[float]]:
+    """Celery 入库：按 KB 解析 embedding 模型并批量向量化分片。"""
     model = resolve_embedding_model_sync(db, kb.embedding_model_config_id, kb.tenant_id)
     return build_embeddings(model).embed_documents(texts)
 
 
 def embed_query_for_kb_sync(db: Session, kb: KnowledgeBase, query: str) -> list[float]:
+    """同步单条 query 向量化（脚本或同步检索路径）。"""
     model = resolve_embedding_model_sync(db, kb.embedding_model_config_id, kb.tenant_id)
     return build_embeddings(model).embed_query(query)
 
@@ -35,6 +37,7 @@ def embed_query_for_kb_sync(db: Session, kb: KnowledgeBase, query: str) -> list[
 async def embed_texts_for_kb(
     db: AsyncSession, tenant_id: UUID, kb: KnowledgeBase, texts: list[str]
 ) -> list[list[float]]:
+    """异步批量向量化（非入库主路径）。"""
     model = await resolve_embedding_model_by_id(
         db, kb.embedding_model_config_id, tenant_id
     )
@@ -44,6 +47,7 @@ async def embed_texts_for_kb(
 async def embed_query_for_kb(
     db: AsyncSession, tenant_id: UUID, kb: KnowledgeBase, query: str
 ) -> list[float]:
+    """API 检索：将用户 query 转为与 KB 维度一致的向量。"""
     model = await resolve_embedding_model_by_id(
         db, kb.embedding_model_config_id, tenant_id
     )
@@ -52,6 +56,7 @@ async def embed_query_for_kb(
 
 # 兼容旧名：同步入库路径
 def embed_texts_for_kb_legacy(db: Session, kb: KnowledgeBase, texts: list[str]) -> list[list[float]]:
+    """兼容旧 import，等同 embed_texts_for_kb_sync。"""
     return embed_texts_for_kb_sync(db, kb, texts)
 
 

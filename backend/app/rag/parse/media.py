@@ -1,4 +1,4 @@
-"""多模态文件类型判定。"""
+"""多模态文件类型判定（图片/音频路由与 vector_type）。"""
 
 _IMAGE_MIMES = {
     "image/jpeg",
@@ -20,17 +20,20 @@ _AUDIO_EXTENSIONS = {".mp3", ".wav", ".m4a", ".ogg", ".webm"}
 
 
 def file_extension(filename: str) -> str:
+    """小写扩展名（含点）。"""
     if "." not in filename:
         return ""
     return filename[filename.rfind(".") :].lower()
 
 
 def is_image_file(filename: str, mime_type: str) -> bool:
+    """是否按图片解析（OCR 或占位文本）。"""
     ext = file_extension(filename)
     return mime_type in _IMAGE_MIMES or ext in _IMAGE_EXTENSIONS
 
 
 def is_audio_file(filename: str, mime_type: str) -> bool:
+    """是否按音频解析（Whisper 或占位文本）。"""
     ext = file_extension(filename)
     return mime_type in _AUDIO_MIMES or ext in _AUDIO_EXTENSIONS
 

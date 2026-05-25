@@ -1,4 +1,4 @@
-"""Rerank 运行时入口。"""
+"""Rerank 运行时入口（对外统一调用 rerank_documents）。"""
 
 from __future__ import annotations
 
@@ -15,6 +15,7 @@ def rerank_documents(
     documents: list[str],
     top_n: int | None = None,
 ) -> list[RerankHit]:
+    """校验模型类型后调用 registry 重排。"""
     ensure_rerank_model_type(model)
     return rerank_documents_for_model(
         model,

@@ -49,6 +49,7 @@ def search_kb(
     embed_query_sync: EmbedQuerySync,
     resolve_rerank_sync: ResolveRerankSync | None = None,
 ) -> list[dict[str, Any]]:
+    """单 KB 同步检索（注入 embed 与 rerank 解析回调）。"""
     vector = embed_query_sync(db, kb, query)
     rerank_model = None
     if resolve_rerank_sync is not None and kb.rerank_model_config_id:
@@ -74,6 +75,7 @@ def search_multi_kb(
     embed_query_sync: EmbedQuerySync,
     resolve_rerank_sync: ResolveRerankSync | None = None,
 ) -> list[dict[str, Any]]:
+    """多 KB 分别检索后按 score 全局排序截断。"""
     if not kbs:
         return []
     all_hits: list[dict[str, Any]] = []
@@ -108,6 +110,7 @@ async def search_multi_kb_async(
     actor_user_id: UUID | None = None,
     agent_id: UUID | None = None,
 ) -> list[dict[str, Any]]:
+    """异步多 KB 检索；可选 on_complete 写审计日志。"""
     if not kbs:
         return []
     started = time.perf_counter()

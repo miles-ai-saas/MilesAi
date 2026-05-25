@@ -22,6 +22,7 @@ async def unlink_sub_agent_bindings(
     parent_agent_id: UUID | None = None,
     child_agent_id: UUID | None = None,
 ) -> None:
+    """删除父子智能体绑定行（删 Agent 前调用）。"""
     if parent_agent_id is None and child_agent_id is None:
         return
     stmt = delete(AgentSubAgentBinding)
@@ -38,6 +39,7 @@ async def unlink_agent_kb_bindings(
     agent_id: UUID | None = None,
     kb_id: UUID | None = None,
 ) -> None:
+    """解除 agent_kb_bindings 关联表记录。"""
     if agent_id is None and kb_id is None:
         return
     stmt = delete(agent_kb_bindings)
@@ -55,6 +57,7 @@ async def nullify_app_install_refs(
     flow_id: UUID | None = None,
     kb_id: UUID | None = None,
 ) -> None:
+    """市场安装记录置空对已删资源的引用。"""
     if agent_id is None and flow_id is None and kb_id is None:
         return
     values: dict = {}
@@ -77,6 +80,7 @@ async def nullify_app_install_refs(
 
 
 async def clear_agents_published_flow_ref(db: AsyncSession, flow_id: UUID) -> None:
+    """删流程前清空智能体 published_flow_id 指针。"""
     await db.execute(
         update(Agent)
         .where(Agent.published_flow_id == flow_id)
@@ -89,6 +93,7 @@ async def delete_hook_bindings_for_target(
     scope: HookScope,
     target_id: UUID,
 ) -> None:
+    """软删指定 scope/target 的 Hook 绑定。"""
     await mark_deleted_where(
         db,
         HookBinding,
@@ -99,10 +104,12 @@ async def delete_hook_bindings_for_target(
 
 
 async def delete_flow_versions(db: AsyncSession, flow_id: UUID) -> None:
+    """软删流程下所有版本行。"""
     await mark_deleted_where(db, FlowVersion, FlowVersion.flow_id == flow_id)
 
 
 async def before_delete_agent(db: AsyncSession, agent_id: UUID) -> None:
+    """删智能体前：子 Agent 绑定、KB 绑定、市场引用、Hook。"""
     await unlink_sub_agent_bindings(db, parent_agent_id=agent_id, child_agent_id=agent_id)
     await unlink_agent_kb_bindings(db, agent_id=agent_id)
     await nullify_app_install_refs(db, agent_id=agent_id)
@@ -116,6 +123,7 @@ async def before_delete_kb(db: AsyncSession, kb_id: UUID) -> None:
 
 
 async def before_delete_flow(db: AsyncSession, flow_id: UUID) -> None:
+    """删流程前：解绑 Agent 发布指针、市场引用、Hook、版本。"""
     await clear_agents_published_flow_ref(db, flow_id)
     await nullify_app_install_refs(db, flow_id=flow_id)
     await delete_hook_bindings_for_target(db, HookScope.FLOW, flow_id)

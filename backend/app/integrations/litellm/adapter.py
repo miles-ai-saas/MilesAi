@@ -42,6 +42,7 @@ _PROVIDER_LITELLM_PREFIX: dict[str, str] = {
 
 
 def _ensure_chat_model_type(model: ModelConfig) -> None:
+    """校验为 llm / reasoning / vision，embedding 走 integrations.embeddings。"""
     if model.model_type not in CHAT_MODEL_TYPES:
         label = model.model_type or "unknown"
         raise BadRequestError(
@@ -74,6 +75,7 @@ def resolve_litellm_model(model: ModelConfig) -> str:
 
 
 def _resolve_api_base(model: ModelConfig) -> str | None:
+    """模型 api_base 或 model_catalog.DEFAULT_API_BASES[vendor]。"""
     if model.api_base:
         return model.api_base.rstrip("/")
     return DEFAULT_API_BASES.get(model.vendor)
@@ -146,6 +148,7 @@ async def litellm_chat_completion(
 
 
 def _extract_embedding_vectors(response: Any) -> list[list[float]]:
+    """从 LiteLLM embedding 响应提取向量列表。"""
     data = getattr(response, "data", None) or []
     vectors: list[list[float]] = []
     for item in data:

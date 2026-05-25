@@ -4,6 +4,7 @@ from io import BytesIO
 
 
 def parse_image(data: bytes, filename: str) -> str:
+    """OCR 或占位文本，保证 ingest 可继续。"""
     try:
         from PIL import Image
     except ImportError as exc:
@@ -27,6 +28,7 @@ def parse_image(data: bytes, filename: str) -> str:
 
 
 def _try_ocr(image) -> str | None:
+    """pytesseract 可选；失败返回 None。"""
     try:
         import pytesseract
     except ImportError:

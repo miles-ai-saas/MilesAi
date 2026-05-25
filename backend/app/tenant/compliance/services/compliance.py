@@ -1,4 +1,7 @@
-"""敏感词库与入出站合规扫描（智能体对话等路径调用 CompliancePipeline）。"""
+"""敏感词库与入出站合规扫描（智能体对话等路径调用 CompliancePipeline）。
+
+Agent.chat 在推理前后调用 check_input / check_output；BLOCK 抛 BadRequestError 并写 InterceptLog。
+"""
 
 from uuid import UUID
 
@@ -25,10 +28,13 @@ from app.tenant.compliance.services.pipeline import CompliancePipeline
 
 
 class ComplianceService(BaseService):
+    """敏感词 CRUD、试跑 scan、拦截审计日志。"""
+
     def __init__(self, db: AsyncSession, ctx: TenantContext) -> None:
         super().__init__(db, ctx)
 
     async def _pipeline(self) -> CompliancePipeline:
+        """按租户加载活跃敏感词构建扫描器。"""
         filters = tenant_filters(self.ctx, SensitiveWord.tenant_id)
         stmt = select(SensitiveWord).where(
             SensitiveWord.is_active.is_(True),
@@ -113,6 +119,7 @@ class ComplianceService(BaseService):
         )
 
     async def scan_text(self, body: ComplianceScanRequest) -> ComplianceScanResult:
+        """管理端试跑：返回 blocked/warned，命中时写 InterceptLog 但不抛错。"""
         result = (await self._pipeline()).scan(body.text)
         matches = [
             ComplianceScanMatch(word=m.word, action=m.action) for m in result.matches

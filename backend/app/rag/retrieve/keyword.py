@@ -13,6 +13,7 @@ from app.models.kb import Document, DocumentChunk
 
 
 def _keyword_stmt(tenant_id: UUID, kb_id: UUID, pattern: str, limit: int):
+    """ILIKE 匹配分片正文，排除已软删文档。"""
     return (
         select(
             DocumentChunk.id,
@@ -32,6 +33,7 @@ def _keyword_stmt(tenant_id: UUID, kb_id: UUID, pattern: str, limit: int):
 
 
 def _rows_to_hits(rows, limit: int) -> list[dict]:
+    """按查询顺序赋予递减 score_keyword（非 BM25）。"""
     hits: list[dict] = []
     for rank, row in enumerate(rows):
         chunk_id, document_id, content = row
@@ -73,6 +75,7 @@ def search_chunks_by_keyword_sync(
     query: str,
     limit: int = 10,
 ) -> list[dict]:
+    """同步版关键词检索（_hybrid_sync 使用）。"""
     q = query.strip()
     if not q:
         return []

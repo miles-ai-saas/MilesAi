@@ -26,6 +26,7 @@ async def retrieve_hits(
     db: AsyncSession,
     top_k: int = 5,
 ) -> list[dict[str, Any]]:
+    """多 KB 检索命中（无租户上下文，不写 actor）。"""
     kbs = await load_kbs_for_tenant(db, tenant_id, kb_ids)
     return await search_multi_kb_async(
         query, kbs=kbs, db=db, tenant_id=tenant_id, top_k=top_k
@@ -41,6 +42,7 @@ async def retrieve_hits_with_ctx(
     top_k: int = 5,
     agent_id: UUID | None = None,
 ) -> list[dict[str, Any]]:
+    """带用户/agent 上下文的检索（写 search_log）。"""
     kbs = await load_kbs_for_tenant(db, ctx.tenant_id, kb_ids)
     return await search_multi_kb_async(
         query,

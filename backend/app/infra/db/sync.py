@@ -15,6 +15,7 @@ SyncSessionLocal = sessionmaker(bind=sync_engine, autocommit=False, autoflush=Fa
 
 @contextmanager
 def get_sync_db() -> Generator[Session, None, None]:
+    """上下文管理器：成功 commit，异常 rollback 并 close。"""
     session = SyncSessionLocal()
     try:
         yield session

@@ -1,3 +1,5 @@
+"""ORM 混入：UUIDv7 主键与时间戳/软删列。"""
+
 import uuid
 from datetime import datetime
 
@@ -10,6 +12,8 @@ from app.utils.idgen import generate_uuid
 
 
 class TimestampMixin:
+    """created_at / updated_at / deleted_at（软删非空即已删）。"""
+
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()

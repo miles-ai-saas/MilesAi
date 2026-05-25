@@ -1,4 +1,8 @@
-"""内置与自定义工具执行。"""
+"""内置与自定义工具执行。
+
+flow_runtime TOOL 节点、ToolsService.invoke、LangChain tools 均经 invoke_tool_by_name 分发。
+内置 knowledge_search 走同步 DB + search_kb（Celery 外勿在 async 路径长时间阻塞）。
+"""
 
 import ast
 import operator as op
@@ -36,6 +40,7 @@ def _eval_expr(node: ast.AST):
 
 
 def safe_calculate(expression: str) -> float:
+    """AST 白名单求值，仅支持四则运算与一元负号。"""
     tree = ast.parse(expression.strip(), mode="eval")
     return float(_eval_expr(tree.body))
 
@@ -47,6 +52,7 @@ async def invoke_builtin(
     db: AsyncSession,
     ctx: TenantContext,
 ) -> dict:
+    """执行 calculator / http_request / knowledge_search。"""
     if name == "calculator":
         expr = params.get("expression") or params.get("expr") or params.get("query", "")
         if not expr:
@@ -82,6 +88,7 @@ async def invoke_builtin(
 
 
 async def invoke_custom_http(tool: Tool, params: dict) -> dict:
+    """租户 HTTP 型工具：config.url/method/headers 与 params 合并请求。"""
     cfg = tool.config or {}
     url = cfg.get("url") or params.get("url")
     if not url:
@@ -104,6 +111,7 @@ async def invoke_tool_by_name(
     *,
     tool_id: UUID | None = None,
 ) -> dict:
+    """按名称或 tool_id 解析 Tool 行；内置名无 tool_id 时走 invoke_builtin。"""
     builtin_names = {"calculator", "http_request", "knowledge_search"}
     if name in builtin_names and not tool_id:
         return await invoke_builtin(name, params, db=db, ctx=ctx)

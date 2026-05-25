@@ -1,4 +1,8 @@
-"""应用市场：上架、审核、安装（克隆 KB/Flow/Agent 到本租户）与评分。"""
+"""应用市场：上架、审核、安装（克隆 KB/Flow/Agent 到本租户）与评分。
+
+安装走 install_app：按 manifest 在本租户 create_kb/create_flow/create_agent；
+审核 approve/reject 需平台权限；卸载见 deletion 与 AppInstall 级联（若有 API）。
+"""
 
 from datetime import datetime, timezone
 from uuid import UUID
@@ -489,6 +493,7 @@ class MarketplaceService(BaseService):
         return PageResult(items=items, total=total or 0, page=params.page, size=params.size)
 
     async def list_pending_apps(self, params: PageParams) -> PageResult[MarketplaceAppOut]:
+        """审核队列：PENDING_REVIEW 状态应用。"""
         filters = [MarketplaceApp.status == MarketplaceAppStatus.PENDING_REVIEW]
         stmt = (
             select(MarketplaceApp)
@@ -512,6 +517,7 @@ class MarketplaceService(BaseService):
         return PageResult(items=items, total=total or 0, page=params.page, size=params.size)
 
     async def approve_app(self, app_id: UUID) -> MarketplaceAppOut:
+        """审核通过 → PUBLISHED，记录 reviewed_by/at。"""
         app = await self._get_app_or_raise(app_id)
         if app.status != MarketplaceAppStatus.PENDING_REVIEW:
             raise BadRequestError("仅待审核应用可通过")
@@ -529,6 +535,7 @@ class MarketplaceService(BaseService):
         )
 
     async def reject_app(self, app_id: UUID, *, note: str | None) -> MarketplaceAppOut:
+        """驳回 → REJECTED，写入 review_note。"""
         app = await self._get_app_or_raise(app_id)
         if app.status != MarketplaceAppStatus.PENDING_REVIEW:
             raise BadRequestError("仅待审核应用可驳回")
@@ -570,6 +577,7 @@ class MarketplaceService(BaseService):
         )
 
     async def upsert_rating(self, app_id: UUID, body: AppRatingCreate) -> AppRatingOut:
+        """已安装用户每应用一条评分，更新后重算 rating_avg。"""
         app = await self._get_app_or_raise(app_id)
         if app.status != MarketplaceAppStatus.PUBLISHED:
             raise BadRequestError("仅已上架应用可评分")

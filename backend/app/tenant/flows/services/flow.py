@@ -172,6 +172,7 @@ class FlowService(BaseService):
         return FlowRunResponse(output=output, steps=result.steps)
 
     async def compile_preview(self, flow_id: UUID) -> dict:
+        """校验 graph_json 能否被 LangGraph 编译（不执行）。"""
         flow = await self._get_flow_or_raise(flow_id)
         version = await self.repo.get_version(flow.id, flow.current_version)
         if not version:

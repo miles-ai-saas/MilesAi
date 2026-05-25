@@ -1,3 +1,8 @@
+"""知识库 ORM：库配置、文档入库状态机、分片与向量引用。
+
+Document.status 由 tenant.kb.ingest 驱动；VectorRef.vector_id 对应 Milvus/pgvector 外部 ID。
+"""
+
 import enum
 import uuid
 
@@ -10,6 +15,8 @@ from app.models.base import TimestampMixin, UUIDPrimaryKeyMixin
 
 
 class DocumentStatus(str, enum.Enum):
+    """入库流水线状态（PENDING → PARSING → EMBEDDING → READY）。"""
+
     PENDING = "pending"
     PARSING = "parsing"
     EMBEDDING = "embedding"
@@ -19,6 +26,8 @@ class DocumentStatus(str, enum.Enum):
 
 
 class KnowledgeBase(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    """检索配置：embedding/rerank 模型、chunk 参数、hybrid_alpha。"""
+
     __tablename__ = "kb_bases"
     __table_args__ = (Index("idx_kb_bases_tenant_id", "tenant_id"),)
 
@@ -48,6 +57,8 @@ class KnowledgeBase(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
 
 class Document(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    """原始文件元数据 + OSS 路径；celery_task_id 关联 TaskService 记录。"""
+
     __tablename__ = "kb_documents"
     __table_args__ = (
         Index("idx_kb_documents_tenant_id", "tenant_id"),
@@ -85,6 +96,8 @@ class Document(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
 
 class DocumentChunk(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    """分片正文与 page_no；与 VectorRef 一对一。"""
+
     __tablename__ = "kb_document_chunks"
     __table_args__ = (
         Index("idx_kb_document_chunks_tenant_id", "tenant_id"),
@@ -116,6 +129,8 @@ class DocumentChunk(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
 
 class VectorRef(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    """chunk_id 与向量库 external_id 映射；vector_type 区分 text/image/audio。"""
+
     __tablename__ = "kb_vector_refs"
     __table_args__ = (
         Index("idx_kb_vector_refs_tenant_id", "tenant_id"),

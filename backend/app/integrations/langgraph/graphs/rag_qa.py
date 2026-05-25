@@ -18,6 +18,7 @@ from app.models.model import ModelConfig
 
 
 def _cfg_model(config: RunnableConfig | None) -> ModelConfig:
+    """从 RunnableConfig.configurable 取已 resolve 的 ModelConfig。"""
     if not config or "configurable" not in config:
         raise ValueError("LangGraph 缺少 configurable.model")
     model = config["configurable"].get("model")  # type: ignore[union-attr]
@@ -27,6 +28,7 @@ def _cfg_model(config: RunnableConfig | None) -> ModelConfig:
 
 
 async def retrieve(state: RAGGraphState, config: RunnableConfig) -> dict[str, Any]:
+    """节点：多 KB retrieve_hits，写入 hits 与 steps。"""
     tenant_id = UUID(state["tenant_id"])
     async with AsyncSessionLocal() as db:
         hits = await retrieve_hits(
@@ -51,6 +53,7 @@ async def retrieve(state: RAGGraphState, config: RunnableConfig) -> dict[str, An
 
 
 async def grade_documents(state: RAGGraphState, config: RunnableConfig) -> dict[str, Any]:
+    """节点：按分数或 LLM 评判检索相关性（good/poor/none）。"""
     hits = state.get("hits") or []
     threshold = float(state.get("relevance_threshold", 0.35))
     relevance, top_score = _score_grade(hits, threshold)
@@ -104,6 +107,7 @@ def route_after_grade(state: RAGGraphState) -> Literal["generate", "retry", "fal
 
 
 async def prepare_retry(state: RAGGraphState) -> dict[str, Any]:
+    """节点：扩大 top_k 后回到 retrieve 重试。"""
     new_retry = int(state.get("retry_count", 0)) + 1
     new_top_k = min(int(state.get("top_k", 5)) * 2, 20)
     return {
@@ -121,6 +125,7 @@ async def prepare_retry(state: RAGGraphState) -> dict[str, Any]:
 
 
 async def generate(state: RAGGraphState, config: RunnableConfig) -> dict[str, Any]:
+    """节点：有相关命中时正常 RAG 生成答案。"""
     model = _cfg_model(config)
     hits = state.get("hits") or []
     if hits:
@@ -151,6 +156,7 @@ async def generate(state: RAGGraphState, config: RunnableConfig) -> dict[str, An
 
 
 async def fallback(state: RAGGraphState, config: RunnableConfig) -> dict[str, Any]:
+    """节点：无命中或相关性差时的保守回答话术。"""
     model = _cfg_model(config)
     hits = state.get("hits") or []
     if hits:
@@ -185,6 +191,7 @@ async def fallback(state: RAGGraphState, config: RunnableConfig) -> dict[str, An
 
 
 def build_rag_qa_graph():
+    """编译前 StateGraph：retrieve → grade → generate|retry|fallback。"""
     graph = StateGraph(RAGGraphState)
     graph.add_node("retrieve", retrieve)
     graph.add_node("grade_documents", grade_documents)

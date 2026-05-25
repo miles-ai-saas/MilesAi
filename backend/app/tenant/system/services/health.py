@@ -6,8 +6,11 @@ from app.common.schema import ApiResponse
 
 
 class HealthService:
+    """/health 无鉴权探测；components 含 postgres/redis/milvus/minio 等。"""
+
     @staticmethod
     async def check() -> ApiResponse[dict]:
+        """healthy 时 code=0；降级时 code=1 且 data 仍带组件明细。"""
         result = await collect_health_status()
         data = {"status": result["status"], "components": result["components"]}
         if result["healthy"]:

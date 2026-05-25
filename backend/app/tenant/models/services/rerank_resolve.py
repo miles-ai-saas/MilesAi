@@ -1,4 +1,7 @@
-"""解析知识库绑定的 rerank ModelConfig（含 BYOK）。"""
+"""解析知识库绑定的 rerank ModelConfig（含 BYOK）。
+
+链路：KnowledgeBaseService.search → resolve_rerank_model_by_id → apply_rerank_to_hits。
+"""
 
 from __future__ import annotations
 
@@ -59,6 +62,7 @@ async def resolve_rerank_model(
     model: ModelConfig,
     tenant_id: UUID,
 ) -> ModelConfig:
+    """合并 BYOK 并校验内置/租户自定义 rerank 模型可用性。"""
     ensure_rerank_model_type(model)
     if not model.is_active:
         raise BadRequestError("重排模型已停用")
@@ -73,6 +77,7 @@ async def resolve_rerank_model(
 async def resolve_rerank_model_by_id(
     db: AsyncSession, model_id: UUID, tenant_id: UUID
 ) -> ModelConfig:
+    """按 ID 解析 KB 绑定的 rerank 模型（检索精排）。"""
     model = (
         await db.execute(
             select(ModelConfig).where(ModelConfig.id == model_id, not_deleted(ModelConfig))
@@ -86,6 +91,7 @@ async def resolve_rerank_model_by_id(
 def resolve_rerank_model_sync(
     db: Session, model_id: UUID, tenant_id: UUID
 ) -> ModelConfig:
+    """同步解析 rerank 模型（脚本或非 async 路径）。"""
     model = db.execute(
         select(ModelConfig).where(ModelConfig.id == model_id, not_deleted(ModelConfig))
     ).scalar_one_or_none()

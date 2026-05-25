@@ -1,4 +1,7 @@
-"""平台能力注册为 LangChain StructuredTool。"""
+"""平台能力注册为 LangChain StructuredTool。
+
+knowledge_search 工具：同步 DB + search_kb，供 Agent/流程调用单库检索。
+"""
 
 from __future__ import annotations
 
@@ -30,6 +33,7 @@ class KnowledgeSearchInput(BaseModel):
 
 
 def _make_calculator_tool() -> StructuredTool:
+    """安全数学表达式计算器。"""
     def _run(expression: str) -> dict:
         from app.tenant.tools.invoke import safe_calculate
 
@@ -44,6 +48,7 @@ def _make_calculator_tool() -> StructuredTool:
 
 
 def _make_http_request_tool() -> StructuredTool:
+    """出站 HTTP 请求（响应体截断 4KB）。"""
     import httpx
 
     def _run(url: str, method: str = "GET", timeout: float = 10.0) -> dict:
@@ -59,6 +64,7 @@ def _make_http_request_tool() -> StructuredTool:
 
 
 def make_knowledge_search_tool(ctx: TenantContext) -> StructuredTool:
+    """绑定租户的单库语义检索工具。"""
     tenant_id = ctx.tenant_id
 
     def _run(query: str, kb_id: str, limit: int = 5) -> dict:
@@ -79,6 +85,7 @@ def make_knowledge_search_tool(ctx: TenantContext) -> StructuredTool:
 
 
 def get_platform_tools(ctx: TenantContext) -> list[StructuredTool]:
+    """返回当前租户可用的内置 StructuredTool 列表。"""
     return [
         _make_calculator_tool(),
         _make_http_request_tool(),
@@ -94,7 +101,7 @@ async def invoke_platform_tool(
     *,
     tool_id: UUID | None = None,
 ) -> dict:
-    """兼容原有 invoke_tool_by_name，内置工具走 LangChain 定义。"""
+    """统一工具调用入口；内置名走 LangChain，其余走 tenant.tools.invoke。"""
     from app.tenant.tools.invoke import invoke_tool_by_name
 
     return await invoke_tool_by_name(db, ctx, name, params, tool_id=tool_id)

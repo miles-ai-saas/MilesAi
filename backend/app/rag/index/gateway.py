@@ -25,6 +25,7 @@ def upsert_chunk_vector(
     page_no: int | None = None,
     vector_id: str | None = None,
 ) -> str:
+    """写入或更新单条分片向量，返回外部向量 ID（存入 kb_vector_refs.vector_id）。"""
     record = ChunkVectorRecord(
         vector=vector,
         tenant_id=tenant_id,
@@ -46,14 +47,17 @@ def search_vectors(
     kb_id: UUID | None = None,
     limit: int = 10,
 ) -> list[dict[str, Any]]:
+    """语义检索，返回 hit 列表（chunk_id、document_id、score 等）。"""
     return get_vector_store().search(
         query_vector, tenant_id=tenant_id, kb_id=kb_id, limit=limit
     )
 
 
 def delete_by_document(document_id: UUID) -> None:
+    """按 document_id 删除该文档在向量库中的全部分片。"""
     get_vector_store().delete_by_document(document_id)
 
 
 def delete_by_chunk_ids(chunk_ids: list[str]) -> None:
+    """按外部向量主键批量删除（重试入库前清理旧向量时使用）。"""
     get_vector_store().delete_by_chunk_ids(chunk_ids)

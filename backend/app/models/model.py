@@ -1,3 +1,8 @@
+"""模型配置 ORM（租户自定义 + 平台内置 tenant_id=NULL）。
+
+对话走 litellm_chat_completion；embedding/rerank 见 integrations 各 provider。
+"""
+
 import enum
 import uuid
 
@@ -11,6 +16,8 @@ from app.models.model_catalog import ModelCapabilityType, ModelPublishStatus, Mo
 
 
 class ModelConfig(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    """api_key_encrypted 明文存储（一期）；extra 可含 litellm_model 覆盖。"""
+
     __tablename__ = "agt_model_configs"
     __table_args__ = (
         Index("idx_agt_model_configs_tenant_id", "tenant_id"),

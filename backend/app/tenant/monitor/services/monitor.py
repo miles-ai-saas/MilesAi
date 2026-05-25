@@ -35,10 +35,13 @@ ALERT_CONFIG_KEY = "monitor.alert"
 
 
 class MonitorService(BaseService):
+    """工作台监控页：租户资源统计、Celery 任务趋势、健康检查与告警配置。"""
+
     def __init__(self, db: AsyncSession, ctx: TenantContext) -> None:
         super().__init__(db, ctx)
 
     async def stats(self) -> MonitorStats:
+        """快捷返回 report.stats。"""
         report = await self.report()
         return report.stats
 

@@ -1,3 +1,5 @@
+"""租户（组织）CRUD；通常仅超管或平台管理员可跨租户列表。"""
+
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,6 +13,8 @@ from app.core.service import BaseService
 
 
 class TenantService(BaseService):
+    """租户主数据；name 全局唯一由 repository.ensure_name_unique 保证。"""
+
     def __init__(self, db: AsyncSession, ctx: TenantContext) -> None:
         super().__init__(db, ctx)
         self.repo = TenantRepository(db)

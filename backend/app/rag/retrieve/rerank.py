@@ -1,4 +1,7 @@
-"""检索结果 rerank 精排。"""
+"""检索结果 rerank 精排。
+
+链路：search_kb_chunks 先扩大 fetch_limit → apply_rerank_to_hits 调用 rerank API 重排。
+"""
 
 from __future__ import annotations
 
@@ -16,6 +19,7 @@ def compute_rerank_fetch_limit(
     rerank_model: ModelConfig | None,
     candidate_k: int | None = None,
 ) -> int:
+    """有 rerank 时先多召回候选，再精排截断到 top_k。"""
     if rerank_model is None:
         return limit
     pool = candidate_k if candidate_k and candidate_k > 0 else DEFAULT_CANDIDATE_K
@@ -29,6 +33,7 @@ def apply_rerank_to_hits(
     rerank_model: ModelConfig,
     top_n: int,
 ) -> list[dict[str, Any]]:
+    """对向量/混合检索候选调用 rerank 模型，按 relevance_score 重排。"""
     if not hits or top_n <= 0:
         return []
 

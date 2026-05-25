@@ -1,4 +1,7 @@
-"""DeepAgents 原生规划与 task 委派。"""
+"""DeepAgents 原生规划与 task 委派。
+
+create_deep_agent + CompiledSubAgent，子工位内调用 AgentService.chat_as_child。
+"""
 
 from __future__ import annotations
 
@@ -18,6 +21,7 @@ if TYPE_CHECKING:
 
 
 def deepagents_importable() -> bool:
+    """运行时检测 deepagents 包是否已安装。"""
     try:
         from deepagents import create_deep_agent  # noqa: F401
 
@@ -27,11 +31,13 @@ def deepagents_importable() -> bool:
 
 
 def _thread_id(parent: Agent, body: ChatRequest) -> str:
+    """DeepAgents checkpointer 线程 id。"""
     suffix = (body.conversation_id or "default").strip()[:128] or "default"
     return f"deep:{parent.tenant_id}:{parent.id}:{suffix}"
 
 
 def _extract_answer(messages: list[Any]) -> str:
+    """从消息列表取最后一条 AIMessage 正文。"""
     for msg in reversed(messages):
         if isinstance(msg, AIMessage) and msg.content:
             return str(msg.content)
@@ -39,6 +45,7 @@ def _extract_answer(messages: list[Any]) -> str:
 
 
 def _extract_steps(messages: list[Any], bindings: list[AgentSubAgentBinding]) -> list[dict]:
+    """从 tool_calls / ToolMessage 提取可展示的委派步骤。"""
     slug_to_binding = {}
     for b in bindings:
         from app.integrations.deepagents.subagent_graphs import _slug_for_binding
@@ -92,6 +99,7 @@ async def run_deepagents_chat(
     bindings: list[AgentSubAgentBinding],
     body: ChatRequest,
 ) -> ChatResponse:
+    """DeepAgents 主循环：task 工具委派子智能体图。"""
     from deepagents import create_deep_agent
 
     if not parent.model_config:

@@ -1,4 +1,7 @@
-"""主智能体 + 多子智能体：DeepAgents 规划或平台 JSON 规划降级。"""
+"""主智能体 + 多子智能体：DeepAgents 规划或平台 JSON 规划降级。
+
+Agent.chat 有 sub_agent_bindings 时进入；config.planner=deepagents 且已安装包则优先 DeepAgents。
+"""
 
 from __future__ import annotations
 
@@ -18,6 +21,7 @@ if TYPE_CHECKING:
 
 
 def _catalog_text(bindings: list[AgentSubAgentBinding]) -> str:
+    """子智能体列表文本，供规划 prompt 使用。"""
     lines = []
     for b in bindings:
         child = b.child_agent
@@ -30,6 +34,7 @@ def _catalog_text(bindings: list[AgentSubAgentBinding]) -> str:
 
 
 def _parse_plan(raw: str) -> list[dict]:
+    """解析 LLM 输出的 JSON 规划 steps。"""
     text = raw.strip()
     fence = re.search(r"```(?:json)?\s*([\s\S]*?)```", text)
     if fence:
@@ -60,6 +65,7 @@ async def _platform_plan(
     db: Any = None,
     tenant_id: Any = None,
 ) -> list[dict]:
+    """平台 JSON 规划器：主模型输出 sub_agent_id + task 列表。"""
     if not parent.model_config:
         return [
             {
@@ -92,6 +98,7 @@ async def _run_platform_planned(
     bindings: list[AgentSubAgentBinding],
     body: ChatRequest,
 ) -> ChatResponse:
+    """按规划依次 chat_as_child，最后主模型综合子回答。"""
     steps: list[dict] = [
         {
             "type": "planner",
@@ -173,6 +180,7 @@ async def _run_platform_planned(
 
 
 def _should_use_deepagents(parent: Agent) -> bool:
+    """是否启用 DeepAgents 库（非 force_platform_planner）。"""
     cfg = parent.config or {}
     if cfg.get("planner", "deepagents") != "deepagents":
         return False

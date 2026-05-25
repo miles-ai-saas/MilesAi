@@ -1,3 +1,5 @@
+"""Celery 任务镜像表（与 Worker sync_task_by_celery_id 同步）。"""
+
 import enum
 import uuid
 
@@ -18,6 +20,8 @@ class TaskStatus(str, enum.Enum):
 
 
 class CeleryTaskRecord(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    """resource_type=document 时 resource_id 指向 kb_documents.id。"""
+
     __tablename__ = "task_records"
     __table_args__ = (
         Index("idx_task_records_tenant_id", "tenant_id"),

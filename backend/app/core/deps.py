@@ -24,6 +24,7 @@ async def get_page_params(
     page: int = Query(1, ge=1, description="页码，从 1 开始"),
     size: int = Query(50, ge=1, le=100, description="每页条数，最大 100"),
 ) -> PageParams:
+    """从 Query 解析分页参数。"""
     return PageParams(page=page, size=size)
 
 
@@ -31,6 +32,7 @@ async def get_current_user(
     credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
     db: AsyncSession = Depends(get_db),
 ) -> User:
+    """Bearer access JWT → 活跃用户（预加载 roles.permissions）。"""
     if not credentials:
         raise UnauthorizedError("未提供认证令牌")
     payload = safe_decode_token(credentials.credentials)
@@ -51,6 +53,7 @@ async def get_current_user(
 
 
 async def get_tenant_context(user: User = Depends(get_current_user)) -> TenantContext:
+    """聚合用户角色权限为 TenantContext（/auth/me 与业务 API 共用）。"""
     permissions: set[str] = set()
     for role in user.roles:
         for perm in role.permissions:

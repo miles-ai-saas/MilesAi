@@ -1,4 +1,7 @@
-"""LangChain VectorStore 后端共用逻辑。"""
+"""LangChain VectorStore 后端共用逻辑（Weaviate / pgvector）。
+
+Milvus 使用 MilvusClient 直连，不经过本模块。
+"""
 
 from __future__ import annotations
 

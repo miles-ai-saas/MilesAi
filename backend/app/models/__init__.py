@@ -1,3 +1,9 @@
+"""核心 ORM 聚合导出（Alembic / FastAPI 启动时加载）。
+
+租户域表前缀：kb_*、agt_*、flow_*；系统 sys_*；任务 task_records。
+逻辑外键无 DB FK，删除见 app.deletion.cascade。
+"""
+
 from app.models.agent import Agent, AgentStatus, AgentSubAgentBinding, agent_kb_bindings
 from app.tenant.compliance.models import InterceptLog, SensitiveAction, SensitiveWord
 from app.tenant.hooks.models import (

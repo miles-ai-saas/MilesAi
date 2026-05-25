@@ -1,4 +1,7 @@
-"""解析租户可用的有效模型配置（平台 Key + BYOK 覆盖）。"""
+"""解析租户可用的有效模型配置（平台 Key + BYOK 覆盖）。
+
+对话/RAG 调用前：resolve_model_for_invoke 合并租户凭证。
+"""
 
 from __future__ import annotations
 
@@ -18,6 +21,7 @@ from app.models.model_tenant_credential import ModelTenantCredential
 async def load_tenant_credential(
     db: AsyncSession, tenant_id: UUID, model_config_id: UUID
 ) -> ModelTenantCredential | None:
+    """加载租户对内置模型的 BYOK 凭证。"""
     row = (
         await db.execute(
             select(ModelTenantCredential).where(
@@ -31,6 +35,7 @@ async def load_tenant_credential(
 
 
 def credential_status(model: ModelConfig, cred: ModelTenantCredential | None) -> str:
+    """返回 platform / tenant / missing，供模型列表 UI 展示。"""
     from app.integrations.embeddings.runtime import INVOKE_MODE_LOCAL, invoke_mode_from_model
     from app.models.model_catalog import ModelCapabilityType
 

@@ -1,4 +1,7 @@
-"""钩子定义与绑定 CRUD（执行由 HookRunner / HookExecutor 负责）。"""
+"""钩子定义与绑定 CRUD（执行由 HookRunner / HookExecutor 负责）。
+
+创建钩子时默认附带一条 HookBinding（scope/trigger 来自请求体）。
+"""
 
 from uuid import UUID
 
@@ -21,10 +24,13 @@ from app.core.service import BaseService
 
 
 class HookService(BaseService):
+    """租户钩子配置管理。"""
+
     def __init__(self, db: AsyncSession, ctx: TenantContext) -> None:
         super().__init__(db, ctx)
 
     async def _get_hook_or_raise(self, hook_id: UUID) -> HookDefinition:
+        """加载 HookDefinition 并校验租户。"""
         hook = await self.db.get(HookDefinition, hook_id)
         if not hook or is_marked_deleted(hook):
             raise NotFoundError("钩子不存在")

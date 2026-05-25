@@ -28,6 +28,7 @@ class AuthService(BaseService):
         self.users = UserRepository(db)
 
     async def login(self, body: LoginRequest) -> TokenResponse:
+        """校验密码后签发双令牌，并将 access 写入 Redis session。"""
         user = await self.users.get_by_username(body.username)
         if not user or not verify_password(body.password, user.hashed_password):
             raise UnauthorizedError("用户名或密码错误")
@@ -40,9 +41,11 @@ class AuthService(BaseService):
         return TokenResponse(access_token=access, refresh_token=refresh)
 
     async def logout(self, user_id: UUID) -> None:
+        """清除 Redis 中的会话键（access 黑名单可在此扩展）。"""
         await get_redis().delete(RedisKeys.session(user_id))
 
     async def refresh(self, refresh_token: str | None) -> TokenResponse:
+        """用 refresh 换新 access+refresh；不校验 Redis session。"""
         if not refresh_token:
             raise BadRequestError("缺少 refresh_token")
         payload = decode_token(refresh_token)
@@ -59,6 +62,7 @@ class AuthService(BaseService):
         return TokenResponse(access_token=access, refresh_token=new_refresh)
 
     async def get_me(self, ctx: TenantContext) -> UserInfo:
+        """返回当前用户信息与权限列表（超管 permissions 为 [\"*\"]）。"""
         result = await self.db.execute(
             select(User)
             .where(User.id == ctx.user_id)

@@ -1,4 +1,7 @@
-"""PostgreSQL 连接与会话。"""
+"""PostgreSQL 连接与会话。
+
+FastAPI 依赖 get_db（异步）；Celery/ingest 使用 get_sync_db（同步）。
+"""
 
 from app.infra.db.async_session import AsyncSessionLocal, engine, get_db
 from app.infra.db.base import Base

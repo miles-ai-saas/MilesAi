@@ -1,3 +1,5 @@
+"""提示词模板 ORM（prm_prompt_templates）。"""
+
 import uuid
 
 from sqlalchemy import Boolean, Index, String, Text
@@ -9,6 +11,8 @@ from app.models.base import TimestampMixin, UUIDPrimaryKeyMixin
 
 
 class PromptTemplate(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    """可复用 system/user 片段；Agent 创建时可拷贝 content。"""
+
     __tablename__ = "prm_prompt_templates"
     __table_args__ = (
         Index("idx_prm_prompt_templates_tenant_id", "tenant_id"),

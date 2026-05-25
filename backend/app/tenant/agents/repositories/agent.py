@@ -11,6 +11,8 @@ from app.models.kb import KnowledgeBase
 
 
 class AgentRepository(BaseRepository[Agent]):
+    """智能体表仓储（含 KB、子 Agent、模型、流程预加载）。"""
+
     def __init__(self, db: AsyncSession) -> None:
         super().__init__(db, Agent)
 
@@ -22,6 +24,7 @@ class AgentRepository(BaseRepository[Agent]):
     ]
 
     async def get_detail(self, agent_id: UUID) -> Agent | None:
+        """加载对话编排所需的关联实体。"""
         stmt = (
             select(Agent)
             .where(Agent.id == agent_id, not_deleted(Agent))
@@ -30,6 +33,7 @@ class AgentRepository(BaseRepository[Agent]):
         return (await self.db.execute(stmt)).scalar_one_or_none()
 
     async def load_kbs(self, kb_ids: list[UUID]) -> list[KnowledgeBase]:
+        """创建/更新 Agent 时批量加载知识库行。"""
         if not kb_ids:
             return []
         result = await self.db.execute(

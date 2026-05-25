@@ -2,6 +2,8 @@
 
 
 class AppError(Exception):
+    """业务异常基类；handlers 映射为 JSON 与 HTTP status_code。"""
+
     def __init__(
         self,
         message: str,

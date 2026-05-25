@@ -1,4 +1,8 @@
-"""Celery Worker 侧同步更新任务记录。"""
+"""Celery Worker 侧同步更新任务记录。
+
+ingest_document 在 RUNNING/SUCCESS/FAILED 时调用 sync_task_by_celery_id，
+与 API 侧 TaskService.create_record 写入的 celery_task_id 对应。
+"""
 
 from uuid import UUID
 
@@ -14,6 +18,7 @@ def sync_task_by_celery_id(
     *,
     fail_reason: str | None = None,
 ) -> None:
+    """按 Celery task id 更新 celery_task_records 状态（Worker 同步会话）。"""
     with get_sync_db() as db:
         record = db.scalar(
             select(CeleryTaskRecord).where(CeleryTaskRecord.celery_task_id == celery_task_id)
@@ -27,6 +32,7 @@ def sync_task_by_celery_id(
 
 
 def sync_task_by_document(document_id: str, status: TaskStatus, *, fail_reason: str | None = None) -> None:
+    """按 resource_type=document 查找最近一条任务记录并更新。"""
     with get_sync_db() as db:
         record = db.scalars(
             select(CeleryTaskRecord)

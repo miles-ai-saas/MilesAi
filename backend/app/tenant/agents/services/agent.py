@@ -128,12 +128,15 @@ async def _agent_out(svc: AgentService, agent: Agent) -> AgentOut:
 
 
 class AgentService(BaseService):
+    """智能体 CRUD；chat 按类型路由 A2A/子 Agent/流程/RAG。"""
+
     def __init__(self, db: AsyncSession, ctx: TenantContext) -> None:
         super().__init__(db, ctx)
         self.repo = AgentRepository(db)
         self.flow_repo = FlowRepository(db)
 
     async def _resolve_system_prompt(self, agent: Agent) -> str:
+        """合并智能体 system_prompt 与技能/MCP 说明块。"""
         if agent.system_prompt and agent.system_prompt.strip():
             base = agent.system_prompt.strip()
         elif agent.prompt_template_id:
@@ -150,6 +153,7 @@ class AgentService(BaseService):
         return base
 
     async def _get_agent_or_raise(self, agent_id: UUID) -> Agent:
+        """加载详情（含 KB/子 Agent 关联）并校验租户。"""
         agent = await self.repo.get_detail(agent_id)
         if not agent or is_marked_deleted(agent):
             raise NotFoundError("智能体不存在")
@@ -159,6 +163,7 @@ class AgentService(BaseService):
     async def list_agents(
         self, params: PageParams, *, agent_type: AgentType | None = None
     ) -> PageResult[AgentOut]:
+        """分页列出智能体，可按 agent_type 过滤。"""
         from sqlalchemy.orm import selectinload
         from app.models.agent import Agent as AgentModel
 
@@ -188,6 +193,7 @@ class AgentService(BaseService):
         )
 
     async def create_agent(self, body: AgentCreate) -> AgentOut:
+        """创建智能体并同步 KB/子 Agent/A2A 绑定。"""
         validate_agent_type_constraints(
             agent_type=body.agent_type,
             kb_ids=body.kb_ids,
@@ -279,6 +285,7 @@ class AgentService(BaseService):
     async def _maybe_augment_a2a(
         self, agent: Agent, body: ChatRequest, response: ChatResponse
     ) -> ChatResponse:
+        """若配置了 A2A peer，在已有回答上追加外部智能体增强。"""
         refs = await list_agent_a2a_peer_refs(self.db, agent.id)
         if not refs:
             return response
@@ -287,6 +294,7 @@ class AgentService(BaseService):
         return await augment_response_with_a2a(self, agent, body, response)
 
     async def delete_agent(self, agent_id: UUID) -> None:
+        """级联解绑后软删智能体。"""
         agent = await self._get_agent_or_raise(agent_id)
         await before_delete_agent(self.db, agent.id)
         await mark_deleted(self.db, agent)

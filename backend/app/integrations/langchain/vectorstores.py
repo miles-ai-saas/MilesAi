@@ -26,6 +26,7 @@ from app.tenant.models.services.rerank_resolve import (
 
 
 def _resolve_rerank_sync(db: Session, kb: KnowledgeBase, tenant_id: UUID) -> ModelConfig | None:
+    """KB 未配置 rerank 时返回 None。"""
     if not kb.rerank_model_config_id:
         return None
     return resolve_rerank_model_sync(db, kb.rerank_model_config_id, tenant_id)
@@ -34,6 +35,7 @@ def _resolve_rerank_sync(db: Session, kb: KnowledgeBase, tenant_id: UUID) -> Mod
 async def _resolve_rerank_async(
     db: AsyncSession, kb: KnowledgeBase, tenant_id: UUID
 ) -> ModelConfig | None:
+    """异步解析 KB 绑定的 rerank 模型。"""
     if not kb.rerank_model_config_id:
         return None
     return await resolve_rerank_model_by_id(db, kb.rerank_model_config_id, tenant_id)
@@ -47,6 +49,7 @@ def search_kb(
     limit: int = 10,
     mode: str = "default",
 ) -> list[dict[str, Any]]:
+    """单 KB 检索（默认注入 embed_query_for_kb_sync）。"""
     return _search_kb(
         query,
         kb=kb,
@@ -66,6 +69,7 @@ def search_multi_kb(
     top_k: int = 5,
     mode: str = "default",
 ) -> list[dict[str, Any]]:
+    """多 KB 同步检索。"""
     return _search_multi_kb(
         query,
         kbs=kbs,
@@ -78,6 +82,7 @@ def search_multi_kb(
 
 
 async def _write_search_log(db: AsyncSession, payload: dict[str, Any]) -> None:
+    """multi_kb 检索完成后的审计日志回调。"""
     from app.tenant.kb.services.search_log import write_kb_search_log
 
     kbs: list[KnowledgeBase] = payload["kbs"]
@@ -110,6 +115,7 @@ async def search_multi_kb_async(
     agent_id: UUID | None = None,
     write_log: bool = True,
 ) -> list[dict[str, Any]]:
+    """Agent/RAG 主入口：多 KB 异步检索，默认写 search_log。"""
     return await _search_multi_kb_async(
         query,
         kbs=kbs,
@@ -133,4 +139,5 @@ def search_as_documents(
     db: Session,
     top_k: int = 5,
 ) -> list[Document]:
+    """检索结果转为 LangChain Document 列表。"""
     return [hit_to_document(h) for h in search_multi_kb(query, kbs=kbs, db=db, top_k=top_k)]

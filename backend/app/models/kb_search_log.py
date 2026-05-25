@@ -1,3 +1,5 @@
+"""知识库检索审计（retrieve_hits / search_log 服务写入）。"""
+
 import uuid
 from datetime import datetime
 
@@ -10,6 +12,8 @@ from app.models.base import UUIDPrimaryKeyMixin
 
 
 class KbSearchLog(UUIDPrimaryKeyMixin, Base):
+    """记录 query、命中数、延迟与 retrieval_mode（无软删）。"""
+
     __tablename__ = "kb_search_logs"
     __table_args__ = (
         Index("idx_kb_search_logs_tenant_created", "tenant_id", "created_at"),

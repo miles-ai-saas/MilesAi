@@ -1,4 +1,8 @@
-"""Celery 任务记录：与文档 ingest 等异步作业状态同步。"""
+"""Celery 任务记录：与文档 ingest 等异步作业状态同步。
+
+API 上传时 create_record；Worker 内 sync_task_by_celery_id 更新状态；
+get_task 可对照 Celery AsyncResult 纠偏。
+"""
 
 from uuid import UUID
 
@@ -15,6 +19,8 @@ from app.core.service import BaseService
 
 
 class TaskService(BaseService):
+    """租户可见的 Celery 任务记录 CRUD 与重试/取消。"""
+
     def __init__(self, db: AsyncSession, ctx: TenantContext) -> None:
         super().__init__(db, ctx)
 
@@ -26,6 +32,7 @@ class TaskService(BaseService):
         resource_type: str | None = None,
         resource_id: UUID | None = None,
     ) -> CeleryTaskRecord:
+        """投递 Celery 后写入 PENDING 记录（如 upload_document）。"""
         record = CeleryTaskRecord(
             tenant_id=self.ctx.tenant_id,
             celery_task_id=celery_task_id,
@@ -40,6 +47,7 @@ class TaskService(BaseService):
         return record
 
     async def _get_record_or_raise(self, task_id: str) -> CeleryTaskRecord:
+        """支持 UUID 主键或 celery_task_id 查询。"""
         record = None
         try:
             record = await self.db.get(CeleryTaskRecord, UUID(task_id))
@@ -60,6 +68,7 @@ class TaskService(BaseService):
         *,
         status: TaskStatus | None = None,
     ) -> PageResult[TaskRecordOut]:
+        """分页列出当前租户异步任务。"""
         filters = list(tenant_filters(self.ctx, CeleryTaskRecord.tenant_id))
         if status:
             filters.append(CeleryTaskRecord.status == status)
@@ -81,6 +90,7 @@ class TaskService(BaseService):
         )
 
     async def get_task(self, task_id: str) -> TaskRecordOut:
+        """查询任务详情，必要时用 Celery 状态纠偏 DB。"""
         record = await self._get_record_or_raise(task_id)
         out = TaskRecordOut.model_validate(record)
         try:
@@ -107,6 +117,7 @@ class TaskService(BaseService):
         return out
 
     async def cancel_task(self, task_id: str) -> TaskRecordOut:
+        """revoke Celery 任务并标记 CANCELLED。"""
         record = await self._get_record_or_raise(task_id)
         if record.status in (TaskStatus.SUCCESS, TaskStatus.CANCELLED):
             raise BadRequestError("任务已结束，无法取消")
@@ -116,6 +127,7 @@ class TaskService(BaseService):
         return TaskRecordOut.model_validate(record)
 
     async def retry_task(self, task_id: str) -> TaskRecordOut:
+        """仅 document 类型：重新 delay ingest 并更新文档 PENDING。"""
         record = await self._get_record_or_raise(task_id)
         if record.resource_type != "document" or not record.resource_id:
             raise BadRequestError("仅支持文档入库任务重试")

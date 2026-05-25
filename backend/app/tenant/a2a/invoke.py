@@ -1,4 +1,8 @@
-"""自定义智能体调用外部 A2A：规则触发 + 自动规划（rules_then_plan）。"""
+"""自定义智能体调用外部 A2A：规则触发 + 自动规划（rules_then_plan）。
+
+策略 config.a2a_invoke_policy：rules_only | rules_then_plan | plan_only。
+Agent.chat / augment_response_with_a2a / run_a2a_host_chat 入口。
+"""
 
 from __future__ import annotations
 
@@ -21,14 +25,17 @@ if TYPE_CHECKING:
 
 
 def _policy(agent: Agent) -> str:
+    """读取 A2A 调用策略配置。"""
     return str((agent.config or {}).get("a2a_invoke_policy", "rules_then_plan"))
 
 
 def _max_calls(agent: Agent) -> int:
+    """单轮最多调用的外部 peer 数。"""
     return int((agent.config or {}).get("max_a2a_calls_per_turn", 2))
 
 
 def _query_matches_keywords(query: str, keywords: list[str]) -> bool:
+    """用户问题是否命中任一 trigger_keywords。"""
     q = query.lower()
     for kw in keywords:
         if kw and kw.lower() in q:
@@ -37,6 +44,7 @@ def _query_matches_keywords(query: str, keywords: list[str]) -> bool:
 
 
 def _peer_keywords(ref: AgentA2aPeerRef | A2aPeerBinding) -> list[str]:
+    """从 peer 引用行读取关键词列表。"""
     kws = ref.trigger_keywords if isinstance(ref.trigger_keywords, list) else []
     return [str(k) for k in kws]
 
@@ -57,6 +65,7 @@ def evaluate_rule_triggered_peers(
 
 
 def _peer_catalog(refs: list[AgentA2aPeerRef] | list[A2aPeerBinding]) -> str:
+    """外部 Agent 目录文本，供规划 LLM 选择。"""
     lines = []
     for ref in refs:
         peer = ref.peer
@@ -73,6 +82,7 @@ def _peer_catalog(refs: list[AgentA2aPeerRef] | list[A2aPeerBinding]) -> str:
 
 
 def _parse_a2a_plan(raw: str) -> list[dict]:
+    """解析 a2a_steps JSON 规划。"""
     text = raw.strip()
     fence = re.search(r"```(?:json)?\s*([\s\S]*?)```", text)
     if fence:

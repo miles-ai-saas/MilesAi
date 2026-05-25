@@ -1,4 +1,7 @@
-"""平台运营后台依赖：管理员认证。"""
+"""平台运营后台依赖：管理员认证。
+
+与 core.deps 租户 JWT 完全分离；payload.type 须为 admin_access。
+"""
 
 from dataclasses import dataclass
 from uuid import UUID
@@ -18,6 +21,8 @@ admin_bearer = HTTPBearer(auto_error=False)
 
 @dataclass(frozen=True)
 class AdminContext:
+    """注入到 request.state.admin_ctx，供 app_ops 视图使用。"""
+
     admin_id: UUID
     username: str
     role: str
@@ -28,6 +33,7 @@ async def get_platform_admin(
     credentials: HTTPAuthorizationCredentials | None = Depends(admin_bearer),
     db: AsyncSession = Depends(get_db),
 ) -> AdminContext:
+    """Bearer admin JWT → PlatformAdmin 行校验。"""
     if not credentials:
         raise UnauthorizedError("未提供管理员令牌")
     payload = safe_decode_token(credentials.credentials)
@@ -51,6 +57,7 @@ async def get_platform_admin(
 
 
 def require_admin_role(*roles: str):
+    """super_admin 可访问所有角色受限端点。"""
     async def checker(ctx: AdminContext = Depends(get_platform_admin)) -> AdminContext:
         if roles and ctx.role not in roles and ctx.role != "super_admin":
             raise ForbiddenError(f"需要角色: {', '.join(roles)}")

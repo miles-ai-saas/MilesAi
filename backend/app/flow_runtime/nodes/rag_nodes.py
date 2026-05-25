@@ -1,4 +1,7 @@
-"""流程画布 RAG 节点：检索与 prompt 拼装（调用 L2 rag.generate）。"""
+"""流程画布 RAG 节点：检索与 prompt 拼装（调用 L2 rag.retrieve / format_hits_context）。
+
+KnowledgeSearch 在节点内开独立 AsyncSession；kb_id 优先于 ctx.kb_ids。
+"""
 
 from typing import Any
 from uuid import UUID
@@ -12,6 +15,7 @@ async def knowledge_search(
     inputs: dict[str, Any],
     ctx: RunContext,
 ) -> list[dict[str, Any]]:
+    """画布 KnowledgeSearch：多 KB retrieve_hits。"""
     query = str(inputs.get("query") or inputs.get("input") or "")
     if not query:
         return []
@@ -35,6 +39,7 @@ async def prompt_template(
     inputs: dict[str, Any],
     ctx: RunContext,
 ) -> str:
+    """将检索 hits 填入模板，供下游 LLMCall 消费。"""
     template = node_data.get("template") or (
         "基于以下检索结果回答问题：\n\n{{检索结果}}\n\n问题：{{用户提问}}"
     )

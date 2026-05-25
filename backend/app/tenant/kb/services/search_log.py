@@ -27,6 +27,7 @@ async def write_kb_search_log(
     request_id: str | None = None,
     retrieval_mode: str = "vector",
 ) -> None:
+    """写入 kb_search_logs；query 超长截断至 2000 字符。"""
     q = query if len(query) <= _QUERY_MAX_LEN else query[:_QUERY_MAX_LEN]
     log = KbSearchLog(
         tenant_id=tenant_id,

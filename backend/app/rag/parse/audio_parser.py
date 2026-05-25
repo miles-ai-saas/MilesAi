@@ -5,6 +5,7 @@ from pathlib import Path
 
 
 def parse_audio(data: bytes, filename: str) -> str:
+    """Whisper 转写或占位文本。"""
     ext = Path(filename).suffix.lower() or ".wav"
     if ext not in {".mp3", ".wav", ".m4a", ".ogg", ".webm"}:
         ext = ".wav"
@@ -21,6 +22,7 @@ def parse_audio(data: bytes, filename: str) -> str:
 
 
 def _try_whisper(data: bytes, ext: str) -> str | None:
+    """openai-whisper base 模型；未安装则返回 None。"""
     try:
         import whisper
     except ImportError:

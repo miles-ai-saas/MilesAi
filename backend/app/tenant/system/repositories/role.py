@@ -10,6 +10,8 @@ from app.models.role import Permission, Role
 
 
 class RoleRepository(BaseRepository[Role]):
+    """角色与 Permission 多对多关联加载。"""
+
     def __init__(self, db: AsyncSession) -> None:
         super().__init__(db, Role)
 

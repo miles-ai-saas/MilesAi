@@ -21,6 +21,7 @@ async def load_kbs_for_tenant(
     tenant_id: UUID,
     kb_ids: list[str],
 ) -> list[KnowledgeBase]:
+    """按请求顺序加载多个 KB；缺失则 NotFoundError。"""
     if not kb_ids:
         return []
     uuids = [UUID(str(i)) for i in kb_ids]
@@ -42,6 +43,7 @@ async def load_kbs_for_tenant(
 
 
 def load_kb_sync(db: Session, tenant_id: UUID, kb_id: UUID) -> KnowledgeBase:
+    """同步加载单个 KB 并校验租户与未删除。"""
     kb = db.get(KnowledgeBase, kb_id)
     if not kb or kb.tenant_id != tenant_id or kb.deleted_at is not None:
         raise NotFoundError("知识库不存在")

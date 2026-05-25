@@ -1,4 +1,8 @@
-"""基础设施健康检查。"""
+"""基础设施健康检查。
+
+供 /health、MonitorService、SystemConfigService.runtime 调用；
+components 键名兼容历史监控（weaviate/minio 别名）。
+"""
 
 import asyncio
 
@@ -15,6 +19,7 @@ settings = get_settings()
 
 
 async def check_postgres() -> bool:
+    """SELECT 1 探测异步引擎连通性。"""
     try:
         async with engine.connect() as conn:
             await conn.execute(text("SELECT 1"))
@@ -24,6 +29,7 @@ async def check_postgres() -> bool:
 
 
 async def check_redis() -> bool:
+    """PING 探测 Redis。"""
     try:
         return bool(await get_redis().ping())
     except Exception:
@@ -31,6 +37,7 @@ async def check_redis() -> bool:
 
 
 async def check_vector_store() -> bool:
+    """委托当前 VECTOR_STORE_BACKEND 实现 health_check。"""
     try:
         return get_vector_store().health_check()
     except Exception:
@@ -38,6 +45,7 @@ async def check_vector_store() -> bool:
 
 
 async def check_object_storage() -> bool:
+    """MinIO/S3 兼容存储桶探测。"""
     try:
         return get_object_storage().health_check()
     except Exception:
@@ -62,6 +70,7 @@ async def check_minio() -> bool:
 
 
 async def collect_health_status() -> dict:
+    """并行探测各组件，返回 {healthy, status, components}。"""
     postgres, redis_ok, vector_store, object_storage = await asyncio.gather(
         check_postgres(),
         check_redis(),

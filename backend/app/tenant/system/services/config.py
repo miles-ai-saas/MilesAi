@@ -56,10 +56,13 @@ def _format_component_status(value: object) -> str:
 
 
 class SystemConfigService(BaseService):
+    """平台键值配置与 /health 运行时信息（合并 CONFIG_DEFINITIONS 默认值）。"""
+
     def __init__(self, db: AsyncSession, ctx: TenantContext) -> None:
         super().__init__(db, ctx)
 
     async def list_definitions(self) -> list[ConfigDefinitionOut]:
+        """管理端展示项：定义元数据 + 库中当前值或 default。"""
         stored = {
             row.key: row
             for row in (await self.db.execute(select(SystemConfig))).scalars().all()

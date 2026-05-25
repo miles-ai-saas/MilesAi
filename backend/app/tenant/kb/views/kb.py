@@ -1,4 +1,8 @@
-"""知识库 HTTP API：KB/文档 CRUD、上传（异步 ingest）、检索与配额。"""
+"""知识库 HTTP API：KB/文档 CRUD、上传（异步 ingest）、检索与配额。
+
+请求流：路由 → KnowledgeBaseService → Repository / rag.retrieve / Celery。
+上传不阻塞解析：仅 OSS + Document 行 + ingest_document.delay。
+"""
 
 from uuid import UUID
 
@@ -27,6 +31,7 @@ router = APIRouter()
 
 
 def _svc(db: AsyncSession, ctx: TenantContext) -> KnowledgeBaseService:
+    """构造带租户上下文的 KB 用例服务。"""
     return KnowledgeBaseService(db, ctx)
 
 
@@ -35,6 +40,7 @@ async def get_kb_quota(
     ctx: TenantContext = Depends(require_permissions("kb:read")),
     db: AsyncSession = Depends(get_db),
 ):
+    """查询当前租户知识库配额（数量、存储等）。"""
     return ok(await _svc(db, ctx).get_quota())
 
 
@@ -44,6 +50,7 @@ async def list_kbs(
     ctx: TenantContext = Depends(require_permissions("kb:read")),
     db: AsyncSession = Depends(get_db),
 ):
+    """分页列出知识库。"""
     result = await _svc(db, ctx).list_kbs(params)
     return page_ok(result.items, result.total, result.page, result.size)
 
@@ -54,6 +61,7 @@ async def create_kb(
     ctx: TenantContext = Depends(require_permissions("kb:write")),
     db: AsyncSession = Depends(get_db),
 ):
+    """创建知识库并固化 embedding 维度。"""
     return ok(await _svc(db, ctx).create_kb(body))
 
 
@@ -63,6 +71,7 @@ async def get_kb(
     ctx: TenantContext = Depends(require_permissions("kb:read")),
     db: AsyncSession = Depends(get_db),
 ):
+    """获取单个知识库详情。"""
     return ok(await _svc(db, ctx).get_kb(kb_id))
 
 
@@ -73,6 +82,7 @@ async def update_kb(
     ctx: TenantContext = Depends(require_permissions("kb:write")),
     db: AsyncSession = Depends(get_db),
 ):
+    """更新知识库元数据（不含 embedding 维度变更）。"""
     return ok(await _svc(db, ctx).update_kb(kb_id, body))
 
 
@@ -82,6 +92,7 @@ async def delete_kb(
     ctx: TenantContext = Depends(require_permissions("kb:write")),
     db: AsyncSession = Depends(get_db),
 ):
+    """软删知识库及其下所有文档与向量。"""
     await _svc(db, ctx).delete_kb(kb_id)
     return ok(message="已删除")
 
@@ -93,6 +104,7 @@ async def list_documents(
     ctx: TenantContext = Depends(require_permissions("kb:read")),
     db: AsyncSession = Depends(get_db),
 ):
+    """分页列出文档；READY 状态附带 chunk_count。"""
     result = await _svc(db, ctx).list_documents(kb_id, params)
     return page_ok(result.items, result.total, result.page, result.size)
 
@@ -104,6 +116,7 @@ async def upload_document(
     ctx: TenantContext = Depends(require_permissions("kb:document:upload")),
     db: AsyncSession = Depends(get_db),
 ):
+    """上传文件至 OSS 并投递 Celery ingest，返回 PENDING 文档。"""
     return ok(await _svc(db, ctx).upload_document(kb_id, file))
 
 
@@ -114,6 +127,7 @@ async def retry_document(
     ctx: TenantContext = Depends(require_permissions("kb:write")),
     db: AsyncSession = Depends(get_db),
 ):
+    """对失败或已完成文档重新投递 ingest。"""
     return ok(await _svc(db, ctx).retry_document(kb_id, document_id))
 
 
@@ -128,6 +142,7 @@ async def list_document_chunks(
     ctx: TenantContext = Depends(require_permissions("kb:read")),
     db: AsyncSession = Depends(get_db),
 ):
+    """分页查看文档分片（按 chunk_index 排序）。"""
     result = await _svc(db, ctx).list_document_chunks(kb_id, document_id, params)
     return page_ok(result.items, result.total, result.page, result.size)
 
@@ -139,6 +154,7 @@ async def delete_document(
     ctx: TenantContext = Depends(require_permissions("kb:write")),
     db: AsyncSession = Depends(get_db),
 ):
+    """删除文档：清分片/向量、删 OSS、软删行。"""
     await _svc(db, ctx).delete_document(kb_id, document_id)
     return ok(message="已删除")
 
@@ -150,6 +166,7 @@ async def list_kb_search_logs(
     ctx: TenantContext = Depends(require_permissions("kb:read")),
     db: AsyncSession = Depends(get_db),
 ):
+    """分页查看知识库检索审计日志。"""
     result = await _svc(db, ctx).list_search_logs(kb_id, params)
     return page_ok(result.items, result.total, result.page, result.size)
 
@@ -161,4 +178,5 @@ async def search_kb(
     ctx: TenantContext = Depends(require_permissions("kb:read")),
     db: AsyncSession = Depends(get_db),
 ):
+    """检索：query 向量化 → vector/hybrid → 可选 rerank → 回填 PG 分片正文。"""
     return ok(await _svc(db, ctx).search(kb_id, body))

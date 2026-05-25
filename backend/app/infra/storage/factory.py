@@ -16,6 +16,7 @@ _SUPPORTED = frozenset({"s3"})
 
 @lru_cache
 def get_object_storage() -> ObjectStorage:
+    """按 OBJECT_STORAGE_BACKEND 返回单例（当前仅 s3 兼容实现）。"""
     backend = get_settings().object_storage_backend.strip().lower()
     if backend not in _SUPPORTED:
         raise ValueError(

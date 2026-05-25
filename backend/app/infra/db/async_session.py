@@ -1,4 +1,4 @@
-"""异步 PostgreSQL 引擎与会话。"""
+"""异步 PostgreSQL 引擎与会话（FastAPI 主路径）。"""
 
 from collections.abc import AsyncGenerator
 

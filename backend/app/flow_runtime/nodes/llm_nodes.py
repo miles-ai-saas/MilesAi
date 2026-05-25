@@ -1,4 +1,7 @@
-"""画布 LLM 节点：解析 ModelConfig 后走 integrations.langchain.chat_models。"""
+"""画布 LLM 节点：解析 ModelConfig 后走 integrations.langchain.chat_models。
+
+未配置 model_config_id 时返回占位文本（仅展示检索上下文），不调用远程 API。
+"""
 
 from typing import Any
 from uuid import UUID
@@ -19,6 +22,7 @@ async def llm_call(
     inputs: dict[str, Any],
     ctx: RunContext,
 ) -> str:
+    """画布 LLMCall：resolve 模型后 ainvoke_chat。"""
     prompt = str(inputs.get("prompt") or inputs.get("input") or "")
     if not prompt:
         raise BadRequestError("LLM 节点缺少输入")

@@ -4,26 +4,34 @@ from uuid import UUID
 
 
 class RedisKeys:
+    """集中管理 Redis 键前缀，避免散落魔法字符串。"""
+
     @staticmethod
     def session(user_id: UUID | str) -> str:
+        """租户登录 access 会话（AuthService.login）。"""
         return f"session:{user_id}"
 
     @staticmethod
     def token_blacklist(jti: str) -> str:
+        """预留：登出后拉黑 access jti。"""
         return f"token:blacklist:{jti}"
 
     @staticmethod
     def api_cache(namespace: str, key_hash: str) -> str:
+        """预留：API 响应缓存。"""
         return f"cache:api:{namespace}:{key_hash}"
 
     @staticmethod
     def ingest_lock(file_id: UUID | str) -> str:
+        """预留：同一文件并发入库互斥。"""
         return f"lock:ingest:{file_id}"
 
     @staticmethod
     def rate_limit(tenant_id: UUID | str, api: str) -> str:
+        """预留：租户级 API 限流计数。"""
         return f"ratelimit:{tenant_id}:{api}"
 
     @staticmethod
     def tenant_prefix(tenant_id: UUID | str) -> str:
+        """租户隔离缓存命名空间前缀。"""
         return f"t:{tenant_id}:"

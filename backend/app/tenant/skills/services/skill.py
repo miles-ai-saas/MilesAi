@@ -15,6 +15,8 @@ from app.core.service import BaseService
 
 
 class SkillService(BaseService):
+    """技能包 CRUD；Agent 通过 config.skill_ids 引用 prompt_snippet。"""
+
     def __init__(self, db: AsyncSession, ctx: TenantContext) -> None:
         super().__init__(db, ctx)
 

@@ -1,4 +1,7 @@
-"""工具注册表：内置 knowledge_search/http/calculator 与租户自定义工具。"""
+"""工具注册表：内置 knowledge_search/http/calculator 与租户自定义工具。
+
+catalog 合并 BUILTIN_TOOLS 与 DB 行；invoke 委托 tenant.tools.invoke。
+"""
 
 from uuid import UUID
 
@@ -30,6 +33,8 @@ BUILTIN_TOOLS = [
 
 
 class ToolsService(BaseService):
+    """租户工具 CRUD、目录与试跑 invoke。"""
+
     def __init__(self, db: AsyncSession, ctx: TenantContext) -> None:
         super().__init__(db, ctx)
 

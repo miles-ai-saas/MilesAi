@@ -5,6 +5,8 @@ from app.models.tenant import Tenant
 
 
 class TenantRepository(BaseRepository[Tenant]):
+    """租户主表；name 唯一性校验。"""
+
     def __init__(self, db: AsyncSession) -> None:
         super().__init__(db, Tenant)
 

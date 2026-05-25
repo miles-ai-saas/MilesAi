@@ -44,10 +44,12 @@ _SEARCH_OUTPUT_FIELDS = [
 
 
 def collection_name_for_dimension(dimension: int) -> str:
+    """按 embedding 维度分 collection，避免混维写入。"""
     return f"{COLLECTION_PREFIX}{dimension}"
 
 
 def _client_kwargs() -> dict[str, Any]:
+    """从配置构造 MilvusClient 连接参数。"""
     settings = get_settings()
     kwargs: dict[str, Any] = {"uri": settings.milvus_uri}
     if settings.milvus_token:
@@ -59,6 +61,7 @@ def _client_kwargs() -> dict[str, Any]:
 
 @lru_cache
 def _client() -> MilvusClient:
+    """进程内单例 MilvusClient（直连，不走 langchain ORM connections）。"""
     return MilvusClient(**_client_kwargs())
 
 
@@ -80,6 +83,7 @@ def _record_to_row(record: ChunkVectorRecord) -> dict[str, Any]:
 
 
 def _required_insert_fields(client: MilvusClient, collection_name: str) -> list[str]:
+    """列出 insert 必填标量字段（不含 vector）。"""
     desc = client.describe_collection(collection_name)
     return [
         f["name"]
@@ -91,6 +95,7 @@ def _required_insert_fields(client: MilvusClient, collection_name: str) -> list[
 def _assert_row_matches_schema(
     client: MilvusClient, collection_name: str, row: dict[str, Any]
 ) -> None:
+    """写入前校验行字段齐全，避免 Milvus 报缺 tenant_id 等。"""
     missing = [
         name
         for name in _required_insert_fields(client, collection_name)
@@ -155,6 +160,7 @@ def _ensure_collection(client: MilvusClient, dimension: int) -> str:
 
 
 def _search_hit_rows(raw: list[list[dict[str, Any]]]) -> list[tuple[Document, float]]:
+    """将 MilvusClient.search 原始结果转为 LangChain Document + 距离。"""
     pairs: list[tuple[Document, float]] = []
     for batch in raw:
         for hit in batch:
@@ -175,10 +181,14 @@ def _search_hit_rows(raw: list[list[dict[str, Any]]]) -> list[tuple[Document, fl
 
 
 class MilvusVectorStore:
+    """Milvus 向量库实现（VectorStore 协议）。"""
+
     def ensure_schema(self, dimension: int) -> None:
+        """确保对应维度的 collection、索引已创建并 load。"""
         _ensure_collection(_client(), validate_dimension(dimension))
 
     def upsert_chunk(self, record: ChunkVectorRecord) -> str:
+        """插入一条分片向量，主键默认 chunk_id。"""
         client = _client()
         dim = validate_dimension(len(record.vector))
         name = _ensure_collection(client, dim)
@@ -196,6 +206,7 @@ class MilvusVectorStore:
         kb_id: UUID | None = None,
         limit: int = 10,
     ) -> list[dict[str, Any]]:
+        """L2 近似检索，按 tenant_id / kb_id 过滤。"""
         client = _client()
         dim = validate_dimension(len(query_vector))
         name = _ensure_collection(client, dim)
@@ -209,6 +220,7 @@ class MilvusVectorStore:
         return distance_pairs_to_hits(_search_hit_rows(raw))
 
     def delete_by_document(self, document_id: UUID) -> None:
+        """遍历已知维度 collection，按 document_id 元数据删除。"""
         client = _client()
         expr = f'{METADATA_DOCUMENT_ID} == "{document_id}"'
         for dim in known_embedding_dimensions():
@@ -217,6 +229,7 @@ class MilvusVectorStore:
                 client.delete(collection_name=name, filter=expr)
 
     def delete_by_chunk_ids(self, chunk_ids: list[str]) -> None:
+        """按主键 id 批量删除（与 upsert 时 PRIMARY_FIELD 一致）。"""
         if not chunk_ids:
             return
         client = _client()
@@ -226,6 +239,7 @@ class MilvusVectorStore:
                 client.delete(collection_name=name, ids=chunk_ids)
 
     def health_check(self) -> bool:
+        """探测 Milvus 是否可连接。"""
         try:
             MilvusClient(**_client_kwargs()).list_collections()
             return True

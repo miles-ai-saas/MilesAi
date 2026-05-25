@@ -1,3 +1,5 @@
+"""租户 ORM：套餐配额与用量计数（quota 服务读写 max_* / storage_used_mb）。"""
+
 import enum
 import uuid
 
@@ -17,6 +19,8 @@ class TenantStatus(str, enum.Enum):
 
 
 class Tenant(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    """多租户隔离根实体；plan_id 关联运营端 BillingPlan。"""
+
     __tablename__ = "sys_tenants"
     __table_args__ = (
         UniqueConstraint("name", name="uk_sys_tenants_name"),

@@ -28,6 +28,7 @@ async def execute_node(
     inputs: dict[str, Any],
     ctx: RunContext,
 ) -> Any:
+    """按节点类型分发到已注册 handler（LangGraph 编译图内调用）。"""
     handler = NODE_REGISTRY.get(node_type)
     if not handler:
         raise ValueError(f"未知节点类型: {node_type}")

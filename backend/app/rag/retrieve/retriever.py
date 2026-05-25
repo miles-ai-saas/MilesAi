@@ -101,6 +101,7 @@ async def _hybrid_rrf(
     query_vector: list[float],
     fetch_limit: int,
 ) -> list[dict[str, Any]]:
+    """向量检索 + PG 关键词检索，RRF 融合（向量库无 search_hybrid 时）。"""
     vector_hits = search_vectors(
         query_vector,
         tenant_id=kb.tenant_id,
@@ -132,6 +133,7 @@ def _hybrid_sync(
     query_vector: list[float],
     fetch_limit: int,
 ) -> list[dict[str, Any]]:
+    """同步版混合检索（脚本或 Worker 内调用）。"""
     store = get_vector_store()
     alpha = float(kb.hybrid_alpha if kb.hybrid_alpha is not None else 0.5)
     alpha = max(0.0, min(1.0, alpha))
@@ -178,6 +180,7 @@ def search_kb_chunks_sync(
     mode: str = "default",
     rerank_model: ModelConfig | None = None,
 ) -> list[dict[str, Any]]:
+    """同步检索入口，语义同 search_kb_chunks。"""
     fetch_limit = compute_rerank_fetch_limit(
         limit,
         rerank_model=rerank_model,

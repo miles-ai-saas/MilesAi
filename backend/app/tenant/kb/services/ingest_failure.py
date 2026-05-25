@@ -1,4 +1,8 @@
-"""文档入库失败状态落库（须在 Celery 重试 rollback 前 commit）。"""
+"""文档入库失败状态落库（须在 Celery 重试 rollback 前 commit）。
+
+run_ingest 异常 → persist_document_ingest_failure（立即 commit）；
+Celery max_retries 耗尽 → ensure_document_failure_if_still_processing 兜底 PENDING/PARSING/EMBEDDING。
+"""
 
 from __future__ import annotations
 

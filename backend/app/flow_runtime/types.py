@@ -12,6 +12,7 @@ class FlowGraph:
 
     @classmethod
     def from_dict(cls, data: dict) -> "FlowGraph":
+        """从前端导出的 graph_json 构造。"""
         return cls(
             nodes=data.get("nodes") or [],
             edges=data.get("edges") or [],

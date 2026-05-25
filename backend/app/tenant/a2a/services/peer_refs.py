@@ -1,4 +1,7 @@
-"""自定义智能体 ↔ 外部 A2A Peer 引用。"""
+"""自定义智能体 ↔ 外部 A2A Peer 引用（agt_agent_a2a_peer_refs）。
+
+创建/更新 Agent 时 validate_and_sync；对话时 list_agent_a2a_peer_refs。
+"""
 
 from uuid import UUID
 
@@ -18,6 +21,7 @@ MAX_A2A_PEER_REFS = 4
 def normalize_peer_refs(
     raw: list[dict] | None,
 ) -> list[tuple[UUID, str | None, list[str], int, bool]]:
+    """解析 API 入参：peer_id、role_hint、trigger_keywords、enabled（最多 4 个）。"""
     if not raw:
         return []
     seen: set[UUID] = set()
@@ -52,6 +56,7 @@ async def list_agent_a2a_peer_refs(
     db: AsyncSession,
     agent_id: UUID,
 ) -> list[AgentA2aPeerRef]:
+    """仅 enabled 的引用（对话编排用）。"""
     stmt = (
         select(AgentA2aPeerRef)
         .where(AgentA2aPeerRef.agent_id == agent_id, AgentA2aPeerRef.enabled.is_(True))
@@ -65,6 +70,7 @@ async def list_all_agent_a2a_peer_refs(
     db: AsyncSession,
     agent_id: UUID,
 ) -> list[AgentA2aPeerRef]:
+    """含 disabled 的引用（管理页展示）。"""
     stmt = (
         select(AgentA2aPeerRef)
         .where(AgentA2aPeerRef.agent_id == agent_id)
@@ -75,6 +81,7 @@ async def list_all_agent_a2a_peer_refs(
 
 
 def apply_a2a_config(config: dict | None, *, has_a2a_refs: bool) -> dict:
+    """有 A2A 引用时写入默认 invoke 策略到 agent.config。"""
     cfg = dict(config or {})
     if has_a2a_refs:
         cfg.setdefault("a2a_invoke_policy", "rules_then_plan")
@@ -91,6 +98,7 @@ async def validate_and_sync_agent_a2a_peer_refs(
     agent: Agent,
     refs: list[tuple[UUID, str | None, list[str], int, bool]],
 ) -> None:
+    """全量替换自定义智能体的 A2A peer 引用行。"""
     if agent.agent_type != AgentType.CUSTOM:
         raise BadRequestError("仅自定义智能体可引用外部 A2A Agent")
 

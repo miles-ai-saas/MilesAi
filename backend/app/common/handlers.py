@@ -1,4 +1,7 @@
-"""全局异常处理器。"""
+"""全局异常处理器。
+
+AppError → JSON {code, message, data:null, trace_id}；校验失败 422；未捕获 500（非 debug 时隐藏细节）。
+"""
 
 from fastapi import Request
 from fastapi.exceptions import RequestValidationError

@@ -1,4 +1,7 @@
-"""将 flow_runtime 画布 graph_json 编译为 LangGraph（并行扇出 / 扇入 / 条件分支）。"""
+"""将 flow_runtime 画布 graph_json 编译为 LangGraph（并行扇出 / 扇入 / 条件分支）。
+
+节点执行统一走 flow_runtime.nodes.registry.execute_node。
+"""
 
 from __future__ import annotations
 
@@ -27,6 +30,7 @@ SUPPORTED_CANVAS_NODE_TYPES = frozenset(NODE_REGISTRY.keys())
 
 
 def resolve_node_type(node: dict[str, Any]) -> str:
+    """从 React Flow 节点 JSON 解析 registry 键名。"""
     node_data = node.get("data") or {}
     if not isinstance(node_data, dict):
         node_data = {}
@@ -83,6 +87,7 @@ class FlowCompileReport:
 
 
 def validate_graph_for_compile(graph: dict[str, Any]) -> FlowCompileReport:
+    """分析画布是否可编译为 LangGraph（环、条件边、节点类型）。"""
     fg = FlowGraph.from_dict(graph)
     errors: list[str] = []
     if not fg.nodes:
@@ -142,10 +147,12 @@ def validate_graph_for_compile(graph: dict[str, Any]) -> FlowCompileReport:
 
 
 def can_compile_flow_graph(graph: dict[str, Any]) -> bool:
+    """快捷判断 compilable。"""
     return validate_graph_for_compile(graph).compilable
 
 
 def _merge_outputs(left: dict[str, Any], right: dict[str, Any]) -> dict[str, Any]:
+    """LangGraph State 中 outputs 字段的 reducer。"""
     return {**left, **right}
 
 
@@ -154,6 +161,7 @@ def _gather_node_inputs(
     incoming: dict[str, list[tuple[str, str, str]]],
     outputs: dict[str, Any],
 ) -> dict[str, Any]:
+    """按入边 targetHandle 聚合上游节点输出。"""
     node_inputs: dict[str, Any] = {}
     for src, _sh, th in incoming.get(node_id, []):
         if src not in outputs:
@@ -175,6 +183,7 @@ def _gather_node_inputs(
 
 
 def _resolve_final_output(fg: FlowGraph, outputs: dict[str, Any]) -> Any:
+    """优先 TextOutput 节点值，否则取最后节点输出。"""
     for node in fg.nodes:
         ntype = resolve_node_type(node)
         if ntype in ("TextOutput", "ChatOutput"):
@@ -192,6 +201,7 @@ def _resolve_final_output(fg: FlowGraph, outputs: dict[str, Any]) -> Any:
 
 
 def _make_condition_router(condition_node_id: str):
+    """条件节点路由：读取 ConditionBranch 输出的 branch 字段。"""
     def router(state: dict[str, Any]) -> str:
         raw = (state.get("outputs") or {}).get(condition_node_id, {})
         if isinstance(raw, dict):

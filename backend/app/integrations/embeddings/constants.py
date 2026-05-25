@@ -1,4 +1,8 @@
-"""向量化 invoke_mode 与 ModelConfig.extra 键名。"""
+"""向量化 invoke_mode 与 ModelConfig.extra 键名。
+
+invoke_mode：local | litellm | openai_compatible
+extra：embedding_dimension、embedding_batch_size（通义默认上限 10）
+"""
 
 INVOKE_MODE_LOCAL = "local"
 INVOKE_MODE_LITELLM = "litellm"

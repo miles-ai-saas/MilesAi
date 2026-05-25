@@ -25,11 +25,13 @@ _VENDOR_DEFAULT_EMBEDDING_BATCH_SIZE: dict[str, int] = {
 
 
 def _is_dashscope_embedding_endpoint(model: ModelConfig) -> bool:
+    """判断是否走 DashScope 兼容端点（需限制 batch≤10）。"""
     base = (model.api_base or DEFAULT_API_BASES.get(model.vendor or "") or "").lower()
     return "dashscope.aliyuncs.com" in base
 
 
 def embedding_dimension_from_model(model: ModelConfig) -> int:
+    """从 ModelConfig.extra.embedding_dimension 读取向量维度。"""
     extra = model.extra or {}
     dim = extra.get(EXTRA_EMBEDDING_DIMENSION)
     if isinstance(dim, int) and dim > 0:
@@ -40,6 +42,7 @@ def embedding_dimension_from_model(model: ModelConfig) -> int:
 
 
 def embedding_batch_size_from_model(model: ModelConfig, *, default: int = 25) -> int:
+    """解析单次 /embeddings 请求的 input 条数上限；通义强制≤10。"""
     extra = model.extra or {}
     size = extra.get(EXTRA_EMBEDDING_BATCH_SIZE)
     if isinstance(size, int) and size > 0:
@@ -52,6 +55,7 @@ def embedding_batch_size_from_model(model: ModelConfig, *, default: int = 25) ->
 
 
 def invoke_mode_from_model(model: ModelConfig) -> str:
+    """解析 provider 分发键：local / openai_compatible / litellm。"""
     extra = model.extra or {}
     mode = extra.get(EXTRA_INVOKE_MODE)
     if isinstance(mode, str) and mode.strip():
@@ -60,12 +64,14 @@ def invoke_mode_from_model(model: ModelConfig) -> str:
 
 
 def resolve_embedding_api_base(model: ModelConfig) -> str | None:
+    """模型自定义 api_base 或 vendor 默认 base。"""
     if model.api_base:
         return model.api_base.rstrip("/")
     return DEFAULT_API_BASES.get(model.vendor or "")
 
 
 def ensure_embedding_model_type(model: ModelConfig) -> None:
+    """校验模型类型为 embedding，避免 KB 绑定 chat 模型。"""
     if model.model_type != ModelCapabilityType.EMBEDDING.value:
         raise BadRequestError(
             f"模型「{model.name}」类型为 {model.model_type}，知识库须绑定向量化模型（embedding）"

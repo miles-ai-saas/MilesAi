@@ -1,4 +1,4 @@
-"""OpenAI 兼容 /v1/reranks（DashScope compatible-api 等）。"""
+"""OpenAI 兼容 /v1/reranks（invoke_mode=openai_compatible）。"""
 
 from __future__ import annotations
 
@@ -19,6 +19,7 @@ DEFAULT_TIMEOUT = 120.0
 
 
 def _parse_response(payload: dict[str, Any]) -> list[RerankHit]:
+    """解析 results/data 数组。"""
     results = payload.get("results") or payload.get("data")
     if not isinstance(results, list):
         raise AppError("重排返回为空", status_code=502)
@@ -43,6 +44,8 @@ def _parse_response(payload: dict[str, Any]) -> list[RerankHit]:
 
 
 class OpenAICompatibleRerankProvider:
+    """POST {base}/reranks，请求体与 OpenAI Rerank 对齐。"""
+
     def rerank(
         self,
         model: ModelConfig,
@@ -51,6 +54,7 @@ class OpenAICompatibleRerankProvider:
         documents: list[str],
         top_n: int | None = None,
     ) -> list[RerankHit]:
+        """对 documents 重排并返回 top_n 条 RerankHit。"""
         if not documents:
             return []
 

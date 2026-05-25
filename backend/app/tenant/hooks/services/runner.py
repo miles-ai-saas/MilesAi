@@ -9,6 +9,8 @@ from app.tenant.hooks.services.executor import HookExecutor
 
 
 class HookRunner:
+    """Agent.chat 等路径使用的钩子门面（如 BEFORE_CALL / AFTER_REASONING）。"""
+
     def __init__(self, db: AsyncSession, tenant_id: UUID) -> None:
         self._executor = HookExecutor(db, tenant_id)
 
@@ -19,6 +21,7 @@ class HookRunner:
         target_id: UUID | None,
         payload: dict,
     ) -> list[dict]:
+        """按 trigger/scope 执行已挂载钩子，返回各钩子执行结果摘要。"""
         return await self._executor.run(
             trigger=trigger,
             scope=scope,

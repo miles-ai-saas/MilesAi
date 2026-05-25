@@ -1,4 +1,7 @@
-"""A2A Peer 登记：拉取 Agent Card、探测 RPC 与状态维护。"""
+"""A2A Peer 登记：拉取 Agent Card、探测 RPC 与状态维护。
+
+HTTP API 见 tenant.a2a.views.peers；对话调用见 tenant.a2a.invoke + client。
+"""
 
 from datetime import datetime, timezone
 from uuid import UUID
@@ -28,6 +31,7 @@ from app.core.tenant import TenantContext, assert_tenant_access, tenant_filters
 
 
 def _peer_out(row: A2aPeer) -> A2aPeerOut:
+    """ORM → API 出参。"""
     card = row.agent_card_json or {}
     return A2aPeerOut(
         id=row.id,
@@ -46,10 +50,13 @@ def _peer_out(row: A2aPeer) -> A2aPeerOut:
 
 
 class A2aPeerService(BaseService):
+    """租户级外部 A2A Agent 目录 CRUD 与 Card 同步。"""
+
     def __init__(self, db: AsyncSession, ctx: TenantContext) -> None:
         super().__init__(db, ctx)
 
     async def _get_peer_or_raise(self, peer_id: UUID) -> A2aPeer:
+        """加载 Peer 并校验租户与未删除。"""
         row = await self.db.get(A2aPeer, peer_id)
         if not row or is_marked_deleted(row):
             raise NotFoundError("A2A 外部 Agent 不存在")
@@ -57,6 +64,7 @@ class A2aPeerService(BaseService):
         return row
 
     async def list_peers(self, params: PageParams) -> PageResult[A2aPeerOut]:
+        """分页列出已登记的外部 Agent。"""
         filters = [*tenant_filters(self.ctx, A2aPeer.tenant_id), not_deleted(A2aPeer)]
         total = await self.db.scalar(select(func.count(A2aPeer.id)).where(*filters))
         stmt = (
@@ -75,6 +83,7 @@ class A2aPeerService(BaseService):
         )
 
     async def create_peer(self, body: A2aPeerCreate) -> A2aPeerOut:
+        """创建 Peer 行（状态 PENDING，需 sync-card 后 ACTIVE）。"""
         card_url = resolve_agent_card_url(body.base_url)
         existing = await self.db.scalar(
             select(A2aPeer.id).where(
@@ -100,9 +109,11 @@ class A2aPeerService(BaseService):
         return _peer_out(row)
 
     async def get_peer(self, peer_id: UUID) -> A2aPeerOut:
+        """获取单个 Peer 详情。"""
         return _peer_out(await self._get_peer_or_raise(peer_id))
 
     async def update_peer(self, peer_id: UUID, body: A2aPeerUpdate) -> A2aPeerOut:
+        """更新名称/URL 等；base_url 变更时重算 agent_card_url。"""
         row = await self._get_peer_or_raise(peer_id)
         data = body.model_dump(exclude_unset=True)
         if "name" in data and data["name"]:
@@ -116,10 +127,12 @@ class A2aPeerService(BaseService):
         return _peer_out(row)
 
     async def delete_peer(self, peer_id: UUID) -> None:
+        """软删 Peer（绑定表由 FK 级联或业务先解绑）。"""
         row = await self._get_peer_or_raise(peer_id)
         await mark_deleted(self.db, row)
 
     async def sync_peer_card(self, peer_id: UUID) -> A2aPeerSyncResult:
+        """拉取并缓存 Agent Card，成功置 ACTIVE，失败置 ERROR。"""
         row = await self._get_peer_or_raise(peer_id)
         source = row.base_url or row.agent_card_url
         try:
@@ -142,6 +155,7 @@ class A2aPeerService(BaseService):
             raise
 
     async def probe_url(self, base_or_card_url: str) -> A2aPeerProbeResult:
+        """登记前探测 URL 是否可拉取 Card（不写库）。"""
         try:
             card, card_url = await fetch_agent_card(base_or_card_url)
             name = card_display_name(card)

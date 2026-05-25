@@ -1,4 +1,7 @@
-"""LangChain ChatModel 适配：LiteLLM 统一调用（复用 ModelConfig）。"""
+"""LangChain ChatModel 适配：LiteLLM 统一调用（复用 ModelConfig）。
+
+链路：Agent.chat / rag_answer / LangGraph generate → ainvoke_chat → litellm_chat_completion。
+"""
 
 from __future__ import annotations
 
@@ -15,6 +18,7 @@ from app.models.model import ModelConfig
 
 
 def _messages_to_openai(messages: list[BaseMessage]) -> list[dict[str, str]]:
+    """LangChain Message → OpenAI chat messages 格式。"""
     out: list[dict[str, str]] = []
     for m in messages:
         role = "user"
@@ -49,6 +53,7 @@ class PlatformChatModel(BaseChatModel):
         run_manager: CallbackManagerForLLMRun | None = None,
         **kwargs: Any,
     ) -> ChatResult:
+        """同步入口：内部 asyncio.run 调异步实现。"""
         import asyncio
 
         return asyncio.run(self._agenerate(messages, stop=stop, run_manager=None, **kwargs))
@@ -60,6 +65,7 @@ class PlatformChatModel(BaseChatModel):
         run_manager: AsyncCallbackManagerForLLMRun | None = None,
         **kwargs: Any,
     ) -> ChatResult:
+        """LangChain 异步生成：委托 litellm_chat_completion。"""
         openai_msgs = _messages_to_openai(messages)
         content = await litellm_chat_completion(
             self.model_row,
@@ -77,6 +83,7 @@ def get_chat_model(
     temperature: float = 0.7,
     max_tokens: int = 2048,
 ) -> PlatformChatModel:
+    """构建 LangChain BaseChatModel 实例。"""
     return PlatformChatModel(
         model_row=model,
         temperature=temperature,

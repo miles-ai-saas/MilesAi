@@ -16,6 +16,7 @@ async def build_skill_mcp_prompt_block(
     ctx: TenantContext,
     config: dict,
 ) -> str:
+    """将 agent.config 中的技能包与 MCP 工具说明拼入 system prompt。"""
     parts: list[str] = []
     skill_id = config.get("skill_package_id")
     if skill_id:

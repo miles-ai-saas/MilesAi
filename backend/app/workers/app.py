@@ -1,4 +1,10 @@
-"""Celery 应用：ingest 走 parse 队列，与 API 共享同一套 app 代码与配置。"""
+"""Celery 应用：ingest 走 parse 队列，与 API 共享同一套 app 代码与配置。
+
+任务注册：include=app.workers.tasks；路由见 task_routes（ingest→parse 队列）。
+Worker 启动示例：celery -A app.workers.app worker -Q parse,default
+
+与租户任务表：ingest_document 内 sync_task_by_celery_id 更新 CeleryTaskRecord。
+"""
 
 from celery import Celery
 

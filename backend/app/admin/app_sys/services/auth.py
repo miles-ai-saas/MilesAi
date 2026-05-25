@@ -1,4 +1,7 @@
-"""平台管理员登录、会话（Redis）与改密。"""
+"""平台管理员登录、会话（Redis）与改密。
+
+令牌 type=admin_access，与租户 JWT 分离；会话键 admin:session:{id}。
+"""
 
 from uuid import UUID
 
@@ -18,11 +21,14 @@ ADMIN_SESSION_PREFIX = "admin:session:"
 
 
 class AdminAuthService:
+    """运营后台 /api/admin/v1 认证，不经过 TenantContext。"""
+
     def __init__(self, db: AsyncSession) -> None:
         self.db = db
         self.repo = PlatformAdminRepository(db)
 
     async def login(self, body: AdminLoginRequest) -> AdminTokenResponse:
+        """签发 admin_access 并写入 Redis jti。"""
         admin = await self.repo.get_by_username(body.username)
         if not admin or not verify_password(body.password, admin.hashed_password):
             raise UnauthorizedError("用户名或密码错误")
@@ -72,4 +78,5 @@ class AdminAuthService:
         return sessions
 
     async def revoke_session(self, admin_id: UUID) -> None:
+        """强制下线指定管理员会话。"""
         await get_redis().delete(f"{ADMIN_SESSION_PREFIX}{admin_id}")

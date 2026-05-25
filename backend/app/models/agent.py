@@ -1,3 +1,5 @@
+"""智能体 ORM：对话配置、KB 多对多、子 Agent 与发布流程绑定。"""
+
 import enum
 import uuid
 
@@ -8,6 +10,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.infra.db import Base
 from app.models.base import TimestampMixin, UUIDPrimaryKeyMixin
 
+# Agent ↔ KnowledgeBase 关联（无 DB 外键，删 Agent/KB 前须 unlink）
 agent_kb_bindings = Table(
     "agt_kb_bindings",
     Base.metadata,
@@ -28,6 +31,8 @@ class AgentType(str, enum.Enum):
 
 
 class Agent(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    """CUSTOM 本地编排 / A2A 远程；config 含 skill_ids、mcp、子 Agent 等 JSON。"""
+
     __tablename__ = "agt_agents"
     __table_args__ = (
         Index("idx_agt_agents_tenant_id", "tenant_id"),

@@ -1,4 +1,7 @@
-"""OpenAI 兼容 /v1/embeddings（DashScope compatible-mode 等）。"""
+"""OpenAI 兼容 /v1/embeddings（DashScope compatible-mode 等）。
+
+按 embedding_batch_size_from_model 分片请求，避免通义等接口 batch>10 报错。
+"""
 
 from __future__ import annotations
 
@@ -18,6 +21,7 @@ DEFAULT_TIMEOUT = 120.0
 
 
 def _parse_embedding_response(payload: dict[str, Any], expected: int) -> list[list[float]]:
+    """解析 OpenAI 风格 embedding 响应并按 index 排序。"""
     data = payload.get("data")
     if not isinstance(data, list) or not data:
         raise AppError("Embedding 返回为空", status_code=502)
@@ -41,7 +45,10 @@ def _parse_embedding_response(payload: dict[str, Any], expected: int) -> list[li
 
 
 class OpenAICompatibleEmbeddingProvider:
+    """HTTP POST {api_base}/embeddings，支持 dimensions 参数。"""
+
     def embed_texts(self, model: ModelConfig, texts: list[str]) -> list[list[float]]:
+        """分批调用远程 embedding API 并拼接为与 texts 等长的向量列表。"""
         if not texts:
             return []
 

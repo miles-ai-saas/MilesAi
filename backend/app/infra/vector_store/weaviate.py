@@ -1,4 +1,8 @@
-"""Weaviate（langchain-weaviate）。"""
+"""Weaviate（langchain-weaviate）。
+
+支持原生 hybrid（BM25 + 向量）；VECTOR_STORE_BACKEND=weaviate 时检索可走 search_hybrid。
+向量由 PrecomputedEmbeddings 注入，不在 Weaviate 侧再调 embedding API。
+"""
 
 from __future__ import annotations
 
@@ -41,6 +45,7 @@ _LC_ATTRS = (
 
 @lru_cache
 def _client() -> weaviate.WeaviateClient:
+    """进程内单例 Weaviate v4 客户端。"""
     s = get_settings()
     return weaviate.connect_to_custom(
         http_host=s.weaviate_host,
@@ -54,6 +59,7 @@ def _client() -> weaviate.WeaviateClient:
 
 
 def _tenant_kb_filter(tenant_id: UUID, kb_id: UUID | None) -> Filter:
+    """构造 tenant_id（及可选 kb_id）过滤条件。"""
     filt = Filter.by_property("tenant_id").equal(str(tenant_id))
     if kb_id:
         filt = filt & Filter.by_property("kb_id").equal(str(kb_id))
@@ -61,6 +67,7 @@ def _tenant_kb_filter(tenant_id: UUID, kb_id: UUID | None) -> Filter:
 
 
 def _ensure_collection() -> None:
+    """创建 DocumentChunk collection（self_provided 向量 + 标量属性）。"""
     client = _client()
     if client.collections.exists(CLASS_NAME):
         return
@@ -85,7 +92,10 @@ def _ensure_collection() -> None:
 
 
 class WeaviateVectorStore:
+    """Weaviate 向量库实现（VectorStore 协议，含 search_hybrid）。"""
+
     def __init__(self, settings: Settings | None = None) -> None:
+        """保留 host/port 供 health_check 使用。"""
         s = settings or get_settings()
         self._host = s.weaviate_host
         self._port = s.weaviate_port
@@ -94,6 +104,7 @@ class WeaviateVectorStore:
     @staticmethod
     @lru_cache
     def _store(_dimension: int):
+        """按维度缓存 langchain WeaviateVectorStore（维度仅用于 cache key）。"""
         from langchain_weaviate import WeaviateVectorStore as Lc
 
         return Lc(
@@ -105,11 +116,13 @@ class WeaviateVectorStore:
         )
 
     def ensure_schema(self, dimension: int) -> None:
+        """确保 Weaviate collection 存在。"""
         validate_dimension(dimension)
         _ensure_collection()
         self._store(dimension)
 
     def upsert_chunk(self, record: ChunkVectorRecord) -> str:
+        """预计算向量 + add_texts 写入，返回 chunk 主键。"""
         dim = validate_dimension(len(record.vector))
         self.ensure_schema(dim)
         return upsert_add_texts(self._store(dim), record, embedding_attr="_embedding")
@@ -122,6 +135,7 @@ class WeaviateVectorStore:
         kb_id: UUID | None = None,
         limit: int = 10,
     ) -> list[dict[str, Any]]:
+        """纯向量检索（alpha=1，等价于无 BM25）。"""
         return self.search_hybrid(
             "",
             query_vector=query_vector,
@@ -141,6 +155,7 @@ class WeaviateVectorStore:
         limit: int = 10,
         alpha: float = 0.5,
     ) -> list[dict[str, Any]]:
+        """混合检索：alpha=1 偏向量，alpha=0 偏关键词。"""
         dim = validate_dimension(len(query_vector))
         self.ensure_schema(dim)
         store = self._store(dim)
@@ -159,6 +174,7 @@ class WeaviateVectorStore:
         return hits
 
     def delete_by_document(self, document_id: UUID) -> None:
+        """按 document_id 属性批量删除。"""
         client = _client()
         if not client.collections.exists(CLASS_NAME):
             return
@@ -167,6 +183,7 @@ class WeaviateVectorStore:
         )
 
     def delete_by_chunk_ids(self, chunk_ids: list[str]) -> None:
+        """按主键删除；LangChain delete 失败时回退 data.delete_by_id。"""
         if not chunk_ids:
             return
         try:
@@ -182,6 +199,7 @@ class WeaviateVectorStore:
                     pass
 
     def health_check(self) -> bool:
+        """请求 /v1/.well-known/ready 探测服务就绪。"""
         import httpx
 
         scheme = "https" if self._scheme == "https" else "http"

@@ -12,10 +12,13 @@ from app.models.flow import Flow, FlowVersion
 
 
 class FlowRepository(BaseRepository[Flow]):
+    """Flow 主表查询（含版本列表预加载）。"""
+
     def __init__(self, db: AsyncSession) -> None:
         super().__init__(db, Flow)
 
     async def get_with_versions(self, flow_id: UUID) -> Flow | None:
+        """管理端查看历史版本列表时使用。"""
         stmt = (
             select(Flow)
             .where(Flow.id == flow_id)
@@ -24,6 +27,7 @@ class FlowRepository(BaseRepository[Flow]):
         return (await self.db.execute(stmt)).scalar_one_or_none()
 
     async def get_version(self, flow_id: UUID, version: int) -> FlowVersion | None:
+        """按 flow_id + 版本号取 graph_json 快照。"""
         stmt = select(FlowVersion).where(
             FlowVersion.flow_id == flow_id,
             FlowVersion.version == version,
@@ -33,5 +37,7 @@ class FlowRepository(BaseRepository[Flow]):
 
 
 class FlowVersionRepository(BaseRepository[FlowVersion]):
+    """每次 save_graph 追加的 FlowVersion 行。"""
+
     def __init__(self, db: AsyncSession) -> None:
         super().__init__(db, FlowVersion)

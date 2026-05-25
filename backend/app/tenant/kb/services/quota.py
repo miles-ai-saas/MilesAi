@@ -1,4 +1,8 @@
-"""知识库与附件的租户配额校验与存储用量回写。"""
+"""知识库与附件的租户配额校验与存储用量回写。
+
+上传前：assert_can_upload_bytes；创建 KB：assert_can_create_kb。
+上传成功：apply_storage_delta；删除文档：delta=0 触发重算 storage_used_mb。
+"""
 
 from __future__ import annotations
 
@@ -18,6 +22,7 @@ DEFAULT_MAX_FILE_MB = 50
 
 
 def _config_int(raw: object, default: int) -> int:
+    """从 system_config JSON 解析整数配置。"""
     if raw is None:
         return default
     if isinstance(raw, dict) and "value" in raw:
@@ -29,6 +34,7 @@ def _config_int(raw: object, default: int) -> int:
 
 
 async def get_max_file_mb(db: AsyncSession) -> int:
+    """单文件大小上限（MB），默认 50。"""
     row = await db.scalar(
         select(SystemConfig.value).where(SystemConfig.key == "ingest.max_file_mb")
     )
@@ -36,6 +42,7 @@ async def get_max_file_mb(db: AsyncSession) -> int:
 
 
 async def _load_tenant(db: AsyncSession, tenant_id: UUID) -> Tenant:
+    """加载租户行，不存在抛 ForbiddenError。"""
     tenant = await db.get(Tenant, tenant_id)
     if not tenant:
         raise ForbiddenError("租户不存在")
@@ -43,6 +50,7 @@ async def _load_tenant(db: AsyncSession, tenant_id: UUID) -> Tenant:
 
 
 async def count_knowledge_bases(db: AsyncSession, tenant_id: UUID) -> int:
+    """统计未删除的知识库数量。"""
     return int(
         await db.scalar(
             select(func.count())
@@ -54,6 +62,7 @@ async def count_knowledge_bases(db: AsyncSession, tenant_id: UUID) -> int:
 
 
 async def sum_storage_bytes(db: AsyncSession, tenant_id: UUID) -> int:
+    """文档 + 附件 file_size 合计（字节）。"""
     doc_bytes = await db.scalar(
         select(func.coalesce(func.sum(Document.file_size), 0)).where(
             Document.tenant_id == tenant_id,
@@ -70,6 +79,7 @@ async def sum_storage_bytes(db: AsyncSession, tenant_id: UUID) -> int:
 
 
 async def assert_can_create_kb(db: AsyncSession, tenant_id: UUID) -> None:
+    """校验知识库数量未超 tenant.max_knowledge_bases。"""
     tenant = await _load_tenant(db, tenant_id)
     count = await count_knowledge_bases(db, tenant_id)
     if count >= tenant.max_knowledge_bases:
@@ -83,6 +93,7 @@ async def assert_can_upload_bytes(
     tenant_id: UUID,
     file_size: int,
 ) -> None:
+    """校验单文件大小与租户总存储上限。"""
     if file_size <= 0:
         raise BadRequestError("文件内容为空")
     max_mb = await get_max_file_mb(db)
@@ -110,6 +121,7 @@ async def apply_storage_delta(db: AsyncSession, tenant_id: UUID, delta_bytes: in
 
 
 async def get_kb_quota_out(db: AsyncSession, tenant_id: UUID) -> dict:
+    """组装 GET /kb/quota 响应字段。"""
     tenant = await _load_tenant(db, tenant_id)
     used_bases = await count_knowledge_bases(db, tenant_id)
     used_bytes = await sum_storage_bytes(db, tenant_id)

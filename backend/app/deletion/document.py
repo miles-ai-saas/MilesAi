@@ -1,4 +1,7 @@
-"""文档衍生数据清理：vector_refs、document_chunks、向量库记录。"""
+"""文档衍生数据清理：vector_refs、document_chunks、向量库记录。
+
+入库重试与 API 删除均调用；同步版供 Celery pipeline，异步版供 HTTP。
+"""
 
 from uuid import UUID
 
@@ -11,6 +14,7 @@ from app.models.kb import DocumentChunk, VectorRef
 
 
 async def _chunk_ids_for_document_async(db: AsyncSession, document_id: UUID) -> list[UUID]:
+    """查询文档下所有 chunk 主键。"""
     result = await db.execute(
         select(DocumentChunk.id).where(DocumentChunk.document_id == document_id)
     )
