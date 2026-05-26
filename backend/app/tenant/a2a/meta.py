@@ -5,7 +5,7 @@
 - 约定：docs/guides/hooks.md §9
 """
 
-from app.common.schemas.enum_meta import enum_options, literal_options
+from app.common.schemas.enum_meta import META_SCHEMA_VERSION, enum_options, literal_options
 from app.tenant.a2a.models import A2aPeerStatus
 from app.tenant.agents.meta import SUB_AGENT_ROLE_OPTIONS
 
@@ -34,5 +34,5 @@ def a2a_meta_dict() -> dict:
         "peer_statuses": enum_options(A2aPeerStatus, PEER_STATUS_LABELS),
         "invoke_policies": literal_options(INVOKE_POLICY_OPTIONS),
         "peer_role_hints": literal_options(PEER_ROLE_HINT_OPTIONS),
-        "schema_version": "1",
+        "schema_version": META_SCHEMA_VERSION,
     }

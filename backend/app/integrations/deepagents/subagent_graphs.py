@@ -18,7 +18,7 @@ from uuid import UUID
 from langchain_core.messages import AIMessage, HumanMessage
 from langgraph.graph import END, START, MessagesState, StateGraph
 
-from app.tenant.agents.meta import SUB_AGENT_ROLE_LABELS
+from app.tenant.agents.constants import SUB_AGENT_ROLE_HINTS, SUB_AGENT_ROLE_LABELS
 from app.tenant.agents.schemas.agent import ChatRequest
 from app.models.agent import AgentSubAgentBinding
 
@@ -30,7 +30,7 @@ _ROLE_LABELS = SUB_AGENT_ROLE_LABELS
 
 def _slug_for_binding(binding: AgentSubAgentBinding) -> str:
     """生成 DeepAgents task 工具可识别的子智能体 slug。"""
-    if binding.role_hint and binding.role_hint in _ROLE_LABELS:
+    if binding.role_hint and binding.role_hint in SUB_AGENT_ROLE_HINTS:
         base = binding.role_hint
     else:
         base = "agent"

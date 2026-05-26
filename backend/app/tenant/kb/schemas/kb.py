@@ -20,9 +20,11 @@ from uuid import UUID
 from pydantic import BaseModel, Field, model_validator
 
 from app.models.kb import DocumentStatus
+from app.rag.retrieve.constants import RETRIEVAL_HYBRID, RETRIEVAL_VECTOR
+from app.tenant.kb.meta import SEARCH_MODE_DEFAULT
 
-RetrievalMode = Literal["vector", "hybrid"]
-SearchMode = Literal["default", "vector", "hybrid"]
+RetrievalMode = Literal[RETRIEVAL_VECTOR, RETRIEVAL_HYBRID]
+SearchMode = Literal[SEARCH_MODE_DEFAULT, RETRIEVAL_VECTOR, RETRIEVAL_HYBRID]
 
 
 class KnowledgeBaseCreate(BaseModel):
@@ -38,7 +40,7 @@ class KnowledgeBaseCreate(BaseModel):
         description="向量化模型（model_type=embedding），默认内置 BGE；创建后不可修改",
     )
     retrieval_mode: RetrievalMode = Field(
-        "vector",
+        RETRIEVAL_VECTOR,
         description="检索策略：vector=纯语义；hybrid=向量+关键词（Weaviate BM25 / Milvus+PG）",
     )
     hybrid_alpha: float = Field(

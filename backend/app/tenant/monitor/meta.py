@@ -5,7 +5,7 @@
 - 约定：docs/guides/hooks.md §9
 """
 
-from app.common.schemas.enum_meta import literal_options
+from app.common.schemas.enum_meta import META_SCHEMA_VERSION, literal_options
 
 HEALTH_COMPONENT_OPTIONS: list[tuple[str, str, str | None]] = [
     ("postgres", "PostgreSQL", "主库连通性"),
@@ -35,5 +35,5 @@ def monitor_meta_dict() -> dict:
         "health_components": literal_options(HEALTH_COMPONENT_OPTIONS),
         "overall_health_statuses": literal_options(OVERALL_HEALTH_STATUS_OPTIONS),
         "trend_day_ranges": literal_options(TREND_DAY_OPTIONS),
-        "schema_version": "1",
+        "schema_version": META_SCHEMA_VERSION,
     }

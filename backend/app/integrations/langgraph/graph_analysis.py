@@ -13,13 +13,14 @@ from __future__ import annotations
 from collections import defaultdict
 from typing import Any
 
+from app.flow_runtime.constants import (
+    CONDITION_NODE_TYPE,
+    CONDITIONAL_NODE_TYPES,
+    RELEVANCE_GRADE_NODE_TYPE,
+    TEXT_OUTPUT_NODE_TYPES,
+)
 from app.flow_runtime.types import FlowGraph
-
-CONDITION_NODE_TYPE = "ConditionBranch"
-RELEVANCE_GRADE_NODE_TYPE = "RelevanceGrade"
-CONDITIONAL_NODE_TYPES = frozenset({CONDITION_NODE_TYPE, RELEVANCE_GRADE_NODE_TYPE})
-GRADE_BRANCH_HANDLES = frozenset({"good", "poor", "none"})
-PARALLEL_JOIN_TYPE = "ParallelJoin"
+from app.integrations.langgraph.constants import GRADE_BRANCH_HANDLES
 
 
 def _edge_endpoints(edge: dict[str, Any]) -> tuple[str | None, str | None, str, str]:
@@ -146,5 +147,5 @@ def find_end_nodes(fg: FlowGraph, resolve_type) -> list[str]:
     return [
         n["id"]
         for n in fg.nodes
-        if resolve_type(n) in ("TextOutput", "ChatOutput")
+        if resolve_type(n) in TEXT_OUTPUT_NODE_TYPES
     ]

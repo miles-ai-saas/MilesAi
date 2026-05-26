@@ -26,9 +26,8 @@ from app.integrations.rerank.model_meta import (
     resolve_rerank_endpoint,
 )
 from app.integrations.rerank.types import RerankHit
+from app.integrations.http_constants import HTTP_DEFAULT_TIMEOUT_SEC
 from app.models.model import ModelConfig
-
-DEFAULT_TIMEOUT = 120.0
 
 
 def _build_payload(
@@ -134,7 +133,7 @@ class DashScopeRerankProvider:
                 url,
                 json=payload,
                 headers=headers,
-                timeout=DEFAULT_TIMEOUT,
+                timeout=HTTP_DEFAULT_TIMEOUT_SEC,
             )
             response.raise_for_status()
             return _parse_response(response.json())

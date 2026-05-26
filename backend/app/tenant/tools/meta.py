@@ -5,7 +5,7 @@
 - 约定：docs/guides/hooks.md §9
 """
 
-from app.common.schemas.enum_meta import EnumOption, enum_options, literal_options
+from app.common.schemas.enum_meta import META_SCHEMA_VERSION, EnumOption, enum_options, literal_options
 from app.tenant.tools.models import ToolType
 
 TOOL_TYPE_LABELS: dict[str, tuple[str, str | None]] = {
@@ -32,4 +32,5 @@ def tools_meta_dict() -> dict:
         "tool_types": enum_options(ToolType, TOOL_TYPE_LABELS),
         "catalog_sources": literal_options(CATALOG_SOURCE_OPTIONS),
         "invocation_statuses": literal_options(INVOCATION_STATUS_OPTIONS),
+        "schema_version": META_SCHEMA_VERSION,
     }

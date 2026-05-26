@@ -5,7 +5,7 @@
 - 约定：docs/guides/hooks.md §9
 """
 
-from app.common.schemas.enum_meta import enum_options
+from app.common.schemas.enum_meta import META_SCHEMA_VERSION, enum_options
 from app.models.tag import TagEntityType
 
 ENTITY_TYPE_LABELS: dict[str, tuple[str, str | None]] = {
@@ -21,5 +21,5 @@ def tags_meta_dict() -> dict:
     """构建 meta 响应 dict，供 *MetaOut.model_validate 与单测使用。"""
     return {
         "entity_types": enum_options(TagEntityType, ENTITY_TYPE_LABELS),
-        "schema_version": "1",
+        "schema_version": META_SCHEMA_VERSION,
     }

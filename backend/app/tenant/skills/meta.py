@@ -5,7 +5,7 @@
 - 约定：docs/guides/hooks.md §9
 """
 
-from app.common.schemas.enum_meta import literal_options
+from app.common.schemas.enum_meta import META_SCHEMA_VERSION, literal_options
 
 SOURCE_TYPE_OPTIONS: list[tuple[str, str, str | None]] = [
     ("manual", "手动创建", "工作台创建空白技能包"),
@@ -25,5 +25,5 @@ def skills_meta_dict() -> dict:
     return {
         "source_types": literal_options(SOURCE_TYPE_OPTIONS),
         "active_states": literal_options(ACTIVE_STATE_OPTIONS),
-        "schema_version": "1",
+        "schema_version": META_SCHEMA_VERSION,
     }

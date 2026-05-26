@@ -16,8 +16,7 @@ from jose import jwt as jose_jwt
 from app.core.config import get_settings
 from app.core.security import hash_password, verify_password
 from app.admin.app_sys.schemas.auth import AdminInfo, AdminLoginRequest, AdminSessionOut, AdminTokenResponse, PasswordChangeRequest
-
-ADMIN_SESSION_PREFIX = "admin:session:"
+from app.utils.redis_keys import RedisKeys
 
 
 class AdminAuthService:
@@ -41,11 +40,13 @@ class AdminAuthService:
             algorithms=[get_settings().jwt_algorithm],
         )
         jti = payload.get("jti", "")
-        await get_redis().setex(f"{ADMIN_SESSION_PREFIX}{admin.id}", 60 * 60 * 24 * 7, jti or token[:32])
+        await get_redis().setex(
+            RedisKeys.admin_session(admin.id), 60 * 60 * 24 * 7, jti or token[:32]
+        )
         return AdminTokenResponse(access_token=token)
 
     async def logout(self, admin_id: UUID) -> None:
-        await get_redis().delete(f"{ADMIN_SESSION_PREFIX}{admin_id}")
+        await get_redis().delete(RedisKeys.admin_session(admin_id))
 
     async def get_me(self, admin_id: UUID) -> AdminInfo:
         admin = await self.repo.get_by_id_or_raise(admin_id, label="管理员不存在")
@@ -61,7 +62,7 @@ class AdminAuthService:
     async def list_sessions(self) -> list[AdminSessionOut]:
         redis = get_redis()
         sessions: list[AdminSessionOut] = []
-        async for key in redis.scan_iter(match=f"{ADMIN_SESSION_PREFIX}*"):
+        async for key in redis.scan_iter(match=RedisKeys.admin_session_scan_pattern()):
             admin_id = key.decode().split(":")[-1] if isinstance(key, bytes) else str(key).split(":")[-1]
             try:
                 admin = await self.repo.get_by_id(UUID(admin_id))
@@ -79,4 +80,4 @@ class AdminAuthService:
 
     async def revoke_session(self, admin_id: UUID) -> None:
         """强制下线指定管理员会话。"""
-        await get_redis().delete(f"{ADMIN_SESSION_PREFIX}{admin_id}")
+        await get_redis().delete(RedisKeys.admin_session(admin_id))

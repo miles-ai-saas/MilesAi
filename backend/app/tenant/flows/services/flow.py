@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.common.exceptions import BadRequestError, NotFoundError
 from app.core.tenant import TenantContext, assert_tenant_access, tenant_filters
+from app.tenant.compliance.constants import SCAN_MODULE_FLOW_RUN
 from app.tenant.compliance.services.compliance import ComplianceService
 from app.tenant.hooks.models import HookScope, HookTrigger
 from app.tenant.hooks.services.runner import HookRunner
@@ -222,7 +223,7 @@ class FlowService(BaseService):
         compliance = ComplianceService(self.db, self.ctx)
         hooks = HookRunner(self.db, self.ctx.tenant_id)
         hook_payload = {
-            "module": "flow_run",
+            "module": SCAN_MODULE_FLOW_RUN,
             "flow_id": str(flow_id),
             "inputs": body.inputs,
         }
@@ -236,7 +237,7 @@ class FlowService(BaseService):
             hook_payload = before.payload
             query_text = str(hook_payload.get("query", query_text))
             if query_text:
-                await compliance.check_input(query_text, module="flow_run")
+                await compliance.check_input(query_text, module=SCAN_MODULE_FLOW_RUN)
 
             run_inputs = dict(body.inputs)
             if query_text:
@@ -258,7 +259,7 @@ class FlowService(BaseService):
             if not isinstance(output, (str, dict, list)):
                 output = str(output)
             if isinstance(output, str) and output:
-                await compliance.check_output(output, module="flow_run")
+                await compliance.check_output(output, module=SCAN_MODULE_FLOW_RUN)
             await hooks.run(
                 HookTrigger.AFTER_CALL,
                 HookScope.FLOW,

@@ -15,6 +15,7 @@ from __future__ import annotations
 from typing import Any
 
 from app.common.exceptions import AppError, BadRequestError
+from app.integrations.http_constants import HTTP_DEFAULT_TIMEOUT_SEC
 from app.models.model import ModelConfig
 from app.models.model_catalog import (
     DEFAULT_API_BASES,
@@ -117,7 +118,7 @@ async def litellm_chat_completion(
     *,
     temperature: float = 0.7,
     max_tokens: int = 2048,
-    timeout: float = 120.0,
+    timeout: float = HTTP_DEFAULT_TIMEOUT_SEC,
 ) -> str:
     """通过 LiteLLM 发起异步 Chat Completions。"""
     litellm = _import_litellm()
@@ -180,7 +181,7 @@ def litellm_embed_texts(
     model: str,
     api_key: str | None = None,
     api_base: str | None = None,
-    timeout: float = 120.0,
+    timeout: float = HTTP_DEFAULT_TIMEOUT_SEC,
 ) -> list[list[float]]:
     """同步批量 embedding（供 LangChain Embeddings 与入库任务）。"""
     litellm = _import_litellm()

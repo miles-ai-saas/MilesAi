@@ -6,7 +6,7 @@
 - 约定：docs/guides/hooks.md §9
 """
 
-from app.common.schemas.enum_meta import enum_options, literal_options
+from app.common.schemas.enum_meta import META_SCHEMA_VERSION, enum_options, literal_options
 from app.tenant.mcp.models import McpStatus
 
 MCP_STATUS_LABELS: dict[str, tuple[str, str | None]] = {
@@ -43,5 +43,5 @@ def mcp_meta_dict() -> dict:
         "transport_filters": literal_options(TRANSPORT_OPTIONS),
         "transport_types": literal_options(TRANSPORT_TYPE_OPTIONS),
         "sync_displays": literal_options(SYNC_DISPLAY_OPTIONS),
-        "schema_version": "1",
+        "schema_version": META_SCHEMA_VERSION,
     }

@@ -61,6 +61,8 @@ api_base, api_key_encrypted, is_active, extra (JSONB), deleted_at
 | 鉴权 | `api_key_encrypted` + 可选 `api_base`（内置模型未配时用 `DEFAULT_API_BASES`） |
 | 未接入 | `image_gen` / `video_gen` / `asr` / `tts` 调用时返回 400，目录仍可展示 |
 
+向量化 / 重排序模型的 `extra.invoke_mode` 与字段对照见 **[model-config-extra.md](./model-config-extra.md)**。
+
 ---
 
 ## 3. 产品模型

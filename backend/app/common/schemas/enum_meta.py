@@ -11,6 +11,8 @@ from typing import Iterable
 
 from pydantic import BaseModel
 
+META_SCHEMA_VERSION = "1"
+
 
 class EnumOption(BaseModel):
     """单条枚举选项；``implemented`` 仅钩子触发器等需标注接线状态的域使用。"""

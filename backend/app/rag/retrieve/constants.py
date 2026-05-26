@@ -1,0 +1,5 @@
+"""检索模式取值（KB 配置、RAG 检索与 meta 共用）。"""
+
+RETRIEVAL_VECTOR = "vector"
+RETRIEVAL_HYBRID = "hybrid"
+VALID_RETRIEVAL_MODES = frozenset({RETRIEVAL_VECTOR, RETRIEVAL_HYBRID})

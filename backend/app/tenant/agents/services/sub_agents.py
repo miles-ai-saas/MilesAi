@@ -24,10 +24,9 @@ from app.common.exceptions import BadRequestError, NotFoundError
 from app.core.soft_delete import is_marked_deleted, not_deleted
 from app.core.tenant import TenantContext
 from app.models.agent import Agent, AgentSubAgentBinding, AgentType
+from app.tenant.agents.constants import SUB_AGENT_ROLE_HINTS
 
 MAX_SUB_AGENTS = 8
-
-ROLE_HINTS = frozenset({"retrieval", "ocr", "summary", "compliance", "custom"})
 
 
 def apply_planner_config(config: dict | None, *, has_sub_agents: bool) -> dict:
@@ -67,7 +66,7 @@ def normalize_bindings(
             continue
         seen.add(child_id)
         rh = (str(hint).strip()[:64] if hint else None) or None
-        if rh and rh not in ROLE_HINTS:
+        if rh and rh not in SUB_AGENT_ROLE_HINTS:
             rh = "custom"
         out.append((child_id, rh, i))
     if len(out) > MAX_SUB_AGENTS:

@@ -5,7 +5,7 @@
 - 约定：docs/guides/hooks.md §9
 """
 
-from app.common.schemas.enum_meta import enum_options
+from app.common.schemas.enum_meta import META_SCHEMA_VERSION, enum_options
 from app.models.flow import FlowStatus
 
 FLOW_STATUS_LABELS: dict[str, tuple[str, str | None]] = {
@@ -18,4 +18,5 @@ def flow_meta_dict() -> dict:
     """构建 meta 响应 dict，供 *MetaOut.model_validate 与单测使用。"""
     return {
         "statuses": enum_options(FlowStatus, FLOW_STATUS_LABELS),
+        "schema_version": META_SCHEMA_VERSION,
     }

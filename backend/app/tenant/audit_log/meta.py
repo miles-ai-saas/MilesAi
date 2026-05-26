@@ -6,7 +6,7 @@
 - 约定：docs/guides/hooks.md §9
 """
 
-from app.common.schemas.enum_meta import literal_options
+from app.common.schemas.enum_meta import META_SCHEMA_VERSION, literal_options
 
 # 筛选「全部」+ 常见 resource_type（与 write_tenant_audit_log 约定一致，可扩展）
 RESOURCE_TYPE_OPTIONS: list[tuple[str, str, str | None]] = [
@@ -53,5 +53,5 @@ def audit_meta_dict() -> dict:
         "resource_type_filters": literal_options(RESOURCE_TYPE_OPTIONS),
         "action_filters": literal_options(ACTION_FILTER_OPTIONS),
         "action_labels": literal_options(ACTION_LABELS),
-        "schema_version": "1",
+        "schema_version": META_SCHEMA_VERSION,
     }

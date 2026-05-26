@@ -17,8 +17,9 @@ INVOKE_MODE_LOCAL = "local"
 INVOKE_MODE_LITELLM = "litellm"
 INVOKE_MODE_OPENAI_COMPATIBLE = "openai_compatible"
 
+from app.common.constants.model_extra import EXTRA_INVOKE_MODE
+
 EXTRA_EMBEDDING_DIMENSION = "embedding_dimension"
-EXTRA_INVOKE_MODE = "invoke_mode"
 EXTRA_EMBEDDING_BATCH_SIZE = "embedding_batch_size"
 
 # DashScope OpenAI 兼容 embeddings：单次 input 条数上限（见官方 InvalidParameter batch size）

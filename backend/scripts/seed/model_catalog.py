@@ -11,6 +11,17 @@ from __future__ import annotations
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.common.constants.model_extra import EXTRA_INVOKE_MODE
+from app.integrations.embeddings.constants import (
+    EXTRA_EMBEDDING_BATCH_SIZE,
+    EXTRA_EMBEDDING_DIMENSION,
+    INVOKE_MODE_LOCAL,
+    INVOKE_MODE_OPENAI_COMPATIBLE,
+)
+from app.integrations.rerank.constants import (
+    EXTRA_RERANK_REQUEST_FORMAT,
+    INVOKE_MODE_DASHSCOPE,
+)
 from app.models.model import ModelConfig
 from app.models.model_catalog import (
     DEFAULT_API_BASES,
@@ -33,7 +44,10 @@ BUILTIN_CATALOG: list[dict] = [
         "context_window": "—",
         "sort_order": 1,
         "is_featured": True,
-        "extra": {"invoke_mode": "local", "embedding_dimension": 768},
+        "extra": {
+            EXTRA_INVOKE_MODE: INVOKE_MODE_LOCAL,
+            EXTRA_EMBEDDING_DIMENSION: 768,
+        },
     },
     {
         "model_code": "qwen-text-embedding-v4",
@@ -47,9 +61,9 @@ BUILTIN_CATALOG: list[dict] = [
         "sort_order": 2,
         "is_featured": True,
         "extra": {
-            "invoke_mode": "openai_compatible",
-            "embedding_dimension": 1024,
-            "embedding_batch_size": 10,
+            EXTRA_INVOKE_MODE: INVOKE_MODE_OPENAI_COMPATIBLE,
+            EXTRA_EMBEDDING_DIMENSION: 1024,
+            EXTRA_EMBEDDING_BATCH_SIZE: 10,
         },
     },
     # --- 重排序（RAG 精排，模型页配置 API Key 后可用于测试）---
@@ -66,8 +80,8 @@ BUILTIN_CATALOG: list[dict] = [
         "is_featured": True,
         "api_base": "https://dashscope.aliyuncs.com/api/v1/services/rerank/text-rerank/text-rerank",
         "extra": {
-            "invoke_mode": "dashscope",
-            "rerank_request_format": "flat",
+            EXTRA_INVOKE_MODE: INVOKE_MODE_DASHSCOPE,
+            EXTRA_RERANK_REQUEST_FORMAT: "flat",
         },
     },
     {
@@ -83,8 +97,8 @@ BUILTIN_CATALOG: list[dict] = [
         "is_featured": False,
         "api_base": "https://dashscope.aliyuncs.com/api/v1/services/rerank/text-rerank/text-rerank",
         "extra": {
-            "invoke_mode": "dashscope",
-            "rerank_request_format": "nested",
+            EXTRA_INVOKE_MODE: INVOKE_MODE_DASHSCOPE,
+            EXTRA_RERANK_REQUEST_FORMAT: "nested",
         },
     },
     # --- 深度求索 ---

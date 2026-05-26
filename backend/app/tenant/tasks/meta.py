@@ -5,7 +5,7 @@
 - 约定：docs/guides/hooks.md §9
 """
 
-from app.common.schemas.enum_meta import enum_options, literal_options
+from app.common.schemas.enum_meta import META_SCHEMA_VERSION, enum_options, literal_options
 from app.models.task import TaskStatus
 
 TASK_STATUS_LABELS: dict[str, tuple[str, str | None]] = {
@@ -27,5 +27,5 @@ def tasks_meta_dict() -> dict:
     return {
         "statuses": enum_options(TaskStatus, TASK_STATUS_LABELS),
         "status_filters": literal_options(STATUS_FILTER_OPTIONS),
-        "schema_version": "1",
+        "schema_version": META_SCHEMA_VERSION,
     }

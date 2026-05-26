@@ -16,6 +16,7 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.kb_search_log import KbSearchLog
+from app.rag.retrieve.constants import RETRIEVAL_VECTOR
 
 _QUERY_MAX_LEN = 2000
 
@@ -34,7 +35,7 @@ async def write_kb_search_log(
     actor_user_id: UUID | None = None,
     agent_id: UUID | None = None,
     request_id: str | None = None,
-    retrieval_mode: str = "vector",
+    retrieval_mode: str = RETRIEVAL_VECTOR,
 ) -> None:
     """写入 kb_search_logs；query 超长截断至 2000 字符。"""
     q = query if len(query) <= _QUERY_MAX_LEN else query[:_QUERY_MAX_LEN]

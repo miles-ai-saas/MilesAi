@@ -61,6 +61,13 @@ scripts/                    # db_ops、verify_db、seed/*（由 cli.py 调用）
 | `schemas/` | Pydantic 请求/响应模型 |
 | `repositories/` | 该域数据访问（如 `kb/repositories/kb.py`） |
 | `models.py` | 仅该子域拥有的 ORM（如 marketplace、compliance） |
+| `constants.py` | 域内多文件共用的字面量（校验、协议字段名）；单文件自用可留在 service |
+| `meta.py` | 枚举展示文案（`GET /{module}/meta`）；`schema_version` 用 `META_SCHEMA_VERSION` |
+
+**常量分家**（勿建全局 `app/constants/`）：`models.Enum` 为持久化真源；`tenant/*/meta.py` 仅 label/hint；`integrations/*/constants.py` 为协议与 `ModelConfig.extra` 键；跨模型 extra 键见 `common/constants/model_extra.py`；Redis 键见 `utils/redis_keys.py`。
+
+- Hook Event `schema_version`（`hooks/events.SCHEMA_VERSION`）与 `GET */meta` 的 `META_SCHEMA_VERSION` 为两套契约，见 [docs/guides/hooks.md](../docs/guides/hooks.md) §9.1。
+- embedding/rerank 的 `extra` 键对照见 [docs/guides/model-config-extra.md](../docs/guides/model-config-extra.md)。
 
 共享 ORM 放在 `app/models/`；租户子域表在 `tenant/*/models.py`；运营表在 `admin/models/`（按域拆分文件）。**表名与索引在各模型文件的 `__tablename__` / `__table_args__` 中定义**（无 `common/tables.py`）。
 

@@ -12,6 +12,20 @@ RAG 相关
 from collections.abc import Awaitable, Callable
 from typing import Any
 
+from app.flow_runtime.constants import (
+    CHAT_INPUT_NODE_TYPE,
+    CHAT_OUTPUT_NODE_TYPE,
+    CONDITION_NODE_TYPE,
+    KNOWLEDGE_SEARCH_NODE_TYPE,
+    LLM_CALL_NODE_TYPE,
+    PARALLEL_JOIN_NODE_TYPE,
+    PLATFORM_TOOL_NODE_TYPE,
+    PROMPT_TEMPLATE_NODE_TYPE,
+    RELEVANCE_GRADE_NODE_TYPE,
+    STATIC_RESPONSE_NODE_TYPE,
+    TEXT_INPUT_NODE_TYPE,
+    TEXT_OUTPUT_NODE_TYPE,
+)
 from app.flow_runtime.nodes import (
     control_nodes,
     grade_nodes,
@@ -25,19 +39,18 @@ from app.flow_runtime.types import RunContext
 NodeHandler = Callable[[dict[str, Any], dict[str, Any], RunContext], Awaitable[Any]]
 
 NODE_REGISTRY: dict[str, NodeHandler] = {
-    "TextInput": io_nodes.text_input,
-    "TextOutput": io_nodes.text_output,
-    "KnowledgeSearch": rag_nodes.knowledge_search,  # ctx.kb_ids / node_data.kb_id
-    "PromptTemplate": rag_nodes.prompt_template,
-    "LLMCall": llm_nodes.llm_call,
-    "PlatformTool": tool_nodes.platform_tool,
-    "ConditionBranch": control_nodes.condition_branch,
-    "RelevanceGrade": grade_nodes.relevance_grade,
-    "StaticResponse": io_nodes.static_response,
-    "ParallelJoin": control_nodes.parallel_join,
-    # 兼容历史 graph 中的节点类型别名
-    "ChatInput": io_nodes.text_input,
-    "ChatOutput": io_nodes.text_output,
+    TEXT_INPUT_NODE_TYPE: io_nodes.text_input,
+    TEXT_OUTPUT_NODE_TYPE: io_nodes.text_output,
+    KNOWLEDGE_SEARCH_NODE_TYPE: rag_nodes.knowledge_search,
+    PROMPT_TEMPLATE_NODE_TYPE: rag_nodes.prompt_template,
+    LLM_CALL_NODE_TYPE: llm_nodes.llm_call,
+    PLATFORM_TOOL_NODE_TYPE: tool_nodes.platform_tool,
+    CONDITION_NODE_TYPE: control_nodes.condition_branch,
+    RELEVANCE_GRADE_NODE_TYPE: grade_nodes.relevance_grade,
+    STATIC_RESPONSE_NODE_TYPE: io_nodes.static_response,
+    PARALLEL_JOIN_NODE_TYPE: control_nodes.parallel_join,
+    CHAT_INPUT_NODE_TYPE: io_nodes.text_input,
+    CHAT_OUTPUT_NODE_TYPE: io_nodes.text_output,
 }
 
 

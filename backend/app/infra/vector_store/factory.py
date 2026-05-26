@@ -1,6 +1,11 @@
 """向量库客户端工厂（L4）。
 
 进程内单例；VECTOR_STORE_BACKEND 变更需重启。索引写删请走 app.rag.index.gateway。
+
+集合/类名前缀（各后端实现不同，勿强行统一）：
+- pgvector：``milesai_kb_{dimension}``（见 ``pgvector.COLLECTION_PREFIX``）
+- milvus：``document_chunk_{dimension}``（见 ``milvus.COLLECTION_PREFIX``）
+- weaviate：固定类名 ``DocumentChunk``（见 ``weaviate.CLASS_NAME``）
 """
 
 from __future__ import annotations

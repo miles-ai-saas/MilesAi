@@ -5,8 +5,14 @@
 - 前端：lib/agent-labels.ts、hooks/use-agent-meta.ts
 """
 
-from app.common.schemas.enum_meta import EnumOption, enum_options, literal_options
+from app.common.schemas.enum_meta import (
+    META_SCHEMA_VERSION,
+    EnumOption,
+    enum_options,
+    literal_options,
+)
 from app.models.agent import AgentStatus, AgentType
+from app.tenant.agents.constants import SUB_AGENT_ROLE_DISPLAY, SUB_AGENT_ROLE_HINTS
 from app.tenant.agents.schemas.architecture import PRIMARY_PATH_LABELS
 
 AGENT_STATUS_LABELS: dict[str, tuple[str, str | None]] = {
@@ -19,22 +25,14 @@ AGENT_TYPE_LABELS: dict[str, tuple[str, str | None]] = {
     AgentType.A2A.value: ("A2A 互联宿主", "统一入口，编排已登记的外部 Agent"),
 }
 
-# 与 integrations.deepagents.subagent_graphs 共用；空 value 表示未指定
+# 空 value 表示未指定
 SUB_AGENT_ROLE_OPTIONS: list[tuple[str, str, str | None]] = [
     ("", "未指定", None),
-    ("retrieval", "检索", "知识检索"),
-    ("ocr", "OCR", "OCR 识别"),
-    ("summary", "总结", "摘要归纳"),
-    ("compliance", "合规", "合规审查"),
-    ("custom", "自定义", "自定义"),
+    *[
+        (role, *SUB_AGENT_ROLE_DISPLAY[role])
+        for role in sorted(SUB_AGENT_ROLE_HINTS)
+    ],
 ]
-
-# DeepAgents 子智能体描述（优先 hint 长文案）
-SUB_AGENT_ROLE_LABELS: dict[str, str] = {
-    value: (hint or label)
-    for value, label, hint in SUB_AGENT_ROLE_OPTIONS
-    if value
-}
 
 
 def agents_meta_dict() -> dict:
@@ -48,5 +46,5 @@ def agents_meta_dict() -> dict:
         "agent_types": enum_options(AgentType, AGENT_TYPE_LABELS),
         "sub_agent_role_hints": literal_options(SUB_AGENT_ROLE_OPTIONS),
         "primary_paths": primary_paths,
-        "schema_version": "1",
+        "schema_version": META_SCHEMA_VERSION,
     }

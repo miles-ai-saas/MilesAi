@@ -8,7 +8,7 @@
 
 from __future__ import annotations
 
-from app.common.schemas.enum_meta import EnumOption, literal_options
+from app.common.schemas.enum_meta import META_SCHEMA_VERSION, EnumOption, literal_options
 from app.tenant.hooks.models import HookScope, HookTrigger
 
 # 与运行时接线保持一致；文档 hooks.md §4 须同步
@@ -76,5 +76,5 @@ def hook_meta_dict() -> dict:
         "scopes": scopes,
         "on_failure_options": literal_options(ON_FAILURE_OPTIONS),
         "response_actions": literal_options(RESPONSE_ACTION_OPTIONS),
-        "schema_version": "1",
+        "schema_version": META_SCHEMA_VERSION,
     }

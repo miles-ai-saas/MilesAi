@@ -2,11 +2,11 @@
 
 from pydantic import BaseModel, Field
 
-from app.common.schemas.enum_meta import EnumOption
+from app.common.schemas.enum_meta import META_SCHEMA_VERSION, EnumOption
 
 
 class CategoryMetaOut(BaseModel):
     """资源域枚举（Tab/筛选）；具体分类名仍走 GET /categories?domain=。"""
 
     domains: list[EnumOption] = Field(description="agent | prompt | skill | tool")
-    schema_version: str = "1"
+    schema_version: str = META_SCHEMA_VERSION

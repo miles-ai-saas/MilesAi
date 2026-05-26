@@ -35,6 +35,8 @@ from typing import Annotated, Any
 from langchain_core.runnables import RunnableConfig
 from langgraph.graph import END, START, StateGraph
 
+from app.flow_runtime.constants import TEXT_OUTPUT_NODE_TYPES
+from app.integrations.langgraph.constants import RELEVANCE_NONE
 from app.integrations.langgraph.graph_analysis import (
     CONDITION_NODE_TYPE,
     GRADE_BRANCH_HANDLES,
@@ -275,7 +277,7 @@ def _gather_node_inputs(
             node_inputs.setdefault("hits", raw["hits"])
         if th in ("true", "false") and isinstance(raw, dict):
             node_inputs[th] = raw
-        if th in ("good", "poor", "none") and isinstance(raw, dict):
+        if th in GRADE_BRANCH_HANDLES and isinstance(raw, dict):
             node_inputs[th] = raw
     return node_inputs
 
@@ -284,7 +286,7 @@ def _resolve_final_output(fg: FlowGraph, outputs: dict[str, Any]) -> Any:
     """优先 TextOutput 节点值，否则取最后节点输出。"""
     for node in fg.nodes:
         ntype = resolve_node_type(node)
-        if ntype in ("TextOutput", "ChatOutput"):
+        if ntype in TEXT_OUTPUT_NODE_TYPES:
             val = outputs.get(node["id"])
             if isinstance(val, dict) and "output" in val:
                 return val["output"]
@@ -320,10 +322,10 @@ def _make_relevance_grade_router(grade_node_id: str):
     def router(state: dict[str, Any]) -> str:
         raw = (state.get("outputs") or {}).get(grade_node_id, {})
         if isinstance(raw, dict):
-            rel = str(raw.get("relevance", "none")).strip().lower()
+            rel = str(raw.get("relevance", RELEVANCE_NONE)).strip().lower()
             if rel in GRADE_BRANCH_HANDLES:
                 return rel
-        return "none"
+        return RELEVANCE_NONE
 
     return router
 

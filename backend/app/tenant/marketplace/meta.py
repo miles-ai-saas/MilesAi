@@ -5,7 +5,7 @@
 - 约定：docs/guides/hooks.md §9
 """
 
-from app.common.schemas.enum_meta import enum_options, literal_options
+from app.common.schemas.enum_meta import META_SCHEMA_VERSION, enum_options, literal_options
 from app.tenant.marketplace.models import MarketplaceAppStatus
 
 APP_STATUS_LABELS: dict[str, tuple[str, str | None]] = {
@@ -27,5 +27,5 @@ def marketplace_meta_dict() -> dict:
     return {
         "app_statuses": enum_options(MarketplaceAppStatus, APP_STATUS_LABELS),
         "catalog_sorts": literal_options(CATALOG_SORT_OPTIONS),
-        "schema_version": "1",
+        "schema_version": META_SCHEMA_VERSION,
     }

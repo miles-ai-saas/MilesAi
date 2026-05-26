@@ -307,6 +307,33 @@ HTTP 请求体为 **Event v1 信封**（§6.1）；下列字段在 `payload` 对
 - 能力：HTTP 钩子 CRUD、`on_failure`、绑定规则、最近执行记录
 - 枚举展示：进入页面前请求 `GET /hooks/meta`，下拉与列表标签均用后端字典（与 `/models/meta` 同模式）；文案维护在 `app/tenant/hooks/meta.py`
 
+### 9.1 `schema_version`：Hook Event 与 `GET */meta`（勿混用）
+
+平台里有两套独立的 `schema_version`，**数值同为 `"1"` 时不代表可合并演进**：
+
+| 用途 | 常量 / 字段 | 代码位置 | 出现在 | 演进规则 |
+|------|-------------|----------|--------|----------|
+| **Hook HTTP 信封** | `SCHEMA_VERSION` | `tenant/hooks/events.py` | §6.1 请求、`§6.2` 响应 JSON | 变更 envelope 字段、action/modify 语义时递增；`parse_hook_response` 仅接受当前版本 |
+| **枚举字典 API** | `META_SCHEMA_VERSION` | `common/schemas/enum_meta.py` | 各 `GET /{module}/meta` 响应体 | 增删改 `EnumOption` 列表字段时递增；前端可据此失效 meta 缓存 |
+
+```text
+Hook 出站 POST body          GET /hooks/meta 响应
+  schema_version: "1"    ≠     schema_version: "1"
+  (Event v1 契约)              (UI 下拉文案契约)
+```
+
+**与合规 `payload.module` 的关系**：Event `payload.module` 为业务场景字符串（如 `agent_chat`、`flow_run`），真源在 `tenant/compliance/constants.py`，与上述两种 `schema_version` 均无对应关系。合规扫描模块展示见 `GET /compliance/meta` → `scan_modules`。
+
+**后端约定**（详见 `backend/README.md` 模块约定）：
+
+- 持久化枚举真源：`models.Enum` 或域内 `constants.py`
+- 展示文案：`tenant/*/meta.py` 的 `*_meta_dict()`，统一带 `"schema_version": META_SCHEMA_VERSION`
+- 单测：`tests/test_domain_meta.py` 参数化校验各域 meta 均含 `schema_version`
+
+### 9.2 `ModelConfig.extra` 键名
+
+embedding / rerank 的 `invoke_mode` 与 `extra` 字段对照见 **[model-config-extra.md](./model-config-extra.md)**（`EXTRA_INVOKE_MODE` 等在 `common/constants/model_extra.py` 与 `integrations/*/constants.py`）。
+
 **全站 `/meta` 约定**（`app/common/schemas/enum_meta.EnumOption`）：
 
 | 模块 | 路径 | 维护位置 |
@@ -378,3 +405,4 @@ HTTP 请求体为 **Event v1 信封**（§6.1）；下列字段在 `payload` 对
 |------|------|
 | 2026-05-26 | 初版：产品边界、挂载对照表、Event v1 目标契约 |
 | 2026-05-26 | P0/P1：Event v1 执行、block/modify、`hook_execution_logs`、tool 钩子、Flow on_error |
+| 2026-05-26 | §9.1：`schema_version` 双轨说明；§9.2 链至 model-config-extra |

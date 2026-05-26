@@ -12,6 +12,16 @@ class RedisKeys:
         return f"session:{user_id}"
 
     @staticmethod
+    def admin_session(admin_id: UUID | str) -> str:
+        """运营后台 admin_access 会话（AdminAuthService.login）。"""
+        return f"admin:session:{admin_id}"
+
+    @staticmethod
+    def admin_session_scan_pattern() -> str:
+        """SCAN 运营会话键（list_sessions）。"""
+        return "admin:session:*"
+
+    @staticmethod
     def token_blacklist(jti: str) -> str:
         """预留：登出后拉黑 access jti。"""
         return f"token:blacklist:{jti}"

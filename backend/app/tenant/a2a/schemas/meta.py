@@ -2,7 +2,7 @@
 
 from pydantic import BaseModel
 
-from app.common.schemas.enum_meta import EnumOption
+from app.common.schemas.enum_meta import META_SCHEMA_VERSION, EnumOption
 
 
 class A2aMetaOut(BaseModel):
@@ -11,4 +11,4 @@ class A2aMetaOut(BaseModel):
     peer_statuses: list[EnumOption]
     invoke_policies: list[EnumOption]
     peer_role_hints: list[EnumOption]
-    schema_version: str = "1"
+    schema_version: str = META_SCHEMA_VERSION

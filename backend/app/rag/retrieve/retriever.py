@@ -29,11 +29,14 @@ from app.rag.retrieve.keyword import (
     search_chunks_by_keyword,
     search_chunks_by_keyword_sync,
 )
+from app.rag.retrieve.constants import (
+    RETRIEVAL_HYBRID,
+    RETRIEVAL_VECTOR,
+    VALID_RETRIEVAL_MODES,
+)
 from app.rag.retrieve.rerank import apply_rerank_to_hits, compute_rerank_fetch_limit
 
-RETRIEVAL_VECTOR = "vector"
-RETRIEVAL_HYBRID = "hybrid"
-VALID_MODES = frozenset({RETRIEVAL_VECTOR, RETRIEVAL_HYBRID})
+VALID_MODES = VALID_RETRIEVAL_MODES
 
 
 def resolve_retrieval_mode(kb: KnowledgeBase, request_mode: str | None) -> str:

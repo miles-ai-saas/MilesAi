@@ -2,7 +2,7 @@
 
 from pydantic import BaseModel
 
-from app.common.schemas.enum_meta import EnumOption
+from app.common.schemas.enum_meta import META_SCHEMA_VERSION, EnumOption
 
 
 class AuditMetaOut(BaseModel):
@@ -12,4 +12,4 @@ class AuditMetaOut(BaseModel):
     resource_type_filters: list[EnumOption]  # 筛选下拉（首项可为空=全部）
     action_filters: list[EnumOption]
     action_labels: list[EnumOption]  # 未知 action 回退原值
-    schema_version: str = "1"
+    schema_version: str = META_SCHEMA_VERSION

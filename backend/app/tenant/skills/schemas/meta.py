@@ -2,7 +2,7 @@
 
 from pydantic import BaseModel
 
-from app.common.schemas.enum_meta import EnumOption
+from app.common.schemas.enum_meta import META_SCHEMA_VERSION, EnumOption
 
 
 class SkillMetaOut(BaseModel):
@@ -10,4 +10,4 @@ class SkillMetaOut(BaseModel):
 
     source_types: list[EnumOption]
     active_states: list[EnumOption]
-    schema_version: str = "1"
+    schema_version: str = META_SCHEMA_VERSION

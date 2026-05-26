@@ -30,15 +30,16 @@ from httpx_sse import EventSource, aconnect_sse
 
 from app.common.exceptions import BadRequestError
 from app.tenant.mcp.rpc import parse_jsonrpc_result
+from app.tenant.mcp.constants import (
+    MCP_CLIENT_INFO,
+    MCP_PROTOCOL_VERSION,
+    MCP_SESSION_HEADER,
+)
 from app.tenant.mcp.security import validate_mcp_endpoint_url
 
 logger = logging.getLogger(__name__)
 
-# Streamable HTTP 会话头（服务端可在首次 POST 响应中下发）
-MCP_SESSION_HEADER = "mcp-session-id"
-# Legacy SSE 握手使用的协议版本
-MCP_PROTOCOL_VERSION = "2024-11-05"
-CLIENT_INFO = {"name": "milesai", "version": "0.1.0"}
+CLIENT_INFO = MCP_CLIENT_INFO
 
 # 进程内递增的 JSON-RPC id（每次 RPC 独立会话，无需全局唯一到 UUID）
 _rpc_id_counter = 0

@@ -1,5 +1,8 @@
 """各域 /meta 字典。"""
 
+import pytest
+
+from app.common.schemas.enum_meta import META_SCHEMA_VERSION
 from app.tenant.a2a.meta import a2a_meta_dict
 from app.tenant.audit_log.meta import audit_meta_dict
 from app.tenant.categories.meta import categories_meta_dict
@@ -18,11 +21,36 @@ from app.tenant.kb.meta import kb_meta_dict
 from app.tenant.prompts.meta import prompts_meta_dict
 from app.tenant.tools.meta import tools_meta_dict
 
+_ALL_META_DICTS = [
+    a2a_meta_dict,
+    audit_meta_dict,
+    categories_meta_dict,
+    agents_meta_dict,
+    attachments_meta_dict,
+    compliance_meta_dict,
+    marketplace_meta_dict,
+    mcp_meta_dict,
+    monitor_meta_dict,
+    skills_meta_dict,
+    tags_meta_dict,
+    tasks_meta_dict,
+    flow_meta_dict,
+    hook_meta_dict,
+    kb_meta_dict,
+    prompts_meta_dict,
+    tools_meta_dict,
+]
+
+
+@pytest.mark.parametrize("meta_fn", _ALL_META_DICTS, ids=lambda f: f.__name__)
+def test_meta_dict_has_schema_version(meta_fn):
+    assert meta_fn()["schema_version"] == META_SCHEMA_VERSION
+
 
 def test_compliance_meta():
     data = compliance_meta_dict()
-    assert len(data["sensitive_actions"]) == 2
-    assert data["sensitive_actions"][0].value in ("warn", "block")
+    assert {a.value for a in data["sensitive_actions"]} == {"warn", "block"}
+    assert {m.value for m in data["scan_modules"]} == {"agent_chat", "flow_run"}
 
 
 def test_flow_meta():
@@ -33,6 +61,14 @@ def test_flow_meta():
 def test_kb_meta():
     data = kb_meta_dict()
     assert {m.value for m in data["retrieval_modes"]} == {"vector", "hybrid"}
+    assert {s.value for s in data["document_statuses"]} == {
+        "pending",
+        "parsing",
+        "embedding",
+        "ready",
+        "parse_failed",
+        "embed_failed",
+    }
 
 
 def test_tools_meta():
@@ -42,7 +78,6 @@ def test_tools_meta():
 
 def test_hook_meta_still_valid():
     data = hook_meta_dict()
-    assert data["schema_version"] == "1"
     assert len(data["triggers"]) == 7
 
 
@@ -117,7 +152,13 @@ def test_categories_meta():
 
 def test_tags_meta():
     data = tags_meta_dict()
-    assert {e.value for e in data["entity_types"]} == {"agent", "prompt", "skill", "tool"}
+    assert {e.value for e in data["entity_types"]} == {
+        "agent",
+        "prompt",
+        "skill",
+        "tool",
+        "flow",
+    }
 
 
 def test_audit_meta():

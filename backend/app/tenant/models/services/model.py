@@ -150,7 +150,7 @@ class ModelService(BaseService):
                     "向量化模型须在 extra 中配置 embedding_dimension（整数）"
                 )
             from app.integrations.embeddings import known_invoke_modes
-            from app.integrations.embeddings.constants import EXTRA_INVOKE_MODE
+            from app.common.constants.model_extra import EXTRA_INVOKE_MODE
 
             mode = extra.get(EXTRA_INVOKE_MODE)
             if isinstance(mode, str) and mode.strip():
@@ -160,8 +160,8 @@ class ModelService(BaseService):
                     )
         if body.model_type == ModelCapabilityType.RERANK.value:
             extra = body.extra or {}
+            from app.common.constants.model_extra import EXTRA_INVOKE_MODE
             from app.integrations.rerank import known_invoke_modes as rerank_invoke_modes
-            from app.integrations.rerank.constants import EXTRA_INVOKE_MODE
 
             mode = extra.get(EXTRA_INVOKE_MODE)
             if isinstance(mode, str) and mode.strip():

@@ -6,9 +6,8 @@ import json
 from typing import Any
 
 from app.common.exceptions import BadRequestError
+from app.tenant.mcp.constants import MCP_PROTOCOL_VERSION
 from app.tenant.mcp.rpc import parse_jsonrpc_result
-
-MCP_PROTOCOL_VERSION = "2024-11-05"
 
 
 class McpStdioClient:

@@ -24,9 +24,8 @@ from app.integrations.embeddings.model_meta import (
     embedding_dimension_from_model,
     resolve_embedding_api_base,
 )
+from app.integrations.http_constants import HTTP_DEFAULT_TIMEOUT_SEC
 from app.models.model import ModelConfig
-
-DEFAULT_TIMEOUT = 120.0
 
 
 def _parse_embedding_response(payload: dict[str, Any], expected: int) -> list[list[float]]:
@@ -95,7 +94,7 @@ class OpenAICompatibleEmbeddingProvider:
                     url,
                     json=payload,
                     headers=headers,
-                    timeout=DEFAULT_TIMEOUT,
+                    timeout=HTTP_DEFAULT_TIMEOUT_SEC,
                 )
                 response.raise_for_status()
                 batch_vectors = _parse_embedding_response(response.json(), len(batch))

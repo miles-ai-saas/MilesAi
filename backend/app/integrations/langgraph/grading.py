@@ -21,8 +21,9 @@ from app.rag.generate import format_hits_context
 from app.integrations.langgraph.constants import RELEVANCE_GOOD, RELEVANCE_NONE, RELEVANCE_POOR
 from app.models.model import ModelConfig
 
+_GRADE_VALUES = "|".join(re.escape(v) for v in (RELEVANCE_GOOD, RELEVANCE_POOR, RELEVANCE_NONE))
 _GRADE_JSON_RE = re.compile(
-    r'\{[^{}]*"relevance"\s*:\s*"(good|poor|none)"[^{}]*\}',
+    rf'\{{[^{{}}]*"relevance"\s*:\s*"({_GRADE_VALUES})"[^{{}}]*\}}',
     re.IGNORECASE,
 )
 

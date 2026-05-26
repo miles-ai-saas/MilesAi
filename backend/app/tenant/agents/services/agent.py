@@ -33,6 +33,7 @@ from app.tenant.prompts.models import PromptTemplate
 from app.models.agent import Agent, AgentStatus, AgentSubAgentBinding, AgentType
 from app.models.category import CategoryDomain
 from app.tenant.categories.services.category import CategoryService
+from app.tenant.compliance.constants import SCAN_MODULE_AGENT_CHAT
 from app.models.tag import TagEntityType
 from app.tenant.tags.services.tag import TagService
 from app.tenant.agents.repositories.agent import AgentRepository
@@ -442,7 +443,7 @@ class AgentService(BaseService):
         compliance = ComplianceService(self.db, self.ctx)
         hooks = HookRunner(self.db, self.ctx.tenant_id)
         hook_payload = {
-            "module": "agent_chat",
+            "module": SCAN_MODULE_AGENT_CHAT,
             "agent_id": str(agent_id),
             "query": body.query,
         }
@@ -457,13 +458,13 @@ class AgentService(BaseService):
             hook_payload = before_call.payload
             query = str(hook_payload.get("query", body.query))
             chat_body = body.model_copy(update={"query": query}) if query != body.query else body
-            await compliance.check_input(query, module="agent_chat")
+            await compliance.check_input(query, module=SCAN_MODULE_AGENT_CHAT)
 
             if agent.agent_type == AgentType.A2A:
                 from app.tenant.a2a.invoke import run_a2a_host_chat
 
                 response = await run_a2a_host_chat(self, agent, chat_body)
-                await compliance.check_output(response.answer, module="agent_chat")
+                await compliance.check_output(response.answer, module=SCAN_MODULE_AGENT_CHAT)
                 await hooks.run(
                     HookTrigger.AFTER_CALL,
                     HookScope.AGENT,
@@ -480,7 +481,7 @@ class AgentService(BaseService):
                 response = await run_subagent_planned_chat(self, agent, bindings, chat_body)
                 if peer_refs:
                     response = await self._maybe_augment_a2a(agent, chat_body, response)
-                await compliance.check_output(response.answer, module="agent_chat")
+                await compliance.check_output(response.answer, module=SCAN_MODULE_AGENT_CHAT)
                 await hooks.run(
                     HookTrigger.AFTER_CALL,
                     HookScope.AGENT,
@@ -503,7 +504,7 @@ class AgentService(BaseService):
                     agent_id=agent_id,
                     hooks=hooks,
                 )
-                await compliance.check_output(response.answer, module="agent_chat")
+                await compliance.check_output(response.answer, module=SCAN_MODULE_AGENT_CHAT)
                 await hooks.run(
                     HookTrigger.AFTER_CALL,
                     HookScope.AGENT,
@@ -529,7 +530,7 @@ class AgentService(BaseService):
                         result = await get_flow_runtime().run(version.graph_json, ctx)
                         response = ChatResponse(answer=str(result.output), steps=result.steps)
                         response = await self._maybe_augment_a2a(agent, chat_body, response)
-                        await compliance.check_output(response.answer, module="agent_chat")
+                        await compliance.check_output(response.answer, module=SCAN_MODULE_AGENT_CHAT)
                         await hooks.run(
                             HookTrigger.AFTER_CALL,
                             HookScope.AGENT,
@@ -540,7 +541,7 @@ class AgentService(BaseService):
 
             response = await self._rag_chat(agent, chat_body, kb_ids, top_k, agent_id, hooks)
             response = await self._maybe_augment_a2a(agent, chat_body, response)
-            await compliance.check_output(response.answer, module="agent_chat")
+            await compliance.check_output(response.answer, module=SCAN_MODULE_AGENT_CHAT)
             await hooks.run(
                 HookTrigger.AFTER_CALL,
                 HookScope.AGENT,
@@ -596,7 +597,7 @@ class AgentService(BaseService):
                 HookScope.AGENT,
                 agent_id,
                 {
-                    "module": "agent_chat",
+                    "module": SCAN_MODULE_AGENT_CHAT,
                     "agent_id": str(agent_id),
                     "mode": "direct",
                     "query": body.query,
@@ -617,7 +618,7 @@ class AgentService(BaseService):
                 HookTrigger.AFTER_REASONING,
                 HookScope.AGENT,
                 agent_id,
-                {"module": "agent_chat", "agent_id": str(agent_id), "text": answer[:500]},
+                {"module": SCAN_MODULE_AGENT_CHAT, "agent_id": str(agent_id), "text": answer[:500]},
             )
             return ChatResponse(answer=answer, sources=[])
 
@@ -682,7 +683,7 @@ class AgentService(BaseService):
                 HookScope.AGENT,
                 agent_id,
                 {
-                    "module": "agent_chat",
+                    "module": SCAN_MODULE_AGENT_CHAT,
                     "agent_id": str(agent_id),
                     "mode": "rag",
                     "query": body.query,
@@ -721,7 +722,7 @@ class AgentService(BaseService):
                 HookTrigger.AFTER_REASONING,
                 HookScope.AGENT,
                 agent_id,
-                {"module": "agent_chat", "agent_id": str(agent_id), "text": answer[:500]},
+                {"module": SCAN_MODULE_AGENT_CHAT, "agent_id": str(agent_id), "text": answer[:500]},
             )
         else:
             all_hits = await retrieve_hits(

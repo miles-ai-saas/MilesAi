@@ -6,7 +6,7 @@
 - 约定：docs/guides/hooks.md §9
 """
 
-from app.common.schemas.enum_meta import enum_options
+from app.common.schemas.enum_meta import META_SCHEMA_VERSION, enum_options
 from app.models.category import CategoryDomain
 
 # value 与 CategoryDomain 存库一致
@@ -22,5 +22,5 @@ def categories_meta_dict() -> dict:
     """构建 meta 响应 dict，供 *MetaOut.model_validate 与单测使用。"""
     return {
         "domains": enum_options(CategoryDomain, DOMAIN_LABELS),
-        "schema_version": "1",
+        "schema_version": META_SCHEMA_VERSION,
     }

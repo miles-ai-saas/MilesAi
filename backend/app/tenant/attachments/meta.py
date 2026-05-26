@@ -5,7 +5,7 @@
 - 约定：docs/guides/hooks.md §9
 """
 
-from app.common.schemas.enum_meta import literal_options
+from app.common.schemas.enum_meta import META_SCHEMA_VERSION, literal_options
 
 PURPOSE_FILTER_OPTIONS: list[tuple[str, str, str | None]] = [
     ("", "全部用途", None),
@@ -25,5 +25,5 @@ def attachments_meta_dict() -> dict:
     return {
         "purposes": literal_options(PURPOSE_OPTIONS),
         "purpose_filters": literal_options(PURPOSE_FILTER_OPTIONS),
-        "schema_version": "1",
+        "schema_version": META_SCHEMA_VERSION,
     }
