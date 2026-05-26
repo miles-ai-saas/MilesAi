@@ -28,7 +28,8 @@ docs/
     ├── model-providers.md
     ├── knowledge-base.md
     ├── mcp.md
-    └── skill-packages.md
+    ├── skill-packages.md
+    └── compliance-word-libraries.md
 ```
 
 ---
@@ -75,6 +76,7 @@ docs/
 | [mcp.md](./guides/mcp.md) | **MCP 服务**：注册、同步、HTTP/SSE invoke、连接安全 |
 | [tools.md](./guides/tools.md) | **工具**：内置 / HTTP / 变换脚本、API、与 MCP 关系（现网） |
 | [skill-packages.md](./guides/skill-packages.md) | **技能包**：SKILL.md、导入（本地/ZIP/Git）、分类、智能体注入 |
+| [compliance-word-libraries.md](./guides/compliance-word-libraries.md) | **合规敏感词库**：多库、扫描绑定、词条 M:N、API 与迁移 |
 
 运维 Compose 与 **Worker / RAG 可选依赖** 见 [../docker/README.md](../docker/README.md)；后端 [../backend/README.md](../backend/README.md)。
 

@@ -390,7 +390,7 @@ ingest / search / delete
 | a2a | `GET/POST /a2a/peers`, `POST /a2a/peers/probe`, `POST /a2a/peers/{id}/sync-card` |
 | kb | CRUD（创建含 `embedding_profile`）+ `GET /kb/embedding-profiles` + `POST /kb/{id}/documents/upload`, `POST /kb/{id}/search` |
 | flows | CRUD + `PUT /flows/{id}/graph`, `POST /flows/{id}/publish`, `/run`, `/compile` |
-| compliance | `/compliance/words`, `POST /compliance/scan`, `GET /compliance/logs` |
+| compliance | `/compliance/libraries`, `/compliance/bindings`, `POST /compliance/scan`, `GET /compliance/logs`（见 [compliance-word-libraries.md](../guides/compliance-word-libraries.md)） |
 | tools | `GET /tools/catalog`, `POST /tools/{name}/invoke` |
 | mcp | CRUD + `POST /mcp/{id}/sync`, `POST /mcp/{id}/tools/{name}/invoke` |
 | marketplace | `POST /marketplace/apps/from-resources`, `/publish`, `/approve`, `/reject`, `/install`, `/apps/{id}/ratings` |

@@ -9,7 +9,13 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.tenant.audit_log.models import TenantAuditLog
-from app.tenant.compliance.models import InterceptLog, SensitiveWord
+from app.tenant.compliance.models import (
+    ComplianceLibraryBinding,
+    InterceptLog,
+    LibraryWordBinding,
+    SensitiveWordEntry,
+    WordLibrary,
+)
 from app.tenant.hooks.models import HookBinding, HookDefinition
 from app.tenant.marketplace.models import AppInstall
 from app.tenant.mcp.models import McpRunnerSession, McpService
@@ -90,7 +96,14 @@ async def purge_tenant_data(db: AsyncSession, tenant_id: UUID) -> None:
     await db.execute(delete(PromptTemplate).where(PromptTemplate.tenant_id == tenant_id))
     await db.execute(delete(SkillPackage).where(SkillPackage.tenant_id == tenant_id))
     remove_tenant_skills(tenant_id)
-    await db.execute(delete(SensitiveWord).where(SensitiveWord.tenant_id == tenant_id))
+    await db.execute(
+        delete(ComplianceLibraryBinding).where(ComplianceLibraryBinding.tenant_id == tenant_id)
+    )
+    await db.execute(delete(LibraryWordBinding).where(LibraryWordBinding.library_id.in_(
+        select(WordLibrary.id).where(WordLibrary.tenant_id == tenant_id)
+    )))
+    await db.execute(delete(SensitiveWordEntry).where(SensitiveWordEntry.tenant_id == tenant_id))
+    await db.execute(delete(WordLibrary).where(WordLibrary.tenant_id == tenant_id))
     await db.execute(delete(InterceptLog).where(InterceptLog.tenant_id == tenant_id))
     await db.execute(delete(ToolInvocationLog).where(ToolInvocationLog.tenant_id == tenant_id))
     await db.execute(delete(Tool).where(Tool.tenant_id == tenant_id))

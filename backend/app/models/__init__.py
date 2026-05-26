@@ -7,7 +7,14 @@
 from app.models.category import CategoryDomain, SysCategory
 from app.models.agent import Agent, AgentStatus, AgentSubAgentBinding, agent_kb_bindings
 from app.models.agent_schedule import AgentSchedule
-from app.tenant.compliance.models import InterceptLog, SensitiveAction, SensitiveWord
+from app.tenant.compliance.models import (
+    ComplianceLibraryBinding,
+    InterceptLog,
+    LibraryWordBinding,
+    SensitiveAction,
+    SensitiveWordEntry,
+    WordLibrary,
+)
 from app.tenant.hooks.models import (
     HookBinding,
     HookDefinition,
@@ -66,7 +73,10 @@ __all__ = [
     "FlowVersion",
     "CeleryTaskRecord",
     "TaskStatus",
-    "SensitiveWord",
+    "WordLibrary",
+    "SensitiveWordEntry",
+    "LibraryWordBinding",
+    "ComplianceLibraryBinding",
     "SensitiveAction",
     "HookDefinition",
     "HookBinding",

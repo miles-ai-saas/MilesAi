@@ -1,16 +1,21 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { ComplianceLibraryDetail } from "@/components/compliance/ComplianceLibraryDetail";
+import { ComplianceScanBindingsPanel } from "@/components/compliance/ComplianceScanBindingsPanel";
+import { WordLibraryDialog } from "@/components/compliance/WordLibraryDialog";
 import { api } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth-store";
 import { usePagedList } from "@/hooks/use-paged-list";
+import { useConfirmAction } from "@/hooks/use-confirm-action";
 import { ResourceListFooter } from "@/components/resource/ResourceListFooter";
 import { AddResourceCard } from "@/components/resource/AddResourceCard";
-import { ResourceDialog } from "@/components/resource/ResourceDialog";
-import { ResourceItemCard } from "@/components/resource/ResourceItemCard";
+import { CardActions } from "@/components/resource/CardActions";
 import { ResourceListLayout } from "@/components/resource/ResourceListLayout";
+import { ResourceItemCard } from "@/components/resource/ResourceItemCard";
 import { filterBySearch } from "@/lib/filter-search";
-import type { InterceptLog, SensitiveWord } from "@/lib/types";
+import type { InterceptLog, WordLibrary } from "@/lib/types";
 
 type Tab = "words" | "logs" | "test";
 
@@ -21,25 +26,24 @@ const MAIN_TABS: { key: Tab; label: string }[] = [
 ];
 
 const PAGE_DESC =
-  "敏感词在智能体对话等环节自动检测；命中拦截或警告规则会写入审计日志，可在本页维护词库与试检。";
-
-function StatChip({ label, value, hint }: { label: string; value: string; hint?: string }) {
-  return (
-    <div className="rounded-xl border border-line bg-surface px-4 py-3 shadow-card">
-      <p className="text-xs text-ink-muted">{label}</p>
-      <p className="mt-0.5 text-2xl font-bold tabular-nums text-brand">{value}</p>
-      {hint ? <p className="mt-1 text-xs text-ink-faint">{hint}</p> : null}
-    </div>
-  );
-}
+  "按词库管理敏感词条；须在「参与扫描的词库」中勾选后，对话等环节才会进行检测。";
 
 function ScanStatusBadge({
   blocked,
   warned,
+  scanningEnabled,
 }: {
   blocked: boolean;
   warned: boolean;
+  scanningEnabled: boolean;
 }) {
+  if (!scanningEnabled) {
+    return (
+      <span className="inline-flex items-center rounded-full bg-surface-muted px-2.5 py-0.5 text-xs font-medium text-ink-muted ring-1 ring-line">
+        扫描未启用
+      </span>
+    );
+  }
   if (blocked) {
     return (
       <span className="inline-flex items-center rounded-full bg-red-50 px-2.5 py-0.5 text-xs font-medium text-red-700 ring-1 ring-red-200">
@@ -61,35 +65,63 @@ function ScanStatusBadge({
   );
 }
 
-export default function CompliancePage() {
+function CompliancePageContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const libraryId = searchParams.get("library");
   const { ready } = useRequireAuth();
   const [tab, setTab] = useState<Tab>("words");
   const [search, setSearch] = useState("");
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [batchOpen, setBatchOpen] = useState(false);
-  const [newWord, setNewWord] = useState("");
-  const [category, setCategory] = useState("");
-  const [action, setAction] = useState<"warn" | "block">("block");
-  const [batchText, setBatchText] = useState("");
+  const [libDialogOpen, setLibDialogOpen] = useState(false);
+  const [editingLib, setEditingLib] = useState<WordLibrary | null>(null);
   const [testText, setTestText] = useState("");
   const [scanBusy, setScanBusy] = useState(false);
   const [scanResult, setScanResult] = useState<{
     blocked: boolean;
     warned: boolean;
+    scanning_enabled: boolean;
     matches: { word: string; action: string }[];
   } | null>(null);
 
-  const words = usePagedList(useCallback((p, s) => api.listSensitiveWords(p, s), []), {
-    enabled: ready && tab === "words",
+  const libraries = usePagedList(useCallback((p, s) => api.listWordLibraries(p, s), []), {
+    enabled: ready && tab === "words" && !libraryId,
   });
   const logs = usePagedList(useCallback((p, s) => api.listInterceptLogs(p, s), []), {
     enabled: ready && tab === "logs",
   });
+  const { requestConfirm, confirmDialog } = useConfirmAction();
 
-  const filteredWords = useMemo(
-    () => filterBySearch(words.items, search, (w) => `${w.word} ${w.category ?? ""}`),
-    [words.items, search],
+  const filteredLibs = useMemo(
+    () => filterBySearch(libraries.items, search, (l) => `${l.name} ${l.description ?? ""}`),
+    [libraries.items, search],
   );
+
+  const [fetchedLibrary, setFetchedLibrary] = useState<WordLibrary | null>(null);
+
+  useEffect(() => {
+    if (!libraryId || !ready) {
+      setFetchedLibrary(null);
+      return;
+    }
+    const inList = libraries.items.find((l) => l.id === libraryId);
+    if (inList) {
+      setFetchedLibrary(inList);
+      return;
+    }
+    void api
+      .getWordLibrary(libraryId)
+      .then(setFetchedLibrary)
+      .catch(() => {
+        const params = new URLSearchParams(searchParams.toString());
+        params.delete("library");
+        router.push(`/workbench/compliance?${params.toString()}`);
+      });
+  }, [libraryId, ready, libraries.items, router, searchParams]);
+
+  const activeLibrary = useMemo(() => {
+    if (!libraryId) return null;
+    return libraries.items.find((l) => l.id === libraryId) ?? fetchedLibrary;
+  }, [libraries.items, libraryId, fetchedLibrary]);
 
   const filteredLogs = useMemo(
     () =>
@@ -101,40 +133,36 @@ export default function CompliancePage() {
     [logs.items, search],
   );
 
-  const wordStats = useMemo(() => {
-    const active = words.items.filter((w) => w.is_active).length;
-    const block = words.items.filter((w) => w.action === "block").length;
-    const warn = words.items.filter((w) => w.action === "warn").length;
-    return { active, block, warn };
-  }, [words.items]);
-
-  const onBatchImport = async () => {
-    const lines = batchText
-      .split("\n")
-      .map((l) => l.trim())
-      .filter(Boolean);
-    if (!lines.length) return;
-    const batch = lines.map((line) => {
-      const [word, act, cat] = line.split(",").map((s) => s.trim());
-      return {
-        word,
-        action: (act === "warn" ? "warn" : "block") as "warn" | "block",
-        category: cat || undefined,
-      };
-    });
-    await api.batchCreateSensitiveWords(batch);
-    setBatchText("");
-    setBatchOpen(false);
-    await words.reload();
+  const openLibrary = (id: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("library", id);
+    router.push(`/workbench/compliance?${params.toString()}`);
   };
 
-  const onCreate = async () => {
-    if (!newWord.trim()) return;
-    await api.createSensitiveWord(newWord.trim(), action, category.trim() || undefined);
-    setNewWord("");
-    setCategory("");
-    setDialogOpen(false);
-    await words.reload();
+  const closeLibrary = () => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("library");
+    router.push(`/workbench/compliance?${params.toString()}`);
+  };
+
+  const reloadLibraries = () => void libraries.reload();
+
+  const onDeleteLibrary = (lib: WordLibrary) => {
+    requestConfirm({
+      title: "删除词库",
+      message: (
+        <>
+          确定删除词库 <span className="font-medium">{lib.name}</span>？库内词条关联将一并移除。
+        </>
+      ),
+      destructive: true,
+      confirmLabel: "确认删除",
+      onConfirm: async () => {
+        await api.deleteWordLibrary(lib.id);
+        if (libraryId === lib.id) closeLibrary();
+        await libraries.reload();
+      },
+    });
   };
 
   const onScan = async () => {
@@ -146,83 +174,6 @@ export default function CompliancePage() {
       setScanBusy(false);
     }
   };
-
-  const addWordDialog = (
-    <ResourceDialog
-      open={dialogOpen}
-      title="添加敏感词"
-      onClose={() => setDialogOpen(false)}
-      footer={
-        <>
-          <button type="button" className="btn-ghost" onClick={() => setDialogOpen(false)}>
-            取消
-          </button>
-          <button type="button" className="btn-primary" onClick={onCreate}>
-            确定
-          </button>
-        </>
-      }
-    >
-      <label className="block space-y-1">
-        <span className="text-xs text-ink-muted">敏感词</span>
-        <input
-          className="input-field w-full"
-          placeholder="例如：违禁品"
-          value={newWord}
-          onChange={(e) => setNewWord(e.target.value)}
-        />
-      </label>
-      <label className="block space-y-1">
-        <span className="text-xs text-ink-muted">分类（可选）</span>
-        <input
-          className="input-field w-full"
-          placeholder="例如：安全"
-          value={category}
-          onChange={(e) => setCategory(e.target.value)}
-        />
-      </label>
-      <label className="block space-y-1">
-        <span className="text-xs text-ink-muted">处置方式</span>
-        <select
-          className="input-field w-full"
-          value={action}
-          onChange={(e) => setAction(e.target.value as "warn" | "block")}
-        >
-          <option value="warn">警告（记录日志）</option>
-          <option value="block">拦截（拒绝请求）</option>
-        </select>
-      </label>
-    </ResourceDialog>
-  );
-
-  const batchDialog = (
-    <ResourceDialog
-      open={batchOpen}
-      title="批量导入敏感词"
-      onClose={() => setBatchOpen(false)}
-      footer={
-        <>
-          <button type="button" className="btn-ghost" onClick={() => setBatchOpen(false)}>
-            取消
-          </button>
-          <button type="button" className="btn-primary" onClick={onBatchImport}>
-            导入
-          </button>
-        </>
-      }
-    >
-      <p className="text-xs leading-relaxed text-ink-muted">
-        每行一条，格式：<span className="font-mono text-ink">词语,block,分类</span> 或{" "}
-        <span className="font-mono text-ink">词语,warn</span>
-      </p>
-      <textarea
-        className="input-field min-h-[160px] w-full font-mono text-xs"
-        placeholder={"违禁品,block,安全\n内部资料,warn"}
-        value={batchText}
-        onChange={(e) => setBatchText(e.target.value)}
-      />
-    </ResourceDialog>
-  );
 
   if (tab === "logs") {
     return (
@@ -297,71 +248,106 @@ export default function CompliancePage() {
 
   if (tab === "test") {
     return (
-      <>
-        <ResourceListLayout
-          title="合规与安全"
-          description={PAGE_DESC}
-          search=""
-          onSearchChange={() => {}}
-          showSearch={false}
-          tabs={MAIN_TABS}
-          activeTab={tab}
-          onTabChange={(k) => setTab(k as Tab)}
-        >
-          <div className="col-span-full mx-auto w-full max-w-2xl">
-            <section className="rounded-xl border border-line bg-surface p-6 shadow-panel">
-              <h2 className="text-base font-semibold text-ink">敏感词在线检测</h2>
-              <p className="mt-1 text-sm text-ink-muted">
-                模拟内容审核，不会阻断当前页面；命中 block 规则会写入拦截日志。
-              </p>
-              <textarea
-                className="input-field mt-4 min-h-[140px] w-full resize-y"
-                placeholder="粘贴或输入待检测文本…"
-                value={testText}
-                onChange={(e) => setTestText(e.target.value)}
-              />
-              <div className="mt-4 flex flex-wrap items-center gap-3">
-                <button
-                  type="button"
-                  className="btn-primary"
-                  disabled={scanBusy || !testText.trim()}
-                  onClick={onScan}
-                >
-                  {scanBusy ? "检测中…" : "开始检测"}
-                </button>
-                {scanResult && (
-                  <ScanStatusBadge blocked={scanResult.blocked} warned={scanResult.warned} />
+      <ResourceListLayout
+        title="合规与安全"
+        description={PAGE_DESC}
+        search=""
+        onSearchChange={() => {}}
+        showSearch={false}
+        tabs={MAIN_TABS}
+        activeTab={tab}
+        onTabChange={(k) => setTab(k as Tab)}
+      >
+        <div className="col-span-full mx-auto w-full max-w-2xl">
+          <section className="rounded-xl border border-line bg-surface p-6 shadow-panel">
+            <h2 className="text-base font-semibold text-ink">敏感词在线检测</h2>
+            <p className="mt-1 text-sm text-ink-muted">
+              使用当前「参与扫描的词库」试跑；未绑定词库时不会命中任何规则。
+            </p>
+            <textarea
+              className="input-field mt-4 min-h-[140px] w-full resize-y"
+              placeholder="粘贴或输入待检测文本…"
+              value={testText}
+              onChange={(e) => setTestText(e.target.value)}
+            />
+            <div className="mt-4 flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                className="btn-primary"
+                disabled={scanBusy || !testText.trim()}
+                onClick={() => void onScan()}
+              >
+                {scanBusy ? "检测中…" : "开始检测"}
+              </button>
+              {scanResult && (
+                <ScanStatusBadge
+                  blocked={scanResult.blocked}
+                  warned={scanResult.warned}
+                  scanningEnabled={scanResult.scanning_enabled}
+                />
+              )}
+            </div>
+            {scanResult && (
+              <div className="mt-5 rounded-lg border border-line-soft bg-surface-muted p-4">
+                {!scanResult.scanning_enabled ? (
+                  <p className="text-sm text-ink-muted">
+                    未配置参与扫描的词库，本次检测跳过。
+                  </p>
+                ) : scanResult.matches.length > 0 ? (
+                  <ul className="flex flex-wrap gap-2">
+                    {scanResult.matches.map((m, i) => (
+                      <li
+                        key={`${m.word}-${i}`}
+                        className={`rounded-lg px-2.5 py-1 text-xs font-medium ${
+                          m.action === "block"
+                            ? "bg-red-50 text-red-700 ring-1 ring-red-100"
+                            : "bg-amber-50 text-amber-800 ring-1 ring-amber-100"
+                        }`}
+                      >
+                        {m.word}
+                        <span className="ml-1 opacity-70">
+                          · {m.action === "block" ? "拦截" : "警告"}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-sm text-ink-muted">未命中任何敏感词规则。</p>
                 )}
               </div>
-              {scanResult && (
-                <div className="mt-5 rounded-lg border border-line-soft bg-surface-muted p-4">
-                  {scanResult.matches.length > 0 ? (
-                    <ul className="flex flex-wrap gap-2">
-                      {scanResult.matches.map((m, i) => (
-                        <li
-                          key={`${m.word}-${i}`}
-                          className={`rounded-lg px-2.5 py-1 text-xs font-medium ${
-                            m.action === "block"
-                              ? "bg-red-50 text-red-700 ring-1 ring-red-100"
-                              : "bg-amber-50 text-amber-800 ring-1 ring-amber-100"
-                          }`}
-                        >
-                          {m.word}
-                          <span className="ml-1 opacity-70">
-                            · {m.action === "block" ? "拦截" : "警告"}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p className="text-sm text-ink-muted">未命中任何敏感词规则。</p>
-                  )}
-                </div>
-              )}
-            </section>
-          </div>
-        </ResourceListLayout>
-      </>
+            )}
+          </section>
+        </div>
+      </ResourceListLayout>
+    );
+  }
+
+  if (libraryId && !activeLibrary) {
+    return (
+      <div className="flex min-h-[40vh] items-center justify-center text-sm text-ink-muted">
+        加载词库…
+      </div>
+    );
+  }
+
+  if (libraryId && activeLibrary) {
+    return (
+      <ResourceListLayout
+        title="合规与安全"
+        description={PAGE_DESC}
+        search=""
+        onSearchChange={() => {}}
+        showSearch={false}
+        tabs={MAIN_TABS}
+        activeTab={tab}
+        onTabChange={(k) => setTab(k as Tab)}
+      >
+        <ComplianceLibraryDetail
+          library={activeLibrary}
+          onBack={closeLibrary}
+          onLibraryChange={reloadLibraries}
+        />
+      </ResourceListLayout>
     );
   }
 
@@ -370,81 +356,94 @@ export default function CompliancePage() {
       <ResourceListLayout
         title="合规与安全"
         description={PAGE_DESC}
-        searchPlaceholder="搜索敏感词或分类"
+        searchPlaceholder="搜索词库名称"
         search={search}
         onSearchChange={setSearch}
         tabs={MAIN_TABS}
         activeTab={tab}
-        onTabChange={(k) => setTab(k as Tab)}
-        loading={words.loading}
+        onTabChange={(k) => {
+          setTab(k as Tab);
+          closeLibrary();
+        }}
+        loading={libraries.loading && !libraryId}
         headerAction={
-          <button type="button" className="btn-ghost shrink-0" onClick={() => setBatchOpen(true)}>
-            批量导入
+          <button
+            type="button"
+            className="btn-sm-primary"
+            onClick={() => {
+              setEditingLib(null);
+              setLibDialogOpen(true);
+            }}
+          >
+            新建词库
           </button>
         }
         footer={
-          !words.loading ? (
+          !libraries.loading && !libraryId ? (
             <ResourceListFooter
-              page={words.page}
-              size={words.size}
-              total={words.total}
-              onPageChange={words.setPage}
+              page={libraries.page}
+              size={libraries.size}
+              total={libraries.total}
+              onPageChange={libraries.setPage}
             />
           ) : null
         }
       >
-        <div className="col-span-full grid gap-3 sm:grid-cols-3">
-          <StatChip label="词库总数" value={String(words.total)} hint="当前租户已配置" />
-          <StatChip
-            label="本页启用"
-            value={String(wordStats.active)}
-            hint={`拦截 ${wordStats.block} · 警告 ${wordStats.warn}`}
-          />
-          <StatChip label="本页展示" value={String(filteredWords.length)} hint="受搜索筛选影响" />
-        </div>
+        <ComplianceScanBindingsPanel onSaved={reloadLibraries} />
         <AddResourceCard
-          label="添加敏感词"
-          hint="配置规则后自动应用于对话与内容输入"
-          onClick={() => setDialogOpen(true)}
+          label="新建词库"
+          hint="创建后可添加词条并勾选参与扫描"
+          onClick={() => {
+            setEditingLib(null);
+            setLibDialogOpen(true);
+          }}
         />
-        {filteredWords.map((w: SensitiveWord) => (
+        {filteredLibs.map((lib) => (
           <ResourceItemCard
-            key={w.id}
-            title={w.word}
-            description={w.category ? `分类：${w.category}` : "用于对话与内容输入检测"}
-            badge={w.action === "block" ? "拦截" : "警告"}
-            meta={<span>{w.is_active ? "已启用" : "已停用"}</span>}
+            key={lib.id}
+            title={lib.name}
+            description={lib.description ?? "点击管理库内敏感词条"}
+            badge={lib.is_active ? "启用" : "停用"}
+            muted={!lib.is_active}
+            onClick={() => openLibrary(lib.id)}
+            meta={
+              <span className="tabular-nums text-ink-muted">{lib.word_count} 条词条</span>
+            }
             actions={
-              <span className="flex gap-3">
-                <button
-                  type="button"
-                  className="text-xs text-brand hover:underline"
-                  onClick={async (e) => {
-                    e.stopPropagation();
-                    await api.updateSensitiveWord(w.id, { is_active: !w.is_active });
-                    await words.reload();
-                  }}
-                >
-                  {w.is_active ? "停用" : "启用"}
-                </button>
-                <button
-                  type="button"
-                  className="text-xs text-red-600 hover:underline"
-                  onClick={async (e) => {
-                    e.stopPropagation();
-                    await api.deleteSensitiveWord(w.id);
-                    await words.reload();
-                  }}
-                >
-                  删除
-                </button>
-              </span>
+              <CardActions
+                onView={() => openLibrary(lib.id)}
+                onEdit={() => {
+                  setEditingLib(lib);
+                  setLibDialogOpen(true);
+                }}
+                onDelete={() => onDeleteLibrary(lib)}
+              />
             }
           />
         ))}
       </ResourceListLayout>
-      {addWordDialog}
-      {batchDialog}
+
+      <WordLibraryDialog
+        open={libDialogOpen}
+        library={editingLib}
+        onClose={() => setLibDialogOpen(false)}
+        onSaved={reloadLibraries}
+      />
+      {confirmDialog}
     </>
+  );
+}
+
+export default function CompliancePage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-[40vh] items-center justify-center text-sm text-ink-muted">
+          加载合规页面…
+        </div>
+      }
+    >
+      <CompliancePageContent />
+    </Suspense>
   );
 }

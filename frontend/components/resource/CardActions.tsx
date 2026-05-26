@@ -9,6 +9,7 @@ export type CardActionItem = {
 
 type Props = {
   actions?: CardActionItem[];
+  onView?: () => void;
   onEdit?: () => void;
   onDelete?: () => void;
   deleteLabel?: string;
@@ -20,7 +21,13 @@ const variantClass: Record<NonNullable<CardActionItem["variant"]>, string> = {
   danger: "text-red-600 hover:underline",
 };
 
-export function CardActions({ actions = [], onEdit, onDelete, deleteLabel = "删除" }: Props) {
+export function CardActions({
+  actions = [],
+  onView,
+  onEdit,
+  onDelete,
+  deleteLabel = "删除",
+}: Props) {
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
       {actions.map((a) => (
@@ -38,6 +45,19 @@ export function CardActions({ actions = [], onEdit, onDelete, deleteLabel = "删
           {a.label}
         </button>
       ))}
+      {onView && (
+        <button
+          type="button"
+          className="text-xs text-brand hover:underline"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onView();
+          }}
+        >
+          查看
+        </button>
+      )}
       {onEdit && (
         <button
           type="button"

@@ -1,7 +1,10 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
-import { PromptTemplateDialog } from "@/components/prompt/PromptTemplateDialog";
+import {
+  PromptTemplateDialog,
+  type PromptTemplateDialogMode,
+} from "@/components/prompt/PromptTemplateDialog";
 import { api } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth-store";
 import { usePagedList } from "@/hooks/use-paged-list";
@@ -28,6 +31,7 @@ export default function PromptsPage() {
   const { ready } = useRequireAuth();
   const [search, setSearch] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogMode, setDialogMode] = useState<PromptTemplateDialogMode>("create");
   const [editing, setEditing] = useState<PromptTemplate | null>(null);
   const [tagFilterIds, setTagFilterIds] = useState<string[]>([]);
   const [tagManageOpen, setTagManageOpen] = useState(false);
@@ -49,11 +53,19 @@ export default function PromptsPage() {
 
   const openCreate = () => {
     setEditing(null);
+    setDialogMode("create");
+    setDialogOpen(true);
+  };
+
+  const openView = (t: PromptTemplate) => {
+    setEditing(t);
+    setDialogMode("view");
     setDialogOpen(true);
   };
 
   const openEdit = (t: PromptTemplate) => {
     setEditing(t);
+    setDialogMode("edit");
     setDialogOpen(true);
   };
 
@@ -124,16 +136,30 @@ export default function PromptsPage() {
                 <TagChips tags={t.tags} />
               </div>
             }
-            actions={<CardActions onEdit={() => openEdit(t)} onDelete={() => onDelete(t)} />}
+            actions={
+              <CardActions
+                onView={() => openView(t)}
+                onEdit={() => openEdit(t)}
+                onDelete={() => onDelete(t)}
+              />
+            }
           />
         ))}
       </ResourceListLayout>
 
       <PromptTemplateDialog
         open={dialogOpen}
+        mode={dialogMode}
         template={editing}
         onClose={() => setDialogOpen(false)}
         onSaved={() => list.reload()}
+        onRequestEdit={
+          editing
+            ? () => {
+                setDialogMode("edit");
+              }
+            : undefined
+        }
       />
       <TagManageDialog open={tagManageOpen} onClose={() => setTagManageOpen(false)} />
       {confirmDialog}

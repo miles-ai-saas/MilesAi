@@ -11,6 +11,7 @@ from scripts.seed.admin_ops import seed_admin_ops
 from scripts.seed.categories import seed_categories, seed_platform_categories
 from scripts.seed.compliance import seed_compliance
 from scripts.seed.marketplace import seed_marketplace
+from scripts.seed.prompts import seed_prompts
 from scripts.seed.model_catalog import seed_model_catalog
 from scripts.seed.tenant import seed_tenant
 
@@ -21,6 +22,7 @@ SEED_TARGETS: dict[str, SeedFn] = {
     "categories": seed_categories,
     "categories-platform": seed_platform_categories,
     "compliance": seed_compliance,
+    "prompts": seed_prompts,
     "marketplace": seed_marketplace,
     "admin": seed_admin_ops,
     "model-catalog": seed_model_catalog,
