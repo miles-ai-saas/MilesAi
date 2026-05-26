@@ -171,7 +171,7 @@ python cli.py worker             # Celery worker
 python cli.py migrate            # alembic upgrade head
 python cli.py init-db            # 迁移 + 全量种子
 python cli.py init-db --seed-only
-python cli.py seed tenant        # 单域种子：tenant | compliance | marketplace | admin | model-catalog | all
+python cli.py seed tenant        # 单域种子：tenant | tools | skills | hooks | compliance | … | all
 python cli.py verify-db          # 检查核心表
 ```
 

@@ -6,6 +6,9 @@ from scripts.seed.compliance import seed_compliance
 from scripts.seed.marketplace import seed_marketplace
 from scripts.seed.prompts import seed_prompts
 from scripts.seed.model_catalog import seed_model_catalog
+from scripts.seed.hooks import seed_hooks
+from scripts.seed.skills import seed_skills
+from scripts.seed.tools import seed_tools
 from scripts.seed.tenant import seed_tenant
 
 __all__ = [
@@ -16,6 +19,9 @@ __all__ = [
     "seed_marketplace",
     "seed_admin_ops",
     "seed_model_catalog",
+    "seed_tools",
+    "seed_skills",
+    "seed_hooks",
     "seed_all",
 ]
 
@@ -26,6 +32,9 @@ async def seed_all(session) -> None:
     await seed_categories(session)
     await seed_compliance(session)
     await seed_prompts(session)
+    await seed_tools(session)
+    await seed_skills(session)
+    await seed_hooks(session)
     await seed_marketplace(session)
     await seed_admin_ops(session)
     await seed_model_catalog(session)
