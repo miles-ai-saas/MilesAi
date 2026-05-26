@@ -2,17 +2,22 @@
 
 /** 异步任务列表（链路 §3 + §4 `useTaskMeta`）。 */
 
-import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { api } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth-store";
 import { usePagedList } from "@/hooks/use-paged-list";
 import { ResourceListFooter } from "@/components/resource/ResourceListFooter";
 import { ResourceListLayout } from "@/components/resource/ResourceListLayout";
+import {
+  canCancelTask,
+  canRetryTask,
+  TaskDetailDialog,
+} from "@/components/task/TaskDetailDialog";
 import { filterBySearch } from "@/lib/filter-search";
 import { taskStatusBadgeClass, taskStatusFilterOptions, taskStatusLabel } from "@/lib/task-labels";
 import { useTaskMeta } from "@/hooks/use-task-meta";
-import type { TaskRecord } from "@/lib/types";
+import type { TaskRecord, TaskMeta } from "@/lib/types";
 
 const PAGE_DESC =
   "查看文档入库等异步任务执行状态；支持按状态筛选、搜索、取消与重试（列表每 8 秒自动刷新）。";
@@ -56,24 +61,16 @@ function TaskStatusBadge({
   );
 }
 
-function canCancel(task: TaskRecord) {
-  return ["pending", "running"].includes(task.status);
-}
-
-function canRetry(task: TaskRecord) {
-  return (
-    ["failed", "cancelled", "success"].includes(task.status) && task.resource_type === "document"
-  );
-}
-
 function TaskRow({
   task,
   taskMeta,
+  onViewDetail,
   onCancel,
   onRetry,
 }: {
   task: TaskRecord;
-  taskMeta: import("@/lib/types").TaskMeta | null;
+  taskMeta: TaskMeta | null;
+  onViewDetail: () => void;
   onCancel: () => void;
   onRetry: () => void;
 }) {
@@ -103,18 +100,15 @@ function TaskRow({
           )}
         </div>
         <div className="flex shrink-0 flex-wrap items-center gap-3 sm:flex-col sm:items-end">
-          <Link
-            href={`/workbench/tasks/${task.id}`}
-            className="btn-secondary px-3 py-1.5 text-xs"
-          >
+          <button type="button" className="btn-secondary px-3 py-1.5 text-xs" onClick={onViewDetail}>
             查看详情
-          </Link>
-          {canCancel(task) && (
+          </button>
+          {canCancelTask(task) && (
             <button type="button" className="text-xs text-red-600 hover:underline" onClick={onCancel}>
               取消任务
             </button>
           )}
-          {canRetry(task) && (
+          {canRetryTask(task) && (
             <button type="button" className="text-xs text-brand hover:underline" onClick={onRetry}>
               重试
             </button>
@@ -126,11 +120,45 @@ function TaskRow({
 }
 
 export default function TasksPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="py-12 text-center text-sm text-ink-muted">加载任务列表…</div>
+      }
+    >
+      <TasksPageContent />
+    </Suspense>
+  );
+}
+
+function TasksPageContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const { ready } = useRequireAuth();
   const taskMeta = useTaskMeta(ready);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("");
   const [msg, setMsg] = useState("");
+  const [detailTaskId, setDetailTaskId] = useState<string | null>(null);
+
+  const taskFromUrl = searchParams.get("task");
+
+  useEffect(() => {
+    if (taskFromUrl) setDetailTaskId(taskFromUrl);
+  }, [taskFromUrl]);
+
+  const closeDetail = useCallback(() => {
+    setDetailTaskId(null);
+    if (taskFromUrl) router.replace("/workbench/tasks");
+  }, [router, taskFromUrl]);
+
+  const openDetail = useCallback(
+    (id: string) => {
+      setDetailTaskId(id);
+      router.replace(`/workbench/tasks?task=${encodeURIComponent(id)}`, { scroll: false });
+    },
+    [router],
+  );
 
   const list = usePagedList(
     useCallback((p, s) => api.listTasks(p, s, filter || undefined), [filter]),
@@ -248,11 +276,20 @@ export default function TasksPage() {
             key={t.id}
             task={t}
             taskMeta={taskMeta}
+            onViewDetail={() => openDetail(t.id)}
             onCancel={() => void act(t.id, "cancel")}
             onRetry={() => void act(t.id, "retry")}
           />
         ))}
       </div>
+
+      <TaskDetailDialog
+        open={!!detailTaskId}
+        taskId={detailTaskId}
+        taskMeta={taskMeta}
+        onClose={closeDetail}
+        onChanged={() => void list.reload()}
+      />
     </ResourceListLayout>
   );
 }
