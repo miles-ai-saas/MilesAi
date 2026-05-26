@@ -53,7 +53,9 @@ def serve(host: str | None, port: int | None, reload: bool | None) -> None:
     import uvicorn
 
     from app.core.config import get_settings
+    from app.core.logging import setup_logging
 
+    setup_logging()
     settings = get_settings()
     if reload is None:
         reload = settings.debug

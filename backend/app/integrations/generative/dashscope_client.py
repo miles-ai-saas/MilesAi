@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Awaitable, Callable
 from typing import Any
 
 import httpx
@@ -32,6 +33,10 @@ def dashscope_headers(api_key: str, *, async_enable: bool = True) -> dict[str, s
     return headers
 
 
+OnPollTick = Callable[[int, str], Awaitable[None]]
+ShouldCancel = Callable[[], Awaitable[bool]]
+
+
 async def poll_dashscope_task(
     api_key: str,
     api_base: str,
@@ -40,12 +45,21 @@ async def poll_dashscope_task(
     poll_interval_sec: float = 3.0,
     poll_timeout_sec: float = 600.0,
     success_label: str = "任务",
+    on_poll: OnPollTick | None = None,
+    should_cancel: ShouldCancel | None = None,
 ) -> dict[str, Any]:
     """轮询 ``GET /tasks/{task_id}`` 直至 SUCCEEDED / FAILED。"""
     task_url = f"{api_base}/tasks/{task_id}"
     max_attempts = max(1, int(poll_timeout_sec / poll_interval_sec))
     async with httpx.AsyncClient(timeout=HTTP_DEFAULT_TIMEOUT_SEC) as client:
-        for _ in range(max_attempts):
+        for attempt in range(max_attempts):
+            if should_cancel and await should_cancel():
+                from app.integrations.generative.jobs.errors import GenerativeJobCancelled
+
+                raise GenerativeJobCancelled()
+            if on_poll:
+                pct = min(90, 10 + int((attempt / max_attempts) * 80))
+                await on_poll(pct, f"万相{success_label}生成中…")
             await asyncio.sleep(poll_interval_sec)
             poll = await client.get(
                 task_url,

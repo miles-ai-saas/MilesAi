@@ -92,6 +92,11 @@ async def test_generate_video_for_model_persists():
             "app.tenant.media_assets.services.media_asset.register_media_asset",
             new_callable=AsyncMock,
         ),
+        patch(
+            "app.integrations.generative.compliance.check_generative_prompt",
+            new_callable=AsyncMock,
+            side_effect=lambda _db, _ctx, p: p,
+        ),
     ):
         from app.integrations.generative.video.service import generate_video_for_model
 

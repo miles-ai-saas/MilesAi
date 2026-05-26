@@ -11,6 +11,7 @@ import {
   VIDEO_RESOLUTION_OPTIONS,
   modelLabel,
 } from "@/components/flow/GenerativeNodeInspectorFields";
+import { AttachmentIdField } from "@/components/attachments/AttachmentIdField";
 import { PlatformToolInspector } from "@/components/flow/PlatformToolInspector";
 import type { KnowledgeBase, ModelConfig, ToolCatalogItem } from "@/lib/types";
 
@@ -394,14 +395,12 @@ function InspectorForm({
               onChange={(e) => patch({ n: Math.min(4, Math.max(1, Number(e.target.value) || 1)) })}
             />
           </InspectorField>
-          <InspectorField label="参考图 attachment_id（图生图，可选）">
-            <input
-              className="input-field w-full font-mono text-xs"
+          <InspectorField label="参考图（图生图，可选）">
+            <AttachmentIdField
               value={String(data.image_attachment_id ?? "")}
-              onChange={(e) =>
-                patch({ image_attachment_id: e.target.value.trim() || "" })
-              }
-              placeholder="或由入边 image_attachment_id 传入"
+              onChange={(id) => patch({ image_attachment_id: id })}
+              uploadPurpose="flow"
+              placeholder="选择/上传，或由入边 image_attachment_id 传入"
             />
           </InspectorField>
           <p className="text-[10px] leading-relaxed text-ink-muted">
@@ -458,23 +457,19 @@ function InspectorForm({
               ))}
             </select>
           </InspectorField>
-          <InspectorField label="首帧 attachment_id（图生视频 / 首尾帧，可选）">
-            <input
-              className="input-field w-full font-mono text-xs"
+          <InspectorField label="首帧图（图生视频 / 首尾帧，可选）">
+            <AttachmentIdField
               value={String(data.image_attachment_id ?? "")}
-              onChange={(e) =>
-                patch({ image_attachment_id: e.target.value.trim() || "" })
-              }
-              placeholder="或由入边 image_attachment_id 传入"
+              onChange={(id) => patch({ image_attachment_id: id })}
+              uploadPurpose="flow"
+              placeholder="选择/上传，或由入边传入"
             />
           </InspectorField>
-          <InspectorField label="尾帧 attachment_id（首尾帧生视频，可选）">
-            <input
-              className="input-field w-full font-mono text-xs"
+          <InspectorField label="尾帧图（首尾帧生视频，可选）">
+            <AttachmentIdField
               value={String(data.last_frame_attachment_id ?? "")}
-              onChange={(e) =>
-                patch({ last_frame_attachment_id: e.target.value.trim() || "" })
-              }
+              onChange={(id) => patch({ last_frame_attachment_id: id })}
+              uploadPurpose="flow"
               placeholder="须与首帧同时提供；或由入边传入"
             />
           </InspectorField>

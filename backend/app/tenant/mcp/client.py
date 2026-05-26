@@ -22,7 +22,7 @@ MCP 对外客户端入口：``tools/list`` 同步与 ``tools/call`` 调用（L3 
 
 from __future__ import annotations
 
-import logging
+from app.core.logging import get_logger
 from typing import Any
 
 import httpx
@@ -33,7 +33,7 @@ from app.tenant.mcp.security import validate_mcp_endpoint_url
 from app.tenant.mcp.sse_transport import legacy_sse_json_rpc, streamable_http_json_rpc
 from app.tenant.mcp.transport import normalize_transport
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 DEFAULT_LIST_TIMEOUT = 10.0
 DEFAULT_INVOKE_TIMEOUT = 60.0

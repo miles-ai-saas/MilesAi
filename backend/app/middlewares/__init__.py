@@ -1,1 +1,22 @@
-"""HTTP 中间件（IP 黑名单、限流等后续在此注册）。"""
+"""HTTP 中间件：在此实现，由 ``register_http_middlewares`` 统一挂载。
+
+请求方向（外 → 内）：Trace → AccessLog → CORS → 路由
+（Starlette 后注册的 ``add_middleware`` 更靠外层）
+"""
+
+from fastapi import FastAPI
+
+from app.middlewares.access_log import AccessLogMiddleware
+from app.middlewares.trace import TraceMiddleware
+
+__all__ = [
+    "AccessLogMiddleware",
+    "TraceMiddleware",
+    "register_http_middlewares",
+]
+
+
+def register_http_middlewares(app: FastAPI) -> None:
+    """在 CORSMiddleware 之后调用，挂载 trace 与访问日志。"""
+    app.add_middleware(AccessLogMiddleware)
+    app.add_middleware(TraceMiddleware)

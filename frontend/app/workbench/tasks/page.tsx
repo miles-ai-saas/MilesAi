@@ -1,12 +1,14 @@
 "use client";
 
-/** 异步任务列表（链路 §3 + §4 `useTaskMeta`）。 */
+/** 任务中心：后台 Celery 任务 + 生成任务（generative_jobs）。 */
 
+import Link from "next/link";
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { api } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth-store";
 import { usePagedList } from "@/hooks/use-paged-list";
+import { useGenerativeJobMeta } from "@/hooks/use-generative-job-meta";
 import { ResourceListFooter } from "@/components/resource/ResourceListFooter";
 import { ResourceListLayout } from "@/components/resource/ResourceListLayout";
 import {
@@ -14,13 +16,26 @@ import {
   canRetryTask,
   TaskDetailDialog,
 } from "@/components/task/TaskDetailDialog";
+import { GenerativeJobsSection } from "@/components/task/GenerativeJobsSection";
 import { filterBySearch } from "@/lib/filter-search";
+import { generativeJobStatusFilterOptions } from "@/lib/generative-job-labels";
 import { taskStatusBadgeClass, taskStatusFilterOptions, taskStatusLabel } from "@/lib/task-labels";
 import { useTaskMeta } from "@/hooks/use-task-meta";
 import type { TaskRecord, TaskMeta } from "@/lib/types";
 
-const PAGE_DESC =
-  "查看文档入库等异步任务执行状态；支持按状态筛选、搜索、取消与重试（列表每 8 秒自动刷新）。";
+type TaskCategory = "celery" | "generative";
+
+const CATEGORY_TABS: { key: TaskCategory; label: string }[] = [
+  { key: "celery", label: "后台任务" },
+  { key: "generative", label: "生成任务" },
+];
+
+const PAGE_DESC: Record<TaskCategory, string> = {
+  celery:
+    "文档入库等 Celery 异步任务；支持按状态筛选、搜索、取消与重试（列表每 8 秒自动刷新）。",
+  generative:
+    "智能体对话、流程或 API 触发的生图/生视频任务；支持类型筛选、进度查看、取消与失败重试；可跳转关联的后台 Celery 记录（列表每 8 秒自动刷新）。",
+};
 
 function StatChip({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
@@ -50,7 +65,7 @@ function TaskStatusBadge({
   taskMeta,
 }: {
   status: string;
-  taskMeta: import("@/lib/types").TaskMeta | null;
+  taskMeta: TaskMeta | null;
 }) {
   return (
     <span
@@ -90,6 +105,14 @@ function TaskRow({
             {task.resource_type || "无关联资源"}
             {task.resource_id ? ` · ${String(task.resource_id).slice(0, 8)}…` : ""}
           </p>
+          {task.resource_type === "generative_job" && task.resource_id ? (
+            <Link
+              href={`/workbench/tasks?category=generative&job=${encodeURIComponent(task.resource_id)}`}
+              className="mt-1 inline-block text-xs text-brand hover:underline"
+            >
+              查看生成任务 →
+            </Link>
+          ) : null}
           <time className="mt-2 block text-xs text-ink-faint">
             创建于 {new Date(task.created_at).toLocaleString("zh-CN")}
           </time>
@@ -119,6 +142,33 @@ function TaskRow({
   );
 }
 
+function CategorySwitcher({
+  category,
+  onChange,
+}: {
+  category: TaskCategory;
+  onChange: (c: TaskCategory) => void;
+}) {
+  return (
+    <div className="mb-4 flex gap-2">
+      {CATEGORY_TABS.map((tab) => (
+        <button
+          key={tab.key}
+          type="button"
+          onClick={() => onChange(tab.key)}
+          className={`rounded-lg px-4 py-2 text-sm font-medium transition ${
+            category === tab.key
+              ? "bg-brand text-white shadow-sm"
+              : "bg-surface text-ink-muted ring-1 ring-line hover:text-ink"
+          }`}
+        >
+          {tab.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export default function TasksPage() {
   return (
     <Suspense
@@ -136,6 +186,12 @@ function TasksPageContent() {
   const searchParams = useSearchParams();
   const { ready } = useRequireAuth();
   const taskMeta = useTaskMeta(ready);
+  const generativeMeta = useGenerativeJobMeta(ready);
+
+  const categoryParam = searchParams.get("category");
+  const category: TaskCategory =
+    categoryParam === "generative" ? "generative" : "celery";
+
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("");
   const [msg, setMsg] = useState("");
@@ -144,32 +200,52 @@ function TasksPageContent() {
   const taskFromUrl = searchParams.get("task");
 
   useEffect(() => {
-    if (taskFromUrl) setDetailTaskId(taskFromUrl);
-  }, [taskFromUrl]);
+    if (taskFromUrl && category === "celery") setDetailTaskId(taskFromUrl);
+  }, [taskFromUrl, category]);
 
-  const closeDetail = useCallback(() => {
-    setDetailTaskId(null);
-    if (taskFromUrl) router.replace("/workbench/tasks");
-  }, [router, taskFromUrl]);
-
-  const openDetail = useCallback(
-    (id: string) => {
-      setDetailTaskId(id);
-      router.replace(`/workbench/tasks?task=${encodeURIComponent(id)}`, { scroll: false });
+  const setCategory = useCallback(
+    (next: TaskCategory) => {
+      setSearch("");
+      setFilter("");
+      setMsg("");
+      setDetailTaskId(null);
+      const params = new URLSearchParams();
+      if (next === "generative") params.set("category", "generative");
+      const q = params.toString();
+      router.replace(q ? `/workbench/tasks?${q}` : "/workbench/tasks", { scroll: false });
     },
     [router],
   );
 
+  const closeDetail = useCallback(() => {
+    setDetailTaskId(null);
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("task");
+    const q = params.toString();
+    router.replace(q ? `/workbench/tasks?${q}` : "/workbench/tasks", { scroll: false });
+  }, [router, searchParams]);
+
+  const openDetail = useCallback(
+    (id: string) => {
+      setDetailTaskId(id);
+      const params = new URLSearchParams(searchParams.toString());
+      params.set("category", "celery");
+      params.set("task", id);
+      router.replace(`/workbench/tasks?${params.toString()}`, { scroll: false });
+    },
+    [router, searchParams],
+  );
+
   const list = usePagedList(
     useCallback((p, s) => api.listTasks(p, s, filter || undefined), [filter]),
-    { enabled: ready, resetKey: filter },
+    { enabled: ready && category === "celery", resetKey: `${filter}-${category}` },
   );
 
   useEffect(() => {
-    if (!ready) return;
+    if (!ready || category !== "celery") return;
     const t = setInterval(() => list.reload(), 8000);
     return () => clearInterval(t);
-  }, [ready, list.reload, filter]);
+  }, [ready, category, list.reload, filter]);
 
   const filtered = useMemo(
     () =>
@@ -199,10 +275,13 @@ function TasksPageContent() {
     setSearch("");
   };
 
-  const statusTabs = useMemo(
-    () => taskStatusFilterOptions(taskMeta).map((o) => ({ key: o.value, label: o.label })),
-    [taskMeta],
-  );
+  const statusTabs = useMemo(() => {
+    const opts =
+      category === "generative"
+        ? generativeJobStatusFilterOptions(generativeMeta)
+        : taskStatusFilterOptions(taskMeta);
+    return opts.map((o) => ({ key: o.value, label: o.label }));
+  }, [category, taskMeta, generativeMeta]);
 
   const act = async (id: string, action: "cancel" | "retry") => {
     setMsg("");
@@ -216,80 +295,124 @@ function TasksPageContent() {
     }
   };
 
+  const isGenerative = category === "generative";
+
   return (
     <ResourceListLayout
-      title="任务"
-      description={PAGE_DESC}
-      searchPlaceholder="搜索任务名称、ID 或失败原因"
-      search={search}
-      onSearchChange={setSearch}
-      tabs={statusTabs}
-      activeTab={filter}
-      onTabChange={onFilterChange}
-      loading={list.loading}
-      headerAction={
-        <button
-          type="button"
-          className="btn-ghost shrink-0 text-sm"
-          disabled={list.loading}
-          onClick={() => void list.reload()}
-        >
-          {list.loading ? "刷新中…" : "刷新"}
-        </button>
-      }
-      footer={
-        !list.loading ? (
-          <ResourceListFooter
-            page={list.page}
-            size={list.size}
-            total={list.total}
-            onPageChange={list.setPage}
+        title="任务中心"
+        description={PAGE_DESC[category]}
+        showSearch={false}
+        search={search}
+        onSearchChange={setSearch}
+        tabs={statusTabs}
+        activeTab={filter}
+        onTabChange={onFilterChange}
+        loading={!isGenerative && list.loading}
+        headerAction={
+          <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
+            <label className="relative block w-full sm:w-72">
+              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-faint">
+                <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
+                  <path
+                    fillRule="evenodd"
+                    d="M9 3.5a5.5 5.5 0 100 11 5.5 5.5 0 000-11zM2 9a7 7 0 1112.452 4.391l3.328 3.329a.75.75 0 11-1.06 1.06l-3.329-3.328A7 7 0 012 9z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              </span>
+              <input
+                type="search"
+                className="input w-full pl-9"
+                placeholder={
+                  isGenerative
+                    ? "搜索 Prompt、ID 或错误信息"
+                    : "搜索任务名称、ID 或失败原因"
+                }
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </label>
+            {!isGenerative ? (
+              <button
+                type="button"
+                className="btn-ghost shrink-0 text-sm"
+                disabled={list.loading}
+                onClick={() => void list.reload()}
+              >
+                {list.loading ? "刷新中…" : "刷新"}
+              </button>
+            ) : null}
+          </div>
+        }
+        footer={
+          !isGenerative && !list.loading ? (
+            <ResourceListFooter
+              page={list.page}
+              size={list.size}
+              total={list.total}
+              onPageChange={list.setPage}
+            />
+          ) : null
+        }
+      >
+        <div className="col-span-full -mt-2 mb-2">
+          <CategorySwitcher category={category} onChange={setCategory} />
+        </div>
+
+        {msg && <PageMessage message={msg} onDismiss={() => setMsg("")} />}
+
+        {isGenerative ? (
+          <GenerativeJobsSection
+            enabled={ready}
+            search={search}
+            filter={filter}
+            msg={msg}
+            onMsg={setMsg}
           />
-        ) : null
-      }
-    >
-      {msg && <PageMessage message={msg} onDismiss={() => setMsg("")} />}
+        ) : (
+          <>
+            <div className="col-span-full grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <StatChip label="任务总数" value={String(list.total)} hint="当前筛选条件下" />
+              <StatChip
+                label="本页运行中"
+                value={String(pageStats.running)}
+                hint={`等待 ${pageStats.pending} · 失败 ${pageStats.failed}（当前页）`}
+              />
+              <StatChip label="本页展示" value={String(filtered.length)} hint="受搜索筛选影响" />
+              <StatChip
+                label="自动刷新"
+                value="8s"
+                hint={filter ? `状态：${taskStatusLabel(filter, taskMeta)}` : "全部状态"}
+              />
+            </div>
 
-      <div className="col-span-full grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <StatChip label="任务总数" value={String(list.total)} hint="当前筛选条件下" />
-        <StatChip
-          label="本页运行中"
-          value={String(pageStats.running)}
-          hint={`等待 ${pageStats.pending} · 失败 ${pageStats.failed}（当前页）`}
-        />
-        <StatChip label="本页展示" value={String(filtered.length)} hint="受搜索筛选影响" />
-        <StatChip
-          label="自动刷新"
-          value="8s"
-          hint={filter ? `状态：${taskStatusLabel(filter, taskMeta)}` : "全部状态"}
-        />
-      </div>
+            <div className="col-span-full space-y-3">
+              {!list.loading && filtered.length === 0 && (
+                <p className="rounded-xl border border-dashed border-line py-12 text-center text-sm text-ink-faint">
+                  暂无匹配的任务
+                </p>
+              )}
+              {filtered.map((t) => (
+                <TaskRow
+                  key={t.id}
+                  task={t}
+                  taskMeta={taskMeta}
+                  onViewDetail={() => openDetail(t.id)}
+                  onCancel={() => void act(t.id, "cancel")}
+                  onRetry={() => void act(t.id, "retry")}
+                />
+              ))}
+            </div>
 
-      <div className="col-span-full space-y-3">
-        {!list.loading && filtered.length === 0 && (
-          <p className="rounded-xl border border-dashed border-line py-12 text-center text-sm text-ink-faint">
-            暂无匹配的任务
-          </p>
+            <TaskDetailDialog
+              open={!!detailTaskId}
+              taskId={detailTaskId}
+              taskMeta={taskMeta}
+              onClose={closeDetail}
+              onChanged={() => void list.reload()}
+            />
+          </>
         )}
-        {filtered.map((t) => (
-          <TaskRow
-            key={t.id}
-            task={t}
-            taskMeta={taskMeta}
-            onViewDetail={() => openDetail(t.id)}
-            onCancel={() => void act(t.id, "cancel")}
-            onRetry={() => void act(t.id, "retry")}
-          />
-        ))}
-      </div>
-
-      <TaskDetailDialog
-        open={!!detailTaskId}
-        taskId={detailTaskId}
-        taskMeta={taskMeta}
-        onClose={closeDetail}
-        onChanged={() => void list.reload()}
-      />
     </ResourceListLayout>
   );
 }

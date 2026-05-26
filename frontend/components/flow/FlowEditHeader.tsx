@@ -18,6 +18,8 @@ interface FlowEditHeaderProps {
   onHistory: () => void;
   onCompile: () => void;
   onRun: () => void;
+  /** busy 时「调试运行」按钮文案 */
+  runBusyLabel?: string;
 }
 
 function FullscreenIcon({ exit }: { exit?: boolean }) {
@@ -66,6 +68,7 @@ export function FlowEditHeader({
   onToggleFullscreen,
   onCompile,
   onRun,
+  runBusyLabel = "运行中…",
 }: FlowEditHeaderProps) {
   return (
     <header className="flex shrink-0 flex-col gap-2 border-b border-line bg-surface px-3 py-2 sm:px-4">
@@ -168,7 +171,7 @@ export function FlowEditHeader({
           disabled={busy}
           onClick={onRun}
         >
-          调试运行
+          {busy ? runBusyLabel : "调试运行"}
         </button>
       </div>
     </header>

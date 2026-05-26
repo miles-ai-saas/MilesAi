@@ -1,10 +1,7 @@
 """
-画布生视频节点 ``VideoGenerate``（万相优先，节点内同步轮询至完成）。
+画布生视频节点 ``VideoGenerate``。
 
-``node_data``：``model_config_id``、``duration``、``resolution``、可选固定 ``prompt`` /
-``image_attachment_id``（首帧）、``last_frame_attachment_id``（尾帧）。
-``inputs``：同上键名，可由入边传入。
-``output``：``{ kind: video, attachment_id, mime_type, duration_sec }``。
+默认异步：提交 ``generative_jobs`` + Celery；``RunContext.generative_video_async=False`` 时同步轮询。
 """
 
 from __future__ import annotations
@@ -18,6 +15,8 @@ from app.flow_runtime.types import RunContext
 from app.infra.db import AsyncSessionLocal
 from app.integrations.generative import generate_video_for_model, resolve_video_gen_model
 from app.integrations.generative.persist import PURPOSE_FLOW_GENERATED
+from app.tenant.generative.schemas.job import VideoGenerativeJobCreate
+from app.tenant.generative.services.job import GenerativeJobService
 
 
 def _optional_uuid(raw: Any) -> UUID | None:
@@ -51,6 +50,33 @@ async def video_generate(
     last_att = _optional_uuid(
         inputs.get("last_frame_attachment_id") or node_data.get("last_frame_attachment_id")
     )
+    duration = int(node_data.get("duration") or inputs.get("duration") or 5)
+    resolution = node_data.get("resolution") or inputs.get("resolution")
+
+    if ctx.generative_video_async and GenerativeJobService.video_async_enabled():
+        body = VideoGenerativeJobCreate(
+            prompt=prompt,
+            duration=duration,
+            resolution=str(resolution) if resolution else None,
+            image_attachment_id=first_att,
+            last_frame_attachment_id=last_att,
+            model_config_id=UUID(str(model_id)),
+        )
+        async with AsyncSessionLocal() as db:
+            tenant_ctx = tenant_context_from_run(ctx)
+            out = await GenerativeJobService(db, tenant_ctx).submit_video(
+                body,
+                source="flow_node",
+                agent_id=_optional_uuid(ctx.agent_id),
+                agent_config=ctx.agent_config,
+            )
+            await db.commit()
+        return {
+            "kind": "video",
+            "status": "pending",
+            "generative_job_id": str(out.id),
+            "message": "生视频任务已提交，请通过 generative_job_id 查询进度",
+        }
 
     async with AsyncSessionLocal() as db:
         tenant_ctx = tenant_context_from_run(ctx)
@@ -65,13 +91,14 @@ async def video_generate(
             tenant_ctx,
             model,
             prompt=prompt,
-            duration=int(node_data.get("duration") or inputs.get("duration") or 5),
-            resolution=node_data.get("resolution") or inputs.get("resolution"),
+            duration=duration,
+            resolution=resolution,
             image_attachment_id=first_att,
             last_frame_attachment_id=last_att,
             purpose=PURPOSE_FLOW_GENERATED,
-            agent_id=UUID(ctx.agent_id) if ctx.agent_id else None,
+            agent_id=_optional_uuid(ctx.agent_id),
         )
+        await db.commit()
         return {
             "kind": "video",
             "attachment_id": str(result.attachment_id),

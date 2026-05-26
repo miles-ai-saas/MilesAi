@@ -21,7 +21,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import json
-import logging
+from app.core.logging import get_logger
 from typing import Any
 from urllib.parse import urljoin, urlparse
 
@@ -37,7 +37,7 @@ from app.tenant.mcp.constants import (
 )
 from app.tenant.mcp.security import validate_mcp_endpoint_url
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 CLIENT_INFO = MCP_CLIENT_INFO
 

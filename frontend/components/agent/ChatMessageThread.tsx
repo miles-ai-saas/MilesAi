@@ -16,6 +16,8 @@ type Props = {
   pendingTool?: PendingToolCall | null;
   onConfirmPendingTool?: () => void;
   confirmPendingToolDisabled?: boolean;
+  /** 覆盖默认「思考中…」 */
+  chattingStatusLabel?: string | null;
 };
 
 function hasPendingConfirmationStep(steps?: Record<string, unknown>[]) {
@@ -28,6 +30,7 @@ export function ChatMessageThread({
   pendingTool,
   onConfirmPendingTool,
   confirmPendingToolDisabled,
+  chattingStatusLabel,
 }: Props) {
   const lastAssistantIndex = (() => {
     for (let i = messages.length - 1; i >= 0; i -= 1) {
@@ -121,7 +124,9 @@ export function ChatMessageThread({
         <div className="card p-4">
           <AgentExecutionSkeleton />
           <p className="text-xs font-medium text-brand">助手</p>
-          <p className="mt-1 text-sm text-ink-muted">思考中…</p>
+          <p className="mt-1 text-sm text-ink-muted">
+            {chattingStatusLabel ?? "思考中…"}
+          </p>
         </div>
       )}
     </div>

@@ -47,7 +47,9 @@ class KnowledgeSearchInput(BaseModel):
 
 class GenerateImageInput(BaseModel):
     prompt: str = Field(..., description="画面描述")
-    size: str | None = Field(None, description="如 1024x1024")
+    size: str | None = Field(None, description="如 1024x1024；≥1280 边长或多张需用户确认")
+    image_attachment_id: str | None = Field(None, description="参考图 attachment_id（图生图）")
+    n: int | None = Field(None, description="生成张数 1–4；≥3 需用户确认")
     model_config_id: str | None = Field(None, description="image_gen 模型配置 UUID")
 
 
@@ -189,6 +191,8 @@ def _make_generate_image_tool() -> StructuredTool:
     async def _arun(
         prompt: str,
         size: str | None = None,
+        image_attachment_id: str | None = None,
+        n: int | None = None,
         model_config_id: str | None = None,
     ) -> dict:
         raise RuntimeError("请通过 invoke_tool_with_context 执行 generate_image")

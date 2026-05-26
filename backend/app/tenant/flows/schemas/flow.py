@@ -80,6 +80,10 @@ class FlowRunRequest(BaseModel):
         default=True,
         description="已废弃：画布统一由 LangGraph 执行，保留字段仅为兼容旧客户端",
     )
+    async_generative: bool = Field(
+        default=True,
+        description="含生视频节点时提交异步任务（False 则同步等待，可能阻塞数分钟）",
+    )
 
     @model_validator(mode="after")
     def validate_inputs_or_media(self) -> "FlowRunRequest":

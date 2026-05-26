@@ -10,6 +10,10 @@ class MediaAssetOut(BaseModel):
     id: UUID = Field(description="媒体资产 ID")
     tenant_id: UUID = Field(description="租户 ID")
     attachment_id: UUID = Field(description="关联附件 ID")
+    cover_attachment_id: UUID | None = Field(
+        default=None,
+        description="视频封面图附件 ID（列表缩略图）",
+    )
     kind: str = Field(description="媒体类型（如 image、video）")
     source: str = Field(description="来源标识")
     source_ref_type: str | None = Field(default=None, description="来源资源类型")
@@ -24,6 +28,10 @@ class MediaAssetOut(BaseModel):
     created_by: UUID = Field(description="创建用户 ID")
     created_at: datetime = Field(description="创建时间")
     attachment: AttachmentOut | None = Field(default=None, description="关联附件详情")
+    cover_attachment: AttachmentOut | None = Field(
+        default=None,
+        description="视频封面附件详情",
+    )
 
     model_config = {"from_attributes": True}
 

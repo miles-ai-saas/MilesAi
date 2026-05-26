@@ -216,3 +216,7 @@ class ChatResponse(BaseModel):
         default=None,
         description="需用户确认后执行的工具调用",
     )
+    generative_jobs: list[dict] = Field(
+        default_factory=list,
+        description="异步生成任务（如 pending 的生视频 job_id），供前端轮询",
+    )

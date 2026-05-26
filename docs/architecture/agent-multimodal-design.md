@@ -1,8 +1,9 @@
 # 智能体 — 多模态技术设计
 
 **日期：** 2026-05-26  
-**状态：** 设计稿（未实施）  
-**关联：** [multimodal-capabilities.md](../product/multimodal-capabilities.md)、[multimodal-roadmap.md](./multimodal-roadmap.md)、[platform-agents.md](../guides/platform-agents.md)、[flow-llm-multimodal-design.md](./flow-llm-multimodal-design.md)、[flow-generative-media-design.md](./flow-generative-media-design.md)、[model-providers.md](../guides/model-providers.md)
+**状态：** 已实现（设计归档）  
+**产品说明：** [multimodal-capabilities.md](../product/multimodal-capabilities.md) · **路线图：** [multimodal-roadmap.md](./multimodal-roadmap.md)  
+**关联：** [multimodal-capabilities.md](../product/multimodal-capabilities.md)、[multimodal-roadmap.md](./multimodal-roadmap.md)、[realtime-transport-design.md](./realtime-transport-design.md)（对话 WebSocket 规划）、[platform-agents.md](../guides/platform-agents.md)、[flow-llm-multimodal-design.md](./flow-llm-multimodal-design.md)、[flow-generative-media-design.md](./flow-generative-media-design.md)、[model-providers.md](../guides/model-providers.md)
 
 ---
 
@@ -13,8 +14,8 @@
 | 技术线 | 产品能力 | 智能体现状 | 设计状态 |
 |--------|----------|------------|----------|
 | **A. 生文** | 文本问答、RAG、工具调用 | ✅ 多路径已实现 | 保持 |
-| **B. 识图** | 用户附图 + 问题 → 文本回答 | ❌ `ChatRequest` 仅 `query: str` | 本文 §4 |
-| **C. 生图 / 生视频** | 对话中生成媒体 | ❌ 无工具/无响应字段 | 本文 §5 + [flow-generative-media-design.md](./flow-generative-media-design.md) |
+| **B. 识图** | 用户附图 + 问题 → 文本回答 | ✅ `ChatRequest.media` + vision 路由 | 本文 §4 |
+| **C. 生图 / 生视频** | 对话中生成媒体 | ✅ `generate_*` 工具 + `artifacts`；生视频默认异步 | 本文 §5 + [flow-generative-media-design.md](./flow-generative-media-design.md) |
 | **D. 入库理解** | 图片进 KB 后 RAG | ✅ OCR/占位（`[multimodal]`） | 非对话多模态，见 §2.3 |
 
 **与流程文档分工：**
@@ -106,7 +107,7 @@ class ChatResponse(BaseModel):
 
 | 项 | 说明 |
 |----|------|
-| 对话 **流式** + 图片渐进显示 | 与 Agent SSE v2 同立项 |
+| 对话 **流式** + 图片渐进显示 | 见 [realtime-transport-design.md](./realtime-transport-design.md)（对话 WebSocket R2；生成任务仍 SSE） |
 | 视频 **输入** 直送 LLM | 走 KB 转写或后续 |
 | 自动把生成图 **写入 KB** | 可选 Phase 3 |
 | 改造 A2A 协议 | 仅平台内 `custom` 智能体 |

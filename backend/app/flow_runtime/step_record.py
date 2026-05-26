@@ -23,6 +23,14 @@ def build_flow_node_step(
     if not isinstance(result, dict):
         return step
 
+    job_id = result.get("generative_job_id")
+    if job_id:
+        step["generative_job"] = {
+            "job_id": str(job_id),
+            "kind": result.get("kind") or "video",
+            "status": result.get("status") or "pending",
+        }
+
     kind = result.get("kind")
     att = result.get("attachment_id")
     if kind in ("image", "video") and att:

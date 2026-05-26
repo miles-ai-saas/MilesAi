@@ -1,7 +1,8 @@
 # 流程编排 — 生成类多模态技术设计（生图 / 生视频 / 语音）
 
 **日期：** 2026-05-26  
-**状态：** 设计稿（未实施）  
+**状态：** 已实现（设计归档；生图/生视频/流程节点/工具已落地，TTS 未做）  
+**产品说明：** [multimodal-capabilities.md](../product/multimodal-capabilities.md) · **路线图：** [multimodal-roadmap.md](./multimodal-roadmap.md)  
 **关联：** [flow-llm-multimodal-design.md](./flow-llm-multimodal-design.md)（识图输入）、[flow-orchestration-enhancement.md](./flow-orchestration-enhancement.md)、[model-providers.md](../guides/model-providers.md)、[flows.md](../guides/flows.md)
 
 ---
@@ -13,8 +14,8 @@ MilesAI 中与「多模态」相关的能力应拆成 **三条独立技术线**�
 | 技术线 | 产品说法 | API 形态 | 流程编排 | 文档 |
 |--------|----------|----------|----------|------|
 | **A. 对话生文** | 生文、RAG 回答 | Chat Completions | ✅ `LLMCall` 已支持 | [flows.md](../guides/flows.md) |
-| **B. 理解型输入** | 识图问答 | Chat + `image_url` part | ❌ 设计稿 | [flow-llm-multimodal-design.md](./flow-llm-multimodal-design.md) |
-| **C. 生成型输出** | 生图、生视频、TTS 等 | Images / Video Task / Speech API | ❌ **本文档** | 本文 |
+| **B. 理解型输入** | 识图问答 | Chat + `image_url` part | ✅ `LLMCall` + `RunContext.media` | [flow-llm-multimodal-design.md](./flow-llm-multimodal-design.md) |
+| **C. 生成型输出** | 生图、生视频、TTS 等 | Images / Video Task / Speech API | ✅ 生图/生视频（TTS 未做） | 本文 |
 
 **本文（C）** 定义：如何在 **流程画布** 中调用 `model_type ∈ { image_gen, video_gen, tts, … }`，将 **生成物**（图片/视频/音频文件）写入对象存储并以 **附件 / URL** 交给下游节点（如 `TextOutput` 展示链接）。
 

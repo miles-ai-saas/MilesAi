@@ -3,9 +3,8 @@
 > 类型：流程编排 | 状态：已实现 | 关联：[technical-design.md](../architecture/technical-design.md) §9  
 > **编排增强（已实现）：** [flow-orchestration-enhancement.md](../architecture/flow-orchestration-enhancement.md)  
 > **子流程 SubFlow（已立项 · 暂不实施）：** [flow-subflow-design.md](../architecture/flow-subflow-design.md)  
-> **LLM 识图输入（设计稿 · 未实施）：** [flow-llm-multimodal-design.md](../architecture/flow-llm-multimodal-design.md)  
-> **生图 / 生视频等生成类（设计稿 · 未实施）：** [flow-generative-media-design.md](../architecture/flow-generative-media-design.md)  
-> **智能体对话多模态（设计稿 · 未实施）：** [agent-multimodal-design.md](../architecture/agent-multimodal-design.md)
+> **多模态（已实现）：** 产品说明 [multimodal-capabilities.md](../product/multimodal-capabilities.md) · 路线图 [multimodal-roadmap.md](../architecture/multimodal-roadmap.md)  
+> **设计归档：** [flow-llm-multimodal-design.md](../architecture/flow-llm-multimodal-design.md)（识图）、[flow-generative-media-design.md](../architecture/flow-generative-media-design.md)（生图/生视频）、[agent-multimodal-design.md](../architecture/agent-multimodal-design.md)（对话）
 
 画布 `graph_json` **仅由 LangGraph 编译执行**；`flow_runtime` 提供节点 handler，编译与执行在 `integrations.langgraph`。
 

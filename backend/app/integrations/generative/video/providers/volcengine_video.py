@@ -103,6 +103,7 @@ async def generate_volcengine_video(
     resolution: str | None = None,
     first_frame_data_url: str | None = None,
     last_frame_data_url: str | None = None,
+    progress: object | None = None,
 ) -> bytes:
     """提交方舟视频任务并轮询，返回 mp4 字节。"""
     api_key = require_volcengine_api_key(model)
@@ -135,12 +136,19 @@ async def generate_volcengine_video(
     if not task_id:
         raise AppError("豆包生视频未返回任务 id", status_code=502)
 
+    on_poll = progress.update if progress and hasattr(progress, "update") else None
+    should_cancel = progress.is_cancelled if progress and hasattr(progress, "is_cancelled") else None
+
     final = await poll_volcengine_video_task(
         model,
         api_key,
         str(task_id),
         poll_interval_sec=poll_interval,
         poll_timeout_sec=poll_timeout,
+        on_poll=on_poll,
+        should_cancel=should_cancel,
     )
+    if on_poll:
+        await on_poll(92, "下载视频中…")
     video_url = extract_volcengine_video_url(final)
     return await download_remote_bytes(video_url)

@@ -260,6 +260,22 @@ export function AgentFormStepContent({
               onChange={(e) => setForm((f) => ({ ...f, system_prompt: e.target.value }))}
             />
           </label>
+          <label className="flex cursor-pointer items-start gap-2 text-sm">
+            <input
+              type="checkbox"
+              className="mt-1"
+              checked={form.carry_forward_media}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, carry_forward_media: e.target.checked }))
+              }
+            />
+            <span>
+              <span className="font-medium text-ink">多轮识图沿用附图</span>
+              <span className="mt-0.5 block text-xs text-ink-muted">
+                用户未上传新图时，自动带上一条用户消息中的图片（最多 4 张，与每轮上限一致）
+              </span>
+            </span>
+          </label>
         </div>
       );
     case 2:

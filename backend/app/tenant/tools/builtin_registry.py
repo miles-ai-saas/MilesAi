@@ -44,10 +44,10 @@ BUILTIN_REGISTRY: list[dict] = [
     },
     {
         "slug": "generate_video",
-        "name": "文生视频",
-        "description": "根据文字描述生成短视频（万相优先；耗时较长，需确认）",
+        "name": "生视频",
+        "description": "文生视频、图生视频或首尾帧生视频（万相/豆包）；通常需 1–5 分钟，调用前需确认",
         "category_slug": "general",
-        "version": "1.0.0",
+        "version": "1.1.0",
         "require_confirmation": True,
         "generative_only": True,
         "parameters": [
@@ -89,9 +89,9 @@ BUILTIN_REGISTRY: list[dict] = [
     {
         "slug": "generate_image",
         "name": "生图",
-        "description": "根据文字描述生成图片；可选参考图 attachment 实现图生图",
+        "description": "根据文字描述生成图片；可选参考图实现图生图；大尺寸或多张需确认",
         "category_slug": "general",
-        "version": "1.1.0",
+        "version": "1.2.0",
         "require_confirmation": False,
         "generative_only": True,
         "parameters": [
@@ -108,6 +108,13 @@ BUILTIN_REGISTRY: list[dict] = [
                 "type": "string",
                 "description": "参考图附件 UUID（图生图 / SeedEdit）",
                 "required": False,
+            },
+            {
+                "name": "n",
+                "type": "integer",
+                "description": "生成张数 1–4；≥3 张需确认",
+                "required": False,
+                "default": 1,
             },
             {
                 "name": "model_config_id",

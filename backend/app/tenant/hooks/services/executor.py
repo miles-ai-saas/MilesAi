@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import logging
+from app.core.logging import get_logger
 import time
 from uuid import UUID
 
@@ -31,7 +31,7 @@ from app.tenant.hooks.services.result import HookRunResult
 from app.core.soft_delete import not_deleted
 from app.utils.idgen import generate_uuid
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class HookExecutor:

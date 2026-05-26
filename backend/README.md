@@ -49,7 +49,7 @@ scripts/                    # db_ops、verify_db、seed/*（由 cli.py 调用）
 ├── workers/                # Celery 应用与任务
 │   ├── app.py
 │   └── tasks/
-└── middlewares/            # （预留）HTTP 中间件
+└── middlewares/            # HTTP 中间件（trace、access_log；由 register_http_middlewares 挂载）
 ```
 
 ## 模块约定
@@ -227,7 +227,7 @@ tenant/tools/
 
 | 项 | 说明 |
 |----|------|
-| 中间件落地 | IP 黑名单、限流写入 `middlewares/` 并在 `apps/application.py` 注册 |
+| 中间件落地 | trace / access_log 已在 `middlewares/`；IP 黑名单、限流等待补充 |
 | 运营删租户 | 在 `AdminTenantService` 中调用 `purge_tenant_data` 后再删租户记录 |
 
 ## 统一 CLI（`cli.py`）

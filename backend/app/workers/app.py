@@ -9,7 +9,9 @@ Worker 启动示例：celery -A app.workers.app worker -Q parse,default
 from celery import Celery
 
 from app.core.config import get_settings
+from app.core.logging import setup_logging
 
+setup_logging()
 settings = get_settings()
 
 celery_app = Celery(

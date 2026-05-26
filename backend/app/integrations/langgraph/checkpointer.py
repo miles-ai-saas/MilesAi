@@ -11,7 +11,7 @@ LangGraph Checkpointer：优先 Redis，不可用时回退内存。
 
 from __future__ import annotations
 
-import logging
+from app.core.logging import get_logger
 import warnings
 from contextlib import AsyncExitStack
 from typing import Any
@@ -20,7 +20,7 @@ from langgraph.checkpoint.memory import MemorySaver
 
 from app.core.config import get_settings
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 # redisvl（langgraph-checkpoint-redis 依赖）在 asetup 时的已知告警，待上游改为 async API
 warnings.filterwarnings(

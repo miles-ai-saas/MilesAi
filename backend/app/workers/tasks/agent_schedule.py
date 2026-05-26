@@ -8,7 +8,7 @@ Beat 每分钟调用 ``tick_agent_schedules`` 扫描到期任务；
 from __future__ import annotations
 
 import asyncio
-import logging
+from app.core.logging import get_logger
 from datetime import datetime, timezone
 from uuid import UUID
 
@@ -24,7 +24,7 @@ from app.tenant.agents.schemas.agent import ChatRequest
 from app.tenant.agents.services.agent import AgentService
 from app.workers.app import celery_app
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 async def _run_schedule_async(schedule_id: UUID) -> None:

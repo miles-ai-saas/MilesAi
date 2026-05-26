@@ -4,7 +4,11 @@
 
 import dynamic from "next/dynamic";
 import { useParams } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useGenerativeJobPoll } from "@/hooks/use-generative-job-poll";
+import { analyzeFlowGenerativeRun } from "@/lib/flow-generative-hints";
+import { extractPendingGenerativeJobs } from "@/lib/generative-jobs";
+import type { FlowRunArtifact } from "@/lib/flow-run-artifacts";
 import { useElementFullscreen } from "@/hooks/use-element-fullscreen";
 import { api } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth-store";
@@ -49,6 +53,26 @@ export default function FlowEditPage() {
   const [debugPanelOpen, setDebugPanelOpen] = useState(false);
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
+  const [graphTick, setGraphTick] = useState(0);
+  const [pollJobs, setPollJobs] = useState<{ jobId: string; kind: string }[]>([]);
+  const [extraRunArtifacts, setExtraRunArtifacts] = useState<FlowRunArtifact[]>([]);
+
+  const {
+    statusMsg: generativePollMsg,
+    progressPercent: generativeProgress,
+    cancelJob: cancelGenerativeJob,
+    canCancel: canCancelGenerative,
+  } = useGenerativeJobPoll(pollJobs, (artifacts) => {
+    setExtraRunArtifacts(
+      artifacts.map((a) => ({
+        attachmentId: a.attachment_id,
+        kind: a.kind as "image" | "video",
+        mimeType: a.mime_type,
+        label: "异步生成",
+      })),
+    );
+    setPollJobs([]);
+  });
   const {
     ref: shellRef,
     active: isFullscreen,
@@ -82,7 +106,13 @@ export default function FlowEditPage() {
 
   const onGraphChange = useCallback((g: FlowGraph) => {
     graphRef.current = g;
+    setGraphTick((t) => t + 1);
   }, []);
+
+  const generativeRun = useMemo(
+    () => analyzeFlowGenerativeRun(graphRef.current),
+    [graphTick],
+  );
 
   const save = async () => {
     setBusy(true);
@@ -154,6 +184,8 @@ export default function FlowEditPage() {
 
     setBusy(true);
     setRunState(null);
+    setPollJobs([]);
+    setExtraRunArtifacts([]);
     try {
       await api.saveFlowGraph(id, graphRef.current);
       const res = await api.runFlow(id, {
@@ -165,10 +197,17 @@ export default function FlowEditPage() {
         typeof res.output === "string"
           ? res.output
           : JSON.stringify(res.output, null, 2);
+      const steps = (res.steps as Record<string, unknown>[]) ?? [];
       setRunState({
         output,
-        steps: (res.steps as Record<string, unknown>[]) ?? [],
+        steps,
       });
+      setPollJobs(
+        extractPendingGenerativeJobs(steps).map((j) => ({
+          jobId: j.jobId,
+          kind: j.kind,
+        })),
+      );
       setRunMedia([]);
       setDebugPanelOpen(true);
     } catch (e) {
@@ -205,6 +244,7 @@ export default function FlowEditPage() {
         onHistory={() => setHistoryOpen(true)}
         onCompile={() => void checkCompile()}
         onRun={() => void runTest()}
+        runBusyLabel={generativeRun.busyRunLabel}
       />
 
       <FlowMetaDialog
@@ -259,6 +299,15 @@ export default function FlowEditPage() {
         onToggleCollapsed={() => setDebugPanelOpen((v) => !v)}
         onSelectCompileNode={(nodeId) => canvasRef.current?.selectNode(nodeId)}
         onRun={() => void runTest()}
+        runBusyLabel={generativeRun.busyRunLabel}
+        generativeHint={generativeRun.preRunMessage}
+        generativePollMsg={generativePollMsg}
+        generativeProgressPercent={generativeProgress}
+        canCancelGenerative={canCancelGenerative}
+        onCancelGenerativeJobs={() => {
+          for (const j of pollJobs) void cancelGenerativeJob(j.jobId);
+        }}
+        extraArtifacts={extraRunArtifacts}
       />
 
       <FlowVersionHistoryDialog

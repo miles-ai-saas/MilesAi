@@ -21,12 +21,14 @@ from app.tenant.agents.schemas.schedule import AgentScheduleCreate, AgentSchedul
 from app.tenant.agents.schemas.stats import AgentStatsOut
 from app.common.schema import ApiResponse, PageParams, PageResult
 from app.tenant.agents.services.agent import AgentService
+from app.tenant.agents.ws import agent_chat_ws_router
 from app.tenant.agents.services.architecture import AgentArchitectureService
 from app.tenant.agents.services.schedule import AgentScheduleService
 from app.tenant.agents.services.stats import AgentStatsService
 from app.models.agent import AgentType
 
 router = APIRouter()
+router.include_router(agent_chat_ws_router)
 
 
 def _svc(db: AsyncSession, ctx: TenantContext) -> AgentService:

@@ -61,6 +61,7 @@ async def register_media_asset(
     source: str | None = None,
     source_ref_type: str | None = None,
     source_ref_id: UUID | None = None,
+    cover_attachment_id: UUID | None = None,
 ) -> MediaAsset:
     """生成物落库后登记资产（同一 attachment 仅一条，已存在则跳过）。"""
     att_repo = AttachmentRepository(db)
@@ -72,6 +73,10 @@ async def register_media_asset(
     repo = MediaAssetRepository(db)
     existing = await repo.get_one(MediaAsset.attachment_id == attachment_id)
     if existing and not is_marked_deleted(existing):
+        if cover_attachment_id and not existing.cover_attachment_id:
+            existing.cover_attachment_id = cover_attachment_id
+            await db.flush()
+            await db.refresh(existing)
         return existing
 
     resolved_kind = kind or _kind_from_mime(att.mime_type)
@@ -81,6 +86,7 @@ async def register_media_asset(
     row = await repo.create(
         tenant_id=ctx.tenant_id,
         attachment_id=attachment_id,
+        cover_attachment_id=cover_attachment_id,
         kind=resolved_kind,
         source=resolved_source,
         source_ref_type=source_ref_type or att.resource_type,
@@ -159,16 +165,18 @@ class MediaAssetService(BaseService):
             raise BadRequestError("该资产已升格入库，请勿重复操作")
 
         att = await self._get_attachment_or_raise(row.attachment_id)
-        if row.kind == "video" or att.mime_type.startswith("video/"):
-            raise BadRequestError("视频资产暂不支持升格入库（后续版本支持描述/关键帧入库）")
+        is_video = row.kind == "video" or att.mime_type.startswith("video/")
 
-        content = download_bytes(att.object_key, att.object_bucket)
-        filename = (body.filename or row.title or att.filename).strip()
-        if not filename:
-            raise BadRequestError("文件名不能为空")
-        mime = att.mime_type
-        if not is_kb_upload_allowed(filename, mime):
-            raise BadRequestError(f"文件类型不支持入库。{kb_upload_allowed_hint()}")
+        if is_video:
+            content, filename, mime = self._build_video_promote_document(row, att, body)
+        else:
+            content = download_bytes(att.object_key, att.object_bucket)
+            filename = (body.filename or row.title or att.filename).strip()
+            if not filename:
+                raise BadRequestError("文件名不能为空")
+            mime = att.mime_type
+            if not is_kb_upload_allowed(filename, mime):
+                raise BadRequestError(f"文件类型不支持入库。{kb_upload_allowed_hint()}")
 
         kb_repo = KnowledgeBaseRepository(self.db)
         kb = await kb_repo.get_by_id(body.kb_id)
@@ -218,8 +226,36 @@ class MediaAssetService(BaseService):
     async def _to_out(self, row: MediaAsset) -> MediaAssetOut:
         att = await self.att_repo.get_by_id(row.attachment_id)
         attachment_out = AttachmentOut.model_validate(att) if att and not is_marked_deleted(att) else None
+        cover_out = None
+        if row.cover_attachment_id:
+            cover_att = await self.att_repo.get_by_id(row.cover_attachment_id)
+            if cover_att and not is_marked_deleted(cover_att):
+                cover_out = AttachmentOut.model_validate(cover_att)
         data = MediaAssetOut.model_validate(row)
-        return data.model_copy(update={"attachment": attachment_out})
+        return data.model_copy(update={"attachment": attachment_out, "cover_attachment": cover_out})
+
+    def _build_video_promote_document(
+        self,
+        row: MediaAsset,
+        att: Attachment,
+        body: PromoteToKbRequest,
+    ) -> tuple[bytes, str, str]:
+        """视频升格：以生成描述 Markdown 入库供 RAG 检索，原视频仍在 attachment。"""
+        base = (body.filename or row.title or att.filename or "generated-video").strip()
+        if not base.lower().endswith(".md"):
+            base = f"{base.rsplit('.', 1)[0] if '.' in base else base}.md"
+        prompt = (row.prompt or "").strip() or "（无记录提示词）"
+        text = (
+            f"# 生成视频资产\n\n"
+            f"- **媒体资产 ID**：`{row.id}`\n"
+            f"- **视频附件 ID**：`{att.id}`\n"
+            f"- **原始文件名**：{att.filename}\n"
+            f"- **MIME**：{att.mime_type}\n\n"
+            f"## 生成描述（检索用）\n\n{prompt}\n\n"
+            f"## 说明\n\n"
+            f"本条为 AI 生成视频的文字索引；播放请在「生成素材」中打开对应视频附件。\n"
+        )
+        return text.encode("utf-8"), base, "text/markdown"
 
     async def _get_or_raise(self, asset_id: UUID) -> MediaAsset:
         row = await self.repo.get_by_id(asset_id)

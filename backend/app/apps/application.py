@@ -1,22 +1,23 @@
 """FastAPI 应用工厂：CORS、链路追踪、路由挂载与启动期迁移 / LangGraph checkpoint。"""
 
-import uuid
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.apps.migrate import run_migrations
 from app.apps.routers import admin_router, api_router
 from app.common.handlers import exception_handlers
-from app.common.trace import reset_trace_id, set_trace_id
 from app.core.config import get_settings
+from app.core.logging import setup_logging
+from app.middlewares import register_http_middlewares
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     from app.integrations.langgraph.checkpointer import init_langgraph_checkpointer, shutdown_langgraph_checkpointer
 
+    setup_logging()
     # 启动时只做 schema 迁移；业务种子由 cli.py init-db 单独执行
     run_migrations()
     # 初始化 RAG / DeepAgents 共用 checkpointer（redis | memory），见 langgraph.checkpointer
@@ -35,7 +36,9 @@ def create_app() -> FastAPI:
         redoc_url="/redoc",
         swagger_ui_oauth2_redirect_url="/docs/oauth2-redirect",
         exception_handlers=exception_handlers,
-        debug=settings.DEBUG,
+        # 勿将 settings.debug 传给 FastAPI：True 时 Starlette 返回明文 traceback，
+        # 会绕过 app.common.handlers 的统一 {code, message, data, trace_id} 信封。
+        debug=False,
         lifespan=lifespan,
     )
 
@@ -47,18 +50,7 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
         expose_headers=["X-Trace-Id"],
     )
-
-    @app.middleware("http")
-    async def add_trace_id(request: Request, call_next):
-        trace_id = request.headers.get("X-Trace-Id") or str(uuid.uuid4())
-        request.state.trace_id = trace_id
-        token = set_trace_id(trace_id)
-        try:
-            response = await call_next(request)
-            response.headers["X-Trace-Id"] = trace_id
-            return response
-        finally:
-            reset_trace_id(token)
+    register_http_middlewares(app)
 
     app.include_router(api_router)
     app.include_router(admin_router)

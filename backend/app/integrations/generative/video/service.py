@@ -103,13 +103,17 @@ async def generate_video_for_model(
     last_frame_attachment_id: UUID | None = None,
     purpose: str = PURPOSE_CHAT_GENERATED,
     agent_id: UUID | None = None,
+    generative_job_id: UUID | None = None,
 ) -> VideoGenerateResult:
     """调用厂商生视频并持久化为 mp4 附件（可能阻塞数分钟）。"""
     prompt = (prompt or "").strip()
     if not prompt:
         raise BadRequestError("生视频 prompt 不能为空")
 
+    from app.integrations.generative.compliance import check_generative_prompt
     from app.integrations.generative.quota import assert_generative_quota
+
+    prompt = await check_generative_prompt(db, ctx, prompt)
 
     await assert_generative_quota(db, ctx.tenant_id, units=1)
 
@@ -120,6 +124,13 @@ async def generate_video_for_model(
         last_attachment_id=last_frame_attachment_id,
     )
 
+    progress = None
+    if generative_job_id:
+        from app.integrations.generative.jobs.progress import GenerativeJobProgress
+
+        progress = GenerativeJobProgress(generative_job_id)
+        await progress.update(8, "已提交厂商任务")
+
     mode = resolve_invoke_mode(model, capability=ModelCapabilityType.VIDEO_GEN.value)
     if mode == INVOKE_DASHSCOPE_T2V:
         video_bytes = await generate_dashscope_video(
@@ -129,6 +140,7 @@ async def generate_video_for_model(
             resolution=resolution,
             first_frame_data_url=first_frame,
             last_frame_data_url=last_frame,
+            progress=progress,
         )
     elif mode == INVOKE_VOLCENGINE_VIDEO:
         video_bytes = await generate_volcengine_video(
@@ -138,9 +150,13 @@ async def generate_video_for_model(
             resolution=resolution,
             first_frame_data_url=first_frame,
             last_frame_data_url=last_frame,
+            progress=progress,
         )
     else:
         raise BadRequestError(f"不支持的生视频 invoke_mode: {mode}")
+
+    if progress:
+        await progress.update(96, "保存生成物…")
 
     att_id = await persist_generated_bytes(
         db,
@@ -152,6 +168,22 @@ async def generate_video_for_model(
         resource_type="agent" if agent_id else None,
         resource_id=agent_id,
     )
+    cover_att_id: UUID | None = None
+    from app.integrations.generative.video.cover import extract_video_cover_jpeg
+
+    cover_bytes = extract_video_cover_jpeg(video_bytes)
+    if cover_bytes:
+        cover_att_id = await persist_generated_bytes(
+            db,
+            ctx,
+            data=cover_bytes,
+            filename="generated-cover.jpg",
+            mime_type="image/jpeg",
+            purpose=purpose,
+            resource_type="agent" if agent_id else None,
+            resource_id=agent_id,
+        )
+
     from app.tenant.media_assets.services.media_asset import register_media_asset
 
     await register_media_asset(
@@ -164,5 +196,6 @@ async def generate_video_for_model(
         kind="video",
         source_ref_type="agent" if agent_id else None,
         source_ref_id=agent_id,
+        cover_attachment_id=cover_att_id,
     )
     return VideoGenerateResult(attachment_id=att_id, mime_type="video/mp4", duration_sec=duration)

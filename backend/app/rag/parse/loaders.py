@@ -18,7 +18,7 @@ LangChain Document 加载与解析后端路由。
 
 from __future__ import annotations
 
-import logging
+from app.core.logging import get_logger
 
 from langchain_core.documents import Document
 
@@ -32,7 +32,7 @@ from app.rag.parse.media import is_audio_file, is_image_file
 from app.rag.parse.text_parser import parse_text
 from app.rag.parse.upload_policy import OFFICE_EXTENSIONS
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 _TEXT_EXTENSIONS = {".txt", ".md", ".markdown"}
 

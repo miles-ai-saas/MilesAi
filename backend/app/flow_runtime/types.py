@@ -47,6 +47,8 @@ class RunContext:
     agent_id: str | None = None  # 绑定智能体 ID（工具/技能鉴权用）
     agent_config: dict[str, Any] = field(default_factory=dict)  # 智能体扩展配置
     media: list[dict[str, Any]] = field(default_factory=list)  # 附图 [{attachment_id, detail}]
+    generative_video_async: bool = True  # False 时 VideoGenerate 节点同步阻塞
+    generative_image_async: bool = True  # False 时 ImageGenerate 节点同步阻塞
 
 
 @dataclass

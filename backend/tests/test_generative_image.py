@@ -110,6 +110,11 @@ async def test_generate_image_for_model_with_reference():
             "app.tenant.media_assets.services.media_asset.register_media_asset",
             new_callable=AsyncMock,
         ),
+        patch(
+            "app.integrations.generative.compliance.check_generative_prompt",
+            new_callable=AsyncMock,
+            side_effect=lambda _db, _ctx, p: p,
+        ),
     ):
         from app.integrations.generative.image.service import generate_image_for_model
 
@@ -154,6 +159,11 @@ async def test_generate_image_for_model_persists():
         patch(
             "app.tenant.media_assets.services.media_asset.register_media_asset",
             new_callable=AsyncMock,
+        ),
+        patch(
+            "app.integrations.generative.compliance.check_generative_prompt",
+            new_callable=AsyncMock,
+            side_effect=lambda _db, _ctx, p: p,
         ),
     ):
         from app.integrations.generative.image.service import generate_image_for_model

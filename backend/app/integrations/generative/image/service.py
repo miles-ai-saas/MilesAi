@@ -124,13 +124,17 @@ async def generate_image_for_model(
     reference_attachment_id: UUID | None = None,
     purpose: str = PURPOSE_CHAT_GENERATED,
     agent_id: UUID | None = None,
+    generative_job_id: UUID | None = None,
 ) -> ImageGenerateResult:
     """调用厂商生图并持久化为附件；可选参考图 attachment 实现图生图。"""
     prompt = (prompt or "").strip()
     if not prompt:
         raise BadRequestError("生图 prompt 不能为空")
 
+    from app.integrations.generative.compliance import check_generative_prompt
     from app.integrations.generative.quota import assert_generative_quota
+
+    prompt = await check_generative_prompt(db, ctx, prompt)
 
     ref_url: str | None = None
     if reference_attachment_id:
@@ -141,6 +145,12 @@ async def generate_image_for_model(
     count = min(max(int(n), 1), MAX_IMAGES_PER_REQUEST)
     await assert_generative_quota(db, ctx.tenant_id, units=count)
 
+    if generative_job_id:
+        from app.integrations.generative.jobs.progress import GenerativeJobProgress
+
+        progress = GenerativeJobProgress(generative_job_id)
+        await progress.update(10, "调用生图 API")
+
     blobs = await _generate_bytes(
         model,
         prompt=prompt,
@@ -148,6 +158,11 @@ async def generate_image_for_model(
         n=count,
         reference_image_data_url=ref_url,
     )
+    if generative_job_id:
+        from app.integrations.generative.jobs.progress import GenerativeJobProgress
+
+        await GenerativeJobProgress(generative_job_id).update(80, "保存生成物")
+
     attachment_ids: list[UUID] = []
     mime = "image/png"
     for i, data in enumerate(blobs):

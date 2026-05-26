@@ -7,13 +7,13 @@ PDF / Office / 部分图片：Docling → LangChain Document（Markdown 导出�
 
 from __future__ import annotations
 
-import logging
+from app.core.logging import get_logger
 import tempfile
 from pathlib import Path
 
 from langchain_core.documents import Document
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 # 导出 Markdown 时插入的分页标记（用于拆分 page_no）
 PAGE_BREAK_PLACEHOLDER = "\n\n<!-- MILESAI_PAGE_BREAK -->\n\n"

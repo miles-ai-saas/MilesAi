@@ -473,9 +473,9 @@ flowchart TD
 - A2A：[a2a.md](../guides/a2a.md)
 - LangChain/LangGraph/DeepAgents：[ai-stack.md](../guides/ai-stack.md)
 
-### 10.1 多模态（规划）
+### 10.1 多模态
 
-当前对话与流程 LLM 为 **纯文本**；识图、生图/生视频为设计稿，未实施。
+识图、生图/生视频、媒体资产、生视频异步任务与任务中心 **已上线**。产品矩阵见 [multimodal-capabilities.md](../product/multimodal-capabilities.md)；实施状态见 [multimodal-roadmap.md](./multimodal-roadmap.md)。
 
 | 文档 | 说明 |
 |------|------|
@@ -615,7 +615,7 @@ flowchart TD
 | 存储配置分层（L1/L2/L3）文档 | ✅ | §6.5；L3 embedding 已落地；L2 待开发 |
 | 流程画布与 LangGraph 执行 | ✅ | 见 [flows.md](../guides/flows.md) |
 | 智能体 RAG / 画布 / 直连 LLM | ✅ | |
-| 对话/流程 **识图、生图、生视频** | 📋 | 见 §10.1 设计稿 |
+| 对话/流程 **识图、生图、生视频** | ✅ | 见 §10.1；生视频默认 `generative_jobs` 异步 |
 | DeepAgents 内部协同 | ✅ | 可选依赖，可降级 |
 | A2A Peer / 宿主 / custom 引用 | ✅ | 对外暴露本平台 Card：未做 |
 | 合规 / HTTP 钩子 | ✅ | Python 钩子未实现 |

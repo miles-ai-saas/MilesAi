@@ -644,6 +644,49 @@ export const api = {
   deleteAttachment: (id: string) =>
     http.delete(`/attachments/${id}`).then(() => undefined),
 
+  getGenerativeJobsMeta: () =>
+    get<import("./lib/generative-job-labels").GenerativeJobsMeta>("/generative/jobs/meta"),
+
+  listGenerativeJobs: (
+    page = 1,
+    size = DEFAULT_PAGE_SIZE,
+    opts?: { status?: string; kind?: string },
+  ) => {
+    const q = new URLSearchParams(buildPageQuery(page, size));
+    if (opts?.status) q.set("status", opts.status);
+    if (opts?.kind) q.set("kind", opts.kind);
+    return getPage<import("./types").GenerativeJobOut>(`/generative/jobs?${q.toString()}`);
+  },
+
+  getGenerativeJob: (jobId: string) =>
+    get<import("./types").GenerativeJobOut>(`/generative/jobs/${jobId}`),
+
+  cancelGenerativeJob: (jobId: string) =>
+    http
+      .post<ApiResponse<import("./types").GenerativeJobOut>>(
+        `/generative/jobs/${jobId}/cancel`,
+      )
+      .then((r) => unwrap(r.data)),
+
+  retryGenerativeJob: (jobId: string) =>
+    http
+      .post<ApiResponse<import("./types").GenerativeJobOut>>(
+        `/generative/jobs/${jobId}/retry`,
+      )
+      .then((r) => unwrap(r.data)),
+
+  submitGenerativeVideoJob: (body: {
+    prompt: string;
+    duration?: number;
+    resolution?: string;
+    image_attachment_id?: string;
+    last_frame_attachment_id?: string;
+    model_config_id?: string;
+  }) =>
+    http
+      .post<ApiResponse<import("./types").GenerativeJobOut>>("/generative/jobs/video", body)
+      .then((r) => unwrap(r.data)),
+
   listMediaAssets: (
     page = 1,
     size = DEFAULT_PAGE_SIZE,

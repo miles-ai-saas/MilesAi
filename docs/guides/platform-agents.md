@@ -1,7 +1,7 @@
 # 平台内智能体与内部协同
 
 > 类型：智能体 | 状态：已实现 | 关联：[a2a.md](./a2a.md)（外部协议，语义不同）  
-> **多模态（设计稿 · 未实施）：** [agent-multimodal-design.md](../architecture/agent-multimodal-design.md)
+> **多模态（已实现）：** [multimodal-capabilities.md](../product/multimodal-capabilities.md) · 设计归档 [agent-multimodal-design.md](../architecture/agent-multimodal-design.md)
 
 ## 产品语义
 
@@ -43,6 +43,15 @@ UI：列表可显示 `内部协同 · N 子智能体`；配置在创建/编辑�
 ```bash
 cd backend && pip install -e ".[agent-stack]"   # deepagents、langgraph>=1.2
 ```
+
+### 对话实时通道（规划）
+
+| 现状 | 规划 |
+|------|------|
+| `POST /agents/{id}/chat` 整包返回；异步生成物靠 `generative_jobs` + SSE/轮询 | 对话工作台 **WebSocket** 流式 token / 工具确认 / 本对话内 job 事件 |
+| 任务中心、流程调试 | 继续 **SSE** + REST（取消/重试） |
+
+详见 [realtime-transport-design.md](../architecture/realtime-transport-design.md)。
 
 | `Agent.config` | 默认 | 说明 |
 |----------------|------|------|

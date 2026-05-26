@@ -30,6 +30,8 @@ export type AgentFormValues = {
   enable_generative_tools: boolean;
   generative_image_model_id: string;
   generative_video_model_id: string;
+  /** 识图：未传新图时沿用上一轮用户附图（默认开启） */
+  carry_forward_media: boolean;
 };
 
 export const AGENT_FORM_STEPS = [
@@ -82,6 +84,7 @@ export function emptyAgentForm(): AgentFormValues {
     enable_generative_tools: false,
     generative_image_model_id: "",
     generative_video_model_id: "",
+    carry_forward_media: true,
   };
 }
 
@@ -122,6 +125,7 @@ export function agentToFormValues(agent: Agent): AgentFormValues {
     enable_generative_tools: Boolean(cfg.enable_generative_tools),
     generative_image_model_id: String(cfg.generative_image_model_id ?? ""),
     generative_video_model_id: String(cfg.generative_video_model_id ?? ""),
+    carry_forward_media: cfg.carry_forward_media !== false,
   };
 }
 
@@ -204,5 +208,12 @@ export function buildAgentConfig(
   } else if (config.runtime_mode === "workflow") {
     delete config.runtime_mode;
   }
+
+  if (!form.carry_forward_media) {
+    config.carry_forward_media = false;
+  } else {
+    delete config.carry_forward_media;
+  }
+
   return config;
 }

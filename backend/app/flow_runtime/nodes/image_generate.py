@@ -1,9 +1,7 @@
 """
 画布生图节点 ``ImageGenerate``。
 
-``node_data``：``model_config_id``（必填）、可选固定 ``prompt`` / ``size`` / ``n`` / ``image_attachment_id``。
-``inputs``：上游 ``prompt`` 或 ``input``；可选 ``image_attachment_id``（图生图参考图）。
-``output``：``{ kind, attachment_id, mime_type }``，下游可接 ``TextOutput`` 或展示链接。
+默认异步：提交 ``generative_jobs`` + Celery；``RunContext.generative_image_async=False`` 时同步阻塞。
 """
 
 from __future__ import annotations
@@ -17,6 +15,14 @@ from app.flow_runtime.types import RunContext
 from app.infra.db import AsyncSessionLocal
 from app.integrations.generative import generate_image_for_model, resolve_image_gen_model
 from app.integrations.generative.persist import PURPOSE_FLOW_GENERATED
+from app.tenant.generative.schemas.job import ImageGenerativeJobCreate
+from app.tenant.generative.services.job import GenerativeJobService
+
+
+def _optional_uuid(raw: Any) -> UUID | None:
+    if not raw:
+        return None
+    return UUID(str(raw))
 
 
 async def image_generate(
@@ -38,8 +44,35 @@ async def image_generate(
     if not model_id:
         raise BadRequestError("生图节点未配置 image_gen 模型")
 
-    raw_img = inputs.get("image_attachment_id") or node_data.get("image_attachment_id")
-    image_att = UUID(str(raw_img)) if raw_img else None
+    image_att = _optional_uuid(
+        inputs.get("image_attachment_id") or node_data.get("image_attachment_id")
+    )
+    n = int(node_data.get("n") or inputs.get("n") or 1)
+    size = node_data.get("size") or inputs.get("size")
+
+    if ctx.generative_image_async and GenerativeJobService.image_async_enabled():
+        body = ImageGenerativeJobCreate(
+            prompt=prompt,
+            size=str(size) if size else None,
+            n=n,
+            image_attachment_id=image_att,
+            model_config_id=UUID(str(model_id)),
+        )
+        async with AsyncSessionLocal() as db:
+            tenant_ctx = tenant_context_from_run(ctx)
+            out = await GenerativeJobService(db, tenant_ctx).submit_image(
+                body,
+                source="flow_node",
+                agent_id=_optional_uuid(ctx.agent_id),
+                agent_config=ctx.agent_config,
+            )
+            await db.commit()
+        return {
+            "kind": "image",
+            "status": "pending",
+            "generative_job_id": str(out.id),
+            "message": "生图任务已提交，请通过 generative_job_id 查询进度",
+        }
 
     async with AsyncSessionLocal() as db:
         tenant_ctx = tenant_context_from_run(ctx)
@@ -54,15 +87,17 @@ async def image_generate(
             tenant_ctx,
             model,
             prompt=prompt,
-            size=node_data.get("size") or inputs.get("size"),
-            n=int(node_data.get("n") or 1),
+            size=size,
+            n=n,
             reference_attachment_id=image_att,
             purpose=PURPOSE_FLOW_GENERATED,
-            agent_id=UUID(ctx.agent_id) if ctx.agent_id else None,
+            agent_id=_optional_uuid(ctx.agent_id),
         )
+        await db.commit()
         primary = result.attachment_ids[0]
         return {
             "kind": "image",
             "attachment_id": str(primary),
+            "attachment_ids": [str(i) for i in result.attachment_ids],
             "mime_type": result.mime_type,
         }

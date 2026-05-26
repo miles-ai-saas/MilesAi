@@ -257,6 +257,38 @@ async def run_tool_calling_chat(
                 actor_user_id=ctx.user_id,
                 invoke_source="agent",
             )
+            pending_job_id = (
+                output.get("generative_job_id")
+                if isinstance(output, dict) and output.get("status") == "pending"
+                else None
+            )
+            if pending_job_id:
+                steps.append(
+                    {
+                        "type": "generative_job",
+                        "slug": slug,
+                        "job_id": pending_job_id,
+                        "kind": output.get("kind") or "video",
+                        "status": "pending",
+                    }
+                )
+                job_kind = str(output.get("kind") or "video")
+                default_msg = (
+                    "图片生成任务已提交，完成后将自动展示预览。"
+                    if job_kind == "image"
+                    else "视频生成任务已提交，完成后将自动展示预览。"
+                )
+                return ChatResponse(
+                    answer=str(output.get("message") or default_msg),
+                    steps=steps,
+                    generative_jobs=[
+                        {
+                            "id": pending_job_id,
+                            "kind": job_kind,
+                            "status": "pending",
+                        }
+                    ],
+                )
             artifacts.extend(_artifacts_from_tool_output(output))
             steps.append({"type": "tool_call", "slug": slug, "status": "success"})
             messages.append(

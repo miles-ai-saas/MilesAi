@@ -158,6 +158,11 @@ export default function MediaAssetsPage() {
                     attachmentId={a.attachment_id}
                     mimeType={a.attachment?.mime_type}
                     caption={a.title ?? undefined}
+                    posterAttachmentId={
+                      a.kind === "video"
+                        ? a.cover_attachment_id ?? a.cover_attachment?.id
+                        : undefined
+                    }
                   />
                 </div>
                 <p className="truncate text-sm font-medium text-ink">
@@ -179,7 +184,7 @@ export default function MediaAssetsPage() {
                   {a.kb_document_id ? " · 已入库" : ""}
                 </p>
                 <div className="mt-3 flex flex-wrap gap-2">
-                  {!a.kb_document_id && a.kind === "image" && kbs.length > 0 && (
+                  {!a.kb_document_id && (a.kind === "image" || a.kind === "video") && kbs.length > 0 && (
                     <button
                       type="button"
                       className="btn-sm-primary text-xs"
@@ -187,9 +192,6 @@ export default function MediaAssetsPage() {
                     >
                       加入知识库
                     </button>
-                  )}
-                  {!a.kb_document_id && a.kind === "video" && (
-                    <span className="text-[10px] text-ink-faint">视频暂不支持入库</span>
                   )}
                   <button
                     type="button"

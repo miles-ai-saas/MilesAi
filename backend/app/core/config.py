@@ -26,6 +26,10 @@ class Settings(BaseSettings):
     app_description: str = "一体化 AI 智能编排与 RAG 应用平台 REST API"
     app_env: str = "development"
     debug: bool = True
+    # 应用日志级别：DEBUG | INFO | WARNING | ERROR（见 app.core.logging）
+    log_level: str = "INFO"
+    # HTTP 访问日志中间件（见 app.middlewares.access_log）
+    log_http_access: bool = True
     secret_key: str = "change-me"
     api_host: str = "0.0.0.0"
     api_port: int = 8000
@@ -67,6 +71,14 @@ class Settings(BaseSettings):
 
     celery_broker_url: str = "redis://localhost:6379/1"
     celery_result_backend: str = "redis://localhost:6379/2"
+
+    # 生视频：True 时工具/流程节点提交 Celery 异步任务；False 时同步阻塞（调试）
+    generative_video_async: bool = True
+    # 生图：True 时工具/流程节点提交 Celery 异步任务；False 时同步阻塞（调试）
+    generative_image_async: bool = True
+
+    # 工作台智能体对话 WebSocket（关闭时前端回退 HTTP POST /chat）
+    agent_chat_websocket_enabled: bool = True
 
     cors_origins: str = (
         "http://localhost:3000,http://127.0.0.1:3000,"

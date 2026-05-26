@@ -63,7 +63,7 @@ export const WORKBENCH_NAV: NavGroup[] = [
   {
     title: "运营",
     items: [
-      { href: "/workbench/tasks", label: "任务" },
+      { href: "/workbench/tasks", label: "任务中心" },
       { href: "/workbench/monitor", label: "监控" },
       { href: "/workbench/marketplace", label: "应用市场" },
     ],

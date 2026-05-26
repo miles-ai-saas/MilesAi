@@ -679,12 +679,30 @@ export interface ChatArtifact {
   caption?: string | null;
 }
 
+export interface GenerativeJobOut {
+  id: string;
+  tenant_id: string;
+  kind: string;
+  status: "pending" | "running" | "success" | "failed" | "cancelled";
+  source: string;
+  progress_message?: string | null;
+  progress_percent?: number | null;
+  params: Record<string, unknown>;
+  result?: Record<string, unknown> | null;
+  error_message?: string | null;
+  celery_task_id?: string | null;
+  celery_task_record_id?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface ChatResponse {
   answer: string;
   sources: Record<string, unknown>[];
   steps: Record<string, unknown>[];
   artifacts?: ChatArtifact[];
   pending_tool?: PendingToolCall | null;
+  generative_jobs?: { id: string; kind: string; status: string }[];
 }
 
 /** chatAgent 返回值：业务数据 + 响应头/信封中的 trace_id。 */
@@ -757,6 +775,7 @@ export interface MediaAsset {
   id: string;
   tenant_id: string;
   attachment_id: string;
+  cover_attachment_id?: string | null;
   kind: string;
   source: string;
   source_ref_type: string | null;
@@ -771,6 +790,7 @@ export interface MediaAsset {
   created_by: string;
   created_at: string;
   attachment?: Attachment | null;
+  cover_attachment?: Attachment | null;
 }
 
 export type SensitiveAction = "warn" | "block";

@@ -263,6 +263,8 @@ class FlowService(BaseService):
                 permissions=self.ctx.permissions,
                 is_superuser=self.ctx.is_superuser,
                 media=[m.model_dump(mode="json") for m in body.media],
+                generative_video_async=body.async_generative,
+                generative_image_async=body.async_generative,
             )
             if "query" not in ctx.inputs and run_inputs:
                 ctx.inputs.setdefault("query", run_inputs.get("message", ""))

@@ -123,6 +123,32 @@ async def invoke_tool_with_context(
             slug, meta["name"], meta.get("description"), params
         )
 
+    if slug == "generate_image":
+        from app.integrations.generative.policy import (
+            image_tool_confirmation_message,
+            needs_image_tool_confirmation,
+        )
+
+        if needs_image_tool_confirmation(params) and not confirmed:
+            await write_tool_invocation_log(
+                db,
+                tenant_id=ctx.tenant_id,
+                tool_slug=slug,
+                tool_id=resolved_tool_id,
+                source=meta["source"],
+                status="confirmation_required",
+                params=params,
+                actor_user_id=actor_user_id,
+                agent_id=agent_id,
+                invoke_source=invoke_source,
+            )
+            raise ToolConfirmationRequired(
+                slug,
+                meta["name"],
+                image_tool_confirmation_message(params),
+                params,
+            )
+
     tool_params = dict(params)
     bound_skill_id: UUID | None = None
     if slug in SKILL_BOUND_SLUGS:

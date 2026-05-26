@@ -1,7 +1,8 @@
 # 流程编排 — LLM 节点多模态技术设计
 
 **日期：** 2026-05-26  
-**状态：** 设计稿（未实施）  
+**状态：** 已实现（设计归档）  
+**产品说明：** [multimodal-capabilities.md](../product/multimodal-capabilities.md) · **路线图：** [multimodal-roadmap.md](./multimodal-roadmap.md)  
 **关联：** [multimodal-roadmap.md](./multimodal-roadmap.md)、[multimodal-capabilities.md](../product/multimodal-capabilities.md)、[flow-orchestration-enhancement.md](./flow-orchestration-enhancement.md)、[flow-generative-media-design.md](./flow-generative-media-design.md)（生图/生视频）、[flows.md](../guides/flows.md)、[model-providers.md](../guides/model-providers.md)、[technical-design.md](./technical-design.md) §9
 
 ---

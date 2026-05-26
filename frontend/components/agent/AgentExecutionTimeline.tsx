@@ -9,6 +9,10 @@ import {
   type AgentStepStatus,
   type ParsedAgentStep,
 } from "@/lib/agent-steps";
+import {
+  generativeToolConfirmButtonLabel,
+  generativeToolConfirmNote,
+} from "@/lib/generative-tool-ui";
 import type { PendingToolCall } from "@/lib/types";
 
 type Props = {
@@ -118,6 +122,9 @@ function StepRow({
     step.type === "tool_confirmation_required" &&
     pendingTool &&
     (!step.raw.slug || step.raw.slug === pendingTool.slug);
+  const confirmNote = showConfirm && pendingTool
+    ? generativeToolConfirmNote(pendingTool.slug, pendingTool.params)
+    : null;
 
   return (
     <li className="relative flex gap-3 pb-4 last:pb-0">
@@ -160,6 +167,11 @@ function StepRow({
             {pendingTool.description ? (
               <p className="mt-0.5 text-[11px] text-amber-800/80">{pendingTool.description}</p>
             ) : null}
+            {confirmNote ? (
+              <p className="mt-1.5 text-[11px] leading-relaxed text-amber-900/90">
+                {confirmNote}
+              </p>
+            ) : null}
             <p className="mt-1.5 font-mono text-[10px] text-amber-900/90">
               {formatToolParams(pendingTool.params)}
             </p>
@@ -170,7 +182,7 @@ function StepRow({
                 disabled={confirmToolDisabled}
                 onClick={onConfirmTool}
               >
-                确认执行
+                {generativeToolConfirmButtonLabel(pendingTool.slug)}
               </button>
             ) : null}
           </div>

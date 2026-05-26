@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Awaitable, Callable
 from typing import Any
 
 import httpx
@@ -72,6 +73,10 @@ def normalize_volcengine_resolution(resolution: str) -> str:
     return r.lower() if r.lower() in ("480p", "720p", "1080p") else r
 
 
+OnPollTick = Callable[[int, str], Awaitable[None]]
+ShouldCancel = Callable[[], Awaitable[bool]]
+
+
 async def poll_volcengine_video_task(
     model: ModelConfig,
     api_key: str,
@@ -79,12 +84,21 @@ async def poll_volcengine_video_task(
     *,
     poll_interval_sec: float = DEFAULT_POLL_INTERVAL_SEC,
     poll_timeout_sec: float = DEFAULT_POLL_TIMEOUT_SEC,
+    on_poll: OnPollTick | None = None,
+    should_cancel: ShouldCancel | None = None,
 ) -> dict[str, Any]:
     """轮询 ``GET .../tasks/{id}`` 直至 succeeded 或失败/超时。"""
     url = volcengine_poll_url(model, task_id)
     max_attempts = max(1, int(poll_timeout_sec / poll_interval_sec))
     async with httpx.AsyncClient(timeout=HTTP_DEFAULT_TIMEOUT_SEC) as client:
-        for _ in range(max_attempts):
+        for attempt in range(max_attempts):
+            if should_cancel and await should_cancel():
+                from app.integrations.generative.jobs.errors import GenerativeJobCancelled
+
+                raise GenerativeJobCancelled()
+            if on_poll:
+                pct = min(90, 10 + int((attempt / max_attempts) * 80))
+                await on_poll(pct, "豆包生视频生成中…")
             await asyncio.sleep(poll_interval_sec)
             poll = await client.get(url, headers=volcengine_headers(api_key))
             if poll.status_code >= 400:

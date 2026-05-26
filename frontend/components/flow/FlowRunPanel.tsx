@@ -39,6 +39,17 @@ interface FlowRunPanelProps {
   onSelectCompileNode?: (nodeId: string) => void;
   onRun?: () => void;
   busy?: boolean;
+  /** busy 时「运行」按钮文案，如「生视频中…」 */
+  runBusyLabel?: string;
+  /** 画布含生图/生视频节点时的运行前提示 */
+  generativeHint?: string | null;
+  /** 异步任务轮询中的说明 */
+  generativePollMsg?: string | null;
+  generativeProgressPercent?: number | null;
+  onCancelGenerativeJobs?: () => void;
+  canCancelGenerative?: boolean;
+  /** 轮询完成后追加的生成物 */
+  extraArtifacts?: import("@/lib/flow-run-artifacts").FlowRunArtifact[];
   pendingMedia?: FlowRunPendingMedia[];
   onPendingMediaChange?: (items: FlowRunPendingMedia[]) => void;
 }
@@ -54,7 +65,14 @@ export function FlowRunPanel({
   onToggleCollapsed,
   onSelectCompileNode,
   onRun,
-  busy,
+  busy = false,
+  runBusyLabel = "运行中…",
+  generativeHint = null,
+  generativePollMsg = null,
+  generativeProgressPercent = null,
+  onCancelGenerativeJobs,
+  canCancelGenerative = false,
+  extraArtifacts = [],
   pendingMedia = [],
   onPendingMediaChange,
 }: FlowRunPanelProps) {
@@ -112,10 +130,20 @@ export function FlowRunPanel({
   const hasOutput = Boolean(runState?.output);
   const hasErrors =
     (runState?.compileErrorDetails?.length ?? 0) > 0 || Boolean(runState?.error);
-  const runArtifacts = useMemo(
-    () => extractFlowRunArtifacts(runState?.steps),
-    [runState?.steps],
-  );
+  const runArtifacts = useMemo(() => {
+    const base = extractFlowRunArtifacts(runState?.steps);
+    if (!extraArtifacts.length) return base;
+    const seen = new Set(base.map((a) => `${a.kind}:${a.attachmentId}`));
+    const merged = [...base];
+    for (const item of extraArtifacts) {
+      const key = `${item.kind}:${item.attachmentId}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        merged.push(item);
+      }
+    }
+    return merged;
+  }, [runState?.steps, extraArtifacts]);
   const hasArtifacts = runArtifacts.length > 0;
 
   if (collapsed) {
@@ -151,7 +179,7 @@ export function FlowRunPanel({
               disabled={!canRun}
               onClick={onRun}
             >
-              运行
+              {busy ? runBusyLabel : "运行"}
             </button>
           )}
           {onToggleCollapsed && (
@@ -202,6 +230,38 @@ export function FlowRunPanel({
           <label className="block text-xs font-medium text-ink-muted">
             测试问题 (query)
           </label>
+          {generativeHint && !busy ? (
+            <p className="rounded-lg border border-amber-200/80 bg-amber-50/90 px-2.5 py-1.5 text-[11px] leading-relaxed text-amber-900">
+              {generativeHint}
+            </p>
+          ) : null}
+          {generativeHint && busy ? (
+            <p className="text-[11px] leading-relaxed text-amber-800">{runBusyLabel}</p>
+          ) : null}
+          {generativePollMsg ? (
+            <div className="rounded-lg border border-amber-200/80 bg-amber-50/90 px-2.5 py-1.5 text-[11px] text-amber-900">
+              <div className="flex items-center justify-between gap-2">
+                <span>{generativePollMsg}</span>
+                {canCancelGenerative && onCancelGenerativeJobs ? (
+                  <button
+                    type="button"
+                    className="btn-sm-ghost shrink-0 !px-1.5 text-[10px]"
+                    onClick={onCancelGenerativeJobs}
+                  >
+                    取消
+                  </button>
+                ) : null}
+              </div>
+              {generativeProgressPercent != null ? (
+                <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-amber-200/60">
+                  <div
+                    className="h-full rounded-full bg-amber-600 transition-all"
+                    style={{ width: `${generativeProgressPercent}%` }}
+                  />
+                </div>
+              ) : null}
+            </div>
+          ) : null}
           {pendingMedia.length > 0 && (
             <div className="flex flex-wrap gap-2">
               {pendingMedia.map((m) => (
@@ -259,7 +319,7 @@ export function FlowRunPanel({
                 disabled={!canRun}
                 onClick={onRun}
               >
-                运行
+                {busy ? runBusyLabel : "运行"}
               </button>
             )}
           </div>

@@ -192,6 +192,17 @@ export function TaskDetailDialog({ open, taskId, taskMeta, onClose, onChanged }:
             </p>
           )}
 
+          {task.resource_type === "generative_job" && task.resource_id && (
+            <p>
+              <Link
+                href={`/workbench/tasks?category=generative&job=${encodeURIComponent(task.resource_id)}`}
+                className="text-sm text-brand hover:underline"
+              >
+                在生成任务中查看详情 →
+              </Link>
+            </p>
+          )}
+
           {msg && <p className="text-sm text-ink-muted">{msg}</p>}
         </div>
       )}

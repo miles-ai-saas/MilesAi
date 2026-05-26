@@ -13,6 +13,7 @@ docs/
 ├── architecture/             # 架构与技术方案
 │   ├── technical-design.md
 │   ├── multimodal-roadmap.md       # 多模态技术总览与实施顺序
+│   ├── realtime-transport-design.md # 对话 WebSocket + 资源 SSE（设计稿）
 │   ├── agent-multimodal-design.md
 │   ├── flow-llm-multimodal-design.md
 │   ├── flow-generative-media-design.md
@@ -64,9 +65,10 @@ docs/
 | [flow-orchestration-enhancement.md](./architecture/flow-orchestration-enhancement.md) | **流程编排增强**：属性面板、调试、RAG 节点（已实现） |
 | [flow-subflow-design.md](./architecture/flow-subflow-design.md) | **子流程 SubFlow**：立项规格，暂不实施 |
 | [multimodal-roadmap.md](./architecture/multimodal-roadmap.md) | **多模态技术总览**：文档地图、附件无签名约定、实施顺序 |
-| [agent-multimodal-design.md](./architecture/agent-multimodal-design.md) | 智能体对话多模态（识图 + 生成工具）设计稿 |
-| [flow-llm-multimodal-design.md](./architecture/flow-llm-multimodal-design.md) | 流程 `LLMCall` **识图输入** 设计稿 |
-| [flow-generative-media-design.md](./architecture/flow-generative-media-design.md) | 流程 **生图/生视频** 节点设计稿 |
+| [realtime-transport-design.md](./architecture/realtime-transport-design.md) | **实时通道**：对话 WebSocket、生成任务 SSE、协议草案与分期 |
+| [agent-multimodal-design.md](./architecture/agent-multimodal-design.md) | 智能体对话多模态（设计归档） |
+| [flow-llm-multimodal-design.md](./architecture/flow-llm-multimodal-design.md) | 流程 `LLMCall` 识图输入（设计归档） |
+| [flow-generative-media-design.md](./architecture/flow-generative-media-design.md) | 流程生图/生视频节点（设计归档） |
 | [media-assets-design.md](./architecture/media-assets-design.md) | **生成物媒体资产**：不自动进 KB、`media_assets` 表与升格入库 |
 
 ## 前端 (`frontend/`)
