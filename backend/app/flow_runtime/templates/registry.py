@@ -46,32 +46,11 @@ FLOW_TEMPLATE_REGISTRY: tuple[FlowTemplateSpec, ...] = (
         graph_file="rag_flow.json",
     ),
     FlowTemplateSpec(
-        id="rag_grade",
-        label="RAG + 相关性评分",
-        hint="含评分分支与无命中兜底",
-        default_name="RAG 评分流程",
-        graph_file="rag_flow_with_grade.json",
-    ),
-    FlowTemplateSpec(
         id="simple_llm",
         label="简单对话",
         hint="用户输入 → 大模型 → 输出",
         default_name="对话流程",
         graph_file="simple_llm.json",
-    ),
-    FlowTemplateSpec(
-        id="image_generate",
-        label="文生图",
-        hint="提示词 → 生图（需配置 image_gen 模型）",
-        default_name="生图流程",
-        graph_file="image_generate.json",
-    ),
-    FlowTemplateSpec(
-        id="video_generate",
-        label="文生视频",
-        hint="提示词 → 生视频（需配置 video_gen 模型）",
-        default_name="生视频流程",
-        graph_file="video_generate.json",
     ),
 )
 
@@ -115,6 +94,7 @@ def list_flow_templates(*, insertable_only: bool = False) -> list[dict[str, Any]
 
 
 def load_rag_graph_template(*, variant: str = "default") -> dict[str, Any]:
-    """兼容市场/种子：``default`` → rag；``with_grade`` → rag_grade。"""
-    template_id = "rag_grade" if variant == "with_grade" else "rag"
-    return load_flow_template_graph(template_id)
+    """兼容市场/种子：``default`` → rag；``with_grade`` → rag_flow_with_grade.json（不入插入模板列表）。"""
+    if variant == "with_grade":
+        return _read_graph_file("rag_flow_with_grade.json")
+    return load_flow_template_graph("rag")

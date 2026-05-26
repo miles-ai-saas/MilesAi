@@ -8,9 +8,11 @@
 import { useCallback, useMemo, useState } from "react";
 import { McpCreateCard } from "@/components/mcp/McpCreateCard";
 import { McpServiceCard } from "@/components/mcp/McpServiceCard";
+import { McpServiceDetailDialog } from "@/components/mcp/McpServiceDetailDialog";
 import { McpServiceDialog } from "@/components/mcp/McpServiceDialog";
 import { ResourceListFooter } from "@/components/resource/ResourceListFooter";
 import { ResourceListLayout } from "@/components/resource/ResourceListLayout";
+import { MCP_ENDPOINT_PLACEHOLDER } from "@/components/mcp/mcp-dialog-shared";
 import { useConfirmAction } from "@/hooks/use-confirm-action";
 import { usePagedList } from "@/hooks/use-paged-list";
 import { api } from "@/lib/api";
@@ -69,13 +71,16 @@ export default function McpPage() {
   const [dialogMode, setDialogMode] = useState<"create" | "edit">("create");
   const [dialogTransport, setDialogTransport] = useState<Exclude<McpTransportTab, "">>("http");
   const [editing, setEditing] = useState<McpService | null>(null);
+  const [viewing, setViewing] = useState<McpService | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [endpointUrl, setEndpointUrl] = useState("http://127.0.0.1:3001/mcp");
+  const [endpointUrl, setEndpointUrl] = useState("https://");
   const [stdioCommand, setStdioCommand] = useState("npx");
   const [stdioArgs, setStdioArgs] = useState("");
   const [busy, setBusy] = useState(false);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [syncingId, setSyncingId] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState("");
 
   const list = usePagedList(
     useCallback(
@@ -96,6 +101,11 @@ export default function McpPage() {
       ),
     [list.items, search, mcpMeta],
   );
+
+  const viewingLive = useMemo(() => {
+    if (!viewing) return null;
+    return list.items.find((s) => s.id === viewing.id) ?? viewing;
+  }, [viewing, list.items]);
 
   const pageStats = useMemo(() => {
     let synced = 0;
@@ -118,9 +128,10 @@ export default function McpPage() {
     setName("");
     setDescription("");
     setDialogTransport(transport);
-    setEndpointUrl(transport === "http" ? "https://" : "http://127.0.0.1:3001/mcp");
+    setEndpointUrl(MCP_ENDPOINT_PLACEHOLDER[transport] || "https://");
     setStdioCommand("npx");
     setStdioArgs("");
+    setSaveError("");
   };
 
   const openCreate = (transport: Exclude<McpTransportTab, "">) => {
@@ -141,7 +152,22 @@ export default function McpPage() {
     setStdioCommand(String(s.connection_config?.command ?? ""));
     const args = s.connection_config?.args;
     setStdioArgs(Array.isArray(args) ? args.map(String).join("\n") : "");
+    setSaveError("");
+    setDetailOpen(false);
     setDialogOpen(true);
+  };
+
+  const openDetail = (s: McpService) => {
+    setViewing(s);
+    setDetailOpen(true);
+  };
+
+  const onDialogTransportChange = (t: Exclude<McpTransportTab, "">) => {
+    if (dialogMode !== "create") return;
+    setDialogTransport(t);
+    if (!endpointUrl.trim() || endpointUrl === MCP_ENDPOINT_PLACEHOLDER[dialogTransport]) {
+      setEndpointUrl(MCP_ENDPOINT_PLACEHOLDER[t] || "");
+    }
   };
 
   const buildPayload = () => {
@@ -169,12 +195,12 @@ export default function McpPage() {
 
   const onSubmit = async () => {
     setBusy(true);
-    setMsg("");
+    setSaveError("");
     try {
       const payload = buildPayload();
       if (dialogMode === "create") {
         await api.createMcpService(payload);
-        setMsg("已创建，请点击「同步工具」拉取 tools/list");
+        setMsg("已创建，请在详情中点击「同步工具」拉取 tools/list");
       } else if (editing) {
         await api.updateMcpService(editing.id, payload);
         setMsg("已保存");
@@ -182,7 +208,7 @@ export default function McpPage() {
       setDialogOpen(false);
       await list.reload();
     } catch (e) {
-      setMsg(e instanceof Error ? e.message : "保存失败");
+      setSaveError(e instanceof Error ? e.message : "保存失败");
     } finally {
       setBusy(false);
     }
@@ -190,6 +216,7 @@ export default function McpPage() {
 
   const onSync = async (id: string) => {
     setMsg("");
+    setSyncingId(id);
     try {
       const res = await api.syncMcpService(id);
       setMsg(`已同步 ${res.tools.length} 个工具`);
@@ -197,6 +224,8 @@ export default function McpPage() {
     } catch (e) {
       setMsg(e instanceof Error ? e.message : "同步失败");
       await list.reload();
+    } finally {
+      setSyncingId(null);
     }
   };
 
@@ -212,7 +241,10 @@ export default function McpPage() {
       confirmLabel: "确认删除",
       onConfirm: async () => {
         await api.deleteMcpService(s.id);
-        if (expandedId === s.id) setExpandedId(null);
+        if (viewing?.id === s.id) {
+          setDetailOpen(false);
+          setViewing(null);
+        }
         await list.reload();
       },
     });
@@ -275,7 +307,7 @@ export default function McpPage() {
 
         {!list.loading && filtered.length === 0 && (
           <p className="col-span-full py-12 text-center text-sm text-ink-faint">
-            暂无匹配的 MCP 服务，可通过左侧卡片添加 HTTP / SSE / STDIO
+            暂无匹配的 MCP 服务，点击「添加 MCP 服务」注册 HTTP / SSE / STDIO
           </p>
         )}
 
@@ -284,11 +316,10 @@ export default function McpPage() {
             key={s.id}
             service={s}
             mcpMeta={mcpMeta}
-            toolsExpanded={expandedId === s.id}
-            onSync={() => onSync(s.id)}
+            onDetail={() => openDetail(s)}
+            onSync={() => void onSync(s.id)}
             onEdit={() => openEdit(s)}
             onDelete={() => onDelete(s)}
-            onToggleTools={() => setExpandedId(expandedId === s.id ? null : s.id)}
           />
         ))}
       </ResourceListLayout>
@@ -298,20 +329,40 @@ export default function McpPage() {
         mode={dialogMode}
         transport={dialogTransport}
         editing={editing}
+        mcpMeta={mcpMeta}
         name={name}
         description={description}
         endpointUrl={endpointUrl}
         stdioCommand={stdioCommand}
         stdioArgs={stdioArgs}
         busy={busy}
+        saveError={saveError}
         onClose={() => setDialogOpen(false)}
-        onSubmit={onSubmit}
+        onDismissError={() => setSaveError("")}
+        onSubmit={() => void onSubmit()}
+        onTransportChange={onDialogTransportChange}
         onNameChange={setName}
         onDescriptionChange={setDescription}
         onEndpointUrlChange={setEndpointUrl}
         onStdioCommandChange={setStdioCommand}
         onStdioArgsChange={setStdioArgs}
       />
+
+      <McpServiceDetailDialog
+        open={detailOpen}
+        service={viewingLive}
+        mcpMeta={mcpMeta}
+        syncing={viewingLive ? syncingId === viewingLive.id : false}
+        onClose={() => setDetailOpen(false)}
+        onSync={
+          viewingLive
+            ? () => void onSync(viewingLive.id)
+            : undefined
+        }
+        onEdit={viewingLive ? () => openEdit(viewingLive) : undefined}
+        onDelete={viewingLive ? () => onDelete(viewingLive) : undefined}
+      />
+
       {confirmDialog}
     </>
   );

@@ -1,29 +1,46 @@
 "use client";
 
-/** MCP 创建/编辑（链路 §11）：HTTP/SSE/STDIO 表单 → api。 */
+/** MCP 创建/编辑（链路 §11）：HTTP/SSE/STDIO 分节表单 → api。 */
 
-/** 创建/编辑弹窗：HTTP·SSE 填 URL；STDIO 填 command 与 args（经 MCP Runner 沙箱同步/调用）。 */
-
+import { KbPageAlert } from "@/components/kb/KbPageAlert";
+import {
+  MCP_ENDPOINT_PLACEHOLDER,
+  MCP_TRANSPORT_HINTS,
+  McpDialogSection,
+  McpTransportBadge,
+  mcpFormCanSubmit,
+} from "@/components/mcp/mcp-dialog-shared";
 import { ResourceDialog } from "@/components/resource/ResourceDialog";
+import type { McpDialogMode } from "@/components/mcp/McpServiceDialog.types";
 import type { McpTransportTab } from "@/lib/mcp-labels";
 import { mcpTransportLabel, normalizeMcpTransport } from "@/lib/mcp-labels";
-import type { McpService } from "@/lib/types";
+import type { McpMeta, McpService } from "@/lib/types";
 
-export type McpDialogMode = "create" | "edit";
+export type { McpDialogMode };
+
+type TransportTab = {
+  key: Exclude<McpTransportTab, "">;
+  label: string;
+  hint: string;
+};
 
 type Props = {
   open: boolean;
   mode: McpDialogMode;
   transport: Exclude<McpTransportTab, "">;
   editing: McpService | null;
+  mcpMeta?: McpMeta | null;
   name: string;
   description: string;
   endpointUrl: string;
   stdioCommand: string;
   stdioArgs: string;
   busy: boolean;
+  saveError?: string;
   onClose: () => void;
   onSubmit: () => void;
+  onDismissError?: () => void;
+  onTransportChange?: (t: Exclude<McpTransportTab, "">) => void;
   onNameChange: (v: string) => void;
   onDescriptionChange: (v: string) => void;
   onEndpointUrlChange: (v: string) => void;
@@ -31,19 +48,73 @@ type Props = {
   onStdioArgsChange: (v: string) => void;
 };
 
+function TransportSelector({
+  transport,
+  transportLocked,
+  mcpMeta,
+  onTransportChange,
+}: {
+  transport: Exclude<McpTransportTab, "">;
+  transportLocked: boolean;
+  mcpMeta?: McpMeta | null;
+  onTransportChange?: (t: Exclude<McpTransportTab, "">) => void;
+}) {
+  const tabs: TransportTab[] = (["http", "sse", "stdio"] as const).map((key) => ({
+    key,
+    label: mcpTransportLabel(key, mcpMeta),
+    hint: MCP_TRANSPORT_HINTS[key],
+  }));
+
+  if (transportLocked) {
+    return (
+      <div className="flex items-center gap-2">
+        <span className="text-xs text-ink-muted">传输类型</span>
+        <McpTransportBadge transport={transport} mcpMeta={mcpMeta} />
+      </div>
+    );
+  }
+
+  return (
+    <div className="inline-flex flex-wrap gap-1 rounded-xl border border-line bg-surface p-1">
+      {tabs.map((tab) => {
+        const active = transport === tab.key;
+        return (
+          <button
+            key={tab.key}
+            type="button"
+            title={tab.hint}
+            onClick={() => onTransportChange?.(tab.key)}
+            className={`rounded-lg px-4 py-2 text-left transition ${
+              active
+                ? "bg-brand-light text-brand shadow-sm ring-1 ring-brand/20"
+                : "text-ink-muted hover:bg-surface-muted hover:text-ink"
+            }`}
+          >
+            <span className="text-sm font-medium">{tab.label}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 export function McpServiceDialog({
   open,
   mode,
   transport,
   editing,
+  mcpMeta,
   name,
   description,
   endpointUrl,
   stdioCommand,
   stdioArgs,
   busy,
+  saveError,
   onClose,
   onSubmit,
+  onDismissError,
+  onTransportChange,
   onNameChange,
   onDescriptionChange,
   onEndpointUrlChange,
@@ -52,91 +123,123 @@ export function McpServiceDialog({
 }: Props) {
   const t = editing ? normalizeMcpTransport(editing.transport) : transport;
   const isStdio = t === "stdio";
+  const transportLocked = mode === "edit";
+  const canSubmit = mcpFormCanSubmit({
+    name,
+    transport: t,
+    endpointUrl,
+    stdioCommand,
+    busy,
+  });
 
   return (
     <ResourceDialog
       open={open}
-      title={
+      size="sheet"
+      contentMaxWidth="max-w-3xl"
+      title={mode === "create" ? "添加 MCP 服务" : `编辑 · ${editing?.name ?? ""}`}
+      description={
         mode === "create"
-          ? `添加 ${mcpTransportLabel(t)} MCP 服务`
-          : `编辑 MCP 服务`
+          ? "选择传输类型并填写连接信息；创建后请在详情中「同步工具」拉取 tools/list。"
+          : "修改名称、描述或连接配置；传输类型创建后不可更改。"
       }
-      size="lg"
       onClose={onClose}
       footer={
         <>
           <button type="button" className="btn-ghost" onClick={onClose} disabled={busy}>
             取消
           </button>
-          <button type="button" className="btn-primary" onClick={onSubmit} disabled={busy}>
+          <button
+            type="button"
+            className="btn-primary"
+            onClick={onSubmit}
+            disabled={!canSubmit}
+          >
             {busy ? "保存中…" : mode === "create" ? "创建" : "保存"}
           </button>
         </>
       }
     >
-      <label className="block text-xs text-ink-muted">
-        名称
-        <input
-          className="input-field mt-1 w-full"
-          placeholder="例如 lbs-amap-http-mcp"
-          value={name}
-          onChange={(e) => onNameChange(e.target.value)}
+      <div className="space-y-5">
+        {saveError ? (
+          <KbPageAlert tone="error" message={saveError} onDismiss={onDismissError} />
+        ) : null}
+
+        <TransportSelector
+          transport={t}
+          transportLocked={transportLocked}
+          mcpMeta={mcpMeta}
+          onTransportChange={onTransportChange}
         />
-      </label>
-      <label className="block text-xs text-ink-muted">
-        描述（可选）
-        <input
-          className="input-field mt-1 w-full"
-          placeholder="例如 高德地图 HTTP MCP"
-          value={description}
-          onChange={(e) => onDescriptionChange(e.target.value)}
-        />
-      </label>
-      {isStdio ? (
-        <>
-          <label className="block text-xs text-ink-muted">
-            启动命令
+
+        <McpDialogSection title="基本信息" hint="名称在租户内用于展示与绑定智能体">
+          <label className="block text-xs">
+            <span className="mb-1 block text-ink-muted">名称 *</span>
             <input
-              className="input-field mt-1 w-full font-mono text-sm"
-              placeholder="npx"
-              value={stdioCommand}
-              onChange={(e) => onStdioCommandChange(e.target.value)}
+              className="input-field w-full"
+              placeholder="例如 lbs-amap-http-mcp"
+              value={name}
+              onChange={(e) => onNameChange(e.target.value)}
             />
           </label>
-          <label className="block text-xs text-ink-muted">
-            参数（每行一个）
+          <label className="block text-xs">
+            <span className="mb-1 block text-ink-muted">描述</span>
             <textarea
-              className="input-field mt-1 min-h-[72px] w-full font-mono text-sm"
-              placeholder={"-y\n@amap/mcp-server"}
-              value={stdioArgs}
-              onChange={(e) => onStdioArgsChange(e.target.value)}
+              className="input-field min-h-[72px] w-full resize-y"
+              placeholder="例如 高德地图 HTTP MCP，供智能体选用"
+              value={description}
+              onChange={(e) => onDescriptionChange(e.target.value)}
             />
           </label>
-          <p className="text-xs text-amber-700">
-            STDIO 经平台 MCP Runner 沙箱执行；需管理员启用 Runner。预装 MCP 可用
-            <code className="text-xs">mcp-server-everything</code>，npx 拉包需配置 network_mode=allow。
-          </p>
-        </>
-      ) : (
-        <label className="block text-xs text-ink-muted">
-          端点 URL
-          {t === "sse" && (
-            <span className="mt-1 block font-normal text-ink-faint">
-              SSE 请填写长连接 GET 地址（如 /sse）；平台将自动接收 endpoint 事件并向消息 URL POST。
-            </span>
+        </McpDialogSection>
+
+        <McpDialogSection
+          title={isStdio ? "STDIO 启动" : "端点连接"}
+          hint={MCP_TRANSPORT_HINTS[t]}
+        >
+          {isStdio ? (
+            <>
+              <label className="block text-xs">
+                <span className="mb-1 block text-ink-muted">启动命令 *</span>
+                <input
+                  className="input-field w-full font-mono text-sm"
+                  placeholder="npx"
+                  value={stdioCommand}
+                  onChange={(e) => onStdioCommandChange(e.target.value)}
+                />
+              </label>
+              <label className="block text-xs">
+                <span className="mb-1 block text-ink-muted">参数（每行一个）</span>
+                <textarea
+                  className="input-field min-h-[88px] w-full resize-y font-mono text-sm"
+                  placeholder={"-y\n@modelcontextprotocol/server-filesystem\n/path/to/dir"}
+                  value={stdioArgs}
+                  onChange={(e) => onStdioArgsChange(e.target.value)}
+                />
+              </label>
+              <p className="text-xs text-amber-800">
+                预装示例可用 <code className="font-mono text-[11px]">mcp-server-everything</code>
+                ；npx 在线拉包需 Runner 配置 <code className="font-mono text-[11px]">network_mode=allow</code>。
+              </p>
+            </>
+          ) : (
+            <label className="block text-xs">
+              <span className="mb-1 block text-ink-muted">端点 URL *</span>
+              <input
+                className="input-field w-full font-mono text-sm"
+                placeholder={MCP_ENDPOINT_PLACEHOLDER[t]}
+                value={endpointUrl}
+                onChange={(e) => onEndpointUrlChange(e.target.value)}
+              />
+              {t === "sse" && (
+                <span className="mt-2 block text-xs leading-relaxed text-ink-faint">
+                  SSE 请填写长连接 GET 地址；平台将自动处理 endpoint 事件与消息 URL POST。
+                </span>
+              )}
+            </label>
           )}
-          <input
-            className="input-field mt-1 w-full font-mono text-sm"
-            placeholder={
-              t === "http"
-                ? "https://example.com/mcp"
-                : "http://127.0.0.1:3001/sse"
-            }
-            value={endpointUrl}
-            onChange={(e) => onEndpointUrlChange(e.target.value)}
-          />
-        </label>
-      )}
+        </McpDialogSection>
+      </div>
     </ResourceDialog>
   );
 }

@@ -15,14 +15,7 @@ from app.integrations.langgraph.compiler import validate_graph_for_compile
 
 def test_registry_has_expected_ids():
     ids = {spec.id for spec in FLOW_TEMPLATE_REGISTRY}
-    assert ids == {
-        "blank",
-        "rag",
-        "rag_grade",
-        "simple_llm",
-        "image_generate",
-        "video_generate",
-    }
+    assert ids == {"blank", "rag", "simple_llm"}
 
 
 def test_blank_template_empty_graph():
@@ -30,17 +23,14 @@ def test_blank_template_empty_graph():
     assert graph == {"nodes": [], "edges": []}
 
 
-def test_load_rag_variants_match_registry():
+def test_load_rag_variants():
     assert load_rag_graph_template() == load_flow_template_graph("rag")
-    assert load_rag_graph_template(variant="with_grade") == load_flow_template_graph(
-        "rag_grade"
-    )
+    graded = load_rag_graph_template(variant="with_grade")
+    report = validate_graph_for_compile(graded)
+    assert report.compilable, report.errors
 
 
-@pytest.mark.parametrize(
-    "template_id",
-    ["rag", "rag_grade", "simple_llm", "image_generate", "video_generate"],
-)
+@pytest.mark.parametrize("template_id", ["rag", "simple_llm"])
 def test_non_blank_templates_compilable(template_id: str):
     graph = load_flow_template_graph(template_id)
     report = validate_graph_for_compile(graph)
@@ -61,7 +51,7 @@ def test_insertable_only_excludes_blank():
     assert "blank" not in {i["id"] for i in items}
 
 
-def test_rag_grade_template_file_matches_grade_node():
+def test_rag_grade_file_for_marketplace():
     graph = json.loads(
         (
             __import__("pathlib").Path(__file__).resolve().parents[1]

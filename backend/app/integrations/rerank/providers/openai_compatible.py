@@ -15,7 +15,7 @@ from app.common.exceptions import AppError, BadRequestError
 from app.integrations.rerank.constants import DEFAULT_RERANK_INSTRUCT
 from app.integrations.rerank.model_meta import (
     rerank_instruct_from_model,
-    resolve_rerank_openai_compat_base,
+    resolve_rerank_openai_compat_url,
 )
 from app.integrations.rerank.types import RerankHit
 from app.integrations.http_constants import HTTP_DEFAULT_TIMEOUT_SEC
@@ -23,8 +23,11 @@ from app.models.model import ModelConfig
 
 
 def _parse_response(payload: dict[str, Any]) -> list[RerankHit]:
-    """解析 results/data 数组。"""
+    """解析 results/data 数组（兼容 DashScope output.results 形状）。"""
     results = payload.get("results") or payload.get("data")
+    if not isinstance(results, list):
+        output = payload.get("output") or {}
+        results = output.get("results")
     if not isinstance(results, list):
         raise AppError("重排返回为空", status_code=502)
 
@@ -70,8 +73,8 @@ class OpenAICompatibleRerankProvider:
         if not api_key:
             raise BadRequestError(f"重排模型「{model.name}」未配置 API Key")
 
-        base = resolve_rerank_openai_compat_base(model)
-        url = f"{base.rstrip('/')}/reranks"
+        base = resolve_rerank_openai_compat_url(model)
+        url = base
         payload: dict[str, Any] = {
             "model": model_name,
             "query": query,

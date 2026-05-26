@@ -69,6 +69,11 @@ export function FlowNodeCard({ type, data, selected }: NodeProps) {
           {String((data as Record<string, unknown>)?.tool_slug ?? "未配置 tool_slug")}
         </p>
       )}
+      {nodeType === "PromptTemplate" && Boolean(d.prompt_template_id) && (
+        <p className="mt-1 truncate text-[10px] text-violet-700">
+          模板库引用
+        </p>
+      )}
       {isCondition && (
         <p className="mt-1 text-[10px] text-pink-600">
           模式: {String((data as Record<string, unknown>)?.mode ?? "has_hits")}

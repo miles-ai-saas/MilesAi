@@ -242,7 +242,7 @@ python cli.py worker             # Celery worker
 python cli.py migrate            # alembic upgrade head
 python cli.py init-db            # 迁移 + 全量种子
 python cli.py init-db --seed-only
-python cli.py seed tenant        # 单域种子：tenant | tools | skills | hooks | compliance | … | all
+python cli.py seed tenant        # 单域种子：tenant | tools | mcp | flows | skills | hooks | … | all
 python cli.py verify-db          # 检查核心表
 python cli.py backfill-media-assets [--dry-run] [--tenant-id UUID]  # 历史生成物登记
 ```

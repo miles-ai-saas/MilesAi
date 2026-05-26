@@ -45,6 +45,7 @@ import type {
   FlowGraph,
   KnowledgeBase,
   ModelConfig,
+  PromptTemplate,
   ToolCatalogItem,
 } from "@/lib/types";
 
@@ -58,6 +59,7 @@ interface FlowCanvasProps {
   onGraphChange?: (graph: FlowGraph) => void;
   kbs?: KnowledgeBase[];
   models?: ModelConfig[];
+  prompts?: PromptTemplate[];
   toolCatalog?: ToolCatalogItem[];
   className?: string;
 }
@@ -188,6 +190,7 @@ const FlowCanvasInner = forwardRef<FlowCanvasHandle, FlowCanvasProps>(
       onGraphChange,
       kbs = [],
       models = [],
+      prompts = [],
       toolCatalog = [],
       className,
     },
@@ -542,6 +545,7 @@ const FlowCanvasInner = forwardRef<FlowCanvasHandle, FlowCanvasProps>(
             node={selectedNode}
             kbs={kbs}
             models={models}
+            prompts={prompts}
             toolCatalog={toolCatalog}
             onChange={updateNodeData}
           />

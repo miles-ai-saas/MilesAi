@@ -64,7 +64,7 @@ class ComplianceInterceptMixin:
                 module=module,
                 direction="in",
                 matched_word=first.word,
-                action=first.worst_action or SensitiveAction.WARN,
+                action=result.worst_action or first.action or SensitiveAction.WARN,
                 content=text,
             )
             if result.has_block:
@@ -83,7 +83,7 @@ class ComplianceInterceptMixin:
                 module=module,
                 direction="out",
                 matched_word=first.word,
-                action=first.worst_action or SensitiveAction.WARN,
+                action=result.worst_action or first.action or SensitiveAction.WARN,
                 content=text,
             )
             if result.has_block:

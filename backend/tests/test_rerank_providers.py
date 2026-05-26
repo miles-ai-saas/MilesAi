@@ -6,8 +6,11 @@ from uuid import uuid4
 import pytest
 
 from app.common.exceptions import BadRequestError
-from app.integrations.rerank.constants import INVOKE_MODE_DASHSCOPE
-from app.integrations.rerank.model_meta import invoke_mode_from_model
+from app.integrations.rerank.constants import INVOKE_MODE_DASHSCOPE, INVOKE_MODE_OPENAI_COMPATIBLE
+from app.integrations.rerank.model_meta import (
+    invoke_mode_from_model,
+    resolve_rerank_openai_compat_url,
+)
 from app.integrations.rerank.providers.dashscope import DashScopeRerankProvider
 from app.integrations.rerank.registry import known_invoke_modes, rerank_documents_for_model
 from app.models.model import ModelConfig
@@ -24,10 +27,8 @@ def _qwen_rerank_model(**kwargs) -> ModelConfig:
         "model_type": ModelCapabilityType.RERANK.value,
         "vendor": ModelVendor.QWEN.value,
         "api_key_encrypted": "sk-test",
-        "api_base": (
-            "https://dashscope.aliyuncs.com/api/v1/services/rerank/text-rerank/text-rerank"
-        ),
-        "extra": {"invoke_mode": INVOKE_MODE_DASHSCOPE, "rerank_request_format": "flat"},
+        "api_base": "https://dashscope.aliyuncs.com/compatible-api/v1",
+        "extra": {"invoke_mode": INVOKE_MODE_OPENAI_COMPATIBLE},
     }
     defaults.update(kwargs)
     return ModelConfig(**defaults)
@@ -48,13 +49,15 @@ def test_known_rerank_invoke_modes():
     assert "openai_compatible" in modes
 
 
-def test_qwen_rerank_defaults_to_dashscope():
+def test_qwen_rerank_defaults_to_openai_compatible():
     model = _qwen_rerank_model(extra={})
-    assert invoke_mode_from_model(model) == INVOKE_MODE_DASHSCOPE
+    assert invoke_mode_from_model(model) == "openai_compatible"
 
 
 def test_dashscope_rerank_flat_payload():
-    model = _qwen_rerank_model()
+    model = _qwen_rerank_model(
+        extra={"invoke_mode": INVOKE_MODE_DASHSCOPE, "rerank_request_format": "flat"},
+    )
     mock_response = MagicMock()
     mock_response.raise_for_status.return_value = None
     mock_response.json.return_value = {
@@ -111,15 +114,25 @@ def test_dashscope_rerank_nested_payload():
     assert payload["parameters"]["top_n"] == 1
 
 
+def test_openai_compat_ignores_native_rerank_api_base_override():
+    model = _qwen_rerank_model(
+        api_base="https://dashscope.aliyuncs.com/api/v1/services/rerank/text-rerank/text-rerank",
+    )
+    assert (
+        resolve_rerank_openai_compat_url(model)
+        == "https://dashscope.aliyuncs.com/compatible-api/v1/reranks"
+    )
+
+
 def test_registry_routes_qwen_rerank():
     model = _qwen_rerank_model()
     mock_response = MagicMock()
     mock_response.raise_for_status.return_value = None
     mock_response.json.return_value = {
-        "output": {"results": [{"index": 0, "relevance_score": 0.75}]}
+        "results": [{"index": 0, "relevance_score": 0.75}]
     }
 
-    with patch("httpx.post", return_value=mock_response):
+    with patch("httpx.post", return_value=mock_response) as mock_post:
         hits = rerank_documents_for_model(
             model,
             query="hello",
@@ -128,6 +141,8 @@ def test_registry_routes_qwen_rerank():
         )
 
     assert hits[0]["relevance_score"] == pytest.approx(0.75)
+    url = mock_post.call_args.args[0]
+    assert url.endswith("/reranks")
 
 
 def test_dashscope_rerank_missing_api_key():

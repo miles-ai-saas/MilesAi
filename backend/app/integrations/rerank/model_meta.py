@@ -16,7 +16,6 @@ from app.integrations.rerank.constants import (
     EXTRA_RERANK_REQUEST_FORMAT,
     INVOKE_MODE_DASHSCOPE,
     INVOKE_MODE_OPENAI_COMPATIBLE,
-    RERANK_REQUEST_FORMAT_FLAT,
     RERANK_REQUEST_FORMAT_NESTED,
 )
 from app.models.model import ModelConfig
@@ -32,7 +31,9 @@ _VENDOR_DEFAULT_INVOKE_MODE: dict[str, str] = {
     ModelVendor.QWEN.value: INVOKE_MODE_DASHSCOPE,
 }
 
-_FLAT_FORMAT_MODELS = frozenset({"qwen3-rerank"})
+# qwen3-rerank 官方推荐 compatible-api/v1/reranks，非 DashScope 原生 text-rerank 端点
+_OPENAI_COMPAT_RERANK_MODELS = frozenset({"qwen3-rerank"})
+_DASHSCOPE_NATIVE_RERANK_MARKER = "/services/rerank/text-rerank/text-rerank"
 
 
 def invoke_mode_from_model(model: ModelConfig) -> str:
@@ -41,6 +42,9 @@ def invoke_mode_from_model(model: ModelConfig) -> str:
     mode = extra.get(EXTRA_INVOKE_MODE)
     if isinstance(mode, str) and mode.strip():
         return mode.strip().lower()
+    name = (model.model_name or "").strip()
+    if name in _OPENAI_COMPAT_RERANK_MODELS or name.startswith("qwen3-rerank"):
+        return INVOKE_MODE_OPENAI_COMPATIBLE
     return _VENDOR_DEFAULT_INVOKE_MODE.get(model.vendor or "", INVOKE_MODE_DASHSCOPE)
 
 
@@ -59,9 +63,6 @@ def rerank_request_format_from_model(model: ModelConfig) -> str:
     fmt = extra.get(EXTRA_RERANK_REQUEST_FORMAT)
     if isinstance(fmt, str) and fmt.strip():
         return fmt.strip().lower()
-    name = (model.model_name or "").strip()
-    if name in _FLAT_FORMAT_MODELS or name.startswith("qwen3-rerank"):
-        return RERANK_REQUEST_FORMAT_FLAT
     return RERANK_REQUEST_FORMAT_NESTED
 
 
@@ -77,12 +78,28 @@ def resolve_rerank_endpoint(model: ModelConfig) -> str:
 
 def resolve_rerank_openai_compat_base(model: ModelConfig) -> str:
     """OpenAI 兼容 rerank API 的 base（拼接 /reranks）。"""
+    base: str | None = None
     if model.api_base:
-        return model.api_base.rstrip("/")
-    base = DEFAULT_RERANK_OPENAI_COMPAT_BASES.get(model.vendor or "")
-    if base:
-        return base
-    raise BadRequestError(f"重排模型「{model.name}」未配置 api_base")
+        candidate = model.api_base.rstrip("/")
+        # 租户 BYOK 可能误留 DashScope 原生端点或 chat compatible-mode，均不能拼 /reranks
+        if (
+            _DASHSCOPE_NATIVE_RERANK_MARKER not in candidate
+            and "/compatible-mode/" not in candidate
+        ):
+            base = candidate
+            if base.endswith("/reranks"):
+                return base[: -len("/reranks")]
+    if not base:
+        base = DEFAULT_RERANK_OPENAI_COMPAT_BASES.get(model.vendor or "")
+    if not base:
+        raise BadRequestError(f"重排模型「{model.name}」未配置 api_base")
+    return base
+
+
+def resolve_rerank_openai_compat_url(model: ModelConfig) -> str:
+    """OpenAI 兼容 rerank 完整 POST URL。"""
+    base = resolve_rerank_openai_compat_base(model)
+    return f"{base.rstrip('/')}/reranks"
 
 
 def ensure_rerank_model_type(model: ModelConfig) -> None:

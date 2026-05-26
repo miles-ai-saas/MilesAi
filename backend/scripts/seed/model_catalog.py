@@ -21,6 +21,7 @@ from app.integrations.embeddings.constants import (
 from app.integrations.rerank.constants import (
     EXTRA_RERANK_REQUEST_FORMAT,
     INVOKE_MODE_DASHSCOPE,
+    INVOKE_MODE_OPENAI_COMPATIBLE,
 )
 from app.models.model import ModelConfig
 from app.models.model_catalog import (
@@ -74,14 +75,13 @@ BUILTIN_CATALOG: list[dict] = [
         "provider": "qwen",
         "model_name": "qwen3-rerank",
         "model_type": ModelCapabilityType.RERANK.value,
-        "description": "DashScope 文本重排序（Qwen3-Rerank），RAG 召回精排；flat 请求格式，支持 instruct。",
+        "description": "DashScope Qwen3 文本重排；使用 compatible-api/v1/reranks（flat 请求体）。",
         "context_window": "—",
         "sort_order": 3,
         "is_featured": True,
-        "api_base": "https://dashscope.aliyuncs.com/api/v1/services/rerank/text-rerank/text-rerank",
+        "api_base": "https://dashscope.aliyuncs.com/compatible-api/v1",
         "extra": {
-            EXTRA_INVOKE_MODE: INVOKE_MODE_DASHSCOPE,
-            EXTRA_RERANK_REQUEST_FORMAT: "flat",
+            EXTRA_INVOKE_MODE: INVOKE_MODE_OPENAI_COMPATIBLE,
         },
     },
     {

@@ -10,12 +10,15 @@ from scripts.seed import seed_all
 from scripts.seed.admin_ops import seed_admin_ops
 from scripts.seed.categories import seed_categories, seed_platform_categories
 from scripts.seed.compliance import seed_compliance
+from scripts.seed.kb_advertising import seed_advertising_kb
 from scripts.seed.marketplace import seed_marketplace
 from scripts.seed.prompts import seed_prompts
 from scripts.seed.model_catalog import seed_model_catalog
 from scripts.seed.hooks import seed_hooks
+from scripts.seed.flows import seed_flows
 from scripts.seed.skills import seed_skills
 from scripts.seed.tools import seed_tools
+from scripts.seed.mcp import seed_mcp
 from scripts.seed.tenant import seed_tenant
 
 SeedFn = Callable[[AsyncSession], Awaitable[None]]
@@ -27,11 +30,14 @@ SEED_TARGETS: dict[str, SeedFn] = {
     "compliance": seed_compliance,
     "prompts": seed_prompts,
     "tools": seed_tools,
+    "mcp": seed_mcp,
     "skills": seed_skills,
     "hooks": seed_hooks,
+    "flows": seed_flows,
     "marketplace": seed_marketplace,
     "admin": seed_admin_ops,
     "model-catalog": seed_model_catalog,
+    "kb-advertising": seed_advertising_kb,
 }
 
 

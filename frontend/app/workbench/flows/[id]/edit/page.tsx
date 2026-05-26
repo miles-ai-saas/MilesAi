@@ -23,6 +23,7 @@ import type {
   FlowGraph,
   KnowledgeBase,
   ModelConfig,
+  PromptTemplate,
   ToolCatalogItem,
 } from "@/lib/types";
 
@@ -45,6 +46,7 @@ export default function FlowEditPage() {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [kbs, setKbs] = useState<KnowledgeBase[]>([]);
   const [models, setModels] = useState<ModelConfig[]>([]);
+  const [prompts, setPrompts] = useState<PromptTemplate[]>([]);
   const [toolCatalog, setToolCatalog] = useState<ToolCatalogItem[]>([]);
   const [selectedKbIds, setSelectedKbIds] = useState<string[]>([]);
   const [testQuery, setTestQuery] = useState("你好");
@@ -86,9 +88,10 @@ export default function FlowEditPage() {
       api.getFlowGraph(id),
       api.listKbs(1, 100),
       api.listModelConfigs(),
+      api.listPromptTemplates(1, 100),
       api.listToolCatalog(),
     ])
-      .then(([flow, version, kbPage, modelList, catalog]) => {
+      .then(([flow, version, kbPage, modelList, promptPage, catalog]) => {
         setFlowName(flow.name);
         setFlowDescription(flow.description ?? null);
         setFlowTagIds(flow.tags?.map((t) => t.id) ?? []);
@@ -97,6 +100,7 @@ export default function FlowEditPage() {
         graphRef.current = version.graph_json;
         setKbs(kbPage.items);
         setModels(modelList.filter((m) => m.is_active !== false));
+        setPrompts(promptPage.items.filter((p) => p.is_active !== false));
         setToolCatalog(catalog);
       })
       .catch(() => {
@@ -279,6 +283,7 @@ export default function FlowEditPage() {
             onGraphChange={onGraphChange}
             kbs={kbs}
             models={models}
+            prompts={prompts}
             toolCatalog={toolCatalog}
             className="h-full"
           />

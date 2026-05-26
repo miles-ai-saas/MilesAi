@@ -41,7 +41,30 @@ Model Context Protocol（MCP）在 MilesAI 中用于**注册远程工具服务**
 | `session_id` | string | Streamable HTTP 的 `Mcp-Session-Id`（可选，跨请求复用） |
 | `command` / `args` / `env` | — | 仅 STDIO 创建时使用 |
 
-## 3. API
+## 3. 种子数据（开发演示）
+
+```bash
+cd backend
+python cli.py seed mcp          # 仅 MCP
+python cli.py init-db           # 含 seed all
+```
+
+每个租户幂等写入 **8 条**示例（按 `name` 去重，重复执行会更新配置）：
+
+| 名称 | transport | status | 场景说明 |
+|------|-----------|--------|----------|
+| MCP示例·HTTP Streamable | http | active | 预置 fetch 类工具；端点 `127.0.0.1:3001/mcp` |
+| MCP示例·SSE Legacy | sse | active | 预置 filesystem 工具；端点 `/sse` |
+| MCP示例·带鉴权 HTTP | http | inactive | `headers.Authorization` 模板 |
+| MCP示例·STDIO 文件系统 | stdio | inactive | `npx @modelcontextprotocol/server-filesystem` |
+| MCP示例·STDIO 记忆图谱 | stdio | inactive | `npx @modelcontextprotocol/server-memory` |
+| MCP示例·同步失败 | http | error | 不可达端口 + `sync_error` 文案 |
+| MCP示例·待同步 | sse | inactive | 空 `tools_cache`，测首次同步 |
+| MCP示例·知识检索 | http | active | 检索类工具名，便于绑智能体 |
+
+实现：`scripts/seed/mcp.py`。`connection_config.seed_scenario` 标识场景；真实 `tools/call` 仍需可达端点或 STDIO Runner。
+
+## 4. API
 
 前缀：`/api/v1/mcp`（租户 JWT + `mcp:read` / `mcp:write`）
 

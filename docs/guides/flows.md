@@ -80,7 +80,7 @@ React Flow → PUT /flows/{id}/graph → flow_versions
 ### 内置模板 `rag_flow_with_grade.json`
 
 `TextInput → KnowledgeSearch → RelevanceGrade` → good/poor → `PromptTemplate → LLMCall`；none → `StaticResponse` → `TextOutput`。  
-加载：`load_rag_graph_template(variant="with_grade")` 或模板 id `rag_grade`。
+加载：`load_rag_graph_template(variant="with_grade")`（仅内部/市场，不出现在「插入模板」列表）。
 
 ### 版本历史
 
@@ -98,7 +98,7 @@ React Flow → PUT /flows/{id}/graph → flow_versions
 
 ### 内置模板 API
 
-`GET /flows/templates` 返回 `items[]`：`id`、`label`、`hint`、`default_name`、`insertable`、`graph_json`。注册表见 `flow_runtime/templates/registry.py`（含 blank、rag、rag_grade、simple_llm、image_generate、video_generate）。新建流程对话框与编辑页「插入模板」均调用此接口。
+`GET /flows/templates` 返回 `items[]`：`id`、`label`、`hint`、`default_name`、`insertable`、`graph_json`。注册表见 `flow_runtime/templates/registry.py`（对外仅 **blank、rag、simple_llm**；生图/分支等节点在画布左侧自行拖拽）。新建流程对话框与编辑页「插入模板」均调用此接口。
 
 ## 标签
 
