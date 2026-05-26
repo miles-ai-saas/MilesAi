@@ -117,6 +117,7 @@ export interface Flow {
   tenant_id: string;
   name: string;
   description?: string | null;
+  tags?: TagRef[];
   status: "draft" | "published";
   current_version: number;
   created_at: string;

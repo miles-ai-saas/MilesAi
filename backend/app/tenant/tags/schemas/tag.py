@@ -1,7 +1,7 @@
 """租户标签 API 模型。
 
 - ``TenantTagOut`` / ``TenantTagCreate``：标签管理接口
-- ``TagRefOut``：嵌入 Agent、Prompt、Skill、Tool 的 ``tags`` 字段
+- ``TagRefOut``：嵌入 Agent、Prompt、Skill、Tool、Flow 的 ``tags`` 字段
 """
 
 from datetime import datetime

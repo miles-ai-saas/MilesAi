@@ -4,17 +4,20 @@ from uuid import UUID
 from pydantic import BaseModel, Field
 
 from app.models.flow import FlowStatus
+from app.tenant.tags.schemas.tag import TagRefOut
 
 
 class FlowCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=128)
     description: str | None = None
+    tag_ids: list[UUID] = []
     graph_json: dict = Field(default_factory=lambda: {"nodes": [], "edges": []})
 
 
 class FlowUpdate(BaseModel):
     name: str | None = None
     description: str | None = None
+    tag_ids: list[UUID] | None = None
 
 
 class FlowSaveGraph(BaseModel):
@@ -50,11 +53,10 @@ class FlowOut(BaseModel):
     tenant_id: UUID
     name: str
     description: str | None
+    tags: list[TagRefOut] = []
     status: FlowStatus
     current_version: int
     created_at: datetime
-
-    model_config = {"from_attributes": True}
 
 
 class FlowRunRequest(BaseModel):

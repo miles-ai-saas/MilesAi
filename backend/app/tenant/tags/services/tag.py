@@ -4,7 +4,7 @@
 - ``tnt_tags``：租户内 (tenant_id, slug) 唯一
 - ``tnt_entity_tag_bindings``：多对多，``entity_type`` + ``entity_id`` + ``tag_id``
 
-由 Agent/Prompt/Skill/Tool 服务在写入后调用 ``replace_entity_tags``；
+由 Agent/Prompt/Skill/Tool/Flow 服务在写入后调用 ``replace_entity_tags``；
 删除资源时调用 ``clear_entity_tags``。
 """
 
@@ -36,7 +36,7 @@ def parse_entity_type(value: str) -> str:
 
 
 class TagService(BaseService):
-    """租户全局标签服务（跨 agent/prompt/skill/tool）。"""
+    """租户全局标签服务（跨 agent/prompt/skill/tool/flow）。"""
 
     def __init__(self, db: AsyncSession, ctx: TenantContext) -> None:
         super().__init__(db, ctx)

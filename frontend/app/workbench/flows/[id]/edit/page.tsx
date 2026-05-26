@@ -9,6 +9,7 @@ import { useElementFullscreen } from "@/hooks/use-element-fullscreen";
 import { api } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth-store";
 import { FlowEditHeader } from "@/components/flow/FlowEditHeader";
+import { FlowMetaDialog } from "@/components/flow/FlowMetaDialog";
 import type { FlowRunState } from "@/components/flow/FlowRunPanel";
 import { FlowRunPanel } from "@/components/flow/FlowRunPanel";
 import type { FlowCanvasHandle } from "@/components/flow/FlowCanvas";
@@ -32,7 +33,10 @@ export default function FlowEditPage() {
   const canvasRef = useRef<FlowCanvasHandle>(null);
   const [initialGraph, setInitialGraph] = useState<FlowGraph | undefined>();
   const [flowName, setFlowName] = useState("");
+  const [flowDescription, setFlowDescription] = useState<string | null>(null);
+  const [flowTagIds, setFlowTagIds] = useState<string[]>([]);
   const [currentVersion, setCurrentVersion] = useState(0);
+  const [metaOpen, setMetaOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [kbs, setKbs] = useState<KnowledgeBase[]>([]);
   const [models, setModels] = useState<ModelConfig[]>([]);
@@ -60,6 +64,8 @@ export default function FlowEditPage() {
     ])
       .then(([flow, version, kbPage, modelList, catalog]) => {
         setFlowName(flow.name);
+        setFlowDescription(flow.description ?? null);
+        setFlowTagIds(flow.tags?.map((t) => t.id) ?? []);
         setCurrentVersion(flow.current_version);
         setInitialGraph(version.graph_json);
         graphRef.current = version.graph_json;
@@ -176,17 +182,39 @@ export default function FlowEditPage() {
     >
       <FlowEditHeader
         flowName={flowName}
+        flowDescription={flowDescription}
         flowId={id}
         currentVersion={currentVersion}
         busy={busy}
         msg={msg}
         isFullscreen={isFullscreen}
         onToggleFullscreen={() => void toggleFullscreen()}
+        onEditMeta={() => setMetaOpen(true)}
         onSave={() => void save()}
         onPublish={() => void publish()}
         onHistory={() => setHistoryOpen(true)}
         onCompile={() => void checkCompile()}
         onRun={() => void runTest()}
+      />
+
+      <FlowMetaDialog
+        open={metaOpen}
+        initialName={flowName}
+        initialDescription={flowDescription}
+        initialTagIds={flowTagIds}
+        busy={busy}
+        onClose={() => setMetaOpen(false)}
+        onSave={async (name, description, tagIds) => {
+          const updated = await api.updateFlow(id, {
+            name,
+            description: description || null,
+            tag_ids: tagIds,
+          });
+          setFlowName(updated.name);
+          setFlowDescription(updated.description ?? null);
+          setFlowTagIds(updated.tags?.map((t) => t.id) ?? []);
+          setMsg("基本信息已保存");
+        }}
       />
 
       <div className="relative min-h-0 flex-1 bg-surface-muted">

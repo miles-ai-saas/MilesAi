@@ -23,6 +23,9 @@ from app.integrations.langgraph.compiler import validate_graph_for_compile
 from app.flow_runtime.runtime_factory import get_flow_runtime
 from app.flow_runtime.types import RunContext
 from app.models.flow import Flow, FlowStatus, FlowVersion
+from app.models.tag import TagEntityType
+from app.tenant.tags.schemas.tag import TagRefOut
+from app.tenant.tags.services.tag import TagService
 from app.tenant.flows.repositories.flow import FlowRepository, FlowVersionRepository
 from app.common.schema import PageParams, PageResult
 from app.tenant.flows.meta import flow_meta_dict
@@ -61,16 +64,41 @@ class FlowService(BaseService):
         assert_tenant_access(self.ctx, flow.tenant_id)
         return flow
 
-    async def list_flows(self, params: PageParams) -> PageResult[FlowOut]:
+    def _to_out(self, row: Flow, tags: list[TagRefOut] | None = None) -> FlowOut:
+        return FlowOut(
+            id=row.id,
+            tenant_id=row.tenant_id,
+            name=row.name,
+            description=row.description,
+            tags=tags or [],
+            status=row.status,
+            current_version=row.current_version,
+            created_at=row.created_at,
+        )
+
+    async def list_flows(
+        self,
+        params: PageParams,
+        *,
+        tag_ids: list[UUID] | None = None,
+    ) -> PageResult[FlowOut]:
         filters = tenant_filters(self.ctx, Flow.tenant_id)
+        tag_subq = TagService(self.db, self.ctx).entity_id_filter(
+            TagEntityType.FLOW, tag_ids or []
+        )
+        if tag_subq is not None:
+            filters.append(Flow.id.in_(tag_subq))
         page = await self.repo.list_page(
             page=params.page,
             size=params.size,
             filters=filters,
             order_by=Flow.created_at.desc(),
         )
+        tags_map = await TagService(self.db, self.ctx).get_refs_map(
+            TagEntityType.FLOW, {f.id for f in page.items}
+        )
         return PageResult(
-            items=[FlowOut.model_validate(f) for f in page.items],
+            items=[self._to_out(f, tags_map.get(f.id, [])) for f in page.items],
             total=page.total,
             page=page.page,
             size=page.size,
@@ -85,9 +113,16 @@ class FlowService(BaseService):
             current_version=0,
         )
         await self.db.flush()
+        if body.tag_ids:
+            await TagService(self.db, self.ctx).replace_entity_tags(
+                TagEntityType.FLOW, flow.id, body.tag_ids
+            )
         await self._save_version(flow, body.graph_json, remark="初始版本")
         await self.db.refresh(flow)
-        return FlowOut.model_validate(flow)
+        tags_map = await TagService(self.db, self.ctx).get_refs_map(
+            TagEntityType.FLOW, {flow.id}
+        )
+        return self._to_out(flow, tags_map.get(flow.id, []))
 
     async def _save_version(self, flow: Flow, graph_json: dict, remark: str | None = None) -> FlowVersion:
         new_version = flow.current_version + 1
@@ -104,13 +139,26 @@ class FlowService(BaseService):
 
     async def get_flow(self, flow_id: UUID) -> FlowOut:
         flow = await self._get_flow_or_raise(flow_id)
-        return FlowOut.model_validate(flow)
+        tags_map = await TagService(self.db, self.ctx).get_refs_map(
+            TagEntityType.FLOW, {flow.id}
+        )
+        return self._to_out(flow, tags_map.get(flow.id, []))
 
     async def update_flow(self, flow_id: UUID, body: FlowUpdate) -> FlowOut:
         flow = await self._get_flow_or_raise(flow_id)
-        await self.repo.update_fields(flow, body.model_dump(exclude_unset=True))
+        data = body.model_dump(exclude_unset=True)
+        tag_ids = data.pop("tag_ids", None)
+        await self.repo.update_fields(flow, data)
+        await self.db.flush()
+        if tag_ids is not None:
+            await TagService(self.db, self.ctx).replace_entity_tags(
+                TagEntityType.FLOW, flow.id, tag_ids
+            )
         await self.db.refresh(flow)
-        return FlowOut.model_validate(flow)
+        tags_map = await TagService(self.db, self.ctx).get_refs_map(
+            TagEntityType.FLOW, {flow.id}
+        )
+        return self._to_out(flow, tags_map.get(flow.id, []))
 
     async def save_graph(self, flow_id: UUID, body: FlowSaveGraph) -> FlowVersionOut:
         """每次保存递增版本号并更新 flow.current_version。"""
@@ -141,6 +189,7 @@ class FlowService(BaseService):
 
     async def delete_flow(self, flow_id: UUID) -> None:
         flow = await self._get_flow_or_raise(flow_id)
+        await TagService(self.db, self.ctx).clear_entity_tags(TagEntityType.FLOW, flow.id)
         await before_delete_flow(self.db, flow.id)
         await mark_deleted(self.db, flow)
 
@@ -151,7 +200,10 @@ class FlowService(BaseService):
         flow.status = FlowStatus.PUBLISHED
         await self.db.flush()
         await self.db.refresh(flow)
-        return FlowOut.model_validate(flow)
+        tags_map = await TagService(self.db, self.ctx).get_refs_map(
+            TagEntityType.FLOW, {flow.id}
+        )
+        return self._to_out(flow, tags_map.get(flow.id, []))
 
     async def run(self, flow_id: UUID, body: FlowRunRequest) -> FlowRunResponse:
         """

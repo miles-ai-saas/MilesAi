@@ -94,6 +94,16 @@ React Flow → PUT /flows/{id}/graph → flow_versions
 
 `GET /flows/meta`（注册在 `/flows/{id}` 之前）返回列表/筛选用的 `statuses`（`draft` / `published` 等 `value` + `label`），与 `GET /hooks/meta` 同模式。前端 `flows/page.tsx` 进入时 `api.getFlowMeta()`，状态标签用 `optionLabel(meta.statuses, status)`。
 
+## 标签
+
+与智能体/提示词等共用租户标签库（`TagEntityType.FLOW`）：
+
+- 创建/更新：`POST|PATCH /flows` 传 `tag_ids`
+- 列表筛选：`GET /flows?tag_ids=...`（任一匹配）
+- 删除流程时自动清理绑定
+
+前端列表页支持标签筛选、`TagChips` 展示，新建/基本信息弹窗内 `TagPicker`。
+
 ## 与智能体
 
 | 场景 | 路径 |

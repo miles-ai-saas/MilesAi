@@ -11,6 +11,7 @@ const ENTITY_FALLBACK: Record<string, string> = {
   prompt: "提示词",
   skill: "技能包",
   tool: "工具",
+  flow: "流程",
 };
 
 export function tagEntityTypeLabel(entityType: string, meta?: TagMeta | null): string {

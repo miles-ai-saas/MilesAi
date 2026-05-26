@@ -31,8 +31,31 @@ export function modelTypeLabel(t: string, meta?: ModelCatalogMeta | null): strin
   return meta?.model_types.find((x) => x.value === t)?.label ?? MODEL_TYPE_LABELS[t] ?? t;
 }
 
+/** 卡片下方说明文案 */
 export function credentialHint(m: ModelConfig): string {
-  if (m.credential_status === "platform") return "平台已配置密钥";
-  if (m.credential_status === "tenant") return "已配置租户密钥";
-  return "需配置 API Key";
+  if (m.source === "custom") {
+    if (m.credential_status === "tenant") return "已配置 API Key，可直接绑定使用";
+    return "请在编辑时填写 API Key 后方可调用";
+  }
+  if (m.credential_status === "platform") return "平台已配置密钥，可直接绑定使用";
+  if (m.credential_status === "tenant") return "当前使用租户自有 Key（优先于平台密钥）";
+  return "平台尚未为该模型配置密钥，请联系管理员；若您自有 Key，可选用下方「使用自有 Key」";
+}
+
+/** 自定义模型缺 Key 时展示 */
+export function isCustomMissingKey(m: ModelConfig): boolean {
+  return m.source === "custom" && m.credential_status === "missing";
+}
+
+/** 内置模型平台未配 Key */
+export function isBuiltinPlatformMissing(m: ModelConfig): boolean {
+  return m.source === "builtin" && m.credential_status === "missing";
+}
+
+export function isBuiltinReady(m: ModelConfig): boolean {
+  return m.source === "builtin" && m.credential_status === "platform";
+}
+
+export function isBuiltinByok(m: ModelConfig): boolean {
+  return m.source === "builtin" && m.credential_status === "tenant";
 }

@@ -11,6 +11,8 @@ interface FlowEditHeaderProps {
   msg: string;
   isFullscreen?: boolean;
   onToggleFullscreen?: () => void;
+  flowDescription?: string | null;
+  onEditMeta?: () => void;
   onSave: () => void;
   onPublish: () => void;
   onHistory: () => void;
@@ -55,6 +57,8 @@ export function FlowEditHeader({
   currentVersion,
   busy,
   msg,
+  flowDescription,
+  onEditMeta,
   onSave,
   onPublish,
   onHistory,
@@ -66,21 +70,37 @@ export function FlowEditHeader({
   return (
     <header className="flex shrink-0 flex-col gap-2 border-b border-line bg-surface px-3 py-2 sm:px-4">
       <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2">
-        <div className="flex min-w-0 flex-1 items-center gap-2">
-          <Link
-            href="/workbench/flows"
-            className="btn-sm-ghost shrink-0 !px-2 text-ink-muted"
-            title="返回流程列表"
-          >
-            ← 列表
-          </Link>
-          <h1 className="truncate text-base font-semibold text-ink">
-            {flowName || `流程 ${flowId.slice(0, 8)}`}
-          </h1>
-          {currentVersion > 0 && (
-            <span className="shrink-0 rounded-md bg-brand-light px-2 py-0.5 text-xs font-medium text-brand">
-              v{currentVersion}
-            </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex min-w-0 items-center gap-2">
+            <Link
+              href="/workbench/flows"
+              className="btn-sm-ghost shrink-0 !px-2 text-ink-muted"
+              title="返回流程列表"
+            >
+              ← 列表
+            </Link>
+            <h1 className="truncate text-base font-semibold text-ink">
+              {flowName || `流程 ${flowId.slice(0, 8)}`}
+            </h1>
+            {currentVersion > 0 && (
+              <span className="shrink-0 rounded-md bg-brand-light px-2 py-0.5 text-xs font-medium text-brand">
+                v{currentVersion}
+              </span>
+            )}
+            {onEditMeta && (
+              <button
+                type="button"
+                className="btn-sm-ghost shrink-0 text-xs text-ink-muted"
+                disabled={busy}
+                onClick={onEditMeta}
+                title="编辑名称与描述"
+              >
+                基本信息
+              </button>
+            )}
+          </div>
+          {flowDescription?.trim() && (
+            <p className="mt-0.5 truncate pl-10 text-xs text-ink-muted">{flowDescription.trim()}</p>
           )}
         </div>
         {msg && (

@@ -1,6 +1,6 @@
 """标签枚举展示元数据（GET /tags/meta）。
 
-- ``entity_types``：标签可绑定的资源类型（agent/prompt/skill/tool）
+- ``entity_types``：标签可绑定的资源类型（agent/prompt/skill/tool/flow）
 - 前端：lib/tag-labels.ts、hooks/use-tag-meta.ts
 - 约定：docs/guides/hooks.md §9
 """
@@ -13,6 +13,7 @@ ENTITY_TYPE_LABELS: dict[str, tuple[str, str | None]] = {
     TagEntityType.PROMPT.value: ("提示词", "绑定 prompt_templates"),
     TagEntityType.SKILL.value: ("技能包", "绑定 skill_packages"),
     TagEntityType.TOOL.value: ("工具", "绑定 tools"),
+    TagEntityType.FLOW.value: ("流程", "绑定 flow_flows"),
 }
 
 

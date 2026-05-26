@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 import { ResourceDialog } from "@/components/resource/ResourceDialog";
 import { api } from "@/lib/api";
+import { TagChips } from "@/components/tag/TagChips";
 import { flowStatusLabel } from "@/lib/flow-labels";
 import type { Flow, FlowGraph, FlowMeta } from "@/lib/types";
 
@@ -20,6 +21,7 @@ type Props = {
   publishing?: boolean;
   onClose: () => void;
   onEdit?: () => void;
+  onEditMeta?: () => void;
   onPublish?: () => void;
 };
 
@@ -52,6 +54,7 @@ export function FlowDetailDialog({
   publishing = false,
   onClose,
   onEdit,
+  onEditMeta,
   onPublish,
 }: Props) {
   const [graph, setGraph] = useState<FlowGraph | null>(null);
@@ -92,7 +95,6 @@ export function FlowDetailDialog({
     <ResourceDialog
       open={open}
       title={flow?.name ?? "流程详情"}
-      description={flow?.description ?? undefined}
       size="sheet"
       onClose={onClose}
       footer={
@@ -100,6 +102,11 @@ export function FlowDetailDialog({
           <button type="button" className="btn-ghost" onClick={onClose}>
             关闭
           </button>
+          {onEditMeta && (
+            <button type="button" className="btn-sm-outline" onClick={onEditMeta}>
+              编辑信息
+            </button>
+          )}
           {onPublish && flow && (
             <button
               type="button"
@@ -124,6 +131,20 @@ export function FlowDetailDialog({
       ) : (
         <div className="space-y-6">
           <dl className="grid gap-3 text-sm sm:grid-cols-2">
+            {flow.description?.trim() && (
+              <div className="sm:col-span-2">
+                <dt className="text-xs text-ink-muted">描述</dt>
+                <dd className="mt-0.5 whitespace-pre-wrap text-ink">{flow.description.trim()}</dd>
+              </div>
+            )}
+            {(flow.tags?.length ?? 0) > 0 && (
+              <div className="sm:col-span-2">
+                <dt className="text-xs text-ink-muted">标签</dt>
+                <dd className="mt-1">
+                  <TagChips tags={flow.tags} />
+                </dd>
+              </div>
+            )}
             <div>
               <dt className="text-xs text-ink-muted">状态</dt>
               <dd className="mt-0.5 font-medium text-ink">{flowStatusLabel(flow.status, flowMeta)}</dd>

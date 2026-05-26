@@ -1,6 +1,6 @@
 """租户全局标签 ORM（tnt_tags、tnt_entity_tag_bindings）。
 
-标签在租户内跨智能体/提示词/技能/工具共用；与 ``sys_categories`` 的系统预置分类互补：
+标签在租户内跨智能体/提示词/技能/工具/流程共用；与 ``sys_categories`` 的系统预置分类互补：
 分类负责稳定导航（单选），标签负责用户自定义标记（多选）。
 """
 
@@ -22,6 +22,7 @@ class TagEntityType(str, enum.Enum):
     PROMPT = "prompt"
     SKILL = "skill"
     TOOL = "tool"
+    FLOW = "flow"
 
 
 class TenantTag(UUIDPrimaryKeyMixin, TimestampMixin, Base):

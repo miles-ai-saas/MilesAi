@@ -2,7 +2,7 @@
 
 from uuid import UUID
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.infra.db import get_db
@@ -43,10 +43,11 @@ async def flow_meta(
 @router.get("", response_model=ApiResponse[PageResult[FlowOut]])
 async def list_flows(
     params: PageParams = Depends(get_page_params),
+    tag_ids: list[UUID] | None = Query(None, description="按标签筛选（任一匹配）"),
     ctx: TenantContext = Depends(require_permissions("flow:read")),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await _svc(db, ctx).list_flows(params)
+    result = await _svc(db, ctx).list_flows(params, tag_ids=tag_ids)
     return page_ok(result.items, result.total, result.page, result.size)
 
 

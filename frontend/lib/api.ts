@@ -365,10 +365,27 @@ export const api = {
   deleteModelConfig: (id: string) =>
     http.delete(`/models/${id}`).then(() => undefined),
 
-  listFlows: (page = 1, size = DEFAULT_PAGE_SIZE) =>
-    getPage<Flow>(`/flows?${buildPageQuery(page, size)}`),
-  createFlow: (name: string, graph_json?: FlowGraph) =>
-    post<Flow>("/flows", { name, graph_json: graph_json || { nodes: [], edges: [] } }),
+  listFlows: (page = 1, size = DEFAULT_PAGE_SIZE, tagIds?: string[]) => {
+    let q = buildPageQuery(page, size);
+    q = appendTagIds(q, tagIds);
+    return getPage<Flow>(`/flows?${q}`);
+  },
+  createFlow: (payload: {
+    name: string;
+    description?: string | null;
+    tag_ids?: string[];
+    graph_json?: FlowGraph;
+  }) =>
+    post<Flow>("/flows", {
+      name: payload.name,
+      description: payload.description ?? null,
+      tag_ids: payload.tag_ids ?? [],
+      graph_json: payload.graph_json ?? { nodes: [], edges: [] },
+    }),
+  updateFlow: (
+    flowId: string,
+    payload: { name?: string; description?: string | null; tag_ids?: string[] },
+  ) => patch<Flow>(`/flows/${flowId}`, payload),
   getFlow: (flowId: string) => get<Flow>(`/flows/${flowId}`),
   getFlowGraph: (flowId: string) => get<FlowVersion>(`/flows/${flowId}/graph`),
   listFlowVersions: (flowId: string) =>

@@ -10,6 +10,10 @@ import { ResourceDialog } from "@/components/resource/ResourceDialog";
 import { PageHeader } from "@/components/layout/PageHeader";
 import {
   credentialHint,
+  isBuiltinByok,
+  isBuiltinPlatformMissing,
+  isBuiltinReady,
+  isCustomMissingKey,
   modelTypeLabel,
   SOURCE_LABELS,
   vendorLabel,
@@ -43,6 +47,7 @@ export default function ModelsPage() {
   const [description, setDescription] = useState("");
   const [apiBase, setApiBase] = useState("");
   const [apiKey, setApiKey] = useState("");
+  const [saveError, setSaveError] = useState("");
 
   const { requestConfirm, confirmDialog } = useConfirmAction();
 
@@ -88,6 +93,7 @@ export default function ModelsPage() {
     setDescription("");
     setApiBase("");
     setApiKey("");
+    setSaveError("");
     setDialogOpen(true);
   };
 
@@ -102,6 +108,7 @@ export default function ModelsPage() {
     setDescription(m.description ?? "");
     setApiBase(m.api_base ?? "");
     setApiKey("");
+    setSaveError("");
     setDialogOpen(true);
   };
 
@@ -114,6 +121,11 @@ export default function ModelsPage() {
 
   const onSave = async () => {
     if (!name.trim() || !modelName.trim()) return;
+    if (!editing && !apiKey.trim()) {
+      setSaveError("自定义模型必须填写 API Key");
+      return;
+    }
+    setSaveError("");
     const payload = {
       name: name.trim(),
       vendor: vendorField,
@@ -143,6 +155,22 @@ export default function ModelsPage() {
     await reload();
   };
 
+  const onClearBuiltinByok = (m: ModelConfig) => {
+    requestConfirm({
+      title: "恢复使用平台密钥",
+      message: (
+        <>
+          将清除 <span className="font-medium">{m.name}</span> 的租户自有 Key，恢复为平台托管密钥（若平台已配置）。
+        </>
+      ),
+      confirmLabel: "确认清除",
+      onConfirm: async () => {
+        await api.deleteBuiltinModelCredentials(m.id);
+        await reload();
+      },
+    });
+  };
+
   const onDelete = (m: ModelConfig) => {
     if (m.source === "builtin") return;
     requestConfirm({
@@ -165,7 +193,7 @@ export default function ModelsPage() {
     <div className="resource-page-shell">
       <PageHeader
         title="模型供应商"
-        description="使用运营发布的内置模型，或添加自定义 OpenAI 兼容接入。"
+        description="内置模型由平台统一提供密钥，可直接选用；自定义 OpenAI 兼容接入需自行配置 API Key。"
         action={
           <button type="button" className="btn-primary" onClick={openCreate}>
             + 自定义模型
@@ -260,7 +288,22 @@ export default function ModelsPage() {
                 <span className="rounded border border-brand/20 bg-brand-light/30 px-2 py-0.5 text-xs text-brand">
                   {SOURCE_LABELS[m.source]}
                 </span>
-                {m.credential_status === "missing" && (
+                {isBuiltinReady(m) && (
+                  <span className="rounded border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-xs text-emerald-800">
+                    可直接使用
+                  </span>
+                )}
+                {isBuiltinByok(m) && (
+                  <span className="rounded border border-sky-200 bg-sky-50 px-2 py-0.5 text-xs text-sky-800">
+                    自有 Key
+                  </span>
+                )}
+                {isBuiltinPlatformMissing(m) && (
+                  <span className="rounded border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs text-amber-800">
+                    平台未配置
+                  </span>
+                )}
+                {isCustomMissingKey(m) && (
                   <span className="rounded border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs text-amber-800">
                     待配置 Key
                   </span>
@@ -269,9 +312,24 @@ export default function ModelsPage() {
               <p className="mt-2 text-xs text-ink-muted">{credentialHint(m)}</p>
               <div className="mt-4 flex flex-wrap gap-2 border-t border-border pt-3">
                 {m.source === "builtin" ? (
-                  <button type="button" className="btn-ghost text-xs" onClick={() => openCred(m)}>
-                    配置 API Key
-                  </button>
+                  isBuiltinByok(m) ? (
+                    <>
+                      <button type="button" className="btn-ghost text-xs" onClick={() => openCred(m)}>
+                        更新自有 Key
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-ghost text-xs text-ink-muted"
+                        onClick={() => onClearBuiltinByok(m)}
+                      >
+                        恢复平台密钥
+                      </button>
+                    </>
+                  ) : (
+                    <button type="button" className="btn-ghost text-xs" onClick={() => openCred(m)}>
+                      使用自有 Key（可选）
+                    </button>
+                  )
                 ) : (
                   <>
                     <button type="button" className="btn-ghost text-xs" onClick={() => openEdit(m)}>
@@ -296,10 +354,20 @@ export default function ModelsPage() {
         open={dialogOpen}
         title={editing ? "编辑自定义模型" : "添加自定义模型"}
         size="lg"
-        onClose={() => setDialogOpen(false)}
+        onClose={() => {
+          setDialogOpen(false);
+          setSaveError("");
+        }}
         footer={
           <>
-            <button type="button" className="btn-ghost" onClick={() => setDialogOpen(false)}>
+            <button
+              type="button"
+              className="btn-ghost"
+              onClick={() => {
+                setDialogOpen(false);
+                setSaveError("");
+              }}
+            >
               取消
             </button>
             <button type="button" className="btn-primary" onClick={onSave}>
@@ -308,6 +376,14 @@ export default function ModelsPage() {
           </>
         }
       >
+        {saveError && (
+          <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+            {saveError}
+          </p>
+        )}
+        <p className="text-xs text-ink-muted">
+          自定义模型由本租户自行维护接入参数；新建时必须填写 API Key，编辑时留空表示不修改密钥。
+        </p>
         <input
           className="input-field w-full"
           placeholder="展示名称"
@@ -363,7 +439,7 @@ export default function ModelsPage() {
         />
         <input
           className="input-field w-full"
-          placeholder="API Key"
+          placeholder={editing ? "API Key（留空不修改）" : "API Key（必填）"}
           type="password"
           value={apiKey}
           onChange={(e) => setApiKey(e.target.value)}
@@ -372,7 +448,7 @@ export default function ModelsPage() {
 
       <ResourceDialog
         open={credDialogOpen}
-        title={credTarget ? `配置密钥 · ${credTarget.name}` : "配置密钥"}
+        title={credTarget ? `租户自有 Key · ${credTarget.name}` : "租户自有 Key"}
         onClose={() => setCredDialogOpen(false)}
         footer={
           <>
@@ -386,7 +462,7 @@ export default function ModelsPage() {
         }
       >
         <p className="text-xs text-ink-muted">
-          内置模型默认使用平台密钥；此处配置租户自有 Key（BYOK），优先于平台密钥。
+          内置模型默认使用平台统一密钥，无需租户配置。仅在合规或自付账单等场景下，可在此填写自有 Key（BYOK），将优先于平台密钥。
         </p>
         <input
           className="input-field w-full"
@@ -396,7 +472,7 @@ export default function ModelsPage() {
         />
         <input
           className="input-field w-full"
-          placeholder="API Key（必填）"
+          placeholder="租户 API Key（必填）"
           type="password"
           value={apiKey}
           onChange={(e) => setApiKey(e.target.value)}
