@@ -35,4 +35,10 @@ celery_app.conf.update(
         "app.workers.tasks.ocr.*": {"queue": "ocr"},
         "app.workers.tasks.embed.*": {"queue": "embed"},
     },
+    beat_schedule={
+        "tick-agent-schedules": {
+            "task": "app.workers.tasks.agent_schedule.tick_agent_schedules",
+            "schedule": 60.0,
+        },
+    },
 )

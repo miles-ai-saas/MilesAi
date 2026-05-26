@@ -19,6 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.tenant.hooks.models import HookBinding, HookScope
 from app.tenant.marketplace.models import AppInstall
 from app.models.agent import Agent, AgentSubAgentBinding, agent_kb_bindings
+from app.models.agent_schedule import AgentSchedule
 from app.models.flow import FlowVersion
 
 
@@ -115,11 +116,17 @@ async def delete_flow_versions(db: AsyncSession, flow_id: UUID) -> None:
 
 
 async def before_delete_agent(db: AsyncSession, agent_id: UUID) -> None:
-    """删智能体前：子 Agent 绑定、KB 绑定、市场引用、Hook。"""
+    """删智能体前：子 Agent 绑定、KB 绑定、市场引用、Hook、定时任务。"""
     await unlink_sub_agent_bindings(db, parent_agent_id=agent_id, child_agent_id=agent_id)
     await unlink_agent_kb_bindings(db, agent_id=agent_id)
     await nullify_app_install_refs(db, agent_id=agent_id)
     await delete_hook_bindings_for_target(db, HookScope.AGENT, agent_id)
+    await mark_deleted_where(
+        db,
+        AgentSchedule,
+        AgentSchedule.agent_id == agent_id,
+        not_deleted(AgentSchedule),
+    )
 
 
 async def before_delete_kb(db: AsyncSession, kb_id: UUID) -> None:

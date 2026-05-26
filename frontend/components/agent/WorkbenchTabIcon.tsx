@@ -35,7 +35,7 @@ const paths: Record<AgentWorkbenchTab, ReactNode> = {
       d="M8 9l-2 2 2 2M16 9l2 2-2 2M14 7l-4 10"
     />
   ),
-  logs: (
+  call_records: (
     <path
       strokeLinecap="round"
       strokeLinejoin="round"

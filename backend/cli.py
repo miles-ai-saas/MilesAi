@@ -96,6 +96,23 @@ def worker(queues: str, loglevel: str, concurrency: int | None) -> None:
 
 
 @cli.command()
+@click.option("-l", "--loglevel", default="info", show_default=True, help="日志级别")
+def beat(loglevel: str) -> None:
+    """启动 Celery Beat（智能体定时任务扫描）。"""
+    cmd = [
+        sys.executable,
+        "-m",
+        "celery",
+        "-A",
+        "app.workers.app",
+        "beat",
+        "-l",
+        loglevel,
+    ]
+    raise SystemExit(subprocess.call(cmd))
+
+
+@cli.command()
 def migrate() -> None:
     """执行 Alembic upgrade head。"""
     from scripts.db_ops import run_migrate

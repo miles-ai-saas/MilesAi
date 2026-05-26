@@ -15,8 +15,14 @@ from app.core.deps import get_page_params, require_permissions
 from app.common.response import ok, page_ok
 from app.core.tenant import TenantContext
 from app.tenant.agents.schemas.agent import AgentCreate, AgentOut, AgentUpdate, ChatRequest, ChatResponse
+from app.tenant.agents.schemas.architecture import AgentArchitectureOut
+from app.tenant.agents.schemas.schedule import AgentScheduleCreate, AgentScheduleOut, AgentScheduleUpdate
+from app.tenant.agents.schemas.stats import AgentStatsOut
 from app.common.schema import ApiResponse, PageParams, PageResult
 from app.tenant.agents.services.agent import AgentService
+from app.tenant.agents.services.architecture import AgentArchitectureService
+from app.tenant.agents.services.schedule import AgentScheduleService
+from app.tenant.agents.services.stats import AgentStatsService
 from app.models.agent import AgentType
 
 router = APIRouter()
@@ -24,6 +30,18 @@ router = APIRouter()
 
 def _svc(db: AsyncSession, ctx: TenantContext) -> AgentService:
     return AgentService(db, ctx)
+
+
+def _stats_svc(db: AsyncSession, ctx: TenantContext) -> AgentStatsService:
+    return AgentStatsService(db, ctx)
+
+
+def _arch_svc(db: AsyncSession, ctx: TenantContext) -> AgentArchitectureService:
+    return AgentArchitectureService(db, ctx)
+
+
+def _schedule_svc(db: AsyncSession, ctx: TenantContext) -> AgentScheduleService:
+    return AgentScheduleService(db, ctx)
 
 
 @router.get("", response_model=ApiResponse[PageResult[AgentOut]])
@@ -76,6 +94,69 @@ async def delete_agent(
     db: AsyncSession = Depends(get_db),
 ):
     await _svc(db, ctx).delete_agent(agent_id)
+    return ok(message="已删除")
+
+
+@router.get("/{agent_id}/stats", response_model=ApiResponse[AgentStatsOut])
+async def agent_stats(
+    agent_id: UUID,
+    days: int = Query(7, ge=3, le=90, description="统计天数：3/7/15/30/90"),
+    ctx: TenantContext = Depends(require_permissions("agent:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    return ok(await _stats_svc(db, ctx).overview(agent_id, days=days))
+
+
+@router.get("/{agent_id}/architecture", response_model=ApiResponse[AgentArchitectureOut])
+async def agent_architecture(
+    agent_id: UUID,
+    ctx: TenantContext = Depends(require_permissions("agent:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    """对话执行路径与编排预览（路由与 ``AgentService.chat`` 一致）。"""
+    return ok(await _arch_svc(db, ctx).overview(agent_id))
+
+
+@router.get("/{agent_id}/schedules", response_model=ApiResponse[PageResult[AgentScheduleOut]])
+async def list_agent_schedules(
+    agent_id: UUID,
+    params: PageParams = Depends(get_page_params),
+    ctx: TenantContext = Depends(require_permissions("agent:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await _schedule_svc(db, ctx).list_schedules(agent_id, params)
+    return page_ok(result.items, result.total, result.page, result.size)
+
+
+@router.post("/{agent_id}/schedules", response_model=ApiResponse[AgentScheduleOut])
+async def create_agent_schedule(
+    agent_id: UUID,
+    body: AgentScheduleCreate,
+    ctx: TenantContext = Depends(require_permissions("agent:write")),
+    db: AsyncSession = Depends(get_db),
+):
+    return ok(await _schedule_svc(db, ctx).create_schedule(agent_id, body))
+
+
+@router.patch("/{agent_id}/schedules/{schedule_id}", response_model=ApiResponse[AgentScheduleOut])
+async def update_agent_schedule(
+    agent_id: UUID,
+    schedule_id: UUID,
+    body: AgentScheduleUpdate,
+    ctx: TenantContext = Depends(require_permissions("agent:write")),
+    db: AsyncSession = Depends(get_db),
+):
+    return ok(await _schedule_svc(db, ctx).update_schedule(agent_id, schedule_id, body))
+
+
+@router.delete("/{agent_id}/schedules/{schedule_id}", response_model=ApiResponse[None])
+async def delete_agent_schedule(
+    agent_id: UUID,
+    schedule_id: UUID,
+    ctx: TenantContext = Depends(require_permissions("agent:write")),
+    db: AsyncSession = Depends(get_db),
+):
+    await _schedule_svc(db, ctx).delete_schedule(agent_id, schedule_id)
     return ok(message="已删除")
 
 

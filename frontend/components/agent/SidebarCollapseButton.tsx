@@ -6,9 +6,12 @@ type Props = {
   side: Side;
   collapsed: boolean;
   onToggle: () => void;
+  /** 工作台详情面板打开时不展示，避免叠在弹层上 */
+  hidden?: boolean;
 };
 
-export function SidebarCollapseButton({ side, collapsed, onToggle }: Props) {
+export function SidebarCollapseButton({ side, collapsed, onToggle, hidden }: Props) {
+  if (hidden) return null;
   const label = collapsed ? "展开侧栏" : "收起侧栏";
   const chevron =
     side === "left"

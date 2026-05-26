@@ -1,6 +1,8 @@
 import axios, { AxiosInstance } from "axios";
 import type {
   Agent,
+  AgentArchitecture,
+  AgentStats,
   AlertConfig,
   ApiResponse,
   AppCategory,
@@ -405,6 +407,24 @@ export const api = {
   deleteA2aPeer: (peerId: string) =>
     http.delete(`/a2a/peers/${peerId}`).then(() => undefined),
   getAgent: (agentId: string) => get<Agent>(`/agents/${agentId}`),
+  getAgentStats: (agentId: string, days = 7) =>
+    get<AgentStats>(`/agents/${agentId}/stats?days=${days}`),
+  getAgentArchitecture: (agentId: string) =>
+    get<AgentArchitecture>(`/agents/${agentId}/architecture`),
+  listAgentSchedules: (agentId: string, page = 1, size = DEFAULT_PAGE_SIZE) =>
+    getPage<import("./types").AgentSchedule>(
+      `/agents/${agentId}/schedules?${buildPageQuery(page, size)}`,
+    ),
+  createAgentSchedule: (agentId: string, payload: import("./types").AgentScheduleInput) =>
+    post<import("./types").AgentSchedule>(`/agents/${agentId}/schedules`, payload),
+  updateAgentSchedule: (
+    agentId: string,
+    scheduleId: string,
+    payload: Partial<import("./types").AgentScheduleInput>,
+  ) =>
+    patch<import("./types").AgentSchedule>(`/agents/${agentId}/schedules/${scheduleId}`, payload),
+  deleteAgentSchedule: (agentId: string, scheduleId: string) =>
+    http.delete(`/agents/${agentId}/schedules/${scheduleId}`).then(() => undefined),
   createAgent: (payload: {
     agent_type?: import("./types").AgentType;
     category_id?: string | null;

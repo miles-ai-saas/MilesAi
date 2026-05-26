@@ -2,5 +2,6 @@
 
 from app.workers.tasks.health import ping
 from app.workers.tasks.ingest import ingest_document
+from app.workers.tasks.agent_schedule import run_agent_schedule, tick_agent_schedules
 
-__all__ = ["ping", "ingest_document"]
+__all__ = ["ping", "ingest_document", "run_agent_schedule", "tick_agent_schedules"]

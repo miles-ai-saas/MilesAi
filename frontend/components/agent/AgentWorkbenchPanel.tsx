@@ -210,23 +210,6 @@ export function AgentWorkbenchPanel({ agentId, activeTab, onSaved }: Props) {
     );
   }
 
-  if (activeTab === "architecture") {
-    return (
-      <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
-        <p className="text-sm text-ink-muted">
-          {form.published_flow_id
-            ? "已绑定编排流程，可进入画布编辑节点与连线。"
-            : "请先在「配置 → 工具与能力」中绑定已发布的编排流程。"}
-        </p>
-        {form.published_flow_id && (
-          <button type="button" className="btn-sm-primary" onClick={openFlowCanvas}>
-            打开流程画布
-          </button>
-        )}
-      </div>
-    );
-  }
-
   return (
     <div className="flex flex-1 items-center justify-center p-6 text-sm text-ink-muted">
       该模块即将推出

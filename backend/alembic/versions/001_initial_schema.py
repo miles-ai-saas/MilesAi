@@ -7,9 +7,8 @@ Create Date: 2026-05-21
 表结构与索引以各 ORM 模型的 __tablename__ / __table_args__ 为准；
 通过 ``Base.metadata.create_all`` 建表（逻辑外键，无数据库 FK）。
 
-历史说明：原 002–012 增量迁移已合并删除；新环境仅需 ``alembic upgrade head``。
-若旧库 ``alembic_version`` 为 002–012 且表结构已与当前 ORM 一致，可执行
-``alembic stamp 001`` 对齐版本号；否则请清库后重新 upgrade。
+历史说明：原 002–012 增量迁移曾合并进 001；``002_agt_schedules`` 为后续补表。
+新环境：``alembic upgrade head``。已跑过 001 的库需再执行至 002 以创建 ``agt_schedules`` 等增量表。
 
 """
 

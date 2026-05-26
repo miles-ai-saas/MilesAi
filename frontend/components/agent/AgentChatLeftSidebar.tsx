@@ -20,6 +20,8 @@ type Props = {
   sessions: ChatSession[];
   activeSessionId: string | null;
   collapsed: boolean;
+  /** 右侧工作台面板打开时隐藏折叠钮 */
+  hideCollapseButton?: boolean;
   hasMoreAgents: boolean;
   loadingMoreAgents: boolean;
   onLoadMoreAgents: () => void;
@@ -193,6 +195,7 @@ export function AgentChatLeftSidebar({
   sessions,
   activeSessionId,
   collapsed,
+  hideCollapseButton,
   hasMoreAgents,
   loadingMoreAgents,
   onLoadMoreAgents,
@@ -217,7 +220,12 @@ export function AgentChatLeftSidebar({
       className="relative flex h-full shrink-0 flex-col overflow-hidden border-r border-line bg-surface transition-[width] duration-200 ease-out"
       style={{ width: collapsed ? CHAT_LEFT_SIDEBAR_COLLAPSED : CHAT_LEFT_SIDEBAR_EXPANDED }}
     >
-      <SidebarCollapseButton side="left" collapsed={collapsed} onToggle={onToggleCollapse} />
+      <SidebarCollapseButton
+        side="left"
+        collapsed={collapsed}
+        onToggle={onToggleCollapse}
+        hidden={hideCollapseButton}
+      />
 
       {collapsed ? (
         <div className="flex min-h-0 flex-1 flex-col">

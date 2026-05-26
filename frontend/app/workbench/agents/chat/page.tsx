@@ -12,7 +12,7 @@ import {
   saveChatSidebarPrefs,
 } from "@/components/agent/chat-sidebar-layout";
 import {
-  isAgentWorkbenchTab,
+  normalizeAgentWorkbenchTab,
   type AgentWorkbenchTab,
 } from "@/components/agent/agent-workbench-tabs";
 import { api } from "@/lib/api";
@@ -96,7 +96,7 @@ function AgentsChatContent() {
       const params = new URLSearchParams();
       params.set("agent", agentId);
       if (convId) params.set("conv", convId);
-      if (isAgentWorkbenchTab(tabFromUrl) && panelOpen) {
+      if (normalizeAgentWorkbenchTab(tabFromUrl) && panelOpen) {
         if (workbenchTab !== "config") params.set("tab", workbenchTab);
       }
       router.replace(`/workbench/agents/chat?${params.toString()}`);
@@ -111,8 +111,9 @@ function AgentsChatContent() {
   }, []);
 
   useEffect(() => {
-    if (isAgentWorkbenchTab(tabFromUrl)) {
-      setWorkbenchTab(tabFromUrl);
+    const tab = normalizeAgentWorkbenchTab(tabFromUrl);
+    if (tab) {
+      setWorkbenchTab(tab);
       setPanelOpen(true);
     }
   }, [tabFromUrl]);
@@ -303,6 +304,7 @@ function AgentsChatContent() {
         sessions={sessions}
         activeSessionId={conversationId || null}
         collapsed={leftCollapsed}
+        hideCollapseButton={panelOpen}
         hasMoreAgents={list.hasMore}
         loadingMoreAgents={list.loadingMore}
         onLoadMoreAgents={() => void list.loadMore()}
@@ -376,6 +378,7 @@ function AgentsChatContent() {
           activeTab={workbenchTab}
           panelOpen={panelOpen}
           collapsed={rightCollapsed}
+          hideCollapseButton={panelOpen}
           onToggleCollapse={() => {
             const next = !rightCollapsed;
             setRightCollapsed(next);
