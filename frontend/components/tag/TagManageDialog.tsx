@@ -1,5 +1,6 @@
 "use client";
 
+/** 标签管理弹窗（链路 §3，`api` 标签 CRUD）。 */
 import { useCallback, useEffect, useState } from "react";
 import { ResourceDialog } from "@/components/resource/ResourceDialog";
 import { api } from "@/lib/api";

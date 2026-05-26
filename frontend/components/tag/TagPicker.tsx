@@ -1,5 +1,6 @@
 "use client";
 
+/** 资源表单内标签选择（链路 §3）。 */
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import type { TenantTag } from "@/lib/types";

@@ -1,5 +1,6 @@
 "use client";
 
+/** A2A 互联宿主表单（链路 §4 `useA2aMeta`）。 */
 import { useEffect, useState } from "react";
 import {
   AGENT_HOST_FORM_STEPS,

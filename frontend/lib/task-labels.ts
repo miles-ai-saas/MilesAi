@@ -1,4 +1,7 @@
-/** 异步任务状态展示文案与样式 */
+/**
+ * 异步任务展示文案：优先 `GET /tasks/meta`（`useTaskMeta`），未加载时本地 fallback。
+ * 链路见 `lib/enum-meta.ts`。；链路 §4 见 lib/chains.ts。
+ */
 
 import { optionLabel, type EnumOption } from "@/lib/enum-meta";
 import type { TaskMeta } from "@/lib/types";

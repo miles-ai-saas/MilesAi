@@ -1,5 +1,6 @@
 "use client";
 
+/** 智能体架构只读说明（链路 §5 配置侧栏）。 */
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { FlowCanvasPreview } from "@/components/flow/FlowCanvasPreview";

@@ -1,4 +1,7 @@
-/** 标准 5 段 Cron（Celery crontab / croniter 兼容） */
+/**
+ * 标准 5 段 Cron 编辑/校验（链路 §10，与 Celery crontab、croniter 兼容）。
+ * 用于智能体定时任务等 UI。
+ */
 
 export type CronParts = {
   minute: string;

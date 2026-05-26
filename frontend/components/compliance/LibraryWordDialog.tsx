@@ -1,5 +1,6 @@
 "use client";
 
+/** 词条编辑（链路 §13）。 */
 import { useEffect, useState } from "react";
 import { ResourceDialog } from "@/components/resource/ResourceDialog";
 import { api } from "@/lib/api";

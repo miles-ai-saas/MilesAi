@@ -1,3 +1,5 @@
+/** Noto Sans SC 字体加载（设计规范 §3，非业务 API 链路）。 */
+
 import { Noto_Sans_SC } from "next/font/google";
 
 import { fontFamilySans } from "./font-family";

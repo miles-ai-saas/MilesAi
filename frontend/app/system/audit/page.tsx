@@ -1,5 +1,7 @@
 "use client";
 
+/** 审计日志（链路 §3 + §4 `useAuditMeta`，壳层 §7）。 */
+
 import { useCallback, useState } from "react";
 import { api } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth-store";

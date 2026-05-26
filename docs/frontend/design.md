@@ -406,6 +406,28 @@ var(--font-sans), "PingFang SC", "Microsoft YaHei", "Segoe UI", system-ui, -appl
 4. **Logo**：导航只用 `BrandHeader`；不要并排 `mark` + `compact` 重复「行千里」。
 5. **弹窗**：按 §5.7 选型；复杂表单用 `size="sheet"`，禁止新功能使用 `fullscreen` 盖住 App Header。
 6. **Lint**：组件目录 `components/brand/`、`components/layout/` 为布局与品牌权威实现。
+7. **必要链路注释**：新增或改动跨文件流程时，在 `frontend/lib/chains.ts` 登记章节，并在入口文件（`lib/*`、`hooks/*`、页面顶部）注明章节号；列表页可参考 `app/workbench/flows/page.tsx`。已覆盖：全部 `app/**` 页面、`lib` 业务模块、`hooks`、各域主要 `components`；纯品牌/图表/`components/ui` 可不注释。
+
+### 9.1 必要链路索引
+
+权威清单：`frontend/lib/chains.ts`（鉴权、API、列表页、枚举 meta、对话、流程、导航、知识库、技能包、Cron 等）。枚举字典另见 `lib/enum-meta.ts` 与 [hooks.md](../guides/hooks.md) §9。
+
+| 章节 | 场景 | 关键文件 |
+|------|------|----------|
+| §1 | 登录与受保护路由 | `auth-store.ts`、`app/login`、`AppShell` |
+| §2 | HTTP 与错误文案 | `api.ts`、`api-error.ts` |
+| §3 | 工作台 CRUD 列表 | `use-paged-list.ts`、`ResourceListLayout`、`use-confirm-action.tsx` |
+| §4 | 枚举展示 | `enum-meta.ts`、`use-*-meta.ts`、`*-labels.ts` |
+| §5 | 智能体对话 | `chat-sessions.ts`、`agents/chat`、`agent-steps.ts` |
+| §6 | 流程编排 | `flow-nodes.ts`、`flows/[id]/edit` |
+| §7 | 导航壳层 | `nav-config.ts`、`AppShell`、`SystemShell` |
+| §8 | KB 文档入库 | `document-status.ts`、`kb/[id]` |
+| §9–§10 | 技能包 / 定时 | `skill-md.ts`、`cron-celery.ts` |
+| §11 | MCP | `mcp/page`、`mcp-labels.ts` |
+| §12 | 应用市场 | `marketplace/page`、`marketplace-labels.ts` |
+| §13 | 合规 | `compliance/page`、`compliance-labels.ts` |
+| §14 | 监控 | `monitor/page`、`monitor-labels.ts` |
+| §15 | 概览 / 重定向 | `dashboard/page`、`app/page.tsx` |
 
 ---
 
@@ -413,6 +435,10 @@ var(--font-sans), "PingFang SC", "Microsoft YaHei", "Segoe UI", system-ui, -appl
 
 ```
 frontend/
+├── lib/chains.ts            # 必要链路索引（§9.1）
+├── lib/enum-meta.ts         # 枚举 meta 契约（§4）
+├── lib/api.ts               # API 客户端（§2）
+├── lib/auth-store.ts        # 鉴权（§1）
 ├── lib/fonts.ts             # next/font Noto Sans SC（appFont）
 ├── lib/font-family.ts       # Tailwind font-sans 栈（供 tailwind.config 引用）
 ├── app/globals.css          # CSS 变量 + body 字体与抗锯齿

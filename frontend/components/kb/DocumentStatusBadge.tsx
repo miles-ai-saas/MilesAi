@@ -1,3 +1,5 @@
+/** 文档状态徽章（链路 §8）：`statusOptions` 来自 `KbMeta.document_statuses`（`useKbMeta`）。 */
+
 import {
   documentStatusLabel,
   documentStatusTone,

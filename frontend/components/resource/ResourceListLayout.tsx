@@ -1,5 +1,10 @@
 "use client";
 
+/**
+ * 工作台标准列表页骨架（链路 §3）：标题、搜索、可选 tabs、内容区、底部分页槽。
+ * 数据加载由页面 `usePagedList` 负责，本组件不发起请求。
+ */
+
 import type { ReactNode } from "react";
 
 export type ResourceTab = { key: string; label: string };

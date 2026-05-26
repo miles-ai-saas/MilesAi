@@ -1,3 +1,5 @@
+/** A2A 宿主表单共享校验（链路 §4）。 */
+
 import type { A2aPeerRefInput, Agent } from "@/lib/types";
 
 export type A2aHostFormValues = {

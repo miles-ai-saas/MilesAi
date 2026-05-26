@@ -1,5 +1,7 @@
 "use client";
 
+/** 创建/编辑弹窗壳（链路 §3）：档位见 design.md §5.7；业务表单作为 children 传入。 */
+
 import { useEffect } from "react";
 import type { ReactNode } from "react";
 

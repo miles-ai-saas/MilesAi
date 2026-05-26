@@ -1,5 +1,7 @@
 "use client";
 
+/** 流程画布编辑（链路 §6）：`getFlowGraph` / `saveFlowGraph` / `testFlow`，图结构见 `flow-nodes`。 */
+
 import dynamic from "next/dynamic";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";

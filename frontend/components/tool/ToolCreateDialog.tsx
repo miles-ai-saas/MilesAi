@@ -1,5 +1,7 @@
 "use client";
 
+/** 自定义工具创建/编辑（链路 §3 + §4 tools meta）。 */
+
 import { KbPageAlert } from "@/components/kb/KbPageAlert";
 import { CodeEditor } from "@/components/editor/CodeEditor";
 import { ResourceDialog } from "@/components/resource/ResourceDialog";

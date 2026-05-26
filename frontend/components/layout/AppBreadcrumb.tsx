@@ -1,3 +1,5 @@
+/** 系统管理面包屑（链路 §7）。 */
+
 import Link from "next/link";
 import type { BreadcrumbItem } from "@/lib/nav-config";
 

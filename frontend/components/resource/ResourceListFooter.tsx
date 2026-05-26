@@ -12,7 +12,10 @@ type Props = {
   noMoreText?: string;
 };
 
-/** 未达分页条件时展示「没有更多数据了」，达到时仅展示分页器（互斥） */
+/**
+ * 列表底部分页（链路 §3，见 lib/chains.ts）：绑定 `usePagedList` 的 page/total/size。
+ * 未达分页阈值时展示「没有更多数据了」，与 `Pagination` 互斥。
+ */
 export function ResourceListFooter({
   page,
   size,

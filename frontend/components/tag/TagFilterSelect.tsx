@@ -1,5 +1,7 @@
 "use client";
 
+/** 列表页标签多选筛选（链路 §3）：`api.listTags` → 选中 id 传给 `api.list*` 的 `tag_ids`。 */
+
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import type { TenantTag } from "@/lib/types";

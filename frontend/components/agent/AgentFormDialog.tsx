@@ -1,5 +1,7 @@
 "use client";
 
+/** 智能体创建/编辑多步表单（链路 §3 + §4 agent/a2a meta）。 */
+
 import { useEffect, useState } from "react";
 import {
   AGENT_FORM_STEPS,

@@ -1,5 +1,6 @@
 "use client";
 
+/** Markdown 分栏编辑（技能/提示词等，链路 §9）。 */
 import { useState } from "react";
 import { CodeEditor } from "@/components/editor/CodeEditor";
 import { MarkdownPreview } from "@/components/editor/MarkdownPreview";

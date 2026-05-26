@@ -1,5 +1,6 @@
 "use client";
 
+/** MCP 添加入口卡片（链路 §11）。 */
 /** 列表页左侧「添加 MCP」卡片：按 HTTP / SSE / STDIO 分入口打开创建弹窗。 */
 
 import type { McpTransportTab } from "@/lib/mcp-labels";

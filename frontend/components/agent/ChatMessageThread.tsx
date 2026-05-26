@@ -1,5 +1,7 @@
 "use client";
 
+/** 对话消息区（链路 §5）：渲染消息 + `AgentExecutionTimeline`（steps）。 */
+
 import {
   AgentExecutionSkeleton,
   AgentExecutionTimeline,

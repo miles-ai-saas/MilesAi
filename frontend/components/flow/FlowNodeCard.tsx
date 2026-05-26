@@ -1,5 +1,6 @@
 "use client";
 
+/** 画布节点卡片 UI（链路 §6）。 */
 /**
  * React Flow 节点卡片：Handle id 须与导出 graph_json 的 sourceHandle/targetHandle 一致。
  * 见 lib/flow-nodes.ts 与 backend flow_runtime/templates/README.md（RAG 模板边示例）。

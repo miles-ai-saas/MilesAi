@@ -1,5 +1,6 @@
 "use client";
 
+/** 合规模块扫描绑定配置（链路 §13）。 */
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import type { WordLibrary } from "@/lib/types";

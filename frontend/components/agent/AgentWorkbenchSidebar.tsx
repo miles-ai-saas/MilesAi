@@ -1,5 +1,6 @@
 "use client";
 
+/** 对话页右侧配置侧栏（链路 §5 + §4 agent meta）。 */
 import {
   AGENT_WORKBENCH_TABS,
   type AgentWorkbenchTab,

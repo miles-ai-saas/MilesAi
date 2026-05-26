@@ -1,3 +1,5 @@
+/** 列表页客户端关键字过滤（在 `usePagedList` 结果上二次筛选，链路 §3）。 */
+
 export function filterBySearch<T>(
   items: T[],
   search: string,

@@ -1,5 +1,10 @@
 "use client";
 
+/**
+ * 根布局壳层（链路 §7）：按路径选择工作台顶栏或 `SystemShell`；登录页无壳。
+ * 鉴权补全见 §1：`fetchMe` 填充 user。
+ */
+
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect } from "react";

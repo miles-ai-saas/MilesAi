@@ -1,4 +1,7 @@
-/** 工具工作台：来源标签、时间格式化（枚举文案优先来自 GET /tools/meta）。 */
+/**
+ * 工具工作台展示文案：优先 `GET /tools/meta`（`useToolsMeta`），未加载时本地 fallback。
+ * 链路见 `lib/enum-meta.ts`、`docs/guides/hooks.md` §9。；链路 §4 见 lib/chains.ts。
+ */
 
 import type { EnumOption } from "@/lib/enum-meta";
 import { optionLabel } from "@/lib/enum-meta";

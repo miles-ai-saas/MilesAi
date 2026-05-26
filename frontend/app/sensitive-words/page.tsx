@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 
-/** 旧路径兼容：跳转到合规页 */
+/** 旧路径兼容（链路 §13，见 lib/chains.ts）：跳转到合规页 */
 export default function SensitiveWordsRedirectPage() {
   const router = useRouter();
   useEffect(() => {

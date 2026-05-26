@@ -1,5 +1,7 @@
 "use client";
 
+/** 词库详情与词条（链路 §13）。 */
+
 import { useCallback, useState } from "react";
 import { LibraryWordDialog } from "@/components/compliance/LibraryWordDialog";
 import { CardActions } from "@/components/resource/CardActions";

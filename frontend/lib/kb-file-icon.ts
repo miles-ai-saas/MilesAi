@@ -1,3 +1,5 @@
+/** 知识库文档图标按扩展名（链路 §8 展示辅助）。 */
+
 export function kbFileIcon(filename: string): string {
   const ext = filename.includes(".") ? filename.slice(filename.lastIndexOf(".")).toLowerCase() : "";
   if ([".pdf"].includes(ext)) return "PDF";

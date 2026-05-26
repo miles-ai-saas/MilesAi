@@ -1,5 +1,6 @@
 "use client";
 
+/** 卡片「更多」菜单（链路 §3）。 */
 import { useEffect, useRef, useState } from "react";
 
 export type OverflowMenuItem = {

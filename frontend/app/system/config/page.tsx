@@ -1,5 +1,7 @@
 "use client";
 
+/** 系统配置项（链路 §3，壳层 §7）。 */
+
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth-store";

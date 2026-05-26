@@ -1,3 +1,5 @@
+/** Next 根布局：字体 token、`AppShell` 包裹全站（链路 §7）。 */
+
 import type { Metadata } from "next";
 import "./globals.css";
 import { AppShell } from "@/components/layout/AppShell";

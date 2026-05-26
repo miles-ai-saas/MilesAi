@@ -1,11 +1,13 @@
 "use client";
 
+/** 工具目录卡片（链路 §3 + §4，props.toolsMeta）。 */
 import { CardOverflowMenu, type OverflowMenuItem } from "@/components/resource/CardOverflowMenu";
 import { formatToolUpdatedAt, toolKindLabel, toolSourceLabel } from "@/lib/tool-labels";
 import type { ToolCatalogItem, ToolsMeta } from "@/lib/types";
 
 type Props = {
   tool: ToolCatalogItem;
+  /** `GET /tools/meta`，供 tool-labels 解析来源/类型文案 */
   toolsMeta?: ToolsMeta | null;
   onDetail: () => void;
   onTest: () => void;

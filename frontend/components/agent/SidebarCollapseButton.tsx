@@ -1,5 +1,7 @@
 "use client";
 
+/** 对话侧栏折叠按钮（链路 §5，纯 UI）。 */
+
 type Side = "left" | "right";
 
 type Props = {

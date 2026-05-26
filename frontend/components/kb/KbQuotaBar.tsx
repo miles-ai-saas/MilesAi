@@ -1,5 +1,6 @@
 "use client";
 
+/** 知识库配额条（链路 §8，`api.getKbQuota`）。 */
 import type { KbQuota } from "@/lib/types";
 
 function pct(used: number, max: number) {

@@ -1,5 +1,6 @@
 "use client";
 
+/** 智能体统计（链路 §5，`api.getAgentStats`）。 */
 import { useCallback, useEffect, useState } from "react";
 import { SimpleLineChart } from "@/components/charts/SimpleLineChart";
 import { api } from "@/lib/api";

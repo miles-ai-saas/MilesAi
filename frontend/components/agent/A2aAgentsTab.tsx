@@ -1,5 +1,6 @@
 "use client";
 
+/** 智能体页 A2A Tab（链路 §3 + §4）。 */
 import { useCallback, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { A2aHostFormDialog } from "@/components/agent/A2aHostFormDialog";

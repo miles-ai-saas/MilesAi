@@ -1,5 +1,7 @@
 "use client";
 
+/** 监控大盘（链路 §14）：统计/趋势/健康 + `useMonitorMeta`。 */
+
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { api } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth-store";

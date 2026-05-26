@@ -1,5 +1,7 @@
 "use client";
 
+/** 系统管理侧栏（链路 §7）。 */
+
 import Link from "next/link";
 import { BrandHeader } from "@/components/brand/brand-header";
 import { SystemNavIcon } from "@/components/layout/SystemNavIcon";

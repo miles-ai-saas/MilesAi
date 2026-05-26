@@ -1,5 +1,6 @@
 "use client";
 
+/** 外部 A2A 对等体登记（链路 §4）。 */
 import { useCallback, useMemo, useState } from "react";
 import { AddResourceCard } from "@/components/resource/AddResourceCard";
 import { ResourceDialog } from "@/components/resource/ResourceDialog";

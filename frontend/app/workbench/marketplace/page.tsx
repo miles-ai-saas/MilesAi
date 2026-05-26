@@ -1,5 +1,7 @@
 "use client";
 
+/** 应用市场（链路 §12）：多主视图 + 分页列表 + `useMarketplaceMeta`。 */
+
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/api";

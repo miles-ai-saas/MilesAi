@@ -1,3 +1,8 @@
+/**
+ * 智能体页展示辅助：枚举文案经 `agent-labels`（`GET /agents/meta`）解析，见 `lib/chains.ts、enum-meta.ts`。
+ * `agentModeLabel` 等为组合逻辑，非后端枚举。
+ */
+
 import {
   agentStatusLabel,
   agentTypeLabel,

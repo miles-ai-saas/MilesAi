@@ -1,3 +1,8 @@
+/**
+ * 路由导航配置（链路 §7）：工作台/系统管理分区、侧栏项、面包屑、全幅页面判定。
+ * 壳层消费方：`AppShell`、`SystemShell`、`WorkbenchHeaderNav`。
+ */
+
 export type AppSection = "workbench" | "system";
 
 export type NavItem = { href: string; label: string };

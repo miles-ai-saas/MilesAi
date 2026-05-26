@@ -1,3 +1,5 @@
+/** 对话侧栏折叠偏好 localStorage（链路 §5）。 */
+
 /** 左栏：智能体列 + 会话列（展开）；折叠后仅智能体头像列 */
 export const CHAT_AGENT_COLUMN = "11rem";
 export const CHAT_SESSION_COLUMN = "13rem";

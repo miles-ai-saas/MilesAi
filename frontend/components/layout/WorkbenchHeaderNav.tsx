@@ -1,5 +1,7 @@
 "use client";
 
+/** 工作台顶栏导航（链路 §7）：消费 `nav-config.WORKBENCH_NAV`。 */
+
 import Link from "next/link";
 import { Fragment } from "react";
 import { WORKBENCH_NAV, isNavActive } from "@/lib/nav-config";

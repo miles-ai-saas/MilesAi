@@ -1,5 +1,6 @@
 "use client";
 
+/** MCP 服务卡片（链路 §11 + mcp-labels）。 */
 /** 已注册 MCP 服务卡片：协议标签、同步状态、··· 菜单与可展开工具列表。 */
 
 import { CardOverflowMenu, type OverflowMenuItem } from "@/components/resource/CardOverflowMenu";

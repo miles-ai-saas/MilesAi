@@ -1,5 +1,7 @@
 "use client";
 
+/** 登录入口（鉴权链路 §1）：`api.login` 写 token/user → 跳转工作台。 */
+
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";

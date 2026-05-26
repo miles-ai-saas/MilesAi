@@ -1,5 +1,6 @@
 "use client";
 
+/** 提示词模板表单（链路 §3 + §4）。 */
 import { useEffect, useState } from "react";
 import { MarkdownPreview } from "@/components/editor/MarkdownPreview";
 import { MarkdownSplitEditor } from "@/components/editor/MarkdownSplitEditor";

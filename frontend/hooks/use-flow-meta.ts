@@ -1,7 +1,8 @@
 "use client";
 
 /**
- * 拉取 GET /flows/meta 枚举元数据；enabled=false 时不请求。
+ * `GET /flows/meta` — 枚举字典（tenant/flows/meta.py → api → flow-labels，见 lib/chains.ts §4、`enum-meta.ts`）。
+ * `enabled=false` 时不请求。
  */
 
 import { useEffect, useState } from "react";

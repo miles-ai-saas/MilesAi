@@ -1,5 +1,6 @@
 "use client";
 
+/** 对话页会话列表（链路 §5，数据来自 chat-sessions）。 */
 import { groupSessionsByDate, type ChatSession } from "@/lib/chat-sessions";
 
 type Props = {

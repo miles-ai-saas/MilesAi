@@ -1,3 +1,5 @@
+/** 上传 accept 与大小限制（链路 §8 文档上传）。 */
+
 /**
  * 与 backend `app/rag/parse/upload_policy.KB_ALLOWED_EXTENSIONS` 保持一致。
  */

@@ -1,5 +1,6 @@
 "use client";
 
+/** 新建空白技能包（链路 §9）。 */
 /** 创建空白技能包：选择分类后 POST /skill-packages/blank，由列表页跳转编辑器。 */
 
 import { useState } from "react";

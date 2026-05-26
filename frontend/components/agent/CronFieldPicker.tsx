@@ -1,5 +1,6 @@
 "use client";
 
+/** Cron 字段选择器（链路 §10）。 */
 import {
   DAY_OPTIONS,
   HOUR_OPTIONS,

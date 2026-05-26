@@ -1,5 +1,7 @@
 "use client";
 
+/** 系统管理区布局（链路 §7）：左侧 `SystemSidebar` + 顶栏面包屑（`nav-config`）。 */
+
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { SystemSidebar } from "@/components/layout/SystemSidebar";

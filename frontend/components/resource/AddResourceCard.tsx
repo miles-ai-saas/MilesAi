@@ -1,5 +1,7 @@
 "use client";
 
+/** 列表页「新增」占位卡（链路 §3）。 */
+
 type Props = {
   label: string;
   hint: string;

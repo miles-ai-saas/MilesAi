@@ -1,5 +1,10 @@
 "use client";
 
+/**
+ * 滚动加载更多（链路 §5 对话页智能体列表等）：首屏 replace，后续 append。
+ * 与 `usePagedList` 二选一，勿混用同一数据源。
+ */
+
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { PageResult } from "@/lib/types";
 import { DEFAULT_PAGE_SIZE, normalizePageResult } from "@/lib/pagination";

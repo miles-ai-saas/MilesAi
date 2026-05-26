@@ -1,5 +1,7 @@
 "use client";
 
+/** 系统管理顶栏与面包屑（链路 §7）。 */
+
 import type { BreadcrumbItem } from "@/lib/nav-config";
 import { AppBreadcrumb } from "@/components/layout/AppBreadcrumb";
 import { SectionLink } from "@/components/layout/SectionLink";

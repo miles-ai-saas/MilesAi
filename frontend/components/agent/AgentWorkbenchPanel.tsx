@@ -1,5 +1,6 @@
 "use client";
 
+/** 对话页工作台 Tab 面板容器（链路 §5）。 */
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {

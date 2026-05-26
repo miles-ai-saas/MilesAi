@@ -1,4 +1,7 @@
-/** MCP 工作台：传输类型 Tab、卡片文案与同步状态展示。 */
+/**
+ * MCP 工作台展示文案：优先 `GET /mcp/meta`（`useMcpMeta`），未加载时本地 fallback。
+ * 链路见 `lib/enum-meta.ts`、`docs/guides/hooks.md` §9。；链路 §4 见 lib/chains.ts。
+ */
 
 import { optionLabel, type EnumOption } from "@/lib/enum-meta";
 import type { McpMeta, McpService } from "@/lib/types";

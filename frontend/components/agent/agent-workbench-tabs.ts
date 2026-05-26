@@ -1,3 +1,5 @@
+/** 对话工作台右侧 Tab 键（链路 §5，纯 UI 枚举）。 */
+
 export type AgentWorkbenchTab =
   | "config"
   | "trace"

@@ -1,9 +1,9 @@
 "use client";
 
 /**
- * 拉取 GET /attachments/meta 枚举元数据；enabled=false 时不请求（弹窗未打开等）。
+ * `GET /attachments/meta` — 枚举字典（tenant/attachments/meta.py → api → attachment-labels，见 lib/chains.ts §4、`enum-meta.ts`）。
+ * `enabled=false` 时不请求。
  */
-
 
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";

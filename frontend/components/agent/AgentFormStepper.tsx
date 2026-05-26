@@ -1,5 +1,6 @@
 "use client";
 
+/** 智能体表单步骤条（链路 §3 弹窗）。 */
 import { AGENT_FORM_STEPS } from "@/components/agent/agent-form-shared";
 
 type Props = {

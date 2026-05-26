@@ -1,5 +1,10 @@
 "use client";
 
+/**
+ * 资源列表「分类」Tab（链路 §3）：`api.listCategories(domain)` → 注入 `ResourceListLayout.tabs`。
+ * `activeCategoryId` 传给 `api.list*` 的 category 筛选参数。
+ */
+
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/api";
 import type { CategoryDomain, SysCategory } from "@/lib/types";

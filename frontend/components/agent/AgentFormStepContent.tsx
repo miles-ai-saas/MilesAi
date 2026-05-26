@@ -1,5 +1,6 @@
 "use client";
 
+/** 智能体表单分步内容（链路 §4 agent/a2a meta）。 */
 import type { Dispatch, SetStateAction } from "react";
 import { formatAgentCode, type AgentFormValues } from "@/components/agent/agent-form-shared";
 import { TagPicker } from "@/components/tag/TagPicker";

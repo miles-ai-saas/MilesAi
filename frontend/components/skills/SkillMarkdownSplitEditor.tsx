@@ -1,5 +1,7 @@
 "use client";
 
+/** 技能 SKILL.md 分栏编辑（链路 §9 + `skill-md` 解析）。 */
+
 import { useMemo, useState } from "react";
 import { CodeEditor } from "@/components/editor/CodeEditor";
 import { MarkdownPreview } from "@/components/editor/MarkdownPreview";

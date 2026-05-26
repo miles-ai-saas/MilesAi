@@ -1,3 +1,5 @@
+/** 知识库页顶部提示条（链路 §8 页面反馈）。 */
+
 type Props = {
   tone: "success" | "error" | "info";
   message: string;

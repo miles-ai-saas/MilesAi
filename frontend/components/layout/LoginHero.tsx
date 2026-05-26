@@ -1,3 +1,5 @@
+/** 登录页左侧品牌区（链路 §1，无 API）。 */
+
 import { CompanyLogo } from "@/components/brand/company-logo";
 
 export function LoginHero() {

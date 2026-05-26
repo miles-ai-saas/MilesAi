@@ -1,5 +1,6 @@
 "use client";
 
+/** 对话页左侧：智能体列表与会话切换（链路 §5）。 */
 import { useEffect, useRef } from "react";
 import { AgentChatSessionPanel } from "@/components/agent/AgentChatSessionPanel";
 import {

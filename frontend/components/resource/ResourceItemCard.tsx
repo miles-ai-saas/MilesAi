@@ -1,5 +1,7 @@
 "use client";
 
+/** 列表卡片容器（链路 §3 列表页通用）。 */
+
 import Link from "next/link";
 import type { ReactNode } from "react";
 

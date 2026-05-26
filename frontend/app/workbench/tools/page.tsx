@@ -1,5 +1,7 @@
 "use client";
 
+/** 工具工作台（链路 §3 + §4）：目录/调用日志 + `useToolsMeta`。 */
+
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { TagFilterSelect } from "@/components/tag/TagFilterSelect";
 import { TagManageDialog } from "@/components/tag/TagManageDialog";
@@ -13,6 +15,7 @@ import { ToolDetailDialog } from "@/components/tool/ToolDetailDialog";
 import { ToolTestDialog } from "@/components/tool/ToolTestDialog";
 import { useConfirmAction } from "@/hooks/use-confirm-action";
 import { usePagedList } from "@/hooks/use-paged-list";
+import { useToolsMeta } from "@/hooks/use-tools-meta";
 import { api, getApiErrorMessage } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth-store";
 import { filterBySearch } from "@/lib/filter-search";
@@ -128,7 +131,7 @@ function InvocationLogRow({ log, toolsMeta }: { log: ToolInvocationLog; toolsMet
 
 export default function ToolsPage() {
   const { ready } = useRequireAuth();
-  const [toolsMeta, setToolsMeta] = useState<ToolsMeta | null>(null);
+  const toolsMeta = useToolsMeta(ready);
   const [pageTab, setPageTab] = useState<ToolPageTab>("catalog");
   const [sourceTab, setSourceTab] = useState<ToolSourceTab>("");
   const [search, setSearch] = useState("");
@@ -189,11 +192,6 @@ export default function ToolsPage() {
       setLoading(false);
     }
   }, [sourceTab, tagFilterIds]);
-
-  useEffect(() => {
-    if (!ready) return;
-    void api.getToolsMeta().then(setToolsMeta).catch(() => setToolsMeta(null));
-  }, [ready]);
 
   useEffect(() => {
     if (!ready || pageTab !== "catalog") return;

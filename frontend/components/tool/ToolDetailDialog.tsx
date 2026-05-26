@@ -1,5 +1,6 @@
 "use client";
 
+/** 工具详情（链路 §3 + tools meta）。 */
 import { useEffect, useState, type ReactNode } from "react";
 import { ResourceDialog } from "@/components/resource/ResourceDialog";
 import { api } from "@/lib/api";

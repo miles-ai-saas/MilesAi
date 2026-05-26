@@ -1,5 +1,6 @@
 "use client";
 
+/** 对话页全屏工作台遮罩（链路 §5）。 */
 import { AGENT_WORKBENCH_TABS, type AgentWorkbenchTab } from "@/components/agent/agent-workbench-tabs";
 import { AgentArchitecturePanel } from "@/components/agent/AgentArchitecturePanel";
 import { AgentSchedulePanel } from "@/components/agent/AgentSchedulePanel";

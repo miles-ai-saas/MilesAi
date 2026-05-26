@@ -1,5 +1,5 @@
 /**
- * 流程画布节点类型与 graph_json 互转。
+ * 流程画布节点类型与 graph_json 互转（链路 §6，见 `lib/chains.ts`）。
  *
  * 须与后端保持一致：
  * - ``flow_runtime.nodes.registry.NODE_REGISTRY``

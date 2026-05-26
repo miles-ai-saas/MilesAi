@@ -1,5 +1,6 @@
 "use client";
 
+/** Cron 预设快捷（链路 §10）。 */
 import { CRON_PRESETS, partsEqual, type CronParts } from "@/lib/cron-celery";
 
 type Props = {

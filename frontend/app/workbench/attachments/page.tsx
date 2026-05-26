@@ -1,5 +1,7 @@
 "use client";
 
+/** 附件列表（链路 §3 + §4 `useAttachmentMeta`）。 */
+
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth-store";

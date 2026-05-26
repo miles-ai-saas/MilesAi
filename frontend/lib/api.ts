@@ -1,3 +1,8 @@
+/**
+ * 租户 API 客户端（链路 §2，索引见 `lib/chains.ts`）。
+ * 约定：`ApiResponse` 信封 `code===0` 才成功；分页走 `getPage` + `normalizePageResult`。
+ */
+
 import axios, { AxiosInstance } from "axios";
 import type {
   Agent,
@@ -141,6 +146,7 @@ async function patch<T>(url: string, data?: unknown): Promise<T> {
 }
 
 export const api = {
+  // --- 鉴权（chains §1）---
   login: async (username: string, password: string) => {
     const data = await post<TokenPair>("/auth/login", { username, password });
     useAuthStore.getState().setToken(data.access_token);
@@ -502,6 +508,7 @@ export const api = {
   ) => patch<Agent>(`/agents/${agentId}`, payload),
   deleteAgent: (agentId: string) =>
     http.delete(`/agents/${agentId}`).then(() => undefined),
+  // --- 智能体对话（chains §5；conversation_id 与 chat-sessions 会话 id 一致）---
   chatAgent: (
     agentId: string,
     query: string,
@@ -596,7 +603,7 @@ export const api = {
   deleteAttachment: (id: string) =>
     http.delete(`/attachments/${id}`).then(() => undefined),
 
-  // --- 各域枚举元数据（GET */meta，见 docs/guides/hooks.md §9；文案维护在 backend tenant/*/meta.py）---
+  // --- 各域枚举元数据：backend tenant/*/meta.py → GET */meta → hooks/use-*-meta → lib/*-labels（见 lib/enum-meta.ts、docs/guides/hooks.md §9）---
   getHookMeta: () => get<import("./types").HookMeta>("/hooks/meta"),
   getComplianceMeta: () => get<import("./types").ComplianceMeta>("/compliance/meta"),
   getFlowMeta: () => get<import("./types").FlowMeta>("/flows/meta"),

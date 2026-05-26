@@ -1,5 +1,6 @@
 "use client";
 
+/** 技能包导入（链路 §9）。 */
 /**
  * 三种批量导入弹窗：本地目录、ZIP（须含 skills/）、Git 克隆。
  * overwrite 勾选对应 API overwrite_existing（覆盖同名 slug）。

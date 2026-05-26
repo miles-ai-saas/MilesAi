@@ -1,5 +1,9 @@
 "use client";
 
+/**
+ * 知识库详情（链路 §8）：文档上传/轮询 status、`useKbMeta` 文案、`usePagedList` 文档与检索日志。
+ */
+
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -22,9 +26,10 @@ import {
 } from "@/lib/document-status";
 import { formatFileSize } from "@/lib/format-bytes";
 import { kbFileIcon } from "@/lib/kb-file-icon";
+import { useKbMeta } from "@/hooks/use-kb-meta";
 import type { EnumOption } from "@/lib/enum-meta";
 import { retrievalModeLabel, searchSourceLabel } from "@/lib/kb-labels";
-import type { Document, KnowledgeBase, KbMeta, KbQuota } from "@/lib/types";
+import type { Document, KnowledgeBase, KbQuota } from "@/lib/types";
 
 type TabKey = "documents" | "search" | "logs";
 type DocFilter = "all" | "ready" | "processing" | "failed";
@@ -57,7 +62,7 @@ export default function KbDetailPage() {
   const { ready } = useRequireAuth();
   const [tab, setTab] = useState<TabKey>("documents");
   const [kb, setKb] = useState<KnowledgeBase | null>(null);
-  const [kbMeta, setKbMeta] = useState<KbMeta | null>(null);
+  const kbMeta = useKbMeta(ready && !!id);
   const [quota, setQuota] = useState<KbQuota | null>(null);
   const [quotaLoading, setQuotaLoading] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -124,7 +129,6 @@ export default function KbDetailPage() {
   useEffect(() => {
     if (!ready || !id) return;
     setQuotaLoading(true);
-    void api.getKbMeta().then(setKbMeta).catch(() => setKbMeta(null));
     Promise.all([reloadKb(), reloadQuota()]).catch((e) =>
       setAlert({ tone: "error", message: e instanceof Error ? e.message : "加载失败" }),
     );

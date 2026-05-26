@@ -1,5 +1,6 @@
 "use client";
 
+/** Markdown 预览（链路 §9）。 */
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 

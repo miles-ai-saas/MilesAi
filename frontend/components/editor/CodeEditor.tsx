@@ -1,5 +1,6 @@
 "use client";
 
+/** 代码/文本编辑器封装（技能文件等，链路 §9）。 */
 import { useMemo } from "react";
 import CodeMirror from "@uiw/react-codemirror";
 import { markdown } from "@codemirror/lang-markdown";

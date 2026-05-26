@@ -1,5 +1,6 @@
 "use client";
 
+/** 流程图只读预览（链路 §6）。 */
 import {
   Background,
   Controls,

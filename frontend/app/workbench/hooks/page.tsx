@@ -1,5 +1,7 @@
 "use client";
 
+/** 钩子列表（链路 §3 + §4）：CRUD、绑定规则、执行记录 + `useHookMeta`。 */
+
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth-store";

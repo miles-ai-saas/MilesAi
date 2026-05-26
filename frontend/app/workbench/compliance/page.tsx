@@ -1,5 +1,7 @@
 "use client";
 
+/** 合规词库（链路 §13）：词库/日志/试扫 + `useComplianceMeta`。 */
+
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ComplianceLibraryDetail } from "@/components/compliance/ComplianceLibraryDetail";

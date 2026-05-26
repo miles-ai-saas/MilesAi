@@ -1,5 +1,7 @@
 "use client";
 
+/** 智能体只读详情（链路 §4 `useAgentMeta`）。 */
+
 import { useEffect, useState, type ReactNode } from "react";
 import { ResourceDialog } from "@/components/resource/ResourceDialog";
 import { api } from "@/lib/api";

@@ -1,3 +1,8 @@
+/**
+ * 从 `chat-sessions` 消息列表提取可浏览的 Trace 轮次（链路 §5）。
+ * 与右侧 `AgentTracePanel`、`agent-steps` 展示配合。
+ */
+
 import type { ChatMessage } from "@/lib/chat-sessions";
 
 /** 单次助手回复对应的 Trace 记录（含触发它的用户问题）。 */

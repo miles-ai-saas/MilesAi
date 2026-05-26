@@ -1,5 +1,7 @@
 "use client";
 
+/** 角色与权限（链路 §3，壳层 §7）。 */
+
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth-store";

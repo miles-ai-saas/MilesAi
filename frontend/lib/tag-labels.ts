@@ -1,6 +1,6 @@
 /**
  * 标签 entity_type展示文案：优先 GET /tags/meta，未加载时用本地 fallback。
- * 页面用 optionLabel(meta?.xxx, value)；约定见 docs/guides/hooks.md §9。
+ * 页面用 optionLabel(meta?.xxx, value)；约定见 docs/guides/hooks.md §9。；链路 §4 见 lib/chains.ts。
  */
 
 import { optionLabel, type EnumOption } from "@/lib/enum-meta";

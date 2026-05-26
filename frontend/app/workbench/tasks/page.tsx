@@ -1,5 +1,7 @@
 "use client";
 
+/** 异步任务列表（链路 §3 + §4 `useTaskMeta`）。 */
+
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/api";

@@ -1,5 +1,7 @@
 "use client";
 
+/** 轻量确认弹窗；状态机由 `useConfirmAction` 驱动（链路 §3）。 */
+
 import type { ReactNode } from "react";
 import { ResourceDialog } from "@/components/resource/ResourceDialog";
 

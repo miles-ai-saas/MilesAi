@@ -1,3 +1,5 @@
+/** 资源卡片标签展示（链路 §3）。 */
+
 import type { TagRef } from "@/lib/types";
 
 export function TagChips({ tags }: { tags?: TagRef[] }) {

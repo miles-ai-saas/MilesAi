@@ -1,3 +1,8 @@
+/**
+ * 统一解析后端/网络错误文案（链路 §2）。
+ * `api` 响应拦截器与 `usePagedList`、表单 catch 均应使用 `getApiErrorMessage`。
+ */
+
 import { isAxiosError } from "axios";
 import type { ApiResponse } from "./types";
 

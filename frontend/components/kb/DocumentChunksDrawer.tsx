@@ -1,5 +1,6 @@
 "use client";
 
+/** 文档分块预览（链路 §8）。 */
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { usePagedList } from "@/hooks/use-paged-list";

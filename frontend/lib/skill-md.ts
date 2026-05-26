@@ -1,4 +1,7 @@
-/** SKILL.md frontmatter 解析（与 backend skill_md.parse_skill_md 对齐）。 */
+/**
+ * SKILL.md frontmatter 解析（链路 §9，与 backend `parse_skill_md` 对齐）。
+ * 技能包编辑页保存时由 API 回写 DB 元数据。
+ */
 
 export type SkillMdFrontmatter = Record<string, string>;
 

@@ -1,5 +1,6 @@
 "use client";
 
+/** 智能体定时任务面板（链路 §10 cron-celery）。 */
 import { useCallback, useMemo, useState } from "react";
 import { AgentScheduleDialog } from "@/components/agent/AgentScheduleDialog";
 import { Pagination } from "@/components/ui/Pagination";

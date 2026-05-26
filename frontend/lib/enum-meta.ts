@@ -1,6 +1,16 @@
 /**
- * 后端各域 GET …/meta 返回的枚举选项（与 app.common.schemas.enum_meta.EnumOption 一致）。
- * 各域 `*-labels.ts` 在 meta 未加载时用本地 fallback，加载后以后端文案为准。
+ * 全站枚举展示契约（与 backend `app/common/schemas/enum_meta.py` 一致）。
+ *
+ * 必要链路（文案单一来源，避免前后端枚举漂移）：
+ *   1. `backend/app/tenant/<module>/meta.py` — 维护 value/label/hint
+ *   2. `GET /<module>/meta` — 须在 `/{id}` 等路径参数路由之前注册
+ *   3. `lib/api.ts` — `get*Meta()`
+ *   4. `hooks/use-*-meta.ts` — 页面/弹窗挂载时拉取（`enabled` 控制是否请求）
+ *   5. `lib/*-labels.ts` 或 `document-status.ts` — `optionLabel(meta?.field, value)` + 本地 fallback
+ *   6. 页面/组件 — 将 `meta` 传入 label 函数或 `statusOptions` 等 props
+ *
+ * 纯 UI Tab（如「全部」「广场/安装」）可保留在前端，不必进 meta。
+ * 模块对照表见 `docs/guides/hooks.md` §9；全站链路索引见 `lib/chains.ts` §4。
  */
 
 export type EnumOption = {

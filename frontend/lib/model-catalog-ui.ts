@@ -1,3 +1,8 @@
+/**
+ * 模型目录 UI：厂商/类型标签优先 `GET /models/meta`（`ModelCatalogMeta`），
+ * 未加载时用下方常量 fallback。链路见 `lib/chains.ts、enum-meta.ts`。
+ */
+
 import type { ModelCatalogMeta, ModelConfig } from "@/lib/types";
 
 export const MODEL_TYPE_LABELS: Record<string, string> = {

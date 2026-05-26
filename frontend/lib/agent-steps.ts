@@ -1,4 +1,7 @@
-/** 智能体对话 steps 的结构化解析（对应 backend ChatResponse.steps）。 */
+/**
+ * 智能体对话 `ChatResponse.steps` 的结构化解析（链路 §5，与 backend 步骤 type 对齐）。
+ * 由 `ChatMessageThread` 等消费，用于时间线/摘要展示。
+ */
 
 export type AgentStepStatus = "success" | "pending" | "error" | "warning" | "skipped" | "neutral";
 

@@ -1,3 +1,8 @@
+/**
+ * 对话工作台本地多会话（链路 §5，见 `lib/chains.ts`）。
+ * `session.id` 作为 `api.chatAgent` 的 `conversation_id`；消息与 steps 仅存浏览器 localStorage。
+ */
+
 export type ChatMessage = {
   role: "user" | "assistant";
   content: string;

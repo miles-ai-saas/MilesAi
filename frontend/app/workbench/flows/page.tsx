@@ -1,5 +1,7 @@
 "use client";
 
+/** 标准列表页范例（链路 §3）：`useRequireAuth` → `usePagedList` → `ResourceListLayout` → `useFlowMeta`。 */
+
 import { useCallback, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";

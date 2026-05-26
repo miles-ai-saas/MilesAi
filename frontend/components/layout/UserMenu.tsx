@@ -1,5 +1,6 @@
 "use client";
 
+/** 顶栏用户菜单与退出（链路 §1 `api.logout`）。 */
 import { useEffect, useRef, useState } from "react";
 import { useAuthStore } from "@/lib/auth-store";
 

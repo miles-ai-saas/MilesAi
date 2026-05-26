@@ -1,5 +1,7 @@
 "use client";
 
+/** 工作台概览（链路 §15）：`api.getWorkbenchOverview` + 快捷入口。 */
+
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";

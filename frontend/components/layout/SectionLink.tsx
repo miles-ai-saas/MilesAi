@@ -1,5 +1,6 @@
 "use client";
 
+/** 工作台/系统分区切换链接（链路 §7）。 */
 import Link from "next/link";
 import { getOtherSection, type AppSection } from "@/lib/nav-config";
 

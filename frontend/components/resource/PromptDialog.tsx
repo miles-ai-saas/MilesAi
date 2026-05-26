@@ -1,5 +1,6 @@
 "use client";
 
+/** 轻量输入弹窗（链路 §3，如市场评分）。 */
 import { useEffect, useState } from "react";
 import { ResourceDialog } from "@/components/resource/ResourceDialog";
 

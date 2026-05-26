@@ -1,9 +1,9 @@
 "use client";
 
 /**
- * 拉取 GET /prompt-templates/meta 枚举元数据；enabled=false 时不请求（弹窗未打开等）。
+ * `GET /prompt-templates/meta` — 枚举字典（tenant/prompts/meta.py → api → prompt-labels，见 lib/chains.ts §4、`enum-meta.ts`）。
+ * `enabled=false` 时不请求。
  */
-
 
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";

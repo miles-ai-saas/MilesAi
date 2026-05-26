@@ -1,3 +1,9 @@
+/**
+ * 知识库文档入库状态：文案来自 `GET /kb/meta` 的 `document_statuses`（`KbMeta`），
+ * 经 `documentStatusLabel(status, meta?.document_statuses)` 消费；色调/重试逻辑仍在前端。
+ * 链路见 `lib/chains.ts` §8、`lib/enum-meta.ts`。
+ */
+
 import type { EnumOption } from "@/lib/enum-meta";
 import { optionLabel } from "@/lib/enum-meta";
 

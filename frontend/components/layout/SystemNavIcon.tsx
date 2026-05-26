@@ -1,3 +1,5 @@
+/** 系统管理侧栏 SVG 图标（链路 §7，键来自 nav-config）。 */
+
 import type { SystemNavIcon } from "@/lib/nav-config";
 
 const paths: Record<SystemNavIcon, string> = {

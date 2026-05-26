@@ -1,3 +1,5 @@
+/** 智能体表单共享类型/默认值（链路 §3）。 */
+
 import type { A2aPeerRefInput, SubAgentBindingInput } from "@/lib/types";
 import type { Agent } from "@/lib/types";
 

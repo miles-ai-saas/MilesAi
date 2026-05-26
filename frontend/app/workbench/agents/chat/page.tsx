@@ -1,5 +1,10 @@
 "use client";
 
+/**
+ * 智能体对话工作台（链路 §5，见 `lib/chains.ts`）。
+ * 会话：`chat-sessions`；发送：`api.chatAgent`；Trace：`agent-trace` / `agent-steps`。
+ */
+
 import { Suspense, useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AgentChatLeftSidebar } from "@/components/agent/AgentChatLeftSidebar";

@@ -1,5 +1,6 @@
 "use client";
 
+/** 定时任务编辑弹窗（链路 §10）。 */
 import { useEffect, useMemo, useState } from "react";
 import { CronExpressionPreview } from "@/components/agent/CronExpressionPreview";
 import { CronFieldPicker } from "@/components/agent/CronFieldPicker";

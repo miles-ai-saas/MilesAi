@@ -1,5 +1,7 @@
 "use client";
 
+/** 知识库列表（链路 §3 + §8）；详情与文档入库见 kb/[id]。 */
+
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
@@ -15,8 +17,9 @@ import { CardActions } from "@/components/resource/CardActions";
 import { KbPageAlert } from "@/components/kb/KbPageAlert";
 import { KbQuotaBar } from "@/components/kb/KbQuotaBar";
 import { filterBySearch } from "@/lib/filter-search";
+import { useKbMeta } from "@/hooks/use-kb-meta";
 import { retrievalModeLabel } from "@/lib/kb-labels";
-import type { KnowledgeBase, KbMeta, KbQuota, ModelConfig } from "@/lib/types";
+import type { KnowledgeBase, KbQuota, ModelConfig } from "@/lib/types";
 
 const DEFAULT_CHUNK_SIZE = 500;
 const DEFAULT_CHUNK_OVERLAP = 50;
@@ -44,7 +47,7 @@ export default function KbPage() {
   const [rerankCandidateK, setRerankCandidateK] = useState(DEFAULT_RERANK_CANDIDATE_K);
   const [retrievalMode, setRetrievalMode] = useState<"vector" | "hybrid">("vector");
   const [hybridAlpha, setHybridAlpha] = useState(0.5);
-  const [kbMeta, setKbMeta] = useState<KbMeta | null>(null);
+  const kbMeta = useKbMeta(ready);
   const [quota, setQuota] = useState<KbQuota | null>(null);
   const [quotaLoading, setQuotaLoading] = useState(true);
   const [saveError, setSaveError] = useState("");
@@ -65,11 +68,6 @@ export default function KbPage() {
   useEffect(() => {
     reloadQuota();
   }, [reloadQuota]);
-
-  useEffect(() => {
-    if (!ready) return;
-    void api.getKbMeta().then(setKbMeta).catch(() => setKbMeta(null));
-  }, [ready]);
 
   useEffect(() => {
     if (!ready) return;

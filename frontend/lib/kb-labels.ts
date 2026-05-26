@@ -1,6 +1,6 @@
 /**
- * 知识库展示文案：优先 GET /kb/meta，未加载时用本地 fallback。
- * 页面用 optionLabel(meta?.xxx, value)；约定见 docs/guides/hooks.md §9。
+ * 知识库展示文案：优先 `GET /kb/meta`（`useKbMeta`），未加载时本地 fallback。
+ * 文档状态见 `document-status.ts`（`meta.document_statuses`）。链路见 `lib/enum-meta.ts`。；链路 §4 见 lib/chains.ts。
  */
 
 import type { EnumOption } from "@/lib/enum-meta";

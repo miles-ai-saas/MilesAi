@@ -1,5 +1,6 @@
 "use client";
 
+/** Cron 表达式预览（链路 §10）。 */
 import { buildCronExpr, describeCron, type CronParts } from "@/lib/cron-celery";
 
 type Props = {

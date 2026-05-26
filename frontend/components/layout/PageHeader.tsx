@@ -1,3 +1,5 @@
+/** 独立页标题区（概览等，链路 §15）。 */
+
 export function PageHeader({
   title,
   description,

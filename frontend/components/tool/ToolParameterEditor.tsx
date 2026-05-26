@@ -1,5 +1,6 @@
 "use client";
 
+/** 工具参数 schema 编辑（链路 §3）。 */
 import type { ToolParameterSpec } from "@/lib/types";
 
 type Props = {

@@ -1,3 +1,8 @@
+/**
+ * 登录态：zustand + localStorage 持久化（链路 §1，见 `lib/chains.ts`）。
+ * 受保护页用 `useRequireAuth`；请求头 token 用 `getAccessToken`（兼容 persist 水合前）。
+ */
+
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { create } from "zustand";

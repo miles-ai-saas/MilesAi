@@ -1,5 +1,7 @@
 "use client";
 
+/** 文档上传区（链路 §8）：`api.uploadDocument` 触发入库流水线。 */
+
 import { useCallback, useState } from "react";
 import { KB_UPLOAD_ACCEPT, KB_UPLOAD_HINT } from "@/lib/upload-accept";
 

@@ -1,5 +1,10 @@
 "use client";
 
+/**
+ * 危险操作二次确认（链路 §3）：`requestConfirm` 打开 `ConfirmDialog`，`onConfirm` 内调 api 后关窗。
+ * 页面 JSX 末尾渲染 `{confirmDialog}`。
+ */
+
 import { useCallback, useState, type ReactNode } from "react";
 import { ConfirmDialog } from "@/components/resource/ConfirmDialog";
 

@@ -1,5 +1,6 @@
 "use client";
 
+/** 单轮回复 steps 时间线（链路 §5，`agent-steps` 解析）。 */
 import { useMemo, useState } from "react";
 import {
   buildStepsSummary,

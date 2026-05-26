@@ -1,5 +1,7 @@
 "use client";
 
+/** 模型目录（链路 §3）：列表 + `GET /models/meta` → model-catalog-ui。 */
+
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { api } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth-store";
@@ -47,6 +49,7 @@ export default function ModelsPage() {
   const reload = useCallback(async () => {
     setLoading(true);
     try {
+      // 枚举字典：GET /models/meta → model-catalog-ui（见 lib/enum-meta.ts）
       const [m, list] = await Promise.all([
         api.getModelCatalogMeta(),
         api.listModelConfigs({

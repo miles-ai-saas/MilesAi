@@ -1,7 +1,13 @@
+/**
+ * 与后端 OpenAPI/ORM 对齐的 TS 契约；HTTP 信封见 `ApiResponse`，分页见 `PageResult`。
+ * 各域枚举响应见下方 `*Meta`；全站链路索引 `lib/chains.ts`。
+ */
+
 import type { EnumOption } from "@/lib/enum-meta";
 
 export type { EnumOption };
 
+/** 业务 API 统一响应信封（`api.unwrap` 要求 code===0） */
 export interface ApiResponse<T> {
   code: number;
   message: string;
@@ -361,7 +367,10 @@ export interface HookBinding {
   created_at: string;
 }
 
-/** 各域 GET …/meta 响应；字段与 backend tenant 下 schemas/meta.py 一致，文案维护在 tenant 各模块 meta.py。 */
+/**
+ * 各域 GET …/meta 响应类型（与 backend tenant 下 schemas/meta.py 一致）。
+ * 文案源：tenant 各模块 meta.py；前端消费见 lib/enum-meta.ts 链路说明。
+ */
 
 /** GET /hooks/meta */
 export interface HookMeta {

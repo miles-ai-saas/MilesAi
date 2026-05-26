@@ -1,3 +1,8 @@
+/**
+ * 分页契约（链路 §3）：`buildPageQuery` 拼 query → `getPage` → `normalizePageResult`。
+ * 见 `lib/chains.ts` §3。
+ */
+
 import type { PageResult } from "@/lib/types";
 
 /** 列表默认每页条数，与后端 get_page_params 默认一致 */

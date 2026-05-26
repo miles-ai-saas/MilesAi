@@ -1,5 +1,6 @@
 "use client";
 
+/** 工具试调用（链路 §3，`api.invokeTool`）。 */
 import { useEffect, useState } from "react";
 import { ResourceDialog } from "@/components/resource/ResourceDialog";
 import type { ToolCatalogItem, ToolParameterSpec } from "@/lib/types";

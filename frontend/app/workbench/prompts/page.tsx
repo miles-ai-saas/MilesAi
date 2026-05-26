@@ -1,5 +1,7 @@
 "use client";
 
+/** 提示词模板列表（链路 §3 + §4 `usePromptMeta`）。 */
+
 import { useCallback, useMemo, useState } from "react";
 import {
   PromptTemplateDialog,

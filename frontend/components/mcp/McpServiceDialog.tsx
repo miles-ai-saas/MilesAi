@@ -1,5 +1,7 @@
 "use client";
 
+/** MCP 创建/编辑（链路 §11）：HTTP/SSE/STDIO 表单 → api。 */
+
 /** 创建/编辑弹窗：HTTP·SSE 填 URL；STDIO 填 command 与 args（经 MCP Runner 沙箱同步/调用）。 */
 
 import { ResourceDialog } from "@/components/resource/ResourceDialog";

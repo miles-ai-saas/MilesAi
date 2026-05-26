@@ -1,5 +1,7 @@
 "use client";
 
+/** 任务详情（链路 §3 延伸）：`api.getTask`、取消/重试。 */
+
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";

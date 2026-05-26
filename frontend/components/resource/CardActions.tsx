@@ -1,5 +1,6 @@
 "use client";
 
+/** 列表卡片底部主操作区（链路 §3）。 */
 export type CardActionItem = {
   label: string;
   onClick: () => void;

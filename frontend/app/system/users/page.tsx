@@ -1,5 +1,7 @@
 "use client";
 
+/** 租户用户管理（链路 §3，壳层 §7 SystemShell）。 */
+
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth-store";

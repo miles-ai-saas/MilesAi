@@ -1,7 +1,8 @@
 "use client";
 
 /**
- * 拉取 GET /hooks/meta 枚举元数据；enabled=false 时不请求。
+ * `GET /hooks/meta` — 枚举字典（tenant/hooks/meta.py → api → hooks 页内联 optionLabel，见 lib/chains.ts §4、`enum-meta.ts`）。
+ * `enabled=false` 时不请求。
  */
 
 import { useEffect, useState } from "react";
