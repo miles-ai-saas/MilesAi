@@ -181,3 +181,24 @@ async def put_skill_file(
     db: AsyncSession = Depends(get_db),
 ):
     return ok(await SkillService(db, ctx).write_file_content(skill_id, body))
+
+
+@router.post("/{skill_id}/reindex", response_model=ApiResponse[SkillPackageOut])
+async def reindex_skill(
+    skill_id: UUID,
+    ctx: TenantContext = Depends(require_permissions("skill:write")),
+    db: AsyncSession = Depends(get_db),
+):
+    """扫描磁盘重建 references/scripts/assets 索引（写入 config.layout）。"""
+    return ok(await SkillService(db, ctx).reindex(skill_id))
+
+
+@router.delete("/{skill_id}/file", response_model=ApiResponse[None])
+async def delete_skill_file(
+    skill_id: UUID,
+    path: str = Query(..., min_length=1, description="技能根下相对路径，不可为 SKILL.md"),
+    ctx: TenantContext = Depends(require_permissions("skill:write")),
+    db: AsyncSession = Depends(get_db),
+):
+    await SkillService(db, ctx).delete_file_content(skill_id, path)
+    return ok(message="已删除")

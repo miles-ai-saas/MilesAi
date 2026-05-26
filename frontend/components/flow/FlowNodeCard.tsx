@@ -41,6 +41,11 @@ export function FlowNodeCard({ type, data, selected }: NodeProps) {
         <span className="text-sm font-medium text-slate-800">{label}</span>
       </div>
       <p className="mt-1 text-xs text-slate-500">{String(type)}</p>
+      {type === "PlatformTool" && (
+        <p className="mt-1 truncate text-[10px] text-sky-700">
+          {String((data as Record<string, unknown>)?.tool_slug ?? "未配置 tool_slug")}
+        </p>
+      )}
       {isCondition && (
         <p className="mt-1 text-[10px] text-pink-600">
           模式: {String((data as Record<string, unknown>)?.mode ?? "has_hits")}

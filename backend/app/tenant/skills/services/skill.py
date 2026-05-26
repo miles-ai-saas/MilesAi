@@ -28,9 +28,15 @@ from app.tenant.skills.schemas.skill import (
     SkillPackageOut,
     SkillPackageUpdate,
 )
+from app.tenant.skills.skill_layout import (
+    build_layout_index,
+    merge_layout_into_config,
+    scaffold_blank_layout,
+)
 from app.tenant.skills.skill_md import build_skill_md, sync_meta_from_skill_md
 from app.tenant.skills.storage import (
     SKILL_MD_FILENAME,
+    delete_file,
     ensure_skill_md,
     list_file_tree,
     read_file,
@@ -56,6 +62,11 @@ class SkillService(BaseService):
     def __init__(self, db: AsyncSession, ctx: TenantContext) -> None:
         super().__init__(db, ctx)
         self._cat = CategoryService(db, ctx)
+
+    async def _refresh_layout(self, row: SkillPackage) -> None:
+        layout = build_layout_index(self.ctx.tenant_id, row.slug)
+        row.config = merge_layout_into_config(row.config, layout)
+        await self.db.flush()
 
     async def get_meta(self) -> SkillMetaOut:
         """返回枚举展示字典（无 DB 查询，文案来自 tenant/*/meta.py）。"""
@@ -127,6 +138,7 @@ class SkillService(BaseService):
                 slug,
                 build_skill_md(row.name, row.description, body.prompt_snippet),
             )
+        await self._refresh_layout(row)
         await self.db.refresh(row)
         if body.tag_ids:
             await TagService(self.db, self.ctx).replace_entity_tags(
@@ -150,11 +162,15 @@ class SkillService(BaseService):
         )
         self.db.add(row)
         await self.db.flush()
-        write_skill_md(
-            self.ctx.tenant_id,
-            slug,
-            build_skill_md(row.name, body.description),
+        scaffold_blank_layout(self.ctx.tenant_id, slug, name=row.name.strip())
+        name, desc = sync_meta_from_skill_md(
+            read_file(self.ctx.tenant_id, slug, SKILL_MD_FILENAME)
         )
+        if name:
+            row.name = name[:128]
+        if desc is not None:
+            row.description = desc or None
+        await self._refresh_layout(row)
         await self.db.refresh(row)
         if body.tag_ids:
             await TagService(self.db, self.ctx).replace_entity_tags(
@@ -215,7 +231,29 @@ class SkillService(BaseService):
                 row.description = desc or None
             row.prompt_snippet = body.content
             await self.db.flush()
+        await self._refresh_layout(row)
         return SkillFileContent(path=rel, content=body.content)
+
+    async def reindex(self, skill_id: UUID) -> SkillPackageOut:
+        """扫描磁盘刷新 config.layout（手动 reindex 或磁盘外部变更后）。"""
+        row = await self._get_or_raise(skill_id)
+        await self._refresh_layout(row)
+        return await self._to_out(row)
+
+    async def delete_file_content(self, skill_id: UUID, path: str) -> None:
+        row = await self._get_or_raise(skill_id)
+        rel = path.strip().lstrip("/")
+        if not rel or rel == SKILL_MD_FILENAME:
+            raise BadRequestError("不可删除 SKILL.md")
+        if ".." in rel.split("/"):
+            raise BadRequestError("非法路径")
+        try:
+            delete_file(self.ctx.tenant_id, row.slug, rel)
+        except FileNotFoundError as exc:
+            raise NotFoundError("文件不存在") from exc
+        except ValueError as exc:
+            raise BadRequestError(str(exc)) from exc
+        await self._refresh_layout(row)
 
     async def _ensure_slug_free(self, slug: str, *, exclude_id: UUID | None = None) -> None:
         """租户内 slug 唯一（含未软删记录）。"""

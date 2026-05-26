@@ -76,6 +76,17 @@ from app.tenant.compliance.services.compliance import ComplianceService
 from app.deletion.cascade import before_delete_agent
 
 
+def should_use_skill_tools_with_kb(agent: Agent, kb_ids: list[str]) -> bool:
+    """绑定 KB 且同时绑定技能包并开启 tool calling 时，走 tool_agent（含 skill_* 与 knowledge_search）。"""
+    cfg = agent.config if isinstance(agent.config, dict) else {}
+    return bool(
+        kb_ids
+        and agent.model_config_id
+        and cfg.get("enable_tool_calling")
+        and cfg.get("skill_package_id")
+    )
+
+
 def _sub_agents_out(agent: Agent) -> list[SubAgentRefOut]:
     refs: list[SubAgentRefOut] = []
     for b in sorted(agent.sub_agent_bindings or [], key=lambda x: x.sort_order):
@@ -186,6 +197,27 @@ class AgentService(BaseService):
         if extras:
             return f"{base}\n\n{extras}"
         return base
+
+    async def _flow_run_context(
+        self,
+        agent: Agent,
+        *,
+        agent_id: UUID,
+        inputs: dict,
+        kb_ids: list[str],
+    ) -> RunContext:
+        return RunContext(
+            tenant_id=str(self.ctx.tenant_id),
+            inputs=inputs,
+            kb_ids=kb_ids,
+            model_config_id=str(agent.model_config_id) if agent.model_config_id else None,
+            system_prompt=await self._resolve_system_prompt(agent),
+            user_id=str(self.ctx.user_id),
+            permissions=self.ctx.permissions,
+            is_superuser=self.ctx.is_superuser,
+            agent_id=str(agent_id),
+            agent_config=dict(agent.config or {}),
+        )
 
     async def _get_agent_or_raise(self, agent_id: UUID) -> Agent:
         """加载详情（含 KB/子 Agent 关联）并校验租户。"""
@@ -488,12 +520,11 @@ class AgentService(BaseService):
                 if flow and flow.current_version > 0:
                     version = await self.flow_repo.get_version(flow.id, flow.current_version)
                     if version:
-                        ctx = RunContext(
-                            tenant_id=str(self.ctx.tenant_id),
+                        ctx = await self._flow_run_context(
+                            agent,
+                            agent_id=agent_id,
                             inputs={"query": query, **chat_body.inputs},
                             kb_ids=kb_ids,
-                            model_config_id=str(agent.model_config_id) if agent.model_config_id else None,
-                            system_prompt=await self._resolve_system_prompt(agent),
                         )
                         result = await get_flow_runtime().run(version.graph_json, ctx)
                         response = ChatResponse(answer=str(result.output), steps=result.steps)
@@ -540,12 +571,11 @@ class AgentService(BaseService):
             if flow and flow.current_version > 0:
                 version = await self.flow_repo.get_version(flow.id, flow.current_version)
                 if version:
-                    ctx = RunContext(
-                        tenant_id=str(self.ctx.tenant_id),
+                    ctx = await self._flow_run_context(
+                        child,
+                        agent_id=child_id,
                         inputs={"query": body.query, **body.inputs},
                         kb_ids=kb_ids,
-                        model_config_id=str(child.model_config_id) if child.model_config_id else None,
-                        system_prompt=await self._resolve_system_prompt(child),
                     )
                     result = await get_flow_runtime().run(version.graph_json, ctx)
                     return ChatResponse(answer=str(result.output), steps=result.steps)
@@ -626,6 +656,23 @@ class AgentService(BaseService):
                     system_prompt=base,
                 )
             return await self._direct_chat(agent, body, agent_id, hooks)
+
+        if should_use_skill_tools_with_kb(agent, kb_ids):
+            from app.integrations.langchain.tool_agent import run_tool_calling_chat
+
+            base = await self._resolve_system_prompt(agent)
+            kb_hint = (
+                "\n【知识库】请使用 knowledge_search 工具检索；"
+                f"可用 kb_id：{', '.join(kb_ids)}"
+            )
+            return await run_tool_calling_chat(
+                self.db,
+                self.ctx,
+                agent,
+                body,
+                agent_id=agent_id,
+                system_prompt=f"{base}{kb_hint}",
+            )
 
         base = await self._resolve_system_prompt(agent)
 

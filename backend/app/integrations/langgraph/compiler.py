@@ -284,6 +284,11 @@ def build_canvas_graph(graph_json: dict[str, Any]):
                 kb_ids=state.get("kb_ids") or [],
                 model_config_id=state.get("model_config_id"),
                 system_prompt=state.get("system_prompt"),
+                user_id=state.get("user_id"),
+                permissions=frozenset(state.get("permissions") or []),
+                is_superuser=bool(state.get("is_superuser")),
+                agent_id=state.get("agent_id"),
+                agent_config=dict(state.get("agent_config") or {}),
             )
             node_inputs = _gather_node_inputs(node_id, incoming, state.get("outputs") or {})
             result = await execute_node(ntype, node_data, node_inputs, ctx)
@@ -310,6 +315,11 @@ def build_canvas_graph(graph_json: dict[str, Any]):
         kb_ids: list[str]
         model_config_id: str | None
         system_prompt: str | None
+        user_id: str | None
+        permissions: list[str]
+        is_superuser: bool
+        agent_id: str | None
+        agent_config: dict[str, Any]
         outputs: Annotated[dict[str, Any], _merge_outputs]
         steps: Annotated[list[dict[str, Any]], operator.add]
         answer: Any
@@ -369,6 +379,11 @@ async def run_compiled_canvas(
         "kb_ids": list(ctx.kb_ids),
         "model_config_id": ctx.model_config_id,
         "system_prompt": ctx.system_prompt,
+        "user_id": ctx.user_id,
+        "permissions": list(ctx.permissions),
+        "is_superuser": ctx.is_superuser,
+        "agent_id": ctx.agent_id,
+        "agent_config": dict(ctx.agent_config),
         "outputs": {},
         "steps": [
             {

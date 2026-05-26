@@ -22,6 +22,7 @@ from app.models.category import CategoryDomain
 from app.tenant.categories.services.category import CategoryService
 from app.tenant.skills.models import SkillPackage
 from app.tenant.skills.schemas.skill import SkillImportResult
+from app.tenant.skills.skill_layout import build_layout_index, merge_layout_into_config
 from app.tenant.skills.skill_md import parse_skill_md
 from app.tenant.skills.storage import (
     SKILL_MD_FILENAME,
@@ -168,12 +169,14 @@ class SkillImportService:
                 dest = skill_package_dir(self.ctx.tenant_id, slug)
                 copy_skill_tree(src, dest)
 
+                row: SkillPackage
                 if existing:
                     existing.name = display_name
                     existing.description = desc
                     existing.category_id = category_id
                     existing.source_type = source_type
                     existing.storage_path = slug
+                    row = existing
                     await self.db.flush()
                     result.imported += 1
                 else:
@@ -189,6 +192,10 @@ class SkillImportService:
                     self.db.add(row)
                     await self.db.flush()
                     result.imported += 1
+
+                layout = build_layout_index(self.ctx.tenant_id, slug)
+                row.config = merge_layout_into_config(row.config, layout)
+                await self.db.flush()
             except Exception as exc:
                 result.errors.append(f"{src.name}: {exc}")
         return result

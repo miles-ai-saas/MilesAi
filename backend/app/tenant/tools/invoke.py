@@ -20,7 +20,7 @@ from app.common.url_security import validate_outbound_url
 from app.integrations.langchain.vectorstores import search_kb
 from app.common.exceptions import BadRequestError, NotFoundError
 from app.core.tenant import TenantContext
-from app.tenant.tools.builtin_registry import BUILTIN_SLUGS
+from app.tenant.tools.builtin_registry import BUILTIN_SLUGS, SKILL_BOUND_SLUGS
 from app.tenant.tools.confirmation import ToolConfirmationRequired, resolve_tool_meta
 from app.tenant.tools.invocation_log import write_tool_invocation_log
 from app.tenant.tools.models import Tool, ToolType
@@ -36,6 +36,26 @@ from app.core.soft_delete import is_marked_deleted
 SCRIPT_RUNNER_DISABLED = (
     "脚本工具需要启用 MCP Runner（MCP_RUNNER_ENABLED=true），请联系管理员"
 )
+
+
+async def _resolve_bound_skill_id_from_agent(
+    db: AsyncSession,
+    agent_id: UUID | None,
+) -> UUID | None:
+    if not agent_id:
+        return None
+    from app.models.agent import Agent
+
+    agent = await db.get(Agent, agent_id)
+    if not agent or not isinstance(agent.config, dict):
+        return None
+    raw = agent.config.get("skill_package_id")
+    if not raw:
+        return None
+    try:
+        return UUID(str(raw))
+    except ValueError:
+        return None
 
 
 _SAFE_OPS = {
@@ -76,6 +96,8 @@ async def invoke_builtin(
     *,
     db: AsyncSession,
     ctx: TenantContext,
+    bound_skill_id: UUID | None = None,
+    actor_user_id: UUID | None = None,
 ) -> dict:
     if name == "calculator":
         expr = params.get("expression") or params.get("expr") or params.get("query", "")
@@ -121,6 +143,24 @@ async def invoke_builtin(
             raise BadRequestError(f"无效时区: {tz_name}") from exc
         now = datetime.now(tz)
         return {"datetime": now.isoformat(), "timezone": tz_name}
+
+    if name == "skill_read_reference":
+        from app.tenant.skills.runtime import skill_read_reference
+
+        return await skill_read_reference(
+            db, ctx, params, bound_skill_id=bound_skill_id
+        )
+
+    if name == "skill_run_script":
+        from app.tenant.skills.runtime import skill_run_script
+
+        return await skill_run_script(
+            db,
+            ctx,
+            params,
+            bound_skill_id=bound_skill_id,
+            actor_user_id=actor_user_id or ctx.user_id,
+        )
 
     raise BadRequestError(f"未知内置工具: {name}")
 
@@ -224,10 +264,19 @@ async def invoke_tool_by_name(
     params: dict,
     *,
     tool_id: UUID | None = None,
+    bound_skill_id: UUID | None = None,
+    actor_user_id: UUID | None = None,
 ) -> dict:
     """按 slug 执行；不含确认与日志（内部用）。"""
     if name in BUILTIN_SLUGS and not tool_id:
-        return await invoke_builtin(name, params, db=db, ctx=ctx)
+        return await invoke_builtin(
+            name,
+            params,
+            db=db,
+            ctx=ctx,
+            bound_skill_id=bound_skill_id,
+            actor_user_id=actor_user_id,
+        )
 
     if tool_id:
         tool = await db.get(Tool, tool_id)
@@ -287,6 +336,12 @@ async def invoke_tool_with_context(
         )
 
     tool_params = dict(params)
+    bound_skill_id: UUID | None = None
+    if slug in SKILL_BOUND_SLUGS:
+        bound_skill_id = await _resolve_bound_skill_id_from_agent(db, agent_id)
+        if not bound_skill_id:
+            raise BadRequestError("该工具需要智能体绑定技能包（config.skill_package_id）")
+
     hook_runner = HookRunner(db, ctx.tenant_id)
     tool_scope_id = resolved_tool_id
     hook_base = {
@@ -308,7 +363,13 @@ async def invoke_tool_with_context(
     started = time.monotonic()
     try:
         output = await invoke_tool_by_name(
-            db, ctx, slug, tool_params, tool_id=resolved_tool_id
+            db,
+            ctx,
+            slug,
+            tool_params,
+            tool_id=resolved_tool_id,
+            bound_skill_id=bound_skill_id,
+            actor_user_id=actor_user_id or ctx.user_id,
         )
         latency_ms = int((time.monotonic() - started) * 1000)
         await write_tool_invocation_log(

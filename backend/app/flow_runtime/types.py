@@ -39,6 +39,11 @@ class RunContext:
     kb_ids: list[str] = field(default_factory=list)
     model_config_id: str | None = None
     system_prompt: str | None = None
+    user_id: str | None = None
+    permissions: frozenset[str] = field(default_factory=frozenset)
+    is_superuser: bool = False
+    agent_id: str | None = None
+    agent_config: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass

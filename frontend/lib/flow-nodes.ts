@@ -9,6 +9,7 @@
  * - TextInput output → query / input
  * - KnowledgeSearch output → hits（targetHandle）
  * - PromptTemplate output → prompt
+ * - PlatformTool output → output（工具执行结果 dict）
  * - ConditionBranch sourceHandle → true | false
  */
 import type { Node, Edge } from "@xyflow/react";
@@ -22,6 +23,7 @@ export const NODE_PALETTE = [
   { type: "ParallelJoin", label: "并行汇合", color: "#06b6d4" },
   { type: "PromptTemplate", label: "提示词模板", color: "#8b5cf6" },
   { type: "LLMCall", label: "大模型", color: "#f59e0b" },
+  { type: "PlatformTool", label: "平台工具", color: "#0ea5e9" },
   { type: "TextOutput", label: "文本输出", color: "#64748b" },
 ] as const;
 
@@ -43,6 +45,13 @@ const DEFAULT_DATA: Record<NodeType, Record<string, unknown>> = {
       "基于以下资料回答用户问题。\n\n资料：\n{{检索结果}}\n\n问题：{{用户提问}}",
   },
   LLMCall: { temperature: 0.7, label: "大模型" },
+  PlatformTool: {
+    tool_slug: "skill_read_reference",
+    label: "平台工具",
+    confirmed: true,
+    merge_input: true,
+    params: {},
+  },
   TextOutput: { label: "输出" },
 };
 

@@ -14,8 +14,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.tenant.mcp.models import McpService
 from app.tenant.skills.models import SkillPackage
+from app.tenant.skills.skill_layout import format_layout_prompt_blocks
 from app.tenant.skills.storage import read_skill_md
-from app.tenant.tools.builtin_registry import BUILTIN_REGISTRY
+from app.tenant.tools.builtin_registry import BUILTIN_REGISTRY, SKILL_BOUND_SLUGS
 from app.tenant.tools.models import Tool
 from app.core.soft_delete import is_marked_deleted, not_deleted
 from app.core.tenant import TenantContext, tenant_filters
@@ -49,8 +50,11 @@ async def _append_platform_tools_block(
     slug_filter = {str(s) for s in raw_slugs if s}
 
     lines: list[str] = []
+    skill_bound = bool(config.get("skill_package_id"))
     for t in BUILTIN_REGISTRY:
         slug = t["slug"]
+        if t.get("skill_bound_only") and not skill_bound:
+            continue
         if slug_filter and slug not in slug_filter:
             continue
         params = _format_param_summary(t.get("parameters"))
@@ -112,6 +116,9 @@ async def build_skill_mcp_prompt_block(
                 if skill.tool_names:
                     tools = ", ".join(skill.tool_names)
                     block += f"\n可用工具: {tools}"
+                layout = (skill.config or {}).get("layout")
+                for extra in format_layout_prompt_blocks(layout if isinstance(layout, dict) else None):
+                    block += f"\n{extra}"
                 parts.append(block)
 
     raw_mcp = config.get("mcp_service_ids") or []

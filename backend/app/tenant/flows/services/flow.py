@@ -182,6 +182,9 @@ class FlowService(BaseService):
                 tenant_id=str(self.ctx.tenant_id),
                 inputs=run_inputs,
                 kb_ids=kb_ids or [],
+                user_id=str(self.ctx.user_id),
+                permissions=self.ctx.permissions,
+                is_superuser=self.ctx.is_superuser,
             )
             if "query" not in ctx.inputs and run_inputs:
                 ctx.inputs.setdefault("query", run_inputs.get("message", ""))

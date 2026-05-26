@@ -37,7 +37,9 @@
  * `uploadDocument` → 文档 `status` 轮询 → `document-status` + `KbMeta.document_statuses`
  *
  * ## 9. 技能包 SKILL.md
- * `skill-md` 解析 frontmatter ↔ 后端 `parse_skill_md`；编辑页读写 `api.writeSkillFile`
+ * `skill-md` 解析 frontmatter ↔ 后端 `parse_skill_md`；编辑页读写 `api.putSkillFile`
+ * references/scripts 分组文件树；`config.layout` 索引摘要 + `api.reindexSkillPackage`
+ * 运行时 `skill_read_reference` / `skill_run_script` 见 platform-agents.md（绑定技能包 + tool calling）
  *
  * ## 10. 定时任务（智能体调度等）
  * `cron-celery` 五段 Cron ↔ 后端 Celery crontab

@@ -16,7 +16,7 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.tenant import TenantContext
-from app.integrations.langchain.tools import get_all_platform_tools
+from app.integrations.langchain.tools import get_all_platform_tools, get_skill_bound_tools
 from app.integrations.litellm.adapter import litellm_chat_completion
 from app.models.agent import Agent
 from app.tenant.agents.schemas.agent import ChatRequest, ChatResponse, PendingToolCall
@@ -79,11 +79,15 @@ async def run_tool_calling_chat(
 
     model = await resolve_model_for_invoke(db, agent.model_config, ctx.tenant_id)
 
-    all_tools = await get_all_platform_tools(db, ctx)
+    all_tools = await get_all_platform_tools(db, ctx, agent_config=agent.config or {})
     allowed = agent.config.get("tool_slugs") if isinstance(agent.config, dict) else None
     if allowed:
         allowed_set = {str(s) for s in allowed}
         tools = [t for t in all_tools if t.name in allowed_set]
+        if (agent.config or {}).get("skill_package_id"):
+            for st in get_skill_bound_tools():
+                if st.name not in {t.name for t in tools}:
+                    tools.append(st)
     else:
         tools = all_tools
 

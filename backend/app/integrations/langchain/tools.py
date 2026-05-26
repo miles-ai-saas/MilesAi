@@ -46,6 +46,18 @@ class DateTimeInput(BaseModel):
     timezone: str | None = Field(None, description="IANA 时区，默认 UTC")
 
 
+class SkillReadReferenceInput(BaseModel):
+    path: str = Field(..., description="相对技能根的路径，如 references/guide.md")
+    max_chars: int | None = Field(None, description="最大读取字符数，默认 12000")
+
+
+class SkillRunScriptInput(BaseModel):
+    path: str = Field(..., description="scripts/ 下脚本路径，如 scripts/example.py")
+    params: dict = Field(default_factory=dict, description="传入 run(params) 的参数字典")
+    timeout_sec: int | None = Field(None, description="超时秒数，默认 30")
+    max_memory_mb: int | None = Field(None, description="内存上限 MB，默认 512")
+
+
 def _make_calculator_tool() -> StructuredTool:
     def _run(expression: str) -> dict:
         from app.tenant.tools.invoke import safe_calculate
@@ -117,6 +129,39 @@ def make_knowledge_search_tool(ctx: TenantContext) -> StructuredTool:
         description="在指定知识库中语义检索",
         args_schema=KnowledgeSearchInput,
     )
+
+
+def _make_skill_read_reference_tool() -> StructuredTool:
+    async def _arun(path: str, max_chars: int | None = None) -> dict:
+        raise RuntimeError("请通过 invoke_tool_with_context 执行技能工具")
+
+    return StructuredTool.from_function(
+        coroutine=_arun,
+        name="skill_read_reference",
+        description="读取绑定技能包 references/ 或 assets/ 下的文本文件",
+        args_schema=SkillReadReferenceInput,
+    )
+
+
+def _make_skill_run_script_tool() -> StructuredTool:
+    async def _arun(
+        path: str,
+        params: dict | None = None,
+        timeout_sec: int | None = None,
+        max_memory_mb: int | None = None,
+    ) -> dict:
+        raise RuntimeError("请通过 invoke_tool_with_context 执行技能工具")
+
+    return StructuredTool.from_function(
+        coroutine=_arun,
+        name="skill_run_script",
+        description="在沙箱中执行绑定技能包 scripts/ 下的 Python 脚本",
+        args_schema=SkillRunScriptInput,
+    )
+
+
+def get_skill_bound_tools() -> list[StructuredTool]:
+    return [_make_skill_read_reference_tool(), _make_skill_run_script_tool()]
 
 
 def get_platform_tools(ctx: TenantContext) -> list[StructuredTool]:
@@ -193,9 +238,17 @@ async def load_tenant_http_tools(db: AsyncSession, ctx: TenantContext) -> list[S
     return await load_tenant_custom_tools(db, ctx)
 
 
-async def get_all_platform_tools(db: AsyncSession, ctx: TenantContext) -> list[StructuredTool]:
-    """内置 + 租户自定义 HTTP / 脚本工具。"""
+async def get_all_platform_tools(
+    db: AsyncSession,
+    ctx: TenantContext,
+    *,
+    agent_config: dict | None = None,
+) -> list[StructuredTool]:
+    """内置 + 租户自定义 HTTP / 脚本工具；绑定技能包时追加 skill_* 工具。"""
     tools = get_platform_tools(ctx)
+    cfg = agent_config if isinstance(agent_config, dict) else {}
+    if cfg.get("skill_package_id"):
+        tools = [*tools, *get_skill_bound_tools()]
     tools.extend(await load_tenant_custom_tools(db, ctx))
     return tools
 

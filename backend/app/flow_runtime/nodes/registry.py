@@ -12,7 +12,7 @@ RAG 相关
 from collections.abc import Awaitable, Callable
 from typing import Any
 
-from app.flow_runtime.nodes import control_nodes, io_nodes, llm_nodes, rag_nodes
+from app.flow_runtime.nodes import control_nodes, io_nodes, llm_nodes, rag_nodes, tool_nodes
 from app.flow_runtime.types import RunContext
 
 NodeHandler = Callable[[dict[str, Any], dict[str, Any], RunContext], Awaitable[Any]]
@@ -23,6 +23,7 @@ NODE_REGISTRY: dict[str, NodeHandler] = {
     "KnowledgeSearch": rag_nodes.knowledge_search,  # ctx.kb_ids / node_data.kb_id
     "PromptTemplate": rag_nodes.prompt_template,
     "LLMCall": llm_nodes.llm_call,
+    "PlatformTool": tool_nodes.platform_tool,
     "ConditionBranch": control_nodes.condition_branch,
     "ParallelJoin": control_nodes.parallel_join,
     # 兼容历史 graph 中的节点类型别名

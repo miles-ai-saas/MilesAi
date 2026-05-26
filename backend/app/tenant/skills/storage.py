@@ -113,6 +113,20 @@ def write_file(tenant_id: UUID, slug: str, rel_path: str, content: str) -> None:
     target.write_text(content, encoding="utf-8")
 
 
+def delete_file(tenant_id: UUID, slug: str, rel_path: str) -> None:
+    """删除相对路径文件；禁止删除 SKILL.md 与路径穿越。"""
+    rel = rel_path.strip().lstrip("/")
+    if not rel or rel == SKILL_MD_FILENAME:
+        raise ValueError("不可删除 SKILL.md")
+    if ".." in rel.split("/"):
+        raise ValueError("非法路径")
+    base = skill_package_dir(tenant_id, slug).resolve()
+    target = (base / rel).resolve()
+    if not str(target).startswith(str(base)) or not target.is_file():
+        raise FileNotFoundError(rel_path)
+    target.unlink()
+
+
 def read_file(tenant_id: UUID, slug: str, rel_path: str) -> str:
     """读相对路径；越界或不存在抛 FileNotFoundError。"""
     base = skill_package_dir(tenant_id, slug).resolve()

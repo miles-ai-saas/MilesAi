@@ -736,6 +736,9 @@ export const api = {
     ),
   putSkillFile: (id: string, payload: { path: string; content: string }) =>
     put<{ path: string; content: string }>(`/skill-packages/${id}/file`, payload),
+  reindexSkillPackage: (id: string) => post<SkillPackage>(`/skill-packages/${id}/reindex`, {}),
+  deleteSkillFile: (id: string, path: string) =>
+    http.delete(`/skill-packages/${id}/file?path=${encodeURIComponent(path)}`).then(() => undefined),
   importSkillLocal: (payload: {
     category_id: string;
     local_path: string;

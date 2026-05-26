@@ -422,7 +422,7 @@ var(--font-sans), "PingFang SC", "Microsoft YaHei", "Segoe UI", system-ui, -appl
 | §6 | 流程编排 | `flow-nodes.ts`、`flows/[id]/edit` |
 | §7 | 导航壳层 | `nav-config.ts`、`AppShell`、`SystemShell` |
 | §8 | KB 文档入库 | `document-status.ts`、`kb/[id]` |
-| §9–§10 | 技能包 / 定时 | `skill-md.ts`、`cron-celery.ts` |
+| §9 | 技能包编辑器 | `skills/[id]`、`skill-md.ts`；references/scripts 分组、layout 索引、`reindexSkillPackage` |
 | §11 | MCP | `mcp/page`、`mcp-labels.ts` |
 | §12 | 应用市场 | `marketplace/page`、`marketplace-labels.ts` |
 | §13 | 合规 | `compliance/page`、`compliance-labels.ts` |

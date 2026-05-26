@@ -53,9 +53,38 @@ BUILTIN_REGISTRY: list[dict] = [
             },
         ],
     },
+    {
+        "slug": "skill_read_reference",
+        "name": "读取技能参考",
+        "description": "读取绑定技能包 references/ 或 assets/ 下的文本文件（按需加载，非默认注入）",
+        "category_slug": "general",
+        "version": "1.0.0",
+        "require_confirmation": False,
+        "skill_bound_only": True,
+        "parameters": [
+            {"name": "path", "type": "string", "description": "相对技能根的路径", "required": True},
+            {"name": "max_chars", "type": "integer", "required": False, "default": 12000},
+        ],
+    },
+    {
+        "slug": "skill_run_script",
+        "name": "执行技能脚本",
+        "description": "在沙箱中执行绑定技能包 scripts/ 下的 Python 脚本（须定义 run(params)）",
+        "category_slug": "general",
+        "version": "1.0.0",
+        "require_confirmation": True,
+        "skill_bound_only": True,
+        "parameters": [
+            {"name": "path", "type": "string", "description": "scripts/ 下脚本路径", "required": True},
+            {"name": "params", "type": "object", "description": "传入 run(params) 的参数字典", "required": False},
+            {"name": "timeout_sec", "type": "integer", "required": False, "default": 30},
+            {"name": "max_memory_mb", "type": "integer", "required": False, "default": 512},
+        ],
+    },
 ]
 
 BUILTIN_SLUGS = {t["slug"] for t in BUILTIN_REGISTRY}
+SKILL_BOUND_SLUGS = {t["slug"] for t in BUILTIN_REGISTRY if t.get("skill_bound_only")}
 
 
 def get_builtin(slug: str) -> dict | None:

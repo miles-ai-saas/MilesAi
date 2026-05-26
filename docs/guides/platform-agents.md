@@ -58,3 +58,37 @@ cd backend && pip install -e ".[agent-stack]"   # deepagents、langgraph>=1.2
 ## general-purpose 占位
 
 DeepAgents 默认注入 `general-purpose` 子智能体；本平台用占位 `CompiledSubAgent` 引导改用已绑定 slug（如 `retrieval_a1b2c3d4`）。
+
+## 技能包与工具调用
+
+智能体 `config` 可同时配置技能包与平台工具，二者职责不同：
+
+| 配置项 | 作用 |
+|--------|------|
+| `skill_package_id` | 绑定单个技能包；`SKILL.md` 全文 + `references/scripts` **索引**注入 system prompt |
+| `enable_tool_calling` | 开启 LiteLLM function calling 循环（`tool_agent`） |
+| `tool_slugs` | 可选白名单；未配置时使用全部内置 + 租户自定义工具 |
+
+### 技能运行时工具
+
+绑定 `skill_package_id` 且走 **无知识库** 的 tool calling 路径时，额外挂载：
+
+| 工具 | 说明 |
+|------|------|
+| `skill_read_reference` | 按需读取 `references/`、`assets/` 文本 |
+| `skill_run_script` | 沙箱执行 `scripts/*.py`（`run(params)`；默认需用户确认） |
+
+工具自动使用当前智能体的 `skill_package_id`，LLM 无需传技能 ID。直接 `POST /tools/invoke` 时须带 `agent_id`（或参数中显式 `skill_package_id`）。
+
+### 路径互斥说明
+
+| 场景 | 技能 Prompt | skill_* 工具 |
+|------|-------------|--------------|
+| 无 KB + `enable_tool_calling` | ✅ | ✅ |
+| 绑定 KB（RAG / LangGraph） | ✅ | ❌（走检索增强，不进入 `tool_agent`） |
+| 绑定 KB + `skill_package_id` + `enable_tool_calling` | ✅ | ✅（tool_agent + `knowledge_search`） |
+| 仅 `_direct_chat` | ✅ | ❌ |
+
+流程画布可使用 **PlatformTool** 节点（`data.tool_slug`）调用 `skill_read_reference` / `skill_run_script`；须由绑定技能包的智能体发布流程执行（注入 `agent_id`）。
+
+详见 [skill-packages.md](./skill-packages.md)。

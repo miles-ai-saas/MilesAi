@@ -15,6 +15,8 @@
 | ZIP 导入 | ✅ | 须含 `skills/` 目录，≤100MB |
 | Git 克隆导入 | ✅ | `git clone --depth 1`，优先 `skills/` 子目录 |
 | 智能体绑定注入 | ✅ | 优先磁盘 `SKILL.md`，回退 `prompt_snippet` |
+| references / scripts 索引 | ✅ | `config.layout` 索引注入 Prompt；按需 `skill_read_reference` |
+| 技能脚本沙箱执行 | ✅ | `skill_run_script`（需 `MCP_RUNNER_ENABLED`） |
 | 导出 ZIP / 打包发布 | 规划 | 编辑器「创建技能包」占位 |
 | 兼容旧版「工具勾选 + 片段」 | ✅ | `POST /skill-packages` 仍保留 |
 
@@ -51,9 +53,32 @@ description: 通过技能你可以获取当前时间
 - `build_skill_md`：创建空白包时生成模板
 - 保存 `SKILL.md` 时：`SkillService.write_file_content` 调用 `sync_meta_from_skill_md` 回写 DB
 
-### 2.3 附属文件
+### 2.3 目录布局（Progressive Disclosure）
 
-目录内可放置任意文本文件（脚本说明、示例等）。编辑器通过文件 API 读写；路径禁止 `..` 穿越（`storage.write_file` / `read_file` 做 resolve 校验）。
+对齐 Agent Skills 约定，推荐目录：
+
+```
+{slug}/
+  SKILL.md           # 精简正文，默认全文注入 Prompt
+  references/        # 长文档、API 手册等（仅索引注入，按需读取）
+  scripts/           # 可执行 Python 脚本（仅索引注入，按需沙箱执行）
+  assets/            # 可选静态资源（图片等，索引展示）
+```
+
+| 目录 | Prompt 策略 | 运行时 |
+|------|-------------|--------|
+| `SKILL.md` | 全文注入 | — |
+| `references/` | 路径 + 首行摘要索引 | 内置工具 `skill_read_reference` |
+| `scripts/` | 路径索引 | 内置工具 `skill_run_script`（`run(params)`） |
+| `assets/` | 路径索引 | `skill_read_reference`（文本类） |
+
+- 索引构建：`app/tenant/skills/skill_layout.py` → 写入 `SkillPackage.config.layout`
+- 刷新时机：保存文件、空白创建、导入后自动 reindex
+- 空白创建：`POST /skill-packages/blank` 会生成 `references/guide.md` 与 `scripts/example_validate.py` 示例
+
+### 2.4 附属文件
+
+目录内可放置任意文本文件。编辑器通过文件 API 读写；路径禁止 `..` 穿越（`storage.write_file` / `read_file` 做 resolve 校验）。
 
 ## 3. 数据模型
 
@@ -74,7 +99,7 @@ description: 通过技能你可以获取当前时间
 | `storage_path` | string(512)? | 存储相对标识，默认等于 `slug` |
 | `tool_names` | JSONB | 遗留字段：工具名列表（可选） |
 | `prompt_snippet` | text? | 遗留字段；无 `SKILL.md` 时注入回退 |
-| `config` | JSONB | 扩展配置 |
+| `config` | JSONB | 扩展配置；`config.layout` 存 references/scripts 索引 |
 | `is_active` | bool | 停用后不注入智能体 |
 | `created_at` / `updated_at` / `deleted_at` | timestamptz | 软删 |
 
@@ -103,14 +128,20 @@ description: 通过技能你可以获取当前时间
   {tenant_id}/
     {slug}/
       SKILL.md
-      ... 其它文件
+      references/
+      scripts/
+      assets/   # 可选
 ```
 
 | 配置项 | 环境变量 | 默认值 |
 |--------|----------|--------|
 | 根目录 | `SKILLS_DATA_ROOT` | `.data/skills`（相对 **backend** 目录） |
 
-实现：`app/tenant/skills/storage.py`
+实现：
+
+- `app/tenant/skills/storage.py` — 磁盘读写、扫描、导入路径
+- `app/tenant/skills/skill_layout.py` — 布局索引、资源读取、Prompt 块
+- `app/tenant/skills/runtime.py` — `skill_read_reference` / `skill_run_script` 执行
 
 - `skills_data_root()`：解析绝对/相对路径并 `mkdir`
 - `skill_package_dir(tenant_id, slug)`：单技能根路径
@@ -156,6 +187,8 @@ description: 通过技能你可以获取当前时间
 | GET | `/{id}/files` | 目录树 `SkillFileNode[]` |
 | GET | `/{id}/file?path=SKILL.md` | 读文件内容 |
 | PUT | `/{id}/file` | 写文件；body: `{ "path", "content" }` |
+| DELETE | `/{id}/file?path=` | 删除文件（不可删 `SKILL.md`） |
+| POST | `/{id}/reindex` | 扫描磁盘重建 `config.layout` 索引 |
 
 保存 `SKILL.md` 时自动同步 DB 的 `name`、`description`，并将全文写入 `prompt_snippet` 字段（便于检索/回退）。
 
@@ -240,9 +273,19 @@ Agent.config.skill_package_id
   → 读取 SkillPackage（租户、未软删、is_active）
   → read_skill_md(tenant_id, slug) 优先
   → 否则 prompt_snippet
+  → 追加 config.layout 索引块（references / scripts）
   → 可选追加 tool_names 行
   → 与 MCP 块拼接进 system prompt
 ```
+
+绑定技能包且 `enable_tool_calling` 时，tool_agent 额外挂载：
+
+| 工具 | 说明 |
+|------|------|
+| `skill_read_reference` | 读取 `references/`、`assets/` 文本 |
+| `skill_run_script` | 沙箱执行 `scripts/*.py`（需确认 + MCP Runner） |
+
+工具自动绑定当前智能体的 `skill_package_id`，LLM 无需传技能 ID。
 
 绑定入口：工作台智能体表单 `skill_package_id`（`frontend/components/agent/AgentFormStepContent.tsx`）。
 
@@ -262,7 +305,7 @@ description: ...
 | 路由 | 说明 |
 |------|------|
 | `/workbench/skills` | 分类 Tab、添加卡片、技能卡片、导入弹窗 |
-| `/workbench/skills/[id]` | 文件树 + `SKILL.md` 编辑器 |
+| `/workbench/skills/[id]` | 分组文件树、layout 索引摘要、新建 references/scripts、刷新索引 |
 
 主要文件：
 
@@ -281,6 +324,8 @@ description: ...
 backend/app/tenant/skills/
 ├── models.py              # ORM
 ├── skill_md.py            # SKILL.md 解析/生成
+├── skill_layout.py        # references/scripts 索引与 Prompt 块
+├── runtime.py             # skill_read_reference / skill_run_script
 ├── storage.py             # 磁盘读写、扫描、导入路径
 ├── schemas/skill.py       # Pydantic
 ├── services/
@@ -304,6 +349,7 @@ backend/app/tenant/skills/
 cd backend
 python cli.py migrate          # alembic upgrade head（001）
 python cli.py seed categories  # 写入 skill 域默认分类
+python cli.py seed skills      # 示例技能包（SKILL.md + references/ + scripts/，可重复执行补全缺失文件）
 ```
 
 生产建议：
@@ -312,7 +358,11 @@ python cli.py seed categories  # 写入 skill 域默认分类
 - Git 导入需镜像内安装 `git`；出站网络需能访问目标仓库。
 - 本地导入路径必须在 API 进程可读范围内（容器部署时注意 volume 映射）。
 
-单元测试：`backend/tests/test_skill_md.py`（frontmatter 解析与同步）。
+单元测试：
+
+- `backend/tests/test_skill_md.py` — frontmatter 解析
+- `backend/tests/test_skill_layout.py` — 布局索引与资源读取
+- `backend/tests/test_skill_runtime_integration.py` — Prompt 索引块与 skill 工具挂载
 
 ## 10. 与 MCP / 工具目录的关系
 
@@ -332,6 +382,6 @@ python cli.py seed categories  # 写入 skill 域默认分类
 | Git SSH | 依赖系统 `git` 与宿主机 SSH 配置，未内置 Deploy Key 管理 |
 | 本地路径安全 | 当前允许配置任意可读路径，生产可加白名单（仅允许 `skills_data_root` 下） |
 | 多技能绑定 | 智能体仅支持单个 `skill_package_id`；多技能需后续改为 ID 列表 |
-| Streamable Skill 协议 | 若对齐 Cursor Agent Skills 全量规范，可扩展 frontmatter 字段与校验 |
+| Streamable Skill 协议 | 已支持 references/scripts 子集；frontmatter 扩展字段待补 |
 
 REST 字段以运行中 OpenAPI（`/docs`）为准。

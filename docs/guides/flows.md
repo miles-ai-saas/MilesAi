@@ -19,7 +19,9 @@ React Flow → PUT /flows/{id}/graph → flow_versions
 
 ## 节点与扩展
 
-支持类型：`TextInput`、`ChatInput`、`KnowledgeSearch`、`ConditionBranch`、`ParallelJoin`、`PromptTemplate`、`LLMCall`、`TextOutput`、`ChatOutput`。
+支持类型：`TextInput`、`ChatInput`、`KnowledgeSearch`、`ConditionBranch`、`ParallelJoin`、`PromptTemplate`、`LLMCall`、`PlatformTool`、`TextOutput`、`ChatOutput`。
+
+`PlatformTool` 节点 `data.tool_slug` 调用平台工具（含 `skill_read_reference`、`skill_run_script`、`knowledge_search` 等）。智能体发布流程执行时注入 `agent_id` / `agent_config` / `kb_ids`；调试运行时使用当前租户用户权限。
 
 扩展：在 `nodes/registry.py` 注册，并在 `frontend/lib/flow-nodes.ts` 增加调色板。
 
