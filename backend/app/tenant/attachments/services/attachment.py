@@ -12,7 +12,13 @@ from app.core.config import get_settings
 from app.core.service import BaseService
 from app.core.soft_delete import is_marked_deleted, mark_deleted, not_deleted
 from app.core.tenant import TenantContext, assert_tenant_access
-from app.infra.storage import build_attachment_object_key, delete_object, upload_bytes
+from app.infra.storage import (
+    build_attachment_object_key,
+    delete_object,
+    download_bytes,
+    upload_bytes,
+)
+from app.rag.parse.media import is_image_file
 from app.models.attachment import Attachment
 from app.tenant.attachments.repositories.attachment import AttachmentRepository
 from app.tenant.attachments.meta import attachments_meta_dict
@@ -106,6 +112,16 @@ class AttachmentService(BaseService):
     async def get(self, attachment_id: UUID) -> AttachmentOut:
         att = await self._get_or_raise(attachment_id)
         return AttachmentOut.model_validate(att)
+
+    async def read_image_bytes(self, attachment_id: UUID) -> tuple[bytes, str]:
+        """校验租户与图片类型后，从对象存储读取字节（供 vision / 内容 API）。"""
+        att = await self._get_or_raise(attachment_id)
+        if not is_image_file(att.filename, att.mime_type):
+            raise BadRequestError("附件不是支持的图片格式（jpeg/png/webp）")
+        if not att.object_key or att.object_key == "pending":
+            raise BadRequestError("附件文件未就绪")
+        data = download_bytes(att.object_key, att.object_bucket)
+        return data, att.mime_type
 
     async def delete(self, attachment_id: UUID) -> None:
         """软删并尝试删除 OSS 对象（存储回退由 quota 层处理）。"""

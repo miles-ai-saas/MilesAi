@@ -8,8 +8,9 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
+from app.common.schemas.media import MediaRefIn
 from app.models.agent import AgentStatus, AgentType
 from app.tenant.tags.schemas.tag import TagRefOut
 
@@ -103,10 +104,18 @@ class AgentOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class ChatMediaIn(MediaRefIn):
+    """智能体对话附图（与 ``MediaRefIn`` 同形）。"""
+
+
 class ChatRequest(BaseModel):
     """对话入参；``inputs`` 合并进流程画布运行时变量。"""
 
-    query: str = Field(..., min_length=1)
+    query: str = Field(default="", max_length=32000)
+    media: list[ChatMediaIn] = Field(
+        default_factory=list,
+        description="识图附图；服务端转 data URL，非签名 OSS URL",
+    )
     inputs: dict = {}
     conversation_id: str | None = Field(
         None,
@@ -117,6 +126,12 @@ class ChatRequest(BaseModel):
     pending_tool_slug: str | None = None
     pending_tool_params: dict = Field(default_factory=dict)
 
+    @model_validator(mode="after")
+    def validate_query_or_media(self) -> "ChatRequest":
+        if not self.query.strip() and not self.media:
+            raise ValueError("query 与 media 不能同时为空")
+        return self
+
 
 class PendingToolCall(BaseModel):
     slug: str
@@ -125,8 +140,21 @@ class PendingToolCall(BaseModel):
     params: dict = Field(default_factory=dict)
 
 
+class ChatArtifact(BaseModel):
+    """工具生图/生视频等产出物；前端经鉴权 content API 预览，非 OSS 签名 URL。"""
+
+    kind: str = "image"  # image | video | audio（扩展）
+    attachment_id: UUID
+    mime_type: str | None = None
+    caption: str | None = None
+
+
 class ChatResponse(BaseModel):
     answer: str
     sources: list[dict] = []
     steps: list[dict] = []
+    artifacts: list[ChatArtifact] = Field(
+        default_factory=list,
+        description="generate_image / generate_video 等工具的结构化产出",
+    )
     pending_tool: PendingToolCall | None = None

@@ -64,6 +64,70 @@ scripts/                    # db_ops、verify_db、seed/*（由 cli.py 调用）
 | `constants.py` | 域内多文件共用的字面量（校验、协议字段名）；单文件自用可留在 service |
 | `meta.py` | 枚举展示文案（`GET /{module}/meta`）；`schema_version` 用 `META_SCHEMA_VERSION` |
 
+### 单文件体量（强制）
+
+适用于 `app/` 下 **Python 业务与集成代码**（`tenant/`、`rag/`、`integrations/`、`flow_runtime/` 等；测试文件、`alembic/` 版本脚本除外）。
+
+| 阈值 | 要求 |
+|------|------|
+| **≥ 500 行** | **禁止合并**；必须按下方「子包 per 聚合」拆分后再合入 |
+| **400–499 行** | 新增逻辑时优先拆文件或子包，避免继续膨胀 |
+| **拆分后** | 单个子模块宜 **300–400 行**；仍超 500 则继续按职责切分 |
+
+自检：在 `backend/` 目录执行 `find app -name '*.py' -exec wc -l {} + | awk '$1 >= 500'`。
+
+### `services/` 子包（按聚合拆分）
+
+当单个 Service 类、或同一聚合下的实现文件 **达到 500 行**、或 mixin/职责块明显增多时，在 `tenant/{domain}/services/{aggregate}/` 下按**业务能力聚合**分子包，而不是在 `services/` 根目录堆 `foo_bar_*.py` 长前缀文件。
+
+函数式模块（如 `tenant/tools/invoke/`）无 `XxxService` 时同样适用：超过 500 行则拆为 `invoke/` 子包 + `builtins/` 等子模块。
+
+**原则**
+
+| 规则 | 说明 |
+|------|------|
+| 领域边界 | 仍以 `tenant/agents/`、`tenant/compliance/` 等为界；子包只整理该域内的 Service |
+| 一个聚合一个目录 | 如 `services/agent/`、`services/compliance/`；目录名与对外 import 模块名一致 |
+| 门面 + 导出 | `service.py` 组装 Mixin；`__init__.py` **唯一对外出口**，re-export 公共 API |
+| 共享模块上浮 | 被多个聚合引用的代码留在 `services/` 根（如 `agents/services/context.py`、`compliance/services/pipeline.py`） |
+| import 稳定 | Views / 集成层继续 `from app.tenant.agents.services.agent import AgentService`，勿改为深层路径 |
+| 目录深度 | 一般 **一层子包**即可（`services/agent/chat.py`），避免 `agent/chat/rag/` 等多级套娃 |
+
+**已落地的聚合包**
+
+```
+tenant/agents/services/
+  agent/              # AgentService：crud.py、chat.py、serialization.py、service.py
+  architecture.py     # 独立 Service，与 agent 并列
+  schedule.py / stats.py / context.py / sub_agents.py
+
+tenant/compliance/services/
+  compliance/         # ComplianceService：intercept、scan_bindings、library、…
+  pipeline.py / word_resolve.py
+
+tenant/marketplace/services/
+  marketplace/        # MarketplaceService：catalog、publish、install、review、ratings
+
+tenant/tools/
+  invoke/             # 工具执行（函数式门面，无 XxxService 类）
+  builtins/           # 各内置 slug 的 handler，由 invoke/builtin.py 分发
+```
+
+**新增子包步骤**：新建 `services/{aggregate}/` → 按职责拆 `*.py` → 在 `service.py` 用 Mixin 组合 → `__init__.py` 导出 → 删除同名旧 `services/{aggregate}.py`（不能与目录共存）→ 跑该域 pytest。
+
+### 文档注释（类 / 方法 / 函数）
+
+`app/` 下业务代码须为 **模块、类、公开方法、模块级函数** 编写 **中文 docstring**（`"""..."""`），不写无意义的 `#` 行注释堆砌。
+
+| 对象 | 要求 |
+|------|------|
+| 模块 | 文件顶部说明职责；子包 `__init__.py` 说明对外 export |
+| 类 / Mixin | 一句话说明聚合职责 |
+| 方法 / 函数 | 说明做什么、关键副作用（抛错、写库、调外部）；兼容别名注明「兼容别名 → …」 |
+| 私有 `_xxx` | 若仅转发公开方法，可写「兼容别名」；有独立逻辑则正常说明 |
+
+新增或拆出的子包代码 **合入前** 应补全 docstring；与 [layering.md](../docs/architecture/layering.md) §5.5 一致。
+
 **常量分家**（勿建全局 `app/constants/`）：`models.Enum` 为持久化真源；`tenant/*/meta.py` 仅 label/hint；`integrations/*/constants.py` 为协议与 `ModelConfig.extra` 键；跨模型 extra 键见 `common/constants/model_extra.py`；Redis 键见 `utils/redis_keys.py`。
 
 - Hook Event `schema_version`（`hooks/events.SCHEMA_VERSION`）与 `GET */meta` 的 `META_SCHEMA_VERSION` 为两套契约，见 [docs/guides/hooks.md](../docs/guides/hooks.md) §9.1。
@@ -180,6 +244,7 @@ python cli.py init-db            # 迁移 + 全量种子
 python cli.py init-db --seed-only
 python cli.py seed tenant        # 单域种子：tenant | tools | skills | hooks | compliance | … | all
 python cli.py verify-db          # 检查核心表
+python cli.py backfill-media-assets [--dry-run] [--tenant-id UUID]  # 历史生成物登记
 ```
 
 `pip install -e .` 后可使用全局命令 `milesai serve`。

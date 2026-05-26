@@ -324,7 +324,7 @@ Hook 出站 POST body          GET /hooks/meta 响应
 
 **与合规 `payload.module` 的关系**：Event `payload.module` 为业务场景字符串（如 `agent_chat`、`flow_run`），真源在 `tenant/compliance/constants.py`，与上述两种 `schema_version` 均无对应关系。合规扫描模块展示见 `GET /compliance/meta` → `scan_modules`。
 
-**后端约定**（详见 `backend/README.md` 模块约定）：
+**后端约定**（详见 [backend/README.md](../../backend/README.md) 模块约定、[layering.md](../architecture/layering.md) §5.4 单文件与子包）：
 
 - 持久化枚举真源：`models.Enum` 或域内 `constants.py`
 - 展示文案：`tenant/*/meta.py` 的 `*_meta_dict()`，统一带 `"schema_version": META_SCHEMA_VERSION`

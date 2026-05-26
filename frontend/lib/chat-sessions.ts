@@ -3,9 +3,24 @@
  * `session.id` 作为 `api.chatAgent` 的 `conversation_id`；消息与 steps 仅存浏览器 localStorage。
  */
 
+export type ChatMessageMedia = {
+  attachment_id: string;
+  preview_url?: string;
+  filename?: string;
+};
+
+export type ChatMessageArtifact = {
+  kind: string;
+  attachment_id: string;
+  mime_type?: string | null;
+  preview_url?: string;
+};
+
 export type ChatMessage = {
   role: "user" | "assistant";
   content: string;
+  media?: ChatMessageMedia[];
+  artifacts?: ChatMessageArtifact[];
   steps?: Record<string, unknown>[];
   traceId?: string;
 };
@@ -133,6 +148,7 @@ export function appendTurn(
   assistantText: string,
   steps: Record<string, unknown>[] = [],
   traceId?: string,
+  userMedia?: ChatMessageMedia[],
 ) {
   const store = loadStore();
   const b = bucket(agentId, store);
@@ -141,7 +157,11 @@ export function appendTurn(
   const session = b.sessions[idx];
   const messages = [
     ...session.messages,
-    { role: "user" as const, content: userText },
+    {
+      role: "user" as const,
+      content: userText,
+      ...(userMedia?.length ? { media: userMedia } : {}),
+    },
     {
       role: "assistant" as const,
       content: assistantText,

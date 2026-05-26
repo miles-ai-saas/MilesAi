@@ -5,20 +5,15 @@
 与 ``tenant.marketplace.util.load_rag_graph_template`` 同源。结构说明见 ``templates/README.md``。
 """
 
-import json
-from pathlib import Path
-
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.flow_runtime.templates.registry import load_flow_template_graph
 from app.tenant.marketplace.models import AppCategory, MarketplaceApp, MarketplaceAppStatus
-
-_BACKEND_ROOT = Path(__file__).resolve().parents[2]
 
 
 def _rag_graph() -> dict:
-    path = _BACKEND_ROOT / "app" / "flow_runtime" / "templates" / "rag_flow.json"
-    return json.loads(path.read_text(encoding="utf-8"))
+    return load_flow_template_graph("rag")
 
 
 async def seed_marketplace_categories(session: AsyncSession) -> dict[str, AppCategory]:

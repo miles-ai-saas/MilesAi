@@ -1,11 +1,14 @@
 "use client";
 
-/** 流程调试面板（链路 §6）：KB、query、steps、output。 */
-import { useState } from "react";
+/** 流程调试面板（链路 §6）：KB、query、附图、steps、output。 */
+import { useMemo, useRef, useState } from "react";
+import { api } from "@/lib/api";
 import {
   formatFlowSteps,
   type FlowCompileErrorDetail,
 } from "@/components/flow/FlowNodeInspector";
+import { FlowRunArtifactsPreview } from "@/components/flow/FlowRunArtifactsPreview";
+import { extractFlowRunArtifacts } from "@/lib/flow-run-artifacts";
 import type { KnowledgeBase } from "@/lib/types";
 
 export interface FlowRunState {
@@ -17,6 +20,12 @@ export interface FlowRunState {
 }
 
 type ResultTab = "steps" | "output";
+
+export type FlowRunPendingMedia = {
+  attachment_id: string;
+  filename?: string;
+  local_preview: string;
+};
 
 interface FlowRunPanelProps {
   kbs: KnowledgeBase[];
@@ -30,6 +39,8 @@ interface FlowRunPanelProps {
   onSelectCompileNode?: (nodeId: string) => void;
   onRun?: () => void;
   busy?: boolean;
+  pendingMedia?: FlowRunPendingMedia[];
+  onPendingMediaChange?: (items: FlowRunPendingMedia[]) => void;
 }
 
 export function FlowRunPanel({
@@ -44,8 +55,50 @@ export function FlowRunPanel({
   onSelectCompileNode,
   onRun,
   busy,
+  pendingMedia = [],
+  onPendingMediaChange,
 }: FlowRunPanelProps) {
   const [tab, setTab] = useState<ResultTab>("output");
+  const [uploadingMedia, setUploadingMedia] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const onPickImages = async (files: FileList | null) => {
+    if (!files?.length || !onPendingMediaChange || uploadingMedia) return;
+    setUploadingMedia(true);
+    try {
+      const next: FlowRunPendingMedia[] = [];
+      for (const file of Array.from(files)) {
+        if (!file.type.startsWith("image/")) continue;
+        const att = await api.uploadAttachment(file, { purpose: "flow" });
+        next.push({
+          attachment_id: att.id,
+          filename: att.filename,
+          local_preview: URL.createObjectURL(file),
+        });
+      }
+      if (next.length) {
+        onPendingMediaChange([...pendingMedia, ...next].slice(0, 4));
+      }
+    } catch (e) {
+      window.alert(e instanceof Error ? e.message : "图片上传失败");
+    } finally {
+      setUploadingMedia(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const removePending = (id: string) => {
+    if (!onPendingMediaChange) return;
+    const item = pendingMedia.find((p) => p.attachment_id === id);
+    if (item?.local_preview) URL.revokeObjectURL(item.local_preview);
+    onPendingMediaChange(pendingMedia.filter((p) => p.attachment_id !== id));
+  };
+
+  const canRun =
+    Boolean(onRun) &&
+    !busy &&
+    !uploadingMedia &&
+    (query.trim().length > 0 || pendingMedia.length > 0);
 
   const toggleKb = (id: string) => {
     if (selectedKbIds.includes(id)) {
@@ -59,6 +112,11 @@ export function FlowRunPanel({
   const hasOutput = Boolean(runState?.output);
   const hasErrors =
     (runState?.compileErrorDetails?.length ?? 0) > 0 || Boolean(runState?.error);
+  const runArtifacts = useMemo(
+    () => extractFlowRunArtifacts(runState?.steps),
+    [runState?.steps],
+  );
+  const hasArtifacts = runArtifacts.length > 0;
 
   if (collapsed) {
     return (
@@ -69,7 +127,13 @@ export function FlowRunPanel({
       >
         <span>展开调试面板</span>
         <span className="text-xs text-ink-faint">
-          {hasOutput ? "有输出" : hasSteps ? "有步骤" : "配置 KB 与 query 后运行"}
+          {hasArtifacts
+            ? "有生成物"
+            : hasOutput
+              ? "有输出"
+              : hasSteps
+                ? "有步骤"
+                : "配置 KB 与 query 后运行"}
         </span>
       </button>
     );
@@ -84,7 +148,7 @@ export function FlowRunPanel({
             <button
               type="button"
               className="btn-sm-primary sm:hidden"
-              disabled={busy}
+              disabled={!canRun}
               onClick={onRun}
             >
               运行
@@ -134,20 +198,57 @@ export function FlowRunPanel({
             )}
           </div>
         </div>
-        <div className="min-w-0">
-          <label className="mb-1.5 block text-xs font-medium text-ink-muted">
+        <div className="min-w-0 space-y-2">
+          <label className="block text-xs font-medium text-ink-muted">
             测试问题 (query)
           </label>
+          {pendingMedia.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {pendingMedia.map((m) => (
+                <div key={m.attachment_id} className="relative">
+                  <img
+                    src={m.local_preview}
+                    alt={m.filename ?? "附图"}
+                    className="h-14 w-14 rounded-lg object-cover ring-1 ring-line"
+                  />
+                  <button
+                    type="button"
+                    className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-ink text-xs text-surface"
+                    aria-label="移除"
+                    onClick={() => removePending(m.attachment_id)}
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
           <div className="flex gap-2">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              multiple
+              className="hidden"
+              onChange={(e) => void onPickImages(e.target.files)}
+            />
+            <button
+              type="button"
+              className="btn-sm-outline shrink-0"
+              disabled={busy || uploadingMedia || !onPendingMediaChange}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              {uploadingMedia ? "上传…" : "图片"}
+            </button>
             <input
               className="input-field min-w-0 flex-1"
               value={query}
               onChange={(e) => onQueryChange(e.target.value)}
-              placeholder="输入用户问题"
+              placeholder="输入问题或附图后运行"
               onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey && onRun) {
+                if (e.key === "Enter" && !e.shiftKey && canRun) {
                   e.preventDefault();
-                  onRun();
+                  onRun?.();
                 }
               }}
             />
@@ -155,7 +256,7 @@ export function FlowRunPanel({
               <button
                 type="button"
                 className="btn-primary hidden shrink-0 sm:inline-flex"
-                disabled={busy}
+                disabled={!canRun}
                 onClick={onRun}
               >
                 运行
@@ -201,6 +302,8 @@ export function FlowRunPanel({
         </div>
       )}
 
+      {hasArtifacts && <FlowRunArtifactsPreview artifacts={runArtifacts} />}
+
       <div className="flex min-h-0 flex-1 flex-col">
         <div className="flex shrink-0 gap-1 border-b border-line px-3 pt-2">
           <button
@@ -213,7 +316,9 @@ export function FlowRunPanel({
             onClick={() => setTab("output")}
           >
             输出
-            {hasOutput && <span className="ml-1 text-ink-faint">●</span>}
+            {(hasOutput || hasArtifacts) && (
+              <span className="ml-1 text-ink-faint">●</span>
+            )}
           </button>
           <button
             type="button"

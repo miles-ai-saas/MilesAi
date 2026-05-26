@@ -4,6 +4,13 @@
 import type { Node } from "@xyflow/react";
 import type { NodeType } from "@/lib/flow-nodes";
 import { CONDITION_MODES, MERGE_STRATEGIES } from "@/lib/flow-node-schemas";
+import {
+  GenerativeModelSelect,
+  IMAGE_SIZE_OPTIONS,
+  InspectorField,
+  VIDEO_RESOLUTION_OPTIONS,
+  modelLabel,
+} from "@/components/flow/GenerativeNodeInspectorFields";
 import { PlatformToolInspector } from "@/components/flow/PlatformToolInspector";
 import type { KnowledgeBase, ModelConfig, ToolCatalogItem } from "@/lib/types";
 
@@ -337,6 +344,126 @@ function InspectorForm({
       );
     case "TextOutput":
       return <>{labelField}</>;
+    // --- 多模态生成（对应 backend flow_runtime.nodes.image_generate / video_generate）---
+    case "ImageGenerate":
+      return (
+        <>
+          {labelField}
+          <InspectorField label="生图模型 (image_gen) *">
+            <GenerativeModelSelect
+              models={models}
+              modelType="image_gen"
+              value={String(data.model_config_id ?? "")}
+              onChange={(id) => patch({ model_config_id: id ?? "" })}
+              required
+            />
+          </InspectorField>
+          {data.model_config_id && (
+            <p className="-mt-2 mb-3 text-[10px] text-ink-muted">
+              已选：{modelLabel(models, data.model_config_id)}
+            </p>
+          )}
+          <InspectorField label="固定 prompt（可选，留空则用上游 prompt/input）">
+            <textarea
+              className="input-field min-h-[72px] w-full text-sm"
+              value={String(data.prompt ?? "")}
+              onChange={(e) => patch({ prompt: e.target.value })}
+              placeholder="例如：一只在沙滩上的猫"
+            />
+          </InspectorField>
+          <InspectorField label="尺寸">
+            <select
+              className="input-field w-full text-sm"
+              value={String(data.size ?? "1024x1024")}
+              onChange={(e) => patch({ size: e.target.value })}
+            >
+              {IMAGE_SIZE_OPTIONS.map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </select>
+          </InspectorField>
+          <InspectorField label="生成张数 n">
+            <input
+              type="number"
+              min={1}
+              max={4}
+              className="input-field w-full text-sm"
+              value={Number(data.n ?? 1)}
+              onChange={(e) => patch({ n: Math.min(4, Math.max(1, Number(e.target.value) || 1)) })}
+            />
+          </InspectorField>
+          <p className="text-[10px] leading-relaxed text-ink-muted">
+            入边：prompt 或 input 接收上游文案；出边 output 为图片 attachment 元数据。
+          </p>
+        </>
+      );
+    case "VideoGenerate":
+      return (
+        <>
+          {labelField}
+          <InspectorField label="生视频模型 (video_gen) *">
+            <GenerativeModelSelect
+              models={models}
+              modelType="video_gen"
+              value={String(data.model_config_id ?? "")}
+              onChange={(id) => patch({ model_config_id: id ?? "" })}
+              required
+            />
+          </InspectorField>
+          {data.model_config_id && (
+            <p className="-mt-2 mb-3 text-[10px] text-ink-muted">
+              已选：{modelLabel(models, data.model_config_id)}（万相优先）
+            </p>
+          )}
+          <InspectorField label="固定 prompt（可选）">
+            <textarea
+              className="input-field min-h-[72px] w-full text-sm"
+              value={String(data.prompt ?? "")}
+              onChange={(e) => patch({ prompt: e.target.value })}
+              placeholder="例如：海浪拍打礁石，慢镜头"
+            />
+          </InspectorField>
+          <InspectorField label="时长（秒）">
+            <input
+              type="number"
+              min={3}
+              max={15}
+              className="input-field w-full text-sm"
+              value={Number(data.duration ?? 5)}
+              onChange={(e) => patch({ duration: Number(e.target.value) || 5 })}
+            />
+          </InspectorField>
+          <InspectorField label="分辨率">
+            <select
+              className="input-field w-full text-sm"
+              value={String(data.resolution ?? "720P")}
+              onChange={(e) => patch({ resolution: e.target.value })}
+            >
+              {VIDEO_RESOLUTION_OPTIONS.map((r) => (
+                <option key={r} value={r}>
+                  {r}
+                </option>
+              ))}
+            </select>
+          </InspectorField>
+          <InspectorField label="首帧 attachment_id（图生视频，可选）">
+            <input
+              className="input-field w-full font-mono text-xs"
+              value={String(data.image_attachment_id ?? "")}
+              onChange={(e) =>
+                patch({ image_attachment_id: e.target.value.trim() || "" })
+              }
+              placeholder="或由入边 image_attachment_id 传入"
+            />
+          </InspectorField>
+          <p className="text-[10px] leading-relaxed text-ink-muted">
+            运行会阻塞轮询直至完成（可达数分钟）。入边：prompt / input；图生视频可接
+            image_attachment_id。
+          </p>
+        </>
+      );
     default:
       return (
         <p className="text-xs text-ink-muted">
@@ -391,14 +518,27 @@ export function formatCompileErrors(
   return errors.join("\n");
 }
 
+function stepOutputLine(s: FlowStep): string {
+  const art = s.artifact;
+  if (art && typeof art === "object") {
+    const kind = (art as Record<string, unknown>).kind;
+    const id = (art as Record<string, unknown>).attachment_id;
+    if (kind === "image" || kind === "video") {
+      const short =
+        typeof id === "string" && id.length > 8 ? `${id.slice(0, 8)}…` : id;
+      return `\n  → 已生成${kind === "video" ? "视频" : "图片"}（${short}，见上方预览）`;
+    }
+  }
+  return s.output_preview ? `\n  ${s.output_preview}` : "";
+}
+
 export function formatFlowSteps(steps: FlowStep[]): string {
   return steps
     .map((s, i) => {
       const t = String(s.type ?? "step");
       const nid = s.node_id ? ` · ${s.node_id}` : "";
       const nt = s.node_type ? ` (${s.node_type})` : "";
-      const preview = s.output_preview ? `\n  ${s.output_preview}` : "";
-      return `${i + 1}. [${t}]${nid}${nt}${preview}`;
+      return `${i + 1}. [${t}]${nid}${nt}${stepOutputLine(s)}`;
     })
     .join("\n");
 }

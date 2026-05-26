@@ -4,7 +4,8 @@
 当 ``AgentService._rag_chat`` 无 ``kb_ids`` 且 ``config.enable_tool_calling`` 为真时启用：
 LiteLLM function calling + 平台内置工具（``integrations.langchain.tools``）+ 人工确认策略。
 
-与 RAG 路径互斥：有 KB 时优先走检索增强，不进入本模块。
+有 KB 时：若 ``enable_generative_tools`` 和/或绑定技能包且 ``enable_tool_calling``，
+走本模块（``knowledge_search`` + 可选 generate_*）；否则走 LangGraph/线性 RAG。
 """
 
 from __future__ import annotations
@@ -16,12 +17,49 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.tenant import TenantContext
+from app.integrations.chat.multimodal import build_user_message, resolve_media_refs
 from app.integrations.langchain.tools import get_all_platform_tools, get_skill_bound_tools
 from app.integrations.litellm.adapter import litellm_chat_completion
 from app.models.agent import Agent
-from app.tenant.agents.schemas.agent import ChatRequest, ChatResponse, PendingToolCall
+from app.tenant.agents.schemas.agent import (
+    ChatArtifact,
+    ChatRequest,
+    ChatResponse,
+    PendingToolCall,
+)
 from app.tenant.tools.confirmation import ToolConfirmationRequired, resolve_tool_meta
 from app.tenant.tools.invoke import invoke_tool_with_context
+
+
+def _artifacts_from_tool_output(output: dict) -> list[ChatArtifact]:
+    """将 invoke 返回的 generate_* 字典转为 ChatArtifact（供前端预览）。"""
+    if not isinstance(output, dict):
+        return []
+    kind = output.get("kind") or "image"
+    if kind == "image":
+        ids = output.get("attachment_ids") or []
+        if not ids and output.get("attachment_id"):
+            ids = [output["attachment_id"]]
+        mime = output.get("mime_type")
+        return [
+            ChatArtifact(
+                attachment_id=UUID(str(aid)),
+                kind="image",
+                mime_type=mime,
+                caption=output.get("message"),
+            )
+            for aid in ids
+        ]
+    if kind == "video" and output.get("attachment_id"):
+        return [
+            ChatArtifact(
+                attachment_id=UUID(str(output["attachment_id"])),
+                kind="video",
+                mime_type=output.get("mime_type") or "video/mp4",
+                caption=output.get("message"),
+            )
+        ]
+    return []
 
 
 def _tools_to_openai_schema(tools: list) -> list[dict]:
@@ -128,12 +166,19 @@ async def run_tool_calling_chat(
 
     openai_tools = _tools_to_openai_schema(tools)
     temperature = float((agent.config or {}).get("temperature", 0.7))
+    max_media = int((agent.config or {}).get("max_media_per_turn", 4))
+    media_parts = (
+        await resolve_media_refs(db, ctx, body.media, max_count=max_media) if body.media else []
+    )
+    chat_query = body.query.strip() or ("请根据附图回答。" if media_parts else body.query)
+    user_msg = build_user_message(query=chat_query, media_parts=media_parts)
     messages: list[dict] = [
         {"role": "system", "content": system_prompt},
-        {"role": "user", "content": body.query},
+        user_msg,
     ]
     max_iter = int((agent.config or {}).get("max_tool_iterations", 5))
     steps: list[dict] = [{"type": "tool_agent", "engine": "litellm_tools"}]
+    artifacts: list[ChatArtifact] = []
 
     for _ in range(max_iter):
         response = await _litellm_with_tools(
@@ -145,7 +190,7 @@ async def run_tool_calling_chat(
 
         if not tool_calls:
             content = getattr(message, "content", None) or ""
-            return ChatResponse(answer=str(content), steps=steps)
+            return ChatResponse(answer=str(content), steps=steps, artifacts=artifacts)
 
         messages.append(
             {
@@ -212,6 +257,7 @@ async def run_tool_calling_chat(
                 actor_user_id=ctx.user_id,
                 invoke_source="agent",
             )
+            artifacts.extend(_artifacts_from_tool_output(output))
             steps.append({"type": "tool_call", "slug": slug, "status": "success"})
             messages.append(
                 {
@@ -224,4 +270,5 @@ async def run_tool_calling_chat(
     return ChatResponse(
         answer="工具调用达到最大轮次，请简化问题后重试。",
         steps=steps + [{"type": "tool_agent", "error": "max_iterations"}],
+        artifacts=artifacts,
     )

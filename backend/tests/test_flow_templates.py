@@ -1,0 +1,73 @@
+"""内置流程画布模板 registry 与 GET /flows/templates。"""
+
+import json
+
+import pytest
+
+from app.flow_runtime.templates.registry import (
+    FLOW_TEMPLATE_REGISTRY,
+    list_flow_templates,
+    load_flow_template_graph,
+    load_rag_graph_template,
+)
+from app.integrations.langgraph.compiler import validate_graph_for_compile
+
+
+def test_registry_has_expected_ids():
+    ids = {spec.id for spec in FLOW_TEMPLATE_REGISTRY}
+    assert ids == {
+        "blank",
+        "rag",
+        "rag_grade",
+        "simple_llm",
+        "image_generate",
+        "video_generate",
+    }
+
+
+def test_blank_template_empty_graph():
+    graph = load_flow_template_graph("blank")
+    assert graph == {"nodes": [], "edges": []}
+
+
+def test_load_rag_variants_match_registry():
+    assert load_rag_graph_template() == load_flow_template_graph("rag")
+    assert load_rag_graph_template(variant="with_grade") == load_flow_template_graph(
+        "rag_grade"
+    )
+
+
+@pytest.mark.parametrize(
+    "template_id",
+    ["rag", "rag_grade", "simple_llm", "image_generate", "video_generate"],
+)
+def test_non_blank_templates_compilable(template_id: str):
+    graph = load_flow_template_graph(template_id)
+    report = validate_graph_for_compile(graph)
+    assert report.compilable, report.errors
+
+
+def test_list_flow_templates_includes_graph_json():
+    items = list_flow_templates()
+    assert len(items) == len(FLOW_TEMPLATE_REGISTRY)
+    rag = next(i for i in items if i["id"] == "rag")
+    assert rag["default_name"] == "RAG 问答流程"
+    assert len(rag["graph_json"]["nodes"]) >= 4
+
+
+def test_insertable_only_excludes_blank():
+    items = list_flow_templates(insertable_only=True)
+    assert all(i["insertable"] for i in items)
+    assert "blank" not in {i["id"] for i in items}
+
+
+def test_rag_grade_template_file_matches_grade_node():
+    graph = json.loads(
+        (
+            __import__("pathlib").Path(__file__).resolve().parents[1]
+            / "app/flow_runtime/templates/rag_flow_with_grade.json"
+        ).read_text(encoding="utf-8")
+    )
+    report = validate_graph_for_compile(graph)
+    assert report.compilable
+    assert "grade_1" in report.conditional_nodes

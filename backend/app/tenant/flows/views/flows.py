@@ -11,6 +11,7 @@ from app.common.response import ok, page_ok
 from app.core.tenant import TenantContext
 from app.common.schema import ApiResponse, PageParams, PageResult
 from app.tenant.flows.schemas.meta import FlowMetaOut
+from app.tenant.flows.schemas.template import FlowTemplatesOut
 from app.tenant.flows.schemas.flow import (
     FlowCreate,
     FlowOut,
@@ -38,6 +39,14 @@ async def flow_meta(
     db: AsyncSession = Depends(get_db),
 ):
     return ok(await _svc(db, ctx).get_meta())
+
+
+@router.get("/templates", response_model=ApiResponse[FlowTemplatesOut])
+async def flow_templates(
+    ctx: TenantContext = Depends(require_permissions("flow:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    return ok(await _svc(db, ctx).list_templates())
 
 
 @router.get("", response_model=ApiResponse[PageResult[FlowOut]])

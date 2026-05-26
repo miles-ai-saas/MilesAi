@@ -5,7 +5,7 @@
  * 会话：`chat-sessions`；发送：`api.chatAgent`；Trace：`agent-trace` / `agent-steps`。
  */
 
-import { Suspense, useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AgentChatLeftSidebar } from "@/components/agent/AgentChatLeftSidebar";
 import { AgentWorkbenchOverlay } from "@/components/agent/AgentWorkbenchOverlay";
@@ -31,8 +31,12 @@ import {
   listSessions,
   setActiveSessionId,
   type ChatMessage,
+  type ChatMessageMedia,
   type ChatSession,
 } from "@/lib/chat-sessions";
+import type { ChatMediaIn } from "@/lib/types";
+
+type PendingMedia = ChatMessageMedia & { local_preview: string };
 import { useInfiniteList } from "@/hooks/use-infinite-list";
 import { useConfirmAction } from "@/hooks/use-confirm-action";
 import type { PendingToolCall } from "@/lib/types";
@@ -70,6 +74,9 @@ function AgentsChatContent() {
   const [leftCollapsed, setLeftCollapsed] = useState(false);
   const [rightCollapsed, setRightCollapsed] = useState(false);
   const [query, setQuery] = useState("");
+  const [pendingMedia, setPendingMedia] = useState<PendingMedia[]>([]);
+  const [uploadingMedia, setUploadingMedia] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [chatting, setChatting] = useState(false);
   const [pendingTool, setPendingTool] = useState<PendingToolCall | null>(null);
   const { selectedTurnIndex, setSelectedTurnIndex } = useTraceTurnSelection(messages, conversationId);
@@ -92,6 +99,7 @@ function AgentsChatContent() {
       setMessages([...session.messages]);
       setSessionTitle(session.title);
       setQuery("");
+      setPendingMedia([]);
     },
     [],
   );
@@ -218,25 +226,85 @@ function AgentsChatContent() {
     router.replace(`/workbench/agents/chat?${params.toString()}`);
   };
 
+  const onPickImages = async (files: FileList | null) => {
+    if (!files?.length || uploadingMedia) return;
+    setUploadingMedia(true);
+    try {
+      const next: PendingMedia[] = [];
+      for (const file of Array.from(files)) {
+        if (!file.type.startsWith("image/")) continue;
+        const att = await api.uploadAttachment(file, { purpose: "chat" });
+        const local_preview = URL.createObjectURL(file);
+        next.push({
+          attachment_id: att.id,
+          filename: att.filename,
+          preview_url: local_preview,
+          local_preview,
+        });
+      }
+      if (next.length) {
+        setPendingMedia((prev) => [...prev, ...next].slice(0, 4));
+      }
+    } catch (e) {
+      const err = e instanceof Error ? e.message : "图片上传失败";
+      window.alert(err);
+    } finally {
+      setUploadingMedia(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const removePendingMedia = (attachmentId: string) => {
+    setPendingMedia((prev) => {
+      const item = prev.find((p) => p.attachment_id === attachmentId);
+      if (item?.local_preview) URL.revokeObjectURL(item.local_preview);
+      return prev.filter((p) => p.attachment_id !== attachmentId);
+    });
+  };
+
   const chat = async () => {
-    if (!selectedAgent || !conversationId || !query.trim()) return;
+    if (!selectedAgent || !conversationId) return;
     const userText = query.trim();
+    const mediaPayload: ChatMediaIn[] = pendingMedia.map((m) => ({
+      attachment_id: m.attachment_id,
+    }));
+    if (!userText && mediaPayload.length === 0) return;
+
+    const userMedia: ChatMessageMedia[] = pendingMedia.map((m) => ({
+      attachment_id: m.attachment_id,
+      filename: m.filename,
+      preview_url: m.preview_url,
+    }));
+
     setChatting(true);
     setQuery("");
+    setPendingMedia([]);
     const optimistic: ChatMessage[] = [
       ...messages,
-      { role: "user", content: userText },
+      {
+        role: "user",
+        content: userText,
+        ...(userMedia.length ? { media: userMedia } : {}),
+      },
     ];
     setMessages(optimistic);
 
     try {
-      const res = await api.chatAgent(selectedAgent, userText, { conversationId });
+      const res = await api.chatAgent(selectedAgent, userText, {
+        conversationId,
+        media: mediaPayload.length ? mediaPayload : undefined,
+      });
       setPendingTool(res.pending_tool ?? null);
       const nextMessages: ChatMessage[] = [
         ...optimistic,
         {
           role: "assistant",
           content: res.answer,
+          artifacts: res.artifacts?.map((a) => ({
+            kind: a.kind,
+            attachment_id: a.attachment_id,
+            mime_type: a.mime_type,
+          })),
           steps: res.steps?.length ? res.steps : undefined,
           traceId: res.trace_id,
         },
@@ -249,6 +317,7 @@ function AgentsChatContent() {
         res.answer,
         res.steps ?? [],
         res.trace_id,
+        userMedia.length ? userMedia : undefined,
       );
       refreshSessions(selectedAgent);
       const updated = getSession(selectedAgent, conversationId);
@@ -350,29 +419,75 @@ function AgentsChatContent() {
         </div>
 
         <div className="border-t border-line bg-surface p-4">
-          <div className="mx-auto flex max-w-3xl gap-2">
-            <textarea
-              className="input-field min-h-[44px] flex-1 resize-none py-2.5"
-              rows={2}
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  void chat();
+          <div className="mx-auto max-w-3xl space-y-2">
+            {pendingMedia.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {pendingMedia.map((m) => (
+                  <div key={m.attachment_id} className="relative">
+                    <img
+                      src={m.local_preview}
+                      alt={m.filename ?? "待发送"}
+                      className="h-16 w-16 rounded-lg object-cover ring-1 ring-line"
+                    />
+                    <button
+                      type="button"
+                      className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-ink text-xs text-surface"
+                      aria-label="移除图片"
+                      onClick={() => removePendingMedia(m.attachment_id)}
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="flex gap-2">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                multiple
+                className="hidden"
+                onChange={(e) => void onPickImages(e.target.files)}
+              />
+              <button
+                type="button"
+                className="btn-sm-outline shrink-0 self-end"
+                disabled={!selectedAgent || !conversationId || uploadingMedia || chatting}
+                onClick={() => fileInputRef.current?.click()}
+                title="上传图片（最多 4 张）"
+              >
+                {uploadingMedia ? "上传中…" : "图片"}
+              </button>
+              <textarea
+                className="input-field min-h-[44px] flex-1 resize-none py-2.5"
+                rows={2}
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    void chat();
+                  }
+                }}
+                placeholder="输入问题或附图，Enter 发送"
+                disabled={!selectedAgent || !conversationId}
+              />
+              <button
+                type="button"
+                onClick={() => void chat()}
+                disabled={
+                  chatting ||
+                  uploadingMedia ||
+                  !selectedAgent ||
+                  !conversationId ||
+                  (!query.trim() && pendingMedia.length === 0)
                 }
-              }}
-              placeholder="输入问题，Enter 发送，Shift+Enter 换行"
-              disabled={!selectedAgent || !conversationId}
-            />
-            <button
-              type="button"
-              onClick={() => void chat()}
-              disabled={chatting || !selectedAgent || !conversationId}
-              className="btn-primary shrink-0 self-end px-5 py-2 text-sm"
-            >
-              {chatting ? "思考中…" : "发送"}
-            </button>
+                className="btn-primary shrink-0 self-end px-5 py-2 text-sm"
+              >
+                {chatting ? "思考中…" : "发送"}
+              </button>
+            </div>
           </div>
         </div>
       </section>

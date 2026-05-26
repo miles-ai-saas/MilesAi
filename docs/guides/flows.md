@@ -2,7 +2,10 @@
 
 > 类型：流程编排 | 状态：已实现 | 关联：[technical-design.md](../architecture/technical-design.md) §9  
 > **编排增强（已实现）：** [flow-orchestration-enhancement.md](../architecture/flow-orchestration-enhancement.md)  
-> **子流程 SubFlow（已立项 · 暂不实施）：** [flow-subflow-design.md](../architecture/flow-subflow-design.md)
+> **子流程 SubFlow（已立项 · 暂不实施）：** [flow-subflow-design.md](../architecture/flow-subflow-design.md)  
+> **LLM 识图输入（设计稿 · 未实施）：** [flow-llm-multimodal-design.md](../architecture/flow-llm-multimodal-design.md)  
+> **生图 / 生视频等生成类（设计稿 · 未实施）：** [flow-generative-media-design.md](../architecture/flow-generative-media-design.md)  
+> **智能体对话多模态（设计稿 · 未实施）：** [agent-multimodal-design.md](../architecture/agent-multimodal-design.md)
 
 画布 `graph_json` **仅由 LangGraph 编译执行**；`flow_runtime` 提供节点 handler，编译与执行在 `integrations.langgraph`。
 
@@ -37,7 +40,7 @@ React Flow → PUT /flows/{id}/graph → flow_versions
 |------|------|
 | 后端 JSON | [`flow_runtime/templates/rag_flow.json`](../backend/app/flow_runtime/templates/rag_flow.json) |
 | 结构说明 | [`templates/README.md`](../backend/app/flow_runtime/templates/README.md) |
-| 前端初始化 | `frontend/lib/flow-nodes.ts` → `RAG_TEMPLATE` |
+| 前端创建/插入 | `GET /flows/templates` ← `flow_runtime/templates/registry.py` |
 | 市场种子 | `tenant.marketplace.util.load_rag_graph_template()` |
 
 编译执行见 `integrations.langgraph.compiler`（`build_canvas_graph` / `run_compiled_canvas`），**不同于**下文 Agent LangGraph RAG 图。
@@ -78,7 +81,7 @@ React Flow → PUT /flows/{id}/graph → flow_versions
 ### 内置模板 `rag_flow_with_grade.json`
 
 `TextInput → KnowledgeSearch → RelevanceGrade` → good/poor → `PromptTemplate → LLMCall`；none → `StaticResponse` → `TextOutput`。  
-加载：`load_rag_graph_template(variant="with_grade")`；前端 `RAG_TEMPLATE_WITH_GRADE`。
+加载：`load_rag_graph_template(variant="with_grade")` 或模板 id `rag_grade`。
 
 ### 版本历史
 
@@ -93,6 +96,10 @@ React Flow → PUT /flows/{id}/graph → flow_versions
 ## 枚举元数据
 
 `GET /flows/meta`（注册在 `/flows/{id}` 之前）返回列表/筛选用的 `statuses`（`draft` / `published` 等 `value` + `label`），与 `GET /hooks/meta` 同模式。前端 `flows/page.tsx` 进入时 `api.getFlowMeta()`，状态标签用 `optionLabel(meta.statuses, status)`。
+
+### 内置模板 API
+
+`GET /flows/templates` 返回 `items[]`：`id`、`label`、`hint`、`default_name`、`insertable`、`graph_json`。注册表见 `flow_runtime/templates/registry.py`（含 blank、rag、rag_grade、simple_llm、image_generate、video_generate）。新建流程对话框与编辑页「插入模板」均调用此接口。
 
 ## 标签
 

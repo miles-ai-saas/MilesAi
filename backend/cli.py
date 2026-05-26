@@ -8,6 +8,7 @@
   python cli.py init-db
   python cli.py seed all
   python cli.py verify-db
+  python cli.py backfill-media-assets [--dry-run] [--tenant-id UUID]
 
 安装 editable 后也可: milesai serve
 """
@@ -151,6 +152,32 @@ def verify_db() -> None:
     from scripts.verify_db import main as verify_main
 
     raise SystemExit(asyncio.run(verify_main()))
+
+
+@cli.command("backfill-media-assets")
+@click.option("--tenant-id", default=None, help="仅处理指定租户 UUID")
+@click.option("--dry-run", is_flag=True, help="只统计将创建条数，不写库")
+@click.option("--limit", type=int, default=None, help="最多处理附件条数")
+def backfill_media_assets(
+    tenant_id: str | None,
+    dry_run: bool,
+    limit: int | None,
+) -> None:
+    """为历史生成附件补写 media_assets 登记。"""
+    from uuid import UUID
+
+    from scripts.backfill_media_assets import run_backfill_media_assets
+
+    tid = UUID(tenant_id) if tenant_id else None
+    stats = asyncio.run(
+        run_backfill_media_assets(tenant_id=tid, dry_run=dry_run, limit=limit)
+    )
+    mode = "dry-run" if dry_run else "committed"
+    click.echo(
+        f">>> backfill-media-assets ({mode}): "
+        f"scanned={stats['scanned']} created={stats['created']} "
+        f"skipped={stats['skipped']} errors={stats['errors']}"
+    )
 
 
 def main() -> None:

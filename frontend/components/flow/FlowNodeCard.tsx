@@ -1,6 +1,9 @@
 "use client";
 
-/** 画布节点卡片 UI（链路 §6）；Handle 见 flow-node-schemas.ts。 */
+/**
+ * 画布节点卡片 UI（链路 §6）；Handle 见 flow-node-schemas.ts。
+ * ImageGenerate / VideoGenerate 摘要见节点 data.model_config_id、duration 等。
+ */
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 import { NODE_PALETTE } from "@/lib/flow-nodes";
 import {
@@ -12,7 +15,9 @@ import {
 const TARGET_TOP_OFFSET: Record<string, string> = {
   query: "20%",
   hits: "50%",
-  prompt: "80%",
+  prompt: "25%",
+  input: "50%",
+  image_attachment_id: "75%",
 };
 
 export function FlowNodeCard({ type, data, selected }: NodeProps) {
@@ -23,6 +28,9 @@ export function FlowNodeCard({ type, data, selected }: NodeProps) {
   const { targets, sources } = getNodeHandles(nodeType);
   const isCondition = nodeType === "ConditionBranch";
   const isGrade = nodeType === "RelevanceGrade";
+  const isImageGen = nodeType === "ImageGenerate";
+  const isVideoGen = nodeType === "VideoGenerate";
+  const d = data as Record<string, unknown>;
   const GRADE_LABELS: Record<string, string> = {
     good: "好",
     poor: "低",
@@ -67,7 +75,19 @@ export function FlowNodeCard({ type, data, selected }: NodeProps) {
       )}
       {isGrade && (
         <p className="mt-1 text-[10px] text-violet-600">
-          阈值: {String((data as Record<string, unknown>)?.relevance_threshold ?? 0.35)}
+          阈值: {String(d.relevance_threshold ?? 0.35)}
+        </p>
+      )}
+      {isImageGen && (
+        <p className="mt-1 text-[10px] text-rose-700">
+          {d.model_config_id ? "image_gen 已配置" : "未选 image_gen 模型"}
+          {d.size ? ` · ${String(d.size)}` : ""}
+        </p>
+      )}
+      {isVideoGen && (
+        <p className="mt-1 text-[10px] text-violet-700">
+          {d.model_config_id ? "video_gen 已配置" : "未选 video_gen 模型"}
+          {` · ${String(d.duration ?? 5)}s · ${String(d.resolution ?? "720P")}`}
         </p>
       )}
 

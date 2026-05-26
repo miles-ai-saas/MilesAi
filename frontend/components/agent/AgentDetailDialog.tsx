@@ -62,6 +62,7 @@ function formatConfigSummary(
   const mcp = cfg.mcp_service_ids as string[] | undefined;
   if (mcp?.length) lines.push(`MCP 服务：${mcp.length} 个`);
   if (cfg.skill_package_id) lines.push("已绑定技能包");
+  if (cfg.enable_generative_tools) lines.push("生图/生视频工具：已开启");
   if (lines.length === 0) return <span className="text-ink-muted">默认配置</span>;
   return (
     <ul className="list-inside list-disc space-y-0.5 text-ink-muted">

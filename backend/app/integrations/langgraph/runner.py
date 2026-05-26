@@ -24,6 +24,7 @@ from langgraph.checkpoint.memory import MemorySaver
 
 from app.integrations.langgraph.checkpointer import checkpoint_backend, get_compiled_rag_graph
 from app.integrations.langgraph.graphs.rag_qa import build_rag_qa_graph
+from app.common.schemas.media import MediaRefIn
 from app.models.agent import Agent
 from app.models.model import ModelConfig
 
@@ -58,6 +59,7 @@ async def run_rag_workflow(
     model: ModelConfig,
     system_prompt: str,
     query: str,
+    prompt_query: str | None = None,
     kb_ids: list[str],
     tenant_id: UUID,
     agent_id: UUID,
@@ -66,6 +68,8 @@ async def run_rag_workflow(
     thread_id: str | None = None,
     conversation_id: str | None = None,
     agent_config: dict | None = None,
+    media: list[MediaRefIn] | None = None,
+    user_id: UUID | None = None,
 ) -> tuple[str, list[dict[str, Any]], list[dict[str, Any]]]:
     """执行 RAG LangGraph，返回 (answer, hits, steps)。"""
     from app.infra.db import AsyncSessionLocal
@@ -83,6 +87,7 @@ async def run_rag_workflow(
     )
     initial: dict[str, Any] = {
         "query": query,
+        "prompt_query": (prompt_query or query).strip(),
         "system_prompt": system_prompt,
         "kb_ids": kb_ids,
         "tenant_id": str(tenant_id),
@@ -92,6 +97,8 @@ async def run_rag_workflow(
         "retry_count": 0,
         "relevance_threshold": float(cfg.get("relevance_threshold", 0.35)),
         "use_llm_grade": bool(cfg.get("use_llm_grade", False)),
+        "media": [m.model_dump(mode="json") for m in (media or [])],
+        "user_id": str(user_id) if user_id else "",
         "hits": [],
         "steps": [
             {

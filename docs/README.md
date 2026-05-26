@@ -8,9 +8,15 @@
 docs/
 ├── README.md                 # 本索引
 ├── product/                  # 产品与需求
-│   └── prd.md
+│   ├── prd.md
+│   └── multimodal-capabilities.md  # 多模态产品能力（生文/识图/生成/入库）
 ├── architecture/             # 架构与技术方案
 │   ├── technical-design.md
+│   ├── multimodal-roadmap.md       # 多模态技术总览与实施顺序
+│   ├── agent-multimodal-design.md
+│   ├── flow-llm-multimodal-design.md
+│   ├── flow-generative-media-design.md
+│   ├── media-assets-design.md           # 生成物媒体资产与升格入库（草案）
 │   ├── layering.md           # 后端分层与代码规范
 │   ├── rag-module-migration.md
 │   ├── vector-database-selection.md
@@ -43,19 +49,25 @@ docs/
 | 文档 | 说明 |
 |------|------|
 | [prd.md](./product/prd.md) | 立项需求原文 + **模块6 实现对照**（只读参考） |
+| [multimodal-capabilities.md](./product/multimodal-capabilities.md) | **多模态产品能力**：生文/识图/生图·视频/知识库入库、场景与发布节奏 |
 
 ## 架构 (`architecture/`)
 
 | 文档 | 说明 |
 |------|------|
 | [technical-design.md](./architecture/technical-design.md) | 架构、分层、库表、API、**对象/向量存储与配置策略（§6.5）**（**主文档**） |
-| [layering.md](./architecture/layering.md) | 后端分层、`app/rag` 目录与入库/检索流水线、import 规范 |
+| [layering.md](./architecture/layering.md) | 后端分层、import 规范；**单文件 ≥500 行须按子包拆分**（§5.4，细则见 [backend/README.md](../backend/README.md)） |
 | [rag-module-migration.md](./architecture/rag-module-migration.md) | RAG 模块迁移清单（已完成）与后续插件位 |
 | [vector-database-selection.md](./architecture/vector-database-selection.md) | 向量数据库选型：pgvector / Weaviate / Milvus / Qdrant / OpenSearch / ES |
 | [mcp-sandbox.md](./architecture/mcp-sandbox.md) | MCP STDIO / 平台执行：沙箱与 Runner 隔离方案 |
 | [tools-runtime.md](./architecture/tools-runtime.md) | **工具运行时**：内置 / HTTP / 脚本 / MCP 统一执行平面（目标架构） |
 | [flow-orchestration-enhancement.md](./architecture/flow-orchestration-enhancement.md) | **流程编排增强**：属性面板、调试、RAG 节点（已实现） |
 | [flow-subflow-design.md](./architecture/flow-subflow-design.md) | **子流程 SubFlow**：立项规格，暂不实施 |
+| [multimodal-roadmap.md](./architecture/multimodal-roadmap.md) | **多模态技术总览**：文档地图、附件无签名约定、实施顺序 |
+| [agent-multimodal-design.md](./architecture/agent-multimodal-design.md) | 智能体对话多模态（识图 + 生成工具）设计稿 |
+| [flow-llm-multimodal-design.md](./architecture/flow-llm-multimodal-design.md) | 流程 `LLMCall` **识图输入** 设计稿 |
+| [flow-generative-media-design.md](./architecture/flow-generative-media-design.md) | 流程 **生图/生视频** 节点设计稿 |
+| [media-assets-design.md](./architecture/media-assets-design.md) | **生成物媒体资产**：不自动进 KB、`media_assets` 表与升格入库 |
 
 ## 前端 (`frontend/`)
 

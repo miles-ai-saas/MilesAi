@@ -19,7 +19,9 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.common.schemas.media import MediaRefIn
 from app.core.tenant import TenantContext
+from app.integrations.chat.multimodal import build_invoke_messages_with_media
 from app.integrations.langchain.chat_models import ainvoke_chat
 from app.integrations.langchain.vectorstores import search_multi_kb_async
 from app.models.model import ModelConfig
@@ -86,14 +88,19 @@ async def rag_answer(
     db: AsyncSession,
     top_k: int = 5,
     temperature: float = 0.7,
+    media: list[MediaRefIn] | None = None,
+    ctx: TenantContext | None = None,
+    retrieve_query: str | None = None,
 ) -> tuple[str, list[dict[str, Any]]]:
     """
     端到端 RAG：检索 → 拼 prompt → LLM 生成。
 
+    ``retrieve_query`` 仅用于向量检索；``query`` 写入生成 prompt（可含「请根据附图回答」）。
     返回 (answer 文本, hits) 便于调用方展示引用来源。
     """
+    search_q = (retrieve_query if retrieve_query is not None else query).strip()
     hits = await retrieve_hits(
-        query,
+        search_q,
         tenant_id=tenant_id,
         kb_ids=kb_ids,
         db=db,
@@ -107,9 +114,22 @@ async def rag_answer(
             query=query,
             hits=hits,
         )
+    messages: list[dict[str, Any]]
+    if media and ctx:
+        messages = await build_invoke_messages_with_media(
+            db,
+            ctx,
+            prompt_text=prompt,
+            media=media,
+        )
+    else:
+        messages = [{"role": "user", "content": prompt}]
+
     answer = await ainvoke_chat(
         model,
-        [{"role": "user", "content": prompt}],
+        messages,
         temperature=temperature,
+        db=db,
+        tenant_id=tenant_id,
     )
     return answer, hits

@@ -1,6 +1,7 @@
 """flow_runtime 画布节点与 LangGraph 评分常量一致性。"""
 
 from app.flow_runtime import constants as flow_constants
+from app.flow_runtime.constants import IMAGE_GENERATE_NODE_TYPE, VIDEO_GENERATE_NODE_TYPE
 from app.flow_runtime.nodes.registry import NODE_REGISTRY
 from app.integrations.langgraph import constants as lg_constants
 from app.integrations.langgraph.graph_analysis import (
@@ -12,6 +13,14 @@ from app.tenant.compliance.constants import COMPLIANCE_SCAN_MODULES
 
 def test_node_registry_matches_canvas_node_types():
     assert set(NODE_REGISTRY.keys()) == flow_constants.CANVAS_NODE_TYPES
+
+
+def test_image_generate_node_registered():
+    assert IMAGE_GENERATE_NODE_TYPE in NODE_REGISTRY
+
+
+def test_video_generate_node_registered():
+    assert VIDEO_GENERATE_NODE_TYPE in NODE_REGISTRY
 
 
 def test_conditional_node_types_are_canvas_nodes():

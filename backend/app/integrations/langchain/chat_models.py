@@ -102,7 +102,7 @@ def get_chat_model(
 
 async def ainvoke_chat(
     model: ModelConfig,
-    messages: list[dict[str, str]],
+    messages: list[dict[str, Any]],
     *,
     temperature: float = 0.7,
     max_tokens: int = 2048,
@@ -112,6 +112,7 @@ async def ainvoke_chat(
     """
     异步对话（OpenAI 形状 ``{"role","content"}`` 列表）。
 
+    ``content`` 可为字符串或多模态 part 数组（见 ``integrations.chat.multimodal``）。
     RAG 路径常将 system+参考+问题拼成单条 user message 传入（见 ``build_rag_user_prompt``）。
     """
     if db is not None and tenant_id is not None:
@@ -121,9 +122,11 @@ async def ainvoke_chat(
 
         model = await resolve_model_for_invoke(db, model, UUID(str(tenant_id)))
 
-    openai_msgs = [
-        {"role": m.get("role", "user"), "content": m.get("content", "")} for m in messages
-    ]
+    openai_msgs: list[dict[str, Any]] = []
+    for m in messages:
+        role = m.get("role", "user")
+        content = m.get("content", "")
+        openai_msgs.append({"role": role, "content": content})
     return await litellm_chat_completion(
         model,
         openai_msgs,

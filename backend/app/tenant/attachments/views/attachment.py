@@ -3,6 +3,7 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Form, UploadFile
+from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.common.response import ok, page_ok
@@ -63,6 +64,17 @@ async def attachments_meta(
     db: AsyncSession = Depends(get_db),
 ):
     return ok(await _svc(db, ctx).get_meta())
+
+
+@router.get("/{attachment_id}/content")
+async def get_attachment_content(
+    attachment_id: UUID,
+    ctx: TenantContext = Depends(require_permissions("attachment:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    """鉴权下返回附件字节流（v1 图片预览/下载，非对象存储签名 URL）。"""
+    data, mime = await _svc(db, ctx).read_image_bytes(attachment_id)
+    return Response(content=data, media_type=mime)
 
 
 @router.get("/{attachment_id}", response_model=ApiResponse[AttachmentOut])

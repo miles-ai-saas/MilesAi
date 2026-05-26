@@ -20,6 +20,7 @@ from app.tenant.prompts.models import PromptTemplate
 from app.tenant.skills.models import SkillPackage
 from app.models.flow import Flow, FlowStatus, FlowVersion
 from app.models.attachment import Attachment
+from app.models.media_asset import MediaAsset
 from app.models.kb import Document, DocumentChunk, DocumentStatus, KnowledgeBase, VectorRef
 from app.models.kb_search_log import KbSearchLog
 from app.tenant.marketplace.models import (
@@ -54,6 +55,7 @@ __all__ = [
     "VectorRef",
     "KbSearchLog",
     "Attachment",
+    "MediaAsset",
     "Agent",
     "AgentStatus",
     "AgentSubAgentBinding",

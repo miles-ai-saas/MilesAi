@@ -403,6 +403,20 @@ export interface FlowMeta {
   statuses: EnumOption[];
 }
 
+/** GET /flows/templates — 内置画布模板 */
+export interface FlowTemplate {
+  id: string;
+  label: string;
+  hint: string;
+  default_name: string;
+  insertable: boolean;
+  graph_json: FlowGraph;
+}
+
+export interface FlowTemplatesResponse {
+  items: FlowTemplate[];
+}
+
 /** GET /kb/meta */
 export interface KbMeta {
   retrieval_modes: EnumOption[];
@@ -651,10 +665,25 @@ export interface ToolInvocationLog {
   created_at: string;
 }
 
+/** 对话附图（服务端读 attachment，非签名 URL） */
+export interface ChatMediaIn {
+  attachment_id: string;
+  detail?: "auto" | "low" | "high";
+}
+
+/** 工具生图/生视频产出；预览用 fetchAttachmentPreviewUrl，非 OSS 签名链接 */
+export interface ChatArtifact {
+  kind: string; // image | video
+  attachment_id: string;
+  mime_type?: string | null;
+  caption?: string | null;
+}
+
 export interface ChatResponse {
   answer: string;
   sources: Record<string, unknown>[];
   steps: Record<string, unknown>[];
+  artifacts?: ChatArtifact[];
   pending_tool?: PendingToolCall | null;
 }
 
@@ -721,6 +750,27 @@ export interface Attachment {
   resource_type: string | null;
   resource_id: string | null;
   created_at: string;
+}
+
+/** AI 生成物媒体资产（blob 在 attachment） */
+export interface MediaAsset {
+  id: string;
+  tenant_id: string;
+  attachment_id: string;
+  kind: string;
+  source: string;
+  source_ref_type: string | null;
+  source_ref_id: string | null;
+  prompt: string | null;
+  model_config_id: string | null;
+  title: string | null;
+  tags: string[] | null;
+  kb_id: string | null;
+  kb_document_id: string | null;
+  promoted_at: string | null;
+  created_by: string;
+  created_at: string;
+  attachment?: Attachment | null;
 }
 
 export type SensitiveAction = "warn" | "block";

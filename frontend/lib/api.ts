@@ -411,12 +411,17 @@ export const api = {
     }>(`/flows/${flowId}/compile`),
   runFlow: (
     flowId: string,
-    payload: { inputs: Record<string, string>; kb_ids?: string[] },
+    payload: {
+      inputs: Record<string, string>;
+      kb_ids?: string[];
+      media?: import("./types").ChatMediaIn[];
+    },
     opts?: { useLanggraph?: boolean },
   ) =>
     post<{ output: unknown; steps: unknown[] }>(`/flows/${flowId}/run`, {
       inputs: payload.inputs,
       kb_ids: payload.kb_ids ?? [],
+      ...(payload.media?.length ? { media: payload.media } : {}),
       ...(opts?.useLanggraph ? { use_langgraph: true } : {}),
     }),
 
@@ -540,6 +545,7 @@ export const api = {
     query: string,
     opts?: {
       conversationId?: string;
+      media?: import("./types").ChatMediaIn[];
       toolConfirmed?: boolean;
       pendingToolSlug?: string;
       pendingToolParams?: Record<string, unknown>;
@@ -547,11 +553,20 @@ export const api = {
   ) =>
     postWithTrace<ChatResponse>(`/agents/${agentId}/chat`, {
       query,
+      ...(opts?.media?.length ? { media: opts.media } : {}),
       ...(opts?.conversationId ? { conversation_id: opts.conversationId } : {}),
       ...(opts?.toolConfirmed ? { tool_confirmed: true } : {}),
       ...(opts?.pendingToolSlug ? { pending_tool_slug: opts.pendingToolSlug } : {}),
       ...(opts?.pendingToolParams ? { pending_tool_params: opts.pendingToolParams } : {}),
     }) as Promise<ChatAgentResult>,
+
+  /** 鉴权拉取附件字节并返回 blob URL（用于对话缩略图，非签名 OSS） */
+  fetchAttachmentPreviewUrl: async (attachmentId: string) => {
+    const res = await http.get<Blob>(`/attachments/${attachmentId}/content`, {
+      responseType: "blob",
+    });
+    return URL.createObjectURL(res.data);
+  },
 
   getKb: (kbId: string) => get<KnowledgeBase>(`/kb/${kbId}`),
   listDocuments: (kbId: string, page = 1, size = DEFAULT_PAGE_SIZE) =>
@@ -629,10 +644,40 @@ export const api = {
   deleteAttachment: (id: string) =>
     http.delete(`/attachments/${id}`).then(() => undefined),
 
+  listMediaAssets: (
+    page = 1,
+    size = DEFAULT_PAGE_SIZE,
+    opts?: { kind?: string; source?: string; has_kb_document?: boolean },
+  ) => {
+    const q = new URLSearchParams(buildPageQuery(page, size));
+    if (opts?.kind) q.set("kind", opts.kind);
+    if (opts?.source) q.set("source", opts.source);
+    if (opts?.has_kb_document !== undefined) {
+      q.set("has_kb_document", String(opts.has_kb_document));
+    }
+    return getPage<import("./types").MediaAsset>(`/media-assets?${q.toString()}`);
+  },
+  getMediaAsset: (id: string) => get<import("./types").MediaAsset>(`/media-assets/${id}`),
+  updateMediaAsset: (id: string, body: { title?: string; tags?: string[] }) =>
+    http.patch<ApiResponse<import("./types").MediaAsset>>(`/media-assets/${id}`, body).then((r) =>
+      unwrap(r.data),
+    ),
+  deleteMediaAsset: (id: string) =>
+    http.delete(`/media-assets/${id}`).then(() => undefined),
+  promoteMediaAssetToKb: (
+    id: string,
+    body: { kb_id: string; filename?: string; run_parse?: boolean },
+  ) =>
+    http
+      .post<ApiResponse<import("./types").MediaAsset>>(`/media-assets/${id}/promote-to-kb`, body)
+      .then((r) => unwrap(r.data)),
+
   // --- 各域枚举元数据：backend tenant/*/meta.py → GET */meta → hooks/use-*-meta → lib/*-labels（见 lib/enum-meta.ts、docs/guides/hooks.md §9）---
   getHookMeta: () => get<import("./types").HookMeta>("/hooks/meta"),
   getComplianceMeta: () => get<import("./types").ComplianceMeta>("/compliance/meta"),
   getFlowMeta: () => get<import("./types").FlowMeta>("/flows/meta"),
+  getFlowTemplates: () =>
+    get<import("./types").FlowTemplatesResponse>("/flows/templates"),
   getKbMeta: () => get<import("./types").KbMeta>("/kb/meta"),
   getToolsMeta: () => get<import("./types").ToolsMeta>("/tools/meta"),
   getAgentMeta: () => get<import("./types").AgentMeta>("/agents/meta"),

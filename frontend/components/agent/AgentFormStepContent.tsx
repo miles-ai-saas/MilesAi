@@ -8,6 +8,7 @@ import { subAgentRoleOptions } from "@/lib/agent-utils";
 import { useAgentMeta } from "@/hooks/use-agent-meta";
 import { useA2aMeta } from "@/hooks/use-a2a-meta";
 import { a2aInvokePolicyOptions } from "@/lib/a2a-labels";
+import { useMemo } from "react";
 import type {
   Agent,
   A2aPeer,
@@ -64,6 +65,15 @@ export function AgentFormStepContent({
   const a2aMeta = useA2aMeta();
   const roleOptions = subAgentRoleOptions(agentMeta);
   const invokePolicies = a2aInvokePolicyOptions(a2aMeta);
+
+  const imageGenModels = useMemo(
+    () => models.filter((m) => m.is_active !== false && m.model_type === "image_gen"),
+    [models],
+  );
+  const videoGenModels = useMemo(
+    () => models.filter((m) => m.is_active !== false && m.model_type === "video_gen"),
+    [models],
+  );
 
   const toggleMcp = (id: string) => {
     setForm((f) => ({
@@ -307,14 +317,75 @@ export function AgentFormStepContent({
                     ...f,
                     enable_tool_calling: e.target.checked,
                     tool_slugs: e.target.checked ? f.tool_slugs : [],
+                    enable_generative_tools: e.target.checked
+                      ? f.enable_generative_tools
+                      : false,
                   }))
                 }
               />
               启用平台工具自动调用（function calling）
             </label>
             <p className="mt-1 text-xs text-ink-muted">
-              仅在不绑定知识库时生效；与 MCP 独立。未勾选下方工具则允许全部内置 + 自定义 HTTP。
+              与 MCP 独立。未勾选下方工具则允许全部内置 + 自定义 HTTP。生图/生视频亦依赖本项。
             </p>
+            <label className="mt-3 flex cursor-pointer items-center gap-2 text-sm text-ink">
+              <input
+                type="checkbox"
+                checked={form.enable_generative_tools}
+                disabled={!form.enable_tool_calling}
+                onChange={(e) =>
+                  setForm((f) => ({
+                    ...f,
+                    enable_generative_tools: e.target.checked,
+                    enable_tool_calling: e.target.checked ? true : f.enable_tool_calling,
+                  }))
+                }
+              />
+              启用生图 / 生视频工具（万相优先）
+            </label>
+            <p className="mt-1 text-xs text-ink-muted">
+              对话中可调用 generate_image、generate_video；产出出现在回复与「生成素材」。有知识库时须同时开启「平台工具」：将走 knowledge_search + 生成工具，不再使用自动 LangGraph RAG。
+            </p>
+            {form.enable_generative_tools && form.enable_tool_calling && (
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                <label className="block text-xs">
+                  <span className="mb-1 block text-ink-muted">生图模型（可选）</span>
+                  <select
+                    className="input-field w-full text-sm"
+                    value={form.generative_image_model_id}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, generative_image_model_id: e.target.value }))
+                    }
+                  >
+                    <option value="">默认（租户 image_gen）</option>
+                    {imageGenModels.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.name}
+                        {!m.has_api_key ? "（缺 Key）" : ""}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="block text-xs">
+                  <span className="mb-1 block text-ink-muted">生视频模型（可选）</span>
+                  <select
+                    className="input-field w-full text-sm"
+                    value={form.generative_video_model_id}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, generative_video_model_id: e.target.value }))
+                    }
+                  >
+                    <option value="">默认（租户 video_gen）</option>
+                    {videoGenModels.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.name}
+                        {!m.has_api_key ? "（缺 Key）" : ""}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+            )}
             {form.enable_tool_calling && (
               <div className="mt-3 flex max-h-36 flex-wrap gap-2 overflow-y-auto">
                 {toolCatalog.length === 0 && (

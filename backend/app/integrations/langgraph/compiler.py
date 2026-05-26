@@ -52,6 +52,7 @@ from app.integrations.langgraph.graph_analysis import (
 )
 from app.integrations.langgraph.graph_analysis import topo_order
 from app.flow_runtime.nodes.registry import NODE_REGISTRY, execute_node
+from app.flow_runtime.step_record import build_flow_node_step
 from app.flow_runtime.types import FlowGraph, RunContext
 
 # 与前端调色板、flow_runtime.nodes.registry 保持一致
@@ -368,19 +369,18 @@ def build_canvas_graph(graph_json: dict[str, Any]):
                 is_superuser=bool(state.get("is_superuser")),
                 agent_id=state.get("agent_id"),
                 agent_config=dict(state.get("agent_config") or {}),
+                media=list(state.get("media") or []),
             )
             node_inputs = _gather_node_inputs(node_id, incoming, state.get("outputs") or {})
             result = await execute_node(ntype, node_data, node_inputs, ctx)
             return {
                 "outputs": {node_id: result},
                 "steps": [
-                    {
-                        "type": "flow_node",
-                        "engine": "langgraph",
-                        "node_id": node_id,
-                        "node_type": ntype,
-                        "output_preview": str(result)[:200],
-                    }
+                    build_flow_node_step(
+                        node_id=node_id,
+                        node_type=ntype,
+                        result=result,
+                    )
                 ],
             }
 
@@ -477,6 +477,7 @@ async def run_compiled_canvas(
         "is_superuser": ctx.is_superuser,
         "agent_id": ctx.agent_id,
         "agent_config": dict(ctx.agent_config),
+        "media": list(ctx.media),
         "outputs": {},
         "steps": [
             {

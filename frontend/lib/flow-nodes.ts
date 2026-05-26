@@ -11,6 +11,11 @@
  * - PromptTemplate output → prompt
  * - PlatformTool output → output（工具执行结果 dict）
  * - ConditionBranch sourceHandle → true | false
+ * - ImageGenerate / VideoGenerate：入 `prompt`/`input`，出 `output`（attachment 元数据 dict）
+ * - VideoGenerate 另可入 `image_attachment_id`（图生视频首帧）
+ *
+ * 多模态生成节点（``group: generative``）须配置 ``model_config_id``（image_gen / video_gen）；
+ * 节点 ``prompt`` 非空时覆盖上游文案。预览/下载走鉴权 attachment content API。
  */
 import type { Node, Edge } from "@xyflow/react";
 import type { FlowEdge, FlowGraph, FlowNode } from "./types";
@@ -27,9 +32,20 @@ export const NODE_PALETTE = [
   { type: "LLMCall", label: "大模型", color: "#f59e0b" },
   { type: "PlatformTool", label: "平台工具", color: "#0ea5e9" },
   { type: "TextOutput", label: "文本输出", color: "#64748b" },
+  /** 调用 image_gen 模型；输出 { kind, attachment_id, mime_type } */
+  { type: "ImageGenerate", label: "生图", color: "#e11d48", group: "generative" },
+  /** 调用 video_gen 模型（万相）；运行可能阻塞数分钟 */
+  { type: "VideoGenerate", label: "生视频", color: "#7c3aed", group: "generative" },
 ] as const;
 
 export type NodeType = (typeof NODE_PALETTE)[number]["type"];
+
+export const PALETTE_GROUPS = [
+  { key: "flow", label: "流程编排" },
+  { key: "generative", label: "多模态生成" },
+] as const;
+
+export type PaletteGroupKey = (typeof PALETTE_GROUPS)[number]["key"];
 
 const DEFAULT_DATA: Record<NodeType, Record<string, unknown>> = {
   TextInput: { input_key: "query", label: "用户输入" },
@@ -64,7 +80,32 @@ const DEFAULT_DATA: Record<NodeType, Record<string, unknown>> = {
     params: {},
   },
   TextOutput: { label: "输出" },
+  ImageGenerate: {
+    label: "生图",
+    model_config_id: "",
+    size: "1024x1024",
+    n: 1,
+    prompt: "",
+  },
+  VideoGenerate: {
+    label: "生视频",
+    model_config_id: "",
+    duration: 5,
+    resolution: "720P",
+    prompt: "",
+    image_attachment_id: "",
+  },
 };
+
+function paletteGroup(
+  item: (typeof NODE_PALETTE)[number],
+): PaletteGroupKey {
+  return "group" in item && item.group === "generative" ? "generative" : "flow";
+}
+
+export function paletteItemsByGroup(group: PaletteGroupKey) {
+  return NODE_PALETTE.filter((p) => paletteGroup(p) === group);
+}
 
 export function reactFlowToGraph(nodes: Node[], edges: Edge[]): FlowGraph {
   return {
@@ -96,7 +137,7 @@ export function graphToReactFlow(graph: FlowGraph): { nodes: Node[]; edges: Edge
       type: n.type,
       position: n.position || { x: 80 + (i % 3) * 220, y: 80 + Math.floor(i / 3) * 120 },
       data: {
-        ...DEFAULT_DATA[n.type as NodeType],
+        ...(DEFAULT_DATA[n.type as NodeType] ?? {}),
         ...n.data,
         label: (n.data?.label as string) || palette?.label || n.type,
       },
@@ -121,43 +162,3 @@ export function createPaletteNode(type: NodeType, position: { x: number; y: numb
     data: { ...DEFAULT_DATA[type], label: meta.label },
   };
 }
-
-export const RAG_TEMPLATE: FlowGraph = {
-  nodes: [
-    { id: "input_1", type: "TextInput", position: { x: 80, y: 120 }, data: { input_key: "query", label: "用户输入" } },
-    { id: "search_1", type: "KnowledgeSearch", position: { x: 320, y: 80 }, data: { top_k: 5, label: "知识库检索" } },
-    { id: "prompt_1", type: "PromptTemplate", position: { x: 560, y: 120 }, data: { label: "提示词", template: "基于以下资料回答：\n{{检索结果}}\n\n问题：{{用户提问}}" } },
-    { id: "llm_1", type: "LLMCall", position: { x: 800, y: 120 }, data: { temperature: 0.7, label: "大模型" } },
-    { id: "output_1", type: "TextOutput", position: { x: 1040, y: 120 }, data: { label: "输出" } },
-  ],
-  edges: [
-    { source: "input_1", target: "search_1", sourceHandle: "output", targetHandle: "query" },
-    { source: "input_1", target: "prompt_1", sourceHandle: "output", targetHandle: "query" },
-    { source: "search_1", target: "prompt_1", sourceHandle: "output", targetHandle: "hits" },
-    { source: "prompt_1", target: "llm_1", sourceHandle: "output", targetHandle: "prompt" },
-    { source: "llm_1", target: "output_1", sourceHandle: "output", targetHandle: "input" },
-  ],
-};
-
-/** 带相关性评分与兜底分支的 RAG 模板（与 backend rag_flow_with_grade.json 一致） */
-export const RAG_TEMPLATE_WITH_GRADE: FlowGraph = {
-  nodes: [
-    { id: "input_1", type: "TextInput", position: { x: 80, y: 160 }, data: { input_key: "query", label: "用户输入" } },
-    { id: "search_1", type: "KnowledgeSearch", position: { x: 300, y: 120 }, data: { top_k: 5, label: "知识库检索" } },
-    { id: "grade_1", type: "RelevanceGrade", position: { x: 520, y: 160 }, data: { relevance_threshold: 0.35, use_llm_grade: false, label: "相关性评分" } },
-    { id: "prompt_1", type: "PromptTemplate", position: { x: 760, y: 80 }, data: { label: "提示词", template: "基于以下资料回答：\n{{检索结果}}\n\n问题：{{用户提问}}" } },
-    { id: "llm_1", type: "LLMCall", position: { x: 1000, y: 80 }, data: { temperature: 0.7, label: "大模型" } },
-    { id: "fallback_1", type: "StaticResponse", position: { x: 760, y: 260 }, data: { label: "无命中兜底", text: "抱歉，未找到与「{{用户提问}}」相关的资料。" } },
-    { id: "output_1", type: "TextOutput", position: { x: 1240, y: 160 }, data: { label: "输出" } },
-  ],
-  edges: [
-    { source: "input_1", target: "search_1", sourceHandle: "output", targetHandle: "query" },
-    { source: "search_1", target: "grade_1", sourceHandle: "output", targetHandle: "hits" },
-    { source: "grade_1", target: "prompt_1", sourceHandle: "good", targetHandle: "input" },
-    { source: "grade_1", target: "prompt_1", sourceHandle: "poor", targetHandle: "input" },
-    { source: "prompt_1", target: "llm_1", sourceHandle: "output", targetHandle: "prompt" },
-    { source: "llm_1", target: "output_1", sourceHandle: "output", targetHandle: "input" },
-    { source: "grade_1", target: "fallback_1", sourceHandle: "none", targetHandle: "input" },
-    { source: "fallback_1", target: "output_1", sourceHandle: "output", targetHandle: "input" },
-  ],
-};

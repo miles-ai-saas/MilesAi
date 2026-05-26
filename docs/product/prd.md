@@ -2,6 +2,7 @@
 
 > **与代码实现对齐说明（2026-05）**  
 > 类型：需求基线 | 状态：只读参考（下文为立项原文，能力以「实现对照」为准）  
+> - **多模态产品能力（生文/识图/生成/入库）**：→ [multimodal-capabilities.md](./multimodal-capabilities.md)（**以该文实现状态为准**）  
 > - **流程编排**：React Flow + `flow_runtime` + LangGraph → [flows.md](../guides/flows.md)  
 > - **RAG / 知识库**：`app/rag`（parse → chunk → index → retrieve）+ `tenant/kb` → [knowledge-base.md](../guides/knowledge-base.md)、[layering.md](../architecture/layering.md)  
 > - **Docker Worker**：队列与可选依赖 → [docker/README.md](../../docker/README.md) § Celery Worker  

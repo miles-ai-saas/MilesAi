@@ -246,6 +246,36 @@ from app.infra.vector_store import get_vector_store
 - 跨层优先 `@dataclass` / `TypedDict`（如 `ChunkHit`），减少裸 `dict[str, Any]` 层层传递。
 - 检索 hit 字段约定：`chunk_id`、`document_id`、`score`、`content_preview`、`score_vector`、`score_keyword`。
 
+### 5.4 单文件体量与子包拆分（强制）
+
+**规范**：`app/` 下单个 `.py` 源文件 **不得超过 500 行**（`wc -l`；测试、`alembic/versions/` 除外）。达到或超过 500 行时，**必须**在合入前拆分，禁止在同文件继续叠加业务逻辑。
+
+**推荐拆分方式（L1 `tenant/*/services`）**：按**聚合**建子包 `services/{aggregate}/`，与领域目录同名或语义一致（如 `agent`、`compliance`、`marketplace`）。详见 [backend/README.md](../../backend/README.md) § 单文件体量、§ services/ 子包。
+
+| 项 | 约定 |
+|----|------|
+| 门面 | `{aggregate}/service.py` 用 Mixin 组合；`{aggregate}/__init__.py` 唯一对外 export |
+| 子模块命名 | 职责名即可（`crud.py`、`chat.py`），避免 `agent_crud.py` 重复前缀 |
+| 共享代码 | 多聚合共用的模块留在 `services/` 根（如 `context.py`、`pipeline.py`） |
+| import | 对外路径保持稳定，例如 `from app.tenant.agents.services.agent import AgentService` |
+| 拆分后体量 | 每个子文件宜 **300–400 行**；仍 ≥500 则继续按职责切文件 |
+| 其它路径 | `integrations/`、`flow_runtime/`、`rag/` 大文件同理：按子包或子模块拆，不引入 `tenant` 依赖 |
+
+**参考实现**：`tenant/agents/services/agent/`、`tenant/compliance/services/compliance/`、`tenant/marketplace/services/marketplace/`、`tenant/tools/invoke/` + `tenant/tools/builtins/`。
+
+### 5.5 文档注释（类 / 方法 / 函数）
+
+**强制**：`app/` 业务代码中，每个 **模块**、**类（含 Mixin）**、**方法**、**模块级函数** 须有 **中文 docstring**（三引号字符串，紧接在定义下一行）。
+
+| 类型 | 内容要点 |
+|------|----------|
+| 模块 | 职责范围；子包注明对外 import 路径 |
+| 类 | 聚合边界、与其它 Mixin 的关系 |
+| 公开方法 | 行为、入参语义、是否抛 ``BadRequestError`` / 写库 / 调外部 |
+| ``_`` 前缀 | 纯别名写「兼容别名 → ``公开方法``」；有业务逻辑则完整说明 |
+
+禁止用 docstring 重复类型注解已表达的信息；禁止无信息量的「获取数据」类空话——应写明业务对象（如「分页列出词库」）。细则见 [backend/README.md](../../backend/README.md) § 文档注释。
+
 ---
 
 ## 6. 包命名（当前）
@@ -279,3 +309,4 @@ tests/
 |------|------|
 | 2026-05-22 | 初版：分层定义、rag 目录、infra 瘦身、无 MinerU/图谱 |
 | 2026-05-22 | 入库链：`pipeline/ingest`、Docling/pypdf、multimodal 接入、`chunk_documents` + `page_no` |
+| 2026-05-26 | §5.4：单文件 ≥500 行强制按子包拆分；§5.5：类/方法/函数 docstring 强制 |

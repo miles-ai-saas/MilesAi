@@ -24,9 +24,10 @@
 
 ### 加载方式
 
-- `tenant.marketplace.util.load_rag_graph_template()`
+- `flow_runtime.templates.registry` — 注册表与 `list_flow_templates()` / `load_flow_template_graph(id)`
+- `GET /flows/templates` — 前端创建流程与编辑页「插入模板」
+- `tenant.marketplace.util.load_rag_graph_template()` — 市场/种子兼容封装
 - `backend/scripts/seed/marketplace.py`
-- 前端等价模板：`frontend/lib/flow-nodes.ts` 中的 `RAG_TEMPLATE`（含 position，便于画布初始化）
 
 ### 与 Agent LangGraph RAG 的区别
 
@@ -37,7 +38,7 @@
 
 带 **RelevanceGrade** 三路分支（good / poor / none）与 **StaticResponse** 兜底；与 Agent `rag_qa` 评分语义对齐（无 top_k 重试环）。
 
-加载：`load_rag_graph_template(variant="with_grade")`；前端 `RAG_TEMPLATE_WITH_GRADE`。
+加载：`load_flow_template_graph("rag_grade")` 或 `load_rag_graph_template(variant="with_grade")`。
 
 ### 扩展建议
 

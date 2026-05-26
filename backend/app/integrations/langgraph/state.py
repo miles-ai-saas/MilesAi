@@ -14,6 +14,7 @@ class RAGGraphState(TypedDict, total=False):
     """retrieve → grade → generate 链路；steps 用 operator.add 累积审计步骤。"""
 
     query: str
+    prompt_query: str
     system_prompt: str
     kb_ids: list[str]
     tenant_id: str
@@ -26,4 +27,6 @@ class RAGGraphState(TypedDict, total=False):
     hits: list[dict[str, Any]]
     relevance: str
     answer: str
+    media: list[dict[str, Any]]
+    user_id: str
     steps: Annotated[list[dict[str, Any]], operator.add]

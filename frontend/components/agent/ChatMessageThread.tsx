@@ -6,6 +6,7 @@ import {
   AgentExecutionSkeleton,
   AgentExecutionTimeline,
 } from "@/components/agent/AgentExecutionTimeline";
+import { ChatArtifactMedia } from "@/components/agent/ChatArtifactMedia";
 import type { ChatMessage } from "@/lib/chat-sessions";
 import type { PendingToolCall } from "@/lib/types";
 
@@ -56,7 +57,23 @@ export function ChatMessageThread({
           {msg.role === "user" ? (
             <div className="flex justify-end">
               <div className="max-w-[85%] rounded-2xl rounded-tr-sm bg-brand px-4 py-2.5 text-sm text-brand-foreground">
-                <p className="whitespace-pre-wrap leading-relaxed">{msg.content}</p>
+                {msg.media && msg.media.length > 0 && (
+                  <div className="mb-2 flex flex-wrap justify-end gap-2">
+                    {msg.media.map((m) =>
+                      m.preview_url ? (
+                        <img
+                          key={m.attachment_id}
+                          src={m.preview_url}
+                          alt={m.filename ?? "附图"}
+                          className="max-h-32 max-w-[140px] rounded-lg object-cover"
+                        />
+                      ) : null,
+                    )}
+                  </div>
+                )}
+                {msg.content ? (
+                  <p className="whitespace-pre-wrap leading-relaxed">{msg.content}</p>
+                ) : null}
               </div>
             </div>
           ) : (
@@ -82,6 +99,19 @@ export function ChatMessageThread({
                 />
               )}
               <p className="mb-1 text-xs font-medium text-brand">助手</p>
+              {msg.artifacts && msg.artifacts.length > 0 && (
+                <div className="mb-3 flex flex-wrap gap-2">
+                  {msg.artifacts.map((a) => (
+                    <ChatArtifactMedia
+                      key={a.attachment_id}
+                      kind={a.kind}
+                      attachmentId={a.attachment_id}
+                      mimeType={a.mime_type}
+                      caption={a.caption}
+                    />
+                  ))}
+                </div>
+              )}
               <div className="whitespace-pre-wrap text-sm leading-relaxed text-ink">{msg.content}</div>
             </div>
           )}

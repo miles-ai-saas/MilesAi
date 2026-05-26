@@ -1,6 +1,7 @@
 # 平台内智能体与内部协同
 
-> 类型：智能体 | 状态：已实现 | 关联：[a2a.md](./a2a.md)（外部协议，语义不同）
+> 类型：智能体 | 状态：已实现 | 关联：[a2a.md](./a2a.md)（外部协议，语义不同）  
+> **多模态（设计稿 · 未实施）：** [agent-multimodal-design.md](../architecture/agent-multimodal-design.md)
 
 ## 产品语义
 

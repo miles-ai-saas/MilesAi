@@ -10,8 +10,9 @@ import { api } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth-store";
 import { FlowEditHeader } from "@/components/flow/FlowEditHeader";
 import { FlowMetaDialog } from "@/components/flow/FlowMetaDialog";
-import type { FlowRunState } from "@/components/flow/FlowRunPanel";
+import type { FlowRunState, FlowRunPendingMedia } from "@/components/flow/FlowRunPanel";
 import { FlowRunPanel } from "@/components/flow/FlowRunPanel";
+import type { ChatMediaIn } from "@/lib/types";
 import type { FlowCanvasHandle } from "@/components/flow/FlowCanvas";
 import { FlowVersionHistoryDialog } from "@/components/flow/FlowVersionHistoryDialog";
 import type {
@@ -43,6 +44,7 @@ export default function FlowEditPage() {
   const [toolCatalog, setToolCatalog] = useState<ToolCatalogItem[]>([]);
   const [selectedKbIds, setSelectedKbIds] = useState<string[]>([]);
   const [testQuery, setTestQuery] = useState("你好");
+  const [runMedia, setRunMedia] = useState<FlowRunPendingMedia[]>([]);
   const [runState, setRunState] = useState<FlowRunState | null>(null);
   const [debugPanelOpen, setDebugPanelOpen] = useState(false);
   const [msg, setMsg] = useState("");
@@ -144,13 +146,20 @@ export default function FlowEditPage() {
   };
 
   const runTest = async () => {
+    const q = testQuery.trim();
+    const media: ChatMediaIn[] = runMedia.map((m) => ({
+      attachment_id: m.attachment_id,
+    }));
+    if (!q && media.length === 0) return;
+
     setBusy(true);
     setRunState(null);
     try {
       await api.saveFlowGraph(id, graphRef.current);
       const res = await api.runFlow(id, {
-        inputs: { query: testQuery },
+        inputs: { query: q || "请根据附图回答。" },
         kb_ids: selectedKbIds,
+        media: media.length ? media : undefined,
       });
       const output =
         typeof res.output === "string"
@@ -160,6 +169,7 @@ export default function FlowEditPage() {
         output,
         steps: (res.steps as Record<string, unknown>[]) ?? [],
       });
+      setRunMedia([]);
       setDebugPanelOpen(true);
     } catch (e) {
       setRunState({
@@ -243,6 +253,8 @@ export default function FlowEditPage() {
         onQueryChange={setTestQuery}
         runState={runState}
         busy={busy}
+        pendingMedia={runMedia}
+        onPendingMediaChange={setRunMedia}
         collapsed={!debugPanelOpen}
         onToggleCollapsed={() => setDebugPanelOpen((v) => !v)}
         onSelectCompileNode={(nodeId) => canvasRef.current?.selectNode(nodeId)}

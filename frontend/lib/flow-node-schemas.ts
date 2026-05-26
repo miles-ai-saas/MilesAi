@@ -18,6 +18,13 @@ export const NODE_HANDLES: Record<
   ParallelJoin: { targets: ["input"], sources: ["output"] },
   PlatformTool: { targets: ["input", "query", "hits"], sources: ["output"] },
   TextOutput: { targets: ["input"], sources: [] },
+  /** 与 backend image_generate 入参键一致 */
+  ImageGenerate: { targets: ["prompt", "input"], sources: ["output"] },
+  /** image_attachment_id 对应 node_data / inputs，供图生视频 */
+  VideoGenerate: {
+    targets: ["prompt", "input", "image_attachment_id"],
+    sources: ["output"],
+  },
 };
 
 export const CONDITION_MODES = [
@@ -38,6 +45,7 @@ const TARGET_HANDLE_COLORS: Record<string, string> = {
   query: "!bg-blue-400",
   hits: "!bg-green-400",
   prompt: "!bg-violet-400",
+  image_attachment_id: "!bg-rose-400",
 };
 
 const SOURCE_HANDLE_COLORS: Record<string, string> = {

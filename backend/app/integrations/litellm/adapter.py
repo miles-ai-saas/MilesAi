@@ -112,18 +112,29 @@ def _import_litellm():
     return litellm
 
 
+def _ensure_messages_valid_for_chat(model: ModelConfig, messages: list[dict[str, Any]]) -> None:
+    """对话类模型校验；含 image_url 时仍须为 llm/reasoning/vision。"""
+    _ensure_chat_model_type(model)
+    from app.integrations.chat.multimodal import messages_contain_image
+
+    if messages_contain_image(messages) and model.model_type not in CHAT_MODEL_TYPES:
+        raise BadRequestError(
+            f"模型「{model.name}」类型为 {model.model_type}，不支持附图对话，请选用 vision 或大语言模型"
+        )
+
+
 async def litellm_chat_completion(
     model: ModelConfig,
-    messages: list[dict[str, str]],
+    messages: list[dict[str, Any]],
     *,
     temperature: float = 0.7,
     max_tokens: int = 2048,
     timeout: float = HTTP_DEFAULT_TIMEOUT_SEC,
 ) -> str:
-    """通过 LiteLLM 发起异步 Chat Completions。"""
+    """通过 LiteLLM 发起异步 Chat Completions（content 可为 str 或多模态 part 数组）。"""
     litellm = _import_litellm()
 
-    _ensure_chat_model_type(model)
+    _ensure_messages_valid_for_chat(model, messages)
 
     litellm_model = resolve_litellm_model(model)
     kwargs: dict[str, Any] = {

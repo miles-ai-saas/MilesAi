@@ -12,6 +12,7 @@ from app.tenant.compliance.views import compliance
 from app.tenant.flows.views import flows
 from app.tenant.hooks.views import hooks
 from app.tenant.attachments.views import attachment
+from app.tenant.media_assets.views import media_asset
 from app.tenant.kb.views import kb
 from app.tenant.marketplace.views import marketplace
 from app.tenant.mcp.views import mcp
@@ -46,6 +47,7 @@ api_router.include_router(skills.router, prefix="/skill-packages", tags=["skill-
 api_router.include_router(mcp.router, prefix="/mcp", tags=["mcp"])
 api_router.include_router(kb.router, prefix="/kb", tags=["knowledge-base"])
 api_router.include_router(attachment.router, prefix="/attachments", tags=["attachments"])
+api_router.include_router(media_asset.router, prefix="/media-assets", tags=["media-assets"])
 api_router.include_router(flows.router, prefix="/flows", tags=["flows"])
 api_router.include_router(tasks.router, prefix="/tasks", tags=["tasks"])
 api_router.include_router(monitor.router, prefix="/monitor", tags=["monitor"])

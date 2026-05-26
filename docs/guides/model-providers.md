@@ -59,9 +59,16 @@ api_base, api_key_encrypted, is_active, extra (JSONB), deleted_at
 | 支持 `model_type` | `llm`、`reasoning`、`vision` |
 | LiteLLM `model` | 默认 `{vendor前缀}/{model_name}`：`deepseek/*`、`dashscope/*`、`volcengine/*`（豆包）、`openai/*`；可在 `extra.litellm_model` 覆盖 |
 | 鉴权 | `api_key_encrypted` + 可选 `api_base`（内置模型未配时用 `DEFAULT_API_BASES`） |
-| 未接入 | `image_gen` / `video_gen` / `asr` / `tts` 调用时返回 400，目录仍可展示 |
+| 已接入 | `image_gen`（OpenAI 兼容 / 万相）；`video_gen`（万相 `dashscope_t2v`、豆包方舟 `volcengine_video`，httpx 异步轮询） |
+| 未接入 | `asr` / `tts` 调用时返回 400，目录仍可展示 |
+
+未显式指定生成模型时，系统默认按 **qwen（万相）→ doubao → 其它** 选取启用的 `image_gen` / `video_gen` 配置（见 `integrations/generative/model_resolve.py`）。
+
+豆包 `video_gen` 从 `ModelConfig` 读取 **`api_base`**（默认 `https://ark.cn-beijing.volces.com/api/v3`）、**`model_name`**（方舟模型 ID 或推理接入点 `ep-…`）、**`api_key_encrypted`**；可选 **`extra`**：`video_resolution`、`video_duration`、`video_ratio`、`generate_audio`、`watermark`、`poll_interval_sec` / `poll_timeout_sec`；仅当路径非默认时再设 `video_submit_path` / `video_poll_path`。
 
 向量化 / 重排序模型的 `extra.invoke_mode` 与字段对照见 **[model-config-extra.md](./model-config-extra.md)**。
+
+生成类在流程画布中的节点与集成层见 **[flow-generative-media-design.md](../architecture/flow-generative-media-design.md)**。工作台流程编辑左侧调色板已提供 **生图**、**生视频** 节点及右侧属性配置（`image_gen` / `video_gen` 模型必选）。
 
 ---
 

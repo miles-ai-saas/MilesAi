@@ -1,4 +1,9 @@
-"""内置工具注册表（不入库，由代码维护）。"""
+"""
+内置工具注册表（不入库，由代码维护）。
+
+``generative_only``：仅当智能体 ``enable_generative_tools`` 时出现在工具列表；
+``generate_video`` 默认 ``require_confirmation=True``（耗时长、费用高）。
+"""
 
 BUILTIN_REGISTRY: list[dict] = [
     {
@@ -35,6 +40,69 @@ BUILTIN_REGISTRY: list[dict] = [
             {"name": "query", "type": "string", "required": True},
             {"name": "kb_id", "type": "string", "required": True},
             {"name": "limit", "type": "integer", "required": False, "default": 5},
+        ],
+    },
+    {
+        "slug": "generate_video",
+        "name": "文生视频",
+        "description": "根据文字描述生成短视频（万相优先；耗时较长，需确认）",
+        "category_slug": "general",
+        "version": "1.0.0",
+        "require_confirmation": True,
+        "generative_only": True,
+        "parameters": [
+            {"name": "prompt", "type": "string", "description": "视频描述", "required": True},
+            {
+                "name": "duration",
+                "type": "integer",
+                "description": "时长（秒），通常 5–10",
+                "required": False,
+                "default": 5,
+            },
+            {
+                "name": "resolution",
+                "type": "string",
+                "description": "720P 或 1080P",
+                "required": False,
+                "default": "720P",
+            },
+            {
+                "name": "image_attachment_id",
+                "type": "string",
+                "description": "可选首帧图片 attachment_id（图生视频）",
+                "required": False,
+            },
+            {
+                "name": "model_config_id",
+                "type": "string",
+                "description": "video_gen 模型配置 UUID，可选",
+                "required": False,
+            },
+        ],
+    },
+    {
+        "slug": "generate_image",
+        "name": "文生图",
+        "description": "根据文字描述生成图片并保存为附件",
+        "category_slug": "general",
+        "version": "1.0.0",
+        "require_confirmation": False,
+        "generative_only": True,
+        "parameters": [
+            {"name": "prompt", "type": "string", "description": "画面描述", "required": True},
+            {
+                "name": "size",
+                "type": "string",
+                "description": "尺寸，如 1024x1024",
+                "required": False,
+                "default": "1024x1024",
+            },
+            {
+                "name": "model_config_id",
+                "type": "string",
+                "description": "image_gen 模型配置 UUID，可选",
+                "required": False,
+            },
         ],
     },
     {
@@ -85,6 +153,7 @@ BUILTIN_REGISTRY: list[dict] = [
 
 BUILTIN_SLUGS = {t["slug"] for t in BUILTIN_REGISTRY}
 SKILL_BOUND_SLUGS = {t["slug"] for t in BUILTIN_REGISTRY if t.get("skill_bound_only")}
+GENERATIVE_SLUGS = {t["slug"] for t in BUILTIN_REGISTRY if t.get("generative_only")}
 
 
 def get_builtin(slug: str) -> dict | None:

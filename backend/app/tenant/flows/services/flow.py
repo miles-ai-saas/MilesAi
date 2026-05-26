@@ -29,8 +29,10 @@ from app.tenant.tags.schemas.tag import TagRefOut
 from app.tenant.tags.services.tag import TagService
 from app.tenant.flows.repositories.flow import FlowRepository, FlowVersionRepository
 from app.common.schema import PageParams, PageResult
+from app.flow_runtime.templates.registry import list_flow_templates
 from app.tenant.flows.meta import flow_meta_dict
 from app.tenant.flows.schemas.meta import FlowMetaOut
+from app.tenant.flows.schemas.template import FlowTemplateOut, FlowTemplatesOut
 from app.tenant.flows.schemas.flow import (
     FlowCreate,
     FlowOut,
@@ -57,6 +59,11 @@ class FlowService(BaseService):
     async def get_meta(self) -> FlowMetaOut:
         """返回枚举展示字典（无 DB 查询，文案来自 tenant/*/meta.py）。"""
         return FlowMetaOut.model_validate(flow_meta_dict())
+
+    async def list_templates(self) -> FlowTemplatesOut:
+        """返回内置画布模板（含 graph_json，无 DB 查询）。"""
+        items = [FlowTemplateOut.model_validate(row) for row in list_flow_templates()]
+        return FlowTemplatesOut(items=items)
 
     async def _get_flow_or_raise(self, flow_id: UUID) -> Flow:
         flow = await self.repo.get_by_id(flow_id)
@@ -219,13 +226,17 @@ class FlowService(BaseService):
 
         query_text = str(
             body.inputs.get("query") or body.inputs.get("message") or body.inputs.get("input") or ""
-        )
+        ).strip()
+        if not query_text and body.media:
+            query_text = "[附图]"
         compliance = ComplianceService(self.db, self.ctx)
         hooks = HookRunner(self.db, self.ctx.tenant_id)
         hook_payload = {
             "module": SCAN_MODULE_FLOW_RUN,
             "flow_id": str(flow_id),
             "inputs": body.inputs,
+            "media_count": len(body.media),
+            "attachment_ids": [str(m.attachment_id) for m in body.media],
         }
         try:
             before = await hooks.run(
@@ -251,6 +262,7 @@ class FlowService(BaseService):
                 user_id=str(self.ctx.user_id),
                 permissions=self.ctx.permissions,
                 is_superuser=self.ctx.is_superuser,
+                media=[m.model_dump(mode="json") for m in body.media],
             )
             if "query" not in ctx.inputs and run_inputs:
                 ctx.inputs.setdefault("query", run_inputs.get("message", ""))

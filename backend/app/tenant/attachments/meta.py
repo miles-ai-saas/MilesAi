@@ -13,6 +13,8 @@ PURPOSE_FILTER_OPTIONS: list[tuple[str, str, str | None]] = [
     ("chat", "对话", "会话消息附件"),
     ("agent", "智能体", "智能体配置相关文件"),
     ("flow", "流程", "流程画布或运行附件"),
+    ("chat_generated", "对话生成", "智能体生图/生视频产出"),
+    ("flow_generated", "流程生成", "流程生图/生视频节点产出"),
 ]
 
 PURPOSE_OPTIONS: list[tuple[str, str, str | None]] = [

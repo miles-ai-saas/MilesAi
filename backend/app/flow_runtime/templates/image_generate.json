@@ -1,0 +1,42 @@
+{
+  "nodes": [
+    {
+      "id": "input_1",
+      "type": "TextInput",
+      "position": { "x": 80, "y": 120 },
+      "data": { "input_key": "query", "label": "用户输入" }
+    },
+    {
+      "id": "img_1",
+      "type": "ImageGenerate",
+      "position": { "x": 360, "y": 120 },
+      "data": {
+        "label": "生图",
+        "model_config_id": "",
+        "size": "1024x1024",
+        "n": 1,
+        "prompt": ""
+      }
+    },
+    {
+      "id": "output_1",
+      "type": "TextOutput",
+      "position": { "x": 640, "y": 120 },
+      "data": { "label": "输出" }
+    }
+  ],
+  "edges": [
+    {
+      "source": "input_1",
+      "target": "img_1",
+      "sourceHandle": "output",
+      "targetHandle": "prompt"
+    },
+    {
+      "source": "img_1",
+      "target": "output_1",
+      "sourceHandle": "output",
+      "targetHandle": "input"
+    }
+  ]
+}

@@ -1,42 +1,11 @@
 "use client";
 
-/** 新建流程：名称、描述、画布模板（链路 §6）。 */
+/** 新建流程：名称、描述、画布模板（GET /flows/templates）。 */
 import { useEffect, useState } from "react";
 import { ResourceDialog } from "@/components/resource/ResourceDialog";
 import { TagPicker } from "@/components/tag/TagPicker";
-import {
-  RAG_TEMPLATE,
-  RAG_TEMPLATE_WITH_GRADE,
-} from "@/lib/flow-nodes";
-import type { FlowGraph } from "@/lib/types";
-
-export type FlowCreateTemplate = "blank" | "rag" | "rag_grade";
-
-const TEMPLATE_OPTIONS: {
-  value: FlowCreateTemplate;
-  label: string;
-  hint: string;
-}[] = [
-  { value: "blank", label: "空白画布", hint: "从零拖拽节点" },
-  { value: "rag", label: "RAG 问答", hint: "检索 → 提示词 → LLM → 输出" },
-  {
-    value: "rag_grade",
-    label: "RAG + 相关性评分",
-    hint: "含评分分支与无命中兜底",
-  },
-];
-
-function graphForTemplate(template: FlowCreateTemplate): FlowGraph {
-  if (template === "rag") return RAG_TEMPLATE;
-  if (template === "rag_grade") return RAG_TEMPLATE_WITH_GRADE;
-  return { nodes: [], edges: [] };
-}
-
-const DEFAULT_NAMES: Record<FlowCreateTemplate, string> = {
-  blank: "新流程",
-  rag: "RAG 问答流程",
-  rag_grade: "RAG 评分流程",
-};
+import { useFlowTemplates } from "@/hooks/use-flow-templates";
+import type { FlowGraph, FlowTemplate } from "@/lib/types";
 
 type Props = {
   open: boolean;
@@ -51,38 +20,43 @@ type Props = {
 };
 
 export function FlowCreateDialog({ open, busy = false, onClose, onCreate }: Props) {
-  const [name, setName] = useState(DEFAULT_NAMES.rag);
+  const { templates, defaultTemplate, loading: templatesLoading } = useFlowTemplates(open);
+  const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [tagIds, setTagIds] = useState<string[]>([]);
-  const [template, setTemplate] = useState<FlowCreateTemplate>("rag");
+  const [templateId, setTemplateId] = useState<string>("rag");
   const [creating, setCreating] = useState(false);
 
+  const selected =
+    templates.find((t) => t.id === templateId) ?? defaultTemplate ?? templates[0] ?? null;
+
   useEffect(() => {
-    if (!open) return;
-    setTemplate("rag");
-    setName(DEFAULT_NAMES.rag);
+    if (!open || templates.length === 0) return;
+    const initial = defaultTemplate ?? templates[0];
+    setTemplateId(initial.id);
+    setName(initial.default_name);
     setDescription("");
     setTagIds([]);
-  }, [open]);
+  }, [open, templates, defaultTemplate]);
 
-  const onTemplateChange = (next: FlowCreateTemplate) => {
-    setTemplate(next);
+  const onTemplateChange = (next: FlowTemplate) => {
+    setTemplateId(next.id);
     setName((prev) => {
-      const wasDefault = Object.values(DEFAULT_NAMES).includes(prev);
-      return wasDefault ? DEFAULT_NAMES[next] : prev;
+      const wasDefault = templates.some((t) => t.default_name === prev);
+      return wasDefault ? next.default_name : prev;
     });
   };
 
   const submit = async () => {
     const trimmed = name.trim();
-    if (!trimmed) return;
+    if (!trimmed || !selected) return;
     setCreating(true);
     try {
       await onCreate({
         name: trimmed,
         description: description.trim(),
         tag_ids: tagIds,
-        graph_json: graphForTemplate(template),
+        graph_json: selected.graph_json,
       });
       onClose();
     } finally {
@@ -90,7 +64,7 @@ export function FlowCreateDialog({ open, busy = false, onClose, onCreate }: Prop
     }
   };
 
-  const disabled = busy || creating;
+  const disabled = busy || creating || templatesLoading;
 
   return (
     <ResourceDialog
@@ -107,7 +81,7 @@ export function FlowCreateDialog({ open, busy = false, onClose, onCreate }: Prop
           <button
             type="button"
             className="btn-primary"
-            disabled={disabled || !name.trim()}
+            disabled={disabled || !name.trim() || !selected}
             onClick={() => void submit()}
           >
             {creating ? "创建中…" : "创建并编辑"}
@@ -144,31 +118,37 @@ export function FlowCreateDialog({ open, busy = false, onClose, onCreate }: Prop
         </label>
         <fieldset className="space-y-2">
           <legend className="text-sm text-ink-muted">初始模板</legend>
-          <div className="space-y-2">
-            {TEMPLATE_OPTIONS.map((opt) => (
-              <label
-                key={opt.value}
-                className={`flex cursor-pointer gap-3 rounded-lg border px-3 py-2.5 transition-colors ${
-                  template === opt.value
-                    ? "border-brand/40 bg-brand-light/20"
-                    : "border-line hover:border-line/80"
-                }`}
-              >
-                <input
-                  type="radio"
-                  name="flow-template"
-                  className="mt-1 shrink-0"
-                  checked={template === opt.value}
-                  disabled={disabled}
-                  onChange={() => onTemplateChange(opt.value)}
-                />
-                <span className="min-w-0">
-                  <span className="block text-sm font-medium text-ink">{opt.label}</span>
-                  <span className="block text-xs text-ink-muted">{opt.hint}</span>
-                </span>
-              </label>
-            ))}
-          </div>
+          {templatesLoading && templates.length === 0 ? (
+            <p className="text-xs text-ink-muted">加载模板…</p>
+          ) : templates.length === 0 ? (
+            <p className="text-xs text-ink-muted">模板加载失败，请刷新后重试。</p>
+          ) : (
+            <div className="space-y-2">
+              {templates.map((opt) => (
+                <label
+                  key={opt.id}
+                  className={`flex cursor-pointer gap-3 rounded-lg border px-3 py-2.5 transition-colors ${
+                    templateId === opt.id
+                      ? "border-brand/40 bg-brand-light/20"
+                      : "border-line hover:border-line/80"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="flow-template"
+                    className="mt-1 shrink-0"
+                    checked={templateId === opt.id}
+                    disabled={disabled}
+                    onChange={() => onTemplateChange(opt)}
+                  />
+                  <span className="min-w-0">
+                    <span className="block text-sm font-medium text-ink">{opt.label}</span>
+                    <span className="block text-xs text-ink-muted">{opt.hint}</span>
+                  </span>
+                </label>
+              ))}
+            </div>
+          )}
         </fieldset>
       </div>
     </ResourceDialog>

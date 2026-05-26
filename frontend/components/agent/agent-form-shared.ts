@@ -26,6 +26,10 @@ export type AgentFormValues = {
   force_platform_planner: boolean;
   enable_tool_calling: boolean;
   tool_slugs: string[];
+  /** 挂载 generate_image / generate_video（需 enable_tool_calling） */
+  enable_generative_tools: boolean;
+  generative_image_model_id: string;
+  generative_video_model_id: string;
 };
 
 export const AGENT_FORM_STEPS = [
@@ -75,6 +79,9 @@ export function emptyAgentForm(): AgentFormValues {
     force_platform_planner: false,
     enable_tool_calling: false,
     tool_slugs: [],
+    enable_generative_tools: false,
+    generative_image_model_id: "",
+    generative_video_model_id: "",
   };
 }
 
@@ -112,6 +119,9 @@ export function agentToFormValues(agent: Agent): AgentFormValues {
     force_platform_planner: Boolean(cfg.force_platform_planner),
     enable_tool_calling: Boolean(cfg.enable_tool_calling),
     tool_slugs: ((cfg.tool_slugs as string[]) ?? []).map(String),
+    enable_generative_tools: Boolean(cfg.enable_generative_tools),
+    generative_image_model_id: String(cfg.generative_image_model_id ?? ""),
+    generative_video_model_id: String(cfg.generative_video_model_id ?? ""),
   };
 }
 
@@ -136,6 +146,22 @@ export function buildAgentConfig(
   else delete config.enable_tool_calling;
   if (form.tool_slugs.length) config.tool_slugs = form.tool_slugs;
   else delete config.tool_slugs;
+
+  if (form.enable_generative_tools && form.enable_tool_calling) {
+    config.enable_generative_tools = true;
+  } else {
+    delete config.enable_generative_tools;
+  }
+  if (form.generative_image_model_id) {
+    config.generative_image_model_id = form.generative_image_model_id;
+  } else {
+    delete config.generative_image_model_id;
+  }
+  if (form.generative_video_model_id) {
+    config.generative_video_model_id = form.generative_video_model_id;
+  } else {
+    delete config.generative_video_model_id;
+  }
 
   if (form.sub_agents.length > 0) {
     config.runtime_mode = "autonomous";

@@ -2,7 +2,7 @@
 
 **日期：** 2026-05-26  
 **状态：** Phase 1–4 已实现  
-**后续立项（暂不实施）：** [flow-subflow-design.md](./flow-subflow-design.md)（SubFlow 子流程调用）  
+**后续立项（暂不实施）：** [flow-subflow-design.md](./flow-subflow-design.md)（SubFlow）、[flow-llm-multimodal-design.md](./flow-llm-multimodal-design.md)（识图输入）、[flow-generative-media-design.md](./flow-generative-media-design.md)（生图/生视频）  
 **关联：** [flows.md](../guides/flows.md)、[technical-design.md](./technical-design.md) §9、[frontend/design.md](../frontend/design.md) §9.1 链路 §6
 
 ---
@@ -43,6 +43,7 @@
 - **子智能体** 节点（**子流程**已单独立项，见 [flow-subflow-design.md](./flow-subflow-design.md)，暂不实施）
 - 流程执行 **SSE 流式**（可列为 v2，与 `AgentService.chat` 流式对齐）
 - 打破 `flow_versions` 的版本模型（仍每次保存递增版本）
+- 画布 **LLM 识图输入**（[flow-llm-multimodal-design.md](./flow-llm-multimodal-design.md)）与 **生成类节点**（[flow-generative-media-design.md](./flow-generative-media-design.md)）
 
 ---
 

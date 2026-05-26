@@ -6,6 +6,7 @@
 - ``inputs``：入口变量（如 ``query``），各节点从上游边汇聚的 ``inputs`` 读取
 - ``kb_ids``：Agent 绑定知识库 id 列表（字符串），供 KnowledgeSearch 默认检索范围
 - ``model_config_id`` / ``system_prompt``：LLMCall 与 PromptTemplate 前缀
+- ``media``：调试/对话注入的附图 ``[{attachment_id, detail}]``，供 ``LLMCall`` vision
 
 与 Agent 对话关系：``AgentService.chat`` 发布流程时构造 ``RunContext`` 并 ``get_flow_runtime().run``。
 """
@@ -44,6 +45,7 @@ class RunContext:
     is_superuser: bool = False
     agent_id: str | None = None
     agent_config: dict[str, Any] = field(default_factory=dict)
+    media: list[dict[str, Any]] = field(default_factory=list)
 
 
 @dataclass

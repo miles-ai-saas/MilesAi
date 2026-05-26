@@ -19,6 +19,7 @@
 8. [异步任务](#8-异步任务)
 9. [流程编排](#9-流程编排)
 10. [智能体对话](#10-智能体对话)
+10.1. [多模态（规划）](#101-多模态规划)
 11. [合规、钩子与工具](#11-合规钩子与工具)
 12. [应用市场](#12-应用市场)
 13. [前端](#13-前端)
@@ -472,6 +473,18 @@ flowchart TD
 - A2A：[a2a.md](../guides/a2a.md)
 - LangChain/LangGraph/DeepAgents：[ai-stack.md](../guides/ai-stack.md)
 
+### 10.1 多模态（规划）
+
+当前对话与流程 LLM 为 **纯文本**；识图、生图/生视频为设计稿，未实施。
+
+| 文档 | 说明 |
+|------|------|
+| [multimodal-capabilities.md](../product/multimodal-capabilities.md) | 产品能力矩阵与场景 |
+| [multimodal-roadmap.md](./multimodal-roadmap.md) | 技术总览、实施顺序；**附件 v1 不做签名 URL**，服务端读存储转 data URL |
+| [agent-multimodal-design.md](./agent-multimodal-design.md) | 智能体 `ChatRequest.media`、生成工具 |
+| [flow-llm-multimodal-design.md](./flow-llm-multimodal-design.md) | 流程 `LLMCall` 识图 |
+| [flow-generative-media-design.md](./flow-generative-media-design.md) | 流程生图/生视频节点 |
+
 ---
 
 ## 11. 合规、钩子与工具
@@ -602,6 +615,7 @@ flowchart TD
 | 存储配置分层（L1/L2/L3）文档 | ✅ | §6.5；L3 embedding 已落地；L2 待开发 |
 | 流程画布与 LangGraph 执行 | ✅ | 见 [flows.md](../guides/flows.md) |
 | 智能体 RAG / 画布 / 直连 LLM | ✅ | |
+| 对话/流程 **识图、生图、生视频** | 📋 | 见 §10.1 设计稿 |
 | DeepAgents 内部协同 | ✅ | 可选依赖，可降级 |
 | A2A Peer / 宿主 / custom 引用 | ✅ | 对外暴露本平台 Card：未做 |
 | 合规 / HTTP 钩子 | ✅ | Python 钩子未实现 |

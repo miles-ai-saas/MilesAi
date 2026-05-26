@@ -27,16 +27,17 @@ import {
   useState,
 } from "react";
 import { useConfirmAction } from "@/hooks/use-confirm-action";
+import { useFlowTemplates } from "@/hooks/use-flow-templates";
 import type { EdgeChange, NodeChange } from "@xyflow/react";
 import {
-  NODE_PALETTE,
+  PALETTE_GROUPS,
+  paletteItemsByGroup,
   type NodeType,
   createPaletteNode,
   graphToReactFlow,
-  RAG_TEMPLATE,
-  RAG_TEMPLATE_WITH_GRADE,
   reactFlowToGraph,
 } from "@/lib/flow-nodes";
+import type { FlowTemplate } from "@/lib/types";
 import { isValidConnection } from "@/lib/flow-node-schemas";
 import { flowNodeTypes } from "@/components/flow/FlowNodeCard";
 import { FlowNodeInspector } from "@/components/flow/FlowNodeInspector";
@@ -76,16 +77,16 @@ function FlowCanvasToolbar({
   canRedo,
   onUndo,
   onRedo,
+  insertableTemplates,
   onInsertTemplate,
-  onInsertGradeTemplate,
 }: {
   onPushHistory: () => void;
   canUndo: boolean;
   canRedo: boolean;
   onUndo: () => void;
   onRedo: () => void;
-  onInsertTemplate: () => void;
-  onInsertGradeTemplate: () => void;
+  insertableTemplates: FlowTemplate[];
+  onInsertTemplate: (template: FlowTemplate) => void;
 }) {
   const { getNodes, getEdges, setNodes, setEdges, deleteElements } = useReactFlow();
   const { requestConfirm, confirmDialog } = useConfirmAction();
@@ -150,16 +151,30 @@ function FlowCanvasToolbar({
           清空
         </button>
         <span className="mx-0.5 h-4 w-px bg-line" />
-        <button type="button" onClick={onInsertTemplate} className="btn-sm-outline">
-          RAG 模板
-        </button>
-        <button
-          type="button"
-          onClick={onInsertGradeTemplate}
-          className="btn-sm-outline text-violet-700 hover:border-violet-300 hover:text-violet-800"
-        >
-          RAG+评分
-        </button>
+        {insertableTemplates.length > 0 && (
+          <label className="inline-flex items-center gap-1.5 text-sm">
+            <span className="text-ink-muted">插入模板</span>
+            <select
+              className="input-field max-w-[11rem] py-1 text-sm"
+              defaultValue=""
+              onChange={(e) => {
+                const id = e.target.value;
+                e.target.value = "";
+                const tpl = insertableTemplates.find((t) => t.id === id);
+                if (tpl) onInsertTemplate(tpl);
+              }}
+            >
+              <option value="" disabled>
+                选择…
+              </option>
+              {insertableTemplates.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
       </div>
       {confirmDialog}
     </>
@@ -395,13 +410,11 @@ const FlowCanvasInner = forwardRef<FlowCanvasHandle, FlowCanvasProps>(
       [nodes.length, requestConfirm, applyGraph, pushHistory],
     );
 
-    const insertRagTemplate = useCallback(
-      () => confirmReplaceGraph("插入 RAG 模板", RAG_TEMPLATE),
-      [confirmReplaceGraph],
-    );
+    const { insertable: insertableTemplates } = useFlowTemplates();
 
-    const insertRagGradeTemplate = useCallback(
-      () => confirmReplaceGraph("插入 RAG+评分 模板", RAG_TEMPLATE_WITH_GRADE),
+    const insertTemplate = useCallback(
+      (tpl: FlowTemplate) =>
+        confirmReplaceGraph(`插入「${tpl.label}」模板`, tpl.graph_json),
       [confirmReplaceGraph],
     );
 
@@ -431,9 +444,9 @@ const FlowCanvasInner = forwardRef<FlowCanvasHandle, FlowCanvasProps>(
           canRedo={canRedo}
           onUndo={undo}
           onRedo={redo}
-        onInsertTemplate={insertRagTemplate}
-        onInsertGradeTemplate={insertRagGradeTemplate}
-      />
+          insertableTemplates={insertableTemplates}
+          onInsertTemplate={insertTemplate}
+        />
         {connectHint && (
           <p className="border-b border-amber-200/80 bg-amber-50 px-3 py-1.5 text-xs text-amber-900">
             {connectHint}
@@ -454,21 +467,34 @@ const FlowCanvasInner = forwardRef<FlowCanvasHandle, FlowCanvasProps>(
                 </button>
               </div>
               <div className="flex-1 overflow-y-auto p-2">
-                <div className="flex flex-col gap-1">
-                  {NODE_PALETTE.map((item) => (
-                    <button
-                      key={item.type}
-                      type="button"
-                      onClick={() => onDropPalette(item.type)}
-                      className="flex items-center gap-2 rounded-lg border border-line bg-surface px-2 py-2 text-left text-xs transition hover:border-brand/50 hover:bg-brand-light"
-                    >
-                      <span
-                        className="h-2 w-2 shrink-0 rounded-full"
-                        style={{ background: item.color }}
-                      />
-                      <span className="text-ink">{item.label}</span>
-                    </button>
-                  ))}
+                <div className="flex flex-col gap-3">
+                  {PALETTE_GROUPS.map((group) => {
+                    const items = paletteItemsByGroup(group.key);
+                    if (!items.length) return null;
+                    return (
+                      <div key={group.key}>
+                        <p className="mb-1 px-1 text-[10px] font-semibold uppercase tracking-wide text-ink-faint">
+                          {group.label}
+                        </p>
+                        <div className="flex flex-col gap-1">
+                          {items.map((item) => (
+                            <button
+                              key={item.type}
+                              type="button"
+                              onClick={() => onDropPalette(item.type)}
+                              className="flex items-center gap-2 rounded-lg border border-line bg-surface px-2 py-2 text-left text-xs transition hover:border-brand/50 hover:bg-brand-light"
+                            >
+                              <span
+                                className="h-2 w-2 shrink-0 rounded-full"
+                                style={{ background: item.color }}
+                              />
+                              <span className="text-ink">{item.label}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
                 <p className="mt-3 text-[10px] leading-relaxed text-ink-faint">
                   选中节点在右侧编辑；Delete 删除；Ctrl+Z 撤销

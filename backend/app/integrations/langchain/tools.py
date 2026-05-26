@@ -42,6 +42,23 @@ class KnowledgeSearchInput(BaseModel):
     limit: int = 5
 
 
+# --- 生成类工具 schema（实际执行在 tenant.tools.invoke，需 enable_generative_tools）---
+
+
+class GenerateImageInput(BaseModel):
+    prompt: str = Field(..., description="画面描述")
+    size: str | None = Field(None, description="如 1024x1024")
+    model_config_id: str | None = Field(None, description="image_gen 模型配置 UUID")
+
+
+class GenerateVideoInput(BaseModel):
+    prompt: str = Field(..., description="视频描述")
+    duration: int | None = Field(None, description="时长秒数，默认 5")
+    resolution: str | None = Field(None, description="720P 或 1080P")
+    image_attachment_id: str | None = Field(None, description="首帧图 attachment_id")
+    model_config_id: str | None = Field(None, description="video_gen 模型配置 UUID")
+
+
 class DateTimeInput(BaseModel):
     timezone: str | None = Field(None, description="IANA 时区，默认 UTC")
 
@@ -164,6 +181,45 @@ def get_skill_bound_tools() -> list[StructuredTool]:
     return [_make_skill_read_reference_tool(), _make_skill_run_script_tool()]
 
 
+def _make_generate_image_tool() -> StructuredTool:
+    async def _arun(
+        prompt: str,
+        size: str | None = None,
+        model_config_id: str | None = None,
+    ) -> dict:
+        raise RuntimeError("请通过 invoke_tool_with_context 执行 generate_image")
+
+    return StructuredTool.from_function(
+        coroutine=_arun,
+        name="generate_image",
+        description="根据文字描述生成图片，结果保存为附件",
+        args_schema=GenerateImageInput,
+    )
+
+
+def _make_generate_video_tool() -> StructuredTool:
+    async def _arun(
+        prompt: str,
+        duration: int | None = None,
+        resolution: str | None = None,
+        image_attachment_id: str | None = None,
+        model_config_id: str | None = None,
+    ) -> dict:
+        raise RuntimeError("请通过 invoke_tool_with_context 执行 generate_video")
+
+    return StructuredTool.from_function(
+        coroutine=_arun,
+        name="generate_video",
+        description="根据文字描述生成短视频（万相/豆包 Seedance；耗时长，需用户确认）",
+        args_schema=GenerateVideoInput,
+    )
+
+
+def get_generative_tools() -> list[StructuredTool]:
+    """由 ``get_all_platform_tools`` 在 ``agent.config.enable_generative_tools`` 时挂载。"""
+    return [_make_generate_image_tool(), _make_generate_video_tool()]
+
+
 def get_platform_tools(ctx: TenantContext) -> list[StructuredTool]:
     """返回当前租户可用的内置 StructuredTool 列表。"""
     return [
@@ -249,6 +305,9 @@ async def get_all_platform_tools(
     cfg = agent_config if isinstance(agent_config, dict) else {}
     if cfg.get("skill_package_id"):
         tools = [*tools, *get_skill_bound_tools()]
+    if cfg.get("enable_generative_tools"):
+        # 与 RAG 可共存：仍走 tool_agent，由 LLM 决定是否调用 generate_*
+        tools = [*tools, *get_generative_tools()]
     tools.extend(await load_tenant_custom_tools(db, ctx))
     return tools
 

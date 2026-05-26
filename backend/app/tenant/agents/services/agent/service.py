@@ -1,0 +1,64 @@
+"""
+智能体 CRUD 与对话编排（L2）。
+
+``chat`` 决策顺序（自上而下命中即返回）
+-------------------------------------
+1. A2A Host 模式（``agent_type=a2a`` 等）
+2. 子智能体绑定 → DeepAgents 规划
+3. A2A Peer 增强（有 peer 且无子 Agent 时）
+4. ``published_flow_id`` → 流程画布运行时
+5. 默认 **RAG**：``rag_chat`` → LangGraph 或线性 ``rag_answer``
+
+子模块见同目录 ``crud`` / ``chat`` / ``serialization``；包说明见 ``agent.__init__``。
+对外仅从此包导入 ``AgentService``（``from app.tenant.agents.services.agent import …``）。
+"""
+
+from __future__ import annotations
+
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.tenant import TenantContext
+from app.tenant.agents.services.agent.chat import AgentChatMixin
+from app.tenant.agents.services.agent.crud import AgentCrudMixin
+from app.tenant.agents.services.agent.serialization import agent_out
+from app.tenant.flows.repositories.flow import FlowRepository
+
+
+class AgentService(AgentChatMixin, AgentCrudMixin):
+    """智能体 CRUD；chat 按类型路由 A2A/子 Agent/流程/RAG。"""
+
+    def __init__(self, db: AsyncSession, ctx: TenantContext) -> None:
+        """组合 CRUD/对话 Mixin，并注入流程版本仓库。"""
+        AgentCrudMixin.__init__(self, db, ctx)
+        self.flow_repo = FlowRepository(db)
+
+    async def _get_agent_or_raise(self, agent_id):
+        """兼容别名 → ``get_agent_or_raise``。"""
+        return await self.get_agent_or_raise(agent_id)
+
+    async def _resolve_system_prompt(self, agent):
+        """兼容别名 → ``resolve_system_prompt``。"""
+        return await self.resolve_system_prompt(agent)
+
+    async def _flow_run_context(self, agent, **kwargs):
+        """兼容别名 → ``flow_run_context``。"""
+        return await self.flow_run_context(agent, **kwargs)
+
+    async def _maybe_augment_a2a(self, agent, body, response):
+        """兼容别名 → ``maybe_augment_a2a``。"""
+        return await self.maybe_augment_a2a(agent, body, response)
+
+    async def _resolve_chat_media_parts(self, agent, body):
+        """兼容别名 → ``resolve_chat_media_parts``。"""
+        return await self.resolve_chat_media_parts(agent, body)
+
+    async def _direct_chat(self, agent, body, agent_id, hooks):
+        """兼容别名 → ``direct_chat``。"""
+        return await self.direct_chat(agent, body, agent_id, hooks)
+
+    async def _rag_chat(self, agent, body, kb_ids, top_k, agent_id, hooks):
+        """兼容别名 → ``rag_chat``。"""
+        return await self.rag_chat(agent, body, kb_ids, top_k, agent_id, hooks)
+
+
+_agent_out = agent_out
