@@ -4,11 +4,12 @@ import { useEffect, useState, type ReactNode } from "react";
 import { ResourceDialog } from "@/components/resource/ResourceDialog";
 import { api } from "@/lib/api";
 import { formatToolUpdatedAt, toolKindLabel, toolSourceLabel } from "@/lib/tool-labels";
-import type { CustomTool, ToolCatalogItem, ToolParameterSpec } from "@/lib/types";
+import type { CustomTool, ToolCatalogItem, ToolParameterSpec, ToolsMeta } from "@/lib/types";
 
 type Props = {
   open: boolean;
   item: ToolCatalogItem | null;
+  toolsMeta?: ToolsMeta | null;
   onClose: () => void;
   onTest?: () => void;
   onEdit?: () => void;
@@ -95,7 +96,7 @@ function ConfigSection({ detail }: { detail: CustomTool }) {
   );
 }
 
-export function ToolDetailDialog({ open, item, onClose, onTest, onEdit }: Props) {
+export function ToolDetailDialog({ open, item, toolsMeta, onClose, onTest, onEdit }: Props) {
   const [detail, setDetail] = useState<CustomTool | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -158,8 +159,10 @@ export function ToolDetailDialog({ open, item, onClose, onTest, onEdit }: Props)
       }
     >
       <dl>
-        <DetailRow label="来源">{toolSourceLabel(item.source)}</DetailRow>
-        {item.tool_type && <DetailRow label="类型">{toolKindLabel(item.tool_type)}</DetailRow>}
+        <DetailRow label="来源">{toolSourceLabel(item.source, toolsMeta)}</DetailRow>
+        {item.tool_type && (
+          <DetailRow label="类型">{toolKindLabel(item.tool_type, toolsMeta)}</DetailRow>
+        )}
         {item.version && <DetailRow label="版本">v{item.version}</DetailRow>}
         {(item.category_name || detail?.category_name) && (
           <DetailRow label="分类">{item.category_name ?? detail?.category_name}</DetailRow>

@@ -18,19 +18,14 @@ from uuid import UUID
 from langchain_core.messages import AIMessage, HumanMessage
 from langgraph.graph import END, START, MessagesState, StateGraph
 
+from app.tenant.agents.meta import SUB_AGENT_ROLE_LABELS
 from app.tenant.agents.schemas.agent import ChatRequest
 from app.models.agent import AgentSubAgentBinding
 
 if TYPE_CHECKING:
     from app.tenant.agents.services.agent import AgentService
 
-_ROLE_LABELS = {
-    "retrieval": "知识检索",
-    "ocr": "OCR 识别",
-    "summary": "摘要归纳",
-    "compliance": "合规审查",
-    "custom": "自定义",
-}
+_ROLE_LABELS = SUB_AGENT_ROLE_LABELS
 
 
 def _slug_for_binding(binding: AgentSubAgentBinding) -> str:

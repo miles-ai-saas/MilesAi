@@ -482,9 +482,11 @@ flowchart TD
 
 ### 11.2 钩子
 
-- 表：`hook_definitions`（HTTP URL）、`hook_bindings`（scope: global / agent / flow）。
-- **HTTP 钩子**：`httpx` 调用。
-- **Python 钩子**：当前记录 `python_not_implemented` 并跳过（`hooks/services/executor.py`）。
+- 表：`hook_definitions`、`hook_bindings`、`hook_execution_logs`。
+- **HTTP 钩子**：Event v1 信封；支持 `block` / `modify`；`config.on_failure`（`ignore` | `fail_request`）。
+- **挂载**：Agent chat、Flow run、工具 `invoke_tool_with_context`（`before_tool` / `after_tool`）。
+- **Python 钩子**：未实现（`python_not_implemented`）。
+- **专题**：[hooks.md](../guides/hooks.md)。
 
 ### 11.3 工具与 MCP
 

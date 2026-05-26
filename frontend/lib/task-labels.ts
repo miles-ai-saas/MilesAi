@@ -1,6 +1,9 @@
 /** 异步任务状态展示文案与样式 */
 
-export const TASK_STATUS_LABEL: Record<string, string> = {
+import { optionLabel, type EnumOption } from "@/lib/enum-meta";
+import type { TaskMeta } from "@/lib/types";
+
+const STATUS_FALLBACK: Record<string, string> = {
   pending: "等待中",
   running: "运行中",
   success: "成功",
@@ -8,16 +11,20 @@ export const TASK_STATUS_LABEL: Record<string, string> = {
   cancelled: "已取消",
 };
 
-export const TASK_STATUS_TABS = [
-  { key: "", label: "全部" },
-  { key: "pending", label: "等待中" },
-  { key: "running", label: "运行中" },
-  { key: "failed", label: "失败" },
-  { key: "success", label: "成功" },
-] as const;
+const FILTER_FALLBACK: EnumOption[] = [
+  { value: "", label: "全部" },
+  { value: "pending", label: "等待中" },
+  { value: "running", label: "运行中" },
+  { value: "failed", label: "失败" },
+  { value: "success", label: "成功" },
+];
 
-export function taskStatusLabel(status: string): string {
-  return TASK_STATUS_LABEL[status] ?? status;
+export function taskStatusLabel(status: string, meta?: TaskMeta | null): string {
+  return optionLabel(meta?.statuses, status) || STATUS_FALLBACK[status] || status;
+}
+
+export function taskStatusFilterOptions(meta?: TaskMeta | null): EnumOption[] {
+  return meta?.status_filters?.length ? meta.status_filters : FILTER_FALLBACK;
 }
 
 export function taskStatusBadgeClass(status: string): string {
@@ -36,3 +43,12 @@ export function taskStatusBadgeClass(status: string): string {
       return "bg-surface-muted text-ink-muted ring-line";
   }
 }
+
+/** @deprecated 使用 taskStatusFilterOptions(meta) */
+export const TASK_STATUS_TABS = FILTER_FALLBACK.map((o) => ({
+  key: o.value,
+  label: o.label,
+}));
+
+/** @deprecated */
+export const TASK_STATUS_LABEL = STATUS_FALLBACK;

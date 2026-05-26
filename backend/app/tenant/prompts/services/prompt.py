@@ -16,6 +16,8 @@ from app.tenant.categories.services.category import CategoryService
 from app.tenant.tags.schemas.tag import TagRefOut
 from app.tenant.tags.services.tag import TagService
 from app.tenant.prompts.models import PromptTemplate
+from app.tenant.prompts.meta import prompts_meta_dict
+from app.tenant.prompts.schemas.meta import PromptMetaOut
 from app.tenant.prompts.schemas.prompt import (
     PromptTemplateCreate,
     PromptTemplateOut,
@@ -31,6 +33,10 @@ class PromptService(BaseService):
 
     def __init__(self, db: AsyncSession, ctx: TenantContext) -> None:
         super().__init__(db, ctx)
+
+    async def get_meta(self) -> PromptMetaOut:
+        """返回枚举展示字典（无 DB 查询，文案来自 tenant/*/meta.py）。"""
+        return PromptMetaOut.model_validate(prompts_meta_dict())
 
     async def list_templates(
         self,

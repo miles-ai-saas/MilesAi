@@ -20,6 +20,8 @@ from app.tenant.marketplace.models import AppInstall
 from app.models.system import SystemConfig
 from app.core.soft_delete import append_not_deleted
 from app.models.task import CeleryTaskRecord, TaskStatus
+from app.tenant.monitor.meta import monitor_meta_dict
+from app.tenant.monitor.schemas.meta import MonitorMetaOut
 from app.tenant.monitor.schemas.monitor import (
     AlertConfig,
     MonitorReport,
@@ -39,6 +41,10 @@ class MonitorService(BaseService):
 
     def __init__(self, db: AsyncSession, ctx: TenantContext) -> None:
         super().__init__(db, ctx)
+
+    async def get_meta(self) -> MonitorMetaOut:
+        """返回枚举展示字典（无 DB 查询，文案来自 tenant/*/meta.py）。"""
+        return MonitorMetaOut.model_validate(monitor_meta_dict())
 
     async def stats(self) -> MonitorStats:
         """快捷返回 report.stats。"""

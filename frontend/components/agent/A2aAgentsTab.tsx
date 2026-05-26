@@ -11,6 +11,7 @@ import { ResourceListFooter } from "@/components/resource/ResourceListFooter";
 import { usePagedList } from "@/hooks/use-paged-list";
 import { useConfirmAction } from "@/hooks/use-confirm-action";
 import { agentModeLabel, agentStatusLabel, agentTypeLabel } from "@/lib/agent-utils";
+import { useAgentMeta } from "@/hooks/use-agent-meta";
 import { useRequireAuth } from "@/lib/auth-store";
 import { filterBySearch } from "@/lib/filter-search";
 import { api } from "@/lib/api";
@@ -34,6 +35,7 @@ const SUB_TABS: { id: A2aSubTab; label: string; hint: string }[] = [
 export function A2aAgentsTab() {
   const router = useRouter();
   const { ready } = useRequireAuth();
+  const agentMeta = useAgentMeta(ready);
   const [subTab, setSubTab] = useState<A2aSubTab>("hosts");
   const [search, setSearch] = useState("");
   const [hostDialogOpen, setHostDialogOpen] = useState(false);
@@ -102,11 +104,11 @@ export function A2aAgentsTab() {
                 key={a.id}
                 title={a.name}
                 description={a.description ?? "未填写描述"}
-                badge={agentStatusLabel(a.status)}
+                badge={agentStatusLabel(a.status, agentMeta)}
                 muted={disabled}
                 meta={
                   <span>
-                    {agentTypeLabel(a)} · {agentModeLabel(a)}
+                    {agentTypeLabel(a, agentMeta)} · {agentModeLabel(a)}
                   </span>
                 }
                 actions={

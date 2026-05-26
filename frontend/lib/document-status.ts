@@ -1,4 +1,7 @@
-const LABELS: Record<string, string> = {
+import type { EnumOption } from "@/lib/enum-meta";
+import { optionLabel } from "@/lib/enum-meta";
+
+const FALLBACK_LABELS: Record<string, string> = {
   pending: "排队中",
   parsing: "解析中",
   embedding: "向量化中",
@@ -18,8 +21,8 @@ const TONES: Record<string, DocumentStatusTone> = {
   embed_failed: "error",
 };
 
-export function documentStatusLabel(status: string): string {
-  return LABELS[status] ?? status;
+export function documentStatusLabel(status: string, options?: EnumOption[]): string {
+  return optionLabel(options, status) || FALLBACK_LABELS[status] || status;
 }
 
 export function documentStatusTone(status: string): DocumentStatusTone {

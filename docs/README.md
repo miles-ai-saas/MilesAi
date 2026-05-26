@@ -29,7 +29,9 @@ docs/
     ├── knowledge-base.md
     ├── mcp.md
     ├── skill-packages.md
-    └── compliance-word-libraries.md
+    ├── compliance-word-libraries.md
+    ├── hooks.md
+    └── …（各模块 `/meta` 见 hooks.md §9）
 ```
 
 ---
@@ -68,7 +70,7 @@ docs/
 | 文档 | 说明 |
 |------|------|
 | [flows.md](./guides/flows.md) | 流程编排、LangGraph 画布与 RAG 对话 |
-| [platform-agents.md](./guides/platform-agents.md) | 平台内智能体、内部协同（DeepAgents） |
+| [platform-agents.md](./guides/platform-agents.md) | 平台内智能体、内部协同（DeepAgents）、`GET /agents/meta` |
 | [a2a.md](./guides/a2a.md) | A2A 外部登记、互联宿主、custom 引用 |
 | [ai-stack.md](./guides/ai-stack.md) | LangChain / LangGraph / DeepAgents 模块与调用链 |
 | [model-providers.md](./guides/model-providers.md) | 模型供应商：内置目录 + 租户自定义 |
@@ -76,7 +78,8 @@ docs/
 | [mcp.md](./guides/mcp.md) | **MCP 服务**：注册、同步、HTTP/SSE invoke、连接安全 |
 | [tools.md](./guides/tools.md) | **工具**：内置 / HTTP / 变换脚本、API、与 MCP 关系（现网） |
 | [skill-packages.md](./guides/skill-packages.md) | **技能包**：SKILL.md、导入（本地/ZIP/Git）、分类、智能体注入 |
-| [compliance-word-libraries.md](./guides/compliance-word-libraries.md) | **合规敏感词库**：多库、扫描绑定、词条 M:N、API 与迁移 |
+| [compliance-word-libraries.md](./guides/compliance-word-libraries.md) | **合规敏感词库**：多库、扫描绑定、`GET /compliance/meta` |
+| [hooks.md](./guides/hooks.md) | **智能体钩子**：切面扩展、Event v1、**全站 `/meta` 枚举字典约定** |
 
 运维 Compose 与 **Worker / RAG 可选依赖** 见 [../docker/README.md](../docker/README.md)；后端 [../backend/README.md](../backend/README.md)。
 
@@ -109,6 +112,7 @@ docs/
 | RAG 入库 | `app/rag/pipeline/ingest.py` ← `tenant/kb/services/ingest.py` |
 | RAG 能力 | `app/rag/`（parse / chunk / index / retrieve / generate / load） |
 | 技能包 | `tenant/skills/`（存储 `storage.py`、导入 `import_service.py`） |
+| 钩子 | `tenant/hooks/`（`HookRunner` / `HookExecutor`） |
 | AI 集成 | `app/integrations/langchain/`、`app/integrations/deepagents/` |
 
 REST 以运行中 OpenAPI（`/docs`）为准。

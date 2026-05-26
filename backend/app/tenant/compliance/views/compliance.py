@@ -10,6 +10,7 @@ from app.core.deps import get_page_params, require_permissions
 from app.common.response import ok, page_ok
 from app.core.tenant import TenantContext
 from app.common.schema import ApiResponse, PageParams, PageResult
+from app.tenant.compliance.schemas.meta import ComplianceMetaOut
 from app.tenant.compliance.schemas.compliance import (
     ComplianceScanBindingsOut,
     ComplianceScanBindingsUpdate,
@@ -33,6 +34,15 @@ router = APIRouter()
 
 def _svc(db: AsyncSession, ctx: TenantContext) -> ComplianceService:
     return ComplianceService(db, ctx)
+
+
+# GET */meta：枚举展示字典，须在 /{id} 等路径参数路由之前注册
+@router.get("/meta", response_model=ApiResponse[ComplianceMetaOut])
+async def compliance_meta(
+    ctx: TenantContext = Depends(require_permissions("compliance:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    return ok(await _svc(db, ctx).get_meta())
 
 
 # --- 扫描绑定 ---

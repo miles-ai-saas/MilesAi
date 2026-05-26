@@ -88,6 +88,13 @@ class KnowledgeBaseService(BaseService):
         self.chunk_repo = DocumentChunkRepository(db)
         self.vector_repo = VectorRefRepository(db)
 
+    async def get_meta(self):
+        """返回枚举展示字典（无 DB 查询，文案来自 tenant/*/meta.py）。"""
+        from app.tenant.kb.schemas.meta import KbMetaOut
+        from app.tenant.kb.meta import kb_meta_dict
+
+        return KbMetaOut.model_validate(kb_meta_dict())
+
     async def _get_kb_or_raise(self, kb_id: UUID) -> KnowledgeBase:
         """加载 KB 并校验租户与未删除。"""
         kb = await self.kb_repo.get_by_id(kb_id)

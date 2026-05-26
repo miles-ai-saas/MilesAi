@@ -22,6 +22,8 @@ from app.tenant.a2a.card_client import (
     resolve_agent_card_url,
 )
 from app.tenant.a2a.models import A2aPeer, A2aPeerStatus
+from app.tenant.a2a.meta import a2a_meta_dict
+from app.tenant.a2a.schemas.meta import A2aMetaOut
 from app.tenant.a2a.schemas.peer import (
     A2aPeerCreate,
     A2aPeerOut,
@@ -60,6 +62,10 @@ class A2aPeerService(BaseService):
 
     def __init__(self, db: AsyncSession, ctx: TenantContext) -> None:
         super().__init__(db, ctx)
+
+    async def get_meta(self) -> A2aMetaOut:
+        """返回枚举展示字典（无 DB 查询，文案来自 tenant/*/meta.py）。"""
+        return A2aMetaOut.model_validate(a2a_meta_dict())
 
     async def _get_peer_or_raise(self, peer_id: UUID) -> A2aPeer:
         """加载 Peer 并校验租户与未删除。"""

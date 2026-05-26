@@ -10,7 +10,7 @@ import {
   mcpTransportLabel,
   normalizeMcpTransport,
 } from "@/lib/mcp-labels";
-import type { McpService } from "@/lib/types";
+import type { McpMeta, McpService } from "@/lib/types";
 
 const transportIcon: Record<"http" | "sse" | "stdio", string> = {
   http: "🌐",
@@ -20,6 +20,7 @@ const transportIcon: Record<"http" | "sse" | "stdio", string> = {
 
 type Props = {
   service: McpService;
+  mcpMeta?: McpMeta | null;
   onSync: () => void;
   onEdit: () => void;
   onDelete: () => void;
@@ -29,6 +30,7 @@ type Props = {
 
 export function McpServiceCard({
   service,
+  mcpMeta,
   onSync,
   onEdit,
   onDelete,
@@ -36,7 +38,7 @@ export function McpServiceCard({
   toolsExpanded,
 }: Props) {
   const transport = normalizeMcpTransport(service.transport);
-  const sync = mcpSyncStatusLabel(service);
+  const sync = mcpSyncStatusLabel(service, mcpMeta);
   const toolCount = service.tools_cache?.length ?? 0;
   const warn = Boolean(service.sync_error) || sync.tone === "warn";
 
@@ -85,7 +87,7 @@ export function McpServiceCard({
 
       <div className="mt-3 flex flex-wrap gap-2">
         <span className="rounded border border-brand/20 bg-brand-light/30 px-2 py-0.5 text-[10px] font-medium text-brand">
-          {mcpTransportLabel(service.transport)}
+          {mcpTransportLabel(service.transport, mcpMeta)}
         </span>
         <span className={`rounded border px-2 py-0.5 text-[10px] font-medium ${syncToneClass}`}>
           {sync.label}

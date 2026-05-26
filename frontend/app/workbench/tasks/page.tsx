@@ -8,11 +8,8 @@ import { usePagedList } from "@/hooks/use-paged-list";
 import { ResourceListFooter } from "@/components/resource/ResourceListFooter";
 import { ResourceListLayout } from "@/components/resource/ResourceListLayout";
 import { filterBySearch } from "@/lib/filter-search";
-import {
-  TASK_STATUS_TABS,
-  taskStatusBadgeClass,
-  taskStatusLabel,
-} from "@/lib/task-labels";
+import { taskStatusBadgeClass, taskStatusFilterOptions, taskStatusLabel } from "@/lib/task-labels";
+import { useTaskMeta } from "@/hooks/use-task-meta";
 import type { TaskRecord } from "@/lib/types";
 
 const PAGE_DESC =
@@ -41,12 +38,18 @@ function PageMessage({ message, onDismiss }: { message: string; onDismiss?: () =
   );
 }
 
-function TaskStatusBadge({ status }: { status: string }) {
+function TaskStatusBadge({
+  status,
+  taskMeta,
+}: {
+  status: string;
+  taskMeta: import("@/lib/types").TaskMeta | null;
+}) {
   return (
     <span
       className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ${taskStatusBadgeClass(status)}`}
     >
-      {taskStatusLabel(status)}
+      {taskStatusLabel(status, taskMeta)}
     </span>
   );
 }
@@ -63,10 +66,12 @@ function canRetry(task: TaskRecord) {
 
 function TaskRow({
   task,
+  taskMeta,
   onCancel,
   onRetry,
 }: {
   task: TaskRecord;
+  taskMeta: import("@/lib/types").TaskMeta | null;
   onCancel: () => void;
   onRetry: () => void;
 }) {
@@ -76,7 +81,7 @@ function TaskRow({
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="font-medium text-ink">{task.task_name}</h3>
-            <TaskStatusBadge status={task.status} />
+            <TaskStatusBadge status={task.status} taskMeta={taskMeta} />
           </div>
           <p className="mt-2 font-mono text-xs text-ink-faint">
             Celery · {task.celery_task_id.slice(0, 20)}
@@ -120,6 +125,7 @@ function TaskRow({
 
 export default function TasksPage() {
   const { ready } = useRequireAuth();
+  const taskMeta = useTaskMeta(ready);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("");
   const [msg, setMsg] = useState("");
@@ -163,6 +169,11 @@ export default function TasksPage() {
     setSearch("");
   };
 
+  const statusTabs = useMemo(
+    () => taskStatusFilterOptions(taskMeta).map((o) => ({ key: o.value, label: o.label })),
+    [taskMeta],
+  );
+
   const act = async (id: string, action: "cancel" | "retry") => {
     setMsg("");
     try {
@@ -182,7 +193,7 @@ export default function TasksPage() {
       searchPlaceholder="搜索任务名称、ID 或失败原因"
       search={search}
       onSearchChange={setSearch}
-      tabs={[...TASK_STATUS_TABS]}
+      tabs={statusTabs}
       activeTab={filter}
       onTabChange={onFilterChange}
       loading={list.loading}
@@ -220,7 +231,7 @@ export default function TasksPage() {
         <StatChip
           label="自动刷新"
           value="8s"
-          hint={filter ? `状态：${taskStatusLabel(filter)}` : "全部状态"}
+          hint={filter ? `状态：${taskStatusLabel(filter, taskMeta)}` : "全部状态"}
         />
       </div>
 
@@ -234,6 +245,7 @@ export default function TasksPage() {
           <TaskRow
             key={t.id}
             task={t}
+            taskMeta={taskMeta}
             onCancel={() => void act(t.id, "cancel")}
             onRetry={() => void act(t.id, "retry")}
           />

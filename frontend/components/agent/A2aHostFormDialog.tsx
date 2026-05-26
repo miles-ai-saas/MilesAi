@@ -10,6 +10,8 @@ import {
 } from "@/components/agent/a2a-host-form-shared";
 import { ResourceDialog } from "@/components/resource/ResourceDialog";
 import { api } from "@/lib/api";
+import { a2aInvokePolicyOptions } from "@/lib/a2a-labels";
+import { useA2aMeta } from "@/hooks/use-a2a-meta";
 import type { Agent, A2aPeer, ModelConfig, PromptTemplate } from "@/lib/types";
 
 type Props = {
@@ -21,6 +23,8 @@ type Props = {
 };
 
 export function A2aHostFormDialog({ open, title, agent, onClose, onSaved }: Props) {
+  const a2aMeta = useA2aMeta(open);
+  const invokePolicies = a2aInvokePolicyOptions(a2aMeta);
   const [form, setForm] = useState<A2aHostFormValues>(emptyHostAgentForm());
   const [step, setStep] = useState(0);
   const [prompts, setPrompts] = useState<PromptTemplate[]>([]);
@@ -228,9 +232,11 @@ export function A2aHostFormDialog({ open, title, agent, onClose, onSaved }: Prop
                   }))
                 }
               >
-                <option value="rules_then_plan">规则优先，未命中则自动规划</option>
-                <option value="rules_only">仅规则触发</option>
-                <option value="plan_only">仅自动规划</option>
+                {invokePolicies.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
               </select>
             </label>
             <p className="text-xs text-ink-muted">

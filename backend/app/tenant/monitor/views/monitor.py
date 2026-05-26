@@ -9,10 +9,20 @@ from app.core.deps import require_permissions
 from app.common.response import ok
 from app.core.tenant import TenantContext
 from app.common.schema import ApiResponse
+from app.tenant.monitor.schemas.meta import MonitorMetaOut
 from app.tenant.monitor.schemas.monitor import AlertConfig, MonitorReport, MonitorStats, MonitorTrends
 from app.tenant.monitor.services.monitor import MonitorService
 
 router = APIRouter()
+
+
+# GET */meta：枚举展示字典，须在 /{id} 等路径参数路由之前注册
+@router.get("/meta", response_model=ApiResponse[MonitorMetaOut])
+async def monitor_meta(
+    ctx: TenantContext = Depends(require_permissions("monitor:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    return ok(await MonitorService(db, ctx).get_meta())
 
 
 @router.get("/stats", response_model=ApiResponse[MonitorStats])

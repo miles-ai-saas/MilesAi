@@ -10,11 +10,14 @@ import { AddResourceCard } from "@/components/resource/AddResourceCard";
 import { ResourceItemCard } from "@/components/resource/ResourceItemCard";
 import { ResourceListLayout } from "@/components/resource/ResourceListLayout";
 import { RAG_TEMPLATE } from "@/lib/flow-nodes";
+import { flowStatusLabel } from "@/lib/flow-labels";
 import { filterBySearch } from "@/lib/filter-search";
+import { useFlowMeta } from "@/hooks/use-flow-meta";
 
 export default function FlowsPage() {
   const router = useRouter();
   const { ready } = useRequireAuth();
+  const flowMeta = useFlowMeta(ready);
   const [search, setSearch] = useState("");
   const [creating, setCreating] = useState(false);
 
@@ -65,7 +68,7 @@ export default function FlowsPage() {
           href={`/workbench/flows/${flow.id}/edit`}
           title={flow.name}
           description={flow.description ?? "点击进入画布编辑"}
-          badge={flow.status === "published" ? "已发布" : "草稿"}
+          badge={flowStatusLabel(flow.status, flowMeta)}
           meta={
             <span>
               版本 v{flow.current_version} · <span className="text-brand">编辑画布 →</span>

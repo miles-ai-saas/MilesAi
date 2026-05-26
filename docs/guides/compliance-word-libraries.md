@@ -50,8 +50,21 @@ load_tenant_scan_words(tenant_id)
 
 ## 4. HTTP API（`/api/v1/compliance`）
 
+### 4.1 枚举元数据
+
+`GET /compliance/meta`（无需资源 id，路由注册在 `/libraries/{id}` 之前）返回表单/列表用的枚举字典，与 `GET /hooks/meta` 同模式：
+
+| 字段 | 说明 |
+|------|------|
+| `sensitive_actions` | 词条处置：`warn` / `block`（`value` + `label`） |
+
+前端进入合规页时拉取一次，筛选项与词条标签均用 `optionLabel(meta.sensitive_actions, value)`，避免前后端枚举漂移。
+
+### 4.2 业务接口
+
 | 方法 | 路径 | 说明 |
 |------|------|------|
+| GET | `/meta` | 枚举元数据（见 §4.1） |
 | GET | `/bindings` | 租户扫描绑定 + 全部词库列表 |
 | PUT | `/bindings` | body: `{ "library_ids": [] }` |
 | GET/POST | `/libraries` | 词库分页 / 创建 |
@@ -73,6 +86,7 @@ load_tenant_scan_words(tenant_id)
 ## 5. 前端
 
 - 路径：`/workbench/compliance`
+- 进入页：`api.getComplianceMeta()` → `ComplianceMeta.sensitive_actions` 驱动筛选与 `sensitiveActionLabel`
 - Tab「敏感词库」：顶部 **参与扫描的词库** 多选 → 词库卡片列表 → `?library={id}` 进入库内词条管理
 - 组件：`ComplianceScanBindingsPanel`、`WordLibraryDialog`、`ComplianceLibraryDetail`、`LibraryWordDialog`
 

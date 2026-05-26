@@ -15,13 +15,6 @@ from app.tenant.compliance.models import (
     SensitiveWordEntry,
     WordLibrary,
 )
-from app.tenant.hooks.models import (
-    HookBinding,
-    HookDefinition,
-    HookScope,
-    HookTrigger,
-    HookType,
-)
 from app.tenant.mcp.models import McpService, McpRunnerSession, McpStatus
 from app.tenant.prompts.models import PromptTemplate
 from app.tenant.skills.models import SkillPackage
@@ -78,11 +71,6 @@ __all__ = [
     "LibraryWordBinding",
     "ComplianceLibraryBinding",
     "SensitiveAction",
-    "HookDefinition",
-    "HookBinding",
-    "HookType",
-    "HookTrigger",
-    "HookScope",
     "InterceptLog",
     "PromptTemplate",
     "SkillPackage",

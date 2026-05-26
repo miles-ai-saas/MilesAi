@@ -17,6 +17,8 @@ from app.models.tag import TagEntityType
 from app.tenant.categories.services.category import CategoryService
 from app.tenant.tags.services.tag import TagService
 from app.tenant.skills.models import SkillPackage
+from app.tenant.skills.meta import skills_meta_dict
+from app.tenant.skills.schemas.meta import SkillMetaOut
 from app.tenant.skills.schemas.skill import (
     SkillFileContent,
     SkillFileNode,
@@ -54,6 +56,10 @@ class SkillService(BaseService):
     def __init__(self, db: AsyncSession, ctx: TenantContext) -> None:
         super().__init__(db, ctx)
         self._cat = CategoryService(db, ctx)
+
+    async def get_meta(self) -> SkillMetaOut:
+        """返回枚举展示字典（无 DB 查询，文案来自 tenant/*/meta.py）。"""
+        return SkillMetaOut.model_validate(skills_meta_dict())
 
     async def get_skill(self, skill_id: UUID) -> SkillPackageOut:
         return await self._to_out(await self._get_or_raise(skill_id))

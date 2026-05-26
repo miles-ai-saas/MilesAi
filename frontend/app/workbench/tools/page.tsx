@@ -18,13 +18,15 @@ import { useRequireAuth } from "@/lib/auth-store";
 import { filterBySearch } from "@/lib/filter-search";
 import {
   TOOL_PAGE_TABS,
-  TOOL_SOURCE_TABS,
+  catalogSourceTabs,
+  invocationStatusLabel,
+  toolKindTabs,
   toolSourceLabel,
   type ToolKindTab,
   type ToolPageTab,
   type ToolSourceTab,
 } from "@/lib/tool-labels";
-import type { CustomTool, ToolCatalogItem, ToolInvocationLog, ToolParameterSpec } from "@/lib/types";
+import type { CustomTool, ToolCatalogItem, ToolInvocationLog, ToolParameterSpec, ToolsMeta } from "@/lib/types";
 
 function slugFromName(name: string): string {
   return name
@@ -76,7 +78,7 @@ function FilterChip({
   );
 }
 
-function LogStatusBadge({ status }: { status: string }) {
+function LogStatusBadge({ status, toolsMeta }: { status: string; toolsMeta: ToolsMeta | null }) {
   const failed = status === "failed" || status === "error";
   const ok = status === "success" || status === "ok";
   return (
@@ -89,20 +91,22 @@ function LogStatusBadge({ status }: { status: string }) {
             : "bg-surface-muted text-ink-muted"
       }`}
     >
-      {status}
+      {invocationStatusLabel(status, toolsMeta)}
     </span>
   );
 }
 
-function InvocationLogRow({ log }: { log: ToolInvocationLog }) {
+function InvocationLogRow({ log, toolsMeta }: { log: ToolInvocationLog; toolsMeta: ToolsMeta | null }) {
   return (
     <article className="rounded-xl border border-line bg-surface p-4 shadow-card transition hover:border-brand/20">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="font-medium text-ink">{log.tool_slug}</h3>
-            <LogStatusBadge status={log.status} />
-            <span className="badge bg-brand-light text-brand">{toolSourceLabel(log.source)}</span>
+            <LogStatusBadge status={log.status} toolsMeta={toolsMeta} />
+            <span className="badge bg-brand-light text-brand">
+              {toolSourceLabel(log.source, toolsMeta)}
+            </span>
             <span className="text-xs text-ink-muted">{log.invoke_source}</span>
           </div>
           <p className="mt-2 text-xs text-ink-muted">
@@ -124,6 +128,7 @@ function InvocationLogRow({ log }: { log: ToolInvocationLog }) {
 
 export default function ToolsPage() {
   const { ready } = useRequireAuth();
+  const [toolsMeta, setToolsMeta] = useState<ToolsMeta | null>(null);
   const [pageTab, setPageTab] = useState<ToolPageTab>("catalog");
   const [sourceTab, setSourceTab] = useState<ToolSourceTab>("");
   const [search, setSearch] = useState("");
@@ -184,6 +189,11 @@ export default function ToolsPage() {
       setLoading(false);
     }
   }, [sourceTab, tagFilterIds]);
+
+  useEffect(() => {
+    if (!ready) return;
+    void api.getToolsMeta().then(setToolsMeta).catch(() => setToolsMeta(null));
+  }, [ready]);
 
   useEffect(() => {
     if (!ready || pageTab !== "catalog") return;
@@ -377,6 +387,7 @@ export default function ToolsPage() {
       <ToolCreateDialog
         open={dialogOpen}
         mode={dialogMode}
+        kindTabs={toolKindTabs(toolsMeta)}
         toolKind={toolKind}
         editing={editing}
         slug={slug}
@@ -418,6 +429,7 @@ export default function ToolsPage() {
       <ToolDetailDialog
         open={detailOpen}
         item={detailTool}
+        toolsMeta={toolsMeta}
         onClose={() => setDetailOpen(false)}
         onTest={
           detailTool
@@ -478,7 +490,7 @@ export default function ToolsPage() {
               </p>
             )}
             {filteredLogs.map((log) => (
-              <InvocationLogRow key={log.id} log={log} />
+              <InvocationLogRow key={log.id} log={log} toolsMeta={toolsMeta} />
             ))}
           </div>
         </ResourceListLayout>
@@ -537,7 +549,7 @@ export default function ToolsPage() {
         <div className="col-span-full rounded-xl border border-line bg-surface-muted/40 p-4">
           <p className="mb-2 text-xs font-medium text-ink-muted">来源</p>
           <div className="flex flex-wrap gap-2">
-            {TOOL_SOURCE_TABS.map((tab) => (
+            {catalogSourceTabs(toolsMeta).map((tab) => (
               <FilterChip
                 key={tab.key || "all"}
                 active={sourceTab === tab.key}
@@ -566,6 +578,7 @@ export default function ToolsPage() {
           <ToolCard
             key={`${t.source}-${t.slug}-${t.tool_id ?? ""}`}
             tool={t}
+            toolsMeta={toolsMeta}
             onDetail={() => openDetail(t)}
             onTest={() => {
               setTestTool(t);

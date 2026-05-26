@@ -16,7 +16,7 @@ import { KbPageAlert } from "@/components/kb/KbPageAlert";
 import { KbQuotaBar } from "@/components/kb/KbQuotaBar";
 import { filterBySearch } from "@/lib/filter-search";
 import { retrievalModeLabel } from "@/lib/kb-labels";
-import type { KnowledgeBase, KbQuota, ModelConfig } from "@/lib/types";
+import type { KnowledgeBase, KbMeta, KbQuota, ModelConfig } from "@/lib/types";
 
 const DEFAULT_CHUNK_SIZE = 500;
 const DEFAULT_CHUNK_OVERLAP = 50;
@@ -44,6 +44,7 @@ export default function KbPage() {
   const [rerankCandidateK, setRerankCandidateK] = useState(DEFAULT_RERANK_CANDIDATE_K);
   const [retrievalMode, setRetrievalMode] = useState<"vector" | "hybrid">("vector");
   const [hybridAlpha, setHybridAlpha] = useState(0.5);
+  const [kbMeta, setKbMeta] = useState<KbMeta | null>(null);
   const [quota, setQuota] = useState<KbQuota | null>(null);
   const [quotaLoading, setQuotaLoading] = useState(true);
   const [saveError, setSaveError] = useState("");
@@ -64,6 +65,11 @@ export default function KbPage() {
   useEffect(() => {
     reloadQuota();
   }, [reloadQuota]);
+
+  useEffect(() => {
+    if (!ready) return;
+    void api.getKbMeta().then(setKbMeta).catch(() => setKbMeta(null));
+  }, [ready]);
 
   useEffect(() => {
     if (!ready) return;
@@ -228,7 +234,7 @@ export default function KbPage() {
                   {kb.embedding_dimension} 维
                 </span>
                 <span className="rounded bg-brand/10 px-1.5 py-0.5 text-[11px] text-brand">
-                  {retrievalModeLabel(kb.retrieval_mode)}
+                  {retrievalModeLabel(kb.retrieval_mode, kbMeta?.retrieval_modes)}
                 </span>
                 {kb.rerank_model_name ? (
                   <span className="rounded bg-surface-muted px-1.5 py-0.5 text-[11px]">
@@ -357,8 +363,15 @@ export default function KbPage() {
             value={retrievalMode}
             onChange={(e) => setRetrievalMode(e.target.value as "vector" | "hybrid")}
           >
-            <option value="vector">纯语义向量</option>
-            <option value="hybrid">混合（向量 + 关键词）</option>
+            {(kbMeta?.retrieval_modes ?? [
+              { value: "vector", label: "纯语义向量" },
+              { value: "hybrid", label: "混合（向量 + 关键词）" },
+            ]).map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+                {o.hint ? ` — ${o.hint}` : ""}
+              </option>
+            ))}
           </select>
         </label>
         {retrievalMode === "hybrid" && (

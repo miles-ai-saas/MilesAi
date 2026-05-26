@@ -13,6 +13,7 @@ import { ResourceListLayout } from "@/components/resource/ResourceListLayout";
 import { usePagedList } from "@/hooks/use-paged-list";
 import { useConfirmAction } from "@/hooks/use-confirm-action";
 import { agentModeLabel, agentStatusLabel, agentTypeLabel } from "@/lib/agent-utils";
+import { useAgentMeta } from "@/hooks/use-agent-meta";
 import { useRequireAuth } from "@/lib/auth-store";
 import { filterBySearch } from "@/lib/filter-search";
 import { useCategoryTabs } from "@/components/category/useCategoryTabs";
@@ -80,6 +81,7 @@ function FilterChip({
 export default function AgentsPage() {
   const router = useRouter();
   const { ready } = useRequireAuth();
+  const agentMeta = useAgentMeta(ready);
   const [tab, setTab] = useState<AgentsTab>("custom");
   const [search, setSearch] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -276,13 +278,13 @@ export default function AgentsPage() {
                   key={a.id}
                   title={a.name}
                   description={a.description ?? "未填写描述"}
-                  badge={agentStatusLabel(a.status)}
+                  badge={agentStatusLabel(a.status, agentMeta)}
                   muted={disabled}
                   meta={
                     <>
                       <span className="text-xs text-ink-muted">
                         {a.category_name ? `${a.category_name} · ` : ""}
-                        {agentTypeLabel(a)} ·{" "}
+                        {agentTypeLabel(a, agentMeta)} ·{" "}
                         {a.kb_ids.length > 0 ? `知识库 ${a.kb_ids.length}` : "未绑知识库"} ·{" "}
                         {agentModeLabel(a)}
                       </span>

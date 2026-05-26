@@ -2,7 +2,7 @@
 
 from uuid import UUID
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.infra.db import get_db
@@ -10,6 +10,8 @@ from app.core.deps import get_page_params, require_permissions
 from app.common.response import ok, page_ok
 from app.core.tenant import TenantContext
 from app.common.schema import ApiResponse, PageParams, PageResult
+from app.tenant.hooks.schemas.execution import HookExecutionLogOut
+from app.tenant.hooks.schemas.meta import HookMetaOut
 from app.tenant.hooks.schemas.hook import (
     HookBindingCreate,
     HookBindingOut,
@@ -24,6 +26,26 @@ router = APIRouter()
 
 def _svc(db: AsyncSession, ctx: TenantContext) -> HookService:
     return HookService(db, ctx)
+
+
+# GET */meta：枚举展示字典，须在 /{id} 等路径参数路由之前注册
+@router.get("/meta", response_model=ApiResponse[HookMetaOut])
+async def hook_meta(
+    ctx: TenantContext = Depends(require_permissions("hook:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    return ok(await _svc(db, ctx).get_meta())
+
+
+@router.get("/executions", response_model=ApiResponse[PageResult[HookExecutionLogOut]])
+async def list_hook_executions(
+    hook_id: UUID | None = Query(None),
+    params: PageParams = Depends(get_page_params),
+    ctx: TenantContext = Depends(require_permissions("hook:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await _svc(db, ctx).list_executions(params, hook_id=hook_id)
+    return page_ok(result.items, result.total, result.page, result.size)
 
 
 @router.get("", response_model=ApiResponse[PageResult[HookDefinitionOut]])

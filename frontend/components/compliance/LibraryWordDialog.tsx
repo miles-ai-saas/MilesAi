@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { ResourceDialog } from "@/components/resource/ResourceDialog";
 import { api } from "@/lib/api";
-import type { LibraryWord } from "@/lib/types";
+import { sensitiveActionLabel } from "@/lib/compliance-labels";
+import type { EnumOption, LibraryWord } from "@/lib/types";
 
 type Mode = "create" | "view" | "edit";
 
@@ -12,6 +13,7 @@ type Props = {
   mode: Mode;
   libraryId: string;
   word?: LibraryWord | null;
+  sensitiveActions?: EnumOption[];
   onClose: () => void;
   onSaved: () => void | Promise<void>;
   onRequestEdit?: () => void;
@@ -25,6 +27,7 @@ export function LibraryWordDialog({
   onClose,
   onSaved,
   onRequestEdit,
+  sensitiveActions = [],
 }: Props) {
   const isView = mode === "view";
   const isCreate = mode === "create";
@@ -125,7 +128,8 @@ export function LibraryWordDialog({
             <div className="text-sm">
               <p className="text-xs text-ink-muted">处置方式</p>
               <p className="mt-1 text-ink">
-                {word?.action === "block" ? "拦截（拒绝请求）" : "警告（记录日志）"}
+                {sensitiveActionLabel(word?.action ?? "", null, sensitiveActions)}
+                {word?.action === "block" ? "（拒绝请求）" : "（记录日志）"}
               </p>
             </div>
             <div className="text-sm">
@@ -156,8 +160,18 @@ export function LibraryWordDialog({
                 value={action}
                 onChange={(e) => setAction(e.target.value as "warn" | "block")}
               >
-                <option value="warn">警告（记录日志）</option>
-                <option value="block">拦截（拒绝请求）</option>
+                {(sensitiveActions.length
+                  ? sensitiveActions
+                  : [
+                      { value: "warn", label: "警告" },
+                      { value: "block", label: "拦截" },
+                    ]
+                ).map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                    {o.hint ? ` — ${o.hint}` : ""}
+                  </option>
+                ))}
               </select>
             </label>
             {!isCreate && (

@@ -22,8 +22,9 @@ import {
 } from "@/lib/document-status";
 import { formatFileSize } from "@/lib/format-bytes";
 import { kbFileIcon } from "@/lib/kb-file-icon";
-import { retrievalModeLabel, SEARCH_SOURCE_LABEL } from "@/lib/kb-labels";
-import type { Document, KnowledgeBase, KbQuota } from "@/lib/types";
+import type { EnumOption } from "@/lib/enum-meta";
+import { retrievalModeLabel, searchSourceLabel } from "@/lib/kb-labels";
+import type { Document, KnowledgeBase, KbMeta, KbQuota } from "@/lib/types";
 
 type TabKey = "documents" | "search" | "logs";
 type DocFilter = "all" | "ready" | "processing" | "failed";
@@ -56,6 +57,7 @@ export default function KbDetailPage() {
   const { ready } = useRequireAuth();
   const [tab, setTab] = useState<TabKey>("documents");
   const [kb, setKb] = useState<KnowledgeBase | null>(null);
+  const [kbMeta, setKbMeta] = useState<KbMeta | null>(null);
   const [quota, setQuota] = useState<KbQuota | null>(null);
   const [quotaLoading, setQuotaLoading] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -122,6 +124,7 @@ export default function KbDetailPage() {
   useEffect(() => {
     if (!ready || !id) return;
     setQuotaLoading(true);
+    void api.getKbMeta().then(setKbMeta).catch(() => setKbMeta(null));
     Promise.all([reloadKb(), reloadQuota()]).catch((e) =>
       setAlert({ tone: "error", message: e instanceof Error ? e.message : "加载失败" }),
     );
@@ -404,6 +407,7 @@ export default function KbDetailPage() {
                     <DocumentRow
                       key={d.id}
                       doc={d}
+                      statusOptions={kbMeta?.document_statuses}
                       retrying={retryingId === d.id}
                       expanded={expandedFailId === d.id}
                       onToggleFail={() =>
@@ -432,7 +436,8 @@ export default function KbDetailPage() {
         <section className="rounded-xl border border-line bg-surface p-5 shadow-card">
           <h2 className="text-sm font-semibold text-ink">检索测试</h2>
           <p className="mt-1 text-xs text-ink-faint">
-            默认使用本库配置（{retrievalModeLabel(kb.retrieval_mode)}）。专有名词、编号可尝试「混合」。
+            默认使用本库配置（{retrievalModeLabel(kb.retrieval_mode, kbMeta?.retrieval_modes)}）。
+            专有名词、编号可尝试「混合」。
           </p>
           <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end">
             <label className="min-w-0 flex-1">
@@ -451,9 +456,15 @@ export default function KbDetailPage() {
                 value={searchMode}
                 onChange={(e) => setSearchMode(e.target.value as typeof searchMode)}
               >
-                <option value="default">按库配置</option>
-                <option value="vector">纯语义</option>
-                <option value="hybrid">混合</option>
+                {(kbMeta?.search_modes ?? [
+                  { value: "default", label: "按库配置" },
+                  { value: "vector", label: "纯语义" },
+                  { value: "hybrid", label: "混合" },
+                ]).map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
               </select>
               <label className="flex items-center gap-1 text-xs text-ink-muted">
                 Top
@@ -526,7 +537,7 @@ export default function KbDetailPage() {
                       <span className="rounded-md bg-surface-muted px-1.5 py-0.5">
                         {log.retrieval_mode}
                       </span>
-                      <span>{SEARCH_SOURCE_LABEL[log.source] ?? log.source}</span>
+                      <span>{searchSourceLabel(log.source, kbMeta?.search_sources)}</span>
                       <span>
                         {log.hit_count} 命中 · {log.latency_ms} ms
                       </span>
@@ -614,8 +625,14 @@ export default function KbDetailPage() {
             value={editRetrievalMode}
             onChange={(e) => setEditRetrievalMode(e.target.value as "vector" | "hybrid")}
           >
-            <option value="vector">纯语义向量</option>
-            <option value="hybrid">混合（向量 + 关键词）</option>
+            {(kbMeta?.retrieval_modes ?? [
+              { value: "vector", label: "纯语义向量" },
+              { value: "hybrid", label: "混合（向量 + 关键词）" },
+            ]).map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
           </select>
         </label>
         {editRetrievalMode === "hybrid" && (
@@ -642,6 +659,7 @@ export default function KbDetailPage() {
 
 function DocumentRow({
   doc,
+  statusOptions,
   retrying,
   expanded,
   onToggleFail,
@@ -650,6 +668,7 @@ function DocumentRow({
   onDelete,
 }: {
   doc: Document;
+  statusOptions?: EnumOption[];
   retrying: boolean;
   expanded: boolean;
   onToggleFail: () => void;
@@ -671,7 +690,11 @@ function DocumentRow({
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
           <p className="truncate font-medium text-ink">{doc.filename}</p>
-          <DocumentStatusBadge status={doc.status} pulse={isDocumentProcessing(doc.status)} />
+          <DocumentStatusBadge
+            status={doc.status}
+            pulse={isDocumentProcessing(doc.status)}
+            statusOptions={statusOptions}
+          />
         </div>
         <p className="mt-0.5 text-xs text-ink-faint">
           {formatFileSize(doc.file_size)} · {new Date(doc.created_at).toLocaleString()}

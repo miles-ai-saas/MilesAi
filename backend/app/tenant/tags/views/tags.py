@@ -16,6 +16,7 @@ from app.common.schema import ApiResponse
 from app.core.deps import get_tenant_context, require_permissions
 from app.core.tenant import TenantContext
 from app.infra.db import get_db
+from app.tenant.tags.schemas.meta import TagMetaOut
 from app.tenant.tags.schemas.tag import TenantTagCreate, TenantTagOut
 from app.tenant.tags.services.tag import TagService
 
@@ -24,6 +25,15 @@ router = APIRouter()
 
 def _svc(db: AsyncSession, ctx: TenantContext) -> TagService:
     return TagService(db, ctx)
+
+
+# GET */meta：枚举展示字典，须在 /{id} 等路径参数路由之前注册
+@router.get("/meta", response_model=ApiResponse[TagMetaOut])
+async def tags_meta(
+    ctx: TenantContext = Depends(require_permissions("tag:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    return ok(await _svc(db, ctx).get_meta())
 
 
 @router.get("", response_model=ApiResponse[list[TenantTagOut]])

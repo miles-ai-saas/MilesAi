@@ -21,6 +21,8 @@ from app.common.exceptions import BadRequestError, NotFoundError
 from app.core.config import get_settings
 from app.core.tenant import TenantContext, assert_tenant_access, tenant_filters
 from app.tenant.mcp.models import McpService, McpStatus
+from app.tenant.mcp.meta import mcp_meta_dict
+from app.tenant.mcp.schemas.meta import McpMetaOut
 from app.tenant.mcp.schemas.mcp import (
     McpServiceCreate,
     McpServiceOut,
@@ -46,6 +48,10 @@ class McpServiceManager(BaseService):
 
     def __init__(self, db: AsyncSession, ctx: TenantContext) -> None:
         super().__init__(db, ctx)
+
+    async def get_meta(self) -> McpMetaOut:
+        """返回枚举展示字典（无 DB 查询，文案来自 tenant/*/meta.py）。"""
+        return McpMetaOut.model_validate(mcp_meta_dict())
 
     def _resolve_endpoint(self, body: McpServiceCreate) -> tuple[str, str, dict]:
         """创建时解析 endpoint_url、归一化 transport 与 connection_config。"""

@@ -54,6 +54,13 @@ class ToolsService(BaseService):
     def __init__(self, db: AsyncSession, ctx: TenantContext) -> None:
         super().__init__(db, ctx)
 
+    async def get_meta(self):
+        """返回枚举展示字典（无 DB 查询，文案来自 tenant/*/meta.py）。"""
+        from app.tenant.tools.meta import tools_meta_dict
+        from app.tenant.tools.schemas.meta import ToolsMetaOut
+
+        return ToolsMetaOut.model_validate(tools_meta_dict())
+
     async def list_tools(
         self,
         params: PageParams,

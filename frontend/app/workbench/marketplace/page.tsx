@@ -11,7 +11,11 @@ import { ResourceItemCard } from "@/components/resource/ResourceItemCard";
 import { ResourceListLayout, type ResourceTab } from "@/components/resource/ResourceListLayout";
 import { PromptDialog } from "@/components/resource/PromptDialog";
 import { filterBySearch } from "@/lib/filter-search";
-import { marketplaceStatusLabel } from "@/lib/marketplace-status";
+import {
+  marketplaceCatalogSortOptions,
+  marketplaceStatusLabel,
+} from "@/lib/marketplace-labels";
+import { useMarketplaceMeta } from "@/hooks/use-marketplace-meta";
 import type {
   Agent,
   AppCategory,
@@ -106,6 +110,7 @@ function InstallSuccessBanner({ result, onDismiss }: { result: AppInstallResult;
 
 export default function MarketplacePage() {
   const { ready, user } = useRequireAuth();
+  const marketplaceMeta = useMarketplaceMeta(ready);
   const canReview = Boolean(
     user?.is_superuser || user?.permissions?.includes("marketplace:review"),
   );
@@ -447,7 +452,11 @@ export default function MarketplacePage() {
       if (app.status === "published") {
         return <span className="text-xs text-ink-faint">已在应用广场展示</span>;
       }
-      return <span className="text-xs text-ink-faint">{marketplaceStatusLabel(app.status)}</span>;
+      return (
+        <span className="text-xs text-ink-faint">
+          {marketplaceStatusLabel(app.status, marketplaceMeta)}
+        </span>
+      );
     }
     return (
       <div className="flex gap-2">
@@ -587,8 +596,11 @@ export default function MarketplacePage() {
               onChange={(e) => setPlazaSort(e.target.value as "installs" | "rating")}
               aria-label="排序方式"
             >
-              <option value="installs">按安装量</option>
-              <option value="rating">按评分</option>
+              {marketplaceCatalogSortOptions(marketplaceMeta).map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
             </select>
           }
           footer={
@@ -771,7 +783,7 @@ export default function MarketplacePage() {
                   ? `驳回：${app.review_note}`
                   : app.description ?? "租户应用"
               }
-              badge={marketplaceStatusLabel(app.status)}
+              badge={marketplaceStatusLabel(app.status, marketplaceMeta)}
               meta={renderRatingMeta(app)}
               actions={renderAppActions(app, "mine")}
             />

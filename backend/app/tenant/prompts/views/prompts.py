@@ -10,6 +10,7 @@ from app.core.deps import get_page_params, require_permissions
 from app.common.response import ok, page_ok
 from app.core.tenant import TenantContext
 from app.common.schema import ApiResponse, PageParams, PageResult
+from app.tenant.prompts.schemas.meta import PromptMetaOut
 from app.tenant.prompts.schemas.prompt import (
     PromptTemplateCreate,
     PromptTemplateOut,
@@ -18,6 +19,15 @@ from app.tenant.prompts.schemas.prompt import (
 from app.tenant.prompts.services.prompt import PromptService
 
 router = APIRouter()
+
+
+# GET */meta：枚举展示字典，须在 /{id} 等路径参数路由之前注册
+@router.get("/meta", response_model=ApiResponse[PromptMetaOut])
+async def prompts_meta(
+    ctx: TenantContext = Depends(require_permissions("prompt:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    return ok(await PromptService(db, ctx).get_meta())
 
 
 @router.get("", response_model=ApiResponse[PageResult[PromptTemplateOut]])

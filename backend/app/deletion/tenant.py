@@ -16,7 +16,7 @@ from app.tenant.compliance.models import (
     SensitiveWordEntry,
     WordLibrary,
 )
-from app.tenant.hooks.models import HookBinding, HookDefinition
+from app.tenant.hooks.models import HookBinding, HookDefinition, HookExecutionLog
 from app.tenant.marketplace.models import AppInstall
 from app.tenant.mcp.models import McpRunnerSession, McpService
 from app.tenant.prompts.models import PromptTemplate
@@ -91,6 +91,7 @@ async def purge_tenant_data(db: AsyncSession, tenant_id: UUID) -> None:
     # sys_categories 为全平台全局字典，删除租户时不删分类行
     await db.execute(delete(TenantAuditLog).where(TenantAuditLog.tenant_id == tenant_id))
     await db.execute(delete(AppInstall).where(AppInstall.tenant_id == tenant_id))
+    await db.execute(delete(HookExecutionLog).where(HookExecutionLog.tenant_id == tenant_id))
     await db.execute(delete(HookBinding).where(HookBinding.tenant_id == tenant_id))
     await db.execute(delete(HookDefinition).where(HookDefinition.tenant_id == tenant_id))
     await db.execute(delete(PromptTemplate).where(PromptTemplate.tenant_id == tenant_id))

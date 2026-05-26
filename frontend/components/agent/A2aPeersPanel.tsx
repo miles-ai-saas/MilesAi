@@ -10,20 +10,13 @@ import { useRequireAuth } from "@/lib/auth-store";
 import { filterBySearch } from "@/lib/filter-search";
 import { usePagedList } from "@/hooks/use-paged-list";
 import { useConfirmAction } from "@/hooks/use-confirm-action";
+import { a2aPeerStatusLabel } from "@/lib/a2a-labels";
+import { useA2aMeta } from "@/hooks/use-a2a-meta";
 import type { A2aPeer } from "@/lib/types";
-
-function peerStatusLabel(status: string): string {
-  const map: Record<string, string> = {
-    pending: "待同步",
-    active: "已连通",
-    error: "异常",
-    inactive: "已停用",
-  };
-  return map[status] ?? status;
-}
 
 export function A2aPeersPanel() {
   const { ready } = useRequireAuth();
+  const a2aMeta = useA2aMeta(ready);
   const [search, setSearch] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [name, setName] = useState("");
@@ -136,7 +129,7 @@ export function A2aPeersPanel() {
           key={p.id}
           title={p.name}
           description={p.card_display_name ?? p.description ?? p.base_url ?? p.agent_card_url}
-          badge={peerStatusLabel(p.status)}
+          badge={a2aPeerStatusLabel(p.status, a2aMeta)}
           meta={
             <span className="line-clamp-2">
               {p.skills_count > 0 ? `${p.skills_count} 个 skill · ` : ""}

@@ -3,7 +3,10 @@
 import type { Dispatch, SetStateAction } from "react";
 import { formatAgentCode, type AgentFormValues } from "@/components/agent/agent-form-shared";
 import { TagPicker } from "@/components/tag/TagPicker";
-import { SUB_AGENT_ROLE_OPTIONS } from "@/lib/agent-utils";
+import { subAgentRoleOptions } from "@/lib/agent-utils";
+import { useAgentMeta } from "@/hooks/use-agent-meta";
+import { useA2aMeta } from "@/hooks/use-a2a-meta";
+import { a2aInvokePolicyOptions } from "@/lib/a2a-labels";
 import type {
   Agent,
   A2aPeer,
@@ -56,6 +59,11 @@ export function AgentFormStepContent({
   designMode,
   onOpenFlowCanvas,
 }: Props) {
+  const agentMeta = useAgentMeta();
+  const a2aMeta = useA2aMeta();
+  const roleOptions = subAgentRoleOptions(agentMeta);
+  const invokePolicies = a2aInvokePolicyOptions(a2aMeta);
+
   const toggleMcp = (id: string) => {
     setForm((f) => ({
       ...f,
@@ -393,7 +401,7 @@ export function AgentFormStepContent({
                           value={bound.role_hint ?? ""}
                           onChange={(e) => setSubRole(a.id, e.target.value)}
                         >
-                          {SUB_AGENT_ROLE_OPTIONS.map((o) => (
+                          {roleOptions.map((o) => (
                             <option key={o.value || "none"} value={o.value}>
                               {o.label}
                             </option>
@@ -431,9 +439,11 @@ export function AgentFormStepContent({
                     }))
                   }
                 >
-                  <option value="rules_then_plan">规则优先，未命中则自动规划</option>
-                  <option value="rules_only">仅规则触发</option>
-                  <option value="plan_only">仅自动规划</option>
+                  {invokePolicies.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
                 </select>
               </label>
             )}

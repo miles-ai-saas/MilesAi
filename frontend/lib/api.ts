@@ -195,8 +195,16 @@ export const api = {
 
   getMonitorTrends: (days = 7) => get<MonitorTrends>(`/monitor/trends?days=${days}`),
 
-  listAuditLogs: (page = 1, size = DEFAULT_PAGE_SIZE) =>
-    getPage<TenantAuditLog>(`/audit/logs?${buildPageQuery(page, size)}`),
+  listAuditLogs: (
+    page = 1,
+    size = DEFAULT_PAGE_SIZE,
+    filters?: { action?: string; resource_type?: string },
+  ) => {
+    const q = new URLSearchParams(buildPageQuery(page, size));
+    if (filters?.action) q.set("action", filters.action);
+    if (filters?.resource_type) q.set("resource_type", filters.resource_type);
+    return getPage<TenantAuditLog>(`/audit/logs?${q.toString()}`);
+  },
 
   getComplianceScanBindings: () => get<ComplianceScanBindings>("/compliance/bindings"),
   setComplianceScanBindings: (libraryIds: string[]) =>
@@ -588,6 +596,24 @@ export const api = {
   deleteAttachment: (id: string) =>
     http.delete(`/attachments/${id}`).then(() => undefined),
 
+  // --- 各域枚举元数据（GET */meta，见 docs/guides/hooks.md §9；文案维护在 backend tenant/*/meta.py）---
+  getHookMeta: () => get<import("./types").HookMeta>("/hooks/meta"),
+  getComplianceMeta: () => get<import("./types").ComplianceMeta>("/compliance/meta"),
+  getFlowMeta: () => get<import("./types").FlowMeta>("/flows/meta"),
+  getKbMeta: () => get<import("./types").KbMeta>("/kb/meta"),
+  getToolsMeta: () => get<import("./types").ToolsMeta>("/tools/meta"),
+  getAgentMeta: () => get<import("./types").AgentMeta>("/agents/meta"),
+  getPromptMeta: () => get<import("./types").PromptMeta>("/prompt-templates/meta"),
+  getSkillMeta: () => get<import("./types").SkillMeta>("/skill-packages/meta"),
+  getA2aMeta: () => get<import("./types").A2aMeta>("/a2a/peers/meta"),
+  getMonitorMeta: () => get<import("./types").MonitorMeta>("/monitor/meta"),
+  getTaskMeta: () => get<import("./types").TaskMeta>("/tasks/meta"),
+  getCategoryMeta: () => get<import("./types").CategoryMeta>("/categories/meta"),
+  getTagMeta: () => get<import("./types").TagMeta>("/tags/meta"),
+  getAuditMeta: () => get<import("./types").AuditMeta>("/audit/meta"),
+  getMarketplaceMeta: () => get<import("./types").MarketplaceMeta>("/marketplace/meta"),
+  getMcpMeta: () => get<import("./types").McpMeta>("/mcp/meta"),
+  getAttachmentMeta: () => get<import("./types").AttachmentMeta>("/attachments/meta"),
   listHooks: (page = 1, size = DEFAULT_PAGE_SIZE) =>
     getPage<HookDefinition>(`/hooks?${buildPageQuery(page, size)}`),
   createHook: (payload: {
@@ -611,6 +637,10 @@ export const api = {
   ) => post<HookBinding>(`/hooks/${hookId}/bindings`, payload),
   deleteHookBinding: (bindingId: string) =>
     http.delete(`/hooks/bindings/${bindingId}`).then(() => undefined),
+  listHookExecutions: (hookId: string, page = 1, size = 10) =>
+    getPage<import("./types").HookExecutionLog>(
+      `/hooks/executions?hook_id=${hookId}&${buildPageQuery(page, size)}`,
+    ),
 
   listToolCatalog: (source?: string, categoryId?: string, tagIds?: string[]) => {
     const q = new URLSearchParams();

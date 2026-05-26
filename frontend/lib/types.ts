@@ -1,3 +1,7 @@
+import type { EnumOption } from "@/lib/enum-meta";
+
+export type { EnumOption };
+
 export interface ApiResponse<T> {
   code: number;
   message: string;
@@ -354,6 +358,149 @@ export interface HookBinding {
   trigger: string;
   priority: number;
   is_active: boolean;
+  created_at: string;
+}
+
+/** 各域 GET …/meta 响应；字段与 backend tenant 下 schemas/meta.py 一致，文案维护在 tenant 各模块 meta.py。 */
+
+/** GET /hooks/meta */
+export interface HookMeta {
+  triggers: EnumOption[];
+  scopes: EnumOption[];
+  on_failure_options: EnumOption[];
+  response_actions: EnumOption[];
+  schema_version: string;
+}
+
+/** GET /compliance/meta */
+export interface ComplianceMeta {
+  sensitive_actions: EnumOption[];
+  scan_modules: EnumOption[];
+}
+
+/** GET /flows/meta */
+export interface FlowMeta {
+  statuses: EnumOption[];
+}
+
+/** GET /kb/meta */
+export interface KbMeta {
+  retrieval_modes: EnumOption[];
+  search_modes: EnumOption[];
+  search_sources: EnumOption[];
+  document_statuses: EnumOption[];
+}
+
+/** GET /tools/meta */
+export interface ToolsMeta {
+  tool_types: EnumOption[];
+  catalog_sources: EnumOption[];
+  invocation_statuses: EnumOption[];
+}
+
+/** GET /agents/meta */
+export interface AgentMeta {
+  statuses: EnumOption[];
+  agent_types: EnumOption[];
+  sub_agent_role_hints: EnumOption[];
+  primary_paths: EnumOption[];
+  schema_version: string;
+}
+
+/** GET /prompt-templates/meta */
+export interface PromptMeta {
+  active_states: EnumOption[];
+  schema_version: string;
+}
+
+/** GET /marketplace/meta */
+export interface MarketplaceMeta {
+  app_statuses: EnumOption[];
+  catalog_sorts: EnumOption[];
+  schema_version: string;
+}
+
+/** GET /mcp/meta */
+export interface McpMeta {
+  statuses: EnumOption[];
+  transport_filters: EnumOption[];
+  transport_types: EnumOption[];
+  sync_displays: EnumOption[];
+  schema_version: string;
+}
+
+/** GET /attachments/meta */
+export interface AttachmentMeta {
+  purposes: EnumOption[];
+  purpose_filters: EnumOption[];
+  schema_version: string;
+}
+
+/** GET /skill-packages/meta */
+export interface SkillMeta {
+  source_types: EnumOption[];
+  active_states: EnumOption[];
+  schema_version: string;
+}
+
+/** GET /a2a/peers/meta */
+export interface A2aMeta {
+  peer_statuses: EnumOption[];
+  invoke_policies: EnumOption[];
+  peer_role_hints: EnumOption[];
+  schema_version: string;
+}
+
+/** GET /monitor/meta */
+export interface MonitorMeta {
+  health_components: EnumOption[];
+  overall_health_statuses: EnumOption[];
+  trend_day_ranges: EnumOption[];
+  schema_version: string;
+}
+
+/** GET /tasks/meta */
+export interface TaskMeta {
+  statuses: EnumOption[];
+  status_filters: EnumOption[];
+  schema_version: string;
+}
+
+/** GET /categories/meta */
+export interface CategoryMeta {
+  domains: EnumOption[];
+  schema_version: string;
+}
+
+/** GET /tags/meta */
+export interface TagMeta {
+  entity_types: EnumOption[];
+  schema_version: string;
+}
+
+/** GET /audit/meta */
+export interface AuditMeta {
+  resource_types: EnumOption[];
+  resource_type_filters: EnumOption[];
+  action_filters: EnumOption[];
+  action_labels: EnumOption[];
+  schema_version: string;
+}
+
+export interface HookExecutionLog {
+  id: string;
+  hook_id: string;
+  binding_id?: string | null;
+  event_id: string;
+  trace_id?: string | null;
+  trigger: string;
+  scope: string;
+  target_id?: string | null;
+  status: string;
+  http_status?: number | null;
+  duration_ms?: number | null;
+  response_action?: string | null;
+  error_message?: string | null;
   created_at: string;
 }
 

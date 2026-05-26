@@ -9,6 +9,7 @@ import {
   agentTypeLabel,
   subAgentRoleLabel,
 } from "@/lib/agent-utils";
+import { useAgentMeta } from "@/hooks/use-agent-meta";
 import type {
   Agent,
   Flow,
@@ -77,6 +78,7 @@ export function AgentDetailDialog({
   onChat,
   onDesign,
 }: Props) {
+  const agentMeta = useAgentMeta(open);
   const [agent, setAgent] = useState<Agent | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -190,10 +192,10 @@ export function AgentDetailDialog({
                   : "text-ink-muted"
               }
             >
-              {agentStatusLabel(agent.status)}
+              {agentStatusLabel(agent.status, agentMeta)}
             </span>
           </DetailRow>
-          <DetailRow label="类型">{agentTypeLabel(agent)}</DetailRow>
+          <DetailRow label="类型">{agentTypeLabel(agent, agentMeta)}</DetailRow>
           <DetailRow label="运行方式">{agentModeLabel(agent)}</DetailRow>
           <DetailRow label="描述">
             {agent.description?.trim() ? agent.description : (
@@ -286,9 +288,9 @@ export function AgentDetailDialog({
                   >
                     <span className="font-medium text-ink">{s.name}</span>
                     <span className="mx-2 text-ink-faint">·</span>
-                    <span className="text-ink-muted">{subAgentRoleLabel(s.role_hint)}</span>
+                    <span className="text-ink-muted">{subAgentRoleLabel(s.role_hint, agentMeta)}</span>
                     <span className="mx-2 text-ink-faint">·</span>
-                    <span className="text-ink-muted">{agentStatusLabel(s.status)}</span>
+                    <span className="text-ink-muted">{agentStatusLabel(s.status, agentMeta)}</span>
                     {s.description && (
                       <p className="mt-1 text-ink-faint line-clamp-2">{s.description}</p>
                     )}

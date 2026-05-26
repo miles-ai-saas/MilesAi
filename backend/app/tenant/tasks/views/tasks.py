@@ -9,6 +9,7 @@ from app.common.response import ok, page_ok
 from app.core.tenant import TenantContext
 from app.models.task import TaskStatus
 from app.common.schema import ApiResponse, PageParams, PageResult
+from app.tenant.tasks.schemas.meta import TaskMetaOut
 from app.tenant.tasks.schemas.task import TaskRecordOut
 from app.tenant.tasks.services.task import TaskService
 
@@ -28,6 +29,15 @@ async def list_tasks(
 ):
     result = await _svc(db, ctx).list_tasks(params, status=status)
     return page_ok(result.items, result.total, result.page, result.size)
+
+
+# GET */meta：枚举展示字典，须在 /{id} 等路径参数路由之前注册
+@router.get("/meta", response_model=ApiResponse[TaskMetaOut])
+async def tasks_meta(
+    ctx: TenantContext = Depends(require_permissions("task:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    return ok(await _svc(db, ctx).get_meta())
 
 
 @router.get("/{task_id}", response_model=ApiResponse[TaskRecordOut])

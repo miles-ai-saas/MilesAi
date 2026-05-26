@@ -43,7 +43,7 @@ export function ComplianceScanBindingsPanel({ onSaved }: Props) {
     setSaving(true);
     setMsg("");
     try {
-      await api.setComplianceScanBindings([...selected]);
+      await api.setComplianceScanBindings(Array.from(selected));
       setMsg("已保存扫描配置");
       onSaved?.();
       await load();

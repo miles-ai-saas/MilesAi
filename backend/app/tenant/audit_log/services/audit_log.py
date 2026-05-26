@@ -5,8 +5,10 @@ from uuid import UUID
 from fastapi import Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.tenant.audit_log.meta import audit_meta_dict
 from app.tenant.audit_log.repositories.audit_log import TenantAuditLogRepository
 from app.tenant.audit_log.schemas.audit_log import TenantAuditLogOut
+from app.tenant.audit_log.schemas.meta import AuditMetaOut
 from app.common.schema import PageParams, PageResult
 from app.core.tenant import TenantContext
 
@@ -48,12 +50,17 @@ class TenantAuditLogService:
         self.ctx = ctx
         self.repo = TenantAuditLogRepository(db)
 
+    async def get_meta(self) -> AuditMetaOut:
+        """返回枚举展示字典（无 DB 查询，文案来自 tenant/*/meta.py）。"""
+        return AuditMetaOut.model_validate(audit_meta_dict())
+
     async def list_logs(
         self,
         params: PageParams,
         *,
         user_id: UUID | None = None,
         action: str | None = None,
+        resource_type: str | None = None,
     ) -> PageResult[TenantAuditLogOut]:
         page = await self.repo.list_by_tenant(
             self.ctx.tenant_id,
@@ -61,6 +68,7 @@ class TenantAuditLogService:
             size=params.size,
             user_id=user_id,
             action=action,
+            resource_type=resource_type,
         )
         return PageResult(
             items=[TenantAuditLogOut.model_validate(r) for r in page.items],

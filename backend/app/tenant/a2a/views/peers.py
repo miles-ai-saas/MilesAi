@@ -11,6 +11,7 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.tenant.a2a.schemas.meta import A2aMetaOut
 from app.tenant.a2a.schemas.peer import (
     A2aPeerCreate,
     A2aPeerOut,
@@ -66,6 +67,15 @@ async def probe_a2a_peer(
 ):
     """登记前探测 Card 是否可访问。"""
     return ok(await _svc(db, ctx).probe_url(body.base_url))
+
+
+# GET */meta：枚举展示字典，须在 /{id} 等路径参数路由之前注册
+@router.get("/meta", response_model=ApiResponse[A2aMetaOut])
+async def a2a_peers_meta(
+    ctx: TenantContext = Depends(require_permissions("agent:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    return ok(await _svc(db, ctx).get_meta())
 
 
 @router.get("/{peer_id}", response_model=ApiResponse[A2aPeerOut])

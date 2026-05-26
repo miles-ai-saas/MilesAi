@@ -12,6 +12,19 @@
 
 UI：列表可显示 `内部协同 · N 子智能体`；配置在创建/编辑向导第 4 步「知识库与内部协同」。
 
+## 枚举元数据
+
+`GET /agents/meta`（注册在 `/agents/{id}` 之前）返回表单/列表用字典，与 `GET /hooks/meta` 同模式：
+
+| 字段 | 说明 |
+|------|------|
+| `statuses` | `enabled` / `disabled` |
+| `agent_types` | `custom` / `a2a` |
+| `sub_agent_role_hints` | 子智能体 `role_hint`（含空值「未指定」） |
+| `primary_paths` | 架构预览主路径（与 `AgentArchitectureOut` 一致） |
+
+文案维护在 `app/tenant/agents/meta.py`；DeepAgents 子智能体描述与 `sub_agent_role_hints` 共用 `SUB_AGENT_ROLE_LABELS`。
+
 ## 数据与约束
 
 - 表：`agt_sub_agent_bindings`（`parent_agent_id`, `child_agent_id`, `role_hint`, `sort_order`）

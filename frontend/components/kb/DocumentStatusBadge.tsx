@@ -3,6 +3,7 @@ import {
   documentStatusTone,
   type DocumentStatusTone,
 } from "@/lib/document-status";
+import type { EnumOption } from "@/lib/enum-meta";
 
 const TONE_CLASS: Record<DocumentStatusTone, string> = {
   success: "bg-emerald-50 text-emerald-800 ring-emerald-200",
@@ -14,9 +15,10 @@ const TONE_CLASS: Record<DocumentStatusTone, string> = {
 type Props = {
   status: string;
   pulse?: boolean;
+  statusOptions?: EnumOption[];
 };
 
-export function DocumentStatusBadge({ status, pulse }: Props) {
+export function DocumentStatusBadge({ status, pulse, statusOptions }: Props) {
   const tone = documentStatusTone(status);
   return (
     <span
@@ -27,7 +29,7 @@ export function DocumentStatusBadge({ status, pulse }: Props) {
       {tone === "progress" && (
         <span className="inline-block h-1.5 w-1.5 rounded-full bg-current" aria-hidden />
       )}
-      {documentStatusLabel(status)}
+      {documentStatusLabel(status, statusOptions)}
     </span>
   );
 }

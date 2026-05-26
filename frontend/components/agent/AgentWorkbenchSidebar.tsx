@@ -11,6 +11,7 @@ import {
 import { SidebarCollapseButton } from "@/components/agent/SidebarCollapseButton";
 import { WorkbenchTabIcon } from "@/components/agent/WorkbenchTabIcon";
 import { agentModeLabel, agentStatusLabel } from "@/lib/agent-utils";
+import { useAgentMeta } from "@/hooks/use-agent-meta";
 import type { Agent } from "@/lib/types";
 
 type Props = {
@@ -32,6 +33,8 @@ export function AgentWorkbenchSidebar({
   onToggleCollapse,
   onTabChange,
 }: Props) {
+  const agentMeta = useAgentMeta(Boolean(agent));
+
   return (
     <aside
       className="relative z-30 flex h-full shrink-0 flex-col overflow-hidden border-l border-line bg-surface transition-[width] duration-200 ease-out"
@@ -89,7 +92,7 @@ export function AgentWorkbenchSidebar({
                     : "border border-line text-ink-faint"
                 }`}
               >
-                {agentStatusLabel(agent.status)}
+                {agentStatusLabel(agent.status, agentMeta)}
               </span>
             </div>
           ) : (

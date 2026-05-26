@@ -10,6 +10,7 @@ from app.common.schema import ApiResponse, PageParams, PageResult
 from app.core.deps import get_page_params, require_permissions
 from app.core.tenant import TenantContext
 from app.infra.db import get_db
+from app.tenant.attachments.schemas.meta import AttachmentMetaOut
 from app.tenant.attachments.schemas.attachment import AttachmentOut, AttachmentUploadMeta
 from app.tenant.attachments.services.attachment import AttachmentService
 
@@ -53,6 +54,15 @@ async def upload_attachment(
         resource_id=resource_id,
     )
     return ok(await _svc(db, ctx).upload(file, meta))
+
+
+# GET */meta：枚举展示字典，须在 /{id} 等路径参数路由之前注册
+@router.get("/meta", response_model=ApiResponse[AttachmentMetaOut])
+async def attachments_meta(
+    ctx: TenantContext = Depends(require_permissions("attachment:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    return ok(await _svc(db, ctx).get_meta())
 
 
 @router.get("/{attachment_id}", response_model=ApiResponse[AttachmentOut])

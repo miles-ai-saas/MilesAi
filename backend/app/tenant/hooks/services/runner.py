@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.tenant.hooks.models import HookScope, HookTrigger
 from app.tenant.hooks.services.executor import HookExecutor
+from app.tenant.hooks.services.result import HookRunResult
 
 
 class HookRunner:
@@ -20,8 +21,8 @@ class HookRunner:
         scope: HookScope,
         target_id: UUID | None,
         payload: dict,
-    ) -> list[dict]:
-        """按 trigger/scope 执行已挂载钩子，返回各钩子执行结果摘要。"""
+    ) -> HookRunResult:
+        """按 trigger/scope 执行已挂载钩子；payload 可能被 before_* 钩子 modify。"""
         return await self._executor.run(
             trigger=trigger,
             scope=scope,

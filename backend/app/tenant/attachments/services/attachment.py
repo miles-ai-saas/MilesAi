@@ -15,6 +15,8 @@ from app.core.tenant import TenantContext, assert_tenant_access
 from app.infra.storage import build_attachment_object_key, delete_object, upload_bytes
 from app.models.attachment import Attachment
 from app.tenant.attachments.repositories.attachment import AttachmentRepository
+from app.tenant.attachments.meta import attachments_meta_dict
+from app.tenant.attachments.schemas.meta import AttachmentMetaOut
 from app.tenant.attachments.schemas.attachment import AttachmentOut, AttachmentUploadMeta
 from app.tenant.kb.services.quota import apply_storage_delta, assert_can_upload_bytes
 from app.common.schema import PageParams, PageResult
@@ -27,6 +29,10 @@ class AttachmentService(BaseService):
     def __init__(self, db: AsyncSession, ctx: TenantContext) -> None:
         super().__init__(db, ctx)
         self.repo = AttachmentRepository(db)
+
+    async def get_meta(self) -> AttachmentMetaOut:
+        """返回枚举展示字典（无 DB 查询，文案来自 tenant/*/meta.py）。"""
+        return AttachmentMetaOut.model_validate(attachments_meta_dict())
 
     async def list_attachments(
         self,

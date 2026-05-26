@@ -25,6 +25,8 @@ from app.flow_runtime.types import RunContext
 from app.models.flow import Flow, FlowStatus, FlowVersion
 from app.tenant.flows.repositories.flow import FlowRepository, FlowVersionRepository
 from app.common.schema import PageParams, PageResult
+from app.tenant.flows.meta import flow_meta_dict
+from app.tenant.flows.schemas.meta import FlowMetaOut
 from app.tenant.flows.schemas.flow import (
     FlowCreate,
     FlowOut,
@@ -46,6 +48,10 @@ class FlowService(BaseService):
         super().__init__(db, ctx)
         self.repo = FlowRepository(db)
         self.version_repo = FlowVersionRepository(db)
+
+    async def get_meta(self) -> FlowMetaOut:
+        """返回枚举展示字典（无 DB 查询，文案来自 tenant/*/meta.py）。"""
+        return FlowMetaOut.model_validate(flow_meta_dict())
 
     async def _get_flow_or_raise(self, flow_id: UUID) -> Flow:
         flow = await self.repo.get_by_id(flow_id)
@@ -155,35 +161,51 @@ class FlowService(BaseService):
             "flow_id": str(flow_id),
             "inputs": body.inputs,
         }
-        if query_text:
-            await compliance.check_input(query_text, module="flow_run")
-        await hooks.run(
-            HookTrigger.BEFORE_CALL,
-            HookScope.FLOW,
-            flow_id,
-            {**hook_payload, "direction": "in", "query": query_text},
-        )
+        try:
+            before = await hooks.run(
+                HookTrigger.BEFORE_CALL,
+                HookScope.FLOW,
+                flow_id,
+                {**hook_payload, "direction": "in", "query": query_text},
+            )
+            hook_payload = before.payload
+            query_text = str(hook_payload.get("query", query_text))
+            if query_text:
+                await compliance.check_input(query_text, module="flow_run")
 
-        ctx = RunContext(
-            tenant_id=str(self.ctx.tenant_id),
-            inputs=body.inputs,
-            kb_ids=kb_ids or [],
-        )
-        if "query" not in ctx.inputs and body.inputs:
-            ctx.inputs.setdefault("query", body.inputs.get("message", ""))
-        result = await get_flow_runtime().run(version.graph_json, ctx)
-        output = result.output
-        if not isinstance(output, (str, dict, list)):
-            output = str(output)
-        if isinstance(output, str) and output:
-            await compliance.check_output(output, module="flow_run")
-        await hooks.run(
-            HookTrigger.AFTER_CALL,
-            HookScope.FLOW,
-            flow_id,
-            {**hook_payload, "direction": "out", "output": output},
-        )
-        return FlowRunResponse(output=output, steps=result.steps)
+            run_inputs = dict(body.inputs)
+            if query_text:
+                run_inputs["query"] = query_text
+            hook_payload["inputs"] = run_inputs
+
+            ctx = RunContext(
+                tenant_id=str(self.ctx.tenant_id),
+                inputs=run_inputs,
+                kb_ids=kb_ids or [],
+            )
+            if "query" not in ctx.inputs and run_inputs:
+                ctx.inputs.setdefault("query", run_inputs.get("message", ""))
+            result = await get_flow_runtime().run(version.graph_json, ctx)
+            output = result.output
+            if not isinstance(output, (str, dict, list)):
+                output = str(output)
+            if isinstance(output, str) and output:
+                await compliance.check_output(output, module="flow_run")
+            await hooks.run(
+                HookTrigger.AFTER_CALL,
+                HookScope.FLOW,
+                flow_id,
+                {**hook_payload, "direction": "out", "output": output},
+            )
+            return FlowRunResponse(output=output, steps=result.steps)
+        except Exception as exc:
+            await hooks.run(
+                HookTrigger.ON_ERROR,
+                HookScope.FLOW,
+                flow_id,
+                {**hook_payload, "error": str(exc)},
+            )
+            raise
 
     async def compile_preview(self, flow_id: UUID) -> dict:
         """

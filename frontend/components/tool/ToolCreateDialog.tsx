@@ -5,7 +5,7 @@ import { CodeEditor } from "@/components/editor/CodeEditor";
 import { ResourceDialog } from "@/components/resource/ResourceDialog";
 import { ToolParameterEditor } from "@/components/tool/ToolParameterEditor";
 import { TagPicker } from "@/components/tag/TagPicker";
-import { TOOL_KIND_TABS, type ToolKindTab } from "@/lib/tool-labels";
+import type { ToolKindTab } from "@/lib/tool-labels";
 import type { CustomTool, ToolParameterSpec } from "@/lib/types";
 
 export type ToolDialogMode = "create" | "edit";
@@ -15,9 +15,12 @@ export const DEFAULT_SCRIPT = `def run(params: dict) -> dict:
     # return {"result": params.get("query")}
     raise NotImplementedError("请实现 run(params)")`;
 
+type KindTab = { key: ToolKindTab; label: string; hint: string; available: boolean };
+
 type Props = {
   open: boolean;
   mode: ToolDialogMode;
+  kindTabs: KindTab[];
   toolKind: ToolKindTab;
   editing: CustomTool | null;
   slug: string;
@@ -79,10 +82,12 @@ function Section({
 }
 
 function KindSelector({
+  kindTabs,
   toolKind,
   kindLocked,
   onToolKindChange,
 }: {
+  kindTabs: KindTab[];
   toolKind: ToolKindTab;
   kindLocked: boolean;
   onToolKindChange: (v: ToolKindTab) => void;
@@ -91,7 +96,7 @@ function KindSelector({
 
   return (
     <div className="inline-flex flex-wrap gap-1 rounded-xl border border-line bg-surface p-1">
-      {TOOL_KIND_TABS.map((tab) => {
+      {kindTabs.map((tab) => {
         const active = toolKind === tab.key;
         return (
           <button
@@ -322,7 +327,7 @@ function ScriptConfigFields({
 
 function ToolEntityFields(props: Omit<
   Props,
-  "open" | "editing" | "busy" | "onClose" | "onSubmit" | "onToolKindChange"
+  "open" | "editing" | "busy" | "onClose" | "onSubmit" | "onToolKindChange" | "kindTabs"
 >) {
   const { toolKind, ...rest } = props;
   const isScript = toolKind === "script";
@@ -370,6 +375,7 @@ function ToolEntityFields(props: Omit<
 export function ToolCreateDialog({
   open,
   mode,
+  kindTabs,
   toolKind,
   editing,
   slug,
@@ -440,6 +446,7 @@ export function ToolCreateDialog({
           <KbPageAlert tone="error" message={saveError} onDismiss={onDismissError} />
         ) : null}
         <KindSelector
+          kindTabs={kindTabs}
           toolKind={toolKind}
           kindLocked={kindLocked}
           onToolKindChange={onToolKindChange}

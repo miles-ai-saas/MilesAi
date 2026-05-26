@@ -14,6 +14,7 @@ from app.core.deps import get_page_params, require_permissions
 from app.common.response import ok, page_ok
 from app.core.tenant import TenantContext
 from app.common.schema import ApiResponse, PageParams, PageResult
+from app.tenant.kb.schemas.meta import KbMetaOut
 from app.tenant.kb.schemas.kb import (
     DocumentChunkOut,
     DocumentOut,
@@ -33,6 +34,15 @@ router = APIRouter()
 def _svc(db: AsyncSession, ctx: TenantContext) -> KnowledgeBaseService:
     """构造带租户上下文的 KB 用例服务。"""
     return KnowledgeBaseService(db, ctx)
+
+
+# GET */meta：枚举展示字典，须在 /{id} 等路径参数路由之前注册
+@router.get("/meta", response_model=ApiResponse[KbMetaOut])
+async def kb_meta(
+    ctx: TenantContext = Depends(require_permissions("kb:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    return ok(await _svc(db, ctx).get_meta())
 
 
 @router.get("/quota", response_model=ApiResponse[KbQuotaOut])

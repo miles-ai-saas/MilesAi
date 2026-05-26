@@ -18,6 +18,8 @@ from app.tenant.compliance.models import (
     WordLibrary,
 )
 from app.common.schema import PageParams, PageResult
+from app.tenant.compliance.meta import compliance_meta_dict
+from app.tenant.compliance.schemas.meta import ComplianceMetaOut
 from app.tenant.compliance.schemas.compliance import (
     ComplianceScanBindingsOut,
     ComplianceScanBindingsUpdate,
@@ -48,6 +50,10 @@ from app.tenant.compliance.services.word_resolve import (
 class ComplianceService(BaseService):
     def __init__(self, db: AsyncSession, ctx: TenantContext) -> None:
         super().__init__(db, ctx)
+
+    async def get_meta(self) -> ComplianceMetaOut:
+        """返回枚举展示字典（无 DB 查询，文案来自 tenant/*/meta.py）。"""
+        return ComplianceMetaOut.model_validate(compliance_meta_dict())
 
     async def _pipeline(self) -> CompliancePipeline | None:
         words = await load_tenant_scan_words(self.db, self.ctx.tenant_id)

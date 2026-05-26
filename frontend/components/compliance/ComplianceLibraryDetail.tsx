@@ -9,15 +9,22 @@ import { ResourceListFooter } from "@/components/resource/ResourceListFooter";
 import { api } from "@/lib/api";
 import { usePagedList } from "@/hooks/use-paged-list";
 import { useConfirmAction } from "@/hooks/use-confirm-action";
-import type { LibraryWord, WordLibrary } from "@/lib/types";
+import { sensitiveActionLabel } from "@/lib/compliance-labels";
+import type { EnumOption, LibraryWord, WordLibrary } from "@/lib/types";
 
 type Props = {
   library: WordLibrary;
+  sensitiveActions?: EnumOption[];
   onBack: () => void;
   onLibraryChange: () => void;
 };
 
-export function ComplianceLibraryDetail({ library, onBack, onLibraryChange }: Props) {
+export function ComplianceLibraryDetail({
+  library,
+  sensitiveActions = [],
+  onBack,
+  onLibraryChange,
+}: Props) {
   const [batchOpen, setBatchOpen] = useState(false);
   const [batchText, setBatchText] = useState("");
   const [wordDialogOpen, setWordDialogOpen] = useState(false);
@@ -121,9 +128,10 @@ export function ComplianceLibraryDetail({ library, onBack, onLibraryChange }: Pr
               key={w.id}
               title={w.word}
               description={
-                w.action === "block" ? "命中后拦截请求" : "命中后记录警告日志"
+                sensitiveActions.find((o) => o.value === w.action)?.hint ??
+                (w.action === "block" ? "命中后拦截请求" : "命中后记录警告日志")
               }
-              badge={w.action === "block" ? "拦截" : "警告"}
+              badge={sensitiveActionLabel(w.action, null, sensitiveActions)}
               muted={!w.is_active}
               meta={<span>{w.is_active ? "已启用" : "本库内停用"}</span>}
               actions={
@@ -191,6 +199,7 @@ export function ComplianceLibraryDetail({ library, onBack, onLibraryChange }: Pr
         mode={wordMode}
         libraryId={library.id}
         word={selectedWord}
+        sensitiveActions={sensitiveActions}
         onClose={() => setWordDialogOpen(false)}
         onSaved={async () => {
           await words.reload();

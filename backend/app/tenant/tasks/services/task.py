@@ -14,6 +14,8 @@ from app.common.exceptions import BadRequestError, NotFoundError
 from app.core.tenant import TenantContext, assert_tenant_access, tenant_filters
 from app.models.task import CeleryTaskRecord, TaskStatus
 from app.common.schema import PageParams, PageResult
+from app.tenant.tasks.meta import tasks_meta_dict
+from app.tenant.tasks.schemas.meta import TaskMetaOut
 from app.tenant.tasks.schemas.task import TaskRecordOut
 from app.core.service import BaseService
 
@@ -23,6 +25,10 @@ class TaskService(BaseService):
 
     def __init__(self, db: AsyncSession, ctx: TenantContext) -> None:
         super().__init__(db, ctx)
+
+    async def get_meta(self) -> TaskMetaOut:
+        """返回枚举展示字典（无 DB 查询，文案来自 tenant/*/meta.py）。"""
+        return TaskMetaOut.model_validate(tasks_meta_dict())
 
     async def create_record(
         self,

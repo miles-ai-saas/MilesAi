@@ -26,6 +26,7 @@ def _svc(db: AsyncSession, ctx: TenantContext) -> ModelService:
     return ModelService(db, ctx)
 
 
+# GET */meta：枚举展示字典，须在 /{id} 等路径参数路由之前注册
 @router.get("/meta", response_model=ApiResponse[ModelCatalogMetaOut])
 async def model_catalog_meta(
     ctx: TenantContext = Depends(require_permissions("model:read")),

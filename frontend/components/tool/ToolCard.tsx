@@ -2,17 +2,18 @@
 
 import { CardOverflowMenu, type OverflowMenuItem } from "@/components/resource/CardOverflowMenu";
 import { formatToolUpdatedAt, toolKindLabel, toolSourceLabel } from "@/lib/tool-labels";
-import type { ToolCatalogItem } from "@/lib/types";
+import type { ToolCatalogItem, ToolsMeta } from "@/lib/types";
 
 type Props = {
   tool: ToolCatalogItem;
+  toolsMeta?: ToolsMeta | null;
   onDetail: () => void;
   onTest: () => void;
   onEdit?: () => void;
   onDelete?: () => void;
 };
 
-export function ToolCard({ tool, onDetail, onTest, onEdit, onDelete }: Props) {
+export function ToolCard({ tool, toolsMeta, onDetail, onTest, onEdit, onDelete }: Props) {
   const readonly = tool.source !== "custom";
 
   const menuItems: OverflowMenuItem[] = [
@@ -59,11 +60,11 @@ export function ToolCard({ tool, onDetail, onTest, onEdit, onDelete }: Props) {
 
       <div className="mt-3 flex flex-wrap gap-2">
         <span className="rounded border border-brand/20 bg-brand-light/30 px-2 py-0.5 text-[10px] font-medium text-brand">
-          {toolSourceLabel(tool.source)}
+          {toolSourceLabel(tool.source, toolsMeta)}
         </span>
         {tool.source === "custom" && tool.tool_type && (
           <span className="rounded border border-line bg-surface-muted px-2 py-0.5 text-[10px] text-ink-muted">
-            {toolKindLabel(tool.tool_type)}
+            {toolKindLabel(tool.tool_type, toolsMeta)}
           </span>
         )}
         {tool.version && (

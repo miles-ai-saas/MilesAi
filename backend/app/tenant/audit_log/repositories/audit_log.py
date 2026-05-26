@@ -22,12 +22,15 @@ class TenantAuditLogRepository(BaseRepository[TenantAuditLog]):
         size: int = 20,
         user_id: UUID | None = None,
         action: str | None = None,
+        resource_type: str | None = None,
     ):
         filters = [TenantAuditLog.tenant_id == tenant_id]
         if user_id:
             filters.append(TenantAuditLog.user_id == user_id)
         if action:
             filters.append(TenantAuditLog.action == action)
+        if resource_type:
+            filters.append(TenantAuditLog.resource_type == resource_type)
         return await self.list_page(
             page=page,
             size=size,

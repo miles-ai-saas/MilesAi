@@ -17,6 +17,7 @@ from app.models.category import CategoryDomain
 from app.common.exceptions import BadRequestError
 from app.common.schema import ApiResponse
 from app.tenant.categories.schemas.category import CategoryOut
+from app.tenant.categories.schemas.meta import CategoryMetaOut
 from app.tenant.categories.services.category import CategoryService
 
 router = APIRouter()
@@ -39,6 +40,15 @@ def _check_domain(domain: str) -> str:
     if d not in _DOMAIN_READ_PERM:
         raise BadRequestError("domain 须为 agent、prompt、skill 或 tool")
     return d
+
+
+# GET /categories/meta：domain 枚举字典，须在 /{id} 等路径参数路由之前
+@router.get("/meta", response_model=ApiResponse[CategoryMetaOut])
+async def categories_meta(
+    ctx: TenantContext = Depends(get_tenant_context),
+    db: AsyncSession = Depends(get_db),
+):
+    return ok(await _svc(db, ctx).get_meta())
 
 
 @router.get("", response_model=ApiResponse[list[CategoryOut]])

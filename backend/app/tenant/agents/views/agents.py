@@ -15,6 +15,7 @@ from app.core.deps import get_page_params, require_permissions
 from app.common.response import ok, page_ok
 from app.core.tenant import TenantContext
 from app.tenant.agents.schemas.agent import AgentCreate, AgentOut, AgentUpdate, ChatRequest, ChatResponse
+from app.tenant.agents.schemas.meta import AgentMetaOut
 from app.tenant.agents.schemas.architecture import AgentArchitectureOut
 from app.tenant.agents.schemas.schedule import AgentScheduleCreate, AgentScheduleOut, AgentScheduleUpdate
 from app.tenant.agents.schemas.stats import AgentStatsOut
@@ -42,6 +43,15 @@ def _arch_svc(db: AsyncSession, ctx: TenantContext) -> AgentArchitectureService:
 
 def _schedule_svc(db: AsyncSession, ctx: TenantContext) -> AgentScheduleService:
     return AgentScheduleService(db, ctx)
+
+
+# GET */meta：枚举展示字典，须在 /{id} 等路径参数路由之前注册
+@router.get("/meta", response_model=ApiResponse[AgentMetaOut])
+async def agents_meta(
+    ctx: TenantContext = Depends(require_permissions("agent:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    return ok(await _svc(db, ctx).get_meta())
 
 
 @router.get("", response_model=ApiResponse[PageResult[AgentOut]])

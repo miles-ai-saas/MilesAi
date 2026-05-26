@@ -1,15 +1,39 @@
 /** MCP 工作台：传输类型 Tab、卡片文案与同步状态展示。 */
 
-import type { McpService } from "@/lib/types";
+import { optionLabel, type EnumOption } from "@/lib/enum-meta";
+import type { McpMeta, McpService } from "@/lib/types";
 
 export type McpTransportTab = "" | "http" | "sse" | "stdio";
 
-export const MCP_TRANSPORT_TABS: { key: McpTransportTab; label: string }[] = [
-  { key: "", label: "全部" },
-  { key: "http", label: "HTTP" },
-  { key: "sse", label: "SSE" },
-  { key: "stdio", label: "STDIO" },
+const TRANSPORT_FILTER_FALLBACK: EnumOption[] = [
+  { value: "", label: "全部" },
+  { value: "http", label: "HTTP" },
+  { value: "sse", label: "SSE" },
+  { value: "stdio", label: "STDIO" },
 ];
+
+const TRANSPORT_TYPE_FALLBACK: Record<string, string> = {
+  http: "HTTP",
+  sse: "SSE",
+  stdio: "STDIO",
+};
+
+const SYNC_DISPLAY_FALLBACK: Record<string, string> = {
+  synced: "已同步",
+  unsynced: "未同步",
+  sync_failed: "同步失败",
+};
+
+export function mcpTransportFilterOptions(meta?: McpMeta | null): EnumOption[] {
+  return meta?.transport_filters?.length ? meta.transport_filters : TRANSPORT_FILTER_FALLBACK;
+}
+
+/** @deprecated 使用 mcpTransportFilterOptions(meta) */
+export const MCP_TRANSPORT_TABS: { key: McpTransportTab; label: string }[] =
+  TRANSPORT_FILTER_FALLBACK.map((o) => ({
+    key: o.value as McpTransportTab,
+    label: o.label,
+  }));
 
 /** 与后端 normalize_transport 对齐（含 streamable-http → http）。 */
 export function normalizeMcpTransport(transport?: string | null): "http" | "sse" | "stdio" {
@@ -19,17 +43,34 @@ export function normalizeMcpTransport(transport?: string | null): "http" | "sse"
   return "sse";
 }
 
-export function mcpTransportLabel(transport?: string | null): string {
-  const map = { http: "HTTP", sse: "SSE", stdio: "STDIO" } as const;
-  return map[normalizeMcpTransport(transport)];
+export function mcpTransportLabel(
+  transport?: string | null,
+  meta?: McpMeta | null,
+): string {
+  const key = normalizeMcpTransport(transport);
+  return optionLabel(meta?.transport_types, key) || TRANSPORT_TYPE_FALLBACK[key] || key;
 }
 
-export function mcpSyncStatusLabel(s: McpService): { label: string; tone: "ok" | "warn" | "muted" } {
-  if (s.sync_error) return { label: "同步失败", tone: "warn" };
-  if (s.last_sync_at && (s.tools_cache?.length ?? 0) > 0) {
-    return { label: "已同步", tone: "ok" };
-  }
-  return { label: "未同步", tone: "muted" };
+function mcpSyncDisplayKey(s: McpService): "sync_failed" | "synced" | "unsynced" {
+  if (s.sync_error) return "sync_failed";
+  if (s.last_sync_at && (s.tools_cache?.length ?? 0) > 0) return "synced";
+  return "unsynced";
+}
+
+export function mcpSyncStatusLabel(
+  s: McpService,
+  meta?: McpMeta | null,
+): { label: string; tone: "ok" | "warn" | "muted" } {
+  const key = mcpSyncDisplayKey(s);
+  const label =
+    optionLabel(meta?.sync_displays, key) || SYNC_DISPLAY_FALLBACK[key] || key;
+  if (key === "sync_failed") return { label, tone: "warn" };
+  if (key === "synced") return { label, tone: "ok" };
+  return { label, tone: "muted" };
+}
+
+export function mcpStatusLabel(status: string, meta?: McpMeta | null): string {
+  return optionLabel(meta?.statuses, status) || status;
 }
 
 export function formatMcpUpdatedAt(s: McpService): string {

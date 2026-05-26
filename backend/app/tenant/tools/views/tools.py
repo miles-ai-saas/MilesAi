@@ -10,6 +10,7 @@ from app.core.deps import get_page_params, require_permissions
 from app.common.response import ok, page_ok
 from app.core.tenant import TenantContext
 from app.common.schema import ApiResponse, PageParams, PageResult
+from app.tenant.tools.schemas.meta import ToolsMetaOut
 from app.tenant.tools.schemas.tools import (
     ToolCatalogItem,
     ToolCreate,
@@ -26,6 +27,15 @@ router = APIRouter()
 
 def _svc(db: AsyncSession, ctx: TenantContext) -> ToolsService:
     return ToolsService(db, ctx)
+
+
+# GET */meta：枚举展示字典，须在 /{id} 等路径参数路由之前注册
+@router.get("/meta", response_model=ApiResponse[ToolsMetaOut])
+async def tools_meta(
+    ctx: TenantContext = Depends(require_permissions("tools:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    return ok(await _svc(db, ctx).get_meta())
 
 
 @router.get("/invocation-logs", response_model=ApiResponse[PageResult[ToolInvocationLogOut]])

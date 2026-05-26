@@ -59,6 +59,8 @@ from app.tenant.a2a.services.peer_refs import (
     normalize_peer_refs,
     validate_and_sync_agent_a2a_peer_refs,
 )
+from app.tenant.agents.meta import agents_meta_dict
+from app.tenant.agents.schemas.meta import AgentMetaOut
 from app.tenant.agents.services.sub_agents import (
     apply_planner_config,
     list_sub_agent_bindings,
@@ -163,6 +165,10 @@ class AgentService(BaseService):
         super().__init__(db, ctx)
         self.repo = AgentRepository(db)
         self.flow_repo = FlowRepository(db)
+
+    async def get_meta(self) -> AgentMetaOut:
+        """返回枚举展示字典（无 DB 查询，文案来自 tenant/*/meta.py）。"""
+        return AgentMetaOut.model_validate(agents_meta_dict())
 
     async def _resolve_system_prompt(self, agent: Agent) -> str:
         """合并智能体 system_prompt 与技能/MCP 说明块。"""
@@ -410,18 +416,21 @@ class AgentService(BaseService):
         }
 
         try:
-            await hooks.run(
+            before_call = await hooks.run(
                 HookTrigger.BEFORE_CALL,
                 HookScope.AGENT,
                 agent_id,
                 {**hook_payload, "direction": "in"},
             )
-            await compliance.check_input(body.query, module="agent_chat")
+            hook_payload = before_call.payload
+            query = str(hook_payload.get("query", body.query))
+            chat_body = body.model_copy(update={"query": query}) if query != body.query else body
+            await compliance.check_input(query, module="agent_chat")
 
             if agent.agent_type == AgentType.A2A:
                 from app.tenant.a2a.invoke import run_a2a_host_chat
 
-                response = await run_a2a_host_chat(self, agent, body)
+                response = await run_a2a_host_chat(self, agent, chat_body)
                 await compliance.check_output(response.answer, module="agent_chat")
                 await hooks.run(
                     HookTrigger.AFTER_CALL,
@@ -436,9 +445,9 @@ class AgentService(BaseService):
             if bindings:
                 from app.integrations.deepagents.orchestrator import run_subagent_planned_chat
 
-                response = await run_subagent_planned_chat(self, agent, bindings, body)
+                response = await run_subagent_planned_chat(self, agent, bindings, chat_body)
                 if peer_refs:
-                    response = await self._maybe_augment_a2a(agent, body, response)
+                    response = await self._maybe_augment_a2a(agent, chat_body, response)
                 await compliance.check_output(response.answer, module="agent_chat")
                 await hooks.run(
                     HookTrigger.AFTER_CALL,
@@ -456,7 +465,7 @@ class AgentService(BaseService):
                 response = await run_a2a_augmented_chat(
                     self,
                     agent,
-                    body,
+                    chat_body,
                     kb_ids=kb_ids,
                     top_k=top_k,
                     agent_id=agent_id,
@@ -481,14 +490,14 @@ class AgentService(BaseService):
                     if version:
                         ctx = RunContext(
                             tenant_id=str(self.ctx.tenant_id),
-                            inputs={"query": body.query, **body.inputs},
+                            inputs={"query": query, **chat_body.inputs},
                             kb_ids=kb_ids,
                             model_config_id=str(agent.model_config_id) if agent.model_config_id else None,
                             system_prompt=await self._resolve_system_prompt(agent),
                         )
                         result = await get_flow_runtime().run(version.graph_json, ctx)
                         response = ChatResponse(answer=str(result.output), steps=result.steps)
-                        response = await self._maybe_augment_a2a(agent, body, response)
+                        response = await self._maybe_augment_a2a(agent, chat_body, response)
                         await compliance.check_output(response.answer, module="agent_chat")
                         await hooks.run(
                             HookTrigger.AFTER_CALL,
@@ -498,8 +507,8 @@ class AgentService(BaseService):
                         )
                         return response
 
-            response = await self._rag_chat(agent, body, kb_ids, top_k, agent_id, hooks)
-            response = await self._maybe_augment_a2a(agent, body, response)
+            response = await self._rag_chat(agent, chat_body, kb_ids, top_k, agent_id, hooks)
+            response = await self._maybe_augment_a2a(agent, chat_body, response)
             await compliance.check_output(response.answer, module="agent_chat")
             await hooks.run(
                 HookTrigger.AFTER_CALL,
@@ -552,17 +561,23 @@ class AgentService(BaseService):
     ) -> ChatResponse:
         base = await self._resolve_system_prompt(agent)
         if agent.model_config_id and agent.model_config:
-            await hooks.run(
+            before = await hooks.run(
                 HookTrigger.BEFORE_REASONING,
                 HookScope.AGENT,
                 agent_id,
-                {"module": "agent_chat", "agent_id": str(agent_id), "mode": "direct"},
+                {
+                    "module": "agent_chat",
+                    "agent_id": str(agent_id),
+                    "mode": "direct",
+                    "query": body.query,
+                },
             )
+            reasoning_query = str(before.payload.get("query", body.query))
             answer = await ainvoke_chat(
                 agent.model_config,
                 [
                     {"role": "system", "content": base},
-                    {"role": "user", "content": body.query},
+                    {"role": "user", "content": reasoning_query},
                 ],
                 temperature=float((agent.config or {}).get("temperature", 0.7)),
                 db=self.db,
@@ -615,7 +630,7 @@ class AgentService(BaseService):
         base = await self._resolve_system_prompt(agent)
 
         if agent.model_config_id and agent.model_config:
-            await hooks.run(
+            before = await hooks.run(
                 HookTrigger.BEFORE_REASONING,
                 HookScope.AGENT,
                 agent_id,
@@ -623,16 +638,18 @@ class AgentService(BaseService):
                     "module": "agent_chat",
                     "agent_id": str(agent_id),
                     "mode": "rag",
+                    "query": body.query,
                     "query_preview": body.query[:200],
                 },
             )
+            reasoning_query = str(before.payload.get("query", body.query))
             temperature = float((agent.config or {}).get("temperature", 0.7))
             # 默认 LangGraph：检索 → 相关性评分 → 可选重试放大 top_k → 生成/兜底
             if should_use_langgraph_rag(agent, kb_ids=kb_ids):
                 answer, all_hits, steps = await run_rag_workflow(
                     model=agent.model_config,
                     system_prompt=base,
-                    query=body.query,
+                    query=reasoning_query,
                     kb_ids=kb_ids,
                     tenant_id=agent.tenant_id,
                     agent_id=agent_id,
@@ -645,7 +662,7 @@ class AgentService(BaseService):
                 answer, all_hits = await rag_answer(
                     model=agent.model_config,
                     system_prompt=base,
-                    query=body.query,
+                    query=reasoning_query,
                     kb_ids=kb_ids,
                     tenant_id=agent.tenant_id,
                     db=self.db,

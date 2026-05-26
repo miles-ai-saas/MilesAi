@@ -1,14 +1,14 @@
+import {
+  agentStatusLabel,
+  agentTypeLabel,
+  subAgentRoleLabel,
+  subAgentRoleOptions,
+} from "@/lib/agent-labels";
 import type { Agent, Flow, ModelConfig, PromptTemplate } from "@/lib/types";
 
 const DEFAULT_SYSTEM_PROMPT = "你是企业智能助手，请准确、简洁地回答用户问题。";
 
-export function agentStatusLabel(status: string): string {
-  return status === "enabled" ? "启用" : "禁用";
-}
-
-export function agentTypeLabel(agent: Agent): string {
-  return agent.agent_type === "a2a" ? "A2A 互联宿主" : "平台内";
-}
+export { agentStatusLabel, agentTypeLabel, subAgentRoleLabel, subAgentRoleOptions };
 
 export function agentModeLabel(agent: Agent): string {
   if (agent.agent_type === "a2a") {
@@ -30,19 +30,8 @@ export function agentModeLabel(agent: Agent): string {
   return "直连";
 }
 
-export function subAgentRoleLabel(roleHint?: string | null): string {
-  const hit = SUB_AGENT_ROLE_OPTIONS.find((o) => o.value === (roleHint ?? ""));
-  return hit?.label ?? roleHint ?? "未指定";
-}
-
-export const SUB_AGENT_ROLE_OPTIONS = [
-  { value: "", label: "未指定" },
-  { value: "retrieval", label: "检索" },
-  { value: "ocr", label: "OCR" },
-  { value: "summary", label: "总结" },
-  { value: "compliance", label: "合规" },
-  { value: "custom", label: "自定义" },
-] as const;
+/** @deprecated 使用 subAgentRoleOptions(meta) */
+export const SUB_AGENT_ROLE_OPTIONS = subAgentRoleOptions();
 
 export function buildCreateAgentPayload(
   total: number,

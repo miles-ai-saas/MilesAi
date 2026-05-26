@@ -14,6 +14,7 @@ from app.core.deps import get_page_params, require_permissions
 from app.common.response import ok, page_ok
 from app.core.tenant import TenantContext
 from app.common.schema import ApiResponse, PageParams, PageResult
+from app.tenant.skills.schemas.meta import SkillMetaOut
 from app.tenant.skills.schemas.skill import (
     SkillFileContent,
     SkillFileNode,
@@ -113,6 +114,15 @@ async def import_zip(
             overwrite_existing=overwrite_existing,
         )
     )
+
+
+# GET */meta：枚举展示字典，须在 /{id} 等路径参数路由之前注册
+@router.get("/meta", response_model=ApiResponse[SkillMetaOut])
+async def skills_meta(
+    ctx: TenantContext = Depends(require_permissions("skill:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    return ok(await SkillService(db, ctx).get_meta())
 
 
 @router.get("/{skill_id}", response_model=ApiResponse[SkillPackageOut])

@@ -24,7 +24,9 @@ import {
   SkillImportLocalDialog,
   SkillImportZipDialog,
 } from "@/components/skills/SkillImportDialogs";
-import type { SkillImportResult, SkillPackage } from "@/lib/types";
+import { skillActiveLabel, skillSourceTypeLabel } from "@/lib/skill-labels";
+import { useSkillMeta } from "@/hooks/use-skill-meta";
+import type { SkillImportResult, SkillMeta, SkillPackage } from "@/lib/types";
 
 function formatUpdated(iso: string) {
   try {
@@ -44,6 +46,7 @@ function formatUpdated(iso: string) {
 export default function SkillsPage() {
   const router = useRouter();
   const { ready } = useRequireAuth();
+  const skillMeta = useSkillMeta(ready);
   const [search, setSearch] = useState("");
   const cat = useCategoryTabs("skill");
   const [tagFilterIds, setTagFilterIds] = useState<string[]>([]);
@@ -165,6 +168,7 @@ export default function SkillsPage() {
           <SkillCard
             key={s.id}
             skill={s}
+            skillMeta={skillMeta}
             onOpen={() => router.push(`/workbench/skills/${s.id}`)}
             onDelete={async () => {
               await api.deleteSkillPackage(s.id);
@@ -209,11 +213,13 @@ export default function SkillsPage() {
 
 function SkillCard({
   skill,
+  skillMeta,
   onOpen,
   onDelete,
   onToggle,
 }: {
   skill: SkillPackage;
+  skillMeta: SkillMeta | null;
   onOpen: () => void;
   onDelete: () => Promise<void>;
   onToggle: () => Promise<void>;
@@ -222,7 +228,11 @@ function SkillCard({
     <ResourceItemCard
       title={skill.name}
       description={skill.description || "暂无描述"}
-      badge={skill.is_active ? undefined : "已停用"}
+      badge={
+        skill.is_active
+          ? skillSourceTypeLabel(skill.source_type, skillMeta)
+          : skillActiveLabel(false, skillMeta)
+      }
       onClick={onOpen}
       meta={
         <>

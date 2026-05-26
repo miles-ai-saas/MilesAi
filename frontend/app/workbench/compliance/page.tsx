@@ -14,11 +14,14 @@ import { AddResourceCard } from "@/components/resource/AddResourceCard";
 import { CardActions } from "@/components/resource/CardActions";
 import { ResourceListLayout } from "@/components/resource/ResourceListLayout";
 import { ResourceItemCard } from "@/components/resource/ResourceItemCard";
+import { sensitiveActionLabel } from "@/lib/compliance-labels";
 import { filterBySearch } from "@/lib/filter-search";
+import { useComplianceMeta } from "@/hooks/use-compliance-meta";
 import type { InterceptLog, WordLibrary } from "@/lib/types";
 
 type Tab = "words" | "logs" | "test";
 
+/** 纯 UI Tab，不进 GET /compliance/meta */
 const MAIN_TABS: { key: Tab; label: string }[] = [
   { key: "words", label: "敏感词库" },
   { key: "logs", label: "拦截日志" },
@@ -70,6 +73,7 @@ function CompliancePageContent() {
   const searchParams = useSearchParams();
   const libraryId = searchParams.get("library");
   const { ready } = useRequireAuth();
+  const complianceMeta = useComplianceMeta(ready);
   const [tab, setTab] = useState<Tab>("words");
   const [search, setSearch] = useState("");
   const [libDialogOpen, setLibDialogOpen] = useState(false);
@@ -82,6 +86,8 @@ function CompliancePageContent() {
     scanning_enabled: boolean;
     matches: { word: string; action: string }[];
   } | null>(null);
+
+  const actionLabel = (action: string) => sensitiveActionLabel(action, complianceMeta);
 
   const libraries = usePagedList(useCallback((p, s) => api.listWordLibraries(p, s), []), {
     enabled: ready && tab === "words" && !libraryId,
@@ -223,7 +229,7 @@ function CompliancePageContent() {
                           : "bg-amber-50 text-amber-800"
                       }`}
                     >
-                      {l.action === "block" ? "拦截" : "警告"}
+                      {actionLabel(l.action)}
                     </span>
                     {l.matched_word && (
                       <span className="text-sm text-brand">命中「{l.matched_word}」</span>
@@ -306,7 +312,7 @@ function CompliancePageContent() {
                       >
                         {m.word}
                         <span className="ml-1 opacity-70">
-                          · {m.action === "block" ? "拦截" : "警告"}
+                          · {actionLabel(m.action)}
                         </span>
                       </li>
                     ))}
@@ -344,6 +350,7 @@ function CompliancePageContent() {
       >
         <ComplianceLibraryDetail
           library={activeLibrary}
+          sensitiveActions={complianceMeta?.sensitive_actions}
           onBack={closeLibrary}
           onLibraryChange={reloadLibraries}
         />

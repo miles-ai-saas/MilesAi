@@ -27,6 +27,8 @@ from app.tenant.tools.models import Tool, ToolType
 from app.core.config import get_settings
 from app.tenant.mcp.runner.audit import write_script_runner_session
 from app.tenant.mcp.runner.client import RunnerClient
+from app.tenant.hooks.models import HookScope, HookTrigger
+from app.tenant.hooks.services.runner import HookRunner
 from app.tenant.tools.parameters import validate_tool_params
 from app.tenant.tools.script_validate import validate_script_source
 from app.core.soft_delete import is_marked_deleted
@@ -284,10 +286,29 @@ async def invoke_tool_with_context(
             slug, meta["name"], meta.get("description"), params
         )
 
+    tool_params = dict(params)
+    hook_runner = HookRunner(db, ctx.tenant_id)
+    tool_scope_id = resolved_tool_id
+    hook_base = {
+        "module": "tool_invoke",
+        "tool_slug": slug,
+        "tool_id": str(tool_scope_id) if tool_scope_id else None,
+        "params": tool_params,
+        "agent_id": str(agent_id) if agent_id else None,
+        "invoke_source": invoke_source,
+    }
+    before = await hook_runner.run(
+        HookTrigger.BEFORE_TOOL,
+        HookScope.TOOL,
+        tool_scope_id,
+        hook_base,
+    )
+    tool_params = dict(before.payload.get("params", tool_params))
+
     started = time.monotonic()
     try:
         output = await invoke_tool_by_name(
-            db, ctx, slug, params, tool_id=resolved_tool_id
+            db, ctx, slug, tool_params, tool_id=resolved_tool_id
         )
         latency_ms = int((time.monotonic() - started) * 1000)
         await write_tool_invocation_log(
@@ -297,12 +318,24 @@ async def invoke_tool_with_context(
             tool_id=resolved_tool_id,
             source=meta["source"],
             status="success",
-            params=params,
+            params=tool_params,
             output=output,
             latency_ms=latency_ms,
             actor_user_id=actor_user_id,
             agent_id=agent_id,
             invoke_source=invoke_source,
+        )
+        await hook_runner.run(
+            HookTrigger.AFTER_TOOL,
+            HookScope.TOOL,
+            tool_scope_id,
+            {
+                **hook_base,
+                "params": tool_params,
+                "output": output,
+                "status": "success",
+                "latency_ms": latency_ms,
+            },
         )
         return output
     except ToolConfirmationRequired:

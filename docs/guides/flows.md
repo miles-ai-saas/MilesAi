@@ -53,6 +53,10 @@ React Flow → PUT /flows/{id}/graph → flow_versions
 
 `dict`（默认）| `concat_text` | `first`。多入边亦可扇入汇合。
 
+## 枚举元数据
+
+`GET /flows/meta`（注册在 `/flows/{id}` 之前）返回列表/筛选用的 `statuses`（`draft` / `published` 等 `value` + `label`），与 `GET /hooks/meta` 同模式。前端 `flows/page.tsx` 进入时 `api.getFlowMeta()`，状态标签用 `optionLabel(meta.statuses, status)`。
+
 ## 与智能体
 
 | 场景 | 路径 |

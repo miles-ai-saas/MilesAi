@@ -6,6 +6,13 @@ import { useRequireAuth } from "@/lib/auth-store";
 import { ResourceListLayout } from "@/components/resource/ResourceListLayout";
 import { SimpleBarChart } from "@/components/charts/SimpleBarChart";
 import { documentStatusLabel } from "@/lib/document-status";
+import {
+  monitorHealthComponentLabel,
+  monitorOverallHealthLabel,
+  monitorTrendDayOptions,
+} from "@/lib/monitor-labels";
+import { useKbMeta } from "@/hooks/use-kb-meta";
+import { useMonitorMeta } from "@/hooks/use-monitor-meta";
 import type { AlertConfig, MonitorReport, MonitorTrends } from "@/lib/types";
 
 type Tab = "overview" | "trends" | "health" | "alerts";
@@ -22,15 +29,6 @@ const PAGE_DESC =
 
 /** 与后端 collect_health_status 主键一致；weaviate/minio 为兼容别名不在此展示 */
 const PRIMARY_COMPONENT_KEYS = ["postgres", "redis", "vector_store", "object_storage"] as const;
-
-const COMPONENT_LABELS: Record<string, string> = {
-  postgres: "PostgreSQL",
-  redis: "Redis",
-  vector_store: "向量库",
-  object_storage: "对象存储",
-  weaviate: "Weaviate",
-  minio: "MinIO",
-};
 
 type MonitorHealthPayload = {
   healthy?: boolean;
@@ -111,15 +109,16 @@ function ChartPanel({
   );
 }
 
-function HealthStatusBadge({ ok, status }: { ok: boolean; status?: string }) {
-  const label =
-    status === "healthy"
-      ? "正常"
-      : status === "degraded"
-        ? "降级"
-        : ok
-          ? "正常"
-          : "异常";
+function HealthStatusBadge({
+  ok,
+  status,
+  monitorMeta,
+}: {
+  ok: boolean;
+  status?: string;
+  monitorMeta: import("@/lib/types").MonitorMeta | null;
+}) {
+  const label = monitorOverallHealthLabel(status, ok, monitorMeta);
   return (
     <span
       className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ${
@@ -133,7 +132,13 @@ function HealthStatusBadge({ ok, status }: { ok: boolean; status?: string }) {
   );
 }
 
-function HealthComponents({ components }: { components: Record<string, unknown> }) {
+function HealthComponents({
+  components,
+  monitorMeta,
+}: {
+  components: Record<string, unknown>;
+  monitorMeta: import("@/lib/types").MonitorMeta | null;
+}) {
   const entries = selectPrimaryComponents(components);
   if (entries.length === 0) {
     return <p className="text-sm text-ink-faint">暂无组件探测数据</p>;
@@ -148,10 +153,10 @@ function HealthComponents({ components }: { components: Record<string, unknown> 
             className="flex flex-col gap-2 rounded-lg border border-line-soft bg-surface-muted px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
           >
             <div className="min-w-0">
-              <p className="font-medium text-ink">{COMPONENT_LABELS[name] ?? name}</p>
+              <p className="font-medium text-ink">{monitorHealthComponentLabel(name, monitorMeta)}</p>
               {detail && <p className="mt-1 text-xs text-ink-muted line-clamp-2">{detail}</p>}
             </div>
-            <HealthStatusBadge ok={ok} />
+            <HealthStatusBadge ok={ok} monitorMeta={monitorMeta} />
           </li>
         );
       })}
@@ -161,6 +166,9 @@ function HealthComponents({ components }: { components: Record<string, unknown> 
 
 export default function MonitorPage() {
   const { ready } = useRequireAuth();
+  const monitorMeta = useMonitorMeta(ready);
+  const kbMeta = useKbMeta(ready);
+  const [trendDays, setTrendDays] = useState(7);
   const [tab, setTab] = useState<Tab>("overview");
   const [loading, setLoading] = useState(true);
   const [report, setReport] = useState<MonitorReport | null>(null);
@@ -179,7 +187,7 @@ export default function MonitorPage() {
     try {
       const [r, t, h, a] = await Promise.all([
         api.getMonitorReport(),
-        api.getMonitorTrends(7),
+        api.getMonitorTrends(trendDays),
         api.getMonitorHealth(),
         api.getAlertConfig(),
       ]);
@@ -190,7 +198,7 @@ export default function MonitorPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [trendDays]);
 
   useEffect(() => {
     if (!ready) return;
@@ -269,13 +277,33 @@ export default function MonitorPage() {
   };
 
   if (tab === "trends") {
+    const trendHint =
+      monitorTrendDayOptions(monitorMeta).find((o) => o.value === String(trendDays))?.label ??
+      `近 ${trendDays} 天`;
     return (
-      <ResourceListLayout {...layoutCommon} loading={loading}>
+      <ResourceListLayout
+        {...layoutCommon}
+        loading={loading}
+        headerAction={
+          <select
+            className="input-field w-auto shrink-0 text-sm"
+            value={String(trendDays)}
+            onChange={(e) => setTrendDays(Number(e.target.value) || 7)}
+            aria-label="趋势天数"
+          >
+            {monitorTrendDayOptions(monitorMeta).map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+        }
+      >
         {!report || !trends ? (
           <p className="col-span-full py-12 text-center text-sm text-ink-muted">加载趋势数据…</p>
         ) : (
         <div className="col-span-full space-y-5">
-          <ChartPanel title="任务趋势" subtitle="近 7 天每日任务总量">
+          <ChartPanel title="任务趋势" subtitle={`${trendHint}每日任务总量`}>
             {trends.task_by_day.length === 0 ? (
               <p className="text-xs text-ink-faint">暂无任务数据</p>
             ) : (
@@ -299,7 +327,7 @@ export default function MonitorPage() {
                 ]}
               />
             </ChartPanel>
-            <ChartPanel title="合规拦截趋势" subtitle="近 7 天按日统计">
+            <ChartPanel title="合规拦截趋势" subtitle={`${trendHint}按日统计`}>
               {trends.intercept_by_day.length === 0 ? (
                 <p className="text-xs text-ink-faint">暂无拦截数据</p>
               ) : (
@@ -320,7 +348,7 @@ export default function MonitorPage() {
             ) : (
               <SimpleBarChart
                 items={Object.entries(report.documents_by_status).map(([k, v]) => ({
-                  label: documentStatusLabel(k),
+                  label: documentStatusLabel(k, kbMeta?.document_statuses),
                   value: v,
                 }))}
               />
@@ -346,6 +374,7 @@ export default function MonitorPage() {
               <HealthStatusBadge
                 ok={health?.healthy ?? health?.status === "healthy"}
                 status={health?.status}
+                monitorMeta={monitorMeta}
               />
             </div>
           </section>
@@ -353,7 +382,7 @@ export default function MonitorPage() {
             <h3 className="text-sm font-semibold text-ink">组件明细</h3>
             <div className="mt-4">
               {health ? (
-                <HealthComponents components={components} />
+                <HealthComponents components={components} monitorMeta={monitorMeta} />
               ) : (
                 <p className="text-sm text-ink-muted">加载中…</p>
               )}

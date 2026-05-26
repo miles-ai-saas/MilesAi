@@ -18,6 +18,8 @@ import { filterBySearch } from "@/lib/filter-search";
 import { TagChips } from "@/components/tag/TagChips";
 import { TagFilterSelect } from "@/components/tag/TagFilterSelect";
 import { TagManageDialog } from "@/components/tag/TagManageDialog";
+import { promptActiveLabel } from "@/lib/prompt-labels";
+import { usePromptMeta } from "@/hooks/use-prompt-meta";
 import type { PromptTemplate } from "@/lib/types";
 
 function contentPreview(text: string, max = 120): string {
@@ -29,6 +31,7 @@ function contentPreview(text: string, max = 120): string {
 
 export default function PromptsPage() {
   const { ready } = useRequireAuth();
+  const promptMeta = usePromptMeta(ready);
   const [search, setSearch] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogMode, setDialogMode] = useState<PromptTemplateDialogMode>("create");
@@ -127,7 +130,7 @@ export default function PromptsPage() {
             key={t.id}
             title={t.name}
             description={contentPreview(t.content)}
-            badge={t.is_active ? "启用" : "停用"}
+            badge={promptActiveLabel(t.is_active, promptMeta)}
             meta={
               <div className="space-y-2">
                 <span className="inline-block rounded border border-line px-1.5 py-px text-[10px] text-ink-faint">

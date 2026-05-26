@@ -15,6 +15,7 @@ from app.core.deps import get_page_params, require_permissions
 from app.common.response import ok, page_ok
 from app.core.tenant import TenantContext
 from app.common.schema import ApiResponse, PageParams, PageResult
+from app.tenant.mcp.schemas.meta import McpMetaOut
 from app.tenant.mcp.schemas.mcp import (
     McpServiceCreate,
     McpServiceOut,
@@ -48,6 +49,15 @@ async def create_mcp(
 ):
     """注册 MCP 服务（创建后需 sync 拉取 tools/list）。"""
     return ok(await McpServiceManager(db, ctx).create_service(body))
+
+
+# GET */meta：枚举展示字典，须在 /{id} 等路径参数路由之前注册
+@router.get("/meta", response_model=ApiResponse[McpMetaOut])
+async def mcp_meta(
+    ctx: TenantContext = Depends(require_permissions("mcp:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    return ok(await McpServiceManager(db, ctx).get_meta())
 
 
 @router.get("/{service_id}", response_model=ApiResponse[McpServiceOut])

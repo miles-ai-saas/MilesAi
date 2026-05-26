@@ -10,7 +10,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.common.exceptions import BadRequestError, NotFoundError
 from app.core.tenant import TenantContext
 from app.models.category import CategoryDomain, SysCategory
+from app.tenant.categories.meta import categories_meta_dict
 from app.tenant.categories.schemas.category import CategoryOut
+from app.tenant.categories.schemas.meta import CategoryMetaOut
 from app.core.soft_delete import is_marked_deleted, not_deleted
 from app.core.service import BaseService
 
@@ -39,6 +41,10 @@ class CategoryService(BaseService):
 
     def __init__(self, db: AsyncSession, ctx: TenantContext) -> None:
         super().__init__(db, ctx)
+
+    async def get_meta(self) -> CategoryMetaOut:
+        """返回枚举展示字典（无 DB 查询，文案来自 tenant/*/meta.py）。"""
+        return CategoryMetaOut.model_validate(categories_meta_dict())
 
     def _domain_value(self, domain: CategoryDomain | str) -> str:
         if isinstance(domain, CategoryDomain):

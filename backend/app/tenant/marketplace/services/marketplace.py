@@ -31,6 +31,8 @@ from app.tenant.agents.schemas.agent import AgentCreate
 from app.common.schema import PageParams, PageResult
 from app.tenant.flows.schemas.flow import FlowCreate
 from app.tenant.kb.schemas.kb import KnowledgeBaseCreate
+from app.tenant.marketplace.meta import marketplace_meta_dict
+from app.tenant.marketplace.schemas.meta import MarketplaceMetaOut
 from app.tenant.marketplace.schemas.marketplace import (
     AppCategoryOut,
     AppInstallOut,
@@ -58,6 +60,10 @@ class MarketplaceService(BaseService):
         self.flow_repo = FlowRepository(db)
         self.agent_repo = AgentRepository(db)
         self.kb_repo = KnowledgeBaseRepository(db)
+
+    async def get_meta(self) -> MarketplaceMetaOut:
+        """返回枚举展示字典（无 DB 查询，文案来自 tenant/*/meta.py）。"""
+        return MarketplaceMetaOut.model_validate(marketplace_meta_dict())
 
     async def list_categories(self) -> list[AppCategoryOut]:
         stmt = select(AppCategory).order_by(AppCategory.sort_order.asc(), AppCategory.name.asc())

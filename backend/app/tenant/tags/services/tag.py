@@ -21,6 +21,8 @@ from app.core.soft_delete import is_marked_deleted, mark_deleted, not_deleted
 from app.core.tenant import TenantContext, assert_tenant_access, tenant_filters
 from app.models.tag import EntityTagBinding, TagEntityType, TenantTag
 from app.tenant.categories.services.category import slugify
+from app.tenant.tags.meta import tags_meta_dict
+from app.tenant.tags.schemas.meta import TagMetaOut
 from app.tenant.tags.schemas.tag import TagRefOut, TenantTagCreate, TenantTagOut
 
 
@@ -38,6 +40,10 @@ class TagService(BaseService):
 
     def __init__(self, db: AsyncSession, ctx: TenantContext) -> None:
         super().__init__(db, ctx)
+
+    async def get_meta(self) -> TagMetaOut:
+        """返回枚举展示字典（无 DB 查询，文案来自 tenant/*/meta.py）。"""
+        return TagMetaOut.model_validate(tags_meta_dict())
 
     async def list_tags(self) -> list[TenantTagOut]:
         """本租户标签库全量列表。"""

@@ -92,3 +92,28 @@ class HookBinding(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         foreign_keys=[hook_id],
         primaryjoin="HookBinding.hook_id == HookDefinition.id",
     )
+
+
+class HookExecutionLog(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    """钩子单次执行审计（HTTP 调用结果与响应 action）。"""
+
+    __tablename__ = "hook_execution_logs"
+    __table_args__ = (
+        Index("idx_hook_execution_logs_tenant_id", "tenant_id"),
+        Index("idx_hook_execution_logs_hook_id", "hook_id"),
+        Index("idx_hook_execution_logs_created_at", "created_at"),
+    )
+
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    hook_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    binding_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    event_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    trace_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    trigger: Mapped[str] = mapped_column(String(32), nullable=False)
+    scope: Mapped[str] = mapped_column(String(32), nullable=False)
+    target_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    status: Mapped[str] = mapped_column(String(32), nullable=False)
+    http_status: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    duration_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    response_action: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    error_message: Mapped[str | None] = mapped_column(String(512), nullable=True)

@@ -17,11 +17,12 @@ import { api } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth-store";
 import { filterBySearch } from "@/lib/filter-search";
 import {
-  MCP_TRANSPORT_TABS,
+  mcpTransportFilterOptions,
   mcpTransportLabel,
   normalizeMcpTransport,
   type McpTransportTab,
 } from "@/lib/mcp-labels";
+import { useMcpMeta } from "@/hooks/use-mcp-meta";
 import type { McpService } from "@/lib/types";
 
 function parseStdioArgs(text: string): string[] {
@@ -59,6 +60,8 @@ function PageMessage({ message, onDismiss }: { message: string; onDismiss?: () =
 
 export default function McpPage() {
   const { ready } = useRequireAuth();
+  const mcpMeta = useMcpMeta(ready);
+  const transportTabs = mcpTransportFilterOptions(mcpMeta);
   const [activeTab, setActiveTab] = useState<McpTransportTab>("");
   const [search, setSearch] = useState("");
   const [msg, setMsg] = useState("");
@@ -89,9 +92,9 @@ export default function McpPage() {
         list.items,
         search,
         (s) =>
-          `${s.name} ${s.description ?? ""} ${s.endpoint_url} ${mcpTransportLabel(s.transport)}`,
+          `${s.name} ${s.description ?? ""} ${s.endpoint_url} ${mcpTransportLabel(s.transport, mcpMeta)}`,
       ),
-    [list.items, search],
+    [list.items, search, mcpMeta],
   );
 
   const pageStats = useMemo(() => {
@@ -216,7 +219,11 @@ export default function McpPage() {
   };
 
   const activeTabLabel =
-    MCP_TRANSPORT_TABS.find((t) => t.key === activeTab)?.label ?? "全部";
+    transportTabs.find((t) => t.value === activeTab)?.label ?? "全部";
+  const layoutTabs = useMemo(
+    () => transportTabs.map((t) => ({ key: t.value, label: t.label })),
+    [transportTabs],
+  );
 
   return (
     <>
@@ -226,7 +233,7 @@ export default function McpPage() {
         searchPlaceholder="搜索服务名称、描述或端点"
         search={search}
         onSearchChange={setSearch}
-        tabs={MCP_TRANSPORT_TABS}
+        tabs={layoutTabs}
         activeTab={activeTab}
         onTabChange={onTabChange}
         loading={list.loading}
@@ -276,6 +283,7 @@ export default function McpPage() {
           <McpServiceCard
             key={s.id}
             service={s}
+            mcpMeta={mcpMeta}
             toolsExpanded={expandedId === s.id}
             onSync={() => onSync(s.id)}
             onEdit={() => openEdit(s)}

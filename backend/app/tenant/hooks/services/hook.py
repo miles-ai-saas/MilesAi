@@ -9,7 +9,10 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.tenant import TenantContext, assert_tenant_access, tenant_filters
-from app.tenant.hooks.models import HookBinding, HookDefinition
+from app.tenant.hooks.meta import hook_meta_dict
+from app.tenant.hooks.models import HookBinding, HookDefinition, HookExecutionLog
+from app.tenant.hooks.schemas.meta import HookMetaOut
+from app.tenant.hooks.schemas.execution import HookExecutionLogOut
 from app.tenant.hooks.schemas.hook import (
     HookBindingCreate,
     HookBindingOut,
@@ -36,6 +39,10 @@ class HookService(BaseService):
             raise NotFoundError("钩子不存在")
         assert_tenant_access(self.ctx, hook.tenant_id)
         return hook
+
+    async def get_meta(self) -> HookMetaOut:
+        """返回枚举展示字典（无 DB 查询，文案来自 tenant/*/meta.py）。"""
+        return HookMetaOut.model_validate(hook_meta_dict())
 
     async def list_hooks(self, params: PageParams) -> PageResult[HookDefinitionOut]:
         filters = append_not_deleted(tenant_filters(self.ctx, HookDefinition.tenant_id), HookDefinition)
@@ -132,3 +139,35 @@ class HookService(BaseService):
         if not binding or binding.tenant_id != self.ctx.tenant_id or is_marked_deleted(binding):
             raise NotFoundError("绑定不存在")
         await mark_deleted(self.db, binding)
+
+    async def list_executions(
+        self,
+        params: PageParams,
+        *,
+        hook_id: UUID | None = None,
+    ) -> PageResult[HookExecutionLogOut]:
+        if hook_id:
+            await self._get_hook_or_raise(hook_id)
+        filters = append_not_deleted(
+            tenant_filters(self.ctx, HookExecutionLog.tenant_id),
+            HookExecutionLog,
+        )
+        if hook_id:
+            filters.append(HookExecutionLog.hook_id == hook_id)
+        total = await self.db.scalar(
+            select(func.count()).select_from(HookExecutionLog).where(*filters)
+        )
+        stmt = (
+            select(HookExecutionLog)
+            .where(*filters)
+            .order_by(HookExecutionLog.created_at.desc())
+            .offset((params.page - 1) * params.size)
+            .limit(params.size)
+        )
+        items = (await self.db.execute(stmt)).scalars().all()
+        return PageResult(
+            items=[HookExecutionLogOut.model_validate(i) for i in items],
+            total=total or 0,
+            page=params.page,
+            size=params.size,
+        )

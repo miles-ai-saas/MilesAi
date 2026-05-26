@@ -9,17 +9,14 @@ import { KbQuotaBar } from "@/components/kb/KbQuotaBar";
 import { ResourceListFooter } from "@/components/resource/ResourceListFooter";
 import { ResourceListLayout } from "@/components/resource/ResourceListLayout";
 import { filterBySearch } from "@/lib/filter-search";
-import { ATTACHMENT_PURPOSE_LABEL } from "@/lib/kb-labels";
+import {
+  attachmentPurposeFilterOptions,
+  attachmentPurposeLabel,
+  attachmentPurposeUploadOptions,
+} from "@/lib/attachment-labels";
+import { useAttachmentMeta } from "@/hooks/use-attachment-meta";
 import { KB_UPLOAD_ACCEPT } from "@/lib/upload-accept";
 import type { Attachment, KbQuota } from "@/lib/types";
-
-const PURPOSE_OPTIONS = [
-  { value: "", label: "全部用途" },
-  { value: "general", label: "通用" },
-  { value: "chat", label: "对话" },
-  { value: "agent", label: "智能体" },
-  { value: "flow", label: "流程" },
-];
 
 function formatBytes(n: number) {
   if (n < 1024) return `${n} B`;
@@ -29,6 +26,9 @@ function formatBytes(n: number) {
 
 export default function AttachmentsPage() {
   const { ready } = useRequireAuth();
+  const attachmentMeta = useAttachmentMeta(ready);
+  const purposeFilterOptions = attachmentPurposeFilterOptions(attachmentMeta);
+  const purposeUploadOptions = attachmentPurposeUploadOptions(attachmentMeta);
   const [search, setSearch] = useState("");
   const [purpose, setPurpose] = useState("");
   const [uploading, setUploading] = useState(false);
@@ -119,7 +119,7 @@ export default function AttachmentsPage() {
               value={purpose}
               onChange={(e) => setPurpose(e.target.value)}
             >
-              {PURPOSE_OPTIONS.map((o) => (
+              {purposeFilterOptions.map((o) => (
                 <option key={o.value || "all"} value={o.value}>
                   {o.label}
                 </option>
@@ -131,7 +131,7 @@ export default function AttachmentsPage() {
               onChange={(e) => setUploadPurpose(e.target.value)}
               title="上传用途"
             >
-              {PURPOSE_OPTIONS.filter((o) => o.value).map((o) => (
+              {purposeUploadOptions.map((o) => (
                 <option key={o.value} value={o.value}>
                   上传为：{o.label}
                 </option>
@@ -182,7 +182,7 @@ export default function AttachmentsPage() {
                   <tr key={a.id} className="hover:bg-surface-muted/50">
                     <td className="max-w-[16rem] truncate px-4 py-2 font-medium">{a.filename}</td>
                     <td className="px-4 py-2 text-ink-muted">
-                      {ATTACHMENT_PURPOSE_LABEL[a.purpose] ?? a.purpose}
+                      {attachmentPurposeLabel(a.purpose, attachmentMeta)}
                     </td>
                     <td className="px-4 py-2 text-ink-muted">{formatBytes(a.file_size)}</td>
                     <td className="px-4 py-2 text-xs text-ink-faint">{a.mime_type}</td>
