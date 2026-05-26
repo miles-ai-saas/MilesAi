@@ -2,7 +2,7 @@
 生成类 ``invoke_mode`` 解析。
 
 ``ModelConfig.extra.invoke_mode`` 显式配置优先；否则按 ``vendor`` + ``capability`` 默认：
-- image_gen：qwen → dashscope_t2i，其它 → openai_images
+- image_gen：qwen → dashscope_t2i，doubao → volcengine_image，其它 → openai_images
 - video_gen：qwen → dashscope_t2v，doubao → volcengine_video
 
 未指定 ``model_config_id`` 时默认模型由 ``model_resolve.pick_default_generative_model``
@@ -14,6 +14,7 @@ from app.integrations.generative.constants import (
     INVOKE_DASHSCOPE_T2I,
     INVOKE_DASHSCOPE_T2V,
     INVOKE_OPENAI_IMAGES,
+    INVOKE_VOLCENGINE_IMAGE,
     INVOKE_VOLCENGINE_VIDEO,
 )
 from app.models.model import ModelConfig
@@ -37,6 +38,8 @@ def default_image_invoke_mode(model: ModelConfig) -> str:
     """未配置 extra 时的生图默认路由。"""
     if model.vendor == ModelVendor.QWEN.value:
         return INVOKE_DASHSCOPE_T2I
+    if model.vendor == ModelVendor.DOUBAO.value:
+        return INVOKE_VOLCENGINE_IMAGE
     return INVOKE_OPENAI_IMAGES
 
 

@@ -24,6 +24,7 @@ async def generate_dashscope_t2i(
     prompt: str,
     size: str,
     n: int = 1,
+    reference_image_url: str | None = None,
 ) -> list[bytes]:
     api_key = model.api_key_encrypted
     if not api_key:
@@ -37,14 +38,21 @@ async def generate_dashscope_t2i(
     url = f"{api_base}/services/aigc/text2image/image-synthesis"
 
     wan_model = model.model_name or "wanx-v1"
+    input_body: dict = {"prompt": prompt}
+    if reference_image_url:
+        # wanx-v1 等：垫图 ref_image（URL 或 data URL）
+        input_body["ref_image"] = reference_image_url
     body = {
         "model": wan_model,
-        "input": {"prompt": prompt},
+        "input": input_body,
         "parameters": {
             "size": _dashscope_size(size or DEFAULT_IMAGE_SIZE),
             "n": min(max(n, 1), 4),
         },
     }
+    if reference_image_url:
+        body["parameters"]["ref_strength"] = 0.85
+        body["parameters"]["ref_mode"] = "repaint"
 
     headers = {
         "Authorization": f"Bearer {api_key}",

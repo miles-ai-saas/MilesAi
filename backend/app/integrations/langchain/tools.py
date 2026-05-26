@@ -56,6 +56,10 @@ class GenerateVideoInput(BaseModel):
     duration: int | None = Field(None, description="时长秒数，默认 5")
     resolution: str | None = Field(None, description="720P 或 1080P")
     image_attachment_id: str | None = Field(None, description="首帧图 attachment_id")
+    last_frame_attachment_id: str | None = Field(
+        None,
+        description="尾帧图 attachment_id（首尾帧生视频，须与首帧同传）",
+    )
     model_config_id: str | None = Field(None, description="video_gen 模型配置 UUID")
 
 
@@ -203,6 +207,7 @@ def _make_generate_video_tool() -> StructuredTool:
         duration: int | None = None,
         resolution: str | None = None,
         image_attachment_id: str | None = None,
+        last_frame_attachment_id: str | None = None,
         model_config_id: str | None = None,
     ) -> dict:
         raise RuntimeError("请通过 invoke_tool_with_context 执行 generate_video")

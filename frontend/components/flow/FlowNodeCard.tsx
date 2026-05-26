@@ -17,7 +17,8 @@ const TARGET_TOP_OFFSET: Record<string, string> = {
   hits: "50%",
   prompt: "25%",
   input: "50%",
-  image_attachment_id: "75%",
+  image_attachment_id: "65%",
+  last_frame_attachment_id: "85%",
 };
 
 export function FlowNodeCard({ type, data, selected }: NodeProps) {
@@ -82,12 +83,18 @@ export function FlowNodeCard({ type, data, selected }: NodeProps) {
         <p className="mt-1 text-[10px] text-rose-700">
           {d.model_config_id ? "image_gen 已配置" : "未选 image_gen 模型"}
           {d.size ? ` · ${String(d.size)}` : ""}
+          {d.image_attachment_id ? " · 图生图" : ""}
         </p>
       )}
       {isVideoGen && (
         <p className="mt-1 text-[10px] text-violet-700">
           {d.model_config_id ? "video_gen 已配置" : "未选 video_gen 模型"}
           {` · ${String(d.duration ?? 5)}s · ${String(d.resolution ?? "720P")}`}
+          {d.image_attachment_id && d.last_frame_attachment_id
+            ? " · 首尾帧"
+            : d.image_attachment_id
+              ? " · 首帧"
+              : ""}
         </p>
       )}
 

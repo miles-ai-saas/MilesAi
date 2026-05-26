@@ -20,6 +20,7 @@ async def generate_openai_images(
     prompt: str,
     size: str,
     n: int = 1,
+    reference_image_data_url: str | None = None,
 ) -> list[bytes]:
     """返回 PNG/JPEG 字节列表。"""
     api_key = model.api_key_encrypted
@@ -30,6 +31,11 @@ async def generate_openai_images(
     if not api_base:
         api_base = "https://api.openai.com/v1"
     url = f"{api_base}/images/generations"
+
+    if reference_image_data_url:
+        raise BadRequestError(
+            f"模型「{model.name}」当前 invoke 不支持图生图，请改用豆包 SeedEdit 或通义万相"
+        )
 
     body: dict[str, Any] = {
         "model": model.model_name or "dall-e-3",

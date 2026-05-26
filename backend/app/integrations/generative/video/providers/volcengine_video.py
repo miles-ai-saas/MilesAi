@@ -36,13 +36,30 @@ from app.integrations.generative.volcengine_client import (
 from app.integrations.http_constants import HTTP_DEFAULT_TIMEOUT_SEC
 from app.models.model import ModelConfig
 
-def _build_content(prompt: str, first_frame_data_url: str | None) -> list[dict[str, Any]]:
+def _build_content(
+    prompt: str,
+    first_frame_data_url: str | None,
+    last_frame_data_url: str | None = None,
+) -> list[dict[str, Any]]:
+    """方舟 content：文生视频；首帧 i2v；首尾帧需 role=first_frame/last_frame。"""
+    if last_frame_data_url and not first_frame_data_url:
+        raise BadRequestError("首尾帧生视频需同时提供首帧与尾帧图片")
+
     items: list[dict[str, Any]] = [{"type": "text", "text": prompt}]
     if first_frame_data_url:
+        first_item: dict[str, Any] = {
+            "type": "image_url",
+            "image_url": {"url": first_frame_data_url},
+        }
+        if last_frame_data_url:
+            first_item["role"] = "first_frame"
+        items.append(first_item)
+    if last_frame_data_url:
         items.append(
             {
                 "type": "image_url",
-                "image_url": {"url": first_frame_data_url},
+                "image_url": {"url": last_frame_data_url},
+                "role": "last_frame",
             }
         )
     return items
@@ -56,6 +73,7 @@ def _build_request_body(
     resolution: str,
     ratio: str,
     first_frame_data_url: str | None,
+    last_frame_data_url: str | None = None,
 ) -> dict[str, Any]:
     extra = model.extra or {}
     ep_model = (model.model_name or "").strip()
@@ -64,7 +82,7 @@ def _build_request_body(
 
     body: dict[str, Any] = {
         "model": ep_model,
-        "content": _build_content(prompt, first_frame_data_url),
+        "content": _build_content(prompt, first_frame_data_url, last_frame_data_url),
         "duration": int(extra.get(EXTRA_VIDEO_DURATION) or duration or DEFAULT_VIDEO_DURATION_SEC),
         "resolution": normalize_volcengine_resolution(
             resolution or str(extra.get(EXTRA_VIDEO_RESOLUTION) or DEFAULT_VIDEO_RESOLUTION)
@@ -84,6 +102,7 @@ async def generate_volcengine_video(
     duration: int = 5,
     resolution: str | None = None,
     first_frame_data_url: str | None = None,
+    last_frame_data_url: str | None = None,
 ) -> bytes:
     """提交方舟视频任务并轮询，返回 mp4 字节。"""
     api_key = require_volcengine_api_key(model)
@@ -93,7 +112,7 @@ async def generate_volcengine_video(
 
     ratio = str(extra.get(EXTRA_VIDEO_RATIO) or "").strip()
     if not ratio:
-        ratio = "adaptive" if first_frame_data_url else "16:9"
+        ratio = "adaptive" if (first_frame_data_url or last_frame_data_url) else "16:9"
 
     body = _build_request_body(
         model,
@@ -102,6 +121,7 @@ async def generate_volcengine_video(
         resolution=resolution or DEFAULT_VIDEO_RESOLUTION,
         ratio=ratio,
         first_frame_data_url=first_frame_data_url,
+        last_frame_data_url=last_frame_data_url,
     )
     submit_url = volcengine_submit_url(model)
 

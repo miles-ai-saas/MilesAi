@@ -39,8 +39,10 @@ async def handle_generate_video(
     prompt = params.get("prompt") or ""
     raw_model = params.get("model_config_id")
     model_uuid = UUID(str(raw_model)) if raw_model else None
-    raw_img = params.get("image_attachment_id")
-    image_att = UUID(str(raw_img)) if raw_img else None
+    raw_first = params.get("image_attachment_id")
+    raw_last = params.get("last_frame_attachment_id")
+    first_att = UUID(str(raw_first)) if raw_first else None
+    last_att = UUID(str(raw_last)) if raw_last else None
     agent_model, agent_config = await _load_agent_model_context(db, agent_id)
     model = await resolve_video_gen_model(
         db,
@@ -56,7 +58,8 @@ async def handle_generate_video(
         prompt=str(prompt),
         duration=int(params.get("duration") or 5),
         resolution=params.get("resolution"),
-        image_attachment_id=image_att,
+        image_attachment_id=first_att,
+        last_frame_attachment_id=last_att,
         agent_id=agent_id,
     )
     return {
@@ -80,6 +83,8 @@ async def handle_generate_image(
     prompt = params.get("prompt") or params.get("description") or ""
     raw_model = params.get("model_config_id")
     model_uuid = UUID(str(raw_model)) if raw_model else None
+    raw_img = params.get("image_attachment_id")
+    image_att = UUID(str(raw_img)) if raw_img else None
     agent_model, agent_config = await _load_agent_model_context(db, agent_id)
     model = await resolve_image_gen_model(
         db,
@@ -94,6 +99,7 @@ async def handle_generate_image(
         model,
         prompt=str(prompt),
         size=params.get("size"),
+        reference_attachment_id=image_att,
         agent_id=agent_id,
     )
     ids = [str(i) for i in result.attachment_ids]

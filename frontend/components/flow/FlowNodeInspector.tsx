@@ -394,8 +394,18 @@ function InspectorForm({
               onChange={(e) => patch({ n: Math.min(4, Math.max(1, Number(e.target.value) || 1)) })}
             />
           </InspectorField>
+          <InspectorField label="参考图 attachment_id（图生图，可选）">
+            <input
+              className="input-field w-full font-mono text-xs"
+              value={String(data.image_attachment_id ?? "")}
+              onChange={(e) =>
+                patch({ image_attachment_id: e.target.value.trim() || "" })
+              }
+              placeholder="或由入边 image_attachment_id 传入"
+            />
+          </InspectorField>
           <p className="text-[10px] leading-relaxed text-ink-muted">
-            入边：prompt 或 input 接收上游文案；出边 output 为图片 attachment 元数据。
+            文生图：prompt/input + image_gen 模型。图生图：另传参考图（豆包 SeedEdit / 万相 ref_image）。
           </p>
         </>
       );
@@ -448,7 +458,7 @@ function InspectorForm({
               ))}
             </select>
           </InspectorField>
-          <InspectorField label="首帧 attachment_id（图生视频，可选）">
+          <InspectorField label="首帧 attachment_id（图生视频 / 首尾帧，可选）">
             <input
               className="input-field w-full font-mono text-xs"
               value={String(data.image_attachment_id ?? "")}
@@ -458,9 +468,19 @@ function InspectorForm({
               placeholder="或由入边 image_attachment_id 传入"
             />
           </InspectorField>
+          <InspectorField label="尾帧 attachment_id（首尾帧生视频，可选）">
+            <input
+              className="input-field w-full font-mono text-xs"
+              value={String(data.last_frame_attachment_id ?? "")}
+              onChange={(e) =>
+                patch({ last_frame_attachment_id: e.target.value.trim() || "" })
+              }
+              placeholder="须与首帧同时提供；或由入边传入"
+            />
+          </InspectorField>
           <p className="text-[10px] leading-relaxed text-ink-muted">
-            运行会阻塞轮询直至完成（可达数分钟）。入边：prompt / input；图生视频可接
-            image_attachment_id。
+            文生视频仅 prompt。首帧图生视频：首帧 attachment。首尾帧：首帧+尾帧（万相
+            wan2.7-i2v / 豆包 Seedance lite i2v）。
           </p>
         </>
       );

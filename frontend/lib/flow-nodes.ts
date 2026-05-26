@@ -12,7 +12,8 @@
  * - PlatformTool output → output（工具执行结果 dict）
  * - ConditionBranch sourceHandle → true | false
  * - ImageGenerate / VideoGenerate：入 `prompt`/`input`，出 `output`（attachment 元数据 dict）
- * - VideoGenerate 另可入 `image_attachment_id`（图生视频首帧）
+ * - ImageGenerate 可入 `image_attachment_id`（图生图参考图）
+ * - VideoGenerate 可入 `image_attachment_id`（首帧）、`last_frame_attachment_id`（尾帧，首尾帧生视频）
  *
  * 多模态生成节点（``group: generative``）须配置 ``model_config_id``（image_gen / video_gen）；
  * 节点 ``prompt`` 非空时覆盖上游文案。预览/下载走鉴权 attachment content API。
@@ -86,6 +87,7 @@ const DEFAULT_DATA: Record<NodeType, Record<string, unknown>> = {
     size: "1024x1024",
     n: 1,
     prompt: "",
+    image_attachment_id: "",
   },
   VideoGenerate: {
     label: "生视频",
@@ -94,6 +96,7 @@ const DEFAULT_DATA: Record<NodeType, Record<string, unknown>> = {
     resolution: "720P",
     prompt: "",
     image_attachment_id: "",
+    last_frame_attachment_id: "",
   },
 };
 

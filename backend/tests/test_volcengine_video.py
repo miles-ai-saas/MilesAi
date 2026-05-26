@@ -81,6 +81,29 @@ def test_build_request_body_i2v():
     assert body["content"][1]["type"] == "image_url"
 
 
+def test_build_request_body_first_last_frame():
+    m = _doubao_video_model()
+    body = _build_request_body(
+        m,
+        prompt="从 A 过渡到 B",
+        duration=5,
+        resolution="720p",
+        ratio="adaptive",
+        first_frame_data_url="data:image/png;base64,first",
+        last_frame_data_url="data:image/png;base64,last",
+    )
+    assert len(body["content"]) == 3
+    assert body["content"][1]["role"] == "first_frame"
+    assert body["content"][2]["role"] == "last_frame"
+
+
+def test_build_content_last_without_first_raises():
+    with pytest.raises(BadRequestError, match="首尾帧"):
+        from app.integrations.generative.video.providers.volcengine_video import _build_content
+
+        _build_content("x", None, "data:image/png;base64,last")
+
+
 def test_build_request_body_missing_model_name():
     m = _doubao_video_model(model_name="")
     with pytest.raises(BadRequestError, match="model_name"):

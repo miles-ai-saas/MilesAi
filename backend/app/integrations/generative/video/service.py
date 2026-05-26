@@ -2,12 +2,11 @@
 生视频服务入口（``model_type=video_gen``）。
 
 万相 / 豆包：节点内同步轮询至完成（``dashscope_t2v`` / ``volcengine_video``）。
-图生视频首帧：服务端读 attachment 字节 → data URL，不向厂商提供 OSS 签名 URL。
+图生视频：服务端读 attachment 字节 → data URL（首帧 / 首尾帧），不向厂商提供 OSS 签名 URL。
 """
 
 from __future__ import annotations
 
-import base64
 from uuid import UUID
 
 from sqlalchemy import select
@@ -22,6 +21,7 @@ from app.integrations.generative.constants import (
 from app.integrations.generative.persist import PURPOSE_CHAT_GENERATED, persist_generated_bytes
 from app.integrations.generative.model_resolve import pick_default_generative_model
 from app.integrations.generative.registry import resolve_invoke_mode
+from app.integrations.generative.reference import reference_image_data_url
 from app.integrations.generative.types import VideoGenerateResult
 from app.integrations.generative.video.providers.dashscope_wan import generate_dashscope_video
 from app.integrations.generative.video.providers.volcengine_video import generate_volcengine_video
@@ -72,17 +72,23 @@ async def resolve_video_gen_model(
     return await resolve_model_for_invoke(db, row, ctx.tenant_id)
 
 
-async def _first_frame_data_url(
+async def _resolve_frame_data_urls(
     db: AsyncSession,
     ctx: TenantContext,
-    attachment_id: UUID,
-) -> str:
-    """图生视频：首帧以 data URL 传给万相 API。"""
-    from app.tenant.attachments.services.attachment import AttachmentService
+    *,
+    first_attachment_id: UUID | None,
+    last_attachment_id: UUID | None,
+) -> tuple[str | None, str | None]:
+    if last_attachment_id and not first_attachment_id:
+        raise BadRequestError("首尾帧生视频需同时提供首帧与尾帧 attachment")
 
-    data, mime = await AttachmentService(db, ctx).read_image_bytes(attachment_id)
-    encoded = base64.standard_b64encode(data).decode("ascii")
-    return f"data:{mime};base64,{encoded}"
+    first_url: str | None = None
+    last_url: str | None = None
+    if first_attachment_id:
+        first_url = await reference_image_data_url(db, ctx, first_attachment_id)
+    if last_attachment_id:
+        last_url = await reference_image_data_url(db, ctx, last_attachment_id)
+    return first_url, last_url
 
 
 async def generate_video_for_model(
@@ -94,6 +100,7 @@ async def generate_video_for_model(
     duration: int = 5,
     resolution: str | None = None,
     image_attachment_id: UUID | None = None,
+    last_frame_attachment_id: UUID | None = None,
     purpose: str = PURPOSE_CHAT_GENERATED,
     agent_id: UUID | None = None,
 ) -> VideoGenerateResult:
@@ -106,9 +113,12 @@ async def generate_video_for_model(
 
     await assert_generative_quota(db, ctx.tenant_id, units=1)
 
-    first_frame: str | None = None
-    if image_attachment_id:
-        first_frame = await _first_frame_data_url(db, ctx, image_attachment_id)
+    first_frame, last_frame = await _resolve_frame_data_urls(
+        db,
+        ctx,
+        first_attachment_id=image_attachment_id,
+        last_attachment_id=last_frame_attachment_id,
+    )
 
     mode = resolve_invoke_mode(model, capability=ModelCapabilityType.VIDEO_GEN.value)
     if mode == INVOKE_DASHSCOPE_T2V:
@@ -118,6 +128,7 @@ async def generate_video_for_model(
             duration=duration,
             resolution=resolution,
             first_frame_data_url=first_frame,
+            last_frame_data_url=last_frame,
         )
     elif mode == INVOKE_VOLCENGINE_VIDEO:
         video_bytes = await generate_volcengine_video(
@@ -126,6 +137,7 @@ async def generate_video_for_model(
             duration=duration,
             resolution=resolution,
             first_frame_data_url=first_frame,
+            last_frame_data_url=last_frame,
         )
     else:
         raise BadRequestError(f"不支持的生视频 invoke_mode: {mode}")

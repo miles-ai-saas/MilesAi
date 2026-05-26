@@ -7,6 +7,7 @@ EXTRA_IMAGE_SIZE = "image_size"
 EXTRA_IMAGE_STYLE = "image_style"
 
 INVOKE_OPENAI_IMAGES = "openai_images"
+INVOKE_VOLCENGINE_IMAGE = "volcengine_image"
 INVOKE_DASHSCOPE_T2I = "dashscope_t2i"
 INVOKE_DASHSCOPE_T2V = "dashscope_t2v"
 INVOKE_VOLCENGINE_VIDEO = "volcengine_video"

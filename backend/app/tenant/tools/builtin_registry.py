@@ -69,7 +69,13 @@ BUILTIN_REGISTRY: list[dict] = [
             {
                 "name": "image_attachment_id",
                 "type": "string",
-                "description": "可选首帧图片 attachment_id（图生视频）",
+                "description": "首帧图片 attachment_id（图生视频 / 首尾帧）",
+                "required": False,
+            },
+            {
+                "name": "last_frame_attachment_id",
+                "type": "string",
+                "description": "尾帧图片 attachment_id（首尾帧生视频，须与首帧同传）",
                 "required": False,
             },
             {
@@ -82,20 +88,26 @@ BUILTIN_REGISTRY: list[dict] = [
     },
     {
         "slug": "generate_image",
-        "name": "文生图",
-        "description": "根据文字描述生成图片并保存为附件",
+        "name": "生图",
+        "description": "根据文字描述生成图片；可选参考图 attachment 实现图生图",
         "category_slug": "general",
-        "version": "1.0.0",
+        "version": "1.1.0",
         "require_confirmation": False,
         "generative_only": True,
         "parameters": [
-            {"name": "prompt", "type": "string", "description": "画面描述", "required": True},
+            {"name": "prompt", "type": "string", "description": "画面描述或编辑指令", "required": True},
             {
                 "name": "size",
                 "type": "string",
-                "description": "尺寸，如 1024x1024",
+                "description": "尺寸，如 1024x1024；图生图时豆包可用 adaptive",
                 "required": False,
                 "default": "1024x1024",
+            },
+            {
+                "name": "image_attachment_id",
+                "type": "string",
+                "description": "参考图附件 UUID（图生图 / SeedEdit）",
+                "required": False,
             },
             {
                 "name": "model_config_id",

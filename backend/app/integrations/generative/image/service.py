@@ -18,10 +18,13 @@ from app.integrations.generative.constants import (
     EXTRA_IMAGE_SIZE,
     INVOKE_DASHSCOPE_T2I,
     INVOKE_OPENAI_IMAGES,
+    INVOKE_VOLCENGINE_IMAGE,
     MAX_IMAGES_PER_REQUEST,
 )
 from app.integrations.generative.image.providers.dashscope_t2i import generate_dashscope_t2i
 from app.integrations.generative.image.providers.openai_images import generate_openai_images
+from app.integrations.generative.image.providers.volcengine_image import generate_volcengine_image
+from app.integrations.generative.reference import reference_image_data_url
 from app.integrations.generative.persist import PURPOSE_CHAT_GENERATED, persist_generated_bytes
 from app.integrations.generative.model_resolve import pick_default_generative_model
 from app.integrations.generative.registry import resolve_invoke_mode
@@ -37,13 +40,34 @@ async def _generate_bytes(
     prompt: str,
     size: str,
     n: int,
+    reference_image_data_url: str | None = None,
 ) -> list[bytes]:
     """按 invoke_mode 分发到具体 Provider，返回原始图片字节列表。"""
     mode = resolve_invoke_mode(model, capability=ModelCapabilityType.IMAGE_GEN.value)
     if mode == INVOKE_DASHSCOPE_T2I:
-        return await generate_dashscope_t2i(model, prompt=prompt, size=size, n=n)
+        return await generate_dashscope_t2i(
+            model,
+            prompt=prompt,
+            size=size,
+            n=n,
+            reference_image_url=reference_image_data_url,
+        )
+    if mode == INVOKE_VOLCENGINE_IMAGE:
+        return await generate_volcengine_image(
+            model,
+            prompt=prompt,
+            size=size,
+            n=n,
+            reference_image_data_url=reference_image_data_url,
+        )
     if mode in (INVOKE_OPENAI_IMAGES, "openai", "dalle"):
-        return await generate_openai_images(model, prompt=prompt, size=size, n=n)
+        return await generate_openai_images(
+            model,
+            prompt=prompt,
+            size=size,
+            n=n,
+            reference_image_data_url=reference_image_data_url,
+        )
     raise BadRequestError(f"不支持的生图 invoke_mode: {mode}")
 
 
@@ -97,22 +121,33 @@ async def generate_image_for_model(
     prompt: str,
     size: str | None = None,
     n: int = 1,
+    reference_attachment_id: UUID | None = None,
     purpose: str = PURPOSE_CHAT_GENERATED,
     agent_id: UUID | None = None,
 ) -> ImageGenerateResult:
-    """调用厂商生图并持久化为附件。"""
+    """调用厂商生图并持久化为附件；可选参考图 attachment 实现图生图。"""
     prompt = (prompt or "").strip()
     if not prompt:
         raise BadRequestError("生图 prompt 不能为空")
 
     from app.integrations.generative.quota import assert_generative_quota
 
+    ref_url: str | None = None
+    if reference_attachment_id:
+        ref_url = await reference_image_data_url(db, ctx, reference_attachment_id)
+
     extra = model.extra or {}
     resolved_size = size or str(extra.get(EXTRA_IMAGE_SIZE) or DEFAULT_IMAGE_SIZE)
     count = min(max(int(n), 1), MAX_IMAGES_PER_REQUEST)
     await assert_generative_quota(db, ctx.tenant_id, units=count)
 
-    blobs = await _generate_bytes(model, prompt=prompt, size=resolved_size, n=count)
+    blobs = await _generate_bytes(
+        model,
+        prompt=prompt,
+        size=resolved_size,
+        n=count,
+        reference_image_data_url=ref_url,
+    )
     attachment_ids: list[UUID] = []
     mime = "image/png"
     for i, data in enumerate(blobs):
