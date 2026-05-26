@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
+import { PromptTemplateDialog } from "@/components/prompt/PromptTemplateDialog";
 import { api } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth-store";
 import { usePagedList } from "@/hooks/use-paged-list";
@@ -8,24 +9,26 @@ import { useConfirmAction } from "@/hooks/use-confirm-action";
 import { ResourceListFooter } from "@/components/resource/ResourceListFooter";
 import { AddResourceCard } from "@/components/resource/AddResourceCard";
 import { CardActions } from "@/components/resource/CardActions";
-import { ResourceDialog } from "@/components/resource/ResourceDialog";
 import { ResourceItemCard } from "@/components/resource/ResourceItemCard";
 import { ResourceListLayout } from "@/components/resource/ResourceListLayout";
 import { filterBySearch } from "@/lib/filter-search";
 import { TagChips } from "@/components/tag/TagChips";
 import { TagFilterSelect } from "@/components/tag/TagFilterSelect";
 import { TagManageDialog } from "@/components/tag/TagManageDialog";
-import { TagPicker } from "@/components/tag/TagPicker";
 import type { PromptTemplate } from "@/lib/types";
+
+function contentPreview(text: string, max = 120): string {
+  const t = text.trim().replace(/\s+/g, " ");
+  if (!t) return "（空正文）";
+  if (t.length <= max) return t;
+  return `${t.slice(0, max)}…`;
+}
 
 export default function PromptsPage() {
   const { ready } = useRequireAuth();
   const [search, setSearch] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<PromptTemplate | null>(null);
-  const [name, setName] = useState("");
-  const [content, setContent] = useState("你是企业智能助手，请准确、简洁地回答用户问题。");
-  const [tagIds, setTagIds] = useState<string[]>([]);
   const [tagFilterIds, setTagFilterIds] = useState<string[]>([]);
   const [tagManageOpen, setTagManageOpen] = useState(false);
 
@@ -46,34 +49,12 @@ export default function PromptsPage() {
 
   const openCreate = () => {
     setEditing(null);
-    setName("");
-    setContent("你是企业智能助手，请准确、简洁地回答用户问题。");
-    setTagIds([]);
     setDialogOpen(true);
   };
 
   const openEdit = (t: PromptTemplate) => {
     setEditing(t);
-    setName(t.name);
-    setContent(t.content);
-    setTagIds((t.tags ?? []).map((x) => x.id));
     setDialogOpen(true);
-  };
-
-  const onSave = async () => {
-    if (!name.trim()) return;
-    if (editing) {
-      await api.updatePromptTemplate(editing.id, {
-        name: name.trim(),
-        content,
-        category_id: null,
-        tag_ids: tagIds,
-      });
-    } else {
-      await api.createPromptTemplate(name.trim(), content, undefined, undefined, tagIds);
-    }
-    setDialogOpen(false);
-    await list.reload();
   };
 
   const onDelete = (t: PromptTemplate) => {
@@ -97,7 +78,7 @@ export default function PromptsPage() {
     <>
       <ResourceListLayout
         title="提示词模板"
-        description="管理系统提示词模板，供智能体与流程编排复用；支持按名称或正文搜索。"
+        description="管理系统提示词（Markdown），供智能体 system prompt 与流程编排复用；支持按名称、正文或标签筛选。"
         searchPlaceholder="搜索模板名称或内容"
         search={search}
         onSearchChange={setSearch}
@@ -106,10 +87,13 @@ export default function PromptsPage() {
             <TagFilterSelect value={tagFilterIds} onChange={setTagFilterIds} />
             <button
               type="button"
-              className="btn-ghost border border-line text-sm"
+              className="btn-sm-outline"
               onClick={() => setTagManageOpen(true)}
             >
               管理标签
+            </button>
+            <button type="button" className="btn-sm-primary" onClick={openCreate}>
+              新建模板
             </button>
           </div>
         }
@@ -125,50 +109,32 @@ export default function PromptsPage() {
           ) : null
         }
       >
-        <AddResourceCard label="添加新模板" hint="创建可复用的系统提示词" onClick={openCreate} />
+        <AddResourceCard label="新建提示词模板" hint="Markdown 正文 · 编辑 / 预览" onClick={openCreate} />
         {filtered.map((t) => (
           <ResourceItemCard
             key={t.id}
             title={t.name}
-            description={t.content}
+            description={contentPreview(t.content)}
             badge={t.is_active ? "启用" : "停用"}
-            meta={<TagChips tags={t.tags} />}
+            meta={
+              <div className="space-y-2">
+                <span className="inline-block rounded border border-line px-1.5 py-px text-[10px] text-ink-faint">
+                  Markdown
+                </span>
+                <TagChips tags={t.tags} />
+              </div>
+            }
             actions={<CardActions onEdit={() => openEdit(t)} onDelete={() => onDelete(t)} />}
           />
         ))}
       </ResourceListLayout>
 
-      <ResourceDialog
+      <PromptTemplateDialog
         open={dialogOpen}
-        title={editing ? "编辑提示词模板" : "新建提示词模板"}
+        template={editing}
         onClose={() => setDialogOpen(false)}
-        footer={
-          <>
-            <button type="button" className="btn-ghost" onClick={() => setDialogOpen(false)}>
-              取消
-            </button>
-            <button type="button" className="btn-primary" onClick={onSave}>
-              保存
-            </button>
-          </>
-        }
-      >
-        <label className="block text-sm">
-          <span className="mb-1 block text-ink-muted">标签</span>
-          <TagPicker value={tagIds} onChange={setTagIds} />
-        </label>
-        <input
-          className="input-field w-full"
-          placeholder="模板名称"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-        />
-        <textarea
-          className="input-field h-32 w-full font-mono text-sm"
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
-        />
-      </ResourceDialog>
+        onSaved={() => list.reload()}
+      />
       <TagManageDialog open={tagManageOpen} onClose={() => setTagManageOpen(false)} />
       {confirmDialog}
     </>
