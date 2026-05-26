@@ -1,8 +1,7 @@
 "use client";
 
 /**
- * 流程画布（链路 §6，见 lib/chains.ts）：ReactFlow ↔ `flow-nodes` graph_json；
- * 保存后由 FlowService / LangGraph compiler 执行（backend integrations.langgraph.compiler）。
+ * 流程画布（链路 §6）：ReactFlow ↔ flow-nodes；FlowNodeInspector / flow-node-schemas。
  */
 import {
   Background,
@@ -19,7 +18,14 @@ import {
   type Node,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState,
+} from "react";
 import { useConfirmAction } from "@/hooks/use-confirm-action";
 import type { EdgeChange, NodeChange } from "@xyflow/react";
 import {
@@ -27,14 +33,32 @@ import {
   type NodeType,
   createPaletteNode,
   graphToReactFlow,
+  RAG_TEMPLATE,
+  RAG_TEMPLATE_WITH_GRADE,
   reactFlowToGraph,
 } from "@/lib/flow-nodes";
+import { isValidConnection } from "@/lib/flow-node-schemas";
 import { flowNodeTypes } from "@/components/flow/FlowNodeCard";
-import type { FlowGraph } from "@/lib/types";
+import { FlowNodeInspector } from "@/components/flow/FlowNodeInspector";
+import type {
+  FlowGraph,
+  KnowledgeBase,
+  ModelConfig,
+  ToolCatalogItem,
+} from "@/lib/types";
+
+export interface FlowCanvasHandle {
+  loadGraph: (graph: FlowGraph) => void;
+  selectNode: (nodeId: string) => void;
+}
 
 interface FlowCanvasProps {
   initialGraph?: FlowGraph;
   onGraphChange?: (graph: FlowGraph) => void;
+  kbs?: KnowledgeBase[];
+  models?: ModelConfig[];
+  toolCatalog?: ToolCatalogItem[];
+  className?: string;
 }
 
 type Snapshot = { nodes: Node[]; edges: Edge[] };
@@ -52,12 +76,16 @@ function FlowCanvasToolbar({
   canRedo,
   onUndo,
   onRedo,
+  onInsertTemplate,
+  onInsertGradeTemplate,
 }: {
   onPushHistory: () => void;
   canUndo: boolean;
   canRedo: boolean;
   onUndo: () => void;
   onRedo: () => void;
+  onInsertTemplate: () => void;
+  onInsertGradeTemplate: () => void;
 }) {
   const { getNodes, getEdges, setNodes, setEdges, deleteElements } = useReactFlow();
   const { requestConfirm, confirmDialog } = useConfirmAction();
@@ -90,260 +118,422 @@ function FlowCanvasToolbar({
 
   return (
     <>
-      <div className="flex flex-wrap items-center gap-1 border-b border-slate-200 bg-slate-50 px-2 py-1.5">
-      <button
-        type="button"
-        title="撤销 (Ctrl+Z)"
-        disabled={!canUndo}
-        onClick={onUndo}
-        className="rounded border border-slate-200 bg-white px-2 py-1 text-xs disabled:opacity-40 hover:bg-slate-100"
-      >
-        撤销
-      </button>
-      <button
-        type="button"
-        title="重做 (Ctrl+Shift+Z)"
-        disabled={!canRedo}
-        onClick={onRedo}
-        className="rounded border border-slate-200 bg-white px-2 py-1 text-xs disabled:opacity-40 hover:bg-slate-100"
-      >
-        重做
-      </button>
-      <span className="mx-1 h-4 w-px bg-slate-300" />
-      <button
-        type="button"
-        title="删除选中 (Delete)"
-        onClick={deleteSelected}
-        className="rounded border border-red-200 bg-white px-2 py-1 text-xs text-red-600 hover:bg-red-50"
-      >
-        删除选中
-      </button>
-      <button
-        type="button"
-        onClick={clearAll}
-        className="rounded border border-slate-200 bg-white px-2 py-1 text-xs text-slate-600 hover:bg-slate-100"
-      >
-        清空画布
-      </button>
+      <div className="flex flex-wrap items-center gap-1 border-b border-line bg-surface px-2 py-1.5">
+        <button
+          type="button"
+          title="撤销 (Ctrl+Z)"
+          disabled={!canUndo}
+          onClick={onUndo}
+          className="btn-sm-ghost disabled:opacity-40"
+        >
+          撤销
+        </button>
+        <button
+          type="button"
+          title="重做 (Ctrl+Shift+Z)"
+          disabled={!canRedo}
+          onClick={onRedo}
+          className="btn-sm-ghost disabled:opacity-40"
+        >
+          重做
+        </button>
+        <span className="mx-0.5 h-4 w-px bg-line" />
+        <button
+          type="button"
+          title="删除选中 (Delete)"
+          onClick={deleteSelected}
+          className="btn-sm text-red-600 hover:bg-red-50"
+        >
+          删除
+        </button>
+        <button type="button" onClick={clearAll} className="btn-sm-ghost">
+          清空
+        </button>
+        <span className="mx-0.5 h-4 w-px bg-line" />
+        <button type="button" onClick={onInsertTemplate} className="btn-sm-outline">
+          RAG 模板
+        </button>
+        <button
+          type="button"
+          onClick={onInsertGradeTemplate}
+          className="btn-sm-outline text-violet-700 hover:border-violet-300 hover:text-violet-800"
+        >
+          RAG+评分
+        </button>
       </div>
       {confirmDialog}
     </>
   );
 }
 
-function FlowCanvasInner({ initialGraph, onGraphChange }: FlowCanvasProps) {
-  const init = initialGraph ? graphToReactFlow(initialGraph) : { nodes: [], edges: [] };
-  const [nodes, setNodes, onNodesChange] = useNodesState(init.nodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState(init.edges);
-
-  const pastRef = useRef<Snapshot[]>([]);
-  const futureRef = useRef<Snapshot[]>([]);
-  const skipHistoryRef = useRef(false);
-  const [canUndo, setCanUndo] = useState(false);
-  const [canRedo, setCanRedo] = useState(false);
-
-  const syncHistoryUi = useCallback(() => {
-    setCanUndo(pastRef.current.length > 0);
-    setCanRedo(futureRef.current.length > 0);
-  }, []);
-
-  const pushHistory = useCallback(() => {
-    pastRef.current.push(cloneSnapshot(nodes, edges));
-    if (pastRef.current.length > 50) pastRef.current.shift();
-    futureRef.current = [];
-    syncHistoryUi();
-  }, [nodes, edges, syncHistoryUi]);
-
-  const applySnapshot = useCallback(
-    (snap: Snapshot) => {
-      skipHistoryRef.current = true;
-      setNodes(snap.nodes);
-      setEdges(snap.edges);
+const FlowCanvasInner = forwardRef<FlowCanvasHandle, FlowCanvasProps>(
+  function FlowCanvasInner(
+    {
+      initialGraph,
+      onGraphChange,
+      kbs = [],
+      models = [],
+      toolCatalog = [],
+      className,
     },
-    [setNodes, setEdges]
-  );
+    ref,
+  ) {
+    const init = initialGraph
+      ? graphToReactFlow(initialGraph)
+      : { nodes: [], edges: [] };
+    const [nodes, setNodes, onNodesChange] = useNodesState(init.nodes);
+    const [edges, setEdges, onEdgesChange] = useEdgesState(init.edges);
+    const [selectedNode, setSelectedNode] = useState<Node | null>(null);
+    const [connectHint, setConnectHint] = useState("");
+    const [paletteOpen, setPaletteOpen] = useState(true);
 
-  const undo = useCallback(() => {
-    const past = pastRef.current;
-    if (past.length === 0) return;
-    futureRef.current.unshift(cloneSnapshot(nodes, edges));
-    const prev = past.pop()!;
-    applySnapshot(prev);
-    syncHistoryUi();
-  }, [nodes, edges, applySnapshot, syncHistoryUi]);
+    const pastRef = useRef<Snapshot[]>([]);
+    const futureRef = useRef<Snapshot[]>([]);
+    const skipHistoryRef = useRef(false);
+    const [canUndo, setCanUndo] = useState(false);
+    const [canRedo, setCanRedo] = useState(false);
+    const { requestConfirm, confirmDialog } = useConfirmAction();
 
-  const redo = useCallback(() => {
-    const future = futureRef.current;
-    if (future.length === 0) return;
-    pastRef.current.push(cloneSnapshot(nodes, edges));
-    const next = future.shift()!;
-    applySnapshot(next);
-    syncHistoryUi();
-  }, [nodes, edges, applySnapshot, syncHistoryUi]);
+    const syncHistoryUi = useCallback(() => {
+      setCanUndo(pastRef.current.length > 0);
+      setCanRedo(futureRef.current.length > 0);
+    }, []);
 
-  useEffect(() => {
-    if (initialGraph) {
-      const { nodes: n, edges: e } = graphToReactFlow(initialGraph);
-      skipHistoryRef.current = true;
-      setNodes(n);
-      setEdges(e);
-      pastRef.current = [];
+    const pushHistory = useCallback(() => {
+      pastRef.current.push(cloneSnapshot(nodes, edges));
+      if (pastRef.current.length > 50) pastRef.current.shift();
       futureRef.current = [];
       syncHistoryUi();
-    }
-  }, [initialGraph, setNodes, setEdges, syncHistoryUi]);
+    }, [nodes, edges, syncHistoryUi]);
 
-  useEffect(() => {
-    if (skipHistoryRef.current) {
-      skipHistoryRef.current = false;
-      return;
-    }
-    onGraphChange?.(reactFlowToGraph(nodes, edges));
-  }, [nodes, edges, onGraphChange]);
+    const applyGraph = useCallback(
+      (graph: FlowGraph) => {
+        const { nodes: n, edges: e } = graphToReactFlow(graph);
+        skipHistoryRef.current = true;
+        setNodes(n);
+        setEdges(e);
+        setSelectedNode(null);
+        pastRef.current = [];
+        futureRef.current = [];
+        syncHistoryUi();
+      },
+      [setNodes, setEdges, syncHistoryUi],
+    );
 
-  const onConnect = useCallback(
-    (conn: Connection) => {
+    const selectNode = useCallback(
+      (nodeId: string) => {
+        setNodes((nds) => {
+          const target = nds.find((n) => n.id === nodeId);
+          setSelectedNode(target ? { ...target, selected: true } : null);
+          return nds.map((n) => ({ ...n, selected: n.id === nodeId }));
+        });
+      },
+      [setNodes],
+    );
+
+    useImperativeHandle(ref, () => ({
+      loadGraph: applyGraph,
+      selectNode,
+    }));
+
+    const applySnapshot = useCallback(
+      (snap: Snapshot) => {
+        skipHistoryRef.current = true;
+        setNodes(snap.nodes);
+        setEdges(snap.edges);
+        setSelectedNode(null);
+      },
+      [setNodes, setEdges],
+    );
+
+    const undo = useCallback(() => {
+      const past = pastRef.current;
+      if (past.length === 0) return;
+      futureRef.current.unshift(cloneSnapshot(nodes, edges));
+      const prev = past.pop()!;
+      applySnapshot(prev);
+      syncHistoryUi();
+    }, [nodes, edges, applySnapshot, syncHistoryUi]);
+
+    const redo = useCallback(() => {
+      const future = futureRef.current;
+      if (future.length === 0) return;
+      pastRef.current.push(cloneSnapshot(nodes, edges));
+      const next = future.shift()!;
+      applySnapshot(next);
+      syncHistoryUi();
+    }, [nodes, edges, applySnapshot, syncHistoryUi]);
+
+    useEffect(() => {
+      if (initialGraph) {
+        applyGraph(initialGraph);
+      }
+    }, [initialGraph, applyGraph]);
+
+    useEffect(() => {
+      if (skipHistoryRef.current) {
+        skipHistoryRef.current = false;
+        return;
+      }
+      onGraphChange?.(reactFlowToGraph(nodes, edges));
+    }, [nodes, edges, onGraphChange]);
+
+    const updateNodeData = useCallback(
+      (nodeId: string, patch: Record<string, unknown>) => {
+        setNodes((nds) =>
+          nds.map((n) =>
+            n.id === nodeId
+              ? { ...n, data: { ...n.data, ...patch } }
+              : n,
+          ),
+        );
+        setSelectedNode((prev) =>
+          prev?.id === nodeId
+            ? { ...prev, data: { ...prev.data, ...patch } }
+            : prev,
+        );
+      },
+      [setNodes],
+    );
+
+    const onConnect = useCallback(
+      (conn: Connection) => {
+        const sourceNode = nodes.find((n) => n.id === conn.source);
+        const targetNode = nodes.find((n) => n.id === conn.target);
+        if (
+          !isValidConnection(
+            sourceNode?.type,
+            conn.sourceHandle,
+            targetNode?.type,
+            conn.targetHandle,
+          )
+        ) {
+          setConnectHint(
+            `连线无效：${conn.sourceHandle ?? "output"} → ${conn.targetHandle ?? "input"}（${sourceNode?.type} → ${targetNode?.type}）`,
+          );
+          window.setTimeout(() => setConnectHint(""), 4000);
+          return;
+        }
+        setConnectHint("");
+        pushHistory();
+        setEdges((eds) =>
+          addEdge(
+            {
+              ...conn,
+              sourceHandle: conn.sourceHandle || "output",
+              targetHandle: conn.targetHandle || "input",
+            },
+            eds,
+          ),
+        );
+      },
+      [nodes, setEdges, pushHistory],
+    );
+
+    const onDropPalette = (type: NodeType) => {
       pushHistory();
-      setEdges((eds) =>
-        addEdge(
-          {
-            ...conn,
-            sourceHandle: conn.sourceHandle || "output",
-            targetHandle: conn.targetHandle || "input",
-          },
-          eds
-        )
-      );
-    },
-    [setEdges, pushHistory]
-  );
-
-  const onDropPalette = (type: NodeType) => {
-    pushHistory();
-    const node = createPaletteNode(type, {
-      x: 120 + nodes.length * 40,
-      y: 120 + nodes.length * 30,
-    });
-    setNodes((nds) => [...nds, node]);
-  };
-
-  const handleNodesChange = useCallback(
-    (changes: NodeChange[]) => {
-      if (!skipHistoryRef.current && changes.some((c) => c.type === "remove")) {
-        pushHistory();
-      }
-      onNodesChange(changes);
-    },
-    [onNodesChange, pushHistory]
-  );
-
-  const handleEdgesChange = useCallback(
-    (changes: EdgeChange[]) => {
-      if (!skipHistoryRef.current && changes.some((c) => c.type === "remove")) {
-        pushHistory();
-      }
-      onEdgesChange(changes);
-    },
-    [onEdgesChange, pushHistory]
-  );
-
-  const onNodeDragStart = useCallback(() => {
-    pushHistory();
-  }, [pushHistory]);
-
-  useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      const tag = (e.target as HTMLElement)?.tagName;
-      if (tag === "INPUT" || tag === "TEXTAREA") return;
-
-      if ((e.ctrlKey || e.metaKey) && e.key === "z" && !e.shiftKey) {
-        e.preventDefault();
-        undo();
-      }
-      if ((e.ctrlKey || e.metaKey) && (e.key === "Z" || e.key === "z") && e.shiftKey) {
-        e.preventDefault();
-        redo();
-      }
+      const node = createPaletteNode(type, {
+        x: 120 + nodes.length * 40,
+        y: 120 + nodes.length * 30,
+      });
+      setNodes((nds) => [...nds, node]);
     };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [undo, redo]);
 
-  return (
-    <div className="flex h-full min-h-[520px] flex-col">
-      <FlowCanvasToolbar
-        onPushHistory={pushHistory}
-        canUndo={canUndo}
-        canRedo={canRedo}
-        onUndo={undo}
-        onRedo={redo}
+    const handleNodesChange = useCallback(
+      (changes: NodeChange[]) => {
+        if (!skipHistoryRef.current && changes.some((c) => c.type === "remove")) {
+          pushHistory();
+        }
+        onNodesChange(changes);
+      },
+      [onNodesChange, pushHistory],
+    );
+
+    const handleEdgesChange = useCallback(
+      (changes: EdgeChange[]) => {
+        if (!skipHistoryRef.current && changes.some((c) => c.type === "remove")) {
+          pushHistory();
+        }
+        onEdgesChange(changes);
+      },
+      [onEdgesChange, pushHistory],
+    );
+
+    const onNodeDragStart = useCallback(() => {
+      pushHistory();
+    }, [pushHistory]);
+
+    const onSelectionChange = useCallback(
+      ({ nodes: selNodes }: { nodes: Node[] }) => {
+        if (selNodes.length === 1) {
+          setSelectedNode(selNodes[0]);
+        } else {
+          setSelectedNode(null);
+        }
+      },
+      [],
+    );
+
+    const confirmReplaceGraph = useCallback(
+      (title: string, graph: FlowGraph) => {
+        const apply = () => {
+          if (nodes.length > 0) pushHistory();
+          applyGraph(graph);
+        };
+        if (nodes.length > 0) {
+          requestConfirm({
+            title,
+            message: "将替换当前画布上所有节点与连线，是否继续？",
+            destructive: true,
+            confirmLabel: "替换画布",
+            onConfirm: apply,
+          });
+        } else {
+          apply();
+        }
+      },
+      [nodes.length, requestConfirm, applyGraph, pushHistory],
+    );
+
+    const insertRagTemplate = useCallback(
+      () => confirmReplaceGraph("插入 RAG 模板", RAG_TEMPLATE),
+      [confirmReplaceGraph],
+    );
+
+    const insertRagGradeTemplate = useCallback(
+      () => confirmReplaceGraph("插入 RAG+评分 模板", RAG_TEMPLATE_WITH_GRADE),
+      [confirmReplaceGraph],
+    );
+
+    useEffect(() => {
+      const onKeyDown = (e: KeyboardEvent) => {
+        const tag = (e.target as HTMLElement)?.tagName;
+        if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+
+        if ((e.ctrlKey || e.metaKey) && e.key === "z" && !e.shiftKey) {
+          e.preventDefault();
+          undo();
+        }
+        if ((e.ctrlKey || e.metaKey) && (e.key === "Z" || e.key === "z") && e.shiftKey) {
+          e.preventDefault();
+          redo();
+        }
+      };
+      window.addEventListener("keydown", onKeyDown);
+      return () => window.removeEventListener("keydown", onKeyDown);
+    }, [undo, redo]);
+
+    return (
+      <div className={`flex h-full min-h-0 flex-col ${className ?? ""}`}>
+        <FlowCanvasToolbar
+          onPushHistory={pushHistory}
+          canUndo={canUndo}
+          canRedo={canRedo}
+          onUndo={undo}
+          onRedo={redo}
+        onInsertTemplate={insertRagTemplate}
+        onInsertGradeTemplate={insertRagGradeTemplate}
       />
-      <div className="flex min-h-0 flex-1">
-        <aside className="w-52 shrink-0 border-r border-slate-200 bg-slate-50 p-3">
-          <p className="mb-2 text-xs font-semibold uppercase text-slate-500">节点面板</p>
-          <div className="mb-4 flex flex-col gap-2">
-            {NODE_PALETTE.map((item) => (
+        {connectHint && (
+          <p className="border-b border-amber-200/80 bg-amber-50 px-3 py-1.5 text-xs text-amber-900">
+            {connectHint}
+          </p>
+        )}
+        <div className="flex min-h-0 flex-1">
+          {paletteOpen ? (
+            <aside className="flex w-44 shrink-0 flex-col border-r border-line bg-surface sm:w-48">
+              <div className="flex items-center justify-between border-b border-line px-2 py-2">
+                <span className="text-xs font-semibold text-ink-muted">节点</span>
+                <button
+                  type="button"
+                  className="btn-sm-ghost !px-1.5 text-[10px]"
+                  onClick={() => setPaletteOpen(false)}
+                  title="收起节点面板"
+                >
+                  ‹
+                </button>
+              </div>
+              <div className="flex-1 overflow-y-auto p-2">
+                <div className="flex flex-col gap-1">
+                  {NODE_PALETTE.map((item) => (
+                    <button
+                      key={item.type}
+                      type="button"
+                      onClick={() => onDropPalette(item.type)}
+                      className="flex items-center gap-2 rounded-lg border border-line bg-surface px-2 py-2 text-left text-xs transition hover:border-brand/50 hover:bg-brand-light"
+                    >
+                      <span
+                        className="h-2 w-2 shrink-0 rounded-full"
+                        style={{ background: item.color }}
+                      />
+                      <span className="text-ink">{item.label}</span>
+                    </button>
+                  ))}
+                </div>
+                <p className="mt-3 text-[10px] leading-relaxed text-ink-faint">
+                  选中节点在右侧编辑；Delete 删除；Ctrl+Z 撤销
+                </p>
+              </div>
+            </aside>
+          ) : (
+            <div className="flex w-9 shrink-0 flex-col items-center border-r border-line bg-surface py-2">
               <button
-                key={item.type}
                 type="button"
-                onClick={() => onDropPalette(item.type)}
-                className="rounded-md border border-slate-200 bg-white px-2 py-2 text-left text-sm hover:border-brand hover:bg-blue-50"
+                className="btn-sm-ghost !px-1 text-lg leading-none"
+                onClick={() => setPaletteOpen(true)}
+                title="展开节点面板"
+                aria-label="展开节点面板"
               >
-                <span
-                  className="mr-2 inline-block h-2 w-2 rounded-full"
-                  style={{ background: item.color }}
-                />
-                {item.label}
+                ›
               </button>
-            ))}
+            </div>
+          )}
+          <div className="min-w-0 flex-1 bg-white">
+            <ReactFlow
+              nodes={nodes}
+              edges={edges}
+              onNodesChange={handleNodesChange}
+              onEdgesChange={handleEdgesChange}
+              onConnect={onConnect}
+              onNodeDragStart={onNodeDragStart}
+              onSelectionChange={onSelectionChange}
+              nodesDraggable
+              nodesConnectable
+              elementsSelectable
+              nodeTypes={flowNodeTypes}
+              deleteKeyCode={["Backspace", "Delete"]}
+              multiSelectionKeyCode={["Shift", "Meta", "Control"]}
+              selectionOnDrag
+              fitView
+              proOptions={{ hideAttribution: true }}
+            >
+              <Background />
+              <Controls />
+              <MiniMap />
+            </ReactFlow>
           </div>
-          <p className="text-xs font-semibold uppercase text-slate-500">操作说明</p>
-          <ul className="mt-2 space-y-1 text-xs leading-relaxed text-slate-600">
-            <li>点击节点或连线进行选中</li>
-            <li>
-              按 <span className="rounded border border-slate-200 bg-white px-1 font-mono text-[10px]">Delete</span> 或工具栏「删除选中」
-            </li>
-            <li>
-              <span className="rounded border border-slate-200 bg-white px-1 font-mono text-[10px]">Ctrl+Z</span> 撤销，
-              <span className="ml-1 rounded border border-slate-200 bg-white px-1 font-mono text-[10px]">Ctrl+Shift+Z</span> 重做
-            </li>
-            <li>拖拽节点移动；从右侧圆点拖出连线</li>
-          </ul>
-        </aside>
-        <div className="flex-1">
-          <ReactFlow
-            nodes={nodes}
-            edges={edges}
-            onNodesChange={handleNodesChange}
-            onEdgesChange={handleEdgesChange}
-            onConnect={onConnect}
-            onNodeDragStart={onNodeDragStart}
-            nodesDraggable
-            nodesConnectable
-            elementsSelectable
-            nodeTypes={flowNodeTypes}
-            deleteKeyCode={["Backspace", "Delete"]}
-            multiSelectionKeyCode={["Shift", "Meta", "Control"]}
-            selectionOnDrag
-            fitView
-            proOptions={{ hideAttribution: true }}
-          >
-            <Background />
-            <Controls />
-            <MiniMap />
-          </ReactFlow>
+          <FlowNodeInspector
+            node={selectedNode}
+            kbs={kbs}
+            models={models}
+            toolCatalog={toolCatalog}
+            onChange={updateNodeData}
+          />
         </div>
+        {confirmDialog}
       </div>
-    </div>
-  );
-}
+    );
+  },
+);
 
-export function FlowCanvas(props: FlowCanvasProps) {
-  return (
-    <ReactFlowProvider>
-      <FlowCanvasInner {...props} />
-    </ReactFlowProvider>
-  );
-}
+export const FlowCanvas = forwardRef<FlowCanvasHandle, FlowCanvasProps>(
+  function FlowCanvas(props, ref) {
+    return (
+      <ReactFlowProvider>
+        <FlowCanvasInner {...props} ref={ref} />
+      </ReactFlowProvider>
+    );
+  },
+);
 
 export default FlowCanvas;

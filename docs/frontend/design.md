@@ -419,7 +419,7 @@ var(--font-sans), "PingFang SC", "Microsoft YaHei", "Segoe UI", system-ui, -appl
 | §3 | 工作台 CRUD 列表 | `use-paged-list.ts`、`ResourceListLayout`、`use-confirm-action.tsx` |
 | §4 | 枚举展示 | `enum-meta.ts`、`use-*-meta.ts`、`*-labels.ts` |
 | §5 | 智能体对话 | `chat-sessions.ts`、`agents/chat`、`agent-steps.ts` |
-| §6 | 流程编排 | `flow-nodes.ts`、`flows/[id]/edit` |
+| §6 | 流程编排 | `flow-nodes.ts`、`flows/[id]/edit`；增强见 [flow-orchestration-enhancement.md](../architecture/flow-orchestration-enhancement.md) |
 | §7 | 导航壳层 | `nav-config.ts`、`AppShell`、`SystemShell` |
 | §8 | KB 文档入库 | `document-status.ts`、`kb/[id]` |
 | §9 | 技能包编辑器 | `skills/[id]`、`skill-md.ts`；references/scripts 分组、layout 索引、`reindexSkillPackage` |

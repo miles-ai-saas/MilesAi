@@ -37,6 +37,8 @@ from langgraph.graph import END, START, StateGraph
 
 from app.integrations.langgraph.graph_analysis import (
     CONDITION_NODE_TYPE,
+    GRADE_BRANCH_HANDLES,
+    RELEVANCE_GRADE_NODE_TYPE,
     build_incoming,
     build_outgoing,
     compute_execution_layers,
@@ -44,6 +46,7 @@ from app.integrations.langgraph.graph_analysis import (
     find_start_nodes,
     has_cycle,
     normalize_branch_handle,
+    normalize_grade_handle,
 )
 from app.integrations.langgraph.graph_analysis import topo_order
 from app.flow_runtime.nodes.registry import NODE_REGISTRY, execute_node
@@ -64,6 +67,24 @@ def resolve_node_type(node: dict[str, Any]) -> str:
     return str(node_type)
 
 
+def _compile_error(
+    code: str,
+    message: str,
+    *,
+    node_id: str | None = None,
+) -> dict[str, Any]:
+    """结构化编译错误；``errors`` 字符串列表与之同步生成。"""
+    return {"code": code, "message": message, "node_id": node_id}
+
+
+def _error_to_str(err: dict[str, Any]) -> str:
+    nid = err.get("node_id")
+    msg = str(err.get("message") or "")
+    if nid:
+        return f"[{nid}] {msg}"
+    return msg
+
+
 class FlowCompileReport:
     """画布编译诊断结果（工作台「编译预览」/ ``FlowService`` 校验用）。"""
 
@@ -76,6 +97,7 @@ class FlowCompileReport:
         "parallel_groups",
         "conditional_nodes",
         "errors",
+        "error_details",
     )
 
     def __init__(
@@ -89,6 +111,7 @@ class FlowCompileReport:
         parallel_groups: list[list[str]],
         conditional_nodes: list[str],
         errors: list[str],
+        error_details: list[dict[str, Any]] | None = None,
     ):
         self.compilable = compilable
         self.engine = engine
@@ -98,6 +121,7 @@ class FlowCompileReport:
         self.parallel_groups = parallel_groups
         self.conditional_nodes = conditional_nodes
         self.errors = errors
+        self.error_details = error_details or []
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -109,6 +133,7 @@ class FlowCompileReport:
             "parallel_groups": self.parallel_groups,
             "conditional_nodes": self.conditional_nodes,
             "errors": self.errors,
+            "error_details": self.error_details,
         }
 
 
@@ -120,9 +145,13 @@ def validate_graph_for_compile(graph: dict[str, Any]) -> FlowCompileReport:
     ``engine``：可编译时为 ``langgraph``，否则 ``builtin``（仅诊断，不执行）。
     """
     fg = FlowGraph.from_dict(graph)
-    errors: list[str] = []
+    error_details: list[dict[str, Any]] = []
+
+    def add_error(code: str, message: str, *, node_id: str | None = None) -> None:
+        error_details.append(_compile_error(code, message, node_id=node_id))
+
     if not fg.nodes:
-        errors.append("流程图为空")
+        add_error("empty_graph", "流程图为空")
         return FlowCompileReport(
             compilable=False,
             engine="builtin",
@@ -131,11 +160,12 @@ def validate_graph_for_compile(graph: dict[str, Any]) -> FlowCompileReport:
             execution_layers=[],
             parallel_groups=[],
             conditional_nodes=[],
-            errors=errors,
+            errors=[_error_to_str(e) for e in error_details],
+            error_details=error_details,
         )
 
     if has_cycle(fg):
-        errors.append("流程图存在环，无法编译")
+        add_error("cycle", "流程图存在环，无法编译")
 
     node_map = {n["id"]: n for n in fg.nodes}
     order = topo_order(fg) if not has_cycle(fg) else []
@@ -152,19 +182,47 @@ def validate_graph_for_compile(graph: dict[str, Any]) -> FlowCompileReport:
         ntype = resolve_node_type(node)
         types.append(ntype)
         if ntype not in SUPPORTED_CANVAS_NODE_TYPES:
-            errors.append(f"节点 {nid} 类型 {ntype!r} 暂不支持 LangGraph 编译")
+            add_error(
+                "unknown_node_type",
+                f"节点类型 {ntype!r} 暂不支持 LangGraph 编译",
+                node_id=nid,
+            )
+        if ntype == "PlatformTool":
+            node_data = node.get("data") or {}
+            if not isinstance(node_data, dict):
+                node_data = {}
+            slug = str(node_data.get("tool_slug") or node_data.get("slug") or "").strip()
+            if not slug:
+                add_error(
+                    "missing_tool_slug",
+                    "平台工具节点须配置 tool_slug",
+                    node_id=nid,
+                )
         if ntype == CONDITION_NODE_TYPE:
             conditional_nodes.append(nid)
             handles = {normalize_branch_handle(sh) for _, sh, _ in outgoing.get(nid, [])}
             if "true" not in handles or "false" not in handles:
-                errors.append(
-                    f"条件节点 {nid} 须同时连出 sourceHandle=true 与 false 两条边"
+                add_error(
+                    "incomplete_condition_edges",
+                    "条件节点须同时连出 sourceHandle=true 与 false 两条边",
+                    node_id=nid,
+                )
+        if ntype == RELEVANCE_GRADE_NODE_TYPE:
+            conditional_nodes.append(nid)
+            handles = {normalize_grade_handle(sh) for _, sh, _ in outgoing.get(nid, [])}
+            missing = GRADE_BRANCH_HANDLES - handles
+            if missing:
+                add_error(
+                    "incomplete_grade_edges",
+                    f"相关性评分节点须连出 good/poor/none 分支，缺少: {', '.join(sorted(missing))}",
+                    node_id=nid,
                 )
 
     if not find_start_nodes(fg):
-        errors.append("缺少入口节点（无入边的节点）")
+        add_error("no_entry", "缺少入口节点（无入边的节点）")
 
-    compilable = not errors
+    errors = [_error_to_str(e) for e in error_details]
+    compilable = not error_details
     return FlowCompileReport(
         compilable=compilable,
         engine="langgraph" if compilable else "builtin",
@@ -174,6 +232,7 @@ def validate_graph_for_compile(graph: dict[str, Any]) -> FlowCompileReport:
         parallel_groups=parallel_groups,
         conditional_nodes=conditional_nodes,
         errors=errors,
+        error_details=error_details,
     )
 
 
@@ -212,7 +271,11 @@ def _gather_node_inputs(
             node_inputs["query"] = val
         if th == "hits" and val is not None:
             node_inputs["hits"] = val
+        if isinstance(raw, dict) and raw.get("hits") is not None:
+            node_inputs.setdefault("hits", raw["hits"])
         if th in ("true", "false") and isinstance(raw, dict):
+            node_inputs[th] = raw
+        if th in ("good", "poor", "none") and isinstance(raw, dict):
             node_inputs[th] = raw
     return node_inputs
 
@@ -247,6 +310,20 @@ def _make_condition_router(condition_node_id: str):
         if isinstance(raw, dict):
             return normalize_branch_handle(str(raw.get("branch", "false")))
         return "false"
+
+    return router
+
+
+def _make_relevance_grade_router(grade_node_id: str):
+    """RelevanceGrade 路由：读取 ``relevance`` 字段（good/poor/none）。"""
+
+    def router(state: dict[str, Any]) -> str:
+        raw = (state.get("outputs") or {}).get(grade_node_id, {})
+        if isinstance(raw, dict):
+            rel = str(raw.get("relevance", "none")).strip().lower()
+            if rel in GRADE_BRANCH_HANDLES:
+                return rel
+        return "none"
 
     return router
 
@@ -341,13 +418,27 @@ def build_canvas_graph(graph_json: dict[str, Any]):
         g.add_edge(src, tgt)
 
     for cond_id in condition_ids:
+        cond_node = node_map.get(cond_id, {})
+        cond_type = resolve_node_type(cond_node)
         routes: dict[str, str] = {}
-        for tgt, sh, _th in outgoing.get(cond_id, []):
-            branch = normalize_branch_handle(sh)
-            if branch in ("true", "false"):
-                routes[branch] = tgt
-        if len(routes) >= 2:
-            g.add_conditional_edges(cond_id, _make_condition_router(cond_id), routes)
+        if cond_type == RELEVANCE_GRADE_NODE_TYPE:
+            for tgt, sh, _th in outgoing.get(cond_id, []):
+                branch = normalize_grade_handle(sh)
+                if branch in GRADE_BRANCH_HANDLES:
+                    routes[branch] = tgt
+            if routes:
+                g.add_conditional_edges(
+                    cond_id,
+                    _make_relevance_grade_router(cond_id),
+                    routes,
+                )
+        else:
+            for tgt, sh, _th in outgoing.get(cond_id, []):
+                branch = normalize_branch_handle(sh)
+                if branch in ("true", "false"):
+                    routes[branch] = tgt
+            if len(routes) >= 2:
+                g.add_conditional_edges(cond_id, _make_condition_router(cond_id), routes)
 
     end_ids = find_end_nodes(fg, resolve_node_type)
     for end_id in end_ids:

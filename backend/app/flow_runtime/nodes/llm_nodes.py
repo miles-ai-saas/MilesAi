@@ -47,5 +47,14 @@ async def llm_call(
             raise BadRequestError("模型配置不存在或已禁用")
         model = await resolve_model_for_invoke(db, model, UUID(str(ctx.tenant_id)))
         temperature = float(node_data.get("temperature") or 0.7)
+        max_tokens_raw = node_data.get("max_tokens")
+        max_tokens = int(max_tokens_raw) if max_tokens_raw is not None else 2048
         messages = [{"role": "user", "content": prompt}]
-        return await ainvoke_chat(model, messages, temperature=temperature)
+        return await ainvoke_chat(
+            model,
+            messages,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            db=db,
+            tenant_id=UUID(str(ctx.tenant_id)),
+        )

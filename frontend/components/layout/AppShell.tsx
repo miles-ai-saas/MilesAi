@@ -15,7 +15,11 @@ import { SystemShell } from "@/components/layout/SystemShell";
 import { SectionLink } from "@/components/layout/SectionLink";
 import { UserMenu } from "@/components/layout/UserMenu";
 import { WorkbenchHeaderNav } from "@/components/layout/WorkbenchHeaderNav";
-import { getAppSection, isFullBleedPage } from "@/lib/nav-config";
+import {
+  getAppSection,
+  isFullBleedPage,
+  isFullHeightPage,
+} from "@/lib/nav-config";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -27,6 +31,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const section = getAppSection(pathname);
   const isWorkbench = section === "workbench";
   const fullBleed = isFullBleedPage(pathname);
+  const fullHeight = isFullHeightPage(pathname);
 
   useEffect(() => {
     if (!hydrated || !token || user) return;
@@ -42,7 +47,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-surface-muted">
+    <div
+      className={`flex flex-col bg-surface-muted ${
+        fullHeight ? "h-dvh overflow-hidden" : "min-h-screen"
+      }`}
+    >
       <header className="flex h-14 shrink-0 items-center gap-3 border-b border-line bg-surface px-4">
         <BrandHeader productLine="MilesAi · 工作台" href="/workbench/dashboard" />
 
@@ -58,7 +67,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </header>
 
-      <main className={`min-h-0 flex-1 overflow-auto ${fullBleed ? "" : "p-4 lg:px-6"}`}>
+      <main
+        className={`min-h-0 flex-1 ${
+          fullHeight
+            ? "flex h-0 flex-col overflow-hidden"
+            : "overflow-auto"
+        } ${fullBleed ? "" : "p-4 lg:px-6"}`}
+      >
         {children}
       </main>
     </div>

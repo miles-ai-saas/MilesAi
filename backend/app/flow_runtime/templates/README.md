@@ -33,7 +33,13 @@
 本模板 **不** 经过 `integrations.langgraph.graphs.rag_qa`（无相关性评分/重试/兜底），
 等价于「检索 → 拼 prompt → 单次 LLM」，与 `rag.generate.rag_answer` 类似。
 
+### `rag_flow_with_grade.json`
+
+带 **RelevanceGrade** 三路分支（good / poor / none）与 **StaticResponse** 兜底；与 Agent `rag_qa` 评分语义对齐（无 top_k 重试环）。
+
+加载：`load_rag_graph_template(variant="with_grade")`；前端 `RAG_TEMPLATE_WITH_GRADE`。
+
 ### 扩展建议
 
-- 在 `search_1` 后增加 `ConditionBranch`（`mode=has_hits`）可做无命中分支
+- 在 `search_1` 后增加 `ConditionBranch`（`mode=has_hits`）可做简单二分支
 - 节点 `data.kb_id` 可写死单库；多库依赖 Agent 发布或 `FlowService.run(kb_ids=...)`

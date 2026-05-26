@@ -26,8 +26,11 @@
  * → `api.chatAgent` → `ChatResponse.steps` → `agent-steps` 解析 → `agent-trace` 按轮展示
  *
  * ## 6. 流程编排
- * `flow-nodes`（graph_json）↔ `FlowCanvas` ↔ 后端 `langgraph.compiler` / `NODE_REGISTRY`
- * 编辑页：`flows/[id]/edit` → `getFlowGraph` / `saveFlowGraph` / `testFlow`
+ * `flow-nodes`（graph_json）↔ `flow-node-schemas`（Handle/校验）
+ * ↔ `FlowCanvas` + `FlowNodeInspector` + `PlatformToolInspector` + `FlowRunPanel`
+ * ↔ 后端 `langgraph.compiler` / `NODE_REGISTRY`
+ * 编辑页：`flows/[id]/edit` → 版本 `listFlowVersions` / `FlowVersionHistoryDialog`
+ * → `getFlow` / `saveFlowGraph` / `compileFlow` / `runFlow(kb_ids)`
  *
  * ## 7. 导航与壳层
  * `nav-config` → `AppShell`（工作台顶栏 + `WorkbenchHeaderNav`）

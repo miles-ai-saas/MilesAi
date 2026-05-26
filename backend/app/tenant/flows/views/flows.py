@@ -20,6 +20,7 @@ from app.tenant.flows.schemas.flow import (
     FlowSaveGraph,
     FlowUpdate,
     FlowVersionOut,
+    FlowVersionSummaryOut,
 )
 from app.tenant.flows.services.flow import FlowService
 
@@ -85,6 +86,28 @@ async def save_graph(
     db: AsyncSession = Depends(get_db),
 ):
     return ok(await _svc(db, ctx).save_graph(flow_id, body))
+
+
+@router.get("/{flow_id}/versions", response_model=ApiResponse[list[FlowVersionSummaryOut]])
+async def list_flow_versions(
+    flow_id: UUID,
+    ctx: TenantContext = Depends(require_permissions("flow:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    return ok(await _svc(db, ctx).list_versions(flow_id))
+
+
+@router.get(
+    "/{flow_id}/versions/{version}",
+    response_model=ApiResponse[FlowVersionOut],
+)
+async def get_flow_version(
+    flow_id: UUID,
+    version: int,
+    ctx: TenantContext = Depends(require_permissions("flow:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    return ok(await _svc(db, ctx).get_version_graph(flow_id, version))
 
 
 @router.get("/{flow_id}/graph", response_model=ApiResponse[FlowVersionOut])

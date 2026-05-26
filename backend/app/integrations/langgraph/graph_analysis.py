@@ -16,6 +16,9 @@ from typing import Any
 from app.flow_runtime.types import FlowGraph
 
 CONDITION_NODE_TYPE = "ConditionBranch"
+RELEVANCE_GRADE_NODE_TYPE = "RelevanceGrade"
+CONDITIONAL_NODE_TYPES = frozenset({CONDITION_NODE_TYPE, RELEVANCE_GRADE_NODE_TYPE})
+GRADE_BRANCH_HANDLES = frozenset({"good", "poor", "none"})
 PARALLEL_JOIN_TYPE = "ParallelJoin"
 
 
@@ -117,6 +120,14 @@ def normalize_branch_handle(handle: str) -> str:
         return "true"
     if h in ("false", "no", "0", "branch_false"):
         return "false"
+    return h
+
+
+def normalize_grade_handle(handle: str) -> str:
+    """RelevanceGrade 条件边 sourceHandle → good / poor / none。"""
+    h = (handle or "").strip().lower()
+    if h in GRADE_BRANCH_HANDLES:
+        return h
     return h
 
 

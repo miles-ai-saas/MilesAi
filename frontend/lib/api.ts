@@ -369,10 +369,17 @@ export const api = {
     getPage<Flow>(`/flows?${buildPageQuery(page, size)}`),
   createFlow: (name: string, graph_json?: FlowGraph) =>
     post<Flow>("/flows", { name, graph_json: graph_json || { nodes: [], edges: [] } }),
+  getFlow: (flowId: string) => get<Flow>(`/flows/${flowId}`),
   getFlowGraph: (flowId: string) => get<FlowVersion>(`/flows/${flowId}/graph`),
+  listFlowVersions: (flowId: string) =>
+    get<import("./types").FlowVersionSummary[]>(`/flows/${flowId}/versions`),
+  getFlowVersion: (flowId: string, version: number) =>
+    get<FlowVersion>(`/flows/${flowId}/versions/${version}`),
   saveFlowGraph: (flowId: string, graph_json: FlowGraph, remark?: string) =>
     put<FlowVersion>(`/flows/${flowId}/graph`, { graph_json, remark }),
   publishFlow: (flowId: string) => post<Flow>(`/flows/${flowId}/publish`),
+  deleteFlow: (flowId: string) =>
+    http.delete(`/flows/${flowId}`).then(() => undefined),
   compileFlow: (flowId: string) =>
     post<{
       compilable: boolean;
@@ -383,14 +390,16 @@ export const api = {
       parallel_groups: string[][];
       conditional_nodes: string[];
       errors: string[];
+      error_details: { code: string; message: string; node_id?: string | null }[];
     }>(`/flows/${flowId}/compile`),
   runFlow: (
     flowId: string,
-    inputs: Record<string, string>,
+    payload: { inputs: Record<string, string>; kb_ids?: string[] },
     opts?: { useLanggraph?: boolean },
   ) =>
     post<{ output: unknown; steps: unknown[] }>(`/flows/${flowId}/run`, {
-      inputs,
+      inputs: payload.inputs,
+      kb_ids: payload.kb_ids ?? [],
       ...(opts?.useLanggraph ? { use_langgraph: true } : {}),
     }),
 

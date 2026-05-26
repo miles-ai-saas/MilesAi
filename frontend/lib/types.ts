@@ -122,12 +122,22 @@ export interface Flow {
   created_at: string;
 }
 
+export interface FlowVersionSummary {
+  id: string;
+  flow_id: string;
+  version: number;
+  editor_id?: string | null;
+  remark?: string | null;
+  created_at: string;
+}
+
 export interface FlowVersion {
   id: string;
   flow_id: string;
   version: number;
   graph_json: FlowGraph;
   remark?: string | null;
+  created_at?: string;
 }
 
 export interface FlowGraph {

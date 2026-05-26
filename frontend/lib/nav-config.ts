@@ -140,10 +140,18 @@ export function getPageTitle(pathname: string): string {
   return section === "system" ? "系统管理" : "AI 工作台";
 }
 
-/** 对话工作台等全屏页无需 main 内边距 */
+const FLOW_EDIT_PATH = /\/workbench\/flows\/[^/]+\/edit\/?$/;
+
+/** 对话工作台、流程画布等全屏页无需 main 内边距 */
 export function isFullBleedPage(pathname: string): boolean {
   return (
     pathname === "/workbench/agents/chat" ||
-    pathname.startsWith("/workbench/agents/chat/")
+    pathname.startsWith("/workbench/agents/chat/") ||
+    FLOW_EDIT_PATH.test(pathname)
   );
+}
+
+/** 流程画布编辑页占满 header 以下区域（main 不滚动） */
+export function isFullHeightPage(pathname: string): boolean {
+  return FLOW_EDIT_PATH.test(pathname);
 }

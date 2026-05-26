@@ -22,6 +22,17 @@ class FlowSaveGraph(BaseModel):
     remark: str | None = None
 
 
+class FlowVersionSummaryOut(BaseModel):
+    id: UUID
+    flow_id: UUID
+    version: int
+    editor_id: UUID | None
+    remark: str | None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
 class FlowVersionOut(BaseModel):
     id: UUID
     flow_id: UUID
@@ -48,10 +59,20 @@ class FlowOut(BaseModel):
 
 class FlowRunRequest(BaseModel):
     inputs: dict = Field(default_factory=dict)
+    kb_ids: list[UUID] = Field(
+        default_factory=list,
+        description="调试运行注入 KnowledgeSearch（节点未配置 kb_id 时使用）",
+    )
     use_langgraph: bool = Field(
         True,
         description="已废弃：画布统一由 LangGraph 执行，保留字段仅为兼容旧客户端",
     )
+
+
+class FlowCompileErrorDetail(BaseModel):
+    code: str
+    message: str
+    node_id: str | None = None
 
 
 class FlowCompileReport(BaseModel):
@@ -63,6 +84,7 @@ class FlowCompileReport(BaseModel):
     parallel_groups: list[list[str]] = []
     conditional_nodes: list[str] = []
     errors: list[str] = []
+    error_details: list[FlowCompileErrorDetail] = []
 
 
 class FlowRunResponse(BaseModel):

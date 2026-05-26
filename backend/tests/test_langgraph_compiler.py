@@ -47,3 +47,4 @@ def test_unknown_node_not_compilable():
     report = validate_graph_for_compile(bad)
     assert not report.compilable
     assert report.errors
+    assert report.error_details[0]["node_id"] == "x"

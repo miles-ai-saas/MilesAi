@@ -19,7 +19,9 @@ import type { FlowEdge, FlowGraph, FlowNode } from "./types";
 export const NODE_PALETTE = [
   { type: "TextInput", label: "文本输入", color: "#3b82f6" },
   { type: "KnowledgeSearch", label: "知识库检索", color: "#10b981" },
+  { type: "RelevanceGrade", label: "相关性评分", color: "#a855f7" },
   { type: "ConditionBranch", label: "条件分支", color: "#ec4899" },
+  { type: "StaticResponse", label: "固定回复", color: "#78716c" },
   { type: "ParallelJoin", label: "并行汇合", color: "#06b6d4" },
   { type: "PromptTemplate", label: "提示词模板", color: "#8b5cf6" },
   { type: "LLMCall", label: "大模型", color: "#f59e0b" },
@@ -31,12 +33,21 @@ export type NodeType = (typeof NODE_PALETTE)[number]["type"];
 
 const DEFAULT_DATA: Record<NodeType, Record<string, unknown>> = {
   TextInput: { input_key: "query", label: "用户输入" },
-  KnowledgeSearch: { top_k: 5, label: "知识库检索" },
+  KnowledgeSearch: { top_k: 5, retrieval_mode: "default", label: "知识库检索" },
+  RelevanceGrade: {
+    label: "相关性评分",
+    relevance_threshold: 0.35,
+    use_llm_grade: false,
+  },
   ConditionBranch: {
     label: "条件分支",
     mode: "has_hits",
     threshold: 0.35,
     keyword: "",
+  },
+  StaticResponse: {
+    label: "固定回复",
+    text: "抱歉，未在知识库中找到相关资料，请换个问法试试。",
   },
   ParallelJoin: { label: "并行汇合", merge_strategy: "dict" },
   PromptTemplate: {
@@ -44,7 +55,7 @@ const DEFAULT_DATA: Record<NodeType, Record<string, unknown>> = {
     template:
       "基于以下资料回答用户问题。\n\n资料：\n{{检索结果}}\n\n问题：{{用户提问}}",
   },
-  LLMCall: { temperature: 0.7, label: "大模型" },
+  LLMCall: { temperature: 0.7, max_tokens: 2048, label: "大模型" },
   PlatformTool: {
     tool_slug: "skill_read_reference",
     label: "平台工具",
@@ -125,5 +136,28 @@ export const RAG_TEMPLATE: FlowGraph = {
     { source: "search_1", target: "prompt_1", sourceHandle: "output", targetHandle: "hits" },
     { source: "prompt_1", target: "llm_1", sourceHandle: "output", targetHandle: "prompt" },
     { source: "llm_1", target: "output_1", sourceHandle: "output", targetHandle: "input" },
+  ],
+};
+
+/** 带相关性评分与兜底分支的 RAG 模板（与 backend rag_flow_with_grade.json 一致） */
+export const RAG_TEMPLATE_WITH_GRADE: FlowGraph = {
+  nodes: [
+    { id: "input_1", type: "TextInput", position: { x: 80, y: 160 }, data: { input_key: "query", label: "用户输入" } },
+    { id: "search_1", type: "KnowledgeSearch", position: { x: 300, y: 120 }, data: { top_k: 5, label: "知识库检索" } },
+    { id: "grade_1", type: "RelevanceGrade", position: { x: 520, y: 160 }, data: { relevance_threshold: 0.35, use_llm_grade: false, label: "相关性评分" } },
+    { id: "prompt_1", type: "PromptTemplate", position: { x: 760, y: 80 }, data: { label: "提示词", template: "基于以下资料回答：\n{{检索结果}}\n\n问题：{{用户提问}}" } },
+    { id: "llm_1", type: "LLMCall", position: { x: 1000, y: 80 }, data: { temperature: 0.7, label: "大模型" } },
+    { id: "fallback_1", type: "StaticResponse", position: { x: 760, y: 260 }, data: { label: "无命中兜底", text: "抱歉，未找到与「{{用户提问}}」相关的资料。" } },
+    { id: "output_1", type: "TextOutput", position: { x: 1240, y: 160 }, data: { label: "输出" } },
+  ],
+  edges: [
+    { source: "input_1", target: "search_1", sourceHandle: "output", targetHandle: "query" },
+    { source: "search_1", target: "grade_1", sourceHandle: "output", targetHandle: "hits" },
+    { source: "grade_1", target: "prompt_1", sourceHandle: "good", targetHandle: "input" },
+    { source: "grade_1", target: "prompt_1", sourceHandle: "poor", targetHandle: "input" },
+    { source: "prompt_1", target: "llm_1", sourceHandle: "output", targetHandle: "prompt" },
+    { source: "llm_1", target: "output_1", sourceHandle: "output", targetHandle: "input" },
+    { source: "grade_1", target: "fallback_1", sourceHandle: "none", targetHandle: "input" },
+    { source: "fallback_1", target: "output_1", sourceHandle: "output", targetHandle: "input" },
   ],
 };

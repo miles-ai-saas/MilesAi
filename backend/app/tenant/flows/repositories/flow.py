@@ -35,6 +35,18 @@ class FlowRepository(BaseRepository[Flow]):
         )
         return (await self.db.execute(stmt)).scalar_one_or_none()
 
+    async def list_versions(self, flow_id: UUID) -> list[FlowVersion]:
+        """版本列表，按 version 降序。"""
+        stmt = (
+            select(FlowVersion)
+            .where(
+                FlowVersion.flow_id == flow_id,
+                not_deleted(FlowVersion),
+            )
+            .order_by(FlowVersion.version.desc())
+        )
+        return list((await self.db.execute(stmt)).scalars().all())
+
 
 class FlowVersionRepository(BaseRepository[FlowVersion]):
     """每次 save_graph 追加的 FlowVersion 行。"""

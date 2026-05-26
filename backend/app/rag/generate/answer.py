@@ -34,6 +34,7 @@ async def retrieve_hits(
     kb_ids: list[str],
     db: AsyncSession,
     top_k: int = 5,
+    mode: str = "default",
 ) -> list[dict[str, Any]]:
     """
     多 KB 检索（LangGraph retrieve 节点、线性 RAG 共用）。
@@ -43,7 +44,13 @@ async def retrieve_hits(
     """
     kbs = await load_kbs_for_tenant(db, tenant_id, kb_ids)
     return await search_multi_kb_async(
-        query, kbs=kbs, db=db, tenant_id=tenant_id, top_k=top_k
+        query,
+        kbs=kbs,
+        db=db,
+        tenant_id=tenant_id,
+        top_k=top_k,
+        mode=mode,
+        write_log=False,
     )
 
 

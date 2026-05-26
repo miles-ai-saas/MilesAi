@@ -65,6 +65,46 @@ def parse_llm_grade_response(text: str) -> tuple[str, str]:
     return "", text[:500]
 
 
+async def evaluate_relevance(
+    hits: list[dict[str, Any]],
+    *,
+    query: str,
+    threshold: float = 0.35,
+    use_llm_grade: bool = False,
+    model: ModelConfig | None = None,
+) -> dict[str, Any]:
+    """
+    画布 ``RelevanceGrade`` 与 ``rag_qa.grade_documents`` 共用的评分逻辑。
+
+    返回 ``relevance``（good/poor/none）、``top_score``、``reason``、``grade_method``。
+    """
+    relevance, top_score = _score_grade(hits, threshold)
+    reason = ""
+    grade_method = "score"
+
+    if use_llm_grade and hits and model is not None:
+        try:
+            llm_rel, reason = await llm_grade_relevance(
+                model,
+                query=query,
+                hits=hits,
+            )
+            if llm_rel:
+                relevance = llm_rel
+                grade_method = "llm"
+        except Exception as exc:
+            grade_method = "score_fallback"
+            reason = str(exc)[:200]
+
+    return {
+        "relevance": relevance,
+        "top_score": top_score,
+        "reason": reason[:300] if reason else None,
+        "grade_method": grade_method,
+        "hits": hits,
+    }
+
+
 async def llm_grade_relevance(
     model: ModelConfig,
     *,

@@ -35,6 +35,7 @@ from app.tenant.flows.schemas.flow import (
     FlowSaveGraph,
     FlowUpdate,
     FlowVersionOut,
+    FlowVersionSummaryOut,
 )
 from app.core.soft_delete import is_marked_deleted, mark_deleted
 from app.core.service import BaseService
@@ -126,6 +127,18 @@ class FlowService(BaseService):
             raise NotFoundError("流程版本不存在")
         return FlowVersionOut.model_validate(version)
 
+    async def list_versions(self, flow_id: UUID) -> list[FlowVersionSummaryOut]:
+        flow = await self._get_flow_or_raise(flow_id)
+        versions = await self.repo.list_versions(flow.id)
+        return [FlowVersionSummaryOut.model_validate(v) for v in versions]
+
+    async def get_version_graph(self, flow_id: UUID, version: int) -> FlowVersionOut:
+        flow = await self._get_flow_or_raise(flow_id)
+        row = await self.repo.get_version(flow.id, version)
+        if not row:
+            raise NotFoundError("流程版本不存在")
+        return FlowVersionOut.model_validate(row)
+
     async def delete_flow(self, flow_id: UUID) -> None:
         flow = await self._get_flow_or_raise(flow_id)
         await before_delete_flow(self.db, flow.id)
@@ -140,11 +153,11 @@ class FlowService(BaseService):
         await self.db.refresh(flow)
         return FlowOut.model_validate(flow)
 
-    async def run(self, flow_id: UUID, body: FlowRunRequest, kb_ids: list[str] | None = None) -> FlowRunResponse:
+    async def run(self, flow_id: UUID, body: FlowRunRequest) -> FlowRunResponse:
         """
         工作台调试运行：合规 + Hook + ``get_flow_runtime().run``。
 
-        ``kb_ids`` 可选；用于测试带 KnowledgeSearch 节点的画布。
+        ``body.kb_ids`` 用于测试带 KnowledgeSearch 节点的画布。
         """
         flow = await self._get_flow_or_raise(flow_id)
         version = await self.repo.get_version(flow.id, flow.current_version)
@@ -181,7 +194,7 @@ class FlowService(BaseService):
             ctx = RunContext(
                 tenant_id=str(self.ctx.tenant_id),
                 inputs=run_inputs,
-                kb_ids=kb_ids or [],
+                kb_ids=[str(k) for k in body.kb_ids],
                 user_id=str(self.ctx.user_id),
                 permissions=self.ctx.permissions,
                 is_superuser=self.ctx.is_superuser,

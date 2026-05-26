@@ -32,6 +32,7 @@ async def knowledge_search(
         return []
     kb_id = node_data.get("kb_id")
     top_k = int(node_data.get("top_k") or 5)
+    retrieval_mode = str(node_data.get("retrieval_mode") or "default").strip() or "default"
     kb_ids = [str(kb_id)] if kb_id else ctx.kb_ids
     from app.infra.db import AsyncSessionLocal
 
@@ -42,6 +43,7 @@ async def knowledge_search(
             kb_ids=kb_ids,
             db=db,
             top_k=top_k,
+            mode=retrieval_mode,
         )
 
 

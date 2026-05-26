@@ -15,6 +15,8 @@ docs/
 │   ├── rag-module-migration.md
 │   ├── vector-database-selection.md
 │   ├── mcp-sandbox.md
+│   ├── flow-orchestration-enhancement.md  # 流程编排增强（Phase 1–4 已实现）
+│   ├── flow-subflow-design.md             # 子流程 SubFlow（已立项，暂不实施）
 │   └── tools-runtime.md      # 工具统一执行平面（目标架构）
 ├── frontend/                 # 前端
 │   └── design.md
@@ -52,6 +54,8 @@ docs/
 | [vector-database-selection.md](./architecture/vector-database-selection.md) | 向量数据库选型：pgvector / Weaviate / Milvus / Qdrant / OpenSearch / ES |
 | [mcp-sandbox.md](./architecture/mcp-sandbox.md) | MCP STDIO / 平台执行：沙箱与 Runner 隔离方案 |
 | [tools-runtime.md](./architecture/tools-runtime.md) | **工具运行时**：内置 / HTTP / 脚本 / MCP 统一执行平面（目标架构） |
+| [flow-orchestration-enhancement.md](./architecture/flow-orchestration-enhancement.md) | **流程编排增强**：属性面板、调试、RAG 节点（已实现） |
+| [flow-subflow-design.md](./architecture/flow-subflow-design.md) | **子流程 SubFlow**：立项规格，暂不实施 |
 
 ## 前端 (`frontend/`)
 

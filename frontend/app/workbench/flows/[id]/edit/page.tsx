@@ -1,43 +1,76 @@
 "use client";
 
-/** 流程画布编辑（链路 §6）：`getFlowGraph` / `saveFlowGraph` / `testFlow`，图结构见 `flow-nodes`。 */
+/** 流程画布编辑（链路 §6）：graph、属性面板、调试运行。 */
 
 import dynamic from "next/dynamic";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useElementFullscreen } from "@/hooks/use-element-fullscreen";
 import { api } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth-store";
-import type { FlowGraph } from "@/lib/types";
+import { FlowEditHeader } from "@/components/flow/FlowEditHeader";
+import type { FlowRunState } from "@/components/flow/FlowRunPanel";
+import { FlowRunPanel } from "@/components/flow/FlowRunPanel";
+import type { FlowCanvasHandle } from "@/components/flow/FlowCanvas";
+import { FlowVersionHistoryDialog } from "@/components/flow/FlowVersionHistoryDialog";
+import type {
+  FlowGraph,
+  KnowledgeBase,
+  ModelConfig,
+  ToolCatalogItem,
+} from "@/lib/types";
 
-const FlowCanvas = dynamic(() => import("@/components/flow/FlowCanvas"), {
-  ssr: false,
-});
+const FlowCanvas = dynamic(
+  () => import("@/components/flow/FlowCanvas").then((m) => m.FlowCanvas),
+  { ssr: false },
+);
 
 export default function FlowEditPage() {
   const { id } = useParams<{ id: string }>();
-  const router = useRouter();
   const { ready } = useRequireAuth();
   const graphRef = useRef<FlowGraph>({ nodes: [], edges: [] });
+  const canvasRef = useRef<FlowCanvasHandle>(null);
   const [initialGraph, setInitialGraph] = useState<FlowGraph | undefined>();
   const [flowName, setFlowName] = useState("");
+  const [currentVersion, setCurrentVersion] = useState(0);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [kbs, setKbs] = useState<KnowledgeBase[]>([]);
+  const [models, setModels] = useState<ModelConfig[]>([]);
+  const [toolCatalog, setToolCatalog] = useState<ToolCatalogItem[]>([]);
+  const [selectedKbIds, setSelectedKbIds] = useState<string[]>([]);
   const [testQuery, setTestQuery] = useState("你好");
-  const [runResult, setRunResult] = useState("");
-  const [compileInfo, setCompileInfo] = useState("");
+  const [runState, setRunState] = useState<FlowRunState | null>(null);
+  const [debugPanelOpen, setDebugPanelOpen] = useState(false);
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
+  const {
+    ref: shellRef,
+    active: isFullscreen,
+    toggle: toggleFullscreen,
+  } = useElementFullscreen<HTMLDivElement>();
 
   useEffect(() => {
     if (!ready) return;
-    api
-      .getFlowGraph(id)
-      .then((v) => {
-        setInitialGraph(v.graph_json);
-        graphRef.current = v.graph_json;
+    Promise.all([
+      api.getFlow(id),
+      api.getFlowGraph(id),
+      api.listKbs(1, 100),
+      api.listModelConfigs(),
+      api.listToolCatalog(),
+    ])
+      .then(([flow, version, kbPage, modelList, catalog]) => {
+        setFlowName(flow.name);
+        setCurrentVersion(flow.current_version);
+        setInitialGraph(version.graph_json);
+        graphRef.current = version.graph_json;
+        setKbs(kbPage.items);
+        setModels(modelList.filter((m) => m.is_active !== false));
+        setToolCatalog(catalog);
       })
       .catch(() => {
         setInitialGraph({ nodes: [], edges: [] });
       });
-  }, [id, ready, router]);
+  }, [id, ready]);
 
   const onGraphChange = useCallback((g: FlowGraph) => {
     graphRef.current = g;
@@ -47,7 +80,8 @@ export default function FlowEditPage() {
     setBusy(true);
     setMsg("");
     try {
-      await api.saveFlowGraph(id, graphRef.current, "画布保存");
+      const v = await api.saveFlowGraph(id, graphRef.current, "画布保存");
+      setCurrentVersion(v.version);
       setMsg("已保存");
     } catch (e) {
       setMsg(e instanceof Error ? e.message : "保存失败");
@@ -71,7 +105,6 @@ export default function FlowEditPage() {
 
   const checkCompile = async () => {
     setBusy(true);
-    setCompileInfo("");
     try {
       await api.saveFlowGraph(id, graphRef.current);
       const r = await api.compileFlow(id);
@@ -80,14 +113,25 @@ export default function FlowEditPage() {
           ? `；并行层 ${r.parallel_groups.map((g) => g.join("+")).join(" | ")}`
           : "";
       const cond =
-        r.conditional_nodes?.length > 0 ? `；条件节点 ${r.conditional_nodes.join(", ")}` : "";
-      setCompileInfo(
-        r.compilable
-          ? `可编译为 LangGraph（${r.node_types.join(" → ")}${parallel}${cond}）`
-          : `不可编译：${r.errors.join("; ")}`,
-      );
+        r.conditional_nodes?.length > 0
+          ? `；条件节点 ${r.conditional_nodes.join(", ")}`
+          : "";
+      setRunState((prev) => ({
+        output: prev?.output ?? "",
+        steps: prev?.steps ?? [],
+        compileInfo: r.compilable
+          ? `可编译（${r.node_types.join(" → ")}${parallel}${cond}）`
+          : undefined,
+        compileErrorDetails: r.compilable ? undefined : r.error_details ?? [],
+      }));
+      setDebugPanelOpen(true);
     } catch (e) {
-      setCompileInfo(e instanceof Error ? e.message : "编译检查失败");
+      setRunState({
+        output: "",
+        steps: [],
+        error: e instanceof Error ? e.message : "编译检查失败",
+      });
+      setDebugPanelOpen(true);
     } finally {
       setBusy(false);
     }
@@ -95,75 +139,101 @@ export default function FlowEditPage() {
 
   const runTest = async () => {
     setBusy(true);
-    setRunResult("");
+    setRunState(null);
     try {
       await api.saveFlowGraph(id, graphRef.current);
-      const res = await api.runFlow(id, { query: testQuery });
-      setRunResult(
-        typeof res.output === "string" ? res.output : JSON.stringify(res.output, null, 2)
-      );
+      const res = await api.runFlow(id, {
+        inputs: { query: testQuery },
+        kb_ids: selectedKbIds,
+      });
+      const output =
+        typeof res.output === "string"
+          ? res.output
+          : JSON.stringify(res.output, null, 2);
+      setRunState({
+        output,
+        steps: (res.steps as Record<string, unknown>[]) ?? [],
+      });
+      setDebugPanelOpen(true);
     } catch (e) {
-      setRunResult(e instanceof Error ? e.message : "运行失败");
+      setRunState({
+        output: "",
+        steps: [],
+        error: e instanceof Error ? e.message : "运行失败",
+      });
+      setDebugPanelOpen(true);
     } finally {
       setBusy(false);
     }
   };
 
   return (
-    <div className="flex h-[calc(100vh-80px)] flex-col rounded-xl border border-line bg-surface shadow-card">
-      <div className="flex flex-wrap items-center gap-2 border-b border-line px-4 py-2">
-        <span className="font-medium text-ink">{flowName || `流程 ${id.slice(0, 8)}`}</span>
-        <button
-          type="button"
-          onClick={save}
-          disabled={busy}
-          className="rounded border border-line px-3 py-1 text-sm hover:bg-surface-muted"
-        >
-          保存
-        </button>
-        <button
-          type="button"
-          onClick={publish}
-          disabled={busy}
-          className="rounded bg-emerald-600 px-3 py-1 text-sm text-white hover:bg-emerald-700"
-        >
-          发布
-        </button>
-        <input
-          className="ml-4 rounded border border-line px-2 py-1 text-sm"
-          value={testQuery}
-          onChange={(e) => setTestQuery(e.target.value)}
-          placeholder="调试输入 query"
-        />
-        <button
-          type="button"
-          onClick={checkCompile}
-          disabled={busy}
-          className="rounded border border-line px-3 py-1 text-sm hover:bg-surface-muted"
-        >
-          编译检查
-        </button>
-        <button
-          type="button"
-          onClick={runTest}
-          disabled={busy}
-          className="rounded bg-brand px-3 py-1 text-sm text-white"
-        >
-          调试运行
-        </button>
-        {compileInfo && <span className="text-xs text-ink-muted">{compileInfo}</span>}
-        {msg && <span className="text-sm text-emerald-600">{msg}</span>}
-      </div>
-      <div className="min-h-0 flex-1">
-        {initialGraph !== undefined && (
-          <FlowCanvas initialGraph={initialGraph} onGraphChange={onGraphChange} />
+    <div
+      ref={shellRef}
+      className={`flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden bg-surface ${
+        isFullscreen ? "max-h-[100dvh]" : ""
+      }`}
+    >
+      <FlowEditHeader
+        flowName={flowName}
+        flowId={id}
+        currentVersion={currentVersion}
+        busy={busy}
+        msg={msg}
+        isFullscreen={isFullscreen}
+        onToggleFullscreen={() => void toggleFullscreen()}
+        onSave={() => void save()}
+        onPublish={() => void publish()}
+        onHistory={() => setHistoryOpen(true)}
+        onCompile={() => void checkCompile()}
+        onRun={() => void runTest()}
+      />
+
+      <div className="relative min-h-0 flex-1 bg-surface-muted">
+        {initialGraph === undefined ? (
+          <div className="flex h-full items-center justify-center text-sm text-ink-muted">
+            加载画布…
+          </div>
+        ) : (
+          <FlowCanvas
+            ref={canvasRef}
+            initialGraph={initialGraph}
+            onGraphChange={onGraphChange}
+            kbs={kbs}
+            models={models}
+            toolCatalog={toolCatalog}
+            className="h-full"
+          />
         )}
       </div>
-      {runResult && (
-        <pre className="max-h-32 overflow-auto border-t border-line bg-surface-muted p-3 text-xs">
-          {runResult}
-        </pre>
-      )}
+
+      <FlowRunPanel
+        kbs={kbs}
+        selectedKbIds={selectedKbIds}
+        onKbIdsChange={setSelectedKbIds}
+        query={testQuery}
+        onQueryChange={setTestQuery}
+        runState={runState}
+        busy={busy}
+        collapsed={!debugPanelOpen}
+        onToggleCollapsed={() => setDebugPanelOpen((v) => !v)}
+        onSelectCompileNode={(nodeId) => canvasRef.current?.selectNode(nodeId)}
+        onRun={() => void runTest()}
+      />
+
+      <FlowVersionHistoryDialog
+        flowId={id}
+        open={historyOpen}
+        currentVersion={currentVersion}
+        onClose={() => setHistoryOpen(false)}
+        onRestored={(graph, ver) => {
+          graphRef.current = graph;
+          setInitialGraph(graph);
+          setCurrentVersion(ver);
+          canvasRef.current?.loadGraph(graph);
+          setMsg(`已恢复为 v${ver}（新版本）`);
+        }}
+      />
     </div>
   );
 }

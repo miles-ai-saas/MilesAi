@@ -12,7 +12,14 @@ RAG 相关
 from collections.abc import Awaitable, Callable
 from typing import Any
 
-from app.flow_runtime.nodes import control_nodes, io_nodes, llm_nodes, rag_nodes, tool_nodes
+from app.flow_runtime.nodes import (
+    control_nodes,
+    grade_nodes,
+    io_nodes,
+    llm_nodes,
+    rag_nodes,
+    tool_nodes,
+)
 from app.flow_runtime.types import RunContext
 
 NodeHandler = Callable[[dict[str, Any], dict[str, Any], RunContext], Awaitable[Any]]
@@ -25,6 +32,8 @@ NODE_REGISTRY: dict[str, NodeHandler] = {
     "LLMCall": llm_nodes.llm_call,
     "PlatformTool": tool_nodes.platform_tool,
     "ConditionBranch": control_nodes.condition_branch,
+    "RelevanceGrade": grade_nodes.relevance_grade,
+    "StaticResponse": io_nodes.static_response,
     "ParallelJoin": control_nodes.parallel_join,
     # 兼容历史 graph 中的节点类型别名
     "ChatInput": io_nodes.text_input,
