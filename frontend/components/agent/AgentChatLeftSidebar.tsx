@@ -33,6 +33,7 @@ type Props = {
   onSelectAgent: (id: string) => void;
   onNewSession: () => void;
   onSelectSession: (id: string) => void;
+  onRenameSession: (sessionId: string, title: string) => void;
   onDeleteSession: (id: string) => void;
 };
 
@@ -208,6 +209,7 @@ export function AgentChatLeftSidebar({
   onSelectAgent,
   onNewSession,
   onSelectSession,
+  onRenameSession,
   onDeleteSession,
 }: Props) {
   const agentColumnProps = {
@@ -276,6 +278,7 @@ export function AgentChatLeftSidebar({
               activeSessionId={activeSessionId}
               onNewSession={onNewSession}
               onSelectSession={onSelectSession}
+              onRenameSession={onRenameSession}
               onDeleteSession={onDeleteSession}
             />
           </div>

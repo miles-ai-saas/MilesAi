@@ -92,7 +92,7 @@ class AgentUpdate(BaseModel):
     agent_type: AgentType | None = Field(default=None, description="智能体类型")
     category_id: UUID | None = Field(default=None, description="分类 ID")
     tag_ids: list[UUID] | None = Field(default=None, description="标签 ID 列表（全量替换）")
-    name: str | None = Field(default=None, description="智能体名称")
+    name: str | None = Field(default=None, min_length=1, max_length=128, description="智能体名称")
     description: str | None = Field(default=None, description="描述")
     status: AgentStatus | None = Field(default=None, description="启用状态")
     system_prompt: str | None = Field(default=None, description="系统提示词")

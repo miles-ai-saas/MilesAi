@@ -37,6 +37,7 @@ import {
   ensureActiveSession,
   getSession,
   listSessions,
+  renameSession,
   setActiveSessionId,
   type ChatMessage,
   type ChatMessageMedia,
@@ -253,6 +254,19 @@ function AgentsChatContent() {
     setPanelOpen(false);
     setLeftDrawerOpen(false);
   };
+
+  const handleRenameSession = useCallback(
+    (sessionId: string, title: string) => {
+      if (!selectedAgent) return;
+      if (!renameSession(selectedAgent, sessionId, title)) return;
+      refreshSessions(selectedAgent);
+      if (sessionId === conversationId) {
+        const updated = getSession(selectedAgent, sessionId);
+        if (updated) setSessionTitle(updated.title);
+      }
+    },
+    [conversationId, refreshSessions, selectedAgent],
+  );
 
   const handleDeleteSession = (sessionId: string) => {
     if (!selectedAgent) return;
@@ -580,6 +594,10 @@ function AgentsChatContent() {
     }
   }, [cancelGenerativeJob, pollJobs, wsActiveJobIds, wsClientRef]);
 
+  const handleAgentRenamed = useCallback(() => {
+    void list.reload();
+  }, [list]);
+
   const generativeStatusEl =
     generativeStatusMessage ? (
       <ChatGenerativeStatusBanner
@@ -604,6 +622,7 @@ function AgentsChatContent() {
     onSelectAgent: onSelectAgent,
     onNewSession: handleNewSession,
     onSelectSession: handleSelectSession,
+    onRenameSession: handleRenameSession,
     onDeleteSession: handleDeleteSession,
   };
 
@@ -737,7 +756,10 @@ function AgentsChatContent() {
       <section className="flex min-h-0 min-w-0 flex-1 flex-col bg-surface-subtle">
         <AgentChatDebugHeader
           sessionTitle={sessionTitle}
+          sessionRenameDisabled={!selectedAgent || !conversationId}
+          onSessionRename={(title) => handleRenameSession(conversationId, title)}
           agent={selected ?? null}
+          onAgentRenamed={handleAgentRenamed}
           wsEnabled={wsEnabled}
           wsReady={wsReady}
           lastTraceId={lastTraceId}
@@ -820,6 +842,7 @@ function AgentsChatContent() {
               persistSidebar({ rightCollapsed: next });
             }}
             onTabChange={onTabChange}
+            onAgentRenamed={handleAgentRenamed}
           />
         </div>
       ) : null}

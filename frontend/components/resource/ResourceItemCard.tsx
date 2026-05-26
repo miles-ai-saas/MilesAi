@@ -6,7 +6,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 type Props = {
-  title: string;
+  title: ReactNode;
   description?: string;
   meta?: ReactNode;
   href?: string;
@@ -29,7 +29,7 @@ export function ResourceItemCard({
   const body = (
     <>
       <div className="flex items-start justify-between gap-2">
-        <h3 className="font-medium text-ink line-clamp-1">{title}</h3>
+        <div className="min-w-0 flex-1 font-medium text-ink line-clamp-1">{title}</div>
         {badge && (
           <span className="shrink-0 rounded bg-brand-light px-2 py-0.5 text-[10px] text-brand">
             {badge}

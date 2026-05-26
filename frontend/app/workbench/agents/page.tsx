@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { A2aAgentsTab } from "@/components/agent/A2aAgentsTab";
 import { AgentDetailDialog } from "@/components/agent/AgentDetailDialog";
 import { AgentFormDialog } from "@/components/agent/AgentFormDialog";
+import { AgentRenameInline } from "@/components/agent/AgentRenameInline";
 import { AddResourceCard } from "@/components/resource/AddResourceCard";
 import { CardActions } from "@/components/resource/CardActions";
 import { ResourceItemCard } from "@/components/resource/ResourceItemCard";
@@ -278,7 +279,14 @@ export default function AgentsPage() {
               return (
                 <ResourceItemCard
                   key={a.id}
-                  title={a.name}
+                  title={
+                    <AgentRenameInline
+                      agentId={a.id}
+                      name={a.name}
+                      prominent
+                      onRenamed={() => list.reload()}
+                    />
+                  }
                   description={a.description ?? "未填写描述"}
                   badge={agentStatusLabel(a.status, agentMeta)}
                   muted={disabled}
@@ -323,6 +331,7 @@ export default function AgentsPage() {
       <AgentDetailDialog
         open={Boolean(viewingId)}
         agentId={viewingId}
+        onRenamed={() => list.reload()}
         onClose={() => setViewingId(null)}
         onEdit={(a) => {
           setViewingId(null);

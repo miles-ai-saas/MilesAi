@@ -3,6 +3,7 @@
 /** 智能体只读详情（链路 §4 `useAgentMeta`）。 */
 
 import { useEffect, useState, type ReactNode } from "react";
+import { AgentRenameInline } from "@/components/agent/AgentRenameInline";
 import { ResourceDialog } from "@/components/resource/ResourceDialog";
 import { api } from "@/lib/api";
 import {
@@ -29,6 +30,7 @@ type Props = {
   onEdit: (agent: Agent) => void;
   onChat: (agent: Agent) => void;
   onDesign: (agent: Agent) => void;
+  onRenamed?: () => void;
 };
 
 function DetailRow({ label, children }: { label: string; children: ReactNode }) {
@@ -81,6 +83,7 @@ export function AgentDetailDialog({
   onEdit,
   onChat,
   onDesign,
+  onRenamed,
 }: Props) {
   const agentMeta = useAgentMeta(open);
   const [agent, setAgent] = useState<Agent | null>(null);
@@ -137,7 +140,7 @@ export function AgentDetailDialog({
   return (
     <ResourceDialog
       open={open}
-      title={agent ? `查看智能体 · ${agent.name}` : "查看智能体"}
+      title="查看智能体"
       size="sheet"
       onClose={onClose}
       footer={
@@ -187,6 +190,16 @@ export function AgentDetailDialog({
         <dl className="divide-y divide-line-soft">
           <DetailRow label="ID">
             <code className="break-all text-xs text-ink-muted">{agent.id}</code>
+          </DetailRow>
+          <DetailRow label="名称">
+            <AgentRenameInline
+              agentId={agent.id}
+              name={agent.name}
+              onRenamed={(nextName) => {
+                setAgent((prev) => (prev ? { ...prev, name: nextName } : prev));
+                onRenamed?.();
+              }}
+            />
           </DetailRow>
           <DetailRow label="状态">
             <span

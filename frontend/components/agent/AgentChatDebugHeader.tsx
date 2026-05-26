@@ -2,12 +2,17 @@
 
 /** 对话调试台顶栏：会话为主标题、状态芯片与布局控制。 */
 import Link from "next/link";
+import { AgentRenameInline } from "@/components/agent/AgentRenameInline";
+import { ChatSessionRenameInline } from "@/components/agent/ChatSessionRenameInline";
 import type { Agent } from "@/lib/types";
 import { agentModeLabel } from "@/lib/agent-utils";
 
 type Props = {
   sessionTitle: string;
+  sessionRenameDisabled?: boolean;
+  onSessionRename?: (title: string) => void;
   agent: Agent | null;
+  onAgentRenamed?: (name: string) => void;
   wsEnabled: boolean;
   wsReady: boolean;
   lastTraceId?: string | null;
@@ -23,7 +28,10 @@ type Props = {
 
 export function AgentChatDebugHeader({
   sessionTitle,
+  sessionRenameDisabled = false,
+  onSessionRename,
   agent,
+  onAgentRenamed,
   wsEnabled,
   wsReady,
   lastTraceId,
@@ -57,20 +65,34 @@ export function AgentChatDebugHeader({
         ) : null}
 
         <div className="min-w-0 flex-1">
-          <h2 className="truncate text-base font-semibold text-ink sm:text-lg" title={sessionTitle}>
-            {sessionTitle}
-          </h2>
-          <p className="mt-0.5 truncate text-xs text-ink-muted">
+          {onSessionRename && !sessionRenameDisabled ? (
+            <ChatSessionRenameInline
+              title={sessionTitle}
+              prominent
+              className="text-base sm:text-lg"
+              onRename={onSessionRename}
+            />
+          ) : (
+            <h2 className="truncate text-base font-semibold text-ink sm:text-lg" title={sessionTitle}>
+              {sessionTitle}
+            </h2>
+          )}
+          <div className="mt-0.5 flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-ink-muted">
             {agent ? (
               <>
-                <span className="font-medium text-ink">{agent.name}</span>
-                <span className="mx-1.5 text-ink-faint">·</span>
-                <span>{agentModeLabel(agent)}</span>
+                <AgentRenameInline
+                  agentId={agent.id}
+                  name={agent.name}
+                  className="max-w-[min(100%,14rem)]"
+                  onRenamed={(name) => onAgentRenamed?.(name)}
+                />
+                <span className="text-ink-faint">·</span>
+                <span className="truncate">{agentModeLabel(agent)}</span>
               </>
             ) : (
               "请选择智能体"
             )}
-          </p>
+          </div>
         </div>
 
         <div className="hidden flex-wrap items-center justify-end gap-1.5 sm:flex">

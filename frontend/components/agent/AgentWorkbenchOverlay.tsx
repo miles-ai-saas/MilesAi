@@ -117,9 +117,14 @@ export function AgentWorkbenchOverlay({
         ) : activeTab === "schedule" && agentId ? (
           <AgentSchedulePanel agentId={agentId} />
         ) : activeTab === "architecture" && agentId ? (
-          <AgentArchitecturePanel agentId={agentId} />
+          <AgentArchitecturePanel agentId={agentId} agentName={agent?.name} />
         ) : (
-          <AgentWorkbenchPanel agentId={agentId} activeTab={activeTab} onSaved={onSaved} />
+          <AgentWorkbenchPanel
+            agentId={agentId}
+            agentName={agent?.name}
+            activeTab={activeTab}
+            onSaved={onSaved}
+          />
         )}
       </div>
     </div>

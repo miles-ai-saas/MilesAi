@@ -4,6 +4,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { A2aHostFormDialog } from "@/components/agent/A2aHostFormDialog";
+import { AgentRenameInline } from "@/components/agent/AgentRenameInline";
 import { A2aPeersPanel } from "@/components/agent/A2aPeersPanel";
 import { AddResourceCard } from "@/components/resource/AddResourceCard";
 import { CardActions } from "@/components/resource/CardActions";
@@ -103,7 +104,14 @@ export function A2aAgentsTab() {
             return (
               <ResourceItemCard
                 key={a.id}
-                title={a.name}
+                title={
+                  <AgentRenameInline
+                    agentId={a.id}
+                    name={a.name}
+                    prominent
+                    onRenamed={() => hosts.reload()}
+                  />
+                }
                 description={a.description ?? "未填写描述"}
                 badge={agentStatusLabel(a.status, agentMeta)}
                 muted={disabled}

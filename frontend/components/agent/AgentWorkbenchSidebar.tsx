@@ -9,6 +9,7 @@ import {
   CHAT_RIGHT_RAIL_COLLAPSED,
   CHAT_RIGHT_RAIL_EXPANDED,
 } from "@/components/agent/chat-sidebar-layout";
+import { AgentRenameInline } from "@/components/agent/AgentRenameInline";
 import { SidebarCollapseButton } from "@/components/agent/SidebarCollapseButton";
 import { WorkbenchTabIcon } from "@/components/agent/WorkbenchTabIcon";
 import { agentModeLabel, agentStatusLabel } from "@/lib/agent-utils";
@@ -23,6 +24,7 @@ type Props = {
   hideCollapseButton?: boolean;
   onToggleCollapse: () => void;
   onTabChange: (tab: AgentWorkbenchTab) => void;
+  onAgentRenamed?: (name: string) => void;
 };
 
 export function AgentWorkbenchSidebar({
@@ -33,6 +35,7 @@ export function AgentWorkbenchSidebar({
   hideCollapseButton,
   onToggleCollapse,
   onTabChange,
+  onAgentRenamed,
 }: Props) {
   const agentMeta = useAgentMeta(Boolean(agent));
 
@@ -82,9 +85,13 @@ export function AgentWorkbenchSidebar({
         <>
           {agent ? (
             <div className="border-b border-line-soft px-4 py-4">
-              <p className="line-clamp-2 text-sm font-medium leading-snug text-ink" title={agent.name}>
-                {agent.name}
-              </p>
+              <AgentRenameInline
+                agentId={agent.id}
+                name={agent.name}
+                prominent
+                className="text-sm leading-snug"
+                onRenamed={(name) => onAgentRenamed?.(name)}
+              />
               <p className="mt-1.5 text-xs text-ink-muted">{agentModeLabel(agent)}</p>
               <span
                 className={`mt-2 inline-block rounded-md px-2 py-0.5 text-xs ${

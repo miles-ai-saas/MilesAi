@@ -43,6 +43,7 @@ type Store = Record<string, AgentSessionBucket>;
 
 const STORAGE_KEY = "agents-chat-sessions-v1";
 const MAX_SESSIONS_PER_AGENT = 80;
+export const MAX_SESSION_TITLE_LENGTH = 64;
 
 function loadStore(): Store {
   if (typeof window === "undefined") return {};
@@ -180,6 +181,21 @@ export function appendTurn(
     updatedAt: Date.now(),
   };
   saveStore(store);
+}
+
+/** 重命名会话标题（仅本地存储）。 */
+export function renameSession(agentId: string, sessionId: string, title: string): boolean {
+  const trimmed = title.trim();
+  if (!trimmed) return false;
+  const session = getSession(agentId, sessionId);
+  if (!session) return false;
+  const next =
+    trimmed.length > MAX_SESSION_TITLE_LENGTH
+      ? `${trimmed.slice(0, MAX_SESSION_TITLE_LENGTH)}…`
+      : trimmed;
+  if (next === session.title) return true;
+  updateSession(agentId, sessionId, { title: next });
+  return true;
 }
 
 export function deleteSession(agentId: string, sessionId: string) {

@@ -29,11 +29,13 @@ import type {
 
 type Props = {
   agentId: string | null;
+  /** 名称变更时触发重新拉取（与 agentId 解耦的展示字段） */
+  agentName?: string | null;
   activeTab: AgentWorkbenchTab;
   onSaved?: () => void;
 };
 
-export function AgentWorkbenchPanel({ agentId, activeTab, onSaved }: Props) {
+export function AgentWorkbenchPanel({ agentId, agentName, activeTab, onSaved }: Props) {
   const router = useRouter();
   const [agent, setAgent] = useState<Agent | null>(null);
   const [form, setForm] = useState<AgentFormValues>(emptyAgentForm());
@@ -90,7 +92,7 @@ export function AgentWorkbenchPanel({ agentId, activeTab, onSaved }: Props) {
         setToolCatalog(catalogRes);
       })
       .finally(() => setLoading(false));
-  }, [agentId]);
+  }, [agentId, agentName]);
 
   const onSubmit = async () => {
     if (!agent || !form.name.trim()) return;
