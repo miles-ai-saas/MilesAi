@@ -47,6 +47,7 @@ export function GenerativeJobDetailDialog({
   const [job, setJob] = useState<GenerativeJobOut | null>(null);
   const [msg, setMsg] = useState("");
   const [acting, setActing] = useState(false);
+  const [loading, setLoading] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
 
   const applyJob = useCallback((row: GenerativeJobOut) => {
@@ -56,11 +57,14 @@ export function GenerativeJobDetailDialog({
 
   const reload = useCallback(async () => {
     if (!jobId) return;
+    setLoading(true);
     try {
       applyJob(await api.getGenerativeJob(jobId));
     } catch (e) {
       setJob(null);
       setMsg(e instanceof Error ? e.message : "加载失败");
+    } finally {
+      setLoading(false);
     }
   }, [jobId, applyJob]);
 
@@ -106,12 +110,6 @@ export function GenerativeJobDetailDialog({
     return () => ac.abort();
   }, [open, jobId, job?.status, applyJob, onChanged]);
 
-  useEffect(() => {
-    if (!open || !jobId || !job || isGenerativeJobTerminal(job.status) || !sseFailed) return;
-    const t = setInterval(() => void reload(), 4000);
-    return () => clearInterval(t);
-  }, [open, jobId, job?.status, sseFailed, reload]);
-
   const onCancel = async () => {
     if (!jobId) return;
     setActing(true);
@@ -156,6 +154,14 @@ export function GenerativeJobDetailDialog({
       footer={
         job ? (
           <div className="flex flex-wrap items-center justify-end gap-2">
+            <button
+              type="button"
+              className="btn-ghost text-sm"
+              disabled={loading || acting}
+              onClick={() => void reload()}
+            >
+              {loading ? "刷新中…" : "刷新"}
+            </button>
             {canRetryGenerativeJob(job.status) && (
               <button
                 type="button"
@@ -181,8 +187,10 @@ export function GenerativeJobDetailDialog({
       }
     >
       {msg ? <p className="mb-3 text-sm text-red-600">{msg}</p> : null}
-      {!job ? (
+      {loading && !job ? (
         <p className="text-sm text-ink-muted">加载中…</p>
+      ) : !job ? (
+        <p className="text-sm text-ink-muted">暂无数据</p>
       ) : (
         <dl className="grid gap-3 sm:grid-cols-2">
           <DetailField label="状态">
@@ -199,6 +207,11 @@ export function GenerativeJobDetailDialog({
           <DetailField label="进度">
             {job.progress_percent != null ? `${job.progress_percent}%` : "—"}
             {job.progress_message ? ` · ${job.progress_message}` : ""}
+            {sseFailed && !isGenerativeJobTerminal(job.status) ? (
+              <span className="mt-1 block text-xs text-amber-800">
+                实时进度不可用，请点击「刷新」更新
+              </span>
+            ) : null}
           </DetailField>
           {job.progress_percent != null && !isGenerativeJobTerminal(job.status) ? (
             <div className="col-span-full">

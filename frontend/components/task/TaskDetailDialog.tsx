@@ -1,6 +1,6 @@
 "use client";
 
-/** 异步任务详情弹窗（链路 §3）：`api.getTask`、运行中轮询、取消/重试。 */
+/** 异步任务详情弹窗（链路 §3）：`api.getTask`、手动刷新、取消/重试。 */
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
@@ -67,12 +67,6 @@ export function TaskDetailDialog({ open, taskId, taskMeta, onClose, onChanged }:
     void reload();
   }, [open, taskId, reload]);
 
-  useEffect(() => {
-    if (!open || !task || !["pending", "running"].includes(task.status)) return;
-    const t = setInterval(() => void reload(), 5000);
-    return () => clearInterval(t);
-  }, [open, task, reload]);
-
   const act = async (action: "cancel" | "retry") => {
     if (!taskId) return;
     setActing(true);
@@ -106,6 +100,14 @@ export function TaskDetailDialog({ open, taskId, taskMeta, onClose, onChanged }:
       footer={
         task ? (
           <div className="flex flex-wrap items-center justify-end gap-2">
+            <button
+              type="button"
+              className="btn-ghost text-sm"
+              disabled={loading || acting}
+              onClick={() => void reload()}
+            >
+              {loading ? "刷新中…" : "刷新"}
+            </button>
             {canCancelTask(task) && (
               <button
                 type="button"
@@ -151,9 +153,6 @@ export function TaskDetailDialog({ open, taskId, taskMeta, onClose, onChanged }:
             >
               {taskStatusLabel(task.status, taskMeta)}
             </span>
-            {["pending", "running"].includes(task.status) && (
-              <span className="text-xs text-ink-faint">每 5 秒自动刷新</span>
-            )}
           </div>
 
           <dl className="grid gap-4 sm:grid-cols-2">

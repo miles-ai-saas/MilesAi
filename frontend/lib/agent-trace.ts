@@ -45,6 +45,16 @@ export function defaultTraceTurnIndex(turns: AgentTraceTurn[]): number {
   return turns.length > 0 ? turns.length - 1 : 0;
 }
 
+/** 消息列表下标 → Trace 轮次下标（非助手消息返回 null）。 */
+export function turnIndexForMessageIndex(
+  messages: ChatMessage[],
+  messageIndex: number,
+): number | null {
+  const turns = listTraceTurns(messages);
+  const hit = turns.find((t) => t.messageIndex === messageIndex);
+  return hit != null ? hit.turnIndex : null;
+}
+
 export async function copyText(text: string): Promise<boolean> {
   if (!text || typeof navigator === "undefined") return false;
   try {

@@ -5,6 +5,7 @@ import { useEffect, useRef } from "react";
 import { AgentChatSessionPanel } from "@/components/agent/AgentChatSessionPanel";
 import {
   CHAT_AGENT_COLUMN,
+  CHAT_AGENT_COLUMN_COMPACT,
   CHAT_LEFT_SIDEBAR_COLLAPSED,
   CHAT_LEFT_SIDEBAR_EXPANDED,
   CHAT_SESSION_COLUMN,
@@ -21,6 +22,8 @@ type Props = {
   sessions: ChatSession[];
   activeSessionId: string | null;
   collapsed: boolean;
+  /** 已选智能体时智能体列仅头像，会话列加宽 */
+  agentsColumnCompact?: boolean;
   /** 右侧工作台面板打开时隐藏折叠钮 */
   hideCollapseButton?: boolean;
   hasMoreAgents: boolean;
@@ -196,6 +199,7 @@ export function AgentChatLeftSidebar({
   sessions,
   activeSessionId,
   collapsed,
+  agentsColumnCompact = false,
   hideCollapseButton,
   hasMoreAgents,
   loadingMoreAgents,
@@ -243,13 +247,22 @@ export function AgentChatLeftSidebar({
         <div className="flex min-h-0 flex-1">
           <div
             className="flex min-h-0 shrink-0 flex-col border-r border-line-soft"
-            style={{ width: CHAT_AGENT_COLUMN }}
+            style={{
+              width: agentsColumnCompact && selectedAgentId ? CHAT_AGENT_COLUMN_COMPACT : CHAT_AGENT_COLUMN,
+            }}
           >
-            <AgentColumn {...agentColumnProps} compact={false} />
+            <AgentColumn
+              {...agentColumnProps}
+              compact={Boolean(agentsColumnCompact && selectedAgentId)}
+            />
           </div>
           <div
-            className="flex min-h-0 shrink-0 flex-col"
-            style={{ width: CHAT_SESSION_COLUMN }}
+            className="flex min-h-0 min-w-0 flex-1 flex-col"
+            style={
+              agentsColumnCompact && selectedAgentId
+                ? undefined
+                : { width: CHAT_SESSION_COLUMN, flex: "none" }
+            }
           >
             <div className="shrink-0 border-b border-line-soft px-3 py-2.5">
               <p className="text-xs font-medium text-ink">会话</p>

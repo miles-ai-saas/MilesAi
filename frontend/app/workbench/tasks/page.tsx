@@ -3,7 +3,7 @@
 /** 任务中心：后台 Celery 任务 + 生成任务（generative_jobs）。 */
 
 import Link from "next/link";
-import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { api } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth-store";
@@ -31,10 +31,9 @@ const CATEGORY_TABS: { key: TaskCategory; label: string }[] = [
 ];
 
 const PAGE_DESC: Record<TaskCategory, string> = {
-  celery:
-    "文档入库等 Celery 异步任务；支持按状态筛选、搜索、取消与重试（列表每 8 秒自动刷新）。",
+  celery: "文档入库等 Celery 异步任务；支持按状态筛选、搜索、取消与重试；点击「刷新」更新列表。",
   generative:
-    "智能体对话、流程或 API 触发的生图/生视频任务；支持类型筛选、进度查看、取消与失败重试；可跳转关联的后台 Celery 记录（列表每 8 秒自动刷新）。",
+    "智能体对话、流程或 API 触发的生图/生视频任务；支持类型筛选、进度查看、取消与失败重试；可跳转关联的后台 Celery 记录；点击「刷新」更新列表。",
 };
 
 function StatChip({ label, value, hint }: { label: string; value: string; hint?: string }) {
@@ -196,6 +195,8 @@ function TasksPageContent() {
   const [filter, setFilter] = useState("");
   const [msg, setMsg] = useState("");
   const [detailTaskId, setDetailTaskId] = useState<string | null>(null);
+  const generativeListApi = useRef<{ reload: () => void } | null>(null);
+  const [generativeListLoading, setGenerativeListLoading] = useState(false);
 
   const taskFromUrl = searchParams.get("task");
 
@@ -240,12 +241,6 @@ function TasksPageContent() {
     useCallback((p, s) => api.listTasks(p, s, filter || undefined), [filter]),
     { enabled: ready && category === "celery", resetKey: `${filter}-${category}` },
   );
-
-  useEffect(() => {
-    if (!ready || category !== "celery") return;
-    const t = setInterval(() => list.reload(), 8000);
-    return () => clearInterval(t);
-  }, [ready, category, list.reload, filter]);
 
   const filtered = useMemo(
     () =>
@@ -296,6 +291,12 @@ function TasksPageContent() {
   };
 
   const isGenerative = category === "generative";
+  const listRefreshing = isGenerative ? generativeListLoading : list.loading;
+
+  const refreshList = () => {
+    if (isGenerative) void generativeListApi.current?.reload();
+    else void list.reload();
+  };
 
   return (
     <ResourceListLayout
@@ -332,16 +333,14 @@ function TasksPageContent() {
                 onChange={(e) => setSearch(e.target.value)}
               />
             </label>
-            {!isGenerative ? (
-              <button
-                type="button"
-                className="btn-ghost shrink-0 text-sm"
-                disabled={list.loading}
-                onClick={() => void list.reload()}
-              >
-                {list.loading ? "刷新中…" : "刷新"}
-              </button>
-            ) : null}
+            <button
+              type="button"
+              className="btn-ghost shrink-0 text-sm"
+              disabled={listRefreshing}
+              onClick={refreshList}
+            >
+              {listRefreshing ? "刷新中…" : "刷新"}
+            </button>
           </div>
         }
         footer={
@@ -368,10 +367,14 @@ function TasksPageContent() {
             filter={filter}
             msg={msg}
             onMsg={setMsg}
+            onExposeList={(api) => {
+              generativeListApi.current = { reload: api.reload };
+              setGenerativeListLoading(api.loading);
+            }}
           />
         ) : (
           <>
-            <div className="col-span-full grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="col-span-full grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               <StatChip label="任务总数" value={String(list.total)} hint="当前筛选条件下" />
               <StatChip
                 label="本页运行中"
@@ -379,11 +382,6 @@ function TasksPageContent() {
                 hint={`等待 ${pageStats.pending} · 失败 ${pageStats.failed}（当前页）`}
               />
               <StatChip label="本页展示" value={String(filtered.length)} hint="受搜索筛选影响" />
-              <StatChip
-                label="自动刷新"
-                value="8s"
-                hint={filter ? `状态：${taskStatusLabel(filter, taskMeta)}` : "全部状态"}
-              />
             </div>
 
             <div className="col-span-full space-y-3">

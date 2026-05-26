@@ -7,14 +7,22 @@
 
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { AgentChatDebugHeader } from "@/components/agent/AgentChatDebugHeader";
 import { AgentChatLeftSidebar } from "@/components/agent/AgentChatLeftSidebar";
 import { AgentWorkbenchOverlay } from "@/components/agent/AgentWorkbenchOverlay";
 import { AgentWorkbenchSidebar } from "@/components/agent/AgentWorkbenchSidebar";
+import { ChatGenerativeStatusBanner } from "@/components/agent/ChatGenerativeStatusBanner";
 import { useTraceTurnSelection } from "@/components/agent/AgentTracePanel";
+import { defaultTraceTurnIndex, listTraceTurns } from "@/lib/agent-trace";
+import {
+  AgentChatComposer,
+  type PendingChatMedia,
+} from "@/components/agent/AgentChatComposer";
 import { ChatMessageThread } from "@/components/agent/ChatMessageThread";
 import {
   loadChatSidebarPrefs,
   saveChatSidebarPrefs,
+  type ChatSidebarPrefs,
 } from "@/components/agent/chat-sidebar-layout";
 import {
   normalizeAgentWorkbenchTab,
@@ -42,13 +50,15 @@ import {
 } from "@/lib/generative-jobs";
 import { generativeToolBusyLabel } from "@/lib/generative-tool-ui";
 import {
+  CHAT_ATTACHMENT_MAX_COUNT,
+  filterChatUploadFiles,
+} from "@/lib/chat-attachments";
+import {
   agentCarryForwardMediaEnabled,
   lastUserMessageMedia,
   resolveOutgoingChatMedia,
 } from "@/lib/chat-media-forward";
 import type { ChatAgentResult, ChatArtifact, ChatMediaIn, GenerativeJobOut } from "@/lib/types";
-
-type PendingMedia = ChatMessageMedia & { local_preview: string };
 import { useInfiniteList } from "@/hooks/use-infinite-list";
 import { useConfirmAction } from "@/hooks/use-confirm-action";
 import type { PendingToolCall } from "@/lib/types";
@@ -85,10 +95,12 @@ function AgentsChatContent() {
   const [panelOpen, setPanelOpen] = useState(false);
   const [leftCollapsed, setLeftCollapsed] = useState(false);
   const [rightCollapsed, setRightCollapsed] = useState(false);
+  const [agentsColumnCompact, setAgentsColumnCompact] = useState(true);
+  const [focusMode, setFocusMode] = useState(false);
+  const [leftDrawerOpen, setLeftDrawerOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const [pendingMedia, setPendingMedia] = useState<PendingMedia[]>([]);
+  const [pendingMedia, setPendingMedia] = useState<PendingChatMedia[]>([]);
   const [uploadingMedia, setUploadingMedia] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [chatting, setChatting] = useState(false);
   const [pendingTool, setPendingTool] = useState<PendingToolCall | null>(null);
   const [pollJobs, setPollJobs] = useState<{ jobId: string; kind: string }[]>([]);
@@ -169,6 +181,8 @@ function AgentsChatContent() {
     const prefs = loadChatSidebarPrefs();
     if (prefs.leftCollapsed) setLeftCollapsed(true);
     if (prefs.rightCollapsed) setRightCollapsed(true);
+    if (prefs.agentsColumnCompact === false) setAgentsColumnCompact(false);
+    if (prefs.focusMode) setFocusMode(true);
   }, []);
 
   useEffect(() => {
@@ -214,10 +228,12 @@ function AgentsChatContent() {
     return lastUserMessageMedia(messages);
   }, [pendingMedia.length, carryForwardMedia, messages]);
 
-  const persistSidebar = (patch: { left?: boolean; right?: boolean }) => {
+  const persistSidebar = (patch: Partial<ChatSidebarPrefs>) => {
     saveChatSidebarPrefs({
-      leftCollapsed: patch.left ?? leftCollapsed,
-      rightCollapsed: patch.right ?? rightCollapsed,
+      leftCollapsed: patch.leftCollapsed ?? leftCollapsed,
+      rightCollapsed: patch.rightCollapsed ?? rightCollapsed,
+      agentsColumnCompact: patch.agentsColumnCompact ?? agentsColumnCompact,
+      focusMode: patch.focusMode ?? focusMode,
     });
   };
 
@@ -235,6 +251,7 @@ function AgentsChatContent() {
     loadSessionIntoUi(selectedAgent, sessionId);
     syncAgentUrl(selectedAgent, sessionId);
     setPanelOpen(false);
+    setLeftDrawerOpen(false);
   };
 
   const handleDeleteSession = (sessionId: string) => {
@@ -263,15 +280,32 @@ function AgentsChatContent() {
     router.replace(`/workbench/agents/chat?${params.toString()}`);
   };
 
-  const onTabChange = (tab: AgentWorkbenchTab) => {
-    setWorkbenchTab(tab);
-    setPanelOpen(true);
-    const params = new URLSearchParams();
-    if (selectedAgent) params.set("agent", selectedAgent);
-    if (conversationId) params.set("conv", conversationId);
-    if (tab !== "config") params.set("tab", tab);
-    router.replace(`/workbench/agents/chat?${params.toString()}`);
-  };
+  const onTabChange = useCallback(
+    (tab: AgentWorkbenchTab) => {
+      setWorkbenchTab(tab);
+      setPanelOpen(true);
+      const params = new URLSearchParams();
+      if (selectedAgent) params.set("agent", selectedAgent);
+      if (conversationId) params.set("conv", conversationId);
+      if (tab !== "config") params.set("tab", tab);
+      router.replace(`/workbench/agents/chat?${params.toString()}`);
+    },
+    [conversationId, router, selectedAgent],
+  );
+
+  const openTraceAtTurn = useCallback(
+    (turnIndex: number) => {
+      setSelectedTurnIndex(turnIndex);
+      onTabChange("trace");
+    },
+    [onTabChange, setSelectedTurnIndex],
+  );
+
+  const openTraceLatest = useCallback(() => {
+    const turns = listTraceTurns(messages);
+    setSelectedTurnIndex(defaultTraceTurnIndex(turns));
+    onTabChange("trace");
+  }, [messages, onTabChange, setSelectedTurnIndex]);
 
   const closePanel = () => {
     setPanelOpen(false);
@@ -281,13 +315,17 @@ function AgentsChatContent() {
     router.replace(`/workbench/agents/chat?${params.toString()}`);
   };
 
-  const onPickImages = async (files: FileList | null) => {
+  const onPickAttachments = async (files: FileList | null) => {
     if (!files?.length || uploadingMedia) return;
+    const picked = filterChatUploadFiles(files);
+    if (!picked.length) {
+      window.alert("当前仅支持上传图片（JPEG / PNG / WebP / GIF）");
+      return;
+    }
     setUploadingMedia(true);
     try {
-      const next: PendingMedia[] = [];
-      for (const file of Array.from(files)) {
-        if (!file.type.startsWith("image/")) continue;
+      const next: PendingChatMedia[] = [];
+      for (const file of picked) {
         const att = await api.uploadAttachment(file, { purpose: "chat" });
         const local_preview = URL.createObjectURL(file);
         next.push({
@@ -298,14 +336,13 @@ function AgentsChatContent() {
         });
       }
       if (next.length) {
-        setPendingMedia((prev) => [...prev, ...next].slice(0, 4));
+        setPendingMedia((prev) => [...prev, ...next].slice(0, CHAT_ATTACHMENT_MAX_COUNT));
       }
     } catch (e) {
-      const err = e instanceof Error ? e.message : "图片上传失败";
+      const err = e instanceof Error ? e.message : "附件上传失败";
       window.alert(err);
     } finally {
       setUploadingMedia(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
 
@@ -521,6 +558,55 @@ function AgentsChatContent() {
         ? "思考中…"
         : null;
 
+  const lastTraceId = useMemo(() => {
+    for (let i = messages.length - 1; i >= 0; i -= 1) {
+      const m = messages[i];
+      if (m.role === "assistant" && m.traceId) return m.traceId;
+    }
+    return null;
+  }, [messages]);
+
+  const generativeStatusMessage = wsGenerativeMsg ?? generativePollMsg;
+  const generativeProgressValue = generativeProgress ?? wsGenerativeProgress;
+
+  const handleCancelGenerative = useCallback(() => {
+    if (wsActiveJobIds.length && wsClientRef.current?.connected) {
+      for (const id of wsActiveJobIds) {
+        wsClientRef.current.cancelGenerativeJob(id);
+      }
+      setWsGenerativeMsg("已请求取消…");
+    } else {
+      for (const j of pollJobs) void cancelGenerativeJob(j.jobId);
+    }
+  }, [cancelGenerativeJob, pollJobs, wsActiveJobIds, wsClientRef]);
+
+  const generativeStatusEl =
+    generativeStatusMessage ? (
+      <ChatGenerativeStatusBanner
+        message={generativeStatusMessage}
+        progressPercent={generativeProgressValue}
+        canCancel={canCancelGenerative || wsActiveJobIds.length > 0}
+        onCancel={handleCancelGenerative}
+      />
+    ) : null;
+
+  const leftSidebarProps = {
+    agents: list.items,
+    total: list.total,
+    selectedAgentId: selectedAgent,
+    sessions,
+    activeSessionId: conversationId || null,
+    collapsed: leftCollapsed,
+    agentsColumnCompact,
+    hasMoreAgents: list.hasMore,
+    loadingMoreAgents: list.loadingMore,
+    onLoadMoreAgents: () => void list.loadMore(),
+    onSelectAgent: onSelectAgent,
+    onNewSession: handleNewSession,
+    onSelectSession: handleSelectSession,
+    onDeleteSession: handleDeleteSession,
+  };
+
   const confirmPendingTool = async () => {
     if (!selectedAgent || !conversationId || !pendingTool) return;
     setChatting(true);
@@ -615,203 +701,150 @@ function AgentsChatContent() {
   }
 
   return (
-    <div className="relative flex h-[calc(100vh-3.5rem)]">
-      <AgentChatLeftSidebar
-        agents={list.items}
-        total={list.total}
-        selectedAgentId={selectedAgent}
-        sessions={sessions}
-        activeSessionId={conversationId || null}
-        collapsed={leftCollapsed}
-        hideCollapseButton={panelOpen}
-        hasMoreAgents={list.hasMore}
-        loadingMoreAgents={list.loadingMore}
-        onLoadMoreAgents={() => void list.loadMore()}
-        onToggleCollapse={() => {
-          const next = !leftCollapsed;
-          setLeftCollapsed(next);
-          persistSidebar({ left: next });
-        }}
-        onSelectAgent={onSelectAgent}
-        onNewSession={handleNewSession}
-        onSelectSession={handleSelectSession}
-        onDeleteSession={handleDeleteSession}
-      />
-
-      <section className="flex min-w-0 flex-1 flex-col bg-surface-subtle">
-        <div className="flex items-start justify-between gap-4 border-b border-line bg-surface px-6 py-3">
-          <div className="min-w-0 flex-1">
-            <h2 className="truncate text-lg font-semibold text-ink">
-              {selected?.name ?? "选择智能体"}
-            </h2>
-            <p className="mt-0.5 truncate text-sm text-ink-muted" title={sessionTitle}>
-              {sessionTitle}
-            </p>
-          </div>
-          <button type="button" className="btn-sm-outline shrink-0" onClick={handleNewSession}>
-            新会话
-          </button>
-        </div>
-
-        <div className="flex-1 overflow-y-auto px-6 py-4">
-          <ChatMessageThread
-            messages={messages}
-            chatting={chatting}
-            chattingStatusLabel={chattingStatusLabel}
-            pendingTool={pendingTool}
-            onConfirmPendingTool={() => void confirmPendingTool()}
-            confirmPendingToolDisabled={chatting}
+    <div className="relative flex h-[calc(100vh-3.5rem)] min-h-0">
+      {!focusMode ? (
+        <div className="hidden h-full shrink-0 lg:block">
+          <AgentChatLeftSidebar
+            {...leftSidebarProps}
+            hideCollapseButton={panelOpen}
+            onToggleCollapse={() => {
+              const next = !leftCollapsed;
+              setLeftCollapsed(next);
+              persistSidebar({ leftCollapsed: next });
+            }}
           />
         </div>
+      ) : null}
 
-        <div className="border-t border-line bg-surface p-4">
-          <div className="mx-auto max-w-3xl space-y-2">
-            {(generativePollMsg || wsGenerativeMsg) ? (
-              <div className="rounded-lg border border-amber-200/80 bg-amber-50/90 px-3 py-2 text-xs text-amber-900">
-                <div className="flex items-center justify-between gap-2">
-                  <span>{wsGenerativeMsg ?? generativePollMsg}</span>
-                  {(canCancelGenerative || wsActiveJobIds.length > 0) ? (
-                    <button
-                      type="button"
-                      className="btn-sm-ghost shrink-0 text-xs text-amber-900"
-                      onClick={() => {
-                        if (wsActiveJobIds.length && wsClientRef.current?.connected) {
-                          for (const id of wsActiveJobIds) {
-                            wsClientRef.current.cancelGenerativeJob(id);
-                          }
-                          setWsGenerativeMsg("已请求取消…");
-                        } else {
-                          for (const j of pollJobs) void cancelGenerativeJob(j.jobId);
-                        }
-                      }}
-                    >
-                      取消
-                    </button>
-                  ) : null}
-                </div>
-                {(generativeProgress ?? wsGenerativeProgress) != null ? (
-                  <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-amber-200/60">
-                    <div
-                      className="h-full rounded-full bg-amber-600 transition-all duration-300"
-                      style={{ width: `${generativeProgress ?? wsGenerativeProgress}%` }}
-                    />
-                  </div>
-                ) : null}
-              </div>
-            ) : null}
-            {(pendingMedia.length > 0 || carriedMedia.length > 0) && (
-              <div className="space-y-1">
-                {carriedMedia.length > 0 && pendingMedia.length === 0 && (
-                  <p className="text-[11px] text-ink-muted">将沿用上一轮附图（可在智能体配置中关闭）</p>
-                )}
-                <div className="flex flex-wrap gap-2">
-                  {pendingMedia.map((m) => (
-                    <div key={m.attachment_id} className="relative">
-                      <img
-                        src={m.local_preview}
-                        alt={m.filename ?? "待发送"}
-                        className="h-16 w-16 rounded-lg object-cover ring-1 ring-line"
-                      />
-                      <button
-                        type="button"
-                        className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-ink text-xs text-surface"
-                        aria-label="移除图片"
-                        onClick={() => removePendingMedia(m.attachment_id)}
-                      >
-                        ×
-                      </button>
-                    </div>
-                  ))}
-                  {carriedMedia.map((m) => (
-                    <div
-                      key={`carry-${m.attachment_id}`}
-                      className="h-16 w-16 overflow-hidden rounded-lg ring-1 ring-dashed ring-brand/40"
-                      title={m.filename ?? "上一轮附图"}
-                    >
-                      {m.preview_url ? (
-                        <img
-                          src={m.preview_url}
-                          alt={m.filename ?? "上一轮附图"}
-                          className="h-full w-full object-cover opacity-90"
-                        />
-                      ) : (
-                        <div className="flex h-full w-full items-center justify-center bg-surface-muted text-[10px] text-ink-faint">
-                          附图
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-            <div className="flex gap-2">
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                multiple
-                className="hidden"
-                onChange={(e) => void onPickImages(e.target.files)}
-              />
-              <button
-                type="button"
-                className="btn-sm-outline shrink-0 self-end"
-                disabled={!selectedAgent || !conversationId || uploadingMedia || chatting}
-                onClick={() => fileInputRef.current?.click()}
-                title="上传图片（最多 4 张）"
-              >
-                {uploadingMedia ? "上传中…" : "图片"}
-              </button>
-              <textarea
-                className="input-field min-h-[44px] flex-1 resize-none py-2.5"
-                rows={2}
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    void chat();
-                  }
-                }}
-                placeholder="输入问题或附图，Enter 发送"
-                disabled={!selectedAgent || !conversationId}
-              />
-              <button
-                type="button"
-                onClick={() => void chat()}
-                disabled={
-                  chatting ||
-                  uploadingMedia ||
-                  !selectedAgent ||
-                  !conversationId ||
-                  (!query.trim() && pendingMedia.length === 0 && carriedMedia.length === 0)
-                }
-                className="btn-primary shrink-0 self-end px-5 py-2 text-sm"
-              >
-                {chatting
-                  ? (generativeToolBusyLabel(pendingTool?.slug) ?? "思考中…")
-                  : "发送"}
-              </button>
-            </div>
+      {leftDrawerOpen && !focusMode ? (
+        <>
+          <button
+            type="button"
+            className="fixed inset-0 z-40 bg-black/30 lg:hidden"
+            aria-label="关闭侧栏"
+            onClick={() => setLeftDrawerOpen(false)}
+          />
+          <div className="fixed inset-y-0 left-0 z-50 h-full shadow-xl lg:hidden">
+            <AgentChatLeftSidebar
+              {...leftSidebarProps}
+              hideCollapseButton
+              onToggleCollapse={() => setLeftDrawerOpen(false)}
+            />
+          </div>
+        </>
+      ) : null}
+
+      <section className="flex min-h-0 min-w-0 flex-1 flex-col bg-surface-subtle">
+        <AgentChatDebugHeader
+          sessionTitle={sessionTitle}
+          agent={selected ?? null}
+          wsEnabled={wsEnabled}
+          wsReady={wsReady}
+          lastTraceId={lastTraceId}
+          focusMode={focusMode}
+          agentsColumnCompact={agentsColumnCompact}
+          showLeftDrawerButton={!focusMode}
+          onOpenLeftDrawer={() => setLeftDrawerOpen(true)}
+          onNewSession={handleNewSession}
+          onOpenTrace={openTraceLatest}
+          onToggleFocusMode={() => {
+            const next = !focusMode;
+            setFocusMode(next);
+            setLeftDrawerOpen(false);
+            persistSidebar({ focusMode: next });
+          }}
+          onToggleAgentsColumnCompact={() => {
+            const next = !agentsColumnCompact;
+            setAgentsColumnCompact(next);
+            persistSidebar({ agentsColumnCompact: next });
+          }}
+        />
+
+        <div className="min-h-0 flex-1 overflow-y-auto px-3 py-4 sm:px-4">
+          <div className="mx-auto w-full max-w-4xl">
+            <ChatMessageThread
+              messages={messages}
+              chatting={chatting}
+              chattingStatusLabel={chattingStatusLabel}
+              pendingTool={pendingTool}
+              onConfirmPendingTool={() => void confirmPendingTool()}
+              confirmPendingToolDisabled={chatting}
+              generativeStatus={generativeStatusEl}
+              onOpenTraceTurn={openTraceAtTurn}
+            />
           </div>
         </div>
+
+        <footer className="sticky bottom-0 z-10 shrink-0 border-t border-line bg-surface/95 px-3 py-3 backdrop-blur-sm sm:px-4">
+          <div className="mx-auto w-full max-w-4xl">
+            <AgentChatComposer
+              query={query}
+              onQueryChange={setQuery}
+              onSend={() => void chat()}
+              onPickFiles={(files) => void onPickAttachments(files)}
+              pendingMedia={pendingMedia}
+              carriedMedia={carriedMedia}
+              onRemovePending={removePendingMedia}
+              carryForwardHint={
+                carriedMedia.length > 0 && pendingMedia.length === 0
+                  ? "将沿用上一轮附图（可在智能体配置中关闭）"
+                  : undefined
+              }
+              disabled={!selectedAgent || !conversationId}
+              sendDisabled={
+                chatting ||
+                uploadingMedia ||
+                !selectedAgent ||
+                !conversationId ||
+                (!query.trim() && pendingMedia.length === 0 && carriedMedia.length === 0)
+              }
+              uploadingMedia={uploadingMedia}
+              chatting={chatting}
+              sendLabel={generativeToolBusyLabel(pendingTool?.slug) ?? "思考中…"}
+            />
+          </div>
+        </footer>
       </section>
 
-      <div className="hidden h-full shrink-0 lg:block">
-        <AgentWorkbenchSidebar
-          agent={selected ?? null}
-          activeTab={workbenchTab}
-          panelOpen={panelOpen}
-          collapsed={rightCollapsed}
-          hideCollapseButton={panelOpen}
-          onToggleCollapse={() => {
-            const next = !rightCollapsed;
-            setRightCollapsed(next);
-            persistSidebar({ right: next });
-          }}
-          onTabChange={onTabChange}
-        />
-      </div>
+      {!focusMode ? (
+        <div className="hidden h-full shrink-0 lg:block">
+          <AgentWorkbenchSidebar
+            agent={selected ?? null}
+            activeTab={workbenchTab}
+            panelOpen={panelOpen}
+            collapsed={rightCollapsed}
+            hideCollapseButton={panelOpen}
+            onToggleCollapse={() => {
+              const next = !rightCollapsed;
+              setRightCollapsed(next);
+              persistSidebar({ rightCollapsed: next });
+            }}
+            onTabChange={onTabChange}
+          />
+        </div>
+      ) : null}
+
+      {focusMode ? (
+        <div className="pointer-events-none fixed bottom-4 right-4 z-30 flex flex-col gap-2 sm:flex-row">
+          <button
+            type="button"
+            className="btn-sm-outline pointer-events-auto shadow-md"
+            onClick={openTraceLatest}
+          >
+            Trace
+          </button>
+          <button
+            type="button"
+            className="btn-sm-outline pointer-events-auto shadow-md"
+            onClick={() => {
+              setFocusMode(false);
+              persistSidebar({ focusMode: false });
+            }}
+          >
+            退出专注
+          </button>
+        </div>
+      ) : null}
 
       <AgentWorkbenchOverlay
         open={panelOpen}

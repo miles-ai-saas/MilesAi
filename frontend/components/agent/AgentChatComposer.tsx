@@ -1,0 +1,178 @@
+"use client";
+
+/**
+ * 智能体对话输入区：附件在框内左下，发送在右下；统一白底无分栏。
+ */
+
+import { useRef } from "react";
+import type { ChatMessageMedia } from "@/lib/chat-sessions";
+import { CHAT_ATTACHMENT_ACCEPT } from "@/lib/chat-attachments";
+
+export type PendingChatMedia = ChatMessageMedia & { local_preview: string };
+
+type Props = {
+  query: string;
+  onQueryChange: (value: string) => void;
+  onSend: () => void;
+  onPickFiles: (files: FileList | null) => void;
+  pendingMedia: PendingChatMedia[];
+  carriedMedia: ChatMessageMedia[];
+  onRemovePending: (attachmentId: string) => void;
+  carryForwardHint?: string;
+  disabled?: boolean;
+  sendDisabled?: boolean;
+  uploadingMedia?: boolean;
+  chatting?: boolean;
+  sendLabel?: string;
+  placeholder?: string;
+};
+
+function AttachIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" />
+    </svg>
+  );
+}
+
+export function AgentChatComposer({
+  query,
+  onQueryChange,
+  onSend,
+  onPickFiles,
+  pendingMedia,
+  carriedMedia,
+  onRemovePending,
+  carryForwardHint,
+  disabled = false,
+  sendDisabled = false,
+  uploadingMedia = false,
+  chatting = false,
+  sendLabel = "发送",
+  placeholder = "输入消息，Enter 发送，Shift+Enter 换行",
+}: Props) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const attachDisabled = disabled || uploadingMedia || chatting;
+
+  return (
+    <div className="w-full space-y-2">
+      {(pendingMedia.length > 0 || carriedMedia.length > 0) && (
+        <div className="space-y-1.5 px-0.5">
+          {carryForwardHint ? (
+            <p className="text-[11px] text-ink-muted">{carryForwardHint}</p>
+          ) : null}
+          <div className="flex flex-wrap gap-1.5">
+            {pendingMedia.map((m) => (
+              <div key={m.attachment_id} className="relative">
+                <img
+                  src={m.local_preview}
+                  alt={m.filename ?? "待发送"}
+                  className="h-12 w-12 rounded-md object-cover ring-1 ring-line"
+                />
+                <button
+                  type="button"
+                  className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-ink text-[10px] text-surface"
+                  aria-label="移除附件"
+                  onClick={() => onRemovePending(m.attachment_id)}
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+            {carriedMedia.map((m) => (
+              <div
+                key={`carry-${m.attachment_id}`}
+                className="h-12 w-12 overflow-hidden rounded-md ring-1 ring-dashed ring-brand/35"
+                title={m.filename ?? "上一轮附图"}
+              >
+                {m.preview_url ? (
+                  <img
+                    src={m.preview_url}
+                    alt={m.filename ?? "上一轮附图"}
+                    className="h-full w-full object-cover opacity-90"
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center bg-surface-muted text-[10px] text-ink-faint">
+                    附图
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div
+        className={[
+          "relative overflow-hidden rounded-2xl border border-line bg-surface shadow-sm",
+          "transition-[box-shadow,border-color] focus-within:border-brand/35 focus-within:shadow-md focus-within:ring-2 focus-within:ring-brand/10",
+        ].join(" ")}
+      >
+        <textarea
+          className="block w-full resize-none border-0 bg-transparent px-4 pb-11 pt-3.5 text-sm leading-relaxed text-ink outline-none placeholder:text-ink-faint disabled:cursor-not-allowed disabled:opacity-50 min-h-[72px] max-h-[160px]"
+          rows={2}
+          value={query}
+          onChange={(e) => onQueryChange(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              onSend();
+            }
+          }}
+          placeholder={placeholder}
+          disabled={disabled}
+          aria-label="对话输入"
+        />
+
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept={CHAT_ATTACHMENT_ACCEPT}
+          multiple
+          className="hidden"
+          onChange={(e) => {
+            onPickFiles(e.target.files);
+            e.target.value = "";
+          }}
+        />
+
+        <div className="absolute bottom-2.5 left-2.5">
+          <button
+            type="button"
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-ink-muted transition hover:bg-brand-light/80 hover:text-brand disabled:pointer-events-none disabled:opacity-40"
+            disabled={attachDisabled}
+            title={uploadingMedia ? "上传中…" : "添加附件（当前支持图片）"}
+            aria-label="添加附件"
+            onClick={() => fileInputRef.current?.click()}
+          >
+            {uploadingMedia ? (
+              <span className="h-4 w-4 animate-spin rounded-full border-2 border-brand border-t-transparent" />
+            ) : (
+              <AttachIcon className="h-[18px] w-[18px]" />
+            )}
+          </button>
+        </div>
+
+        <div className="absolute bottom-2.5 right-2.5">
+          <button
+            type="button"
+            onClick={onSend}
+            disabled={sendDisabled || attachDisabled}
+            className="btn-primary px-4 py-1.5 text-sm shadow-sm disabled:opacity-45"
+          >
+            {chatting ? sendLabel : "发送"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

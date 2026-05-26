@@ -115,12 +115,19 @@ function GenerativeJobRow({
   );
 }
 
+export type GenerativeJobsListApi = {
+  reload: () => void;
+  loading: boolean;
+};
+
 type Props = {
   enabled: boolean;
   search: string;
   filter: string;
   msg: string;
   onMsg: (msg: string) => void;
+  /** 供任务中心页头「刷新」按钮调用 */
+  onExposeList?: (api: GenerativeJobsListApi) => void;
 };
 
 export function GenerativeJobsSection({
@@ -129,6 +136,7 @@ export function GenerativeJobsSection({
   filter,
   msg,
   onMsg,
+  onExposeList,
 }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -185,9 +193,11 @@ export function GenerativeJobsSection({
 
   useEffect(() => {
     if (!enabled) return;
-    const t = setInterval(() => list.reload(), 8000);
-    return () => clearInterval(t);
-  }, [enabled, list.reload, filter, kindFilter]);
+    onExposeList?.({
+      reload: () => void list.reload(),
+      loading: list.loading,
+    });
+  }, [enabled, list.reload, list.loading, onExposeList]);
 
   const filtered = useMemo(
     () =>
@@ -240,34 +250,24 @@ export function GenerativeJobsSection({
 
   return (
     <>
-      <div className="col-span-full flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-wrap gap-2">
-          {generativeJobKindFilterOptions().map((opt) => (
-            <button
-              key={opt.value || "all"}
-              type="button"
-              onClick={() => setKindFilter(opt.value)}
-              className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
-                kindFilter === opt.value
-                  ? "bg-brand text-white"
-                  : "bg-surface text-ink-muted ring-1 ring-line hover:text-ink"
-              }`}
-            >
-              {opt.label}
-            </button>
-          ))}
-        </div>
-        <button
-          type="button"
-          className="btn-ghost shrink-0 text-sm"
-          disabled={list.loading}
-          onClick={() => void list.reload()}
-        >
-          {list.loading ? "刷新中…" : "刷新"}
-        </button>
+      <div className="col-span-full flex flex-wrap gap-2">
+        {generativeJobKindFilterOptions().map((opt) => (
+          <button
+            key={opt.value || "all"}
+            type="button"
+            onClick={() => setKindFilter(opt.value)}
+            className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
+              kindFilter === opt.value
+                ? "bg-brand text-white"
+                : "bg-surface text-ink-muted ring-1 ring-line hover:text-ink"
+            }`}
+          >
+            {opt.label}
+          </button>
+        ))}
       </div>
 
-      <div className="col-span-full grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="col-span-full grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <StatChip label="生成任务总数" value={String(list.total)} hint="当前筛选" />
         <StatChip
           label="本页进行中"
@@ -275,7 +275,6 @@ export function GenerativeJobsSection({
           hint={`失败 ${pageStats.failed}（当前页）`}
         />
         <StatChip label="本页展示" value={String(filtered.length)} hint="受搜索影响" />
-        <StatChip label="自动刷新" value="8s" hint="含进度更新" />
       </div>
 
       <div className="col-span-full space-y-3">

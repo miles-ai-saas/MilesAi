@@ -7,8 +7,11 @@ import {
   AgentExecutionTimeline,
 } from "@/components/agent/AgentExecutionTimeline";
 import { ChatArtifactMedia } from "@/components/agent/ChatArtifactMedia";
+import { ChatGenerativeStatusBanner } from "@/components/agent/ChatGenerativeStatusBanner";
 import type { ChatMessage } from "@/lib/chat-sessions";
+import { turnIndexForMessageIndex } from "@/lib/agent-trace";
 import type { PendingToolCall } from "@/lib/types";
+import type { ReactNode } from "react";
 
 type Props = {
   messages: ChatMessage[];
@@ -18,6 +21,10 @@ type Props = {
   confirmPendingToolDisabled?: boolean;
   /** 覆盖默认「思考中…」 */
   chattingStatusLabel?: string | null;
+  /** 异步生成进度（显示在最后一条助手消息下方或流式骨架下方） */
+  generativeStatus?: ReactNode;
+  /** 点击助手消息打开 Trace（传入轮次下标） */
+  onOpenTraceTurn?: (turnIndex: number) => void;
 };
 
 function hasPendingConfirmationStep(steps?: Record<string, unknown>[]) {
@@ -31,6 +38,8 @@ export function ChatMessageThread({
   onConfirmPendingTool,
   confirmPendingToolDisabled,
   chattingStatusLabel,
+  generativeStatus,
+  onOpenTraceTurn,
 }: Props) {
   const lastAssistantIndex = (() => {
     for (let i = messages.length - 1; i >= 0; i -= 1) {
@@ -47,15 +56,23 @@ export function ChatMessageThread({
         </div>
         <p className="text-sm text-ink-muted">输入问题开始对话</p>
         <p className="mt-1 text-xs text-ink-faint">
-          支持直连、RAG、流程；绑定子智能体时由规划器协同回答
+          支持直连、RAG、流程与多模态；助手卡片可点「Trace」查看执行步骤
         </p>
       </div>
     );
   }
 
   return (
-    <div className="mx-auto max-w-3xl space-y-4">
-      {messages.map((msg, i) => (
+    <div className="space-y-4">
+      {messages.map((msg, i) => {
+        const traceTurn =
+          msg.role === "assistant" ? turnIndexForMessageIndex(messages, i) : null;
+        const showTraceBtn =
+          traceTurn != null &&
+          onOpenTraceTurn &&
+          ((msg.steps?.length ?? 0) > 0 || Boolean(msg.traceId));
+
+        return (
         <div key={`${i}-${msg.role}`}>
           {msg.role === "user" ? (
             <div className="flex justify-end">
@@ -81,6 +98,18 @@ export function ChatMessageThread({
             </div>
           ) : (
             <div className="card p-4">
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <p className="text-xs font-medium text-brand">助手</p>
+                {showTraceBtn ? (
+                  <button
+                    type="button"
+                    className="btn-sm-ghost text-[10px] text-ink-muted"
+                    onClick={() => onOpenTraceTurn(traceTurn)}
+                  >
+                    Trace
+                  </button>
+                ) : null}
+              </div>
               {msg.steps && msg.steps.length > 0 && (
                 <AgentExecutionTimeline
                   steps={msg.steps}
@@ -101,7 +130,6 @@ export function ChatMessageThread({
                   confirmToolDisabled={confirmPendingToolDisabled}
                 />
               )}
-              <p className="mb-1 text-xs font-medium text-brand">助手</p>
               {msg.artifacts && msg.artifacts.length > 0 && (
                 <div className="mb-3 flex flex-wrap gap-2">
                   {msg.artifacts.map((a) => (
@@ -116,19 +144,27 @@ export function ChatMessageThread({
                 </div>
               )}
               <div className="whitespace-pre-wrap text-sm leading-relaxed text-ink">{msg.content}</div>
+              {i === lastAssistantIndex && generativeStatus ? (
+                <div className="mt-3">{generativeStatus}</div>
+              ) : null}
             </div>
           )}
         </div>
-      ))}
+        );
+      })}
       {chatting && (
         <div className="card p-4">
+          <p className="mb-2 text-xs font-medium text-brand">助手</p>
           <AgentExecutionSkeleton />
-          <p className="text-xs font-medium text-brand">助手</p>
           <p className="mt-1 text-sm text-ink-muted">
             {chattingStatusLabel ?? "思考中…"}
           </p>
+          {generativeStatus ? <div className="mt-3">{generativeStatus}</div> : null}
         </div>
       )}
+      {!chatting && lastAssistantIndex < 0 && generativeStatus ? (
+        <div>{generativeStatus}</div>
+      ) : null}
     </div>
   );
 }
