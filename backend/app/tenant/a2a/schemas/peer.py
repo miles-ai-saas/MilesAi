@@ -13,51 +13,61 @@ from app.tenant.a2a.models import A2aPeerStatus
 
 
 class A2aPeerCreate(BaseModel):
-    name: str = Field(..., min_length=1, max_length=128)
-    description: str | None = None
+    name: str = Field(..., min_length=1, max_length=128, description="对端名称")
+    description: str | None = Field(default=None, description="对端描述")
     base_url: str = Field(
         ...,
         min_length=1,
         max_length=1024,
         description="外部 Agent 根地址或完整 Agent Card URL",
     )
-    auth_config: dict = Field(default_factory=dict)
+    auth_config: dict = Field(default_factory=dict, description="认证配置 JSON")
 
 
 class A2aPeerUpdate(BaseModel):
-    name: str | None = Field(None, min_length=1, max_length=128)
-    description: str | None = None
-    base_url: str | None = Field(None, min_length=1, max_length=1024)
-    auth_config: dict | None = None
-    status: A2aPeerStatus | None = None
+    name: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=128,
+        description="对端名称",
+    )
+    description: str | None = Field(default=None, description="对端描述")
+    base_url: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=1024,
+        description="外部 Agent 根地址或 Agent Card URL",
+    )
+    auth_config: dict | None = Field(default=None, description="认证配置 JSON")
+    status: A2aPeerStatus | None = Field(default=None, description="连接状态")
 
 
 class A2aPeerOut(BaseModel):
-    id: UUID
-    tenant_id: UUID
-    name: str
-    description: str | None
-    base_url: str | None
-    agent_card_url: str
-    card_display_name: str | None
-    status: A2aPeerStatus
-    skills_count: int = 0
-    last_synced_at: datetime | None
-    last_error: str | None
-    created_at: datetime
+    id: UUID = Field(description="对端 ID")
+    tenant_id: UUID = Field(description="租户 ID")
+    name: str = Field(description="对端名称")
+    description: str | None = Field(default=None, description="对端描述")
+    base_url: str | None = Field(default=None, description="用户配置的根地址")
+    agent_card_url: str = Field(description="规范化后的 Agent Card URL")
+    card_display_name: str | None = Field(default=None, description="Agent Card 展示名")
+    status: A2aPeerStatus = Field(description="连接状态")
+    skills_count: int = Field(default=0, description="Card 中技能数量")
+    last_synced_at: datetime | None = Field(default=None, description="上次同步时间")
+    last_error: str | None = Field(default=None, description="上次同步错误信息")
+    created_at: datetime = Field(description="创建时间")
 
     model_config = {"from_attributes": True}
 
 
 class A2aPeerSyncResult(BaseModel):
-    peer: A2aPeerOut
-    card_url: str
-    message: str
+    peer: A2aPeerOut = Field(description="同步后的对端详情")
+    card_url: str = Field(description="使用的 Agent Card URL")
+    message: str = Field(description="同步结果说明")
 
 
 class A2aPeerProbeResult(BaseModel):
-    ok: bool
-    card_url: str
-    card_display_name: str | None = None
-    skills_count: int = 0
-    message: str
+    ok: bool = Field(description="探测是否成功")
+    card_url: str = Field(description="探测使用的 Card URL")
+    card_display_name: str | None = Field(default=None, description="Card 展示名")
+    skills_count: int = Field(default=0, description="Card 中技能数量")
+    message: str = Field(description="探测结果说明")

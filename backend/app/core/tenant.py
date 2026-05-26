@@ -15,11 +15,11 @@ from app.common.exceptions import ForbiddenError
 class TenantContext:
     """请求级租户身份；is_superuser 时 has_permission 恒为 True。"""
 
-    user_id: UUID
-    tenant_id: UUID
-    username: str
-    is_superuser: bool
-    permissions: frozenset[str]
+    user_id: UUID  # 当前用户 ID
+    tenant_id: UUID  # 当前租户 ID
+    username: str  # 登录名
+    is_superuser: bool  # 是否平台超级用户
+    permissions: frozenset[str]  # RBAC 权限码集合
 
     def has_permission(self, *codes: str) -> bool:
         """是否拥有全部给定 permission code。"""

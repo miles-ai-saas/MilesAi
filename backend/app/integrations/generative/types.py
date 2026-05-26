@@ -8,17 +8,17 @@ from uuid import UUID
 class ImageGenerateResult:
     """单次生图结果（可能多张）。"""
 
-    attachment_ids: list[UUID]
-    mime_type: str
-    width: int | None = None
-    height: int | None = None
+    attachment_ids: list[UUID]  # 产出附件 ID 列表
+    mime_type: str  # 图片 MIME 类型
+    width: int | None = None  # 宽度（像素，可选）
+    height: int | None = None  # 高度（像素，可选）
 
 
 @dataclass
 class VideoGenerateResult:
     """生视频结果。"""
 
-    attachment_id: UUID
-    mime_type: str = "video/mp4"
-    provider_task_id: str | None = None
-    duration_sec: int | None = None
+    attachment_id: UUID  # 产出视频附件 ID
+    mime_type: str = "video/mp4"  # 视频 MIME 类型
+    provider_task_id: str | None = None  # 供应商异步任务 ID（如有）
+    duration_sec: int | None = None  # 视频时长（秒，可选）

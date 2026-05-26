@@ -7,48 +7,48 @@ from app.tenant.hooks.models import HookScope, HookTrigger, HookType
 
 
 class HookDefinitionCreate(BaseModel):
-    name: str = Field(..., min_length=1, max_length=128)
-    hook_type: HookType = HookType.HTTP
-    config: dict = Field(default_factory=dict)
-    trigger: HookTrigger = HookTrigger.BEFORE_CALL
-    scope: HookScope = HookScope.GLOBAL
-    target_id: UUID | None = None
-    priority: int = 100
+    name: str = Field(..., min_length=1, max_length=128, description="钩子名称")
+    hook_type: HookType = Field(default=HookType.HTTP, description="钩子类型")
+    config: dict = Field(default_factory=dict, description="钩子配置 JSON")
+    trigger: HookTrigger = Field(default=HookTrigger.BEFORE_CALL, description="触发时机")
+    scope: HookScope = Field(default=HookScope.GLOBAL, description="作用域")
+    target_id: UUID | None = Field(default=None, description="作用域目标 ID（非全局时必填）")
+    priority: int = Field(default=100, description="执行优先级（数值越小越优先）")
 
 
 class HookDefinitionUpdate(BaseModel):
-    name: str | None = None
-    config: dict | None = None
-    is_active: bool | None = None
+    name: str | None = Field(default=None, description="钩子名称")
+    config: dict | None = Field(default=None, description="钩子配置 JSON")
+    is_active: bool | None = Field(default=None, description="是否启用")
 
 
 class HookDefinitionOut(BaseModel):
-    id: UUID
-    tenant_id: UUID
-    name: str
-    hook_type: HookType
-    config: dict
-    is_active: bool
-    created_at: datetime
+    id: UUID = Field(description="钩子定义 ID")
+    tenant_id: UUID = Field(description="租户 ID")
+    name: str = Field(description="钩子名称")
+    hook_type: HookType = Field(description="钩子类型")
+    config: dict = Field(description="钩子配置 JSON")
+    is_active: bool = Field(description="是否启用")
+    created_at: datetime = Field(description="创建时间")
 
     model_config = {"from_attributes": True}
 
 
 class HookBindingCreate(BaseModel):
-    scope: HookScope = HookScope.GLOBAL
-    target_id: UUID | None = None
-    trigger: HookTrigger = HookTrigger.BEFORE_CALL
-    priority: int = 100
+    scope: HookScope = Field(default=HookScope.GLOBAL, description="作用域")
+    target_id: UUID | None = Field(default=None, description="作用域目标 ID")
+    trigger: HookTrigger = Field(default=HookTrigger.BEFORE_CALL, description="触发时机")
+    priority: int = Field(default=100, description="执行优先级（数值越小越优先）")
 
 
 class HookBindingOut(BaseModel):
-    id: UUID
-    hook_id: UUID
-    scope: HookScope
-    target_id: UUID | None
-    trigger: HookTrigger
-    priority: int
-    is_active: bool
-    created_at: datetime
+    id: UUID = Field(description="绑定 ID")
+    hook_id: UUID = Field(description="钩子定义 ID")
+    scope: HookScope = Field(description="作用域")
+    target_id: UUID | None = Field(default=None, description="作用域目标 ID")
+    trigger: HookTrigger = Field(description="触发时机")
+    priority: int = Field(description="执行优先级")
+    is_active: bool = Field(description="是否启用")
+    created_at: datetime = Field(description="创建时间")
 
     model_config = {"from_attributes": True}

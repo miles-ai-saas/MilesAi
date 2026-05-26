@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field
 class MediaRefIn(BaseModel):
     """运行时附图：仅 attachment_id，由服务端读对象存储转 data URL。"""
 
-    attachment_id: UUID
+    attachment_id: UUID = Field(description="租户附件 ID")
     detail: str = Field(
         default="auto",
         description="OpenAI image detail: auto | low | high",

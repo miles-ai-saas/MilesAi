@@ -50,20 +50,20 @@ class LoadObjectBytes(Protocol):
 class IngestInput:
     """入库管道输入：文件元数据与分片参数。"""
 
-    filename: str
-    mime_type: str
-    object_key: str
-    object_bucket: str
-    chunk_size: int
-    chunk_overlap: int
+    filename: str  # 原始文件名
+    mime_type: str  # MIME 类型
+    object_key: str  # 对象存储 key
+    object_bucket: str  # 对象存储桶名
+    chunk_size: int  # 分片大小（字符）
+    chunk_overlap: int  # 分片重叠（字符）
 
 
 @dataclass
 class IngestResult:
     """入库管道输出摘要（不含状态机）。"""
 
-    chunks_text: list[str]
-    chunk_count: int
+    chunks_text: list[str]  # 各分片文本
+    chunk_count: int  # 分片数量
 
 
 def run_ingest_pipeline(

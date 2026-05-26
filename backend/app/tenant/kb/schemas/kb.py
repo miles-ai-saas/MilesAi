@@ -30,11 +30,11 @@ SearchMode = Literal[SEARCH_MODE_DEFAULT, RETRIEVAL_VECTOR, RETRIEVAL_HYBRID]
 class KnowledgeBaseCreate(BaseModel):
     """创建知识库；未指定 embedding 时使用内置默认 BGE 并固化 ``embedding_dimension``。"""
 
-    name: str = Field(..., min_length=1, max_length=128)
-    description: str | None = None
-    is_public: bool = False
-    chunk_size: int = Field(500, ge=100, le=4000)
-    chunk_overlap: int = Field(50, ge=0, le=500)
+    name: str = Field(..., min_length=1, max_length=128, description="知识库名称")
+    description: str | None = Field(default=None, description="描述")
+    is_public: bool = Field(default=False, description="是否公开")
+    chunk_size: int = Field(500, ge=100, le=4000, description="分片大小（字符数）")
+    chunk_overlap: int = Field(50, ge=0, le=500, description="分片重叠长度（字符数）")
     embedding_model_config_id: UUID | None = Field(
         None,
         description="向量化模型（model_type=embedding），默认内置 BGE；创建后不可修改",
@@ -62,15 +62,20 @@ class KnowledgeBaseCreate(BaseModel):
 
 
 class KnowledgeBaseUpdate(BaseModel):
-    name: str | None = None
-    description: str | None = None
-    is_public: bool | None = None
-    chunk_size: int | None = Field(None, ge=100, le=4000)
-    chunk_overlap: int | None = Field(None, ge=0, le=500)
-    retrieval_mode: RetrievalMode | None = None
-    hybrid_alpha: float | None = Field(None, ge=0.0, le=1.0)
-    rerank_model_config_id: UUID | None = None
-    rerank_candidate_k: int | None = Field(None, ge=5, le=100)
+    name: str | None = Field(default=None, description="知识库名称")
+    description: str | None = Field(default=None, description="描述")
+    is_public: bool | None = Field(default=None, description="是否公开")
+    chunk_size: int | None = Field(None, ge=100, le=4000, description="分片大小（字符数）")
+    chunk_overlap: int | None = Field(None, ge=0, le=500, description="分片重叠长度（字符数）")
+    retrieval_mode: RetrievalMode | None = Field(default=None, description="检索策略")
+    hybrid_alpha: float | None = Field(None, ge=0.0, le=1.0, description="混合检索权重")
+    rerank_model_config_id: UUID | None = Field(default=None, description="重排模型配置 ID")
+    rerank_candidate_k: int | None = Field(
+        None,
+        ge=5,
+        le=100,
+        description="重排首轮召回候选数上限",
+    )
 
     @model_validator(mode="before")
     @classmethod
@@ -90,53 +95,53 @@ class KnowledgeBaseUpdate(BaseModel):
 
 
 class KnowledgeBaseOut(BaseModel):
-    id: UUID
-    tenant_id: UUID
-    name: str
-    description: str | None
-    is_public: bool
-    embedding_model_config_id: UUID
-    embedding_model_name: str | None = None
-    embedding_dimension: int
-    chunk_size: int
-    chunk_overlap: int
-    retrieval_mode: str
-    hybrid_alpha: float
-    rerank_model_config_id: UUID | None = None
-    rerank_model_name: str | None = None
-    rerank_candidate_k: int = 50
-    created_at: datetime
+    id: UUID = Field(description="知识库 ID")
+    tenant_id: UUID = Field(description="租户 ID")
+    name: str = Field(description="知识库名称")
+    description: str | None = Field(default=None, description="描述")
+    is_public: bool = Field(description="是否公开")
+    embedding_model_config_id: UUID = Field(description="向量化模型配置 ID")
+    embedding_model_name: str | None = Field(default=None, description="向量化模型名称")
+    embedding_dimension: int = Field(description="向量维度")
+    chunk_size: int = Field(description="分片大小（字符数）")
+    chunk_overlap: int = Field(description="分片重叠长度（字符数）")
+    retrieval_mode: str = Field(description="检索策略")
+    hybrid_alpha: float = Field(description="混合检索权重")
+    rerank_model_config_id: UUID | None = Field(default=None, description="重排模型配置 ID")
+    rerank_model_name: str | None = Field(default=None, description="重排模型名称")
+    rerank_candidate_k: int = Field(default=50, description="重排首轮召回候选数上限")
+    created_at: datetime = Field(description="创建时间")
 
     model_config = {"from_attributes": True}
 
 
 class DocumentOut(BaseModel):
-    id: UUID
-    kb_id: UUID
-    tenant_id: UUID
-    filename: str
-    mime_type: str
-    file_size: int
-    status: DocumentStatus
-    fail_reason: str | None
-    celery_task_id: str | None
+    id: UUID = Field(description="文档 ID")
+    kb_id: UUID = Field(description="所属知识库 ID")
+    tenant_id: UUID = Field(description="租户 ID")
+    filename: str = Field(description="文件名")
+    mime_type: str = Field(description="MIME 类型")
+    file_size: int = Field(description="文件大小（字节）")
+    status: DocumentStatus = Field(description="处理状态")
+    fail_reason: str | None = Field(default=None, description="失败原因")
+    celery_task_id: str | None = Field(default=None, description="异步任务 ID")
     chunk_count: int | None = Field(
         None,
         description="已入库分片数（仅列表接口填充；非 ready 或未统计时为 null）",
     )
-    created_at: datetime
+    created_at: datetime = Field(description="创建时间")
 
     model_config = {"from_attributes": True}
 
 
 class DocumentChunkOut(BaseModel):
-    id: UUID
-    document_id: UUID
-    kb_id: UUID
-    chunk_index: int
-    content: str
-    page_no: int | None = None
-    created_at: datetime
+    id: UUID = Field(description="分片 ID")
+    document_id: UUID = Field(description="所属文档 ID")
+    kb_id: UUID = Field(description="所属知识库 ID")
+    chunk_index: int = Field(description="分片序号")
+    content: str = Field(description="分片正文")
+    page_no: int | None = Field(default=None, description="页码（如有）")
+    created_at: datetime = Field(description="创建时间")
 
     model_config = {"from_attributes": True}
 
@@ -144,8 +149,8 @@ class DocumentChunkOut(BaseModel):
 class SearchRequest(BaseModel):
     """工作台 KB 检索入参；``mode=default`` 沿用 KB 的 retrieval_mode。"""
 
-    query: str = Field(..., min_length=1)
-    top_k: int = Field(10, ge=1, le=50)
+    query: str = Field(..., min_length=1, description="检索查询文本")
+    top_k: int = Field(10, ge=1, le=50, description="返回命中条数上限")
     mode: SearchMode = Field(
         "default",
         description="default=使用知识库 retrieval_mode；可单次覆盖为 vector/hybrid",
@@ -153,43 +158,43 @@ class SearchRequest(BaseModel):
 
 
 class SearchHit(BaseModel):
-    chunk_id: UUID
-    document_id: UUID
-    content: str
-    score: float
-    score_vector: float | None = None
-    score_keyword: float | None = None
-    score_rerank: float | None = None
-    filename: str | None = None
+    chunk_id: UUID = Field(description="分片 ID")
+    document_id: UUID = Field(description="来源文档 ID")
+    content: str = Field(description="命中分片正文")
+    score: float = Field(description="综合相关度分数")
+    score_vector: float | None = Field(default=None, description="向量检索分数")
+    score_keyword: float | None = Field(default=None, description="关键词检索分数")
+    score_rerank: float | None = Field(default=None, description="重排分数")
+    filename: str | None = Field(default=None, description="来源文件名")
 
 
 class SearchResponse(BaseModel):
-    query: str
-    mode: str
-    hits: list[SearchHit]
+    query: str = Field(description="检索查询文本")
+    mode: str = Field(description="实际使用的检索模式")
+    hits: list[SearchHit] = Field(default_factory=list, description="命中结果列表")
 
 
 class KbQuotaOut(BaseModel):
-    used_knowledge_bases: int
-    max_knowledge_bases: int
-    used_storage_mb: int
-    max_storage_mb: int
-    max_file_mb: int
+    used_knowledge_bases: int = Field(description="已用知识库数量")
+    max_knowledge_bases: int = Field(description="知识库数量上限")
+    used_storage_mb: int = Field(description="已用存储（MB）")
+    max_storage_mb: int = Field(description="存储上限（MB）")
+    max_file_mb: int = Field(description="单文件大小上限（MB）")
 
 
 class KbSearchLogOut(BaseModel):
-    id: UUID
-    tenant_id: UUID
-    kb_id: UUID | None
-    kb_ids: list[str] | None
-    query: str
-    top_k: int
-    hit_count: int
-    latency_ms: int
-    retrieval_mode: str
-    source: str
-    actor_user_id: UUID | None
-    agent_id: UUID | None
-    created_at: datetime
+    id: UUID = Field(description="日志 ID")
+    tenant_id: UUID = Field(description="租户 ID")
+    kb_id: UUID | None = Field(default=None, description="知识库 ID（单库检索）")
+    kb_ids: list[str] | None = Field(default=None, description="知识库 ID 列表（多库检索）")
+    query: str = Field(description="检索查询文本")
+    top_k: int = Field(description="请求返回条数")
+    hit_count: int = Field(description="实际命中条数")
+    latency_ms: int = Field(description="检索耗时（毫秒）")
+    retrieval_mode: str = Field(description="检索模式")
+    source: str = Field(description="调用来源")
+    actor_user_id: UUID | None = Field(default=None, description="操作用户 ID")
+    agent_id: UUID | None = Field(default=None, description="关联智能体 ID")
+    created_at: datetime = Field(description="创建时间")
 
     model_config = {"from_attributes": True}

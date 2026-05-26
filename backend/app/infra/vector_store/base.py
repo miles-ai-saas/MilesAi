@@ -19,15 +19,15 @@ class ChunkVectorRecord:
     external_id 可选，默认与 chunk_id 一致，写入 Milvus/pgvector 主键。
     """
 
-    vector: list[float]
-    tenant_id: UUID
-    kb_id: UUID
-    document_id: UUID
-    chunk_id: UUID
+    vector: list[float]  # 分片 embedding 向量
+    tenant_id: UUID  # 租户 ID
+    kb_id: UUID  # 知识库 ID
+    document_id: UUID  # 文档 ID
+    chunk_id: UUID  # PG 分片主键
     content_preview: str  # 写入向量库文本字段，通常截断预览
     object_key: str  # 对象存储 key，便于回溯原文
-    page_no: int | None = None
-    external_id: str | None = None
+    page_no: int | None = None  # 页码（1-based，可选）
+    external_id: str | None = None  # 向量库主键；默认与 chunk_id 一致
 
 
 def validate_dimension(dimension: int) -> int:

@@ -17,12 +17,14 @@ from app.tenant.mcp.runner.spec import RunSpec, validate_run_spec
 
 @dataclass
 class SessionResult:
-    ok: bool
-    data: Any = None
-    error_code: str | None = None
-    message: str | None = None
-    duration_ms: int = 0
-    exit_code: int | None = None
+    """MCP 子进程会话执行结果。"""
+
+    ok: bool  # 是否成功
+    data: Any = None  # 成功时的返回载荷
+    error_code: str | None = None  # 失败错误码（如 RUNTIME_TIMEOUT）
+    message: str | None = None  # 失败说明
+    duration_ms: int = 0  # 耗时（毫秒）
+    exit_code: int | None = None  # 子进程退出码
 
 
 def _build_env(spec: RunSpec) -> dict[str, str]:

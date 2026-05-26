@@ -19,12 +19,14 @@ _EMPTY_GRAPH: dict[str, Any] = {"nodes": [], "edges": []}
 
 @dataclass(frozen=True, slots=True)
 class FlowTemplateSpec:
-    id: str
-    label: str
-    hint: str
-    default_name: str
-    graph_file: str | None
-    insertable: bool = True
+    """内置画布模板注册项。"""
+
+    id: str  # 模板标识（如 rag、blank）
+    label: str  # 展示名称
+    hint: str  # 简短说明
+    default_name: str  # 建议的流程名称
+    graph_file: str | None  # 同目录 JSON 文件名；blank 为 None
+    insertable: bool = True  # 编辑页是否出现在「插入模板」
 
 
 FLOW_TEMPLATE_REGISTRY: tuple[FlowTemplateSpec, ...] = (

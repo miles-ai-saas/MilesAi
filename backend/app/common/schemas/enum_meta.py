@@ -9,7 +9,7 @@ from __future__ import annotations
 from enum import Enum
 from typing import Iterable
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 META_SCHEMA_VERSION = "1"
 
@@ -17,10 +17,13 @@ META_SCHEMA_VERSION = "1"
 class EnumOption(BaseModel):
     """单条枚举选项；``implemented`` 仅钩子触发器等需标注接线状态的域使用。"""
 
-    value: str
-    label: str
-    hint: str | None = None
-    implemented: bool | None = None
+    value: str = Field(description="枚举值（API/存储用）")
+    label: str = Field(description="展示标签")
+    hint: str | None = Field(default=None, description="补充说明")
+    implemented: bool | None = Field(
+        default=None,
+        description="是否已在运行时接线（部分域使用）",
+    )
 
 
 def enum_options(

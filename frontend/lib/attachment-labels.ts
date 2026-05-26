@@ -11,6 +11,8 @@ const PURPOSE_FALLBACK: EnumOption[] = [
   { value: "chat", label: "对话" },
   { value: "agent", label: "智能体" },
   { value: "flow", label: "流程" },
+  { value: "chat_generated", label: "对话生成" },
+  { value: "flow_generated", label: "流程生成" },
 ];
 
 const FILTER_FALLBACK: EnumOption[] = [{ value: "", label: "全部用途" }, ...PURPOSE_FALLBACK];

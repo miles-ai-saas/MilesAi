@@ -9,5 +9,5 @@ from dataclasses import dataclass, field
 class HookRunResult:
     """单次 run() 的汇总：各钩子结果 + 可能被 modify 后的 payload。"""
 
-    results: list[dict] = field(default_factory=list)
-    payload: dict = field(default_factory=dict)
+    results: list[dict] = field(default_factory=list)  # 各钩子执行结果
+    payload: dict = field(default_factory=dict)  # 经 modify 合并后的载荷

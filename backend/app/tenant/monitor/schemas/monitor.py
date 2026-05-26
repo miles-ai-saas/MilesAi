@@ -4,38 +4,47 @@ from app.tenant.tasks.schemas.task import TaskSummary
 
 
 class MonitorStats(BaseModel):
-    knowledge_bases: int
-    documents: int
-    agents: int
-    flows: int
-    intercept_logs_today: int
-    pending_documents: int
+    knowledge_bases: int = Field(description="知识库数量")
+    documents: int = Field(description="文档数量")
+    agents: int = Field(description="智能体数量")
+    flows: int = Field(description="流程数量")
+    intercept_logs_today: int = Field(description="今日合规拦截次数")
+    pending_documents: int = Field(description="待处理文档数量")
 
 
 class MonitorReport(BaseModel):
-    stats: MonitorStats
-    tasks: TaskSummary
-    documents_by_status: dict[str, int] = Field(default_factory=dict)
-    marketplace_installs: int = 0
+    stats: MonitorStats = Field(description="资源统计概览")
+    tasks: TaskSummary = Field(description="异步任务汇总")
+    documents_by_status: dict[str, int] = Field(
+        default_factory=dict,
+        description="按状态分组的文档数量",
+    )
+    marketplace_installs: int = Field(default=0, description="应用广场安装次数")
 
 
 class AlertConfig(BaseModel):
-    enabled: bool = False
-    webhook_url: str = ""
-    notify_on_task_failed: bool = True
-    notify_on_health_degraded: bool = True
+    enabled: bool = Field(default=False, description="是否启用告警")
+    webhook_url: str = Field(default="", description="Webhook 通知地址")
+    notify_on_task_failed: bool = Field(default=True, description="任务失败时通知")
+    notify_on_health_degraded: bool = Field(default=True, description="健康检查降级时通知")
 
 
 class TaskTrendPoint(BaseModel):
-    date: str
-    pending: int = 0
-    running: int = 0
-    success: int = 0
-    failed: int = 0
-    cancelled: int = 0
-    total: int = 0
+    date: str = Field(description="日期（YYYY-MM-DD）")
+    pending: int = Field(default=0, description="待处理任务数")
+    running: int = Field(default=0, description="运行中任务数")
+    success: int = Field(default=0, description="成功任务数")
+    failed: int = Field(default=0, description="失败任务数")
+    cancelled: int = Field(default=0, description="已取消任务数")
+    total: int = Field(default=0, description="任务总数")
 
 
 class MonitorTrends(BaseModel):
-    task_by_day: list[TaskTrendPoint] = Field(default_factory=list)
-    intercept_by_day: list[dict[str, int | str]] = Field(default_factory=list)
+    task_by_day: list[TaskTrendPoint] = Field(
+        default_factory=list,
+        description="按日任务趋势",
+    )
+    intercept_by_day: list[dict[str, int | str]] = Field(
+        default_factory=list,
+        description="按日合规拦截趋势",
+    )

@@ -7,13 +7,17 @@ from app.tenant.compliance.models import SensitiveAction
 
 @dataclass(frozen=True)
 class ScanMatch:
-    word: str
-    action: SensitiveAction
+    """单条敏感词命中。"""
+
+    word: str  # 命中的词
+    action: SensitiveAction  # 处置动作（warn / block）
 
 
 @dataclass(frozen=True)
 class ScanResult:
-    matches: tuple[ScanMatch, ...]
+    """一次扫描的汇总结果。"""
+
+    matches: tuple[ScanMatch, ...]  # 全部命中项
 
     @property
     def has_block(self) -> bool:

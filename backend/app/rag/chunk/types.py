@@ -13,5 +13,5 @@ from dataclasses import dataclass
 class TextChunk:
     """单条分片文本；page_no 为 1-based，来自 parser metadata（pypdf/docling）。"""
 
-    content: str
-    page_no: int | None = None
+    content: str  # 分片正文
+    page_no: int | None = None  # 来源页码（1-based，可选）

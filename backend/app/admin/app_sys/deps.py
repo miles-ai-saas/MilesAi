@@ -23,9 +23,9 @@ admin_bearer = HTTPBearer(auto_error=False)
 class AdminContext:
     """注入到 request.state.admin_ctx，供 app_ops 视图使用。"""
 
-    admin_id: UUID
-    username: str
-    role: str
+    admin_id: UUID  # 平台管理员 ID
+    username: str  # 登录名
+    role: str  # 管理员角色
 
 
 async def get_platform_admin(

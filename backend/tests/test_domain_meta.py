@@ -114,8 +114,16 @@ def test_mcp_meta():
 
 def test_attachments_meta():
     data = attachments_meta_dict()
-    assert {p.value for p in data["purposes"]} == {"general", "chat", "agent", "flow"}
+    assert {p.value for p in data["purposes"]} == {
+        "general",
+        "chat",
+        "agent",
+        "flow",
+        "chat_generated",
+        "flow_generated",
+    }
     assert data["purpose_filters"][0].value == ""
+    assert len(data["purpose_filters"]) == len(data["purposes"]) + 1
 
 
 def test_skills_meta():

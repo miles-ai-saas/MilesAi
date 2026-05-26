@@ -9,4 +9,7 @@ class CategoryMetaOut(BaseModel):
     """资源域枚举（Tab/筛选）；具体分类名仍走 GET /categories?domain=。"""
 
     domains: list[EnumOption] = Field(description="agent | prompt | skill | tool")
-    schema_version: str = META_SCHEMA_VERSION
+    schema_version: str = Field(
+        default=META_SCHEMA_VERSION,
+        description="元数据 schema 版本号",
+    )

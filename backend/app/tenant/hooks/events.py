@@ -34,9 +34,11 @@ BEFORE_TRIGGERS = frozenset(
 
 @dataclass
 class ParsedHookResponse:
-    action: str = "continue"
-    modify: dict[str, Any] = field(default_factory=dict)
-    message: str | None = None
+    """解析后的钩子 HTTP 响应体。"""
+
+    action: str = "continue"  # continue | block | modify
+    modify: dict[str, Any] = field(default_factory=dict)  # 允许合并进 payload 的字段
+    message: str | None = None  # 阻断或提示文案
 
 
 def build_event_envelope(
