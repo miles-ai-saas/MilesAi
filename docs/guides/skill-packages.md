@@ -1,5 +1,7 @@
 # 技能包技术方案
 
+**功能规格：** [features/tools-mcp-skills.md](../features/tools-mcp-skills.md) §技能包
+
 技能包（Skill Package）在 MilesAI 中用于管理 **Cursor 风格的 `SKILL.md` 技能目录**：元数据入库、文件落盘、分类筛选，并在智能体对话时通过 `config.skill_package_id` 将技能说明注入系统提示（System Prompt）。
 
 与 **MCP**（远程工具服务）互补：技能包侧重「提示词/流程说明」类知识；MCP 侧重可调用远程工具。二者可同时绑定在同一智能体上。

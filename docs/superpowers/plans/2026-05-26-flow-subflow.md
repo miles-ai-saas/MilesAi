@@ -1,8 +1,10 @@
 # 画布子流程（SubFlow）— 实施计划占位
 
+> **归档：** 未开工占位（2026-05-26）。**目标规格：** [flow-subflow-design.md](../../architecture/flow-subflow-design.md)（**未实施**，无 features 文档）
+
 **日期：** 2026-05-26  
 **立项规格：** [flow-subflow-design.md](../../architecture/flow-subflow-design.md)  
-**状态：** **未开工**（已立项，排期待定）
+**状态：** 归档 · **未开工**
 
 ---
 

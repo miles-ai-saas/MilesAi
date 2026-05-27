@@ -1,6 +1,7 @@
 # 模型供应商（内置模型 + 自定义模型）
 
 > 类型：产品设计 + 技术方案 | 状态：**M1–M3 已实现**（深度求索 / 豆包 / 通义千问种子已内置）  
+> **功能规格：** [features/models-prompts.md](../features/models-prompts.md)  
 > 关联：[technical-design.md](../architecture/technical-design.md)、[prd.md](../product/prd.md)
 
 ---

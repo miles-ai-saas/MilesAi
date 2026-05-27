@@ -1,15 +1,19 @@
 # 流程编排增强 — 技术设计
 
 **日期：** 2026-05-26  
-**状态：** Phase 1–4 已实现  
-**后续立项（暂不实施）：** [flow-subflow-design.md](./flow-subflow-design.md)（SubFlow）、[flow-llm-multimodal-design.md](./flow-llm-multimodal-design.md)（识图输入）、[flow-generative-media-design.md](./flow-generative-media-design.md)（生图/生视频）  
+**状态：** Phase 1–4 已实现（设计归档）  
+**As-Is 规格：** [features/flow-orchestration.md](../features/flow-orchestration.md)  
+**后续立项（暂不实施）：** [flow-subflow-design.md](./flow-subflow-design.md)（SubFlow）  
+**关联归档：** [flow-llm-multimodal-design.md](./flow-llm-multimodal-design.md)（识图）、[flow-generative-media-design.md](./flow-generative-media-design.md)（生图/生视频）  
 **关联：** [flows.md](../guides/flows.md)、[technical-design.md](./technical-design.md) §9、[frontend/design.md](../frontend/design.md) §9.1 链路 §6
 
 ---
 
 ## 1. 背景与目标
 
-### 1.1 现状
+### 1.1 现状（立项前快照，仅供参考）
+
+> **现网以 [features/flow-orchestration.md](../features/flow-orchestration.md) 为准。** 下文描述 Phase 1–4 立项时的缺口，多数已关闭。
 
 画布流程（`graph_json`）已由 **LangGraph** 编译执行（`integrations.langgraph.compiler`），节点 handler 在 `flow_runtime.nodes.registry`。当前调色板节点：
 

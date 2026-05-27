@@ -2,7 +2,7 @@
 
 > 类型：产品能力 | 状态：**核心能力已上线**（识图、生图/图生图、生视频/首尾帧、媒体资产、生视频异步任务、SSE 进度/取消、任务中心、视频升格 KB）  
 > 技术方案：[multimodal-roadmap.md](../architecture/multimodal-roadmap.md)  
-> 立项对照：[prd.md](./prd.md)（PRD 愿景较全，以本文「实现状态」为准）
+> 立项对照：[prd.md](./prd.md)（§模块6b 多模态差异速查；PRD 愿景较全，以本文「实现状态」为准）
 
 本文从 **产品视角** 说明平台多模态能力：用户能做什么、在哪里做、与知识库入库的区别。不涉及签名下载等实现细节。
 
@@ -163,7 +163,7 @@ flowchart TB
 - 在普通 LLM 节点里「一句话顺带出图」（须走生成工具或专用节点）。
 - 生成结果 **默认不入库**（须在「生成素材」中手动升格；图片为原图入库，视频为 **描述文档** 入库供 RAG，原 mp4 仍在附件）。
 - 视频 **逐帧/流式** 预览。
-- **对话 WebSocket**（规划）：对话工作台双向流式；生成任务进度仍用 SSE（见 [realtime-transport-design.md](../architecture/realtime-transport-design.md)）。
+- **LLM 真 token 流式**（📋）：WS v1 已上线（[features/agent-chat-websocket.md](../features/agent-chat-websocket.md)），`chat.delta` 仍为整段模拟；生成任务进度用 SSE。
 - **视频封面**：生成视频后若环境有 `ffmpeg` 会抽首帧写入 `cover_attachment_id`，供「生成素材」列表缩略图。
 
 ### 4.6 视频升格知识库（产品说明）
@@ -220,7 +220,7 @@ flowchart TB
 | **已上线（运营）** | 工作台 **任务中心** → **生成任务** Tab（列表、筛选、详情、取消） |
 | **已上线（生图异步）** | `kind=image` 的 `generative_jobs` + Celery；工具/流程节点默认异步 |
 | **已上线（P3）** | 视频封面、识图多轮附图、流程模板 API |
-| **后续** | 对话 WebSocket（资源仍 SSE）、视频逐帧预览 | 📋 [realtime-transport-design.md](../architecture/realtime-transport-design.md) |
+| **后续** | LLM 真 token 流式、视频逐帧预览 | 📋 [realtime-transport-design.md](../architecture/realtime-transport-design.md)（WS v1 见 [features/agent-chat-websocket.md](../features/agent-chat-websocket.md)） |
 
 技术拆解见 [multimodal-roadmap.md](../architecture/multimodal-roadmap.md)。
 

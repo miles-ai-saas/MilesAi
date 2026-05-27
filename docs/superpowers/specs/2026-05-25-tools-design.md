@@ -1,8 +1,9 @@
 # 工具功能 v1 设计规格
 
+> **归档：** 立项过程稿（2026-05-25）。**现网规格：** [features/tools-mcp-skills.md](../../features/tools-mcp-skills.md) · [architecture/tools-runtime.md](../../architecture/tools-runtime.md)
+
 **日期：** 2026-05-25  
-**状态：** 已批准  
-**策略：** 混合方案 C — v1 HTTP + 参数 schema + UI 改版；v2 脚本工具 + 沙箱
+**状态：** 归档（v1 已落地；v2 脚本/沙箱见 tools-runtime §8）
 
 ---
 

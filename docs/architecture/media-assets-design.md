@@ -1,8 +1,10 @@
 # 生成物与媒体资产（Media Assets）
 
 **日期：** 2026-05-26  
-**状态：** v2 已实施（表 + API + 生成双写 + 工作台「生成素材」；视频升格入库待 v3）  
-**关联：** [flow-generative-media-design.md](./flow-generative-media-design.md)、[multimodal-capabilities.md](../product/multimodal-capabilities.md)、`sys_attachments`
+**状态：** v2 已实施（表 + API + 生成双写 + 工作台「生成素材」；视频升格 KB 已实现）  
+**文档类型：** 设计归档  
+**As-Is 规格：** [features/attachments-media-generative.md](../features/attachments-media-generative.md)  
+**关联：** [flow-generative-media-design.md](./flow-generative-media-design.md)、[multimodal-capabilities.md](../product/multimodal-capabilities.md)
 
 ---
 
@@ -40,11 +42,11 @@
 | **Media Asset** | 这是不是「可管理的创作物」、从哪次 agent/flow 来、能否再打标签/复用 |
 | **KB Document** | 是否进入某个知识库的检索索引 |
 
-当前实现：生成物已写 **`sys_attachments`**，`purpose ∈ { chat_generated, flow_generated }`（见 `integrations/generative/persist.py`）。**缺的是资产登记与素材库 UI**，不是再 copy 一份进 OSS。
+当前实现：生成物写入 **`sys_attachments`**（`purpose ∈ { chat_generated, flow_generated }`）并登记 **`media_assets`**；工作台 **「生成素材」**（`/workbench/media-assets`）已上线。详见 [features/attachments-media-generative.md](../features/attachments-media-generative.md)。
 
 ---
 
-## 3. 表设计（草案）
+## 3. 表设计（已实现）
 
 表名：**`media_assets`**（租户域，建议前缀与现有约定对齐，如 `med_assets` 或放 `sys_media_assets`，实施时与 `technical-design.md` §库表统一）。
 
@@ -87,7 +89,7 @@ v1 可仅用附件列表 + `purpose` 筛选；**v2 生成时双写** `persist_ge
 
 ---
 
-## 5. API 草案（租户 API）
+## 5. API（租户 API，已实现）
 
 前缀：`/api/v1/media-assets`（名称实施时可调整为 `/creative-assets`）。
 

@@ -1,9 +1,9 @@
 # MilesAi 技术方案
 
-> 版本：v2.0 | 日期：2026-05-21 | 与当前代码库对齐  
+> 版本：v2.1 | 日期：2026-05-27 | 与当前代码库对齐  
 > 需求基线：[prd.md](../product/prd.md) · 专题文档：[README.md](../README.md)
 
-本文描述**仓库已实现**的架构与行为；专题见 [guides/](../guides/) 目录下各文档。
+本文描述**仓库已实现**的架构与行为；**功能规格**见 [features/](../features/)，专题见 [guides/](../guides/)。
 
 ---
 
@@ -19,7 +19,7 @@
 8. [异步任务](#8-异步任务)
 9. [流程编排](#9-流程编排)
 10. [智能体对话](#10-智能体对话)
-10.1. [多模态（规划）](#101-多模态规划)
+10.1. [多模态（已实现）](#101-多模态已实现)
 11. [合规、钩子与工具](#11-合规钩子与工具)
 12. [应用市场](#12-应用市场)
 13. [前端](#13-前端)
@@ -75,6 +75,8 @@ flowchart TB
         CMP[compliance / hooks]
         MKT[marketplace]
         TOOL[tools / mcp / skills]
+        ATT[attachments / media-assets / generative]
+        TAG[tags / categories]
     end
 
     subgraph AI["integrations + rag + flow_runtime"]
@@ -84,8 +86,10 @@ flowchart TB
         DA[DeepAgents 可选]
     end
 
-    subgraph Worker["Celery worker"]
+    subgraph Worker["Celery worker + Beat"]
         ING[ingest_document]
+        GEN[generative image/video]
+        SCH[tick_agent_schedules]
     end
 
     subgraph Store
@@ -133,7 +137,7 @@ MilesAi/
 │   │   ├── core/                   # config、deps、security、tenant
 │   │   ├── workers/                # Celery（ingest_document 等）
 │   │   └── deletion/               # 级联删除
-│   ├── alembic/versions/           # 001_initial_schema（唯一迁移）
+│   ├── alembic/versions/           # 001–009（见 §6.1）
 │   └── pyproject.toml
 ├── frontend/                       # 租户 Next.js 14
 ├── admin_frontend/                 # 运营 Next.js 14
@@ -164,17 +168,23 @@ MilesAi/
 | 域 | 前缀 | 说明 |
 |----|------|------|
 | system | `/tenants` `/users` `/roles` `/system/configs` | 租户、用户、RBAC、配置 |
+| categories | `/categories` | 系统预置资源分类（单选导航） |
+| tags | `/tags` | 租户全局标签（多选、跨资源筛选） |
 | kb | `/kb` | 知识库、文档、检索（详见 [knowledge-base.md](../guides/knowledge-base.md)） |
+| attachments | `/attachments` | 会话/对话附件（非 KB 文档） |
+| media-assets | `/media-assets` | 生成物媒体资产目录、升格 KB |
+| generative | `/generative/jobs` | 生图/生视频异步任务、SSE 进度 |
 | flows | `/flows` | 流程版本、画布、发布、运行、编译预览 |
-| agents | `/agents` | 智能体 CRUD、`POST …/chat` |
+| agents | `/agents` | 智能体 CRUD、`POST …/chat`、WebSocket、`…/schedules` |
 | a2a | `/a2a/peers` | 外部 Peer 登记与 Card 同步 |
 | models | `/models` | 大模型配置（内置 `tenant_id` 空 + 租户自定义；演进见 [model-providers.md](../guides/model-providers.md)） |
-| compliance | `/compliance` | 敏感词、扫描、拦截日志 |
+| compliance | `/compliance` | 敏感词库、扫描、拦截日志 |
 | hooks | `/hooks` | Webhook 定义与绑定 |
 | tools / mcp / skills | `/tools` `/mcp` `/skill-packages` | 工具目录、MCP、技能包 |
 | prompts | `/prompt-templates` | 提示词模板 |
 | marketplace | `/marketplace` | 应用打包、审核、安装、评分 |
-| tasks | `/tasks` | Celery 任务查询 |
+| tasks | `/tasks` | Celery 任务记录查询（入库等） |
+| workbench | `/workbench` | 工作台概览聚合统计 |
 | monitor | `/monitor` | 统计、报表、告警配置 |
 | audit | `/audit` | 租户操作审计 |
 
@@ -197,22 +207,34 @@ MilesAi/
 
 ### 6.1 PostgreSQL 核心表
 
-迁移：仅 `001_initial_schema`（`metadata.create_all` 按当前 ORM 建全库）。
+迁移：`001_initial_schema`（`create_all` 建全库）+ `002`–`009` 增量（schedules、合规词库、media、generative 等）。
 
 | 分组 | 表名 | 说明 |
 |------|------|------|
 | 系统 | `sys_tenants`, `sys_users`, `sys_roles`, `sys_permissions`, `sys_configs` | 租户与用户体系 |
+| | `sys_categories` | 资源分类（系统预置） |
+| | `sys_attachments` | 会话/对话附件元数据 |
+| | `tnt_tags`, `tnt_entity_tag_bindings` | 租户标签与资源绑定 |
 | 智能体 | `agt_agents` | `agent_type`: `custom` \| `a2a`；`config` JSONB |
 | | `agt_model_configs` | 模型端点、加密 API Key |
+| | `agt_model_tenant_credentials` | 租户 BYOK 凭证 |
 | | `agt_sub_agent_bindings` | 平台内父子智能体 |
 | | `agt_kb_bindings` | 智能体-知识库 M:N |
+| | `agt_schedules` | 智能体定时任务（Cron + Beat） |
 | A2A | `agt_a2a_peers` | 外部登记、Agent Card 缓存 |
 | | `agt_a2a_peer_bindings` | 互联宿主 → peer（含 `trigger_keywords`） |
 | | `agt_agent_a2a_peer_refs` | custom 智能体引用外部 peer |
 | 流程 | `flow_flows`, `flow_versions` | `graph_json` |
 | 知识库 | `kb_bases`, `kb_documents`, `kb_document_chunks`, `kb_vector_refs` | 文档状态与向量引用；**向量化规格绑在 `kb_bases`**（见 §6.5） |
+| | `kb_search_logs` | 检索日志 |
+| 多模态 | `media_assets` | 生成物媒体资产目录 |
+| | `generative_jobs` | 生图/生视频异步任务 |
 | 产品 | `prm_prompt_templates`, `skl_skill_packages`, `tool_tools`, `tool_mcp_services` | |
-| | `hook_definitions`, `hook_bindings`, `cmp_*`, `mkt_*`, `task_records`, `aud_logs` | |
+| | `tool_invocation_logs`, `mcp_runner_sessions` | 工具调用审计、MCP Runner 会话 |
+| | `hook_definitions`, `hook_bindings`, `hook_execution_logs` | 钩子 |
+| | `cmp_word_libraries`, `cmp_sensitive_word_entries`, `cmp_library_word_bindings`, `cmp_compliance_library_bindings`, `cmp_intercept_logs` | 合规词库与拦截 |
+| | `mkt_categories`, `mkt_apps`, `mkt_ratings`, `mkt_installs` | 应用市场 |
+| | `task_records`, `aud_logs` | Celery 任务记录、审计 |
 | 运营 | `adm_admins`, `adm_billing_*`, `adm_risk_*`, `adm_audit_logs` | 仅运营 API 使用 |
 
 ORM **不在库级声明外键**（`001` 使用 `create_all`）；关联由应用层维护。
@@ -387,7 +409,13 @@ ingest / search / delete
 |------|----------|
 | health | `GET /health` |
 | auth | `POST /login`, `GET /me`, `POST /refresh` |
-| agents | `GET/POST /agents`, `PATCH/DELETE /agents/{id}`, `POST /agents/{id}/chat` |
+| agents | `GET/POST /agents`, `PATCH/DELETE /agents/{id}`, `POST /agents/{id}/chat`, `WS …/chat/ws`, `…/schedules` CRUD |
+| attachments | `GET/POST /attachments`, `GET /attachments/{id}/content` |
+| media-assets | CRUD + `POST /media-assets/{id}/promote-to-kb` |
+| generative | `GET/POST /generative/jobs`, `GET …/stream`（SSE）, `POST …/cancel|retry` |
+| tags | `GET/POST /tags`, `GET /tags/meta` |
+| categories | `GET /categories` |
+| workbench | `GET /workbench/overview` |
 | a2a | `GET/POST /a2a/peers`, `POST /a2a/peers/probe`, `POST /a2a/peers/{id}/sync-card` |
 | kb | CRUD（创建含 `embedding_profile`）+ `GET /kb/embedding-profiles` + `POST /kb/{id}/documents/upload`, `POST /kb/{id}/search` |
 | flows | CRUD + `PUT /flows/{id}/graph`, `POST /flows/{id}/publish`, `/run`, `/compile` |
@@ -410,10 +438,15 @@ ingest / search / delete
 | 组件 | 说明 |
 |------|------|
 | Broker | `CELERY_BROKER_URL`（通常 Redis） |
-| Worker 命令 | `celery -A app.workers.app worker -Q default,parse,ocr,asr,embed` |
-| 主任务 | `ingest_document` → `tenant.kb.ingest.run_ingest` → `rag.pipeline.run_ingest_pipeline` |
+| Worker 命令 | `python cli.py worker` 或 `celery -A app.workers.app worker -Q default,parse,ocr,asr,embed` |
+| Beat 命令 | `python cli.py beat`（**独立进程**；Docker Compose 默认未含 beat 服务） |
+| 入库 | `ingest_document` → `tenant.kb.ingest.run_ingest` → `rag.pipeline.run_ingest_pipeline`（队列 `parse`） |
+| 生成 | `run_generative_image_job` / `run_generative_video_job`（队列 `default`；见 [features/task-center.md](../features/task-center.md)） |
+| 定时 | Beat 每 60s → `tick_agent_schedules` → `run_agent_schedule` → `AgentService.chat`（见 [features/agent-schedules.md](../features/agent-schedules.md)） |
 | 解析链 | `load_documents_from_bytes` → `chunk_documents` → `embed_texts_for_kb` → `upsert_chunk_vector` |
 | 可选依赖 | `[parse-docling]`：PDF/Office 版式；`[multimodal]`：图 OCR / 音 Whisper（未装则占位文本仍可入库） |
+
+**任务中心 UI** 聚合两类记录：`GET /tasks`（Celery `task_records`，主要是入库）与 `GET /generative/jobs`（`generative_jobs` 表）。详见 [features/task-center.md](../features/task-center.md)。
 
 任务记录表：`task_records`；API：`GET /tasks`、`POST /tasks/{id}/cancel|retry`。
 
@@ -427,7 +460,7 @@ React Flow 画布 → PUT /flows/{id}/graph → flow_versions.graph_json
 节点：`flow_runtime/nodes/registry.py`
 ```
 
-**已注册节点类型**：`TextInput`、`TextOutput`、`ChatInput`/`ChatOutput`（别名）、`KnowledgeSearch`、`RelevanceGrade`、`StaticResponse`、`PromptTemplate`、`LLMCall`、`PlatformTool`、`ConditionBranch`、`ParallelJoin`。
+**已注册节点类型**：`TextInput`、`TextOutput`、`ChatInput`/`ChatOutput`（别名）、`KnowledgeSearch`、`RelevanceGrade`、`StaticResponse`、`PromptTemplate`、`LLMCall`、`PlatformTool`、`ConditionBranch`、`ParallelJoin`、`ImageGenerate`、`VideoGenerate`。
 
 - 编译预览：`POST /flows/{id}/compile`（DAG 校验、并行层分析）。
 - 智能体绑定 `published_flow_id` 时，对话走同一 LangGraph 执行链。
@@ -439,7 +472,8 @@ React Flow 画布 → PUT /flows/{id}/graph → flow_versions.graph_json
 
 ## 10. 智能体对话
 
-`POST /api/v1/agents/{id}/chat` 入口：`AgentService.chat`（`tenant/agents/services/agent.py`）。
+`POST /api/v1/agents/{id}/chat` 入口：`AgentService.chat`（`tenant/agents/services/agent.py`）。  
+**WebSocket（v1）**：`WS /api/v1/agents/{id}/chat/ws`（对话工作台流式/事件总线；设计见 [realtime-transport-design.md](./realtime-transport-design.md)）。
 
 执行前：**钩子** `BEFORE_CALL`、**合规** `check_input`；执行后：`check_output`、`AFTER_CALL`。
 
@@ -473,7 +507,7 @@ flowchart TD
 - A2A：[a2a.md](../guides/a2a.md)
 - LangChain/LangGraph/DeepAgents：[ai-stack.md](../guides/ai-stack.md)
 
-### 10.1 多模态
+### 10.1 多模态（已实现）
 
 识图、生图/生视频、媒体资产、生视频异步任务与任务中心 **已上线**。产品矩阵见 [multimodal-capabilities.md](../product/multimodal-capabilities.md)；实施状态见 [multimodal-roadmap.md](./multimodal-roadmap.md)。
 
@@ -533,8 +567,10 @@ flowchart TD
 | `/login` | JWT 登录 |
 | `/workbench/dashboard` | 概览 |
 | `/workbench/agents` | 智能体列表（Tab：全部 / 智能体 / A2A 互联） |
-| `/workbench/agents/chat` | 对话工作台（单智能体调试、会话） |
+| `/workbench/agents/chat` | 对话工作台（单智能体调试、会话、定时 Tab） |
 | `/workbench/kb`, `/workbench/kb/[id]` | 知识库 |
+| `/workbench/media-assets` | 生成素材目录 |
+| `/workbench/attachments` | 附件管理 |
 | `/workbench/flows`, `/workbench/flows/[id]/edit` | 流程列表与 React Flow 画布 |
 | `/workbench/compliance` | 敏感词与日志 |
 | `/workbench/prompts` | 提示词模板 |
@@ -567,18 +603,22 @@ flowchart TD
 | 服务 | 说明 |
 |------|------|
 | `api` | FastAPI，健康检查 `/api/v1/health` |
-| `worker` | 单 Celery 进程，多队列 |
+| `worker` | 单 Celery 进程，多队列（ingest / generative / schedule） |
+| `beat` | Celery Beat，智能体定时任务扫描 |
+| `mcp-runner` | MCP STDIO 沙箱（`MCP_RUNNER_ENABLED` 时 API 转发 invoke） |
 | `web` | 租户 Next.js |
 | `admin-web` | 运营 Next.js `:3001` |
 | `flower` | Celery 监控 `:5555` |
 
 **不是** 多个独立 `worker-parse` / `worker-ocr` 容器；解析/OCR/ASR/向量化由同一 worker 按队列消费。
 
+**向量库默认**：Compose 应用栈默认 `VECTOR_STORE_BACKEND=milvus`；本地/文档示例仍可用 Weaviate（见 `docker-compose.infra.yml`）。
+
 ### 14.2 本地仅后端
 
 中间件 Compose + `backend/.env`（`POSTGRES_HOST=localhost`）+ `alembic upgrade head` + `uvicorn app.main:app`。
 
-详见 [database-setup.md](../operations/database-setup.md)、[docker/README.md](../../docker/README.md)。
+详见 [operations/deployment.md](../operations/deployment.md)、[database-setup.md](../operations/database-setup.md)、[docker/README.md](../../docker/README.md)。
 
 ---
 
@@ -615,12 +655,17 @@ flowchart TD
 | 存储配置分层（L1/L2/L3）文档 | ✅ | §6.5；L3 embedding 已落地；L2 待开发 |
 | 流程画布与 LangGraph 执行 | ✅ | 见 [flows.md](../guides/flows.md) |
 | 智能体 RAG / 画布 / 直连 LLM | ✅ | |
-| 对话/流程 **识图、生图、生视频** | ✅ | 见 §10.1；生视频默认 `generative_jobs` 异步 |
+| 对话/流程 **识图、生图、生视频** | ✅ | 见 §10.1；生图/生视频默认 `generative_jobs` 异步 |
+| 附件 / 媒体资产 / 升格 KB | ✅ | 见 [features/attachments-media-generative.md](../features/attachments-media-generative.md) |
+| 智能体定时任务（Celery Beat） | ✅ | 见 [features/agent-schedules.md](../features/agent-schedules.md)；Beat 需独立进程 |
+| 租户标签 / 资源分类 | ✅ | `/tags`、`/categories`；列表 `tag_ids` 筛选 |
+| 对话 WebSocket v1 | 🔶 | `WS …/chat/ws` 已落地；全站实时方案见 [realtime-transport-design.md](./realtime-transport-design.md) |
 | DeepAgents 内部协同 | ✅ | 可选依赖，可降级 |
 | A2A Peer / 宿主 / custom 引用 | ✅ | 对外暴露本平台 Card：未做 |
 | 合规 / HTTP 钩子 | ✅ | Python 钩子未实现 |
-| 工具 / MCP / 技能包 | 🔶 | MCP HTTP/SSE invoke 已接通；STDIO 待沙箱 |
+| 工具 / MCP / 技能包 | 🔶 | MCP HTTP/SSE invoke 已接通；STDIO 经 mcp-runner |
 | 应用市场审核与安装 | ✅ | |
+| 任务中心（入库 + 生成） | ✅ | 见 [features/task-center.md](../features/task-center.md) |
 | 监控报表 / 告警 Webhook | 🔶 | 基础聚合 + HTTP 告警 |
 | 运营计费 / 风控 | ✅ | 后台 UI + API |
 | 模型供应商目录（运营发布内置 + 租户自定义） | ✅ | 见 [model-providers.md](../guides/model-providers.md) |
@@ -643,6 +688,22 @@ flowchart TD
 | [guides/a2a.md](../guides/a2a.md) | 外部互联 |
 | [guides/ai-stack.md](../guides/ai-stack.md) | LangChain 模块与依赖 |
 | [guides/model-providers.md](../guides/model-providers.md) | 模型供应商（内置 + 自定义） |
+| [features/task-center.md](../features/task-center.md) | 任务中心（入库 + 生成） |
+| [features/agent-schedules.md](../features/agent-schedules.md) | 智能体定时任务 |
+| [features/attachments-media-generative.md](../features/attachments-media-generative.md) | 附件、媒体资产、生成任务 |
+| [features/tags-categories.md](../features/tags-categories.md) | 标签与分类 |
+| [features/marketplace.md](../features/marketplace.md) | 应用市场 |
+| [features/agent-chat-websocket.md](../features/agent-chat-websocket.md) | 对话 WebSocket |
+| [features/system-management.md](../features/system-management.md) | 系统管理 |
+| [features/compliance.md](../features/compliance.md) | 安全合规 |
+| [features/flow-orchestration.md](../features/flow-orchestration.md) | 流程编排 |
+| [features/kb-ingest-retrieval.md](../features/kb-ingest-retrieval.md) | RAG 知识库 |
+| [features/tools-mcp-skills.md](../features/tools-mcp-skills.md) | 工具 / MCP / 技能包 |
+| [features/models-prompts.md](../features/models-prompts.md) | 模型与提示词 |
+| [features/monitor.md](../features/monitor.md) | 监控统计 |
+| [features/platform-agents.md](../features/platform-agents.md) | 平台内智能体与内部协同 |
+| [features/a2a-interconnect.md](../features/a2a-interconnect.md) | A2A 外部互联 |
+| [features/hooks.md](../features/hooks.md) | 智能体钩子 |
 
 ---
 

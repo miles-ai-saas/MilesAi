@@ -2,8 +2,9 @@
 
 **日期：** 2026-05-26  
 **状态：** 已实现（设计归档）  
+**As-Is 规格：** [features/attachments-media-generative.md](../features/attachments-media-generative.md)、[features/platform-agents.md](../features/platform-agents.md)  
 **产品说明：** [multimodal-capabilities.md](../product/multimodal-capabilities.md) · **路线图：** [multimodal-roadmap.md](./multimodal-roadmap.md)  
-**关联：** [multimodal-capabilities.md](../product/multimodal-capabilities.md)、[multimodal-roadmap.md](./multimodal-roadmap.md)、[realtime-transport-design.md](./realtime-transport-design.md)（对话 WebSocket 规划）、[platform-agents.md](../guides/platform-agents.md)、[flow-llm-multimodal-design.md](./flow-llm-multimodal-design.md)、[flow-generative-media-design.md](./flow-generative-media-design.md)、[model-providers.md](../guides/model-providers.md)
+**关联：** [multimodal-capabilities.md](../product/multimodal-capabilities.md)、[multimodal-roadmap.md](./multimodal-roadmap.md)、[realtime-transport-design.md](./realtime-transport-design.md)、[features/agent-chat-websocket.md](../features/agent-chat-websocket.md)、[features/attachments-media-generative.md](../features/attachments-media-generative.md)、[platform-agents.md](../guides/platform-agents.md)、[flow-llm-multimodal-design.md](./flow-llm-multimodal-design.md)、[flow-generative-media-design.md](./flow-generative-media-design.md)、[model-providers.md](../guides/model-providers.md)
 
 ---
 
@@ -82,7 +83,7 @@ class ChatResponse(BaseModel):
 | 场景 | 机制 | 用户感知 |
 |------|------|----------|
 | 文档含图入库 KB | `rag/parse` + 可选 OCR → 文本分片检索 | 「根据资料回答」，非「看这张图」 |
-| 对话附图 | **未实现** | 需 §4：原图进 vision 模型 |
+| 对话附图 | ✅ 已实现 | `ChatRequest.media` + vision 模型；见 [features/attachments-media-generative.md](../features/attachments-media-generative.md) §4.1 |
 
 二者可并存：同一智能体既绑 KB，又在单轮对话中附图。
 

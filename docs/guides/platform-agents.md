@@ -1,6 +1,8 @@
 # 平台内智能体与内部协同
 
-> 类型：智能体 | 状态：已实现 | 关联：[a2a.md](./a2a.md)（外部协议，语义不同）  
+> 类型：智能体 | 状态：已实现  
+> **功能规格：** [features/platform-agents.md](../features/platform-agents.md) · [features/agent-chat-websocket.md](../features/agent-chat-websocket.md)  
+> 关联：[a2a.md](./a2a.md)（外部协议，语义不同）  
 > **多模态（已实现）：** [multimodal-capabilities.md](../product/multimodal-capabilities.md) · 设计归档 [agent-multimodal-design.md](../architecture/agent-multimodal-design.md)
 
 ## 产品语义
@@ -44,14 +46,14 @@ UI：列表可显示 `内部协同 · N 子智能体`；配置在创建/编辑�
 cd backend && pip install -e ".[agent-stack]"   # deepagents、langgraph>=1.2
 ```
 
-### 对话实时通道（规划）
+### 对话实时通道
 
-| 现状 | 规划 |
-|------|------|
-| `POST /agents/{id}/chat` 整包返回；异步生成物靠 `generative_jobs` + SSE/轮询 | 对话工作台 **WebSocket** 流式 token / 工具确认 / 本对话内 job 事件 |
-| 任务中心、流程调试 | 继续 **SSE** + REST（取消/重试） |
-
-详见 [realtime-transport-design.md](../architecture/realtime-transport-design.md)。
+| 通道 | 状态 | 说明 |
+|------|------|------|
+| `POST /agents/{id}/chat` | ✅ | HTTP 整包返回；无 LLM 真 token 流式 |
+| `WS …/chat/ws` | ✅ v1 | 会话级事件总线（delta 模拟、工具确认、job 进度）；见 [features/agent-chat-websocket.md](../features/agent-chat-websocket.md) |
+| 生成任务 SSE | ✅ | `GET /generative/jobs/{id}/stream`；任务中心仍用 REST + SSE |
+| LLM 真 token 流式 | 📋 | 见 [realtime-transport-design.md](../architecture/realtime-transport-design.md) |
 
 | `Agent.config` | 默认 | 说明 |
 |----------------|------|------|

@@ -1,7 +1,9 @@
 # MCP Runner 沙箱实现技术方案
 
+> **归档：** 立项过程稿（2026-05-25）。**现网规格：** [features/tools-mcp-skills.md](../../features/tools-mcp-skills.md) · [architecture/mcp-sandbox.md](../../architecture/mcp-sandbox.md)
+
 **日期：** 2026-05-25  
-**状态：** 待评审  
+**状态：** 归档（MVP 已部分落地；以 features 为准）  
 **依赖基线：** [mcp-sandbox.md](../../architecture/mcp-sandbox.md)（架构原则）、[mcp.md](../../guides/mcp.md)（Phase 2 已完成）  
 **关联：** 工具 v2 `tool_type=script` 复用同一 Runner
 

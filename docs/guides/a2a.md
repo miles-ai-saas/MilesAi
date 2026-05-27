@@ -1,6 +1,7 @@
 # A2A 外部互联
 
 > 类型：智能体 | 状态：部分实现（登记/引用/宿主 ✅；对外暴露 Card 待做）  
+> **功能规格：** [features/a2a-interconnect.md](../features/a2a-interconnect.md)  
 > 协议：[A2A Protocol v1.0](https://a2a-protocol.org/v1.0.0/specification/) | 关联：[platform-agents.md](./platform-agents.md)
 
 **A2A** = 跨厂商 Agent Card + 标准消息调用。**不等于** `agt_sub_agent_bindings` 内部协同。

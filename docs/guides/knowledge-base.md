@@ -1,5 +1,6 @@
 # 知识库（RAG）技术方案
 
+> **功能规格：** [features/kb-ingest-retrieval.md](../features/kb-ingest-retrieval.md)  
 > 与主架构 [technical-design.md §6](../architecture/technical-design.md#6-数据与存储) 互补：本文聚焦 **知识库领域模型、入库流水线、检索与删除编排**。  
 > 配置分层（对象存储 / 向量库 / 向量化规格）见 [§6.5 存储与向量化配置策略](../architecture/technical-design.md#65-存储与向量化配置策略)。
 
@@ -260,7 +261,9 @@ OpenAPI：`/docs`（运行实例）。
 cd backend && pip install -e ".[parse-docling]"
 ```
 
-`docling` 模式下除 PDF 外还可解析 `DOCLING_EXTENSIONS` 中的版式/图片扩展名；**API 上传白名单**已包含 Office 与多模态常用格式（见 `upload_policy.py`）。扫描件 OCR、PaddleOCR 等列为后续扩展，不在当前 P0。
+`docling` 模式下除 PDF 外还可解析 `DOCLING_EXTENSIONS` 中的版式/图片扩展名；**API 上传白名单**已包含 Office（docx/pptx/xlsx）与多模态常用格式（见 `upload_policy.py`）。
+
+**图片 OCR**：默认无引擎；安装 `[multimodal]` 后使用 **pytesseract**（`chi_sim+eng`）。**PaddleOCR** 为 PRD 愿景，**按需立项**（扫描件/票据场景），见 [backlog.md §按需](../product/backlog.md#按需--有场景再立项)；实现位 `rag/parse/backends/*`，不改 ingest 主链。
 
 **分片（P1）**：Docling 导出 Markdown 后由 `MarkdownHeaderTextSplitter`（`#` / `##` / `###`）按标题切分，超长块再 `RecursiveCharacterTextSplitter`；分页通过 Docling `page_break_placeholder` 或按页导出写入 `DocumentChunk.page_no` 与向量 metadata。`pypdf` 多页 PDF 按页保留 `page_no`。
 

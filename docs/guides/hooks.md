@@ -1,6 +1,7 @@
 # 智能体钩子（Hook）
 
-> 类型：设计 + 实现对照 | 状态：**P0/P1 已实现**（Event v1、执行日志、tool 钩子；见 §4）  
+> 类型：设计 + 实现对照 | 状态：**HTTP 已实现**（Event v1、执行日志、tool 钩子；Python 未实现）  
+> **功能规格：** [features/hooks.md](../features/hooks.md)（概要）· 本文（Event v1 契约真源）  
 > 关联：[technical-design.md](../architecture/technical-design.md) §11.2
 
 ## 1. 产品定位

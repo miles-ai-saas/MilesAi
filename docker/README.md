@@ -7,7 +7,7 @@ Compose 已拆分为 **基础设施（infra）** 与 **应用** 两个文件，�
 | 文件 | 服务 | 说明 |
 |------|------|------|
 | `docker-compose.infra.yml` | pgvector、redis、minio、etcd、milvus、weaviate | 数据与基础设施 |
-| `docker-compose.yml` | api, worker, web, admin-web, flower | 业务应用 |
+| `docker-compose.yml` | api, worker, beat, mcp-runner, web, admin-web, flower | 业务应用 |
 
 ## 环境变量
 
@@ -145,5 +145,16 @@ RUN pip install --no-cache-dir -e "/app/backend[parse-docling,multimodal]"
 ```
 
 `.env` 解析相关变量见 `backend/.env.example`（`PARSE_PDF_BACKEND`、`PARSE_DOCLING_FALLBACK_PYPDF`）。
+
+## Celery Beat（智能体定时任务）
+
+| 项 | 说明 |
+|----|------|
+| 容器 | `milesai-beat`（`docker-compose.yml` → `beat`） |
+| 命令 | `celery -A app.workers.app beat -l info` |
+| 镜像 | 与 `worker` 相同（`docker/images/worker/Dockerfile`） |
+| 任务 | 每分钟 `tick_agent_schedules`，到期 schedule 投递 `run_agent_schedule` |
+
+本地仅中间件开发时：`cd backend && python cli.py beat`（与 worker 并列进程）。
 
 **实现说明**（非 PRD 全量）：[docs/guides/knowledge-base.md](../docs/guides/knowledge-base.md)、[docs/architecture/layering.md](../docs/architecture/layering.md)。

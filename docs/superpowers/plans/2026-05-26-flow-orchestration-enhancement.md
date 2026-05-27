@@ -1,8 +1,10 @@
 # 流程编排增强 — 实施计划
 
+> **归档：** 实施 checklist（2026-05-26）。**现网规格：** [features/flow-orchestration.md](../../features/flow-orchestration.md)
+
 **日期：** 2026-05-26  
 **设计文档：** [flow-orchestration-enhancement.md](../../architecture/flow-orchestration-enhancement.md)  
-**状态：** Phase 1–4 已实现
+**状态：** 归档（Phase 1–4 已实现）
 
 ---
 

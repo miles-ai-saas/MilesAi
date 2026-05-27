@@ -135,9 +135,11 @@ Celery Worker
 # Worker（已有）
 python cli.py worker
 
-# Beat（新增）
+# Beat
 python cli.py beat
 ```
+
+Docker 全栈：`docker-compose.yml` 已含 `beat` 服务（与 `worker` 同镜像）。本地仅中间件时需手动起 Beat。
 
 ### 4.3 执行上下文
 

@@ -1,6 +1,8 @@
 # 流程编排（flow_runtime + LangGraph）
 
-> 类型：流程编排 | 状态：已实现 | 关联：[technical-design.md](../architecture/technical-design.md) §9  
+> 类型：流程编排 | 状态：已实现  
+> **功能规格：** [features/flow-orchestration.md](../features/flow-orchestration.md)  
+> 关联：[technical-design.md](../architecture/technical-design.md) §9  
 > **编排增强（已实现）：** [flow-orchestration-enhancement.md](../architecture/flow-orchestration-enhancement.md)  
 > **子流程 SubFlow（已立项 · 暂不实施）：** [flow-subflow-design.md](../architecture/flow-subflow-design.md)  
 > **多模态（已实现）：** 产品说明 [multimodal-capabilities.md](../product/multimodal-capabilities.md) · 路线图 [multimodal-roadmap.md](../architecture/multimodal-roadmap.md)  

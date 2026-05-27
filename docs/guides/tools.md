@@ -1,5 +1,7 @@
 # 工具（Tools）指南
 
+**功能规格：** [features/tools-mcp-skills.md](../features/tools-mcp-skills.md)
+
 MilesAI **工具模块**管理租户可用的**平台内置工具**（含规划中的 **L2 复杂内置**）与**自定义 HTTP / 变换脚本工具**，供技能包引用、工作台试调用、以及智能体 **function calling** 自动执行。
 
 **内置复杂工具**（多库检索、合规检测等，平台实现、租户选用）见 **[工具运行时架构 §2.1](../architecture/tools-runtime.md#21-平台内置built-in)**。
@@ -17,7 +19,7 @@ MilesAI **工具模块**管理租户可用的**平台内置工具**（含规划�
 | **内置** | 代码 `BUILTIN_REGISTRY` | `invoke_builtin` | ✅ |
 | **自定义 HTTP** | `tool_tools` 表 | `invoke_custom_http` | ✅ |
 | **变换脚本 script** | `tool_tools` 表 | MCP Runner `script/exec` | ✅（需 `MCP_RUNNER_ENABLED`） |
-| **MCP tools** | `tool_mcp_services.tools_cache` | `McpServiceManager.invoke_tool` | ❌ 规划 P0（当前仅 prompt 注入） |
+| **MCP tools** | `tool_mcp_services.tools_cache` | `McpServiceManager.invoke_tool` | 🔶 工作台试调用 ✅；智能体 **prompt 注入** tool 说明；**未**纳入 `tool_agent` function calling（见 [tools-runtime.md](../architecture/tools-runtime.md)） |
 
 内置工具（v1）：
 

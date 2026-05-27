@@ -1,5 +1,7 @@
 # MCP 服务技术方案
 
+**功能规格：** [features/tools-mcp-skills.md](../features/tools-mcp-skills.md) · 沙箱设计：[mcp-sandbox.md](../architecture/mcp-sandbox.md)
+
 Model Context Protocol（MCP）在 MilesAI 中用于**注册远程工具服务**、**同步 `tools/list`**、**试调用 `tools/call`**，并通过智能体 `config.mcp_service_ids` 将工具说明注入对话上下文。
 
 ## 1. 能力范围

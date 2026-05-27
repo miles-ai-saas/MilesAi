@@ -1,8 +1,9 @@
 # 画布子流程调用（SubFlow）— 立项规格
 
 **日期：** 2026-05-26  
-**状态：** 已立项 · **暂不实施**  
-**优先级：** P2（待 [flow-orchestration-enhancement.md](./flow-orchestration-enhancement.md) Phase 1–4 稳定运行后排期）  
+**状态：** 目标规格 · **未实施**（无对应 `features/` 文档）  
+**As-Is 规格：** 无 — 子流程节点尚未落地；现网流程见 [features/flow-orchestration.md](../features/flow-orchestration.md)  
+**优先级：** P2（待 Phase 1–4 稳定运行后排期）  
 **关联：** [flows.md](../guides/flows.md)、[technical-design.md](./technical-design.md) §9、[flow-orchestration-enhancement.md](./flow-orchestration-enhancement.md)
 
 ---

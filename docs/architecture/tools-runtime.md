@@ -2,6 +2,7 @@
 
 **日期：** 2026-05-25  
 **状态：** 目标架构（部分已落地，见 §8 对照）  
+**As-Is 规格：** [features/tools-mcp-skills.md](../features/tools-mcp-skills.md) · **现网 API：** [guides/tools.md](../guides/tools.md)  
 **读者：** 产品、后端、前端  
 **关联：** [tools.md](../guides/tools.md)（实现与 API）、[mcp-sandbox.md](./mcp-sandbox.md)、[mcp.md](../guides/mcp.md)
 

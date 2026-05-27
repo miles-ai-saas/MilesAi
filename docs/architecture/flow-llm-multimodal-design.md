@@ -2,6 +2,7 @@
 
 **日期：** 2026-05-26  
 **状态：** 已实现（设计归档）  
+**As-Is 规格：** [features/flow-orchestration.md](../features/flow-orchestration.md)、[features/attachments-media-generative.md](../features/attachments-media-generative.md)  
 **产品说明：** [multimodal-capabilities.md](../product/multimodal-capabilities.md) · **路线图：** [multimodal-roadmap.md](./multimodal-roadmap.md)  
 **关联：** [multimodal-roadmap.md](./multimodal-roadmap.md)、[multimodal-capabilities.md](../product/multimodal-capabilities.md)、[flow-orchestration-enhancement.md](./flow-orchestration-enhancement.md)、[flow-generative-media-design.md](./flow-generative-media-design.md)（生图/生视频）、[flows.md](../guides/flows.md)、[model-providers.md](../guides/model-providers.md)、[technical-design.md](./technical-design.md) §9
 
@@ -11,7 +12,9 @@
 
 > **生图 / 生视频 / TTS 等生成类能力** 见独立文档 [flow-generative-media-design.md](./flow-generative-media-design.md)。本文仅覆盖 **vision 识图（输入侧）**。
 
-### 1.1 现状（As-Is）
+### 1.1 现状（As-Is，立项前快照）
+
+> **2026-05-27：** §1.2 目标已落地。本节保留立项前描述，**当前行为**以 [features/flow-orchestration.md](../features/flow-orchestration.md) 与代码为准。
 
 | 层级 | 行为 |
 |------|------|
@@ -22,7 +25,7 @@
 | **模型目录** | 支持 `model_type = vision`，LiteLLM 允许 `llm / reasoning / vision` 对话 |
 | **知识库入库** | 图片可走 OCR/占位文本 **分片入库**（RAG），与「运行时把原图送给 LLM」无关 |
 
-**结论：** 可选 vision 模型 ≠ 流程已支持多模态；当前画布是 **文本 Prompt → 文本 LLM**，未实现图/音/视频作为模型输入。
+**结论（立项前）：** 可选 vision 模型 ≠ 流程已支持多模态。**现已支持** `RunContext.media` / `LLMCall` 识图输入。
 
 ### 1.2 目标（To-Be）
 

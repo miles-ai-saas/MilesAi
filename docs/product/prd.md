@@ -2,10 +2,15 @@
 
 > **与代码实现对齐说明（2026-05）**  
 > 类型：需求基线 | 状态：只读参考（下文为立项原文，能力以「实现对照」为准）  
+> **各模块实现规格（As-Is）：** [README.md §功能节点 ↔ 文档速查](../README.md#功能节点--文档速查) · [features/](../features/)  
 > - **多模态产品能力（生文/识图/生成/入库）**：→ [multimodal-capabilities.md](./multimodal-capabilities.md)（**以该文实现状态为准**）  
 > - **流程编排**：React Flow + `flow_runtime` + LangGraph → [flows.md](../guides/flows.md)  
 > - **RAG / 知识库**：`app/rag`（parse → chunk → index → retrieve）+ `tenant/kb` → [knowledge-base.md](../guides/knowledge-base.md)、[layering.md](../architecture/layering.md)  
 > - **Docker Worker**：队列与可选依赖 → [docker/README.md](../../docker/README.md) § Celery Worker  
+
+> - **差距 backlog（⬜ 排期）：** [backlog.md](./backlog.md)
+
+<a id="as-is-module-6"></a>
 
 ### 模块6（RAG）实现对照（当前代码）
 
@@ -13,14 +18,209 @@
 |----------|----------|------|
 | Docling 文档解析 | `rag/parse/backends/docling.py` | 需 `[parse-docling]`，`PARSE_PDF_BACKEND=docling` |
 | PDF 解析 | 默认 `pypdf`（PyPDFLoader） | 无 docling 时兜底 |
-| PaddleOCR | 未默认集成 | 图：可选 `pytesseract`（`[multimodal]`）；PRD 级 OCR 待插件 |
+| PaddleOCR | 按需暂缓 | 现网：`pytesseract`（`[multimodal]`）+ Vision 识图；见 [backlog §按需](./backlog.md#按需--有场景再立项) |
 | Whisper 转写 | `rag/parse/audio_parser.py` | 需 `[multimodal]` |
 | 视频解析 | 未实现 | 上传白名单未含视频 |
-| Word/Excel/PPT 上传 | 白名单未含 Office | docling 能力已有，需放开扩展名后入库 |
+| Word/Excel/PPT 上传 | ✅ | `.docx`/`.pptx`/`.xlsx` 已在 `upload_policy.py`；解析需 docling |
 | 文本/图/音上传入库 | ✅ | `load_documents_from_bytes` → `chunk_documents` → 向量 |
 | Weaviate 检索 | ✅ | 另支持 Milvus；KB 级 `vector` / `hybrid` |
 | 以图搜图 / 文本搜图 | 未实现 | 当前为文本向量 + 关键词 hybrid |
 | Celery 异步入库 | ✅ | `ingest_document` → `rag.pipeline.ingest` |
+
+### 全模块实现对照索引
+
+| PRD 模块 | As-Is 规格 | 架构 / 指南 |
+|----------|------------|-------------|
+| 1 系统管理（租户） | [system-management.md](../features/system-management.md) | [technical-design §5](../architecture/technical-design.md#5-多租户与权限) |
+| 1a 运营后台 | [admin-ops.md](../features/admin-ops.md) | §4 运营域 |
+| 2 安全合规 | [compliance.md](../features/compliance.md)、[hooks.md](../features/hooks.md) | [compliance-word-libraries.md](../guides/compliance-word-libraries.md) |
+| 3 模型与提示词 | [models-prompts.md](../features/models-prompts.md) | [model-providers.md](../guides/model-providers.md) |
+| 4 智能体与编排 | [platform-agents.md](../features/platform-agents.md)、[flow-orchestration.md](../features/flow-orchestration.md) | [flows.md](../guides/flows.md)、[platform-agents.md](../guides/platform-agents.md) |
+| 4 定时 / WS / A2A | [agent-schedules.md](../features/agent-schedules.md)、[agent-chat-websocket.md](../features/agent-chat-websocket.md)、[a2a-interconnect.md](../features/a2a-interconnect.md) | [a2a.md](../guides/a2a.md) |
+| 5 工具 / MCP / 技能 | [tools-mcp-skills.md](../features/tools-mcp-skills.md) | [tools.md](../guides/tools.md)、[mcp.md](../guides/mcp.md) |
+| 6 RAG 知识库 | [kb-ingest-retrieval.md](../features/kb-ingest-retrieval.md) | 下表 · [knowledge-base.md](../guides/knowledge-base.md) |
+| 6b 附件 / 生成 | [attachments-media-generative.md](../features/attachments-media-generative.md) | [multimodal-capabilities.md](./multimodal-capabilities.md) |
+| 7 应用市场 | [marketplace.md](../features/marketplace.md) | [technical-design §12](../architecture/technical-design.md) |
+| 8 异步任务 | [task-center.md](../features/task-center.md) | [deployment.md](../operations/deployment.md) |
+| 9 监控统计 | [monitor.md](../features/monitor.md) | — |
+| 横切 标签 / 分类 | [tags-categories.md](../features/tags-categories.md) | — |
+
+<a id="as-is-module-1"></a>
+
+### 模块1（系统管理）实现对照
+
+**租户侧** → [system-management.md](../features/system-management.md)
+
+| PRD 表述 | 当前实现 | 备注 |
+|----------|----------|------|
+| 用户 CRUD、启用/禁用、密码重置 | ✅ | `/system/users` |
+| 批量用户操作 | ⬜ | 无批量 UI |
+| 登录日志、会话设备、强制登出 | 部分 | JWT 黑名单 logout；无设备/会话列表 UI |
+| RBAC 角色与权限 | ✅ | 菜单 + API 权限码 |
+| 租户 CRUD、数据隔离 | ✅ | 平台权限下租户 API；行级 `tenant_id` |
+| 资源配额（KB、存储、并发等） | 部分 | `sys_tenants` 配额字段；非 PRD 全量指标 |
+| 全局配置 UI（DB/MinIO/Weaviate/Redis/Celery） | ⬜ | 基础设施走 `.env` / Compose；租户侧仅 `sys_configs` 键值 |
+| AI 能力配置 UI（Embedding/OCR/Whisper） | 部分 | 模型在工作台 BYOK；OCR/Whisper 为 Worker extras |
+| 操作/审计日志查询 | ✅ | `aud_logs` |
+| 日志导出、Celery/向量库专日志 | ⬜ | — |
+| 缓存列表/清理/命中率 | ⬜ | Redis 无管理 UI |
+
+**平台运营侧** → [admin-ops.md](../features/admin-ops.md)（PRD 未单独成章，对应模块1 平台能力 + 模块7 分类）
+
+| PRD 相关能力 | 当前实现 | 备注 |
+|--------------|----------|------|
+| 平台租户管理与配额 | ✅ | `admin_frontend/tenants` |
+| 平台管理员与审计 | ✅ | `adm_admins` · `/audit` |
+| 内置模型目录 | ✅ | 租户只读 + BYOK 凭证 |
+| 工作台 / 市场分类字典 | ✅ | `sys_categories` · `mkt_categories` |
+| 计费计划与账单 | ✅ | PRD 未详述，已实现 |
+| 风控（IP 黑名单、限流） | ✅ | PRD 未详述，已实现 |
+| 租户内 RBAC / 用户 | — | 在租户 `/system/*`，非运营后台 |
+
+<a id="as-is-module-2"></a>
+
+### 模块2（安全合规）实现对照
+
+→ [compliance.md](../features/compliance.md) · [hooks.md](../features/hooks.md)
+
+| PRD 表述 | 当前实现 | 备注 |
+|----------|----------|------|
+| 敏感词 CRUD、分类、warn/block | ✅ | 多词库 + 库内词条 + 租户扫描绑定 |
+| Excel 批量导入敏感词 | 部分 | API 支持批量；无 Excel 专导入 UI |
+| 拦截范围（对话/流程文本） | ✅ | `ComplianceService` 入参/出参 |
+| OCR/音视频内容安全检测 | ⬜ | 仅文本扫描；无视觉/音频模型审核 |
+| 违规统计报表与导出 | 部分 | 拦截日志查询；无专报表 |
+| HTTP 钩子（前后置/on_error） | ✅ | Event v1；Agent/Flow/Tool 挂载 |
+| Python 脚本钩子 | ⬜ | `python_not_implemented` |
+| 数据脱敏、水印 | ⬜ | PRD §2.3 未落地 |
+| 按智能体/流程/应用绑定钩子 | 部分 | scope 支持；`scope=tool` 未接 |
+
+<a id="as-is-module-3"></a>
+
+### 模块3（模型与提示词）实现对照
+
+→ [models-prompts.md](../features/models-prompts.md)
+
+| PRD 表述 | 当前实现 | 备注 |
+|----------|----------|------|
+| 多厂商模型（DashScope/OpenAI/…/Ollama） | ✅ | LiteLLM + 内置目录 + 租户自定义 |
+| BYOK 密钥加密存储 | ✅ | `api_key_encrypted` |
+| 多模态模型（image_gen/video_gen/vision） | ✅ | `model_type` + capabilities |
+| Embedding / Rerank 与 KB 绑定 | ✅ | embedding profiles |
+| 模型健康探测与故障告警 | 部分 | 调用失败标记；无自动探测 cron |
+| 模型分组与启用/禁用 | ✅ | 分类 + 状态字段 |
+| 提示词模板 CRUD、变量占位 | ✅ | `prm_prompt_templates` |
+| 模板导入/导出、A/B 实验 | ⬜ | — |
+| 按场景分类与搜索 | ✅ | 分类 + 标签 |
+
+<a id="as-is-module-4"></a>
+
+### 模块4（智能体与编排）实现对照
+
+→ [platform-agents.md](../features/platform-agents.md) · [flow-orchestration.md](../features/flow-orchestration.md) · [agent-schedules.md](../features/agent-schedules.md) · [a2a-interconnect.md](../features/a2a-interconnect.md)
+
+| PRD 表述 | 当前实现 | 备注 |
+|----------|----------|------|
+| 自定义智能体（模型/KB/工具/流程/技能） | ✅ | `agent_type=custom` |
+| 内部协同 / 多智能体委派 | ✅ | DeepAgents + 平台规划降级 |
+| A2A 外部互联 | ✅ | Peer 登记 + 互联宿主 + custom 引用 |
+| 对话 WebSocket + HTTP | ✅ | v1 已实现 |
+| 智能体定时任务（Cron） | ✅ | Celery Beat；Compose 含 `beat` 服务 |
+| 复制/导出/导入智能体 | 部分 | CRUD；无一键导出包 |
+| 调用限流、会话上限 UI | 部分 | 风控在运营侧；智能体级限流简化 |
+| React Flow 画布（无 iframe） | ✅ | `/workbench/flows/[id]/edit` |
+| 核心节点（LLM/RAG/分支/工具/生图生视频） | ✅ | 14 类节点 |
+| PaddleOCR/Whisper 专用画布节点 | ⬜ | 能力在 KB 入库链，非独立节点 |
+| 循环节点、敏感词/审核画布节点 | ⬜ | 合规在运行时集成，非独立节点 |
+| 子流程 SubFlow | ⬜ | 已立项，暂不实施 |
+| 流程版本快照/回滚/对比 | 部分 | 版本列表 + 发布；无 diff UI |
+| 识图输入（对话/流程 LLM） | ✅ | Vision + `RunContext.media` |
+
+<a id="as-is-module-5"></a>
+
+### 模块5（工具 / MCP / 技能）实现对照
+
+→ [tools-mcp-skills.md](../features/tools-mcp-skills.md)
+
+| PRD 表述 | 当前实现 | 备注 |
+|----------|----------|------|
+| 内置工具（计算器、HTTP、KB 检索、生图/生视频等） | ✅ | `BUILTIN_REGISTRY` |
+| 网页搜索、代码执行、Redis 操作 | 部分 | 非 PRD 全量内置 |
+| 自定义 HTTP 工具 + 参数 schema | ✅ | `tool_tools` |
+| 本地脚本工具 | 部分 | 经 mcp-runner / 演进中 |
+| 工具调用日志 | ✅ | `tool_invocation_logs` |
+| MCP HTTP/SSE/STDIO | ✅ | STDIO 经 `mcp-runner` 沙箱 |
+| MCP 工具 sync、invoke | ✅ | `tools_cache` |
+| 自定义 MCP 协议插件 | ⬜ | — |
+| 技能包（SKILL.md + 导入） | ✅ | 本地/ZIP/Git |
+| 行业内置技能模板 | 部分 | 种子有限；可扩展 |
+
+<a id="as-is-module-6b"></a>
+
+### 模块6b（多模态 · PRD 差异速查）
+
+**完整产品说明：** [multimodal-capabilities.md](./multimodal-capabilities.md)
+
+| PRD 愿景 | 现网 | 备注 |
+|----------|------|------|
+| PaddleOCR 高精度中文 OCR | 按需暂缓 | 现网 pytesseract + Vision；见 [backlog §按需](./backlog.md#按需--有场景再立项) |
+| 以图搜图 / 文本搜图 | ⬜ | 检索为文本向量 + hybrid |
+| 视频入库与抽帧 | ⬜ | 上传白名单未含视频 |
+| Office 文档上传 | ✅ | docx/pptx/xlsx 白名单已开；老格式 `.doc`/`.xls`/`.ppt` 按需 |
+| TTS / 语音生成 | ⬜ | 生图/生视频已支持 |
+| 对话/流程识图 | ✅ | Vision 模型 |
+| 生图/图生图/生视频/首尾帧 | ✅ | 异步 `generative_jobs` + 任务中心 |
+| 视频升格 KB（描述入库） | ✅ | Markdown 描述链 |
+
+<a id="as-is-module-7"></a>
+
+### 模块7（应用市场）实现对照
+
+→ [marketplace.md](../features/marketplace.md)
+
+| PRD 表述 | 当前实现 | 备注 |
+|----------|----------|------|
+| 应用广场（分类/搜索/评分） | ✅ | `mkt_categories` + 星级 |
+| 一键安装（流程/智能体/KB 壳） | ✅ | manifest 复制资源 |
+| 打包、提交、审核上架 | ✅ | 租户 `marketplace:review` |
+| 应用试用 | ⬜ | 无 sandbox 试用 |
+| 安装后版本更新/回滚 | ⬜ | 安装后资源独立演进 |
+| 私有应用（仅本租户可见） | ⬜ | 审核通过即全平台 `PUBLISHED` |
+| 下载量统计、开发者反馈 | 部分 | 安装记录；无专反馈模块 |
+
+<a id="as-is-module-8"></a>
+
+### 模块8（异步任务中心）实现对照
+
+→ [task-center.md](../features/task-center.md)
+
+| PRD 表述 | 当前实现 | 备注 |
+|----------|----------|------|
+| 入库 Celery 任务列表/详情/取消/重试 | ✅ | `task_records` Tab |
+| 生图/生视频异步任务 + SSE | ✅ | `generative_jobs` Tab |
+| 任务状态与失败原因 | ✅ | |
+| Flower Worker 监控 | ✅ | 独立 `:5555`（未嵌入工作台） |
+| 任务图表统计、Worker 在线监控 | 部分 | 列表筛选；无 PRD 级图表 |
+| 批量解析/批量取消 | ⬜ | 单任务操作为主 |
+| 队列优先级/Worker 数配置 UI | ⬜ | 走 `.env` / Compose |
+| 智能体定时执行历史 | 部分 | `last_run_at`；无专 UI |
+
+<a id="as-is-module-9"></a>
+
+### 模块9（监控与统计）实现对照
+
+→ [monitor.md](../features/monitor.md)
+
+| PRD 表述 | 当前实现 | 备注 |
+|----------|----------|------|
+| 资源数量统计卡片 | ✅ | 智能体/KB/流程/任务等 |
+| 调用趋势（近 N 日） | ✅ | 默认 7 天 |
+| 健康报告 + CSV 导出 | ✅ | |
+| Webhook 阈值告警 | ✅ | test + 配置 |
+| PG/Redis/MinIO/Weaviate 进程监控 | ⬜ | 依赖外部运维 |
+| Token 消耗、模型分模型报表 | 部分 | 简化聚合；非 PRD 全量 |
+| 多模态处理量（OCR/Whisper）专统计 | ⬜ | — |
+| PDF/Excel 报表、邮件短信告警 | ⬜ | — |
 
 # 一、项目基础信息
 
@@ -270,6 +470,8 @@
 
 ## 模块1：系统管理
 
+> **As-Is 实现对照：** [文首对照表 ↑](#as-is-module-1) · [features/system-management.md](../features/system-management.md) · [features/admin-ops.md](../features/admin-ops.md)
+
 ### 1\.1 用户管理
 
 - 账号操作：支持用户新增、编辑、启用/禁用、密码重置、删除，支持批量操作。
@@ -318,6 +520,8 @@
 
 ## 模块2：安全合规模块
 
+> **As-Is 实现对照：** [文首对照表 ↑](#as-is-module-2) · [features/compliance.md](../features/compliance.md) · [features/hooks.md](../features/hooks.md)
+
 ### 2\.1 敏感词管理
 
 - 敏感词操作：支持手动新增、批量导入（Excel）、编辑、删除、分类管理，支持敏感词模糊匹配。
@@ -353,6 +557,8 @@
 
 ## 模块3：AI模型与提示词中心
 
+> **As-Is 实现对照：** [文首对照表 ↑](#as-is-module-3) · [features/models-prompts.md](../features/models-prompts.md)
+
 ### 3\.1 模型供应商管理
 
 - 支持厂商：通义DashScope、OpenAI、Anthropic、Ollama、私有大模型，支持新增自定义模型供应商。
@@ -376,6 +582,8 @@
 - 快速绑定：支持智能体、流程节点、应用模板一键选用系统提示词模板，支持模板自定义修改后绑定。
 
 ## 模块4：智能体与可视化编排
+
+> **As-Is 实现对照：** [文首对照表 ↑](#as-is-module-4) · [features/platform-agents.md](../features/platform-agents.md) · [features/flow-orchestration.md](../features/flow-orchestration.md)
 
 ### 4\.1 智能体管理
 
@@ -425,6 +633,8 @@
 
 ## 模块5：工具与MCP协议生态
 
+> **As-Is 实现对照：** [文首对照表 ↑](#as-is-module-5) · [features/tools-mcp-skills.md](../features/tools-mcp-skills.md)
+
 ### 5\.1 工具管理
 
 - 工具类型：
@@ -461,6 +671,8 @@
 - 行业模板：内置办公、客服、数据分析、医疗、金融等多领域技能包模板，适配不同行业场景。
 
 ## 模块6：RAG多模态知识库（核心）
+
+> **As-Is 实现对照：** [RAG ↑](#as-is-module-6) · [多模态 ↑](#as-is-module-6b) · [features/kb-ingest-retrieval.md](../features/kb-ingest-retrieval.md) · [knowledge-base.md](../guides/knowledge-base.md)
 
 > **运行与排错**以 [knowledge-base.md](../guides/knowledge-base.md) 为准；本节保留立项需求描述。
 
@@ -521,6 +733,8 @@
 
 ## 模块7：AI应用市场
 
+> **As-Is 实现对照：** [文首对照表 ↑](#as-is-module-7) · [features/marketplace.md](../features/marketplace.md)
+
 ### 7\.1 应用广场
 
 - 应用分类：按场景（知识库问答、客服助手、办公自动化、数据分析、多模态处理）分类，支持自定义分类。
@@ -547,6 +761,8 @@
 
 ## 模块8：异步任务中心（Celery）
 
+> **As-Is 实现对照：** [文首对照表 ↑](#as-is-module-8) · [features/task-center.md](../features/task-center.md)
+
 ### 8\.1 任务管理
 
 - 任务列表：展示所有Celery任务（文档解析、PaddleOCR识别、音频转写、向量入库等），显示任务ID、名称、状态、创建时间、执行时间、租户ID、操作人。
@@ -564,6 +780,8 @@
 - 批量任务：支持批量处理任务（批量解析文件、批量向量化），支持任务进度查看，支持批量取消任务。
 
 ## 模块9：监控与统计
+
+> **As-Is 实现对照：** [文首对照表 ↑](#as-is-module-9) · [features/monitor.md](../features/monitor.md) · 差距项见 [backlog.md](./backlog.md)
 
 ### 9\.1 系统监控
 

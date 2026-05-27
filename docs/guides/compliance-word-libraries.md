@@ -1,6 +1,7 @@
 # 合规敏感词库（多库 + 扫描绑定）
 
 > 类型：实现说明 | 状态：已实现 | 迁移：`003_compliance_word_libraries`  
+> **功能规格：** [features/compliance.md](../features/compliance.md)  
 > 关联：[technical-design.md](../architecture/technical-design.md) §11.1
 
 ## 1. 产品规则

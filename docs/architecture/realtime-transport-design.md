@@ -1,7 +1,8 @@
 # 实时通道技术设计 — 对话 WebSocket + 资源 SSE
 
 **日期：** 2026-05-26  
-**状态：** 部分已实施（工作台 WS v1；对外 HTTP 流式仍待做）  
+**状态：** 部分已实施（工作台 WS v1 ✅；LLM 真 token 流式、对外 HTTP 流式仍待做）  
+**As-Is 规格：** [features/agent-chat-websocket.md](../features/agent-chat-websocket.md)  
 **关联：** [multimodal-roadmap.md](./multimodal-roadmap.md)、[agent-multimodal-design.md](./agent-multimodal-design.md)、[platform-agents.md](../guides/platform-agents.md)、[flow-generative-media-design.md](./flow-generative-media-design.md)、[technical-design.md](./technical-design.md)
 
 ---

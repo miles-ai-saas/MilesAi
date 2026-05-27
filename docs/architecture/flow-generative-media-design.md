@@ -2,6 +2,7 @@
 
 **日期：** 2026-05-26  
 **状态：** 已实现（设计归档；生图/生视频/流程节点/工具已落地，TTS 未做）  
+**As-Is 规格：** [features/attachments-media-generative.md](../features/attachments-media-generative.md)、[features/flow-orchestration.md](../features/flow-orchestration.md)  
 **产品说明：** [multimodal-capabilities.md](../product/multimodal-capabilities.md) · **路线图：** [multimodal-roadmap.md](./multimodal-roadmap.md)  
 **关联：** [flow-llm-multimodal-design.md](./flow-llm-multimodal-design.md)（识图输入）、[flow-orchestration-enhancement.md](./flow-orchestration-enhancement.md)、[model-providers.md](../guides/model-providers.md)、[flows.md](../guides/flows.md)
 

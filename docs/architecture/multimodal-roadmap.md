@@ -72,11 +72,11 @@ media_assets                      # 生成物目录 + promote-to-kb（图片）
 - 识图多轮：`agent.config.carry_forward_media` + 对话工作台自动沿用上一轮附图
 - 流程模板 `GET /flows/templates`（registry + 创建/插入模板 UI，此前已落地）
 
-**待做（实时通道，见设计稿）：**
+**待做（实时通道）：**
 
-- [realtime-transport-design.md](./realtime-transport-design.md)：**对话 WebSocket** + **生成任务/任务中心 SSE** 分场景；非全站 WS
-- ~~任务失败重试 API~~（✅ `POST /generative/jobs/{id}/retry`）
-- ~~任务中心：关联 Celery 记录、类型筛选~~（✅）
+- [realtime-transport-design.md](./realtime-transport-design.md)：**LLM 真 token 流式**（当前 WS `chat.delta` 为整段切块）；对外 HTTP 流式仍待做
+- ~~对话 WebSocket v1~~（✅ 见 [features/agent-chat-websocket.md](../features/agent-chat-websocket.md)）
+- ~~生成任务 SSE / 任务中心~~（✅）
 
 **P1 已完成：**
 
