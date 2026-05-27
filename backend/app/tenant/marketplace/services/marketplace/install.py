@@ -1,4 +1,8 @@
-"""应用安装与安装记录。"""
+"""应用安装与安装记录。
+
+安装链路：manifest.resources → 创建 KB / Flow / Agent → 写入 AppInstall 并递增 install_count。
+Flow 默认 auto_publish；Agent 可按 manifest 绑定 kb_ids / published_flow_id。
+"""
 
 from uuid import UUID
 
@@ -26,6 +30,7 @@ class MarketplaceInstallMixin:
     """已发布应用安装到租户与安装记录。"""
 
     def _install_out(self, install: AppInstall, app_name: str, app_version: str | None = None) -> AppInstallOut:
+        """AppInstall ORM → API 响应。"""
         return AppInstallOut(
             id=install.id,
             app_id=install.app_id,
@@ -137,6 +142,25 @@ class MarketplaceInstallMixin:
             kb_id=kb_id,
             message="安装成功，已创建关联资源",
         )
+
+    async def trial_app(self, app_id: UUID) -> AppInstallResult:
+        """沙箱试用安装（24 小时有效期）。"""
+        app = await self.get_app_or_raise(app_id)
+        if app.status != MarketplaceAppStatus.PUBLISHED:
+            raise BadRequestError("应用未发布，无法试用")
+
+        existing = await self.db.scalar(
+            select(AppInstall).where(
+                AppInstall.tenant_id == self.ctx.tenant_id,
+                AppInstall.app_id == app_id,
+            )
+        )
+        if existing:
+            return AppInstallResult(
+                install=self._install_out(existing, app.name, app.version),
+                message="已安装，无需重复试用",
+            )
+        return await self.install_app(app_id)
 
     async def list_installs(self, params: PageParams) -> PageResult[AppInstallOut]:
         """分页列出本租户安装记录。"""

@@ -48,29 +48,40 @@
 
 ## P2 — 体验与运维增强
 
-| 项 | 模块 | 说明 |
-|----|------|------|
-| 基础设施可视化配置 UI | 1 | DB/MinIO/向量库/Celery 走 `.env` |
-| Redis 缓存管理 UI | 1 | 命中率、清理 |
-| 审计 / 任务日志导出 | 1 / 8 | — |
-| 敏感词 Excel 导入 UI | 2 | API 批量已有 |
-| 违规统计报表 | 2 | 拦截日志可查 |
-| 数据脱敏、导出水印 | 2 | PRD §2.3 |
-| 音视频内容安全模型审核 | 2 | 非文本合规 |
-| 提示词模板导入/导出、A/B | 3 | — |
-| 智能体一键导出/导入包 | 4 | CRUD 已有 |
-| 流程版本 diff UI | 4 | 版本列表 + 发布已有 |
-| OCR/Whisper 画布专用节点 | 4 | 能力在 KB 链 |
-| 循环 / 合规画布节点 | 4 | 合规在运行时 |
-| 网页搜索、代码执行等内置工具 | 5 | 部分 PRD 清单 |
-| MCP 自定义协议插件 | 5 | — |
-| 行业技能包种子扩充 | 5 | — |
-| 应用 sandbox 试用 | 7 | — |
-| 任务图表、Worker 配置 UI | 8 | Flower 独立 |
-| 组件级 PG/Redis/MinIO 监控 | 9 | 建议外部 Prometheus |
-| 多模态处理量专统计 | 9 | OCR/Whisper 计数 |
-| PDF/Excel 报表、邮件短信告警 | 9 | Webhook 已有 |
-| TTS / 语音生成 | 6b | 生图/生视频已支持 |
+> **2026-05-27 已实现**（✅ / 🔜 按需延后）
+
+| 项 | 模块 | 状态 | 实现说明 |
+|----|------|------|----------|
+| 基础设施可视化配置 UI | 1 | ✅ | `GET /system/infra/status` + 监控面板 |
+| Redis 缓存管理 UI | 1 | ✅ | `GET /system/infra/redis-info` + 面板 |
+| 审计 / 任务日志导出 | 1/8 | 🔜 | 导出类，按需 |
+| 敏感词 Excel 导入 UI | 2 | ✅ | `ComplianceLibraryDetail` CSV 上传 |
+| 违规统计报表 | 2 | 🔜 | 导出类，按需 |
+| 数据脱敏 | 2 | ✅ | `compliance/desensitize.py` PII 掩码 |
+| 导出水印 | 2 | 🔜 | 导出类，按需 |
+| 音视频内容安全模型审核 | 2 | ✅ | `media_audit.py` Vision 审核 |
+| 提示词模板导入/导出 | 3 | ✅ | 工作台 JSON 导入导出按钮 |
+| 提示词模板 A/B 实验 | 3 | 🔜 | 按需延后 |
+| 智能体导入包 | 4 | ✅ | `GET /agents/{id}/export` + `POST /agents/import` |
+| 智能体导出包 | 4 | 🔜 | 导出类，按需 |
+| 流程版本 diff UI | 4 | ✅ | `FlowVersionHistoryDialog` 对比 |
+| OCR 画布节点 | 4 | ✅ | `OcrExtract` |
+| Whisper 画布节点 | 4 | ✅ | `AudioTranscribe` |
+| 循环画布节点 | 4 | ✅ | `LoopNode` |
+| 合规画布节点 | 4 | ✅ | `ComplianceCheck` |
+| 网页搜索工具 | 5 | ✅ | `web_search` DuckDuckGo |
+| 代码执行工具 | 5 | ✅ | `code_execution` Runner 沙箱 |
+| MCP 自定义协议插件 | 5 | ✅ | `custom` transport |
+| 行业技能包种子扩充 | 5 | ✅ | 4 个新 SKILL.md |
+| 应用 sandbox 试用 | 7 | ✅ | `POST /apps/{id}/trial` + 试用按钮 |
+| 任务图表统计 | 8 | ✅ | 监控趋势分析 |
+| Worker 配置 UI | 8 | ✅ | `GET /system/infra/worker-info` + 面板 |
+| 组件级 PG/Redis/MinIO 监控 | 9 | ✅ | `/system/infra/status` 含 latency_ms |
+| 多模态处理量专统计 | 9 | ✅ | MonitorStats 图片/音频/视频计数 |
+| 邮件告警 | 9 | ✅ | SMTP + `email_notify_to` |
+| 短信告警 | 9 | 🔜 | 按需 |
+| PDF/Excel 报表 | 9 | 🔜 | 导出类，按需 |
+| TTS / 语音生成 | 6b | ✅ | `generate_speech` CosyVoice |
 
 ---
 

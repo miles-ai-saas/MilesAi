@@ -1,4 +1,7 @@
-"""部署级基础设施只读 API（L1 .env，租户不可修改）。"""
+"""部署级基础设施只读 API（L1 .env，租户不可修改）。
+
+/status：组件健康 + 脱敏配置预览；/redis-info、/worker-info 供运维面板扩展指标。
+"""
 
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,6 +17,7 @@ from app.tenant.system.schemas.infra import (
     InfraTestConnectionOut,
 )
 from app.tenant.system.services.infra import InfraService
+from app.utils.health_checks import get_redis_info, get_worker_info
 
 router = APIRouter()
 
@@ -38,3 +42,17 @@ async def test_infra_connection(
 ):
     components = body.components if body and body.components else None
     return ok(await _svc(db, ctx).test_connection(components))
+
+
+@router.get("/redis-info", response_model=ApiResponse[dict])
+async def get_redis_cache_info(
+    ctx: TenantContext = Depends(require_permissions("system:config:read")),
+):
+    return ok(await get_redis_info())
+
+
+@router.get("/worker-info", response_model=ApiResponse[dict])
+async def get_celery_worker_info(
+    ctx: TenantContext = Depends(require_permissions("system:config:read")),
+):
+    return ok(await get_worker_info())

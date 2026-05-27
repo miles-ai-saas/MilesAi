@@ -1,4 +1,7 @@
-"""智能体对话执行架构（与 AgentService.chat 路由一致）。"""
+"""智能体执行架构视图（与 AgentService.chat 路由一致）。
+
+``PrimaryPath`` 枚举与 ``AgentArchitectureService.overview`` 输出供工作台架构图只读展示。
+"""
 
 from typing import Any, Literal
 

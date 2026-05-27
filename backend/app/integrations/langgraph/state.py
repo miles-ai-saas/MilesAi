@@ -13,20 +13,20 @@ from typing import Annotated, Any, TypedDict
 class RAGGraphState(TypedDict, total=False):
     """retrieve → grade → generate 链路；steps 用 operator.add 累积审计步骤。"""
 
-    query: str
-    prompt_query: str
+    query: str  # 向量检索用文本（不含附图语义）
+    prompt_query: str  # 拼进 generate/fallback prompt 的用户问题
     system_prompt: str
     kb_ids: list[str]
     tenant_id: str
     top_k: int
     temperature: float
-    max_retries: int
+    max_retries: int  # poor 分支最大重试次数（agent.config.rag_max_retries）
     retry_count: int
     relevance_threshold: float
     use_llm_grade: bool
     hits: list[dict[str, Any]]
-    relevance: str
+    relevance: str  # good / poor / none
     answer: str
-    media: list[dict[str, Any]]
-    user_id: str
+    media: list[dict[str, Any]]  # 生成阶段 multimodal 附图
+    user_id: str  # 解析 attachment 鉴权用
     steps: Annotated[list[dict[str, Any]], operator.add]

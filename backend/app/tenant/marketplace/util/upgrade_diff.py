@@ -12,6 +12,8 @@ _TEXT_LIMIT = 400
 
 @dataclass
 class UpgradeFieldChange:
+    """单字段 before/after 对比。"""
+
     field: str
     label: str
     before: str | None
@@ -21,6 +23,8 @@ class UpgradeFieldChange:
 
 @dataclass
 class UpgradeResourceDiff:
+    """单个资源（KB/Flow/Agent）的字段变更集合。"""
+
     resource_type: str
     resource_id: UUID | None
     resource_name: str
@@ -30,6 +34,8 @@ class UpgradeResourceDiff:
 
 @dataclass
 class UpgradePreviewData:
+    """升级预览聚合结果（供 MarketplaceUpgradeMixin.preview_upgrade 序列化）。"""
+
     app_id: UUID
     app_name: str
     installed_version: str
@@ -63,6 +69,7 @@ def _field(
     before: Any,
     after: Any,
 ) -> UpgradeFieldChange:
+    """构造单字段 diff 项，长文本截断至 _TEXT_LIMIT。"""
     b = _norm(before)
     a = _norm(after)
     changed = b != a
@@ -100,6 +107,7 @@ def diff_knowledge_base(
     current_description: str | None,
     target: dict,
 ) -> UpgradeResourceDiff:
+    """对比知识库名称与描述。"""
     changes = [
         _field("name", "名称", current_name, target.get("name")),
         _field("description", "描述", current_description, target.get("description")),
@@ -121,6 +129,7 @@ def diff_flow(
     current_graph: dict | None,
     target: dict,
 ) -> UpgradeResourceDiff:
+    """对比流程元数据与 graph_json 结构（节点/边数）。"""
     target_graph = target.get("graph_json") if isinstance(target.get("graph_json"), dict) else None
     n_before, e_before = _graph_counts(current_graph)
     n_after, e_after = _graph_counts(target_graph)
@@ -155,6 +164,7 @@ def diff_agent(
     current_system_prompt: str | None,
     target: dict,
 ) -> UpgradeResourceDiff:
+    """对比智能体名称、描述与 system_prompt。"""
     changes = [
         _field("name", "名称", current_name, target.get("name")),
         _field("description", "描述", current_description, target.get("description")),
@@ -177,6 +187,7 @@ def build_upgrade_preview(
     target_version: str,
     resources: list[UpgradeResourceDiff],
 ) -> UpgradePreviewData:
+    """汇总各资源 diff，判定 can_upgrade / has_changes 与用户提示文案。"""
     can_upgrade = installed_version != target_version
     has_changes = any(r.has_changes for r in resources)
     if not can_upgrade:

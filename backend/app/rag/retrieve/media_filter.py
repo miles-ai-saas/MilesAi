@@ -15,6 +15,7 @@ from app.models.kb import VectorRef
 
 
 def _allowed_types(media_types: list[str] | None) -> set[str] | None:
+    """归一化 media_types 为小写集合；空则不过滤。"""
     if not media_types:
         return None
     cleaned = {t.strip().lower() for t in media_types if t and t.strip()}

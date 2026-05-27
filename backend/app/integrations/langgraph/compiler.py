@@ -18,6 +18,14 @@ RAG 相关 handle（``_gather_node_inputs``）
 - ``query`` → KnowledgeSearch / PromptTemplate
 - ``hits`` → 上游 KnowledgeSearch 输出列表
 - ``prompt`` → LLMCall
+- ``media`` → OcrExtract / AudioTranscribe（含 attachment_id 的媒体列表）
+- ``input`` → ComplianceCheck 等文本扫描节点的默认入边
+
+P2 节点（Loop / 合规 / 媒体）
+-----------------------------
+- ``LoopNode`` / ``SubFlow``：编译期校验 ``sub_flow_id``；运行时 ``ctx.run_subflow`` 递归
+- ``ComplianceCheck``：输出 ``passed`` / ``hits``，可接 ConditionBranch
+- ``OcrExtract`` / ``AudioTranscribe``：附件 → 纯文本，常作 LLMCall 前置
 
 ``SUPPORTED_CANVAS_NODE_TYPES`` 与 ``flow_runtime.nodes.registry`` 键名必须一致。
 
@@ -37,7 +45,7 @@ from dataclasses import replace
 from langchain_core.runnables import RunnableConfig
 from langgraph.graph import END, START, StateGraph
 
-from app.flow_runtime.constants import TEXT_OUTPUT_NODE_TYPES, SUB_FLOW_NODE_TYPE
+from app.flow_runtime.constants import COMPLIANCE_CHECK_NODE_TYPE, TEXT_OUTPUT_NODE_TYPES, LOOP_NODE_TYPE, SUB_FLOW_NODE_TYPE
 from app.integrations.langgraph.constants import RELEVANCE_NONE
 from app.integrations.langgraph.graph_analysis import (
     CONDITION_NODE_TYPE,
@@ -83,6 +91,7 @@ def _compile_error(
 
 
 def _error_to_str(err: dict[str, Any]) -> str:
+    """将结构化编译错误格式化为 ``[node_id] message`` 便于展示。"""
     nid = err.get("node_id")
     msg = str(err.get("message") or "")
     if nid:
@@ -118,6 +127,7 @@ class FlowCompileReport:
         errors: list[str],
         error_details: list[dict[str, Any]] | None = None,
     ):
+        """compilable=False 时 engine 为 ``builtin``，仅用于诊断不可执行。"""
         self.compilable = compilable
         self.engine = engine
         self.node_order = node_order
@@ -129,6 +139,7 @@ class FlowCompileReport:
         self.error_details = error_details or []
 
     def to_dict(self) -> dict[str, Any]:
+        """序列化为 API / 编译预览 JSON。"""
         return {
             "compilable": self.compilable,
             "engine": self.engine,
@@ -213,6 +224,24 @@ def validate_graph_for_compile(graph: dict[str, Any]) -> FlowCompileReport:
                     "SubFlow 节点须配置 sub_flow_id",
                     node_id=nid,
                 )
+        if ntype == LOOP_NODE_TYPE:
+            # LoopNode 与 SubFlow 共用 sub_flow_id；迭代次数在运行时 clamp 1–100
+            node_data = node.get("data") or {}
+            if not isinstance(node_data, dict):
+                node_data = {}
+            if not str(node_data.get("sub_flow_id") or "").strip():
+                add_error(
+                    "missing_sub_flow_id",
+                    "LoopNode 须配置 sub_flow_id",
+                    node_id=nid,
+                )
+            iterations = int(node_data.get("max_iterations") or 10)
+            if iterations < 1 or iterations > 100:
+                add_error(
+                    "invalid_max_iterations",
+                    f"LoopNode max_iterations 须在 1–100 之间，当前: {iterations}",
+                    node_id=nid,
+                )
         if ntype == CONDITION_NODE_TYPE:
             conditional_nodes.append(nid)
             handles = {normalize_branch_handle(sh) for _, sh, _ in outgoing.get(nid, [])}
@@ -270,6 +299,7 @@ def _gather_node_inputs(
     按入边 ``targetHandle`` 聚合上游 ``outputs[node_id]``。
 
     同时设置 ``input`` 为首个入边值；``rag_flow.json`` 典型：search→prompt 的 handle 为 ``hits``。
+    媒体节点可经 ``media`` handle 接收上游附件列表。
     """
     node_inputs: dict[str, Any] = {}
     for src, _sh, th in incoming.get(node_id, []):
@@ -292,6 +322,8 @@ def _gather_node_inputs(
             node_inputs[th] = raw
         if th in GRADE_BRANCH_HANDLES and isinstance(raw, dict):
             node_inputs[th] = raw
+        if th == "media" and val is not None:
+            node_inputs.setdefault("media", val)
     return node_inputs
 
 
@@ -365,6 +397,7 @@ def build_canvas_graph(graph_json: dict[str, Any]):
         """闭包：单画布节点 → ``execute_node``，写入 ``outputs[node_id]`` 与 ``steps``。"""
 
         async def run_node(state: dict[str, Any], config: RunnableConfig) -> dict[str, Any]:
+            """LangGraph 节点函数：聚合入边 → execute_node → 写入 outputs/steps。"""
             node = node_map[node_id]
             node_data = node.get("data") or {}
             if not isinstance(node_data, dict):
@@ -406,6 +439,8 @@ def build_canvas_graph(graph_json: dict[str, Any]):
     from typing import TypedDict
 
     class _State(TypedDict, total=False):
+        """LangGraph 画布状态；outputs/steps 使用 reducer 合并并行分支。"""
+
         tenant_id: str
         inputs: dict[str, Any]
         kb_ids: list[str]

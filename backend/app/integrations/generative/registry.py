@@ -4,6 +4,7 @@
 ``ModelConfig.extra.invoke_mode`` 显式配置优先；否则按 ``vendor`` + ``capability`` 默认：
 - image_gen：qwen → dashscope_t2i，doubao → volcengine_image，其它 → openai_images
 - video_gen：qwen → dashscope_t2v，doubao → volcengine_video
+- tts：默认 dashscope_tts（CosyVoice）
 
 未指定 ``model_config_id`` 时默认模型由 ``model_resolve.pick_default_generative_model``
 按 **qwen → doubao → 其它** 选取（租户配置优先于平台种子）。
@@ -13,6 +14,7 @@ from app.common.constants.model_extra import EXTRA_INVOKE_MODE
 from app.integrations.generative.constants import (
     INVOKE_DASHSCOPE_T2I,
     INVOKE_DASHSCOPE_T2V,
+    INVOKE_DASHSCOPE_TTS,
     INVOKE_OPENAI_IMAGES,
     INVOKE_VOLCENGINE_IMAGE,
     INVOKE_VOLCENGINE_VIDEO,
@@ -31,6 +33,8 @@ def resolve_invoke_mode(model: ModelConfig, *, capability: str) -> str:
         return default_image_invoke_mode(model)
     if capability == ModelCapabilityType.VIDEO_GEN.value:
         return default_video_invoke_mode(model)
+    if capability == ModelCapabilityType.TTS.value:
+        return default_tts_invoke_mode(model)
     return explicit or ""
 
 
@@ -50,3 +54,8 @@ def default_video_invoke_mode(model: ModelConfig) -> str:
     if model.vendor == ModelVendor.DOUBAO.value:
         return INVOKE_VOLCENGINE_VIDEO
     return INVOKE_DASHSCOPE_T2V
+
+
+def default_tts_invoke_mode(model: ModelConfig) -> str:
+    """未配置 extra 时的 TTS 默认路由。"""
+    return INVOKE_DASHSCOPE_TTS

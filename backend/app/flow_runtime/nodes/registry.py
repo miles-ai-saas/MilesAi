@@ -6,6 +6,12 @@ RAG 相关
 - ``KnowledgeSearch`` / ``PromptTemplate`` → ``rag_nodes``（检索 + 模板）
 - 常接在 ``TextInput`` 与 ``LLMCall`` 之间，等价于简化版 Agent 线性 RAG
 
+合规 / 媒体 / 循环
+------------------
+- ``ComplianceCheck`` → ``compliance_nodes``（敏感词扫描，warn/block 模式）
+- ``OcrExtract`` / ``AudioTranscribe`` → ``media_nodes``（附件 OCR / 音频转写）
+- ``LoopNode`` → ``loop_nodes``（循环执行 SubFlow，支持条件退出）
+
 新增节点：实现 ``(node_data, inputs, ctx) -> Any`` 并写入 ``NODE_REGISTRY``。
 """
 
@@ -26,16 +32,23 @@ from app.flow_runtime.constants import (
     RELEVANCE_GRADE_NODE_TYPE,
     STATIC_RESPONSE_NODE_TYPE,
     SUB_FLOW_NODE_TYPE,
+    COMPLIANCE_CHECK_NODE_TYPE,
+    OCR_EXTRACT_NODE_TYPE,
+    AUDIO_TRANSCRIBE_NODE_TYPE,
+    LOOP_NODE_TYPE,
     TEXT_INPUT_NODE_TYPE,
     TEXT_OUTPUT_NODE_TYPE,
 )
 from app.flow_runtime.nodes import (
+    compliance_nodes,
     control_nodes,
     grade_nodes,
     image_generate,
     video_generate,
     io_nodes,
     llm_nodes,
+    loop_nodes,
+    media_nodes,
     rag_nodes,
     subflow_nodes,
     tool_nodes,
@@ -60,6 +73,10 @@ NODE_REGISTRY: dict[str, NodeHandler] = {
     CHAT_INPUT_NODE_TYPE: io_nodes.text_input,
     CHAT_OUTPUT_NODE_TYPE: io_nodes.text_output,
     SUB_FLOW_NODE_TYPE: subflow_nodes.sub_flow,
+    LOOP_NODE_TYPE: loop_nodes.loop_node,
+    COMPLIANCE_CHECK_NODE_TYPE: compliance_nodes.compliance_check,
+    OCR_EXTRACT_NODE_TYPE: media_nodes.ocr_extract,
+    AUDIO_TRANSCRIBE_NODE_TYPE: media_nodes.audio_transcribe,
 }
 
 

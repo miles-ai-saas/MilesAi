@@ -55,6 +55,10 @@ export function FlowVersionHistoryDialog({
   const [previewLoading, setPreviewLoading] = useState(false);
   const [restoring, setRestoring] = useState(false);
   const [error, setError] = useState("");
+  const [diffMode, setDiffMode] = useState(false);
+  const [diffTarget, setDiffTarget] = useState<number | null>(null);
+  const [diffGraph, setDiffGraph] = useState<FlowGraph | null>(null);
+  const [diffLoading, setDiffLoading] = useState(false);
 
   const selectedMeta = useMemo(
     () => versions.find((v) => v.version === selected) ?? null,
@@ -129,6 +133,26 @@ export function FlowVersionHistoryDialog({
     previewGraph !== null &&
     selected !== currentVersion;
 
+  const loadDiffGraph = async (v: number) => {
+    setDiffTarget(v);
+    setDiffLoading(true);
+    try {
+      const ver = await api.getFlowVersion(flowId, v);
+      setDiffGraph(ver.graph_json);
+    } catch (e) {
+      setDiffGraph(null);
+    } finally {
+      setDiffLoading(false);
+    }
+  };
+
+  const diffResult = useMemo(() => {
+    if (!diffMode || !previewGraph || !diffGraph) return null;
+    const a = JSON.stringify(previewGraph, null, 2).split("\n");
+    const b = JSON.stringify(diffGraph, null, 2).split("\n");
+    return { a, b };
+  }, [diffMode, previewGraph, diffGraph]);
+
   return (
     <ResourceDialog
       open={open}
@@ -167,6 +191,16 @@ export function FlowVersionHistoryDialog({
             </button>
             <button
               type="button"
+              className="btn-outline text-xs"
+              onClick={() => {
+                if (diffMode) { setDiffMode(false); setDiffTarget(null); setDiffGraph(null); }
+                else { setDiffMode(true); setDiffTarget(currentVersion); void loadDiffGraph(currentVersion); }
+              }}
+            >
+              {diffMode ? "退出对比" : "对比版本"}
+            </button>
+            <button
+              type="button"
               className="btn-primary"
               disabled={!canRestore}
               title={
@@ -187,6 +221,68 @@ export function FlowVersionHistoryDialog({
           <p className="mb-3 shrink-0 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
             {error}
           </p>
+        )}
+
+        {diffMode && (
+          <div className="mb-3 shrink-0 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3">
+            <div className="flex flex-wrap items-center gap-2 text-sm">
+              <span className="font-medium">对比模式</span>
+              <span className="text-ink-muted">
+                左侧 v{selected} ↔ 右侧 v
+              </span>
+              <select
+                className="input-field !w-auto text-xs"
+                value={diffTarget ?? ""}
+                onChange={(e) => {
+                  const v = Number(e.target.value);
+                  if (v) void loadDiffGraph(v);
+                }}
+              >
+                {versions.map((v) => (
+                  <option key={v.version} value={v.version}>
+                    v{v.version} {v.version === currentVersion ? "(当前)" : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {diffResult && (
+              <div className="mt-3 max-h-60 overflow-auto rounded border border-line bg-white p-3 font-mono text-xs">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="mb-1 text-ink-faint">v{selected}</p>
+                    {diffResult.a.slice(0, 80).map((line, i) => (
+                      <p
+                        key={i}
+                        className={
+                          diffResult.b[i] !== line ? "bg-red-50 text-red-700" : "text-ink-muted"
+                        }
+                      >
+                        {line || " "}
+                      </p>
+                    ))}
+                  </div>
+                  <div>
+                    <p className="mb-1 text-ink-faint">v{diffTarget}</p>
+                    {diffResult.b.slice(0, 80).map((line, i) => (
+                      <p
+                        key={i}
+                        className={
+                          diffResult.a[i] !== line ? "bg-green-50 text-green-700" : "text-ink-muted"
+                        }
+                      >
+                        {line || " "}
+                      </p>
+                    ))}
+                  </div>
+                </div>
+                {diffResult.a.length > 80 && (
+                  <p className="mt-2 text-ink-faint">
+                    ... 仅显示前 80 行差异
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
         )}
 
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-line lg:flex-row">

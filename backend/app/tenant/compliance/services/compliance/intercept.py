@@ -1,4 +1,8 @@
-"""入出站敏感词检测与试跑扫描。"""
+"""入出站敏感词检测与试跑扫描。
+
+Agent 对话链：``AgentChatMixin.chat`` → ``check_input`` / ``check_output``；
+画布 ``ComplianceCheck`` 节点走 ``CompliancePipeline`` 但不写 InterceptLog。
+"""
 
 from app.common.exceptions import BadRequestError
 from app.tenant.compliance.models import InterceptLog, SensitiveAction

@@ -23,6 +23,7 @@ from app.core.tenant import TenantContext, tenant_filters
 
 
 def _format_param_summary(parameters: list | None) -> str:
+    """将工具 parameters schema 压缩为一行「name(必填/可选)」摘要。"""
     if not parameters:
         return ""
     parts: list[str] = []

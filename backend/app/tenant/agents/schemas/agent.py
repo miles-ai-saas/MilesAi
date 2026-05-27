@@ -220,3 +220,11 @@ class ChatResponse(BaseModel):
         default_factory=list,
         description="异步生成任务（如 pending 的生视频 job_id），供前端轮询",
     )
+
+
+class AgentPackage(BaseModel):
+    """智能体导入/导出包。"""
+
+    version: str = Field(default="1.0", description="包格式版本")
+    agent: AgentCreate = Field(description="智能体创建参数")
+

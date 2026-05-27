@@ -138,6 +138,69 @@ async def probe_components(component_ids: list[str] | None = None) -> list[dict]
     return list(results)
 
 
+async def get_worker_info() -> dict:
+    """获取 Celery Worker 状态（活跃数、队列、任务统计）。"""
+    try:
+        from app.workers.app import celery_app
+        inspect = celery_app.control.inspect()
+        stats = inspect.stats() or {}
+        active = inspect.active() or {}
+        reserved = inspect.reserved() or {}
+        active_queues = inspect.active_queues() or {}
+        scheduled = inspect.scheduled() or {}
+
+        workers = []
+        total_active = 0
+        total_reserved = 0
+        for name in sorted(set(list(stats.keys()) + list(active.keys()))):
+            w_stat = stats.get(name, {})
+            w_active = active.get(name, [])
+            w_reserved = reserved.get(name, [])
+            w_queues = active_queues.get(name, [])
+            pool = w_stat.get("pool", {})
+            workers.append({
+                "name": name,
+                "pool_size": pool.get("max-concurrency", 0) if isinstance(pool, dict) else 0,
+                "active_tasks": len(w_active),
+                "reserved_tasks": len(w_reserved),
+                "queues": [q.get("name", "") for q in w_queues] if w_queues else [],
+            })
+            total_active += len(w_active)
+            total_reserved += len(w_reserved)
+
+        return {
+            "worker_count": len(workers),
+            "workers": workers,
+            "total_active_tasks": total_active,
+            "total_reserved_tasks": total_reserved,
+            "total_scheduled": sum(len(scheduled.get(w, [])) for w in scheduled),
+        }
+    except Exception as exc:
+        return {"error": str(exc)}
+
+
+async def get_redis_info() -> dict:
+    """获取 Redis INFO 统计（内存、命中率、连接数等）。"""
+    try:
+        redis_client = get_redis()
+        info = await redis_client.info()
+        hits = info.get("keyspace_hits", 0) or 0
+        misses = info.get("keyspace_misses", 0) or 0
+        total = hits + misses
+        return {
+            "used_memory_human": info.get("used_memory_human", "N/A"),
+            "used_memory_peak_human": info.get("used_memory_peak_human", "N/A"),
+            "connected_clients": info.get("connected_clients", 0),
+            "keyspace_hits": hits,
+            "keyspace_misses": misses,
+            "hit_rate": round(hits / total * 100, 1) if total > 0 else 0,
+            "uptime_in_seconds": info.get("uptime_in_seconds", 0),
+            "redis_version": info.get("redis_version", "N/A"),
+        }
+    except Exception as exc:
+        return {"error": str(exc)}
+
+
 def build_infra_settings_preview() -> dict[str, str | None]:
     """部署级连接信息（脱敏，不含密码/完整 URL）。"""
     s = get_settings()

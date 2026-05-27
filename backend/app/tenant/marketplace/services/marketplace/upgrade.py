@@ -1,4 +1,8 @@
-"""应用升级预览与 manifest 同步。"""
+"""应用升级预览与 manifest 同步。
+
+升级链路：对比已安装 KB/Flow/Agent 与 manifest → preview → 覆盖字段并更新 installed_version。
+Flow 升级会 save_graph 并可选 remark；不自动重新 publish。
+"""
 
 from uuid import UUID
 
@@ -27,6 +31,7 @@ from app.tenant.marketplace.util.upgrade_diff import (
 
 
 def _preview_to_schema(data) -> AppUpgradePreview:
+    """UpgradePreviewData dataclass → Pydantic schema。"""
     return AppUpgradePreview.model_validate(data, from_attributes=True)
 
 
@@ -34,6 +39,7 @@ class MarketplaceUpgradeMixin:
     """升级预览与执行。"""
 
     async def _get_install_for_upgrade(self, app_id: UUID) -> tuple[AppInstall, object]:
+        """校验已安装且应用仍 published，返回 (install, app)。"""
         stmt = (
             select(AppInstall)
             .where(
@@ -51,6 +57,7 @@ class MarketplaceUpgradeMixin:
         return install, app
 
     async def _collect_upgrade_diffs(self, install: AppInstall, app) -> list:
+        """逐资源 diff 已安装实体与市场 manifest 目标值。"""
         resources_manifest = (app.manifest or {}).get("resources") or app.manifest or {}
         diffs = []
         flow_svc = FlowService(self.db, self.ctx)
@@ -100,6 +107,7 @@ class MarketplaceUpgradeMixin:
         return diffs
 
     async def preview_upgrade(self, app_id: UUID) -> AppUpgradePreview:
+        """返回升级 diff 预览（字段变更、画布节点/边数、是否可升级）。"""
         install, app = await self._get_install_for_upgrade(app_id)
         diffs = await self._collect_upgrade_diffs(install, app)
         return _preview_to_schema(
@@ -113,6 +121,7 @@ class MarketplaceUpgradeMixin:
         )
 
     async def _apply_upgrade_resources(self, install: AppInstall, app) -> None:
+        """将 manifest 字段写入已安装 KB/Flow/Agent，并更新 installed_version。"""
         resources = (app.manifest or {}).get("resources") or app.manifest or {}
         kb_svc = KnowledgeBaseService(self.db, self.ctx)
         flow_svc = FlowService(self.db, self.ctx)
@@ -157,6 +166,7 @@ class MarketplaceUpgradeMixin:
         install.installed_version = app.version
 
     async def upgrade_app(self, app_id: UUID) -> AppUpgradeResult:
+        """执行升级：应用 manifest 变更并返回版本前后信息。"""
         install, app = await self._get_install_for_upgrade(app_id)
         if install.installed_version == app.version:
             raise BadRequestError("已是最新版本")

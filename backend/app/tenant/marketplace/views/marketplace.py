@@ -194,12 +194,23 @@ async def install_app(
     return ok(await _svc(db, ctx).install_app(app_id))
 
 
+@router.post("/apps/{app_id}/trial", response_model=ApiResponse[AppInstallResult])
+async def trial_app(
+    app_id: UUID,
+    ctx: TenantContext = Depends(require_permissions("marketplace:install")),
+    db: AsyncSession = Depends(get_db),
+):
+    """沙箱试用：安装应用并标记为 24 小时试用。"""
+    return ok(await _svc(db, ctx).trial_app(app_id))
+
+
 @router.get("/apps/{app_id}/upgrade-preview", response_model=ApiResponse[AppUpgradePreview])
 async def upgrade_preview(
     app_id: UUID,
     ctx: TenantContext = Depends(require_permissions("marketplace:install")),
     db: AsyncSession = Depends(get_db),
 ):
+    """升级前 diff 预览：对比已安装资源与市场 manifest。"""
     return ok(await _svc(db, ctx).preview_upgrade(app_id))
 
 
@@ -209,6 +220,7 @@ async def upgrade_app(
     ctx: TenantContext = Depends(require_permissions("marketplace:install")),
     db: AsyncSession = Depends(get_db),
 ):
+    """确认后执行应用升级，同步 KB/Flow/Agent 与 installed_version。"""
     return ok(await _svc(db, ctx).upgrade_app(app_id))
 
 

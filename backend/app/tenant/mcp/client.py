@@ -134,6 +134,16 @@ async def mcp_json_rpc(
     req_timeout = timeout if timeout is not None else _client_timeout(connection_config, DEFAULT_INVOKE_TIMEOUT)
     cfg = dict(connection_config or {})
 
+    if t == "custom":
+        adapter_url = cfg.get("adapter_url") or endpoint_url
+        return await _simple_post_json_rpc(
+            adapter_url,
+            method,
+            params,
+            connection_config=cfg,
+            timeout=req_timeout,
+        )
+
     if t == "sse":
         try:
             return await legacy_sse_json_rpc(

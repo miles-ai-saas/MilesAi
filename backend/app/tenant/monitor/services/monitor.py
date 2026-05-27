@@ -33,7 +33,12 @@ from app.tenant.monitor.schemas.monitor import (
     TaskTrendPoint,
 )
 from app.tenant.tasks.schemas.task import TaskSummary
-from app.core.soft_delete import append_not_deleted
+import asyncio
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+
+from app.core.config import get_settings
 from app.core.service import BaseService
 
 ALERT_CONFIG_KEY = "monitor.alert"
@@ -55,6 +60,7 @@ class MonitorService(BaseService):
         return report.stats
 
     async def _task_summary(self) -> TaskSummary:
+        """按状态统计租户 Celery 任务数量。"""
         filters = tenant_filters(self.ctx, CeleryTaskRecord.tenant_id)
         summary = TaskSummary()
         for status in TaskStatus:
@@ -78,6 +84,7 @@ class MonitorService(BaseService):
         return summary
 
     async def report(self) -> MonitorReport:
+        """聚合租户资源统计、任务摘要、文档状态与多模态处理量。"""
         kb_f = append_not_deleted(tenant_filters(self.ctx, KnowledgeBase.tenant_id), KnowledgeBase)
         doc_f = append_not_deleted(tenant_filters(self.ctx, Document.tenant_id), Document)
         agent_f = append_not_deleted(tenant_filters(self.ctx, Agent.tenant_id), Agent)
@@ -108,6 +115,23 @@ class MonitorService(BaseService):
         )
         installs = await self.db.scalar(select(func.count()).select_from(AppInstall).where(*install_f))
 
+        # 多模态处理量：按 mime_type 前缀统计
+        image_docs = await self.db.scalar(
+            select(func.count())
+            .select_from(Document)
+            .where(*doc_f, Document.mime_type.like("image/%"))
+        )
+        audio_docs = await self.db.scalar(
+            select(func.count())
+            .select_from(Document)
+            .where(*doc_f, Document.mime_type.like("audio/%"))
+        )
+        video_docs = await self.db.scalar(
+            select(func.count())
+            .select_from(Document)
+            .where(*doc_f, Document.mime_type.like("video/%"))
+        )
+
         doc_status_rows = await self.db.execute(
             select(Document.status, func.count())
             .where(*doc_f)
@@ -121,6 +145,9 @@ class MonitorService(BaseService):
         stats = MonitorStats(
             knowledge_bases=kbs or 0,
             documents=docs or 0,
+            image_documents=image_docs or 0,
+            audio_documents=audio_docs or 0,
+            video_documents=video_docs or 0,
             agents=agents or 0,
             flows=flows or 0,
             intercept_logs_today=logs_today or 0,
@@ -134,12 +161,16 @@ class MonitorService(BaseService):
         )
 
     async def export_report_csv(self) -> str:
+        """导出 report 为 CSV 字符串。"""
         report = await self.report()
         buf = io.StringIO()
         writer = csv.writer(buf)
         writer.writerow(["指标", "数值"])
         writer.writerow(["知识库", report.stats.knowledge_bases])
         writer.writerow(["文档", report.stats.documents])
+        writer.writerow(["图片(OCR)", report.stats.image_documents])
+        writer.writerow(["音频(Whisper)", report.stats.audio_documents])
+        writer.writerow(["视频", report.stats.video_documents])
         writer.writerow(["智能体", report.stats.agents])
         writer.writerow(["流程", report.stats.flows])
         writer.writerow(["今日拦截", report.stats.intercept_logs_today])
@@ -159,15 +190,18 @@ class MonitorService(BaseService):
         return buf.getvalue()
 
     async def health(self) -> dict:
+        """委托 health_checks.collect_health_status 探测依赖组件。"""
         return await collect_health_status()
 
     async def get_alert_config(self) -> AlertConfig:
+        """读取租户级 monitor.alert 系统配置。"""
         row = await self.db.scalar(select(SystemConfig).where(SystemConfig.key == ALERT_CONFIG_KEY))
         if not row or not row.value:
             return AlertConfig()
         return AlertConfig.model_validate(row.value)
 
     async def save_alert_config(self, body: AlertConfig) -> AlertConfig:
+        """写入或更新 monitor.alert 配置。"""
         row = await self.db.scalar(select(SystemConfig).where(SystemConfig.key == ALERT_CONFIG_KEY))
         if row:
             row.value = body.model_dump()
@@ -181,23 +215,75 @@ class MonitorService(BaseService):
         await self.db.flush()
         return body
 
-    async def test_alert(self, body: AlertConfig) -> dict:
-        if not body.webhook_url:
-            return {"ok": False, "message": "未配置 webhook_url"}
-        payload = {
-            "event": "test",
-            "tenant_id": str(self.ctx.tenant_id),
-            "message": "MilesAi 监控告警测试",
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-        }
+    async def _send_alert_email(self, body: AlertConfig, subject: str, message: str) -> dict:
+        """发送告警邮件，未配置 SMTP 时跳过。"""
+        settings = get_settings()
+        if not body.email_notify_to or not settings.smtp_host:
+            return {"ok": False, "message": "未配置邮件收件人或 SMTP"}
+
+        recipients = [addr.strip() for addr in body.email_notify_to.split(",") if addr.strip()]
+        if not recipients:
+            return {"ok": False, "message": "邮件收件人列表为空"}
+
+        msg = MIMEMultipart()
+        msg["From"] = settings.smtp_from
+        msg["To"] = ", ".join(recipients)
+        msg["Subject"] = f"[MilesAi] {subject}"
+        msg.attach(MIMEText(message, "plain", "utf-8"))
+
+        def _send():
+            if settings.smtp_tls:
+                server = smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=10)
+                server.starttls()
+            else:
+                server = smtplib.SMTP_SSL(settings.smtp_host, settings.smtp_port, timeout=10)
+            try:
+                if settings.smtp_user:
+                    server.login(settings.smtp_user, settings.smtp_password)
+                server.send_message(msg)
+            finally:
+                server.quit()
+
         try:
-            async with httpx.AsyncClient(timeout=5.0) as client:
-                resp = await client.post(body.webhook_url, json=payload)
-            return {"ok": resp.is_success, "status": resp.status_code}
+            await asyncio.to_thread(_send)
+            return {"ok": True, "message": f"已发送至 {len(recipients)} 位收件人"}
         except Exception as exc:
-            return {"ok": False, "message": str(exc)}
+            return {"ok": False, "message": f"邮件发送失败: {exc}"}
+
+    async def test_alert(self, body: AlertConfig) -> dict:
+        """向配置的 Webhook / 邮件收件人发送测试告警。"""
+        results = {}
+
+        # Webhook 测试
+        if body.webhook_url:
+            payload = {
+                "event": "test",
+                "tenant_id": str(self.ctx.tenant_id),
+                "message": "MilesAi 监控告警测试",
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            }
+            try:
+                async with httpx.AsyncClient(timeout=5.0) as client:
+                    resp = await client.post(body.webhook_url, json=payload)
+                results["webhook"] = {"ok": resp.is_success, "status": resp.status_code}
+            except Exception as exc:
+                results["webhook"] = {"ok": False, "message": str(exc)}
+        else:
+            results["webhook"] = {"ok": False, "message": "未配置 webhook_url"}
+
+        # 邮件测试
+        if body.email_notify_to:
+            email_result = await self._send_alert_email(
+                body,
+                subject="告警测试",
+                message=f"租户 {self.ctx.tenant_id} 监控告警通道测试成功。\n时间: {datetime.now(timezone.utc).isoformat()}",
+            )
+            results["email"] = email_result
+
+        return results
 
     async def trends(self, *, days: int = 7) -> MonitorTrends:
+        """按日聚合 Celery 任务与合规拦截趋势（最多 30 天）。"""
         days = max(1, min(days, 30))
         start = datetime.now(timezone.utc) - timedelta(days=days - 1)
         task_f = append_not_deleted(
@@ -253,6 +339,7 @@ class MonitorService(BaseService):
         )
 
     async def model_usage(self, *, days: int = 7) -> ModelUsageReport:
+        """按模型聚合 Token 用量（ModelUsageLog）。"""
         days = max(1, min(days, 30))
         start = datetime.now(timezone.utc) - timedelta(days=days - 1)
         filters = tenant_filters(self.ctx, ModelUsageLog.tenant_id)
@@ -288,6 +375,7 @@ class MonitorService(BaseService):
         return ModelUsageReport(days=days, rows=items, total_tokens=total_tokens)
 
     async def notify_task_failed(self, task_name: str, fail_reason: str) -> None:
+        """Celery 任务失败时按配置推送 Webhook（静默忽略发送错误）。"""
         cfg = await self.get_alert_config()
         if not cfg.enabled or not cfg.webhook_url or not cfg.notify_on_task_failed:
             return

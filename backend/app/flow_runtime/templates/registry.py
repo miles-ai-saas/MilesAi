@@ -58,6 +58,7 @@ _REGISTRY_BY_ID = {spec.id: spec for spec in FLOW_TEMPLATE_REGISTRY}
 
 
 def _read_graph_file(name: str) -> dict[str, Any]:
+    """读取 templates 目录下 JSON 画布文件。"""
     path = _TEMPLATES_DIR / name
     return json.loads(path.read_text(encoding="utf-8"))
 

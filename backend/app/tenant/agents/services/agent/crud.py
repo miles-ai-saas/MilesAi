@@ -1,4 +1,8 @@
-"""智能体 CRUD 与详情加载。"""
+"""智能体 CRUD 与详情加载。
+
+创建/更新时同步 KB 绑定、子 Agent、A2A peer、标签；删除走 ``before_delete_agent`` 级联。
+``export_package`` / ``import_package`` 支持 JSON 包迁移（不含 KB 文档内容）。
+"""
 
 from __future__ import annotations
 
@@ -281,3 +285,35 @@ class AgentCrudMixin(BaseService):
         await TagService(self.db, self.ctx).clear_entity_tags(TagEntityType.AGENT, agent.id)
         await before_delete_agent(self.db, agent.id)
         await mark_deleted(self.db, agent)
+
+    async def export_package(self, agent_id: UUID) -> "AgentPackage":
+        """导出智能体为可移植 JSON 包。"""
+        from sqlalchemy import select
+        from app.models.agent import agent_kb_bindings
+        from app.tenant.agents.schemas.agent import AgentPackage
+
+        agent = await self.get_agent_or_raise(agent_id)
+        rows = await self.db.execute(
+            select(agent_kb_bindings.c.kb_id).where(
+                agent_kb_bindings.c.agent_id == agent_id
+            )
+        )
+        kb_ids = [row[0] for row in rows.all()]
+
+        body = AgentCreate(
+            agent_type=agent.agent_type,
+            name=agent.name,
+            description=agent.description or "",
+            system_prompt=agent.system_prompt,
+            model_config_id=agent.model_config_id,
+            prompt_template_id=agent.prompt_template_id,
+            published_flow_id=agent.published_flow_id,
+            category_id=agent.category_id,
+            config=agent.config or {},
+            kb_ids=kb_ids,
+        )
+        return AgentPackage(version="1.0", agent=body)
+
+    async def import_package(self, pkg: "AgentPackage") -> "AgentOut":
+        """从 JSON 包导入智能体。"""
+        return await self.create_agent(pkg.agent)

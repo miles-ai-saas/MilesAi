@@ -204,6 +204,7 @@ def build_rule_plan_items(
     rule_refs: list[AgentA2aPeerRef] | list[A2aPeerBinding],
     query: str,
 ) -> list[dict]:
+    """规则层命中 peer → ``{peer_id, task, trigger: rule}`` 计划项（task 为整句用户 query）。"""
     return [
         {
             "peer_id": str(r.peer_id),

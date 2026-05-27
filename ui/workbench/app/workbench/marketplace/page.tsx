@@ -348,6 +348,26 @@ export default function MarketplacePage() {
     }
   };
 
+  const onTrial = async (app: MarketplaceApp) => {
+    if (app.installed) {
+      setMsg("该应用已安装");
+      return;
+    }
+    setInstalling(app.id);
+    setMsg("");
+    try {
+      const res = await api.trialMarketplaceApp(app.id);
+      setLastResult(res);
+      setMsg("试用已安装，24 小时内有效");
+      await apps.reload();
+      if (detailAppId === app.id) await loadDetail(app.id);
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : "试用失败");
+    } finally {
+      setInstalling(null);
+    }
+  };
+
   const onSubmitReview = async (appId: string) => {
     setPublishing(appId);
     setMsg("");
@@ -502,6 +522,9 @@ export default function MarketplacePage() {
               onClick: () => void onInstall(app),
               disabled: app.installed || installing === app.id,
             },
+            ...(app.installed || installing === app.id
+              ? []
+              : [{ label: "试用", onClick: () => void onTrial(app) }]),
           ]}
         />
       );

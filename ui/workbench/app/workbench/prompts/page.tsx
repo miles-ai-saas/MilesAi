@@ -91,6 +91,23 @@ export default function PromptsPage() {
     });
   };
 
+  const onExport = (t: PromptTemplate) => {
+    const pkg = {
+      version: "1.0",
+      name: t.name,
+      content: t.content,
+      category_id: t.category_id,
+      tag_ids: t.tags?.map((tg) => tg.id) ?? [],
+    };
+    const blob = new Blob([JSON.stringify(pkg, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${t.name.replace(/[^a-zA-Z0-9\u4e00-\u9fff]/g, "_")}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <>
       <ResourceListLayout
@@ -109,6 +126,36 @@ export default function PromptsPage() {
             >
               管理标签
             </button>
+            <label className="btn-sm-outline cursor-pointer">
+              导入
+              <input
+                type="file"
+                accept=".json"
+                className="hidden"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  try {
+                    const text = await file.text();
+                    const pkg = JSON.parse(text);
+                    const t = pkg.agent || pkg;
+                    if (!t.name || !t.content) {
+                      alert("JSON 格式错误：需要 name 和 content 字段");
+                      return;
+                    }
+                    await api.createPromptTemplate(
+                      t.name,
+                      t.content,
+                      t.category_id,
+                      t.tag_ids ?? t.tags?.map((tg: { id: string }) => tg.id),
+                    );
+                    await list.reload();
+                  } catch (err) {
+                    alert(`导入失败: ${err instanceof Error ? err.message : err}`);
+                  }
+                }}
+              />
+            </label>
             <button type="button" className="btn-sm-primary" onClick={openCreate}>
               新建模板
             </button>
@@ -144,6 +191,7 @@ export default function PromptsPage() {
             }
             actions={
               <CardActions
+                actions={[{ label: "导出", onClick: () => onExport(t) }]}
                 onView={() => openView(t)}
                 onEdit={() => openEdit(t)}
                 onDelete={() => onDelete(t)}

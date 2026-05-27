@@ -2,6 +2,7 @@
 音频解析：可选 openai-whisper 转写。
 
 无 Whisper 时返回占位说明，流程可继续；与 image_parser 策略一致。
+供 ingest 入库与画布 ``AudioTranscribe`` / ``media_nodes`` 节点共用。
 """
 
 import tempfile

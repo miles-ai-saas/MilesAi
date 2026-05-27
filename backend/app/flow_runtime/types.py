@@ -11,6 +11,7 @@
 与 Agent 对话关系：``AgentService.chat`` 发布流程时构造 ``RunContext`` 并 ``get_flow_runtime().run``。
 """
 
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -54,9 +55,12 @@ class RunContext:
     parent_node_id: str | None = None  # SubFlow 父节点 ID
     subflow_depth: int = 0  # 子流程嵌套深度
     executing_node_id: str | None = None  # 当前执行节点（运行时注入）
+    run_subflow: Callable[[dict[str, Any], "RunContext"], Awaitable["RunResult"]] | None = None  # 子流程执行回调（由 flow_runner 注入，避免节点层循环引用）
 
 
 @dataclass
 class RunResult:
+    """流程单次 run 的终点输出与节点 steps 轨迹。"""
+
     output: Any  # 流程终点输出（文本或结构化）
     steps: list[dict[str, Any]] = field(default_factory=list)  # 节点执行步骤轨迹

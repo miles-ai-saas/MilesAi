@@ -122,6 +122,14 @@ class Settings(BaseSettings):
     default_chunk_size: int = 500
     default_chunk_overlap: int = 50
 
+    # SMTP 邮件告警（可选）
+    smtp_host: str = "localhost"
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""
+    smtp_from: str = "milesai@localhost"
+    smtp_tls: bool = True
+
     # 技能包文件根目录（相对 backend 目录或绝对路径）
     skills_data_root: str = ".data/skills"
 

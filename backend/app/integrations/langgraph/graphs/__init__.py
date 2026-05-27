@@ -1,7 +1,8 @@
 """
 LangGraph 状态图定义。
 
-当前导出 ``build_rag_qa_graph``（Agent 默认 RAG，非画布 ``rag_flow.json`` 模板）。
+当前导出 ``build_rag_qa_graph``（Agent 默认 RAG 引擎）。
+与画布 ``integrations.langgraph.compiler.build_canvas_graph`` 为独立编译产物。
 """
 
 from app.integrations.langgraph.graphs.rag_qa import build_rag_qa_graph

@@ -1,8 +1,13 @@
-"""SubFlow 节点：嵌套调用同租户已发布流程。"""
+"""SubFlow 节点：嵌套调用同租户已发布流程。
+
+解析 ``sub_flow_id`` 对应 graph_json，通过 ``run_subflow`` 执行子图；
+``MAX_SUBFLOW_DEPTH`` 限制嵌套层数，与 LoopNode 共用同一深度计数。
+"""
 
 from __future__ import annotations
 
 from typing import Any
+from uuid import UUID
 
 from app.common.exceptions import BadRequestError
 from app.flow_runtime.constants import MAX_SUBFLOW_DEPTH
@@ -33,8 +38,6 @@ async def sub_flow(
     parent_node_id = ctx.executing_node_id or ""
 
     async with AsyncSessionLocal() as db:
-        from uuid import UUID
-
         graph_json = await resolve_subflow_graph(
             db,
             node_data,
@@ -50,10 +53,12 @@ async def sub_flow(
         child_flow_id=sub_flow_id,
     )
 
-    from app.flow_runtime.runtime_factory import get_flow_runtime
+    run_subflow = ctx.run_subflow
+    if run_subflow is None:
+        from app.flow_runtime.runtime_factory import get_flow_runtime  # pragma: no cover
+        run_subflow = get_flow_runtime().run
 
-    runtime = get_flow_runtime()
-    result = await runtime.run(graph_json, child_ctx)
+    result = await run_subflow(graph_json, child_ctx)
     output = pick_subflow_output(result.output, node_data.get("output_key"))
     child_summary = summarize_child_steps(result.steps)
 

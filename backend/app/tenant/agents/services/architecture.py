@@ -47,6 +47,7 @@ async def _load_flow_graph(
     flow_id: UUID,
     version: int,
 ) -> dict | None:
+    """加载指定版本 graph_json，供架构预览只读画布使用。"""
     row = await flow_repo.get_version(flow_id, version)
     if not row:
         return None
@@ -60,6 +61,7 @@ def _resolve_primary_path(
     has_peer_refs: bool,
     flow_runnable: bool,
 ) -> PrimaryPath:
+    """与 AgentService.chat 相同的路由优先级判定。"""
     if agent.agent_type == AgentType.A2A:
         return "a2a_host"
     if has_bindings:
@@ -91,6 +93,7 @@ def _build_decision_steps(
     flow_runnable: bool,
     primary: PrimaryPath,
 ) -> list[ArchitectureDecisionStep]:
+    """构建架构图决策步骤列表，active 标记本次命中的主路径。"""
     kb_count = len(agent.knowledge_bases or [])
     steps: list[ArchitectureDecisionStep] = [
         ArchitectureDecisionStep(
@@ -178,12 +181,15 @@ def _build_decision_steps(
 
 
 class AgentArchitectureService(BaseService):
+    """聚合智能体绑定资源与路由判定，输出工作台架构视图。"""
+
     def __init__(self, db: AsyncSession, ctx: TenantContext) -> None:
         super().__init__(db, ctx)
         self._repo = AgentRepository(db)
         self._flow_repo = FlowRepository(db)
 
     async def overview(self, agent_id: UUID) -> AgentArchitectureOut:
+        """返回 primary_path、decision_steps、attachments 与可选 flow_graph 预览。"""
         agent = await self._repo.get_detail(agent_id)
         if not agent or is_marked_deleted(agent):
             raise NotFoundError("智能体不存在")

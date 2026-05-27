@@ -1,3 +1,5 @@
+"""运行监控 API 响应模型（统计、趋势、告警、模型用量）。"""
+
 from pydantic import BaseModel, Field
 from uuid import UUID
 
@@ -7,6 +9,9 @@ from app.tenant.tasks.schemas.task import TaskSummary
 class MonitorStats(BaseModel):
     knowledge_bases: int = Field(description="知识库数量")
     documents: int = Field(description="文档数量")
+    image_documents: int = Field(default=0, description="图片文档数量（OCR）")
+    audio_documents: int = Field(default=0, description="音频文档数量（Whisper）")
+    video_documents: int = Field(default=0, description="视频文档数量")
     agents: int = Field(description="智能体数量")
     flows: int = Field(description="流程数量")
     intercept_logs_today: int = Field(description="今日合规拦截次数")
@@ -26,6 +31,7 @@ class MonitorReport(BaseModel):
 class AlertConfig(BaseModel):
     enabled: bool = Field(default=False, description="是否启用告警")
     webhook_url: str = Field(default="", description="Webhook 通知地址")
+    email_notify_to: str = Field(default="", description="告警邮件接收人（逗号分隔）")
     notify_on_task_failed: bool = Field(default=True, description="任务失败时通知")
     notify_on_health_degraded: bool = Field(default=True, description="健康检查降级时通知")
 

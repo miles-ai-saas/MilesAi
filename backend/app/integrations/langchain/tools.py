@@ -1,10 +1,20 @@
 """
 平台内置工具注册为 LangChain ``StructuredTool``。
 
+调用链
+------
+``run_tool_calling_chat`` → ``get_all_platform_tools`` → 本模块 ``StructuredTool`` 列表
+→ LLM 选工具 → ``invoke_tool_with_context``（实际执行在 ``tenant.tools.builtins``）。
+
 与知识库相关
 ------------
 - ``knowledge_search``：单 KB 同步检索（``integrations.langchain.vectorstores.search_kb``）
 - 与 Agent ``_rag_chat`` 多 KB 路径独立；tool calling 模式下由 LLM 决定是否检索
+
+生成类 / 技能类
+---------------
+``generate_*``、``skill_*`` 的 ``_arun`` 仅占位（抛错提示走 invoke）；
+schema 供 LLM 填参，执行统一经 ``invoke_tool_with_context`` 与确认策略。
 
 其它内置：计算器、HTTP、日期时间等；租户自定义工具从 DB ``Tool`` 表加载。
 """
@@ -82,6 +92,7 @@ class SkillRunScriptInput(BaseModel):
 
 
 def _make_calculator_tool() -> StructuredTool:
+    """内置 calculator；同步 ``safe_calculate``。"""
     def _run(expression: str) -> dict:
         from app.tenant.tools.invoke import safe_calculate
 
@@ -96,6 +107,7 @@ def _make_calculator_tool() -> StructuredTool:
 
 
 def _make_http_request_tool() -> StructuredTool:
+    """内置 http_request；直连 httpx（tool_agent 路径不经 outbound URL 校验）。"""
     import httpx
 
     def _run(url: str, method: str = "GET", timeout: float = 10.0) -> dict:
@@ -111,6 +123,7 @@ def _make_http_request_tool() -> StructuredTool:
 
 
 def _make_datetime_tool() -> StructuredTool:
+    """内置 get_current_datetime；IANA 时区，默认 UTC。"""
     def _run(timezone: str | None = None) -> dict:
         from datetime import datetime
         from zoneinfo import ZoneInfo
@@ -155,6 +168,7 @@ def make_knowledge_search_tool(ctx: TenantContext) -> StructuredTool:
 
 
 def _make_skill_read_reference_tool() -> StructuredTool:
+    """技能包 references/ 读取；执行走 invoke，此处仅暴露 schema。"""
     async def _arun(path: str, max_chars: int | None = None) -> dict:
         raise RuntimeError("请通过 invoke_tool_with_context 执行技能工具")
 
@@ -167,6 +181,7 @@ def _make_skill_read_reference_tool() -> StructuredTool:
 
 
 def _make_skill_run_script_tool() -> StructuredTool:
+    """技能包 scripts/ 沙箱执行；执行走 invoke，此处仅暴露 schema。"""
     async def _arun(
         path: str,
         params: dict | None = None,
@@ -184,10 +199,12 @@ def _make_skill_run_script_tool() -> StructuredTool:
 
 
 def get_skill_bound_tools() -> list[StructuredTool]:
+    """Agent 绑定 ``skill_package_id`` 时追加的技能工具对。"""
     return [_make_skill_read_reference_tool(), _make_skill_run_script_tool()]
 
 
 def _make_generate_image_tool() -> StructuredTool:
+    """generate_image schema；``enable_generative_tools`` 时挂载。"""
     async def _arun(
         prompt: str,
         size: str | None = None,
@@ -206,6 +223,7 @@ def _make_generate_image_tool() -> StructuredTool:
 
 
 def _make_generate_video_tool() -> StructuredTool:
+    """generate_video schema；异步 Celery 任务，常需用户确认。"""
     async def _arun(
         prompt: str,
         duration: int | None = None,
@@ -332,6 +350,7 @@ async def invoke_platform_tool(
     agent_id: UUID | None = None,
     invoke_source: str = "agent",
 ) -> dict:
+    """LangChain/流程侧统一入口：委托 ``invoke_tool_with_context``（含确认与审计）。"""
     from app.tenant.tools.invoke import invoke_tool_with_context
 
     return await invoke_tool_with_context(

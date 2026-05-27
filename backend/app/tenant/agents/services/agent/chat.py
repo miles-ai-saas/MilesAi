@@ -1,4 +1,9 @@
-"""智能体对话编排：A2A、子 Agent、流程画布、RAG。"""
+"""智能体对话编排：A2A、子 Agent、流程画布、RAG。
+
+路由优先级与 ``AgentService`` / ``architecture`` 一致：
+A2A Host → 子 Agent 规划 → A2A Peer → published_flow 画布 → ``rag_chat``。
+每条路径均经合规 scan + Hook 包裹，出站再 ``check_output``。
+"""
 
 from __future__ import annotations
 

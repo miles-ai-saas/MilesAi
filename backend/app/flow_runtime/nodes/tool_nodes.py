@@ -1,4 +1,8 @@
-"""画布平台工具节点（含技能包 skill_* 工具）。"""
+"""画布平台工具节点（含技能包 skill_* 工具）。
+
+调用链：``platform_tool`` → ``invoke_tool_with_context`` → ``handlers.BUILTIN_HANDLERS``。
+节点 ``data.tool_slug`` 指定工具；``param_from_input`` / ``merge_input`` 合并上游 inputs。
+"""
 
 from __future__ import annotations
 
@@ -6,8 +10,10 @@ from typing import Any
 from uuid import UUID
 
 from app.common.exceptions import BadRequestError
+from app.core.tenant import TenantContext
 from app.flow_runtime.types import RunContext
 from app.infra.db import AsyncSessionLocal
+from app.tenant.tools.invoke import invoke_tool_with_context
 
 
 def _build_invoke_params(
@@ -15,6 +21,7 @@ def _build_invoke_params(
     inputs: dict[str, Any],
     ctx: RunContext,
 ) -> dict[str, Any]:
+    """合并节点固定 params、param_from_input 映射与上游 inputs；按 slug 注入默认值。"""
     params = dict(node_data.get("params") or {})
     if not isinstance(params, dict):
         raise BadRequestError("params 须为对象")
@@ -41,8 +48,7 @@ def _build_invoke_params(
 
 
 def _tenant_context_from_run(ctx: RunContext) -> "TenantContext":
-    from app.core.tenant import TenantContext
-
+    """从 RunContext 构造 TenantContext，供工具 invoke 鉴权。"""
     uid = UUID(ctx.user_id) if ctx.user_id else UUID(int=0)
     return TenantContext(
         user_id=uid,
@@ -67,8 +73,6 @@ async def platform_tool(
     tenant_ctx = _tenant_context_from_run(ctx)
     agent_id = UUID(ctx.agent_id) if ctx.agent_id else None
     confirmed = bool(node_data.get("confirmed", True))
-
-    from app.tenant.tools.invoke import invoke_tool_with_context
 
     async with AsyncSessionLocal() as db:
         output = await invoke_tool_with_context(

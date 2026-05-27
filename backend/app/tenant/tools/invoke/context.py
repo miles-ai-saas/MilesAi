@@ -101,7 +101,11 @@ async def invoke_tool_with_context(
     agent_id: UUID | None = None,
     invoke_source: str = "api",
 ) -> dict:
-    """带确认策略与审计日志的工具调用入口。"""
+    """带确认策略、Hook 与审计日志的工具调用入口。
+
+    链路：resolve_tool_meta → 确认校验 → BEFORE_TOOL Hook → invoke_tool_by_name
+    → 写 invocation_log → AFTER_TOOL Hook。
+    """
     meta = await resolve_tool_meta(db, ctx, name, tool_id=tool_id)
     slug = meta["slug"]
     resolved_tool_id = meta.get("tool_id") or tool_id

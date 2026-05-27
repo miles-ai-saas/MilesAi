@@ -3,12 +3,14 @@ RAG 问答 LangGraph（Agent 默认 RAG 引擎）。
 
 节点流
 ------
-START → retrieve（``retrieve_hits`` 多 KB）
+START → retrieve（``retrieve_hits`` 多 KB；仅用 ``query`` 文本，不用附图）
      → grade_documents（分数阈值或 LLM 评判 good/poor/none）
      → route_after_grade
-         - good → generate（``build_rag_user_prompt`` + ``ainvoke_chat``）
+         - good → generate（``build_rag_user_prompt`` + ``ainvoke_chat``，可带 media）
          - poor → prepare_retry（top_k×2，≤20）→ retrieve
          - none / 重试耗尽 → fallback（低相关或无命中话术）
+
+``query`` 用于检索；``prompt_query`` 写入生成 prompt（Agent 附图场景可与 query 不同）。
 
 状态字段见 ``integrations.langgraph.state.RAGGraphState``；
 ``agent.config`` 可设 ``rag_max_retries``、``relevance_threshold``、``use_llm_grade``。
@@ -159,6 +161,7 @@ async def prepare_retry(state: RAGGraphState) -> dict[str, Any]:
 
 
 def _prompt_user_query(state: RAGGraphState) -> str:
+    """生成阶段用户问题：优先 prompt_query，否则 query。"""
     return (state.get("prompt_query") or state.get("query") or "").strip()
 
 
@@ -264,7 +267,7 @@ async def fallback(state: RAGGraphState, config: RunnableConfig) -> dict[str, An
 
 
 def build_rag_qa_graph():
-    """编译前 StateGraph：retrieve → grade → generate|retry|fallback。"""
+    """编译前 StateGraph：retrieve → grade → generate|retry|fallback（不含 checkpointer）。"""
     graph = StateGraph(RAGGraphState)
     graph.add_node("retrieve", retrieve)
     graph.add_node("grade_documents", grade_documents)

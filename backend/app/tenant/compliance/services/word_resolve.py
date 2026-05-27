@@ -1,4 +1,12 @@
-"""词条解析、扫描词表合并（BLOCK 优先）。"""
+"""
+词条解析、扫描词表合并（BLOCK 优先）。
+
+调用方
+------
+- ``CompliancePipeline`` / ``intercept``：Agent 对话敏感词扫描
+- ``compliance_nodes.compliance_check``：画布 ComplianceCheck 节点
+- 词库 CRUD：``get_or_create_entry`` 去重创建词条行
+"""
 
 from uuid import UUID
 
@@ -79,6 +87,7 @@ async def get_or_create_entry(
     tenant_id: UUID,
     word: str,
 ) -> SensitiveWordEntry:
+    """按租户 + 词面查找或新建 ``SensitiveWordEntry``（未绑定词库前仅占位）。"""
     normalized = word.strip()
     existing = (
         await db.execute(

@@ -223,6 +223,8 @@ export const api = {
     post<{ results: InfraComponentStatus[] }>("/system/infra/test-connection", {
       components: components?.length ? components : undefined,
     }),
+  getRedisInfo: () => get<Record<string, unknown>>("/system/infra/redis-info"),
+  getWorkerInfo: () => get<Record<string, unknown>>("/system/infra/worker-info"),
   upsertSystemConfig: (key: string, value: unknown, description?: string) =>
     put<{ key: string; value: Record<string, unknown> }>(`/system/configs/${encodeURIComponent(key)}`, {
       value: typeof value === "object" && value !== null ? value : { value },
@@ -1062,6 +1064,8 @@ export const api = {
     http.delete(`/marketplace/apps/${appId}/ratings/mine`).then(() => undefined),
   installMarketplaceApp: (appId: string) =>
     post<AppInstallResult>(`/marketplace/apps/${appId}/install`),
+  trialMarketplaceApp: (appId: string) =>
+    post<AppInstallResult>(`/marketplace/apps/${appId}/trial`),
   getMarketplaceUpgradePreview: (appId: string) =>
     get<import("./types").AppUpgradePreview>(`/marketplace/apps/${appId}/upgrade-preview`),
   upgradeMarketplaceApp: (appId: string) =>

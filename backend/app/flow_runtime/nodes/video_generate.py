@@ -20,6 +20,7 @@ from app.tenant.generative.services.job import GenerativeJobService
 
 
 def _optional_uuid(raw: Any) -> UUID | None:
+    """将节点/入边中的 attachment id 转为 UUID，空值返回 None。"""
     if not raw:
         return None
     return UUID(str(raw))

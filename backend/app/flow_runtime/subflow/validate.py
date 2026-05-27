@@ -1,4 +1,7 @@
-"""SubFlow 编译期校验（published/pinned、环、深度）。"""
+"""SubFlow 编译期校验（published/pinned、环、深度）。
+
+FlowService 保存/发布前调用；LoopNode 与 SubFlow 共用 sub_flow_id 校验逻辑。
+"""
 
 from __future__ import annotations
 
@@ -26,6 +29,7 @@ def _compile_error(
     *,
     node_id: str | None = None,
 ) -> dict[str, Any]:
+    """结构化校验错误（与 compiler._compile_error 字段一致）。"""
     return {"code": code, "message": message, "node_id": node_id}
 
 
@@ -74,6 +78,7 @@ async def _max_chain_depth(
     visiting: set[str],
     current_depth: int,
 ) -> int:
+    """DFS 计算子流程引用链最大深度，检测间接环。"""
     key = str(start_flow_id)
     if key in visiting:
         return current_depth
@@ -117,7 +122,7 @@ async def validate_subflow_references(
     tenant_id: UUID,
     current_flow_id: UUID | None,
 ) -> list[dict[str, Any]]:
-    """返回结构化编译错误列表。"""
+    """校验画布中所有 SubFlow 引用；返回结构化错误列表（空表示通过）。"""
     repo = FlowRepository(db)
     errors: list[dict[str, Any]] = []
 

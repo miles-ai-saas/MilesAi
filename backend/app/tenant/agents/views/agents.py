@@ -14,7 +14,7 @@ from app.infra.db import get_db
 from app.core.deps import get_page_params, require_permissions
 from app.common.response import ok, page_ok
 from app.core.tenant import TenantContext
-from app.tenant.agents.schemas.agent import AgentCreate, AgentOut, AgentUpdate, ChatRequest, ChatResponse
+from app.tenant.agents.schemas.agent import AgentCreate, AgentOut, AgentPackage, AgentUpdate, ChatRequest, ChatResponse
 from app.tenant.agents.schemas.meta import AgentMetaOut
 from app.tenant.agents.schemas.architecture import AgentArchitectureOut
 from app.tenant.agents.schemas.schedule import AgentScheduleCreate, AgentScheduleOut, AgentScheduleUpdate
@@ -197,3 +197,25 @@ async def chat_agent(
 ):
     """主对话入口：合规 → 钩子 → A2A/子 Agent/流程/RAG 路由（见 AgentService.chat）。"""
     return ok(await _svc(db, ctx).chat(agent_id, body))
+
+
+@router.get("/{agent_id}/export", response_model=ApiResponse[AgentPackage])
+async def export_agent(
+    agent_id: UUID,
+    ctx: TenantContext = Depends(require_permissions("agent:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    """导出智能体配置为 JSON 包（可跨租户导入）。"""
+    pkg = await _svc(db, ctx).export_package(agent_id)
+    return ok(pkg)
+
+
+@router.post("/import", response_model=ApiResponse[AgentOut])
+async def import_agent(
+    body: AgentPackage,
+    ctx: TenantContext = Depends(require_permissions("agent:write")),
+    db: AsyncSession = Depends(get_db),
+):
+    """从 JSON 包导入智能体。"""
+    agent = await _svc(db, ctx).import_package(body)
+    return ok(agent)

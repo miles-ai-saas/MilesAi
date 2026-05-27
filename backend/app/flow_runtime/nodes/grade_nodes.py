@@ -1,4 +1,8 @@
-"""画布相关性评分节点（对齐 Agent ``rag_qa.grade_documents``）。"""
+"""画布相关性评分节点（对齐 Agent ``rag_qa.grade_documents``）。
+
+输出 ``relevance`` 为 good / poor / none，compiler 映射为三路条件边 handle。
+``use_llm_grade=True`` 时委托 ``integrations.langgraph.grading.llm_grade_relevance``。
+"""
 
 from __future__ import annotations
 

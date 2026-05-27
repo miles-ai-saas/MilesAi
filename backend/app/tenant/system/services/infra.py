@@ -17,6 +17,7 @@ class InfraService(BaseService):
     """L1 部署基础设施：只读展示 + 连接测试（不写配置）。"""
 
     async def get_status(self) -> InfraStatusOut:
+        """聚合各组件 probe 结果与 settings_preview。"""
         data = await collect_infra_status()
         return InfraStatusOut(
             healthy=data["healthy"],
@@ -26,6 +27,7 @@ class InfraService(BaseService):
         )
 
     async def test_connection(self, components: list[str] | None = None) -> InfraTestConnectionOut:
+        """按需探测指定组件；未知 id 标记为 skipped。"""
         ids = components if components else list(COMPONENT_IDS)
         unknown = [c for c in ids if c not in COMPONENT_IDS]
         results = [InfraComponentStatusOut.model_validate(r) for r in await probe_components(ids)]

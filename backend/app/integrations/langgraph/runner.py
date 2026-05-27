@@ -71,7 +71,10 @@ async def run_rag_workflow(
     media: list[MediaRefIn] | None = None,
     user_id: UUID | None = None,
 ) -> tuple[str, list[dict[str, Any]], list[dict[str, Any]]]:
-    """执行 RAG LangGraph，返回 (answer, hits, steps)。"""
+    """执行 RAG LangGraph，返回 (answer, hits, steps)。
+
+    ``thread_id`` 写入 checkpointer；``configurable.model`` 供各节点 ``_cfg_model`` 读取。
+    """
     from app.infra.db import AsyncSessionLocal
     from app.tenant.models.services.model_resolve import resolve_model_for_invoke
 

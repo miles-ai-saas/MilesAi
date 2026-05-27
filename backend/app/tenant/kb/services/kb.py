@@ -500,6 +500,7 @@ class KnowledgeBaseService(BaseService):
         kb: KnowledgeBase,
         body: SearchRequest,
     ) -> tuple[str, list[float], list[str] | None]:
+        """CLIP 视觉检索：文本搜图或以 query_document_id 图片 embedding 搜图。"""
         if not kb.visual_embedding_model_config_id:
             raise BadRequestError("知识库未配置 CLIP 视觉向量化模型")
         media_types = list(body.media_types) if body.media_types else ["image"]

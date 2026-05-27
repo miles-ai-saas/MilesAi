@@ -2,6 +2,7 @@
 视频解析：ffmpeg 抽音轨转写 + 关键帧 OCR（可选）。
 
 无 ffmpeg / Whisper / pytesseract 时仍返回占位文本，保证 ingest 可继续。
+供 KB 多模态文档入库；检索时可经 ``query_document_id`` 现场解析为 query。
 """
 
 from __future__ import annotations

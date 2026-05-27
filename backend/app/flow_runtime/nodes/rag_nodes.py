@@ -18,6 +18,7 @@ from typing import Any
 from uuid import UUID
 
 from app.core.soft_delete import is_marked_deleted
+from app.infra.db import AsyncSessionLocal
 from app.rag.generate import format_hits_context, retrieve_hits
 from app.flow_runtime.types import RunContext
 from app.tenant.prompts.models import PromptTemplate
@@ -40,7 +41,6 @@ async def knowledge_search(
     top_k = int(node_data.get("top_k") or 5)
     retrieval_mode = str(node_data.get("retrieval_mode") or "default").strip() or "default"
     kb_ids = [str(kb_id)] if kb_id else ctx.kb_ids
-    from app.infra.db import AsyncSessionLocal
 
     async with AsyncSessionLocal() as db:
         return await retrieve_hits(
@@ -63,8 +63,6 @@ async def _load_prompt_template_content(
         tenant_uuid = UUID(tenant_id)
     except (ValueError, TypeError):
         return None
-
-    from app.infra.db import AsyncSessionLocal
 
     async with AsyncSessionLocal() as db:
         tpl = await db.get(PromptTemplate, tid)
@@ -100,6 +98,7 @@ def _apply_prompt_placeholders(
     query: str,
     hits: Any,
 ) -> str:
+    """将模板占位符 {{用户提问}} / {{检索结果}} 替换为 query 与 hits 上下文。"""
     if isinstance(hits, list) and hits and isinstance(hits[0], dict):
         context = format_hits_context(hits)
     else:

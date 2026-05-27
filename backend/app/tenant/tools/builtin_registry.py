@@ -42,6 +42,22 @@ BUILTIN_REGISTRY: list[dict] = [
             {"name": "limit", "type": "integer", "required": False, "default": 5},
         ],
     },
+    # P2: 语音合成（TTS）— DashScope CosyVoice，生成 WAV 附件
+    {
+        "slug": "generate_speech",
+        "name": "语音合成",
+        "description": "将文本转为语音（TTS），支持音色、语速调节",
+        "category_slug": "general",
+        "version": "1.0.0",
+        "require_confirmation": False,
+        "generative_only": True,
+        "parameters": [
+            {"name": "text", "type": "string", "description": "语音合成文本（最长 1000 字符）", "required": True},
+            {"name": "voice", "type": "string", "required": False, "default": "longxiaochun"},
+            {"name": "speech_rate", "type": "number", "required": False, "default": 1.0},
+            {"name": "model_config_id", "type": "string", "description": "tts 模型配置 UUID，可选", "required": False},
+        ],
+    },
     {
         "slug": "generate_video",
         "name": "生视频",
@@ -140,6 +156,33 @@ BUILTIN_REGISTRY: list[dict] = [
             },
         ],
     },
+    # P2: 网页搜索 — 免 API Key，DuckDuckGo Instant Answer
+    {
+        "slug": "web_search",
+        "name": "网页搜索",
+        "description": "使用 DuckDuckGo 搜索网页，返回摘要与相关链接",
+        "category_slug": "data",
+        "version": "1.0.0",
+        "require_confirmation": False,
+        "parameters": [
+            {"name": "query", "type": "string", "description": "搜索关键词", "required": True},
+            {"name": "max_results", "type": "integer", "required": False, "default": 5},
+        ],
+    },
+    # P2: 代码执行 — Runner 隔离子进程，30s/256MB 限制
+    {
+        "slug": "code_execution",
+        "name": "代码执行",
+        "description": "在沙箱中执行 Python 代码片段（须符合安全校验）",
+        "category_slug": "general",
+        "version": "1.0.0",
+        "require_confirmation": True,
+        "parameters": [
+            {"name": "code", "type": "string", "description": "Python 代码片段", "required": True},
+            {"name": "timeout", "type": "integer", "required": False, "default": 30},
+            {"name": "memory", "type": "integer", "required": False, "default": 256},
+        ],
+    },
     {
         "slug": "skill_read_reference",
         "name": "读取技能参考",
@@ -176,6 +219,7 @@ GENERATIVE_SLUGS = {t["slug"] for t in BUILTIN_REGISTRY if t.get("generative_onl
 
 
 def get_builtin(slug: str) -> dict | None:
+    """按 slug 查找内置工具元数据（名称、参数 schema、确认策略等）。"""
     for t in BUILTIN_REGISTRY:
         if t["slug"] == slug:
             return t

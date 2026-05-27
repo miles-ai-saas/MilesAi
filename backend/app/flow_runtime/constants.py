@@ -1,4 +1,7 @@
-"""画布节点类型名（registry、LangGraph 编译与分析共用）。"""
+"""画布节点类型名（registry、LangGraph 编译与分析共用）。
+
+P2 新增：LoopNode、ComplianceCheck、OcrExtract、AudioTranscribe。
+"""
 
 TEXT_INPUT_NODE_TYPE = "TextInput"
 TEXT_OUTPUT_NODE_TYPE = "TextOutput"
@@ -15,7 +18,16 @@ CHAT_OUTPUT_NODE_TYPE = "ChatOutput"
 IMAGE_GENERATE_NODE_TYPE = "ImageGenerate"
 VIDEO_GENERATE_NODE_TYPE = "VideoGenerate"
 SUB_FLOW_NODE_TYPE = "SubFlow"
+# P2: 循环节点 — 固定次数/条件退出
+LOOP_NODE_TYPE = "LoopNode"
+# P2: 合规检查节点 — 敏感词扫描
+COMPLIANCE_CHECK_NODE_TYPE = "ComplianceCheck"
+# P2: OCR 文字提取节点
+OCR_EXTRACT_NODE_TYPE = "OcrExtract"
+# P2: 音频转写节点（Whisper）
+AUDIO_TRANSCRIBE_NODE_TYPE = "AudioTranscribe"
 MAX_SUBFLOW_DEPTH = 3
+MAX_LOOP_ITERATIONS = 100
 
 CONDITIONAL_NODE_TYPES = frozenset({CONDITION_NODE_TYPE, RELEVANCE_GRADE_NODE_TYPE})
 
@@ -41,4 +53,8 @@ CANVAS_NODE_TYPES = frozenset({
     IMAGE_GENERATE_NODE_TYPE,
     VIDEO_GENERATE_NODE_TYPE,
     SUB_FLOW_NODE_TYPE,
+    LOOP_NODE_TYPE,
+    COMPLIANCE_CHECK_NODE_TYPE,
+    OCR_EXTRACT_NODE_TYPE,
+    AUDIO_TRANSCRIBE_NODE_TYPE,
 })

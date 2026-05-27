@@ -1,4 +1,4 @@
-"""媒体资产 HTTP API。"""
+"""媒体资产 HTTP API：生成物列表、编辑与升格知识库。"""
 
 from uuid import UUID
 
@@ -33,6 +33,7 @@ async def list_media_assets(
     ctx: TenantContext = Depends(require_permissions("attachment:read")),
     db: AsyncSession = Depends(get_db),
 ):
+    """分页列出 AI 生成图片/视频等素材。"""
     result = await _svc(db, ctx).list_assets(
         params, kind=kind, source=source, has_kb_document=has_kb_document
     )
@@ -75,4 +76,5 @@ async def promote_media_asset_to_kb(
     ctx: TenantContext = Depends(require_permissions("kb:write")),
     db: AsyncSession = Depends(get_db),
 ):
+    """升格为 KB 文档并可选触发 ingest 解析。"""
     return ok(await _svc(db, ctx).promote_to_kb(asset_id, body))

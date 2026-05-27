@@ -63,6 +63,7 @@ def _artifacts_from_tool_output(output: dict) -> list[ChatArtifact]:
 
 
 def _tools_to_openai_schema(tools: list) -> list[dict]:
+    """StructuredTool → LiteLLM/OpenAI ``tools`` 数组（name、description、parameters JSON Schema）。"""
     schemas: list[dict] = []
     for t in tools:
         schema = {"type": "function", "function": {"name": t.name, "description": t.description or t.name}}
@@ -81,6 +82,7 @@ async def _litellm_with_tools(
     *,
     temperature: float,
 ) -> Any:
+    """带 ``tools`` / ``tool_choice=auto`` 的 LiteLLM ``acompletion`` 封装。"""
     import litellm
     from app.integrations.litellm.adapter import resolve_litellm_model, _resolve_api_base, _ensure_chat_model_type
 
@@ -109,7 +111,13 @@ async def run_tool_calling_chat(
     agent_id: UUID,
     system_prompt: str,
 ) -> ChatResponse:
-    """当 agent.config.enable_tool_calling 为真时，走工具调用循环。"""
+    """
+    LiteLLM 多轮 function calling 主循环。
+
+    流程：解析模型 → 按 ``tool_slugs`` 过滤工具 → 多轮 ``acompletion`` →
+    ``invoke_tool_with_context`` 执行；需确认时返回 ``pending_tool``；
+    ``generate_*`` 异步任务返回 ``generative_jobs``；同步附件写入 ``artifacts``。
+    """
     if not agent.model_config:
         raise ValueError("工具调用需要配置大模型")
 

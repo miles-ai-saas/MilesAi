@@ -2,6 +2,7 @@
 图片解析：Pillow 读图 + 可选 pytesseract OCR。
 
 无 OCR 时仍返回占位文本，保证 ingest 不失败（检索质量依赖后续安装 multimodal 依赖）。
+供 ingest 入库与画布 ``OcrExtract`` / ``media_nodes`` 节点共用。
 """
 
 from io import BytesIO

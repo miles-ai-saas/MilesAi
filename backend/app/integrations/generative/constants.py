@@ -12,6 +12,9 @@ INVOKE_DASHSCOPE_T2I = "dashscope_t2i"
 INVOKE_DASHSCOPE_T2V = "dashscope_t2v"
 INVOKE_VOLCENGINE_VIDEO = "volcengine_video"
 
+# --- TTS ---
+INVOKE_DASHSCOPE_TTS = "dashscope_tts"
+
 # --- 生视频 extra / 轮询 ---
 EXTRA_VIDEO_RESOLUTION = "video_resolution"
 EXTRA_VIDEO_DURATION = "video_duration"

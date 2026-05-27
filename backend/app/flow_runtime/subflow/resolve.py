@@ -1,4 +1,8 @@
-"""子流程 graph 解析与 RunContext 构造。"""
+"""子流程 graph 解析与 RunContext 构造。
+
+SubFlow / LoopNode 共用：``resolve_subflow_graph`` 按 published/pinned 加载子图；
+``build_child_context`` 处理 input_mapping 与 subflow_depth 递增。
+"""
 
 from __future__ import annotations
 
@@ -19,6 +23,7 @@ VERSION_POLICY_PINNED = "pinned"
 
 
 def _resolve_node_type(node: dict[str, Any]) -> str:
+    """从 React Flow 节点 JSON 解析 type（与 compiler.resolve_node_type 逻辑一致）。"""
     node_data = node.get("data") or {}
     if not isinstance(node_data, dict):
         node_data = {}
@@ -43,6 +48,7 @@ def iter_subflow_nodes(graph: dict[str, Any]) -> list[tuple[str, dict[str, Any]]
 
 
 def _parse_sub_flow_id(node_data: dict[str, Any]) -> UUID:
+    """解析并校验 SubFlow/LoopNode 的 sub_flow_id。"""
     raw = node_data.get("sub_flow_id")
     if not raw:
         raise BadRequestError("SubFlow 节点须配置 sub_flow_id")
@@ -85,6 +91,7 @@ async def resolve_subflow_graph(
 
 
 def _resolve_mapped_value(key: str, inputs: dict[str, Any], ctx: RunContext) -> Any:
+    """input_mapping 源 key：优先当前 inputs，其次 parent ctx.inputs。"""
     if key in inputs and inputs[key] is not None:
         return inputs[key]
     if key in ctx.inputs and ctx.inputs[key] is not None:
@@ -147,10 +154,12 @@ def build_child_context(
         parent_flow_id=parent_flow_id,
         parent_node_id=parent_node_id,
         subflow_depth=parent_ctx.subflow_depth + 1,
+        run_subflow=parent_ctx.run_subflow,  # 传播子流程回调到子 context
     )
 
 
 def pick_subflow_output(result: Any, output_key: str | None) -> Any:
+    """从子流程 run 结果中抽取 output_key 或默认 output 字段。"""
     if output_key:
         if isinstance(result, dict) and output_key in result:
             return result[output_key]

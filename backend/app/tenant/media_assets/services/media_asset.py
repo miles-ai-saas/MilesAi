@@ -1,4 +1,8 @@
-"""媒体资产：登记、列表、升格入库。"""
+"""媒体资产：登记、列表、升格入库。
+
+登记链路：``persist_generated_bytes`` → ``register_media_asset``（生图/生视频/TTS 附件）。
+升格入库：图片/视频附件 → KB Document → 可选 ``ingest_document`` 解析入库。
+"""
 
 from __future__ import annotations
 
@@ -38,12 +42,14 @@ SOURCE_FLOW_NODE = "flow_node"
 
 
 def _source_from_purpose(purpose: str) -> str:
+    """根据附件 purpose 推断资产来源（agent_tool / flow_node）。"""
     if purpose == PURPOSE_FLOW_GENERATED:
         return SOURCE_FLOW_NODE
     return SOURCE_AGENT_TOOL
 
 
 def _kind_from_mime(mime_type: str) -> str:
+    """MIME → 资产 kind（video / image）。"""
     if mime_type.startswith("video/"):
         return "video"
     return "image"
@@ -106,6 +112,8 @@ async def register_media_asset(
 
 
 class MediaAssetService(BaseService):
+    """租户生成素材库：分页列表、元数据编辑、删除与升格 KB。"""
+
     def __init__(self, db: AsyncSession, ctx: TenantContext) -> None:
         super().__init__(db, ctx)
         self.repo = MediaAssetRepository(db)
@@ -119,6 +127,7 @@ class MediaAssetService(BaseService):
         source: str | None = None,
         has_kb_document: bool | None = None,
     ) -> PageResult[MediaAssetOut]:
+        """分页列出媒体资产，可按 kind/source/是否已入库筛选。"""
         filters: list[ColumnElement[bool]] = [
             MediaAsset.tenant_id == self.ctx.tenant_id,
             not_deleted(MediaAsset),
@@ -142,10 +151,12 @@ class MediaAssetService(BaseService):
         return PageResult(items=items, total=page.total, page=page.page, size=page.size)
 
     async def get(self, asset_id: UUID) -> MediaAssetOut:
+        """单条详情（含 attachment / cover 预览元数据）。"""
         row = await self._get_or_raise(asset_id)
         return await self._to_out(row)
 
     async def update(self, asset_id: UUID, body: MediaAssetUpdate) -> MediaAssetOut:
+        """更新标题与标签。"""
         row = await self._get_or_raise(asset_id)
         if body.title is not None:
             row.title = body.title.strip() or None
@@ -156,10 +167,12 @@ class MediaAssetService(BaseService):
         return await self._to_out(row)
 
     async def delete(self, asset_id: UUID) -> None:
+        """软删媒体资产记录（不删底层 attachment）。"""
         row = await self._get_or_raise(asset_id)
         await mark_deleted(self.db, row)
 
     async def promote_to_kb(self, asset_id: UUID, body: PromoteToKbRequest) -> MediaAssetOut:
+        """将生成物升格为 KB 文档；视频默认以 Markdown 描述入库供检索。"""
         row = await self._get_or_raise(asset_id)
         if row.kb_document_id:
             raise BadRequestError("该资产已升格入库，请勿重复操作")
@@ -224,6 +237,7 @@ class MediaAssetService(BaseService):
         return await self._to_out(row)
 
     async def _to_out(self, row: MediaAsset) -> MediaAssetOut:
+        """ORM → API，附带 attachment / cover 嵌套对象。"""
         att = await self.att_repo.get_by_id(row.attachment_id)
         attachment_out = AttachmentOut.model_validate(att) if att and not is_marked_deleted(att) else None
         cover_out = None
@@ -258,6 +272,7 @@ class MediaAssetService(BaseService):
         return text.encode("utf-8"), base, "text/markdown"
 
     async def _get_or_raise(self, asset_id: UUID) -> MediaAsset:
+        """加载资产并校验租户归属。"""
         row = await self.repo.get_by_id(asset_id)
         if not row or is_marked_deleted(row):
             raise NotFoundError("媒体资产不存在")
@@ -265,6 +280,7 @@ class MediaAssetService(BaseService):
         return row
 
     async def _get_attachment_or_raise(self, attachment_id: UUID) -> Attachment:
+        """加载附件并确认 object_key 已就绪（非 pending）。"""
         att = await self.att_repo.get_by_id(attachment_id)
         if not att or is_marked_deleted(att):
             raise NotFoundError("附件不存在")
