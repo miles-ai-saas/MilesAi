@@ -4,12 +4,14 @@ Revision ID: 001
 Revises:
 Create Date: 2026-05-21
 
-表结构与索引以各 ORM 模型的 __tablename__ / __table_args__ 为准；
+表结构与索引以各 ORM 模型的 ``__tablename__`` / ``__table_args__`` 为准；
 通过 ``Base.metadata.create_all`` 建表（逻辑外键，无数据库 FK）。
 
-历史说明：原 002–012 增量迁移曾合并进 001；``002_agt_schedules`` 为后续补表。
-新环境：``alembic upgrade head``。已跑过 001 的库需再执行至 002 以创建 ``agt_schedules`` 等增量表。
+新环境：``alembic upgrade head``。
 
+已有库（曾跑过旧版 002–015 增量链且 schema 已对齐当前 ORM）：
+``alembic stamp 001``，勿重复 upgrade。
+清库重建：drop database 或 ``drop_all`` 后 ``alembic upgrade head``。
 """
 
 from typing import Sequence, Union

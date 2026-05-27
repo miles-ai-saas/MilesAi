@@ -150,7 +150,10 @@ tenant/tools/
 | `aud_` | 租户审计 | `aud_logs` |
 | `adm_` | 运营后台 | `adm_admins`、`adm_audit_logs` |
 
-数据库迁移仅保留 `alembic/versions/001_initial_schema.py`（按 ORM metadata 建表）。清库后执行：`alembic upgrade head`。
+数据库迁移仅保留 `alembic/versions/001_initial_schema.py`（按 ORM metadata 一次性建表）。
+
+- **新环境 / 清库后**：`alembic upgrade head` 或 `python cli.py init-db`
+- **已有库且 schema 已与当前 ORM 一致**（曾跑过旧 002–015 链）：`alembic stamp 001`，勿重复 upgrade
 
 **逻辑外键**：ORM 列使用 UUID，不建数据库 `FOREIGN KEY`；关联用 `relationship(..., foreign_keys=..., primaryjoin=...)`。删除级联由应用层或 `relationship(cascade=...)` 负责。
 
