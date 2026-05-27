@@ -54,10 +54,12 @@ def embed_texts_for_model(model: ModelConfig, texts: list[str]) -> list[list[flo
 def _register_builtin_providers() -> None:
     """模块加载时注册内置 Provider。"""
     from app.integrations.embeddings.constants import (
+        INVOKE_MODE_CLIP,
         INVOKE_MODE_LITELLM,
         INVOKE_MODE_LOCAL,
         INVOKE_MODE_OPENAI_COMPATIBLE,
     )
+    from app.integrations.embeddings.providers.clip import ClipEmbeddingProvider
     from app.integrations.embeddings.providers.litellm import LiteLLMEmbeddingProvider
     from app.integrations.embeddings.providers.local import LocalEmbeddingProvider
     from app.integrations.embeddings.providers.openai_compatible import (
@@ -65,6 +67,7 @@ def _register_builtin_providers() -> None:
     )
 
     register_embedding_provider(INVOKE_MODE_LOCAL, LocalEmbeddingProvider())
+    register_embedding_provider(INVOKE_MODE_CLIP, ClipEmbeddingProvider())
     register_embedding_provider(
         INVOKE_MODE_OPENAI_COMPATIBLE, OpenAICompatibleEmbeddingProvider()
     )

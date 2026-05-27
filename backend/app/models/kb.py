@@ -46,6 +46,9 @@ class KnowledgeBase(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         UUID(as_uuid=True), nullable=False
     )
     embedding_dimension: Mapped[int] = mapped_column(Integer, default=768, nullable=False)
+    visual_embedding_model_config_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), nullable=True
+    )
     chunk_size: Mapped[int] = mapped_column(Integer, default=500, nullable=False)
     chunk_overlap: Mapped[int] = mapped_column(Integer, default=50, nullable=False)
     retrieval_mode: Mapped[str] = mapped_column(String(16), default="vector", nullable=False)

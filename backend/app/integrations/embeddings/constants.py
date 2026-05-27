@@ -14,6 +14,7 @@ extra 键
 """
 
 INVOKE_MODE_LOCAL = "local"
+INVOKE_MODE_CLIP = "clip"
 INVOKE_MODE_LITELLM = "litellm"
 INVOKE_MODE_OPENAI_COMPATIBLE = "openai_compatible"
 

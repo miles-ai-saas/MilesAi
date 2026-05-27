@@ -16,13 +16,12 @@
 - KB CRUD、配额查询、embedding profiles 目录
 - 文档上传 → Celery `ingest_document`（含 **视频** MP4/MOV/WebM）
 - 文档状态机、分片列表、重试、删除（级联向量/OSS）
-- `POST …/search` vector / hybrid + **`media_types` 过滤** + **`query_document_id` 以图/视频搜（OCR MVP）**
+- `POST …/search` vector / hybrid + **`media_types` 过滤** + **`query_document_id` 以图/视频搜（OCR MVP）** + **`visual_search` CLIP 视觉相似度**
 - 检索日志 `kb_search_logs`
 - 前端：`/workbench/kb`、`/workbench/kb/[id]`
 
 ### 1.2 明确不做
 
-- CLIP / 视觉向量真·以图搜图（当前为 OCR 文本 + 语义检索 MVP）
 - PaddleOCR / 高精度 OCR 插件（按需，见 [backlog.md](../product/backlog.md)）
 
 ---
@@ -31,7 +30,7 @@
 
 | 表 | 说明 |
 |----|------|
-| `kb_bases` | embedding 维度、chunk、retrieval_mode、hybrid_alpha、rerank |
+| `kb_bases` | embedding 维度、chunk、retrieval_mode、hybrid_alpha、rerank、**visual_embedding_model_config_id（CLIP）** |
 | `kb_documents` | OSS 路径、status、celery_task_id |
 | `kb_document_chunks` | 分片正文（PG） |
 | `kb_vector_refs` | 外部 vector_id |
@@ -59,7 +58,7 @@ POST /kb/{id}/documents/{doc_id}/retry
 GET  /kb/{id}/documents/{doc_id}/chunks
 DELETE /kb/{id}/documents/{doc_id}
 GET  /kb/{id}/search-logs
-POST /kb/{id}/search             # SearchRequest: query, top_k, mode…
+POST /kb/{id}/search             # SearchRequest: query, top_k, mode, visual_search…
 ```
 
 ---
@@ -73,7 +72,7 @@ upload → OSS + kb_documents (PENDING)
 Worker:
     load_documents_from_bytes (pypdf | docling | text | image | audio)
     → chunk_documents
-    → embed_texts_for_kb
+    → embed_texts_for_kb（文本）或 CLIP 图片向量（配置了 visual 模型时）
     → upsert_chunk_vector
     → PG chunks + vector_refs
     → status READY
@@ -87,7 +86,7 @@ Worker:
 
 ```
 POST /search
-    → embed_query_for_kb
+    → visual_search ? CLIP embed(query|参考图) : embed_query_for_kb（含 OCR MVP）
     → rag.retrieve.search_kb_chunks (vector | hybrid RRF)
     → 可选 rerank
     → 回填 PG chunk 正文
@@ -103,7 +102,7 @@ POST /search
 | 项 | 说明 |
 |----|------|
 | `VECTOR_STORE_BACKEND` | weaviate / milvus（部署级 L1） |
-| `embedding_profile` | 创建 KB 时选择，如 `local-bge-zh`(768)、`dashscope-v3`(1024) |
+| `embedding_profile` | 创建 KB 时选择，如 `local-bge-zh`(768)、`dashscope-v3`(1024)；可选 `clip-vit-b-32`(512) 作视觉模型 |
 | `PARSE_PDF_BACKEND` | `pypdf` \| `docling` |
 | `[parse-docling]` / `[multimodal]` | 可选依赖 |
 
@@ -135,7 +134,7 @@ backend/app/deletion/cascade.py          # 删 KB 级联
 1. 创建 KB 选 profile → 上传 txt → task + READY
 2. search 返回 hits + score；hybrid 与 vector 模式切换
 3. 删 document → 向量与 OSS 清理
-4. 改 embedding 维度 → 创建后 PATCH 拒绝
+5. 配置 CLIP 视觉模型 → 上传图片 → visual_search 以图搜图 / 文本搜图
 
 ---
 

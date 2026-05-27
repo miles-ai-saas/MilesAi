@@ -30,6 +30,10 @@ function embeddingDimension(m: ModelConfig): number {
   return typeof dim === "number" ? dim : 0;
 }
 
+function isClipModel(m: ModelConfig): boolean {
+  return m.extra?.invoke_mode === "clip";
+}
+
 export default function KbPage() {
   const router = useRouter();
   const { ready } = useRequireAuth();
@@ -43,6 +47,7 @@ export default function KbPage() {
   const [embeddingModels, setEmbeddingModels] = useState<ModelConfig[]>([]);
   const [rerankModels, setRerankModels] = useState<ModelConfig[]>([]);
   const [embeddingModelId, setEmbeddingModelId] = useState("");
+  const [visualModelId, setVisualModelId] = useState("");
   const [rerankModelId, setRerankModelId] = useState("");
   const [rerankCandidateK, setRerankCandidateK] = useState(DEFAULT_RERANK_CANDIDATE_K);
   const [retrievalMode, setRetrievalMode] = useState<"vector" | "hybrid">("vector");
@@ -75,7 +80,8 @@ export default function KbPage() {
       .listModelConfigs({ model_type: "embedding" })
       .then((items) => {
         setEmbeddingModels(items);
-        setEmbeddingModelId((prev) => prev || items[0]?.id || "");
+        const textModels = items.filter((m) => m.extra?.invoke_mode !== "clip");
+        setEmbeddingModelId((prev) => prev || textModels[0]?.id || items[0]?.id || "");
       })
       .catch(() => {});
     api
@@ -83,6 +89,15 @@ export default function KbPage() {
       .then(setRerankModels)
       .catch(() => {});
   }, [ready]);
+
+  const textEmbeddingModels = useMemo(
+    () => embeddingModels.filter((m) => !isClipModel(m)),
+    [embeddingModels],
+  );
+  const clipModels = useMemo(
+    () => embeddingModels.filter((m) => isClipModel(m)),
+    [embeddingModels],
+  );
 
   const filtered = useMemo(
     () => filterBySearch(list.items, search, (kb) => `${kb.name} ${kb.description ?? ""}`),
@@ -95,7 +110,8 @@ export default function KbPage() {
     setDescription("");
     setChunkSize(DEFAULT_CHUNK_SIZE);
     setChunkOverlap(DEFAULT_CHUNK_OVERLAP);
-    setEmbeddingModelId(embeddingModels[0]?.id || "");
+    setEmbeddingModelId(textEmbeddingModels[0]?.id || embeddingModels[0]?.id || "");
+    setVisualModelId("");
     setRerankModelId("");
     setRerankCandidateK(DEFAULT_RERANK_CANDIDATE_K);
     setRetrievalMode("vector");
@@ -112,6 +128,7 @@ export default function KbPage() {
     setRetrievalMode(kb.retrieval_mode === "hybrid" ? "hybrid" : "vector");
     setHybridAlpha(kb.hybrid_alpha ?? 0.5);
     setRerankModelId(kb.rerank_model_config_id ?? "");
+    setVisualModelId(kb.visual_embedding_model_config_id ?? "");
     setRerankCandidateK(kb.rerank_candidate_k ?? DEFAULT_RERANK_CANDIDATE_K);
     setDialogOpen(true);
   };
@@ -129,12 +146,14 @@ export default function KbPage() {
           hybrid_alpha: hybridAlpha,
           rerank_model_config_id: rerankModelId || null,
           rerank_candidate_k: rerankModelId ? rerankCandidateK : undefined,
+          visual_embedding_model_config_id: visualModelId || null,
         });
       } else {
         await api.createKb({
           name: name.trim() || `知识库 ${list.total + 1}`,
           description: description || undefined,
           embedding_model_config_id: embeddingModelId || undefined,
+          visual_embedding_model_config_id: visualModelId || null,
           chunk_size: chunkSize,
           chunk_overlap: chunkOverlap,
           retrieval_mode: retrievalMode,
@@ -338,7 +357,7 @@ export default function KbPage() {
               value={embeddingModelId}
               onChange={(e) => setEmbeddingModelId(e.target.value)}
             >
-              {embeddingModels.map((m) => (
+              {textEmbeddingModels.map((m) => (
                 <option key={m.id} value={m.id}>
                   {m.name}
                   {embeddingDimension(m) ? `（${embeddingDimension(m)} 维）` : ""}
@@ -352,6 +371,28 @@ export default function KbPage() {
           <p className="text-xs text-ink-faint">
             向量化模型：{editing.embedding_model_name ?? "—"}（{editing.embedding_dimension}{" "}
             维），创建后不可修改。
+          </p>
+        )}
+        <label className="block text-xs text-ink-muted">
+          CLIP 视觉模型（可选，以图搜图）
+          <select
+            className="input-field mt-1 w-full"
+            value={visualModelId}
+            onChange={(e) => setVisualModelId(e.target.value)}
+          >
+            <option value="">不启用</option>
+            {clipModels.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.name}
+                {embeddingDimension(m) ? `（${embeddingDimension(m)} 维）` : ""}
+                {m.source === "builtin" ? " · 内置" : ""}
+              </option>
+            ))}
+          </select>
+        </label>
+        {clipModels.length === 0 && (
+          <p className="text-xs text-ink-faint">
+            未找到 CLIP 模型。请执行 model-catalog seed 或在模型页添加 invoke_mode=clip 的 embedding 模型。
           </p>
         )}
         <label className="block text-xs text-ink-muted">

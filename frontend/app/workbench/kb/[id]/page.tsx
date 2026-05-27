@@ -82,6 +82,7 @@ export default function KbDetailPage() {
   const [searchMode, setSearchMode] = useState<"default" | "vector" | "hybrid">("default");
   const [searchMediaTypes, setSearchMediaTypes] = useState<string[]>([]);
   const [searchQueryDocId, setSearchQueryDocId] = useState("");
+  const [searchVisual, setSearchVisual] = useState(false);
   const [searching, setSearching] = useState(false);
   const [searchResultMode, setSearchResultMode] = useState("");
   const [searchHits, setSearchHits] = useState<
@@ -247,9 +248,14 @@ export default function KbDetailPage() {
     [docs.items],
   );
 
+  const imageDocs = useMemo(
+    () => docs.items.filter((d) => d.status === "ready" && /^image\//.test(d.mime_type)),
+    [docs.items],
+  );
+
   const onSearch = async () => {
     const q = searchQ.trim();
-    if (!q && !searchQueryDocId) return;
+    if (searchVisual ? !q && !searchQueryDocId : !q && !searchQueryDocId) return;
     setSearching(true);
     setAlert(null);
     try {
@@ -258,6 +264,7 @@ export default function KbDetailPage() {
         top_k: searchTopK,
         ...(searchMediaTypes.length ? { media_types: searchMediaTypes as ("text" | "image" | "audio" | "video")[] } : {}),
         ...(searchQueryDocId ? { query_document_id: searchQueryDocId } : {}),
+        ...(searchVisual ? { visual_search: true } : {}),
       });
       setSearchResultMode(res.mode);
       setSearchHits(res.hits);
@@ -470,7 +477,7 @@ export default function KbDetailPage() {
           <h2 className="text-sm font-semibold text-ink">检索测试</h2>
           <p className="mt-1 text-xs text-ink-faint">
             默认使用本库配置（{retrievalModeLabel(kb.retrieval_mode, kbMeta?.retrieval_modes)}）。
-            专有名词、编号可尝试「混合」。文本搜图：勾选「图片」；以图搜图：选择参考文档。
+            专有名词、编号可尝试「混合」。文本搜图：勾选「图片」+ OCR 检索；真·以图搜图：勾选「CLIP 视觉相似度」并选择参考图或输入描述。
           </p>
           <div className="mt-4 flex flex-col gap-3">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
@@ -548,13 +555,28 @@ export default function KbDetailPage() {
                   onChange={(e) => setSearchQueryDocId(e.target.value)}
                 >
                   <option value="">不选</option>
-                  {imageVideoDocs.map((d) => (
+                  {(searchVisual ? imageDocs : imageVideoDocs).map((d) => (
                     <option key={d.id} value={d.id}>
                       {d.filename}
                     </option>
                   ))}
                 </select>
               </label>
+              {kb.visual_embedding_model_config_id ? (
+                <label className="inline-flex items-center gap-1.5 rounded-lg border border-line px-2 py-1">
+                  <input
+                    type="checkbox"
+                    checked={searchVisual}
+                    onChange={(e) => {
+                      setSearchVisual(e.target.checked);
+                      if (e.target.checked && searchMediaTypes.length === 0) {
+                        setSearchMediaTypes(["image"]);
+                      }
+                    }}
+                  />
+                  CLIP 视觉相似度
+                </label>
+              ) : null}
             </div>
           </div>
           {searchResultMode && (

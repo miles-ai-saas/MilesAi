@@ -30,6 +30,10 @@ from app.rag.chunk import chunk_documents
 from app.rag.index.gateway import upsert_chunk_vector
 from app.rag.parse import vector_type_for_document
 from app.rag.parse.loaders import load_documents_from_bytes
+from app.integrations.langchain.visual_embeddings import (
+    embed_image_chunks_vectors_sync,
+    should_use_visual_image_embedding,
+)
 
 
 class EmbedTextsForKb(Protocol):
@@ -92,7 +96,10 @@ def run_ingest_pipeline(
         on_before_index(db, doc.id)
 
     chunks_text = [c.content for c in chunks]
-    vectors = embed_texts(db, kb, chunks_text)
+    if should_use_visual_image_embedding(kb, data.filename, data.mime_type):
+        vectors = embed_image_chunks_vectors_sync(db, kb, raw, len(chunks_text))
+    else:
+        vectors = embed_texts(db, kb, chunks_text)
     vector_type = vector_type_for_document(data.filename, data.mime_type)
 
     # 逐分片事务：chunk.id 作为 Milvus/Weaviate 主键与 vector_ref 外键

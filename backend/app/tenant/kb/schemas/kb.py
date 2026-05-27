@@ -42,6 +42,10 @@ class KnowledgeBaseCreate(BaseModel):
         None,
         description="向量化模型（model_type=embedding），默认内置 BGE；创建后不可修改",
     )
+    visual_embedding_model_config_id: UUID | None = Field(
+        None,
+        description="CLIP 视觉向量化模型；配置后图片入库写入视觉向量，并支持 visual_search",
+    )
     retrieval_mode: RetrievalMode = Field(
         RETRIEVAL_VECTOR,
         description="检索策略：vector=纯语义；hybrid=向量+关键词（Weaviate BM25 / Milvus+PG）",
@@ -79,6 +83,10 @@ class KnowledgeBaseUpdate(BaseModel):
         le=100,
         description="重排首轮召回候选数上限",
     )
+    visual_embedding_model_config_id: UUID | None = Field(
+        default=None,
+        description="CLIP 视觉向量化模型；设为 null 可关闭",
+    )
 
     @model_validator(mode="before")
     @classmethod
@@ -106,6 +114,12 @@ class KnowledgeBaseOut(BaseModel):
     embedding_model_config_id: UUID = Field(description="向量化模型配置 ID")
     embedding_model_name: str | None = Field(default=None, description="向量化模型名称")
     embedding_dimension: int = Field(description="向量维度")
+    visual_embedding_model_config_id: UUID | None = Field(
+        default=None, description="CLIP 视觉向量化模型 ID"
+    )
+    visual_embedding_model_name: str | None = Field(
+        default=None, description="CLIP 视觉向量化模型名称"
+    )
     chunk_size: int = Field(description="分片大小（字符数）")
     chunk_overlap: int = Field(description="分片重叠长度（字符数）")
     retrieval_mode: str = Field(description="检索策略")
@@ -155,7 +169,11 @@ class SearchRequest(BaseModel):
     query: str = Field(default="", description="检索查询文本（可与 query_document_id 组合）")
     query_document_id: UUID | None = Field(
         default=None,
-        description="以图/视频搜：对该文档 OCR/转写后作为查询（文本搜图/以图搜图 MVP）",
+        description="以图/视频搜：对该文档 OCR/转写后作为查询（文本搜图/以图搜图 MVP）；visual_search 时为参考图",
+    )
+    visual_search: bool = Field(
+        default=False,
+        description="CLIP 视觉相似度检索（需 KB 配置 visual_embedding_model_config_id）",
     )
     media_types: list[MediaType] | None = Field(
         default=None,

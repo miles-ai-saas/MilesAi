@@ -15,6 +15,7 @@ from app.common.constants.model_extra import EXTRA_INVOKE_MODE
 from app.integrations.embeddings.constants import (
     EXTRA_EMBEDDING_BATCH_SIZE,
     EXTRA_EMBEDDING_DIMENSION,
+    INVOKE_MODE_CLIP,
     INVOKE_MODE_LOCAL,
     INVOKE_MODE_OPENAI_COMPATIBLE,
 )
@@ -65,6 +66,22 @@ BUILTIN_CATALOG: list[dict] = [
             EXTRA_INVOKE_MODE: INVOKE_MODE_OPENAI_COMPATIBLE,
             EXTRA_EMBEDDING_DIMENSION: 1024,
             EXTRA_EMBEDDING_BATCH_SIZE: 10,
+        },
+    },
+    {
+        "model_code": "clip-vit-b-32",
+        "name": "本地 CLIP ViT-B-32",
+        "vendor": ModelVendor.OTHER.value,
+        "provider": "local",
+        "model_name": "clip-ViT-B-32",
+        "model_type": ModelCapabilityType.EMBEDDING.value,
+        "description": "视觉相似度检索（以图搜图/文本搜图）；图片入库时写入 CLIP 向量。",
+        "context_window": "—",
+        "sort_order": 3,
+        "is_featured": False,
+        "extra": {
+            EXTRA_INVOKE_MODE: INVOKE_MODE_CLIP,
+            EXTRA_EMBEDDING_DIMENSION: 512,
         },
     },
     # --- 重排序（RAG 精排，模型页配置 API Key 后可用于测试）---

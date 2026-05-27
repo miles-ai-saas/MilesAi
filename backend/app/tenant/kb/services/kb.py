@@ -29,6 +29,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.integrations.embeddings.runtime import embedding_dimension_from_model
 from app.integrations.langchain.embeddings import embed_query_for_kb
+from app.integrations.langchain.visual_embeddings import (
+    embed_image_bytes_async,
+    embed_query_visual_async,
+    ensure_clip_model,
+)
 from app.core.config import get_settings
 from app.common.exceptions import BadRequestError, NotFoundError
 from app.infra.storage import build_object_key, delete_object, download_bytes, upload_bytes
@@ -119,6 +124,11 @@ class KnowledgeBaseService(BaseService):
             if kb.rerank_model_config_id
             else None
         )
+        visual_name = (
+            await self._model_name(kb.visual_embedding_model_config_id)
+            if kb.visual_embedding_model_config_id
+            else None
+        )
         return KnowledgeBaseOut(
             id=kb.id,
             tenant_id=kb.tenant_id,
@@ -128,6 +138,8 @@ class KnowledgeBaseService(BaseService):
             embedding_model_config_id=kb.embedding_model_config_id,
             embedding_model_name=embed_name,
             embedding_dimension=kb.embedding_dimension,
+            visual_embedding_model_config_id=kb.visual_embedding_model_config_id,
+            visual_embedding_model_name=visual_name,
             chunk_size=kb.chunk_size,
             chunk_overlap=kb.chunk_overlap,
             retrieval_mode=kb.retrieval_mode,
@@ -198,6 +210,12 @@ class KnowledgeBaseService(BaseService):
         rerank_model_id = body.rerank_model_config_id
         if rerank_model_id:
             await resolve_rerank_model_by_id(self.db, rerank_model_id, self.ctx.tenant_id)
+        visual_model_id = body.visual_embedding_model_config_id
+        if visual_model_id:
+            visual_model = await resolve_embedding_model_by_id(
+                self.db, visual_model_id, self.ctx.tenant_id
+            )
+            ensure_clip_model(visual_model)
         kb = await self.kb_repo.create(
             tenant_id=self.ctx.tenant_id,
             name=body.name,
@@ -207,6 +225,7 @@ class KnowledgeBaseService(BaseService):
             chunk_overlap=body.chunk_overlap,
             embedding_model_config_id=model.id,
             embedding_dimension=dimension,
+            visual_embedding_model_config_id=visual_model_id,
             rerank_model_config_id=rerank_model_id,
             rerank_candidate_k=body.rerank_candidate_k,
         )
@@ -227,6 +246,15 @@ class KnowledgeBaseService(BaseService):
             await resolve_rerank_model_by_id(self.db, rerank_id, self.ctx.tenant_id)
         elif "rerank_model_config_id" in data and data["rerank_model_config_id"] is None:
             data["rerank_model_config_id"] = None
+        if "visual_embedding_model_config_id" in data:
+            visual_id = data.get("visual_embedding_model_config_id")
+            if visual_id:
+                visual_model = await resolve_embedding_model_by_id(
+                    self.db, visual_id, self.ctx.tenant_id
+                )
+                ensure_clip_model(visual_model)
+            else:
+                data["visual_embedding_model_config_id"] = None
         await self.kb_repo.update_fields(kb, data)
         await self.db.refresh(kb)
         return await self._to_kb_out(kb)
@@ -467,6 +495,37 @@ class KnowledgeBaseService(BaseService):
         combined = f"{query}\n\n{derived}".strip() if query else derived
         return combined, media_types
 
+    async def _search_visual(
+        self,
+        kb: KnowledgeBase,
+        body: SearchRequest,
+    ) -> tuple[str, list[float], list[str] | None]:
+        if not kb.visual_embedding_model_config_id:
+            raise BadRequestError("知识库未配置 CLIP 视觉向量化模型")
+        media_types = list(body.media_types) if body.media_types else ["image"]
+        query = (body.query or "").strip()
+
+        if body.query_document_id is not None:
+            doc = await self.doc_repo.get_by_id_or_raise(
+                body.query_document_id, label="文档不存在"
+            )
+            if doc.kb_id != kb.id or is_marked_deleted(doc):
+                raise NotFoundError("文档不存在")
+            assert_tenant_access(self.ctx, doc.tenant_id)
+            if doc.status != DocumentStatus.READY:
+                raise BadRequestError("query_document_id 须为已就绪（ready）的文档")
+            if not is_image_file(doc.filename, doc.mime_type):
+                raise BadRequestError("视觉以图搜图仅支持图片文档")
+            data = download_bytes(doc.object_key, bucket=doc.object_bucket)
+            vector = await embed_image_bytes_async(self.db, self.ctx.tenant_id, kb, data)
+            query_text = query or f"[CLIP 以图搜图] {doc.filename}"
+            return query_text, vector, media_types
+
+        if not query:
+            raise BadRequestError("视觉文本搜图需填写 query")
+        vector = await embed_query_visual_async(self.db, self.ctx.tenant_id, kb, query)
+        return query, vector, media_types
+
     async def search(self, kb_id: UUID, body: SearchRequest) -> SearchResponse:
         """
         工作台 KB 检索 API。
@@ -476,14 +535,21 @@ class KnowledgeBaseService(BaseService):
         """
         kb = await self._get_kb_or_raise(kb_id)
         effective_mode = resolve_retrieval_mode(kb, body.mode)
-        query_text, media_types = await self._resolve_search_query(kb_id, body)
         started = time.perf_counter()
-        vector = await embed_query_for_kb(self.db, self.ctx.tenant_id, kb, query_text)
-        rerank_model = None
-        if kb.rerank_model_config_id:
-            rerank_model = await resolve_rerank_model_by_id(
-                self.db, kb.rerank_model_config_id, self.ctx.tenant_id
-            )
+
+        if body.visual_search:
+            query_text, vector, media_types = await self._search_visual(kb, body)
+            effective_mode = "vector"
+            rerank_model = None
+        else:
+            query_text, media_types = await self._resolve_search_query(kb_id, body)
+            vector = await embed_query_for_kb(self.db, self.ctx.tenant_id, kb, query_text)
+            rerank_model = None
+            if kb.rerank_model_config_id:
+                rerank_model = await resolve_rerank_model_by_id(
+                    self.db, kb.rerank_model_config_id, self.ctx.tenant_id
+                )
+
         fetch_limit = body.top_k
         if media_types:
             fetch_limit = max(body.top_k * 3, kb.rerank_candidate_k or 50)
@@ -493,11 +559,11 @@ class KnowledgeBaseService(BaseService):
             query=query_text,
             query_vector=vector,
             limit=fetch_limit,
-            mode=body.mode,
-            rerank_model=None if media_types else rerank_model,
+            mode=effective_mode if not body.visual_search else "vector",
+            rerank_model=None if media_types or body.visual_search else rerank_model,
         )
         raw_hits = await filter_hits_by_media_types_async(self.db, raw_hits, media_types)
-        if rerank_model is not None and media_types:
+        if rerank_model is not None and media_types and not body.visual_search:
             from app.rag.retrieve.rerank import apply_rerank_to_hits
 
             raw_hits = apply_rerank_to_hits(
@@ -533,9 +599,9 @@ class KnowledgeBaseService(BaseService):
                     mime_type=doc.mime_type if doc else None,
                 )
             )
-        log_mode = effective_mode
+        log_mode = "visual" if body.visual_search else effective_mode
         if rerank_model is not None:
-            log_mode = f"{effective_mode}+rerank"
+            log_mode = f"{log_mode}+rerank"
         if media_types:
             log_mode = f"{log_mode}+media:{','.join(media_types)}"
         latency_ms = int((time.perf_counter() - started) * 1000)

@@ -645,6 +645,8 @@ export interface KnowledgeBase {
   is_public?: boolean;
   embedding_model_config_id: string;
   embedding_model_name?: string | null;
+  visual_embedding_model_config_id?: string | null;
+  visual_embedding_model_name?: string | null;
   embedding_dimension: number;
   chunk_size?: number;
   chunk_overlap?: number;

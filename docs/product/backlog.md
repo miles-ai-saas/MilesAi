@@ -24,7 +24,7 @@
 | 项 | 模块 | 状态 |
 |----|------|------|
 | 以图搜图 / 文本搜图（MVP） | 6b | ✅ `media_types` + `query_document_id` OCR 检索 |
-| 视觉向量以图搜图（CLIP 等） | 6b | P1 增强 |
+| 视觉向量以图搜图（CLIP 等） | 6b | ✅ CLIP Provider + visual_search |
 | 视频入库 | 6b | ✅ 白名单 + `parse_video`（ffmpeg + Whisper/OCR） |
 
 ---
@@ -33,7 +33,7 @@
 
 | 项 | 模块 | 说明 |
 |----|------|------|
-| 视觉向量以图搜图（CLIP / 多模态 embedding） | 6b | P0 MVP 为 OCR 派生；真·相似图检索 |
+| 视觉向量以图搜图（CLIP / 多模态 embedding） | 6b | ✅ CLIP + visual_search API/UI |
 | 私有应用 / 租户内可见市场包 | 7 | ✅ `visibility` + 广场过滤 |
 | 应用安装后版本升级与 diff | 7 | ✅ 升级 API + diff 预览 UI |
 | 批量文档入库 / 批量任务取消 | 8 | ✅ 批量上传 + batch-cancel |

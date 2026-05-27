@@ -458,6 +458,7 @@ export const api = {
     hybrid_alpha?: number;
     rerank_model_config_id?: string | null;
     rerank_candidate_k?: number;
+    visual_embedding_model_config_id?: string | null;
     is_public?: boolean;
   }) => post<KnowledgeBase>("/kb", payload),
   updateKb: (
@@ -471,6 +472,7 @@ export const api = {
       hybrid_alpha?: number;
       rerank_model_config_id?: string | null;
       rerank_candidate_k?: number;
+      visual_embedding_model_config_id?: string | null;
       is_public?: boolean;
     },
   ) => patch<KnowledgeBase>(`/kb/${kbId}`, payload),
@@ -630,6 +632,7 @@ export const api = {
       mode?: "default" | "vector" | "hybrid";
       media_types?: ("text" | "image" | "audio" | "video")[];
       query_document_id?: string;
+      visual_search?: boolean;
     },
   ) =>
     post<{
@@ -651,6 +654,7 @@ export const api = {
       mode: opts?.mode ?? "default",
       ...(opts?.media_types?.length ? { media_types: opts.media_types } : {}),
       ...(opts?.query_document_id ? { query_document_id: opts.query_document_id } : {}),
+      ...(opts?.visual_search ? { visual_search: true } : {}),
     }),
 
   listKbSearchLogs: (kbId: string, page = 1, size = DEFAULT_PAGE_SIZE) =>
