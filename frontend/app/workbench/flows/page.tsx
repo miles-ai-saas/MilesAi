@@ -17,7 +17,7 @@ import { AddResourceCard } from "@/components/resource/AddResourceCard";
 import { ResourceItemCard } from "@/components/resource/ResourceItemCard";
 import { ResourceListLayout } from "@/components/resource/ResourceListLayout";
 import { TagChips } from "@/components/tag/TagChips";
-import { TagFilterSelect } from "@/components/tag/TagFilterSelect";
+import { TagFilterDropdown } from "@/components/tag/TagFilterDropdown";
 import { TagManageDialog } from "@/components/tag/TagManageDialog";
 import { flowStatusLabel } from "@/lib/flow-labels";
 import { filterBySearch } from "@/lib/filter-search";
@@ -137,7 +137,7 @@ export default function FlowsPage() {
         loading={!ready || list.loading}
         headerAction={
           <div className="flex flex-wrap items-center gap-2">
-            <TagFilterSelect value={tagFilterIds} onChange={setTagFilterIds} />
+            <TagFilterDropdown value={tagFilterIds} onChange={setTagFilterIds} />
             <button
               type="button"
               className="btn-sm-outline"

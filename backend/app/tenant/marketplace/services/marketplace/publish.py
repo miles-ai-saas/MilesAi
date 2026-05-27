@@ -16,7 +16,9 @@ from app.tenant.marketplace.schemas.marketplace import (
     MarketplaceAppOut,
     MarketplaceAppUpdate,
 )
+from app.models.tag import TagEntityType
 from app.tenant.marketplace.util import load_rag_graph_template
+from app.tenant.tags.services.tag import TagService
 
 
 class MarketplacePublishMixin:
@@ -84,6 +86,7 @@ class MarketplacePublishMixin:
                 category_slug=body.category_slug,
                 manifest=manifest,
                 status=MarketplaceAppStatus.DRAFT,
+                tag_ids=body.tag_ids,
             )
         )
 
@@ -109,12 +112,12 @@ class MarketplacePublishMixin:
         )
         self.db.add(app)
         await self.db.flush()
+        if body.tag_ids:
+            await TagService(self.db, self.ctx).replace_entity_tags(
+                TagEntityType.MARKETPLACE_APP, app.id, body.tag_ids
+            )
         await self.db.refresh(app, ["category"])
-        return self.app_out(
-            app,
-            installed=False,
-            category_name=app.category.name if app.category else None,
-        )
+        return await self.app_out_with_tags(app)
 
     async def update_app(self, app_id: UUID, body: MarketplaceAppUpdate) -> MarketplaceAppOut:
         """更新应用（禁止直接改上架/待审状态）。"""
@@ -129,6 +132,7 @@ class MarketplacePublishMixin:
         ):
             raise BadRequestError("请使用「提交审核」上架，不可直接修改为上架或待审状态")
         category_slug = data.pop("category_slug", None)
+        tag_ids = data.pop("tag_ids", None)
         if category_slug is not None:
             cat = await self.db.scalar(
                 select(AppCategory).where(AppCategory.slug == category_slug)
@@ -137,13 +141,12 @@ class MarketplacePublishMixin:
         for key, value in data.items():
             setattr(app, key, value)
         await self.db.flush()
+        if tag_ids is not None:
+            await TagService(self.db, self.ctx).replace_entity_tags(
+                TagEntityType.MARKETPLACE_APP, app.id, tag_ids
+            )
         await self.db.refresh(app, ["category"])
-        installed_ids = await self.installed_app_ids()
-        return self.app_out(
-            app,
-            installed=app.id in installed_ids,
-            category_name=app.category.name if app.category else None,
-        )
+        return await self.app_out_with_tags(app)
 
     def validate_manifest(self, manifest: dict) -> None:
         """校验 manifest 至少含一种可安装资源。"""
@@ -173,9 +176,4 @@ class MarketplacePublishMixin:
         app.reviewed_by = None
         await self.db.flush()
         await self.db.refresh(app, ["category"])
-        installed_ids = await self.installed_app_ids()
-        return self.app_out(
-            app,
-            installed=app.id in installed_ids,
-            category_name=app.category.name if app.category else None,
-        )
+        return await self.app_out_with_tags(app)

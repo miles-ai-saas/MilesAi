@@ -3,7 +3,7 @@
 /** 工具工作台（链路 §3 + §4）：目录/调用日志 + `useToolsMeta`。 */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { TagFilterSelect } from "@/components/tag/TagFilterSelect";
+import { TagFilterDropdown } from "@/components/tag/TagFilterDropdown";
 import { TagManageDialog } from "@/components/tag/TagManageDialog";
 import { AddResourceCard } from "@/components/resource/AddResourceCard";
 import { ResourceListFooter } from "@/components/resource/ResourceListFooter";
@@ -515,7 +515,7 @@ export default function ToolsPage() {
             >
               {loading ? "刷新中…" : "刷新"}
             </button>
-            <TagFilterSelect value={tagFilterIds} onChange={setTagFilterIds} />
+            <TagFilterDropdown value={tagFilterIds} onChange={setTagFilterIds} />
             <button
               type="button"
               className="btn-ghost border border-line text-sm"

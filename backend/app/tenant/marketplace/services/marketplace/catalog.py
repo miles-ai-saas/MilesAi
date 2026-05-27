@@ -2,10 +2,11 @@
 
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import exists, func, select
 from sqlalchemy.orm import selectinload
 
 from app.common.exceptions import BadRequestError, NotFoundError
+from app.models.tag import EntityTagBinding, TagEntityType, TenantTag
 from app.common.schema import PageParams, PageResult
 from app.tenant.marketplace.models import (
     AppCategory,
@@ -21,6 +22,8 @@ from app.tenant.marketplace.schemas.marketplace import (
     MarketplaceAppDetail,
     MarketplaceAppOut,
 )
+from app.tenant.tags.schemas.tag import TagRefOut
+from app.tenant.tags.services.tag import TagService
 
 
 class MarketplaceCatalogMixin:
@@ -36,7 +39,12 @@ class MarketplaceCatalogMixin:
         return await self.installed_app_ids()
 
     def app_out(
-        self, app: MarketplaceApp, *, installed: bool, category_name: str | None
+        self,
+        app: MarketplaceApp,
+        *,
+        installed: bool,
+        category_name: str | None,
+        tags: list[TagRefOut] | None = None,
     ) -> MarketplaceAppOut:
         """组装 ``MarketplaceAppOut``。"""
         return MarketplaceAppOut(
@@ -52,6 +60,7 @@ class MarketplaceCatalogMixin:
             rating_count=int(app.rating_count or 0),
             category_id=app.category_id,
             category_name=category_name,
+            tags=tags or [],
             installed=installed,
             review_note=app.review_note,
             submitted_at=app.submitted_at,
@@ -59,9 +68,78 @@ class MarketplaceCatalogMixin:
             created_at=app.created_at,
         )
 
-    def _app_out(self, app: MarketplaceApp, *, installed: bool, category_name: str | None) -> MarketplaceAppOut:
+    def _app_out(
+        self,
+        app: MarketplaceApp,
+        *,
+        installed: bool,
+        category_name: str | None,
+        tags: list[TagRefOut] | None = None,
+    ) -> MarketplaceAppOut:
         """兼容别名 → ``app_out``。"""
-        return self.app_out(app, installed=installed, category_name=category_name)
+        return self.app_out(
+            app, installed=installed, category_name=category_name, tags=tags
+        )
+
+    async def tags_map_for_apps(self, apps: list[MarketplaceApp]) -> dict[UUID, list[TagRefOut]]:
+        """按发布方租户批量加载应用标签。"""
+        if not apps:
+            return {}
+        tag_svc = TagService(self.db, self.ctx)
+        by_tenant: dict[UUID, set[UUID]] = {}
+        for app in apps:
+            tid = app.publisher_tenant_id
+            if tid is None:
+                continue
+            by_tenant.setdefault(tid, set()).add(app.id)
+        out: dict[UUID, list[TagRefOut]] = {}
+        for tenant_id, entity_ids in by_tenant.items():
+            partial = await tag_svc.get_refs_map_for_tenant(
+                TagEntityType.MARKETPLACE_APP, entity_ids, tenant_id
+            )
+            out.update(partial)
+        return out
+
+    def _plaza_tag_filter(self, tag_slugs: list[str]):
+        """广场列表：按标签 slug 匹配发布方绑定（跨租户浏览）。"""
+        if not tag_slugs:
+            return None
+        return exists(
+            select(1)
+            .select_from(EntityTagBinding)
+            .join(TenantTag, TenantTag.id == EntityTagBinding.tag_id)
+            .where(
+                EntityTagBinding.entity_type == TagEntityType.MARKETPLACE_APP.value,
+                EntityTagBinding.entity_id == MarketplaceApp.id,
+                EntityTagBinding.tenant_id == MarketplaceApp.publisher_tenant_id,
+                TenantTag.slug.in_(tag_slugs),
+            )
+        )
+
+    async def app_out_with_tags(self, app: MarketplaceApp) -> MarketplaceAppOut:
+        """单条应用 Out（含标签与安装态）。"""
+        installed_ids = await self.installed_app_ids()
+        tags_map = await self.tags_map_for_apps([app])
+        return self.app_out(
+            app,
+            installed=app.id in installed_ids,
+            category_name=app.category.name if app.category else None,
+            tags=tags_map.get(app.id, []),
+        )
+
+    async def apps_to_out(
+        self, apps: list[MarketplaceApp], *, installed_ids: set[UUID]
+    ) -> list[MarketplaceAppOut]:
+        tags_map = await self.tags_map_for_apps(apps)
+        return [
+            self.app_out(
+                a,
+                installed=a.id in installed_ids,
+                category_name=a.category.name if a.category else None,
+                tags=tags_map.get(a.id, []),
+            )
+            for a in apps
+        ]
 
     async def get_app_or_raise(self, app_id: UUID) -> MarketplaceApp:
         """加载应用（含分类）；不存在则 404。"""
@@ -91,9 +169,13 @@ class MarketplaceCatalogMixin:
         *,
         category_slug: str | None = None,
         sort: str = "installs",
+        tag_ids: list[UUID] | None = None,
     ) -> PageResult[MarketplaceAppOut]:
-        """分页列出已上架应用（支持分类、排序）。"""
+        """分页列出已上架应用（支持分类、排序、标签）。"""
         installed_ids = await self.installed_app_ids()
+        tag_slugs: list[str] = []
+        if tag_ids:
+            tag_slugs = await TagService(self.db, self.ctx).slugs_for_tag_ids(tag_ids)
         stmt = (
             select(MarketplaceApp)
             .where(MarketplaceApp.status == MarketplaceAppStatus.PUBLISHED)
@@ -105,6 +187,10 @@ class MarketplaceCatalogMixin:
                 AppCategory.slug == category_slug
             )
             count_filters.append(AppCategory.slug == category_slug)
+        tag_filter = self._plaza_tag_filter(tag_slugs)
+        if tag_filter is not None:
+            stmt = stmt.where(tag_filter)
+            count_filters.append(tag_filter)
         count_stmt = select(func.count(MarketplaceApp.id)).where(*count_filters)
         if category_slug:
             count_stmt = count_stmt.join(
@@ -121,14 +207,7 @@ class MarketplaceCatalogMixin:
             stmt = stmt.order_by(MarketplaceApp.install_count.desc())
         stmt = stmt.offset((params.page - 1) * params.size).limit(params.size)
         apps = (await self.db.execute(stmt)).scalars().all()
-        items = [
-            self.app_out(
-                a,
-                installed=a.id in installed_ids,
-                category_name=a.category.name if a.category else None,
-            )
-            for a in apps
-        ]
+        items = await self.apps_to_out(apps, installed_ids=installed_ids)
         return PageResult(items=items, total=total or 0, page=params.page, size=params.size)
 
     async def get_app(self, app_id: UUID) -> MarketplaceAppDetail:
@@ -139,7 +218,13 @@ class MarketplaceCatalogMixin:
                 raise NotFoundError("应用不存在或未发布")
         installed_ids = await self.installed_app_ids()
         cat_name = app.category.name if app.category else None
-        base = self.app_out(app, installed=app.id in installed_ids, category_name=cat_name)
+        tags_map = await self.tags_map_for_apps([app])
+        base = self.app_out(
+            app,
+            installed=app.id in installed_ids,
+            category_name=cat_name,
+            tags=tags_map.get(app.id, []),
+        )
         my_rating = await self.db.scalar(
             select(AppRating).where(
                 AppRating.app_id == app_id,
@@ -154,7 +239,9 @@ class MarketplaceCatalogMixin:
             my_rating=AppRatingOut.model_validate(my_rating) if my_rating else None,
         )
 
-    async def list_my_apps(self, params: PageParams) -> PageResult[MarketplaceAppOut]:
+    async def list_my_apps(
+        self, params: PageParams, *, tag_ids: list[UUID] | None = None
+    ) -> PageResult[MarketplaceAppOut]:
         """分页列出本租户发布的应用。"""
         installed_ids = await self.installed_app_ids()
         filters = [MarketplaceApp.publisher_tenant_id == self.ctx.tenant_id]
@@ -164,18 +251,17 @@ class MarketplaceCatalogMixin:
             .options(selectinload(MarketplaceApp.category))
             .order_by(MarketplaceApp.updated_at.desc())
         )
+        tag_filter = TagService(self.db, self.ctx).entity_id_filter(
+            TagEntityType.MARKETPLACE_APP, tag_ids or []
+        )
+        if tag_filter is not None:
+            stmt = stmt.where(MarketplaceApp.id.in_(tag_filter))
+            filters.append(MarketplaceApp.id.in_(tag_filter))
         count_stmt = select(func.count(MarketplaceApp.id)).where(*filters)
         total = await self.db.scalar(count_stmt)
         stmt = stmt.offset((params.page - 1) * params.size).limit(params.size)
         apps = (await self.db.execute(stmt)).scalars().all()
-        items = [
-            self.app_out(
-                a,
-                installed=a.id in installed_ids,
-                category_name=a.category.name if a.category else None,
-            )
-            for a in apps
-        ]
+        items = await self.apps_to_out(apps, installed_ids=installed_ids)
         return PageResult(items=items, total=total or 0, page=params.page, size=params.size)
 
     async def get_own_app_or_raise(self, app_id: UUID) -> MarketplaceApp:

@@ -5,7 +5,7 @@
 import { useEffect } from "react";
 import type { ReactNode } from "react";
 
-type PanelSize = "md" | "lg" | "sheet" | "fullscreen";
+type PanelSize = "md" | "lg" | "sheet" | "drawer" | "fullscreen";
 
 type Props = {
   open: boolean;
@@ -14,7 +14,7 @@ type Props = {
   onClose: () => void;
   children: ReactNode;
   footer?: ReactNode;
-  /** md: 居中小窗；lg: 居中宽窗；sheet: 顶栏下铺满；fullscreen: 铺满视口（慎用，会盖住 App Header） */
+  /** md: 居中小窗；lg: 居中宽窗；sheet: 顶栏下铺满；drawer: 右侧滑出；fullscreen: 铺满视口 */
   size?: PanelSize;
   /** sheet / fullscreen 内容区最大宽度，默认 max-w-5xl */
   contentMaxWidth?: string;
@@ -64,7 +64,7 @@ function PanelChrome({
 
 function useDialogEffects(open: boolean, size: PanelSize, onClose: () => void) {
   useEffect(() => {
-    if (!open || (size !== "fullscreen" && size !== "sheet")) return;
+    if (!open || (size !== "fullscreen" && size !== "sheet" && size !== "drawer")) return;
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
@@ -112,6 +112,34 @@ export function ResourceDialog({
         >
           {children}
         </PanelChrome>
+      </div>
+    );
+  }
+
+  if (size === "drawer") {
+    return (
+      <div className="fixed inset-0 z-50 flex justify-end" role="presentation">
+        <button
+          type="button"
+          className="absolute inset-0 bg-ink/30"
+          aria-label="关闭"
+          onClick={onClose}
+        />
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed bottom-0 right-0 top-14 z-10 flex w-full max-w-md flex-col border-l border-line bg-surface shadow-panel sm:max-w-[28rem]"
+        >
+          <PanelChrome
+            title={title}
+            description={description}
+            onClose={onClose}
+            footer={footer}
+            contentMaxWidth="max-w-none"
+          >
+            {children}
+          </PanelChrome>
+        </div>
       </div>
     );
   }

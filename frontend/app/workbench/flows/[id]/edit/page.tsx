@@ -278,7 +278,7 @@ export default function FlowEditPage() {
           </div>
         ) : (
           <FlowCanvas
-            ref={canvasRef}
+            canvasRef={canvasRef}
             initialGraph={initialGraph}
             onGraphChange={onGraphChange}
             kbs={kbs}

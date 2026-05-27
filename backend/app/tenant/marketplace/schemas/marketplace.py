@@ -4,6 +4,7 @@ from uuid import UUID
 from pydantic import BaseModel, Field
 
 from app.tenant.marketplace.models import MarketplaceAppStatus
+from app.tenant.tags.schemas.tag import TagRefOut
 
 
 class AppCategoryOut(BaseModel):
@@ -28,6 +29,7 @@ class MarketplaceAppOut(BaseModel):
     rating_count: int = Field(default=0, description="评分人数")
     category_id: UUID | None = Field(default=None, description="分类 ID")
     category_name: str | None = Field(default=None, description="分类名称")
+    tags: list[TagRefOut] = Field(default_factory=list, description="标签列表")
     installed: bool = Field(default=False, description="当前租户是否已安装")
     review_note: str | None = Field(default=None, description="审核备注")
     submitted_at: datetime | None = Field(default=None, description="提交审核时间")
@@ -85,6 +87,7 @@ class MarketplaceAppCreate(BaseModel):
         default=MarketplaceAppStatus.DRAFT,
         description="上架状态",
     )
+    tag_ids: list[UUID] = Field(default_factory=list, description="标签 ID 列表")
 
 
 class MarketplaceAppUpdate(BaseModel):
@@ -100,6 +103,7 @@ class MarketplaceAppUpdate(BaseModel):
     category_slug: str | None = Field(default=None, description="分类 slug")
     manifest: dict | None = Field(default=None, description="应用清单 JSON")
     status: MarketplaceAppStatus | None = Field(default=None, description="上架状态")
+    tag_ids: list[UUID] | None = Field(default=None, description="标签 ID 列表（全量替换）")
 
 
 class MarketplaceAppCreateFromResources(BaseModel):
@@ -112,6 +116,7 @@ class MarketplaceAppCreateFromResources(BaseModel):
     flow_id: UUID | None = Field(default=None, description="打包的流程 ID")
     agent_id: UUID | None = Field(default=None, description="打包的智能体 ID")
     kb_id: UUID | None = Field(default=None, description="打包的知识库 ID")
+    tag_ids: list[UUID] = Field(default_factory=list, description="标签 ID 列表")
 
 
 class AppInstallOut(BaseModel):

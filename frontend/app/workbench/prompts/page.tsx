@@ -18,7 +18,7 @@ import { ResourceItemCard } from "@/components/resource/ResourceItemCard";
 import { ResourceListLayout } from "@/components/resource/ResourceListLayout";
 import { filterBySearch } from "@/lib/filter-search";
 import { TagChips } from "@/components/tag/TagChips";
-import { TagFilterSelect } from "@/components/tag/TagFilterSelect";
+import { TagFilterDropdown } from "@/components/tag/TagFilterDropdown";
 import { TagManageDialog } from "@/components/tag/TagManageDialog";
 import { promptActiveLabel } from "@/lib/prompt-labels";
 import { usePromptMeta } from "@/hooks/use-prompt-meta";
@@ -101,7 +101,7 @@ export default function PromptsPage() {
         onSearchChange={setSearch}
         headerAction={
           <div className="flex flex-wrap items-center gap-2">
-            <TagFilterSelect value={tagFilterIds} onChange={setTagFilterIds} />
+            <TagFilterDropdown value={tagFilterIds} onChange={setTagFilterIds} />
             <button
               type="button"
               className="btn-sm-outline"

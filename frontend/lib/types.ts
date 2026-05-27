@@ -970,6 +970,7 @@ export interface MarketplaceApp {
   rating_count: number;
   category_id?: string | null;
   category_name?: string | null;
+  tags?: TagRef[];
   installed: boolean;
   review_note?: string | null;
   submitted_at?: string | null;

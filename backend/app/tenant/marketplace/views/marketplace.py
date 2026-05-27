@@ -54,31 +54,36 @@ async def list_categories(
 async def list_apps(
     category: str | None = Query(None, description="分类 slug"),
     sort: str = Query("installs", description="installs | rating"),
+    tag_ids: list[UUID] | None = Query(None, description="按标签筛选（任一匹配）"),
     params: PageParams = Depends(get_page_params),
     ctx: TenantContext = Depends(require_permissions("marketplace:read")),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await _svc(db, ctx).list_apps(params, category_slug=category, sort=sort)
+    result = await _svc(db, ctx).list_apps(
+        params, category_slug=category, sort=sort, tag_ids=tag_ids
+    )
     return page_ok(result.items, result.total, result.page, result.size)
 
 
 @router.get("/apps/mine", response_model=ApiResponse[PageResult[MarketplaceAppOut]])
 async def list_my_apps(
+    tag_ids: list[UUID] | None = Query(None, description="按标签筛选（任一匹配）"),
     params: PageParams = Depends(get_page_params),
     ctx: TenantContext = Depends(require_permissions("marketplace:write")),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await _svc(db, ctx).list_my_apps(params)
+    result = await _svc(db, ctx).list_my_apps(params, tag_ids=tag_ids)
     return page_ok(result.items, result.total, result.page, result.size)
 
 
 @router.get("/apps/pending", response_model=ApiResponse[PageResult[MarketplaceAppOut]])
 async def list_pending_apps(
+    tag_ids: list[UUID] | None = Query(None, description="按标签筛选（任一匹配）"),
     params: PageParams = Depends(get_page_params),
     ctx: TenantContext = Depends(require_permissions("marketplace:review")),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await _svc(db, ctx).list_pending_apps(params)
+    result = await _svc(db, ctx).list_pending_apps(params, tag_ids=tag_ids)
     return page_ok(result.items, result.total, result.page, result.size)
 
 

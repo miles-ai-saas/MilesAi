@@ -25,6 +25,7 @@ import {
   useImperativeHandle,
   useRef,
   useState,
+  type Ref,
 } from "react";
 import { useConfirmAction } from "@/hooks/use-confirm-action";
 import { useFlowTemplates } from "@/hooks/use-flow-templates";
@@ -62,6 +63,8 @@ interface FlowCanvasProps {
   prompts?: PromptTemplate[];
   toolCatalog?: ToolCatalogItem[];
   className?: string;
+  /** 供 `next/dynamic` 懒加载场景使用（LoadableComponent 无法转发 ref） */
+  canvasRef?: Ref<FlowCanvasHandle>;
 }
 
 type Snapshot = { nodes: Node[]; edges: Edge[] };
@@ -193,6 +196,7 @@ const FlowCanvasInner = forwardRef<FlowCanvasHandle, FlowCanvasProps>(
       prompts = [],
       toolCatalog = [],
       className,
+      canvasRef,
     },
     ref,
   ) {
@@ -249,10 +253,22 @@ const FlowCanvasInner = forwardRef<FlowCanvasHandle, FlowCanvasProps>(
       [setNodes],
     );
 
-    useImperativeHandle(ref, () => ({
-      loadGraph: applyGraph,
-      selectNode,
-    }));
+    useImperativeHandle(
+      ref,
+      () => ({
+        loadGraph: applyGraph,
+        selectNode,
+      }),
+      [applyGraph, selectNode],
+    );
+    useImperativeHandle(
+      canvasRef,
+      () => ({
+        loadGraph: applyGraph,
+        selectNode,
+      }),
+      [applyGraph, selectNode],
+    );
 
     const applySnapshot = useCallback(
       (snap: Snapshot) => {

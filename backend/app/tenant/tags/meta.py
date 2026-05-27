@@ -14,6 +14,7 @@ ENTITY_TYPE_LABELS: dict[str, tuple[str, str | None]] = {
     TagEntityType.SKILL.value: ("技能包", "绑定 skill_packages"),
     TagEntityType.TOOL.value: ("工具", "绑定 tools"),
     TagEntityType.FLOW.value: ("流程", "绑定 flow_flows"),
+    TagEntityType.MARKETPLACE_APP.value: ("应用市场", "绑定 mkt_apps"),
 }
 
 

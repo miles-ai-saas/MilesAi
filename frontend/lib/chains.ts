@@ -15,7 +15,7 @@
  * `useRequireAuth(ready)` → `usePagedList(api.listX)` → `pagination.normalizePageResult`
  * → `filterBySearch`（客户端关键字）→ `ResourceListLayout` + `ResourceListFooter`
  * → `useConfirmAction` 删除/危险操作确认
- * 可选：`useCategoryTabs`、`TagFilterSelect`、`use*Meta`（枚举见 §4）
+ * 可选：`useCategoryTabs`、`TagFilterDropdown`、`use*Meta`（枚举见 §4）
  *
  * ## 4. 枚举展示
  * 见 `lib/enum-meta.ts`、`docs/guides/hooks.md` §9

@@ -153,7 +153,18 @@ class TagService(BaseService):
         entity_type: str | TagEntityType,
         entity_ids: set[UUID],
     ) -> dict[UUID, list[TagRefOut]]:
-        """批量加载资源的标签列表，用于列表/详情 Out。"""
+        """批量加载资源的标签列表（当前租户）。"""
+        return await self.get_refs_map_for_tenant(
+            entity_type, entity_ids, self.ctx.tenant_id
+        )
+
+    async def get_refs_map_for_tenant(
+        self,
+        entity_type: str | TagEntityType,
+        entity_ids: set[UUID],
+        tenant_id: UUID,
+    ) -> dict[UUID, list[TagRefOut]]:
+        """按指定租户加载实体标签（应用市场展示发布方标签）。"""
         if not entity_ids:
             return {}
         et = entity_type.value if isinstance(entity_type, TagEntityType) else parse_entity_type(entity_type)
@@ -166,7 +177,7 @@ class TagService(BaseService):
             )
             .join(TenantTag, TenantTag.id == EntityTagBinding.tag_id)
             .where(
-                EntityTagBinding.tenant_id == self.ctx.tenant_id,
+                EntityTagBinding.tenant_id == tenant_id,
                 EntityTagBinding.entity_type == et,
                 EntityTagBinding.entity_id.in_(entity_ids),
                 not_deleted(TenantTag),
@@ -178,6 +189,11 @@ class TagService(BaseService):
         for entity_id, tag_id, name, slug in rows:
             out.setdefault(entity_id, []).append(TagRefOut(id=tag_id, name=name, slug=slug))
         return out
+
+    async def slugs_for_tag_ids(self, tag_ids: list[UUID]) -> list[str]:
+        """解析当前租户标签 ID 对应的 slug（用于跨租户广场筛选）。"""
+        tags = await self._resolve_tag_ids(tag_ids)
+        return [t.slug for t in tags]
 
     def entity_id_filter(self, entity_type: str | TagEntityType, tag_ids: list[UUID]):
         """返回 IN 子查询：实体至少拥有 tag_ids 中的一个标签；无 tag_ids 时返回 None。"""

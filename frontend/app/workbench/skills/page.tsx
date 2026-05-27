@@ -18,7 +18,7 @@ import { CardActions } from "@/components/resource/CardActions";
 import { filterBySearch } from "@/lib/filter-search";
 import { useCategoryTabs } from "@/components/category/useCategoryTabs";
 import { TagChips } from "@/components/tag/TagChips";
-import { TagFilterSelect } from "@/components/tag/TagFilterSelect";
+import { TagFilterDropdown } from "@/components/tag/TagFilterDropdown";
 import { TagManageDialog } from "@/components/tag/TagManageDialog";
 import { SkillCreateBlankDialog } from "@/components/skills/SkillCreateBlankDialog";
 import {
@@ -115,7 +115,7 @@ export default function SkillsPage() {
         loading={list.loading}
         headerAction={
           <div className="flex flex-wrap items-center gap-2">
-            <TagFilterSelect value={tagFilterIds} onChange={setTagFilterIds} />
+            <TagFilterDropdown value={tagFilterIds} onChange={setTagFilterIds} />
             <button
               type="button"
               className="text-sm text-brand hover:underline"

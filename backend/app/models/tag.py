@@ -23,6 +23,7 @@ class TagEntityType(str, enum.Enum):
     SKILL = "skill"
     TOOL = "tool"
     FLOW = "flow"
+    MARKETPLACE_APP = "marketplace_app"
 
 
 class TenantTag(UUIDPrimaryKeyMixin, TimestampMixin, Base):

@@ -939,14 +939,20 @@ export const api = {
     size = DEFAULT_PAGE_SIZE,
     category?: string,
     sort: "installs" | "rating" = "installs",
-  ) =>
+    tagIds?: string[],
+  ) => {
+    let q = `${buildPageQuery(page, size)}&sort=${sort}`;
+    if (category) q += `&category=${encodeURIComponent(category)}`;
+    return getPage<MarketplaceApp>(`/marketplace/apps?${appendTagIds(q, tagIds)}`);
+  },
+  listPendingMarketplaceApps: (page = 1, size = DEFAULT_PAGE_SIZE, tagIds?: string[]) =>
     getPage<MarketplaceApp>(
-      `/marketplace/apps?${buildPageQuery(page, size)}${category ? `&category=${category}` : ""}&sort=${sort}`,
+      `/marketplace/apps/pending?${appendTagIds(buildPageQuery(page, size), tagIds)}`,
     ),
-  listPendingMarketplaceApps: (page = 1, size = DEFAULT_PAGE_SIZE) =>
-    getPage<MarketplaceApp>(`/marketplace/apps/pending?${buildPageQuery(page, size)}`),
-  listMyMarketplaceApps: (page = 1, size = DEFAULT_PAGE_SIZE) =>
-    getPage<MarketplaceApp>(`/marketplace/apps/mine?${buildPageQuery(page, size)}`),
+  listMyMarketplaceApps: (page = 1, size = DEFAULT_PAGE_SIZE, tagIds?: string[]) =>
+    getPage<MarketplaceApp>(
+      `/marketplace/apps/mine?${appendTagIds(buildPageQuery(page, size), tagIds)}`,
+    ),
   getMarketplaceApp: (appId: string) => get<MarketplaceAppDetail>(`/marketplace/apps/${appId}`),
   listMarketplaceAppRatings: (appId: string, page = 1, size = 10) =>
     getPage<AppRating>(`/marketplace/apps/${appId}/ratings?${buildPageQuery(page, size)}`),
@@ -958,6 +964,7 @@ export const api = {
     flow_id?: string;
     agent_id?: string;
     kb_id?: string;
+    tag_ids?: string[];
   }) => post<MarketplaceApp>("/marketplace/apps/from-resources", body),
   publishMarketplaceApp: (appId: string) =>
     post<MarketplaceApp>(`/marketplace/apps/${appId}/publish`),

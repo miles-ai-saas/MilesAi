@@ -21,7 +21,7 @@ import { useRequireAuth } from "@/lib/auth-store";
 import { filterBySearch } from "@/lib/filter-search";
 import { useCategoryTabs } from "@/components/category/useCategoryTabs";
 import { TagChips } from "@/components/tag/TagChips";
-import { TagFilterSelect } from "@/components/tag/TagFilterSelect";
+import { TagFilterDropdown } from "@/components/tag/TagFilterDropdown";
 import { TagManageDialog } from "@/components/tag/TagManageDialog";
 import { api } from "@/lib/api";
 import type { Agent, AgentType } from "@/lib/types";
@@ -207,7 +207,7 @@ export default function AgentsPage() {
               >
                 {list.loading ? "刷新中…" : "刷新"}
               </button>
-              <TagFilterSelect value={tagFilterIds} onChange={setTagFilterIds} />
+              <TagFilterDropdown value={tagFilterIds} onChange={setTagFilterIds} />
               <button
                 type="button"
                 className="btn-ghost border border-line text-sm"
@@ -233,7 +233,7 @@ export default function AgentsPage() {
           <A2aAgentsTab />
         ) : (
           <>
-            <div className="col-span-full grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="col-span-full grid gap-3 sm:grid-cols-3">
               <StatChip label="智能体总数" value={String(list.total)} hint={TAB_ITEMS.find((t) => t.key === tab)?.label} />
               <StatChip
                 label="本页已启用"
@@ -241,11 +241,6 @@ export default function AgentsPage() {
                 hint={`已绑知识库 ${pageStats.withKb}（当前筛选）`}
               />
               <StatChip label="本页展示" value={String(filtered.length)} hint="受搜索与分类影响" />
-              <StatChip
-                label="快捷入口"
-                value="对话"
-                hint="卡片内可查看、对话、编排配置"
-              />
             </div>
 
             <div className="col-span-full rounded-xl border border-line bg-surface-muted/40 p-4">
