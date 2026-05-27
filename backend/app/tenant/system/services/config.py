@@ -17,13 +17,6 @@ from app.utils.health_checks import collect_health_status
 
 CONFIG_DEFINITIONS: list[dict] = [
     {
-        "key": "platform.display_name",
-        "label": "平台显示名称",
-        "category": "基础",
-        "description": "登录页与顶栏展示名称",
-        "default_value": "MilesAi",
-    },
-    {
         "key": "rag.default_chunk_size",
         "label": "默认分片大小",
         "category": "知识库",

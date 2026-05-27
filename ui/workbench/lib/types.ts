@@ -48,6 +48,21 @@ export interface TenantUser {
   role_codes: string[];
 }
 
+export interface QuotaMetric {
+  used: number;
+  max: number;
+  unit: string;
+}
+
+export interface TenantQuota {
+  knowledge_bases: QuotaMetric;
+  storage_mb: QuotaMetric;
+  agents: QuotaMetric;
+  flows: QuotaMetric;
+  tokens_monthly: QuotaMetric;
+  generative_daily: QuotaMetric;
+}
+
 export interface Permission {
   id: string;
   code: string;
@@ -78,6 +93,21 @@ export interface ConfigDefinition {
   description: string;
   value_type: string;
   default_value: unknown;
+}
+
+export interface InfraComponentStatus {
+  id: string;
+  label: string;
+  status: "ok" | "unavailable" | "skipped";
+  latency_ms?: number | null;
+  message?: string | null;
+}
+
+export interface InfraStatus {
+  healthy: boolean;
+  status: string;
+  components: InfraComponentStatus[];
+  settings_preview: Record<string, string | null>;
 }
 
 export interface RuntimeInfo {

@@ -3,13 +3,26 @@
  * 壳层消费方：`AppShell`、`SystemShell`、`WorkbenchHeaderNav`。
  */
 
+import type { UserInfo } from "./types";
+import { hasPermission } from "./permissions";
+
 export type AppSection = "workbench" | "system";
 
 export type NavItem = { href: string; label: string };
 
-export type SystemNavIcon = "users" | "roles" | "sessions" | "config" | "audit";
+export type SystemNavIcon =
+  | "users"
+  | "roles"
+  | "sessions"
+  | "quota"
+  | "config"
+  | "audit";
 
-export type SystemNavItem = NavItem & { icon: SystemNavIcon };
+export type SystemNavItem = NavItem & {
+  icon: SystemNavIcon;
+  /** RBAC 权限码；无则登录即可见 */
+  permission?: string;
+};
 
 export type BreadcrumbItem = { label: string; href?: string };
 
@@ -74,19 +87,42 @@ export const SYSTEM_NAV: { title: string; items: SystemNavItem[] }[] = [
   {
     title: "权限管理",
     items: [
-      { href: "/system/users", label: "用户管理", icon: "users" },
-      { href: "/system/roles", label: "角色权限", icon: "roles" },
-      { href: "/system/sessions", label: "登录会话", icon: "sessions" },
+      { href: "/system/users", label: "用户管理", icon: "users", permission: "system:user:read" },
+      { href: "/system/roles", label: "角色权限", icon: "roles", permission: "system:role:read" },
+      {
+        href: "/system/sessions",
+        label: "登录会话",
+        icon: "sessions",
+        permission: "system:session:read",
+      },
     ],
   },
   {
     title: "系统设置",
     items: [
-      { href: "/system/config", label: "系统配置", icon: "config" },
-      { href: "/system/audit", label: "审计日志", icon: "audit" },
+      {
+        href: "/system/quota",
+        label: "资源配额",
+        icon: "quota",
+        permission: "system:quota:read",
+      },
+      { href: "/system/config", label: "系统配置", icon: "config", permission: "system:config:read" },
+      { href: "/system/audit", label: "审计日志", icon: "audit", permission: "audit:read" },
     ],
   },
 ];
+
+/** 按用户权限过滤系统管理侧栏（超管见全部）。 */
+export function filterSystemNav(
+  user: UserInfo | null | undefined,
+): { title: string; items: SystemNavItem[] }[] {
+  return SYSTEM_NAV.map((group) => ({
+    ...group,
+    items: group.items.filter(
+      (item) => !item.permission || hasPermission(user, item.permission),
+    ),
+  })).filter((g) => g.items.length > 0);
+}
 
 export function getSystemBreadcrumbs(pathname: string): BreadcrumbItem[] {
   const home: BreadcrumbItem = { label: "用户管理", href: "/system/users" };
@@ -96,6 +132,7 @@ export function getSystemBreadcrumbs(pathname: string): BreadcrumbItem[] {
   }
   if (pathname === "/system/roles") return [home, { label: "角色权限" }];
   if (pathname === "/system/sessions") return [home, { label: "登录会话" }];
+  if (pathname === "/system/quota") return [home, { label: "资源配额" }];
   if (pathname === "/system/config") return [home, { label: "系统配置" }];
   if (pathname === "/system/audit") return [home, { label: "审计日志" }];
 
@@ -135,7 +172,7 @@ export function isNavActive(pathname: string, href: string): boolean {
 
 export function getPageTitle(pathname: string): string {
   const section = getAppSection(pathname);
-  const groups = getNavForSection(section);
+  const groups = section === "system" ? SYSTEM_NAV : WORKBENCH_NAV;
   for (const g of groups) {
     const item = g.items.find((i) => isNavActive(pathname, i.href));
     if (item) return item.label;

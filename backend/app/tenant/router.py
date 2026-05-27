@@ -21,7 +21,7 @@ from app.tenant.models.views import models as model_views
 from app.tenant.monitor.views import monitor
 from app.tenant.prompts.views import prompts
 from app.tenant.skills.views import skills
-from app.tenant.system.views import configs, health, roles, tenants, users
+from app.tenant.system.views import configs, health, infra, quota, roles, tenants, users
 from app.tenant.tasks.views import tasks
 from app.tenant.tools.views import tools
 from app.tenant.workbench.views import overview as workbench_overview
@@ -33,6 +33,8 @@ api_router.include_router(tenants.router, prefix="/tenants", tags=["tenants"])
 api_router.include_router(users.router, prefix="/users", tags=["users"])
 api_router.include_router(roles.router, prefix="/roles", tags=["roles"])
 api_router.include_router(configs.router, prefix="/system/configs", tags=["system-config"])
+api_router.include_router(infra.router, prefix="/system/infra", tags=["system-infra"])
+api_router.include_router(quota.router, prefix="/system/quota", tags=["system-quota"])
 
 # 13 项产品能力（按配置 → 编排 → 运行 → 分发）
 api_router.include_router(categories.router, prefix="/categories", tags=["categories"])

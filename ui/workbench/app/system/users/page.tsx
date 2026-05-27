@@ -13,11 +13,12 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import type { Role, TenantUser } from "@/lib/types";
 
 export default function SystemUsersPage() {
-  const { ready } = useRequireAuth();
+  const { ready, user: currentUser } = useRequireAuth();
   const list = usePagedList(useCallback((p, s) => api.listUsers(p, s), []), { enabled: ready });
   const { requestConfirm, confirmDialog } = useConfirmAction();
 
   const [roles, setRoles] = useState<Role[]>([]);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [createOpen, setCreateOpen] = useState(false);
   const [editUser, setEditUser] = useState<TenantUser | null>(null);
   const [username, setUsername] = useState("");
@@ -26,6 +27,8 @@ export default function SystemUsersPage() {
   const [phone, setPhone] = useState("");
   const [isActive, setIsActive] = useState(true);
   const [roleIds, setRoleIds] = useState<string[]>([]);
+  const [resetUser, setResetUser] = useState<TenantUser | null>(null);
+  const [resetPassword, setResetPassword] = useState("");
 
   useEffect(() => {
     if (!ready) return;
@@ -97,6 +100,52 @@ export default function SystemUsersPage() {
     });
   };
 
+  const onResetPassword = (u: TenantUser) => {
+    setResetUser(u);
+    setResetPassword("");
+  };
+
+  const onConfirmResetPassword = async () => {
+    if (!resetUser || resetPassword.length < 6) return;
+    await api.resetUserPassword(resetUser.id, resetPassword);
+    setResetUser(null);
+    setResetPassword("");
+    alert("密码已重置，该用户所有会话已下线");
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+  };
+
+  const toggleSelectAll = () => {
+    const selectable = list.items
+      .filter((u: TenantUser) => u.is_active && u.id !== currentUser?.id)
+      .map((u: TenantUser) => u.id);
+    if (selectable.every((id) => selectedIds.includes(id))) {
+      setSelectedIds((prev) => prev.filter((id) => !selectable.includes(id)));
+    } else {
+      setSelectedIds((prev) => [...new Set([...prev, ...selectable])]);
+    }
+  };
+
+  const onBatchDeactivate = () => {
+    if (selectedIds.length === 0) return;
+    requestConfirm({
+      title: "批量删除用户",
+      message: `确定删除选中的 ${selectedIds.length} 个用户？此操作不可撤销。`,
+      destructive: true,
+      confirmLabel: "确认删除",
+      onConfirm: async () => {
+        const res = await api.batchDeactivateUsers(selectedIds);
+        setSelectedIds([]);
+        await list.reload();
+        alert(`已删除 ${res.deactivated} 个用户${res.skipped ? `，跳过 ${res.skipped} 个` : ""}`);
+      },
+    });
+  };
+
   const onRevokeSessions = (u: TenantUser) => {
     requestConfirm({
       title: "强制下线全部会话",
@@ -111,14 +160,21 @@ export default function SystemUsersPage() {
   };
 
   return (
-    <div className="mx-auto max-w-5xl">
+    <div className="w-full">
       <PageHeader
         title="用户管理"
         description="管理当前租户下的用户账号与角色分配"
         action={
-          <button type="button" className="btn-primary" onClick={openCreate}>
-            新建用户
-          </button>
+          <div className="flex items-center gap-2">
+            {selectedIds.length > 0 && (
+              <button type="button" className="btn-ghost text-red-600" onClick={onBatchDeactivate}>
+                批量删除 ({selectedIds.length})
+              </button>
+            )}
+            <button type="button" className="btn-primary" onClick={openCreate}>
+              新建用户
+            </button>
+          </div>
         }
       />
       {list.loading ? (
@@ -129,6 +185,21 @@ export default function SystemUsersPage() {
             <table className="w-full text-left text-sm">
               <thead className="border-b border-line bg-surface-muted text-xs text-ink-muted">
                 <tr>
+                  <th className="w-10 px-4 py-2">
+                    <input
+                      type="checkbox"
+                      aria-label="全选"
+                      onChange={toggleSelectAll}
+                      checked={
+                        list.items.some(
+                          (u: TenantUser) => u.is_active && u.id !== currentUser?.id,
+                        ) &&
+                        list.items
+                          .filter((u: TenantUser) => u.is_active && u.id !== currentUser?.id)
+                          .every((u: TenantUser) => selectedIds.includes(u.id))
+                      }
+                    />
+                  </th>
                   <th className="px-4 py-2">用户名</th>
                   <th className="px-4 py-2">邮箱</th>
                   <th className="px-4 py-2">状态</th>
@@ -139,13 +210,23 @@ export default function SystemUsersPage() {
               <tbody className="divide-y divide-line-soft">
                 {list.items.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="px-4 py-8 text-center text-ink-faint">
+                    <td colSpan={6} className="px-4 py-8 text-center text-ink-faint">
                       暂无用户
                     </td>
                   </tr>
                 )}
                 {list.items.map((u: TenantUser) => (
                   <tr key={u.id}>
+                    <td className="px-4 py-3">
+                      {u.is_active && u.id !== currentUser?.id && (
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.includes(u.id)}
+                          onChange={() => toggleSelect(u.id)}
+                          aria-label={`选择 ${u.username}`}
+                        />
+                      )}
+                    </td>
                     <td className="px-4 py-3 font-medium text-ink">{u.username}</td>
                     <td className="px-4 py-3 text-ink-muted">{u.email}</td>
                     <td className="px-4 py-3">
@@ -168,6 +249,15 @@ export default function SystemUsersPage() {
                       >
                         编辑
                       </button>
+                      {u.is_active && (
+                        <button
+                          type="button"
+                          className="mr-3 text-xs text-ink-muted hover:text-ink"
+                          onClick={() => onResetPassword(u)}
+                        >
+                          重置密码
+                        </button>
+                      )}
                       {u.is_active && (
                         <button
                           type="button"
@@ -269,6 +359,40 @@ export default function SystemUsersPage() {
           </div>
         </div>
       </ResourceDialog>
+
+      <ResourceDialog
+        open={!!resetUser}
+        title="重置密码"
+        onClose={() => setResetUser(null)}
+        footer={
+          <>
+            <button type="button" className="btn-ghost" onClick={() => setResetUser(null)}>
+              取消
+            </button>
+            <button
+              type="button"
+              className="btn-primary"
+              disabled={resetPassword.length < 6}
+              onClick={onConfirmResetPassword}
+            >
+              确认重置
+            </button>
+          </>
+        }
+      >
+        <p className="text-sm text-ink-muted">
+          为用户 <span className="font-medium text-ink">{resetUser?.username}</span>{" "}
+          设置新密码。重置后该用户在所有设备上的登录将失效。
+        </p>
+        <input
+          className="input-field mt-3 w-full"
+          placeholder="新密码（至少 6 位）"
+          type="password"
+          value={resetPassword}
+          onChange={(e) => setResetPassword(e.target.value)}
+        />
+      </ResourceDialog>
+
       {confirmDialog}
     </div>
   );

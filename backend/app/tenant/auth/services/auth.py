@@ -14,6 +14,7 @@ from app.models.user import User
 from app.tenant.system.repositories.user import UserRepository
 from app.tenant.auth.schemas.auth import LoginRequest, TokenResponse, UserInfo, UserSessionOut
 from app.tenant.auth.services import session_store
+from app.tenant.audit_log.services.audit_log import write_auth_login_audit
 from app.core.service import BaseService
 
 
@@ -42,6 +43,13 @@ class AuthService(BaseService):
         await session_store.clear_legacy_session(user.id)
         await session_store.register_session(
             user.id, access, user_agent=user_agent, ip=ip
+        )
+        await write_auth_login_audit(
+            self.db,
+            tenant_id=user.tenant_id,
+            user_id=user.id,
+            ip=ip,
+            user_agent=user_agent,
         )
         return TokenResponse(access_token=access, refresh_token=refresh)
 

@@ -43,7 +43,7 @@ export function SystemShell({ children }: { children: React.ReactNode }) {
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         <SystemTopBar breadcrumbs={breadcrumbs} onMenuOpen={() => setMobileNavOpen(true)} />
         <main className="min-h-0 flex-1 overflow-auto">
-          <div className="mx-auto w-full max-w-7xl p-5 lg:p-6">{children}</div>
+          <div className="system-page-shell">{children}</div>
         </main>
       </div>
     </div>

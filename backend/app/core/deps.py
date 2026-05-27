@@ -90,3 +90,16 @@ def require_permissions(*required: str):
         return ctx
 
     return checker
+
+
+def require_superuser():
+    """仅租户超级管理员可访问（如基础设施连接探测）。"""
+
+    async def checker(ctx: TenantContext = Depends(get_tenant_context)) -> TenantContext:
+        if not ctx.is_superuser:
+            from app.common.exceptions import ForbiddenError
+
+            raise ForbiddenError("仅超级管理员可执行此操作")
+        return ctx
+
+    return checker

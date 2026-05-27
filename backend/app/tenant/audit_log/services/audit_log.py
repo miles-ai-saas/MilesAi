@@ -1,5 +1,7 @@
 """租户操作审计写库与分页查询（与运营端 admin 审计分离）。"""
 
+import csv
+import io
 from uuid import UUID
 
 from fastapi import Request
@@ -11,6 +13,8 @@ from app.tenant.audit_log.schemas.audit_log import TenantAuditLogOut
 from app.tenant.audit_log.schemas.meta import AuditMetaOut
 from app.common.schema import PageParams, PageResult
 from app.core.tenant import TenantContext
+
+EXPORT_MAX_ROWS = 5000
 
 
 async def write_tenant_audit_log(
@@ -39,6 +43,27 @@ async def write_tenant_audit_log(
         ip_address=ip,
         user_agent=ua,
         detail=detail or {},
+    )
+
+
+async def write_auth_login_audit(
+    db: AsyncSession,
+    *,
+    tenant_id: UUID,
+    user_id: UUID,
+    ip: str | None = None,
+    user_agent: str | None = None,
+) -> None:
+    """登录成功后写入审计（无 TenantContext）。"""
+    await TenantAuditLogRepository(db).create(
+        tenant_id=tenant_id,
+        user_id=user_id,
+        action="auth.login",
+        resource_type="user",
+        resource_id=str(user_id),
+        ip_address=ip,
+        user_agent=(user_agent or "")[:512] or None,
+        detail={},
     )
 
 
@@ -76,3 +101,47 @@ class TenantAuditLogService:
             page=page.page,
             size=page.size,
         )
+
+    async def export_logs_csv(
+        self,
+        *,
+        user_id: UUID | None = None,
+        action: str | None = None,
+        resource_type: str | None = None,
+        limit: int = EXPORT_MAX_ROWS,
+    ) -> str:
+        rows = await self.repo.list_for_export(
+            self.ctx.tenant_id,
+            limit=limit,
+            user_id=user_id,
+            action=action,
+            resource_type=resource_type,
+        )
+        buf = io.StringIO()
+        writer = csv.writer(buf)
+        writer.writerow(
+            [
+                "created_at",
+                "action",
+                "resource_type",
+                "resource_id",
+                "user_id",
+                "ip_address",
+                "user_agent",
+                "detail",
+            ]
+        )
+        for row in rows:
+            writer.writerow(
+                [
+                    row.created_at.isoformat() if row.created_at else "",
+                    row.action,
+                    row.resource_type or "",
+                    row.resource_id or "",
+                    str(row.user_id) if row.user_id else "",
+                    row.ip_address or "",
+                    (row.user_agent or "")[:200],
+                    str(row.detail or {}),
+                ]
+            )
+        return buf.getvalue()

@@ -60,7 +60,7 @@ export default function SystemSessionsPage() {
   };
 
   return (
-    <div className="mx-auto max-w-3xl px-6 py-8">
+    <div className="w-full">
       <PageHeader
         title="登录会话"
         description="查看当前账号在各设备上的活跃登录，可强制下线可疑会话。"

@@ -108,6 +108,11 @@
     @apply mx-auto w-full max-w-screen-2xl;
   }
 
+  /* 系统管理主内容区（与侧栏同屏尽量占满可用宽度） */
+  .system-page-shell {
+    @apply mx-auto w-full max-w-screen-2xl p-5 lg:p-8;
+  }
+
   .resource-card-grid {
     @apply grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4;
   }

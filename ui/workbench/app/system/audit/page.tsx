@@ -22,6 +22,27 @@ export default function SystemAuditPage() {
   const auditMeta = useAuditMeta(ready);
   const [actionFilter, setActionFilter] = useState("");
   const [resourceFilter, setResourceFilter] = useState("");
+  const [exporting, setExporting] = useState(false);
+
+  const onExport = async () => {
+    setExporting(true);
+    try {
+      const blob = await api.exportAuditLogs({
+        action: actionFilter || undefined,
+        resource_type: resourceFilter || undefined,
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "audit-logs.csv";
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "导出失败");
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const list = usePagedList(
     useCallback(
@@ -39,7 +60,7 @@ export default function SystemAuditPage() {
   const resourceOptions = auditResourceTypeFilterOptions(auditMeta);
 
   return (
-    <div className="mx-auto max-w-5xl">
+    <div className="w-full">
       <PageHeader title="审计日志" description="记录租户内关键操作行为" />
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <select
@@ -66,6 +87,14 @@ export default function SystemAuditPage() {
             </option>
           ))}
         </select>
+        <button
+          type="button"
+          className="btn-ghost text-sm"
+          disabled={exporting}
+          onClick={onExport}
+        >
+          {exporting ? "导出中…" : "导出 CSV"}
+        </button>
       </div>
       {list.loading ? (
         <p className="text-sm text-ink-muted">加载中…</p>

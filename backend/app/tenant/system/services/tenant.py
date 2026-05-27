@@ -45,6 +45,15 @@ class TenantService(BaseService):
     async def update_tenant(self, tenant_id: UUID, body: TenantUpdate) -> TenantOut:
         tenant = await self.repo.get_by_id_or_raise(tenant_id, label="租户不存在")
         data = body.model_dump(exclude_unset=True)
+        if not self.ctx.is_superuser:
+            for key in (
+                "max_knowledge_bases",
+                "max_storage_mb",
+                "max_tokens_monthly",
+                "max_agents",
+                "max_flows",
+            ):
+                data.pop(key, None)
         if "name" in data:
             await self.repo.ensure_name_unique(data["name"], exclude_id=tenant_id)
         await self.repo.update_fields(tenant, data)

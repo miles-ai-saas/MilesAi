@@ -6,8 +6,14 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth-store";
+import { hasPermission } from "@/lib/permissions";
 import { PageHeader } from "@/components/layout/PageHeader";
-import type { WorkbenchOverview } from "@/lib/types";
+import type { QuotaMetric, TenantQuota, WorkbenchOverview } from "@/lib/types";
+
+function quotaLabel(metric: QuotaMetric) {
+  if (metric.max <= 0) return `${metric.used}${metric.unit ? ` ${metric.unit}` : ""}`;
+  return `${metric.used} / ${metric.max}${metric.unit ? ` ${metric.unit}` : ""}`;
+}
 
 const QUICK_LINKS = [
   { href: "/workbench/agents/chat", label: "对话工作台", desc: "与智能体对话调试" },
@@ -19,13 +25,20 @@ const QUICK_LINKS = [
 ];
 
 export default function WorkbenchOverviewPage() {
-  const { ready } = useRequireAuth();
+  const { ready, user } = useRequireAuth();
   const [stats, setStats] = useState<WorkbenchOverview | null>(null);
+  const [quota, setQuota] = useState<TenantQuota | null>(null);
+  const showQuota = hasPermission(user, "system:quota:read");
 
   useEffect(() => {
     if (!ready) return;
     api.getWorkbenchOverview().then(setStats).catch(() => setStats(null));
   }, [ready]);
+
+  useEffect(() => {
+    if (!ready || !showQuota) return;
+    api.getSystemQuota().then(setQuota).catch(() => setQuota(null));
+  }, [ready, showQuota]);
 
   if (!stats) {
     return <p className="text-sm text-ink-muted">加载概览…</p>;
@@ -59,6 +72,38 @@ export default function WorkbenchOverviewPage() {
           </Link>
         ))}
       </div>
+
+      {quota && (
+        <>
+          <div className="mb-2 flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-ink">资源配额</h2>
+            <Link href="/system/quota" className="text-xs text-brand hover:underline">
+              查看详情
+            </Link>
+          </div>
+          <div className="resource-card-grid mb-8">
+            {(
+              [
+                ["智能体", quota.agents],
+                ["流程", quota.flows],
+                ["知识库", quota.knowledge_bases],
+                ["存储", quota.storage_mb],
+              ] as const
+            ).map(([label, metric]) => (
+              <Link
+                key={label}
+                href="/system/quota"
+                className="resource-card !min-h-[88px] flex-row items-center justify-between !p-4"
+              >
+                <span className="text-sm text-ink-muted">{label}</span>
+                <span className="text-sm tabular-nums font-medium text-ink">
+                  {quotaLabel(metric)}
+                </span>
+              </Link>
+            ))}
+          </div>
+        </>
+      )}
 
       <h2 className="mb-3 text-sm font-semibold text-ink">快捷入口</h2>
       <div className="resource-card-grid">

@@ -36,7 +36,8 @@ docs/
 │   ├── vector-database-selection.md
 │   ├── mcp-sandbox.md
 │   ├── flow-orchestration-enhancement.md  # 流程编排增强（Phase 1–4 已实现）
-│   ├── flow-subflow-design.md             # 子流程 SubFlow（已立项，暂不实施）
+│   ├── flow-subflow-design.md             # 子流程 SubFlow（已实现）
+│   ├── system-management-design.md        # 系统管理增强方案（Phase 0–3）
 │   └── tools-runtime.md      # 工具统一执行平面（目标架构）
 ├── frontend/                 # 前端
 │   └── design.md
@@ -100,7 +101,8 @@ docs/
 | [mcp-sandbox.md](./architecture/mcp-sandbox.md) | MCP STDIO / 平台执行：沙箱与 Runner 隔离方案 |
 | [tools-runtime.md](./architecture/tools-runtime.md) | **工具运行时**：内置 / HTTP / 脚本 / MCP 统一执行平面（目标架构） |
 | [flow-orchestration-enhancement.md](./architecture/flow-orchestration-enhancement.md) | **流程编排增强**：属性面板、调试、RAG 节点（已实现） |
-| [flow-subflow-design.md](./architecture/flow-subflow-design.md) | **子流程 SubFlow**：立项规格，暂不实施 |
+| [flow-subflow-design.md](./architecture/flow-subflow-design.md) | **子流程 SubFlow**（已实现） |
+| [system-management-design.md](./architecture/system-management-design.md) | **系统管理增强**：RBAC/会话/配额/审计分期方案 |
 | [multimodal-roadmap.md](./architecture/multimodal-roadmap.md) | **多模态技术总览**：文档地图、附件无签名约定、实施顺序 |
 | [realtime-transport-design.md](./architecture/realtime-transport-design.md) | **实时通道**：对话 WebSocket、生成任务 SSE、协议草案与分期 |
 | [agent-multimodal-design.md](./architecture/agent-multimodal-design.md) | 智能体对话多模态（设计归档） |

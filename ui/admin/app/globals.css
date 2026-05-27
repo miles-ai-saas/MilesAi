@@ -78,4 +78,9 @@
   .admin-nav-item-active:hover {
     @apply bg-brand-light text-brand;
   }
+
+  /* 运营后台主内容区 */
+  .admin-page-shell {
+    @apply mx-auto w-full max-w-screen-2xl p-5 lg:p-8;
+  }
 }

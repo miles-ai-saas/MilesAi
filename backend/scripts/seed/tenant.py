@@ -15,6 +15,11 @@ DEFAULT_PERMISSIONS = [
     ("system:user:write", "管理用户", "system"),
     ("system:config:read", "查看配置", "system"),
     ("system:config:write", "管理配置", "system"),
+    ("system:role:read", "查看角色", "system"),
+    ("system:role:write", "管理角色", "system"),
+    ("system:session:read", "查看会话", "system"),
+    ("system:session:write", "管理会话", "system"),
+    ("system:quota:read", "查看资源配额", "system"),
     ("compliance:read", "查看合规", "compliance"),
     ("compliance:write", "管理合规", "compliance"),
     ("prompt:read", "查看提示词模版", "prompt"),
@@ -54,8 +59,57 @@ DEFAULT_PERMISSIONS = [
 ]
 
 
+TENANT_ADMIN_PERMISSION_PREFIX_DENY = ("system:tenant:",)
+
+
+async def ensure_tenant_permissions(session: AsyncSession) -> None:
+    """幂等补齐权限，并挂到 super_admin / 各租户 tenant_admin 角色。"""
+    perm_by_code: dict[str, Permission] = {}
+    for code, name, module in DEFAULT_PERMISSIONS:
+        row = await session.scalar(select(Permission).where(Permission.code == code))
+        if not row:
+            row = Permission(code=code, name=name, module=module)
+            session.add(row)
+            await session.flush()
+        perm_by_code[code] = row
+
+    async def _grant_role(role: Role, codes: set[str]) -> None:
+        linked = set(
+            await session.scalars(
+                select(role_permissions.c.permission_id).where(
+                    role_permissions.c.role_id == role.id
+                )
+            )
+        )
+        for code in codes:
+            perm = perm_by_code.get(code)
+            if perm and perm.id not in linked:
+                await session.execute(
+                    role_permissions.insert().values(
+                        role_id=role.id, permission_id=perm.id
+                    )
+                )
+
+    super_admin = await session.scalar(select(Role).where(Role.code == "super_admin"))
+    if super_admin:
+        await _grant_role(super_admin, set(perm_by_code.keys()))
+
+    tenant_admin_roles = (
+        await session.scalars(select(Role).where(Role.code == "tenant_admin"))
+    ).all()
+    tenant_codes = {
+        c
+        for c in perm_by_code
+        if not c.startswith(TENANT_ADMIN_PERMISSION_PREFIX_DENY)
+    }
+    for role in tenant_admin_roles:
+        await _grant_role(role, tenant_codes)
+
+
 async def seed_tenant(session: AsyncSession) -> None:
     settings = get_settings()
+
+    await ensure_tenant_permissions(session)
 
     existing = await session.execute(
         select(User).where(User.username == settings.seed_admin_username)

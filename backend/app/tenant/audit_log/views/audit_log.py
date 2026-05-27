@@ -3,11 +3,12 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
+from fastapi.responses import PlainTextResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.infra.db import get_db
 from app.core.deps import get_page_params, require_permissions
-from app.common.response import page_ok
+from app.common.response import ok, page_ok
 from app.core.tenant import TenantContext
 from app.common.schema import ApiResponse, PageParams, PageResult
 from app.tenant.audit_log.schemas.audit_log import TenantAuditLogOut
@@ -21,13 +22,34 @@ def _svc(db: AsyncSession, ctx: TenantContext) -> TenantAuditLogService:
     return TenantAuditLogService(db, ctx)
 
 
-# GET */meta：枚举展示字典，须在 /{id} 等路径参数路由之前注册
 @router.get("/meta", response_model=ApiResponse[AuditMetaOut])
 async def audit_meta(
     ctx: TenantContext = Depends(require_permissions("audit:read")),
     db: AsyncSession = Depends(get_db),
 ):
     return ok(await _svc(db, ctx).get_meta())
+
+
+@router.get("/logs/export")
+async def export_audit_logs(
+    user_id: UUID | None = Query(None),
+    action: str | None = Query(None),
+    resource_type: str | None = Query(None),
+    limit: int = Query(5000, ge=1, le=10000),
+    ctx: TenantContext = Depends(require_permissions("audit:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    csv_text = await _svc(db, ctx).export_logs_csv(
+        user_id=user_id,
+        action=action,
+        resource_type=resource_type,
+        limit=limit,
+    )
+    return PlainTextResponse(
+        content="\ufeff" + csv_text,
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": 'attachment; filename="audit-logs.csv"'},
+    )
 
 
 @router.get("/logs", response_model=ApiResponse[PageResult[TenantAuditLogOut]])

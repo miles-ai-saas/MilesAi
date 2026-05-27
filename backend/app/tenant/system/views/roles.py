@@ -27,7 +27,7 @@ def _svc(db: AsyncSession, ctx: TenantContext) -> RoleService:
 
 @router.get("/permissions", response_model=ApiResponse[list[PermissionGroupOut]])
 async def list_permissions(
-    ctx: TenantContext = Depends(require_permissions("system:user:read")),
+    ctx: TenantContext = Depends(require_permissions("system:role:read")),
     db: AsyncSession = Depends(get_db),
 ):
     return ok(await _svc(db, ctx).list_permissions())
@@ -35,7 +35,7 @@ async def list_permissions(
 
 @router.get("/assignable", response_model=ApiResponse[list[RoleOut]])
 async def list_assignable_roles(
-    ctx: TenantContext = Depends(require_permissions("system:user:read")),
+    ctx: TenantContext = Depends(require_permissions("system:role:read")),
     db: AsyncSession = Depends(get_db),
 ):
     return ok(await _svc(db, ctx).list_assignable_roles())
@@ -44,7 +44,7 @@ async def list_assignable_roles(
 @router.get("", response_model=ApiResponse[PageResult[RoleOut]])
 async def list_roles(
     params: PageParams = Depends(get_page_params),
-    ctx: TenantContext = Depends(require_permissions("system:user:read")),
+    ctx: TenantContext = Depends(require_permissions("system:role:read")),
     db: AsyncSession = Depends(get_db),
 ):
     result = await _svc(db, ctx).list_roles(params)
@@ -54,7 +54,7 @@ async def list_roles(
 @router.post("", response_model=ApiResponse[RoleOut])
 async def create_role(
     body: RoleCreate,
-    ctx: TenantContext = Depends(require_permissions("system:user:write")),
+    ctx: TenantContext = Depends(require_permissions("system:role:write")),
     db: AsyncSession = Depends(get_db),
 ):
     return ok(await _svc(db, ctx).create_role(body))
@@ -64,7 +64,7 @@ async def create_role(
 async def update_role(
     role_id: UUID,
     body: RoleUpdate,
-    ctx: TenantContext = Depends(require_permissions("system:user:write")),
+    ctx: TenantContext = Depends(require_permissions("system:role:write")),
     db: AsyncSession = Depends(get_db),
 ):
     return ok(await _svc(db, ctx).update_role(role_id, body))
@@ -73,7 +73,7 @@ async def update_role(
 @router.delete("/{role_id}", response_model=ApiResponse[None])
 async def delete_role(
     role_id: UUID,
-    ctx: TenantContext = Depends(require_permissions("system:user:write")),
+    ctx: TenantContext = Depends(require_permissions("system:role:write")),
     db: AsyncSession = Depends(get_db),
 ):
     await _svc(db, ctx).delete_role(role_id)

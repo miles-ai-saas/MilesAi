@@ -39,6 +39,8 @@ import type {
   PermissionGroup,
   Role,
   RuntimeInfo,
+  InfraStatus,
+  InfraComponentStatus,
   McpService,
   PageResult,
   PromptTemplate,
@@ -189,8 +191,14 @@ export const api = {
     userId: string,
     payload: { email?: string; phone?: string; is_active?: boolean; role_ids?: string[] },
   ) => patch<TenantUser>(`/users/${userId}`, payload),
+  resetUserPassword: (userId: string, password: string) =>
+    post<TenantUser>(`/users/${userId}/reset-password`, { password }),
   deactivateUser: (userId: string) =>
     http.delete<ApiResponse<TenantUser>>(`/users/${userId}`).then((res) => unwrap(res.data)),
+  batchDeactivateUsers: (userIds: string[]) =>
+    post<{ deactivated: number; skipped: number }>("/users/batch-deactivate", {
+      user_ids: userIds,
+    }),
 
   listPermissionGroups: () => get<PermissionGroup[]>("/roles/permissions"),
   listAssignableRoles: () => get<Role[]>("/roles/assignable"),
@@ -210,11 +218,18 @@ export const api = {
 
   listConfigDefinitions: () => get<ConfigDefinition[]>("/system/configs/definitions"),
   getRuntimeInfo: () => get<RuntimeInfo>("/system/configs/runtime"),
+  getInfraStatus: () => get<InfraStatus>("/system/infra/status"),
+  testInfraConnection: (components?: string[]) =>
+    post<{ results: InfraComponentStatus[] }>("/system/infra/test-connection", {
+      components: components?.length ? components : undefined,
+    }),
   upsertSystemConfig: (key: string, value: unknown, description?: string) =>
     put<{ key: string; value: Record<string, unknown> }>(`/system/configs/${encodeURIComponent(key)}`, {
       value: typeof value === "object" && value !== null ? value : { value },
       description,
     }),
+
+  getSystemQuota: () => get<import("./types").TenantQuota>("/system/quota"),
 
   getMonitorTrends: (days = 7) => get<MonitorTrends>(`/monitor/trends?days=${days}`),
   getMonitorModelUsage: (days = 7) =>
@@ -229,6 +244,18 @@ export const api = {
     if (filters?.action) q.set("action", filters.action);
     if (filters?.resource_type) q.set("resource_type", filters.resource_type);
     return getPage<TenantAuditLog>(`/audit/logs?${q.toString()}`);
+  },
+
+  exportAuditLogs: async (filters?: { action?: string; resource_type?: string }) => {
+    const q = new URLSearchParams();
+    if (filters?.action) q.set("action", filters.action);
+    if (filters?.resource_type) q.set("resource_type", filters.resource_type);
+    const suffix = q.toString();
+    const res = await http.get(
+      `/audit/logs/export${suffix ? `?${suffix}` : ""}`,
+      { responseType: "blob" },
+    );
+    return res.data as Blob;
   },
 
   getComplianceScanBindings: () => get<ComplianceScanBindings>("/compliance/bindings"),

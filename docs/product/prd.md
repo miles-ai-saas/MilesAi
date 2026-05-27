@@ -32,7 +32,7 @@
 
 | PRD 模块 | As-Is 规格 | 架构 / 指南 |
 |----------|------------|-------------|
-| 1 系统管理（租户） | [system-management.md](../features/system-management.md) | [technical-design §5](../architecture/technical-design.md#5-多租户与权限) |
+| 1 系统管理（租户） | [system-management.md](../features/system-management.md) | [technical-design §5](../architecture/technical-design.md#5-多租户与权限) · [system-management-design.md](../architecture/system-management-design.md) |
 | 1a 运营后台 | [admin-ops.md](../features/admin-ops.md) | §4 运营域 |
 | 2 安全合规 | [compliance.md](../features/compliance.md)、[hooks.md](../features/hooks.md) | [compliance-word-libraries.md](../guides/compliance-word-libraries.md) |
 | 3 模型与提示词 | [models-prompts.md](../features/models-prompts.md) | [model-providers.md](../guides/model-providers.md) |

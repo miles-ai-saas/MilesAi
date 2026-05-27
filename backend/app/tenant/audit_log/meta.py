@@ -35,7 +35,11 @@ ACTION_FILTER_OPTIONS: list[tuple[str, str, str | None]] = [
     ("kb.document.delete", "删除文档", None),
     ("flow.publish", "发布流程", None),
     ("compliance.scan", "合规试跑", None),
-    ("user.login", "用户登录", None),
+    ("auth.login", "用户登录", None),
+    ("user.create", "创建用户", None),
+    ("user.update", "更新用户", None),
+    ("user.deactivate", "删除用户", None),
+    ("user.reset_password", "重置密码", None),
 ]
 
 # 展示用动作文案（未知 action 仍回显原值）

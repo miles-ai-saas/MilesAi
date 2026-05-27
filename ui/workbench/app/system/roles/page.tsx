@@ -99,7 +99,7 @@ export default function SystemRolesPage() {
   };
 
   return (
-    <div className="mx-auto max-w-5xl">
+    <div className="w-full">
       <PageHeader
         title="角色权限"
         description="为本租户配置角色与权限，用户通过角色获得访问能力。"

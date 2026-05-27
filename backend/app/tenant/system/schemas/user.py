@@ -19,6 +19,14 @@ class UserUpdate(BaseModel):
     role_ids: list[UUID] | None = Field(default=None, description="角色 ID 列表（全量替换）")
 
 
+class UserResetPassword(BaseModel):
+    password: str = Field(..., min_length=6, description="新登录密码")
+
+
+class UserBatchDeactivate(BaseModel):
+    user_ids: list[UUID] = Field(..., min_length=1, description="待禁用用户 ID 列表")
+
+
 class UserOut(BaseModel):
     id: UUID = Field(description="用户 ID")
     username: str = Field(description="用户名")

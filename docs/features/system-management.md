@@ -3,7 +3,7 @@
 **日期：** 2026-05-27  
 **状态：** 已实现  
 **PRD 对照：** 模块1 系统管理  
-**架构：** [technical-design.md §5](../architecture/technical-design.md#5-多租户与权限)
+**架构：** [technical-design.md §5](../architecture/technical-design.md#5-多租户与权限) · **增强方案：** [system-management-design.md](../architecture/system-management-design.md)
 
 ---
 
@@ -23,6 +23,7 @@
 ### 1.2 明确不做
 
 - 租户自助修改向量库/OSS 引擎类型（见 technical-design §6.5 L2 规划）
+- **租户后台修改资源配额**（`max_*`）；配额变更仅运营后台
 - 会话设备管理与强制登出 UI（JWT 黑名单 logout 已支持）
 
 ---
@@ -59,6 +60,7 @@ POST /auth/refresh
 ```
 GET    /users?page=
 POST   /users
+POST   /users/batch-deactivate   # 批量软禁用，返回 { deactivated, skipped }
 PATCH  /users/{id}
 DELETE /users/{id}         # 软禁用
 ```
@@ -96,6 +98,15 @@ GET /system/configs
 PUT /system/configs/{key}
 ```
 
+### 3.5.1 基础设施 `/api/v1/system/infra`（只读 + 探测）
+
+权限：`GET /status` 需 `system:config:read`；`POST /test-connection` 仅租户超管。
+
+```
+GET  /system/infra/status              # 组件状态 + 脱敏配置预览
+POST /system/infra/test-connection     # 测试 PG/Redis/对象存储/向量库/Celery Broker
+```
+
 ### 3.6 审计 `/api/v1/audit`
 
 权限：`audit:read`
@@ -103,9 +114,28 @@ PUT /system/configs/{key}
 ```
 GET /audit/meta
 GET /audit/logs?user_id=&action=&resource_type=
+GET /audit/logs/export?action=&resource_type=&limit=   # CSV 导出（UTF-8 BOM）
 ```
 
-### 3.7 健康检查
+### 3.7 资源配额 `/api/v1/system/quota`（只读）
+
+权限：`system:quota:read`
+
+```
+GET /system/quota    # 本租户 KB/存储/智能体/流程/Token/生成日次数汇总
+```
+
+配额上限修改仅在运营后台；租户侧无写接口。
+
+### 3.8 用户扩展
+
+```
+POST /users/{id}/reset-password    # 管理员重置密码（system:user:write），并重置全部会话
+```
+
+登录成功写入审计：`action=auth.login`。
+
+### 3.9 健康检查
 
 ```
 GET /api/v1/health
@@ -126,12 +156,15 @@ GET /api/v1/health
 | 路径 | 功能 |
 |------|------|
 | `/login` | JWT 登录 |
-| `/system/users` | 用户管理 |
+| `/system/users` | 用户管理（含重置密码、批量删除） |
 | `/system/roles` | 角色权限 |
-| `/system/config` | 系统配置 |
-| `/system/audit` | 审计日志 |
+| `/system/sessions` | 登录会话 |
+| `/system/quota` | 资源配额（只读） |
+| `/system/config` | 系统配置（L2 可编辑 + L1 基础设施只读/探测） |
+| `/system/audit` | 审计日志（含 CSV 导出） |
+| `/workbench/dashboard` | 概览页配额摘要（需 `system:quota:read`） |
 
-导航：`ui/workbench/lib/nav-config.ts` → `SYSTEM_NAV`。
+侧栏按 RBAC 过滤：`ui/workbench/lib/nav-config.ts` · `lib/permissions.ts`
 
 ---
 
@@ -139,7 +172,8 @@ GET /api/v1/health
 
 ```
 backend/app/tenant/auth/
-backend/app/tenant/system/views/{users,roles,tenants,configs,health}.py
+backend/app/tenant/system/views/{users,roles,tenants,configs,quota,health}.py
+backend/app/tenant/system/services/quota.py
 backend/app/tenant/system/services/
 backend/app/tenant/audit_log/
 backend/app/core/deps.py              # get_tenant_context, require_permissions
@@ -160,5 +194,6 @@ backend/app/models/{tenant,user,role,system}.py
 
 ## 8. 参考
 
+- [system-management-design.md](../architecture/system-management-design.md) — Phase 0–3 增强技术方案
 - [operations/database-setup.md](../operations/database-setup.md) — 种子与迁移
 - [admin-ops.md](./admin-ops.md) — 运营后台

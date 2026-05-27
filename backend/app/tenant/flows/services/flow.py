@@ -114,6 +114,9 @@ class FlowService(BaseService):
         )
 
     async def create_flow(self, body: FlowCreate) -> FlowOut:
+        from app.tenant.system.services.quota import assert_can_create_flow
+
+        await assert_can_create_flow(self.db, self.ctx.tenant_id)
         flow = await self.repo.create(
             tenant_id=self.ctx.tenant_id,
             name=body.name,

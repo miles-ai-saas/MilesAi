@@ -72,7 +72,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           onLogout={logout}
         />
         <main className="min-h-0 flex-1 overflow-auto">
-          <div className="mx-auto w-full max-w-7xl p-5 lg:p-6">{children}</div>
+          <div className="admin-page-shell">{children}</div>
         </main>
       </div>
     </div>

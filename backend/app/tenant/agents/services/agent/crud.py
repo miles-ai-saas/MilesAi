@@ -144,6 +144,9 @@ class AgentCrudMixin(BaseService):
 
     async def create_agent(self, body: AgentCreate) -> AgentOut:
         """创建智能体并同步 KB、子 Agent、A2A peer、标签绑定。"""
+        from app.tenant.system.services.quota import assert_can_create_agent
+
+        await assert_can_create_agent(self.db, self.ctx.tenant_id)
         await CategoryService(self.db, self.ctx).validate_category_for_domain(
             body.category_id, CategoryDomain.AGENT
         )
