@@ -148,7 +148,7 @@ POST /mcp/{id}/sync | .../invoke
 | **Runner 客户端** | `app/tenant/mcp/runner/client.py` | API → Runner HTTP |
 | **RunSpec** | `app/tenant/mcp/runner/spec.py` | 命令校验与构建 |
 | **Runner 服务** | `app/runner/main.py` | 独立 uvicorn 入口 |
-| 前端 | `frontend/app/workbench/mcp/`，`frontend/components/mcp/` | Tab 与卡片 |
+| 前端 | `ui/workbench/app/workbench/mcp/`，`ui/workbench/components/mcp/` | Tab 与卡片 |
 
 ## 6. 与智能体集成
 

@@ -139,8 +139,9 @@ MilesAi/
 │   │   └── deletion/               # 级联删除
 │   ├── alembic/versions/           # 001–009（见 §6.1）
 │   └── pyproject.toml
-├── frontend/                       # 租户 Next.js 14
-├── admin_frontend/                 # 运营 Next.js 14
+├── ui/                             # 前端应用
+│   ├── workbench/                  # 租户 Next.js 14
+│   └── admin/                      # 运营 Next.js 14
 ├── docker/                         # infra + app compose
 └── docs/                           # → docs/README.md
     ├── product/                    # 需求
@@ -560,7 +561,7 @@ flowchart TD
 
 ## 13. 前端
 
-### 13.1 租户工作台（`frontend/`，`:3000`）
+### 13.1 租户工作台（`ui/workbench/`，`:3000`）
 
 | 路径 | 功能 |
 |------|------|
@@ -584,9 +585,9 @@ flowchart TD
 | `/workbench/marketplace` | 应用市场 |
 | `/system/*` | 用户、角色、配置、审计（系统管理区） |
 
-导航：`frontend/lib/nav-config.ts`。API 客户端：`frontend/lib/api.ts`。
+导航：`ui/workbench/lib/nav-config.ts`。API 客户端：`ui/workbench/lib/api.ts`。
 
-### 13.2 运营后台（`admin_frontend/`，`:3001`）
+### 13.2 运营后台（`ui/admin/`，`:3001`）
 
 登录、租户、计费、风控、审计、个人资料；API 基址 `NEXT_PUBLIC_ADMIN_API_URL` → `/api/admin/v1`。
 

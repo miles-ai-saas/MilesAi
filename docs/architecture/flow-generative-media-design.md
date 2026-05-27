@@ -109,7 +109,7 @@ flow_runtime.nodes.image_generate / video_generate
 |----|------|
 | Handler | `flow_runtime/nodes/registry.py` |
 | 编译 | `integrations/langgraph/compiler`（`CANVAS_NODE_TYPES`） |
-| 前端 | `frontend/lib/flow-nodes.ts`、`flow-node-schemas.ts`、`FlowNodeInspector` |
+| 前端 | `ui/workbench/lib/flow-nodes.ts`、`flow-node-schemas.ts`、`FlowNodeInspector` |
 
 ### 4.3 输出契约（统一）
 

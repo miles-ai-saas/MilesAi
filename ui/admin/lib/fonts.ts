@@ -4,7 +4,7 @@ import { fontFamilySans } from "./font-family";
 
 export { fontFamilySans };
 
-/** 与租户工作台一致（见 frontend/lib/fonts.ts） */
+/** 与租户工作台一致（见 ui/workbench/lib/fonts.ts） */
 export const appFont = Noto_Sans_SC({
   weight: ["400", "500", "600", "700"],
   subsets: ["latin"],

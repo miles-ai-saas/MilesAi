@@ -177,22 +177,22 @@ Docker 全栈：`docker-compose.yml` 已含 `beat` 服务（与 `worker` 同镜�
 | 常用 | `CronPresetLinks` |
 | 状态 | `ToggleSwitch` |
 
-工具模块：`frontend/lib/cron-celery.ts`（build / parse / describe / validate / presets）。
+工具模块：`ui/workbench/lib/cron-celery.ts`（build / parse / describe / validate / presets）。
 
 ### 5.4 文件清单
 
 ```
-frontend/lib/cron-celery.ts
-frontend/lib/types.ts                    # AgentSchedule
-frontend/lib/api.ts                      # schedule CRUD
-frontend/components/ui/ToggleSwitch.tsx
-frontend/components/agent/CronFieldPicker.tsx
-frontend/components/agent/CronPresetLinks.tsx
-frontend/components/agent/CronExpressionPreview.tsx
-frontend/components/agent/AgentScheduleDialog.tsx
-frontend/components/agent/AgentSchedulePanel.tsx
-frontend/components/agent/AgentWorkbenchOverlay.tsx
-frontend/components/agent/agent-workbench-tabs.ts
+ui/workbench/lib/cron-celery.ts
+ui/workbench/lib/types.ts                    # AgentSchedule
+ui/workbench/lib/api.ts                      # schedule CRUD
+ui/workbench/components/ui/ToggleSwitch.tsx
+ui/workbench/components/agent/CronFieldPicker.tsx
+ui/workbench/components/agent/CronPresetLinks.tsx
+ui/workbench/components/agent/CronExpressionPreview.tsx
+ui/workbench/components/agent/AgentScheduleDialog.tsx
+ui/workbench/components/agent/AgentSchedulePanel.tsx
+ui/workbench/components/agent/AgentWorkbenchOverlay.tsx
+ui/workbench/components/agent/agent-workbench-tabs.ts
 ```
 
 ---

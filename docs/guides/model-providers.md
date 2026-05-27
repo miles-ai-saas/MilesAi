@@ -254,7 +254,7 @@ effective_api_base  = tenant_credentials.api_base ?? model_config.api_base
 
 ### 6.2 运营后台（新建）
 
-路径建议：`/catalog/models` 或 `/models`（`admin_frontend`）。
+路径建议：`/catalog/models` 或 `/models`（ui/admin）。
 
 - 表格/卡片管理内置目录；
 - 发布/下架；
@@ -317,8 +317,8 @@ effective_api_base  = tenant_credentials.api_base ?? model_config.api_base
 | 租户服务 | `tenant/models/services/model.py`、`model_resolve.py` |
 | 运营服务 | `admin/app_ops/services/model_catalog.py`（新建） |
 | 视图 | `tenant/models/views/models.py`；`admin/app_ops/views/model_catalog.py` |
-| 前端租户 | `frontend/app/workbench/models/page.tsx` + `components/model/*` |
-| 前端运营 | `admin_frontend/app/catalog/models/` |
+| 前端租户 | `ui/workbench/app/workbench/models/page.tsx` + `components/model/*` |
+| 前端运营 | `ui/admin/app/catalog/models/` |
 | 调用链改造点 | `chat_models._http_chat_completion` 入口改为 `get_effective_config` |
 
 ---

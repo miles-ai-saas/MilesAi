@@ -29,7 +29,7 @@ React Flow → PUT /flows/{id}/graph → flow_versions
 
 `PlatformTool` 节点 `data.tool_slug` 调用平台工具（含 `skill_read_reference`、`skill_run_script`、`knowledge_search` 等）。智能体发布流程执行时注入 `agent_id` / `agent_config` / `kb_ids`；调试运行时使用当前租户用户权限。
 
-扩展：在 `nodes/registry.py` 注册，并在 `frontend/lib/flow-nodes.ts` 增加调色板。
+扩展：在 `nodes/registry.py` 注册，并在 `ui/workbench/lib/flow-nodes.ts` 增加调色板。
 
 `POST /flows/{id}/compile` 预览编译结果；不可编译返回 `400` + `errors`。要求 **DAG**（无环）。
 

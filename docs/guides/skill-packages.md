@@ -289,7 +289,7 @@ Agent.config.skill_package_id
 
 工具自动绑定当前智能体的 `skill_package_id`，LLM 无需传技能 ID。
 
-绑定入口：工作台智能体表单 `skill_package_id`（`frontend/components/agent/AgentFormStepContent.tsx`）。
+绑定入口：工作台智能体表单 `skill_package_id`（`ui/workbench/components/agent/AgentFormStepContent.tsx`）。
 
 注入块示例：
 
@@ -313,12 +313,12 @@ description: ...
 
 | 路径 | 职责 |
 |------|------|
-| `frontend/app/workbench/skills/page.tsx` | 列表与导入入口 |
-| `frontend/app/workbench/skills/[id]/page.tsx` | 编辑器 |
-| `frontend/components/skills/SkillImportDialogs.tsx` | 本地 / ZIP / Git 弹窗 |
-| `frontend/components/skills/SkillCreateBlankDialog.tsx` | 空白创建 |
-| `frontend/lib/api.ts` | `listSkillPackages`、`importSkill*`、`putSkillFile` 等 |
-| `frontend/components/category/useCategoryTabs.tsx` | `domain="skill"` |
+| `ui/workbench/app/workbench/skills/page.tsx` | 列表与导入入口 |
+| `ui/workbench/app/workbench/skills/[id]/page.tsx` | 编辑器 |
+| `ui/workbench/components/skills/SkillImportDialogs.tsx` | 本地 / ZIP / Git 弹窗 |
+| `ui/workbench/components/skills/SkillCreateBlankDialog.tsx` | 空白创建 |
+| `ui/workbench/lib/api.ts` | `listSkillPackages`、`importSkill*`、`putSkillFile` 等 |
+| `ui/workbench/components/category/useCategoryTabs.tsx` | `domain="skill"` |
 
 ## 8. 代码结构（后端）
 

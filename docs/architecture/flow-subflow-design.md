@@ -257,7 +257,7 @@ async def sub_flow(node_data, inputs, ctx):
 | 节点注册 | `flow_runtime/nodes/registry.py` |
 | 编译器 | `integrations/langgraph/compiler.py` |
 | 主流程服务 | `tenant/flows/services/flow.py` |
-| 画布 UI | `frontend/components/flow/` |
+| 画布 UI | `ui/workbench/components/flow/` |
 | 编排增强（已完成） | [flow-orchestration-enhancement.md](./flow-orchestration-enhancement.md) |
 
 ---

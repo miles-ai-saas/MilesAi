@@ -73,7 +73,7 @@ React Flow (graph_json)
 |----|------|
 | Handler | `backend/app/flow_runtime/nodes/registry.py` |
 | 编译 | `integrations.langgraph.compiler`（`SUPPORTED_CANVAS_NODE_TYPES` 取自 registry） |
-| 前端 | `frontend/lib/flow-nodes.ts`（`NODE_PALETTE`、`DEFAULT_DATA`、Handle 约定） |
+| 前端 | `ui/workbench/lib/flow-nodes.ts`（`NODE_PALETTE`、`DEFAULT_DATA`、Handle 约定） |
 
 Handle 名须与 `compiler._gather_node_inputs` 及 `flow_runtime/templates/README.md` 一致。
 
@@ -160,7 +160,7 @@ Handle 名须与 `compiler._gather_node_inputs` 及 `flow_runtime/templates/READ
 | `FlowRunPanel` | KB 多选、`query`、运行、`steps` + `output` |
 | `flow-node-schemas.ts` | 各类型字段定义、Handle 允许表（与后端对齐） |
 
-链路登记：`frontend/lib/chains.ts` §6 增补 `FlowNodeInspector`、`flow-node-schemas.ts`。
+链路登记：`ui/workbench/lib/chains.ts` §6 增补 `FlowNodeInspector`、`flow-node-schemas.ts`。
 
 ### 4.3 各节点属性字段（`node.data`）
 
@@ -459,7 +459,7 @@ flowchart TD
 | 评分 | `backend/app/integrations/langgraph/grading.py` |
 | Agent RAG 图 | `backend/app/integrations/langgraph/graphs/rag_qa.py` |
 | 节点注册 | `backend/app/flow_runtime/nodes/registry.py` |
-| 画布 UI | `frontend/components/flow/FlowCanvas.tsx` |
-| 节点卡片 | `frontend/components/flow/FlowNodeCard.tsx` |
-| 类型/模板 | `frontend/lib/flow-nodes.ts` |
+| 画布 UI | `ui/workbench/components/flow/FlowCanvas.tsx` |
+| 节点卡片 | `ui/workbench/components/flow/FlowNodeCard.tsx` |
+| 类型/模板 | `ui/workbench/lib/flow-nodes.ts` |
 | 用户指南 | `docs/guides/flows.md` |

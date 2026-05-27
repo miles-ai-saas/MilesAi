@@ -184,11 +184,11 @@ POST /apps/{id}/upgrade
 ### 5.2 组件
 
 ```
-frontend/app/workbench/marketplace/page.tsx
-frontend/components/marketplace/MarketplaceAppDetailDrawer.tsx
-frontend/components/marketplace/MarketplaceUpgradeDialog.tsx
-frontend/components/marketplace/MarketplaceStarDisplay.tsx
-frontend/components/marketplace/marketplace-manifest.ts
+ui/workbench/app/workbench/marketplace/page.tsx
+ui/workbench/components/marketplace/MarketplaceAppDetailDrawer.tsx
+ui/workbench/components/marketplace/MarketplaceUpgradeDialog.tsx
+ui/workbench/components/marketplace/MarketplaceStarDisplay.tsx
+ui/workbench/components/marketplace/marketplace-manifest.ts
 ```
 
 ---

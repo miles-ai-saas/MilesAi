@@ -1,6 +1,6 @@
 # MilesAi 前端设计规范
 
-> 适用范围：`frontend/`（租户 AI 工作台）、`admin_frontend/`（平台运营后台）  
+> 适用范围：`ui/workbench/`（租户 AI 工作台）、`ui/admin/`（平台运营后台）  
 > 技术栈：Next.js 14 · Tailwind CSS 3 · 组件级 CSS（`globals.css`）  
 > 品牌主色与公司 Logo「行千里」保持一致。
 
@@ -31,7 +31,7 @@
 | `company.orange` | `#E66432` | Logo「行千里」主色 |
 | `company.tagline` | `#C9A88E` | Logo 英文标语 |
 
-常量定义：`frontend/components/brand/company-logo.tsx`（`COMPANY_ORANGE` / `COMPANY_TAGLINE`）。
+常量定义：`ui/workbench/components/brand/company-logo.tsx`（`COMPANY_ORANGE` / `COMPANY_TAGLINE`）。
 
 ### 2.2 产品主色（Tailwind `brand`）
 
@@ -77,10 +77,10 @@
 
 | 文件 | 说明 |
 |------|------|
-| `frontend/tailwind.config.ts` | Tailwind 扩展色、阴影 |
-| `frontend/app/globals.css` | CSS 变量 + 组件类 |
-| `admin_frontend/tailwind.config.ts` | 与租户端保持一致 |
-| `admin_frontend/app/globals.css` | 同上 |
+| `ui/workbench/tailwind.config.ts` | Tailwind 扩展色、阴影 |
+| `ui/workbench/app/globals.css` | CSS 变量 + 组件类 |
+| `ui/admin/tailwind.config.ts` | 与租户端保持一致 |
+| `ui/admin/app/globals.css` | 同上 |
 
 ---
 
@@ -134,13 +134,13 @@ var(--font-sans), "PingFang SC", "Microsoft YaHei", "Segoe UI", system-ui, -appl
 
 - 等宽仅用于**可复制的技术内容**；普通说明文案仍用 `font-sans`（默认）。
 - 字号比同级正文略小一级（多为 `text-xs`），避免与界面主字体抢视觉重心。
-- 两端（`frontend` / `admin_frontend`）写法保持一致；运营后台模型表单的 `model_code`、`model_name` 等同理。
+- 两端（`workbench` / `admin`）写法保持一致；运营后台模型表单的 `model_code`、`model_name` 等同理。
 
 ---
 
 ## 4. 布局结构
 
-### 4.1 租户工作台（`frontend`）
+### 4.1 租户工作台（`workbench`）
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -163,10 +163,10 @@ var(--font-sans), "PingFang SC", "Microsoft YaHei", "Segoe UI", system-ui, -appl
 └──────────┴──────────────────────────────────────────────┘
 ```
 
-### 4.3 运营后台（`admin_frontend`）
+### 4.3 运营后台（`admin`）
 
 - 侧栏 `w-60`，顶栏 `h-12`，配色 token 与租户端一致。
-- 管理类组件前缀：`admin-nav-item` / `admin-nav-item-active`（定义于 `admin_frontend/app/globals.css`）。
+- 管理类组件前缀：`admin-nav-item` / `admin-nav-item-active`（定义于 `ui/admin/app/globals.css`）。
 
 ### 4.4 登录页
 
@@ -386,7 +386,7 @@ var(--font-sans), "PingFang SC", "Microsoft YaHei", "Segoe UI", system-ui, -appl
 
 ## 8. 两端差异
 
-| 项目 | `frontend` | `admin_frontend` |
+| 项目 | `workbench` | `admin` |
 |------|------------|------------------|
 | 色彩 token | 相同 | 相同 |
 | Logo 组件 | `components/brand/*` | 副本同步维护 |
@@ -406,11 +406,11 @@ var(--font-sans), "PingFang SC", "Microsoft YaHei", "Segoe UI", system-ui, -appl
 4. **Logo**：导航只用 `BrandHeader`；不要并排 `mark` + `compact` 重复「行千里」。
 5. **弹窗**：按 §5.7 选型；复杂表单用 `size="sheet"`，禁止新功能使用 `fullscreen` 盖住 App Header。
 6. **Lint**：组件目录 `components/brand/`、`components/layout/` 为布局与品牌权威实现。
-7. **必要链路注释**：新增或改动跨文件流程时，在 `frontend/lib/chains.ts` 登记章节，并在入口文件（`lib/*`、`hooks/*`、页面顶部）注明章节号；列表页可参考 `app/workbench/flows/page.tsx`。已覆盖：全部 `app/**` 页面、`lib` 业务模块、`hooks`、各域主要 `components`；纯品牌/图表/`components/ui` 可不注释。
+7. **必要链路注释**：新增或改动跨文件流程时，在 `ui/workbench/lib/chains.ts` 登记章节，并在入口文件（`lib/*`、`hooks/*`、页面顶部）注明章节号；列表页可参考 `app/workbench/flows/page.tsx`。已覆盖：全部 `app/**` 页面、`lib` 业务模块、`hooks`、各域主要 `components`；纯品牌/图表/`components/ui` 可不注释。
 
 ### 9.1 必要链路索引
 
-权威清单：`frontend/lib/chains.ts`（鉴权、API、列表页、枚举 meta、对话、流程、导航、知识库、技能包、Cron 等）。枚举字典另见 `lib/enum-meta.ts` 与 [hooks.md](../guides/hooks.md) §9。
+权威清单：`ui/workbench/lib/chains.ts`（鉴权、API、列表页、枚举 meta、对话、流程、导航、知识库、技能包、Cron 等）。枚举字典另见 `lib/enum-meta.ts` 与 [hooks.md](../guides/hooks.md) §9。
 
 | 章节 | 场景 | 关键文件 |
 |------|------|----------|
@@ -434,7 +434,7 @@ var(--font-sans), "PingFang SC", "Microsoft YaHei", "Segoe UI", system-ui, -appl
 ## 10. 参考文件速查
 
 ```
-frontend/
+ui/workbench/
 ├── lib/chains.ts            # 必要链路索引（§9.1）
 ├── lib/enum-meta.ts         # 枚举 meta 契约（§4）
 ├── lib/api.ts               # API 客户端（§2）
@@ -448,7 +448,7 @@ frontend/
 ├── components/layout/       # AppShell, SystemSidebar, LoginHero
 └── components/resource/   # ResourceDialog, ConfirmDialog（§5.7）
 
-admin_frontend/              # 同上：lib/fonts.ts、font-family.ts、globals、tailwind 与租户端保持一致
+ui/admin/              # 同上：lib/fonts.ts、font-family.ts、globals、tailwind 与租户端保持一致
 ```
 
 相关文档：[technical-design.md](../architecture/technical-design.md)（系统架构）、根目录 [README.md](../README.md)（启动与端口）。

@@ -70,8 +70,8 @@ GET /workbench/overview         # 聚合 COUNT，减少多路列表请求
 ## 4. 前端
 
 ```
-frontend/app/workbench/monitor/page.tsx
-frontend/app/workbench/dashboard/page.tsx
+ui/workbench/app/workbench/monitor/page.tsx
+ui/workbench/app/workbench/dashboard/page.tsx
 ```
 
 ---

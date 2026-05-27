@@ -100,9 +100,9 @@ POST /compile → 校验环、未知节点、ParallelJoin 层
 ## 6. 前端
 
 ```
-frontend/app/workbench/flows/page.tsx
-frontend/app/workbench/flows/[id]/edit/page.tsx
-frontend/components/flow/FlowCanvas.tsx
+ui/workbench/app/workbench/flows/page.tsx
+ui/workbench/app/workbench/flows/[id]/edit/page.tsx
+ui/workbench/components/flow/FlowCanvas.tsx
 ```
 
 画布节点类型与 `flow_runtime/constants.py` 对齐。

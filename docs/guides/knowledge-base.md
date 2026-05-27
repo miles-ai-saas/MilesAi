@@ -277,7 +277,7 @@ cd backend && pip install -e ".[parse-docling]"
 | `/workbench/kb` | 列表、新建（选向量化模型，来自模型目录） |
 | `/workbench/kb/[id]` | 上传、文档状态轮询、重试、删除、检索测试 |
 
-类型与 API：`frontend/lib/types.ts`、`frontend/lib/api.ts`。
+类型与 API：`ui/workbench/lib/types.ts`、`ui/workbench/lib/api.ts`。
 
 ---
 

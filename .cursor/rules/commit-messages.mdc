@@ -1,0 +1,33 @@
+---
+description: Git commit message 必须使用简体中文
+alwaysApply: true
+---
+
+# Commit Message（简体中文）
+
+执行 `git commit` 或用户要求提交代码时：
+
+1. **subject 与 body 必须简体中文**（禁止整句英文 subject）
+2. 格式：`<type>(<scope>): <简述>`
+3. 简述写动机/影响，不堆文件名
+4. 专有名词可英文：SubFlow、CLIP、API、Docker
+
+示例：
+
+```
+refactor(ui): 前端目录迁入 ui/workbench 与 ui/admin
+
+与 backend 并列，统一 UI 工程布局。
+```
+
+用 HEREDOC 传递 message。
+
+---
+
+**注意（Cursor 源码管理 ✨ 生成 commit message）**：
+
+- 该按钮**不读取** `.cursor/rules/`、User Rules 或 `AGENTS.md`
+- 仅读取项目根目录 **`.cursorrules`** 中的 `## Commit Message Rules`（见 Cursor 官方说明）
+- 另会参考最近约 5 条 git 历史；历史里若有英文 commit 可能仍偶发英文
+
+若仍生成英文：重载窗口（`Developer: Reload Window`）后再试 ✨。

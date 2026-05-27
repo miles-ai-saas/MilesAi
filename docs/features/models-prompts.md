@@ -87,8 +87,8 @@ API Key **加密存库**，非环境变量（部署级默认 embedding 除外）
 ## 5. 前端
 
 ```
-frontend/app/workbench/models/page.tsx
-frontend/app/workbench/prompts/page.tsx
+ui/workbench/app/workbench/models/page.tsx
+ui/workbench/app/workbench/prompts/page.tsx
 ```
 
 ---

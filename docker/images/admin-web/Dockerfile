@@ -1,8 +1,8 @@
 FROM node:20-alpine AS builder
 WORKDIR /app
-COPY admin_frontend/package.json admin_frontend/package-lock.json* ./
+COPY ui/admin/package.json ui/admin/package-lock.json* ./
 RUN npm install
-COPY admin_frontend .
+COPY ui/admin .
 ARG NEXT_PUBLIC_ADMIN_API_URL=http://localhost:8000/api/admin/v1
 ARG NEXT_PUBLIC_TENANT_WEB_URL=http://localhost:3000
 ENV NEXT_PUBLIC_ADMIN_API_URL=$NEXT_PUBLIC_ADMIN_API_URL

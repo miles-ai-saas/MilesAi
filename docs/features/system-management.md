@@ -9,7 +9,7 @@
 
 ## 1. 背景与目标
 
-租户工作台 **系统管理区**（`/system/*`）提供 RBAC、用户、角色、租户（多租户管理员）、运行时配置与操作审计。认证走 JWT；**平台运营**见 [admin-ops.md](./admin-ops.md)（`admin_frontend` · `/api/admin/v1`）。
+租户工作台 **系统管理区**（`/system/*`）提供 RBAC、用户、角色、租户（多租户管理员）、运行时配置与操作审计。认证走 JWT；**平台运营**见 [admin-ops.md](./admin-ops.md)（`ui/admin` · `/api/admin/v1`）。
 
 ### 1.1 交付范围
 
@@ -131,7 +131,7 @@ GET /api/v1/health
 | `/system/config` | 系统配置 |
 | `/system/audit` | 审计日志 |
 
-导航：`frontend/lib/nav-config.ts` → `SYSTEM_NAV`。
+导航：`ui/workbench/lib/nav-config.ts` → `SYSTEM_NAV`。
 
 ---
 

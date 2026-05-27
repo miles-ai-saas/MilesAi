@@ -142,11 +142,11 @@ CategoryService.list_categories(domain)    # 按 domain 排序返回
 ### 5.3 文件清单
 
 ```
-frontend/components/tag/TagPicker.tsx
-frontend/components/tag/TagFilterDropdown.tsx
-frontend/components/tag/TagChips.tsx
-frontend/components/tag/TagManageDialog.tsx
-frontend/lib/api.ts                       # tags + categories
+ui/workbench/components/tag/TagPicker.tsx
+ui/workbench/components/tag/TagFilterDropdown.tsx
+ui/workbench/components/tag/TagChips.tsx
+ui/workbench/components/tag/TagManageDialog.tsx
+ui/workbench/lib/api.ts                       # tags + categories
 ```
 
 ---

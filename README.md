@@ -70,10 +70,10 @@ python cli.py beat                 # Celery Beat（智能体 Cron；Docker 全�
 ### 前端工作台
 
 ```bash
-cd frontend && cp .env.local.example .env.local && npm install && npm run dev
+cd ui/workbench && cp .env.local.example .env.local && npm install && npm run dev
 # http://localhost:3000
 
-cd admin_frontend && cp .env.local.example .env.local && npm install && npm run dev
+cd ui/admin && cp .env.local.example .env.local && npm install && npm run dev
 # http://localhost:3001
 ```
 
@@ -100,8 +100,9 @@ MilesAi/
 │   │   ├── flow_runtime/    # 画布节点 registry
 │   │   └── models/
 │   └── alembic/
-├── frontend/                # 租户工作台
-├── admin_frontend/          # 运营后台
+├── ui/                      # 前端应用
+│   ├── workbench/           # 租户工作台
+│   └── admin/               # 运营后台
 ├── docker/
 └── docs/                    # → docs/README.md（product / features / architecture / guides / operations）
 ```

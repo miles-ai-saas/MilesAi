@@ -13,11 +13,17 @@ dist/
 build/
 *.egg-info/
 node_modules/
-frontend/.env.local
-frontend/node_modules/
+ui/workbench/.env.local
+ui/admin/.env.local
+ui/workbench/node_modules/
+ui/admin/node_modules/
 .next/
 out/
 *.log
 .DS_Store
 .idea/
 .vscode/
+# Cursor 本地缓存（规则目录需纳入版本库）
+.cursor/*
+!.cursor/rules/
+!.cursor/rules/**

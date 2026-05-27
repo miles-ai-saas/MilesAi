@@ -133,7 +133,7 @@ HookRunner.run(trigger, scope, target_id, payload)
 ## 6. 前端
 
 ```
-frontend/app/workbench/hooks/page.tsx
+ui/workbench/app/workbench/hooks/page.tsx
 ```
 
 `GET /hooks/meta` — trigger/scope 枚举文案。

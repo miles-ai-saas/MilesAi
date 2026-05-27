@@ -65,7 +65,7 @@ graph_json → compiler → registry.execute_node
 | `flow_runtime/nodes/llm_nodes.py` | 组装多模态 messages |
 | `integrations/langchain/chat_models.py` | `ainvoke_chat` 支持 `str \| list[ContentPart]` |
 | `integrations/litellm/adapter.py` | 透传 OpenAI 形状 `content: string \| array` |
-| `frontend/lib/flow-nodes.ts` + `FlowNodeInspector` + `FlowRunPanel` | 媒体配置与调试上传 |
+| `ui/workbench/lib/flow-nodes.ts` + `FlowNodeInspector` + `FlowRunPanel` | 媒体配置与调试上传 |
 
 ### 2.3 与 KB「图入库」的边界
 
@@ -250,8 +250,8 @@ async def ainvoke_chat(model, messages: list[Message], ...) -> str:
 
 ### 5.3 契约文件
 
-- `frontend/lib/flow-node-schemas.ts`：`LLMCall` 的 `data` 字段 TS 类型。  
-- `frontend/lib/types.ts`：`FlowRunRequest.media`。  
+- `ui/workbench/lib/flow-node-schemas.ts`：`LLMCall` 的 `data` 字段 TS 类型。  
+- `ui/workbench/lib/types.ts`：`FlowRunRequest.media`。  
 - Handle 表 **不变**（媒体不占用边）。
 
 ---
@@ -339,8 +339,8 @@ async def ainvoke_chat(model, messages: list[Message], ...) -> str:
 | 流程 run | `backend/app/tenant/flows/services/flow.py` |
 | 附件 | `backend/app/tenant/attachments/services/attachment.py` |
 | 请求 schema | `backend/app/tenant/flows/schemas/flow.py` |
-| 前端调试 | `frontend/components/flow/FlowRunPanel.tsx` |
-| 前端检查器 | `frontend/components/flow/FlowNodeInspector.tsx` |
+| 前端调试 | `ui/workbench/components/flow/FlowRunPanel.tsx` |
+| 前端检查器 | `ui/workbench/components/flow/FlowNodeInspector.tsx` |
 
 ---
 

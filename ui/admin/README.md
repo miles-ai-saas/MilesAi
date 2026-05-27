@@ -1,11 +1,11 @@
-# MilesAi 运营后台（admin_frontend）
+# MilesAi 运营后台（ui/admin）
 
-独立 Next.js 应用，对接平台运营 API `/api/admin/v1`，与租户 AI 工作台（`frontend`，端口 3000）分离部署。
+独立 Next.js 应用，对接平台运营 API `/api/admin/v1`，与租户 AI 工作台（`ui/workbench`，端口 3000）分离部署。
 
 ## 本地开发
 
 ```bash
-cd admin_frontend
+cd ui/admin
 cp .env.local.example .env.local
 npm install
 npm run dev

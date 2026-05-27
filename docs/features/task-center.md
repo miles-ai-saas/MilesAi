@@ -159,13 +159,13 @@ python cli.py beat      # 定时任务扫描（可选）
 ### 5.3 文件清单
 
 ```
-frontend/app/workbench/tasks/page.tsx
-frontend/app/workbench/tasks/[id]/page.tsx
-frontend/components/task/GenerativeJobsSection.tsx
-frontend/components/task/TaskDetailDialog.tsx
-frontend/lib/task-labels.ts
-frontend/lib/generative-job-labels.ts
-frontend/lib/api.ts                     # tasks + generative jobs CRUD
+ui/workbench/app/workbench/tasks/page.tsx
+ui/workbench/app/workbench/tasks/[id]/page.tsx
+ui/workbench/components/task/GenerativeJobsSection.tsx
+ui/workbench/components/task/TaskDetailDialog.tsx
+ui/workbench/lib/task-labels.ts
+ui/workbench/lib/generative-job-labels.ts
+ui/workbench/lib/api.ts                     # tasks + generative jobs CRUD
 ```
 
 ---

@@ -115,9 +115,9 @@ Job watcher 轮询 `generative_jobs` 状态，经 WS 推送 progress/done；客�
 ### 6.2 文件清单
 
 ```
-frontend/hooks/use-agent-chat-ws.ts
-frontend/lib/agent-chat-ws.ts           # URL 构建、AgentChatWsClient
-frontend/app/workbench/agents/chat/page.tsx
+ui/workbench/hooks/use-agent-chat-ws.ts
+ui/workbench/lib/agent-chat-ws.ts           # URL 构建、AgentChatWsClient
+ui/workbench/app/workbench/agents/chat/page.tsx
 ```
 
 ---

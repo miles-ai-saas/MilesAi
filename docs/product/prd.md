@@ -70,7 +70,7 @@
 
 | PRD 相关能力 | 当前实现 | 备注 |
 |--------------|----------|------|
-| 平台租户管理与配额 | ✅ | `admin_frontend/tenants` |
+| 平台租户管理与配额 | ✅ | `ui/admin/tenants` |
 | 平台管理员与审计 | ✅ | `adm_admins` · `/audit` |
 | 内置模型目录 | ✅ | 租户只读 + BYOK 凭证 |
 | 工作台 / 市场分类字典 | ✅ | `sys_categories` · `mkt_categories` |

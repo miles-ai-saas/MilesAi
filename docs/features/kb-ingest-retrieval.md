@@ -111,8 +111,8 @@ POST /search
 ## 7. 前端
 
 ```
-frontend/app/workbench/kb/page.tsx
-frontend/app/workbench/kb/[id]/page.tsx
+ui/workbench/app/workbench/kb/page.tsx
+ui/workbench/app/workbench/kb/[id]/page.tsx
 ```
 
 ---

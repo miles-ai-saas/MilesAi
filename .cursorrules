@@ -1,0 +1,21 @@
+## Commit Message Rules
+
+### language
+
+Commit messages MUST be written in Simplified Chinese (简体中文).
+NEVER write the subject or body in English.
+Technical terms may stay in English: SubFlow, CLIP, API, WebSocket, Docker.
+
+### format
+
+Use Conventional Commits: `<type>(<scope>): <中文简述>`
+
+- type: feat | fix | refactor | docs | test | chore
+- scope: module name in lowercase, optional
+- 简述: explain why or what changed; do not list filenames
+
+### examples
+
+- feat(marketplace): 应用升级前增加 diff 预览与确认
+- refactor(ui): 前端目录迁入 ui/workbench 与 ui/admin
+- fix(flow): 修复 SubFlow 循环依赖导致的编译失败

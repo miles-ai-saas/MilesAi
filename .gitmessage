@@ -1,0 +1,6 @@
+# <type>(<scope>): <中文简述>
+#
+# 说明动机或影响（可选，简体中文）
+#
+# type: feat | fix | refactor | docs | test | chore
+# 示例: feat(marketplace): 应用升级前增加 diff 预览

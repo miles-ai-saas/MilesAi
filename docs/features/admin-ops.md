@@ -9,7 +9,7 @@
 
 ## 1. 背景与目标
 
-**运营后台**（`admin_frontend/`，`:3001`）与租户工作台分离：独立 JWT（`adm_admins`）、API 前缀 `/api/admin/v1`，用于平台管理员维护租户、计费、风控、内置模型目录、系统分类与应用市场分类。
+**运营后台**（`ui/admin/`，`:3001`）与租户工作台分离：独立 JWT（`adm_admins`）、API 前缀 `/api/admin/v1`，用于平台管理员维护租户、计费、风控、内置模型目录、系统分类与应用市场分类。
 
 ### 1.1 交付范围
 
@@ -32,7 +32,7 @@
 
 | 项 | 租户 | 运营 |
 |----|------|------|
-| 前端 | `frontend/` :3000 | `admin_frontend/` :3001 |
+| 前端 | `ui/workbench/` :3000 | `ui/admin/` :3001 |
 | API | `/api/v1` | `/api/admin/v1` |
 | 认证 | `sys_users` JWT | `adm_admins` JWT |
 | 用户 | 租户管理员/成员 | 平台管理员 |
@@ -114,7 +114,7 @@ backend/app/admin/
     router.py
     app_sys/views/auth.py
     app_ops/views/{tenants,billing,risk,audit,model_catalog,sys_categories,marketplace_categories}.py
-admin_frontend/app/
+ui/admin/app/
 ```
 
 ---

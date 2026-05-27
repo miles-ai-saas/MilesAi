@@ -56,7 +56,7 @@ python cli.py worker   # 另开终端
 python cli.py beat     # 定时任务，可选
 ```
 
-前端：`frontend/`、`admin_frontend/` 各自 `npm run dev`。
+前端：ui/workbench/、`ui/admin/` 各自 `npm run dev`。
 
 ---
 

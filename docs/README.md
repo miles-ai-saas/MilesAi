@@ -132,7 +132,7 @@ docs/
 | [monitor.md](./features/monitor.md) | 模块9 监控 | 统计、趋势、告警 Webhook |
 | [admin-ops.md](./features/admin-ops.md) | 模块1 系统管理（平台侧） | 运营后台：租户、计费、风控、模型目录、分类 |
 
-## 前端 (`frontend/`)
+## 前端 (ui/workbench/)
 
 | 文档 | 说明 |
 |------|------|
