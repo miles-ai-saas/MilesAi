@@ -35,6 +35,10 @@ class AdminBillingService:
         rows = await self.plans.list_ordered()
         return [BillingPlanOut.model_validate(p) for p in rows]
 
+    async def get_plan(self, plan_id: UUID) -> BillingPlanOut:
+        plan = await self.plans.get_by_id_or_raise(plan_id, label="套餐不存在")
+        return BillingPlanOut.model_validate(plan)
+
     async def create_plan(self, body: BillingPlanCreate) -> BillingPlanOut:
         plan = await self.plans.create(**body.model_dump())
         await self.db.refresh(plan)

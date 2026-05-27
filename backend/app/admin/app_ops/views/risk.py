@@ -45,8 +45,13 @@ async def resolve_risk(
 
 
 @router.get("/risk/ip-blacklist")
-async def list_ips(ctx: AdminContext = Depends(get_platform_admin), db: AsyncSession = Depends(get_db)):
-    return ok(await AdminRiskService(db).list_ip_blacklist())
+async def list_ips(
+    params: PageParams = Depends(get_page_params),
+    ctx: AdminContext = Depends(get_platform_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await AdminRiskService(db).list_ip_blacklist(params)
+    return page_ok(result.items, result.total, result.page, result.size)
 
 
 @router.post("/risk/ip-blacklist")
@@ -83,8 +88,13 @@ async def toggle_ip(
 
 
 @router.get("/risk/rate-limits")
-async def list_rate_limits(ctx: AdminContext = Depends(get_platform_admin), db: AsyncSession = Depends(get_db)):
-    return ok(await AdminRiskService(db).list_rate_limits())
+async def list_rate_limits(
+    params: PageParams = Depends(get_page_params),
+    ctx: AdminContext = Depends(get_platform_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await AdminRiskService(db).list_rate_limits(params)
+    return page_ok(result.items, result.total, result.page, result.size)
 
 
 @router.post("/risk/rate-limits")

@@ -10,7 +10,7 @@ from app.admin.app_ops.repositories.risk import (
     RiskEventRepository,
 )
 from app.admin.app_ops.services.risk_enforce import platform_risk_enforcer
-from app.admin.models import RiskEvent, RiskSeverity
+from app.admin.models import IpBlacklist, RateLimitRule, RiskEvent, RiskSeverity
 from app.admin.app_ops.schemas.risk import (
     IpBlacklistCreate,
     IpBlacklistOut,
@@ -61,9 +61,18 @@ class AdminRiskService:
         await self.db.flush()
         return RiskEventOut.model_validate(event)
 
-    async def list_ip_blacklist(self) -> list[IpBlacklistOut]:
-        rows = await self.ip_blacklist.list_ordered()
-        return [IpBlacklistOut.model_validate(r) for r in rows]
+    async def list_ip_blacklist(self, params: PageParams) -> PageResult[IpBlacklistOut]:
+        page = await self.ip_blacklist.list_page(
+            page=params.page,
+            size=params.size,
+            order_by=IpBlacklist.created_at.desc(),
+        )
+        return PageResult(
+            items=[IpBlacklistOut.model_validate(r) for r in page.items],
+            total=page.total,
+            page=page.page,
+            size=page.size,
+        )
 
     async def add_ip_blacklist(
         self, body: IpBlacklistCreate, admin_id: UUID
@@ -83,9 +92,18 @@ class AdminRiskService:
         platform_risk_enforcer.invalidate_cache()
         return IpBlacklistOut.model_validate(row)
 
-    async def list_rate_limits(self) -> list[RateLimitRuleOut]:
-        rows = await self.rate_limits.list_all()
-        return [RateLimitRuleOut.model_validate(r) for r in rows]
+    async def list_rate_limits(self, params: PageParams) -> PageResult[RateLimitRuleOut]:
+        page = await self.rate_limits.list_page(
+            page=params.page,
+            size=params.size,
+            order_by=RateLimitRule.created_at.desc(),
+        )
+        return PageResult(
+            items=[RateLimitRuleOut.model_validate(r) for r in page.items],
+            total=page.total,
+            page=page.page,
+            size=page.size,
+        )
 
     async def create_rate_limit(self, body: RateLimitRuleCreate) -> RateLimitRuleOut:
         row = await self.rate_limits.create(**body.model_dump())

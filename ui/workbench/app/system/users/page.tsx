@@ -288,6 +288,7 @@ export default function SystemUsersPage() {
             size={list.size}
             total={list.total}
             onPageChange={list.setPage}
+            onSizeChange={list.setSize}
           />
         </>
       )}

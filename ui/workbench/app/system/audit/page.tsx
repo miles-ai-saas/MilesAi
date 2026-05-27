@@ -126,6 +126,7 @@ export default function SystemAuditPage() {
             size={list.size}
             total={list.total}
             onPageChange={list.setPage}
+            onSizeChange={list.setSize}
           />
         </>
       )}

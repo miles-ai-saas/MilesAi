@@ -627,6 +627,7 @@ export default function MarketplacePage() {
                 size={apps.size}
                 total={apps.total}
                 onPageChange={apps.setPage}
+                onSizeChange={apps.setSize}
               />
             ) : null
           }
@@ -709,6 +710,7 @@ export default function MarketplacePage() {
                 size={installs.size}
                 total={installs.total}
                 onPageChange={installs.setPage}
+                onSizeChange={installs.setSize}
               />
             ) : null
           }
@@ -798,6 +800,7 @@ export default function MarketplacePage() {
                 size={myApps.size}
                 total={myApps.total}
                 onPageChange={myApps.setPage}
+                onSizeChange={myApps.setSize}
               />
             ) : null
           }
@@ -860,6 +863,7 @@ export default function MarketplacePage() {
                 size={pendingApps.size}
                 total={pendingApps.total}
                 onPageChange={pendingApps.setPage}
+                onSizeChange={pendingApps.setSize}
               />
             ) : null
           }

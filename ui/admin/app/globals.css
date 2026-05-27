@@ -126,6 +126,10 @@
     @apply whitespace-nowrap tabular-nums;
   }
 
+  .admin-table :is(th, td).col-compact {
+    @apply w-[1%] whitespace-nowrap;
+  }
+
   .cell-primary {
     @apply font-medium text-ink;
   }
@@ -140,6 +144,39 @@
 
   .cell-numeric {
     @apply tabular-nums text-ink-muted;
+  }
+
+  /* 主列 + 副标题（模型标识等） */
+  .cell-stack .cell-stack-title {
+    @apply font-medium text-ink;
+  }
+
+  .cell-stack .cell-stack-sub {
+    @apply mt-0.5 max-w-[18rem] truncate font-mono text-xs text-ink-faint;
+  }
+
+  .status-badge {
+    @apply inline-block rounded-full px-2 py-0.5 text-xs font-medium;
+  }
+
+  .status-badge-draft {
+    @apply bg-surface-muted text-ink-muted;
+  }
+
+  .status-badge-published {
+    @apply bg-emerald-50 text-emerald-700;
+  }
+
+  .status-badge-deprecated {
+    @apply bg-surface-muted text-ink-faint line-through;
+  }
+
+  .key-badge-ready {
+    @apply inline-block rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700;
+  }
+
+  .key-badge-missing {
+    @apply inline-block rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-800;
   }
 
   .col-actions :is(button, a) {

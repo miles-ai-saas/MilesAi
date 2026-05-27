@@ -159,6 +159,7 @@ export default function AttachmentsPage() {
               size={list.size}
               total={list.total}
               onPageChange={list.setPage}
+              onSizeChange={list.setSize}
             />
           ) : null
         }

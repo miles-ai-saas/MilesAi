@@ -465,6 +465,7 @@ export default function KbDetailPage() {
                   size={docs.size}
                   total={docs.total}
                   onPageChange={docs.setPage}
+                  onSizeChange={docs.setSize}
                 />
               </>
             )}
@@ -652,6 +653,7 @@ export default function KbDetailPage() {
                 size={logs.size}
                 total={logs.total}
                 onPageChange={logs.setPage}
+                onSizeChange={logs.setSize}
               />
             </>
           )}

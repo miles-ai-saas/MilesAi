@@ -87,6 +87,7 @@ export function DocumentChunksDrawer({ kbId, doc, open, onClose }: Props) {
             size={chunks.size}
             total={chunks.total}
             onPageChange={chunks.setPage}
+            onSizeChange={chunks.setSize}
           />
         ) : undefined
       }

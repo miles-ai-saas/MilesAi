@@ -1,8 +1,3 @@
-/**
- * 分页契约（链路 §3）：`buildPageQuery` 拼 query → `getPage` → `normalizePageResult`。
- * 见 `lib/chains.ts` §3。
- */
-
 import type { PageResult } from "@/lib/types";
 
 /** 列表默认每页条数，与后端 get_page_params 默认一致 */
@@ -27,7 +22,7 @@ export function needsPagination(total: number, size: number = DEFAULT_PAGE_SIZE)
   return safeTotal > safeSize;
 }
 
-/** 统一解析后端分页结构，避免 total 缺失导致 0–0 / 0 */
+/** 统一解析后端分页结构 */
 export function normalizePageResult<T>(raw: unknown): PageResult<T> {
   if (Array.isArray(raw)) {
     const items = raw as T[];
@@ -55,7 +50,6 @@ export function normalizePageResult<T>(raw: unknown): PageResult<T> {
   if (!Number.isFinite(page) || page < 1) page = 1;
   if (!Number.isFinite(size) || size < 1) size = DEFAULT_PAGE_SIZE;
 
-  // 有数据但 total 为 0 时，按当前页条数兜底（常见于响应字段不一致）
   if (total === 0 && items.length > 0) {
     total = items.length;
   }

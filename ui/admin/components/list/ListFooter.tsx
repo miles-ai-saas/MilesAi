@@ -12,10 +12,7 @@ type Props = {
   noMoreText?: string;
 };
 
-/**
- * 列表底部分页：绑定 `usePagedList` 的 page/total/size/setSize。
- */
-export function ResourceListFooter({
+export function ListFooter({
   page,
   size,
   total,
@@ -41,6 +38,6 @@ export function ResourceListFooter({
   }
 
   return (
-    <p className={`py-12 text-center text-sm text-ink-faint ${className}`}>{noMoreText}</p>
+    <p className={`py-6 text-center text-sm text-ink-faint ${className}`}>{noMoreText}</p>
   );
 }

@@ -165,6 +165,7 @@ export function ComplianceLibraryDetail({
           size={words.size}
           total={words.total}
           onPageChange={words.setPage}
+          onSizeChange={words.setSize}
           className="col-span-full"
         />
       )}

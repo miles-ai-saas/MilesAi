@@ -23,7 +23,7 @@ bearer_scheme = HTTPBearer(auto_error=False)
 
 async def get_page_params(
     page: int = Query(1, ge=1, description="页码，从 1 开始"),
-    size: int = Query(50, ge=1, le=100, description="每页条数，最大 100"),
+    size: int = Query(10, ge=1, le=100, description="每页条数，最大 100"),
 ) -> PageParams:
     """从 Query 解析分页参数。"""
     return PageParams(page=page, size=size)

@@ -473,6 +473,7 @@ export default function ToolsPage() {
                 size={logList.size}
                 total={logList.total}
                 onPageChange={logList.setPage}
+                onSizeChange={logList.setSize}
               />
             ) : null
           }

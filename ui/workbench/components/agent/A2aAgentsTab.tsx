@@ -179,6 +179,7 @@ export function A2aAgentsTab() {
                 size={hosts.size}
                 total={hosts.total}
                 onPageChange={hosts.setPage}
+                onSizeChange={hosts.setSize}
               />
             </div>
           ) : null}

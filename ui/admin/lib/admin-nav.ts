@@ -1,7 +1,7 @@
 export type AdminNavItem = {
   href: string;
   label: string;
-  icon: "dashboard" | "tenants" | "billing" | "risk" | "audit" | "profile" | "model" | "review" | "marketplace" | "collection" | "admins";
+  icon: "dashboard" | "tenants" | "billing" | "bills" | "risk" | "audit" | "profile" | "model" | "review" | "marketplace" | "collection" | "admins";
   superAdminOnly?: boolean;
   platformReviewOnly?: boolean;
 };
@@ -24,7 +24,8 @@ export const ADMIN_NAV: AdminNavGroup[] = [
       { href: "/marketplace-review", label: "应用审核", icon: "review", platformReviewOnly: true },
       { href: "/marketplace-categories", label: "市场分类", icon: "marketplace" },
       { href: "/sys-categories", label: "工作台分类", icon: "collection" },
-      { href: "/billing", label: "计费管理", icon: "billing" },
+      { href: "/billing/plans", label: "套餐管理", icon: "billing" },
+      { href: "/billing/bills", label: "账单管理", icon: "bills" },
     ],
   },
   {
@@ -59,13 +60,23 @@ export function getAdminBreadcrumbs(pathname: string): BreadcrumbItem[] {
   if (pathname === "/") return [{ label: "控制台" }];
 
   if (pathname === "/model-catalog") return [home, { label: "模型目录" }];
+  if (pathname === "/model-catalog/new") {
+    return [home, { label: "模型目录", href: "/model-catalog" }, { label: "新建模型" }];
+  }
+  if (pathname.startsWith("/model-catalog/")) {
+    return [home, { label: "模型目录", href: "/model-catalog" }, { label: "模型详情" }];
+  }
   if (pathname === "/marketplace-review") return [home, { label: "应用审核" }];
   if (pathname === "/marketplace-categories") return [home, { label: "市场分类" }];
   if (pathname === "/sys-categories") return [home, { label: "工作台分类" }];
   if (pathname === "/tenants") return [home, { label: "租户管理" }];
   if (pathname.startsWith("/tenants/")) return [home, { label: "租户管理", href: "/tenants" }, { label: "租户详情" }];
 
-  if (pathname === "/billing") return [home, { label: "计费管理" }];
+  if (pathname === "/billing/plans") return [home, { label: "套餐管理" }];
+  if (pathname.startsWith("/billing/plans/")) {
+    return [home, { label: "套餐管理", href: "/billing/plans" }, { label: "套餐详情" }];
+  }
+  if (pathname === "/billing/bills") return [home, { label: "账单管理" }];
   if (pathname === "/risk") return [home, { label: "风控中心" }];
   if (pathname === "/audit") return [home, { label: "审计日志" }];
   if (pathname === "/admins") return [home, { label: "平台管理员" }];

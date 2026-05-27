@@ -143,6 +143,7 @@ export default function SystemRolesPage() {
             size={list.size}
             total={list.total}
             onPageChange={list.setPage}
+            onSizeChange={list.setSize}
           />
         </>
       )}

@@ -1,29 +1,40 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { ListFooter } from "@/components/list/ListFooter";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { adminApi, type AuditLog } from "@/lib/api";
+import { usePagedList } from "@/hooks/use-paged-list";
+import { adminApi } from "@/lib/api";
 import { useRequireAdmin } from "@/lib/auth-store";
 
 export default function AuditPage() {
   const ready = useRequireAdmin();
-  const [logs, setLogs] = useState<AuditLog[]>([]);
+  const searchParams = useSearchParams();
   const [actionFilter, setActionFilter] = useState("");
   const [tenantFilter, setTenantFilter] = useState("");
   const [exporting, setExporting] = useState(false);
 
-  const load = async () => {
-    const res = await adminApi.listAuditLogs({
-      action: actionFilter.trim() || undefined,
-      tenant_id: tenantFilter.trim() || undefined,
-    });
-    setLogs(res.items);
-  };
-
   useEffect(() => {
-    if (!ready) return;
-    load().catch(() => undefined);
-  }, [ready, actionFilter, tenantFilter]);
+    const fromUrl = searchParams.get("tenant_id");
+    if (fromUrl) setTenantFilter(fromUrl);
+  }, [searchParams]);
+
+  const filterKey = `${actionFilter.trim()}-${tenantFilter.trim()}`;
+
+  const list = usePagedList(
+    useCallback(
+      (p, s) =>
+        adminApi.listAuditLogs({
+          page: p,
+          size: s,
+          action: actionFilter.trim() || undefined,
+          tenant_id: tenantFilter.trim() || undefined,
+        }),
+      [actionFilter, tenantFilter],
+    ),
+    { enabled: ready, resetKey: filterKey },
+  );
 
   const onExport = async () => {
     setExporting(true);
@@ -67,26 +78,40 @@ export default function AuditPage() {
       </div>
 
       <section className="card p-4">
-        <ul className="admin-data-list max-h-[32rem] overflow-y-auto">
-          {logs.length === 0 && <li className="text-ink-faint">暂无审计记录</li>}
-          {logs.map((l) => (
-            <li key={l.id} className="admin-data-row">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="admin-data-meta">{l.created_at.slice(0, 19)}</span>
-                <span className="cell-primary">{l.action}</span>
-                {l.tenant_id && (
-                  <span className="badge bg-brand/10 text-brand">
-                    租户 {l.tenant_id.slice(0, 8)}…
-                  </span>
-                )}
-                {l.ip_address && <span className="admin-data-meta">{l.ip_address}</span>}
-              </div>
-              {Object.keys(l.detail || {}).length > 0 && (
-                <pre className="admin-code-block">{JSON.stringify(l.detail, null, 2)}</pre>
-              )}
-            </li>
-          ))}
-        </ul>
+        {list.loading ? (
+          <p className="text-sm text-ink-muted">加载中…</p>
+        ) : (
+          <>
+            <ul className="admin-data-list max-h-[32rem] overflow-y-auto">
+              {list.items.length === 0 && <li className="text-ink-faint">暂无审计记录</li>}
+              {list.items.map((l) => (
+                <li key={l.id} className="admin-data-row">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="admin-data-meta">{l.created_at.slice(0, 19)}</span>
+                    <span className="cell-primary">{l.action}</span>
+                    {l.tenant_id && (
+                      <span className="badge bg-brand/10 text-brand">
+                        租户 {l.tenant_id.slice(0, 8)}…
+                      </span>
+                    )}
+                    {l.ip_address && <span className="admin-data-meta">{l.ip_address}</span>}
+                  </div>
+                  {Object.keys(l.detail || {}).length > 0 && (
+                    <pre className="admin-code-block">{JSON.stringify(l.detail, null, 2)}</pre>
+                  )}
+                </li>
+              ))}
+            </ul>
+            <ListFooter
+              className="mt-3"
+              page={list.page}
+              size={list.size}
+              total={list.total}
+              onPageChange={list.setPage}
+              onSizeChange={list.setSize}
+            />
+          </>
+        )}
       </section>
     </div>
   );

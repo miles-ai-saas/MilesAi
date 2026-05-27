@@ -18,7 +18,7 @@ class ApiResponse(BaseModel, Generic[T]):
 
 class PageParams(BaseModel):
     page: int = Field(default=1, ge=1, description="页码，从 1 开始")
-    size: int = Field(default=50, ge=1, le=100, description="每页条数")
+    size: int = Field(default=10, ge=1, le=100, description="每页条数")
 
     @property
     def offset(self) -> int:

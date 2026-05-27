@@ -203,6 +203,7 @@ function CompliancePageContent() {
                 size={logs.size}
                 total={logs.total}
                 onPageChange={logs.setPage}
+                onSizeChange={logs.setSize}
               />
             ) : null
           }
@@ -394,6 +395,7 @@ function CompliancePageContent() {
               size={libraries.size}
               total={libraries.total}
               onPageChange={libraries.setPage}
+              onSizeChange={libraries.setSize}
             />
           ) : null
         }

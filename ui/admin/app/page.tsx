@@ -33,7 +33,7 @@ export default function DashboardPage() {
     { label: "租户总数", value: stats.tenants_total, href: "/tenants" },
     { label: "活跃租户", value: stats.tenants_active, href: "/tenants" },
     { label: "待处理风险", value: stats.risk_open, href: "/risk" },
-    { label: "账单记录", value: stats.bills_total, href: "/billing" },
+    { label: "账单记录", value: stats.bills_total, href: "/billing/bills" },
     { label: "今日审计", value: stats.audit_today, href: "/audit" },
   ];
 
@@ -54,8 +54,11 @@ export default function DashboardPage() {
           <Link href="/tenants" className="btn-primary">
             管理租户
           </Link>
-          <Link href="/billing" className="btn-ghost">
-            查看计费
+          <Link href="/billing/plans" className="btn-ghost">
+            套餐管理
+          </Link>
+          <Link href="/billing/bills" className="btn-ghost">
+            账单管理
           </Link>
           <Link href="/risk" className="btn-ghost">
             风控中心

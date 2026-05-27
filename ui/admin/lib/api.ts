@@ -2,6 +2,7 @@ import axios from "axios";
 import type { ApiResponse, PageResult } from "./types";
 import { getAdminToken, useAdminAuthStore } from "./auth-store";
 import { getApiErrorMessage } from "./api-error";
+import { buildPageQuery, DEFAULT_PAGE_SIZE } from "./pagination";
 
 export { getApiErrorMessage } from "./api-error";
 
@@ -77,8 +78,8 @@ export const adminApi = {
     ),
   revokeSession: (adminId: string) => del<null>(`/auth/sessions/${adminId}`),
 
-  listAdmins: (page = 1, size = 50) =>
-    get<PageResult<PlatformAdmin>>(`/admins?page=${page}&size=${size}`),
+  listAdmins: (page = 1, size = DEFAULT_PAGE_SIZE) =>
+    get<PageResult<PlatformAdmin>>(`/admins?${buildPageQuery(page, size)}`),
   createAdmin: (body: {
     username: string;
     password: string;
@@ -103,10 +104,12 @@ export const adminApi = {
       plans_active: number;
     }>("/dashboard/summary"),
 
-  listTenants: (page = 1, size = 50, status?: string) =>
-    get<PageResult<AdminTenant>>(
-      `/tenants?page=${page}&size=${size}${status ? `&status=${status}` : ""}`,
-    ),
+  listTenants: (page = 1, size = DEFAULT_PAGE_SIZE, status?: string, planId?: string) => {
+    const q = new URLSearchParams({ page: String(page), size: String(size) });
+    if (status) q.set("status", status);
+    if (planId) q.set("plan_id", planId);
+    return get<PageResult<AdminTenant>>(`/tenants?${q.toString()}`);
+  },
   getTenant: (id: string) => get<AdminTenantDetail>(`/tenants/${id}`),
   getTenantUsage: (id: string) =>
     get<AdminTenantDetail["usage"]>(`/tenants/${id}/usage`),
@@ -118,13 +121,18 @@ export const adminApi = {
   deleteTenant: (id: string) => del<null>(`/tenants/${id}`),
 
   listPlans: () => get<BillingPlan[]>("/billing/plans"),
+  getPlan: (id: string) => get<BillingPlan>(`/billing/plans/${id}`),
   createPlan: (body: Record<string, unknown>) => post<BillingPlan>("/billing/plans", body),
   updatePlan: (id: string, body: Record<string, unknown>) =>
     patch<BillingPlan>(`/billing/plans/${id}`, body),
-  listBills: (tenantId?: string) =>
-    get<PageResult<TenantBill>>(
-      `/billing/bills?page=1&size=50${tenantId ? `&tenant_id=${tenantId}` : ""}`,
-    ),
+  listBills: (page = 1, size = DEFAULT_PAGE_SIZE, tenantId?: string) => {
+    const q = new URLSearchParams({
+      page: String(page),
+      size: String(size),
+    });
+    if (tenantId) q.set("tenant_id", tenantId);
+    return get<PageResult<TenantBill>>(`/billing/bills?${q.toString()}`);
+  },
   getBill: (id: string) => get<TenantBillDetail>(`/billing/bills/${id}`),
   generateBill: (tenantId: string, period_start: string, period_end: string) =>
     post<TenantBillDetail>(
@@ -133,19 +141,22 @@ export const adminApi = {
   updateBillStatus: (id: string, status: "paid" | "void") =>
     patch<TenantBillDetail>(`/billing/bills/${id}`, { status }),
 
-  listRiskEvents: () => get<PageResult<RiskEvent>>("/risk/events?page=1&size=50"),
+  listRiskEvents: (page = 1, size = DEFAULT_PAGE_SIZE) =>
+    get<PageResult<RiskEvent>>(`/risk/events?${buildPageQuery(page, size)}`),
   resolveRisk: (id: string) => post<RiskEvent>(`/risk/events/${id}/resolve`),
-  listIpBlacklist: () => get<IpBlacklist[]>("/risk/ip-blacklist"),
+  listIpBlacklist: (page = 1, size = DEFAULT_PAGE_SIZE) =>
+    get<PageResult<IpBlacklist>>(`/risk/ip-blacklist?${buildPageQuery(page, size)}`),
   addIp: (ip_address: string, reason?: string) =>
     post<IpBlacklist>("/risk/ip-blacklist", { ip_address, reason }),
   toggleIp: (id: string, is_active: boolean) =>
     patch<IpBlacklist>(`/risk/ip-blacklist/${id}?is_active=${is_active}`),
-  listRateLimits: () => get<RateLimitRule[]>("/risk/rate-limits"),
+  listRateLimits: (page = 1, size = DEFAULT_PAGE_SIZE) =>
+    get<PageResult<RateLimitRule>>(`/risk/rate-limits?${buildPageQuery(page, size)}`),
   createRateLimit: (body: Record<string, unknown>) => post<RateLimitRule>("/risk/rate-limits", body),
   listAuditLogs: (opts?: { action?: string; tenant_id?: string; page?: number; size?: number }) => {
     const q = new URLSearchParams({
       page: String(opts?.page ?? 1),
-      size: String(opts?.size ?? 100),
+      size: String(opts?.size ?? DEFAULT_PAGE_SIZE),
     });
     if (opts?.action) q.set("action", opts.action);
     if (opts?.tenant_id) q.set("tenant_id", opts.tenant_id);
@@ -170,12 +181,18 @@ export const adminApi = {
     URL.revokeObjectURL(url);
   },
 
-  listModelCatalog: (vendor?: string, publish_status?: string) => {
-    const q = new URLSearchParams({ page: "1", size: "100" });
+  listModelCatalog: (
+    page = 1,
+    size = DEFAULT_PAGE_SIZE,
+    vendor?: string,
+    publish_status?: string,
+  ) => {
+    const q = new URLSearchParams({ page: String(page), size: String(size) });
     if (vendor) q.set("vendor", vendor);
     if (publish_status) q.set("publish_status", publish_status);
     return get<PageResult<AdminModelCatalog>>("/model-catalog?" + q.toString());
   },
+  getModelCatalog: (id: string) => get<AdminModelCatalog>(`/model-catalog/${id}`),
   createModelCatalog: (body: Record<string, unknown>) =>
     post<AdminModelCatalog>("/model-catalog", body),
   updateModelCatalog: (id: string, body: Record<string, unknown>) =>
@@ -213,8 +230,8 @@ export const adminApi = {
   deleteSysCategory: (id: string) => http.delete(`/sys-categories/${id}`).then(() => undefined),
 
   getMarketplaceReviewMode: () => get<{ review_mode: string }>("/marketplace/review-mode"),
-  listPendingMarketplaceApps: (page = 1, size = 50) =>
-    get<PageResult<AdminMarketplaceApp>>(`/marketplace/apps/pending?page=${page}&size=${size}`),
+  listPendingMarketplaceApps: (page = 1, size = DEFAULT_PAGE_SIZE) =>
+    get<PageResult<AdminMarketplaceApp>>(`/marketplace/apps/pending?${buildPageQuery(page, size)}`),
   getMarketplaceAppForReview: (id: string) =>
     get<AdminMarketplaceAppDetail>(`/marketplace/apps/${id}`),
   approveMarketplaceApp: (id: string) => post<AdminMarketplaceApp>(`/marketplace/apps/${id}/approve`),
@@ -283,6 +300,7 @@ export interface AdminModelCatalog {
   has_api_key: boolean;
   api_base: string | null;
   sort_order: number;
+  created_at: string;
 }
 
 export interface AdminTenant {
@@ -319,9 +337,13 @@ export interface BillingPlan {
   id: string;
   code: string;
   name: string;
+  description?: string | null;
   price_monthly: string;
-  max_tokens_monthly: number;
+  max_knowledge_bases: number;
   max_storage_mb: number;
+  max_tokens_monthly: number;
+  max_agents: number;
+  max_flows: number;
   is_active: boolean;
 }
 

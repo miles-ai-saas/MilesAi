@@ -363,6 +363,7 @@ export function GenerativeJobsSection({
             size={list.size}
             total={list.total}
             onPageChange={list.setPage}
+            onSizeChange={list.setSize}
           />
         </div>
       ) : null}

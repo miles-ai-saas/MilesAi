@@ -286,6 +286,7 @@ export default function McpPage() {
               size={list.size}
               total={list.total}
               onPageChange={list.setPage}
+              onSizeChange={list.setSize}
             />
           ) : null
         }

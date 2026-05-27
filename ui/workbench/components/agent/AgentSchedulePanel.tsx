@@ -7,7 +7,6 @@ import { Pagination } from "@/components/ui/Pagination";
 import { api } from "@/lib/api";
 import { usePagedList } from "@/hooks/use-paged-list";
 import { useConfirmAction } from "@/hooks/use-confirm-action";
-import { needsPagination } from "@/lib/pagination";
 import type { AgentSchedule, AgentScheduleRun } from "@/lib/types";
 
 type Props = {
@@ -315,18 +314,15 @@ export function AgentSchedulePanel({ agentId }: Props) {
         )}
       </div>
 
-      {!isEmpty && (
+      {!isEmpty && list.total > 0 && (
         <div className="shrink-0 border-t border-line-soft bg-surface-subtle/40 px-6 py-2.5">
-          {needsPagination(list.total, list.size) ? (
-            <Pagination
-              page={list.page}
-              size={list.size}
-              total={list.total}
-              onPageChange={list.setPage}
-            />
-          ) : (
-            <p className="text-center text-[11px] text-ink-faint">已加载全部 {list.total} 条</p>
-          )}
+          <Pagination
+            page={list.page}
+            size={list.size}
+            total={list.total}
+            onPageChange={list.setPage}
+            onSizeChange={list.setSize}
+          />
         </div>
       )}
 

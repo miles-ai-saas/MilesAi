@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { ListFooter } from "@/components/list/ListFooter";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { adminApi, type AdminTenant, type BillingPlan } from "@/lib/api";
+import { usePagedList } from "@/hooks/use-paged-list";
+import { adminApi, type BillingPlan } from "@/lib/api";
 import { useRequireAdmin } from "@/lib/auth-store";
 
 const STATUS_LABEL: Record<string, string> = {
@@ -14,25 +16,23 @@ const STATUS_LABEL: Record<string, string> = {
 
 export default function TenantsPage() {
   const ready = useRequireAdmin();
-  const [tenants, setTenants] = useState<AdminTenant[]>([]);
   const [plans, setPlans] = useState<BillingPlan[]>([]);
   const [statusFilter, setStatusFilter] = useState("");
   const [name, setName] = useState("");
   const [planId, setPlanId] = useState("");
 
-  const reload = async () => {
-    const [t, p] = await Promise.all([
-      adminApi.listTenants(1, 50, statusFilter || undefined),
-      adminApi.listPlans(),
-    ]);
-    setTenants(t.items);
-    setPlans(p);
-  };
+  const list = usePagedList(
+    useCallback(
+      (p, s) => adminApi.listTenants(p, s, statusFilter || undefined),
+      [statusFilter],
+    ),
+    { enabled: ready, resetKey: statusFilter },
+  );
 
   useEffect(() => {
     if (!ready) return;
-    reload();
-  }, [ready, statusFilter]);
+    adminApi.listPlans().then(setPlans).catch(() => undefined);
+  }, [ready]);
 
   const create = async () => {
     if (!name.trim()) return;
@@ -42,7 +42,7 @@ export default function TenantsPage() {
       status: "active",
     });
     setName("");
-    await reload();
+    await list.reload();
   };
 
   return (
@@ -91,40 +91,62 @@ export default function TenantsPage() {
         </div>
       </section>
 
-      <div className="admin-table-wrap">
-        <table className="admin-table">
-          <thead>
-            <tr>
-              <th>名称</th>
-              <th className="col-center">套餐</th>
-              <th className="col-center">状态</th>
-              <th className="col-center col-numeric">用量</th>
-              <th className="col-actions">操作</th>
-            </tr>
-          </thead>
-          <tbody>
-            {tenants.map((t) => (
-              <tr key={t.id}>
-                <td className="cell-primary">{t.name}</td>
-                <td className="col-center cell-muted">{t.plan_name || "—"}</td>
-                <td className="col-center">
-                  <span className="badge bg-brand-light text-ink">
-                    {STATUS_LABEL[t.status] || t.status}
-                  </span>
-                </td>
-                <td className="col-center col-numeric cell-numeric">
-                  {t.storage_used_mb}/{t.max_storage_mb} MB · Token {t.tokens_used_month.toLocaleString()}
-                </td>
-                <td className="col-actions">
-                  <Link href={`/tenants/${t.id}`} className="text-brand hover:underline">
-                    详情
-                  </Link>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      {list.loading ? (
+        <p className="text-sm text-ink-muted">加载中…</p>
+      ) : (
+        <>
+          <div className="admin-table-wrap">
+            <table className="admin-table">
+              <thead>
+                <tr>
+                  <th>名称</th>
+                  <th className="col-center">套餐</th>
+                  <th className="col-center">状态</th>
+                  <th className="col-center col-numeric">用量</th>
+                  <th className="col-actions">操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                {list.items.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="py-10 text-center cell-muted">
+                      暂无租户
+                    </td>
+                  </tr>
+                )}
+                {list.items.map((t) => (
+                  <tr key={t.id}>
+                    <td className="cell-primary">{t.name}</td>
+                    <td className="col-center cell-muted">{t.plan_name || "—"}</td>
+                    <td className="col-center">
+                      <span className="badge bg-brand-light text-ink">
+                        {STATUS_LABEL[t.status] || t.status}
+                      </span>
+                    </td>
+                    <td className="col-center col-numeric cell-numeric">
+                      {t.storage_used_mb}/{t.max_storage_mb} MB · Token{" "}
+                      {t.tokens_used_month.toLocaleString()}
+                    </td>
+                    <td className="col-actions">
+                      <Link href={`/tenants/${t.id}`} className="text-brand hover:underline">
+                        详情
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <ListFooter
+            className="mt-3"
+            page={list.page}
+            size={list.size}
+            total={list.total}
+            onPageChange={list.setPage}
+            onSizeChange={list.setSize}
+          />
+        </>
+      )}
     </div>
   );
 }

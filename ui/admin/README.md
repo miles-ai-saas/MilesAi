@@ -31,7 +31,9 @@ npm run dev
 | `/tenants/[id]` | 租户详情、配额、删除 |
 | `/model-catalog` | 内置模型目录 |
 | `/marketplace-review` | 应用审核（`MARKETPLACE_REVIEW_MODE=platform`） |
-| `/billing` | 套餐与账单 |
+| `/billing/plans` | 套餐管理 |
+| `/billing/plans/[id]` | 套餐详情 |
+| `/billing/bills` | 账单管理 |
 | `/risk` | 风险事件、IP 黑名单、限流 |
 | `/audit` | 审计日志（含导出） |
 | `/admins` | 平台管理员（super_admin） |

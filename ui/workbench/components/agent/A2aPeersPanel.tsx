@@ -178,6 +178,7 @@ export function A2aPeersPanel() {
             size={list.size}
             total={list.total}
             onPageChange={list.setPage}
+            onSizeChange={list.setSize}
           />
         </div>
       ) : null}

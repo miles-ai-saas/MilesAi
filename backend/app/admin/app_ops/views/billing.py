@@ -24,6 +24,15 @@ async def list_plans(ctx: AdminContext = Depends(get_platform_admin), db: AsyncS
     return ok(await AdminBillingService(db).list_plans())
 
 
+@router.get("/billing/plans/{plan_id}")
+async def get_plan(
+    plan_id: UUID,
+    ctx: AdminContext = Depends(get_platform_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    return ok(await AdminBillingService(db).get_plan(plan_id))
+
+
 @router.post("/billing/plans")
 async def create_plan(
     body: BillingPlanCreate,

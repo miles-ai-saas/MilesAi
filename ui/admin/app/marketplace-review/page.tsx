@@ -1,34 +1,34 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { ListFooter } from "@/components/list/ListFooter";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { adminApi, type AdminMarketplaceApp, type AdminMarketplaceAppDetail } from "@/lib/api";
+import { usePagedList } from "@/hooks/use-paged-list";
+import { adminApi, type AdminMarketplaceAppDetail } from "@/lib/api";
 import { useRequireAdmin } from "@/lib/auth-store";
 
 export default function MarketplaceReviewPage() {
   const ready = useRequireAdmin();
   const [reviewMode, setReviewMode] = useState<string | null>(null);
-  const [apps, setApps] = useState<AdminMarketplaceApp[]>([]);
   const [detail, setDetail] = useState<AdminMarketplaceAppDetail | null>(null);
-  const [rejectTarget, setRejectTarget] = useState<AdminMarketplaceApp | null>(null);
+  const [rejectTarget, setRejectTarget] = useState<{ id: string; name: string } | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [rejectLoading, setRejectLoading] = useState(false);
   const [rejectNote, setRejectNote] = useState("");
   const [msg, setMsg] = useState("");
   const [err, setErr] = useState("");
 
-  const reload = async () => {
-    const [modeRes, pending] = await Promise.all([
-      adminApi.getMarketplaceReviewMode(),
-      adminApi.listPendingMarketplaceApps(),
-    ]);
-    setReviewMode(modeRes.review_mode);
-    setApps(pending.items);
-  };
+  const list = usePagedList(
+    useCallback((p, s) => adminApi.listPendingMarketplaceApps(p, s), []),
+    { enabled: ready && reviewMode === "platform" },
+  );
 
   useEffect(() => {
     if (!ready) return;
-    reload().catch((e) => setErr(e instanceof Error ? e.message : "加载失败"));
+    adminApi
+      .getMarketplaceReviewMode()
+      .then((res) => setReviewMode(res.review_mode))
+      .catch((e) => setErr(e instanceof Error ? e.message : "加载失败"));
   }, [ready]);
 
   const onApprove = async (id: string) => {
@@ -38,7 +38,7 @@ export default function MarketplaceReviewPage() {
       await adminApi.approveMarketplaceApp(id);
       setMsg("已通过并上架");
       setDetail(null);
-      await reload();
+      await list.reload();
     } catch (e) {
       setErr(e instanceof Error ? e.message : "操作失败");
     } finally {
@@ -56,7 +56,7 @@ export default function MarketplaceReviewPage() {
       setRejectTarget(null);
       setRejectNote("");
       setDetail(null);
-      await reload();
+      await list.reload();
     } catch (e) {
       setErr(e instanceof Error ? e.message : "驳回失败");
     } finally {
@@ -90,53 +90,67 @@ export default function MarketplaceReviewPage() {
       {err && <p className="mb-4 text-sm text-red-600">{err}</p>}
 
       <section className="card p-4">
-        <p className="text-sm text-ink-muted">待审核 {apps.length} 个</p>
-        <ul className="mt-4 space-y-3">
-          {apps.length === 0 && <li className="text-sm text-ink-faint">暂无待审核应用</li>}
-          {apps.map((app) => (
-            <li
-              key={app.id}
-              className="flex flex-col gap-3 rounded-lg border border-line-soft bg-surface-muted p-4 sm:flex-row sm:items-center sm:justify-between"
-            >
-              <div className="min-w-0">
-                <h3 className="font-semibold text-ink">
-                  {app.icon || "📦"} {app.name}
-                </h3>
-                <p className="mt-1 text-sm text-ink-muted line-clamp-2">
-                  {app.description || "无描述"}
-                </p>
-                <p className="mt-1 admin-data-meta">
-                  {app.category_name ? `${app.category_name} · ` : ""}
-                  提交于{" "}
-                  {app.submitted_at
-                    ? new Date(app.submitted_at).toLocaleString("zh-CN")
-                    : "—"}
-                </p>
-              </div>
-              <div className="flex shrink-0 flex-wrap gap-2">
-                <button type="button" className="btn-secondary text-xs" onClick={() => onView(app.id)}>
-                  详情
-                </button>
-                <button
-                  type="button"
-                  className="btn-primary text-xs"
-                  disabled={busyId === app.id}
-                  onClick={() => onApprove(app.id)}
+        <p className="text-sm text-ink-muted">待审核 {list.total} 个</p>
+        {list.loading ? (
+          <p className="mt-4 text-sm text-ink-muted">加载中…</p>
+        ) : (
+          <>
+            <ul className="mt-4 space-y-3">
+              {list.items.length === 0 && <li className="text-sm text-ink-faint">暂无待审核应用</li>}
+              {list.items.map((app) => (
+                <li
+                  key={app.id}
+                  className="flex flex-col gap-3 rounded-lg border border-line-soft bg-surface-muted p-4 sm:flex-row sm:items-center sm:justify-between"
                 >
-                  {busyId === app.id ? "处理中…" : "通过"}
-                </button>
-                <button
-                  type="button"
-                  className="btn-ghost text-xs text-red-600"
-                  disabled={busyId === app.id}
-                  onClick={() => setRejectTarget(app)}
-                >
-                  驳回
-                </button>
-              </div>
-            </li>
-          ))}
-        </ul>
+                  <div className="min-w-0">
+                    <h3 className="font-semibold text-ink">
+                      {app.icon || "📦"} {app.name}
+                    </h3>
+                    <p className="mt-1 text-sm text-ink-muted line-clamp-2">
+                      {app.description || "无描述"}
+                    </p>
+                    <p className="mt-1 admin-data-meta">
+                      {app.category_name ? `${app.category_name} · ` : ""}
+                      提交于{" "}
+                      {app.submitted_at
+                        ? new Date(app.submitted_at).toLocaleString("zh-CN")
+                        : "—"}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 flex-wrap gap-2">
+                    <button type="button" className="btn-secondary text-xs" onClick={() => onView(app.id)}>
+                      详情
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-primary text-xs"
+                      disabled={busyId === app.id}
+                      onClick={() => onApprove(app.id)}
+                    >
+                      {busyId === app.id ? "处理中…" : "通过"}
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-ghost text-xs text-red-600"
+                      disabled={busyId === app.id}
+                      onClick={() => setRejectTarget({ id: app.id, name: app.name })}
+                    >
+                      驳回
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+            <ListFooter
+              className="mt-3"
+              page={list.page}
+              size={list.size}
+              total={list.total}
+              onPageChange={list.setPage}
+              onSizeChange={list.setSize}
+            />
+          </>
+        )}
       </section>
 
       {detail && (
