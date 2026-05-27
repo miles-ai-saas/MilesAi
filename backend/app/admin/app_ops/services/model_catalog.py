@@ -2,7 +2,7 @@
 
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.admin.app_ops.schemas.model_catalog import (
@@ -79,8 +79,9 @@ class AdminModelCatalogService:
             stmt = stmt.where(ModelConfig.vendor == vendor)
         if publish_status:
             stmt = stmt.where(ModelConfig.publish_status == publish_status)
+        count_stmt = select(func.count()).select_from(stmt.subquery())
+        total = int(await self.db.scalar(count_stmt) or 0)
         stmt = stmt.order_by(ModelConfig.sort_order.asc(), ModelConfig.created_at.desc())
-        total = len((await self.db.execute(stmt)).scalars().all())
         rows = (
             (
                 await self.db.execute(

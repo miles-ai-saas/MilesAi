@@ -60,17 +60,56 @@ export const adminApi = {
     useAdminAuthStore.getState().setAdmin(me);
     return data;
   },
-  logout: () => useAdminAuthStore.getState().logout(),
+  logout: async () => {
+    try {
+      await post<null>("/auth/logout", {});
+    } catch {
+      /* 令牌已失效时仍清本地状态 */
+    }
+    useAdminAuthStore.getState().logout();
+  },
   me: () => get<{ id: string; username: string; role: string }>("/auth/me"),
   changePassword: (old_password: string, new_password: string) =>
     post<null>("/auth/change-password", { old_password, new_password }),
-  listSessions: () => get<{ admin_id: string; username: string; role: string }[]>("/auth/sessions"),
+  listSessions: () =>
+    get<{ admin_id: string; username: string; role: string; is_current: boolean }[]>(
+      "/auth/sessions",
+    ),
+  revokeSession: (adminId: string) => del<null>(`/auth/sessions/${adminId}`),
+
+  listAdmins: (page = 1, size = 50) =>
+    get<PageResult<PlatformAdmin>>(`/admins?page=${page}&size=${size}`),
+  createAdmin: (body: {
+    username: string;
+    password: string;
+    email?: string;
+    display_name?: string;
+    role?: string;
+  }) => post<PlatformAdmin>("/admins", body),
+  updateAdmin: (id: string, body: Record<string, unknown>) =>
+    patch<PlatformAdmin>(`/admins/${id}`, body),
+  disableAdmin: (id: string) => del<null>(`/admins/${id}`),
+  resetAdminPassword: (id: string, new_password: string) =>
+    post<null>(`/admins/${id}/reset-password`, { new_password }),
+
+  getDashboardSummary: () =>
+    get<{
+      tenants_total: number;
+      tenants_active: number;
+      risk_open: number;
+      bills_total: number;
+      bills_issued_month: number;
+      audit_today: number;
+      plans_active: number;
+    }>("/dashboard/summary"),
 
   listTenants: (page = 1, size = 50, status?: string) =>
     get<PageResult<AdminTenant>>(
       `/tenants?page=${page}&size=${size}${status ? `&status=${status}` : ""}`,
     ),
   getTenant: (id: string) => get<AdminTenantDetail>(`/tenants/${id}`),
+  getTenantUsage: (id: string) =>
+    get<AdminTenantDetail["usage"]>(`/tenants/${id}/usage`),
   createTenant: (body: Record<string, unknown>) => post<AdminTenant>("/tenants", body),
   updateTenant: (id: string, body: Record<string, unknown>) =>
     patch<AdminTenant>(`/tenants/${id}`, body),
@@ -80,6 +119,8 @@ export const adminApi = {
 
   listPlans: () => get<BillingPlan[]>("/billing/plans"),
   createPlan: (body: Record<string, unknown>) => post<BillingPlan>("/billing/plans", body),
+  updatePlan: (id: string, body: Record<string, unknown>) =>
+    patch<BillingPlan>(`/billing/plans/${id}`, body),
   listBills: (tenantId?: string) =>
     get<PageResult<TenantBill>>(
       `/billing/bills?page=1&size=50${tenantId ? `&tenant_id=${tenantId}` : ""}`,
@@ -89,6 +130,8 @@ export const adminApi = {
     post<TenantBillDetail>(
       `/billing/bills/generate?tenant_id=${tenantId}&period_start=${period_start}&period_end=${period_end}`,
     ),
+  updateBillStatus: (id: string, status: "paid" | "void") =>
+    patch<TenantBillDetail>(`/billing/bills/${id}`, { status }),
 
   listRiskEvents: () => get<PageResult<RiskEvent>>("/risk/events?page=1&size=50"),
   resolveRisk: (id: string) => post<RiskEvent>(`/risk/events/${id}/resolve`),
@@ -99,7 +142,33 @@ export const adminApi = {
     patch<IpBlacklist>(`/risk/ip-blacklist/${id}?is_active=${is_active}`),
   listRateLimits: () => get<RateLimitRule[]>("/risk/rate-limits"),
   createRateLimit: (body: Record<string, unknown>) => post<RateLimitRule>("/risk/rate-limits", body),
-  listAuditLogs: () => get<PageResult<AuditLog>>("/audit/logs?page=1&size=100"),
+  listAuditLogs: (opts?: { action?: string; tenant_id?: string; page?: number; size?: number }) => {
+    const q = new URLSearchParams({
+      page: String(opts?.page ?? 1),
+      size: String(opts?.size ?? 100),
+    });
+    if (opts?.action) q.set("action", opts.action);
+    if (opts?.tenant_id) q.set("tenant_id", opts.tenant_id);
+    return get<PageResult<AuditLog>>(`/audit/logs?${q.toString()}`);
+  },
+  exportAuditLogs: async (opts?: { action?: string; tenant_id?: string }) => {
+    const q = new URLSearchParams();
+    if (opts?.action) q.set("action", opts.action);
+    if (opts?.tenant_id) q.set("tenant_id", opts.tenant_id);
+    const suffix = q.toString() ? `?${q.toString()}` : "";
+    const token = getAdminToken();
+    const res = await fetch(`${baseURL}/audit/logs/export${suffix}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    if (!res.ok) throw new Error("导出失败");
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "admin-audit-logs.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  },
 
   listModelCatalog: (vendor?: string, publish_status?: string) => {
     const q = new URLSearchParams({ page: "1", size: "100" });
@@ -142,7 +211,41 @@ export const adminApi = {
     body: { name?: string; slug?: string; sort_order?: number },
   ) => patch<AdminSysCategory>(`/sys-categories/${id}`, body),
   deleteSysCategory: (id: string) => http.delete(`/sys-categories/${id}`).then(() => undefined),
+
+  getMarketplaceReviewMode: () => get<{ review_mode: string }>("/marketplace/review-mode"),
+  listPendingMarketplaceApps: (page = 1, size = 50) =>
+    get<PageResult<AdminMarketplaceApp>>(`/marketplace/apps/pending?page=${page}&size=${size}`),
+  getMarketplaceAppForReview: (id: string) =>
+    get<AdminMarketplaceAppDetail>(`/marketplace/apps/${id}`),
+  approveMarketplaceApp: (id: string) => post<AdminMarketplaceApp>(`/marketplace/apps/${id}/approve`),
+  rejectMarketplaceApp: (id: string, note?: string) =>
+    post<AdminMarketplaceApp>(`/marketplace/apps/${id}/reject`, { note }),
 };
+
+export interface PlatformAdmin {
+  id: string;
+  username: string;
+  email?: string | null;
+  display_name?: string | null;
+  role: string;
+  is_active: boolean;
+}
+
+export interface AdminMarketplaceApp {
+  id: string;
+  name: string;
+  description?: string | null;
+  icon?: string | null;
+  version: string;
+  status: string;
+  category_name?: string | null;
+  submitted_at?: string | null;
+  review_note?: string | null;
+}
+
+export interface AdminMarketplaceAppDetail extends AdminMarketplaceApp {
+  manifest: Record<string, unknown>;
+}
 
 export interface AdminSysCategory {
   id: string;

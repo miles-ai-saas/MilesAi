@@ -3,9 +3,12 @@
 from fastapi import APIRouter
 
 from app.admin.app_ops.views import (
+    admins,
     audit,
     billing,
+    dashboard,
     marketplace_categories,
+    marketplace_review,
     model_catalog,
     risk,
     sys_categories,
@@ -13,6 +16,9 @@ from app.admin.app_ops.views import (
 )
 
 router = APIRouter(tags=["admin-ops"])
+router.include_router(admins.router)
+router.include_router(dashboard.router)
+router.include_router(marketplace_review.router)
 router.include_router(tenants.router)
 router.include_router(billing.router)
 router.include_router(risk.router)

@@ -1,9 +1,9 @@
 # 运营后台（Admin）
 
 **日期：** 2026-05-27  
-**状态：** 已实现  
+**状态：** 基线 + Phase 0–5 已实现（见 [admin-ops-design.md](../architecture/admin-ops-design.md)）  
 **PRD 对照：** 模块1 系统管理（平台侧）· 模块7 市场分类  
-**架构：** [technical-design.md §运营域](../architecture/technical-design.md#4-分层与模块)
+**架构：** [technical-design.md §运营域](../architecture/technical-design.md#4-分层与模块) · **增强方案：** [admin-ops-design.md](../architecture/admin-ops-design.md)
 
 ---
 
@@ -24,7 +24,7 @@
 ### 1.2 明确不做
 
 - 租户内 RBAC（在租户 `/system/*`）
-- 应用市场审核（在租户 `marketplace:review`）
+- 应用市场审核：按 `MARKETPLACE_REVIEW_MODE` — `platform` 在运营 `/marketplace-review`，`tenant` 在工作台「上架审核」（见 [marketplace-review-design.md](../architecture/marketplace-review-design.md)）
 
 ---
 
@@ -55,18 +55,31 @@ DELETE /auth/sessions/{admin_id}
 ### 3.2 运营 `/api/admin/v1`
 
 ```
+GET  /dashboard/summary
+
+GET/POST/PATCH/DELETE /admins          # super_admin
+POST   /admins/{id}/reset-password
+
 GET/POST/PATCH/DELETE /tenants
 PATCH /tenants/{id}/quota
+GET  /tenants/{id}/usage
 
 GET/POST/PATCH /billing/plans
 GET /billing/bills
 POST /billing/bills/generate
+PATCH /billing/bills/{id}              # paid / void
 
 GET /risk/events · POST …/resolve
 GET/POST/PATCH /risk/ip-blacklist
 GET/POST/PATCH /risk/rate-limits
 
 GET /audit/logs
+GET /audit/logs/export
+
+GET  /marketplace/review-mode
+GET  /marketplace/apps/pending
+GET  /marketplace/apps/{id}
+POST /marketplace/apps/{id}/approve|reject   # review_mode=platform
 
 GET/POST/PATCH/DELETE /model-catalog
 POST /model-catalog/{id}/publish|deprecate
@@ -79,20 +92,25 @@ GET/POST/PATCH/DELETE /sys-categories
 
 ---
 
-## 4. 前端页面
+## 4. 前端页面（`ui/admin/app/`）
 
 | 路径 | 功能 |
 |------|------|
 | `/login` | 运营登录 |
+| `/` | 控制台（`GET /dashboard/summary`） |
 | `/tenants` | 租户列表 |
 | `/tenants/[id]` | 租户详情与配额 |
 | `/model-catalog` | 内置模型目录 |
+| `/marketplace-review` | 应用审核（`review_mode=platform` 时侧栏可见） |
 | `/sys-categories` | 工作台资源分类 |
 | `/marketplace-categories` | 应用市场分类 |
-| `/billing` | 计费计划与账单 |
+| `/billing` | 计费计划、生成账单、标记已付/作废 |
 | `/risk` | 风控 |
-| `/audit` | 审计 |
-| `/profile` | 个人资料 |
+| `/audit` | 审计（含 CSV 导出） |
+| `/admins` | 平台管理员（`super_admin`） |
+| `/profile` | 改密、会话、强制下线 |
+
+壳层：`ui/admin/components/layout/AdminShell` · `AdminUserMenu`；导航 `ui/admin/lib/admin-nav.ts`。
 
 ---
 
@@ -107,14 +125,22 @@ GET/POST/PATCH/DELETE /sys-categories
 
 ---
 
-## 6. 后端文件清单
+## 6. 后端与前端文件清单
 
 ```
 backend/app/admin/
     router.py
     app_sys/views/auth.py
-    app_ops/views/{tenants,billing,risk,audit,model_catalog,sys_categories,marketplace_categories}.py
-ui/admin/app/
+    app_sys/session_store.py
+    app_ops/views/{admins,dashboard,tenants,billing,risk,audit,model_catalog,marketplace_review,sys_categories,marketplace_categories}.py
+    app_ops/services/{admins,dashboard,marketplace_review,risk_enforce,...}.py
+backend/app/middlewares/platform_risk.py
+backend/app/marketplace/{review_config,review_core}.py
+
+ui/admin/
+    app/{page.tsx,login/,tenants/,model-catalog/,marketplace-review/,billing/,risk/,audit/,admins/,profile/,...}
+    lib/{api.ts,admin-nav.ts,auth-store.ts}
+    components/layout/{AdminShell,AdminSidebar,AdminUserMenu,...}
 ```
 
 ---
@@ -140,6 +166,7 @@ ui/admin/app/
 
 ## 9. 参考
 
+- [admin-ops-design.md](../architecture/admin-ops-design.md) — Phase 0–4 增强技术方案
 - [features/system-management.md](./system-management.md) — 租户侧系统管理
 - [features/tags-categories.md](./tags-categories.md) — sys_categories 消费方
 - [features/marketplace.md](./marketplace.md) — mkt_categories

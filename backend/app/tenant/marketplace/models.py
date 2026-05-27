@@ -69,6 +69,8 @@ class MarketplaceApp(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     submitted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     reviewed_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    reviewed_by_admin_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    reviewer_type: Mapped[str | None] = mapped_column(String(16), nullable=True)
     review_note: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     category: Mapped["AppCategory | None"] = relationship(

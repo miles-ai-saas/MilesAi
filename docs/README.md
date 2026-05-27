@@ -25,59 +25,22 @@ docs/
 │   └── multimodal-capabilities.md
 ├── architecture/             # 架构与技术方案
 │   ├── technical-design.md
-│   ├── multimodal-roadmap.md       # 多模态技术总览与实施顺序
-│   ├── realtime-transport-design.md # 对话 WebSocket + 资源 SSE（设计稿）
-│   ├── agent-multimodal-design.md
-│   ├── flow-llm-multimodal-design.md
-│   ├── flow-generative-media-design.md
-│   ├── media-assets-design.md           # 生成物媒体资产（设计归档 → features/attachments-media-generative）
-│   ├── layering.md           # 后端分层与代码规范
-│   ├── rag-module-migration.md
-│   ├── vector-database-selection.md
-│   ├── mcp-sandbox.md
-│   ├── flow-orchestration-enhancement.md  # 流程编排增强（Phase 1–4 已实现）
-│   ├── flow-subflow-design.md             # 子流程 SubFlow（已实现）
-│   ├── system-management-design.md        # 系统管理增强方案（Phase 0–3）
-│   └── tools-runtime.md      # 工具统一执行平面（目标架构）
-├── frontend/                 # 前端
+│   ├── admin-ops-design.md
+│   ├── marketplace-review-design.md
+│   └── …
+├── frontend/                 # 前端设计规范（非应用源码；应用在仓库 ui/）
 │   └── design.md
 ├── features/                 # 功能节点规格（按模块，已实现对照）
-│   ├── a2a-interconnect.md
-│   ├── agent-schedules.md
-│   ├── agent-chat-websocket.md
-│   ├── attachments-media-generative.md
-│   ├── compliance.md
-│   ├── flow-orchestration.md
-│   ├── hooks.md
-│   ├── kb-ingest-retrieval.md
+│   ├── admin-ops.md
 │   ├── marketplace.md
-│   ├── models-prompts.md
-│   ├── monitor.md
-│   ├── platform-agents.md
-│   ├── system-management.md
-│   ├── tags-categories.md
-│   ├── task-center.md
-│   ├── tools-mcp-skills.md
-│   └── admin-ops.md
+│   └── …
 ├── operations/               # 运维与部署
-│   ├── database-setup.md
-│   └── deployment.md
-├── superpowers/              # 立项过程稿（spec/plan，以 features 为准）
-│   ├── README.md             # 归档索引与现网对照
-│   ├── specs/
-│   └── plans/
+├── superpowers/              # 立项过程稿
 └── guides/                   # 功能专题（实现说明）
-    ├── flows.md
-    ├── platform-agents.md
-    ├── a2a.md
-    ├── ai-stack.md
-    ├── model-providers.md
-    ├── knowledge-base.md
-    ├── mcp.md
-    ├── skill-packages.md
-    ├── compliance-word-libraries.md
-    ├── hooks.md
-    └── …（各模块 `/meta` 见 hooks.md §9）
+
+ui/                           # 前端应用源码（与 docs/ 并列，见仓库根目录）
+├── workbench/                # 租户 AI 工作台 :3000
+└── admin/                    # 运营后台 :3001
 ```
 
 ---
@@ -103,6 +66,8 @@ docs/
 | [flow-orchestration-enhancement.md](./architecture/flow-orchestration-enhancement.md) | **流程编排增强**：属性面板、调试、RAG 节点（已实现） |
 | [flow-subflow-design.md](./architecture/flow-subflow-design.md) | **子流程 SubFlow**（已实现） |
 | [system-management-design.md](./architecture/system-management-design.md) | **系统管理增强**：RBAC/会话/配额/审计分期方案 |
+| [admin-ops-design.md](./architecture/admin-ops-design.md) | **运营后台增强**：安全闭环/计费/风控生效/管理员治理 |
+| [marketplace-review-design.md](./architecture/marketplace-review-design.md) | **应用市场审核**：SaaS 平台审 / 私有化租户审（`review_mode`） |
 | [multimodal-roadmap.md](./architecture/multimodal-roadmap.md) | **多模态技术总览**：文档地图、附件无签名约定、实施顺序 |
 | [realtime-transport-design.md](./architecture/realtime-transport-design.md) | **实时通道**：对话 WebSocket、生成任务 SSE、协议草案与分期 |
 | [agent-multimodal-design.md](./architecture/agent-multimodal-design.md) | 智能体对话多模态（设计归档） |
@@ -134,11 +99,14 @@ docs/
 | [monitor.md](./features/monitor.md) | 模块9 监控 | 统计、趋势、告警 Webhook |
 | [admin-ops.md](./features/admin-ops.md) | 模块1 系统管理（平台侧） | 运营后台：租户、计费、风控、模型目录、分类 |
 
-## 前端 (ui/workbench/)
+## 前端
 
-| 文档 | 说明 |
-|------|------|
-| [design.md](./frontend/design.md) | 设计规范：品牌色、组件类、Logo、布局、**弹窗/Sheet（§5.7）** |
+| 应用 | 源码 | 设计规范 |
+|------|------|----------|
+| 租户工作台 | [ui/workbench/](../ui/workbench/) | [design.md](./frontend/design.md) |
+| 运营后台 | [ui/admin/](../ui/admin/) | 同上（共用品牌与组件类） |
+
+> 仓库根目录已无 `frontend/` 应用目录；`docs/frontend/` 仅存放设计规范文档。
 
 ## 运维 (`operations/`)
 

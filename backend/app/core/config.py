@@ -103,6 +103,12 @@ class Settings(BaseSettings):
     seed_platform_admin_username: str = "platform"
     seed_platform_admin_password: str = "admin123"
 
+    # 应用市场审核：platform（SaaS 默认）| tenant | off
+    marketplace_review_mode: str | None = None
+    marketplace_review_tenant_id: str | None = None
+    # designated：仅 MARKETPLACE_REVIEW_TENANT_ID 可审；publisher：仅发布方租户可审
+    marketplace_review_scope: str = "designated"
+
     # local：Sentence-Transformers；litellm：云端 embedding API（如 dashscope/text-embedding-v4）
     embedding_backend: str = "local"
     embedding_model_name: str = "BAAI/bge-base-zh-v1.5"

@@ -318,7 +318,7 @@ effective_api_base  = tenant_credentials.api_base ?? model_config.api_base
 | 运营服务 | `admin/app_ops/services/model_catalog.py`（新建） |
 | 视图 | `tenant/models/views/models.py`；`admin/app_ops/views/model_catalog.py` |
 | 前端租户 | `ui/workbench/app/workbench/models/page.tsx` + `components/model/*` |
-| 前端运营 | `ui/admin/app/catalog/models/` |
+| 前端运营 | `ui/admin/app/model-catalog/page.tsx` |
 | 调用链改造点 | `chat_models._http_chat_completion` 入口改为 `get_effective_config` |
 
 ---

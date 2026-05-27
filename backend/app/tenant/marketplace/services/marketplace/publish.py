@@ -6,6 +6,7 @@ from uuid import UUID
 from sqlalchemy import select
 
 from app.common.exceptions import BadRequestError, NotFoundError
+from app.marketplace.review_config import get_marketplace_review_mode
 from app.models.agent import Agent
 from app.models.flow import Flow
 from app.models.kb import KnowledgeBase
@@ -171,11 +172,17 @@ class MarketplacePublishMixin:
         ):
             raise BadRequestError("仅草稿或已驳回的应用可提交审核")
         self.validate_manifest(app.manifest or {})
-        app.status = MarketplaceAppStatus.PENDING_REVIEW
+        mode = await get_marketplace_review_mode(self.db)
         app.submitted_at = datetime.now(timezone.utc)
         app.review_note = None
         app.reviewed_at = None
         app.reviewed_by = None
+        app.reviewed_by_admin_id = None
+        app.reviewer_type = None
+        if mode == "off":
+            app.status = MarketplaceAppStatus.PUBLISHED
+        else:
+            app.status = MarketplaceAppStatus.PENDING_REVIEW
         await self.db.flush()
         await self.db.refresh(app, ["category"])
         return await self.app_out_with_tags(app)

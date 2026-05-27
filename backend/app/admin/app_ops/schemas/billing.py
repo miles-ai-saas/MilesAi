@@ -76,3 +76,7 @@ class TenantBillOut(BaseModel):
 
 class TenantBillDetail(TenantBillOut):
     line_items: list[BillLineItemOut] = Field(default=[], description="账单明细列表")
+
+
+class TenantBillStatusUpdate(BaseModel):
+    status: BillStatus = Field(description="目标状态（paid / void）")

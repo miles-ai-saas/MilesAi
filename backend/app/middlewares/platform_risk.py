@@ -1,0 +1,82 @@
+"""平台风控中间件：IP 黑名单与租户 API 限流。"""
+
+from __future__ import annotations
+
+from typing import Callable
+
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
+from starlette.responses import JSONResponse, Response
+
+from app.admin.app_ops.services.risk_enforce import platform_risk_enforcer
+from app.admin.models import RiskSeverity
+from app.common.trace import get_trace_id
+
+_SKIP_PREFIXES = ("/health", "/docs", "/redoc", "/openapi.json", "/favicon.ico")
+
+
+def _client_ip(request: Request) -> str:
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    if request.client:
+        return request.client.host
+    return "unknown"
+
+
+def _should_skip(path: str) -> bool:
+    if path.endswith("/health"):
+        return True
+    return any(path == p or path.startswith(p + "/") for p in _SKIP_PREFIXES)
+
+
+class PlatformRiskMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+        path = request.url.path
+        if _should_skip(path):
+            return await call_next(request)
+
+        ip = _client_ip(request)
+
+        if await platform_risk_enforcer.is_ip_blocked(ip):
+            await platform_risk_enforcer.record_event(
+                event_type="ip_blocked",
+                severity=RiskSeverity.HIGH,
+                ip_address=ip,
+                detail={"kind": "ip_blocked", "path": path, "ip": ip},
+            )
+            return JSONResponse(
+                status_code=403,
+                content={
+                    "code": 403,
+                    "message": "访问被拒绝",
+                    "data": None,
+                    "trace_id": get_trace_id(),
+                },
+            )
+
+        if path.startswith("/api/v1"):
+            limited, rule_id = await platform_risk_enforcer.check_rate_limit(path, ip)
+            if limited:
+                await platform_risk_enforcer.record_event(
+                    event_type="rate_limit",
+                    severity=RiskSeverity.MEDIUM,
+                    ip_address=ip,
+                    detail={
+                        "kind": "rate_limit",
+                        "path": path,
+                        "ip": ip,
+                        "rule_id": str(rule_id) if rule_id else None,
+                    },
+                )
+                return JSONResponse(
+                    status_code=429,
+                    content={
+                        "code": 429,
+                        "message": "请求过于频繁，请稍后再试",
+                        "data": None,
+                        "trace_id": get_trace_id(),
+                    },
+                )
+
+        return await call_next(request)

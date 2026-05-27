@@ -16,6 +16,7 @@ from jose import jwt as jose_jwt
 from app.core.config import get_settings
 from app.core.security import hash_password, verify_password
 from app.admin.app_sys.schemas.auth import AdminInfo, AdminLoginRequest, AdminSessionOut, AdminTokenResponse, PasswordChangeRequest
+from app.admin.app_sys.session_store import revoke_admin_session
 from app.utils.redis_keys import RedisKeys
 
 
@@ -46,7 +47,7 @@ class AdminAuthService:
         return AdminTokenResponse(access_token=token)
 
     async def logout(self, admin_id: UUID) -> None:
-        await get_redis().delete(RedisKeys.admin_session(admin_id))
+        await revoke_admin_session(admin_id)
 
     async def get_me(self, admin_id: UUID) -> AdminInfo:
         admin = await self.repo.get_by_id_or_raise(admin_id, label="管理员不存在")
@@ -58,8 +59,9 @@ class AdminAuthService:
             raise BadRequestError("原密码错误")
         admin.hashed_password = hash_password(body.new_password)
         await self.db.flush()
+        await revoke_admin_session(admin_id)
 
-    async def list_sessions(self) -> list[AdminSessionOut]:
+    async def list_sessions(self, *, current_admin_id: UUID | None = None) -> list[AdminSessionOut]:
         redis = get_redis()
         sessions: list[AdminSessionOut] = []
         async for key in redis.scan_iter(match=RedisKeys.admin_session_scan_pattern()):
@@ -72,6 +74,7 @@ class AdminAuthService:
                             admin_id=admin.id,
                             username=admin.username,
                             role=admin.role,
+                            is_current=current_admin_id == admin.id if current_admin_id else False,
                         )
                     )
             except ValueError:
@@ -80,4 +83,4 @@ class AdminAuthService:
 
     async def revoke_session(self, admin_id: UUID) -> None:
         """强制下线指定管理员会话。"""
-        await get_redis().delete(RedisKeys.admin_session(admin_id))
+        await revoke_admin_session(admin_id)

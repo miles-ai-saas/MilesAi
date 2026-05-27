@@ -1,7 +1,9 @@
 export type AdminNavItem = {
   href: string;
   label: string;
-  icon: "dashboard" | "tenants" | "billing" | "risk" | "audit" | "profile" | "catalog";
+  icon: "dashboard" | "tenants" | "billing" | "risk" | "audit" | "profile" | "model" | "review" | "marketplace" | "collection" | "admins";
+  superAdminOnly?: boolean;
+  platformReviewOnly?: boolean;
 };
 
 export type AdminNavGroup = {
@@ -18,9 +20,10 @@ export const ADMIN_NAV: AdminNavGroup[] = [
     title: "业务运营",
     items: [
       { href: "/tenants", label: "租户管理", icon: "tenants" },
-      { href: "/model-catalog", label: "模型目录", icon: "catalog" },
-      { href: "/marketplace-categories", label: "市场分类", icon: "catalog" },
-      { href: "/sys-categories", label: "工作台分类", icon: "catalog" },
+      { href: "/model-catalog", label: "模型目录", icon: "model" },
+      { href: "/marketplace-review", label: "应用审核", icon: "review", platformReviewOnly: true },
+      { href: "/marketplace-categories", label: "市场分类", icon: "marketplace" },
+      { href: "/sys-categories", label: "工作台分类", icon: "collection" },
       { href: "/billing", label: "计费管理", icon: "billing" },
     ],
   },
@@ -30,6 +33,10 @@ export const ADMIN_NAV: AdminNavGroup[] = [
       { href: "/risk", label: "风控中心", icon: "risk" },
       { href: "/audit", label: "审计日志", icon: "audit" },
     ],
+  },
+  {
+    title: "系统治理",
+    items: [{ href: "/admins", label: "平台管理员", icon: "admins", superAdminOnly: true }],
   },
 ];
 
@@ -52,6 +59,7 @@ export function getAdminBreadcrumbs(pathname: string): BreadcrumbItem[] {
   if (pathname === "/") return [{ label: "控制台" }];
 
   if (pathname === "/model-catalog") return [home, { label: "模型目录" }];
+  if (pathname === "/marketplace-review") return [home, { label: "应用审核" }];
   if (pathname === "/marketplace-categories") return [home, { label: "市场分类" }];
   if (pathname === "/sys-categories") return [home, { label: "工作台分类" }];
   if (pathname === "/tenants") return [home, { label: "租户管理" }];
@@ -60,6 +68,7 @@ export function getAdminBreadcrumbs(pathname: string): BreadcrumbItem[] {
   if (pathname === "/billing") return [home, { label: "计费管理" }];
   if (pathname === "/risk") return [home, { label: "风控中心" }];
   if (pathname === "/audit") return [home, { label: "审计日志" }];
+  if (pathname === "/admins") return [home, { label: "平台管理员" }];
   if (pathname === "/profile") return [home, { label: "账号安全" }];
 
   return [home];

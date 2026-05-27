@@ -8,6 +8,7 @@ from app.admin.app_ops.schemas.billing import (
     BillingPlanUpdate,
     TenantBillDetail,
     TenantBillOut,
+    TenantBillStatusUpdate,
 )
 from app.admin.app_ops.schemas.risk import (
     IpBlacklistCreate,

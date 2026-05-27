@@ -12,6 +12,7 @@ from app.core.tenant import TenantContext
 from app.tenant.agents.repositories.agent import AgentRepository
 from app.tenant.flows.repositories.flow import FlowRepository
 from app.tenant.kb.repositories.kb import KnowledgeBaseRepository
+from app.marketplace.review_config import get_marketplace_review_mode
 from app.tenant.marketplace.meta import marketplace_meta_dict
 from app.tenant.marketplace.schemas.meta import MarketplaceMetaOut
 from app.tenant.marketplace.services.marketplace.catalog import MarketplaceCatalogMixin
@@ -41,5 +42,6 @@ class MarketplaceService(
         self.kb_repo = KnowledgeBaseRepository(db)
 
     async def get_meta(self) -> MarketplaceMetaOut:
-        """返回枚举展示字典（无 DB 查询，文案来自 tenant/*/meta.py）。"""
-        return MarketplaceMetaOut.model_validate(marketplace_meta_dict())
+        """返回枚举展示字典与 review_mode。"""
+        mode = await get_marketplace_review_mode(self.db)
+        return MarketplaceMetaOut.model_validate(marketplace_meta_dict(review_mode=mode))

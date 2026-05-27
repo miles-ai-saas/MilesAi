@@ -108,9 +108,11 @@ function InstallSuccessBanner({ result, onDismiss }: { result: AppInstallResult;
 export default function MarketplacePage() {
   const { ready, user } = useRequireAuth();
   const marketplaceMeta = useMarketplaceMeta(ready);
+  const reviewMode = marketplaceMeta?.review_mode ?? "tenant";
   const canReview = Boolean(
     user?.is_superuser || user?.permissions?.includes("marketplace:review"),
   );
+  const showReviewTab = canReview && reviewMode === "tenant";
   const [mainView, setMainView] = useState<MainView>("plaza");
   const [plazaSort, setPlazaSort] = useState<"installs" | "rating">("installs");
   const [search, setSearch] = useState("");
@@ -159,9 +161,9 @@ export default function MarketplacePage() {
       { key: "installs", label: "我的安装" },
       { key: "mine", label: "我的上架" },
       { key: "publish", label: "打包上架" },
-      ...(canReview ? [{ key: "review", label: "上架审核" }] : []),
+      ...(showReviewTab ? [{ key: "review", label: "上架审核" }] : []),
     ],
-    [canReview],
+    [showReviewTab],
   );
 
   const switchView = (view: MainView) => {
@@ -206,7 +208,7 @@ export default function MarketplacePage() {
       (p, s) => api.listPendingMarketplaceApps(p, s, tagFilterIds.length ? tagFilterIds : undefined),
       [tagFilterKey],
     ),
-    { enabled: ready && mainView === "review" && canReview, resetKey: `pending-${tagFilterKey}` },
+    { enabled: ready && mainView === "review" && showReviewTab, resetKey: `pending-${tagFilterKey}` },
   );
 
   useEffect(() => {
@@ -351,9 +353,15 @@ export default function MarketplacePage() {
     setMsg("");
     try {
       await api.publishMarketplaceApp(appId);
-      setMsg("已提交审核，通过后将在应用广场展示");
+      setMsg(
+        reviewMode === "off"
+          ? "已上架"
+          : reviewMode === "platform"
+            ? "已提交，等待平台运营审核"
+            : "已提交审核，通过后将在应用广场展示",
+      );
       await myApps.reload();
-      if (canReview) await pendingApps.reload();
+      if (showReviewTab) await pendingApps.reload();
     } catch (e) {
       setMsg(e instanceof Error ? e.message : "提交失败");
     } finally {
@@ -835,7 +843,7 @@ export default function MarketplacePage() {
     );
   }
 
-  if (mainView === "review" && canReview) {
+  if (mainView === "review" && showReviewTab) {
     return (
       <>
         <ResourceListLayout

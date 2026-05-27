@@ -4,7 +4,7 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.common.exceptions import NotFoundError
+from app.common.exceptions import BadRequestError, NotFoundError
 from app.admin.app_ops.repositories.billing import BillingPlanRepository
 from app.admin.app_ops.repositories.tenant import AdminTenantRepository
 from app.admin.app_ops.schemas.tenant import (
@@ -33,6 +33,8 @@ class AdminTenantService:
         plan = await self.plans.get_by_id(plan_id)
         if not plan:
             raise NotFoundError("套餐不存在")
+        if not plan.is_active:
+            raise BadRequestError("该套餐已停用，不可绑定租户")
         tenant.plan_id = plan.id
         tenant.max_knowledge_bases = plan.max_knowledge_bases
         tenant.max_storage_mb = plan.max_storage_mb
@@ -104,6 +106,10 @@ class AdminTenantService:
             storage_used_mb=counts["storage_used_mb"],
             tokens_used_month=int(tenant.tokens_used_month) if tenant else 0,
         )
+
+    async def get_tenant_usage(self, tenant_id: UUID) -> TenantUsageStats:
+        await self.repo.get_by_id_or_raise(tenant_id, label="租户不存在")
+        return await self._usage(tenant_id)
 
     async def get_tenant_detail(self, tenant_id: UUID) -> AdminTenantDetail:
         tenant = await self.repo.get_by_id_or_raise(tenant_id, label="租户不存在")

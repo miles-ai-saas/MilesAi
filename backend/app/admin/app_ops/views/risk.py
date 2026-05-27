@@ -9,7 +9,7 @@ from app.admin.models import RiskSeverity
 from app.admin.app_ops.services.audit import write_audit_log
 from app.admin.app_ops.services.risk import AdminRiskService
 from app.admin.app_ops.schemas import IpBlacklistCreate, RateLimitRuleCreate
-from app.admin.app_sys.deps import AdminContext, get_platform_admin
+from app.admin.app_sys.deps import AdminContext, get_platform_admin, require_admin_role
 from app.common.response import ok, page_ok
 from app.common.schema import PageParams
 from app.infra.db import get_db
@@ -33,10 +33,15 @@ async def list_risk(
 @router.post("/risk/events/{event_id}/resolve")
 async def resolve_risk(
     event_id: UUID,
-    ctx: AdminContext = Depends(get_platform_admin),
+    request: Request,
+    ctx: AdminContext = Depends(require_admin_role("security")),
     db: AsyncSession = Depends(get_db),
 ):
-    return ok(await AdminRiskService(db).resolve_risk(event_id))
+    event = await AdminRiskService(db).resolve_risk(event_id)
+    await write_audit_log(
+        db, admin_id=ctx.admin_id, action="risk.resolve", request=request, detail={"event_id": str(event_id)}
+    )
+    return ok(event)
 
 
 @router.get("/risk/ip-blacklist")
@@ -48,7 +53,7 @@ async def list_ips(ctx: AdminContext = Depends(get_platform_admin), db: AsyncSes
 async def add_ip(
     body: IpBlacklistCreate,
     request: Request,
-    ctx: AdminContext = Depends(get_platform_admin),
+    ctx: AdminContext = Depends(require_admin_role("security")),
     db: AsyncSession = Depends(get_db),
 ):
     row = await AdminRiskService(db).add_ip_blacklist(body, ctx.admin_id)
@@ -62,10 +67,19 @@ async def add_ip(
 async def toggle_ip(
     ip_id: UUID,
     is_active: bool,
-    ctx: AdminContext = Depends(get_platform_admin),
+    request: Request,
+    ctx: AdminContext = Depends(require_admin_role("security")),
     db: AsyncSession = Depends(get_db),
 ):
-    return ok(await AdminRiskService(db).toggle_ip(ip_id, is_active))
+    row = await AdminRiskService(db).toggle_ip(ip_id, is_active)
+    await write_audit_log(
+        db,
+        admin_id=ctx.admin_id,
+        action="risk.ip.toggle",
+        request=request,
+        detail={"ip_id": str(ip_id), "is_active": is_active},
+    )
+    return ok(row)
 
 
 @router.get("/risk/rate-limits")
@@ -76,10 +90,15 @@ async def list_rate_limits(ctx: AdminContext = Depends(get_platform_admin), db: 
 @router.post("/risk/rate-limits")
 async def create_rate_limit(
     body: RateLimitRuleCreate,
-    ctx: AdminContext = Depends(get_platform_admin),
+    request: Request,
+    ctx: AdminContext = Depends(require_admin_role("security")),
     db: AsyncSession = Depends(get_db),
 ):
-    return ok(await AdminRiskService(db).create_rate_limit(body))
+    row = await AdminRiskService(db).create_rate_limit(body)
+    await write_audit_log(
+        db, admin_id=ctx.admin_id, action="risk.rule.create", request=request, detail=body.model_dump()
+    )
+    return ok(row)
 
 
 @router.patch("/risk/rate-limits/{rule_id}")
@@ -87,11 +106,18 @@ async def patch_rate_limit(
     rule_id: UUID,
     is_active: bool | None = None,
     limit_per_minute: int | None = None,
-    ctx: AdminContext = Depends(get_platform_admin),
+    request: Request = None,
+    ctx: AdminContext = Depends(require_admin_role("security")),
     db: AsyncSession = Depends(get_db),
 ):
-    return ok(
-        await AdminRiskService(db).update_rate_limit(
-            rule_id, is_active=is_active, limit_per_minute=limit_per_minute
-        )
+    row = await AdminRiskService(db).update_rate_limit(
+        rule_id, is_active=is_active, limit_per_minute=limit_per_minute
     )
+    await write_audit_log(
+        db,
+        admin_id=ctx.admin_id,
+        action="risk.rule.update",
+        request=request,
+        detail={"rule_id": str(rule_id), "is_active": is_active, "limit_per_minute": limit_per_minute},
+    )
+    return ok(row)

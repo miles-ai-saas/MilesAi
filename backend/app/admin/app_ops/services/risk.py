@@ -9,6 +9,7 @@ from app.admin.app_ops.repositories.risk import (
     RateLimitRuleRepository,
     RiskEventRepository,
 )
+from app.admin.app_ops.services.risk_enforce import platform_risk_enforcer
 from app.admin.models import RiskEvent, RiskSeverity
 from app.admin.app_ops.schemas.risk import (
     IpBlacklistCreate,
@@ -72,12 +73,14 @@ class AdminRiskService:
             reason=body.reason,
             created_by=admin_id,
         )
+        platform_risk_enforcer.invalidate_cache()
         return IpBlacklistOut.model_validate(row)
 
     async def toggle_ip(self, ip_id: UUID, is_active: bool) -> IpBlacklistOut:
         row = await self.ip_blacklist.get_by_id_or_raise(ip_id, label="记录不存在")
         row.is_active = is_active
         await self.db.flush()
+        platform_risk_enforcer.invalidate_cache()
         return IpBlacklistOut.model_validate(row)
 
     async def list_rate_limits(self) -> list[RateLimitRuleOut]:
@@ -86,6 +89,7 @@ class AdminRiskService:
 
     async def create_rate_limit(self, body: RateLimitRuleCreate) -> RateLimitRuleOut:
         row = await self.rate_limits.create(**body.model_dump())
+        platform_risk_enforcer.invalidate_cache()
         return RateLimitRuleOut.model_validate(row)
 
     async def update_rate_limit(
@@ -97,4 +101,5 @@ class AdminRiskService:
         if limit_per_minute is not None:
             row.limit_per_minute = limit_per_minute
         await self.db.flush()
+        platform_risk_enforcer.invalidate_cache()
         return RateLimitRuleOut.model_validate(row)

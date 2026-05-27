@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.admin.app_ops.services.audit import write_audit_log
 from app.admin.app_ops.services.tenant import AdminTenantService
 from app.admin.app_ops.schemas import AdminTenantCreate, AdminTenantUpdate, TenantQuotaUpdate
-from app.admin.app_sys.deps import AdminContext, get_platform_admin
+from app.admin.app_sys.deps import AdminContext, get_platform_admin, require_admin_role
 from app.common.response import ok, page_ok
 from app.common.schema import PageParams
 from app.infra.db import get_db
@@ -37,7 +37,7 @@ async def list_tenants(
 async def create_tenant(
     body: AdminTenantCreate,
     request: Request,
-    ctx: AdminContext = Depends(get_platform_admin),
+    ctx: AdminContext = Depends(require_admin_role("ops")),
     db: AsyncSession = Depends(get_db),
 ):
     tenant = await AdminTenantService(db).create_tenant(body)
@@ -54,6 +54,15 @@ async def create_tenant(
     return ok(tenant)
 
 
+@router.get("/tenants/{tenant_id}/usage")
+async def get_tenant_usage(
+    tenant_id: UUID,
+    ctx: AdminContext = Depends(get_platform_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    return ok(await AdminTenantService(db).get_tenant_usage(tenant_id))
+
+
 @router.get("/tenants/{tenant_id}")
 async def get_tenant(
     tenant_id: UUID,
@@ -68,7 +77,7 @@ async def update_tenant(
     tenant_id: UUID,
     body: AdminTenantUpdate,
     request: Request,
-    ctx: AdminContext = Depends(get_platform_admin),
+    ctx: AdminContext = Depends(require_admin_role("ops")),
     db: AsyncSession = Depends(get_db),
 ):
     tenant = await AdminTenantService(db).update_tenant(tenant_id, body)
@@ -89,7 +98,7 @@ async def update_tenant(
 async def delete_tenant(
     tenant_id: UUID,
     request: Request,
-    ctx: AdminContext = Depends(get_platform_admin),
+    ctx: AdminContext = Depends(require_admin_role("ops")),
     db: AsyncSession = Depends(get_db),
 ):
     await AdminTenantService(db).delete_tenant(tenant_id)
@@ -110,7 +119,7 @@ async def update_quota(
     tenant_id: UUID,
     body: TenantQuotaUpdate,
     request: Request,
-    ctx: AdminContext = Depends(get_platform_admin),
+    ctx: AdminContext = Depends(require_admin_role("ops")),
     db: AsyncSession = Depends(get_db),
 ):
     tenant = await AdminTenantService(db).update_quota(tenant_id, body)

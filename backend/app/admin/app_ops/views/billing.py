@@ -9,8 +9,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.admin.models import BillStatus
 from app.admin.app_ops.services.audit import write_audit_log
 from app.admin.app_ops.services.billing import AdminBillingService
-from app.admin.app_ops.schemas import BillingPlanCreate, BillingPlanUpdate
-from app.admin.app_sys.deps import AdminContext, get_platform_admin
+from app.admin.app_ops.schemas import BillingPlanCreate, BillingPlanUpdate, TenantBillStatusUpdate
+from app.admin.app_sys.deps import AdminContext, get_platform_admin, require_admin_role
 from app.common.response import ok, page_ok
 from app.common.schema import PageParams
 from app.infra.db import get_db
@@ -28,7 +28,7 @@ async def list_plans(ctx: AdminContext = Depends(get_platform_admin), db: AsyncS
 async def create_plan(
     body: BillingPlanCreate,
     request: Request,
-    ctx: AdminContext = Depends(get_platform_admin),
+    ctx: AdminContext = Depends(require_admin_role("billing")),
     db: AsyncSession = Depends(get_db),
 ):
     plan = await AdminBillingService(db).create_plan(body)
@@ -40,10 +40,13 @@ async def create_plan(
 async def update_plan(
     plan_id: UUID,
     body: BillingPlanUpdate,
-    ctx: AdminContext = Depends(get_platform_admin),
+    request: Request,
+    ctx: AdminContext = Depends(require_admin_role("billing")),
     db: AsyncSession = Depends(get_db),
 ):
-    return ok(await AdminBillingService(db).update_plan(plan_id, body))
+    plan = await AdminBillingService(db).update_plan(plan_id, body)
+    await write_audit_log(db, admin_id=ctx.admin_id, action="plan.update", request=request)
+    return ok(plan)
 
 
 @router.get("/billing/bills")
@@ -69,7 +72,7 @@ async def generate_bill(
     period_start: date = Query(...),
     period_end: date = Query(...),
     request: Request = None,
-    ctx: AdminContext = Depends(get_platform_admin),
+    ctx: AdminContext = Depends(require_admin_role("billing")),
     db: AsyncSession = Depends(get_db),
 ):
     bill = await AdminBillingService(db).generate_bill(tenant_id, period_start, period_end)
@@ -78,6 +81,26 @@ async def generate_bill(
         admin_id=ctx.admin_id,
         action="bill.generate",
         tenant_id=tenant_id,
+        request=request,
+    )
+    return ok(bill)
+
+
+@router.patch("/billing/bills/{bill_id}")
+async def update_bill_status(
+    bill_id: UUID,
+    body: TenantBillStatusUpdate,
+    request: Request,
+    ctx: AdminContext = Depends(require_admin_role("billing")),
+    db: AsyncSession = Depends(get_db),
+):
+    bill = await AdminBillingService(db).update_bill_status(bill_id, body)
+    action = "bill.paid" if body.status.value == "paid" else "bill.void"
+    await write_audit_log(
+        db,
+        admin_id=ctx.admin_id,
+        action=action,
+        tenant_id=bill.tenant_id,
         request=request,
     )
     return ok(bill)

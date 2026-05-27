@@ -32,4 +32,5 @@ class AdminSessionOut(BaseModel):
     admin_id: UUID = Field(description="管理员 ID")
     username: str = Field(description="用户名")
     role: str = Field(description="角色")
+    is_current: bool = Field(default=False, description="是否为当前登录会话")
     jti: str | None = Field(None, description="会话令牌 ID（JWT jti）")

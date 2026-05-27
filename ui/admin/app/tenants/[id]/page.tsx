@@ -6,6 +6,39 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { adminApi, type AdminTenantDetail, type BillingPlan } from "@/lib/api";
 import { useRequireAdmin } from "@/lib/auth-store";
 
+function UsageBar({
+  label,
+  used,
+  max,
+  unit = "",
+}: {
+  label: string;
+  used: number;
+  max: number;
+  unit?: string;
+}) {
+  const pct = max > 0 ? Math.min(100, Math.round((used / max) * 100)) : 0;
+  const warn = pct >= 90;
+  return (
+    <div className="rounded-lg bg-surface-muted p-3">
+      <div className="flex items-center justify-between text-xs text-ink-muted">
+        <span>{label}</span>
+        <span className={warn ? "text-amber-600" : ""}>
+          {used.toLocaleString()}
+          {unit} / {max.toLocaleString()}
+          {unit} ({pct}%)
+        </span>
+      </div>
+      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-line-soft">
+        <div
+          className={`h-full rounded-full ${warn ? "bg-amber-500" : "bg-brand"}`}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
 export default function TenantDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
@@ -13,33 +46,55 @@ export default function TenantDetailPage() {
   const [tenant, setTenant] = useState<AdminTenantDetail | null>(null);
   const [plans, setPlans] = useState<BillingPlan[]>([]);
   const [msg, setMsg] = useState("");
+  const [err, setErr] = useState("");
+
+  const reload = async () => {
+    const [t, p, usage] = await Promise.all([
+      adminApi.getTenant(id),
+      adminApi.listPlans(),
+      adminApi.getTenantUsage(id),
+    ]);
+    setTenant({ ...t, usage });
+    setPlans(p);
+  };
 
   useEffect(() => {
     if (!ready) return;
-    Promise.all([adminApi.getTenant(id), adminApi.listPlans()]).then(([t, p]) => {
-      setTenant(t);
-      setPlans(p);
-    });
+    reload().catch(() => undefined);
   }, [ready, id]);
 
   const save = async () => {
     if (!tenant) return;
-    await adminApi.updateTenant(id, {
-      status: tenant.status,
-      plan_id: tenant.plan_id,
-      is_active: tenant.is_active,
-    });
-    setMsg("基本信息已保存");
+    setErr("");
+    try {
+      await adminApi.updateTenant(id, {
+        status: tenant.status,
+        plan_id: tenant.plan_id,
+        is_active: tenant.is_active,
+      });
+      setMsg("基本信息已保存");
+      await reload();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "保存失败");
+    }
   };
 
   const saveQuota = async () => {
     if (!tenant) return;
-    await adminApi.updateQuota(id, {
-      max_tokens_monthly: tenant.max_tokens_monthly,
-      max_storage_mb: tenant.max_storage_mb,
-      max_knowledge_bases: tenant.max_knowledge_bases,
-    });
-    setMsg("配额已更新");
+    setErr("");
+    try {
+      await adminApi.updateQuota(id, {
+        max_tokens_monthly: tenant.max_tokens_monthly,
+        max_storage_mb: tenant.max_storage_mb,
+        max_knowledge_bases: tenant.max_knowledge_bases,
+        max_agents: tenant.max_agents,
+        max_flows: tenant.max_flows,
+      });
+      setMsg("配额已更新");
+      await reload();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "更新失败");
+    }
   };
 
   const onDelete = async () => {
@@ -49,6 +104,8 @@ export default function TenantDetailPage() {
   };
 
   if (!tenant) return <p className="text-ink-muted">加载中…</p>;
+
+  const activePlans = plans.filter((p) => p.is_active || p.id === tenant.plan_id);
 
   return (
     <div className="max-w-3xl">
@@ -62,6 +119,7 @@ export default function TenantDetailPage() {
         }
       />
       {msg && <p className="mb-4 text-sm text-emerald-600">{msg}</p>}
+      {err && <p className="mb-4 text-sm text-red-600">{err}</p>}
 
       <section className="card mb-6 p-4">
         <h2 className="text-sm font-semibold">基本信息</h2>
@@ -86,9 +144,10 @@ export default function TenantDetailPage() {
               onChange={(e) => setTenant({ ...tenant, plan_id: e.target.value || null })}
             >
               <option value="">无</option>
-              {plans.map((p) => (
-                <option key={p.id} value={p.id}>
+              {activePlans.map((p) => (
+                <option key={p.id} value={p.id} disabled={!p.is_active}>
                   {p.name}
+                  {!p.is_active ? "（已停用）" : ""}
                 </option>
               ))}
             </select>
@@ -101,13 +160,28 @@ export default function TenantDetailPage() {
 
       <section className="card mb-6 p-4">
         <h2 className="text-sm font-semibold">使用统计</h2>
-        <div className="mt-3 grid grid-cols-2 gap-3 text-sm sm:grid-cols-3">
-          <div className="rounded bg-surface-muted p-3">知识库 {tenant.usage.knowledge_bases}</div>
-          <div className="rounded bg-surface-muted p-3">文档 {tenant.usage.documents}</div>
-          <div className="rounded bg-surface-muted p-3">智能体 {tenant.usage.agents}</div>
-          <div className="rounded bg-surface-muted p-3">流程 {tenant.usage.flows}</div>
-          <div className="rounded bg-surface-muted p-3">用户 {tenant.usage.users}</div>
-          <div className="rounded bg-surface-muted p-3">存储 {tenant.usage.storage_used_mb} MB</div>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          <div className="rounded-lg bg-surface-muted p-3 text-sm">
+            知识库 {tenant.usage.knowledge_bases} · 文档 {tenant.usage.documents}
+          </div>
+          <div className="rounded-lg bg-surface-muted p-3 text-sm">
+            智能体 {tenant.usage.agents} · 流程 {tenant.usage.flows} · 用户 {tenant.usage.users}
+          </div>
+        </div>
+        <div className="mt-4 space-y-3">
+          <UsageBar
+            label="Token（本月）"
+            used={tenant.usage.tokens_used_month}
+            max={tenant.max_tokens_monthly}
+          />
+          <UsageBar label="存储" used={tenant.usage.storage_used_mb} max={tenant.max_storage_mb} unit=" MB" />
+          <UsageBar
+            label="知识库数量"
+            used={tenant.usage.knowledge_bases}
+            max={tenant.max_knowledge_bases}
+          />
+          <UsageBar label="智能体" used={tenant.usage.agents} max={tenant.max_agents} />
+          <UsageBar label="流程" used={tenant.usage.flows} max={tenant.max_flows} />
         </div>
       </section>
 
@@ -132,6 +206,35 @@ export default function TenantDetailPage() {
               className="input-field mt-1"
               value={tenant.max_storage_mb}
               onChange={(e) => setTenant({ ...tenant, max_storage_mb: Number(e.target.value) })}
+            />
+          </label>
+          <label className="text-xs text-ink-muted">
+            知识库上限
+            <input
+              type="number"
+              className="input-field mt-1"
+              value={tenant.max_knowledge_bases}
+              onChange={(e) =>
+                setTenant({ ...tenant, max_knowledge_bases: Number(e.target.value) })
+              }
+            />
+          </label>
+          <label className="text-xs text-ink-muted">
+            智能体上限
+            <input
+              type="number"
+              className="input-field mt-1"
+              value={tenant.max_agents}
+              onChange={(e) => setTenant({ ...tenant, max_agents: Number(e.target.value) })}
+            />
+          </label>
+          <label className="text-xs text-ink-muted">
+            流程上限
+            <input
+              type="number"
+              className="input-field mt-1"
+              value={tenant.max_flows}
+              onChange={(e) => setTenant({ ...tenant, max_flows: Number(e.target.value) })}
             />
           </label>
         </div>

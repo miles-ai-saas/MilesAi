@@ -6,7 +6,7 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.common.exceptions import NotFoundError
+from app.common.exceptions import NotFoundError, BadRequestError
 from app.admin.app_ops.repositories.billing import BillingPlanRepository, TenantBillRepository
 from app.admin.app_ops.repositories.tenant import AdminTenantRepository
 from app.admin.models import BillLineItem, BillStatus, TenantBill
@@ -17,6 +17,7 @@ from app.admin.app_ops.schemas.billing import (
     BillingPlanUpdate,
     TenantBillDetail,
     TenantBillOut,
+    TenantBillStatusUpdate,
 )
 from app.common.schema import PageParams, PageResult
 
@@ -162,3 +163,15 @@ class AdminBillingService:
             self.db.add(item)
         await self.db.flush()
         return await self.get_bill(bill.id)
+
+    async def update_bill_status(
+        self, bill_id: UUID, body: TenantBillStatusUpdate
+    ) -> TenantBillDetail:
+        if body.status not in (BillStatus.PAID, BillStatus.VOID):
+            raise BadRequestError("仅支持标记为 paid 或 void")
+        bill = await self.bills.get_by_id_or_raise(bill_id, label="账单不存在")
+        if bill.status not in (BillStatus.ISSUED, BillStatus.DRAFT):
+            raise BadRequestError("当前状态不可变更")
+        bill.status = body.status
+        await self.db.flush()
+        return await self.get_bill(bill_id)

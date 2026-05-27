@@ -15,6 +15,7 @@ from app.infra.db import get_db
 from app.common.exceptions import ForbiddenError, UnauthorizedError
 from app.core.security import safe_decode_token
 from app.admin.models import PlatformAdmin
+from app.admin.app_sys.session_store import validate_admin_session
 
 admin_bearer = HTTPBearer(auto_error=False)
 
@@ -42,6 +43,9 @@ async def get_platform_admin(
     admin_id = payload.get("sub")
     if not admin_id:
         raise UnauthorizedError("无效令牌载荷")
+    jti = payload.get("jti")
+    if not await validate_admin_session(UUID(str(admin_id)), str(jti) if jti else None):
+        raise UnauthorizedError("会话已失效，请重新登录")
     admin = await db.scalar(
         select(PlatformAdmin).where(
             PlatformAdmin.id == UUID(str(admin_id)),

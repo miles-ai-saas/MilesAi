@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { AdminSidebar } from "@/components/layout/AdminSidebar";
 import { AdminTopBar } from "@/components/layout/AdminTopBar";
 import { getAdminBreadcrumbs } from "@/lib/admin-nav";
+import { adminApi } from "@/lib/api";
 import { useAdminAuthStore, useAdminHydrated } from "@/lib/auth-store";
 
 export function AdminShell({ children }: { children: React.ReactNode }) {
@@ -35,8 +36,8 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
   const breadcrumbs = getAdminBreadcrumbs(pathname);
 
-  const logout = () => {
-    useAdminAuthStore.getState().logout();
+  const logout = async () => {
+    await adminApi.logout();
     router.push("/login");
   };
 

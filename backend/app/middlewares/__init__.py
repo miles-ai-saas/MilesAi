@@ -7,10 +7,12 @@
 from fastapi import FastAPI
 
 from app.middlewares.access_log import AccessLogMiddleware
+from app.middlewares.platform_risk import PlatformRiskMiddleware
 from app.middlewares.trace import TraceMiddleware
 
 __all__ = [
     "AccessLogMiddleware",
+    "PlatformRiskMiddleware",
     "TraceMiddleware",
     "register_http_middlewares",
 ]
@@ -19,4 +21,5 @@ __all__ = [
 def register_http_middlewares(app: FastAPI) -> None:
     """在 CORSMiddleware 之后调用，挂载 trace 与访问日志。"""
     app.add_middleware(AccessLogMiddleware)
+    app.add_middleware(PlatformRiskMiddleware)
     app.add_middleware(TraceMiddleware)

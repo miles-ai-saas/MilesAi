@@ -23,6 +23,7 @@
 
 - 跨租户共享 KB 文档 blob（安装时创建空 KB 壳，需用户自行入库）
 - 私有应用仅本租户可见（v1 审核通过后全平台 `PUBLISHED` 可见）
+- **固定单一审核模型** — 审核按部署配置切换，见 [marketplace-review-design.md](../architecture/marketplace-review-design.md)
 
 ---
 
@@ -94,10 +95,21 @@ GET   /marketplace/apps/mine?tag_ids=
 
 ### 3.3 审核
 
+> **双部署：** SaaS 默认由平台运营在 `ui/admin` 审核；私有化默认由工作台「上架审核」审核。配置项 `MARKETPLACE_REVIEW_MODE=platform|tenant|off`。详见 [marketplace-review-design.md](../architecture/marketplace-review-design.md)。
+
+**租户 API（`review_mode=tenant` 时）**
+
 ```
 GET  /marketplace/apps/pending?tag_ids=   # marketplace:review
 POST /marketplace/apps/{id}/approve
 POST /marketplace/apps/{id}/reject        # body: { note }
+```
+
+**运营 API（`review_mode=platform` 时，规划）**
+
+```
+GET  /api/admin/v1/marketplace/apps/pending
+POST /api/admin/v1/marketplace/apps/{id}/approve|reject
 ```
 
 ### 3.4 安装、升级与评分

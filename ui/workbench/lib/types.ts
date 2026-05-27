@@ -493,6 +493,7 @@ export interface MarketplaceMeta {
   app_statuses: EnumOption[];
   catalog_sorts: EnumOption[];
   visibilities?: EnumOption[];
+  review_mode?: "platform" | "tenant" | "off";
   schema_version: string;
 }
 

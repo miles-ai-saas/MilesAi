@@ -1,6 +1,7 @@
 from uuid import UUID
 
 from fastapi import Request
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.admin.models import AuditLog
@@ -37,3 +38,26 @@ class AuditLogRepository(BaseRepository[AuditLog]):
             user_agent=ua,
             detail=detail or {},
         )
+
+    async def list_for_export(
+        self,
+        *,
+        limit: int = 5000,
+        admin_id: UUID | None = None,
+        action: str | None = None,
+        tenant_id: UUID | None = None,
+    ) -> list[AuditLog]:
+        filters = []
+        if admin_id:
+            filters.append(AuditLog.admin_id == admin_id)
+        if action:
+            filters.append(AuditLog.action == action)
+        if tenant_id:
+            filters.append(AuditLog.tenant_id == tenant_id)
+        stmt = (
+            select(AuditLog)
+            .where(*filters)
+            .order_by(AuditLog.created_at.desc())
+            .limit(max(1, min(limit, 5000)))
+        )
+        return list((await self.db.execute(stmt)).scalars().all())

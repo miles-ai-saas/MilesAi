@@ -10,11 +10,13 @@ from app.tenant.marketplace.models import MarketplaceAppStatus, MarketplaceAppVi
 
 APP_STATUS_LABELS: dict[str, tuple[str, str | None]] = {
     MarketplaceAppStatus.DRAFT.value: ("草稿", "未提交审核"),
-    MarketplaceAppStatus.PENDING_REVIEW.value: ("待审核", "已提交，等待平台审核"),
+    MarketplaceAppStatus.PENDING_REVIEW.value: ("待审核", "已提交，等待审核"),
     MarketplaceAppStatus.PUBLISHED.value: ("已上架", "广场可见，可被安装"),
     MarketplaceAppStatus.REJECTED.value: ("已驳回", "可修改后重新提交"),
     MarketplaceAppStatus.ARCHIVED.value: ("已下架", "不再展示与安装"),
 }
+
+PENDING_REVIEW_PLATFORM_LABEL = ("待平台审核", "已提交，等待平台运营审核")
 
 CATALOG_SORT_OPTIONS: list[tuple[str, str, str | None]] = [
     ("installs", "按安装量", "安装次数降序"),
@@ -27,11 +29,15 @@ VISIBILITY_LABELS: dict[str, tuple[str, str | None]] = {
 }
 
 
-def marketplace_meta_dict() -> dict:
+def marketplace_meta_dict(*, review_mode: str = "platform") -> dict:
     """构建 meta 响应 dict，供 *MetaOut.model_validate 与单测使用。"""
+    status_labels = dict(APP_STATUS_LABELS)
+    if review_mode == "platform":
+        status_labels[MarketplaceAppStatus.PENDING_REVIEW.value] = PENDING_REVIEW_PLATFORM_LABEL
     return {
-        "app_statuses": enum_options(MarketplaceAppStatus, APP_STATUS_LABELS),
+        "app_statuses": enum_options(MarketplaceAppStatus, status_labels),
         "catalog_sorts": literal_options(CATALOG_SORT_OPTIONS),
         "visibilities": enum_options(MarketplaceAppVisibility, VISIBILITY_LABELS),
+        "review_mode": review_mode,
         "schema_version": META_SCHEMA_VERSION,
     }
