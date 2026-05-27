@@ -43,7 +43,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-screen bg-surface-muted">
       <div className="hidden lg:flex lg:shrink-0">
-        <AdminSidebar pathname={pathname} username={admin?.username} role={admin?.role} />
+        <AdminSidebar pathname={pathname} />
       </div>
 
       {mobileNavOpen && (
@@ -55,12 +55,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             onClick={() => setMobileNavOpen(false)}
           />
           <div className="relative z-50 flex h-full shadow-panel">
-            <AdminSidebar
-              pathname={pathname}
-              username={admin?.username}
-              role={admin?.role}
-              onNavigate={() => setMobileNavOpen(false)}
-            />
+            <AdminSidebar pathname={pathname} onNavigate={() => setMobileNavOpen(false)} />
           </div>
         </div>
       )}
@@ -68,6 +63,8 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
       <div className="flex min-h-screen min-w-0 flex-1 flex-col">
         <AdminTopBar
           breadcrumbs={breadcrumbs}
+          username={admin?.username}
+          role={admin?.role}
           onMenuOpen={() => setMobileNavOpen(true)}
           onLogout={logout}
         />

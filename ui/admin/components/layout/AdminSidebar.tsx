@@ -2,12 +2,7 @@
 
 import Link from "next/link";
 import { BrandHeader } from "@/components/brand/brand-header";
-import {
-  ADMIN_ACCOUNT_NAV,
-  ADMIN_NAV,
-  isAdminNavActive,
-  type AdminNavItem,
-} from "@/lib/admin-nav";
+import { ADMIN_NAV, isAdminNavActive, type AdminNavItem } from "@/lib/admin-nav";
 import { AdminNavIcon } from "@/components/layout/AdminNavIcon";
 
 function NavLink({
@@ -34,13 +29,9 @@ function NavLink({
 
 export function AdminSidebar({
   pathname,
-  username,
-  role,
   onNavigate,
 }: {
   pathname: string;
-  username?: string;
-  role?: string;
   onNavigate?: () => void;
 }) {
   return (
@@ -65,16 +56,6 @@ export function AdminSidebar({
           </div>
         ))}
       </nav>
-
-      <div className="shrink-0 border-t border-line bg-surface-subtle p-3">
-        <NavLink item={ADMIN_ACCOUNT_NAV} pathname={pathname} onNavigate={onNavigate} />
-        {username && (
-          <div className="mt-3 rounded-lg border border-line bg-brand-light/60 px-3 py-2.5">
-            <p className="truncate text-sm font-medium text-ink">{username}</p>
-            {role && <p className="truncate text-xs text-ink-muted">{role}</p>}
-          </div>
-        )}
-      </div>
     </aside>
   );
 }

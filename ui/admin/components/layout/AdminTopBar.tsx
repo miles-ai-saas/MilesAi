@@ -2,18 +2,23 @@
 
 import type { BreadcrumbItem } from "@/lib/admin-nav";
 import { AdminBreadcrumb } from "@/components/layout/AdminBreadcrumb";
+import { AdminUserMenu } from "@/components/layout/AdminUserMenu";
 
 export function AdminTopBar({
   breadcrumbs,
+  username,
+  role,
   onMenuOpen,
   onLogout,
 }: {
   breadcrumbs: BreadcrumbItem[];
+  username?: string;
+  role?: string;
   onMenuOpen: () => void;
   onLogout: () => void;
 }) {
   return (
-    <header className="flex h-12 shrink-0 items-center justify-between gap-4 border-b border-line bg-surface px-4 lg:px-6">
+    <header className="flex h-14 shrink-0 items-center justify-between gap-4 border-b border-line bg-surface px-4 lg:px-6">
       <div className="flex min-w-0 items-center gap-3">
         <button
           type="button"
@@ -28,15 +33,7 @@ export function AdminTopBar({
         <AdminBreadcrumb items={breadcrumbs} />
       </div>
 
-      <div className="flex shrink-0 items-center">
-        <button
-          type="button"
-          onClick={onLogout}
-          className="text-sm text-ink-muted transition hover:text-brand-dark"
-        >
-          退出登录
-        </button>
-      </div>
+      <AdminUserMenu username={username} role={role} onLogout={onLogout} />
     </header>
   );
 }
