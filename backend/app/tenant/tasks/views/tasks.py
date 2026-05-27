@@ -10,7 +10,7 @@ from app.core.tenant import TenantContext
 from app.models.task import TaskStatus
 from app.common.schema import ApiResponse, PageParams, PageResult
 from app.tenant.tasks.schemas.meta import TaskMetaOut
-from app.tenant.tasks.schemas.task import TaskRecordOut
+from app.tenant.tasks.schemas.task import TaskBatchCancelBody, TaskBatchCancelResult, TaskRecordOut
 from app.tenant.tasks.services.task import TaskService
 
 router = APIRouter()
@@ -38,6 +38,15 @@ async def tasks_meta(
     db: AsyncSession = Depends(get_db),
 ):
     return ok(await _svc(db, ctx).get_meta())
+
+
+@router.post("/batch-cancel", response_model=ApiResponse[TaskBatchCancelResult])
+async def batch_cancel_tasks(
+    body: TaskBatchCancelBody,
+    ctx: TenantContext = Depends(require_permissions("task:write")),
+    db: AsyncSession = Depends(get_db),
+):
+    return ok(await _svc(db, ctx).batch_cancel_tasks(body.task_ids))
 
 
 @router.get("/{task_id}", response_model=ApiResponse[TaskRecordOut])

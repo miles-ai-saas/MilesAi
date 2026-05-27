@@ -15,13 +15,14 @@ import {
 } from "@/lib/monitor-labels";
 import { useKbMeta } from "@/hooks/use-kb-meta";
 import { useMonitorMeta } from "@/hooks/use-monitor-meta";
-import type { AlertConfig, MonitorReport, MonitorTrends } from "@/lib/types";
+import type { AlertConfig, ModelUsageReport, MonitorReport, MonitorTrends } from "@/lib/types";
 
-type Tab = "overview" | "trends" | "health" | "alerts";
+type Tab = "overview" | "trends" | "usage" | "health" | "alerts";
 
 const MAIN_TABS: { key: Tab; label: string }[] = [
   { key: "overview", label: "概览" },
   { key: "trends", label: "趋势分析" },
+  { key: "usage", label: "模型用量" },
   { key: "health", label: "系统健康" },
   { key: "alerts", label: "告警配置" },
 ];
@@ -175,6 +176,7 @@ export default function MonitorPage() {
   const [loading, setLoading] = useState(true);
   const [report, setReport] = useState<MonitorReport | null>(null);
   const [trends, setTrends] = useState<MonitorTrends | null>(null);
+  const [modelUsage, setModelUsage] = useState<ModelUsageReport | null>(null);
   const [health, setHealth] = useState<MonitorHealthPayload | null>(null);
   const [alerts, setAlerts] = useState<AlertConfig>({
     enabled: false,
@@ -187,14 +189,16 @@ export default function MonitorPage() {
   const reload = useCallback(async () => {
     setLoading(true);
     try {
-      const [r, t, h, a] = await Promise.all([
+      const [r, t, u, h, a] = await Promise.all([
         api.getMonitorReport(),
         api.getMonitorTrends(trendDays),
+        api.getMonitorModelUsage(trendDays),
         api.getMonitorHealth(),
         api.getAlertConfig(),
       ]);
       setReport(r);
       setTrends(t);
+      setModelUsage(u);
       setHealth(h);
       setAlerts(a);
     } finally {
@@ -358,6 +362,50 @@ export default function MonitorPage() {
           </ChartPanel>
         </div>
         )}
+      </ResourceListLayout>
+    );
+  }
+
+  if (tab === "usage") {
+    return (
+      <ResourceListLayout {...layoutCommon} loading={loading}>
+        <div className="col-span-full space-y-4">
+          <StatChip
+            label={`近 ${trendDays} 天总 Token`}
+            value={String(modelUsage?.total_tokens ?? 0)}
+            hint="来自对话类模型调用（LiteLLM usage）"
+          />
+          {!modelUsage?.rows.length ? (
+            <p className="rounded-xl border border-dashed border-line py-12 text-center text-sm text-ink-faint">
+              暂无用量数据，智能体对话后将在此汇总
+            </p>
+          ) : (
+            <div className="overflow-x-auto rounded-xl border border-line bg-surface shadow-card">
+              <table className="w-full min-w-[520px] text-left text-sm">
+                <thead className="border-b border-line-soft bg-surface-muted text-xs text-ink-muted">
+                  <tr>
+                    <th className="px-4 py-2 font-medium">模型</th>
+                    <th className="px-4 py-2 font-medium">调用次数</th>
+                    <th className="px-4 py-2 font-medium">输入 Token</th>
+                    <th className="px-4 py-2 font-medium">输出 Token</th>
+                    <th className="px-4 py-2 font-medium">合计</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {modelUsage.rows.map((row) => (
+                    <tr key={row.model_config_id ?? row.model_name} className="border-b border-line-soft">
+                      <td className="px-4 py-2 font-medium text-ink">{row.model_name}</td>
+                      <td className="px-4 py-2 tabular-nums">{row.call_count}</td>
+                      <td className="px-4 py-2 tabular-nums">{row.prompt_tokens}</td>
+                      <td className="px-4 py-2 tabular-nums">{row.completion_tokens}</td>
+                      <td className="px-4 py-2 tabular-nums text-brand">{row.total_tokens}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
       </ResourceListLayout>
     );
   }

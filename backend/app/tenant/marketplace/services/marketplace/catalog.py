@@ -2,7 +2,7 @@
 
 from uuid import UUID
 
-from sqlalchemy import exists, func, select
+from sqlalchemy import exists, func, or_, select
 from sqlalchemy.orm import selectinload
 
 from app.common.exceptions import BadRequestError, NotFoundError
@@ -14,6 +14,7 @@ from app.tenant.marketplace.models import (
     AppRating,
     MarketplaceApp,
     MarketplaceAppStatus,
+    MarketplaceAppVisibility,
 )
 from app.core.soft_delete import not_deleted
 from app.tenant.marketplace.schemas.marketplace import (
@@ -58,6 +59,7 @@ class MarketplaceCatalogMixin:
             install_count=app.install_count,
             rating_avg=round(float(app.rating_avg or 0), 2),
             rating_count=int(app.rating_count or 0),
+            visibility=app.visibility,
             category_id=app.category_id,
             category_name=category_name,
             tags=tags or [],
@@ -114,6 +116,16 @@ class MarketplaceCatalogMixin:
                 EntityTagBinding.tenant_id == MarketplaceApp.publisher_tenant_id,
                 TenantTag.slug.in_(tag_slugs),
             )
+        )
+
+    def _plaza_visibility_filter(self):
+        """广场：公开应用或本租户发布的租户内可见应用。"""
+        return or_(
+            MarketplaceApp.visibility == MarketplaceAppVisibility.PUBLIC.value,
+            (
+                (MarketplaceApp.visibility == MarketplaceAppVisibility.TENANT_ONLY.value)
+                & (MarketplaceApp.publisher_tenant_id == self.ctx.tenant_id)
+            ),
         )
 
     async def app_out_with_tags(self, app: MarketplaceApp) -> MarketplaceAppOut:
@@ -178,10 +190,16 @@ class MarketplaceCatalogMixin:
             tag_slugs = await TagService(self.db, self.ctx).slugs_for_tag_ids(tag_ids)
         stmt = (
             select(MarketplaceApp)
-            .where(MarketplaceApp.status == MarketplaceAppStatus.PUBLISHED)
+            .where(
+                MarketplaceApp.status == MarketplaceAppStatus.PUBLISHED,
+                self._plaza_visibility_filter(),
+            )
             .options(selectinload(MarketplaceApp.category))
         )
-        count_filters = [MarketplaceApp.status == MarketplaceAppStatus.PUBLISHED]
+        count_filters = [
+            MarketplaceApp.status == MarketplaceAppStatus.PUBLISHED,
+            self._plaza_visibility_filter(),
+        ]
         if category_slug:
             stmt = stmt.join(AppCategory, MarketplaceApp.category_id == AppCategory.id).where(
                 AppCategory.slug == category_slug
@@ -216,6 +234,11 @@ class MarketplaceCatalogMixin:
         if app.status != MarketplaceAppStatus.PUBLISHED:
             if app.publisher_tenant_id != self.ctx.tenant_id:
                 raise NotFoundError("应用不存在或未发布")
+        elif (
+            app.visibility == MarketplaceAppVisibility.TENANT_ONLY.value
+            and app.publisher_tenant_id != self.ctx.tenant_id
+        ):
+            raise NotFoundError("应用不存在或未发布")
         installed_ids = await self.installed_app_ids()
         cat_name = app.category.name if app.category else None
         tags_map = await self.tags_map_for_apps([app])

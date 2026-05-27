@@ -80,6 +80,8 @@ export default function KbDetailPage() {
   const [searchQ, setSearchQ] = useState("");
   const [searchTopK, setSearchTopK] = useState(5);
   const [searchMode, setSearchMode] = useState<"default" | "vector" | "hybrid">("default");
+  const [searchMediaTypes, setSearchMediaTypes] = useState<string[]>([]);
+  const [searchQueryDocId, setSearchQueryDocId] = useState("");
   const [searching, setSearching] = useState(false);
   const [searchResultMode, setSearchResultMode] = useState("");
   const [searchHits, setSearchHits] = useState<
@@ -90,6 +92,8 @@ export default function KbDetailPage() {
       score_keyword?: number | null;
       score_rerank?: number | null;
       filename?: string;
+      vector_type?: string | null;
+      mime_type?: string | null;
     }[]
   >([]);
   const [alert, setAlert] = useState<AlertState>(null);
@@ -192,13 +196,25 @@ export default function KbDetailPage() {
     });
   };
 
-  const onUploadFile = async (file: File) => {
+  const onUploadFiles = async (files: File[]) => {
+    if (!files.length) return;
     setUploading(true);
     setAlert(null);
     try {
-      await api.uploadDocument(id, file);
+      if (files.length === 1) {
+        await api.uploadDocument(id, files[0]);
+        setAlert({
+          tone: "success",
+          message: `「${files[0].name}」已上传，正在后台解析入库。`,
+        });
+      } else {
+        const uploaded = await api.uploadDocumentsBatch(id, files);
+        setAlert({
+          tone: "success",
+          message: `已提交 ${uploaded.length} 个文件入库（共选择 ${files.length} 个）。`,
+        });
+      }
       await Promise.all([docs.reload(), reloadQuota()]);
-      setAlert({ tone: "success", message: `「${file.name}」已上传，正在后台解析入库。` });
       setTab("documents");
     } catch (err) {
       setAlert({ tone: "error", message: err instanceof Error ? err.message : "上传失败" });
@@ -221,14 +237,27 @@ export default function KbDetailPage() {
     }
   };
 
+  const imageVideoDocs = useMemo(
+    () =>
+      docs.items.filter(
+        (d) =>
+          d.status === "ready" &&
+          (/^image\//.test(d.mime_type) || /^video\//.test(d.mime_type)),
+      ),
+    [docs.items],
+  );
+
   const onSearch = async () => {
-    if (!searchQ.trim()) return;
+    const q = searchQ.trim();
+    if (!q && !searchQueryDocId) return;
     setSearching(true);
     setAlert(null);
     try {
-      const res = await api.searchKb(id, searchQ.trim(), {
+      const res = await api.searchKb(id, q, {
         mode: searchMode,
         top_k: searchTopK,
+        ...(searchMediaTypes.length ? { media_types: searchMediaTypes as ("text" | "image" | "audio" | "video")[] } : {}),
+        ...(searchQueryDocId ? { query_document_id: searchQueryDocId } : {}),
       });
       setSearchResultMode(res.mode);
       setSearchHits(res.hits);
@@ -341,7 +370,7 @@ export default function KbDetailPage() {
 
       {tab === "documents" && (
         <section className="space-y-4">
-          <KbUploadZone uploading={uploading} onFile={onUploadFile} />
+          <KbUploadZone uploading={uploading} onFiles={onUploadFiles} />
 
           <div className="rounded-xl border border-line bg-surface p-4 shadow-card">
             <div className="flex flex-wrap items-center justify-between gap-3">
@@ -441,16 +470,17 @@ export default function KbDetailPage() {
           <h2 className="text-sm font-semibold text-ink">检索测试</h2>
           <p className="mt-1 text-xs text-ink-faint">
             默认使用本库配置（{retrievalModeLabel(kb.retrieval_mode, kbMeta?.retrieval_modes)}）。
-            专有名词、编号可尝试「混合」。
+            专有名词、编号可尝试「混合」。文本搜图：勾选「图片」；以图搜图：选择参考文档。
           </p>
-          <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end">
+          <div className="mt-4 flex flex-col gap-3">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
             <label className="min-w-0 flex-1">
               <span className="sr-only">检索问题</span>
               <input
                 className="input-field w-full"
                 value={searchQ}
                 onChange={(e) => setSearchQ(e.target.value)}
-                placeholder="输入问题或关键词"
+                placeholder="输入问题或关键词（以图搜图时可留空）"
                 onKeyDown={(e) => e.key === "Enter" && onSearch()}
               />
             </label>
@@ -485,6 +515,47 @@ export default function KbDetailPage() {
                 {searching ? "检索中…" : "检索"}
               </button>
             </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-3 text-xs text-ink-muted">
+              <span className="font-medium text-ink">来源类型</span>
+              {(kbMeta?.media_types ?? [
+                { value: "text", label: "文本" },
+                { value: "image", label: "图片" },
+                { value: "audio", label: "音频" },
+                { value: "video", label: "视频" },
+              ]).map((o) => {
+                const checked = searchMediaTypes.includes(o.value);
+                return (
+                  <label key={o.value} className="inline-flex items-center gap-1">
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => {
+                        setSearchMediaTypes((prev) =>
+                          checked ? prev.filter((v) => v !== o.value) : [...prev, o.value],
+                        );
+                      }}
+                    />
+                    {o.label}
+                  </label>
+                );
+              })}
+              <label className="inline-flex items-center gap-2 sm:ml-2">
+                <span>以图/视频搜</span>
+                <select
+                  className="input-field w-auto min-w-[10rem] text-xs"
+                  value={searchQueryDocId}
+                  onChange={(e) => setSearchQueryDocId(e.target.value)}
+                >
+                  <option value="">不选</option>
+                  {imageVideoDocs.map((d) => (
+                    <option key={d.id} value={d.id}>
+                      {d.filename}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
           </div>
           {searchResultMode && (
             <p className="mt-3 text-xs text-ink-faint">
@@ -509,6 +580,9 @@ export default function KbDetailPage() {
                   {h.score_vector != null && <span>向量 {h.score_vector.toFixed(2)}</span>}
                   {h.score_keyword != null && <span>关键词 {h.score_keyword.toFixed(2)}</span>}
                   {h.filename && <span className="truncate">· {h.filename}</span>}
+                  {h.vector_type && (
+                    <span className="rounded bg-brand/10 px-1.5 py-0.5 text-brand">{h.vector_type}</span>
+                  )}
                 </div>
                 <p className="whitespace-pre-wrap text-sm leading-relaxed text-ink">{h.content}</p>
               </li>

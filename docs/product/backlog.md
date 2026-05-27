@@ -19,10 +19,13 @@
 
 ## P0 — 多模态与 RAG 核心差距
 
-| 项 | 模块 | 说明 | 关联 |
-|----|------|------|------|
-| 以图搜图 / 文本搜图 | 6b | 当前仅文本向量 + hybrid；需多模态向量或 CLIP 类索引 | [vector-database-selection.md](../architecture/vector-database-selection.md) |
-| 视频入库（抽帧 + 转写） | 6b | 上传白名单与 parse 链未含 MP4 | `rag/parse/` |
+> **2026-05-27 MVP 已落地**（以图搜图为 OCR 派生 + media_types 过滤；非 CLIP 向量）。真·视觉相似度检索列为 P1 增强。
+
+| 项 | 模块 | 状态 |
+|----|------|------|
+| 以图搜图 / 文本搜图（MVP） | 6b | ✅ `media_types` + `query_document_id` OCR 检索 |
+| 视觉向量以图搜图（CLIP 等） | 6b | P1 增强 |
+| 视频入库 | 6b | ✅ 白名单 + `parse_video`（ffmpeg + Whisper/OCR） |
 
 ---
 
@@ -30,14 +33,15 @@
 
 | 项 | 模块 | 说明 |
 |----|------|------|
-| 私有应用 / 租户内可见市场包 | 7 | 现审核通过即全平台 `PUBLISHED` |
-| 应用安装后版本升级与 diff | 7 | 安装后资源独立演进 |
-| 批量文档入库 / 批量任务取消 | 8 | 任务中心单条操作为主 |
-| Token / 分模型调用报表 | 9 | 监控页简化聚合 |
-| 智能体定时执行历史 UI | 4 / 8 | 仅 `last_run_at` |
-| 会话设备列表与强制登出 UI | 1 | JWT 黑名单已有 |
-| 模型健康自动探测 cron | 3 | 现仅调用失败标记 |
-| Python 钩子 | 2 | HTTP 钩子已完整 |
+| 视觉向量以图搜图（CLIP / 多模态 embedding） | 6b | P0 MVP 为 OCR 派生；真·相似图检索 |
+| 私有应用 / 租户内可见市场包 | 7 | ✅ `visibility` + 广场过滤 |
+| 应用安装后版本升级与 diff | 7 | ✅ 升级 API（manifest 同步）；diff UI 未做 |
+| 批量文档入库 / 批量任务取消 | 8 | ✅ 批量上传 + batch-cancel |
+| Token / 分模型调用报表 | 9 | ✅ `agt_model_usage_logs` + 监控「模型用量」 |
+| 智能体定时执行历史 UI | 4 / 8 | ✅ `agt_schedule_runs` + 面板历史 |
+| 会话设备列表与强制登出 UI | 1 | ✅ 多设备会话 + `/system/sessions` |
+| 模型健康自动探测 cron | 3 | ✅ Beat 每 15 分钟 `probe_models_health` |
+| Python 钩子 | 2 | ✅ `app.tenant.hooks.plugins.*` |
 | 子流程 SubFlow | 4 | [flow-subflow-design.md](../architecture/flow-subflow-design.md)，已立项 |
 
 ---
@@ -94,6 +98,8 @@ PRD 原文提及、现网已有替代路径，**不阻塞交付**；客户有扫
 | 对话 WebSocket v1 | [agent-chat-websocket.md](../features/agent-chat-websocket.md) |
 | 识图 / 生图 / 生视频 | [multimodal-capabilities.md](./multimodal-capabilities.md) |
 | KB Office 上传白名单（docx/pptx/xlsx） | `upload_policy.py` 已含；解析需 `[parse-docling]` |
+| 视频入库 MVP | `video_parser.py` + 白名单 mp4/mov/webm |
+| 文本搜图 / 以图搜图 MVP | `POST /kb/{id}/search` · `media_types` · `query_document_id` |
 
 ---
 

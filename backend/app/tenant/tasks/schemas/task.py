@@ -29,3 +29,12 @@ class TaskSummary(BaseModel):
     failed: int = Field(default=0, description="失败任务数")
     cancelled: int = Field(default=0, description="已取消任务数")
     total: int = Field(default=0, description="任务总数")
+
+
+class TaskBatchCancelBody(BaseModel):
+    task_ids: list[str] = Field(..., min_length=1, max_length=50, description="任务 ID 列表")
+
+
+class TaskBatchCancelResult(BaseModel):
+    cancelled: list[TaskRecordOut] = Field(default_factory=list, description="已取消")
+    skipped: list[str] = Field(default_factory=list, description="跳过（不存在或已结束）")

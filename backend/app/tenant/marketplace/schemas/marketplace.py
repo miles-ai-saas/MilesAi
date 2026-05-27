@@ -3,7 +3,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-from app.tenant.marketplace.models import MarketplaceAppStatus
+from app.tenant.marketplace.models import MarketplaceAppStatus, MarketplaceAppVisibility
 from app.tenant.tags.schemas.tag import TagRefOut
 
 
@@ -27,6 +27,7 @@ class MarketplaceAppOut(BaseModel):
     install_count: int = Field(description="安装次数")
     rating_avg: float = Field(default=0.0, description="平均评分")
     rating_count: int = Field(default=0, description="评分人数")
+    visibility: str = Field(default="public", description="可见范围：public | tenant_only")
     category_id: UUID | None = Field(default=None, description="分类 ID")
     category_name: str | None = Field(default=None, description="分类名称")
     tags: list[TagRefOut] = Field(default_factory=list, description="标签列表")
@@ -88,6 +89,10 @@ class MarketplaceAppCreate(BaseModel):
         description="上架状态",
     )
     tag_ids: list[UUID] = Field(default_factory=list, description="标签 ID 列表")
+    visibility: MarketplaceAppVisibility = Field(
+        default=MarketplaceAppVisibility.PUBLIC,
+        description="可见范围",
+    )
 
 
 class MarketplaceAppUpdate(BaseModel):
@@ -104,6 +109,7 @@ class MarketplaceAppUpdate(BaseModel):
     manifest: dict | None = Field(default=None, description="应用清单 JSON")
     status: MarketplaceAppStatus | None = Field(default=None, description="上架状态")
     tag_ids: list[UUID] | None = Field(default=None, description="标签 ID 列表（全量替换）")
+    visibility: MarketplaceAppVisibility | None = Field(default=None, description="可见范围")
 
 
 class MarketplaceAppCreateFromResources(BaseModel):
@@ -117,6 +123,10 @@ class MarketplaceAppCreateFromResources(BaseModel):
     agent_id: UUID | None = Field(default=None, description="打包的智能体 ID")
     kb_id: UUID | None = Field(default=None, description="打包的知识库 ID")
     tag_ids: list[UUID] = Field(default_factory=list, description="标签 ID 列表")
+    visibility: MarketplaceAppVisibility = Field(
+        default=MarketplaceAppVisibility.PUBLIC,
+        description="可见范围",
+    )
 
 
 class AppInstallOut(BaseModel):
@@ -124,6 +134,8 @@ class AppInstallOut(BaseModel):
     app_id: UUID = Field(description="应用 ID")
     app_name: str = Field(description="应用名称")
     tenant_id: UUID = Field(description="租户 ID")
+    installed_version: str = Field(default="1.0.0", description="已安装版本")
+    app_version: str | None = Field(default=None, description="市场当前版本")
     flow_id: UUID | None = Field(default=None, description="安装后创建的流程 ID")
     agent_id: UUID | None = Field(default=None, description="安装后创建的智能体 ID")
     kb_id: UUID | None = Field(default=None, description="安装后创建的知识库 ID")
@@ -138,3 +150,10 @@ class AppInstallResult(BaseModel):
     agent_id: UUID | None = Field(default=None, description="新创建的智能体 ID")
     kb_id: UUID | None = Field(default=None, description="新创建的知识库 ID")
     message: str = Field(default="安装成功", description="结果说明")
+
+
+class AppUpgradeResult(BaseModel):
+    install: AppInstallOut = Field(description="安装记录")
+    previous_version: str = Field(description="升级前版本")
+    new_version: str = Field(description="升级后版本")
+    message: str = Field(default="升级成功", description="结果说明")

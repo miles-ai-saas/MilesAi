@@ -12,6 +12,8 @@ from app.core.tenant import TenantContext
 from app.common.schema import ApiResponse, PageParams, PageResult
 from app.tenant.system.schemas.user import UserCreate, UserOut, UserUpdate
 from app.tenant.system.services.user import UserService
+from app.tenant.auth.schemas.auth import UserSessionOut
+from app.tenant.auth.services.auth import AuthService
 
 router = APIRouter()
 
@@ -53,3 +55,24 @@ async def deactivate_user(
     db: AsyncSession = Depends(get_db),
 ) -> ApiResponse[UserOut]:
     return ok(await UserService(db, ctx).deactivate_user(user_id))
+
+
+@router.get("/{user_id}/sessions", response_model=ApiResponse[list[UserSessionOut]])
+async def list_user_sessions(
+    user_id: UUID,
+    ctx: TenantContext = Depends(require_permissions("system:user:read")),
+    db: AsyncSession = Depends(get_db),
+) -> ApiResponse[list[UserSessionOut]]:
+    await UserService(db, ctx).get_user_or_raise(user_id)
+    return ok(await AuthService(db, ctx).list_sessions(user_id))
+
+
+@router.delete("/{user_id}/sessions", response_model=ApiResponse[dict])
+async def revoke_all_user_sessions(
+    user_id: UUID,
+    ctx: TenantContext = Depends(require_permissions("system:user:write")),
+    db: AsyncSession = Depends(get_db),
+) -> ApiResponse[dict]:
+    await UserService(db, ctx).get_user_or_raise(user_id)
+    n = await AuthService(db, ctx).admin_revoke_user_sessions(user_id)
+    return ok({"revoked": n})

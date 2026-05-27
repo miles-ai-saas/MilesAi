@@ -10,7 +10,7 @@ from uuid import UUID
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.common.exceptions import BadRequestError
+from app.common.exceptions import BadRequestError, NotFoundError
 from app.common.schema import PageParams, PageResult
 from app.core.tenant import tenant_filters
 from app.core.config import get_settings
@@ -23,6 +23,7 @@ from app.integrations.generative.jobs.submit import (
 from app.models.generative_job import GenerativeJob, GenerativeJobStatus
 from app.models.task import CeleryTaskRecord, TaskStatus
 from app.tenant.generative.schemas.job import (
+    GenerativeJobBatchCancelResult,
     GenerativeJobOut,
     ImageGenerativeJobCreate,
     VideoGenerativeJobCreate,
@@ -233,6 +234,36 @@ class GenerativeJobService(BaseService):
         await self.db.refresh(job)
         record_map = await self._celery_record_ids_for_jobs([job.id])
         return self._job_out(job, celery_task_record_id=record_map.get(job.id))
+
+    async def batch_cancel_jobs(self, job_ids: list[UUID]) -> GenerativeJobBatchCancelResult:
+        cancelled: list[GenerativeJobOut] = []
+        skipped: list[str] = []
+        for job_id in job_ids:
+            try:
+                job = await get_generative_job_for_tenant(self.db, self.ctx, job_id)
+            except NotFoundError:
+                skipped.append(str(job_id))
+                continue
+            if job.status in _TERMINAL:
+                skipped.append(str(job_id))
+                continue
+            if job.celery_task_id:
+                celery_app.control.revoke(job.celery_task_id, terminate=True)
+                record = await self.db.scalar(
+                    select(CeleryTaskRecord).where(
+                        CeleryTaskRecord.celery_task_id == job.celery_task_id,
+                    )
+                )
+                if record and record.status not in (TaskStatus.SUCCESS, TaskStatus.CANCELLED):
+                    record.status = TaskStatus.CANCELLED
+                    record.fail_reason = "用户取消"
+            job.status = GenerativeJobStatus.CANCELLED
+            job.progress_message = "已取消"
+            record_map = await self._celery_record_ids_for_jobs([job.id])
+            cancelled.append(self._job_out(job, celery_task_record_id=record_map.get(job.id)))
+        if cancelled:
+            await self.db.flush()
+        return GenerativeJobBatchCancelResult(cancelled=cancelled, skipped=skipped)
 
     async def retry_job(self, job_id: UUID) -> GenerativeJobOut:
         job = await get_generative_job_for_tenant(self.db, self.ctx, job_id)

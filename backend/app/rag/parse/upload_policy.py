@@ -7,10 +7,11 @@
 
 from __future__ import annotations
 
-from app.rag.parse.media import file_extension, is_audio_file, is_image_file
+from app.rag.parse.media import file_extension, is_audio_file, is_image_file, is_video_file
 
 _TEXT_EXTENSIONS = frozenset({".txt", ".md", ".markdown"})
 OFFICE_EXTENSIONS = frozenset({".docx", ".pptx", ".xlsx", ".html", ".htm"})
+VIDEO_EXTENSIONS = frozenset({".mp4", ".mov", ".m4v", ".webm", ".mkv"})
 
 KB_ALLOWED_MIMES = frozenset(
     {
@@ -33,6 +34,10 @@ KB_ALLOWED_MIMES = frozenset(
         "audio/x-wav",
         "audio/webm",
         "audio/ogg",
+        "video/mp4",
+        "video/quicktime",
+        "video/webm",
+        "video/x-matroska",
     }
 )
 
@@ -41,6 +46,7 @@ KB_ALLOWED_EXTENSIONS = (
     | {".pdf"}
     | OFFICE_EXTENSIONS
     | {".jpg", ".jpeg", ".png", ".webp", ".mp3", ".wav", ".m4a", ".ogg", ".webm"}
+    | VIDEO_EXTENSIONS
 )
 
 
@@ -49,7 +55,7 @@ def is_kb_upload_allowed(filename: str, mime: str) -> bool:
     ext = file_extension(filename)
     if mime in KB_ALLOWED_MIMES or ext in KB_ALLOWED_EXTENSIONS:
         return True
-    return is_image_file(filename, mime) or is_audio_file(filename, mime)
+    return is_image_file(filename, mime) or is_audio_file(filename, mime) or is_video_file(filename, mime)
 
 
 def kb_upload_accept_attribute() -> str:
@@ -61,5 +67,5 @@ def kb_upload_allowed_hint() -> str:
     """上传失败时返回给前端的友好提示文案。"""
     return (
         "支持 TXT/MD/PDF、Office（DOCX/PPTX/XLSX/HTML，解析需 docling）、"
-        "图片（JPG/PNG/WebP）、音频（MP3/WAV 等）"
+        "图片（JPG/PNG/WebP）、音频（MP3/WAV 等）、视频（MP4/MOV/WebM，需 ffmpeg）"
     )

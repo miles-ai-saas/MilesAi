@@ -43,3 +43,12 @@ class ImageGenerativeJobCreate(BaseModel):
     n: int | None = Field(default=1, ge=1, le=4, description="生成张数")
     image_attachment_id: UUID | None = Field(default=None, description="图生图参考图")
     model_config_id: UUID | None = Field(default=None, description="image_gen 模型配置")
+
+
+class GenerativeJobBatchCancelBody(BaseModel):
+    job_ids: list[UUID] = Field(..., min_length=1, max_length=50, description="生成任务 ID 列表")
+
+
+class GenerativeJobBatchCancelResult(BaseModel):
+    cancelled: list[GenerativeJobOut] = Field(default_factory=list, description="已取消")
+    skipped: list[str] = Field(default_factory=list, description="跳过（不存在或已结束）")

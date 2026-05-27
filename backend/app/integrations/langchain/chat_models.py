@@ -122,6 +122,17 @@ async def ainvoke_chat(
 
         model = await resolve_model_for_invoke(db, model, UUID(str(tenant_id)))
 
+    usage_ctx = None
+    if db is not None and tenant_id is not None:
+        from app.tenant.models.services.usage import UsageRecordContext
+
+        usage_ctx = UsageRecordContext(
+            db=db,
+            tenant_id=UUID(str(tenant_id)),
+            model=model,
+            source="chat",
+        )
+
     openai_msgs: list[dict[str, Any]] = []
     for m in messages:
         role = m.get("role", "user")
@@ -132,6 +143,7 @@ async def ainvoke_chat(
         openai_msgs,
         temperature=temperature,
         max_tokens=max_tokens,
+        usage_ctx=usage_ctx,
     )
 
 

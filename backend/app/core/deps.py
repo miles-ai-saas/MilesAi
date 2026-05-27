@@ -16,6 +16,7 @@ from app.core.tenant import TenantContext
 from app.models.role import Role
 from app.models.user import User
 from app.common.schema import PageParams
+from app.tenant.auth.services import session_store
 
 bearer_scheme = HTTPBearer(auto_error=False)
 
@@ -41,6 +42,9 @@ async def get_current_user(
     user_id = payload.get("sub")
     if not user_id:
         raise UnauthorizedError("无效令牌载荷")
+    jti = payload.get("jti")
+    if jti and await session_store.is_token_blacklisted(str(jti)):
+        raise UnauthorizedError("令牌已失效，请重新登录")
     result = await db.execute(
         select(User)
         .where(User.id == user_id, User.is_active.is_(True))
@@ -49,21 +53,33 @@ async def get_current_user(
     user = result.scalar_one_or_none()
     if not user:
         raise UnauthorizedError("用户不存在或已禁用")
+    if jti:
+        await session_store.touch_session(user.id, str(jti))
     return user
 
 
-async def get_tenant_context(user: User = Depends(get_current_user)) -> TenantContext:
+async def get_tenant_context(
+    user: User = Depends(get_current_user),
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
+) -> TenantContext:
     """聚合用户角色权限为 TenantContext（/auth/me 与业务 API 共用）。"""
     permissions: set[str] = set()
     for role in user.roles:
         for perm in role.permissions:
             permissions.add(perm.code)
+    token_jti: str | None = None
+    if credentials:
+        payload = safe_decode_token(credentials.credentials)
+        if payload:
+            jti = payload.get("jti")
+            token_jti = str(jti) if jti else None
     return TenantContext(
         user_id=user.id,
         tenant_id=user.tenant_id,
         username=user.username,
         is_superuser=user.is_superuser,
         permissions=frozenset(permissions),
+        token_jti=token_jti,
     )
 
 

@@ -29,6 +29,13 @@ SEARCH_SOURCE_OPTIONS: list[tuple[str, str, str | None]] = [
     ("debug", "调试", None),
 ]
 
+MEDIA_TYPE_OPTIONS: list[tuple[str, str, str | None]] = [
+    ("text", "文本/文档", "PDF、Office、TXT 等"),
+    ("image", "图片", "OCR 文本入库的图片"),
+    ("audio", "音频", "转写文本入库的音频"),
+    ("video", "视频", "转写/关键帧 OCR 入库的视频"),
+]
+
 DOCUMENT_STATUS_LABELS: dict[str, tuple[str, str | None]] = {
     DocumentStatus.PENDING.value: ("待处理", None),
     DocumentStatus.PARSING.value: ("解析中", None),
@@ -46,5 +53,6 @@ def kb_meta_dict() -> dict:
         "search_modes": literal_options(SEARCH_MODE_OPTIONS),
         "search_sources": literal_options(SEARCH_SOURCE_OPTIONS),
         "document_statuses": enum_options(DocumentStatus, DOCUMENT_STATUS_LABELS),
+        "media_types": literal_options(MEDIA_TYPE_OPTIONS),
         "schema_version": META_SCHEMA_VERSION,
     }

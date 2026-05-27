@@ -317,6 +317,16 @@ export interface AgentScheduleInput {
   enabled?: boolean;
 }
 
+export interface AgentScheduleRun {
+  id: string;
+  schedule_id: string;
+  agent_id: string;
+  status: "success" | "failed";
+  started_at: string;
+  finished_at?: string | null;
+  error_message?: string | null;
+}
+
 export interface PromptTemplate {
   id: string;
   category_id?: string | null;
@@ -423,6 +433,7 @@ export interface KbMeta {
   search_modes: EnumOption[];
   search_sources: EnumOption[];
   document_statuses: EnumOption[];
+  media_types: EnumOption[];
 }
 
 /** GET /tools/meta */
@@ -451,6 +462,7 @@ export interface PromptMeta {
 export interface MarketplaceMeta {
   app_statuses: EnumOption[];
   catalog_sorts: EnumOption[];
+  visibilities?: EnumOption[];
   schema_version: string;
 }
 
@@ -968,6 +980,7 @@ export interface MarketplaceApp {
   install_count: number;
   rating_avg: number;
   rating_count: number;
+  visibility?: string;
   category_id?: string | null;
   category_name?: string | null;
   tags?: TagRef[];
@@ -993,6 +1006,30 @@ export interface MarketplaceAppDetail extends MarketplaceApp {
   my_rating?: AppRating | null;
 }
 
+export interface UserSession {
+  jti: string;
+  user_agent?: string | null;
+  ip?: string | null;
+  created_at: string;
+  last_seen_at?: string | null;
+  is_current: boolean;
+}
+
+export interface ModelUsageRow {
+  model_config_id?: string | null;
+  model_name: string;
+  call_count: number;
+  prompt_tokens: number;
+  completion_tokens: number;
+  total_tokens: number;
+}
+
+export interface ModelUsageReport {
+  days: number;
+  rows: ModelUsageRow[];
+  total_tokens: number;
+}
+
 export interface AppInstallResult {
   install: {
     id: string;
@@ -1008,10 +1045,19 @@ export interface AppInstallResult {
   message: string;
 }
 
+export interface AppUpgradeResult {
+  install: AppInstall;
+  previous_version: string;
+  new_version: string;
+  message: string;
+}
+
 export interface AppInstall {
   id: string;
   app_id: string;
   app_name: string;
+  installed_version?: string;
+  app_version?: string | null;
   flow_id?: string | null;
   agent_id?: string | null;
   kb_id?: string | null;

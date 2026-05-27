@@ -61,6 +61,7 @@ def test_flow_meta():
 def test_kb_meta():
     data = kb_meta_dict()
     assert {m.value for m in data["retrieval_modes"]} == {"vector", "hybrid"}
+    assert {t.value for t in data["media_types"]} == {"text", "image", "audio", "video"}
     assert {s.value for s in data["document_statuses"]} == {
         "pending",
         "parsing",

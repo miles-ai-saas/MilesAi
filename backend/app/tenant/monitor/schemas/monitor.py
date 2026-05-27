@@ -1,4 +1,5 @@
 from pydantic import BaseModel, Field
+from uuid import UUID
 
 from app.tenant.tasks.schemas.task import TaskSummary
 
@@ -48,3 +49,18 @@ class MonitorTrends(BaseModel):
         default_factory=list,
         description="按日合规拦截趋势",
     )
+
+
+class ModelUsageRow(BaseModel):
+    model_config_id: UUID | None = Field(default=None, description="模型配置 ID")
+    model_name: str = Field(description="模型名称")
+    call_count: int = Field(description="调用次数")
+    prompt_tokens: int = Field(description="输入 Token")
+    completion_tokens: int = Field(description="输出 Token")
+    total_tokens: int = Field(description="总 Token")
+
+
+class ModelUsageReport(BaseModel):
+    days: int = Field(description="统计天数")
+    rows: list[ModelUsageRow] = Field(default_factory=list, description="按模型聚合")
+    total_tokens: int = Field(default=0, description="总 Token")

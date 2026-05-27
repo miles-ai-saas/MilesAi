@@ -26,3 +26,16 @@ export function marketplaceStatusLabel(status: string, meta?: MarketplaceMeta | 
 export function marketplaceCatalogSortOptions(meta?: MarketplaceMeta | null): EnumOption[] {
   return meta?.catalog_sorts?.length ? meta.catalog_sorts : SORT_FALLBACK;
 }
+
+const VISIBILITY_FALLBACK: Record<string, string> = {
+  public: "全平台公开",
+  tenant_only: "租户内可见",
+};
+
+export function marketplaceVisibilityLabel(
+  visibility: string | undefined,
+  meta?: MarketplaceMeta | null,
+): string {
+  const v = visibility || "public";
+  return optionLabel(meta?.visibilities, v) || VISIBILITY_FALLBACK[v] || v;
+}

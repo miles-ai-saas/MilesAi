@@ -13,8 +13,10 @@ from app.core.service import BaseService
 from app.core.soft_delete import append_not_deleted, is_marked_deleted, mark_deleted
 from app.core.tenant import TenantContext, assert_tenant_access, tenant_filters
 from app.models.agent_schedule import AgentSchedule
+from app.models.agent_schedule_run import AgentScheduleRun
 from app.common.schema import PageParams, PageResult
 from app.tenant.agents.schemas.schedule import AgentScheduleCreate, AgentScheduleOut, AgentScheduleUpdate
+from app.tenant.agents.schemas.schedule_run import AgentScheduleRunOut
 from app.tenant.agents.services.agent import AgentService
 
 
@@ -102,3 +104,29 @@ class AgentScheduleService(BaseService):
         schedule = await self._get_schedule_or_raise(agent_id, schedule_id)
         mark_deleted(schedule)
         await self.db.flush()
+
+    async def list_runs(
+        self, agent_id: UUID, schedule_id: UUID, params: PageParams
+    ) -> PageResult[AgentScheduleRunOut]:
+        await self._get_schedule_or_raise(agent_id, schedule_id)
+        filters = tenant_filters(self.ctx, AgentScheduleRun.tenant_id) + [
+            AgentScheduleRun.schedule_id == schedule_id,
+            AgentScheduleRun.agent_id == agent_id,
+        ]
+        total = await self.db.scalar(
+            select(func.count()).select_from(AgentScheduleRun).where(*filters)
+        )
+        stmt = (
+            select(AgentScheduleRun)
+            .where(*filters)
+            .order_by(AgentScheduleRun.started_at.desc())
+            .offset((params.page - 1) * params.size)
+            .limit(params.size)
+        )
+        items = (await self.db.execute(stmt)).scalars().all()
+        return PageResult(
+            items=[AgentScheduleRunOut.from_model(i) for i in items],
+            total=total or 0,
+            page=params.page,
+            size=params.size,
+        )

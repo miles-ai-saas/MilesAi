@@ -14,18 +14,16 @@
 ### 1.1 交付范围
 
 - KB CRUD、配额查询、embedding profiles 目录
-- 文档上传 → Celery `ingest_document`
+- 文档上传 → Celery `ingest_document`（含 **视频** MP4/MOV/WebM）
 - 文档状态机、分片列表、重试、删除（级联向量/OSS）
-- `POST …/search` vector / hybrid + 可选 rerank
+- `POST …/search` vector / hybrid + **`media_types` 过滤** + **`query_document_id` 以图/视频搜（OCR MVP）**
 - 检索日志 `kb_search_logs`
 - 前端：`/workbench/kb`、`/workbench/kb/[id]`
 
 ### 1.2 明确不做
 
-- 以图搜图 / 文本搜图（当前文本向量 + 关键词 hybrid）
-- 视频入库解析
-- PaddleOCR / 高精度 OCR 插件（按需立项；现网图：`pytesseract` `[multimodal]`，见 [backlog.md](../product/backlog.md)）
-- 老格式 Office（`.doc`/`.xls`/`.ppt`；Open XML docx/pptx/xlsx 已支持上传）
+- CLIP / 视觉向量真·以图搜图（当前为 OCR 文本 + 语义检索 MVP）
+- PaddleOCR / 高精度 OCR 插件（按需，见 [backlog.md](../product/backlog.md)）
 
 ---
 

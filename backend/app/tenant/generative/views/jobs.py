@@ -13,6 +13,8 @@ from app.core.tenant import TenantContext
 from app.infra.db import get_db
 from app.models.generative_job import GenerativeJobStatus
 from app.tenant.generative.schemas.job import (
+    GenerativeJobBatchCancelBody,
+    GenerativeJobBatchCancelResult,
     GenerativeJobOut,
     ImageGenerativeJobCreate,
     VideoGenerativeJobCreate,
@@ -64,6 +66,15 @@ async def submit_image_job(
     db: AsyncSession = Depends(get_db),
 ):
     return ok(await _svc(db, ctx).submit_image(body, source="api"))
+
+
+@router.post("/batch-cancel", response_model=ApiResponse[GenerativeJobBatchCancelResult])
+async def batch_cancel_generative_jobs(
+    body: GenerativeJobBatchCancelBody,
+    ctx: TenantContext = Depends(require_permissions("attachment:upload")),
+    db: AsyncSession = Depends(get_db),
+):
+    return ok(await _svc(db, ctx).batch_cancel_jobs(body.job_ids))
 
 
 @router.get("/{job_id}/stream")

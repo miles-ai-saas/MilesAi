@@ -9,7 +9,7 @@ from app.common.exceptions import BadRequestError, NotFoundError
 from app.models.agent import Agent
 from app.models.flow import Flow
 from app.models.kb import KnowledgeBase
-from app.tenant.marketplace.models import AppCategory, MarketplaceApp, MarketplaceAppStatus
+from app.tenant.marketplace.models import AppCategory, MarketplaceApp, MarketplaceAppStatus, MarketplaceAppVisibility
 from app.tenant.marketplace.schemas.marketplace import (
     MarketplaceAppCreate,
     MarketplaceAppCreateFromResources,
@@ -87,6 +87,7 @@ class MarketplacePublishMixin:
                 manifest=manifest,
                 status=MarketplaceAppStatus.DRAFT,
                 tag_ids=body.tag_ids,
+                visibility=body.visibility,
             )
         )
 
@@ -109,6 +110,7 @@ class MarketplacePublishMixin:
             status=body.status,
             is_official=False,
             manifest=body.manifest,
+            visibility=body.visibility.value,
         )
         self.db.add(app)
         await self.db.flush()

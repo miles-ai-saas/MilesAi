@@ -16,7 +16,7 @@ from app.models.task import CeleryTaskRecord, TaskStatus
 from app.common.schema import PageParams, PageResult
 from app.tenant.tasks.meta import tasks_meta_dict
 from app.tenant.tasks.schemas.meta import TaskMetaOut
-from app.tenant.tasks.schemas.task import TaskRecordOut
+from app.tenant.tasks.schemas.task import TaskBatchCancelResult, TaskRecordOut
 from app.core.service import BaseService
 
 
@@ -131,6 +131,26 @@ class TaskService(BaseService):
         record.status = TaskStatus.CANCELLED
         await self.db.flush()
         return TaskRecordOut.model_validate(record)
+
+    async def batch_cancel_tasks(self, task_ids: list[str]) -> TaskBatchCancelResult:
+        """批量取消；单条失败不中断，已结束任务记入 skipped。"""
+        cancelled: list[TaskRecordOut] = []
+        skipped: list[str] = []
+        for task_id in task_ids:
+            try:
+                record = await self._get_record_or_raise(task_id)
+            except NotFoundError:
+                skipped.append(task_id)
+                continue
+            if record.status in (TaskStatus.SUCCESS, TaskStatus.CANCELLED):
+                skipped.append(task_id)
+                continue
+            celery_app.control.revoke(record.celery_task_id, terminate=True)
+            record.status = TaskStatus.CANCELLED
+            cancelled.append(TaskRecordOut.model_validate(record))
+        if cancelled:
+            await self.db.flush()
+        return TaskBatchCancelResult(cancelled=cancelled, skipped=skipped)
 
     async def retry_task(self, task_id: str) -> TaskRecordOut:
         """仅 document 类型：重新 delay ingest 并更新文档 PENDING。"""

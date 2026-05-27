@@ -42,5 +42,9 @@ celery_app.conf.update(
             "task": "app.workers.tasks.agent_schedule.tick_agent_schedules",
             "schedule": 60.0,
         },
+        "probe-models-health": {
+            "task": "app.workers.tasks.model_health.probe_models_health",
+            "schedule": 900.0,
+        },
     },
 )

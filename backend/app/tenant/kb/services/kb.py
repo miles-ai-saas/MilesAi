@@ -31,8 +31,9 @@ from app.integrations.embeddings.runtime import embedding_dimension_from_model
 from app.integrations.langchain.embeddings import embed_query_for_kb
 from app.core.config import get_settings
 from app.common.exceptions import BadRequestError, NotFoundError
-from app.infra.storage import build_object_key, delete_object, upload_bytes
+from app.infra.storage import build_object_key, delete_object, download_bytes, upload_bytes
 from app.rag.retrieve import resolve_retrieval_mode, search_kb_chunks
+from app.rag.retrieve.media_filter import filter_hits_by_media_types_async
 from app.core.tenant import TenantContext, assert_tenant_access, tenant_filters
 from app.deletion.cascade import before_delete_kb
 from app.deletion.document import clear_document_derived_data_async
@@ -70,7 +71,9 @@ from app.tenant.kb.services.quota import (
 )
 from app.tenant.kb.services.search_log import write_kb_search_log
 from app.models.kb_search_log import KbSearchLog
-from app.rag.parse import file_extension, is_audio_file, is_image_file
+from app.rag.parse import is_image_file, is_video_file
+from app.rag.parse.image_parser import parse_image
+from app.rag.parse.video_parser import parse_video
 from app.rag.parse.upload_policy import is_kb_upload_allowed, kb_upload_allowed_hint
 from app.core.soft_delete import is_marked_deleted, mark_deleted, not_deleted
 from app.core.service import BaseService
@@ -347,6 +350,28 @@ class KnowledgeBaseService(BaseService):
         await self.db.refresh(doc)
         return DocumentOut.model_validate(doc)
 
+    async def upload_documents_batch(
+        self,
+        kb_id: UUID,
+        files: list[UploadFile],
+    ) -> list[DocumentOut]:
+        """批量上传文档（顺序处理，单文件失败不中断）。"""
+        if not files:
+            raise BadRequestError("请至少选择一个文件")
+        if len(files) > 20:
+            raise BadRequestError("单次最多上传 20 个文件")
+        results: list[DocumentOut] = []
+        errors: list[str] = []
+        for file in files:
+            try:
+                results.append(await self.upload_document(kb_id, file))
+            except Exception as exc:
+                name = file.filename or "未命名"
+                errors.append(f"{name}: {exc}")
+        if not results and errors:
+            raise BadRequestError("；".join(errors[:5]))
+        return results
+
     async def retry_document(self, kb_id: UUID, document_id: UUID) -> DocumentOut:
         """失败或已完成文档重新入库（pipeline 内会先清旧分片/向量）。"""
         await self._get_kb_or_raise(kb_id)
@@ -397,6 +422,51 @@ class KnowledgeBaseService(BaseService):
         if size > 0:
             await apply_storage_delta(self.db, doc.tenant_id, 0)
 
+    async def _resolve_search_query(
+        self,
+        kb_id: UUID,
+        body: SearchRequest,
+    ) -> tuple[str, list[str] | None]:
+        """组合文本 query 与 query_document_id（OCR/转写）并推断 media_types 过滤。"""
+        query = (body.query or "").strip()
+        media_types = list(body.media_types) if body.media_types else None
+
+        if body.query_document_id is None:
+            if not query:
+                raise BadRequestError("检索 query 不能为空")
+            return query, media_types
+
+        doc = await self.doc_repo.get_by_id_or_raise(body.query_document_id, label="文档不存在")
+        if doc.kb_id != kb_id or is_marked_deleted(doc):
+            raise NotFoundError("文档不存在")
+        assert_tenant_access(self.ctx, doc.tenant_id)
+        if doc.status != DocumentStatus.READY:
+            raise BadRequestError("query_document_id 须为已就绪（ready）的文档")
+
+        if not doc.object_key or doc.object_key == "pending":
+            raise BadRequestError("文档对象尚未就绪")
+
+        data = download_bytes(doc.object_key, bucket=doc.object_bucket)
+        if is_image_file(doc.filename, doc.mime_type):
+            derived = parse_image(data, doc.filename)
+            if media_types is None:
+                media_types = ["image"]
+        elif is_video_file(doc.filename, doc.mime_type) or doc.mime_type.startswith("video/"):
+            derived = parse_video(data, doc.filename)
+            if media_types is None:
+                media_types = ["video"]
+        else:
+            raise BadRequestError("query_document_id 仅支持图片或视频文档")
+
+        derived = (derived or "").strip()
+        if not derived or derived.startswith("[图片 ·") or derived.startswith("[视频 ·"):
+            raise BadRequestError(
+                "未能从 query_document_id 提取有效文本，请安装 OCR/Whisper/ffmpeg 或改用手动 query"
+            )
+
+        combined = f"{query}\n\n{derived}".strip() if query else derived
+        return combined, media_types
+
     async def search(self, kb_id: UUID, body: SearchRequest) -> SearchResponse:
         """
         工作台 KB 检索 API。
@@ -406,22 +476,38 @@ class KnowledgeBaseService(BaseService):
         """
         kb = await self._get_kb_or_raise(kb_id)
         effective_mode = resolve_retrieval_mode(kb, body.mode)
+        query_text, media_types = await self._resolve_search_query(kb_id, body)
         started = time.perf_counter()
-        vector = await embed_query_for_kb(self.db, self.ctx.tenant_id, kb, body.query)
+        vector = await embed_query_for_kb(self.db, self.ctx.tenant_id, kb, query_text)
         rerank_model = None
         if kb.rerank_model_config_id:
             rerank_model = await resolve_rerank_model_by_id(
                 self.db, kb.rerank_model_config_id, self.ctx.tenant_id
             )
+        fetch_limit = body.top_k
+        if media_types:
+            fetch_limit = max(body.top_k * 3, kb.rerank_candidate_k or 50)
         raw_hits = await search_kb_chunks(
             self.db,
             kb=kb,
-            query=body.query,
+            query=query_text,
             query_vector=vector,
-            limit=body.top_k,
+            limit=fetch_limit,
             mode=body.mode,
-            rerank_model=rerank_model,
+            rerank_model=None if media_types else rerank_model,
         )
+        raw_hits = await filter_hits_by_media_types_async(self.db, raw_hits, media_types)
+        if rerank_model is not None and media_types:
+            from app.rag.retrieve.rerank import apply_rerank_to_hits
+
+            raw_hits = apply_rerank_to_hits(
+                raw_hits,
+                query=query_text,
+                rerank_model=rerank_model,
+                top_n=body.top_k,
+            )
+        else:
+            raw_hits = raw_hits[: body.top_k]
         hits: list[SearchHit] = []
         for h in raw_hits:
             chunk_id = h.get("chunk_id")
@@ -443,17 +529,21 @@ class KnowledgeBaseService(BaseService):
                     score_keyword=h.get("score_keyword"),
                     score_rerank=h.get("score_rerank"),
                     filename=doc.filename if doc else None,
+                    vector_type=h.get("vector_type"),
+                    mime_type=doc.mime_type if doc else None,
                 )
             )
         log_mode = effective_mode
         if rerank_model is not None:
             log_mode = f"{effective_mode}+rerank"
+        if media_types:
+            log_mode = f"{log_mode}+media:{','.join(media_types)}"
         latency_ms = int((time.perf_counter() - started) * 1000)
         await write_kb_search_log(
             self.db,
             tenant_id=kb.tenant_id,
             kb_id=kb.id,
-            query=body.query,
+            query=query_text,
             top_k=body.top_k,
             hit_count=len(hits),
             latency_ms=latency_ms,
@@ -461,4 +551,4 @@ class KnowledgeBaseService(BaseService):
             actor_user_id=self.ctx.user_id,
             retrieval_mode=log_mode,
         )
-        return SearchResponse(query=body.query, mode=log_mode, hits=hits)
+        return SearchResponse(query=query_text, mode=log_mode, hits=hits)

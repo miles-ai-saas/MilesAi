@@ -6,7 +6,7 @@
 """
 
 from app.common.schemas.enum_meta import META_SCHEMA_VERSION, enum_options, literal_options
-from app.tenant.marketplace.models import MarketplaceAppStatus
+from app.tenant.marketplace.models import MarketplaceAppStatus, MarketplaceAppVisibility
 
 APP_STATUS_LABELS: dict[str, tuple[str, str | None]] = {
     MarketplaceAppStatus.DRAFT.value: ("草稿", "未提交审核"),
@@ -21,11 +21,17 @@ CATALOG_SORT_OPTIONS: list[tuple[str, str, str | None]] = [
     ("rating", "按评分", "平均评分降序"),
 ]
 
+VISIBILITY_LABELS: dict[str, tuple[str, str | None]] = {
+    MarketplaceAppVisibility.PUBLIC.value: ("全平台公开", "审核通过后所有租户可见"),
+    MarketplaceAppVisibility.TENANT_ONLY.value: ("租户内可见", "仅本租户成员可在广场浏览与安装"),
+}
+
 
 def marketplace_meta_dict() -> dict:
     """构建 meta 响应 dict，供 *MetaOut.model_validate 与单测使用。"""
     return {
         "app_statuses": enum_options(MarketplaceAppStatus, APP_STATUS_LABELS),
         "catalog_sorts": literal_options(CATALOG_SORT_OPTIONS),
+        "visibilities": enum_options(MarketplaceAppVisibility, VISIBILITY_LABELS),
         "schema_version": META_SCHEMA_VERSION,
     }

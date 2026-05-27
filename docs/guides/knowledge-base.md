@@ -246,6 +246,7 @@ OpenAPI：`/docs`（运行实例）。
 | PDF | `.pdf` | 默认 `pypdf`；可选 `docling` |
 | 图片 | `.jpg`、`.jpeg`、`.png`、`.webp` | Pillow 必填；OCR 需 Worker 安装 `[multimodal]` |
 | 音频 | `.mp3`、`.wav`、`.m4a`、`.ogg`、`.webm` | 无 Whisper 时写入占位文本，仍可入库 |
+| 视频 | `.mp4`、`.mov`、`.m4v`、`.webm`、`.mkv` | ffmpeg 抽音轨（Whisper）+ 关键帧 OCR；无 ffmpeg 时占位文本 |
 | Office | `.docx`、`.pptx`、`.xlsx`、`.html`、`.htm` | **可上传**；解析需 `PARSE_PDF_BACKEND=docling` 且安装 `[parse-docling]` |
 
 白名单实现：`app/rag/parse/upload_policy.py`（KB 与通用附件共用）。

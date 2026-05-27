@@ -21,11 +21,13 @@ import { filterBySearch } from "@/lib/filter-search";
 import {
   marketplaceCatalogSortOptions,
   marketplaceStatusLabel,
+  marketplaceVisibilityLabel,
 } from "@/lib/marketplace-labels";
 import { useMarketplaceMeta } from "@/hooks/use-marketplace-meta";
 import type {
   Agent,
   AppCategory,
+  AppInstall,
   AppInstallResult,
   AppRating,
   Flow,
@@ -113,6 +115,7 @@ export default function MarketplacePage() {
   const [categories, setCategories] = useState<AppCategory[]>([]);
   const [activeCategory, setActiveCategory] = useState("");
   const [installing, setInstalling] = useState<string | null>(null);
+  const [upgrading, setUpgrading] = useState<string | null>(null);
   const [publishing, setPublishing] = useState<string | null>(null);
   const [reviewing, setReviewing] = useState<string | null>(null);
   const [rejectTarget, setRejectTarget] = useState<MarketplaceApp | null>(null);
@@ -136,6 +139,7 @@ export default function MarketplacePage() {
   const [publishFlowId, setPublishFlowId] = useState("");
   const [publishAgentId, setPublishAgentId] = useState("");
   const [publishTagIds, setPublishTagIds] = useState<string[]>([]);
+  const [publishVisibility, setPublishVisibility] = useState<"public" | "tenant_only">("public");
   const [tagFilterIds, setTagFilterIds] = useState<string[]>([]);
   const [publishLoading, setPublishLoading] = useState(false);
   const [resourceOptions, setResourceOptions] = useState<{
@@ -275,6 +279,20 @@ export default function MarketplacePage() {
     [plazaFiltered],
   );
 
+  const onUpgrade = async (ins: AppInstall) => {
+    setUpgrading(ins.app_id);
+    setMsg("");
+    try {
+      const res = await api.upgradeMarketplaceApp(ins.app_id);
+      setMsg(res.message);
+      await installs.reload();
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : "升级失败");
+    } finally {
+      setUpgrading(null);
+    }
+  };
+
   const onInstall = async (app: MarketplaceApp) => {
     if (app.installed) {
       setMsg("该应用已安装");
@@ -366,6 +384,7 @@ export default function MarketplacePage() {
         flow_id: publishFlowId || undefined,
         agent_id: publishAgentId || undefined,
         tag_ids: publishTagIds,
+        visibility: publishVisibility,
       });
       setMsg("草稿已创建，可在「我的上架」中提交审核");
       setPublishName("");
@@ -423,6 +442,9 @@ export default function MarketplacePage() {
         <span className="text-ink-muted">
           v{app.version}
           {app.category_name && ` · ${app.category_name}`} · {app.install_count} 次安装
+          {app.visibility && app.visibility !== "public"
+            ? ` · ${marketplaceVisibilityLabel(app.visibility, marketplaceMeta)}`
+            : ""}
         </span>
       </span>
       <TagChips tags={app.tags} />
@@ -643,14 +665,30 @@ export default function MarketplacePage() {
               尚未安装任何应用，请前往「应用广场」浏览
             </p>
           )}
-          {installsFiltered.map((ins) => (
+          {installsFiltered.map((ins) => {
+            const canUpgrade =
+              ins.app_version &&
+              ins.installed_version &&
+              ins.app_version !== ins.installed_version;
+            return (
             <ResourceItemCard
               key={ins.id}
               title={ins.app_name}
-              description={`安装于 ${new Date(ins.created_at).toLocaleDateString("zh-CN")}`}
-              badge="已安装"
+              description={`v${ins.installed_version ?? "?"} · 安装于 ${new Date(ins.created_at).toLocaleDateString("zh-CN")}${ins.app_version ? ` · 市场 v${ins.app_version}` : ""}`}
+              badge={canUpgrade ? "可升级" : "已安装"}
               actions={
-                <span className="flex flex-wrap gap-3 text-xs text-brand">
+                <span className="flex flex-wrap items-center gap-3 text-xs">
+                  {canUpgrade ? (
+                    <button
+                      type="button"
+                      className="font-medium text-brand hover:underline disabled:opacity-50"
+                      disabled={upgrading === ins.app_id}
+                      onClick={() => void onUpgrade(ins)}
+                    >
+                      {upgrading === ins.app_id ? "升级中…" : "升级到最新版"}
+                    </button>
+                  ) : null}
+                  <span className="flex flex-wrap gap-3 text-brand">
                   {ins.kb_id && (
                     <Link href={`/workbench/kb/${ins.kb_id}`} className="hover:underline">
                       知识库
@@ -666,10 +704,12 @@ export default function MarketplacePage() {
                       智能体
                     </Link>
                   )}
+                  </span>
                 </span>
               }
             />
-          ))}
+            );
+          })}
         </ResourceListLayout>
         {appDetailDrawer}
       </>
@@ -886,6 +926,26 @@ export default function MarketplacePage() {
                 </select>
               </label>
             </div>
+            <label className="mt-3 block space-y-1">
+              <span className="text-xs text-ink-muted">可见范围</span>
+              <select
+                className="input-field w-full"
+                value={publishVisibility}
+                onChange={(e) =>
+                  setPublishVisibility(e.target.value as "public" | "tenant_only")
+                }
+              >
+                <option value="public">
+                  {marketplaceVisibilityLabel("public", marketplaceMeta)}
+                </option>
+                <option value="tenant_only">
+                  {marketplaceVisibilityLabel("tenant_only", marketplaceMeta)}
+                </option>
+              </select>
+              <p className="text-[11px] text-ink-faint">
+                「租户内可见」审核通过后仅本租户成员可在广场浏览与安装。
+              </p>
+            </label>
             <label className="mt-4 block space-y-1">
               <span className="text-xs text-ink-muted">标签</span>
               <TagPicker value={publishTagIds} onChange={setPublishTagIds} />

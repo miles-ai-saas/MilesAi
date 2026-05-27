@@ -18,6 +18,7 @@ from app.common.cron import compute_next_run
 from app.core.tenant import TenantContext
 from app.infra.db import AsyncSessionLocal, get_sync_db
 from app.models.agent_schedule import AgentSchedule
+from app.models.agent_schedule_run import AgentScheduleRun, AgentScheduleRunStatus
 from app.models.user import User
 from app.core.soft_delete import not_deleted
 from app.tenant.agents.schemas.agent import ChatRequest
@@ -28,6 +29,7 @@ logger = get_logger(__name__)
 
 
 async def _run_schedule_async(schedule_id: UUID) -> None:
+    started = datetime.now(timezone.utc)
     async with AsyncSessionLocal() as db:
         schedule = await db.get(AgentSchedule, schedule_id)
         if not schedule or schedule.deleted_at is not None or not schedule.enabled:
@@ -45,14 +47,32 @@ async def _run_schedule_async(schedule_id: UUID) -> None:
             permissions=frozenset(["agent:read", "agent:write"]),
         )
         svc = AgentService(db, ctx)
-        await svc.chat(
-            schedule.agent_id,
-            ChatRequest(
-                query=schedule.content,
-                conversation_id=f"schedule:{schedule.id}",
-            ),
+        run = AgentScheduleRun(
+            tenant_id=schedule.tenant_id,
+            schedule_id=schedule.id,
+            agent_id=schedule.agent_id,
+            status=AgentScheduleRunStatus.SUCCESS.value,
+            started_at=started,
         )
-        schedule.last_run_at = datetime.now(timezone.utc)
+        try:
+            await svc.chat(
+                schedule.agent_id,
+                ChatRequest(
+                    query=schedule.content,
+                    conversation_id=f"schedule:{schedule.id}",
+                ),
+            )
+            run.finished_at = datetime.now(timezone.utc)
+            schedule.last_run_at = run.finished_at
+        except Exception as exc:
+            run.status = AgentScheduleRunStatus.FAILED.value
+            run.finished_at = datetime.now(timezone.utc)
+            run.error_message = str(exc)[:2000]
+            schedule.last_run_at = run.finished_at
+            db.add(run)
+            await db.commit()
+            raise
+        db.add(run)
         await db.commit()
 
 

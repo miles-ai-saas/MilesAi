@@ -7,7 +7,7 @@ LangChain Document 加载与解析后端路由。
 
 路由顺序（自上而下命中即返回）
 ----------------------------
-1. 图片 / 音频 → ``parse_image`` / ``parse_audio``（可选 OCR/Whisper，无依赖时占位文本）
+1. 图片 / 音频 / 视频 → ``parse_image`` / ``parse_audio`` / ``parse_video``
 2. 纯文本 .txt/.md 或 text/* → ``parse_text``
 3. Docling（``PARSE_PDF_BACKEND=docling`` 且扩展名支持）→ 失败可 ``parse_docling_fallback_pypdf`` 回退
 4. PDF → ``load_pdf_documents``（PyPDFLoader，按页 Document）
@@ -31,6 +31,7 @@ from app.rag.parse.image_parser import parse_image
 from app.rag.parse.media import is_audio_file, is_image_file
 from app.rag.parse.text_parser import parse_text
 from app.rag.parse.upload_policy import OFFICE_EXTENSIONS
+from app.rag.parse.video_parser import parse_video
 
 logger = get_logger(__name__)
 
@@ -82,7 +83,19 @@ def load_documents_from_bytes(
     ext = _file_ext(filename)
 
     try:
-        # 多模态：无 OCR/Whisper 时 parse_* 仍返回占位文本，保证流程可走完
+        # 多模态：无 OCR/Whisper/ffmpeg 时 parse_* 仍返回占位文本，保证流程可走完
+        if mime_type.startswith("video/") or (
+            _file_ext(filename) in {".mp4", ".mov", ".m4v", ".mkv"}
+            and not mime_type.startswith("audio/")
+        ):
+            text = parse_video(data, filename)
+            return [
+                Document(
+                    page_content=text,
+                    metadata={"source": filename, "parser": "video"},
+                )
+            ]
+
         if is_image_file(filename, mime_type):
             text = parse_image(data, filename)
             return [

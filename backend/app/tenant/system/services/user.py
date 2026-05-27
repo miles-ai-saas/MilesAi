@@ -90,6 +90,13 @@ class UserService(BaseService):
         await self.db.refresh(user, ["roles"])
         return to_user_out(user)
 
+    async def get_user_or_raise(self, user_id: UUID) -> User:
+        user = await self.repo.get_with_roles(user_id)
+        if not user or is_marked_deleted(user):
+            raise NotFoundError("用户不存在")
+        assert_tenant_access(self.ctx, user.tenant_id)
+        return user
+
     async def deactivate_user(self, user_id: UUID) -> UserOut:
         user = await self.repo.get_with_roles(user_id)
         if not user or is_marked_deleted(user):

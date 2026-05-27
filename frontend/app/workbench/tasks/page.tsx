@@ -78,20 +78,35 @@ function TaskStatusBadge({
 function TaskRow({
   task,
   taskMeta,
+  selected,
+  onSelectChange,
   onViewDetail,
   onCancel,
   onRetry,
 }: {
   task: TaskRecord;
   taskMeta: TaskMeta | null;
+  selected?: boolean;
+  onSelectChange?: (checked: boolean) => void;
   onViewDetail: () => void;
   onCancel: () => void;
   onRetry: () => void;
 }) {
+  const cancellable = canCancelTask(task);
   return (
     <article className="rounded-xl border border-line bg-surface p-4 shadow-card transition hover:border-brand/20">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0 flex-1">
+        <div className="flex min-w-0 flex-1 gap-3">
+          {onSelectChange && cancellable ? (
+            <input
+              type="checkbox"
+              className="mt-1 h-4 w-4 shrink-0 rounded border-line text-brand"
+              checked={selected ?? false}
+              onChange={(e) => onSelectChange(e.target.checked)}
+              aria-label={`选择任务 ${task.task_name}`}
+            />
+          ) : null}
+          <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="font-medium text-ink">{task.task_name}</h3>
             <TaskStatusBadge status={task.status} taskMeta={taskMeta} />
@@ -120,6 +135,7 @@ function TaskRow({
               {task.fail_reason}
             </p>
           )}
+          </div>
         </div>
         <div className="flex shrink-0 flex-wrap items-center gap-3 sm:flex-col sm:items-end">
           <button type="button" className="btn-secondary px-3 py-1.5 text-xs" onClick={onViewDetail}>
@@ -195,6 +211,7 @@ function TasksPageContent() {
   const [filter, setFilter] = useState("");
   const [msg, setMsg] = useState("");
   const [detailTaskId, setDetailTaskId] = useState<string | null>(null);
+  const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set());
   const generativeListApi = useRef<{ reload: () => void } | null>(null);
   const [generativeListLoading, setGenerativeListLoading] = useState(false);
 
@@ -268,6 +285,34 @@ function TasksPageContent() {
   const onFilterChange = (key: string) => {
     setFilter(key);
     setSearch("");
+    setSelectedTaskIds(new Set());
+  };
+
+  const cancellableOnPage = useMemo(
+    () => filtered.filter((t) => canCancelTask(t)),
+    [filtered],
+  );
+
+  const toggleTaskSelection = (taskId: string, checked: boolean) => {
+    setSelectedTaskIds((prev) => {
+      const next = new Set(prev);
+      if (checked) next.add(taskId);
+      else next.delete(taskId);
+      return next;
+    });
+  };
+
+  const batchCancelSelected = async () => {
+    if (selectedTaskIds.size === 0) return;
+    setMsg("");
+    try {
+      const res = await api.batchCancelTasks([...selectedTaskIds]);
+      setMsg(`已取消 ${res.cancelled.length} 条${res.skipped.length ? `，跳过 ${res.skipped.length} 条` : ""}`);
+      setSelectedTaskIds(new Set());
+      await list.reload();
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : "批量取消失败");
+    }
   };
 
   const statusTabs = useMemo(() => {
@@ -341,6 +386,15 @@ function TasksPageContent() {
             >
               {listRefreshing ? "刷新中…" : "刷新"}
             </button>
+            {!isGenerative && selectedTaskIds.size > 0 ? (
+              <button
+                type="button"
+                className="btn-sm-outline shrink-0 text-red-600"
+                onClick={() => void batchCancelSelected()}
+              >
+                批量取消 ({selectedTaskIds.size})
+              </button>
+            ) : null}
           </div>
         }
         footer={
@@ -390,11 +444,18 @@ function TasksPageContent() {
                   暂无匹配的任务
                 </p>
               )}
+              {cancellableOnPage.length > 0 && filtered.length > 0 ? (
+                <p className="text-xs text-ink-faint">
+                  可勾选 {cancellableOnPage.length} 条待取消任务，使用右上角「批量取消」
+                </p>
+              ) : null}
               {filtered.map((t) => (
                 <TaskRow
                   key={t.id}
                   task={t}
                   taskMeta={taskMeta}
+                  selected={selectedTaskIds.has(t.id)}
+                  onSelectChange={(checked) => toggleTaskSelection(t.id, checked)}
                   onViewDetail={() => openDetail(t.id)}
                   onCancel={() => void act(t.id, "cancel")}
                   onRetry={() => void act(t.id, "retry")}

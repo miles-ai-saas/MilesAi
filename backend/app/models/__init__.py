@@ -7,6 +7,7 @@
 from app.models.category import CategoryDomain, SysCategory
 from app.models.agent import Agent, AgentStatus, AgentSubAgentBinding, agent_kb_bindings
 from app.models.agent_schedule import AgentSchedule
+from app.models.agent_schedule_run import AgentScheduleRun
 from app.tenant.compliance.models import (
     ComplianceLibraryBinding,
     InterceptLog,
@@ -21,6 +22,7 @@ from app.tenant.skills.models import SkillPackage
 from app.models.flow import Flow, FlowStatus, FlowVersion
 from app.models.attachment import Attachment
 from app.models.media_asset import MediaAsset
+from app.models.model_usage_log import ModelUsageLog
 from app.models.generative_job import GenerativeJob, GenerativeJobStatus
 from app.models.kb import Document, DocumentChunk, DocumentStatus, KnowledgeBase, VectorRef
 from app.models.kb_search_log import KbSearchLog
@@ -30,6 +32,7 @@ from app.tenant.marketplace.models import (
     AppRating,
     MarketplaceApp,
     MarketplaceAppStatus,
+    MarketplaceAppVisibility,
 )
 from app.models.model import ModelConfig
 from app.models.model_tenant_credential import ModelTenantCredential
@@ -61,7 +64,9 @@ __all__ = [
     "AgentStatus",
     "AgentSubAgentBinding",
     "AgentSchedule",
+    "AgentScheduleRun",
     "ModelConfig",
+    "ModelUsageLog",
     "ModelTenantCredential",
     "agent_kb_bindings",
     "Flow",
@@ -86,6 +91,7 @@ __all__ = [
     "AppCategory",
     "MarketplaceApp",
     "MarketplaceAppStatus",
+    "MarketplaceAppVisibility",
     "AppInstall",
     "AppRating",
     "user_roles",

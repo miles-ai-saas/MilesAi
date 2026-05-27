@@ -35,12 +35,16 @@ function StatChip({ label, value, hint }: { label: string; value: string; hint?:
 function GenerativeJobRow({
   job,
   jobMeta,
+  selected,
+  onSelectChange,
   onViewDetail,
   onCancel,
   onRetry,
 }: {
   job: GenerativeJobOut;
   jobMeta: GenerativeJobsMeta | null;
+  selected?: boolean;
+  onSelectChange?: (checked: boolean) => void;
   onViewDetail: () => void;
   onCancel: () => void;
   onRetry: () => void;
@@ -49,10 +53,21 @@ function GenerativeJobRow({
     job.params && typeof job.params.prompt === "string"
       ? job.params.prompt
       : "";
+  const cancellable = canCancelGenerativeJob(job.status);
   return (
     <article className="rounded-xl border border-line bg-surface p-4 shadow-card transition hover:border-brand/20">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0 flex-1">
+        <div className="flex min-w-0 flex-1 gap-3">
+          {onSelectChange && cancellable ? (
+            <input
+              type="checkbox"
+              className="mt-1 h-4 w-4 shrink-0 rounded border-line text-brand"
+              checked={selected ?? false}
+              onChange={(e) => onSelectChange(e.target.checked)}
+              aria-label={`选择生成任务 ${job.id}`}
+            />
+          ) : null}
+          <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="font-medium text-ink">{generativeJobKindLabel(job.kind)}</h3>
             <span
@@ -83,6 +98,7 @@ function GenerativeJobRow({
               {job.error_message}
             </p>
           ) : null}
+          </div>
         </div>
         <div className="flex shrink-0 flex-wrap gap-3">
           <button type="button" className="btn-secondary px-3 py-1.5 text-xs" onClick={onViewDetail}>
@@ -142,6 +158,7 @@ export function GenerativeJobsSection({
   const searchParams = useSearchParams();
   const jobMeta = useGenerativeJobMeta(enabled);
   const [detailJobId, setDetailJobId] = useState<string | null>(null);
+  const [selectedJobIds, setSelectedJobIds] = useState<Set<string>>(new Set());
 
   const jobFromUrl = searchParams.get("job");
   const kindFilter = searchParams.get("gen_kind") || "";
@@ -242,6 +259,33 @@ export function GenerativeJobsSection({
     }
   };
 
+  const cancellableOnPage = useMemo(
+    () => filtered.filter((j) => canCancelGenerativeJob(j.status)),
+    [filtered],
+  );
+
+  const toggleJobSelection = (jobId: string, checked: boolean) => {
+    setSelectedJobIds((prev) => {
+      const next = new Set(prev);
+      if (checked) next.add(jobId);
+      else next.delete(jobId);
+      return next;
+    });
+  };
+
+  const batchCancelSelected = async () => {
+    if (selectedJobIds.size === 0) return;
+    onMsg("");
+    try {
+      const res = await api.batchCancelGenerativeJobs([...selectedJobIds]);
+      onMsg(`已取消 ${res.cancelled.length} 条${res.skipped.length ? `，跳过 ${res.skipped.length} 条` : ""}`);
+      setSelectedJobIds(new Set());
+      await list.reload();
+    } catch (e) {
+      onMsg(e instanceof Error ? e.message : "批量取消失败");
+    }
+  };
+
   if (!enabled) return null;
 
   if (list.loading && list.items.length === 0) {
@@ -278,16 +322,33 @@ export function GenerativeJobsSection({
       </div>
 
       <div className="col-span-full space-y-3">
+        {selectedJobIds.size > 0 ? (
+          <div className="flex items-center justify-between rounded-lg border border-line bg-surface-subtle/50 px-4 py-2">
+            <span className="text-xs text-ink-muted">已选 {selectedJobIds.size} 条</span>
+            <button
+              type="button"
+              className="text-xs font-medium text-red-600 hover:underline"
+              onClick={() => void batchCancelSelected()}
+            >
+              批量取消
+            </button>
+          </div>
+        ) : null}
         {!list.loading && filtered.length === 0 && (
           <p className="rounded-xl border border-dashed border-line py-12 text-center text-sm text-ink-faint">
             暂无生成任务。在智能体对话或流程中生图/生视频后会出现在此。
           </p>
         )}
+        {cancellableOnPage.length > 0 && filtered.length > 0 ? (
+          <p className="text-xs text-ink-faint">可勾选 {cancellableOnPage.length} 条待取消任务</p>
+        ) : null}
         {filtered.map((j) => (
           <GenerativeJobRow
             key={j.id}
             job={j}
             jobMeta={jobMeta}
+            selected={selectedJobIds.has(j.id)}
+            onSelectChange={(checked) => toggleJobSelection(j.id, checked)}
             onViewDetail={() => openDetail(j.id)}
             onCancel={() => void onCancel(j.id)}
             onRetry={() => void onRetry(j.id)}

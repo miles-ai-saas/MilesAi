@@ -97,6 +97,19 @@ export default function SystemUsersPage() {
     });
   };
 
+  const onRevokeSessions = (u: TenantUser) => {
+    requestConfirm({
+      title: "强制下线全部会话",
+      message: `将使用户「${u.username}」在所有设备上的登录立即失效。`,
+      destructive: true,
+      confirmLabel: "确认下线",
+      onConfirm: async () => {
+        const res = await api.revokeAllUserSessions(u.id);
+        alert(`已下线 ${res.revoked} 个会话`);
+      },
+    });
+  };
+
   return (
     <div className="mx-auto max-w-5xl">
       <PageHeader
@@ -155,6 +168,15 @@ export default function SystemUsersPage() {
                       >
                         编辑
                       </button>
+                      {u.is_active && (
+                        <button
+                          type="button"
+                          className="mr-3 text-xs text-ink-muted hover:text-ink"
+                          onClick={() => onRevokeSessions(u)}
+                        >
+                          下线会话
+                        </button>
+                      )}
                       {u.is_active && (
                         <button
                           type="button"

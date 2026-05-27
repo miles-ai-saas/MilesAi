@@ -12,6 +12,16 @@ class RedisKeys:
         return f"session:{user_id}"
 
     @staticmethod
+    def user_session_index(user_id: UUID | str) -> str:
+        """用户多设备会话 jti 索引（SET）。"""
+        return f"sessions:user:{user_id}"
+
+    @staticmethod
+    def user_session_entry(user_id: UUID | str, jti: str) -> str:
+        """单条会话元数据（JSON）。"""
+        return f"session:entry:{user_id}:{jti}"
+
+    @staticmethod
     def admin_session(admin_id: UUID | str) -> str:
         """运营后台 admin_access 会话（AdminAuthService.login）。"""
         return f"admin:session:{admin_id}"

@@ -16,6 +16,7 @@ from app.models.agent import Agent
 from app.tenant.compliance.models import InterceptLog
 from app.models.flow import Flow
 from app.models.kb import Document, DocumentStatus, KnowledgeBase
+from app.models.model_usage_log import ModelUsageLog
 from app.tenant.marketplace.models import AppInstall
 from app.models.system import SystemConfig
 from app.core.soft_delete import append_not_deleted
@@ -24,6 +25,8 @@ from app.tenant.monitor.meta import monitor_meta_dict
 from app.tenant.monitor.schemas.meta import MonitorMetaOut
 from app.tenant.monitor.schemas.monitor import (
     AlertConfig,
+    ModelUsageReport,
+    ModelUsageRow,
     MonitorReport,
     MonitorStats,
     MonitorTrends,
@@ -248,6 +251,41 @@ class MonitorService(BaseService):
             task_by_day=sorted(by_day.values(), key=lambda x: x.date),
             intercept_by_day=sorted(intercept_by_day, key=lambda x: str(x["date"])),
         )
+
+    async def model_usage(self, *, days: int = 7) -> ModelUsageReport:
+        days = max(1, min(days, 30))
+        start = datetime.now(timezone.utc) - timedelta(days=days - 1)
+        filters = tenant_filters(self.ctx, ModelUsageLog.tenant_id)
+        filters.append(ModelUsageLog.created_at >= start)
+        rows = await self.db.execute(
+            select(
+                ModelUsageLog.model_config_id,
+                ModelUsageLog.model_name,
+                func.count(ModelUsageLog.id),
+                func.coalesce(func.sum(ModelUsageLog.prompt_tokens), 0),
+                func.coalesce(func.sum(ModelUsageLog.completion_tokens), 0),
+                func.coalesce(func.sum(ModelUsageLog.total_tokens), 0),
+            )
+            .where(*filters)
+            .group_by(ModelUsageLog.model_config_id, ModelUsageLog.model_name)
+            .order_by(func.sum(ModelUsageLog.total_tokens).desc())
+        )
+        items: list[ModelUsageRow] = []
+        total_tokens = 0
+        for model_id, name, cnt, prompt, completion, total in rows.all():
+            t = int(total or 0)
+            total_tokens += t
+            items.append(
+                ModelUsageRow(
+                    model_config_id=model_id,
+                    model_name=name or "未知模型",
+                    call_count=int(cnt or 0),
+                    prompt_tokens=int(prompt or 0),
+                    completion_tokens=int(completion or 0),
+                    total_tokens=t,
+                )
+            )
+        return ModelUsageReport(days=days, rows=items, total_tokens=total_tokens)
 
     async def notify_task_failed(self, task_name: str, fail_reason: str) -> None:
         cfg = await self.get_alert_config()

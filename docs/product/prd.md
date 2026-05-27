@@ -20,11 +20,12 @@
 | PDF 解析 | 默认 `pypdf`（PyPDFLoader） | 无 docling 时兜底 |
 | PaddleOCR | 按需暂缓 | 现网：`pytesseract`（`[multimodal]`）+ Vision 识图；见 [backlog §按需](./backlog.md#按需--有场景再立项) |
 | Whisper 转写 | `rag/parse/audio_parser.py` | 需 `[multimodal]` |
-| 视频解析 | 未实现 | 上传白名单未含视频 |
+| 视频解析 | ✅ | `parse_video`：ffmpeg 抽音轨 + 关键帧 OCR；需 Worker 装 ffmpeg |
 | Word/Excel/PPT 上传 | ✅ | `.docx`/`.pptx`/`.xlsx` 已在 `upload_policy.py`；解析需 docling |
-| 文本/图/音上传入库 | ✅ | `load_documents_from_bytes` → `chunk_documents` → 向量 |
+| 文本/图/音/视频上传入库 | ✅ | loaders → chunk → embed |
 | Weaviate 检索 | ✅ | 另支持 Milvus；KB 级 `vector` / `hybrid` |
-| 以图搜图 / 文本搜图 | 未实现 | 当前为文本向量 + 关键词 hybrid |
+| 文本搜图 / 以图搜图（MVP） | ✅ | `media_types` + `query_document_id` OCR 派生检索 |
+| 视觉向量以图搜图 | ⬜ | CLIP 等多模态向量（P1 增强） |
 | Celery 异步入库 | ✅ | `ingest_document` → `rag.pipeline.ingest` |
 
 ### 全模块实现对照索引
@@ -164,8 +165,9 @@
 | PRD 愿景 | 现网 | 备注 |
 |----------|------|------|
 | PaddleOCR 高精度中文 OCR | 按需暂缓 | 现网 pytesseract + Vision；见 [backlog §按需](./backlog.md#按需--有场景再立项) |
-| 以图搜图 / 文本搜图 | ⬜ | 检索为文本向量 + hybrid |
-| 视频入库与抽帧 | ⬜ | 上传白名单未含视频 |
+| 以图搜图 / 文本搜图（MVP） | ✅ | `POST /kb/{id}/search` · `media_types` · `query_document_id` |
+| 视觉向量以图搜图 | ⬜ | CLIP 等 P1 增强 |
+| 视频入库与抽帧 | ✅ | mp4/mov/webm 白名单 + `parse_video` |
 | Office 文档上传 | ✅ | docx/pptx/xlsx 白名单已开；老格式 `.doc`/`.xls`/`.ppt` 按需 |
 | TTS / 语音生成 | ⬜ | 生图/生视频已支持 |
 | 对话/流程识图 | ✅ | Vision 模型 |

@@ -18,6 +18,7 @@ from app.tenant.agents.schemas.agent import AgentCreate, AgentOut, AgentUpdate, 
 from app.tenant.agents.schemas.meta import AgentMetaOut
 from app.tenant.agents.schemas.architecture import AgentArchitectureOut
 from app.tenant.agents.schemas.schedule import AgentScheduleCreate, AgentScheduleOut, AgentScheduleUpdate
+from app.tenant.agents.schemas.schedule_run import AgentScheduleRunOut
 from app.tenant.agents.schemas.stats import AgentStatsOut
 from app.common.schema import ApiResponse, PageParams, PageResult
 from app.tenant.agents.services.agent import AgentService
@@ -170,6 +171,21 @@ async def delete_agent_schedule(
 ):
     await _schedule_svc(db, ctx).delete_schedule(agent_id, schedule_id)
     return ok(message="已删除")
+
+
+@router.get(
+    "/{agent_id}/schedules/{schedule_id}/runs",
+    response_model=ApiResponse[PageResult[AgentScheduleRunOut]],
+)
+async def list_agent_schedule_runs(
+    agent_id: UUID,
+    schedule_id: UUID,
+    params: PageParams = Depends(get_page_params),
+    ctx: TenantContext = Depends(require_permissions("agent:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await _schedule_svc(db, ctx).list_runs(agent_id, schedule_id, params)
+    return page_ok(result.items, result.total, result.page, result.size)
 
 
 @router.post("/{agent_id}/chat", response_model=ApiResponse[ChatResponse])

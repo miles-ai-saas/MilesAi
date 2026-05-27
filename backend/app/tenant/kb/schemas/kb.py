@@ -13,6 +13,8 @@
 - ``SearchMode.default`` 表示使用 KB 上配置的 ``retrieval_mode``
 """
 
+from __future__ import annotations
+
 from datetime import datetime
 from typing import Literal
 from uuid import UUID
@@ -25,6 +27,7 @@ from app.tenant.kb.meta import SEARCH_MODE_DEFAULT
 
 RetrievalMode = Literal[RETRIEVAL_VECTOR, RETRIEVAL_HYBRID]
 SearchMode = Literal[SEARCH_MODE_DEFAULT, RETRIEVAL_VECTOR, RETRIEVAL_HYBRID]
+MediaType = Literal["text", "image", "audio", "video"]
 
 
 class KnowledgeBaseCreate(BaseModel):
@@ -149,12 +152,26 @@ class DocumentChunkOut(BaseModel):
 class SearchRequest(BaseModel):
     """工作台 KB 检索入参；``mode=default`` 沿用 KB 的 retrieval_mode。"""
 
-    query: str = Field(..., min_length=1, description="检索查询文本")
+    query: str = Field(default="", description="检索查询文本（可与 query_document_id 组合）")
+    query_document_id: UUID | None = Field(
+        default=None,
+        description="以图/视频搜：对该文档 OCR/转写后作为查询（文本搜图/以图搜图 MVP）",
+    )
+    media_types: list[MediaType] | None = Field(
+        default=None,
+        description="限定命中分片的 vector_type；空=全部类型",
+    )
     top_k: int = Field(10, ge=1, le=50, description="返回命中条数上限")
     mode: SearchMode = Field(
         "default",
         description="default=使用知识库 retrieval_mode；可单次覆盖为 vector/hybrid",
     )
+
+    @model_validator(mode="after")
+    def require_query_or_document(self) -> SearchRequest:
+        if not (self.query or "").strip() and not self.query_document_id:
+            raise ValueError("query 与 query_document_id 至少提供一项")
+        return self
 
 
 class SearchHit(BaseModel):
@@ -166,6 +183,8 @@ class SearchHit(BaseModel):
     score_keyword: float | None = Field(default=None, description="关键词检索分数")
     score_rerank: float | None = Field(default=None, description="重排分数")
     filename: str | None = Field(default=None, description="来源文件名")
+    vector_type: str | None = Field(default=None, description="分片媒体类型 text/image/audio/video")
+    mime_type: str | None = Field(default=None, description="来源文档 MIME")
 
 
 class SearchResponse(BaseModel):

@@ -130,6 +130,17 @@ async def upload_document(
     return ok(await _svc(db, ctx).upload_document(kb_id, file))
 
 
+@router.post("/{kb_id}/documents/batch", response_model=ApiResponse[list[DocumentOut]])
+async def upload_documents_batch(
+    kb_id: UUID,
+    files: list[UploadFile] = File(...),
+    ctx: TenantContext = Depends(require_permissions("kb:document:upload")),
+    db: AsyncSession = Depends(get_db),
+):
+    """批量上传（最多 20 个），单文件失败跳过。"""
+    return ok(await _svc(db, ctx).upload_documents_batch(kb_id, files))
+
+
 @router.post("/{kb_id}/documents/{document_id}/retry", response_model=ApiResponse[DocumentOut])
 async def retry_document(
     kb_id: UUID,

@@ -21,6 +21,11 @@ class MarketplaceAppStatus(str, enum.Enum):
     ARCHIVED = "archived"
 
 
+class MarketplaceAppVisibility(str, enum.Enum):
+    PUBLIC = "public"
+    TENANT_ONLY = "tenant_only"
+
+
 class AppCategory(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __tablename__ = "mkt_categories"
     __table_args__ = (UniqueConstraint("slug", name="uk_mkt_categories_slug"),)
@@ -60,6 +65,7 @@ class MarketplaceApp(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     manifest: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
     rating_avg: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
     rating_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    visibility: Mapped[str] = mapped_column(String(32), default="public", nullable=False)
     submitted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     reviewed_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
@@ -119,6 +125,7 @@ class AppInstall(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
     app_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
     installed_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    installed_version: Mapped[str] = mapped_column(String(32), default="1.0.0", nullable=False)
     flow_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     agent_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     kb_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)

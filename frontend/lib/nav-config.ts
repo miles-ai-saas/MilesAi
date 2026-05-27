@@ -7,7 +7,7 @@ export type AppSection = "workbench" | "system";
 
 export type NavItem = { href: string; label: string };
 
-export type SystemNavIcon = "users" | "roles" | "config" | "audit";
+export type SystemNavIcon = "users" | "roles" | "sessions" | "config" | "audit";
 
 export type SystemNavItem = NavItem & { icon: SystemNavIcon };
 
@@ -76,6 +76,7 @@ export const SYSTEM_NAV: { title: string; items: SystemNavItem[] }[] = [
     items: [
       { href: "/system/users", label: "用户管理", icon: "users" },
       { href: "/system/roles", label: "角色权限", icon: "roles" },
+      { href: "/system/sessions", label: "登录会话", icon: "sessions" },
     ],
   },
   {
@@ -94,6 +95,7 @@ export function getSystemBreadcrumbs(pathname: string): BreadcrumbItem[] {
     return [{ label: "用户管理" }];
   }
   if (pathname === "/system/roles") return [home, { label: "角色权限" }];
+  if (pathname === "/system/sessions") return [home, { label: "登录会话" }];
   if (pathname === "/system/config") return [home, { label: "系统配置" }];
   if (pathname === "/system/audit") return [home, { label: "审计日志" }];
 

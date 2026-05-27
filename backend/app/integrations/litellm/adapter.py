@@ -123,6 +123,23 @@ def _ensure_messages_valid_for_chat(model: ModelConfig, messages: list[dict[str,
         )
 
 
+def _extract_usage(response: Any) -> tuple[int, int, int]:
+    usage = getattr(response, "usage", None)
+    if usage is None and isinstance(response, dict):
+        usage = response.get("usage")
+    if usage is None:
+        return 0, 0, 0
+    if isinstance(usage, dict):
+        prompt = int(usage.get("prompt_tokens") or 0)
+        completion = int(usage.get("completion_tokens") or 0)
+        total = int(usage.get("total_tokens") or prompt + completion)
+        return prompt, completion, total
+    prompt = int(getattr(usage, "prompt_tokens", 0) or 0)
+    completion = int(getattr(usage, "completion_tokens", 0) or 0)
+    total = int(getattr(usage, "total_tokens", 0) or prompt + completion)
+    return prompt, completion, total
+
+
 async def litellm_chat_completion(
     model: ModelConfig,
     messages: list[dict[str, Any]],
@@ -130,6 +147,7 @@ async def litellm_chat_completion(
     temperature: float = 0.7,
     max_tokens: int = 2048,
     timeout: float = HTTP_DEFAULT_TIMEOUT_SEC,
+    usage_ctx: Any | None = None,
 ) -> str:
     """通过 LiteLLM 发起异步 Chat Completions（content 可为 str 或多模态 part 数组）。"""
     litellm = _import_litellm()
@@ -169,6 +187,15 @@ async def litellm_chat_completion(
         content = (first.get("message") or {}).get("content")
     if content is None:
         raise AppError("模型返回为空", status_code=502)
+    if usage_ctx is not None:
+        prompt_t, completion_t, _ = _extract_usage(response)
+        from app.tenant.models.services.usage import record_model_usage
+
+        await record_model_usage(
+            usage_ctx,
+            prompt_tokens=prompt_t,
+            completion_tokens=completion_t,
+        )
     return content if isinstance(content, str) else str(content)
 
 

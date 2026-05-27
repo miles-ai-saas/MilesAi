@@ -10,7 +10,13 @@ from app.common.response import ok
 from app.core.tenant import TenantContext
 from app.common.schema import ApiResponse
 from app.tenant.monitor.schemas.meta import MonitorMetaOut
-from app.tenant.monitor.schemas.monitor import AlertConfig, MonitorReport, MonitorStats, MonitorTrends
+from app.tenant.monitor.schemas.monitor import (
+    AlertConfig,
+    ModelUsageReport,
+    MonitorReport,
+    MonitorStats,
+    MonitorTrends,
+)
 from app.tenant.monitor.services.monitor import MonitorService
 
 router = APIRouter()
@@ -40,6 +46,15 @@ async def monitor_trends(
     db: AsyncSession = Depends(get_db),
 ):
     return ok(await MonitorService(db, ctx).trends(days=days))
+
+
+@router.get("/model-usage", response_model=ApiResponse[ModelUsageReport])
+async def monitor_model_usage(
+    days: int = Query(7, ge=1, le=30),
+    ctx: TenantContext = Depends(require_permissions("monitor:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    return ok(await MonitorService(db, ctx).model_usage(days=days))
 
 
 @router.get("/report", response_model=ApiResponse[MonitorReport])

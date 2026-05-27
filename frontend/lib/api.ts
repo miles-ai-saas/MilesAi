@@ -157,7 +157,24 @@ export const api = {
 
   fetchMe: () => get<UserInfo>("/auth/me"),
 
-  logout: () => useAuthStore.getState().logout(),
+  logout: async () => {
+    try {
+      await http.post("/auth/logout");
+    } catch {
+      /* 本地仍清除会话 */
+    }
+    useAuthStore.getState().logout();
+  },
+
+  listMySessions: () => get<UserSession[]>("/auth/sessions"),
+  revokeMySession: (jti: string) =>
+    http.delete(`/auth/sessions/${encodeURIComponent(jti)}`).then(() => undefined),
+  revokeOtherSessions: () => post<{ revoked: number }>("/auth/sessions/revoke-others", {}),
+  listUserSessions: (userId: string) => get<UserSession[]>(`/users/${userId}/sessions`),
+  revokeAllUserSessions: (userId: string) =>
+    http.delete<ApiResponse<{ revoked: number }>>(`/users/${userId}/sessions`).then((r) =>
+      unwrap(r.data),
+    ),
 
   listUsers: (page = 1, size = DEFAULT_PAGE_SIZE) =>
     getPage<TenantUser>(`/users?${buildPageQuery(page, size)}`),
@@ -200,6 +217,8 @@ export const api = {
     }),
 
   getMonitorTrends: (days = 7) => get<MonitorTrends>(`/monitor/trends?days=${days}`),
+  getMonitorModelUsage: (days = 7) =>
+    get<import("./types").ModelUsageReport>(`/monitor/model-usage?days=${days}`),
 
   listAuditLogs: (
     page = 1,
@@ -504,6 +523,10 @@ export const api = {
     patch<import("./types").AgentSchedule>(`/agents/${agentId}/schedules/${scheduleId}`, payload),
   deleteAgentSchedule: (agentId: string, scheduleId: string) =>
     http.delete(`/agents/${agentId}/schedules/${scheduleId}`).then(() => undefined),
+  listAgentScheduleRuns: (agentId: string, scheduleId: string, page = 1, size = 10) =>
+    getPage<import("./types").AgentScheduleRun>(
+      `/agents/${agentId}/schedules/${scheduleId}/runs?${buildPageQuery(page, size)}`,
+    ),
   createAgent: (payload: {
     agent_type?: import("./types").AgentType;
     category_id?: string | null;
@@ -583,6 +606,14 @@ export const api = {
     });
     return unwrap(res.data);
   },
+  uploadDocumentsBatch: async (kbId: string, files: File[]) => {
+    const form = new FormData();
+    for (const f of files) form.append("files", f);
+    const res = await http.post<ApiResponse<Document[]>>(`/kb/${kbId}/documents/batch`, form, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+    return unwrap(res.data);
+  },
   deleteDocument: (kbId: string, documentId: string) =>
     http
       .delete<ApiResponse<null>>(`/kb/${kbId}/documents/${documentId}`)
@@ -594,7 +625,12 @@ export const api = {
   searchKb: (
     kbId: string,
     query: string,
-    opts?: { top_k?: number; mode?: "default" | "vector" | "hybrid" },
+    opts?: {
+      top_k?: number;
+      mode?: "default" | "vector" | "hybrid";
+      media_types?: ("text" | "image" | "audio" | "video")[];
+      query_document_id?: string;
+    },
   ) =>
     post<{
       query: string;
@@ -604,12 +640,17 @@ export const api = {
         score: number;
         score_vector?: number | null;
         score_keyword?: number | null;
+        score_rerank?: number | null;
         filename?: string;
+        vector_type?: string | null;
+        mime_type?: string | null;
       }[];
     }>(`/kb/${kbId}/search`, {
       query,
       top_k: opts?.top_k ?? 5,
       mode: opts?.mode ?? "default",
+      ...(opts?.media_types?.length ? { media_types: opts.media_types } : {}),
+      ...(opts?.query_document_id ? { query_document_id: opts.query_document_id } : {}),
     }),
 
   listKbSearchLogs: (kbId: string, page = 1, size = DEFAULT_PAGE_SIZE) =>
@@ -666,6 +707,13 @@ export const api = {
       .post<ApiResponse<import("./types").GenerativeJobOut>>(
         `/generative/jobs/${jobId}/cancel`,
       )
+      .then((r) => unwrap(r.data)),
+
+  batchCancelGenerativeJobs: (jobIds: string[]) =>
+    http
+      .post<
+        ApiResponse<{ cancelled: import("./types").GenerativeJobOut[]; skipped: string[] }>
+      >("/generative/jobs/batch-cancel", { job_ids: jobIds })
       .then((r) => unwrap(r.data)),
 
   retryGenerativeJob: (jobId: string) =>
@@ -931,6 +979,10 @@ export const api = {
     ),
   getTask: (taskId: string) => get<TaskRecord>(`/tasks/${taskId}`),
   cancelTask: (taskId: string) => post<TaskRecord>(`/tasks/${taskId}/cancel`),
+  batchCancelTasks: (taskIds: string[]) =>
+    post<{ cancelled: TaskRecord[]; skipped: string[] }>("/tasks/batch-cancel", {
+      task_ids: taskIds,
+    }),
   retryTask: (taskId: string) => post<TaskRecord>(`/tasks/${taskId}/retry`),
 
   listMarketplaceCategories: () => get<AppCategory[]>("/marketplace/categories"),
@@ -965,6 +1017,7 @@ export const api = {
     agent_id?: string;
     kb_id?: string;
     tag_ids?: string[];
+    visibility?: "public" | "tenant_only";
   }) => post<MarketplaceApp>("/marketplace/apps/from-resources", body),
   publishMarketplaceApp: (appId: string) =>
     post<MarketplaceApp>(`/marketplace/apps/${appId}/publish`),
@@ -978,6 +1031,8 @@ export const api = {
     http.delete(`/marketplace/apps/${appId}/ratings/mine`).then(() => undefined),
   installMarketplaceApp: (appId: string) =>
     post<AppInstallResult>(`/marketplace/apps/${appId}/install`),
+  upgradeMarketplaceApp: (appId: string) =>
+    post<import("./types").AppUpgradeResult>(`/marketplace/apps/${appId}/upgrade`, {}),
   listAppInstalls: (page = 1, size = DEFAULT_PAGE_SIZE) =>
     getPage<AppInstall>(`/marketplace/installs?${buildPageQuery(page, size)}`),
 };
