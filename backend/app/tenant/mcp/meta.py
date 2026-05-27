@@ -7,6 +7,7 @@
 """
 
 from app.common.schemas.enum_meta import META_SCHEMA_VERSION, enum_options, literal_options
+from app.tenant.mcp.constants import McpTransport
 from app.tenant.mcp.models import McpStatus
 
 MCP_STATUS_LABELS: dict[str, tuple[str, str | None]] = {
@@ -17,15 +18,15 @@ MCP_STATUS_LABELS: dict[str, tuple[str, str | None]] = {
 
 TRANSPORT_OPTIONS: list[tuple[str, str, str | None]] = [
     ("", "全部", "不过滤传输类型"),
-    ("http", "HTTP", "Streamable HTTP JSON-RPC"),
-    ("sse", "SSE", "Legacy SSE + POST message"),
-    ("stdio", "STDIO", "沙箱 Runner（需 MCP_RUNNER_ENABLED）"),
+    (McpTransport.HTTP.value, "HTTP", "Streamable HTTP JSON-RPC"),
+    (McpTransport.SSE.value, "SSE", "Legacy SSE + POST message"),
+    (McpTransport.STDIO.value, "STDIO", "沙箱 Runner（需 MCP_RUNNER_ENABLED）"),
 ]
 
 TRANSPORT_TYPE_OPTIONS: list[tuple[str, str, str | None]] = [
-    ("http", "HTTP", None),
-    ("sse", "SSE", None),
-    ("stdio", "STDIO", None),
+    (McpTransport.HTTP.value, "HTTP", None),
+    (McpTransport.SSE.value, "SSE", None),
+    (McpTransport.STDIO.value, "STDIO", None),
 ]
 
 # 卡片展示：由 sync_error / tools_cache 推导，与 ORM status 互补

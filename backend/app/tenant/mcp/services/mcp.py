@@ -35,6 +35,7 @@ from app.tenant.mcp.client import fetch_mcp_tools, invoke_mcp_tool as remote_inv
 from app.tenant.mcp.runner.audit import write_mcp_runner_session
 from app.tenant.mcp.runner.client import RunnerClient
 from app.tenant.mcp.runner.spec import build_run_spec
+from app.tenant.mcp.constants import McpTransport
 from app.tenant.mcp.transport import normalize_transport, transport_filter_values
 from app.common.schema import PageParams, PageResult
 from app.core.soft_delete import is_marked_deleted, mark_deleted, not_deleted
@@ -58,17 +59,17 @@ class McpServiceManager(BaseService):
         transport = normalize_transport(body.transport)
         cfg = dict(body.connection_config or {})
         endpoint = (body.endpoint_url or "").strip()
-        if transport == "stdio":
+        if transport == McpTransport.STDIO:
             command = str(cfg.get("command") or "").strip()
             if not command:
                 raise BadRequestError("STDIO 需填写启动命令")
             if not endpoint:
                 endpoint = f"stdio://{body.name.strip()}"
-            return endpoint, transport, cfg
+            return endpoint, transport.value, cfg
         if not endpoint:
             raise BadRequestError("HTTP/SSE 需填写端点 URL")
         cfg.setdefault("endpoint_url", endpoint)
-        return endpoint, transport, cfg
+        return endpoint, transport.value, cfg
 
     async def get_service(self, service_id: UUID) -> McpServiceOut:
         row = await self.db.get(McpService, service_id)
@@ -133,14 +134,14 @@ class McpServiceManager(BaseService):
         if body.description is not None:
             row.description = body.description.strip() or None
         if body.transport is not None:
-            row.transport = normalize_transport(body.transport)
+            row.transport = normalize_transport(body.transport).value
         if body.connection_config is not None:
             row.connection_config = dict(body.connection_config)
         if body.endpoint_url is not None:
             row.endpoint_url = body.endpoint_url.strip()
 
         transport = normalize_transport(row.transport)
-        if transport == "stdio":
+        if transport == McpTransport.STDIO:
             command = str((row.connection_config or {}).get("command") or "").strip()
             if not command:
                 raise BadRequestError("STDIO 需填写启动命令")
@@ -161,7 +162,7 @@ class McpServiceManager(BaseService):
         assert_tenant_access(self.ctx, row.tenant_id)
 
         transport = normalize_transport(row.transport)
-        if transport == "stdio":
+        if transport == McpTransport.STDIO:
             return await self._sync_stdio_service(row)
 
         try:
@@ -265,7 +266,7 @@ class McpServiceManager(BaseService):
             raise NotFoundError(f"MCP 工具不存在: {tool_name}")
 
         transport = normalize_transport(row.transport)
-        if transport == "stdio":
+        if transport == McpTransport.STDIO:
             settings = get_settings()
             if not settings.mcp_runner_enabled:
                 raise BadRequestError(STDIO_RUNNER_DISABLED)

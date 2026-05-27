@@ -24,7 +24,7 @@ from app.common.exceptions import BadRequestError, NotFoundError
 from app.core.soft_delete import is_marked_deleted, not_deleted
 from app.core.tenant import TenantContext
 from app.models.agent import Agent, AgentSubAgentBinding, AgentType
-from app.tenant.agents.constants import SUB_AGENT_ROLE_HINTS
+from app.tenant.agents.constants import SUB_AGENT_ROLE_HINTS, SubAgentPlanner
 
 MAX_SUB_AGENTS = 8
 
@@ -34,7 +34,7 @@ def apply_planner_config(config: dict | None, *, has_sub_agents: bool) -> dict:
     cfg = dict(config or {})
     if has_sub_agents:
         cfg["runtime_mode"] = "autonomous"
-        cfg["planner"] = "deepagents"
+        cfg["planner"] = SubAgentPlanner.DEEPAGENTS.value
         cfg.setdefault("max_plan_iterations", 12)
         cfg.setdefault("max_subagent_calls", 20)
         cfg.setdefault("subagent_parallel", False)

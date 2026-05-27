@@ -11,7 +11,7 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.soft_delete import is_marked_deleted
-from app.flow_runtime.constants import MAX_SUBFLOW_DEPTH, SUB_FLOW_NODE_TYPE
+from app.flow_runtime.constants import MAX_SUBFLOW_DEPTH
 from app.flow_runtime.subflow.resolve import (
     VERSION_POLICY_PINNED,
     VERSION_POLICY_PUBLISHED,

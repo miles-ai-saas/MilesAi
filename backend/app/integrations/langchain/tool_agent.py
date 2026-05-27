@@ -14,12 +14,18 @@ import json
 from typing import Any
 from uuid import UUID
 
+import litellm
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.tenant import TenantContext
 from app.integrations.chat.multimodal import build_user_message, resolve_media_refs
 from app.integrations.langchain.tools import get_all_platform_tools, get_skill_bound_tools
-from app.integrations.litellm.adapter import litellm_chat_completion
+from app.integrations.litellm.adapter import (
+    _ensure_chat_model_type,
+    _resolve_api_base,
+    litellm_chat_completion,
+    resolve_litellm_model,
+)
 from app.models.agent import Agent
 from app.tenant.agents.schemas.agent import (
     ChatArtifact,
@@ -27,6 +33,7 @@ from app.tenant.agents.schemas.agent import (
     ChatResponse,
     PendingToolCall,
 )
+from app.tenant.models.services.model_resolve import resolve_model_for_invoke
 from app.tenant.tools.confirmation import ToolConfirmationRequired, resolve_tool_meta
 from app.tenant.tools.invoke import invoke_tool_with_context
 
@@ -83,9 +90,6 @@ async def _litellm_with_tools(
     temperature: float,
 ) -> Any:
     """带 ``tools`` / ``tool_choice=auto`` 的 LiteLLM ``acompletion`` 封装。"""
-    import litellm
-    from app.integrations.litellm.adapter import resolve_litellm_model, _resolve_api_base, _ensure_chat_model_type
-
     _ensure_chat_model_type(model)
     kwargs: dict[str, Any] = {
         "model": resolve_litellm_model(model),
@@ -120,8 +124,6 @@ async def run_tool_calling_chat(
     """
     if not agent.model_config:
         raise ValueError("工具调用需要配置大模型")
-
-    from app.tenant.models.services.model_resolve import resolve_model_for_invoke
 
     model = await resolve_model_for_invoke(db, agent.model_config, ctx.tenant_id)
 

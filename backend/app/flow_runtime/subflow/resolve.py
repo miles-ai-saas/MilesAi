@@ -17,7 +17,8 @@ from app.flow_runtime.types import RunContext
 from app.models.flow import Flow, FlowStatus
 from app.tenant.flows.repositories.flow import FlowRepository
 
-SUB_FLOW_NODE_TYPE = "SubFlow"
+from app.flow_runtime.constants import CanvasNodeType
+
 VERSION_POLICY_PUBLISHED = "published"
 VERSION_POLICY_PINNED = "pinned"
 
@@ -37,7 +38,7 @@ def iter_subflow_nodes(graph: dict[str, Any]) -> list[tuple[str, dict[str, Any]]
     """返回 (node_id, node_data) 列表。"""
     items: list[tuple[str, dict[str, Any]]] = []
     for node in graph.get("nodes") or []:
-        if _resolve_node_type(node) != SUB_FLOW_NODE_TYPE:
+        if _resolve_node_type(node) != CanvasNodeType.SUB_FLOW:
             continue
         node_id = str(node.get("id") or "")
         data = node.get("data") or {}

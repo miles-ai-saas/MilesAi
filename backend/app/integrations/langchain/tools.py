@@ -21,19 +21,29 @@ schema 供 LLM 填参，执行统一经 ``invoke_tool_with_context`` 与确认�
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any
 from uuid import UUID
+from zoneinfo import ZoneInfo
 
+import httpx
 from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.integrations.langchain.vectorstores import search_kb
+from app.core.soft_delete import append_not_deleted
 from app.core.tenant import TenantContext, tenant_filters
+from app.infra.db import get_sync_db
+from app.integrations.langchain.vectorstores import search_kb
+from app.rag.load import load_kb_sync
+from app.tenant.tools.invoke import (
+    invoke_custom_http,
+    invoke_tool_with_context,
+    safe_calculate,
+)
 from app.tenant.tools.models import Tool, ToolType
 from app.tenant.tools.parameters import parameters_to_pydantic
-from app.core.soft_delete import append_not_deleted
 
 
 class CalculatorInput(BaseModel):
@@ -94,8 +104,6 @@ class SkillRunScriptInput(BaseModel):
 def _make_calculator_tool() -> StructuredTool:
     """内置 calculator；同步 ``safe_calculate``。"""
     def _run(expression: str) -> dict:
-        from app.tenant.tools.invoke import safe_calculate
-
         return {"result": safe_calculate(expression)}
 
     return StructuredTool.from_function(
@@ -108,8 +116,6 @@ def _make_calculator_tool() -> StructuredTool:
 
 def _make_http_request_tool() -> StructuredTool:
     """内置 http_request；直连 httpx（tool_agent 路径不经 outbound URL 校验）。"""
-    import httpx
-
     def _run(url: str, method: str = "GET", timeout: float = 10.0) -> dict:
         resp = httpx.request(method.upper(), url, timeout=timeout)
         return {"status_code": resp.status_code, "body": resp.text[:4000]}
@@ -125,9 +131,6 @@ def _make_http_request_tool() -> StructuredTool:
 def _make_datetime_tool() -> StructuredTool:
     """内置 get_current_datetime；IANA 时区，默认 UTC。"""
     def _run(timezone: str | None = None) -> dict:
-        from datetime import datetime
-        from zoneinfo import ZoneInfo
-
         tz_name = timezone or "UTC"
         tz = ZoneInfo(tz_name)
         now = datetime.now(tz)
@@ -151,9 +154,6 @@ def make_knowledge_search_tool(ctx: TenantContext) -> StructuredTool:
     tenant_id = ctx.tenant_id
 
     def _run(query: str, kb_id: str, limit: int = 5) -> dict:
-        from app.infra.db import get_sync_db
-        from app.rag.load import load_kb_sync
-
         with get_sync_db() as db:
             kb = load_kb_sync(db, tenant_id, UUID(kb_id))
             hits = search_kb(query, kb=kb, db=db, limit=limit)
@@ -264,8 +264,6 @@ def make_custom_http_tool(tool: Tool) -> StructuredTool:
     slug = tool.slug
 
     async def _arun(**kwargs: Any) -> dict:
-        from app.tenant.tools.invoke import invoke_custom_http
-
         return await invoke_custom_http(tool, kwargs)
 
     return StructuredTool.from_function(
@@ -283,8 +281,6 @@ def make_custom_script_tool(tool: Tool) -> StructuredTool:
     slug = tool.slug
 
     async def _arun(**kwargs: Any) -> dict:
-        from app.tenant.tools.invoke import invoke_custom_script
-
         raise RuntimeError("请通过 invoke_tool_with_context 执行脚本工具")
 
     return StructuredTool.from_function(
@@ -351,8 +347,6 @@ async def invoke_platform_tool(
     invoke_source: str = "agent",
 ) -> dict:
     """LangChain/流程侧统一入口：委托 ``invoke_tool_with_context``（含确认与审计）。"""
-    from app.tenant.tools.invoke import invoke_tool_with_context
-
     return await invoke_tool_with_context(
         db,
         ctx,

@@ -6,7 +6,7 @@
 """
 
 from app.common.schemas.enum_meta import META_SCHEMA_VERSION, enum_options, literal_options
-from app.tenant.a2a.models import A2aPeerStatus
+from app.tenant.a2a.models import A2aInvokePolicy, A2aPeerStatus
 from app.tenant.agents.meta import SUB_AGENT_ROLE_OPTIONS
 
 PEER_STATUS_LABELS: dict[str, tuple[str, str | None]] = {
@@ -17,9 +17,9 @@ PEER_STATUS_LABELS: dict[str, tuple[str, str | None]] = {
 }
 
 INVOKE_POLICY_OPTIONS: list[tuple[str, str, str | None]] = [
-    ("rules_then_plan", "规则优先，未命中则自动规划", "默认策略"),
-    ("rules_only", "仅规则触发", "按 trigger_keywords 匹配 Peer"),
-    ("plan_only", "仅自动规划", "由主模型选择 Peer"),
+    (A2aInvokePolicy.RULES_THEN_PLAN.value, "规则优先，未命中则自动规划", "默认策略"),
+    (A2aInvokePolicy.RULES_ONLY.value, "仅规则触发", "按 trigger_keywords 匹配 Peer"),
+    (A2aInvokePolicy.PLAN_ONLY.value, "仅自动规划", "由主模型选择 Peer"),
 ]
 
 # 与 agents.meta 子智能体 role_hint 一致（Peer 引用 / 宿主绑定）

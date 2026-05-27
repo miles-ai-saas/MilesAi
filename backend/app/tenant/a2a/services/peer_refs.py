@@ -16,7 +16,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.tenant.a2a.models import A2aPeer, A2aPeerStatus, AgentA2aPeerRef
+from app.tenant.a2a.models import A2aInvokePolicy, A2aPeer, A2aPeerStatus, AgentA2aPeerRef
 from app.common.exceptions import BadRequestError, NotFoundError
 from app.core.soft_delete import is_marked_deleted, not_deleted
 from app.core.tenant import TenantContext
@@ -91,7 +91,7 @@ def apply_a2a_config(config: dict | None, *, has_a2a_refs: bool) -> dict:
     """有 A2A 引用时写入默认 invoke 策略到 agent.config。"""
     cfg = dict(config or {})
     if has_a2a_refs:
-        cfg.setdefault("a2a_invoke_policy", "rules_then_plan")
+        cfg.setdefault("a2a_invoke_policy", A2aInvokePolicy.RULES_THEN_PLAN.value)
         cfg.setdefault("max_a2a_calls_per_turn", 2)
     else:
         for key in ("a2a_invoke_policy", "max_a2a_calls_per_turn", "a2a_peer_count"):

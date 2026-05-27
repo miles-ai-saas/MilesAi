@@ -8,6 +8,8 @@ API: POST /services/aigc/text-to-speech/speech-synthesis
 
 from __future__ import annotations
 
+import base64
+
 import httpx
 
 from app.common.exceptions import AppError, BadRequestError
@@ -72,7 +74,6 @@ async def generate_dashscope_tts(
 
         audio_b64 = output.get("audio_data") or output.get("audio_base64") or ""
         if audio_b64:
-            import base64
             return base64.b64decode(audio_b64)
 
         raise AppError("TTS 响应中未找到音频数据", status_code=502)

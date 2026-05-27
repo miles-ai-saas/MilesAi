@@ -23,6 +23,21 @@ class A2aPeerStatus(str, enum.Enum):
     INACTIVE = "inactive"
 
 
+class A2aInvokePolicy(str, enum.Enum):
+    """Agent ``config.a2a_invoke_policy`` 取值。"""
+
+    RULES_THEN_PLAN = "rules_then_plan"
+    RULES_ONLY = "rules_only"
+    PLAN_ONLY = "plan_only"
+
+
+class A2aPlanTrigger(str, enum.Enum):
+    """A2A 调用计划项来源：规则命中 vs 规划器。"""
+
+    RULE = "rule"
+    PLAN = "plan"
+
+
 class A2aPeer(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     """外部 A2A Agent 登记（Agent Card 缓存）。"""
 

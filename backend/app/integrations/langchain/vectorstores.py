@@ -29,6 +29,7 @@ from app.models.model import ModelConfig
 from app.rag.retrieve.multi_kb import search_kb as _search_kb
 from app.rag.retrieve.multi_kb import search_multi_kb as _search_multi_kb
 from app.rag.retrieve.multi_kb import search_multi_kb_async as _search_multi_kb_async
+from app.tenant.kb.services.search_log import write_kb_search_log
 from app.tenant.models.services.rerank_resolve import (
     resolve_rerank_model_by_id,
     resolve_rerank_model_sync,
@@ -93,8 +94,6 @@ def search_multi_kb(
 
 async def _write_search_log(db: AsyncSession, payload: dict[str, Any]) -> None:
     """``search_multi_kb_async`` 完成后的审计回调。"""
-    from app.tenant.kb.services.search_log import write_kb_search_log
-
     kbs: list[KnowledgeBase] = payload["kbs"]
     await write_kb_search_log(
         db,

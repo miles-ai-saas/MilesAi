@@ -22,6 +22,11 @@ from app.tenant.agents.constants import SUB_AGENT_ROLE_HINTS, SUB_AGENT_ROLE_LAB
 from app.tenant.agents.schemas.agent import ChatRequest
 from app.models.agent import AgentSubAgentBinding
 
+try:
+    from deepagents.middleware.subagents import CompiledSubAgent
+except ImportError:
+    CompiledSubAgent = None  # type: ignore[misc, assignment]
+
 if TYPE_CHECKING:
     from app.tenant.agents.services.agent import AgentService
 
@@ -77,7 +82,8 @@ def _build_general_purpose_guard(
     bindings: list[AgentSubAgentBinding],
 ) -> dict[str, Any] | None:
     """覆盖 DeepAgents 默认 general-purpose，避免委派到与主智能体等权的内置子智能体。"""
-    from deepagents.middleware.subagents import CompiledSubAgent
+    if CompiledSubAgent is None:
+        return None
 
     slugs = [_slug_for_binding(b) for b in bindings if b.child_agent]
     if not slugs:
@@ -112,7 +118,8 @@ def build_compiled_subagents(
     bindings: list[AgentSubAgentBinding],
 ) -> list[dict[str, Any]]:
     """DeepAgents CompiledSubAgent 列表。"""
-    from deepagents.middleware.subagents import CompiledSubAgent
+    if CompiledSubAgent is None:
+        raise ImportError("deepagents 包未安装")
 
     out: list[CompiledSubAgent] = []
     guard = _build_general_purpose_guard(bindings)

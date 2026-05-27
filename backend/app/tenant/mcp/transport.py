@@ -10,17 +10,21 @@ MCP 传输类型归一化（HTTP / SSE / STDIO / Custom）。
 列表 Tab transport_filter_values 兼容历史数据 streamable-http。
 """
 
+from app.tenant.mcp.constants import MCP_TRANSPORT_HTTP_LEGACY, McpTransport
 
-def normalize_transport(transport: str | None) -> str:
-    """将 transport 别名归一化为 http / sse / stdio / custom。"""
-    t = (transport or "sse").lower().strip()
-    if t in ("http", "streamable-http"):
-        return "http"
-    if t == "stdio":
-        return "stdio"
-    if t == "custom":
-        return "custom"
-    return "sse"
+
+def normalize_transport(transport: str | McpTransport | None) -> McpTransport:
+    """将 transport 别名归一化为 ``McpTransport``。"""
+    if isinstance(transport, McpTransport):
+        return transport
+    t = (transport or McpTransport.SSE.value).lower().strip()
+    if t in (McpTransport.HTTP.value, MCP_TRANSPORT_HTTP_LEGACY):
+        return McpTransport.HTTP
+    if t == McpTransport.STDIO.value:
+        return McpTransport.STDIO
+    if t == McpTransport.CUSTOM.value:
+        return McpTransport.CUSTOM
+    return McpTransport.SSE
 
 
 def transport_filter_values(tab: str | None) -> list[str] | None:
@@ -28,8 +32,8 @@ def transport_filter_values(tab: str | None) -> list[str] | None:
     if not tab or tab in ("all", ""):
         return None
     t = normalize_transport(tab)
-    if t == "http":
-        return ["http", "streamable-http"]
-    if t in ("sse", "stdio", "custom"):
-        return [t]
+    if t == McpTransport.HTTP:
+        return [McpTransport.HTTP.value, MCP_TRANSPORT_HTTP_LEGACY]
+    if t in (McpTransport.SSE, McpTransport.STDIO, McpTransport.CUSTOM):
+        return [t.value]
     return None

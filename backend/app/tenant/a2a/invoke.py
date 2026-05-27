@@ -19,7 +19,12 @@ from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
 from app.tenant.a2a.client import invoke_a2a_peer
-from app.tenant.a2a.models import A2aPeerBinding, AgentA2aPeerRef
+from app.tenant.a2a.models import (
+    A2aInvokePolicy,
+    A2aPeerBinding,
+    A2aPlanTrigger,
+    AgentA2aPeerRef,
+)
 from app.tenant.a2a.services.host_bindings import list_host_peer_bindings
 from app.tenant.a2a.services.peer_refs import list_agent_a2a_peer_refs
 from app.models.agent import AgentType
@@ -31,9 +36,13 @@ if TYPE_CHECKING:
     from app.tenant.agents.services.agent import AgentService
 
 
-def _policy(agent: Agent) -> str:
+def _policy(agent: Agent) -> A2aInvokePolicy:
     """读取 A2A 调用策略配置。"""
-    return str((agent.config or {}).get("a2a_invoke_policy", "rules_then_plan"))
+    raw = str((agent.config or {}).get("a2a_invoke_policy", A2aInvokePolicy.RULES_THEN_PLAN.value))
+    try:
+        return A2aInvokePolicy(raw)
+    except ValueError:
+        return A2aInvokePolicy.RULES_THEN_PLAN
 
 
 def _max_calls(agent: Agent) -> int:
@@ -182,7 +191,7 @@ async def execute_a2a_calls(
                     "peer_id": pid,
                     "peer_name": name,
                     "role_hint": ref.role_hint,
-                    "trigger": item.get("trigger", "plan"),
+                    "trigger": item.get("trigger", A2aPlanTrigger.PLAN.value),
                     "task": task[:300],
                     "output_preview": answer[:500],
                 }
@@ -209,7 +218,7 @@ def build_rule_plan_items(
         {
             "peer_id": str(r.peer_id),
             "task": query,
-            "trigger": "rule",
+            "trigger": A2aPlanTrigger.RULE.value,
         }
         for r in rule_refs
         if r.peer
@@ -245,17 +254,17 @@ async def resolve_a2a_plan_items(
     plan_items: list[dict] = build_rule_plan_items(rule_refs, query)
     rule_ids = {str(r.peer_id) for r in rule_refs}
 
-    if policy == "rules_only":
+    if policy == A2aInvokePolicy.RULES_ONLY:
         return plan_items[:max_calls], pre_steps
 
-    if policy in ("rules_then_plan", "plan_only") and (
-        policy == "plan_only" or len(plan_items) < max_calls
+    if policy in (A2aInvokePolicy.RULES_THEN_PLAN, A2aInvokePolicy.PLAN_ONLY) and (
+        policy == A2aInvokePolicy.PLAN_ONLY or len(plan_items) < max_calls
     ):
         planned = await plan_a2a_peers(
             agent,
             refs,
             query,
-            exclude_peer_ids=rule_ids if policy == "rules_then_plan" else None,
+            exclude_peer_ids=rule_ids if policy == A2aInvokePolicy.RULES_THEN_PLAN else None,
             db=db,
             tenant_id=tenant_id,
         )
@@ -265,7 +274,7 @@ async def resolve_a2a_plan_items(
             if len(plan_items) >= max_calls:
                 break
             if not any(x.get("peer_id") == p.get("peer_id") for x in plan_items):
-                plan_items.append({**p, "trigger": "plan"})
+                plan_items.append({**p, "trigger": A2aPlanTrigger.PLAN.value})
 
     return plan_items[:max_calls], pre_steps
 
@@ -358,7 +367,7 @@ async def run_a2a_host_chat(
             steps=[{"type": "a2a_host", "error": "no_model"}],
         )
 
-    steps: list[dict] = [{"type": "a2a_host", "engine": "rules_then_plan"}]
+    steps: list[dict] = [{"type": "a2a_host", "engine": A2aInvokePolicy.RULES_THEN_PLAN.value}]
     plan_items, pre = await resolve_a2a_plan_items(
         agent, bindings, body.query, db=svc.db, tenant_id=svc.ctx.tenant_id
     )

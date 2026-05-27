@@ -23,6 +23,7 @@ from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
 from app.tenant.agents.schemas.agent import ChatRequest, ChatResponse
+from app.tenant.agents.constants import SubAgentPlanner
 from app.integrations.deepagents.runner import deepagents_importable, run_deepagents_chat
 from app.integrations.langchain.chat_models import ainvoke_chat
 from app.models.agent import Agent, AgentSubAgentBinding
@@ -113,7 +114,7 @@ async def _run_platform_planned(
     steps: list[dict] = [
         {
             "type": "planner",
-            "engine": "platform",
+            "engine": SubAgentPlanner.PLATFORM.value,
             "mode": "json_plan",
         }
     ]
@@ -193,7 +194,7 @@ async def _run_platform_planned(
 def _should_use_deepagents(parent: Agent) -> bool:
     """是否启用 DeepAgents 库（非 force_platform_planner）。"""
     cfg = parent.config or {}
-    if cfg.get("planner", "deepagents") != "deepagents":
+    if cfg.get("planner", SubAgentPlanner.DEEPAGENTS.value) != SubAgentPlanner.DEEPAGENTS.value:
         return False
     if cfg.get("force_platform_planner"):
         return False
@@ -214,7 +215,7 @@ async def run_subagent_planned_chat(
             steps = [
                 {
                     "type": "planner_fallback",
-                    "engine": "platform",
+                    "engine": SubAgentPlanner.PLATFORM.value,
                     "error": str(exc)[:300],
                 }
             ]

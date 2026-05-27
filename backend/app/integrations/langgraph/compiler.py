@@ -45,12 +45,10 @@ from dataclasses import replace
 from langchain_core.runnables import RunnableConfig
 from langgraph.graph import END, START, StateGraph
 
-from app.flow_runtime.constants import COMPLIANCE_CHECK_NODE_TYPE, TEXT_OUTPUT_NODE_TYPES, LOOP_NODE_TYPE, SUB_FLOW_NODE_TYPE
+from app.flow_runtime.constants import CanvasNodeType, TEXT_OUTPUT_NODE_TYPES
 from app.integrations.langgraph.constants import RELEVANCE_NONE
 from app.integrations.langgraph.graph_analysis import (
-    CONDITION_NODE_TYPE,
     GRADE_BRANCH_HANDLES,
-    RELEVANCE_GRADE_NODE_TYPE,
     build_incoming,
     build_outgoing,
     compute_execution_layers,
@@ -214,7 +212,7 @@ def validate_graph_for_compile(graph: dict[str, Any]) -> FlowCompileReport:
                     "平台工具节点须配置 tool_slug",
                     node_id=nid,
                 )
-        if ntype == SUB_FLOW_NODE_TYPE:
+        if ntype == CanvasNodeType.SUB_FLOW:
             node_data = node.get("data") or {}
             if not isinstance(node_data, dict):
                 node_data = {}
@@ -224,7 +222,7 @@ def validate_graph_for_compile(graph: dict[str, Any]) -> FlowCompileReport:
                     "SubFlow 节点须配置 sub_flow_id",
                     node_id=nid,
                 )
-        if ntype == LOOP_NODE_TYPE:
+        if ntype == CanvasNodeType.LOOP:
             # LoopNode 与 SubFlow 共用 sub_flow_id；迭代次数在运行时 clamp 1–100
             node_data = node.get("data") or {}
             if not isinstance(node_data, dict):
@@ -242,7 +240,7 @@ def validate_graph_for_compile(graph: dict[str, Any]) -> FlowCompileReport:
                     f"LoopNode max_iterations 须在 1–100 之间，当前: {iterations}",
                     node_id=nid,
                 )
-        if ntype == CONDITION_NODE_TYPE:
+        if ntype == CanvasNodeType.CONDITION:
             conditional_nodes.append(nid)
             handles = {normalize_branch_handle(sh) for _, sh, _ in outgoing.get(nid, [])}
             if "true" not in handles or "false" not in handles:
@@ -251,7 +249,7 @@ def validate_graph_for_compile(graph: dict[str, Any]) -> FlowCompileReport:
                     "条件节点须同时连出 sourceHandle=true 与 false 两条边",
                     node_id=nid,
                 )
-        if ntype == RELEVANCE_GRADE_NODE_TYPE:
+        if ntype == CanvasNodeType.RELEVANCE_GRADE:
             conditional_nodes.append(nid)
             handles = {normalize_grade_handle(sh) for _, sh, _ in outgoing.get(nid, [])}
             missing = GRADE_BRANCH_HANDLES - handles
@@ -477,7 +475,7 @@ def build_canvas_graph(graph_json: dict[str, Any]):
         cond_node = node_map.get(cond_id, {})
         cond_type = resolve_node_type(cond_node)
         routes: dict[str, str] = {}
-        if cond_type == RELEVANCE_GRADE_NODE_TYPE:
+        if cond_type == CanvasNodeType.RELEVANCE_GRADE:
             for tgt, sh, _th in outgoing.get(cond_id, []):
                 branch = normalize_grade_handle(sh)
                 if branch in GRADE_BRANCH_HANDLES:

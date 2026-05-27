@@ -18,27 +18,7 @@ RAG 相关
 from collections.abc import Awaitable, Callable
 from typing import Any
 
-from app.flow_runtime.constants import (
-    CHAT_INPUT_NODE_TYPE,
-    CHAT_OUTPUT_NODE_TYPE,
-    CONDITION_NODE_TYPE,
-    KNOWLEDGE_SEARCH_NODE_TYPE,
-    LLM_CALL_NODE_TYPE,
-    IMAGE_GENERATE_NODE_TYPE,
-    VIDEO_GENERATE_NODE_TYPE,
-    PARALLEL_JOIN_NODE_TYPE,
-    PLATFORM_TOOL_NODE_TYPE,
-    PROMPT_TEMPLATE_NODE_TYPE,
-    RELEVANCE_GRADE_NODE_TYPE,
-    STATIC_RESPONSE_NODE_TYPE,
-    SUB_FLOW_NODE_TYPE,
-    COMPLIANCE_CHECK_NODE_TYPE,
-    OCR_EXTRACT_NODE_TYPE,
-    AUDIO_TRANSCRIBE_NODE_TYPE,
-    LOOP_NODE_TYPE,
-    TEXT_INPUT_NODE_TYPE,
-    TEXT_OUTPUT_NODE_TYPE,
-)
+from app.flow_runtime.constants import CanvasNodeType, parse_canvas_node_type
 from app.flow_runtime.nodes import (
     compliance_nodes,
     control_nodes,
@@ -58,25 +38,25 @@ from app.flow_runtime.types import RunContext
 NodeHandler = Callable[[dict[str, Any], dict[str, Any], RunContext], Awaitable[Any]]
 
 NODE_REGISTRY: dict[str, NodeHandler] = {
-    TEXT_INPUT_NODE_TYPE: io_nodes.text_input,
-    TEXT_OUTPUT_NODE_TYPE: io_nodes.text_output,
-    KNOWLEDGE_SEARCH_NODE_TYPE: rag_nodes.knowledge_search,
-    PROMPT_TEMPLATE_NODE_TYPE: rag_nodes.prompt_template,
-    LLM_CALL_NODE_TYPE: llm_nodes.llm_call,
-    IMAGE_GENERATE_NODE_TYPE: image_generate.image_generate,
-    VIDEO_GENERATE_NODE_TYPE: video_generate.video_generate,
-    PLATFORM_TOOL_NODE_TYPE: tool_nodes.platform_tool,
-    CONDITION_NODE_TYPE: control_nodes.condition_branch,
-    RELEVANCE_GRADE_NODE_TYPE: grade_nodes.relevance_grade,
-    STATIC_RESPONSE_NODE_TYPE: io_nodes.static_response,
-    PARALLEL_JOIN_NODE_TYPE: control_nodes.parallel_join,
-    CHAT_INPUT_NODE_TYPE: io_nodes.text_input,
-    CHAT_OUTPUT_NODE_TYPE: io_nodes.text_output,
-    SUB_FLOW_NODE_TYPE: subflow_nodes.sub_flow,
-    LOOP_NODE_TYPE: loop_nodes.loop_node,
-    COMPLIANCE_CHECK_NODE_TYPE: compliance_nodes.compliance_check,
-    OCR_EXTRACT_NODE_TYPE: media_nodes.ocr_extract,
-    AUDIO_TRANSCRIBE_NODE_TYPE: media_nodes.audio_transcribe,
+    CanvasNodeType.TEXT_INPUT: io_nodes.text_input,
+    CanvasNodeType.TEXT_OUTPUT: io_nodes.text_output,
+    CanvasNodeType.KNOWLEDGE_SEARCH: rag_nodes.knowledge_search,
+    CanvasNodeType.PROMPT_TEMPLATE: rag_nodes.prompt_template,
+    CanvasNodeType.LLM_CALL: llm_nodes.llm_call,
+    CanvasNodeType.IMAGE_GENERATE: image_generate.image_generate,
+    CanvasNodeType.VIDEO_GENERATE: video_generate.video_generate,
+    CanvasNodeType.PLATFORM_TOOL: tool_nodes.platform_tool,
+    CanvasNodeType.CONDITION: control_nodes.condition_branch,
+    CanvasNodeType.RELEVANCE_GRADE: grade_nodes.relevance_grade,
+    CanvasNodeType.STATIC_RESPONSE: io_nodes.static_response,
+    CanvasNodeType.PARALLEL_JOIN: control_nodes.parallel_join,
+    CanvasNodeType.CHAT_INPUT: io_nodes.text_input,
+    CanvasNodeType.CHAT_OUTPUT: io_nodes.text_output,
+    CanvasNodeType.SUB_FLOW: subflow_nodes.sub_flow,
+    CanvasNodeType.LOOP: loop_nodes.loop_node,
+    CanvasNodeType.COMPLIANCE_CHECK: compliance_nodes.compliance_check,
+    CanvasNodeType.OCR_EXTRACT: media_nodes.ocr_extract,
+    CanvasNodeType.AUDIO_TRANSCRIBE: media_nodes.audio_transcribe,
 }
 
 
@@ -87,6 +67,7 @@ async def execute_node(
     ctx: RunContext,
 ) -> Any:
     """按节点类型分发到已注册 handler（LangGraph 编译图内调用）。"""
+    parse_canvas_node_type(node_type)
     handler = NODE_REGISTRY.get(node_type)
     if not handler:
         raise ValueError(f"未知节点类型: {node_type}")

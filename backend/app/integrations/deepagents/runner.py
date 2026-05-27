@@ -17,11 +17,17 @@ from uuid import UUID
 
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 
-from app.integrations.deepagents.subagent_graphs import build_compiled_subagents
+from app.integrations.deepagents.subagent_graphs import _slug_for_binding, build_compiled_subagents
 from app.integrations.langchain.chat_models import get_chat_model
 from app.integrations.langgraph.checkpointer import get_checkpointer
+from app.tenant.agents.constants import SubAgentPlanner
 from app.tenant.agents.schemas.agent import ChatRequest, ChatResponse
 from app.models.agent import Agent, AgentSubAgentBinding
+
+try:
+    from deepagents import create_deep_agent
+except ImportError:
+    create_deep_agent = None  # type: ignore[misc, assignment]
 
 if TYPE_CHECKING:
     from app.tenant.agents.services.agent import AgentService
@@ -29,12 +35,7 @@ if TYPE_CHECKING:
 
 def deepagents_importable() -> bool:
     """运行时检测 deepagents 包是否已安装。"""
-    try:
-        from deepagents import create_deep_agent  # noqa: F401
-
-        return True
-    except ImportError:
-        return False
+    return create_deep_agent is not None
 
 
 def _thread_id(parent: Agent, body: ChatRequest) -> str:
@@ -55,14 +56,12 @@ def _extract_steps(messages: list[Any], bindings: list[AgentSubAgentBinding]) ->
     """从 tool_calls / ToolMessage 提取可展示的委派步骤。"""
     slug_to_binding = {}
     for b in bindings:
-        from app.integrations.deepagents.subagent_graphs import _slug_for_binding
-
         slug_to_binding[_slug_for_binding(b)] = b
 
     steps: list[dict] = [
         {
             "type": "planner",
-            "engine": "deepagents",
+            "engine": SubAgentPlanner.DEEPAGENTS.value,
             "mode": "task_delegation",
         }
     ]
@@ -111,7 +110,8 @@ async def run_deepagents_chat(
 
     ``recursion_limit`` 来自 ``config.max_plan_iterations``（默认 12）。
     """
-    from deepagents import create_deep_agent
+    if create_deep_agent is None:
+        raise ImportError("deepagents 包未安装")
 
     if not parent.model_config:
         raise ValueError("DeepAgents 需要主智能体配置大模型")

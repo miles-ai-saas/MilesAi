@@ -1,60 +1,42 @@
-"""画布节点类型名（registry、LangGraph 编译与分析共用）。
+"""画布节点类型（registry、LangGraph 编译与分析共用）。"""
 
-P2 新增：LoopNode、ComplianceCheck、OcrExtract、AudioTranscribe。
-"""
+from __future__ import annotations
 
-TEXT_INPUT_NODE_TYPE = "TextInput"
-TEXT_OUTPUT_NODE_TYPE = "TextOutput"
-KNOWLEDGE_SEARCH_NODE_TYPE = "KnowledgeSearch"
-PROMPT_TEMPLATE_NODE_TYPE = "PromptTemplate"
-LLM_CALL_NODE_TYPE = "LLMCall"
-PLATFORM_TOOL_NODE_TYPE = "PlatformTool"
-CONDITION_NODE_TYPE = "ConditionBranch"
-RELEVANCE_GRADE_NODE_TYPE = "RelevanceGrade"
-STATIC_RESPONSE_NODE_TYPE = "StaticResponse"
-PARALLEL_JOIN_NODE_TYPE = "ParallelJoin"
-CHAT_INPUT_NODE_TYPE = "ChatInput"
-CHAT_OUTPUT_NODE_TYPE = "ChatOutput"
-IMAGE_GENERATE_NODE_TYPE = "ImageGenerate"
-VIDEO_GENERATE_NODE_TYPE = "VideoGenerate"
-SUB_FLOW_NODE_TYPE = "SubFlow"
-# P2: 循环节点 — 固定次数/条件退出
-LOOP_NODE_TYPE = "LoopNode"
-# P2: 合规检查节点 — 敏感词扫描
-COMPLIANCE_CHECK_NODE_TYPE = "ComplianceCheck"
-# P2: OCR 文字提取节点
-OCR_EXTRACT_NODE_TYPE = "OcrExtract"
-# P2: 音频转写节点（Whisper）
-AUDIO_TRANSCRIBE_NODE_TYPE = "AudioTranscribe"
+import enum
+
+
+class CanvasNodeType(str, enum.Enum):
+    """React Flow ``node.type`` 与 ``NODE_REGISTRY`` 键名。"""
+
+    TEXT_INPUT = "TextInput"
+    TEXT_OUTPUT = "TextOutput"
+    KNOWLEDGE_SEARCH = "KnowledgeSearch"
+    PROMPT_TEMPLATE = "PromptTemplate"
+    LLM_CALL = "LLMCall"
+    PLATFORM_TOOL = "PlatformTool"
+    CONDITION = "ConditionBranch"
+    RELEVANCE_GRADE = "RelevanceGrade"
+    STATIC_RESPONSE = "StaticResponse"
+    PARALLEL_JOIN = "ParallelJoin"
+    CHAT_INPUT = "ChatInput"
+    CHAT_OUTPUT = "ChatOutput"
+    IMAGE_GENERATE = "ImageGenerate"
+    VIDEO_GENERATE = "VideoGenerate"
+    SUB_FLOW = "SubFlow"
+    LOOP = "LoopNode"
+    COMPLIANCE_CHECK = "ComplianceCheck"
+    OCR_EXTRACT = "OcrExtract"
+    AUDIO_TRANSCRIBE = "AudioTranscribe"
+
+
+def parse_canvas_node_type(type_str: str) -> CanvasNodeType:
+    """将 graph JSON 中的 type 字符串解析为枚举；未知类型抛 ``ValueError``。"""
+    return CanvasNodeType(type_str)
+
+
 MAX_SUBFLOW_DEPTH = 3
 MAX_LOOP_ITERATIONS = 100
 
-CONDITIONAL_NODE_TYPES = frozenset({CONDITION_NODE_TYPE, RELEVANCE_GRADE_NODE_TYPE})
-
-# 兼容历史引用
-PARALLEL_JOIN_TYPE = PARALLEL_JOIN_NODE_TYPE
-
-TEXT_OUTPUT_NODE_TYPES = frozenset({TEXT_OUTPUT_NODE_TYPE, CHAT_OUTPUT_NODE_TYPE})
-
-# 与 flow_runtime.nodes.registry.NODE_REGISTRY 键名一致（含历史别名）
-CANVAS_NODE_TYPES = frozenset({
-    TEXT_INPUT_NODE_TYPE,
-    TEXT_OUTPUT_NODE_TYPE,
-    KNOWLEDGE_SEARCH_NODE_TYPE,
-    PROMPT_TEMPLATE_NODE_TYPE,
-    LLM_CALL_NODE_TYPE,
-    PLATFORM_TOOL_NODE_TYPE,
-    CONDITION_NODE_TYPE,
-    RELEVANCE_GRADE_NODE_TYPE,
-    STATIC_RESPONSE_NODE_TYPE,
-    PARALLEL_JOIN_NODE_TYPE,
-    CHAT_INPUT_NODE_TYPE,
-    CHAT_OUTPUT_NODE_TYPE,
-    IMAGE_GENERATE_NODE_TYPE,
-    VIDEO_GENERATE_NODE_TYPE,
-    SUB_FLOW_NODE_TYPE,
-    LOOP_NODE_TYPE,
-    COMPLIANCE_CHECK_NODE_TYPE,
-    OCR_EXTRACT_NODE_TYPE,
-    AUDIO_TRANSCRIBE_NODE_TYPE,
-})
+CONDITIONAL_NODE_TYPES = frozenset({CanvasNodeType.CONDITION, CanvasNodeType.RELEVANCE_GRADE})
+TEXT_OUTPUT_NODE_TYPES = frozenset({CanvasNodeType.TEXT_OUTPUT, CanvasNodeType.CHAT_OUTPUT})
+CANVAS_NODE_TYPES = frozenset(CanvasNodeType)

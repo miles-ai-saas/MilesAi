@@ -28,6 +28,7 @@ from typing import Any
 import httpx
 
 from app.common.exceptions import BadRequestError
+from app.tenant.mcp.constants import McpTransport
 from app.tenant.mcp.rpc import normalize_tool_call_result, parse_jsonrpc_result
 from app.tenant.mcp.security import validate_mcp_endpoint_url
 from app.tenant.mcp.sse_transport import legacy_sse_json_rpc, streamable_http_json_rpc
@@ -118,7 +119,7 @@ async def mcp_json_rpc(
     method: str,
     params: dict,
     *,
-    transport: str = "sse",
+    transport: str | McpTransport = McpTransport.SSE,
     connection_config: dict | None = None,
     timeout: float | None = None,
 ) -> Any:
@@ -128,13 +129,13 @@ async def mcp_json_rpc(
     ``method`` 常用：``tools/list``、``tools/call``、``initialize``（Legacy SSE 内部）。
     """
     t = normalize_transport(transport)
-    if t == "stdio":
+    if t == McpTransport.STDIO:
         raise BadRequestError("STDIO 传输不支持远程 JSON-RPC invoke")
 
     req_timeout = timeout if timeout is not None else _client_timeout(connection_config, DEFAULT_INVOKE_TIMEOUT)
     cfg = dict(connection_config or {})
 
-    if t == "custom":
+    if t == McpTransport.CUSTOM:
         adapter_url = cfg.get("adapter_url") or endpoint_url
         return await _simple_post_json_rpc(
             adapter_url,
@@ -144,7 +145,7 @@ async def mcp_json_rpc(
             timeout=req_timeout,
         )
 
-    if t == "sse":
+    if t == McpTransport.SSE:
         try:
             return await legacy_sse_json_rpc(
                 endpoint_url,
@@ -184,7 +185,7 @@ async def mcp_json_rpc(
 
 async def fetch_mcp_tools(
     endpoint_url: str,
-    transport: str = "sse",
+    transport: str | McpTransport = McpTransport.SSE,
     connection_config: dict | None = None,
 ) -> list[dict]:
     """
@@ -240,7 +241,7 @@ async def invoke_mcp_tool(
     tool_name: str,
     arguments: dict,
     *,
-    transport: str = "sse",
+    transport: str | McpTransport = McpTransport.SSE,
     connection_config: dict | None = None,
 ) -> dict:
     """
