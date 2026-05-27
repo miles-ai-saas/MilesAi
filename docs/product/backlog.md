@@ -35,7 +35,7 @@
 |----|------|------|
 | 视觉向量以图搜图（CLIP / 多模态 embedding） | 6b | P0 MVP 为 OCR 派生；真·相似图检索 |
 | 私有应用 / 租户内可见市场包 | 7 | ✅ `visibility` + 广场过滤 |
-| 应用安装后版本升级与 diff | 7 | ✅ 升级 API（manifest 同步）；diff UI 未做 |
+| 应用安装后版本升级与 diff | 7 | ✅ 升级 API + diff 预览 UI |
 | 批量文档入库 / 批量任务取消 | 8 | ✅ 批量上传 + batch-cancel |
 | Token / 分模型调用报表 | 9 | ✅ `agt_model_usage_logs` + 监控「模型用量」 |
 | 智能体定时执行历史 UI | 4 / 8 | ✅ `agt_schedule_runs` + 面板历史 |

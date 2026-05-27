@@ -16,11 +16,11 @@
 - 应用 CRUD、从资源打包、提交审核、通过/驳回
 - 广场列表（分类、排序、标签筛选）、详情、安装、我的安装
 - 评分（需已安装，`marketplace:rate`）
-- 前端：`/workbench/marketplace`、详情 Drawer、星级展示
+- **应用升级**：manifest 同步到已安装资源；升级前 **diff 预览**（KB / 流程 / 智能体字段与画布结构）
+- 前端：`/workbench/marketplace`、详情 Drawer、升级 diff 对话框、星级展示
 
 ### 1.2 明确不做
 
-- 应用版本 diff / 一键升级（安装后资源独立演进）
 - 跨租户共享 KB 文档 blob（安装时创建空 KB 壳，需用户自行入库）
 - 私有应用仅本租户可见（v1 审核通过后全平台 `PUBLISHED` 可见）
 
@@ -55,6 +55,7 @@
 | 字段 | 说明 |
 |------|------|
 | `tenant_id` + `app_id` | UNIQUE，每租户每应用仅安装一次 |
+| `installed_version` | 安装/升级时的应用版本号 |
 | `flow_id` / `agent_id` / `kb_id` | 安装后在本租户创建的资源 ID |
 
 ### 2.4 表 `mkt_ratings`
@@ -99,11 +100,13 @@ POST /marketplace/apps/{id}/approve
 POST /marketplace/apps/{id}/reject        # body: { note }
 ```
 
-### 3.4 安装与评分
+### 3.4 安装、升级与评分
 
 ```
-POST   /marketplace/apps/{id}/install     # marketplace:install
-POST   /marketplace/apps/{id}/ratings       # 需已安装
+POST   /marketplace/apps/{id}/install              # marketplace:install
+GET    /marketplace/apps/{id}/upgrade-preview      # 升级 diff 预览
+POST   /marketplace/apps/{id}/upgrade              # 确认升级（manifest → 已安装资源）
+POST   /marketplace/apps/{id}/ratings              # 需已安装
 DELETE /marketplace/apps/{id}/ratings/mine
 ```
 
@@ -153,19 +156,37 @@ POST /apps/{id}/install
 
 安装创建的 KB 为**空壳**（名称/描述来自 manifest）；流程复制 `graph_json`；智能体按 `bind_kb` / `bind_flow` 关联新资源。
 
+### 4.4 升级
+
+```
+GET  /apps/{id}/upgrade-preview
+    → 对比 installed_version 与市场 version
+    → 逐资源 diff：KB/Agent 名称·描述·系统提示词；Flow 名称·描述·节点数·连线数·画布结构
+
+POST /apps/{id}/upgrade
+    → 校验已安装、已发布、版本不同
+    → 将 manifest.resources 同步到 install 关联的 kb/flow/agent
+    → 更新 installed_version
+```
+
+**Diff 范围（v1）：** 仅 manifest 中声明的字段；不合并租户侧对资源的独立修改策略（以市场 manifest 覆盖对应字段）。KB 文档内容不在升级范围内。
+
+**前端：**「我的安装」中 `app_version ≠ installed_version` 时显示「升级到最新版」，先打开 `MarketplaceUpgradeDialog` 预览，确认后调用 upgrade API。
+
 ---
 
 ## 5. 前端
 
 ### 5.1 页面
 
-- `/workbench/marketplace` — 广场 Tab（分类、标签、排序）、我的应用、待审核（有 review 权限）
+- `/workbench/marketplace` — 广场 Tab（分类、标签、排序）、我的安装（含升级 diff）、我的应用、待审核（有 review 权限）
 
 ### 5.2 组件
 
 ```
 frontend/app/workbench/marketplace/page.tsx
 frontend/components/marketplace/MarketplaceAppDetailDrawer.tsx
+frontend/components/marketplace/MarketplaceUpgradeDialog.tsx
 frontend/components/marketplace/MarketplaceStarDisplay.tsx
 frontend/components/marketplace/marketplace-manifest.ts
 ```
@@ -182,7 +203,11 @@ backend/app/tenant/marketplace/services/marketplace/
     publish.py      # 创建、打包、提交审核
     review.py       # 审核通过/驳回
     install.py      # 安装与安装记录
-backend/app/tenant/marketplace/util.py
+    upgrade.py      # 升级预览与 manifest 同步
+backend/app/tenant/marketplace/util/
+    __init__.py     # RAG 模板加载
+    upgrade_diff.py # diff 纯函数
+backend/tests/test_upgrade_diff.py
 backend/scripts/seed/marketplace.py         # 预置 mkt_categories
 ```
 
@@ -194,6 +219,7 @@ backend/scripts/seed/marketplace.py         # 预置 mkt_categories
 2. approve → 广场列表 → install → 本租户出现 flow/agent/kb
 3. 重复 install → 409；未安装评分 → 403
 4. reject 后 review_note 展示；tag_ids 筛选
+5. 发布方 bump version → 已安装租户 upgrade-preview 可见 diff → upgrade 后 installed_version 更新
 
 ---
 

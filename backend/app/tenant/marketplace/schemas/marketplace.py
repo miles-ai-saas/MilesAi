@@ -157,3 +157,30 @@ class AppUpgradeResult(BaseModel):
     previous_version: str = Field(description="升级前版本")
     new_version: str = Field(description="升级后版本")
     message: str = Field(default="升级成功", description="结果说明")
+
+
+class UpgradeFieldChange(BaseModel):
+    field: str = Field(description="字段键")
+    label: str = Field(description="展示标签")
+    before: str | None = Field(default=None, description="当前值")
+    after: str | None = Field(default=None, description="升级后值")
+    changed: bool = Field(description="是否有差异")
+
+
+class UpgradeResourceDiff(BaseModel):
+    resource_type: str = Field(description="knowledge_base | flow | agent")
+    resource_id: UUID | None = Field(default=None, description="租户内资源 ID")
+    resource_name: str = Field(description="资源名称")
+    changes: list[UpgradeFieldChange] = Field(default_factory=list, description="字段对比")
+    has_changes: bool = Field(default=False, description="该资源是否存在差异")
+
+
+class AppUpgradePreview(BaseModel):
+    app_id: UUID = Field(description="应用 ID")
+    app_name: str = Field(description="应用名称")
+    installed_version: str = Field(description="已安装版本")
+    target_version: str = Field(description="市场目标版本")
+    can_upgrade: bool = Field(description="是否可升级（版本不同）")
+    has_changes: bool = Field(description="manifest 与当前资源是否存在字段差异")
+    message: str | None = Field(default=None, description="提示说明")
+    resources: list[UpgradeResourceDiff] = Field(default_factory=list, description="资源 diff")

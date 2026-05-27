@@ -1031,6 +1031,8 @@ export const api = {
     http.delete(`/marketplace/apps/${appId}/ratings/mine`).then(() => undefined),
   installMarketplaceApp: (appId: string) =>
     post<AppInstallResult>(`/marketplace/apps/${appId}/install`),
+  getMarketplaceUpgradePreview: (appId: string) =>
+    get<import("./types").AppUpgradePreview>(`/marketplace/apps/${appId}/upgrade-preview`),
   upgradeMarketplaceApp: (appId: string) =>
     post<import("./types").AppUpgradeResult>(`/marketplace/apps/${appId}/upgrade`, {}),
   listAppInstalls: (page = 1, size = DEFAULT_PAGE_SIZE) =>

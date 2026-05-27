@@ -8,6 +8,7 @@ import { api } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth-store";
 import { usePagedList } from "@/hooks/use-paged-list";
 import { MarketplaceAppDetailDrawer } from "@/components/marketplace/MarketplaceAppDetailDrawer";
+import { MarketplaceUpgradeDialog } from "@/components/marketplace/MarketplaceUpgradeDialog";
 import { MarketplaceStarDisplay } from "@/components/marketplace/MarketplaceStarDisplay";
 import { TagChips } from "@/components/tag/TagChips";
 import { TagFilterDropdown } from "@/components/tag/TagFilterDropdown";
@@ -30,6 +31,7 @@ import type {
   AppInstall,
   AppInstallResult,
   AppRating,
+  AppUpgradePreview,
   Flow,
   KnowledgeBase,
   MarketplaceApp,
@@ -116,6 +118,9 @@ export default function MarketplacePage() {
   const [activeCategory, setActiveCategory] = useState("");
   const [installing, setInstalling] = useState<string | null>(null);
   const [upgrading, setUpgrading] = useState<string | null>(null);
+  const [upgradeTarget, setUpgradeTarget] = useState<AppInstall | null>(null);
+  const [upgradePreview, setUpgradePreview] = useState<AppUpgradePreview | null>(null);
+  const [upgradePreviewLoading, setUpgradePreviewLoading] = useState(false);
   const [publishing, setPublishing] = useState<string | null>(null);
   const [reviewing, setReviewing] = useState<string | null>(null);
   const [rejectTarget, setRejectTarget] = useState<MarketplaceApp | null>(null);
@@ -279,17 +284,44 @@ export default function MarketplacePage() {
     [plazaFiltered],
   );
 
-  const onUpgrade = async (ins: AppInstall) => {
-    setUpgrading(ins.app_id);
+  const onOpenUpgrade = async (ins: AppInstall) => {
+    setUpgradeTarget(ins);
+    setUpgradePreview(null);
+    setUpgradePreviewLoading(true);
     setMsg("");
     try {
-      const res = await api.upgradeMarketplaceApp(ins.app_id);
+      const preview = await api.getMarketplaceUpgradePreview(ins.app_id);
+      setUpgradePreview(preview);
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : "加载升级预览失败");
+      setUpgradeTarget(null);
+    } finally {
+      setUpgradePreviewLoading(false);
+    }
+  };
+
+  const closeUpgradeDialog = () => {
+    if (upgrading) return;
+    setUpgradeTarget(null);
+    setUpgradePreview(null);
+    setUpgradePreviewLoading(false);
+  };
+
+  const onConfirmUpgrade = async () => {
+    if (!upgradeTarget) return;
+    setUpgrading(upgradeTarget.app_id);
+    setMsg("");
+    try {
+      const res = await api.upgradeMarketplaceApp(upgradeTarget.app_id);
       setMsg(res.message);
+      setUpgradeTarget(null);
+      setUpgradePreview(null);
       await installs.reload();
     } catch (e) {
       setMsg(e instanceof Error ? e.message : "升级失败");
     } finally {
       setUpgrading(null);
+      setUpgradePreviewLoading(false);
     }
   };
 
@@ -536,6 +568,24 @@ export default function MarketplacePage() {
     />
   );
 
+  const upgradeDialog = (
+    <MarketplaceUpgradeDialog
+      open={upgradeTarget !== null}
+      loading={upgradePreviewLoading}
+      preview={upgradePreview}
+      upgrading={upgrading !== null}
+      onClose={closeUpgradeDialog}
+      onConfirm={() => void onConfirmUpgrade()}
+    />
+  );
+
+  const pageOverlays = (
+    <>
+      {appDetailDrawer}
+      {upgradeDialog}
+    </>
+  );
+
   if (mainView === "plaza") {
     return (
       <>
@@ -616,7 +666,7 @@ export default function MarketplacePage() {
             />
           ))}
         </ResourceListLayout>
-        {appDetailDrawer}
+        {pageOverlays}
         <PromptDialog
           open={rejectTarget !== null}
           title="驳回应用"
@@ -683,7 +733,7 @@ export default function MarketplacePage() {
                       type="button"
                       className="font-medium text-brand hover:underline disabled:opacity-50"
                       disabled={upgrading === ins.app_id}
-                      onClick={() => void onUpgrade(ins)}
+                      onClick={() => void onOpenUpgrade(ins)}
                     >
                       {upgrading === ins.app_id ? "升级中…" : "升级到最新版"}
                     </button>
@@ -711,7 +761,7 @@ export default function MarketplacePage() {
             );
           })}
         </ResourceListLayout>
-        {appDetailDrawer}
+        {pageOverlays}
       </>
     );
   }
@@ -766,7 +816,7 @@ export default function MarketplacePage() {
             />
           ))}
         </ResourceListLayout>
-        {appDetailDrawer}
+        {pageOverlays}
         <PromptDialog
           open={rejectTarget !== null}
           title="驳回应用"
@@ -850,7 +900,7 @@ export default function MarketplacePage() {
             ))}
           </div>
         </ResourceListLayout>
-        {appDetailDrawer}
+        {pageOverlays}
         <PromptDialog
           open={rejectTarget !== null}
           title="驳回应用"
@@ -1000,7 +1050,7 @@ export default function MarketplacePage() {
           </section>
         </div>
       </ResourceListLayout>
-      {appDetailDrawer}
+      {pageOverlays}
     </>
   );
 }

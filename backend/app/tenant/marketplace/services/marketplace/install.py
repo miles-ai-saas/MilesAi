@@ -8,17 +8,16 @@ from sqlalchemy.orm import selectinload
 from app.common.exceptions import BadRequestError, ConflictError
 from app.common.schema import PageParams, PageResult
 from app.core.tenant import tenant_filters
-from app.tenant.agents.schemas.agent import AgentCreate, AgentUpdate
+from app.tenant.agents.schemas.agent import AgentCreate
 from app.tenant.agents.services.agent import AgentService
-from app.tenant.flows.schemas.flow import FlowCreate, FlowSaveGraph, FlowUpdate
+from app.tenant.flows.schemas.flow import FlowCreate
 from app.tenant.flows.services.flow import FlowService
-from app.tenant.kb.schemas.kb import KnowledgeBaseCreate, KnowledgeBaseUpdate
+from app.tenant.kb.schemas.kb import KnowledgeBaseCreate
 from app.tenant.kb.services.kb import KnowledgeBaseService
 from app.tenant.marketplace.models import AppInstall, MarketplaceAppStatus, MarketplaceAppVisibility
 from app.tenant.marketplace.schemas.marketplace import (
     AppInstallOut,
     AppInstallResult,
-    AppUpgradeResult,
 )
 from app.tenant.marketplace.util import load_rag_graph_template
 
@@ -137,79 +136,6 @@ class MarketplaceInstallMixin:
             agent_id=agent_id,
             kb_id=kb_id,
             message="安装成功，已创建关联资源",
-        )
-
-    async def upgrade_app(self, app_id: UUID) -> AppUpgradeResult:
-        """将已安装资源同步到市场应用当前 manifest 版本。"""
-        stmt = (
-            select(AppInstall)
-            .where(
-                AppInstall.tenant_id == self.ctx.tenant_id,
-                AppInstall.app_id == app_id,
-            )
-            .options(selectinload(AppInstall.app))
-        )
-        install = (await self.db.execute(stmt)).scalar_one_or_none()
-        if not install:
-            raise BadRequestError("未安装该应用")
-        app = install.app or await self.get_app_or_raise(app_id)
-        if app.status != MarketplaceAppStatus.PUBLISHED:
-            raise BadRequestError("应用未发布，无法升级")
-        if install.installed_version == app.version:
-            raise BadRequestError("已是最新版本")
-
-        prev = install.installed_version
-        resources = (app.manifest or {}).get("resources") or app.manifest or {}
-        kb_svc = KnowledgeBaseService(self.db, self.ctx)
-        flow_svc = FlowService(self.db, self.ctx)
-        agent_svc = AgentService(self.db, self.ctx)
-
-        kb_spec = resources.get("knowledge_base")
-        if kb_spec and install.kb_id:
-            await kb_svc.update_kb(
-                install.kb_id,
-                KnowledgeBaseUpdate(
-                    name=kb_spec.get("name"),
-                    description=kb_spec.get("description"),
-                ),
-            )
-
-        flow_spec = resources.get("flow")
-        if flow_spec and install.flow_id:
-            graph = flow_spec.get("graph_json") or load_rag_graph_template()
-            await flow_svc.update_flow(
-                install.flow_id,
-                FlowUpdate(
-                    name=flow_spec.get("name"),
-                    description=flow_spec.get("description"),
-                ),
-            )
-            await flow_svc.save_graph(
-                install.flow_id,
-                FlowSaveGraph(graph_json=graph, remark=f"市场升级 v{app.version}"),
-            )
-
-        agent_spec = resources.get("agent")
-        if agent_spec and install.agent_id:
-            await agent_svc.update_agent(
-                install.agent_id,
-                AgentUpdate(
-                    name=agent_spec.get("name"),
-                    description=agent_spec.get("description"),
-                    system_prompt=agent_spec.get("system_prompt"),
-                ),
-            )
-
-        install.installed_version = app.version
-        await self.db.flush()
-        await self.db.refresh(install)
-
-        out = self._install_out(install, app.name, app.version)
-        return AppUpgradeResult(
-            install=out,
-            previous_version=prev,
-            new_version=app.version,
-            message=f"已从 v{prev} 升级到 v{app.version}",
         )
 
     async def list_installs(self, params: PageParams) -> PageResult[AppInstallOut]:

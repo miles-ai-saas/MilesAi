@@ -1052,6 +1052,33 @@ export interface AppUpgradeResult {
   message: string;
 }
 
+export interface UpgradeFieldChange {
+  field: string;
+  label: string;
+  before?: string | null;
+  after?: string | null;
+  changed: boolean;
+}
+
+export interface UpgradeResourceDiff {
+  resource_type: string;
+  resource_id?: string | null;
+  resource_name: string;
+  changes: UpgradeFieldChange[];
+  has_changes: boolean;
+}
+
+export interface AppUpgradePreview {
+  app_id: string;
+  app_name: string;
+  installed_version: string;
+  target_version: string;
+  can_upgrade: boolean;
+  has_changes: boolean;
+  message?: string | null;
+  resources: UpgradeResourceDiff[];
+}
+
 export interface AppInstall {
   id: string;
   app_id: string;

@@ -18,6 +18,7 @@ from app.tenant.marketplace.schemas.marketplace import (
     AppRatingCreate,
     AppRatingOut,
     AppReviewBody,
+    AppUpgradePreview,
     AppUpgradeResult,
     MarketplaceAppCreate,
     MarketplaceAppCreateFromResources,
@@ -191,6 +192,15 @@ async def install_app(
     db: AsyncSession = Depends(get_db),
 ):
     return ok(await _svc(db, ctx).install_app(app_id))
+
+
+@router.get("/apps/{app_id}/upgrade-preview", response_model=ApiResponse[AppUpgradePreview])
+async def upgrade_preview(
+    app_id: UUID,
+    ctx: TenantContext = Depends(require_permissions("marketplace:install")),
+    db: AsyncSession = Depends(get_db),
+):
+    return ok(await _svc(db, ctx).preview_upgrade(app_id))
 
 
 @router.post("/apps/{app_id}/upgrade", response_model=ApiResponse[AppUpgradeResult])
