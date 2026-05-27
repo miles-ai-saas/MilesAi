@@ -7,10 +7,10 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.infra.db import Base
-from app.models.base import TimestampMixin, UUIDPrimaryKeyMixin
+from app.models.base import AuditTimestampMixin, UUIDPrimaryKeyMixin
 
 
-class ModelUsageLog(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+class ModelUsageLog(UUIDPrimaryKeyMixin, AuditTimestampMixin, Base):
     __tablename__ = "agt_model_usage_logs"
     __table_args__ = (
         Index("idx_agt_model_usage_logs_tenant_id", "tenant_id"),

@@ -9,7 +9,7 @@ from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.infra.db import Base
-from app.models.base import TimestampMixin, UUIDPrimaryKeyMixin
+from app.models.base import AuditTimestampMixin, TimestampMixin, UUIDPrimaryKeyMixin
 
 
 class HookType(str, enum.Enum):
@@ -94,7 +94,7 @@ class HookBinding(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     )
 
 
-class HookExecutionLog(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+class HookExecutionLog(UUIDPrimaryKeyMixin, AuditTimestampMixin, Base):
     """钩子单次执行审计（HTTP 调用结果与响应 action）。"""
 
     __tablename__ = "hook_execution_logs"

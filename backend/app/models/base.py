@@ -12,7 +12,7 @@ from app.utils.idgen import generate_uuid
 
 
 class TimestampMixin:
-    """created_at / updated_at / deleted_at（软删非空即已删）。"""
+    """created_at / updated_at / deleted_at（软删：deleted_at 非空即已删）。"""
 
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
@@ -23,6 +23,21 @@ class TimestampMixin:
     from typing import TYPE_CHECKING
 
     # 类型注解，用于 IDE 提示
+    if TYPE_CHECKING:
+        created_at: datetime
+        updated_at: datetime
+
+
+class AuditTimestampMixin:
+    """仅 created_at / updated_at，供审计与 append-only 日志表（无软删）。"""
+
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    from typing import TYPE_CHECKING
+
     if TYPE_CHECKING:
         created_at: datetime
         updated_at: datetime

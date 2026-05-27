@@ -11,7 +11,7 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.infra.db import Base
-from app.models.base import TimestampMixin, UUIDPrimaryKeyMixin
+from app.models.base import AuditTimestampMixin, UUIDPrimaryKeyMixin
 
 
 class AgentScheduleRunStatus(str, enum.Enum):
@@ -19,7 +19,7 @@ class AgentScheduleRunStatus(str, enum.Enum):
     FAILED = "failed"
 
 
-class AgentScheduleRun(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+class AgentScheduleRun(UUIDPrimaryKeyMixin, AuditTimestampMixin, Base):
     __tablename__ = "agt_schedule_runs"
     __table_args__ = (
         Index("idx_agt_schedule_runs_schedule_id", "schedule_id"),
