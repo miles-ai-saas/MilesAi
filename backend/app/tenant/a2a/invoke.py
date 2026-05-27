@@ -310,7 +310,7 @@ async def augment_response_with_a2a(
 
     if agent.model_config:
         synth = (
-            f"{await svc._resolve_system_prompt(agent)}\n\n"
+            f"{await svc.resolve_system_prompt(agent)}\n\n"
             f"用户问题：{body.query}\n\n"
             f"本智能体初步回答：\n{base.answer}\n\n"
             "外部 A2A 智能体补充：\n"
@@ -345,7 +345,7 @@ async def run_a2a_augmented_chat(
 
     ``kb_ids`` 来自 ``agent.knowledge_bases``；本地答案由 RAG/直连产生后再调外部 Agent。
     """
-    base = await svc._rag_chat(agent, body, kb_ids, top_k, agent_id, hooks)
+    base = await svc.rag_chat(agent, body, kb_ids, top_k, agent_id, hooks)
     return await augment_response_with_a2a(svc, agent, body, base)
 
 
@@ -375,7 +375,7 @@ async def run_a2a_host_chat(
 
     if not plan_items:
         prompt = (
-            f"{await svc._resolve_system_prompt(agent)}\n\n"
+            f"{await svc.resolve_system_prompt(agent)}\n\n"
             f"用户问题：{body.query}\n\n"
             "当前未命中外部调用规则，且规划器未选择外部 Agent。"
             "请根据你的编排提示，直接回答或说明需要用户补充信息。"
@@ -397,7 +397,7 @@ async def run_a2a_host_chat(
         )
 
     synth = (
-        f"{await svc._resolve_system_prompt(agent)}\n\n"
+        f"{await svc.resolve_system_prompt(agent)}\n\n"
         f"用户问题：{body.query}\n\n"
         "各外部 A2A 智能体结果：\n"
         + "\n\n---\n\n".join(blocks)

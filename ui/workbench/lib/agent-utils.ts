@@ -35,9 +35,6 @@ export function agentModeLabel(agent: Agent): string {
   return "直连";
 }
 
-/** @deprecated 使用 subAgentRoleOptions(meta) */
-export const SUB_AGENT_ROLE_OPTIONS = subAgentRoleOptions();
-
 export function buildCreateAgentPayload(
   total: number,
   opts: {

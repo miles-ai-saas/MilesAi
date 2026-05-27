@@ -23,7 +23,7 @@ from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
 from app.tenant.agents.schemas.agent import ChatRequest, ChatResponse
-from app.tenant.agents.constants import SubAgentPlanner
+from app.tenant.agents.constants import AgentPlanner, AgentRuntimeMode
 from app.integrations.deepagents.runner import deepagents_importable, run_deepagents_chat
 from app.integrations.langchain.chat_models import ainvoke_chat
 from app.models.agent import Agent, AgentSubAgentBinding
@@ -114,7 +114,7 @@ async def _run_platform_planned(
     steps: list[dict] = [
         {
             "type": "planner",
-            "engine": SubAgentPlanner.PLATFORM.value,
+            "engine": AgentPlanner.PLATFORM.value,
             "mode": "json_plan",
         }
     ]
@@ -172,7 +172,7 @@ async def _run_platform_planned(
 
     if parent.model_config:
         synth_prompt = (
-            f"{await svc._resolve_system_prompt(parent)}\n\n"
+            f"{await svc.resolve_system_prompt(parent)}\n\n"
             f"用户问题：{body.query}\n\n"
             "各子智能体结果：\n"
             + "\n\n---\n\n".join(sub_answers)
@@ -194,7 +194,7 @@ async def _run_platform_planned(
 def _should_use_deepagents(parent: Agent) -> bool:
     """是否启用 DeepAgents 库（非 force_platform_planner）。"""
     cfg = parent.config or {}
-    if cfg.get("planner", SubAgentPlanner.DEEPAGENTS.value) != SubAgentPlanner.DEEPAGENTS.value:
+    if cfg.get("planner", AgentPlanner.DEEPAGENTS.value) != AgentPlanner.DEEPAGENTS.value:
         return False
     if cfg.get("force_platform_planner"):
         return False
@@ -215,7 +215,7 @@ async def run_subagent_planned_chat(
             steps = [
                 {
                     "type": "planner_fallback",
-                    "engine": SubAgentPlanner.PLATFORM.value,
+                    "engine": AgentPlanner.PLATFORM.value,
                     "error": str(exc)[:300],
                 }
             ]

@@ -12,6 +12,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.tenant.agents.constants import AgentPlanner, AgentRuntimeMode
 from app.tenant.a2a.models import A2aInvokePolicy, A2aPeer, A2aPeerBinding, A2aPeerStatus
 from app.tenant.a2a.services.peer_refs import normalize_peer_refs
 from app.common.exceptions import BadRequestError, NotFoundError
@@ -27,8 +28,8 @@ def apply_host_config(config: dict | None, *, has_peers: bool) -> dict:
     """A2A 宿主 config：runtime_mode=autonomous、planner=a2a_orchestrator。"""
     cfg = dict(config or {})
     if has_peers:
-        cfg["runtime_mode"] = "autonomous"
-        cfg["planner"] = "a2a_orchestrator"
+        cfg["runtime_mode"] = AgentRuntimeMode.AUTONOMOUS.value
+        cfg["planner"] = AgentPlanner.A2A_ORCHESTRATOR.value
         cfg.setdefault("a2a_invoke_policy", A2aInvokePolicy.RULES_THEN_PLAN.value)
         cfg.setdefault("max_a2a_calls_per_turn", 3)
     else:

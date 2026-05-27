@@ -312,11 +312,6 @@ async def load_tenant_custom_tools(db: AsyncSession, ctx: TenantContext) -> list
     return out
 
 
-async def load_tenant_http_tools(db: AsyncSession, ctx: TenantContext) -> list[StructuredTool]:
-    """兼容旧名；等价于 load_tenant_custom_tools 的 HTTP 子集。"""
-    return await load_tenant_custom_tools(db, ctx)
-
-
 async def get_all_platform_tools(
     db: AsyncSession,
     ctx: TenantContext,

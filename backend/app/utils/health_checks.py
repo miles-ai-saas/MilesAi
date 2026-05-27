@@ -1,14 +1,12 @@
 """基础设施健康检查。
 
-供 /health、MonitorService、SystemConfigService.runtime、/system/infra 调用；
-components 键名兼容历史监控（weaviate/minio 别名）。
+供 /health、MonitorService、SystemConfigService.runtime、/system/infra 调用。
 """
 
 import asyncio
 import time
 from typing import Literal
 
-import httpx
 from sqlalchemy import text
 
 from app.core.config import get_settings
@@ -62,18 +60,6 @@ async def check_object_storage() -> bool:
     """MinIO/S3 兼容存储桶探测。"""
     try:
         return get_object_storage().health_check()
-    except Exception:
-        return False
-
-
-async def check_weaviate() -> bool:
-    """兼容：仅当后端为 weaviate 时检查 HTTP ready。"""
-    if settings.vector_store_backend.strip().lower() != "weaviate":
-        return True
-    try:
-        async with httpx.AsyncClient(timeout=3.0) as client:
-            r = await client.get(f"{settings.weaviate_url}/v1/.well-known/ready")
-            return r.status_code == 200
     except Exception:
         return False
 
@@ -253,9 +239,6 @@ async def collect_health_status() -> dict:
         "redis": redis_ok,
         "vector_store": vector_store,
         "object_storage": object_storage,
-        # 兼容旧监控字段名
-        "weaviate": vector_store if settings.vector_store_backend == "weaviate" else await check_weaviate(),
-        "minio": object_storage,
     }
     healthy = all(
         [postgres, redis_ok, vector_store, object_storage]

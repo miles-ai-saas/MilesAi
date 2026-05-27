@@ -23,15 +23,9 @@ export const AGENT_WORKBENCH_TABS: {
   { id: "stats", label: "统计", ready: true },
 ];
 
-/** 旧 URL `tab=logs` 兼容为调用记录 */
-const TAB_ID_ALIASES: Record<string, AgentWorkbenchTab> = {
-  logs: "call_records",
-};
-
 export function normalizeAgentWorkbenchTab(value: string | null): AgentWorkbenchTab | null {
   if (!value) return null;
-  const id = TAB_ID_ALIASES[value] ?? value;
-  return AGENT_WORKBENCH_TABS.some((t) => t.id === id) ? (id as AgentWorkbenchTab) : null;
+  return AGENT_WORKBENCH_TABS.some((t) => t.id === value) ? (value as AgentWorkbenchTab) : null;
 }
 
 export function isAgentWorkbenchTab(value: string | null): value is AgentWorkbenchTab {

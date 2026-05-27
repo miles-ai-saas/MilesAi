@@ -2,7 +2,7 @@
 应用市场官方模板种子数据。
 
 ``_rag_graph()`` 加载 ``flow_runtime/templates/rag_flow.json`` 作为上架应用的默认画布；
-与 ``tenant.marketplace.util.load_rag_graph_template`` 同源。结构说明见 ``templates/README.md``。
+与 ``load_flow_template_graph("rag")`` 同源。结构说明见 ``templates/README.md``。
 
 官方应用标签绑定在默认租户（``seed_tenant_name``）下，``publisher_tenant_id`` 指向该租户，
 广场展示与按 slug 筛选均按发布方租户解析。

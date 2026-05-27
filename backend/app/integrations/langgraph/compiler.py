@@ -73,8 +73,6 @@ def resolve_node_type(node: dict[str, Any]) -> str:
     if not isinstance(node_data, dict):
         node_data = {}
     node_type = node_data.get("type") or node.get("type") or node.get("node_type") or ""
-    if node_type in ("genericNode", "customNode") and node_data.get("type"):
-        node_type = node_data.get("type")
     return str(node_type)
 
 

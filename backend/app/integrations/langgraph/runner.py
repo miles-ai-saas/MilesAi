@@ -27,6 +27,7 @@ from app.integrations.langgraph.graphs.rag_qa import build_rag_qa_graph
 from app.common.schemas.media import MediaRefIn
 from app.models.agent import Agent
 from app.models.model import ModelConfig
+from app.tenant.agents.constants import AgentRuntimeMode
 
 
 def should_use_langgraph_rag(agent: Agent, *, kb_ids: list[str]) -> bool:
@@ -34,9 +35,9 @@ def should_use_langgraph_rag(agent: Agent, *, kb_ids: list[str]) -> bool:
     if not kb_ids:
         return False
     cfg = agent.config or {}
-    if cfg.get("runtime_mode") == "legacy":
+    if cfg.get("runtime_mode") == AgentRuntimeMode.LEGACY.value:
         return False
-    if cfg.get("runtime_mode") == "autonomous":
+    if cfg.get("runtime_mode") == AgentRuntimeMode.AUTONOMOUS.value:
         return False
     if cfg.get("use_langgraph_rag") is False:
         return False

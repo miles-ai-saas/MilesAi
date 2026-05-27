@@ -54,7 +54,7 @@
  * `marketplace/page`：广场/安装/上架/审核多视图 + `usePagedList` + `useMarketplaceMeta`
  *
  * ## 13. 合规词库
- * `compliance/page`：词库 CRUD、扫描绑定、拦截日志；`useComplianceMeta`；旧路径 `/sensitive-words` 跳转
+ * `compliance/page`：词库 CRUD、扫描绑定、拦截日志；`useComplianceMeta`
  *
  * ## 14. 监控
  * `monitor/page`：`getMonitorStats` / trends / health + `useMonitorMeta`（可与 `useKbMeta` 联动展示）

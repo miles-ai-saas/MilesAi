@@ -3,7 +3,7 @@ Agent 聚合：CRUD + 对话编排。
 
 目录职责
 --------
-- ``service.py``：``AgentService`` 门面（组合下方 Mixin，保留 ``_rag_chat`` 等兼容别名）。
+- ``service.py``：``AgentService`` 门面（组合 CRUD / 对话 Mixin）。
 - ``crud.py``：元数据、列表/创建/更新/删除、``resolve_system_prompt``。
 - ``chat.py``：``chat`` / ``chat_as_child`` / ``rag_chat`` / 流程与 A2A 路由。
 - ``serialization.py``：``agent_out``、``should_use_skill_tools_with_kb``。

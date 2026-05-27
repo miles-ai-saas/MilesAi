@@ -26,7 +26,7 @@ Model Context Protocol（MCP）在 MilesAI 中用于**注册远程工具服务**
 |------|------|
 | `name` | 租户内唯一显示名 |
 | `endpoint_url` | HTTP(S) 端点；STDIO 为 `stdio://{name}` 占位 |
-| `transport` | `http` \| `sse` \| `stdio`（`streamable-http` 归一为 `http`） |
+| `transport` | `http` \| `sse` \| `stdio` \| `custom` |
 | `description` | 卡片副标题 |
 | `connection_config` | JSON：见下表 |
 | `tools_cache` | 最近一次 `tools/list` 结果 |

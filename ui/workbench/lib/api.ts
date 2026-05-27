@@ -464,13 +464,11 @@ export const api = {
       kb_ids?: string[];
       media?: import("./types").ChatMediaIn[];
     },
-    opts?: { useLanggraph?: boolean },
   ) =>
     post<{ output: unknown; steps: unknown[] }>(`/flows/${flowId}/run`, {
       inputs: payload.inputs,
       kb_ids: payload.kb_ids ?? [],
       ...(payload.media?.length ? { media: payload.media } : {}),
-      ...(opts?.useLanggraph ? { use_langgraph: true } : {}),
     }),
 
   getKbQuota: () => get<KbQuota>("/kb/quota"),

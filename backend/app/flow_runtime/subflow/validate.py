@@ -20,8 +20,6 @@ from app.flow_runtime.subflow.resolve import (
 from app.models.flow import Flow, FlowStatus
 from app.tenant.flows.repositories.flow import FlowRepository
 
-MAX_SUBFLOW_DEPTH = MAX_SUBFLOW_DEPTH  # re-export
-
 
 def _compile_error(
     code: str,

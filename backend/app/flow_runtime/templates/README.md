@@ -12,7 +12,7 @@
 
 ## `rag_flow_with_grade.json`
 
-**不在**注册表中展示；仅供 `load_rag_graph_template(variant="with_grade")` 与市场等内部场景使用。
+**不在**注册表中展示为可插入模板；使用 ``load_flow_template_graph("rag_with_grade")`` 加载。
 
 ## 租户种子
 

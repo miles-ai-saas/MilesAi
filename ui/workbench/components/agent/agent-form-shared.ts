@@ -2,6 +2,7 @@
 
 import type { A2aPeerRefInput, SubAgentBindingInput } from "@/lib/types";
 import type { Agent } from "@/lib/types";
+import { AGENT_PLANNER, AGENT_RUNTIME_MODE } from "@/lib/agent-config";
 
 export type AgentFormValues = {
   name: string;
@@ -168,8 +169,8 @@ export function buildAgentConfig(
   }
 
   if (form.sub_agents.length > 0) {
-    config.runtime_mode = "autonomous";
-    config.planner = "deepagents";
+    config.runtime_mode = AGENT_RUNTIME_MODE.AUTONOMOUS;
+    config.planner = AGENT_PLANNER.DEEPAGENTS;
     config.max_plan_iterations = Number(config.max_plan_iterations ?? 12);
     config.max_subagent_calls = Number(config.max_subagent_calls ?? 20);
     if (form.subagent_parallel) config.subagent_parallel = true;
@@ -204,8 +205,8 @@ export function buildAgentConfig(
   }
 
   if (form.published_flow_id) {
-    config.runtime_mode = "workflow";
-  } else if (config.runtime_mode === "workflow") {
+    config.runtime_mode = AGENT_RUNTIME_MODE.WORKFLOW;
+  } else if (config.runtime_mode === AGENT_RUNTIME_MODE.WORKFLOW) {
     delete config.runtime_mode;
   }
 

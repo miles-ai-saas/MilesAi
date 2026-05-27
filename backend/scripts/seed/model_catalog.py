@@ -144,30 +144,6 @@ BUILTIN_CATALOG: list[dict] = [
         "sort_order": 11,
         "is_featured": True,
     },
-    {
-        "model_code": "deepseek-reasoner",
-        "name": "DeepSeek-R1（兼容）",
-        "vendor": ModelVendor.DEEPSEEK.value,
-        "provider": "deepseek",
-        "model_name": "deepseek-reasoner",
-        "model_type": ModelCapabilityType.REASONING.value,
-        "description": "兼容别名，路由至 V4-Flash 思考模式；计划于 2026-07 退役，请迁移 deepseek-v4-flash。",
-        "context_window": "1M",
-        "sort_order": 12,
-        "is_featured": False,
-    },
-    {
-        "model_code": "deepseek-chat",
-        "name": "DeepSeek-V3（兼容）",
-        "vendor": ModelVendor.DEEPSEEK.value,
-        "provider": "deepseek",
-        "model_name": "deepseek-chat",
-        "model_type": ModelCapabilityType.LLM.value,
-        "description": "兼容别名，路由至 V4-Flash 非思考模式；计划于 2026-07 退役，请迁移 deepseek-v4-flash。",
-        "context_window": "1M",
-        "sort_order": 13,
-        "is_featured": False,
-    },
     # --- 豆包（火山方舟 OpenAI 兼容，model 填模型 ID 或接入点 ep-xxx）---
     {
         "model_code": "doubao-seed-1-6-251015",
@@ -455,6 +431,11 @@ BUILTIN_CATALOG: list[dict] = [
     },
 ]
 
+_RETIRED_BUILTIN_MODEL_CODES = frozenset({"deepseek-reasoner", "deepseek-chat"})
+_RETIRED_MODEL_DESCRIPTION = (
+    "已退役；请迁移至 deepseek-v4-flash（对话/思考）或 deepseek-v4-pro（复杂推理）。"
+)
+
 _UPDATABLE = (
     "name",
     "provider",
@@ -469,6 +450,24 @@ _UPDATABLE = (
     "api_base",
     "is_active",
 )
+
+
+async def _deprecate_retired_catalog_models(session: AsyncSession) -> int:
+    """将已移出种子的内置模型标记为 deprecated（保留行以免租户引用断裂）。"""
+    rows = (
+        await session.execute(
+            select(ModelConfig).where(
+                ModelConfig.tenant_id.is_(None),
+                ModelConfig.model_code.in_(_RETIRED_BUILTIN_MODEL_CODES),
+            )
+        )
+    ).scalars().all()
+    for row in rows:
+        row.publish_status = ModelPublishStatus.DEPRECATED.value
+        row.is_active = False
+        row.is_featured = False
+        row.description = _RETIRED_MODEL_DESCRIPTION
+    return len(rows)
 
 
 async def seed_model_catalog(session: AsyncSession) -> None:
@@ -514,3 +513,6 @@ async def seed_model_catalog(session: AsyncSession) -> None:
                 **values,
             )
         )
+    retired = await _deprecate_retired_catalog_models(session)
+    if retired:
+        print(f">>> model catalog: deprecated {retired} retired builtin model(s)")

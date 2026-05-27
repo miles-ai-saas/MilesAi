@@ -2,7 +2,7 @@
 内置流程画布模板注册表与加载。
 
 模板 JSON 存放于同目录；``list_flow_templates`` 供 ``GET /flows/templates``，
-``load_flow_template_graph`` 供市场种子与 ``load_rag_graph_template`` 兼容封装。
+``load_flow_template_graph`` 供市场种子与 API 加载画布 JSON。
 """
 
 from __future__ import annotations
@@ -52,6 +52,14 @@ FLOW_TEMPLATE_REGISTRY: tuple[FlowTemplateSpec, ...] = (
         default_name="对话流程",
         graph_file="simple_llm.json",
     ),
+    FlowTemplateSpec(
+        id="rag_with_grade",
+        label="RAG 问答（评分分支）",
+        hint="检索 → 相关性评分 → 条件分支",
+        default_name="RAG 评分流程",
+        graph_file="rag_flow_with_grade.json",
+        insertable=False,
+    ),
 )
 
 _REGISTRY_BY_ID = {spec.id: spec for spec in FLOW_TEMPLATE_REGISTRY}
@@ -92,10 +100,3 @@ def list_flow_templates(*, insertable_only: bool = False) -> list[dict[str, Any]
             }
         )
     return items
-
-
-def load_rag_graph_template(*, variant: str = "default") -> dict[str, Any]:
-    """兼容市场/种子：``default`` → rag；``with_grade`` → rag_flow_with_grade.json（不入插入模板列表）。"""
-    if variant == "with_grade":
-        return _read_graph_file("rag_flow_with_grade.json")
-    return load_flow_template_graph("rag")

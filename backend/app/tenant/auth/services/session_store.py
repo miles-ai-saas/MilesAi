@@ -128,8 +128,3 @@ async def revoke_all_sessions(user_id: UUID, *, keep_jti: str | None = None) -> 
         revoked += 1
     return revoked
 
-
-async def clear_legacy_session(user_id: UUID) -> None:
-    """兼容旧版单键 session:{user_id}。"""
-    redis = await get_redis()
-    await redis.delete(RedisKeys.session(user_id))

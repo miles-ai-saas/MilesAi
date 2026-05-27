@@ -17,7 +17,7 @@ from uuid import UUID
 
 from sqlalchemy import select
 
-from app.core.llm_client import chat_completion
+from app.integrations.langchain.chat_models import ainvoke_chat
 from app.core.logging import get_logger
 from app.models.model import ModelConfig
 from app.models.model_catalog import ModelCapabilityType
@@ -67,7 +67,14 @@ async def check_media_safety(
     }]
 
     try:
-        raw = await chat_completion(model, messages, temperature=0.1, max_tokens=256)
+        raw = await ainvoke_chat(
+            model,
+            messages,
+            temperature=0.1,
+            max_tokens=256,
+            db=db,
+            tenant_id=ctx.tenant_id,
+        )
     except Exception as exc:
         logger.warning("视觉审核调用失败: %s", exc)
         return {"safe": True, "category": "error", "reason": str(exc)[:100]}

@@ -40,7 +40,6 @@ class AuthService(BaseService):
         if not user.is_active:
             raise UnauthorizedError("用户已禁用")
         access, refresh = issue_tokens_for_user(user)
-        await session_store.clear_legacy_session(user.id)
         await session_store.register_session(
             user.id, access, user_agent=user_agent, ip=ip
         )
@@ -64,7 +63,6 @@ class AuthService(BaseService):
             await session_store.blacklist_token(access_token)
         if current_jti:
             await session_store.revoke_session(user_id, current_jti)
-        await session_store.clear_legacy_session(user_id)
 
     async def refresh(
         self,

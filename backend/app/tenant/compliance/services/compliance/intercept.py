@@ -25,10 +25,6 @@ class ComplianceInterceptMixin:
             return None
         return CompliancePipeline(words)
 
-    async def _pipeline(self) -> CompliancePipeline | None:
-        """兼容别名 → ``compliance_pipeline``。"""
-        return await self.compliance_pipeline()
-
     async def log_intercept(
         self,
         *,
@@ -51,10 +47,6 @@ class ComplianceInterceptMixin:
                 content_snippet=snippet,
             )
         )
-
-    async def _log_intercept(self, **kwargs) -> None:
-        """兼容别名 → ``log_intercept``。"""
-        await self.log_intercept(**kwargs)
 
     async def check_input(self, text: str, *, module: str) -> str:
         """入站文本扫描；命中 block 时抛 ``BadRequestError``。"""

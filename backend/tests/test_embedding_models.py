@@ -6,11 +6,9 @@ from uuid import uuid4
 import numpy as np
 import pytest
 
-from app.integrations.embeddings.runtime import (
-    EXTRA_EMBEDDING_DIMENSION,
-    build_embeddings,
-    embedding_dimension_from_model,
-)
+from app.integrations.embeddings.constants import EXTRA_EMBEDDING_DIMENSION
+from app.integrations.embeddings.model_meta import embedding_dimension_from_model
+from app.integrations.embeddings.runtime import build_embeddings
 from app.integrations.langchain.embeddings import embed_query_for_kb_sync
 from app.models.kb import KnowledgeBase
 from app.models.model import ModelConfig

@@ -50,8 +50,6 @@ NODE_REGISTRY: dict[str, NodeHandler] = {
     CanvasNodeType.RELEVANCE_GRADE: grade_nodes.relevance_grade,
     CanvasNodeType.STATIC_RESPONSE: io_nodes.static_response,
     CanvasNodeType.PARALLEL_JOIN: control_nodes.parallel_join,
-    CanvasNodeType.CHAT_INPUT: io_nodes.text_input,
-    CanvasNodeType.CHAT_OUTPUT: io_nodes.text_output,
     CanvasNodeType.SUB_FLOW: subflow_nodes.sub_flow,
     CanvasNodeType.LOOP: loop_nodes.loop_node,
     CanvasNodeType.COMPLIANCE_CHECK: compliance_nodes.compliance_check,

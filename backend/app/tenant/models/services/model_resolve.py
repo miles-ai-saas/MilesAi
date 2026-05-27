@@ -43,7 +43,8 @@ async def load_tenant_credential(
 
 def credential_status(model: ModelConfig, cred: ModelTenantCredential | None) -> str:
     """返回 platform / tenant / missing，供模型列表 UI 展示。"""
-    from app.integrations.embeddings.runtime import INVOKE_MODE_LOCAL, invoke_mode_from_model
+    from app.integrations.embeddings.constants import INVOKE_MODE_LOCAL
+    from app.integrations.embeddings.model_meta import invoke_mode_from_model
     from app.models.model_catalog import ModelCapabilityType
 
     if model.model_type == ModelCapabilityType.EMBEDDING.value:

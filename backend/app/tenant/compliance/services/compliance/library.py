@@ -39,19 +39,11 @@ class WordLibraryMixin:
             or 0
         )
 
-    async def _count_words_in_library(self, library_id: UUID) -> int:
-        """兼容别名 → ``count_words_in_library``。"""
-        return await self.count_words_in_library(library_id)
-
     async def library_out(self, lib: WordLibrary) -> WordLibraryOut:
         """组装带 ``word_count`` 的 ``WordLibraryOut``。"""
         count = await self.count_words_in_library(lib.id)
         data = WordLibraryOut.model_validate(lib)
         return data.model_copy(update={"word_count": count})
-
-    async def _library_out(self, lib: WordLibrary) -> WordLibraryOut:
-        """兼容别名 → ``library_out``。"""
-        return await self.library_out(lib)
 
     async def list_libraries_query(self, *, active_only: bool) -> list[WordLibrary]:
         """查询词库列表（可选仅启用）。"""
@@ -64,10 +56,6 @@ class WordLibraryMixin:
             .order_by(WordLibrary.sort_order.asc(), WordLibrary.created_at.desc())
         )
         return list((await self.db.execute(stmt)).scalars().all())
-
-    async def _list_libraries_query(self, *, active_only: bool) -> list[WordLibrary]:
-        """兼容别名 → ``list_libraries_query``。"""
-        return await self.list_libraries_query(active_only=active_only)
 
     async def list_libraries(self, params: PageParams) -> PageResult[WordLibraryOut]:
         """分页列出词库。"""
@@ -158,10 +146,6 @@ class WordLibraryMixin:
             raise NotFoundError("词库不存在")
         assert_tenant_access(self.ctx, row.tenant_id)
         return row
-
-    async def _get_library_or_raise(self, library_id: UUID) -> WordLibrary:
-        """兼容别名 → ``get_library_or_raise``。"""
-        return await self.get_library_or_raise(library_id)
 
     async def ensure_default_library(self) -> WordLibraryOut:
         """确保租户存在默认词库（种子/迁移）。"""

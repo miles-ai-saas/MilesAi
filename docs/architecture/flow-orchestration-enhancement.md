@@ -19,7 +19,7 @@
 
 `TextInput` · `KnowledgeSearch` · `ConditionBranch` · `ParallelJoin` · `PromptTemplate` · `LLMCall` · `PlatformTool` · `TextOutput`
 
-（`ChatInput` / `ChatOutput` 为 I/O 别名，仅兼容历史图。）
+（历史 `ChatInput` / `ChatOutput` 别名已移除。）
 
 **已具备：** DAG 校验、并行层分析、条件边、智能体 `published_flow_id` 注入 `kb_ids` / `model_config_id` / `agent_id`、工作台 `compile` / `run`、合规与 Hook。
 
@@ -305,8 +305,9 @@ export const NODE_HANDLES: Record<NodeType, {
 class FlowRunRequest(BaseModel):
     inputs: dict = Field(default_factory=dict)
     kb_ids: list[UUID] = Field(default_factory=list, description="调试运行注入 KnowledgeSearch")
-    use_langgraph: bool = Field(True, deprecated=True)
 ```
+
+（`use_langgraph` 废弃字段已删除；画布统一 LangGraph 执行。）
 
 `FlowService.run` 将 `body.kb_ids` 传入 `RunContext.kb_ids`（字符串化 id）。
 
@@ -414,7 +415,6 @@ flowchart TD
 ## 8. 迁移与兼容
 
 - 已发布 `graph_json` **无需**迁移；新字段均有默认值。
-- `ChatInput`/`ChatOutput` 继续仅 registry 别名，调色板不展示。
 - `compile` 的 `errors` 字符串格式在 Phase 2 前保持；结构化 errors 为附加能力。
 
 ---

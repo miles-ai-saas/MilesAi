@@ -31,17 +31,10 @@ export function mcpTransportFilterOptions(meta?: McpMeta | null): EnumOption[] {
   return meta?.transport_filters?.length ? meta.transport_filters : TRANSPORT_FILTER_FALLBACK;
 }
 
-/** @deprecated 使用 mcpTransportFilterOptions(meta) */
-export const MCP_TRANSPORT_TABS: { key: McpTransportTab; label: string }[] =
-  TRANSPORT_FILTER_FALLBACK.map((o) => ({
-    key: o.value as McpTransportTab,
-    label: o.label,
-  }));
-
-/** 与后端 normalize_transport 对齐（含 streamable-http → http）。 */
+/** 与后端 McpTransport 对齐。 */
 export function normalizeMcpTransport(transport?: string | null): "http" | "sse" | "stdio" {
   const t = (transport || "sse").toLowerCase();
-  if (t === "http" || t === "streamable-http") return "http";
+  if (t === "http") return "http";
   if (t === "stdio") return "stdio";
   return "sse";
 }

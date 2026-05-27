@@ -31,10 +31,6 @@ class LibraryWordMixin:
             created_at=binding.created_at,
         )
 
-    async def _binding_out(self, binding: LibraryWordBinding, word: str) -> LibraryWordOut:
-        """兼容别名 → ``binding_out``。"""
-        return self.binding_out(binding, word)
-
     async def list_library_words(
         self, library_id: UUID, params: PageParams
     ) -> PageResult[LibraryWordOut]:
@@ -129,7 +125,3 @@ class LibraryWordMixin:
         if lib:
             assert_tenant_access(self.ctx, lib.tenant_id)
         return row
-
-    async def _get_binding_or_raise(self, binding_id: UUID, library_id: UUID) -> LibraryWordBinding:
-        """兼容别名 → ``get_binding_or_raise``。"""
-        return await self.get_binding_or_raise(binding_id, library_id)

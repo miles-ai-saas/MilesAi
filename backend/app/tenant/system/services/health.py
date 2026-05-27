@@ -6,7 +6,7 @@ from app.common.schema import ApiResponse
 
 
 class HealthService:
-    """/health 无鉴权探测；components 含 postgres/redis/milvus/minio 等。"""
+    """/health 无鉴权探测；components 含 postgres/redis/vector_store/object_storage。"""
 
     @staticmethod
     async def check() -> ApiResponse[dict]:

@@ -1,6 +1,22 @@
-"""子智能体 role_hint 取值与展示文案（校验、meta、DeepAgents 共用）。"""
+"""智能体 runtime_mode / planner 与子智能体 role_hint 枚举（校验、meta、编排共用）。"""
 
 import enum
+
+
+class AgentRuntimeMode(str, enum.Enum):
+    """``agent.config.runtime_mode``：RAG 与编排路径开关。"""
+
+    LEGACY = "legacy"
+    AUTONOMOUS = "autonomous"
+    WORKFLOW = "workflow"
+
+
+class AgentPlanner(str, enum.Enum):
+    """``agent.config.planner``：子智能体 / A2A 宿主编排引擎。"""
+
+    DEEPAGENTS = "deepagents"
+    PLATFORM = "platform"
+    A2A_ORCHESTRATOR = "a2a_orchestrator"
 
 
 class SubAgentRoleHint(str, enum.Enum):
@@ -9,13 +25,6 @@ class SubAgentRoleHint(str, enum.Enum):
     SUMMARY = "summary"
     COMPLIANCE = "compliance"
     CUSTOM = "custom"
-
-
-class SubAgentPlanner(str, enum.Enum):
-    """有子智能体绑定时 ``agent.config.planner`` 取值。"""
-
-    DEEPAGENTS = "deepagents"
-    PLATFORM = "platform"
 
 
 SUB_AGENT_ROLE_HINTS = frozenset(h.value for h in SubAgentRoleHint)

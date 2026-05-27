@@ -26,7 +26,7 @@ class AgentScheduleService(BaseService):
         self._agents = AgentService(db, ctx)
 
     async def _get_schedule_or_raise(self, agent_id: UUID, schedule_id: UUID) -> AgentSchedule:
-        await self._agents._get_agent_or_raise(agent_id)
+        await self._agents.get_agent_or_raise(agent_id)
         schedule = await self.db.get(AgentSchedule, schedule_id)
         if not schedule or is_marked_deleted(schedule) or schedule.agent_id != agent_id:
             raise NotFoundError("定时任务不存在")
@@ -34,7 +34,7 @@ class AgentScheduleService(BaseService):
         return schedule
 
     async def list_schedules(self, agent_id: UUID, params: PageParams) -> PageResult[AgentScheduleOut]:
-        await self._agents._get_agent_or_raise(agent_id)
+        await self._agents.get_agent_or_raise(agent_id)
         filters = append_not_deleted(
             tenant_filters(self.ctx, AgentSchedule.tenant_id) + [AgentSchedule.agent_id == agent_id],
             AgentSchedule,
@@ -56,7 +56,7 @@ class AgentScheduleService(BaseService):
         )
 
     async def create_schedule(self, agent_id: UUID, body: AgentScheduleCreate) -> AgentScheduleOut:
-        agent = await self._agents._get_agent_or_raise(agent_id)
+        agent = await self._agents.get_agent_or_raise(agent_id)
         try:
             cron = validate_cron(body.cron)
         except ValueError as exc:

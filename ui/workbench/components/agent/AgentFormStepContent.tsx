@@ -4,7 +4,7 @@
 import type { Dispatch, SetStateAction } from "react";
 import { formatAgentCode, type AgentFormValues } from "@/components/agent/agent-form-shared";
 import { TagPicker } from "@/components/tag/TagPicker";
-import { subAgentRoleOptions } from "@/lib/agent-utils";
+import { subAgentRoleOptions } from "@/lib/agent-labels";
 import { useAgentMeta } from "@/hooks/use-agent-meta";
 import { useA2aMeta } from "@/hooks/use-a2a-meta";
 import { a2aInvokePolicyOptions } from "@/lib/a2a-labels";

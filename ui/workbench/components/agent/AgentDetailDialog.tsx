@@ -12,9 +12,14 @@ import {
   agentTypeLabel,
   subAgentRoleLabel,
 } from "@/lib/agent-utils";
+import {
+  agentPlannerLabel,
+  agentRuntimeModeLabel,
+} from "@/lib/agent-labels";
 import { useAgentMeta } from "@/hooks/use-agent-meta";
 import type {
   Agent,
+  AgentMeta,
   Flow,
   KnowledgeBase,
   McpService,
@@ -46,11 +51,15 @@ function formatConfigSummary(
   cfg: Record<string, unknown>,
   subs: number,
   kbCount: number,
+  meta: AgentMeta | null,
 ): ReactNode {
   const lines: string[] = [];
-  if (cfg.runtime_mode) lines.push(`运行模式：${String(cfg.runtime_mode)}`);
+  if (cfg.runtime_mode) {
+    lines.push(`运行模式：${agentRuntimeModeLabel(String(cfg.runtime_mode), meta)}`);
+  }
   if (subs > 0) {
-    lines.push(`规划器：${cfg.planner === "deepagents" ? "DeepAgents" : String(cfg.planner ?? "deepagents")}`);
+    const planner = cfg.planner != null ? String(cfg.planner) : "deepagents";
+    lines.push(`规划器：${agentPlannerLabel(planner, meta)}`);
     if (cfg.subagent_parallel) lines.push("平台规划：并行调用成员智能体");
     if (cfg.force_platform_planner) lines.push("强制平台 JSON 规划");
     if (cfg.max_plan_iterations) lines.push(`最大规划轮次：${cfg.max_plan_iterations}`);
@@ -319,7 +328,7 @@ export function AgentDetailDialog({
             )}
           </DetailRow>
           <DetailRow label="高级配置">
-            {formatConfigSummary(cfg, agent.sub_agents?.length ?? 0, agent.kb_ids.length)}
+            {formatConfigSummary(cfg, agent.sub_agents?.length ?? 0, agent.kb_ids.length, agentMeta)}
           </DetailRow>
         </dl>
       )}

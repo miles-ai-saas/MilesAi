@@ -1,6 +1,7 @@
 /** A2A 宿主表单共享校验（链路 §4）。 */
 
 import type { A2aPeerRefInput, Agent } from "@/lib/types";
+import { AGENT_PLANNER, AGENT_RUNTIME_MODE } from "@/lib/agent-config";
 
 export type A2aHostFormValues = {
   name: string;
@@ -60,7 +61,7 @@ export function buildHostAgentConfig(
     ...base,
     a2a_invoke_policy: form.a2a_invoke_policy,
     max_a2a_calls_per_turn: Number(base.max_a2a_calls_per_turn ?? 3),
-    runtime_mode: "autonomous",
-    planner: "a2a_orchestrator",
+    runtime_mode: AGENT_RUNTIME_MODE.AUTONOMOUS,
+    planner: AGENT_PLANNER.A2A_ORCHESTRATOR,
   };
 }

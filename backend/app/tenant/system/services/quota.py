@@ -95,7 +95,6 @@ async def get_tenant_quota_out(db: AsyncSession, tenant_id: UUID) -> TenantQuota
     )
 
 
-# re-export kb quota helpers for callers migrating imports
 __all__ = [
     "assert_can_create_agent",
     "assert_can_create_flow",

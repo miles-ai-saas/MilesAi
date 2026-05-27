@@ -50,7 +50,7 @@ def test_meta_dict_has_schema_version(meta_fn):
 def test_compliance_meta():
     data = compliance_meta_dict()
     assert {a.value for a in data["sensitive_actions"]} == {"warn", "block"}
-    assert {m.value for m in data["scan_modules"]} == {"agent_chat", "flow_run"}
+    assert {m.value for m in data["scan_modules"]} == {"agent_chat", "flow_run", "generative"}
 
 
 def test_flow_meta():
@@ -88,6 +88,8 @@ def test_agents_meta():
     assert {t.value for t in data["agent_types"]} == {"custom", "a2a"}
     assert any(r.value == "retrieval" for r in data["sub_agent_role_hints"])
     assert len(data["primary_paths"]) >= 8
+    assert {m.value for m in data["runtime_modes"]} == {"legacy", "autonomous", "workflow"}
+    assert {p.value for p in data["planners"]} == {"deepagents", "platform", "a2a_orchestrator"}
 
 
 def test_prompts_meta():
@@ -141,6 +143,8 @@ def test_a2a_meta():
 def test_monitor_meta():
     data = monitor_meta_dict()
     assert any(c.value == "postgres" for c in data["health_components"])
+    values = {c.value for c in data["health_components"]}
+    assert values == {"postgres", "redis", "vector_store", "object_storage"}
 
 
 def test_tasks_meta():
@@ -167,6 +171,7 @@ def test_tags_meta():
         "skill",
         "tool",
         "flow",
+        "marketplace_app",
     }
 
 

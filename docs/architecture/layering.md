@@ -272,7 +272,7 @@ from app.infra.vector_store import get_vector_store
 | 模块 | 职责范围；子包注明对外 import 路径 |
 | 类 | 聚合边界、与其它 Mixin 的关系 |
 | 公开方法 | 行为、入参语义、是否抛 ``BadRequestError`` / 写库 / 调外部 |
-| ``_`` 前缀 | 纯别名写「兼容别名 → ``公开方法``」；有业务逻辑则完整说明 |
+| ``_`` 前缀 | 私有实现细节；有业务逻辑则完整说明，避免仅转发公开方法的 shim |
 
 禁止用 docstring 重复类型注解已表达的信息；禁止无信息量的「获取数据」类空话——应写明业务对象（如「分页列出词库」）。细则见 [backend/README.md](../../backend/README.md) § 文档注释。
 

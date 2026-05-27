@@ -12,8 +12,6 @@ HEALTH_COMPONENT_OPTIONS: list[tuple[str, str, str | None]] = [
     ("redis", "Redis", "缓存与 LangGraph checkpoint"),
     ("vector_store", "向量库", "当前 VECTOR_STORE_BACKEND"),
     ("object_storage", "对象存储", "MinIO/S3 兼容存储"),
-    ("weaviate", "Weaviate", "兼容别名，非主后端时可忽略"),
-    ("minio", "MinIO", "兼容别名"),
 ]
 
 OVERALL_HEALTH_STATUS_OPTIONS: list[tuple[str, str, str | None]] = [

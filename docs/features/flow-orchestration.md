@@ -43,7 +43,6 @@
 | 类型 | 说明 |
 |------|------|
 | `TextInput` / `TextOutput` | 文本入出 |
-| `ChatInput` / `ChatOutput` | 别名 |
 | `KnowledgeSearch` | KB 检索 |
 | `RelevanceGrade` | 相关性判定 |
 | `StaticResponse` | 静态回复 |

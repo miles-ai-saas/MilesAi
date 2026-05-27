@@ -46,12 +46,3 @@ export function taskStatusBadgeClass(status: string): string {
       return "bg-surface-muted text-ink-muted ring-line";
   }
 }
-
-/** @deprecated 使用 taskStatusFilterOptions(meta) */
-export const TASK_STATUS_TABS = FILTER_FALLBACK.map((o) => ({
-  key: o.value,
-  label: o.label,
-}));
-
-/** @deprecated */
-export const TASK_STATUS_LABEL = STATUS_FALLBACK;

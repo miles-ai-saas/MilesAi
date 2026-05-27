@@ -27,7 +27,7 @@ from fastapi import UploadFile
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.integrations.embeddings.runtime import embedding_dimension_from_model
+from app.integrations.embeddings.model_meta import embedding_dimension_from_model
 from app.integrations.langchain.embeddings import embed_query_for_kb
 from app.integrations.langchain.visual_embeddings import (
     embed_image_bytes_async,

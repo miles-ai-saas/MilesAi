@@ -18,7 +18,7 @@ from app.tenant.marketplace.schemas.marketplace import (
     MarketplaceAppUpdate,
 )
 from app.models.tag import TagEntityType
-from app.tenant.marketplace.util import load_rag_graph_template
+from app.tenant.marketplace.util import load_flow_template_graph
 from app.tenant.tags.services.tag import TagService
 
 
@@ -42,7 +42,7 @@ class MarketplacePublishMixin:
             flow = await self.db.get(Flow, body.flow_id)
             if not flow or flow.tenant_id != self.ctx.tenant_id:
                 raise NotFoundError("流程不存在")
-            graph_json = load_rag_graph_template()
+            graph_json = load_flow_template_graph("rag")
             if flow.current_version > 0:
                 version = await self.flow_repo.get_version(body.flow_id, flow.current_version)
                 if version and version.graph_json:
@@ -67,12 +67,6 @@ class MarketplacePublishMixin:
         if not resources:
             raise BadRequestError("请至少选择知识库、流程或智能体之一")
         return {"version": "1.0.0", "resources": resources}
-
-    async def _build_manifest_from_resources(
-        self, body: MarketplaceAppCreateFromResources
-    ) -> dict:
-        """兼容别名 → ``build_manifest_from_resources``。"""
-        return await self.build_manifest_from_resources(body)
 
     async def create_app_from_resources(
         self, body: MarketplaceAppCreateFromResources
@@ -156,10 +150,6 @@ class MarketplacePublishMixin:
         resources = manifest.get("resources") or manifest
         if not any(resources.get(k) for k in ("flow", "agent", "knowledge_base")):
             raise BadRequestError("manifest 需包含 flow、agent 或 knowledge_base 至少一项")
-
-    def _validate_manifest(self, manifest: dict) -> None:
-        """兼容别名 → ``validate_manifest``。"""
-        self.validate_manifest(manifest)
 
     async def publish_app(self, app_id: UUID) -> MarketplaceAppOut:
         """提交审核（原 publish 路径保留）。"""

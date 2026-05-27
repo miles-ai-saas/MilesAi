@@ -23,7 +23,7 @@ from app.tenant.marketplace.schemas.marketplace import (
     AppInstallOut,
     AppInstallResult,
 )
-from app.tenant.marketplace.util import load_rag_graph_template
+from app.tenant.marketplace.util import load_flow_template_graph
 
 
 class MarketplaceInstallMixin:
@@ -86,7 +86,7 @@ class MarketplaceInstallMixin:
 
         flow_spec = resources.get("flow")
         if flow_spec:
-            graph = flow_spec.get("graph_json") or load_rag_graph_template()
+            graph = flow_spec.get("graph_json") or load_flow_template_graph("rag")
             flow = await flow_svc.create_flow(
                 FlowCreate(
                     name=flow_spec.get("name", f"{app.name} 流程"),

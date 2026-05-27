@@ -21,7 +21,7 @@ from app.tenant.kb.schemas.kb import KnowledgeBaseUpdate
 from app.tenant.kb.services.kb import KnowledgeBaseService
 from app.tenant.marketplace.models import AppInstall, MarketplaceAppStatus
 from app.tenant.marketplace.schemas.marketplace import AppUpgradePreview, AppUpgradeResult
-from app.tenant.marketplace.util import load_rag_graph_template
+from app.tenant.marketplace.util import load_flow_template_graph
 from app.tenant.marketplace.util.upgrade_diff import (
     build_upgrade_preview,
     diff_agent,
@@ -139,7 +139,7 @@ class MarketplaceUpgradeMixin:
 
         flow_spec = resources.get("flow")
         if flow_spec and install.flow_id:
-            graph = flow_spec.get("graph_json") or load_rag_graph_template()
+            graph = flow_spec.get("graph_json") or load_flow_template_graph("rag")
             await flow_svc.update_flow(
                 install.flow_id,
                 FlowUpdate(

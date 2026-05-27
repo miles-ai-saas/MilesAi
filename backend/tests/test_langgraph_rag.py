@@ -9,6 +9,7 @@ from app.integrations.langgraph.grading import _score_grade, parse_llm_grade_res
 from app.integrations.langgraph.graphs.rag_qa import route_after_grade
 from app.integrations.langgraph.runner import build_rag_thread_id, should_use_langgraph_rag
 from app.models.agent import Agent
+from app.tenant.agents.constants import AgentRuntimeMode
 
 
 def test_route_none_goes_fallback():
@@ -64,8 +65,8 @@ def test_should_use_langgraph_rag_flags():
     assert should_use_langgraph_rag(agent, kb_ids=["kb"]) is True
     agent.config = {"use_langgraph_rag": False}
     assert should_use_langgraph_rag(agent, kb_ids=["kb"]) is False
-    agent.config = {"runtime_mode": "legacy"}
+    agent.config = {"runtime_mode": AgentRuntimeMode.LEGACY.value}
     assert should_use_langgraph_rag(agent, kb_ids=["kb"]) is False
-    agent.config = {"runtime_mode": "autonomous"}
+    agent.config = {"runtime_mode": AgentRuntimeMode.AUTONOMOUS.value}
     assert should_use_langgraph_rag(agent, kb_ids=["kb"]) is False
     assert should_use_langgraph_rag(agent, kb_ids=[]) is False

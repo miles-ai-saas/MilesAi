@@ -11,8 +11,6 @@ const COMPONENT_FALLBACK: Record<string, string> = {
   redis: "Redis",
   vector_store: "向量库",
   object_storage: "对象存储",
-  weaviate: "Weaviate",
-  minio: "MinIO",
 };
 
 const HEALTH_FALLBACK: Record<string, string> = {

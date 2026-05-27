@@ -98,9 +98,3 @@ async def seed_categories(session: AsyncSession) -> None:
     purged = await _purge_deprecated_categories(session)
     await session.flush()
     print(f">>> categories seed (global): {stats}, purged: {purged}")
-
-
-# 兼容旧命令名
-async def seed_platform_categories(session: AsyncSession) -> dict[str, int]:
-    await seed_categories(session)
-    return DEFAULTS_BY_DOMAIN and {k: len(v) for k, v in DEFAULTS_BY_DOMAIN.items()} or {}

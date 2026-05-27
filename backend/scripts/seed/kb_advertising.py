@@ -17,7 +17,7 @@ from app.core.config import get_settings
 from app.core.soft_delete import mark_deleted, not_deleted
 from app.deletion.cascade import before_delete_kb
 from app.infra.storage import build_object_key, upload_bytes
-from app.integrations.embeddings.runtime import embedding_dimension_from_model
+from app.integrations.embeddings.model_meta import embedding_dimension_from_model
 from app.models.kb import Document, DocumentStatus, KnowledgeBase
 from app.models.model import ModelConfig
 from app.models.model_catalog import ModelCapabilityType

@@ -32,33 +32,5 @@ class AgentService(AgentChatMixin, AgentCrudMixin):
         AgentCrudMixin.__init__(self, db, ctx)
         self.flow_repo = FlowRepository(db)
 
-    async def _get_agent_or_raise(self, agent_id):
-        """兼容别名 → ``get_agent_or_raise``。"""
-        return await self.get_agent_or_raise(agent_id)
-
-    async def _resolve_system_prompt(self, agent):
-        """兼容别名 → ``resolve_system_prompt``。"""
-        return await self.resolve_system_prompt(agent)
-
-    async def _flow_run_context(self, agent, **kwargs):
-        """兼容别名 → ``flow_run_context``。"""
-        return await self.flow_run_context(agent, **kwargs)
-
-    async def _maybe_augment_a2a(self, agent, body, response):
-        """兼容别名 → ``maybe_augment_a2a``。"""
-        return await self.maybe_augment_a2a(agent, body, response)
-
-    async def _resolve_chat_media_parts(self, agent, body):
-        """兼容别名 → ``resolve_chat_media_parts``。"""
-        return await self.resolve_chat_media_parts(agent, body)
-
-    async def _direct_chat(self, agent, body, agent_id, hooks):
-        """兼容别名 → ``direct_chat``。"""
-        return await self.direct_chat(agent, body, agent_id, hooks)
-
-    async def _rag_chat(self, agent, body, kb_ids, top_k, agent_id, hooks):
-        """兼容别名 → ``rag_chat``。"""
-        return await self.rag_chat(agent, body, kb_ids, top_k, agent_id, hooks)
-
 
 _agent_out = agent_out

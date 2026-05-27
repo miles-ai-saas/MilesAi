@@ -18,8 +18,6 @@ class CanvasNodeType(str, enum.Enum):
     RELEVANCE_GRADE = "RelevanceGrade"
     STATIC_RESPONSE = "StaticResponse"
     PARALLEL_JOIN = "ParallelJoin"
-    CHAT_INPUT = "ChatInput"
-    CHAT_OUTPUT = "ChatOutput"
     IMAGE_GENERATE = "ImageGenerate"
     VIDEO_GENERATE = "VideoGenerate"
     SUB_FLOW = "SubFlow"
@@ -38,5 +36,5 @@ MAX_SUBFLOW_DEPTH = 3
 MAX_LOOP_ITERATIONS = 100
 
 CONDITIONAL_NODE_TYPES = frozenset({CanvasNodeType.CONDITION, CanvasNodeType.RELEVANCE_GRADE})
-TEXT_OUTPUT_NODE_TYPES = frozenset({CanvasNodeType.TEXT_OUTPUT, CanvasNodeType.CHAT_OUTPUT})
+TEXT_OUTPUT_NODE_TYPES = frozenset({CanvasNodeType.TEXT_OUTPUT})
 CANVAS_NODE_TYPES = frozenset(CanvasNodeType)

@@ -18,29 +18,13 @@ from copy import copy
 
 from langchain_core.embeddings import Embeddings
 
-from app.integrations.embeddings.constants import (
-    EXTRA_EMBEDDING_DIMENSION,
-    INVOKE_MODE_LOCAL,
-)
-from app.integrations.embeddings.model_meta import (
-    embedding_dimension_from_model,
-    ensure_embedding_model_type,
-    invoke_mode_from_model,
-)
-from app.integrations.embeddings.providers.local import LocalEmbeddings
+from app.integrations.embeddings.model_meta import ensure_embedding_model_type
 from app.integrations.embeddings.registry import embed_texts_for_model
 from app.models.model import ModelConfig
 
-# 兼容旧 import 路径
 __all__ = [
-    "EXTRA_EMBEDDING_DIMENSION",
-    "INVOKE_MODE_LOCAL",
-    "LocalEmbeddings",
     "ModelConfigEmbeddings",
     "build_embeddings",
-    "embedding_dimension_from_model",
-    "ensure_embedding_model_type",
-    "invoke_mode_from_model",
     "merge_effective_embedding_model",
 ]
 

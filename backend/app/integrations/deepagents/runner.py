@@ -20,7 +20,7 @@ from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from app.integrations.deepagents.subagent_graphs import _slug_for_binding, build_compiled_subagents
 from app.integrations.langchain.chat_models import get_chat_model
 from app.integrations.langgraph.checkpointer import get_checkpointer
-from app.tenant.agents.constants import SubAgentPlanner
+from app.tenant.agents.constants import AgentPlanner
 from app.tenant.agents.schemas.agent import ChatRequest, ChatResponse
 from app.models.agent import Agent, AgentSubAgentBinding
 
@@ -61,7 +61,7 @@ def _extract_steps(messages: list[Any], bindings: list[AgentSubAgentBinding]) ->
     steps: list[dict] = [
         {
             "type": "planner",
-            "engine": SubAgentPlanner.DEEPAGENTS.value,
+            "engine": AgentPlanner.DEEPAGENTS.value,
             "mode": "task_delegation",
         }
     ]
@@ -125,7 +125,7 @@ async def run_deepagents_chat(
         catalog_lines.append(f"- {s['name']}: {s['description']}")
     catalog = "\n".join(catalog_lines)
 
-    parent_prompt = await svc._resolve_system_prompt(parent)
+    parent_prompt = await svc.resolve_system_prompt(parent)
     system_prompt = (
         f"{parent_prompt}\n\n"
         "你是主协调智能体。将用户问题拆解后，通过 task 工具委派给下列子智能体工位，"

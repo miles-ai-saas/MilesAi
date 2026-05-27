@@ -76,10 +76,6 @@ class FlowRunRequest(BaseModel):
         default_factory=list,
         description="调试运行注入 KnowledgeSearch（节点未配置 kb_id 时使用）",
     )
-    use_langgraph: bool = Field(
-        default=True,
-        description="已废弃：画布统一由 LangGraph 执行，保留字段仅为兼容旧客户端",
-    )
     async_generative: bool = Field(
         default=True,
         description="含生视频节点时提交异步任务（False 则同步等待，可能阻塞数分钟）",

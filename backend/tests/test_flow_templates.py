@@ -8,14 +8,13 @@ from app.flow_runtime.templates.registry import (
     FLOW_TEMPLATE_REGISTRY,
     list_flow_templates,
     load_flow_template_graph,
-    load_rag_graph_template,
 )
 from app.integrations.langgraph.compiler import validate_graph_for_compile
 
 
 def test_registry_has_expected_ids():
     ids = {spec.id for spec in FLOW_TEMPLATE_REGISTRY}
-    assert ids == {"blank", "rag", "simple_llm"}
+    assert ids == {"blank", "rag", "simple_llm", "rag_with_grade"}
 
 
 def test_blank_template_empty_graph():
@@ -23,9 +22,8 @@ def test_blank_template_empty_graph():
     assert graph == {"nodes": [], "edges": []}
 
 
-def test_load_rag_variants():
-    assert load_rag_graph_template() == load_flow_template_graph("rag")
-    graded = load_rag_graph_template(variant="with_grade")
+def test_rag_with_grade_template_compilable():
+    graded = load_flow_template_graph("rag_with_grade")
     report = validate_graph_for_compile(graded)
     assert report.compilable, report.errors
 
@@ -45,10 +43,10 @@ def test_list_flow_templates_includes_graph_json():
     assert len(rag["graph_json"]["nodes"]) >= 4
 
 
-def test_insertable_only_excludes_blank():
+def test_insertable_only_excludes_blank_and_rag_with_grade():
     items = list_flow_templates(insertable_only=True)
     assert all(i["insertable"] for i in items)
-    assert "blank" not in {i["id"] for i in items}
+    assert {"blank", "rag_with_grade"}.isdisjoint({i["id"] for i in items})
 
 
 def test_rag_grade_file_for_marketplace():

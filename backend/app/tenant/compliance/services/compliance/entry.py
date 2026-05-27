@@ -79,10 +79,6 @@ class WordEntryMixin:
         assert_tenant_access(self.ctx, row.tenant_id)
         return row
 
-    async def _get_entry_or_raise(self, entry_id: UUID) -> SensitiveWordEntry:
-        """兼容别名 → ``get_entry_or_raise``。"""
-        return await self.get_entry_or_raise(entry_id)
-
     async def entry_out(self, entry: SensitiveWordEntry) -> SensitiveWordEntryOut:
         """组装 ``SensitiveWordEntryOut``。"""
         stmt = (
@@ -112,7 +108,3 @@ class WordEntryMixin:
             libraries=refs,
             created_at=entry.created_at,
         )
-
-    async def _entry_out(self, entry: SensitiveWordEntry) -> SensitiveWordEntryOut:
-        """兼容别名 → ``entry_out``。"""
-        return await self.entry_out(entry)

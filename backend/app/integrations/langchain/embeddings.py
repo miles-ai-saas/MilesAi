@@ -62,9 +62,4 @@ async def embed_query_for_kb(
     return build_embeddings(model).embed_query(query)
 
 
-def embed_texts_for_kb_legacy(db: Session, kb: KnowledgeBase, texts: list[str]) -> list[list[float]]:
-    """兼容旧 import 名，等同 ``embed_texts_for_kb_sync``。"""
-    return embed_texts_for_kb_sync(db, kb, texts)
-
-
 PlatformEmbeddings = Embeddings

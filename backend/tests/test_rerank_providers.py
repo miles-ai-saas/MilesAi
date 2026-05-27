@@ -34,15 +34,6 @@ def _qwen_rerank_model(**kwargs) -> ModelConfig:
     return ModelConfig(**defaults)
 
 
-def test_catalog_contains_rerank_models():
-    from pathlib import Path
-
-    catalog_src = Path(__file__).resolve().parents[1] / "scripts" / "seed" / "model_catalog.py"
-    text = catalog_src.read_text(encoding="utf-8")
-    assert '"model_code": "qwen3-rerank"' in text
-    assert '"model_code": "gte-rerank-v2"' in text
-
-
 def test_known_rerank_invoke_modes():
     modes = known_invoke_modes()
     assert "dashscope" in modes

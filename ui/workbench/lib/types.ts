@@ -479,6 +479,8 @@ export interface AgentMeta {
   agent_types: EnumOption[];
   sub_agent_role_hints: EnumOption[];
   primary_paths: EnumOption[];
+  runtime_modes: EnumOption[];
+  planners: EnumOption[];
   schema_version: string;
 }
 

@@ -26,10 +26,6 @@ class MarketplaceRatingsMixin:
         app.rating_count = int(count or 0)
         await self.db.flush()
 
-    async def _refresh_rating_stats(self, app_id: UUID) -> None:
-        """兼容别名 → ``refresh_rating_stats``。"""
-        await self.refresh_rating_stats(app_id)
-
     async def list_app_ratings(
         self, app_id: UUID, params: PageParams
     ) -> PageResult[AppRatingOut]:

@@ -35,10 +35,6 @@ class MarketplaceCatalogMixin:
         stmt = select(AppInstall.app_id).where(AppInstall.tenant_id == self.ctx.tenant_id)
         return set((await self.db.execute(stmt)).scalars().all())
 
-    async def _installed_app_ids(self) -> set[UUID]:
-        """兼容别名 → ``installed_app_ids``。"""
-        return await self.installed_app_ids()
-
     def app_out(
         self,
         app: MarketplaceApp,
@@ -68,19 +64,6 @@ class MarketplaceCatalogMixin:
             submitted_at=app.submitted_at,
             reviewed_at=app.reviewed_at,
             created_at=app.created_at,
-        )
-
-    def _app_out(
-        self,
-        app: MarketplaceApp,
-        *,
-        installed: bool,
-        category_name: str | None,
-        tags: list[TagRefOut] | None = None,
-    ) -> MarketplaceAppOut:
-        """兼容别名 → ``app_out``。"""
-        return self.app_out(
-            app, installed=installed, category_name=category_name, tags=tags
         )
 
     async def tags_map_for_apps(self, apps: list[MarketplaceApp]) -> dict[UUID, list[TagRefOut]]:
@@ -164,10 +147,6 @@ class MarketplaceCatalogMixin:
         if not app:
             raise NotFoundError("应用不存在")
         return app
-
-    async def _get_app_or_raise(self, app_id: UUID) -> MarketplaceApp:
-        """兼容别名 → ``get_app_or_raise``。"""
-        return await self.get_app_or_raise(app_id)
 
     async def list_categories(self) -> list[AppCategoryOut]:
         """列出应用分类。"""
@@ -294,10 +273,6 @@ class MarketplaceCatalogMixin:
             raise NotFoundError("应用不存在")
         return app
 
-    async def _get_own_app_or_raise(self, app_id: UUID) -> MarketplaceApp:
-        """兼容别名 → ``get_own_app_or_raise``。"""
-        return await self.get_own_app_or_raise(app_id)
-
     async def require_installed(self, app_id: UUID) -> None:
         """校验当前租户已安装指定应用。"""
         installed = await self.db.scalar(
@@ -308,7 +283,3 @@ class MarketplaceCatalogMixin:
         )
         if not installed:
             raise BadRequestError("安装该应用后才可评分")
-
-    async def _require_installed(self, app_id: UUID) -> None:
-        """兼容别名 → ``require_installed``。"""
-        await self.require_installed(app_id)

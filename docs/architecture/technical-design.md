@@ -461,7 +461,7 @@ React Flow 画布 → PUT /flows/{id}/graph → flow_versions.graph_json
 节点：`flow_runtime/nodes/registry.py`
 ```
 
-**已注册节点类型**：`TextInput`、`TextOutput`、`ChatInput`/`ChatOutput`（别名）、`KnowledgeSearch`、`RelevanceGrade`、`StaticResponse`、`PromptTemplate`、`LLMCall`、`PlatformTool`、`ConditionBranch`、`ParallelJoin`、`ImageGenerate`、`VideoGenerate`。
+**已注册节点类型**：`TextInput`、`TextOutput`、`KnowledgeSearch`、`RelevanceGrade`、`StaticResponse`、`PromptTemplate`、`LLMCall`、`PlatformTool`、`ConditionBranch`、`ParallelJoin`、`ImageGenerate`、`VideoGenerate`、`SubFlow`、`LoopNode` 等（完整列表见 `flow_runtime/nodes/registry.py`）。
 
 - 编译预览：`POST /flows/{id}/compile`（DAG 校验、并行层分析）。
 - 智能体绑定 `published_flow_id` 时，对话走同一 LangGraph 执行链。

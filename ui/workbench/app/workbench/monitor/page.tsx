@@ -30,7 +30,7 @@ const MAIN_TABS: { key: Tab; label: string }[] = [
 const PAGE_DESC =
   "查看租户业务指标、异步任务与合规拦截趋势，检查依赖组件健康状态，并配置 Webhook 告警。";
 
-/** 与后端 collect_health_status 主键一致；weaviate/minio 为兼容别名不在此展示 */
+/** 与后端 collect_health_status 主键一致 */
 const PRIMARY_COMPONENT_KEYS = ["postgres", "redis", "vector_store", "object_storage"] as const;
 
 type MonitorHealthPayload = {

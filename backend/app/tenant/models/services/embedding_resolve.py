@@ -22,8 +22,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
-from app.integrations.embeddings.runtime import (
-    INVOKE_MODE_LOCAL,
+from app.integrations.embeddings.constants import INVOKE_MODE_LOCAL
+from app.integrations.embeddings.model_meta import (
     ensure_embedding_model_type,
     invoke_mode_from_model,
 )

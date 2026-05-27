@@ -25,7 +25,7 @@ React Flow → PUT /flows/{id}/graph → flow_versions
 
 ## 节点与扩展
 
-支持类型：`TextInput`、`ChatInput`、`KnowledgeSearch`、`RelevanceGrade`、`ConditionBranch`、`StaticResponse`、`ParallelJoin`、`PromptTemplate`、`LLMCall`、`PlatformTool`、`TextOutput`、`ChatOutput`。
+支持类型：`TextInput`、`KnowledgeSearch`、`RelevanceGrade`、`ConditionBranch`、`StaticResponse`、`ParallelJoin`、`PromptTemplate`、`LLMCall`、`PlatformTool`、`TextOutput`，以及 `SubFlow`、`LoopNode`、合规/媒体等扩展节点（见 registry）。
 
 `PlatformTool` 节点 `data.tool_slug` 调用平台工具（含 `skill_read_reference`、`skill_run_script`、`knowledge_search` 等）。智能体发布流程执行时注入 `agent_id` / `agent_config` / `kb_ids`；调试运行时使用当前租户用户权限。
 
