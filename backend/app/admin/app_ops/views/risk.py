@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.admin.models import RiskSeverity
 from app.admin.app_ops.services.audit import write_audit_log
 from app.admin.app_ops.services.risk import AdminRiskService
-from app.admin.app_ops.schemas import IpBlacklistCreate, RateLimitRuleCreate
+from app.admin.app_ops.schemas import IpBlacklistCreate, RateLimitRuleCreate, RateLimitRuleUpdate
 from app.admin.app_sys.deps import AdminContext, get_platform_admin, require_admin_role
 from app.common.response import ok, page_ok
 from app.common.schema import PageParams
@@ -114,20 +114,17 @@ async def create_rate_limit(
 @router.patch("/risk/rate-limits/{rule_id}")
 async def patch_rate_limit(
     rule_id: UUID,
-    is_active: bool | None = None,
-    limit_per_minute: int | None = None,
-    request: Request = None,
+    body: RateLimitRuleUpdate,
+    request: Request,
     ctx: AdminContext = Depends(require_admin_role("security")),
     db: AsyncSession = Depends(get_db),
 ):
-    row = await AdminRiskService(db).update_rate_limit(
-        rule_id, is_active=is_active, limit_per_minute=limit_per_minute
-    )
+    row = await AdminRiskService(db).update_rate_limit(rule_id, body)
     await write_audit_log(
         db,
         admin_id=ctx.admin_id,
         action="risk.rule.update",
         request=request,
-        detail={"rule_id": str(rule_id), "is_active": is_active, "limit_per_minute": limit_per_minute},
+        detail={"rule_id": str(rule_id), **body.model_dump(exclude_unset=True)},
     )
     return ok(row)

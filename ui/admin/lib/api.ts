@@ -153,19 +153,43 @@ export const adminApi = {
   listRateLimits: (page = 1, size = DEFAULT_PAGE_SIZE) =>
     get<PageResult<RateLimitRule>>(`/risk/rate-limits?${buildPageQuery(page, size)}`),
   createRateLimit: (body: Record<string, unknown>) => post<RateLimitRule>("/risk/rate-limits", body),
-  listAuditLogs: (opts?: { action?: string; tenant_id?: string; page?: number; size?: number }) => {
+  updateRateLimit: (id: string, body: Record<string, unknown>) =>
+    patch<RateLimitRule>(`/risk/rate-limits/${id}`, body),
+  getAuditMeta: () =>
+    get<{ actions: string[]; admins: { id: string; username: string }[] }>("/audit/meta"),
+  listAuditLogs: (opts?: {
+    action?: string;
+    tenant_id?: string;
+    admin_id?: string;
+    created_from?: string;
+    created_to?: string;
+    page?: number;
+    size?: number;
+  }) => {
     const q = new URLSearchParams({
       page: String(opts?.page ?? 1),
       size: String(opts?.size ?? DEFAULT_PAGE_SIZE),
     });
     if (opts?.action) q.set("action", opts.action);
     if (opts?.tenant_id) q.set("tenant_id", opts.tenant_id);
+    if (opts?.admin_id) q.set("admin_id", opts.admin_id);
+    if (opts?.created_from) q.set("created_from", opts.created_from);
+    if (opts?.created_to) q.set("created_to", opts.created_to);
     return get<PageResult<AuditLog>>(`/audit/logs?${q.toString()}`);
   },
-  exportAuditLogs: async (opts?: { action?: string; tenant_id?: string }) => {
+  exportAuditLogs: async (opts?: {
+    action?: string;
+    tenant_id?: string;
+    admin_id?: string;
+    created_from?: string;
+    created_to?: string;
+  }) => {
     const q = new URLSearchParams();
     if (opts?.action) q.set("action", opts.action);
     if (opts?.tenant_id) q.set("tenant_id", opts.tenant_id);
+    if (opts?.admin_id) q.set("admin_id", opts.admin_id);
+    if (opts?.created_from) q.set("created_from", opts.created_from);
+    if (opts?.created_to) q.set("created_to", opts.created_to);
     const suffix = q.toString() ? `?${q.toString()}` : "";
     const token = getAdminToken();
     const res = await fetch(`${baseURL}/audit/logs/export${suffix}`, {
@@ -385,11 +409,14 @@ export interface RateLimitRule {
   path_pattern: string;
   limit_per_minute: number;
   is_active: boolean;
+  description?: string | null;
 }
 
 export interface AuditLog {
   id: string;
   action: string;
+  admin_id?: string | null;
+  admin_username?: string | null;
   tenant_id?: string;
   ip_address?: string;
   created_at: string;

@@ -38,7 +38,15 @@ class IpBlacklistOut(BaseModel):
 class RateLimitRuleCreate(BaseModel):
     name: str = Field(description="规则名称")
     path_pattern: str = Field(description="路径匹配模式")
-    limit_per_minute: int = Field(60, description="每分钟请求上限")
+    limit_per_minute: int = Field(60, ge=1, le=10000, description="每分钟请求上限")
+    description: str | None = Field(None, description="规则描述")
+
+
+class RateLimitRuleUpdate(BaseModel):
+    name: str | None = Field(None, description="规则名称")
+    path_pattern: str | None = Field(None, description="路径匹配模式")
+    limit_per_minute: int | None = Field(None, ge=1, le=10000, description="每分钟请求上限")
+    is_active: bool | None = Field(None, description="是否启用")
     description: str | None = Field(None, description="规则描述")
 
 

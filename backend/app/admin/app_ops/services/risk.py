@@ -16,6 +16,7 @@ from app.admin.app_ops.schemas.risk import (
     IpBlacklistOut,
     RateLimitRuleCreate,
     RateLimitRuleOut,
+    RateLimitRuleUpdate,
     RiskEventOut,
 )
 from app.common.schema import PageParams, PageResult
@@ -110,14 +111,11 @@ class AdminRiskService:
         platform_risk_enforcer.invalidate_cache()
         return RateLimitRuleOut.model_validate(row)
 
-    async def update_rate_limit(
-        self, rule_id: UUID, *, is_active: bool | None = None, limit_per_minute: int | None = None
-    ) -> RateLimitRuleOut:
+    async def update_rate_limit(self, rule_id: UUID, body: RateLimitRuleUpdate) -> RateLimitRuleOut:
         row = await self.rate_limits.get_by_id_or_raise(rule_id, label="规则不存在")
-        if is_active is not None:
-            row.is_active = is_active
-        if limit_per_minute is not None:
-            row.limit_per_minute = limit_per_minute
+        data = body.model_dump(exclude_unset=True)
+        for key, value in data.items():
+            setattr(row, key, value)
         await self.db.flush()
         platform_risk_enforcer.invalidate_cache()
         return RateLimitRuleOut.model_validate(row)

@@ -15,6 +15,7 @@ from app.admin.app_ops.schemas.risk import (
     IpBlacklistOut,
     RateLimitRuleCreate,
     RateLimitRuleOut,
+    RateLimitRuleUpdate,
     RiskEventOut,
 )
 from app.admin.app_ops.schemas.tenant import (
@@ -43,6 +44,7 @@ __all__ = [
     "IpBlacklistCreate",
     "IpBlacklistOut",
     "RateLimitRuleCreate",
+    "RateLimitRuleUpdate",
     "RateLimitRuleOut",
     "AuditLogOut",
 ]
