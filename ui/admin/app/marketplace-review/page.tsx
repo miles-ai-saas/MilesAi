@@ -105,7 +105,7 @@ export default function MarketplaceReviewPage() {
                 <p className="mt-1 text-sm text-ink-muted line-clamp-2">
                   {app.description || "无描述"}
                 </p>
-                <p className="mt-1 text-xs text-ink-faint">
+                <p className="mt-1 admin-data-meta">
                   {app.category_name ? `${app.category_name} · ` : ""}
                   提交于{" "}
                   {app.submitted_at
@@ -147,7 +147,7 @@ export default function MarketplaceReviewPage() {
               关闭
             </button>
           </div>
-          <pre className="mt-3 max-h-80 overflow-auto rounded-lg bg-surface-muted p-3 text-xs text-ink-muted">
+          <pre className="admin-code-block mt-3 max-h-80 rounded-lg bg-surface-muted p-3">
             {JSON.stringify(detail.manifest, null, 2)}
           </pre>
         </section>

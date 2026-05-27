@@ -115,26 +115,26 @@ export default function SysCategoriesPage() {
         ))}
       </div>
 
-      <div className="overflow-hidden rounded-xl border border-line bg-surface">
-        <table className="w-full text-left text-sm">
-          <thead className="border-b border-line bg-surface-muted text-xs text-ink-muted">
+      <div className="admin-table-wrap">
+        <table className="admin-table">
+          <thead>
             <tr>
-              <th className="px-4 py-3 font-medium">名称</th>
-              <th className="px-4 py-3 font-medium">slug</th>
-              <th className="px-4 py-3 font-medium">排序</th>
-              <th className="px-4 py-3 font-medium text-right">操作</th>
+              <th>名称</th>
+              <th>slug</th>
+              <th className="col-center col-numeric">排序</th>
+              <th className="col-actions">操作</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-line">
+          <tbody>
             {items.map((row) => (
-              <tr key={row.id} className="hover:bg-surface-muted/50">
-                <td className="px-4 py-3 font-medium">{row.name}</td>
-                <td className="px-4 py-3 font-mono text-xs text-ink-muted">{row.slug}</td>
-                <td className="px-4 py-3">{row.sort_order}</td>
-                <td className="px-4 py-3 text-right">
+              <tr key={row.id}>
+                <td className="cell-primary">{row.name}</td>
+                <td className="cell-mono">{row.slug}</td>
+                <td className="col-center col-numeric cell-numeric">{row.sort_order}</td>
+                <td className="col-actions">
                   <button
                     type="button"
-                    className="mr-3 text-brand hover:underline"
+                    className="text-brand hover:underline"
                     onClick={() => openEdit(row)}
                   >
                     编辑

@@ -83,4 +83,91 @@
   .admin-page-shell {
     @apply mx-auto w-full max-w-screen-2xl p-5 lg:p-8;
   }
+
+  /* 数据表格 */
+  .admin-table-wrap {
+    @apply overflow-x-auto rounded-xl border border-line bg-surface;
+  }
+
+  .admin-table {
+    @apply w-full border-collapse text-left text-sm;
+  }
+
+  .admin-table thead {
+    @apply bg-surface-muted text-ink-muted;
+  }
+
+  .admin-table th {
+    @apply border-b border-line px-4 py-2.5 text-sm font-medium;
+  }
+
+  .admin-table td {
+    @apply border-b border-line-soft px-4 py-2.5 align-middle text-sm text-ink;
+  }
+
+  .admin-table tbody tr:last-child td {
+    @apply border-b-0;
+  }
+
+  .admin-table tbody tr {
+    @apply transition hover:bg-brand-light/40;
+  }
+
+  /* th / td 必须成对使用，保证列对齐 */
+  .admin-table :is(th, td).col-center {
+    @apply text-center;
+  }
+
+  .admin-table :is(th, td).col-actions {
+    @apply w-[1%] whitespace-nowrap text-right;
+  }
+
+  .admin-table :is(th, td).col-numeric {
+    @apply whitespace-nowrap tabular-nums;
+  }
+
+  .cell-primary {
+    @apply font-medium text-ink;
+  }
+
+  .cell-muted {
+    @apply text-ink-muted;
+  }
+
+  .cell-mono {
+    @apply font-mono text-xs text-ink-muted;
+  }
+
+  .cell-numeric {
+    @apply tabular-nums text-ink-muted;
+  }
+
+  .col-actions :is(button, a) {
+    @apply text-xs;
+  }
+
+  .col-actions > :not([hidden]) ~ :not([hidden]) {
+    @apply ml-2;
+  }
+
+  /* 审计 / 风控等列表行 */
+  .admin-data-list {
+    @apply space-y-2 text-sm;
+  }
+
+  .admin-data-row {
+    @apply rounded-lg border border-line-soft bg-surface-muted px-3 py-2;
+  }
+
+  .admin-data-meta {
+    @apply tabular-nums text-xs text-ink-faint;
+  }
+
+  .admin-code-block {
+    @apply mt-1 overflow-x-auto font-mono text-xs text-ink-muted;
+  }
+
+  .stat-value {
+    @apply tabular-nums;
+  }
 }

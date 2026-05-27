@@ -40,17 +40,17 @@ export default function RiskPage() {
 
       <section className="card p-4">
         <h2 className="text-sm font-semibold text-ink">风险事件</h2>
-        <ul className="mt-3 max-h-64 space-y-2 overflow-y-auto text-sm">
+        <ul className="admin-data-list mt-3 max-h-64 overflow-y-auto">
           {risks.length === 0 && <li className="text-ink-faint">暂无风险事件</li>}
           {risks.map((e) => (
-            <li key={e.id} className="flex items-center justify-between rounded-lg bg-surface-muted px-3 py-2">
+            <li key={e.id} className="admin-data-row flex items-center justify-between gap-2">
               <span>
-                <span className="font-medium">{e.event_type}</span>
-                <span className="text-ink-muted"> · {e.severity}</span>
+                <span className="cell-primary">{e.event_type}</span>
+                <span className="cell-muted"> · {e.severity}</span>
                 {e.ip_address && (
-                  <span className="text-ink-faint"> · {e.ip_address}</span>
+                  <span className="admin-data-meta"> · {e.ip_address}</span>
                 )}
-                <span className="ml-2 text-xs text-ink-faint">
+                <span className="admin-data-meta ml-2">
                   {e.created_at.slice(0, 19)}
                 </span>
               </span>
@@ -102,12 +102,12 @@ export default function RiskPage() {
             封禁
           </button>
         </div>
-        <ul className="mt-3 space-y-1 text-sm">
+        <ul className="admin-data-list mt-3">
           {ips.map((ip) => (
-            <li key={ip.id} className="flex justify-between rounded-lg bg-surface-muted px-3 py-2">
+            <li key={ip.id} className="admin-data-row flex justify-between gap-2">
               <span>
-                {ip.ip_address}
-                {ip.reason && <span className="text-ink-faint"> — {ip.reason}</span>}
+                <span className="cell-mono">{ip.ip_address}</span>
+                {ip.reason && <span className="cell-muted"> — {ip.reason}</span>}
                 {!ip.is_active && <span className="text-amber-600"> (已禁用)</span>}
               </span>
               <button
@@ -127,14 +127,15 @@ export default function RiskPage() {
 
       <section className="card p-4">
         <h2 className="text-sm font-semibold text-ink">限流配置</h2>
-        <ul className="mt-3 space-y-2 text-sm">
+        <ul className="admin-data-list mt-3">
           {rules.length === 0 && <li className="text-ink-faint">暂无限流规则</li>}
           {rules.map((r) => (
-            <li key={r.id} className="rounded-lg bg-surface-muted px-3 py-2">
-              <span className="font-medium">{r.name}</span>
-              <span className="text-ink-muted">
+            <li key={r.id} className="admin-data-row">
+              <span className="cell-primary">{r.name}</span>
+              <span className="cell-muted">
                 {" "}
-                — {r.path_pattern} · {r.limit_per_minute}/min
+                — <span className="cell-mono">{r.path_pattern}</span> ·{" "}
+                <span className="cell-numeric">{r.limit_per_minute}/min</span>
               </span>
               {!r.is_active && <span className="text-amber-600"> (停用)</span>}
             </li>

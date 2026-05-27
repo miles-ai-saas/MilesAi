@@ -147,37 +147,37 @@ export default function AdminsPage() {
       )}
 
       <section className="card p-4">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="text-xs text-ink-muted">
+        <div className="admin-table-wrap border-0">
+          <table className="admin-table">
+            <thead>
               <tr>
-                <th className="py-2 text-left">用户名</th>
-                <th className="py-2 text-left">显示名</th>
-                <th className="py-2 text-center">角色</th>
-                <th className="py-2 text-center">状态</th>
-                <th className="py-2 text-right">操作</th>
+                <th>用户名</th>
+                <th>显示名</th>
+                <th className="col-center">角色</th>
+                <th className="col-center">状态</th>
+                <th className="col-actions">操作</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-line-soft">
+            <tbody>
               {admins.map((a) => (
-                <tr key={a.id} className="hover:bg-brand-light/60">
-                  <td className="py-2 font-medium">{a.username}</td>
-                  <td className="py-2 text-ink-muted">{a.display_name || "—"}</td>
-                  <td className="py-2 text-center">
+                <tr key={a.id}>
+                  <td className="cell-primary">{a.username}</td>
+                  <td className="cell-muted">{a.display_name || "—"}</td>
+                  <td className="col-center">
                     <span className="badge bg-brand-light text-ink">{a.role}</span>
                   </td>
-                  <td className="py-2 text-center">
+                  <td className="col-center">
                     {a.is_active ? (
                       <span className="text-emerald-600">启用</span>
                     ) : (
                       <span className="text-ink-faint">已禁用</span>
                     )}
                   </td>
-                  <td className="py-2 text-right space-x-2">
+                  <td className="col-actions">
                     {a.is_active && (
                       <button
                         type="button"
-                        className="text-xs text-brand hover:underline"
+                        className="text-brand hover:underline"
                         onClick={() => setResetId(a.id)}
                       >
                         重置密码
@@ -186,7 +186,7 @@ export default function AdminsPage() {
                     {a.is_active && a.id !== currentId && (
                       <button
                         type="button"
-                        className="text-xs text-red-600 hover:underline"
+                        className="text-red-600 hover:underline"
                         onClick={() => onDisable(a.id)}
                       >
                         禁用

@@ -122,26 +122,26 @@ export default function ModelCatalogPage() {
         ))}
       </div>
 
-      <div className="overflow-x-auto rounded-xl border bg-white">
-        <table className="w-full text-left text-sm">
-          <thead className="border-b bg-surface-muted text-xs text-ink-muted">
+      <div className="admin-table-wrap">
+        <table className="admin-table">
+          <thead>
             <tr>
-              <th className="px-4 py-3">名称</th>
-              <th className="px-4 py-3">服务商</th>
-              <th className="px-4 py-3">model</th>
-              <th className="px-4 py-3">状态</th>
-              <th className="px-4 py-3">平台 Key</th>
-              <th className="px-4 py-3">操作</th>
+              <th>名称</th>
+              <th>服务商</th>
+              <th>model</th>
+              <th>状态</th>
+              <th>平台 Key</th>
+              <th className="col-actions">操作</th>
             </tr>
           </thead>
           <tbody>
             {items.map((m) => (
-              <tr key={m.id} className="border-b last:border-0">
-                <td className="px-4 py-3 font-medium">{m.name}</td>
-                <td className="px-4 py-3">{VENDOR_LABEL[m.vendor] ?? m.vendor}</td>
-                <td className="px-4 py-3 font-mono text-xs">{m.model_code ?? m.model_name}</td>
-                <td className="px-4 py-3">{STATUS_LABEL[m.publish_status] ?? m.publish_status}</td>
-                <td className="px-4 py-3">
+              <tr key={m.id}>
+                <td className="cell-primary">{m.name}</td>
+                <td>{VENDOR_LABEL[m.vendor] ?? m.vendor}</td>
+                <td className="cell-mono">{m.model_code ?? m.model_name}</td>
+                <td>{STATUS_LABEL[m.publish_status] ?? m.publish_status}</td>
+                <td>
                   <span
                     className={
                       m.has_api_key
@@ -152,34 +152,32 @@ export default function ModelCatalogPage() {
                     {m.has_api_key ? "已配置" : "未配置"}
                   </span>
                 </td>
-                <td className="px-4 py-3">
-                  <div className="flex flex-wrap items-center gap-2">
+                <td className="col-actions">
+                  <button
+                    type="button"
+                    className="text-brand hover:underline"
+                    onClick={() => openEdit(m)}
+                  >
+                    编辑
+                  </button>
+                  {m.publish_status === "draft" && (
                     <button
                       type="button"
-                      className="text-xs text-brand hover:underline"
-                      onClick={() => openEdit(m)}
+                      className="text-brand hover:underline"
+                      onClick={() => publish(m.id)}
                     >
-                      编辑
+                      发布
                     </button>
-                    {m.publish_status === "draft" && (
-                      <button
-                        type="button"
-                        className="text-xs text-brand hover:underline"
-                        onClick={() => publish(m.id)}
-                      >
-                        发布
-                      </button>
-                    )}
-                    {m.publish_status === "published" && (
-                      <button
-                        type="button"
-                        className="text-xs text-amber-700 hover:underline"
-                        onClick={() => deprecate(m.id)}
-                      >
-                        下架
-                      </button>
-                    )}
-                  </div>
+                  )}
+                  {m.publish_status === "published" && (
+                    <button
+                      type="button"
+                      className="text-amber-700 hover:underline"
+                      onClick={() => deprecate(m.id)}
+                    >
+                      下架
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}

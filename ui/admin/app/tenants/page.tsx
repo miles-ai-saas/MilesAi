@@ -91,31 +91,31 @@ export default function TenantsPage() {
         </div>
       </section>
 
-      <div className="card overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-surface-muted text-xs text-ink-muted">
+      <div className="admin-table-wrap">
+        <table className="admin-table">
+          <thead>
             <tr>
-              <th className="px-4 py-2 text-left">名称</th>
-              <th className="px-4 py-2">套餐</th>
-              <th className="px-4 py-2">状态</th>
-              <th className="px-4 py-2">用量</th>
-              <th className="px-4 py-2 text-right">操作</th>
+              <th>名称</th>
+              <th className="col-center">套餐</th>
+              <th className="col-center">状态</th>
+              <th className="col-center col-numeric">用量</th>
+              <th className="col-actions">操作</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-line-soft">
+          <tbody>
             {tenants.map((t) => (
-              <tr key={t.id} className="hover:bg-brand-light/60">
-                <td className="px-4 py-3 font-medium">{t.name}</td>
-                <td className="px-4 py-3 text-center text-xs">{t.plan_name || "—"}</td>
-                <td className="px-4 py-3 text-center">
+              <tr key={t.id}>
+                <td className="cell-primary">{t.name}</td>
+                <td className="col-center cell-muted">{t.plan_name || "—"}</td>
+                <td className="col-center">
                   <span className="badge bg-brand-light text-ink">
                     {STATUS_LABEL[t.status] || t.status}
                   </span>
                 </td>
-                <td className="px-4 py-3 text-center text-xs text-ink-muted">
-                  {t.storage_used_mb}/{t.max_storage_mb} MB · Token {t.tokens_used_month}
+                <td className="col-center col-numeric cell-numeric">
+                  {t.storage_used_mb}/{t.max_storage_mb} MB · Token {t.tokens_used_month.toLocaleString()}
                 </td>
-                <td className="px-4 py-3 text-right">
+                <td className="col-actions">
                   <Link href={`/tenants/${t.id}`} className="text-brand hover:underline">
                     详情
                   </Link>

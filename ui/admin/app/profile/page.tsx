@@ -100,11 +100,11 @@ export default function ProfilePage() {
 
       <section className="card p-4">
         <h2 className="text-sm font-semibold text-ink">在线会话</h2>
-        <ul className="mt-3 space-y-2 text-sm">
+        <ul className="admin-data-list mt-3">
           {sessions.map((s) => (
             <li
               key={s.admin_id}
-              className="flex items-center justify-between gap-2 rounded-lg bg-surface-muted px-3 py-2"
+              className="admin-data-row flex items-center justify-between gap-2"
             >
               <div className="min-w-0">
                 {s.username}

@@ -67,26 +67,22 @@ export default function AuditPage() {
       </div>
 
       <section className="card p-4">
-        <ul className="max-h-[32rem] space-y-2 overflow-y-auto text-sm">
+        <ul className="admin-data-list max-h-[32rem] overflow-y-auto">
           {logs.length === 0 && <li className="text-ink-faint">暂无审计记录</li>}
           {logs.map((l) => (
-            <li key={l.id} className="rounded-lg border border-line-soft bg-surface-muted px-3 py-2">
+            <li key={l.id} className="admin-data-row">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="font-mono text-xs text-ink-faint">
-                  {l.created_at.slice(0, 19)}
-                </span>
-                <span className="font-medium text-ink">{l.action}</span>
+                <span className="admin-data-meta">{l.created_at.slice(0, 19)}</span>
+                <span className="cell-primary">{l.action}</span>
                 {l.tenant_id && (
                   <span className="badge bg-brand/10 text-brand">
                     租户 {l.tenant_id.slice(0, 8)}…
                   </span>
                 )}
-                {l.ip_address && <span className="text-xs text-ink-muted">{l.ip_address}</span>}
+                {l.ip_address && <span className="admin-data-meta">{l.ip_address}</span>}
               </div>
               {Object.keys(l.detail || {}).length > 0 && (
-                <pre className="mt-1 overflow-x-auto text-xs text-ink-muted">
-                  {JSON.stringify(l.detail, null, 2)}
-                </pre>
+                <pre className="admin-code-block">{JSON.stringify(l.detail, null, 2)}</pre>
               )}
             </li>
           ))}

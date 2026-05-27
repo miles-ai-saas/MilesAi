@@ -132,9 +132,9 @@ export default function BillingPage() {
             <div key={p.id} className="rounded-lg border border-line p-3 text-sm">
               <p className="font-bold">{p.name}</p>
               <p className="text-xs text-ink-muted">{p.code}</p>
-              <p className="mt-2 text-brand">¥{p.price_monthly}/月</p>
-              <p className="mt-1 text-xs text-ink-muted">
-                {p.max_storage_mb} MB · {p.max_tokens_monthly.toLocaleString()} tokens
+              <p className="mt-2 cell-numeric text-brand">¥{p.price_monthly}/月</p>
+              <p className="mt-1 cell-numeric text-xs text-ink-muted">
+                {p.max_storage_mb.toLocaleString()} MB · {p.max_tokens_monthly.toLocaleString()} tokens
               </p>
               {!p.is_active && (
                 <span className="mt-2 inline-block text-xs text-ink-faint">已停用</span>
@@ -192,32 +192,32 @@ export default function BillingPage() {
 
       <section className="card p-4">
         <h2 className="text-sm font-semibold text-ink">账单列表</h2>
-        <div className="mt-4 overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="text-xs text-ink-muted">
+        <div className="mt-4 admin-table-wrap border-0">
+          <table className="admin-table">
+            <thead>
               <tr>
-                <th className="py-2 text-left">租户</th>
-                <th className="py-2 text-center">周期</th>
-                <th className="py-2 text-center">金额</th>
-                <th className="py-2 text-center">状态</th>
-                <th className="py-2 text-right">操作</th>
+                <th>租户</th>
+                <th className="col-center col-numeric">周期</th>
+                <th className="col-center col-numeric">金额</th>
+                <th className="col-center">状态</th>
+                <th className="col-actions">操作</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-line-soft">
+            <tbody>
               {bills.map((b) => (
-                <tr key={b.id} className="hover:bg-brand-light/60">
-                  <td className="py-2">{b.tenant_name || b.tenant_id.slice(0, 8)}</td>
-                  <td className="py-2 text-center text-xs">
+                <tr key={b.id}>
+                  <td className="cell-primary">{b.tenant_name || b.tenant_id.slice(0, 8)}</td>
+                  <td className="col-center col-numeric cell-numeric">
                     {b.period_start} ~ {b.period_end}
                   </td>
-                  <td className="py-2 text-center">¥{b.amount}</td>
-                  <td className="py-2 text-center">
+                  <td className="col-center col-numeric cell-numeric">¥{b.amount}</td>
+                  <td className="col-center">
                     <span className="badge bg-brand-light text-ink">{b.status}</span>
                   </td>
-                  <td className="py-2 text-right space-x-2">
+                  <td className="col-actions">
                     <button
                       type="button"
-                      className="text-xs text-brand hover:underline"
+                      className="text-brand hover:underline"
                       onClick={() => viewBill(b.id)}
                     >
                       明细
@@ -226,7 +226,7 @@ export default function BillingPage() {
                       <>
                         <button
                           type="button"
-                          className="text-xs text-emerald-600 hover:underline"
+                          className="text-emerald-600 hover:underline"
                           onClick={async () => {
                             await adminApi.updateBillStatus(b.id, "paid");
                             setMsg("已标记为已付");
@@ -237,7 +237,7 @@ export default function BillingPage() {
                         </button>
                         <button
                           type="button"
-                          className="text-xs text-red-600 hover:underline"
+                          className="text-red-600 hover:underline"
                           onClick={async () => {
                             await adminApi.updateBillStatus(b.id, "void");
                             setMsg("账单已作废");
@@ -257,7 +257,7 @@ export default function BillingPage() {
         {billDetail && (
           <div className="mt-4 rounded-lg bg-surface-muted p-3 text-xs">
             <p className="font-semibold text-ink">消费明细 · {billDetail.tenant_name}</p>
-            <ul className="mt-2 space-y-1 text-ink-muted">
+            <ul className="mt-2 space-y-1 cell-numeric text-ink-muted">
               {billDetail.line_items.map((item, i) => (
                 <li key={i}>
                   {item.item_type}: {item.description || "—"} — ¥{item.amount}

@@ -21,9 +21,9 @@ function UsageBar({
   const warn = pct >= 90;
   return (
     <div className="rounded-lg bg-surface-muted p-3">
-      <div className="flex items-center justify-between text-xs text-ink-muted">
+      <div className="flex items-center justify-between text-xs cell-muted">
         <span>{label}</span>
-        <span className={warn ? "text-amber-600" : ""}>
+        <span className={`cell-numeric ${warn ? "text-amber-600" : ""}`}>
           {used.toLocaleString()}
           {unit} / {max.toLocaleString()}
           {unit} ({pct}%)

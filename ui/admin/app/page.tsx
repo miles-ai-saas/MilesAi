@@ -44,7 +44,7 @@ export default function DashboardPage() {
         {cards.map((c) => (
           <Link key={c.label} href={c.href} className="card p-5 transition hover:border-brand/40">
             <p className="text-sm text-ink-muted">{c.label}</p>
-            <p className="mt-2 text-3xl font-bold text-brand">{c.value}</p>
+            <p className="mt-2 text-3xl font-bold stat-value text-brand">{c.value}</p>
           </Link>
         ))}
       </div>
