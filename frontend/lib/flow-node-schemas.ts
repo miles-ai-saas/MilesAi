@@ -17,6 +17,7 @@ export const NODE_HANDLES: Record<
   ConditionBranch: { targets: ["hits", "input"], sources: ["true", "false"] },
   ParallelJoin: { targets: ["input"], sources: ["output"] },
   PlatformTool: { targets: ["input", "query", "hits"], sources: ["output"] },
+  SubFlow: { targets: ["input", "query"], sources: ["output"] },
   TextOutput: { targets: ["input"], sources: [] },
   /** 与 backend image_generate 入参键一致 */
   ImageGenerate: {

@@ -4,7 +4,7 @@
 > **功能规格：** [features/flow-orchestration.md](../features/flow-orchestration.md)  
 > 关联：[technical-design.md](../architecture/technical-design.md) §9  
 > **编排增强（已实现）：** [flow-orchestration-enhancement.md](../architecture/flow-orchestration-enhancement.md)  
-> **子流程 SubFlow（已立项 · 暂不实施）：** [flow-subflow-design.md](../architecture/flow-subflow-design.md)  
+> **子流程 SubFlow：** [flow-subflow-design.md](../architecture/flow-subflow-design.md)  
 > **多模态（已实现）：** 产品说明 [multimodal-capabilities.md](../product/multimodal-capabilities.md) · 路线图 [multimodal-roadmap.md](../architecture/multimodal-roadmap.md)  
 > **设计归档：** [flow-llm-multimodal-design.md](../architecture/flow-llm-multimodal-design.md)（识图）、[flow-generative-media-design.md](../architecture/flow-generative-media-design.md)（生图/生视频）、[agent-multimodal-design.md](../architecture/agent-multimodal-design.md)（对话）
 
@@ -90,9 +90,9 @@ React Flow → PUT /flows/{id}/graph → flow_versions
 - `GET /flows/{id}/versions/{version}` — 指定版本完整画布
 - 编辑页「版本历史」：只读预览 +「恢复此版本」（另存为新版本号）
 
-### 子流程调用 SubFlow（未实现）
+### 子流程调用 SubFlow
 
-已立项，规格见 [flow-subflow-design.md](../architecture/flow-subflow-design.md)。当前请使用模板、版本恢复或复制画布实现复用。
+画布调色板可拖入 **SubFlow** 节点，引用同租户**已发布**流程；支持 `published`（跟随最新发布版）与 `pinned`（锁定版本）。编译时会校验子流程存在性、发布状态、直接环与最大嵌套深度（3 层）。
 
 ## 枚举元数据
 

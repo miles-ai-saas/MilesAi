@@ -133,7 +133,7 @@
 | 核心节点（LLM/RAG/分支/工具/生图生视频） | ✅ | 14 类节点 |
 | PaddleOCR/Whisper 专用画布节点 | ⬜ | 能力在 KB 入库链，非独立节点 |
 | 循环节点、敏感词/审核画布节点 | ⬜ | 合规在运行时集成，非独立节点 |
-| 子流程 SubFlow | ⬜ | 已立项，暂不实施 |
+| 子流程 SubFlow | ✅ | SubFlow 节点嵌套 run |
 | 流程版本快照/回滚/对比 | 部分 | 版本列表 + 发布；无 diff UI |
 | 识图输入（对话/流程 LLM） | ✅ | Vision + `RunContext.media` |
 

@@ -49,6 +49,11 @@ class RunContext:
     media: list[dict[str, Any]] = field(default_factory=list)  # 附图 [{attachment_id, detail}]
     generative_video_async: bool = True  # False 时 VideoGenerate 节点同步阻塞
     generative_image_async: bool = True  # False 时 ImageGenerate 节点同步阻塞
+    current_flow_id: str | None = None  # 当前执行的流程 ID
+    parent_flow_id: str | None = None  # SubFlow 父流程 ID
+    parent_node_id: str | None = None  # SubFlow 父节点 ID
+    subflow_depth: int = 0  # 子流程嵌套深度
+    executing_node_id: str | None = None  # 当前执行节点（运行时注入）
 
 
 @dataclass

@@ -42,7 +42,7 @@
 | 会话设备列表与强制登出 UI | 1 | ✅ 多设备会话 + `/system/sessions` |
 | 模型健康自动探测 cron | 3 | ✅ Beat 每 15 分钟 `probe_models_health` |
 | Python 钩子 | 2 | ✅ `app.tenant.hooks.plugins.*` |
-| 子流程 SubFlow | 4 | [flow-subflow-design.md](../architecture/flow-subflow-design.md)，已立项 |
+| 子流程 SubFlow | 4 | ✅ SubFlow 节点 + 编译校验 + 前端 |
 
 ---
 

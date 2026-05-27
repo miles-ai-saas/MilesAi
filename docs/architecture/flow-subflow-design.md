@@ -1,7 +1,7 @@
 # 画布子流程调用（SubFlow）— 立项规格
 
 **日期：** 2026-05-26  
-**状态：** 目标规格 · **未实施**（无对应 `features/` 文档）  
+**状态：** 已实现（Phase A–C）  
 **As-Is 规格：** 无 — 子流程节点尚未落地；现网流程见 [features/flow-orchestration.md](../features/flow-orchestration.md)  
 **优先级：** P2（待 Phase 1–4 稳定运行后排期）  
 **关联：** [flows.md](../guides/flows.md)、[technical-design.md](./technical-design.md) §9、[flow-orchestration-enhancement.md](./flow-orchestration-enhancement.md)
@@ -14,7 +14,7 @@
 
 | 项 | 结论 |
 |----|------|
-| 是否实施 | **否**（本文档仅锁定方案，供后续迭代） |
+| 是否实施 | **是**（SubFlow 节点 + 编译校验 + 前端属性面板） |
 | 执行引擎 | 仍仅 `get_flow_runtime().run()` + LangGraph，不新增第二执行器 |
 | 与 Agent | 对话入口仍为 Agent `published_flow_id`；子流程仅在主图节点内嵌套 |
 | 预估规模 | 后端 3–5d + 前端 2–3d + 测试/文档 1–2d（含循环检测与嵌套 steps） |

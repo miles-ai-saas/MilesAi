@@ -281,6 +281,7 @@ export default function FlowEditPage() {
             canvasRef={canvasRef}
             initialGraph={initialGraph}
             onGraphChange={onGraphChange}
+            currentFlowId={id}
             kbs={kbs}
             models={models}
             prompts={prompts}

@@ -25,6 +25,7 @@ from app.flow_runtime.constants import (
     PROMPT_TEMPLATE_NODE_TYPE,
     RELEVANCE_GRADE_NODE_TYPE,
     STATIC_RESPONSE_NODE_TYPE,
+    SUB_FLOW_NODE_TYPE,
     TEXT_INPUT_NODE_TYPE,
     TEXT_OUTPUT_NODE_TYPE,
 )
@@ -36,6 +37,7 @@ from app.flow_runtime.nodes import (
     io_nodes,
     llm_nodes,
     rag_nodes,
+    subflow_nodes,
     tool_nodes,
 )
 from app.flow_runtime.types import RunContext
@@ -57,6 +59,7 @@ NODE_REGISTRY: dict[str, NodeHandler] = {
     PARALLEL_JOIN_NODE_TYPE: control_nodes.parallel_join,
     CHAT_INPUT_NODE_TYPE: io_nodes.text_input,
     CHAT_OUTPUT_NODE_TYPE: io_nodes.text_output,
+    SUB_FLOW_NODE_TYPE: subflow_nodes.sub_flow,
 }
 
 

@@ -32,10 +32,12 @@ from __future__ import annotations
 import operator
 from typing import Annotated, Any
 
+from dataclasses import replace
+
 from langchain_core.runnables import RunnableConfig
 from langgraph.graph import END, START, StateGraph
 
-from app.flow_runtime.constants import TEXT_OUTPUT_NODE_TYPES
+from app.flow_runtime.constants import TEXT_OUTPUT_NODE_TYPES, SUB_FLOW_NODE_TYPE
 from app.integrations.langgraph.constants import RELEVANCE_NONE
 from app.integrations.langgraph.graph_analysis import (
     CONDITION_NODE_TYPE,
@@ -201,6 +203,16 @@ def validate_graph_for_compile(graph: dict[str, Any]) -> FlowCompileReport:
                     "平台工具节点须配置 tool_slug",
                     node_id=nid,
                 )
+        if ntype == SUB_FLOW_NODE_TYPE:
+            node_data = node.get("data") or {}
+            if not isinstance(node_data, dict):
+                node_data = {}
+            if not str(node_data.get("sub_flow_id") or "").strip():
+                add_error(
+                    "missing_sub_flow_id",
+                    "SubFlow 节点须配置 sub_flow_id",
+                    node_id=nid,
+                )
         if ntype == CONDITION_NODE_TYPE:
             conditional_nodes.append(nid)
             handles = {normalize_branch_handle(sh) for _, sh, _ in outgoing.get(nid, [])}
@@ -358,18 +370,23 @@ def build_canvas_graph(graph_json: dict[str, Any]):
             if not isinstance(node_data, dict):
                 node_data = {}
             ntype = resolve_node_type(node)
-            ctx = RunContext(
-                tenant_id=state["tenant_id"],
-                inputs=state.get("inputs") or {},
-                kb_ids=state.get("kb_ids") or [],
-                model_config_id=state.get("model_config_id"),
-                system_prompt=state.get("system_prompt"),
-                user_id=state.get("user_id"),
-                permissions=frozenset(state.get("permissions") or []),
-                is_superuser=bool(state.get("is_superuser")),
-                agent_id=state.get("agent_id"),
-                agent_config=dict(state.get("agent_config") or {}),
-                media=list(state.get("media") or []),
+            ctx = replace(
+                RunContext(
+                    tenant_id=state["tenant_id"],
+                    inputs=state.get("inputs") or {},
+                    kb_ids=state.get("kb_ids") or [],
+                    model_config_id=state.get("model_config_id"),
+                    system_prompt=state.get("system_prompt"),
+                    user_id=state.get("user_id"),
+                    permissions=frozenset(state.get("permissions") or []),
+                    is_superuser=bool(state.get("is_superuser")),
+                    agent_id=state.get("agent_id"),
+                    agent_config=dict(state.get("agent_config") or {}),
+                    media=list(state.get("media") or []),
+                    current_flow_id=state.get("current_flow_id"),
+                    subflow_depth=int(state.get("subflow_depth") or 0),
+                ),
+                executing_node_id=node_id,
             )
             node_inputs = _gather_node_inputs(node_id, incoming, state.get("outputs") or {})
             result = await execute_node(ntype, node_data, node_inputs, ctx)
@@ -399,6 +416,8 @@ def build_canvas_graph(graph_json: dict[str, Any]):
         is_superuser: bool
         agent_id: str | None
         agent_config: dict[str, Any]
+        current_flow_id: str | None
+        subflow_depth: int
         outputs: Annotated[dict[str, Any], _merge_outputs]
         steps: Annotated[list[dict[str, Any]], operator.add]
         answer: Any
@@ -477,6 +496,8 @@ async def run_compiled_canvas(
         "is_superuser": ctx.is_superuser,
         "agent_id": ctx.agent_id,
         "agent_config": dict(ctx.agent_config),
+        "current_flow_id": ctx.current_flow_id,
+        "subflow_depth": ctx.subflow_depth,
         "media": list(ctx.media),
         "outputs": {},
         "steps": [

@@ -21,6 +21,7 @@ from app.tenant.compliance.services.compliance import ComplianceService
 from app.tenant.hooks.models import HookScope, HookTrigger
 from app.tenant.hooks.services.runner import HookRunner
 from app.integrations.langgraph.compiler import validate_graph_for_compile
+from app.flow_runtime.subflow.validate import validate_subflow_references
 from app.flow_runtime.runtime_factory import get_flow_runtime
 from app.flow_runtime.types import RunContext
 from app.models.flow import Flow, FlowStatus, FlowVersion
@@ -265,6 +266,8 @@ class FlowService(BaseService):
                 media=[m.model_dump(mode="json") for m in body.media],
                 generative_video_async=body.async_generative,
                 generative_image_async=body.async_generative,
+                current_flow_id=str(flow_id),
+                subflow_depth=0,
             )
             if "query" not in ctx.inputs and run_inputs:
                 ctx.inputs.setdefault("query", run_inputs.get("message", ""))
@@ -290,6 +293,54 @@ class FlowService(BaseService):
             )
             raise
 
+    async def _compile_report_for_flow(self, flow: Flow) -> dict:
+        version = await self.repo.get_version(flow.id, flow.current_version)
+        if not version:
+            raise BadRequestError("流程无可用版本")
+        report = validate_graph_for_compile(version.graph_json)
+        sub_errors = await validate_subflow_references(
+            self.db,
+            version.graph_json,
+            tenant_id=self.ctx.tenant_id,
+            current_flow_id=flow.id,
+        )
+        if sub_errors:
+            from app.integrations.langgraph.compiler import FlowCompileReport, _error_to_str
+
+            merged_details = list(report.error_details) + sub_errors
+            merged_errors = report.errors + [_error_to_str(e) for e in sub_errors]
+            report = FlowCompileReport(
+                compilable=False,
+                engine=report.engine,
+                node_order=report.node_order,
+                node_types=report.node_types,
+                execution_layers=report.execution_layers,
+                parallel_groups=report.parallel_groups,
+                conditional_nodes=report.conditional_nodes,
+                errors=merged_errors,
+                error_details=merged_details,
+            )
+        return report.to_dict()
+
+    async def subflow_deps(self, flow_id: UUID) -> dict:
+        """返回当前流程直接引用的子流程 ID 列表。"""
+        flow = await self._get_flow_or_raise(flow_id)
+        version = await self.repo.get_version(flow.id, flow.current_version)
+        if not version:
+            return {"flow_id": str(flow_id), "depends_on": [], "depended_by": []}
+        from app.flow_runtime.subflow.resolve import iter_subflow_nodes
+
+        depends_on: list[str] = []
+        for _nid, data in iter_subflow_nodes(version.graph_json or {}):
+            raw = data.get("sub_flow_id")
+            if raw:
+                depends_on.append(str(raw))
+        return {
+            "flow_id": str(flow_id),
+            "depends_on": sorted(set(depends_on)),
+            "depended_by": [],
+        }
+
     async def compile_preview(self, flow_id: UUID) -> dict:
         """
         校验当前版本 ``graph_json`` 能否被 LangGraph 编译（不执行）。
@@ -297,7 +348,4 @@ class FlowService(BaseService):
         返回 ``FlowCompileReport.to_dict()``：``compilable``、``errors``、``execution_layers`` 等。
         """
         flow = await self._get_flow_or_raise(flow_id)
-        version = await self.repo.get_version(flow.id, flow.current_version)
-        if not version:
-            raise BadRequestError("流程无可用版本")
-        return validate_graph_for_compile(version.graph_json).to_dict()
+        return await self._compile_report_for_flow(flow)

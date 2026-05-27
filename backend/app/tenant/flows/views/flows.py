@@ -120,6 +120,15 @@ async def get_flow_version(
     return ok(await _svc(db, ctx).get_version_graph(flow_id, version))
 
 
+@router.get("/{flow_id}/subflow-deps", response_model=ApiResponse[dict])
+async def subflow_deps(
+    flow_id: UUID,
+    ctx: TenantContext = Depends(require_permissions("flow:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    return ok(await _svc(db, ctx).subflow_deps(flow_id))
+
+
 @router.get("/{flow_id}/graph", response_model=ApiResponse[FlowVersionOut])
 async def get_graph(
     flow_id: UUID,

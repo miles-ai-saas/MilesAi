@@ -21,7 +21,7 @@
 
 ### 1.2 明确不做
 
-- 子流程 SubFlow（见 [flow-subflow-design.md](../architecture/flow-subflow-design.md)，暂不实施）
+- 子流程 SubFlow（见 [flow-subflow-design.md](../architecture/flow-subflow-design.md)）
 - iframe 嵌入画布
 - 循环节点（PRD 提及，未注册）
 

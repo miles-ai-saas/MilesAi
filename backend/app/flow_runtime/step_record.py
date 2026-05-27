@@ -23,6 +23,15 @@ def build_flow_node_step(
     if not isinstance(result, dict):
         return step
 
+    if result.get("child_flow_id"):
+        step["child_flow_id"] = str(result["child_flow_id"])
+        child_steps = result.get("child_steps")
+        if isinstance(child_steps, list):
+            step["child_steps"] = child_steps
+        count = result.get("child_step_count")
+        if isinstance(count, int):
+            step["child_step_count"] = count
+
     job_id = result.get("generative_job_id")
     if job_id:
         step["generative_job"] = {

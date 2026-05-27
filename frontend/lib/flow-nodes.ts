@@ -32,6 +32,7 @@ export const NODE_PALETTE = [
   { type: "PromptTemplate", label: "提示词模板", color: "#8b5cf6" },
   { type: "LLMCall", label: "大模型", color: "#f59e0b" },
   { type: "PlatformTool", label: "平台工具", color: "#0ea5e9" },
+  { type: "SubFlow", label: "子流程", color: "#6366f1" },
   { type: "TextOutput", label: "文本输出", color: "#64748b" },
   /** 调用 image_gen 模型；输出 { kind, attachment_id, mime_type } */
   { type: "ImageGenerate", label: "生图", color: "#e11d48", group: "generative" },
@@ -79,6 +80,14 @@ const DEFAULT_DATA: Record<NodeType, Record<string, unknown>> = {
     confirmed: true,
     merge_input: true,
     params: {},
+  },
+  SubFlow: {
+    label: "子流程",
+    sub_flow_id: "",
+    version_policy: "published",
+    pinned_version: 1,
+    input_mapping: { query: "input" },
+    output_key: "",
   },
   TextOutput: { label: "输出" },
   ImageGenerate: {

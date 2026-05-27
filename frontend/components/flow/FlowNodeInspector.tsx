@@ -13,6 +13,7 @@ import {
 } from "@/components/flow/GenerativeNodeInspectorFields";
 import { AttachmentIdField } from "@/components/attachments/AttachmentIdField";
 import { PlatformToolInspector } from "@/components/flow/PlatformToolInspector";
+import { SubFlowInspector } from "@/components/flow/SubFlowInspector";
 import type { KnowledgeBase, ModelConfig, PromptTemplate, ToolCatalogItem } from "@/lib/types";
 
 type FlowStep = Record<string, unknown>;
@@ -23,6 +24,7 @@ interface FlowNodeInspectorProps {
   models: ModelConfig[];
   prompts: PromptTemplate[];
   toolCatalog: ToolCatalogItem[];
+  currentFlowId?: string;
   onChange: (nodeId: string, patch: Record<string, unknown>) => void;
 }
 
@@ -47,6 +49,7 @@ function InspectorForm({
   models,
   prompts,
   toolCatalog,
+  currentFlowId,
   onChange,
 }: Required<FlowNodeInspectorProps>) {
   const type = node.type as NodeType;
@@ -439,6 +442,17 @@ function InspectorForm({
           </label>
         </>
       );
+    case "SubFlow":
+      return (
+        <>
+          {labelField}
+          <SubFlowInspector
+            data={data}
+            currentFlowId={currentFlowId}
+            onChange={patch}
+          />
+        </>
+      );
     case "TextOutput":
       return <>{labelField}</>;
     // --- 多模态生成（对应 backend flow_runtime.nodes.image_generate / video_generate）---
@@ -639,6 +653,11 @@ function stepOutputLine(s: FlowStep): string {
         typeof id === "string" && id.length > 8 ? `${id.slice(0, 8)}…` : id;
       return `\n  → 已生成${kind === "video" ? "视频" : "图片"}（${short}，见上方预览）`;
     }
+  }
+  const childSteps = s.child_steps;
+  if (Array.isArray(childSteps) && childSteps.length > 0) {
+    const count = typeof s.child_step_count === "number" ? s.child_step_count : childSteps.length;
+    return `\n  → 子流程 ${String(s.child_flow_id ?? "").slice(0, 8)}… · ${count} 步（摘要 ${childSteps.length} 条）`;
   }
   return s.output_preview ? `\n  ${s.output_preview}` : "";
 }

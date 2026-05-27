@@ -58,6 +58,7 @@ export interface FlowCanvasHandle {
 interface FlowCanvasProps {
   initialGraph?: FlowGraph;
   onGraphChange?: (graph: FlowGraph) => void;
+  currentFlowId?: string;
   kbs?: KnowledgeBase[];
   models?: ModelConfig[];
   prompts?: PromptTemplate[];
@@ -191,6 +192,7 @@ const FlowCanvasInner = forwardRef<FlowCanvasHandle, FlowCanvasProps>(
     {
       initialGraph,
       onGraphChange,
+      currentFlowId,
       kbs = [],
       models = [],
       prompts = [],
@@ -563,6 +565,7 @@ const FlowCanvasInner = forwardRef<FlowCanvasHandle, FlowCanvasProps>(
             models={models}
             prompts={prompts}
             toolCatalog={toolCatalog}
+            currentFlowId={currentFlowId}
             onChange={updateNodeData}
           />
         </div>
