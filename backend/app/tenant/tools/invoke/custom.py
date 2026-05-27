@@ -22,6 +22,30 @@ SCRIPT_RUNNER_DISABLED = (
 )
 
 
+def _render_headers(cfg: dict, validated: dict) -> dict[str, str]:
+    headers: dict[str, str] = {}
+    for key, raw in (cfg.get("headers") or {}).items():
+        value = apply_template(str(raw), validated).strip()
+        if not value or value in ("Bearer", "Bearer "):
+            continue
+        headers[key] = value
+    return headers
+
+
+def _json_body(cfg: dict, validated: dict) -> dict:
+    exclude = set(cfg.get("body_exclude") or [])
+    return {k: v for k, v in validated.items() if k not in exclude}
+
+
+def _query_params(cfg: dict, validated: dict) -> dict | None:
+    if not cfg.get("send_query_params", True):
+        return None
+    include = cfg.get("query_include")
+    if include:
+        return {k: validated[k] for k in include if k in validated}
+    return validated
+
+
 async def invoke_custom_http(tool: Tool, params: dict) -> dict:
     """执行租户配置的 HTTP 工具。"""
     validated = validate_tool_params(tool.parameters or [], params)
@@ -31,18 +55,16 @@ async def invoke_custom_http(tool: Tool, params: dict) -> dict:
         raise BadRequestError("HTTP 工具未配置 url")
     validate_outbound_url(url)
     method = str(cfg.get("method", "POST")).upper()
-    headers = {
-        k: apply_template(str(v), validated) for k, v in (cfg.get("headers") or {}).items()
-    }
+    headers = _render_headers(cfg, validated)
     timeout = float(cfg.get("timeout_sec", cfg.get("timeout", 15)))
     async with httpx.AsyncClient(timeout=timeout) as client:
         if method == "GET":
-            resp = await client.get(url, params=validated, headers=headers)
+            resp = await client.get(url, params=_query_params(cfg, validated), headers=headers)
         else:
             body_mode = cfg.get("body_mode", "json")
             kwargs: dict = {"headers": headers}
             if body_mode == "json":
-                kwargs["json"] = validated
+                kwargs["json"] = _json_body(cfg, validated)
             resp = await client.request(method, url, **kwargs)
     text = resp.text[:4000]
     result: dict = {"status_code": resp.status_code, "body": text}
