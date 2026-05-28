@@ -10,5 +10,5 @@ import { useEnumMeta } from "@/hooks/use-enum-meta";
 import type { ToolsMeta } from "@/lib/types";
 
 export function useToolsMeta(enabled = true) {
-  return useEnumMeta<ToolsMeta>(api.getToolsMeta, enabled);
+  return useEnumMeta<ToolsMeta>("tools", api.getToolsMeta, enabled);
 }

@@ -19,7 +19,10 @@ from app.models.kb import Document, DocumentStatus, KnowledgeBase
 from app.models.model_usage_log import ModelUsageLog
 from app.tenant.marketplace.models import AppInstall
 from app.models.system import SystemConfig
+from app.core.logging import get_logger
 from app.core.soft_delete import append_not_deleted
+
+logger = get_logger(__name__)
 from app.models.task import CeleryTaskRecord, TaskStatus
 from app.tenant.monitor.meta import monitor_meta_dict
 from app.tenant.monitor.schemas.meta import MonitorMetaOut
@@ -390,4 +393,9 @@ class MonitorService(BaseService):
             async with httpx.AsyncClient(timeout=5.0) as client:
                 await client.post(cfg.webhook_url, json=payload)
         except Exception:
-            pass
+            logger.warning(
+                "任务失败告警 Webhook 发送失败 tenant_id=%s task_name=%s",
+                self.ctx.tenant_id,
+                task_name,
+                exc_info=True,
+            )

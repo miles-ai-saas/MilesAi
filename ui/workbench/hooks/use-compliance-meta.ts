@@ -10,5 +10,5 @@ import { useEnumMeta } from "@/hooks/use-enum-meta";
 import type { ComplianceMeta } from "@/lib/types";
 
 export function useComplianceMeta(enabled = true) {
-  return useEnumMeta<ComplianceMeta>(api.getComplianceMeta, enabled);
+  return useEnumMeta<ComplianceMeta>("compliance", api.getComplianceMeta, enabled);
 }

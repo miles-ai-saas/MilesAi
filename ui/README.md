@@ -6,7 +6,7 @@
 
 | 项 | 值 |
 |----|-----|
-| 行宽 | **160** |
+| 行宽 | **160**（与 `.editorconfig`、`prettier.config.mjs` 一致） |
 | 缩进 | 2 空格（TS/TSX/JS/CSS/JSON） |
 | 引号 | 双引号 |
 | 分号 | 有 |

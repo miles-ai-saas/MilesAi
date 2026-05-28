@@ -20,6 +20,7 @@ import {
   isFullBleedPage,
   isFullHeightPage,
 } from "@/lib/nav-config";
+import { MetaCacheProvider } from "@/lib/enum-meta-cache";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -43,10 +44,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   if (section === "system") {
-    return <SystemShell>{children}</SystemShell>;
+    return (
+      <MetaCacheProvider>
+        <SystemShell>{children}</SystemShell>
+      </MetaCacheProvider>
+    );
   }
 
   return (
+    <MetaCacheProvider>
     <div
       className={`flex flex-col bg-surface-muted ${
         fullHeight ? "h-dvh overflow-hidden" : "min-h-screen"
@@ -77,5 +83,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         {children}
       </main>
     </div>
+    </MetaCacheProvider>
   );
 }

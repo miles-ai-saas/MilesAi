@@ -10,5 +10,5 @@ import { useEnumMeta } from "@/hooks/use-enum-meta";
 import type { AttachmentMeta } from "@/lib/types";
 
 export function useAttachmentMeta(enabled = true) {
-  return useEnumMeta<AttachmentMeta>(api.getAttachmentMeta, enabled);
+  return useEnumMeta<AttachmentMeta>("attachments", api.getAttachmentMeta, enabled);
 }

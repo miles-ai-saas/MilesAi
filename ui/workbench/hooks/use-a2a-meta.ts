@@ -10,5 +10,5 @@ import { useEnumMeta } from "@/hooks/use-enum-meta";
 import type { A2aMeta } from "@/lib/types";
 
 export function useA2aMeta(enabled = true) {
-  return useEnumMeta<A2aMeta>(api.getA2aMeta, enabled);
+  return useEnumMeta<A2aMeta>("a2a", api.getA2aMeta, enabled);
 }

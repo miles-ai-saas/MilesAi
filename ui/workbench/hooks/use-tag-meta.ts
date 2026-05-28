@@ -10,5 +10,5 @@ import { useEnumMeta } from "@/hooks/use-enum-meta";
 import type { TagMeta } from "@/lib/types";
 
 export function useTagMeta(enabled = true) {
-  return useEnumMeta<TagMeta>(api.getTagMeta, enabled);
+  return useEnumMeta<TagMeta>("tags", api.getTagMeta, enabled);
 }

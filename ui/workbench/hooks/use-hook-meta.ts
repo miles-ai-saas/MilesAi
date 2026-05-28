@@ -10,5 +10,5 @@ import { useEnumMeta } from "@/hooks/use-enum-meta";
 import type { HookMeta } from "@/lib/types";
 
 export function useHookMeta(enabled = true) {
-  return useEnumMeta<HookMeta>(api.getHookMeta, enabled);
+  return useEnumMeta<HookMeta>("hooks", api.getHookMeta, enabled);
 }

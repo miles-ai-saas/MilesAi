@@ -10,5 +10,5 @@ import { useEnumMeta } from "@/hooks/use-enum-meta";
 import type { MonitorMeta } from "@/lib/types";
 
 export function useMonitorMeta(enabled = true) {
-  return useEnumMeta<MonitorMeta>(api.getMonitorMeta, enabled);
+  return useEnumMeta<MonitorMeta>("monitor", api.getMonitorMeta, enabled);
 }

@@ -10,5 +10,5 @@ import { useEnumMeta } from "@/hooks/use-enum-meta";
 import type { KbMeta } from "@/lib/types";
 
 export function useKbMeta(enabled = true) {
-  return useEnumMeta<KbMeta>(api.getKbMeta, enabled);
+  return useEnumMeta<KbMeta>("kb", api.getKbMeta, enabled);
 }

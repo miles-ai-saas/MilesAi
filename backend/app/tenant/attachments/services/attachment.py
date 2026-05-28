@@ -16,7 +16,10 @@ from app.infra.storage import build_attachment_object_key
 from app.infra.storage.resolve import resolve_object_storage_async
 from app.rag.parse.media import is_image_file
 from app.models.attachment import Attachment
+from app.core.logging import get_logger
 from app.tenant.attachments.repositories.attachment import AttachmentRepository
+
+logger = get_logger(__name__)
 from app.tenant.attachments.meta import attachments_meta_dict
 from app.tenant.attachments.schemas.meta import AttachmentMetaOut
 from app.tenant.attachments.schemas.attachment import AttachmentOut, AttachmentUploadMeta
@@ -129,7 +132,12 @@ class AttachmentService(BaseService):
                 storage = await resolve_object_storage_async(att.tenant_id, self.db)
                 storage.storage.delete_object(att.object_key, att.object_bucket)
             except Exception:
-                pass
+                logger.warning(
+                    "删除附件 OSS 对象失败 attachment_id=%s object_key=%s",
+                    attachment_id,
+                    att.object_key,
+                    exc_info=True,
+                )
         await mark_deleted(self.db, att)
         await apply_storage_delta(self.db, att.tenant_id, 0)
 

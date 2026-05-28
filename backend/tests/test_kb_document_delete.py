@@ -34,19 +34,30 @@ async def test_delete_document_clears_derived_and_object():
     svc._get_kb_or_raise = AsyncMock(return_value=kb)
     svc.doc_repo.get_by_id_or_raise = AsyncMock(return_value=doc)
 
+    storage = MagicMock()
+    storage.storage.delete_object = MagicMock()
+
     with (
         patch(
-            "app.tenant.kb.services.kb.clear_document_derived_data_async",
+            "app.tenant.kb.services.kb.documents.clear_document_derived_data_async",
             new_callable=AsyncMock,
         ) as mock_clear,
-        patch("app.tenant.kb.services.kb.delete_object") as mock_delete_obj,
         patch(
-            "app.tenant.kb.services.kb.mark_deleted",
+            "app.tenant.kb.services.kb.documents.resolve_object_storage_async",
+            new_callable=AsyncMock,
+            return_value=storage,
+        ),
+        patch(
+            "app.tenant.kb.services.kb.documents.mark_deleted",
             new_callable=AsyncMock,
         ) as mock_mark,
+        patch(
+            "app.tenant.kb.services.kb.documents.apply_storage_delta",
+            new_callable=AsyncMock,
+        ),
     ):
         await svc.delete_document(doc.kb_id, doc.id)
 
     mock_clear.assert_awaited_once_with(db, doc.id)
-    mock_delete_obj.assert_called_once_with(doc.object_key, doc.object_bucket)
+    storage.storage.delete_object.assert_called_once_with(doc.object_key, doc.object_bucket)
     mock_mark.assert_awaited_once()

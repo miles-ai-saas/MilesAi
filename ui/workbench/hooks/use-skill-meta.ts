@@ -10,5 +10,5 @@ import { useEnumMeta } from "@/hooks/use-enum-meta";
 import type { SkillMeta } from "@/lib/types";
 
 export function useSkillMeta(enabled = true) {
-  return useEnumMeta<SkillMeta>(api.getSkillMeta, enabled);
+  return useEnumMeta<SkillMeta>("skills", api.getSkillMeta, enabled);
 }

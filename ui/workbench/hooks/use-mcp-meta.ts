@@ -10,5 +10,5 @@ import { useEnumMeta } from "@/hooks/use-enum-meta";
 import type { McpMeta } from "@/lib/types";
 
 export function useMcpMeta(enabled = true) {
-  return useEnumMeta<McpMeta>(api.getMcpMeta, enabled);
+  return useEnumMeta<McpMeta>("mcp", api.getMcpMeta, enabled);
 }

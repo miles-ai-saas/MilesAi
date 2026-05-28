@@ -10,5 +10,5 @@ import { useEnumMeta } from "@/hooks/use-enum-meta";
 import type { PromptMeta } from "@/lib/types";
 
 export function usePromptMeta(enabled = true) {
-  return useEnumMeta<PromptMeta>(api.getPromptMeta, enabled);
+  return useEnumMeta<PromptMeta>("prompts", api.getPromptMeta, enabled);
 }

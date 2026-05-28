@@ -10,5 +10,5 @@ import { useEnumMeta } from "@/hooks/use-enum-meta";
 import type { MarketplaceMeta } from "@/lib/types";
 
 export function useMarketplaceMeta(enabled = true) {
-  return useEnumMeta<MarketplaceMeta>(api.getMarketplaceMeta, enabled);
+  return useEnumMeta<MarketplaceMeta>("marketplace", api.getMarketplaceMeta, enabled);
 }

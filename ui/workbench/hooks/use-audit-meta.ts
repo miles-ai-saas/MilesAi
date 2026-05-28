@@ -10,5 +10,5 @@ import { useEnumMeta } from "@/hooks/use-enum-meta";
 import type { AuditMeta } from "@/lib/types";
 
 export function useAuditMeta(enabled = true) {
-  return useEnumMeta<AuditMeta>(api.getAuditMeta, enabled);
+  return useEnumMeta<AuditMeta>("audit", api.getAuditMeta, enabled);
 }

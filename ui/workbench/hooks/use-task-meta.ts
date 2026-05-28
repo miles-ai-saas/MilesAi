@@ -10,5 +10,5 @@ import { useEnumMeta } from "@/hooks/use-enum-meta";
 import type { TaskMeta } from "@/lib/types";
 
 export function useTaskMeta(enabled = true) {
-  return useEnumMeta<TaskMeta>(api.getTaskMeta, enabled);
+  return useEnumMeta<TaskMeta>("tasks", api.getTaskMeta, enabled);
 }

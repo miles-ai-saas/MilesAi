@@ -17,7 +17,10 @@ from app.common.schema import PageParams, PageResult
 from app.tenant.tasks.meta import tasks_meta_dict
 from app.tenant.tasks.schemas.meta import TaskMetaOut
 from app.tenant.tasks.schemas.task import TaskBatchCancelResult, TaskRecordOut
+from app.core.logging import get_logger
 from app.core.service import BaseService
+
+logger = get_logger(__name__)
 
 
 class TaskService(BaseService):
@@ -119,7 +122,12 @@ class TaskService(BaseService):
                     await self.db.flush()
                     out = TaskRecordOut.model_validate(record)
         except Exception:
-            pass
+            logger.warning(
+                "Celery 状态纠偏失败 task_id=%s celery_task_id=%s",
+                task_id,
+                record.celery_task_id,
+                exc_info=True,
+            )
         return out
 
     async def cancel_task(self, task_id: str) -> TaskRecordOut:

@@ -2,20 +2,43 @@
 
 /**
  * 通用枚举 meta 拉取（见 lib/enum-meta.ts 链路说明）。
- * 各模块 `use-*-meta.ts` 仅绑定对应 `api.get*Meta`。
+ * AppShell 内 MetaCacheProvider 按 cacheKey 去重；无 Provider 时退化为组件内单次请求。
  */
 
-import { useEffect, useState } from "react";
+import { useContext, useEffect, useState, useSyncExternalStore } from "react";
+import {
+  MetaCacheContext,
+  getCacheState,
+  loadIntoCache,
+  subscribeStore,
+} from "@/lib/enum-meta-cache";
 
-export function useEnumMeta<T>(fetcher: () => Promise<T>, enabled = true): T | null {
-  const [meta, setMeta] = useState<T | null>(null);
+export function useEnumMeta<T>(cacheKey: string, fetcher: () => Promise<T>, enabled = true): T | null {
+  const store = useContext(MetaCacheContext);
+
+  const [fallback, setFallback] = useState<T | null>(null);
+  useEffect(() => {
+    if (store || !enabled) return;
+    void fetcher().then(setFallback).catch(() => setFallback(null));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [store, cacheKey, enabled]);
+
+  const cachedState = useSyncExternalStore(
+    (onChange) => (store ? subscribeStore(store, cacheKey, onChange) : () => {}),
+    () =>
+      store
+        ? getCacheState(store, cacheKey)
+        : { data: fallback, loading: false, settled: fallback !== null },
+    () => ({ data: null, loading: false, settled: false }),
+  );
 
   useEffect(() => {
-    if (!enabled) return;
-    void fetcher().then(setMeta).catch(() => setMeta(null));
-    // fetcher 为模块级稳定引用（如 api.getFlowMeta），无需列入 deps
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabled]);
+    if (!store || !enabled) return;
+    loadIntoCache(store, cacheKey, fetcher);
+  }, [store, cacheKey, enabled, fetcher]);
 
-  return meta;
+  if (!store) {
+    return fallback;
+  }
+  return cachedState.data as T | null;
 }

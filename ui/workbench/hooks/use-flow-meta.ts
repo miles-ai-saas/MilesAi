@@ -10,5 +10,5 @@ import { useEnumMeta } from "@/hooks/use-enum-meta";
 import type { FlowMeta } from "@/lib/types";
 
 export function useFlowMeta(enabled = true) {
-  return useEnumMeta<FlowMeta>(api.getFlowMeta, enabled);
+  return useEnumMeta<FlowMeta>("flows", api.getFlowMeta, enabled);
 }

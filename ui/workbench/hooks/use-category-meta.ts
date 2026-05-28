@@ -10,5 +10,5 @@ import { useEnumMeta } from "@/hooks/use-enum-meta";
 import type { CategoryMeta } from "@/lib/types";
 
 export function useCategoryMeta(enabled = true) {
-  return useEnumMeta<CategoryMeta>(api.getCategoryMeta, enabled);
+  return useEnumMeta<CategoryMeta>("categories", api.getCategoryMeta, enabled);
 }

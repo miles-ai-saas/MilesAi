@@ -10,5 +10,5 @@ import { useEnumMeta } from "@/hooks/use-enum-meta";
 import type { AgentMeta } from "@/lib/types";
 
 export function useAgentMeta(enabled = true) {
-  return useEnumMeta<AgentMeta>(api.getAgentMeta, enabled);
+  return useEnumMeta<AgentMeta>("agents", api.getAgentMeta, enabled);
 }
