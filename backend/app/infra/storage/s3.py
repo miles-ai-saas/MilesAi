@@ -17,15 +17,27 @@ from app.core.config import Settings, get_settings
 class S3CompatibleObjectStorage:
     """基于 MinIO Python SDK 的 S3 API 客户端。"""
 
-    def __init__(self, settings: Settings | None = None) -> None:
-        """从 Settings 读取 endpoint、密钥与默认 bucket。"""
+    def __init__(
+        self,
+        settings: Settings | None = None,
+        *,
+        endpoint: str | None = None,
+        access_key: str | None = None,
+        secret_key: str | None = None,
+        secure: bool | None = None,
+        region: str | None = None,
+        default_bucket: str | None = None,
+    ) -> None:
+        """从 Settings 或显式参数构造（租户 BYOK 使用显式参数）。"""
         s = settings or get_settings()
-        self._endpoint = s.object_storage_endpoint
-        self._access_key = s.object_storage_access_key
-        self._secret_key = s.object_storage_secret_key
-        self._secure = s.object_storage_secure
-        self._region = s.object_storage_region
-        self._default_bucket = s.object_storage_bucket
+        self._endpoint = endpoint if endpoint is not None else s.object_storage_endpoint
+        self._access_key = access_key if access_key is not None else s.object_storage_access_key
+        self._secret_key = secret_key if secret_key is not None else s.object_storage_secret_key
+        self._secure = secure if secure is not None else s.object_storage_secure
+        self._region = region if region is not None else s.object_storage_region
+        self._default_bucket = (
+            default_bucket if default_bucket is not None else s.object_storage_bucket
+        )
 
     @property
     def default_bucket(self) -> str:

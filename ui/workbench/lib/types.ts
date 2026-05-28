@@ -103,6 +103,18 @@ export interface InfraComponentStatus {
   message?: string | null;
 }
 
+export interface TenantObjectStorageConfig {
+  tenant_id: string;
+  is_enabled: boolean;
+  endpoint: string;
+  bucket: string;
+  access_key: string;
+  secret_key_masked?: string | null;
+  secure: boolean;
+  region?: string | null;
+  source: "platform" | "tenant";
+}
+
 export interface InfraStatus {
   healthy: boolean;
   status: string;
@@ -1111,6 +1123,16 @@ export interface AppUpgradePreview {
   can_upgrade: boolean;
   has_changes: boolean;
   message?: string | null;
+  resources: UpgradeResourceDiff[];
+}
+
+export interface AppRollbackPreview {
+  app_id: string;
+  app_name: string;
+  current_version: string;
+  target_version: string;
+  can_rollback: boolean;
+  message?: string;
   resources: UpgradeResourceDiff[];
 }
 

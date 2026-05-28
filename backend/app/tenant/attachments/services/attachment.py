@@ -12,12 +12,8 @@ from app.core.config import get_settings
 from app.core.service import BaseService
 from app.core.soft_delete import is_marked_deleted, mark_deleted, not_deleted
 from app.core.tenant import TenantContext, assert_tenant_access
-from app.infra.storage import (
-    build_attachment_object_key,
-    delete_object,
-    download_bytes,
-    upload_bytes,
-)
+from app.infra.storage import build_attachment_object_key
+from app.infra.storage.resolve import resolve_object_storage_async
 from app.rag.parse.media import is_image_file
 from app.models.attachment import Attachment
 from app.tenant.attachments.repositories.attachment import AttachmentRepository
@@ -87,13 +83,14 @@ class AttachmentService(BaseService):
                 f"不支持的文件类型: {mime}。{kb_upload_allowed_hint()}"
             )
 
+        storage = await resolve_object_storage_async(self.ctx.tenant_id, self.db)
         att = await self.repo.create(
             tenant_id=self.ctx.tenant_id,
             uploaded_by=self.ctx.user_id,
             filename=file.filename,
             mime_type=mime,
             file_size=len(content),
-            object_bucket=settings.object_storage_bucket,
+            object_bucket=storage.default_bucket,
             object_key="pending",
             purpose=meta.purpose or "general",
             resource_type=meta.resource_type,
@@ -103,7 +100,7 @@ class AttachmentService(BaseService):
             str(self.ctx.tenant_id), str(att.id), file.filename
         )
         att.object_key = object_key
-        upload_bytes(content, object_key, mime)
+        storage.storage.upload_bytes(content, object_key, mime)
         await apply_storage_delta(self.db, self.ctx.tenant_id, len(content))
         await self.db.flush()
         await self.db.refresh(att)
@@ -120,7 +117,8 @@ class AttachmentService(BaseService):
             raise BadRequestError("附件不是支持的图片格式（jpeg/png/webp）")
         if not att.object_key or att.object_key == "pending":
             raise BadRequestError("附件文件未就绪")
-        data = download_bytes(att.object_key, att.object_bucket)
+        storage = await resolve_object_storage_async(att.tenant_id, self.db)
+        data = storage.storage.download_bytes(att.object_key, att.object_bucket)
         return data, att.mime_type
 
     async def delete(self, attachment_id: UUID) -> None:
@@ -128,7 +126,8 @@ class AttachmentService(BaseService):
         att = await self._get_or_raise(attachment_id)
         if att.object_key and att.object_key != "pending":
             try:
-                delete_object(att.object_key, att.object_bucket)
+                storage = await resolve_object_storage_async(att.tenant_id, self.db)
+                storage.storage.delete_object(att.object_key, att.object_bucket)
             except Exception:
                 pass
         await mark_deleted(self.db, att)

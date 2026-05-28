@@ -4,6 +4,7 @@
 def load_all_models() -> None:
     """按依赖顺序导入各域 models，避免在 models/__init__ 中循环引用。"""
     import app.models  # noqa: F401 — 核心域 ORM
+    import app.models.tenant_object_storage  # noqa: F401
     import app.models.tag  # noqa: F401
     import app.models.agent_schedule  # noqa: F401
     import app.admin.models  # noqa: F401

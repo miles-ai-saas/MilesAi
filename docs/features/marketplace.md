@@ -17,6 +17,7 @@
 - 广场列表（分类、排序、标签筛选）、详情、安装、我的安装
 - 评分（需已安装，`marketplace:rate`）
 - **应用升级**：manifest 同步到已安装资源；升级前 **diff 预览**（KB / 流程 / 智能体字段与画布结构）
+- **应用回滚**：升级前自动快照；`rollback-preview` / `rollback` 恢复上一版资源
 - 前端：`/workbench/marketplace`、详情 Drawer、升级 diff 对话框、星级展示
 
 ### 1.2 明确不做
@@ -118,6 +119,8 @@ POST /api/admin/v1/marketplace/apps/{id}/approve|reject
 POST   /marketplace/apps/{id}/install              # marketplace:install
 GET    /marketplace/apps/{id}/upgrade-preview      # 升级 diff 预览
 POST   /marketplace/apps/{id}/upgrade              # 确认升级（manifest → 已安装资源）
+GET    /marketplace/apps/{id}/rollback-preview     # 回滚 diff 预览
+POST   /marketplace/apps/{id}/rollback             # 恢复最近一次升级前快照
 POST   /marketplace/apps/{id}/ratings              # 需已安装
 DELETE /marketplace/apps/{id}/ratings/mine
 ```

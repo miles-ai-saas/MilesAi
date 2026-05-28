@@ -199,6 +199,19 @@ export const api = {
     post<{ deactivated: number; skipped: number }>("/users/batch-deactivate", {
       user_ids: userIds,
     }),
+  batchUsers: (
+    userIds: string[],
+    action: "enable" | "disable" | "assign_roles" | "deactivate",
+    roleIds?: string[],
+  ) =>
+    post<{ processed: number; skipped: number; action: string; deactivated?: number }>(
+      "/users/batch",
+      {
+        user_ids: userIds,
+        action,
+        role_ids: roleIds,
+      },
+    ),
 
   listPermissionGroups: () => get<PermissionGroup[]>("/roles/permissions"),
   listAssignableRoles: () => get<Role[]>("/roles/assignable"),
@@ -218,6 +231,27 @@ export const api = {
 
   listConfigDefinitions: () => get<ConfigDefinition[]>("/system/configs/definitions"),
   getRuntimeInfo: () => get<RuntimeInfo>("/system/configs/runtime"),
+  getTenantObjectStorage: () =>
+    get<import("./types").TenantObjectStorageConfig>("/system/object-storage"),
+  upsertTenantObjectStorage: (payload: {
+    is_enabled: boolean;
+    endpoint: string;
+    bucket: string;
+    access_key: string;
+    secret_key?: string;
+    secure: boolean;
+    region?: string;
+  }) => put<import("./types").TenantObjectStorageConfig>("/system/object-storage", payload),
+  testTenantObjectStorage: (payload?: {
+    is_enabled: boolean;
+    endpoint: string;
+    bucket: string;
+    access_key: string;
+    secret_key?: string;
+    secure: boolean;
+    region?: string;
+  }) =>
+    post<{ ok: boolean; message: string }>("/system/object-storage/test-connection", payload ?? {}),
   getInfraStatus: () => get<InfraStatus>("/system/infra/status"),
   testInfraConnection: (components?: string[]) =>
     post<{ results: InfraComponentStatus[] }>("/system/infra/test-connection", {
@@ -1066,6 +1100,10 @@ export const api = {
     post<AppInstallResult>(`/marketplace/apps/${appId}/trial`),
   getMarketplaceUpgradePreview: (appId: string) =>
     get<import("./types").AppUpgradePreview>(`/marketplace/apps/${appId}/upgrade-preview`),
+  getMarketplaceRollbackPreview: (appId: string) =>
+    get<import("./types").AppRollbackPreview>(`/marketplace/apps/${appId}/rollback-preview`),
+  rollbackMarketplaceApp: (appId: string) =>
+    post<{ message: string }>(`/marketplace/apps/${appId}/rollback`, {}),
   upgradeMarketplaceApp: (appId: string) =>
     post<import("./types").AppUpgradeResult>(`/marketplace/apps/${appId}/upgrade`, {}),
   listAppInstalls: (page = 1, size = DEFAULT_PAGE_SIZE) =>

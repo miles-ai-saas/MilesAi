@@ -23,7 +23,7 @@ from app.tenant.prompts.models import PromptTemplate
 from app.tenant.skills.models import SkillPackage
 from app.tenant.skills.storage import remove_tenant_skills
 from app.tenant.tools.models import Tool, ToolInvocationLog
-from app.infra.storage import delete_object
+from app.infra.storage.resolve import resolve_object_storage_async
 from app.deletion.cascade import (
     before_delete_agent,
     before_delete_flow,
@@ -50,6 +50,7 @@ async def purge_tenant_data(db: AsyncSession, tenant_id: UUID) -> None:
         .scalars()
         .all()
     )
+    storage = await resolve_object_storage_async(tenant_id, db)
     for kb_id in kb_ids:
         doc_rows = (
             await db.execute(
@@ -61,7 +62,7 @@ async def purge_tenant_data(db: AsyncSession, tenant_id: UUID) -> None:
         for doc_id, object_key, object_bucket in doc_rows:
             await clear_document_derived_data_async(db, doc_id)
             if object_key and object_key != "pending":
-                delete_object(object_key, object_bucket)
+                storage.storage.delete_object(object_key, object_bucket)
             doc = await db.get(Document, doc_id)
             if doc:
                 await db.delete(doc)

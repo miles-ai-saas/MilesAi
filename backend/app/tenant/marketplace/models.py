@@ -138,3 +138,32 @@ class AppInstall(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         foreign_keys=[app_id],
         primaryjoin="AppInstall.app_id == MarketplaceApp.id",
     )
+    snapshots: Mapped[list["AppInstallSnapshot"]] = relationship(
+        "AppInstallSnapshot",
+        back_populates="install",
+        foreign_keys="AppInstallSnapshot.install_id",
+        primaryjoin="AppInstall.id == AppInstallSnapshot.install_id",
+    )
+
+
+class AppInstallSnapshot(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    """安装/升级前的资源快照，供回滚到上一版本。"""
+
+    __tablename__ = "mkt_install_snapshots"
+    __table_args__ = (
+        Index("idx_mkt_install_snapshots_install_id", "install_id"),
+        Index("idx_mkt_install_snapshots_tenant_id", "tenant_id"),
+    )
+
+    install_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    app_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    version: Mapped[str] = mapped_column(String(32), nullable=False)
+    resources: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
+
+    install: Mapped["AppInstall"] = relationship(
+        "AppInstall",
+        back_populates="snapshots",
+        foreign_keys=[install_id],
+        primaryjoin="AppInstallSnapshot.install_id == AppInstall.id",
+    )

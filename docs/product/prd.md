@@ -55,12 +55,12 @@
 | PRD 表述 | 当前实现 | 备注 |
 |----------|----------|------|
 | 用户 CRUD、启用/禁用、密码重置 | ✅ | `/system/users` |
-| 批量用户操作 | ⬜ | 无批量 UI |
+| 批量用户操作 | ✅ | `POST /users/batch`：启用/禁用/赋角色；批量删除保留 |
 | 登录日志、会话设备、强制登出 | ✅ | `/system/sessions`；用户页可强制登出全部会话 |
 | RBAC 角色与权限 | ✅ | 菜单 + API 权限码 |
 | 租户 CRUD、数据隔离 | ✅ | 平台权限下租户 API；行级 `tenant_id` |
 | 资源配额（KB、存储、并发等） | 部分 | `sys_tenants` 配额字段；非 PRD 全量指标 |
-| 全局配置 UI（DB/MinIO/Weaviate/Redis/Celery） | 部分 | `GET /system/infra/status` 只读聚合；非 PRD 全量可编辑 |
+| 全局配置 UI（DB/MinIO/Weaviate/Redis/Celery） | 部分 | L1 只读 `infra/status`；L2 对象存储 BYOK 可配置 |
 | AI 能力配置 UI（Embedding/OCR/Whisper） | 部分 | 模型在工作台 BYOK；OCR/Whisper 为 Worker extras |
 | 操作/审计日志查询 | ✅ | `aud_logs` |
 | 日志导出、Celery/向量库专日志 | ⬜ | 导出类，按需 |
@@ -186,7 +186,7 @@
 | 一键安装（流程/智能体/KB 壳） | ✅ | manifest 复制资源 |
 | 打包、提交、审核上架 | ✅ | 租户 `marketplace:review` |
 | 应用试用 | ✅ | `POST /apps/{id}/trial` + 试用按钮 |
-| 安装后版本更新/回滚 | 部分 | manifest 升级 + diff 预览 UI ✅；无回滚 |
+| 安装后版本更新/回滚 | 部分 | 升级 + diff ✅；回滚上一版快照 ✅（多级历史按需） |
 | 私有应用（仅本租户可见） | ✅ | `visibility=tenant_only` |
 | 下载量统计、开发者反馈 | 部分 | 安装记录；无专反馈模块 |
 

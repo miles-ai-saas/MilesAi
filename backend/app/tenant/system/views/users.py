@@ -10,7 +10,14 @@ from app.core.deps import get_page_params, require_permissions
 from app.common.response import ok, page_ok
 from app.core.tenant import TenantContext
 from app.common.schema import ApiResponse, PageParams, PageResult
-from app.tenant.system.schemas.user import UserBatchDeactivate, UserCreate, UserOut, UserResetPassword, UserUpdate
+from app.tenant.system.schemas.user import (
+    UserBatchDeactivate,
+    UserBatchRequest,
+    UserCreate,
+    UserOut,
+    UserResetPassword,
+    UserUpdate,
+)
 from app.tenant.system.services.user import UserService
 from app.tenant.auth.schemas.auth import UserSessionOut
 from app.tenant.auth.services.auth import AuthService
@@ -37,6 +44,16 @@ async def create_user(
     db: AsyncSession = Depends(get_db),
 ) -> ApiResponse[UserOut]:
     return ok(await UserService(db, ctx).create_user(body, request=request))
+
+
+@router.post("/batch", response_model=ApiResponse[dict])
+async def batch_users(
+    body: UserBatchRequest,
+    request: Request,
+    ctx: TenantContext = Depends(require_permissions("system:user:write")),
+    db: AsyncSession = Depends(get_db),
+) -> ApiResponse[dict]:
+    return ok(await UserService(db, ctx).batch_apply(body, request=request))
 
 
 @router.post("/batch-deactivate", response_model=ApiResponse[dict])

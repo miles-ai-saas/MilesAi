@@ -36,7 +36,8 @@ from app.integrations.langchain.visual_embeddings import (
 )
 from app.core.config import get_settings
 from app.common.exceptions import BadRequestError, NotFoundError
-from app.infra.storage import build_object_key, delete_object, download_bytes, upload_bytes
+from app.infra.storage import build_object_key
+from app.infra.storage.resolve import resolve_object_storage_async
 from app.rag.retrieve import resolve_retrieval_mode, search_kb_chunks
 from app.rag.retrieve.media_filter import filter_hits_by_media_types_async
 from app.core.tenant import TenantContext, assert_tenant_access, tenant_filters
@@ -344,13 +345,14 @@ class KnowledgeBaseService(BaseService):
                 f"不支持的文件类型: {mime}。{kb_upload_allowed_hint()}"
             )
 
+        storage = await resolve_object_storage_async(kb.tenant_id, self.db)
         doc = await self.doc_repo.create(
             tenant_id=kb.tenant_id,
             kb_id=kb.id,
             filename=file.filename,
             mime_type=mime,
             file_size=len(content),
-            object_bucket=settings.object_storage_bucket,
+            object_bucket=storage.default_bucket,
             object_key="pending",
             status=DocumentStatus.PENDING,
         )
@@ -358,7 +360,7 @@ class KnowledgeBaseService(BaseService):
             str(kb.tenant_id), str(kb.id), str(doc.id), file.filename
         )
         doc.object_key = object_key
-        upload_bytes(content, object_key, mime)
+        storage.storage.upload_bytes(content, object_key, mime)
         await self.db.flush()
 
         # 异步 ingest；失败状态见 doc.status / fail_reason
@@ -442,7 +444,8 @@ class KnowledgeBaseService(BaseService):
         await clear_document_derived_data_async(self.db, doc.id)
         if doc.object_key and doc.object_key != "pending":
             try:
-                delete_object(doc.object_key, doc.object_bucket)
+                storage = await resolve_object_storage_async(doc.tenant_id, self.db)
+                storage.storage.delete_object(doc.object_key, doc.object_bucket)
             except Exception:
                 pass
         size = doc.file_size or 0
@@ -474,7 +477,8 @@ class KnowledgeBaseService(BaseService):
         if not doc.object_key or doc.object_key == "pending":
             raise BadRequestError("文档对象尚未就绪")
 
-        data = download_bytes(doc.object_key, bucket=doc.object_bucket)
+        storage = await resolve_object_storage_async(doc.tenant_id, self.db)
+        data = storage.storage.download_bytes(doc.object_key, bucket=doc.object_bucket)
         if is_image_file(doc.filename, doc.mime_type):
             derived = parse_image(data, doc.filename)
             if media_types is None:
@@ -517,7 +521,8 @@ class KnowledgeBaseService(BaseService):
                 raise BadRequestError("query_document_id 须为已就绪（ready）的文档")
             if not is_image_file(doc.filename, doc.mime_type):
                 raise BadRequestError("视觉以图搜图仅支持图片文档")
-            data = download_bytes(doc.object_key, bucket=doc.object_bucket)
+            storage = await resolve_object_storage_async(doc.tenant_id, self.db)
+            data = storage.storage.download_bytes(doc.object_key, bucket=doc.object_bucket)
             vector = await embed_image_bytes_async(self.db, self.ctx.tenant_id, kb, data)
             query_text = query or f"[CLIP 以图搜图] {doc.filename}"
             return query_text, vector, media_types

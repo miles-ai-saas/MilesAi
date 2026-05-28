@@ -98,7 +98,19 @@ GET /system/configs
 PUT /system/configs/{key}
 ```
 
-### 3.5.1 基础设施 `/api/v1/system/infra`（只读 + 探测）
+### 3.5.1 租户对象存储 BYOK `/api/v1/system/object-storage`（L2）
+
+权限：`system:config:read` · `system:config:write`
+
+```
+GET  /system/object-storage              # 当前租户配置（Secret 脱敏）
+PUT  /system/object-storage              # 保存/启用租户 S3 兼容桶
+POST /system/object-storage/test-connection
+```
+
+启用后新上传（KB 文档、附件、生成物）写入租户 bucket；`object_key` 仍含 `tenant_id/` 前缀。历史文件保留在原桶。
+
+### 3.5.2 基础设施 `/api/v1/system/infra`（只读 + 探测）
 
 权限：`GET /status` 需 `system:config:read`；`POST /test-connection` 仅租户超管。
 
@@ -156,11 +168,11 @@ GET /api/v1/health
 | 路径 | 功能 |
 |------|------|
 | `/login` | JWT 登录 |
-| `/system/users` | 用户管理（含重置密码、批量删除） |
+| `/system/users` | 用户管理（批量启用/禁用/赋角色/删除、重置密码） |
 | `/system/roles` | 角色权限 |
 | `/system/sessions` | 登录会话 |
 | `/system/quota` | 资源配额（只读） |
-| `/system/config` | 系统配置（L2 可编辑 + L1 基础设施只读/探测） |
+| `/system/config` | 系统配置（L2 业务参数 + 租户对象存储 BYOK + L1 基础设施只读） |
 | `/system/audit` | 审计日志（含 CSV 导出） |
 | `/workbench/dashboard` | 概览页配额摘要（需 `system:quota:read`） |
 

@@ -184,3 +184,20 @@ class AppUpgradePreview(BaseModel):
     has_changes: bool = Field(description="manifest 与当前资源是否存在字段差异")
     message: str | None = Field(default=None, description="提示说明")
     resources: list[UpgradeResourceDiff] = Field(default_factory=list, description="资源 diff")
+
+
+class AppRollbackPreview(BaseModel):
+    app_id: UUID = Field(description="应用 ID")
+    app_name: str = Field(description="应用名称")
+    current_version: str = Field(description="当前已安装版本")
+    target_version: str = Field(description="回滚目标版本")
+    can_rollback: bool = Field(description="是否可执行回滚")
+    resources: list[UpgradeResourceDiff] = Field(default_factory=list, description="资源 diff")
+    message: str = Field(default="", description="说明")
+
+
+class AppRollbackResult(BaseModel):
+    install: AppInstallOut = Field(description="安装记录")
+    previous_version: str = Field(description="回滚前版本")
+    restored_version: str = Field(description="恢复后的版本")
+    message: str = Field(default="回滚成功", description="结果说明")

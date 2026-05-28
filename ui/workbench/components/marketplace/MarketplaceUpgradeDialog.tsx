@@ -18,6 +18,8 @@ type Props = {
   upgrading: boolean;
   onClose: () => void;
   onConfirm: () => void;
+  /** upgrade（默认）或 rollback，仅影响文案 */
+  mode?: "upgrade" | "rollback";
 };
 
 function DiffValue({ value, changed }: { value: string | null | undefined; changed: boolean }) {
@@ -36,8 +38,16 @@ export function MarketplaceUpgradeDialog({
   upgrading,
   onClose,
   onConfirm,
+  mode = "upgrade",
 }: Props) {
-  const title = preview ? `升级 ${preview.app_name}` : "应用升级预览";
+  const isRollback = mode === "rollback";
+  const title = preview
+    ? isRollback
+      ? `回滚 ${preview.app_name}`
+      : `升级 ${preview.app_name}`
+    : isRollback
+      ? "应用回滚预览"
+      : "应用升级预览";
   const description = preview
     ? `v${preview.installed_version} → v${preview.target_version}`
     : undefined;
@@ -62,7 +72,13 @@ export function MarketplaceUpgradeDialog({
             onClick={onConfirm}
             disabled={!canConfirm}
           >
-            {upgrading ? "升级中…" : "确认升级"}
+            {upgrading
+              ? isRollback
+                ? "回滚中…"
+                : "升级中…"
+              : isRollback
+                ? "确认回滚"
+                : "确认升级"}
           </button>
         </>
       }

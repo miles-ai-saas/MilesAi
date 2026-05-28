@@ -18,6 +18,8 @@ from app.tenant.marketplace.schemas.marketplace import (
     AppRatingCreate,
     AppRatingOut,
     AppReviewBody,
+    AppRollbackPreview,
+    AppRollbackResult,
     AppUpgradePreview,
     AppUpgradeResult,
     MarketplaceAppCreate,
@@ -222,6 +224,26 @@ async def upgrade_app(
 ):
     """确认后执行应用升级，同步 KB/Flow/Agent 与 installed_version。"""
     return ok(await _svc(db, ctx).upgrade_app(app_id))
+
+
+@router.get("/apps/{app_id}/rollback-preview", response_model=ApiResponse[AppRollbackPreview])
+async def rollback_preview(
+    app_id: UUID,
+    ctx: TenantContext = Depends(require_permissions("marketplace:install")),
+    db: AsyncSession = Depends(get_db),
+):
+    """回滚前 diff 预览：对比当前资源与最近一次升级前快照。"""
+    return ok(await _svc(db, ctx).preview_rollback(app_id))
+
+
+@router.post("/apps/{app_id}/rollback", response_model=ApiResponse[AppRollbackResult])
+async def rollback_app(
+    app_id: UUID,
+    ctx: TenantContext = Depends(require_permissions("marketplace:install")),
+    db: AsyncSession = Depends(get_db),
+):
+    """回滚到最近一次升级前的资源快照。"""
+    return ok(await _svc(db, ctx).rollback_app(app_id))
 
 
 @router.get("/installs", response_model=ApiResponse[PageResult[AppInstallOut]])

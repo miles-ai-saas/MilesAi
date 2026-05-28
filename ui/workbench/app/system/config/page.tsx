@@ -6,7 +6,12 @@ import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth-store";
 import { PageHeader } from "@/components/layout/PageHeader";
-import type { ConfigDefinition, InfraComponentStatus, InfraStatus } from "@/lib/types";
+import type {
+  ConfigDefinition,
+  InfraComponentStatus,
+  InfraStatus,
+  TenantObjectStorageConfig,
+} from "@/lib/types";
 
 const PREVIEW_LABELS: Record<string, string> = {
   app_env: "运行环境",
@@ -41,16 +46,43 @@ export default function SystemConfigPage() {
   const [msg, setMsg] = useState("");
   const [testing, setTesting] = useState(false);
   const [testingId, setTestingId] = useState<string | null>(null);
+  const [oss, setOss] = useState<TenantObjectStorageConfig | null>(null);
+  const [ossForm, setOssForm] = useState({
+    is_enabled: false,
+    endpoint: "",
+    bucket: "",
+    access_key: "",
+    secret_key: "",
+    secure: false,
+    region: "",
+  });
+  const [ossTesting, setOssTesting] = useState(false);
+  const [ossSaving, setOssSaving] = useState(false);
 
   const reloadInfra = async () => {
     const status = await api.getInfraStatus();
     setInfra(status);
   };
 
+  const reloadOss = async () => {
+    const cfg = await api.getTenantObjectStorage();
+    setOss(cfg);
+    setOssForm({
+      is_enabled: cfg.is_enabled,
+      endpoint: cfg.endpoint ?? "",
+      bucket: cfg.bucket ?? "",
+      access_key: cfg.access_key ?? "",
+      secret_key: "",
+      secure: cfg.secure ?? false,
+      region: cfg.region ?? "",
+    });
+  };
+
   const reload = async () => {
     const d = await api.listConfigDefinitions();
     setDefs(d);
     await reloadInfra();
+    await reloadOss().catch(() => undefined);
     const init: Record<string, string> = {};
     for (const item of d) {
       const v = item.default_value;
@@ -74,6 +106,54 @@ export default function SystemConfigPage() {
     await api.upsertSystemConfig(key, payload);
     setMsg(`已保存 ${key}`);
     await reload();
+  };
+
+  const onSaveOss = async () => {
+    setOssSaving(true);
+    setMsg("");
+    try {
+      const saved = await api.upsertTenantObjectStorage({
+        is_enabled: ossForm.is_enabled,
+        endpoint: ossForm.endpoint.trim(),
+        bucket: ossForm.bucket.trim(),
+        access_key: ossForm.access_key.trim(),
+        secret_key: ossForm.secret_key.trim() || undefined,
+        secure: ossForm.secure,
+        region: ossForm.region.trim() || undefined,
+      });
+      setOss(saved);
+      setOssForm((f) => ({ ...f, secret_key: "" }));
+      setMsg(
+        saved.is_enabled
+          ? "已启用租户自有对象存储，新上传将写入您的 bucket"
+          : "已保存：继续使用平台默认对象存储",
+      );
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : "保存失败");
+    } finally {
+      setOssSaving(false);
+    }
+  };
+
+  const onTestOss = async () => {
+    setOssTesting(true);
+    setMsg("");
+    try {
+      const res = await api.testTenantObjectStorage({
+        is_enabled: ossForm.is_enabled,
+        endpoint: ossForm.endpoint.trim(),
+        bucket: ossForm.bucket.trim(),
+        access_key: ossForm.access_key.trim(),
+        secret_key: ossForm.secret_key.trim() || undefined,
+        secure: ossForm.secure,
+        region: ossForm.region.trim() || undefined,
+      });
+      setMsg(res.ok ? res.message : `连接失败：${res.message}`);
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : "连接测试失败");
+    } finally {
+      setOssTesting(false);
+    }
   };
 
   const onTestAll = async () => {
@@ -130,6 +210,100 @@ export default function SystemConfigPage() {
         title="系统配置"
         description="L2 业务参数可在此编辑；L1 部署连接（PostgreSQL / Redis / 对象存储等）来自环境变量，只读展示。"
       />
+
+      <section className="card p-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h2 className="text-sm font-semibold text-ink">租户对象存储（L2 BYOK）</h2>
+            <p className="mt-0.5 text-xs text-ink-muted">
+              启用后，本租户知识库/附件/生成物新上传将使用您的 S3 兼容桶；历史文件仍在原桶。
+              当前：{oss?.source === "tenant" && oss.is_enabled ? "租户自有存储" : "平台默认存储"}
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              className="btn-ghost text-sm"
+              disabled={ossTesting || ossSaving}
+              onClick={() => void onTestOss()}
+            >
+              {ossTesting ? "测试中…" : "测试连接"}
+            </button>
+            <button
+              type="button"
+              className="btn-primary text-sm"
+              disabled={ossSaving}
+              onClick={() => void onSaveOss()}
+            >
+              {ossSaving ? "保存中…" : "保存配置"}
+            </button>
+          </div>
+        </div>
+        <label className="mt-4 flex items-center gap-2 text-sm text-ink">
+          <input
+            type="checkbox"
+            checked={ossForm.is_enabled}
+            onChange={(e) => setOssForm((f) => ({ ...f, is_enabled: e.target.checked }))}
+          />
+          启用租户自有对象存储
+        </label>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          <label className="block text-sm">
+            <span className="text-ink-muted">Endpoint（host:port）</span>
+            <input
+              className="input-field mt-1 w-full"
+              placeholder="oss-cn-hangzhou.aliyuncs.com"
+              value={ossForm.endpoint}
+              onChange={(e) => setOssForm((f) => ({ ...f, endpoint: e.target.value }))}
+            />
+          </label>
+          <label className="block text-sm">
+            <span className="text-ink-muted">Bucket</span>
+            <input
+              className="input-field mt-1 w-full"
+              value={ossForm.bucket}
+              onChange={(e) => setOssForm((f) => ({ ...f, bucket: e.target.value }))}
+            />
+          </label>
+          <label className="block text-sm">
+            <span className="text-ink-muted">Access Key</span>
+            <input
+              className="input-field mt-1 w-full"
+              value={ossForm.access_key}
+              onChange={(e) => setOssForm((f) => ({ ...f, access_key: e.target.value }))}
+            />
+          </label>
+          <label className="block text-sm">
+            <span className="text-ink-muted">
+              Secret Key{oss?.secret_key_masked ? `（已保存 ${oss.secret_key_masked}）` : ""}
+            </span>
+            <input
+              className="input-field mt-1 w-full"
+              type="password"
+              placeholder="留空表示不修改"
+              value={ossForm.secret_key}
+              onChange={(e) => setOssForm((f) => ({ ...f, secret_key: e.target.value }))}
+            />
+          </label>
+          <label className="flex items-center gap-2 text-sm sm:col-span-2">
+            <input
+              type="checkbox"
+              checked={ossForm.secure}
+              onChange={(e) => setOssForm((f) => ({ ...f, secure: e.target.checked }))}
+            />
+            使用 HTTPS
+          </label>
+          <label className="block text-sm sm:col-span-2">
+            <span className="text-ink-muted">Region（可选）</span>
+            <input
+              className="input-field mt-1 w-full"
+              placeholder="cn-hangzhou"
+              value={ossForm.region}
+              onChange={(e) => setOssForm((f) => ({ ...f, region: e.target.value }))}
+            />
+          </label>
+        </div>
+      </section>
 
       {infra && (
         <section className="card p-4">

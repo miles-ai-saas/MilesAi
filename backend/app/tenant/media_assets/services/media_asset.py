@@ -18,7 +18,8 @@ from app.core.config import get_settings
 from app.core.service import BaseService
 from app.core.soft_delete import is_marked_deleted, mark_deleted, not_deleted
 from app.core.tenant import TenantContext, assert_tenant_access
-from app.infra.storage import build_object_key, download_bytes, upload_bytes
+from app.infra.storage import build_object_key
+from app.infra.storage.resolve import resolve_object_storage_async
 from app.integrations.generative.persist import PURPOSE_CHAT_GENERATED, PURPOSE_FLOW_GENERATED
 from app.models.attachment import Attachment
 from app.models.kb import DocumentStatus
@@ -183,7 +184,8 @@ class MediaAssetService(BaseService):
         if is_video:
             content, filename, mime = self._build_video_promote_document(row, att, body)
         else:
-            content = download_bytes(att.object_key, att.object_bucket)
+            storage = await resolve_object_storage_async(att.tenant_id, self.db)
+            content = storage.storage.download_bytes(att.object_key, att.object_bucket)
             filename = (body.filename or row.title or att.filename).strip()
             if not filename:
                 raise BadRequestError("文件名不能为空")
@@ -200,19 +202,20 @@ class MediaAssetService(BaseService):
         await assert_can_upload_bytes(self.db, kb.tenant_id, len(content))
 
         doc_repo = DocumentRepository(self.db)
+        kb_storage = await resolve_object_storage_async(kb.tenant_id, self.db)
         doc = await doc_repo.create(
             tenant_id=kb.tenant_id,
             kb_id=kb.id,
             filename=filename,
             mime_type=mime,
             file_size=len(content),
-            object_bucket=settings.object_storage_bucket,
+            object_bucket=kb_storage.default_bucket,
             object_key="pending",
             status=DocumentStatus.PENDING,
         )
         object_key = build_object_key(str(kb.tenant_id), str(kb.id), str(doc.id), filename)
         doc.object_key = object_key
-        upload_bytes(content, object_key, mime)
+        kb_storage.storage.upload_bytes(content, object_key, mime)
         await self.db.flush()
 
         if body.run_parse:

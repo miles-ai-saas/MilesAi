@@ -29,6 +29,8 @@ export default function SystemUsersPage() {
   const [roleIds, setRoleIds] = useState<string[]>([]);
   const [resetUser, setResetUser] = useState<TenantUser | null>(null);
   const [resetPassword, setResetPassword] = useState("");
+  const [batchRolesOpen, setBatchRolesOpen] = useState(false);
+  const [batchRoleIds, setBatchRoleIds] = useState<string[]>([]);
 
   useEffect(() => {
     if (!ready) return;
@@ -121,13 +123,61 @@ export default function SystemUsersPage() {
 
   const toggleSelectAll = () => {
     const selectable = list.items
-      .filter((u: TenantUser) => u.is_active && u.id !== currentUser?.id)
+      .filter((u: TenantUser) => u.id !== currentUser?.id)
       .map((u: TenantUser) => u.id);
-    if (selectable.every((id) => selectedIds.includes(id))) {
+    if (selectable.length > 0 && selectable.every((id) => selectedIds.includes(id))) {
       setSelectedIds((prev) => prev.filter((id) => !selectable.includes(id)));
     } else {
       setSelectedIds((prev) => [...new Set([...prev, ...selectable])]);
     }
+  };
+
+  const runBatch = async (
+    action: "enable" | "disable" | "assign_roles" | "deactivate",
+    roleIds?: string[],
+  ) => {
+    if (selectedIds.length === 0) return;
+    const res = await api.batchUsers(selectedIds, action, roleIds);
+    setSelectedIds([]);
+    const n =
+      "deactivated" in res && typeof res.deactivated === "number"
+        ? res.deactivated
+        : res.processed;
+    alert(
+      action === "deactivate"
+        ? `已删除 ${n} 个用户${res.skipped ? `，跳过 ${res.skipped} 个` : ""}`
+        : `已处理 ${n} 个用户${res.skipped ? `，跳过 ${res.skipped} 个` : ""}`,
+    );
+    await list.reload();
+  };
+
+  const onBatchEnable = () => {
+    requestConfirm({
+      title: "批量启用",
+      message: `确定启用选中的 ${selectedIds.length} 个用户？`,
+      onConfirm: () => runBatch("enable"),
+    });
+  };
+
+  const onBatchDisable = () => {
+    requestConfirm({
+      title: "批量禁用",
+      message: `确定禁用选中的 ${selectedIds.length} 个用户？禁用后将强制下线。`,
+      destructive: true,
+      confirmLabel: "确认禁用",
+      onConfirm: () => runBatch("disable"),
+    });
+  };
+
+  const onOpenBatchRoles = () => {
+    setBatchRoleIds(roles[0] ? [roles[0].id] : []);
+    setBatchRolesOpen(true);
+  };
+
+  const onConfirmBatchRoles = async () => {
+    if (batchRoleIds.length === 0) return;
+    await runBatch("assign_roles", batchRoleIds);
+    setBatchRolesOpen(false);
   };
 
   const onBatchDeactivate = () => {
@@ -138,10 +188,7 @@ export default function SystemUsersPage() {
       destructive: true,
       confirmLabel: "确认删除",
       onConfirm: async () => {
-        const res = await api.batchDeactivateUsers(selectedIds);
-        setSelectedIds([]);
-        await list.reload();
-        alert(`已删除 ${res.deactivated} 个用户${res.skipped ? `，跳过 ${res.skipped} 个` : ""}`);
+        await runBatch("deactivate");
       },
     });
   };
@@ -167,9 +214,20 @@ export default function SystemUsersPage() {
         action={
           <div className="flex items-center gap-2">
             {selectedIds.length > 0 && (
-              <button type="button" className="btn-ghost text-red-600" onClick={onBatchDeactivate}>
-                批量删除 ({selectedIds.length})
-              </button>
+              <>
+                <button type="button" className="btn-ghost text-sm" onClick={onBatchEnable}>
+                  批量启用
+                </button>
+                <button type="button" className="btn-ghost text-sm" onClick={onBatchDisable}>
+                  批量禁用
+                </button>
+                <button type="button" className="btn-ghost text-sm" onClick={onOpenBatchRoles}>
+                  分配角色
+                </button>
+                <button type="button" className="btn-ghost text-red-600" onClick={onBatchDeactivate}>
+                  批量删除 ({selectedIds.length})
+                </button>
+              </>
             )}
             <button type="button" className="btn-primary" onClick={openCreate}>
               新建用户
@@ -191,11 +249,9 @@ export default function SystemUsersPage() {
                       aria-label="全选"
                       onChange={toggleSelectAll}
                       checked={
-                        list.items.some(
-                          (u: TenantUser) => u.is_active && u.id !== currentUser?.id,
-                        ) &&
+                        list.items.some((u: TenantUser) => u.id !== currentUser?.id) &&
                         list.items
-                          .filter((u: TenantUser) => u.is_active && u.id !== currentUser?.id)
+                          .filter((u: TenantUser) => u.id !== currentUser?.id)
                           .every((u: TenantUser) => selectedIds.includes(u.id))
                       }
                     />
@@ -218,7 +274,7 @@ export default function SystemUsersPage() {
                 {list.items.map((u: TenantUser) => (
                   <tr key={u.id}>
                     <td className="px-4 py-3">
-                      {u.is_active && u.id !== currentUser?.id && (
+                      {u.id !== currentUser?.id && (
                         <input
                           type="checkbox"
                           checked={selectedIds.includes(u.id)}
@@ -392,6 +448,47 @@ export default function SystemUsersPage() {
           value={resetPassword}
           onChange={(e) => setResetPassword(e.target.value)}
         />
+      </ResourceDialog>
+
+      <ResourceDialog
+        open={batchRolesOpen}
+        title={`批量分配角色（${selectedIds.length} 人）`}
+        onClose={() => setBatchRolesOpen(false)}
+        footer={
+          <>
+            <button type="button" className="btn-ghost" onClick={() => setBatchRolesOpen(false)}>
+              取消
+            </button>
+            <button
+              type="button"
+              className="btn-primary"
+              disabled={batchRoleIds.length === 0}
+              onClick={() => void onConfirmBatchRoles()}
+            >
+              确认分配
+            </button>
+          </>
+        }
+      >
+        <p className="mb-3 text-sm text-ink-muted">
+          将为选中用户<strong>全量替换</strong>为下列角色（与单用户编辑行为一致）。
+        </p>
+        <div className="flex flex-wrap gap-3">
+          {roles.map((r) => (
+            <label key={r.id} className="flex cursor-pointer items-center gap-1 text-sm">
+              <input
+                type="checkbox"
+                checked={batchRoleIds.includes(r.id)}
+                onChange={() =>
+                  setBatchRoleIds((prev) =>
+                    prev.includes(r.id) ? prev.filter((x) => x !== r.id) : [...prev, r.id],
+                  )
+                }
+              />
+              {r.name}
+            </label>
+          ))}
+        </div>
       </ResourceDialog>
 
       {confirmDialog}

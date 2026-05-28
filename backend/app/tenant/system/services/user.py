@@ -12,7 +12,7 @@ from app.models.user import User
 from app.tenant.audit_log.services.audit_log import write_tenant_audit_log
 from app.tenant.system.repositories.user import UserRepository
 from app.common.schema import PageParams, PageResult
-from app.tenant.system.schemas.user import UserCreate, UserOut, UserUpdate
+from app.tenant.system.schemas.user import UserBatchRequest, UserCreate, UserOut, UserUpdate
 from app.core.soft_delete import is_marked_deleted, mark_deleted
 from app.core.service import BaseService
 from app.tenant.auth.services.auth import AuthService
@@ -206,3 +206,77 @@ class UserService(BaseService):
             )
             deactivated += 1
         return {"deactivated": deactivated, "skipped": skipped}
+
+    async def batch_apply(
+        self, body: UserBatchRequest, *, request: Request | None = None
+    ) -> dict:
+        """批量启用/禁用、赋角色或软删。"""
+        if body.action == "deactivate":
+            return await self.batch_deactivate(body.user_ids, request=request)
+
+        processed = 0
+        skipped = 0
+        roles = None
+        if body.action == "assign_roles" and body.role_ids is not None:
+            roles = await self.repo.load_roles(body.role_ids)
+
+        for uid in body.user_ids:
+            if uid == self.ctx.user_id and body.action in ("disable", "deactivate"):
+                skipped += 1
+                continue
+            user = await self.repo.get_with_roles(uid)
+            if not user or is_marked_deleted(user):
+                skipped += 1
+                continue
+            try:
+                assert_tenant_access(self.ctx, user.tenant_id)
+            except ForbiddenError:
+                skipped += 1
+                continue
+
+            if body.action == "enable":
+                if not user.is_active:
+                    user.is_active = True
+                    await write_tenant_audit_log(
+                        self.db,
+                        self.ctx,
+                        action="user.update",
+                        resource_type="user",
+                        resource_id=str(user.id),
+                        request=request,
+                        detail={"batch": True, "is_active": True},
+                    )
+                    processed += 1
+                else:
+                    skipped += 1
+            elif body.action == "disable":
+                if user.is_active:
+                    user.is_active = False
+                    await AuthService(self.db, self.ctx).admin_revoke_user_sessions(user.id)
+                    await write_tenant_audit_log(
+                        self.db,
+                        self.ctx,
+                        action="user.update",
+                        resource_type="user",
+                        resource_id=str(user.id),
+                        request=request,
+                        detail={"batch": True, "is_active": False},
+                    )
+                    processed += 1
+                else:
+                    skipped += 1
+            elif body.action == "assign_roles" and roles is not None:
+                user.roles = list(roles)
+                await write_tenant_audit_log(
+                    self.db,
+                    self.ctx,
+                    action="user.update",
+                    resource_type="user",
+                    resource_id=str(user.id),
+                    request=request,
+                    detail={"batch": True, "role_ids": [str(r) for r in body.role_ids or []]},
+                )
+                processed += 1
+
+        await self.db.flush()
+        return {"processed": processed, "skipped": skipped, "action": body.action}

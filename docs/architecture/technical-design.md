@@ -335,7 +335,7 @@ flowchart TB
 | 层级 | 控制什么 | 不控制什么 | 配置载体 | 状态 |
 |------|----------|------------|----------|------|
 | **L1 部署级** | 对象存储实现（S3 API）、向量引擎种类、默认 embedding 后端 | 单租户 AK、单库维度 | `.env` / `Settings` | ✅ 已实现 |
-| **L2 租户级** | 可选：独立 bucket 前缀、OSS BYOK、向量服务 URL/Key | weaviate vs milvus 二选一 per tenant | `sys_configs` 或 `sys_tenants` 扩展 | 📋 规划 |
+| **L2 租户级** | 可选：独立 bucket、OSS BYOK（S3 兼容 endpoint/AK/SK） | weaviate vs milvus 二选一 per tenant | `sys_tenant_object_storage` | ✅ BYOK |
 | **L3 知识库级** | `embedding_profile`、`embedding_backend`、`embedding_model_name`、`embedding_dimension` | 创建后禁止改维度/模型 | `kb_bases` | ✅ 已实现 |
 
 **隔离约定**：
@@ -361,7 +361,7 @@ ingest / search / delete
 | 阶段 | 内容 | 优先级 |
 |------|------|--------|
 | **Phase 1（当前）** | L1 环境变量；`kb_bases.embedding_dimension`；`object_bucket` / `object_key` / `vector_id` 通用字段名 | 已交付 |
-| **Phase 2** | L2 租户对象存储 BYOK（`resolve_object_storage(tenant_id)`）；运营/租户 UI 配置 bucket | 中 |
+| **Phase 2** | L2 租户对象存储 BYOK（`resolve_object_storage_async/sync`）；`/system/object-storage` UI | ✅ |
 | **Phase 3** | L3 `kb_bases` 绑定 `embedding_profile` / `embedding_model_name`；`GET /kb/embedding-profiles`；创建 KB 选规格，**创建后不可改**；ingest/检索 `get_embeddings_for_kb` | ✅ 已交付 |
 | **Phase 4** | pgvector / Milvus 实现；仍通过 L1 切换，不做 per-tenant 混用 | 按需 |
 

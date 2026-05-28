@@ -1,6 +1,7 @@
+from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, model_validator
 
 
 class UserCreate(BaseModel):
@@ -24,7 +25,24 @@ class UserResetPassword(BaseModel):
 
 
 class UserBatchDeactivate(BaseModel):
-    user_ids: list[UUID] = Field(..., min_length=1, description="待禁用用户 ID 列表")
+    user_ids: list[UUID] = Field(..., min_length=1, description="待删除用户 ID 列表")
+
+
+class UserBatchRequest(BaseModel):
+    user_ids: list[UUID] = Field(..., min_length=1, description="目标用户 ID 列表")
+    action: Literal["enable", "disable", "assign_roles", "deactivate"] = Field(
+        description="enable/disable 仅改状态；assign_roles 批量赋角色；deactivate 软删"
+    )
+    role_ids: list[UUID] | None = Field(
+        default=None,
+        description="action=assign_roles 时必填，写入各用户角色（全量替换）",
+    )
+
+    @model_validator(mode="after")
+    def _validate_roles(self) -> "UserBatchRequest":
+        if self.action == "assign_roles" and not self.role_ids:
+            raise ValueError("assign_roles 需要提供 role_ids")
+        return self
 
 
 class UserOut(BaseModel):

@@ -72,7 +72,9 @@ def run_ingest(document_id: str) -> None:
                     chunk_overlap=kb.chunk_overlap,
                 ),
                 embed_texts=embed_texts_for_kb_sync,
-                load_bytes=download_bytes,
+                load_bytes=lambda key, bucket: download_bytes(
+                    key, bucket, tenant_id=doc.tenant_id, db=db
+                ),
                 on_before_index=clear_document_derived_data_sync,
             )
 

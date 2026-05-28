@@ -20,12 +20,16 @@ from app.tenant.marketplace.services.marketplace.install import MarketplaceInsta
 from app.tenant.marketplace.services.marketplace.publish import MarketplacePublishMixin
 from app.tenant.marketplace.services.marketplace.ratings import MarketplaceRatingsMixin
 from app.tenant.marketplace.services.marketplace.review import MarketplaceReviewMixin
+from app.tenant.marketplace.services.marketplace.rollback import MarketplaceRollbackMixin
+from app.tenant.marketplace.services.marketplace.snapshot import MarketplaceSnapshotMixin
 from app.tenant.marketplace.services.marketplace.upgrade import MarketplaceUpgradeMixin
 
 
 class MarketplaceService(
     MarketplaceRatingsMixin,
     MarketplaceReviewMixin,
+    MarketplaceRollbackMixin,
+    MarketplaceSnapshotMixin,
     MarketplaceUpgradeMixin,
     MarketplaceInstallMixin,
     MarketplacePublishMixin,

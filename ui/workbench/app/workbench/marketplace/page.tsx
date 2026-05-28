@@ -123,6 +123,10 @@ export default function MarketplacePage() {
   const [upgradeTarget, setUpgradeTarget] = useState<AppInstall | null>(null);
   const [upgradePreview, setUpgradePreview] = useState<AppUpgradePreview | null>(null);
   const [upgradePreviewLoading, setUpgradePreviewLoading] = useState(false);
+  const [rollbackTarget, setRollbackTarget] = useState<AppInstall | null>(null);
+  const [rollbackPreview, setRollbackPreview] = useState<AppUpgradePreview | null>(null);
+  const [rollbackPreviewLoading, setRollbackPreviewLoading] = useState(false);
+  const [rollingBack, setRollingBack] = useState<string | null>(null);
   const [publishing, setPublishing] = useState<string | null>(null);
   const [reviewing, setReviewing] = useState<string | null>(null);
   const [rejectTarget, setRejectTarget] = useState<MarketplaceApp | null>(null);
@@ -324,6 +328,58 @@ export default function MarketplacePage() {
     } finally {
       setUpgrading(null);
       setUpgradePreviewLoading(false);
+    }
+  };
+
+  const rollbackPreviewToUpgrade = (p: import("@/lib/types").AppRollbackPreview): AppUpgradePreview => ({
+    app_id: p.app_id,
+    app_name: p.app_name,
+    installed_version: p.current_version,
+    target_version: p.target_version,
+    can_upgrade: p.can_rollback,
+    has_changes: p.resources.some((r) => r.has_changes),
+    message: p.message,
+    resources: p.resources,
+  });
+
+  const onOpenRollback = async (ins: AppInstall) => {
+    setRollbackTarget(ins);
+    setRollbackPreview(null);
+    setRollbackPreviewLoading(true);
+    setMsg("");
+    try {
+      const preview = await api.getMarketplaceRollbackPreview(ins.app_id);
+      setRollbackPreview(rollbackPreviewToUpgrade(preview));
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : "加载回滚预览失败");
+      setRollbackTarget(null);
+    } finally {
+      setRollbackPreviewLoading(false);
+    }
+  };
+
+  const closeRollbackDialog = () => {
+    if (rollingBack) return;
+    setRollbackTarget(null);
+    setRollbackPreview(null);
+    setRollbackPreviewLoading(false);
+  };
+
+  const onConfirmRollback = async () => {
+    if (!rollbackTarget) return;
+    setRollingBack(rollbackTarget.app_id);
+    setMsg("");
+    try {
+      const res = await api.rollbackMarketplaceApp(rollbackTarget.app_id);
+      setMsg(res.message);
+      setRollbackTarget(null);
+      setRollbackPreview(null);
+      await installs.reload();
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : "回滚失败");
+    } finally {
+      setRollingBack(null);
+      setRollbackPreviewLoading(false);
     }
   };
 
@@ -607,6 +663,19 @@ export default function MarketplacePage() {
       upgrading={upgrading !== null}
       onClose={closeUpgradeDialog}
       onConfirm={() => void onConfirmUpgrade()}
+      mode="upgrade"
+    />
+  );
+
+  const rollbackDialog = (
+    <MarketplaceUpgradeDialog
+      open={rollbackTarget !== null}
+      loading={rollbackPreviewLoading}
+      preview={rollbackPreview}
+      upgrading={rollingBack !== null}
+      onClose={closeRollbackDialog}
+      onConfirm={() => void onConfirmRollback()}
+      mode="rollback"
     />
   );
 
@@ -614,6 +683,7 @@ export default function MarketplacePage() {
     <>
       {appDetailDrawer}
       {upgradeDialog}
+      {rollbackDialog}
     </>
   );
 
@@ -771,6 +841,14 @@ export default function MarketplacePage() {
                       {upgrading === ins.app_id ? "升级中…" : "升级到最新版"}
                     </button>
                   ) : null}
+                  <button
+                    type="button"
+                    className="font-medium text-ink-muted hover:text-ink hover:underline disabled:opacity-50"
+                    disabled={rollingBack === ins.app_id}
+                    onClick={() => void onOpenRollback(ins)}
+                  >
+                    {rollingBack === ins.app_id ? "回滚中…" : "回滚上一版"}
+                  </button>
                   <span className="flex flex-wrap gap-3 text-brand">
                   {ins.kb_id && (
                     <Link href={`/workbench/kb/${ins.kb_id}`} className="hover:underline">

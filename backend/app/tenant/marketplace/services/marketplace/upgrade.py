@@ -13,15 +13,10 @@ from app.common.exceptions import BadRequestError
 from app.models.agent import Agent
 from app.models.flow import Flow
 from app.models.kb import KnowledgeBase
-from app.tenant.agents.schemas.agent import AgentUpdate
-from app.tenant.agents.services.agent import AgentService
-from app.tenant.flows.schemas.flow import FlowSaveGraph, FlowUpdate
 from app.tenant.flows.services.flow import FlowService
-from app.tenant.kb.schemas.kb import KnowledgeBaseUpdate
-from app.tenant.kb.services.kb import KnowledgeBaseService
 from app.tenant.marketplace.models import AppInstall, MarketplaceAppStatus
 from app.tenant.marketplace.schemas.marketplace import AppUpgradePreview, AppUpgradeResult
-from app.tenant.marketplace.util import load_flow_template_graph
+from app.tenant.marketplace.util.install_resources import apply_resources_to_install
 from app.tenant.marketplace.util.upgrade_diff import (
     build_upgrade_preview,
     diff_agent,
@@ -123,46 +118,13 @@ class MarketplaceUpgradeMixin:
     async def _apply_upgrade_resources(self, install: AppInstall, app) -> None:
         """将 manifest 字段写入已安装 KB/Flow/Agent，并更新 installed_version。"""
         resources = (app.manifest or {}).get("resources") or app.manifest or {}
-        kb_svc = KnowledgeBaseService(self.db, self.ctx)
-        flow_svc = FlowService(self.db, self.ctx)
-        agent_svc = AgentService(self.db, self.ctx)
-
-        kb_spec = resources.get("knowledge_base")
-        if kb_spec and install.kb_id:
-            await kb_svc.update_kb(
-                install.kb_id,
-                KnowledgeBaseUpdate(
-                    name=kb_spec.get("name"),
-                    description=kb_spec.get("description"),
-                ),
-            )
-
-        flow_spec = resources.get("flow")
-        if flow_spec and install.flow_id:
-            graph = flow_spec.get("graph_json") or load_flow_template_graph("rag")
-            await flow_svc.update_flow(
-                install.flow_id,
-                FlowUpdate(
-                    name=flow_spec.get("name"),
-                    description=flow_spec.get("description"),
-                ),
-            )
-            await flow_svc.save_graph(
-                install.flow_id,
-                FlowSaveGraph(graph_json=graph, remark=f"市场升级 v{app.version}"),
-            )
-
-        agent_spec = resources.get("agent")
-        if agent_spec and install.agent_id:
-            await agent_svc.update_agent(
-                install.agent_id,
-                AgentUpdate(
-                    name=agent_spec.get("name"),
-                    description=agent_spec.get("description"),
-                    system_prompt=agent_spec.get("system_prompt"),
-                ),
-            )
-
+        await apply_resources_to_install(
+            self.db,
+            self.ctx,
+            install,
+            resources,
+            remark=f"市场升级 v{app.version}",
+        )
         install.installed_version = app.version
 
     async def upgrade_app(self, app_id: UUID) -> AppUpgradeResult:
@@ -171,6 +133,7 @@ class MarketplaceUpgradeMixin:
         if install.installed_version == app.version:
             raise BadRequestError("已是最新版本")
         prev = install.installed_version
+        await self._save_install_snapshot(install, version=prev)
         await self._apply_upgrade_resources(install, app)
         await self.db.flush()
         await self.db.refresh(install)
