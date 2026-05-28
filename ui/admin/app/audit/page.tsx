@@ -33,8 +33,6 @@ export default function AuditPage() {
   const [customTo, setCustomTo] = useState("");
   const [metaActions, setMetaActions] = useState<string[]>([]);
   const [metaAdmins, setMetaAdmins] = useState<{ id: string; username: string }[]>([]);
-  const [exporting, setExporting] = useState(false);
-
   useEffect(() => {
     const fromUrl = searchParams.get("tenant_id");
     if (fromUrl) setTenantFilter(fromUrl);
@@ -77,33 +75,11 @@ export default function AuditPage() {
 
   const actionOptions = useMemo(() => auditActionOptions(metaActions), [metaActions]);
 
-  const onExport = async () => {
-    setExporting(true);
-    try {
-      await adminApi.exportAuditLogs({
-        action: actionFilter || undefined,
-        admin_id: adminFilter || undefined,
-        tenant_id: tenantFilter.trim() || undefined,
-        created_from: dateRange.created_from,
-        created_to: dateRange.created_to,
-      });
-    } catch {
-      /* 403 等由 interceptor 处理 */
-    } finally {
-      setExporting(false);
-    }
-  };
-
   return (
     <div>
       <PageHeader
         title="审计日志"
         description="平台级操作记录，支持按操作人、时间与租户追溯（私有化合规）"
-        action={
-          <button type="button" className="btn-secondary" disabled={exporting} onClick={onExport}>
-            {exporting ? "导出中…" : "导出 CSV"}
-          </button>
-        }
       />
 
       <div className="mb-4 flex flex-wrap items-end gap-2">

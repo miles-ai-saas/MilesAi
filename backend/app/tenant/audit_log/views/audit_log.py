@@ -3,7 +3,6 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
-from fastapi.responses import PlainTextResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.infra.db import get_db
@@ -28,28 +27,6 @@ async def audit_meta(
     db: AsyncSession = Depends(get_db),
 ):
     return ok(await _svc(db, ctx).get_meta())
-
-
-@router.get("/logs/export")
-async def export_audit_logs(
-    user_id: UUID | None = Query(None),
-    action: str | None = Query(None),
-    resource_type: str | None = Query(None),
-    limit: int = Query(5000, ge=1, le=10000),
-    ctx: TenantContext = Depends(require_permissions("audit:read")),
-    db: AsyncSession = Depends(get_db),
-):
-    csv_text = await _svc(db, ctx).export_logs_csv(
-        user_id=user_id,
-        action=action,
-        resource_type=resource_type,
-        limit=limit,
-    )
-    return PlainTextResponse(
-        content="\ufeff" + csv_text,
-        media_type="text/csv; charset=utf-8",
-        headers={"Content-Disposition": 'attachment; filename="audit-logs.csv"'},
-    )
 
 
 @router.get("/logs", response_model=ApiResponse[PageResult[TenantAuditLogOut]])

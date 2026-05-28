@@ -2,7 +2,6 @@
 
 from uuid import UUID
 
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.tenant.audit_log.models import TenantAuditLog
@@ -38,27 +37,3 @@ class TenantAuditLogRepository(BaseRepository[TenantAuditLog]):
             filters=filters,
             order_by=TenantAuditLog.created_at.desc(),
         )
-
-    async def list_for_export(
-        self,
-        tenant_id: UUID,
-        *,
-        limit: int = 5000,
-        user_id: UUID | None = None,
-        action: str | None = None,
-        resource_type: str | None = None,
-    ) -> list[TenantAuditLog]:
-        filters = [TenantAuditLog.tenant_id == tenant_id]
-        if user_id:
-            filters.append(TenantAuditLog.user_id == user_id)
-        if action:
-            filters.append(TenantAuditLog.action == action)
-        if resource_type:
-            filters.append(TenantAuditLog.resource_type == resource_type)
-        stmt = (
-            select(TenantAuditLog)
-            .where(*filters)
-            .order_by(TenantAuditLog.created_at.desc())
-            .limit(max(1, min(limit, 10_000)))
-        )
-        return list((await self.db.execute(stmt)).scalars().all())

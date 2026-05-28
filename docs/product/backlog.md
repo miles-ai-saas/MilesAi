@@ -55,7 +55,7 @@
 |----|------|------|----------|
 | 基础设施可视化配置 UI | 1 | ✅ | `GET /system/infra/status` + 监控面板 |
 | Redis 缓存管理 UI | 1 | ✅ | `GET /system/infra/redis-info` + 面板 |
-| 审计 / 任务日志导出 | 1/8 | 🔜 | 导出类，按需 |
+| 审计 / 任务日志导出 | 1/8 | ❌ 不立项 | 产品确认不做；审计查询保留 `GET /audit/logs` |
 | 敏感词 Excel 导入 UI | 2 | ✅ | `ComplianceLibraryDetail` CSV 上传 |
 | 违规统计报表 | 2 | 🔜 | 导出类，按需 |
 | 数据脱敏 | 2 | ✅ | `compliance/desensitize.py` PII 掩码 |
@@ -86,13 +86,21 @@
 
 ---
 
+## 不立项 — 产品确认不做
+
+| 项 | 模块 | 说明 |
+|----|------|------|
+| 审计 / 任务日志 CSV·Excel 导出 | 1/8 | 不做专导出；现网审计列表查询已满足 |
+
+---
+
 ## 按需 — 有场景再立项
 
-PRD 原文提及、现网已有替代路径，**不阻塞交付**；客户有扫描件/高精度 OCR 诉求时再排期。
+PRD 原文提及、现网已有替代路径，**不阻塞交付**。
 
 | 项 | 模块 | 现网替代 | 触发条件 |
 |----|------|----------|----------|
-| PaddleOCR（或等价高精度 OCR） | 6b | KB 图：`pytesseract`（`[multimodal]`）；对话：Vision 模型；文档：Docling/pypdf | 大量扫描件/票据/手写/表格 OCR 入库 |
+| PaddleOCR（或等价高精度 OCR） | 6b | KB 图：`pytesseract`（`[multimodal]`）；对话：Vision；文档：Docling/pypdf | **后续版本**；有扫描件/票据/手写批量入库需求时再排 |
 | 老格式 Office（`.doc`/`.xls`/`.ppt`） | 6 | Open XML（docx/xlsx/pptx）已支持 | 客户遗留 97-2003 文件批量迁移 |
 | 云 OCR API 接入 | 6b | 同上 | 私有化不想装 Paddle、可接受外呼 |
 

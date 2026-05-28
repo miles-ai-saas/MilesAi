@@ -74,7 +74,6 @@ GET/POST/PATCH /risk/ip-blacklist
 GET/POST/PATCH /risk/rate-limits
 
 GET /audit/logs
-GET /audit/logs/export
 
 GET  /marketplace/review-mode
 GET  /marketplace/apps/pending

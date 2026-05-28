@@ -93,7 +93,7 @@ auth:blacklist:{jti}              → 登出/撤销
 | 多角色继承 | P2 | 用户多角色并集，无 `parent_role_id` |
 | 基础设施配置 UI | ✅ P2 | `GET /system/infra/status` 只读 + 监控面板 |
 | Redis 缓存管理 | ✅ P2 | `GET /system/infra/redis-info` 只读；按前缀清理按需 |
-| 审计 / 日志导出 | 🔜 P2 | CSV / Excel，按需 |
+| 审计 / 日志导出 | ❌ | 产品确认不立项；保留 `GET /audit/logs` 查询 |
 
 ---
 
@@ -322,13 +322,7 @@ role.create | config.update
 
 **写入点**：Service 层成功提交后 `AuditService.record()`，避免散落在 views。
 
-**导出（P2）**
-
-```
-GET /audit/logs/export?format=csv&from=&to=
-```
-
-大导出：Celery 任务 + 对象存储下载链接。
+**导出：** 不立项；审计仅分页在线查询（见 [system-management.md](../features/system-management.md)）。
 
 ### 4.6 会话管理
 

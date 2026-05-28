@@ -70,31 +70,6 @@ class AuditLogRepository(BaseRepository[AuditLog]):
             filters.append(AuditLog.created_at < _day_end_exclusive(created_to))
         return filters
 
-    async def list_for_export(
-        self,
-        *,
-        limit: int = 5000,
-        admin_id: UUID | None = None,
-        action: str | None = None,
-        tenant_id: UUID | None = None,
-        created_from: date | None = None,
-        created_to: date | None = None,
-    ) -> list[AuditLog]:
-        filters = self._build_filters(
-            admin_id=admin_id,
-            action=action,
-            tenant_id=tenant_id,
-            created_from=created_from,
-            created_to=created_to,
-        )
-        stmt = (
-            select(AuditLog)
-            .where(*filters)
-            .order_by(AuditLog.created_at.desc())
-            .limit(max(1, min(limit, 5000)))
-        )
-        return list((await self.db.execute(stmt)).scalars().all())
-
     async def list_distinct_actions(self) -> list[str]:
         stmt = select(distinct(AuditLog.action)).order_by(AuditLog.action)
         return list((await self.db.execute(stmt)).scalars().all())

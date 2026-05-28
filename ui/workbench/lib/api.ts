@@ -282,18 +282,6 @@ export const api = {
     return getPage<TenantAuditLog>(`/audit/logs?${q.toString()}`);
   },
 
-  exportAuditLogs: async (filters?: { action?: string; resource_type?: string }) => {
-    const q = new URLSearchParams();
-    if (filters?.action) q.set("action", filters.action);
-    if (filters?.resource_type) q.set("resource_type", filters.resource_type);
-    const suffix = q.toString();
-    const res = await http.get(
-      `/audit/logs/export${suffix ? `?${suffix}` : ""}`,
-      { responseType: "blob" },
-    );
-    return res.data as Blob;
-  },
-
   getComplianceScanBindings: () => get<ComplianceScanBindings>("/compliance/bindings"),
   setComplianceScanBindings: (libraryIds: string[]) =>
     http

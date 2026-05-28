@@ -177,33 +177,6 @@ export const adminApi = {
     if (opts?.created_to) q.set("created_to", opts.created_to);
     return get<PageResult<AuditLog>>(`/audit/logs?${q.toString()}`);
   },
-  exportAuditLogs: async (opts?: {
-    action?: string;
-    tenant_id?: string;
-    admin_id?: string;
-    created_from?: string;
-    created_to?: string;
-  }) => {
-    const q = new URLSearchParams();
-    if (opts?.action) q.set("action", opts.action);
-    if (opts?.tenant_id) q.set("tenant_id", opts.tenant_id);
-    if (opts?.admin_id) q.set("admin_id", opts.admin_id);
-    if (opts?.created_from) q.set("created_from", opts.created_from);
-    if (opts?.created_to) q.set("created_to", opts.created_to);
-    const suffix = q.toString() ? `?${q.toString()}` : "";
-    const token = getAdminToken();
-    const res = await fetch(`${baseURL}/audit/logs/export${suffix}`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-    });
-    if (!res.ok) throw new Error("导出失败");
-    const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "admin-audit-logs.csv";
-    a.click();
-    URL.revokeObjectURL(url);
-  },
 
   listModelCatalog: (
     page = 1,

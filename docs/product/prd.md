@@ -63,7 +63,7 @@
 | 全局配置 UI（DB/MinIO/Weaviate/Redis/Celery） | 部分 | L1 只读 `infra/status`；L2 对象存储 BYOK 可配置 |
 | AI 能力配置 UI（Embedding/OCR/Whisper） | 部分 | 模型在工作台 BYOK；OCR/Whisper 为 Worker extras |
 | 操作/审计日志查询 | ✅ | `aud_logs` |
-| 日志导出、Celery/向量库专日志 | ⬜ | 导出类，按需 |
+| 日志导出、Celery/向量库专日志 | — | 不立项（审计在线查询即可） |
 | 缓存列表/清理/命中率 | 部分 | `GET /system/infra/redis-info` + 监控面板（只读） |
 
 **平台运营侧** → [admin-ops.md](../features/admin-ops.md)（PRD 未单独成章，对应模块1 平台能力 + 模块7 分类）
@@ -164,7 +164,7 @@
 
 | PRD 愿景 | 现网 | 备注 |
 |----------|------|------|
-| PaddleOCR 高精度中文 OCR | 按需暂缓 | 现网 pytesseract + Vision；见 [backlog §按需](./backlog.md#按需--有场景再立项) |
+| PaddleOCR 高精度中文 OCR | 后续按需 | 现网 pytesseract + Vision；**下一版不做**，见 [backlog](./backlog.md) |
 | 以图搜图 / 文本搜图（MVP） | ✅ | `POST /kb/{id}/search` · `media_types` · `query_document_id` |
 | 视觉向量以图搜图 | ✅ | `visual_search` + CLIP |
 | 视频入库与抽帧 | ✅ | mp4/mov/webm 白名单 + `parse_video` |

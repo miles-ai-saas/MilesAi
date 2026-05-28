@@ -126,8 +126,9 @@ POST /system/infra/test-connection     # 测试 PG/Redis/对象存储/向量库/
 ```
 GET /audit/meta
 GET /audit/logs?user_id=&action=&resource_type=
-GET /audit/logs/export?action=&resource_type=&limit=   # CSV 导出（UTF-8 BOM）
 ```
+
+> **产品范围：** 不做审计/任务日志导出（CSV、Excel、联合导出等）；仅在线筛选查询。PaddleOCR 见 [backlog §按需](../product/backlog.md)。
 
 ### 3.7 资源配额 `/api/v1/system/quota`（只读）
 

@@ -297,11 +297,11 @@ GET /dashboard/summary
 | 4.1 | 账单状态 API | `PATCH /billing/bills/{id}` → `paid` / `void` |
 | 4.2 | 套餐停用 | `is_active` 字段；停用后不可新绑租户 |
 | 4.3 | 审计全覆盖 | Phase 0–3 所有写操作补 audit |
-| 4.4 | 审计 CSV 导出 | `GET /audit/logs/export`（UTF-8 BOM，上限 5000 行） |
+| 4.4 | ~~审计 CSV 导出~~ | 已移除；产品不立项审计导出 |
 | 4.5 | 租户用量报表 | `GET /tenants/{id}/usage` 或详情页图表（KB/Agent/Flow/Token） |
 | 4.6 | 模型目录 list 性能 | `count()` 替代 `len(all rows)` |
 
-**验收：** 账单可标记已付；审计可导出；模型/分类变更可在 audit 检索。
+**验收：** 账单可标记已付；审计可在线检索；模型/分类变更可在 audit 检索。
 
 ---
 
@@ -424,7 +424,7 @@ draft → issued → paid
 | Phase 1 | UI 创建套餐；生成账单；dashboard summary 与 DB 一致 |
 | Phase 2 | super_admin 创建 ops；ops 403 on DELETE tenant；禁用 admin |
 | Phase 3 | 黑名单 IP 403；超限 429；risk 列表有事件 |
-| Phase 4 | 账单 paid；audit export CSV；模型 publish 有 audit |
+| Phase 4 | 账单 paid；audit 在线检索；模型 publish 有 audit |
 
 建议新增：`backend/tests/test_admin_auth.py`、`test_admin_risk_middleware.py`。
 
@@ -440,7 +440,7 @@ draft → issued → paid
 | 1 | `app_ops/views/dashboard.py`, `services/dashboard.py` | `app/billing/page.tsx`, `app/page.tsx` |
 | 2 | `app_ops/views/admins.py`, `services/admins.py` | `app/admins/page.tsx`, `lib/admin-nav.ts` |
 | 3 | `app/middlewares/platform_risk.py`, `app_ops/services/risk_enforce.py` | `app/risk/page.tsx` |
-| 4 | `audit` export, `billing` status patch | `app/audit/page.tsx` |
+| 4 | `audit` 列表, `billing` status patch | `app/audit/page.tsx` |
 | 5 | `app/marketplace/review_*.py`, `app_ops/views/marketplace_review.py` | `app/marketplace-review/page.tsx` |
 
 ---

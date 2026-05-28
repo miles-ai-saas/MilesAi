@@ -1,7 +1,5 @@
 """运营端审计：管理员操作写库与分页查询。"""
 
-import csv
-import io
 from datetime import date, datetime, time, timedelta, timezone
 from uuid import UUID
 
@@ -12,9 +10,6 @@ from app.admin.app_ops.repositories.audit import AuditLogRepository
 from app.admin.app_ops.schemas.audit import AuditAdminOption, AuditLogOut, AuditMetaOut
 from app.admin.models import AuditLog
 from app.common.schema import PageParams, PageResult
-
-EXPORT_MAX_ROWS = 5000
-
 
 def _day_start(d: date) -> datetime:
     return datetime.combine(d, time.min, tzinfo=timezone.utc)
@@ -118,54 +113,3 @@ class AdminAuditService:
             actions=actions,
             admins=[AuditAdminOption(id=a.id, username=a.username) for a in admins],
         )
-
-    async def export_logs_csv(
-        self,
-        *,
-        admin_id: UUID | None = None,
-        action: str | None = None,
-        tenant_id: UUID | None = None,
-        created_from: date | None = None,
-        created_to: date | None = None,
-        limit: int = EXPORT_MAX_ROWS,
-    ) -> str:
-        rows = await self.repo.list_for_export(
-            limit=limit,
-            admin_id=admin_id,
-            action=action,
-            tenant_id=tenant_id,
-            created_from=created_from,
-            created_to=created_to,
-        )
-        admin_ids = {r.admin_id for r in rows if r.admin_id}
-        names = await self.repo.load_admin_usernames(admin_ids)
-        buf = io.StringIO()
-        writer = csv.writer(buf)
-        writer.writerow(
-            [
-                "created_at",
-                "action",
-                "admin_id",
-                "admin_username",
-                "tenant_id",
-                "resource_type",
-                "resource_id",
-                "ip_address",
-                "detail",
-            ]
-        )
-        for row in rows:
-            writer.writerow(
-                [
-                    row.created_at.isoformat() if row.created_at else "",
-                    row.action,
-                    str(row.admin_id) if row.admin_id else "",
-                    names.get(row.admin_id, "") if row.admin_id else "",
-                    str(row.tenant_id) if row.tenant_id else "",
-                    row.resource_type or "",
-                    row.resource_id or "",
-                    row.ip_address or "",
-                    str(row.detail or {}),
-                ]
-            )
-        return buf.getvalue()
