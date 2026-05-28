@@ -1,8 +1,42 @@
-# UI 应用
+# MilesAI 前端（Workbench + Admin）
 
-| 目录 | 说明 | 端口 |
-|------|------|------|
-| [workbench/](./workbench/) | 租户 AI 工作台 | 3000 |
-| [admin/](./admin/) | 平台运营后台 | 3001 |
+## 代码规范
 
-本地开发见仓库根目录 [README.md](../README.md#前端工作台)。设计规范见 [docs/frontend/design.md](../docs/frontend/design.md)。
+与仓库根目录 [`.editorconfig`](../.editorconfig) 及 [`prettier.config.mjs`](./prettier.config.mjs) 对齐：
+
+| 项 | 值 |
+|----|-----|
+| 行宽 | **160** |
+| 缩进 | 2 空格（TS/TSX/JS/CSS/JSON） |
+| 引号 | 双引号 |
+| 分号 | 有 |
+| 换行 | LF |
+
+- **格式化**：Prettier（`printWidth: 160`）
+- **Lint**：ESLint + `eslint-config-next` + `eslint-config-prettier`（样式冲突以 Prettier 为准）
+
+## 常用命令
+
+先在各应用目录安装依赖（workbench 常用 npm，admin 常用 pnpm）：
+
+```bash
+cd ui/workbench && npm install
+cd ui/admin && pnpm install   # 或 npm install
+```
+
+在 `ui/` 目录可聚合执行（需两侧均已安装依赖）：
+
+```bash
+cd ui
+npm run format        # 格式化 workbench + admin
+npm run format:check
+npm run lint
+```
+
+单应用（在 `workbench/` 或 `admin/` 下）：
+
+```bash
+npm run format
+npm run format:check
+npm run lint
+```

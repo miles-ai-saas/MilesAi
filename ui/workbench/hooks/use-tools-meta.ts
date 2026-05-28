@@ -5,17 +5,10 @@
  * `enabled=false` 时不请求。
  */
 
-import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
+import { useEnumMeta } from "@/hooks/use-enum-meta";
 import type { ToolsMeta } from "@/lib/types";
 
 export function useToolsMeta(enabled = true) {
-  const [meta, setMeta] = useState<ToolsMeta | null>(null);
-
-  useEffect(() => {
-    if (!enabled) return;
-    void api.getToolsMeta().then(setMeta).catch(() => setMeta(null));
-  }, [enabled]);
-
-  return meta;
+  return useEnumMeta<ToolsMeta>(api.getToolsMeta, enabled);
 }

@@ -5,17 +5,10 @@
  * `enabled=false` 时不请求。
  */
 
-import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
+import { useEnumMeta } from "@/hooks/use-enum-meta";
 import type { CategoryMeta } from "@/lib/types";
 
 export function useCategoryMeta(enabled = true) {
-  const [meta, setMeta] = useState<CategoryMeta | null>(null);
-
-  useEffect(() => {
-    if (!enabled) return;
-    void api.getCategoryMeta().then(setMeta).catch(() => setMeta(null));
-  }, [enabled]);
-
-  return meta;
+  return useEnumMeta<CategoryMeta>(api.getCategoryMeta, enabled);
 }

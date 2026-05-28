@@ -1,0 +1,10 @@
+{
+  "name": "milesai-ui",
+  "private": true,
+  "description": "聚合脚本；依赖请在 workbench/ 与 admin/ 分别安装。",
+  "scripts": {
+    "format": "npm run format --prefix workbench && npm run format --prefix admin",
+    "format:check": "npm run format:check --prefix workbench && npm run format:check --prefix admin",
+    "lint": "npm run lint --prefix workbench && npm run lint --prefix admin"
+  }
+}

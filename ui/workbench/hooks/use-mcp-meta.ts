@@ -5,17 +5,10 @@
  * `enabled=false` 时不请求。
  */
 
-import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
+import { useEnumMeta } from "@/hooks/use-enum-meta";
 import type { McpMeta } from "@/lib/types";
 
 export function useMcpMeta(enabled = true) {
-  const [meta, setMeta] = useState<McpMeta | null>(null);
-
-  useEffect(() => {
-    if (!enabled) return;
-    void api.getMcpMeta().then(setMeta).catch(() => setMeta(null));
-  }, [enabled]);
-
-  return meta;
+  return useEnumMeta<McpMeta>(api.getMcpMeta, enabled);
 }

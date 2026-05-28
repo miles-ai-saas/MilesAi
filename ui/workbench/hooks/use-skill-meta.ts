@@ -5,17 +5,10 @@
  * `enabled=false` 时不请求。
  */
 
-import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
+import { useEnumMeta } from "@/hooks/use-enum-meta";
 import type { SkillMeta } from "@/lib/types";
 
 export function useSkillMeta(enabled = true) {
-  const [meta, setMeta] = useState<SkillMeta | null>(null);
-
-  useEffect(() => {
-    if (!enabled) return;
-    void api.getSkillMeta().then(setMeta).catch(() => setMeta(null));
-  }, [enabled]);
-
-  return meta;
+  return useEnumMeta<SkillMeta>(api.getSkillMeta, enabled);
 }

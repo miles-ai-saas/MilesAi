@@ -5,7 +5,7 @@
  *   1. `backend/app/tenant/<module>/meta.py` — 维护 value/label/hint
  *   2. `GET /<module>/meta` — 须在 `/{id}` 等路径参数路由之前注册
  *   3. `lib/api.ts` — `get*Meta()`
- *   4. `hooks/use-*-meta.ts` — 页面/弹窗挂载时拉取（`enabled` 控制是否请求）
+ *   4. `hooks/use-enum-meta.ts` + `hooks/use-*-meta.ts` — 页面/弹窗挂载时拉取（`enabled` 控制是否请求）
  *   5. `lib/*-labels.ts` 或 `document-status.ts` — `optionLabel(meta?.field, value)` + 本地 fallback
  *   6. 页面/组件 — 将 `meta` 传入 label 函数或 `statusOptions` 等 props
  *

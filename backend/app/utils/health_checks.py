@@ -51,7 +51,7 @@ async def check_redis() -> bool:
 async def check_vector_store() -> bool:
     """委托当前 VECTOR_STORE_BACKEND 实现 health_check。"""
     try:
-        return get_vector_store().health_check()
+        return await asyncio.to_thread(get_vector_store().health_check)
     except Exception:
         return False
 
@@ -59,7 +59,7 @@ async def check_vector_store() -> bool:
 async def check_object_storage() -> bool:
     """MinIO/S3 兼容存储桶探测。"""
     try:
-        return get_object_storage().health_check()
+        return await asyncio.to_thread(get_object_storage().health_check)
     except Exception:
         return False
 
@@ -124,43 +124,48 @@ async def probe_components(component_ids: list[str] | None = None) -> list[dict]
     return list(results)
 
 
+def _collect_worker_info_sync() -> dict:
+    from app.workers.app import celery_app
+
+    inspect = celery_app.control.inspect()
+    stats = inspect.stats() or {}
+    active = inspect.active() or {}
+    reserved = inspect.reserved() or {}
+    active_queues = inspect.active_queues() or {}
+    scheduled = inspect.scheduled() or {}
+
+    workers = []
+    total_active = 0
+    total_reserved = 0
+    for name in sorted(set(list(stats.keys()) + list(active.keys()))):
+        w_stat = stats.get(name, {})
+        w_active = active.get(name, [])
+        w_reserved = reserved.get(name, [])
+        w_queues = active_queues.get(name, [])
+        pool = w_stat.get("pool", {})
+        workers.append({
+            "name": name,
+            "pool_size": pool.get("max-concurrency", 0) if isinstance(pool, dict) else 0,
+            "active_tasks": len(w_active),
+            "reserved_tasks": len(w_reserved),
+            "queues": [q.get("name", "") for q in w_queues] if w_queues else [],
+        })
+        total_active += len(w_active)
+        total_reserved += len(w_reserved)
+
+    return {
+        "worker_count": len(workers),
+        "workers": workers,
+        "total_active_tasks": total_active,
+        "total_reserved_tasks": total_reserved,
+        "total_scheduled": sum(len(scheduled.get(w, [])) for w in scheduled),
+    }
+
+
 async def get_worker_info() -> dict:
     """获取 Celery Worker 状态（活跃数、队列、任务统计）。"""
     try:
-        from app.workers.app import celery_app
-        inspect = celery_app.control.inspect()
-        stats = inspect.stats() or {}
-        active = inspect.active() or {}
-        reserved = inspect.reserved() or {}
-        active_queues = inspect.active_queues() or {}
-        scheduled = inspect.scheduled() or {}
-
-        workers = []
-        total_active = 0
-        total_reserved = 0
-        for name in sorted(set(list(stats.keys()) + list(active.keys()))):
-            w_stat = stats.get(name, {})
-            w_active = active.get(name, [])
-            w_reserved = reserved.get(name, [])
-            w_queues = active_queues.get(name, [])
-            pool = w_stat.get("pool", {})
-            workers.append({
-                "name": name,
-                "pool_size": pool.get("max-concurrency", 0) if isinstance(pool, dict) else 0,
-                "active_tasks": len(w_active),
-                "reserved_tasks": len(w_reserved),
-                "queues": [q.get("name", "") for q in w_queues] if w_queues else [],
-            })
-            total_active += len(w_active)
-            total_reserved += len(w_reserved)
-
-        return {
-            "worker_count": len(workers),
-            "workers": workers,
-            "total_active_tasks": total_active,
-            "total_reserved_tasks": total_reserved,
-            "total_scheduled": sum(len(scheduled.get(w, [])) for w in scheduled),
-        }
+        return await asyncio.to_thread(_collect_worker_info_sync)
     except Exception as exc:
         return {"error": str(exc)}
 
@@ -226,23 +231,14 @@ async def collect_infra_status() -> dict:
     }
 
 
+_CORE_HEALTH_IDS = ("postgres", "redis", "vector_store", "object_storage")
+
+
 async def collect_health_status() -> dict:
     """并行探测各组件，返回 {healthy, status, components}。"""
-    postgres, redis_ok, vector_store, object_storage = await asyncio.gather(
-        check_postgres(),
-        check_redis(),
-        check_vector_store(),
-        check_object_storage(),
-    )
-    components = {
-        "postgres": postgres,
-        "redis": redis_ok,
-        "vector_store": vector_store,
-        "object_storage": object_storage,
-    }
-    healthy = all(
-        [postgres, redis_ok, vector_store, object_storage]
-    )
+    probed = await probe_components(list(_CORE_HEALTH_IDS))
+    components = {item["id"]: item["status"] == "ok" for item in probed}
+    healthy = all(components.values())
     return {
         "healthy": healthy,
         "status": "healthy" if healthy else "degraded",

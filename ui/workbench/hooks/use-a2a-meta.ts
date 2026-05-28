@@ -5,17 +5,10 @@
  * `enabled=false` 时不请求。
  */
 
-import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
+import { useEnumMeta } from "@/hooks/use-enum-meta";
 import type { A2aMeta } from "@/lib/types";
 
 export function useA2aMeta(enabled = true) {
-  const [meta, setMeta] = useState<A2aMeta | null>(null);
-
-  useEffect(() => {
-    if (!enabled) return;
-    void api.getA2aMeta().then(setMeta).catch(() => setMeta(null));
-  }, [enabled]);
-
-  return meta;
+  return useEnumMeta<A2aMeta>(api.getA2aMeta, enabled);
 }

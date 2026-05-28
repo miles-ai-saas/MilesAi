@@ -5,17 +5,10 @@
  * `enabled=false` 时不请求。
  */
 
-import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
+import { useEnumMeta } from "@/hooks/use-enum-meta";
 import type { MonitorMeta } from "@/lib/types";
 
 export function useMonitorMeta(enabled = true) {
-  const [meta, setMeta] = useState<MonitorMeta | null>(null);
-
-  useEffect(() => {
-    if (!enabled) return;
-    void api.getMonitorMeta().then(setMeta).catch(() => setMeta(null));
-  }, [enabled]);
-
-  return meta;
+  return useEnumMeta<MonitorMeta>(api.getMonitorMeta, enabled);
 }

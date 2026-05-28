@@ -5,17 +5,10 @@
  * `enabled=false` 时不请求。
  */
 
-import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
+import { useEnumMeta } from "@/hooks/use-enum-meta";
 import type { PromptMeta } from "@/lib/types";
 
 export function usePromptMeta(enabled = true) {
-  const [meta, setMeta] = useState<PromptMeta | null>(null);
-
-  useEffect(() => {
-    if (!enabled) return;
-    void api.getPromptMeta().then(setMeta).catch(() => setMeta(null));
-  }, [enabled]);
-
-  return meta;
+  return useEnumMeta<PromptMeta>(api.getPromptMeta, enabled);
 }
