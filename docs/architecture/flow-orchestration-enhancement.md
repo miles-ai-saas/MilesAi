@@ -3,7 +3,7 @@
 **日期：** 2026-05-26  
 **状态：** Phase 1–4 已实现（设计归档）  
 **As-Is 规格：** [features/flow-orchestration.md](../features/flow-orchestration.md)  
-**后续立项（暂不实施）：** [flow-subflow-design.md](./flow-subflow-design.md)（SubFlow）  
+**SubFlow：** 已实现，见 [flow-subflow-design.md](./flow-subflow-design.md) · [features/flow-orchestration.md](../features/flow-orchestration.md)  
 **关联归档：** [flow-llm-multimodal-design.md](./flow-llm-multimodal-design.md)（识图）、[flow-generative-media-design.md](./flow-generative-media-design.md)（生图/生视频）  
 **关联：** [flows.md](../guides/flows.md)、[technical-design.md](./technical-design.md) §9、[frontend/design.md](../frontend/design.md) §9.1 链路 §6
 

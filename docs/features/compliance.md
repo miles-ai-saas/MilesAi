@@ -1,6 +1,6 @@
 # 安全合规
 
-**日期：** 2026-05-27  
+**日期：** 2026-05-28  
 **状态：** 已实现  
 **PRD 对照：** 模块2 安全合规模块  
 **架构：** [technical-design.md §11.1](../architecture/technical-design.md#111-合规) · [compliance-word-libraries.md](../guides/compliance-word-libraries.md)
@@ -19,11 +19,18 @@
 - 对话/流程集成：`ComplianceService.check_input` / `check_output`
 - 前端：`/workbench/compliance`
 
-### 1.2 明确不做
+### 1.2 明确不做 / 局限
 
-- Python 钩子（见 hooks；合规独立）
-- 图片/音视频内容安全模型（仅文本扫描）
-- 多模态 OCR 结果自动合规（需文本化后再扫）
+- Python 钩子（见 [hooks.md](./hooks.md)；合规独立）
+- 违规统计专报表与导出（拦截日志可查；报表按需）
+- 导出水印（按需）
+- 多模态 OCR 结果自动合规（需文本化后再扫；画布可用 `ComplianceCheck`）
+
+### 1.3 已增强（P2）
+
+- 词库 **CSV 批量导入** UI（`ComplianceLibraryDetail`）
+- **PII 脱敏** `compliance/desensitize.py`
+- **音视频 Vision 审核** `media_audit.py`
 
 ---
 

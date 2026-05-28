@@ -1,7 +1,7 @@
 # 监控与统计
 
-**日期：** 2026-05-27  
-**状态：** 基础已实现  
+**日期：** 2026-05-28  
+**状态：** 已实现（导出类报表按需）  
 **PRD 对照：** 模块9 监控与统计  
 **架构：** [technical-design.md §4 monitor](../architecture/technical-design.md#4-分层与模块)
 
@@ -17,14 +17,18 @@
 - 趋势：近 N 日调用量（默认 7 天）
 - 健康报告 + CSV 导出
 - 告警配置：阈值 + Webhook URL，支持 test
+- **模型用量**：`agt_model_usage_logs` 分模型报表
+- **多模态处理量**：MonitorStats 图/音/视频计数
+- **基础设施探测**：`GET /system/infra/status`（PG/Redis/MinIO 等 latency）
+- **SMTP 邮件告警**：`email_notify_to` 配置
 - 工作台概览：`GET /workbench/overview`（快捷入口统计）
 - 前端：`/workbench/monitor`、`/workbench/dashboard`
 
-### 1.2 明确不做
+### 1.2 明确不做 / 按需
 
-- PostgreSQL/Redis/MinIO 进程级监控 UI
-- PDF 报表、自定义报表模板
-- 多通道告警（邮件/短信）
+- 进程级 CPU/磁盘 APM（依赖外部运维）
+- PDF/Excel 专报表模板
+- 短信告警
 
 ---
 

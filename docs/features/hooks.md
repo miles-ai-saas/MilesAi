@@ -1,7 +1,7 @@
 # 智能体钩子（Hook）
 
-**日期：** 2026-05-27  
-**状态：** HTTP 钩子已实现；Python 钩子未实现  
+**日期：** 2026-05-28  
+**状态：** HTTP / Python 钩子已实现  
 **PRD 对照：** 模块2 全局执行钩子  
 **架构：** [technical-design.md §11.2](../architecture/technical-design.md#112-钩子) · [hooks.md](../guides/hooks.md)
 
@@ -27,11 +27,11 @@ BEFORE_CALL → 合规 check_input → … 推理/工具/流程 …
 - triggers：before/after_call、before/after_reasoning、before/after_tool、on_error
 - 前端：`/workbench/hooks`
 
-### 1.2 明确不做
+### 1.2 明确不做 / 局限
 
-- Python 钩子（`python_not_implemented` 跳过）
 - 画布内每个 LLM 节点独立 reasoning 钩子
 - `scope=tool` 绑定（执行点未接）
+- Python 模块路径仅限 `app.tenant.hooks.plugins.*`
 
 ---
 
@@ -48,7 +48,7 @@ BEFORE_CALL → 合规 check_input → … 推理/工具/流程 …
 | 值 | 状态 |
 |----|------|
 | `http` | ✅ |
-| `python` | ❌ 未实现 |
+| `python` | ✅ `config.module` + `config.function` |
 
 ### 2.2 trigger
 
@@ -118,7 +118,8 @@ GET  /hooks/executions?page=
 ```
 HookRunner.run(trigger, scope, target_id, payload)
     → HookExecutor 按 priority 串行
-    → HttpHookExecutor POST config.url
+    → http: POST config.url
+    → python: import app.tenant.hooks.plugins.*
     → 写 hook_execution_logs
 ```
 

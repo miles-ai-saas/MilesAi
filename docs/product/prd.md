@@ -1,7 +1,7 @@
 # 一体化AI智能编排与RAG应用平台（多模态企业版）完整项目需求
 
-> **与代码实现对齐说明（2026-05）**  
-> 类型：需求基线 | 状态：只读参考（下文为立项原文，能力以「实现对照」为准）  
+> **与代码实现对齐说明（2026-05-28）**  
+> 类型：需求基线 | 状态：只读参考（下文为立项原文，能力以「实现对照」为准；与 [backlog.md](./backlog.md) 同步）  
 > **各模块实现规格（As-Is）：** [README.md §功能节点 ↔ 文档速查](../README.md#功能节点--文档速查) · [features/](../features/)  
 > - **多模态产品能力（生文/识图/生成/入库）**：→ [multimodal-capabilities.md](./multimodal-capabilities.md)（**以该文实现状态为准**）  
 > - **流程编排**：React Flow + `flow_runtime` + LangGraph → [flows.md](../guides/flows.md)  
@@ -56,15 +56,15 @@
 |----------|----------|------|
 | 用户 CRUD、启用/禁用、密码重置 | ✅ | `/system/users` |
 | 批量用户操作 | ⬜ | 无批量 UI |
-| 登录日志、会话设备、强制登出 | 部分 | JWT 黑名单 logout；无设备/会话列表 UI |
+| 登录日志、会话设备、强制登出 | ✅ | `/system/sessions`；用户页可强制登出全部会话 |
 | RBAC 角色与权限 | ✅ | 菜单 + API 权限码 |
 | 租户 CRUD、数据隔离 | ✅ | 平台权限下租户 API；行级 `tenant_id` |
 | 资源配额（KB、存储、并发等） | 部分 | `sys_tenants` 配额字段；非 PRD 全量指标 |
-| 全局配置 UI（DB/MinIO/Weaviate/Redis/Celery） | ⬜ | 基础设施走 `.env` / Compose；租户侧仅 `sys_configs` 键值 |
+| 全局配置 UI（DB/MinIO/Weaviate/Redis/Celery） | 部分 | `GET /system/infra/status` 只读聚合；非 PRD 全量可编辑 |
 | AI 能力配置 UI（Embedding/OCR/Whisper） | 部分 | 模型在工作台 BYOK；OCR/Whisper 为 Worker extras |
 | 操作/审计日志查询 | ✅ | `aud_logs` |
-| 日志导出、Celery/向量库专日志 | ⬜ | — |
-| 缓存列表/清理/命中率 | ⬜ | Redis 无管理 UI |
+| 日志导出、Celery/向量库专日志 | ⬜ | 导出类，按需 |
+| 缓存列表/清理/命中率 | 部分 | `GET /system/infra/redis-info` + 监控面板（只读） |
 
 **平台运营侧** → [admin-ops.md](../features/admin-ops.md)（PRD 未单独成章，对应模块1 平台能力 + 模块7 分类）
 
@@ -87,14 +87,14 @@
 | PRD 表述 | 当前实现 | 备注 |
 |----------|----------|------|
 | 敏感词 CRUD、分类、warn/block | ✅ | 多词库 + 库内词条 + 租户扫描绑定 |
-| Excel 批量导入敏感词 | 部分 | API 支持批量；无 Excel 专导入 UI |
+| Excel 批量导入敏感词 | ✅ | 词库详情 CSV 批量导入 UI |
 | 拦截范围（对话/流程文本） | ✅ | `ComplianceService` 入参/出参 |
-| OCR/音视频内容安全检测 | ⬜ | 仅文本扫描；无视觉/音频模型审核 |
-| 违规统计报表与导出 | 部分 | 拦截日志查询；无专报表 |
+| OCR/音视频内容安全检测 | ✅ | `media_audit.py` Vision 审核 |
+| 违规统计报表与导出 | 部分 | 拦截日志查询；专报表导出按需 |
 | HTTP 钩子（前后置/on_error） | ✅ | Event v1；Agent/Flow/Tool 挂载 |
-| Python 脚本钩子 | ⬜ | `python_not_implemented` |
-| 数据脱敏、水印 | ⬜ | PRD §2.3 未落地 |
-| 按智能体/流程/应用绑定钩子 | 部分 | scope 支持；`scope=tool` 未接 |
+| Python 脚本钩子 | ✅ | `app.tenant.hooks.plugins.*` |
+| 数据脱敏、水印 | 部分 | PII 掩码 `desensitize.py`；导出水印按需 |
+| 按智能体/流程/应用绑定钩子 | 部分 | scope 支持；`scope=tool` 绑定未接 |
 
 <a id="as-is-module-3"></a>
 
@@ -108,10 +108,10 @@
 | BYOK 密钥加密存储 | ✅ | `api_key_encrypted` |
 | 多模态模型（image_gen/video_gen/vision） | ✅ | `model_type` + capabilities |
 | Embedding / Rerank 与 KB 绑定 | ✅ | embedding profiles |
-| 模型健康探测与故障告警 | 部分 | 调用失败标记；无自动探测 cron |
+| 模型健康探测与故障告警 | ✅ | Beat `probe_models_health`（默认每 15 分钟） |
 | 模型分组与启用/禁用 | ✅ | 分类 + 状态字段 |
 | 提示词模板 CRUD、变量占位 | ✅ | `prm_prompt_templates` |
-| 模板导入/导出、A/B 实验 | ⬜ | — |
+| 模板导入/导出、A/B 实验 | 部分 | JSON 导入/导出 ✅；A/B 实验按需 |
 | 按场景分类与搜索 | ✅ | 分类 + 标签 |
 
 <a id="as-is-module-4"></a>
@@ -127,14 +127,14 @@
 | A2A 外部互联 | ✅ | Peer 登记 + 互联宿主 + custom 引用 |
 | 对话 WebSocket + HTTP | ✅ | v1 已实现 |
 | 智能体定时任务（Cron） | ✅ | Celery Beat；Compose 含 `beat` 服务 |
-| 复制/导出/导入智能体 | 部分 | CRUD；无一键导出包 |
+| 复制/导出/导入智能体 | ✅ | `GET /agents/{id}/export` · `POST /agents/import` |
 | 调用限流、会话上限 UI | 部分 | 风控在运营侧；智能体级限流简化 |
 | React Flow 画布（无 iframe） | ✅ | `/workbench/flows/[id]/edit` |
-| 核心节点（LLM/RAG/分支/工具/生图生视频） | ✅ | 14 类节点 |
-| PaddleOCR/Whisper 专用画布节点 | ⬜ | 能力在 KB 入库链，非独立节点 |
-| 循环节点、敏感词/审核画布节点 | ⬜ | 合规在运行时集成，非独立节点 |
+| 核心节点（LLM/RAG/分支/工具/生图生视频） | ✅ | 含 SubFlow / 循环 / 合规 / OCR / 转写等 |
+| PaddleOCR/Whisper 专用画布节点 | ✅ | `OcrExtract` · `AudioTranscribe`（KB 链仍用入库解析） |
+| 循环节点、敏感词/审核画布节点 | ✅ | `LoopNode` · `ComplianceCheck` |
 | 子流程 SubFlow | ✅ | SubFlow 节点嵌套 run |
-| 流程版本快照/回滚/对比 | 部分 | 版本列表 + 发布；无 diff UI |
+| 流程版本快照/回滚/对比 | 部分 | 版本列表 + 发布 + diff UI；无一键回滚 |
 | 识图输入（对话/流程 LLM） | ✅ | Vision + `RunContext.media` |
 
 <a id="as-is-module-5"></a>
@@ -146,15 +146,15 @@
 | PRD 表述 | 当前实现 | 备注 |
 |----------|----------|------|
 | 内置工具（计算器、HTTP、KB 检索、生图/生视频等） | ✅ | `BUILTIN_REGISTRY` |
-| 网页搜索、代码执行、Redis 操作 | 部分 | 非 PRD 全量内置 |
+| 网页搜索、代码执行、Redis 操作 | 部分 | `web_search` · `code_execution` ✅；Redis 操作未内置 |
 | 自定义 HTTP 工具 + 参数 schema | ✅ | `tool_tools` |
 | 本地脚本工具 | 部分 | 经 mcp-runner / 演进中 |
 | 工具调用日志 | ✅ | `tool_invocation_logs` |
 | MCP HTTP/SSE/STDIO | ✅ | STDIO 经 `mcp-runner` 沙箱 |
 | MCP 工具 sync、invoke | ✅ | `tools_cache` |
-| 自定义 MCP 协议插件 | ⬜ | — |
+| 自定义 MCP 协议插件 | ✅ | `custom` transport |
 | 技能包（SKILL.md + 导入） | ✅ | 本地/ZIP/Git |
-| 行业内置技能模板 | 部分 | 种子有限；可扩展 |
+| 行业内置技能模板 | ✅ | 种子已扩充，可继续导入 |
 
 <a id="as-is-module-6b"></a>
 
@@ -169,7 +169,7 @@
 | 视觉向量以图搜图 | ✅ | `visual_search` + CLIP |
 | 视频入库与抽帧 | ✅ | mp4/mov/webm 白名单 + `parse_video` |
 | Office 文档上传 | ✅ | docx/pptx/xlsx 白名单已开；老格式 `.doc`/`.xls`/`.ppt` 按需 |
-| TTS / 语音生成 | ⬜ | 生图/生视频已支持 |
+| TTS / 语音生成 | ✅ | 内置工具 `generate_speech`（CosyVoice） |
 | 对话/流程识图 | ✅ | Vision 模型 |
 | 生图/图生图/生视频/首尾帧 | ✅ | 异步 `generative_jobs` + 任务中心 |
 | 视频升格 KB（描述入库） | ✅ | Markdown 描述链 |
@@ -185,8 +185,8 @@
 | 应用广场（分类/搜索/评分） | ✅ | `mkt_categories` + 星级 |
 | 一键安装（流程/智能体/KB 壳） | ✅ | manifest 复制资源 |
 | 打包、提交、审核上架 | ✅ | 租户 `marketplace:review` |
-| 应用试用 | ⬜ | 无 sandbox 试用 |
-| 安装后版本更新/回滚 | 部分 | ✅ manifest 同步升级 + diff 预览 UI；无回滚 |
+| 应用试用 | ✅ | `POST /apps/{id}/trial` + 试用按钮 |
+| 安装后版本更新/回滚 | 部分 | manifest 升级 + diff 预览 UI ✅；无回滚 |
 | 私有应用（仅本租户可见） | ✅ | `visibility=tenant_only` |
 | 下载量统计、开发者反馈 | 部分 | 安装记录；无专反馈模块 |
 
@@ -202,10 +202,10 @@
 | 生图/生视频异步任务 + SSE | ✅ | `generative_jobs` Tab |
 | 任务状态与失败原因 | ✅ | |
 | Flower Worker 监控 | ✅ | 独立 `:5555`（未嵌入工作台） |
-| 任务图表统计、Worker 在线监控 | 部分 | 列表筛选；无 PRD 级图表 |
-| 批量解析/批量取消 | ⬜ | 单任务操作为主 |
-| 队列优先级/Worker 数配置 UI | ⬜ | 走 `.env` / Compose |
-| 智能体定时执行历史 | 部分 | `last_run_at`；无专 UI |
+| 任务图表统计、Worker 在线监控 | ✅ | 监控趋势 + `GET /system/infra/worker-info` |
+| 批量解析/批量取消 | ✅ | 批量上传 + `batch-cancel`（入库/生成任务） |
+| 队列优先级/Worker 数配置 UI | 部分 | `worker-info` 只读；队列数仍走 Compose |
+| 智能体定时执行历史 | ✅ | `agt_schedule_runs` + 定时面板历史 |
 
 <a id="as-is-module-9"></a>
 
@@ -219,10 +219,10 @@
 | 调用趋势（近 N 日） | ✅ | 默认 7 天 |
 | 健康报告 + CSV 导出 | ✅ | |
 | Webhook 阈值告警 | ✅ | test + 配置 |
-| PG/Redis/MinIO/Weaviate 进程监控 | ⬜ | 依赖外部运维 |
-| Token 消耗、模型分模型报表 | 部分 | 简化聚合；非 PRD 全量 |
-| 多模态处理量（OCR/Whisper）专统计 | ⬜ | — |
-| PDF/Excel 报表、邮件短信告警 | ⬜ | — |
+| PG/Redis/MinIO/Weaviate 进程监控 | 部分 | `GET /system/infra/status` 连通性 + latency；非进程级 APM |
+| Token 消耗、模型分模型报表 | ✅ | `agt_model_usage_logs` + 监控「模型用量」 |
+| 多模态处理量（OCR/Whisper）专统计 | ✅ | MonitorStats 图/音/视频计数 |
+| PDF/Excel 报表、邮件短信告警 | 部分 | SMTP 邮件告警 ✅；短信/PDF 报表按需 |
 
 # 一、项目基础信息
 

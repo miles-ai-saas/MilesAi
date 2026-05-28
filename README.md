@@ -140,7 +140,7 @@ MilesAi/
 | P2 编排与智能体 | ✅ | `flow_runtime`、画布、智能体对话 |
 | P3 安全与工具 | ✅ | 敏感词、钩子、MCP、技能包、工具目录 |
 | P4 应用市场 | ✅ | 审核上架、评分排序 |
-| P5 运维增强 | 部分 ✅ | 任务中心、监控基础、Compose Beat；深化见 [docs/product/backlog.md](docs/product/backlog.md) |
+| P5 运维增强 | ✅ | 任务中心、监控/infra 面板、Beat、批量任务；导出类见 [backlog](docs/product/backlog.md) 🔜 |
 | P6 AI 栈增强 | ✅ | LangChain / LangGraph / DeepAgents 已接入，见 [docs/guides/ai-stack.md](docs/guides/ai-stack.md) |
 
 ---

@@ -220,6 +220,7 @@ flowchart TB
 | **已上线（运营）** | 工作台 **任务中心** → **生成任务** Tab（列表、筛选、详情、取消） |
 | **已上线（生图异步）** | `kind=image` 的 `generative_jobs` + Celery；工具/流程节点默认异步 |
 | **已上线（P3）** | 视频封面、识图多轮附图、流程模板 API |
+| **已上线（TTS）** | 内置工具 `generate_speech`（CosyVoice） |
 | **后续** | LLM 真 token 流式、视频逐帧预览 | 📋 [realtime-transport-design.md](../architecture/realtime-transport-design.md)（WS v1 见 [features/agent-chat-websocket.md](../features/agent-chat-websocket.md)） |
 
 技术拆解见 [multimodal-roadmap.md](../architecture/multimodal-roadmap.md)。
@@ -248,3 +249,4 @@ flowchart TB
 | 2026-05-26 | P1：画布附件选择器、高分辨率生图确认、生成 prompt 合规扫描 |
 | 2026-05-26 | 文档同步：异步/SSE/取消/任务中心/视频升格 KB 与实现对齐 |
 | 2026-05-26 | 生图异步任务与文档更新 |
+| 2026-05-28 | 文档同步：TTS `generate_speech`；与 prd/backlog 对照表对齐 |

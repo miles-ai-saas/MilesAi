@@ -91,9 +91,9 @@ auth:blacklist:{jti}              → 登出/撤销
 | 配额 hard limit | P1 | `sys_tenants` 字段已有，部分创建路径未拦截 |
 | 菜单权限细粒度 | P2 | 前端靠 `permissions` 隐式过滤，无 `menu:*` 码 |
 | 多角色继承 | P2 | 用户多角色并集，无 `parent_role_id` |
-| 基础设施配置 UI | P2 | PRD §1.4；与 §6.5 冲突 → **只读 + 测试连接** |
-| Redis 缓存管理 | P2 | 命中率、按前缀清理 |
-| 审计 / 日志导出 | P2 | CSV / Excel |
+| 基础设施配置 UI | ✅ P2 | `GET /system/infra/status` 只读 + 监控面板 |
+| Redis 缓存管理 | ✅ P2 | `GET /system/infra/redis-info` 只读；按前缀清理按需 |
+| 审计 / 日志导出 | 🔜 P2 | CSV / Excel，按需 |
 
 ---
 

@@ -27,3 +27,4 @@ out/
 .cursor/*
 !.cursor/rules/
 !.cursor/rules/**
+celerybeat-schedule.db

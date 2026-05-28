@@ -1,6 +1,6 @@
 # MilesAi 技术方案
 
-> 版本：v2.1 | 日期：2026-05-27 | 与当前代码库对齐  
+> 版本：v2.2 | 日期：2026-05-28 | 与当前代码库对齐  
 > 需求基线：[prd.md](../product/prd.md) · 专题文档：[README.md](../README.md)
 
 本文描述**仓库已实现**的架构与行为；**功能规格**见 [features/](../features/)，专题见 [guides/](../guides/)。
@@ -535,7 +535,7 @@ flowchart TD
 - 表：`hook_definitions`、`hook_bindings`、`hook_execution_logs`。
 - **HTTP 钩子**：Event v1 信封；支持 `block` / `modify`；`config.on_failure`（`ignore` | `fail_request`）。
 - **挂载**：Agent chat、Flow run、工具 `invoke_tool_with_context`（`before_tool` / `after_tool`）。
-- **Python 钩子**：未实现（`python_not_implemented`）。
+- **Python 钩子**：✅ `hook_type=python`，模块限定 `app.tenant.hooks.plugins.*`。
 - **专题**：[hooks.md](../guides/hooks.md)。
 
 ### 11.3 工具与 MCP
@@ -544,7 +544,7 @@ flowchart TD
 |------|------|
 | 内置工具 | `calculator`、`http_request`、`knowledge_search`（`tools/invoke.py`） |
 | 自定义 HTTP 工具 | `tool_tools` 表配置 |
-| MCP | `tools/list` 同步；HTTP/SSE **`tools/call` 真 invoke**；STDIO 待沙箱，见 [mcp.md](../guides/mcp.md)、[mcp-sandbox.md](./mcp-sandbox.md) |
+| MCP | `tools/list` 同步；HTTP/SSE **`tools/call` 真 invoke**；STDIO 经 `mcp-runner`；`custom` transport，见 [mcp.md](../guides/mcp.md)、[mcp-sandbox.md](./mcp-sandbox.md) |
 | 技能包 | `skl_skill_packages` + 磁盘 `SKILL.md`；导入与注入见 [skill-packages.md](../guides/skill-packages.md) |
 | 智能体配置 | `config.skill_package_id`、`config.mcp_service_ids` |
 
@@ -663,11 +663,12 @@ flowchart TD
 | 对话 WebSocket v1 | 🔶 | `WS …/chat/ws` 已落地；全站实时方案见 [realtime-transport-design.md](./realtime-transport-design.md) |
 | DeepAgents 内部协同 | ✅ | 可选依赖，可降级 |
 | A2A Peer / 宿主 / custom 引用 | ✅ | 对外暴露本平台 Card：未做 |
-| 合规 / HTTP 钩子 | ✅ | Python 钩子未实现 |
-| 工具 / MCP / 技能包 | 🔶 | MCP HTTP/SSE invoke 已接通；STDIO 经 mcp-runner |
-| 应用市场审核与安装 | ✅ | |
-| 任务中心（入库 + 生成） | ✅ | 见 [features/task-center.md](../features/task-center.md) |
-| 监控报表 / 告警 Webhook | 🔶 | 基础聚合 + HTTP 告警 |
+| 合规 / HTTP / Python 钩子 | ✅ | 文本扫描 + `media_audit`；Python 见 `hooks.plugins` |
+| 工具 / MCP / 技能包 | ✅ | 内置含 web_search/code_execution；MCP HTTP/SSE/STDIO/custom |
+| 应用市场审核与安装 | ✅ | 含试用、升级 diff、租户内可见 |
+| 任务中心（入库 + 生成） | ✅ | 含批量取消；见 [features/task-center.md](../features/task-center.md) |
+| 监控报表 / 告警 | ✅ | 模型用量、多模态计数、infra 探测、SMTP 邮件；短信/PDF 按需 |
+| 基础设施只读面板 | ✅ | `/system/infra/status` · `redis-info` · `worker-info` |
 | 运营计费 / 风控 | ✅ | 后台 UI + API |
 | 模型供应商目录（运营发布内置 + 租户自定义） | ✅ | 见 [model-providers.md](../guides/model-providers.md) |
 | 离线 OpenAPI 导出 / 离线部署手册 | ⬜ | 文档待补充 |
