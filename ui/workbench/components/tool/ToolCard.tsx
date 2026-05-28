@@ -1,7 +1,7 @@
 "use client";
 
 /** 工具目录卡片（链路 §3 + §4，props.toolsMeta）。 */
-import { CardActions } from "@/components/resource/CardActions";
+import { CardActions, type CardActionItem } from "@/components/resource/CardActions";
 import { ResourceItemCard } from "@/components/resource/ResourceItemCard";
 import { formatToolUpdatedAt, toolKindLabel, toolSourceLabel } from "@/lib/tool-labels";
 import type { ToolCatalogItem, ToolsMeta } from "@/lib/types";
@@ -20,15 +20,15 @@ export function ToolCard({ tool, toolsMeta, onDetail, onTest, onEdit, onDelete }
   const readonly = tool.source !== "custom";
   const updated = formatToolUpdatedAt(tool);
 
-  const actions = [
-    { label: "查看详情", onClick: onDetail, variant: "primary" as const },
+  const actions: CardActionItem[] = [
+    { label: "查看详情", onClick: onDetail, variant: "primary" },
     { label: "试调用", onClick: onTest },
   ];
   if (!readonly && onEdit) {
     actions.push({ label: "编辑", onClick: onEdit });
   }
   if (!readonly && onDelete) {
-    actions.push({ label: "删除", onClick: onDelete, variant: "danger" as const });
+    actions.push({ label: "删除", onClick: onDelete, variant: "danger" });
   }
 
   return (

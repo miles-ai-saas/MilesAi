@@ -14,6 +14,7 @@ export type ChatMessageArtifact = {
   attachment_id: string;
   mime_type?: string | null;
   preview_url?: string;
+  caption?: string | null;
 };
 
 export type ChatMessage = {

@@ -28,6 +28,8 @@ interface FlowNodeInspectorProps {
   onChange: (nodeId: string, patch: Record<string, unknown>) => void;
 }
 
+type InspectorFormProps = Omit<FlowNodeInspectorProps, "node"> & { node: Node };
+
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="mb-3 block">
@@ -37,7 +39,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
-function InspectorForm({ node, kbs, models, prompts, toolCatalog, currentFlowId, onChange }: Required<FlowNodeInspectorProps>) {
+function InspectorForm({ node, kbs, models, prompts, toolCatalog, currentFlowId, onChange }: InspectorFormProps) {
   const type = node.type as NodeType;
   const data = node.data as Record<string, unknown>;
   const patch = (p: Record<string, unknown>) => onChange(node.id, p);
