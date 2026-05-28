@@ -7,7 +7,6 @@ export interface QuotaMetric {
   unit: string;
 }
 
-
 export interface TenantQuota {
   knowledge_bases: QuotaMetric;
   storage_mb: QuotaMetric;
@@ -17,7 +16,6 @@ export interface TenantQuota {
   generative_daily: QuotaMetric;
 }
 
-
 export interface Permission {
   id: string;
   code: string;
@@ -26,12 +24,10 @@ export interface Permission {
   description?: string | null;
 }
 
-
 export interface PermissionGroup {
   module: string;
   permissions: Permission[];
 }
-
 
 export interface Role {
   id: string;
@@ -43,7 +39,6 @@ export interface Role {
   permission_codes: string[];
 }
 
-
 export interface ConfigDefinition {
   key: string;
   label: string;
@@ -53,7 +48,6 @@ export interface ConfigDefinition {
   default_value: unknown;
 }
 
-
 export interface InfraComponentStatus {
   id: string;
   label: string;
@@ -61,7 +55,6 @@ export interface InfraComponentStatus {
   latency_ms?: number | null;
   message?: string | null;
 }
-
 
 export interface TenantObjectStorageConfig {
   tenant_id: string;
@@ -75,7 +68,6 @@ export interface TenantObjectStorageConfig {
   source: "platform" | "tenant";
 }
 
-
 export interface InfraStatus {
   healthy: boolean;
   status: string;
@@ -83,9 +75,7 @@ export interface InfraStatus {
   settings_preview: Record<string, string | null>;
 }
 
-
 export interface RuntimeInfo {
   components: Record<string, string>;
   settings_preview: Record<string, string | number | boolean | null>;
 }
-

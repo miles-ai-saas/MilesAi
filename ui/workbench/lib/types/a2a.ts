@@ -8,7 +8,6 @@ export interface A2aPeerRefInput {
   enabled?: boolean;
 }
 
-
 export interface A2aPeerRef {
   id: string;
   name: string;
@@ -19,7 +18,6 @@ export interface A2aPeerRef {
   card_display_name?: string | null;
   agent_card_url?: string | null;
 }
-
 
 export interface A2aPeer {
   id: string;
@@ -35,7 +33,6 @@ export interface A2aPeer {
   created_at: string;
 }
 
-
 export interface A2aPeerProbeResult {
   ok: boolean;
   card_url: string;
@@ -44,10 +41,8 @@ export interface A2aPeerProbeResult {
   message: string;
 }
 
-
 export interface A2aPeerSyncResult {
   peer: A2aPeer;
   card_url: string;
   message: string;
 }
-

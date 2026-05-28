@@ -13,6 +13,7 @@ import { ResourceListFooter } from "@/components/resource/ResourceListFooter";
 import { ResourceListLayout } from "@/components/resource/ResourceListLayout";
 import { canCancelTask, canRetryTask, TaskDetailDialog } from "@/components/task/TaskDetailDialog";
 import { GenerativeJobsSection } from "@/components/task/GenerativeJobsSection";
+import { StatChip } from "@/components/ui/StatChip";
 import { filterBySearch } from "@/lib/filter-search";
 import { generativeJobStatusFilterOptions } from "@/lib/generative-job-labels";
 import { taskStatusBadgeClass, taskStatusFilterOptions, taskStatusLabel } from "@/lib/task-labels";
@@ -30,16 +31,6 @@ const PAGE_DESC: Record<TaskCategory, string> = {
   celery: "文档入库等 Celery 异步任务；支持按状态筛选、搜索、取消与重试；点击「刷新」更新列表。",
   generative: "智能体对话、流程或 API 触发的生图/生视频任务；支持类型筛选、进度查看、取消与失败重试；可跳转关联的后台 Celery 记录；点击「刷新」更新列表。",
 };
-
-function StatChip({ label, value, hint }: { label: string; value: string; hint?: string }) {
-  return (
-    <div className="rounded-xl border border-line bg-surface px-4 py-3 shadow-card">
-      <p className="text-xs text-ink-muted">{label}</p>
-      <p className="mt-0.5 text-2xl font-bold tabular-nums text-brand">{value}</p>
-      {hint ? <p className="mt-1 text-xs text-ink-faint">{hint}</p> : null}
-    </div>
-  );
-}
 
 function PageMessage({ message, onDismiss }: { message: string; onDismiss?: () => void }) {
   return (

@@ -13,4 +13,3 @@ export interface PromptTemplate {
   is_active: boolean;
   created_at: string;
 }
-

@@ -12,15 +12,12 @@ export interface SubAgentRef {
   description?: string | null;
 }
 
-
 export interface SubAgentBindingInput {
   child_agent_id: string;
   role_hint?: string | null;
 }
 
-
 export type AgentType = "custom" | "a2a";
-
 
 export interface Agent {
   id: string;
@@ -41,12 +38,10 @@ export interface Agent {
   config?: Record<string, unknown>;
 }
 
-
 export interface AgentStatsPoint {
   date: string;
   value: number;
 }
-
 
 export interface AgentStats {
   days: number;
@@ -60,7 +55,6 @@ export interface AgentStats {
   avg_rounds_by_day: AgentStatsPoint[];
 }
 
-
 export type AgentPrimaryPath =
   | "a2a_host"
   | "subagent_orchestration"
@@ -72,14 +66,12 @@ export type AgentPrimaryPath =
   | "rag_retrieve_only"
   | "direct";
 
-
 export interface AgentArchitectureDecisionStep {
   id: string;
   label: string;
   description?: string | null;
   active: boolean;
 }
-
 
 export interface AgentArchitectureAttachments {
   model?: { id: string; name: string } | null;
@@ -95,7 +87,6 @@ export interface AgentArchitectureAttachments {
   } | null;
 }
 
-
 export interface AgentArchitecture {
   agent_id: string;
   primary_path: AgentPrimaryPath;
@@ -104,7 +95,6 @@ export interface AgentArchitecture {
   attachments: AgentArchitectureAttachments;
   flow_graph?: FlowGraph | null;
 }
-
 
 export interface AgentSchedule {
   id: string;
@@ -119,13 +109,11 @@ export interface AgentSchedule {
   updated_at: string;
 }
 
-
 export interface AgentScheduleInput {
   content: string;
   cron: string;
   enabled?: boolean;
 }
-
 
 export interface AgentScheduleRun {
   id: string;
@@ -137,14 +125,12 @@ export interface AgentScheduleRun {
   error_message?: string | null;
 }
 
-
 export interface PendingToolCall {
   slug: string;
   name: string;
   description?: string | null;
   params: Record<string, unknown>;
 }
-
 
 export interface ToolInvocationLog {
   id: string;
@@ -176,7 +162,6 @@ export interface ChatArtifact {
   caption?: string | null;
 }
 
-
 export interface ChatResponse {
   answer: string;
   sources: Record<string, unknown>[];
@@ -191,4 +176,3 @@ export interface ChatResponse {
 export interface ChatAgentResult extends ChatResponse {
   trace_id?: string;
 }
-

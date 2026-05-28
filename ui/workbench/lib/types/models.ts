@@ -5,7 +5,6 @@ export type ModelSource = "builtin" | "custom";
 
 export type ModelCredentialStatus = "platform" | "tenant" | "missing";
 
-
 export interface ModelConfig {
   id: string;
   source: ModelSource;
@@ -27,9 +26,7 @@ export interface ModelConfig {
   created_at: string;
 }
 
-
 export interface ModelCatalogMeta {
   vendors: { value: string; label: string }[];
   model_types: { value: string; label: string }[];
 }
-

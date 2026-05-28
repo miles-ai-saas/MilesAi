@@ -145,4 +145,3 @@ export interface AuditMeta {
   action_labels: EnumOption[];
   schema_version: string;
 }
-

@@ -11,7 +11,6 @@ export interface ToolParameterSpec {
   enum?: string[];
 }
 
-
 export interface ToolCatalogItem {
   source: "builtin" | "custom" | string;
   slug: string;
@@ -26,7 +25,6 @@ export interface ToolCatalogItem {
   tool_type?: string | null;
   updated_at?: string | null;
 }
-
 
 export interface CustomTool {
   id: string;
@@ -45,7 +43,6 @@ export interface CustomTool {
   created_at: string;
   updated_at: string;
 }
-
 
 export interface ToolCreatePayload {
   slug: string;

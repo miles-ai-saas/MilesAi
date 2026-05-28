@@ -9,6 +9,7 @@ import { usePagedList } from "@/hooks/use-paged-list";
 import { useGenerativeJobMeta } from "@/hooks/use-generative-job-meta";
 import { ResourceListFooter } from "@/components/resource/ResourceListFooter";
 import { GenerativeJobDetailDialog } from "@/components/task/GenerativeJobDetailDialog";
+import { StatChip } from "@/components/ui/StatChip";
 import { filterBySearch } from "@/lib/filter-search";
 import {
   canCancelGenerativeJob,
@@ -21,16 +22,6 @@ import {
 } from "@/lib/generative-job-labels";
 import type { GenerativeJobsMeta } from "@/lib/generative-job-labels";
 import type { GenerativeJobOut } from "@/lib/types";
-
-function StatChip({ label, value, hint }: { label: string; value: string; hint?: string }) {
-  return (
-    <div className="rounded-xl border border-line bg-surface px-4 py-3 shadow-card">
-      <p className="text-xs text-ink-muted">{label}</p>
-      <p className="mt-0.5 text-2xl font-bold tabular-nums text-brand">{value}</p>
-      {hint ? <p className="mt-1 text-xs text-ink-faint">{hint}</p> : null}
-    </div>
-  );
-}
 
 function GenerativeJobRow({
   job,

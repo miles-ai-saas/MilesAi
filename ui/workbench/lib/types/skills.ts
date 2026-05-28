@@ -20,7 +20,6 @@ export interface SkillPackage {
   updated_at: string;
 }
 
-
 export interface SkillFileNode {
   name: string;
   path: string;
@@ -28,10 +27,8 @@ export interface SkillFileNode {
   children?: SkillFileNode[];
 }
 
-
 export interface SkillImportResult {
   imported: number;
   skipped: number;
   errors: string[];
 }
-

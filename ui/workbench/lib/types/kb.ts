@@ -22,7 +22,6 @@ export interface KnowledgeBase {
   created_at?: string;
 }
 
-
 export interface Document {
   id: string;
   kb_id: string;
@@ -35,7 +34,6 @@ export interface Document {
   created_at: string;
 }
 
-
 export interface DocumentChunk {
   id: string;
   document_id: string;
@@ -46,7 +44,6 @@ export interface DocumentChunk {
   created_at: string;
 }
 
-
 export interface KbQuota {
   used_knowledge_bases: number;
   max_knowledge_bases: number;
@@ -54,7 +51,6 @@ export interface KbQuota {
   max_storage_mb: number;
   max_file_mb: number;
 }
-
 
 export interface KbSearchLog {
   id: string;
@@ -71,4 +67,3 @@ export interface KbSearchLog {
   agent_id: string | null;
   created_at: string;
 }
-

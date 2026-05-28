@@ -10,7 +10,6 @@ export interface HookDefinition {
   created_at: string;
 }
 
-
 export interface HookBinding {
   id: string;
   hook_id: string;
@@ -45,4 +44,3 @@ export interface HookExecutionLog {
   error_message?: string | null;
   created_at: string;
 }
-

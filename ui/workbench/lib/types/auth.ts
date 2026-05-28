@@ -7,7 +7,6 @@ export interface TokenPair {
   token_type: string;
 }
 
-
 export interface UserInfo {
   id: string;
   username: string;
@@ -16,7 +15,6 @@ export interface UserInfo {
   is_superuser: boolean;
   permissions: string[];
 }
-
 
 export interface TenantUser {
   id: string;
@@ -29,7 +27,6 @@ export interface TenantUser {
   role_codes: string[];
 }
 
-
 export interface UserSession {
   jti: string;
   user_agent?: string | null;
@@ -38,4 +35,3 @@ export interface UserSession {
   last_seen_at?: string | null;
   is_current: boolean;
 }
-

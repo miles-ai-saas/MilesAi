@@ -3,7 +3,6 @@
 import type { EnumOption } from "@/lib/enum-meta";
 export type CategoryDomain = "agent" | "prompt" | "skill" | "tool";
 
-
 export interface SysCategory {
   id: string;
   domain: CategoryDomain;
@@ -15,13 +14,11 @@ export interface SysCategory {
   created_at: string;
 }
 
-
 export interface TagRef {
   id: string;
   name: string;
   slug: string;
 }
-
 
 export interface TenantTag {
   id: string;
@@ -30,4 +27,3 @@ export interface TenantTag {
   slug: string;
   created_at: string;
 }
-

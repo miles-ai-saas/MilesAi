@@ -4,7 +4,12 @@
   "version": "0.0.0",
   "exports": {
     "./brand/company-logo": "./brand/company-logo.tsx",
-    "./brand/brand-header": "./brand/brand-header.tsx"
+    "./brand/brand-header": "./brand/brand-header.tsx",
+    "./lib/pagination": "./lib/pagination.ts",
+    "./ui/page-header": "./ui/page-header.tsx",
+    "./ui/pagination": "./ui/pagination.tsx",
+    "./ui/stat-chip": "./ui/stat-chip.tsx",
+    "./ui/filter-chip": "./ui/filter-chip.tsx"
   },
   "peerDependencies": {
     "next": "^14.2.18",

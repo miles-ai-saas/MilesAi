@@ -12,4 +12,3 @@ export interface TenantAuditLog {
   detail: Record<string, unknown>;
   created_at: string;
 }
-

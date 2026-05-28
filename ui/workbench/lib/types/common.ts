@@ -11,11 +11,9 @@ export interface ApiResponse<T> {
   trace_id?: string;
 }
 
-
 export interface PageResult<T> {
   items: T[];
   total: number;
   page: number;
   size: number;
 }
-

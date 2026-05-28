@@ -23,6 +23,8 @@ import { useCategoryTabs } from "@/components/category/useCategoryTabs";
 import { TagChips } from "@/components/tag/TagChips";
 import { TagFilterDropdown } from "@/components/tag/TagFilterDropdown";
 import { TagManageDialog } from "@/components/tag/TagManageDialog";
+import { FilterChip } from "@/components/ui/FilterChip";
+import { StatChip } from "@/components/ui/StatChip";
 import { api } from "@/lib/api";
 import type { Agent, AgentType } from "@/lib/types";
 
@@ -44,30 +46,6 @@ function tabToApiType(tab: AgentsTab): AgentType | undefined {
   if (tab === "custom") return "custom";
   if (tab === "a2a") return "a2a";
   return undefined;
-}
-
-function StatChip({ label, value, hint }: { label: string; value: string; hint?: string }) {
-  return (
-    <div className="rounded-xl border border-line bg-surface px-4 py-3 shadow-card">
-      <p className="text-xs text-ink-muted">{label}</p>
-      <p className="mt-0.5 text-2xl font-bold tabular-nums text-brand">{value}</p>
-      {hint ? <p className="mt-1 text-xs text-ink-faint line-clamp-2">{hint}</p> : null}
-    </div>
-  );
-}
-
-function FilterChip({ active, label, onClick }: { active: boolean; label: string; onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`rounded-lg px-3 py-1.5 text-xs transition ${
-        active ? "bg-brand-light font-medium text-brand" : "text-ink-muted hover:bg-surface hover:text-ink"
-      }`}
-    >
-      {label}
-    </button>
-  );
 }
 
 export default function AgentsPage() {

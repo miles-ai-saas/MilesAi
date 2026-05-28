@@ -9,7 +9,6 @@ export interface AppCategory {
   sort_order: number;
 }
 
-
 export interface MarketplaceApp {
   id: string;
   name: string;
@@ -32,7 +31,6 @@ export interface MarketplaceApp {
   created_at: string;
 }
 
-
 export interface AppRating {
   id: string;
   app_id: string;
@@ -43,12 +41,10 @@ export interface AppRating {
   updated_at: string;
 }
 
-
 export interface MarketplaceAppDetail extends MarketplaceApp {
   manifest: Record<string, unknown>;
   my_rating?: AppRating | null;
 }
-
 
 export interface AppInstallResult {
   install: {
@@ -65,14 +61,12 @@ export interface AppInstallResult {
   message: string;
 }
 
-
 export interface AppUpgradeResult {
   install: AppInstall;
   previous_version: string;
   new_version: string;
   message: string;
 }
-
 
 export interface UpgradeFieldChange {
   field: string;
@@ -82,7 +76,6 @@ export interface UpgradeFieldChange {
   changed: boolean;
 }
 
-
 export interface UpgradeResourceDiff {
   resource_type: string;
   resource_id?: string | null;
@@ -90,7 +83,6 @@ export interface UpgradeResourceDiff {
   changes: UpgradeFieldChange[];
   has_changes: boolean;
 }
-
 
 export interface AppUpgradePreview {
   app_id: string;
@@ -103,7 +95,6 @@ export interface AppUpgradePreview {
   resources: UpgradeResourceDiff[];
 }
 
-
 export interface AppRollbackPreview {
   app_id: string;
   app_name: string;
@@ -113,7 +104,6 @@ export interface AppRollbackPreview {
   message?: string;
   resources: UpgradeResourceDiff[];
 }
-
 
 export interface AppInstall {
   id: string;

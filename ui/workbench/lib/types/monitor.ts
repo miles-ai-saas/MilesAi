@@ -11,12 +11,10 @@ export interface TaskTrendPoint {
   total: number;
 }
 
-
 export interface MonitorTrends {
   task_by_day: TaskTrendPoint[];
   intercept_by_day: { date: string; count: number }[];
 }
-
 
 export interface MonitorStats {
   knowledge_bases: number;
@@ -27,7 +25,6 @@ export interface MonitorStats {
   pending_documents: number;
 }
 
-
 export interface TaskSummary {
   pending: number;
   running: number;
@@ -37,14 +34,12 @@ export interface TaskSummary {
   total: number;
 }
 
-
 export interface MonitorReport {
   stats: MonitorStats;
   tasks: TaskSummary;
   documents_by_status: Record<string, number>;
   marketplace_installs: number;
 }
-
 
 export interface TaskRecord {
   id: string;
@@ -58,14 +53,12 @@ export interface TaskRecord {
   updated_at: string;
 }
 
-
 export interface AlertConfig {
   enabled: boolean;
   webhook_url: string;
   notify_on_task_failed: boolean;
   notify_on_health_degraded: boolean;
 }
-
 
 export interface ModelUsageRow {
   model_config_id?: string | null;
@@ -76,10 +69,8 @@ export interface ModelUsageRow {
   total_tokens: number;
 }
 
-
 export interface ModelUsageReport {
   days: number;
   rows: ModelUsageRow[];
   total_tokens: number;
 }
-

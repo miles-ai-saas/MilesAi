@@ -5,19 +5,11 @@
 
 import type { PageResult } from "@/lib/types";
 
-/** 列表默认每页条数，与后端 get_page_params 默认一致 */
-export const DEFAULT_PAGE_SIZE = 10;
-
-/** 分页条数可选值（不超过后端 size 上限 100） */
-export const PAGE_SIZE_OPTIONS = [10, 20, 50, 100] as const;
+export { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS, totalPages } from "@milesai/ui-shared/lib/pagination";
+import { DEFAULT_PAGE_SIZE } from "@milesai/ui-shared/lib/pagination";
 
 export function buildPageQuery(page: number, size: number = DEFAULT_PAGE_SIZE): string {
   return `page=${page}&size=${size}`;
-}
-
-export function totalPages(total: number, size: number): number {
-  const safeSize = Math.max(1, size);
-  return Math.max(1, Math.ceil(total / safeSize));
 }
 
 /** 总条数超过每页大小时才需要分页 */

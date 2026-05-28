@@ -1,19 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import { StatChip } from "@/components/ui/StatChip";
 import type { AppInstallResult } from "@/lib/types";
 
 export const MARKETPLACE_PAGE_DESC = "浏览并安装已审核上架的应用；可将本租户知识库、流程或智能体打包为应用，审核通过后供其他租户安装。";
 
-export function MarketplaceStatChip({ label, value, hint }: { label: string; value: string; hint?: string }) {
-  return (
-    <div className="rounded-xl border border-line bg-surface px-4 py-3 shadow-card">
-      <p className="text-xs text-ink-muted">{label}</p>
-      <p className="mt-0.5 text-2xl font-bold tabular-nums text-brand">{value}</p>
-      {hint ? <p className="mt-1 text-xs text-ink-faint">{hint}</p> : null}
-    </div>
-  );
-}
+export { StatChip as MarketplaceStatChip };
 
 export function MarketplacePageMessage({ message, onDismiss }: { message: string; onDismiss?: () => void }) {
   return (

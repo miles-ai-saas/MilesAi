@@ -3,7 +3,7 @@
 /** 流程调试面板（链路 §6）：KB、query、附图、steps、output。 */
 import { useMemo, useRef, useState } from "react";
 import { api } from "@/lib/api";
-import { formatFlowSteps, type FlowCompileErrorDetail } from "@/components/flow/FlowNodeInspector";
+import { formatFlowSteps, type FlowCompileErrorDetail } from "@/lib/flow-run-format";
 import { FlowRunArtifactsPreview } from "@/components/flow/FlowRunArtifactsPreview";
 import { extractFlowRunArtifacts } from "@/lib/flow-run-artifacts";
 import type { KnowledgeBase } from "@/lib/types";

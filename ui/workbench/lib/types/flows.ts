@@ -13,7 +13,6 @@ export interface Flow {
   created_at: string;
 }
 
-
 export interface FlowVersionSummary {
   id: string;
   flow_id: string;
@@ -22,7 +21,6 @@ export interface FlowVersionSummary {
   remark?: string | null;
   created_at: string;
 }
-
 
 export interface FlowVersion {
   id: string;
@@ -33,12 +31,10 @@ export interface FlowVersion {
   created_at?: string;
 }
 
-
 export interface FlowGraph {
   nodes: FlowNode[];
   edges: FlowEdge[];
 }
-
 
 export interface FlowNode {
   id: string;
@@ -46,7 +42,6 @@ export interface FlowNode {
   position?: { x: number; y: number };
   data: Record<string, unknown>;
 }
-
 
 export interface FlowEdge {
   id?: string;
@@ -56,7 +51,6 @@ export interface FlowEdge {
   targetHandle?: string;
 }
 
-
 export interface FlowTemplate {
   id: string;
   label: string;
@@ -65,7 +59,6 @@ export interface FlowTemplate {
   insertable: boolean;
   graph_json: FlowGraph;
 }
-
 
 export interface FlowTemplatesResponse {
   items: FlowTemplate[];

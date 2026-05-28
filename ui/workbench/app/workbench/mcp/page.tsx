@@ -12,6 +12,7 @@ import { McpServiceDetailDialog } from "@/components/mcp/McpServiceDetailDialog"
 import { McpServiceDialog } from "@/components/mcp/McpServiceDialog";
 import { ResourceListFooter } from "@/components/resource/ResourceListFooter";
 import { ResourceListLayout } from "@/components/resource/ResourceListLayout";
+import { StatChip } from "@/components/ui/StatChip";
 import { MCP_ENDPOINT_PLACEHOLDER } from "@/components/mcp/mcp-dialog-shared";
 import { useConfirmAction } from "@/hooks/use-confirm-action";
 import { usePagedList } from "@/hooks/use-paged-list";
@@ -30,16 +31,6 @@ function parseStdioArgs(text: string): string[] {
 }
 
 const PAGE_DESC = "注册 Model Context Protocol 端点（HTTP / SSE / STDIO），同步远程工具列表；绑定到智能体后注入系统提示。SSE 请填写 GET 长连接地址。";
-
-function StatChip({ label, value, hint }: { label: string; value: string; hint?: string }) {
-  return (
-    <div className="rounded-xl border border-line bg-surface px-4 py-3 shadow-card">
-      <p className="text-xs text-ink-muted">{label}</p>
-      <p className="mt-0.5 text-2xl font-bold tabular-nums text-brand">{value}</p>
-      {hint ? <p className="mt-1 text-xs text-ink-faint line-clamp-2">{hint}</p> : null}
-    </div>
-  );
-}
 
 function PageMessage({ message, onDismiss }: { message: string; onDismiss?: () => void }) {
   return (

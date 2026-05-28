@@ -3,7 +3,6 @@
 import type { EnumOption } from "@/lib/enum-meta";
 export type SensitiveAction = "warn" | "block";
 
-
 export interface WordLibrary {
   id: string;
   tenant_id: string;
@@ -15,7 +14,6 @@ export interface WordLibrary {
   created_at: string;
 }
 
-
 export interface LibraryWord {
   id: string;
   library_id: string;
@@ -26,7 +24,6 @@ export interface LibraryWord {
   created_at: string;
 }
 
-
 export interface EntryLibraryRef {
   library_id: string;
   library_name: string;
@@ -34,7 +31,6 @@ export interface EntryLibraryRef {
   action: SensitiveAction;
   is_active: boolean;
 }
-
 
 export interface SensitiveWordEntry {
   id: string;
@@ -44,12 +40,10 @@ export interface SensitiveWordEntry {
   created_at: string;
 }
 
-
 export interface ComplianceScanBindings {
   library_ids: string[];
   libraries: WordLibrary[];
 }
-
 
 export interface ComplianceScanResult {
   blocked: boolean;
@@ -57,7 +51,6 @@ export interface ComplianceScanResult {
   matches: { word: string; action: string }[];
   scanning_enabled: boolean;
 }
-
 
 export interface InterceptLog {
   id: string;
@@ -68,4 +61,3 @@ export interface InterceptLog {
   content_snippet?: string | null;
   created_at: string;
 }
-

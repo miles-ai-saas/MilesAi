@@ -23,4 +23,3 @@ export interface MediaAsset {
   attachment?: Attachment | null;
   cover_attachment?: Attachment | null;
 }
-

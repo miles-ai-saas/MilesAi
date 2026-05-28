@@ -17,4 +17,3 @@ export interface GenerativeJobOut {
   created_at: string;
   updated_at: string;
 }
-
