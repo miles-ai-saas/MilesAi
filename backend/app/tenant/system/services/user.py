@@ -63,9 +63,7 @@ class UserService(BaseService):
             size=page.size,
         )
 
-    async def create_user(
-        self, body: UserCreate, *, request: Request | None = None
-    ) -> UserOut:
+    async def create_user(self, body: UserCreate, *, request: Request | None = None) -> UserOut:
         tenant_id = resolve_tenant_id(self.ctx, body.tenant_id)
         await self.repo.ensure_username_unique(body.username)
         user = await self.repo.create(
@@ -90,9 +88,7 @@ class UserService(BaseService):
         )
         return to_user_out(user)
 
-    async def update_user(
-        self, user_id: UUID, body: UserUpdate, *, request: Request | None = None
-    ) -> UserOut:
+    async def update_user(self, user_id: UUID, body: UserUpdate, *, request: Request | None = None) -> UserOut:
         user = await self.repo.get_with_roles(user_id)
         if not user or is_marked_deleted(user):
             raise NotFoundError("用户不存在")
@@ -115,9 +111,7 @@ class UserService(BaseService):
         )
         return to_user_out(user)
 
-    async def reset_password(
-        self, user_id: UUID, password: str, *, request: Request | None = None
-    ) -> UserOut:
+    async def reset_password(self, user_id: UUID, password: str, *, request: Request | None = None) -> UserOut:
         user = await self.repo.get_with_roles(user_id)
         if not user or is_marked_deleted(user):
             raise NotFoundError("用户不存在")
@@ -145,9 +139,7 @@ class UserService(BaseService):
         assert_tenant_access(self.ctx, user.tenant_id)
         return user
 
-    async def deactivate_user(
-        self, user_id: UUID, *, request: Request | None = None
-    ) -> UserOut:
+    async def deactivate_user(self, user_id: UUID, *, request: Request | None = None) -> UserOut:
         user = await self.repo.get_with_roles(user_id)
         if not user or is_marked_deleted(user):
             raise NotFoundError("用户不存在")
@@ -171,9 +163,7 @@ class UserService(BaseService):
         await self.db.refresh(user, ["roles"])
         return to_user_out(user)
 
-    async def batch_deactivate(
-        self, user_ids: list[UUID], *, request: Request | None = None
-    ) -> dict:
+    async def batch_deactivate(self, user_ids: list[UUID], *, request: Request | None = None) -> dict:
         deactivated = 0
         skipped = 0
         for uid in user_ids:
@@ -207,9 +197,7 @@ class UserService(BaseService):
             deactivated += 1
         return {"deactivated": deactivated, "skipped": skipped}
 
-    async def batch_apply(
-        self, body: UserBatchRequest, *, request: Request | None = None
-    ) -> dict:
+    async def batch_apply(self, body: UserBatchRequest, *, request: Request | None = None) -> dict:
         """批量启用/禁用、赋角色或软删。"""
         if body.action == "deactivate":
             return await self.batch_deactivate(body.user_ids, request=request)

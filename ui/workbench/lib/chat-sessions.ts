@@ -112,9 +112,7 @@ export function createSession(agentId: string, title = "新对话"): ChatSession
 export function ensureActiveSession(agentId: string): ChatSession {
   const store = loadStore();
   const b = bucket(agentId, store);
-  const active = b.activeSessionId
-    ? b.sessions.find((s) => s.id === b.activeSessionId)
-    : null;
+  const active = b.activeSessionId ? b.sessions.find((s) => s.id === b.activeSessionId) : null;
   if (active) return active;
   if (b.sessions.length > 0) {
     const latest = [...b.sessions].sort((a, b) => b.updatedAt - a.updatedAt)[0];
@@ -125,11 +123,7 @@ export function ensureActiveSession(agentId: string): ChatSession {
   return createSession(agentId);
 }
 
-export function updateSession(
-  agentId: string,
-  sessionId: string,
-  patch: Partial<Pick<ChatSession, "title" | "messages" | "updatedAt">>,
-) {
+export function updateSession(agentId: string, sessionId: string, patch: Partial<Pick<ChatSession, "title" | "messages" | "updatedAt">>) {
   const store = loadStore();
   const b = bucket(agentId, store);
   const idx = b.sessions.findIndex((s) => s.id === sessionId);
@@ -189,10 +183,7 @@ export function renameSession(agentId: string, sessionId: string, title: string)
   if (!trimmed) return false;
   const session = getSession(agentId, sessionId);
   if (!session) return false;
-  const next =
-    trimmed.length > MAX_SESSION_TITLE_LENGTH
-      ? `${trimmed.slice(0, MAX_SESSION_TITLE_LENGTH)}…`
-      : trimmed;
+  const next = trimmed.length > MAX_SESSION_TITLE_LENGTH ? `${trimmed.slice(0, MAX_SESSION_TITLE_LENGTH)}…` : trimmed;
   if (next === session.title) return true;
   updateSession(agentId, sessionId, { title: next });
   return true;
@@ -229,7 +220,5 @@ export function groupSessionsByDate(sessions: ChatSession[]): SessionGroup[] {
     else groups["更早"].push(s);
   }
 
-  return (["今天", "昨天", "更早"] as const)
-    .map((label) => ({ label, sessions: groups[label] }))
-    .filter((g) => g.sessions.length > 0);
+  return (["今天", "昨天", "更早"] as const).map((label) => ({ label, sessions: groups[label] })).filter((g) => g.sessions.length > 0);
 }

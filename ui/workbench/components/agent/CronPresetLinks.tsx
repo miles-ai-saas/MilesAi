@@ -20,9 +20,7 @@ export function CronPresetLinks({ parts, onSelect }: Props) {
               key={preset.label}
               type="button"
               onClick={() => onSelect(preset.parts)}
-              className={`text-xs transition hover:underline ${
-                active ? "font-medium text-brand" : "text-brand"
-              }`}
+              className={`text-xs transition hover:underline ${active ? "font-medium text-brand" : "text-brand"}`}
             >
               {preset.label}
             </button>

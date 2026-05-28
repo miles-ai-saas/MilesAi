@@ -33,13 +33,9 @@ class MarketplaceSnapshotMixin:
 
     async def _trim_install_snapshots(self, install_id: UUID) -> None:
         """每安装记录最多保留最近 N 条快照。"""
-        stmt = (
-            select(AppInstallSnapshot)
-            .where(AppInstallSnapshot.install_id == install_id)
-            .order_by(AppInstallSnapshot.created_at.desc())
-        )
+        stmt = select(AppInstallSnapshot).where(AppInstallSnapshot.install_id == install_id).order_by(AppInstallSnapshot.created_at.desc())
         rows = (await self.db.execute(stmt)).scalars().all()
-        for extra in rows[_MAX_SNAPSHOTS_PER_INSTALL :]:
+        for extra in rows[_MAX_SNAPSHOTS_PER_INSTALL:]:
             await self.db.delete(extra)
 
     async def _get_latest_snapshot(self, install_id: UUID) -> AppInstallSnapshot | None:

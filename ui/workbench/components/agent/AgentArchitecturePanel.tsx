@@ -68,8 +68,7 @@ export function AgentArchitecturePanel({ agentId, agentName }: Props) {
 
   useEffect(() => {
     if (!data) return;
-    const hasFlow =
-      data.primary_path === "flow" && (data.flow_graph?.nodes?.length ?? 0) > 0;
+    const hasFlow = data.primary_path === "flow" && (data.flow_graph?.nodes?.length ?? 0) > 0;
     setTab(hasFlow ? "flow" : "routing");
   }, [agentId, data]);
 
@@ -79,11 +78,7 @@ export function AgentArchitecturePanel({ agentId, agentName }: Props) {
   };
 
   if (loading) {
-    return (
-      <div className="flex flex-1 items-center justify-center p-6 text-sm text-ink-muted">
-        加载架构…
-      </div>
-    );
+    return <div className="flex flex-1 items-center justify-center p-6 text-sm text-ink-muted">加载架构…</div>;
   }
 
   if (error || !data) {
@@ -106,9 +101,7 @@ export function AgentArchitecturePanel({ agentId, agentName }: Props) {
       <header className="shrink-0 space-y-3 border-b border-line-soft px-6 py-4">
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-xs text-ink-muted">当前执行路径</span>
-          <span className="rounded-full bg-brand-light px-3 py-1 text-sm font-medium text-brand">
-            {data.primary_path_label}
-          </span>
+          <span className="rounded-full bg-brand-light px-3 py-1 text-sm font-medium text-brand">{data.primary_path_label}</span>
         </div>
         <ArchitectureLegend />
         <nav className="flex gap-1 rounded-lg border border-line-soft bg-surface-subtle/50 p-1">
@@ -117,9 +110,7 @@ export function AgentArchitecturePanel({ agentId, agentName }: Props) {
               key={t.id}
               type="button"
               className={`flex-1 rounded-md px-3 py-1.5 text-xs font-medium transition ${
-                tab === t.id
-                  ? "bg-surface text-brand shadow-sm"
-                  : "text-ink-muted hover:text-ink"
+                tab === t.id ? "bg-surface text-brand shadow-sm" : "text-ink-muted hover:text-ink"
               }`}
               onClick={() => setTab(t.id)}
             >
@@ -136,10 +127,7 @@ export function AgentArchitecturePanel({ agentId, agentName }: Props) {
               自上而下为路由优先级；高亮为本次配置下实际命中的分支（与 chat 路由一致）。
             </p>
             <div className="min-h-0 flex-1 bg-surface-subtle/30">
-              <AgentArchitectureRoutingGraph
-                steps={data.decision_steps}
-                className="h-full min-h-[300px] w-full"
-              />
+              <AgentArchitectureRoutingGraph steps={data.decision_steps} className="h-full min-h-[300px] w-full" />
             </div>
           </div>
         )}
@@ -166,11 +154,7 @@ export function AgentArchitecturePanel({ agentId, agentName }: Props) {
               <div>
                 <p className="text-sm font-medium text-ink">编排流程预览</p>
                 <p className="mt-0.5 text-xs text-ink-faint">
-                  {data.attachments.flow
-                    ? data.attachments.flow.is_runtime_path
-                      ? "当前对话将走此画布"
-                      : "已绑定但未作为当前主路径"
-                    : "未绑定已发布流程"}
+                  {data.attachments.flow ? (data.attachments.flow.is_runtime_path ? "当前对话将走此画布" : "已绑定但未作为当前主路径") : "未绑定已发布流程"}
                 </p>
               </div>
               {data.attachments.flow ? (
@@ -189,9 +173,7 @@ export function AgentArchitecturePanel({ agentId, agentName }: Props) {
                 <FlowCanvasPreview graph={data.flow_graph!} className="h-full min-h-[280px] w-full" />
               ) : (
                 <div className="flex h-full min-h-[200px] items-center justify-center p-6 text-center text-sm text-ink-muted">
-                  {data.attachments.flow
-                    ? "流程暂无节点，请进入画布添加节点并发布。"
-                    : "在「配置 → 工具与能力」中绑定已发布的编排流程后，可在此预览。"}
+                  {data.attachments.flow ? "流程暂无节点，请进入画布添加节点并发布。" : "在「配置 → 工具与能力」中绑定已发布的编排流程后，可在此预览。"}
                 </div>
               )}
             </div>

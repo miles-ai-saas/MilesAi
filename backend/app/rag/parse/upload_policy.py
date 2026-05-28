@@ -42,11 +42,7 @@ KB_ALLOWED_MIMES = frozenset(
 )
 
 KB_ALLOWED_EXTENSIONS = (
-    _TEXT_EXTENSIONS
-    | {".pdf"}
-    | OFFICE_EXTENSIONS
-    | {".jpg", ".jpeg", ".png", ".webp", ".mp3", ".wav", ".m4a", ".ogg", ".webm"}
-    | VIDEO_EXTENSIONS
+    _TEXT_EXTENSIONS | {".pdf"} | OFFICE_EXTENSIONS | {".jpg", ".jpeg", ".png", ".webp", ".mp3", ".wav", ".m4a", ".ogg", ".webm"} | VIDEO_EXTENSIONS
 )
 
 
@@ -65,7 +61,4 @@ def kb_upload_accept_attribute() -> str:
 
 def kb_upload_allowed_hint() -> str:
     """上传失败时返回给前端的友好提示文案。"""
-    return (
-        "支持 TXT/MD/PDF、Office（DOCX/PPTX/XLSX/HTML，解析需 docling）、"
-        "图片（JPG/PNG/WebP）、音频（MP3/WAV 等）、视频（MP4/MOV/WebM，需 ffmpeg）"
-    )
+    return "支持 TXT/MD/PDF、Office（DOCX/PPTX/XLSX/HTML，解析需 docling）、图片（JPG/PNG/WebP）、音频（MP3/WAV 等）、视频（MP4/MOV/WebM，需 ffmpeg）"

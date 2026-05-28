@@ -43,17 +43,13 @@ ACTION_FILTER_OPTIONS: list[tuple[str, str, str | None]] = [
 ]
 
 # 展示用动作文案（未知 action 仍回显原值）
-ACTION_LABELS: list[tuple[str, str, str | None]] = [
-    (v, lb, h) for v, lb, h in ACTION_FILTER_OPTIONS if v
-]
+ACTION_LABELS: list[tuple[str, str, str | None]] = [(v, lb, h) for v, lb, h in ACTION_FILTER_OPTIONS if v]
 
 
 def audit_meta_dict() -> dict:
     """构建 meta 响应 dict，供 *MetaOut.model_validate 与单测使用。"""
     return {
-        "resource_types": literal_options(
-            [(v, lb, h) for v, lb, h in RESOURCE_TYPE_OPTIONS if v]
-        ),
+        "resource_types": literal_options([(v, lb, h) for v, lb, h in RESOURCE_TYPE_OPTIONS if v]),
         "resource_type_filters": literal_options(RESOURCE_TYPE_OPTIONS),
         "action_filters": literal_options(ACTION_FILTER_OPTIONS),
         "action_labels": literal_options(ACTION_LABELS),

@@ -6,13 +6,7 @@ import { CardActions } from "@/components/resource/CardActions";
 import { marketplaceVisibilityLabel } from "@/lib/marketplace-labels";
 import type { MarketplaceApp, MarketplaceMeta } from "@/lib/types";
 
-export function MarketplaceAppCardMeta({
-  app,
-  marketplaceMeta,
-}: {
-  app: MarketplaceApp;
-  marketplaceMeta: MarketplaceMeta | null;
-}) {
+export function MarketplaceAppCardMeta({ app, marketplaceMeta }: { app: MarketplaceApp; marketplaceMeta: MarketplaceMeta | null }) {
   return (
     <span className="flex flex-col gap-2 text-xs">
       <span className="flex flex-wrap items-center gap-2">
@@ -20,9 +14,7 @@ export function MarketplaceAppCardMeta({
         <span className="text-ink-muted">
           v{app.version}
           {app.category_name && ` · ${app.category_name}`} · {app.install_count} 次安装
-          {app.visibility && app.visibility !== "public"
-            ? ` · ${marketplaceVisibilityLabel(app.visibility, marketplaceMeta)}`
-            : ""}
+          {app.visibility && app.visibility !== "public" ? ` · ${marketplaceVisibilityLabel(app.visibility, marketplaceMeta)}` : ""}
         </span>
       </span>
       <TagChips tags={app.tags} />
@@ -67,24 +59,16 @@ export function MarketplaceAppCardActions({
             onClick: () => onInstall(app),
             disabled: app.installed || installing === app.id,
           },
-          ...(app.installed || installing === app.id
-            ? []
-            : [{ label: "试用", onClick: () => onTrial(app) }]),
+          ...(app.installed || installing === app.id ? [] : [{ label: "试用", onClick: () => onTrial(app) }]),
         ]}
       />
     );
   }
   if (mode === "mine") {
-    const actions: Parameters<typeof CardActions>[0]["actions"] = [
-      { label: "详情", variant: "primary", onClick: () => onDetail(app.id) },
-    ];
+    const actions: Parameters<typeof CardActions>[0]["actions"] = [{ label: "详情", variant: "primary", onClick: () => onDetail(app.id) }];
     if (app.status === "draft" || app.status === "rejected") {
       actions.push({
-        label: publishing === app.id
-          ? "提交中…"
-          : app.status === "rejected"
-            ? "重新提交审核"
-            : "提交审核",
+        label: publishing === app.id ? "提交中…" : app.status === "rejected" ? "重新提交审核" : "提交审核",
         onClick: () => onSubmitReview(app.id),
         disabled: publishing === app.id,
       });

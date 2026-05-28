@@ -7,13 +7,7 @@ import { AppBreadcrumb } from "@/components/layout/AppBreadcrumb";
 import { SectionLink } from "@/components/layout/SectionLink";
 import { UserMenu } from "@/components/layout/UserMenu";
 
-export function SystemTopBar({
-  breadcrumbs,
-  onMenuOpen,
-}: {
-  breadcrumbs: BreadcrumbItem[];
-  onMenuOpen: () => void;
-}) {
+export function SystemTopBar({ breadcrumbs, onMenuOpen }: { breadcrumbs: BreadcrumbItem[]; onMenuOpen: () => void }) {
   return (
     <header className="flex h-14 shrink-0 items-center justify-between gap-4 border-b border-line bg-surface px-4 lg:px-6">
       <div className="flex min-w-0 items-center gap-3">

@@ -22,27 +22,18 @@ type Props = {
 function ChunkItem({ chunk }: { chunk: DocumentChunk }) {
   const [expanded, setExpanded] = useState(false);
   const long = chunk.content.length > PREVIEW_LEN;
-  const shown =
-    expanded || !long ? chunk.content : `${chunk.content.slice(0, PREVIEW_LEN)}…`;
+  const shown = expanded || !long ? chunk.content : `${chunk.content.slice(0, PREVIEW_LEN)}…`;
 
   return (
     <li className="rounded-lg border border-line bg-surface-muted/30 px-3 py-3">
       <div className="flex flex-wrap items-center gap-2 text-xs text-ink-faint">
-        <span className="rounded bg-surface px-1.5 py-0.5 font-medium text-ink">
-          #{chunk.chunk_index + 1}
-        </span>
-        {chunk.page_no != null && chunk.page_no > 0 && (
-          <span>第 {chunk.page_no} 页</span>
-        )}
+        <span className="rounded bg-surface px-1.5 py-0.5 font-medium text-ink">#{chunk.chunk_index + 1}</span>
+        {chunk.page_no != null && chunk.page_no > 0 && <span>第 {chunk.page_no} 页</span>}
         <span>{chunk.content.length} 字</span>
       </div>
       <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-ink">{shown}</p>
       {long && (
-        <button
-          type="button"
-          className="mt-2 text-xs text-brand hover:underline"
-          onClick={() => setExpanded((v) => !v)}
-        >
+        <button type="button" className="mt-2 text-xs text-brand hover:underline" onClick={() => setExpanded((v) => !v)}>
           {expanded ? "收起" : "展开全文"}
         </button>
       )}
@@ -82,19 +73,11 @@ export function DocumentChunksDrawer({ kbId, doc, open, onClose }: Props) {
       size="lg"
       footer={
         needsPagination(chunks.total, CHUNK_PAGE_SIZE) ? (
-          <ResourceListFooter
-            page={chunks.page}
-            size={chunks.size}
-            total={chunks.total}
-            onPageChange={chunks.setPage}
-            onSizeChange={chunks.setSize}
-          />
+          <ResourceListFooter page={chunks.page} size={chunks.size} total={chunks.total} onPageChange={chunks.setPage} onSizeChange={chunks.setSize} />
         ) : undefined
       }
     >
-      <p className="text-xs text-ink-muted">
-        共 {doc.chunk_count ?? chunks.total} 个分片，按入库顺序展示（chunk_index）。
-      </p>
+      <p className="text-xs text-ink-muted">共 {doc.chunk_count ?? chunks.total} 个分片，按入库顺序展示（chunk_index）。</p>
       {chunks.loading ? (
         <ul className="mt-4 space-y-2">
           {[1, 2, 3].map((i) => (

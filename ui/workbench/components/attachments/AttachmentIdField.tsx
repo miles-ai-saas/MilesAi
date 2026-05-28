@@ -25,13 +25,7 @@ type Props = {
   placeholder?: string;
 };
 
-export function AttachmentIdField({
-  value,
-  onChange,
-  disabled,
-  uploadPurpose = "flow",
-  placeholder = "选择或上传图片，亦可由入边传入",
-}: Props) {
+export function AttachmentIdField({ value, onChange, disabled, uploadPurpose = "flow", placeholder = "选择或上传图片，亦可由入边传入" }: Props) {
   const listId = useId();
   const fileRef = useRef<HTMLInputElement>(null);
   const [open, setOpen] = useState(false);
@@ -70,10 +64,7 @@ export function AttachmentIdField({
       const seen = new Set<string>();
       const next: PickerItem[] = [];
 
-      const [attPage, assetPage] = await Promise.all([
-        api.listAttachments(1, 30),
-        api.listMediaAssets(1, 20, { kind: "image" }),
-      ]);
+      const [attPage, assetPage] = await Promise.all([api.listAttachments(1, 30), api.listMediaAssets(1, 20, { kind: "image" })]);
 
       for (const a of attPage.items) {
         if (!isImageMime(a.mime_type) || seen.has(a.id)) continue;
@@ -143,54 +134,24 @@ export function AttachmentIdField({
           disabled={disabled}
           aria-describedby={open ? listId : undefined}
         />
-        <button
-          type="button"
-          className="btn-sm-outline shrink-0"
-          disabled={disabled}
-          onClick={() => setOpen((v) => !v)}
-        >
+        <button type="button" className="btn-sm-outline shrink-0" disabled={disabled} onClick={() => setOpen((v) => !v)}>
           {open ? "收起" : "选择…"}
         </button>
-        <input
-          ref={fileRef}
-          type="file"
-          accept="image/jpeg,image/png,image/webp"
-          className="hidden"
-          onChange={(e) => void onUpload(e.target.files)}
-        />
-        <button
-          type="button"
-          className="btn-sm-outline shrink-0"
-          disabled={disabled || uploading}
-          onClick={() => fileRef.current?.click()}
-        >
+        <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(e) => void onUpload(e.target.files)} />
+        <button type="button" className="btn-sm-outline shrink-0" disabled={disabled || uploading} onClick={() => fileRef.current?.click()}>
           {uploading ? "上传…" : "上传"}
         </button>
         {value ? (
-          <button
-            type="button"
-            className="btn-sm-ghost shrink-0 text-xs"
-            disabled={disabled}
-            onClick={() => onChange("")}
-          >
+          <button type="button" className="btn-sm-ghost shrink-0 text-xs" disabled={disabled} onClick={() => onChange("")}>
             清除
           </button>
         ) : null}
       </div>
 
-      {value && previewUrl ? (
-        <img
-          src={previewUrl}
-          alt="已选参考图"
-          className="h-16 w-16 rounded-lg object-cover ring-1 ring-line"
-        />
-      ) : null}
+      {value && previewUrl ? <img src={previewUrl} alt="已选参考图" className="h-16 w-16 rounded-lg object-cover ring-1 ring-line" /> : null}
 
       {open ? (
-        <div
-          id={listId}
-          className="max-h-40 overflow-y-auto rounded-lg border border-line bg-surface-muted p-2"
-        >
+        <div id={listId} className="max-h-40 overflow-y-auto rounded-lg border border-line bg-surface-muted p-2">
           {loading ? (
             <p className="text-xs text-ink-muted">加载中…</p>
           ) : items.length === 0 ? (
@@ -202,9 +163,7 @@ export function AttachmentIdField({
                   <button
                     type="button"
                     className={`w-full rounded-md px-2 py-1.5 text-left text-xs transition hover:bg-surface ${
-                      item.attachmentId === value
-                        ? "bg-brand-light text-brand ring-1 ring-brand/30"
-                        : "text-ink"
+                      item.attachmentId === value ? "bg-brand-light text-brand ring-1 ring-brand/30" : "text-ink"
                     }`}
                     disabled={disabled}
                     onClick={() => {
@@ -214,12 +173,8 @@ export function AttachmentIdField({
                     }}
                   >
                     <span className="font-medium">{item.label}</span>
-                    {item.sublabel ? (
-                      <span className="ml-1 text-ink-faint">· {item.sublabel}</span>
-                    ) : null}
-                    <span className="mt-0.5 block font-mono text-[10px] text-ink-muted">
-                      {item.attachmentId.slice(0, 8)}…
-                    </span>
+                    {item.sublabel ? <span className="ml-1 text-ink-faint">· {item.sublabel}</span> : null}
+                    <span className="mt-0.5 block font-mono text-[10px] text-ink-muted">{item.attachmentId.slice(0, 8)}…</span>
                   </button>
                 </li>
               ))}

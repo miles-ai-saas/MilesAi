@@ -25,9 +25,7 @@ from app.tenant.tags.services.tag import TagService
 class MarketplacePublishMixin:
     """应用创建、编辑、manifest 与提交审核。"""
 
-    async def build_manifest_from_resources(
-        self, body: MarketplaceAppCreateFromResources
-    ) -> dict:
+    async def build_manifest_from_resources(self, body: MarketplaceAppCreateFromResources) -> dict:
         """从 KB/Flow/Agent 资源生成安装 manifest。"""
         resources: dict = {}
         if body.kb_id:
@@ -68,9 +66,7 @@ class MarketplacePublishMixin:
             raise BadRequestError("请至少选择知识库、流程或智能体之一")
         return {"version": "1.0.0", "resources": resources}
 
-    async def create_app_from_resources(
-        self, body: MarketplaceAppCreateFromResources
-    ) -> MarketplaceAppOut:
+    async def create_app_from_resources(self, body: MarketplaceAppCreateFromResources) -> MarketplaceAppOut:
         """从已有资源创建草稿应用。"""
         manifest = await self.build_manifest_from_resources(body)
         return await self.create_app(
@@ -90,9 +86,7 @@ class MarketplacePublishMixin:
         """创建市场应用（草稿）。"""
         category_id = None
         if body.category_slug:
-            cat = await self.db.scalar(
-                select(AppCategory).where(AppCategory.slug == body.category_slug)
-            )
+            cat = await self.db.scalar(select(AppCategory).where(AppCategory.slug == body.category_slug))
             if cat:
                 category_id = cat.id
         app = MarketplaceApp(
@@ -110,9 +104,7 @@ class MarketplacePublishMixin:
         self.db.add(app)
         await self.db.flush()
         if body.tag_ids:
-            await TagService(self.db, self.ctx).replace_entity_tags(
-                TagEntityType.MARKETPLACE_APP, app.id, body.tag_ids
-            )
+            await TagService(self.db, self.ctx).replace_entity_tags(TagEntityType.MARKETPLACE_APP, app.id, body.tag_ids)
         await self.db.refresh(app, ["category"])
         return await self.app_out_with_tags(app)
 
@@ -131,17 +123,13 @@ class MarketplacePublishMixin:
         category_slug = data.pop("category_slug", None)
         tag_ids = data.pop("tag_ids", None)
         if category_slug is not None:
-            cat = await self.db.scalar(
-                select(AppCategory).where(AppCategory.slug == category_slug)
-            )
+            cat = await self.db.scalar(select(AppCategory).where(AppCategory.slug == category_slug))
             app.category_id = cat.id if cat else None
         for key, value in data.items():
             setattr(app, key, value)
         await self.db.flush()
         if tag_ids is not None:
-            await TagService(self.db, self.ctx).replace_entity_tags(
-                TagEntityType.MARKETPLACE_APP, app.id, tag_ids
-            )
+            await TagService(self.db, self.ctx).replace_entity_tags(TagEntityType.MARKETPLACE_APP, app.id, tag_ids)
         await self.db.refresh(app, ["category"])
         return await self.app_out_with_tags(app)
 

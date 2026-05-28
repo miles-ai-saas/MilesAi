@@ -157,11 +157,5 @@ export function describeCron(expr: string): string {
 }
 
 export function partsEqual(a: CronParts, b: CronParts): boolean {
-  return (
-    a.minute === b.minute &&
-    a.hour === b.hour &&
-    a.dayOfMonth === b.dayOfMonth &&
-    a.month === b.month &&
-    a.dayOfWeek === b.dayOfWeek
-  );
+  return a.minute === b.minute && a.hour === b.hour && a.dayOfMonth === b.dayOfMonth && a.month === b.month && a.dayOfWeek === b.dayOfWeek;
 }

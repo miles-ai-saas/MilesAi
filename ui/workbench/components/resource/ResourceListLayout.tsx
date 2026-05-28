@@ -57,9 +57,7 @@ export function ResourceListLayout({
                 type="button"
                 onClick={() => onTabChange?.(tab.key)}
                 className={`border-b-2 pb-2 text-sm transition ${
-                  active
-                    ? "border-brand font-medium text-brand"
-                    : "border-transparent text-ink-muted hover:text-ink"
+                  active ? "border-brand font-medium text-brand" : "border-transparent text-ink-muted hover:text-ink"
                 }`}
               >
                 {tab.label}

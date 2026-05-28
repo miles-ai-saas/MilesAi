@@ -58,17 +58,7 @@ function toChartPoints(series: AgentStatsPoint[]) {
   }));
 }
 
-function StatsMetricCard({
-  label,
-  total,
-  color,
-  series,
-}: {
-  label: string;
-  total: string;
-  color: string;
-  series: AgentStatsPoint[];
-}) {
+function StatsMetricCard({ label, total, color, series }: { label: string; total: string; color: string; series: AgentStatsPoint[] }) {
   return (
     <article className="flex flex-col rounded-xl border border-line bg-surface px-4 py-3 shadow-card">
       <div className="flex items-start justify-between gap-2">
@@ -118,11 +108,7 @@ export function AgentStatsPanel({ agentId }: Props) {
         <h2 id="workbench-overlay-title" className="text-base font-semibold text-ink">
           数据概览
         </h2>
-        <div
-          className="inline-flex rounded-lg border border-line bg-surface p-0.5"
-          role="tablist"
-          aria-label="统计时间范围"
-        >
+        <div className="inline-flex rounded-lg border border-line bg-surface p-0.5" role="tablist" aria-label="统计时间范围">
           {DAY_OPTIONS.map((d) => (
             <button
               key={d}
@@ -131,9 +117,7 @@ export function AgentStatsPanel({ agentId }: Props) {
               aria-selected={days === d}
               onClick={() => setDays(d)}
               className={`rounded-md px-2.5 py-1 text-xs font-medium transition ${
-                days === d
-                  ? "bg-brand text-white shadow-sm"
-                  : "text-ink-muted hover:bg-surface-muted hover:text-ink"
+                days === d ? "bg-brand text-white shadow-sm" : "text-ink-muted hover:bg-surface-muted hover:text-ink"
               }`}
             >
               {d}天
@@ -155,21 +139,11 @@ export function AgentStatsPanel({ agentId }: Props) {
         ) : stats ? (
           <div className="mx-auto grid w-full max-w-5xl gap-4 sm:grid-cols-2">
             {METRICS.map((m) => (
-              <StatsMetricCard
-                key={m.key}
-                label={m.label}
-                total={m.formatTotal(stats[m.totalKey])}
-                color={m.color}
-                series={stats[m.seriesKey]}
-              />
+              <StatsMetricCard key={m.key} label={m.label} total={m.formatTotal(stats[m.totalKey])} color={m.color} series={stats[m.seriesKey]} />
             ))}
           </div>
         ) : null}
-        {!loading && stats && (
-          <p className="mt-4 text-center text-[11px] text-ink-faint">
-            服务端会话统计接入后将在此展示真实趋势；当前为按日时间轴占位。
-          </p>
-        )}
+        {!loading && stats && <p className="mt-4 text-center text-[11px] text-ink-faint">服务端会话统计接入后将在此展示真实趋势；当前为按日时间轴占位。</p>}
       </div>
     </div>
   );

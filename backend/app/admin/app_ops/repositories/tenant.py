@@ -43,42 +43,22 @@ class AdminTenantRepository(TenantRepository):
     async def plan_names_by_ids(self, plan_ids: set[UUID]) -> dict[UUID, str]:
         if not plan_ids:
             return {}
-        rows = (
-            await self.db.execute(select(BillingPlan).where(BillingPlan.id.in_(plan_ids)))
-        ).scalars().all()
+        rows = (await self.db.execute(select(BillingPlan).where(BillingPlan.id.in_(plan_ids)))).scalars().all()
         return {p.id: p.name for p in rows}
 
     async def tenant_names_by_ids(self, tenant_ids: set[UUID]) -> dict[UUID, str]:
         if not tenant_ids:
             return {}
-        rows = (
-            await self.db.execute(select(Tenant.id, Tenant.name).where(Tenant.id.in_(tenant_ids)))
-        ).all()
+        rows = (await self.db.execute(select(Tenant.id, Tenant.name).where(Tenant.id.in_(tenant_ids)))).all()
         return {r[0]: r[1] for r in rows}
 
     async def usage_counts(self, tenant_id: UUID) -> dict[str, int]:
-        kbs = await self.db.scalar(
-            select(func.count()).select_from(KnowledgeBase).where(
-                KnowledgeBase.tenant_id == tenant_id
-            )
-        )
-        docs = await self.db.scalar(
-            select(func.count()).select_from(Document).where(Document.tenant_id == tenant_id)
-        )
-        agents = await self.db.scalar(
-            select(func.count()).select_from(Agent).where(Agent.tenant_id == tenant_id)
-        )
-        flows = await self.db.scalar(
-            select(func.count()).select_from(Flow).where(Flow.tenant_id == tenant_id)
-        )
-        users = await self.db.scalar(
-            select(func.count()).select_from(User).where(User.tenant_id == tenant_id)
-        )
-        storage_bytes = await self.db.scalar(
-            select(func.coalesce(func.sum(Document.file_size), 0)).where(
-                Document.tenant_id == tenant_id
-            )
-        )
+        kbs = await self.db.scalar(select(func.count()).select_from(KnowledgeBase).where(KnowledgeBase.tenant_id == tenant_id))
+        docs = await self.db.scalar(select(func.count()).select_from(Document).where(Document.tenant_id == tenant_id))
+        agents = await self.db.scalar(select(func.count()).select_from(Agent).where(Agent.tenant_id == tenant_id))
+        flows = await self.db.scalar(select(func.count()).select_from(Flow).where(Flow.tenant_id == tenant_id))
+        users = await self.db.scalar(select(func.count()).select_from(User).where(User.tenant_id == tenant_id))
+        storage_bytes = await self.db.scalar(select(func.coalesce(func.sum(Document.file_size), 0)).where(Document.tenant_id == tenant_id))
         return {
             "knowledge_bases": kbs or 0,
             "documents": docs or 0,

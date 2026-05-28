@@ -59,9 +59,7 @@ async def update_admin(
     ctx: AdminContext = Depends(require_admin_role("super_admin")),
     db: AsyncSession = Depends(get_db),
 ):
-    admin = await AdminManagementService(db).update_admin(
-        admin_id, body, actor_id=ctx.admin_id
-    )
+    admin = await AdminManagementService(db).update_admin(admin_id, body, actor_id=ctx.admin_id)
     await write_audit_log(
         db,
         admin_id=ctx.admin_id,

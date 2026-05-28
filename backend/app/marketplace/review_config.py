@@ -85,9 +85,7 @@ async def require_tenant_review_allowed(db: AsyncSession, ctx: TenantContext) ->
             raise ForbiddenError("无权审核应用市场上架")
 
 
-async def assert_tenant_can_review_app(
-    db: AsyncSession, ctx: TenantContext, *, publisher_tenant_id: UUID | None
-) -> None:
+async def assert_tenant_can_review_app(db: AsyncSession, ctx: TenantContext, *, publisher_tenant_id: UUID | None) -> None:
     await require_tenant_review_allowed(db, ctx)
     if is_publisher_review_scope():
         if publisher_tenant_id != ctx.tenant_id:

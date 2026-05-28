@@ -28,15 +28,11 @@ def test_build_event_envelope():
 
 
 def test_parse_block_and_modify():
-    parsed = parse_hook_response(
-        {"schema_version": "1", "action": "block", "message": "denied"}
-    )
+    parsed = parse_hook_response({"schema_version": "1", "action": "block", "message": "denied"})
     assert parsed.action == "block"
     assert parsed.message == "denied"
 
-    parsed2 = parse_hook_response(
-        {"schema_version": "1", "action": "modify", "modify": {"query": "new"}}
-    )
+    parsed2 = parse_hook_response({"schema_version": "1", "action": "modify", "modify": {"query": "new"}})
     assert parsed2.modify["query"] == "new"
 
 

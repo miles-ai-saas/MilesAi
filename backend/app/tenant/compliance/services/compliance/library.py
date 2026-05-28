@@ -50,11 +50,7 @@ class WordLibraryMixin:
         filters = append_not_deleted(tenant_filters(self.ctx, WordLibrary.tenant_id), WordLibrary)
         if active_only:
             filters.append(WordLibrary.is_active.is_(True))
-        stmt = (
-            select(WordLibrary)
-            .where(*filters)
-            .order_by(WordLibrary.sort_order.asc(), WordLibrary.created_at.desc())
-        )
+        stmt = select(WordLibrary).where(*filters).order_by(WordLibrary.sort_order.asc(), WordLibrary.created_at.desc())
         return list((await self.db.execute(stmt)).scalars().all())
 
     async def list_libraries(self, params: PageParams) -> PageResult[WordLibraryOut]:
@@ -112,13 +108,7 @@ class WordLibraryMixin:
         row = await self.get_library_or_raise(library_id)
         await mark_deleted(self.db, row)
         bindings = (
-            (
-                await self.db.execute(
-                    select(LibraryWordBinding).where(
-                        LibraryWordBinding.library_id == library_id, not_deleted(LibraryWordBinding)
-                    )
-                )
-            )
+            (await self.db.execute(select(LibraryWordBinding).where(LibraryWordBinding.library_id == library_id, not_deleted(LibraryWordBinding))))
             .scalars()
             .all()
         )
@@ -160,6 +150,4 @@ class WordLibraryMixin:
         ).scalar_one_or_none()
         if existing:
             return await self.library_out(existing)
-        return await self.create_library(
-            WordLibraryCreate(name=DEFAULT_WORD_LIBRARY_NAME, description="系统迁移/种子默认词库")
-        )
+        return await self.create_library(WordLibraryCreate(name=DEFAULT_WORD_LIBRARY_NAME, description="系统迁移/种子默认词库"))

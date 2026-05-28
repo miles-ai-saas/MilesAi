@@ -32,10 +32,7 @@ const VISIBILITY_FALLBACK: Record<string, string> = {
   tenant_only: "租户内可见",
 };
 
-export function marketplaceVisibilityLabel(
-  visibility: string | undefined,
-  meta?: MarketplaceMeta | null,
-): string {
+export function marketplaceVisibilityLabel(visibility: string | undefined, meta?: MarketplaceMeta | null): string {
   const v = visibility || "public";
   return optionLabel(meta?.visibilities, v) || VISIBILITY_FALLBACK[v] || v;
 }

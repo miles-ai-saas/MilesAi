@@ -21,9 +21,7 @@ class WordEntryMixin:
         entry = await self.get_entry_or_raise(entry_id)
         return await self.entry_out(entry)
 
-    async def set_entry_libraries(
-        self, entry_id: UUID, body: EntryLibrariesUpdate
-    ) -> SensitiveWordEntryOut:
+    async def set_entry_libraries(self, entry_id: UUID, body: EntryLibrariesUpdate) -> SensitiveWordEntryOut:
         """全量更新词条关联的词库集合。"""
         entry = await self.get_entry_or_raise(entry_id)
         wanted = set(body.library_ids)
@@ -44,15 +42,7 @@ class WordEntryMixin:
             if len(found) != len(wanted):
                 raise BadRequestError("部分词库不存在")
         existing = (
-            (
-                await self.db.execute(
-                    select(LibraryWordBinding).where(
-                        LibraryWordBinding.entry_id == entry_id, not_deleted(LibraryWordBinding)
-                    )
-                )
-            )
-            .scalars()
-            .all()
+            (await self.db.execute(select(LibraryWordBinding).where(LibraryWordBinding.entry_id == entry_id, not_deleted(LibraryWordBinding)))).scalars().all()
         )
         by_lib = {b.library_id: b for b in existing}
         for lib_id, binding in list(by_lib.items()):

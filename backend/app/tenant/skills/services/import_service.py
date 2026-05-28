@@ -202,9 +202,11 @@ class SkillImportService:
 
     async def _get_by_slug(self, slug: str) -> SkillPackage | None:
         return await self.db.scalar(
-            select(SkillPackage).where(
+            select(SkillPackage)
+            .where(
                 SkillPackage.tenant_id == self.ctx.tenant_id,
                 SkillPackage.slug == slug,
                 not_deleted(SkillPackage),
-            ).limit(1)
+            )
+            .limit(1)
         )

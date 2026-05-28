@@ -54,14 +54,13 @@ async def get_platform_admin(
     )
     if not admin:
         raise UnauthorizedError("管理员不存在或已禁用")
-    request.state.admin_ctx = AdminContext(
-        admin_id=admin.id, username=admin.username, role=admin.role
-    )
+    request.state.admin_ctx = AdminContext(admin_id=admin.id, username=admin.username, role=admin.role)
     return request.state.admin_ctx
 
 
 def require_admin_role(*roles: str):
     """super_admin 可访问所有角色受限端点。"""
+
     async def checker(ctx: AdminContext = Depends(get_platform_admin)) -> AdminContext:
         if roles and ctx.role not in roles and ctx.role != "super_admin":
             raise ForbiddenError(f"需要角色: {', '.join(roles)}")

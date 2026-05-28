@@ -26,15 +26,15 @@ export function A2aPeersPanel() {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
 
-  const list = usePagedList(useCallback((p, s) => api.listA2aPeers(p, s), []), {
-    enabled: ready,
-  });
+  const list = usePagedList(
+    useCallback((p, s) => api.listA2aPeers(p, s), []),
+    {
+      enabled: ready,
+    },
+  );
   const { requestConfirm, confirmDialog } = useConfirmAction();
 
-  const filtered = useMemo(
-    () => filterBySearch(list.items, search, (p) => `${p.name} ${p.description ?? ""} ${p.base_url ?? ""}`),
-    [list.items, search],
-  );
+  const filtered = useMemo(() => filterBySearch(list.items, search, (p) => `${p.name} ${p.description ?? ""} ${p.base_url ?? ""}`), [list.items, search]);
 
   const onCreate = async () => {
     if (!name.trim() || !baseUrl.trim()) return;
@@ -103,11 +103,7 @@ export function A2aPeersPanel() {
 
   return (
     <>
-      {msg ? (
-        <p className="col-span-full mb-2 rounded-lg border border-line-soft bg-surface-muted px-3 py-2 text-xs text-ink-muted">
-          {msg}
-        </p>
-      ) : null}
+      {msg ? <p className="col-span-full mb-2 rounded-lg border border-line-soft bg-surface-muted px-3 py-2 text-xs text-ink-muted">{msg}</p> : null}
 
       <div className="col-span-full mb-2 flex items-center justify-end gap-2">
         <input
@@ -119,11 +115,7 @@ export function A2aPeersPanel() {
         />
       </div>
 
-      <AddResourceCard
-        label="登记外部 Agent"
-        hint="填写对方服务根地址，拉取 /.well-known/agent-card.json"
-        onClick={() => setDialogOpen(true)}
-      />
+      <AddResourceCard label="登记外部 Agent" hint="填写对方服务根地址，拉取 /.well-known/agent-card.json" onClick={() => setDialogOpen(true)} />
 
       {filtered.map((p) => (
         <ResourceItemCard
@@ -166,20 +158,12 @@ export function A2aPeersPanel() {
       ))}
 
       {!list.loading && filtered.length === 0 ? (
-        <p className="col-span-full py-8 text-center text-sm text-ink-muted">
-          暂无外部 Agent。登记后可同步 Agent Card，供后续 A2A 宿主智能体绑定（P2）。
-        </p>
+        <p className="col-span-full py-8 text-center text-sm text-ink-muted">暂无外部 Agent。登记后可同步 Agent Card，供后续 A2A 宿主智能体绑定（P2）。</p>
       ) : null}
 
       {!list.loading && list.total > list.size ? (
         <div className="col-span-full">
-          <ResourceListFooter
-            page={list.page}
-            size={list.size}
-            total={list.total}
-            onPageChange={list.setPage}
-            onSizeChange={list.setSize}
-          />
+          <ResourceListFooter page={list.page} size={list.size} total={list.total} onPageChange={list.setPage} onSizeChange={list.setSize} />
         </div>
       ) : null}
 
@@ -195,12 +179,7 @@ export function A2aPeersPanel() {
             <button type="button" className="btn-sm-outline" onClick={() => setDialogOpen(false)}>
               取消
             </button>
-            <button
-              type="button"
-              className="btn-primary text-sm"
-              disabled={busy || !name.trim() || !baseUrl.trim()}
-              onClick={() => void onCreate()}
-            >
+            <button type="button" className="btn-primary text-sm" disabled={busy || !name.trim() || !baseUrl.trim()} onClick={() => void onCreate()}>
               {busy ? "提交中…" : "登记"}
             </button>
           </>
@@ -209,12 +188,7 @@ export function A2aPeersPanel() {
         <div className="space-y-4">
           <label className="block text-sm">
             <span className="mb-1 block text-ink-muted">显示名称</span>
-            <input
-              className="input-field w-full"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="例如：合作伙伴客服 Agent"
-            />
+            <input className="input-field w-full" value={name} onChange={(e) => setName(e.target.value)} placeholder="例如：合作伙伴客服 Agent" />
           </label>
           <label className="block text-sm">
             <span className="mb-1 block text-ink-muted">根地址或 Agent Card URL</span>
@@ -227,16 +201,10 @@ export function A2aPeersPanel() {
           </label>
           <label className="block text-sm">
             <span className="mb-1 block text-ink-muted">备注（可选）</span>
-            <textarea
-              className="input-field w-full resize-none"
-              rows={2}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-            />
+            <textarea className="input-field w-full resize-none" rows={2} value={description} onChange={(e) => setDescription(e.target.value)} />
           </label>
           <p className="text-xs text-ink-faint">
-            将解析为{" "}
-            <code className="rounded bg-surface-muted px-1">/.well-known/agent-card.json</code>
+            将解析为 <code className="rounded bg-surface-muted px-1">/.well-known/agent-card.json</code>
             ，与平台内「内部协同」无关。
           </p>
         </div>

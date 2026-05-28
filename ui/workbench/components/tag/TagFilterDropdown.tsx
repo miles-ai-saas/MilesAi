@@ -17,7 +17,10 @@ export function TagFilterDropdown({ value, onChange }: Props) {
   const rootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    void api.listTags().then(setTags).catch(() => setTags([]));
+    void api
+      .listTags()
+      .then(setTags)
+      .catch(() => setTags([]));
   }, []);
 
   useEffect(() => {
@@ -43,12 +46,7 @@ export function TagFilterDropdown({ value, onChange }: Props) {
   if (tags.length === 0) return null;
 
   const selected = tags.filter((t) => value.includes(t.id));
-  const triggerLabel =
-    selected.length === 0
-      ? "全部标签"
-      : selected.length === 1
-        ? selected[0].name
-        : `已选 ${selected.length} 个标签`;
+  const triggerLabel = selected.length === 0 ? "全部标签" : selected.length === 1 ? selected[0].name : `已选 ${selected.length} 个标签`;
 
   const toggle = (id: string) => {
     if (value.includes(id)) onChange(value.filter((x) => x !== id));
@@ -79,11 +77,7 @@ export function TagFilterDropdown({ value, onChange }: Props) {
           <div className="flex items-center justify-between border-b border-line-soft px-3 py-2">
             <span className="text-xs font-medium text-ink-muted">筛选标签（可多选）</span>
             {value.length > 0 ? (
-              <button
-                type="button"
-                className="text-xs text-brand hover:underline"
-                onClick={() => onChange([])}
-              >
+              <button type="button" className="text-xs text-brand hover:underline" onClick={() => onChange([])}>
                 清除
               </button>
             ) : null}
@@ -94,12 +88,7 @@ export function TagFilterDropdown({ value, onChange }: Props) {
               return (
                 <li key={t.id} role="option" aria-selected={checked}>
                   <label className="flex cursor-pointer items-center gap-2 px-3 py-1.5 text-sm hover:bg-surface-muted">
-                    <input
-                      type="checkbox"
-                      className="rounded border-line text-brand"
-                      checked={checked}
-                      onChange={() => toggle(t.id)}
-                    />
+                    <input type="checkbox" className="rounded border-line text-brand" checked={checked} onChange={() => toggle(t.id)} />
                     <span className="text-ink">{t.name}</span>
                   </label>
                 </li>

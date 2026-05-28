@@ -103,6 +103,7 @@ class SkillRunScriptInput(BaseModel):
 
 def _make_calculator_tool() -> StructuredTool:
     """内置 calculator；同步 ``safe_calculate``。"""
+
     def _run(expression: str) -> dict:
         return {"result": safe_calculate(expression)}
 
@@ -116,6 +117,7 @@ def _make_calculator_tool() -> StructuredTool:
 
 def _make_http_request_tool() -> StructuredTool:
     """内置 http_request；直连 httpx（tool_agent 路径不经 outbound URL 校验）。"""
+
     def _run(url: str, method: str = "GET", timeout: float = 10.0) -> dict:
         resp = httpx.request(method.upper(), url, timeout=timeout)
         return {"status_code": resp.status_code, "body": resp.text[:4000]}
@@ -130,6 +132,7 @@ def _make_http_request_tool() -> StructuredTool:
 
 def _make_datetime_tool() -> StructuredTool:
     """内置 get_current_datetime；IANA 时区，默认 UTC。"""
+
     def _run(timezone: str | None = None) -> dict:
         tz_name = timezone or "UTC"
         tz = ZoneInfo(tz_name)
@@ -169,6 +172,7 @@ def make_knowledge_search_tool(ctx: TenantContext) -> StructuredTool:
 
 def _make_skill_read_reference_tool() -> StructuredTool:
     """技能包 references/ 读取；执行走 invoke，此处仅暴露 schema。"""
+
     async def _arun(path: str, max_chars: int | None = None) -> dict:
         raise RuntimeError("请通过 invoke_tool_with_context 执行技能工具")
 
@@ -182,6 +186,7 @@ def _make_skill_read_reference_tool() -> StructuredTool:
 
 def _make_skill_run_script_tool() -> StructuredTool:
     """技能包 scripts/ 沙箱执行；执行走 invoke，此处仅暴露 schema。"""
+
     async def _arun(
         path: str,
         params: dict | None = None,
@@ -205,6 +210,7 @@ def get_skill_bound_tools() -> list[StructuredTool]:
 
 def _make_generate_image_tool() -> StructuredTool:
     """generate_image schema；``enable_generative_tools`` 时挂载。"""
+
     async def _arun(
         prompt: str,
         size: str | None = None,
@@ -224,6 +230,7 @@ def _make_generate_image_tool() -> StructuredTool:
 
 def _make_generate_video_tool() -> StructuredTool:
     """generate_video schema；异步 Celery 任务，常需用户确认。"""
+
     async def _arun(
         prompt: str,
         duration: int | None = None,
@@ -295,14 +302,18 @@ async def load_tenant_custom_tools(db: AsyncSession, ctx: TenantContext) -> list
     """加载租户启用的自定义 HTTP / 脚本工具。"""
     filters = append_not_deleted(tenant_filters(ctx, Tool.tenant_id), Tool)
     rows = (
-        await db.execute(
-            select(Tool).where(
-                *filters,
-                Tool.is_active.is_(True),
-                Tool.tool_type.in_([ToolType.HTTP, ToolType.SCRIPT]),
+        (
+            await db.execute(
+                select(Tool).where(
+                    *filters,
+                    Tool.is_active.is_(True),
+                    Tool.tool_type.in_([ToolType.HTTP, ToolType.SCRIPT]),
+                )
             )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     out: list[StructuredTool] = []
     for t in rows:
         if t.tool_type == ToolType.HTTP:

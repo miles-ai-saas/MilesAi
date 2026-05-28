@@ -83,12 +83,7 @@ class FlowRunRequest(BaseModel):
 
     @model_validator(mode="after")
     def validate_inputs_or_media(self) -> "FlowRunRequest":
-        q = str(
-            self.inputs.get("query")
-            or self.inputs.get("message")
-            or self.inputs.get("input")
-            or ""
-        ).strip()
+        q = str(self.inputs.get("query") or self.inputs.get("message") or self.inputs.get("input") or "").strip()
         if not q and not self.media:
             raise ValueError("inputs 需包含 query（或 message/input），或提供 media 附图")
         return self

@@ -11,21 +11,14 @@ export type FlowRunArtifact = {
 
 type StepRecord = Record<string, unknown>;
 
-function pushArtifact(
-  out: FlowRunArtifact[],
-  seen: Set<string>,
-  item: FlowRunArtifact,
-) {
+function pushArtifact(out: FlowRunArtifact[], seen: Set<string>, item: FlowRunArtifact) {
   const key = `${item.kind}:${item.attachmentId}`;
   if (seen.has(key)) return;
   seen.add(key);
   out.push(item);
 }
 
-function artifactFromDict(
-  raw: Record<string, unknown>,
-  meta: { nodeId?: string; nodeType?: string },
-): FlowRunArtifact | null {
+function artifactFromDict(raw: Record<string, unknown>, meta: { nodeId?: string; nodeType?: string }): FlowRunArtifact | null {
   const id = raw.attachment_id;
   const kind = raw.kind;
   if (typeof id !== "string" || (kind !== "image" && kind !== "video")) {
@@ -33,10 +26,7 @@ function artifactFromDict(
   }
   const nodeType = meta.nodeType;
   const nodeId = meta.nodeId;
-  const label =
-    nodeType && nodeId
-      ? `${nodeType} · ${nodeId.length > 8 ? `${nodeId.slice(0, 8)}…` : nodeId}`
-      : nodeType;
+  const label = nodeType && nodeId ? `${nodeType} · ${nodeId.length > 8 ? `${nodeId.slice(0, 8)}…` : nodeId}` : nodeType;
   return {
     attachmentId: id,
     kind,
@@ -60,9 +50,7 @@ function parsePreviewArtifact(preview: string): FlowRunArtifact | null {
   };
 }
 
-export function extractFlowRunArtifacts(
-  steps: StepRecord[] | undefined | null,
-): FlowRunArtifact[] {
+export function extractFlowRunArtifacts(steps: StepRecord[] | undefined | null): FlowRunArtifact[] {
   if (!steps?.length) return [];
 
   const out: FlowRunArtifact[] = [];
@@ -95,10 +83,7 @@ export function extractFlowRunArtifacts(
         pushArtifact(out, seen, {
           ...fromPreview,
           ...meta,
-          label:
-            nodeType && nodeId
-              ? `${nodeType} · ${nodeId.slice(0, 8)}…`
-              : nodeType,
+          label: nodeType && nodeId ? `${nodeType} · ${nodeId.slice(0, 8)}…` : nodeType,
         });
       }
     }

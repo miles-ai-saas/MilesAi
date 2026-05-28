@@ -208,7 +208,4 @@ async def seed_hooks(session: AsyncSession) -> None:
     total_created = 0
     for tenant_id in await list_tenant_ids(session):
         total_created += await seed_hooks_for_tenant(session, tenant_id)
-    print(
-        f">>> hooks seed: created {total_created} hook definition(s) "
-        "(sample webhooks default inactive; enable after replacing URL)"
-    )
+    print(f">>> hooks seed: created {total_created} hook definition(s) (sample webhooks default inactive; enable after replacing URL)")

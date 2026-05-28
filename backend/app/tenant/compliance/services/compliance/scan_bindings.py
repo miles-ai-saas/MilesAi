@@ -36,9 +36,7 @@ class ComplianceScanBindingsMixin:
         out_libs = [await self.library_out(lib) for lib in libs]
         return ComplianceScanBindingsOut(library_ids=list(bound_ids), libraries=out_libs)
 
-    async def set_scan_bindings(
-        self, body: ComplianceScanBindingsUpdate
-    ) -> ComplianceScanBindingsOut:
+    async def set_scan_bindings(self, body: ComplianceScanBindingsUpdate) -> ComplianceScanBindingsOut:
         """全量更新租户扫描词库绑定。"""
         wanted = set(body.library_ids)
         if wanted:

@@ -46,9 +46,7 @@ def embedding_dimension_from_model(model: ModelConfig) -> int:
     dim = extra.get(EXTRA_EMBEDDING_DIMENSION)
     if isinstance(dim, int) and dim > 0:
         return dim
-    raise BadRequestError(
-        f"向量化模型「{model.name}」未配置 extra.embedding_dimension"
-    )
+    raise BadRequestError(f"向量化模型「{model.name}」未配置 extra.embedding_dimension")
 
 
 def embedding_batch_size_from_model(model: ModelConfig, *, default: int = 25) -> int:
@@ -83,6 +81,4 @@ def resolve_embedding_api_base(model: ModelConfig) -> str | None:
 def ensure_embedding_model_type(model: ModelConfig) -> None:
     """校验模型类型为 embedding，避免 KB 绑定 chat 模型。"""
     if model.model_type != ModelCapabilityType.EMBEDDING.value:
-        raise BadRequestError(
-            f"模型「{model.name}」类型为 {model.model_type}，知识库须绑定向量化模型（embedding）"
-        )
+        raise BadRequestError(f"模型「{model.name}」类型为 {model.model_type}，知识库须绑定向量化模型（embedding）")

@@ -19,11 +19,7 @@ class FlowRepository(BaseRepository[Flow]):
 
     async def get_with_versions(self, flow_id: UUID) -> Flow | None:
         """管理端查看历史版本列表时使用。"""
-        stmt = (
-            select(Flow)
-            .where(Flow.id == flow_id)
-            .options(selectinload(Flow.versions))
-        )
+        stmt = select(Flow).where(Flow.id == flow_id).options(selectinload(Flow.versions))
         return (await self.db.execute(stmt)).scalar_one_or_none()
 
     async def get_version(self, flow_id: UUID, version: int) -> FlowVersion | None:

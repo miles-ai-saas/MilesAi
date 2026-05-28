@@ -40,9 +40,7 @@ class AuthService(BaseService):
         if not user.is_active:
             raise UnauthorizedError("用户已禁用")
         access, refresh = issue_tokens_for_user(user)
-        await session_store.register_session(
-            user.id, access, user_agent=user_agent, ip=ip
-        )
+        await session_store.register_session(user.id, access, user_agent=user_agent, ip=ip)
         await write_auth_login_audit(
             self.db,
             tenant_id=user.tenant_id,
@@ -84,17 +82,11 @@ class AuthService(BaseService):
         if not user:
             raise UnauthorizedError("用户不存在")
         access, new_refresh = issue_tokens_for_user(user)
-        await session_store.register_session(
-            user.id, access, user_agent=user_agent, ip=ip
-        )
+        await session_store.register_session(user.id, access, user_agent=user_agent, ip=ip)
         return TokenResponse(access_token=access, refresh_token=new_refresh)
 
     async def get_me(self, ctx: TenantContext) -> UserInfo:
-        result = await self.db.execute(
-            select(User)
-            .where(User.id == ctx.user_id)
-            .options(selectinload(User.roles).selectinload(Role.permissions))
-        )
+        result = await self.db.execute(select(User).where(User.id == ctx.user_id).options(selectinload(User.roles).selectinload(Role.permissions)))
         user = result.scalar_one()
         perms = sorted(ctx.permissions) if not ctx.is_superuser else ["*"]
         return UserInfo(
@@ -106,9 +98,7 @@ class AuthService(BaseService):
             permissions=perms,
         )
 
-    async def list_sessions(
-        self, user_id: UUID, *, current_jti: str | None = None
-    ) -> list[UserSessionOut]:
+    async def list_sessions(self, user_id: UUID, *, current_jti: str | None = None) -> list[UserSessionOut]:
         rows = await session_store.list_sessions(user_id)
         return [
             UserSessionOut(
@@ -122,9 +112,7 @@ class AuthService(BaseService):
             for r in rows
         ]
 
-    async def revoke_session(
-        self, user_id: UUID, jti: str, *, current_jti: str | None = None
-    ) -> None:
+    async def revoke_session(self, user_id: UUID, jti: str, *, current_jti: str | None = None) -> None:
         if current_jti and jti == current_jti:
             raise BadRequestError("不能下线当前会话，请使用登出")
         await session_store.revoke_session(user_id, jti)

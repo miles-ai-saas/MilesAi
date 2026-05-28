@@ -14,12 +14,7 @@ export function CronExpressionPreview({ parts }: Props) {
   return (
     <div className="space-y-2">
       <p className="text-sm font-medium text-ink">Cron 表达式</p>
-      <input
-        readOnly
-        value={expr}
-        className="input-field w-full font-mono text-sm bg-surface-muted"
-        aria-label="Cron 表达式"
-      />
+      <input readOnly value={expr} className="input-field w-full font-mono text-sm bg-surface-muted" aria-label="Cron 表达式" />
       <p className="text-xs text-ink-muted">{description}</p>
     </div>
   );

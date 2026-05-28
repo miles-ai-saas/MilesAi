@@ -57,11 +57,7 @@ async def tool_catalog(
     ctx: TenantContext = Depends(require_permissions("tools:read")),
     db: AsyncSession = Depends(get_db),
 ):
-    return ok(
-        await _svc(db, ctx).list_catalog(
-            source=source, category_id=category_id, tag_ids=tag_ids
-        )
-    )
+    return ok(await _svc(db, ctx).list_catalog(source=source, category_id=category_id, tag_ids=tag_ids))
 
 
 @router.get("", response_model=ApiResponse[PageResult[ToolOut]])
@@ -72,9 +68,7 @@ async def list_tools(
     ctx: TenantContext = Depends(require_permissions("tools:read")),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await _svc(db, ctx).list_tools(
-        params, category_id=category_id, tag_ids=tag_ids
-    )
+    result = await _svc(db, ctx).list_tools(params, category_id=category_id, tag_ids=tag_ids)
     return page_ok(result.items, result.total, result.page, result.size)
 
 

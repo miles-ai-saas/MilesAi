@@ -13,10 +13,7 @@ type JobPollTarget = { jobId: string; kind: string };
 
 const TERMINAL = new Set(["success", "failed", "cancelled"]);
 
-export function useGenerativeJobPoll(
-  jobs: JobPollTarget[],
-  onComplete?: (artifacts: ChatArtifact[]) => void,
-) {
+export function useGenerativeJobPoll(jobs: JobPollTarget[], onComplete?: (artifacts: ChatArtifact[]) => void) {
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
   const [progressPercent, setProgressPercent] = useState<number | null>(null);
   const [activeJobIds, setActiveJobIds] = useState<string[]>([]);
@@ -60,9 +57,7 @@ export function useGenerativeJobPoll(
     const handleJob = (job: GenerativeJobOut) => {
       if (job.progress_percent != null) setProgressPercent(job.progress_percent);
       const label = job.progress_message || "生成中…";
-      setStatusMsg(
-        job.progress_percent != null ? `${label}（${job.progress_percent}%）` : label,
-      );
+      setStatusMsg(job.progress_percent != null ? `${label}（${job.progress_percent}%）` : label);
       if (job.status === "success") {
         finishJob(job.id, generativeJobToArtifacts(job), null);
       } else if (job.status === "failed") {
@@ -103,12 +98,7 @@ export function useGenerativeJobPoll(
 
     const hasVideo = jobs.some((j) => j.kind === "video");
     const hasImage = jobs.some((j) => j.kind === "image");
-    const label =
-      hasVideo && hasImage
-        ? "媒体"
-        : hasImage
-          ? "图片"
-          : "视频";
+    const label = hasVideo && hasImage ? "媒体" : hasImage ? "图片" : "视频";
     setStatusMsg(`正在生成${label}（${pending.size} 个任务）…`);
 
     return () => {

@@ -61,9 +61,7 @@ DEFAULT_API_BASES: dict[str, str] = {
 
 # DashScope 文本重排（与 chat/embedding 的 compatible-mode 不同）
 DEFAULT_RERANK_API_ENDPOINTS: dict[str, str] = {
-    ModelVendor.QWEN.value: (
-        "https://dashscope.aliyuncs.com/api/v1/services/rerank/text-rerank/text-rerank"
-    ),
+    ModelVendor.QWEN.value: ("https://dashscope.aliyuncs.com/api/v1/services/rerank/text-rerank/text-rerank"),
 }
 
 DEFAULT_RERANK_OPENAI_COMPAT_BASES: dict[str, str] = {

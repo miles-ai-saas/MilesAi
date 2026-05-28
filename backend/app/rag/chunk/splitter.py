@@ -98,11 +98,7 @@ def _chunk_markdown_document(
         if page_no is not None and "page" not in meta and "page_no" not in meta:
             meta["page"] = page_no - 1
         header_doc.metadata = meta
-        sub_docs = (
-            _recursive_split_document(header_doc, chunk_size=chunk_size, overlap=overlap)
-            if len(header_doc.page_content) > chunk_size
-            else [header_doc]
-        )
+        sub_docs = _recursive_split_document(header_doc, chunk_size=chunk_size, overlap=overlap) if len(header_doc.page_content) > chunk_size else [header_doc]
         for sub in sub_docs:
             content = (sub.page_content or "").strip()
             if not content:
@@ -156,7 +152,4 @@ def chunk_documents(
 
     combined = "\n\n".join((d.page_content or "").strip() for d in non_empty)
     page_no = page_no_from_metadata(non_empty[0].metadata) if len(non_empty) == 1 else None
-    return [
-        TextChunk(content=text, page_no=page_no)
-        for text in split_text(combined, size, ov)
-    ]
+    return [TextChunk(content=text, page_no=page_no) for text in split_text(combined, size, ov)]

@@ -16,11 +16,7 @@ from app.models.model_catalog import DEFAULT_API_BASES, ModelVendor
 
 def dashscope_api_base(model: ModelConfig) -> str:
     """万相 API 根路径（可被 model.api_base 覆盖）。"""
-    return (
-        model.api_base
-        or DEFAULT_API_BASES.get(ModelVendor.QWEN.value)
-        or "https://dashscope.aliyuncs.com/api/v1"
-    ).rstrip("/")
+    return (model.api_base or DEFAULT_API_BASES.get(ModelVendor.QWEN.value) or "https://dashscope.aliyuncs.com/api/v1").rstrip("/")
 
 
 def dashscope_headers(api_key: str, *, async_enable: bool = True) -> dict[str, str]:

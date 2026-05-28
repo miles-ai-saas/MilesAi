@@ -75,9 +75,7 @@ function ScheduleRunsPanel({ agentId, scheduleId }: { agentId: string; scheduleI
             {run.status === "success" ? "成功" : "失败"}
           </span>
           <span className="tabular-nums text-ink-muted">{formatTime(run.started_at)}</span>
-          {run.error_message ? (
-            <p className="w-full text-[11px] text-red-700 line-clamp-2">{run.error_message}</p>
-          ) : null}
+          {run.error_message ? <p className="w-full text-[11px] text-red-700 line-clamp-2">{run.error_message}</p> : null}
         </li>
       ))}
     </ul>
@@ -100,9 +98,7 @@ function ScheduleListItem({
   const [showRuns, setShowRuns] = useState(false);
   return (
     <article
-      className={`rounded-xl border border-line bg-surface px-4 py-3 shadow-card transition hover:border-brand/25 ${
-        schedule.enabled ? "" : "opacity-75"
-      }`}
+      className={`rounded-xl border border-line bg-surface px-4 py-3 shadow-card transition hover:border-brand/25 ${schedule.enabled ? "" : "opacity-75"}`}
     >
       <div className="flex items-start gap-3">
         <div
@@ -120,16 +116,12 @@ function ScheduleListItem({
           <div className="flex flex-wrap items-center gap-2">
             <span
               className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${
-                schedule.enabled
-                  ? "bg-emerald-50 text-emerald-700"
-                  : "bg-surface-muted text-ink-faint"
+                schedule.enabled ? "bg-emerald-50 text-emerald-700" : "bg-surface-muted text-ink-faint"
               }`}
             >
               {schedule.enabled ? "启用" : "停用"}
             </span>
-            <p className="min-w-0 flex-1 text-sm font-medium leading-snug text-ink line-clamp-2">
-              {schedule.content.trim() || "（空内容）"}
-            </p>
+            <p className="min-w-0 flex-1 text-sm font-medium leading-snug text-ink line-clamp-2">{schedule.content.trim() || "（空内容）"}</p>
           </div>
 
           <p className="mt-1.5 text-xs font-medium text-brand">{schedule.cron_description}</p>
@@ -152,18 +144,10 @@ function ScheduleListItem({
         <button type="button" className="text-xs font-medium text-brand hover:underline" onClick={onEdit}>
           编辑
         </button>
-        <button
-          type="button"
-          className="text-xs text-ink-muted hover:text-ink"
-          onClick={() => setShowRuns((v) => !v)}
-        >
+        <button type="button" className="text-xs text-ink-muted hover:text-ink" onClick={() => setShowRuns((v) => !v)}>
           {showRuns ? "收起历史" : "执行历史"}
         </button>
-        <button
-          type="button"
-          className="text-xs text-ink-muted hover:text-ink"
-          onClick={onToggle}
-        >
+        <button type="button" className="text-xs text-ink-muted hover:text-ink" onClick={onToggle}>
           {schedule.enabled ? "停用" : "启用"}
         </button>
         <button type="button" className="text-xs text-red-600 hover:underline" onClick={onDelete}>
@@ -186,10 +170,7 @@ export function AgentSchedulePanel({ agentId }: Props) {
   );
   const { requestConfirm, confirmDialog } = useConfirmAction();
 
-  const enabledOnPage = useMemo(
-    () => list.items.filter((s) => s.enabled).length,
-    [list.items],
-  );
+  const enabledOnPage = useMemo(() => list.items.filter((s) => s.enabled).length, [list.items]);
 
   const openCreate = () => {
     setEditing(null);
@@ -212,10 +193,7 @@ export function AgentSchedulePanel({ agentId }: Props) {
   };
 
   const onDelete = (schedule: AgentSchedule) => {
-    const preview =
-      schedule.content.trim().length > 80
-        ? `${schedule.content.trim().slice(0, 80)}…`
-        : schedule.content.trim();
+    const preview = schedule.content.trim().length > 80 ? `${schedule.content.trim().slice(0, 80)}…` : schedule.content.trim();
     requestConfirm({
       title: "删除定时任务",
       message: (
@@ -234,9 +212,7 @@ export function AgentSchedulePanel({ agentId }: Props) {
   };
 
   if (list.loading && list.items.length === 0) {
-    return (
-      <div className="flex flex-1 items-center justify-center p-6 text-sm text-ink-muted">加载中…</div>
-    );
+    return <div className="flex flex-1 items-center justify-center p-6 text-sm text-ink-muted">加载中…</div>;
   }
 
   if (list.error) {
@@ -259,9 +235,7 @@ export function AgentSchedulePanel({ agentId }: Props) {
           <span>
             共 <span className="font-medium tabular-nums text-ink">{list.total}</span> 条
           </span>
-          {!isEmpty && (
-            <span className="text-ink-faint">·</span>
-          )}
+          {!isEmpty && <span className="text-ink-faint">·</span>}
           {!isEmpty && (
             <span>
               本页 <span className="tabular-nums text-ink">{enabledOnPage}</span> 条启用
@@ -273,11 +247,7 @@ export function AgentSchedulePanel({ agentId }: Props) {
         </button>
       </div>
 
-      {msg && (
-        <p className="shrink-0 border-b border-line-soft bg-amber-50/80 px-6 py-2 text-xs text-amber-900">
-          {msg}
-        </p>
-      )}
+      {msg && <p className="shrink-0 border-b border-line-soft bg-amber-50/80 px-6 py-2 text-xs text-amber-900">{msg}</p>}
 
       <div className="min-h-0 flex-1 overflow-y-auto">
         {isEmpty ? (
@@ -289,9 +259,7 @@ export function AgentSchedulePanel({ agentId }: Props) {
             </div>
             <div className="max-w-xs">
               <p className="text-sm font-medium text-ink">暂无定时任务</p>
-              <p className="mt-1.5 text-xs leading-relaxed text-ink-faint">
-                按 Cron 计划自动向当前智能体发送消息，触发后走合规、钩子与完整对话编排。
-              </p>
+              <p className="mt-1.5 text-xs leading-relaxed text-ink-faint">按 Cron 计划自动向当前智能体发送消息，触发后走合规、钩子与完整对话编排。</p>
             </div>
             <button type="button" className="btn-sm-primary" onClick={openCreate}>
               创建第一条任务
@@ -316,23 +284,11 @@ export function AgentSchedulePanel({ agentId }: Props) {
 
       {!isEmpty && list.total > 0 && (
         <div className="shrink-0 border-t border-line-soft bg-surface-subtle/40 px-6 py-2.5">
-          <Pagination
-            page={list.page}
-            size={list.size}
-            total={list.total}
-            onPageChange={list.setPage}
-            onSizeChange={list.setSize}
-          />
+          <Pagination page={list.page} size={list.size} total={list.total} onPageChange={list.setPage} onSizeChange={list.setSize} />
         </div>
       )}
 
-      <AgentScheduleDialog
-        open={dialogOpen}
-        agentId={agentId}
-        schedule={editing}
-        onClose={() => setDialogOpen(false)}
-        onSaved={() => void list.reload()}
-      />
+      <AgentScheduleDialog open={dialogOpen} agentId={agentId} schedule={editing} onClose={() => setDialogOpen(false)} onSaved={() => void list.reload()} />
       {confirmDialog}
     </div>
   );

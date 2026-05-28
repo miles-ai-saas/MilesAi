@@ -35,9 +35,7 @@ class S3CompatibleObjectStorage:
         self._secret_key = secret_key if secret_key is not None else s.object_storage_secret_key
         self._secure = secure if secure is not None else s.object_storage_secure
         self._region = region if region is not None else s.object_storage_region
-        self._default_bucket = (
-            default_bucket if default_bucket is not None else s.object_storage_bucket
-        )
+        self._default_bucket = default_bucket if default_bucket is not None else s.object_storage_bucket
 
     @property
     def default_bucket(self) -> str:

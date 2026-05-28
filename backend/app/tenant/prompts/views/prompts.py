@@ -38,9 +38,7 @@ async def list_prompts(
     ctx: TenantContext = Depends(require_permissions("prompt:read")),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await PromptService(db, ctx).list_templates(
-        params, category_id=category_id, tag_ids=tag_ids
-    )
+    result = await PromptService(db, ctx).list_templates(params, category_id=category_id, tag_ids=tag_ids)
     return page_ok(result.items, result.total, result.page, result.size)
 
 

@@ -33,9 +33,7 @@ async def generate_openai_images(
     url = f"{api_base}/images/generations"
 
     if reference_image_data_url:
-        raise BadRequestError(
-            f"模型「{model.name}」当前 invoke 不支持图生图，请改用豆包 SeedEdit 或通义万相"
-        )
+        raise BadRequestError(f"模型「{model.name}」当前 invoke 不支持图生图，请改用豆包 SeedEdit 或通义万相")
 
     body: dict[str, Any] = {
         "model": model.model_name or "dall-e-3",
@@ -75,5 +73,3 @@ async def generate_openai_images(
     if not out:
         raise AppError("生图 API 未返回可用图片数据", status_code=502)
     return out
-
-

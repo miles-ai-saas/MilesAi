@@ -29,9 +29,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   if (pathname === "/login") return <>{children}</>;
 
   if (!hydrated || !token) {
-    return (
-      <p className="flex min-h-screen items-center justify-center text-ink-muted">加载中…</p>
-    );
+    return <p className="flex min-h-screen items-center justify-center text-ink-muted">加载中…</p>;
   }
 
   const breadcrumbs = getAdminBreadcrumbs(pathname);
@@ -49,12 +47,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
       {mobileNavOpen && (
         <div className="fixed inset-0 z-40 flex lg:hidden">
-          <button
-            type="button"
-            className="absolute inset-0 bg-black/40"
-            aria-label="关闭菜单"
-            onClick={() => setMobileNavOpen(false)}
-          />
+          <button type="button" className="absolute inset-0 bg-black/40" aria-label="关闭菜单" onClick={() => setMobileNavOpen(false)} />
           <div className="relative z-50 flex h-full shadow-panel">
             <AdminSidebar pathname={pathname} onNavigate={() => setMobileNavOpen(false)} />
           </div>
@@ -62,13 +55,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
       )}
 
       <div className="flex min-h-screen min-w-0 flex-1 flex-col">
-        <AdminTopBar
-          breadcrumbs={breadcrumbs}
-          username={admin?.username}
-          role={admin?.role}
-          onMenuOpen={() => setMobileNavOpen(true)}
-          onLogout={logout}
-        />
+        <AdminTopBar breadcrumbs={breadcrumbs} username={admin?.username} role={admin?.role} onMenuOpen={() => setMobileNavOpen(true)} onLogout={logout} />
         <main className="min-h-0 flex-1 overflow-auto">
           <div className="admin-page-shell">{children}</div>
         </main>

@@ -22,6 +22,4 @@ EXTRA_RERANK_REQUEST_FORMAT = "rerank_request_format"
 RERANK_REQUEST_FORMAT_FLAT = "flat"
 RERANK_REQUEST_FORMAT_NESTED = "nested"
 
-DEFAULT_RERANK_INSTRUCT = (
-    "Given a web search query, retrieve relevant passages that answer the query."
-)
+DEFAULT_RERANK_INSTRUCT = "Given a web search query, retrieve relevant passages that answer the query."

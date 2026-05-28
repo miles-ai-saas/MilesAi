@@ -42,9 +42,7 @@ async def test_create_flow_with_tags(monkeypatch):
     svc.repo.create = AsyncMock(return_value=flow)
     svc._save_version = AsyncMock()
     replace = AsyncMock()
-    get_refs = AsyncMock(
-        return_value={flow_id: [TagRefOut(id=tag_id, name="客服", slug="kefu")]}
-    )
+    get_refs = AsyncMock(return_value={flow_id: [TagRefOut(id=tag_id, name="客服", slug="kefu")]})
     monkeypatch.setattr(
         "app.tenant.flows.services.flow.TagService.replace_entity_tags",
         replace,
@@ -54,9 +52,7 @@ async def test_create_flow_with_tags(monkeypatch):
         get_refs,
     )
 
-    out = await svc.create_flow(
-        FlowCreate(name="RAG", description="desc", tag_ids=[tag_id], graph_json={"nodes": [], "edges": []})
-    )
+    out = await svc.create_flow(FlowCreate(name="RAG", description="desc", tag_ids=[tag_id], graph_json={"nodes": [], "edges": []}))
 
     replace.assert_awaited_once_with(TagEntityType.FLOW, flow_id, [tag_id])
     assert out.tags[0].slug == "kefu"

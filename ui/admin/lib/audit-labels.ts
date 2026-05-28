@@ -50,11 +50,7 @@ export function auditActionOptions(actions: string[]): { value: string; label: s
 /** 日期快捷筛选 */
 export type AuditDatePreset = "all" | "today" | "7d" | "30d" | "custom";
 
-export function auditDateRangeFromPreset(
-  preset: AuditDatePreset,
-  customFrom: string,
-  customTo: string,
-): { created_from?: string; created_to?: string } {
+export function auditDateRangeFromPreset(preset: AuditDatePreset, customFrom: string, customTo: string): { created_from?: string; created_to?: string } {
   if (preset === "all") return {};
   const today = new Date();
   const fmt = (d: Date) => d.toISOString().slice(0, 10);

@@ -40,13 +40,7 @@ class AgentScheduleService(BaseService):
             AgentSchedule,
         )
         total = await self.db.scalar(select(func.count()).select_from(AgentSchedule).where(*filters))
-        stmt = (
-            select(AgentSchedule)
-            .where(*filters)
-            .order_by(AgentSchedule.created_at.desc())
-            .offset((params.page - 1) * params.size)
-            .limit(params.size)
-        )
+        stmt = select(AgentSchedule).where(*filters).order_by(AgentSchedule.created_at.desc()).offset((params.page - 1) * params.size).limit(params.size)
         items = (await self.db.execute(stmt)).scalars().all()
         return PageResult(
             items=[AgentScheduleOut.from_model(i) for i in items],
@@ -76,9 +70,7 @@ class AgentScheduleService(BaseService):
         await self.db.refresh(schedule)
         return AgentScheduleOut.from_model(schedule)
 
-    async def update_schedule(
-        self, agent_id: UUID, schedule_id: UUID, body: AgentScheduleUpdate
-    ) -> AgentScheduleOut:
+    async def update_schedule(self, agent_id: UUID, schedule_id: UUID, body: AgentScheduleUpdate) -> AgentScheduleOut:
         schedule = await self._get_schedule_or_raise(agent_id, schedule_id)
 
         if body.content is not None:
@@ -105,24 +97,14 @@ class AgentScheduleService(BaseService):
         mark_deleted(schedule)
         await self.db.flush()
 
-    async def list_runs(
-        self, agent_id: UUID, schedule_id: UUID, params: PageParams
-    ) -> PageResult[AgentScheduleRunOut]:
+    async def list_runs(self, agent_id: UUID, schedule_id: UUID, params: PageParams) -> PageResult[AgentScheduleRunOut]:
         await self._get_schedule_or_raise(agent_id, schedule_id)
         filters = tenant_filters(self.ctx, AgentScheduleRun.tenant_id) + [
             AgentScheduleRun.schedule_id == schedule_id,
             AgentScheduleRun.agent_id == agent_id,
         ]
-        total = await self.db.scalar(
-            select(func.count()).select_from(AgentScheduleRun).where(*filters)
-        )
-        stmt = (
-            select(AgentScheduleRun)
-            .where(*filters)
-            .order_by(AgentScheduleRun.started_at.desc())
-            .offset((params.page - 1) * params.size)
-            .limit(params.size)
-        )
+        total = await self.db.scalar(select(func.count()).select_from(AgentScheduleRun).where(*filters))
+        stmt = select(AgentScheduleRun).where(*filters).order_by(AgentScheduleRun.started_at.desc()).offset((params.page - 1) * params.size).limit(params.size)
         items = (await self.db.execute(stmt)).scalars().all()
         return PageResult(
             items=[AgentScheduleRunOut.from_model(i) for i in items],

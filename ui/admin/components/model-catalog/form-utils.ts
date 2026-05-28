@@ -19,13 +19,9 @@ export const MODEL_TYPES = [
   { value: "other", label: "其它" },
 ] as const;
 
-export const VENDOR_LABEL: Record<string, string> = Object.fromEntries(
-  VENDORS.map((v) => [v.value, v.label]),
-);
+export const VENDOR_LABEL: Record<string, string> = Object.fromEntries(VENDORS.map((v) => [v.value, v.label]));
 
-export const TYPE_LABEL: Record<string, string> = Object.fromEntries(
-  MODEL_TYPES.map((t) => [t.value, t.label]),
-);
+export const TYPE_LABEL: Record<string, string> = Object.fromEntries(MODEL_TYPES.map((t) => [t.value, t.label]));
 
 export const STATUS_LABEL: Record<string, string> = {
   draft: "草稿",

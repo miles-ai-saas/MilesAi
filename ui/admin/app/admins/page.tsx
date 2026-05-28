@@ -112,25 +112,9 @@ export default function AdminsPage() {
         <section className="card mb-6 p-4">
           <h2 className="text-sm font-semibold text-ink">新建管理员</h2>
           <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-            <input
-              className="input-field"
-              placeholder="用户名"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-            />
-            <input
-              className="input-field"
-              type="password"
-              placeholder="初始密码"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-            <input
-              className="input-field"
-              placeholder="显示名称（可选）"
-              value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
-            />
+            <input className="input-field" placeholder="用户名" value={username} onChange={(e) => setUsername(e.target.value)} />
+            <input className="input-field" type="password" placeholder="初始密码" value={password} onChange={(e) => setPassword(e.target.value)} />
+            <input className="input-field" placeholder="显示名称（可选）" value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
             <select className="input-field" value={role} onChange={(e) => setRole(e.target.value)}>
               {ROLES.filter((r) => r.value !== "super_admin").map((r) => (
                 <option key={r.value} value={r.value}>
@@ -177,28 +161,16 @@ export default function AdminsPage() {
                         <span className="badge bg-brand-light text-ink">{a.role}</span>
                       </td>
                       <td className="col-center">
-                        {a.is_active ? (
-                          <span className="text-emerald-600">启用</span>
-                        ) : (
-                          <span className="text-ink-faint">已禁用</span>
-                        )}
+                        {a.is_active ? <span className="text-emerald-600">启用</span> : <span className="text-ink-faint">已禁用</span>}
                       </td>
                       <td className="col-actions">
                         {a.is_active && (
-                          <button
-                            type="button"
-                            className="text-brand hover:underline"
-                            onClick={() => setResetId(a.id)}
-                          >
+                          <button type="button" className="text-brand hover:underline" onClick={() => setResetId(a.id)}>
                             重置密码
                           </button>
                         )}
                         {a.is_active && a.id !== currentId && (
-                          <button
-                            type="button"
-                            className="text-red-600 hover:underline"
-                            onClick={() => onDisable(a.id)}
-                          >
+                          <button type="button" className="text-red-600 hover:underline" onClick={() => onDisable(a.id)}>
                             禁用
                           </button>
                         )}
@@ -208,14 +180,7 @@ export default function AdminsPage() {
                 </tbody>
               </table>
             </div>
-            <ListFooter
-              className="mt-3"
-              page={list.page}
-              size={list.size}
-              total={list.total}
-              onPageChange={list.setPage}
-              onSizeChange={list.setSize}
-            />
+            <ListFooter className="mt-3" page={list.page} size={list.size} total={list.total} onPageChange={list.setPage} onSizeChange={list.setSize} />
           </>
         )}
       </section>

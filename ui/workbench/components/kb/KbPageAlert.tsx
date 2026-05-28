@@ -15,18 +15,10 @@ const TONE_CLASS = {
 export function KbPageAlert({ tone, message, onDismiss }: Props) {
   if (!message) return null;
   return (
-    <div
-      className={`flex items-start justify-between gap-3 rounded-lg border px-3 py-2 text-sm ${TONE_CLASS[tone]}`}
-      role="alert"
-    >
+    <div className={`flex items-start justify-between gap-3 rounded-lg border px-3 py-2 text-sm ${TONE_CLASS[tone]}`} role="alert">
       <span className="min-w-0 flex-1">{message}</span>
       {onDismiss && (
-        <button
-          type="button"
-          className="shrink-0 text-xs opacity-70 hover:opacity-100"
-          onClick={onDismiss}
-          aria-label="关闭提示"
-        >
+        <button type="button" className="shrink-0 text-xs opacity-70 hover:opacity-100" onClick={onDismiss} aria-label="关闭提示">
           关闭
         </button>
       )}

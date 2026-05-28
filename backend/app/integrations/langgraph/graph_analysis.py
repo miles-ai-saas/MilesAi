@@ -139,8 +139,4 @@ def find_end_nodes(fg: FlowGraph, resolve_type) -> list[str]:
     ends = [n["id"] for n in fg.nodes if not outgoing.get(n["id"])]
     if ends:
         return ends
-    return [
-        n["id"]
-        for n in fg.nodes
-        if resolve_type(n) in TEXT_OUTPUT_NODE_TYPES
-    ]
+    return [n["id"] for n in fg.nodes if resolve_type(n) in TEXT_OUTPUT_NODE_TYPES]

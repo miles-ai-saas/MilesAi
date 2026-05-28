@@ -19,8 +19,7 @@ export const AGENT_HOST_FORM_STEPS = [
   { title: "成员 Agent", subtitle: "绑定外部 A2A Agent 与规则" },
 ] as const;
 
-const DEFAULT_HOST_PROMPT =
-  "你是 A2A 互联宿主编排器。根据用户问题，从已绑定的外部 Agent 中选择合适的成员委派任务，并综合各成员返回结果给出最终回答。";
+const DEFAULT_HOST_PROMPT = "你是 A2A 互联宿主编排器。根据用户问题，从已绑定的外部 Agent 中选择合适的成员委派任务，并综合各成员返回结果给出最终回答。";
 
 export function emptyHostAgentForm(): A2aHostFormValues {
   return {
@@ -48,15 +47,11 @@ export function agentToHostFormValues(agent: Agent): A2aHostFormValues {
       trigger_keywords: p.trigger_keywords ?? [],
       enabled: p.enabled !== false,
     })),
-    a2a_invoke_policy:
-      (cfg.a2a_invoke_policy as A2aHostFormValues["a2a_invoke_policy"]) || "rules_then_plan",
+    a2a_invoke_policy: (cfg.a2a_invoke_policy as A2aHostFormValues["a2a_invoke_policy"]) || "rules_then_plan",
   };
 }
 
-export function buildHostAgentConfig(
-  form: A2aHostFormValues,
-  base: Record<string, unknown>,
-): Record<string, unknown> {
+export function buildHostAgentConfig(form: A2aHostFormValues, base: Record<string, unknown>): Record<string, unknown> {
   return {
     ...base,
     a2a_invoke_policy: form.a2a_invoke_policy,

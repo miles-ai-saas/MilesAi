@@ -49,10 +49,7 @@ function GenerativeJobRow({
   onCancel: () => void;
   onRetry: () => void;
 }) {
-  const prompt =
-    job.params && typeof job.params.prompt === "string"
-      ? job.params.prompt
-      : "";
+  const prompt = job.params && typeof job.params.prompt === "string" ? job.params.prompt : "";
   const cancellable = canCancelGenerativeJob(job.status);
   return (
     <article className="rounded-xl border border-line bg-surface p-4 shadow-card transition hover:border-brand/20">
@@ -68,36 +65,24 @@ function GenerativeJobRow({
             />
           ) : null}
           <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <h3 className="font-medium text-ink">{generativeJobKindLabel(job.kind)}</h3>
-            <span
-              className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ${generativeJobStatusBadgeClass(job.status)}`}
-            >
-              {generativeJobStatusLabel(job.status, jobMeta)}
-            </span>
-            {job.progress_percent != null &&
-            (job.status === "pending" || job.status === "running") ? (
-              <span className="text-xs text-ink-muted">{job.progress_percent}%</span>
-            ) : null}
-          </div>
-          <p className="mt-1 text-xs text-ink-muted">
-            {generativeJobSourceLabel(job.source, jobMeta)} · {job.id.slice(0, 8)}…
-          </p>
-          {prompt ? (
-            <p className="mt-2 line-clamp-2 text-sm text-ink-muted">{prompt}</p>
-          ) : null}
-          {job.progress_message &&
-          (job.status === "pending" || job.status === "running") ? (
-            <p className="mt-1 text-xs text-amber-800">{job.progress_message}</p>
-          ) : null}
-          <time className="mt-2 block text-xs text-ink-faint">
-            {new Date(job.created_at).toLocaleString("zh-CN")}
-          </time>
-          {job.error_message ? (
-            <p className="mt-2 rounded-lg bg-red-50/80 px-3 py-2 text-xs text-red-700 line-clamp-2">
-              {job.error_message}
+            <div className="flex flex-wrap items-center gap-2">
+              <h3 className="font-medium text-ink">{generativeJobKindLabel(job.kind)}</h3>
+              <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ${generativeJobStatusBadgeClass(job.status)}`}>
+                {generativeJobStatusLabel(job.status, jobMeta)}
+              </span>
+              {job.progress_percent != null && (job.status === "pending" || job.status === "running") ? (
+                <span className="text-xs text-ink-muted">{job.progress_percent}%</span>
+              ) : null}
+            </div>
+            <p className="mt-1 text-xs text-ink-muted">
+              {generativeJobSourceLabel(job.source, jobMeta)} · {job.id.slice(0, 8)}…
             </p>
-          ) : null}
+            {prompt ? <p className="mt-2 line-clamp-2 text-sm text-ink-muted">{prompt}</p> : null}
+            {job.progress_message && (job.status === "pending" || job.status === "running") ? (
+              <p className="mt-1 text-xs text-amber-800">{job.progress_message}</p>
+            ) : null}
+            <time className="mt-2 block text-xs text-ink-faint">{new Date(job.created_at).toLocaleString("zh-CN")}</time>
+            {job.error_message ? <p className="mt-2 rounded-lg bg-red-50/80 px-3 py-2 text-xs text-red-700 line-clamp-2">{job.error_message}</p> : null}
           </div>
         </div>
         <div className="flex shrink-0 flex-wrap gap-3">
@@ -116,15 +101,9 @@ function GenerativeJobRow({
           )}
         </div>
       </div>
-      {!canCancelGenerativeJob(job.status) &&
-      job.progress_percent != null &&
-      job.progress_percent > 0 &&
-      job.progress_percent < 100 ? (
+      {!canCancelGenerativeJob(job.status) && job.progress_percent != null && job.progress_percent > 0 && job.progress_percent < 100 ? (
         <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-surface-muted">
-          <div
-            className="h-full rounded-full bg-brand transition-all"
-            style={{ width: `${job.progress_percent}%` }}
-          />
+          <div className="h-full rounded-full bg-brand transition-all" style={{ width: `${job.progress_percent}%` }} />
         </div>
       ) : null}
     </article>
@@ -146,14 +125,7 @@ type Props = {
   onExposeList?: (api: GenerativeJobsListApi) => void;
 };
 
-export function GenerativeJobsSection({
-  enabled,
-  search,
-  filter,
-  msg,
-  onMsg,
-  onExposeList,
-}: Props) {
+export function GenerativeJobsSection({ enabled, search, filter, msg, onMsg, onExposeList }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const jobMeta = useGenerativeJobMeta(enabled);
@@ -259,10 +231,7 @@ export function GenerativeJobsSection({
     }
   };
 
-  const cancellableOnPage = useMemo(
-    () => filtered.filter((j) => canCancelGenerativeJob(j.status)),
-    [filtered],
-  );
+  const cancellableOnPage = useMemo(() => filtered.filter((j) => canCancelGenerativeJob(j.status)), [filtered]);
 
   const toggleJobSelection = (jobId: string, checked: boolean) => {
     setSelectedJobIds((prev) => {
@@ -301,9 +270,7 @@ export function GenerativeJobsSection({
             type="button"
             onClick={() => setKindFilter(opt.value)}
             className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
-              kindFilter === opt.value
-                ? "bg-brand text-white"
-                : "bg-surface text-ink-muted ring-1 ring-line hover:text-ink"
+              kindFilter === opt.value ? "bg-brand text-white" : "bg-surface text-ink-muted ring-1 ring-line hover:text-ink"
             }`}
           >
             {opt.label}
@@ -313,11 +280,7 @@ export function GenerativeJobsSection({
 
       <div className="col-span-full grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <StatChip label="生成任务总数" value={String(list.total)} hint="当前筛选" />
-        <StatChip
-          label="本页进行中"
-          value={String(pageStats.running + pageStats.pending)}
-          hint={`失败 ${pageStats.failed}（当前页）`}
-        />
+        <StatChip label="本页进行中" value={String(pageStats.running + pageStats.pending)} hint={`失败 ${pageStats.failed}（当前页）`} />
         <StatChip label="本页展示" value={String(filtered.length)} hint="受搜索影响" />
       </div>
 
@@ -325,11 +288,7 @@ export function GenerativeJobsSection({
         {selectedJobIds.size > 0 ? (
           <div className="flex items-center justify-between rounded-lg border border-line bg-surface-subtle/50 px-4 py-2">
             <span className="text-xs text-ink-muted">已选 {selectedJobIds.size} 条</span>
-            <button
-              type="button"
-              className="text-xs font-medium text-red-600 hover:underline"
-              onClick={() => void batchCancelSelected()}
-            >
+            <button type="button" className="text-xs font-medium text-red-600 hover:underline" onClick={() => void batchCancelSelected()}>
               批量取消
             </button>
           </div>
@@ -339,9 +298,7 @@ export function GenerativeJobsSection({
             暂无生成任务。在智能体对话或流程中生图/生视频后会出现在此。
           </p>
         )}
-        {cancellableOnPage.length > 0 && filtered.length > 0 ? (
-          <p className="text-xs text-ink-faint">可勾选 {cancellableOnPage.length} 条待取消任务</p>
-        ) : null}
+        {cancellableOnPage.length > 0 && filtered.length > 0 ? <p className="text-xs text-ink-faint">可勾选 {cancellableOnPage.length} 条待取消任务</p> : null}
         {filtered.map((j) => (
           <GenerativeJobRow
             key={j.id}
@@ -358,23 +315,11 @@ export function GenerativeJobsSection({
 
       {!list.loading ? (
         <div className="col-span-full">
-          <ResourceListFooter
-            page={list.page}
-            size={list.size}
-            total={list.total}
-            onPageChange={list.setPage}
-            onSizeChange={list.setSize}
-          />
+          <ResourceListFooter page={list.page} size={list.size} total={list.total} onPageChange={list.setPage} onSizeChange={list.setSize} />
         </div>
       ) : null}
 
-      <GenerativeJobDetailDialog
-        open={!!detailJobId}
-        jobId={detailJobId}
-        jobMeta={jobMeta}
-        onClose={closeDetail}
-        onChanged={() => void list.reload()}
-      />
+      <GenerativeJobDetailDialog open={!!detailJobId} jobId={detailJobId} jobMeta={jobMeta} onClose={closeDetail} onChanged={() => void list.reload()} />
     </>
   );
 }

@@ -191,9 +191,7 @@ async def seed_compliance_for_tenant(session: AsyncSession, tenant_id) -> None:
 
         for word, action in spec.get("words", []):
             entry = await _get_or_create_entry(session, tenant_id, word)
-            await _ensure_binding(
-                session, library_id=lib.id, entry_id=entry.id, action=action
-            )
+            await _ensure_binding(session, library_id=lib.id, entry_id=entry.id, action=action)
 
     for word, lib_actions in SEED_MULTI_LIBRARY_WORDS:
         entry = await _get_or_create_entry(session, tenant_id, word)
@@ -208,9 +206,7 @@ async def seed_compliance_for_tenant(session: AsyncSession, tenant_id) -> None:
                     )
                 )
             if lib:
-                await _ensure_binding(
-                    session, library_id=lib.id, entry_id=entry.id, action=action
-                )
+                await _ensure_binding(session, library_id=lib.id, entry_id=entry.id, action=action)
 
     await session.flush()
 

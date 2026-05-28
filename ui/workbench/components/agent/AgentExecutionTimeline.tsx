@@ -2,17 +2,8 @@
 
 /** 单轮回复 steps 时间线（链路 §5，`agent-steps` 解析）。 */
 import { useMemo, useState } from "react";
-import {
-  buildStepsSummary,
-  formatToolParams,
-  parseAgentSteps,
-  type AgentStepStatus,
-  type ParsedAgentStep,
-} from "@/lib/agent-steps";
-import {
-  generativeToolConfirmButtonLabel,
-  generativeToolConfirmNote,
-} from "@/lib/generative-tool-ui";
+import { buildStepsSummary, formatToolParams, parseAgentSteps, type AgentStepStatus, type ParsedAgentStep } from "@/lib/agent-steps";
+import { generativeToolConfirmButtonLabel, generativeToolConfirmNote } from "@/lib/generative-tool-ui";
 import type { PendingToolCall } from "@/lib/types";
 
 type Props = {
@@ -40,12 +31,7 @@ const STATUS_LABEL: Record<AgentStepStatus, string> = {
   neutral: "",
 };
 
-export function AgentExecutionTimeline({
-  steps,
-  pendingTool,
-  onConfirmTool,
-  confirmToolDisabled,
-}: Props) {
+export function AgentExecutionTimeline({ steps, pendingTool, onConfirmTool, confirmToolDisabled }: Props) {
   const parsed = useMemo(() => parseAgentSteps(steps), [steps]);
   const summary = useMemo(() => buildStepsSummary(parsed), [parsed]);
   const [expanded, setExpanded] = useState(false);
@@ -64,9 +50,7 @@ export function AgentExecutionTimeline({
         <Chevron expanded={expanded} />
         <span className="font-medium text-ink">执行步骤</span>
         <span className="min-w-0 flex-1 truncate text-ink-muted">{summary}</span>
-        <span className="shrink-0 rounded-full bg-surface px-2 py-0.5 text-[10px] text-ink-muted">
-          {parsed.length}
-        </span>
+        <span className="shrink-0 rounded-full bg-surface px-2 py-0.5 text-[10px] text-ink-muted">{parsed.length}</span>
       </button>
 
       {expanded && (
@@ -85,17 +69,11 @@ export function AgentExecutionTimeline({
           </ol>
 
           <div className="mt-3 border-t border-line-soft pt-2">
-            <button
-              type="button"
-              className="text-[11px] text-ink-muted hover:text-brand"
-              onClick={() => setShowRaw((v) => !v)}
-            >
+            <button type="button" className="text-[11px] text-ink-muted hover:text-brand" onClick={() => setShowRaw((v) => !v)}>
               {showRaw ? "隐藏原始数据" : "查看原始数据"}
             </button>
             {showRaw && (
-              <pre className="mt-2 max-h-48 overflow-auto rounded-md bg-surface p-2 font-mono text-[10px] text-ink-muted">
-                {JSON.stringify(steps, null, 2)}
-              </pre>
+              <pre className="mt-2 max-h-48 overflow-auto rounded-md bg-surface p-2 font-mono text-[10px] text-ink-muted">{JSON.stringify(steps, null, 2)}</pre>
             )}
           </div>
         </div>
@@ -118,26 +96,13 @@ function StepRow({
   confirmToolDisabled?: boolean;
 }) {
   const statusLabel = STATUS_LABEL[step.status];
-  const showConfirm =
-    step.type === "tool_confirmation_required" &&
-    pendingTool &&
-    (!step.raw.slug || step.raw.slug === pendingTool.slug);
-  const confirmNote = showConfirm && pendingTool
-    ? generativeToolConfirmNote(pendingTool.slug, pendingTool.params)
-    : null;
+  const showConfirm = step.type === "tool_confirmation_required" && pendingTool && (!step.raw.slug || step.raw.slug === pendingTool.slug);
+  const confirmNote = showConfirm && pendingTool ? generativeToolConfirmNote(pendingTool.slug, pendingTool.params) : null;
 
   return (
     <li className="relative flex gap-3 pb-4 last:pb-0">
-      {!isLast && (
-        <span
-          className="absolute left-[7px] top-4 h-[calc(100%-4px)] w-px bg-line"
-          aria-hidden
-        />
-      )}
-      <span
-        className={`relative z-[1] mt-1 h-3.5 w-3.5 shrink-0 rounded-full ring-4 ${STATUS_DOT[step.status]}`}
-        aria-hidden
-      />
+      {!isLast && <span className="absolute left-[7px] top-4 h-[calc(100%-4px)] w-px bg-line" aria-hidden />}
+      <span className={`relative z-[1] mt-1 h-3.5 w-3.5 shrink-0 rounded-full ring-4 ${STATUS_DOT[step.status]}`} aria-hidden />
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
           <span className="text-xs font-medium text-ink">{step.title}</span>
@@ -157,40 +122,23 @@ function StepRow({
             </span>
           ) : null}
         </div>
-        {step.detail ? (
-          <p className="mt-0.5 text-[11px] leading-relaxed text-ink-muted">{step.detail}</p>
-        ) : null}
+        {step.detail ? <p className="mt-0.5 text-[11px] leading-relaxed text-ink-muted">{step.detail}</p> : null}
 
         {showConfirm && pendingTool ? (
           <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50/80 p-2.5">
             <p className="text-[11px] font-medium text-amber-900">{pendingTool.name}</p>
-            {pendingTool.description ? (
-              <p className="mt-0.5 text-[11px] text-amber-800/80">{pendingTool.description}</p>
-            ) : null}
-            {confirmNote ? (
-              <p className="mt-1.5 text-[11px] leading-relaxed text-amber-900/90">
-                {confirmNote}
-              </p>
-            ) : null}
-            <p className="mt-1.5 font-mono text-[10px] text-amber-900/90">
-              {formatToolParams(pendingTool.params)}
-            </p>
+            {pendingTool.description ? <p className="mt-0.5 text-[11px] text-amber-800/80">{pendingTool.description}</p> : null}
+            {confirmNote ? <p className="mt-1.5 text-[11px] leading-relaxed text-amber-900/90">{confirmNote}</p> : null}
+            <p className="mt-1.5 font-mono text-[10px] text-amber-900/90">{formatToolParams(pendingTool.params)}</p>
             {onConfirmTool ? (
-              <button
-                type="button"
-                className="btn-primary mt-2 px-3 py-1 text-xs"
-                disabled={confirmToolDisabled}
-                onClick={onConfirmTool}
-              >
+              <button type="button" className="btn-primary mt-2 px-3 py-1 text-xs" disabled={confirmToolDisabled} onClick={onConfirmTool}>
                 {generativeToolConfirmButtonLabel(pendingTool.slug)}
               </button>
             ) : null}
           </div>
         ) : null}
 
-        {step.type === "grade" && step.raw.reason ? (
-          <p className="mt-1 text-[10px] text-ink-faint">{String(step.raw.reason)}</p>
-        ) : null}
+        {step.type === "grade" && step.raw.reason ? <p className="mt-1 text-[10px] text-ink-faint">{String(step.raw.reason)}</p> : null}
       </div>
     </li>
   );
@@ -198,19 +146,8 @@ function StepRow({
 
 function Chevron({ expanded }: { expanded: boolean }) {
   return (
-    <svg
-      className={`h-3.5 w-3.5 shrink-0 text-ink-muted transition ${expanded ? "rotate-90" : ""}`}
-      viewBox="0 0 16 16"
-      fill="none"
-      aria-hidden
-    >
-      <path
-        d="M6 4l4 4-4 4"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
+    <svg className={`h-3.5 w-3.5 shrink-0 text-ink-muted transition ${expanded ? "rotate-90" : ""}`} viewBox="0 0 16 16" fill="none" aria-hidden>
+      <path d="M6 4l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
@@ -227,10 +164,7 @@ export function AgentExecutionSkeleton() {
         {[0, 1].map((i) => (
           <div key={i} className="flex items-center gap-3">
             <span className="h-3 w-3 animate-pulse rounded-full bg-line" />
-            <span
-              className="h-2.5 animate-pulse rounded bg-line"
-              style={{ width: `${55 + i * 15}%` }}
-            />
+            <span className="h-2.5 animate-pulse rounded bg-line" style={{ width: `${55 + i * 15}%` }} />
           </div>
         ))}
       </div>

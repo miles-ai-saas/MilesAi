@@ -39,10 +39,7 @@ export function normalizeMcpTransport(transport?: string | null): "http" | "sse"
   return "sse";
 }
 
-export function mcpTransportLabel(
-  transport?: string | null,
-  meta?: McpMeta | null,
-): string {
+export function mcpTransportLabel(transport?: string | null, meta?: McpMeta | null): string {
   const key = normalizeMcpTransport(transport);
   return optionLabel(meta?.transport_types, key) || TRANSPORT_TYPE_FALLBACK[key] || key;
 }
@@ -53,13 +50,9 @@ function mcpSyncDisplayKey(s: McpService): "sync_failed" | "synced" | "unsynced"
   return "unsynced";
 }
 
-export function mcpSyncStatusLabel(
-  s: McpService,
-  meta?: McpMeta | null,
-): { label: string; tone: "ok" | "warn" | "muted" } {
+export function mcpSyncStatusLabel(s: McpService, meta?: McpMeta | null): { label: string; tone: "ok" | "warn" | "muted" } {
   const key = mcpSyncDisplayKey(s);
-  const label =
-    optionLabel(meta?.sync_displays, key) || SYNC_DISPLAY_FALLBACK[key] || key;
+  const label = optionLabel(meta?.sync_displays, key) || SYNC_DISPLAY_FALLBACK[key] || key;
   if (key === "sync_failed") return { label, tone: "warn" };
   if (key === "synced") return { label, tone: "ok" };
   return { label, tone: "muted" };

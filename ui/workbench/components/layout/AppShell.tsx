@@ -15,11 +15,7 @@ import { SystemShell } from "@/components/layout/SystemShell";
 import { SectionLink } from "@/components/layout/SectionLink";
 import { UserMenu } from "@/components/layout/UserMenu";
 import { WorkbenchHeaderNav } from "@/components/layout/WorkbenchHeaderNav";
-import {
-  getAppSection,
-  isFullBleedPage,
-  isFullHeightPage,
-} from "@/lib/nav-config";
+import { getAppSection, isFullBleedPage, isFullHeightPage } from "@/lib/nav-config";
 import { MetaCacheProvider } from "@/lib/enum-meta-cache";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -36,7 +32,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!hydrated || !token || user) return;
-    api.fetchMe().then(setUser).catch(() => {});
+    api
+      .fetchMe()
+      .then(setUser)
+      .catch(() => {});
   }, [hydrated, token, user, setUser]);
 
   if (pathname === "/login") {
@@ -53,36 +52,22 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <MetaCacheProvider>
-    <div
-      className={`flex flex-col bg-surface-muted ${
-        fullHeight ? "h-dvh overflow-hidden" : "min-h-screen"
-      }`}
-    >
-      <header className="flex h-14 shrink-0 items-center gap-3 border-b border-line bg-surface px-4">
-        <BrandHeader productLine="MilesAi · 工作台" href="/workbench/dashboard" />
+      <div className={`flex flex-col bg-surface-muted ${fullHeight ? "h-dvh overflow-hidden" : "min-h-screen"}`}>
+        <header className="flex h-14 shrink-0 items-center gap-3 border-b border-line bg-surface px-4">
+          <BrandHeader productLine="MilesAi · 工作台" href="/workbench/dashboard" />
 
-        {isWorkbench ? (
-          <WorkbenchHeaderNav pathname={pathname} />
-        ) : (
-          <div className="min-w-0 flex-1" />
-        )}
+          {isWorkbench ? <WorkbenchHeaderNav pathname={pathname} /> : <div className="min-w-0 flex-1" />}
 
-        <div className="flex shrink-0 items-center gap-3 border-l border-line-soft pl-3">
-          <SectionLink section={section} />
-          <UserMenu variant="header" />
-        </div>
-      </header>
+          <div className="flex shrink-0 items-center gap-3 border-l border-line-soft pl-3">
+            <SectionLink section={section} />
+            <UserMenu variant="header" />
+          </div>
+        </header>
 
-      <main
-        className={`min-h-0 flex-1 ${
-          fullHeight
-            ? "flex h-0 flex-col overflow-hidden"
-            : "overflow-auto"
-        } ${fullBleed ? "" : "p-4 lg:px-6"}`}
-      >
-        {children}
-      </main>
-    </div>
+        <main className={`min-h-0 flex-1 ${fullHeight ? "flex h-0 flex-col overflow-hidden" : "overflow-auto"} ${fullBleed ? "" : "p-4 lg:px-6"}`}>
+          {children}
+        </main>
+      </div>
     </MetaCacheProvider>
   );
 }

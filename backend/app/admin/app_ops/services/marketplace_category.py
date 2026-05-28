@@ -21,11 +21,7 @@ class AdminMarketplaceCategoryService:
         self.db = db
 
     async def list_categories(self) -> list[MarketplaceCategoryOut]:
-        stmt = (
-            select(AppCategory)
-            .where(not_deleted(AppCategory))
-            .order_by(AppCategory.sort_order.asc(), AppCategory.name.asc())
-        )
+        stmt = select(AppCategory).where(not_deleted(AppCategory)).order_by(AppCategory.sort_order.asc(), AppCategory.name.asc())
         rows = (await self.db.execute(stmt)).scalars().all()
         out: list[MarketplaceCategoryOut] = []
         for row in rows:

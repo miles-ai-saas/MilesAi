@@ -14,7 +14,10 @@ import type { Role, TenantUser } from "@/lib/types";
 
 export default function SystemUsersPage() {
   const { ready, user: currentUser } = useRequireAuth();
-  const list = usePagedList(useCallback((p, s) => api.listUsers(p, s), []), { enabled: ready });
+  const list = usePagedList(
+    useCallback((p, s) => api.listUsers(p, s), []),
+    { enabled: ready },
+  );
   const { requestConfirm, confirmDialog } = useConfirmAction();
 
   const [roles, setRoles] = useState<Role[]>([]);
@@ -58,9 +61,7 @@ export default function SystemUsersPage() {
   };
 
   const toggleRole = (id: string) => {
-    setRoleIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
-    );
+    setRoleIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   };
 
   const onSave = async () => {
@@ -116,15 +117,11 @@ export default function SystemUsersPage() {
   };
 
   const toggleSelect = (id: string) => {
-    setSelectedIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
-    );
+    setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   };
 
   const toggleSelectAll = () => {
-    const selectable = list.items
-      .filter((u: TenantUser) => u.id !== currentUser?.id)
-      .map((u: TenantUser) => u.id);
+    const selectable = list.items.filter((u: TenantUser) => u.id !== currentUser?.id).map((u: TenantUser) => u.id);
     if (selectable.length > 0 && selectable.every((id) => selectedIds.includes(id))) {
       setSelectedIds((prev) => prev.filter((id) => !selectable.includes(id)));
     } else {
@@ -132,17 +129,11 @@ export default function SystemUsersPage() {
     }
   };
 
-  const runBatch = async (
-    action: "enable" | "disable" | "assign_roles" | "deactivate",
-    roleIds?: string[],
-  ) => {
+  const runBatch = async (action: "enable" | "disable" | "assign_roles" | "deactivate", roleIds?: string[]) => {
     if (selectedIds.length === 0) return;
     const res = await api.batchUsers(selectedIds, action, roleIds);
     setSelectedIds([]);
-    const n =
-      "deactivated" in res && typeof res.deactivated === "number"
-        ? res.deactivated
-        : res.processed;
+    const n = "deactivated" in res && typeof res.deactivated === "number" ? res.deactivated : res.processed;
     alert(
       action === "deactivate"
         ? `已删除 ${n} 个用户${res.skipped ? `，跳过 ${res.skipped} 个` : ""}`
@@ -250,9 +241,7 @@ export default function SystemUsersPage() {
                       onChange={toggleSelectAll}
                       checked={
                         list.items.some((u: TenantUser) => u.id !== currentUser?.id) &&
-                        list.items
-                          .filter((u: TenantUser) => u.id !== currentUser?.id)
-                          .every((u: TenantUser) => selectedIds.includes(u.id))
+                        list.items.filter((u: TenantUser) => u.id !== currentUser?.id).every((u: TenantUser) => selectedIds.includes(u.id))
                       }
                     />
                   </th>
@@ -275,60 +264,33 @@ export default function SystemUsersPage() {
                   <tr key={u.id}>
                     <td className="px-4 py-3">
                       {u.id !== currentUser?.id && (
-                        <input
-                          type="checkbox"
-                          checked={selectedIds.includes(u.id)}
-                          onChange={() => toggleSelect(u.id)}
-                          aria-label={`选择 ${u.username}`}
-                        />
+                        <input type="checkbox" checked={selectedIds.includes(u.id)} onChange={() => toggleSelect(u.id)} aria-label={`选择 ${u.username}`} />
                       )}
                     </td>
                     <td className="px-4 py-3 font-medium text-ink">{u.username}</td>
                     <td className="px-4 py-3 text-ink-muted">{u.email}</td>
                     <td className="px-4 py-3">
-                      <span
-                        className={`rounded px-2 py-0.5 text-xs ${
-                          u.is_active ? "bg-brand-light text-brand" : "bg-surface-muted text-ink-faint"
-                        }`}
-                      >
+                      <span className={`rounded px-2 py-0.5 text-xs ${u.is_active ? "bg-brand-light text-brand" : "bg-surface-muted text-ink-faint"}`}>
                         {u.is_active ? "启用" : "禁用"}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-xs text-ink-muted">
-                      {u.role_codes?.join(", ") || "—"}
-                    </td>
+                    <td className="px-4 py-3 text-xs text-ink-muted">{u.role_codes?.join(", ") || "—"}</td>
                     <td className="px-4 py-3 text-right">
-                      <button
-                        type="button"
-                        className="mr-3 text-xs text-brand hover:underline"
-                        onClick={() => openEdit(u)}
-                      >
+                      <button type="button" className="mr-3 text-xs text-brand hover:underline" onClick={() => openEdit(u)}>
                         编辑
                       </button>
                       {u.is_active && (
-                        <button
-                          type="button"
-                          className="mr-3 text-xs text-ink-muted hover:text-ink"
-                          onClick={() => onResetPassword(u)}
-                        >
+                        <button type="button" className="mr-3 text-xs text-ink-muted hover:text-ink" onClick={() => onResetPassword(u)}>
                           重置密码
                         </button>
                       )}
                       {u.is_active && (
-                        <button
-                          type="button"
-                          className="mr-3 text-xs text-ink-muted hover:text-ink"
-                          onClick={() => onRevokeSessions(u)}
-                        >
+                        <button type="button" className="mr-3 text-xs text-ink-muted hover:text-ink" onClick={() => onRevokeSessions(u)}>
                           下线会话
                         </button>
                       )}
                       {u.is_active && (
-                        <button
-                          type="button"
-                          className="text-xs text-red-600 hover:underline"
-                          onClick={() => onDeactivate(u)}
-                        >
+                        <button type="button" className="text-xs text-red-600 hover:underline" onClick={() => onDeactivate(u)}>
                           删除
                         </button>
                       )}
@@ -338,14 +300,7 @@ export default function SystemUsersPage() {
               </tbody>
             </table>
           </div>
-          <ResourceListFooter
-            className="mt-3"
-            page={list.page}
-            size={list.size}
-            total={list.total}
-            onPageChange={list.setPage}
-            onSizeChange={list.setSize}
-          />
+          <ResourceListFooter className="mt-3" page={list.page} size={list.size} total={list.total} onPageChange={list.setPage} onSizeChange={list.setSize} />
         </>
       )}
 
@@ -364,21 +319,8 @@ export default function SystemUsersPage() {
           </>
         }
       >
-        {!editUser && (
-          <input
-            className="input-field w-full"
-            placeholder="用户名"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-          />
-        )}
-        <input
-          className="input-field w-full"
-          placeholder="邮箱"
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
+        {!editUser && <input className="input-field w-full" placeholder="用户名" value={username} onChange={(e) => setUsername(e.target.value)} />}
+        <input className="input-field w-full" placeholder="邮箱" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
         {!editUser && (
           <input
             className="input-field w-full"
@@ -388,12 +330,7 @@ export default function SystemUsersPage() {
             onChange={(e) => setPassword(e.target.value)}
           />
         )}
-        <input
-          className="input-field w-full"
-          placeholder="手机号（可选）"
-          value={phone}
-          onChange={(e) => setPhone(e.target.value)}
-        />
+        <input className="input-field w-full" placeholder="手机号（可选）" value={phone} onChange={(e) => setPhone(e.target.value)} />
         {editUser && (
           <label className="flex items-center gap-2 text-sm text-ink-muted">
             <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} />
@@ -405,11 +342,7 @@ export default function SystemUsersPage() {
           <div className="flex flex-wrap gap-3">
             {roles.map((r) => (
               <label key={r.id} className="flex cursor-pointer items-center gap-1 text-xs">
-                <input
-                  type="checkbox"
-                  checked={roleIds.includes(r.id)}
-                  onChange={() => toggleRole(r.id)}
-                />
+                <input type="checkbox" checked={roleIds.includes(r.id)} onChange={() => toggleRole(r.id)} />
                 {r.name}
               </label>
             ))}
@@ -426,20 +359,14 @@ export default function SystemUsersPage() {
             <button type="button" className="btn-ghost" onClick={() => setResetUser(null)}>
               取消
             </button>
-            <button
-              type="button"
-              className="btn-primary"
-              disabled={resetPassword.length < 6}
-              onClick={onConfirmResetPassword}
-            >
+            <button type="button" className="btn-primary" disabled={resetPassword.length < 6} onClick={onConfirmResetPassword}>
               确认重置
             </button>
           </>
         }
       >
         <p className="text-sm text-ink-muted">
-          为用户 <span className="font-medium text-ink">{resetUser?.username}</span>{" "}
-          设置新密码。重置后该用户在所有设备上的登录将失效。
+          为用户 <span className="font-medium text-ink">{resetUser?.username}</span> 设置新密码。重置后该用户在所有设备上的登录将失效。
         </p>
         <input
           className="input-field mt-3 w-full"
@@ -459,12 +386,7 @@ export default function SystemUsersPage() {
             <button type="button" className="btn-ghost" onClick={() => setBatchRolesOpen(false)}>
               取消
             </button>
-            <button
-              type="button"
-              className="btn-primary"
-              disabled={batchRoleIds.length === 0}
-              onClick={() => void onConfirmBatchRoles()}
-            >
+            <button type="button" className="btn-primary" disabled={batchRoleIds.length === 0} onClick={() => void onConfirmBatchRoles()}>
               确认分配
             </button>
           </>
@@ -479,11 +401,7 @@ export default function SystemUsersPage() {
               <input
                 type="checkbox"
                 checked={batchRoleIds.includes(r.id)}
-                onChange={() =>
-                  setBatchRoleIds((prev) =>
-                    prev.includes(r.id) ? prev.filter((x) => x !== r.id) : [...prev, r.id],
-                  )
-                }
+                onChange={() => setBatchRoleIds((prev) => (prev.includes(r.id) ? prev.filter((x) => x !== r.id) : [...prev, r.id]))}
               />
               {r.name}
             </label>

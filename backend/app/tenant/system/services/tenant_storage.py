@@ -38,16 +38,12 @@ class TenantObjectStorageService(BaseService):
                 endpoint=row.endpoint,
                 bucket=row.bucket,
                 access_key=row.access_key,
-                secret_key_masked=mask_secret(
-                    decrypt_secret(row.secret_key_encrypted) if row.secret_key_encrypted else None
-                ),
+                secret_key_masked=mask_secret(decrypt_secret(row.secret_key_encrypted) if row.secret_key_encrypted else None),
                 secure=row.secure,
                 region=row.region,
                 source="platform",
             )
-        secret_plain = (
-            decrypt_secret(row.secret_key_encrypted) if row.secret_key_encrypted else ""
-        )
+        secret_plain = decrypt_secret(row.secret_key_encrypted) if row.secret_key_encrypted else ""
         return TenantObjectStorageOut(
             tenant_id=row.tenant_id,
             is_enabled=row.is_enabled,
@@ -74,9 +70,7 @@ class TenantObjectStorageService(BaseService):
         if not has_secret and not has_stored:
             raise BadRequestError("启用租户对象存储时必须填写 Secret Key")
 
-    async def upsert_config(
-        self, body: TenantObjectStorageUpsert, *, request=None
-    ) -> TenantObjectStorageOut:
+    async def upsert_config(self, body: TenantObjectStorageUpsert, *, request=None) -> TenantObjectStorageOut:
         row = await self.db.get(TenantObjectStorageConfig, self.ctx.tenant_id)
         self._validate_upsert(body, row)
 

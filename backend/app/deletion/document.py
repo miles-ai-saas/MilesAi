@@ -21,9 +21,7 @@ from app.models.kb import DocumentChunk, VectorRef
 
 async def _chunk_ids_for_document_async(db: AsyncSession, document_id: UUID) -> list[UUID]:
     """查询文档下所有 chunk 主键。"""
-    result = await db.execute(
-        select(DocumentChunk.id).where(DocumentChunk.document_id == document_id)
-    )
+    result = await db.execute(select(DocumentChunk.id).where(DocumentChunk.document_id == document_id))
     return list(result.scalars().all())
 
 
@@ -32,11 +30,7 @@ def clear_document_derived_data_sync(db: Session, document_id: UUID) -> None:
 
     顺序：先 PG 关联表，再向量库按 document_id 删除（避免孤儿向量）。
     """
-    chunk_ids = list(
-        db.scalars(
-            select(DocumentChunk.id).where(DocumentChunk.document_id == document_id)
-        )
-    )
+    chunk_ids = list(db.scalars(select(DocumentChunk.id).where(DocumentChunk.document_id == document_id)))
     if chunk_ids:
         db.execute(delete(VectorRef).where(VectorRef.chunk_id.in_(chunk_ids)))
         db.execute(delete(DocumentChunk).where(DocumentChunk.document_id == document_id))

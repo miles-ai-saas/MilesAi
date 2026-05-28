@@ -68,6 +68,7 @@ async def loop_node(
     run_subflow = ctx.run_subflow
     if run_subflow is None:
         from app.flow_runtime.runtime_factory import get_flow_runtime
+
         run_subflow = get_flow_runtime().run  # pragma: no cover — 兜底路径（正常由 flow_runner 注入）
 
     for iteration in range(1, max_iterations + 1):
@@ -83,11 +84,13 @@ async def loop_node(
         result = await run_subflow(graph_json, child_ctx)
         output = pick_subflow_output(result.output, node_data.get("output_key"))
 
-        all_steps.append({
-            "iteration": iteration,
-            "steps": summarize_child_steps(result.steps),
-            "output": output,
-        })
+        all_steps.append(
+            {
+                "iteration": iteration,
+                "steps": summarize_child_steps(result.steps),
+                "output": output,
+            }
+        )
 
         # 条件退出检查
         if condition_field and isinstance(output, dict):

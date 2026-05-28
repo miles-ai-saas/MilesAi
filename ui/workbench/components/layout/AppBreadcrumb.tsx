@@ -18,9 +18,7 @@ export function AppBreadcrumb({ items }: { items: BreadcrumbItem[] }) {
                 {item.label}
               </Link>
             ) : (
-              <span className={`truncate ${isLast ? "font-medium text-ink" : "text-ink-muted"}`}>
-                {item.label}
-              </span>
+              <span className={`truncate ${isLast ? "font-medium text-ink" : "text-ink-muted"}`}>{item.label}</span>
             )}
           </span>
         );

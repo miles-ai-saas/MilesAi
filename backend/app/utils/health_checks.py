@@ -143,13 +143,15 @@ def _collect_worker_info_sync() -> dict:
         w_reserved = reserved.get(name, [])
         w_queues = active_queues.get(name, [])
         pool = w_stat.get("pool", {})
-        workers.append({
-            "name": name,
-            "pool_size": pool.get("max-concurrency", 0) if isinstance(pool, dict) else 0,
-            "active_tasks": len(w_active),
-            "reserved_tasks": len(w_reserved),
-            "queues": [q.get("name", "") for q in w_queues] if w_queues else [],
-        })
+        workers.append(
+            {
+                "name": name,
+                "pool_size": pool.get("max-concurrency", 0) if isinstance(pool, dict) else 0,
+                "active_tasks": len(w_active),
+                "reserved_tasks": len(w_reserved),
+                "queues": [q.get("name", "") for q in w_queues] if w_queues else [],
+            }
+        )
         total_active += len(w_active)
         total_reserved += len(w_reserved)
 

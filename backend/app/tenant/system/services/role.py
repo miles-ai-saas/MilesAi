@@ -48,11 +48,7 @@ class RoleService(BaseService):
         ]
 
     async def list_permissions(self) -> list[PermissionGroupOut]:
-        rows = (
-            await self.db.execute(
-                select(Permission).where(not_deleted(Permission)).order_by(Permission.module, Permission.code)
-            )
-        ).scalars().all()
+        rows = (await self.db.execute(select(Permission).where(not_deleted(Permission)).order_by(Permission.module, Permission.code))).scalars().all()
         groups: dict[str, list[PermissionOut]] = {}
         for p in rows:
             groups.setdefault(p.module, []).append(PermissionOut.model_validate(p))

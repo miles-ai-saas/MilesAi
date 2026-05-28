@@ -36,10 +36,12 @@ async def resolve_bound_skill(
         from sqlalchemy import select
 
         row = await db.scalar(
-            select(SkillPackage).where(
+            select(SkillPackage)
+            .where(
                 SkillPackage.tenant_id == ctx.tenant_id,
                 SkillPackage.slug == skill_slug,
-            ).limit(1)
+            )
+            .limit(1)
         )
     if not row or is_marked_deleted(row) or not row.is_active:
         raise NotFoundError("技能包不存在或已停用")
@@ -106,9 +108,11 @@ async def skill_run_script(
         raise BadRequestError("暂不支持直接执行 .sh，请使用 Python 脚本")
 
     source = validate_script_source(source)
-    script_params = params.get("params") if isinstance(params.get("params"), dict) else {
-        k: v for k, v in params.items() if k not in ("path", "skill_package_id", "skill_slug", "params")
-    }
+    script_params = (
+        params.get("params")
+        if isinstance(params.get("params"), dict)
+        else {k: v for k, v in params.items() if k not in ("path", "skill_package_id", "skill_slug", "params")}
+    )
 
     from app.tenant.mcp.runner.client import RunnerClient
     from app.tenant.mcp.runner.audit import write_script_runner_session

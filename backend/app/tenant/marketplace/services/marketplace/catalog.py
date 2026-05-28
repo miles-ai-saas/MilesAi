@@ -79,9 +79,7 @@ class MarketplaceCatalogMixin:
             by_tenant.setdefault(tid, set()).add(app.id)
         out: dict[UUID, list[TagRefOut]] = {}
         for tenant_id, entity_ids in by_tenant.items():
-            partial = await tag_svc.get_refs_map_for_tenant(
-                TagEntityType.MARKETPLACE_APP, entity_ids, tenant_id
-            )
+            partial = await tag_svc.get_refs_map_for_tenant(TagEntityType.MARKETPLACE_APP, entity_ids, tenant_id)
             out.update(partial)
         return out
 
@@ -105,10 +103,7 @@ class MarketplaceCatalogMixin:
         """广场：公开应用或本租户发布的租户内可见应用。"""
         return or_(
             MarketplaceApp.visibility == MarketplaceAppVisibility.PUBLIC.value,
-            (
-                (MarketplaceApp.visibility == MarketplaceAppVisibility.TENANT_ONLY.value)
-                & (MarketplaceApp.publisher_tenant_id == self.ctx.tenant_id)
-            ),
+            ((MarketplaceApp.visibility == MarketplaceAppVisibility.TENANT_ONLY.value) & (MarketplaceApp.publisher_tenant_id == self.ctx.tenant_id)),
         )
 
     async def app_out_with_tags(self, app: MarketplaceApp) -> MarketplaceAppOut:
@@ -122,9 +117,7 @@ class MarketplaceCatalogMixin:
             tags=tags_map.get(app.id, []),
         )
 
-    async def apps_to_out(
-        self, apps: list[MarketplaceApp], *, installed_ids: set[UUID]
-    ) -> list[MarketplaceAppOut]:
+    async def apps_to_out(self, apps: list[MarketplaceApp], *, installed_ids: set[UUID]) -> list[MarketplaceAppOut]:
         tags_map = await self.tags_map_for_apps(apps)
         return [
             self.app_out(
@@ -138,11 +131,7 @@ class MarketplaceCatalogMixin:
 
     async def get_app_or_raise(self, app_id: UUID) -> MarketplaceApp:
         """加载应用（含分类）；不存在则 404。"""
-        stmt = (
-            select(MarketplaceApp)
-            .where(MarketplaceApp.id == app_id)
-            .options(selectinload(MarketplaceApp.category))
-        )
+        stmt = select(MarketplaceApp).where(MarketplaceApp.id == app_id).options(selectinload(MarketplaceApp.category))
         app = (await self.db.execute(stmt)).scalar_one_or_none()
         if not app:
             raise NotFoundError("应用不存在")
@@ -180,9 +169,7 @@ class MarketplaceCatalogMixin:
             self._plaza_visibility_filter(),
         ]
         if category_slug:
-            stmt = stmt.join(AppCategory, MarketplaceApp.category_id == AppCategory.id).where(
-                AppCategory.slug == category_slug
-            )
+            stmt = stmt.join(AppCategory, MarketplaceApp.category_id == AppCategory.id).where(AppCategory.slug == category_slug)
             count_filters.append(AppCategory.slug == category_slug)
         tag_filter = self._plaza_tag_filter(tag_slugs)
         if tag_filter is not None:
@@ -190,9 +177,7 @@ class MarketplaceCatalogMixin:
             count_filters.append(tag_filter)
         count_stmt = select(func.count(MarketplaceApp.id)).where(*count_filters)
         if category_slug:
-            count_stmt = count_stmt.join(
-                AppCategory, MarketplaceApp.category_id == AppCategory.id
-            )
+            count_stmt = count_stmt.join(AppCategory, MarketplaceApp.category_id == AppCategory.id)
         total = await self.db.scalar(count_stmt)
         if sort == "rating":
             stmt = stmt.order_by(
@@ -213,10 +198,7 @@ class MarketplaceCatalogMixin:
         if app.status != MarketplaceAppStatus.PUBLISHED:
             if app.publisher_tenant_id != self.ctx.tenant_id:
                 raise NotFoundError("应用不存在或未发布")
-        elif (
-            app.visibility == MarketplaceAppVisibility.TENANT_ONLY.value
-            and app.publisher_tenant_id != self.ctx.tenant_id
-        ):
+        elif app.visibility == MarketplaceAppVisibility.TENANT_ONLY.value and app.publisher_tenant_id != self.ctx.tenant_id:
             raise NotFoundError("应用不存在或未发布")
         installed_ids = await self.installed_app_ids()
         cat_name = app.category.name if app.category else None
@@ -241,21 +223,12 @@ class MarketplaceCatalogMixin:
             my_rating=AppRatingOut.model_validate(my_rating) if my_rating else None,
         )
 
-    async def list_my_apps(
-        self, params: PageParams, *, tag_ids: list[UUID] | None = None
-    ) -> PageResult[MarketplaceAppOut]:
+    async def list_my_apps(self, params: PageParams, *, tag_ids: list[UUID] | None = None) -> PageResult[MarketplaceAppOut]:
         """分页列出本租户发布的应用。"""
         installed_ids = await self.installed_app_ids()
         filters = [MarketplaceApp.publisher_tenant_id == self.ctx.tenant_id]
-        stmt = (
-            select(MarketplaceApp)
-            .where(*filters)
-            .options(selectinload(MarketplaceApp.category))
-            .order_by(MarketplaceApp.updated_at.desc())
-        )
-        tag_filter = TagService(self.db, self.ctx).entity_id_filter(
-            TagEntityType.MARKETPLACE_APP, tag_ids or []
-        )
+        stmt = select(MarketplaceApp).where(*filters).options(selectinload(MarketplaceApp.category)).order_by(MarketplaceApp.updated_at.desc())
+        tag_filter = TagService(self.db, self.ctx).entity_id_filter(TagEntityType.MARKETPLACE_APP, tag_ids or [])
         if tag_filter is not None:
             stmt = stmt.where(MarketplaceApp.id.in_(tag_filter))
             filters.append(MarketplaceApp.id.in_(tag_filter))

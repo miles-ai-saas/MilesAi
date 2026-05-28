@@ -34,11 +34,7 @@ def persist_document_ingest_failure(
 
     EMBEDDING 阶段失败标 EMBED_FAILED，其余（含 PARSING）标 PARSE_FAILED。
     """
-    doc.status = (
-        DocumentStatus.EMBED_FAILED
-        if phase == DocumentStatus.EMBEDDING
-        else DocumentStatus.PARSE_FAILED
-    )
+    doc.status = DocumentStatus.EMBED_FAILED if phase == DocumentStatus.EMBEDDING else DocumentStatus.PARSE_FAILED
     doc.fail_reason = str(exc)[:2000]
     db.flush()
     db.commit()

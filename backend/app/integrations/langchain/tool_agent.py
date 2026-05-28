@@ -177,9 +177,7 @@ async def run_tool_calling_chat(
     openai_tools = _tools_to_openai_schema(tools)
     temperature = float((agent.config or {}).get("temperature", 0.7))
     max_media = int((agent.config or {}).get("max_media_per_turn", 4))
-    media_parts = (
-        await resolve_media_refs(db, ctx, body.media, max_count=max_media) if body.media else []
-    )
+    media_parts = await resolve_media_refs(db, ctx, body.media, max_count=max_media) if body.media else []
     chat_query = body.query.strip() or ("请根据附图回答。" if media_parts else body.query)
     user_msg = build_user_message(query=chat_query, media_parts=media_parts)
     messages: list[dict] = [
@@ -191,9 +189,7 @@ async def run_tool_calling_chat(
     artifacts: list[ChatArtifact] = []
 
     for _ in range(max_iter):
-        response = await _litellm_with_tools(
-            model, messages, openai_tools, temperature=temperature
-        )
+        response = await _litellm_with_tools(model, messages, openai_tools, temperature=temperature)
         choice = response.choices[0]
         message = choice.message
         tool_calls = getattr(message, "tool_calls", None) or []
@@ -267,11 +263,7 @@ async def run_tool_calling_chat(
                 actor_user_id=ctx.user_id,
                 invoke_source="agent",
             )
-            pending_job_id = (
-                output.get("generative_job_id")
-                if isinstance(output, dict) and output.get("status") == "pending"
-                else None
-            )
+            pending_job_id = output.get("generative_job_id") if isinstance(output, dict) and output.get("status") == "pending" else None
             if pending_job_id:
                 steps.append(
                     {
@@ -283,11 +275,7 @@ async def run_tool_calling_chat(
                     }
                 )
                 job_kind = str(output.get("kind") or "video")
-                default_msg = (
-                    "图片生成任务已提交，完成后将自动展示预览。"
-                    if job_kind == "image"
-                    else "视频生成任务已提交，完成后将自动展示预览。"
-                )
+                default_msg = "图片生成任务已提交，完成后将自动展示预览。" if job_kind == "image" else "视频生成任务已提交，完成后将自动展示预览。"
                 return ChatResponse(
                     answer=str(output.get("message") or default_msg),
                     steps=steps,

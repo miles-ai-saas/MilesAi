@@ -85,21 +85,13 @@ class McpServiceManager(BaseService):
         assert_tenant_access(self.ctx, row.tenant_id)
         await mark_deleted(self.db, row)
 
-    async def list_services(
-        self, params: PageParams, transport_tab: str | None = None
-    ) -> PageResult[McpServiceOut]:
+    async def list_services(self, params: PageParams, transport_tab: str | None = None) -> PageResult[McpServiceOut]:
         filters = [*tenant_filters(self.ctx, McpService.tenant_id), not_deleted(McpService)]
         values = transport_filter_values(transport_tab) if transport_tab else None
         if values:
             filters.append(McpService.transport.in_(values))
         total = await self.db.scalar(select(func.count(McpService.id)).where(*filters))
-        stmt = (
-            select(McpService)
-            .where(*filters)
-            .order_by(McpService.updated_at.desc())
-            .offset((params.page - 1) * params.size)
-            .limit(params.size)
-        )
+        stmt = select(McpService).where(*filters).order_by(McpService.updated_at.desc()).offset((params.page - 1) * params.size).limit(params.size)
         items = (await self.db.execute(stmt)).scalars().all()
         return PageResult(
             items=[McpServiceOut.model_validate(i) for i in items],
@@ -166,9 +158,7 @@ class McpServiceManager(BaseService):
             return await self._sync_stdio_service(row)
 
         try:
-            tools = await fetch_mcp_tools(
-                row.endpoint_url, transport, row.connection_config or {}
-            )
+            tools = await fetch_mcp_tools(row.endpoint_url, transport, row.connection_config or {})
         except BadRequestError as e:
             row.sync_error = e.message
             row.status = McpStatus.ERROR

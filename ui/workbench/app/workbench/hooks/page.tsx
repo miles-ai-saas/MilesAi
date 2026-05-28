@@ -42,13 +42,13 @@ export default function HooksPage() {
   const scopes = meta?.scopes ?? [];
   const onFailureOptions = meta?.on_failure_options ?? [];
 
-  const list = usePagedList(useCallback((p, s) => api.listHooks(p, s), []), { enabled: ready });
+  const list = usePagedList(
+    useCallback((p, s) => api.listHooks(p, s), []),
+    { enabled: ready },
+  );
   const { requestConfirm, confirmDialog } = useConfirmAction();
 
-  const filtered = useMemo(
-    () => filterBySearch(list.items, search, (h) => `${h.name} ${h.hook_type}`),
-    [list.items, search],
-  );
+  const filtered = useMemo(() => filterBySearch(list.items, search, (h) => `${h.name} ${h.hook_type}`), [list.items, search]);
 
   const openCreate = () => {
     setEditing(null);
@@ -115,10 +115,7 @@ export default function HooksPage() {
     setBindingHook(h);
     setBindingsLoading(true);
     try {
-      const [b, ex] = await Promise.all([
-        api.listHookBindings(h.id),
-        api.listHookExecutions(h.id, 1, 8),
-      ]);
+      const [b, ex] = await Promise.all([api.listHookBindings(h.id), api.listHookExecutions(h.id, 1, 8)]);
       setBindings(b);
       setExecutions(ex.items);
     } finally {
@@ -133,10 +130,7 @@ export default function HooksPage() {
       scope: bindScope,
       target_id: bindTargetId.trim() || undefined,
     });
-    const [b, ex] = await Promise.all([
-      api.listHookBindings(bindingHook.id),
-      api.listHookExecutions(bindingHook.id, 1, 8),
-    ]);
+    const [b, ex] = await Promise.all([api.listHookBindings(bindingHook.id), api.listHookExecutions(bindingHook.id, 1, 8)]);
     setBindings(b);
     setExecutions(ex.items);
     setBindTargetId("");
@@ -167,21 +161,11 @@ export default function HooksPage() {
         loading={list.loading}
         footer={
           !list.loading ? (
-            <ResourceListFooter
-              page={list.page}
-              size={list.size}
-              total={list.total}
-              onPageChange={list.setPage}
-              onSizeChange={list.setSize}
-            />
+            <ResourceListFooter page={list.page} size={list.size} total={list.total} onPageChange={list.setPage} onSizeChange={list.setSize} />
           ) : null
         }
       >
-        <AddResourceCard
-          label="新建 HTTP 钩子"
-          hint="Webhook · 支持多条绑定规则"
-          onClick={openCreate}
-        />
+        <AddResourceCard label="新建 HTTP 钩子" hint="Webhook · 支持多条绑定规则" onClick={openCreate} />
         {filtered.map((h) => (
           <ResourceItemCard
             key={h.id}
@@ -191,9 +175,7 @@ export default function HooksPage() {
             meta={
               <span className="text-xs text-ink-muted">
                 {h.is_active ? "已启用" : "已停用"}
-                {(h.config as { on_failure?: string }).on_failure === "fail_request"
-                  ? " · 失败时阻断"
-                  : ""}
+                {(h.config as { on_failure?: string }).on_failure === "fail_request" ? " · 失败时阻断" : ""}
               </span>
             }
             actions={
@@ -210,11 +192,7 @@ export default function HooksPage() {
                   {h.is_active ? "停用" : "启用"}
                 </button>
                 <CardActions onEdit={() => openEdit(h)} onDelete={() => onDeleteHook(h)} />
-                <button
-                  type="button"
-                  className="text-xs text-brand hover:underline"
-                  onClick={() => openBindings(h)}
-                >
+                <button type="button" className="text-xs text-brand hover:underline" onClick={() => openBindings(h)}>
                   绑定与记录
                 </button>
               </div>
@@ -240,12 +218,7 @@ export default function HooksPage() {
         }
       >
         <div className="space-y-3">
-          <input
-            className="input-field w-full"
-            placeholder="名称，如：访问审计"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
+          <input className="input-field w-full" placeholder="名称，如：访问审计" value={name} onChange={(e) => setName(e.target.value)} />
           <input
             className="input-field w-full font-mono text-sm"
             placeholder="https://your-service/hooks/agent"
@@ -254,12 +227,7 @@ export default function HooksPage() {
           />
           <label className="block text-sm">
             <span className="mb-1 block text-xs text-ink-muted">HTTP 失败时（仅 before_*）</span>
-            <select
-              className="input-field w-full"
-              value={onFailure}
-              onChange={(e) => setOnFailure(e.target.value)}
-              disabled={!onFailureOptions.length}
-            >
+            <select className="input-field w-full" value={onFailure} onChange={(e) => setOnFailure(e.target.value)} disabled={!onFailureOptions.length}>
               {onFailureOptions.map((o) => (
                 <option key={o.value} value={o.value}>
                   {o.label}
@@ -271,23 +239,13 @@ export default function HooksPage() {
             <>
               <label className="block text-sm">
                 <span className="mb-1 block text-xs text-ink-muted">默认绑定 · 时机</span>
-                <select
-                  className="input-field w-full"
-                  value={trigger}
-                  onChange={(e) => setTrigger(e.target.value)}
-                  disabled={!triggers.length}
-                >
+                <select className="input-field w-full" value={trigger} onChange={(e) => setTrigger(e.target.value)} disabled={!triggers.length}>
                   {triggers.map(renderTriggerOption)}
                 </select>
               </label>
               <label className="block text-sm">
                 <span className="mb-1 block text-xs text-ink-muted">默认绑定 · 作用域</span>
-                <select
-                  className="input-field w-full"
-                  value={scope}
-                  onChange={(e) => setScope(e.target.value)}
-                  disabled={!scopes.length}
-                >
+                <select className="input-field w-full" value={scope} onChange={(e) => setScope(e.target.value)} disabled={!scopes.length}>
                   {scopes.map((s) => (
                     <option key={s.value} value={s.value}>
                       {s.label}
@@ -319,20 +277,14 @@ export default function HooksPage() {
             <section>
               <h3 className="mb-2 text-sm font-medium text-ink">挂载规则</h3>
               <ul className="divide-y rounded-lg border border-line text-sm">
-                {bindings.length === 0 && (
-                  <li className="px-3 py-2 text-ink-faint">暂无绑定</li>
-                )}
+                {bindings.length === 0 && <li className="px-3 py-2 text-ink-faint">暂无绑定</li>}
                 {bindings.map((b) => (
                   <li key={b.id} className="flex items-center justify-between gap-2 px-3 py-2">
                     <span className="text-xs text-ink-muted">
                       {optionLabel(scopes, b.scope)} · {optionLabel(triggers, b.trigger)}
                       {b.target_id ? ` · ${b.target_id.slice(0, 8)}…` : ""} · 优先级 {b.priority}
                     </span>
-                    <button
-                      type="button"
-                      className="shrink-0 text-xs text-red-600"
-                      onClick={() => removeBinding(b.id)}
-                    >
+                    <button type="button" className="shrink-0 text-xs text-red-600" onClick={() => removeBinding(b.id)}>
                       删除
                     </button>
                   </li>
@@ -343,32 +295,18 @@ export default function HooksPage() {
             <section>
               <h3 className="mb-2 text-sm font-medium text-ink">最近执行</h3>
               <ul className="divide-y rounded-lg border border-line text-xs">
-                {executions.length === 0 && (
-                  <li className="px-3 py-2 text-ink-faint">尚无执行记录</li>
-                )}
+                {executions.length === 0 && <li className="px-3 py-2 text-ink-faint">尚无执行记录</li>}
                 {executions.map((ex) => (
                   <li key={ex.id} className="space-y-0.5 px-3 py-2">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span
-                        className={
-                          ex.status === "ok"
-                            ? "text-green-700"
-                            : ex.status === "blocked"
-                              ? "text-amber-700"
-                              : "text-red-600"
-                        }
-                      >
-                        {ex.status}
-                      </span>
+                      <span className={ex.status === "ok" ? "text-green-700" : ex.status === "blocked" ? "text-amber-700" : "text-red-600"}>{ex.status}</span>
                       <span className="text-ink-muted">
                         {optionLabel(triggers, ex.trigger)} · {optionLabel(scopes, ex.scope)}
                       </span>
                       {ex.duration_ms != null && <span>{ex.duration_ms}ms</span>}
                       {ex.http_status != null && <span>HTTP {ex.http_status}</span>}
                     </div>
-                    {ex.error_message && (
-                      <p className="truncate text-ink-faint">{ex.error_message}</p>
-                    )}
+                    {ex.error_message && <p className="truncate text-ink-faint">{ex.error_message}</p>}
                   </li>
                 ))}
               </ul>
@@ -376,20 +314,10 @@ export default function HooksPage() {
 
             <section className="border-t border-line-soft pt-4">
               <p className="mb-2 text-xs font-medium text-ink-muted">新增绑定</p>
-              <select
-                className="input-field mb-2 w-full"
-                value={bindTrigger}
-                onChange={(e) => setBindTrigger(e.target.value)}
-                disabled={!triggers.length}
-              >
+              <select className="input-field mb-2 w-full" value={bindTrigger} onChange={(e) => setBindTrigger(e.target.value)} disabled={!triggers.length}>
                 {triggers.map(renderTriggerOption)}
               </select>
-              <select
-                className="input-field mb-2 w-full"
-                value={bindScope}
-                onChange={(e) => setBindScope(e.target.value)}
-                disabled={!scopes.length}
-              >
+              <select className="input-field mb-2 w-full" value={bindScope} onChange={(e) => setBindScope(e.target.value)} disabled={!scopes.length}>
                 {scopes.map((s) => (
                   <option key={s.value} value={s.value}>
                     {s.label}

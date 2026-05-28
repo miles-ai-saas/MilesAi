@@ -88,9 +88,7 @@ class AdminManagementService:
         await revoke_admin_session(admin_id)
         await self.db.flush()
 
-    async def reset_password(
-        self, admin_id: UUID, body: AdminResetPasswordRequest
-    ) -> None:
+    async def reset_password(self, admin_id: UUID, body: AdminResetPasswordRequest) -> None:
         admin = await self.repo.get_by_id_or_raise(admin_id, label="管理员不存在")
         admin.hashed_password = hash_password(body.new_password)
         await revoke_admin_session(admin_id)

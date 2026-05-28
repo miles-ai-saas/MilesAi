@@ -13,8 +13,7 @@ const milesEditorTheme = EditorView.theme(
   {
     "&": {
       fontSize: "13px",
-      fontFamily:
-        'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace',
+      fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace',
       backgroundColor: "var(--surface)",
       color: "var(--ink)",
     },
@@ -77,20 +76,8 @@ type Props = {
   "aria-label"?: string;
 };
 
-export function CodeEditor({
-  value,
-  onChange,
-  language = "text",
-  height,
-  fill = false,
-  readOnly = false,
-  className = "",
-  "aria-label": ariaLabel,
-}: Props) {
-  const extensions = useMemo(
-    () => [milesEditorTheme, focusedOutline, languageExtension(language), EditorView.lineWrapping],
-    [language],
-  );
+export function CodeEditor({ value, onChange, language = "text", height, fill = false, readOnly = false, className = "", "aria-label": ariaLabel }: Props) {
+  const extensions = useMemo(() => [milesEditorTheme, focusedOutline, languageExtension(language), EditorView.lineWrapping], [language]);
 
   const shellClass = [
     "overflow-hidden rounded-lg border border-line bg-surface transition-colors",
@@ -101,7 +88,7 @@ export function CodeEditor({
     .filter(Boolean)
     .join(" ");
 
-  const editorHeight = fill ? "100%" : height ?? "320px";
+  const editorHeight = fill ? "100%" : (height ?? "320px");
 
   return (
     <div className={shellClass}>

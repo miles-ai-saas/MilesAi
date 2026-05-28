@@ -9,18 +9,7 @@ import { useAgentMeta } from "@/hooks/use-agent-meta";
 import { useA2aMeta } from "@/hooks/use-a2a-meta";
 import { a2aInvokePolicyOptions } from "@/lib/a2a-labels";
 import { useMemo } from "react";
-import type {
-  Agent,
-  A2aPeer,
-  Flow,
-  KnowledgeBase,
-  McpService,
-  ModelConfig,
-  PromptTemplate,
-  SkillPackage,
-  SysCategory,
-  ToolCatalogItem,
-} from "@/lib/types";
+import type { Agent, A2aPeer, Flow, KnowledgeBase, McpService, ModelConfig, PromptTemplate, SkillPackage, SysCategory, ToolCatalogItem } from "@/lib/types";
 
 type Props = {
   step: number;
@@ -66,30 +55,20 @@ export function AgentFormStepContent({
   const roleOptions = subAgentRoleOptions(agentMeta);
   const invokePolicies = a2aInvokePolicyOptions(a2aMeta);
 
-  const imageGenModels = useMemo(
-    () => models.filter((m) => m.is_active !== false && m.model_type === "image_gen"),
-    [models],
-  );
-  const videoGenModels = useMemo(
-    () => models.filter((m) => m.is_active !== false && m.model_type === "video_gen"),
-    [models],
-  );
+  const imageGenModels = useMemo(() => models.filter((m) => m.is_active !== false && m.model_type === "image_gen"), [models]);
+  const videoGenModels = useMemo(() => models.filter((m) => m.is_active !== false && m.model_type === "video_gen"), [models]);
 
   const toggleMcp = (id: string) => {
     setForm((f) => ({
       ...f,
-      mcp_service_ids: f.mcp_service_ids.includes(id)
-        ? f.mcp_service_ids.filter((x) => x !== id)
-        : [...f.mcp_service_ids, id],
+      mcp_service_ids: f.mcp_service_ids.includes(id) ? f.mcp_service_ids.filter((x) => x !== id) : [...f.mcp_service_ids, id],
     }));
   };
 
   const toggleToolSlug = (slug: string) => {
     setForm((f) => ({
       ...f,
-      tool_slugs: f.tool_slugs.includes(slug)
-        ? f.tool_slugs.filter((x) => x !== slug)
-        : [...f.tool_slugs, slug],
+      tool_slugs: f.tool_slugs.includes(slug) ? f.tool_slugs.filter((x) => x !== slug) : [...f.tool_slugs, slug],
     }));
   };
 
@@ -107,9 +86,7 @@ export function AgentFormStepContent({
   const setSubRole = (id: string, role_hint: string) => {
     setForm((f) => ({
       ...f,
-      sub_agents: f.sub_agents.map((s) =>
-        s.child_agent_id === id ? { ...s, role_hint: role_hint || undefined } : s,
-      ),
+      sub_agents: f.sub_agents.map((s) => (s.child_agent_id === id ? { ...s, role_hint: role_hint || undefined } : s)),
     }));
   };
 
@@ -135,9 +112,7 @@ export function AgentFormStepContent({
       .filter(Boolean);
     setForm((f) => ({
       ...f,
-      a2a_peers: f.a2a_peers.map((p) =>
-        p.peer_id === peerId ? { ...p, trigger_keywords: keywords } : p,
-      ),
+      a2a_peers: f.a2a_peers.map((p) => (p.peer_id === peerId ? { ...p, trigger_keywords: keywords } : p)),
     }));
   };
 
@@ -156,11 +131,7 @@ export function AgentFormStepContent({
         <div className={`mx-auto ${formWidth} space-y-5`}>
           <label className="block text-sm">
             <span className="mb-1 block text-ink-muted">分类</span>
-            <select
-              className="input-field w-full"
-              value={form.category_id}
-              onChange={(e) => setForm((f) => ({ ...f, category_id: e.target.value }))}
-            >
+            <select className="input-field w-full" value={form.category_id} onChange={(e) => setForm((f) => ({ ...f, category_id: e.target.value }))}>
               <option value="">未分类</option>
               {categories.map((c) => (
                 <option key={c.id} value={c.id}>
@@ -171,10 +142,7 @@ export function AgentFormStepContent({
           </label>
           <label className="block text-sm">
             <span className="mb-1 block text-ink-muted">标签</span>
-            <TagPicker
-              value={form.tag_ids}
-              onChange={(tag_ids) => setForm((f) => ({ ...f, tag_ids }))}
-            />
+            <TagPicker value={form.tag_ids} onChange={(tag_ids) => setForm((f) => ({ ...f, tag_ids }))} />
           </label>
           <label className="block text-sm">
             <span className="mb-1 block text-ink-muted">
@@ -191,18 +159,11 @@ export function AgentFormStepContent({
             <label className="block text-sm">
               <span className="mb-1 flex items-center gap-1 text-ink-muted">
                 智能体编号
-                <span
-                  className="cursor-help text-ink-faint"
-                  title="系统根据 ID 生成的展示编号，不可修改"
-                >
+                <span className="cursor-help text-ink-faint" title="系统根据 ID 生成的展示编号，不可修改">
                   ⓘ
                 </span>
               </span>
-              <input
-                className="input-field w-full bg-surface-muted text-ink-muted"
-                readOnly
-                value={formatAgentCode(agentId)}
-              />
+              <input className="input-field w-full bg-surface-muted text-ink-muted" readOnly value={formatAgentCode(agentId)} />
             </label>
           )}
           <label className="block text-sm">
@@ -223,11 +184,7 @@ export function AgentFormStepContent({
         <div className={`mx-auto ${formWidth} space-y-5`}>
           <label className="block text-sm">
             <span className="mb-1 block text-ink-muted">大模型</span>
-            <select
-              className="input-field w-full"
-              value={form.model_config_id}
-              onChange={(e) => setForm((f) => ({ ...f, model_config_id: e.target.value }))}
-            >
+            <select className="input-field w-full" value={form.model_config_id} onChange={(e) => setForm((f) => ({ ...f, model_config_id: e.target.value }))}>
               <option value="">默认模型</option>
               {models.map((m) => (
                 <option key={m.id} value={m.id}>
@@ -265,15 +222,11 @@ export function AgentFormStepContent({
               type="checkbox"
               className="mt-1"
               checked={form.carry_forward_media}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, carry_forward_media: e.target.checked }))
-              }
+              onChange={(e) => setForm((f) => ({ ...f, carry_forward_media: e.target.checked }))}
             />
             <span>
               <span className="font-medium text-ink">多轮识图沿用附图</span>
-              <span className="mt-0.5 block text-xs text-ink-muted">
-                用户未上传新图时，自动带上一条用户消息中的图片（最多 4 张，与每轮上限一致）
-              </span>
+              <span className="mt-0.5 block text-xs text-ink-muted">用户未上传新图时，自动带上一条用户消息中的图片（最多 4 张，与每轮上限一致）</span>
             </span>
           </label>
         </div>
@@ -283,11 +236,7 @@ export function AgentFormStepContent({
         <div className="grid gap-5 lg:grid-cols-2">
           <label className="block text-sm lg:col-span-2">
             <span className="mb-1 block text-ink-muted">技能包</span>
-            <select
-              className="input-field w-full"
-              value={form.skill_package_id}
-              onChange={(e) => setForm((f) => ({ ...f, skill_package_id: e.target.value }))}
-            >
+            <select className="input-field w-full" value={form.skill_package_id} onChange={(e) => setForm((f) => ({ ...f, skill_package_id: e.target.value }))}>
               <option value="">无技能包</option>
               {skills.map((s) => (
                 <option key={s.id} value={s.id}>
@@ -319,9 +268,7 @@ export function AgentFormStepContent({
             </div>
           </label>
           {form.published_flow_id && form.sub_agents.length === 0 && (
-            <p className="text-xs text-ink-muted lg:col-span-2">
-              已绑定流程：对话将经 LangGraph 编译执行画布（并行 / 条件分支）。
-            </p>
+            <p className="text-xs text-ink-muted lg:col-span-2">已绑定流程：对话将经 LangGraph 编译执行画布（并行 / 条件分支）。</p>
           )}
           <div className="rounded-lg border border-brand/30 bg-brand-light/20 p-4 lg:col-span-2">
             <label className="flex cursor-pointer items-center gap-2 text-sm font-medium text-ink">
@@ -333,17 +280,13 @@ export function AgentFormStepContent({
                     ...f,
                     enable_tool_calling: e.target.checked,
                     tool_slugs: e.target.checked ? f.tool_slugs : [],
-                    enable_generative_tools: e.target.checked
-                      ? f.enable_generative_tools
-                      : false,
+                    enable_generative_tools: e.target.checked ? f.enable_generative_tools : false,
                   }))
                 }
               />
               启用平台工具自动调用（function calling）
             </label>
-            <p className="mt-1 text-xs text-ink-muted">
-              与 MCP 独立。未勾选下方工具则允许全部内置 + 自定义 HTTP。生图/生视频亦依赖本项。
-            </p>
+            <p className="mt-1 text-xs text-ink-muted">与 MCP 独立。未勾选下方工具则允许全部内置 + 自定义 HTTP。生图/生视频亦依赖本项。</p>
             <label className="mt-3 flex cursor-pointer items-center gap-2 text-sm text-ink">
               <input
                 type="checkbox"
@@ -360,7 +303,8 @@ export function AgentFormStepContent({
               启用生图 / 生视频工具（万相优先）
             </label>
             <p className="mt-1 text-xs text-ink-muted">
-              对话中可调用 generate_image、generate_video；产出出现在回复与「生成素材」。有知识库时须同时开启「平台工具」：将走 knowledge_search + 生成工具，不再使用自动 LangGraph RAG。
+              对话中可调用 generate_image、generate_video；产出出现在回复与「生成素材」。有知识库时须同时开启「平台工具」：将走 knowledge_search +
+              生成工具，不再使用自动 LangGraph RAG。
             </p>
             {form.enable_generative_tools && form.enable_tool_calling && (
               <div className="mt-3 grid gap-3 sm:grid-cols-2">
@@ -369,9 +313,7 @@ export function AgentFormStepContent({
                   <select
                     className="input-field w-full text-sm"
                     value={form.generative_image_model_id}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, generative_image_model_id: e.target.value }))
-                    }
+                    onChange={(e) => setForm((f) => ({ ...f, generative_image_model_id: e.target.value }))}
                   >
                     <option value="">默认（租户 image_gen）</option>
                     {imageGenModels.map((m) => (
@@ -387,9 +329,7 @@ export function AgentFormStepContent({
                   <select
                     className="input-field w-full text-sm"
                     value={form.generative_video_model_id}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, generative_video_model_id: e.target.value }))
-                    }
+                    onChange={(e) => setForm((f) => ({ ...f, generative_video_model_id: e.target.value }))}
                   >
                     <option value="">默认（租户 video_gen）</option>
                     {videoGenModels.map((m) => (
@@ -404,16 +344,10 @@ export function AgentFormStepContent({
             )}
             {form.enable_tool_calling && (
               <div className="mt-3 flex max-h-36 flex-wrap gap-2 overflow-y-auto">
-                {toolCatalog.length === 0 && (
-                  <span className="text-xs text-ink-faint">暂无平台工具，请先在工具页创建</span>
-                )}
+                {toolCatalog.length === 0 && <span className="text-xs text-ink-faint">暂无平台工具，请先在工具页创建</span>}
                 {toolCatalog.map((t) => (
                   <label key={`${t.source}-${t.slug}`} className="flex cursor-pointer items-center gap-1 text-xs">
-                    <input
-                      type="checkbox"
-                      checked={form.tool_slugs.includes(t.slug)}
-                      onChange={() => toggleToolSlug(t.slug)}
-                    />
+                    <input type="checkbox" checked={form.tool_slugs.includes(t.slug)} onChange={() => toggleToolSlug(t.slug)} />
                     {t.name} ({t.slug})
                   </label>
                 ))}
@@ -422,18 +356,12 @@ export function AgentFormStepContent({
           </div>
           <div className="rounded-lg border border-line-soft p-4 lg:col-span-2">
             <p className="mb-1 text-xs font-medium text-ink-muted">MCP 服务（可多选，仅注入提示词）</p>
-            <p className="mb-2 text-xs text-ink-faint">
-              MCP 与平台工具分离；绑定后写入系统提示，对话内暂不自动调用。
-            </p>
+            <p className="mb-2 text-xs text-ink-faint">MCP 与平台工具分离；绑定后写入系统提示，对话内暂不自动调用。</p>
             <div className="flex max-h-32 flex-wrap gap-2 overflow-y-auto">
               {mcps.length === 0 && <span className="text-xs text-ink-faint">暂无 MCP 服务</span>}
               {mcps.map((m) => (
                 <label key={m.id} className="flex cursor-pointer items-center gap-1 text-xs">
-                  <input
-                    type="checkbox"
-                    checked={form.mcp_service_ids.includes(m.id)}
-                    onChange={() => toggleMcp(m.id)}
-                  />
+                  <input type="checkbox" checked={form.mcp_service_ids.includes(m.id)} onChange={() => toggleMcp(m.id)} />
                   {m.name} ({m.tools_cache?.length ?? 0})
                 </label>
               ))}
@@ -450,11 +378,7 @@ export function AgentFormStepContent({
               {kbs.length === 0 && <span className="text-xs text-ink-faint">暂无知识库</span>}
               {kbs.map((kb) => (
                 <label key={kb.id} className="flex cursor-pointer items-center gap-1 text-xs">
-                  <input
-                    type="checkbox"
-                    checked={form.kb_ids.includes(kb.id)}
-                    onChange={() => toggleKb(kb.id)}
-                  />
+                  <input type="checkbox" checked={form.kb_ids.includes(kb.id)} onChange={() => toggleKb(kb.id)} />
                   {kb.name}
                 </label>
               ))}
@@ -462,33 +386,20 @@ export function AgentFormStepContent({
           </div>
           <div className="rounded-lg border border-brand/30 bg-brand-light/30 p-4">
             <p className="mb-1 text-xs font-medium text-ink">内部协同（可选，最多 8 个）</p>
-            <p className="mb-2 text-xs text-ink-muted">
-              绑定同租户其他智能体，由 DeepAgents 做平台内委派；非 A2A 外部协议。
-            </p>
+            <p className="mb-2 text-xs text-ink-muted">绑定同租户其他智能体，由 DeepAgents 做平台内委派；非 A2A 外部协议。</p>
             <div className="max-h-48 space-y-2 overflow-y-auto">
               {allAgents
                 .filter((a) => a.id !== agent?.id)
                 .map((a) => {
                   const bound = form.sub_agents.find((s) => s.child_agent_id === a.id);
                   return (
-                    <div
-                      key={a.id}
-                      className="flex flex-wrap items-center gap-2 rounded border border-line-soft bg-surface px-2 py-1.5"
-                    >
+                    <div key={a.id} className="flex flex-wrap items-center gap-2 rounded border border-line-soft bg-surface px-2 py-1.5">
                       <label className="flex cursor-pointer items-center gap-1 text-xs">
-                        <input
-                          type="checkbox"
-                          checked={Boolean(bound)}
-                          onChange={() => toggleSubAgent(a.id)}
-                        />
+                        <input type="checkbox" checked={Boolean(bound)} onChange={() => toggleSubAgent(a.id)} />
                         {a.name}
                       </label>
                       {bound && (
-                        <select
-                          className="input-field py-0.5 text-xs"
-                          value={bound.role_hint ?? ""}
-                          onChange={(e) => setSubRole(a.id, e.target.value)}
-                        >
+                        <select className="input-field py-0.5 text-xs" value={bound.role_hint ?? ""} onChange={(e) => setSubRole(a.id, e.target.value)}>
                           {roleOptions.map((o) => (
                             <option key={o.value || "none"} value={o.value}>
                               {o.label}
@@ -499,15 +410,11 @@ export function AgentFormStepContent({
                     </div>
                   );
                 })}
-              {allAgents.filter((a) => a.id !== agent?.id).length === 0 && (
-                <span className="text-xs text-ink-faint">暂无其他智能体可绑定</span>
-              )}
+              {allAgents.filter((a) => a.id !== agent?.id).length === 0 && <span className="text-xs text-ink-faint">暂无其他智能体可绑定</span>}
             </div>
           </div>
           {form.sub_agents.length > 0 && form.kb_ids.length > 0 && (
-            <p className="text-xs text-ink-muted lg:col-span-2">
-              已启用内部协同：对话走 DeepAgents 规划，RAG LangGraph 不生效。
-            </p>
+            <p className="text-xs text-ink-muted lg:col-span-2">已启用内部协同：对话走 DeepAgents 规划，RAG LangGraph 不生效。</p>
           )}
           <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-4 lg:col-span-2">
             <p className="mb-1 text-xs font-medium text-ink">引用外部 A2A（可选，最多 4 个）</p>
@@ -536,24 +443,13 @@ export function AgentFormStepContent({
               </label>
             )}
             <div className="max-h-56 space-y-2 overflow-y-auto">
-              {a2aPeers.length === 0 && (
-                <span className="text-xs text-ink-faint">
-                  请先在智能体列表 A2A Tab 登记外部 Agent 并同步 Card。
-                </span>
-              )}
+              {a2aPeers.length === 0 && <span className="text-xs text-ink-faint">请先在智能体列表 A2A Tab 登记外部 Agent 并同步 Card。</span>}
               {a2aPeers.map((p) => {
                 const bound = form.a2a_peers.find((x) => x.peer_id === p.id);
                 return (
-                  <div
-                    key={p.id}
-                    className="rounded border border-line-soft bg-surface px-2 py-2 text-xs"
-                  >
+                  <div key={p.id} className="rounded border border-line-soft bg-surface px-2 py-2 text-xs">
                     <label className="flex cursor-pointer items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={Boolean(bound)}
-                        onChange={() => toggleA2aPeer(p.id)}
-                      />
+                      <input type="checkbox" checked={Boolean(bound)} onChange={() => toggleA2aPeer(p.id)} />
                       <span className="font-medium text-ink">{p.name}</span>
                       <span className="text-ink-faint">
                         {p.card_display_name ?? "已连通"} · {p.skills_count} skills
@@ -581,22 +477,14 @@ export function AgentFormStepContent({
             <div className="rounded-lg border border-line-soft p-4">
               <p className="mb-2 text-xs font-medium text-ink">内部协同规划</p>
               <label className="mb-2 flex cursor-pointer items-center gap-2 text-xs">
-                <input
-                  type="checkbox"
-                  checked={form.subagent_parallel}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, subagent_parallel: e.target.checked }))
-                  }
-                />
+                <input type="checkbox" checked={form.subagent_parallel} onChange={(e) => setForm((f) => ({ ...f, subagent_parallel: e.target.checked }))} />
                 平台规划路径并行调用子智能体
               </label>
               <label className="flex cursor-pointer items-center gap-2 text-xs">
                 <input
                   type="checkbox"
                   checked={form.force_platform_planner}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, force_platform_planner: e.target.checked }))
-                  }
+                  onChange={(e) => setForm((f) => ({ ...f, force_platform_planner: e.target.checked }))}
                 />
                 强制平台 JSON 规划（跳过 DeepAgents）
               </label>
@@ -604,27 +492,13 @@ export function AgentFormStepContent({
           ) : form.kb_ids.length > 0 ? (
             <div className="rounded-lg border border-line-soft p-4">
               <p className="mb-1 text-xs font-medium text-ink">RAG 工作流（LangGraph）</p>
-              <p className="mb-2 text-xs text-ink-muted">
-                检索 → 相关性评估 → 重试或生成；多轮会话可写入 Redis checkpoint。
-              </p>
+              <p className="mb-2 text-xs text-ink-muted">检索 → 相关性评估 → 重试或生成；多轮会话可写入 Redis checkpoint。</p>
               <label className="mb-3 flex cursor-pointer items-center gap-2 text-xs">
-                <input
-                  type="checkbox"
-                  checked={form.use_langgraph_rag}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, use_langgraph_rag: e.target.checked }))
-                  }
-                />
+                <input type="checkbox" checked={form.use_langgraph_rag} onChange={(e) => setForm((f) => ({ ...f, use_langgraph_rag: e.target.checked }))} />
                 启用 LangGraph RAG
               </label>
               <label className="mb-3 flex cursor-pointer items-center gap-2 text-xs">
-                <input
-                  type="checkbox"
-                  checked={form.use_llm_grade}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, use_llm_grade: e.target.checked }))
-                  }
-                />
+                <input type="checkbox" checked={form.use_llm_grade} onChange={(e) => setForm((f) => ({ ...f, use_llm_grade: e.target.checked }))} />
                 LLM 相关性评分（需配置模型）
               </label>
               <div className="grid grid-cols-2 gap-2">
@@ -665,10 +539,7 @@ export function AgentFormStepContent({
               </div>
             </div>
           ) : (
-            <p className="text-sm text-ink-muted">
-              未绑定知识库或子智能体，本步无额外配置。可在上一步添加知识库或子智能体后再调整 RAG /
-              规划选项。
-            </p>
+            <p className="text-sm text-ink-muted">未绑定知识库或子智能体，本步无额外配置。可在上一步添加知识库或子智能体后再调整 RAG / 规划选项。</p>
           )}
         </div>
       );

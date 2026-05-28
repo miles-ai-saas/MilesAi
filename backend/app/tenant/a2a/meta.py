@@ -23,9 +23,7 @@ INVOKE_POLICY_OPTIONS: list[tuple[str, str, str | None]] = [
 ]
 
 # 与 agents.meta 子智能体 role_hint 一致（Peer 引用 / 宿主绑定）
-PEER_ROLE_HINT_OPTIONS: list[tuple[str, str, str | None]] = [
-    (v, lb, h) for v, lb, h in SUB_AGENT_ROLE_OPTIONS if v
-]
+PEER_ROLE_HINT_OPTIONS: list[tuple[str, str, str | None]] = [(v, lb, h) for v, lb, h in SUB_AGENT_ROLE_OPTIONS if v]
 
 
 def a2a_meta_dict() -> dict:

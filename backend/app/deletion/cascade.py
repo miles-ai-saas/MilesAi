@@ -88,11 +88,7 @@ async def nullify_app_install_refs(
 
 async def clear_agents_published_flow_ref(db: AsyncSession, flow_id: UUID) -> None:
     """删流程前清空智能体 published_flow_id 指针。"""
-    await db.execute(
-        update(Agent)
-        .where(Agent.published_flow_id == flow_id)
-        .values(published_flow_id=None)
-    )
+    await db.execute(update(Agent).where(Agent.published_flow_id == flow_id).values(published_flow_id=None))
 
 
 async def delete_hook_bindings_for_target(

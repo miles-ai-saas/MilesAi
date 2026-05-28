@@ -12,16 +12,8 @@ type Props = {
   className?: string;
 };
 
-export function AgentArchitectureTopologyGraph({
-  agentName,
-  primaryPathLabel,
-  attachments,
-  className,
-}: Props) {
-  const { nodes, edges } = useMemo(
-    () => buildTopologyGraph(attachments, agentName, primaryPathLabel),
-    [agentName, attachments, primaryPathLabel],
-  );
+export function AgentArchitectureTopologyGraph({ agentName, primaryPathLabel, attachments, className }: Props) {
+  const { nodes, edges } = useMemo(() => buildTopologyGraph(attachments, agentName, primaryPathLabel), [agentName, attachments, primaryPathLabel]);
 
   const hasAttachments =
     Boolean(attachments.model) ||
@@ -38,12 +30,5 @@ export function AgentArchitectureTopologyGraph({
     );
   }
 
-  return (
-    <ArchitectureGraphView
-      nodes={nodes}
-      edges={edges}
-      className={className ?? "h-full w-full"}
-      minHeight={360}
-    />
-  );
+  return <ArchitectureGraphView nodes={nodes} edges={edges} className={className ?? "h-full w-full"} minHeight={360} />;
 }

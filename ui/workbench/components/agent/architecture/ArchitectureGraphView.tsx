@@ -1,16 +1,6 @@
 "use client";
 
-import {
-  Background,
-  Controls,
-  MiniMap,
-  ReactFlow,
-  ReactFlowProvider,
-  useEdgesState,
-  useNodesState,
-  type Edge,
-  type Node,
-} from "@xyflow/react";
+import { Background, Controls, MiniMap, ReactFlow, ReactFlowProvider, useEdgesState, useNodesState, type Edge, type Node } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { useEffect, useMemo } from "react";
 import { ArchitectureGraphNode } from "@/components/agent/architecture/ArchitectureGraphNode";
@@ -25,12 +15,7 @@ type Props = {
   minHeight?: number;
 };
 
-function ArchitectureGraphViewInner({
-  nodes: initialNodes,
-  edges: initialEdges,
-  className,
-  minHeight = 320,
-}: Props) {
+function ArchitectureGraphViewInner({ nodes: initialNodes, edges: initialEdges, className, minHeight = 320 }: Props) {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
 
@@ -61,12 +46,7 @@ function ArchitectureGraphViewInner({
       >
         <Background gap={16} size={1} />
         <Controls showInteractive={false} className="!shadow-sm" />
-        <MiniMap
-          zoomable
-          pannable
-          className="!bg-surface-subtle !border-line"
-          nodeColor={(n) => (n.data?.active ? "#e66432" : "#e2e8f0")}
-        />
+        <MiniMap zoomable pannable className="!bg-surface-subtle !border-line" nodeColor={(n) => (n.data?.active ? "#e66432" : "#e2e8f0")} />
       </ReactFlow>
     </div>
   );

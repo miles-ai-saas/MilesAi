@@ -3,10 +3,7 @@
  */
 
 import type { Edge, Node } from "@xyflow/react";
-import type {
-  AgentArchitectureAttachments,
-  AgentArchitectureDecisionStep,
-} from "@/lib/types";
+import type { AgentArchitectureAttachments, AgentArchitectureDecisionStep } from "@/lib/types";
 
 export type ArchitectureNodeData = {
   label: string;
@@ -25,9 +22,7 @@ const NODE_W = 200;
 const NODE_H = 56;
 const GAP_Y = 24;
 
-export function buildRoutingGraph(
-  steps: AgentArchitectureDecisionStep[],
-): { nodes: Node<ArchitectureNodeData>[]; edges: Edge[] } {
+export function buildRoutingGraph(steps: AgentArchitectureDecisionStep[]): { nodes: Node<ArchitectureNodeData>[]; edges: Edge[] } {
   const byId = new Map(steps.map((s) => [s.id, s]));
   const ordered: AgentArchitectureDecisionStep[] = [];
   for (const id of ROUTING_ORDER) {
@@ -99,13 +94,7 @@ export function buildTopologyGraph(
   ];
   const edges: Edge[] = [];
 
-  const attach = (
-    id: string,
-    label: string,
-    subtitle: string,
-    position: { x: number; y: number },
-    opts?: { muted?: boolean; active?: boolean },
-  ) => {
+  const attach = (id: string, label: string, subtitle: string, position: { x: number; y: number }, opts?: { muted?: boolean; active?: boolean }) => {
     nodes.push({
       id,
       type: "architectureNode",
@@ -131,13 +120,7 @@ export function buildTopologyGraph(
   };
 
   if (attachments.model) {
-    attach(
-      `model-${attachments.model.id}`,
-      attachments.model.name,
-      "大模型",
-      { x: cx - NODE_W / 2, y: cy - 120 },
-      { active: true },
-    );
+    attach(`model-${attachments.model.id}`, attachments.model.name, "大模型", { x: cx - NODE_W / 2, y: cy - 120 }, { active: true });
   }
 
   attachments.kbs.forEach((kb, i) => {
@@ -149,13 +132,7 @@ export function buildTopologyGraph(
   attachments.sub_agents.forEach((sub, i) => {
     const n = attachments.sub_agents.length;
     const offsetY = (i - (n - 1) / 2) * (NODE_H + 12);
-    attach(
-      `sub-${sub.id}`,
-      sub.name,
-      sub.role_hint ? `子智能体 · ${sub.role_hint}` : "子智能体",
-      { x: cx + 40, y: cy - 20 + offsetY },
-      { active: true },
-    );
+    attach(`sub-${sub.id}`, sub.name, sub.role_hint ? `子智能体 · ${sub.role_hint}` : "子智能体", { x: cx + 40, y: cy - 20 + offsetY }, { active: true });
   });
 
   attachments.a2a_peers.forEach((peer, i) => {

@@ -19,9 +19,5 @@ def test_seed_mcp_scenarios_coverage():
     assert "stdio_filesystem" in scenarios
     assert "sync_error" in scenarios
 
-    active_with_tools = [
-        s
-        for s in SEED_MCP_SERVICES
-        if _status_value(s["status"]) == "active" and s["tools_cache"]
-    ]
+    active_with_tools = [s for s in SEED_MCP_SERVICES if _status_value(s["status"]) == "active" and s["tools_cache"]]
     assert len(active_with_tools) >= 3

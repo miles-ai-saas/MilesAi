@@ -19,10 +19,7 @@ GENERATIVE_SOURCE_LABELS: dict[str, tuple[str, str | None]] = {
 
 STATUS_FILTER_OPTIONS: list[tuple[str, str, str | None]] = [
     ("", "全部", None),
-    *[
-        (s.value, GENERATIVE_JOB_STATUS_LABELS[s.value][0], GENERATIVE_JOB_STATUS_LABELS[s.value][1])
-        for s in GenerativeJobStatus
-    ],
+    *[(s.value, GENERATIVE_JOB_STATUS_LABELS[s.value][0], GENERATIVE_JOB_STATUS_LABELS[s.value][1]) for s in GenerativeJobStatus],
 ]
 
 
@@ -30,12 +27,12 @@ def generative_jobs_meta_dict() -> dict:
     return {
         "statuses": enum_options(GenerativeJobStatus, GENERATIVE_JOB_STATUS_LABELS),
         "status_filters": literal_options(STATUS_FILTER_OPTIONS),
-        "sources": literal_options(
-            [(k, v[0], v[1]) for k, v in GENERATIVE_SOURCE_LABELS.items()]
+        "sources": literal_options([(k, v[0], v[1]) for k, v in GENERATIVE_SOURCE_LABELS.items()]),
+        "kinds": literal_options(
+            [
+                ("image", "生图", None),
+                ("video", "生视频", None),
+            ]
         ),
-        "kinds": literal_options([
-            ("image", "生图", None),
-            ("video", "生视频", None),
-        ]),
         "schema_version": META_SCHEMA_VERSION,
     }

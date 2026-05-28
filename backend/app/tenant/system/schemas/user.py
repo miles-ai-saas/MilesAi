@@ -30,9 +30,7 @@ class UserBatchDeactivate(BaseModel):
 
 class UserBatchRequest(BaseModel):
     user_ids: list[UUID] = Field(..., min_length=1, description="目标用户 ID 列表")
-    action: Literal["enable", "disable", "assign_roles", "deactivate"] = Field(
-        description="enable/disable 仅改状态；assign_roles 批量赋角色；deactivate 软删"
-    )
+    action: Literal["enable", "disable", "assign_roles", "deactivate"] = Field(description="enable/disable 仅改状态；assign_roles 批量赋角色；deactivate 软删")
     role_ids: list[UUID] | None = Field(
         default=None,
         description="action=assign_roles 时必填，写入各用户角色（全量替换）",

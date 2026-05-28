@@ -39,7 +39,4 @@ SUB_AGENT_ROLE_DISPLAY: dict[str, tuple[str, str | None]] = {
 }
 
 # DeepAgents 子智能体描述（优先 hint 长文案）
-SUB_AGENT_ROLE_LABELS: dict[str, str] = {
-    role: (hint or label)
-    for role, (label, hint) in SUB_AGENT_ROLE_DISPLAY.items()
-}
+SUB_AGENT_ROLE_LABELS: dict[str, str] = {role: (hint or label) for role, (label, hint) in SUB_AGENT_ROLE_DISPLAY.items()}

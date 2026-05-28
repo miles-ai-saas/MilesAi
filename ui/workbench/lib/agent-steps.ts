@@ -20,14 +20,7 @@ const RELEVANCE_LABEL: Record<string, string> = {
   none: "无相关",
 };
 
-const SUMMARY_SKIP_TYPES = new Set([
-  "tool_agent",
-  "graph_start",
-  "planner",
-  "a2a_host",
-  "a2a_rules",
-  "rag_linear",
-]);
+const SUMMARY_SKIP_TYPES = new Set(["tool_agent", "graph_start", "planner", "a2a_host", "a2a_rules", "rag_linear"]);
 
 function asStr(v: unknown): string {
   if (v == null) return "";
@@ -55,9 +48,7 @@ function titleForStep(type: string, step: Record<string, unknown>): { title: str
     case "retrieve":
       return {
         title: "检索知识库",
-        detail: `命中 ${step.hit_count ?? 0} 条${
-          step.top_score != null ? ` · 最高分 ${Number(step.top_score).toFixed(2)}` : ""
-        }`,
+        detail: `命中 ${step.hit_count ?? 0} 条${step.top_score != null ? ` · 最高分 ${Number(step.top_score).toFixed(2)}` : ""}`,
       };
     case "grade": {
       const rel = RELEVANCE_LABEL[asStr(step.relevance)] ?? asStr(step.relevance) ?? "—";

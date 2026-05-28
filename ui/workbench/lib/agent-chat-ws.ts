@@ -20,12 +20,7 @@ export type WsChatSendOptions = {
 export type AgentChatWsCallbacks = {
   onDelta?: (text: string) => void;
   onStep?: (step: Record<string, unknown>) => void;
-  onToolConfirmRequired?: (tool: {
-    slug: string;
-    name: string;
-    description?: string | null;
-    params: Record<string, unknown>;
-  }) => void;
+  onToolConfirmRequired?: (tool: { slug: string; name: string; description?: string | null; params: Record<string, unknown> }) => void;
   onGenerativeJob?: (job: GenerativeJobOut, phase: "queued" | "progress" | "done") => void;
   onError?: (message: string) => void;
 };
@@ -189,10 +184,7 @@ export class AgentChatWsClient {
         cb?.onGenerativeJob?.(payload as unknown as GenerativeJobOut, "progress");
         break;
       case "generative_job.done":
-        cb?.onGenerativeJob?.(
-          (payload.job as GenerativeJobOut) ?? (payload as unknown as GenerativeJobOut),
-          "done",
-        );
+        cb?.onGenerativeJob?.((payload.job as GenerativeJobOut) ?? (payload as unknown as GenerativeJobOut), "done");
         break;
       case "chat.done": {
         const res = payload as unknown as ChatResponse;

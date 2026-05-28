@@ -44,34 +44,20 @@ export function AgentChatDebugHeader({
   onOpenLeftDrawer,
   showLeftDrawerButton,
 }: Props) {
-  const transportLabel = !wsEnabled
-    ? "HTTP"
-    : wsReady
-      ? "WS"
-      : "WS…";
+  const transportLabel = !wsEnabled ? "HTTP" : wsReady ? "WS" : "WS…";
 
   return (
     <header className="sticky top-0 z-20 shrink-0 border-b border-line bg-surface/95 backdrop-blur-sm">
       <div className="flex items-center gap-2 px-3 py-2 sm:gap-3 sm:px-4">
         {showLeftDrawerButton && onOpenLeftDrawer ? (
-          <button
-            type="button"
-            className="btn-sm-ghost shrink-0 lg:hidden"
-            aria-label="打开侧栏"
-            onClick={onOpenLeftDrawer}
-          >
+          <button type="button" className="btn-sm-ghost shrink-0 lg:hidden" aria-label="打开侧栏" onClick={onOpenLeftDrawer}>
             ☰
           </button>
         ) : null}
 
         <div className="min-w-0 flex-1">
           {onSessionRename && !sessionRenameDisabled ? (
-            <ChatSessionRenameInline
-              title={sessionTitle}
-              prominent
-              className="text-base sm:text-lg"
-              onRename={onSessionRename}
-            />
+            <ChatSessionRenameInline title={sessionTitle} prominent className="text-base sm:text-lg" onRename={onSessionRename} />
           ) : (
             <h2 className="truncate text-base font-semibold text-ink sm:text-lg" title={sessionTitle}>
               {sessionTitle}
@@ -80,12 +66,7 @@ export function AgentChatDebugHeader({
           <div className="mt-0.5 flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-ink-muted">
             {agent ? (
               <>
-                <AgentRenameInline
-                  agentId={agent.id}
-                  name={agent.name}
-                  className="max-w-[min(100%,14rem)]"
-                  onRenamed={(name) => onAgentRenamed?.(name)}
-                />
+                <AgentRenameInline agentId={agent.id} name={agent.name} className="max-w-[min(100%,14rem)]" onRenamed={(name) => onAgentRenamed?.(name)} />
                 <span className="text-ink-faint">·</span>
                 <span className="truncate">{agentModeLabel(agent)}</span>
               </>
@@ -98,19 +79,14 @@ export function AgentChatDebugHeader({
         <div className="hidden flex-wrap items-center justify-end gap-1.5 sm:flex">
           <span
             className={`rounded-md px-2 py-0.5 font-mono text-[10px] ${
-              wsEnabled && wsReady
-                ? "bg-emerald-50 text-emerald-800"
-                : "bg-surface-muted text-ink-faint"
+              wsEnabled && wsReady ? "bg-emerald-50 text-emerald-800" : "bg-surface-muted text-ink-faint"
             }`}
             title={wsEnabled ? "WebSocket 已连接" : "HTTP 流式"}
           >
             {transportLabel}
           </span>
           {lastTraceId ? (
-            <span
-              className="max-w-[8rem] truncate rounded-md bg-surface-muted px-2 py-0.5 font-mono text-[10px] text-ink-muted"
-              title={lastTraceId}
-            >
+            <span className="max-w-[8rem] truncate rounded-md bg-surface-muted px-2 py-0.5 font-mono text-[10px] text-ink-muted" title={lastTraceId}>
               trace …{lastTraceId.slice(-8)}
             </span>
           ) : null}
@@ -131,12 +107,7 @@ export function AgentChatDebugHeader({
           <Link href="/workbench/tasks" className="btn-sm-ghost hidden text-xs md:inline-flex">
             任务
           </Link>
-          <button
-            type="button"
-            className="btn-sm-ghost text-xs"
-            title={focusMode ? "退出专注模式" : "专注模式：隐藏侧栏"}
-            onClick={onToggleFocusMode}
-          >
+          <button type="button" className="btn-sm-ghost text-xs" title={focusMode ? "退出专注模式" : "专注模式：隐藏侧栏"} onClick={onToggleFocusMode}>
             {focusMode ? "退出专注" : "专注"}
           </button>
           <button type="button" className="btn-sm-outline text-xs" onClick={onNewSession}>

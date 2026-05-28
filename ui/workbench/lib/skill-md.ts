@@ -24,10 +24,7 @@ export function parseSkillMd(content: string): {
     const colon = trimmed.indexOf(":");
     const key = trimmed.slice(0, colon).trim();
     let val = trimmed.slice(colon + 1).trim();
-    if (
-      (val.startsWith('"') && val.endsWith('"')) ||
-      (val.startsWith("'") && val.endsWith("'"))
-    ) {
+    if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
       val = val.slice(1, -1);
     }
     if (key) frontmatter[key] = val;

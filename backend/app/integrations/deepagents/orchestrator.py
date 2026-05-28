@@ -88,7 +88,7 @@ async def _platform_plan(
     catalog = _catalog_text(bindings)
     prompt = (
         "你是任务规划器。根据用户问题，从下列子智能体中选择要调用的一个或多个，并给出每个子任务说明。\n"
-        "仅输出 JSON：{\"steps\":[{\"sub_agent_id\":\"uuid\",\"task\":\"子任务描述\"}]}\n\n"
+        '仅输出 JSON：{"steps":[{"sub_agent_id":"uuid","task":"子任务描述"}]}\n\n'
         f"子智能体列表：\n{catalog}\n\n用户问题：{query}"
     )
     raw = await ainvoke_chat(
@@ -119,9 +119,7 @@ async def _run_platform_planned(
         }
     ]
     allowed = {str(b.child_agent_id) for b in bindings}
-    plan = await _platform_plan(
-        parent, bindings, body.query, db=svc.db, tenant_id=svc.ctx.tenant_id
-    )
+    plan = await _platform_plan(parent, bindings, body.query, db=svc.db, tenant_id=svc.ctx.tenant_id)
     steps.append({"type": "plan", "steps": plan})
 
     parallel = bool((parent.config or {}).get("subagent_parallel", False))
@@ -174,9 +172,7 @@ async def _run_platform_planned(
         synth_prompt = (
             f"{await svc.resolve_system_prompt(parent)}\n\n"
             f"用户问题：{body.query}\n\n"
-            "各子智能体结果：\n"
-            + "\n\n---\n\n".join(sub_answers)
-            + "\n\n请综合以上结果，给用户一个完整、简洁的最终回答。"
+            "各子智能体结果：\n" + "\n\n---\n\n".join(sub_answers) + "\n\n请综合以上结果，给用户一个完整、简洁的最终回答。"
         )
         final = await ainvoke_chat(
             parent.model_config,

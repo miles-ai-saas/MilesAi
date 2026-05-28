@@ -36,8 +36,7 @@ const TAB_ITEMS = [
 
 const TAB_DESCRIPTIONS: Record<AgentsTab, string> = {
   all: "查看全部平台内智能体（不含 A2A 互联宿主）；A2A 能力请在「A2A 互联」Tab 管理。",
-  custom:
-    "配置模型、知识库与工具；可选内部协同，或引用已登记的外部 A2A（规则触发 + 自动规划）。",
+  custom: "配置模型、知识库与工具；可选内部协同，或引用已登记的外部 A2A（规则触发 + 自动规划）。",
   a2a: "管理 A2A 协议能力：先在「外部登记」同步 Agent Card，再创建「互联宿主」作为统一对话入口。",
 };
 
@@ -57,23 +56,13 @@ function StatChip({ label, value, hint }: { label: string; value: string; hint?:
   );
 }
 
-function FilterChip({
-  active,
-  label,
-  onClick,
-}: {
-  active: boolean;
-  label: string;
-  onClick: () => void;
-}) {
+function FilterChip({ active, label, onClick }: { active: boolean; label: string; onClick: () => void }) {
   return (
     <button
       type="button"
       onClick={onClick}
       className={`rounded-lg px-3 py-1.5 text-xs transition ${
-        active
-          ? "bg-brand-light font-medium text-brand"
-          : "text-ink-muted hover:bg-surface hover:text-ink"
+        active ? "bg-brand-light font-medium text-brand" : "text-ink-muted hover:bg-surface hover:text-ink"
       }`}
     >
       {label}
@@ -96,14 +85,7 @@ export default function AgentsPage() {
 
   const list = usePagedList(
     useCallback(
-      (p, s) =>
-        api.listAgents(
-          p,
-          s,
-          tab === "all" ? undefined : tabToApiType(tab),
-          cat.activeCategoryId,
-          tagFilterIds.length ? tagFilterIds : undefined,
-        ),
+      (p, s) => api.listAgents(p, s, tab === "all" ? undefined : tabToApiType(tab), cat.activeCategoryId, tagFilterIds.length ? tagFilterIds : undefined),
       [tab, cat.activeCategoryId, tagFilterIds],
     ),
     { enabled: ready && tab !== "a2a", resetKey: `${tab}-${cat.activeId}-${tagFilterIds.join(",")}` },
@@ -199,20 +181,11 @@ export default function AgentsPage() {
         headerAction={
           tab !== "a2a" ? (
             <div className="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                className="btn-ghost shrink-0 text-sm"
-                disabled={list.loading}
-                onClick={() => void list.reload()}
-              >
+              <button type="button" className="btn-ghost shrink-0 text-sm" disabled={list.loading} onClick={() => void list.reload()}>
                 {list.loading ? "刷新中…" : "刷新"}
               </button>
               <TagFilterDropdown value={tagFilterIds} onChange={setTagFilterIds} />
-              <button
-                type="button"
-                className="btn-ghost border border-line text-sm"
-                onClick={() => setTagManageOpen(true)}
-              >
+              <button type="button" className="btn-ghost border border-line text-sm" onClick={() => setTagManageOpen(true)}>
                 管理标签
               </button>
             </div>
@@ -220,13 +193,7 @@ export default function AgentsPage() {
         }
         footer={
           tab !== "a2a" && !list.loading ? (
-            <ResourceListFooter
-              page={list.page}
-              size={list.size}
-              total={list.total}
-              onPageChange={list.setPage}
-              onSizeChange={list.setSize}
-            />
+            <ResourceListFooter page={list.page} size={list.size} total={list.total} onPageChange={list.setPage} onSizeChange={list.setSize} />
           ) : null
         }
       >
@@ -236,11 +203,7 @@ export default function AgentsPage() {
           <>
             <div className="col-span-full grid gap-3 sm:grid-cols-3">
               <StatChip label="智能体总数" value={String(list.total)} hint={TAB_ITEMS.find((t) => t.key === tab)?.label} />
-              <StatChip
-                label="本页已启用"
-                value={String(pageStats.enabled)}
-                hint={`已绑知识库 ${pageStats.withKb}（当前筛选）`}
-              />
+              <StatChip label="本页已启用" value={String(pageStats.enabled)} hint={`已绑知识库 ${pageStats.withKb}（当前筛选）`} />
               <StatChip label="本页展示" value={String(filtered.length)} hint="受搜索与分类影响" />
             </div>
 
@@ -248,26 +211,15 @@ export default function AgentsPage() {
               <p className="mb-2 text-xs font-medium text-ink-muted">分类</p>
               <div className="flex flex-wrap gap-2">
                 {cat.tabs.map((t) => (
-                  <FilterChip
-                    key={t.key || "all"}
-                    active={cat.activeId === t.key}
-                    label={t.label}
-                    onClick={() => cat.setActiveId(t.key)}
-                  />
+                  <FilterChip key={t.key || "all"} active={cat.activeId === t.key} label={t.label} onClick={() => cat.setActiveId(t.key)} />
                 ))}
               </div>
             </div>
 
-            <AddResourceCard
-              label="添加智能体"
-              hint="配置模型、知识库、工具；可选内部协同或引用外部 A2A"
-              onClick={openCreate}
-            />
+            <AddResourceCard label="添加智能体" hint="配置模型、知识库、工具；可选内部协同或引用外部 A2A" onClick={openCreate} />
 
             {!list.loading && filtered.length === 0 && (
-              <p className="col-span-full py-12 text-center text-sm text-ink-faint">
-                暂无匹配的智能体，可调整筛选或新建
-              </p>
+              <p className="col-span-full py-12 text-center text-sm text-ink-faint">暂无匹配的智能体，可调整筛选或新建</p>
             )}
 
             {filtered.map((a) => {
@@ -275,14 +227,7 @@ export default function AgentsPage() {
               return (
                 <ResourceItemCard
                   key={a.id}
-                  title={
-                    <AgentRenameInline
-                      agentId={a.id}
-                      name={a.name}
-                      prominent
-                      onRenamed={() => list.reload()}
-                    />
-                  }
+                  title={<AgentRenameInline agentId={a.id} name={a.name} prominent onRenamed={() => list.reload()} />}
                   description={a.description ?? "未填写描述"}
                   badge={agentStatusLabel(a.status, agentMeta)}
                   muted={disabled}
@@ -290,9 +235,7 @@ export default function AgentsPage() {
                     <>
                       <span className="text-xs text-ink-muted">
                         {a.category_name ? `${a.category_name} · ` : ""}
-                        {agentTypeLabel(a, agentMeta)} ·{" "}
-                        {a.kb_ids.length > 0 ? `知识库 ${a.kb_ids.length}` : "未绑知识库"} ·{" "}
-                        {agentModeLabel(a)}
+                        {agentTypeLabel(a, agentMeta)} · {a.kb_ids.length > 0 ? `知识库 ${a.kb_ids.length}` : "未绑知识库"} · {agentModeLabel(a)}
                       </span>
                       <TagChips tags={a.tags} />
                     </>

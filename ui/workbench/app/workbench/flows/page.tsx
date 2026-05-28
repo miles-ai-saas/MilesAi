@@ -39,28 +39,17 @@ export default function FlowsPage() {
   const [metaTarget, setMetaTarget] = useState<Flow | null>(null);
 
   const list = usePagedList(
-    useCallback(
-      (p, s) => api.listFlows(p, s, tagFilterIds.length ? tagFilterIds : undefined),
-      [tagFilterIds],
-    ),
+    useCallback((p, s) => api.listFlows(p, s, tagFilterIds.length ? tagFilterIds : undefined), [tagFilterIds]),
     { enabled: ready, resetKey: tagFilterIds.join(",") },
   );
 
-  const filtered = useMemo(
-    () => filterBySearch(list.items, search, (f) => `${f.name} ${f.description ?? ""}`),
-    [list.items, search],
-  );
+  const filtered = useMemo(() => filterBySearch(list.items, search, (f) => `${f.name} ${f.description ?? ""}`), [list.items, search]);
 
   const openEdit = (flow: Flow) => {
     router.push(`/workbench/flows/${flow.id}/edit`);
   };
 
-  const saveFlowMeta = async (
-    flowId: string,
-    name: string,
-    description: string,
-    tagIds: string[],
-  ) => {
+  const saveFlowMeta = async (flowId: string, name: string, description: string, tagIds: string[]) => {
     const updated = await api.updateFlow(flowId, {
       name,
       description: description || null,
@@ -138,32 +127,18 @@ export default function FlowsPage() {
         headerAction={
           <div className="flex flex-wrap items-center gap-2">
             <TagFilterDropdown value={tagFilterIds} onChange={setTagFilterIds} />
-            <button
-              type="button"
-              className="btn-sm-outline"
-              onClick={() => setTagManageOpen(true)}
-            >
+            <button type="button" className="btn-sm-outline" onClick={() => setTagManageOpen(true)}>
               管理标签
             </button>
           </div>
         }
         footer={
           ready && !list.loading ? (
-            <ResourceListFooter
-              page={list.page}
-              size={list.size}
-              total={list.total}
-              onPageChange={list.setPage}
-              onSizeChange={list.setSize}
-            />
+            <ResourceListFooter page={list.page} size={list.size} total={list.total} onPageChange={list.setPage} onSizeChange={list.setSize} />
           ) : null
         }
       >
-        <AddResourceCard
-          label="添加新流程"
-          hint="填写名称、描述与标签，选择画布模板"
-          onClick={() => setCreateOpen(true)}
-        />
+        <AddResourceCard label="添加新流程" hint="填写名称、描述与标签，选择画布模板" onClick={() => setCreateOpen(true)} />
         {filtered.map((flow) => (
           <ResourceItemCard
             key={flow.id}
@@ -225,9 +200,7 @@ export default function FlowsPage() {
         initialDescription={metaTarget?.description}
         initialTagIds={metaTarget?.tags?.map((t) => t.id) ?? []}
         onClose={() => setMetaTarget(null)}
-        onSave={(name, description, tagIds) =>
-          saveFlowMeta(metaTarget!.id, name, description, tagIds)
-        }
+        onSave={(name, description, tagIds) => saveFlowMeta(metaTarget!.id, name, description, tagIds)}
       />
 
       <FlowDetailDialog

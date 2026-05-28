@@ -15,13 +15,7 @@ type Props = {
   onChange: (value: string) => void;
 };
 
-function ViewModeTabs({
-  mode,
-  onChange,
-}: {
-  mode: ViewMode;
-  onChange: (mode: ViewMode) => void;
-}) {
+function ViewModeTabs({ mode, onChange }: { mode: ViewMode; onChange: (mode: ViewMode) => void }) {
   const tabs: { key: ViewMode; label: string }[] = [
     { key: "edit", label: "编辑" },
     { key: "split", label: "分栏" },
@@ -35,9 +29,7 @@ function ViewModeTabs({
           type="button"
           onClick={() => onChange(tab.key)}
           className={`rounded-md px-2.5 py-1 text-xs transition ${
-            mode === tab.key
-              ? "bg-surface font-medium text-brand shadow-sm"
-              : "text-ink-muted hover:text-ink"
+            mode === tab.key ? "bg-surface font-medium text-brand shadow-sm" : "text-ink-muted hover:text-ink"
           }`}
         >
           {tab.label}
@@ -83,24 +75,10 @@ export function SkillMarkdownSplitEditor({ path, value, onChange }: Props) {
         <ViewModeTabs mode={viewMode} onChange={setViewMode} />
       </div>
 
-      <div
-        className={`flex min-h-0 flex-1 gap-3 ${
-          viewMode === "split" ? "flex-col lg:flex-row" : "flex-col"
-        }`}
-      >
+      <div className={`flex min-h-0 flex-1 gap-3 ${viewMode === "split" ? "flex-col lg:flex-row" : "flex-col"}`}>
         {showEdit && (
-          <div
-            className={`flex min-h-0 min-w-0 flex-col ${
-              viewMode === "split" ? "min-h-[240px] flex-1 lg:min-h-0" : "flex-1"
-            }`}
-          >
-            <CodeEditor
-              fill
-              language="markdown"
-              value={value}
-              onChange={onChange}
-              aria-label={`编辑 ${path}`}
-            />
+          <div className={`flex min-h-0 min-w-0 flex-col ${viewMode === "split" ? "min-h-[240px] flex-1 lg:min-h-0" : "flex-1"}`}>
+            <CodeEditor fill language="markdown" value={value} onChange={onChange} aria-label={`编辑 ${path}`} />
           </div>
         )}
 
@@ -110,9 +88,7 @@ export function SkillMarkdownSplitEditor({ path, value, onChange }: Props) {
               viewMode === "split" ? "min-h-[240px] flex-1 lg:min-h-0" : "flex-1"
             }`}
           >
-            <header className="shrink-0 border-b border-line-soft px-4 py-2 text-xs font-medium text-ink-muted">
-              预览
-            </header>
+            <header className="shrink-0 border-b border-line-soft px-4 py-2 text-xs font-medium text-ink-muted">预览</header>
             <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
               <FrontmatterPanel frontmatter={frontmatter} />
               <MarkdownPreview content={body} />

@@ -45,11 +45,7 @@ async def get_current_user(
     jti = payload.get("jti")
     if jti and await session_store.is_token_blacklisted(str(jti)):
         raise UnauthorizedError("令牌已失效，请重新登录")
-    result = await db.execute(
-        select(User)
-        .where(User.id == user_id, User.is_active.is_(True))
-        .options(selectinload(User.roles).selectinload(Role.permissions))
-    )
+    result = await db.execute(select(User).where(User.id == user_id, User.is_active.is_(True)).options(selectinload(User.roles).selectinload(Role.permissions)))
     user = result.scalar_one_or_none()
     if not user:
         raise UnauthorizedError("用户不存在或已禁用")
@@ -85,6 +81,7 @@ async def get_tenant_context(
 
 def require_permissions(*required: str):
     """超级用户绕过具体 permission 校验（见 TenantContext.require_permission）。"""
+
     async def checker(ctx: TenantContext = Depends(get_tenant_context)) -> TenantContext:
         ctx.require_permission(*required)
         return ctx

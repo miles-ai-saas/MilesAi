@@ -15,11 +15,7 @@ export function WorkbenchHeaderNav({ pathname }: { pathname: string }) {
           {group.items.map((item) => {
             const active = isNavActive(pathname, item.href);
             return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`header-nav-item shrink-0 ${active ? "header-nav-item-active" : ""}`}
-              >
+              <Link key={item.href} href={item.href} className={`header-nav-item shrink-0 ${active ? "header-nav-item-active" : ""}`}>
                 {item.label}
               </Link>
             );

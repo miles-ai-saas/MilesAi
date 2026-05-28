@@ -86,9 +86,7 @@ def test_dashscope_rerank_nested_payload():
     )
     mock_response = MagicMock()
     mock_response.raise_for_status.return_value = None
-    mock_response.json.return_value = {
-        "output": {"results": [{"index": 0, "relevance_score": 0.8}]}
-    }
+    mock_response.json.return_value = {"output": {"results": [{"index": 0, "relevance_score": 0.8}]}}
 
     with patch("httpx.post", return_value=mock_response) as mock_post:
         hits = DashScopeRerankProvider().rerank(
@@ -109,19 +107,14 @@ def test_openai_compat_ignores_native_rerank_api_base_override():
     model = _qwen_rerank_model(
         api_base="https://dashscope.aliyuncs.com/api/v1/services/rerank/text-rerank/text-rerank",
     )
-    assert (
-        resolve_rerank_openai_compat_url(model)
-        == "https://dashscope.aliyuncs.com/compatible-api/v1/reranks"
-    )
+    assert resolve_rerank_openai_compat_url(model) == "https://dashscope.aliyuncs.com/compatible-api/v1/reranks"
 
 
 def test_registry_routes_qwen_rerank():
     model = _qwen_rerank_model()
     mock_response = MagicMock()
     mock_response.raise_for_status.return_value = None
-    mock_response.json.return_value = {
-        "results": [{"index": 0, "relevance_score": 0.75}]
-    }
+    mock_response.json.return_value = {"results": [{"index": 0, "relevance_score": 0.75}]}
 
     with patch("httpx.post", return_value=mock_response) as mock_post:
         hits = rerank_documents_for_model(

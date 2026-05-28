@@ -28,18 +28,8 @@ export function ChatArtifactImage({ attachmentId, alt }: Props) {
   }, [attachmentId]);
 
   if (!src) {
-    return (
-      <div className="flex h-24 w-24 items-center justify-center rounded-lg bg-surface-muted text-xs text-ink-faint">
-        加载中…
-      </div>
-    );
+    return <div className="flex h-24 w-24 items-center justify-center rounded-lg bg-surface-muted text-xs text-ink-faint">加载中…</div>;
   }
 
-  return (
-    <img
-      src={src}
-      alt={alt ?? "生成图片"}
-      className="max-h-48 max-w-full rounded-lg object-contain ring-1 ring-line"
-    />
-  );
+  return <img src={src} alt={alt ?? "生成图片"} className="max-h-48 max-w-full rounded-lg object-contain ring-1 ring-line" />;
 }

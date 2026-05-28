@@ -15,13 +15,9 @@ export function auditResourceTypeLabel(resourceType: string, meta?: AuditMeta | 
 }
 
 export function auditActionFilterOptions(meta?: AuditMeta | null): EnumOption[] {
-  return meta?.action_filters?.length
-    ? meta.action_filters
-    : [{ value: "", label: "全部动作" }];
+  return meta?.action_filters?.length ? meta.action_filters : [{ value: "", label: "全部动作" }];
 }
 
 export function auditResourceTypeFilterOptions(meta?: AuditMeta | null): EnumOption[] {
-  return meta?.resource_type_filters?.length
-    ? meta.resource_type_filters
-    : [{ value: "", label: "全部资源" }];
+  return meta?.resource_type_filters?.length ? meta.resource_type_filters : [{ value: "", label: "全部资源" }];
 }

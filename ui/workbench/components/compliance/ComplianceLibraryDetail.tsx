@@ -21,12 +21,7 @@ type Props = {
   onLibraryChange: () => void;
 };
 
-export function ComplianceLibraryDetail({
-  library,
-  sensitiveActions = [],
-  onBack,
-  onLibraryChange,
-}: Props) {
+export function ComplianceLibraryDetail({ library, sensitiveActions = [], onBack, onLibraryChange }: Props) {
   const [batchOpen, setBatchOpen] = useState(false);
   const [batchText, setBatchText] = useState("");
   const [wordDialogOpen, setWordDialogOpen] = useState(false);
@@ -102,15 +97,9 @@ export function ComplianceLibraryDetail({
 
       <header className="rounded-xl border border-line bg-surface px-5 py-4 shadow-card">
         <h2 className="text-lg font-semibold text-ink">{library.name}</h2>
-        {library.description && (
-          <p className="mt-1 text-sm text-ink-muted">{library.description}</p>
-        )}
+        {library.description && <p className="mt-1 text-sm text-ink-muted">{library.description}</p>}
         <div className="mt-2 flex flex-wrap gap-2 text-xs">
-          <span
-            className={`rounded-full px-2 py-0.5 ${
-              library.is_active ? "bg-brand-light text-brand" : "bg-surface-muted text-ink-faint"
-            }`}
-          >
+          <span className={`rounded-full px-2 py-0.5 ${library.is_active ? "bg-brand-light text-brand" : "bg-surface-muted text-ink-faint"}`}>
             {library.is_active ? "词库已启用" : "词库已停用"}
           </span>
           <span className="text-ink-muted tabular-nums">共 {library.word_count} 条词条</span>
@@ -129,10 +118,7 @@ export function ComplianceLibraryDetail({
             <ResourceItemCard
               key={w.id}
               title={w.word}
-              description={
-                sensitiveActions.find((o) => o.value === w.action)?.hint ??
-                (w.action === "block" ? "命中后拦截请求" : "命中后记录警告日志")
-              }
+              description={sensitiveActions.find((o) => o.value === w.action)?.hint ?? (w.action === "block" ? "命中后拦截请求" : "命中后记录警告日志")}
               badge={sensitiveActionLabel(w.action, null, sensitiveActions)}
               muted={!w.is_active}
               meta={<span>{w.is_active ? "已启用" : "本库内停用"}</span>}
@@ -186,9 +172,8 @@ export function ComplianceLibraryDetail({
         }
       >
         <p className="text-xs text-ink-muted">
-          每行一条：<span className="font-mono">词语</span> 或{" "}
-          <span className="font-mono">词语,block</span> / <span className="font-mono">词语,warn</span>
-          {" "}或上传 CSV 文件
+          每行一条：<span className="font-mono">词语</span> 或 <span className="font-mono">词语,block</span> / <span className="font-mono">词语,warn</span>{" "}
+          或上传 CSV 文件
         </p>
         <div className="mt-2 flex items-center gap-2">
           <label className="btn-sm-outline cursor-pointer">
@@ -234,11 +219,7 @@ export function ComplianceLibraryDetail({
           await words.reload();
           onLibraryChange();
         }}
-        onRequestEdit={
-          wordMode === "view" && selectedWord
-            ? () => openWord("edit", selectedWord)
-            : undefined
-        }
+        onRequestEdit={wordMode === "view" && selectedWord ? () => openWord("edit", selectedWord) : undefined}
       />
       {confirmDialog}
     </div>

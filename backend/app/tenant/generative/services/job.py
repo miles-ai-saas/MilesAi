@@ -32,16 +32,20 @@ from app.core.service import BaseService
 from app.tenant.tasks.services.task import TaskService
 from app.workers.app import celery_app
 
-_TERMINAL = frozenset({
-    GenerativeJobStatus.SUCCESS,
-    GenerativeJobStatus.FAILED,
-    GenerativeJobStatus.CANCELLED,
-})
+_TERMINAL = frozenset(
+    {
+        GenerativeJobStatus.SUCCESS,
+        GenerativeJobStatus.FAILED,
+        GenerativeJobStatus.CANCELLED,
+    }
+)
 
-_RETRYABLE = frozenset({
-    GenerativeJobStatus.FAILED,
-    GenerativeJobStatus.CANCELLED,
-})
+_RETRYABLE = frozenset(
+    {
+        GenerativeJobStatus.FAILED,
+        GenerativeJobStatus.CANCELLED,
+    }
+)
 
 
 class GenerativeJobService(BaseService):
@@ -97,20 +101,11 @@ class GenerativeJobService(BaseService):
             filters.append(GenerativeJob.kind == kind)
         count_stmt = select(func.count(GenerativeJob.id)).where(*filters)
         total = await self.db.scalar(count_stmt) or 0
-        stmt = (
-            select(GenerativeJob)
-            .where(*filters)
-            .order_by(GenerativeJob.created_at.desc())
-            .offset((params.page - 1) * params.size)
-            .limit(params.size)
-        )
+        stmt = select(GenerativeJob).where(*filters).order_by(GenerativeJob.created_at.desc()).offset((params.page - 1) * params.size).limit(params.size)
         rows = (await self.db.execute(stmt)).scalars().all()
         record_map = await self._celery_record_ids_for_jobs([r.id for r in rows])
         return PageResult(
-            items=[
-                self._job_out(r, celery_task_record_id=record_map.get(r.id))
-                for r in rows
-            ],
+            items=[self._job_out(r, celery_task_record_id=record_map.get(r.id)) for r in rows],
             total=total,
             page=params.page,
             size=params.size,
@@ -150,9 +145,7 @@ class GenerativeJobService(BaseService):
             "duration": body.duration or 5,
             "resolution": body.resolution,
             "image_attachment_id": str(body.image_attachment_id) if body.image_attachment_id else None,
-            "last_frame_attachment_id": (
-                str(body.last_frame_attachment_id) if body.last_frame_attachment_id else None
-            ),
+            "last_frame_attachment_id": (str(body.last_frame_attachment_id) if body.last_frame_attachment_id else None),
             "model_config_id": str(body.model_config_id) if body.model_config_id else None,
             "agent_id": str(agent_id) if agent_id else None,
             "agent_config": agent_config or {},

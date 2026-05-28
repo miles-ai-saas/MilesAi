@@ -19,11 +19,7 @@ class UserRepository(BaseRepository[User]):
     _with_roles = [selectinload(User.roles)]
 
     async def get_with_roles(self, user_id: UUID) -> User | None:
-        stmt = (
-            select(User)
-            .where(User.id == user_id, not_deleted(User))
-            .options(*self._with_roles)
-        )
+        stmt = select(User).where(User.id == user_id, not_deleted(User)).options(*self._with_roles)
         return (await self.db.execute(stmt)).scalar_one_or_none()
 
     async def get_by_username(self, username: str) -> User | None:

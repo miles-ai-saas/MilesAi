@@ -17,12 +17,8 @@ def test_route_none_goes_fallback():
 
 
 def test_route_poor_retries_then_fallback():
-    assert route_after_grade(
-        {"relevance": RELEVANCE_POOR, "retry_count": 0, "max_retries": 1}
-    ) == "retry"
-    assert route_after_grade(
-        {"relevance": RELEVANCE_POOR, "retry_count": 1, "max_retries": 1}
-    ) == "fallback"
+    assert route_after_grade({"relevance": RELEVANCE_POOR, "retry_count": 0, "max_retries": 1}) == "retry"
+    assert route_after_grade({"relevance": RELEVANCE_POOR, "retry_count": 1, "max_retries": 1}) == "fallback"
 
 
 def test_route_good_generates():
@@ -50,9 +46,7 @@ def test_build_rag_thread_id():
     tid = uuid4()
     aid = uuid4()
     assert build_rag_thread_id(tenant_id=tid, agent_id=aid) == f"{tid}:{aid}:default"
-    assert build_rag_thread_id(tenant_id=tid, agent_id=aid, conversation_id="sess-1") == (
-        f"{tid}:{aid}:sess-1"
-    )
+    assert build_rag_thread_id(tenant_id=tid, agent_id=aid, conversation_id="sess-1") == (f"{tid}:{aid}:sess-1")
 
 
 def test_should_use_langgraph_rag_flags():

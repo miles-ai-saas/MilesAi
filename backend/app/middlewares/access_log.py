@@ -29,10 +29,7 @@ def _should_skip(path: str) -> bool:
         return True
     if path.endswith("/health"):
         return True
-    return any(
-        path == prefix or path.startswith(prefix + "/")
-        for prefix in _DEFAULT_SKIP_PREFIXES
-    )
+    return any(path == prefix or path.startswith(prefix + "/") for prefix in _DEFAULT_SKIP_PREFIXES)
 
 
 def _client_host(request: Request) -> str:

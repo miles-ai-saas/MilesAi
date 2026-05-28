@@ -24,13 +24,19 @@ export default function BillingBillsPage() {
   const [msg, setMsg] = useState("");
   const [err, setErr] = useState("");
 
-  const list = usePagedList(useCallback((p, s) => adminApi.listBills(p, s), []), {
-    enabled: ready,
-  });
+  const list = usePagedList(
+    useCallback((p, s) => adminApi.listBills(p, s), []),
+    {
+      enabled: ready,
+    },
+  );
 
   useEffect(() => {
     if (!ready) return;
-    adminApi.listTenants(1, 100).then((t) => setTenants(t.items)).catch(() => undefined);
+    adminApi
+      .listTenants(1, 100)
+      .then((t) => setTenants(t.items))
+      .catch(() => undefined);
   }, [ready]);
 
   const onGenerateBill = async () => {
@@ -63,11 +69,7 @@ export default function BillingBillsPage() {
       <section className="card mb-6 p-4">
         <h2 className="text-sm font-semibold text-ink">生成账单</h2>
         <div className="mt-3 flex flex-wrap items-end gap-2">
-          <select
-            className="input-field w-auto min-w-[12rem]"
-            value={genTenantId}
-            onChange={(e) => setGenTenantId(e.target.value)}
-          >
+          <select className="input-field w-auto min-w-[12rem]" value={genTenantId} onChange={(e) => setGenTenantId(e.target.value)}>
             <option value="">选择租户</option>
             {tenants.map((t) => (
               <option key={t.id} value={t.id}>
@@ -75,19 +77,9 @@ export default function BillingBillsPage() {
               </option>
             ))}
           </select>
-          <input
-            type="date"
-            className="input-field w-auto"
-            value={periodStart}
-            onChange={(e) => setPeriodStart(e.target.value)}
-          />
+          <input type="date" className="input-field w-auto" value={periodStart} onChange={(e) => setPeriodStart(e.target.value)} />
           <span className="cell-muted">至</span>
-          <input
-            type="date"
-            className="input-field w-auto"
-            value={periodEnd}
-            onChange={(e) => setPeriodEnd(e.target.value)}
-          />
+          <input type="date" className="input-field w-auto" value={periodEnd} onChange={(e) => setPeriodEnd(e.target.value)} />
           <button type="button" className="btn-primary" onClick={onGenerateBill}>
             生成账单
           </button>
@@ -127,16 +119,10 @@ export default function BillingBillsPage() {
                       </td>
                       <td className="col-center col-numeric cell-numeric">¥{b.amount}</td>
                       <td className="col-center">
-                        <span className="badge bg-brand-light text-ink">
-                          {BILL_STATUS_LABEL[b.status] ?? b.status}
-                        </span>
+                        <span className="badge bg-brand-light text-ink">{BILL_STATUS_LABEL[b.status] ?? b.status}</span>
                       </td>
                       <td className="col-actions">
-                        <button
-                          type="button"
-                          className="text-brand hover:underline"
-                          onClick={() => viewBill(b.id)}
-                        >
+                        <button type="button" className="text-brand hover:underline" onClick={() => viewBill(b.id)}>
                           明细
                         </button>
                         {b.status === "issued" && (
@@ -171,14 +157,7 @@ export default function BillingBillsPage() {
                 </tbody>
               </table>
             </div>
-            <ListFooter
-              className="mt-3"
-              page={list.page}
-              size={list.size}
-              total={list.total}
-              onPageChange={list.setPage}
-              onSizeChange={list.setSize}
-            />
+            <ListFooter className="mt-3" page={list.page} size={list.size} total={list.total} onPageChange={list.setPage} onSizeChange={list.setSize} />
           </>
         )}
         {billDetail && (

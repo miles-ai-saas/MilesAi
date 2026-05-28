@@ -4,11 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { AdminDetailHeader } from "@/components/layout/AdminDetailHeader";
 import { ModelCatalogEditor } from "@/components/model-catalog/ModelCatalogEditor";
-import {
-  emptyForm,
-  toPayload,
-  type ModelCatalogFormValues,
-} from "@/components/model-catalog/form-utils";
+import { emptyForm, toPayload, type ModelCatalogFormValues } from "@/components/model-catalog/form-utils";
 import { adminApi } from "@/lib/api";
 import { useRequireAdmin } from "@/lib/auth-store";
 
@@ -45,12 +41,7 @@ export default function ModelCatalogNewPage() {
         title="新建内置模型"
         description="创建后为草稿状态，可在详情页继续编辑并发布上架。"
         action={
-          <button
-            type="button"
-            className="btn-primary"
-            disabled={saving}
-            onClick={() => void onCreate()}
-          >
+          <button type="button" className="btn-primary" disabled={saving} onClick={() => void onCreate()}>
             {saving ? "创建中…" : "创建并继续编辑"}
           </button>
         }
@@ -59,11 +50,7 @@ export default function ModelCatalogNewPage() {
       {err && <p className="text-sm text-red-600">{err}</p>}
 
       <div className="max-w-3xl">
-        <ModelCatalogEditor
-          form={form}
-          onChange={(patch) => setForm((f) => ({ ...f, ...patch }))}
-          isCreate
-        />
+        <ModelCatalogEditor form={form} onChange={(patch) => setForm((f) => ({ ...f, ...patch }))} isCreate />
       </div>
     </div>
   );

@@ -5,12 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { AdminDetailHeader } from "@/components/layout/AdminDetailHeader";
 import { UsageQuotaRow } from "@/components/tenant/UsageQuotaRow";
-import {
-  adminApi,
-  type AdminTenantDetail,
-  type BillingPlan,
-  type TenantBill,
-} from "@/lib/api";
+import { adminApi, type AdminTenantDetail, type BillingPlan, type TenantBill } from "@/lib/api";
 import { useRequireAdmin } from "@/lib/auth-store";
 
 const STATUS_LABEL: Record<string, string> = {
@@ -36,10 +31,7 @@ function statusBadgeClass(status: string) {
   return "bg-surface-muted text-ink-muted";
 }
 
-function applyPlanQuotas(
-  tenant: AdminTenantDetail,
-  plan: BillingPlan,
-): AdminTenantDetail {
+function applyPlanQuotas(tenant: AdminTenantDetail, plan: BillingPlan): AdminTenantDetail {
   return {
     ...tenant,
     max_tokens_monthly: plan.max_tokens_monthly,
@@ -63,12 +55,7 @@ export default function TenantDetailPage() {
   const [savingQuota, setSavingQuota] = useState(false);
 
   const reload = async () => {
-    const [t, p, usage, billRes] = await Promise.all([
-      adminApi.getTenant(id),
-      adminApi.listPlans(),
-      adminApi.getTenantUsage(id),
-      adminApi.listBills(1, 5, id),
-    ]);
+    const [t, p, usage, billRes] = await Promise.all([adminApi.getTenant(id), adminApi.listPlans(), adminApi.getTenantUsage(id), adminApi.listBills(1, 5, id)]);
     setTenant({ ...t, usage });
     setPlans(p);
     setBills(billRes.items);
@@ -79,15 +66,9 @@ export default function TenantDetailPage() {
     reload().catch(() => undefined);
   }, [ready, id]);
 
-  const activePlans = useMemo(
-    () => plans.filter((p) => p.is_active || p.id === tenant?.plan_id),
-    [plans, tenant?.plan_id],
-  );
+  const activePlans = useMemo(() => plans.filter((p) => p.is_active || p.id === tenant?.plan_id), [plans, tenant?.plan_id]);
 
-  const selectedPlan = useMemo(
-    () => plans.find((p) => p.id === tenant?.plan_id) ?? null,
-    [plans, tenant?.plan_id],
-  );
+  const selectedPlan = useMemo(() => plans.find((p) => p.id === tenant?.plan_id) ?? null, [plans, tenant?.plan_id]);
 
   const saveSubscription = async () => {
     if (!tenant) return;
@@ -165,24 +146,15 @@ export default function TenantDetailPage() {
         title={tenant.name}
         badges={
           <>
-            <span className={`status-badge ${statusBadgeClass(tenant.status)}`}>
-              {STATUS_LABEL[tenant.status] ?? tenant.status}
-            </span>
-            {tenant.plan_name && (
-              <span className="badge bg-brand-light text-brand">{tenant.plan_name}</span>
-            )}
+            <span className={`status-badge ${statusBadgeClass(tenant.status)}`}>{STATUS_LABEL[tenant.status] ?? tenant.status}</span>
+            {tenant.plan_name && <span className="badge bg-brand-light text-brand">{tenant.plan_name}</span>}
           </>
         }
         description={
           <>
             创建于 {tenant.created_at.slice(0, 10)}
             <span className="mx-2 text-ink-faint">·</span>
-            <button
-              type="button"
-              className="font-mono text-xs text-ink-faint hover:text-brand"
-              onClick={() => void copyTenantId()}
-              title="点击复制"
-            >
+            <button type="button" className="font-mono text-xs text-ink-faint hover:text-brand" onClick={() => void copyTenantId()} title="点击复制">
               {id.slice(0, 8)}…
             </button>
           </>
@@ -199,11 +171,7 @@ export default function TenantDetailPage() {
           { label: "租户用户", value: String(tenant.usage.users), sub: "活跃用户账号" },
           {
             label: "资源实例",
-            value: String(
-              tenant.usage.knowledge_bases +
-                tenant.usage.agents +
-                tenant.usage.flows,
-            ),
+            value: String(tenant.usage.knowledge_bases + tenant.usage.agents + tenant.usage.flows),
             sub: `KB ${tenant.usage.knowledge_bases} · 智能体 ${tenant.usage.agents} · 流程 ${tenant.usage.flows}`,
           },
         ].map((s) => (
@@ -221,16 +189,9 @@ export default function TenantDetailPage() {
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <h2 className="text-sm font-semibold text-ink">用量与配额</h2>
-                <p className="mt-1 text-xs cell-muted">
-                  左侧查看实时用量，右侧直接调整上限；文档 {tenant.usage.documents} 份
-                </p>
+                <p className="mt-1 text-xs cell-muted">左侧查看实时用量，右侧直接调整上限；文档 {tenant.usage.documents} 份</p>
               </div>
-              <button
-                type="button"
-                className="btn-primary"
-                disabled={savingQuota}
-                onClick={() => void saveQuota()}
-              >
+              <button type="button" className="btn-primary" disabled={savingQuota} onClick={() => void saveQuota()}>
                 {savingQuota ? "保存中…" : "保存配额"}
               </button>
             </div>
@@ -254,18 +215,8 @@ export default function TenantDetailPage() {
                 max={tenant.max_knowledge_bases}
                 onMaxChange={(v) => setTenant({ ...tenant, max_knowledge_bases: v })}
               />
-              <UsageQuotaRow
-                label="智能体"
-                used={tenant.usage.agents}
-                max={tenant.max_agents}
-                onMaxChange={(v) => setTenant({ ...tenant, max_agents: v })}
-              />
-              <UsageQuotaRow
-                label="流程"
-                used={tenant.usage.flows}
-                max={tenant.max_flows}
-                onMaxChange={(v) => setTenant({ ...tenant, max_flows: v })}
-              />
+              <UsageQuotaRow label="智能体" used={tenant.usage.agents} max={tenant.max_agents} onMaxChange={(v) => setTenant({ ...tenant, max_agents: v })} />
+              <UsageQuotaRow label="流程" used={tenant.usage.flows} max={tenant.max_flows} onMaxChange={(v) => setTenant({ ...tenant, max_flows: v })} />
             </div>
           </section>
 
@@ -296,9 +247,7 @@ export default function TenantDetailPage() {
                         </td>
                         <td className="col-center col-numeric cell-numeric">¥{b.amount}</td>
                         <td className="col-center">
-                          <span className="badge bg-brand-light text-ink">
-                            {BILL_STATUS_LABEL[b.status] ?? b.status}
-                          </span>
+                          <span className="badge bg-brand-light text-ink">{BILL_STATUS_LABEL[b.status] ?? b.status}</span>
                         </td>
                       </tr>
                     ))}
@@ -315,11 +264,7 @@ export default function TenantDetailPage() {
             <div className="mt-4 space-y-3">
               <label className="block text-xs cell-muted">
                 运营状态
-                <select
-                  className="input-field mt-1"
-                  value={tenant.status}
-                  onChange={(e) => setTenant({ ...tenant, status: e.target.value })}
-                >
+                <select className="input-field mt-1" value={tenant.status} onChange={(e) => setTenant({ ...tenant, status: e.target.value })}>
                   <option value="active">活跃</option>
                   <option value="trial">试用</option>
                   <option value="suspended">已停用</option>
@@ -327,13 +272,7 @@ export default function TenantDetailPage() {
               </label>
               <label className="block text-xs cell-muted">
                 计费套餐
-                <select
-                  className="input-field mt-1"
-                  value={tenant.plan_id || ""}
-                  onChange={(e) =>
-                    setTenant({ ...tenant, plan_id: e.target.value || null })
-                  }
-                >
+                <select className="input-field mt-1" value={tenant.plan_id || ""} onChange={(e) => setTenant({ ...tenant, plan_id: e.target.value || null })}>
                   <option value="">无套餐</option>
                   {activePlans.map((p) => (
                     <option key={p.id} value={p.id} disabled={!p.is_active}>
@@ -346,28 +285,16 @@ export default function TenantDetailPage() {
               </label>
               {selectedPlan && (
                 <p className="rounded-lg bg-surface-muted px-3 py-2 text-xs cell-muted">
-                  套餐默认：{selectedPlan.max_tokens_monthly.toLocaleString()} Token ·{" "}
-                  {selectedPlan.max_storage_mb.toLocaleString()} MB · KB{" "}
+                  套餐默认：{selectedPlan.max_tokens_monthly.toLocaleString()} Token · {selectedPlan.max_storage_mb.toLocaleString()} MB · KB{" "}
                   {selectedPlan.max_knowledge_bases}
                 </p>
               )}
             </div>
             <div className="mt-4 flex flex-wrap gap-2">
-              <button
-                type="button"
-                className="btn-primary flex-1"
-                disabled={savingSub}
-                onClick={() => void saveSubscription()}
-              >
+              <button type="button" className="btn-primary flex-1" disabled={savingSub} onClick={() => void saveSubscription()}>
                 {savingSub ? "保存中…" : "保存订阅"}
               </button>
-              <button
-                type="button"
-                className="btn-ghost"
-                disabled={!selectedPlan}
-                onClick={onApplyPlanQuota}
-                title="将套餐默认配额填入左侧表单"
-              >
+              <button type="button" className="btn-ghost" disabled={!selectedPlan} onClick={onApplyPlanQuota} title="将套餐默认配额填入左侧表单">
                 套用配额
               </button>
             </div>
@@ -376,11 +303,7 @@ export default function TenantDetailPage() {
           <section className="card border-red-200 p-5">
             <h2 className="text-sm font-semibold text-red-700">危险操作</h2>
             <p className="mt-1 text-xs cell-muted">删除后租户业务数据不可恢复。</p>
-            <button
-              type="button"
-              className="mt-3 text-sm text-red-600 hover:underline"
-              onClick={() => void onDelete()}
-            >
+            <button type="button" className="mt-3 text-sm text-red-600 hover:underline" onClick={() => void onDelete()}>
               删除租户
             </button>
           </section>

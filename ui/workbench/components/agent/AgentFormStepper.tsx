@@ -23,11 +23,7 @@ export function AgentFormStepper({ step, onStepClick, designMode }: Props) {
           const lineDone = i < step;
           return (
             <div key={s.title} className="flex min-w-0 flex-1 items-start">
-              <button
-                type="button"
-                onClick={() => onStepClick(i)}
-                className="group flex min-w-0 flex-1 flex-col items-center px-0.5"
-              >
+              <button type="button" onClick={() => onStepClick(i)} className="group flex min-w-0 flex-1 flex-col items-center px-0.5">
                 <span
                   className={`relative z-10 flex shrink-0 items-center justify-center rounded-full font-medium transition ${circle} ${
                     active
@@ -54,12 +50,7 @@ export function AgentFormStepper({ step, onStepClick, designMode }: Props) {
                 </span>
               </button>
               {i < AGENT_FORM_STEPS.length - 1 && (
-                <div
-                  className={`mx-0.5 hidden h-px min-w-[8px] flex-1 sm:block ${connectorMt} ${
-                    lineDone ? "bg-brand/30" : "bg-line"
-                  }`}
-                  aria-hidden
-                />
+                <div className={`mx-0.5 hidden h-px min-w-[8px] flex-1 sm:block ${connectorMt} ${lineDone ? "bg-brand/30" : "bg-line"}`} aria-hidden />
               )}
             </div>
           );

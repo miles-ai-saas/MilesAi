@@ -23,13 +23,7 @@ function niceMax(values: number[]): number {
   return (n <= 2 ? 2 : n <= 5 ? 5 : 10) * exp;
 }
 
-export function SimpleLineChart({
-  points,
-  color = "var(--brand)",
-  className = "",
-  height = 120,
-  compact = false,
-}: Props) {
+export function SimpleLineChart({ points, color = "var(--brand)", className = "", height = 120, compact = false }: Props) {
   const PAD = compact ? PAD_COMPACT : PAD_DEFAULT;
   const width = compact ? 240 : 280;
   const innerW = width - PAD.left - PAD.right;
@@ -46,68 +40,31 @@ export function SimpleLineChart({
     return { x, y, ...p };
   });
 
-  const linePath =
-    coords.length > 0
-      ? coords.map((c, i) => `${i === 0 ? "M" : "L"} ${c.x} ${c.y}`).join(" ")
-      : "";
+  const linePath = coords.length > 0 ? coords.map((c, i) => `${i === 0 ? "M" : "L"} ${c.x} ${c.y}`).join(" ") : "";
 
   const yTicks = [0, yMax * 0.5, yMax];
   const showEvery = points.length > 10 ? Math.ceil(points.length / 7) : 1;
 
   return (
-    <svg
-      viewBox={`0 0 ${width} ${height}`}
-      className={`w-full max-w-full ${className}`}
-      role="img"
-      aria-hidden
-    >
+    <svg viewBox={`0 0 ${width} ${height}`} className={`w-full max-w-full ${className}`} role="img" aria-hidden>
       {yTicks.map((tick) => {
         const y = PAD.top + innerH - (tick / yMax) * innerH;
         return (
           <g key={tick}>
-            <line
-              x1={PAD.left}
-              y1={y}
-              x2={width - PAD.right}
-              y2={y}
-              stroke="var(--line-soft, #f0f0f0)"
-              strokeWidth={1}
-            />
-            <text
-              x={PAD.left - 6}
-              y={y + 3}
-              textAnchor="end"
-              className="fill-ink-faint"
-              fontSize={fontSize}
-            >
+            <line x1={PAD.left} y1={y} x2={width - PAD.right} y2={y} stroke="var(--line-soft, #f0f0f0)" strokeWidth={1} />
+            <text x={PAD.left - 6} y={y + 3} textAnchor="end" className="fill-ink-faint" fontSize={fontSize}>
               {tick % 1 === 0 ? tick : tick.toFixed(1)}
             </text>
           </g>
         );
       })}
-      {linePath && (
-        <path
-          d={linePath}
-          fill="none"
-          stroke={color}
-          strokeWidth={strokeW}
-          strokeLinejoin="round"
-          strokeLinecap="round"
-        />
-      )}
+      {linePath && <path d={linePath} fill="none" stroke={color} strokeWidth={strokeW} strokeLinejoin="round" strokeLinecap="round" />}
       {coords.map((c) => (
         <circle key={c.label} cx={c.x} cy={c.y} r={dotR} fill={color} />
       ))}
       {coords.map((c, i) =>
         i % showEvery === 0 || i === coords.length - 1 ? (
-          <text
-            key={`${c.label}-x`}
-            x={c.x}
-            y={height - 4}
-            textAnchor="middle"
-            className="fill-ink-faint"
-            fontSize={fontSize}
-          >
+          <text key={`${c.label}-x`} x={c.x} y={height - 4} textAnchor="middle" className="fill-ink-faint" fontSize={fontSize}>
             {c.label}
           </text>
         ) : null,

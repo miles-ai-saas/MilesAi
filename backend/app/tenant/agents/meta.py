@@ -34,10 +34,7 @@ AGENT_TYPE_LABELS: dict[str, tuple[str, str | None]] = {
 # 空 value 表示未指定
 SUB_AGENT_ROLE_OPTIONS: list[tuple[str, str, str | None]] = [
     ("", "未指定", None),
-    *[
-        (role, *SUB_AGENT_ROLE_DISPLAY[role])
-        for role in sorted(SUB_AGENT_ROLE_HINTS)
-    ],
+    *[(role, *SUB_AGENT_ROLE_DISPLAY[role]) for role in sorted(SUB_AGENT_ROLE_HINTS)],
 ]
 
 RUNTIME_MODE_LABELS: dict[str, tuple[str, str | None]] = {
@@ -55,10 +52,7 @@ PLANNER_LABELS: dict[str, tuple[str, str | None]] = {
 
 def agents_meta_dict() -> dict:
     """构建 meta 响应 dict，供 *MetaOut.model_validate 与单测使用。"""
-    primary_paths = [
-        EnumOption(value=key, label=label, hint=None)
-        for key, label in PRIMARY_PATH_LABELS.items()
-    ]
+    primary_paths = [EnumOption(value=key, label=label, hint=None) for key, label in PRIMARY_PATH_LABELS.items()]
     return {
         "statuses": enum_options(AgentStatus, AGENT_STATUS_LABELS),
         "agent_types": enum_options(AgentType, AGENT_TYPE_LABELS),

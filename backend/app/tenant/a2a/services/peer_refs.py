@@ -121,9 +121,7 @@ async def validate_and_sync_agent_a2a_peer_refs(
         if not peer or is_marked_deleted(peer) or peer.tenant_id != ctx.tenant_id:
             raise NotFoundError("外部 A2A Agent 不存在")
         if peer.status != A2aPeerStatus.ACTIVE:
-            raise BadRequestError(
-                f"外部 Agent「{peer.name}」未同步 Card（请先同步并确保状态为已连通）"
-            )
+            raise BadRequestError(f"外部 Agent「{peer.name}」未同步 Card（请先同步并确保状态为已连通）")
         db.add(
             AgentA2aPeerRef(
                 agent_id=agent.id,

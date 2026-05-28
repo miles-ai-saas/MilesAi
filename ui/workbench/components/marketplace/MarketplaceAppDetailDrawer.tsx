@@ -10,15 +10,7 @@ import { marketplaceStatusLabel } from "@/lib/marketplace-labels";
 import type { MarketplaceMeta } from "@/lib/types";
 import type { AppRating, MarketplaceApp, MarketplaceAppDetail } from "@/lib/types";
 
-function DetailSection({
-  title,
-  hint,
-  children,
-}: {
-  title: string;
-  hint?: string;
-  children: React.ReactNode;
-}) {
+function DetailSection({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) {
   return (
     <section className="rounded-xl border border-line bg-surface-muted/30 p-4">
       <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-muted">{title}</h3>
@@ -64,22 +56,13 @@ export function MarketplaceAppDetailDrawer({
   onDeleteRating,
 }: Props) {
   const manifestItems = detail ? manifestResourceItems(detail.manifest ?? {}) : [];
-  const canInstall =
-    detail && !detail.installed && detail.status === "published";
+  const canInstall = detail && !detail.installed && detail.status === "published";
 
-  const title = loading
-    ? "加载中…"
-    : detail
-      ? `${detail.icon || "📦"} ${detail.name}`
-      : "应用详情";
+  const title = loading ? "加载中…" : detail ? `${detail.icon || "📦"} ${detail.name}` : "应用详情";
 
   const description =
     detail && !loading
-      ? [
-          detail.category_name,
-          detail.is_official ? "官方" : null,
-          detail.installed ? "已安装" : marketplaceStatusLabel(detail.status, marketplaceMeta),
-        ]
+      ? [detail.category_name, detail.is_official ? "官方" : null, detail.installed ? "已安装" : marketplaceStatusLabel(detail.status, marketplaceMeta)]
           .filter(Boolean)
           .join(" · ")
       : undefined;
@@ -98,12 +81,7 @@ export function MarketplaceAppDetailDrawer({
               关闭
             </button>
             {canInstall && (
-              <button
-                type="button"
-                className="btn-primary"
-                disabled={installingId === detail.id}
-                onClick={() => onInstall(detail)}
-              >
+              <button type="button" className="btn-primary" disabled={installingId === detail.id} onClick={() => onInstall(detail)}>
                 {installingId === detail.id ? "安装中…" : "一键安装"}
               </button>
             )}
@@ -111,9 +89,7 @@ export function MarketplaceAppDetailDrawer({
         ) : null
       }
     >
-      {loading && (
-        <p className="py-12 text-center text-sm text-ink-muted">加载应用详情…</p>
-      )}
+      {loading && <p className="py-12 text-center text-sm text-ink-muted">加载应用详情…</p>}
 
       {detail && !loading && (
         <div className="space-y-4">
@@ -128,24 +104,17 @@ export function MarketplaceAppDetailDrawer({
           </div>
 
           <DetailSection title="应用说明">
-            <p className="whitespace-pre-wrap text-sm leading-relaxed text-ink">
-              {detail.description?.trim() || "暂无描述"}
-            </p>
+            <p className="whitespace-pre-wrap text-sm leading-relaxed text-ink">{detail.description?.trim() || "暂无描述"}</p>
           </DetailSection>
 
           {manifestItems.length > 0 && (
             <DetailSection title="包含能力" hint="安装后将复制以下资源到本租户">
               <ul className="space-y-2 text-sm">
                 {manifestItems.map((item) => (
-                  <li
-                    key={item.key}
-                    className="flex flex-wrap items-baseline gap-x-2 rounded-lg border border-line-soft bg-surface px-3 py-2"
-                  >
+                  <li key={item.key} className="flex flex-wrap items-baseline gap-x-2 rounded-lg border border-line-soft bg-surface px-3 py-2">
                     <span className="shrink-0 text-xs font-medium text-brand">{item.label}</span>
                     <span className="min-w-0 font-medium text-ink">{item.name}</span>
-                    {item.hint && (
-                      <span className="w-full text-xs text-ink-faint">{item.hint}</span>
-                    )}
+                    {item.hint && <span className="w-full text-xs text-ink-faint">{item.hint}</span>}
                   </li>
                 ))}
               </ul>
@@ -179,21 +148,11 @@ export function MarketplaceAppDetailDrawer({
                 onChange={(e) => onRateCommentChange(e.target.value)}
               />
               <div className="mt-3 flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  disabled={rateSaving}
-                  onClick={onSaveRating}
-                  className="btn-primary text-xs"
-                >
+                <button type="button" disabled={rateSaving} onClick={onSaveRating} className="btn-primary text-xs">
                   {rateSaving ? "保存中…" : "保存评分"}
                 </button>
                 {detail.my_rating && (
-                  <button
-                    type="button"
-                    disabled={rateSaving}
-                    onClick={onDeleteRating}
-                    className="btn-secondary text-xs"
-                  >
+                  <button type="button" disabled={rateSaving} onClick={onDeleteRating} className="btn-secondary text-xs">
                     删除评分
                   </button>
                 )}

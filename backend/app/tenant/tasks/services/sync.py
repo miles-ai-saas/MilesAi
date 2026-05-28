@@ -20,9 +20,7 @@ def sync_task_by_celery_id(
 ) -> None:
     """按 Celery task id 更新 celery_task_records 状态（Worker 同步会话）。"""
     with get_sync_db() as db:
-        record = db.scalar(
-            select(CeleryTaskRecord).where(CeleryTaskRecord.celery_task_id == celery_task_id)
-        )
+        record = db.scalar(select(CeleryTaskRecord).where(CeleryTaskRecord.celery_task_id == celery_task_id))
         if not record:
             return
         record.status = status

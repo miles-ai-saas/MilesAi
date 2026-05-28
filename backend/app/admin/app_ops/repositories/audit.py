@@ -75,12 +75,7 @@ class AuditLogRepository(BaseRepository[AuditLog]):
         return list((await self.db.execute(stmt)).scalars().all())
 
     async def list_audit_admins(self) -> list[PlatformAdmin]:
-        stmt = (
-            select(PlatformAdmin)
-            .join(AuditLog, AuditLog.admin_id == PlatformAdmin.id)
-            .distinct()
-            .order_by(PlatformAdmin.username)
-        )
+        stmt = select(PlatformAdmin).join(AuditLog, AuditLog.admin_id == PlatformAdmin.id).distinct().order_by(PlatformAdmin.username)
         return list((await self.db.execute(stmt)).scalars().all())
 
     async def load_admin_usernames(self, admin_ids: set[UUID]) -> dict[UUID, str]:

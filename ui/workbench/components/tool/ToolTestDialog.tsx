@@ -67,21 +67,11 @@ export function ToolTestDialog({ open, tool, onClose, onRun }: Props) {
             关闭
           </button>
           {needsConfirm ? (
-            <button
-              type="button"
-              className="btn-primary"
-              disabled={busy}
-              onClick={() => handleExecute(true)}
-            >
+            <button type="button" className="btn-primary" disabled={busy} onClick={() => handleExecute(true)}>
               确认执行
             </button>
           ) : (
-            <button
-              type="button"
-              className="btn-primary"
-              disabled={busy}
-              onClick={() => handleExecute(false)}
-            >
+            <button type="button" className="btn-primary" disabled={busy} onClick={() => handleExecute(false)}>
               {busy ? "执行中…" : "执行"}
             </button>
           )}
@@ -99,11 +89,7 @@ export function ToolTestDialog({ open, tool, onClose, onRun }: Props) {
                 {p.required ? " *" : ""}
               </span>
               {p.type === "boolean" ? (
-                <input
-                  type="checkbox"
-                  checked={Boolean(values[p.name])}
-                  onChange={(e) => setValues((v) => ({ ...v, [p.name]: e.target.checked }))}
-                />
+                <input type="checkbox" checked={Boolean(values[p.name])} onChange={(e) => setValues((v) => ({ ...v, [p.name]: e.target.checked }))} />
               ) : (
                 <input
                   className="input-field w-full"
@@ -115,12 +101,8 @@ export function ToolTestDialog({ open, tool, onClose, onRun }: Props) {
           ))}
         </div>
       )}
-      {needsConfirm && (
-        <p className="mt-2 text-xs text-amber-700">此工具需要确认后才会真正执行。</p>
-      )}
-      {result && (
-        <pre className="mt-3 max-h-48 overflow-auto rounded bg-surface-muted p-3 text-xs">{result}</pre>
-      )}
+      {needsConfirm && <p className="mt-2 text-xs text-amber-700">此工具需要确认后才会真正执行。</p>}
+      {result && <pre className="mt-3 max-h-48 overflow-auto rounded bg-surface-muted p-3 text-xs">{result}</pre>}
     </ResourceDialog>
   );
 }

@@ -35,42 +35,20 @@ export function ToolParameterEditor({ value, onChange }: Props) {
         </div>
       )}
       {value.map((row, idx) => (
-        <div
-          key={idx}
-          className="grid gap-2 rounded-lg border border-line-soft bg-surface p-3 md:grid-cols-[1fr_120px_72px_56px] md:items-center"
-        >
-          <input
-            className="input-field w-full"
-            placeholder="参数名"
-            value={row.name}
-            onChange={(e) => update(idx, { name: e.target.value })}
-          />
-          <select
-            className="input-field w-full"
-            value={row.type}
-            onChange={(e) =>
-              update(idx, { type: e.target.value as ToolParameterSpec["type"] })
-            }
-          >
+        <div key={idx} className="grid gap-2 rounded-lg border border-line-soft bg-surface p-3 md:grid-cols-[1fr_120px_72px_56px] md:items-center">
+          <input className="input-field w-full" placeholder="参数名" value={row.name} onChange={(e) => update(idx, { name: e.target.value })} />
+          <select className="input-field w-full" value={row.type} onChange={(e) => update(idx, { type: e.target.value as ToolParameterSpec["type"] })}>
             <option value="string">string</option>
             <option value="integer">integer</option>
             <option value="number">number</option>
             <option value="boolean">boolean</option>
           </select>
           <label className="flex items-center gap-2 text-xs text-ink-muted md:justify-center">
-            <input
-              type="checkbox"
-              checked={Boolean(row.required)}
-              onChange={(e) => update(idx, { required: e.target.checked })}
-            />
+            <input type="checkbox" checked={Boolean(row.required)} onChange={(e) => update(idx, { required: e.target.checked })} />
             <span className="md:sr-only">必填</span>
             <span className="md:hidden">必填</span>
           </label>
-          <button
-            type="button"
-            className="text-xs text-red-600 hover:underline md:text-center"
-            onClick={() => remove(idx)}
-          >
+          <button type="button" className="text-xs text-red-600 hover:underline md:text-center" onClick={() => remove(idx)}>
             删除
           </button>
           <input

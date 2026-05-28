@@ -1,9 +1,4 @@
-import type {
-  ConfigDefinition,
-  RuntimeInfo,
-  InfraStatus,
-  InfraComponentStatus,
-} from "../types";
+import type { ConfigDefinition, RuntimeInfo, InfraStatus, InfraComponentStatus } from "../types";
 import { get, post, put } from "./client";
 
 export const systemApi = {
@@ -11,8 +6,7 @@ export const systemApi = {
 
   getRuntimeInfo: () => get<RuntimeInfo>("/system/configs/runtime"),
 
-  getTenantObjectStorage: () =>
-    get<import("../types").TenantObjectStorageConfig>("/system/object-storage"),
+  getTenantObjectStorage: () => get<import("../types").TenantObjectStorageConfig>("/system/object-storage"),
 
   upsertTenantObjectStorage: (payload: {
     is_enabled: boolean;
@@ -32,8 +26,7 @@ export const systemApi = {
     secret_key?: string;
     secure: boolean;
     region?: string;
-  }) =>
-    post<{ ok: boolean; message: string }>("/system/object-storage/test-connection", payload ?? {}),
+  }) => post<{ ok: boolean; message: string }>("/system/object-storage/test-connection", payload ?? {}),
 
   getInfraStatus: () => get<InfraStatus>("/system/infra/status"),
 
@@ -53,5 +46,4 @@ export const systemApi = {
     }),
 
   getSystemQuota: () => get<import("../types").TenantQuota>("/system/quota"),
-
 };

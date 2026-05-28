@@ -7,12 +7,7 @@ export function generativeJobToArtifacts(job: GenerativeJobOut): ChatArtifact[] 
   const kind = (job.result.kind as string) || "video";
   const mime = (job.result.mime_type as string) ?? undefined;
   const rawIds = job.result.attachment_ids;
-  const ids =
-    Array.isArray(rawIds) && rawIds.length > 0
-      ? rawIds.map((id) => String(id))
-      : job.result.attachment_id
-        ? [String(job.result.attachment_id)]
-        : [];
+  const ids = Array.isArray(rawIds) && rawIds.length > 0 ? rawIds.map((id) => String(id)) : job.result.attachment_id ? [String(job.result.attachment_id)] : [];
   return ids.map((attachment_id) => ({
     kind,
     attachment_id,
@@ -26,9 +21,7 @@ export type PendingGenerativeJob = {
   kind: "video" | "image";
 };
 
-export function extractPendingGenerativeJobs(
-  steps: Record<string, unknown>[] | undefined | null,
-): PendingGenerativeJob[] {
+export function extractPendingGenerativeJobs(steps: Record<string, unknown>[] | undefined | null): PendingGenerativeJob[] {
   if (!steps?.length) return [];
   const out: PendingGenerativeJob[] = [];
   const seen = new Set<string>();

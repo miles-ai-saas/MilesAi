@@ -39,9 +39,7 @@ from app.integrations.langchain.visual_embeddings import (
 class EmbedTextsForKb(Protocol):
     """按 KB 绑定的 embedding 模型批量向量化分片文本。"""
 
-    def __call__(
-        self, db: Session, kb: KnowledgeBase, texts: list[str]
-    ) -> list[list[float]]: ...
+    def __call__(self, db: Session, kb: KnowledgeBase, texts: list[str]) -> list[list[float]]: ...
 
 
 class LoadObjectBytes(Protocol):

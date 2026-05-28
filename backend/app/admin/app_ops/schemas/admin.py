@@ -2,9 +2,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-ADMIN_ROLES = frozenset(
-    {"super_admin", "ops", "billing", "security", "viewer", "operator"}
-)
+ADMIN_ROLES = frozenset({"super_admin", "ops", "billing", "security", "viewer", "operator"})
 
 
 class PlatformAdminOut(BaseModel):

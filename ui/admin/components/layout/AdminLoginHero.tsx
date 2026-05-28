@@ -8,11 +8,7 @@ export function AdminLoginHero() {
         <div className="absolute right-10 top-16 h-28 w-28 rotate-12 rounded-2xl border border-brand/10 bg-white/90 shadow-panel" />
         <div className="absolute bottom-28 left-[18%] h-36 w-36 -rotate-12 rounded-full border-2 border-dashed border-brand/25" />
         <div className="absolute right-[22%] top-[42%] h-24 w-24 rotate-45 rounded-lg border border-brand/15 bg-brand-light/80" />
-        <svg
-          className="absolute -bottom-8 -right-4 h-72 w-72 text-brand/10"
-          viewBox="0 0 200 200"
-          fill="currentColor"
-        >
+        <svg className="absolute -bottom-8 -right-4 h-72 w-72 text-brand/10" viewBox="0 0 200 200" fill="currentColor">
           <polygon points="100,10 190,190 10,190" />
         </svg>
         <div className="absolute left-[48%] top-[36%] h-3 w-3 rounded-full bg-brand" />
@@ -44,9 +40,7 @@ export function AdminLoginHero() {
         </ul>
       </div>
 
-      <p className="relative z-10 px-10 pb-8 text-xs text-ink-faint xl:px-14">
-        让平台管理有数据、有边界、有留痕
-      </p>
+      <p className="relative z-10 px-10 pb-8 text-xs text-ink-faint xl:px-14">让平台管理有数据、有边界、有留痕</p>
     </aside>
   );
 }

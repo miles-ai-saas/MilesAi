@@ -9,8 +9,8 @@ export function KbDetailSearchTab({ vm }: { vm: KbDetailPageVm }) {
     <section className="rounded-xl border border-line bg-surface p-5 shadow-card">
       <h2 className="text-sm font-semibold text-ink">检索测试</h2>
       <p className="mt-1 text-xs text-ink-faint">
-        默认使用本库配置（{retrievalModeLabel(kb.retrieval_mode, vm.kbMeta?.retrieval_modes)}）。
-        专有名词、编号可尝试「混合」。文本搜图：勾选「图片」+ OCR 检索；真·以图搜图：勾选「CLIP 视觉相似度」并选择参考图或输入描述。
+        默认使用本库配置（{retrievalModeLabel(kb.retrieval_mode, vm.kbMeta?.retrieval_modes)}）。 专有名词、编号可尝试「混合」。文本搜图：勾选「图片」+ OCR
+        检索；真·以图搜图：勾选「CLIP 视觉相似度」并选择参考图或输入描述。
       </p>
       <div className="mt-4 flex flex-col gap-3">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
@@ -30,11 +30,13 @@ export function KbDetailSearchTab({ vm }: { vm: KbDetailPageVm }) {
               value={vm.searchMode}
               onChange={(e) => vm.setSearchMode(e.target.value as typeof vm.searchMode)}
             >
-              {(vm.kbMeta?.search_modes ?? [
-                { value: "default", label: "按库配置" },
-                { value: "vector", label: "纯语义" },
-                { value: "hybrid", label: "混合" },
-              ]).map((o) => (
+              {(
+                vm.kbMeta?.search_modes ?? [
+                  { value: "default", label: "按库配置" },
+                  { value: "vector", label: "纯语义" },
+                  { value: "hybrid", label: "混合" },
+                ]
+              ).map((o) => (
                 <option key={o.value} value={o.value}>
                   {o.label}
                 </option>
@@ -58,12 +60,14 @@ export function KbDetailSearchTab({ vm }: { vm: KbDetailPageVm }) {
         </div>
         <div className="flex flex-wrap items-center gap-3 text-xs text-ink-muted">
           <span className="font-medium text-ink">来源类型</span>
-          {(vm.kbMeta?.media_types ?? [
-            { value: "text", label: "文本" },
-            { value: "image", label: "图片" },
-            { value: "audio", label: "音频" },
-            { value: "video", label: "视频" },
-          ]).map((o) => {
+          {(
+            vm.kbMeta?.media_types ?? [
+              { value: "text", label: "文本" },
+              { value: "image", label: "图片" },
+              { value: "audio", label: "音频" },
+              { value: "video", label: "视频" },
+            ]
+          ).map((o) => {
             const checked = vm.searchMediaTypes.includes(o.value);
             return (
               <label key={o.value} className="inline-flex items-center gap-1">
@@ -71,9 +75,7 @@ export function KbDetailSearchTab({ vm }: { vm: KbDetailPageVm }) {
                   type="checkbox"
                   checked={checked}
                   onChange={() => {
-                    vm.setSearchMediaTypes((prev) =>
-                      checked ? prev.filter((v) => v !== o.value) : [...prev, o.value],
-                    );
+                    vm.setSearchMediaTypes((prev) => (checked ? prev.filter((v) => v !== o.value) : [...prev, o.value]));
                   }}
                 />
                 {o.label}
@@ -82,11 +84,7 @@ export function KbDetailSearchTab({ vm }: { vm: KbDetailPageVm }) {
           })}
           <label className="inline-flex items-center gap-2 sm:ml-2">
             <span>以图/视频搜</span>
-            <select
-              className="input-field w-auto min-w-[10rem] text-xs"
-              value={vm.searchQueryDocId}
-              onChange={(e) => vm.setSearchQueryDocId(e.target.value)}
-            >
+            <select className="input-field w-auto min-w-[10rem] text-xs" value={vm.searchQueryDocId} onChange={(e) => vm.setSearchQueryDocId(e.target.value)}>
               <option value="">不选</option>
               {(vm.searchVisual ? vm.imageDocs : vm.imageVideoDocs).map((d) => (
                 <option key={d.id} value={d.id}>
@@ -133,9 +131,7 @@ export function KbDetailSearchTab({ vm }: { vm: KbDetailPageVm }) {
               {h.score_vector != null ? <span>向量 {h.score_vector.toFixed(2)}</span> : null}
               {h.score_keyword != null ? <span>关键词 {h.score_keyword.toFixed(2)}</span> : null}
               {h.filename ? <span className="truncate">· {h.filename}</span> : null}
-              {h.vector_type ? (
-                <span className="rounded bg-brand/10 px-1.5 py-0.5 text-brand">{h.vector_type}</span>
-              ) : null}
+              {h.vector_type ? <span className="rounded bg-brand/10 px-1.5 py-0.5 text-brand">{h.vector_type}</span> : null}
             </div>
             <p className="whitespace-pre-wrap text-sm leading-relaxed text-ink">{h.content}</p>
           </li>

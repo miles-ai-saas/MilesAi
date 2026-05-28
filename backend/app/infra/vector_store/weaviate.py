@@ -197,9 +197,7 @@ class WeaviateVectorStore:
         client = _client()
         if not client.collections.exists(CLASS_NAME):
             return
-        client.collections.get(CLASS_NAME).data.delete_many(
-            where=Filter.by_property("document_id").equal(str(document_id))
-        )
+        client.collections.get(CLASS_NAME).data.delete_many(where=Filter.by_property("document_id").equal(str(document_id)))
 
     def delete_by_chunk_ids(self, chunk_ids: list[str]) -> None:
         """

@@ -63,9 +63,7 @@ async def list_apps(
     ctx: TenantContext = Depends(require_permissions("marketplace:read")),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await _svc(db, ctx).list_apps(
-        params, category_slug=category, sort=sort, tag_ids=tag_ids
-    )
+    result = await _svc(db, ctx).list_apps(params, category_slug=category, sort=sort, tag_ids=tag_ids)
     return page_ok(result.items, result.total, result.page, result.size)
 
 

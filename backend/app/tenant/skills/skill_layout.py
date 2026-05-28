@@ -150,10 +150,7 @@ def format_layout_prompt_blocks(layout: dict | None) -> list[str]:
             p = item.get("path", "")
             s = item.get("summary") or ""
             lines.append(f"- {p}" + (f" — {s}" if s else ""))
-        parts.append(
-            "【技能参考索引】需要详细说明时用 skill_read_reference 读取，勿臆造：\n"
-            + "\n".join(lines)
-        )
+        parts.append("【技能参考索引】需要详细说明时用 skill_read_reference 读取，勿臆造：\n" + "\n".join(lines))
     scripts = layout.get("script_index") or []
     if scripts:
         lines = []
@@ -161,10 +158,7 @@ def format_layout_prompt_blocks(layout: dict | None) -> list[str]:
             p = item.get("path", "")
             s = item.get("summary") or ""
             lines.append(f"- {p}" + (f" — {s}" if s else ""))
-        parts.append(
-            "【技能脚本索引】需要执行时用 skill_run_script，路径相对技能根：\n"
-            + "\n".join(lines)
-        )
+        parts.append("【技能脚本索引】需要执行时用 skill_run_script，路径相对技能根：\n" + "\n".join(lines))
     return parts
 
 

@@ -107,18 +107,10 @@ export default function MarketplaceCategoriesPage() {
                 <td className="col-center col-numeric cell-numeric">{row.sort_order}</td>
                 <td className="col-center col-numeric cell-numeric">{row.app_count}</td>
                 <td className="col-actions">
-                  <button
-                    type="button"
-                    className="text-brand hover:underline"
-                    onClick={() => openEdit(row)}
-                  >
+                  <button type="button" className="text-brand hover:underline" onClick={() => openEdit(row)}>
                     编辑
                   </button>
-                  <button
-                    type="button"
-                    className="text-red-600 hover:underline"
-                    onClick={() => void onDelete(row)}
-                  >
+                  <button type="button" className="text-red-600 hover:underline" onClick={() => void onDelete(row)}>
                     删除
                   </button>
                 </td>
@@ -127,8 +119,7 @@ export default function MarketplaceCategoriesPage() {
             {items.length === 0 && (
               <tr>
                 <td colSpan={5} className="px-4 py-8 text-center text-ink-muted">
-                  暂无分类。可点击「新建分类」或执行后端{" "}
-                  <code className="text-brand">python cli.py seed marketplace</code>
+                  暂无分类。可点击「新建分类」或执行后端 <code className="text-brand">python cli.py seed marketplace</code>
                 </td>
               </tr>
             )}
@@ -139,35 +130,19 @@ export default function MarketplaceCategoriesPage() {
       {dialogOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="w-full max-w-md rounded-xl border border-line bg-surface p-6 shadow-panel">
-            <h2 className="text-lg font-semibold text-ink">
-              {editing ? "编辑分类" : "新建分类"}
-            </h2>
+            <h2 className="text-lg font-semibold text-ink">{editing ? "编辑分类" : "新建分类"}</h2>
             <div className="mt-4 space-y-3">
               <label className="block text-sm">
                 <span className="mb-1 block text-ink-muted">名称</span>
-                <input
-                  className="input-field w-full"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                />
+                <input className="input-field w-full" value={name} onChange={(e) => setName(e.target.value)} />
               </label>
               <label className="block text-sm">
                 <span className="mb-1 block text-ink-muted">slug（可选，留空自动生成）</span>
-                <input
-                  className="input-field w-full font-mono text-xs"
-                  value={slug}
-                  onChange={(e) => setSlug(e.target.value)}
-                  placeholder="rag"
-                />
+                <input className="input-field w-full font-mono text-xs" value={slug} onChange={(e) => setSlug(e.target.value)} placeholder="rag" />
               </label>
               <label className="block text-sm">
                 <span className="mb-1 block text-ink-muted">排序</span>
-                <input
-                  type="number"
-                  className="input-field w-full"
-                  value={sortOrder}
-                  onChange={(e) => setSortOrder(Number(e.target.value))}
-                />
+                <input type="number" className="input-field w-full" value={sortOrder} onChange={(e) => setSortOrder(Number(e.target.value))} />
               </label>
               {msg ? <p className="text-sm text-red-600">{msg}</p> : null}
             </div>

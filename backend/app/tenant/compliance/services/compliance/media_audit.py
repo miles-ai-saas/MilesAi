@@ -28,7 +28,7 @@ logger = get_logger(__name__)
 MODERATION_PROMPT = (
     "请审查以下图片内容是否包含违规信息。"
     "违规类型包括但不限于：色情、暴力、血腥、恐怖主义、政治敏感、违法信息。"
-    "请用 JSON 格式回复：{\"safe\": true/false, \"category\": \"违规类型或none\", \"reason\": \"简短说明\"}"
+    '请用 JSON 格式回复：{"safe": true/false, "category": "违规类型或none", "reason": "简短说明"}'
 )
 
 
@@ -50,21 +50,25 @@ async def check_media_safety(
 
     # 优先 vision 模型，其次 llm（多数 llm 也支持 vision）
     model = await db.scalar(
-        select(ModelConfig).where(
+        select(ModelConfig)
+        .where(
             ModelConfig.model_type.in_([ModelCapabilityType.VISION.value, ModelCapabilityType.LLM.value]),
             ModelConfig.is_active.is_(True),
-        ).limit(1)
+        )
+        .limit(1)
     )
     if not model:
         return {"safe": True, "category": "none", "reason": "无可用模型"}
 
-    messages = [{
-        "role": "user",
-        "content": [
-            {"type": "text", "text": MODERATION_PROMPT},
-            {"type": "image_url", "image_url": {"url": image_url}},
-        ],
-    }]
+    messages = [
+        {
+            "role": "user",
+            "content": [
+                {"type": "text", "text": MODERATION_PROMPT},
+                {"type": "image_url", "image_url": {"url": image_url}},
+            ],
+        }
+    ]
 
     try:
         raw = await ainvoke_chat(

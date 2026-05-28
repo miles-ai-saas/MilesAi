@@ -8,11 +8,7 @@ import { useRequireAuth } from "@/lib/auth-store";
 import { ResourceListLayout } from "@/components/resource/ResourceListLayout";
 import { SimpleBarChart } from "@/components/charts/SimpleBarChart";
 import { documentStatusLabel } from "@/lib/document-status";
-import {
-  monitorHealthComponentLabel,
-  monitorOverallHealthLabel,
-  monitorTrendDayOptions,
-} from "@/lib/monitor-labels";
+import { monitorHealthComponentLabel, monitorOverallHealthLabel, monitorTrendDayOptions } from "@/lib/monitor-labels";
 import { useKbMeta } from "@/hooks/use-kb-meta";
 import { useMonitorMeta } from "@/hooks/use-monitor-meta";
 import type { AlertConfig, ModelUsageReport, MonitorReport, MonitorTrends } from "@/lib/types";
@@ -27,8 +23,7 @@ const MAIN_TABS: { key: Tab; label: string }[] = [
   { key: "alerts", label: "告警配置" },
 ];
 
-const PAGE_DESC =
-  "查看租户业务指标、异步任务与合规拦截趋势，检查依赖组件健康状态，并配置 Webhook 告警。";
+const PAGE_DESC = "查看租户业务指标、异步任务与合规拦截趋势，检查依赖组件健康状态，并配置 Webhook 告警。";
 
 /** 与后端 collect_health_status 主键一致 */
 const PRIMARY_COMPONENT_KEYS = ["postgres", "redis", "vector_store", "object_storage"] as const;
@@ -66,9 +61,7 @@ function parseComponentHealth(raw: unknown): { ok: boolean; detail?: string } {
 }
 
 function selectPrimaryComponents(components: Record<string, unknown>) {
-  return PRIMARY_COMPONENT_KEYS.filter((k) => k in components).map(
-    (k) => [k, components[k]] as const,
-  );
+  return PRIMARY_COMPONENT_KEYS.filter((k) => k in components).map((k) => [k, components[k]] as const);
 }
 
 function StatChip({ label, value, hint }: { label: string; value: string; hint?: string }) {
@@ -94,15 +87,7 @@ function PageMessage({ message, onDismiss }: { message: string; onDismiss?: () =
   );
 }
 
-function ChartPanel({
-  title,
-  subtitle,
-  children,
-}: {
-  title: string;
-  subtitle?: string;
-  children: ReactNode;
-}) {
+function ChartPanel({ title, subtitle, children }: { title: string; subtitle?: string; children: ReactNode }) {
   return (
     <section className="rounded-xl border border-line bg-surface p-5 shadow-card">
       <h3 className="text-sm font-semibold text-ink">{title}</h3>
@@ -112,22 +97,12 @@ function ChartPanel({
   );
 }
 
-function HealthStatusBadge({
-  ok,
-  status,
-  monitorMeta,
-}: {
-  ok: boolean;
-  status?: string;
-  monitorMeta: import("@/lib/types").MonitorMeta | null;
-}) {
+function HealthStatusBadge({ ok, status, monitorMeta }: { ok: boolean; status?: string; monitorMeta: import("@/lib/types").MonitorMeta | null }) {
   const label = monitorOverallHealthLabel(status, ok, monitorMeta);
   return (
     <span
       className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ${
-        ok
-          ? "bg-emerald-50 text-emerald-800 ring-emerald-200"
-          : "bg-amber-50 text-amber-800 ring-amber-200"
+        ok ? "bg-emerald-50 text-emerald-800 ring-emerald-200" : "bg-amber-50 text-amber-800 ring-amber-200"
       }`}
     >
       {label}
@@ -135,13 +110,7 @@ function HealthStatusBadge({
   );
 }
 
-function HealthComponents({
-  components,
-  monitorMeta,
-}: {
-  components: Record<string, unknown>;
-  monitorMeta: import("@/lib/types").MonitorMeta | null;
-}) {
+function HealthComponents({ components, monitorMeta }: { components: Record<string, unknown>; monitorMeta: import("@/lib/types").MonitorMeta | null }) {
   const entries = selectPrimaryComponents(components);
   if (entries.length === 0) {
     return <p className="text-sm text-ink-faint">暂无组件探测数据</p>;
@@ -203,8 +172,14 @@ export default function MonitorPage() {
       setModelUsage(u);
       setHealth(h);
       setAlerts(a);
-      void api.getRedisInfo().then(setRedisInfo).catch(() => {});
-      void api.getWorkerInfo().then(setWorkerInfo).catch(() => {});
+      void api
+        .getRedisInfo()
+        .then(setRedisInfo)
+        .catch(() => {});
+      void api
+        .getWorkerInfo()
+        .then(setWorkerInfo)
+        .catch(() => {});
     } finally {
       setLoading(false);
     }
@@ -287,9 +262,7 @@ export default function MonitorPage() {
   };
 
   if (tab === "trends") {
-    const trendHint =
-      monitorTrendDayOptions(monitorMeta).find((o) => o.value === String(trendDays))?.label ??
-      `近 ${trendDays} 天`;
+    const trendHint = monitorTrendDayOptions(monitorMeta).find((o) => o.value === String(trendDays))?.label ?? `近 ${trendDays} 天`;
     return (
       <ResourceListLayout
         {...layoutCommon}
@@ -312,59 +285,59 @@ export default function MonitorPage() {
         {!report || !trends ? (
           <p className="col-span-full py-12 text-center text-sm text-ink-muted">加载趋势数据…</p>
         ) : (
-        <div className="col-span-full space-y-5">
-          <ChartPanel title="任务趋势" subtitle={`${trendHint}每日任务总量`}>
-            {trends.task_by_day.length === 0 ? (
-              <p className="text-xs text-ink-faint">暂无任务数据</p>
-            ) : (
-              <SimpleBarChart
-                items={trends.task_by_day.map((d) => ({
-                  label: d.date.slice(5),
-                  value: d.total,
-                }))}
-              />
-            )}
-          </ChartPanel>
-
-          <div className="grid gap-5 lg:grid-cols-2">
-            <ChartPanel title="任务状态分布" subtitle="当前租户累计">
-              <SimpleBarChart
-                items={[
-                  { label: "成功", value: report.tasks.success, color: "#059669" },
-                  { label: "失败", value: report.tasks.failed, color: "#dc2626" },
-                  { label: "运行", value: report.tasks.running, color: "#d97706" },
-                  { label: "等待", value: report.tasks.pending, color: "#6b7280" },
-                ]}
-              />
-            </ChartPanel>
-            <ChartPanel title="合规拦截趋势" subtitle={`${trendHint}按日统计`}>
-              {trends.intercept_by_day.length === 0 ? (
-                <p className="text-xs text-ink-faint">暂无拦截数据</p>
+          <div className="col-span-full space-y-5">
+            <ChartPanel title="任务趋势" subtitle={`${trendHint}每日任务总量`}>
+              {trends.task_by_day.length === 0 ? (
+                <p className="text-xs text-ink-faint">暂无任务数据</p>
               ) : (
                 <SimpleBarChart
-                  items={trends.intercept_by_day.map((d) => ({
-                    label: String(d.date).slice(5),
-                    value: d.count,
-                    color: "#dc2626",
+                  items={trends.task_by_day.map((d) => ({
+                    label: d.date.slice(5),
+                    value: d.total,
+                  }))}
+                />
+              )}
+            </ChartPanel>
+
+            <div className="grid gap-5 lg:grid-cols-2">
+              <ChartPanel title="任务状态分布" subtitle="当前租户累计">
+                <SimpleBarChart
+                  items={[
+                    { label: "成功", value: report.tasks.success, color: "#059669" },
+                    { label: "失败", value: report.tasks.failed, color: "#dc2626" },
+                    { label: "运行", value: report.tasks.running, color: "#d97706" },
+                    { label: "等待", value: report.tasks.pending, color: "#6b7280" },
+                  ]}
+                />
+              </ChartPanel>
+              <ChartPanel title="合规拦截趋势" subtitle={`${trendHint}按日统计`}>
+                {trends.intercept_by_day.length === 0 ? (
+                  <p className="text-xs text-ink-faint">暂无拦截数据</p>
+                ) : (
+                  <SimpleBarChart
+                    items={trends.intercept_by_day.map((d) => ({
+                      label: String(d.date).slice(5),
+                      value: d.count,
+                      color: "#dc2626",
+                    }))}
+                  />
+                )}
+              </ChartPanel>
+            </div>
+
+            <ChartPanel title="文档状态分布" subtitle="按处理状态汇总">
+              {Object.keys(report.documents_by_status).length === 0 ? (
+                <p className="text-xs text-ink-faint">暂无文档</p>
+              ) : (
+                <SimpleBarChart
+                  items={Object.entries(report.documents_by_status).map(([k, v]) => ({
+                    label: documentStatusLabel(k, kbMeta?.document_statuses),
+                    value: v,
                   }))}
                 />
               )}
             </ChartPanel>
           </div>
-
-          <ChartPanel title="文档状态分布" subtitle="按处理状态汇总">
-            {Object.keys(report.documents_by_status).length === 0 ? (
-              <p className="text-xs text-ink-faint">暂无文档</p>
-            ) : (
-              <SimpleBarChart
-                items={Object.entries(report.documents_by_status).map(([k, v]) => ({
-                  label: documentStatusLabel(k, kbMeta?.document_statuses),
-                  value: v,
-                }))}
-              />
-            )}
-          </ChartPanel>
-        </div>
         )}
       </ResourceListLayout>
     );
@@ -374,15 +347,9 @@ export default function MonitorPage() {
     return (
       <ResourceListLayout {...layoutCommon} loading={loading}>
         <div className="col-span-full space-y-4">
-          <StatChip
-            label={`近 ${trendDays} 天总 Token`}
-            value={String(modelUsage?.total_tokens ?? 0)}
-            hint="来自对话类模型调用（LiteLLM usage）"
-          />
+          <StatChip label={`近 ${trendDays} 天总 Token`} value={String(modelUsage?.total_tokens ?? 0)} hint="来自对话类模型调用（LiteLLM usage）" />
           {!modelUsage?.rows.length ? (
-            <p className="rounded-xl border border-dashed border-line py-12 text-center text-sm text-ink-faint">
-              暂无用量数据，智能体对话后将在此汇总
-            </p>
+            <p className="rounded-xl border border-dashed border-line py-12 text-center text-sm text-ink-faint">暂无用量数据，智能体对话后将在此汇总</p>
           ) : (
             <div className="overflow-x-auto rounded-xl border border-line bg-surface shadow-card">
               <table className="w-full min-w-[520px] text-left text-sm">
@@ -425,21 +392,13 @@ export default function MonitorPage() {
                 <h2 className="text-base font-semibold text-ink">整体状态</h2>
                 <p className="mt-1 text-sm text-ink-muted">数据库、向量库、消息队列等依赖探测结果</p>
               </div>
-              <HealthStatusBadge
-                ok={health?.healthy ?? health?.status === "healthy"}
-                status={health?.status}
-                monitorMeta={monitorMeta}
-              />
+              <HealthStatusBadge ok={health?.healthy ?? health?.status === "healthy"} status={health?.status} monitorMeta={monitorMeta} />
             </div>
           </section>
           <section className="rounded-xl border border-line bg-surface p-5 shadow-panel">
             <h3 className="text-sm font-semibold text-ink">组件明细</h3>
             <div className="mt-4">
-              {health ? (
-                <HealthComponents components={components} monitorMeta={monitorMeta} />
-              ) : (
-                <p className="text-sm text-ink-muted">加载中…</p>
-              )}
+              {health ? <HealthComponents components={components} monitorMeta={monitorMeta} /> : <p className="text-sm text-ink-muted">加载中…</p>}
             </div>
           </section>
           {redisInfo && !("error" in redisInfo) && (
@@ -505,9 +464,7 @@ export default function MonitorPage() {
                           <td className="px-2 py-1 tabular-nums">{String(w.pool_size ?? "-")}</td>
                           <td className="px-2 py-1 tabular-nums">{String(w.active_tasks ?? 0)}</td>
                           <td className="px-2 py-1 tabular-nums">{String(w.reserved_tasks ?? 0)}</td>
-                          <td className="px-2 py-1 tabular-nums text-ink-faint">
-                            {Array.isArray(w.queues) ? (w.queues as string[]).join(", ") : "-"}
-                          </td>
+                          <td className="px-2 py-1 tabular-nums text-ink-faint">{Array.isArray(w.queues) ? (w.queues as string[]).join(", ") : "-"}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -528,15 +485,9 @@ export default function MonitorPage() {
         <div className="col-span-full mx-auto w-full max-w-2xl">
           <section className="rounded-xl border border-line bg-surface p-6 shadow-panel">
             <h2 className="text-base font-semibold text-ink">Webhook 告警</h2>
-            <p className="mt-1 text-sm text-ink-muted">
-              任务失败或组件健康降级时，向指定 URL 发送 JSON 通知。
-            </p>
+            <p className="mt-1 text-sm text-ink-muted">任务失败或组件健康降级时，向指定 URL 发送 JSON 通知。</p>
             <label className="mt-5 flex cursor-pointer items-center gap-2 text-sm text-ink">
-              <input
-                type="checkbox"
-                checked={alerts.enabled}
-                onChange={(e) => setAlerts({ ...alerts, enabled: e.target.checked })}
-              />
+              <input type="checkbox" checked={alerts.enabled} onChange={(e) => setAlerts({ ...alerts, enabled: e.target.checked })} />
               启用告警
             </label>
             <label className="mt-4 block space-y-1">
@@ -554,9 +505,7 @@ export default function MonitorPage() {
                 <input
                   type="checkbox"
                   checked={alerts.notify_on_task_failed}
-                  onChange={(e) =>
-                    setAlerts({ ...alerts, notify_on_task_failed: e.target.checked })
-                  }
+                  onChange={(e) => setAlerts({ ...alerts, notify_on_task_failed: e.target.checked })}
                 />
                 异步任务失败时通知
               </label>
@@ -564,9 +513,7 @@ export default function MonitorPage() {
                 <input
                   type="checkbox"
                   checked={alerts.notify_on_health_degraded}
-                  onChange={(e) =>
-                    setAlerts({ ...alerts, notify_on_health_degraded: e.target.checked })
-                  }
+                  onChange={(e) => setAlerts({ ...alerts, notify_on_health_degraded: e.target.checked })}
                 />
                 组件健康降级时通知
               </label>
@@ -608,11 +555,7 @@ export default function MonitorPage() {
               ) : (
                 <p className="mt-3 text-xs text-ink-faint">暂无近期任务数据</p>
               )}
-              <button
-                type="button"
-                className="mt-4 text-xs text-brand hover:underline"
-                onClick={() => setTab("trends")}
-              >
+              <button type="button" className="mt-4 text-xs text-brand hover:underline" onClick={() => setTab("trends")}>
                 查看完整趋势 →
               </button>
             </section>
@@ -621,26 +564,18 @@ export default function MonitorPage() {
               <dl className="mt-4 space-y-3 text-sm">
                 <div className="flex justify-between gap-4">
                   <dt className="text-ink-muted">今日拦截</dt>
-                  <dd className="font-semibold tabular-nums text-ink">
-                    {report.stats.intercept_logs_today}
-                  </dd>
+                  <dd className="font-semibold tabular-nums text-ink">{report.stats.intercept_logs_today}</dd>
                 </div>
                 <div className="flex justify-between gap-4">
                   <dt className="text-ink-muted">待处理文档</dt>
-                  <dd className="font-semibold tabular-nums text-ink">
-                    {report.stats.pending_documents}
-                  </dd>
+                  <dd className="font-semibold tabular-nums text-ink">{report.stats.pending_documents}</dd>
                 </div>
                 <div className="flex justify-between gap-4">
                   <dt className="text-ink-muted">文档总数</dt>
                   <dd className="font-semibold tabular-nums text-ink">{report.stats.documents}</dd>
                 </div>
               </dl>
-              <button
-                type="button"
-                className="mt-4 text-xs text-brand hover:underline"
-                onClick={() => setTab("trends")}
-              >
+              <button type="button" className="mt-4 text-xs text-brand hover:underline" onClick={() => setTab("trends")}>
                 查看趋势图表 →
               </button>
             </section>

@@ -64,9 +64,7 @@ async def seed_admin_ops(session: AsyncSession) -> None:
         )
 
     username = settings.seed_platform_admin_username
-    existing = await session.scalar(
-        select(PlatformAdmin).where(PlatformAdmin.username == username)
-    )
+    existing = await session.scalar(select(PlatformAdmin).where(PlatformAdmin.username == username))
     if not existing:
         session.add(
             PlatformAdmin(

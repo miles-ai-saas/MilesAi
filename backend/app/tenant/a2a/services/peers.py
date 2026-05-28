@@ -79,13 +79,7 @@ class A2aPeerService(BaseService):
         """分页列出已登记的外部 Agent。"""
         filters = [*tenant_filters(self.ctx, A2aPeer.tenant_id), not_deleted(A2aPeer)]
         total = await self.db.scalar(select(func.count(A2aPeer.id)).where(*filters))
-        stmt = (
-            select(A2aPeer)
-            .where(*filters)
-            .order_by(A2aPeer.created_at.desc())
-            .offset(params.offset)
-            .limit(params.size)
-        )
+        stmt = select(A2aPeer).where(*filters).order_by(A2aPeer.created_at.desc()).offset(params.offset).limit(params.size)
         items = (await self.db.execute(stmt)).scalars().all()
         return PageResult(
             items=[_peer_out(i) for i in items],

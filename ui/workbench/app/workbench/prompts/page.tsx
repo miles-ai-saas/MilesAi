@@ -3,10 +3,7 @@
 /** 提示词模板列表（链路 §3 + §4 `usePromptMeta`）。 */
 
 import { useCallback, useMemo, useState } from "react";
-import {
-  PromptTemplateDialog,
-  type PromptTemplateDialogMode,
-} from "@/components/prompt/PromptTemplateDialog";
+import { PromptTemplateDialog, type PromptTemplateDialogMode } from "@/components/prompt/PromptTemplateDialog";
 import { api } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth-store";
 import { usePagedList } from "@/hooks/use-paged-list";
@@ -42,19 +39,12 @@ export default function PromptsPage() {
   const [tagManageOpen, setTagManageOpen] = useState(false);
 
   const list = usePagedList(
-    useCallback(
-      (p, s) =>
-        api.listPromptTemplates(p, s, undefined, tagFilterIds.length ? tagFilterIds : undefined),
-      [tagFilterIds],
-    ),
+    useCallback((p, s) => api.listPromptTemplates(p, s, undefined, tagFilterIds.length ? tagFilterIds : undefined), [tagFilterIds]),
     { enabled: ready, resetKey: tagFilterIds.join(",") },
   );
   const { requestConfirm, confirmDialog } = useConfirmAction();
 
-  const filtered = useMemo(
-    () => filterBySearch(list.items, search, (t) => `${t.name} ${t.content}`),
-    [list.items, search],
-  );
+  const filtered = useMemo(() => filterBySearch(list.items, search, (t) => `${t.name} ${t.content}`), [list.items, search]);
 
   const openCreate = () => {
     setEditing(null);
@@ -119,11 +109,7 @@ export default function PromptsPage() {
         headerAction={
           <div className="flex flex-wrap items-center gap-2">
             <TagFilterDropdown value={tagFilterIds} onChange={setTagFilterIds} />
-            <button
-              type="button"
-              className="btn-sm-outline"
-              onClick={() => setTagManageOpen(true)}
-            >
+            <button type="button" className="btn-sm-outline" onClick={() => setTagManageOpen(true)}>
               管理标签
             </button>
             <label className="btn-sm-outline cursor-pointer">
@@ -143,12 +129,7 @@ export default function PromptsPage() {
                       alert("JSON 格式错误：需要 name 和 content 字段");
                       return;
                     }
-                    await api.createPromptTemplate(
-                      t.name,
-                      t.content,
-                      t.category_id,
-                      t.tag_ids ?? t.tags?.map((tg: { id: string }) => tg.id),
-                    );
+                    await api.createPromptTemplate(t.name, t.content, t.category_id, t.tag_ids ?? t.tags?.map((tg: { id: string }) => tg.id));
                     await list.reload();
                   } catch (err) {
                     alert(`导入失败: ${err instanceof Error ? err.message : err}`);
@@ -164,13 +145,7 @@ export default function PromptsPage() {
         loading={list.loading}
         footer={
           !list.loading ? (
-            <ResourceListFooter
-              page={list.page}
-              size={list.size}
-              total={list.total}
-              onPageChange={list.setPage}
-              onSizeChange={list.setSize}
-            />
+            <ResourceListFooter page={list.page} size={list.size} total={list.total} onPageChange={list.setPage} onSizeChange={list.setSize} />
           ) : null
         }
       >
@@ -183,9 +158,7 @@ export default function PromptsPage() {
             badge={promptActiveLabel(t.is_active, promptMeta)}
             meta={
               <div className="space-y-2">
-                <span className="inline-block rounded border border-line px-1.5 py-px text-[10px] text-ink-faint">
-                  Markdown
-                </span>
+                <span className="inline-block rounded border border-line px-1.5 py-px text-[10px] text-ink-faint">Markdown</span>
                 <TagChips tags={t.tags} />
               </div>
             }

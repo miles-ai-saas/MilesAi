@@ -90,10 +90,7 @@ def _peer_catalog(refs: list[AgentA2aPeerRef] | list[A2aPeerBinding]) -> str:
         kws = _peer_keywords(ref)
         kw_txt = f" 规则关键词={','.join(kws)}" if kws else ""
         hint = f"（{ref.role_hint}）" if ref.role_hint else ""
-        lines.append(
-            f"- peer_id={peer.id} 名称={peer.name}{hint}{kw_txt} "
-            f"Card名={peer.card_display_name or '-'}"
-        )
+        lines.append(f"- peer_id={peer.id} 名称={peer.name}{hint}{kw_txt} Card名={peer.card_display_name or '-'}")
     return "\n".join(lines)
 
 
@@ -145,8 +142,8 @@ async def plan_a2a_peers(
     catalog = _peer_catalog(candidates)
     prompt = (
         "你是任务规划器。用户问题可能需要调用外部 A2A 智能体（已登记 Agent Card）。\n"
-        "若不需要外部协助，输出 {\"a2a_steps\":[]}。\n"
-        "若需要，输出 {\"a2a_steps\":[{\"peer_id\":\"uuid\",\"task\":\"发给外部 Agent 的子任务\"}]}\n"
+        '若不需要外部协助，输出 {"a2a_steps":[]}。\n'
+        '若需要，输出 {"a2a_steps":[{"peer_id":"uuid","task":"发给外部 Agent 的子任务"}]}\n'
         f"可选外部 Agent：\n{catalog}\n\n用户问题：{query}"
     )
     raw = await ainvoke_chat(
@@ -257,9 +254,7 @@ async def resolve_a2a_plan_items(
     if policy == A2aInvokePolicy.RULES_ONLY:
         return plan_items[:max_calls], pre_steps
 
-    if policy in (A2aInvokePolicy.RULES_THEN_PLAN, A2aInvokePolicy.PLAN_ONLY) and (
-        policy == A2aInvokePolicy.PLAN_ONLY or len(plan_items) < max_calls
-    ):
+    if policy in (A2aInvokePolicy.RULES_THEN_PLAN, A2aInvokePolicy.PLAN_ONLY) and (policy == A2aInvokePolicy.PLAN_ONLY or len(plan_items) < max_calls):
         planned = await plan_a2a_peers(
             agent,
             refs,
@@ -296,9 +291,7 @@ async def augment_response_with_a2a(
         return base
 
     steps = list(base.steps)
-    plan_items, pre = await resolve_a2a_plan_items(
-        agent, refs, body.query, db=svc.db, tenant_id=svc.ctx.tenant_id
-    )
+    plan_items, pre = await resolve_a2a_plan_items(agent, refs, body.query, db=svc.db, tenant_id=svc.ctx.tenant_id)
     steps.extend(pre)
 
     if not plan_items:
@@ -313,9 +306,7 @@ async def augment_response_with_a2a(
             f"{await svc.resolve_system_prompt(agent)}\n\n"
             f"用户问题：{body.query}\n\n"
             f"本智能体初步回答：\n{base.answer}\n\n"
-            "外部 A2A 智能体补充：\n"
-            + "\n\n---\n\n".join(blocks)
-            + "\n\n请综合以上内容，给用户完整、简洁的最终回答。"
+            "外部 A2A 智能体补充：\n" + "\n\n---\n\n".join(blocks) + "\n\n请综合以上内容，给用户完整、简洁的最终回答。"
         )
         final = await ainvoke_chat(
             agent.model_config,
@@ -368,9 +359,7 @@ async def run_a2a_host_chat(
         )
 
     steps: list[dict] = [{"type": "a2a_host", "engine": A2aInvokePolicy.RULES_THEN_PLAN.value}]
-    plan_items, pre = await resolve_a2a_plan_items(
-        agent, bindings, body.query, db=svc.db, tenant_id=svc.ctx.tenant_id
-    )
+    plan_items, pre = await resolve_a2a_plan_items(agent, bindings, body.query, db=svc.db, tenant_id=svc.ctx.tenant_id)
     steps.extend(pre)
 
     if not plan_items:
@@ -399,9 +388,7 @@ async def run_a2a_host_chat(
     synth = (
         f"{await svc.resolve_system_prompt(agent)}\n\n"
         f"用户问题：{body.query}\n\n"
-        "各外部 A2A 智能体结果：\n"
-        + "\n\n---\n\n".join(blocks)
-        + "\n\n请综合以上外部结果，给用户完整、简洁的最终回答。"
+        "各外部 A2A 智能体结果：\n" + "\n\n---\n\n".join(blocks) + "\n\n请综合以上外部结果，给用户完整、简洁的最终回答。"
     )
     final = await ainvoke_chat(
         agent.model_config,

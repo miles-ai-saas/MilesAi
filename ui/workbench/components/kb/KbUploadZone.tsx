@@ -24,9 +24,7 @@ export function KbUploadZone({ uploading, onFiles }: Props) {
   return (
     <div
       className={`relative mt-4 rounded-xl border-2 border-dashed px-6 py-8 text-center transition-colors ${
-        dragOver
-          ? "border-brand bg-brand/5"
-          : "border-line bg-surface-muted/30 hover:border-brand/40"
+        dragOver ? "border-brand bg-brand/5" : "border-line bg-surface-muted/30 hover:border-brand/40"
       } ${uploading ? "pointer-events-none opacity-60" : ""}`}
       onDragOver={(e) => {
         e.preventDefault();
@@ -39,20 +37,11 @@ export function KbUploadZone({ uploading, onFiles }: Props) {
         pick(e.dataTransfer.files);
       }}
     >
-      <p className="text-sm font-medium text-ink">
-        {uploading ? "正在上传…" : "拖拽文件到此处，或点击选择（可多选）"}
-      </p>
+      <p className="text-sm font-medium text-ink">{uploading ? "正在上传…" : "拖拽文件到此处，或点击选择（可多选）"}</p>
       <p className="mt-2 text-xs text-ink-faint">{KB_UPLOAD_HINT} · 单次最多 20 个</p>
       <label className="btn-primary mt-4 inline-flex cursor-pointer text-sm">
         {uploading ? "上传中…" : "选择文件"}
-        <input
-          type="file"
-          className="hidden"
-          accept={KB_UPLOAD_ACCEPT}
-          multiple
-          disabled={uploading}
-          onChange={(e) => pick(e.target.files)}
-        />
+        <input type="file" className="hidden" accept={KB_UPLOAD_ACCEPT} multiple disabled={uploading} onChange={(e) => pick(e.target.files)} />
       </label>
     </div>
   );

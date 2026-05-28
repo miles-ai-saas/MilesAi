@@ -49,10 +49,7 @@ class MarketplaceInstallMixin:
         app = await self.get_app_or_raise(app_id)
         if app.status != MarketplaceAppStatus.PUBLISHED:
             raise BadRequestError("应用未发布，无法安装")
-        if (
-            app.visibility == MarketplaceAppVisibility.TENANT_ONLY.value
-            and app.publisher_tenant_id != self.ctx.tenant_id
-        ):
+        if app.visibility == MarketplaceAppVisibility.TENANT_ONLY.value and app.publisher_tenant_id != self.ctx.tenant_id:
             raise BadRequestError("应用不可安装")
 
         existing = await self.db.scalar(
@@ -165,12 +162,7 @@ class MarketplaceInstallMixin:
     async def list_installs(self, params: PageParams) -> PageResult[AppInstallOut]:
         """分页列出本租户安装记录。"""
         filters = tenant_filters(self.ctx, AppInstall.tenant_id)
-        stmt = (
-            select(AppInstall)
-            .where(*filters)
-            .options(selectinload(AppInstall.app))
-            .order_by(AppInstall.created_at.desc())
-        )
+        stmt = select(AppInstall).where(*filters).options(selectinload(AppInstall.app)).order_by(AppInstall.created_at.desc())
         count_stmt = select(func.count(AppInstall.id)).where(*filters)
         total = await self.db.scalar(count_stmt)
         stmt = stmt.offset((params.page - 1) * params.size).limit(params.size)

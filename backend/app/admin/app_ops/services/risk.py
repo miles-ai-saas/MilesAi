@@ -78,9 +78,7 @@ class AdminRiskService:
             size=page.size,
         )
 
-    async def add_ip_blacklist(
-        self, body: IpBlacklistCreate, admin_id: UUID
-    ) -> IpBlacklistOut:
+    async def add_ip_blacklist(self, body: IpBlacklistCreate, admin_id: UUID) -> IpBlacklistOut:
         """新增 IP 黑名单并刷新 enforcer 缓存。"""
         row = await self.ip_blacklist.create(
             ip_address=body.ip_address.strip(),

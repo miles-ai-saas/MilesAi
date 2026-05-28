@@ -34,9 +34,7 @@ async def list_media_assets(
     db: AsyncSession = Depends(get_db),
 ):
     """分页列出 AI 生成图片/视频等素材。"""
-    result = await _svc(db, ctx).list_assets(
-        params, kind=kind, source=source, has_kb_document=has_kb_document
-    )
+    result = await _svc(db, ctx).list_assets(params, kind=kind, source=source, has_kb_document=has_kb_document)
     return page_ok(result.items, result.total, result.page, result.size)
 
 

@@ -64,9 +64,7 @@ class AgentChatMixin:
             media=media_payload,
         )
 
-    async def maybe_augment_a2a(
-        self, agent: Agent, body: ChatRequest, response: ChatResponse
-    ) -> ChatResponse:
+    async def maybe_augment_a2a(self, agent: Agent, body: ChatRequest, response: ChatResponse) -> ChatResponse:
         """若配置了 A2A peer，在已有回答上追加外部智能体增强。"""
         refs = await list_agent_a2a_peer_refs(self.db, agent.id)
         if not refs:
@@ -120,9 +118,7 @@ class AgentChatMixin:
             )
             hook_payload = before_call.payload
             query = str(hook_payload.get("query", effective_query))
-            chat_body = (
-                body.model_copy(update={"query": query}) if query != effective_query else body
-            )
+            chat_body = body.model_copy(update={"query": query}) if query != effective_query else body
             await compliance.check_input(query, module=SCAN_MODULE_AGENT_CHAT)
 
             if agent.agent_type == AgentType.A2A:
@@ -256,9 +252,7 @@ class AgentChatMixin:
         max_media = int((agent.config or {}).get("max_media_per_turn", 4))
         parts: list = []
         if body.media:
-            parts = await resolve_media_refs(
-                self.db, self.ctx, body.media, max_count=max_media
-            )
+            parts = await resolve_media_refs(self.db, self.ctx, body.media, max_count=max_media)
         query = body.query.strip() or ("请根据附图回答。" if parts else body.query.strip())
         return query, parts
 
@@ -347,15 +341,9 @@ class AgentChatMixin:
 
             base = await self.resolve_system_prompt(agent)
             cfg = agent.config if isinstance(agent.config, dict) else {}
-            kb_hint = (
-                "\n【知识库】请使用 knowledge_search 工具检索；"
-                f"可用 kb_id：{', '.join(kb_ids)}"
-            )
+            kb_hint = f"\n【知识库】请使用 knowledge_search 工具检索；可用 kb_id：{', '.join(kb_ids)}"
             if cfg.get("enable_generative_tools"):
-                kb_hint += (
-                    "\n【生成】可按需调用 generate_image / generate_video；"
-                    "生视频耗时长且默认需用户确认。"
-                )
+                kb_hint += "\n【生成】可按需调用 generate_image / generate_video；生视频耗时长且默认需用户确认。"
             return await run_tool_calling_chat(
                 self.db,
                 self.ctx,

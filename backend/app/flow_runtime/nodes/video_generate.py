@@ -45,12 +45,8 @@ async def video_generate(
     if not model_id:
         raise BadRequestError("生视频节点未配置 video_gen 模型")
 
-    first_att = _optional_uuid(
-        inputs.get("image_attachment_id") or node_data.get("image_attachment_id")
-    )
-    last_att = _optional_uuid(
-        inputs.get("last_frame_attachment_id") or node_data.get("last_frame_attachment_id")
-    )
+    first_att = _optional_uuid(inputs.get("image_attachment_id") or node_data.get("image_attachment_id"))
+    last_att = _optional_uuid(inputs.get("last_frame_attachment_id") or node_data.get("last_frame_attachment_id"))
     duration = int(node_data.get("duration") or inputs.get("duration") or 5)
     resolution = node_data.get("resolution") or inputs.get("resolution")
 

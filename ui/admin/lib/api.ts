@@ -6,8 +6,7 @@ import { buildPageQuery, DEFAULT_PAGE_SIZE } from "./pagination";
 
 export { getApiErrorMessage } from "./api-error";
 
-const baseURL =
-  process.env.NEXT_PUBLIC_ADMIN_API_URL || "http://localhost:8000/api/admin/v1";
+const baseURL = process.env.NEXT_PUBLIC_ADMIN_API_URL || "http://localhost:8000/api/admin/v1";
 
 const http = axios.create({ baseURL, timeout: 120000 });
 
@@ -70,28 +69,15 @@ export const adminApi = {
     useAdminAuthStore.getState().logout();
   },
   me: () => get<{ id: string; username: string; role: string }>("/auth/me"),
-  changePassword: (old_password: string, new_password: string) =>
-    post<null>("/auth/change-password", { old_password, new_password }),
-  listSessions: () =>
-    get<{ admin_id: string; username: string; role: string; is_current: boolean }[]>(
-      "/auth/sessions",
-    ),
+  changePassword: (old_password: string, new_password: string) => post<null>("/auth/change-password", { old_password, new_password }),
+  listSessions: () => get<{ admin_id: string; username: string; role: string; is_current: boolean }[]>("/auth/sessions"),
   revokeSession: (adminId: string) => del<null>(`/auth/sessions/${adminId}`),
 
-  listAdmins: (page = 1, size = DEFAULT_PAGE_SIZE) =>
-    get<PageResult<PlatformAdmin>>(`/admins?${buildPageQuery(page, size)}`),
-  createAdmin: (body: {
-    username: string;
-    password: string;
-    email?: string;
-    display_name?: string;
-    role?: string;
-  }) => post<PlatformAdmin>("/admins", body),
-  updateAdmin: (id: string, body: Record<string, unknown>) =>
-    patch<PlatformAdmin>(`/admins/${id}`, body),
+  listAdmins: (page = 1, size = DEFAULT_PAGE_SIZE) => get<PageResult<PlatformAdmin>>(`/admins?${buildPageQuery(page, size)}`),
+  createAdmin: (body: { username: string; password: string; email?: string; display_name?: string; role?: string }) => post<PlatformAdmin>("/admins", body),
+  updateAdmin: (id: string, body: Record<string, unknown>) => patch<PlatformAdmin>(`/admins/${id}`, body),
   disableAdmin: (id: string) => del<null>(`/admins/${id}`),
-  resetAdminPassword: (id: string, new_password: string) =>
-    post<null>(`/admins/${id}/reset-password`, { new_password }),
+  resetAdminPassword: (id: string, new_password: string) => post<null>(`/admins/${id}/reset-password`, { new_password }),
 
   getDashboardSummary: () =>
     get<{
@@ -111,20 +97,16 @@ export const adminApi = {
     return get<PageResult<AdminTenant>>(`/tenants?${q.toString()}`);
   },
   getTenant: (id: string) => get<AdminTenantDetail>(`/tenants/${id}`),
-  getTenantUsage: (id: string) =>
-    get<AdminTenantDetail["usage"]>(`/tenants/${id}/usage`),
+  getTenantUsage: (id: string) => get<AdminTenantDetail["usage"]>(`/tenants/${id}/usage`),
   createTenant: (body: Record<string, unknown>) => post<AdminTenant>("/tenants", body),
-  updateTenant: (id: string, body: Record<string, unknown>) =>
-    patch<AdminTenant>(`/tenants/${id}`, body),
-  updateQuota: (id: string, body: Record<string, unknown>) =>
-    patch<AdminTenant>(`/tenants/${id}/quota`, body),
+  updateTenant: (id: string, body: Record<string, unknown>) => patch<AdminTenant>(`/tenants/${id}`, body),
+  updateQuota: (id: string, body: Record<string, unknown>) => patch<AdminTenant>(`/tenants/${id}/quota`, body),
   deleteTenant: (id: string) => del<null>(`/tenants/${id}`),
 
   listPlans: () => get<BillingPlan[]>("/billing/plans"),
   getPlan: (id: string) => get<BillingPlan>(`/billing/plans/${id}`),
   createPlan: (body: Record<string, unknown>) => post<BillingPlan>("/billing/plans", body),
-  updatePlan: (id: string, body: Record<string, unknown>) =>
-    patch<BillingPlan>(`/billing/plans/${id}`, body),
+  updatePlan: (id: string, body: Record<string, unknown>) => patch<BillingPlan>(`/billing/plans/${id}`, body),
   listBills: (page = 1, size = DEFAULT_PAGE_SIZE, tenantId?: string) => {
     const q = new URLSearchParams({
       page: String(page),
@@ -135,28 +117,18 @@ export const adminApi = {
   },
   getBill: (id: string) => get<TenantBillDetail>(`/billing/bills/${id}`),
   generateBill: (tenantId: string, period_start: string, period_end: string) =>
-    post<TenantBillDetail>(
-      `/billing/bills/generate?tenant_id=${tenantId}&period_start=${period_start}&period_end=${period_end}`,
-    ),
-  updateBillStatus: (id: string, status: "paid" | "void") =>
-    patch<TenantBillDetail>(`/billing/bills/${id}`, { status }),
+    post<TenantBillDetail>(`/billing/bills/generate?tenant_id=${tenantId}&period_start=${period_start}&period_end=${period_end}`),
+  updateBillStatus: (id: string, status: "paid" | "void") => patch<TenantBillDetail>(`/billing/bills/${id}`, { status }),
 
-  listRiskEvents: (page = 1, size = DEFAULT_PAGE_SIZE) =>
-    get<PageResult<RiskEvent>>(`/risk/events?${buildPageQuery(page, size)}`),
+  listRiskEvents: (page = 1, size = DEFAULT_PAGE_SIZE) => get<PageResult<RiskEvent>>(`/risk/events?${buildPageQuery(page, size)}`),
   resolveRisk: (id: string) => post<RiskEvent>(`/risk/events/${id}/resolve`),
-  listIpBlacklist: (page = 1, size = DEFAULT_PAGE_SIZE) =>
-    get<PageResult<IpBlacklist>>(`/risk/ip-blacklist?${buildPageQuery(page, size)}`),
-  addIp: (ip_address: string, reason?: string) =>
-    post<IpBlacklist>("/risk/ip-blacklist", { ip_address, reason }),
-  toggleIp: (id: string, is_active: boolean) =>
-    patch<IpBlacklist>(`/risk/ip-blacklist/${id}?is_active=${is_active}`),
-  listRateLimits: (page = 1, size = DEFAULT_PAGE_SIZE) =>
-    get<PageResult<RateLimitRule>>(`/risk/rate-limits?${buildPageQuery(page, size)}`),
+  listIpBlacklist: (page = 1, size = DEFAULT_PAGE_SIZE) => get<PageResult<IpBlacklist>>(`/risk/ip-blacklist?${buildPageQuery(page, size)}`),
+  addIp: (ip_address: string, reason?: string) => post<IpBlacklist>("/risk/ip-blacklist", { ip_address, reason }),
+  toggleIp: (id: string, is_active: boolean) => patch<IpBlacklist>(`/risk/ip-blacklist/${id}?is_active=${is_active}`),
+  listRateLimits: (page = 1, size = DEFAULT_PAGE_SIZE) => get<PageResult<RateLimitRule>>(`/risk/rate-limits?${buildPageQuery(page, size)}`),
   createRateLimit: (body: Record<string, unknown>) => post<RateLimitRule>("/risk/rate-limits", body),
-  updateRateLimit: (id: string, body: Record<string, unknown>) =>
-    patch<RateLimitRule>(`/risk/rate-limits/${id}`, body),
-  getAuditMeta: () =>
-    get<{ actions: string[]; admins: { id: string; username: string }[] }>("/audit/meta"),
+  updateRateLimit: (id: string, body: Record<string, unknown>) => patch<RateLimitRule>(`/risk/rate-limits/${id}`, body),
+  getAuditMeta: () => get<{ actions: string[]; admins: { id: string; username: string }[] }>("/audit/meta"),
   listAuditLogs: (opts?: {
     action?: string;
     tenant_id?: string;
@@ -178,62 +150,37 @@ export const adminApi = {
     return get<PageResult<AuditLog>>(`/audit/logs?${q.toString()}`);
   },
 
-  listModelCatalog: (
-    page = 1,
-    size = DEFAULT_PAGE_SIZE,
-    vendor?: string,
-    publish_status?: string,
-  ) => {
+  listModelCatalog: (page = 1, size = DEFAULT_PAGE_SIZE, vendor?: string, publish_status?: string) => {
     const q = new URLSearchParams({ page: String(page), size: String(size) });
     if (vendor) q.set("vendor", vendor);
     if (publish_status) q.set("publish_status", publish_status);
     return get<PageResult<AdminModelCatalog>>("/model-catalog?" + q.toString());
   },
   getModelCatalog: (id: string) => get<AdminModelCatalog>(`/model-catalog/${id}`),
-  createModelCatalog: (body: Record<string, unknown>) =>
-    post<AdminModelCatalog>("/model-catalog", body),
-  updateModelCatalog: (id: string, body: Record<string, unknown>) =>
-    patch<AdminModelCatalog>(`/model-catalog/${id}`, body),
+  createModelCatalog: (body: Record<string, unknown>) => post<AdminModelCatalog>("/model-catalog", body),
+  updateModelCatalog: (id: string, body: Record<string, unknown>) => patch<AdminModelCatalog>(`/model-catalog/${id}`, body),
   publishModelCatalog: (id: string) => post<AdminModelCatalog>(`/model-catalog/${id}/publish`),
-  deprecateModelCatalog: (id: string) =>
-    post<AdminModelCatalog>(`/model-catalog/${id}/deprecate`),
-  deleteModelCatalog: (id: string) =>
-    http.delete(`/model-catalog/${id}`).then(() => undefined),
+  deprecateModelCatalog: (id: string) => post<AdminModelCatalog>(`/model-catalog/${id}/deprecate`),
+  deleteModelCatalog: (id: string) => http.delete(`/model-catalog/${id}`).then(() => undefined),
 
   listMarketplaceCategories: () => get<AdminMarketplaceCategory[]>("/marketplace-categories"),
-  createMarketplaceCategory: (body: {
-    name: string;
-    slug?: string;
-    sort_order?: number;
-  }) => post<AdminMarketplaceCategory>("/marketplace-categories", body),
-  updateMarketplaceCategory: (
-    id: string,
-    body: { name?: string; slug?: string; sort_order?: number },
-  ) => patch<AdminMarketplaceCategory>(`/marketplace-categories/${id}`, body),
-  deleteMarketplaceCategory: (id: string) =>
-    http.delete(`/marketplace-categories/${id}`).then(() => undefined),
+  createMarketplaceCategory: (body: { name: string; slug?: string; sort_order?: number }) => post<AdminMarketplaceCategory>("/marketplace-categories", body),
+  updateMarketplaceCategory: (id: string, body: { name?: string; slug?: string; sort_order?: number }) =>
+    patch<AdminMarketplaceCategory>(`/marketplace-categories/${id}`, body),
+  deleteMarketplaceCategory: (id: string) => http.delete(`/marketplace-categories/${id}`).then(() => undefined),
 
-  listSysCategories: (domain: string) =>
-    get<AdminSysCategory[]>(`/sys-categories?domain=${encodeURIComponent(domain)}`),
-  createSysCategory: (
-    domain: string,
-    body: { name: string; slug?: string; sort_order?: number },
-  ) =>
+  listSysCategories: (domain: string) => get<AdminSysCategory[]>(`/sys-categories?domain=${encodeURIComponent(domain)}`),
+  createSysCategory: (domain: string, body: { name: string; slug?: string; sort_order?: number }) =>
     post<AdminSysCategory>(`/sys-categories?domain=${encodeURIComponent(domain)}`, body),
-  updateSysCategory: (
-    id: string,
-    body: { name?: string; slug?: string; sort_order?: number },
-  ) => patch<AdminSysCategory>(`/sys-categories/${id}`, body),
+  updateSysCategory: (id: string, body: { name?: string; slug?: string; sort_order?: number }) => patch<AdminSysCategory>(`/sys-categories/${id}`, body),
   deleteSysCategory: (id: string) => http.delete(`/sys-categories/${id}`).then(() => undefined),
 
   getMarketplaceReviewMode: () => get<{ review_mode: string }>("/marketplace/review-mode"),
   listPendingMarketplaceApps: (page = 1, size = DEFAULT_PAGE_SIZE) =>
     get<PageResult<AdminMarketplaceApp>>(`/marketplace/apps/pending?${buildPageQuery(page, size)}`),
-  getMarketplaceAppForReview: (id: string) =>
-    get<AdminMarketplaceAppDetail>(`/marketplace/apps/${id}`),
+  getMarketplaceAppForReview: (id: string) => get<AdminMarketplaceAppDetail>(`/marketplace/apps/${id}`),
   approveMarketplaceApp: (id: string) => post<AdminMarketplaceApp>(`/marketplace/apps/${id}/approve`),
-  rejectMarketplaceApp: (id: string, note?: string) =>
-    post<AdminMarketplaceApp>(`/marketplace/apps/${id}/reject`, { note }),
+  rejectMarketplaceApp: (id: string, note?: string) => post<AdminMarketplaceApp>(`/marketplace/apps/${id}/reject`, { note }),
 };
 
 export interface PlatformAdmin {

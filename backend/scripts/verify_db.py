@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """检查迁移是否真正落库：表数量 + alembic_version。"""
+
 import asyncio
 import sys
 
@@ -29,17 +30,8 @@ async def main() -> int:
 
     engine = create_async_engine(settings.database_url)
     async with engine.connect() as conn:
-        tables = (
-            await conn.execute(
-                text(
-                    "SELECT tablename FROM pg_tables "
-                    "WHERE schemaname = 'public' ORDER BY tablename"
-                )
-            )
-        ).scalars().all()
-        version = (
-            await conn.execute(text("SELECT version_num FROM alembic_version"))
-        ).scalar_one_or_none()
+        tables = (await conn.execute(text("SELECT tablename FROM pg_tables WHERE schemaname = 'public' ORDER BY tablename"))).scalars().all()
+        version = (await conn.execute(text("SELECT version_num FROM alembic_version"))).scalar_one_or_none()
 
     await engine.dispose()
 

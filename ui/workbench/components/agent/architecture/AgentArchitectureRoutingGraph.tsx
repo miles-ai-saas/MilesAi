@@ -13,12 +13,5 @@ type Props = {
 export function AgentArchitectureRoutingGraph({ steps, className }: Props) {
   const { nodes, edges } = useMemo(() => buildRoutingGraph(steps), [steps]);
 
-  return (
-    <ArchitectureGraphView
-      nodes={nodes}
-      edges={edges}
-      className={className ?? "h-full w-full"}
-      minHeight={Math.max(280, nodes.length * 80)}
-    />
-  );
+  return <ArchitectureGraphView nodes={nodes} edges={edges} className={className ?? "h-full w-full"} minHeight={Math.max(280, nodes.length * 80)} />;
 }

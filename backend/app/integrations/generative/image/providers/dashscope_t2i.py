@@ -30,11 +30,7 @@ async def generate_dashscope_t2i(
     if not api_key:
         raise BadRequestError(f"模型「{model.name}」未配置 API Key")
 
-    api_base = (
-        model.api_base
-        or DEFAULT_API_BASES.get(ModelVendor.QWEN.value)
-        or "https://dashscope.aliyuncs.com/api/v1"
-    ).rstrip("/")
+    api_base = (model.api_base or DEFAULT_API_BASES.get(ModelVendor.QWEN.value) or "https://dashscope.aliyuncs.com/api/v1").rstrip("/")
     url = f"{api_base}/services/aigc/text2image/image-synthesis"
 
     wan_model = model.model_name or "wanx-v1"

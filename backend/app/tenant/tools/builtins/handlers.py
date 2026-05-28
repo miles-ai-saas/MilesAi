@@ -45,9 +45,7 @@ async def handle_http_request(params: dict, **_: Any) -> dict:
     validate_outbound_url(str(url))
     method = str(params.get("method", "GET")).upper()
     async with httpx.AsyncClient(timeout=float(params.get("timeout", 10))) as client:
-        resp = await client.request(
-            method, url, json=params.get("json"), params=params.get("params")
-        )
+        resp = await client.request(method, url, json=params.get("json"), params=params.get("params"))
     return {"status_code": resp.status_code, "body": resp.text[:4000]}
 
 
@@ -136,8 +134,8 @@ BUILTIN_HANDLERS: dict[str, BuiltinHandler] = {
     "knowledge_search": handle_knowledge_search,
     "get_current_datetime": handle_get_current_datetime,
     # P2: 内置工具扩展
-    "web_search": handle_web_search,       # DuckDuckGo
-    "code_execution": handle_code_execution, # Runner 沙箱
+    "web_search": handle_web_search,  # DuckDuckGo
+    "code_execution": handle_code_execution,  # Runner 沙箱
     "generate_speech": handle_generate_speech,  # P2: CosyVoice
     "generate_video": handle_generate_video,
     "generate_image": handle_generate_image,

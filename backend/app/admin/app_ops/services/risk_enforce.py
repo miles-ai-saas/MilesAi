@@ -40,25 +40,10 @@ class PlatformRiskEnforcer:
         if now - self._loaded_at < _CACHE_TTL_SEC:
             return
         async with AsyncSessionLocal() as db:
-            ip_rows = list(
-                (
-                    await db.execute(
-                        select(IpBlacklist.ip_address).where(IpBlacklist.is_active.is_(True))
-                    )
-                ).scalars()
-            )
-            rule_rows = list(
-                (
-                    await db.execute(
-                        select(RateLimitRule).where(RateLimitRule.is_active.is_(True))
-                    )
-                ).scalars()
-            )
+            ip_rows = list((await db.execute(select(IpBlacklist.ip_address).where(IpBlacklist.is_active.is_(True)))).scalars())
+            rule_rows = list((await db.execute(select(RateLimitRule).where(RateLimitRule.is_active.is_(True)))).scalars())
         self._blocked_ips = {ip.strip() for ip in ip_rows if ip}
-        self._rate_rules = [
-            _RateRule(id=r.id, path_pattern=r.path_pattern, limit_per_minute=r.limit_per_minute)
-            for r in rule_rows
-        ]
+        self._rate_rules = [_RateRule(id=r.id, path_pattern=r.path_pattern, limit_per_minute=r.limit_per_minute) for r in rule_rows]
         self._loaded_at = now
 
     @staticmethod

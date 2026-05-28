@@ -28,14 +28,9 @@ function messageFromDetail(detail: unknown): string | null {
     const first = detail[0];
     if (first && typeof first === "object") {
       const row = first as { msg?: unknown; loc?: unknown };
-      const msg =
-        typeof row.msg === "string" && row.msg.trim()
-          ? stripValidationPrefix(row.msg.trim())
-          : "";
+      const msg = typeof row.msg === "string" && row.msg.trim() ? stripValidationPrefix(row.msg.trim()) : "";
       if (!msg) return null;
-      const loc = Array.isArray(row.loc)
-        ? row.loc.filter((x) => x !== "body" && x !== "query" && x !== "path").join(".")
-        : "";
+      const loc = Array.isArray(row.loc) ? row.loc.filter((x) => x !== "body" && x !== "query" && x !== "path").join(".") : "";
       return loc ? `${loc}: ${msg}` : msg;
     }
   }

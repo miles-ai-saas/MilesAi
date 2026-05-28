@@ -32,9 +32,7 @@ export function canCancelTask(task: TaskRecord) {
 }
 
 export function canRetryTask(task: TaskRecord) {
-  return (
-    ["failed", "cancelled", "success"].includes(task.status) && task.resource_type === "document"
-  );
+  return ["failed", "cancelled", "success"].includes(task.status) && task.resource_type === "document";
 }
 
 export function TaskDetailDialog({ open, taskId, taskMeta, onClose, onChanged }: Props) {
@@ -90,41 +88,22 @@ export function TaskDetailDialog({ open, taskId, taskMeta, onClose, onChanged }:
     <ResourceDialog
       open={open}
       title={title}
-      description={
-        task
-          ? `状态：${taskStatusLabel(task.status, taskMeta)}`
-          : undefined
-      }
+      description={task ? `状态：${taskStatusLabel(task.status, taskMeta)}` : undefined}
       size="lg"
       onClose={onClose}
       footer={
         task ? (
           <div className="flex flex-wrap items-center justify-end gap-2">
-            <button
-              type="button"
-              className="btn-ghost text-sm"
-              disabled={loading || acting}
-              onClick={() => void reload()}
-            >
+            <button type="button" className="btn-ghost text-sm" disabled={loading || acting} onClick={() => void reload()}>
               {loading ? "刷新中…" : "刷新"}
             </button>
             {canCancelTask(task) && (
-              <button
-                type="button"
-                className="btn-ghost text-red-600"
-                disabled={acting}
-                onClick={() => void act("cancel")}
-              >
+              <button type="button" className="btn-ghost text-red-600" disabled={acting} onClick={() => void act("cancel")}>
                 取消任务
               </button>
             )}
             {canRetryTask(task) && (
-              <button
-                type="button"
-                className="btn-primary"
-                disabled={acting}
-                onClick={() => void act("retry")}
-              >
+              <button type="button" className="btn-primary" disabled={acting} onClick={() => void act("retry")}>
                 重试
               </button>
             )}
@@ -142,15 +121,11 @@ export function TaskDetailDialog({ open, taskId, taskMeta, onClose, onChanged }:
       }
     >
       {loading && !task && <p className="text-sm text-ink-muted">加载中…</p>}
-      {!loading && !task && (
-        <p className="text-sm text-red-600">{msg || "任务不存在"}</p>
-      )}
+      {!loading && !task && <p className="text-sm text-red-600">{msg || "任务不存在"}</p>}
       {task && (
         <div className="space-y-5">
           <div className="flex flex-wrap items-center gap-2">
-            <span
-              className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ${taskStatusBadgeClass(task.status)}`}
-            >
+            <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ${taskStatusBadgeClass(task.status)}`}>
               {taskStatusLabel(task.status, taskMeta)}
             </span>
           </div>
@@ -166,20 +141,14 @@ export function TaskDetailDialog({ open, taskId, taskMeta, onClose, onChanged }:
             <DetailField label="资源 ID">
               <span className="font-mono text-xs">{task.resource_id || "—"}</span>
             </DetailField>
-            <DetailField label="创建时间">
-              {new Date(task.created_at).toLocaleString("zh-CN")}
-            </DetailField>
-            <DetailField label="更新时间">
-              {new Date(task.updated_at).toLocaleString("zh-CN")}
-            </DetailField>
+            <DetailField label="创建时间">{new Date(task.created_at).toLocaleString("zh-CN")}</DetailField>
+            <DetailField label="更新时间">{new Date(task.updated_at).toLocaleString("zh-CN")}</DetailField>
           </dl>
 
           {task.fail_reason && (
             <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
               <p className="font-medium">失败原因</p>
-              <pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap text-xs">
-                {task.fail_reason}
-              </pre>
+              <pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap text-xs">{task.fail_reason}</pre>
             </div>
           )}
 
@@ -193,10 +162,7 @@ export function TaskDetailDialog({ open, taskId, taskMeta, onClose, onChanged }:
 
           {task.resource_type === "generative_job" && task.resource_id && (
             <p>
-              <Link
-                href={`/workbench/tasks?category=generative&job=${encodeURIComponent(task.resource_id)}`}
-                className="text-sm text-brand hover:underline"
-              >
+              <Link href={`/workbench/tasks?category=generative&job=${encodeURIComponent(task.resource_id)}`} className="text-sm text-brand hover:underline">
                 在生成任务中查看详情 →
               </Link>
             </p>

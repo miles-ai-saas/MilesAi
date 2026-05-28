@@ -36,6 +36,7 @@ from app.integrations.generative.volcengine_client import (
 from app.integrations.http_constants import HTTP_DEFAULT_TIMEOUT_SEC
 from app.models.model import ModelConfig
 
+
 def _build_content(
     prompt: str,
     first_frame_data_url: str | None,
@@ -84,9 +85,7 @@ def _build_request_body(
         "model": ep_model,
         "content": _build_content(prompt, first_frame_data_url, last_frame_data_url),
         "duration": int(extra.get(EXTRA_VIDEO_DURATION) or duration or DEFAULT_VIDEO_DURATION_SEC),
-        "resolution": normalize_volcengine_resolution(
-            resolution or str(extra.get(EXTRA_VIDEO_RESOLUTION) or DEFAULT_VIDEO_RESOLUTION)
-        ),
+        "resolution": normalize_volcengine_resolution(resolution or str(extra.get(EXTRA_VIDEO_RESOLUTION) or DEFAULT_VIDEO_RESOLUTION)),
         "ratio": ratio,
         "watermark": bool(extra.get(EXTRA_WATERMARK, False)),
     }

@@ -104,9 +104,7 @@ class AgentCrudMixin(BaseService):
             filters.append(AgentModel.agent_type == agent_type)
         if category_id is not None:
             filters.append(AgentModel.category_id == category_id)
-        tag_subq = TagService(self.db, self.ctx).entity_id_filter(
-            TagEntityType.AGENT, tag_ids or []
-        )
+        tag_subq = TagService(self.db, self.ctx).entity_id_filter(TagEntityType.AGENT, tag_ids or [])
         if tag_subq is not None:
             filters.append(AgentModel.id.in_(tag_subq))
         page = await self.repo.list_page(
@@ -116,19 +114,13 @@ class AgentCrudMixin(BaseService):
             order_by=AgentModel.created_at.desc(),
             options=[
                 selectinload(AgentModel.knowledge_bases),
-                selectinload(AgentModel.sub_agent_bindings).selectinload(
-                    AgentSubAgentBinding.child_agent
-                ),
+                selectinload(AgentModel.sub_agent_bindings).selectinload(AgentSubAgentBinding.child_agent),
             ],
         )
         cat_ids = {a.category_id for a in page.items if a.category_id}
-        cat_names = await CategoryService(self.db, self.ctx).get_category_name_map(
-            CategoryDomain.AGENT, cat_ids
-        )
+        cat_names = await CategoryService(self.db, self.ctx).get_category_name_map(CategoryDomain.AGENT, cat_ids)
         entity_ids = {a.id for a in page.items}
-        tags_map = await TagService(self.db, self.ctx).get_refs_map(
-            TagEntityType.AGENT, entity_ids
-        )
+        tags_map = await TagService(self.db, self.ctx).get_refs_map(TagEntityType.AGENT, entity_ids)
         items = []
         for a in page.items:
             items.append(
@@ -151,9 +143,7 @@ class AgentCrudMixin(BaseService):
         from app.tenant.system.services.quota import assert_can_create_agent
 
         await assert_can_create_agent(self.db, self.ctx.tenant_id)
-        await CategoryService(self.db, self.ctx).validate_category_for_domain(
-            body.category_id, CategoryDomain.AGENT
-        )
+        await CategoryService(self.db, self.ctx).validate_category_for_domain(body.category_id, CategoryDomain.AGENT)
         validate_agent_type_constraints(
             agent_type=body.agent_type,
             kb_ids=body.kb_ids,
@@ -177,12 +167,8 @@ class AgentCrudMixin(BaseService):
             status=AgentStatus.ENABLED,
         )
         if body.kb_ids:
-            await self.repo.replace_kb_bindings(
-                agent.id, body.kb_ids, tenant_id=self.ctx.tenant_id
-            )
-        bindings = normalize_bindings(
-            [b.model_dump() for b in body.sub_agents] if body.sub_agents else None
-        )
+            await self.repo.replace_kb_bindings(agent.id, body.kb_ids, tenant_id=self.ctx.tenant_id)
+        bindings = normalize_bindings([b.model_dump() for b in body.sub_agents] if body.sub_agents else None)
         agent.config = apply_planner_config(body.config, has_sub_agents=bool(bindings))
         await validate_and_sync_sub_agents(self.db, self.ctx, agent, bindings)
         a2a_raw_list = [p.model_dump() for p in body.a2a_peers] if body.a2a_peers else None
@@ -194,14 +180,10 @@ class AgentCrudMixin(BaseService):
             await validate_and_sync_agent_a2a_peer_refs(self.db, self.ctx, agent, a2a_raw)
         await self.db.flush()
         if body.tag_ids:
-            await TagService(self.db, self.ctx).replace_entity_tags(
-                TagEntityType.AGENT, agent.id, body.tag_ids
-            )
+            await TagService(self.db, self.ctx).replace_entity_tags(TagEntityType.AGENT, agent.id, body.tag_ids)
         await self.db.refresh(agent, ["knowledge_bases", "sub_agent_bindings"])
         agent = await self.get_agent_or_raise(agent.id)
-        tags_map = await TagService(self.db, self.ctx).get_refs_map(
-            TagEntityType.AGENT, {agent.id}
-        )
+        tags_map = await TagService(self.db, self.ctx).get_refs_map(TagEntityType.AGENT, {agent.id})
         return await agent_out(self, agent, tag_refs=tags_map.get(agent.id, []))
 
     async def get_agent(self, agent_id: UUID) -> AgentOut:
@@ -211,21 +193,15 @@ class AgentCrudMixin(BaseService):
             CategoryDomain.AGENT,
             {agent.category_id} if agent.category_id else set(),
         )
-        tags_map = await TagService(self.db, self.ctx).get_refs_map(
-            TagEntityType.AGENT, {agent.id}
-        )
-        return await agent_out(
-            self, agent, category_names=cat_names, tag_refs=tags_map.get(agent.id, [])
-        )
+        tags_map = await TagService(self.db, self.ctx).get_refs_map(TagEntityType.AGENT, {agent.id})
+        return await agent_out(self, agent, category_names=cat_names, tag_refs=tags_map.get(agent.id, []))
 
     async def update_agent(self, agent_id: UUID, body: AgentUpdate) -> AgentOut:
         """部分更新智能体字段及 KB/子 Agent/A2A/标签绑定。"""
         agent = await self.get_agent_or_raise(agent_id)
         data = body.model_dump(exclude_unset=True)
         if "category_id" in data:
-            await CategoryService(self.db, self.ctx).validate_category_for_domain(
-                data.get("category_id"), CategoryDomain.AGENT
-            )
+            await CategoryService(self.db, self.ctx).validate_category_for_domain(data.get("category_id"), CategoryDomain.AGENT)
         kb_ids = data.pop("kb_ids", None)
         tag_ids = data.pop("tag_ids", None)
         sub_raw = data.pop("sub_agents", None)
@@ -243,13 +219,9 @@ class AgentCrudMixin(BaseService):
         )
         await self.repo.update_fields(agent, data)
         if kb_ids is not None:
-            await self.repo.replace_kb_bindings(
-                agent.id, kb_ids, tenant_id=self.ctx.tenant_id
-            )
+            await self.repo.replace_kb_bindings(agent.id, kb_ids, tenant_id=self.ctx.tenant_id)
         if sub_raw is not None:
-            bindings = normalize_bindings(
-                [b.model_dump() if hasattr(b, "model_dump") else b for b in sub_raw]
-            )
+            bindings = normalize_bindings([b.model_dump() if hasattr(b, "model_dump") else b for b in sub_raw])
             agent.config = apply_planner_config(
                 data.get("config") or agent.config,
                 has_sub_agents=bool(bindings),
@@ -261,22 +233,14 @@ class AgentCrudMixin(BaseService):
         if a2a_raw_in is not None:
             raw_list = [p.model_dump() if hasattr(p, "model_dump") else p for p in a2a_raw_in]
             if agent.agent_type == AgentType.A2A:
-                await validate_and_sync_host_peer_bindings(
-                    self.db, self.ctx, agent, normalize_host_peers(raw_list)
-                )
+                await validate_and_sync_host_peer_bindings(self.db, self.ctx, agent, normalize_host_peers(raw_list))
             else:
-                await validate_and_sync_agent_a2a_peer_refs(
-                    self.db, self.ctx, agent, normalize_peer_refs(raw_list)
-                )
+                await validate_and_sync_agent_a2a_peer_refs(self.db, self.ctx, agent, normalize_peer_refs(raw_list))
         await self.db.flush()
         if tag_ids is not None:
-            await TagService(self.db, self.ctx).replace_entity_tags(
-                TagEntityType.AGENT, agent_id, tag_ids
-            )
+            await TagService(self.db, self.ctx).replace_entity_tags(TagEntityType.AGENT, agent_id, tag_ids)
         agent = await self.get_agent_or_raise(agent_id)
-        tags_map = await TagService(self.db, self.ctx).get_refs_map(
-            TagEntityType.AGENT, {agent_id}
-        )
+        tags_map = await TagService(self.db, self.ctx).get_refs_map(TagEntityType.AGENT, {agent_id})
         return await agent_out(self, agent, tag_refs=tags_map.get(agent_id, []))
 
     async def delete_agent(self, agent_id: UUID) -> None:
@@ -293,11 +257,7 @@ class AgentCrudMixin(BaseService):
         from app.tenant.agents.schemas.agent import AgentPackage
 
         agent = await self.get_agent_or_raise(agent_id)
-        rows = await self.db.execute(
-            select(agent_kb_bindings.c.kb_id).where(
-                agent_kb_bindings.c.agent_id == agent_id
-            )
-        )
+        rows = await self.db.execute(select(agent_kb_bindings.c.kb_id).where(agent_kb_bindings.c.agent_id == agent_id))
         kb_ids = [row[0] for row in rows.all()]
 
         body = AgentCreate(

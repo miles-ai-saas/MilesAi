@@ -18,10 +18,7 @@ const FALLBACK_SEARCH_SOURCE: Record<string, string> = {
   debug: "调试",
 };
 
-export function retrievalModeLabel(
-  mode?: string | null,
-  modes?: EnumOption[],
-): string {
+export function retrievalModeLabel(mode?: string | null, modes?: EnumOption[]): string {
   if (!mode) return "—";
   return optionLabel(modes, mode) || FALLBACK_RETRIEVAL[mode] || mode;
 }

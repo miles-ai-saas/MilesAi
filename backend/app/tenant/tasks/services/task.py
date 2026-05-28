@@ -63,9 +63,7 @@ class TaskService(BaseService):
         except ValueError:
             pass
         if not record:
-            record = await self.db.scalar(
-                select(CeleryTaskRecord).where(CeleryTaskRecord.celery_task_id == task_id)
-            )
+            record = await self.db.scalar(select(CeleryTaskRecord).where(CeleryTaskRecord.celery_task_id == task_id))
         if not record:
             raise NotFoundError("任务不存在")
         assert_tenant_access(self.ctx, record.tenant_id)
@@ -83,13 +81,7 @@ class TaskService(BaseService):
             filters.append(CeleryTaskRecord.status == status)
         count_stmt = select(func.count(CeleryTaskRecord.id)).where(*filters)
         total = await self.db.scalar(count_stmt)
-        stmt = (
-            select(CeleryTaskRecord)
-            .where(*filters)
-            .order_by(CeleryTaskRecord.created_at.desc())
-            .offset((params.page - 1) * params.size)
-            .limit(params.size)
-        )
+        stmt = select(CeleryTaskRecord).where(*filters).order_by(CeleryTaskRecord.created_at.desc()).offset((params.page - 1) * params.size).limit(params.size)
         rows = (await self.db.execute(stmt)).scalars().all()
         return PageResult(
             items=[TaskRecordOut.model_validate(r) for r in rows],

@@ -6,27 +6,10 @@ import { useEffect, useState, type ReactNode } from "react";
 import { AgentRenameInline } from "@/components/agent/AgentRenameInline";
 import { ResourceDialog } from "@/components/resource/ResourceDialog";
 import { api } from "@/lib/api";
-import {
-  agentModeLabel,
-  agentStatusLabel,
-  agentTypeLabel,
-  subAgentRoleLabel,
-} from "@/lib/agent-utils";
-import {
-  agentPlannerLabel,
-  agentRuntimeModeLabel,
-} from "@/lib/agent-labels";
+import { agentModeLabel, agentStatusLabel, agentTypeLabel, subAgentRoleLabel } from "@/lib/agent-utils";
+import { agentPlannerLabel, agentRuntimeModeLabel } from "@/lib/agent-labels";
 import { useAgentMeta } from "@/hooks/use-agent-meta";
-import type {
-  Agent,
-  AgentMeta,
-  Flow,
-  KnowledgeBase,
-  McpService,
-  ModelConfig,
-  PromptTemplate,
-  SkillPackage,
-} from "@/lib/types";
+import type { Agent, AgentMeta, Flow, KnowledgeBase, McpService, ModelConfig, PromptTemplate, SkillPackage } from "@/lib/types";
 
 type Props = {
   open: boolean;
@@ -47,12 +30,7 @@ function DetailRow({ label, children }: { label: string; children: ReactNode }) 
   );
 }
 
-function formatConfigSummary(
-  cfg: Record<string, unknown>,
-  subs: number,
-  kbCount: number,
-  meta: AgentMeta | null,
-): ReactNode {
+function formatConfigSummary(cfg: Record<string, unknown>, subs: number, kbCount: number, meta: AgentMeta | null): ReactNode {
   const lines: string[] = [];
   if (cfg.runtime_mode) {
     lines.push(`运行模式：${agentRuntimeModeLabel(String(cfg.runtime_mode), meta)}`);
@@ -85,15 +63,7 @@ function formatConfigSummary(
   );
 }
 
-export function AgentDetailDialog({
-  open,
-  agentId,
-  onClose,
-  onEdit,
-  onChat,
-  onDesign,
-  onRenamed,
-}: Props) {
+export function AgentDetailDialog({ open, agentId, onClose, onEdit, onChat, onDesign, onRenamed }: Props) {
   const agentMeta = useAgentMeta(open);
   const [agent, setAgent] = useState<Agent | null>(null);
   const [loading, setLoading] = useState(false);
@@ -172,13 +142,7 @@ export function AgentDetailDialog({
                 <span className="text-xs text-ink-muted">A2A 宿主请在「A2A 互联」Tab 中编辑</span>
               )}
             </div>
-            <button
-              type="button"
-              className="btn-primary"
-              disabled={disabled}
-              title={disabled ? "请先启用智能体" : undefined}
-              onClick={() => onChat(agent)}
-            >
+            <button type="button" className="btn-primary" disabled={disabled} title={disabled ? "请先启用智能体" : undefined} onClick={() => onChat(agent)}>
               对话
             </button>
           </div>
@@ -190,11 +154,7 @@ export function AgentDetailDialog({
       }
     >
       {loading && <p className="py-8 text-center text-sm text-ink-muted">加载中…</p>}
-      {error && (
-        <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-          {error}
-        </p>
-      )}
+      {error && <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
       {agent && !loading && !error && (
         <dl className="divide-y divide-line-soft">
           <DetailRow label="ID">
@@ -211,36 +171,16 @@ export function AgentDetailDialog({
             />
           </DetailRow>
           <DetailRow label="状态">
-            <span
-              className={
-                agent.status === "enabled"
-                  ? "text-brand"
-                  : "text-ink-muted"
-              }
-            >
-              {agentStatusLabel(agent.status, agentMeta)}
-            </span>
+            <span className={agent.status === "enabled" ? "text-brand" : "text-ink-muted"}>{agentStatusLabel(agent.status, agentMeta)}</span>
           </DetailRow>
           <DetailRow label="类型">{agentTypeLabel(agent, agentMeta)}</DetailRow>
           <DetailRow label="运行方式">{agentModeLabel(agent)}</DetailRow>
-          <DetailRow label="描述">
-            {agent.description?.trim() ? agent.description : (
-              <span className="text-ink-muted">未填写</span>
-            )}
-          </DetailRow>
-          <DetailRow label="大模型">
-            {modelName ?? (
-              <span className="text-ink-muted">默认模型</span>
-            )}
-          </DetailRow>
-          <DetailRow label="提示词模版">
-            {promptName ?? <span className="text-ink-muted">无</span>}
-          </DetailRow>
+          <DetailRow label="描述">{agent.description?.trim() ? agent.description : <span className="text-ink-muted">未填写</span>}</DetailRow>
+          <DetailRow label="大模型">{modelName ?? <span className="text-ink-muted">默认模型</span>}</DetailRow>
+          <DetailRow label="提示词模版">{promptName ?? <span className="text-ink-muted">无</span>}</DetailRow>
           <DetailRow label="系统提示词">
             {agent.system_prompt?.trim() ? (
-              <pre className="max-h-32 overflow-auto whitespace-pre-wrap rounded-lg bg-surface-muted p-2 text-xs">
-                {agent.system_prompt}
-              </pre>
+              <pre className="max-h-32 overflow-auto whitespace-pre-wrap rounded-lg bg-surface-muted p-2 text-xs">{agent.system_prompt}</pre>
             ) : (
               <span className="text-ink-muted">未配置</span>
             )}
@@ -255,9 +195,7 @@ export function AgentDetailDialog({
               <span className="text-ink-muted">未绑定</span>
             )}
           </DetailRow>
-          <DetailRow label="技能包">
-            {skillName ?? <span className="text-ink-muted">无</span>}
-          </DetailRow>
+          <DetailRow label="技能包">{skillName ?? <span className="text-ink-muted">无</span>}</DetailRow>
           <DetailRow label="MCP 服务">
             {mcpNames.length > 0 ? (
               <ul className="list-inside list-disc">
@@ -284,19 +222,10 @@ export function AgentDetailDialog({
             {(agent.a2a_peers?.length ?? 0) > 0 ? (
               <ul className="space-y-2">
                 {agent.a2a_peers!.map((p) => (
-                  <li
-                    key={p.id}
-                    className="rounded-lg border border-line-soft bg-surface-muted px-3 py-2 text-xs"
-                  >
+                  <li key={p.id} className="rounded-lg border border-line-soft bg-surface-muted px-3 py-2 text-xs">
                     <span className="font-medium text-ink">{p.name}</span>
-                    {p.card_display_name && (
-                      <span className="text-ink-muted"> · Card: {p.card_display_name}</span>
-                    )}
-                    {(p.trigger_keywords?.length ?? 0) > 0 && (
-                      <p className="mt-1 text-ink-faint">
-                        规则关键词：{p.trigger_keywords.join("、")}
-                      </p>
-                    )}
+                    {p.card_display_name && <span className="text-ink-muted"> · Card: {p.card_display_name}</span>}
+                    {(p.trigger_keywords?.length ?? 0) > 0 && <p className="mt-1 text-ink-faint">规则关键词：{p.trigger_keywords.join("、")}</p>}
                   </li>
                 ))}
               </ul>
@@ -308,18 +237,13 @@ export function AgentDetailDialog({
             {(agent.sub_agents?.length ?? 0) > 0 ? (
               <ul className="space-y-2">
                 {agent.sub_agents!.map((s) => (
-                  <li
-                    key={s.id}
-                    className="rounded-lg border border-line-soft bg-surface-muted px-3 py-2 text-xs"
-                  >
+                  <li key={s.id} className="rounded-lg border border-line-soft bg-surface-muted px-3 py-2 text-xs">
                     <span className="font-medium text-ink">{s.name}</span>
                     <span className="mx-2 text-ink-faint">·</span>
                     <span className="text-ink-muted">{subAgentRoleLabel(s.role_hint, agentMeta)}</span>
                     <span className="mx-2 text-ink-faint">·</span>
                     <span className="text-ink-muted">{agentStatusLabel(s.status, agentMeta)}</span>
-                    {s.description && (
-                      <p className="mt-1 text-ink-faint line-clamp-2">{s.description}</p>
-                    )}
+                    {s.description && <p className="mt-1 text-ink-faint line-clamp-2">{s.description}</p>}
                   </li>
                 ))}
               </ul>
@@ -327,9 +251,7 @@ export function AgentDetailDialog({
               <span className="text-ink-muted">无</span>
             )}
           </DetailRow>
-          <DetailRow label="高级配置">
-            {formatConfigSummary(cfg, agent.sub_agents?.length ?? 0, agent.kb_ids.length, agentMeta)}
-          </DetailRow>
+          <DetailRow label="高级配置">{formatConfigSummary(cfg, agent.sub_agents?.length ?? 0, agent.kb_ids.length, agentMeta)}</DetailRow>
         </dl>
       )}
     </ResourceDialog>

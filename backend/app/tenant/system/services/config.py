@@ -56,10 +56,7 @@ class SystemConfigService(BaseService):
 
     async def list_definitions(self) -> list[ConfigDefinitionOut]:
         """管理端展示项：定义元数据 + 库中当前值或 default。"""
-        stored = {
-            row.key: row
-            for row in (await self.db.execute(select(SystemConfig))).scalars().all()
-        }
+        stored = {row.key: row for row in (await self.db.execute(select(SystemConfig))).scalars().all()}
         out: list[ConfigDefinitionOut] = []
         for d in CONFIG_DEFINITIONS:
             row = stored.get(d["key"])
@@ -118,9 +115,7 @@ class SystemConfigService(BaseService):
     async def runtime_info(self) -> RuntimeInfoOut:
         settings = get_settings()
         health = await collect_health_status()
-        components = {
-            k: _format_component_status(v) for k, v in health.get("components", {}).items()
-        }
+        components = {k: _format_component_status(v) for k, v in health.get("components", {}).items()}
         preview = {
             "database_url": "***" if settings.database_url else None,
             "redis_url": "***" if settings.redis_url else None,

@@ -16,17 +16,11 @@ class RoleRepository(BaseRepository[Role]):
         super().__init__(db, Role)
 
     async def get_with_permissions(self, role_id: UUID) -> Role | None:
-        stmt = (
-            select(Role)
-            .where(Role.id == role_id, not_deleted(Role))
-            .options(selectinload(Role.permissions))
-        )
+        stmt = select(Role).where(Role.id == role_id, not_deleted(Role)).options(selectinload(Role.permissions))
         return (await self.db.execute(stmt)).scalar_one_or_none()
 
     async def load_permissions(self, permission_ids: list[UUID]) -> list[Permission]:
         if not permission_ids:
             return []
-        result = await self.db.execute(
-            select(Permission).where(Permission.id.in_(permission_ids), not_deleted(Permission))
-        )
+        result = await self.db.execute(select(Permission).where(Permission.id.in_(permission_ids), not_deleted(Permission)))
         return list(result.scalars().all())

@@ -25,17 +25,9 @@ export function SystemShell({ children }: { children: React.ReactNode }) {
 
       {mobileNavOpen && (
         <div className="fixed inset-0 z-40 flex lg:hidden">
-          <button
-            type="button"
-            className="absolute inset-0 bg-black/40"
-            aria-label="关闭菜单"
-            onClick={() => setMobileNavOpen(false)}
-          />
+          <button type="button" className="absolute inset-0 bg-black/40" aria-label="关闭菜单" onClick={() => setMobileNavOpen(false)} />
           <div className="relative z-50 flex h-full shadow-panel">
-            <SystemSidebar
-              pathname={pathname}
-              onNavigate={() => setMobileNavOpen(false)}
-            />
+            <SystemSidebar pathname={pathname} onNavigate={() => setMobileNavOpen(false)} />
           </div>
         </div>
       )}

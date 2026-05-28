@@ -43,9 +43,7 @@ def _resolve_rerank_sync(db: Session, kb: KnowledgeBase, tenant_id: UUID) -> Mod
     return resolve_rerank_model_sync(db, kb.rerank_model_config_id, tenant_id)
 
 
-async def _resolve_rerank_async(
-    db: AsyncSession, kb: KnowledgeBase, tenant_id: UUID
-) -> ModelConfig | None:
+async def _resolve_rerank_async(db: AsyncSession, kb: KnowledgeBase, tenant_id: UUID) -> ModelConfig | None:
     """异步解析 rerank 模型（multi_kb_async 使用）。"""
     if not kb.rerank_model_config_id:
         return None

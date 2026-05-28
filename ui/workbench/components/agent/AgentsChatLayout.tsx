@@ -81,18 +81,9 @@ export function AgentsChatLayout({ vm }: Props) {
 
       {leftDrawerOpen && !focusMode ? (
         <>
-          <button
-            type="button"
-            className="fixed inset-0 z-40 bg-black/30 lg:hidden"
-            aria-label="关闭侧栏"
-            onClick={() => setLeftDrawerOpen(false)}
-          />
+          <button type="button" className="fixed inset-0 z-40 bg-black/30 lg:hidden" aria-label="关闭侧栏" onClick={() => setLeftDrawerOpen(false)} />
           <div className="fixed inset-y-0 left-0 z-50 h-full shadow-xl lg:hidden">
-            <AgentChatLeftSidebar
-              {...leftSidebarProps}
-              hideCollapseButton
-              onToggleCollapse={() => setLeftDrawerOpen(false)}
-            />
+            <AgentChatLeftSidebar {...leftSidebarProps} hideCollapseButton onToggleCollapse={() => setLeftDrawerOpen(false)} />
           </div>
         </>
       ) : null}
@@ -151,18 +142,10 @@ export function AgentsChatLayout({ vm }: Props) {
               pendingMedia={pendingMedia}
               carriedMedia={carriedMedia}
               onRemovePending={removePendingMedia}
-              carryForwardHint={
-                carriedMedia.length > 0 && pendingMedia.length === 0
-                  ? "将沿用上一轮附图（可在智能体配置中关闭）"
-                  : undefined
-              }
+              carryForwardHint={carriedMedia.length > 0 && pendingMedia.length === 0 ? "将沿用上一轮附图（可在智能体配置中关闭）" : undefined}
               disabled={!selectedAgent || !conversationId}
               sendDisabled={
-                chatting ||
-                uploadingMedia ||
-                !selectedAgent ||
-                !conversationId ||
-                (!query.trim() && pendingMedia.length === 0 && carriedMedia.length === 0)
+                chatting || uploadingMedia || !selectedAgent || !conversationId || (!query.trim() && pendingMedia.length === 0 && carriedMedia.length === 0)
               }
               uploadingMedia={uploadingMedia}
               chatting={chatting}
@@ -193,11 +176,7 @@ export function AgentsChatLayout({ vm }: Props) {
 
       {focusMode ? (
         <div className="pointer-events-none fixed bottom-4 right-4 z-30 flex flex-col gap-2 sm:flex-row">
-          <button
-            type="button"
-            className="btn-sm-outline pointer-events-auto shadow-md"
-            onClick={openTraceLatest}
-          >
+          <button type="button" className="btn-sm-outline pointer-events-auto shadow-md" onClick={openTraceLatest}>
             Trace
           </button>
           <button

@@ -14,11 +14,7 @@ function parseSseData(line: string): GenerativeJobOut | null {
   }
 }
 
-export async function subscribeGenerativeJobStream(
-  jobId: string,
-  onEvent: (job: GenerativeJobOut) => void,
-  signal?: AbortSignal,
-): Promise<void> {
+export async function subscribeGenerativeJobStream(jobId: string, onEvent: (job: GenerativeJobOut) => void, signal?: AbortSignal): Promise<void> {
   const token = getAccessToken();
   const res = await fetch(`${baseURL}/generative/jobs/${jobId}/stream`, {
     headers: token ? { Authorization: `Bearer ${token}` } : {},

@@ -28,9 +28,7 @@ from app.models.model_tenant_credential import ModelTenantCredential
 from app.tenant.models.services.model_resolve import load_tenant_credential
 
 
-def _load_tenant_credential_sync(
-    db: Session, tenant_id: UUID, model_config_id: UUID
-) -> ModelTenantCredential | None:
+def _load_tenant_credential_sync(db: Session, tenant_id: UUID, model_config_id: UUID) -> ModelTenantCredential | None:
     return db.execute(
         select(ModelTenantCredential).where(
             ModelTenantCredential.tenant_id == tenant_id,
@@ -40,9 +38,7 @@ def _load_tenant_credential_sync(
     ).scalar_one_or_none()
 
 
-def _apply_builtin_credential(
-    model: ModelConfig, cred: ModelTenantCredential | None
-) -> ModelConfig:
+def _apply_builtin_credential(model: ModelConfig, cred: ModelTenantCredential | None) -> ModelConfig:
     effective = copy(model)
     if cred:
         if cred.api_base:
@@ -50,9 +46,7 @@ def _apply_builtin_credential(
         if cred.api_key_encrypted:
             effective.api_key_encrypted = cred.api_key_encrypted
     if not effective.api_key_encrypted:
-        raise BadRequestError(
-            f"重排模型「{model.name}」未配置 API Key，请在模型供应商页配置密钥"
-        )
+        raise BadRequestError(f"重排模型「{model.name}」未配置 API Key，请在模型供应商页配置密钥")
     return effective
 
 
@@ -81,27 +75,17 @@ async def resolve_rerank_model(
     return _ensure_tenant_custom(model, tenant_id)
 
 
-async def resolve_rerank_model_by_id(
-    db: AsyncSession, model_id: UUID, tenant_id: UUID
-) -> ModelConfig:
+async def resolve_rerank_model_by_id(db: AsyncSession, model_id: UUID, tenant_id: UUID) -> ModelConfig:
     """按 ID 解析 KB 绑定的 rerank 模型（检索精排）。"""
-    model = (
-        await db.execute(
-            select(ModelConfig).where(ModelConfig.id == model_id, not_deleted(ModelConfig))
-        )
-    ).scalar_one_or_none()
+    model = (await db.execute(select(ModelConfig).where(ModelConfig.id == model_id, not_deleted(ModelConfig)))).scalar_one_or_none()
     if not model:
         raise BadRequestError("重排模型不存在")
     return await resolve_rerank_model(db, model, tenant_id)
 
 
-def resolve_rerank_model_sync(
-    db: Session, model_id: UUID, tenant_id: UUID
-) -> ModelConfig:
+def resolve_rerank_model_sync(db: Session, model_id: UUID, tenant_id: UUID) -> ModelConfig:
     """同步解析 rerank 模型（脚本或非 async 路径）。"""
-    model = db.execute(
-        select(ModelConfig).where(ModelConfig.id == model_id, not_deleted(ModelConfig))
-    ).scalar_one_or_none()
+    model = db.execute(select(ModelConfig).where(ModelConfig.id == model_id, not_deleted(ModelConfig))).scalar_one_or_none()
     if not model:
         raise BadRequestError("重排模型不存在")
     ensure_rerank_model_type(model)

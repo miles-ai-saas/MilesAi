@@ -32,12 +32,18 @@ export default function WorkbenchOverviewPage() {
 
   useEffect(() => {
     if (!ready) return;
-    api.getWorkbenchOverview().then(setStats).catch(() => setStats(null));
+    api
+      .getWorkbenchOverview()
+      .then(setStats)
+      .catch(() => setStats(null));
   }, [ready]);
 
   useEffect(() => {
     if (!ready || !showQuota) return;
-    api.getSystemQuota().then(setQuota).catch(() => setQuota(null));
+    api
+      .getSystemQuota()
+      .then(setQuota)
+      .catch(() => setQuota(null));
   }, [ready, showQuota]);
 
   if (!stats) {
@@ -55,18 +61,11 @@ export default function WorkbenchOverviewPage() {
 
   return (
     <div className="resource-page-shell">
-      <PageHeader
-        title="工作台概览"
-        description="AI 能力资源一览，快速进入常用功能"
-      />
+      <PageHeader title="工作台概览" description="AI 能力资源一览，快速进入常用功能" />
 
       <div className="resource-card-grid mb-8">
         {statCards.map((c) => (
-          <Link
-            key={c.label}
-            href={c.href}
-            className="resource-card !min-h-[100px] flex-row items-center justify-between !p-4"
-          >
+          <Link key={c.label} href={c.href} className="resource-card !min-h-[100px] flex-row items-center justify-between !p-4">
             <span className="text-sm text-ink-muted">{c.label}</span>
             <span className="text-2xl font-bold text-brand">{c.value}</span>
           </Link>
@@ -90,15 +89,9 @@ export default function WorkbenchOverviewPage() {
                 ["存储", quota.storage_mb],
               ] as const
             ).map(([label, metric]) => (
-              <Link
-                key={label}
-                href="/system/quota"
-                className="resource-card !min-h-[88px] flex-row items-center justify-between !p-4"
-              >
+              <Link key={label} href="/system/quota" className="resource-card !min-h-[88px] flex-row items-center justify-between !p-4">
                 <span className="text-sm text-ink-muted">{label}</span>
-                <span className="text-sm tabular-nums font-medium text-ink">
-                  {quotaLabel(metric)}
-                </span>
+                <span className="text-sm tabular-nums font-medium text-ink">{quotaLabel(metric)}</span>
               </Link>
             ))}
           </div>
@@ -108,11 +101,7 @@ export default function WorkbenchOverviewPage() {
       <h2 className="mb-3 text-sm font-semibold text-ink">快捷入口</h2>
       <div className="resource-card-grid">
         {QUICK_LINKS.map((item) => (
-          <Link
-            key={item.href}
-            href={item.href}
-            className="resource-card"
-          >
+          <Link key={item.href} href={item.href} className="resource-card">
             <p className="font-medium text-ink">{item.label}</p>
             <p className="mt-1 text-xs text-ink-muted">{item.desc}</p>
           </Link>

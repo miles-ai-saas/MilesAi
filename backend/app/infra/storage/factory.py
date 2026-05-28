@@ -19,8 +19,5 @@ def get_object_storage() -> ObjectStorage:
     """按 OBJECT_STORAGE_BACKEND 返回单例（当前仅 s3 兼容实现）。"""
     backend = get_settings().object_storage_backend.strip().lower()
     if backend not in _SUPPORTED:
-        raise ValueError(
-            f"不支持的 OBJECT_STORAGE_BACKEND={backend!r}，"
-            f"当前实现: {', '.join(sorted(_SUPPORTED))}（均为 S3 兼容 API）"
-        )
+        raise ValueError(f"不支持的 OBJECT_STORAGE_BACKEND={backend!r}，当前实现: {', '.join(sorted(_SUPPORTED))}（均为 S3 兼容 API）")
     return S3CompatibleObjectStorage()

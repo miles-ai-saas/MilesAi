@@ -157,11 +157,7 @@ async def validate_and_sync_sub_agents(
     if parent.agent_type == AgentType.A2A:
         raise BadRequestError("A2A 互联智能体不支持平台内子智能体绑定")
     if not bindings:
-        await db.execute(
-            delete(AgentSubAgentBinding).where(
-                AgentSubAgentBinding.parent_agent_id == parent.id
-            )
-        )
+        await db.execute(delete(AgentSubAgentBinding).where(AgentSubAgentBinding.parent_agent_id == parent.id))
         return
 
     child_ids = [b[0] for b in bindings]
@@ -174,24 +170,14 @@ async def validate_and_sync_sub_agents(
     for cid in child_ids:
         child = await _load_agent(db, cid, ctx.tenant_id)
         if child.agent_type != AgentType.CUSTOM:
-            raise BadRequestError(
-                f"「{child.name}」为 A2A 互联智能体，不能作为内部协同子节点"
-            )
+            raise BadRequestError(f"「{child.name}」为 A2A 互联智能体，不能作为内部协同子节点")
         if child.status.value != "enabled":
             raise BadRequestError(f"子智能体「{child.name}」未启用")
-        child_as_parent = await db.scalar(
-            select(AgentSubAgentBinding.child_agent_id)
-            .where(AgentSubAgentBinding.parent_agent_id == cid)
-            .limit(1)
-        )
+        child_as_parent = await db.scalar(select(AgentSubAgentBinding.child_agent_id).where(AgentSubAgentBinding.parent_agent_id == cid).limit(1))
         if child_as_parent:
-            raise BadRequestError(
-                f"子智能体「{child.name}」已绑定其他子智能体，仅支持一层委派"
-            )
+            raise BadRequestError(f"子智能体「{child.name}」已绑定其他子智能体，仅支持一层委派")
 
-    await db.execute(
-        delete(AgentSubAgentBinding).where(AgentSubAgentBinding.parent_agent_id == parent.id)
-    )
+    await db.execute(delete(AgentSubAgentBinding).where(AgentSubAgentBinding.parent_agent_id == parent.id))
     for child_id, role_hint, sort_order in bindings:
         db.add(
             AgentSubAgentBinding(

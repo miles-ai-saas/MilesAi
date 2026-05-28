@@ -32,18 +32,12 @@ def _video_model(**kwargs) -> ModelConfig:
 
 def test_resolve_video_invoke_mode_qwen():
     m = _video_model()
-    assert (
-        resolve_invoke_mode(m, capability=ModelCapabilityType.VIDEO_GEN.value)
-        == INVOKE_DASHSCOPE_T2V
-    )
+    assert resolve_invoke_mode(m, capability=ModelCapabilityType.VIDEO_GEN.value) == INVOKE_DASHSCOPE_T2V
 
 
 def test_resolve_video_invoke_mode_doubao():
     m = _video_model(vendor=ModelVendor.DOUBAO.value, provider="doubao")
-    assert (
-        resolve_invoke_mode(m, capability=ModelCapabilityType.VIDEO_GEN.value)
-        == INVOKE_VOLCENGINE_VIDEO
-    )
+    assert resolve_invoke_mode(m, capability=ModelCapabilityType.VIDEO_GEN.value) == INVOKE_VOLCENGINE_VIDEO
 
 
 def test_artifacts_from_video_tool_output():
@@ -111,5 +105,3 @@ async def test_generate_video_for_model_persists():
     assert isinstance(result, VideoGenerateResult)
     assert result.attachment_id == att_id
     assert result.mime_type == "video/mp4"
-
-

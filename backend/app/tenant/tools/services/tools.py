@@ -71,29 +71,16 @@ class ToolsService(BaseService):
         filters = append_not_deleted(tenant_filters(self.ctx, Tool.tenant_id), Tool)
         if category_id:
             filters.append(Tool.category_id == category_id)
-        tag_subq = TagService(self.db, self.ctx).entity_id_filter(
-            TagEntityType.TOOL, tag_ids or []
-        )
+        tag_subq = TagService(self.db, self.ctx).entity_id_filter(TagEntityType.TOOL, tag_ids or [])
         if tag_subq is not None:
             filters.append(Tool.id.in_(tag_subq))
         total = await self.db.scalar(select(func.count(Tool.id)).where(*filters))
-        stmt = (
-            select(Tool)
-            .where(*filters)
-            .order_by(Tool.created_at.desc())
-            .offset((params.page - 1) * params.size)
-            .limit(params.size)
-        )
+        stmt = select(Tool).where(*filters).order_by(Tool.created_at.desc()).offset((params.page - 1) * params.size).limit(params.size)
         items = (await self.db.execute(stmt)).scalars().all()
         names = await self._category_names({t.category_id for t in items if t.category_id})
-        tags_map = await TagService(self.db, self.ctx).get_refs_map(
-            TagEntityType.TOOL, {t.id for t in items}
-        )
+        tags_map = await TagService(self.db, self.ctx).get_refs_map(TagEntityType.TOOL, {t.id for t in items})
         return PageResult(
-            items=[
-                self._to_out(t, names.get(t.category_id), tags_map.get(t.id, []))
-                for t in items
-            ],
+            items=[self._to_out(t, names.get(t.category_id), tags_map.get(t.id, [])) for t in items],
             total=total or 0,
             page=params.page,
             size=params.size,
@@ -102,9 +89,7 @@ class ToolsService(BaseService):
     async def get_tool(self, tool_id: UUID) -> ToolOut:
         row = await self._get_or_raise(tool_id)
         cat_name = await self._category_name(row.category_id)
-        tags_map = await TagService(self.db, self.ctx).get_refs_map(
-            TagEntityType.TOOL, {row.id}
-        )
+        tags_map = await TagService(self.db, self.ctx).get_refs_map(TagEntityType.TOOL, {row.id})
         return self._to_out(row, cat_name, tags_map.get(row.id, []))
 
     def _normalize_script_config(self, config: dict | None) -> dict:
@@ -122,9 +107,7 @@ class ToolsService(BaseService):
     async def create_tool(self, body: ToolCreate) -> ToolOut:
         if body.tool_type == ToolType.SCRIPT:
             if not get_settings().mcp_runner_enabled:
-                raise BadRequestError(
-                    "脚本工具需要启用 MCP Runner（MCP_RUNNER_ENABLED=true）"
-                )
+                raise BadRequestError("脚本工具需要启用 MCP Runner（MCP_RUNNER_ENABLED=true）")
         if body.slug in BUILTIN_SLUGS:
             raise BadRequestError(f"slug「{body.slug}」与内置工具冲突")
         await self._ensure_slug_unique(body.slug)
@@ -138,9 +121,7 @@ class ToolsService(BaseService):
         elif body.tool_type == ToolType.SCRIPT:
             config = self._normalize_script_config(config)
         if body.category_id:
-            await CategoryService(self.db, self.ctx).validate_category_for_domain(
-                body.category_id, CategoryDomain.TOOL
-            )
+            await CategoryService(self.db, self.ctx).validate_category_for_domain(body.category_id, CategoryDomain.TOOL)
         row = Tool(
             tenant_id=self.ctx.tenant_id,
             slug=body.slug.strip(),
@@ -156,14 +137,10 @@ class ToolsService(BaseService):
         self.db.add(row)
         await self.db.flush()
         if body.tag_ids:
-            await TagService(self.db, self.ctx).replace_entity_tags(
-                TagEntityType.TOOL, row.id, body.tag_ids
-            )
+            await TagService(self.db, self.ctx).replace_entity_tags(TagEntityType.TOOL, row.id, body.tag_ids)
         await self.db.refresh(row)
         cat_name = await self._category_name(row.category_id)
-        tags_map = await TagService(self.db, self.ctx).get_refs_map(
-            TagEntityType.TOOL, {row.id}
-        )
+        tags_map = await TagService(self.db, self.ctx).get_refs_map(TagEntityType.TOOL, {row.id})
         return self._to_out(row, cat_name, tags_map.get(row.id, []))
 
     async def update_tool(self, tool_id: UUID, body: ToolUpdate) -> ToolOut:
@@ -177,15 +154,11 @@ class ToolsService(BaseService):
         if "parameters" in data and data["parameters"] is not None:
             data["parameters"] = normalize_parameters(data["parameters"])
         if "category_id" in data and data["category_id"]:
-            await CategoryService(self.db, self.ctx).validate_category_for_domain(
-                data["category_id"], CategoryDomain.TOOL
-            )
+            await CategoryService(self.db, self.ctx).validate_category_for_domain(data["category_id"], CategoryDomain.TOOL)
         if "config" in data and data["config"] is not None:
             if row.tool_type == ToolType.SCRIPT or data.get("tool_type") == ToolType.SCRIPT:
                 if not get_settings().mcp_runner_enabled:
-                    raise BadRequestError(
-                        "脚本工具需要启用 MCP Runner（MCP_RUNNER_ENABLED=true）"
-                    )
+                    raise BadRequestError("脚本工具需要启用 MCP Runner（MCP_RUNNER_ENABLED=true）")
                 data["config"] = self._normalize_script_config(data["config"])
             else:
                 url = data["config"].get("url")
@@ -195,14 +168,10 @@ class ToolsService(BaseService):
             setattr(row, k, v)
         await self.db.flush()
         if tag_ids is not None:
-            await TagService(self.db, self.ctx).replace_entity_tags(
-                TagEntityType.TOOL, row.id, tag_ids
-            )
+            await TagService(self.db, self.ctx).replace_entity_tags(TagEntityType.TOOL, row.id, tag_ids)
         await self.db.refresh(row)
         cat_name = await self._category_name(row.category_id)
-        tags_map = await TagService(self.db, self.ctx).get_refs_map(
-            TagEntityType.TOOL, {row.id}
-        )
+        tags_map = await TagService(self.db, self.ctx).get_refs_map(TagEntityType.TOOL, {row.id})
         return self._to_out(row, cat_name, tags_map.get(row.id, []))
 
     async def delete_tool(self, tool_id: UUID) -> None:
@@ -238,19 +207,13 @@ class ToolsService(BaseService):
         source = "custom" if body.tool_id else ("builtin" if name in BUILTIN_SLUGS else "custom")
         return ToolInvokeResult(tool=name, source=source, status="success", output=output)
 
-    async def list_invocation_logs(
-        self, params: PageParams, *, tool_slug: str | None = None
-    ) -> PageResult[ToolInvocationLogOut]:
+    async def list_invocation_logs(self, params: PageParams, *, tool_slug: str | None = None) -> PageResult[ToolInvocationLogOut]:
         filters = [ToolInvocationLog.tenant_id == self.ctx.tenant_id]
         if tool_slug:
             filters.append(ToolInvocationLog.tool_slug == tool_slug)
         total = await self.db.scalar(select(func.count(ToolInvocationLog.id)).where(*filters))
         stmt = (
-            select(ToolInvocationLog)
-            .where(*filters)
-            .order_by(ToolInvocationLog.created_at.desc())
-            .offset((params.page - 1) * params.size)
-            .limit(params.size)
+            select(ToolInvocationLog).where(*filters).order_by(ToolInvocationLog.created_at.desc()).offset((params.page - 1) * params.size).limit(params.size)
         )
         items = (await self.db.execute(stmt)).scalars().all()
         return PageResult(
@@ -316,16 +279,10 @@ class ToolsService(BaseService):
             )
             if category_id:
                 filters.append(Tool.category_id == category_id)
-            tag_subq = TagService(self.db, self.ctx).entity_id_filter(
-                TagEntityType.TOOL, tag_ids or []
-            )
+            tag_subq = TagService(self.db, self.ctx).entity_id_filter(TagEntityType.TOOL, tag_ids or [])
             if tag_subq is not None:
                 filters.append(Tool.id.in_(tag_subq))
-            custom = (
-                await self.db.execute(
-                    select(Tool).where(*filters, Tool.is_active.is_(True)).order_by(Tool.slug)
-                )
-            ).scalars().all()
+            custom = (await self.db.execute(select(Tool).where(*filters, Tool.is_active.is_(True)).order_by(Tool.slug))).scalars().all()
             for t in custom:
                 catalog.append(
                     ToolCatalogItem(
@@ -372,9 +329,7 @@ class ToolsService(BaseService):
             raise ConflictError(f"工具编号「{slug}」已存在")
 
     async def _category_names(self, ids: set[UUID]) -> dict[UUID, str]:
-        return await CategoryService(self.db, self.ctx).get_category_name_map(
-            CategoryDomain.TOOL, ids
-        )
+        return await CategoryService(self.db, self.ctx).get_category_name_map(CategoryDomain.TOOL, ids)
 
     async def _category_name(self, category_id: UUID | None) -> str | None:
         if not category_id:

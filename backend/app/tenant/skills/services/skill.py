@@ -89,25 +89,13 @@ class SkillService(BaseService):
         )
         if category_id:
             filters.append(SkillPackage.category_id == category_id)
-        tag_subq = TagService(self.db, self.ctx).entity_id_filter(
-            TagEntityType.SKILL, tag_ids or []
-        )
+        tag_subq = TagService(self.db, self.ctx).entity_id_filter(TagEntityType.SKILL, tag_ids or [])
         if tag_subq is not None:
             filters.append(SkillPackage.id.in_(tag_subq))
-        total = await self.db.scalar(
-            select(func.count()).select_from(SkillPackage).where(*filters)
-        )
-        stmt = (
-            select(SkillPackage)
-            .where(*filters)
-            .order_by(SkillPackage.updated_at.desc())
-            .offset((params.page - 1) * params.size)
-            .limit(params.size)
-        )
+        total = await self.db.scalar(select(func.count()).select_from(SkillPackage).where(*filters))
+        stmt = select(SkillPackage).where(*filters).order_by(SkillPackage.updated_at.desc()).offset((params.page - 1) * params.size).limit(params.size)
         items = (await self.db.execute(stmt)).scalars().all()
-        tags_map = await TagService(self.db, self.ctx).get_refs_map(
-            TagEntityType.SKILL, {i.id for i in items}
-        )
+        tags_map = await TagService(self.db, self.ctx).get_refs_map(TagEntityType.SKILL, {i.id for i in items})
         outs = [await self._to_out(i, tags_map.get(i.id, [])) for i in items]
         return PageResult(items=outs, total=total or 0, page=params.page, size=params.size)
 
@@ -141,9 +129,7 @@ class SkillService(BaseService):
         await self._refresh_layout(row)
         await self.db.refresh(row)
         if body.tag_ids:
-            await TagService(self.db, self.ctx).replace_entity_tags(
-                TagEntityType.SKILL, row.id, body.tag_ids
-            )
+            await TagService(self.db, self.ctx).replace_entity_tags(TagEntityType.SKILL, row.id, body.tag_ids)
         return await self._to_out(row)
 
     async def create_blank(self, body: SkillPackageCreateBlank) -> SkillPackageOut:
@@ -163,9 +149,7 @@ class SkillService(BaseService):
         self.db.add(row)
         await self.db.flush()
         scaffold_blank_layout(self.ctx.tenant_id, slug, name=row.name.strip())
-        name, desc = sync_meta_from_skill_md(
-            read_file(self.ctx.tenant_id, slug, SKILL_MD_FILENAME)
-        )
+        name, desc = sync_meta_from_skill_md(read_file(self.ctx.tenant_id, slug, SKILL_MD_FILENAME))
         if name:
             row.name = name[:128]
         if desc is not None:
@@ -173,9 +157,7 @@ class SkillService(BaseService):
         await self._refresh_layout(row)
         await self.db.refresh(row)
         if body.tag_ids:
-            await TagService(self.db, self.ctx).replace_entity_tags(
-                TagEntityType.SKILL, row.id, body.tag_ids
-            )
+            await TagService(self.db, self.ctx).replace_entity_tags(TagEntityType.SKILL, row.id, body.tag_ids)
         return await self._to_out(row)
 
     async def update_skill(self, skill_id: UUID, body: SkillPackageUpdate) -> SkillPackageOut:
@@ -189,9 +171,7 @@ class SkillService(BaseService):
             setattr(row, k, v)
         await self.db.flush()
         if tag_ids is not None:
-            await TagService(self.db, self.ctx).replace_entity_tags(
-                TagEntityType.SKILL, row.id, tag_ids
-            )
+            await TagService(self.db, self.ctx).replace_entity_tags(TagEntityType.SKILL, row.id, tag_ids)
         await self.db.refresh(row)
         return await self._to_out(row)
 
@@ -283,9 +263,7 @@ class SkillService(BaseService):
             if cat and not is_marked_deleted(cat):
                 cat_name = cat.name
         if tags is None:
-            tags_map = await TagService(self.db, self.ctx).get_refs_map(
-                TagEntityType.SKILL, {row.id}
-            )
+            tags_map = await TagService(self.db, self.ctx).get_refs_map(TagEntityType.SKILL, {row.id})
             tags = tags_map.get(row.id, [])
         data = SkillPackageOut.model_validate(row)
         return data.model_copy(update={"category_name": cat_name, "tags": tags or []})

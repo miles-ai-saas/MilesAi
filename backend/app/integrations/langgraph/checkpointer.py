@@ -43,10 +43,7 @@ def _import_async_redis_saver():
 
         return AsyncRedisSaver
     except ImportError as exc:
-        raise ImportError(
-            "未安装 langgraph-checkpoint-redis。请执行: "
-            "pip install -e \".[dev]\" 或 pip install langgraph-checkpoint-redis>=0.4"
-        ) from exc
+        raise ImportError('未安装 langgraph-checkpoint-redis。请执行: pip install -e ".[dev]" 或 pip install langgraph-checkpoint-redis>=0.4') from exc
 
 
 def get_checkpointer() -> Any:
@@ -97,9 +94,7 @@ async def init_langgraph_checkpointer() -> str:
 
             if await check_redis():
                 stack = AsyncExitStack()
-                saver = await stack.enter_async_context(
-                    AsyncRedisSaver.from_conn_string(settings.langgraph_redis_url)
-                )
+                saver = await stack.enter_async_context(AsyncRedisSaver.from_conn_string(settings.langgraph_redis_url))
                 await saver.asetup()
                 _exit_stack = stack
                 backend = "redis"
@@ -108,8 +103,7 @@ async def init_langgraph_checkpointer() -> str:
                 logger.warning("LangGraph checkpointer: Redis 不可用，使用 MemorySaver")
         except ImportError as exc:
             logger.warning(
-                "LangGraph checkpointer: %s；使用 MemorySaver。"
-                "（安装后重启: pip install langgraph-checkpoint-redis）",
+                "LangGraph checkpointer: %s；使用 MemorySaver。（安装后重启: pip install langgraph-checkpoint-redis）",
                 exc,
             )
         except Exception as exc:

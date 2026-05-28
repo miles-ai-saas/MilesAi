@@ -6,15 +6,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { ADMIN_ACCOUNT_NAV } from "@/lib/admin-nav";
 
-export function AdminUserMenu({
-  username,
-  role,
-  onLogout,
-}: {
-  username?: string;
-  role?: string;
-  onLogout: () => void;
-}) {
+export function AdminUserMenu({ username, role, onLogout }: { username?: string; role?: string; onLogout: () => void }) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -45,25 +37,14 @@ export function AdminUserMenu({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className={`flex items-center gap-2 rounded-lg px-2 py-1.5 transition ${
-          open ? "bg-brand-light" : "hover:bg-surface-muted"
-        }`}
+        className={`flex items-center gap-2 rounded-lg px-2 py-1.5 transition ${open ? "bg-brand-light" : "hover:bg-surface-muted"}`}
         aria-expanded={open}
         aria-haspopup="menu"
         aria-label="用户菜单"
       >
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand text-sm font-semibold text-brand-foreground">
-          {initial}
-        </span>
-        <span className="hidden max-w-[120px] truncate text-sm font-medium text-ink md:inline">
-          {username}
-        </span>
-        <svg
-          className={`h-4 w-4 shrink-0 text-ink-faint transition ${open ? "rotate-180" : ""}`}
-          viewBox="0 0 20 20"
-          fill="currentColor"
-          aria-hidden
-        >
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand text-sm font-semibold text-brand-foreground">{initial}</span>
+        <span className="hidden max-w-[120px] truncate text-sm font-medium text-ink md:inline">{username}</span>
+        <svg className={`h-4 w-4 shrink-0 text-ink-faint transition ${open ? "rotate-180" : ""}`} viewBox="0 0 20 20" fill="currentColor" aria-hidden>
           <path
             fillRule="evenodd"
             d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.94a.75.75 0 111.08 1.04l-4.24 4.5a.75.75 0 01-1.08 0l-4.24-4.5a.75.75 0 01.02-1.06z"
@@ -73,10 +54,7 @@ export function AdminUserMenu({
       </button>
 
       {open && (
-        <div
-          role="menu"
-          className="absolute right-0 top-full z-50 mt-1 w-52 overflow-hidden rounded-lg border border-line bg-surface py-1 shadow-panel"
-        >
+        <div role="menu" className="absolute right-0 top-full z-50 mt-1 w-52 overflow-hidden rounded-lg border border-line bg-surface py-1 shadow-panel">
           <div className="border-b border-line-soft px-3 py-2.5">
             <p className="truncate text-sm font-medium text-ink">{username}</p>
             {role && <p className="truncate text-xs text-ink-muted">{role}</p>}

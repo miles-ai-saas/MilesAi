@@ -59,21 +59,9 @@ type Props = {
   onScriptSourceChange: (v: string) => void;
 };
 
-function Section({
-  title,
-  hint,
-  children,
-  className = "",
-}: {
-  title: string;
-  hint?: string;
-  children: React.ReactNode;
-  className?: string;
-}) {
+function Section({ title, hint, children, className = "" }: { title: string; hint?: string; children: React.ReactNode; className?: string }) {
   return (
-    <section
-      className={`rounded-xl border border-line bg-surface-muted/30 p-4 ${className}`}
-    >
+    <section className={`rounded-xl border border-line bg-surface-muted/30 p-4 ${className}`}>
       <div className="mb-3">
         <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-muted">{title}</h3>
         {hint ? <p className="mt-1 text-xs leading-relaxed text-ink-faint">{hint}</p> : null}
@@ -157,12 +145,7 @@ function BasicFields({
     <>
       <label className="block text-xs">
         <span className="mb-1 block text-ink-muted">名称 *</span>
-        <input
-          className="input-field w-full"
-          placeholder="例如：天气查询"
-          value={name}
-          onChange={(e) => onNameChange(e.target.value)}
-        />
+        <input className="input-field w-full" placeholder="例如：天气查询" value={name} onChange={(e) => onNameChange(e.target.value)} />
       </label>
       <label className="block text-xs">
         <span className="mb-1 block text-ink-muted">编号 *</span>
@@ -190,19 +173,11 @@ function BasicFields({
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="block text-xs">
           <span className="mb-1 block text-ink-muted">版本</span>
-          <input
-            className="input-field w-full"
-            value={version}
-            onChange={(e) => onVersionChange(e.target.value)}
-          />
+          <input className="input-field w-full" value={version} onChange={(e) => onVersionChange(e.target.value)} />
         </label>
         <label className="flex min-h-[42px] items-center justify-between rounded-lg border border-line-soft bg-surface px-3 text-xs">
           <span className="text-ink-muted">执行前需确认</span>
-          <input
-            type="checkbox"
-            checked={requireConfirmation}
-            onChange={(e) => onRequireConfirmationChange(e.target.checked)}
-          />
+          <input type="checkbox" checked={requireConfirmation} onChange={(e) => onRequireConfirmationChange(e.target.checked)} />
         </label>
       </div>
     </>
@@ -234,63 +209,55 @@ function HttpConfigFields({
   | "onTimeoutSecChange"
 >) {
   return (
-  <>
-    <label className="block text-xs">
-      <span className="mb-1 block text-ink-muted">URL *</span>
-      <input
-        className="input-field w-full font-mono text-sm"
-        placeholder="https://api.example.com/weather?city={{city}}"
-        value={url}
-        onChange={(e) => onUrlChange(e.target.value)}
-      />
-    </label>
-    <div className="grid gap-3 sm:grid-cols-3">
+    <>
       <label className="block text-xs">
-        <span className="mb-1 block text-ink-muted">方法</span>
-        <select
-          className="input-field w-full"
-          value={method}
-          onChange={(e) => onMethodChange(e.target.value)}
-        >
-          <option value="GET">GET</option>
-          <option value="POST">POST</option>
-          <option value="PUT">PUT</option>
-          <option value="PATCH">PATCH</option>
-        </select>
-      </label>
-      <label className="block text-xs">
-        <span className="mb-1 block text-ink-muted">Body</span>
-        <select
-          className="input-field w-full"
-          value={bodyMode}
-          onChange={(e) => onBodyModeChange(e.target.value as "json" | "none")}
-        >
-          <option value="json">JSON</option>
-          <option value="none">无 Body</option>
-        </select>
-      </label>
-      <label className="block text-xs">
-        <span className="mb-1 block text-ink-muted">超时（秒）</span>
+        <span className="mb-1 block text-ink-muted">URL *</span>
         <input
-          type="number"
-          min={1}
-          max={120}
-          className="input-field w-full"
-          value={timeoutSec}
-          onChange={(e) => onTimeoutSecChange(Number(e.target.value) || 15)}
+          className="input-field w-full font-mono text-sm"
+          placeholder="https://api.example.com/weather?city={{city}}"
+          value={url}
+          onChange={(e) => onUrlChange(e.target.value)}
         />
       </label>
-    </div>
-    <label className="block text-xs">
-      <span className="mb-1 block text-ink-muted">Headers（JSON）</span>
-      <textarea
-        className="input-field min-h-[88px] w-full resize-y font-mono text-xs"
-        placeholder='{"Authorization": "Bearer xxx"}'
-        value={headersJson}
-        onChange={(e) => onHeadersJsonChange(e.target.value)}
-      />
-    </label>
-  </>
+      <div className="grid gap-3 sm:grid-cols-3">
+        <label className="block text-xs">
+          <span className="mb-1 block text-ink-muted">方法</span>
+          <select className="input-field w-full" value={method} onChange={(e) => onMethodChange(e.target.value)}>
+            <option value="GET">GET</option>
+            <option value="POST">POST</option>
+            <option value="PUT">PUT</option>
+            <option value="PATCH">PATCH</option>
+          </select>
+        </label>
+        <label className="block text-xs">
+          <span className="mb-1 block text-ink-muted">Body</span>
+          <select className="input-field w-full" value={bodyMode} onChange={(e) => onBodyModeChange(e.target.value as "json" | "none")}>
+            <option value="json">JSON</option>
+            <option value="none">无 Body</option>
+          </select>
+        </label>
+        <label className="block text-xs">
+          <span className="mb-1 block text-ink-muted">超时（秒）</span>
+          <input
+            type="number"
+            min={1}
+            max={120}
+            className="input-field w-full"
+            value={timeoutSec}
+            onChange={(e) => onTimeoutSecChange(Number(e.target.value) || 15)}
+          />
+        </label>
+      </div>
+      <label className="block text-xs">
+        <span className="mb-1 block text-ink-muted">Headers（JSON）</span>
+        <textarea
+          className="input-field min-h-[88px] w-full resize-y font-mono text-xs"
+          placeholder='{"Authorization": "Bearer xxx"}'
+          value={headersJson}
+          onChange={(e) => onHeadersJsonChange(e.target.value)}
+        />
+      </label>
+    </>
   );
 }
 
@@ -327,18 +294,11 @@ function ScriptConfigFields({
   );
 }
 
-function ToolEntityFields(props: Omit<
-  Props,
-  "open" | "editing" | "busy" | "onClose" | "onSubmit" | "onToolKindChange" | "kindTabs"
->) {
+function ToolEntityFields(props: Omit<Props, "open" | "editing" | "busy" | "onClose" | "onSubmit" | "onToolKindChange" | "kindTabs">) {
   const { toolKind, ...rest } = props;
   const isScript = toolKind === "script";
-  const paramHint = isScript
-    ? "传入 run(params) 的字典；试调用与 Agent 共用。"
-    : "URL 可用 {{参数名}} 占位；试调用与 Agent 共用。";
-  const execHint = isScript
-    ? "MCP Runner 沙箱执行；须定义 run(params: dict) -> dict，禁止 import。"
-    : "REST 调用配置；支持 URL 模板与 JSON Body。";
+  const paramHint = isScript ? "传入 run(params) 的字典；试调用与 Agent 共用。" : "URL 可用 {{参数名}} 占位；试调用与 Agent 共用。";
+  const execHint = isScript ? "MCP Runner 沙箱执行；须定义 run(params: dict) -> dict，禁止 import。" : "REST 调用配置；支持 URL 模板与 JSON Body。";
 
   return (
     <div className="grid gap-5 lg:grid-cols-[minmax(260px,300px)_minmax(0,1fr)] lg:items-start">
@@ -353,11 +313,7 @@ function ToolEntityFields(props: Omit<
           <ToolParameterEditor value={rest.parameters} onChange={rest.onParametersChange} />
         </Section>
 
-        <Section
-          title={isScript ? "Python 脚本" : "HTTP 配置"}
-          hint={execHint}
-          className={isScript ? "flex flex-col" : undefined}
-        >
+        <Section title={isScript ? "Python 脚本" : "HTTP 配置"} hint={execHint} className={isScript ? "flex flex-col" : undefined}>
           {isScript ? (
             <ScriptConfigFields
               scriptSource={rest.scriptSource}
@@ -414,10 +370,7 @@ export function ToolCreateDialog({
   onScriptSourceChange,
 }: Props) {
   const isHttp = toolKind === "http";
-  const canSubmit =
-    Boolean(name.trim() && slug.trim()) &&
-    !busy &&
-    (isHttp ? Boolean(url.trim()) : Boolean(scriptSource.trim()));
+  const canSubmit = Boolean(name.trim() && slug.trim()) && !busy && (isHttp ? Boolean(url.trim()) : Boolean(scriptSource.trim()));
   const kindLocked = mode === "edit";
 
   return (
@@ -426,11 +379,7 @@ export function ToolCreateDialog({
       size="sheet"
       contentMaxWidth="max-w-6xl"
       title={mode === "create" ? "新增工具" : `编辑 · ${editing?.name ?? ""}`}
-      description={
-        mode === "create"
-          ? "左侧填写元数据，右侧配置参数与 HTTP / 脚本执行方式。"
-          : undefined
-      }
+      description={mode === "create" ? "左侧填写元数据，右侧配置参数与 HTTP / 脚本执行方式。" : undefined}
       onClose={onClose}
       footer={
         <>
@@ -444,15 +393,8 @@ export function ToolCreateDialog({
       }
     >
       <div className="space-y-5">
-        {saveError ? (
-          <KbPageAlert tone="error" message={saveError} onDismiss={onDismissError} />
-        ) : null}
-        <KindSelector
-          kindTabs={kindTabs}
-          toolKind={toolKind}
-          kindLocked={kindLocked}
-          onToolKindChange={onToolKindChange}
-        />
+        {saveError ? <KbPageAlert tone="error" message={saveError} onDismiss={onDismissError} /> : null}
+        <KindSelector kindTabs={kindTabs} toolKind={toolKind} kindLocked={kindLocked} onToolKindChange={onToolKindChange} />
         <ToolEntityFields
           mode={mode}
           toolKind={toolKind}

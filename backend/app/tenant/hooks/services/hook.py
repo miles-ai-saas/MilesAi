@@ -46,16 +46,8 @@ class HookService(BaseService):
 
     async def list_hooks(self, params: PageParams) -> PageResult[HookDefinitionOut]:
         filters = append_not_deleted(tenant_filters(self.ctx, HookDefinition.tenant_id), HookDefinition)
-        total = await self.db.scalar(
-            select(func.count()).select_from(HookDefinition).where(*filters)
-        )
-        stmt = (
-            select(HookDefinition)
-            .where(*filters)
-            .order_by(HookDefinition.created_at.desc())
-            .offset((params.page - 1) * params.size)
-            .limit(params.size)
-        )
+        total = await self.db.scalar(select(func.count()).select_from(HookDefinition).where(*filters))
+        stmt = select(HookDefinition).where(*filters).order_by(HookDefinition.created_at.desc()).offset((params.page - 1) * params.size).limit(params.size)
         items = (await self.db.execute(stmt)).scalars().all()
         return PageResult(
             items=[HookDefinitionOut.model_validate(i) for i in items],
@@ -107,16 +99,20 @@ class HookService(BaseService):
     async def list_bindings(self, hook_id: UUID) -> list[HookBindingOut]:
         await self._get_hook_or_raise(hook_id)
         rows = (
-            await self.db.execute(
-                select(HookBinding)
-                .where(
-                    HookBinding.hook_id == hook_id,
-                    HookBinding.tenant_id == self.ctx.tenant_id,
-                    not_deleted(HookBinding),
+            (
+                await self.db.execute(
+                    select(HookBinding)
+                    .where(
+                        HookBinding.hook_id == hook_id,
+                        HookBinding.tenant_id == self.ctx.tenant_id,
+                        not_deleted(HookBinding),
+                    )
+                    .order_by(HookBinding.priority.asc())
                 )
-                .order_by(HookBinding.priority.asc())
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
         return [HookBindingOut.model_validate(b) for b in rows]
 
     async def create_binding(self, hook_id: UUID, body: HookBindingCreate) -> HookBindingOut:
@@ -154,16 +150,8 @@ class HookService(BaseService):
         )
         if hook_id:
             filters.append(HookExecutionLog.hook_id == hook_id)
-        total = await self.db.scalar(
-            select(func.count()).select_from(HookExecutionLog).where(*filters)
-        )
-        stmt = (
-            select(HookExecutionLog)
-            .where(*filters)
-            .order_by(HookExecutionLog.created_at.desc())
-            .offset((params.page - 1) * params.size)
-            .limit(params.size)
-        )
+        total = await self.db.scalar(select(func.count()).select_from(HookExecutionLog).where(*filters))
+        stmt = select(HookExecutionLog).where(*filters).order_by(HookExecutionLog.created_at.desc()).offset((params.page - 1) * params.size).limit(params.size)
         items = (await self.db.execute(stmt)).scalars().all()
         return PageResult(
             items=[HookExecutionLogOut.model_validate(i) for i in items],

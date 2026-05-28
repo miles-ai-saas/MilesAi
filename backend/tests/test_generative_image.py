@@ -37,26 +37,17 @@ def _image_model(**kwargs) -> ModelConfig:
 
 def test_resolve_invoke_mode_qwen():
     m = _image_model()
-    assert (
-        resolve_invoke_mode(m, capability=ModelCapabilityType.IMAGE_GEN.value)
-        == INVOKE_DASHSCOPE_T2I
-    )
+    assert resolve_invoke_mode(m, capability=ModelCapabilityType.IMAGE_GEN.value) == INVOKE_DASHSCOPE_T2I
 
 
 def test_resolve_invoke_mode_doubao():
     m = _image_model(vendor=ModelVendor.DOUBAO.value, model_name="doubao-seededit-3-0-i2i-250628")
-    assert (
-        resolve_invoke_mode(m, capability=ModelCapabilityType.IMAGE_GEN.value)
-        == INVOKE_VOLCENGINE_IMAGE
-    )
+    assert resolve_invoke_mode(m, capability=ModelCapabilityType.IMAGE_GEN.value) == INVOKE_VOLCENGINE_IMAGE
 
 
 def test_resolve_invoke_mode_explicit():
     m = _image_model(extra={"invoke_mode": INVOKE_OPENAI_IMAGES})
-    assert (
-        resolve_invoke_mode(m, capability=ModelCapabilityType.IMAGE_GEN.value)
-        == INVOKE_OPENAI_IMAGES
-    )
+    assert resolve_invoke_mode(m, capability=ModelCapabilityType.IMAGE_GEN.value) == INVOKE_OPENAI_IMAGES
 
 
 def test_artifacts_from_tool_output():

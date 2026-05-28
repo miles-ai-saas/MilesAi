@@ -29,11 +29,7 @@ export function monitorHealthComponentLabel(key: string, meta?: MonitorMeta | nu
   return optionLabel(meta?.health_components, key) || COMPONENT_FALLBACK[key] || key;
 }
 
-export function monitorOverallHealthLabel(
-  status: string | undefined,
-  ok: boolean,
-  meta?: MonitorMeta | null,
-): string {
+export function monitorOverallHealthLabel(status: string | undefined, ok: boolean, meta?: MonitorMeta | null): string {
   if (status) {
     return optionLabel(meta?.overall_health_statuses, status) || HEALTH_FALLBACK[status] || status;
   }

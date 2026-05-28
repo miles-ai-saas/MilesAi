@@ -8,9 +8,6 @@ export function hasPermission(user: UserInfo | null | undefined, code: string): 
   return user.permissions.includes(code);
 }
 
-export function hasAnyPermission(
-  user: UserInfo | null | undefined,
-  codes: string[],
-): boolean {
+export function hasAnyPermission(user: UserInfo | null | undefined, codes: string[]): boolean {
   return codes.some((c) => hasPermission(user, c));
 }

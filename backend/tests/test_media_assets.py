@@ -48,9 +48,7 @@ def test_video_promote_builds_markdown():
         purpose="chat_generated",
     )
     svc = MediaAssetService.__new__(MediaAssetService)
-    content, filename, mime = svc._build_video_promote_document(
-        row, att, PromoteToKbRequest(kb_id=uuid4())
-    )
+    content, filename, mime = svc._build_video_promote_document(row, att, PromoteToKbRequest(kb_id=uuid4()))
     text = content.decode("utf-8")
     assert mime == "text/markdown"
     assert filename.endswith(".md")

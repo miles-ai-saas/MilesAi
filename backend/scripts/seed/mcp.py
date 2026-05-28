@@ -267,7 +267,4 @@ async def seed_mcp(session: AsyncSession) -> None:
         return
     for tenant_id in tenants:
         total_created += await seed_mcp_for_tenant(session, tenant_id)
-    print(
-        f">>> mcp seed: {len(SEED_MCP_SERVICES)} scenario(s) per tenant, "
-        f"created {total_created} new row(s) across {len(tenants)} tenant(s)"
-    )
+    print(f">>> mcp seed: {len(SEED_MCP_SERVICES)} scenario(s) per tenant, created {total_created} new row(s) across {len(tenants)} tenant(s)")

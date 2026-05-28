@@ -38,7 +38,5 @@ async def list_audit_logs(
     ctx: TenantContext = Depends(require_permissions("audit:read")),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await _svc(db, ctx).list_logs(
-        params, user_id=user_id, action=action, resource_type=resource_type
-    )
+    result = await _svc(db, ctx).list_logs(params, user_id=user_id, action=action, resource_type=resource_type)
     return page_ok(result.items, result.total, result.page, result.size)

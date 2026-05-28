@@ -38,9 +38,7 @@ async def resolve_risk(
     db: AsyncSession = Depends(get_db),
 ):
     event = await AdminRiskService(db).resolve_risk(event_id)
-    await write_audit_log(
-        db, admin_id=ctx.admin_id, action="risk.resolve", request=request, detail={"event_id": str(event_id)}
-    )
+    await write_audit_log(db, admin_id=ctx.admin_id, action="risk.resolve", request=request, detail={"event_id": str(event_id)})
     return ok(event)
 
 
@@ -62,9 +60,7 @@ async def add_ip(
     db: AsyncSession = Depends(get_db),
 ):
     row = await AdminRiskService(db).add_ip_blacklist(body, ctx.admin_id)
-    await write_audit_log(
-        db, admin_id=ctx.admin_id, action="ip.blacklist.add", request=request, detail=body.model_dump()
-    )
+    await write_audit_log(db, admin_id=ctx.admin_id, action="ip.blacklist.add", request=request, detail=body.model_dump())
     return ok(row)
 
 
@@ -105,9 +101,7 @@ async def create_rate_limit(
     db: AsyncSession = Depends(get_db),
 ):
     row = await AdminRiskService(db).create_rate_limit(body)
-    await write_audit_log(
-        db, admin_id=ctx.admin_id, action="risk.rule.create", request=request, detail=body.model_dump()
-    )
+    await write_audit_log(db, admin_id=ctx.admin_id, action="risk.rule.create", request=request, detail=body.model_dump())
     return ok(row)
 
 

@@ -51,10 +51,10 @@ export function AgentWorkbenchOverlay({
           : activeTab === "schedule"
             ? "按计划自动向智能体发送消息"
             : activeTab === "stats"
-            ? (agent?.name ?? "会话、用户与消息趋势")
-            : activeTab === "call_records"
-              ? "智能体对话调用流水"
-              : "功能开发中";
+              ? (agent?.name ?? "会话、用户与消息趋势")
+              : activeTab === "call_records"
+                ? "智能体对话调用流水"
+                : "功能开发中";
 
   return (
     <div
@@ -107,11 +107,7 @@ export function AgentWorkbenchOverlay({
           </button>
         )}
         {activeTab === "trace" ? (
-          <AgentTracePanel
-            messages={chatMessages}
-            selectedTurnIndex={traceTurnIndex}
-            onSelectTurnIndex={onTraceTurnIndexChange}
-          />
+          <AgentTracePanel messages={chatMessages} selectedTurnIndex={traceTurnIndex} onSelectTurnIndex={onTraceTurnIndexChange} />
         ) : activeTab === "stats" && agentId ? (
           <AgentStatsPanel agentId={agentId} />
         ) : activeTab === "schedule" && agentId ? (
@@ -119,12 +115,7 @@ export function AgentWorkbenchOverlay({
         ) : activeTab === "architecture" && agentId ? (
           <AgentArchitecturePanel agentId={agentId} agentName={agent?.name} />
         ) : (
-          <AgentWorkbenchPanel
-            agentId={agentId}
-            agentName={agent?.name}
-            activeTab={activeTab}
-            onSaved={onSaved}
-          />
+          <AgentWorkbenchPanel agentId={agentId} agentName={agent?.name} activeTab={activeTab} onSaved={onSaved} />
         )}
       </div>
     </div>

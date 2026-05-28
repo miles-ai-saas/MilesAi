@@ -36,33 +36,33 @@ _FORBIDDEN_AST = (
 
 
 class _ScriptVisitor(ast.NodeVisitor):
-  def __init__(self) -> None:
-      self.has_run = False
-      self.errors: list[str] = []
+    def __init__(self) -> None:
+        self.has_run = False
+        self.errors: list[str] = []
 
-  def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
-      if node.name == "run":
-          if len(node.args.args) < 1:
-              self.errors.append("run() 须至少接受一个 params 参数")
-          else:
-              self.has_run = True
-      self.generic_visit(node)
+    def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
+        if node.name == "run":
+            if len(node.args.args) < 1:
+                self.errors.append("run() 须至少接受一个 params 参数")
+            else:
+                self.has_run = True
+        self.generic_visit(node)
 
-  def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> None:
-      self.errors.append("不支持 async def")
+    def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> None:
+        self.errors.append("不支持 async def")
 
-  def visit_ClassDef(self, node: ast.ClassDef) -> None:
-      self.errors.append("不支持 class 定义")
+    def visit_ClassDef(self, node: ast.ClassDef) -> None:
+        self.errors.append("不支持 class 定义")
 
-  def generic_visit(self, node: ast.AST) -> None:
-      if isinstance(node, _FORBIDDEN_AST):
-          self.errors.append(f"不允许的语法: {type(node).__name__}")
-          return
-      if isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
-          if node.func.id in {"eval", "exec", "compile", "open", "__import__"}:
-              self.errors.append(f"禁止调用 {node.func.id}()")
-              return
-      super().generic_visit(node)
+    def generic_visit(self, node: ast.AST) -> None:
+        if isinstance(node, _FORBIDDEN_AST):
+            self.errors.append(f"不允许的语法: {type(node).__name__}")
+            return
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
+            if node.func.id in {"eval", "exec", "compile", "open", "__import__"}:
+                self.errors.append(f"禁止调用 {node.func.id}()")
+                return
+        super().generic_visit(node)
 
 
 def validate_script_source(source: str) -> str:

@@ -41,9 +41,7 @@ class AdminAuthService:
             algorithms=[get_settings().jwt_algorithm],
         )
         jti = payload.get("jti", "")
-        await get_redis().setex(
-            RedisKeys.admin_session(admin.id), 60 * 60 * 24 * 7, jti or token[:32]
-        )
+        await get_redis().setex(RedisKeys.admin_session(admin.id), 60 * 60 * 24 * 7, jti or token[:32])
         return AdminTokenResponse(access_token=token)
 
     async def logout(self, admin_id: UUID) -> None:

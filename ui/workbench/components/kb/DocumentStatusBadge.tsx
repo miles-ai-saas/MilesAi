@@ -1,10 +1,6 @@
 /** 文档状态徽章（链路 §8）：`statusOptions` 来自 `KbMeta.document_statuses`（`useKbMeta`）。 */
 
-import {
-  documentStatusLabel,
-  documentStatusTone,
-  type DocumentStatusTone,
-} from "@/lib/document-status";
+import { documentStatusLabel, documentStatusTone, type DocumentStatusTone } from "@/lib/document-status";
 import type { EnumOption } from "@/lib/enum-meta";
 
 const TONE_CLASS: Record<DocumentStatusTone, string> = {
@@ -28,9 +24,7 @@ export function DocumentStatusBadge({ status, pulse, statusOptions }: Props) {
         pulse && tone === "progress" ? "animate-pulse" : ""
       }`}
     >
-      {tone === "progress" && (
-        <span className="inline-block h-1.5 w-1.5 rounded-full bg-current" aria-hidden />
-      )}
+      {tone === "progress" && <span className="inline-block h-1.5 w-1.5 rounded-full bg-current" aria-hidden />}
       {documentStatusLabel(status, statusOptions)}
     </span>
   );

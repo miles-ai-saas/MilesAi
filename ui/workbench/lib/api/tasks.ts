@@ -4,9 +4,7 @@ import { buildPageQuery, DEFAULT_PAGE_SIZE } from "../pagination";
 
 export const tasksApi = {
   listTasks: (page = 1, size = DEFAULT_PAGE_SIZE, status?: string) =>
-    getPage<TaskRecord>(
-      `/tasks?${buildPageQuery(page, size)}${status ? `&status=${status}` : ""}`
-    ),
+    getPage<TaskRecord>(`/tasks?${buildPageQuery(page, size)}${status ? `&status=${status}` : ""}`),
 
   getTask: (taskId: string) => get<TaskRecord>(`/tasks/${taskId}`),
 
@@ -18,5 +16,4 @@ export const tasksApi = {
     }),
 
   retryTask: (taskId: string) => post<TaskRecord>(`/tasks/${taskId}/retry`),
-
 };

@@ -45,9 +45,7 @@ async def persist_generated_bytes(
         resource_type=resource_type,
         resource_id=resource_id,
     )
-    object_key = build_attachment_object_key(
-        str(ctx.tenant_id), str(att.id), filename
-    )
+    object_key = build_attachment_object_key(str(ctx.tenant_id), str(att.id), filename)
     att.object_key = object_key
     storage.storage.upload_bytes(data, object_key, mime_type)
     await apply_storage_delta(db, ctx.tenant_id, len(data))

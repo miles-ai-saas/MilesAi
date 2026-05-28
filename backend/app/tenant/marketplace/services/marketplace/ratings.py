@@ -26,21 +26,13 @@ class MarketplaceRatingsMixin:
         app.rating_count = int(count or 0)
         await self.db.flush()
 
-    async def list_app_ratings(
-        self, app_id: UUID, params: PageParams
-    ) -> PageResult[AppRatingOut]:
+    async def list_app_ratings(self, app_id: UUID, params: PageParams) -> PageResult[AppRatingOut]:
         """分页列出应用评分。"""
         app = await self.get_app_or_raise(app_id)
         if app.status != MarketplaceAppStatus.PUBLISHED:
             raise NotFoundError("应用未上架")
         filters = [AppRating.app_id == app_id, not_deleted(AppRating)]
-        stmt = (
-            select(AppRating)
-            .where(*filters)
-            .order_by(AppRating.created_at.desc())
-            .offset((params.page - 1) * params.size)
-            .limit(params.size)
-        )
+        stmt = select(AppRating).where(*filters).order_by(AppRating.created_at.desc()).offset((params.page - 1) * params.size).limit(params.size)
         count_stmt = select(func.count(AppRating.id)).where(*filters)
         total = await self.db.scalar(count_stmt)
         rows = (await self.db.execute(stmt)).scalars().all()

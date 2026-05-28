@@ -66,9 +66,7 @@ async def list_agents(
     ctx: TenantContext = Depends(require_permissions("agent:read")),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await _svc(db, ctx).list_agents(
-        params, agent_type=agent_type, category_id=category_id, tag_ids=tag_ids
-    )
+    result = await _svc(db, ctx).list_agents(params, agent_type=agent_type, category_id=category_id, tag_ids=tag_ids)
     return page_ok(result.items, result.total, result.page, result.size)
 
 

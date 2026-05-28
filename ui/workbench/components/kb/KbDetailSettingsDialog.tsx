@@ -21,18 +21,8 @@ export function KbDetailSettingsDialog({ vm }: { vm: KbDetailPageVm }) {
         </>
       }
     >
-      <input
-        className="input-field w-full"
-        placeholder="名称"
-        value={vm.editName}
-        onChange={(e) => vm.setEditName(e.target.value)}
-      />
-      <input
-        className="input-field w-full"
-        placeholder="描述（可选）"
-        value={vm.editDesc}
-        onChange={(e) => vm.setEditDesc(e.target.value)}
-      />
+      <input className="input-field w-full" placeholder="名称" value={vm.editName} onChange={(e) => vm.setEditName(e.target.value)} />
+      <input className="input-field w-full" placeholder="描述（可选）" value={vm.editDesc} onChange={(e) => vm.setEditDesc(e.target.value)} />
       <div className="grid grid-cols-2 gap-3">
         <label className="block text-xs text-ink-muted">
           分片大小
@@ -64,10 +54,12 @@ export function KbDetailSettingsDialog({ vm }: { vm: KbDetailPageVm }) {
           value={vm.editRetrievalMode}
           onChange={(e) => vm.setEditRetrievalMode(e.target.value as "vector" | "hybrid")}
         >
-          {(vm.kbMeta?.retrieval_modes ?? [
-            { value: "vector", label: "纯语义向量" },
-            { value: "hybrid", label: "混合（向量 + 关键词）" },
-          ]).map((o) => (
+          {(
+            vm.kbMeta?.retrieval_modes ?? [
+              { value: "vector", label: "纯语义向量" },
+              { value: "hybrid", label: "混合（向量 + 关键词）" },
+            ]
+          ).map((o) => (
             <option key={o.value} value={o.value}>
               {o.label}
             </option>

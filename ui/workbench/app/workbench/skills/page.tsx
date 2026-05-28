@@ -21,11 +21,7 @@ import { TagChips } from "@/components/tag/TagChips";
 import { TagFilterDropdown } from "@/components/tag/TagFilterDropdown";
 import { TagManageDialog } from "@/components/tag/TagManageDialog";
 import { SkillCreateBlankDialog } from "@/components/skills/SkillCreateBlankDialog";
-import {
-  SkillImportGitDialog,
-  SkillImportLocalDialog,
-  SkillImportZipDialog,
-} from "@/components/skills/SkillImportDialogs";
+import { SkillImportGitDialog, SkillImportLocalDialog, SkillImportZipDialog } from "@/components/skills/SkillImportDialogs";
 import { skillActiveLabel, skillSourceTypeLabel } from "@/lib/skill-labels";
 import { useSkillMeta } from "@/hooks/use-skill-meta";
 import type { SkillImportResult, SkillMeta, SkillPackage } from "@/lib/types";
@@ -61,22 +57,13 @@ export default function SkillsPage() {
 
   const list = usePagedList(
     useCallback(
-      (p, s) =>
-        api.listSkillPackages(
-          p,
-          s,
-          cat.activeCategoryId,
-          tagFilterIds.length ? tagFilterIds : undefined,
-        ),
+      (p, s) => api.listSkillPackages(p, s, cat.activeCategoryId, tagFilterIds.length ? tagFilterIds : undefined),
       [cat.activeCategoryId, tagFilterIds],
     ),
     { enabled: ready, resetKey: `${cat.activeId}-${tagFilterIds.join(",")}` },
   );
 
-  const filtered = useMemo(
-    () => filterBySearch(list.items, search, (s) => `${s.name} ${s.slug} ${s.description ?? ""}`),
-    [list.items, search],
-  );
+  const filtered = useMemo(() => filterBySearch(list.items, search, (s) => `${s.name} ${s.slug} ${s.description ?? ""}`), [list.items, search]);
 
   const onImportDone = (result: SkillImportResult) => {
     const parts = [`导入 ${result.imported} 个`, `跳过 ${result.skipped} 个`];
@@ -86,12 +73,7 @@ export default function SkillsPage() {
     void cat.reload();
   };
 
-  const onCreateBlank = async (
-    name: string,
-    description: string,
-    categoryId: string,
-    tagIds: string[],
-  ) => {
+  const onCreateBlank = async (name: string, description: string, categoryId: string, tagIds: string[]) => {
     const row = await api.createSkillPackageBlank({
       name,
       description: description || undefined,
@@ -116,24 +98,14 @@ export default function SkillsPage() {
         headerAction={
           <div className="flex flex-wrap items-center gap-2">
             <TagFilterDropdown value={tagFilterIds} onChange={setTagFilterIds} />
-            <button
-              type="button"
-              className="text-sm text-brand hover:underline"
-              onClick={() => setTagManageOpen(true)}
-            >
+            <button type="button" className="text-sm text-brand hover:underline" onClick={() => setTagManageOpen(true)}>
               管理标签
             </button>
           </div>
         }
         footer={
           !list.loading ? (
-            <ResourceListFooter
-              page={list.page}
-              size={list.size}
-              total={list.total}
-              onPageChange={list.setPage}
-              onSizeChange={list.setSize}
-            />
+            <ResourceListFooter page={list.page} size={list.size} total={list.total} onPageChange={list.setPage} onSizeChange={list.setSize} />
           ) : null
         }
       >
@@ -163,9 +135,7 @@ export default function SkillsPage() {
           </ul>
         </div>
 
-        {importMsg ? (
-          <p className="col-span-full rounded-md bg-brand/10 px-3 py-2 text-sm text-brand">{importMsg}</p>
-        ) : null}
+        {importMsg ? <p className="col-span-full rounded-md bg-brand/10 px-3 py-2 text-sm text-brand">{importMsg}</p> : null}
 
         {filtered.map((s) => (
           <SkillCard
@@ -185,30 +155,10 @@ export default function SkillsPage() {
         ))}
       </ResourceListLayout>
 
-      <SkillCreateBlankDialog
-        open={createOpen}
-        categories={cat.categories}
-        onClose={() => setCreateOpen(false)}
-        onSubmit={onCreateBlank}
-      />
-      <SkillImportLocalDialog
-        open={importLocal}
-        categories={cat.categories}
-        onClose={() => setImportLocal(false)}
-        onDone={onImportDone}
-      />
-      <SkillImportZipDialog
-        open={importZip}
-        categories={cat.categories}
-        onClose={() => setImportZip(false)}
-        onDone={onImportDone}
-      />
-      <SkillImportGitDialog
-        open={importGit}
-        categories={cat.categories}
-        onClose={() => setImportGit(false)}
-        onDone={onImportDone}
-      />
+      <SkillCreateBlankDialog open={createOpen} categories={cat.categories} onClose={() => setCreateOpen(false)} onSubmit={onCreateBlank} />
+      <SkillImportLocalDialog open={importLocal} categories={cat.categories} onClose={() => setImportLocal(false)} onDone={onImportDone} />
+      <SkillImportZipDialog open={importZip} categories={cat.categories} onClose={() => setImportZip(false)} onDone={onImportDone} />
+      <SkillImportGitDialog open={importGit} categories={cat.categories} onClose={() => setImportGit(false)} onDone={onImportDone} />
       <TagManageDialog open={tagManageOpen} onClose={() => setTagManageOpen(false)} />
     </>
   );
@@ -231,18 +181,12 @@ function SkillCard({
     <ResourceItemCard
       title={skill.name}
       description={skill.description || "暂无描述"}
-      badge={
-        skill.is_active
-          ? skillSourceTypeLabel(skill.source_type, skillMeta)
-          : skillActiveLabel(false, skillMeta)
-      }
+      badge={skill.is_active ? skillSourceTypeLabel(skill.source_type, skillMeta) : skillActiveLabel(false, skillMeta)}
       onClick={onOpen}
       meta={
         <>
           <span className="flex flex-wrap items-center gap-2 text-xs text-ink-muted">
-            {skill.category_name ? (
-              <span className="rounded bg-surface-muted px-1.5 py-0.5">{skill.category_name}</span>
-            ) : null}
+            {skill.category_name ? <span className="rounded bg-surface-muted px-1.5 py-0.5">{skill.category_name}</span> : null}
             <span>更新于 {formatUpdated(skill.updated_at)}</span>
           </span>
           <TagChips tags={skill.tags} />

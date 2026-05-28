@@ -17,9 +17,7 @@ from app.tenant.tools.models import Tool
 from app.tenant.tools.parameters import validate_tool_params
 from app.tenant.tools.script_validate import validate_script_source
 
-SCRIPT_RUNNER_DISABLED = (
-    "脚本工具需要启用 MCP Runner（MCP_RUNNER_ENABLED=true），请联系管理员"
-)
+SCRIPT_RUNNER_DISABLED = "脚本工具需要启用 MCP Runner（MCP_RUNNER_ENABLED=true），请联系管理员"
 
 
 def _render_headers(cfg: dict, validated: dict) -> dict[str, str]:

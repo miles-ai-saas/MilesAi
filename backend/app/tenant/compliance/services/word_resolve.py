@@ -42,27 +42,35 @@ async def load_tenant_scan_words(
 ) -> list[tuple[str, SensitiveAction]]:
     """仅加载已绑定且启用的词库中的启用词条。"""
     bound_lib_ids = (
-        await db.execute(
-            select(ComplianceLibraryBinding.library_id).where(
-                ComplianceLibraryBinding.tenant_id == tenant_id,
-                ComplianceLibraryBinding.scope == COMPLIANCE_SCOPE_TENANT,
-                not_deleted(ComplianceLibraryBinding),
+        (
+            await db.execute(
+                select(ComplianceLibraryBinding.library_id).where(
+                    ComplianceLibraryBinding.tenant_id == tenant_id,
+                    ComplianceLibraryBinding.scope == COMPLIANCE_SCOPE_TENANT,
+                    not_deleted(ComplianceLibraryBinding),
+                )
             )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     if not bound_lib_ids:
         return []
 
     active_libs = (
-        await db.execute(
-            select(WordLibrary.id).where(
-                WordLibrary.id.in_(bound_lib_ids),
-                WordLibrary.tenant_id == tenant_id,
-                WordLibrary.is_active.is_(True),
-                not_deleted(WordLibrary),
+        (
+            await db.execute(
+                select(WordLibrary.id).where(
+                    WordLibrary.id.in_(bound_lib_ids),
+                    WordLibrary.tenant_id == tenant_id,
+                    WordLibrary.is_active.is_(True),
+                    not_deleted(WordLibrary),
+                )
             )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     if not active_libs:
         return []
 

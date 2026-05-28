@@ -50,9 +50,7 @@ class MarketplaceRollbackMixin:
             flow = await self.db.get(Flow, install.flow_id)
             current_graph = None
             if flow and flow.current_version > 0:
-                version = await FlowService(self.db, self.ctx).repo.get_version(
-                    flow.id, flow.current_version
-                )
+                version = await FlowService(self.db, self.ctx).repo.get_version(flow.id, flow.current_version)
                 current_graph = version.graph_json if version else None
             diffs.append(
                 diff_flow(
@@ -86,9 +84,7 @@ class MarketplaceRollbackMixin:
             target_version=snap.version,
             resources=diffs,
         )
-        resource_models = [
-            UpgradeResourceDiff.model_validate(r, from_attributes=True) for r in preview.resources
-        ]
+        resource_models = [UpgradeResourceDiff.model_validate(r, from_attributes=True) for r in preview.resources]
         return AppRollbackPreview(
             app_id=preview.app_id,
             app_name=preview.app_name,

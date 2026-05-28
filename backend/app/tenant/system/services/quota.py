@@ -38,43 +38,25 @@ async def _load_tenant(db: AsyncSession, tenant_id: UUID) -> Tenant:
 
 
 async def count_agents(db: AsyncSession, tenant_id: UUID) -> int:
-    return int(
-        await db.scalar(
-            select(func.count())
-            .select_from(Agent)
-            .where(Agent.tenant_id == tenant_id, not_deleted(Agent))
-        )
-        or 0
-    )
+    return int(await db.scalar(select(func.count()).select_from(Agent).where(Agent.tenant_id == tenant_id, not_deleted(Agent))) or 0)
 
 
 async def count_flows(db: AsyncSession, tenant_id: UUID) -> int:
-    return int(
-        await db.scalar(
-            select(func.count())
-            .select_from(Flow)
-            .where(Flow.tenant_id == tenant_id, not_deleted(Flow))
-        )
-        or 0
-    )
+    return int(await db.scalar(select(func.count()).select_from(Flow).where(Flow.tenant_id == tenant_id, not_deleted(Flow))) or 0)
 
 
 async def assert_can_create_agent(db: AsyncSession, tenant_id: UUID) -> None:
     tenant = await _load_tenant(db, tenant_id)
     count = await count_agents(db, tenant_id)
     if count >= tenant.max_agents:
-        raise ForbiddenError(
-            f"智能体数量已达上限（{tenant.max_agents}），请联系平台管理员提升配额"
-        )
+        raise ForbiddenError(f"智能体数量已达上限（{tenant.max_agents}），请联系平台管理员提升配额")
 
 
 async def assert_can_create_flow(db: AsyncSession, tenant_id: UUID) -> None:
     tenant = await _load_tenant(db, tenant_id)
     count = await count_flows(db, tenant_id)
     if count >= tenant.max_flows:
-        raise ForbiddenError(
-            f"流程数量已达上限（{tenant.max_flows}），请联系平台管理员提升配额"
-        )
+        raise ForbiddenError(f"流程数量已达上限（{tenant.max_flows}），请联系平台管理员提升配额")
 
 
 async def get_tenant_quota_out(db: AsyncSession, tenant_id: UUID) -> TenantQuotaOut:

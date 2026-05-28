@@ -6,10 +6,6 @@
 import { optionLabel, type EnumOption } from "@/lib/enum-meta";
 import type { ComplianceMeta } from "@/lib/types";
 
-export function sensitiveActionLabel(
-  action: string,
-  meta?: ComplianceMeta | null,
-  actions?: EnumOption[],
-): string {
+export function sensitiveActionLabel(action: string, meta?: ComplianceMeta | null, actions?: EnumOption[]): string {
   return optionLabel(actions ?? meta?.sensitive_actions, action) || action;
 }

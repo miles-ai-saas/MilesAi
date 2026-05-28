@@ -15,32 +15,16 @@ type Props = {
 /**
  * 列表底部分页：绑定 `usePagedList` 的 page/total/size/setSize。
  */
-export function ResourceListFooter({
-  page,
-  size,
-  total,
-  onPageChange,
-  onSizeChange,
-  className = "",
-  noMoreText = "没有更多数据了",
-}: Props) {
+export function ResourceListFooter({ page, size, total, onPageChange, onSizeChange, className = "", noMoreText = "没有更多数据了" }: Props) {
   const safeTotal = Math.max(0, Number(total) || 0);
 
   if (safeTotal > 0) {
     return (
       <div className={`mt-3 border-t border-line-soft pt-3 ${className}`.trim()}>
-        <Pagination
-          page={page}
-          size={size}
-          total={safeTotal}
-          onPageChange={onPageChange}
-          onSizeChange={onSizeChange}
-        />
+        <Pagination page={page} size={size} total={safeTotal} onPageChange={onPageChange} onSizeChange={onSizeChange} />
       </div>
     );
   }
 
-  return (
-    <p className={`py-12 text-center text-sm text-ink-faint ${className}`}>{noMoreText}</p>
-  );
+  return <p className={`py-12 text-center text-sm text-ink-faint ${className}`}>{noMoreText}</p>;
 }

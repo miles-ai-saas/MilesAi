@@ -1,14 +1,7 @@
 "use client";
 
 /** Cron 字段选择器（链路 §10）。 */
-import {
-  DAY_OPTIONS,
-  HOUR_OPTIONS,
-  MINUTE_OPTIONS,
-  MONTH_OPTIONS,
-  WEEK_OPTIONS,
-  type CronParts,
-} from "@/lib/cron-celery";
+import { DAY_OPTIONS, HOUR_OPTIONS, MINUTE_OPTIONS, MONTH_OPTIONS, WEEK_OPTIONS, type CronParts } from "@/lib/cron-celery";
 
 type Props = {
   parts: CronParts;
@@ -33,11 +26,7 @@ export function CronFieldPicker({ parts, onChange }: Props) {
       {FIELDS.map(({ key, label, options }) => (
         <label key={key} className="block text-sm">
           <span className="mb-1 block text-ink-muted">{label}</span>
-          <select
-            className="input-field w-full"
-            value={parts[key]}
-            onChange={(e) => onChange({ ...parts, [key]: e.target.value })}
-          >
+          <select className="input-field w-full" value={parts[key]} onChange={(e) => onChange({ ...parts, [key]: e.target.value })}>
             {options.map((opt) => (
               <option key={opt.value} value={opt.value}>
                 {opt.label}

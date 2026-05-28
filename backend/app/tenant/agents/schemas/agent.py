@@ -227,4 +227,3 @@ class AgentPackage(BaseModel):
 
     version: str = Field(default="1.0", description="包格式版本")
     agent: AgentCreate = Field(description="智能体创建参数")
-

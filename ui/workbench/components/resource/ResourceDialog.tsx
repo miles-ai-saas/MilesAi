@@ -52,9 +52,7 @@ function PanelChrome({
         </div>
         {footer && (
           <footer className="shrink-0 border-t border-line bg-surface px-6 py-4">
-            <div className={`mx-auto flex w-full flex-wrap items-center justify-end gap-2 ${contentMaxWidth}`}>
-              {footer}
-            </div>
+            <div className={`mx-auto flex w-full flex-wrap items-center justify-end gap-2 ${contentMaxWidth}`}>{footer}</div>
           </footer>
         )}
       </div>
@@ -82,34 +80,15 @@ function useDialogEffects(open: boolean, size: PanelSize, onClose: () => void) {
   }, [open, onClose]);
 }
 
-export function ResourceDialog({
-  open,
-  title,
-  description,
-  onClose,
-  children,
-  footer,
-  size = "md",
-  contentMaxWidth = "max-w-5xl",
-}: Props) {
+export function ResourceDialog({ open, title, description, onClose, children, footer, size = "md", contentMaxWidth = "max-w-5xl" }: Props) {
   useDialogEffects(open, size, onClose);
 
   if (!open) return null;
 
   if (size === "sheet") {
     return (
-      <div
-        role="dialog"
-        aria-modal="true"
-        className="fixed inset-x-0 bottom-0 top-14 z-40 flex flex-col border-t border-line bg-surface shadow-panel"
-      >
-        <PanelChrome
-          title={title}
-          description={description}
-          onClose={onClose}
-          footer={footer}
-          contentMaxWidth={contentMaxWidth}
-        >
+      <div role="dialog" aria-modal="true" className="fixed inset-x-0 bottom-0 top-14 z-40 flex flex-col border-t border-line bg-surface shadow-panel">
+        <PanelChrome title={title} description={description} onClose={onClose} footer={footer} contentMaxWidth={contentMaxWidth}>
           {children}
         </PanelChrome>
       </div>
@@ -119,24 +98,13 @@ export function ResourceDialog({
   if (size === "drawer") {
     return (
       <div className="fixed inset-0 z-50 flex justify-end" role="presentation">
-        <button
-          type="button"
-          className="absolute inset-0 bg-ink/30"
-          aria-label="关闭"
-          onClick={onClose}
-        />
+        <button type="button" className="absolute inset-0 bg-ink/30" aria-label="关闭" onClick={onClose} />
         <div
           role="dialog"
           aria-modal="true"
           className="fixed bottom-0 right-0 top-14 z-10 flex w-full max-w-md flex-col border-l border-line bg-surface shadow-panel sm:max-w-[28rem]"
         >
-          <PanelChrome
-            title={title}
-            description={description}
-            onClose={onClose}
-            footer={footer}
-            contentMaxWidth="max-w-none"
-          >
+          <PanelChrome title={title} description={description} onClose={onClose} footer={footer} contentMaxWidth="max-w-none">
             {children}
           </PanelChrome>
         </div>
@@ -147,12 +115,7 @@ export function ResourceDialog({
   if (size === "fullscreen") {
     return (
       <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex flex-col bg-surface">
-        <PanelChrome
-          title={title}
-          onClose={onClose}
-          footer={footer}
-          contentMaxWidth={contentMaxWidth}
-        >
+        <PanelChrome title={title} onClose={onClose} footer={footer} contentMaxWidth={contentMaxWidth}>
           {children}
         </PanelChrome>
       </div>
@@ -161,12 +124,7 @@ export function ResourceDialog({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <button
-        type="button"
-        className="absolute inset-0 bg-ink/30"
-        aria-label="关闭"
-        onClick={onClose}
-      />
+      <button type="button" className="absolute inset-0 bg-ink/30" aria-label="关闭" onClick={onClose} />
       <div
         role="dialog"
         aria-modal="true"

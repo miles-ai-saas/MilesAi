@@ -3,11 +3,7 @@
 /** Trace 侧栏（链路 §5）：`agent-trace` 轮次 + steps 明细。 */
 
 import { useEffect, useMemo, useState } from "react";
-import {
-  copyText,
-  defaultTraceTurnIndex,
-  listTraceTurns,
-} from "@/lib/agent-trace";
+import { copyText, defaultTraceTurnIndex, listTraceTurns } from "@/lib/agent-trace";
 import type { ChatMessage } from "@/lib/chat-sessions";
 
 type Props = {
@@ -55,11 +51,7 @@ export function AgentTracePanel({ messages, selectedTurnIndex, onSelectTurnIndex
       <div className="shrink-0 space-y-3 border-b border-line-soft px-6 py-4">
         <div>
           <label className="mb-1 block text-xs font-medium text-ink-muted">选择回复</label>
-          <select
-            className="input-field text-xs"
-            value={selectedTurnIndex}
-            onChange={(e) => onSelectTurnIndex(Number(e.target.value))}
-          >
+          <select className="input-field text-xs" value={selectedTurnIndex} onChange={(e) => onSelectTurnIndex(Number(e.target.value))}>
             {turns.map((t) => (
               <option key={t.messageIndex} value={t.turnIndex}>
                 #{t.turnIndex + 1} · {t.userQuery.slice(0, 36) || "（无用户问题）"}
@@ -72,12 +64,8 @@ export function AgentTracePanel({ messages, selectedTurnIndex, onSelectTurnIndex
         <div className="rounded-lg border border-line-soft bg-surface-muted/60 px-3 py-2.5">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0 flex-1">
-              <p className="text-[10px] font-medium uppercase tracking-wide text-ink-faint">
-                X-Trace-Id
-              </p>
-              <p className="mt-0.5 break-all font-mono text-xs text-ink">
-                {selected?.traceId ?? "—"}
-              </p>
+              <p className="text-[10px] font-medium uppercase tracking-wide text-ink-faint">X-Trace-Id</p>
+              <p className="mt-0.5 break-all font-mono text-xs text-ink">{selected?.traceId ?? "—"}</p>
             </div>
             <button
               type="button"

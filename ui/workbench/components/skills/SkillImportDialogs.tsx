@@ -18,15 +18,7 @@ type BaseProps = {
   onDone: (result: SkillImportResult) => void;
 };
 
-function CategorySelect({
-  categories,
-  value,
-  onChange,
-}: {
-  categories: SysCategory[];
-  value: string;
-  onChange: (v: string) => void;
-}) {
+function CategorySelect({ categories, value, onChange }: { categories: SysCategory[]; value: string; onChange: (v: string) => void }) {
   return (
     <label className="block text-sm">
       <span className="mb-1 block text-ink-muted">
@@ -47,17 +39,10 @@ function CategorySelect({
 function OverwriteToggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
   return (
     <label className="flex items-start gap-3 text-sm">
-      <input
-        type="checkbox"
-        className="mt-1"
-        checked={checked}
-        onChange={(e) => onChange(e.target.checked)}
-      />
+      <input type="checkbox" className="mt-1" checked={checked} onChange={(e) => onChange(e.target.checked)} />
       <span>
         <span className="font-medium text-ink">覆盖已有同名技能</span>
-        <span className="mt-1 block text-xs text-ink-muted">
-          开启后，若存在同名技能包，将以新导入内容覆盖原有数据；关闭则跳过同名项。
-        </span>
+        <span className="mt-1 block text-xs text-ink-muted">开启后，若存在同名技能包，将以新导入内容覆盖原有数据；关闭则跳过同名项。</span>
       </span>
     </label>
   );
@@ -70,10 +55,7 @@ export function SkillImportLocalDialog({ open, categories, onClose, onDone }: Ba
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
 
-  const defaultCat = useMemo(
-    () => categories.find((c) => c.slug === "local_import")?.id ?? categories[0]?.id ?? "",
-    [categories],
-  );
+  const defaultCat = useMemo(() => categories.find((c) => c.slug === "local_import")?.id ?? categories[0]?.id ?? "", [categories]);
 
   const effectiveCat = categoryId || defaultCat;
 
@@ -115,20 +97,13 @@ export function SkillImportLocalDialog({ open, categories, onClose, onDone }: Ba
         </>
       }
     >
-      <p className="text-xs text-ink-muted">
-        从服务端可访问的目录扫描技能包（每个子目录须含 SKILL.md）。默认相对 backend 的 .data/skills。
-      </p>
+      <p className="text-xs text-ink-muted">从服务端可访问的目录扫描技能包（每个子目录须含 SKILL.md）。默认相对 backend 的 .data/skills。</p>
       <CategorySelect categories={categories} value={effectiveCat} onChange={setCategoryId} />
       <label className="block text-sm">
         <span className="mb-1 block text-ink-muted">
           本地路径 <span className="text-red-500">*</span>
         </span>
-        <input
-          className="input-field w-full"
-          value={localPath}
-          onChange={(e) => setLocalPath(e.target.value)}
-          placeholder=".data/skills"
-        />
+        <input className="input-field w-full" value={localPath} onChange={(e) => setLocalPath(e.target.value)} placeholder=".data/skills" />
       </label>
       <OverwriteToggle checked={overwrite} onChange={setOverwrite} />
       {err && <p className="text-xs text-red-600">{err}</p>}
@@ -143,10 +118,7 @@ export function SkillImportZipDialog({ open, categories, onClose, onDone }: Base
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
 
-  const defaultCat = useMemo(
-    () => categories.find((c) => c.slug === "zip_import")?.id ?? categories[0]?.id ?? "",
-    [categories],
-  );
+  const defaultCat = useMemo(() => categories.find((c) => c.slug === "zip_import")?.id ?? categories[0]?.id ?? "", [categories]);
   const effectiveCat = categoryId || defaultCat;
 
   const submit = async () => {
@@ -184,18 +156,12 @@ export function SkillImportZipDialog({ open, categories, onClose, onDone }: Base
       }
     >
       <p className="text-xs text-ink-muted">
-        须为 .zip，解压后包含 <code className="text-brand">skills/</code> 目录，其下每个技能文件夹含{" "}
-        <code className="text-brand">SKILL.md</code>（≤100MB）。
+        须为 .zip，解压后包含 <code className="text-brand">skills/</code> 目录，其下每个技能文件夹含 <code className="text-brand">SKILL.md</code>（≤100MB）。
       </p>
       <CategorySelect categories={categories} value={effectiveCat} onChange={setCategoryId} />
       <label className="block text-sm">
         <span className="mb-1 block text-ink-muted">压缩包</span>
-        <input
-          type="file"
-          accept=".zip"
-          className="input-field w-full"
-          onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-        />
+        <input type="file" accept=".zip" className="input-field w-full" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
       </label>
       <OverwriteToggle checked={overwrite} onChange={setOverwrite} />
       {err && <p className="text-xs text-red-600">{err}</p>}
@@ -210,10 +176,7 @@ export function SkillImportGitDialog({ open, categories, onClose, onDone }: Base
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
 
-  const defaultCat = useMemo(
-    () => categories.find((c) => c.slug === "git_import")?.id ?? categories[0]?.id ?? "",
-    [categories],
-  );
+  const defaultCat = useMemo(() => categories.find((c) => c.slug === "git_import")?.id ?? categories[0]?.id ?? "", [categories]);
   const effectiveCat = categoryId || defaultCat;
 
   const submit = async () => {
@@ -262,12 +225,7 @@ export function SkillImportGitDialog({ open, categories, onClose, onDone }: Base
         <span className="mb-1 block text-ink-muted">
           仓库地址 <span className="text-red-500">*</span>
         </span>
-        <input
-          className="input-field w-full"
-          value={repoUrl}
-          onChange={(e) => setRepoUrl(e.target.value)}
-          placeholder="https://github.com/user/repo.git"
-        />
+        <input className="input-field w-full" value={repoUrl} onChange={(e) => setRepoUrl(e.target.value)} placeholder="https://github.com/user/repo.git" />
       </label>
       <OverwriteToggle checked={overwrite} onChange={setOverwrite} />
       {err && <p className="text-xs text-red-600">{err}</p>}

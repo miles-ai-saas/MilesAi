@@ -11,9 +11,7 @@ export default function ProfilePage() {
   const router = useRouter();
   const currentAdmin = useAdminAuthStore((s) => s.admin);
   const [me, setMe] = useState<{ username: string; role: string } | null>(null);
-  const [sessions, setSessions] = useState<
-    { admin_id: string; username: string; role: string; is_current: boolean }[]
-  >([]);
+  const [sessions, setSessions] = useState<{ admin_id: string; username: string; role: string; is_current: boolean }[]>([]);
   const [oldPwd, setOldPwd] = useState("");
   const [newPwd, setNewPwd] = useState("");
   const [msg, setMsg] = useState("");
@@ -102,18 +100,11 @@ export default function ProfilePage() {
         <h2 className="text-sm font-semibold text-ink">在线会话</h2>
         <ul className="admin-data-list mt-3">
           {sessions.map((s) => (
-            <li
-              key={s.admin_id}
-              className="admin-data-row flex items-center justify-between gap-2"
-            >
+            <li key={s.admin_id} className="admin-data-row flex items-center justify-between gap-2">
               <div className="min-w-0">
                 {s.username}
                 <span className="text-ink-faint"> · {s.role}</span>
-                {s.is_current && (
-                  <span className="ml-2 rounded bg-brand-light px-1.5 py-0.5 text-xs text-brand">
-                    当前
-                  </span>
-                )}
+                {s.is_current && <span className="ml-2 rounded bg-brand-light px-1.5 py-0.5 text-xs text-brand">当前</span>}
               </div>
               {!s.is_current && (
                 <button

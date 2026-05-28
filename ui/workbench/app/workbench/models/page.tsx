@@ -78,9 +78,7 @@ export default function ModelsPage() {
 
   const vendors = useMemo(() => {
     const fromMeta = meta?.vendors ?? [];
-    return [...fromMeta].sort(
-      (a, b) => VENDOR_ORDER.indexOf(a.value) - VENDOR_ORDER.indexOf(b.value),
-    );
+    return [...fromMeta].sort((a, b) => VENDOR_ORDER.indexOf(a.value) - VENDOR_ORDER.indexOf(b.value));
   }, [meta]);
 
   const openCreate = () => {
@@ -223,11 +221,7 @@ export default function ModelsPage() {
               全部
             </FilterChip>
             {(meta?.model_types ?? []).map((t) => (
-              <FilterChip
-                key={t.value}
-                active={modelType === t.value}
-                onClick={() => setModelType(t.value)}
-              >
+              <FilterChip key={t.value} active={modelType === t.value} onClick={() => setModelType(t.value)}>
                 {t.label}
               </FilterChip>
             ))}
@@ -248,12 +242,7 @@ export default function ModelsPage() {
           </div>
         </div>
         <div className="mt-4">
-          <input
-            className="input-field w-full max-w-md"
-            placeholder="搜索模型名称或编码"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
+          <input className="input-field w-full max-w-md" placeholder="搜索模型名称或编码" value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
       </section>
 
@@ -266,48 +255,22 @@ export default function ModelsPage() {
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {items.map((m) => (
             <article key={m.id} className="resource-card relative !min-h-0 flex-col !items-stretch !p-4">
-              {m.badge === "latest" && (
-                <span className="absolute right-3 top-3 rounded bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
-                  最新
-                </span>
-              )}
+              {m.badge === "latest" && <span className="absolute right-3 top-3 rounded bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">最新</span>}
               <div className="mb-2 flex items-center gap-2">
-                <span className="rounded bg-surface-muted px-2 py-0.5 text-xs font-medium text-ink">
-                  {vendorLabel(m.vendor, meta)}
-                </span>
+                <span className="rounded bg-surface-muted px-2 py-0.5 text-xs font-medium text-ink">{vendorLabel(m.vendor, meta)}</span>
                 <span className="text-xs text-ink-muted">{m.model_code ?? m.model_name}</span>
               </div>
               <h3 className="pr-12 text-base font-semibold text-ink">{m.name}</h3>
-              <p className="mt-2 line-clamp-3 text-xs leading-relaxed text-ink-muted">
-                {m.description ?? "暂无描述"}
-              </p>
+              <p className="mt-2 line-clamp-3 text-xs leading-relaxed text-ink-muted">{m.description ?? "暂无描述"}</p>
               <div className="mt-3 flex flex-wrap gap-2">
-                <span className="rounded border border-border px-2 py-0.5 text-xs text-ink-muted">
-                  {modelTypeLabel(m.model_type, meta)}
-                </span>
-                <span className="rounded border border-brand/20 bg-brand-light/30 px-2 py-0.5 text-xs text-brand">
-                  {SOURCE_LABELS[m.source]}
-                </span>
-                {isBuiltinReady(m) && (
-                  <span className="rounded border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-xs text-emerald-800">
-                    可直接使用
-                  </span>
-                )}
-                {isBuiltinByok(m) && (
-                  <span className="rounded border border-sky-200 bg-sky-50 px-2 py-0.5 text-xs text-sky-800">
-                    自有 Key
-                  </span>
-                )}
+                <span className="rounded border border-border px-2 py-0.5 text-xs text-ink-muted">{modelTypeLabel(m.model_type, meta)}</span>
+                <span className="rounded border border-brand/20 bg-brand-light/30 px-2 py-0.5 text-xs text-brand">{SOURCE_LABELS[m.source]}</span>
+                {isBuiltinReady(m) && <span className="rounded border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-xs text-emerald-800">可直接使用</span>}
+                {isBuiltinByok(m) && <span className="rounded border border-sky-200 bg-sky-50 px-2 py-0.5 text-xs text-sky-800">自有 Key</span>}
                 {isBuiltinPlatformMissing(m) && (
-                  <span className="rounded border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs text-amber-800">
-                    平台未配置
-                  </span>
+                  <span className="rounded border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs text-amber-800">平台未配置</span>
                 )}
-                {isCustomMissingKey(m) && (
-                  <span className="rounded border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs text-amber-800">
-                    待配置 Key
-                  </span>
-                )}
+                {isCustomMissingKey(m) && <span className="rounded border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs text-amber-800">待配置 Key</span>}
               </div>
               <p className="mt-2 text-xs text-ink-muted">{credentialHint(m)}</p>
               <div className="mt-4 flex flex-wrap gap-2 border-t border-border pt-3">
@@ -317,11 +280,7 @@ export default function ModelsPage() {
                       <button type="button" className="btn-ghost text-xs" onClick={() => openCred(m)}>
                         更新自有 Key
                       </button>
-                      <button
-                        type="button"
-                        className="btn-ghost text-xs text-ink-muted"
-                        onClick={() => onClearBuiltinByok(m)}
-                      >
+                      <button type="button" className="btn-ghost text-xs text-ink-muted" onClick={() => onClearBuiltinByok(m)}>
                         恢复平台密钥
                       </button>
                     </>
@@ -335,11 +294,7 @@ export default function ModelsPage() {
                     <button type="button" className="btn-ghost text-xs" onClick={() => openEdit(m)}>
                       编辑
                     </button>
-                    <button
-                      type="button"
-                      className="btn-ghost text-xs text-red-600"
-                      onClick={() => onDelete(m)}
-                    >
+                    <button type="button" className="btn-ghost text-xs text-red-600" onClick={() => onDelete(m)}>
                       删除
                     </button>
                   </>
@@ -376,25 +331,10 @@ export default function ModelsPage() {
           </>
         }
       >
-        {saveError && (
-          <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-            {saveError}
-          </p>
-        )}
-        <p className="text-xs text-ink-muted">
-          自定义模型由本租户自行维护接入参数；新建时必须填写 API Key，编辑时留空表示不修改密钥。
-        </p>
-        <input
-          className="input-field w-full"
-          placeholder="展示名称"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-        />
-        <select
-          className="input-field w-full"
-          value={vendorField}
-          onChange={(e) => setVendorField(e.target.value)}
-        >
+        {saveError && <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{saveError}</p>}
+        <p className="text-xs text-ink-muted">自定义模型由本租户自行维护接入参数；新建时必须填写 API Key，编辑时留空表示不修改密钥。</p>
+        <input className="input-field w-full" placeholder="展示名称" value={name} onChange={(e) => setName(e.target.value)} />
+        <select className="input-field w-full" value={vendorField} onChange={(e) => setVendorField(e.target.value)}>
           {vendors.map((v) => (
             <option key={v.value} value={v.value}>
               {v.label}
@@ -402,41 +342,17 @@ export default function ModelsPage() {
           ))}
           <option value="other">其它</option>
         </select>
-        <input
-          className="input-field w-full"
-          placeholder="模型编码（可选）"
-          value={modelCode}
-          onChange={(e) => setModelCode(e.target.value)}
-        />
-        <input
-          className="input-field w-full"
-          placeholder="请求体 model 参数"
-          value={modelName}
-          onChange={(e) => setModelName(e.target.value)}
-        />
-        <select
-          className="input-field w-full"
-          value={modelTypeField}
-          onChange={(e) => setModelTypeField(e.target.value)}
-        >
+        <input className="input-field w-full" placeholder="模型编码（可选）" value={modelCode} onChange={(e) => setModelCode(e.target.value)} />
+        <input className="input-field w-full" placeholder="请求体 model 参数" value={modelName} onChange={(e) => setModelName(e.target.value)} />
+        <select className="input-field w-full" value={modelTypeField} onChange={(e) => setModelTypeField(e.target.value)}>
           {(meta?.model_types ?? []).map((t) => (
             <option key={t.value} value={t.value}>
               {t.label}
             </option>
           ))}
         </select>
-        <textarea
-          className="input-field w-full min-h-[72px]"
-          placeholder="描述（可选）"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-        />
-        <input
-          className="input-field w-full"
-          placeholder="API Base（可选）"
-          value={apiBase}
-          onChange={(e) => setApiBase(e.target.value)}
-        />
+        <textarea className="input-field w-full min-h-[72px]" placeholder="描述（可选）" value={description} onChange={(e) => setDescription(e.target.value)} />
+        <input className="input-field w-full" placeholder="API Base（可选）" value={apiBase} onChange={(e) => setApiBase(e.target.value)} />
         <input
           className="input-field w-full"
           placeholder={editing ? "API Key（留空不修改）" : "API Key（必填）"}
@@ -464,34 +380,15 @@ export default function ModelsPage() {
         <p className="text-xs text-ink-muted">
           内置模型默认使用平台统一密钥，无需租户配置。仅在合规或自付账单等场景下，可在此填写自有 Key（BYOK），将优先于平台密钥。
         </p>
-        <input
-          className="input-field w-full"
-          placeholder="API Base（可选，留空用内置默认）"
-          value={apiBase}
-          onChange={(e) => setApiBase(e.target.value)}
-        />
-        <input
-          className="input-field w-full"
-          placeholder="租户 API Key（必填）"
-          type="password"
-          value={apiKey}
-          onChange={(e) => setApiKey(e.target.value)}
-        />
+        <input className="input-field w-full" placeholder="API Base（可选，留空用内置默认）" value={apiBase} onChange={(e) => setApiBase(e.target.value)} />
+        <input className="input-field w-full" placeholder="租户 API Key（必填）" type="password" value={apiKey} onChange={(e) => setApiKey(e.target.value)} />
       </ResourceDialog>
       {confirmDialog}
     </div>
   );
 }
 
-function FilterChip({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: ReactNode;
-}) {
+function FilterChip({ active, onClick, children }: { active: boolean; onClick: () => void; children: ReactNode }) {
   return (
     <button
       type="button"

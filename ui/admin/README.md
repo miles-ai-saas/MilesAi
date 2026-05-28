@@ -17,29 +17,29 @@ npm run dev
 
 ## 环境变量
 
-| 变量 | 说明 | 默认 |
-|------|------|------|
+| 变量                        | 说明            | 默认                                 |
+| --------------------------- | --------------- | ------------------------------------ |
 | `NEXT_PUBLIC_ADMIN_API_URL` | 运营 API 根路径 | `http://localhost:8000/api/admin/v1` |
 
 ## 页面路由
 
-| 路径 | 功能 |
-|------|------|
-| `/login` | 平台管理员登录 |
-| `/` | 运营概览 |
-| `/tenants` | 租户列表与创建 |
-| `/tenants/[id]` | 租户详情、配额、删除 |
-| `/model-catalog` | 内置模型目录 |
-| `/marketplace-review` | 应用审核（`MARKETPLACE_REVIEW_MODE=platform`） |
-| `/billing/plans` | 套餐管理 |
-| `/billing/plans/[id]` | 套餐详情 |
-| `/billing/bills` | 账单管理 |
-| `/risk` | 风险事件、IP 黑名单、限流 |
-| `/audit` | 审计日志（含导出） |
-| `/admins` | 平台管理员（super_admin） |
-| `/profile` | 改密、会话列表 |
-| `/marketplace-categories` | 应用市场分类（mkt_categories） |
-| `/sys-categories` | 工作台分类（全平台全局字典） |
+| 路径                      | 功能                                           |
+| ------------------------- | ---------------------------------------------- |
+| `/login`                  | 平台管理员登录                                 |
+| `/`                       | 运营概览                                       |
+| `/tenants`                | 租户列表与创建                                 |
+| `/tenants/[id]`           | 租户详情、配额、删除                           |
+| `/model-catalog`          | 内置模型目录                                   |
+| `/marketplace-review`     | 应用审核（`MARKETPLACE_REVIEW_MODE=platform`） |
+| `/billing/plans`          | 套餐管理                                       |
+| `/billing/plans/[id]`     | 套餐详情                                       |
+| `/billing/bills`          | 账单管理                                       |
+| `/risk`                   | 风险事件、IP 黑名单、限流                      |
+| `/audit`                  | 审计日志（含导出）                             |
+| `/admins`                 | 平台管理员（super_admin）                      |
+| `/profile`                | 改密、会话列表                                 |
+| `/marketplace-categories` | 应用市场分类（mkt_categories）                 |
+| `/sys-categories`         | 工作台分类（全平台全局字典）                   |
 
 ## Docker
 

@@ -94,9 +94,7 @@ class KnowledgeBaseDocumentMixin:
         await assert_can_upload_bytes(self.db, kb.tenant_id, len(content))
         mime = file.content_type or "application/octet-stream"
         if not is_kb_upload_allowed(file.filename, mime):
-            raise BadRequestError(
-                f"不支持的文件类型: {mime}。{kb_upload_allowed_hint()}"
-            )
+            raise BadRequestError(f"不支持的文件类型: {mime}。{kb_upload_allowed_hint()}")
 
         storage = await resolve_object_storage_async(kb.tenant_id, self.db)
         doc = await self.doc_repo.create(
@@ -109,9 +107,7 @@ class KnowledgeBaseDocumentMixin:
             object_key="pending",
             status=DocumentStatus.PENDING,
         )
-        object_key = build_object_key(
-            str(kb.tenant_id), str(kb.id), str(doc.id), file.filename
-        )
+        object_key = build_object_key(str(kb.tenant_id), str(kb.id), str(doc.id), file.filename)
         doc.object_key = object_key
         storage.storage.upload_bytes(content, object_key, mime)
         await self.db.flush()

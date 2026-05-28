@@ -10,11 +10,7 @@ type Props = {
   emptyHint?: string;
 };
 
-export function MarkdownPreview({
-  content,
-  className = "",
-  emptyHint = "暂无正文，在左侧编辑 Markdown。",
-}: Props) {
+export function MarkdownPreview({ content, className = "", emptyHint = "暂无正文，在左侧编辑 Markdown。" }: Props) {
   const trimmed = content.trim();
   if (!trimmed) {
     return <p className="text-sm text-ink-faint">{emptyHint}</p>;

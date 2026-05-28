@@ -65,9 +65,7 @@ async def llm_call(
         max_media = int((ctx.agent_config or {}).get("max_media_per_turn", 4))
         media_parts: list[dict[str, Any]] = []
         if media_refs:
-            media_parts = await resolve_media_refs(
-                db, tenant_ctx, media_refs, max_count=max_media
-            )
+            media_parts = await resolve_media_refs(db, tenant_ctx, media_refs, max_count=max_media)
 
         user_msg = build_user_message(
             query=prompt or "请根据附图回答。",

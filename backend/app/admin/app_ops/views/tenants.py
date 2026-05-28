@@ -27,9 +27,7 @@ async def list_tenants(
     ctx: AdminContext = Depends(get_platform_admin),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await AdminTenantService(db).list_tenants(
-        params, status=status, plan_id=plan_id, is_active=is_active
-    )
+    result = await AdminTenantService(db).list_tenants(params, status=status, plan_id=plan_id, is_active=is_active)
     return page_ok(result.items, result.total, result.page, result.size)
 
 

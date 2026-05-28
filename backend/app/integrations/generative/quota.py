@@ -76,6 +76,4 @@ async def assert_generative_quota(
     units = max(1, int(units))
     used = await count_generative_today(db, tenant_id)
     if used + units > limit:
-        raise ForbiddenError(
-            f"今日生成次数已达上限（{used}/{limit}），请明日再试或联系管理员调整配额"
-        )
+        raise ForbiddenError(f"今日生成次数已达上限（{used}/{limit}），请明日再试或联系管理员调整配额")

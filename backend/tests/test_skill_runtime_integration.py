@@ -36,9 +36,7 @@ def skill_tree(tmp_path, monkeypatch):
 
     base = _dir(tid, slug)
     base.mkdir(parents=True)
-    (base / SKILL_MD_FILENAME).write_text(
-        "---\nname: Demo\n---\n正文\n", encoding="utf-8"
-    )
+    (base / SKILL_MD_FILENAME).write_text("---\nname: Demo\n---\n正文\n", encoding="utf-8")
     (base / "references").mkdir()
     (base / "references" / "guide.md").write_text("# Guide\n细节", encoding="utf-8")
 
@@ -62,9 +60,7 @@ def skill_tree(tmp_path, monkeypatch):
         },
     )()
 
-    monkeypatch.setattr(
-        "app.tenant.agents.services.context.is_marked_deleted", lambda _s: False
-    )
+    monkeypatch.setattr("app.tenant.agents.services.context.is_marked_deleted", lambda _s: False)
     monkeypatch.setattr(
         "app.tenant.agents.services.context.read_skill_md",
         lambda _tid, _s: (base / SKILL_MD_FILENAME).read_text(encoding="utf-8"),
@@ -88,7 +84,9 @@ async def test_get_all_platform_tools_skill_bound(monkeypatch):
 
     without = await lc_tools.get_all_platform_tools(None, ctx, agent_config={})
     with_skill = await lc_tools.get_all_platform_tools(
-        None, ctx, agent_config={"skill_package_id": str(uuid4())},
+        None,
+        ctx,
+        agent_config={"skill_package_id": str(uuid4())},
     )
     names_without = {t.name for t in without}
     names_with = {t.name for t in with_skill}

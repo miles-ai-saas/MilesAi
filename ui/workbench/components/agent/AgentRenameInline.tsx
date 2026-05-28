@@ -15,14 +15,7 @@ type Props = {
   disabled?: boolean;
 };
 
-export function AgentRenameInline({
-  agentId,
-  name,
-  onRenamed,
-  prominent = false,
-  className = "",
-  disabled = false,
-}: Props) {
+export function AgentRenameInline({ agentId, name, onRenamed, prominent = false, className = "", disabled = false }: Props) {
   const inputId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
   const [editing, setEditing] = useState(false);
@@ -64,10 +57,7 @@ export function AgentRenameInline({
 
   if (editing) {
     return (
-      <div
-        className={`flex min-w-0 flex-1 items-center gap-1 ${className}`}
-        onClick={(e) => e.stopPropagation()}
-      >
+      <div className={`flex min-w-0 flex-1 items-center gap-1 ${className}`} onClick={(e) => e.stopPropagation()}>
         <label htmlFor={inputId} className="sr-only">
           智能体名称
         </label>
@@ -84,20 +74,10 @@ export function AgentRenameInline({
             if (e.key === "Escape") cancel();
           }}
         />
-        <button
-          type="button"
-          className="btn-sm-primary shrink-0 px-2 py-1 text-xs"
-          disabled={busy || !draft.trim()}
-          onClick={() => void save()}
-        >
+        <button type="button" className="btn-sm-primary shrink-0 px-2 py-1 text-xs" disabled={busy || !draft.trim()} onClick={() => void save()}>
           保存
         </button>
-        <button
-          type="button"
-          className="btn-sm-ghost shrink-0 px-2 py-1 text-xs"
-          disabled={busy}
-          onClick={cancel}
-        >
+        <button type="button" className="btn-sm-ghost shrink-0 px-2 py-1 text-xs" disabled={busy} onClick={cancel}>
           取消
         </button>
       </div>
@@ -106,10 +86,7 @@ export function AgentRenameInline({
 
   return (
     <div className={`group flex min-w-0 max-w-full items-center gap-1 ${className}`}>
-      <span
-        className={`min-w-0 truncate ${prominent ? "font-medium text-ink" : "text-ink"}`}
-        title={name}
-      >
+      <span className={`min-w-0 truncate ${prominent ? "font-medium text-ink" : "text-ink"}`} title={name}>
         {name}
       </span>
       {!disabled ? (

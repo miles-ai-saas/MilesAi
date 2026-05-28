@@ -55,26 +55,16 @@ export function TagPicker({ value, onChange, disabled }: Props) {
     <div className="space-y-2">
       <div className="flex min-h-[2rem] flex-wrap gap-1.5">
         {selected.map((t) => (
-          <span
-            key={t.id}
-            className="inline-flex items-center gap-1 rounded-full bg-brand-light px-2.5 py-0.5 text-xs text-brand"
-          >
+          <span key={t.id} className="inline-flex items-center gap-1 rounded-full bg-brand-light px-2.5 py-0.5 text-xs text-brand">
             {t.name}
             {!disabled ? (
-              <button
-                type="button"
-                className="hover:text-brand-dark"
-                aria-label={`移除标签 ${t.name}`}
-                onClick={() => remove(t.id)}
-              >
+              <button type="button" className="hover:text-brand-dark" aria-label={`移除标签 ${t.name}`} onClick={() => remove(t.id)}>
                 ×
               </button>
             ) : null}
           </span>
         ))}
-        {selected.length === 0 ? (
-          <span className="text-xs text-ink-muted">暂无标签</span>
-        ) : null}
+        {selected.length === 0 ? <span className="text-xs text-ink-muted">暂无标签</span> : null}
       </div>
       {!disabled ? (
         <div className="flex flex-wrap gap-2">
@@ -90,12 +80,7 @@ export function TagPicker({ value, onChange, disabled }: Props) {
               }
             }}
           />
-          <button
-            type="button"
-            className="btn-ghost border border-line text-xs"
-            disabled={busy || !draft.trim()}
-            onClick={() => void createAndAdd()}
-          >
+          <button type="button" className="btn-ghost border border-line text-xs" disabled={busy || !draft.trim()} onClick={() => void createAndAdd()}>
             添加标签
           </button>
         </div>

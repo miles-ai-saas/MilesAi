@@ -129,5 +129,3 @@ async def llm_grade_relevance(
     raw = await ainvoke_chat(model, [{"role": "user", "content": prompt}], temperature=0)
     rel, reason = parse_llm_grade_response(raw)
     return rel or RELEVANCE_POOR, reason or raw[:300]
-
-

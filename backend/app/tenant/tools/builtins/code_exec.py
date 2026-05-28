@@ -26,7 +26,7 @@ async def execute_code(
 
     wrapper = f"""
 def run(params):
-{chr(10).join('    ' + line for line in code.strip().splitlines())}
+{chr(10).join("    " + line for line in code.strip().splitlines())}
 """
     try:
         result = await run_python_script(

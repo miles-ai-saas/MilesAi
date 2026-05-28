@@ -14,13 +14,7 @@ class InterceptLogMixin:
         """分页查询拦截日志。"""
         filters = tenant_filters(self.ctx, InterceptLog.tenant_id)
         total = await self.db.scalar(select(func.count()).select_from(InterceptLog).where(*filters))
-        stmt = (
-            select(InterceptLog)
-            .where(*filters)
-            .order_by(InterceptLog.created_at.desc())
-            .offset((params.page - 1) * params.size)
-            .limit(params.size)
-        )
+        stmt = select(InterceptLog).where(*filters).order_by(InterceptLog.created_at.desc()).offset((params.page - 1) * params.size).limit(params.size)
         items = (await self.db.execute(stmt)).scalars().all()
         return PageResult(
             items=[InterceptLogOut.model_validate(i) for i in items],

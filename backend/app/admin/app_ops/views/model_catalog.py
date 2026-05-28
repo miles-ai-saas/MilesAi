@@ -29,9 +29,7 @@ async def list_model_catalog(
     ctx: AdminContext = Depends(get_platform_admin),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await AdminModelCatalogService(db).list_catalog(
-        params, vendor=vendor, publish_status=publish_status
-    )
+    result = await AdminModelCatalogService(db).list_catalog(params, vendor=vendor, publish_status=publish_status)
     return page_ok(result.items, result.total, result.page, result.size)
 
 

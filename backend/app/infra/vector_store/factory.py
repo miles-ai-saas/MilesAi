@@ -23,10 +23,7 @@ def get_vector_store() -> VectorStore:
     """按 VECTOR_STORE_BACKEND 返回单例向量库客户端（weaviate/pgvector/milvus）。"""
     name = get_settings().vector_store_backend.strip().lower()
     if name not in _BACKENDS:
-        raise ValueError(
-            f"不支持的 VECTOR_STORE_BACKEND={name!r}，"
-            f"可选: {', '.join(sorted(_BACKENDS))}"
-        )
+        raise ValueError(f"不支持的 VECTOR_STORE_BACKEND={name!r}，可选: {', '.join(sorted(_BACKENDS))}")
     # 延迟 import，避免未启用后端时加载对应客户端 SDK
     if name == "weaviate":
         from app.infra.vector_store.weaviate import WeaviateVectorStore

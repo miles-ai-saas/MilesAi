@@ -3,8 +3,7 @@
 import Link from "next/link";
 import type { AppInstallResult } from "@/lib/types";
 
-export const MARKETPLACE_PAGE_DESC =
-  "浏览并安装已审核上架的应用；可将本租户知识库、流程或智能体打包为应用，审核通过后供其他租户安装。";
+export const MARKETPLACE_PAGE_DESC = "浏览并安装已审核上架的应用；可将本租户知识库、流程或智能体打包为应用，审核通过后供其他租户安装。";
 
 export function MarketplaceStatChip({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
@@ -29,13 +28,7 @@ export function MarketplacePageMessage({ message, onDismiss }: { message: string
   );
 }
 
-export function MarketplaceInstallSuccessBanner({
-  result,
-  onDismiss,
-}: {
-  result: AppInstallResult;
-  onDismiss: () => void;
-}) {
+export function MarketplaceInstallSuccessBanner({ result, onDismiss }: { result: AppInstallResult; onDismiss: () => void }) {
   return (
     <div className="col-span-full rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
       <div className="flex items-start justify-between gap-3">

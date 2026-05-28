@@ -19,11 +19,7 @@ def parse_audio(data: bytes, filename: str) -> str:
     if transcript and transcript.strip():
         return f"[音频转写 · {filename}]\n\n{transcript.strip()}"
 
-    return (
-        f"[音频 · {filename}]\n"
-        "未能转写音频内容。可在 Worker 环境安装 openai-whisper 后重试，"
-        "或先将音频转为文本文件上传。"
-    )
+    return f"[音频 · {filename}]\n未能转写音频内容。可在 Worker 环境安装 openai-whisper 后重试，或先将音频转为文本文件上传。"
 
 
 def _try_whisper(data: bytes, ext: str) -> str | None:

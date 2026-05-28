@@ -82,9 +82,7 @@ async def test_llm_call_with_media_builds_multimodal_message():
         ) as mock_chat,
     ):
         db = MagicMock()
-        db.execute = AsyncMock(
-            return_value=MagicMock(scalar_one_or_none=MagicMock(return_value=model_row))
-        )
+        db.execute = AsyncMock(return_value=MagicMock(scalar_one_or_none=MagicMock(return_value=model_row)))
         session_cls.return_value.__aenter__ = AsyncMock(return_value=db)
         session_cls.return_value.__aexit__ = AsyncMock(return_value=None)
 

@@ -24,19 +24,14 @@ class WorkbenchOverviewService(BaseService):
 
     async def _scalar_count(self, model, *where) -> int:
         """单表 count 查询。"""
-        return int(
-            await self.db.scalar(select(func.count()).select_from(model).where(*where)) or 0
-        )
+        return int(await self.db.scalar(select(func.count()).select_from(model).where(*where)) or 0)
 
     async def _count_models(self) -> int:
         return await self._scalar_count(
             ModelConfig,
             or_(
                 ModelConfig.tenant_id == self.ctx.tenant_id,
-                (
-                    ModelConfig.tenant_id.is_(None)
-                    & (ModelConfig.publish_status == ModelPublishStatus.PUBLISHED.value)
-                ),
+                (ModelConfig.tenant_id.is_(None) & (ModelConfig.publish_status == ModelPublishStatus.PUBLISHED.value)),
             ),
             not_deleted(ModelConfig),
         )

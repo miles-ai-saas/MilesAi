@@ -29,16 +29,7 @@ type Props = {
 
 function AttachIcon({ className }: { className?: string }) {
   return (
-    <svg
-      className={className}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
       <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" />
     </svg>
   );
@@ -67,17 +58,11 @@ export function AgentChatComposer({
     <div className="w-full space-y-2">
       {(pendingMedia.length > 0 || carriedMedia.length > 0) && (
         <div className="space-y-1.5 px-0.5">
-          {carryForwardHint ? (
-            <p className="text-[11px] text-ink-muted">{carryForwardHint}</p>
-          ) : null}
+          {carryForwardHint ? <p className="text-[11px] text-ink-muted">{carryForwardHint}</p> : null}
           <div className="flex flex-wrap gap-1.5">
             {pendingMedia.map((m) => (
               <div key={m.attachment_id} className="relative">
-                <img
-                  src={m.local_preview}
-                  alt={m.filename ?? "待发送"}
-                  className="h-12 w-12 rounded-md object-cover ring-1 ring-line"
-                />
+                <img src={m.local_preview} alt={m.filename ?? "待发送"} className="h-12 w-12 rounded-md object-cover ring-1 ring-line" />
                 <button
                   type="button"
                   className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-ink text-[10px] text-surface"
@@ -95,15 +80,9 @@ export function AgentChatComposer({
                 title={m.filename ?? "上一轮附图"}
               >
                 {m.preview_url ? (
-                  <img
-                    src={m.preview_url}
-                    alt={m.filename ?? "上一轮附图"}
-                    className="h-full w-full object-cover opacity-90"
-                  />
+                  <img src={m.preview_url} alt={m.filename ?? "上一轮附图"} className="h-full w-full object-cover opacity-90" />
                 ) : (
-                  <div className="flex h-full w-full items-center justify-center bg-surface-muted text-[10px] text-ink-faint">
-                    附图
-                  </div>
+                  <div className="flex h-full w-full items-center justify-center bg-surface-muted text-[10px] text-ink-faint">附图</div>
                 )}
               </div>
             ))}

@@ -6,9 +6,7 @@ import { buildPageQuery, DEFAULT_PAGE_SIZE } from "../pagination";
 
 export const tagsApi = {
   listCategories: async (domain: import("../types").CategoryDomain) => {
-    const raw = await get<import("../types").SysCategory[] | null>(
-      `/categories?domain=${domain}`,
-    );
+    const raw = await get<import("../types").SysCategory[] | null>(`/categories?domain=${domain}`);
     return Array.isArray(raw) ? raw : [];
   },
 
@@ -17,5 +15,4 @@ export const tagsApi = {
   createTag: (name: string) => post<TenantTag>("/tags", { name }),
 
   deleteTag: (id: string) => http.delete(`/tags/${id}`).then(() => undefined),
-
 };

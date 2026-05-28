@@ -5,15 +5,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useTraceTurnSelection } from "@/components/agent/AgentTracePanel";
 import { ChatGenerativeStatusBanner } from "@/components/agent/ChatGenerativeStatusBanner";
 import type { PendingChatMedia } from "@/components/agent/AgentChatComposer";
-import {
-  loadChatSidebarPrefs,
-  saveChatSidebarPrefs,
-  type ChatSidebarPrefs,
-} from "@/components/agent/chat-sidebar-layout";
-import {
-  normalizeAgentWorkbenchTab,
-  type AgentWorkbenchTab,
-} from "@/components/agent/agent-workbench-tabs";
+import { loadChatSidebarPrefs, saveChatSidebarPrefs, type ChatSidebarPrefs } from "@/components/agent/chat-sidebar-layout";
+import { normalizeAgentWorkbenchTab, type AgentWorkbenchTab } from "@/components/agent/agent-workbench-tabs";
 import { defaultTraceTurnIndex, listTraceTurns } from "@/lib/agent-trace";
 import { api } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth-store";
@@ -32,26 +25,15 @@ import {
 } from "@/lib/chat-sessions";
 import { useAgentChatWs } from "@/hooks/use-agent-chat-ws";
 import { useGenerativeJobPoll } from "@/hooks/use-generative-job-poll";
-import {
-  extractPendingGenerativeJobs,
-  generativeJobToArtifacts,
-} from "@/lib/generative-jobs";
+import { extractPendingGenerativeJobs, generativeJobToArtifacts } from "@/lib/generative-jobs";
 import { generativeToolBusyLabel } from "@/lib/generative-tool-ui";
-import {
-  CHAT_ATTACHMENT_MAX_COUNT,
-  filterChatUploadFiles,
-} from "@/lib/chat-attachments";
-import {
-  agentCarryForwardMediaEnabled,
-  lastUserMessageMedia,
-  resolveOutgoingChatMedia,
-} from "@/lib/chat-media-forward";
+import { CHAT_ATTACHMENT_MAX_COUNT, filterChatUploadFiles } from "@/lib/chat-attachments";
+import { agentCarryForwardMediaEnabled, lastUserMessageMedia, resolveOutgoingChatMedia } from "@/lib/chat-media-forward";
 import type { ChatAgentResult, ChatArtifact, ChatMediaIn, GenerativeJobOut, PendingToolCall } from "@/lib/types";
 import { useInfiniteList } from "@/hooks/use-infinite-list";
 import { useConfirmAction } from "@/hooks/use-confirm-action";
 
 export function useAgentsChatPage() {
-
   const router = useRouter();
   const searchParams = useSearchParams();
   const agentFromUrl = searchParams.get("agent");
@@ -82,10 +64,7 @@ export function useAgentsChatPage() {
   const [wsGenerativeProgress, setWsGenerativeProgress] = useState<number | null>(null);
   const [wsActiveJobIds, setWsActiveJobIds] = useState<string[]>([]);
 
-  const { wsEnabled, wsReady, client: wsClientRef } = useAgentChatWs(
-    selectedAgent,
-    conversationId,
-  );
+  const { wsEnabled, wsReady, client: wsClientRef } = useAgentChatWs(selectedAgent, conversationId);
 
   const {
     statusMsg: generativePollMsg,
@@ -116,27 +95,27 @@ export function useAgentsChatPage() {
   const { selectedTurnIndex, setSelectedTurnIndex } = useTraceTurnSelection(messages, conversationId);
   const { requestConfirm, confirmDialog } = useConfirmAction();
 
-  const list = useInfiniteList(useCallback((p, s) => api.listAgents(p, s), []), {
-    enabled: ready,
-    pageSize: 30,
-  });
+  const list = useInfiniteList(
+    useCallback((p, s) => api.listAgents(p, s), []),
+    {
+      enabled: ready,
+      pageSize: 30,
+    },
+  );
 
   const refreshSessions = useCallback((agentId: string) => {
     setSessions(listSessions(agentId));
   }, []);
 
-  const loadSessionIntoUi = useCallback(
-    (agentId: string, sessionId: string) => {
-      const session = getSession(agentId, sessionId);
-      if (!session) return;
-      setConversationId(session.id);
-      setMessages([...session.messages]);
-      setSessionTitle(session.title);
-      setQuery("");
-      setPendingMedia([]);
-    },
-    [],
-  );
+  const loadSessionIntoUi = useCallback((agentId: string, sessionId: string) => {
+    const session = getSession(agentId, sessionId);
+    if (!session) return;
+    setConversationId(session.id);
+    setMessages([...session.messages]);
+    setSessionTitle(session.title);
+    setQuery("");
+    setPendingMedia([]);
+  }, []);
 
   const syncAgentUrl = useCallback(
     (agentId: string, convId?: string) => {
@@ -194,9 +173,7 @@ export function useAgentsChatPage() {
   }, [selectedAgent, convFromUrl, refreshSessions, loadSessionIntoUi, syncAgentUrl]);
 
   const selected = list.items.find((a) => a.id === selectedAgent);
-  const carryForwardMedia = agentCarryForwardMediaEnabled(
-    (selected?.config ?? null) as Record<string, unknown> | null,
-  );
+  const carryForwardMedia = agentCarryForwardMediaEnabled((selected?.config ?? null) as Record<string, unknown> | null);
   const carriedMedia = useMemo(() => {
     if (pendingMedia.length > 0 || !carryForwardMedia) return [];
     return lastUserMessageMedia(messages);
@@ -365,14 +342,10 @@ export function useAgentsChatPage() {
 
   const handleWsGenerativeJob = useCallback(
     (job: GenerativeJobOut, phase: "queued" | "progress" | "done") => {
-      setWsActiveJobIds((prev) =>
-        prev.includes(job.id) ? prev : [...prev, job.id],
-      );
+      setWsActiveJobIds((prev) => (prev.includes(job.id) ? prev : [...prev, job.id]));
       if (job.progress_percent != null) setWsGenerativeProgress(job.progress_percent);
       const label = job.progress_message || "生成中…";
-      setWsGenerativeMsg(
-        job.progress_percent != null ? `${label}（${job.progress_percent}%）` : label,
-      );
+      setWsGenerativeMsg(job.progress_percent != null ? `${label}（${job.progress_percent}%）` : label);
       if (phase === "done") {
         setWsActiveJobIds((prev) => prev.filter((id) => id !== job.id));
         if (job.status === "success") {
@@ -390,13 +363,7 @@ export function useAgentsChatPage() {
   );
 
   const applyChatResponse = useCallback(
-    (
-      res: ChatAgentResult,
-      optimistic: ChatMessage[],
-      userText: string,
-      userMedia: ChatMessageMedia[],
-      useWsJobs: boolean,
-    ) => {
+    (res: ChatAgentResult, optimistic: ChatMessage[], userText: string, userMedia: ChatMessageMedia[], useWsJobs: boolean) => {
       setPendingTool(res.pending_tool ?? null);
       if (!useWsJobs) {
         const pendingJobs = [
@@ -404,18 +371,14 @@ export function useAgentsChatPage() {
             jobId: j.jobId,
             kind: j.kind,
           })),
-          ...(res.generative_jobs ?? [])
-            .filter((j) => j.status === "pending")
-            .map((j) => ({ jobId: j.id, kind: j.kind })),
+          ...(res.generative_jobs ?? []).filter((j) => j.status === "pending").map((j) => ({ jobId: j.id, kind: j.kind })),
         ];
         setPollJobs(pendingJobs);
       } else {
         setPollJobs([]);
         const pendingIds = [
           ...extractPendingGenerativeJobs(res.steps).map((j) => j.jobId),
-          ...(res.generative_jobs ?? [])
-            .filter((j) => j.status === "pending")
-            .map((j) => j.id),
+          ...(res.generative_jobs ?? []).filter((j) => j.status === "pending").map((j) => j.id),
         ];
         setWsActiveJobIds(pendingIds);
         if (pendingIds.length) {
@@ -437,15 +400,7 @@ export function useAgentsChatPage() {
         },
       ];
       setMessages(nextMessages);
-      appendTurn(
-        selectedAgent,
-        conversationId,
-        userText,
-        res.answer,
-        res.steps ?? [],
-        res.trace_id,
-        userMedia.length ? userMedia : undefined,
-      );
+      appendTurn(selectedAgent, conversationId, userText, res.answer, res.steps ?? [], res.trace_id, userMedia.length ? userMedia : undefined);
       refreshSessions(selectedAgent);
       const updated = getSession(selectedAgent, conversationId);
       if (updated) setSessionTitle(updated.title);
@@ -459,11 +414,7 @@ export function useAgentsChatPage() {
     const pendingPayload: ChatMediaIn[] = pendingMedia.map((m) => ({
       attachment_id: m.attachment_id,
     }));
-    const { payload: mediaPayload, carriedFromPrevious } = resolveOutgoingChatMedia(
-      pendingPayload,
-      messages,
-      carryForwardMedia,
-    );
+    const { payload: mediaPayload, carriedFromPrevious } = resolveOutgoingChatMedia(pendingPayload, messages, carryForwardMedia);
     if (!userText && mediaPayload.length === 0) return;
 
     const userMedia: ChatMessageMedia[] = pendingMedia.length
@@ -529,21 +480,13 @@ export function useAgentsChatPage() {
       }
     } catch (e) {
       const err = e instanceof Error ? e.message : "对话失败";
-      setMessages([
-        ...optimistic,
-        { role: "assistant", content: err },
-      ]);
+      setMessages([...optimistic, { role: "assistant", content: err }]);
     } finally {
       setChatting(false);
     }
   };
 
-  const chattingStatusLabel =
-    chatting && pendingTool
-      ? generativeToolBusyLabel(pendingTool.slug) ?? "思考中…"
-      : chatting
-        ? "思考中…"
-        : null;
+  const chattingStatusLabel = chatting && pendingTool ? (generativeToolBusyLabel(pendingTool.slug) ?? "思考中…") : chatting ? "思考中…" : null;
 
   const lastTraceId = useMemo(() => {
     for (let i = messages.length - 1; i >= 0; i -= 1) {
@@ -571,15 +514,14 @@ export function useAgentsChatPage() {
     void list.reload();
   }, [list]);
 
-  const generativeStatusEl =
-    generativeStatusMessage ? (
-      <ChatGenerativeStatusBanner
-        message={generativeStatusMessage}
-        progressPercent={generativeProgressValue}
-        canCancel={canCancelGenerative || wsActiveJobIds.length > 0}
-        onCancel={handleCancelGenerative}
-      />
-    ) : null;
+  const generativeStatusEl = generativeStatusMessage ? (
+    <ChatGenerativeStatusBanner
+      message={generativeStatusMessage}
+      progressPercent={generativeProgressValue}
+      canCancel={canCancelGenerative || wsActiveJobIds.length > 0}
+      onCancel={handleCancelGenerative}
+    />
+  ) : null;
 
   const leftSidebarProps = {
     agents: list.items,
@@ -646,21 +588,14 @@ export function useAgentsChatPage() {
             jobId: j.jobId,
             kind: j.kind,
           })),
-          ...(res.generative_jobs ?? [])
-            .filter((j) => j.status === "pending")
-            .map((j) => ({ jobId: j.id, kind: j.kind })),
+          ...(res.generative_jobs ?? []).filter((j) => j.status === "pending").map((j) => ({ jobId: j.id, kind: j.kind })),
         ];
         setPollJobs(pendingJobs);
       } else {
         setPollJobs([]);
       }
       setMessages((prev) => {
-        const withoutEmptyTail =
-          prev.length &&
-          prev[prev.length - 1].role === "assistant" &&
-          !prev[prev.length - 1].content
-            ? prev.slice(0, -1)
-            : prev;
+        const withoutEmptyTail = prev.length && prev[prev.length - 1].role === "assistant" && !prev[prev.length - 1].content ? prev.slice(0, -1) : prev;
         return [
           ...withoutEmptyTail,
           {

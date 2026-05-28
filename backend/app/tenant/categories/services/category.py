@@ -57,9 +57,7 @@ class CategoryService(BaseService):
             raise NotFoundError("分类不存在")
         return row
 
-    async def validate_category_for_domain(
-        self, category_id: UUID | None, domain: CategoryDomain
-    ) -> None:
+    async def validate_category_for_domain(self, category_id: UUID | None, domain: CategoryDomain) -> None:
         """创建/更新资源时校验 category_id 属于全局字典且 domain 一致。"""
         if not category_id:
             return
@@ -81,9 +79,7 @@ class CategoryService(BaseService):
         rows = (await self.db.execute(stmt)).scalars().all()
         return [CategoryOut.model_validate(r) for r in rows]
 
-    async def get_category_name_map(
-        self, domain: CategoryDomain, ids: set[UUID]
-    ) -> dict[UUID, str]:
+    async def get_category_name_map(self, domain: CategoryDomain, ids: set[UUID]) -> dict[UUID, str]:
         """批量解析分类 ID → 展示名。"""
         if not ids:
             return {}

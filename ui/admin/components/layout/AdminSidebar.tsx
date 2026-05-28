@@ -8,40 +8,25 @@ import { AdminNavIcon } from "@/components/layout/AdminNavIcon";
 import { adminApi } from "@/lib/api";
 import { useAdminAuthStore } from "@/lib/auth-store";
 
-function NavLink({
-  item,
-  pathname,
-  onNavigate,
-}: {
-  item: AdminNavItem;
-  pathname: string;
-  onNavigate?: () => void;
-}) {
+function NavLink({ item, pathname, onNavigate }: { item: AdminNavItem; pathname: string; onNavigate?: () => void }) {
   const active = isAdminNavActive(pathname, item.href);
   return (
-    <Link
-      href={item.href}
-      onClick={onNavigate}
-      className={`admin-nav-item ${active ? "admin-nav-item-active" : ""}`}
-    >
+    <Link href={item.href} onClick={onNavigate} className={`admin-nav-item ${active ? "admin-nav-item-active" : ""}`}>
       <AdminNavIcon icon={item.icon} className="h-[18px] w-[18px] shrink-0" />
       <span className="truncate">{item.label}</span>
     </Link>
   );
 }
 
-export function AdminSidebar({
-  pathname,
-  onNavigate,
-}: {
-  pathname: string;
-  onNavigate?: () => void;
-}) {
+export function AdminSidebar({ pathname, onNavigate }: { pathname: string; onNavigate?: () => void }) {
   const role = useAdminAuthStore((s) => s.admin?.role);
   const [reviewMode, setReviewMode] = useState<string | null>(null);
 
   useEffect(() => {
-    adminApi.getMarketplaceReviewMode().then((r) => setReviewMode(r.review_mode)).catch(() => setReviewMode(null));
+    adminApi
+      .getMarketplaceReviewMode()
+      .then((r) => setReviewMode(r.review_mode))
+      .catch(() => setReviewMode(null));
   }, []);
 
   const navGroups: AdminNavGroup[] = ADMIN_NAV.map((group) => ({
@@ -61,9 +46,7 @@ export function AdminSidebar({
       <nav className="flex-1 overflow-y-auto px-3 py-4">
         {navGroups.map((group) => (
           <div key={group.title} className="mb-5 last:mb-0">
-            <p className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
-              {group.title}
-            </p>
+            <p className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{group.title}</p>
             <ul className="space-y-0.5">
               {group.items.map((item) => (
                 <li key={item.href}>

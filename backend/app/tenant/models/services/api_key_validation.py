@@ -50,7 +50,4 @@ def assert_usable_api_key(key: str, *, model_name: str, vendor: str | None) -> N
     try:
         validate_api_key(key, vendor=vendor)
     except BadRequestError as exc:
-        raise BadRequestError(
-            f"模型「{model_name}」的 API Key 无效：{exc.message}。"
-            "请在「模型供应商」配置租户密钥，或联系运营在后台更新平台密钥。"
-        ) from exc
+        raise BadRequestError(f"模型「{model_name}」的 API Key 无效：{exc.message}。请在「模型供应商」配置租户密钥，或联系运营在后台更新平台密钥。") from exc

@@ -92,9 +92,7 @@ class FlowService(BaseService):
         tag_ids: list[UUID] | None = None,
     ) -> PageResult[FlowOut]:
         filters = tenant_filters(self.ctx, Flow.tenant_id)
-        tag_subq = TagService(self.db, self.ctx).entity_id_filter(
-            TagEntityType.FLOW, tag_ids or []
-        )
+        tag_subq = TagService(self.db, self.ctx).entity_id_filter(TagEntityType.FLOW, tag_ids or [])
         if tag_subq is not None:
             filters.append(Flow.id.in_(tag_subq))
         page = await self.repo.list_page(
@@ -103,9 +101,7 @@ class FlowService(BaseService):
             filters=filters,
             order_by=Flow.created_at.desc(),
         )
-        tags_map = await TagService(self.db, self.ctx).get_refs_map(
-            TagEntityType.FLOW, {f.id for f in page.items}
-        )
+        tags_map = await TagService(self.db, self.ctx).get_refs_map(TagEntityType.FLOW, {f.id for f in page.items})
         return PageResult(
             items=[self._to_out(f, tags_map.get(f.id, [])) for f in page.items],
             total=page.total,
@@ -126,14 +122,10 @@ class FlowService(BaseService):
         )
         await self.db.flush()
         if body.tag_ids:
-            await TagService(self.db, self.ctx).replace_entity_tags(
-                TagEntityType.FLOW, flow.id, body.tag_ids
-            )
+            await TagService(self.db, self.ctx).replace_entity_tags(TagEntityType.FLOW, flow.id, body.tag_ids)
         await self._save_version(flow, body.graph_json, remark="初始版本")
         await self.db.refresh(flow)
-        tags_map = await TagService(self.db, self.ctx).get_refs_map(
-            TagEntityType.FLOW, {flow.id}
-        )
+        tags_map = await TagService(self.db, self.ctx).get_refs_map(TagEntityType.FLOW, {flow.id})
         return self._to_out(flow, tags_map.get(flow.id, []))
 
     async def _save_version(self, flow: Flow, graph_json: dict, remark: str | None = None) -> FlowVersion:
@@ -151,9 +143,7 @@ class FlowService(BaseService):
 
     async def get_flow(self, flow_id: UUID) -> FlowOut:
         flow = await self._get_flow_or_raise(flow_id)
-        tags_map = await TagService(self.db, self.ctx).get_refs_map(
-            TagEntityType.FLOW, {flow.id}
-        )
+        tags_map = await TagService(self.db, self.ctx).get_refs_map(TagEntityType.FLOW, {flow.id})
         return self._to_out(flow, tags_map.get(flow.id, []))
 
     async def update_flow(self, flow_id: UUID, body: FlowUpdate) -> FlowOut:
@@ -163,13 +153,9 @@ class FlowService(BaseService):
         await self.repo.update_fields(flow, data)
         await self.db.flush()
         if tag_ids is not None:
-            await TagService(self.db, self.ctx).replace_entity_tags(
-                TagEntityType.FLOW, flow.id, tag_ids
-            )
+            await TagService(self.db, self.ctx).replace_entity_tags(TagEntityType.FLOW, flow.id, tag_ids)
         await self.db.refresh(flow)
-        tags_map = await TagService(self.db, self.ctx).get_refs_map(
-            TagEntityType.FLOW, {flow.id}
-        )
+        tags_map = await TagService(self.db, self.ctx).get_refs_map(TagEntityType.FLOW, {flow.id})
         return self._to_out(flow, tags_map.get(flow.id, []))
 
     async def save_graph(self, flow_id: UUID, body: FlowSaveGraph) -> FlowVersionOut:
@@ -212,9 +198,7 @@ class FlowService(BaseService):
         flow.status = FlowStatus.PUBLISHED
         await self.db.flush()
         await self.db.refresh(flow)
-        tags_map = await TagService(self.db, self.ctx).get_refs_map(
-            TagEntityType.FLOW, {flow.id}
-        )
+        tags_map = await TagService(self.db, self.ctx).get_refs_map(TagEntityType.FLOW, {flow.id})
         return self._to_out(flow, tags_map.get(flow.id, []))
 
     async def run(self, flow_id: UUID, body: FlowRunRequest) -> FlowRunResponse:
@@ -228,9 +212,7 @@ class FlowService(BaseService):
         if not version:
             raise BadRequestError("流程无可用版本")
 
-        query_text = str(
-            body.inputs.get("query") or body.inputs.get("message") or body.inputs.get("input") or ""
-        ).strip()
+        query_text = str(body.inputs.get("query") or body.inputs.get("message") or body.inputs.get("input") or "").strip()
         if not query_text and body.media:
             query_text = "[附图]"
         compliance = ComplianceService(self.db, self.ctx)

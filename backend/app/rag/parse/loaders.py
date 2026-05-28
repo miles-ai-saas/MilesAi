@@ -45,14 +45,10 @@ def _raise_if_office_unparseable(ext: str) -> None:
     backend = get_settings().parse_pdf_backend.strip().lower()
     if backend != "docling":
         raise BadRequestError(
-            "Office 文档解析需将 PARSE_PDF_BACKEND 设为 docling（当前为 pypdf）；"
-            "API 与 Celery Worker 均需安装：pip install 'milesai[parse-docling]'"
+            "Office 文档解析需将 PARSE_PDF_BACKEND 设为 docling（当前为 pypdf）；API 与 Celery Worker 均需安装：pip install 'milesai[parse-docling]'"
         )
     if not docling_available():
-        raise BadRequestError(
-            f"Office 文档解析需要 docling（{ext}），请在 Worker 执行："
-            "pip install 'milesai[parse-docling]'"
-        )
+        raise BadRequestError(f"Office 文档解析需要 docling（{ext}），请在 Worker 执行：pip install 'milesai[parse-docling]'")
 
 
 def _file_ext(filename: str) -> str:
@@ -84,10 +80,7 @@ def load_documents_from_bytes(
 
     try:
         # 多模态：无 OCR/Whisper/ffmpeg 时 parse_* 仍返回占位文本，保证流程可走完
-        if mime_type.startswith("video/") or (
-            _file_ext(filename) in {".mp4", ".mov", ".m4v", ".mkv"}
-            and not mime_type.startswith("audio/")
-        ):
+        if mime_type.startswith("video/") or (_file_ext(filename) in {".mp4", ".mov", ".m4v", ".mkv"} and not mime_type.startswith("audio/")):
             text = parse_video(data, filename)
             return [
                 Document(
@@ -121,9 +114,7 @@ def load_documents_from_bytes(
         # Docling 未安装或失败时，仅 PDF 可继续落到下方 pypdf 分支
         if _use_docling_for(ext, mime_type):
             if not docling_available():
-                logger.warning(
-                    "未安装 docling，回退 pypdf/跳过：pip install 'milesai[parse-docling]'"
-                )
+                logger.warning("未安装 docling，回退 pypdf/跳过：pip install 'milesai[parse-docling]'")
             else:
                 try:
                     return load_documents_with_docling(data, filename, ext or ".pdf")

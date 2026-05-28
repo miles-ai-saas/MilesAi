@@ -28,13 +28,7 @@ interface FlowNodeInspectorProps {
   onChange: (nodeId: string, patch: Record<string, unknown>) => void;
 }
 
-function Field({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="mb-3 block">
       <span className="mb-1 block text-xs font-medium text-ink-muted">{label}</span>
@@ -43,26 +37,14 @@ function Field({
   );
 }
 
-function InspectorForm({
-  node,
-  kbs,
-  models,
-  prompts,
-  toolCatalog,
-  currentFlowId,
-  onChange,
-}: Required<FlowNodeInspectorProps>) {
+function InspectorForm({ node, kbs, models, prompts, toolCatalog, currentFlowId, onChange }: Required<FlowNodeInspectorProps>) {
   const type = node.type as NodeType;
   const data = node.data as Record<string, unknown>;
   const patch = (p: Record<string, unknown>) => onChange(node.id, p);
 
   const labelField = (
     <Field label="显示名称">
-      <input
-        className="input-field w-full text-sm"
-        value={String(data.label ?? "")}
-        onChange={(e) => patch({ label: e.target.value })}
-      />
+      <input className="input-field w-full text-sm" value={String(data.label ?? "")} onChange={(e) => patch({ label: e.target.value })} />
     </Field>
   );
 
@@ -72,11 +54,7 @@ function InspectorForm({
         <>
           {labelField}
           <Field label="输入键 (input_key)">
-            <input
-              className="input-field w-full text-sm"
-              value={String(data.input_key ?? "query")}
-              onChange={(e) => patch({ input_key: e.target.value })}
-            />
+            <input className="input-field w-full text-sm" value={String(data.input_key ?? "query")} onChange={(e) => patch({ input_key: e.target.value })} />
           </Field>
           <Field label="调试默认值 (可选)">
             <input
@@ -100,17 +78,11 @@ function InspectorForm({
               step={0.05}
               className="input-field w-full text-sm"
               value={Number(data.relevance_threshold ?? 0.35)}
-              onChange={(e) =>
-                patch({ relevance_threshold: Number(e.target.value) })
-              }
+              onChange={(e) => patch({ relevance_threshold: Number(e.target.value) })}
             />
           </Field>
           <label className="mb-3 flex items-center gap-2 text-sm text-ink">
-            <input
-              type="checkbox"
-              checked={Boolean(data.use_llm_grade)}
-              onChange={(e) => patch({ use_llm_grade: e.target.checked })}
-            />
+            <input type="checkbox" checked={Boolean(data.use_llm_grade)} onChange={(e) => patch({ use_llm_grade: e.target.checked })} />
             使用 LLM 复核（需配置模型）
           </label>
           {data.use_llm_grade && (
@@ -133,9 +105,7 @@ function InspectorForm({
               </select>
             </Field>
           )}
-          <p className="text-[10px] leading-relaxed text-ink-muted">
-            出边须连 good / poor / none 三支；good 与 poor 通常接生成链，none 接固定回复。
-          </p>
+          <p className="text-[10px] leading-relaxed text-ink-muted">出边须连 good / poor / none 三支；good 与 poor 通常接生成链，none 接固定回复。</p>
         </>
       );
     case "StaticResponse":
@@ -157,13 +127,7 @@ function InspectorForm({
         <>
           {labelField}
           <Field label="知识库 (可选，留空用调试运行所选)">
-            <select
-              className="input-field w-full text-sm"
-              value={String(data.kb_id ?? "")}
-              onChange={(e) =>
-                patch({ kb_id: e.target.value || undefined })
-              }
-            >
+            <select className="input-field w-full text-sm" value={String(data.kb_id ?? "")} onChange={(e) => patch({ kb_id: e.target.value || undefined })}>
               <option value="">— 使用运行上下文 —</option>
               {kbs.map((kb) => (
                 <option key={kb.id} value={kb.id}>
@@ -196,12 +160,8 @@ function InspectorForm({
         </>
       );
     case "PromptTemplate": {
-      const templateSource =
-        (data.template_source as string | undefined) ??
-        (data.prompt_template_id ? "library" : "inline");
-      const selectedPrompt = prompts.find(
-        (p) => p.id === String(data.prompt_template_id ?? ""),
-      );
+      const templateSource = (data.template_source as string | undefined) ?? (data.prompt_template_id ? "library" : "inline");
+      const selectedPrompt = prompts.find((p) => p.id === String(data.prompt_template_id ?? ""));
       const setTemplateSource = (source: "library" | "inline") => {
         if (source === "library") {
           patch({
@@ -212,9 +172,7 @@ function InspectorForm({
           patch({
             template_source: "inline",
             prompt_template_id: undefined,
-            template:
-              data.template ??
-              "基于以下资料回答用户问题。\n\n资料：\n{{检索结果}}\n\n问题：{{用户提问}}",
+            template: data.template ?? "基于以下资料回答用户问题。\n\n资料：\n{{检索结果}}\n\n问题：{{用户提问}}",
           });
         }
       };
@@ -224,21 +182,11 @@ function InspectorForm({
           <Field label="来源">
             <div className="flex flex-col gap-1.5 text-sm">
               <label className="flex cursor-pointer items-center gap-2">
-                <input
-                  type="radio"
-                  name={`prompt-source-${node.id}`}
-                  checked={templateSource === "library"}
-                  onChange={() => setTemplateSource("library")}
-                />
+                <input type="radio" name={`prompt-source-${node.id}`} checked={templateSource === "library"} onChange={() => setTemplateSource("library")} />
                 <span>模板库（运行时引用）</span>
               </label>
               <label className="flex cursor-pointer items-center gap-2">
-                <input
-                  type="radio"
-                  name={`prompt-source-${node.id}`}
-                  checked={templateSource === "inline"}
-                  onChange={() => setTemplateSource("inline")}
-                />
+                <input type="radio" name={`prompt-source-${node.id}`} checked={templateSource === "inline"} onChange={() => setTemplateSource("inline")} />
                 <span>自定义内联</span>
               </label>
             </div>
@@ -275,9 +223,7 @@ function InspectorForm({
                   />
                 </Field>
               ) : (
-                <p className="mb-3 text-xs text-amber-700">
-                  请选择模板库中的提示词；保存后运行时会 live 引用最新 content。
-                </p>
+                <p className="mb-3 text-xs text-amber-700">请选择模板库中的提示词；保存后运行时会 live 引用最新 content。</p>
               )}
             </>
           ) : (
@@ -297,8 +243,7 @@ function InspectorForm({
             </Field>
           )}
           <p className="text-[11px] leading-relaxed text-ink-faint">
-            占位符：{"{{检索结果}}"}、{"{{用户提问}}"}、{"{{query}}"}、{"{{context}}"}。
-            智能体配置中的系统提示词会拼在本模板之前。
+            占位符：{"{{检索结果}}"}、{"{{用户提问}}"}、{"{{query}}"}、{"{{context}}"}。 智能体配置中的系统提示词会拼在本模板之前。
           </p>
         </>
       );
@@ -333,9 +278,7 @@ function InspectorForm({
               step={0.1}
               className="input-field w-full text-sm"
               value={Number(data.temperature ?? 0.7)}
-              onChange={(e) =>
-                patch({ temperature: Number(e.target.value) })
-              }
+              onChange={(e) => patch({ temperature: Number(e.target.value) })}
             />
           </Field>
           <Field label="max_tokens">
@@ -346,9 +289,7 @@ function InspectorForm({
               step={256}
               className="input-field w-full text-sm"
               value={Number(data.max_tokens ?? 2048)}
-              onChange={(e) =>
-                patch({ max_tokens: Number(e.target.value) || 2048 })
-              }
+              onChange={(e) => patch({ max_tokens: Number(e.target.value) || 2048 })}
             />
           </Field>
         </>
@@ -358,11 +299,7 @@ function InspectorForm({
         <>
           {labelField}
           <Field label="模式">
-            <select
-              className="input-field w-full text-sm"
-              value={String(data.mode ?? "has_hits")}
-              onChange={(e) => patch({ mode: e.target.value })}
-            >
+            <select className="input-field w-full text-sm" value={String(data.mode ?? "has_hits")} onChange={(e) => patch({ mode: e.target.value })}>
               {CONDITION_MODES.map((m) => (
                 <option key={m.value} value={m.value}>
                   {m.label}
@@ -379,19 +316,13 @@ function InspectorForm({
                 step={0.05}
                 className="input-field w-full text-sm"
                 value={Number(data.threshold ?? 0.35)}
-                onChange={(e) =>
-                  patch({ threshold: Number(e.target.value) })
-                }
+                onChange={(e) => patch({ threshold: Number(e.target.value) })}
               />
             </Field>
           )}
           {data.mode === "text_contains" && (
             <Field label="关键词">
-              <input
-                className="input-field w-full text-sm"
-                value={String(data.keyword ?? "")}
-                onChange={(e) => patch({ keyword: e.target.value })}
-              />
+              <input className="input-field w-full text-sm" value={String(data.keyword ?? "")} onChange={(e) => patch({ keyword: e.target.value })} />
             </Field>
           )}
         </>
@@ -419,25 +350,13 @@ function InspectorForm({
       return (
         <>
           {labelField}
-          <PlatformToolInspector
-            data={data}
-            catalog={toolCatalog}
-            onPatch={patch}
-          />
+          <PlatformToolInspector data={data} catalog={toolCatalog} onPatch={patch} />
           <label className="mb-3 flex items-center gap-2 text-sm text-ink">
-            <input
-              type="checkbox"
-              checked={data.merge_input !== false}
-              onChange={(e) => patch({ merge_input: e.target.checked })}
-            />
+            <input type="checkbox" checked={data.merge_input !== false} onChange={(e) => patch({ merge_input: e.target.checked })} />
             合并上游输入到 params
           </label>
           <label className="flex items-center gap-2 text-sm text-ink">
-            <input
-              type="checkbox"
-              checked={data.confirmed !== false}
-              onChange={(e) => patch({ confirmed: e.target.checked })}
-            />
+            <input type="checkbox" checked={data.confirmed !== false} onChange={(e) => patch({ confirmed: e.target.checked })} />
             已确认执行 (confirmed)
           </label>
         </>
@@ -446,11 +365,7 @@ function InspectorForm({
       return (
         <>
           {labelField}
-          <SubFlowInspector
-            data={data}
-            currentFlowId={currentFlowId}
-            onChange={patch}
-          />
+          <SubFlowInspector data={data} currentFlowId={currentFlowId} onChange={patch} />
         </>
       );
     case "TextOutput":
@@ -469,11 +384,7 @@ function InspectorForm({
               required
             />
           </InspectorField>
-          {data.model_config_id && (
-            <p className="-mt-2 mb-3 text-[10px] text-ink-muted">
-              已选：{modelLabel(models, data.model_config_id)}
-            </p>
-          )}
+          {data.model_config_id && <p className="-mt-2 mb-3 text-[10px] text-ink-muted">已选：{modelLabel(models, data.model_config_id)}</p>}
           <InspectorField label="固定 prompt（可选，留空则用上游 prompt/input）">
             <textarea
               className="input-field min-h-[72px] w-full text-sm"
@@ -483,11 +394,7 @@ function InspectorForm({
             />
           </InspectorField>
           <InspectorField label="尺寸">
-            <select
-              className="input-field w-full text-sm"
-              value={String(data.size ?? "1024x1024")}
-              onChange={(e) => patch({ size: e.target.value })}
-            >
+            <select className="input-field w-full text-sm" value={String(data.size ?? "1024x1024")} onChange={(e) => patch({ size: e.target.value })}>
               {IMAGE_SIZE_OPTIONS.map((s) => (
                 <option key={s} value={s}>
                   {s}
@@ -531,11 +438,7 @@ function InspectorForm({
               required
             />
           </InspectorField>
-          {data.model_config_id && (
-            <p className="-mt-2 mb-3 text-[10px] text-ink-muted">
-              已选：{modelLabel(models, data.model_config_id)}（万相优先）
-            </p>
-          )}
+          {data.model_config_id && <p className="-mt-2 mb-3 text-[10px] text-ink-muted">已选：{modelLabel(models, data.model_config_id)}（万相优先）</p>}
           <InspectorField label="固定 prompt（可选）">
             <textarea
               className="input-field min-h-[72px] w-full text-sm"
@@ -555,11 +458,7 @@ function InspectorForm({
             />
           </InspectorField>
           <InspectorField label="分辨率">
-            <select
-              className="input-field w-full text-sm"
-              value={String(data.resolution ?? "720P")}
-              onChange={(e) => patch({ resolution: e.target.value })}
-            >
+            <select className="input-field w-full text-sm" value={String(data.resolution ?? "720P")} onChange={(e) => patch({ resolution: e.target.value })}>
               {VIDEO_RESOLUTION_OPTIONS.map((r) => (
                 <option key={r} value={r}>
                   {r}
@@ -584,17 +483,12 @@ function InspectorForm({
             />
           </InspectorField>
           <p className="text-[10px] leading-relaxed text-ink-muted">
-            文生视频仅 prompt。首帧图生视频：首帧 attachment。首尾帧：首帧+尾帧（万相
-            wan2.7-i2v / 豆包 Seedance lite i2v）。
+            文生视频仅 prompt。首帧图生视频：首帧 attachment。首尾帧：首帧+尾帧（万相 wan2.7-i2v / 豆包 Seedance lite i2v）。
           </p>
         </>
       );
     default:
-      return (
-        <p className="text-xs text-ink-muted">
-          节点类型 {String(type)} 暂无属性表单
-        </p>
-      );
+      return <p className="text-xs text-ink-muted">节点类型 {String(type)} 暂无属性表单</p>;
   }
 }
 
@@ -613,9 +507,7 @@ export function FlowNodeInspector(props: FlowNodeInspectorProps) {
     <aside className="flex w-64 shrink-0 flex-col border-l border-line bg-surface sm:w-72">
       <div className="border-b border-line bg-surface-muted/50 px-3 py-2.5">
         <p className="text-xs font-semibold uppercase text-ink-faint">节点属性</p>
-        <p className="mt-1 truncate text-sm font-medium text-ink">
-          {String((node.data as Record<string, unknown>)?.label ?? node.type)}
-        </p>
+        <p className="mt-1 truncate text-sm font-medium text-ink">{String((node.data as Record<string, unknown>)?.label ?? node.type)}</p>
         <p className="font-mono text-[10px] text-ink-faint">{node.type}</p>
       </div>
       <div className="flex-1 overflow-y-auto p-3">
@@ -631,14 +523,9 @@ export type FlowCompileErrorDetail = {
   node_id?: string | null;
 };
 
-export function formatCompileErrors(
-  errors: string[],
-  details?: FlowCompileErrorDetail[],
-): string {
+export function formatCompileErrors(errors: string[], details?: FlowCompileErrorDetail[]): string {
   if (details?.length) {
-    return details
-      .map((d) => (d.node_id ? `[${d.node_id}] ${d.message}` : d.message))
-      .join("\n");
+    return details.map((d) => (d.node_id ? `[${d.node_id}] ${d.message}` : d.message)).join("\n");
   }
   return errors.join("\n");
 }
@@ -649,8 +536,7 @@ function stepOutputLine(s: FlowStep): string {
     const kind = (art as Record<string, unknown>).kind;
     const id = (art as Record<string, unknown>).attachment_id;
     if (kind === "image" || kind === "video") {
-      const short =
-        typeof id === "string" && id.length > 8 ? `${id.slice(0, 8)}…` : id;
+      const short = typeof id === "string" && id.length > 8 ? `${id.slice(0, 8)}…` : id;
       return `\n  → 已生成${kind === "video" ? "视频" : "图片"}（${short}，见上方预览）`;
     }
   }

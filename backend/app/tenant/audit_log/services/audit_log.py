@@ -12,6 +12,7 @@ from app.tenant.audit_log.schemas.meta import AuditMetaOut
 from app.common.schema import PageParams, PageResult
 from app.core.tenant import TenantContext
 
+
 async def write_tenant_audit_log(
     db: AsyncSession,
     ctx: TenantContext,

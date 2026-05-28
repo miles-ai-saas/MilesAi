@@ -46,12 +46,7 @@ export default function LoginPage() {
             <p className="mt-1 text-sm text-ink-muted">使用租户账号登录 AI 工作台</p>
 
             <label className="mb-1 mt-6 block text-sm font-medium text-ink">用户名</label>
-            <input
-              className="input-field mb-4"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              autoComplete="username"
-            />
+            <input className="input-field mb-4" value={username} onChange={(e) => setUsername(e.target.value)} autoComplete="username" />
 
             <label className="mb-1 block text-sm font-medium text-ink">密码</label>
             <input
@@ -62,9 +57,7 @@ export default function LoginPage() {
               autoComplete="current-password"
             />
 
-            {error && (
-              <p className="mb-3 rounded-lg bg-brand-light px-3 py-2 text-sm text-brand-dark">{error}</p>
-            )}
+            {error && <p className="mb-3 rounded-lg bg-brand-light px-3 py-2 text-sm text-brand-dark">{error}</p>}
 
             <button type="submit" disabled={loading} className="btn-primary w-full">
               {loading ? "登录中…" : "进入工作台"}

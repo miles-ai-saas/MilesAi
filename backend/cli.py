@@ -26,6 +26,7 @@ _BACKEND_ROOT = Path(__file__).resolve().parent
 if str(_BACKEND_ROOT) not in sys.path:
     sys.path.insert(0, str(_BACKEND_ROOT))
 
+
 def _seed_choices() -> list[str]:
     from scripts.db_ops import SEED_TARGETS
 
@@ -171,15 +172,9 @@ def backfill_media_assets(
     from scripts.backfill_media_assets import run_backfill_media_assets
 
     tid = UUID(tenant_id) if tenant_id else None
-    stats = asyncio.run(
-        run_backfill_media_assets(tenant_id=tid, dry_run=dry_run, limit=limit)
-    )
+    stats = asyncio.run(run_backfill_media_assets(tenant_id=tid, dry_run=dry_run, limit=limit))
     mode = "dry-run" if dry_run else "committed"
-    click.echo(
-        f">>> backfill-media-assets ({mode}): "
-        f"scanned={stats['scanned']} created={stats['created']} "
-        f"skipped={stats['skipped']} errors={stats['errors']}"
-    )
+    click.echo(f">>> backfill-media-assets ({mode}): scanned={stats['scanned']} created={stats['created']} skipped={stats['skipped']} errors={stats['errors']}")
 
 
 def main() -> None:

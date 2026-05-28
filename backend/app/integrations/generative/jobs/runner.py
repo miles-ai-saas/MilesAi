@@ -51,14 +51,8 @@ async def run_generative_video_job_async(job_id: UUID) -> None:
         await db.commit()
 
         params = job.params or {}
-        purpose = (
-            PURPOSE_FLOW_GENERATED
-            if job.source == "flow_node"
-            else PURPOSE_CHAT_GENERATED
-        )
-        agent_id = _optional_uuid(params.get("agent_id")) or (
-            job.source_ref_id if job.source_ref_type == "agent" else None
-        )
+        purpose = PURPOSE_FLOW_GENERATED if job.source == "flow_node" else PURPOSE_CHAT_GENERATED
+        agent_id = _optional_uuid(params.get("agent_id")) or (job.source_ref_id if job.source_ref_type == "agent" else None)
 
         try:
             prompt = str(params.get("prompt") or "").strip()
@@ -138,14 +132,8 @@ async def run_generative_image_job_async(job_id: UUID) -> None:
         await db.commit()
 
         params = job.params or {}
-        purpose = (
-            PURPOSE_FLOW_GENERATED
-            if job.source == "flow_node"
-            else PURPOSE_CHAT_GENERATED
-        )
-        agent_id = _optional_uuid(params.get("agent_id")) or (
-            job.source_ref_id if job.source_ref_type == "agent" else None
-        )
+        purpose = PURPOSE_FLOW_GENERATED if job.source == "flow_node" else PURPOSE_CHAT_GENERATED
+        agent_id = _optional_uuid(params.get("agent_id")) or (job.source_ref_id if job.source_ref_type == "agent" else None)
 
         try:
             prompt = str(params.get("prompt") or "").strip()
@@ -158,9 +146,7 @@ async def run_generative_image_job_async(job_id: UUID) -> None:
                 db,
                 ctx,
                 model_config_id=_optional_uuid(params.get("model_config_id")),
-                agent_config=params.get("agent_config")
-                if isinstance(params.get("agent_config"), dict)
-                else {},
+                agent_config=params.get("agent_config") if isinstance(params.get("agent_config"), dict) else {},
             )
             result = await generate_image_for_model(
                 db,

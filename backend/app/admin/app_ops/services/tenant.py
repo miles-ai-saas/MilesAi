@@ -75,9 +75,7 @@ class AdminTenantService:
         plan_id: UUID | None = None,
         is_active: bool | None = None,
     ) -> PageResult[AdminTenantOut]:
-        page = await self.repo.list_for_admin(
-            params, status=status, plan_id=plan_id, is_active=is_active
-        )
+        page = await self.repo.list_for_admin(params, status=status, plan_id=plan_id, is_active=is_active)
         plans = await self.repo.plan_names_by_ids({t.plan_id for t in page.items if t.plan_id})
         items = [self._out(t, plans.get(t.plan_id)) for t in page.items]
         return PageResult(items=items, total=page.total, page=page.page, size=page.size)

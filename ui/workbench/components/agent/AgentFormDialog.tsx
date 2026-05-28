@@ -3,29 +3,12 @@
 /** 智能体创建/编辑多步表单（链路 §3 + §4 agent/a2a meta）。 */
 
 import { useEffect, useState } from "react";
-import {
-  AGENT_FORM_STEPS,
-  agentToFormValues,
-  buildAgentConfig,
-  emptyAgentForm,
-  type AgentFormValues,
-} from "@/components/agent/agent-form-shared";
+import { AGENT_FORM_STEPS, agentToFormValues, buildAgentConfig, emptyAgentForm, type AgentFormValues } from "@/components/agent/agent-form-shared";
 import { AgentFormStepContent } from "@/components/agent/AgentFormStepContent";
 import { AgentFormStepper } from "@/components/agent/AgentFormStepper";
 import { ResourceDialog } from "@/components/resource/ResourceDialog";
 import { api } from "@/lib/api";
-import type {
-  Agent,
-  A2aPeer,
-  Flow,
-  KnowledgeBase,
-  McpService,
-  ModelConfig,
-  PromptTemplate,
-  SkillPackage,
-  SysCategory,
-  ToolCatalogItem,
-} from "@/lib/types";
+import type { Agent, A2aPeer, Flow, KnowledgeBase, McpService, ModelConfig, PromptTemplate, SkillPackage, SysCategory, ToolCatalogItem } from "@/lib/types";
 
 export type { AgentFormValues } from "@/components/agent/agent-form-shared";
 
@@ -142,20 +125,10 @@ export function AgentFormDialog({ open, title, agent, onClose, onSaved }: Props)
       footer={
         <div className="flex w-full flex-wrap items-center justify-between gap-3">
           <div className="flex gap-2">
-            <button
-              type="button"
-              className="btn-ghost border border-line"
-              disabled={step === 0}
-              onClick={() => setStep((s) => Math.max(0, s - 1))}
-            >
+            <button type="button" className="btn-ghost border border-line" disabled={step === 0} onClick={() => setStep((s) => Math.max(0, s - 1))}>
               上一步
             </button>
-            <button
-              type="button"
-              className="btn-primary"
-              disabled={busy || !canNext}
-              onClick={goNext}
-            >
+            <button type="button" className="btn-primary" disabled={busy || !canNext} onClick={goNext}>
               {busy ? "保存中…" : isLastStep ? (agent ? "保存" : "创建") : "下一步"}
             </button>
           </div>

@@ -114,12 +114,8 @@ class KnowledgeBaseOut(BaseModel):
     embedding_model_config_id: UUID = Field(description="向量化模型配置 ID")
     embedding_model_name: str | None = Field(default=None, description="向量化模型名称")
     embedding_dimension: int = Field(description="向量维度")
-    visual_embedding_model_config_id: UUID | None = Field(
-        default=None, description="CLIP 视觉向量化模型 ID"
-    )
-    visual_embedding_model_name: str | None = Field(
-        default=None, description="CLIP 视觉向量化模型名称"
-    )
+    visual_embedding_model_config_id: UUID | None = Field(default=None, description="CLIP 视觉向量化模型 ID")
+    visual_embedding_model_name: str | None = Field(default=None, description="CLIP 视觉向量化模型名称")
     chunk_size: int = Field(description="分片大小（字符数）")
     chunk_overlap: int = Field(description="分片重叠长度（字符数）")
     retrieval_mode: str = Field(description="检索策略")

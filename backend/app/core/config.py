@@ -71,6 +71,13 @@ class Settings(BaseSettings):
 
     celery_broker_url: str = "redis://localhost:6379/1"
     celery_result_backend: str = "redis://localhost:6379/2"
+    # 全局任务超时（秒）：soft 触发 SoftTimeLimitExceeded；hard 强制终止 Worker 子进程
+    celery_task_soft_time_limit_sec: int = 3600
+    celery_task_time_limit_sec: int = 3660
+    celery_ingest_soft_time_limit_sec: int = 1800
+    celery_ingest_time_limit_sec: int = 1860
+    celery_generative_soft_time_limit_sec: int = 7200
+    celery_generative_time_limit_sec: int = 7260
 
     # 生视频：True 时工具/流程节点提交 Celery 异步任务；False 时同步阻塞（调试）
     generative_video_async: bool = True
@@ -80,11 +87,7 @@ class Settings(BaseSettings):
     # 工作台智能体对话 WebSocket（关闭时前端回退 HTTP POST /chat）
     agent_chat_websocket_enabled: bool = True
 
-    cors_origins: str = (
-        "http://localhost:3000,http://127.0.0.1:3000,"
-        "http://localhost:3001,http://127.0.0.1:3001,"
-        "http://localhost:3002,http://127.0.0.1:3002"
-    )
+    cors_origins: str = "http://localhost:3000,http://127.0.0.1:3000,http://localhost:3001,http://127.0.0.1:3001,http://localhost:3002,http://127.0.0.1:3002"
 
     # MCP 出站：生产建议 false，禁止连接本机/内网（防 SSRF）
     mcp_allow_private_hosts: bool = True
@@ -140,17 +143,11 @@ class Settings(BaseSettings):
 
     @property
     def database_url(self) -> str:
-        return (
-            f"postgresql+asyncpg://{self.postgres_user}:{self.postgres_password}"
-            f"@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
-        )
+        return f"postgresql+asyncpg://{self.postgres_user}:{self.postgres_password}@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
 
     @property
     def database_url_sync(self) -> str:
-        return (
-            f"postgresql://{self.postgres_user}:{self.postgres_password}"
-            f"@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
-        )
+        return f"postgresql://{self.postgres_user}:{self.postgres_password}@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
 
     @property
     def redis_url(self) -> str:
@@ -161,10 +158,7 @@ class Settings(BaseSettings):
     @property
     def langgraph_redis_url(self) -> str:
         if self.redis_password:
-            return (
-                f"redis://:{self.redis_password}@{self.redis_host}:"
-                f"{self.redis_port}/{self.langgraph_redis_db}"
-            )
+            return f"redis://:{self.redis_password}@{self.redis_host}:{self.redis_port}/{self.langgraph_redis_db}"
         return f"redis://{self.redis_host}:{self.redis_port}/{self.langgraph_redis_db}"
 
     @property
@@ -185,9 +179,8 @@ class Settings(BaseSettings):
 
     @property
     def mcp_runner_command_whitelist_set(self) -> frozenset[str]:
-        return frozenset(
-            c.strip() for c in self.mcp_runner_command_whitelist.split(",") if c.strip()
-        )
+        return frozenset(c.strip() for c in self.mcp_runner_command_whitelist.split(",") if c.strip())
+
 
 @lru_cache
 def get_settings() -> Settings:

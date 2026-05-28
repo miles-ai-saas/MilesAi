@@ -57,7 +57,10 @@ export default function KbPage() {
   const [quotaLoading, setQuotaLoading] = useState(true);
   const [saveError, setSaveError] = useState("");
 
-  const list = usePagedList(useCallback((p, s) => api.listKbs(p, s), []), { enabled: ready });
+  const list = usePagedList(
+    useCallback((p, s) => api.listKbs(p, s), []),
+    { enabled: ready },
+  );
   const { requestConfirm, confirmDialog } = useConfirmAction();
 
   const reloadQuota = useCallback(() => {
@@ -90,19 +93,10 @@ export default function KbPage() {
       .catch(() => {});
   }, [ready]);
 
-  const textEmbeddingModels = useMemo(
-    () => embeddingModels.filter((m) => !isClipModel(m)),
-    [embeddingModels],
-  );
-  const clipModels = useMemo(
-    () => embeddingModels.filter((m) => isClipModel(m)),
-    [embeddingModels],
-  );
+  const textEmbeddingModels = useMemo(() => embeddingModels.filter((m) => !isClipModel(m)), [embeddingModels]);
+  const clipModels = useMemo(() => embeddingModels.filter((m) => isClipModel(m)), [embeddingModels]);
 
-  const filtered = useMemo(
-    () => filterBySearch(list.items, search, (kb) => `${kb.name} ${kb.description ?? ""}`),
-    [list.items, search],
-  );
+  const filtered = useMemo(() => filterBySearch(list.items, search, (kb) => `${kb.name} ${kb.description ?? ""}`), [list.items, search]);
 
   const openCreate = () => {
     setEditing(null);
@@ -194,9 +188,7 @@ export default function KbPage() {
     <>
       {(listError || saveError) && (
         <div className="resource-page-shell mb-4">
-          {listError && (
-            <KbPageAlert tone="error" message={listError} onDismiss={list.clearError} />
-          )}
+          {listError && <KbPageAlert tone="error" message={listError} onDismiss={list.clearError} />}
           {saveError && (
             <div className={listError ? "mt-3" : ""}>
               <KbPageAlert tone="error" message={saveError} onDismiss={() => setSaveError("")} />
@@ -210,27 +202,15 @@ export default function KbPage() {
         searchPlaceholder="搜索知识库名称"
         search={search}
         onSearchChange={setSearch}
-        headerAction={
-          <KbQuotaBar quota={quota} loading={quotaLoading} variant="inline" />
-        }
+        headerAction={<KbQuotaBar quota={quota} loading={quotaLoading} variant="inline" />}
         loading={list.loading}
         footer={
           !list.loading ? (
-            <ResourceListFooter
-              page={list.page}
-              size={list.size}
-              total={list.total}
-              onPageChange={list.setPage}
-              onSizeChange={list.setSize}
-            />
+            <ResourceListFooter page={list.page} size={list.size} total={list.total} onPageChange={list.setPage} onSizeChange={list.setSize} />
           ) : null
         }
       >
-        <AddResourceCard
-          label="添加新知识库"
-          hint="创建知识库并上传文档"
-          onClick={openCreate}
-        />
+        <AddResourceCard label="添加新知识库" hint="创建知识库并上传文档" onClick={openCreate} />
         {!list.loading && search.trim() && filtered.length === 0 && (
           <div className="col-span-full rounded-xl border border-dashed border-line bg-surface-muted/30 px-6 py-10 text-center">
             <p className="text-sm font-medium text-ink">没有匹配的知识库</p>
@@ -245,20 +225,12 @@ export default function KbPage() {
             description={kb.description || "管理文档、检索测试与入库状态"}
             meta={
               <span className="flex flex-wrap gap-1.5 text-ink-faint">
-                <span className="rounded bg-surface-muted px-1.5 py-0.5 text-[11px]">
-                  {kb.embedding_model_name ?? "向量化"}
-                </span>
-                <span className="rounded bg-surface-muted px-1.5 py-0.5 text-[11px]">
-                  {kb.embedding_dimension} 维
-                </span>
+                <span className="rounded bg-surface-muted px-1.5 py-0.5 text-[11px]">{kb.embedding_model_name ?? "向量化"}</span>
+                <span className="rounded bg-surface-muted px-1.5 py-0.5 text-[11px]">{kb.embedding_dimension} 维</span>
                 <span className="rounded bg-brand/10 px-1.5 py-0.5 text-[11px] text-brand">
                   {retrievalModeLabel(kb.retrieval_mode, kbMeta?.retrieval_modes)}
                 </span>
-                {kb.rerank_model_name ? (
-                  <span className="rounded bg-surface-muted px-1.5 py-0.5 text-[11px]">
-                    重排 {kb.rerank_model_name}
-                  </span>
-                ) : null}
+                {kb.rerank_model_name ? <span className="rounded bg-surface-muted px-1.5 py-0.5 text-[11px]">重排 {kb.rerank_model_name}</span> : null}
                 <span className="text-[11px]">
                   分片 {kb.chunk_size ?? DEFAULT_CHUNK_SIZE}/{kb.chunk_overlap ?? DEFAULT_CHUNK_OVERLAP}
                 </span>
@@ -307,21 +279,9 @@ export default function KbPage() {
           </>
         }
       >
-        {saveError && (
-          <KbPageAlert tone="error" message={saveError} onDismiss={() => setSaveError("")} />
-        )}
-        <input
-          className="input-field w-full"
-          placeholder="知识库名称"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-        />
-        <input
-          className="input-field w-full"
-          placeholder="描述（可选）"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-        />
+        {saveError && <KbPageAlert tone="error" message={saveError} onDismiss={() => setSaveError("")} />}
+        <input className="input-field w-full" placeholder="知识库名称" value={name} onChange={(e) => setName(e.target.value)} />
+        <input className="input-field w-full" placeholder="描述（可选）" value={description} onChange={(e) => setDescription(e.target.value)} />
         <div className="grid grid-cols-2 gap-3">
           <label className="block text-xs text-ink-muted">
             分片大小
@@ -353,11 +313,7 @@ export default function KbPage() {
               模型供应商
             </a>
             ）
-            <select
-              className="input-field mt-1 w-full"
-              value={embeddingModelId}
-              onChange={(e) => setEmbeddingModelId(e.target.value)}
-            >
+            <select className="input-field mt-1 w-full" value={embeddingModelId} onChange={(e) => setEmbeddingModelId(e.target.value)}>
               {textEmbeddingModels.map((m) => (
                 <option key={m.id} value={m.id}>
                   {m.name}
@@ -370,17 +326,12 @@ export default function KbPage() {
         )}
         {editing && (
           <p className="text-xs text-ink-faint">
-            向量化模型：{editing.embedding_model_name ?? "—"}（{editing.embedding_dimension}{" "}
-            维），创建后不可修改。
+            向量化模型：{editing.embedding_model_name ?? "—"}（{editing.embedding_dimension} 维），创建后不可修改。
           </p>
         )}
         <label className="block text-xs text-ink-muted">
           CLIP 视觉模型（可选，以图搜图）
-          <select
-            className="input-field mt-1 w-full"
-            value={visualModelId}
-            onChange={(e) => setVisualModelId(e.target.value)}
-          >
+          <select className="input-field mt-1 w-full" value={visualModelId} onChange={(e) => setVisualModelId(e.target.value)}>
             <option value="">不启用</option>
             {clipModels.map((m) => (
               <option key={m.id} value={m.id}>
@@ -392,21 +343,17 @@ export default function KbPage() {
           </select>
         </label>
         {clipModels.length === 0 && (
-          <p className="text-xs text-ink-faint">
-            未找到 CLIP 模型。请执行 model-catalog seed 或在模型页添加 invoke_mode=clip 的 embedding 模型。
-          </p>
+          <p className="text-xs text-ink-faint">未找到 CLIP 模型。请执行 model-catalog seed 或在模型页添加 invoke_mode=clip 的 embedding 模型。</p>
         )}
         <label className="block text-xs text-ink-muted">
           检索策略
-          <select
-            className="input-field mt-1 w-full"
-            value={retrievalMode}
-            onChange={(e) => setRetrievalMode(e.target.value as "vector" | "hybrid")}
-          >
-            {(kbMeta?.retrieval_modes ?? [
-              { value: "vector", label: "纯语义向量" },
-              { value: "hybrid", label: "混合（向量 + 关键词）" },
-            ]).map((o) => (
+          <select className="input-field mt-1 w-full" value={retrievalMode} onChange={(e) => setRetrievalMode(e.target.value as "vector" | "hybrid")}>
+            {(
+              kbMeta?.retrieval_modes ?? [
+                { value: "vector", label: "纯语义向量" },
+                { value: "hybrid", label: "混合（向量 + 关键词）" },
+              ]
+            ).map((o) => (
               <option key={o.value} value={o.value}>
                 {o.label}
                 {o.hint ? ` — ${o.hint}` : ""}
@@ -430,11 +377,7 @@ export default function KbPage() {
         )}
         <label className="block text-xs text-ink-muted">
           重排模型（可选，RAG 精排）
-          <select
-            className="input-field mt-1 w-full"
-            value={rerankModelId}
-            onChange={(e) => setRerankModelId(e.target.value)}
-          >
+          <select className="input-field mt-1 w-full" value={rerankModelId} onChange={(e) => setRerankModelId(e.target.value)}>
             <option value="">不启用</option>
             {rerankModels.map((m) => (
               <option key={m.id} value={m.id}>

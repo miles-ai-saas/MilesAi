@@ -10,13 +10,7 @@ export type AppSection = "workbench" | "system";
 
 export type NavItem = { href: string; label: string };
 
-export type SystemNavIcon =
-  | "users"
-  | "roles"
-  | "sessions"
-  | "quota"
-  | "config"
-  | "audit";
+export type SystemNavIcon = "users" | "roles" | "sessions" | "quota" | "config" | "audit";
 
 export type SystemNavItem = NavItem & {
   icon: SystemNavIcon;
@@ -113,14 +107,10 @@ export const SYSTEM_NAV: { title: string; items: SystemNavItem[] }[] = [
 ];
 
 /** 按用户权限过滤系统管理侧栏（超管见全部）。 */
-export function filterSystemNav(
-  user: UserInfo | null | undefined,
-): { title: string; items: SystemNavItem[] }[] {
+export function filterSystemNav(user: UserInfo | null | undefined): { title: string; items: SystemNavItem[] }[] {
   return SYSTEM_NAV.map((group) => ({
     ...group,
-    items: group.items.filter(
-      (item) => !item.permission || hasPermission(user, item.permission),
-    ),
+    items: group.items.filter((item) => !item.permission || hasPermission(user, item.permission)),
   })).filter((g) => g.items.length > 0);
 }
 
@@ -144,9 +134,7 @@ export function getAppSection(pathname: string): AppSection {
   return "workbench";
 }
 
-export function getNavForSection(
-  section: AppSection,
-): { title: string; items: NavItem[] }[] {
+export function getNavForSection(section: AppSection): { title: string; items: NavItem[] }[] {
   return section === "system" ? SYSTEM_NAV : WORKBENCH_NAV;
 }
 
@@ -162,10 +150,7 @@ export function isNavActive(pathname: string, href: string): boolean {
     return pathname === "/workbench/agents";
   }
   if (href === "/workbench/agents/chat") {
-    return (
-      pathname === "/workbench/agents/chat" ||
-      pathname.startsWith("/workbench/agents/chat/")
-    );
+    return pathname === "/workbench/agents/chat" || pathname.startsWith("/workbench/agents/chat/");
   }
   return pathname === href || pathname.startsWith(`${href}/`);
 }
@@ -184,11 +169,7 @@ const FLOW_EDIT_PATH = /\/workbench\/flows\/[^/]+\/edit\/?$/;
 
 /** 对话工作台、流程画布等全屏页无需 main 内边距 */
 export function isFullBleedPage(pathname: string): boolean {
-  return (
-    pathname === "/workbench/agents/chat" ||
-    pathname.startsWith("/workbench/agents/chat/") ||
-    FLOW_EDIT_PATH.test(pathname)
-  );
+  return pathname === "/workbench/agents/chat" || pathname.startsWith("/workbench/agents/chat/") || FLOW_EDIT_PATH.test(pathname);
 }
 
 /** 流程画布编辑页占满 header 以下区域（main 不滚动） */

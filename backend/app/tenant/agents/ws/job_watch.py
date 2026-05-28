@@ -81,9 +81,7 @@ def spawn_job_watchers(
         task.add_done_callback(tasks.discard)
 
 
-async def cancel_generative_job_ws(
-    db: AsyncSession, ctx: TenantContext, job_id: UUID
-) -> GenerativeJobOut:
+async def cancel_generative_job_ws(db: AsyncSession, ctx: TenantContext, job_id: UUID) -> GenerativeJobOut:
     svc = GenerativeJobService(db, ctx)
     job = await svc.cancel_job(job_id)
     return GenerativeJobOut.model_validate(job)

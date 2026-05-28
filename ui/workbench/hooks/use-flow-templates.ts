@@ -33,8 +33,7 @@ export function useFlowTemplates(enabled = true) {
 
   const list = templates ?? [];
   const insertable = list.filter((t) => t.insertable);
-  const defaultTemplate =
-    list.find((t) => t.id === "rag") ?? list.find((t) => t.id !== "blank") ?? null;
+  const defaultTemplate = list.find((t) => t.id === "rag") ?? list.find((t) => t.id !== "blank") ?? null;
 
   return { templates: list, insertable, defaultTemplate, loading };
 }

@@ -36,11 +36,7 @@ class DocumentChunkRepository(BaseRepository[DocumentChunk]):
         """批量统计各文档分片数（用于列表展示 chunk_count）。"""
         if not document_ids:
             return {}
-        stmt = (
-            select(DocumentChunk.document_id, func.count())
-            .where(DocumentChunk.document_id.in_(document_ids))
-            .group_by(DocumentChunk.document_id)
-        )
+        stmt = select(DocumentChunk.document_id, func.count()).where(DocumentChunk.document_id.in_(document_ids)).group_by(DocumentChunk.document_id)
         rows = (await self.db.execute(stmt)).all()
         return {doc_id: int(count) for doc_id, count in rows}
 
@@ -53,7 +49,5 @@ class VectorRefRepository(BaseRepository[VectorRef]):
 
     async def list_by_document(self, document_id: UUID) -> list[VectorRef]:
         """列出某文档下所有分片的向量引用。"""
-        result = await self.db.execute(
-            select(VectorRef).join(DocumentChunk).where(DocumentChunk.document_id == document_id)
-        )
+        result = await self.db.execute(select(VectorRef).join(DocumentChunk).where(DocumentChunk.document_id == document_id))
         return list(result.scalars().all())

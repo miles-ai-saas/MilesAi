@@ -78,18 +78,11 @@ export function TagManageDialog({ open, onClose }: Props) {
         </div>
         {msg ? <p className="text-sm text-red-600">{msg}</p> : null}
         <ul className="divide-y divide-line rounded-lg border border-line">
-          {items.length === 0 ? (
-            <li className="px-3 py-4 text-center text-xs text-ink-muted">暂无标签</li>
-          ) : null}
+          {items.length === 0 ? <li className="px-3 py-4 text-center text-xs text-ink-muted">暂无标签</li> : null}
           {items.map((t) => (
             <li key={t.id} className="flex items-center justify-between gap-2 px-3 py-2 text-sm">
               <span>{t.name}</span>
-              <button
-                type="button"
-                className="text-xs text-red-600 hover:underline"
-                disabled={busy}
-                onClick={() => void onDelete(t)}
-              >
+              <button type="button" className="text-xs text-red-600 hover:underline" disabled={busy} onClick={() => void onDelete(t)}>
                 删除
               </button>
             </li>

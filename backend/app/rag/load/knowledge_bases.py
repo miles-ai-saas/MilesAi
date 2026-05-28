@@ -32,14 +32,18 @@ async def load_kbs_for_tenant(
         return []
     uuids = [UUID(str(i)) for i in kb_ids]
     rows = (
-        await db.execute(
-            select(KnowledgeBase).where(
-                KnowledgeBase.tenant_id == tenant_id,
-                KnowledgeBase.id.in_(uuids),
-                not_deleted(KnowledgeBase),
+        (
+            await db.execute(
+                select(KnowledgeBase).where(
+                    KnowledgeBase.tenant_id == tenant_id,
+                    KnowledgeBase.id.in_(uuids),
+                    not_deleted(KnowledgeBase),
+                )
             )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     found = {kb.id for kb in rows}
     missing = [uid for uid in uuids if uid not in found]
     if missing:

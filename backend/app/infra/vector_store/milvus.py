@@ -96,22 +96,12 @@ def _record_to_row(record: ChunkVectorRecord) -> dict[str, Any]:
 def _required_insert_fields(client: MilvusClient, collection_name: str) -> list[str]:
     """列出 insert 必填标量字段（不含 vector）。"""
     desc = client.describe_collection(collection_name)
-    return [
-        f["name"]
-        for f in desc["fields"]
-        if f["name"] != VECTOR_FIELD
-    ]
+    return [f["name"] for f in desc["fields"] if f["name"] != VECTOR_FIELD]
 
 
-def _assert_row_matches_schema(
-    client: MilvusClient, collection_name: str, row: dict[str, Any]
-) -> None:
+def _assert_row_matches_schema(client: MilvusClient, collection_name: str, row: dict[str, Any]) -> None:
     """写入前校验行字段齐全，避免 Milvus 报缺 tenant_id 等。"""
-    missing = [
-        name
-        for name in _required_insert_fields(client, collection_name)
-        if name not in row or row[name] is None
-    ]
+    missing = [name for name in _required_insert_fields(client, collection_name) if name not in row or row[name] is None]
     if missing:
         raise AppError(
             f"Milvus 写入缺少必填字段: {missing}",

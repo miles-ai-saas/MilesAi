@@ -42,11 +42,7 @@ class AdminMarketplaceReviewService:
         )
 
     async def _get_app_or_raise(self, app_id: UUID) -> MarketplaceApp:
-        app = await self.db.scalar(
-            select(MarketplaceApp)
-            .where(MarketplaceApp.id == app_id)
-            .options(selectinload(MarketplaceApp.category))
-        )
+        app = await self.db.scalar(select(MarketplaceApp).where(MarketplaceApp.id == app_id).options(selectinload(MarketplaceApp.category)))
         if not app:
             raise NotFoundError("应用不存在")
         return app
@@ -80,9 +76,7 @@ class AdminMarketplaceReviewService:
     async def approve(self, app_id: UUID, *, admin_id: UUID) -> MarketplaceAppOut:
         await require_platform_review_allowed(self.db)
         app = await self._get_app_or_raise(app_id)
-        await approve_marketplace_app(
-            self.db, app, reviewer_type="admin", reviewer_admin_id=admin_id
-        )
+        await approve_marketplace_app(self.db, app, reviewer_type="admin", reviewer_admin_id=admin_id)
         await self.db.refresh(app, ["category"])
         return self._app_out(app)
 

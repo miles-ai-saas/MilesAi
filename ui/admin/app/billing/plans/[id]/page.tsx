@@ -31,15 +31,7 @@ function fromPlan(p: BillingPlan): PlanForm {
   };
 }
 
-function Field({
-  label,
-  hint,
-  children,
-}: {
-  label: string;
-  hint?: string;
-  children: ReactNode;
-}) {
+function Field({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
   return (
     <label className="block">
       <span className="mb-1 block text-xs font-medium text-ink-muted">{label}</span>
@@ -61,10 +53,7 @@ export default function BillingPlanDetailPage() {
   const [saving, setSaving] = useState(false);
 
   const reload = async () => {
-    const [p, t] = await Promise.all([
-      adminApi.getPlan(id),
-      adminApi.listTenants(1, 10, undefined, id),
-    ]);
+    const [p, t] = await Promise.all([adminApi.getPlan(id), adminApi.listTenants(1, 10, undefined, id)]);
     setPlan(p);
     setForm(fromPlan(p));
     setTenants(t.items);
@@ -126,9 +115,7 @@ export default function BillingPlanDetailPage() {
         badges={
           <>
             <span className="badge bg-brand-light font-mono text-xs text-ink">{plan.code}</span>
-            <span
-              className={`status-badge ${plan.is_active ? "status-badge-published" : "status-badge-deprecated"}`}
-            >
+            <span className={`status-badge ${plan.is_active ? "status-badge-published" : "status-badge-deprecated"}`}>
               {plan.is_active ? "启用中" : "已停用"}
             </span>
           </>
@@ -174,11 +161,7 @@ export default function BillingPlanDetailPage() {
             <h2 className="text-sm font-semibold text-ink">基本信息</h2>
             <div className="mt-4 space-y-3">
               <Field label="套餐名称">
-                <input
-                  className="input-field"
-                  value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
-                />
+                <input className="input-field" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
               </Field>
               <Field label="描述">
                 <textarea
@@ -188,29 +171,21 @@ export default function BillingPlanDetailPage() {
                 />
               </Field>
               <Field label="月费（元）">
-                <input
-                  className="input-field max-w-[12rem]"
-                  value={form.price_monthly}
-                  onChange={(e) => setForm({ ...form, price_monthly: e.target.value })}
-                />
+                <input className="input-field max-w-[12rem]" value={form.price_monthly} onChange={(e) => setForm({ ...form, price_monthly: e.target.value })} />
               </Field>
             </div>
           </section>
 
           <section className="card p-5">
             <h2 className="text-sm font-semibold text-ink">默认配额</h2>
-            <p className="mt-1 text-xs cell-muted">
-              租户绑定此套餐时将同步以下上限（可在租户详情单独调整）。
-            </p>
+            <p className="mt-1 text-xs cell-muted">租户绑定此套餐时将同步以下上限（可在租户详情单独调整）。</p>
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               <Field label="Token 月额度">
                 <input
                   type="number"
                   className="input-field"
                   value={form.max_tokens_monthly}
-                  onChange={(e) =>
-                    setForm({ ...form, max_tokens_monthly: Number(e.target.value) })
-                  }
+                  onChange={(e) => setForm({ ...form, max_tokens_monthly: Number(e.target.value) })}
                 />
               </Field>
               <Field label="存储 MB">
@@ -218,9 +193,7 @@ export default function BillingPlanDetailPage() {
                   type="number"
                   className="input-field"
                   value={form.max_storage_mb}
-                  onChange={(e) =>
-                    setForm({ ...form, max_storage_mb: Number(e.target.value) })
-                  }
+                  onChange={(e) => setForm({ ...form, max_storage_mb: Number(e.target.value) })}
                 />
               </Field>
               <Field label="知识库数量">
@@ -228,9 +201,7 @@ export default function BillingPlanDetailPage() {
                   type="number"
                   className="input-field"
                   value={form.max_knowledge_bases}
-                  onChange={(e) =>
-                    setForm({ ...form, max_knowledge_bases: Number(e.target.value) })
-                  }
+                  onChange={(e) => setForm({ ...form, max_knowledge_bases: Number(e.target.value) })}
                 />
               </Field>
               <Field label="智能体数量">
@@ -242,12 +213,7 @@ export default function BillingPlanDetailPage() {
                 />
               </Field>
               <Field label="流程数量">
-                <input
-                  type="number"
-                  className="input-field"
-                  value={form.max_flows}
-                  onChange={(e) => setForm({ ...form, max_flows: Number(e.target.value) })}
-                />
+                <input type="number" className="input-field" value={form.max_flows} onChange={(e) => setForm({ ...form, max_flows: Number(e.target.value) })} />
               </Field>
             </div>
           </section>
@@ -256,14 +222,8 @@ export default function BillingPlanDetailPage() {
         <aside className="space-y-4">
           <section className="card p-5">
             <h2 className="text-sm font-semibold text-ink">状态</h2>
-            <p className="mt-1 text-xs cell-muted">
-              停用后不可新绑租户；已绑定租户不受影响。
-            </p>
-            <button
-              type="button"
-              className="btn-ghost mt-4 w-full"
-              onClick={() => void onToggleActive()}
-            >
+            <p className="mt-1 text-xs cell-muted">停用后不可新绑租户；已绑定租户不受影响。</p>
+            <button type="button" className="btn-ghost mt-4 w-full" onClick={() => void onToggleActive()}>
               {plan.is_active ? "停用套餐" : "重新启用"}
             </button>
           </section>
@@ -284,7 +244,9 @@ export default function BillingPlanDetailPage() {
               </ul>
             )}
             {tenantTotal > tenants.length && (
-              <p className="mt-2 text-xs cell-muted">共 {tenantTotal} 个，仅展示前 {tenants.length} 个</p>
+              <p className="mt-2 text-xs cell-muted">
+                共 {tenantTotal} 个，仅展示前 {tenants.length} 个
+              </p>
             )}
           </section>
         </aside>

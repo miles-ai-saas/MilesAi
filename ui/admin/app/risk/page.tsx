@@ -25,17 +25,26 @@ export default function RiskPage() {
   const [ruleMsg, setRuleMsg] = useState("");
   const [ruleErr, setRuleErr] = useState("");
 
-  const events = usePagedList(useCallback((p, s) => adminApi.listRiskEvents(p, s), []), {
-    enabled: ready,
-  });
+  const events = usePagedList(
+    useCallback((p, s) => adminApi.listRiskEvents(p, s), []),
+    {
+      enabled: ready,
+    },
+  );
 
-  const ips = usePagedList(useCallback((p, s) => adminApi.listIpBlacklist(p, s), []), {
-    enabled: ready,
-  });
+  const ips = usePagedList(
+    useCallback((p, s) => adminApi.listIpBlacklist(p, s), []),
+    {
+      enabled: ready,
+    },
+  );
 
-  const rules = usePagedList(useCallback((p, s) => adminApi.listRateLimits(p, s), []), {
-    enabled: ready,
-  });
+  const rules = usePagedList(
+    useCallback((p, s) => adminApi.listRateLimits(p, s), []),
+    {
+      enabled: ready,
+    },
+  );
 
   const onCreateRule = async () => {
     setRuleErr("");
@@ -155,18 +164,8 @@ export default function RiskPage() {
       <section className="card p-4">
         <h2 className="text-sm font-semibold text-ink">IP 黑名单</h2>
         <div className="mt-3 flex flex-wrap gap-2">
-          <input
-            className="input-field max-w-xs"
-            placeholder="IP 地址"
-            value={newIp}
-            onChange={(e) => setNewIp(e.target.value)}
-          />
-          <input
-            className="input-field max-w-xs"
-            placeholder="封禁原因（可选）"
-            value={ipReason}
-            onChange={(e) => setIpReason(e.target.value)}
-          />
+          <input className="input-field max-w-xs" placeholder="IP 地址" value={newIp} onChange={(e) => setNewIp(e.target.value)} />
+          <input className="input-field max-w-xs" placeholder="封禁原因（可选）" value={ipReason} onChange={(e) => setIpReason(e.target.value)} />
           <button
             type="button"
             className="btn-primary"
@@ -207,14 +206,7 @@ export default function RiskPage() {
                 </li>
               ))}
             </ul>
-            <ListFooter
-              className="mt-3"
-              page={ips.page}
-              size={ips.size}
-              total={ips.total}
-              onPageChange={ips.setPage}
-              onSizeChange={ips.setSize}
-            />
+            <ListFooter className="mt-3" page={ips.page} size={ips.size} total={ips.total} onPageChange={ips.setPage} onSizeChange={ips.setSize} />
           </>
         )}
       </section>
@@ -293,11 +285,7 @@ export default function RiskPage() {
                       <td className="cell-mono cell-muted">{r.path_pattern}</td>
                       <td className="col-center col-numeric cell-numeric">{r.limit_per_minute}/min</td>
                       <td className="col-center">
-                        {r.is_active ? (
-                          <span className="text-emerald-600">启用</span>
-                        ) : (
-                          <span className="text-amber-600">停用</span>
-                        )}
+                        {r.is_active ? <span className="text-emerald-600">启用</span> : <span className="text-amber-600">停用</span>}
                       </td>
                       <td className="col-actions">
                         <button type="button" className="text-brand hover:underline" onClick={() => openEditRule(r)}>
@@ -312,14 +300,7 @@ export default function RiskPage() {
                 </tbody>
               </table>
             </div>
-            <ListFooter
-              className="mt-3"
-              page={rules.page}
-              size={rules.size}
-              total={rules.total}
-              onPageChange={rules.setPage}
-              onSizeChange={rules.setSize}
-            />
+            <ListFooter className="mt-3" page={rules.page} size={rules.size} total={rules.total} onPageChange={rules.setPage} onSizeChange={rules.setSize} />
           </>
         )}
       </section>

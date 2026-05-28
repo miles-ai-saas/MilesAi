@@ -7,8 +7,7 @@ export const metaApi = {
 
   getFlowMeta: () => get<import("../types").FlowMeta>("/flows/meta"),
 
-  getFlowTemplates: () =>
-    get<import("../types").FlowTemplatesResponse>("/flows/templates"),
+  getFlowTemplates: () => get<import("../types").FlowTemplatesResponse>("/flows/templates"),
 
   getKbMeta: () => get<import("../types").KbMeta>("/kb/meta"),
 

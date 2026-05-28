@@ -61,9 +61,7 @@ async def _purge_deprecated_categories(session: AsyncSession) -> int:
         return 0
     ids = [row.id for row in rows]
     for model in (Agent, PromptTemplate, SkillPackage, Tool):
-        await session.execute(
-            update(model).where(model.category_id.in_(ids)).values(category_id=None)
-        )
+        await session.execute(update(model).where(model.category_id.in_(ids)).values(category_id=None))
     for row in rows:
         await mark_deleted(session, row)
     return len(rows)

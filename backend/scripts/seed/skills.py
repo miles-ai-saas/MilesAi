@@ -343,9 +343,7 @@ async def seed_skills_for_tenant(session: AsyncSession, tenant_id) -> tuple[int,
     created = 0
     files_added = 0
     for spec in SEED_SKILL_PACKAGES:
-        category_id = await category_id_by_slug(
-            session, CategoryDomain.SKILL, spec.get("category_slug")
-        )
+        category_id = await category_id_by_slug(session, CategoryDomain.SKILL, spec.get("category_slug"))
         row, is_new = await _get_or_create_skill(
             session,
             tenant_id,
@@ -371,7 +369,4 @@ async def seed_skills(session: AsyncSession) -> None:
         created, added = await seed_skills_for_tenant(session, tenant_id)
         total_created += created
         total_files += added
-    print(
-        f">>> skills seed: created {total_created} skill package(s), "
-        f"added {total_files} file(s) across tenants"
-    )
+    print(f">>> skills seed: created {total_created} skill package(s), added {total_files} file(s) across tenants")

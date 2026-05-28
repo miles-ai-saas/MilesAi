@@ -1,10 +1,4 @@
-import type {
-  KbQuota,
-  KnowledgeBase,
-  Document,
-  DocumentChunk,
-  KbSearchLog,
-} from "../types";
+import type { KbQuota, KnowledgeBase, Document, DocumentChunk, KbSearchLog } from "../types";
 import type { ApiResponse } from "../types";
 import { get, getPage, post, put, patch, http, unwrap } from "./client";
 import { appendTagIds } from "./query";
@@ -13,8 +7,7 @@ import { buildPageQuery, DEFAULT_PAGE_SIZE } from "../pagination";
 export const kbApi = {
   getKbQuota: () => get<KbQuota>("/kb/quota"),
 
-  listKbs: (page = 1, size = DEFAULT_PAGE_SIZE) =>
-    getPage<KnowledgeBase>(`/kb?${buildPageQuery(page, size)}`),
+  listKbs: (page = 1, size = DEFAULT_PAGE_SIZE) => getPage<KnowledgeBase>(`/kb?${buildPageQuery(page, size)}`),
 
   createKb: (payload: {
     name: string;
@@ -50,13 +43,10 @@ export const kbApi = {
 
   getKb: (kbId: string) => get<KnowledgeBase>(`/kb/${kbId}`),
 
-  listDocuments: (kbId: string, page = 1, size = DEFAULT_PAGE_SIZE) =>
-    getPage<Document>(`/kb/${kbId}/documents?${buildPageQuery(page, size)}`),
+  listDocuments: (kbId: string, page = 1, size = DEFAULT_PAGE_SIZE) => getPage<Document>(`/kb/${kbId}/documents?${buildPageQuery(page, size)}`),
 
   listDocumentChunks: (kbId: string, documentId: string, page = 1, size = 20) =>
-    getPage<DocumentChunk>(
-      `/kb/${kbId}/documents/${documentId}/chunks?${buildPageQuery(page, size)}`,
-    ),
+    getPage<DocumentChunk>(`/kb/${kbId}/documents/${documentId}/chunks?${buildPageQuery(page, size)}`),
 
   uploadDocument: async (kbId: string, file: File) => {
     const form = new FormData();
@@ -77,14 +67,11 @@ export const kbApi = {
   },
 
   deleteDocument: (kbId: string, documentId: string) =>
-    http
-      .delete<ApiResponse<null>>(`/kb/${kbId}/documents/${documentId}`)
-      .then((res) => {
-        unwrap(res.data);
-      }),
+    http.delete<ApiResponse<null>>(`/kb/${kbId}/documents/${documentId}`).then((res) => {
+      unwrap(res.data);
+    }),
 
-  retryDocument: (kbId: string, documentId: string) =>
-    post<Document>(`/kb/${kbId}/documents/${documentId}/retry`),
+  retryDocument: (kbId: string, documentId: string) => post<Document>(`/kb/${kbId}/documents/${documentId}/retry`),
 
   searchKb: (
     kbId: string,
@@ -119,7 +106,5 @@ export const kbApi = {
       ...(opts?.visual_search ? { visual_search: true } : {}),
     }),
 
-  listKbSearchLogs: (kbId: string, page = 1, size = DEFAULT_PAGE_SIZE) =>
-    getPage<KbSearchLog>(`/kb/${kbId}/search-logs?${buildPageQuery(page, size)}`),
-
+  listKbSearchLogs: (kbId: string, page = 1, size = DEFAULT_PAGE_SIZE) => getPage<KbSearchLog>(`/kb/${kbId}/search-logs?${buildPageQuery(page, size)}`),
 };

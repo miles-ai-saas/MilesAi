@@ -8,35 +8,17 @@ import { SystemNavIcon } from "@/components/layout/SystemNavIcon";
 import { filterSystemNav, isNavActive, type SystemNavItem } from "@/lib/nav-config";
 import { useAuthStore } from "@/lib/auth-store";
 
-function NavLink({
-  item,
-  pathname,
-  onNavigate,
-}: {
-  item: SystemNavItem;
-  pathname: string;
-  onNavigate?: () => void;
-}) {
+function NavLink({ item, pathname, onNavigate }: { item: SystemNavItem; pathname: string; onNavigate?: () => void }) {
   const active = isNavActive(pathname, item.href);
   return (
-    <Link
-      href={item.href}
-      onClick={onNavigate}
-      className={`nav-item ${active ? "nav-item-active" : "hover:bg-surface-muted"}`}
-    >
+    <Link href={item.href} onClick={onNavigate} className={`nav-item ${active ? "nav-item-active" : "hover:bg-surface-muted"}`}>
       <SystemNavIcon icon={item.icon} className="h-[18px] w-[18px] shrink-0" />
       <span className="truncate">{item.label}</span>
     </Link>
   );
 }
 
-export function SystemSidebar({
-  pathname,
-  onNavigate,
-}: {
-  pathname: string;
-  onNavigate?: () => void;
-}) {
+export function SystemSidebar({ pathname, onNavigate }: { pathname: string; onNavigate?: () => void }) {
   const user = useAuthStore((s) => s.user);
   const navGroups = filterSystemNav(user);
 
@@ -49,9 +31,7 @@ export function SystemSidebar({
       <nav className="flex-1 overflow-y-auto px-3 py-4">
         {navGroups.map((group) => (
           <div key={group.title} className="mb-5 last:mb-0">
-            <p className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
-              {group.title}
-            </p>
+            <p className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{group.title}</p>
             <ul className="space-y-0.5">
               {group.items.map((item) => (
                 <li key={item.href}>

@@ -48,10 +48,12 @@ def search(query: str, max_results: int = 5) -> dict:
             if label and value:
                 content_parts.append(f"{label}: {value}")
         if content_parts:
-            results.append({
-                "title": infobox.get("meta", {}).get("value", ""),
-                "snippet": "; ".join(content_parts),
-                "url": "",
-            })
+            results.append(
+                {
+                    "title": infobox.get("meta", {}).get("value", ""),
+                    "snippet": "; ".join(content_parts),
+                    "url": "",
+                }
+            )
 
     return {"results": results[:max_results]}

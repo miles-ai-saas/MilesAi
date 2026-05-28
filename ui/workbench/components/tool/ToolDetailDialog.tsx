@@ -88,9 +88,7 @@ function ConfigSection({ detail }: { detail: CustomTool }) {
         {Object.keys(headers).length === 0 ? (
           <span className="text-ink-muted">无</span>
         ) : (
-          <pre className="overflow-x-auto rounded-lg border border-line bg-surface-muted/40 p-2 font-mono text-xs">
-            {JSON.stringify(headers, null, 2)}
-          </pre>
+          <pre className="overflow-x-auto rounded-lg border border-line bg-surface-muted/40 p-2 font-mono text-xs">{JSON.stringify(headers, null, 2)}</pre>
         )}
       </DetailRow>
     </section>
@@ -161,30 +159,19 @@ export function ToolDetailDialog({ open, item, toolsMeta, onClose, onTest, onEdi
     >
       <dl>
         <DetailRow label="来源">{toolSourceLabel(item.source, toolsMeta)}</DetailRow>
-        {item.tool_type && (
-          <DetailRow label="类型">{toolKindLabel(item.tool_type, toolsMeta)}</DetailRow>
-        )}
+        {item.tool_type && <DetailRow label="类型">{toolKindLabel(item.tool_type, toolsMeta)}</DetailRow>}
         {item.version && <DetailRow label="版本">v{item.version}</DetailRow>}
-        {(item.category_name || detail?.category_name) && (
-          <DetailRow label="分类">{item.category_name ?? detail?.category_name}</DetailRow>
-        )}
+        {(item.category_name || detail?.category_name) && <DetailRow label="分类">{item.category_name ?? detail?.category_name}</DetailRow>}
         <DetailRow label="需确认">{item.require_confirmation ? "是" : "否"}</DetailRow>
         {updatedLabel && <DetailRow label="更新时间">{updatedLabel}</DetailRow>}
         <DetailRow label="描述">
-          {item.description ? (
-            <p className="whitespace-pre-wrap leading-relaxed">{item.description}</p>
-          ) : (
-            <span className="text-ink-muted">—</span>
-          )}
+          {item.description ? <p className="whitespace-pre-wrap leading-relaxed">{item.description}</p> : <span className="text-ink-muted">—</span>}
         </DetailRow>
         {detail?.tags && detail.tags.length > 0 && (
           <DetailRow label="标签">
             <div className="flex flex-wrap gap-1.5">
               {detail.tags.map((t) => (
-                <span
-                  key={t.id}
-                  className="rounded border border-line bg-surface-muted px-2 py-0.5 text-xs text-ink-muted"
-                >
+                <span key={t.id} className="rounded border border-line bg-surface-muted px-2 py-0.5 text-xs text-ink-muted">
                   {t.name}
                 </span>
               ))}

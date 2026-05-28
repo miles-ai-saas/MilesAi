@@ -74,34 +74,18 @@ async def ensure_tenant_permissions(session: AsyncSession) -> None:
         perm_by_code[code] = row
 
     async def _grant_role(role: Role, codes: set[str]) -> None:
-        linked = set(
-            await session.scalars(
-                select(role_permissions.c.permission_id).where(
-                    role_permissions.c.role_id == role.id
-                )
-            )
-        )
+        linked = set(await session.scalars(select(role_permissions.c.permission_id).where(role_permissions.c.role_id == role.id)))
         for code in codes:
             perm = perm_by_code.get(code)
             if perm and perm.id not in linked:
-                await session.execute(
-                    role_permissions.insert().values(
-                        role_id=role.id, permission_id=perm.id
-                    )
-                )
+                await session.execute(role_permissions.insert().values(role_id=role.id, permission_id=perm.id))
 
     super_admin = await session.scalar(select(Role).where(Role.code == "super_admin"))
     if super_admin:
         await _grant_role(super_admin, set(perm_by_code.keys()))
 
-    tenant_admin_roles = (
-        await session.scalars(select(Role).where(Role.code == "tenant_admin"))
-    ).all()
-    tenant_codes = {
-        c
-        for c in perm_by_code
-        if not c.startswith(TENANT_ADMIN_PERMISSION_PREFIX_DENY)
-    }
+    tenant_admin_roles = (await session.scalars(select(Role).where(Role.code == "tenant_admin"))).all()
+    tenant_codes = {c for c in perm_by_code if not c.startswith(TENANT_ADMIN_PERMISSION_PREFIX_DENY)}
     for role in tenant_admin_roles:
         await _grant_role(role, tenant_codes)
 
@@ -111,9 +95,7 @@ async def seed_tenant(session: AsyncSession) -> None:
 
     await ensure_tenant_permissions(session)
 
-    existing = await session.execute(
-        select(User).where(User.username == settings.seed_admin_username)
-    )
+    existing = await session.execute(select(User).where(User.username == settings.seed_admin_username))
     if existing.scalar_one_or_none():
         return
 
@@ -139,9 +121,7 @@ async def seed_tenant(session: AsyncSession) -> None:
     await session.flush()
 
     for perm in permissions:
-        await session.execute(
-            role_permissions.insert().values(role_id=admin_role.id, permission_id=perm.id)
-        )
+        await session.execute(role_permissions.insert().values(role_id=admin_role.id, permission_id=perm.id))
 
     admin_user = User(
         tenant_id=tenant.id,
@@ -154,9 +134,7 @@ async def seed_tenant(session: AsyncSession) -> None:
     session.add(admin_user)
     await session.flush()
 
-    await session.execute(
-        user_roles.insert().values(user_id=admin_user.id, role_id=admin_role.id)
-    )
+    await session.execute(user_roles.insert().values(user_id=admin_user.id, role_id=admin_role.id))
 
     tenant_admin = Role(
         tenant_id=tenant.id,
@@ -167,18 +145,10 @@ async def seed_tenant(session: AsyncSession) -> None:
     )
     session.add(tenant_admin)
     await session.flush()
-    tenant_perm_codes = {
-        c for c, _, _ in DEFAULT_PERMISSIONS if not c.startswith("system:tenant:")
-    }
+    tenant_perm_codes = {c for c, _, _ in DEFAULT_PERMISSIONS if not c.startswith("system:tenant:")}
     for perm in permissions:
         if perm.code in tenant_perm_codes:
-            await session.execute(
-                role_permissions.insert().values(
-                    role_id=tenant_admin.id, permission_id=perm.id
-                )
-            )
-    await session.execute(
-        user_roles.insert().values(user_id=admin_user.id, role_id=tenant_admin.id)
-    )
+            await session.execute(role_permissions.insert().values(role_id=tenant_admin.id, permission_id=perm.id))
+    await session.execute(user_roles.insert().values(user_id=admin_user.id, role_id=tenant_admin.id))
 
     # 分类为全平台全局字典，新租户无需 provision

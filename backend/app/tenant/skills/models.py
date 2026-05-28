@@ -22,23 +22,13 @@ class SkillPackage(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     )
 
     tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
-    category_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), nullable=True
-    )  # sys_categories.domain=skill
+    category_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)  # sys_categories.domain=skill
     slug: Mapped[str] = mapped_column(String(128), nullable=False)  # 磁盘子目录名，租户内唯一
     name: Mapped[str] = mapped_column(String(128), nullable=False)  # 展示名，常来自 SKILL.md frontmatter
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
-    source_type: Mapped[str] = mapped_column(
-        String(32), default="manual", nullable=False
-    )  # manual | local | zip | git
-    storage_path: Mapped[str | None] = mapped_column(
-        String(512), nullable=True
-    )  # 相对存储标识，默认与 slug 相同
-    tool_names: Mapped[list] = mapped_column(
-        JSONB, default=list, nullable=False
-    )  # 遗留：旧版表单勾选的工具名，注入时可选追加
-    prompt_snippet: Mapped[str | None] = mapped_column(
-        Text, nullable=True
-    )  # 无磁盘 SKILL.md 时供 agents.context 回退
+    source_type: Mapped[str] = mapped_column(String(32), default="manual", nullable=False)  # manual | local | zip | git
+    storage_path: Mapped[str | None] = mapped_column(String(512), nullable=True)  # 相对存储标识，默认与 slug 相同
+    tool_names: Mapped[list] = mapped_column(JSONB, default=list, nullable=False)  # 遗留：旧版表单勾选的工具名，注入时可选追加
+    prompt_snippet: Mapped[str | None] = mapped_column(Text, nullable=True)  # 无磁盘 SKILL.md 时供 agents.context 回退
     config: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)

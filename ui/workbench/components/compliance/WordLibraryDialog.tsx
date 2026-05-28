@@ -74,12 +74,7 @@ export function WordLibraryDialog({ open, library, onClose, onSaved }: Props) {
           <button type="button" className="btn-ghost" disabled={busy} onClick={onClose}>
             取消
           </button>
-          <button
-            type="button"
-            className="btn-primary"
-            disabled={busy || !name.trim()}
-            onClick={() => void save()}
-          >
+          <button type="button" className="btn-primary" disabled={busy || !name.trim()} onClick={() => void save()}>
             {busy ? "保存中…" : "保存"}
           </button>
         </>
@@ -88,28 +83,14 @@ export function WordLibraryDialog({ open, library, onClose, onSaved }: Props) {
       <div className="space-y-4">
         <label className="block space-y-1 text-sm">
           <span className="text-xs text-ink-muted">词库名称</span>
-          <input
-            className="input-field w-full"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="例如：通用违禁、广告法"
-          />
+          <input className="input-field w-full" value={name} onChange={(e) => setName(e.target.value)} placeholder="例如：通用违禁、广告法" />
         </label>
         <label className="block space-y-1 text-sm">
           <span className="text-xs text-ink-muted">说明（可选）</span>
-          <textarea
-            className="input-field min-h-[80px] w-full resize-y"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-          />
+          <textarea className="input-field min-h-[80px] w-full resize-y" value={description} onChange={(e) => setDescription(e.target.value)} />
         </label>
         <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={isActive}
-            onChange={(e) => setIsActive(e.target.checked)}
-            className="rounded border-line text-brand"
-          />
+          <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} className="rounded border-line text-brand" />
           <span>启用词库（停用后库内词条不参与扫描）</span>
         </label>
         {error && <p className="text-sm text-red-600">{error}</p>}

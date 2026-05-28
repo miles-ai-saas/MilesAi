@@ -88,9 +88,7 @@ function AgentColumn({
           title={`${a.name} · ${agentModeLabel(a)}`}
           onClick={() => onSelectAgent(a.id)}
           className={`flex h-9 w-9 items-center justify-center rounded-lg text-sm font-medium transition ${
-            selectedAgentId === a.id
-              ? "bg-brand text-brand-foreground shadow-sm"
-              : "text-ink-muted hover:bg-brand-light hover:text-brand"
+            selectedAgentId === a.id ? "bg-brand text-brand-foreground shadow-sm" : "text-ink-muted hover:bg-brand-light hover:text-brand"
           }`}
         >
           {agentInitial(a.name)}
@@ -100,9 +98,7 @@ function AgentColumn({
           type="button"
           onClick={() => onSelectAgent(a.id)}
           className={`mb-1 w-full rounded-lg border px-2.5 py-2 text-left text-sm transition ${
-            selectedAgentId === a.id
-              ? "border-brand/30 bg-brand-light"
-              : "border-transparent hover:border-line hover:bg-brand-light/40"
+            selectedAgentId === a.id ? "border-brand/30 bg-brand-light" : "border-transparent hover:border-line hover:bg-brand-light/40"
           }`}
         >
           <p className="truncate font-medium text-ink">{a.name}</p>
@@ -115,12 +111,7 @@ function AgentColumn({
   const loadTail =
     hasMore || loadingMore ? (
       <li className={compact ? "py-1" : "py-2"}>
-        <div
-          ref={sentinelRef}
-          className={`flex items-center justify-center text-[10px] text-ink-faint ${
-            compact ? "min-h-6" : "min-h-8"
-          }`}
-        >
+        <div ref={sentinelRef} className={`flex items-center justify-center text-[10px] text-ink-faint ${compact ? "min-h-6" : "min-h-8"}`}>
           {loadingMore ? "加载中…" : ""}
         </div>
       </li>
@@ -182,9 +173,7 @@ function SessionColumnCompact({
               type="button"
               title={s.title}
               onClick={() => onSelectSession(s.id)}
-              className={`h-2 w-2 rounded-full transition ${
-                s.id === activeSessionId ? "bg-brand" : "bg-line hover:bg-brand/50"
-              }`}
+              className={`h-2 w-2 rounded-full transition ${s.id === activeSessionId ? "bg-brand" : "bg-line hover:bg-brand/50"}`}
             />
           </li>
         ))}
@@ -227,12 +216,7 @@ export function AgentChatLeftSidebar({
       className="relative flex h-full shrink-0 flex-col overflow-hidden border-r border-line bg-surface transition-[width] duration-200 ease-out"
       style={{ width: collapsed ? CHAT_LEFT_SIDEBAR_COLLAPSED : CHAT_LEFT_SIDEBAR_EXPANDED }}
     >
-      <SidebarCollapseButton
-        side="left"
-        collapsed={collapsed}
-        onToggle={onToggleCollapse}
-        hidden={hideCollapseButton}
-      />
+      <SidebarCollapseButton side="left" collapsed={collapsed} onToggle={onToggleCollapse} hidden={hideCollapseButton} />
 
       {collapsed ? (
         <div className="flex min-h-0 flex-1 flex-col">
@@ -253,24 +237,15 @@ export function AgentChatLeftSidebar({
               width: agentsColumnCompact && selectedAgentId ? CHAT_AGENT_COLUMN_COMPACT : CHAT_AGENT_COLUMN,
             }}
           >
-            <AgentColumn
-              {...agentColumnProps}
-              compact={Boolean(agentsColumnCompact && selectedAgentId)}
-            />
+            <AgentColumn {...agentColumnProps} compact={Boolean(agentsColumnCompact && selectedAgentId)} />
           </div>
           <div
             className="flex min-h-0 min-w-0 flex-1 flex-col"
-            style={
-              agentsColumnCompact && selectedAgentId
-                ? undefined
-                : { width: CHAT_SESSION_COLUMN, flex: "none" }
-            }
+            style={agentsColumnCompact && selectedAgentId ? undefined : { width: CHAT_SESSION_COLUMN, flex: "none" }}
           >
             <div className="shrink-0 border-b border-line-soft px-3 py-2.5">
               <p className="text-xs font-medium text-ink">会话</p>
-              <p className="mt-0.5 truncate text-[10px] text-ink-faint">
-                {selectedAgentId ? "当前智能体的对话记录" : "选择智能体后显示"}
-              </p>
+              <p className="mt-0.5 truncate text-[10px] text-ink-faint">{selectedAgentId ? "当前智能体的对话记录" : "选择智能体后显示"}</p>
             </div>
             <AgentChatSessionPanel
               agentSelected={Boolean(selectedAgentId)}

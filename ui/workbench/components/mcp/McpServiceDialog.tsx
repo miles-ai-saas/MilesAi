@@ -3,13 +3,7 @@
 /** MCP 创建/编辑（链路 §11）：HTTP/SSE/STDIO 分节表单 → api。 */
 
 import { KbPageAlert } from "@/components/kb/KbPageAlert";
-import {
-  MCP_ENDPOINT_PLACEHOLDER,
-  MCP_TRANSPORT_HINTS,
-  McpDialogSection,
-  McpTransportBadge,
-  mcpFormCanSubmit,
-} from "@/components/mcp/mcp-dialog-shared";
+import { MCP_ENDPOINT_PLACEHOLDER, MCP_TRANSPORT_HINTS, McpDialogSection, McpTransportBadge, mcpFormCanSubmit } from "@/components/mcp/mcp-dialog-shared";
 import { ResourceDialog } from "@/components/resource/ResourceDialog";
 import type { McpDialogMode } from "@/components/mcp/McpServiceDialog.types";
 import type { McpTransportTab } from "@/lib/mcp-labels";
@@ -85,9 +79,7 @@ function TransportSelector({
             title={tab.hint}
             onClick={() => onTransportChange?.(tab.key)}
             className={`rounded-lg px-4 py-2 text-left transition ${
-              active
-                ? "bg-brand-light text-brand shadow-sm ring-1 ring-brand/20"
-                : "text-ink-muted hover:bg-surface-muted hover:text-ink"
+              active ? "bg-brand-light text-brand shadow-sm ring-1 ring-brand/20" : "text-ink-muted hover:bg-surface-muted hover:text-ink"
             }`}
           >
             <span className="text-sm font-medium">{tab.label}</span>
@@ -139,9 +131,7 @@ export function McpServiceDialog({
       contentMaxWidth="max-w-3xl"
       title={mode === "create" ? "添加 MCP 服务" : `编辑 · ${editing?.name ?? ""}`}
       description={
-        mode === "create"
-          ? "选择传输类型并填写连接信息；创建后请在详情中「同步工具」拉取 tools/list。"
-          : "修改名称、描述或连接配置；传输类型创建后不可更改。"
+        mode === "create" ? "选择传输类型并填写连接信息；创建后请在详情中「同步工具」拉取 tools/list。" : "修改名称、描述或连接配置；传输类型创建后不可更改。"
       }
       onClose={onClose}
       footer={
@@ -149,38 +139,21 @@ export function McpServiceDialog({
           <button type="button" className="btn-ghost" onClick={onClose} disabled={busy}>
             取消
           </button>
-          <button
-            type="button"
-            className="btn-primary"
-            onClick={onSubmit}
-            disabled={!canSubmit}
-          >
+          <button type="button" className="btn-primary" onClick={onSubmit} disabled={!canSubmit}>
             {busy ? "保存中…" : mode === "create" ? "创建" : "保存"}
           </button>
         </>
       }
     >
       <div className="space-y-5">
-        {saveError ? (
-          <KbPageAlert tone="error" message={saveError} onDismiss={onDismissError} />
-        ) : null}
+        {saveError ? <KbPageAlert tone="error" message={saveError} onDismiss={onDismissError} /> : null}
 
-        <TransportSelector
-          transport={t}
-          transportLocked={transportLocked}
-          mcpMeta={mcpMeta}
-          onTransportChange={onTransportChange}
-        />
+        <TransportSelector transport={t} transportLocked={transportLocked} mcpMeta={mcpMeta} onTransportChange={onTransportChange} />
 
         <McpDialogSection title="基本信息" hint="名称在租户内用于展示与绑定智能体">
           <label className="block text-xs">
             <span className="mb-1 block text-ink-muted">名称 *</span>
-            <input
-              className="input-field w-full"
-              placeholder="例如 lbs-amap-http-mcp"
-              value={name}
-              onChange={(e) => onNameChange(e.target.value)}
-            />
+            <input className="input-field w-full" placeholder="例如 lbs-amap-http-mcp" value={name} onChange={(e) => onNameChange(e.target.value)} />
           </label>
           <label className="block text-xs">
             <span className="mb-1 block text-ink-muted">描述</span>
@@ -193,10 +166,7 @@ export function McpServiceDialog({
           </label>
         </McpDialogSection>
 
-        <McpDialogSection
-          title={isStdio ? "STDIO 启动" : "端点连接"}
-          hint={MCP_TRANSPORT_HINTS[t]}
-        >
+        <McpDialogSection title={isStdio ? "STDIO 启动" : "端点连接"} hint={MCP_TRANSPORT_HINTS[t]}>
           {isStdio ? (
             <>
               <label className="block text-xs">

@@ -56,11 +56,7 @@ export function ComplianceScanBindingsPanel({ onSaved }: Props) {
   };
 
   if (loading) {
-    return (
-      <section className="col-span-full rounded-xl border border-line bg-surface-subtle/40 px-4 py-3 text-sm text-ink-muted">
-        加载扫描配置…
-      </section>
-    );
+    return <section className="col-span-full rounded-xl border border-line bg-surface-subtle/40 px-4 py-3 text-sm text-ink-muted">加载扫描配置…</section>;
   }
 
   const scanningOff = selected.size === 0;
@@ -80,9 +76,7 @@ export function ComplianceScanBindingsPanel({ onSaved }: Props) {
       </div>
 
       {scanningOff && (
-        <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50/80 px-3 py-2 text-xs text-amber-900">
-          当前未绑定词库，合规扫描已关闭。
-        </p>
+        <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50/80 px-3 py-2 text-xs text-amber-900">当前未绑定词库，合规扫描已关闭。</p>
       )}
 
       <ul className="mt-3 flex flex-wrap gap-2">
@@ -93,9 +87,7 @@ export function ComplianceScanBindingsPanel({ onSaved }: Props) {
             <li key={lib.id}>
               <label
                 className={`inline-flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-1.5 text-xs transition ${
-                  checked
-                    ? "border-brand/40 bg-brand-light text-brand"
-                    : "border-line bg-surface-muted/50 text-ink-muted hover:border-line-soft"
+                  checked ? "border-brand/40 bg-brand-light text-brand" : "border-line bg-surface-muted/50 text-ink-muted hover:border-line-soft"
                 } ${disabled ? "opacity-50" : ""}`}
               >
                 <input

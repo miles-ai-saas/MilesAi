@@ -21,12 +21,7 @@ if TYPE_CHECKING:
 def should_use_skill_tools_with_kb(agent: Agent, kb_ids: list[str]) -> bool:
     """绑定 KB 且开启 tool calling 时走 tool_agent（技能包和/或生图生视频工具）。"""
     cfg = agent.config if isinstance(agent.config, dict) else {}
-    return bool(
-        kb_ids
-        and agent.model_config_id
-        and cfg.get("enable_tool_calling")
-        and (cfg.get("skill_package_id") or cfg.get("enable_generative_tools"))
-    )
+    return bool(kb_ids and agent.model_config_id and cfg.get("enable_tool_calling") and (cfg.get("skill_package_id") or cfg.get("enable_generative_tools")))
 
 
 def _sub_agents_out(agent: Agent) -> list[SubAgentRefOut]:

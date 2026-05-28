@@ -26,9 +26,7 @@ export default function KbDetailPage() {
     <div className="mx-auto max-w-5xl space-y-5">
       <KbDetailHeader vm={vm} />
 
-      {vm.alert ? (
-        <KbPageAlert tone={vm.alert.tone} message={vm.alert.message} onDismiss={() => vm.setAlert(null)} />
-      ) : null}
+      {vm.alert ? <KbPageAlert tone={vm.alert.tone} message={vm.alert.message} onDismiss={() => vm.setAlert(null)} /> : null}
 
       <div className="flex gap-1 border-b border-line">
         {KB_DETAIL_TABS.map((t) => (
@@ -43,9 +41,7 @@ export default function KbDetailPage() {
             }`}
           >
             {t.label}
-            {t.key === "documents" && vm.docs.total > 0 ? (
-              <span className="ml-1.5 text-xs text-ink-faint">({vm.docs.total})</span>
-            ) : null}
+            {t.key === "documents" && vm.docs.total > 0 ? <span className="ml-1.5 text-xs text-ink-faint">({vm.docs.total})</span> : null}
           </button>
         ))}
       </div>
@@ -56,12 +52,7 @@ export default function KbDetailPage() {
 
       {vm.confirmDialog}
 
-      <DocumentChunksDrawer
-        kbId={vm.id}
-        doc={vm.chunksDoc}
-        open={!!vm.chunksDoc}
-        onClose={() => vm.setChunksDoc(null)}
-      />
+      <DocumentChunksDrawer kbId={vm.id} doc={vm.chunksDoc} open={!!vm.chunksDoc} onClose={() => vm.setChunksDoc(null)} />
 
       <KbDetailSettingsDialog vm={vm} />
     </div>

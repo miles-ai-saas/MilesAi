@@ -25,9 +25,7 @@ export const CHAT_ATTACHMENT_PICKERS: ChatAttachmentPicker[] = [
 
 export const CHAT_ATTACHMENT_ACCEPT = CHAT_ATTACHMENT_PICKERS.map((p) => p.accept).join(",");
 
-export const CHAT_ATTACHMENT_MAX_COUNT = Math.max(
-  ...CHAT_ATTACHMENT_PICKERS.map((p) => p.maxCount),
-);
+export const CHAT_ATTACHMENT_MAX_COUNT = Math.max(...CHAT_ATTACHMENT_PICKERS.map((p) => p.maxCount));
 
 export function filterChatUploadFiles(files: FileList | File[]): File[] {
   const list = Array.from(files);

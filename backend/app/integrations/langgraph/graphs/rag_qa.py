@@ -221,9 +221,7 @@ async def fallback(state: RAGGraphState, config: RunnableConfig) -> dict[str, An
     if hits:
         context = format_hits_context(hits)
         prompt = (
-            f"{state['system_prompt']}\n\n"
-            f"检索到的内容相关性较低，请谨慎回答并说明依据有限。\n\n"
-            f"参考片段：\n{context}\n\n用户问题：{_prompt_user_query(state)}"
+            f"{state['system_prompt']}\n\n检索到的内容相关性较低，请谨慎回答并说明依据有限。\n\n参考片段：\n{context}\n\n用户问题：{_prompt_user_query(state)}"
         )
     else:
         prompt = (

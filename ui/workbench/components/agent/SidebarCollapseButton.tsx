@@ -15,14 +15,7 @@ type Props = {
 export function SidebarCollapseButton({ side, collapsed, onToggle, hidden }: Props) {
   if (hidden) return null;
   const label = collapsed ? "展开侧栏" : "收起侧栏";
-  const chevron =
-    side === "left"
-      ? collapsed
-        ? "M9 6l6 6-6 6"
-        : "M15 6l-6 6 6 6"
-      : collapsed
-        ? "M15 6l-6 6 6 6"
-        : "M9 6l6 6-6 6";
+  const chevron = side === "left" ? (collapsed ? "M9 6l6 6-6 6" : "M15 6l-6 6 6 6") : collapsed ? "M15 6l-6 6 6 6" : "M9 6l6 6-6 6";
 
   return (
     <button

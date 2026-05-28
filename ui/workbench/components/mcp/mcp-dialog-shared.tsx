@@ -5,15 +5,7 @@ import type { McpTransportTab } from "@/lib/mcp-labels";
 import { mcpTransportLabel } from "@/lib/mcp-labels";
 import type { McpMeta } from "@/lib/types";
 
-export function McpDialogSection({
-  title,
-  hint,
-  children,
-}: {
-  title: string;
-  hint?: string;
-  children: ReactNode;
-}) {
+export function McpDialogSection({ title, hint, children }: { title: string; hint?: string; children: ReactNode }) {
   return (
     <section className="rounded-xl border border-line bg-surface-muted/30 p-4">
       <div className="mb-3">
@@ -46,13 +38,7 @@ export const MCP_ENDPOINT_PLACEHOLDER: Record<Exclude<McpTransportTab, "">, stri
   stdio: "",
 };
 
-export function McpTransportBadge({
-  transport,
-  mcpMeta,
-}: {
-  transport: Exclude<McpTransportTab, "">;
-  mcpMeta?: McpMeta | null;
-}) {
+export function McpTransportBadge({ transport, mcpMeta }: { transport: Exclude<McpTransportTab, "">; mcpMeta?: McpMeta | null }) {
   return (
     <span className="inline-flex rounded border border-brand/20 bg-brand-light/30 px-2 py-0.5 text-[10px] font-medium text-brand">
       {mcpTransportLabel(transport, mcpMeta)}

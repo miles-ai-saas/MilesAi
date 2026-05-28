@@ -25,14 +25,10 @@ export function needsHighResImageConfirm(params: Record<string, unknown> | undef
 }
 
 /** 待确认卡片下方的补充说明 */
-export function generativeToolConfirmNote(
-  slug: string | undefined | null,
-  params?: Record<string, unknown>,
-): string | null {
+export function generativeToolConfirmNote(slug: string | undefined | null, params?: Record<string, unknown>): string | null {
   if (slug === GENERATIVE_TOOL_SLUGS.video) {
     const res = String(params?.resolution ?? "").toUpperCase();
-    const base =
-      "生视频通常需 1–5 分钟，将按模型与时长计费；确认后开始调用，请勿关闭页面。";
+    const base = "生视频通常需 1–5 分钟，将按模型与时长计费；确认后开始调用，请勿关闭页面。";
     return res === "1080P" ? `${base}（当前为 1080P）` : base;
   }
   if (slug === GENERATIVE_TOOL_SLUGS.image) {

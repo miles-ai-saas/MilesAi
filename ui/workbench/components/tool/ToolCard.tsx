@@ -45,16 +45,8 @@ export function ToolCard({ tool, toolsMeta, onDetail, onTest, onEdit, onDelete }
                 {toolKindLabel(tool.tool_type, toolsMeta)}
               </span>
             )}
-            {tool.version && (
-              <span className="rounded border border-line bg-surface-muted px-2 py-0.5 text-[10px] text-ink-muted">
-                v{tool.version}
-              </span>
-            )}
-            {tool.require_confirmation && (
-              <span className="rounded border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] text-amber-800">
-                需确认
-              </span>
-            )}
+            {tool.version && <span className="rounded border border-line bg-surface-muted px-2 py-0.5 text-[10px] text-ink-muted">v{tool.version}</span>}
+            {tool.require_confirmation && <span className="rounded border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] text-amber-800">需确认</span>}
           </div>
           {updated ? <p className="mt-2">更新于 {updated}</p> : null}
         </>

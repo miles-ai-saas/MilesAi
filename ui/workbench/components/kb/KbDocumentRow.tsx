@@ -1,11 +1,7 @@
 "use client";
 
 import { DocumentStatusBadge } from "@/components/kb/DocumentStatusBadge";
-import {
-  canRetryDocument,
-  isDocumentFailed,
-  isDocumentProcessing,
-} from "@/lib/document-status";
+import { canRetryDocument, isDocumentFailed, isDocumentProcessing } from "@/lib/document-status";
 import { formatFileSize } from "@/lib/format-bytes";
 import { kbFileIcon } from "@/lib/kb-file-icon";
 import type { EnumOption } from "@/lib/enum-meta";
@@ -44,32 +40,18 @@ export function KbDocumentRow({
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
           <p className="truncate font-medium text-ink">{doc.filename}</p>
-          <DocumentStatusBadge
-            status={doc.status}
-            pulse={isDocumentProcessing(doc.status)}
-            statusOptions={statusOptions}
-          />
+          <DocumentStatusBadge status={doc.status} pulse={isDocumentProcessing(doc.status)} statusOptions={statusOptions} />
         </div>
         <p className="mt-0.5 text-xs text-ink-faint">
           {formatFileSize(doc.file_size)} · {new Date(doc.created_at).toLocaleString()}
-          {doc.status === "ready" && doc.chunk_count != null && doc.chunk_count > 0 && (
-            <> · {doc.chunk_count} 个分片</>
-          )}
+          {doc.status === "ready" && doc.chunk_count != null && doc.chunk_count > 0 && <> · {doc.chunk_count} 个分片</>}
         </p>
         {(hasFail || isDocumentFailed(doc.status)) && (
           <div className="mt-2">
-            <button
-              type="button"
-              className="text-left text-xs text-red-700 hover:underline"
-              onClick={onToggleFail}
-            >
+            <button type="button" className="text-left text-xs text-red-700 hover:underline" onClick={onToggleFail}>
               {expanded ? "收起失败原因" : "查看失败原因"}
             </button>
-            {expanded && (
-              <p className="mt-1 whitespace-pre-wrap rounded-md bg-red-50 px-2 py-1.5 text-xs text-red-900">
-                {doc.fail_reason}
-              </p>
-            )}
+            {expanded && <p className="mt-1 whitespace-pre-wrap rounded-md bg-red-50 px-2 py-1.5 text-xs text-red-900">{doc.fail_reason}</p>}
           </div>
         )}
       </div>
@@ -80,20 +62,11 @@ export function KbDocumentRow({
           </button>
         )}
         {canRetryDocument(doc.status) && (
-          <button
-            type="button"
-            className="btn-primary px-2 py-1 text-xs"
-            disabled={retrying}
-            onClick={onRetry}
-          >
+          <button type="button" className="btn-primary px-2 py-1 text-xs" disabled={retrying} onClick={onRetry}>
             {retrying ? "提交中…" : "重试入库"}
           </button>
         )}
-        <button
-          type="button"
-          className="btn-ghost px-2 py-1 text-xs text-red-600 hover:bg-red-50"
-          onClick={onDelete}
-        >
+        <button type="button" className="btn-ghost px-2 py-1 text-xs text-red-600 hover:bg-red-50" onClick={onDelete}>
           删除
         </button>
       </div>

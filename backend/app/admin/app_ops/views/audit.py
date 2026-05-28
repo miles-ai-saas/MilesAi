@@ -44,5 +44,3 @@ async def audit_logs(
         created_to=created_to,
     )
     return page_ok(result.items, result.total, result.page, result.size)
-
-

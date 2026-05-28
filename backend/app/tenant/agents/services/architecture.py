@@ -209,15 +209,8 @@ class AgentArchitectureService(BaseService):
         )
 
         attachments = ArchitectureAttachments(
-            model=(
-                ArchitectureModelRef(id=str(agent.model_config.id), name=agent.model_config.name)
-                if agent.model_config
-                else None
-            ),
-            kbs=[
-                ArchitectureKbRef(id=str(kb.id), name=kb.name)
-                for kb in (agent.knowledge_bases or [])
-            ],
+            model=(ArchitectureModelRef(id=str(agent.model_config.id), name=agent.model_config.name) if agent.model_config else None),
+            kbs=[ArchitectureKbRef(id=str(kb.id), name=kb.name) for kb in (agent.knowledge_bases or [])],
             sub_agents=[
                 ArchitectureSubAgentRef(
                     id=str(b.child_agent_id),

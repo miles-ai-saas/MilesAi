@@ -37,9 +37,7 @@ def _config_int(raw: object, default: int) -> int:
 
 async def get_max_file_mb(db: AsyncSession) -> int:
     """单文件大小上限（MB），默认 50。"""
-    row = await db.scalar(
-        select(SystemConfig.value).where(SystemConfig.key == "ingest.max_file_mb")
-    )
+    row = await db.scalar(select(SystemConfig.value).where(SystemConfig.key == "ingest.max_file_mb"))
     return _config_int(row, DEFAULT_MAX_FILE_MB)
 
 
@@ -53,14 +51,7 @@ async def _load_tenant(db: AsyncSession, tenant_id: UUID) -> Tenant:
 
 async def count_knowledge_bases(db: AsyncSession, tenant_id: UUID) -> int:
     """统计未删除的知识库数量。"""
-    return int(
-        await db.scalar(
-            select(func.count())
-            .select_from(KnowledgeBase)
-            .where(KnowledgeBase.tenant_id == tenant_id, not_deleted(KnowledgeBase))
-        )
-        or 0
-    )
+    return int(await db.scalar(select(func.count()).select_from(KnowledgeBase).where(KnowledgeBase.tenant_id == tenant_id, not_deleted(KnowledgeBase))) or 0)
 
 
 async def sum_storage_bytes(db: AsyncSession, tenant_id: UUID) -> int:
@@ -85,9 +76,7 @@ async def assert_can_create_kb(db: AsyncSession, tenant_id: UUID) -> None:
     tenant = await _load_tenant(db, tenant_id)
     count = await count_knowledge_bases(db, tenant_id)
     if count >= tenant.max_knowledge_bases:
-        raise ForbiddenError(
-            f"知识库数量已达上限（{tenant.max_knowledge_bases}），请联系管理员提升配额"
-        )
+        raise ForbiddenError(f"知识库数量已达上限（{tenant.max_knowledge_bases}），请联系管理员提升配额")
 
 
 async def assert_can_upload_bytes(
@@ -107,9 +96,7 @@ async def assert_can_upload_bytes(
     used_bytes = await sum_storage_bytes(db, tenant_id)
     projected_mb = (used_bytes + file_size + 1024 * 1024 - 1) // (1024 * 1024)
     if projected_mb > tenant.max_storage_mb:
-        raise ForbiddenError(
-            f"存储空间不足（已用约 {used_bytes // (1024 * 1024)} MB / 上限 {tenant.max_storage_mb} MB）"
-        )
+        raise ForbiddenError(f"存储空间不足（已用约 {used_bytes // (1024 * 1024)} MB / 上限 {tenant.max_storage_mb} MB）")
 
 
 async def apply_storage_delta(db: AsyncSession, tenant_id: UUID, delta_bytes: int) -> None:

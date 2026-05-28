@@ -59,6 +59,7 @@ def _description(binding: AgentSubAgentBinding) -> str:
 
 def _make_child_node(svc: AgentService, child_id: UUID):
     """单节点图：HumanMessage → chat_as_child → AIMessage。"""
+
     async def _run(state: MessagesState) -> dict[str, Any]:
         query = ""
         for msg in reversed(state.get("messages") or []):
@@ -91,16 +92,7 @@ def _build_general_purpose_guard(
     catalog = "、".join(slugs)
 
     async def _reject(state: MessagesState) -> dict[str, Any]:
-        return {
-            "messages": [
-                AIMessage(
-                    content=(
-                        "general-purpose 工位已禁用。请通过 task 工具委派到下列子智能体："
-                        f"{catalog}"
-                    )
-                )
-            ]
-        }
+        return {"messages": [AIMessage(content=(f"general-purpose 工位已禁用。请通过 task 工具委派到下列子智能体：{catalog}"))]}
 
     graph = StateGraph(MessagesState)
     graph.add_node("reject", _reject)

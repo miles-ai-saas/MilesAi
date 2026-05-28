@@ -36,10 +36,7 @@ async def test_relevance_grade_good_score():
 
 
 def test_rag_with_grade_template_compilable():
-    path = (
-        Path(__file__).resolve().parents[1]
-        / "app/flow_runtime/templates/rag_flow_with_grade.json"
-    )
+    path = Path(__file__).resolve().parents[1] / "app/flow_runtime/templates/rag_flow_with_grade.json"
     graph = json.loads(path.read_text(encoding="utf-8"))
     report = validate_graph_for_compile(graph)
     assert report.compilable, report.errors

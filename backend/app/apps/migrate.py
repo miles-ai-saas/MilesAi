@@ -29,7 +29,5 @@ def run_migrations() -> None:
     if result.returncode != 0:
         detail = (result.stderr or result.stdout or "").strip()
         raise RuntimeError(
-            "数据库迁移失败（alembic upgrade head）。"
-            "请确认 PostgreSQL 已启动，且 backend/.env 中 POSTGRES_DB 与数据库实例一致。\n"
-            f"{detail}"
+            f"数据库迁移失败（alembic upgrade head）。请确认 PostgreSQL 已启动，且 backend/.env 中 POSTGRES_DB 与数据库实例一致。\n{detail}"
         ) from None

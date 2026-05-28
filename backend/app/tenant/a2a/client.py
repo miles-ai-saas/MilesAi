@@ -99,10 +99,7 @@ async def invoke_a2a_peer(peer: A2aPeer, task: str) -> str:
     rpc_base = _pick_rpc_url(peer)
     if not rpc_base:
         name = peer.card_display_name or peer.name
-        return (
-            f"[A2A] 已向外部智能体「{name}」提交任务（Card 未声明 HTTP 接口，仅记录任务预览）：\n"
-            f"{task[:800]}"
-        )
+        return f"[A2A] 已向外部智能体「{name}」提交任务（Card 未声明 HTTP 接口，仅记录任务预览）：\n{task[:800]}"
 
     payload = {
         "jsonrpc": "2.0",
@@ -136,7 +133,4 @@ async def invoke_a2a_peer(peer: A2aPeer, task: str) -> str:
             except ValueError:
                 last_err = "响应非 JSON"
 
-    raise BadRequestError(
-        f"调用外部 A2A Agent「{peer.name}」失败"
-        + (f"：{last_err}" if last_err else "")
-    )
+    raise BadRequestError(f"调用外部 A2A Agent「{peer.name}」失败" + (f"：{last_err}" if last_err else ""))

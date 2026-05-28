@@ -61,16 +61,8 @@ class KnowledgeBaseCoreMixin:
     async def _to_kb_out(self, kb: KnowledgeBase) -> KnowledgeBaseOut:
         """ORM → API 出参，附带 embedding/rerank 模型名。"""
         embed_name = await self._model_name(kb.embedding_model_config_id)
-        rerank_name = (
-            await self._model_name(kb.rerank_model_config_id)
-            if kb.rerank_model_config_id
-            else None
-        )
-        visual_name = (
-            await self._model_name(kb.visual_embedding_model_config_id)
-            if kb.visual_embedding_model_config_id
-            else None
-        )
+        rerank_name = await self._model_name(kb.rerank_model_config_id) if kb.rerank_model_config_id else None
+        visual_name = await self._model_name(kb.visual_embedding_model_config_id) if kb.visual_embedding_model_config_id else None
         return KnowledgeBaseOut(
             id=kb.id,
             tenant_id=kb.tenant_id,
@@ -114,9 +106,7 @@ class KnowledgeBaseCoreMixin:
         data = await get_kb_quota_out(self.db, self.ctx.tenant_id)
         return KbQuotaOut(**data)
 
-    async def list_search_logs(
-        self, kb_id: UUID, params: PageParams
-    ) -> PageResult[KbSearchLogOut]:
+    async def list_search_logs(self, kb_id: UUID, params: PageParams) -> PageResult[KbSearchLogOut]:
         """分页列出该知识库的检索日志。"""
         await self._get_kb_or_raise(kb_id)
         from app.common.pagination import paginate
@@ -154,9 +144,7 @@ class KnowledgeBaseCoreMixin:
             await resolve_rerank_model_by_id(self.db, rerank_model_id, self.ctx.tenant_id)
         visual_model_id = body.visual_embedding_model_config_id
         if visual_model_id:
-            visual_model = await resolve_embedding_model_by_id(
-                self.db, visual_model_id, self.ctx.tenant_id
-            )
+            visual_model = await resolve_embedding_model_by_id(self.db, visual_model_id, self.ctx.tenant_id)
             ensure_clip_model(visual_model)
         kb = await self.kb_repo.create(
             tenant_id=self.ctx.tenant_id,
@@ -191,9 +179,7 @@ class KnowledgeBaseCoreMixin:
         if "visual_embedding_model_config_id" in data:
             visual_id = data.get("visual_embedding_model_config_id")
             if visual_id:
-                visual_model = await resolve_embedding_model_by_id(
-                    self.db, visual_id, self.ctx.tenant_id
-                )
+                visual_model = await resolve_embedding_model_by_id(self.db, visual_id, self.ctx.tenant_id)
                 ensure_clip_model(visual_model)
             else:
                 data["visual_embedding_model_config_id"] = None
@@ -208,11 +194,7 @@ class KnowledgeBaseCoreMixin:
         向量库按 document_id 删除；不单独按 kb_id 扫全库（依赖文档级清理）。
         """
         kb = await self._get_kb_or_raise(kb_id)
-        docs = (
-            await self.db.execute(
-                select(Document).where(Document.kb_id == kb.id, not_deleted(Document))
-            )
-        ).scalars().all()
+        docs = (await self.db.execute(select(Document).where(Document.kb_id == kb.id, not_deleted(Document)))).scalars().all()
         for doc in docs:
             await self.delete_document(kb_id, doc.id)
         await before_delete_kb(self.db, kb.id)

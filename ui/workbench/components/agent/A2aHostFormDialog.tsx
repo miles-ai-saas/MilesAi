@@ -39,11 +39,7 @@ export function A2aHostFormDialog({ open, title, agent, onClose, onSaved }: Prop
   useEffect(() => {
     if (!open) return;
     setStep(0);
-    Promise.all([
-      api.listPromptTemplates(1, 100),
-      api.listModelConfigs(),
-      api.listA2aPeers(1, 100),
-    ]).then(([promptRes, modelRes, a2aRes]) => {
+    Promise.all([api.listPromptTemplates(1, 100), api.listModelConfigs(), api.listA2aPeers(1, 100)]).then(([promptRes, modelRes, a2aRes]) => {
       setPrompts(promptRes.items);
       setModels(modelRes);
       setA2aPeers(a2aRes.items.filter((p) => p.status === "active"));
@@ -78,9 +74,7 @@ export function A2aHostFormDialog({ open, title, agent, onClose, onSaved }: Prop
       .filter(Boolean);
     setForm((f) => ({
       ...f,
-      a2a_peers: f.a2a_peers.map((p) =>
-        p.peer_id === peerId ? { ...p, trigger_keywords: keywords } : p,
-      ),
+      a2a_peers: f.a2a_peers.map((p) => (p.peer_id === peerId ? { ...p, trigger_keywords: keywords } : p)),
     }));
   };
 
@@ -127,20 +121,10 @@ export function A2aHostFormDialog({ open, title, agent, onClose, onSaved }: Prop
       footer={
         <div className="flex w-full flex-wrap items-center justify-between gap-3">
           <div className="flex gap-2">
-            <button
-              type="button"
-              className="btn-ghost border border-line"
-              disabled={step === 0}
-              onClick={() => setStep((s) => Math.max(0, s - 1))}
-            >
+            <button type="button" className="btn-ghost border border-line" disabled={step === 0} onClick={() => setStep((s) => Math.max(0, s - 1))}>
               上一步
             </button>
-            <button
-              type="button"
-              className="btn-primary"
-              disabled={busy || !canNext || (isLastStep && form.a2a_peers.length < 1)}
-              onClick={goNext}
-            >
+            <button type="button" className="btn-primary" disabled={busy || !canNext || (isLastStep && form.a2a_peers.length < 1)} onClick={goNext}>
               {busy ? "保存中…" : isLastStep ? (agent ? "保存" : "创建") : "下一步"}
             </button>
           </div>
@@ -180,11 +164,7 @@ export function A2aHostFormDialog({ open, title, agent, onClose, onSaved }: Prop
           <div className="space-y-4">
             <label className="block text-sm">
               <span className="mb-1 block text-ink-muted">编排模型（必填）</span>
-              <select
-                className="input-field w-full"
-                value={form.model_config_id}
-                onChange={(e) => setForm((f) => ({ ...f, model_config_id: e.target.value }))}
-              >
+              <select className="input-field w-full" value={form.model_config_id} onChange={(e) => setForm((f) => ({ ...f, model_config_id: e.target.value }))}>
                 <option value="">请选择</option>
                 {models.map((m) => (
                   <option key={m.id} value={m.id}>
@@ -240,23 +220,15 @@ export function A2aHostFormDialog({ open, title, agent, onClose, onSaved }: Prop
                 ))}
               </select>
             </label>
-            <p className="text-xs text-ink-muted">
-              至少选择 1 个已在「外部登记」中同步 Card 的 Agent。规则关键词命中则必调该成员。
-            </p>
+            <p className="text-xs text-ink-muted">至少选择 1 个已在「外部登记」中同步 Card 的 Agent。规则关键词命中则必调该成员。</p>
             <div className="max-h-64 space-y-2 overflow-y-auto">
-              {a2aPeers.length === 0 && (
-                <p className="text-xs text-ink-faint">请先在 A2A Tab → 外部登记 中添加并同步 Card。</p>
-              )}
+              {a2aPeers.length === 0 && <p className="text-xs text-ink-faint">请先在 A2A Tab → 外部登记 中添加并同步 Card。</p>}
               {a2aPeers.map((p) => {
                 const bound = form.a2a_peers.find((x) => x.peer_id === p.id);
                 return (
                   <div key={p.id} className="rounded-lg border border-line-soft p-3 text-xs">
                     <label className="flex cursor-pointer items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={Boolean(bound)}
-                        onChange={() => togglePeer(p.id)}
-                      />
+                      <input type="checkbox" checked={Boolean(bound)} onChange={() => togglePeer(p.id)} />
                       <span className="font-medium text-ink">{p.name}</span>
                       <span className="text-ink-faint">{p.card_display_name ?? "已连通"}</span>
                     </label>

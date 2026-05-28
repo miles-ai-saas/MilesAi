@@ -68,9 +68,7 @@ def _register_builtin_providers() -> None:
 
     register_embedding_provider(INVOKE_MODE_LOCAL, LocalEmbeddingProvider())
     register_embedding_provider(INVOKE_MODE_CLIP, ClipEmbeddingProvider())
-    register_embedding_provider(
-        INVOKE_MODE_OPENAI_COMPATIBLE, OpenAICompatibleEmbeddingProvider()
-    )
+    register_embedding_provider(INVOKE_MODE_OPENAI_COMPATIBLE, OpenAICompatibleEmbeddingProvider())
     register_embedding_provider(INVOKE_MODE_LITELLM, LiteLLMEmbeddingProvider())
 
 

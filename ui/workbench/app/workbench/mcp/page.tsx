@@ -18,12 +18,7 @@ import { usePagedList } from "@/hooks/use-paged-list";
 import { api } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth-store";
 import { filterBySearch } from "@/lib/filter-search";
-import {
-  mcpTransportFilterOptions,
-  mcpTransportLabel,
-  normalizeMcpTransport,
-  type McpTransportTab,
-} from "@/lib/mcp-labels";
+import { mcpTransportFilterOptions, mcpTransportLabel, normalizeMcpTransport, type McpTransportTab } from "@/lib/mcp-labels";
 import { useMcpMeta } from "@/hooks/use-mcp-meta";
 import type { McpService } from "@/lib/types";
 
@@ -34,8 +29,7 @@ function parseStdioArgs(text: string): string[] {
     .filter(Boolean);
 }
 
-const PAGE_DESC =
-  "注册 Model Context Protocol 端点（HTTP / SSE / STDIO），同步远程工具列表；绑定到智能体后注入系统提示。SSE 请填写 GET 长连接地址。";
+const PAGE_DESC = "注册 Model Context Protocol 端点（HTTP / SSE / STDIO），同步远程工具列表；绑定到智能体后注入系统提示。SSE 请填写 GET 长连接地址。";
 
 function StatChip({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
@@ -83,22 +77,13 @@ export default function McpPage() {
   const [saveError, setSaveError] = useState("");
 
   const list = usePagedList(
-    useCallback(
-      (p, s) => api.listMcpServices(p, s, activeTab || undefined),
-      [activeTab],
-    ),
+    useCallback((p, s) => api.listMcpServices(p, s, activeTab || undefined), [activeTab]),
     { enabled: ready, resetKey: activeTab },
   );
   const { requestConfirm, confirmDialog } = useConfirmAction();
 
   const filtered = useMemo(
-    () =>
-      filterBySearch(
-        list.items,
-        search,
-        (s) =>
-          `${s.name} ${s.description ?? ""} ${s.endpoint_url} ${mcpTransportLabel(s.transport, mcpMeta)}`,
-      ),
+    () => filterBySearch(list.items, search, (s) => `${s.name} ${s.description ?? ""} ${s.endpoint_url} ${mcpTransportLabel(s.transport, mcpMeta)}`),
     [list.items, search, mcpMeta],
   );
 
@@ -250,12 +235,8 @@ export default function McpPage() {
     });
   };
 
-  const activeTabLabel =
-    transportTabs.find((t) => t.value === activeTab)?.label ?? "全部";
-  const layoutTabs = useMemo(
-    () => transportTabs.map((t) => ({ key: t.value, label: t.label })),
-    [transportTabs],
-  );
+  const activeTabLabel = transportTabs.find((t) => t.value === activeTab)?.label ?? "全部";
+  const layoutTabs = useMemo(() => transportTabs.map((t) => ({ key: t.value, label: t.label })), [transportTabs]);
 
   return (
     <>
@@ -270,24 +251,13 @@ export default function McpPage() {
         onTabChange={onTabChange}
         loading={list.loading}
         headerAction={
-          <button
-            type="button"
-            className="btn-ghost shrink-0 text-sm"
-            disabled={list.loading}
-            onClick={() => void list.reload()}
-          >
+          <button type="button" className="btn-ghost shrink-0 text-sm" disabled={list.loading} onClick={() => void list.reload()}>
             {list.loading ? "刷新中…" : "刷新"}
           </button>
         }
         footer={
           !list.loading ? (
-            <ResourceListFooter
-              page={list.page}
-              size={list.size}
-              total={list.total}
-              onPageChange={list.setPage}
-              onSizeChange={list.setSize}
-            />
+            <ResourceListFooter page={list.page} size={list.size} total={list.total} onPageChange={list.setPage} onSizeChange={list.setSize} />
           ) : null
         }
       >
@@ -295,11 +265,7 @@ export default function McpPage() {
 
         <div className="col-span-full grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <StatChip label="服务总数" value={String(list.total)} hint={`当前筛选：${activeTabLabel}`} />
-          <StatChip
-            label="本页已同步"
-            value={String(pageStats.synced)}
-            hint={`同步失败 ${pageStats.warn}（当前页）`}
-          />
+          <StatChip label="本页已同步" value={String(pageStats.synced)} hint={`同步失败 ${pageStats.warn}（当前页）`} />
           <StatChip label="本页工具数" value={String(pageStats.tools)} hint="已缓存 tools/list" />
           <StatChip label="本页展示" value={String(filtered.length)} hint="受搜索筛选影响" />
         </div>
@@ -307,9 +273,7 @@ export default function McpPage() {
         <McpCreateCard onAdd={openCreate} />
 
         {!list.loading && filtered.length === 0 && (
-          <p className="col-span-full py-12 text-center text-sm text-ink-faint">
-            暂无匹配的 MCP 服务，点击「添加 MCP 服务」注册 HTTP / SSE / STDIO
-          </p>
+          <p className="col-span-full py-12 text-center text-sm text-ink-faint">暂无匹配的 MCP 服务，点击「添加 MCP 服务」注册 HTTP / SSE / STDIO</p>
         )}
 
         {filtered.map((s) => (
@@ -355,11 +319,7 @@ export default function McpPage() {
         mcpMeta={mcpMeta}
         syncing={viewingLive ? syncingId === viewingLive.id : false}
         onClose={() => setDetailOpen(false)}
-        onSync={
-          viewingLive
-            ? () => void onSync(viewingLive.id)
-            : undefined
-        }
+        onSync={viewingLive ? () => void onSync(viewingLive.id) : undefined}
         onEdit={viewingLive ? () => openEdit(viewingLive) : undefined}
         onDelete={viewingLive ? () => onDelete(viewingLive) : undefined}
       />

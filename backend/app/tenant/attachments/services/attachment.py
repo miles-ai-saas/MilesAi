@@ -28,6 +28,7 @@ from app.common.schema import PageParams, PageResult
 
 settings = get_settings()
 
+
 class AttachmentService(BaseService):
     """通用附件上传/列表/删除；object_key 与 KB 文档路径分离，仍扣 storage 配额。"""
 
@@ -82,9 +83,7 @@ class AttachmentService(BaseService):
         await assert_can_upload_bytes(self.db, self.ctx.tenant_id, len(content))
         mime = file.content_type or "application/octet-stream"
         if not is_kb_upload_allowed(file.filename, mime):
-            raise BadRequestError(
-                f"不支持的文件类型: {mime}。{kb_upload_allowed_hint()}"
-            )
+            raise BadRequestError(f"不支持的文件类型: {mime}。{kb_upload_allowed_hint()}")
 
         storage = await resolve_object_storage_async(self.ctx.tenant_id, self.db)
         att = await self.repo.create(
@@ -99,9 +98,7 @@ class AttachmentService(BaseService):
             resource_type=meta.resource_type,
             resource_id=meta.resource_id,
         )
-        object_key = build_attachment_object_key(
-            str(self.ctx.tenant_id), str(att.id), file.filename
-        )
+        object_key = build_attachment_object_key(str(self.ctx.tenant_id), str(att.id), file.filename)
         att.object_key = object_key
         storage.storage.upload_bytes(content, object_key, mime)
         await apply_storage_delta(self.db, self.ctx.tenant_id, len(content))

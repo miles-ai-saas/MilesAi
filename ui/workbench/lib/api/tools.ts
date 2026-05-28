@@ -22,20 +22,14 @@ export const toolsApi = {
 
   getCustomTool: (id: string) => get<import("../types").CustomTool>(`/tools/${id}`),
 
-  createCustomTool: (payload: import("../types").ToolCreatePayload) =>
-    post<import("../types").CustomTool>("/tools", { tool_type: "http", ...payload }),
+  createCustomTool: (payload: import("../types").ToolCreatePayload) => post<import("../types").CustomTool>("/tools", { tool_type: "http", ...payload }),
 
   updateCustomTool: (id: string, payload: Partial<import("../types").ToolCreatePayload & { is_active?: boolean }>) =>
     patch<import("../types").CustomTool>(`/tools/${id}`, payload),
 
   deleteCustomTool: (id: string) => http.delete(`/tools/${id}`).then(() => undefined),
 
-  invokeTool: (
-    name: string,
-    params: Record<string, unknown>,
-    toolId?: string,
-    confirmed = false,
-  ) =>
+  invokeTool: (name: string, params: Record<string, unknown>, toolId?: string, confirmed = false) =>
     post<{
       tool: string;
       source: string;

@@ -8,17 +8,10 @@ import { usePagedList } from "@/hooks/use-paged-list";
 import { useConfirmAction } from "@/hooks/use-confirm-action";
 import { useKbMeta } from "@/hooks/use-kb-meta";
 import { isDocumentProcessing } from "@/lib/document-status";
-import {
-  type KbDetailAlertState,
-  type KbDetailTabKey,
-  type KbDocFilter,
-  type KbSearchHit,
-  matchKbDocFilter,
-} from "@/lib/kb-detail-shared";
+import { type KbDetailAlertState, type KbDetailTabKey, type KbDocFilter, type KbSearchHit, matchKbDocFilter } from "@/lib/kb-detail-shared";
 import type { Document, KnowledgeBase, KbQuota } from "@/lib/types";
 
 export function useKbDetailPage() {
-
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const { ready } = useRequireAuth();
@@ -52,20 +45,20 @@ export function useKbDetailPage() {
   const [docsRefreshing, setDocsRefreshing] = useState(false);
   const { requestConfirm, confirmDialog } = useConfirmAction();
 
-  const docs = usePagedList(useCallback((p, s) => api.listDocuments(id, p, s), [id]), {
-    enabled: ready && !!id,
-    resetKey: id,
-  });
+  const docs = usePagedList(
+    useCallback((p, s) => api.listDocuments(id, p, s), [id]),
+    {
+      enabled: ready && !!id,
+      resetKey: id,
+    },
+  );
 
   const logs = usePagedList(
     useCallback((p, s) => api.listKbSearchLogs(id, p, s), [id]),
     { enabled: ready && !!id && tab === "logs", resetKey: `${id}-${tab}` },
   );
 
-  const filteredDocs = useMemo(
-    () => docs.items.filter((d) => matchKbDocFilter(d.status, docFilter)),
-    [docs.items, docFilter],
-  );
+  const filteredDocs = useMemo(() => docs.items.filter((d) => matchKbDocFilter(d.status, docFilter)), [docs.items, docFilter]);
 
   const hasProcessing = docs.items.some((d) => isDocumentProcessing(d.status));
 
@@ -85,9 +78,7 @@ export function useKbDetailPage() {
   useEffect(() => {
     if (!ready || !id) return;
     setQuotaLoading(true);
-    Promise.all([reloadKb(), reloadQuota()]).catch((e) =>
-      setAlert({ tone: "error", message: e instanceof Error ? e.message : "加载失败" }),
-    );
+    Promise.all([reloadKb(), reloadQuota()]).catch((e) => setAlert({ tone: "error", message: e instanceof Error ? e.message : "加载失败" }));
   }, [ready, id, reloadKb, reloadQuota]);
 
   const onRefreshDocuments = async () => {
@@ -190,19 +181,11 @@ export function useKbDetailPage() {
   };
 
   const imageVideoDocs = useMemo(
-    () =>
-      docs.items.filter(
-        (d) =>
-          d.status === "ready" &&
-          (/^image\//.test(d.mime_type) || /^video\//.test(d.mime_type)),
-      ),
+    () => docs.items.filter((d) => d.status === "ready" && (/^image\//.test(d.mime_type) || /^video\//.test(d.mime_type))),
     [docs.items],
   );
 
-  const imageDocs = useMemo(
-    () => docs.items.filter((d) => d.status === "ready" && /^image\//.test(d.mime_type)),
-    [docs.items],
-  );
+  const imageDocs = useMemo(() => docs.items.filter((d) => d.status === "ready" && /^image\//.test(d.mime_type)), [docs.items]);
 
   const onSearch = async () => {
     const q = searchQ.trim();

@@ -41,9 +41,7 @@ async def list_skills(
     ctx: TenantContext = Depends(require_permissions("skill:read")),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await SkillService(db, ctx).list_skills(
-        params, category_id=category_id, tag_ids=tag_ids
-    )
+    result = await SkillService(db, ctx).list_skills(params, category_id=category_id, tag_ids=tag_ids)
     return page_ok(result.items, result.total, result.page, result.size)
 
 

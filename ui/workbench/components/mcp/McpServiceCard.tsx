@@ -4,13 +4,7 @@
 
 import { CardActions } from "@/components/resource/CardActions";
 import { ResourceItemCard } from "@/components/resource/ResourceItemCard";
-import {
-  formatMcpUpdatedAt,
-  mcpCardDescription,
-  mcpSyncStatusLabel,
-  mcpTransportLabel,
-  normalizeMcpTransport,
-} from "@/lib/mcp-labels";
+import { formatMcpUpdatedAt, mcpCardDescription, mcpSyncStatusLabel, mcpTransportLabel, normalizeMcpTransport } from "@/lib/mcp-labels";
 import type { McpMeta, McpService } from "@/lib/types";
 
 const transportIcon: Record<"http" | "sse" | "stdio", string> = {
@@ -28,14 +22,7 @@ type Props = {
   onDelete: () => void;
 };
 
-export function McpServiceCard({
-  service,
-  mcpMeta,
-  onDetail,
-  onSync,
-  onEdit,
-  onDelete,
-}: Props) {
+export function McpServiceCard({ service, mcpMeta, onDetail, onSync, onEdit, onDelete }: Props) {
   const transport = normalizeMcpTransport(service.transport);
   const sync = mcpSyncStatusLabel(service, mcpMeta);
   const toolCount = service.tools_cache?.length ?? 0;

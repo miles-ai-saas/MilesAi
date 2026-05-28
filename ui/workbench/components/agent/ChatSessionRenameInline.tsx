@@ -13,13 +13,7 @@ type Props = {
   disabled?: boolean;
 };
 
-export function ChatSessionRenameInline({
-  title,
-  onRename,
-  prominent = false,
-  className = "",
-  disabled = false,
-}: Props) {
+export function ChatSessionRenameInline({ title, onRename, prominent = false, className = "", disabled = false }: Props) {
   const inputId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
   const [editing, setEditing] = useState(false);
@@ -51,10 +45,7 @@ export function ChatSessionRenameInline({
 
   if (editing) {
     return (
-      <div
-        className={`flex min-w-0 flex-1 items-center gap-1 ${className}`}
-        onClick={(e) => e.stopPropagation()}
-      >
+      <div className={`flex min-w-0 flex-1 items-center gap-1 ${className}`} onClick={(e) => e.stopPropagation()}>
         <label htmlFor={inputId} className="sr-only">
           会话名称
         </label>
@@ -82,10 +73,7 @@ export function ChatSessionRenameInline({
 
   return (
     <div className={`group flex min-w-0 max-w-full items-center gap-1 ${className}`}>
-      <span
-        className={`min-w-0 truncate ${prominent ? "font-semibold text-ink" : "font-medium text-ink"}`}
-        title={title}
-      >
+      <span className={`min-w-0 truncate ${prominent ? "font-semibold text-ink" : "font-medium text-ink"}`} title={title}>
         {title}
       </span>
       {!disabled ? (

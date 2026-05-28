@@ -88,9 +88,7 @@ def test_registry_routes_qwen_via_openai_compatible():
     model = _qwen_embedding_model()
     mock_response = MagicMock()
     mock_response.raise_for_status.return_value = None
-    mock_response.json.return_value = {
-        "data": [{"index": 0, "embedding": [0.5] * 1024}]
-    }
+    mock_response.json.return_value = {"data": [{"index": 0, "embedding": [0.5] * 1024}]}
 
     with patch("httpx.post", return_value=mock_response):
         vectors = embed_texts_for_model(model, ["hello"])
@@ -112,9 +110,7 @@ def test_openai_compatible_batches_over_10_texts():
     def _fake_response(batch_len: int):
         mock_response = MagicMock()
         mock_response.raise_for_status.return_value = None
-        mock_response.json.return_value = {
-            "data": [{"index": i, "embedding": [0.1]} for i in range(batch_len)]
-        }
+        mock_response.json.return_value = {"data": [{"index": i, "embedding": [0.1]} for i in range(batch_len)]}
         return mock_response
 
     with patch("httpx.post", side_effect=lambda *a, **k: _fake_response(len(k["json"]["input"]))) as mock_post:

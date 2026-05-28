@@ -5,25 +5,14 @@ import { appendTagIds } from "./query";
 import { buildPageQuery, DEFAULT_PAGE_SIZE } from "../pagination";
 
 export const promptsApi = {
-  listPromptTemplates: (
-    page = 1,
-    size = DEFAULT_PAGE_SIZE,
-    categoryId?: string,
-    tagIds?: string[],
-  ) => {
+  listPromptTemplates: (page = 1, size = DEFAULT_PAGE_SIZE, categoryId?: string, tagIds?: string[]) => {
     let q = buildPageQuery(page, size);
     if (categoryId) q += `&category_id=${categoryId}`;
     q = appendTagIds(q, tagIds);
     return getPage<PromptTemplate>(`/prompt-templates?${q}`);
   },
 
-  createPromptTemplate: (
-    name: string,
-    content: string,
-    description?: string,
-    categoryId?: string,
-    tagIds?: string[],
-  ) =>
+  createPromptTemplate: (name: string, content: string, description?: string, categoryId?: string, tagIds?: string[]) =>
     post<PromptTemplate>("/prompt-templates", {
       name,
       content,
@@ -44,7 +33,5 @@ export const promptsApi = {
     },
   ) => patch<PromptTemplate>(`/prompt-templates/${id}`, payload),
 
-  deletePromptTemplate: (id: string) =>
-    http.delete(`/prompt-templates/${id}`).then(() => undefined),
-
+  deletePromptTemplate: (id: string) => http.delete(`/prompt-templates/${id}`).then(() => undefined),
 };

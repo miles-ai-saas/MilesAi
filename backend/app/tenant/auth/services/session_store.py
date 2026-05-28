@@ -127,4 +127,3 @@ async def revoke_all_sessions(user_id: UUID, *, keep_jti: str | None = None) -> 
         await redis.srem(_index_key(user_id), jti)
         revoked += 1
     return revoked
-

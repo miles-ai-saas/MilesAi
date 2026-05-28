@@ -45,9 +45,7 @@ export function KbDetailDocumentsTab({ vm }: { vm: KbDetailPageVm }) {
                   type="button"
                   onClick={() => vm.setDocFilter(f.key)}
                   className={`rounded-full px-2.5 py-1 text-xs transition ${
-                    vm.docFilter === f.key
-                      ? "bg-brand text-white"
-                      : "bg-surface-muted text-ink-muted hover:text-ink"
+                    vm.docFilter === f.key ? "bg-brand text-white" : "bg-surface-muted text-ink-muted hover:text-ink"
                   }`}
                 >
                   {f.label}
@@ -56,9 +54,7 @@ export function KbDetailDocumentsTab({ vm }: { vm: KbDetailPageVm }) {
             </div>
           </div>
         </div>
-        {vm.docFilter !== "all" ? (
-          <p className="mt-2 text-xs text-ink-faint">筛选仅作用于当前页；切换页码可查看更多。</p>
-        ) : null}
+        {vm.docFilter !== "all" ? <p className="mt-2 text-xs text-ink-faint">筛选仅作用于当前页；切换页码可查看更多。</p> : null}
 
         {vm.docs.loading ? (
           <ul className="mt-4 space-y-2">
@@ -67,9 +63,7 @@ export function KbDetailDocumentsTab({ vm }: { vm: KbDetailPageVm }) {
             ))}
           </ul>
         ) : vm.docs.items.length === 0 ? (
-          <p className="mt-6 text-center text-sm text-ink-muted">
-            暂无文档。上传文件后将自动解析、分片并写入向量库。
-          </p>
+          <p className="mt-6 text-center text-sm text-ink-muted">暂无文档。上传文件后将自动解析、分片并写入向量库。</p>
         ) : vm.filteredDocs.length === 0 ? (
           <p className="mt-6 text-center text-sm text-ink-muted">当前筛选下无文档。</p>
         ) : (
@@ -82,9 +76,7 @@ export function KbDetailDocumentsTab({ vm }: { vm: KbDetailPageVm }) {
                   statusOptions={vm.kbMeta?.document_statuses}
                   retrying={vm.retryingId === d.id}
                   expanded={vm.expandedFailId === d.id}
-                  onToggleFail={() =>
-                    vm.setExpandedFailId((prev) => (prev === d.id ? null : d.id))
-                  }
+                  onToggleFail={() => vm.setExpandedFailId((prev) => (prev === d.id ? null : d.id))}
                   onRetry={() => void vm.onRetry(d.id)}
                   onViewChunks={() => vm.setChunksDoc(d)}
                   onDelete={() => vm.onRequestDeleteDoc(d)}

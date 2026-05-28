@@ -1,13 +1,6 @@
 /** 对话工作台右侧 Tab 键（链路 §5，纯 UI 枚举）。 */
 
-export type AgentWorkbenchTab =
-  | "config"
-  | "trace"
-  | "schedule"
-  | "architecture"
-  | "api"
-  | "call_records"
-  | "stats";
+export type AgentWorkbenchTab = "config" | "trace" | "schedule" | "architecture" | "api" | "call_records" | "stats";
 
 export const AGENT_WORKBENCH_TABS: {
   id: AgentWorkbenchTab;

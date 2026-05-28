@@ -22,8 +22,7 @@ export function SkillCreateBlankDialog({ open, categories, onClose, onSubmit }: 
   const [tagIds, setTagIds] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
 
-  const generalId =
-    categories.find((c) => c.slug === "general")?.id ?? categories[0]?.id ?? "";
+  const generalId = categories.find((c) => c.slug === "general")?.id ?? categories[0]?.id ?? "";
   const effectiveCat = categoryId || generalId;
 
   const save = async () => {
@@ -55,25 +54,11 @@ export function SkillCreateBlankDialog({ open, categories, onClose, onSubmit }: 
         </>
       }
     >
-      <input
-        className="input-field w-full"
-        placeholder="技能名称"
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-      />
-      <input
-        className="input-field w-full"
-        placeholder="描述（可选）"
-        value={description}
-        onChange={(e) => setDescription(e.target.value)}
-      />
+      <input className="input-field w-full" placeholder="技能名称" value={name} onChange={(e) => setName(e.target.value)} />
+      <input className="input-field w-full" placeholder="描述（可选）" value={description} onChange={(e) => setDescription(e.target.value)} />
       <label className="block text-sm">
         <span className="mb-1 block text-ink-muted">分类</span>
-        <select
-          className="input-field w-full"
-          value={effectiveCat}
-          onChange={(e) => setCategoryId(e.target.value)}
-        >
+        <select className="input-field w-full" value={effectiveCat} onChange={(e) => setCategoryId(e.target.value)}>
           {categories.map((c) => (
             <option key={c.id} value={c.id}>
               {c.name}

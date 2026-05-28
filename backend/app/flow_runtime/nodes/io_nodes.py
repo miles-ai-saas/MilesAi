@@ -34,15 +34,9 @@ async def static_response(
     ctx: RunContext,
 ) -> str:
     """固定文案兜底（无命中 / 低分分支）。"""
-    template = str(
-        node_data.get("text")
-        or "抱歉，未在知识库中找到与您问题相关的资料，请换个问法或联系管理员。"
-    )
+    template = str(node_data.get("text") or "抱歉，未在知识库中找到与您问题相关的资料，请换个问法或联系管理员。")
     query = str(inputs.get("query") or ctx.inputs.get("query", ""))
-    return (
-        template.replace("{{用户提问}}", query)
-        .replace("{{query}}", query)
-    )
+    return template.replace("{{用户提问}}", query).replace("{{query}}", query)
 
 
 async def text_output(

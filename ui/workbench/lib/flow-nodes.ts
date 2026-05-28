@@ -70,8 +70,7 @@ const DEFAULT_DATA: Record<NodeType, Record<string, unknown>> = {
   ParallelJoin: { label: "并行汇合", merge_strategy: "dict" },
   PromptTemplate: {
     label: "提示词",
-    template:
-      "基于以下资料回答用户问题。\n\n资料：\n{{检索结果}}\n\n问题：{{用户提问}}",
+    template: "基于以下资料回答用户问题。\n\n资料：\n{{检索结果}}\n\n问题：{{用户提问}}",
   },
   LLMCall: { temperature: 0.7, max_tokens: 2048, label: "大模型" },
   PlatformTool: {
@@ -109,9 +108,7 @@ const DEFAULT_DATA: Record<NodeType, Record<string, unknown>> = {
   },
 };
 
-function paletteGroup(
-  item: (typeof NODE_PALETTE)[number],
-): PaletteGroupKey {
+function paletteGroup(item: (typeof NODE_PALETTE)[number]): PaletteGroupKey {
   return "group" in item && item.group === "generative" ? "generative" : "flow";
 }
 
@@ -127,7 +124,7 @@ export function reactFlowToGraph(nodes: Node[], edges: Edge[]): FlowGraph {
         type: (n.type as string) || "TextInput",
         position: n.position,
         data: (n.data as Record<string, unknown>) || {},
-      })
+      }),
     ),
     edges: edges.map(
       (e): FlowEdge => ({
@@ -136,7 +133,7 @@ export function reactFlowToGraph(nodes: Node[], edges: Edge[]): FlowGraph {
         target: e.target,
         sourceHandle: e.sourceHandle || "output",
         targetHandle: e.targetHandle || "input",
-      })
+      }),
     ),
   };
 }

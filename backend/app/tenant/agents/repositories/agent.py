@@ -34,20 +34,14 @@ class AgentRepository(BaseRepository[Agent]):
 
     async def get_detail(self, agent_id: UUID) -> Agent | None:
         """加载对话编排所需的关联实体。"""
-        stmt = (
-            select(Agent)
-            .where(Agent.id == agent_id, not_deleted(Agent))
-            .options(*self._eager)
-        )
+        stmt = select(Agent).where(Agent.id == agent_id, not_deleted(Agent)).options(*self._eager)
         return (await self.db.execute(stmt)).scalar_one_or_none()
 
     async def load_kbs(self, kb_ids: list[UUID]) -> list[KnowledgeBase]:
         """创建/更新 Agent 时批量加载知识库行。"""
         if not kb_ids:
             return []
-        result = await self.db.execute(
-            select(KnowledgeBase).where(KnowledgeBase.id.in_(kb_ids), not_deleted(KnowledgeBase))
-        )
+        result = await self.db.execute(select(KnowledgeBase).where(KnowledgeBase.id.in_(kb_ids), not_deleted(KnowledgeBase)))
         return list(result.scalars().all())
 
     async def replace_kb_bindings(
@@ -62,14 +56,18 @@ class AgentRepository(BaseRepository[Agent]):
         if not kb_ids:
             return
         rows = (
-            await self.db.execute(
-                select(KnowledgeBase.id).where(
-                    KnowledgeBase.id.in_(kb_ids),
-                    KnowledgeBase.tenant_id == tenant_id,
-                    not_deleted(KnowledgeBase),
+            (
+                await self.db.execute(
+                    select(KnowledgeBase.id).where(
+                        KnowledgeBase.id.in_(kb_ids),
+                        KnowledgeBase.tenant_id == tenant_id,
+                        not_deleted(KnowledgeBase),
+                    )
                 )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
         found = set(rows)
         if len(found) != len(set(kb_ids)):
             raise NotFoundError("知识库不存在或无权访问")

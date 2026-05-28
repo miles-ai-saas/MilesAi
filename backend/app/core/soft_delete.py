@@ -47,9 +47,5 @@ async def mark_deleted_where(
     """批量软删（如删除 Hook 时级联 HookBinding）。"""
     if not has_soft_delete(model):
         return
-    stmt = (
-        update(model)
-        .where(*filters, not_deleted(model))
-        .values(deleted_at=utc_now())
-    )
+    stmt = update(model).where(*filters, not_deleted(model)).values(deleted_at=utc_now())
     await db.execute(stmt)

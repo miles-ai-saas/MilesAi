@@ -19,11 +19,7 @@ export function ToggleSwitch({ checked, onChange, label, disabled }: Props) {
         checked ? "bg-brand" : "bg-surface-muted"
       }`}
     >
-      <span
-        className={`inline-block h-5 w-5 rounded-full bg-surface shadow transition-transform ${
-          checked ? "translate-x-[2.125rem]" : "translate-x-1"
-        }`}
-      />
+      <span className={`inline-block h-5 w-5 rounded-full bg-surface shadow transition-transform ${checked ? "translate-x-[2.125rem]" : "translate-x-1"}`} />
       {label && (
         <span
           className={`pointer-events-none absolute inset-0 flex items-center text-[11px] font-medium ${

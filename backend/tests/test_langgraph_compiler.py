@@ -5,6 +5,7 @@
 """
 
 from app.integrations.langgraph.compiler import can_compile_flow_graph, validate_graph_for_compile
+
 RAG_GRAPH = {
     "nodes": [
         {"id": "input_1", "type": "TextInput", "data": {"input_key": "query"}},

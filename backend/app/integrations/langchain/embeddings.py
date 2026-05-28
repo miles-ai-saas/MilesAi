@@ -42,23 +42,15 @@ def embed_query_for_kb_sync(db: Session, kb: KnowledgeBase, query: str) -> list[
     return build_embeddings(model).embed_query(query)
 
 
-async def embed_texts_for_kb(
-    db: AsyncSession, tenant_id: UUID, kb: KnowledgeBase, texts: list[str]
-) -> list[list[float]]:
+async def embed_texts_for_kb(db: AsyncSession, tenant_id: UUID, kb: KnowledgeBase, texts: list[str]) -> list[list[float]]:
     """异步批量 embed（非入库主路径）。"""
-    model = await resolve_embedding_model_by_id(
-        db, kb.embedding_model_config_id, tenant_id
-    )
+    model = await resolve_embedding_model_by_id(db, kb.embedding_model_config_id, tenant_id)
     return build_embeddings(model).embed_documents(texts)
 
 
-async def embed_query_for_kb(
-    db: AsyncSession, tenant_id: UUID, kb: KnowledgeBase, query: str
-) -> list[float]:
+async def embed_query_for_kb(db: AsyncSession, tenant_id: UUID, kb: KnowledgeBase, query: str) -> list[float]:
     """HTTP API 检索、Agent async 检索：query → 与 KB 同维度的向量。"""
-    model = await resolve_embedding_model_by_id(
-        db, kb.embedding_model_config_id, tenant_id
-    )
+    model = await resolve_embedding_model_by_id(db, kb.embedding_model_config_id, tenant_id)
     return build_embeddings(model).embed_query(query)
 
 

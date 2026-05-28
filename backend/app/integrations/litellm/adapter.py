@@ -53,9 +53,7 @@ def _ensure_chat_model_type(model: ModelConfig) -> None:
     """校验为 llm / reasoning / vision，embedding 走 integrations.embeddings。"""
     if model.model_type not in CHAT_MODEL_TYPES:
         label = model.model_type or "unknown"
-        raise BadRequestError(
-            f"模型「{model.name}」类型为 {label}，当前仅支持对话类（llm / reasoning / vision）"
-        )
+        raise BadRequestError(f"模型「{model.name}」类型为 {label}，当前仅支持对话类（llm / reasoning / vision）")
 
 
 def resolve_litellm_model(model: ModelConfig) -> str:
@@ -72,9 +70,7 @@ def resolve_litellm_model(model: ModelConfig) -> str:
     if "/" in name:
         return name
 
-    prefix = _VENDOR_LITELLM_PREFIX.get(model.vendor) or _PROVIDER_LITELLM_PREFIX.get(
-        model.provider
-    )
+    prefix = _VENDOR_LITELLM_PREFIX.get(model.vendor) or _PROVIDER_LITELLM_PREFIX.get(model.provider)
     if prefix:
         return f"{prefix}/{name}"
 
@@ -93,10 +89,7 @@ def _litellm_error_message(exc: BaseException) -> str:
     msg = getattr(exc, "message", None) or str(exc)
     lower = msg.lower()
     if "authenticationerror" in lower or "incorrect api key" in lower or "invalid api key" in lower:
-        return (
-            "模型 API Key 鉴权失败，请检查密钥是否正确、未过期，"
-            "并在「模型供应商」为对应模型配置有效的 DashScope / 厂商密钥"
-        )
+        return "模型 API Key 鉴权失败，请检查密钥是否正确、未过期，并在「模型供应商」为对应模型配置有效的 DashScope / 厂商密钥"
     return f"模型调用失败: {msg}"
 
 
@@ -118,9 +111,7 @@ def _ensure_messages_valid_for_chat(model: ModelConfig, messages: list[dict[str,
     from app.integrations.chat.multimodal import messages_contain_image
 
     if messages_contain_image(messages) and model.model_type not in CHAT_MODEL_TYPES:
-        raise BadRequestError(
-            f"模型「{model.name}」类型为 {model.model_type}，不支持附图对话，请选用 vision 或大语言模型"
-        )
+        raise BadRequestError(f"模型「{model.name}」类型为 {model.model_type}，不支持附图对话，请选用 vision 或大语言模型")
 
 
 def _extract_usage(response: Any) -> tuple[int, int, int]:

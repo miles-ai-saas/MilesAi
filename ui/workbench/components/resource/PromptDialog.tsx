@@ -69,13 +69,7 @@ export function PromptDialog({
     >
       <label className="block text-sm text-ink">
         {label && <span className="mb-1 block text-xs text-ink-muted">{label}</span>}
-        <input
-          className="input-field w-full"
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          placeholder={placeholder}
-          autoFocus
-        />
+        <input className="input-field w-full" value={value} onChange={(e) => setValue(e.target.value)} placeholder={placeholder} autoFocus />
       </label>
     </ResourceDialog>
   );

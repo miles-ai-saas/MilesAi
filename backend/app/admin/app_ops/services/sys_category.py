@@ -35,11 +35,7 @@ class AdminSysCategoryService:
 
     async def list_by_domain(self, domain: str) -> list[SysCategoryAdminOut]:
         dom = _parse_domain(domain)
-        stmt = (
-            select(SysCategory)
-            .where(SysCategory.domain == dom, not_deleted(SysCategory))
-            .order_by(SysCategory.sort_order.asc(), SysCategory.name.asc())
-        )
+        stmt = select(SysCategory).where(SysCategory.domain == dom, not_deleted(SysCategory)).order_by(SysCategory.sort_order.asc(), SysCategory.name.asc())
         rows = (await self.db.execute(stmt)).scalars().all()
         return [_to_out(r) for r in rows]
 
@@ -83,9 +79,7 @@ class AdminSysCategoryService:
             raise NotFoundError("分类不存在")
         return row
 
-    async def _ensure_slug_unique(
-        self, slug: str, domain: str, *, exclude_id: UUID | None = None
-    ) -> None:
+    async def _ensure_slug_unique(self, slug: str, domain: str, *, exclude_id: UUID | None = None) -> None:
         filters = [
             SysCategory.domain == domain,
             SysCategory.slug == slug,

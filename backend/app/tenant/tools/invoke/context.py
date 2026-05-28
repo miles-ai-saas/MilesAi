@@ -83,9 +83,7 @@ async def invoke_tool_by_name(
     if tool.tool_type == ToolType.HTTP:
         return await invoke_custom_http(tool, params)
     if tool.tool_type == ToolType.SCRIPT:
-        return await invoke_custom_script(
-            db, tool, params, ctx=ctx, actor_user_id=ctx.user_id
-        )
+        return await invoke_custom_script(db, tool, params, ctx=ctx, actor_user_id=ctx.user_id)
     raise BadRequestError(f"暂不支持执行工具类型: {tool.tool_type}")
 
 
@@ -123,9 +121,7 @@ async def invoke_tool_with_context(
             agent_id=agent_id,
             invoke_source=invoke_source,
         )
-        raise ToolConfirmationRequired(
-            slug, meta["name"], meta.get("description"), params
-        )
+        raise ToolConfirmationRequired(slug, meta["name"], meta.get("description"), params)
 
     if slug == "generate_image":
         from app.integrations.generative.policy import (

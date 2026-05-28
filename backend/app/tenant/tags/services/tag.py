@@ -47,11 +47,7 @@ class TagService(BaseService):
 
     async def list_tags(self) -> list[TenantTagOut]:
         """本租户标签库全量列表。"""
-        stmt = (
-            select(TenantTag)
-            .where(*tenant_filters(self.ctx, TenantTag.tenant_id), not_deleted(TenantTag))
-            .order_by(TenantTag.name.asc())
-        )
+        stmt = select(TenantTag).where(*tenant_filters(self.ctx, TenantTag.tenant_id), not_deleted(TenantTag)).order_by(TenantTag.name.asc())
         rows = (await self.db.execute(stmt)).scalars().all()
         return [TenantTagOut.model_validate(r) for r in rows]
 
@@ -154,9 +150,7 @@ class TagService(BaseService):
         entity_ids: set[UUID],
     ) -> dict[UUID, list[TagRefOut]]:
         """批量加载资源的标签列表（当前租户）。"""
-        return await self.get_refs_map_for_tenant(
-            entity_type, entity_ids, self.ctx.tenant_id
-        )
+        return await self.get_refs_map_for_tenant(entity_type, entity_ids, self.ctx.tenant_id)
 
     async def get_refs_map_for_tenant(
         self,

@@ -36,8 +36,7 @@ export default function MediaAssetsPage() {
       (p, s) =>
         api.listMediaAssets(p, s, {
           kind: kind || undefined,
-          has_kb_document:
-            promoted === "yes" ? true : promoted === "no" ? false : undefined,
+          has_kb_document: promoted === "yes" ? true : promoted === "no" ? false : undefined,
         }),
       [kind, promoted],
     ),
@@ -51,10 +50,7 @@ export default function MediaAssetsPage() {
   }, [ready]);
 
   const filtered = useMemo(
-    () =>
-      filterBySearch(list.items, search, (a) =>
-        `${a.title ?? ""} ${a.prompt ?? ""} ${a.kind} ${a.source} ${a.attachment?.filename ?? ""}`.trim(),
-      ),
+    () => filterBySearch(list.items, search, (a) => `${a.title ?? ""} ${a.prompt ?? ""} ${a.kind} ${a.source} ${a.attachment?.filename ?? ""}`.trim()),
     [list.items, search],
   );
 
@@ -109,20 +105,12 @@ export default function MediaAssetsPage() {
         loading={list.loading}
         headerAction={
           <div className="flex flex-wrap items-center gap-2">
-            <select
-              className="input-field w-auto text-sm"
-              value={kind}
-              onChange={(e) => setKind(e.target.value)}
-            >
+            <select className="input-field w-auto text-sm" value={kind} onChange={(e) => setKind(e.target.value)}>
               <option value="">全部类型</option>
               <option value="image">图片</option>
               <option value="video">视频</option>
             </select>
-            <select
-              className="input-field w-auto text-sm"
-              value={promoted}
-              onChange={(e) => setPromoted(e.target.value as "" | "yes" | "no")}
-            >
+            <select className="input-field w-auto text-sm" value={promoted} onChange={(e) => setPromoted(e.target.value as "" | "yes" | "no")}>
               <option value="">全部状态</option>
               <option value="no">未入库</option>
               <option value="yes">已入库</option>
@@ -131,49 +119,30 @@ export default function MediaAssetsPage() {
         }
         footer={
           !list.loading ? (
-            <ResourceListFooter
-              page={list.page}
-              size={list.size}
-              total={list.total}
-              onPageChange={list.setPage}
-              onSizeChange={list.setSize}
-            />
+            <ResourceListFooter page={list.page} size={list.size} total={list.total} onPageChange={list.setPage} onSizeChange={list.setSize} />
           ) : null
         }
       >
         {msg && <p className="mb-4 text-sm text-ink-muted">{msg}</p>}
         {filtered.length === 0 && !list.loading ? (
-          <p className="text-sm text-ink-muted">
-            暂无生成素材。在智能体中开启生成工具并生图/生视频，或在流程中使用生图/生视频节点。
-          </p>
+          <p className="text-sm text-ink-muted">暂无生成素材。在智能体中开启生成工具并生图/生视频，或在流程中使用生图/生视频节点。</p>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {filtered.map((a) => (
-              <article
-                key={a.id}
-                className="flex flex-col rounded-lg border border-line bg-surface p-3 shadow-sm"
-              >
+              <article key={a.id} className="flex flex-col rounded-lg border border-line bg-surface p-3 shadow-sm">
                 <div className="mb-2 flex min-h-[120px] items-center justify-center rounded-md bg-surface-muted">
                   <ChatArtifactMedia
                     kind={a.kind}
                     attachmentId={a.attachment_id}
                     mimeType={a.attachment?.mime_type}
                     caption={a.title ?? undefined}
-                    posterAttachmentId={
-                      a.kind === "video"
-                        ? a.cover_attachment_id ?? a.cover_attachment?.id
-                        : undefined
-                    }
+                    posterAttachmentId={a.kind === "video" ? (a.cover_attachment_id ?? a.cover_attachment?.id) : undefined}
                   />
                 </div>
-                <p className="truncate text-sm font-medium text-ink">
-                  {a.title ?? a.attachment?.filename ?? "未命名"}
-                </p>
+                <p className="truncate text-sm font-medium text-ink">{a.title ?? a.attachment?.filename ?? "未命名"}</p>
                 <p className="mt-1 text-xs text-ink-muted">
                   {mediaAssetKindLabel(a.kind)} · {mediaAssetSourceLabel(a.source)}
-                  {a.attachment?.file_size != null
-                    ? ` · ${formatBytes(a.attachment.file_size)}`
-                    : ""}
+                  {a.attachment?.file_size != null ? ` · ${formatBytes(a.attachment.file_size)}` : ""}
                 </p>
                 {a.prompt && (
                   <p className="mt-2 line-clamp-2 text-xs text-ink-faint" title={a.prompt}>
@@ -186,19 +155,11 @@ export default function MediaAssetsPage() {
                 </p>
                 <div className="mt-3 flex flex-wrap gap-2">
                   {!a.kb_document_id && (a.kind === "image" || a.kind === "video") && kbs.length > 0 && (
-                    <button
-                      type="button"
-                      className="btn-sm-primary text-xs"
-                      onClick={() => openPromote(a)}
-                    >
+                    <button type="button" className="btn-sm-primary text-xs" onClick={() => openPromote(a)}>
                       加入知识库
                     </button>
                   )}
-                  <button
-                    type="button"
-                    className="btn-sm-ghost text-xs text-red-600"
-                    onClick={() => onDelete(a)}
-                  >
+                  <button type="button" className="btn-sm-ghost text-xs text-red-600" onClick={() => onDelete(a)}>
                     删除
                   </button>
                 </div>
@@ -212,16 +173,10 @@ export default function MediaAssetsPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="w-full max-w-md rounded-xl border border-line bg-surface p-5 shadow-lg">
             <h2 className="text-base font-semibold text-ink">加入知识库</h2>
-            <p className="mt-1 text-sm text-ink-muted">
-              将复制文件到所选知识库并触发解析（占用存储配额）。
-            </p>
+            <p className="mt-1 text-sm text-ink-muted">将复制文件到所选知识库并触发解析（占用存储配额）。</p>
             <label className="mt-4 block text-xs font-medium text-ink-muted">
               目标知识库
-              <select
-                className="input-field mt-1 w-full text-sm"
-                value={promoteKbId}
-                onChange={(e) => setPromoteKbId(e.target.value)}
-              >
+              <select className="input-field mt-1 w-full text-sm" value={promoteKbId} onChange={(e) => setPromoteKbId(e.target.value)}>
                 {kbs.map((kb) => (
                   <option key={kb.id} value={kb.id}>
                     {kb.name}
@@ -230,20 +185,10 @@ export default function MediaAssetsPage() {
               </select>
             </label>
             <div className="mt-5 flex justify-end gap-2">
-              <button
-                type="button"
-                className="btn-secondary text-sm"
-                disabled={promoteBusy}
-                onClick={() => setPromoteTarget(null)}
-              >
+              <button type="button" className="btn-secondary text-sm" disabled={promoteBusy} onClick={() => setPromoteTarget(null)}>
                 取消
               </button>
-              <button
-                type="button"
-                className="btn-primary text-sm"
-                disabled={promoteBusy || !promoteKbId}
-                onClick={() => void onPromote()}
-              >
+              <button type="button" className="btn-primary text-sm" disabled={promoteBusy || !promoteKbId} onClick={() => void onPromote()}>
                 {promoteBusy ? "处理中…" : "确认"}
               </button>
             </div>

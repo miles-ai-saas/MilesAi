@@ -42,21 +42,10 @@ type ModelSelectProps = {
   required?: boolean;
 };
 
-export function GenerativeModelSelect({
-  models,
-  modelType,
-  value,
-  onChange,
-  required,
-}: ModelSelectProps) {
+export function GenerativeModelSelect({ models, modelType, value, onChange, required }: ModelSelectProps) {
   const options = filterModelsByType(models, modelType);
   return (
-    <select
-      className="input-field w-full text-sm"
-      value={value}
-      onChange={(e) => onChange(e.target.value || undefined)}
-      required={required}
-    >
+    <select className="input-field w-full text-sm" value={value} onChange={(e) => onChange(e.target.value || undefined)} required={required}>
       <option value="">{required ? "— 请选择 —" : "— 未选择 —"}</option>
       {options.map((m) => (
         <option key={m.id} value={m.id}>

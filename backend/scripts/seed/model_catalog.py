@@ -432,9 +432,7 @@ BUILTIN_CATALOG: list[dict] = [
 ]
 
 _RETIRED_BUILTIN_MODEL_CODES = frozenset({"deepseek-reasoner", "deepseek-chat"})
-_RETIRED_MODEL_DESCRIPTION = (
-    "已退役；请迁移至 deepseek-v4-flash（对话/思考）或 deepseek-v4-pro（复杂推理）。"
-)
+_RETIRED_MODEL_DESCRIPTION = "已退役；请迁移至 deepseek-v4-flash（对话/思考）或 deepseek-v4-pro（复杂推理）。"
 
 _UPDATABLE = (
     "name",
@@ -455,13 +453,17 @@ _UPDATABLE = (
 async def _deprecate_retired_catalog_models(session: AsyncSession) -> int:
     """将已移出种子的内置模型标记为 deprecated（保留行以免租户引用断裂）。"""
     rows = (
-        await session.execute(
-            select(ModelConfig).where(
-                ModelConfig.tenant_id.is_(None),
-                ModelConfig.model_code.in_(_RETIRED_BUILTIN_MODEL_CODES),
+        (
+            await session.execute(
+                select(ModelConfig).where(
+                    ModelConfig.tenant_id.is_(None),
+                    ModelConfig.model_code.in_(_RETIRED_BUILTIN_MODEL_CODES),
+                )
             )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     for row in rows:
         row.publish_status = ModelPublishStatus.DEPRECATED.value
         row.is_active = False

@@ -28,10 +28,7 @@ function MenuTriggerContent({ variant }: { variant: "dots" | "icon" }) {
     );
   }
   return (
-    <span
-      aria-hidden
-      className="inline-block translate-y-px text-[10px] font-medium leading-none tracking-[0.12em] text-current"
-    >
+    <span aria-hidden className="inline-block translate-y-px text-[10px] font-medium leading-none tracking-[0.12em] text-current">
       ···
     </span>
   );
@@ -92,10 +89,7 @@ export function CardOverflowMenu({ items, label = "更多操作", trigger = "dot
       </button>
 
       {open && (
-        <div
-          role="menu"
-          className="absolute right-0 z-20 mt-1.5 min-w-[9.5rem] overflow-hidden rounded-xl border border-line bg-surface py-1 shadow-panel"
-        >
+        <div role="menu" className="absolute right-0 z-20 mt-1.5 min-w-[9.5rem] overflow-hidden rounded-xl border border-line bg-surface py-1 shadow-panel">
           {normalItems.map((item) => (
             <button
               key={item.label}
@@ -110,9 +104,7 @@ export function CardOverflowMenu({ items, label = "更多操作", trigger = "dot
               {item.label}
             </button>
           ))}
-          {dangerItems.length > 0 && normalItems.length > 0 && (
-            <div className="my-1 border-t border-line-soft" role="separator" />
-          )}
+          {dangerItems.length > 0 && normalItems.length > 0 && <div className="my-1 border-t border-line-soft" role="separator" />}
           {dangerItems.map((item) => (
             <button
               key={item.label}

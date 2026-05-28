@@ -56,6 +56,7 @@ async def sub_flow(
     run_subflow = ctx.run_subflow
     if run_subflow is None:
         from app.flow_runtime.runtime_factory import get_flow_runtime  # pragma: no cover
+
         run_subflow = get_flow_runtime().run
 
     result = await run_subflow(graph_json, child_ctx)

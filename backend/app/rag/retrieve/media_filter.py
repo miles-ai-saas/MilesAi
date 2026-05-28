@@ -43,13 +43,7 @@ async def filter_hits_by_media_types_async(
     if not chunk_ids:
         return []
 
-    rows = (
-        await db.execute(
-            select(VectorRef.chunk_id, VectorRef.vector_type).where(
-                VectorRef.chunk_id.in_(chunk_ids)
-            )
-        )
-    ).all()
+    rows = (await db.execute(select(VectorRef.chunk_id, VectorRef.vector_type).where(VectorRef.chunk_id.in_(chunk_ids)))).all()
     type_by_chunk = {str(row[0]): row[1] for row in rows}
     filtered: list[dict[str, Any]] = []
     for h in hits:
@@ -83,11 +77,7 @@ def filter_hits_by_media_types_sync(
     if not chunk_ids:
         return []
 
-    rows = db.execute(
-        select(VectorRef.chunk_id, VectorRef.vector_type).where(
-            VectorRef.chunk_id.in_(chunk_ids)
-        )
-    ).all()
+    rows = db.execute(select(VectorRef.chunk_id, VectorRef.vector_type).where(VectorRef.chunk_id.in_(chunk_ids))).all()
     type_by_chunk = {str(row[0]): row[1] for row in rows}
     filtered: list[dict[str, Any]] = []
     for h in hits:

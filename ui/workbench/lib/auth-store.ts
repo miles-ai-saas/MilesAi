@@ -30,8 +30,8 @@ export const useAuthStore = create<AuthState>()(
       setSession: (token, user) => set({ accessToken: token, user }),
       logout: () => set({ accessToken: null, user: null }),
     }),
-    { name: STORAGE_KEY }
-  )
+    { name: STORAGE_KEY },
+  ),
 );
 
 /** 从内存或 localStorage 同步读取 token（避免 persist 水合前 token 为空） */

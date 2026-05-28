@@ -3,29 +3,12 @@
 /** 对话页工作台 Tab 面板容器（链路 §5）。 */
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  AGENT_FORM_STEPS,
-  agentToFormValues,
-  buildAgentConfig,
-  emptyAgentForm,
-  type AgentFormValues,
-} from "@/components/agent/agent-form-shared";
+import { AGENT_FORM_STEPS, agentToFormValues, buildAgentConfig, emptyAgentForm, type AgentFormValues } from "@/components/agent/agent-form-shared";
 import type { AgentWorkbenchTab } from "@/components/agent/agent-workbench-tabs";
 import { AgentFormStepContent } from "@/components/agent/AgentFormStepContent";
 import { AgentFormStepper } from "@/components/agent/AgentFormStepper";
 import { api } from "@/lib/api";
-import type {
-  Agent,
-  Flow,
-  KnowledgeBase,
-  McpService,
-  ModelConfig,
-  PromptTemplate,
-  SkillPackage,
-  A2aPeer,
-  SysCategory,
-  ToolCatalogItem,
-} from "@/lib/types";
+import type { Agent, Flow, KnowledgeBase, McpService, ModelConfig, PromptTemplate, SkillPackage, A2aPeer, SysCategory, ToolCatalogItem } from "@/lib/types";
 
 type Props = {
   agentId: string | null;
@@ -132,19 +115,11 @@ export function AgentWorkbenchPanel({ agentId, agentName, activeTab, onSaved }: 
   };
 
   if (!agentId) {
-    return (
-      <div className="flex flex-1 items-center justify-center p-6 text-center text-sm text-ink-muted">
-        请从左侧选择智能体
-      </div>
-    );
+    return <div className="flex flex-1 items-center justify-center p-6 text-center text-sm text-ink-muted">请从左侧选择智能体</div>;
   }
 
   if (loading) {
-    return (
-      <div className="flex flex-1 items-center justify-center p-6 text-sm text-ink-muted">
-        加载中…
-      </div>
-    );
+    return <div className="flex flex-1 items-center justify-center p-6 text-sm text-ink-muted">加载中…</div>;
   }
 
   if (activeTab === "config") {
@@ -177,12 +152,7 @@ export function AgentWorkbenchPanel({ agentId, agentName, activeTab, onSaved }: 
           />
         </div>
         <footer className="flex shrink-0 items-center justify-between gap-4 border-t border-line-soft bg-surface-subtle/60 px-8 py-3">
-          <button
-            type="button"
-            className="btn-sm-outline"
-            disabled={step === 0 || busy}
-            onClick={() => setStep((s) => Math.max(0, s - 1))}
-          >
+          <button type="button" className="btn-sm-outline" disabled={step === 0 || busy} onClick={() => setStep((s) => Math.max(0, s - 1))}>
             上一步
           </button>
           <span className="text-[11px] tabular-nums text-ink-faint">
@@ -190,21 +160,11 @@ export function AgentWorkbenchPanel({ agentId, agentName, activeTab, onSaved }: 
           </span>
           <div className="flex items-center gap-2">
             {!isLastStep && (
-              <button
-                type="button"
-                className="btn-sm-ghost"
-                disabled={busy || !form.name.trim()}
-                onClick={() => void onSubmit()}
-              >
+              <button type="button" className="btn-sm-ghost" disabled={busy || !form.name.trim()} onClick={() => void onSubmit()}>
                 保存
               </button>
             )}
-            <button
-              type="button"
-              className="btn-sm-primary min-w-[4.5rem]"
-              disabled={busy || !canNext}
-              onClick={goNext}
-            >
+            <button type="button" className="btn-sm-primary min-w-[4.5rem]" disabled={busy || !canNext} onClick={goNext}>
               {busy ? "…" : isLastStep ? "完成" : "下一步"}
             </button>
           </div>
@@ -213,9 +173,5 @@ export function AgentWorkbenchPanel({ agentId, agentName, activeTab, onSaved }: 
     );
   }
 
-  return (
-    <div className="flex flex-1 items-center justify-center p-6 text-sm text-ink-muted">
-      该模块即将推出
-    </div>
-  );
+  return <div className="flex flex-1 items-center justify-center p-6 text-sm text-ink-muted">该模块即将推出</div>;
 }

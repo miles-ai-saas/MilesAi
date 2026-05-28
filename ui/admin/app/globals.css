@@ -23,8 +23,14 @@
     min-height: 100%;
     color: var(--ink);
     background: var(--surface-muted);
-    font-family: var(--font-sans), "PingFang SC", "Microsoft YaHei", "Segoe UI", system-ui,
-      -apple-system, sans-serif;
+    font-family:
+      var(--font-sans),
+      "PingFang SC",
+      "Microsoft YaHei",
+      "Segoe UI",
+      system-ui,
+      -apple-system,
+      sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;

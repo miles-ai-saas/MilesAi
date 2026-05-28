@@ -4,10 +4,7 @@
  */
 import type { NodeType } from "./flow-nodes";
 
-export const NODE_HANDLES: Record<
-  NodeType,
-  { targets: string[]; sources: string[] }
-> = {
+export const NODE_HANDLES: Record<NodeType, { targets: string[]; sources: string[] }> = {
   TextInput: { targets: [], sources: ["output"] },
   KnowledgeSearch: { targets: ["query"], sources: ["output"] },
   RelevanceGrade: { targets: ["hits", "input"], sources: ["good", "poor", "none"] },

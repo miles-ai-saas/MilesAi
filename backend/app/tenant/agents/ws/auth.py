@@ -31,11 +31,7 @@ async def resolve_tenant_context(db: AsyncSession, token: str) -> TenantContext:
     user_id = payload.get("sub")
     if not user_id:
         raise UnauthorizedError("无效令牌载荷")
-    result = await db.execute(
-        select(User)
-        .where(User.id == user_id, User.is_active.is_(True))
-        .options(selectinload(User.roles).selectinload(Role.permissions))
-    )
+    result = await db.execute(select(User).where(User.id == user_id, User.is_active.is_(True)).options(selectinload(User.roles).selectinload(Role.permissions)))
     user = result.scalar_one_or_none()
     if not user:
         raise UnauthorizedError("用户不存在或已禁用")

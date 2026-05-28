@@ -161,16 +161,12 @@ async def agent_chat_websocket(
             if event_type == proto.GENERATIVE_JOB_CANCEL:
                 raw_id = payload.get("job_id")
                 if not raw_id:
-                    await proto.send_json(
-                        websocket, proto.CHAT_ERROR, {"message": "缺少 job_id"}
-                    )
+                    await proto.send_json(websocket, proto.CHAT_ERROR, {"message": "缺少 job_id"})
                     continue
                 try:
                     job_id = UUID(str(raw_id))
                 except ValueError:
-                    await proto.send_json(
-                        websocket, proto.CHAT_ERROR, {"message": "无效 job_id"}
-                    )
+                    await proto.send_json(websocket, proto.CHAT_ERROR, {"message": "无效 job_id"})
                     continue
                 async with AsyncSessionLocal() as db:
                     try:
@@ -183,9 +179,7 @@ async def agent_chat_websocket(
                         )
                     except Exception as exc:
                         await db.rollback()
-                        await proto.send_json(
-                            websocket, proto.CHAT_ERROR, {"message": str(exc)}
-                        )
+                        await proto.send_json(websocket, proto.CHAT_ERROR, {"message": str(exc)})
                 continue
 
             if event_type == proto.TOOL_CONFIRM:

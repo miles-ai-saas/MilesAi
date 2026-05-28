@@ -31,15 +31,11 @@ class ModelConfig(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     model_name: Mapped[str] = mapped_column(String(128), nullable=False)
     model_code: Mapped[str | None] = mapped_column(String(128), nullable=True)
     vendor: Mapped[str] = mapped_column(String(32), default=ModelVendor.OTHER.value, nullable=False)
-    model_type: Mapped[str] = mapped_column(
-        String(32), default=ModelCapabilityType.LLM.value, nullable=False
-    )
+    model_type: Mapped[str] = mapped_column(String(32), default=ModelCapabilityType.LLM.value, nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     context_window: Mapped[str | None] = mapped_column(String(32), nullable=True)
     capabilities: Mapped[list] = mapped_column(JSONB, default=list, nullable=False)
-    publish_status: Mapped[str] = mapped_column(
-        String(16), default=ModelPublishStatus.PUBLISHED.value, nullable=False
-    )
+    publish_status: Mapped[str] = mapped_column(String(16), default=ModelPublishStatus.PUBLISHED.value, nullable=False)
     is_featured: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     badge: Mapped[str | None] = mapped_column(String(16), nullable=True)
     sort_order: Mapped[int] = mapped_column(Integer, default=0, nullable=False)

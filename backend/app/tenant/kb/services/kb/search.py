@@ -73,9 +73,7 @@ class KnowledgeBaseSearchMixin:
 
         derived = (derived or "").strip()
         if not derived or derived.startswith("[图片 ·") or derived.startswith("[视频 ·"):
-            raise BadRequestError(
-                "未能从 query_document_id 提取有效文本，请安装 OCR/Whisper/ffmpeg 或改用手动 query"
-            )
+            raise BadRequestError("未能从 query_document_id 提取有效文本，请安装 OCR/Whisper/ffmpeg 或改用手动 query")
 
         combined = f"{query}\n\n{derived}".strip() if query else derived
         return combined, media_types
@@ -92,9 +90,7 @@ class KnowledgeBaseSearchMixin:
         query = (body.query or "").strip()
 
         if body.query_document_id is not None:
-            doc = await self.doc_repo.get_by_id_or_raise(
-                body.query_document_id, label="文档不存在"
-            )
+            doc = await self.doc_repo.get_by_id_or_raise(body.query_document_id, label="文档不存在")
             if doc.kb_id != kb.id or is_marked_deleted(doc):
                 raise NotFoundError("文档不存在")
             assert_tenant_access(self.ctx, doc.tenant_id)
@@ -133,9 +129,7 @@ class KnowledgeBaseSearchMixin:
             vector = await embed_query_for_kb(self.db, self.ctx.tenant_id, kb, query_text)
             rerank_model = None
             if kb.rerank_model_config_id:
-                rerank_model = await resolve_rerank_model_by_id(
-                    self.db, kb.rerank_model_config_id, self.ctx.tenant_id
-                )
+                rerank_model = await resolve_rerank_model_by_id(self.db, kb.rerank_model_config_id, self.ctx.tenant_id)
 
         fetch_limit = body.top_k
         if media_types:

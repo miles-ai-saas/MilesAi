@@ -10,11 +10,5 @@ type Props = {
 };
 
 export function McpCreateCard({ onAdd }: Props) {
-  return (
-    <AddResourceCard
-      label="添加 MCP 服务"
-      hint="支持 HTTP、SSE、STDIO；创建后同步 tools/list"
-      onClick={() => onAdd("http")}
-    />
-  );
+  return <AddResourceCard label="添加 MCP 服务" hint="支持 HTTP、SSE、STDIO；创建后同步 tools/list" onClick={() => onAdd("http")} />;
 }

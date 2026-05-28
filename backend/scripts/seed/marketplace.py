@@ -154,16 +154,12 @@ async def seed_marketplace_categories(session: AsyncSession) -> dict[str, AppCat
 
 async def _default_tenant_id(session: AsyncSession) -> UUID | None:
     settings = get_settings()
-    return await session.scalar(
-        select(Tenant.id).where(Tenant.name == settings.seed_tenant_name).limit(1)
-    )
+    return await session.scalar(select(Tenant.id).where(Tenant.name == settings.seed_tenant_name).limit(1))
 
 
 async def _ensure_tenant_tag(session: AsyncSession, tenant_id: UUID, name: str) -> TenantTag:
     slug = slugify(name)
-    tag_id = await session.scalar(
-        select(TenantTag.id).where(TenantTag.tenant_id == tenant_id, TenantTag.slug == slug).limit(1)
-    )
+    tag_id = await session.scalar(select(TenantTag.id).where(TenantTag.tenant_id == tenant_id, TenantTag.slug == slug).limit(1))
     if tag_id:
         row = await session.get(TenantTag, tag_id)
         if row:
@@ -241,9 +237,7 @@ async def seed_marketplace(session: AsyncSession) -> None:
 
     graph = _rag_graph()
 
-    existing = await session.scalar(
-        select(MarketplaceApp.id).where(MarketplaceApp.is_official.is_(True)).limit(1)
-    )
+    existing = await session.scalar(select(MarketplaceApp.id).where(MarketplaceApp.is_official.is_(True)).limit(1))
     if not existing:
         for spec in OFFICIAL_APP_SPECS:
             session.add(

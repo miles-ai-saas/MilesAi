@@ -37,13 +37,7 @@ function DetailField({ label, children }: { label: string; children: React.React
   );
 }
 
-export function GenerativeJobDetailDialog({
-  open,
-  jobId,
-  jobMeta,
-  onClose,
-  onChanged,
-}: Props) {
+export function GenerativeJobDetailDialog({ open, jobId, jobMeta, onClose, onChanged }: Props) {
   const [job, setJob] = useState<GenerativeJobOut | null>(null);
   const [msg, setMsg] = useState("");
   const [acting, setActing] = useState(false);
@@ -137,13 +131,9 @@ export function GenerativeJobDetailDialog({
     }
   };
 
-  const celeryTaskHref =
-    job?.celery_task_record_id
-      ? `/workbench/tasks?category=celery&task=${encodeURIComponent(job.celery_task_record_id)}`
-      : null;
+  const celeryTaskHref = job?.celery_task_record_id ? `/workbench/tasks?category=celery&task=${encodeURIComponent(job.celery_task_record_id)}` : null;
 
-  const prompt =
-    job?.params && typeof job.params.prompt === "string" ? job.params.prompt : "";
+  const prompt = job?.params && typeof job.params.prompt === "string" ? job.params.prompt : "";
 
   return (
     <ResourceDialog
@@ -154,31 +144,16 @@ export function GenerativeJobDetailDialog({
       footer={
         job ? (
           <div className="flex flex-wrap items-center justify-end gap-2">
-            <button
-              type="button"
-              className="btn-ghost text-sm"
-              disabled={loading || acting}
-              onClick={() => void reload()}
-            >
+            <button type="button" className="btn-ghost text-sm" disabled={loading || acting} onClick={() => void reload()}>
               {loading ? "刷新中…" : "刷新"}
             </button>
             {canRetryGenerativeJob(job.status) && (
-              <button
-                type="button"
-                className="btn-primary text-sm"
-                disabled={acting}
-                onClick={() => void onRetry()}
-              >
+              <button type="button" className="btn-primary text-sm" disabled={acting} onClick={() => void onRetry()}>
                 重试
               </button>
             )}
             {canCancelGenerativeJob(job.status) && (
-              <button
-                type="button"
-                className="btn-secondary text-sm text-red-600"
-                disabled={acting}
-                onClick={() => void onCancel()}
-              >
+              <button type="button" className="btn-secondary text-sm text-red-600" disabled={acting} onClick={() => void onCancel()}>
                 取消任务
               </button>
             )}
@@ -194,38 +169,27 @@ export function GenerativeJobDetailDialog({
       ) : (
         <dl className="grid gap-3 sm:grid-cols-2">
           <DetailField label="状态">
-            <span
-              className={`inline-flex rounded-full px-2 py-0.5 text-xs ring-1 ${generativeJobStatusBadgeClass(job.status)}`}
-            >
+            <span className={`inline-flex rounded-full px-2 py-0.5 text-xs ring-1 ${generativeJobStatusBadgeClass(job.status)}`}>
               {generativeJobStatusLabel(job.status, jobMeta)}
             </span>
           </DetailField>
           <DetailField label="类型">{generativeJobKindLabel(job.kind)}</DetailField>
-          <DetailField label="来源">
-            {generativeJobSourceLabel(job.source, jobMeta)}
-          </DetailField>
+          <DetailField label="来源">{generativeJobSourceLabel(job.source, jobMeta)}</DetailField>
           <DetailField label="进度">
             {job.progress_percent != null ? `${job.progress_percent}%` : "—"}
             {job.progress_message ? ` · ${job.progress_message}` : ""}
             {sseFailed && !isGenerativeJobTerminal(job.status) ? (
-              <span className="mt-1 block text-xs text-amber-800">
-                实时进度不可用，请点击「刷新」更新
-              </span>
+              <span className="mt-1 block text-xs text-amber-800">实时进度不可用，请点击「刷新」更新</span>
             ) : null}
           </DetailField>
           {job.progress_percent != null && !isGenerativeJobTerminal(job.status) ? (
             <div className="col-span-full">
               <div className="h-2 overflow-hidden rounded-full bg-surface-muted">
-                <div
-                  className="h-full rounded-full bg-brand transition-all"
-                  style={{ width: `${job.progress_percent}%` }}
-                />
+                <div className="h-full rounded-full bg-brand transition-all" style={{ width: `${job.progress_percent}%` }} />
               </div>
             </div>
           ) : null}
-          <DetailField label="创建时间">
-            {new Date(job.created_at).toLocaleString("zh-CN")}
-          </DetailField>
+          <DetailField label="创建时间">{new Date(job.created_at).toLocaleString("zh-CN")}</DetailField>
           {job.celery_task_id ? (
             <DetailField label="Celery ID">
               <span className="font-mono text-xs">{job.celery_task_id}</span>
@@ -253,17 +217,13 @@ export function GenerativeJobDetailDialog({
             </div>
           ) : null}
           {job.status === "success" &&
-          (job.result?.attachment_id ||
-            (Array.isArray(job.result?.attachment_ids) &&
-              (job.result.attachment_ids as string[]).length > 0)) ? (
+          (job.result?.attachment_id || (Array.isArray(job.result?.attachment_ids) && (job.result.attachment_ids as string[]).length > 0)) ? (
             <div className="col-span-full">
               <DetailField label="生成物">
                 <div className="flex flex-wrap gap-3">
-                  {(
-                    Array.isArray(job.result?.attachment_ids) &&
-                    (job.result.attachment_ids as string[]).length > 0
-                      ? (job.result.attachment_ids as string[])
-                      : [String(job.result!.attachment_id)]
+                  {(Array.isArray(job.result?.attachment_ids) && (job.result.attachment_ids as string[]).length > 0
+                    ? (job.result.attachment_ids as string[])
+                    : [String(job.result!.attachment_id)]
                   ).map((attId) => (
                     <ChatArtifactMedia
                       key={attId}
@@ -274,10 +234,7 @@ export function GenerativeJobDetailDialog({
                   ))}
                 </div>
               </DetailField>
-              <Link
-                href="/workbench/media-assets"
-                className="mt-2 inline-block text-xs text-brand hover:underline"
-              >
+              <Link href="/workbench/media-assets" className="mt-2 inline-block text-xs text-brand hover:underline">
                 在生成素材中查看 →
               </Link>
             </div>

@@ -73,13 +73,8 @@ class ModelService(BaseService):
 
     async def catalog_meta(self) -> ModelCatalogMetaOut:
         return ModelCatalogMetaOut(
-            vendors=[
-                ModelVendorOption(value=v.value, label=VENDOR_LABELS[v.value]) for v in SUPPORTED_VENDORS
-            ],
-            model_types=[
-                ModelTypeOption(value=t.value, label=MODEL_TYPE_LABELS[t.value])
-                for t in CATALOG_MODEL_TYPES
-            ],
+            vendors=[ModelVendorOption(value=v.value, label=VENDOR_LABELS[v.value]) for v in SUPPORTED_VENDORS],
+            model_types=[ModelTypeOption(value=t.value, label=MODEL_TYPE_LABELS[t.value]) for t in CATALOG_MODEL_TYPES],
         )
 
     async def _get_or_raise(self, config_id: UUID) -> ModelConfig:
@@ -94,10 +89,7 @@ class ModelService(BaseService):
         return select(ModelConfig).where(
             or_(
                 ModelConfig.tenant_id == self.ctx.tenant_id,
-                (
-                    ModelConfig.tenant_id.is_(None)
-                    & (ModelConfig.publish_status == ModelPublishStatus.PUBLISHED.value)
-                ),
+                (ModelConfig.tenant_id.is_(None) & (ModelConfig.publish_status == ModelPublishStatus.PUBLISHED.value)),
             ),
             not_deleted(ModelConfig),
         )
@@ -125,13 +117,7 @@ class ModelService(BaseService):
         rows = (await self.db.execute(stmt)).scalars().all()
         if q:
             q_lower = q.lower()
-            rows = [
-                m
-                for m in rows
-                if q_lower in (m.name or "").lower()
-                or q_lower in (m.model_code or "").lower()
-                or q_lower in (m.model_name or "").lower()
-            ]
+            rows = [m for m in rows if q_lower in (m.name or "").lower() or q_lower in (m.model_code or "").lower() or q_lower in (m.model_name or "").lower()]
         out: list[ModelConfigOut] = []
         for m in rows:
             cred = None
@@ -146,18 +132,14 @@ class ModelService(BaseService):
         if body.model_type == ModelCapabilityType.EMBEDDING.value:
             extra = body.extra or {}
             if not extra.get("embedding_dimension"):
-                raise BadRequestError(
-                    "向量化模型须在 extra 中配置 embedding_dimension（整数）"
-                )
+                raise BadRequestError("向量化模型须在 extra 中配置 embedding_dimension（整数）")
             from app.integrations.embeddings import known_invoke_modes
             from app.common.constants.model_extra import EXTRA_INVOKE_MODE
 
             mode = extra.get(EXTRA_INVOKE_MODE)
             if isinstance(mode, str) and mode.strip():
                 if mode.strip().lower() not in known_invoke_modes():
-                    raise BadRequestError(
-                        f"不支持的 invoke_mode: {mode}，可选: {', '.join(sorted(known_invoke_modes()))}"
-                    )
+                    raise BadRequestError(f"不支持的 invoke_mode: {mode}，可选: {', '.join(sorted(known_invoke_modes()))}")
         if body.model_type == ModelCapabilityType.RERANK.value:
             extra = body.extra or {}
             from app.common.constants.model_extra import EXTRA_INVOKE_MODE
@@ -166,9 +148,7 @@ class ModelService(BaseService):
             mode = extra.get(EXTRA_INVOKE_MODE)
             if isinstance(mode, str) and mode.strip():
                 if mode.strip().lower() not in rerank_invoke_modes():
-                    raise BadRequestError(
-                        f"不支持的 rerank invoke_mode: {mode}，可选: {', '.join(sorted(rerank_invoke_modes()))}"
-                    )
+                    raise BadRequestError(f"不支持的 rerank invoke_mode: {mode}，可选: {', '.join(sorted(rerank_invoke_modes()))}")
         model = await self.repo.create(
             tenant_id=self.ctx.tenant_id,
             name=body.name,
@@ -194,9 +174,7 @@ class ModelService(BaseService):
         api_key = data.pop("api_key", None)
         if api_key is not None:
             normalized = normalize_api_key(api_key)
-            model.api_key_encrypted = (
-                validate_api_key(normalized, vendor=model.vendor) if normalized else None
-            )
+            model.api_key_encrypted = validate_api_key(normalized, vendor=model.vendor) if normalized else None
         if "vendor" in data and data.get("provider") is None:
             data["provider"] = data["vendor"]
         await self.repo.update_fields(model, data)
@@ -209,9 +187,7 @@ class ModelService(BaseService):
             raise BadRequestError("系统内置模型不可删除")
         await mark_deleted(self.db, model)
 
-    async def upsert_builtin_credentials(
-        self, config_id: UUID, body: ModelBuiltinCredentialsIn
-    ) -> ModelConfigOut:
+    async def upsert_builtin_credentials(self, config_id: UUID, body: ModelBuiltinCredentialsIn) -> ModelConfigOut:
         model = await self._get_or_raise(config_id)
         if not model.is_builtin:
             raise BadRequestError("仅内置模型可配置租户密钥")

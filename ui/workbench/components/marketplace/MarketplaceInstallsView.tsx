@@ -33,13 +33,10 @@ export function MarketplaceInstallsView({ vm }: { vm: MarketplacePageVm }) {
         <MarketplaceStatChip label="本页展示" value={String(vm.installsFiltered.length)} hint="受搜索筛选影响" />
       </div>
       {!vm.installs.loading && vm.installsFiltered.length === 0 ? (
-        <p className="col-span-full py-12 text-center text-sm text-ink-faint">
-          尚未安装任何应用，请前往「应用广场」浏览
-        </p>
+        <p className="col-span-full py-12 text-center text-sm text-ink-faint">尚未安装任何应用，请前往「应用广场」浏览</p>
       ) : null}
       {vm.installsFiltered.map((ins) => {
-        const canUpgrade =
-          ins.app_version && ins.installed_version && ins.app_version !== ins.installed_version;
+        const canUpgrade = ins.app_version && ins.installed_version && ins.app_version !== ins.installed_version;
         return (
           <ResourceItemCard
             key={ins.id}

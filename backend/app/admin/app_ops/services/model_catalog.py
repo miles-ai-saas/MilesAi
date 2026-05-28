@@ -82,15 +82,7 @@ class AdminModelCatalogService:
         count_stmt = select(func.count()).select_from(stmt.subquery())
         total = int(await self.db.scalar(count_stmt) or 0)
         stmt = stmt.order_by(ModelConfig.sort_order.asc(), ModelConfig.created_at.desc())
-        rows = (
-            (
-                await self.db.execute(
-                    stmt.offset((params.page - 1) * params.size).limit(params.size)
-                )
-            )
-            .scalars()
-            .all()
-        )
+        rows = (await self.db.execute(stmt.offset((params.page - 1) * params.size).limit(params.size))).scalars().all()
         return PageResult(
             items=[_admin_out(m) for m in rows],
             total=total,

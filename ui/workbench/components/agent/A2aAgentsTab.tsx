@@ -49,10 +49,7 @@ export function A2aAgentsTab() {
   );
   const { requestConfirm, confirmDialog } = useConfirmAction();
 
-  const filteredHosts = useMemo(
-    () => filterBySearch(hosts.items, search, (a) => `${a.name} ${a.description ?? ""}`),
-    [hosts.items, search],
-  );
+  const filteredHosts = useMemo(() => filterBySearch(hosts.items, search, (a) => `${a.name} ${a.description ?? ""}`), [hosts.items, search]);
 
   const sub = SUB_TABS.find((t) => t.id === subTab)!;
 
@@ -66,9 +63,7 @@ export function A2aAgentsTab() {
               type="button"
               onClick={() => setSubTab(t.id)}
               className={`rounded-lg px-3 py-1.5 text-sm transition ${
-                subTab === t.id
-                  ? "bg-brand-light font-medium text-brand"
-                  : "text-ink-muted hover:bg-surface-subtle hover:text-ink"
+                subTab === t.id ? "bg-brand-light font-medium text-brand" : "text-ink-muted hover:bg-surface-subtle hover:text-ink"
               }`}
             >
               {t.label}
@@ -104,14 +99,7 @@ export function A2aAgentsTab() {
             return (
               <ResourceItemCard
                 key={a.id}
-                title={
-                  <AgentRenameInline
-                    agentId={a.id}
-                    name={a.name}
-                    prominent
-                    onRenamed={() => hosts.reload()}
-                  />
-                }
+                title={<AgentRenameInline agentId={a.id} name={a.name} prominent onRenamed={() => hosts.reload()} />}
                 description={a.description ?? "未填写描述"}
                 badge={agentStatusLabel(a.status, agentMeta)}
                 muted={disabled}
@@ -124,23 +112,27 @@ export function A2aAgentsTab() {
                   <CardActions
                     actions={[
                       { label: "对话", variant: "primary", disabled, onClick: () => router.push(`/workbench/agents/chat?agent=${a.id}`) },
-                      { label: disabled ? "启用" : "禁用", variant: disabled ? "primary" : "danger", onClick: () => {
-                        const next = a.status === "enabled" ? "disabled" : "enabled";
-                        const verb = next === "disabled" ? "禁用" : "启用";
-                        requestConfirm({
-                          title: `${verb}互联宿主`,
-                          message: (
-                            <>
-                              确定{verb} <span className="font-medium">{a.name}</span>？
-                            </>
-                          ),
-                          confirmLabel: `确认${verb}`,
-                          onConfirm: async () => {
-                            await api.updateAgent(a.id, { status: next });
-                            await hosts.reload();
-                          },
-                        });
-                      }},
+                      {
+                        label: disabled ? "启用" : "禁用",
+                        variant: disabled ? "primary" : "danger",
+                        onClick: () => {
+                          const next = a.status === "enabled" ? "disabled" : "enabled";
+                          const verb = next === "disabled" ? "禁用" : "启用";
+                          requestConfirm({
+                            title: `${verb}互联宿主`,
+                            message: (
+                              <>
+                                确定{verb} <span className="font-medium">{a.name}</span>？
+                              </>
+                            ),
+                            confirmLabel: `确认${verb}`,
+                            onConfirm: async () => {
+                              await api.updateAgent(a.id, { status: next });
+                              await hosts.reload();
+                            },
+                          });
+                        },
+                      },
                     ]}
                     onEdit={() => {
                       setEditingHost(a);
@@ -168,19 +160,11 @@ export function A2aAgentsTab() {
             );
           })}
           {!hosts.loading && filteredHosts.length === 0 && (
-            <p className="col-span-full py-8 text-center text-sm text-ink-muted">
-              暂无互联宿主。请先在「外部登记」同步 Card，再创建宿主。
-            </p>
+            <p className="col-span-full py-8 text-center text-sm text-ink-muted">暂无互联宿主。请先在「外部登记」同步 Card，再创建宿主。</p>
           )}
           {!hosts.loading && hosts.total > hosts.size ? (
             <div className="col-span-full">
-              <ResourceListFooter
-                page={hosts.page}
-                size={hosts.size}
-                total={hosts.total}
-                onPageChange={hosts.setPage}
-                onSizeChange={hosts.setSize}
-              />
+              <ResourceListFooter page={hosts.page} size={hosts.size} total={hosts.total} onPageChange={hosts.setPage} onSizeChange={hosts.setSize} />
             </div>
           ) : null}
         </>

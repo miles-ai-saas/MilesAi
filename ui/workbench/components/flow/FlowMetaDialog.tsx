@@ -64,12 +64,7 @@ export function FlowMetaDialog({
           <button type="button" className="btn-ghost" disabled={disabled} onClick={onClose}>
             取消
           </button>
-          <button
-            type="button"
-            className="btn-primary"
-            disabled={disabled || !name.trim()}
-            onClick={() => void submit()}
-          >
+          <button type="button" className="btn-primary" disabled={disabled || !name.trim()} onClick={() => void submit()}>
             {saving ? "保存中…" : "保存"}
           </button>
         </>

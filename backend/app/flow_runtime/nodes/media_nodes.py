@@ -37,9 +37,7 @@ async def ocr_extract(
 
     async with AsyncSessionLocal() as db:
         tctx = _make_ctx(ctx)
-        data, mime = await AttachmentService(db, tctx).read_image_bytes(
-            UUID(attachment_id)
-        )
+        data, mime = await AttachmentService(db, tctx).read_image_bytes(UUID(attachment_id))
 
     text = parse_image(data, f"ocr-{attachment_id}")
 
@@ -63,15 +61,11 @@ async def audio_transcribe(
 
     async with AsyncSessionLocal() as db:
         tctx = _make_ctx(ctx)
-        att = await db.scalar(
-            select(Attachment).where(Attachment.id == UUID(attachment_id))
-        )
+        att = await db.scalar(select(Attachment).where(Attachment.id == UUID(attachment_id)))
         if not att:
             raise BadRequestError(f"附件不存在: {attachment_id}")
 
-        data, _ = await AttachmentService(db, tctx).read_image_bytes(
-            UUID(attachment_id)
-        )
+        data, _ = await AttachmentService(db, tctx).read_image_bytes(UUID(attachment_id))
 
     filename = att.filename or f"audio-{attachment_id}"
     text = parse_audio(data, filename)

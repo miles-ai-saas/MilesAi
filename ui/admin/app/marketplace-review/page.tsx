@@ -106,27 +106,17 @@ export default function MarketplaceReviewPage() {
                     <h3 className="font-semibold text-ink">
                       {app.icon || "📦"} {app.name}
                     </h3>
-                    <p className="mt-1 text-sm text-ink-muted line-clamp-2">
-                      {app.description || "无描述"}
-                    </p>
+                    <p className="mt-1 text-sm text-ink-muted line-clamp-2">{app.description || "无描述"}</p>
                     <p className="mt-1 admin-data-meta">
                       {app.category_name ? `${app.category_name} · ` : ""}
-                      提交于{" "}
-                      {app.submitted_at
-                        ? new Date(app.submitted_at).toLocaleString("zh-CN")
-                        : "—"}
+                      提交于 {app.submitted_at ? new Date(app.submitted_at).toLocaleString("zh-CN") : "—"}
                     </p>
                   </div>
                   <div className="flex shrink-0 flex-wrap gap-2">
                     <button type="button" className="btn-secondary text-xs" onClick={() => onView(app.id)}>
                       详情
                     </button>
-                    <button
-                      type="button"
-                      className="btn-primary text-xs"
-                      disabled={busyId === app.id}
-                      onClick={() => onApprove(app.id)}
-                    >
+                    <button type="button" className="btn-primary text-xs" disabled={busyId === app.id} onClick={() => onApprove(app.id)}>
                       {busyId === app.id ? "处理中…" : "通过"}
                     </button>
                     <button
@@ -141,14 +131,7 @@ export default function MarketplaceReviewPage() {
                 </li>
               ))}
             </ul>
-            <ListFooter
-              className="mt-3"
-              page={list.page}
-              size={list.size}
-              total={list.total}
-              onPageChange={list.setPage}
-              onSizeChange={list.setSize}
-            />
+            <ListFooter className="mt-3" page={list.page} size={list.size} total={list.total} onPageChange={list.setPage} onSizeChange={list.setSize} />
           </>
         )}
       </section>
@@ -161,9 +144,7 @@ export default function MarketplaceReviewPage() {
               关闭
             </button>
           </div>
-          <pre className="admin-code-block mt-3 max-h-80 rounded-lg bg-surface-muted p-3">
-            {JSON.stringify(detail.manifest, null, 2)}
-          </pre>
+          <pre className="admin-code-block mt-3 max-h-80 rounded-lg bg-surface-muted p-3">{JSON.stringify(detail.manifest, null, 2)}</pre>
         </section>
       )}
 
@@ -179,20 +160,10 @@ export default function MarketplaceReviewPage() {
               onChange={(e) => setRejectNote(e.target.value)}
             />
             <div className="mt-4 flex justify-end gap-2">
-              <button
-                type="button"
-                className="btn-secondary"
-                disabled={rejectLoading}
-                onClick={() => setRejectTarget(null)}
-              >
+              <button type="button" className="btn-secondary" disabled={rejectLoading} onClick={() => setRejectTarget(null)}>
                 取消
               </button>
-              <button
-                type="button"
-                className="btn-primary bg-red-600 hover:bg-red-700"
-                disabled={rejectLoading}
-                onClick={() => void onConfirmReject()}
-              >
+              <button type="button" className="btn-primary bg-red-600 hover:bg-red-700" disabled={rejectLoading} onClick={() => void onConfirmReject()}>
                 {rejectLoading ? "提交中…" : "确认驳回"}
               </button>
             </div>

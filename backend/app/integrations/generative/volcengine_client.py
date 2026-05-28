@@ -27,11 +27,7 @@ _TERMINAL_FAIL = frozenset({"failed", "cancelled", "canceled", "expired"})
 
 def volcengine_api_base(model: ModelConfig) -> str:
     """API 根路径（``model.api_base`` 优先，否则豆包默认方舟 v3）。"""
-    return (
-        model.api_base
-        or DEFAULT_API_BASES.get(ModelVendor.DOUBAO.value)
-        or "https://ark.cn-beijing.volces.com/api/v3"
-    ).rstrip("/")
+    return (model.api_base or DEFAULT_API_BASES.get(ModelVendor.DOUBAO.value) or "https://ark.cn-beijing.volces.com/api/v3").rstrip("/")
 
 
 def volcengine_headers(api_key: str) -> dict[str, str]:

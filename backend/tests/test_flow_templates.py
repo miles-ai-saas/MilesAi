@@ -51,10 +51,7 @@ def test_insertable_only_excludes_blank_and_rag_with_grade():
 
 def test_rag_grade_file_for_marketplace():
     graph = json.loads(
-        (
-            __import__("pathlib").Path(__file__).resolve().parents[1]
-            / "app/flow_runtime/templates/rag_flow_with_grade.json"
-        ).read_text(encoding="utf-8")
+        (__import__("pathlib").Path(__file__).resolve().parents[1] / "app/flow_runtime/templates/rag_flow_with_grade.json").read_text(encoding="utf-8")
     )
     report = validate_graph_for_compile(graph)
     assert report.compilable

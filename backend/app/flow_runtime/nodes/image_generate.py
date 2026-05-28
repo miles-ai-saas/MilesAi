@@ -45,9 +45,7 @@ async def image_generate(
     if not model_id:
         raise BadRequestError("生图节点未配置 image_gen 模型")
 
-    image_att = _optional_uuid(
-        inputs.get("image_attachment_id") or node_data.get("image_attachment_id")
-    )
+    image_att = _optional_uuid(inputs.get("image_attachment_id") or node_data.get("image_attachment_id"))
     n = int(node_data.get("n") or inputs.get("n") or 1)
     size = node_data.get("size") or inputs.get("size")
 

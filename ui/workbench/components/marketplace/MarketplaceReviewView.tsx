@@ -35,9 +35,7 @@ export function MarketplaceReviewView({ vm }: { vm: MarketplacePageVm }) {
       </div>
       <div className="col-span-full space-y-3">
         {!vm.pendingApps.loading && vm.pendingFiltered.length === 0 ? (
-          <p className="rounded-xl border border-dashed border-line py-12 text-center text-sm text-ink-faint">
-            暂无待审核应用
-          </p>
+          <p className="rounded-xl border border-dashed border-line py-12 text-center text-sm text-ink-faint">暂无待审核应用</p>
         ) : null}
         {vm.pendingFiltered.map((app) => (
           <article
@@ -56,9 +54,7 @@ export function MarketplaceReviewView({ vm }: { vm: MarketplacePageVm }) {
               <div className="mt-2">
                 <TagChips tags={app.tags} />
               </div>
-              <p className="mt-2 text-xs text-ink-faint">
-                提交于 {app.submitted_at ? new Date(app.submitted_at).toLocaleString("zh-CN") : "—"}
-              </p>
+              <p className="mt-2 text-xs text-ink-faint">提交于 {app.submitted_at ? new Date(app.submitted_at).toLocaleString("zh-CN") : "—"}</p>
             </div>
             <div className="flex shrink-0 sm:min-w-[12rem]">
               <MarketplaceAppCardActions

@@ -4,13 +4,7 @@
 import Link from "next/link";
 import { getOtherSection, type AppSection } from "@/lib/nav-config";
 
-export function SectionLink({
-  section,
-  className = "",
-}: {
-  section: AppSection;
-  className?: string;
-}) {
+export function SectionLink({ section, className = "" }: { section: AppSection; className?: string }) {
   const target = getOtherSection(section);
   return (
     <Link

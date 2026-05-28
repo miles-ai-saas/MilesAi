@@ -185,9 +185,7 @@ SEED_PROMPT_TEMPLATES: list[dict] = [
 ]
 
 
-async def _category_id_by_slug(
-    session: AsyncSession, slug: str | None
-) -> object | None:
+async def _category_id_by_slug(session: AsyncSession, slug: str | None) -> object | None:
     if not slug:
         return None
     return await session.scalar(
@@ -233,9 +231,7 @@ async def _get_or_create_template(
 
 async def seed_prompts_for_tenant(session: AsyncSession, tenant_id) -> None:
     for spec in SEED_PROMPT_TEMPLATES:
-        category_id = await _category_id_by_slug(
-            session, spec.get("category_slug")
-        )
+        category_id = await _category_id_by_slug(session, spec.get("category_slug"))
         await _get_or_create_template(
             session,
             tenant_id,

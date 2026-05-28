@@ -12,9 +12,7 @@ export function KbDetailLogsTab({ vm }: { vm: KbDetailPageVm }) {
       {vm.logs.loading ? (
         <p className="mt-4 text-sm text-ink-muted">加载中…</p>
       ) : vm.logs.items.length === 0 ? (
-        <p className="mt-6 text-center text-sm text-ink-muted">
-          暂无记录。在「检索测试」或绑定本库的智能体对话后会出现。
-        </p>
+        <p className="mt-6 text-center text-sm text-ink-muted">暂无记录。在「检索测试」或绑定本库的智能体对话后会出现。</p>
       ) : (
         <>
           <ul className="mt-4 divide-y divide-line">

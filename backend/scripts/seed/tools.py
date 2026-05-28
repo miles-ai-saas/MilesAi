@@ -73,10 +73,7 @@ SEED_CUSTOM_TOOLS: list[dict] = [
     {
         "slug": "jina_search",
         "name": "Jina Search · 联网搜索",
-        "description": (
-            "通过 s.jina.ai 检索 Web 并返回 Top 结果的正文摘要（适合 RAG / Agent 补全事实）。"
-            "可选 jina_api_key 提高速率限制。"
-        ),
+        "description": ("通过 s.jina.ai 检索 Web 并返回 Top 结果的正文摘要（适合 RAG / Agent 补全事实）。可选 jina_api_key 提高速率限制。"),
         "tool_type": ToolType.HTTP,
         "category_slug": "data",
         "parameters": [
@@ -197,9 +194,7 @@ async def _upsert_seed_tool(
             Tool.slug == slug,
         )
     )
-    category_id = await category_id_by_slug(
-        session, CategoryDomain.TOOL, spec.get("category_slug")
-    )
+    category_id = await category_id_by_slug(session, CategoryDomain.TOOL, spec.get("category_slug"))
     parameters = normalize_parameters(spec.get("parameters") or [])
     config = _seed_config(spec.get("config") or {})
     created = row is None
@@ -275,8 +270,4 @@ async def seed_tools(session: AsyncSession) -> None:
         created, retired = await seed_tools_for_tenant(session, tenant_id)
         total_created += created
         total_retired += retired
-    print(
-        f">>> tools seed v{SEED_VERSION}: "
-        f"created {total_created}, updated/kept {len(SEED_CUSTOM_TOOLS)} per tenant, "
-        f"retired {total_retired} obsolete row(s)"
-    )
+    print(f">>> tools seed v{SEED_VERSION}: created {total_created}, updated/kept {len(SEED_CUSTOM_TOOLS)} per tenant, retired {total_retired} obsolete row(s)")

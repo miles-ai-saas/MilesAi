@@ -48,7 +48,5 @@ async def test_change_password_revokes_session():
     ):
         from app.admin.app_sys.schemas.auth import PasswordChangeRequest
 
-        await svc.change_password(
-            admin_id, PasswordChangeRequest(old_password="old", new_password="new123")
-        )
+        await svc.change_password(admin_id, PasswordChangeRequest(old_password="old", new_password="new123"))
         revoke.assert_awaited_once_with(admin_id)

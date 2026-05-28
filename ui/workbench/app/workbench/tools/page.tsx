@@ -42,8 +42,7 @@ function slugFromName(name: string): string {
 
 const defaultParams = (): ToolParameterSpec[] => [];
 
-const PAGE_DESC =
-  "平台内置与自定义 HTTP / Python 脚本工具；供技能包引用与智能体 function calling。外部 MCP 服务请前往 MCP 工作台。";
+const PAGE_DESC = "平台内置与自定义 HTTP / Python 脚本工具；供技能包引用与智能体 function calling。外部 MCP 服务请前往 MCP 工作台。";
 
 const MAIN_TABS = TOOL_PAGE_TABS.map((t) => ({ key: t.key, label: t.label }));
 
@@ -57,23 +56,13 @@ function StatChip({ label, value, hint }: { label: string; value: string; hint?:
   );
 }
 
-function FilterChip({
-  active,
-  label,
-  onClick,
-}: {
-  active: boolean;
-  label: string;
-  onClick: () => void;
-}) {
+function FilterChip({ active, label, onClick }: { active: boolean; label: string; onClick: () => void }) {
   return (
     <button
       type="button"
       onClick={onClick}
       className={`rounded-lg px-3 py-1.5 text-xs transition ${
-        active
-          ? "bg-brand-light font-medium text-brand"
-          : "text-ink-muted hover:bg-surface hover:text-ink"
+        active ? "bg-brand-light font-medium text-brand" : "text-ink-muted hover:bg-surface hover:text-ink"
       }`}
     >
       {label}
@@ -85,15 +74,7 @@ function LogStatusBadge({ status, toolsMeta }: { status: string; toolsMeta: Tool
   const failed = status === "failed" || status === "error";
   const ok = status === "success" || status === "ok";
   return (
-    <span
-      className={`badge ${
-        ok
-          ? "bg-emerald-50 text-emerald-800"
-          : failed
-            ? "bg-red-50 text-red-700"
-            : "bg-surface-muted text-ink-muted"
-      }`}
-    >
+    <span className={`badge ${ok ? "bg-emerald-50 text-emerald-800" : failed ? "bg-red-50 text-red-700" : "bg-surface-muted text-ink-muted"}`}>
       {invocationStatusLabel(status, toolsMeta)}
     </span>
   );
@@ -107,24 +88,14 @@ function InvocationLogRow({ log, toolsMeta }: { log: ToolInvocationLog; toolsMet
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="font-medium text-ink">{log.tool_slug}</h3>
             <LogStatusBadge status={log.status} toolsMeta={toolsMeta} />
-            <span className="badge bg-brand-light text-brand">
-              {toolSourceLabel(log.source, toolsMeta)}
-            </span>
+            <span className="badge bg-brand-light text-brand">{toolSourceLabel(log.source, toolsMeta)}</span>
             <span className="text-xs text-ink-muted">{log.invoke_source}</span>
           </div>
-          <p className="mt-2 text-xs text-ink-muted">
-            {log.latency_ms != null ? `耗时 ${log.latency_ms} ms` : "—"}
-          </p>
+          <p className="mt-2 text-xs text-ink-muted">{log.latency_ms != null ? `耗时 ${log.latency_ms} ms` : "—"}</p>
         </div>
-        <time className="shrink-0 font-mono text-xs text-ink-faint">
-          {new Date(log.created_at).toLocaleString("zh-CN")}
-        </time>
+        <time className="shrink-0 font-mono text-xs text-ink-faint">{new Date(log.created_at).toLocaleString("zh-CN")}</time>
       </div>
-      {log.error_message && (
-        <p className="mt-3 rounded-lg bg-red-50/80 px-3 py-2 text-xs text-red-700 line-clamp-3">
-          {log.error_message}
-        </p>
-      )}
+      {log.error_message && <p className="mt-3 rounded-lg bg-red-50/80 px-3 py-2 text-xs text-red-700 line-clamp-3">{log.error_message}</p>}
     </article>
   );
 }
@@ -182,11 +153,7 @@ export default function ToolsPage() {
   const reloadCatalog = useCallback(async () => {
     setLoading(true);
     try {
-      const rows = await api.listToolCatalog(
-        sourceTab || undefined,
-        undefined,
-        tagFilterIds.length ? tagFilterIds : undefined,
-      );
+      const rows = await api.listToolCatalog(sourceTab || undefined, undefined, tagFilterIds.length ? tagFilterIds : undefined);
       setCatalog(rows);
     } finally {
       setLoading(false);
@@ -198,24 +165,10 @@ export default function ToolsPage() {
     void reloadCatalog();
   }, [ready, pageTab, reloadCatalog]);
 
-  const filtered = useMemo(
-    () =>
-      filterBySearch(
-        catalog,
-        search,
-        (t) => `${t.name} ${t.slug} ${t.description ?? ""} ${t.source}`,
-      ),
-    [catalog, search],
-  );
+  const filtered = useMemo(() => filterBySearch(catalog, search, (t) => `${t.name} ${t.slug} ${t.description ?? ""} ${t.source}`), [catalog, search]);
 
   const filteredLogs = useMemo(
-    () =>
-      filterBySearch(
-        logList.items,
-        search,
-        (l) =>
-          `${l.tool_slug} ${l.status} ${l.source} ${l.invoke_source} ${l.error_message ?? ""}`,
-      ),
+    () => filterBySearch(logList.items, search, (l) => `${l.tool_slug} ${l.status} ${l.source} ${l.invoke_source} ${l.error_message ?? ""}`),
     [logList.items, search],
   );
 
@@ -368,12 +321,7 @@ export default function ToolsPage() {
 
   const runTest = async (params: Record<string, unknown>, confirmed: boolean) => {
     if (!testTool) return "";
-    const res = await api.invokeTool(
-      testTool.slug,
-      params,
-      testTool.tool_id || undefined,
-      confirmed,
-    );
+    const res = await api.invokeTool(testTool.slug, params, testTool.tool_id || undefined, confirmed);
     if (res.status === "confirmation_required" && res.pending) {
       return `__CONFIRM__:工具「${res.pending.name}」需要确认。\n参数：${JSON.stringify(res.pending.params, null, 2)}`;
     }
@@ -446,12 +394,7 @@ export default function ToolsPage() {
             : undefined
         }
       />
-      <ToolTestDialog
-        open={testOpen}
-        tool={testTool}
-        onClose={() => setTestOpen(false)}
-        onRun={runTest}
-      />
+      <ToolTestDialog open={testOpen} tool={testTool} onClose={() => setTestOpen(false)} onRun={runTest} />
       <TagManageDialog open={tagManageOpen} onClose={() => setTagManageOpen(false)} />
       {confirmDialog}
     </>
@@ -468,13 +411,7 @@ export default function ToolsPage() {
           loading={logList.loading}
           footer={
             !logList.loading ? (
-              <ResourceListFooter
-                page={logList.page}
-                size={logList.size}
-                total={logList.total}
-                onPageChange={logList.setPage}
-                onSizeChange={logList.setSize}
-              />
+              <ResourceListFooter page={logList.page} size={logList.size} total={logList.total} onPageChange={logList.setPage} onSizeChange={logList.setSize} />
             ) : null
           }
         >
@@ -484,9 +421,7 @@ export default function ToolsPage() {
           </div>
           <div className="col-span-full space-y-3">
             {!logList.loading && filteredLogs.length === 0 && (
-              <p className="rounded-xl border border-dashed border-line py-12 text-center text-sm text-ink-faint">
-                暂无调用记录
-              </p>
+              <p className="rounded-xl border border-dashed border-line py-12 text-center text-sm text-ink-faint">暂无调用记录</p>
             )}
             {filteredLogs.map((log) => (
               <InvocationLogRow key={log.id} log={log} toolsMeta={toolsMeta} />
@@ -508,20 +443,11 @@ export default function ToolsPage() {
         loading={loading}
         headerAction={
           <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              className="btn-ghost shrink-0 text-sm"
-              disabled={loading}
-              onClick={() => void reloadCatalog()}
-            >
+            <button type="button" className="btn-ghost shrink-0 text-sm" disabled={loading} onClick={() => void reloadCatalog()}>
               {loading ? "刷新中…" : "刷新"}
             </button>
             <TagFilterDropdown value={tagFilterIds} onChange={setTagFilterIds} />
-            <button
-              type="button"
-              className="btn-ghost border border-line text-sm"
-              onClick={() => setTagManageOpen(true)}
-            >
+            <button type="button" className="btn-ghost border border-line text-sm" onClick={() => setTagManageOpen(true)}>
               管理标签
             </button>
           </div>
@@ -538,39 +464,22 @@ export default function ToolsPage() {
         <div className="col-span-full grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <StatChip label="工具总数" value={String(catalogStats.total)} hint="当前筛选条件下" />
           <StatChip label="内置" value={String(catalogStats.builtin)} />
-          <StatChip
-            label="自定义"
-            value={String(catalogStats.custom)}
-            hint={`本页展示 ${filtered.length} 个`}
-          />
+          <StatChip label="自定义" value={String(catalogStats.custom)} hint={`本页展示 ${filtered.length} 个`} />
         </div>
 
         <div className="col-span-full rounded-xl border border-line bg-surface-muted/40 p-4">
           <p className="mb-2 text-xs font-medium text-ink-muted">来源</p>
           <div className="flex flex-wrap gap-2">
             {catalogSourceTabs(toolsMeta).map((tab) => (
-              <FilterChip
-                key={tab.key || "all"}
-                active={sourceTab === tab.key}
-                label={tab.label}
-                onClick={() => setSourceTab(tab.key)}
-              />
+              <FilterChip key={tab.key || "all"} active={sourceTab === tab.key} label={tab.label} onClick={() => setSourceTab(tab.key)} />
             ))}
           </div>
         </div>
 
-        {sourceTab !== "builtin" && (
-          <AddResourceCard
-            label="添加新工具"
-            hint="创建 HTTP 工具扩展智能体能力"
-            onClick={openCreate}
-          />
-        )}
+        {sourceTab !== "builtin" && <AddResourceCard label="添加新工具" hint="创建 HTTP 工具扩展智能体能力" onClick={openCreate} />}
 
         {!loading && filtered.length === 0 && (
-          <p className="col-span-full py-12 text-center text-sm text-ink-faint">
-            暂无匹配的工具，可调整筛选或创建自定义工具
-          </p>
+          <p className="col-span-full py-12 text-center text-sm text-ink-faint">暂无匹配的工具，可调整筛选或创建自定义工具</p>
         )}
 
         {filtered.map((t) => (

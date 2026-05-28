@@ -67,11 +67,7 @@ class MonitorService(BaseService):
         filters = tenant_filters(self.ctx, CeleryTaskRecord.tenant_id)
         summary = TaskSummary()
         for status in TaskStatus:
-            count = await self.db.scalar(
-                select(func.count())
-                .select_from(CeleryTaskRecord)
-                .where(*filters, CeleryTaskRecord.status == status)
-            )
+            count = await self.db.scalar(select(func.count()).select_from(CeleryTaskRecord).where(*filters, CeleryTaskRecord.status == status))
             n = count or 0
             summary.total += n
             if status == TaskStatus.PENDING:
@@ -101,49 +97,24 @@ class MonitorService(BaseService):
         docs = await self.db.scalar(select(func.count()).select_from(Document).where(*doc_f))
         agents = await self.db.scalar(select(func.count()).select_from(Agent).where(*agent_f))
         flows = await self.db.scalar(select(func.count()).select_from(Flow).where(*flow_f))
-        logs_today = await self.db.scalar(
-            select(func.count())
-            .select_from(InterceptLog)
-            .where(*log_f, InterceptLog.created_at >= today_start)
-        )
+        logs_today = await self.db.scalar(select(func.count()).select_from(InterceptLog).where(*log_f, InterceptLog.created_at >= today_start))
         pending = await self.db.scalar(
             select(func.count())
             .select_from(Document)
             .where(
                 *doc_f,
-                Document.status.in_(
-                    [DocumentStatus.PENDING, DocumentStatus.PARSING, DocumentStatus.EMBEDDING]
-                ),
+                Document.status.in_([DocumentStatus.PENDING, DocumentStatus.PARSING, DocumentStatus.EMBEDDING]),
             )
         )
         installs = await self.db.scalar(select(func.count()).select_from(AppInstall).where(*install_f))
 
         # 多模态处理量：按 mime_type 前缀统计
-        image_docs = await self.db.scalar(
-            select(func.count())
-            .select_from(Document)
-            .where(*doc_f, Document.mime_type.like("image/%"))
-        )
-        audio_docs = await self.db.scalar(
-            select(func.count())
-            .select_from(Document)
-            .where(*doc_f, Document.mime_type.like("audio/%"))
-        )
-        video_docs = await self.db.scalar(
-            select(func.count())
-            .select_from(Document)
-            .where(*doc_f, Document.mime_type.like("video/%"))
-        )
+        image_docs = await self.db.scalar(select(func.count()).select_from(Document).where(*doc_f, Document.mime_type.like("image/%")))
+        audio_docs = await self.db.scalar(select(func.count()).select_from(Document).where(*doc_f, Document.mime_type.like("audio/%")))
+        video_docs = await self.db.scalar(select(func.count()).select_from(Document).where(*doc_f, Document.mime_type.like("video/%")))
 
-        doc_status_rows = await self.db.execute(
-            select(Document.status, func.count())
-            .where(*doc_f)
-            .group_by(Document.status)
-        )
-        documents_by_status = {
-            (row[0].value if hasattr(row[0], "value") else str(row[0])): row[1]
-            for row in doc_status_rows.all()
-        }
+        doc_status_rows = await self.db.execute(select(Document.status, func.count()).where(*doc_f).group_by(Document.status))
+        documents_by_status = {(row[0].value if hasattr(row[0], "value") else str(row[0])): row[1] for row in doc_status_rows.all()}
 
         stats = MonitorStats(
             knowledge_bases=kbs or 0,
@@ -327,14 +298,9 @@ class MonitorService(BaseService):
         log_f = append_not_deleted(tenant_filters(self.ctx, InterceptLog.tenant_id), InterceptLog)
         log_f.append(InterceptLog.created_at >= start)
         log_rows = await self.db.execute(
-            select(cast(InterceptLog.created_at, Date).label("day"), func.count(InterceptLog.id))
-            .where(*log_f)
-            .group_by(cast(InterceptLog.created_at, Date))
+            select(cast(InterceptLog.created_at, Date).label("day"), func.count(InterceptLog.id)).where(*log_f).group_by(cast(InterceptLog.created_at, Date))
         )
-        intercept_by_day = [
-            {"date": (d.isoformat() if hasattr(d, "isoformat") else str(d)), "count": int(c)}
-            for d, c in log_rows.all()
-        ]
+        intercept_by_day = [{"date": (d.isoformat() if hasattr(d, "isoformat") else str(d)), "count": int(c)} for d, c in log_rows.all()]
 
         return MonitorTrends(
             task_by_day=sorted(by_day.values(), key=lambda x: x.date),

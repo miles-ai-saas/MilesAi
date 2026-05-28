@@ -6,12 +6,7 @@
  */
 
 import { useContext, useEffect, useState, useSyncExternalStore } from "react";
-import {
-  MetaCacheContext,
-  getCacheState,
-  loadIntoCache,
-  subscribeStore,
-} from "@/lib/enum-meta-cache";
+import { MetaCacheContext, getCacheState, loadIntoCache, subscribeStore } from "@/lib/enum-meta-cache";
 
 export function useEnumMeta<T>(cacheKey: string, fetcher: () => Promise<T>, enabled = true): T | null {
   const store = useContext(MetaCacheContext);
@@ -19,16 +14,15 @@ export function useEnumMeta<T>(cacheKey: string, fetcher: () => Promise<T>, enab
   const [fallback, setFallback] = useState<T | null>(null);
   useEffect(() => {
     if (store || !enabled) return;
-    void fetcher().then(setFallback).catch(() => setFallback(null));
+    void fetcher()
+      .then(setFallback)
+      .catch(() => setFallback(null));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [store, cacheKey, enabled]);
 
   const cachedState = useSyncExternalStore(
     (onChange) => (store ? subscribeStore(store, cacheKey, onChange) : () => {}),
-    () =>
-      store
-        ? getCacheState(store, cacheKey)
-        : { data: fallback, loading: false, settled: fallback !== null },
+    () => (store ? getCacheState(store, cacheKey) : { data: fallback, loading: false, settled: fallback !== null }),
     () => ({ data: null, loading: false, settled: false }),
   );
 

@@ -53,11 +53,7 @@ async def list_model_configs(
     ctx: TenantContext = Depends(require_permissions("model:read")),
     db: AsyncSession = Depends(get_db),
 ):
-    return ok(
-        await _svc(db, ctx).list_configs(
-            vendor=vendor, model_type=model_type, source=source, q=q
-        )
-    )
+    return ok(await _svc(db, ctx).list_configs(vendor=vendor, model_type=model_type, source=source, q=q))
 
 
 @router.patch("/{config_id}", response_model=ApiResponse[ModelConfigOut])

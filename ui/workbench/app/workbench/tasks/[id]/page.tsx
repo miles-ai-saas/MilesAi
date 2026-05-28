@@ -17,7 +17,5 @@ export default function TaskDetailRedirectPage() {
     router.replace(`/workbench/tasks?task=${encodeURIComponent(id)}`);
   }, [id, router]);
 
-  return (
-    <p className="py-12 text-center text-sm text-ink-muted">正在打开任务详情…</p>
-  );
+  return <p className="py-12 text-center text-sm text-ink-muted">正在打开任务详情…</p>;
 }

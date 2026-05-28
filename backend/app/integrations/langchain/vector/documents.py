@@ -105,18 +105,12 @@ def documents_to_hits(docs: list[Document]) -> list[dict[str, Any]]:
 
 def distance_pairs_to_hits(pairs: list[tuple[Document, float]]) -> list[dict[str, Any]]:
     """L2 距离转相似度 score（1 - distance），Milvus 检索用。"""
-    return [
-        _doc_to_hit_row(doc, score=float(1.0 - dist) if dist is not None else 0.0)
-        for doc, dist in pairs
-    ]
+    return [_doc_to_hit_row(doc, score=float(1.0 - dist) if dist is not None else 0.0) for doc, dist in pairs]
 
 
 def scored_pairs_to_hits(pairs: list[tuple[Document, float]]) -> list[dict[str, Any]]:
     """已有相似度分数的 (Document, score) 转 hit（Weaviate 等）。"""
-    return [
-        _doc_to_hit_row(doc, score=float(score) if score is not None else 0.0)
-        for doc, score in pairs
-    ]
+    return [_doc_to_hit_row(doc, score=float(score) if score is not None else 0.0) for doc, score in pairs]
 
 
 def milvus_filter_expr(tenant_id: UUID, kb_id: UUID | None) -> str:

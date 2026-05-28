@@ -39,9 +39,7 @@ from app.models.model_tenant_credential import ModelTenantCredential
 from app.tenant.models.services.model_resolve import load_tenant_credential
 
 
-def _load_tenant_credential_sync(
-    db: Session, tenant_id: UUID, model_config_id: UUID
-) -> ModelTenantCredential | None:
+def _load_tenant_credential_sync(db: Session, tenant_id: UUID, model_config_id: UUID) -> ModelTenantCredential | None:
     return db.execute(
         select(ModelTenantCredential).where(
             ModelTenantCredential.tenant_id == tenant_id,
@@ -62,9 +60,7 @@ def _apply_builtin_credential(model: ModelConfig, cred: ModelTenantCredential | 
     if invoke_mode_from_model(effective) == INVOKE_MODE_LOCAL:
         return effective
     if not effective.api_key_encrypted:
-        raise BadRequestError(
-            f"向量化模型「{model.name}」未配置 API Key，请在模型供应商页配置密钥"
-        )
+        raise BadRequestError(f"向量化模型「{model.name}」未配置 API Key，请在模型供应商页配置密钥")
     return effective
 
 
@@ -90,9 +86,7 @@ async def get_default_embedding_model(db: AsyncSession) -> ModelConfig:
         )
     ).scalar_one_or_none()
     if not model:
-        raise BadRequestError(
-            "未找到默认向量化内置模型，请执行: python cli.py seed model-catalog"
-        )
+        raise BadRequestError("未找到默认向量化内置模型，请执行: python cli.py seed model-catalog")
     return model
 
 
@@ -108,9 +102,7 @@ def get_default_embedding_model_sync(db: Session) -> ModelConfig:
         )
     ).scalar_one_or_none()
     if not model:
-        raise BadRequestError(
-            "未找到默认向量化内置模型，请执行: python cli.py seed model-catalog"
-        )
+        raise BadRequestError("未找到默认向量化内置模型，请执行: python cli.py seed model-catalog")
     return model
 
 
@@ -131,27 +123,17 @@ async def resolve_embedding_model(
     return _ensure_tenant_custom(model, tenant_id)
 
 
-async def resolve_embedding_model_by_id(
-    db: AsyncSession, model_id: UUID, tenant_id: UUID
-) -> ModelConfig:
+async def resolve_embedding_model_by_id(db: AsyncSession, model_id: UUID, tenant_id: UUID) -> ModelConfig:
     """按 ID 加载并解析有效 embedding 配置（API 检索/向量化）。"""
-    model = (
-        await db.execute(
-            select(ModelConfig).where(ModelConfig.id == model_id, not_deleted(ModelConfig))
-        )
-    ).scalar_one_or_none()
+    model = (await db.execute(select(ModelConfig).where(ModelConfig.id == model_id, not_deleted(ModelConfig)))).scalar_one_or_none()
     if not model:
         raise BadRequestError("向量化模型不存在")
     return await resolve_embedding_model(db, model, tenant_id)
 
 
-def resolve_embedding_model_sync(
-    db: Session, model_id: UUID, tenant_id: UUID
-) -> ModelConfig:
+def resolve_embedding_model_sync(db: Session, model_id: UUID, tenant_id: UUID) -> ModelConfig:
     """按 ID 同步解析 embedding 配置（Celery ingest）。"""
-    model = db.execute(
-        select(ModelConfig).where(ModelConfig.id == model_id, not_deleted(ModelConfig))
-    ).scalar_one_or_none()
+    model = db.execute(select(ModelConfig).where(ModelConfig.id == model_id, not_deleted(ModelConfig))).scalar_one_or_none()
     if not model:
         raise BadRequestError("向量化模型不存在")
     ensure_embedding_model_type(model)

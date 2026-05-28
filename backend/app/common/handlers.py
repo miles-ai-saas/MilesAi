@@ -77,9 +77,7 @@ def _public_message(exc: Exception) -> str:
     return "服务器内部错误"
 
 
-async def validation_error_handler(
-    request: Request, exc: RequestValidationError
-) -> JSONResponse:
+async def validation_error_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
     detail = _format_validation_message(exc)
     return _error_envelope(request, status_code=422, code=422, message=detail)
 

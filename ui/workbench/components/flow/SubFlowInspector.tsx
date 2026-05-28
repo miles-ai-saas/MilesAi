@@ -21,20 +21,13 @@ export function SubFlowInspector({ data, currentFlowId, onChange }: Props) {
     api
       .listFlows(1, 200)
       .then((page) => {
-        setFlows(
-          page.items.filter(
-            (f) => f.status === "published" && (!currentFlowId || f.id !== currentFlowId),
-          ),
-        );
+        setFlows(page.items.filter((f) => f.status === "published" && (!currentFlowId || f.id !== currentFlowId)));
       })
       .catch(() => setFlows([]))
       .finally(() => setLoading(false));
   }, [currentFlowId]);
 
-  const selected = useMemo(
-    () => flows.find((f) => f.id === String(data.sub_flow_id || "")),
-    [flows, data.sub_flow_id],
-  );
+  const selected = useMemo(() => flows.find((f) => f.id === String(data.sub_flow_id || "")), [flows, data.sub_flow_id]);
 
   const policy = String(data.version_policy || "published");
 
@@ -70,11 +63,7 @@ export function SubFlowInspector({ data, currentFlowId, onChange }: Props) {
 
       <label className="block">
         <span className="mb-1 block text-xs font-medium text-ink-muted">版本策略</span>
-        <select
-          className="input-field w-full text-sm"
-          value={policy}
-          onChange={(e) => onChange({ version_policy: e.target.value })}
-        >
+        <select className="input-field w-full text-sm" value={policy} onChange={(e) => onChange({ version_policy: e.target.value })}>
           <option value="published">跟随已发布版</option>
           <option value="pinned">锁定指定版本</option>
         </select>

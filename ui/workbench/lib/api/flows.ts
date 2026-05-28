@@ -11,12 +11,7 @@ export const flowsApi = {
     return getPage<Flow>(`/flows?${q}`);
   },
 
-  createFlow: (payload: {
-    name: string;
-    description?: string | null;
-    tag_ids?: string[];
-    graph_json?: FlowGraph;
-  }) =>
+  createFlow: (payload: { name: string; description?: string | null; tag_ids?: string[]; graph_json?: FlowGraph }) =>
     post<Flow>("/flows", {
       name: payload.name,
       description: payload.description ?? null,
@@ -24,28 +19,21 @@ export const flowsApi = {
       graph_json: payload.graph_json ?? { nodes: [], edges: [] },
     }),
 
-  updateFlow: (
-    flowId: string,
-    payload: { name?: string; description?: string | null; tag_ids?: string[] },
-  ) => patch<Flow>(`/flows/${flowId}`, payload),
+  updateFlow: (flowId: string, payload: { name?: string; description?: string | null; tag_ids?: string[] }) => patch<Flow>(`/flows/${flowId}`, payload),
 
   getFlow: (flowId: string) => get<Flow>(`/flows/${flowId}`),
 
   getFlowGraph: (flowId: string) => get<FlowVersion>(`/flows/${flowId}/graph`),
 
-  listFlowVersions: (flowId: string) =>
-    get<import("../types").FlowVersionSummary[]>(`/flows/${flowId}/versions`),
+  listFlowVersions: (flowId: string) => get<import("../types").FlowVersionSummary[]>(`/flows/${flowId}/versions`),
 
-  getFlowVersion: (flowId: string, version: number) =>
-    get<FlowVersion>(`/flows/${flowId}/versions/${version}`),
+  getFlowVersion: (flowId: string, version: number) => get<FlowVersion>(`/flows/${flowId}/versions/${version}`),
 
-  saveFlowGraph: (flowId: string, graph_json: FlowGraph, remark?: string) =>
-    put<FlowVersion>(`/flows/${flowId}/graph`, { graph_json, remark }),
+  saveFlowGraph: (flowId: string, graph_json: FlowGraph, remark?: string) => put<FlowVersion>(`/flows/${flowId}/graph`, { graph_json, remark }),
 
   publishFlow: (flowId: string) => post<Flow>(`/flows/${flowId}/publish`),
 
-  deleteFlow: (flowId: string) =>
-    http.delete(`/flows/${flowId}`).then(() => undefined),
+  deleteFlow: (flowId: string) => http.delete(`/flows/${flowId}`).then(() => undefined),
 
   compileFlow: (flowId: string) =>
     post<{
@@ -73,5 +61,4 @@ export const flowsApi = {
       kb_ids: payload.kb_ids ?? [],
       ...(payload.media?.length ? { media: payload.media } : {}),
     }),
-
 };

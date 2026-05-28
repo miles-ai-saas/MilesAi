@@ -24,11 +24,7 @@ def _build_media_artifacts(
     if not isinstance(extra_ids, list) or len(extra_ids) <= 1:
         return artifact, None
     mime = result.get("mime_type")
-    extras = [
-        {"kind": "image", "attachment_id": str(aid), "mime_type": mime}
-        for aid in extra_ids
-        if aid
-    ]
+    extras = [{"kind": "image", "attachment_id": str(aid), "mime_type": mime} for aid in extra_ids if aid]
     return artifact, extras or None
 
 

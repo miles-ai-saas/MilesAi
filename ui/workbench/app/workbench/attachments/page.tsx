@@ -11,11 +11,7 @@ import { KbQuotaBar } from "@/components/kb/KbQuotaBar";
 import { ResourceListFooter } from "@/components/resource/ResourceListFooter";
 import { ResourceListLayout } from "@/components/resource/ResourceListLayout";
 import { filterBySearch } from "@/lib/filter-search";
-import {
-  attachmentPurposeFilterOptions,
-  attachmentPurposeLabel,
-  attachmentPurposeUploadOptions,
-} from "@/lib/attachment-labels";
+import { attachmentPurposeFilterOptions, attachmentPurposeLabel, attachmentPurposeUploadOptions } from "@/lib/attachment-labels";
 import { useAttachmentMeta } from "@/hooks/use-attachment-meta";
 import { KB_UPLOAD_ACCEPT } from "@/lib/upload-accept";
 import type { Attachment, KbQuota } from "@/lib/types";
@@ -40,10 +36,7 @@ export default function AttachmentsPage() {
   const [quotaLoading, setQuotaLoading] = useState(true);
 
   const list = usePagedList(
-    useCallback(
-      (p, s) => api.listAttachments(p, s, purpose ? { purpose } : undefined),
-      [purpose],
-    ),
+    useCallback((p, s) => api.listAttachments(p, s, purpose ? { purpose } : undefined), [purpose]),
     { enabled: ready, resetKey: purpose },
   );
   const { requestConfirm, confirmDialog } = useConfirmAction();
@@ -58,11 +51,7 @@ export default function AttachmentsPage() {
       .finally(() => setQuotaLoading(false));
   }, [ready, list.total]);
 
-  const filtered = useMemo(
-    () =>
-      filterBySearch(list.items, search, (a) => `${a.filename} ${a.purpose} ${a.mime_type}`),
-    [list.items, search],
-  );
+  const filtered = useMemo(() => filterBySearch(list.items, search, (a) => `${a.filename} ${a.purpose} ${a.mime_type}`), [list.items, search]);
 
   const onUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -116,51 +105,30 @@ export default function AttachmentsPage() {
           <div className="flex flex-wrap items-center gap-3">
             <KbQuotaBar quota={quota} loading={quotaLoading} variant="inline" />
             <div className="flex flex-wrap items-center gap-2">
-            <select
-              className="input-field w-auto text-sm"
-              value={purpose}
-              onChange={(e) => setPurpose(e.target.value)}
-            >
-              {purposeFilterOptions.map((o) => (
-                <option key={o.value || "all"} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
-            <select
-              className="input-field w-auto text-sm"
-              value={uploadPurpose}
-              onChange={(e) => setUploadPurpose(e.target.value)}
-              title="上传用途"
-            >
-              {purposeUploadOptions.map((o) => (
-                <option key={o.value} value={o.value}>
-                  上传为：{o.label}
-                </option>
-              ))}
-            </select>
-            <label className="btn-primary cursor-pointer text-sm">
-              {uploading ? "上传中…" : "上传附件"}
-              <input
-                type="file"
-                className="hidden"
-                accept={KB_UPLOAD_ACCEPT}
-                onChange={onUpload}
-                disabled={uploading}
-              />
-            </label>
+              <select className="input-field w-auto text-sm" value={purpose} onChange={(e) => setPurpose(e.target.value)}>
+                {purposeFilterOptions.map((o) => (
+                  <option key={o.value || "all"} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+              <select className="input-field w-auto text-sm" value={uploadPurpose} onChange={(e) => setUploadPurpose(e.target.value)} title="上传用途">
+                {purposeUploadOptions.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    上传为：{o.label}
+                  </option>
+                ))}
+              </select>
+              <label className="btn-primary cursor-pointer text-sm">
+                {uploading ? "上传中…" : "上传附件"}
+                <input type="file" className="hidden" accept={KB_UPLOAD_ACCEPT} onChange={onUpload} disabled={uploading} />
+              </label>
             </div>
           </div>
         }
         footer={
           !list.loading ? (
-            <ResourceListFooter
-              page={list.page}
-              size={list.size}
-              total={list.total}
-              onPageChange={list.setPage}
-              onSizeChange={list.setSize}
-            />
+            <ResourceListFooter page={list.page} size={list.size} total={list.total} onPageChange={list.setPage} onSizeChange={list.setSize} />
           ) : null
         }
       >
@@ -184,20 +152,12 @@ export default function AttachmentsPage() {
                 {filtered.map((a) => (
                   <tr key={a.id} className="hover:bg-surface-muted/50">
                     <td className="max-w-[16rem] truncate px-4 py-2 font-medium">{a.filename}</td>
-                    <td className="px-4 py-2 text-ink-muted">
-                      {attachmentPurposeLabel(a.purpose, attachmentMeta)}
-                    </td>
+                    <td className="px-4 py-2 text-ink-muted">{attachmentPurposeLabel(a.purpose, attachmentMeta)}</td>
                     <td className="px-4 py-2 text-ink-muted">{formatBytes(a.file_size)}</td>
                     <td className="px-4 py-2 text-xs text-ink-faint">{a.mime_type}</td>
-                    <td className="px-4 py-2 text-xs text-ink-faint">
-                      {new Date(a.created_at).toLocaleString()}
-                    </td>
+                    <td className="px-4 py-2 text-xs text-ink-faint">{new Date(a.created_at).toLocaleString()}</td>
                     <td className="px-4 py-2 text-right">
-                      <button
-                        type="button"
-                        className="text-xs text-red-600 hover:underline"
-                        onClick={() => onDelete(a)}
-                      >
+                      <button type="button" className="text-xs text-red-600 hover:underline" onClick={() => onDelete(a)}>
                         删除
                       </button>
                     </td>

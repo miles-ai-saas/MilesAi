@@ -31,9 +31,7 @@ class LibraryWordMixin:
             created_at=binding.created_at,
         )
 
-    async def list_library_words(
-        self, library_id: UUID, params: PageParams
-    ) -> PageResult[LibraryWordOut]:
+    async def list_library_words(self, library_id: UUID, params: PageParams) -> PageResult[LibraryWordOut]:
         """分页列出词库内词条。"""
         await self.get_library_or_raise(library_id)
         filters = [
@@ -42,10 +40,7 @@ class LibraryWordMixin:
             not_deleted(SensitiveWordEntry),
         ]
         total = await self.db.scalar(
-            select(func.count())
-            .select_from(LibraryWordBinding)
-            .join(SensitiveWordEntry, SensitiveWordEntry.id == LibraryWordBinding.entry_id)
-            .where(*filters)
+            select(func.count()).select_from(LibraryWordBinding).join(SensitiveWordEntry, SensitiveWordEntry.id == LibraryWordBinding.entry_id).where(*filters)
         )
         stmt = (
             select(LibraryWordBinding, SensitiveWordEntry.word)
@@ -78,17 +73,13 @@ class LibraryWordMixin:
         ).scalar_one_or_none()
         if existing:
             raise BadRequestError("该词已存在于本词库")
-        binding = LibraryWordBinding(
-            library_id=library_id, entry_id=entry.id, action=body.action, is_active=body.is_active
-        )
+        binding = LibraryWordBinding(library_id=library_id, entry_id=entry.id, action=body.action, is_active=body.is_active)
         self.db.add(binding)
         await self.db.flush()
         await self.db.refresh(binding)
         return self.binding_out(binding, entry.word)
 
-    async def batch_add_library_words(
-        self, library_id: UUID, body: LibraryWordBatchCreate
-    ) -> list[LibraryWordOut]:
+    async def batch_add_library_words(self, library_id: UUID, body: LibraryWordBatchCreate) -> list[LibraryWordOut]:
         """批量添加词条（重复词跳过）。"""
         out: list[LibraryWordOut] = []
         for item in body.words:
@@ -98,9 +89,7 @@ class LibraryWordMixin:
                 continue
         return out
 
-    async def update_library_word(
-        self, library_id: UUID, binding_id: UUID, body: LibraryWordUpdate
-    ) -> LibraryWordOut:
+    async def update_library_word(self, library_id: UUID, binding_id: UUID, body: LibraryWordUpdate) -> LibraryWordOut:
         """更新库内词条绑定属性。"""
         await self.get_library_or_raise(library_id)
         binding = await self.get_binding_or_raise(binding_id, library_id)

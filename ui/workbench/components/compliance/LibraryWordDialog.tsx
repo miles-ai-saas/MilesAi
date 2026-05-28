@@ -20,16 +20,7 @@ type Props = {
   onRequestEdit?: () => void;
 };
 
-export function LibraryWordDialog({
-  open,
-  mode,
-  libraryId,
-  word,
-  onClose,
-  onSaved,
-  onRequestEdit,
-  sensitiveActions = [],
-}: Props) {
+export function LibraryWordDialog({ open, mode, libraryId, word, onClose, onSaved, onRequestEdit, sensitiveActions = [] }: Props) {
   const isView = mode === "view";
   const isCreate = mode === "create";
 
@@ -83,11 +74,7 @@ export function LibraryWordDialog({
     <ResourceDialog
       open={open}
       title={title}
-      description={
-        isView
-          ? "同一词面可加入多个词库；在本库内的处置方式可单独配置。"
-          : undefined
-      }
+      description={isView ? "同一词面可加入多个词库；在本库内的处置方式可单独配置。" : undefined}
       size="md"
       onClose={onClose}
       footer={
@@ -107,12 +94,7 @@ export function LibraryWordDialog({
             <button type="button" className="btn-ghost" disabled={busy} onClick={onClose}>
               取消
             </button>
-            <button
-              type="button"
-              className="btn-primary"
-              disabled={busy || (isCreate && !text.trim())}
-              onClick={() => void save()}
-            >
+            <button type="button" className="btn-primary" disabled={busy || (isCreate && !text.trim())} onClick={() => void save()}>
               {busy ? "保存中…" : "确定"}
             </button>
           </>
@@ -151,16 +133,10 @@ export function LibraryWordDialog({
                 placeholder="例如：违禁品"
               />
             </label>
-            {!isCreate && (
-              <p className="text-xs text-ink-faint">词面创建后不可修改；需更名请删除后重新添加。</p>
-            )}
+            {!isCreate && <p className="text-xs text-ink-faint">词面创建后不可修改；需更名请删除后重新添加。</p>}
             <label className="block space-y-1 text-sm">
               <span className="text-xs text-ink-muted">处置方式</span>
-              <select
-                className="input-field w-full"
-                value={action}
-                onChange={(e) => setAction(e.target.value as "warn" | "block")}
-              >
+              <select className="input-field w-full" value={action} onChange={(e) => setAction(e.target.value as "warn" | "block")}>
                 {(sensitiveActions.length
                   ? sensitiveActions
                   : [
@@ -177,12 +153,7 @@ export function LibraryWordDialog({
             </label>
             {!isCreate && (
               <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={isActive}
-                  onChange={(e) => setIsActive(e.target.checked)}
-                  className="rounded border-line text-brand"
-                />
+                <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} className="rounded border-line text-brand" />
                 <span>在本库中启用</span>
               </label>
             )}

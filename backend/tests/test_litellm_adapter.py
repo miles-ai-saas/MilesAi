@@ -85,9 +85,7 @@ async def test_litellm_chat_success():
         new_callable=AsyncMock,
         return_value=mock_response,
     ) as mock_acompletion:
-        out = await litellm_chat_completion(
-            m, [{"role": "user", "content": "hi"}], temperature=0.5, max_tokens=100
-        )
+        out = await litellm_chat_completion(m, [{"role": "user", "content": "hi"}], temperature=0.5, max_tokens=100)
 
     assert out == "hello"
     mock_acompletion.assert_awaited_once()

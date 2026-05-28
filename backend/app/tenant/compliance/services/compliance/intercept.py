@@ -90,9 +90,7 @@ class ComplianceInterceptMixin:
         """管理端试跑扫描，返回命中列表与是否拦截/警告。"""
         pipeline = await self.compliance_pipeline()
         if pipeline is None:
-            return ComplianceScanResult(
-                blocked=False, warned=False, matches=[], scanning_enabled=False
-            )
+            return ComplianceScanResult(blocked=False, warned=False, matches=[], scanning_enabled=False)
         result = pipeline.scan(body.text)
         matches = [ComplianceScanMatch(word=m.word, action=m.action) for m in result.matches]
         if result.has_block and result.matches:
@@ -113,6 +111,4 @@ class ComplianceInterceptMixin:
                 action=SensitiveAction.WARN,
                 content=body.text,
             )
-        return ComplianceScanResult(
-            blocked=result.has_block, warned=result.has_warn, matches=matches, scanning_enabled=True
-        )
+        return ComplianceScanResult(blocked=result.has_block, warned=result.has_warn, matches=matches, scanning_enabled=True)

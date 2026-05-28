@@ -23,9 +23,7 @@ from app.rag.generate import format_hits_context, retrieve_hits
 from app.flow_runtime.types import RunContext
 from app.tenant.prompts.models import PromptTemplate
 
-_DEFAULT_PROMPT_TEMPLATE = (
-    "基于以下检索结果回答问题：\n\n{{检索结果}}\n\n问题：{{用户提问}}"
-)
+_DEFAULT_PROMPT_TEMPLATE = "基于以下检索结果回答问题：\n\n{{检索结果}}\n\n问题：{{用户提问}}"
 
 
 async def knowledge_search(
@@ -66,12 +64,7 @@ async def _load_prompt_template_content(
 
     async with AsyncSessionLocal() as db:
         tpl = await db.get(PromptTemplate, tid)
-        if (
-            tpl
-            and tpl.tenant_id == tenant_uuid
-            and tpl.is_active
-            and not is_marked_deleted(tpl)
-        ):
+        if tpl and tpl.tenant_id == tenant_uuid and tpl.is_active and not is_marked_deleted(tpl):
             return tpl.content
     return None
 

@@ -11,13 +11,8 @@ export const mcpApi = {
     return getPage<McpService>(`/mcp?${q}${extra}`);
   },
 
-  createMcpService: (payload: {
-    name: string;
-    transport: string;
-    endpoint_url?: string;
-    description?: string;
-    connection_config?: Record<string, unknown>;
-  }) => post<McpService>("/mcp", payload),
+  createMcpService: (payload: { name: string; transport: string; endpoint_url?: string; description?: string; connection_config?: Record<string, unknown> }) =>
+    post<McpService>("/mcp", payload),
 
   updateMcpService: (
     id: string,
@@ -32,13 +27,10 @@ export const mcpApi = {
 
   deleteMcpService: (id: string) => http.delete(`/mcp/${id}`).then(() => undefined),
 
-  syncMcpService: (serviceId: string) =>
-    post<{ tools: Record<string, unknown>[]; synced_at: string }>(`/mcp/${serviceId}/sync`),
+  syncMcpService: (serviceId: string) => post<{ tools: Record<string, unknown>[]; synced_at: string }>(`/mcp/${serviceId}/sync`),
 
   invokeMcpTool: (serviceId: string, toolName: string, params: Record<string, unknown>) =>
-    post<{ service_id: string; tool_name: string; output: Record<string, unknown> }>(
-      `/mcp/${serviceId}/tools/${encodeURIComponent(toolName)}/invoke`,
-      { params },
-    ),
-
+    post<{ service_id: string; tool_name: string; output: Record<string, unknown> }>(`/mcp/${serviceId}/tools/${encodeURIComponent(toolName)}/invoke`, {
+      params,
+    }),
 };

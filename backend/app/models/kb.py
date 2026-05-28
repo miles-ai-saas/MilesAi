@@ -42,20 +42,14 @@ class KnowledgeBase(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     name: Mapped[str] = mapped_column(String(128), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     is_public: Mapped[bool] = mapped_column(default=False, nullable=False)
-    embedding_model_config_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), nullable=False
-    )
+    embedding_model_config_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
     embedding_dimension: Mapped[int] = mapped_column(Integer, default=768, nullable=False)
-    visual_embedding_model_config_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), nullable=True
-    )
+    visual_embedding_model_config_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     chunk_size: Mapped[int] = mapped_column(Integer, default=500, nullable=False)
     chunk_overlap: Mapped[int] = mapped_column(Integer, default=50, nullable=False)
     retrieval_mode: Mapped[str] = mapped_column(String(16), default="vector", nullable=False)
     hybrid_alpha: Mapped[float] = mapped_column(Float, default=0.5, nullable=False)
-    rerank_model_config_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), nullable=True
-    )
+    rerank_model_config_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     rerank_candidate_k: Mapped[int] = mapped_column(Integer, default=50, nullable=False)
 
     documents: Mapped[list["Document"]] = relationship(

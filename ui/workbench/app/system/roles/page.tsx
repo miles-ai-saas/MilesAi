@@ -24,7 +24,10 @@ export default function SystemRolesPage() {
   const [description, setDescription] = useState("");
   const [selectedPermIds, setSelectedPermIds] = useState<Set<string>>(new Set());
 
-  const list = usePagedList(useCallback((p, s) => api.listRoles(p, s), []), { enabled: ready });
+  const list = usePagedList(
+    useCallback((p, s) => api.listRoles(p, s), []),
+    { enabled: ready },
+  );
   const { requestConfirm, confirmDialog } = useConfirmAction();
 
   useEffect(() => {
@@ -48,9 +51,7 @@ export default function SystemRolesPage() {
     setName(role.name);
     setCode(role.code);
     setDescription(role.description ?? "");
-    const ids = new Set(
-      allPerms.filter((p) => role.permission_codes.includes(p.code)).map((p) => p.id),
-    );
+    const ids = new Set(allPerms.filter((p) => role.permission_codes.includes(p.code)).map((p) => p.id));
     setSelectedPermIds(ids);
     setDialogOpen(true);
   };
@@ -137,14 +138,7 @@ export default function SystemRolesPage() {
               />
             ))}
           </div>
-          <ResourceListFooter
-            className="mt-4"
-            page={list.page}
-            size={list.size}
-            total={list.total}
-            onPageChange={list.setPage}
-            onSizeChange={list.setSize}
-          />
+          <ResourceListFooter className="mt-4" page={list.page} size={list.size} total={list.total} onPageChange={list.setPage} onSizeChange={list.setSize} />
         </>
       )}
 
@@ -163,26 +157,9 @@ export default function SystemRolesPage() {
           </>
         }
       >
-        <input
-          className="input-field w-full"
-          placeholder="角色名称"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-        />
-        {!editing && (
-          <input
-            className="input-field w-full"
-            placeholder="角色编码（英文）"
-            value={code}
-            onChange={(e) => setCode(e.target.value)}
-          />
-        )}
-        <input
-          className="input-field w-full"
-          placeholder="描述（可选）"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-        />
+        <input className="input-field w-full" placeholder="角色名称" value={name} onChange={(e) => setName(e.target.value)} />
+        {!editing && <input className="input-field w-full" placeholder="角色编码（英文）" value={code} onChange={(e) => setCode(e.target.value)} />}
+        <input className="input-field w-full" placeholder="描述（可选）" value={description} onChange={(e) => setDescription(e.target.value)} />
         <div className="max-h-64 overflow-y-auto rounded border border-line-soft p-3">
           <p className="mb-2 text-xs font-medium text-ink-muted">权限</p>
           {groups.map((g) => (
@@ -191,11 +168,7 @@ export default function SystemRolesPage() {
               <div className="flex flex-wrap gap-2">
                 {g.permissions.map((p) => (
                   <label key={p.id} className="flex cursor-pointer items-center gap-1 text-xs">
-                    <input
-                      type="checkbox"
-                      checked={selectedPermIds.has(p.id)}
-                      onChange={() => togglePerm(p.id)}
-                    />
+                    <input type="checkbox" checked={selectedPermIds.has(p.id)} onChange={() => togglePerm(p.id)} />
                     {p.name}
                   </label>
                 ))}

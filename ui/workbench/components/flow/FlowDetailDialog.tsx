@@ -9,10 +9,7 @@ import { TagChips } from "@/components/tag/TagChips";
 import { flowStatusLabel } from "@/lib/flow-labels";
 import type { Flow, FlowGraph, FlowMeta } from "@/lib/types";
 
-const FlowCanvasPreview = dynamic(
-  () => import("@/components/flow/FlowCanvasPreview").then((m) => m.FlowCanvasPreview),
-  { ssr: false },
-);
+const FlowCanvasPreview = dynamic(() => import("@/components/flow/FlowCanvasPreview").then((m) => m.FlowCanvasPreview), { ssr: false });
 
 type Props = {
   open: boolean;
@@ -47,16 +44,7 @@ function graphStats(graph: FlowGraph | null): { nodes: number; edges: number } {
   };
 }
 
-export function FlowDetailDialog({
-  open,
-  flow,
-  flowMeta,
-  publishing = false,
-  onClose,
-  onEdit,
-  onEditMeta,
-  onPublish,
-}: Props) {
+export function FlowDetailDialog({ open, flow, flowMeta, publishing = false, onClose, onEdit, onEditMeta, onPublish }: Props) {
   const [graph, setGraph] = useState<FlowGraph | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -159,33 +147,21 @@ export function FlowDetailDialog({
             </div>
             <div>
               <dt className="text-xs text-ink-muted">画布规模</dt>
-              <dd className="mt-0.5 text-ink">
-                {loading ? "加载中…" : `${stats.nodes} 个节点 · ${stats.edges} 条连线`}
-              </dd>
+              <dd className="mt-0.5 text-ink">{loading ? "加载中…" : `${stats.nodes} 个节点 · ${stats.edges} 条连线`}</dd>
             </div>
           </dl>
 
-          {error && (
-            <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-              {error}
-            </p>
-          )}
+          {error && <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
 
           <div className="overflow-hidden rounded-xl border border-line bg-surface-muted/30">
-            <p className="border-b border-line-soft px-4 py-2 text-xs font-medium text-ink-muted">
-              画布预览
-            </p>
+            <p className="border-b border-line-soft px-4 py-2 text-xs font-medium text-ink-muted">画布预览</p>
             <div className="relative h-[min(52vh,420px)] min-h-[280px]">
               {loading ? (
-                <div className="flex h-full items-center justify-center text-sm text-ink-faint">
-                  加载画布…
-                </div>
+                <div className="flex h-full items-center justify-center text-sm text-ink-faint">加载画布…</div>
               ) : graph ? (
                 <FlowCanvasPreview graph={graph} className="absolute inset-0 h-full w-full" />
               ) : (
-                <div className="flex h-full items-center justify-center text-sm text-ink-faint">
-                  暂无画布数据
-                </div>
+                <div className="flex h-full items-center justify-center text-sm text-ink-faint">暂无画布数据</div>
               )}
             </div>
           </div>

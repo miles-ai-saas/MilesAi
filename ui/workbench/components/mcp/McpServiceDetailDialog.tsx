@@ -5,14 +5,7 @@
 import { McpDetailRow, McpDialogSection, McpTransportBadge } from "@/components/mcp/mcp-dialog-shared";
 import { ResourceDialog } from "@/components/resource/ResourceDialog";
 import { KbPageAlert } from "@/components/kb/KbPageAlert";
-import {
-  formatMcpUpdatedAt,
-  mcpCardDescription,
-  mcpStatusLabel,
-  mcpSyncStatusLabel,
-  mcpTransportLabel,
-  normalizeMcpTransport,
-} from "@/lib/mcp-labels";
+import { formatMcpUpdatedAt, mcpCardDescription, mcpStatusLabel, mcpSyncStatusLabel, mcpTransportLabel, normalizeMcpTransport } from "@/lib/mcp-labels";
 import type { McpMeta, McpService } from "@/lib/types";
 
 type Props = {
@@ -68,17 +61,14 @@ function ConnectionBlock({ service }: { service: McpService }) {
           {args.length === 0 ? (
             <span className="text-ink-muted">无</span>
           ) : (
-            <pre className="overflow-x-auto rounded-lg border border-line bg-surface-muted/40 p-2 font-mono text-xs">
-              {args.join("\n")}
-            </pre>
+            <pre className="overflow-x-auto rounded-lg border border-line bg-surface-muted/40 p-2 font-mono text-xs">{args.join("\n")}</pre>
           )}
         </McpDetailRow>
       </>
     );
   }
 
-  const url =
-    service.endpoint_url.startsWith("stdio://") ? "—" : service.endpoint_url;
+  const url = service.endpoint_url.startsWith("stdio://") ? "—" : service.endpoint_url;
 
   return (
     <McpDetailRow label="端点 URL">
@@ -87,16 +77,7 @@ function ConnectionBlock({ service }: { service: McpService }) {
   );
 }
 
-export function McpServiceDetailDialog({
-  open,
-  service,
-  mcpMeta,
-  syncing,
-  onClose,
-  onSync,
-  onEdit,
-  onDelete,
-}: Props) {
+export function McpServiceDetailDialog({ open, service, mcpMeta, syncing, onClose, onSync, onEdit, onDelete }: Props) {
   if (!service) return null;
 
   const transport = normalizeMcpTransport(service.transport);
@@ -143,9 +124,7 @@ export function McpServiceDetailDialog({
       }
     >
       <div className="space-y-5">
-        {service.sync_error ? (
-          <KbPageAlert tone="error" message={service.sync_error} />
-        ) : null}
+        {service.sync_error ? <KbPageAlert tone="error" message={service.sync_error} /> : null}
 
         <McpDialogSection title="概览">
           <dl>
@@ -154,9 +133,7 @@ export function McpServiceDetailDialog({
             </McpDetailRow>
             <McpDetailRow label="运行状态">{mcpStatusLabel(service.status, mcpMeta)}</McpDetailRow>
             <McpDetailRow label="同步状态">
-              <span
-                className={`inline-flex rounded border px-2 py-0.5 text-[10px] font-medium ${syncToneClass}`}
-              >
+              <span className={`inline-flex rounded border px-2 py-0.5 text-[10px] font-medium ${syncToneClass}`}>
                 {sync.label}
                 {tools.length > 0 && sync.tone === "ok" ? ` · ${tools.length} 工具` : ""}
               </span>
@@ -172,10 +149,7 @@ export function McpServiceDetailDialog({
           </dl>
         </McpDialogSection>
 
-        <McpDialogSection
-          title="连接配置"
-          hint={mcpTransportLabel(transport, mcpMeta)}
-        >
+        <McpDialogSection title="连接配置" hint={mcpTransportLabel(transport, mcpMeta)}>
           <dl>
             <ConnectionBlock service={service} />
           </dl>

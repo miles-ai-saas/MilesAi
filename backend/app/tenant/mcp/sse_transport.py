@@ -257,8 +257,7 @@ async def legacy_sse_json_rpc(
                 await asyncio.wait_for(endpoint_ready.wait(), timeout=connect_timeout)
             except asyncio.TimeoutError as e:
                 raise BadRequestError(
-                    f"MCP SSE 未在 {connect_timeout}s 内收到 endpoint 事件；"
-                    "请确认 URL 为 SSE GET 入口（例如 /sse）",
+                    f"MCP SSE 未在 {connect_timeout}s 内收到 endpoint 事件；请确认 URL 为 SSE GET 入口（例如 /sse）",
                 ) from e
 
             post_url = post_url_box["url"]

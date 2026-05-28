@@ -17,9 +17,7 @@ PURPOSE_FILTER_OPTIONS: list[tuple[str, str, str | None]] = [
     ("flow_generated", "流程生成", "流程生图/生视频节点产出"),
 ]
 
-PURPOSE_OPTIONS: list[tuple[str, str, str | None]] = [
-    (v, lb, h) for v, lb, h in PURPOSE_FILTER_OPTIONS if v
-]
+PURPOSE_OPTIONS: list[tuple[str, str, str | None]] = [(v, lb, h) for v, lb, h in PURPOSE_FILTER_OPTIONS if v]
 
 
 def attachments_meta_dict() -> dict:

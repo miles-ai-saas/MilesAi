@@ -31,6 +31,22 @@ celery_app.conf.update(
     task_acks_late=True,
     worker_prefetch_multiplier=1,
     task_default_queue="default",
+    task_soft_time_limit=settings.celery_task_soft_time_limit_sec,
+    task_time_limit=settings.celery_task_time_limit_sec,
+    task_annotations={
+        "app.workers.tasks.ingest.ingest_document": {
+            "soft_time_limit": settings.celery_ingest_soft_time_limit_sec,
+            "time_limit": settings.celery_ingest_time_limit_sec,
+        },
+        "app.workers.tasks.generative.run_generative_video_job": {
+            "soft_time_limit": settings.celery_generative_soft_time_limit_sec,
+            "time_limit": settings.celery_generative_time_limit_sec,
+        },
+        "app.workers.tasks.generative.run_generative_image_job": {
+            "soft_time_limit": settings.celery_generative_soft_time_limit_sec,
+            "time_limit": settings.celery_generative_time_limit_sec,
+        },
+    },
     # ingest_document 实际消费 parse/default；ocr/embed 队列预留扩展
     task_routes={
         "app.workers.tasks.ingest.*": {"queue": "parse"},

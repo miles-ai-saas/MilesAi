@@ -82,10 +82,7 @@ def resolve_rerank_openai_compat_base(model: ModelConfig) -> str:
     if model.api_base:
         candidate = model.api_base.rstrip("/")
         # 租户 BYOK 可能误留 DashScope 原生端点或 chat compatible-mode，均不能拼 /reranks
-        if (
-            _DASHSCOPE_NATIVE_RERANK_MARKER not in candidate
-            and "/compatible-mode/" not in candidate
-        ):
+        if _DASHSCOPE_NATIVE_RERANK_MARKER not in candidate and "/compatible-mode/" not in candidate:
             base = candidate
             if base.endswith("/reranks"):
                 return base[: -len("/reranks")]
@@ -105,6 +102,4 @@ def resolve_rerank_openai_compat_url(model: ModelConfig) -> str:
 def ensure_rerank_model_type(model: ModelConfig) -> None:
     """校验模型类型为 rerank。"""
     if model.model_type != ModelCapabilityType.RERANK.value:
-        raise BadRequestError(
-            f"模型「{model.name}」类型为 {model.model_type}，须为 rerank 重排模型"
-        )
+        raise BadRequestError(f"模型「{model.name}」类型为 {model.model_type}，须为 rerank 重排模型")

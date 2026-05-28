@@ -40,14 +40,10 @@ export function normalizePageResult<T>(raw: unknown): PageResult<T> {
   }
 
   const body = (raw ?? {}) as Record<string, unknown>;
-  const nested = (body.pagination ?? body.meta ?? body.page_info) as
-    | Record<string, unknown>
-    | undefined;
+  const nested = (body.pagination ?? body.meta ?? body.page_info) as Record<string, unknown> | undefined;
 
   const items = (body.items ?? body.list ?? body.records ?? body.data ?? []) as T[];
-  let total = Number(
-    body.total ?? body.total_count ?? body.totalCount ?? body.count ?? nested?.total ?? nested?.total_count,
-  );
+  let total = Number(body.total ?? body.total_count ?? body.totalCount ?? body.count ?? nested?.total ?? nested?.total_count);
   let page = Number(body.page ?? body.page_num ?? nested?.page ?? 1);
   let size = Number(body.size ?? body.page_size ?? body.pageSize ?? nested?.size ?? DEFAULT_PAGE_SIZE);
 

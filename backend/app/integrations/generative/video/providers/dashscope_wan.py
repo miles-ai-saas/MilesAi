@@ -81,9 +81,7 @@ async def generate_dashscope_video(
     body = {
         "model": wan_model,
         "input": input_body,
-        "parameters": _video_parameters(
-            model, duration=duration, resolution=resolution or DEFAULT_VIDEO_RESOLUTION
-        ),
+        "parameters": _video_parameters(model, duration=duration, resolution=resolution or DEFAULT_VIDEO_RESOLUTION),
     }
 
     extra = model.extra or {}

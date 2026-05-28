@@ -10,8 +10,7 @@ import { TagPicker } from "@/components/tag/TagPicker";
 import { api } from "@/lib/api";
 import type { PromptTemplate } from "@/lib/types";
 
-export const DEFAULT_PROMPT_TEMPLATE_CONTENT =
-  "你是企业智能助手，请准确、简洁地回答用户问题。";
+export const DEFAULT_PROMPT_TEMPLATE_CONTENT = "你是企业智能助手，请准确、简洁地回答用户问题。";
 
 export type PromptTemplateDialogMode = "create" | "edit" | "view";
 
@@ -24,14 +23,7 @@ type Props = {
   onRequestEdit?: () => void;
 };
 
-export function PromptTemplateDialog({
-  open,
-  mode,
-  template,
-  onClose,
-  onSaved,
-  onRequestEdit,
-}: Props) {
+export function PromptTemplateDialog({ open, mode, template, onClose, onSaved, onRequestEdit }: Props) {
   const isView = mode === "view";
   const isEdit = mode === "edit";
   const [name, setName] = useState("");
@@ -80,8 +72,7 @@ export function PromptTemplateDialog({
     }
   };
 
-  const title =
-    mode === "create" ? "新建提示词模板" : isView ? "查看提示词模板" : "编辑提示词模板";
+  const title = mode === "create" ? "新建提示词模板" : isView ? "查看提示词模板" : "编辑提示词模板";
 
   return (
     <ResourceDialog
@@ -108,12 +99,7 @@ export function PromptTemplateDialog({
             <button type="button" className="btn-ghost" disabled={busy} onClick={onClose}>
               取消
             </button>
-            <button
-              type="button"
-              className="btn-primary"
-              disabled={busy || !canSave}
-              onClick={() => void save()}
-            >
+            <button type="button" className="btn-primary" disabled={busy || !canSave} onClick={() => void save()}>
               {busy ? "保存中…" : "保存"}
             </button>
           </>
@@ -147,12 +133,7 @@ export function PromptTemplateDialog({
                 <span className="mb-1 block font-medium text-ink">
                   <span className="text-red-500">*</span> 模板名称
                 </span>
-                <input
-                  className="input-field w-full"
-                  placeholder="例如：客服助手 · 系统提示"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                />
+                <input className="input-field w-full" placeholder="例如：客服助手 · 系统提示" value={name} onChange={(e) => setName(e.target.value)} />
               </label>
               <label className="block text-sm sm:col-span-2">
                 <span className="mb-1 block font-medium text-ink">标签</span>
@@ -165,23 +146,14 @@ export function PromptTemplateDialog({
         <section className="flex min-h-0 flex-1 flex-col gap-2 border-t border-line-soft pt-5">
           <div className="flex shrink-0 flex-wrap items-end justify-between gap-2">
             <div>
-              <h3 className="text-sm font-medium text-ink">
-                {!isView && <span className="text-red-500">*</span>} 提示词正文
-              </h3>
-              {!isView && (
-                <p className="mt-0.5 text-xs text-ink-faint">
-                  Markdown 格式 · 支持标题、列表、代码块与 GFM 表格
-                </p>
-              )}
+              <h3 className="text-sm font-medium text-ink">{!isView && <span className="text-red-500">*</span>} 提示词正文</h3>
+              {!isView && <p className="mt-0.5 text-xs text-ink-faint">Markdown 格式 · 支持标题、列表、代码块与 GFM 表格</p>}
             </div>
           </div>
           {isView ? (
             <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-line bg-surface">
               <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
-                <MarkdownPreview
-                  content={content}
-                  emptyHint="（空正文）"
-                />
+                <MarkdownPreview content={content} emptyHint="（空正文）" />
               </div>
             </section>
           ) : (

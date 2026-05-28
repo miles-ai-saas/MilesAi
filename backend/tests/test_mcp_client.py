@@ -39,10 +39,7 @@ def test_validate_accepts_https():
 
 
 def test_sse_same_origin():
-    assert (
-        _assert_same_origin("http://localhost:3001/sse", "http://localhost:3001/messages")
-        == "http://localhost:3001/messages"
-    )
+    assert _assert_same_origin("http://localhost:3001/sse", "http://localhost:3001/messages") == "http://localhost:3001/messages"
 
 
 def test_sse_rejects_cross_origin():

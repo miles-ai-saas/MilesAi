@@ -29,11 +29,13 @@ def test_conditional_node_types_are_canvas_nodes():
 
 
 def test_grade_branch_handles_match_relevance_constants():
-    assert GRADE_BRANCH_HANDLES == frozenset({
-        lg_constants.RELEVANCE_GOOD,
-        lg_constants.RELEVANCE_POOR,
-        lg_constants.RELEVANCE_NONE,
-    })
+    assert GRADE_BRANCH_HANDLES == frozenset(
+        {
+            lg_constants.RELEVANCE_GOOD,
+            lg_constants.RELEVANCE_POOR,
+            lg_constants.RELEVANCE_NONE,
+        }
+    )
 
 
 def test_compliance_scan_modules_cover_meta_options():

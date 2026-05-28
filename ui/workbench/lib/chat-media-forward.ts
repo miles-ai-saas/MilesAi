@@ -36,9 +36,7 @@ export function resolveOutgoingChatMedia(
   };
 }
 
-export function agentCarryForwardMediaEnabled(
-  config: Record<string, unknown> | undefined | null,
-): boolean {
+export function agentCarryForwardMediaEnabled(config: Record<string, unknown> | undefined | null): boolean {
   if (!config) return true;
   return config.carry_forward_media !== false;
 }

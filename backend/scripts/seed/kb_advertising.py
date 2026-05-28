@@ -49,18 +49,12 @@ async def _resolve_seed_embedding_model(session: AsyncSession) -> ModelConfig:
         )
     )
     if not model:
-        raise RuntimeError(
-            "未找到通义 text-embedding-v4 内置模型，请先执行: python cli.py seed model-catalog"
-        )
+        raise RuntimeError("未找到通义 text-embedding-v4 内置模型，请先执行: python cli.py seed model-catalog")
     return model
 
 
 async def _retire_kb(session: AsyncSession, kb: KnowledgeBase) -> None:
-    docs = (
-        await session.execute(
-            select(Document).where(Document.kb_id == kb.id, not_deleted(Document))
-        )
-    ).scalars().all()
+    docs = (await session.execute(select(Document).where(Document.kb_id == kb.id, not_deleted(Document)))).scalars().all()
     for doc in docs:
         await mark_deleted(session, doc)
     await before_delete_kb(session, kb.id)
@@ -78,10 +72,7 @@ async def _get_or_create_kb(session: AsyncSession, tenant_id) -> KnowledgeBase:
         )
     )
     if row and row.embedding_model_config_id != target_model.id:
-        print(
-            f">>> 广告知识库向量化模型不匹配，重建为 {SEED_EMBEDDING_MODEL_CODE} "
-            f"（与测试知识库一致）"
-        )
+        print(f">>> 广告知识库向量化模型不匹配，重建为 {SEED_EMBEDDING_MODEL_CODE} （与测试知识库一致）")
         await _retire_kb(session, row)
         row = None
     if row:
@@ -148,9 +139,7 @@ async def _ensure_document(
         session.add(doc)
         await session.flush()
 
-    object_key = build_object_key(
-        str(kb.tenant_id), str(kb.id), str(doc.id), filename
-    )
+    object_key = build_object_key(str(kb.tenant_id), str(kb.id), str(doc.id), filename)
     doc.object_key = object_key
     doc.file_size = len(content)
     doc.mime_type = mime_type

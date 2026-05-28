@@ -8,13 +8,7 @@ import { CronPresetLinks } from "@/components/agent/CronPresetLinks";
 import { ResourceDialog } from "@/components/resource/ResourceDialog";
 import { ToggleSwitch } from "@/components/ui/ToggleSwitch";
 import { api } from "@/lib/api";
-import {
-  DEFAULT_CRON_PARTS,
-  buildCronExpr,
-  parseCronExpr,
-  validateCronExpr,
-  type CronParts,
-} from "@/lib/cron-celery";
+import { DEFAULT_CRON_PARTS, buildCronExpr, parseCronExpr, validateCronExpr, type CronParts } from "@/lib/cron-celery";
 import type { AgentSchedule } from "@/lib/types";
 
 const CONTENT_MAX = 500;

@@ -75,9 +75,7 @@ def _register_builtin_providers() -> None:
     )
 
     register_rerank_provider(INVOKE_MODE_DASHSCOPE, DashScopeRerankProvider())
-    register_rerank_provider(
-        INVOKE_MODE_OPENAI_COMPATIBLE, OpenAICompatibleRerankProvider()
-    )
+    register_rerank_provider(INVOKE_MODE_OPENAI_COMPATIBLE, OpenAICompatibleRerankProvider())
 
 
 _register_builtin_providers()

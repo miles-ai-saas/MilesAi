@@ -36,9 +36,7 @@ def test_apply_rerank_to_hits_reorders_and_sets_score():
     ]
     mock_response = MagicMock()
     mock_response.raise_for_status.return_value = None
-    mock_response.json.return_value = {
-        "output": {"results": [{"index": 0, "relevance_score": 0.95}]}
-    }
+    mock_response.json.return_value = {"output": {"results": [{"index": 0, "relevance_score": 0.95}]}}
 
     with patch("httpx.post", return_value=mock_response):
         out = apply_rerank_to_hits(

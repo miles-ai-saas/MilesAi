@@ -18,9 +18,7 @@ def format_hits_context(hits: list[dict[str, Any]]) -> str:
     """
     if not hits:
         return ""
-    return "\n\n".join(
-        f"[{h.get('score', 0):.2f}] {h.get('content_preview', '')}" for h in hits
-    )
+    return "\n\n".join(f"[{h.get('score', 0):.2f}] {h.get('content_preview', '')}" for h in hits)
 
 
 def build_rag_user_prompt(

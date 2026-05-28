@@ -13,9 +13,7 @@ class RunnerLimits:
     def __init__(self, *, max_global: int, max_per_tenant: int) -> None:
         self._global = asyncio.Semaphore(max_global)
         self._max_per_tenant = max_per_tenant
-        self._tenant: dict[UUID, asyncio.Semaphore] = defaultdict(
-            lambda: asyncio.Semaphore(max_per_tenant)
-        )
+        self._tenant: dict[UUID, asyncio.Semaphore] = defaultdict(lambda: asyncio.Semaphore(max_per_tenant))
 
     async def acquire(self, tenant_id: UUID) -> None:
         await self._global.acquire()

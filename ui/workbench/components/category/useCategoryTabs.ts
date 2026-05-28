@@ -22,13 +22,7 @@ export function useCategoryTabs(domain: CategoryDomain) {
     void reload();
   }, [reload]);
 
-  const tabs: ResourceTab[] = useMemo(
-    () => [
-      { key: "", label: "全部" },
-      ...categories.map((c) => ({ key: c.id, label: c.name })),
-    ],
-    [categories],
-  );
+  const tabs: ResourceTab[] = useMemo(() => [{ key: "", label: "全部" }, ...categories.map((c) => ({ key: c.id, label: c.name }))], [categories]);
 
   const activeCategoryId = activeId || undefined;
 

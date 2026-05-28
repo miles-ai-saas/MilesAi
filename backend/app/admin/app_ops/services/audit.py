@@ -11,6 +11,7 @@ from app.admin.app_ops.schemas.audit import AuditAdminOption, AuditLogOut, Audit
 from app.admin.models import AuditLog
 from app.common.schema import PageParams, PageResult
 
+
 def _day_start(d: date) -> datetime:
     return datetime.combine(d, time.min, tzinfo=timezone.utc)
 
@@ -67,11 +68,7 @@ class AdminAuditService:
         items: list[AuditLogOut] = []
         for row in rows:
             out = AuditLogOut.model_validate(row)
-            items.append(
-                out.model_copy(
-                    update={"admin_username": names.get(row.admin_id) if row.admin_id else None}
-                )
-            )
+            items.append(out.model_copy(update={"admin_username": names.get(row.admin_id) if row.admin_id else None}))
         return items
 
     async def list_audit_logs(

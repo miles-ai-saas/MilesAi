@@ -4,12 +4,7 @@ import { get, post, put, patch, http, unwrap } from "./client";
 export const modelsApi = {
   getModelCatalogMeta: () => get<ModelCatalogMeta>("/models/meta"),
 
-  listModelConfigs: (params?: {
-    vendor?: string;
-    model_type?: string;
-    source?: "builtin" | "custom";
-    q?: string;
-  }) => {
+  listModelConfigs: (params?: { vendor?: string; model_type?: string; source?: "builtin" | "custom"; q?: string }) => {
     const q = new URLSearchParams();
     if (params?.vendor) q.set("vendor", params.vendor);
     if (params?.model_type) q.set("model_type", params.model_type);
@@ -47,17 +42,13 @@ export const modelsApi = {
     },
   ) => patch<ModelConfig>(`/models/${id}`, payload),
 
-  upsertBuiltinModelCredentials: (
-    id: string,
-    payload: { api_key: string; api_base?: string },
-  ) => put<ModelConfig>(`/models/builtin/${id}/credentials`, payload),
+  upsertBuiltinModelCredentials: (id: string, payload: { api_key: string; api_base?: string }) =>
+    put<ModelConfig>(`/models/builtin/${id}/credentials`, payload),
 
   deleteBuiltinModelCredentials: async (id: string) => {
     const res = await http.delete<ApiResponse<ModelConfig>>(`/models/builtin/${id}/credentials`);
     return unwrap(res.data);
   },
 
-  deleteModelConfig: (id: string) =>
-    http.delete(`/models/${id}`).then(() => undefined),
-
+  deleteModelConfig: (id: string) => http.delete(`/models/${id}`).then(() => undefined),
 };

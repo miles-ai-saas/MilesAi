@@ -113,8 +113,7 @@ export function agentToFormValues(agent: Agent): AgentFormValues {
       trigger_keywords: p.trigger_keywords ?? [],
       enabled: p.enabled !== false,
     })),
-    a2a_invoke_policy:
-      (cfg.a2a_invoke_policy as AgentFormValues["a2a_invoke_policy"]) || "rules_then_plan",
+    a2a_invoke_policy: (cfg.a2a_invoke_policy as AgentFormValues["a2a_invoke_policy"]) || "rules_then_plan",
     use_langgraph_rag: cfg.use_langgraph_rag !== false,
     relevance_threshold: Number(cfg.relevance_threshold ?? 0.35),
     rag_max_retries: Number(cfg.rag_max_retries ?? 1),
@@ -136,10 +135,7 @@ export function formatAgentCode(agentId: string): string {
   return `AGENT-${year}-${short}`;
 }
 
-export function buildAgentConfig(
-  form: AgentFormValues,
-  baseConfig: Record<string, unknown> | undefined,
-): Record<string, unknown> {
+export function buildAgentConfig(form: AgentFormValues, baseConfig: Record<string, unknown> | undefined): Record<string, unknown> {
   const config: Record<string, unknown> = { ...(baseConfig ?? {}) };
   delete config.agent_tag;
   if (form.skill_package_id) config.skill_package_id = form.skill_package_id;

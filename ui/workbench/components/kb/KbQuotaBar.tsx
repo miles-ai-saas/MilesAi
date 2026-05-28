@@ -8,17 +8,7 @@ function pct(used: number, max: number) {
   return Math.min(100, Math.round((used / max) * 100));
 }
 
-function InlineStat({
-  label,
-  used,
-  max,
-  unit,
-}: {
-  label: string;
-  used: number;
-  max: number;
-  unit: string;
-}) {
+function InlineStat({ label, used, max, unit }: { label: string; used: number; max: number; unit: string }) {
   const p = pct(used, max);
   const warn = p >= 90;
   return (
@@ -52,16 +42,8 @@ export function KbQuotaBar({ quota, loading, className = "", variant = "inline" 
 
   if (variant === "inline") {
     return (
-      <div
-        className={`flex flex-wrap items-center gap-x-3 gap-y-1 text-xs ${className}`}
-        aria-label="租户知识库配额"
-      >
-        <InlineStat
-          label="库"
-          used={quota.used_knowledge_bases}
-          max={quota.max_knowledge_bases}
-          unit=""
-        />
+      <div className={`flex flex-wrap items-center gap-x-3 gap-y-1 text-xs ${className}`} aria-label="租户知识库配额">
+        <InlineStat label="库" used={quota.used_knowledge_bases} max={quota.max_knowledge_bases} unit="" />
         <span className="text-ink-faint" aria-hidden>
           ·
         </span>

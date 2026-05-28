@@ -29,11 +29,7 @@ export function KbDetailHeader({ vm }: { vm: KbDetailPageVm }) {
             <button type="button" className="btn-ghost text-sm" onClick={vm.openSettings}>
               设置
             </button>
-            <button
-              type="button"
-              className="btn-ghost text-sm text-red-600 hover:bg-red-50"
-              onClick={vm.onDeleteKb}
-            >
+            <button type="button" className="btn-ghost text-sm text-red-600 hover:bg-red-50" onClick={vm.onDeleteKb}>
               删除
             </button>
           </div>

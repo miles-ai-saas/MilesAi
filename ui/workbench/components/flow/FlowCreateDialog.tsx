@@ -11,12 +11,7 @@ type Props = {
   open: boolean;
   busy?: boolean;
   onClose: () => void;
-  onCreate: (payload: {
-    name: string;
-    description: string;
-    tag_ids: string[];
-    graph_json: FlowGraph;
-  }) => Promise<void>;
+  onCreate: (payload: { name: string; description: string; tag_ids: string[]; graph_json: FlowGraph }) => Promise<void>;
 };
 
 export function FlowCreateDialog({ open, busy = false, onClose, onCreate }: Props) {
@@ -27,8 +22,7 @@ export function FlowCreateDialog({ open, busy = false, onClose, onCreate }: Prop
   const [templateId, setTemplateId] = useState<string>("rag");
   const [creating, setCreating] = useState(false);
 
-  const selected =
-    templates.find((t) => t.id === templateId) ?? defaultTemplate ?? templates[0] ?? null;
+  const selected = templates.find((t) => t.id === templateId) ?? defaultTemplate ?? templates[0] ?? null;
 
   useEffect(() => {
     if (!open || templates.length === 0) return;
@@ -78,12 +72,7 @@ export function FlowCreateDialog({ open, busy = false, onClose, onCreate }: Prop
           <button type="button" className="btn-ghost" disabled={disabled} onClick={onClose}>
             取消
           </button>
-          <button
-            type="button"
-            className="btn-primary"
-            disabled={disabled || !name.trim() || !selected}
-            onClick={() => void submit()}
-          >
+          <button type="button" className="btn-primary" disabled={disabled || !name.trim() || !selected} onClick={() => void submit()}>
             {creating ? "创建中…" : "创建并编辑"}
           </button>
         </>
@@ -128,9 +117,7 @@ export function FlowCreateDialog({ open, busy = false, onClose, onCreate }: Prop
                 <label
                   key={opt.id}
                   className={`flex cursor-pointer gap-3 rounded-lg border px-3 py-2.5 transition-colors ${
-                    templateId === opt.id
-                      ? "border-brand/40 bg-brand-light/20"
-                      : "border-line hover:border-line/80"
+                    templateId === opt.id ? "border-brand/40 bg-brand-light/20" : "border-line hover:border-line/80"
                   }`}
                 >
                   <input

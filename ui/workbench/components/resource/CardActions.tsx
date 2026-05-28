@@ -22,13 +22,7 @@ const variantClass: Record<NonNullable<CardActionItem["variant"]>, string> = {
   danger: "text-red-600 hover:underline",
 };
 
-export function CardActions({
-  actions = [],
-  onView,
-  onEdit,
-  onDelete,
-  deleteLabel = "删除",
-}: Props) {
+export function CardActions({ actions = [], onView, onEdit, onDelete, deleteLabel = "删除" }: Props) {
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
       {actions.map((a) => (

@@ -63,9 +63,7 @@ async def reject_marketplace_app(
     ctx: AdminContext = Depends(require_admin_role("ops")),
     db: AsyncSession = Depends(get_db),
 ):
-    app = await AdminMarketplaceReviewService(db).reject(
-        app_id, admin_id=ctx.admin_id, note=body.note
-    )
+    app = await AdminMarketplaceReviewService(db).reject(app_id, admin_id=ctx.admin_id, note=body.note)
     await write_audit_log(
         db,
         admin_id=ctx.admin_id,

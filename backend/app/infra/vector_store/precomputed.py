@@ -57,9 +57,7 @@ class PrecomputedEmbeddings(Embeddings):
         texts 内容仅用于满足 API 形状，实际向量以 ``_vectors`` 为准。
         """
         if len(self._vectors) != len(texts):
-            raise ValueError(
-                f"预计算向量条数({len(self._vectors)})与文本条数({len(texts)})不一致"
-            )
+            raise ValueError(f"预计算向量条数({len(self._vectors)})与文本条数({len(texts)})不一致")
         return self._vectors
 
     def embed_query(self, text: str) -> list[float]:

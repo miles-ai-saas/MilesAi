@@ -35,9 +35,7 @@ def should_use_visual_image_embedding(
 def embed_image_bytes_sync(db: Session, kb: KnowledgeBase, raw: bytes) -> list[float]:
     if not kb.visual_embedding_model_config_id:
         raise BadRequestError("知识库未配置视觉向量化模型")
-    model = resolve_embedding_model_sync(
-        db, kb.visual_embedding_model_config_id, kb.tenant_id
-    )
+    model = resolve_embedding_model_sync(db, kb.visual_embedding_model_config_id, kb.tenant_id)
     ensure_clip_model(model)
     provider = get_embedding_provider(INVOKE_MODE_CLIP)
     return provider.embed_images(model, [raw])[0]
@@ -59,9 +57,7 @@ def embed_query_visual_sync(db: Session, kb: KnowledgeBase, query: str) -> list[
     text = (query or "").strip()
     if not text:
         raise BadRequestError("视觉文本搜图需填写 query")
-    model = resolve_embedding_model_sync(
-        db, kb.visual_embedding_model_config_id, kb.tenant_id
-    )
+    model = resolve_embedding_model_sync(db, kb.visual_embedding_model_config_id, kb.tenant_id)
     ensure_clip_model(model)
     provider = get_embedding_provider(INVOKE_MODE_CLIP)
     return provider.embed_texts(model, [text])[0]
@@ -78,9 +74,7 @@ async def embed_query_visual_async(
     text = (query or "").strip()
     if not text:
         raise BadRequestError("视觉文本搜图需填写 query")
-    model = await resolve_embedding_model_by_id(
-        db, kb.visual_embedding_model_config_id, tenant_id
-    )
+    model = await resolve_embedding_model_by_id(db, kb.visual_embedding_model_config_id, tenant_id)
     ensure_clip_model(model)
     provider = get_embedding_provider(INVOKE_MODE_CLIP)
     return provider.embed_texts(model, [text])[0]
@@ -94,9 +88,7 @@ async def embed_image_bytes_async(
 ) -> list[float]:
     if not kb.visual_embedding_model_config_id:
         raise BadRequestError("知识库未配置视觉向量化模型")
-    model = await resolve_embedding_model_by_id(
-        db, kb.visual_embedding_model_config_id, tenant_id
-    )
+    model = await resolve_embedding_model_by_id(db, kb.visual_embedding_model_config_id, tenant_id)
     ensure_clip_model(model)
     provider = get_embedding_provider(INVOKE_MODE_CLIP)
     return provider.embed_images(model, [raw])[0]

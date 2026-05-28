@@ -67,10 +67,7 @@ function readTraceId(headers: Record<string, unknown>, body: ApiResponse<unknown
   return undefined;
 }
 
-export async function postWithTrace<T extends object>(
-  url: string,
-  data?: unknown,
-): Promise<T & { trace_id?: string }> {
+export async function postWithTrace<T extends object>(url: string, data?: unknown): Promise<T & { trace_id?: string }> {
   const res = await http.post<ApiResponse<T>>(url, data);
   const payload = unwrap(res.data);
   const trace_id = readTraceId(res.headers as Record<string, unknown>, res.data);

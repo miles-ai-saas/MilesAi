@@ -1,15 +1,7 @@
 "use client";
 
 /** 流程图只读预览（链路 §6）。 */
-import {
-  Background,
-  Controls,
-  MiniMap,
-  ReactFlow,
-  ReactFlowProvider,
-  useEdgesState,
-  useNodesState,
-} from "@xyflow/react";
+import { Background, Controls, MiniMap, ReactFlow, ReactFlowProvider, useEdgesState, useNodesState } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { useEffect } from "react";
 import { flowNodeTypes } from "@/components/flow/FlowNodeCard";

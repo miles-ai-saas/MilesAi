@@ -1,22 +1,10 @@
-import type {
-  Agent,
-  AgentStats,
-  AgentArchitecture,
-  ChatResponse,
-  ChatAgentResult,
-} from "../types";
+import type { Agent, AgentStats, AgentArchitecture, ChatResponse, ChatAgentResult } from "../types";
 import { get, getPage, post, patch, http, postWithTrace } from "./client";
 import { appendTagIds } from "./query";
 import { buildPageQuery, DEFAULT_PAGE_SIZE } from "../pagination";
 
 export const agentsApi = {
-  listAgents: (
-    page = 1,
-    size = DEFAULT_PAGE_SIZE,
-    agentType?: import("../types").AgentType,
-    categoryId?: string,
-    tagIds?: string[],
-  ) => {
+  listAgents: (page = 1, size = DEFAULT_PAGE_SIZE, agentType?: import("../types").AgentType, categoryId?: string, tagIds?: string[]) => {
     let q = buildPageQuery(page, size);
     if (agentType) q += `&agent_type=${agentType}`;
     if (categoryId) q += `&category_id=${categoryId}`;
@@ -24,55 +12,36 @@ export const agentsApi = {
     return getPage<Agent>(`/agents?${q}`);
   },
 
-  listA2aPeers: (page = 1, size = DEFAULT_PAGE_SIZE) =>
-    getPage<import("../types").A2aPeer>(`/a2a/peers?${buildPageQuery(page, size)}`),
+  listA2aPeers: (page = 1, size = DEFAULT_PAGE_SIZE) => getPage<import("../types").A2aPeer>(`/a2a/peers?${buildPageQuery(page, size)}`),
 
-  createA2aPeer: (payload: {
-    name: string;
-    base_url: string;
-    description?: string;
-    auth_config?: Record<string, unknown>;
-  }) => post<import("../types").A2aPeer>("/a2a/peers", payload),
+  createA2aPeer: (payload: { name: string; base_url: string; description?: string; auth_config?: Record<string, unknown> }) =>
+    post<import("../types").A2aPeer>("/a2a/peers", payload),
 
-  probeA2aPeer: (baseUrl: string) =>
-    post<import("../types").A2aPeerProbeResult>("/a2a/peers/probe", { base_url: baseUrl }),
+  probeA2aPeer: (baseUrl: string) => post<import("../types").A2aPeerProbeResult>("/a2a/peers/probe", { base_url: baseUrl }),
 
-  syncA2aPeerCard: (peerId: string) =>
-    post<import("../types").A2aPeerSyncResult>(`/a2a/peers/${peerId}/sync-card`, {}),
+  syncA2aPeerCard: (peerId: string) => post<import("../types").A2aPeerSyncResult>(`/a2a/peers/${peerId}/sync-card`, {}),
 
-  deleteA2aPeer: (peerId: string) =>
-    http.delete(`/a2a/peers/${peerId}`).then(() => undefined),
+  deleteA2aPeer: (peerId: string) => http.delete(`/a2a/peers/${peerId}`).then(() => undefined),
 
   getAgent: (agentId: string) => get<Agent>(`/agents/${agentId}`),
 
-  getAgentStats: (agentId: string, days = 7) =>
-    get<AgentStats>(`/agents/${agentId}/stats?days=${days}`),
+  getAgentStats: (agentId: string, days = 7) => get<AgentStats>(`/agents/${agentId}/stats?days=${days}`),
 
-  getAgentArchitecture: (agentId: string) =>
-    get<AgentArchitecture>(`/agents/${agentId}/architecture`),
+  getAgentArchitecture: (agentId: string) => get<AgentArchitecture>(`/agents/${agentId}/architecture`),
 
   listAgentSchedules: (agentId: string, page = 1, size = DEFAULT_PAGE_SIZE) =>
-    getPage<import("../types").AgentSchedule>(
-      `/agents/${agentId}/schedules?${buildPageQuery(page, size)}`,
-    ),
+    getPage<import("../types").AgentSchedule>(`/agents/${agentId}/schedules?${buildPageQuery(page, size)}`),
 
   createAgentSchedule: (agentId: string, payload: import("../types").AgentScheduleInput) =>
     post<import("../types").AgentSchedule>(`/agents/${agentId}/schedules`, payload),
 
-  updateAgentSchedule: (
-    agentId: string,
-    scheduleId: string,
-    payload: Partial<import("../types").AgentScheduleInput>,
-  ) =>
+  updateAgentSchedule: (agentId: string, scheduleId: string, payload: Partial<import("../types").AgentScheduleInput>) =>
     patch<import("../types").AgentSchedule>(`/agents/${agentId}/schedules/${scheduleId}`, payload),
 
-  deleteAgentSchedule: (agentId: string, scheduleId: string) =>
-    http.delete(`/agents/${agentId}/schedules/${scheduleId}`).then(() => undefined),
+  deleteAgentSchedule: (agentId: string, scheduleId: string) => http.delete(`/agents/${agentId}/schedules/${scheduleId}`).then(() => undefined),
 
   listAgentScheduleRuns: (agentId: string, scheduleId: string, page = 1, size = 10) =>
-    getPage<import("../types").AgentScheduleRun>(
-      `/agents/${agentId}/schedules/${scheduleId}/runs?${buildPageQuery(page, size)}`,
-    ),
+    getPage<import("../types").AgentScheduleRun>(`/agents/${agentId}/schedules/${scheduleId}/runs?${buildPageQuery(page, size)}`),
 
   createAgent: (payload: {
     agent_type?: import("../types").AgentType;
@@ -109,8 +78,7 @@ export const agentsApi = {
     },
   ) => patch<Agent>(`/agents/${agentId}`, payload),
 
-  deleteAgent: (agentId: string) =>
-    http.delete(`/agents/${agentId}`).then(() => undefined),
+  deleteAgent: (agentId: string) => http.delete(`/agents/${agentId}`).then(() => undefined),
   // --- 智能体对话（chains §5；conversation_id 与 chat-sessions 会话 id 一致）---,
 
   chatAgent: (
@@ -140,5 +108,4 @@ export const agentsApi = {
     });
     return URL.createObjectURL(res.data);
   },
-
 };

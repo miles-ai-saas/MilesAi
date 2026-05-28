@@ -22,16 +22,16 @@ export default function TenantsPage() {
   const [planId, setPlanId] = useState("");
 
   const list = usePagedList(
-    useCallback(
-      (p, s) => adminApi.listTenants(p, s, statusFilter || undefined),
-      [statusFilter],
-    ),
+    useCallback((p, s) => adminApi.listTenants(p, s, statusFilter || undefined), [statusFilter]),
     { enabled: ready, resetKey: statusFilter },
   );
 
   useEffect(() => {
     if (!ready) return;
-    adminApi.listPlans().then(setPlans).catch(() => undefined);
+    adminApi
+      .listPlans()
+      .then(setPlans)
+      .catch(() => undefined);
   }, [ready]);
 
   const create = async () => {
@@ -55,9 +55,7 @@ export default function TenantsPage() {
             key={s || "all"}
             type="button"
             onClick={() => setStatusFilter(s)}
-            className={`rounded-full px-3 py-1 text-xs ${
-              statusFilter === s ? "bg-brand text-white" : "border bg-white text-ink-muted"
-            }`}
+            className={`rounded-full px-3 py-1 text-xs ${statusFilter === s ? "bg-brand text-white" : "border bg-white text-ink-muted"}`}
           >
             {s ? STATUS_LABEL[s] || s : "全部"}
           </button>
@@ -67,17 +65,8 @@ export default function TenantsPage() {
       <section className="card mb-6 p-4">
         <h2 className="text-sm font-semibold">新建租户</h2>
         <div className="mt-3 flex flex-wrap gap-2">
-          <input
-            className="input-field max-w-xs"
-            placeholder="租户名称"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
-          <select
-            className="input-field max-w-xs"
-            value={planId}
-            onChange={(e) => setPlanId(e.target.value)}
-          >
+          <input className="input-field max-w-xs" placeholder="租户名称" value={name} onChange={(e) => setName(e.target.value)} />
+          <select className="input-field max-w-xs" value={planId} onChange={(e) => setPlanId(e.target.value)}>
             <option value="">选择套餐</option>
             {plans.map((p) => (
               <option key={p.id} value={p.id}>
@@ -119,13 +108,10 @@ export default function TenantsPage() {
                     <td className="cell-primary">{t.name}</td>
                     <td className="col-center cell-muted">{t.plan_name || "—"}</td>
                     <td className="col-center">
-                      <span className="badge bg-brand-light text-ink">
-                        {STATUS_LABEL[t.status] || t.status}
-                      </span>
+                      <span className="badge bg-brand-light text-ink">{STATUS_LABEL[t.status] || t.status}</span>
                     </td>
                     <td className="col-center col-numeric cell-numeric">
-                      {t.storage_used_mb}/{t.max_storage_mb} MB · Token{" "}
-                      {t.tokens_used_month.toLocaleString()}
+                      {t.storage_used_mb}/{t.max_storage_mb} MB · Token {t.tokens_used_month.toLocaleString()}
                     </td>
                     <td className="col-actions">
                       <Link href={`/tenants/${t.id}`} className="text-brand hover:underline">
@@ -137,14 +123,7 @@ export default function TenantsPage() {
               </tbody>
             </table>
           </div>
-          <ListFooter
-            className="mt-3"
-            page={list.page}
-            size={list.size}
-            total={list.total}
-            onPageChange={list.setPage}
-            onSizeChange={list.setSize}
-          />
+          <ListFooter className="mt-3" page={list.page} size={list.size} total={list.total} onPageChange={list.setPage} onSizeChange={list.setSize} />
         </>
       )}
     </div>

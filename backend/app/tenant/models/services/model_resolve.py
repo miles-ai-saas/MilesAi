@@ -25,9 +25,7 @@ from app.models.model_tenant_credential import ModelTenantCredential
 from app.tenant.models.services.api_key_validation import assert_usable_api_key
 
 
-async def load_tenant_credential(
-    db: AsyncSession, tenant_id: UUID, model_config_id: UUID
-) -> ModelTenantCredential | None:
+async def load_tenant_credential(db: AsyncSession, tenant_id: UUID, model_config_id: UUID) -> ModelTenantCredential | None:
     """加载租户对内置模型的 BYOK 凭证。"""
     row = (
         await db.execute(
@@ -84,9 +82,7 @@ async def resolve_model_for_invoke(
             effective.api_key_encrypted = cred.api_key_encrypted
 
     if not effective.api_key_encrypted:
-        raise BadRequestError(
-            f"模型「{model.name}」未配置 API Key，请在模型供应商页配置密钥"
-        )
+        raise BadRequestError(f"模型「{model.name}」未配置 API Key，请在模型供应商页配置密钥")
     assert_usable_api_key(
         effective.api_key_encrypted,
         model_name=model.name,
@@ -95,14 +91,8 @@ async def resolve_model_for_invoke(
     return effective
 
 
-async def resolve_model_by_id(
-    db: AsyncSession, model_id: UUID, tenant_id: UUID
-) -> ModelConfig:
-    model = (
-        await db.execute(
-            select(ModelConfig).where(ModelConfig.id == model_id, not_deleted(ModelConfig))
-        )
-    ).scalar_one_or_none()
+async def resolve_model_by_id(db: AsyncSession, model_id: UUID, tenant_id: UUID) -> ModelConfig:
+    model = (await db.execute(select(ModelConfig).where(ModelConfig.id == model_id, not_deleted(ModelConfig)))).scalar_one_or_none()
     if not model:
         raise BadRequestError("模型配置不存在")
     return await resolve_model_for_invoke(db, model, tenant_id)

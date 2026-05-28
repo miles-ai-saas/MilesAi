@@ -4,15 +4,8 @@ import { ResourceListFooter } from "@/components/resource/ResourceListFooter";
 import { ResourceItemCard } from "@/components/resource/ResourceItemCard";
 import { ResourceListLayout } from "@/components/resource/ResourceListLayout";
 import { TagFilterDropdown } from "@/components/tag/TagFilterDropdown";
-import {
-  MarketplaceAppCardActions,
-  MarketplaceAppCardMeta,
-} from "@/components/marketplace/MarketplaceAppCardParts";
-import {
-  MarketplaceInstallSuccessBanner,
-  MarketplacePageMessage,
-  MarketplaceStatChip,
-} from "@/components/marketplace/marketplace-page-ui";
+import { MarketplaceAppCardActions, MarketplaceAppCardMeta } from "@/components/marketplace/MarketplaceAppCardParts";
+import { MarketplaceInstallSuccessBanner, MarketplacePageMessage, MarketplaceStatChip } from "@/components/marketplace/marketplace-page-ui";
 import { marketplaceCatalogSortOptions } from "@/lib/marketplace-labels";
 import type { MarketplacePageVm } from "@/hooks/use-marketplace-page";
 
@@ -43,27 +36,15 @@ export function MarketplacePlazaView({ vm }: { vm: MarketplacePageVm }) {
       }
       footer={
         !vm.apps.loading ? (
-          <ResourceListFooter
-            page={vm.apps.page}
-            size={vm.apps.size}
-            total={vm.apps.total}
-            onPageChange={vm.apps.setPage}
-            onSizeChange={vm.apps.setSize}
-          />
+          <ResourceListFooter page={vm.apps.page} size={vm.apps.size} total={vm.apps.total} onPageChange={vm.apps.setPage} onSizeChange={vm.apps.setSize} />
         ) : null
       }
     >
       {vm.msg ? <MarketplacePageMessage message={vm.msg} onDismiss={() => vm.setMsg("")} /> : null}
-      {vm.lastResult ? (
-        <MarketplaceInstallSuccessBanner result={vm.lastResult} onDismiss={() => vm.setLastResult(null)} />
-      ) : null}
+      {vm.lastResult ? <MarketplaceInstallSuccessBanner result={vm.lastResult} onDismiss={() => vm.setLastResult(null)} /> : null}
       <div className="col-span-full grid gap-3 sm:grid-cols-2">
         <MarketplaceStatChip label="广场应用" value={String(vm.apps.total)} hint="已上架可安装" />
-        <MarketplaceStatChip
-          label="本页已安装"
-          value={String(vm.plazaInstalledOnPage)}
-          hint={`本页共 ${vm.plazaFiltered.length} 个`}
-        />
+        <MarketplaceStatChip label="本页已安装" value={String(vm.plazaInstalledOnPage)} hint={`本页共 ${vm.plazaFiltered.length} 个`} />
       </div>
       <div className="col-span-full flex flex-wrap gap-2 border-b border-line pb-4">
         {vm.categoryTabs.map((tab) => (
@@ -72,18 +53,14 @@ export function MarketplacePlazaView({ vm }: { vm: MarketplacePageVm }) {
             type="button"
             onClick={() => vm.setActiveCategory(tab.key)}
             className={`rounded-lg px-3 py-1.5 text-xs transition ${
-              vm.activeCategory === tab.key
-                ? "bg-brand-light font-medium text-brand"
-                : "text-ink-muted hover:bg-surface-muted hover:text-ink"
+              vm.activeCategory === tab.key ? "bg-brand-light font-medium text-brand" : "text-ink-muted hover:bg-surface-muted hover:text-ink"
             }`}
           >
             {tab.label}
           </button>
         ))}
       </div>
-      {!vm.apps.loading && vm.plazaFiltered.length === 0 ? (
-        <p className="col-span-full py-12 text-center text-sm text-ink-faint">暂无匹配的应用</p>
-      ) : null}
+      {!vm.apps.loading && vm.plazaFiltered.length === 0 ? <p className="col-span-full py-12 text-center text-sm text-ink-faint">暂无匹配的应用</p> : null}
       {vm.plazaFiltered.map((app) => (
         <ResourceItemCard
           key={app.id}

@@ -6,8 +6,7 @@ export const AGENT_RUNTIME_MODE = {
   WORKFLOW: "workflow",
 } as const;
 
-export type AgentRuntimeMode =
-  (typeof AGENT_RUNTIME_MODE)[keyof typeof AGENT_RUNTIME_MODE];
+export type AgentRuntimeMode = (typeof AGENT_RUNTIME_MODE)[keyof typeof AGENT_RUNTIME_MODE];
 
 export const AGENT_PLANNER = {
   DEEPAGENTS: "deepagents",

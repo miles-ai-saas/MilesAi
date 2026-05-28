@@ -85,11 +85,7 @@ async def reset_user_password(
     ctx: TenantContext = Depends(require_permissions("system:user:write")),
     db: AsyncSession = Depends(get_db),
 ) -> ApiResponse[UserOut]:
-    return ok(
-        await UserService(db, ctx).reset_password(
-            user_id, body.password, request=request
-        )
-    )
+    return ok(await UserService(db, ctx).reset_password(user_id, body.password, request=request))
 
 
 @router.delete("/{user_id}", response_model=ApiResponse[UserOut])

@@ -14,25 +14,12 @@ type Props = {
 };
 
 /** 对话生成物预览：图片 / 视频（鉴权 content API，非签名 URL）。 */
-export function ChatArtifactMedia({
-  kind,
-  attachmentId,
-  mimeType,
-  caption,
-  posterAttachmentId,
-}: Props) {
+export function ChatArtifactMedia({ kind, attachmentId, mimeType, caption, posterAttachmentId }: Props) {
   if (kind === "image") {
     return <ChatArtifactImage attachmentId={attachmentId} alt={caption ?? "生成图片"} />;
   }
   if (kind === "video") {
-    return (
-      <ChatArtifactVideo
-        attachmentId={attachmentId}
-        mimeType={mimeType}
-        caption={caption}
-        posterAttachmentId={posterAttachmentId}
-      />
-    );
+    return <ChatArtifactVideo attachmentId={attachmentId} mimeType={mimeType} caption={caption} posterAttachmentId={posterAttachmentId} />;
   }
   return null;
 }
@@ -88,24 +75,14 @@ function ChatArtifactVideo({
   if (poster && !src) {
     return (
       <div className="relative max-w-full">
-        <img
-          src={poster}
-          alt={caption ?? "视频封面"}
-          className="max-h-48 max-w-full rounded-lg object-cover ring-1 ring-line"
-        />
-        <span className="absolute bottom-2 right-2 rounded bg-black/50 px-1.5 py-0.5 text-[10px] text-white">
-          点击播放加载视频
-        </span>
+        <img src={poster} alt={caption ?? "视频封面"} className="max-h-48 max-w-full rounded-lg object-cover ring-1 ring-line" />
+        <span className="absolute bottom-2 right-2 rounded bg-black/50 px-1.5 py-0.5 text-[10px] text-white">点击播放加载视频</span>
       </div>
     );
   }
 
   if (!src) {
-    return (
-      <div className="flex h-32 w-56 items-center justify-center rounded-lg bg-surface-muted text-xs text-ink-faint">
-        视频加载中…
-      </div>
-    );
+    return <div className="flex h-32 w-56 items-center justify-center rounded-lg bg-surface-muted text-xs text-ink-faint">视频加载中…</div>;
   }
 
   return (

@@ -69,9 +69,7 @@ def search_vectors(
     返回 hit 列表，字段见 ``integrations.langchain.vector.documents._doc_to_hit_row``
     （chunk_id、document_id、score、score_vector 等）。
     """
-    return get_vector_store().search(
-        query_vector, tenant_id=tenant_id, kb_id=kb_id, limit=limit
-    )
+    return get_vector_store().search(query_vector, tenant_id=tenant_id, kb_id=kb_id, limit=limit)
 
 
 def delete_by_document(document_id: UUID) -> None:

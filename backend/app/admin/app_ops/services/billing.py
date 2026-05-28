@@ -67,9 +67,7 @@ class AdminBillingService:
             filters=filters,
             order_by=TenantBill.created_at.desc(),
         )
-        tenant_names = await self.tenants.tenant_names_by_ids(
-            {b.tenant_id for b in page.items}
-        )
+        tenant_names = await self.tenants.tenant_names_by_ids({b.tenant_id for b in page.items})
         items = [
             TenantBillOut(
                 id=b.id,
@@ -168,9 +166,7 @@ class AdminBillingService:
         await self.db.flush()
         return await self.get_bill(bill.id)
 
-    async def update_bill_status(
-        self, bill_id: UUID, body: TenantBillStatusUpdate
-    ) -> TenantBillDetail:
+    async def update_bill_status(self, bill_id: UUID, body: TenantBillStatusUpdate) -> TenantBillDetail:
         if body.status not in (BillStatus.PAID, BillStatus.VOID):
             raise BadRequestError("仅支持标记为 paid 或 void")
         bill = await self.bills.get_by_id_or_raise(bill_id, label="账单不存在")
