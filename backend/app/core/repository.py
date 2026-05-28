@@ -101,6 +101,8 @@ class BaseRepository(Generic[T]):
         if has_soft_delete(self.model):
             stmt = stmt.where(not_deleted(self.model))
         if exclude_id is not None:
-            stmt = stmt.where(self.model.id != exclude_id)  # type: ignore[attr-defined]
+            id_col = getattr(self.model, "id", None)
+            if id_col is not None:
+                stmt = stmt.where(id_col != exclude_id)
         if (await self.db.execute(stmt)).scalar_one_or_none():
             raise ConflictError(message)

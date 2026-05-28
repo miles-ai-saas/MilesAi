@@ -1,0 +1,18 @@
+{
+  "name": "@milesai/ui-shared",
+  "private": true,
+  "version": "0.0.0",
+  "exports": {
+    "./brand/company-logo": "./brand/company-logo.tsx",
+    "./brand/brand-header": "./brand/brand-header.tsx"
+  },
+  "peerDependencies": {
+    "next": "^14.2.18",
+    "react": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.12",
+    "next": "^14.2.18",
+    "react": "^18.3.1"
+  }
+}

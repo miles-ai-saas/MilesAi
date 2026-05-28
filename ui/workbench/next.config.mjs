@@ -2,6 +2,7 @@
 const nextConfig = {
   reactStrictMode: true,
   output: "standalone",
+  transpilePackages: ["@milesai/ui-shared"],
   async redirects() {
     return [
       { source: "/agents", destination: "/workbench/agents", permanent: false },

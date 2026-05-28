@@ -1,0 +1,121 @@
+"""HookExecutor 门面：加载绑定并按优先级串行 dispatch。"""
+
+from uuid import UUID
+
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
+
+from app.common.trace import get_trace_id
+from app.core.logging import get_logger
+from app.core.soft_delete import not_deleted
+from app.tenant.hooks.exceptions import HookBlockedError
+from app.tenant.hooks.models import HookBinding, HookDefinition, HookScope, HookTrigger, HookType
+from app.tenant.hooks.services.executor.http import HookHttpMixin
+from app.tenant.hooks.services.executor.log import HookLogMixin
+from app.tenant.hooks.services.executor.python import HookPythonMixin
+from app.tenant.hooks.services.result import HookRunResult
+from app.utils.idgen import generate_uuid
+
+logger = get_logger(__name__)
+
+
+class HookExecutor(HookHttpMixin, HookPythonMixin, HookLogMixin):
+    """从 DB 加载绑定并 dispatch HTTP / Python 钩子。"""
+
+    def __init__(self, db: AsyncSession, tenant_id: UUID) -> None:
+        self.db = db
+        self.tenant_id = tenant_id
+
+    async def run(
+        self,
+        *,
+        trigger: HookTrigger,
+        scope: HookScope,
+        target_id: UUID | None,
+        payload: dict,
+    ) -> HookRunResult:
+        bindings = await self._load_bindings(trigger, scope, target_id)
+        current_payload = dict(payload)
+        results: list[dict] = []
+        trace_id = get_trace_id()
+
+        for binding, hook in bindings:
+            if hook.hook_type == HookType.HTTP:
+                item, current_payload = await self._run_http(
+                    hook,
+                    binding=binding,
+                    trigger=trigger,
+                    scope=scope,
+                    target_id=target_id,
+                    payload=current_payload,
+                    trace_id=trace_id,
+                )
+            elif hook.hook_type == HookType.PYTHON:
+                item, current_payload = await self._run_python(
+                    hook,
+                    binding=binding,
+                    trigger=trigger,
+                    scope=scope,
+                    target_id=target_id,
+                    payload=current_payload,
+                    trace_id=trace_id,
+                )
+            else:
+                logger.warning("unsupported hook type: %s", hook.hook_type)
+                item = {
+                    "hook": hook.name,
+                    "status": "skipped",
+                    "reason": "unsupported_type",
+                }
+                await self._write_log(
+                    hook=hook,
+                    binding=binding,
+                    trigger=trigger,
+                    scope=scope,
+                    target_id=target_id,
+                    event_id=generate_uuid(),
+                    trace_id=trace_id,
+                    status="skipped",
+                    duration_ms=0,
+                    response_action=None,
+                    error_message="unsupported_type",
+                )
+            results.append(item)
+
+            if item.get("status") == "blocked":
+                raise HookBlockedError(
+                    item.get("message") or "请求被钩子拦截",
+                    hook_name=hook.name,
+                )
+
+        return HookRunResult(results=results, payload=current_payload)
+
+    async def _load_bindings(
+        self,
+        trigger: HookTrigger,
+        scope: HookScope,
+        target_id: UUID | None,
+    ) -> list[tuple[HookBinding, HookDefinition]]:
+        stmt = (
+            select(HookBinding)
+            .join(HookDefinition, HookBinding.hook_id == HookDefinition.id)
+            .where(
+                HookBinding.tenant_id == self.tenant_id,
+                HookBinding.is_active.is_(True),
+                HookDefinition.is_active.is_(True),
+                not_deleted(HookBinding),
+                not_deleted(HookDefinition),
+                HookBinding.trigger == trigger,
+            )
+            .options(selectinload(HookBinding.hook))
+            .order_by(HookBinding.priority.asc())
+        )
+        rows = (await self.db.execute(stmt)).scalars().all()
+        out: list[tuple[HookBinding, HookDefinition]] = []
+        for b in rows:
+            if b.scope == HookScope.GLOBAL:
+                out.append((b, b.hook))
+            elif b.scope == scope and (b.target_id is None or b.target_id == target_id):
+                out.append((b, b.hook))
+        return out

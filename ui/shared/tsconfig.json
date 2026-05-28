@@ -1,0 +1,9 @@
+{
+  "extends": "../workbench/tsconfig.json",
+  "compilerOptions": {
+    "paths": {
+      "@shared/*": ["./*"]
+    }
+  },
+  "include": ["brand/**/*.ts", "brand/**/*.tsx"]
+}
