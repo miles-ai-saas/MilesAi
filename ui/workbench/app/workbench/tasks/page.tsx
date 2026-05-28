@@ -13,6 +13,7 @@ import { ResourceListFooter } from "@/components/resource/ResourceListFooter";
 import { ResourceListLayout } from "@/components/resource/ResourceListLayout";
 import { canCancelTask, canRetryTask, TaskDetailDialog } from "@/components/task/TaskDetailDialog";
 import { GenerativeJobsSection } from "@/components/task/GenerativeJobsSection";
+import { PageMessage } from "@/components/ui/PageMessage";
 import { StatChip } from "@/components/ui/StatChip";
 import { filterBySearch } from "@/lib/filter-search";
 import { generativeJobStatusFilterOptions } from "@/lib/generative-job-labels";
@@ -31,19 +32,6 @@ const PAGE_DESC: Record<TaskCategory, string> = {
   celery: "文档入库等 Celery 异步任务；支持按状态筛选、搜索、取消与重试；点击「刷新」更新列表。",
   generative: "智能体对话、流程或 API 触发的生图/生视频任务；支持类型筛选、进度查看、取消与失败重试；可跳转关联的后台 Celery 记录；点击「刷新」更新列表。",
 };
-
-function PageMessage({ message, onDismiss }: { message: string; onDismiss?: () => void }) {
-  return (
-    <div className="col-span-full flex items-start justify-between gap-3 rounded-xl border border-line bg-brand-light/40 px-4 py-3 text-sm text-ink">
-      <p className="min-w-0 flex-1">{message}</p>
-      {onDismiss && (
-        <button type="button" className="shrink-0 text-xs text-ink-muted hover:text-ink" onClick={onDismiss}>
-          关闭
-        </button>
-      )}
-    </div>
-  );
-}
 
 function TaskStatusBadge({ status, taskMeta }: { status: string; taskMeta: TaskMeta | null }) {
   return (

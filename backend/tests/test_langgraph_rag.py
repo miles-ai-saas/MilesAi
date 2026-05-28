@@ -2,7 +2,6 @@
 
 from uuid import uuid4
 
-import pytest
 
 from app.integrations.langgraph.constants import RELEVANCE_GOOD, RELEVANCE_NONE, RELEVANCE_POOR
 from app.integrations.langgraph.grading import _score_grade, parse_llm_grade_response

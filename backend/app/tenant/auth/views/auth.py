@@ -1,13 +1,11 @@
 """租户认证 HTTP API：登录、刷新、登出与当前用户信息。"""
 
-from uuid import UUID
-
 from fastapi import APIRouter, Depends, Request
 from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.infra.db import get_db
-from app.core.deps import bearer_scheme, get_tenant_context, require_permissions
+from app.core.deps import bearer_scheme, get_tenant_context
 from app.common.response import ok
 from app.core.tenant import TenantContext
 from app.tenant.auth.schemas.auth import (

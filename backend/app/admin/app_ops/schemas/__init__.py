@@ -40,6 +40,7 @@ __all__ = [
     "BillLineItemOut",
     "TenantBillOut",
     "TenantBillDetail",
+    "TenantBillStatusUpdate",
     "RiskEventOut",
     "IpBlacklistCreate",
     "IpBlacklistOut",

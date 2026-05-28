@@ -17,11 +17,7 @@ from app.models.agent import Agent
 from app.models.flow import Flow
 from app.models.tenant import Tenant
 from app.tenant.kb.services.quota import (
-    assert_can_create_kb,
-    assert_can_upload_bytes,
-    count_knowledge_bases,
     get_kb_quota_out,
-    sum_storage_bytes,
 )
 from app.tenant.system.schemas.quota import QuotaMetricOut, TenantQuotaOut
 

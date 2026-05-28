@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -43,6 +44,9 @@ from app.tenant.agents.services.sub_agents import (
 from app.tenant.categories.services.category import CategoryService
 from app.tenant.prompts.models import PromptTemplate
 from app.tenant.tags.services.tag import TagService
+
+if TYPE_CHECKING:
+    from app.tenant.agents.schemas.agent import AgentPackage
 
 
 class AgentCrudMixin(BaseService):

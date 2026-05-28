@@ -5,7 +5,7 @@
 - 约定：docs/guides/hooks.md §9
 """
 
-from app.common.schemas.enum_meta import META_SCHEMA_VERSION, EnumOption, enum_options, literal_options
+from app.common.schemas.enum_meta import META_SCHEMA_VERSION, enum_options, literal_options
 from app.tenant.tools.models import ToolType
 
 TOOL_TYPE_LABELS: dict[str, tuple[str, str | None]] = {

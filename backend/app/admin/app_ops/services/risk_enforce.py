@@ -8,7 +8,6 @@ from dataclasses import dataclass
 from uuid import UUID
 
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.admin.models import IpBlacklist, RateLimitRule, RiskEvent, RiskSeverity
 from app.infra.db.async_session import AsyncSessionLocal

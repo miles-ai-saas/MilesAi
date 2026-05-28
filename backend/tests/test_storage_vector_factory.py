@@ -3,7 +3,7 @@
 import pytest
 
 from app.infra.storage import S3CompatibleObjectStorage, get_object_storage
-from app.infra.vector_store import WeaviateVectorStore, get_vector_store
+from app.infra.vector_store import WeaviateVectorStore
 from app.infra.vector_store.pgvector import PgVectorStore
 
 

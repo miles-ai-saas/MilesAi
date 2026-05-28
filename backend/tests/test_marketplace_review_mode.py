@@ -1,6 +1,6 @@
 """应用市场 review_mode 行为测试。"""
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 from uuid import uuid4
 
 import pytest

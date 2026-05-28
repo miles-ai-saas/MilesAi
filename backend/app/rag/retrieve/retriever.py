@@ -30,7 +30,6 @@ from app.rag.retrieve.keyword import (
     search_chunks_by_keyword_sync,
 )
 from app.rag.retrieve.constants import (
-    RETRIEVAL_HYBRID,
     RETRIEVAL_VECTOR,
     VALID_RETRIEVAL_MODES,
 )

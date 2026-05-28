@@ -1,6 +1,6 @@
 """生成日配额。"""
 
-from datetime import datetime, timezone
+from datetime import timezone
 from unittest.mock import AsyncMock
 from uuid import uuid4
 
@@ -9,7 +9,6 @@ import pytest
 from app.common.exceptions import ForbiddenError
 from app.integrations.generative.quota import (
     assert_generative_quota,
-    count_generative_today,
     get_generative_daily_limit,
 )
 

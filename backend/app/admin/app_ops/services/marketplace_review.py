@@ -10,7 +10,7 @@ from app.common.exceptions import NotFoundError
 from app.common.schema import PageParams, PageResult
 from app.marketplace.review_config import require_platform_review_allowed
 from app.marketplace.review_core import approve_marketplace_app, reject_marketplace_app
-from app.tenant.marketplace.models import AppCategory, MarketplaceApp, MarketplaceAppStatus
+from app.tenant.marketplace.models import MarketplaceApp, MarketplaceAppStatus
 from app.tenant.marketplace.schemas.marketplace import MarketplaceAppDetail, MarketplaceAppOut
 
 

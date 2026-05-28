@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.common.response import ok
 from app.common.schema import ApiResponse
-from app.core.deps import get_tenant_context, require_permissions
+from app.core.deps import require_permissions
 from app.core.tenant import TenantContext
 from app.infra.db import get_db
 from app.tenant.tags.schemas.meta import TagMetaOut

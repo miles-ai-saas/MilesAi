@@ -1,7 +1,6 @@
 """多模态消息组装与附件解析单测。"""
 
 import base64
-from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 

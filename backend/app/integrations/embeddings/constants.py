@@ -18,7 +18,6 @@ INVOKE_MODE_CLIP = "clip"
 INVOKE_MODE_LITELLM = "litellm"
 INVOKE_MODE_OPENAI_COMPATIBLE = "openai_compatible"
 
-from app.common.constants.model_extra import EXTRA_INVOKE_MODE
 
 EXTRA_EMBEDDING_DIMENSION = "embedding_dimension"
 EXTRA_EMBEDDING_BATCH_SIZE = "embedding_batch_size"

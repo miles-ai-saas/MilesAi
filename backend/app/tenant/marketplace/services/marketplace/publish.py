@@ -10,7 +10,7 @@ from app.marketplace.review_config import get_marketplace_review_mode
 from app.models.agent import Agent
 from app.models.flow import Flow
 from app.models.kb import KnowledgeBase
-from app.tenant.marketplace.models import AppCategory, MarketplaceApp, MarketplaceAppStatus, MarketplaceAppVisibility
+from app.tenant.marketplace.models import AppCategory, MarketplaceApp, MarketplaceAppStatus
 from app.tenant.marketplace.schemas.marketplace import (
     MarketplaceAppCreate,
     MarketplaceAppCreateFromResources,

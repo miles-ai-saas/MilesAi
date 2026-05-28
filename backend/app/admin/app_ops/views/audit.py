@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.admin.app_ops.services.audit import AdminAuditService
-from app.admin.app_sys.deps import AdminContext, get_platform_admin, require_admin_role
+from app.admin.app_sys.deps import AdminContext, get_platform_admin
 from app.common.response import ok, page_ok
 from app.common.schema import PageParams
 from app.infra.db import get_db

@@ -72,6 +72,7 @@ async def handle_knowledge_search(
 
 async def handle_get_current_datetime(params: dict, **_: Any) -> dict:
     """返回指定 IANA 时区的当前 ISO 8601 时间。"""
+    tz_name = params.get("timezone") or params.get("tz") or "UTC"
     try:
         tz = ZoneInfo(str(tz_name))
     except Exception as exc:

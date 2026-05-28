@@ -32,7 +32,7 @@ from app.integrations.chat.multimodal import (
 from app.integrations.langchain.chat_models import ainvoke_chat
 from app.rag.generate import build_rag_user_prompt, format_hits_context, retrieve_hits
 from app.infra.db import AsyncSessionLocal
-from app.integrations.langgraph.constants import RELEVANCE_GOOD, RELEVANCE_NONE, RELEVANCE_POOR
+from app.integrations.langgraph.constants import RELEVANCE_NONE, RELEVANCE_POOR
 from app.integrations.langgraph.grading import _score_grade, llm_grade_relevance
 from app.integrations.langgraph.state import RAGGraphState
 from app.models.model import ModelConfig

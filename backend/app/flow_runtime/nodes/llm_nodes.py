@@ -12,7 +12,6 @@ from typing import Any
 from uuid import UUID
 
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.infra.db import AsyncSessionLocal
 from app.common.exceptions import BadRequestError

@@ -23,7 +23,6 @@ from app.integrations.langchain.tools import get_all_platform_tools, get_skill_b
 from app.integrations.litellm.adapter import (
     _ensure_chat_model_type,
     _resolve_api_base,
-    litellm_chat_completion,
     resolve_litellm_model,
 )
 from app.models.agent import Agent

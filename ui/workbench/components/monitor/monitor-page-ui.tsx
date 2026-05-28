@@ -1,25 +1,13 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { PageMessage } from "@/components/ui/PageMessage";
 import { StatChip } from "@/components/ui/StatChip";
 import type { MonitorMeta } from "@/lib/types";
 import { monitorHealthComponentLabel, monitorOverallHealthLabel } from "@/lib/monitor-labels";
 import { parseComponentHealth, selectPrimaryComponents } from "@/lib/monitor-shared";
 
-export { StatChip };
-
-export function PageMessage({ message, onDismiss }: { message: string; onDismiss?: () => void }) {
-  return (
-    <div className="col-span-full flex items-start justify-between gap-3 rounded-xl border border-line bg-brand-light/40 px-4 py-3 text-sm text-ink">
-      <p className="min-w-0 flex-1">{message}</p>
-      {onDismiss && (
-        <button type="button" className="shrink-0 text-xs text-ink-muted hover:text-ink" onClick={onDismiss}>
-          关闭
-        </button>
-      )}
-    </div>
-  );
-}
+export { StatChip, PageMessage };
 
 export function ChartPanel({ title, subtitle, children }: { title: string; subtitle?: string; children: ReactNode }) {
   return (

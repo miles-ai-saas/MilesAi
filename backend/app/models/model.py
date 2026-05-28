@@ -3,7 +3,6 @@
 对话走 litellm_chat_completion；embedding/rerank 见 integrations 各 provider。
 """
 
-import enum
 import uuid
 
 from sqlalchemy import Boolean, Index, Integer, String, Text

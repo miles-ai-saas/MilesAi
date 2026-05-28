@@ -22,7 +22,6 @@ from app.integrations.embeddings.constants import (
 from app.integrations.rerank.constants import (
     EXTRA_RERANK_REQUEST_FORMAT,
     INVOKE_MODE_DASHSCOPE,
-    INVOKE_MODE_OPENAI_COMPATIBLE,
 )
 from app.models.model import ModelConfig
 from app.models.model_catalog import (

@@ -15,7 +15,7 @@ from app.common.schema import PageParams, PageResult
 from app.core.soft_delete import is_marked_deleted, mark_deleted, not_deleted
 from app.models.model import ModelConfig
 from app.models.model_catalog import ModelPublishStatus
-from app.tenant.models.services.api_key_validation import normalize_api_key, validate_api_key
+from app.tenant.models.services.api_key_validation import validate_api_key
 
 
 def _admin_out(m: ModelConfig) -> ModelCatalogOut:

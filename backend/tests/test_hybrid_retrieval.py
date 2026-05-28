@@ -1,7 +1,6 @@
 """混合检索：RRF 融合与检索模式解析。"""
 
 from types import SimpleNamespace
-from uuid import uuid4
 
 from app.rag.retrieve import resolve_retrieval_mode, rrf_fuse
 

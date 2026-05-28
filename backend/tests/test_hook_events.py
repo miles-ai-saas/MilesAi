@@ -2,7 +2,6 @@
 
 from uuid import uuid4
 
-import pytest
 
 from app.tenant.hooks.events import apply_modify, build_event_envelope, parse_hook_response
 from app.tenant.hooks.models import HookScope, HookTrigger

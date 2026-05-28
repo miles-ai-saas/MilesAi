@@ -20,6 +20,8 @@ jobs:
         run: pip install ruff
       - name: Ruff format check
         run: ruff format --check .
+      - name: Ruff lint
+        run: ruff check .
 
   workbench:
     runs-on: ubuntu-latest

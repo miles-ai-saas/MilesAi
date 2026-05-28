@@ -1,7 +1,5 @@
 """租户 L2 对象存储 BYOK 配置。"""
 
-from uuid import UUID
-
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.common.exceptions import BadRequestError

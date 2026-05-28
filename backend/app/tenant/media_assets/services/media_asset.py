@@ -9,7 +9,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from uuid import UUID
 
-from sqlalchemy import ColumnElement, select
+from sqlalchemy import ColumnElement
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.common.exceptions import BadRequestError, NotFoundError
@@ -20,7 +20,7 @@ from app.core.soft_delete import is_marked_deleted, mark_deleted, not_deleted
 from app.core.tenant import TenantContext, assert_tenant_access
 from app.infra.storage import build_object_key
 from app.infra.storage.resolve import resolve_object_storage_async
-from app.integrations.generative.persist import PURPOSE_CHAT_GENERATED, PURPOSE_FLOW_GENERATED
+from app.integrations.generative.persist import PURPOSE_FLOW_GENERATED
 from app.models.attachment import Attachment
 from app.models.kb import DocumentStatus
 from app.models.media_asset import MediaAsset

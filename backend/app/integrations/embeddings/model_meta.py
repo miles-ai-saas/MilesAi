@@ -12,12 +12,12 @@
 
 from __future__ import annotations
 
+from app.common.constants.model_extra import EXTRA_INVOKE_MODE
 from app.common.exceptions import BadRequestError
 from app.integrations.embeddings.constants import (
     DASHSCOPE_EMBEDDING_BATCH_SIZE_MAX,
     EXTRA_EMBEDDING_BATCH_SIZE,
     EXTRA_EMBEDDING_DIMENSION,
-    EXTRA_INVOKE_MODE,
     INVOKE_MODE_LITELLM,
     INVOKE_MODE_OPENAI_COMPATIBLE,
 )

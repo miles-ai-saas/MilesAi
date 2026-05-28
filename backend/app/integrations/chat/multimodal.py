@@ -15,7 +15,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.common.exceptions import BadRequestError
 from app.common.schemas.media import MediaRefIn
 from app.core.tenant import TenantContext
-from app.rag.parse.media import is_image_file
 
 MAX_MEDIA_PER_TURN = 4
 MAX_IMAGE_BYTES = 10 * 1024 * 1024

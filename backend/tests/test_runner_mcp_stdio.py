@@ -1,6 +1,5 @@
 """McpStdioClient 组件测试（mock stdin/stdout）。"""
 
-import asyncio
 import json
 from io import BytesIO
 

@@ -14,7 +14,6 @@ invoke_mode
 INVOKE_MODE_DASHSCOPE = "dashscope"
 INVOKE_MODE_OPENAI_COMPATIBLE = "openai_compatible"
 
-from app.common.constants.model_extra import EXTRA_INVOKE_MODE
 
 EXTRA_RERANK_INSTRUCT = "rerank_instruct"
 EXTRA_RERANK_REQUEST_FORMAT = "rerank_request_format"

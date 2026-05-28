@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.common.exceptions import BadRequestError, NotFoundError
 from app.core.soft_delete import is_marked_deleted
 from app.flow_runtime.types import RunContext
-from app.models.flow import Flow, FlowStatus
+from app.models.flow import FlowStatus
 from app.tenant.flows.repositories.flow import FlowRepository
 
 from app.flow_runtime.constants import CanvasNodeType

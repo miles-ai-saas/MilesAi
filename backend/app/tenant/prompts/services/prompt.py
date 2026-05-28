@@ -24,7 +24,7 @@ from app.tenant.prompts.schemas.prompt import (
     PromptTemplateUpdate,
 )
 from app.common.schema import PageParams, PageResult
-from app.core.soft_delete import append_not_deleted, is_marked_deleted, mark_deleted, not_deleted
+from app.core.soft_delete import append_not_deleted, is_marked_deleted, mark_deleted
 from app.core.service import BaseService
 
 

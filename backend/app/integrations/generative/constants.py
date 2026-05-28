@@ -1,7 +1,5 @@
 """生成类 ``ModelConfig.extra`` 键与 ``invoke_mode`` 常量。"""
 
-from app.common.constants.model_extra import EXTRA_INVOKE_MODE
-
 # --- 生图 extra ---
 EXTRA_IMAGE_SIZE = "image_size"
 EXTRA_IMAGE_STYLE = "image_style"

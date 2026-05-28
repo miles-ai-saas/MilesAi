@@ -9,7 +9,8 @@
     "./ui/page-header": "./ui/page-header.tsx",
     "./ui/pagination": "./ui/pagination.tsx",
     "./ui/stat-chip": "./ui/stat-chip.tsx",
-    "./ui/filter-chip": "./ui/filter-chip.tsx"
+    "./ui/filter-chip": "./ui/filter-chip.tsx",
+    "./ui/page-message": "./ui/page-message.tsx"
   },
   "peerDependencies": {
     "next": "^14.2.18",

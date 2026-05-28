@@ -1,5 +1,3 @@
-import pytest
-
 from app.tenant.a2a.card_client import card_display_name, count_card_skills, resolve_agent_card_url
 
 

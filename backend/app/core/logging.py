@@ -30,7 +30,8 @@ def setup_logging() -> None:
 
     settings = get_settings()
     level_name = (settings.log_level or "INFO").upper()
-    level = getattr(logging, level_name, logging.INFO)
+    if not hasattr(logging, level_name):
+        level_name = "INFO"
 
     sqlalchemy_level = logging.INFO if settings.debug else logging.WARNING
     access_level = logging.INFO if settings.debug else logging.WARNING

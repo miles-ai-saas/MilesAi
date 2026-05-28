@@ -1,25 +1,14 @@
 "use client";
 
 import Link from "next/link";
+import { PageMessage } from "@/components/ui/PageMessage";
 import { StatChip } from "@/components/ui/StatChip";
 import type { AppInstallResult } from "@/lib/types";
 
 export const MARKETPLACE_PAGE_DESC = "浏览并安装已审核上架的应用；可将本租户知识库、流程或智能体打包为应用，审核通过后供其他租户安装。";
 
 export { StatChip as MarketplaceStatChip };
-
-export function MarketplacePageMessage({ message, onDismiss }: { message: string; onDismiss?: () => void }) {
-  return (
-    <div className="col-span-full flex items-start justify-between gap-3 rounded-xl border border-line bg-brand-light/40 px-4 py-3 text-sm text-ink">
-      <p className="min-w-0 flex-1">{message}</p>
-      {onDismiss ? (
-        <button type="button" className="shrink-0 text-xs text-ink-muted hover:text-ink" onClick={onDismiss}>
-          关闭
-        </button>
-      ) : null}
-    </div>
-  );
-}
+export { PageMessage as MarketplacePageMessage };
 
 export function MarketplaceInstallSuccessBanner({ result, onDismiss }: { result: AppInstallResult; onDismiss: () => void }) {
   return (

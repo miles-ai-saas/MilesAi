@@ -9,9 +9,8 @@
 """
 
 from app.rag.retrieve.hybrid import rrf_fuse
+from app.rag.retrieve.constants import RETRIEVAL_HYBRID, RETRIEVAL_VECTOR
 from app.rag.retrieve.retriever import (
-    RETRIEVAL_HYBRID,
-    RETRIEVAL_VECTOR,
     resolve_retrieval_mode,
     search_kb_chunks,
     search_kb_chunks_sync,

@@ -16,7 +16,7 @@ from app.tenant.agents.constants import AgentPlanner, AgentRuntimeMode
 from app.tenant.a2a.models import A2aInvokePolicy, A2aPeer, A2aPeerBinding, A2aPeerStatus
 from app.tenant.a2a.services.peer_refs import normalize_peer_refs
 from app.common.exceptions import BadRequestError, NotFoundError
-from app.core.soft_delete import is_marked_deleted, not_deleted
+from app.core.soft_delete import is_marked_deleted
 from app.core.tenant import TenantContext
 from app.models.agent import Agent, AgentType
 

@@ -1,5 +1,4 @@
 import time
-import uuid
 
 from app.utils.idgen import generate_id, generate_uuid, is_uuid7, uuid7_version
 

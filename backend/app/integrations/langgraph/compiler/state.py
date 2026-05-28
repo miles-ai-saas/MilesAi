@@ -5,7 +5,7 @@ from typing import Any
 from app.flow_runtime.constants import TEXT_OUTPUT_NODE_TYPES
 from app.flow_runtime.types import FlowGraph
 from app.integrations.langgraph.constants import RELEVANCE_NONE
-from app.integrations.langgraph.graph_analysis import GRADE_BRANCH_HANDLES, normalize_branch_handle, normalize_grade_handle
+from app.integrations.langgraph.graph_analysis import GRADE_BRANCH_HANDLES, normalize_branch_handle
 from app.integrations.langgraph.compiler.report import resolve_node_type
 
 

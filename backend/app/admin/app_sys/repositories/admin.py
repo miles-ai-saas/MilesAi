@@ -1,7 +1,6 @@
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-
 """平台管理员账号仓储。"""
+
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.admin.models import PlatformAdmin
 from app.core.repository import BaseRepository

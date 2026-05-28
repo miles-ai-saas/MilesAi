@@ -18,14 +18,13 @@ from app.rag.parse.media import is_image_file
 from app.models.attachment import Attachment
 from app.core.logging import get_logger
 from app.tenant.attachments.repositories.attachment import AttachmentRepository
-
-logger = get_logger(__name__)
 from app.tenant.attachments.meta import attachments_meta_dict
 from app.tenant.attachments.schemas.meta import AttachmentMetaOut
 from app.tenant.attachments.schemas.attachment import AttachmentOut, AttachmentUploadMeta
 from app.tenant.kb.services.quota import apply_storage_delta, assert_can_upload_bytes
 from app.common.schema import PageParams, PageResult
 
+logger = get_logger(__name__)
 settings = get_settings()
 
 

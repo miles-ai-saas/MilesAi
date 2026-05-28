@@ -7,7 +7,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.admin.app_ops.schemas.model_catalog import (
     ModelCatalogCreate,
-    ModelCatalogOut,
     ModelCatalogUpdate,
 )
 from app.admin.app_ops.services.audit import write_audit_log

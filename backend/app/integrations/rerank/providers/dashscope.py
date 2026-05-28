@@ -18,7 +18,6 @@ from app.common.exceptions import AppError, BadRequestError
 from app.integrations.rerank.constants import (
     DEFAULT_RERANK_INSTRUCT,
     RERANK_REQUEST_FORMAT_FLAT,
-    RERANK_REQUEST_FORMAT_NESTED,
 )
 from app.integrations.rerank.model_meta import (
     rerank_instruct_from_model,

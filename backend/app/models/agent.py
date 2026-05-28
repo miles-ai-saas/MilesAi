@@ -12,6 +12,7 @@
 
 import enum
 import uuid
+from typing import TYPE_CHECKING
 
 from sqlalchemy import Column, Enum, Index, Integer, String, Table, Text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
@@ -19,6 +20,11 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.infra.db import Base
 from app.models.base import TimestampMixin, UUIDPrimaryKeyMixin
+
+if TYPE_CHECKING:
+    from app.models.flow import Flow
+    from app.models.kb import KnowledgeBase
+    from app.models.model import ModelConfig
 
 # Agent ↔ KnowledgeBase 关联（无 DB 外键，删 Agent/KB 前须 unlink）
 agent_kb_bindings = Table(

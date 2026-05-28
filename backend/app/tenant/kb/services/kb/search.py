@@ -14,7 +14,7 @@ from app.integrations.langchain.visual_embeddings import (
     embed_image_bytes_async,
     embed_query_visual_async,
 )
-from app.models.kb import Document, DocumentStatus, KnowledgeBase
+from app.models.kb import DocumentStatus, KnowledgeBase
 from app.rag.parse import is_image_file, is_video_file
 from app.rag.parse.image_parser import parse_image
 from app.rag.parse.video_parser import parse_video

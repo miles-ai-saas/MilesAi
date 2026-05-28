@@ -10,8 +10,8 @@
 
 from __future__ import annotations
 
+from app.common.constants.model_extra import EXTRA_INVOKE_MODE
 from app.integrations.rerank.constants import (
-    EXTRA_INVOKE_MODE,
     EXTRA_RERANK_INSTRUCT,
     EXTRA_RERANK_REQUEST_FORMAT,
     INVOKE_MODE_DASHSCOPE,

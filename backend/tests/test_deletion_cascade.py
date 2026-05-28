@@ -52,4 +52,6 @@ async def test_before_delete_flow_cleans_versions_and_refs() -> None:
         await before_delete_flow(db, flow_id)
 
     m1.assert_awaited_once_with(db, flow_id)
+    m2.assert_awaited_once_with(db, flow_id=flow_id)
+    m3.assert_awaited_once()
     m4.assert_awaited_once_with(db, flow_id)
