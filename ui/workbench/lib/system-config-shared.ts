@@ -1,4 +1,4 @@
-import type { InfraComponentStatus } from "@/lib/types";
+import type { InfraComponentStatus, TenantObjectStorageConfig } from "@/lib/types";
 
 export const SYSTEM_CONFIG_PAGE_DESC =
   "L2 业务参数可在此编辑；L1 部署连接（PostgreSQL / Redis / 对象存储等）来自环境变量，只读展示。";
@@ -26,4 +26,28 @@ export function infraStatusLabel(status: InfraComponentStatus["status"]) {
   if (status === "ok") return "正常";
   if (status === "skipped") return "跳过";
   return "不可用";
+}
+
+export const emptyOssForm = () => ({
+  is_enabled: false,
+  endpoint: "",
+  bucket: "",
+  access_key: "",
+  secret_key: "",
+  secure: false,
+  region: "",
+});
+
+export type OssFormState = ReturnType<typeof emptyOssForm>;
+
+export function ossFormFromConfig(cfg: TenantObjectStorageConfig): OssFormState {
+  return {
+    is_enabled: cfg.is_enabled,
+    endpoint: cfg.endpoint ?? "",
+    bucket: cfg.bucket ?? "",
+    access_key: cfg.access_key ?? "",
+    secret_key: "",
+    secure: cfg.secure ?? false,
+    region: cfg.region ?? "",
+  };
 }
