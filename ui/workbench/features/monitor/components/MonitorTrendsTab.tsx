@@ -1,10 +1,10 @@
 "use client";
 
 import { SimpleBarChart } from "@/components/charts/SimpleBarChart";
-import { ChartPanel } from "@/components/monitor/monitor-page-ui";
-import type { MonitorPageVm } from "@/hooks/use-monitor-page";
+import { ChartPanel } from "@/features/monitor/components/monitor-page-ui";
+import type { MonitorPageVm } from "@/features/monitor/hooks/use-monitor-page";
 import { documentStatusLabel } from "@/lib/document-status";
-import { monitorTrendDayOptions } from "@/lib/monitor-labels";
+import { monitorTrendDayOptions } from "@/features/monitor/lib/monitor-labels";
 
 export function MonitorTrendsTab({ vm }: { vm: MonitorPageVm }) {
   const { report, trends, trendDays, monitorMeta, kbMeta } = vm;

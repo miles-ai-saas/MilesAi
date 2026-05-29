@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth-store";
-import { DASHBOARD_STAT_CARDS } from "@/lib/dashboard-shared";
+import { DASHBOARD_STAT_CARDS } from "@/features/dashboard/lib/dashboard-shared";
 import { hasPermission } from "@/lib/permissions";
 import type { TenantQuota, WorkbenchOverview } from "@/lib/types";
 

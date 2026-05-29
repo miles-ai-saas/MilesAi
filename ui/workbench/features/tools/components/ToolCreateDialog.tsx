@@ -2,7 +2,7 @@
 
 /** 自定义工具创建/编辑（链路 §3 + §4 tools meta）。 */
 
-import { KbPageAlert } from "@/components/kb/KbPageAlert";
+import { KbPageAlert } from "@/features/kb";
 import { ResourceDialog } from "@/components/resource/ResourceDialog";
 import { ToolCreateDialogEntityForm } from "@/features/tools/components/ToolCreateDialogEntityForm";
 import { ToolCreateDialogKindSelector } from "@/features/tools/components/ToolCreateDialogKindSelector";

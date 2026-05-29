@@ -1,11 +1,11 @@
 "use client";
 
-import { MediaAssetCard } from "@/components/media-assets/MediaAssetCard";
-import { MediaAssetPromoteDialog } from "@/components/media-assets/MediaAssetPromoteDialog";
+import { MediaAssetCard } from "@/features/media-assets/components/MediaAssetCard";
+import { MediaAssetPromoteDialog } from "@/features/media-assets/components/MediaAssetPromoteDialog";
 import { ResourceListFooter } from "@/components/resource/ResourceListFooter";
 import { ResourceListLayout } from "@/components/resource/ResourceListLayout";
-import type { MediaAssetsPageVm } from "@/hooks/use-media-assets-page";
-import { MEDIA_ASSETS_PAGE_DESC } from "@/lib/media-assets-page-shared";
+import type { MediaAssetsPageVm } from "@/features/media-assets/hooks/use-media-assets-page";
+import { MEDIA_ASSETS_PAGE_DESC } from "@/features/media-assets/lib/media-assets-page-shared";
 
 export function MediaAssetsPageView({ vm }: { vm: MediaAssetsPageVm }) {
   const {

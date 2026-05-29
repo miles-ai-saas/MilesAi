@@ -1,9 +1,9 @@
 "use client";
 
 import { PageHeader } from "@/components/layout/PageHeader";
-import { SessionListItem } from "@/components/system-sessions/SessionListItem";
-import type { SystemSessionsPageVm } from "@/hooks/use-system-sessions-page";
-import { SYSTEM_SESSIONS_PAGE_DESC } from "@/lib/system-sessions-shared";
+import { SessionListItem } from "@/features/system-sessions/components/SessionListItem";
+import type { SystemSessionsPageVm } from "@/features/system-sessions/hooks/use-system-sessions-page";
+import { SYSTEM_SESSIONS_PAGE_DESC } from "@/features/system-sessions/lib/system-sessions-shared";
 
 export function SystemSessionsPageView({ vm }: { vm: SystemSessionsPageVm }) {
   const { sessions, loading, msg, load, revoke, revokeOthers } = vm;

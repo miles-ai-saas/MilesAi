@@ -1,7 +1,7 @@
 "use client";
 
-import { useHooksBindings } from "@/hooks/use-hooks-bindings";
-import { useHooksForm, useHooksList } from "@/hooks/use-hooks-list";
+import { useHooksBindings } from "@/features/http-hooks/hooks/use-hooks-bindings";
+import { useHooksForm, useHooksList } from "@/features/http-hooks/hooks/use-hooks-list";
 
 export function useHooksPage() {
   const listSlice = useHooksList();

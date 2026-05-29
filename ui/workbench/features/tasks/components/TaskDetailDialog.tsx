@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { ResourceDialog } from "@/components/resource/ResourceDialog";
 import { api } from "@/lib/api";
-import { taskStatusBadgeClass, taskStatusLabel } from "@/lib/task-labels";
+import { taskStatusBadgeClass, taskStatusLabel } from "@/features/tasks/lib/task-labels";
 import type { TaskMeta, TaskRecord } from "@/lib/types";
 
 type Props = {

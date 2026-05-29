@@ -9,8 +9,8 @@ import {
   modelTypeLabel,
   SOURCE_LABELS,
   vendorLabel,
-} from "@/lib/model-catalog-ui";
-import type { ModelsPageVm } from "@/hooks/use-models-page";
+} from "@/features/models/lib/model-catalog-ui";
+import type { ModelsPageVm } from "@/features/models/hooks/use-models-page";
 
 export function ModelCatalogGrid({ vm }: { vm: ModelsPageVm }) {
   if (vm.loading) {

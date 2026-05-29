@@ -4,7 +4,7 @@ import { useState } from "react";
 import { api } from "@/lib/api";
 import { useConfirmAction } from "@/hooks/use-confirm-action";
 import type { HookBinding, HookDefinition, HookExecutionLog } from "@/lib/types";
-import type { HooksListSlice } from "@/hooks/use-hooks-list";
+import type { HooksListSlice } from "@/features/http-hooks/hooks/use-hooks-list";
 
 export function useHooksBindings(listSlice: HooksListSlice) {
   const { list } = listSlice;

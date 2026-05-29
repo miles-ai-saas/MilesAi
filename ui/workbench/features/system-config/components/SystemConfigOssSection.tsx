@@ -1,6 +1,6 @@
 "use client";
 
-import type { SystemConfigPageVm } from "@/hooks/use-system-config-page";
+import type { SystemConfigPageVm } from "@/features/system-config/hooks/use-system-config-page";
 
 export function SystemConfigOssSection({ vm }: { vm: SystemConfigPageVm }) {
   const { oss, ossForm, setOssForm, ossTesting, ossSaving, onTestOss, onSaveOss } = vm;

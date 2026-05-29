@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useConfirmAction } from "@/hooks/use-confirm-action";
 import { api } from "@/lib/api";
 import type { ModelConfig } from "@/lib/types";
-import type { ModelsListSlice } from "@/hooks/use-models-list";
+import type { ModelsListSlice } from "@/features/models/hooks/use-models-list";
 
 export function useModelsForm({ reload }: Pick<ModelsListSlice, "reload">) {
   const [dialogOpen, setDialogOpen] = useState(false);

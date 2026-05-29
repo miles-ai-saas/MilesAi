@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { TaskStatusBadge } from "@/components/task/TaskStatusBadge";
-import { canCancelTask, canRetryTask } from "@/components/task/TaskDetailDialog";
+import { TaskStatusBadge } from "@/features/tasks/components/TaskStatusBadge";
+import { canCancelTask, canRetryTask } from "@/features/tasks/components/TaskDetailDialog";
 import type { TaskMeta, TaskRecord } from "@/lib/types";
 
 export function TaskRow({

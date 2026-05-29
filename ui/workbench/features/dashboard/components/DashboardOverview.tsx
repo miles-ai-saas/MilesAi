@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { DASHBOARD_PAGE_DESC, DASHBOARD_QUICK_LINKS, quotaLabel } from "@/lib/dashboard-shared";
-import type { DashboardPageVm } from "@/hooks/use-dashboard-page";
+import { DASHBOARD_PAGE_DESC, DASHBOARD_QUICK_LINKS, quotaLabel } from "@/features/dashboard/lib/dashboard-shared";
+import type { DashboardPageVm } from "@/features/dashboard/hooks/use-dashboard-page";
 
 export function DashboardOverview({ vm }: { vm: DashboardPageVm }) {
   if (vm.loading) {

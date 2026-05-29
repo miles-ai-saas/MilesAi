@@ -1,7 +1,7 @@
 "use client";
 
-import { HealthComponents, HealthStatusBadge } from "@/components/monitor/monitor-page-ui";
-import type { MonitorPageVm } from "@/hooks/use-monitor-page";
+import { HealthComponents, HealthStatusBadge } from "@/features/monitor/components/monitor-page-ui";
+import type { MonitorPageVm } from "@/features/monitor/hooks/use-monitor-page";
 
 export function MonitorHealthTab({ vm }: { vm: MonitorPageVm }) {
   const { health, monitorMeta, redisInfo, workerInfo } = vm;

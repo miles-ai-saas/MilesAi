@@ -2,7 +2,7 @@
 
 /** MCP 创建/编辑（链路 §11）：HTTP/SSE/STDIO 分节表单 → api。 */
 
-import { KbPageAlert } from "@/components/kb/KbPageAlert";
+import { KbPageAlert } from "@/features/kb";
 import { MCP_ENDPOINT_PLACEHOLDER, MCP_TRANSPORT_HINTS, McpDialogSection, McpTransportBadge, mcpFormCanSubmit } from "@/features/mcp/components/mcp-dialog-shared";
 import { ResourceDialog } from "@/components/resource/ResourceDialog";
 import type { McpDialogMode } from "@/features/mcp/components/McpServiceDialog.types";

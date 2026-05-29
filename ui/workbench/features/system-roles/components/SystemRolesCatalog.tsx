@@ -3,7 +3,7 @@
 import { CardActions } from "@/components/resource/CardActions";
 import { ResourceItemCard } from "@/components/resource/ResourceItemCard";
 import { ResourceListFooter } from "@/components/resource/ResourceListFooter";
-import type { SystemRolesPageVm } from "@/hooks/use-system-roles-page";
+import type { SystemRolesPageVm } from "@/features/system-roles/hooks/use-system-roles-page";
 
 export function SystemRolesCatalog({ vm }: { vm: SystemRolesPageVm }) {
   const { list, openEdit, onDelete } = vm;

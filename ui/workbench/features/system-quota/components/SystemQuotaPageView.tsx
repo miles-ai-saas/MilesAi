@@ -1,8 +1,8 @@
 "use client";
 
 import { PageHeader } from "@/components/layout/PageHeader";
-import type { SystemQuotaPageVm } from "@/hooks/use-system-quota-page";
-import { quotaUsagePct, SYSTEM_QUOTA_FOOTER_NOTE, SYSTEM_QUOTA_PAGE_DESC } from "@/lib/system-quota-shared";
+import type { SystemQuotaPageVm } from "@/features/system-quota/hooks/use-system-quota-page";
+import { quotaUsagePct, SYSTEM_QUOTA_FOOTER_NOTE, SYSTEM_QUOTA_PAGE_DESC } from "@/features/system-quota/lib/system-quota-shared";
 import type { QuotaMetric } from "@/lib/types";
 
 function QuotaCard({ title, metric, hint }: { title: string; metric: QuotaMetric; hint?: string }) {

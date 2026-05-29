@@ -3,7 +3,7 @@
  */
 
 import type { ChatMediaIn } from "@/lib/types";
-import type { ChatMessage, ChatMessageMedia } from "@/lib/chat-sessions";
+import type { ChatMessage, ChatMessageMedia } from "./chat-sessions";
 
 export function lastUserMessageMedia(messages: ChatMessage[]): ChatMessageMedia[] {
   for (let i = messages.length - 1; i >= 0; i--) {

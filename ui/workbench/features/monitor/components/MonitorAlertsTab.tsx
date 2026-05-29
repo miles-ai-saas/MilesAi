@@ -1,7 +1,7 @@
 "use client";
 
-import { PageMessage } from "@/components/monitor/monitor-page-ui";
-import type { MonitorPageVm } from "@/hooks/use-monitor-page";
+import { PageMessage } from "@/features/monitor/components/monitor-page-ui";
+import type { MonitorPageVm } from "@/features/monitor/hooks/use-monitor-page";
 
 export function MonitorAlertsTab({ vm }: { vm: MonitorPageVm }) {
   const { alerts, setAlerts, alertMsg, setAlertMsg, onSaveAlerts, onTestAlert } = vm;

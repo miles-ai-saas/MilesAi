@@ -4,7 +4,7 @@
 
 import { McpDetailRow, McpDialogSection, McpTransportBadge } from "@/features/mcp/components/mcp-dialog-shared";
 import { ResourceDialog } from "@/components/resource/ResourceDialog";
-import { KbPageAlert } from "@/components/kb/KbPageAlert";
+import { KbPageAlert } from "@/features/kb";
 import { formatMcpUpdatedAt, mcpCardDescription, mcpStatusLabel, mcpSyncStatusLabel, mcpTransportLabel, normalizeMcpTransport } from "@/features/mcp/lib/mcp-labels";
 import type { McpMeta, McpService } from "@/lib/types";
 

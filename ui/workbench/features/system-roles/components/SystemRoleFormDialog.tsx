@@ -1,7 +1,7 @@
 "use client";
 
 import { ResourceDialog } from "@/components/resource/ResourceDialog";
-import type { SystemRolesPageVm } from "@/hooks/use-system-roles-page";
+import type { SystemRolesPageVm } from "@/features/system-roles/hooks/use-system-roles-page";
 
 export function SystemRoleFormDialog({ vm }: { vm: SystemRolesPageVm }) {
   const {

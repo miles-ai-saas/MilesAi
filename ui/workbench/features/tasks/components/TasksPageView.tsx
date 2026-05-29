@@ -1,15 +1,15 @@
 "use client";
 
-import { GenerativeJobsSection } from "@/components/task/GenerativeJobsSection";
-import { TaskCategorySwitcher } from "@/components/task/TaskCategorySwitcher";
-import { TaskDetailDialog } from "@/components/task/TaskDetailDialog";
-import { TaskRow } from "@/components/task/TaskRow";
+import { GenerativeJobsSection } from "@/features/tasks/components/GenerativeJobsSection";
+import { TaskCategorySwitcher } from "@/features/tasks/components/TaskCategorySwitcher";
+import { TaskDetailDialog } from "@/features/tasks/components/TaskDetailDialog";
+import { TaskRow } from "@/features/tasks/components/TaskRow";
 import { ResourceListFooter } from "@/components/resource/ResourceListFooter";
 import { ResourceListLayout } from "@/components/resource/ResourceListLayout";
 import { PageMessage } from "@/components/ui/PageMessage";
 import { StatChip } from "@/components/ui/StatChip";
-import type { TasksPageVm } from "@/hooks/use-tasks-page";
-import { TASKS_PAGE_DESC } from "@/lib/tasks-page-shared";
+import type { TasksPageVm } from "@/features/tasks/hooks/use-tasks-page";
+import { TASKS_PAGE_DESC } from "@/features/tasks/lib/tasks-page-shared";
 
 export function TasksPageView({ vm }: { vm: TasksPageVm }) {
   const {

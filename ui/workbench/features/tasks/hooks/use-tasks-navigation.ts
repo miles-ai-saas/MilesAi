@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import type { TaskCategory } from "@/lib/tasks-page-shared";
+import type { TaskCategory } from "@/features/tasks/lib/tasks-page-shared";
 
 export function useTasksNavigation() {
   const router = useRouter();

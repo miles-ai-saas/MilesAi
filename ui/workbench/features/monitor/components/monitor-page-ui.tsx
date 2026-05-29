@@ -4,8 +4,8 @@ import type { ReactNode } from "react";
 import { PageMessage } from "@/components/ui/PageMessage";
 import { StatChip } from "@/components/ui/StatChip";
 import type { MonitorMeta } from "@/lib/types";
-import { monitorHealthComponentLabel, monitorOverallHealthLabel } from "@/lib/monitor-labels";
-import { parseComponentHealth, selectPrimaryComponents } from "@/lib/monitor-shared";
+import { monitorHealthComponentLabel, monitorOverallHealthLabel } from "@/features/monitor/lib/monitor-labels";
+import { parseComponentHealth, selectPrimaryComponents } from "@/features/monitor/lib/monitor-shared";
 
 export { StatChip, PageMessage };
 

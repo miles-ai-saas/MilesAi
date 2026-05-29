@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { api } from "@/lib/api";
 import type { TenantUser } from "@/lib/types";
-import type { useSystemUsersList } from "@/hooks/use-system-users-list";
+import type { useSystemUsersList } from "@/features/system-users/hooks/use-system-users-list";
 import type { useConfirmAction } from "@/hooks/use-confirm-action";
 
 type ListSlice = ReturnType<typeof useSystemUsersList>;

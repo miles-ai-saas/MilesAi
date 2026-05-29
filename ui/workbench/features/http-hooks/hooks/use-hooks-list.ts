@@ -4,7 +4,7 @@ import { useCallback, useMemo, useState } from "react";
 import { api } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth-store";
 import { usePagedList } from "@/hooks/use-paged-list";
-import { useHookMeta } from "@/hooks/use-hook-meta";
+import { useHookMeta } from "@/features/http-hooks/hooks/use-hook-meta";
 import { filterBySearch } from "@/lib/filter-search";
 import type { HookDefinition } from "@/lib/types";
 

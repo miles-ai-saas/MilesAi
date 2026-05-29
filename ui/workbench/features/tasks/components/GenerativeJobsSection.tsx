@@ -2,11 +2,11 @@
 
 /** 任务中心 — 生成任务（generative_jobs）列表区块。 */
 
-import { GenerativeJobDetailDialog } from "@/components/task/GenerativeJobDetailDialog";
-import { GenerativeJobRow } from "@/components/task/GenerativeJobRow";
+import { GenerativeJobDetailDialog } from "@/features/tasks/components/GenerativeJobDetailDialog";
+import { GenerativeJobRow } from "@/features/tasks/components/GenerativeJobRow";
 import { ResourceListFooter } from "@/components/resource/ResourceListFooter";
 import { StatChip } from "@/components/ui/StatChip";
-import { useGenerativeJobsSection, type GenerativeJobsListApi } from "@/hooks/use-generative-jobs-section";
+import { useGenerativeJobsSection, type GenerativeJobsListApi } from "@/features/tasks/hooks/use-generative-jobs-section";
 
 export type { GenerativeJobsListApi };
 

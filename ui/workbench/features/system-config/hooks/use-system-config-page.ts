@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect } from "react";
-import { ossFormFromConfig } from "@/lib/system-config-shared";
-import { useSystemConfigInfra } from "@/hooks/use-system-config-infra";
-import { useSystemConfigLoad } from "@/hooks/use-system-config-load";
-import { useSystemConfigOss } from "@/hooks/use-system-config-oss";
+import { ossFormFromConfig } from "@/features/system-config/lib/system-config-shared";
+import { useSystemConfigInfra } from "@/features/system-config/hooks/use-system-config-infra";
+import { useSystemConfigLoad } from "@/features/system-config/hooks/use-system-config-load";
+import { useSystemConfigOss } from "@/features/system-config/hooks/use-system-config-oss";
 
 export function useSystemConfigPage() {
   const load = useSystemConfigLoad();

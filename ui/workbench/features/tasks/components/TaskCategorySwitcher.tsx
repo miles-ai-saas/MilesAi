@@ -1,6 +1,6 @@
 "use client";
 
-import { TASK_CATEGORY_TABS, type TaskCategory } from "@/lib/tasks-page-shared";
+import { TASK_CATEGORY_TABS, type TaskCategory } from "@/features/tasks/lib/tasks-page-shared";
 
 export function TaskCategorySwitcher({ category, onChange }: { category: TaskCategory; onChange: (c: TaskCategory) => void }) {
   return (

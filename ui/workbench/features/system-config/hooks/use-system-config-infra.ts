@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { api } from "@/lib/api";
-import type { SystemConfigLoadSlice } from "@/hooks/use-system-config-load";
+import type { SystemConfigLoadSlice } from "@/features/system-config/hooks/use-system-config-load";
 
 export function useSystemConfigInfra({ setInfra, setMsg }: Pick<SystemConfigLoadSlice, "setInfra" | "setMsg">) {
   const [testing, setTesting] = useState(false);

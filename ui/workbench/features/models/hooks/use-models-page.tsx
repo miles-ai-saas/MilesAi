@@ -1,7 +1,7 @@
 "use client";
 
-import { useModelsForm } from "@/hooks/use-models-form";
-import { useModelsList } from "@/hooks/use-models-list";
+import { useModelsForm } from "@/features/models/hooks/use-models-form";
+import { useModelsList } from "@/features/models/hooks/use-models-list";
 
 export function useModelsPage() {
   const listSlice = useModelsList();

@@ -1,8 +1,8 @@
 "use client";
 
-import { useTasksCeleryList } from "@/hooks/use-tasks-celery-list";
-import { useTasksNavigation } from "@/hooks/use-tasks-navigation";
-import type { TaskCategory } from "@/lib/tasks-page-shared";
+import { useTasksCeleryList } from "@/features/tasks/hooks/use-tasks-celery-list";
+import { useTasksNavigation } from "@/features/tasks/hooks/use-tasks-navigation";
+import type { TaskCategory } from "@/features/tasks/lib/tasks-page-shared";
 
 export function useTasksPage() {
   const navigation = useTasksNavigation();

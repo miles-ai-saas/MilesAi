@@ -1,11 +1,11 @@
 "use client";
 
 import { PageHeader } from "@/components/layout/PageHeader";
-import { SystemUserBatchRolesDialog } from "@/components/system-users/SystemUserBatchRolesDialog";
-import { SystemUserFormDialog } from "@/components/system-users/SystemUserFormDialog";
-import { SystemUserResetPasswordDialog } from "@/components/system-users/SystemUserResetPasswordDialog";
-import { SystemUsersTable } from "@/components/system-users/SystemUsersTable";
-import type { SystemUsersPageVm } from "@/hooks/use-system-users-page";
+import { SystemUserBatchRolesDialog } from "@/features/system-users/components/SystemUserBatchRolesDialog";
+import { SystemUserFormDialog } from "@/features/system-users/components/SystemUserFormDialog";
+import { SystemUserResetPasswordDialog } from "@/features/system-users/components/SystemUserResetPasswordDialog";
+import { SystemUsersTable } from "@/features/system-users/components/SystemUsersTable";
+import type { SystemUsersPageVm } from "@/features/system-users/hooks/use-system-users-page";
 import { SYSTEM_USERS_PAGE_DESC } from "@/lib/system-users-shared";
 
 export function SystemUsersPageView({ vm }: { vm: SystemUsersPageVm }) {

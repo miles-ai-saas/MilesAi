@@ -1,6 +1,6 @@
 "use client";
 
-import { taskStatusBadgeClass, taskStatusLabel } from "@/lib/task-labels";
+import { taskStatusBadgeClass, taskStatusLabel } from "@/features/tasks/lib/task-labels";
 import type { TaskMeta } from "@/lib/types";
 
 export function TaskStatusBadge({ status, taskMeta }: { status: string; taskMeta: TaskMeta | null }) {

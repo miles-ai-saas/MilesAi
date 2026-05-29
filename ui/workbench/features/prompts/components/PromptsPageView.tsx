@@ -1,6 +1,6 @@
 "use client";
 
-import { PromptTemplateDialog } from "@/components/prompt/PromptTemplateDialog";
+import { PromptTemplateDialog } from "@/features/prompts/components/PromptTemplateDialog";
 import { AddResourceCard } from "@/components/resource/AddResourceCard";
 import { CardActions } from "@/components/resource/CardActions";
 import { ResourceItemCard } from "@/components/resource/ResourceItemCard";
@@ -9,9 +9,9 @@ import { ResourceListLayout } from "@/components/resource/ResourceListLayout";
 import { TagChips } from "@/components/tag/TagChips";
 import { TagFilterDropdown } from "@/components/tag/TagFilterDropdown";
 import { TagManageDialog } from "@/components/tag/TagManageDialog";
-import type { PromptsPageVm } from "@/hooks/use-prompts-page";
-import { promptActiveLabel } from "@/lib/prompt-labels";
-import { PROMPTS_PAGE_DESC, promptContentPreview } from "@/lib/prompts-page-shared";
+import type { PromptsPageVm } from "@/features/prompts/hooks/use-prompts-page";
+import { promptActiveLabel } from "@/features/prompts/lib/prompt-labels";
+import { PROMPTS_PAGE_DESC, promptContentPreview } from "@/features/prompts/lib/prompts-page-shared";
 
 export function PromptsPageView({ vm }: { vm: PromptsPageVm }) {
   const {

@@ -1,6 +1,6 @@
 "use client";
 
-import { formatSessionTime } from "@/lib/system-sessions-shared";
+import { formatSessionTime } from "@/features/system-sessions/lib/system-sessions-shared";
 import type { UserSession } from "@/lib/types";
 
 export function SessionListItem({ session, onRevoke }: { session: UserSession; onRevoke: () => void }) {

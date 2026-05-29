@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { api } from "@/lib/api";
-import { emptyOssForm } from "@/lib/system-config-shared";
-import type { SystemConfigLoadSlice } from "@/hooks/use-system-config-load";
+import { emptyOssForm } from "@/features/system-config/lib/system-config-shared";
+import type { SystemConfigLoadSlice } from "@/features/system-config/hooks/use-system-config-load";
 
 export function useSystemConfigOss({ setOss, setMsg }: Pick<SystemConfigLoadSlice, "setOss" | "setMsg">) {
   const [ossForm, setOssForm] = useState(emptyOssForm);

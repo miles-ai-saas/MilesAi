@@ -1,7 +1,7 @@
 "use client";
 
 import { ResourceDialog } from "@/components/resource/ResourceDialog";
-import type { ModelsPageVm } from "@/hooks/use-models-page";
+import type { ModelsPageVm } from "@/features/models/hooks/use-models-page";
 
 export function ModelsPageOverlays({ vm }: { vm: ModelsPageVm }) {
   return (

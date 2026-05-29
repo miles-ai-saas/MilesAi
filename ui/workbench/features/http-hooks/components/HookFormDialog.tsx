@@ -1,7 +1,7 @@
 "use client";
 
 import { ResourceDialog } from "@/components/resource/ResourceDialog";
-import type { HooksPageVm } from "@/hooks/use-hooks-page";
+import type { HooksPageVm } from "@/features/http-hooks/hooks/use-hooks-page";
 import type { EnumOption } from "@/lib/types";
 
 function renderTriggerOption(t: EnumOption) {

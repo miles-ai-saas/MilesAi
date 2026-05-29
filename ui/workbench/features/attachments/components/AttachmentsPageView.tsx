@@ -1,11 +1,11 @@
 "use client";
 
-import { KbQuotaBar } from "@/components/kb/KbQuotaBar";
+import { KbQuotaBar } from "@/features/kb";
 import { ResourceListFooter } from "@/components/resource/ResourceListFooter";
 import { ResourceListLayout } from "@/components/resource/ResourceListLayout";
-import type { AttachmentsPageVm } from "@/hooks/use-attachments-page";
-import { attachmentPurposeLabel } from "@/lib/attachment-labels";
-import { ATTACHMENTS_PAGE_DESC, formatAttachmentBytes } from "@/lib/attachments-page-shared";
+import type { AttachmentsPageVm } from "@/features/attachments/hooks/use-attachments-page";
+import { attachmentPurposeLabel } from "@/features/attachments/lib/attachment-labels";
+import { ATTACHMENTS_PAGE_DESC, formatAttachmentBytes } from "@/features/attachments/lib/attachments-page-shared";
 import { KB_UPLOAD_ACCEPT } from "@/lib/upload-accept";
 
 export function AttachmentsTable({ vm }: { vm: AttachmentsPageVm }) {

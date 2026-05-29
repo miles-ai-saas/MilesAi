@@ -1,8 +1,8 @@
 "use client";
 
 import { ChatArtifactMedia } from "@/components/agent/ChatArtifactMedia";
-import { mediaAssetKindLabel, mediaAssetSourceLabel } from "@/lib/media-asset-labels";
-import { formatMediaBytes } from "@/lib/media-assets-page-shared";
+import { mediaAssetKindLabel, mediaAssetSourceLabel } from "@/features/media-assets/lib/media-asset-labels";
+import { formatMediaBytes } from "@/features/media-assets/lib/media-assets-page-shared";
 import type { KnowledgeBase, MediaAsset } from "@/lib/types";
 
 export function MediaAssetCard({

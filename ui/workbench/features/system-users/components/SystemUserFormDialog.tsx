@@ -1,7 +1,7 @@
 "use client";
 
 import { ResourceDialog } from "@/components/resource/ResourceDialog";
-import type { SystemUsersPageVm } from "@/hooks/use-system-users-page";
+import type { SystemUsersPageVm } from "@/features/system-users/hooks/use-system-users-page";
 
 export function SystemUserFormDialog({ vm }: { vm: SystemUsersPageVm }) {
   const {

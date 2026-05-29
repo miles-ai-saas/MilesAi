@@ -2,8 +2,8 @@
 
 import type { ReactNode } from "react";
 import { ResourceListLayout } from "@/components/resource/ResourceListLayout";
-import { MONITOR_MAIN_TABS, MONITOR_PAGE_DESC } from "@/lib/monitor-shared";
-import type { MonitorPageVm } from "@/hooks/use-monitor-page";
+import { MONITOR_MAIN_TABS, MONITOR_PAGE_DESC } from "@/features/monitor/lib/monitor-shared";
+import type { MonitorPageVm } from "@/features/monitor/hooks/use-monitor-page";
 
 type Props = {
   vm: MonitorPageVm;

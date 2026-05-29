@@ -1,9 +1,9 @@
 "use client";
 
 import { useConfirmAction } from "@/hooks/use-confirm-action";
-import { useSystemUsersForm } from "@/hooks/use-system-users-form";
-import { useSystemUsersList } from "@/hooks/use-system-users-list";
-import { useSystemUsersSelection } from "@/hooks/use-system-users-selection";
+import { useSystemUsersForm } from "@/features/system-users/hooks/use-system-users-form";
+import { useSystemUsersList } from "@/features/system-users/hooks/use-system-users-list";
+import { useSystemUsersSelection } from "@/features/system-users/hooks/use-system-users-selection";
 
 export function useSystemUsersPage() {
   const listSlice = useSystemUsersList();

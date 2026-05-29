@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { api } from "@/lib/api";
 import { usePagedList } from "@/hooks/use-paged-list";
-import { useGenerativeJobMeta } from "@/hooks/use-generative-job-meta";
+import { useGenerativeJobMeta } from "@/features/tasks/hooks/use-generative-job-meta";
 import { filterBySearch } from "@/lib/filter-search";
 import { canCancelGenerativeJob, generativeJobKindFilterOptions } from "@/lib/generative-job-labels";
 

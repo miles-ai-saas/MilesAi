@@ -3,9 +3,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth-store";
-import { useKbMeta } from "@/hooks/use-kb-meta";
-import { useMonitorMeta } from "@/hooks/use-monitor-meta";
-import type { MonitorTab, MonitorHealthPayload } from "@/lib/monitor-shared";
+import { useKbMeta } from "@/features/kb";
+import { useMonitorMeta } from "@/features/monitor/hooks/use-monitor-meta";
+import type { MonitorTab, MonitorHealthPayload } from "@/features/monitor/lib/monitor-shared";
 import type { AlertConfig, ModelUsageReport, MonitorReport, MonitorTrends } from "@/lib/types";
 
 export function useMonitorPage() {

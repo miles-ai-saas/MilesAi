@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth-store";
-import { VENDOR_ORDER, type SourceFilter } from "@/lib/model-page-shared";
+import { VENDOR_ORDER, type SourceFilter } from "@/features/models/lib/model-page-shared";
 import type { ModelCatalogMeta, ModelConfig } from "@/lib/types";
 
 export function useModelsList() {

@@ -1,7 +1,7 @@
 "use client";
 
-import { ModelFilterChip } from "@/components/model/model-page-ui";
-import type { ModelsPageVm } from "@/hooks/use-models-page";
+import { ModelFilterChip } from "@/features/models/components/model-page-ui";
+import type { ModelsPageVm } from "@/features/models/hooks/use-models-page";
 
 export function ModelFilterPanel({ vm }: { vm: ModelsPageVm }) {
   return (

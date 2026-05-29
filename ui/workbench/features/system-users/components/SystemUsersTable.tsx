@@ -1,7 +1,7 @@
 "use client";
 
 import { ResourceListFooter } from "@/components/resource/ResourceListFooter";
-import type { SystemUsersPageVm } from "@/hooks/use-system-users-page";
+import type { SystemUsersPageVm } from "@/features/system-users/hooks/use-system-users-page";
 import type { TenantUser } from "@/lib/types";
 
 export function SystemUsersTable({ vm }: { vm: SystemUsersPageVm }) {

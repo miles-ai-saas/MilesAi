@@ -1,14 +1,14 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
-import type { PromptTemplateDialogMode } from "@/components/prompt/PromptTemplateDialog";
+import type { PromptTemplateDialogMode } from "@/features/prompts/components/PromptTemplateDialog";
 import { api } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth-store";
 import { usePagedList } from "@/hooks/use-paged-list";
 import { useConfirmAction } from "@/hooks/use-confirm-action";
-import { usePromptMeta } from "@/hooks/use-prompt-meta";
+import { usePromptMeta } from "@/features/prompts/hooks/use-prompt-meta";
 import { filterBySearch } from "@/lib/filter-search";
-import { exportPromptTemplate } from "@/lib/prompts-page-shared";
+import { exportPromptTemplate } from "@/features/prompts/lib/prompts-page-shared";
 import type { PromptTemplate } from "@/lib/types";
 
 export function usePromptsPage() {

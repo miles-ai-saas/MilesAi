@@ -1,10 +1,10 @@
 "use client";
 
 import { PageHeader } from "@/components/layout/PageHeader";
-import { SystemRoleFormDialog } from "@/components/system-roles/SystemRoleFormDialog";
-import { SystemRolesCatalog } from "@/components/system-roles/SystemRolesCatalog";
-import type { SystemRolesPageVm } from "@/hooks/use-system-roles-page";
-import { SYSTEM_ROLES_PAGE_DESC } from "@/lib/system-roles-shared";
+import { SystemRoleFormDialog } from "@/features/system-roles/components/SystemRoleFormDialog";
+import { SystemRolesCatalog } from "@/features/system-roles/components/SystemRolesCatalog";
+import type { SystemRolesPageVm } from "@/features/system-roles/hooks/use-system-roles-page";
+import { SYSTEM_ROLES_PAGE_DESC } from "@/features/system-roles/lib/system-roles-shared";
 
 export function SystemRolesPageView({ vm }: { vm: SystemRolesPageVm }) {
   const { openCreate, confirmDialog } = vm;

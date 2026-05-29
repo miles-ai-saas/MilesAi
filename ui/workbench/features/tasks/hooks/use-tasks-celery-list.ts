@@ -4,13 +4,13 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth-store";
 import { usePagedList } from "@/hooks/use-paged-list";
-import { useGenerativeJobMeta } from "@/hooks/use-generative-job-meta";
-import { useTaskMeta } from "@/hooks/use-task-meta";
-import { canCancelTask } from "@/components/task/TaskDetailDialog";
+import { useGenerativeJobMeta } from "@/features/tasks/hooks/use-generative-job-meta";
+import { useTaskMeta } from "@/features/tasks/hooks/use-task-meta";
+import { canCancelTask } from "@/features/tasks/components/TaskDetailDialog";
 import { filterBySearch } from "@/lib/filter-search";
 import { generativeJobStatusFilterOptions } from "@/lib/generative-job-labels";
-import { taskStatusFilterOptions } from "@/lib/task-labels";
-import type { TaskCategory } from "@/lib/tasks-page-shared";
+import { taskStatusFilterOptions } from "@/features/tasks/lib/task-labels";
+import type { TaskCategory } from "@/features/tasks/lib/tasks-page-shared";
 
 export function useTasksCeleryList(category: TaskCategory) {
   const { ready } = useRequireAuth();

@@ -1,7 +1,7 @@
 "use client";
 
-import { INFRA_PREVIEW_LABELS, infraStatusClass, infraStatusLabel } from "@/lib/system-config-shared";
-import type { SystemConfigPageVm } from "@/hooks/use-system-config-page";
+import { INFRA_PREVIEW_LABELS, infraStatusClass, infraStatusLabel } from "@/features/system-config/lib/system-config-shared";
+import type { SystemConfigPageVm } from "@/features/system-config/hooks/use-system-config-page";
 
 export function SystemConfigInfraSection({ vm }: { vm: SystemConfigPageVm }) {
   const { user, infra, testing, testingId, onTestAll, onTestOne } = vm;

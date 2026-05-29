@@ -5,8 +5,8 @@ import { CardActions } from "@/components/resource/CardActions";
 import { ResourceItemCard } from "@/components/resource/ResourceItemCard";
 import { ResourceListFooter } from "@/components/resource/ResourceListFooter";
 import { ResourceListLayout } from "@/components/resource/ResourceListLayout";
-import type { HooksPageVm } from "@/hooks/use-hooks-page";
-import { HOOKS_PAGE_DESC } from "@/lib/hooks-page-shared";
+import type { HooksPageVm } from "@/features/http-hooks/hooks/use-hooks-page";
+import { HOOKS_PAGE_DESC } from "@/features/http-hooks/lib/hooks-page-shared";
 
 export function HookCatalogView({ vm }: { vm: HooksPageVm }) {
   const { list, search, setSearch, filtered, openCreate, openEdit, onDeleteHook, toggleActive, openBindings } = vm;
