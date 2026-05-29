@@ -1,17 +1,96 @@
 "use client";
 
 /** 定时任务编辑弹窗（链路 §10）。 */
+
 import { useEffect, useMemo, useState } from "react";
-import { CronExpressionPreview } from "@/features/agents/components/CronExpressionPreview";
-import { CronFieldPicker } from "@/features/agents/components/CronFieldPicker";
-import { CronPresetLinks } from "@/features/agents/components/CronPresetLinks";
 import { ResourceDialog } from "@/components/resource/ResourceDialog";
 import { ToggleSwitch } from "@/components/ui/ToggleSwitch";
 import { api } from "@/lib/api";
-import { DEFAULT_CRON_PARTS, buildCronExpr, parseCronExpr, validateCronExpr, type CronParts } from "@/lib/cron-celery";
+import {
+  CRON_PRESETS,
+  DAY_OPTIONS,
+  DEFAULT_CRON_PARTS,
+  HOUR_OPTIONS,
+  MINUTE_OPTIONS,
+  MONTH_OPTIONS,
+  WEEK_OPTIONS,
+  buildCronExpr,
+  describeCron,
+  parseCronExpr,
+  partsEqual,
+  validateCronExpr,
+  type CronParts,
+} from "@/lib/cron-celery";
 import type { AgentSchedule } from "@/lib/types";
 
 const CONTENT_MAX = 500;
+
+const CRON_FIELDS: {
+  key: keyof CronParts;
+  label: string;
+  options: { value: string; label: string }[];
+}[] = [
+  { key: "minute", label: "分", options: MINUTE_OPTIONS },
+  { key: "hour", label: "时", options: HOUR_OPTIONS },
+  { key: "dayOfMonth", label: "日", options: DAY_OPTIONS },
+  { key: "month", label: "月", options: MONTH_OPTIONS },
+  { key: "dayOfWeek", label: "周", options: WEEK_OPTIONS },
+];
+
+function CronFieldPicker({ parts, onChange }: { parts: CronParts; onChange: (parts: CronParts) => void }) {
+  return (
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+      {CRON_FIELDS.map(({ key, label, options }) => (
+        <label key={key} className="block text-sm">
+          <span className="mb-1 block text-ink-muted">{label}</span>
+          <select className="input-field w-full" value={parts[key]} onChange={(e) => onChange({ ...parts, [key]: e.target.value })}>
+            {options.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        </label>
+      ))}
+    </div>
+  );
+}
+
+function CronExpressionPreview({ parts }: { parts: CronParts }) {
+  const expr = buildCronExpr(parts);
+  const description = describeCron(expr);
+
+  return (
+    <div className="space-y-2">
+      <p className="text-sm font-medium text-ink">Cron 表达式</p>
+      <input readOnly value={expr} className="input-field w-full font-mono text-sm bg-surface-muted" aria-label="Cron 表达式" />
+      <p className="text-xs text-ink-muted">{description}</p>
+    </div>
+  );
+}
+
+function CronPresetLinks({ parts, onSelect }: { parts: CronParts; onSelect: (parts: CronParts) => void }) {
+  return (
+    <div className="space-y-2">
+      <p className="text-sm text-ink-muted">常用</p>
+      <div className="flex flex-wrap gap-x-3 gap-y-1">
+        {CRON_PRESETS.map((preset) => {
+          const active = partsEqual(parts, preset.parts);
+          return (
+            <button
+              key={preset.label}
+              type="button"
+              onClick={() => onSelect(preset.parts)}
+              className={`text-xs transition hover:underline ${active ? "font-medium text-brand" : "text-brand"}`}
+            >
+              {preset.label}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 type Props = {
   open: boolean;

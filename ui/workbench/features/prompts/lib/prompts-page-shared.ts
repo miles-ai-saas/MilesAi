@@ -1,5 +1,3 @@
-export const PROMPTS_PAGE_DESC = "管理系统提示词（Markdown），供智能体 system prompt 与流程编排复用；支持按名称、正文或标签筛选。";
-
 export function promptContentPreview(text: string, max = 120): string {
   const t = text.trim().replace(/\s+/g, " ");
   if (!t) return "（空正文）";

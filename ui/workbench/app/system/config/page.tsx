@@ -9,7 +9,9 @@ import {
   useSystemConfigPage,
 } from "@/features/system-config";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { SYSTEM_CONFIG_PAGE_DESC } from "@/features/system-config/lib/system-config-shared";
+
+const SYSTEM_CONFIG_PAGE_DESC =
+  "L2 业务参数可在此编辑；L1 部署连接（PostgreSQL / Redis / 对象存储等）来自环境变量，只读展示。";
 
 export default function SystemConfigPage() {
   const vm = useSystemConfigPage();

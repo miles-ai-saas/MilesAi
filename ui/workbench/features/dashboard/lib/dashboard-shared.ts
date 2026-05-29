@@ -1,7 +1,5 @@
 import type { QuotaMetric } from "@/lib/types";
 
-export const DASHBOARD_PAGE_DESC = "AI 能力资源一览，快速进入常用功能";
-
 export const DASHBOARD_QUICK_LINKS = [
   { href: "/workbench/agents/chat", label: "对话工作台", desc: "与智能体对话调试" },
   { href: "/workbench/agents", label: "智能体", desc: "查看与管理智能体" },

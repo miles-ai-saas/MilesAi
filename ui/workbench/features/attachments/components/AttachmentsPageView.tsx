@@ -5,8 +5,10 @@ import { ResourceListFooter } from "@/components/resource/ResourceListFooter";
 import { ResourceListLayout } from "@/components/resource/ResourceListLayout";
 import type { AttachmentsPageVm } from "@/features/attachments/hooks/use-attachments-page";
 import { attachmentPurposeLabel } from "@/features/attachments/lib/attachment-labels";
-import { ATTACHMENTS_PAGE_DESC, formatAttachmentBytes } from "@/features/attachments/lib/attachments-page-shared";
+import { formatAttachmentBytes } from "@/features/attachments/lib/attachments-page-shared";
 import { KB_UPLOAD_ACCEPT } from "@/lib/upload-accept";
+
+const ATTACHMENTS_PAGE_DESC = "租户级通用文件存储，可用于对话、智能体等场景；占用与知识库文档合计的存储配额。";
 
 export function AttachmentsTable({ vm }: { vm: AttachmentsPageVm }) {
   const { filtered, attachmentMeta, onDelete } = vm;

@@ -2,8 +2,11 @@
 
 import { PageHeader } from "@/components/layout/PageHeader";
 import type { SystemQuotaPageVm } from "@/features/system-quota/hooks/use-system-quota-page";
-import { quotaUsagePct, SYSTEM_QUOTA_FOOTER_NOTE, SYSTEM_QUOTA_PAGE_DESC } from "@/features/system-quota/lib/system-quota-shared";
+import { quotaUsagePct } from "@/features/system-quota/lib/system-quota-shared";
 import type { QuotaMetric } from "@/lib/types";
+
+const SYSTEM_QUOTA_PAGE_DESC = "查看本租户资源使用与上限。配额调整请联系平台管理员（运营后台）。";
+const SYSTEM_QUOTA_FOOTER_NOTE = "如需提升配额，请联系平台管理员在运营后台调整租户套餐或配额上限。";
 
 function QuotaCard({ title, metric, hint }: { title: string; metric: QuotaMetric; hint?: string }) {
   const unlimited = metric.max <= 0;

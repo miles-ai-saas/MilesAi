@@ -7,5 +7,3 @@ export { ToolsCatalogTab } from "./components/ToolsCatalogTab";
 export { ToolsLogsTab } from "./components/ToolsLogsTab";
 export { ToolsPageOverlays } from "./components/ToolsPageOverlays";
 export { ToolCreateDialog, type ToolDialogMode, DEFAULT_SCRIPT } from "./components/ToolCreateDialog";
-
-export { TOOLS_PAGE_DESC } from "./lib/tool-page-shared";

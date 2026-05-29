@@ -9,7 +9,9 @@ import {
   useModelsPage,
 } from "@/features/models";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { MODELS_PAGE_DESC } from "@/features/models/lib/model-page-shared";
+
+const MODELS_PAGE_DESC =
+  "内置模型由平台统一提供密钥，可直接选用；自定义 OpenAI 兼容接入需自行配置 API Key。";
 
 export default function ModelsPage() {
   const vm = useModelsPage();

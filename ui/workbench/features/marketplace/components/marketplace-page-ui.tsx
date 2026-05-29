@@ -5,8 +5,6 @@ import { PageMessage } from "@/components/ui/PageMessage";
 import { StatChip } from "@/components/ui/StatChip";
 import type { AppInstallResult } from "@/lib/types";
 
-export const MARKETPLACE_PAGE_DESC = "浏览并安装已审核上架的应用；可将本租户知识库、流程或智能体打包为应用，审核通过后供其他租户安装。";
-
 export { StatChip as MarketplaceStatChip };
 export { PageMessage as MarketplacePageMessage };
 

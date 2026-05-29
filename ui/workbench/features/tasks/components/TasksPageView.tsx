@@ -9,7 +9,11 @@ import { ResourceListLayout } from "@/components/resource/ResourceListLayout";
 import { PageMessage } from "@/components/ui/PageMessage";
 import { StatChip } from "@/components/ui/StatChip";
 import type { TasksPageVm } from "@/features/tasks/hooks/use-tasks-page";
-import { TASKS_PAGE_DESC } from "@/features/tasks/lib/tasks-page-shared";
+
+const TASKS_PAGE_DESC = {
+  celery: "文档入库等 Celery 异步任务；支持按状态筛选、搜索、取消与重试；点击「刷新」更新列表。",
+  generative: "智能体对话、流程或 API 触发的生图/生视频任务；支持类型筛选、进度查看、取消与失败重试；可跳转关联的后台 Celery 记录；点击「刷新」更新列表。",
+} as const;
 
 export function TasksPageView({ vm }: { vm: TasksPageVm }) {
   const {

@@ -2,8 +2,10 @@
 
 import Link from "next/link";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { DASHBOARD_PAGE_DESC, DASHBOARD_QUICK_LINKS, quotaLabel } from "@/features/dashboard/lib/dashboard-shared";
+import { DASHBOARD_QUICK_LINKS, quotaLabel } from "@/features/dashboard/lib/dashboard-shared";
 import type { DashboardPageVm } from "@/features/dashboard/hooks/use-dashboard-page";
+
+const DASHBOARD_PAGE_DESC = "AI 能力资源一览，快速进入常用功能";
 
 export function DashboardOverview({ vm }: { vm: DashboardPageVm }) {
   if (vm.loading) {

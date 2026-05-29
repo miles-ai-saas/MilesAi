@@ -9,5 +9,3 @@ export { MarketplaceMineView } from "./components/MarketplaceMineView";
 export { MarketplaceReviewView } from "./components/MarketplaceReviewView";
 export { MarketplacePublishView } from "./components/MarketplacePublishView";
 export { MarketplacePageOverlays } from "./components/MarketplacePageOverlays";
-
-export { MARKETPLACE_PAGE_DESC } from "./components/marketplace-page-ui";

@@ -17,6 +17,6 @@ export { KbDetailSearchTab } from "./components/KbDetailSearchTab";
 export { KbDetailSettingsDialog } from "./components/KbDetailSettingsDialog";
 export { KbDetailSkeleton } from "./components/KbDetailSkeleton";
 
-export { KB_PAGE_DESC, DEFAULT_CHUNK_SIZE, DEFAULT_CHUNK_OVERLAP } from "./lib/kb-page-shared";
+export { DEFAULT_CHUNK_SIZE, DEFAULT_CHUNK_OVERLAP } from "./lib/kb-page-shared";
 export { KB_DETAIL_TABS } from "./lib/kb-detail-shared";
 export { retrievalModeLabel } from "./lib/kb-labels";

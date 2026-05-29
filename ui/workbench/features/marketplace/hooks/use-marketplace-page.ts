@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { MARKETPLACE_PAGE_DESC } from "@/features/marketplace/components/marketplace-page-ui";
 import { useMarketplaceAppDetail } from "@/features/marketplace/hooks/use-marketplace-app-detail";
 import { useMarketplaceInstallOps } from "@/features/marketplace/hooks/use-marketplace-install-ops";
 import { useMarketplacePageLists } from "@/features/marketplace/hooks/use-marketplace-page-lists";
@@ -10,6 +9,9 @@ import { useMarketplaceMeta } from "@/features/marketplace/hooks/use-marketplace
 import { useRequireAuth } from "@/lib/auth-store";
 import type { MarketplaceMainView } from "@/features/marketplace/lib/marketplace-page-shared";
 import type { ResourceTab } from "@/components/resource/ResourceListLayout";
+
+const MARKETPLACE_PAGE_DESC =
+  "浏览并安装已审核上架的应用；可将本租户知识库、流程或智能体打包为应用，审核通过后供其他租户安装。";
 
 export type { MarketplaceMainView } from "@/features/marketplace/lib/marketplace-page-shared";
 

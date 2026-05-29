@@ -11,7 +11,9 @@ import { TagFilterDropdown } from "@/components/tag/TagFilterDropdown";
 import { TagManageDialog } from "@/components/tag/TagManageDialog";
 import type { PromptsPageVm } from "@/features/prompts/hooks/use-prompts-page";
 import { promptActiveLabel } from "@/features/prompts/lib/prompt-labels";
-import { PROMPTS_PAGE_DESC, promptContentPreview } from "@/features/prompts/lib/prompts-page-shared";
+import { promptContentPreview } from "@/features/prompts/lib/prompts-page-shared";
+
+const PROMPTS_PAGE_DESC = "管理系统提示词（Markdown），供智能体 system prompt 与流程编排复用；支持按名称、正文或标签筛选。";
 
 export function PromptsPageView({ vm }: { vm: PromptsPageVm }) {
   const {
