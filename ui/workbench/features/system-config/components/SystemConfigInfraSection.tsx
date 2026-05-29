@@ -1,7 +1,32 @@
 "use client";
 
-import { INFRA_PREVIEW_LABELS, infraStatusClass, infraStatusLabel } from "@/features/system-config/lib/system-config-shared";
+import type { InfraComponentStatus } from "@/lib/types";
 import type { SystemConfigPageVm } from "@/features/system-config/hooks/use-system-config-page";
+
+const INFRA_PREVIEW_LABELS: Record<string, string> = {
+  app_env: "运行环境",
+  postgres: "PostgreSQL",
+  redis: "Redis",
+  object_storage_backend: "对象存储类型",
+  object_storage_endpoint: "对象存储端点",
+  object_storage_bucket: "存储桶",
+  vector_store_backend: "向量库类型",
+  vector_store_endpoint: "向量库端点",
+  celery_broker: "Celery Broker",
+  embedding_backend: "Embedding 后端",
+};
+
+function infraStatusClass(status: InfraComponentStatus["status"]) {
+  if (status === "ok") return "bg-emerald-50 text-emerald-800";
+  if (status === "skipped") return "bg-surface-muted text-ink-faint";
+  return "bg-amber-50 text-amber-800";
+}
+
+function infraStatusLabel(status: InfraComponentStatus["status"]) {
+  if (status === "ok") return "正常";
+  if (status === "skipped") return "跳过";
+  return "不可用";
+}
 
 export function SystemConfigInfraSection({ vm }: { vm: SystemConfigPageVm }) {
   const { user, infra, testing, testingId, onTestAll, onTestOne } = vm;

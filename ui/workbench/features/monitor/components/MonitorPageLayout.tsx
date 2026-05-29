@@ -2,8 +2,7 @@
 
 import type { ReactNode } from "react";
 import { ResourceListLayout } from "@/components/resource/ResourceListLayout";
-import type { MonitorPageVm } from "@/features/monitor/hooks/use-monitor-page";
-import type { MonitorTab } from "@/features/monitor/lib/monitor-shared";
+import type { MonitorPageVm, MonitorTab } from "@/features/monitor/hooks/use-monitor-page";
 
 const MONITOR_PAGE_DESC = "查看租户业务指标、异步任务与合规拦截趋势，检查依赖组件健康状态，并配置 Webhook 告警。";
 

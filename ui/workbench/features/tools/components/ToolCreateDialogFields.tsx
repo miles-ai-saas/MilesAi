@@ -2,7 +2,7 @@
 
 import { CodeEditor } from "@/components/editor/CodeEditor";
 import { TagPicker } from "@/components/tag/TagPicker";
-import type { ToolDialogMode } from "@/features/tools/lib/tool-create-dialog-shared";
+import type { ToolDialogMode } from "@/features/tools/components/ToolCreateDialog";
 
 type BasicFieldsProps = {
   mode: ToolDialogMode;

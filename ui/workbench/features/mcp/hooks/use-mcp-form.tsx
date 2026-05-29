@@ -1,12 +1,18 @@
 "use client";
 
 import { useState } from "react";
-import { MCP_ENDPOINT_PLACEHOLDER } from "@/features/mcp/components/mcp-dialog-shared";
+import type { McpTransportTab } from "@/features/mcp/lib/mcp-labels";
 import { useConfirmAction } from "@/hooks/use-confirm-action";
 import { api } from "@/lib/api";
-import { normalizeMcpTransport, type McpTransportTab } from "@/features/mcp/lib/mcp-labels";
+import { normalizeMcpTransport } from "@/features/mcp/lib/mcp-labels";
 import type { McpService } from "@/lib/types";
 import type { McpListSlice } from "@/features/mcp/hooks/use-mcp-list";
+
+export const MCP_ENDPOINT_PLACEHOLDER: Record<Exclude<McpTransportTab, "">, string> = {
+  http: "https://example.com/mcp",
+  sse: "http://127.0.0.1:3001/sse",
+  stdio: "",
+};
 
 function parseStdioArgs(text: string): string[] {
   return text

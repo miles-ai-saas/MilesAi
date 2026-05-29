@@ -2,8 +2,7 @@
 
 import { useState } from "react";
 import { api, getApiErrorMessage } from "@/lib/api";
-import { DEFAULT_SCRIPT } from "@/features/tools/lib/tool-create-dialog-shared";
-import type { ToolDialogMode } from "@/features/tools/lib/tool-create-dialog-shared";
+import { DEFAULT_SCRIPT, type ToolDialogMode } from "@/features/tools/components/ToolCreateDialog";
 import type { ToolKindTab } from "@/features/tools/lib/tool-labels";
 import type { CustomTool, ToolCatalogItem, ToolCreatePayload, ToolParameterSpec } from "@/lib/types";
 

@@ -5,8 +5,15 @@ import { api } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth-store";
 import { useKbMeta } from "@/features/kb";
 import { useMonitorMeta } from "@/features/monitor/hooks/use-monitor-meta";
-import type { MonitorTab, MonitorHealthPayload } from "@/features/monitor/lib/monitor-shared";
 import type { AlertConfig, ModelUsageReport, MonitorReport, MonitorTrends } from "@/lib/types";
+
+export type MonitorTab = "overview" | "trends" | "usage" | "health" | "alerts";
+
+export type MonitorHealthPayload = {
+  healthy?: boolean;
+  status?: string;
+  components?: Record<string, unknown>;
+};
 
 export function useMonitorPage() {
   const { ready } = useRequireAuth();

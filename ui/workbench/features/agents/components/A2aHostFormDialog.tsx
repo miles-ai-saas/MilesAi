@@ -3,8 +3,7 @@
 /** A2A 互联宿主表单（链路 §4 `useA2aMeta`）。 */
 
 import { ResourceDialog } from "@/components/resource/ResourceDialog";
-import type { A2aHostFormValues } from "@/features/agents/components/a2a-host-form-shared";
-import type { A2aHostFormDialogVm } from "@/features/agents/hooks/use-a2a-host-form-dialog";
+import type { A2aHostFormValues, A2aHostFormDialogVm } from "@/features/agents/hooks/use-a2a-host-form-dialog";
 import { useA2aHostFormDialog } from "@/features/agents/hooks/use-a2a-host-form-dialog";
 import type { EnumOption } from "@/lib/enum-meta";
 import type { Agent, A2aPeer, ModelConfig, PromptTemplate } from "@/lib/types";

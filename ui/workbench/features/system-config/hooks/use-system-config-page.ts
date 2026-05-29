@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { ossFormFromConfig } from "@/features/system-config/lib/system-config-shared";
+import { ossFormFromConfig } from "@/features/system-config/hooks/use-system-config-oss";
 import { useSystemConfigInfra } from "@/features/system-config/hooks/use-system-config-infra";
 import { useSystemConfigLoad } from "@/features/system-config/hooks/use-system-config-load";
 import { useSystemConfigOss } from "@/features/system-config/hooks/use-system-config-oss";

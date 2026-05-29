@@ -2,8 +2,32 @@
 
 import { useState } from "react";
 import { api } from "@/lib/api";
-import { emptyOssForm } from "@/features/system-config/lib/system-config-shared";
+import type { TenantObjectStorageConfig } from "@/lib/types";
 import type { SystemConfigLoadSlice } from "@/features/system-config/hooks/use-system-config-load";
+
+export const emptyOssForm = () => ({
+  is_enabled: false,
+  endpoint: "",
+  bucket: "",
+  access_key: "",
+  secret_key: "",
+  secure: false,
+  region: "",
+});
+
+export type OssFormState = ReturnType<typeof emptyOssForm>;
+
+export function ossFormFromConfig(cfg: TenantObjectStorageConfig): OssFormState {
+  return {
+    is_enabled: cfg.is_enabled,
+    endpoint: cfg.endpoint ?? "",
+    bucket: cfg.bucket ?? "",
+    access_key: cfg.access_key ?? "",
+    secret_key: "",
+    secure: cfg.secure ?? false,
+    region: cfg.region ?? "",
+  };
+}
 
 export function useSystemConfigOss({ setOss, setMsg }: Pick<SystemConfigLoadSlice, "setOss" | "setMsg">) {
   const [ossForm, setOssForm] = useState(emptyOssForm);

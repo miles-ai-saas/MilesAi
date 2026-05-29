@@ -5,7 +5,7 @@ import { useMemo, useState } from "react";
 import { CodeEditor, codeLanguageFromPath } from "@/components/editor/CodeEditor";
 import { MarkdownPreview } from "@/components/editor/MarkdownPreview";
 import type { SkillEditorPageVm } from "@/features/skills/hooks/use-skill-editor-page";
-import { SKILL_EDITOR_DEFAULT_PATH } from "@/features/skills/lib/skill-editor-shared";
+import { SKILL_EDITOR_DEFAULT_PATH } from "@/features/skills/hooks/use-skill-editor-page";
 import { isMarkdownPath, parseSkillMd } from "@/features/skills/lib/skill-md";
 
 type SkillMdViewMode = "edit" | "preview" | "split";

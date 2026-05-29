@@ -6,9 +6,8 @@ import {
   ToolCreateDialogHttpFields,
   ToolCreateDialogScriptFields,
 } from "@/features/tools/components/ToolCreateDialogFields";
-import { ToolCreateDialogSection } from "@/features/tools/lib/tool-create-dialog-shared";
+import { ToolCreateDialogSection, type ToolDialogMode } from "@/features/tools/components/ToolCreateDialog";
 import type { ToolKindTab } from "@/features/tools/lib/tool-labels";
-import type { ToolDialogMode } from "@/features/tools/lib/tool-create-dialog-shared";
 import type { ToolParameterSpec } from "@/lib/types";
 
 export type ToolCreateDialogEntityFormProps = {
