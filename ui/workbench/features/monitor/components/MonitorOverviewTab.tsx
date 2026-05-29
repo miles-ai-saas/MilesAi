@@ -1,7 +1,7 @@
 "use client";
 
 import { SimpleBarChart } from "@/components/charts/SimpleBarChart";
-import { StatChip } from "@/features/monitor/components/monitor-page-ui";
+import { StatChip } from "@/components/ui/StatChip";
 import type { MonitorPageVm } from "@/features/monitor/hooks/use-monitor-page";
 
 export function MonitorOverviewTab({ vm }: { vm: MonitorPageVm }) {

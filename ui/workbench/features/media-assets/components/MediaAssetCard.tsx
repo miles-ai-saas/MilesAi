@@ -1,8 +1,25 @@
 "use client";
 
 import { ChatArtifactMedia } from "@/features/agents";
-import { mediaAssetKindLabel, mediaAssetSourceLabel } from "@/features/media-assets/lib/media-asset-labels";
 import type { KnowledgeBase, MediaAsset } from "@/lib/types";
+
+const MEDIA_KIND_LABELS: Record<string, string> = {
+  image: "图片",
+  video: "视频",
+};
+
+const MEDIA_SOURCE_LABELS: Record<string, string> = {
+  agent_tool: "智能体生成",
+  flow_node: "流程生成",
+};
+
+function mediaAssetKindLabel(kind: string): string {
+  return MEDIA_KIND_LABELS[kind] ?? kind;
+}
+
+function mediaAssetSourceLabel(source: string): string {
+  return MEDIA_SOURCE_LABELS[source] ?? source;
+}
 
 function formatMediaBytes(n: number) {
   if (n < 1024) return `${n} B`;

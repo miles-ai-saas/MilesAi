@@ -3,7 +3,7 @@
 /** 应用市场详情：右侧抽屉（链路 §12）。 */
 
 import { ResourceDialog } from "@/components/resource/ResourceDialog";
-import { MarketplaceStarDisplay } from "@/features/marketplace/components/marketplace-page-ui";
+import { MarketplaceStarDisplay } from "@/features/marketplace/components/MarketplaceAppCardParts";
 import { TagChips } from "@/components/tag/TagChips";
 import { marketplaceStatusLabel } from "@/features/marketplace/lib/marketplace-labels";
 import type { MarketplaceMeta } from "@/lib/types";

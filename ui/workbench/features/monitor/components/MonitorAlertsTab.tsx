@@ -1,6 +1,6 @@
 "use client";
 
-import { PageMessage } from "@/features/monitor/components/monitor-page-ui";
+import { PageMessage } from "@/components/ui/PageMessage";
 import type { MonitorPageVm } from "@/features/monitor/hooks/use-monitor-page";
 
 export function MonitorAlertsTab({ vm }: { vm: MonitorPageVm }) {

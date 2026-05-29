@@ -4,7 +4,8 @@ import Link from "next/link";
 import { ResourceListFooter } from "@/components/resource/ResourceListFooter";
 import { ResourceItemCard } from "@/components/resource/ResourceItemCard";
 import { ResourceListLayout } from "@/components/resource/ResourceListLayout";
-import { MarketplacePageMessage, MarketplaceStatChip } from "@/features/marketplace/components/marketplace-page-ui";
+import { PageMessage } from "@/components/ui/PageMessage";
+import { StatChip } from "@/components/ui/StatChip";
 import type { MarketplacePageVm } from "@/features/marketplace/hooks/use-marketplace-page";
 
 export function MarketplaceInstallsView({ vm }: { vm: MarketplacePageVm }) {
@@ -27,10 +28,10 @@ export function MarketplaceInstallsView({ vm }: { vm: MarketplacePageVm }) {
         ) : null
       }
     >
-      {vm.msg ? <MarketplacePageMessage message={vm.msg} onDismiss={() => vm.setMsg("")} /> : null}
+      {vm.msg ? <PageMessage message={vm.msg} onDismiss={() => vm.setMsg("")} /> : null}
       <div className="col-span-full grid gap-3 sm:grid-cols-2">
-        <MarketplaceStatChip label="安装记录" value={String(vm.installs.total)} hint="当前租户历史安装" />
-        <MarketplaceStatChip label="本页展示" value={String(vm.installsFiltered.length)} hint="受搜索筛选影响" />
+        <StatChip label="安装记录" value={String(vm.installs.total)} hint="当前租户历史安装" />
+        <StatChip label="本页展示" value={String(vm.installsFiltered.length)} hint="受搜索筛选影响" />
       </div>
       {!vm.installs.loading && vm.installsFiltered.length === 0 ? (
         <p className="col-span-full py-12 text-center text-sm text-ink-faint">尚未安装任何应用，请前往「应用广场」浏览</p>

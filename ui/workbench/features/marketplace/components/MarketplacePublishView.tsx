@@ -2,14 +2,14 @@
 
 import { ResourceListLayout } from "@/components/resource/ResourceListLayout";
 import { TagPicker } from "@/components/tag/TagPicker";
-import { MarketplacePageMessage } from "@/features/marketplace/components/marketplace-page-ui";
+import { PageMessage } from "@/components/ui/PageMessage";
 import { marketplaceVisibilityLabel } from "@/features/marketplace/lib/marketplace-labels";
 import type { MarketplacePageVm } from "@/features/marketplace/hooks/use-marketplace-page";
 
 export function MarketplacePublishView({ vm }: { vm: MarketplacePageVm }) {
   return (
     <ResourceListLayout {...vm.layoutCommon} search="" onSearchChange={() => {}} showSearch={false}>
-      {vm.msg ? <MarketplacePageMessage message={vm.msg} onDismiss={() => vm.setMsg("")} /> : null}
+      {vm.msg ? <PageMessage message={vm.msg} onDismiss={() => vm.setMsg("")} /> : null}
       <div className="col-span-full mx-auto w-full max-w-2xl">
         <section className="rounded-xl border border-line bg-surface p-6 shadow-panel">
           <h2 className="text-base font-semibold text-ink">从资源打包应用</h2>

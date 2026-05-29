@@ -5,7 +5,8 @@ import { ResourceListLayout } from "@/components/resource/ResourceListLayout";
 import { TagFilterDropdown } from "@/components/tag/TagFilterDropdown";
 import { TagChips } from "@/components/tag/TagChips";
 import { MarketplaceAppCardActions } from "@/features/marketplace/components/MarketplaceAppCardParts";
-import { MarketplacePageMessage, MarketplaceStatChip } from "@/features/marketplace/components/marketplace-page-ui";
+import { PageMessage } from "@/components/ui/PageMessage";
+import { StatChip } from "@/components/ui/StatChip";
 import type { MarketplacePageVm } from "@/features/marketplace/hooks/use-marketplace-page";
 
 export function MarketplaceReviewView({ vm }: { vm: MarketplacePageVm }) {
@@ -29,9 +30,9 @@ export function MarketplaceReviewView({ vm }: { vm: MarketplacePageVm }) {
         ) : null
       }
     >
-      {vm.msg ? <MarketplacePageMessage message={vm.msg} onDismiss={() => vm.setMsg("")} /> : null}
+      {vm.msg ? <PageMessage message={vm.msg} onDismiss={() => vm.setMsg("")} /> : null}
       <div className="col-span-full">
-        <MarketplaceStatChip label="待审核" value={String(vm.pendingApps.total)} hint="通过后将在应用广场展示" />
+        <StatChip label="待审核" value={String(vm.pendingApps.total)} hint="通过后将在应用广场展示" />
       </div>
       <div className="col-span-full space-y-3">
         {!vm.pendingApps.loading && vm.pendingFiltered.length === 0 ? (

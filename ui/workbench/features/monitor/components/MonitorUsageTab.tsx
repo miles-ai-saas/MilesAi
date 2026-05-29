@@ -1,6 +1,6 @@
 "use client";
 
-import { StatChip } from "@/features/monitor/components/monitor-page-ui";
+import { StatChip } from "@/components/ui/StatChip";
 import type { MonitorPageVm } from "@/features/monitor/hooks/use-monitor-page";
 
 export function MonitorUsageTab({ vm }: { vm: MonitorPageVm }) {

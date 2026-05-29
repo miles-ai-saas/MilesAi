@@ -1,10 +1,20 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { SimpleBarChart } from "@/components/charts/SimpleBarChart";
-import { ChartPanel } from "@/features/monitor/components/monitor-page-ui";
 import type { MonitorPageVm } from "@/features/monitor/hooks/use-monitor-page";
 import { documentStatusLabel } from "@/lib/document-status";
 import { monitorTrendDayOptions } from "@/features/monitor/lib/monitor-labels";
+
+function ChartPanel({ title, subtitle, children }: { title: string; subtitle?: string; children: ReactNode }) {
+  return (
+    <section className="rounded-xl border border-line bg-surface p-5 shadow-card">
+      <h3 className="text-sm font-semibold text-ink">{title}</h3>
+      {subtitle && <p className="mt-1 text-xs text-ink-muted">{subtitle}</p>}
+      <div className="mt-4">{children}</div>
+    </section>
+  );
+}
 
 export function MonitorTrendsTab({ vm }: { vm: MonitorPageVm }) {
   const { report, trends, trendDays, monitorMeta, kbMeta } = vm;

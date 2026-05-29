@@ -1,13 +1,55 @@
 "use client";
 
+import Link from "next/link";
+import { PageMessage } from "@/components/ui/PageMessage";
+import { StatChip } from "@/components/ui/StatChip";
 import { ResourceListFooter } from "@/components/resource/ResourceListFooter";
 import { ResourceItemCard } from "@/components/resource/ResourceItemCard";
 import { ResourceListLayout } from "@/components/resource/ResourceListLayout";
 import { TagFilterDropdown } from "@/components/tag/TagFilterDropdown";
 import { MarketplaceAppCardActions, MarketplaceAppCardMeta } from "@/features/marketplace/components/MarketplaceAppCardParts";
-import { MarketplaceInstallSuccessBanner, MarketplacePageMessage, MarketplaceStatChip } from "@/features/marketplace/components/marketplace-page-ui";
 import { marketplaceCatalogSortOptions } from "@/features/marketplace/lib/marketplace-labels";
 import type { MarketplacePageVm } from "@/features/marketplace/hooks/use-marketplace-page";
+import type { AppInstallResult } from "@/lib/types";
+
+function MarketplaceInstallSuccessBanner({ result, onDismiss }: { result: AppInstallResult; onDismiss: () => void }) {
+  return (
+    <div className="col-span-full rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
+      <div className="flex items-start justify-between gap-3">
+        <p className="font-medium">{result.message || "安装完成"}</p>
+        <button type="button" className="text-xs opacity-70 hover:opacity-100" onClick={onDismiss}>
+          关闭
+        </button>
+      </div>
+      <ul className="mt-2 space-y-1 text-xs">
+        {result.kb_id ? (
+          <li>
+            知识库 →{" "}
+            <Link href={`/workbench/kb/${result.kb_id}`} className="underline">
+              管理文档
+            </Link>
+          </li>
+        ) : null}
+        {result.flow_id ? (
+          <li>
+            流程 →{" "}
+            <Link href={`/workbench/flows/${result.flow_id}/edit`} className="underline">
+              编辑画布
+            </Link>
+          </li>
+        ) : null}
+        {result.agent_id ? (
+          <li>
+            智能体 →{" "}
+            <Link href="/workbench/agents/chat" className="underline">
+              去对话
+            </Link>
+          </li>
+        ) : null}
+      </ul>
+    </div>
+  );
+}
 
 export function MarketplacePlazaView({ vm }: { vm: MarketplacePageVm }) {
   return (
@@ -40,11 +82,11 @@ export function MarketplacePlazaView({ vm }: { vm: MarketplacePageVm }) {
         ) : null
       }
     >
-      {vm.msg ? <MarketplacePageMessage message={vm.msg} onDismiss={() => vm.setMsg("")} /> : null}
+      {vm.msg ? <PageMessage message={vm.msg} onDismiss={() => vm.setMsg("")} /> : null}
       {vm.lastResult ? <MarketplaceInstallSuccessBanner result={vm.lastResult} onDismiss={() => vm.setLastResult(null)} /> : null}
       <div className="col-span-full grid gap-3 sm:grid-cols-2">
-        <MarketplaceStatChip label="广场应用" value={String(vm.apps.total)} hint="已上架可安装" />
-        <MarketplaceStatChip label="本页已安装" value={String(vm.plazaInstalledOnPage)} hint={`本页共 ${vm.plazaFiltered.length} 个`} />
+        <StatChip label="广场应用" value={String(vm.apps.total)} hint="已上架可安装" />
+        <StatChip label="本页已安装" value={String(vm.plazaInstalledOnPage)} hint={`本页共 ${vm.plazaFiltered.length} 个`} />
       </div>
       <div className="col-span-full flex flex-wrap gap-2 border-b border-line pb-4">
         {vm.categoryTabs.map((tab) => (

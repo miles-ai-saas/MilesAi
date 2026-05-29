@@ -3,8 +3,7 @@
 /** 智能体创建/编辑多步表单（链路 §3 + §4 agent/a2a meta）。 */
 
 import { useEffect, useState } from "react";
-import { AGENT_FORM_STEPS, emptyAgentForm, type AgentFormValues } from "@/features/agents/lib/agent-form-types";
-import { agentToFormValues, buildAgentConfig } from "@/features/agents/lib/agent-form-config";
+import { AGENT_FORM_STEPS, agentToFormValues, buildAgentConfig, emptyAgentForm, type AgentFormValues } from "@/features/agents/lib/agent-form-types";
 import { AgentFormStepContent } from "@/features/agents/components/AgentFormStepContent";
 import { AgentFormStepper } from "@/features/agents/components/AgentFormStepper";
 import { ResourceDialog } from "@/components/resource/ResourceDialog";
