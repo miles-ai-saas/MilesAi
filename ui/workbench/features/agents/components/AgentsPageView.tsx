@@ -15,8 +15,14 @@ import { TagManageDialog } from "@/components/tag/TagManageDialog";
 import { FilterChip } from "@/components/ui/FilterChip";
 import { StatChip } from "@/components/ui/StatChip";
 import type { AgentsPageVm } from "@/features/agents/hooks/use-agents-page";
+import { AGENTS_TAB_ITEMS } from "@/features/agents/hooks/use-agents-page";
 import { agentModeLabel, agentStatusLabel, agentTypeLabel } from "@/features/agents/lib/agent-utils";
-import { AGENTS_TAB_DESCRIPTIONS, AGENTS_TAB_ITEMS } from "@/features/agents/lib/agents-page-shared";
+
+const AGENTS_TAB_DESCRIPTIONS = {
+  all: "查看全部平台内智能体（不含 A2A 互联宿主）；A2A 能力请在「A2A 互联」Tab 管理。",
+  custom: "配置模型、知识库与工具；可选内部协同，或引用已登记的外部 A2A（规则触发 + 自动规划）。",
+  a2a: "管理 A2A 协议能力：先在「外部登记」同步 Agent Card，再创建「互联宿主」作为统一对话入口。",
+} as const;
 
 export function AgentsPageView({ vm }: { vm: AgentsPageVm }) {
   const {

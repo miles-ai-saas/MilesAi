@@ -9,8 +9,21 @@ import { useAgentMeta } from "@/features/agents/hooks/use-agent-meta";
 import { api } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth-store";
 import { filterBySearch } from "@/lib/filter-search";
-import { AGENTS_TAB_ITEMS, agentsTabToApiType, type AgentsTab } from "@/features/agents/lib/agents-page-shared";
-import type { Agent } from "@/lib/types";
+import type { Agent, AgentType } from "@/lib/types";
+
+export type AgentsTab = "all" | "custom" | "a2a";
+
+export const AGENTS_TAB_ITEMS = [
+  { key: "all" as const, label: "全部" },
+  { key: "custom" as const, label: "智能体" },
+  { key: "a2a" as const, label: "A2A 互联" },
+];
+
+function agentsTabToApiType(tab: AgentsTab): AgentType | undefined {
+  if (tab === "custom") return "custom";
+  if (tab === "a2a") return "a2a";
+  return undefined;
+}
 
 export function useAgentsPage() {
   const router = useRouter();

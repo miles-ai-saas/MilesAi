@@ -2,7 +2,7 @@
 
 import { addEdge, useEdgesState, useNodesState, type Connection, type Node, type EdgeChange, type NodeChange } from "@xyflow/react";
 import { useCallback, useEffect, useImperativeHandle, useState, type Ref } from "react";
-import type { FlowCanvasHandle, FlowCanvasProps } from "@/features/flows/components/flow-canvas-types";
+import type { FlowCanvasHandle, FlowCanvasProps } from "@/features/flows/components/FlowCanvas";
 import { useConfirmAction } from "@/hooks/use-confirm-action";
 import { useFlowCanvasHistory } from "@/features/flows/hooks/use-flow-canvas-history";
 import { useFlowTemplates } from "@/features/flows/hooks/use-flow-templates";

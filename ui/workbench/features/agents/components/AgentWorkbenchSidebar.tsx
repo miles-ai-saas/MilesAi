@@ -2,8 +2,7 @@
 
 /** 对话页右侧配置侧栏（链路 §5 + §4 agent meta）。 */
 import type { ReactNode } from "react";
-import { AGENT_WORKBENCH_TABS, type AgentWorkbenchTab } from "@/features/agents/components/agent-workbench-tabs";
-import { CHAT_RIGHT_RAIL_COLLAPSED, CHAT_RIGHT_RAIL_EXPANDED } from "@/features/agents/components/chat-sidebar-layout";
+import { AGENT_WORKBENCH_TABS, CHAT_RIGHT_RAIL_COLLAPSED, CHAT_RIGHT_RAIL_EXPANDED, type AgentWorkbenchTab } from "@/features/agents/hooks/use-agents-chat-layout";
 import { AgentRenameInline } from "@/features/agents/components/AgentRenameInline";
 import { SidebarCollapseButton } from "@/features/agents/components/SidebarCollapseButton";
 import { agentModeLabel, agentStatusLabel } from "@/features/agents/lib/agent-utils";

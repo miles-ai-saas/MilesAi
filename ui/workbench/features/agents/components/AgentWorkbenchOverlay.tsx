@@ -1,7 +1,7 @@
 "use client";
 
 /** 对话页全屏工作台遮罩（链路 §5）。 */
-import { AGENT_WORKBENCH_TABS, type AgentWorkbenchTab } from "@/features/agents/components/agent-workbench-tabs";
+import { AGENT_WORKBENCH_TABS, type AgentWorkbenchTab } from "@/features/agents/hooks/use-agents-chat-layout";
 import { AgentArchitecturePanel } from "@/features/agents/components/AgentArchitecturePanel";
 import { AgentSchedulePanel } from "@/features/agents/components/AgentSchedulePanel";
 import { AgentStatsPanel } from "@/features/agents/components/AgentStatsPanel";

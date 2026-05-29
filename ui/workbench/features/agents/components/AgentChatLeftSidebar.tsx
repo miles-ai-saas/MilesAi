@@ -11,7 +11,7 @@ import {
   CHAT_LEFT_SIDEBAR_COLLAPSED,
   CHAT_LEFT_SIDEBAR_EXPANDED,
   CHAT_SESSION_COLUMN,
-} from "@/features/agents/components/chat-sidebar-layout";
+} from "@/features/agents/hooks/use-agents-chat-layout";
 import { SidebarCollapseButton } from "@/features/agents/components/SidebarCollapseButton";
 import type { ChatSession } from "@/features/agents/lib/chat-sessions";
 import type { Agent } from "@/lib/types";

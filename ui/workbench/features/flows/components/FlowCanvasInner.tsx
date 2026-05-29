@@ -5,7 +5,7 @@ import "@xyflow/react/dist/style.css";
 import { forwardRef, useCallback } from "react";
 import { FlowNodeInspector } from "@/features/flows/components/FlowNodeInspector";
 import { flowNodeTypes } from "@/features/flows/components/FlowNodeCard";
-import type { FlowCanvasHandle, FlowCanvasProps } from "@/features/flows/components/flow-canvas-types";
+import type { FlowCanvasHandle, FlowCanvasProps } from "@/features/flows/components/FlowCanvas";
 import { useFlowCanvasCore } from "@/features/flows/hooks/use-flow-canvas-core";
 import { PALETTE_GROUPS, paletteItemsByGroup, type NodeType } from "@/features/flows/lib/flow-nodes";
 import { useConfirmAction } from "@/hooks/use-confirm-action";

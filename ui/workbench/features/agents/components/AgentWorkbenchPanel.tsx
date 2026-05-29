@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AGENT_FORM_STEPS, emptyAgentForm, type AgentFormValues } from "@/features/agents/lib/agent-form-types";
 import { agentToFormValues, buildAgentConfig } from "@/features/agents/lib/agent-form-config";
-import type { AgentWorkbenchTab } from "@/features/agents/components/agent-workbench-tabs";
+import type { AgentWorkbenchTab } from "@/features/agents/hooks/use-agents-chat-layout";
 import { AgentFormStepContent } from "@/features/agents/components/AgentFormStepContent";
 import { AgentFormStepper } from "@/features/agents/components/AgentFormStepper";
 import { api } from "@/lib/api";
