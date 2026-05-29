@@ -2,12 +2,16 @@
 
 /** 外部 A2A 对等体登记（链路 §4）。 */
 
-import { A2aPeerCreateDialog } from "@/features/agents/components/A2aPeerCreateDialog";
-import { A2aPeerList } from "@/features/agents/components/A2aPeerList";
+import { AddResourceCard } from "@/components/resource/AddResourceCard";
+import { ResourceDialog } from "@/components/resource/ResourceDialog";
+import { ResourceItemCard } from "@/components/resource/ResourceItemCard";
+import { ResourceListFooter } from "@/components/resource/ResourceListFooter";
 import { useA2aPeersPanel } from "@/features/agents/hooks/use-a2a-peers-panel";
+import { a2aPeerStatusLabel } from "@/lib/a2a-labels";
 
 export function A2aPeersPanel() {
   const vm = useA2aPeersPanel();
+  const { a2aMeta, list, filtered, setDialogOpen, onSync, onDelete } = vm;
 
   return (
     <>
@@ -23,21 +27,105 @@ export function A2aPeersPanel() {
         />
       </div>
 
-      <A2aPeerList vm={vm} />
+      <AddResourceCard label="登记外部 Agent" hint="填写对方服务根地址，拉取 /.well-known/agent-card.json" onClick={() => setDialogOpen(true)} />
 
-      <A2aPeerCreateDialog
-        dialogOpen={vm.dialogOpen}
-        setDialogOpen={vm.setDialogOpen}
-        name={vm.name}
-        setName={vm.setName}
-        description={vm.description}
-        setDescription={vm.setDescription}
-        baseUrl={vm.baseUrl}
-        setBaseUrl={vm.setBaseUrl}
-        busy={vm.busy}
-        onCreate={vm.onCreate}
-        onProbe={vm.onProbe}
-      />
+      {filtered.map((p) => (
+        <ResourceItemCard
+          key={p.id}
+          title={p.name}
+          description={p.card_display_name ?? p.description ?? p.base_url ?? p.agent_card_url}
+          badge={a2aPeerStatusLabel(p.status, a2aMeta)}
+          meta={
+            <span className="line-clamp-2">
+              {p.skills_count > 0 ? `${p.skills_count} 个 skill · ` : ""}
+              {p.last_synced_at ? "已同步 Card" : "未同步"}
+              {p.last_error ? ` · ${p.last_error}` : ""}
+            </span>
+          }
+          actions={
+            <span className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                className="text-xs text-brand hover:underline"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  void onSync(p.id);
+                }}
+              >
+                同步 Card
+              </button>
+              <button
+                type="button"
+                className="text-xs text-ink-muted hover:text-danger"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  void onDelete(p);
+                }}
+              >
+                删除
+              </button>
+            </span>
+          }
+        />
+      ))}
+
+      {!list.loading && filtered.length === 0 ? (
+        <p className="col-span-full py-8 text-center text-sm text-ink-muted">暂无外部 Agent。登记后可同步 Agent Card，供后续 A2A 宿主智能体绑定（P2）。</p>
+      ) : null}
+
+      {!list.loading && list.total > list.size ? (
+        <div className="col-span-full">
+          <ResourceListFooter page={list.page} size={list.size} total={list.total} onPageChange={list.setPage} onSizeChange={list.setSize} />
+        </div>
+      ) : null}
+
+      <ResourceDialog
+        open={vm.dialogOpen}
+        title="登记外部 A2A Agent"
+        onClose={() => vm.setDialogOpen(false)}
+        footer={
+          <>
+            <button type="button" className="btn-sm-outline" disabled={vm.busy} onClick={() => void vm.onProbe()}>
+              探测连通
+            </button>
+            <button type="button" className="btn-sm-outline" onClick={() => vm.setDialogOpen(false)}>
+              取消
+            </button>
+            <button
+              type="button"
+              className="btn-primary text-sm"
+              disabled={vm.busy || !vm.name.trim() || !vm.baseUrl.trim()}
+              onClick={() => void vm.onCreate()}
+            >
+              {vm.busy ? "提交中…" : "登记"}
+            </button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <label className="block text-sm">
+            <span className="mb-1 block text-ink-muted">显示名称</span>
+            <input className="input-field w-full" value={vm.name} onChange={(e) => vm.setName(e.target.value)} placeholder="例如：合作伙伴客服 Agent" />
+          </label>
+          <label className="block text-sm">
+            <span className="mb-1 block text-ink-muted">根地址或 Agent Card URL</span>
+            <input
+              className="input-field w-full font-mono text-xs"
+              value={vm.baseUrl}
+              onChange={(e) => vm.setBaseUrl(e.target.value)}
+              placeholder="https://partner.example.com"
+            />
+          </label>
+          <label className="block text-sm">
+            <span className="mb-1 block text-ink-muted">备注（可选）</span>
+            <textarea className="input-field w-full resize-none" rows={2} value={vm.description} onChange={(e) => vm.setDescription(e.target.value)} />
+          </label>
+          <p className="text-xs text-ink-faint">
+            将解析为 <code className="rounded bg-surface-muted px-1">/.well-known/agent-card.json</code>
+            ，与平台内「内部协同」无关。
+          </p>
+        </div>
+      </ResourceDialog>
       {vm.confirmDialog}
     </>
   );
