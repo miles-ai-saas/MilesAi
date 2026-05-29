@@ -2,9 +2,9 @@
 
 import { ResourceListLayout } from "@/components/resource/ResourceListLayout";
 import { TagPicker } from "@/components/tag/TagPicker";
-import { MarketplacePageMessage } from "@/components/marketplace/marketplace-page-ui";
-import { marketplaceVisibilityLabel } from "@/lib/marketplace-labels";
-import type { MarketplacePageVm } from "@/hooks/use-marketplace-page";
+import { MarketplacePageMessage } from "@/features/marketplace/components/marketplace-page-ui";
+import { marketplaceVisibilityLabel } from "@/features/marketplace/lib/marketplace-labels";
+import type { MarketplacePageVm } from "@/features/marketplace/hooks/use-marketplace-page";
 
 export function MarketplacePublishView({ vm }: { vm: MarketplacePageVm }) {
   return (

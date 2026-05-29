@@ -1,17 +1,17 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { MARKETPLACE_PAGE_DESC } from "@/components/marketplace/marketplace-page-ui";
-import { useMarketplaceAppDetail } from "@/hooks/use-marketplace-app-detail";
-import { useMarketplaceInstallOps } from "@/hooks/use-marketplace-install-ops";
-import { useMarketplacePageLists } from "@/hooks/use-marketplace-page-lists";
-import { useMarketplacePublishForm } from "@/hooks/use-marketplace-publish-form";
-import { useMarketplaceMeta } from "@/hooks/use-marketplace-meta";
+import { MARKETPLACE_PAGE_DESC } from "@/features/marketplace/components/marketplace-page-ui";
+import { useMarketplaceAppDetail } from "@/features/marketplace/hooks/use-marketplace-app-detail";
+import { useMarketplaceInstallOps } from "@/features/marketplace/hooks/use-marketplace-install-ops";
+import { useMarketplacePageLists } from "@/features/marketplace/hooks/use-marketplace-page-lists";
+import { useMarketplacePublishForm } from "@/features/marketplace/hooks/use-marketplace-publish-form";
+import { useMarketplaceMeta } from "@/features/marketplace/hooks/use-marketplace-meta";
 import { useRequireAuth } from "@/lib/auth-store";
-import type { MarketplaceMainView } from "@/lib/marketplace-page-shared";
+import type { MarketplaceMainView } from "@/features/marketplace/lib/marketplace-page-shared";
 import type { ResourceTab } from "@/components/resource/ResourceListLayout";
 
-export type { MarketplaceMainView } from "@/lib/marketplace-page-shared";
+export type { MarketplaceMainView } from "@/features/marketplace/lib/marketplace-page-shared";
 
 export function useMarketplacePage() {
   const { ready, user } = useRequireAuth();

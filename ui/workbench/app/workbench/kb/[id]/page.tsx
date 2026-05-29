@@ -4,16 +4,18 @@
  * 知识库详情（链路 §8）：文档上传/轮询 status、`useKbMeta` 文案、`usePagedList` 文档与检索日志。
  */
 
-import { DocumentChunksDrawer } from "@/components/kb/DocumentChunksDrawer";
-import { KbDetailDocumentsTab } from "@/components/kb/KbDetailDocumentsTab";
-import { KbDetailHeader } from "@/components/kb/KbDetailHeader";
-import { KbDetailLogsTab } from "@/components/kb/KbDetailLogsTab";
-import { KbDetailSearchTab } from "@/components/kb/KbDetailSearchTab";
-import { KbDetailSettingsDialog } from "@/components/kb/KbDetailSettingsDialog";
-import { KbDetailSkeleton } from "@/components/kb/KbDetailSkeleton";
-import { KbPageAlert } from "@/components/kb/KbPageAlert";
-import { KB_DETAIL_TABS } from "@/lib/kb-detail-shared";
-import { useKbDetailPage } from "@/hooks/use-kb-detail-page";
+import {
+  DocumentChunksDrawer,
+  KB_DETAIL_TABS,
+  KbDetailDocumentsTab,
+  KbDetailHeader,
+  KbDetailLogsTab,
+  KbDetailSearchTab,
+  KbDetailSettingsDialog,
+  KbDetailSkeleton,
+  KbPageAlert,
+  useKbDetailPage,
+} from "@/features/kb";
 
 export default function KbDetailPage() {
   const vm = useKbDetailPage();

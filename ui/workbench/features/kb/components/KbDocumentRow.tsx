@@ -1,9 +1,9 @@
 "use client";
 
-import { DocumentStatusBadge } from "@/components/kb/DocumentStatusBadge";
+import { DocumentStatusBadge } from "@/features/kb/components/DocumentStatusBadge";
 import { canRetryDocument, isDocumentFailed, isDocumentProcessing } from "@/lib/document-status";
 import { formatFileSize } from "@/lib/format-bytes";
-import { kbFileIcon } from "@/lib/kb-file-icon";
+import { kbFileIcon } from "@/features/kb/lib/kb-file-icon";
 import type { EnumOption } from "@/lib/enum-meta";
 import type { Document } from "@/lib/types";
 

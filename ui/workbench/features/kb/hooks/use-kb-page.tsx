@@ -1,8 +1,8 @@
 "use client";
 
 import { useRequireAuth } from "@/lib/auth-store";
-import { useKbForm } from "@/hooks/use-kb-form";
-import { useKbList, useKbModels } from "@/hooks/use-kb-list";
+import { useKbForm } from "@/features/kb/hooks/use-kb-form";
+import { useKbList, useKbModels } from "@/features/kb/hooks/use-kb-list";
 
 export function useKbPage() {
   const { ready } = useRequireAuth();

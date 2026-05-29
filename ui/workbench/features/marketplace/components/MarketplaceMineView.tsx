@@ -4,10 +4,10 @@ import { ResourceListFooter } from "@/components/resource/ResourceListFooter";
 import { ResourceItemCard } from "@/components/resource/ResourceItemCard";
 import { ResourceListLayout } from "@/components/resource/ResourceListLayout";
 import { TagFilterDropdown } from "@/components/tag/TagFilterDropdown";
-import { MarketplaceAppCardActions, MarketplaceAppCardMeta } from "@/components/marketplace/MarketplaceAppCardParts";
-import { MarketplacePageMessage } from "@/components/marketplace/marketplace-page-ui";
-import { marketplaceStatusLabel } from "@/lib/marketplace-labels";
-import type { MarketplacePageVm } from "@/hooks/use-marketplace-page";
+import { MarketplaceAppCardActions, MarketplaceAppCardMeta } from "@/features/marketplace/components/MarketplaceAppCardParts";
+import { MarketplacePageMessage } from "@/features/marketplace/components/marketplace-page-ui";
+import { marketplaceStatusLabel } from "@/features/marketplace/lib/marketplace-labels";
+import type { MarketplacePageVm } from "@/features/marketplace/hooks/use-marketplace-page";
 
 export function MarketplaceMineView({ vm }: { vm: MarketplacePageVm }) {
   return (

@@ -2,13 +2,15 @@
 
 /** 应用市场（链路 §12）：多主视图 + 分页列表 + `useMarketplaceMeta`。 */
 
-import { MarketplaceInstallsView } from "@/components/marketplace/MarketplaceInstallsView";
-import { MarketplaceMineView } from "@/components/marketplace/MarketplaceMineView";
-import { MarketplacePageOverlays } from "@/components/marketplace/MarketplacePageOverlays";
-import { MarketplacePlazaView } from "@/components/marketplace/MarketplacePlazaView";
-import { MarketplacePublishView } from "@/components/marketplace/MarketplacePublishView";
-import { MarketplaceReviewView } from "@/components/marketplace/MarketplaceReviewView";
-import { useMarketplacePage } from "@/hooks/use-marketplace-page";
+import {
+  MarketplaceInstallsView,
+  MarketplaceMineView,
+  MarketplacePageOverlays,
+  MarketplacePlazaView,
+  MarketplacePublishView,
+  MarketplaceReviewView,
+  useMarketplacePage,
+} from "@/features/marketplace";
 
 export default function MarketplacePage() {
   const vm = useMarketplacePage();

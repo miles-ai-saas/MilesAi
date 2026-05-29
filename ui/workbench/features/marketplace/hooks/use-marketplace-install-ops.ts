@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import { api } from "@/lib/api";
-import { rollbackPreviewToUpgrade } from "@/lib/marketplace-page-shared";
+import { rollbackPreviewToUpgrade } from "@/features/marketplace/lib/marketplace-page-shared";
 import type { AppInstall, AppInstallResult, AppUpgradePreview, MarketplaceApp } from "@/lib/types";
-import type { MarketplaceMainView } from "@/lib/marketplace-page-shared";
+import type { MarketplaceMainView } from "@/features/marketplace/lib/marketplace-page-shared";
 
 type ListReloaders = {
   reloadApps: () => Promise<void>;

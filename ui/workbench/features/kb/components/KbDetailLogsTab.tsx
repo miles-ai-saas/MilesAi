@@ -1,8 +1,8 @@
 "use client";
 
 import { ResourceListFooter } from "@/components/resource/ResourceListFooter";
-import { searchSourceLabel } from "@/lib/kb-labels";
-import type { KbDetailPageVm } from "@/hooks/use-kb-detail-page";
+import { searchSourceLabel } from "@/features/kb/lib/kb-labels";
+import type { KbDetailPageVm } from "@/features/kb/hooks/use-kb-detail-page";
 
 export function KbDetailLogsTab({ vm }: { vm: KbDetailPageVm }) {
   return (

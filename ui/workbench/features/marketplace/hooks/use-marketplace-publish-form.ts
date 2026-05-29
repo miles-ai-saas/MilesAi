@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
-import type { MarketplaceMainView } from "@/lib/marketplace-page-shared";
+import type { MarketplaceMainView } from "@/features/marketplace/lib/marketplace-page-shared";
 import type { Agent, Flow, KnowledgeBase } from "@/lib/types";
 
 type Params = {

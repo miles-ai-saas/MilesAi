@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/api";
 import { usePagedList } from "@/hooks/use-paged-list";
 import { filterBySearch } from "@/lib/filter-search";
-import { marketplaceAppSearchText, type MarketplaceMainView } from "@/lib/marketplace-page-shared";
+import { marketplaceAppSearchText, type MarketplaceMainView } from "@/features/marketplace/lib/marketplace-page-shared";
 import type { ResourceTab } from "@/components/resource/ResourceListLayout";
 import type { AppCategory } from "@/lib/types";
 

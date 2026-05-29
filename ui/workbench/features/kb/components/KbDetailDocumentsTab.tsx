@@ -1,10 +1,10 @@
 "use client";
 
-import { KbDocumentRow } from "@/components/kb/KbDocumentRow";
-import { KbUploadZone } from "@/components/kb/KbUploadZone";
+import { KbDocumentRow } from "@/features/kb/components/KbDocumentRow";
+import { KbUploadZone } from "@/features/kb/components/KbUploadZone";
 import { ResourceListFooter } from "@/components/resource/ResourceListFooter";
-import { KB_DOC_FILTERS } from "@/lib/kb-detail-shared";
-import type { KbDetailPageVm } from "@/hooks/use-kb-detail-page";
+import { KB_DOC_FILTERS } from "@/features/kb/lib/kb-detail-shared";
+import type { KbDetailPageVm } from "@/features/kb/hooks/use-kb-detail-page";
 
 export function KbDetailDocumentsTab({ vm }: { vm: KbDetailPageVm }) {
   return (

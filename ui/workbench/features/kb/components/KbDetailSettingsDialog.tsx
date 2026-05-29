@@ -1,7 +1,7 @@
 "use client";
 
 import { ResourceDialog } from "@/components/resource/ResourceDialog";
-import type { KbDetailPageVm } from "@/hooks/use-kb-detail-page";
+import type { KbDetailPageVm } from "@/features/kb/hooks/use-kb-detail-page";
 
 export function KbDetailSettingsDialog({ vm }: { vm: KbDetailPageVm }) {
   const kb = vm.kb!;

@@ -2,10 +2,7 @@
 
 /** 知识库列表（链路 §3 + §8）；详情与文档入库见 kb/[id]。 */
 
-import { KbCatalogView } from "@/components/kb/KbCatalogView";
-import { KbFormDialog } from "@/components/kb/KbFormDialog";
-import { KbPageAlerts } from "@/components/kb/KbPageAlerts";
-import { useKbPage } from "@/hooks/use-kb-page";
+import { KbCatalogView, KbFormDialog, KbPageAlerts, useKbPage } from "@/features/kb";
 
 export default function KbPage() {
   const vm = useKbPage();

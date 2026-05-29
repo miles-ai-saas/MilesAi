@@ -1,9 +1,9 @@
 "use client";
 
-import { MarketplaceStarDisplay } from "@/components/marketplace/MarketplaceStarDisplay";
+import { MarketplaceStarDisplay } from "@/features/marketplace/components/MarketplaceStarDisplay";
 import { TagChips } from "@/components/tag/TagChips";
 import { CardActions } from "@/components/resource/CardActions";
-import { marketplaceVisibilityLabel } from "@/lib/marketplace-labels";
+import { marketplaceVisibilityLabel } from "@/features/marketplace/lib/marketplace-labels";
 import type { MarketplaceApp, MarketplaceMeta } from "@/lib/types";
 
 export function MarketplaceAppCardMeta({ app, marketplaceMeta }: { app: MarketplaceApp; marketplaceMeta: MarketplaceMeta | null }) {

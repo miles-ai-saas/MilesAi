@@ -8,9 +8,9 @@ import {
   DEFAULT_CHUNK_OVERLAP,
   DEFAULT_CHUNK_SIZE,
   DEFAULT_RERANK_CANDIDATE_K,
-} from "@/lib/kb-page-shared";
+} from "@/features/kb/lib/kb-page-shared";
 import type { KnowledgeBase, ModelConfig } from "@/lib/types";
-import type { KbListSlice } from "@/hooks/use-kb-list";
+import type { KbListSlice } from "@/features/kb/hooks/use-kb-list";
 
 type ModelsSlice = {
   embeddingModels: ModelConfig[];

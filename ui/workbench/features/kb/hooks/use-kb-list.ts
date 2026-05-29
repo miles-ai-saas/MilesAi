@@ -4,14 +4,14 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth-store";
 import { usePagedList } from "@/hooks/use-paged-list";
-import { useKbMeta } from "@/hooks/use-kb-meta";
+import { useKbMeta } from "@/features/kb/hooks/use-kb-meta";
 import { filterBySearch } from "@/lib/filter-search";
 import {
   DEFAULT_CHUNK_OVERLAP,
   DEFAULT_CHUNK_SIZE,
   DEFAULT_RERANK_CANDIDATE_K,
   isClipModel,
-} from "@/lib/kb-page-shared";
+} from "@/features/kb/lib/kb-page-shared";
 import type { KnowledgeBase, KbQuota, ModelConfig } from "@/lib/types";
 
 export function useKbList() {

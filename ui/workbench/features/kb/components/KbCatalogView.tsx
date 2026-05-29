@@ -5,10 +5,10 @@ import { CardActions } from "@/components/resource/CardActions";
 import { ResourceItemCard } from "@/components/resource/ResourceItemCard";
 import { ResourceListFooter } from "@/components/resource/ResourceListFooter";
 import { ResourceListLayout } from "@/components/resource/ResourceListLayout";
-import { KbQuotaBar } from "@/components/kb/KbQuotaBar";
-import type { KbPageVm } from "@/hooks/use-kb-page";
-import { DEFAULT_CHUNK_OVERLAP, DEFAULT_CHUNK_SIZE, KB_PAGE_DESC } from "@/lib/kb-page-shared";
-import { retrievalModeLabel } from "@/lib/kb-labels";
+import { KbQuotaBar } from "@/features/kb/components/KbQuotaBar";
+import type { KbPageVm } from "@/features/kb/hooks/use-kb-page";
+import { DEFAULT_CHUNK_OVERLAP, DEFAULT_CHUNK_SIZE, KB_PAGE_DESC } from "@/features/kb/lib/kb-page-shared";
+import { retrievalModeLabel } from "@/features/kb/lib/kb-labels";
 
 export function KbCatalogView({ vm }: { vm: KbPageVm }) {
   const { list, search, setSearch, quota, quotaLoading, filtered, kbMeta, router, openCreate, openEdit, onDelete } = vm;

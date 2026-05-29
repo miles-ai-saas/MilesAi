@@ -1,6 +1,6 @@
 /** 知识库检索模式等展示 chips（链路 §8 + kb meta）。 */
 
-import { retrievalModeLabel } from "@/lib/kb-labels";
+import { retrievalModeLabel } from "@/features/kb/lib/kb-labels";
 import type { KnowledgeBase } from "@/lib/types";
 
 export function KbMetaChips({ kb }: { kb: KnowledgeBase }) {

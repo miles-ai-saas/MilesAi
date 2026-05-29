@@ -4,9 +4,9 @@ import { ResourceListFooter } from "@/components/resource/ResourceListFooter";
 import { ResourceListLayout } from "@/components/resource/ResourceListLayout";
 import { TagFilterDropdown } from "@/components/tag/TagFilterDropdown";
 import { TagChips } from "@/components/tag/TagChips";
-import { MarketplaceAppCardActions } from "@/components/marketplace/MarketplaceAppCardParts";
-import { MarketplacePageMessage, MarketplaceStatChip } from "@/components/marketplace/marketplace-page-ui";
-import type { MarketplacePageVm } from "@/hooks/use-marketplace-page";
+import { MarketplaceAppCardActions } from "@/features/marketplace/components/MarketplaceAppCardParts";
+import { MarketplacePageMessage, MarketplaceStatChip } from "@/features/marketplace/components/marketplace-page-ui";
+import type { MarketplacePageVm } from "@/features/marketplace/hooks/use-marketplace-page";
 
 export function MarketplaceReviewView({ vm }: { vm: MarketplacePageVm }) {
   return (

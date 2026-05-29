@@ -1,9 +1,9 @@
 "use client";
 
 import { ResourceDialog } from "@/components/resource/ResourceDialog";
-import { KbPageAlert } from "@/components/kb/KbPageAlert";
-import type { KbPageVm } from "@/hooks/use-kb-page";
-import { embeddingDimension } from "@/lib/kb-page-shared";
+import { KbPageAlert } from "@/features/kb/components/KbPageAlert";
+import type { KbPageVm } from "@/features/kb/hooks/use-kb-page";
+import { embeddingDimension } from "@/features/kb/lib/kb-page-shared";
 
 export function KbFormDialog({ vm }: { vm: KbPageVm }) {
   const {

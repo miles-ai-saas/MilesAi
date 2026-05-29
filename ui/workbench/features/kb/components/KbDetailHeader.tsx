@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { KbMetaChips } from "@/components/kb/KbMetaChips";
-import { KbQuotaBar } from "@/components/kb/KbQuotaBar";
-import type { KbDetailPageVm } from "@/hooks/use-kb-detail-page";
+import { KbMetaChips } from "@/features/kb/components/KbMetaChips";
+import { KbQuotaBar } from "@/features/kb/components/KbQuotaBar";
+import type { KbDetailPageVm } from "@/features/kb/hooks/use-kb-detail-page";
 
 export function KbDetailHeader({ vm }: { vm: KbDetailPageVm }) {
   const kb = vm.kb!;

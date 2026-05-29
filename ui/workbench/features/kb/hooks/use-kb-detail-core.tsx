@@ -5,8 +5,8 @@ import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth-store";
 import { useConfirmAction } from "@/hooks/use-confirm-action";
-import { useKbMeta } from "@/hooks/use-kb-meta";
-import type { KbDetailAlertState } from "@/lib/kb-detail-shared";
+import { useKbMeta } from "@/features/kb/hooks/use-kb-meta";
+import type { KbDetailAlertState } from "@/features/kb/lib/kb-detail-shared";
 import type { KnowledgeBase, KbQuota } from "@/lib/types";
 
 export function useKbDetailCore() {

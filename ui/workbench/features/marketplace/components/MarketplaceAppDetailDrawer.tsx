@@ -3,10 +3,10 @@
 /** 应用市场详情：右侧抽屉（链路 §12）。 */
 
 import { ResourceDialog } from "@/components/resource/ResourceDialog";
-import { manifestResourceItems } from "@/components/marketplace/marketplace-manifest";
-import { MarketplaceStarDisplay } from "@/components/marketplace/MarketplaceStarDisplay";
+import { manifestResourceItems } from "@/features/marketplace/components/marketplace-manifest";
+import { MarketplaceStarDisplay } from "@/features/marketplace/components/MarketplaceStarDisplay";
 import { TagChips } from "@/components/tag/TagChips";
-import { marketplaceStatusLabel } from "@/lib/marketplace-labels";
+import { marketplaceStatusLabel } from "@/features/marketplace/lib/marketplace-labels";
 import type { MarketplaceMeta } from "@/lib/types";
 import type { AppRating, MarketplaceApp, MarketplaceAppDetail } from "@/lib/types";
 

@@ -4,8 +4,8 @@ import Link from "next/link";
 import { ResourceListFooter } from "@/components/resource/ResourceListFooter";
 import { ResourceItemCard } from "@/components/resource/ResourceItemCard";
 import { ResourceListLayout } from "@/components/resource/ResourceListLayout";
-import { MarketplacePageMessage, MarketplaceStatChip } from "@/components/marketplace/marketplace-page-ui";
-import type { MarketplacePageVm } from "@/hooks/use-marketplace-page";
+import { MarketplacePageMessage, MarketplaceStatChip } from "@/features/marketplace/components/marketplace-page-ui";
+import type { MarketplacePageVm } from "@/features/marketplace/hooks/use-marketplace-page";
 
 export function MarketplaceInstallsView({ vm }: { vm: MarketplacePageVm }) {
   return (

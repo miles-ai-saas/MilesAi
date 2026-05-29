@@ -1,7 +1,7 @@
 "use client";
 
-import { retrievalModeLabel } from "@/lib/kb-labels";
-import type { KbDetailPageVm } from "@/hooks/use-kb-detail-page";
+import { retrievalModeLabel } from "@/features/kb/lib/kb-labels";
+import type { KbDetailPageVm } from "@/features/kb/hooks/use-kb-detail-page";
 
 export function KbDetailSearchTab({ vm }: { vm: KbDetailPageVm }) {
   const kb = vm.kb!;

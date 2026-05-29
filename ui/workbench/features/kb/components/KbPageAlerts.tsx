@@ -1,7 +1,7 @@
 "use client";
 
-import { KbPageAlert } from "@/components/kb/KbPageAlert";
-import type { KbPageVm } from "@/hooks/use-kb-page";
+import { KbPageAlert } from "@/features/kb/components/KbPageAlert";
+import type { KbPageVm } from "@/features/kb/hooks/use-kb-page";
 
 export function KbPageAlerts({ vm }: { vm: KbPageVm }) {
   const { listError, saveError, setSaveError, clearListError } = vm;

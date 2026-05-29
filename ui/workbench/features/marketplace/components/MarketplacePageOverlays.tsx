@@ -1,9 +1,9 @@
 "use client";
 
-import { MarketplaceAppDetailDrawer } from "@/components/marketplace/MarketplaceAppDetailDrawer";
-import { MarketplaceUpgradeDialog } from "@/components/marketplace/MarketplaceUpgradeDialog";
+import { MarketplaceAppDetailDrawer } from "@/features/marketplace/components/MarketplaceAppDetailDrawer";
+import { MarketplaceUpgradeDialog } from "@/features/marketplace/components/MarketplaceUpgradeDialog";
 import { PromptDialog } from "@/components/resource/PromptDialog";
-import type { MarketplacePageVm } from "@/hooks/use-marketplace-page";
+import type { MarketplacePageVm } from "@/features/marketplace/hooks/use-marketplace-page";
 
 export function MarketplacePageOverlays({ vm }: { vm: MarketplacePageVm }) {
   return (
