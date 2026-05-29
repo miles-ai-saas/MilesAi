@@ -3,20 +3,16 @@
 /** MCP 创建/编辑（链路 §11）：HTTP/SSE/STDIO 分节表单 → api。 */
 
 import { KbPageAlert } from "@/features/kb";
-import { MCP_ENDPOINT_PLACEHOLDER, MCP_TRANSPORT_HINTS, McpDialogSection, McpTransportBadge, mcpFormCanSubmit } from "@/features/mcp/components/mcp-dialog-shared";
+import { mcpFormCanSubmit } from "@/features/mcp/components/mcp-dialog-shared";
+import { McpServiceDialogForm } from "@/features/mcp/components/McpServiceDialogForm";
+import { McpServiceDialogTransport } from "@/features/mcp/components/McpServiceDialogTransport";
 import { ResourceDialog } from "@/components/resource/ResourceDialog";
 import type { McpDialogMode } from "@/features/mcp/components/McpServiceDialog.types";
 import type { McpTransportTab } from "@/features/mcp/lib/mcp-labels";
-import { mcpTransportLabel, normalizeMcpTransport } from "@/features/mcp/lib/mcp-labels";
+import { normalizeMcpTransport } from "@/features/mcp/lib/mcp-labels";
 import type { McpMeta, McpService } from "@/lib/types";
 
 export type { McpDialogMode };
-
-type TransportTab = {
-  key: Exclude<McpTransportTab, "">;
-  label: string;
-  hint: string;
-};
 
 type Props = {
   open: boolean;
@@ -42,54 +38,6 @@ type Props = {
   onStdioArgsChange: (v: string) => void;
 };
 
-function TransportSelector({
-  transport,
-  transportLocked,
-  mcpMeta,
-  onTransportChange,
-}: {
-  transport: Exclude<McpTransportTab, "">;
-  transportLocked: boolean;
-  mcpMeta?: McpMeta | null;
-  onTransportChange?: (t: Exclude<McpTransportTab, "">) => void;
-}) {
-  const tabs: TransportTab[] = (["http", "sse", "stdio"] as const).map((key) => ({
-    key,
-    label: mcpTransportLabel(key, mcpMeta),
-    hint: MCP_TRANSPORT_HINTS[key],
-  }));
-
-  if (transportLocked) {
-    return (
-      <div className="flex items-center gap-2">
-        <span className="text-xs text-ink-muted">传输类型</span>
-        <McpTransportBadge transport={transport} mcpMeta={mcpMeta} />
-      </div>
-    );
-  }
-
-  return (
-    <div className="inline-flex flex-wrap gap-1 rounded-xl border border-line bg-surface p-1">
-      {tabs.map((tab) => {
-        const active = transport === tab.key;
-        return (
-          <button
-            key={tab.key}
-            type="button"
-            title={tab.hint}
-            onClick={() => onTransportChange?.(tab.key)}
-            className={`rounded-lg px-4 py-2 text-left transition ${
-              active ? "bg-brand-light text-brand shadow-sm ring-1 ring-brand/20" : "text-ink-muted hover:bg-surface-muted hover:text-ink"
-            }`}
-          >
-            <span className="text-sm font-medium">{tab.label}</span>
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
 export function McpServiceDialog({
   open,
   mode,
@@ -114,7 +62,6 @@ export function McpServiceDialog({
   onStdioArgsChange,
 }: Props) {
   const t = editing ? normalizeMcpTransport(editing.transport) : transport;
-  const isStdio = t === "stdio";
   const transportLocked = mode === "edit";
   const canSubmit = mcpFormCanSubmit({
     name,
@@ -148,67 +95,21 @@ export function McpServiceDialog({
       <div className="space-y-5">
         {saveError ? <KbPageAlert tone="error" message={saveError} onDismiss={onDismissError} /> : null}
 
-        <TransportSelector transport={t} transportLocked={transportLocked} mcpMeta={mcpMeta} onTransportChange={onTransportChange} />
+        <McpServiceDialogTransport transport={t} transportLocked={transportLocked} mcpMeta={mcpMeta} onTransportChange={onTransportChange} />
 
-        <McpDialogSection title="基本信息" hint="名称在租户内用于展示与绑定智能体">
-          <label className="block text-xs">
-            <span className="mb-1 block text-ink-muted">名称 *</span>
-            <input className="input-field w-full" placeholder="例如 lbs-amap-http-mcp" value={name} onChange={(e) => onNameChange(e.target.value)} />
-          </label>
-          <label className="block text-xs">
-            <span className="mb-1 block text-ink-muted">描述</span>
-            <textarea
-              className="input-field min-h-[72px] w-full resize-y"
-              placeholder="例如 高德地图 HTTP MCP，供智能体选用"
-              value={description}
-              onChange={(e) => onDescriptionChange(e.target.value)}
-            />
-          </label>
-        </McpDialogSection>
-
-        <McpDialogSection title={isStdio ? "STDIO 启动" : "端点连接"} hint={MCP_TRANSPORT_HINTS[t]}>
-          {isStdio ? (
-            <>
-              <label className="block text-xs">
-                <span className="mb-1 block text-ink-muted">启动命令 *</span>
-                <input
-                  className="input-field w-full font-mono text-sm"
-                  placeholder="npx"
-                  value={stdioCommand}
-                  onChange={(e) => onStdioCommandChange(e.target.value)}
-                />
-              </label>
-              <label className="block text-xs">
-                <span className="mb-1 block text-ink-muted">参数（每行一个）</span>
-                <textarea
-                  className="input-field min-h-[88px] w-full resize-y font-mono text-sm"
-                  placeholder={"-y\n@modelcontextprotocol/server-filesystem\n/path/to/dir"}
-                  value={stdioArgs}
-                  onChange={(e) => onStdioArgsChange(e.target.value)}
-                />
-              </label>
-              <p className="text-xs text-amber-800">
-                预装示例可用 <code className="font-mono text-[11px]">mcp-server-everything</code>
-                ；npx 在线拉包需 Runner 配置 <code className="font-mono text-[11px]">network_mode=allow</code>。
-              </p>
-            </>
-          ) : (
-            <label className="block text-xs">
-              <span className="mb-1 block text-ink-muted">端点 URL *</span>
-              <input
-                className="input-field w-full font-mono text-sm"
-                placeholder={MCP_ENDPOINT_PLACEHOLDER[t]}
-                value={endpointUrl}
-                onChange={(e) => onEndpointUrlChange(e.target.value)}
-              />
-              {t === "sse" && (
-                <span className="mt-2 block text-xs leading-relaxed text-ink-faint">
-                  SSE 请填写长连接 GET 地址；平台将自动处理 endpoint 事件与消息 URL POST。
-                </span>
-              )}
-            </label>
-          )}
-        </McpDialogSection>
+        <McpServiceDialogForm
+          transport={t}
+          name={name}
+          description={description}
+          endpointUrl={endpointUrl}
+          stdioCommand={stdioCommand}
+          stdioArgs={stdioArgs}
+          onNameChange={onNameChange}
+          onDescriptionChange={onDescriptionChange}
+          onEndpointUrlChange={onEndpointUrlChange}
+          onStdioCommandChange={onStdioCommandChange}
+          onStdioArgsChange={onStdioArgsChange}
+        />
       </div>
     </ResourceDialog>
   );
