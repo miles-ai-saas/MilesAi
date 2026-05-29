@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { api } from "@/lib/api";
 import type { AppInstallResult, MarketplaceApp } from "@/lib/types";
-import type { MarketplaceMainView } from "@/features/marketplace/lib/marketplace-page-shared";
+import type { MarketplaceMainView } from "@/features/marketplace/hooks/use-marketplace-page";
 
 type Params = {
   setMsg: (msg: string) => void;

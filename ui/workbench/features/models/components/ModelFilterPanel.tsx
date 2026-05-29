@@ -1,7 +1,23 @@
 "use client";
 
-import { ModelFilterChip } from "@/features/models/components/model-page-ui";
+import type { ReactNode } from "react";
 import type { ModelsPageVm } from "@/features/models/hooks/use-models-page";
+
+function ModelFilterChip({ active, onClick, children }: { active: boolean; onClick: () => void; children: ReactNode }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={
+        active
+          ? "rounded-full border border-brand bg-brand-light/50 px-3 py-1 text-xs font-medium text-brand"
+          : "rounded-full border border-border bg-surface px-3 py-1 text-xs text-ink-muted hover:border-brand/30"
+      }
+    >
+      {children}
+    </button>
+  );
+}
 
 export function ModelFilterPanel({ vm }: { vm: ModelsPageVm }) {
   return (

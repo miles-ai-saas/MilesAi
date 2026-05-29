@@ -7,13 +7,12 @@ import { useMarketplacePageLists } from "@/features/marketplace/hooks/use-market
 import { useMarketplacePublishForm } from "@/features/marketplace/hooks/use-marketplace-publish-form";
 import { useMarketplaceMeta } from "@/features/marketplace/hooks/use-marketplace-meta";
 import { useRequireAuth } from "@/lib/auth-store";
-import type { MarketplaceMainView } from "@/features/marketplace/lib/marketplace-page-shared";
 import type { ResourceTab } from "@/components/resource/ResourceListLayout";
+
+export type MarketplaceMainView = "plaza" | "installs" | "mine" | "publish" | "review";
 
 const MARKETPLACE_PAGE_DESC =
   "浏览并安装已审核上架的应用；可将本租户知识库、流程或智能体打包为应用，审核通过后供其他租户安装。";
-
-export type { MarketplaceMainView } from "@/features/marketplace/lib/marketplace-page-shared";
 
 export function useMarketplacePage() {
   const { ready, user } = useRequireAuth();

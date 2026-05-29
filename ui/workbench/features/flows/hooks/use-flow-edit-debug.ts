@@ -6,7 +6,7 @@ import { useGenerativeJobPoll } from "@/hooks/use-generative-job-poll";
 import { api } from "@/lib/api";
 import { analyzeFlowGenerativeRun } from "@/features/flows/lib/flow-generative-hints";
 import type { FlowRunArtifact } from "@/features/flows/lib/flow-run-artifacts";
-import type { FlowRunState, FlowRunPendingMedia } from "@/features/flows/lib/flow-run-panel-shared";
+import type { FlowRunState, FlowRunPendingMedia } from "@/features/flows/components/FlowRunPanel";
 import { extractPendingGenerativeJobs } from "@/lib/generative-jobs";
 import type { ChatMediaIn, FlowGraph } from "@/lib/types";
 

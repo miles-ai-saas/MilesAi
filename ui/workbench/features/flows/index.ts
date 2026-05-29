@@ -14,4 +14,4 @@ export { FlowVersionHistoryDialog } from "./components/FlowVersionHistoryDialog"
 
 export type { FlowCompileErrorDetail } from "./lib/flow-run-format";
 export { formatFlowSteps } from "./lib/flow-run-format";
-export type { FlowRunPanelProps } from "./lib/flow-run-panel-shared";
+export type { FlowRunPanelProps } from "./components/FlowRunPanel";

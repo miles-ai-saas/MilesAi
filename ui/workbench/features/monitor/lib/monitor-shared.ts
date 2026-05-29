@@ -1,14 +1,6 @@
-/** 监控页 Tab、健康探测解析等共享常量。 */
+/** 监控页健康探测解析等共享常量。 */
 
 export type MonitorTab = "overview" | "trends" | "usage" | "health" | "alerts";
-
-export const MONITOR_MAIN_TABS: { key: MonitorTab; label: string }[] = [
-  { key: "overview", label: "概览" },
-  { key: "trends", label: "趋势分析" },
-  { key: "usage", label: "模型用量" },
-  { key: "health", label: "系统健康" },
-  { key: "alerts", label: "告警配置" },
-];
 
 /** 与后端 collect_health_status 主键一致 */
 export const MONITOR_PRIMARY_COMPONENT_KEYS = ["postgres", "redis", "vector_store", "object_storage"] as const;

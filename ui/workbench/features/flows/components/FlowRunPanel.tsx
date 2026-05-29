@@ -9,9 +9,46 @@ import {
   FlowRunPanelResults,
 } from "@/features/flows/components/FlowRunPanelSections";
 import { useFlowRunPanelMedia } from "@/features/flows/hooks/use-flow-run-panel-media";
-import type { FlowRunPanelProps, FlowRunState, FlowRunPendingMedia } from "@/features/flows/lib/flow-run-panel-shared";
+import type { FlowCompileErrorDetail } from "@/features/flows/lib/flow-run-format";
+import type { FlowRunArtifact } from "@/features/flows/lib/flow-run-artifacts";
+import type { KnowledgeBase } from "@/lib/types";
 
-export type { FlowRunState, FlowRunPendingMedia };
+export interface FlowRunState {
+  output: string;
+  steps: Record<string, unknown>[];
+  compileInfo?: string;
+  compileErrorDetails?: FlowCompileErrorDetail[];
+  error?: string;
+}
+
+export type FlowRunPendingMedia = {
+  attachment_id: string;
+  filename?: string;
+  local_preview: string;
+};
+
+export type FlowRunPanelProps = {
+  kbs: KnowledgeBase[];
+  selectedKbIds: string[];
+  onKbIdsChange: (ids: string[]) => void;
+  query: string;
+  onQueryChange: (q: string) => void;
+  runState: FlowRunState | null;
+  collapsed?: boolean;
+  onToggleCollapsed?: () => void;
+  onSelectCompileNode?: (nodeId: string) => void;
+  onRun?: () => void;
+  busy?: boolean;
+  runBusyLabel?: string;
+  generativeHint?: string | null;
+  generativePollMsg?: string | null;
+  generativeProgressPercent?: number | null;
+  onCancelGenerativeJobs?: () => void;
+  canCancelGenerative?: boolean;
+  extraArtifacts?: FlowRunArtifact[];
+  pendingMedia?: FlowRunPendingMedia[];
+  onPendingMediaChange?: (items: FlowRunPendingMedia[]) => void;
+};
 
 export function FlowRunPanel({
   kbs,

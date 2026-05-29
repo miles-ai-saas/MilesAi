@@ -1,10 +1,52 @@
 "use client";
 
 import Link from "next/link";
-import { SkillEditorHeader } from "@/features/skills/components/SkillEditorHeader";
-import { SkillEditorMain } from "@/features/skills/components/SkillEditorMain";
+import { CodeEditor, codeLanguageFromPath } from "@/components/editor/CodeEditor";
+import { SkillMarkdownSplitEditor } from "@/features/skills/components/SkillMarkdownSplitEditor";
 import type { SkillEditorPageVm } from "@/features/skills/hooks/use-skill-editor-page";
 import { SKILL_EDITOR_DEFAULT_PATH } from "@/features/skills/lib/skill-editor-shared";
+import { isMarkdownPath } from "@/features/skills/lib/skill-md";
+
+function SkillEditorHeader({ vm }: { vm: SkillEditorPageVm }) {
+  const { skill, saved, saving, onSave } = vm;
+  if (!skill) return null;
+
+  return (
+    <header className="flex items-center justify-between border-b border-line px-4 py-3">
+      <div className="flex items-center gap-3">
+        <Link href="/workbench/skills" className="text-ink-muted hover:text-ink">
+          ←
+        </Link>
+        <h1 className="text-lg font-semibold text-ink">{skill.name}</h1>
+        <span className="text-xs text-ink-muted">{skill.slug}</span>
+      </div>
+      <div className="flex items-center gap-3">
+        <span className={`text-xs ${saved ? "text-green-600" : "text-amber-600"}`}>{saved ? "已保存" : "未保存"}</span>
+        <button type="button" className="btn-primary text-sm" disabled={saving} onClick={() => void onSave()}>
+          {saving ? "保存中…" : "保存"}
+        </button>
+      </div>
+    </header>
+  );
+}
+
+function SkillEditorMain({ vm }: { vm: SkillEditorPageVm }) {
+  const { activePath, content, updateContent, err } = vm;
+
+  return (
+    <main className="flex min-h-0 min-w-0 flex-1 flex-col p-4">
+      {isMarkdownPath(activePath) ? (
+        <SkillMarkdownSplitEditor path={activePath} value={content} onChange={updateContent} />
+      ) : (
+        <>
+          <p className="mb-2 text-xs text-ink-muted">{activePath}</p>
+          <CodeEditor fill language={codeLanguageFromPath(activePath)} value={content} onChange={updateContent} aria-label={`编辑 ${activePath}`} />
+        </>
+      )}
+      {err && <p className="mt-2 text-xs text-red-600">{err}</p>}
+    </main>
+  );
+}
 
 function SkillEditorSidebar({ vm }: { vm: SkillEditorPageVm }) {
   const {

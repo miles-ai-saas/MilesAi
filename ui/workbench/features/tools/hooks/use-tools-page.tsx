@@ -6,8 +6,9 @@ import { useToolsFormDialog } from "@/features/tools/hooks/use-tools-form-dialog
 import { useToolsOverlays } from "@/features/tools/hooks/use-tools-overlays";
 import { useToolsMeta } from "@/features/tools/hooks/use-tools-meta";
 import { useRequireAuth } from "@/lib/auth-store";
-import { TOOLS_MAIN_TABS } from "@/features/tools/lib/tool-page-shared";
-import { toolKindTabs, type ToolPageTab, type ToolSourceTab } from "@/features/tools/lib/tool-labels";
+import { TOOL_PAGE_TABS, toolKindTabs, type ToolPageTab, type ToolSourceTab } from "@/features/tools/lib/tool-labels";
+
+const TOOLS_MAIN_TABS = TOOL_PAGE_TABS.map((t) => ({ key: t.key, label: t.label }));
 
 const TOOLS_PAGE_DESC =
   "平台内置与自定义 HTTP / Python 脚本工具；供技能包引用与智能体 function calling。外部 MCP 服务请前往 MCP 工作台。";

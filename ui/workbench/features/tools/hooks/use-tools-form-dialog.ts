@@ -5,8 +5,18 @@ import { api, getApiErrorMessage } from "@/lib/api";
 import { DEFAULT_SCRIPT } from "@/features/tools/lib/tool-create-dialog-shared";
 import type { ToolDialogMode } from "@/features/tools/lib/tool-create-dialog-shared";
 import type { ToolKindTab } from "@/features/tools/lib/tool-labels";
-import { defaultToolParams, slugFromName } from "@/features/tools/lib/tool-page-shared";
 import type { CustomTool, ToolCatalogItem, ToolCreatePayload, ToolParameterSpec } from "@/lib/types";
+
+function slugFromName(name: string): string {
+  return name
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 63);
+}
+
+const defaultToolParams = (): ToolParameterSpec[] => [];
 
 export type ToolFormState = {
   toolKind: ToolKindTab;

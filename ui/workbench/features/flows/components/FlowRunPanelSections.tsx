@@ -6,7 +6,7 @@ import { ChatArtifactMedia } from "@/features/agents";
 import type { FlowRunArtifact } from "@/features/flows/lib/flow-run-artifacts";
 import { extractFlowRunArtifacts } from "@/features/flows/lib/flow-run-artifacts";
 import { formatFlowSteps } from "@/features/flows/lib/flow-run-format";
-import type { FlowRunPanelProps } from "@/features/flows/lib/flow-run-panel-shared";
+import type { FlowRunPanelProps } from "@/features/flows/components/FlowRunPanel";
 import { useFlowRunPanelMedia } from "@/features/flows/hooks/use-flow-run-panel-media";
 
 function FlowRunArtifactsPreview({ artifacts }: { artifacts: FlowRunArtifact[] }) {

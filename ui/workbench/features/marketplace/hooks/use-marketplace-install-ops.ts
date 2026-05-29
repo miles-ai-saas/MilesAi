@@ -2,7 +2,7 @@
 
 import { useMarketplaceInstallReviewOps } from "@/features/marketplace/hooks/use-marketplace-install-review-ops";
 import { useMarketplaceVersionOps } from "@/features/marketplace/hooks/use-marketplace-version-ops";
-import type { MarketplaceMainView } from "@/features/marketplace/lib/marketplace-page-shared";
+import type { MarketplaceMainView } from "@/features/marketplace/hooks/use-marketplace-page";
 
 type Params = {
   setMsg: (msg: string) => void;

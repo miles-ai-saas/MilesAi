@@ -3,9 +3,17 @@
 import type { ReactNode } from "react";
 import { ResourceListLayout } from "@/components/resource/ResourceListLayout";
 import type { MonitorPageVm } from "@/features/monitor/hooks/use-monitor-page";
-import { MONITOR_MAIN_TABS } from "@/features/monitor/lib/monitor-shared";
+import type { MonitorTab } from "@/features/monitor/lib/monitor-shared";
 
 const MONITOR_PAGE_DESC = "查看租户业务指标、异步任务与合规拦截趋势，检查依赖组件健康状态，并配置 Webhook 告警。";
+
+const MONITOR_MAIN_TABS: { key: MonitorTab; label: string }[] = [
+  { key: "overview", label: "概览" },
+  { key: "trends", label: "趋势分析" },
+  { key: "usage", label: "模型用量" },
+  { key: "health", label: "系统健康" },
+  { key: "alerts", label: "告警配置" },
+];
 
 type Props = {
   vm: MonitorPageVm;

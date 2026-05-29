@@ -4,9 +4,13 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/api";
 import { usePagedList } from "@/hooks/use-paged-list";
 import { filterBySearch } from "@/lib/filter-search";
-import { marketplaceAppSearchText, type MarketplaceMainView } from "@/features/marketplace/lib/marketplace-page-shared";
+import type { MarketplaceMainView } from "@/features/marketplace/hooks/use-marketplace-page";
 import type { ResourceTab } from "@/components/resource/ResourceListLayout";
-import type { AppCategory } from "@/lib/types";
+import type { AppCategory, MarketplaceApp } from "@/lib/types";
+
+function marketplaceAppSearchText(a: MarketplaceApp) {
+  return `${a.name} ${a.description ?? ""} ${(a.tags ?? []).map((t) => t.name).join(" ")}`;
+}
 
 type Params = {
   ready: boolean;

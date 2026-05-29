@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { api } from "@/lib/api";
-import type { FlowRunPendingMedia } from "@/features/flows/lib/flow-run-panel-shared";
+import type { FlowRunPendingMedia } from "@/features/flows/components/FlowRunPanel";
 
 export function useFlowRunPanelMedia(pendingMedia: FlowRunPendingMedia[], onPendingMediaChange?: (items: FlowRunPendingMedia[]) => void) {
   const [uploadingMedia, setUploadingMedia] = useState(false);
