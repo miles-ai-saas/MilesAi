@@ -11,7 +11,7 @@ import {
   SKILL_NEW_FILE_TEMPLATES,
   skillLayoutSummary,
   skillLayoutWarnings,
-} from "@/lib/skill-editor-shared";
+} from "@/features/skills/lib/skill-editor-shared";
 import type { SkillFileNode, SkillPackage } from "@/lib/types";
 
 export function useSkillEditorPage() {

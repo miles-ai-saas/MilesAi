@@ -1,14 +1,14 @@
 "use client";
 
-import { AttachmentIdField } from "@/components/attachments/AttachmentIdField";
+import { AttachmentIdField } from "@/features/attachments";
 import {
   GenerativeModelSelect,
   IMAGE_SIZE_OPTIONS,
   InspectorField as GenerativeInspectorField,
   VIDEO_RESOLUTION_OPTIONS,
   modelLabel,
-} from "@/components/flow/GenerativeNodeInspectorFields";
-import { type InspectorFormContext } from "@/components/flow/flow-inspector-shared";
+} from "@/features/flows/components/GenerativeNodeInspectorFields";
+import { type InspectorFormContext } from "@/features/flows/components/flow-inspector-shared";
 
 export function ImageGenerateInspectorForm({ data, patch, labelField, models }: InspectorFormContext) {
   return (

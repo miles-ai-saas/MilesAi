@@ -1,7 +1,7 @@
 "use client";
 
-import type { ToolKindTab } from "@/lib/tool-labels";
-import type { ToolCreateDialogKindTab } from "@/lib/tool-create-dialog-shared";
+import type { ToolKindTab } from "@/features/tools/lib/tool-labels";
+import type { ToolCreateDialogKindTab } from "@/features/tools/lib/tool-create-dialog-shared";
 
 export function ToolCreateDialogKindSelector({
   kindTabs,

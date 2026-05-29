@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
-import { formatScheduleTime } from "@/lib/agent-schedule-shared";
+import { formatScheduleTime } from "@/features/agents/lib/agent-schedule-shared";
 import type { AgentScheduleRun } from "@/lib/types";
 
 export function AgentScheduleRunsPanel({ agentId, scheduleId }: { agentId: string; scheduleId: string }) {

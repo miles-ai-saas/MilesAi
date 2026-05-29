@@ -5,7 +5,7 @@
 import { useMemo, useState } from "react";
 import { CodeEditor } from "@/components/editor/CodeEditor";
 import { MarkdownPreview } from "@/components/editor/MarkdownPreview";
-import { parseSkillMd } from "@/lib/skill-md";
+import { parseSkillMd } from "@/features/skills/lib/skill-md";
 
 type ViewMode = "edit" | "preview" | "split";
 

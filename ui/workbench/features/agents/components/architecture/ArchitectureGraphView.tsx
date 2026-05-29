@@ -3,8 +3,8 @@
 import { Background, Controls, MiniMap, ReactFlow, ReactFlowProvider, useEdgesState, useNodesState, type Edge, type Node } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { useEffect, useMemo } from "react";
-import { ArchitectureGraphNode } from "@/components/agent/architecture/ArchitectureGraphNode";
-import type { ArchitectureNodeData } from "@/lib/agent-architecture-graph";
+import { ArchitectureGraphNode } from "@/features/agents/components/architecture/ArchitectureGraphNode";
+import type { ArchitectureNodeData } from "@/features/agents/lib/agent-architecture-graph";
 
 const nodeTypes = { architectureNode: ArchitectureGraphNode };
 

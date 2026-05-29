@@ -2,11 +2,11 @@
 
 /** 流程节点属性面板（链路 §6，见 flow-node-schemas.ts）。 */
 import type { Node } from "@xyflow/react";
-import { InspectorForm } from "@/components/flow/FlowInspectorForm";
+import { InspectorForm } from "@/features/flows/components/FlowInspectorForm";
 import type { KnowledgeBase, ModelConfig, PromptTemplate, ToolCatalogItem } from "@/lib/types";
 
-export type { FlowCompileErrorDetail } from "@/lib/flow-run-format";
-export { formatCompileErrors, formatFlowSteps } from "@/lib/flow-run-format";
+export type { FlowCompileErrorDetail } from "@/features/flows/lib/flow-run-format";
+export { formatCompileErrors, formatFlowSteps } from "@/features/flows/lib/flow-run-format";
 
 interface FlowNodeInspectorProps {
   node: Node | null;

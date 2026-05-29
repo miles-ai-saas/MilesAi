@@ -3,8 +3,7 @@
 /** 任务中心：后台 Celery 任务 + 生成任务（generative_jobs）。 */
 
 import { Suspense } from "react";
-import { TasksPageView } from "@/components/task/TasksPageView";
-import { useTasksPage } from "@/hooks/use-tasks-page";
+import { TasksPageView, useTasksPage } from "@/features/tasks";
 
 function TasksPageContent() {
   const vm = useTasksPage();

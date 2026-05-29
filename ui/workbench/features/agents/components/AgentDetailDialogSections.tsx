@@ -1,9 +1,9 @@
 "use client";
 
-import { AgentRenameInline } from "@/components/agent/AgentRenameInline";
-import { AgentDetailRow, formatAgentConfigSummary } from "@/lib/agent-detail-shared";
-import { agentModeLabel, agentStatusLabel, agentTypeLabel, subAgentRoleLabel } from "@/lib/agent-utils";
-import type { AgentDetailDialogVm } from "@/hooks/use-agent-detail-dialog";
+import { AgentRenameInline } from "@/features/agents/components/AgentRenameInline";
+import { AgentDetailRow, formatAgentConfigSummary } from "@/features/agents/lib/agent-detail-shared";
+import { agentModeLabel, agentStatusLabel, agentTypeLabel, subAgentRoleLabel } from "@/features/agents/lib/agent-utils";
+import type { AgentDetailDialogVm } from "@/features/agents/hooks/use-agent-detail-dialog";
 
 export function AgentDetailDialogBody({
   vm,

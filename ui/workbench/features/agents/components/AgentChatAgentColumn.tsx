@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { agentModeLabel } from "@/lib/agent-utils";
+import { agentModeLabel } from "@/features/agents/lib/agent-utils";
 import type { Agent } from "@/lib/types";
 
 function agentInitial(name: string) {

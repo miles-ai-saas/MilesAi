@@ -3,7 +3,7 @@
 /** MCP 添加入口卡片（链路 §11）。 */
 
 import { AddResourceCard } from "@/components/resource/AddResourceCard";
-import type { McpTransportTab } from "@/lib/mcp-labels";
+import type { McpTransportTab } from "@/features/mcp/lib/mcp-labels";
 
 type Props = {
   onAdd: (transport: Exclude<McpTransportTab, "">) => void;

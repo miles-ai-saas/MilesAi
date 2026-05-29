@@ -3,7 +3,7 @@
  * `agentModeLabel` 等为组合逻辑，非后端枚举。
  */
 
-import { agentStatusLabel, agentTypeLabel, subAgentRoleLabel, subAgentRoleOptions } from "@/lib/agent-labels";
+import { agentStatusLabel, agentTypeLabel, subAgentRoleLabel, subAgentRoleOptions } from "@/features/agents/lib/agent-labels";
 import type { Agent, Flow, ModelConfig, PromptTemplate } from "@/lib/types";
 
 const DEFAULT_SYSTEM_PROMPT = "你是企业智能助手，请准确、简洁地回答用户问题。";

@@ -2,7 +2,7 @@
 
 /** 单轮回复 steps 时间线（链路 §5，`agent-steps` 解析）。 */
 import { useMemo, useState } from "react";
-import { buildStepsSummary, formatToolParams, parseAgentSteps, type AgentStepStatus, type ParsedAgentStep } from "@/lib/agent-steps";
+import { buildStepsSummary, formatToolParams, parseAgentSteps, type AgentStepStatus, type ParsedAgentStep } from "@/features/agents/lib/agent-steps";
 import { generativeToolConfirmButtonLabel, generativeToolConfirmNote } from "@/lib/generative-tool-ui";
 import type { PendingToolCall } from "@/lib/types";
 

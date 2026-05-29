@@ -8,8 +8,8 @@ import {
   FlowVersionHistoryFooter,
   FlowVersionListPanel,
   FlowVersionPreviewPanel,
-} from "@/components/flow/FlowVersionHistoryDialogSections";
-import { useFlowVersionHistory, type FlowVersionHistoryProps } from "@/hooks/use-flow-version-history";
+} from "@/features/flows/components/FlowVersionHistoryDialogSections";
+import { useFlowVersionHistory, type FlowVersionHistoryProps } from "@/features/flows/hooks/use-flow-version-history";
 
 export function FlowVersionHistoryDialog(props: FlowVersionHistoryProps) {
   const vm = useFlowVersionHistory(props);

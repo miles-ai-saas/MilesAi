@@ -4,7 +4,7 @@
 
 import { CardActions } from "@/components/resource/CardActions";
 import { ResourceItemCard } from "@/components/resource/ResourceItemCard";
-import { formatMcpUpdatedAt, mcpCardDescription, mcpSyncStatusLabel, mcpTransportLabel, normalizeMcpTransport } from "@/lib/mcp-labels";
+import { formatMcpUpdatedAt, mcpCardDescription, mcpSyncStatusLabel, mcpTransportLabel, normalizeMcpTransport } from "@/features/mcp/lib/mcp-labels";
 import type { McpMeta, McpService } from "@/lib/types";
 
 const transportIcon: Record<"http" | "sse" | "stdio", string> = {

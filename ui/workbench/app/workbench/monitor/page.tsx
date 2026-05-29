@@ -2,13 +2,16 @@
 
 /** 监控大盘（链路 §14）：统计/趋势/健康 + `useMonitorMeta`。 */
 
-import { MonitorAlertsTab } from "@/components/monitor/MonitorAlertsTab";
-import { MonitorHealthTab } from "@/components/monitor/MonitorHealthTab";
-import { MonitorOverviewTab } from "@/components/monitor/MonitorOverviewTab";
-import { MonitorPageLayout } from "@/components/monitor/MonitorPageLayout";
-import { MonitorTrendsHeaderAction, MonitorTrendsTab } from "@/components/monitor/MonitorTrendsTab";
-import { MonitorUsageTab } from "@/components/monitor/MonitorUsageTab";
-import { useMonitorPage } from "@/hooks/use-monitor-page";
+import {
+  MonitorAlertsTab,
+  MonitorHealthTab,
+  MonitorOverviewTab,
+  MonitorPageLayout,
+  MonitorTrendsHeaderAction,
+  MonitorTrendsTab,
+  MonitorUsageTab,
+  useMonitorPage,
+} from "@/features/monitor";
 
 export default function MonitorPage() {
   const vm = useMonitorPage();

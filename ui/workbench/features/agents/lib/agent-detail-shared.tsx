@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { agentPlannerLabel, agentRuntimeModeLabel } from "@/lib/agent-labels";
+import { agentPlannerLabel, agentRuntimeModeLabel } from "@/features/agents/lib/agent-labels";
 import type { AgentMeta } from "@/lib/types";
 
 export function AgentDetailRow({ label, children }: { label: string; children: ReactNode }) {

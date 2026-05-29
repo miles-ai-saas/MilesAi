@@ -6,7 +6,7 @@ import { api } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth-store";
 import { usePagedList } from "@/hooks/use-paged-list";
 import { useConfirmAction } from "@/hooks/use-confirm-action";
-import { useFlowMeta } from "@/hooks/use-flow-meta";
+import { useFlowMeta } from "@/features/flows/hooks/use-flow-meta";
 import { filterBySearch } from "@/lib/filter-search";
 import type { Flow, FlowGraph } from "@/lib/types";
 

@@ -1,15 +1,15 @@
 "use client";
 
-import { ComplianceLibraryDetail } from "@/components/compliance/ComplianceLibraryDetail";
-import { ComplianceScanBindingsPanel } from "@/components/compliance/ComplianceScanBindingsPanel";
-import { WordLibraryDialog } from "@/components/compliance/WordLibraryDialog";
+import { ComplianceLibraryDetail } from "@/features/compliance/components/ComplianceLibraryDetail";
+import { ComplianceScanBindingsPanel } from "@/features/compliance/components/ComplianceScanBindingsPanel";
+import { WordLibraryDialog } from "@/features/compliance/components/WordLibraryDialog";
 import { AddResourceCard } from "@/components/resource/AddResourceCard";
 import { CardActions } from "@/components/resource/CardActions";
 import { ResourceItemCard } from "@/components/resource/ResourceItemCard";
 import { ResourceListFooter } from "@/components/resource/ResourceListFooter";
 import { ResourceListLayout } from "@/components/resource/ResourceListLayout";
-import type { CompliancePageVm } from "@/hooks/use-compliance-page";
-import { COMPLIANCE_MAIN_TABS, COMPLIANCE_PAGE_DESC } from "@/lib/compliance-page-shared";
+import type { CompliancePageVm } from "@/features/compliance/hooks/use-compliance-page";
+import { COMPLIANCE_MAIN_TABS, COMPLIANCE_PAGE_DESC } from "@/features/compliance/lib/compliance-page-shared";
 
 export function ComplianceWordsTab({ vm }: { vm: CompliancePageVm }) {
   const {

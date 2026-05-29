@@ -1,15 +1,15 @@
 "use client";
 
 import { useMemo } from "react";
-import { extractFlowRunArtifacts } from "@/lib/flow-run-artifacts";
+import { extractFlowRunArtifacts } from "@/features/flows/lib/flow-run-artifacts";
 import {
   FlowRunPanelCollapsedBar,
   FlowRunPanelErrors,
   FlowRunPanelInputs,
   FlowRunPanelResults,
-} from "@/components/flow/FlowRunPanelSections";
-import { useFlowRunPanelMedia } from "@/hooks/use-flow-run-panel-media";
-import type { FlowRunPanelProps, FlowRunState, FlowRunPendingMedia } from "@/lib/flow-run-panel-shared";
+} from "@/features/flows/components/FlowRunPanelSections";
+import { useFlowRunPanelMedia } from "@/features/flows/hooks/use-flow-run-panel-media";
+import type { FlowRunPanelProps, FlowRunState, FlowRunPendingMedia } from "@/features/flows/lib/flow-run-panel-shared";
 
 export type { FlowRunState, FlowRunPendingMedia };
 

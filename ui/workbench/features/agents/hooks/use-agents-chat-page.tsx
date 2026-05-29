@@ -2,14 +2,14 @@
 
 import { useCallback, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useTraceTurnSelection } from "@/components/agent/AgentTracePanel";
+import { useTraceTurnSelection } from "@/features/agents/components/AgentTracePanel";
 import { agentCarryForwardMediaEnabled, lastUserMessageMedia } from "@/lib/chat-media-forward";
 import { api } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth-store";
 import { useInfiniteList } from "@/hooks/use-infinite-list";
-import { useAgentsChatLayout } from "@/hooks/use-agents-chat-layout";
-import { useAgentsChatMessaging } from "@/hooks/use-agents-chat-messaging";
-import { useAgentsChatSessionSync } from "@/hooks/use-agents-chat-session-sync";
+import { useAgentsChatLayout } from "@/features/agents/hooks/use-agents-chat-layout";
+import { useAgentsChatMessaging } from "@/features/agents/hooks/use-agents-chat-messaging";
+import { useAgentsChatSessionSync } from "@/features/agents/hooks/use-agents-chat-session-sync";
 
 export function useAgentsChatPage() {
   const router = useRouter();

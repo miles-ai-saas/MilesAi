@@ -1,10 +1,10 @@
 "use client";
 
 import { TagManageDialog } from "@/components/tag/TagManageDialog";
-import { ToolCreateDialog } from "@/components/tool/ToolCreateDialog";
-import { ToolDetailDialog } from "@/components/tool/ToolDetailDialog";
-import { ToolTestDialog } from "@/components/tool/ToolTestDialog";
-import type { ToolsPageVm } from "@/hooks/use-tools-page";
+import { ToolCreateDialog } from "@/features/tools/components/ToolCreateDialog";
+import { ToolDetailDialog } from "@/features/tools/components/ToolDetailDialog";
+import { ToolTestDialog } from "@/features/tools/components/ToolTestDialog";
+import type { ToolsPageVm } from "@/features/tools/hooks/use-tools-page";
 
 export function ToolsPageOverlays({ vm }: { vm: ToolsPageVm }) {
   return (

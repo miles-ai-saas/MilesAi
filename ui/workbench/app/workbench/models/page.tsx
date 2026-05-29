@@ -2,12 +2,14 @@
 
 /** 模型目录（链路 §3）：列表 + `GET /models/meta` → model-catalog-ui。 */
 
-import { ModelCatalogGrid } from "@/components/model/ModelCatalogGrid";
-import { ModelFilterPanel } from "@/components/model/ModelFilterPanel";
-import { ModelsPageOverlays } from "@/components/model/ModelsPageOverlays";
+import {
+  ModelCatalogGrid,
+  ModelFilterPanel,
+  ModelsPageOverlays,
+  useModelsPage,
+} from "@/features/models";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { useModelsPage } from "@/hooks/use-models-page";
-import { MODELS_PAGE_DESC } from "@/lib/model-page-shared";
+import { MODELS_PAGE_DESC } from "@/features/models/lib/model-page-shared";
 
 export default function ModelsPage() {
   const vm = useModelsPage();

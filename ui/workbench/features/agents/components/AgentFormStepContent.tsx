@@ -1,15 +1,15 @@
 "use client";
 
 /** 智能体表单分步内容（链路 §4 agent/a2a meta）。 */
-import { AgentFormStepAdvancedSection } from "@/components/agent/AgentFormSteps/AgentFormStepAdvancedSection";
-import { AgentFormStepBasicSection } from "@/components/agent/AgentFormSteps/AgentFormStepBasicSection";
-import { AgentFormStepBindingsSection } from "@/components/agent/AgentFormSteps/AgentFormStepBindingsSection";
-import { AgentFormStepCapabilitiesSection } from "@/components/agent/AgentFormSteps/AgentFormStepCapabilitiesSection";
-import { AgentFormStepModelSection } from "@/components/agent/AgentFormSteps/AgentFormStepModelSection";
-import type { AgentFormStepContentProps } from "@/components/agent/agent-form-step-types";
-import { useAgentFormStepActions } from "@/hooks/use-agent-form-step-actions";
+import { AgentFormStepAdvancedSection } from "@/features/agents/components/AgentFormSteps/AgentFormStepAdvancedSection";
+import { AgentFormStepBasicSection } from "@/features/agents/components/AgentFormSteps/AgentFormStepBasicSection";
+import { AgentFormStepBindingsSection } from "@/features/agents/components/AgentFormSteps/AgentFormStepBindingsSection";
+import { AgentFormStepCapabilitiesSection } from "@/features/agents/components/AgentFormSteps/AgentFormStepCapabilitiesSection";
+import { AgentFormStepModelSection } from "@/features/agents/components/AgentFormSteps/AgentFormStepModelSection";
+import type { AgentFormStepContentProps } from "@/features/agents/components/agent-form-step-types";
+import { useAgentFormStepActions } from "@/features/agents/hooks/use-agent-form-step-actions";
 
-export type { AgentFormStepContentProps } from "@/components/agent/agent-form-step-types";
+export type { AgentFormStepContentProps } from "@/features/agents/components/agent-form-step-types";
 
 export function AgentFormStepContent({
   step,

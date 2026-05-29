@@ -1,14 +1,14 @@
 "use client";
 
-import { ToolParameterEditor } from "@/components/tool/ToolParameterEditor";
+import { ToolParameterEditor } from "@/features/tools/components/ToolParameterEditor";
 import {
   ToolCreateDialogBasicFields,
   ToolCreateDialogHttpFields,
   ToolCreateDialogScriptFields,
-} from "@/components/tool/ToolCreateDialogFields";
-import { ToolCreateDialogSection } from "@/lib/tool-create-dialog-shared";
-import type { ToolKindTab } from "@/lib/tool-labels";
-import type { ToolDialogMode } from "@/lib/tool-create-dialog-shared";
+} from "@/features/tools/components/ToolCreateDialogFields";
+import { ToolCreateDialogSection } from "@/features/tools/lib/tool-create-dialog-shared";
+import type { ToolKindTab } from "@/features/tools/lib/tool-labels";
+import type { ToolDialogMode } from "@/features/tools/lib/tool-create-dialog-shared";
 import type { ToolParameterSpec } from "@/lib/types";
 
 export type ToolCreateDialogEntityFormProps = {

@@ -1,7 +1,7 @@
 /** A2A 宿主表单共享校验（链路 §4）。 */
 
 import type { A2aPeerRefInput, Agent } from "@/lib/types";
-import { AGENT_PLANNER, AGENT_RUNTIME_MODE } from "@/lib/agent-config";
+import { AGENT_PLANNER, AGENT_RUNTIME_MODE } from "@/features/agents/lib/agent-config";
 
 export type A2aHostFormValues = {
   name: string;

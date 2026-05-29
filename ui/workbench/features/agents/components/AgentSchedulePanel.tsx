@@ -2,10 +2,10 @@
 
 /** 智能体定时任务面板（链路 §10 cron-celery）。 */
 
-import { AgentScheduleDialog } from "@/components/agent/AgentScheduleDialog";
-import { AgentScheduleEmptyState, AgentScheduleListItem } from "@/components/agent/AgentScheduleListItem";
+import { AgentScheduleDialog } from "@/features/agents/components/AgentScheduleDialog";
+import { AgentScheduleEmptyState, AgentScheduleListItem } from "@/features/agents/components/AgentScheduleListItem";
 import { Pagination } from "@/components/ui/Pagination";
-import { useAgentSchedulePanel } from "@/hooks/use-agent-schedule-panel";
+import { useAgentSchedulePanel } from "@/features/agents/hooks/use-agent-schedule-panel";
 
 type Props = {
   agentId: string;

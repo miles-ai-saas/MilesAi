@@ -3,17 +3,17 @@
 /** 智能体页 A2A Tab（链路 §3 + §4）。 */
 import { useCallback, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { A2aHostFormDialog } from "@/components/agent/A2aHostFormDialog";
-import { AgentRenameInline } from "@/components/agent/AgentRenameInline";
-import { A2aPeersPanel } from "@/components/agent/A2aPeersPanel";
+import { A2aHostFormDialog } from "@/features/agents/components/A2aHostFormDialog";
+import { AgentRenameInline } from "@/features/agents/components/AgentRenameInline";
+import { A2aPeersPanel } from "@/features/agents/components/A2aPeersPanel";
 import { AddResourceCard } from "@/components/resource/AddResourceCard";
 import { CardActions } from "@/components/resource/CardActions";
 import { ResourceItemCard } from "@/components/resource/ResourceItemCard";
 import { ResourceListFooter } from "@/components/resource/ResourceListFooter";
 import { usePagedList } from "@/hooks/use-paged-list";
 import { useConfirmAction } from "@/hooks/use-confirm-action";
-import { agentModeLabel, agentStatusLabel, agentTypeLabel } from "@/lib/agent-utils";
-import { useAgentMeta } from "@/hooks/use-agent-meta";
+import { agentModeLabel, agentStatusLabel, agentTypeLabel } from "@/features/agents/lib/agent-utils";
+import { useAgentMeta } from "@/features/agents/hooks/use-agent-meta";
 import { useRequireAuth } from "@/lib/auth-store";
 import { filterBySearch } from "@/lib/filter-search";
 import { api } from "@/lib/api";

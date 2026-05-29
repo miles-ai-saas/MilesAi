@@ -5,10 +5,10 @@
  */
 import { ReactFlowProvider } from "@xyflow/react";
 import { forwardRef } from "react";
-import { FlowCanvasInner } from "@/components/flow/FlowCanvasInner";
-import type { FlowCanvasHandle, FlowCanvasProps } from "@/components/flow/flow-canvas-types";
+import { FlowCanvasInner } from "@/features/flows/components/FlowCanvasInner";
+import type { FlowCanvasHandle, FlowCanvasProps } from "@/features/flows/components/flow-canvas-types";
 
-export type { FlowCanvasHandle, FlowCanvasProps } from "@/components/flow/flow-canvas-types";
+export type { FlowCanvasHandle, FlowCanvasProps } from "@/features/flows/components/flow-canvas-types";
 
 export const FlowCanvas = forwardRef<FlowCanvasHandle, FlowCanvasProps>(function FlowCanvas(props, ref) {
   return (

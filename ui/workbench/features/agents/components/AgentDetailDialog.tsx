@@ -2,9 +2,9 @@
 
 /** 智能体只读详情（链路 §4 `useAgentMeta`）。 */
 
-import { AgentDetailDialogBody, AgentDetailDialogFooter } from "@/components/agent/AgentDetailDialogSections";
+import { AgentDetailDialogBody, AgentDetailDialogFooter } from "@/features/agents/components/AgentDetailDialogSections";
 import { ResourceDialog } from "@/components/resource/ResourceDialog";
-import { useAgentDetailDialog } from "@/hooks/use-agent-detail-dialog";
+import { useAgentDetailDialog } from "@/features/agents/hooks/use-agent-detail-dialog";
 import type { Agent } from "@/lib/types";
 
 type Props = {

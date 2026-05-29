@@ -1,13 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { useToolsCatalog } from "@/hooks/use-tools-catalog";
-import { useToolsFormDialog } from "@/hooks/use-tools-form-dialog";
-import { useToolsOverlays } from "@/hooks/use-tools-overlays";
-import { useToolsMeta } from "@/hooks/use-tools-meta";
+import { useToolsCatalog } from "@/features/tools/hooks/use-tools-catalog";
+import { useToolsFormDialog } from "@/features/tools/hooks/use-tools-form-dialog";
+import { useToolsOverlays } from "@/features/tools/hooks/use-tools-overlays";
+import { useToolsMeta } from "@/features/tools/hooks/use-tools-meta";
 import { useRequireAuth } from "@/lib/auth-store";
-import { TOOLS_MAIN_TABS, TOOLS_PAGE_DESC } from "@/lib/tool-page-shared";
-import { toolKindTabs, type ToolPageTab, type ToolSourceTab } from "@/lib/tool-labels";
+import { TOOLS_MAIN_TABS, TOOLS_PAGE_DESC } from "@/features/tools/lib/tool-page-shared";
+import { toolKindTabs, type ToolPageTab, type ToolSourceTab } from "@/features/tools/lib/tool-labels";
 
 export function useToolsPage() {
   const { ready } = useRequireAuth();

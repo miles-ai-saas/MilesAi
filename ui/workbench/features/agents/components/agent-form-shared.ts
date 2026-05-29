@@ -2,7 +2,7 @@
 
 import type { A2aPeerRefInput, SubAgentBindingInput } from "@/lib/types";
 import type { Agent } from "@/lib/types";
-import { AGENT_PLANNER, AGENT_RUNTIME_MODE } from "@/lib/agent-config";
+import { AGENT_PLANNER, AGENT_RUNTIME_MODE } from "@/features/agents/lib/agent-config";
 
 export type AgentFormValues = {
   name: string;

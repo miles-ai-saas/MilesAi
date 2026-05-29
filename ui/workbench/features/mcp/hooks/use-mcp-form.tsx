@@ -1,13 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { MCP_ENDPOINT_PLACEHOLDER } from "@/components/mcp/mcp-dialog-shared";
+import { MCP_ENDPOINT_PLACEHOLDER } from "@/features/mcp/components/mcp-dialog-shared";
 import { useConfirmAction } from "@/hooks/use-confirm-action";
 import { api } from "@/lib/api";
-import { normalizeMcpTransport, type McpTransportTab } from "@/lib/mcp-labels";
-import { parseStdioArgs } from "@/lib/mcp-page-shared";
+import { normalizeMcpTransport, type McpTransportTab } from "@/features/mcp/lib/mcp-labels";
+import { parseStdioArgs } from "@/features/mcp/lib/mcp-page-shared";
 import type { McpService } from "@/lib/types";
-import type { McpListSlice } from "@/hooks/use-mcp-list";
+import type { McpListSlice } from "@/features/mcp/hooks/use-mcp-list";
 
 type ViewingSlice = {
   viewing: McpService | null;

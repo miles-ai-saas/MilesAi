@@ -3,8 +3,7 @@
 /** 合规词库（链路 §13）：词库/日志/试扫 + `useComplianceMeta`。 */
 
 import { Suspense } from "react";
-import { CompliancePageView } from "@/components/compliance/CompliancePageView";
-import { useCompliancePage } from "@/hooks/use-compliance-page";
+import { CompliancePageView, useCompliancePage } from "@/features/compliance";
 
 function CompliancePageContent() {
   const vm = useCompliancePage();

@@ -6,10 +6,10 @@ import { useEffect, useState } from "react";
 import { ResourceDialog } from "@/components/resource/ResourceDialog";
 import { api } from "@/lib/api";
 import { TagChips } from "@/components/tag/TagChips";
-import { flowStatusLabel } from "@/lib/flow-labels";
+import { flowStatusLabel } from "@/features/flows/lib/flow-labels";
 import type { Flow, FlowGraph, FlowMeta } from "@/lib/types";
 
-const FlowCanvasPreview = dynamic(() => import("@/components/flow/FlowCanvasPreview").then((m) => m.FlowCanvasPreview), { ssr: false });
+const FlowCanvasPreview = dynamic(() => import("@/features/flows/components/FlowCanvasPreview").then((m) => m.FlowCanvasPreview), { ssr: false });
 
 type Props = {
   open: boolean;

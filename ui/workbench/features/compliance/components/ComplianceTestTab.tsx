@@ -1,9 +1,9 @@
 "use client";
 
-import { ScanStatusBadge } from "@/components/compliance/ScanStatusBadge";
+import { ScanStatusBadge } from "@/features/compliance/components/ScanStatusBadge";
 import { ResourceListLayout } from "@/components/resource/ResourceListLayout";
-import type { CompliancePageVm } from "@/hooks/use-compliance-page";
-import { COMPLIANCE_MAIN_TABS, COMPLIANCE_PAGE_DESC } from "@/lib/compliance-page-shared";
+import type { CompliancePageVm } from "@/features/compliance/hooks/use-compliance-page";
+import { COMPLIANCE_MAIN_TABS, COMPLIANCE_PAGE_DESC } from "@/features/compliance/lib/compliance-page-shared";
 
 export function ComplianceTestTab({ vm }: { vm: CompliancePageVm }) {
   const { tab, setTab, testText, setTestText, scanBusy, scanResult, onScan, actionLabel } = vm;

@@ -3,7 +3,7 @@
 /** 词库详情与词条（链路 §13）。 */
 
 import { useCallback, useState } from "react";
-import { LibraryWordDialog } from "@/components/compliance/LibraryWordDialog";
+import { LibraryWordDialog } from "@/features/compliance/components/LibraryWordDialog";
 import { CardActions } from "@/components/resource/CardActions";
 import { ResourceDialog } from "@/components/resource/ResourceDialog";
 import { ResourceItemCard } from "@/components/resource/ResourceItemCard";
@@ -11,7 +11,7 @@ import { ResourceListFooter } from "@/components/resource/ResourceListFooter";
 import { api } from "@/lib/api";
 import { usePagedList } from "@/hooks/use-paged-list";
 import { useConfirmAction } from "@/hooks/use-confirm-action";
-import { sensitiveActionLabel } from "@/lib/compliance-labels";
+import { sensitiveActionLabel } from "@/features/compliance/lib/compliance-labels";
 import type { EnumOption, LibraryWord, WordLibrary } from "@/lib/types";
 
 type Props = {

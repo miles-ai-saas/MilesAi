@@ -1,9 +1,9 @@
 "use client";
 
-import { A2aAgentsTab } from "@/components/agent/A2aAgentsTab";
-import { AgentDetailDialog } from "@/components/agent/AgentDetailDialog";
-import { AgentFormDialog } from "@/components/agent/AgentFormDialog";
-import { AgentRenameInline } from "@/components/agent/AgentRenameInline";
+import { A2aAgentsTab } from "@/features/agents/components/A2aAgentsTab";
+import { AgentDetailDialog } from "@/features/agents/components/AgentDetailDialog";
+import { AgentFormDialog } from "@/features/agents/components/AgentFormDialog";
+import { AgentRenameInline } from "@/features/agents/components/AgentRenameInline";
 import { AddResourceCard } from "@/components/resource/AddResourceCard";
 import { CardActions } from "@/components/resource/CardActions";
 import { ResourceItemCard } from "@/components/resource/ResourceItemCard";
@@ -14,9 +14,9 @@ import { TagFilterDropdown } from "@/components/tag/TagFilterDropdown";
 import { TagManageDialog } from "@/components/tag/TagManageDialog";
 import { FilterChip } from "@/components/ui/FilterChip";
 import { StatChip } from "@/components/ui/StatChip";
-import type { AgentsPageVm } from "@/hooks/use-agents-page";
-import { agentModeLabel, agentStatusLabel, agentTypeLabel } from "@/lib/agent-utils";
-import { AGENTS_TAB_DESCRIPTIONS, AGENTS_TAB_ITEMS } from "@/lib/agents-page-shared";
+import type { AgentsPageVm } from "@/features/agents/hooks/use-agents-page";
+import { agentModeLabel, agentStatusLabel, agentTypeLabel } from "@/features/agents/lib/agent-utils";
+import { AGENTS_TAB_DESCRIPTIONS, AGENTS_TAB_ITEMS } from "@/features/agents/lib/agents-page-shared";
 
 export function AgentsPageView({ vm }: { vm: AgentsPageVm }) {
   const {

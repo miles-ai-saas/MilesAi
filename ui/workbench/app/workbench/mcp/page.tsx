@@ -5,8 +5,7 @@
  * SSE 类型 endpoint 应填 GET 长连接地址（如 /sse），由后端 legacy_sse 客户端处理。
  */
 
-import { McpPageView } from "@/components/mcp/McpPageView";
-import { useMcpPage } from "@/hooks/use-mcp-page";
+import { McpPageView, useMcpPage } from "@/features/mcp";
 
 export default function McpPage() {
   const vm = useMcpPage();

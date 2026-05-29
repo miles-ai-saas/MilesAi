@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import type { ToolKindTab } from "@/lib/tool-labels";
+import type { ToolKindTab } from "@/features/tools/lib/tool-labels";
 
 export type ToolDialogMode = "create" | "edit";
 

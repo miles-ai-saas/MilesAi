@@ -6,7 +6,7 @@ import { useCategoryTabs } from "@/components/category/useCategoryTabs";
 import { api } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth-store";
 import { usePagedList } from "@/hooks/use-paged-list";
-import { useSkillMeta } from "@/hooks/use-skill-meta";
+import { useSkillMeta } from "@/features/skills/hooks/use-skill-meta";
 import { filterBySearch } from "@/lib/filter-search";
 import type { SkillImportResult } from "@/lib/types";
 

@@ -3,14 +3,14 @@
 /** 智能体创建/编辑多步表单（链路 §3 + §4 agent/a2a meta）。 */
 
 import { useEffect, useState } from "react";
-import { AGENT_FORM_STEPS, agentToFormValues, buildAgentConfig, emptyAgentForm, type AgentFormValues } from "@/components/agent/agent-form-shared";
-import { AgentFormStepContent } from "@/components/agent/AgentFormStepContent";
-import { AgentFormStepper } from "@/components/agent/AgentFormStepper";
+import { AGENT_FORM_STEPS, agentToFormValues, buildAgentConfig, emptyAgentForm, type AgentFormValues } from "@/features/agents/components/agent-form-shared";
+import { AgentFormStepContent } from "@/features/agents/components/AgentFormStepContent";
+import { AgentFormStepper } from "@/features/agents/components/AgentFormStepper";
 import { ResourceDialog } from "@/components/resource/ResourceDialog";
 import { api } from "@/lib/api";
 import type { Agent, A2aPeer, Flow, KnowledgeBase, McpService, ModelConfig, PromptTemplate, SkillPackage, SysCategory, ToolCatalogItem } from "@/lib/types";
 
-export type { AgentFormValues } from "@/components/agent/agent-form-shared";
+export type { AgentFormValues } from "@/features/agents/components/agent-form-shared";
 
 type Props = {
   open: boolean;

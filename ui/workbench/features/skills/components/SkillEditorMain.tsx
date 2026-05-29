@@ -1,9 +1,9 @@
 "use client";
 
 import { CodeEditor, codeLanguageFromPath } from "@/components/editor/CodeEditor";
-import { SkillMarkdownSplitEditor } from "@/components/skills/SkillMarkdownSplitEditor";
-import type { SkillEditorPageVm } from "@/hooks/use-skill-editor-page";
-import { isMarkdownPath } from "@/lib/skill-md";
+import { SkillMarkdownSplitEditor } from "@/features/skills/components/SkillMarkdownSplitEditor";
+import type { SkillEditorPageVm } from "@/features/skills/hooks/use-skill-editor-page";
+import { isMarkdownPath } from "@/features/skills/lib/skill-md";
 
 export function SkillEditorMain({ vm }: { vm: SkillEditorPageVm }) {
   const { activePath, content, updateContent, err } = vm;

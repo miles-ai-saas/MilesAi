@@ -1,8 +1,8 @@
 "use client";
 
 import type { ReactNode } from "react";
-import type { McpTransportTab } from "@/lib/mcp-labels";
-import { mcpTransportLabel } from "@/lib/mcp-labels";
+import type { McpTransportTab } from "@/features/mcp/lib/mcp-labels";
+import { mcpTransportLabel } from "@/features/mcp/lib/mcp-labels";
 import type { McpMeta } from "@/lib/types";
 
 export function McpDialogSection({ title, hint, children }: { title: string; hint?: string; children: ReactNode }) {

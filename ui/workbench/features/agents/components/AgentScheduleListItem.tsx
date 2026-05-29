@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { AgentScheduleRunsPanel } from "@/components/agent/AgentScheduleRunsPanel";
-import { formatScheduleTime } from "@/lib/agent-schedule-shared";
+import { AgentScheduleRunsPanel } from "@/features/agents/components/AgentScheduleRunsPanel";
+import { formatScheduleTime } from "@/features/agents/lib/agent-schedule-shared";
 import type { AgentSchedule } from "@/lib/types";
 
 export function AgentScheduleListItem({

@@ -4,15 +4,15 @@
 
 import { KbPageAlert } from "@/components/kb/KbPageAlert";
 import { ResourceDialog } from "@/components/resource/ResourceDialog";
-import { ToolCreateDialogEntityForm } from "@/components/tool/ToolCreateDialogEntityForm";
-import { ToolCreateDialogKindSelector } from "@/components/tool/ToolCreateDialogKindSelector";
-import type { ToolCreateDialogKindTab } from "@/lib/tool-create-dialog-shared";
-import type { ToolDialogMode } from "@/lib/tool-create-dialog-shared";
-import type { ToolKindTab } from "@/lib/tool-labels";
+import { ToolCreateDialogEntityForm } from "@/features/tools/components/ToolCreateDialogEntityForm";
+import { ToolCreateDialogKindSelector } from "@/features/tools/components/ToolCreateDialogKindSelector";
+import type { ToolCreateDialogKindTab } from "@/features/tools/lib/tool-create-dialog-shared";
+import type { ToolDialogMode } from "@/features/tools/lib/tool-create-dialog-shared";
+import type { ToolKindTab } from "@/features/tools/lib/tool-labels";
 import type { CustomTool, ToolParameterSpec } from "@/lib/types";
 
-export type { ToolDialogMode } from "@/lib/tool-create-dialog-shared";
-export { DEFAULT_SCRIPT } from "@/lib/tool-create-dialog-shared";
+export type { ToolDialogMode } from "@/features/tools/lib/tool-create-dialog-shared";
+export { DEFAULT_SCRIPT } from "@/features/tools/lib/tool-create-dialog-shared";
 
 type Props = {
   open: boolean;

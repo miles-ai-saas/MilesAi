@@ -3,8 +3,8 @@
 import { CardActions } from "@/components/resource/CardActions";
 import { ResourceItemCard } from "@/components/resource/ResourceItemCard";
 import { TagChips } from "@/components/tag/TagChips";
-import { skillActiveLabel, skillSourceTypeLabel } from "@/lib/skill-labels";
-import { formatSkillUpdated } from "@/lib/skills-page-shared";
+import { skillActiveLabel, skillSourceTypeLabel } from "@/features/skills/lib/skill-labels";
+import { formatSkillUpdated } from "@/features/skills/lib/skills-page-shared";
 import type { SkillMeta, SkillPackage } from "@/lib/types";
 
 export function SkillCard({

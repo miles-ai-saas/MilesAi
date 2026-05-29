@@ -1,13 +1,13 @@
 "use client";
 
 /** 对话页右侧配置侧栏（链路 §5 + §4 agent meta）。 */
-import { AGENT_WORKBENCH_TABS, type AgentWorkbenchTab } from "@/components/agent/agent-workbench-tabs";
-import { CHAT_RIGHT_RAIL_COLLAPSED, CHAT_RIGHT_RAIL_EXPANDED } from "@/components/agent/chat-sidebar-layout";
-import { AgentRenameInline } from "@/components/agent/AgentRenameInline";
-import { SidebarCollapseButton } from "@/components/agent/SidebarCollapseButton";
-import { WorkbenchTabIcon } from "@/components/agent/WorkbenchTabIcon";
-import { agentModeLabel, agentStatusLabel } from "@/lib/agent-utils";
-import { useAgentMeta } from "@/hooks/use-agent-meta";
+import { AGENT_WORKBENCH_TABS, type AgentWorkbenchTab } from "@/features/agents/components/agent-workbench-tabs";
+import { CHAT_RIGHT_RAIL_COLLAPSED, CHAT_RIGHT_RAIL_EXPANDED } from "@/features/agents/components/chat-sidebar-layout";
+import { AgentRenameInline } from "@/features/agents/components/AgentRenameInline";
+import { SidebarCollapseButton } from "@/features/agents/components/SidebarCollapseButton";
+import { WorkbenchTabIcon } from "@/features/agents/components/WorkbenchTabIcon";
+import { agentModeLabel, agentStatusLabel } from "@/features/agents/lib/agent-utils";
+import { useAgentMeta } from "@/features/agents/hooks/use-agent-meta";
 import type { Agent } from "@/lib/types";
 
 type Props = {

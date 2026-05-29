@@ -1,6 +1,6 @@
 "use client";
 
-import { agentFormStepWidth, type AgentFormStepContentProps } from "@/components/agent/agent-form-step-types";
+import { agentFormStepWidth, type AgentFormStepContentProps } from "@/features/agents/components/agent-form-step-types";
 
 type Props = Pick<AgentFormStepContentProps, "form" | "setForm" | "models" | "prompts" | "designMode">;
 

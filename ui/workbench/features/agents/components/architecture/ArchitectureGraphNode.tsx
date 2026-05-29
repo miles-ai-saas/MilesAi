@@ -1,7 +1,7 @@
 "use client";
 
 import { Handle, Position, type Node, type NodeProps } from "@xyflow/react";
-import type { ArchitectureNodeData } from "@/lib/agent-architecture-graph";
+import type { ArchitectureNodeData } from "@/features/agents/lib/agent-architecture-graph";
 
 export function ArchitectureGraphNode({ data }: NodeProps<Node<ArchitectureNodeData>>) {
   const isHub = data.variant === "hub";

@@ -1,6 +1,6 @@
 /** 工具页共享常量与表单辅助。 */
 
-import { TOOL_PAGE_TABS } from "@/lib/tool-labels";
+import { TOOL_PAGE_TABS } from "@/features/tools/lib/tool-labels";
 import type { ToolParameterSpec } from "@/lib/types";
 
 export const TOOLS_PAGE_DESC =

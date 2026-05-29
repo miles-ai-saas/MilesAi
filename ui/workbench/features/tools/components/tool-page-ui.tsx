@@ -2,7 +2,7 @@
 
 import { FilterChip } from "@/components/ui/FilterChip";
 import { StatChip } from "@/components/ui/StatChip";
-import { invocationStatusLabel, toolSourceLabel } from "@/lib/tool-labels";
+import { invocationStatusLabel, toolSourceLabel } from "@/features/tools/lib/tool-labels";
 import type { ToolInvocationLog, ToolsMeta } from "@/lib/types";
 
 export { FilterChip, StatChip };

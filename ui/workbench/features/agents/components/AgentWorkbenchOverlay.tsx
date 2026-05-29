@@ -1,12 +1,12 @@
 "use client";
 
 /** 对话页全屏工作台遮罩（链路 §5）。 */
-import { AGENT_WORKBENCH_TABS, type AgentWorkbenchTab } from "@/components/agent/agent-workbench-tabs";
-import { AgentArchitecturePanel } from "@/components/agent/AgentArchitecturePanel";
-import { AgentSchedulePanel } from "@/components/agent/AgentSchedulePanel";
-import { AgentStatsPanel } from "@/components/agent/AgentStatsPanel";
-import { AgentTracePanel } from "@/components/agent/AgentTracePanel";
-import { AgentWorkbenchPanel } from "@/components/agent/AgentWorkbenchPanel";
+import { AGENT_WORKBENCH_TABS, type AgentWorkbenchTab } from "@/features/agents/components/agent-workbench-tabs";
+import { AgentArchitecturePanel } from "@/features/agents/components/AgentArchitecturePanel";
+import { AgentSchedulePanel } from "@/features/agents/components/AgentSchedulePanel";
+import { AgentStatsPanel } from "@/features/agents/components/AgentStatsPanel";
+import { AgentTracePanel } from "@/features/agents/components/AgentTracePanel";
+import { AgentWorkbenchPanel } from "@/features/agents/components/AgentWorkbenchPanel";
 import type { ChatMessage } from "@/lib/chat-sessions";
 import type { Agent } from "@/lib/types";
 

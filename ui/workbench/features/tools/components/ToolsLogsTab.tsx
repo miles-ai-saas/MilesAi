@@ -2,8 +2,8 @@
 
 import { ResourceListFooter } from "@/components/resource/ResourceListFooter";
 import { ResourceListLayout } from "@/components/resource/ResourceListLayout";
-import { InvocationLogRow, StatChip } from "@/components/tool/tool-page-ui";
-import type { ToolsPageVm } from "@/hooks/use-tools-page";
+import { InvocationLogRow, StatChip } from "@/features/tools/components/tool-page-ui";
+import type { ToolsPageVm } from "@/features/tools/hooks/use-tools-page";
 
 export function ToolsLogsTab({ vm }: { vm: ToolsPageVm }) {
   return (

@@ -1,7 +1,7 @@
 "use client";
 
-import type { SkillEditorPageVm } from "@/hooks/use-skill-editor-page";
-import { SKILL_EDITOR_DEFAULT_PATH } from "@/lib/skill-editor-shared";
+import type { SkillEditorPageVm } from "@/features/skills/hooks/use-skill-editor-page";
+import { SKILL_EDITOR_DEFAULT_PATH } from "@/features/skills/lib/skill-editor-shared";
 
 export function SkillEditorSidebar({ vm }: { vm: SkillEditorPageVm }) {
   const {

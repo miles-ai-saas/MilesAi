@@ -4,7 +4,7 @@
 import { useEffect, useState } from "react";
 import { ResourceDialog } from "@/components/resource/ResourceDialog";
 import { TagPicker } from "@/components/tag/TagPicker";
-import { useFlowTemplates } from "@/hooks/use-flow-templates";
+import { useFlowTemplates } from "@/features/flows/hooks/use-flow-templates";
 import type { FlowGraph, FlowTemplate } from "@/lib/types";
 
 type Props = {

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { ChatArtifactMedia } from "@/components/agent/ChatArtifactMedia";
-import type { FlowRunArtifact } from "@/lib/flow-run-artifacts";
+import type { FlowRunArtifact } from "@/features/flows/lib/flow-run-artifacts";
 
 type Props = {
   artifacts: FlowRunArtifact[];

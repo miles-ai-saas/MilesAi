@@ -13,17 +13,17 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useState, type Ref } from "react";
-import { FlowCanvasPalette } from "@/components/flow/FlowCanvasPalette";
-import { FlowCanvasToolbar } from "@/components/flow/FlowCanvasToolbar";
-import { FlowNodeInspector } from "@/components/flow/FlowNodeInspector";
-import { flowNodeTypes } from "@/components/flow/FlowNodeCard";
-import type { FlowCanvasHandle, FlowCanvasProps } from "@/components/flow/flow-canvas-types";
+import { FlowCanvasPalette } from "@/features/flows/components/FlowCanvasPalette";
+import { FlowCanvasToolbar } from "@/features/flows/components/FlowCanvasToolbar";
+import { FlowNodeInspector } from "@/features/flows/components/FlowNodeInspector";
+import { flowNodeTypes } from "@/features/flows/components/FlowNodeCard";
+import type { FlowCanvasHandle, FlowCanvasProps } from "@/features/flows/components/flow-canvas-types";
 import { useConfirmAction } from "@/hooks/use-confirm-action";
-import { useFlowCanvasHistory } from "@/hooks/use-flow-canvas-history";
-import { useFlowTemplates } from "@/hooks/use-flow-templates";
+import { useFlowCanvasHistory } from "@/features/flows/hooks/use-flow-canvas-history";
+import { useFlowTemplates } from "@/features/flows/hooks/use-flow-templates";
 import type { EdgeChange, NodeChange } from "@xyflow/react";
-import { createPaletteNode, graphToReactFlow, reactFlowToGraph } from "@/lib/flow-nodes";
-import { isValidConnection } from "@/lib/flow-node-schemas";
+import { createPaletteNode, graphToReactFlow, reactFlowToGraph } from "@/features/flows/lib/flow-nodes";
+import { isValidConnection } from "@/features/flows/lib/flow-node-schemas";
 import type { FlowGraph, FlowTemplate } from "@/lib/types";
 
 export const FlowCanvasInner = forwardRef<FlowCanvasHandle, FlowCanvasProps>(function FlowCanvasInner(

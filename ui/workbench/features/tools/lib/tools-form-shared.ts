@@ -1,7 +1,7 @@
-import { DEFAULT_SCRIPT } from "@/lib/tool-create-dialog-shared";
-import type { ToolKindTab } from "@/lib/tool-labels";
+import { DEFAULT_SCRIPT } from "@/features/tools/lib/tool-create-dialog-shared";
+import type { ToolKindTab } from "@/features/tools/lib/tool-labels";
 import type { CustomTool, ToolCreatePayload, ToolParameterSpec } from "@/lib/types";
-import { defaultToolParams } from "@/lib/tool-page-shared";
+import { defaultToolParams } from "@/features/tools/lib/tool-page-shared";
 
 export type ToolFormState = {
   toolKind: ToolKindTab;

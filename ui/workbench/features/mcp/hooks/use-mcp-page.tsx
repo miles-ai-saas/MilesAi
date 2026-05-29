@@ -1,7 +1,7 @@
 "use client";
 
-import { useMcpForm } from "@/hooks/use-mcp-form";
-import { useMcpList, useMcpViewing } from "@/hooks/use-mcp-list";
+import { useMcpForm } from "@/features/mcp/hooks/use-mcp-form";
+import { useMcpList, useMcpViewing } from "@/features/mcp/hooks/use-mcp-list";
 
 export function useMcpPage() {
   const listSlice = useMcpList();

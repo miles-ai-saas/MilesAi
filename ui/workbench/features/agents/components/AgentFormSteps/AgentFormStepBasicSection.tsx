@@ -1,7 +1,7 @@
 "use client";
 
-import { formatAgentCode } from "@/components/agent/agent-form-shared";
-import { agentFormStepWidth, type AgentFormStepContentProps } from "@/components/agent/agent-form-step-types";
+import { formatAgentCode } from "@/features/agents/components/agent-form-shared";
+import { agentFormStepWidth, type AgentFormStepContentProps } from "@/features/agents/components/agent-form-step-types";
 import { TagPicker } from "@/components/tag/TagPicker";
 
 type Props = Pick<AgentFormStepContentProps, "form" | "setForm" | "agentId" | "categories" | "designMode">;

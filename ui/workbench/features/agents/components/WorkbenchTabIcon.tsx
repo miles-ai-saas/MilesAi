@@ -3,7 +3,7 @@
 /** 工作台 Tab 图标（链路 §5，映射 agent-workbench-tabs）。 */
 
 import type { ReactNode } from "react";
-import type { AgentWorkbenchTab } from "@/components/agent/agent-workbench-tabs";
+import type { AgentWorkbenchTab } from "@/features/agents/components/agent-workbench-tabs";
 
 const paths: Record<AgentWorkbenchTab, ReactNode> = {
   config: (

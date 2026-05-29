@@ -1,5 +1,5 @@
-import type { FlowCompileErrorDetail } from "@/lib/flow-run-format";
-import type { FlowRunArtifact } from "@/lib/flow-run-artifacts";
+import type { FlowCompileErrorDetail } from "@/features/flows/lib/flow-run-format";
+import type { FlowRunArtifact } from "@/features/flows/lib/flow-run-artifacts";
 import type { KnowledgeBase } from "@/lib/types";
 
 export interface FlowRunState {

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/api";
-import { graphStats } from "@/lib/flow-version-history-shared";
+import { graphStats } from "@/features/flows/lib/flow-version-history-shared";
 import type { FlowGraph, FlowVersionSummary } from "@/lib/types";
 
 export type FlowVersionHistoryProps = {

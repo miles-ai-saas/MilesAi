@@ -5,8 +5,8 @@
  * ImageGenerate / VideoGenerate 摘要见节点 data.model_config_id、duration 等。
  */
 import { Handle, Position, type NodeProps } from "@xyflow/react";
-import { NODE_PALETTE } from "@/lib/flow-nodes";
-import { getNodeHandles, sourceHandleClass, targetHandleClass } from "@/lib/flow-node-schemas";
+import { NODE_PALETTE } from "@/features/flows/lib/flow-nodes";
+import { getNodeHandles, sourceHandleClass, targetHandleClass } from "@/features/flows/lib/flow-node-schemas";
 
 const TARGET_TOP_OFFSET: Record<string, string> = {
   query: "20%",

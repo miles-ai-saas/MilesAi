@@ -2,9 +2,9 @@
 
 import { useMemo } from "react";
 import type { Dispatch, SetStateAction } from "react";
-import type { AgentFormValues } from "@/components/agent/agent-form-shared";
-import { subAgentRoleOptions } from "@/lib/agent-labels";
-import { useAgentMeta } from "@/hooks/use-agent-meta";
+import type { AgentFormValues } from "@/features/agents/components/agent-form-shared";
+import { subAgentRoleOptions } from "@/features/agents/lib/agent-labels";
+import { useAgentMeta } from "@/features/agents/hooks/use-agent-meta";
 import { useA2aMeta } from "@/hooks/use-a2a-meta";
 import { a2aInvokePolicyOptions } from "@/lib/a2a-labels";
 import type { ModelConfig } from "@/lib/types";

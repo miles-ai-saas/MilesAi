@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePagedList } from "@/hooks/use-paged-list";
 import { api } from "@/lib/api";
 import { filterBySearch } from "@/lib/filter-search";
-import type { ToolPageTab, ToolSourceTab } from "@/lib/tool-labels";
+import type { ToolPageTab, ToolSourceTab } from "@/features/tools/lib/tool-labels";
 import type { ToolCatalogItem } from "@/lib/types";
 
 type Params = {

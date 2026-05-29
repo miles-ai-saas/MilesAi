@@ -3,10 +3,10 @@
 import { AddResourceCard } from "@/components/resource/AddResourceCard";
 import { ResourceListLayout } from "@/components/resource/ResourceListLayout";
 import { TagFilterDropdown } from "@/components/tag/TagFilterDropdown";
-import { ToolCard } from "@/components/tool/ToolCard";
-import { FilterChip, StatChip } from "@/components/tool/tool-page-ui";
-import { catalogSourceTabs } from "@/lib/tool-labels";
-import type { ToolsPageVm } from "@/hooks/use-tools-page";
+import { ToolCard } from "@/features/tools/components/ToolCard";
+import { FilterChip, StatChip } from "@/features/tools/components/tool-page-ui";
+import { catalogSourceTabs } from "@/features/tools/lib/tool-labels";
+import type { ToolsPageVm } from "@/features/tools/hooks/use-tools-page";
 
 export function ToolsCatalogTab({ vm }: { vm: ToolsPageVm }) {
   return (

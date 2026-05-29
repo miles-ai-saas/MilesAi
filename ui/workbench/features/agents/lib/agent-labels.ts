@@ -4,7 +4,7 @@
  */
 
 import { optionLabel, type EnumOption } from "@/lib/enum-meta";
-import { AGENT_PLANNER, AGENT_RUNTIME_MODE } from "@/lib/agent-config";
+import { AGENT_PLANNER, AGENT_RUNTIME_MODE } from "@/features/agents/lib/agent-config";
 import type { Agent, AgentMeta } from "@/lib/types";
 
 const STATUS_FALLBACK: Record<string, string> = {

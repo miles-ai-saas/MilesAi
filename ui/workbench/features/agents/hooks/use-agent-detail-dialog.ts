@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/api";
-import { useAgentMeta } from "@/hooks/use-agent-meta";
+import { useAgentMeta } from "@/features/agents/hooks/use-agent-meta";
 import type { Agent, Flow, KnowledgeBase, McpService, ModelConfig, PromptTemplate, SkillPackage } from "@/lib/types";
 
 export function useAgentDetailDialog(open: boolean, agentId: string | null) {

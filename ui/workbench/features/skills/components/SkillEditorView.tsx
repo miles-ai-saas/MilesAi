@@ -1,10 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { SkillEditorHeader } from "@/components/skills/SkillEditorHeader";
-import { SkillEditorMain } from "@/components/skills/SkillEditorMain";
-import { SkillEditorSidebar } from "@/components/skills/SkillEditorSidebar";
-import type { SkillEditorPageVm } from "@/hooks/use-skill-editor-page";
+import { SkillEditorHeader } from "@/features/skills/components/SkillEditorHeader";
+import { SkillEditorMain } from "@/features/skills/components/SkillEditorMain";
+import { SkillEditorSidebar } from "@/features/skills/components/SkillEditorSidebar";
+import type { SkillEditorPageVm } from "@/features/skills/hooks/use-skill-editor-page";
 
 export function SkillEditorView({ vm }: { vm: SkillEditorPageVm }) {
   const { loading, skill, err } = vm;

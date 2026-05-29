@@ -1,6 +1,6 @@
 "use client";
 
-import { PALETTE_GROUPS, paletteItemsByGroup, type NodeType } from "@/lib/flow-nodes";
+import { PALETTE_GROUPS, paletteItemsByGroup, type NodeType } from "@/features/flows/lib/flow-nodes";
 
 type Props = {
   open: boolean;

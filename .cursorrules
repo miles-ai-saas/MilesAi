@@ -19,3 +19,68 @@ Use Conventional Commits: `<type>(<scope>): <中文简述>`
 - feat(marketplace): 应用升级前增加 diff 预览与确认
 - refactor(ui): 前端目录迁入 ui/workbench 与 ui/admin
 - fix(flow): 修复 SubFlow 循环依赖导致的编译失败
+
+## Workbench UI：`features/<域>/` 目录约定
+
+适用于 `ui/workbench/`。新功能与页面逻辑**优先**落在对应 feature 内，**禁止**把域内代码继续堆进全局 `hooks/`、`components/<域>/`、`lib/<域>-*`（除非 re-export 薄壳）。
+
+### 结构
+
+```text
+ui/workbench/features/<域>/
+├── index.ts          # 对外 barrel（页面从此 import）
+├── hooks/            # 该域 page VM 与子 slice
+├── components/       # 该域视图、对话框、Tab
+└── lib/              # 该域 labels、*-page-shared、纯函数
+```
+
+`app/**/page.tsx` 保持薄壳；OpenAPI 对齐类型仍放 `lib/types/`；跨域基础设施仍放根 `lib/`（`api/`、`auth-store`、`filter-search` 等）；`@milesai/ui-shared` 放 admin/workbench 共用 UI。
+
+### 已试点域
+
+- `features/kb/`
+- `features/marketplace/`
+- `features/flows/`
+- `features/agents/`
+- `features/tools/`
+- `features/mcp/`
+- `features/compliance/`
+- `features/skills/`
+- `features/prompts/`
+- `features/tasks/`
+- `features/system-users/`
+- `features/monitor/`
+- `features/attachments/`
+- `features/http-hooks/`（HTTP 拦截器，避免与 React hooks 目录混淆）
+- `features/models/`
+- `features/media-assets/`
+- `features/dashboard/`
+- `features/system-config/`
+- `features/system-sessions/`
+- `features/system-audit/`
+- `features/system-quota/`
+- `features/system-roles/`
+
+新代码写入上述域的 `features/<域>/` 下；旧路径 `@/hooks/use-kb-*`、`@/components/flow/*` 等仅作兼容 re-export，**不要**在薄壳里写业务逻辑。
+
+### 何时仍用根目录
+
+| 位置 | 内容 |
+|------|------|
+| `hooks/` | 仅跨域 hook：`use-paged-list` 薄壳、`*-meta.ts`、与具体页面无关的通用 hook |
+| `components/` | `layout/`、`resource/`、`ui/` 等跨 feature 组件 |
+| `lib/` | `api/`、全局 types、与单域无关的工具 |
+
+单域 CRUD 若尚未建 `features/<域>/`，新增文件仍放 `components/<域>/` + `hooks/use-<域>-*`，但**下一个 refactor 应整包迁入** `features/<域>/`。
+
+### import 约定
+
+- 页面与新代码：`import { ... } from "@/features/<域>"` 或 `@/features/<域>/components/...`
+- feature 内引用全局：`@/lib/api`、`@/hooks/use-paged-list` 等
+- **禁止** feature A 直接 import feature B 的内部文件（除对方 `index.ts` 显式导出）；跨域共用应下沉 `lib/` 或 `ui/shared`
+
+### 命名
+
+- 目录用复数域名：`agents`、`flows`、`kb`
+- 组件前缀保持现有风格：`Agent*`、`Flow*`、`Kb*`
+

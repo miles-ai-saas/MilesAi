@@ -2,10 +2,10 @@
 
 /** MCP 服务详情（链路 §11）：连接信息、同步状态与 tools/list 缓存。 */
 
-import { McpDetailRow, McpDialogSection, McpTransportBadge } from "@/components/mcp/mcp-dialog-shared";
+import { McpDetailRow, McpDialogSection, McpTransportBadge } from "@/features/mcp/components/mcp-dialog-shared";
 import { ResourceDialog } from "@/components/resource/ResourceDialog";
 import { KbPageAlert } from "@/components/kb/KbPageAlert";
-import { formatMcpUpdatedAt, mcpCardDescription, mcpStatusLabel, mcpSyncStatusLabel, mcpTransportLabel, normalizeMcpTransport } from "@/lib/mcp-labels";
+import { formatMcpUpdatedAt, mcpCardDescription, mcpStatusLabel, mcpSyncStatusLabel, mcpTransportLabel, normalizeMcpTransport } from "@/features/mcp/lib/mcp-labels";
 import type { McpMeta, McpService } from "@/lib/types";
 
 type Props = {

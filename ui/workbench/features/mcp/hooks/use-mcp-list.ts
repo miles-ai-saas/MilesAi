@@ -5,8 +5,8 @@ import { usePagedList } from "@/hooks/use-paged-list";
 import { api } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth-store";
 import { filterBySearch } from "@/lib/filter-search";
-import { mcpTransportFilterOptions, mcpTransportLabel, type McpTransportTab } from "@/lib/mcp-labels";
-import { useMcpMeta } from "@/hooks/use-mcp-meta";
+import { mcpTransportFilterOptions, mcpTransportLabel, type McpTransportTab } from "@/features/mcp/lib/mcp-labels";
+import { useMcpMeta } from "@/features/mcp/hooks/use-mcp-meta";
 import type { McpService } from "@/lib/types";
 
 export function useMcpList() {

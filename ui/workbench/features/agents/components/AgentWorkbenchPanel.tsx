@@ -3,10 +3,10 @@
 /** 对话页工作台 Tab 面板容器（链路 §5）。 */
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AGENT_FORM_STEPS, agentToFormValues, buildAgentConfig, emptyAgentForm, type AgentFormValues } from "@/components/agent/agent-form-shared";
-import type { AgentWorkbenchTab } from "@/components/agent/agent-workbench-tabs";
-import { AgentFormStepContent } from "@/components/agent/AgentFormStepContent";
-import { AgentFormStepper } from "@/components/agent/AgentFormStepper";
+import { AGENT_FORM_STEPS, agentToFormValues, buildAgentConfig, emptyAgentForm, type AgentFormValues } from "@/features/agents/components/agent-form-shared";
+import type { AgentWorkbenchTab } from "@/features/agents/components/agent-workbench-tabs";
+import { AgentFormStepContent } from "@/features/agents/components/AgentFormStepContent";
+import { AgentFormStepper } from "@/features/agents/components/AgentFormStepper";
 import { api } from "@/lib/api";
 import type { Agent, Flow, KnowledgeBase, McpService, ModelConfig, PromptTemplate, SkillPackage, A2aPeer, SysCategory, ToolCatalogItem } from "@/lib/types";
 

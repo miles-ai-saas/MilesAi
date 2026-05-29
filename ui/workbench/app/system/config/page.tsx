@@ -2,12 +2,14 @@
 
 /** 系统配置项（链路 §3，壳层 §7）。 */
 
+import {
+  SystemConfigCategoriesSection,
+  SystemConfigInfraSection,
+  SystemConfigOssSection,
+  useSystemConfigPage,
+} from "@/features/system-config";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { SystemConfigCategoriesSection } from "@/components/system-config/SystemConfigCategoriesSection";
-import { SystemConfigInfraSection } from "@/components/system-config/SystemConfigInfraSection";
-import { SystemConfigOssSection } from "@/components/system-config/SystemConfigOssSection";
-import { useSystemConfigPage } from "@/hooks/use-system-config-page";
-import { SYSTEM_CONFIG_PAGE_DESC } from "@/lib/system-config-shared";
+import { SYSTEM_CONFIG_PAGE_DESC } from "@/features/system-config/lib/system-config-shared";
 
 export default function SystemConfigPage() {
   const vm = useSystemConfigPage();

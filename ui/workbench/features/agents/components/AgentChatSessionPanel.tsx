@@ -1,7 +1,7 @@
 "use client";
 
 /** 对话页会话列表（链路 §5，数据来自 chat-sessions）。 */
-import { ChatSessionRenameInline } from "@/components/agent/ChatSessionRenameInline";
+import { ChatSessionRenameInline } from "@/features/agents/components/ChatSessionRenameInline";
 import { groupSessionsByDate, type ChatSession } from "@/lib/chat-sessions";
 
 type Props = {

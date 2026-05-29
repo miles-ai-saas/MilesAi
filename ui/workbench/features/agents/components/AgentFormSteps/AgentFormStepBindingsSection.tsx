@@ -1,7 +1,7 @@
 "use client";
 
-import type { AgentFormStepActions } from "@/hooks/use-agent-form-step-actions";
-import type { AgentFormStepContentProps } from "@/components/agent/agent-form-step-types";
+import type { AgentFormStepActions } from "@/features/agents/hooks/use-agent-form-step-actions";
+import type { AgentFormStepContentProps } from "@/features/agents/components/agent-form-step-types";
 
 type Props = Pick<AgentFormStepContentProps, "form" | "setForm" | "kbs" | "allAgents" | "a2aPeers" | "agent"> & {
   actions: AgentFormStepActions;

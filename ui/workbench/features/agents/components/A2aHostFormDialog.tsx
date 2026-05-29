@@ -8,7 +8,7 @@ import {
   buildHostAgentConfig,
   emptyHostAgentForm,
   type A2aHostFormValues,
-} from "@/components/agent/a2a-host-form-shared";
+} from "@/features/agents/components/a2a-host-form-shared";
 import { ResourceDialog } from "@/components/resource/ResourceDialog";
 import { api } from "@/lib/api";
 import { a2aInvokePolicyOptions } from "@/lib/a2a-labels";

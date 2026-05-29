@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import { api, getApiErrorMessage } from "@/lib/api";
-import type { ToolDialogMode } from "@/lib/tool-create-dialog-shared";
-import { buildCustomToolPayload, emptyToolForm, toolFormFromCustomTool, type ToolFormState } from "@/lib/tools-form-shared";
-import { slugFromName } from "@/lib/tool-page-shared";
+import type { ToolDialogMode } from "@/features/tools/lib/tool-create-dialog-shared";
+import { buildCustomToolPayload, emptyToolForm, toolFormFromCustomTool, type ToolFormState } from "@/features/tools/lib/tools-form-shared";
+import { slugFromName } from "@/features/tools/lib/tool-page-shared";
 import type { CustomTool, ToolCatalogItem } from "@/lib/types";
 
 type Params = {

@@ -1,6 +1,6 @@
 "use client";
 
-import { InspectorField, type InspectorFormContext } from "@/components/flow/flow-inspector-shared";
+import { InspectorField, type InspectorFormContext } from "@/features/flows/components/flow-inspector-shared";
 
 export function TextInputInspectorForm({ data, patch, labelField }: InspectorFormContext) {
   return (

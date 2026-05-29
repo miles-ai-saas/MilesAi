@@ -1,10 +1,10 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { formatVersionTime } from "@/lib/flow-version-history-shared";
-import type { FlowVersionHistoryVm } from "@/hooks/use-flow-version-history";
+import { formatVersionTime } from "@/features/flows/lib/flow-version-history-shared";
+import type { FlowVersionHistoryVm } from "@/features/flows/hooks/use-flow-version-history";
 
-const FlowCanvasPreview = dynamic(() => import("@/components/flow/FlowCanvasPreview").then((m) => m.FlowCanvasPreview), { ssr: false });
+const FlowCanvasPreview = dynamic(() => import("@/features/flows/components/FlowCanvasPreview").then((m) => m.FlowCanvasPreview), { ssr: false });
 
 export function FlowVersionHistoryFooter({
   vm,

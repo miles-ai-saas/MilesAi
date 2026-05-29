@@ -1,8 +1,8 @@
 "use client";
 
 import { useMemo } from "react";
-import { ArchitectureGraphView } from "@/components/agent/architecture/ArchitectureGraphView";
-import { buildRoutingGraph } from "@/lib/agent-architecture-graph";
+import { ArchitectureGraphView } from "@/features/agents/components/architecture/ArchitectureGraphView";
+import { buildRoutingGraph } from "@/features/agents/lib/agent-architecture-graph";
 import type { AgentArchitectureDecisionStep } from "@/lib/types";
 
 type Props = {

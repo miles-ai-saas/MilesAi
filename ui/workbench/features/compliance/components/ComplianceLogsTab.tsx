@@ -2,8 +2,8 @@
 
 import { ResourceListFooter } from "@/components/resource/ResourceListFooter";
 import { ResourceListLayout } from "@/components/resource/ResourceListLayout";
-import type { CompliancePageVm } from "@/hooks/use-compliance-page";
-import { COMPLIANCE_MAIN_TABS, COMPLIANCE_PAGE_DESC } from "@/lib/compliance-page-shared";
+import type { CompliancePageVm } from "@/features/compliance/hooks/use-compliance-page";
+import { COMPLIANCE_MAIN_TABS, COMPLIANCE_PAGE_DESC } from "@/features/compliance/lib/compliance-page-shared";
 import type { InterceptLog } from "@/lib/types";
 
 export function ComplianceLogsTab({ vm }: { vm: CompliancePageVm }) {

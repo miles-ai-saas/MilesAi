@@ -1,11 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { formatFlowSteps } from "@/lib/flow-run-format";
-import { extractFlowRunArtifacts } from "@/lib/flow-run-artifacts";
-import { FlowRunArtifactsPreview } from "@/components/flow/FlowRunArtifactsPreview";
-import { useFlowRunPanelMedia } from "@/hooks/use-flow-run-panel-media";
-import type { FlowRunPanelProps } from "@/lib/flow-run-panel-shared";
+import { formatFlowSteps } from "@/features/flows/lib/flow-run-format";
+import { extractFlowRunArtifacts } from "@/features/flows/lib/flow-run-artifacts";
+import { FlowRunArtifactsPreview } from "@/features/flows/components/FlowRunArtifactsPreview";
+import { useFlowRunPanelMedia } from "@/features/flows/hooks/use-flow-run-panel-media";
+import type { FlowRunPanelProps } from "@/features/flows/lib/flow-run-panel-shared";
 
 type ResultTab = "steps" | "output";
 

@@ -5,18 +5,18 @@ import {
   StaticResponseInspectorForm,
   TextInputInspectorForm,
   TextOutputInspectorForm,
-} from "@/components/flow/FlowInspectorInputForms";
-import { PlatformToolInspectorForm, SubFlowInspectorForm } from "@/components/flow/FlowInspectorIntegrationForms";
-import { ConditionBranchInspectorForm, ParallelJoinInspectorForm } from "@/components/flow/FlowInspectorLogicForms";
-import { ImageGenerateInspectorForm, VideoGenerateInspectorForm } from "@/components/flow/FlowInspectorGenerativeForms";
+} from "@/features/flows/components/FlowInspectorInputForms";
+import { PlatformToolInspectorForm, SubFlowInspectorForm } from "@/features/flows/components/FlowInspectorIntegrationForms";
+import { ConditionBranchInspectorForm, ParallelJoinInspectorForm } from "@/features/flows/components/FlowInspectorLogicForms";
+import { ImageGenerateInspectorForm, VideoGenerateInspectorForm } from "@/features/flows/components/FlowInspectorGenerativeForms";
 import {
   KnowledgeSearchInspectorForm,
   LLMCallInspectorForm,
   PromptTemplateInspectorForm,
   RelevanceGradeInspectorForm,
-} from "@/components/flow/FlowInspectorRagForms";
-import { makeLabelField, type InspectorFormContext } from "@/components/flow/flow-inspector-shared";
-import type { NodeType } from "@/lib/flow-nodes";
+} from "@/features/flows/components/FlowInspectorRagForms";
+import { makeLabelField, type InspectorFormContext } from "@/features/flows/components/flow-inspector-shared";
+import type { NodeType } from "@/features/flows/lib/flow-nodes";
 import type { KnowledgeBase, ModelConfig, PromptTemplate, ToolCatalogItem } from "@/lib/types";
 
 type Props = {

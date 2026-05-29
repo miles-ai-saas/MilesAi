@@ -4,12 +4,12 @@ import { ResourceListFooter } from "@/components/resource/ResourceListFooter";
 import { ResourceListLayout } from "@/components/resource/ResourceListLayout";
 import { TagFilterDropdown } from "@/components/tag/TagFilterDropdown";
 import { TagManageDialog } from "@/components/tag/TagManageDialog";
-import { SkillAddPanel } from "@/components/skills/SkillAddPanel";
-import { SkillCard } from "@/components/skills/SkillCard";
-import { SkillCreateBlankDialog } from "@/components/skills/SkillCreateBlankDialog";
-import { SkillImportGitDialog, SkillImportLocalDialog, SkillImportZipDialog } from "@/components/skills/SkillImportDialogs";
-import type { SkillsPageVm } from "@/hooks/use-skills-page";
-import { SKILLS_PAGE_DESC } from "@/lib/skills-page-shared";
+import { SkillAddPanel } from "@/features/skills/components/SkillAddPanel";
+import { SkillCard } from "@/features/skills/components/SkillCard";
+import { SkillCreateBlankDialog } from "@/features/skills/components/SkillCreateBlankDialog";
+import { SkillImportGitDialog, SkillImportLocalDialog, SkillImportZipDialog } from "@/features/skills/components/SkillImportDialogs";
+import type { SkillsPageVm } from "@/features/skills/hooks/use-skills-page";
+import { SKILLS_PAGE_DESC } from "@/features/skills/lib/skills-page-shared";
 
 export function SkillsPageView({ vm }: { vm: SkillsPageVm }) {
   const {

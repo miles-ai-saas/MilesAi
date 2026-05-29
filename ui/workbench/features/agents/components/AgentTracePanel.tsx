@@ -3,7 +3,7 @@
 /** Trace 侧栏（链路 §5）：`agent-trace` 轮次 + steps 明细。 */
 
 import { useEffect, useMemo, useState } from "react";
-import { copyText, defaultTraceTurnIndex, listTraceTurns } from "@/lib/agent-trace";
+import { copyText, defaultTraceTurnIndex, listTraceTurns } from "@/features/agents/lib/agent-trace";
 import type { ChatMessage } from "@/lib/chat-sessions";
 
 type Props = {

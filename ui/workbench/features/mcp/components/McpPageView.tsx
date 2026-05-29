@@ -1,15 +1,15 @@
 "use client";
 
-import { McpCreateCard } from "@/components/mcp/McpCreateCard";
-import { McpServiceCard } from "@/components/mcp/McpServiceCard";
-import { McpServiceDetailDialog } from "@/components/mcp/McpServiceDetailDialog";
-import { McpServiceDialog } from "@/components/mcp/McpServiceDialog";
+import { McpCreateCard } from "@/features/mcp/components/McpCreateCard";
+import { McpServiceCard } from "@/features/mcp/components/McpServiceCard";
+import { McpServiceDetailDialog } from "@/features/mcp/components/McpServiceDetailDialog";
+import { McpServiceDialog } from "@/features/mcp/components/McpServiceDialog";
 import { ResourceListFooter } from "@/components/resource/ResourceListFooter";
 import { ResourceListLayout } from "@/components/resource/ResourceListLayout";
 import { PageMessage } from "@/components/ui/PageMessage";
 import { StatChip } from "@/components/ui/StatChip";
-import type { McpPageVm } from "@/hooks/use-mcp-page";
-import { MCP_PAGE_DESC } from "@/lib/mcp-page-shared";
+import type { McpPageVm } from "@/features/mcp/hooks/use-mcp-page";
+import { MCP_PAGE_DESC } from "@/features/mcp/lib/mcp-page-shared";
 
 export function McpPageView({ vm }: { vm: McpPageVm }) {
   const {

@@ -1,8 +1,8 @@
 "use client";
 
-import { InspectorField, type InspectorFormContext } from "@/components/flow/flow-inspector-shared";
-import { PlatformToolInspector } from "@/components/flow/PlatformToolInspector";
-import { SubFlowInspector } from "@/components/flow/SubFlowInspector";
+import { InspectorField, type InspectorFormContext } from "@/features/flows/components/flow-inspector-shared";
+import { PlatformToolInspector } from "@/features/flows/components/PlatformToolInspector";
+import { SubFlowInspector } from "@/features/flows/components/SubFlowInspector";
 
 export function PlatformToolInspectorForm({ data, patch, labelField, toolCatalog }: InspectorFormContext) {
   return (

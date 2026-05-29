@@ -1,7 +1,7 @@
 "use client";
 
-import { useFlowEditCore } from "@/hooks/use-flow-edit-core";
-import { useFlowEditDebug } from "@/hooks/use-flow-edit-debug";
+import { useFlowEditCore } from "@/features/flows/hooks/use-flow-edit-core";
+import { useFlowEditDebug } from "@/features/flows/hooks/use-flow-edit-debug";
 
 export function useFlowEditPage() {
   const core = useFlowEditCore();

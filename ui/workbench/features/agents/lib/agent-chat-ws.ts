@@ -3,8 +3,8 @@
  * 协议见 docs/architecture/realtime-transport-design.md
  */
 
-import { getAccessToken } from "./auth-store";
-import type { ChatArtifact, ChatMediaIn, ChatResponse, GenerativeJobOut } from "./types";
+import { getAccessToken } from "@/lib/auth-store";
+import type { ChatArtifact, ChatMediaIn, ChatResponse, GenerativeJobOut } from "@/lib/types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 const WS_ENABLED = process.env.NEXT_PUBLIC_AGENT_CHAT_WS !== "false";

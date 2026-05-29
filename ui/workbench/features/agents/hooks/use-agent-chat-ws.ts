@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { AgentChatWsClient, isAgentChatWsEnabled } from "@/lib/agent-chat-ws";
+import { AgentChatWsClient, isAgentChatWsEnabled } from "@/features/agents/lib/agent-chat-ws";
 
 /** 绑定智能体 + 会话，维持一条对话 WebSocket。 */
 export function useAgentChatWs(agentId: string, conversationId: string) {

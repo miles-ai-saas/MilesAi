@@ -6,9 +6,7 @@
  */
 
 import { Suspense } from "react";
-import { AgentsChatLayout } from "@/components/agent/AgentsChatLayout";
-import { AgentsChatLoading } from "@/components/agent/AgentsChatLoading";
-import { useAgentsChatPage } from "@/hooks/use-agents-chat-page";
+import { AgentsChatLayout, AgentsChatLoading, useAgentsChatPage } from "@/features/agents";
 
 export default function AgentsChatPage() {
   return (

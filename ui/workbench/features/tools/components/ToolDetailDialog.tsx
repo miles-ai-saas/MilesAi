@@ -4,7 +4,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { ResourceDialog } from "@/components/resource/ResourceDialog";
 import { api } from "@/lib/api";
-import { formatToolUpdatedAt, toolKindLabel, toolSourceLabel } from "@/lib/tool-labels";
+import { formatToolUpdatedAt, toolKindLabel, toolSourceLabel } from "@/features/tools/lib/tool-labels";
 import type { CustomTool, ToolCatalogItem, ToolParameterSpec, ToolsMeta } from "@/lib/types";
 
 type Props = {

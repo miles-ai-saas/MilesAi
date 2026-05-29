@@ -2,17 +2,17 @@
 
 /** 对话页左侧：智能体列表与会话切换（链路 §5）。 */
 
-import { AgentChatAgentColumn } from "@/components/agent/AgentChatAgentColumn";
-import { AgentChatSessionColumnCompact } from "@/components/agent/AgentChatSessionColumnCompact";
-import { AgentChatSessionPanel } from "@/components/agent/AgentChatSessionPanel";
+import { AgentChatAgentColumn } from "@/features/agents/components/AgentChatAgentColumn";
+import { AgentChatSessionColumnCompact } from "@/features/agents/components/AgentChatSessionColumnCompact";
+import { AgentChatSessionPanel } from "@/features/agents/components/AgentChatSessionPanel";
 import {
   CHAT_AGENT_COLUMN,
   CHAT_AGENT_COLUMN_COMPACT,
   CHAT_LEFT_SIDEBAR_COLLAPSED,
   CHAT_LEFT_SIDEBAR_EXPANDED,
   CHAT_SESSION_COLUMN,
-} from "@/components/agent/chat-sidebar-layout";
-import { SidebarCollapseButton } from "@/components/agent/SidebarCollapseButton";
+} from "@/features/agents/components/chat-sidebar-layout";
+import { SidebarCollapseButton } from "@/features/agents/components/SidebarCollapseButton";
 import type { ChatSession } from "@/lib/chat-sessions";
 import type { Agent } from "@/lib/types";
 

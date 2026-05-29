@@ -2,8 +2,7 @@
 
 /** 审计日志（链路 §3 + §4 `useAuditMeta`，壳层 §7）。 */
 
-import { SystemAuditPageView } from "@/components/system-audit/SystemAuditPageView";
-import { useSystemAuditPage } from "@/hooks/use-system-audit-page";
+import { SystemAuditPageView, useSystemAuditPage } from "@/features/system-audit";
 
 export default function SystemAuditPage() {
   const vm = useSystemAuditPage();

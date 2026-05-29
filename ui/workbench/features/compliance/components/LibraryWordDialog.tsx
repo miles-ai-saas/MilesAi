@@ -4,7 +4,7 @@
 import { useEffect, useState } from "react";
 import { ResourceDialog } from "@/components/resource/ResourceDialog";
 import { api } from "@/lib/api";
-import { sensitiveActionLabel } from "@/lib/compliance-labels";
+import { sensitiveActionLabel } from "@/features/compliance/lib/compliance-labels";
 import type { EnumOption, LibraryWord } from "@/lib/types";
 
 type Mode = "create" | "view" | "edit";

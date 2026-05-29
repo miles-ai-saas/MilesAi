@@ -1,12 +1,12 @@
 "use client";
 
-import { AgentChatDebugHeader } from "@/components/agent/AgentChatDebugHeader";
-import { AgentChatLeftSidebar } from "@/components/agent/AgentChatLeftSidebar";
-import { AgentWorkbenchOverlay } from "@/components/agent/AgentWorkbenchOverlay";
-import { AgentWorkbenchSidebar } from "@/components/agent/AgentWorkbenchSidebar";
-import { AgentChatComposer } from "@/components/agent/AgentChatComposer";
-import { ChatMessageThread } from "@/components/agent/ChatMessageThread";
-import type { AgentsChatPageVm } from "@/hooks/use-agents-chat-page";
+import { AgentChatDebugHeader } from "@/features/agents/components/AgentChatDebugHeader";
+import { AgentChatLeftSidebar } from "@/features/agents/components/AgentChatLeftSidebar";
+import { AgentWorkbenchOverlay } from "@/features/agents/components/AgentWorkbenchOverlay";
+import { AgentWorkbenchSidebar } from "@/features/agents/components/AgentWorkbenchSidebar";
+import { AgentChatComposer } from "@/features/agents/components/AgentChatComposer";
+import { ChatMessageThread } from "@/features/agents/components/ChatMessageThread";
+import type { AgentsChatPageVm } from "@/features/agents/hooks/use-agents-chat-page";
 import { generativeToolBusyLabel } from "@/lib/generative-tool-ui";
 
 type Props = {

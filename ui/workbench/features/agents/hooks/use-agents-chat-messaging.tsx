@@ -1,29 +1,17 @@
 "use client";
 
-import { useCallback, useMemo, useState, type Dispatch, type SetStateAction } from "react";
-import { ChatGenerativeStatusBanner } from "@/components/agent/ChatGenerativeStatusBanner";
-import type { PendingChatMedia } from "@/components/agent/AgentChatComposer";
+import { useCallback, useState } from "react";
+import type { PendingChatMedia } from "@/features/agents/components/AgentChatComposer";
+import { useAgentsChatComposerMedia } from "@/features/agents/hooks/use-agents-chat-composer-media";
+import { useAgentsChatGenerativeStatus } from "@/features/agents/hooks/use-agents-chat-generative-status";
+import { useAgentChatWs } from "@/features/agents/hooks/use-agent-chat-ws";
 import { api } from "@/lib/api";
-import {
-  appendTurn,
-  getSession,
-  type ChatMessage,
-  type ChatMessageMedia,
-} from "@/lib/chat-sessions";
-import { useAgentChatWs } from "@/hooks/use-agent-chat-ws";
-import { useGenerativeJobPoll } from "@/hooks/use-generative-job-poll";
-import { generativeJobToArtifacts } from "@/lib/generative-jobs";
+import { appendTurn, getSession, type ChatMessage, type ChatMessageMedia } from "@/lib/chat-sessions";
 import { generativeToolBusyLabel } from "@/lib/generative-tool-ui";
-import { CHAT_ATTACHMENT_MAX_COUNT, filterChatUploadFiles } from "@/lib/chat-attachments";
-import { resolveOutgoingChatMedia, lastUserMessageMedia } from "@/lib/chat-media-forward";
-import {
-  collectPendingGenerativeJobIds,
-  collectPendingGenerativeJobs,
-  mapResponseArtifacts,
-  mergeArtifactsIntoLastAssistant,
-  type GenerativePollJob,
-} from "@/lib/agents-chat-helpers";
-import type { ChatAgentResult, ChatMediaIn, GenerativeJobOut, PendingToolCall } from "@/lib/types";
+import { resolveOutgoingChatMedia } from "@/lib/chat-media-forward";
+import { mapResponseArtifacts } from "@/features/agents/lib/agents-chat-helpers";
+import type { ChatAgentResult, ChatMediaIn, PendingToolCall } from "@/lib/types";
+import type { Dispatch, SetStateAction } from "react";
 
 type Params = {
   selectedAgent: string;
@@ -45,75 +33,18 @@ export function useAgentsChatMessaging({
   carryForwardMedia,
 }: Params) {
   const [query, setQuery] = useState("");
-  const [pendingMedia, setPendingMedia] = useState<PendingChatMedia[]>([]);
-  const [uploadingMedia, setUploadingMedia] = useState(false);
   const [chatting, setChatting] = useState(false);
   const [pendingTool, setPendingTool] = useState<PendingToolCall | null>(null);
-  const [pollJobs, setPollJobs] = useState<GenerativePollJob[]>([]);
-  const [wsGenerativeMsg, setWsGenerativeMsg] = useState<string | null>(null);
-  const [wsGenerativeProgress, setWsGenerativeProgress] = useState<number | null>(null);
-  const [wsActiveJobIds, setWsActiveJobIds] = useState<string[]>([]);
 
   const { wsEnabled, wsReady, client: wsClientRef } = useAgentChatWs(selectedAgent, conversationId);
 
-  const carriedMedia = useMemo((): ChatMessageMedia[] => {
-    if (pendingMedia.length > 0 || !carryForwardMedia) return [];
-    return lastUserMessageMedia(messages);
-  }, [carryForwardMedia, messages, pendingMedia.length]);
-
-  const {
-    statusMsg: generativePollMsg,
-    progressPercent: generativeProgress,
-    cancelJob: cancelGenerativeJob,
-    canCancel: canCancelGenerative,
-  } = useGenerativeJobPoll(pollJobs, (artifacts) => {
-    setMessages((prev) => mergeArtifactsIntoLastAssistant(prev, artifacts));
-    setPollJobs([]);
-  });
-
-  const mergeGenerativeArtifacts = useCallback(
-    (artifacts: Parameters<typeof mergeArtifactsIntoLastAssistant>[1]) => {
-      if (!artifacts.length) return;
-      setMessages((prev) => mergeArtifactsIntoLastAssistant(prev, artifacts));
-    },
-    [setMessages],
-  );
-
-  const handleWsGenerativeJob = useCallback(
-    (job: GenerativeJobOut, phase: "queued" | "progress" | "done") => {
-      setWsActiveJobIds((prev) => (prev.includes(job.id) ? prev : [...prev, job.id]));
-      if (job.progress_percent != null) setWsGenerativeProgress(job.progress_percent);
-      const label = job.progress_message || "生成中…";
-      setWsGenerativeMsg(job.progress_percent != null ? `${label}（${job.progress_percent}%）` : label);
-      if (phase === "done") {
-        setWsActiveJobIds((prev) => prev.filter((id) => id !== job.id));
-        if (job.status === "success") {
-          mergeGenerativeArtifacts(generativeJobToArtifacts(job));
-          setWsGenerativeMsg(null);
-          setWsGenerativeProgress(null);
-        } else if (job.status === "failed") {
-          setWsGenerativeMsg(job.error_message ?? "生成失败");
-        } else if (job.status === "cancelled") {
-          setWsGenerativeMsg("任务已取消");
-        }
-      }
-    },
-    [mergeGenerativeArtifacts],
-  );
+  const media = useAgentsChatComposerMedia({ messages, carryForwardMedia });
+  const generative = useAgentsChatGenerativeStatus({ setMessages, wsClientRef });
 
   const applyChatResponse = useCallback(
     (res: ChatAgentResult, optimistic: ChatMessage[], userText: string, userMedia: ChatMessageMedia[], useWsJobs: boolean) => {
       setPendingTool(res.pending_tool ?? null);
-      if (!useWsJobs) {
-        setPollJobs(collectPendingGenerativeJobs(res));
-      } else {
-        setPollJobs([]);
-        const pendingIds = collectPendingGenerativeJobIds(res);
-        setWsActiveJobIds(pendingIds);
-        if (pendingIds.length) {
-          setWsGenerativeMsg(`正在生成（${pendingIds.length} 个任务）…`);
-        }
-      }
+      generative.applyResponseGenerativeJobs(res, useWsJobs);
       const nextMessages: ChatMessage[] = [
         ...optimistic,
         {
@@ -130,7 +61,7 @@ export function useAgentsChatMessaging({
       const updated = getSession(selectedAgent, conversationId);
       if (updated) setSessionTitle(updated.title);
     },
-    [conversationId, refreshSessions, selectedAgent, setMessages, setSessionTitle],
+    [conversationId, generative, refreshSessions, selectedAgent, setMessages, setSessionTitle],
   );
 
   const runWsChat = useCallback(
@@ -150,38 +81,48 @@ export function useAgentsChatMessaging({
             description: tool.description ?? undefined,
             params: tool.params,
           }),
-        onGenerativeJob: handleWsGenerativeJob,
+        onGenerativeJob: generative.handleWsGenerativeJob,
       });
     },
-    [handleWsGenerativeJob, setMessages, wsClientRef],
+    [generative.handleWsGenerativeJob, setMessages, wsClientRef],
   );
+
+  const buildUserMedia = (
+    pendingMedia: PendingChatMedia[],
+    carriedMedia: ChatMessageMedia[],
+    carriedFromPrevious: boolean,
+  ): ChatMessageMedia[] => {
+    if (pendingMedia.length) {
+      return pendingMedia.map((m) => ({
+        attachment_id: m.attachment_id,
+        filename: m.filename,
+        preview_url: m.preview_url,
+      }));
+    }
+    if (carriedFromPrevious) {
+      return carriedMedia.map((m) => ({
+        attachment_id: m.attachment_id,
+        filename: m.filename,
+        preview_url: m.preview_url,
+      }));
+    }
+    return [];
+  };
 
   const chat = async () => {
     if (!selectedAgent || !conversationId) return;
     const userText = query.trim();
-    const pendingPayload: ChatMediaIn[] = pendingMedia.map((m) => ({
+    const pendingPayload: ChatMediaIn[] = media.pendingMedia.map((m) => ({
       attachment_id: m.attachment_id,
     }));
     const { payload: mediaPayload, carriedFromPrevious } = resolveOutgoingChatMedia(pendingPayload, messages, carryForwardMedia);
     if (!userText && mediaPayload.length === 0) return;
 
-    const userMedia: ChatMessageMedia[] = pendingMedia.length
-      ? pendingMedia.map((m) => ({
-          attachment_id: m.attachment_id,
-          filename: m.filename,
-          preview_url: m.preview_url,
-        }))
-      : carriedFromPrevious
-        ? carriedMedia.map((m) => ({
-            attachment_id: m.attachment_id,
-            filename: m.filename,
-            preview_url: m.preview_url,
-          }))
-        : [];
+    const userMedia = buildUserMedia(media.pendingMedia, media.carriedMedia, carriedFromPrevious);
 
     setChatting(true);
     setQuery("");
-    setPendingMedia([]);
+    media.setPendingMedia([]);
     const optimistic: ChatMessage[] = [
       ...messages,
       {
@@ -244,11 +185,7 @@ export function useAgentsChatMessaging({
         });
       }
       setPendingTool(res.pending_tool ?? null);
-      if (!useWs) {
-        setPollJobs(collectPendingGenerativeJobs(res));
-      } else {
-        setPollJobs([]);
-      }
+      generative.applyResponseGenerativeJobs(res, Boolean(useWs));
       setMessages((prev) => {
         const withoutEmptyTail = prev.length && prev[prev.length - 1].role === "assistant" && !prev[prev.length - 1].content ? prev.slice(0, -1) : prev;
         return [
@@ -270,93 +207,28 @@ export function useAgentsChatMessaging({
     }
   };
 
-  const onPickAttachments = async (files: FileList | null) => {
-    if (!files?.length || uploadingMedia) return;
-    const picked = filterChatUploadFiles(files);
-    if (!picked.length) {
-      window.alert("当前仅支持上传图片（JPEG / PNG / WebP / GIF）");
-      return;
-    }
-    setUploadingMedia(true);
-    try {
-      const next: PendingChatMedia[] = [];
-      for (const file of picked) {
-        const att = await api.uploadAttachment(file, { purpose: "chat" });
-        const local_preview = URL.createObjectURL(file);
-        next.push({
-          attachment_id: att.id,
-          filename: att.filename,
-          preview_url: local_preview,
-          local_preview,
-        });
-      }
-      if (next.length) {
-        setPendingMedia((prev) => [...prev, ...next].slice(0, CHAT_ATTACHMENT_MAX_COUNT));
-      }
-    } catch (e) {
-      const err = e instanceof Error ? e.message : "附件上传失败";
-      window.alert(err);
-    } finally {
-      setUploadingMedia(false);
-    }
-  };
-
-  const removePendingMedia = (attachmentId: string) => {
-    setPendingMedia((prev) => {
-      const item = prev.find((p) => p.attachment_id === attachmentId);
-      if (item?.local_preview) URL.revokeObjectURL(item.local_preview);
-      return prev.filter((p) => p.attachment_id !== attachmentId);
-    });
-  };
-
-  const handleCancelGenerative = useCallback(() => {
-    if (wsActiveJobIds.length && wsClientRef.current?.connected) {
-      for (const id of wsActiveJobIds) {
-        wsClientRef.current.cancelGenerativeJob(id);
-      }
-      setWsGenerativeMsg("已请求取消…");
-    } else {
-      for (const j of pollJobs) void cancelGenerativeJob(j.jobId);
-    }
-  }, [cancelGenerativeJob, pollJobs, wsActiveJobIds, wsClientRef]);
-
-  const chattingStatusLabel = chatting && pendingTool ? (generativeToolBusyLabel(pendingTool.slug) ?? "思考中…") : chatting ? "思考中…" : null;
-  const generativeStatusMessage = wsGenerativeMsg ?? generativePollMsg;
-  const generativeProgressValue = generativeProgress ?? wsGenerativeProgress;
-
-  const generativeStatusEl = useMemo(
-    () =>
-      generativeStatusMessage ? (
-        <ChatGenerativeStatusBanner
-          message={generativeStatusMessage}
-          progressPercent={generativeProgressValue}
-          canCancel={canCancelGenerative || wsActiveJobIds.length > 0}
-          onCancel={handleCancelGenerative}
-        />
-      ) : null,
-    [canCancelGenerative, generativeProgressValue, generativeStatusMessage, handleCancelGenerative, wsActiveJobIds.length],
-  );
-
   const clearComposer = useCallback(() => {
     setQuery("");
-    setPendingMedia([]);
-  }, []);
+    media.clearPendingMedia();
+  }, [media]);
+
+  const chattingStatusLabel = chatting && pendingTool ? (generativeToolBusyLabel(pendingTool.slug) ?? "思考中…") : chatting ? "思考中…" : null;
 
   return {
     query,
     setQuery,
-    pendingMedia,
-    uploadingMedia,
+    pendingMedia: media.pendingMedia,
+    uploadingMedia: media.uploadingMedia,
     chatting,
     pendingTool,
     wsEnabled,
     wsReady,
     chattingStatusLabel,
-    generativeStatusEl,
+    generativeStatusEl: generative.generativeStatusEl,
     chat,
     confirmPendingTool,
-    onPickAttachments,
-    removePendingMedia,
+    onPickAttachments: media.onPickAttachments,
+    removePendingMedia: media.removePendingMedia,
     clearComposer,
   };
 }

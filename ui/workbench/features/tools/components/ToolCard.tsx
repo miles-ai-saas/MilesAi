@@ -3,7 +3,7 @@
 /** 工具目录卡片（链路 §3 + §4，props.toolsMeta）。 */
 import { CardActions, type CardActionItem } from "@/components/resource/CardActions";
 import { ResourceItemCard } from "@/components/resource/ResourceItemCard";
-import { formatToolUpdatedAt, toolKindLabel, toolSourceLabel } from "@/lib/tool-labels";
+import { formatToolUpdatedAt, toolKindLabel, toolSourceLabel } from "@/features/tools/lib/tool-labels";
 import type { ToolCatalogItem, ToolsMeta } from "@/lib/types";
 
 type Props = {

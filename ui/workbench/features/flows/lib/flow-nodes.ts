@@ -19,7 +19,7 @@
  * 节点 ``prompt`` 非空时覆盖上游文案。预览/下载走鉴权 attachment content API。
  */
 import type { Node, Edge } from "@xyflow/react";
-import type { FlowEdge, FlowGraph, FlowNode } from "./types";
+import type { FlowEdge, FlowGraph, FlowNode } from "@/lib/types";
 
 /** 后端 LangGraph 画布编译支持的节点类型 */
 export const NODE_PALETTE = [

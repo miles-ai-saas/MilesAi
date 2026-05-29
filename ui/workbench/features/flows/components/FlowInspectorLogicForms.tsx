@@ -1,7 +1,7 @@
 "use client";
 
-import { InspectorField, type InspectorFormContext } from "@/components/flow/flow-inspector-shared";
-import { CONDITION_MODES, MERGE_STRATEGIES } from "@/lib/flow-node-schemas";
+import { InspectorField, type InspectorFormContext } from "@/features/flows/components/flow-inspector-shared";
+import { CONDITION_MODES, MERGE_STRATEGIES } from "@/features/flows/lib/flow-node-schemas";
 
 export function ConditionBranchInspectorForm({ data, patch, labelField }: InspectorFormContext) {
   return (

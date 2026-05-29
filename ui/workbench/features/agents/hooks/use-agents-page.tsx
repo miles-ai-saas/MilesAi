@@ -5,11 +5,11 @@ import { useRouter } from "next/navigation";
 import { useCategoryTabs } from "@/components/category/useCategoryTabs";
 import { useConfirmAction } from "@/hooks/use-confirm-action";
 import { usePagedList } from "@/hooks/use-paged-list";
-import { useAgentMeta } from "@/hooks/use-agent-meta";
+import { useAgentMeta } from "@/features/agents/hooks/use-agent-meta";
 import { api } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth-store";
 import { filterBySearch } from "@/lib/filter-search";
-import { AGENTS_TAB_ITEMS, agentsTabToApiType, type AgentsTab } from "@/lib/agents-page-shared";
+import { AGENTS_TAB_ITEMS, agentsTabToApiType, type AgentsTab } from "@/features/agents/lib/agents-page-shared";
 import type { Agent } from "@/lib/types";
 
 export function useAgentsPage() {

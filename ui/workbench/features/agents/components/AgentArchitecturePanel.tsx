@@ -3,8 +3,8 @@
 /** 智能体架构：路由图 / 能力拓扑 / 流程画布（链路 §5）。 */
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AgentArchitectureRoutingGraph } from "@/components/agent/architecture/AgentArchitectureRoutingGraph";
-import { AgentArchitectureTopologyGraph } from "@/components/agent/architecture/AgentArchitectureTopologyGraph";
+import { AgentArchitectureRoutingGraph } from "@/features/agents/components/architecture/AgentArchitectureRoutingGraph";
+import { AgentArchitectureTopologyGraph } from "@/features/agents/components/architecture/AgentArchitectureTopologyGraph";
 import { FlowCanvasPreview } from "@/components/flow/FlowCanvasPreview";
 import { api } from "@/lib/api";
 import type { AgentArchitecture } from "@/lib/types";

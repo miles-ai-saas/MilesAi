@@ -2,10 +2,10 @@
 
 /** 对话调试台顶栏：会话为主标题、状态芯片与布局控制。 */
 import Link from "next/link";
-import { AgentRenameInline } from "@/components/agent/AgentRenameInline";
-import { ChatSessionRenameInline } from "@/components/agent/ChatSessionRenameInline";
+import { AgentRenameInline } from "@/features/agents/components/AgentRenameInline";
+import { ChatSessionRenameInline } from "@/features/agents/components/ChatSessionRenameInline";
 import type { Agent } from "@/lib/types";
-import { agentModeLabel } from "@/lib/agent-utils";
+import { agentModeLabel } from "@/features/agents/lib/agent-utils";
 
 type Props = {
   sessionTitle: string;

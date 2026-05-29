@@ -4,8 +4,8 @@
 import { Background, Controls, MiniMap, ReactFlow, ReactFlowProvider, useEdgesState, useNodesState } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { useEffect } from "react";
-import { flowNodeTypes } from "@/components/flow/FlowNodeCard";
-import { graphToReactFlow } from "@/lib/flow-nodes";
+import { flowNodeTypes } from "@/features/flows/components/FlowNodeCard";
+import { graphToReactFlow } from "@/features/flows/lib/flow-nodes";
 import type { FlowGraph } from "@/lib/types";
 
 type Props = {

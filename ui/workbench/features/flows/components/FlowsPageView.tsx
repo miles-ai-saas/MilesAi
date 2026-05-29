@@ -1,8 +1,8 @@
 "use client";
 
-import { FlowCreateDialog } from "@/components/flow/FlowCreateDialog";
-import { FlowDetailDialog } from "@/components/flow/FlowDetailDialog";
-import { FlowMetaDialog } from "@/components/flow/FlowMetaDialog";
+import { FlowCreateDialog } from "@/features/flows/components/FlowCreateDialog";
+import { FlowDetailDialog } from "@/features/flows/components/FlowDetailDialog";
+import { FlowMetaDialog } from "@/features/flows/components/FlowMetaDialog";
 import { AddResourceCard } from "@/components/resource/AddResourceCard";
 import { CardActions } from "@/components/resource/CardActions";
 import { ResourceItemCard } from "@/components/resource/ResourceItemCard";
@@ -11,9 +11,9 @@ import { ResourceListLayout } from "@/components/resource/ResourceListLayout";
 import { TagChips } from "@/components/tag/TagChips";
 import { TagFilterDropdown } from "@/components/tag/TagFilterDropdown";
 import { TagManageDialog } from "@/components/tag/TagManageDialog";
-import type { FlowsPageVm } from "@/hooks/use-flows-page";
-import { flowStatusLabel } from "@/lib/flow-labels";
-import { FLOWS_PAGE_DESC } from "@/lib/flows-page-shared";
+import type { FlowsPageVm } from "@/features/flows/hooks/use-flows-page";
+import { flowStatusLabel } from "@/features/flows/lib/flow-labels";
+import { FLOWS_PAGE_DESC } from "@/features/flows/lib/flows-page-shared";
 
 export function FlowsPageView({ vm }: { vm: FlowsPageVm }) {
   const {

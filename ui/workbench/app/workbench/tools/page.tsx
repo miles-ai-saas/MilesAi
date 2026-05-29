@@ -2,10 +2,7 @@
 
 /** 工具工作台（链路 §3 + §4）：目录/调用日志 + `useToolsMeta`。 */
 
-import { ToolsCatalogTab } from "@/components/tool/ToolsCatalogTab";
-import { ToolsLogsTab } from "@/components/tool/ToolsLogsTab";
-import { ToolsPageOverlays } from "@/components/tool/ToolsPageOverlays";
-import { useToolsPage } from "@/hooks/use-tools-page";
+import { ToolsCatalogTab, ToolsLogsTab, ToolsPageOverlays, useToolsPage } from "@/features/tools";
 
 export default function ToolsPage() {
   const vm = useToolsPage();

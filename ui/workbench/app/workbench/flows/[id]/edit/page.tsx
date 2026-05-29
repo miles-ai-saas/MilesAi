@@ -3,13 +3,15 @@
 /** 流程画布编辑（链路 §6）：graph、属性面板、调试运行。 */
 
 import dynamic from "next/dynamic";
-import { FlowEditHeader } from "@/components/flow/FlowEditHeader";
-import { FlowMetaDialog } from "@/components/flow/FlowMetaDialog";
-import { FlowRunPanel } from "@/components/flow/FlowRunPanel";
-import { FlowVersionHistoryDialog } from "@/components/flow/FlowVersionHistoryDialog";
-import { useFlowEditPage } from "@/hooks/use-flow-edit-page";
+import {
+  FlowEditHeader,
+  FlowMetaDialog,
+  FlowRunPanel,
+  FlowVersionHistoryDialog,
+  useFlowEditPage,
+} from "@/features/flows";
 
-const FlowCanvas = dynamic(() => import("@/components/flow/FlowCanvas").then((m) => m.FlowCanvas), { ssr: false });
+const FlowCanvas = dynamic(() => import("@/features/flows/components/FlowCanvas").then((m) => m.FlowCanvas), { ssr: false });
 
 export default function FlowEditPage() {
   const vm = useFlowEditPage();

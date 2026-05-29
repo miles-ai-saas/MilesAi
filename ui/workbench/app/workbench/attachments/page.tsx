@@ -2,8 +2,7 @@
 
 /** 附件列表（链路 §3 + §4 `useAttachmentMeta`）。 */
 
-import { AttachmentsPageView } from "@/components/attachments/AttachmentsPageView";
-import { useAttachmentsPage } from "@/hooks/use-attachments-page";
+import { AttachmentsPageView, useAttachmentsPage } from "@/features/attachments";
 
 export default function AttachmentsPage() {
   const vm = useAttachmentsPage();

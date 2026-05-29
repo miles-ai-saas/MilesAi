@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import type { SkillEditorPageVm } from "@/hooks/use-skill-editor-page";
+import type { SkillEditorPageVm } from "@/features/skills/hooks/use-skill-editor-page";
 
 export function SkillEditorHeader({ vm }: { vm: SkillEditorPageVm }) {
   const { skill, saved, saving, onSave } = vm;

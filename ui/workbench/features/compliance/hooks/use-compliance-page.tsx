@@ -6,9 +6,9 @@ import { api } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth-store";
 import { usePagedList } from "@/hooks/use-paged-list";
 import { useConfirmAction } from "@/hooks/use-confirm-action";
-import { useComplianceMeta } from "@/hooks/use-compliance-meta";
-import { sensitiveActionLabel } from "@/lib/compliance-labels";
-import type { ComplianceTab } from "@/lib/compliance-page-shared";
+import { useComplianceMeta } from "@/features/compliance/hooks/use-compliance-meta";
+import { sensitiveActionLabel } from "@/features/compliance/lib/compliance-labels";
+import type { ComplianceTab } from "@/features/compliance/lib/compliance-page-shared";
 import { filterBySearch } from "@/lib/filter-search";
 import type { WordLibrary } from "@/lib/types";
 

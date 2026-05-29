@@ -3,11 +3,11 @@
 /** MCP 创建/编辑（链路 §11）：HTTP/SSE/STDIO 分节表单 → api。 */
 
 import { KbPageAlert } from "@/components/kb/KbPageAlert";
-import { MCP_ENDPOINT_PLACEHOLDER, MCP_TRANSPORT_HINTS, McpDialogSection, McpTransportBadge, mcpFormCanSubmit } from "@/components/mcp/mcp-dialog-shared";
+import { MCP_ENDPOINT_PLACEHOLDER, MCP_TRANSPORT_HINTS, McpDialogSection, McpTransportBadge, mcpFormCanSubmit } from "@/features/mcp/components/mcp-dialog-shared";
 import { ResourceDialog } from "@/components/resource/ResourceDialog";
-import type { McpDialogMode } from "@/components/mcp/McpServiceDialog.types";
-import type { McpTransportTab } from "@/lib/mcp-labels";
-import { mcpTransportLabel, normalizeMcpTransport } from "@/lib/mcp-labels";
+import type { McpDialogMode } from "@/features/mcp/components/McpServiceDialog.types";
+import type { McpTransportTab } from "@/features/mcp/lib/mcp-labels";
+import { mcpTransportLabel, normalizeMcpTransport } from "@/features/mcp/lib/mcp-labels";
 import type { McpMeta, McpService } from "@/lib/types";
 
 export type { McpDialogMode };

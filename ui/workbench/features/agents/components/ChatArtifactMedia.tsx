@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
-import { ChatArtifactImage } from "@/components/agent/ChatArtifactImage";
+import { ChatArtifactImage } from "@/features/agents/components/ChatArtifactImage";
 
 type Props = {
   kind: string;
