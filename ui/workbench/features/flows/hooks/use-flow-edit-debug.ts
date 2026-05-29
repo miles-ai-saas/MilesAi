@@ -4,11 +4,51 @@ import { useMemo, useState } from "react";
 import type { MutableRefObject } from "react";
 import { useGenerativeJobPoll } from "@/hooks/use-generative-job-poll";
 import { api } from "@/lib/api";
-import { analyzeFlowGenerativeRun } from "@/features/flows/lib/flow-generative-hints";
-import type { FlowRunArtifact } from "@/features/flows/lib/flow-run-artifacts";
+import type { FlowRunArtifact } from "@/features/flows/components/FlowRunPanelSections";
 import type { FlowRunState, FlowRunPendingMedia } from "@/features/flows/components/FlowRunPanel";
 import { extractPendingGenerativeJobs } from "@/lib/generative-jobs";
 import type { ChatMediaIn, FlowGraph } from "@/lib/types";
+
+type FlowGenerativeRunHint = {
+  hasImageGenerate: boolean;
+  hasVideoGenerate: boolean;
+  preRunMessage: string | null;
+  busyRunLabel: string;
+};
+
+function analyzeFlowGenerativeRun(graph: FlowGraph): FlowGenerativeRunHint {
+  const types = new Set((graph.nodes ?? []).map((n) => n.type));
+  const hasImageGenerate = types.has("ImageGenerate");
+  const hasVideoGenerate = types.has("VideoGenerate");
+
+  if (!hasImageGenerate && !hasVideoGenerate) {
+    return {
+      hasImageGenerate: false,
+      hasVideoGenerate: false,
+      preRunMessage: null,
+      busyRunLabel: "运行中…",
+    };
+  }
+
+  const parts: string[] = [];
+  if (hasVideoGenerate) {
+    parts.push("含生视频节点：同步等待可能需数分钟，请勿关闭页面");
+  }
+  if (hasImageGenerate) {
+    parts.push("含生图节点：将调用 image_gen 模型");
+  }
+
+  let busyRunLabel = "运行中…";
+  if (hasVideoGenerate) busyRunLabel = "生视频中…";
+  else if (hasImageGenerate) busyRunLabel = "生图中…";
+
+  return {
+    hasImageGenerate,
+    hasVideoGenerate,
+    preRunMessage: parts.join("；"),
+    busyRunLabel,
+  };
+}
 
 type DebugSliceDeps = {
   id: string;

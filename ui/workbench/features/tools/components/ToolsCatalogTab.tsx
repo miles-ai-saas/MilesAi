@@ -4,7 +4,8 @@ import { AddResourceCard } from "@/components/resource/AddResourceCard";
 import { ResourceListLayout } from "@/components/resource/ResourceListLayout";
 import { TagFilterDropdown } from "@/components/tag/TagFilterDropdown";
 import { ToolCard } from "@/features/tools/components/ToolCard";
-import { FilterChip, StatChip } from "@/features/tools/components/tool-page-ui";
+import { FilterChip } from "@/components/ui/FilterChip";
+import { StatChip } from "@/components/ui/StatChip";
 import { catalogSourceTabs } from "@/features/tools/lib/tool-labels";
 import type { ToolsPageVm } from "@/features/tools/hooks/use-tools-page";
 

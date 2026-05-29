@@ -1,16 +1,16 @@
 "use client";
 
 import { useMemo } from "react";
-import { extractFlowRunArtifacts } from "@/features/flows/lib/flow-run-artifacts";
 import {
+  extractFlowRunArtifacts,
   FlowRunPanelCollapsedBar,
   FlowRunPanelErrors,
   FlowRunPanelInputs,
   FlowRunPanelResults,
+  type FlowCompileErrorDetail,
+  type FlowRunArtifact,
 } from "@/features/flows/components/FlowRunPanelSections";
 import { useFlowRunPanelMedia } from "@/features/flows/hooks/use-flow-run-panel-media";
-import type { FlowCompileErrorDetail } from "@/features/flows/lib/flow-run-format";
-import type { FlowRunArtifact } from "@/features/flows/lib/flow-run-artifacts";
 import type { KnowledgeBase } from "@/lib/types";
 
 export interface FlowRunState {

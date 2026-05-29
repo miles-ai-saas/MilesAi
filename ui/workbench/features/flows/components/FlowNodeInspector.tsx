@@ -23,8 +23,8 @@ import {
 import type { NodeType } from "@/features/flows/lib/flow-nodes";
 import type { KnowledgeBase, ModelConfig, PromptTemplate, ToolCatalogItem } from "@/lib/types";
 
-export type { FlowCompileErrorDetail } from "@/features/flows/lib/flow-run-format";
-export { formatCompileErrors, formatFlowSteps } from "@/features/flows/lib/flow-run-format";
+export type { FlowCompileErrorDetail } from "@/features/flows/components/FlowRunPanelSections";
+export { formatCompileErrors, formatFlowSteps } from "@/features/flows/components/FlowRunPanelSections";
 
 interface FlowNodeInspectorProps {
   node: Node | null;

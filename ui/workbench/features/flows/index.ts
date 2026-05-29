@@ -12,6 +12,6 @@ export { FlowMetaDialog } from "./components/FlowMetaDialog";
 export { FlowRunPanel, type FlowRunState, type FlowRunPendingMedia } from "./components/FlowRunPanel";
 export { FlowVersionHistoryDialog } from "./components/FlowVersionHistoryDialog";
 
-export type { FlowCompileErrorDetail } from "./lib/flow-run-format";
-export { formatFlowSteps } from "./lib/flow-run-format";
+export type { FlowCompileErrorDetail } from "./components/FlowRunPanelSections";
+export { formatFlowSteps } from "./components/FlowRunPanelSections";
 export type { FlowRunPanelProps } from "./components/FlowRunPanel";

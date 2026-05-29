@@ -2,7 +2,6 @@
 
 import { canRetryDocument, documentStatusLabel, documentStatusTone, isDocumentFailed, isDocumentProcessing, type DocumentStatusTone } from "@/lib/document-status";
 import { formatFileSize } from "@/lib/format-bytes";
-import { kbFileIcon } from "@/features/kb/lib/kb-file-icon";
 import type { EnumOption } from "@/lib/enum-meta";
 import type { Document } from "@/lib/types";
 
@@ -12,6 +11,19 @@ const DOC_STATUS_TONE_CLASS: Record<DocumentStatusTone, string> = {
   error: "bg-red-50 text-red-800 ring-red-200",
   neutral: "bg-surface-muted text-ink-muted ring-line",
 };
+
+function kbFileIcon(filename: string): string {
+  const ext = filename.includes(".") ? filename.slice(filename.lastIndexOf(".")).toLowerCase() : "";
+  if ([".pdf"].includes(ext)) return "PDF";
+  if ([".docx", ".doc"].includes(ext)) return "DOC";
+  if ([".pptx", ".ppt"].includes(ext)) return "PPT";
+  if ([".xlsx", ".xls"].includes(ext)) return "XLS";
+  if ([".md", ".markdown", ".txt"].includes(ext)) return "TXT";
+  if ([".jpg", ".jpeg", ".png", ".webp"].includes(ext)) return "IMG";
+  if ([".mp3", ".wav", ".m4a", ".ogg", ".webm"].includes(ext)) return "AUD";
+  if ([".html", ".htm"].includes(ext)) return "WEB";
+  return "FILE";
+}
 
 function DocumentStatusBadge({ status, pulse, statusOptions }: { status: string; pulse?: boolean; statusOptions?: EnumOption[] }) {
   const tone = documentStatusTone(status);
