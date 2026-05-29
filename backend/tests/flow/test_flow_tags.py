@@ -51,6 +51,10 @@ async def test_create_flow_with_tags(monkeypatch):
         "app.tenant.flows.services.flow.TagService.get_refs_map",
         get_refs,
     )
+    monkeypatch.setattr(
+        "app.tenant.system.services.quota.assert_can_create_flow",
+        AsyncMock(),
+    )
 
     out = await svc.create_flow(FlowCreate(name="RAG", description="desc", tag_ids=[tag_id], graph_json={"nodes": [], "edges": []}))
 

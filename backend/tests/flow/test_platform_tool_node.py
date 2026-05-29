@@ -1,11 +1,20 @@
 """画布 PlatformTool 节点。"""
 
+from unittest.mock import AsyncMock
 from uuid import uuid4
 
 import pytest
 
 from app.flow_runtime.nodes.tool_nodes import _build_invoke_params, platform_tool
 from app.flow_runtime.types import RunContext
+
+
+class _FakeDbSession:
+    async def __aenter__(self):
+        return AsyncMock()
+
+    async def __aexit__(self, *args):
+        return None
 
 
 def test_build_invoke_params_kb_default():
@@ -30,8 +39,12 @@ async def test_platform_tool_invoke(monkeypatch):
         return {"ok": True}
 
     monkeypatch.setattr(
-        "app.tenant.tools.invoke.invoke_tool_with_context",
+        "app.flow_runtime.nodes.tool_nodes.invoke_tool_with_context",
         _invoke,
+    )
+    monkeypatch.setattr(
+        "app.flow_runtime.nodes.tool_nodes.AsyncSessionLocal",
+        lambda: _FakeDbSession(),
     )
 
     ctx = RunContext(

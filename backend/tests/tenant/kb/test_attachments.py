@@ -54,7 +54,14 @@ async def test_upload_attachment_stores_object_and_updates_quota():
             "app.tenant.attachments.services.attachment.assert_can_upload_bytes",
             new_callable=AsyncMock,
         ),
-        patch("app.tenant.attachments.services.attachment.upload_bytes"),
+        patch(
+            "app.tenant.attachments.services.attachment.resolve_object_storage_async",
+            new_callable=AsyncMock,
+            return_value=SimpleNamespace(
+                default_bucket="bucket",
+                storage=SimpleNamespace(upload_bytes=MagicMock()),
+            ),
+        ),
         patch(
             "app.tenant.attachments.services.attachment.apply_storage_delta",
             new_callable=AsyncMock,

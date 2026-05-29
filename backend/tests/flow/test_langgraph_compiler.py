@@ -26,9 +26,10 @@ RAG_GRAPH = {
 
 def test_rag_template_compilable():
     import json
-    from pathlib import Path
 
-    tpl_path = Path(__file__).resolve().parents[1] / "app/flow_runtime/templates/rag_flow.json"
+    from tests.paths import BACKEND_ROOT
+
+    tpl_path = BACKEND_ROOT / "app/flow_runtime/templates/rag_flow.json"
     graph = json.loads(tpl_path.read_text())
     assert can_compile_flow_graph(graph)
 

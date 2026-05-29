@@ -52,9 +52,12 @@ async def test_read_image_bytes_downloads():
     svc = AttachmentService(db, ctx)
     svc._get_or_raise = AsyncMock(return_value=att)  # type: ignore[method-assign]
 
-    with patch(
-        "app.tenant.attachments.services.attachment.download_bytes",
-        return_value=b"png-bytes",
+    with (
+        patch(
+            "app.tenant.attachments.services.attachment.resolve_object_storage_async",
+            new_callable=AsyncMock,
+            return_value=SimpleNamespace(storage=SimpleNamespace(download_bytes=lambda *_a, **_k: b"png-bytes")),
+        ),
     ):
         data, mime = await svc.read_image_bytes(att_id)
 

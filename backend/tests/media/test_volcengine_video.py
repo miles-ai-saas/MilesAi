@@ -170,6 +170,11 @@ async def test_generate_video_for_model_doubao_route():
             new_callable=AsyncMock,
         ),
         patch(
+            "app.integrations.generative.compliance.check_generative_prompt",
+            new_callable=AsyncMock,
+            side_effect=lambda _db, _ctx, p: p,
+        ),
+        patch(
             "app.integrations.generative.video.service.generate_volcengine_video",
             new_callable=AsyncMock,
             return_value=b"\x00\x00\x00\x18ftypmp42",

@@ -291,15 +291,19 @@ from app.infra.vector_store import get_vector_store
 ## 7. 测试布局
 
 ```text
-tests/
-  rag/
-    test_hybrid.py          # RRF
-    test_retrieval_modes.py
-  infra/vector_store/       # 工厂、Record 映射
-  tenant/kb/                # API / 集成（可选）
+backend/tests/
+  conftest.py              # 全局 fixture
+  paths.py                 # BACKEND_ROOT（子目录内引用资源路径）
+  api/                     # HTTP / meta / smoke
+  integration/             # 跨模块编排
+  rag/                     # 解析、分片、检索、向量化
+  flow/                    # LangGraph 编译与流程
+  tenant/
+    agents/ kb/ tools/ skills/ hooks/ generative/
+  mcp/ admin/ infra/ marketplace/ media/
 ```
 
-单测 `rag` 模块时 **不启动** FastAPI；向量库测试 mock `get_vector_store`。
+单测 `rag` 模块时 **不启动** FastAPI；向量库测试 mock `get_vector_store`。详见 [tests/README.md](../../backend/tests/README.md)。
 
 ---
 

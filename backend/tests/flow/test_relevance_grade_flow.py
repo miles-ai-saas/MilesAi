@@ -1,13 +1,13 @@
 """RelevanceGrade / StaticResponse 画布编译与节点。"""
 
 import json
-from pathlib import Path
 
 import pytest
 
 from app.flow_runtime.nodes.grade_nodes import relevance_grade
 from app.flow_runtime.types import RunContext
 from app.integrations.langgraph.compiler import validate_graph_for_compile
+from tests.paths import BACKEND_ROOT
 
 
 @pytest.mark.asyncio
@@ -36,7 +36,7 @@ async def test_relevance_grade_good_score():
 
 
 def test_rag_with_grade_template_compilable():
-    path = Path(__file__).resolve().parents[1] / "app/flow_runtime/templates/rag_flow_with_grade.json"
+    path = BACKEND_ROOT / "app/flow_runtime/templates/rag_flow_with_grade.json"
     graph = json.loads(path.read_text(encoding="utf-8"))
     report = validate_graph_for_compile(graph)
     assert report.compilable, report.errors
