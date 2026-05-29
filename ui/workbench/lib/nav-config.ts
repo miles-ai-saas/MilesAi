@@ -172,7 +172,11 @@ export function isFullBleedPage(pathname: string): boolean {
   return pathname === "/workbench/agents/chat" || pathname.startsWith("/workbench/agents/chat/") || FLOW_EDIT_PATH.test(pathname);
 }
 
-/** 流程画布编辑页占满 header 以下区域（main 不滚动） */
+/** 对话工作台、流程画布编辑页占满 header 以下区域（main 不滚动） */
 export function isFullHeightPage(pathname: string): boolean {
-  return FLOW_EDIT_PATH.test(pathname);
+  return (
+    pathname === "/workbench/agents/chat" ||
+    pathname.startsWith("/workbench/agents/chat/") ||
+    FLOW_EDIT_PATH.test(pathname)
+  );
 }

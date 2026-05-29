@@ -64,13 +64,11 @@ export function AgentChatLeftSidebar({
     onSelectAgent,
   };
 
-  return (
-    <aside
-      className="relative flex h-full shrink-0 flex-col overflow-hidden border-r border-line bg-surface transition-[width] duration-200 ease-out"
-      style={{ width: collapsed ? CHAT_LEFT_SIDEBAR_COLLAPSED : CHAT_LEFT_SIDEBAR_EXPANDED }}
-    >
-      <SidebarCollapseButton side="left" collapsed={collapsed} onToggle={onToggleCollapse} hidden={hideCollapseButton} />
+  const width = collapsed ? CHAT_LEFT_SIDEBAR_COLLAPSED : CHAT_LEFT_SIDEBAR_EXPANDED;
 
+  return (
+    <div className="relative h-full shrink-0 transition-[width] duration-200 ease-out" style={{ width }}>
+      <aside className="flex h-full w-full flex-col overflow-hidden border-r border-line bg-surface">
       {collapsed ? (
         <div className="flex min-h-0 flex-1 flex-col">
           <AgentChatAgentColumn {...agentColumnProps} compact />
@@ -112,7 +110,9 @@ export function AgentChatLeftSidebar({
           </div>
         </div>
       )}
-    </aside>
+      </aside>
+      <SidebarCollapseButton side="left" collapsed={collapsed} onToggle={onToggleCollapse} hidden={hideCollapseButton} />
+    </div>
   );
 }
 

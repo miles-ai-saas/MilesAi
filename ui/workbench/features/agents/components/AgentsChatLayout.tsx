@@ -64,7 +64,7 @@ export function AgentsChatLayout({ vm }: Props) {
   } = vm;
 
   return (
-    <div className="relative flex h-[calc(100vh-3.5rem)] min-h-0">
+    <div className="relative flex h-full min-h-0 w-full flex-1 overflow-hidden">
       {!focusMode ? (
         <div className="hidden h-full shrink-0 lg:block">
           <AgentChatLeftSidebar

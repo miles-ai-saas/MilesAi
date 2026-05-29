@@ -48,13 +48,11 @@ type Props = {
 export function AgentWorkbenchSidebar({ agent, activeTab, panelOpen, collapsed, hideCollapseButton, onToggleCollapse, onTabChange, onAgentRenamed }: Props) {
   const agentMeta = useAgentMeta(Boolean(agent));
 
-  return (
-    <aside
-      className="relative z-30 flex h-full shrink-0 flex-col overflow-hidden border-l border-line bg-surface transition-[width] duration-200 ease-out"
-      style={{ width: collapsed ? CHAT_RIGHT_RAIL_COLLAPSED : CHAT_RIGHT_RAIL_EXPANDED }}
-    >
-      <SidebarCollapseButton side="right" collapsed={collapsed} onToggle={onToggleCollapse} hidden={hideCollapseButton} />
+  const width = collapsed ? CHAT_RIGHT_RAIL_COLLAPSED : CHAT_RIGHT_RAIL_EXPANDED;
 
+  return (
+    <div className="relative z-30 h-full shrink-0 transition-[width] duration-200 ease-out" style={{ width }}>
+      <aside className="flex h-full w-full flex-col overflow-hidden border-l border-line bg-surface">
       {collapsed ? (
         <nav className="flex flex-1 flex-col items-center gap-1 overflow-y-auto py-3" aria-label="工作台">
           {AGENT_WORKBENCH_TABS.map((item) => {
@@ -117,7 +115,9 @@ export function AgentWorkbenchSidebar({ agent, activeTab, panelOpen, collapsed, 
           </nav>
         </>
       )}
-    </aside>
+      </aside>
+      <SidebarCollapseButton side="right" collapsed={collapsed} onToggle={onToggleCollapse} hidden={hideCollapseButton} />
+    </div>
   );
 }
 
