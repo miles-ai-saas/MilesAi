@@ -69,16 +69,6 @@ export function useMonitorPage() {
     void reload();
   }, [ready, reload]);
 
-  const onExport = async () => {
-    const blob = await api.exportMonitorReport();
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "milesai-report.csv";
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
   const onSaveAlerts = async () => {
     await api.saveAlertConfig(alerts);
     setAlertMsg("告警配置已保存");
@@ -131,7 +121,6 @@ export function useMonitorPage() {
     redisInfo,
     workerInfo,
     reload,
-    onExport,
     onSaveAlerts,
     onTestAlert,
     statCards,

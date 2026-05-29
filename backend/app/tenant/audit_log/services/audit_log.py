@@ -3,6 +3,7 @@
 from uuid import UUID
 
 from fastapi import Request
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.tenant.audit_log.meta import audit_meta_dict
@@ -11,6 +12,7 @@ from app.tenant.audit_log.schemas.audit_log import TenantAuditLogOut
 from app.tenant.audit_log.schemas.meta import AuditMetaOut
 from app.common.schema import PageParams, PageResult
 from app.core.tenant import TenantContext
+from app.models.user import User
 
 
 async def write_tenant_audit_log(
@@ -91,8 +93,20 @@ class TenantAuditLogService:
             action=action,
             resource_type=resource_type,
         )
+        user_ids = {row.user_id for row in page.items if row.user_id}
+        username_by_id: dict[UUID, str] = {}
+        if user_ids:
+            result = await self.db.execute(select(User.id, User.username).where(User.id.in_(user_ids)))
+            username_by_id = {uid: name for uid, name in result.all()}
+
+        items: list[TenantAuditLogOut] = []
+        for row in page.items:
+            out = TenantAuditLogOut.model_validate(row)
+            if row.user_id:
+                out.username = username_by_id.get(row.user_id)
+            items.append(out)
         return PageResult(
-            items=[TenantAuditLogOut.model_validate(r) for r in page.items],
+            items=items,
             total=page.total,
             page=page.page,
             size=page.size,

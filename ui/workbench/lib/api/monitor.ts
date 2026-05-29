@@ -1,5 +1,5 @@
 import type { MonitorTrends, MonitorStats, MonitorReport, AlertConfig } from "../types";
-import { get, put, post, http } from "./client";
+import { get, put, post } from "./client";
 
 export const monitorApi = {
   getMonitorTrends: (days = 7) => get<MonitorTrends>(`/monitor/trends?days=${days}`),
@@ -9,8 +9,6 @@ export const monitorApi = {
   getMonitorStats: () => get<MonitorStats>("/monitor/stats"),
 
   getMonitorReport: () => get<MonitorReport>("/monitor/report"),
-
-  exportMonitorReport: () => http.get("/monitor/report/export", { responseType: "blob" }).then((res) => res.data as Blob),
 
   getMonitorHealth: () => get<{ healthy: boolean; status: string; components: Record<string, unknown> }>("/monitor/health"),
 

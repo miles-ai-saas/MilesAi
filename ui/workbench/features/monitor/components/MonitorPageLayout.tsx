@@ -22,14 +22,9 @@ type Props = {
 
 export function MonitorPageLayout({ vm, headerAction, children }: Props) {
   const defaultHeader = (
-    <div className="flex shrink-0 gap-2">
-      <button type="button" onClick={() => void vm.reload()} className="btn-ghost text-sm" disabled={vm.loading}>
-        {vm.loading ? "刷新中…" : "刷新"}
-      </button>
-      <button type="button" onClick={() => void vm.onExport()} className="btn-ghost text-sm" disabled={!vm.report}>
-        导出 CSV
-      </button>
-    </div>
+    <button type="button" onClick={() => void vm.reload()} className="btn-ghost text-sm" disabled={vm.loading}>
+      {vm.loading ? "刷新中…" : "刷新"}
+    </button>
   );
 
   return (

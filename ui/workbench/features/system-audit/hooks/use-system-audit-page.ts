@@ -27,6 +27,12 @@ export function useSystemAuditPage() {
 
   const actionOptions = auditActionFilterOptions(auditMeta);
   const resourceOptions = auditResourceTypeFilterOptions(auditMeta);
+  const hasActiveFilters = Boolean(actionFilter || resourceFilter);
+
+  const clearFilters = () => {
+    setActionFilter("");
+    setResourceFilter("");
+  };
 
   return {
     auditMeta,
@@ -37,6 +43,8 @@ export function useSystemAuditPage() {
     list,
     actionOptions,
     resourceOptions,
+    hasActiveFilters,
+    clearFilters,
   };
 }
 
