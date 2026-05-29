@@ -2,18 +2,311 @@
 
 import { AttachmentIdField } from "@/features/attachments";
 import type { Node } from "@xyflow/react";
-import type { KnowledgeBase, ModelConfig, PromptTemplate, ToolCatalogItem } from "@/lib/types";
+import { useEffect, useMemo, useState } from "react";
+import { api } from "@/lib/api";
+import type { Flow, KnowledgeBase, ModelConfig, PromptTemplate, ToolCatalogItem, ToolParameterSpec } from "@/lib/types";
 
-import {
-  GenerativeModelSelect,
-  IMAGE_SIZE_OPTIONS,
-  InspectorField as GenerativeInspectorField,
-  VIDEO_RESOLUTION_OPTIONS,
-  modelLabel,
-} from "@/features/flows/components/GenerativeNodeInspectorFields";
-import { PlatformToolInspector } from "@/features/flows/components/PlatformToolInspector";
-import { SubFlowInspector } from "@/features/flows/components/SubFlowInspector";
 import { CONDITION_MODES, MERGE_STRATEGIES } from "@/features/flows/lib/flow-node-schemas";
+
+const IMAGE_SIZE_OPTIONS = ["1024x1024", "1280x720", "720x1280"] as const;
+const VIDEO_RESOLUTION_OPTIONS = ["720P", "1080P"] as const;
+
+function filterModelsByType(models: ModelConfig[], modelType: string) {
+  return models.filter((m) => m.model_type === modelType);
+}
+
+function modelLabel(models: ModelConfig[], id: unknown): string {
+  if (!id) return "未选模型";
+  const m = models.find((x) => x.id === String(id));
+  return m?.name ?? String(id).slice(0, 8);
+}
+
+type FieldProps = {
+  label: string;
+  children: React.ReactNode;
+};
+
+function GenerativeInspectorField({ label, children }: FieldProps) {
+  return (
+    <label className="mb-3 block">
+      <span className="mb-1 block text-xs font-medium text-ink-muted">{label}</span>
+      {children}
+    </label>
+  );
+}
+
+type ModelSelectProps = {
+  models: ModelConfig[];
+  modelType: "image_gen" | "video_gen";
+  value: string;
+  onChange: (id: string | undefined) => void;
+  required?: boolean;
+};
+
+function GenerativeModelSelect({ models, modelType, value, onChange, required }: ModelSelectProps) {
+  const options = filterModelsByType(models, modelType);
+  return (
+    <select className="input-field w-full text-sm" value={value} onChange={(e) => onChange(e.target.value || undefined)} required={required}>
+      <option value="">{required ? "— 请选择 —" : "— 未选择 —"}</option>
+      {options.map((m) => (
+        <option key={m.id} value={m.id}>
+          {m.name}
+          {!m.has_api_key ? "（缺 Key）" : ""}
+        </option>
+      ))}
+    </select>
+  );
+}
+
+function defaultParamsFromSpec(parameters: ToolParameterSpec[]): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const p of parameters) {
+    if (p.default !== undefined && p.default !== null) {
+      out[p.name] = p.default;
+    } else if (p.type === "boolean") {
+      out[p.name] = false;
+    } else if (!p.required) {
+      continue;
+    } else if (p.type === "integer" || p.type === "number") {
+      out[p.name] = 0;
+    } else {
+      out[p.name] = "";
+    }
+  }
+  return out;
+}
+
+function ParamField({ spec, value, onChange }: { spec: ToolParameterSpec; value: unknown; onChange: (v: unknown) => void }) {
+  const label = `${spec.name}${spec.required ? " *" : ""}`;
+  const desc = spec.description ? <span className="mt-0.5 block text-[10px] text-slate-500">{spec.description}</span> : null;
+
+  if (spec.type === "boolean") {
+    return (
+      <label className="mb-3 flex items-center gap-2 text-sm">
+        <input type="checkbox" checked={Boolean(value)} onChange={(e) => onChange(e.target.checked)} />
+        <span>
+          {label}
+          {desc}
+        </span>
+      </label>
+    );
+  }
+
+  if (spec.enum?.length) {
+    return (
+      <label className="mb-3 block">
+        <span className="mb-1 block text-xs font-medium text-slate-600">{label}</span>
+        {desc}
+        <select className="input-field mt-1 w-full text-sm" value={String(value ?? spec.default ?? "")} onChange={(e) => onChange(e.target.value)}>
+          <option value="">—</option>
+          {spec.enum.map((opt) => (
+            <option key={opt} value={opt}>
+              {opt}
+            </option>
+          ))}
+        </select>
+      </label>
+    );
+  }
+
+  if (spec.type === "integer" || spec.type === "number") {
+    return (
+      <label className="mb-3 block">
+        <span className="mb-1 block text-xs font-medium text-slate-600">{label}</span>
+        {desc}
+        <input
+          type="number"
+          className="input-field mt-1 w-full text-sm"
+          value={value === undefined || value === null ? "" : Number(value)}
+          onChange={(e) => onChange(spec.type === "integer" ? parseInt(e.target.value, 10) || 0 : parseFloat(e.target.value) || 0)}
+        />
+      </label>
+    );
+  }
+
+  return (
+    <label className="mb-3 block">
+      <span className="mb-1 block text-xs font-medium text-slate-600">{label}</span>
+      {desc}
+      <input className="input-field mt-1 w-full text-sm" value={String(value ?? "")} onChange={(e) => onChange(e.target.value)} />
+    </label>
+  );
+}
+
+interface PlatformToolInspectorProps {
+  data: Record<string, unknown>;
+  catalog: ToolCatalogItem[];
+  onPatch: (patch: Record<string, unknown>) => void;
+}
+
+function PlatformToolInspector({ data, catalog, onPatch }: PlatformToolInspectorProps) {
+  const slug = String(data.tool_slug ?? "");
+  const params = (data.params as Record<string, unknown>) ?? {};
+
+  const tool = useMemo(() => catalog.find((t) => t.slug === slug), [catalog, slug]);
+
+  const onSlugChange = (nextSlug: string) => {
+    const next = catalog.find((t) => t.slug === nextSlug);
+    const nextParams = next?.parameters?.length ? defaultParamsFromSpec(next.parameters) : {};
+    onPatch({
+      tool_slug: nextSlug,
+      params: nextParams,
+      confirmed: next?.require_confirmation ?? data.confirmed !== false,
+    });
+  };
+
+  const setParam = (name: string, value: unknown) => {
+    onPatch({ params: { ...params, [name]: value } });
+  };
+
+  const builtins = catalog.filter((t) => t.source === "builtin");
+  const customs = catalog.filter((t) => t.source !== "builtin");
+
+  return (
+    <>
+      <label className="mb-3 block">
+        <span className="mb-1 block text-xs font-medium text-slate-600">工具</span>
+        <select className="input-field w-full text-sm" value={slug} onChange={(e) => onSlugChange(e.target.value)}>
+          <option value="">— 选择工具 —</option>
+          {builtins.length > 0 && (
+            <optgroup label="内置">
+              {builtins.map((t) => (
+                <option key={t.slug} value={t.slug}>
+                  {t.name} ({t.slug})
+                </option>
+              ))}
+            </optgroup>
+          )}
+          {customs.length > 0 && (
+            <optgroup label="自定义">
+              {customs.map((t) => (
+                <option key={t.slug} value={t.slug}>
+                  {t.name} ({t.slug})
+                </option>
+              ))}
+            </optgroup>
+          )}
+        </select>
+      </label>
+      {tool?.description && <p className="mb-3 text-[11px] leading-relaxed text-slate-500">{tool.description}</p>}
+      {tool?.parameters && tool.parameters.length > 0 ? (
+        <div className="mb-2 border-t border-slate-200 pt-2">
+          <p className="mb-2 text-[10px] font-semibold uppercase text-slate-500">参数</p>
+          {tool.parameters.map((spec) => (
+            <ParamField key={spec.name} spec={spec} value={params[spec.name]} onChange={(v) => setParam(spec.name, v)} />
+          ))}
+        </div>
+      ) : slug ? (
+        <label className="mb-3 block">
+          <span className="mb-1 block text-xs font-medium text-slate-600">params (JSON)</span>
+          <textarea
+            className="input-field min-h-[72px] w-full font-mono text-xs"
+            value={JSON.stringify(params, null, 2)}
+            onChange={(e) => {
+              try {
+                onPatch({ params: JSON.parse(e.target.value || "{}") });
+              } catch {
+                /* 编辑中 */
+              }
+            }}
+          />
+        </label>
+      ) : null}
+      <p className="mb-2 text-[10px] text-amber-700">skill_* 工具需在绑定技能包的智能体对话或流程中执行。</p>
+    </>
+  );
+}
+
+function SubFlowInspector({
+  data,
+  currentFlowId,
+  onChange,
+}: {
+  data: Record<string, unknown>;
+  currentFlowId?: string;
+  onChange: (patch: Record<string, unknown>) => void;
+}) {
+  const [flows, setFlows] = useState<Flow[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    setLoading(true);
+    api
+      .listFlows(1, 200)
+      .then((page) => {
+        setFlows(page.items.filter((f) => f.status === "published" && (!currentFlowId || f.id !== currentFlowId)));
+      })
+      .catch(() => setFlows([]))
+      .finally(() => setLoading(false));
+  }, [currentFlowId]);
+
+  const selected = useMemo(() => flows.find((f) => f.id === String(data.sub_flow_id || "")), [flows, data.sub_flow_id]);
+
+  const policy = String(data.version_policy || "published");
+
+  return (
+    <div className="space-y-3">
+      <label className="block">
+        <span className="mb-1 block text-xs font-medium text-ink-muted">子流程</span>
+        <select
+          className="input-field w-full text-sm"
+          value={String(data.sub_flow_id || "")}
+          onChange={(e) =>
+            onChange({
+              sub_flow_id: e.target.value,
+              label: flows.find((f) => f.id === e.target.value)?.name || "子流程",
+            })
+          }
+          disabled={loading}
+        >
+          <option value="">{loading ? "加载中…" : "选择已发布流程"}</option>
+          {flows.map((f) => (
+            <option key={f.id} value={f.id}>
+              {f.name} · v{f.current_version}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      {selected ? (
+        <p className="text-xs text-ink-faint">
+          当前版本 v{selected.current_version} · {selected.description || "无描述"}
+        </p>
+      ) : null}
+
+      <label className="block">
+        <span className="mb-1 block text-xs font-medium text-ink-muted">版本策略</span>
+        <select className="input-field w-full text-sm" value={policy} onChange={(e) => onChange({ version_policy: e.target.value })}>
+          <option value="published">跟随已发布版</option>
+          <option value="pinned">锁定指定版本</option>
+        </select>
+      </label>
+
+      {policy === "pinned" ? (
+        <label className="block">
+          <span className="mb-1 block text-xs font-medium text-ink-muted">锁定版本号</span>
+          <input
+            type="number"
+            min={1}
+            className="input-field w-full text-sm"
+            value={Number(data.pinned_version ?? 1)}
+            onChange={(e) => onChange({ pinned_version: Number(e.target.value) || 1 })}
+          />
+        </label>
+      ) : null}
+
+      <label className="block">
+        <span className="mb-1 block text-xs font-medium text-ink-muted">输出字段（可选）</span>
+        <input
+          className="input-field w-full text-sm"
+          placeholder="留空则取子流程最终 output"
+          value={String(data.output_key || "")}
+          onChange={(e) => onChange({ output_key: e.target.value })}
+        />
+      </label>
+    </div>
+  );
+}
 
 export function InspectorField({ label, children }: { label: string; children: React.ReactNode }) {
   return (

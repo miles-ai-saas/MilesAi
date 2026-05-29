@@ -5,9 +5,40 @@ import { PageMessage } from "@/components/ui/PageMessage";
 import { StatChip } from "@/components/ui/StatChip";
 import type { MonitorMeta } from "@/lib/types";
 import { monitorHealthComponentLabel, monitorOverallHealthLabel } from "@/features/monitor/lib/monitor-labels";
-import { parseComponentHealth, selectPrimaryComponents } from "@/features/monitor/lib/monitor-shared";
 
 export { StatChip, PageMessage };
+
+const MONITOR_PRIMARY_COMPONENT_KEYS = ["postgres", "redis", "vector_store", "object_storage"] as const;
+
+function parseComponentHealth(raw: unknown): { ok: boolean; detail?: string } {
+  if (typeof raw === "boolean") {
+    return { ok: raw, detail: raw ? undefined : "探测未通过" };
+  }
+  if (typeof raw === "string") {
+    const ok = raw === "healthy" || raw === "ok" || raw === "up";
+    return { ok, detail: ok ? undefined : raw };
+  }
+  if (raw && typeof raw === "object") {
+    const item = raw as Record<string, unknown>;
+    if (typeof item.healthy === "boolean") {
+      return {
+        ok: item.healthy,
+        detail: item.message ? String(item.message) : item.error ? String(item.error) : undefined,
+      };
+    }
+    const status = typeof item.status === "string" ? item.status : undefined;
+    const ok = status === "healthy" || status === "ok" || status === "up";
+    return {
+      ok,
+      detail: item.message ? String(item.message) : item.error ? String(item.error) : status,
+    };
+  }
+  return { ok: false, detail: "未知状态" };
+}
+
+function selectPrimaryComponents(components: Record<string, unknown>) {
+  return MONITOR_PRIMARY_COMPONENT_KEYS.filter((k) => k in components).map((k) => [k, components[k]] as const);
+}
 
 export function ChartPanel({ title, subtitle, children }: { title: string; subtitle?: string; children: ReactNode }) {
   return (

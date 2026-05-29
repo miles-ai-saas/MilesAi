@@ -1,16 +1,59 @@
 "use client";
 
-import {
-  credentialHint,
-  isBuiltinByok,
-  isBuiltinPlatformMissing,
-  isBuiltinReady,
-  isCustomMissingKey,
-  modelTypeLabel,
-  SOURCE_LABELS,
-  vendorLabel,
-} from "@/features/models/lib/model-catalog-ui";
+import type { ModelCatalogMeta, ModelConfig } from "@/lib/types";
 import type { ModelsPageVm } from "@/features/models/hooks/use-models-page";
+
+const MODEL_TYPE_LABELS: Record<string, string> = {
+  llm: "大语言模型",
+  reasoning: "推理模型",
+  vision: "图像理解",
+  embedding: "向量化",
+  rerank: "重排序",
+  image_gen: "图像生成",
+  video_gen: "视频生成",
+  asr: "语音识别",
+  tts: "语音合成",
+  other: "其它",
+};
+
+const SOURCE_LABELS: Record<string, string> = {
+  builtin: "内置模型",
+  custom: "自定义模型",
+};
+
+function vendorLabel(vendor: string, meta?: ModelCatalogMeta | null): string {
+  return meta?.vendors.find((v) => v.value === vendor)?.label ?? vendor;
+}
+
+function modelTypeLabel(t: string, meta?: ModelCatalogMeta | null): string {
+  return meta?.model_types.find((x) => x.value === t)?.label ?? MODEL_TYPE_LABELS[t] ?? t;
+}
+
+function credentialHint(m: ModelConfig): string {
+  if (m.source === "custom") {
+    if (m.credential_status === "tenant") return "已配置 API Key，可直接绑定使用";
+    return "请在编辑时填写 API Key 后方可调用";
+  }
+  if (m.credential_status === "platform") return "平台已配置密钥，可直接绑定使用";
+  if (m.credential_status === "tenant") return "当前使用租户自有 Key（优先于平台密钥）";
+  return "平台尚未为该模型配置密钥，请联系管理员；若您自有 Key，可选用下方「使用自有 Key」";
+}
+
+function isCustomMissingKey(m: ModelConfig): boolean {
+  return m.source === "custom" && m.credential_status === "missing";
+}
+
+function isBuiltinPlatformMissing(m: ModelConfig): boolean {
+  return m.source === "builtin" && m.credential_status === "missing";
+}
+
+function isBuiltinReady(m: ModelConfig): boolean {
+  return m.source === "builtin" && m.credential_status === "platform";
+}
+
+function isBuiltinByok(m: ModelConfig): boolean {
+  return m.source === "builtin" && m.credential_status === "tenant";
+}
 
 export function ModelCatalogGrid({ vm }: { vm: ModelsPageVm }) {
   if (vm.loading) {

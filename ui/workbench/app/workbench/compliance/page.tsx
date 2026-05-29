@@ -3,11 +3,16 @@
 /** 合规词库（链路 §13）：词库/日志/试扫 + `useComplianceMeta`。 */
 
 import { Suspense } from "react";
-import { CompliancePageView, useCompliancePage } from "@/features/compliance";
+import { ComplianceLogsTab } from "@/features/compliance/components/ComplianceLogsTab";
+import { ComplianceTestTab } from "@/features/compliance/components/ComplianceTestTab";
+import { ComplianceWordsTab } from "@/features/compliance/components/ComplianceWordsTab";
+import { useCompliancePage } from "@/features/compliance";
 
 function CompliancePageContent() {
   const vm = useCompliancePage();
-  return <CompliancePageView vm={vm} />;
+  if (vm.tab === "logs") return <ComplianceLogsTab vm={vm} />;
+  if (vm.tab === "test") return <ComplianceTestTab vm={vm} />;
+  return <ComplianceWordsTab vm={vm} />;
 }
 
 export default function CompliancePage() {

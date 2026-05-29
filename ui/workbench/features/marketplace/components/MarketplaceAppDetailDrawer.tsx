@@ -3,12 +3,46 @@
 /** 应用市场详情：右侧抽屉（链路 §12）。 */
 
 import { ResourceDialog } from "@/components/resource/ResourceDialog";
-import { manifestResourceItems } from "@/features/marketplace/components/marketplace-manifest";
 import { MarketplaceStarDisplay } from "@/features/marketplace/components/marketplace-page-ui";
 import { TagChips } from "@/components/tag/TagChips";
 import { marketplaceStatusLabel } from "@/features/marketplace/lib/marketplace-labels";
 import type { MarketplaceMeta } from "@/lib/types";
 import type { AppRating, MarketplaceApp, MarketplaceAppDetail } from "@/lib/types";
+
+function manifestResourceItems(manifest: Record<string, unknown>) {
+  const resourceLabels: Record<string, string> = {
+    knowledge_base: "知识库",
+    flow: "流程",
+    agent: "智能体",
+  };
+  const resources = (manifest.resources ?? manifest) as Record<string, unknown>;
+  const items: { key: string; label: string; name: string; hint?: string }[] = [];
+
+  for (const key of ["knowledge_base", "flow", "agent"] as const) {
+    const raw = resources[key];
+    if (!raw || typeof raw !== "object") continue;
+    const obj = raw as Record<string, unknown>;
+    const name = String(obj.name ?? "—");
+    let hint: string | undefined;
+    if (key === "agent") {
+      const parts: string[] = [];
+      if (obj.bind_kb) parts.push("绑知识库");
+      if (obj.bind_flow) parts.push("绑流程");
+      if (parts.length) hint = parts.join(" · ");
+    }
+    if (key === "flow" && obj.auto_publish === false) {
+      hint = hint ? `${hint} · 安装后不自动发布` : "安装后不自动发布";
+    }
+    items.push({
+      key,
+      label: resourceLabels[key] ?? key,
+      name,
+      hint,
+    });
+  }
+
+  return items;
+}
 
 function DetailSection({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) {
   return (

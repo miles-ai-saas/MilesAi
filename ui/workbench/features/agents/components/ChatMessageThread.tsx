@@ -4,7 +4,6 @@
 
 import { AgentExecutionSkeleton, AgentExecutionTimeline } from "@/features/agents/components/AgentExecutionTimeline";
 import { ChatArtifactMedia } from "@/features/agents/components/ChatArtifactMedia";
-import { ChatGenerativeStatusBanner } from "@/features/agents/components/ChatGenerativeStatusBanner";
 import type { ChatMessage } from "@/features/agents/lib/chat-sessions";
 import { turnIndexForMessageIndex } from "@/features/agents/lib/agent-trace";
 import type { PendingToolCall } from "@/lib/types";
