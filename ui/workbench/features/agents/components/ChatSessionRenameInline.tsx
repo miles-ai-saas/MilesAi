@@ -3,7 +3,7 @@
 /** 会话标题内联重命名（本地 chat-sessions）。 */
 
 import { useEffect, useId, useRef, useState } from "react";
-import { MAX_SESSION_TITLE_LENGTH } from "@/lib/chat-sessions";
+import { MAX_SESSION_TITLE_LENGTH } from "@/features/agents/lib/chat-sessions";
 
 type Props = {
   title: string;

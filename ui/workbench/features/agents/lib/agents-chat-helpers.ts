@@ -1,5 +1,5 @@
 import type { ChatAgentResult, ChatArtifact } from "@/lib/types";
-import type { ChatMessage } from "@/lib/chat-sessions";
+import type { ChatMessage } from "@/features/agents/lib/chat-sessions";
 import { extractPendingGenerativeJobs } from "@/lib/generative-jobs";
 
 export type GenerativePollJob = { jobId: string; kind: string };

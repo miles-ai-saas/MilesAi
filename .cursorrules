@@ -61,7 +61,7 @@ ui/workbench/features/<域>/
 - `features/system-quota/`
 - `features/system-roles/`
 
-新代码写入上述域的 `features/<域>/` 下；旧路径 `@/hooks/use-kb-*`、`@/components/flow/*` 等仅作兼容 re-export，**不要**在薄壳里写业务逻辑。
+新代码写入上述域的 `features/<域>/` 下；**禁止**再往已迁移域的旧路径 `components/<域>/`、`hooks/use-<域>-*` 添加文件。
 
 ### 何时仍用根目录
 
@@ -71,7 +71,7 @@ ui/workbench/features/<域>/
 | `components/` | `layout/`、`resource/`、`ui/` 等跨 feature 组件 |
 | `lib/` | `api/`、全局 types、与单域无关的工具 |
 
-单域 CRUD 若尚未建 `features/<域>/`，新增文件仍放 `components/<域>/` + `hooks/use-<域>-*`，但**下一个 refactor 应整包迁入** `features/<域>/`。
+单域 CRUD 一律在 `features/<域>/` 内新增；`components/` 仅保留 layout、resource、ui、tag、editor 等跨 feature 目录。
 
 ### import 约定
 

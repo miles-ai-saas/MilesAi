@@ -4,7 +4,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { copyText, defaultTraceTurnIndex, listTraceTurns } from "@/features/agents/lib/agent-trace";
-import type { ChatMessage } from "@/lib/chat-sessions";
+import type { ChatMessage } from "@/features/agents/lib/chat-sessions";
 
 type Props = {
   messages: ChatMessage[];

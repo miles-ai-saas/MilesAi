@@ -1,6 +1,6 @@
 "use client";
 
-import type { ChatSession } from "@/lib/chat-sessions";
+import type { ChatSession } from "@/features/agents/lib/chat-sessions";
 
 export function AgentChatSessionColumnCompact({
   selectedAgentId,

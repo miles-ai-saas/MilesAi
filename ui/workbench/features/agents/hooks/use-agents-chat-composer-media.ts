@@ -3,9 +3,9 @@
 import { useCallback, useMemo, useState } from "react";
 import type { PendingChatMedia } from "@/features/agents/components/AgentChatComposer";
 import { api } from "@/lib/api";
-import type { ChatMessage, ChatMessageMedia } from "@/lib/chat-sessions";
+import type { ChatMessage, ChatMessageMedia } from "@/features/agents/lib/chat-sessions";
 import { CHAT_ATTACHMENT_MAX_COUNT, filterChatUploadFiles } from "@/lib/chat-attachments";
-import { lastUserMessageMedia } from "@/lib/chat-media-forward";
+import { lastUserMessageMedia } from "@/features/agents/lib/chat-media-forward";
 
 type Params = {
   messages: ChatMessage[];

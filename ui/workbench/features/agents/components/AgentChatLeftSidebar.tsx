@@ -13,7 +13,7 @@ import {
   CHAT_SESSION_COLUMN,
 } from "@/features/agents/components/chat-sidebar-layout";
 import { SidebarCollapseButton } from "@/features/agents/components/SidebarCollapseButton";
-import type { ChatSession } from "@/lib/chat-sessions";
+import type { ChatSession } from "@/features/agents/lib/chat-sessions";
 import type { Agent } from "@/lib/types";
 
 type Props = {

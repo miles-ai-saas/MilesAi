@@ -5,7 +5,7 @@ import type { AppRouterInstance } from "next/dist/shared/lib/app-router-context.
 import { normalizeAgentWorkbenchTab, type AgentWorkbenchTab } from "@/features/agents/components/agent-workbench-tabs";
 import { loadChatSidebarPrefs, saveChatSidebarPrefs, type ChatSidebarPrefs } from "@/features/agents/components/chat-sidebar-layout";
 import { defaultTraceTurnIndex, listTraceTurns } from "@/features/agents/lib/agent-trace";
-import type { ChatMessage } from "@/lib/chat-sessions";
+import type { ChatMessage } from "@/features/agents/lib/chat-sessions";
 
 type Params = {
   tabFromUrl: string | null;

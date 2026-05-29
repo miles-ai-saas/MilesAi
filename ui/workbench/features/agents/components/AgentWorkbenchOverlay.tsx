@@ -7,7 +7,7 @@ import { AgentSchedulePanel } from "@/features/agents/components/AgentSchedulePa
 import { AgentStatsPanel } from "@/features/agents/components/AgentStatsPanel";
 import { AgentTracePanel } from "@/features/agents/components/AgentTracePanel";
 import { AgentWorkbenchPanel } from "@/features/agents/components/AgentWorkbenchPanel";
-import type { ChatMessage } from "@/lib/chat-sessions";
+import type { ChatMessage } from "@/features/agents/lib/chat-sessions";
 import type { Agent } from "@/lib/types";
 
 type Props = {

@@ -3,7 +3,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTraceTurnSelection } from "@/features/agents/components/AgentTracePanel";
-import { agentCarryForwardMediaEnabled, lastUserMessageMedia } from "@/lib/chat-media-forward";
+import { agentCarryForwardMediaEnabled, lastUserMessageMedia } from "@/features/agents/lib/chat-media-forward";
 import { api } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth-store";
 import { useInfiniteList } from "@/hooks/use-infinite-list";

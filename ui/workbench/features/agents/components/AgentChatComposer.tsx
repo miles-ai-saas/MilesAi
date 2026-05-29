@@ -5,7 +5,7 @@
  */
 
 import { useRef } from "react";
-import type { ChatMessageMedia } from "@/lib/chat-sessions";
+import type { ChatMessageMedia } from "@/features/agents/lib/chat-sessions";
 import { CHAT_ATTACHMENT_ACCEPT } from "@/lib/chat-attachments";
 
 export type PendingChatMedia = ChatMessageMedia & { local_preview: string };

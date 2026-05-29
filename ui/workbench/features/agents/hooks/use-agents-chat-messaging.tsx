@@ -6,9 +6,9 @@ import { useAgentsChatComposerMedia } from "@/features/agents/hooks/use-agents-c
 import { useAgentsChatGenerativeStatus } from "@/features/agents/hooks/use-agents-chat-generative-status";
 import { useAgentChatWs } from "@/features/agents/hooks/use-agent-chat-ws";
 import { api } from "@/lib/api";
-import { appendTurn, getSession, type ChatMessage, type ChatMessageMedia } from "@/lib/chat-sessions";
+import { appendTurn, getSession, type ChatMessage, type ChatMessageMedia } from "@/features/agents/lib/chat-sessions";
 import { generativeToolBusyLabel } from "@/lib/generative-tool-ui";
-import { resolveOutgoingChatMedia } from "@/lib/chat-media-forward";
+import { resolveOutgoingChatMedia } from "@/features/agents/lib/chat-media-forward";
 import { mapResponseArtifacts } from "@/features/agents/lib/agents-chat-helpers";
 import type { ChatAgentResult, ChatMediaIn, PendingToolCall } from "@/lib/types";
 import type { Dispatch, SetStateAction } from "react";

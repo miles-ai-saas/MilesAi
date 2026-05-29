@@ -12,7 +12,7 @@ import {
   setActiveSessionId,
   type ChatMessage,
   type ChatSession,
-} from "@/lib/chat-sessions";
+} from "@/features/agents/lib/chat-sessions";
 import { useConfirmAction } from "@/hooks/use-confirm-action";
 
 type Params = {
