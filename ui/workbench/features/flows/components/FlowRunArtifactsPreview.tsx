@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ChatArtifactMedia } from "@/components/agent/ChatArtifactMedia";
+import { ChatArtifactMedia } from "@/features/agents";
 import type { FlowRunArtifact } from "@/features/flows/lib/flow-run-artifacts";
 
 type Props = {

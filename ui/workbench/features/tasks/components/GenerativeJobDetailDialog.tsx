@@ -4,7 +4,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ChatArtifactMedia } from "@/components/agent/ChatArtifactMedia";
+import { ChatArtifactMedia } from "@/features/agents";
 import { ResourceDialog } from "@/components/resource/ResourceDialog";
 import { api } from "@/lib/api";
 import { subscribeGenerativeJobStream } from "@/lib/generative-job-stream";

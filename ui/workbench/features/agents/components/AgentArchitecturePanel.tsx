@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AgentArchitectureRoutingGraph } from "@/features/agents/components/architecture/AgentArchitectureRoutingGraph";
 import { AgentArchitectureTopologyGraph } from "@/features/agents/components/architecture/AgentArchitectureTopologyGraph";
-import { FlowCanvasPreview } from "@/components/flow/FlowCanvasPreview";
+import { FlowCanvasPreview } from "@/features/flows/components/FlowCanvasPreview";
 import { api } from "@/lib/api";
 import type { AgentArchitecture } from "@/lib/types";
 
