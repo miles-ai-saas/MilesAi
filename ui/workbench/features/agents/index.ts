@@ -6,7 +6,6 @@ export { useAgentMeta } from "./hooks/use-agent-meta";
 
 export { AgentsPageView } from "./components/AgentsPageView";
 export { AgentsChatLayout } from "./components/AgentsChatLayout";
-export { AgentsChatLoading } from "./components/AgentsChatLoading";
 
 export { AgentDetailDialog } from "./components/AgentDetailDialog";
 export { AgentFormDialog } from "./components/AgentFormDialog";

@@ -13,7 +13,8 @@ import { TagFilterDropdown } from "@/components/tag/TagFilterDropdown";
 import { TagManageDialog } from "@/components/tag/TagManageDialog";
 import type { FlowsPageVm } from "@/features/flows/hooks/use-flows-page";
 import { flowStatusLabel } from "@/features/flows/lib/flow-labels";
-import { FLOWS_PAGE_DESC } from "@/features/flows/lib/flows-page-shared";
+
+const FLOWS_PAGE_DESC = "可视化编排智能体执行流程，支持 RAG、工具调用等节点，发布后可绑定智能体。";
 
 export function FlowsPageView({ vm }: { vm: FlowsPageVm }) {
   const {

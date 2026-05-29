@@ -10,13 +10,11 @@ import {
   McpTransportBadge,
   mcpFormCanSubmit,
 } from "@/features/mcp/components/mcp-dialog-shared";
-import type { McpDialogMode } from "@/features/mcp/components/McpServiceDialog.types";
+export type McpDialogMode = "create" | "edit";
 import type { McpTransportTab } from "@/features/mcp/lib/mcp-labels";
 import { mcpTransportLabel, normalizeMcpTransport } from "@/features/mcp/lib/mcp-labels";
 import { ResourceDialog } from "@/components/resource/ResourceDialog";
 import type { McpMeta, McpService } from "@/lib/types";
-
-export type { McpDialogMode };
 
 type TransportTab = {
   key: Exclude<McpTransportTab, "">;

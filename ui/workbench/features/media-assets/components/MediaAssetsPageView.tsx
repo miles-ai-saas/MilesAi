@@ -5,7 +5,8 @@ import { MediaAssetPromoteDialog } from "@/features/media-assets/components/Medi
 import { ResourceListFooter } from "@/components/resource/ResourceListFooter";
 import { ResourceListLayout } from "@/components/resource/ResourceListLayout";
 import type { MediaAssetsPageVm } from "@/features/media-assets/hooks/use-media-assets-page";
-import { MEDIA_ASSETS_PAGE_DESC } from "@/features/media-assets/lib/media-assets-page-shared";
+
+const MEDIA_ASSETS_PAGE_DESC = "智能体与流程产生的图片/视频；可预览、管理，图片可升格写入知识库（不自动入库）。";
 
 export function MediaAssetsPageView({ vm }: { vm: MediaAssetsPageVm }) {
   const {

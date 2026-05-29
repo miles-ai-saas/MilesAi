@@ -1,6 +1,6 @@
 "use client";
 
-import { formatAgentCode } from "@/features/agents/components/agent-form-shared";
+import { formatAgentCode } from "@/features/agents/lib/agent-form-config";
 import { agentFormStepWidth, type AgentFormStepContentProps } from "@/features/agents/components/agent-form-step-types";
 import { TagPicker } from "@/components/tag/TagPicker";
 

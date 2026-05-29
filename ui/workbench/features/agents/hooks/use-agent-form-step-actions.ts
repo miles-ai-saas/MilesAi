@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import type { Dispatch, SetStateAction } from "react";
-import type { AgentFormValues } from "@/features/agents/components/agent-form-shared";
+import type { AgentFormValues } from "@/features/agents/lib/agent-form-types";
 import { subAgentRoleOptions } from "@/features/agents/lib/agent-labels";
 import { useAgentMeta } from "@/features/agents/hooks/use-agent-meta";
 import { useA2aMeta } from "@/hooks/use-a2a-meta";

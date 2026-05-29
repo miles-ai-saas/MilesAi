@@ -9,7 +9,9 @@ import { ResourceListLayout } from "@/components/resource/ResourceListLayout";
 import { PageMessage } from "@/components/ui/PageMessage";
 import { StatChip } from "@/components/ui/StatChip";
 import type { McpPageVm } from "@/features/mcp/hooks/use-mcp-page";
-import { MCP_PAGE_DESC } from "@/features/mcp/lib/mcp-page-shared";
+
+const MCP_PAGE_DESC =
+  "注册 Model Context Protocol 端点（HTTP / SSE / STDIO），同步远程工具列表；绑定到智能体后注入系统提示。SSE 请填写 GET 长连接地址。";
 
 export function McpPageView({ vm }: { vm: McpPageVm }) {
   const {

@@ -6,7 +6,8 @@ import { SystemUserFormDialog } from "@/features/system-users/components/SystemU
 import { SystemUserResetPasswordDialog } from "@/features/system-users/components/SystemUserResetPasswordDialog";
 import { SystemUsersTable } from "@/features/system-users/components/SystemUsersTable";
 import type { SystemUsersPageVm } from "@/features/system-users/hooks/use-system-users-page";
-import { SYSTEM_USERS_PAGE_DESC } from "@/features/system-users/lib/system-users-shared";
+
+const SYSTEM_USERS_PAGE_DESC = "管理当前租户下的用户账号与角色分配";
 
 export function SystemUsersPageView({ vm }: { vm: SystemUsersPageVm }) {
   const { selectedIds, openCreate, onBatchEnable, onBatchDisable, onOpenBatchRoles, onBatchDeactivate, confirmDialog } = vm;

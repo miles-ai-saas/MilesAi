@@ -6,7 +6,11 @@
  */
 
 import { Suspense } from "react";
-import { AgentsChatLayout, AgentsChatLoading, useAgentsChatPage } from "@/features/agents";
+import { AgentsChatLayout, useAgentsChatPage } from "@/features/agents";
+
+function AgentsChatLoading() {
+  return <div className="flex h-[calc(100vh-3.5rem)] items-center justify-center text-ink-muted">加载对话工作台…</div>;
+}
 
 export default function AgentsChatPage() {
   return (

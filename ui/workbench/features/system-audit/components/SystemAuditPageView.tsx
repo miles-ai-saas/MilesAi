@@ -4,8 +4,9 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { ResourceListFooter } from "@/components/resource/ResourceListFooter";
 import type { SystemAuditPageVm } from "@/features/system-audit/hooks/use-system-audit-page";
 import { auditActionLabel, auditResourceTypeLabel } from "@/lib/audit-labels";
-import { SYSTEM_AUDIT_PAGE_DESC } from "@/features/system-audit/lib/system-audit-shared";
 import type { TenantAuditLog } from "@/lib/types";
+
+const SYSTEM_AUDIT_PAGE_DESC = "记录租户内关键操作行为";
 
 export function SystemAuditPageView({ vm }: { vm: SystemAuditPageVm }) {
   const { auditMeta, actionFilter, setActionFilter, resourceFilter, setResourceFilter, list, actionOptions, resourceOptions } = vm;

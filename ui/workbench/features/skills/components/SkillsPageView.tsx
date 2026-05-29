@@ -9,7 +9,8 @@ import { SkillCard } from "@/features/skills/components/SkillCard";
 import { SkillCreateBlankDialog } from "@/features/skills/components/SkillCreateBlankDialog";
 import { SkillImportGitDialog, SkillImportLocalDialog, SkillImportZipDialog } from "@/features/skills/components/SkillImportDialogs";
 import type { SkillsPageVm } from "@/features/skills/hooks/use-skills-page";
-import { SKILLS_PAGE_DESC } from "@/features/skills/lib/skills-page-shared";
+
+const SKILLS_PAGE_DESC = "管理 Cursor 风格 SKILL.md 技能目录；支持本地目录、ZIP 与 Git 导入，在智能体中绑定后注入系统提示。";
 
 export function SkillsPageView({ vm }: { vm: SkillsPageVm }) {
   const {

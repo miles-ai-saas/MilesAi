@@ -7,7 +7,6 @@ export { useKbMeta } from "./hooks/use-kb-meta";
 export { KbCatalogView } from "./components/KbCatalogView";
 export { KbFormDialog } from "./components/KbFormDialog";
 export { KbPageAlert } from "./components/KbPageAlert";
-export { KbPageAlerts } from "./components/KbPageAlerts";
 export { KbQuotaBar } from "./components/KbQuotaBar";
 
 export { DocumentChunksDrawer } from "./components/DocumentChunksDrawer";

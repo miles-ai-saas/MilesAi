@@ -4,7 +4,8 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { SystemRoleFormDialog } from "@/features/system-roles/components/SystemRoleFormDialog";
 import { SystemRolesCatalog } from "@/features/system-roles/components/SystemRolesCatalog";
 import type { SystemRolesPageVm } from "@/features/system-roles/hooks/use-system-roles-page";
-import { SYSTEM_ROLES_PAGE_DESC } from "@/features/system-roles/lib/system-roles-shared";
+
+const SYSTEM_ROLES_PAGE_DESC = "为本租户配置角色与权限，用户通过角色获得访问能力。";
 
 export function SystemRolesPageView({ vm }: { vm: SystemRolesPageVm }) {
   const { openCreate, confirmDialog } = vm;

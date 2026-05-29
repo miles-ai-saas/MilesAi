@@ -3,7 +3,8 @@
 import { PageHeader } from "@/components/layout/PageHeader";
 import { SessionListItem } from "@/features/system-sessions/components/SessionListItem";
 import type { SystemSessionsPageVm } from "@/features/system-sessions/hooks/use-system-sessions-page";
-import { SYSTEM_SESSIONS_PAGE_DESC } from "@/features/system-sessions/lib/system-sessions-shared";
+
+const SYSTEM_SESSIONS_PAGE_DESC = "查看当前账号在各设备上的活跃登录，可强制下线可疑会话。";
 
 export function SystemSessionsPageView({ vm }: { vm: SystemSessionsPageVm }) {
   const { sessions, loading, msg, load, revoke, revokeOthers } = vm;

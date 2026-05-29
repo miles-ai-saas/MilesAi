@@ -1,5 +1,5 @@
 import type { Dispatch, SetStateAction } from "react";
-import type { AgentFormValues } from "@/features/agents/components/agent-form-shared";
+import type { AgentFormValues } from "@/features/agents/lib/agent-form-types";
 import type { Agent, A2aPeer, Flow, KnowledgeBase, McpService, ModelConfig, PromptTemplate, SkillPackage, SysCategory, ToolCatalogItem } from "@/lib/types";
 
 export type AgentFormStepContentProps = {
