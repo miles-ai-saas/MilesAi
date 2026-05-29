@@ -8,8 +8,24 @@ import { usePagedList } from "@/hooks/use-paged-list";
 import { useConfirmAction } from "@/hooks/use-confirm-action";
 import { usePromptMeta } from "@/features/prompts/hooks/use-prompt-meta";
 import { filterBySearch } from "@/lib/filter-search";
-import { exportPromptTemplate } from "@/features/prompts/lib/prompts-page-shared";
 import type { PromptTemplate } from "@/lib/types";
+
+function exportPromptTemplate(t: { name: string; content: string; category_id?: string | null; tags?: { id: string }[] }) {
+  const pkg = {
+    version: "1.0",
+    name: t.name,
+    content: t.content,
+    category_id: t.category_id,
+    tag_ids: t.tags?.map((tg) => tg.id) ?? [],
+  };
+  const blob = new Blob([JSON.stringify(pkg, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${t.name.replace(/[^a-zA-Z0-9\u4e00-\u9fff]/g, "_")}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 export function usePromptsPage() {
   const { ready } = useRequireAuth();

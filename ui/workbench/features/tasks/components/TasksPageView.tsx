@@ -8,7 +8,7 @@ import { ResourceListLayout } from "@/components/resource/ResourceListLayout";
 import { PageMessage } from "@/components/ui/PageMessage";
 import { StatChip } from "@/components/ui/StatChip";
 import type { TasksPageVm } from "@/features/tasks/hooks/use-tasks-page";
-import { TASK_CATEGORY_TABS } from "@/features/tasks/lib/tasks-page-shared";
+import { TASK_CATEGORY_TABS } from "@/features/tasks/lib/task-labels";
 
 const TASKS_PAGE_DESC = {
   celery: "文档入库等 Celery 异步任务；支持按状态筛选、搜索、取消与重试；点击「刷新」更新列表。",

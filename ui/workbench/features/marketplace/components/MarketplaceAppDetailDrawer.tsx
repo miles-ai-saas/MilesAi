@@ -4,7 +4,7 @@
 
 import { ResourceDialog } from "@/components/resource/ResourceDialog";
 import { manifestResourceItems } from "@/features/marketplace/components/marketplace-manifest";
-import { MarketplaceStarDisplay } from "@/features/marketplace/components/MarketplaceStarDisplay";
+import { MarketplaceStarDisplay } from "@/features/marketplace/components/marketplace-page-ui";
 import { TagChips } from "@/components/tag/TagChips";
 import { marketplaceStatusLabel } from "@/features/marketplace/lib/marketplace-labels";
 import type { MarketplaceMeta } from "@/lib/types";

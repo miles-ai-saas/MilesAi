@@ -3,8 +3,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth-store";
-import { VENDOR_ORDER, type SourceFilter } from "@/features/models/lib/model-page-shared";
 import type { ModelCatalogMeta, ModelConfig } from "@/lib/types";
+
+export const VENDOR_ORDER = ["deepseek", "doubao", "qwen"] as const;
+
+export type SourceFilter = "" | "builtin" | "custom";
 
 export function useModelsList() {
   const { ready } = useRequireAuth();

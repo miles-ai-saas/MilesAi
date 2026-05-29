@@ -5,9 +5,15 @@ import { MCP_ENDPOINT_PLACEHOLDER } from "@/features/mcp/components/mcp-dialog-s
 import { useConfirmAction } from "@/hooks/use-confirm-action";
 import { api } from "@/lib/api";
 import { normalizeMcpTransport, type McpTransportTab } from "@/features/mcp/lib/mcp-labels";
-import { parseStdioArgs } from "@/features/mcp/lib/mcp-page-shared";
 import type { McpService } from "@/lib/types";
 import type { McpListSlice } from "@/features/mcp/hooks/use-mcp-list";
+
+function parseStdioArgs(text: string): string[] {
+  return text
+    .split("\n")
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
 
 type ViewingSlice = {
   viewing: McpService | null;

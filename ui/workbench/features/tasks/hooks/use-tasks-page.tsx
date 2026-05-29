@@ -2,7 +2,7 @@
 
 import { useTasksCeleryList } from "@/features/tasks/hooks/use-tasks-celery-list";
 import { useTasksNavigation } from "@/features/tasks/hooks/use-tasks-navigation";
-import type { TaskCategory } from "@/features/tasks/lib/tasks-page-shared";
+import type { TaskCategory } from "@/features/tasks/lib/task-labels";
 
 export function useTasksPage() {
   const navigation = useTasksNavigation();

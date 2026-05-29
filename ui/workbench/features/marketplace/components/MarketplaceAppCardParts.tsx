@@ -1,6 +1,6 @@
 "use client";
 
-import { MarketplaceStarDisplay } from "@/features/marketplace/components/MarketplaceStarDisplay";
+import { MarketplaceStarDisplay } from "@/features/marketplace/components/marketplace-page-ui";
 import { TagChips } from "@/components/tag/TagChips";
 import { CardActions } from "@/components/resource/CardActions";
 import { marketplaceVisibilityLabel } from "@/features/marketplace/lib/marketplace-labels";

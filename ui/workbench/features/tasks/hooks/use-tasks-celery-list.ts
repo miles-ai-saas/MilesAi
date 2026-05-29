@@ -10,7 +10,7 @@ import { canCancelTask } from "@/features/tasks/components/TaskDetailDialog";
 import { filterBySearch } from "@/lib/filter-search";
 import { generativeJobStatusFilterOptions } from "@/lib/generative-job-labels";
 import { taskStatusFilterOptions } from "@/features/tasks/lib/task-labels";
-import type { TaskCategory } from "@/features/tasks/lib/tasks-page-shared";
+import type { TaskCategory } from "@/features/tasks/lib/task-labels";
 
 export function useTasksCeleryList(category: TaskCategory) {
   const { ready } = useRequireAuth();

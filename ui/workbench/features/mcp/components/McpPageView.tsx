@@ -1,6 +1,6 @@
 "use client";
 
-import { McpCreateCard } from "@/features/mcp/components/McpCreateCard";
+import { AddResourceCard } from "@/components/resource/AddResourceCard";
 import { McpServiceCard } from "@/features/mcp/components/McpServiceCard";
 import { McpServiceDetailDialog } from "@/features/mcp/components/McpServiceDetailDialog";
 import { McpServiceDialog } from "@/features/mcp/components/McpServiceDialog";
@@ -91,7 +91,7 @@ export function McpPageView({ vm }: { vm: McpPageVm }) {
           <StatChip label="本页展示" value={String(filtered.length)} hint="受搜索筛选影响" />
         </div>
 
-        <McpCreateCard onAdd={openCreate} />
+        <AddResourceCard label="添加 MCP 服务" hint="支持 HTTP、SSE、STDIO；创建后同步 tools/list" onClick={() => openCreate("http")} />
 
         {!list.loading && filtered.length === 0 && (
           <p className="col-span-full py-12 text-center text-sm text-ink-faint">暂无匹配的 MCP 服务，点击「添加 MCP 服务」注册 HTTP / SSE / STDIO</p>

@@ -6,6 +6,13 @@
 import { optionLabel, type EnumOption } from "@/lib/enum-meta";
 import type { TaskMeta } from "@/lib/types";
 
+export type TaskCategory = "celery" | "generative";
+
+export const TASK_CATEGORY_TABS: { key: TaskCategory; label: string }[] = [
+  { key: "celery", label: "后台任务" },
+  { key: "generative", label: "生成任务" },
+];
+
 const STATUS_FALLBACK: Record<string, string> = {
   pending: "等待中",
   running: "运行中",

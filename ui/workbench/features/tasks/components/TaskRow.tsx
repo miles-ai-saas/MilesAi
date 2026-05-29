@@ -1,9 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { TaskStatusBadge } from "@/features/tasks/components/TaskStatusBadge";
 import { canCancelTask, canRetryTask } from "@/features/tasks/components/TaskDetailDialog";
+import { taskStatusBadgeClass, taskStatusLabel } from "@/features/tasks/lib/task-labels";
 import type { TaskMeta, TaskRecord } from "@/lib/types";
+
+function TaskStatusBadge({ status, taskMeta }: { status: string; taskMeta: TaskMeta | null }) {
+  return (
+    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ${taskStatusBadgeClass(status)}`}>
+      {taskStatusLabel(status, taskMeta)}
+    </span>
+  );
+}
 
 export function TaskRow({
   task,
