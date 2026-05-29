@@ -3,22 +3,17 @@
 import { ResourceListFooter } from "@/components/resource/ResourceListFooter";
 import { ResourceListLayout } from "@/components/resource/ResourceListLayout";
 import type { CompliancePageVm } from "@/features/compliance/hooks/use-compliance-page";
-import { COMPLIANCE_MAIN_TABS, COMPLIANCE_PAGE_DESC } from "@/features/compliance/lib/compliance-page-shared";
 import type { InterceptLog } from "@/lib/types";
 
 export function ComplianceLogsTab({ vm }: { vm: CompliancePageVm }) {
-  const { logs, search, setSearch, tab, setTab, filteredLogs, actionLabel } = vm;
+  const { layoutShell, logs, search, setSearch, filteredLogs, actionLabel } = vm;
 
   return (
     <ResourceListLayout
-      title="合规与安全"
-      description={COMPLIANCE_PAGE_DESC}
+      {...layoutShell}
       searchPlaceholder="搜索模块、命中词或内容摘要"
       search={search}
       onSearchChange={setSearch}
-      tabs={COMPLIANCE_MAIN_TABS}
-      activeTab={tab}
-      onTabChange={(k) => setTab(k as typeof tab)}
       loading={logs.loading}
       footer={
         !logs.loading ? (

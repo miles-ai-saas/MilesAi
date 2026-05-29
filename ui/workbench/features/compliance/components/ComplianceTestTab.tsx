@@ -3,21 +3,16 @@
 import { ScanStatusBadge } from "@/features/compliance/components/ScanStatusBadge";
 import { ResourceListLayout } from "@/components/resource/ResourceListLayout";
 import type { CompliancePageVm } from "@/features/compliance/hooks/use-compliance-page";
-import { COMPLIANCE_MAIN_TABS, COMPLIANCE_PAGE_DESC } from "@/features/compliance/lib/compliance-page-shared";
 
 export function ComplianceTestTab({ vm }: { vm: CompliancePageVm }) {
-  const { tab, setTab, testText, setTestText, scanBusy, scanResult, onScan, actionLabel } = vm;
+  const { layoutShell, testText, setTestText, scanBusy, scanResult, onScan, actionLabel } = vm;
 
   return (
     <ResourceListLayout
-      title="合规与安全"
-      description={COMPLIANCE_PAGE_DESC}
+      {...layoutShell}
       search=""
       onSearchChange={() => {}}
       showSearch={false}
-      tabs={COMPLIANCE_MAIN_TABS}
-      activeTab={tab}
-      onTabChange={(k) => setTab(k as typeof tab)}
     >
       <div className="col-span-full mx-auto w-full max-w-2xl">
         <section className="rounded-xl border border-line bg-surface p-6 shadow-panel">

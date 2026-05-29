@@ -4,8 +4,7 @@
 
 import dynamic from "next/dynamic";
 import { ResourceDialog } from "@/components/resource/ResourceDialog";
-import { useFlowVersionHistory, type FlowVersionHistoryProps, type FlowVersionHistoryVm } from "@/features/flows/hooks/use-flow-version-history";
-import { formatVersionTime } from "@/features/flows/lib/flow-version-history-shared";
+import { formatVersionTime, useFlowVersionHistory, type FlowVersionHistoryProps, type FlowVersionHistoryVm } from "@/features/flows/hooks/use-flow-version-history";
 
 const FlowCanvasPreview = dynamic(() => import("@/features/flows/components/FlowCanvasPreview").then((m) => m.FlowCanvasPreview), { ssr: false });
 

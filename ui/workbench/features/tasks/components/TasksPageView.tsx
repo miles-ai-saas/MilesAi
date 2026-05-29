@@ -1,7 +1,6 @@
 "use client";
 
 import { GenerativeJobsSection } from "@/features/tasks/components/GenerativeJobsSection";
-import { TaskCategorySwitcher } from "@/features/tasks/components/TaskCategorySwitcher";
 import { TaskDetailDialog } from "@/features/tasks/components/TaskDetailDialog";
 import { TaskRow } from "@/features/tasks/components/TaskRow";
 import { ResourceListFooter } from "@/components/resource/ResourceListFooter";
@@ -9,11 +8,31 @@ import { ResourceListLayout } from "@/components/resource/ResourceListLayout";
 import { PageMessage } from "@/components/ui/PageMessage";
 import { StatChip } from "@/components/ui/StatChip";
 import type { TasksPageVm } from "@/features/tasks/hooks/use-tasks-page";
+import { TASK_CATEGORY_TABS } from "@/features/tasks/lib/tasks-page-shared";
 
 const TASKS_PAGE_DESC = {
   celery: "文档入库等 Celery 异步任务；支持按状态筛选、搜索、取消与重试；点击「刷新」更新列表。",
   generative: "智能体对话、流程或 API 触发的生图/生视频任务；支持类型筛选、进度查看、取消与失败重试；可跳转关联的后台 Celery 记录；点击「刷新」更新列表。",
 } as const;
+
+function TaskCategorySwitcher({ category, onChange }: { category: TasksPageVm["category"]; onChange: (c: TasksPageVm["category"]) => void }) {
+  return (
+    <div className="mb-4 flex gap-2">
+      {TASK_CATEGORY_TABS.map((tab) => (
+        <button
+          key={tab.key}
+          type="button"
+          onClick={() => onChange(tab.key)}
+          className={`rounded-lg px-4 py-2 text-sm font-medium transition ${
+            category === tab.key ? "bg-brand text-white shadow-sm" : "bg-surface text-ink-muted ring-1 ring-line hover:text-ink"
+          }`}
+        >
+          {tab.label}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 export function TasksPageView({ vm }: { vm: TasksPageVm }) {
   const {

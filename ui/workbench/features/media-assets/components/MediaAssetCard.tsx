@@ -2,8 +2,13 @@
 
 import { ChatArtifactMedia } from "@/features/agents";
 import { mediaAssetKindLabel, mediaAssetSourceLabel } from "@/features/media-assets/lib/media-asset-labels";
-import { formatMediaBytes } from "@/features/media-assets/lib/media-assets-page-shared";
 import type { KnowledgeBase, MediaAsset } from "@/lib/types";
+
+function formatMediaBytes(n: number) {
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+  return `${(n / 1024 / 1024).toFixed(2)} MB`;
+}
 
 export function MediaAssetCard({
   asset,

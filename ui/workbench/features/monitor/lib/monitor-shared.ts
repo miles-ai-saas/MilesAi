@@ -10,8 +10,6 @@ export const MONITOR_MAIN_TABS: { key: MonitorTab; label: string }[] = [
   { key: "alerts", label: "告警配置" },
 ];
 
-export const MONITOR_PAGE_DESC = "查看租户业务指标、异步任务与合规拦截趋势，检查依赖组件健康状态，并配置 Webhook 告警。";
-
 /** 与后端 collect_health_status 主键一致 */
 export const MONITOR_PRIMARY_COMPONENT_KEYS = ["postgres", "redis", "vector_store", "object_storage"] as const;
 

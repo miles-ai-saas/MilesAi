@@ -1,7 +1,13 @@
 "use client";
 
-import { formatSessionTime } from "@/features/system-sessions/lib/system-sessions-shared";
 import type { UserSession } from "@/lib/types";
+
+function formatSessionTime(iso?: string | null): string {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleString("zh-CN");
+}
 
 export function SessionListItem({ session, onRevoke }: { session: UserSession; onRevoke: () => void }) {
   return (

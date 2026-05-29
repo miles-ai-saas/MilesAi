@@ -4,8 +4,22 @@ import { CardActions } from "@/components/resource/CardActions";
 import { ResourceItemCard } from "@/components/resource/ResourceItemCard";
 import { TagChips } from "@/components/tag/TagChips";
 import { skillActiveLabel, skillSourceTypeLabel } from "@/features/skills/lib/skill-labels";
-import { formatSkillUpdated } from "@/features/skills/lib/skills-page-shared";
 import type { SkillMeta, SkillPackage } from "@/lib/types";
+
+function formatSkillUpdated(iso: string) {
+  try {
+    const d = new Date(iso);
+    return d.toLocaleString("zh-CN", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  } catch {
+    return iso;
+  }
+}
 
 export function SkillCard({
   skill,

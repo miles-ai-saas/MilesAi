@@ -8,9 +8,18 @@ import { usePagedList } from "@/hooks/use-paged-list";
 import { useConfirmAction } from "@/hooks/use-confirm-action";
 import { useComplianceMeta } from "@/features/compliance/hooks/use-compliance-meta";
 import { sensitiveActionLabel } from "@/features/compliance/lib/compliance-labels";
-import type { ComplianceTab } from "@/features/compliance/lib/compliance-page-shared";
 import { filterBySearch } from "@/lib/filter-search";
 import type { WordLibrary } from "@/lib/types";
+
+export type ComplianceTab = "words" | "logs" | "test";
+
+const COMPLIANCE_MAIN_TABS: { key: ComplianceTab; label: string }[] = [
+  { key: "words", label: "敏感词库" },
+  { key: "logs", label: "拦截日志" },
+  { key: "test", label: "在线检测" },
+];
+
+const COMPLIANCE_PAGE_DESC = "按词库管理敏感词条；须在「参与扫描的词库」中勾选后，对话等环节才会进行检测。";
 
 export function useCompliancePage() {
   const router = useRouter();
@@ -136,6 +145,13 @@ export function useCompliancePage() {
     tab,
     setTab,
     onTabChange,
+    layoutShell: {
+      title: "合规与安全",
+      description: COMPLIANCE_PAGE_DESC,
+      tabs: COMPLIANCE_MAIN_TABS,
+      activeTab: tab,
+      onTabChange,
+    },
     search,
     setSearch,
     libraryId,

@@ -9,12 +9,10 @@ import { ResourceItemCard } from "@/components/resource/ResourceItemCard";
 import { ResourceListFooter } from "@/components/resource/ResourceListFooter";
 import { ResourceListLayout } from "@/components/resource/ResourceListLayout";
 import type { CompliancePageVm } from "@/features/compliance/hooks/use-compliance-page";
-import { COMPLIANCE_MAIN_TABS, COMPLIANCE_PAGE_DESC } from "@/features/compliance/lib/compliance-page-shared";
 
 export function ComplianceWordsTab({ vm }: { vm: CompliancePageVm }) {
   const {
-    tab,
-    onTabChange,
+    layoutShell,
     search,
     setSearch,
     libraryId,
@@ -41,14 +39,10 @@ export function ComplianceWordsTab({ vm }: { vm: CompliancePageVm }) {
   if (libraryId && activeLibrary) {
     return (
       <ResourceListLayout
-        title="合规与安全"
-        description={COMPLIANCE_PAGE_DESC}
+        {...layoutShell}
         search=""
         onSearchChange={() => {}}
         showSearch={false}
-        tabs={COMPLIANCE_MAIN_TABS}
-        activeTab={tab}
-        onTabChange={(k) => vm.setTab(k as typeof tab)}
       >
         <ComplianceLibraryDetail
           library={activeLibrary}
@@ -63,14 +57,10 @@ export function ComplianceWordsTab({ vm }: { vm: CompliancePageVm }) {
   return (
     <>
       <ResourceListLayout
-        title="合规与安全"
-        description={COMPLIANCE_PAGE_DESC}
+        {...layoutShell}
         searchPlaceholder="搜索词库名称"
         search={search}
         onSearchChange={setSearch}
-        tabs={COMPLIANCE_MAIN_TABS}
-        activeTab={tab}
-        onTabChange={onTabChange}
         loading={libraries.loading && !libraryId}
         headerAction={
           <button type="button" className="btn-sm-primary" onClick={openCreateLib}>
