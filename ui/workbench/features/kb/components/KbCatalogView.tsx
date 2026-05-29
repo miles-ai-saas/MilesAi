@@ -7,7 +7,7 @@ import { ResourceListFooter } from "@/components/resource/ResourceListFooter";
 import { ResourceListLayout } from "@/components/resource/ResourceListLayout";
 import { KbQuotaBar } from "@/features/kb/components/KbQuotaBar";
 import type { KbPageVm } from "@/features/kb/hooks/use-kb-page";
-import { DEFAULT_CHUNK_OVERLAP, DEFAULT_CHUNK_SIZE } from "@/features/kb/lib/kb-page-shared";
+import { DEFAULT_CHUNK_OVERLAP, DEFAULT_CHUNK_SIZE } from "@/features/kb/hooks/use-kb-list";
 import { retrievalModeLabel } from "@/features/kb/lib/kb-labels";
 
 const KB_PAGE_DESC = "管理企业知识库与文档，为智能体 RAG 检索与流程节点提供知识来源。";

@@ -3,7 +3,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { api } from "@/lib/api";
 import { usePagedList } from "@/hooks/use-paged-list";
-import { type KbDetailAlertState, type KbDetailTabKey, type KbSearchHit } from "@/features/kb/lib/kb-detail-shared";
+import { type KbDetailAlertState, type KbDetailTabKey, type KbSearchHit } from "@/features/kb/hooks/use-kb-detail-page";
 import type { Document } from "@/lib/types";
 
 type SearchSliceDeps = {

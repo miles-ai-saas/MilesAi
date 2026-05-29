@@ -5,9 +5,13 @@ import { api } from "@/lib/api";
 import { usePagedList } from "@/hooks/use-paged-list";
 import { useConfirmAction } from "@/hooks/use-confirm-action";
 import { isDocumentProcessing } from "@/lib/document-status";
-import { type KbDetailTabKey, type KbDocFilter, matchKbDocFilter } from "@/features/kb/lib/kb-detail-shared";
+import {
+  type KbDetailAlertState,
+  type KbDetailTabKey,
+  type KbDocFilter,
+  matchKbDocFilter,
+} from "@/features/kb/hooks/use-kb-detail-page";
 import type { Document } from "@/lib/types";
-import type { KbDetailAlertState } from "@/features/kb/lib/kb-detail-shared";
 
 type CoreSlice = {
   id: string;

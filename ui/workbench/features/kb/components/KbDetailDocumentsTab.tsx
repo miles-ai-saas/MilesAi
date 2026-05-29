@@ -3,7 +3,7 @@
 import { useCallback, useState } from "react";
 import { KbDocumentRow } from "@/features/kb/components/KbDocumentRow";
 import { ResourceListFooter } from "@/components/resource/ResourceListFooter";
-import { KB_DOC_FILTERS } from "@/features/kb/lib/kb-detail-shared";
+import { KB_DOC_FILTERS } from "@/features/kb/hooks/use-kb-detail-page";
 import type { KbDetailPageVm } from "@/features/kb/hooks/use-kb-detail-page";
 import { KB_UPLOAD_ACCEPT, KB_UPLOAD_HINT } from "@/lib/upload-accept";
 

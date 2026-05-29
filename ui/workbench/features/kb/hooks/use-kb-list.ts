@@ -6,13 +6,20 @@ import { useRequireAuth } from "@/lib/auth-store";
 import { usePagedList } from "@/hooks/use-paged-list";
 import { useKbMeta } from "@/features/kb/hooks/use-kb-meta";
 import { filterBySearch } from "@/lib/filter-search";
-import {
-  DEFAULT_CHUNK_OVERLAP,
-  DEFAULT_CHUNK_SIZE,
-  DEFAULT_RERANK_CANDIDATE_K,
-  isClipModel,
-} from "@/features/kb/lib/kb-page-shared";
-import type { KnowledgeBase, KbQuota, ModelConfig } from "@/lib/types";
+import type { KbQuota, ModelConfig } from "@/lib/types";
+
+export const DEFAULT_CHUNK_SIZE = 500;
+export const DEFAULT_CHUNK_OVERLAP = 50;
+export const DEFAULT_RERANK_CANDIDATE_K = 50;
+
+export function embeddingDimension(m: ModelConfig): number {
+  const dim = m.extra?.embedding_dimension;
+  return typeof dim === "number" ? dim : 0;
+}
+
+export function isClipModel(m: ModelConfig): boolean {
+  return m.extra?.invoke_mode === "clip";
+}
 
 export function useKbList() {
   const { ready } = useRequireAuth();

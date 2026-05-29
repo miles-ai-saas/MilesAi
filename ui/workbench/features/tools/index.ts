@@ -5,5 +5,4 @@ export { useToolsMeta } from "./hooks/use-tools-meta";
 
 export { ToolsCatalogTab } from "./components/ToolsCatalogTab";
 export { ToolsLogsTab } from "./components/ToolsLogsTab";
-export { ToolsPageOverlays } from "./components/ToolsPageOverlays";
 export { ToolCreateDialog, type ToolDialogMode, DEFAULT_SCRIPT } from "./components/ToolCreateDialog";

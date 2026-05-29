@@ -3,7 +3,7 @@
 import { ResourceDialog } from "@/components/resource/ResourceDialog";
 import { KbPageAlert } from "@/features/kb/components/KbPageAlert";
 import type { KbPageVm } from "@/features/kb/hooks/use-kb-page";
-import { embeddingDimension } from "@/features/kb/lib/kb-page-shared";
+import { embeddingDimension } from "@/features/kb/hooks/use-kb-list";
 
 export function KbFormDialog({ vm }: { vm: KbPageVm }) {
   const {
