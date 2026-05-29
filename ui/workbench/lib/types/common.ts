@@ -4,16 +4,11 @@ import type { EnumOption } from "@/lib/enum-meta";
 
 export type { EnumOption };
 
+export type { PageResult } from "@milesai/ui-shared/lib/pagination";
+
 export interface ApiResponse<T> {
   code: number;
   message: string;
   data: T | null;
   trace_id?: string;
-}
-
-export interface PageResult<T> {
-  items: T[];
-  total: number;
-  page: number;
-  size: number;
 }

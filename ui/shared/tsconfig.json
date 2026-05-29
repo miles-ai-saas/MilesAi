@@ -5,5 +5,5 @@
       "@shared/*": ["./*"]
     }
   },
-  "include": ["brand/**/*.ts", "brand/**/*.tsx"]
+  "include": ["brand/**/*.ts", "brand/**/*.tsx", "hooks/**/*.ts", "lib/**/*.ts", "ui/**/*.ts", "ui/**/*.tsx"]
 }

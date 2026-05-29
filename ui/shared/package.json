@@ -5,9 +5,11 @@
   "exports": {
     "./brand/company-logo": "./brand/company-logo.tsx",
     "./brand/brand-header": "./brand/brand-header.tsx",
+    "./hooks/use-paged-list": "./hooks/use-paged-list.ts",
     "./lib/pagination": "./lib/pagination.ts",
     "./ui/page-header": "./ui/page-header.tsx",
     "./ui/pagination": "./ui/pagination.tsx",
+    "./ui/list-footer": "./ui/list-footer.tsx",
     "./ui/stat-chip": "./ui/stat-chip.tsx",
     "./ui/filter-chip": "./ui/filter-chip.tsx",
     "./ui/page-message": "./ui/page-message.tsx"
