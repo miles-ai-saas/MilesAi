@@ -19,7 +19,6 @@ export function AdminLoginHero() {
 
       <div className="relative z-10 flex flex-1 flex-col justify-center px-10 xl:px-14">
         <CompanyLogo variant="full" size="lg" className="mb-6" />
-        <p className="mb-2 text-sm font-semibold tracking-wide text-brand">MilesAi · 管理后台</p>
         <h1 className="text-3xl font-bold leading-tight text-ink xl:text-4xl">
           平台级
           <br />

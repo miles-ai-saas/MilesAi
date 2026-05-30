@@ -104,12 +104,13 @@ export function CompanyLogo({
           textAnchor="middle"
           fill={COMPANY_ORANGE}
           style={{
-            fontSize: box * 0.42,
+            fontSize: box * 0.26,
             fontWeight: 700,
             fontFamily: '"PingFang SC", "Noto Sans SC", sans-serif',
+            letterSpacing: "-0.06em",
           }}
         >
-          千里
+          行千里
         </text>
       </svg>
     );

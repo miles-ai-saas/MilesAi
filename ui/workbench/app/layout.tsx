@@ -6,12 +6,8 @@ import { AppShell } from "@/components/layout/AppShell";
 import { appFont } from "@/lib/fonts";
 
 export const metadata: Metadata = {
-  title: "MilesAi",
+  title: "行千里",
   description: "AI 智能编排与 RAG 平台",
-  icons: {
-    icon: "/brand/logo-mark.svg",
-    apple: "/brand/logo-mark.svg",
-  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

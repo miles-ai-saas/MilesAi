@@ -54,7 +54,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <MetaCacheProvider>
       <div className={`flex flex-col bg-surface-muted ${fullHeight ? "h-dvh overflow-hidden" : "min-h-screen"}`}>
         <header className="flex h-14 shrink-0 items-center gap-3 border-b border-line bg-surface px-4">
-          <BrandHeader productLine="MilesAi · 工作台" href="/workbench/dashboard" />
+          <BrandHeader href="/workbench/dashboard" />
 
           {isWorkbench ? <WorkbenchHeaderNav pathname={pathname} /> : <div className="min-w-0 flex-1" />}
 

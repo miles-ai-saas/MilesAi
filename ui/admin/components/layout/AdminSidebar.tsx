@@ -40,7 +40,7 @@ export function AdminSidebar({ pathname, onNavigate }: { pathname: string; onNav
   return (
     <aside className="flex h-full w-60 shrink-0 flex-col border-r border-line bg-surface">
       <div className="flex h-14 shrink-0 items-center border-b border-line px-4">
-        <BrandHeader productLine="MilesAi · 管理后台" href="/" />
+        <BrandHeader href="/" />
       </div>
 
       <nav className="flex-1 overflow-y-auto px-3 py-4">

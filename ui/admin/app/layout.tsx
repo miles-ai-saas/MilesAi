@@ -4,12 +4,8 @@ import "./globals.css";
 import { appFont } from "@/lib/fonts";
 
 export const metadata: Metadata = {
-  title: "MilesAi 管理后台",
+  title: "管理后台",
   description: "平台租户、计费与风控管理",
-  icons: {
-    icon: "/brand/logo-mark.svg",
-    apple: "/brand/logo-mark.svg",
-  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

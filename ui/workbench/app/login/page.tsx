@@ -37,7 +37,6 @@ export default function LoginPage() {
         <div className="mx-auto w-full max-w-md">
           <div className="mb-8 lg:hidden">
             <CompanyLogo variant="full" size="md" className="mb-3" />
-            <p className="text-sm font-semibold text-brand">MilesAi</p>
             <h1 className="mt-1 text-2xl font-bold text-ink">登录工作台</h1>
           </div>
 
