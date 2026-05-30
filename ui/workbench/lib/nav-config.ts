@@ -68,12 +68,15 @@ export const WORKBENCH_NAV: NavGroup[] = [
     ],
   },
   {
-    title: "运营",
+    title: "观测",
     items: [
       { href: "/workbench/tasks", label: "任务中心" },
       { href: "/workbench/monitor", label: "监控" },
-      { href: "/workbench/marketplace", label: "应用市场" },
     ],
+  },
+  {
+    title: "应用市场",
+    items: [{ href: "/workbench/marketplace", label: "应用市场" }],
   },
 ];
 
@@ -153,6 +156,10 @@ export function isNavActive(pathname: string, href: string): boolean {
     return pathname === "/workbench/agents/chat" || pathname.startsWith("/workbench/agents/chat/");
   }
   return pathname === href || pathname.startsWith(`${href}/`);
+}
+
+export function isNavGroupActive(pathname: string, group: NavGroup): boolean {
+  return group.items.some((item) => isNavActive(pathname, item.href));
 }
 
 export function getPageTitle(pathname: string): string {
