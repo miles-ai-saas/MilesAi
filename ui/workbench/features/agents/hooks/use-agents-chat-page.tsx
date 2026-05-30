@@ -150,6 +150,7 @@ export function useAgentsChatPage() {
     handleRenameSession: session.handleRenameSession,
     openTraceLatest: layout.openTraceLatest,
     openTraceAtTurn: layout.openTraceAtTurn,
+    handleOpenTraceFromRecord: session.handleOpenTraceFromRecord,
     closePanel: layout.closePanel,
     chat: messaging.chat,
     confirmPendingTool: messaging.confirmPendingTool,

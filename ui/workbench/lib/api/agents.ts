@@ -43,6 +43,47 @@ export const agentsApi = {
   listAgentScheduleRuns: (agentId: string, scheduleId: string, page = 1, size = 10) =>
     getPage<import("../types").AgentScheduleRun>(`/agents/${agentId}/schedules/${scheduleId}/runs?${buildPageQuery(page, size)}`),
 
+  listAgentCallRecords: (
+    agentId: string,
+    page = 1,
+    size = DEFAULT_PAGE_SIZE,
+    opts?: {
+      status?: string;
+      conversation_id?: string;
+      route?: string;
+      q?: string;
+      from?: string;
+      to?: string;
+    },
+  ) => {
+    let q = buildPageQuery(page, size);
+    if (opts?.status) q += `&status=${encodeURIComponent(opts.status)}`;
+    if (opts?.conversation_id) q += `&conversation_id=${encodeURIComponent(opts.conversation_id)}`;
+    if (opts?.route) q += `&route=${encodeURIComponent(opts.route)}`;
+    if (opts?.q) q += `&q=${encodeURIComponent(opts.q)}`;
+    if (opts?.from) q += `&from=${encodeURIComponent(opts.from)}`;
+    if (opts?.to) q += `&to=${encodeURIComponent(opts.to)}`;
+    return getPage<import("../types").AgentCallRecord>(`/agents/${agentId}/call-records?${q}`);
+  },
+
+  getAgentCallRecord: (agentId: string, callId: string) =>
+    get<import("../types").AgentCallRecordDetail>(`/agents/${agentId}/call-records/${callId}`),
+
+  listAgentChatSessions: (agentId: string, page = 1, size = DEFAULT_PAGE_SIZE) =>
+    getPage<import("../types").AgentChatSessionSummary>(`/agents/${agentId}/chat-sessions?${buildPageQuery(page, size)}`),
+
+  getAgentChatSession: (agentId: string, sessionId: string) =>
+    get<import("../types").ChatSessionDetail>(`/agents/${agentId}/chat-sessions/${sessionId}`),
+
+  createAgentChatSession: (agentId: string, payload: { id?: string; title?: string }) =>
+    post<import("../types").AgentChatSessionSummary>(`/agents/${agentId}/chat-sessions`, payload),
+
+  updateAgentChatSession: (agentId: string, sessionId: string, payload: { title: string }) =>
+    patch<import("../types").AgentChatSessionSummary>(`/agents/${agentId}/chat-sessions/${sessionId}`, payload),
+
+  deleteAgentChatSession: (agentId: string, sessionId: string) =>
+    http.delete(`/agents/${agentId}/chat-sessions/${sessionId}`).then(() => undefined),
+
   createAgent: (payload: {
     agent_type?: import("../types").AgentType;
     category_id?: string | null;

@@ -20,7 +20,9 @@ from app.rag.generate import format_hits_context, rag_answer, retrieve_hits
 from app.tenant.a2a.services.peer_refs import list_agent_a2a_peer_refs
 from app.tenant.agents.schemas.agent import ChatRequest, ChatResponse
 from app.tenant.agents.services.agent.serialization import should_use_skill_tools_with_kb
+from app.tenant.agents.services.call_records import ChatCallRecorder
 from app.tenant.agents.services.sub_agents import list_sub_agent_bindings
+from app.tenant.models.services.usage import begin_chat_usage_accumulation, end_chat_usage_accumulation
 from app.tenant.compliance.constants import SCAN_MODULE_AGENT_CHAT
 from app.tenant.compliance.services.compliance import ComplianceService
 from app.tenant.flows.repositories.flow import FlowRepository
@@ -92,6 +94,44 @@ class AgentChatMixin:
         )
         return response
 
+    def _resolve_rag_route(self, agent: Agent, kb_ids: list[str]) -> str:
+        if not kb_ids:
+            if (agent.config or {}).get("enable_tool_calling") and agent.model_config_id:
+                return "tool_agent"
+            return "direct_llm"
+        if should_use_skill_tools_with_kb(agent, kb_ids):
+            return "tool_agent"
+        if should_use_langgraph_rag(agent, kb_ids=kb_ids):
+            return "rag"
+        return "rag"
+
+    async def _complete_chat_turn(
+        self,
+        recorder: ChatCallRecorder,
+        route: str,
+        *,
+        compliance: ComplianceService,
+        hooks: HookRunner,
+        agent_id: UUID,
+        hook_payload: dict,
+        response: ChatResponse,
+    ) -> ChatResponse:
+        """出站合规 + Hook 收尾，并写入调用记录。"""
+        recorder.set_route(route)
+        try:
+            finished = await self._finish_chat_turn(
+                compliance=compliance,
+                hooks=hooks,
+                agent_id=agent_id,
+                hook_payload=hook_payload,
+                response=response,
+            )
+            await recorder.record_success(finished, route=route)
+            return finished
+        except Exception as exc:
+            await recorder.record_failure(exc, route=route, response=response)
+            raise
+
     async def chat(self, agent_id: UUID, body: ChatRequest) -> ChatResponse:
         """租户侧智能体对话入口：合规与 Hook 包裹整条调用链。"""
         agent = await self.get_agent_or_raise(agent_id)
@@ -108,6 +148,16 @@ class AgentChatMixin:
             "media_count": len(body.media),
             "attachment_ids": [str(m.attachment_id) for m in body.media],
         }
+        recorder = ChatCallRecorder(
+            self.db,
+            self.ctx,
+            agent_id=agent_id,
+            body=body,
+            user_query=effective_query,
+            media_count=len(body.media),
+        )
+        route = "unknown"
+        usage_acc = begin_chat_usage_accumulation()
 
         try:
             before_call = await hooks.run(
@@ -124,8 +174,11 @@ class AgentChatMixin:
             if agent.agent_type == AgentType.A2A:
                 from app.tenant.a2a.invoke import run_a2a_host_chat
 
+                route = "a2a_host"
                 response = await run_a2a_host_chat(self, agent, chat_body)
-                return await self._finish_chat_turn(
+                return await self._complete_chat_turn(
+                    recorder,
+                    route,
                     compliance=compliance,
                     hooks=hooks,
                     agent_id=agent_id,
@@ -138,10 +191,13 @@ class AgentChatMixin:
             if bindings:
                 from app.integrations.deepagents.orchestrator import run_subagent_planned_chat
 
+                route = "subagent"
                 response = await run_subagent_planned_chat(self, agent, bindings, chat_body)
                 if peer_refs:
                     response = await self.maybe_augment_a2a(agent, chat_body, response)
-                return await self._finish_chat_turn(
+                return await self._complete_chat_turn(
+                    recorder,
+                    route,
                     compliance=compliance,
                     hooks=hooks,
                     agent_id=agent_id,
@@ -154,6 +210,7 @@ class AgentChatMixin:
 
                 kb_ids = [str(kb.id) for kb in agent.knowledge_bases]
                 top_k = int((agent.config or {}).get("top_k", 5))
+                route = "a2a_augmented"
                 response = await run_a2a_augmented_chat(
                     self,
                     agent,
@@ -163,7 +220,9 @@ class AgentChatMixin:
                     agent_id=agent_id,
                     hooks=hooks,
                 )
-                return await self._finish_chat_turn(
+                return await self._complete_chat_turn(
+                    recorder,
+                    route,
                     compliance=compliance,
                     hooks=hooks,
                     agent_id=agent_id,
@@ -189,10 +248,13 @@ class AgentChatMixin:
                             kb_ids=kb_ids,
                             media=chat_body.media,
                         )
+                        route = "flow"
                         result = await get_flow_runtime().run(version.graph_json, ctx)
                         response = ChatResponse(answer=str(result.output), steps=result.steps)
                         response = await self.maybe_augment_a2a(agent, chat_body, response)
-                        return await self._finish_chat_turn(
+                        return await self._complete_chat_turn(
+                            recorder,
+                            route,
                             compliance=compliance,
                             hooks=hooks,
                             agent_id=agent_id,
@@ -200,9 +262,12 @@ class AgentChatMixin:
                             response=response,
                         )
 
+            route = self._resolve_rag_route(agent, kb_ids)
             response = await self.rag_chat(agent, chat_body, kb_ids, top_k, agent_id, hooks)
             response = await self.maybe_augment_a2a(agent, chat_body, response)
-            return await self._finish_chat_turn(
+            return await self._complete_chat_turn(
+                recorder,
+                route,
                 compliance=compliance,
                 hooks=hooks,
                 agent_id=agent_id,
@@ -210,6 +275,7 @@ class AgentChatMixin:
                 response=response,
             )
         except Exception as exc:
+            await recorder.record_failure(exc, route=route)
             await hooks.run(
                 HookTrigger.ON_ERROR,
                 HookScope.AGENT,
@@ -217,6 +283,8 @@ class AgentChatMixin:
                 {**hook_payload, "error": str(exc)},
             )
             raise
+        finally:
+            end_chat_usage_accumulation(usage_acc)
 
     async def chat_as_child(self, child_id: UUID, body: ChatRequest) -> ChatResponse:
         """子智能体工位：不再走子智能体规划，仅 RAG/流程/直连。"""
@@ -291,6 +359,7 @@ class AgentChatMixin:
                 temperature=float((agent.config or {}).get("temperature", 0.7)),
                 db=self.db,
                 tenant_id=self.ctx.tenant_id,
+                source_id=agent_id,
             )
             await hooks.run(
                 HookTrigger.AFTER_REASONING,
@@ -404,6 +473,7 @@ class AgentChatMixin:
                     media=body.media or None,
                     ctx=self.ctx,
                     retrieve_query=retrieve_query,
+                    source_id=agent_id,
                 )
                 steps = [{"type": "rag_linear", "engine": "langchain"}]
             await hooks.run(

@@ -10,6 +10,8 @@
 
 from app.models.category import CategoryDomain, SysCategory
 from app.models.agent import Agent, AgentStatus, AgentSubAgentBinding, agent_kb_bindings
+from app.models.agent_chat_call import AgentChatCall
+from app.models.agent_chat_session import AgentChatMessage, AgentChatSession
 from app.models.agent_schedule import AgentSchedule
 from app.models.agent_schedule_run import AgentScheduleRun
 from app.models.flow import Flow, FlowStatus, FlowVersion
@@ -49,6 +51,9 @@ __all__ = [
     "AgentSubAgentBinding",
     "AgentSchedule",
     "AgentScheduleRun",
+    "AgentChatCall",
+    "AgentChatSession",
+    "AgentChatMessage",
     "ModelConfig",
     "ModelUsageLog",
     "ModelTenantCredential",

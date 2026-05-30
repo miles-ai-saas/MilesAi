@@ -33,6 +33,7 @@ from app.tenant.agents.schemas.agent import (
     PendingToolCall,
 )
 from app.tenant.models.services.model_resolve import resolve_model_for_invoke
+from app.tenant.models.services.usage import UsageRecordContext, record_litellm_response_usage
 from app.tenant.tools.confirmation import ToolConfirmationRequired, resolve_tool_meta
 from app.tenant.tools.invoke import invoke_tool_with_context
 
@@ -125,6 +126,13 @@ async def run_tool_calling_chat(
         raise ValueError("工具调用需要配置大模型")
 
     model = await resolve_model_for_invoke(db, agent.model_config, ctx.tenant_id)
+    usage_ctx = UsageRecordContext(
+        db=db,
+        tenant_id=ctx.tenant_id,
+        model=model,
+        source="chat",
+        source_id=agent_id,
+    )
 
     all_tools = await get_all_platform_tools(db, ctx, agent_config=agent.config or {})
     allowed = agent.config.get("tool_slugs") if isinstance(agent.config, dict) else None
@@ -189,6 +197,7 @@ async def run_tool_calling_chat(
 
     for _ in range(max_iter):
         response = await _litellm_with_tools(model, messages, openai_tools, temperature=temperature)
+        await record_litellm_response_usage(usage_ctx, response)
         choice = response.choices[0]
         message = choice.message
         tool_calls = getattr(message, "tool_calls", None) or []

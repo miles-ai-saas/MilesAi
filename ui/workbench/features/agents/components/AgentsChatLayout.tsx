@@ -40,6 +40,8 @@ export function AgentsChatLayout({ vm }: Props) {
     setFocusMode,
     onTabChange,
     openTraceLatest,
+    openTraceAtTurn,
+    handleOpenTraceFromRecord,
     closePanel,
     handleAgentRenamed,
     wsEnabled,
@@ -56,7 +58,6 @@ export function AgentsChatLayout({ vm }: Props) {
     generativeStatusEl,
     handleNewSession,
     handleRenameSession,
-    openTraceAtTurn,
     chat,
     confirmPendingTool,
     onPickAttachments,
@@ -196,11 +197,17 @@ export function AgentsChatLayout({ vm }: Props) {
         open={panelOpen}
         agent={selected ?? null}
         agentId={selectedAgent || null}
+        conversationId={conversationId}
         activeTab={workbenchTab}
         rightRailCollapsed={rightCollapsed}
         chatMessages={messages}
         traceTurnIndex={selectedTurnIndex}
         onTraceTurnIndexChange={setSelectedTurnIndex}
+        onOpenTrace={openTraceLatest}
+        onOpenTraceFromRecord={async (sessionId) => {
+          await handleOpenTraceFromRecord(sessionId);
+          openTraceLatest();
+        }}
         onClose={closePanel}
         onSaved={() => list.reload()}
       />

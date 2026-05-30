@@ -151,6 +151,7 @@ async def plan_a2a_peers(
         temperature=0.2,
         db=db,
         tenant_id=tenant_id,
+        source_id=parent.id,
     )
     plan = _parse_a2a_plan(raw)
     allowed = {str(r.peer.id) for r in candidates if r.peer}
@@ -313,6 +314,7 @@ async def augment_response_with_a2a(
             temperature=float((agent.config or {}).get("temperature", 0.7)),
             db=svc.db,
             tenant_id=svc.ctx.tenant_id,
+            source_id=agent.id,
         )
     else:
         final = base.answer + "\n\n---\n\n" + "\n\n".join(blocks)
@@ -374,6 +376,7 @@ async def run_a2a_host_chat(
             temperature=float((agent.config or {}).get("temperature", 0.7)),
             db=svc.db,
             tenant_id=svc.ctx.tenant_id,
+            source_id=agent.id,
         )
         return ChatResponse(answer=answer, steps=steps)
 
@@ -395,5 +398,6 @@ async def run_a2a_host_chat(
         temperature=float((agent.config or {}).get("temperature", 0.7)),
         db=svc.db,
         tenant_id=svc.ctx.tenant_id,
+        source_id=agent.id,
     )
     return ChatResponse(answer=final, sources=[], steps=steps)

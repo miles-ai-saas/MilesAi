@@ -103,6 +103,7 @@ async def run_rag_workflow(
         "use_llm_grade": bool(cfg.get("use_llm_grade", False)),
         "media": [m.model_dump(mode="json") for m in (media or [])],
         "user_id": str(user_id) if user_id else "",
+        "agent_id": str(agent_id),
         "hits": [],
         "steps": [
             {

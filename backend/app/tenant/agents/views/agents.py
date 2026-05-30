@@ -17,11 +17,15 @@ from app.core.tenant import TenantContext
 from app.tenant.agents.schemas.agent import AgentCreate, AgentOut, AgentPackage, AgentUpdate, ChatRequest, ChatResponse
 from app.tenant.agents.schemas.meta import AgentMetaOut
 from app.tenant.agents.schemas.architecture import AgentArchitectureOut
+from app.tenant.agents.schemas.call_records import AgentCallRecordDetailOut, AgentCallRecordOut
+from app.tenant.agents.schemas.chat_sessions import ChatSessionCreate, ChatSessionDetailOut, ChatSessionOut, ChatSessionUpdate
 from app.tenant.agents.schemas.schedule import AgentScheduleCreate, AgentScheduleOut, AgentScheduleUpdate
 from app.tenant.agents.schemas.schedule_run import AgentScheduleRunOut
 from app.tenant.agents.schemas.stats import AgentStatsOut
 from app.common.schema import ApiResponse, PageParams, PageResult
 from app.tenant.agents.services.agent import AgentService
+from app.tenant.agents.services.call_records import AgentCallRecordService, parse_call_record_datetime
+from app.tenant.agents.services.chat_sessions import AgentChatSessionService
 from app.tenant.agents.ws import agent_chat_ws_router
 from app.tenant.agents.services.architecture import AgentArchitectureService
 from app.tenant.agents.services.schedule import AgentScheduleService
@@ -46,6 +50,14 @@ def _arch_svc(db: AsyncSession, ctx: TenantContext) -> AgentArchitectureService:
 
 def _schedule_svc(db: AsyncSession, ctx: TenantContext) -> AgentScheduleService:
     return AgentScheduleService(db, ctx)
+
+
+def _call_record_svc(db: AsyncSession, ctx: TenantContext) -> AgentCallRecordService:
+    return AgentCallRecordService(db, ctx)
+
+
+def _chat_session_svc(db: AsyncSession, ctx: TenantContext) -> AgentChatSessionService:
+    return AgentChatSessionService(db, ctx)
 
 
 # GET */meta：枚举展示字典，须在 /{id} 等路径参数路由之前注册
@@ -116,6 +128,95 @@ async def agent_stats(
     db: AsyncSession = Depends(get_db),
 ):
     return ok(await _stats_svc(db, ctx).overview(agent_id, days=days))
+
+
+@router.get("/{agent_id}/call-records", response_model=ApiResponse[PageResult[AgentCallRecordOut]])
+async def list_agent_call_records(
+    agent_id: UUID,
+    params: PageParams = Depends(get_page_params),
+    status: str | None = Query(None, description="success | failed | blocked"),
+    conversation_id: str | None = Query(None, max_length=128),
+    route: str | None = Query(None, max_length=32),
+    q: str | None = Query(None, max_length=128, description="搜索问题摘要或 trace_id"),
+    from_dt: str | None = Query(None, alias="from", description="起始时间 ISO8601 或 YYYY-MM-DD"),
+    to_dt: str | None = Query(None, alias="to", description="结束时间 ISO8601 或 YYYY-MM-DD"),
+    ctx: TenantContext = Depends(require_permissions("agent:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await _call_record_svc(db, ctx).list_records(
+        agent_id,
+        params,
+        status=status,
+        conversation_id=conversation_id,
+        route=route,
+        q=q,
+        from_dt=parse_call_record_datetime(from_dt),
+        to_dt=parse_call_record_datetime(to_dt),
+    )
+    return page_ok(result.items, result.total, result.page, result.size)
+
+
+@router.get("/{agent_id}/call-records/{call_id}", response_model=ApiResponse[AgentCallRecordDetailOut])
+async def get_agent_call_record(
+    agent_id: UUID,
+    call_id: UUID,
+    ctx: TenantContext = Depends(require_permissions("agent:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    return ok(await _call_record_svc(db, ctx).get_record(agent_id, call_id))
+
+
+@router.get("/{agent_id}/chat-sessions", response_model=ApiResponse[PageResult[ChatSessionOut]])
+async def list_agent_chat_sessions(
+    agent_id: UUID,
+    params: PageParams = Depends(get_page_params),
+    ctx: TenantContext = Depends(require_permissions("agent:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await _chat_session_svc(db, ctx).list_sessions(agent_id, params)
+    return page_ok(result.items, result.total, result.page, result.size)
+
+
+@router.post("/{agent_id}/chat-sessions", response_model=ApiResponse[ChatSessionOut])
+async def create_agent_chat_session(
+    agent_id: UUID,
+    body: ChatSessionCreate,
+    ctx: TenantContext = Depends(require_permissions("agent:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    return ok(await _chat_session_svc(db, ctx).create_session(agent_id, body))
+
+
+@router.get("/{agent_id}/chat-sessions/{session_id}", response_model=ApiResponse[ChatSessionDetailOut])
+async def get_agent_chat_session(
+    agent_id: UUID,
+    session_id: str,
+    ctx: TenantContext = Depends(require_permissions("agent:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    return ok(await _chat_session_svc(db, ctx).get_session(agent_id, session_id))
+
+
+@router.patch("/{agent_id}/chat-sessions/{session_id}", response_model=ApiResponse[ChatSessionOut])
+async def update_agent_chat_session(
+    agent_id: UUID,
+    session_id: str,
+    body: ChatSessionUpdate,
+    ctx: TenantContext = Depends(require_permissions("agent:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    return ok(await _chat_session_svc(db, ctx).update_session(agent_id, session_id, body))
+
+
+@router.delete("/{agent_id}/chat-sessions/{session_id}", response_model=ApiResponse[None])
+async def delete_agent_chat_session(
+    agent_id: UUID,
+    session_id: str,
+    ctx: TenantContext = Depends(require_permissions("agent:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    await _chat_session_svc(db, ctx).delete_session(agent_id, session_id)
+    return ok(message="已删除")
 
 
 @router.get("/{agent_id}/architecture", response_model=ApiResponse[AgentArchitectureOut])

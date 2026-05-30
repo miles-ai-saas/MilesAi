@@ -2,13 +2,33 @@
 
 from __future__ import annotations
 
+from contextvars import ContextVar, Token
 from dataclasses import dataclass
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.model import ModelConfig
 from app.models.model_usage_log import ModelUsageLog
+
+_chat_usage_acc: ContextVar[tuple[int, int] | None] = ContextVar("_chat_usage_acc", default=None)
+
+
+def begin_chat_usage_accumulation() -> Token[tuple[int, int] | None]:
+    """单轮 Agent chat 开始时重置 Token 累计（供调用记录写入）。"""
+    return _chat_usage_acc.set((0, 0))
+
+
+def end_chat_usage_accumulation(token: Token[tuple[int, int] | None]) -> None:
+    _chat_usage_acc.reset(token)
+
+
+def get_chat_usage_totals() -> tuple[int, int]:
+    val = _chat_usage_acc.get()
+    if val is None:
+        return (0, 0)
+    return val
 
 
 @dataclass(frozen=True)
@@ -29,6 +49,11 @@ async def record_model_usage(
     total = max(0, prompt_tokens) + max(0, completion_tokens)
     if total <= 0:
         return
+    if ctx.source == "chat" and ctx.source_id is not None:
+        acc = _chat_usage_acc.get()
+        if acc is not None:
+            p, c = acc
+            _chat_usage_acc.set((p + max(0, prompt_tokens), c + max(0, completion_tokens)))
     row = ModelUsageLog(
         tenant_id=ctx.tenant_id,
         model_config_id=ctx.model.id,
@@ -41,3 +66,11 @@ async def record_model_usage(
     )
     ctx.db.add(row)
     await ctx.db.flush()
+
+
+async def record_litellm_response_usage(ctx: UsageRecordContext, response: Any) -> None:
+    """从 LiteLLM completion 响应提取 Token 并写入用量日志。"""
+    from app.integrations.litellm.adapter import extract_litellm_usage
+
+    prompt_t, completion_t, _ = extract_litellm_usage(response)
+    await record_model_usage(ctx, prompt_tokens=prompt_t, completion_tokens=completion_t)

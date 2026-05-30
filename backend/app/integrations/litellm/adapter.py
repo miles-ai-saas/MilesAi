@@ -115,6 +115,10 @@ def _ensure_messages_valid_for_chat(model: ModelConfig, messages: list[dict[str,
 
 
 def _extract_usage(response: Any) -> tuple[int, int, int]:
+    return extract_litellm_usage(response)
+
+
+def extract_litellm_usage(response: Any) -> tuple[int, int, int]:
     usage = getattr(response, "usage", None)
     if usage is None and isinstance(response, dict):
         usage = response.get("usage")

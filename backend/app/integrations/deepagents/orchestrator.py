@@ -97,6 +97,7 @@ async def _platform_plan(
         temperature=0.2,
         db=db,
         tenant_id=tenant_id,
+        source_id=parent.id,
     )
     plan = _parse_plan(raw)
     if plan:
@@ -180,6 +181,7 @@ async def _run_platform_planned(
             temperature=float((parent.config or {}).get("temperature", 0.7)),
             db=svc.db,
             tenant_id=svc.ctx.tenant_id,
+            source_id=parent.id,
         )
     else:
         final = "\n\n---\n\n".join(sub_answers)

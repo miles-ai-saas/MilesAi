@@ -19,6 +19,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.tenant.hooks.models import HookBinding, HookScope
 from app.tenant.marketplace.models import AppInstall
 from app.models.agent import Agent, AgentSubAgentBinding, agent_kb_bindings
+from app.models.agent_chat_call import AgentChatCall
+from app.models.agent_chat_session import AgentChatMessage, AgentChatSession
 from app.models.agent_schedule import AgentSchedule
 from app.models.flow import FlowVersion
 
@@ -123,6 +125,9 @@ async def before_delete_agent(db: AsyncSession, agent_id: UUID) -> None:
         AgentSchedule.agent_id == agent_id,
         not_deleted(AgentSchedule),
     )
+    await db.execute(delete(AgentChatCall).where(AgentChatCall.agent_id == agent_id))
+    await db.execute(delete(AgentChatMessage).where(AgentChatMessage.agent_id == agent_id))
+    await db.execute(delete(AgentChatSession).where(AgentChatSession.agent_id == agent_id))
 
 
 async def before_delete_kb(db: AsyncSession, kb_id: UUID) -> None:

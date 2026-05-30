@@ -200,6 +200,7 @@ async def generate(state: RAGGraphState, config: RunnableConfig) -> dict[str, An
             temperature=float(state.get("temperature", 0.7)),
             db=db,
             tenant_id=UUID(state["tenant_id"]),
+            source_id=UUID(state["agent_id"]) if state.get("agent_id") else None,
         )
     return {
         "answer": answer,
@@ -250,6 +251,7 @@ async def fallback(state: RAGGraphState, config: RunnableConfig) -> dict[str, An
             temperature=float(state.get("temperature", 0.7)),
             db=db,
             tenant_id=UUID(state["tenant_id"]),
+            source_id=UUID(state["agent_id"]) if state.get("agent_id") else None,
         )
     return {
         "answer": answer,

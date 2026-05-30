@@ -7,6 +7,8 @@ def load_all_models() -> None:
     import app.models.tenant_object_storage  # noqa: F401
     import app.models.tag  # noqa: F401
     import app.models.agent_schedule  # noqa: F401
+    import app.models.agent_chat_call  # noqa: F401
+    import app.models.agent_chat_session  # noqa: F401
     import app.admin.models  # noqa: F401
     import app.tenant.compliance.models  # noqa: F401
     import app.tenant.hooks.models  # noqa: F401

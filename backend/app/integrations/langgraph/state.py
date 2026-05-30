@@ -29,4 +29,5 @@ class RAGGraphState(TypedDict, total=False):
     answer: str
     media: list[dict[str, Any]]  # 生成阶段 multimodal 附图
     user_id: str  # 解析 attachment 鉴权用
+    agent_id: str  # 模型用量与调用记录关联
     steps: Annotated[list[dict[str, Any]], operator.add]

@@ -1,4 +1,4 @@
-"""智能体使用统计（按日序列；暂无服务端会话落库时返回零值）。"""
+"""智能体使用统计（按日序列，数据来自 agt_agent_chat_calls）。"""
 
 from pydantic import BaseModel, Field
 

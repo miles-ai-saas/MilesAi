@@ -101,6 +101,7 @@ GET  /agents?agent_type=&category_id=&tag_ids=
 POST /agents
 GET/PATCH/DELETE /agents/{id}
 GET  /agents/{id}/stats
+GET  /agents/{id}/call-records      # 见 agent-call-records.md
 GET  /agents/{id}/architecture      # 拓扑与主路径预览
 POST /agents/{id}/chat
 WS   /agents/{id}/chat/ws
@@ -116,6 +117,9 @@ WS   /agents/{id}/chat/ws
 | `/workbench/agents` | 列表 Tab：全部 / 智能体 / A2A |
 | `/workbench/agents/chat` | 对话工作台 |
 | `AgentFormDialog` | 创建/编辑向导（含 KB、内部协同、A2A 引用） |
+| `AgentCallRecordsPanel` | 调用记录 Tab（见 agent-call-records.md） |
+| `AgentTracePanel` | 当前会话 Trace / steps |
+| `AgentStatsPanel` | 统计趋势（从 call-records 聚合） |
 | `AgentArchitecturePanel` | 架构图 |
 | `AgentExecutionTimeline` | steps 时间线 |
 
@@ -146,6 +150,9 @@ backend/app/tenant/a2a/invoke.py          # augment / host
 
 ## 9. 参考
 
+- [agent-call-records.md](./agent-call-records.md) — 对话调用流水（业务层 PG；OpenTelemetry 后续可选）
+- [agent-chat-websocket.md](./agent-chat-websocket.md) — 对话 WebSocket
+- [agent-schedules.md](./agent-schedules.md) — 定时任务
 - [platform-agents.md](../guides/platform-agents.md)
 - [ai-stack.md](../guides/ai-stack.md)
 - [a2a-interconnect.md](./a2a-interconnect.md)

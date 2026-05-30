@@ -13,6 +13,8 @@ import {
   type ChatMessage,
   type ChatSession,
 } from "@/features/agents/lib/chat-sessions";
+import { mergeServerChatSessions, fetchServerSessionIntoLocal } from "@/features/agents/lib/chat-sessions-server";
+import { api } from "@/lib/api";
 import { useConfirmAction } from "@/hooks/use-confirm-action";
 
 type Params = {
@@ -68,6 +70,22 @@ export function useAgentsChatSessionSync({
 
   useEffect(() => {
     if (!selectedAgent) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        await mergeServerChatSessions(selectedAgent);
+        if (!cancelled) refreshSessions(selectedAgent);
+      } catch {
+        /* 离线时仍用本地会话 */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [refreshSessions, selectedAgent]);
+
+  useEffect(() => {
+    if (!selectedAgent) return;
     refreshSessions(selectedAgent);
 
     let session: ChatSession | null = null;
@@ -108,6 +126,7 @@ export function useAgentsChatSessionSync({
     (sessionId: string, title: string) => {
       if (!selectedAgent) return;
       if (!renameSession(selectedAgent, sessionId, title)) return;
+      void api.updateAgentChatSession(selectedAgent, sessionId, { title: title.trim() }).catch(() => undefined);
       refreshSessions(selectedAgent);
       if (sessionId === conversationId) {
         const updated = getSession(selectedAgent, sessionId);
@@ -123,10 +142,11 @@ export function useAgentsChatSessionSync({
       requestConfirm({
         title: "删除会话",
         description: "此操作不可撤销。",
-        message: "确定删除该会话？本地消息记录将无法恢复。",
+        message: "确定删除该会话？服务端与本地消息记录将无法恢复。",
         destructive: true,
         confirmLabel: "确认删除",
-        onConfirm: () => {
+        onConfirm: async () => {
+          await api.deleteAgentChatSession(selectedAgent, sessionId).catch(() => undefined);
           deleteSession(selectedAgent, sessionId);
           refreshSessions(selectedAgent);
           const next = ensureActiveSession(selectedAgent);
@@ -136,6 +156,18 @@ export function useAgentsChatSessionSync({
       });
     },
     [loadSessionIntoUi, refreshSessions, requestConfirm, selectedAgent, syncUrl],
+  );
+
+  const handleOpenTraceFromRecord = useCallback(
+    async (sessionId: string) => {
+      if (!selectedAgent) return;
+      await fetchServerSessionIntoLocal(selectedAgent, sessionId);
+      refreshSessions(selectedAgent);
+      setActiveSessionId(selectedAgent, sessionId);
+      loadSessionIntoUi(selectedAgent, sessionId);
+      syncUrl(selectedAgent, sessionId);
+    },
+    [loadSessionIntoUi, refreshSessions, selectedAgent, syncUrl],
   );
 
   const onSelectAgent = useCallback(
@@ -161,6 +193,7 @@ export function useAgentsChatSessionSync({
     handleSelectSession,
     handleRenameSession,
     handleDeleteSession,
+    handleOpenTraceFromRecord,
     onSelectAgent,
     confirmDialog,
   };

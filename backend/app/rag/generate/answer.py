@@ -91,6 +91,7 @@ async def rag_answer(
     media: list[MediaRefIn] | None = None,
     ctx: TenantContext | None = None,
     retrieve_query: str | None = None,
+    source_id: UUID | None = None,
 ) -> tuple[str, list[dict[str, Any]]]:
     """
     端到端 RAG：检索 → 拼 prompt → LLM 生成。
@@ -131,5 +132,6 @@ async def rag_answer(
         temperature=temperature,
         db=db,
         tenant_id=tenant_id,
+        source_id=source_id,
     )
     return answer, hits

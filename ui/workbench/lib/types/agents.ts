@@ -125,6 +125,70 @@ export interface AgentScheduleRun {
   error_message?: string | null;
 }
 
+export interface AgentCallRecord {
+  id: string;
+  agent_id: string;
+  conversation_id?: string | null;
+  trace_id?: string | null;
+  actor_user_id?: string | null;
+  actor_username?: string | null;
+  status: string;
+  route: string;
+  query_preview: string;
+  answer_preview: string;
+  latency_ms: number;
+  prompt_tokens: number;
+  completion_tokens: number;
+  step_count: number;
+  tool_call_count: number;
+  error_code?: string | null;
+  error_message?: string | null;
+  created_at: string;
+}
+
+export interface AgentCallRecordDetail extends AgentCallRecord {
+  meta?: Record<string, unknown>;
+  steps_summary?: { type?: string; label?: string }[] | null;
+  related_tool_logs?: ToolInvocationLog[];
+  related_hook_logs?: AgentCallRecordHookLog[];
+}
+
+export interface AgentCallRecordHookLog {
+  id: string;
+  hook_id: string;
+  trace_id?: string | null;
+  trigger: string;
+  scope: string;
+  status: string;
+  duration_ms?: number | null;
+  error_message?: string | null;
+  created_at: string;
+}
+
+export interface AgentChatSessionMessage {
+  id: string;
+  role: string;
+  content: string;
+  media?: { attachment_id: string; detail?: string; filename?: string; preview_url?: string }[] | null;
+  artifacts?: ChatArtifact[] | null;
+  steps?: Record<string, unknown>[] | null;
+  trace_id?: string | null;
+  created_at: string;
+}
+
+export interface AgentChatSessionSummary {
+  id: string;
+  agent_id: string;
+  title: string;
+  message_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ChatSessionDetail extends AgentChatSessionSummary {
+  messages: AgentChatSessionMessage[];
+}
+
 export interface PendingToolCall {
   slug: string;
   name: string;

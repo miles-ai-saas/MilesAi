@@ -15,6 +15,7 @@ LangChain ChatModel 适配：平台 ModelConfig → LiteLLM 对话。
 from __future__ import annotations
 
 from typing import Any
+from uuid import UUID
 
 from langchain_core.callbacks import AsyncCallbackManagerForLLMRun, CallbackManagerForLLMRun
 from langchain_core.language_models.chat_models import BaseChatModel
@@ -108,6 +109,7 @@ async def ainvoke_chat(
     max_tokens: int = 2048,
     db: Any | None = None,
     tenant_id: Any | None = None,
+    source_id: UUID | None = None,
 ) -> str:
     """
     异步对话（OpenAI 形状 ``{"role","content"}`` 列表）。
@@ -131,6 +133,7 @@ async def ainvoke_chat(
             tenant_id=UUID(str(tenant_id)),
             model=model,
             source="chat",
+            source_id=source_id,
         )
 
     openai_msgs: list[dict[str, Any]] = []

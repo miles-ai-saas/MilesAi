@@ -17,7 +17,7 @@ export const AGENT_WORKBENCH_TABS: {
   { id: "schedule", label: "定时", ready: true },
   { id: "architecture", label: "架构", ready: true },
   { id: "api", label: "API", ready: false },
-  { id: "call_records", label: "调用记录", ready: false },
+  { id: "call_records", label: "调用记录", ready: true },
   { id: "stats", label: "统计", ready: true },
 ];
 
