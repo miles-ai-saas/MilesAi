@@ -2,9 +2,17 @@
 
 import { ListFooter } from "@/components/list/ListFooter";
 import type { AuditPageVm } from "@/hooks/use-audit-page";
+import {
+  auditResourceTypeLabel,
+  buildAdminAuditLogSummary,
+  formatAuditTime,
+  resolveAdminAuditOperatorLabel,
+  shortenId,
+} from "@/lib/audit-log-present";
 import { auditActionLabel } from "@/lib/audit-labels";
 import { AUDIT_DATE_PRESETS } from "@/lib/audit-page-shared";
 import type { AuditDatePreset } from "@/lib/audit-labels";
+import type { AuditLog } from "@/lib/api";
 
 export function AuditFiltersSection({ vm }: { vm: AuditPageVm }) {
   const {
@@ -78,7 +86,7 @@ export function AuditFiltersSection({ vm }: { vm: AuditPageVm }) {
 }
 
 export function AuditLogListSection({ vm }: { vm: AuditPageVm }) {
-  const { list } = vm;
+  const { list, hasActiveFilters } = vm;
 
   return (
     <section className="card p-4">
@@ -86,22 +94,61 @@ export function AuditLogListSection({ vm }: { vm: AuditPageVm }) {
         <p className="text-sm text-ink-muted">加载中…</p>
       ) : (
         <>
-          <ul className="admin-data-list max-h-[32rem] overflow-y-auto">
-            {list.items.length === 0 && <li className="text-ink-faint">暂无审计记录</li>}
-            {list.items.map((l) => (
-              <li key={l.id} className="admin-data-row">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="admin-data-meta">{l.created_at.slice(0, 19).replace("T", " ")}</span>
-                  <span className="cell-primary">{auditActionLabel(l.action)}</span>
-                  <span className="admin-data-meta cell-mono">{l.action}</span>
-                  {l.admin_username && <span className="badge bg-brand-light text-ink">{l.admin_username}</span>}
-                  {l.tenant_id && <span className="badge bg-brand/10 text-brand">租户 {l.tenant_id.slice(0, 8)}…</span>}
-                  {l.ip_address && <span className="admin-data-meta">{l.ip_address}</span>}
-                </div>
-                {Object.keys(l.detail || {}).length > 0 && <pre className="admin-code-block">{JSON.stringify(l.detail, null, 2)}</pre>}
-              </li>
-            ))}
-          </ul>
+          <div className="admin-table-wrap border-0">
+            <table className="admin-table">
+              <thead>
+                <tr>
+                  <th className="col-compact">时间</th>
+                  <th>操作人</th>
+                  <th>动作</th>
+                  <th>租户</th>
+                  <th>资源</th>
+                  <th className="col-compact">IP</th>
+                  <th>说明</th>
+                </tr>
+              </thead>
+              <tbody>
+                {list.items.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="py-10 text-center cell-muted">
+                      {hasActiveFilters ? "当前筛选条件下暂无审计记录" : "暂无审计记录"}
+                    </td>
+                  </tr>
+                ) : (
+                  list.items.map((log: AuditLog) => {
+                    const operator = resolveAdminAuditOperatorLabel(log);
+                    const summary = buildAdminAuditLogSummary(log);
+                    return (
+                      <tr key={log.id}>
+                        <td className="col-compact cell-muted font-mono text-xs">{formatAuditTime(log.created_at)}</td>
+                        <td className="cell-primary" title={operator.title}>
+                          {operator.label}
+                        </td>
+                        <td>{auditActionLabel(log.action)}</td>
+                        <td className="cell-muted" title={log.tenant_id ?? undefined}>
+                          {log.tenant_id ? shortenId(log.tenant_id) : "—"}
+                        </td>
+                        <td className="cell-muted">
+                          {log.resource_type ? (
+                            <span title={log.resource_id ?? undefined}>
+                              {auditResourceTypeLabel(log.resource_type)}
+                              {log.resource_id ? ` · ${shortenId(log.resource_id)}` : ""}
+                            </span>
+                          ) : (
+                            "—"
+                          )}
+                        </td>
+                        <td className="col-compact cell-muted font-mono text-xs">{log.ip_address ?? "—"}</td>
+                        <td className="cell-muted" title={Object.keys(log.detail || {}).length > 0 ? JSON.stringify(log.detail) : undefined}>
+                          {summary || "—"}
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
           <ListFooter className="mt-3" page={list.page} size={list.size} total={list.total} onPageChange={list.setPage} onSizeChange={list.setSize} />
         </>
       )}

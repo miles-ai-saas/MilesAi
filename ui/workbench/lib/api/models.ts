@@ -14,6 +14,8 @@ export const modelsApi = {
     return get<ModelConfig[]>(`/models${qs ? `?${qs}` : ""}`);
   },
 
+  getModelConfig: (id: string) => get<ModelConfig>(`/models/${id}`),
+
   createModelConfig: (payload: {
     name: string;
     vendor?: string;

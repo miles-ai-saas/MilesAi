@@ -337,8 +337,10 @@ export interface AuditLog {
   action: string;
   admin_id?: string | null;
   admin_username?: string | null;
-  tenant_id?: string;
-  ip_address?: string;
+  tenant_id?: string | null;
+  resource_type?: string | null;
+  resource_id?: string | null;
+  ip_address?: string | null;
   created_at: string;
   detail: Record<string, unknown>;
 }

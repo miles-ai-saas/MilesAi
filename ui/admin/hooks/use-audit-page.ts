@@ -56,6 +56,7 @@ export function useAuditPage() {
   );
 
   const actionOptions = useMemo(() => auditActionOptions(metaActions), [metaActions]);
+  const hasActiveFilters = Boolean(actionFilter || adminFilter || tenantFilter.trim() || datePreset !== "30d" || customFrom || customTo);
 
   return {
     actionFilter,
@@ -73,6 +74,7 @@ export function useAuditPage() {
     metaAdmins,
     list,
     actionOptions,
+    hasActiveFilters,
   };
 }
 

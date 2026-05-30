@@ -4,3 +4,5 @@ export { useModelsPage, type ModelsPageVm } from "./hooks/use-models-page";
 
 export { ModelCatalogGrid } from "./components/ModelCatalogGrid";
 export { ModelFilterPanel } from "./components/ModelFilterPanel";
+export { ModelDetailDialog } from "./components/ModelDetailDialog";
+export { ModelsPageOverlays } from "./components/ModelsPageOverlays";

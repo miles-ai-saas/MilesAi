@@ -6,7 +6,10 @@ import { api } from "@/lib/api";
 import type { ModelConfig } from "@/lib/types";
 import type { ModelsListSlice } from "@/features/models/hooks/use-models-list";
 
-export function useModelsForm({ reload }: Pick<ModelsListSlice, "reload">) {
+export function useModelsForm({
+  reload,
+  onDeleted,
+}: Pick<ModelsListSlice, "reload"> & { onDeleted?: () => void }) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [credDialogOpen, setCredDialogOpen] = useState(false);
   const [editing, setEditing] = useState<ModelConfig | null>(null);
@@ -124,6 +127,7 @@ export function useModelsForm({ reload }: Pick<ModelsListSlice, "reload">) {
       onConfirm: async () => {
         await api.deleteModelConfig(m.id);
         await reload();
+        onDeleted?.();
       },
     });
   };

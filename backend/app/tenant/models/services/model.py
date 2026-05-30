@@ -126,6 +126,15 @@ class ModelService(BaseService):
             out.append(_to_out(m, cred))
         return out
 
+    async def get_config(self, config_id: UUID) -> ModelConfigOut:
+        model = await self._get_or_raise(config_id)
+        if model.tenant_id is None and model.publish_status != ModelPublishStatus.PUBLISHED.value:
+            raise NotFoundError("模型配置不存在")
+        cred = None
+        if model.is_builtin:
+            cred = await load_tenant_credential(self.db, self.ctx.tenant_id, model.id)
+        return _to_out(model, cred)
+
     async def create_config(self, body: ModelConfigCreate) -> ModelConfigOut:
         vendor = body.vendor or ModelVendor.OTHER.value
         provider = body.provider or vendor
