@@ -1,6 +1,6 @@
 import { get, getPage, post, patch, http } from "./client";
 import { buildPageQuery } from "../pagination";
-import type { BizClient, BizClientContact, BizContract, BizDeliverable, BizOpportunity, BizPayment, BizProject, BizWorkPackage, DashboardSummary, FinancialSummary } from "../types";
+import type { BizClient, BizClientContact, BizContract, BizDeliverable, BizOpportunity, BizPayment, BizProject, BizProjectMember, BizWorkPackage, DashboardSummary, FinancialSummary } from "../types";
 
 export const bizApi = {
   // ── 业务仪表盘 ──
@@ -40,14 +40,22 @@ export const bizApi = {
   deleteProject: (id: string) => http.delete(`/biz/projects/${id}`).then(() => undefined),
 
   listWorkPackages: (projectId: string) => get<BizWorkPackage[]>(`/biz/projects/${projectId}/work-packages`),
+  createWorkPackage: (projectId: string, p: { service_line: string; name: string; stage?: string; stage_index?: number; status?: string; owner_id?: string; budget?: number; planned_start?: string; planned_end?: string }) =>
+    post<BizWorkPackage>(`/biz/projects/${projectId}/work-packages`, p),
   updateWorkPackage: (projectId: string, wpId: string, p: { name?: string; stage?: string; status?: string; owner_id?: string; budget?: number; actual_cost?: number }) => patch<BizWorkPackage>(`/biz/projects/${projectId}/work-packages/${wpId}`, p),
   deleteWorkPackage: (projectId: string, wpId: string) => http.delete(`/biz/projects/${projectId}/work-packages/${wpId}`).then(() => undefined),
+
+  listProjectMembers: (projectId: string) => get<BizProjectMember[]>(`/biz/projects/${projectId}/members`),
+  addProjectMember: (projectId: string, p: { user_id: string; role_in_project?: string }) =>
+    post<BizProjectMember>(`/biz/projects/${projectId}/members`, p),
+  removeProjectMember: (projectId: string, userId: string) =>
+    http.delete(`/biz/projects/${projectId}/members/${userId}`).then(() => undefined),
 
   // ── 交付物管理 ──
 
   listDeliverables: (projectId: string) => get<BizDeliverable[]>(`/biz/deliverables?project_id=${projectId}`),
   createDeliverable: (p: { project_id: string; name: string; type?: string; work_package_id?: string; attachment_id?: string; version?: string }) => post<BizDeliverable>("/biz/deliverables", p),
-  updateDeliverable: (id: string, p: { name?: string; type?: string; status?: string; work_package_id?: string; version?: string }) => patch<BizDeliverable>(`/biz/deliverables/${id}`, p),
+  updateDeliverable: (id: string, p: { name?: string; type?: string; status?: string; work_package_id?: string; attachment_id?: string; media_asset_id?: string; version?: string }) => patch<BizDeliverable>(`/biz/deliverables/${id}`, p),
   deleteDeliverable: (id: string) => http.delete(`/biz/deliverables/${id}`).then(() => undefined),
 
   // ── 商机管理 ──

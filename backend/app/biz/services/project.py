@@ -11,21 +11,28 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.biz.audit import log_biz_action
 from app.biz.repositories.project import ProjectRepository
 from app.biz.schemas.project import (
     BizProjectCreate,
+    BizProjectMemberCreate,
+    BizProjectMemberOut,
     BizProjectOut,
     BizProjectUpdate,
+    BizWorkPackageCreate,
     BizWorkPackageOut,
     BizWorkPackageUpdate,
+    WorkPackageCreate,
 )
-from app.common.exceptions import NotFoundError
+from app.biz.services.service_line_template import ServiceLineTemplateService
+from app.common.exceptions import BadRequestError, NotFoundError
 from app.common.pagination import paginate
 from app.common.schema import PageResult
 from app.core.service import BaseService
 from app.core.soft_delete import mark_deleted, not_deleted
 from app.core.tenant import TenantContext, assert_tenant_access, tenant_filters
-from app.models.biz import BizProject, BizWorkPackage
+from app.models.biz import BizProject, BizProjectMember, BizWorkPackage
+from app.models.platform.user import User
 
 
 class ProjectService(BaseService):
@@ -34,6 +41,7 @@ class ProjectService(BaseService):
     def __init__(self, db: AsyncSession, ctx: TenantContext) -> None:
         super().__init__(db, ctx)
         self.repo = ProjectRepository(db)
+        self.template_svc = ServiceLineTemplateService(db)
 
     # ── projects ──
 
@@ -81,18 +89,15 @@ class ProjectService(BaseService):
         await self.db.flush()
 
         for wp_body in body.work_packages:
-            wp = BizWorkPackage(
-                tenant_id=self.ctx.tenant_id,
-                project_id=row.id,
-                service_line=wp_body.service_line,
-                name=wp_body.name.strip(),
-                owner_id=wp_body.owner_id,
-                budget=wp_body.budget,
-                planned_start=wp_body.planned_start,
-                planned_end=wp_body.planned_end,
-            )
-            self.db.add(wp)
-        await self.db.flush()
+            await self._add_work_package(row.id, wp_body)
+
+        await log_biz_action(
+            self.db, self.ctx,
+            action="biz.project.create",
+            resource_type="biz_project",
+            resource_id=row.id,
+            detail={"name": row.name, "work_package_count": len(body.work_packages)},
+        )
 
         wps = await self.repo.get_work_packages(self.ctx.tenant_id, row.id)
         return self._to_out(row, wps)
@@ -100,17 +105,34 @@ class ProjectService(BaseService):
     async def update_project(self, project_id: UUID, body: BizProjectUpdate) -> BizProjectOut:
         """更新项目（仅更新传入的非空字段）。"""
         row = await self._get_or_raise(project_id)
+        changed: list[str] = []
         for f in ("name", "code", "status", "owner_id", "description", "total_budget"):
             val = getattr(body, f, None)
             if val is not None:
                 setattr(row, f, val.strip() if isinstance(val, str) and f in ("name", "code") else val)
+                changed.append(f)
         await self.db.flush()
+        if changed:
+            await log_biz_action(
+                self.db, self.ctx,
+                action="biz.project.update",
+                resource_type="biz_project",
+                resource_id=row.id,
+                detail={"fields": changed},
+            )
         return await self.get_project(project_id)
 
     async def delete_project(self, project_id: UUID) -> None:
         """软删除项目，不影响关联的工作包。"""
         row = await self._get_or_raise(project_id)
         await mark_deleted(self.db, row)
+        await log_biz_action(
+            self.db, self.ctx,
+            action="biz.project.delete",
+            resource_type="biz_project",
+            resource_id=row.id,
+            detail={"name": row.name},
+        )
 
     # ── work packages ──
 
@@ -118,23 +140,20 @@ class ProjectService(BaseService):
         """列出项目下的工作包（按阶段序号排序）。"""
         await self._get_or_raise(project_id)
         rows = await self.repo.get_work_packages(self.ctx.tenant_id, project_id)
-        return [BizWorkPackageOut(id=r.id, project_id=r.project_id, service_line=r.service_line, name=r.name, stage=r.stage, stage_index=r.stage_index, status=r.status, owner_id=r.owner_id, budget=r.budget, actual_cost=r.actual_cost, planned_start=r.planned_start, planned_end=r.planned_end) for r in rows]
+        return [self._wp_to_out(r) for r in rows]
 
-    async def create_work_package(self, project_id: UUID, body: BizWorkPackageUpdate) -> BizWorkPackageOut:
+    async def create_work_package(self, project_id: UUID, body: BizWorkPackageCreate) -> BizWorkPackageOut:
         """在项目下创建工作包。"""
         await self._get_or_raise(project_id)
-        wp = BizWorkPackage(
-            tenant_id=self.ctx.tenant_id, project_id=project_id,
-            service_line=body.name or "other", name=body.name or "未命名",
-            stage=body.stage, status=body.status or "pending",
-            owner_id=body.owner_id, budget=body.budget,
-            actual_cost=body.actual_cost,
-            planned_start=body.planned_start, planned_end=body.planned_end,
+        wp = await self._add_work_package(project_id, body)
+        await log_biz_action(
+            self.db, self.ctx,
+            action="biz.work_package.create",
+            resource_type="biz_work_package",
+            resource_id=wp.id,
+            detail={"project_id": str(project_id), "service_line": wp.service_line, "name": wp.name},
         )
-        self.db.add(wp)
-        await self.db.flush()
-        await self.db.refresh(wp)
-        return BizWorkPackageOut(id=wp.id, project_id=wp.project_id, service_line=wp.service_line, name=wp.name, stage=wp.stage, stage_index=wp.stage_index, status=wp.status, owner_id=wp.owner_id, budget=wp.budget, actual_cost=wp.actual_cost, planned_start=wp.planned_start, planned_end=wp.planned_end)
+        return self._wp_to_out(wp)
 
     async def update_work_package(self, wp_id: UUID, body: BizWorkPackageUpdate) -> BizWorkPackageOut:
         """更新工作包信息。"""
@@ -142,13 +161,22 @@ class ProjectService(BaseService):
         if not wp:
             raise NotFoundError("工作包不存在")
         assert_tenant_access(self.ctx, wp.tenant_id)
+        old_status = wp.status
         for f in ("name", "stage", "status", "owner_id", "budget", "actual_cost", "planned_start", "planned_end"):
             val = getattr(body, f, None)
             if val is not None:
                 setattr(wp, f, val.strip() if isinstance(val, str) else val)
         await self.db.flush()
         await self.db.refresh(wp)
-        return BizWorkPackageOut(id=wp.id, project_id=wp.project_id, service_line=wp.service_line, name=wp.name, stage=wp.stage, stage_index=wp.stage_index, status=wp.status, owner_id=wp.owner_id, budget=wp.budget, actual_cost=wp.actual_cost, planned_start=wp.planned_start, planned_end=wp.planned_end)
+        if body.status is not None and body.status != old_status:
+            await log_biz_action(
+                self.db, self.ctx,
+                action="biz.work_package.status_change",
+                resource_type="biz_work_package",
+                resource_id=wp.id,
+                detail={"from": old_status, "to": body.status, "project_id": str(wp.project_id)},
+            )
+        return self._wp_to_out(wp)
 
     async def delete_work_package(self, wp_id: UUID) -> None:
         """软删除工作包。"""
@@ -157,8 +185,101 @@ class ProjectService(BaseService):
             raise NotFoundError("工作包不存在")
         assert_tenant_access(self.ctx, wp.tenant_id)
         await mark_deleted(self.db, wp)
+        await log_biz_action(
+            self.db, self.ctx,
+            action="biz.work_package.delete",
+            resource_type="biz_work_package",
+            resource_id=wp.id,
+            detail={"project_id": str(wp.project_id), "name": wp.name},
+        )
+
+    # ── members ──
+
+    async def list_members(self, project_id: UUID) -> list[BizProjectMemberOut]:
+        await self._get_or_raise(project_id)
+        rows = await self.repo.list_members(self.ctx.tenant_id, project_id)
+        if not rows:
+            return []
+        user_ids = [r.user_id for r in rows]
+        users = {
+            u.id: u.username
+            for u in (await self.db.execute(select(User).where(User.id.in_(user_ids)))).scalars().all()
+        }
+        return [
+            BizProjectMemberOut(
+                project_id=r.project_id,
+                user_id=r.user_id,
+                role_in_project=r.role_in_project,
+                username=users.get(r.user_id),
+            )
+            for r in rows
+        ]
+
+    async def add_member(self, project_id: UUID, body: BizProjectMemberCreate) -> BizProjectMemberOut:
+        await self._get_or_raise(project_id)
+        user = await self.db.get(User, body.user_id)
+        if not user or user.tenant_id != self.ctx.tenant_id:
+            raise BadRequestError("用户不存在或不属于当前租户")
+        existing = await self.repo.get_member(self.ctx.tenant_id, project_id, body.user_id)
+        if existing:
+            raise BadRequestError("用户已是项目成员")
+        row = BizProjectMember(
+            tenant_id=self.ctx.tenant_id,
+            project_id=project_id,
+            user_id=body.user_id,
+            role_in_project=body.role_in_project or "viewer",
+        )
+        self.db.add(row)
+        await self.db.flush()
+        await log_biz_action(
+            self.db, self.ctx,
+            action="biz.project.member.add",
+            resource_type="biz_project",
+            resource_id=project_id,
+            detail={"user_id": str(body.user_id), "role": row.role_in_project},
+        )
+        return BizProjectMemberOut(
+            project_id=project_id,
+            user_id=body.user_id,
+            role_in_project=row.role_in_project,
+            username=user.username,
+        )
+
+    async def remove_member(self, project_id: UUID, user_id: UUID) -> None:
+        await self._get_or_raise(project_id)
+        row = await self.repo.get_member(self.ctx.tenant_id, project_id, user_id)
+        if not row:
+            raise NotFoundError("项目成员不存在")
+        await self.db.delete(row)
+        await self.db.flush()
+        await log_biz_action(
+            self.db, self.ctx,
+            action="biz.project.member.remove",
+            resource_type="biz_project",
+            resource_id=project_id,
+            detail={"user_id": str(user_id)},
+        )
 
     # ── internal ──
+
+    async def _add_work_package(self, project_id: UUID, body: WorkPackageCreate | BizWorkPackageCreate) -> BizWorkPackage:
+        stage, stage_index = await self.template_svc.resolve_initial_stage(self.ctx.tenant_id, body.service_line)
+        wp = BizWorkPackage(
+            tenant_id=self.ctx.tenant_id,
+            project_id=project_id,
+            service_line=body.service_line,
+            name=body.name.strip(),
+            stage=stage,
+            stage_index=stage_index,
+            owner_id=body.owner_id,
+            budget=body.budget,
+            planned_start=body.planned_start,
+            planned_end=body.planned_end,
+        )
+        self.db.add(wp)
+        await self.db.flush()
+        await self.db.refresh(wp)
+        return wp
 
     async def _get_or_raise(self, project_id: UUID) -> BizProject:
         row = await self.repo.get_by_id(project_id)
@@ -184,10 +305,17 @@ class ProjectService(BaseService):
             out.setdefault(r.project_id, []).append(r)
         return out
 
+    def _wp_to_out(self, r: BizWorkPackage) -> BizWorkPackageOut:
+        return BizWorkPackageOut(
+            id=r.id, project_id=r.project_id, service_line=r.service_line, name=r.name,
+            stage=r.stage, stage_index=r.stage_index, status=r.status, owner_id=r.owner_id,
+            budget=r.budget, actual_cost=r.actual_cost, planned_start=r.planned_start, planned_end=r.planned_end,
+        )
+
     def _to_out(self, row: BizProject, wps: list[BizWorkPackage]) -> BizProjectOut:
         return BizProjectOut(
             id=row.id, client_id=row.client_id, name=row.name, status=row.status,
             code=row.code, owner_id=row.owner_id, description=row.description,
             total_budget=row.total_budget,
-            work_packages=[BizWorkPackageOut(id=r.id, project_id=r.project_id, service_line=r.service_line, name=r.name, stage=r.stage, stage_index=r.stage_index, status=r.status, owner_id=r.owner_id, budget=r.budget, actual_cost=r.actual_cost, planned_start=r.planned_start, planned_end=r.planned_end) for r in wps],
+            work_packages=[self._wp_to_out(r) for r in wps],
         )

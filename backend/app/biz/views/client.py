@@ -32,7 +32,8 @@ async def list_clients(
     db: AsyncSession = Depends(get_db),
 ):
     """分页查询客户列表，支持名称搜索。"""
-    return page_ok(await _svc(db, ctx).list_clients(page=page, size=size, search=search))
+    result = await _svc(db, ctx).list_clients(page=page, size=size, search=search)
+    return page_ok(result.items, result.total, result.page, result.size)
 
 
 @router.post("", response_model=ApiResponse[BizClientOut])

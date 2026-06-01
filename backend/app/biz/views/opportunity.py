@@ -37,7 +37,8 @@ async def list_opportunities(
     db: AsyncSession = Depends(get_db),
 ):
     """分页查询商机列表，支持按客户和阶段筛选。"""
-    return page_ok(await _svc(db, ctx).list_opportunities(page=page, size=size, client_id=client_id, stage=stage))
+    result = await _svc(db, ctx).list_opportunities(page=page, size=size, client_id=client_id, stage=stage)
+    return page_ok(result.items, result.total, result.page, result.size)
 
 
 @router.post("", response_model=ApiResponse[BizOpportunityOut])

@@ -16,8 +16,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.biz.schemas.project import (
     BizProjectCreate,
+    BizProjectMemberCreate,
+    BizProjectMemberOut,
     BizProjectOut,
     BizProjectUpdate,
+    BizWorkPackageCreate,
     BizWorkPackageOut,
     BizWorkPackageUpdate,
 )
@@ -47,7 +50,9 @@ async def list_projects(
     db: AsyncSession = Depends(get_db),
 ):
     """分页查询项目列表，可按客户、状态过滤。"""
-    return page_ok(await _svc(db, ctx).list_projects(page=page, size=size, client_id=client_id, status=status))
+    """分页查询项目列表，可按客户、状态过滤。"""
+    result = await _svc(db, ctx).list_projects(page=page, size=size, client_id=client_id, status=status)
+    return page_ok(result.items, result.total, result.page, result.size)
 
 
 @router.post("", response_model=ApiResponse[BizProjectOut])
@@ -107,7 +112,7 @@ async def list_work_packages(
 @router.post("/{project_id}/work-packages", response_model=ApiResponse[BizWorkPackageOut])
 async def create_work_package(
     project_id: UUID,
-    body: BizWorkPackageUpdate,
+    body: BizWorkPackageCreate,
     ctx: TenantContext = Depends(require_permissions("biz:project:write")),
     db: AsyncSession = Depends(get_db),
 ):
@@ -137,3 +142,38 @@ async def delete_work_package(
     """软删除工作包。"""
     await _svc(db, ctx).delete_work_package(wp_id)
     return ok(message="已删除")
+
+
+# ── members ──
+
+@router.get("/{project_id}/members", response_model=ApiResponse[list[BizProjectMemberOut]])
+async def list_members(
+    project_id: UUID,
+    ctx: TenantContext = Depends(require_permissions("biz:project:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    """获取项目成员列表。"""
+    return ok(await _svc(db, ctx).list_members(project_id))
+
+
+@router.post("/{project_id}/members", response_model=ApiResponse[BizProjectMemberOut])
+async def add_member(
+    project_id: UUID,
+    body: BizProjectMemberCreate,
+    ctx: TenantContext = Depends(require_permissions("biz:project:write")),
+    db: AsyncSession = Depends(get_db),
+):
+    """添加项目成员。"""
+    return ok(await _svc(db, ctx).add_member(project_id, body))
+
+
+@router.delete("/{project_id}/members/{user_id}", response_model=ApiResponse[None])
+async def remove_member(
+    project_id: UUID,
+    user_id: UUID,
+    ctx: TenantContext = Depends(require_permissions("biz:project:write")),
+    db: AsyncSession = Depends(get_db),
+):
+    """移除项目成员。"""
+    await _svc(db, ctx).remove_member(project_id, user_id)
+    return ok(message="已移除")

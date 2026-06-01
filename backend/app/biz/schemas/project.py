@@ -43,6 +43,16 @@ class BizProjectUpdate:
 # ── work package ──
 
 @dataclass
+class BizWorkPackageCreate:
+    service_line: str
+    name: str
+    owner_id: Optional[UUID] = None
+    budget: Optional[float] = None
+    planned_start: Optional[str] = None
+    planned_end: Optional[str] = None
+
+
+@dataclass
 class BizWorkPackageUpdate:
     name: Optional[str] = None
     stage: Optional[str] = None
@@ -83,3 +93,17 @@ class BizProjectOut:
     description: Optional[str] = None
     total_budget: Optional[float] = None
     work_packages: list[BizWorkPackageOut] = field(default_factory=list)
+
+
+@dataclass
+class BizProjectMemberOut:
+    project_id: UUID
+    user_id: UUID
+    role_in_project: str
+    username: Optional[str] = None
+
+
+@dataclass
+class BizProjectMemberCreate:
+    user_id: UUID
+    role_in_project: str = "viewer"

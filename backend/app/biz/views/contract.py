@@ -33,7 +33,8 @@ async def list_contracts(
     db: AsyncSession = Depends(get_db),
 ):
     """分页查询合同列表，支持按项目和状态筛选。"""
-    return page_ok(await _svc(db, ctx).list_contracts(page=page, size=size, project_id=project_id, status=status))
+    result = await _svc(db, ctx).list_contracts(page=page, size=size, project_id=project_id, status=status)
+    return page_ok(result.items, result.total, result.page, result.size)
 
 
 @router.post("", response_model=ApiResponse[BizContractOut])

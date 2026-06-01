@@ -11,6 +11,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.biz.audit import log_biz_action
 from app.biz.repositories.client import ClientRepository
 from app.biz.schemas.client import (
     BizClientContactCreate,
@@ -111,6 +112,13 @@ class ClientService(BaseService):
         self.db.add(row)
         await self.db.flush()
         await self.db.refresh(row)
+        await log_biz_action(
+            self.db, self.ctx,
+            action="biz.client.create",
+            resource_type="biz_client",
+            resource_id=row.id,
+            detail={"name": row.name},
+        )
         return BizClientOut(
             id=row.id,
             name=row.name,
@@ -126,17 +134,34 @@ class ClientService(BaseService):
     async def update_client(self, client_id: UUID, body: BizClientUpdate) -> BizClientOut:
         """部分更新客户信息（仅更新传入的非空字段）。"""
         row = await self._get_or_raise(client_id)
+        changed: list[str] = []
         for field in ("name", "short_name", "industry", "confidentiality_level", "address", "remark"):
             val = getattr(body, field, None)
             if val is not None:
                 setattr(row, field, val.strip() if isinstance(val, str) and field != "industry" and field != "confidentiality_level" else val)
+                changed.append(field)
         await self.db.flush()
+        if changed:
+            await log_biz_action(
+                self.db, self.ctx,
+                action="biz.client.update",
+                resource_type="biz_client",
+                resource_id=row.id,
+                detail={"fields": changed},
+            )
         return await self.get_client(client_id)
 
     async def delete_client(self, client_id: UUID) -> None:
         """软删除客户，不影响关联的项目和商机。"""
         row = await self._get_or_raise(client_id)
         await mark_deleted(self.db, row)
+        await log_biz_action(
+            self.db, self.ctx,
+            action="biz.client.delete",
+            resource_type="biz_client",
+            resource_id=row.id,
+            detail={"name": row.name},
+        )
 
     # ── contacts ──
 

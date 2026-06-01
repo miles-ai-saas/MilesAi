@@ -9,6 +9,7 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.biz.audit import log_biz_action
 from app.biz.repositories.deliverable import DeliverableRepository
 from app.biz.schemas.deliverable import (
     BizDeliverableCreate,
@@ -50,17 +51,33 @@ class DeliverableService(BaseService):
         self.db.add(row)
         await self.db.flush()
         await self.db.refresh(row)
+        await log_biz_action(
+            self.db, self.ctx,
+            action="biz.deliverable.create",
+            resource_type="biz_deliverable",
+            resource_id=row.id,
+            detail={"project_id": str(row.project_id), "name": row.name},
+        )
         return self._to_out(row)
 
     async def update(self, deliverable_id: UUID, body: BizDeliverableUpdate) -> BizDeliverableOut:
         """编辑交付物，可更新名称、类型、状态、关联资源等。"""
         row = await self._get_or_raise(deliverable_id)
+        old_status = row.status
         for f in ("name", "type", "status", "work_package_id", "attachment_id", "media_asset_id", "version"):
             val = getattr(body, f, None)
             if val is not None:
                 setattr(row, f, val.strip() if isinstance(val, str) and f == "name" else val)
         await self.db.flush()
         await self.db.refresh(row)
+        if body.status is not None and body.status != old_status:
+            await log_biz_action(
+                self.db, self.ctx,
+                action="biz.deliverable.status_change",
+                resource_type="biz_deliverable",
+                resource_id=row.id,
+                detail={"from": old_status, "to": body.status, "project_id": str(row.project_id)},
+            )
         return self._to_out(row)
 
     async def delete(self, deliverable_id: UUID) -> None:

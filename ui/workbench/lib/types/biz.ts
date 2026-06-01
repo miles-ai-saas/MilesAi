@@ -57,6 +57,14 @@ export interface BizProject {
   work_packages: BizWorkPackage[];
 }
 
+/** 项目成员 */
+export interface BizProjectMember {
+  project_id: string;
+  user_id: string;
+  role_in_project: string;
+  username?: string;
+}
+
 /** 交付物——项目产出的文档/设计稿/视频等 */
 export interface BizDeliverable {
   id: string;
