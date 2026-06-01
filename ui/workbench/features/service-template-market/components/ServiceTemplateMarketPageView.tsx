@@ -8,13 +8,33 @@ import type { BizServiceLineTemplatePack } from "@/lib/types";
 const PUBLISHER_LABELS: Record<string, string> = {
   platform: "平台官方",
   partner: "合作伙伴",
+  tenant: "租户分享",
+};
+
+const STATUS_LABELS: Record<string, string> = {
+  draft: "草稿",
+  pending_review: "待审核",
+  published: "已上架",
+  rejected: "已驳回",
+};
+
+const STATUS_COLORS: Record<string, string> = {
+  draft: "bg-surface-muted text-ink-muted",
+  pending_review: "bg-amber-50 text-amber-700",
+  published: "bg-emerald-50 text-emerald-700",
+  rejected: "bg-red-50 text-red-600",
 };
 
 export function ServiceTemplateMarketPageView({ vm }: { vm: ServiceTemplateMarketPageVm }) {
   const {
     ready,
+    tab,
+    setTab,
     items,
+    mineItems,
+    templates,
     loading,
+    mineLoading,
     search,
     setSearch,
     serviceLine,
@@ -25,11 +45,25 @@ export function ServiceTemplateMarketPageView({ vm }: { vm: ServiceTemplateMarke
     canWriteProject,
     applyingId,
     applyPack,
+    busyMineId,
+    submitMine,
+    withdrawMine,
     msg,
     setMsg,
     detailId,
     setDetailId,
     detailPack,
+    publishOpen,
+    setPublishOpen,
+    openPublish,
+    publishServiceLine,
+    setPublishServiceLine,
+    publishName,
+    setPublishName,
+    publishDesc,
+    setPublishDesc,
+    publishing,
+    createPublish,
   } = vm;
 
   if (!ready) {
@@ -42,13 +76,35 @@ export function ServiceTemplateMarketPageView({ vm }: { vm: ServiceTemplateMarke
         flowStep="projects"
         compact
         title="模板市场"
-        subtitle="浏览平台与合作伙伴发布的服务线流水线方案，一键应用到租户配置"
+        subtitle="浏览官方与租户分享的流水线方案；可将本租户配置发布供他人使用"
         actions={
-          <Link href="/business/service-templates" className="text-xs text-brand hover:underline">
-            我的服务线模板 →
-          </Link>
+          <div className="flex gap-3">
+            {canWriteProject && (
+              <button type="button" className="btn-primary text-xs" onClick={openPublish}>
+                发布模板
+              </button>
+            )}
+            <Link href="/business/service-templates" className="text-xs text-brand hover:underline self-center">
+              我的服务线模板 →
+            </Link>
+          </div>
         }
       />
+
+      <div className="mb-4 flex gap-2 border-b border-line">
+        {(["plaza", "mine"] as const).map((t) => (
+          <button
+            key={t}
+            type="button"
+            className={`border-b-2 px-3 py-2 text-sm transition ${
+              tab === t ? "border-brand font-medium text-brand" : "border-transparent text-ink-muted hover:text-ink"
+            }`}
+            onClick={() => setTab(t)}
+          >
+            {t === "plaza" ? "模板广场" : `我的发布${mineItems.length ? ` (${mineItems.length})` : ""}`}
+          </button>
+        ))}
+      </div>
 
       {msg && (
         <div className="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
@@ -59,58 +115,173 @@ export function ServiceTemplateMarketPageView({ vm }: { vm: ServiceTemplateMarke
         </div>
       )}
 
-      <div className="mb-4 flex flex-wrap items-center gap-3">
-        <input
-          type="search"
-          className="input-field h-9 w-full max-w-xs text-sm"
-          placeholder="搜索模板名称或描述"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-        <label className="flex items-center gap-2 text-xs text-ink-muted">
-          <input type="checkbox" checked={featuredOnly} onChange={(e) => setFeaturedOnly(e.target.checked)} />
-          仅精选
-        </label>
-        <select
-          className="input-field h-9 w-auto text-sm"
-          value={serviceLine}
-          onChange={(e) => setServiceLine(e.target.value)}
-        >
-          <option value="">全部服务线</option>
-          {serviceLineOptions.map(([sl, label]) => (
-            <option key={sl} value={sl}>{label}</option>
-          ))}
-        </select>
-      </div>
-
-      {loading ? (
-        <p className="text-sm text-ink-muted">加载模板…</p>
-      ) : items.length === 0 ? (
-        <p className="text-sm text-ink-faint">暂无匹配的模板包</p>
-      ) : (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {items.map((pack) => (
-            <PackCard
-              key={pack.id}
-              pack={pack}
-              applying={applyingId === pack.id}
-              canApply={canWriteProject}
-              onDetail={() => setDetailId(pack.id)}
-              onApply={() => void applyPack(pack)}
+      {tab === "plaza" ? (
+        <>
+          <div className="mb-4 flex flex-wrap items-center gap-3">
+            <input
+              type="search"
+              className="input-field h-9 w-full max-w-xs text-sm"
+              placeholder="搜索模板名称或描述"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
             />
-          ))}
-        </div>
+            <label className="flex items-center gap-2 text-xs text-ink-muted">
+              <input type="checkbox" checked={featuredOnly} onChange={(e) => setFeaturedOnly(e.target.checked)} />
+              仅精选
+            </label>
+            <select
+              className="input-field h-9 w-auto text-sm"
+              value={serviceLine}
+              onChange={(e) => setServiceLine(e.target.value)}
+            >
+              <option value="">全部服务线</option>
+              {serviceLineOptions.map(([sl, label]) => (
+                <option key={sl} value={sl}>{label}</option>
+              ))}
+            </select>
+          </div>
+
+          {loading ? (
+            <p className="text-sm text-ink-muted">加载模板…</p>
+          ) : items.length === 0 ? (
+            <p className="text-sm text-ink-faint">暂无匹配的模板包</p>
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              {items.map((pack) => (
+                <PackCard
+                  key={pack.id}
+                  pack={pack}
+                  applying={applyingId === pack.id}
+                  canApply={canWriteProject}
+                  onDetail={() => setDetailId(pack.id)}
+                  onApply={() => void applyPack(pack)}
+                />
+              ))}
+            </div>
+          )}
+        </>
+      ) : (
+        <>
+          {mineLoading ? (
+            <p className="text-sm text-ink-muted">加载中…</p>
+          ) : mineItems.length === 0 ? (
+            <p className="text-sm text-ink-faint">
+              暂无发布记录。在「服务线模板」页配置好阶段后，点击「发布模板」提交审核。
+            </p>
+          ) : (
+            <div className="space-y-3">
+              {mineItems.map((pack) => (
+                <MineRow
+                  key={pack.id}
+                  pack={pack}
+                  busy={busyMineId === pack.id}
+                  canWrite={canWriteProject}
+                  onDetail={() => setDetailId(pack.id)}
+                  onSubmit={() => void submitMine(pack)}
+                  onWithdraw={() => void withdrawMine(pack)}
+                />
+              ))}
+            </div>
+          )}
+        </>
       )}
 
       {detailPack && (
         <PackDetailDialog
           pack={detailPack}
           applying={applyingId === detailPack.id}
-          canApply={canWriteProject}
+          canApply={canWriteProject && tab === "plaza"}
           onClose={() => setDetailId(null)}
           onApply={() => void applyPack(detailPack)}
         />
       )}
+
+      {publishOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setPublishOpen(false)}>
+          <div className="card w-full max-w-md p-5" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-lg font-semibold text-ink">发布到模板市场</h2>
+            <p className="mt-1 text-xs text-ink-muted">将当前租户某条服务线的阶段与 AI 配置打包为草稿，提交后由平台审核上架。</p>
+            <div className="mt-4 space-y-3">
+              <label className="block">
+                <span className="text-xs text-ink-muted">服务线</span>
+                <select
+                  className="input-field mt-1 w-full text-sm"
+                  value={publishServiceLine}
+                  onChange={(e) => setPublishServiceLine(e.target.value)}
+                >
+                  {templates.map((t) => (
+                    <option key={t.service_line} value={t.service_line}>
+                      {t.label}{t.stages.length === 0 ? "（无阶段）" : ""}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="block">
+                <span className="text-xs text-ink-muted">模板名称</span>
+                <input className="input-field mt-1 w-full text-sm" value={publishName} onChange={(e) => setPublishName(e.target.value)} placeholder="如：政府活动精简版" />
+              </label>
+              <label className="block">
+                <span className="text-xs text-ink-muted">简介</span>
+                <textarea className="input-field mt-1 w-full text-sm" rows={2} value={publishDesc} onChange={(e) => setPublishDesc(e.target.value)} />
+              </label>
+            </div>
+            <div className="mt-5 flex justify-end gap-2">
+              <button type="button" className="btn-ghost text-sm" onClick={() => setPublishOpen(false)}>取消</button>
+              <button type="button" className="btn-primary text-sm" disabled={publishing || !publishName.trim()} onClick={() => void createPublish()}>
+                {publishing ? "创建中…" : "创建草稿"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MineRow({
+  pack,
+  busy,
+  canWrite,
+  onDetail,
+  onSubmit,
+  onWithdraw,
+}: {
+  pack: BizServiceLineTemplatePack;
+  busy: boolean;
+  canWrite: boolean;
+  onDetail: () => void;
+  onSubmit: () => void;
+  onWithdraw: () => void;
+}) {
+  const status = pack.status ?? "draft";
+  return (
+    <div className="card flex flex-wrap items-center justify-between gap-3 p-4">
+      <div>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs text-ink-muted">{pack.service_line_label}</span>
+          <span className={`rounded px-2 py-0.5 text-xs ${STATUS_COLORS[status] ?? STATUS_COLORS.draft}`}>
+            {STATUS_LABELS[status] ?? status}
+          </span>
+        </div>
+        <p className="mt-1 font-medium text-ink">{pack.name}</p>
+        {pack.review_note && status === "rejected" && (
+          <p className="mt-1 text-xs text-red-600">驳回原因：{pack.review_note}</p>
+        )}
+        {status === "published" && pack.install_count > 0 && (
+          <p className="mt-1 text-xs text-ink-faint">{pack.install_count} 次被其他租户应用</p>
+        )}
+      </div>
+      <div className="flex gap-2 text-xs">
+        <button type="button" className="text-brand hover:underline" onClick={onDetail}>详情</button>
+        {canWrite && (status === "draft" || status === "rejected") && (
+          <>
+            <button type="button" className="text-brand hover:underline disabled:opacity-50" disabled={busy} onClick={onSubmit}>
+              {busy ? "…" : "提交审核"}
+            </button>
+            <button type="button" className="text-ink-muted hover:underline disabled:opacity-50" disabled={busy} onClick={onWithdraw}>删除</button>
+          </>
+        )}
+      </div>
     </div>
   );
 }

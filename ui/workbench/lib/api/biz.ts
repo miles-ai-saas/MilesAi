@@ -229,6 +229,20 @@ export const bizApi = {
   applyServiceLineTemplatePack: (packId: string) =>
     post<BizServiceLineTemplatePackApplyResult>(`/biz/service-line-template-packs/${packId}/apply`, {}),
 
+  listMyServiceLineTemplatePacks: () => get<BizServiceLineTemplatePack[]>("/biz/service-line-template-packs/mine"),
+
+  createMyServiceLineTemplatePack: (p: { service_line: string; name: string; description?: string; tags?: string[] }) =>
+    post<BizServiceLineTemplatePack>("/biz/service-line-template-packs/mine", p),
+
+  updateMyServiceLineTemplatePack: (packId: string, p: { name?: string; description?: string; tags?: string[] }) =>
+    patch<BizServiceLineTemplatePack>(`/biz/service-line-template-packs/mine/${packId}`, p),
+
+  submitMyServiceLineTemplatePack: (packId: string) =>
+    post<BizServiceLineTemplatePack>(`/biz/service-line-template-packs/mine/${packId}/submit`, {}),
+
+  withdrawMyServiceLineTemplatePack: (packId: string) =>
+    http.delete(`/biz/service-line-template-packs/mine/${packId}`).then(() => undefined),
+
   searchBiz: (q: string, limit = 12) => get<BizSearchResult>(`/biz/search?q=${encodeURIComponent(q)}&limit=${limit}`),
 
   listProjectActivity: (projectId: string, limit = 30) =>

@@ -373,10 +373,16 @@ export interface BizServiceLineTemplatePack {
   stages: string[];
   ai_config: BizServiceLineAiConfig;
   publisher_name: string;
-  publisher_type: "platform" | "partner" | string;
+  publisher_type: "platform" | "partner" | "tenant" | string;
+  publisher_tenant_id?: string | null;
   tags: string[];
   is_featured: boolean;
   install_count: number;
+  status?: "draft" | "pending_review" | "published" | "rejected" | string;
+  review_note?: string | null;
+  submitted_at?: string | null;
+  reviewed_at?: string | null;
+  is_mine?: boolean;
 }
 
 export interface BizServiceLineTemplatePackApplyResult {

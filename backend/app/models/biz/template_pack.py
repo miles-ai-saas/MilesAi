@@ -1,13 +1,15 @@
 """服务线模板市场 · 可安装模板包 ORM。"""
 
 import uuid
+from datetime import datetime
 
-from sqlalchemy import Boolean, Index, Integer, String, Text
+from sqlalchemy import Boolean, DateTime, Index, Integer, String, Text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.infra.db import Base
 from app.models.base import TimestampMixin, UUIDPrimaryKeyMixin
+from app.models.biz.template_pack_status import TemplatePackStatus
 
 
 class BizServiceLineTemplatePack(UUIDPrimaryKeyMixin, TimestampMixin, Base):
@@ -22,6 +24,7 @@ class BizServiceLineTemplatePack(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __table_args__ = (
         Index("idx_biz_sltp_service_line", "service_line"),
         Index("idx_biz_sltp_active", "is_active"),
+        Index("idx_biz_sltp_status", "status"),
     )
 
     tenant_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
@@ -37,3 +40,8 @@ class BizServiceLineTemplatePack(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     install_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default=TemplatePackStatus.PUBLISHED.value)
+    submitted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    reviewed_by_admin_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    review_note: Mapped[str | None] = mapped_column(Text, nullable=True)

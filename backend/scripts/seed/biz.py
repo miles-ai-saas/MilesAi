@@ -230,6 +230,7 @@ async def seed_biz_service_line_template_packs(session: AsyncSession) -> None:
             existing.is_featured = spec.get("is_featured", False)
             existing.sort_order = spec.get("sort_order", 0)
             existing.is_active = True
+            existing.status = "published"
             continue
         session.add(
             BizServiceLineTemplatePack(
@@ -245,6 +246,7 @@ async def seed_biz_service_line_template_packs(session: AsyncSession) -> None:
                 is_featured=spec.get("is_featured", False),
                 sort_order=spec.get("sort_order", 0),
                 is_active=True,
+                status="published",
             )
         )
     await session.flush()

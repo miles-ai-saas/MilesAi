@@ -12,10 +12,10 @@ from app.biz.schemas.template_pack import BizServiceLineTemplatePackApplyResult,
 from app.biz.services.meta import SERVICE_LINES
 from app.biz.services.service_line_template import parse_stage_names
 from app.biz.services.service_line_template_admin import ServiceLineTemplateAdminService
+from app.biz.services.template_pack_serialize import pack_to_out
 from app.common.exceptions import NotFoundError
 from app.core.service import BaseService
 from app.core.tenant import TenantContext
-from app.models.biz.template_pack import BizServiceLineTemplatePack
 
 
 class ServiceLineTemplatePackMarketService(BaseService):
@@ -32,20 +32,21 @@ class ServiceLineTemplatePackMarketService(BaseService):
         featured_only: bool = False,
     ) -> list[BizServiceLineTemplatePackOut]:
         rows = await self.repo.list_catalog(
+            self.ctx.tenant_id,
             service_line=service_line,
             search=search,
             featured_only=featured_only,
         )
-        return [self._to_out(row) for row in rows]
+        return [pack_to_out(r, viewer_tenant_id=self.ctx.tenant_id) for r in rows]
 
     async def get_pack(self, pack_id: UUID) -> BizServiceLineTemplatePackOut:
-        row = await self.repo.get_catalog_pack(pack_id)
+        row = await self.repo.get_catalog_pack(pack_id, self.ctx.tenant_id)
         if not row:
             raise NotFoundError("模板包不存在或已下架")
-        return self._to_out(row)
+        return pack_to_out(row, viewer_tenant_id=self.ctx.tenant_id)
 
     async def apply_pack(self, pack_id: UUID) -> BizServiceLineTemplatePackApplyResult:
-        row = await self.repo.get_catalog_pack(pack_id)
+        row = await self.repo.get_catalog_pack(pack_id, self.ctx.tenant_id)
         if not row:
             raise NotFoundError("模板包不存在或已下架")
         if row.service_line not in self._labels:
@@ -66,21 +67,4 @@ class ServiceLineTemplatePackMarketService(BaseService):
             pack_name=row.name,
             service_line=row.service_line,
             template=template,
-        )
-
-    def _to_out(self, row: BizServiceLineTemplatePack) -> BizServiceLineTemplatePackOut:
-        tags = row.tags if isinstance(row.tags, list) else []
-        return BizServiceLineTemplatePackOut(
-            id=str(row.id),
-            service_line=row.service_line,
-            service_line_label=self._labels.get(row.service_line, row.service_line),
-            name=row.name,
-            description=row.description,
-            stages=parse_stage_names(row.stages),
-            ai_config=row.ai_config if isinstance(row.ai_config, dict) else {},
-            publisher_name=row.publisher_name,
-            publisher_type=row.publisher_type,
-            tags=[str(t) for t in tags],
-            is_featured=row.is_featured,
-            install_count=row.install_count or 0,
         )

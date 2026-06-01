@@ -4,21 +4,33 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth-store";
 import { useBizPermissions } from "@/features/business/lib/biz-permissions";
-import type { BizServiceLineTemplatePack } from "@/lib/types";
+import type { BizServiceLineTemplate, BizServiceLineTemplatePack } from "@/lib/types";
+
+export type MarketTab = "plaza" | "mine";
 
 export function useServiceTemplateMarketPage() {
   const { ready } = useRequireAuth();
   const { canWriteProject } = useBizPermissions();
+  const [tab, setTab] = useState<MarketTab>("plaza");
   const [allItems, setAllItems] = useState<BizServiceLineTemplatePack[]>([]);
+  const [mineItems, setMineItems] = useState<BizServiceLineTemplatePack[]>([]);
+  const [templates, setTemplates] = useState<BizServiceLineTemplate[]>([]);
   const [loading, setLoading] = useState(true);
+  const [mineLoading, setMineLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [serviceLine, setServiceLine] = useState("");
   const [featuredOnly, setFeaturedOnly] = useState(false);
   const [applyingId, setApplyingId] = useState<string | null>(null);
+  const [busyMineId, setBusyMineId] = useState<string | null>(null);
   const [msg, setMsg] = useState("");
   const [detailId, setDetailId] = useState<string | null>(null);
+  const [publishOpen, setPublishOpen] = useState(false);
+  const [publishServiceLine, setPublishServiceLine] = useState("");
+  const [publishName, setPublishName] = useState("");
+  const [publishDesc, setPublishDesc] = useState("");
+  const [publishing, setPublishing] = useState(false);
 
-  const reload = useCallback(async () => {
+  const reloadPlaza = useCallback(async () => {
     setLoading(true);
     try {
       setAllItems(await api.listServiceLineTemplatePacks());
@@ -27,10 +39,21 @@ export function useServiceTemplateMarketPage() {
     }
   }, []);
 
+  const reloadMine = useCallback(async () => {
+    setMineLoading(true);
+    try {
+      setMineItems(await api.listMyServiceLineTemplatePacks());
+    } finally {
+      setMineLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     if (!ready) return;
-    void reload();
-  }, [ready, reload]);
+    void reloadPlaza();
+    void reloadMine();
+    void api.listServiceLineTemplates().then(setTemplates);
+  }, [ready, reloadPlaza, reloadMine]);
 
   const serviceLineOptions = useMemo(() => {
     const map = new Map<string, string>();
@@ -51,7 +74,9 @@ export function useServiceTemplateMarketPage() {
     });
   }, [allItems, serviceLine, featuredOnly, search]);
 
-  const detailPack = detailId ? allItems.find((p) => p.id === detailId) ?? null : null;
+  const detailPack = detailId
+    ? [...allItems, ...mineItems].find((p) => p.id === detailId) ?? null
+    : null;
 
   const applyPack = async (pack: BizServiceLineTemplatePack) => {
     if (!canWriteProject) return;
@@ -62,7 +87,7 @@ export function useServiceTemplateMarketPage() {
       const result = await api.applyServiceLineTemplatePack(pack.id);
       setMsg(`已应用「${result.pack_name}」，可在服务线模板页查看与微调。`);
       setDetailId(null);
-      await reload();
+      await reloadPlaza();
     } catch (e: unknown) {
       setMsg(e instanceof Error ? e.message : "应用失败");
     } finally {
@@ -70,10 +95,70 @@ export function useServiceTemplateMarketPage() {
     }
   };
 
+  const openPublish = () => {
+    const first = templates.find((t) => t.stages.length > 0);
+    setPublishServiceLine(first?.service_line ?? templates[0]?.service_line ?? "");
+    setPublishName("");
+    setPublishDesc("");
+    setPublishOpen(true);
+  };
+
+  const createPublish = async () => {
+    if (!publishServiceLine || !publishName.trim()) return;
+    setPublishing(true);
+    setMsg("");
+    try {
+      await api.createMyServiceLineTemplatePack({
+        service_line: publishServiceLine,
+        name: publishName.trim(),
+        description: publishDesc.trim() || undefined,
+      });
+      setPublishOpen(false);
+      setTab("mine");
+      setMsg("已创建草稿，可提交审核上架");
+      await reloadMine();
+    } catch (e: unknown) {
+      setMsg(e instanceof Error ? e.message : "创建失败");
+    } finally {
+      setPublishing(false);
+    }
+  };
+
+  const submitMine = async (pack: BizServiceLineTemplatePack) => {
+    setBusyMineId(pack.id);
+    try {
+      await api.submitMyServiceLineTemplatePack(pack.id);
+      setMsg("已提交审核，通过后将在模板广场展示");
+      await reloadMine();
+    } catch (e: unknown) {
+      setMsg(e instanceof Error ? e.message : "提交失败");
+    } finally {
+      setBusyMineId(null);
+    }
+  };
+
+  const withdrawMine = async (pack: BizServiceLineTemplatePack) => {
+    if (!window.confirm(`删除草稿「${pack.name}」？`)) return;
+    setBusyMineId(pack.id);
+    try {
+      await api.withdrawMyServiceLineTemplatePack(pack.id);
+      await reloadMine();
+    } catch (e: unknown) {
+      setMsg(e instanceof Error ? e.message : "删除失败");
+    } finally {
+      setBusyMineId(null);
+    }
+  };
+
   return {
     ready,
+    tab,
+    setTab,
     items,
+    mineItems,
+    templates,
     loading,
+    mineLoading,
     search,
     setSearch,
     serviceLine,
@@ -84,11 +169,25 @@ export function useServiceTemplateMarketPage() {
     canWriteProject,
     applyingId,
     applyPack,
+    busyMineId,
+    submitMine,
+    withdrawMine,
     msg,
     setMsg,
     detailId,
     setDetailId,
     detailPack,
+    publishOpen,
+    setPublishOpen,
+    openPublish,
+    publishServiceLine,
+    setPublishServiceLine,
+    publishName,
+    setPublishName,
+    publishDesc,
+    setPublishDesc,
+    publishing,
+    createPublish,
   };
 }
 

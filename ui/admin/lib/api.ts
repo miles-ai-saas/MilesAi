@@ -181,6 +181,12 @@ export const adminApi = {
   getMarketplaceAppForReview: (id: string) => get<AdminMarketplaceAppDetail>(`/marketplace/apps/${id}`),
   approveMarketplaceApp: (id: string) => post<AdminMarketplaceApp>(`/marketplace/apps/${id}/approve`),
   rejectMarketplaceApp: (id: string, note?: string) => post<AdminMarketplaceApp>(`/marketplace/apps/${id}/reject`, { note }),
+
+  listPendingTemplatePacks: (page = 1, size = DEFAULT_PAGE_SIZE) =>
+    get<PageResult<AdminTemplatePack>>(`/template-packs/pending?${buildPageQuery(page, size)}`),
+  getTemplatePackForReview: (id: string) => get<AdminTemplatePack>(`/template-packs/${id}`),
+  approveTemplatePack: (id: string) => post<AdminTemplatePack>(`/template-packs/${id}/approve`),
+  rejectTemplatePack: (id: string, note?: string) => post<AdminTemplatePack>(`/template-packs/${id}/reject`, { note }),
 };
 
 export interface PlatformAdmin {
@@ -206,6 +212,24 @@ export interface AdminMarketplaceApp {
 
 export interface AdminMarketplaceAppDetail extends AdminMarketplaceApp {
   manifest: Record<string, unknown>;
+}
+
+export interface AdminTemplatePack {
+  id: string;
+  service_line: string;
+  service_line_label: string;
+  name: string;
+  description?: string | null;
+  stages: string[];
+  ai_config: Record<string, unknown>;
+  publisher_name: string;
+  publisher_type: string;
+  publisher_tenant_id?: string | null;
+  tags: string[];
+  status: string;
+  review_note?: string | null;
+  submitted_at?: string | null;
+  install_count: number;
 }
 
 export interface AdminSysCategory {

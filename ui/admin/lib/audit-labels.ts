@@ -30,6 +30,8 @@ const ACTION_LABELS: Record<string, string> = {
   "model.delete": "删除模型",
   "marketplace.approve": "通过应用审核",
   "marketplace.reject": "驳回应用审核",
+  "template_pack.approve": "通过模板包审核",
+  "template_pack.reject": "驳回模板包审核",
   "marketplace_category.create": "创建市场分类",
   "marketplace_category.update": "更新市场分类",
   "marketplace_category.delete": "删除市场分类",
