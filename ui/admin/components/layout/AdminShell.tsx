@@ -1,12 +1,28 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
-import { AdminSidebar } from "@/components/layout/AdminSidebar";
+import { useCallback, useEffect, useState } from "react";
+import { AdminSidebar, ADMIN_SIDEBAR_STORAGE_KEY } from "@/components/layout/AdminSidebar";
 import { AdminTopBar } from "@/components/layout/AdminTopBar";
 import { getAdminBreadcrumbs } from "@/lib/admin-nav";
 import { adminApi } from "@/lib/api";
 import { useAdminAuthStore, useAdminHydrated } from "@/lib/auth-store";
+
+function loadSidebarCollapsed(): boolean {
+  try {
+    return localStorage.getItem(ADMIN_SIDEBAR_STORAGE_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function saveSidebarCollapsed(collapsed: boolean) {
+  try {
+    localStorage.setItem(ADMIN_SIDEBAR_STORAGE_KEY, collapsed ? "1" : "0");
+  } catch {
+    /* ignore */
+  }
+}
 
 export function AdminShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -15,6 +31,11 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   const token = useAdminAuthStore((s) => s.accessToken);
   const admin = useAdminAuthStore((s) => s.admin);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
+  useEffect(() => {
+    setSidebarCollapsed(loadSidebarCollapsed());
+  }, []);
 
   useEffect(() => {
     if (!hydrated) return;
@@ -25,6 +46,14 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     setMobileNavOpen(false);
   }, [pathname]);
+
+  const toggleSidebarCollapsed = useCallback(() => {
+    setSidebarCollapsed((prev) => {
+      const next = !prev;
+      saveSidebarCollapsed(next);
+      return next;
+    });
+  }, []);
 
   if (pathname === "/login") return <>{children}</>;
 
@@ -41,15 +70,19 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex min-h-screen bg-surface-muted">
-      <div className="hidden lg:flex lg:shrink-0">
-        <AdminSidebar pathname={pathname} />
+      <div className="hidden shrink-0 lg:block">
+        <AdminSidebar
+          pathname={pathname}
+          collapsed={sidebarCollapsed}
+          onToggleCollapse={toggleSidebarCollapsed}
+        />
       </div>
 
       {mobileNavOpen && (
         <div className="fixed inset-0 z-40 flex lg:hidden">
           <button type="button" className="absolute inset-0 bg-black/40" aria-label="关闭菜单" onClick={() => setMobileNavOpen(false)} />
           <div className="relative z-50 flex h-full shadow-panel">
-            <AdminSidebar pathname={pathname} onNavigate={() => setMobileNavOpen(false)} />
+            <AdminSidebar pathname={pathname} hideCollapseButton onNavigate={() => setMobileNavOpen(false)} />
           </div>
         </div>
       )}

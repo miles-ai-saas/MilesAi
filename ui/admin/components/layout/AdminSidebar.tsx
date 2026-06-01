@@ -3,22 +3,58 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { BrandHeader } from "@/components/brand/brand-header";
+import { CompanyLogo } from "@/components/brand/company-logo";
+import { SidebarCollapseButton } from "@/components/layout/SidebarCollapseButton";
 import { ADMIN_NAV, isAdminNavActive, type AdminNavGroup, type AdminNavItem } from "@/lib/admin-nav";
 import { AdminNavIcon } from "@/components/layout/AdminNavIcon";
 import { adminApi } from "@/lib/api";
 import { useAdminAuthStore } from "@/lib/auth-store";
 
-function NavLink({ item, pathname, onNavigate }: { item: AdminNavItem; pathname: string; onNavigate?: () => void }) {
+export const ADMIN_SIDEBAR_EXPANDED = 240;
+export const ADMIN_SIDEBAR_COLLAPSED = 64;
+export const ADMIN_SIDEBAR_STORAGE_KEY = "admin-sidebar-collapsed";
+
+function NavLink({
+  item,
+  pathname,
+  collapsed,
+  onNavigate,
+}: {
+  item: AdminNavItem;
+  pathname: string;
+  collapsed: boolean;
+  onNavigate?: () => void;
+}) {
   const active = isAdminNavActive(pathname, item.href);
   return (
-    <Link href={item.href} onClick={onNavigate} className={`admin-nav-item ${active ? "admin-nav-item-active" : ""}`}>
+    <Link
+      href={item.href}
+      onClick={onNavigate}
+      title={collapsed ? item.label : undefined}
+      aria-label={collapsed ? item.label : undefined}
+      className={`admin-nav-item ${active ? "admin-nav-item-active" : ""} ${collapsed ? "admin-nav-item-collapsed" : ""}`}
+    >
       <AdminNavIcon icon={item.icon} className="h-[18px] w-[18px] shrink-0" />
-      <span className="truncate">{item.label}</span>
+      {!collapsed ? <span className="truncate">{item.label}</span> : null}
     </Link>
   );
 }
 
-export function AdminSidebar({ pathname, onNavigate }: { pathname: string; onNavigate?: () => void }) {
+type Props = {
+  pathname: string;
+  collapsed?: boolean;
+  hideCollapseButton?: boolean;
+  onToggleCollapse?: () => void;
+  onNavigate?: () => void;
+};
+
+export function AdminSidebar({
+  pathname,
+  collapsed = false,
+  hideCollapseButton,
+  onToggleCollapse,
+  onNavigate,
+}: Props) {
   const role = useAdminAuthStore((s) => s.admin?.role);
   const [reviewMode, setReviewMode] = useState<string | null>(null);
 
@@ -37,26 +73,53 @@ export function AdminSidebar({ pathname, onNavigate }: { pathname: string; onNav
       return true;
     }),
   })).filter((group) => group.items.length > 0);
-  return (
-    <aside className="flex h-full w-60 shrink-0 flex-col border-r border-line bg-surface">
-      <div className="flex h-14 shrink-0 items-center border-b border-line px-4">
-        <BrandHeader href="/" />
-      </div>
 
-      <nav className="flex-1 overflow-y-auto px-3 py-4">
-        {navGroups.map((group) => (
-          <div key={group.title} className="mb-5 last:mb-0">
-            <p className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{group.title}</p>
-            <ul className="space-y-0.5">
-              {group.items.map((item) => (
-                <li key={item.href}>
-                  <NavLink item={item} pathname={pathname} onNavigate={onNavigate} />
-                </li>
-              ))}
-            </ul>
-          </div>
-        ))}
-      </nav>
-    </aside>
+  const width = collapsed ? ADMIN_SIDEBAR_COLLAPSED : ADMIN_SIDEBAR_EXPANDED;
+
+  return (
+    <div className="relative shrink-0 transition-[width] duration-200 ease-out" style={{ width }}>
+      <aside className="flex min-h-screen w-full flex-col border-r border-line bg-surface">
+        <div
+          className={`flex h-14 shrink-0 items-center border-b border-line ${collapsed ? "justify-center px-2" : "px-4"}`}
+        >
+          {collapsed ? (
+            <Link href="/" title="行千里" aria-label="行千里" className="transition opacity-95 hover:opacity-100">
+              <CompanyLogo variant="mark" size="sm" />
+            </Link>
+          ) : (
+            <BrandHeader href="/" />
+          )}
+        </div>
+
+        <nav className={`min-h-0 flex-1 overflow-y-auto py-4 ${collapsed ? "px-2" : "px-3"}`}>
+          {navGroups.map((group, groupIndex) => (
+            <div
+              key={group.title}
+              className={groupIndex > 0 ? (collapsed ? "mt-3 border-t border-line pt-3" : "mt-5") : undefined}
+            >
+              {!collapsed ? (
+                <p className="mb-2 px-3 text-[11px] font-semibold tracking-wider text-ink-faint">{group.title}</p>
+              ) : null}
+              <ul className="space-y-0.5">
+                {group.items.map((item) => (
+                  <li key={item.href}>
+                    <NavLink item={item} pathname={pathname} collapsed={collapsed} onNavigate={onNavigate} />
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </nav>
+      </aside>
+
+      {onToggleCollapse ? (
+        <SidebarCollapseButton
+          side="left"
+          collapsed={collapsed}
+          onToggle={onToggleCollapse}
+          hidden={hideCollapseButton}
+        />
+      ) : null}
+    </div>
   );
 }

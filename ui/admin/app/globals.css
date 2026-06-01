@@ -85,6 +85,10 @@
     @apply bg-brand-light text-brand;
   }
 
+  .admin-nav-item-collapsed {
+    @apply justify-center px-2;
+  }
+
   /* 运营后台主内容区 */
   .admin-page-shell {
     @apply mx-auto w-full max-w-screen-2xl p-5 lg:p-8;

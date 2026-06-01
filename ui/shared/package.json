@@ -13,7 +13,8 @@
     "./ui/list-footer": "./ui/list-footer.tsx",
     "./ui/stat-chip": "./ui/stat-chip.tsx",
     "./ui/filter-chip": "./ui/filter-chip.tsx",
-    "./ui/page-message": "./ui/page-message.tsx"
+    "./ui/page-message": "./ui/page-message.tsx",
+    "./ui/sidebar-collapse-button": "./ui/sidebar-collapse-button.tsx"
   },
   "peerDependencies": {
     "next": "^14.2.18",

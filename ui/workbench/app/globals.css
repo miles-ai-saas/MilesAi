@@ -94,11 +94,23 @@
   }
 
   .nav-item {
-    @apply flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-ink-muted transition;
+    @apply flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-ink-muted transition;
+  }
+
+  .nav-item:hover {
+    @apply bg-surface-muted text-ink;
   }
 
   .nav-item-active {
     @apply bg-brand-light font-medium text-brand;
+  }
+
+  .nav-item-active:hover {
+    @apply bg-brand-light text-brand;
+  }
+
+  .nav-item-collapsed {
+    @apply justify-center px-2;
   }
 
   .header-nav-item {
