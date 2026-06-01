@@ -24,9 +24,12 @@ export function useProjectsPage() {
   const [createError, setCreateError] = useState("");
   const createParamHandled = useRef(false);
 
+  const [status, setStatus] = useState("");
+  const filterKey = `${clientFilter}|${status}`;
+
   const list = usePagedList(
-    (page, size) => api.listProjects(page, size, clientFilter || undefined, undefined),
-    { enabled: ready, resetKey: clientFilter },
+    (page, size) => api.listProjects(page, size, clientFilter || undefined, status || undefined),
+    { enabled: ready, resetKey: filterKey },
   );
 
   const { requestConfirm, confirmDialog } = useConfirmAction();
@@ -128,6 +131,13 @@ export function useProjectsPage() {
     router.replace("/business/projects");
   }, [router]);
 
+  const clearFilters = useCallback(() => {
+    setStatus("");
+    if (clientFilter) router.replace("/business/projects");
+  }, [clientFilter, router]);
+
+  const hasActiveFilters = Boolean(clientFilter || status);
+
   return {
     ready,
     list,
@@ -136,6 +146,10 @@ export function useProjectsPage() {
     clientFilter,
     filterClientName,
     clearClientFilter,
+    status,
+    onStatus: setStatus,
+    clearFilters,
+    hasActiveFilters,
     createOpen,
     closeCreate,
     createForm,

@@ -20,7 +20,7 @@ export function OpportunitiesPipelineBoard({ vm }: { vm: OpportunitiesPageVm }) 
     return map;
   }, [pipeline]);
 
-  if (pipelineLoading) return <p className="text-sm text-ink-muted">加载看板…</p>;
+  if (pipelineLoading) return null;
 
   return (
     <div className="flex gap-3 overflow-x-auto pb-2">

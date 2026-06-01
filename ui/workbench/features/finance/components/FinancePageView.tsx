@@ -1,26 +1,23 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { BizPageHero } from "@/features/business-dashboard/components/BizPageHero";
+import { BizListPageSkeleton } from "@/features/business/components/BizListSkeleton";
+import { ExportCsvButton } from "@/features/business/components/ExportCsvButton";
+import { useBizPermissions } from "@/features/business/lib/biz-permissions";
+import {
+  PAYMENT_DIRECTION_LABELS,
+  PAYMENT_STATUS_LABELS,
+} from "@/features/contracts/lib/contract-labels";
+import { StatChip } from "@/components/ui/StatChip";
 import { api } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth-store";
-import { useBizPermissions } from "@/features/business/lib/biz-permissions";
-import { BizPageHero } from "@/features/business-dashboard/components/BizPageHero";
-import { ExportCsvButton } from "@/features/business/components/ExportCsvButton";
 import type { BizPayment, FinancialSummary } from "@/lib/types";
 
-const COLOR_MAP: Record<string, string> = {
-  brand: "bg-brand-light text-brand",
-  amber: "bg-amber-50 text-amber-700",
-  emerald: "bg-emerald-50 text-emerald-700",
-  slate: "bg-slate-100 text-slate-700",
-};
-
-const PAYMENT_STATUS_LABELS: Record<string, string> = {
-  pending: "待处理",
-  paid: "已结清",
-  cancelled: "已取消",
-};
+function paymentDirectionBadge(direction: string): string {
+  return direction === "in" ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700";
+}
 
 export function useFinancePage() {
   const { ready } = useRequireAuth();
@@ -58,97 +55,206 @@ export function useFinancePage() {
 
 export type FinancePageVm = ReturnType<typeof useFinancePage>;
 
-export function FinancePageView({ vm }: { vm: FinancePageVm }) {
-  const { summary, pending, loading, actionId, markPaid } = vm;
-  const { canWritePayment } = useBizPermissions();
+function PendingPaymentMobileCard({
+  payment,
+  canWrite,
+  actionId,
+  onMarkPaid,
+}: {
+  payment: BizPayment;
+  canWrite: boolean;
+  actionId: string | null;
+  onMarkPaid: (id: string) => void;
+}) {
+  return (
+    <article className="card p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h3 className="truncate font-medium text-ink">{payment.name}</h3>
+          <p className="mt-1 text-sm tabular-nums text-ink">¥{payment.amount.toLocaleString()}</p>
+        </div>
+        <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs ${paymentDirectionBadge(payment.direction)}`}>
+          {PAYMENT_DIRECTION_LABELS[payment.direction] ?? payment.direction}
+        </span>
+      </div>
+      <div className="mt-3 flex flex-wrap gap-2 text-xs text-ink-muted">
+        <span>{payment.planned_date ?? "无计划日期"}</span>
+        <span>{PAYMENT_STATUS_LABELS[payment.status] ?? payment.status}</span>
+      </div>
+      <div className="mt-3 flex flex-wrap gap-3">
+        {canWrite && payment.status === "pending" ? (
+          <button
+            type="button"
+            className="text-xs text-brand hover:underline disabled:opacity-50"
+            disabled={actionId === payment.id}
+            onClick={() => onMarkPaid(payment.id)}
+          >
+            {actionId === payment.id ? "处理中…" : "标记结清"}
+          </button>
+        ) : null}
+        <Link
+          href={`/business/contracts?id=${payment.contract_id}`}
+          className="text-xs text-ink-muted hover:text-brand hover:underline"
+        >
+          查看合同
+        </Link>
+      </div>
+    </article>
+  );
+}
 
-  if (loading || !summary) {
-    return <p className="text-sm text-ink-muted">加载中…</p>;
+function PendingPaymentsList({
+  pending,
+  canWrite,
+  actionId,
+  onMarkPaid,
+}: {
+  pending: BizPayment[];
+  canWrite: boolean;
+  actionId: string | null;
+  onMarkPaid: (id: string) => void;
+}) {
+  if (pending.length === 0) {
+    return (
+      <div className="px-4 py-16 text-center">
+        <p className="text-sm text-ink-muted">暂无待收付记录</p>
+        <p className="mt-1 text-xs text-ink-faint">可在合同详情中创建收付款计划</p>
+      </div>
+    );
   }
 
   return (
-    <div>
+    <>
+      <div className="space-y-3 p-3 md:hidden">
+        {pending.map((payment) => (
+          <PendingPaymentMobileCard
+            key={payment.id}
+            payment={payment}
+            canWrite={canWrite}
+            actionId={actionId}
+            onMarkPaid={onMarkPaid}
+          />
+        ))}
+      </div>
+
+      <div className="hidden overflow-x-auto md:block">
+        <table className="w-full min-w-[720px] text-left text-sm">
+          <thead className="border-b border-line bg-surface-muted/60 text-xs text-ink-muted">
+            <tr>
+              <th className="px-4 py-2.5 font-medium">名称</th>
+              <th className="px-4 py-2.5 font-medium">方向</th>
+              <th className="px-4 py-2.5 font-medium">金额</th>
+              <th className="px-4 py-2.5 font-medium">计划日期</th>
+              <th className="px-4 py-2.5 font-medium">状态</th>
+              <th className="px-4 py-2.5 text-right font-medium">操作</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-line-soft">
+            {pending.map((payment) => (
+              <tr key={payment.id} className="transition hover:bg-surface-muted/40">
+                <td className="px-4 py-3 font-medium text-ink">{payment.name}</td>
+                <td className="px-4 py-3">
+                  <span className={`rounded-full px-2 py-0.5 text-xs ${paymentDirectionBadge(payment.direction)}`}>
+                    {PAYMENT_DIRECTION_LABELS[payment.direction] ?? payment.direction}
+                  </span>
+                </td>
+                <td className="px-4 py-3 tabular-nums text-ink-muted">¥{payment.amount.toLocaleString()}</td>
+                <td className="px-4 py-3 text-ink-muted">{payment.planned_date ?? "—"}</td>
+                <td className="px-4 py-3 text-xs text-ink-muted">
+                  {PAYMENT_STATUS_LABELS[payment.status] ?? payment.status}
+                </td>
+                <td className="px-4 py-3 text-right">
+                  <div className="flex flex-wrap items-center justify-end gap-2">
+                    {canWrite && payment.status === "pending" ? (
+                      <button
+                        type="button"
+                        className="text-xs text-brand hover:underline disabled:opacity-50"
+                        disabled={actionId === payment.id}
+                        onClick={() => onMarkPaid(payment.id)}
+                      >
+                        {actionId === payment.id ? "处理中…" : "标记结清"}
+                      </button>
+                    ) : null}
+                    <Link
+                      href={`/business/contracts?id=${payment.contract_id}`}
+                      className="text-xs text-ink-muted hover:text-brand hover:underline"
+                    >
+                      查看合同
+                    </Link>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
+  );
+}
+
+export function FinancePageView({ vm }: { vm: FinancePageVm }) {
+  const { summary, pending, loading, actionId, markPaid, ready } = vm;
+  const { canWritePayment } = useBizPermissions();
+
+  const pendingIn = useMemo(
+    () => pending.filter((p) => p.direction === "in").reduce((sum, p) => sum + p.amount, 0),
+    [pending],
+  );
+  const pendingOut = useMemo(
+    () => pending.filter((p) => p.direction === "out").reduce((sum, p) => sum + p.amount, 0),
+    [pending],
+  );
+
+  if (!ready || loading || !summary) {
+    return <BizListPageSkeleton statCount={5} />;
+  }
+
+  return (
+    <div className="w-full">
       <BizPageHero
         flowStep="finance"
         compact
+        subtitle="合同应收应付、待收付清单与结清操作"
         actions={
           <>
             <ExportCsvButton url={api.exportPaymentsCsv()} filename="biz-payments.csv" />
-            <Link href="/business/contracts" className="btn-sm-outline text-sm">合同管理</Link>
+            <Link href="/business/contracts" className="btn-sm-outline text-sm">
+              合同管理
+            </Link>
           </>
         }
       />
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-        <StatCard label="合同总数" value={summary.contract_count} color="slate" />
-        <StatCard label="应收合计" value={summary.total_income} color="emerald" formatAmount />
-        <StatCard label="已结清" value={summary.total_paid} color="brand" formatAmount />
-        <StatCard label="待收款" value={summary.total_pending_in} color="amber" formatAmount />
-        <StatCard label="待付款" value={summary.total_pending_out} color="amber" formatAmount />
+      <div className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+        <Link href="/business/contracts" className="block transition hover:opacity-90">
+          <StatChip label="合同总数" value={String(summary.contract_count)} hint="跳转合同列表" />
+        </Link>
+        <StatChip label="应收合计" value={`¥${summary.total_income.toLocaleString()}`} hint="全部合同应收" />
+        <StatChip label="已结清" value={`¥${summary.total_paid.toLocaleString()}`} hint="已完成收付" />
+        <StatChip
+          label="待收款"
+          value={`¥${summary.total_pending_in.toLocaleString()}`}
+          hint={pendingIn > 0 ? `清单中 ¥${pendingIn.toLocaleString()}` : "无待收"}
+        />
+        <StatChip
+          label="待付款"
+          value={`¥${summary.total_pending_out.toLocaleString()}`}
+          hint={pendingOut > 0 ? `清单中 ¥${pendingOut.toLocaleString()}` : "无待付"}
+        />
       </div>
 
-      <div className="mt-8">
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-base font-medium text-ink">待收付清单</h2>
+      <section className="card overflow-hidden">
+        <div className="flex items-center justify-between border-b border-line bg-surface-muted/30 px-4 py-3">
+          <h2 className="text-sm font-semibold text-ink">待收付清单</h2>
           <span className="text-xs text-ink-muted">{pending.length} 条</span>
         </div>
-        {pending.length === 0 ? (
-          <p className="text-sm text-ink-faint">暂无待收付记录</p>
-        ) : (
-          <div className="card overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-line text-left text-xs text-ink-muted">
-                  <th className="p-3">名称</th>
-                  <th className="p-3">方向</th>
-                  <th className="p-3">金额</th>
-                  <th className="p-3">计划日期</th>
-                  <th className="p-3">状态</th>
-                  <th className="p-3">操作</th>
-                </tr>
-              </thead>
-              <tbody>
-                {pending.map((p) => (
-                  <tr key={p.id} className="border-b border-line last:border-0">
-                    <td className="p-3">{p.name}</td>
-                    <td className="p-3">{p.direction === "in" ? "收款" : "付款"}</td>
-                    <td className="p-3">¥{p.amount.toLocaleString()}</td>
-                    <td className="p-3">{p.planned_date ?? "—"}</td>
-                    <td className="p-3">{PAYMENT_STATUS_LABELS[p.status] ?? p.status}</td>
-                    <td className="p-3">
-                      <div className="flex flex-wrap items-center gap-2">
-                        {canWritePayment && p.status === "pending" && (
-                          <button
-                            type="button"
-                            className="text-xs text-brand hover:underline disabled:opacity-50"
-                            disabled={actionId === p.id}
-                            onClick={() => void markPaid(p.id)}
-                          >
-                            {actionId === p.id ? "处理中…" : "标记结清"}
-                          </button>
-                        )}
-                        <Link href={`/business/contracts?id=${p.contract_id}`} className="text-xs text-ink-muted hover:text-brand hover:underline">
-                          查看合同
-                        </Link>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function StatCard({ label, value, color, formatAmount }: { label: string; value: number; color: string; formatAmount?: boolean }) {
-  const display = formatAmount ? `¥${value.toLocaleString()}` : String(value);
-  return (
-    <div className="card p-5">
-      <p className="text-sm text-ink-muted">{label}</p>
-      <p className={`mt-1 ${formatAmount ? "text-2xl" : "text-3xl"} font-bold ${COLOR_MAP[color] ?? "text-ink"}`}>{display}</p>
+        <PendingPaymentsList
+          pending={pending}
+          canWrite={canWritePayment}
+          actionId={actionId}
+          onMarkPaid={(id) => void markPaid(id)}
+        />
+      </section>
     </div>
   );
 }

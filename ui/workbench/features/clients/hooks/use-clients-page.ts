@@ -19,9 +19,10 @@ export function useClientsPage() {
   const [createForm, setCreateForm] = useState<ClientFormValues>(EMPTY_CLIENT_FORM);
   const [saving, setSaving] = useState(false);
 
+  const filterKey = search;
   const list = usePagedList(
     (page, size) => api.listClients(page, size, search || undefined),
-    { enabled: ready },
+    { enabled: ready, resetKey: filterKey },
   );
 
   const { requestConfirm, confirmDialog } = useConfirmAction();
@@ -66,10 +67,14 @@ export function useClientsPage() {
     [requestConfirm, list, detailId, closeDetail],
   );
 
+  const clearFilters = useCallback(() => setSearch(""), []);
+
   return {
     ready,
     search,
     onSearch: setSearch,
+    clearFilters,
+    hasActiveFilters: Boolean(search),
     list,
     onDelete: handleDelete,
     confirmDialog,

@@ -32,7 +32,12 @@ export function useOpportunitiesPage() {
   const [saving, setSaving] = useState(false);
   const prefillHandled = useRef(false);
 
-  const list = usePagedList((page, size) => api.listOpportunities(page, size), { enabled: ready && viewMode === "table" });
+  const [stage, setStage] = useState("");
+
+  const list = usePagedList(
+    (page, size) => api.listOpportunities(page, size, undefined, stage || undefined),
+    { enabled: ready && viewMode === "table", resetKey: `${viewMode}|${stage}` },
+  );
   const { requestConfirm, confirmDialog } = useConfirmAction();
 
   const loadPipeline = useCallback(async () => {
@@ -126,10 +131,16 @@ export function useOpportunitiesPage() {
     router.push(`/business/projects/${result.project_id}`);
   }, [loadPipeline, router]);
 
+  const clearFilters = useCallback(() => setStage(""), []);
+
   return {
     ready,
     viewMode,
     setViewMode,
+    stage,
+    onStage: setStage,
+    clearFilters,
+    hasActiveFilters: Boolean(stage),
     list,
     pipeline,
     pipelineLoading,

@@ -3,6 +3,22 @@ export const PROJECT_STATUS_LABELS: Record<string, string> = {
   delivered: "已交付", closed: "已结项", cancelled: "已取消",
 };
 
+export const PROJECT_STATUSES = [
+  { key: "draft", label: "草稿" },
+  { key: "active", label: "进行中" },
+  { key: "on_hold", label: "暂停" },
+  { key: "delivered", label: "已交付" },
+  { key: "closed", label: "已结项" },
+  { key: "cancelled", label: "已取消" },
+] as const;
+
+export function projectStatusBadgeClass(status: string): string {
+  if (status === "active") return "bg-brand-light text-brand";
+  if (status === "delivered") return "bg-emerald-50 text-emerald-700";
+  if (status === "cancelled") return "bg-red-50 text-red-600";
+  return "bg-surface-muted text-ink-muted";
+}
+
 export const SERVICE_LINE_LABELS: Record<string, string> = {
   brand_identity: "品牌形象", video_production: "影视拍摄", exhibition: "展览展示",
   event: "活动策划", training: "会务培训", signage: "标识设计",

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { BizPageHero } from "@/features/business-dashboard/components/BizPageHero";
+import { BizListPageSkeleton } from "@/features/business/components/BizListSkeleton";
 import { ServiceTemplateEditDialog } from "@/features/service-templates/components/ServiceTemplateEditDialog";
 import type { ServiceTemplatesPageVm } from "@/features/service-templates/hooks/use-service-templates-page";
 import { StatChip } from "@/components/ui/StatChip";
@@ -207,16 +208,7 @@ function ServiceLineDetailPanel({
 }
 
 function PageSkeleton() {
-  return (
-    <div className="space-y-4">
-      <div className="grid gap-3 sm:grid-cols-3">
-        {[1, 2, 3].map((i) => (
-          <div key={i} className="h-20 animate-pulse rounded-xl bg-surface-muted" />
-        ))}
-      </div>
-      <div className="h-[480px] animate-pulse rounded-xl bg-surface-muted" />
-    </div>
-  );
+  return <BizListPageSkeleton />;
 }
 
 export function ServiceTemplatesPageView({ vm }: { vm: ServiceTemplatesPageVm }) {

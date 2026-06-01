@@ -15,7 +15,11 @@ export function useContractsPage() {
   const searchParams = useSearchParams();
   const { ready } = useRequireAuth();
   const { detailId, openDetail, closeDetail } = useBizDetailQuery("/business/contracts");
-  const list = usePagedList((page, size) => api.listContracts(page, size), { enabled: ready });
+  const [status, setStatus] = useState("");
+  const list = usePagedList(
+    (page, size) => api.listContracts(page, size, undefined, status || undefined),
+    { enabled: ready, resetKey: status },
+  );
   const { requestConfirm, confirmDialog } = useConfirmAction();
 
   const [createOpen, setCreateOpen] = useState(false);
@@ -102,9 +106,15 @@ export function useContractsPage() {
     [requestConfirm, list, detailId, closeDetail],
   );
 
+  const clearFilters = useCallback(() => setStatus(""), []);
+
   return {
     ready,
     list,
+    status,
+    onStatus: setStatus,
+    clearFilters,
+    hasActiveFilters: Boolean(status),
     onDelete: handleDelete,
     confirmDialog,
     createOpen,

@@ -247,6 +247,31 @@ export function useServiceTemplateMarketPage() {
     [categories],
   );
 
+  const clearFilters = useCallback(() => {
+    setSearch("");
+    setCategory("");
+    setCustomerType("");
+    setServiceLine("");
+    setFeaturedOnly(false);
+  }, []);
+
+  const hasActiveFilters = Boolean(search || category || customerType || serviceLine || featuredOnly);
+
+  const filterCategoryLabel = useMemo(() => {
+    if (!category) return "全部分类";
+    return categories.find((c) => c.key === category)?.label ?? category;
+  }, [category, categories]);
+
+  const filterCustomerLabel = useMemo(() => {
+    if (!customerType) return "全部客户";
+    return industries.find((i) => i.key === customerType)?.label ?? customerType;
+  }, [customerType, industries]);
+
+  const filterServiceLineLabel = useMemo(() => {
+    if (!serviceLine) return "全部服务线";
+    return serviceLineOptions.find((s) => s.key === serviceLine)?.label ?? serviceLine;
+  }, [serviceLine, serviceLineOptions]);
+
   return {
     ready,
     tab,
@@ -269,6 +294,11 @@ export function useServiceTemplateMarketPage() {
     setServiceLine,
     featuredOnly,
     setFeaturedOnly,
+    clearFilters,
+    hasActiveFilters,
+    filterCategoryLabel,
+    filterCustomerLabel,
+    filterServiceLineLabel,
     serviceLineOptions,
     canWriteProject,
     applyingId,

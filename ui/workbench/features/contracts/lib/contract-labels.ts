@@ -9,6 +9,15 @@ export const CONTRACT_STATUS_LABELS: Record<string, string> = {
   terminated: "已终止",
 };
 
+export const CONTRACT_STATUSES = [
+  { key: "draft", label: "草稿" },
+  { key: "pending_sign", label: "待签署" },
+  { key: "signed", label: "已签署" },
+  { key: "active", label: "履约中" },
+  { key: "completed", label: "已完结" },
+  { key: "terminated", label: "已终止" },
+] as const;
+
 export const CONTRACT_TYPE_LABELS: Record<string, string> = {
   service: "服务合同",
   nda: "保密协议",

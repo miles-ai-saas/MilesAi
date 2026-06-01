@@ -1,12 +1,18 @@
 "use client";
 
-import Link from "next/link";
 import { BizPageHero } from "@/features/business-dashboard/components/BizPageHero";
+import { BizListPageSkeleton } from "@/features/business/components/BizListSkeleton";
 import { ExportCsvButton } from "@/features/business/components/ExportCsvButton";
 import { useBizPermissions } from "@/features/business/lib/biz-permissions";
 import { ProjectFormDialog } from "@/features/projects/components/ProjectFormDialog";
-import { ProjectsTable } from "@/features/projects/components/ProjectsTable";
+import {
+  ProjectsFilters,
+  ProjectsListFooter,
+  ProjectsTable,
+} from "@/features/projects/components/ProjectsTable";
 import type { ProjectsPageVm } from "@/features/projects/hooks/use-projects-page";
+import { PROJECT_STATUS_LABELS } from "@/features/projects/lib/biz-labels";
+import { StatChip } from "@/components/ui/StatChip";
 import { api } from "@/lib/api";
 
 export function ProjectsPageView({ vm }: { vm: ProjectsPageVm }) {
@@ -15,8 +21,8 @@ export function ProjectsPageView({ vm }: { vm: ProjectsPageVm }) {
     confirmDialog,
     list,
     clientFilter,
-    filterClientName,
-    clearClientFilter,
+    status,
+    hasActiveFilters,
     createOpen,
     closeCreate,
     createForm,
@@ -30,52 +36,51 @@ export function ProjectsPageView({ vm }: { vm: ProjectsPageVm }) {
   } = vm;
   const { canWriteProject } = useBizPermissions();
 
+  if (!ready) {
+    return <BizListPageSkeleton />;
+  }
+
+  const statusLabel = status ? PROJECT_STATUS_LABELS[status] ?? status : "全部状态";
+
   return (
     <div className="w-full">
-      {!ready ? (
-        <p className="text-sm text-ink-muted">加载中…</p>
-      ) : (
-        <>
-          <BizPageHero
-            flowStep="projects"
-            compact
-            actions={
-              <div className="flex items-center gap-2">
-                <ExportCsvButton url={api.exportProjectsCsv(clientFilter || undefined)} filename="biz-projects.csv" />
-                {canWriteProject ? (
-                  <button type="button" onClick={() => openCreate()} className="btn-primary text-sm">
-                    新建项目
-                  </button>
-                ) : null}
-              </div>
-            }
-          />
-
-          {clientFilter ? (
-            <div className="mb-4 flex flex-wrap items-center gap-3 rounded-lg border border-line bg-surface-muted/40 px-3 py-2 text-sm">
-              <span className="text-ink-muted">
-                筛选客户：<span className="font-medium text-ink">{filterClientName ?? clientFilter.slice(0, 8)}</span>
-              </span>
-              <button type="button" className="text-xs text-brand hover:underline" onClick={clearClientFilter}>
-                清除筛选
+      <BizPageHero
+        flowStep="projects"
+        compact
+        subtitle="赢单后立项与执行，关联工作包、交付物与合同"
+        actions={
+          <div className="flex items-center gap-2">
+            <ExportCsvButton url={api.exportProjectsCsv(clientFilter || undefined)} filename="biz-projects.csv" />
+            {canWriteProject ? (
+              <button type="button" onClick={() => openCreate()} className="btn-primary text-sm">
+                新建项目
               </button>
-              {canWriteProject ? (
-                <button type="button" className="text-xs text-brand hover:underline" onClick={() => openCreate(clientFilter)}>
-                  为此客户新建项目
-                </button>
-              ) : null}
-            </div>
-          ) : null}
+            ) : null}
+          </div>
+        }
+      />
 
-          {list.error ? (
-            <p className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{list.error}</p>
-          ) : null}
+      <div className="mb-4 grid gap-3 sm:grid-cols-3">
+        <StatChip
+          label="项目总数"
+          value={String(list.total)}
+          hint={hasActiveFilters ? "当前筛选结果" : "全部项目"}
+        />
+        <StatChip label="状态筛选" value={statusLabel} hint="点击 Chip 快速切换" />
+        <StatChip
+          label="本页展示"
+          value={String(list.items.length)}
+          hint={clientFilter ? "已按客户筛选" : `第 ${list.page} 页`}
+        />
+      </div>
 
-          <ProjectsTable vm={vm} />
-          {confirmDialog}
-        </>
-      )}
+      <div className="card overflow-hidden">
+        <ProjectsFilters vm={vm} />
+        <ProjectsTable vm={vm} />
+        <ProjectsListFooter vm={vm} />
+      </div>
 
+      {confirmDialog}
       <ProjectFormDialog
         open={createOpen}
         form={createForm}
