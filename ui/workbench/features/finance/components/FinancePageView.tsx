@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth-store";
+import { useBizPermissions } from "@/features/business/lib/biz-permissions";
 import { BizPageHero } from "@/features/business-dashboard/components/BizPageHero";
 import type { BizPayment, FinancialSummary } from "@/lib/types";
 
@@ -25,21 +26,40 @@ export function useFinancePage() {
   const [summary, setSummary] = useState<FinancialSummary | null>(null);
   const [pending, setPending] = useState<BizPayment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [actionId, setActionId] = useState<string | null>(null);
+
+  const reload = useCallback(async () => {
+    const [s, p] = await Promise.all([api.getFinancialSummary(), api.listPendingPayments()]);
+    setSummary(s);
+    setPending(p);
+  }, []);
 
   useEffect(() => {
     if (!ready) return;
-    Promise.all([api.getFinancialSummary(), api.listPendingPayments()])
-      .then(([s, p]) => { setSummary(s); setPending(p); })
-      .finally(() => setLoading(false));
-  }, [ready]);
+    reload().finally(() => setLoading(false));
+  }, [ready, reload]);
 
-  return { ready, summary, pending, loading };
+  const markPaid = async (paymentId: string) => {
+    setActionId(paymentId);
+    try {
+      await api.updatePayment(paymentId, {
+        status: "paid",
+        paid_date: new Date().toISOString().slice(0, 10),
+      });
+      await reload();
+    } finally {
+      setActionId(null);
+    }
+  };
+
+  return { ready, summary, pending, loading, actionId, markPaid, reload };
 }
 
 export type FinancePageVm = ReturnType<typeof useFinancePage>;
 
 export function FinancePageView({ vm }: { vm: FinancePageVm }) {
-  const { summary, pending, loading } = vm;
+  const { summary, pending, loading, actionId, markPaid } = vm;
+  const { canWritePayment } = useBizPermissions();
 
   if (loading || !summary) {
     return <p className="text-sm text-ink-muted">加载中…</p>;
@@ -89,9 +109,21 @@ export function FinancePageView({ vm }: { vm: FinancePageVm }) {
                     <td className="p-3">{p.planned_date ?? "—"}</td>
                     <td className="p-3">{PAYMENT_STATUS_LABELS[p.status] ?? p.status}</td>
                     <td className="p-3">
-                      <Link href={`/business/contracts?id=${p.contract_id}`} className="text-xs text-brand hover:underline">
-                        查看合同
-                      </Link>
+                      <div className="flex flex-wrap items-center gap-2">
+                        {canWritePayment && p.status === "pending" && (
+                          <button
+                            type="button"
+                            className="text-xs text-brand hover:underline disabled:opacity-50"
+                            disabled={actionId === p.id}
+                            onClick={() => void markPaid(p.id)}
+                          >
+                            {actionId === p.id ? "处理中…" : "标记结清"}
+                          </button>
+                        )}
+                        <Link href={`/business/contracts?id=${p.contract_id}`} className="text-xs text-ink-muted hover:text-brand hover:underline">
+                          查看合同
+                        </Link>
+                      </div>
                     </td>
                   </tr>
                 ))}

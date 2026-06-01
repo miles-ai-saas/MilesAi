@@ -1,6 +1,7 @@
 "use client";
 
 import { ProjectCloseWizard } from "@/features/projects/components/ProjectCloseWizard";
+import { useBizPermissions } from "@/features/business/lib/biz-permissions";
 import { ProjectAiTab } from "@/features/projects/components/ProjectAiTab";
 import { ProjectDeliverablesTab } from "@/features/projects/components/ProjectDeliverablesTab";
 import { ProjectMembersTab } from "@/features/projects/components/ProjectMembersTab";
@@ -68,13 +69,14 @@ export function ProjectDetailView({ vm }: { vm: ProjectDetailPageVm }) {
 }
 
 function ProjectInfoTab({ project, vm }: { project: BizProject; vm: ProjectDetailPageVm }) {
+  const { canWriteProject } = useBizPermissions();
   const canClose = project.status !== "closed" && project.status !== "cancelled";
 
   return (
     <div className="mt-6 space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-semibold text-ink">基本信息</h2>
-        {!vm.editingInfo && (
+        {!vm.editingInfo && canWriteProject && (
           <button type="button" className="text-xs text-brand hover:underline" onClick={() => vm.setEditingInfo(true)}>编辑</button>
         )}
       </div>
@@ -121,7 +123,7 @@ function ProjectInfoTab({ project, vm }: { project: BizProject; vm: ProjectDetai
         </div>
       )}
 
-      {canClose && (
+      {canClose && canWriteProject && (
         <div className="card flex flex-wrap items-center gap-3 p-4">
           <ProjectCloseWizard vm={vm} onDone={() => {}} />
           <p className="text-xs text-ink-muted">通过向导检查交付与工作包后再结项，可选案例入库。</p>

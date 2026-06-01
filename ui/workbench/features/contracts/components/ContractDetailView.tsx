@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { api } from "@/lib/api";
+import { useBizPermissions } from "@/features/business/lib/biz-permissions";
 import type { ContractDetailPageVm } from "@/features/contracts/hooks/use-contract-detail-page";
 import {
   CONTRACT_STATUS_LABELS,
@@ -19,7 +20,7 @@ export function ContractDetailView({
   vm: ContractDetailPageVm;
   embedded?: boolean;
 }) {
-  const { contract, payments, loading, error, tab, handleTabChange, loadPayments, onMutated } = vm;
+  const { contract, payments, loading, error, tab, handleTabChange, loadPayments, onMutated, editingInfo, setEditingInfo, infoForm, setInfoForm, savingInfo, saveContractInfo } = vm;
 
   if (loading) return <p className="text-sm text-ink-muted">加载中…</p>;
   if (error || !contract) return <p className="text-sm text-red-600">{error || "合同不存在"}</p>;
@@ -62,7 +63,19 @@ export function ContractDetailView({
         ))}
       </div>
 
-      {tab === "info" && <ContractInfoTab contract={contract} embedded={embedded} />}
+      {tab === "info" && (
+        <ContractInfoTab
+          contract={contract}
+          embedded={embedded}
+          editing={editingInfo}
+          onEdit={() => setEditingInfo(true)}
+          onCancelEdit={() => setEditingInfo(false)}
+          form={infoForm}
+          setForm={setInfoForm}
+          saving={savingInfo}
+          onSave={saveContractInfo}
+        />
+      )}
       {tab === "payments" && (
         <ContractPaymentsTab
           contractId={contract.id}
@@ -79,14 +92,102 @@ export function ContractDetailView({
   );
 }
 
-function ContractInfoTab({ contract, embedded }: { contract: BizContract; embedded?: boolean }) {
+function ContractInfoTab({
+  contract,
+  embedded,
+  editing,
+  onEdit,
+  onCancelEdit,
+  form,
+  setForm,
+  saving,
+  onSave,
+}: {
+  contract: BizContract;
+  embedded?: boolean;
+  editing: boolean;
+  onEdit: () => void;
+  onCancelEdit: () => void;
+  form: ContractDetailPageVm["infoForm"];
+  setForm: React.Dispatch<React.SetStateAction<ContractDetailPageVm["infoForm"]>>;
+  saving: boolean;
+  onSave: (e: React.FormEvent) => void;
+}) {
+  const { canWriteContract } = useBizPermissions();
+
+  if (editing) {
+    return (
+      <form onSubmit={onSave} className={`card space-y-3 p-4 ${embedded ? "mt-4" : "mt-6"}`}>
+        <label className="block">
+          <span className="text-xs text-ink-muted">合同名称</span>
+          <input className="input-field mt-1 w-full text-sm" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} required />
+        </label>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <label className="block">
+            <span className="text-xs text-ink-muted">合同编号</span>
+            <input className="input-field mt-1 w-full text-sm" value={form.contract_no} onChange={(e) => setForm((f) => ({ ...f, contract_no: e.target.value }))} />
+          </label>
+          <label className="block">
+            <span className="text-xs text-ink-muted">类型</span>
+            <select className="input-field mt-1 w-full text-sm" value={form.type} onChange={(e) => setForm((f) => ({ ...f, type: e.target.value }))}>
+              {Object.entries(CONTRACT_TYPE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+            </select>
+          </label>
+        </div>
+        <label className="block">
+          <span className="text-xs text-ink-muted">状态</span>
+          <select className="input-field mt-1 w-full text-sm" value={form.status} onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))}>
+            {Object.entries(CONTRACT_STATUS_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+          </select>
+        </label>
+        <label className="block">
+          <span className="text-xs text-ink-muted">合同金额</span>
+          <input type="number" className="input-field mt-1 w-full text-sm" value={form.total_amount} onChange={(e) => setForm((f) => ({ ...f, total_amount: e.target.value }))} />
+        </label>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <label className="block">
+            <span className="text-xs text-ink-muted">签署日期</span>
+            <input type="date" className="input-field mt-1 w-full text-sm" value={form.signed_date} onChange={(e) => setForm((f) => ({ ...f, signed_date: e.target.value }))} />
+          </label>
+          <label className="block">
+            <span className="text-xs text-ink-muted">开始日期</span>
+            <input type="date" className="input-field mt-1 w-full text-sm" value={form.start_date} onChange={(e) => setForm((f) => ({ ...f, start_date: e.target.value }))} />
+          </label>
+          <label className="block">
+            <span className="text-xs text-ink-muted">结束日期</span>
+            <input type="date" className="input-field mt-1 w-full text-sm" value={form.end_date} onChange={(e) => setForm((f) => ({ ...f, end_date: e.target.value }))} />
+          </label>
+        </div>
+        <label className="block">
+          <span className="text-xs text-ink-muted">付款条款</span>
+          <input className="input-field mt-1 w-full text-sm" value={form.payment_terms} onChange={(e) => setForm((f) => ({ ...f, payment_terms: e.target.value }))} />
+        </label>
+        <label className="block">
+          <span className="text-xs text-ink-muted">描述</span>
+          <textarea className="input-field mt-1 w-full text-sm" rows={3} value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} />
+        </label>
+        <div className="flex gap-2">
+          <button type="submit" disabled={saving} className="btn-primary text-sm">{saving ? "保存中…" : "保存"}</button>
+          <button type="button" className="btn-ghost text-sm" onClick={onCancelEdit}>取消</button>
+        </div>
+      </form>
+    );
+  }
+
   return (
-    <div className={`grid gap-4 sm:grid-cols-2 ${embedded ? "mt-4" : "mt-6"}`}>
-      <InfoCard label="合同金额" value={contract.total_amount != null ? `¥${contract.total_amount.toLocaleString()}` : "—"} />
-      <InfoCard label="付款条款" value={contract.payment_terms || "—"} />
-      <InfoCard label="签署日期" value={contract.signed_date || "—"} />
-      <InfoCard label="有效期" value={contract.start_date ? `${contract.start_date} ~ ${contract.end_date || "—"}` : "—"} />
-      <InfoCard label="描述" value={contract.description || "—"} className="sm:col-span-2" />
+    <div className={`${embedded ? "mt-4" : "mt-6"}`}>
+      {canWriteContract && (
+        <div className="mb-3 flex justify-end">
+          <button type="button" className="text-xs text-brand hover:underline" onClick={onEdit}>编辑</button>
+        </div>
+      )}
+      <div className="grid gap-4 sm:grid-cols-2">
+        <InfoCard label="合同金额" value={contract.total_amount != null ? `¥${contract.total_amount.toLocaleString()}` : "—"} />
+        <InfoCard label="付款条款" value={contract.payment_terms || "—"} />
+        <InfoCard label="签署日期" value={contract.signed_date || "—"} />
+        <InfoCard label="有效期" value={contract.start_date ? `${contract.start_date} ~ ${contract.end_date || "—"}` : "—"} />
+        <InfoCard label="描述" value={contract.description || "—"} className="sm:col-span-2" />
+      </div>
     </div>
   );
 }
@@ -104,6 +205,7 @@ function ContractPaymentsTab({
   onRefresh: () => void;
   embedded?: boolean;
 }) {
+  const { canWritePayment } = useBizPermissions();
   const [name, setName] = useState("");
   const [direction, setDirection] = useState("in");
   const [amount, setAmount] = useState("");
@@ -156,7 +258,8 @@ function ContractPaymentsTab({
         </div>
       </div>
 
-      <form onSubmit={handleAdd} className="card flex flex-wrap items-end gap-3 p-4">
+      {canWritePayment && (
+        <form onSubmit={handleAdd} className="card flex flex-wrap items-end gap-3 p-4">
         <label className="min-w-[8rem] flex-1">
           <span className="text-xs text-ink-muted">摘要</span>
           <input className="input-field mt-1 w-full text-sm" value={name} onChange={(e) => setName(e.target.value)} placeholder="如：第一期款项" required />
@@ -177,7 +280,8 @@ function ContractPaymentsTab({
           <input className="input-field mt-1 w-32 text-sm" type="date" value={plannedDate} onChange={(e) => setPlannedDate(e.target.value)} />
         </label>
         <button type="submit" disabled={saving} className="btn-primary text-sm">{saving ? "添加中…" : "添加"}</button>
-      </form>
+        </form>
+      )}
 
       {payments.length === 0 && <p className="text-sm text-ink-faint">暂无收付款记录</p>}
       {payments.map((p) => (
@@ -200,9 +304,9 @@ function ContractPaymentsTab({
             <span className={`rounded px-2 py-0.5 text-xs ${p.status === "paid" ? "bg-green-50 text-green-700" : "bg-surface-muted text-ink-muted"}`}>
               {PAYMENT_STATUS_LABELS[p.status] ?? p.status}
             </span>
-            {p.status === "pending" && (
+            {canWritePayment && p.status === "pending" && (
               <button type="button" className="text-xs text-brand hover:underline" onClick={() => void handleStatus(p, "paid")}>
-                确认
+                确认结清
               </button>
             )}
           </div>

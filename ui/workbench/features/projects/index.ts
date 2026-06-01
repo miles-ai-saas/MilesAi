@@ -2,5 +2,5 @@
 
 export { useProjectsPage, type ProjectsPageVm } from "./hooks/use-projects-page";
 export { ProjectsPageView } from "./components/ProjectsPageView";
-export { useProjectDetailPage, type ProjectDetailPageVm } from "./hooks/use-project-detail-page";
+export { useProjectDetailPage, type ProjectDetailPageVm, type ProjectDetailTab } from "./hooks/use-project-detail-page";
 export { ProjectDetailView } from "./components/ProjectDetailView";

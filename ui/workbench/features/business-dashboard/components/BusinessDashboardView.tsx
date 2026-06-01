@@ -49,8 +49,10 @@ export function BusinessDashboardView({ vm }: { vm: BusinessDashboardPageVm }) {
       show: data.pending_deliverables > 0,
       label: "待验收交付物",
       value: data.pending_deliverables,
-      href: "/business/projects",
-      hint: "进入项目 → 交付物 Tab",
+      href: (data.pending_deliverable_items?.[0])
+        ? `/business/projects/${data.pending_deliverable_items[0].project_id}?tab=deliverables`
+        : "/business/projects",
+      hint: "进入项目交付物 Tab",
       color: "amber" as const,
     },
     {
@@ -124,11 +126,35 @@ export function BusinessDashboardView({ vm }: { vm: BusinessDashboardPageVm }) {
         <h2 className="mb-3 text-sm font-semibold text-ink">执行概览</h2>
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <StatCard label="在制项目" value={data.active_projects} color="brand" href="/business/projects" />
-          <StatCard label="待验收交付物" value={data.pending_deliverables} color="amber" href="/business/projects" />
+          <StatCard label="待验收交付物" value={data.pending_deliverables} color="amber" href={data.pending_deliverable_items?.[0] ? `/business/projects/${data.pending_deliverable_items[0].project_id}?tab=deliverables` : "/business/projects"} />
           <StatCard label="进行中工作包" value={data.work_packages_in_progress} color="emerald" href="/business/work-packages" />
           <StatCard label="客户数" value={data.total_clients} color="slate" href="/business/clients" />
         </div>
       </section>
+
+      {(data.pending_deliverable_items?.length ?? 0) > 0 && (
+        <section className="mb-8">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-ink">待验收交付物</h2>
+            <Link href="/business/projects" className="text-xs text-brand hover:underline">全部项目</Link>
+          </div>
+          <div className="space-y-2">
+            {data.pending_deliverable_items?.map((d) => (
+              <Link
+                key={d.id}
+                href={`/business/projects/${d.project_id}?tab=deliverables`}
+                className="card flex items-center justify-between p-3 transition hover:shadow-md"
+              >
+                <div>
+                  <p className="text-sm font-medium text-ink">{d.name}</p>
+                  <p className="text-xs text-ink-muted">{d.project_name}</p>
+                </div>
+                <span className="text-xs text-amber-700">待验收 →</span>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
 
       {data.due_milestone_items.length > 0 && (
         <section className="mb-8">

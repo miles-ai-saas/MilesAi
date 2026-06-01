@@ -1,6 +1,7 @@
 "use client";
 
 import { BizPageHero } from "@/features/business-dashboard/components/BizPageHero";
+import { useBizPermissions } from "@/features/business/lib/biz-permissions";
 import { ClientDetailDialog } from "@/features/clients/components/ClientDetailDialog";
 import { ClientFormDialog } from "@/features/clients/components/ClientFormDialog";
 import { ClientsTable } from "@/features/clients/components/ClientsTable";
@@ -23,6 +24,7 @@ export function ClientsPageView({ vm }: { vm: ClientsPageVm }) {
     closeDetail,
     list,
   } = vm;
+  const { canWriteClient } = useBizPermissions();
 
   if (!ready) {
     return <p className="text-sm text-ink-muted">加载中…</p>;
@@ -33,9 +35,11 @@ export function ClientsPageView({ vm }: { vm: ClientsPageVm }) {
       <BizPageHero
         flowStep="clients"
         actions={
-          <button type="button" onClick={openCreate} className="btn-primary text-sm">
-            新建客户
-          </button>
+          canWriteClient ? (
+            <button type="button" onClick={openCreate} className="btn-primary text-sm">
+              新建客户
+            </button>
+          ) : undefined
         }
       />
 

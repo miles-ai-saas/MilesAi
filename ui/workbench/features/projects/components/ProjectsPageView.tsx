@@ -1,6 +1,7 @@
 "use client";
 
 import { BizPageHero } from "@/features/business-dashboard/components/BizPageHero";
+import { useBizPermissions } from "@/features/business/lib/biz-permissions";
 import { ProjectFormDialog } from "@/features/projects/components/ProjectFormDialog";
 import { ProjectsTable } from "@/features/projects/components/ProjectsTable";
 import type { ProjectsPageVm } from "@/features/projects/hooks/use-projects-page";
@@ -23,6 +24,7 @@ export function ProjectsPageView({ vm }: { vm: ProjectsPageVm }) {
     openCreate,
     handleCreateSave,
   } = vm;
+  const { canWriteProject } = useBizPermissions();
 
   return (
     <div className="w-full">
@@ -34,9 +36,11 @@ export function ProjectsPageView({ vm }: { vm: ProjectsPageVm }) {
             flowStep="projects"
             subtitle="商机赢单后立项；工作包、交付物、成员与结项均在此管理"
             actions={
-              <button type="button" onClick={() => openCreate()} className="btn-primary text-sm">
-                新建项目
-              </button>
+              canWriteProject ? (
+                <button type="button" onClick={() => openCreate()} className="btn-primary text-sm">
+                  新建项目
+                </button>
+              ) : undefined
             }
           />
 

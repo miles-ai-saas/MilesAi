@@ -1,6 +1,7 @@
 "use client";
 
 import { BizPageHero } from "@/features/business-dashboard/components/BizPageHero";
+import { useBizPermissions } from "@/features/business/lib/biz-permissions";
 import { OpportunitiesPipelineBoard } from "@/features/opportunities/components/OpportunitiesPipelineBoard";
 import { OpportunitiesTable } from "@/features/opportunities/components/OpportunitiesTable";
 import { OpportunityDetailDialog } from "@/features/opportunities/components/OpportunityDetailDialog";
@@ -26,6 +27,7 @@ export function OpportunitiesPageView({ vm }: { vm: OpportunitiesPageVm }) {
     closeDetail,
     refreshList,
   } = vm;
+  const { canWriteOpportunity } = useBizPermissions();
   if (!ready) return <p className="text-sm text-ink-muted">加载中…</p>;
 
   return (
@@ -38,9 +40,11 @@ export function OpportunitiesPageView({ vm }: { vm: OpportunitiesPageVm }) {
               <button type="button" className={`rounded-md px-3 py-1.5 ${viewMode === "board" ? "bg-brand-light text-brand" : "text-ink-muted"}`} onClick={() => setViewMode("board")}>看板</button>
               <button type="button" className={`rounded-md px-3 py-1.5 ${viewMode === "table" ? "bg-brand-light text-brand" : "text-ink-muted"}`} onClick={() => setViewMode("table")}>列表</button>
             </div>
-            <button type="button" onClick={() => openCreate()} className="btn-primary text-sm">
-              新建商机
-            </button>
+            {canWriteOpportunity && (
+              <button type="button" onClick={() => openCreate()} className="btn-primary text-sm">
+                新建商机
+              </button>
+            )}
           </>
         }
       />

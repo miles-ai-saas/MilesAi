@@ -15,20 +15,51 @@ export function useContractDetailPage(contractId: string | null, options?: Optio
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [tab, setTab] = useState<"info" | "payments">("info");
+  const [editingInfo, setEditingInfo] = useState(false);
+  const [savingInfo, setSavingInfo] = useState(false);
+  const [infoForm, setInfoForm] = useState({
+    name: "",
+    contract_no: "",
+    type: "service",
+    status: "draft",
+    signed_date: "",
+    start_date: "",
+    end_date: "",
+    total_amount: "",
+    payment_terms: "",
+    description: "",
+  });
+
+  const syncInfoForm = useCallback((data: BizContract) => {
+    setInfoForm({
+      name: data.name,
+      contract_no: data.contract_no ?? "",
+      type: data.type,
+      status: data.status,
+      signed_date: data.signed_date ?? "",
+      start_date: data.start_date ?? "",
+      end_date: data.end_date ?? "",
+      total_amount: data.total_amount != null ? String(data.total_amount) : "",
+      payment_terms: data.payment_terms ?? "",
+      description: data.description ?? "",
+    });
+  }, []);
 
   const resetLocalState = useCallback(() => {
     setContract(null);
     setPayments([]);
     setError("");
     setTab("info");
+    setEditingInfo(false);
   }, []);
 
   const loadContract = useCallback(async () => {
     if (!contractId) return null;
     const data = await api.getContract(contractId);
     setContract(data);
+    syncInfoForm(data);
     return data;
-  }, [contractId]);
+  }, [contractId, syncInfoForm]);
 
   const loadPayments = useCallback(async () => {
     if (!contractId) return;
@@ -56,6 +87,32 @@ export function useContractDetailPage(contractId: string | null, options?: Optio
     [loadPayments],
   );
 
+  const saveContractInfo = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!contractId || !infoForm.name.trim()) return;
+    setSavingInfo(true);
+    try {
+      const updated = await api.updateContract(contractId, {
+        name: infoForm.name.trim(),
+        contract_no: infoForm.contract_no.trim() || undefined,
+        type: infoForm.type,
+        status: infoForm.status,
+        signed_date: infoForm.signed_date || undefined,
+        start_date: infoForm.start_date || undefined,
+        end_date: infoForm.end_date || undefined,
+        total_amount: infoForm.total_amount ? Number(infoForm.total_amount) : undefined,
+        payment_terms: infoForm.payment_terms.trim() || undefined,
+        description: infoForm.description.trim() || undefined,
+      });
+      setContract(updated);
+      syncInfoForm(updated);
+      setEditingInfo(false);
+      onMutated?.();
+    } finally {
+      setSavingInfo(false);
+    }
+  };
+
   return {
     contract,
     payments,
@@ -65,6 +122,12 @@ export function useContractDetailPage(contractId: string | null, options?: Optio
     handleTabChange,
     loadPayments,
     onMutated,
+    editingInfo,
+    setEditingInfo,
+    infoForm,
+    setInfoForm,
+    savingInfo,
+    saveContractInfo,
   };
 }
 

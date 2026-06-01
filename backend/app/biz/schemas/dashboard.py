@@ -24,10 +24,19 @@ class DueMilestoneItem:
 
 
 @dataclass
+class PendingDeliverableItem:
+    id: str
+    project_id: str
+    project_name: str
+    name: str
+
+
+@dataclass
 class DashboardSummaryOut:
     total_clients: int = 0
     active_projects: int = 0
     pending_deliverables: int = 0
+    pending_deliverable_items: list[PendingDeliverableItem] = field(default_factory=list)
     work_packages_in_progress: int = 0
     due_milestones: int = 0
     due_milestone_items: list[DueMilestoneItem] = field(default_factory=list)

@@ -2,12 +2,14 @@
 
 import Link from "next/link";
 import { useMemo } from "react";
+import { useBizPermissions } from "@/features/business/lib/biz-permissions";
 import type { BizOpportunity } from "@/lib/types";
 import { OPPORTUNITY_STAGES, stageBadgeClass } from "@/features/opportunities/lib/opportunity-labels";
 import type { OpportunitiesPageVm } from "@/features/opportunities/hooks/use-opportunities-page";
 
 export function OpportunitiesPipelineBoard({ vm }: { vm: OpportunitiesPageVm }) {
   const { pipeline, pipelineLoading, onStageChange, onConvert, onDelete, openDetail } = vm;
+  const { canWriteOpportunity } = useBizPermissions();
 
   const grouped = useMemo(() => {
     const map: Record<string, BizOpportunity[]> = {};
@@ -29,6 +31,7 @@ export function OpportunitiesPipelineBoard({ vm }: { vm: OpportunitiesPageVm }) 
           onDragOver={(e) => e.preventDefault()}
           onDrop={(e) => {
             e.preventDefault();
+            if (!canWriteOpportunity) return;
             const id = e.dataTransfer.getData("text/opportunity-id");
             if (id) void onStageChange(id, stage.key);
           }}
@@ -44,9 +47,15 @@ export function OpportunitiesPipelineBoard({ vm }: { vm: OpportunitiesPageVm }) 
             {(grouped[stage.key] ?? []).map((opp) => (
               <div
                 key={opp.id}
-                draggable
-                onDragStart={(e) => e.dataTransfer.setData("text/opportunity-id", opp.id)}
-                className="card cursor-grab p-3 active:cursor-grabbing"
+                draggable={canWriteOpportunity}
+                onDragStart={(e) => {
+                  if (!canWriteOpportunity) {
+                    e.preventDefault();
+                    return;
+                  }
+                  e.dataTransfer.setData("text/opportunity-id", opp.id);
+                }}
+                className={`card p-3 ${canWriteOpportunity ? "cursor-grab active:cursor-grabbing" : ""}`}
               >
                 <button
                   type="button"
@@ -63,7 +72,7 @@ export function OpportunitiesPipelineBoard({ vm }: { vm: OpportunitiesPageVm }) 
                   <span className={`rounded px-1.5 py-0.5 text-[10px] ${stageBadgeClass(opp.stage)}`}>
                     {stage.label}
                   </span>
-                  {opp.stage === "won" && !opp.converted_to_project_id ? (
+                  {canWriteOpportunity && opp.stage === "won" && !opp.converted_to_project_id ? (
                     <button type="button" className="text-[10px] text-brand hover:underline" onClick={() => void onConvert(opp)}>
                       转项目
                     </button>
@@ -73,9 +82,11 @@ export function OpportunitiesPipelineBoard({ vm }: { vm: OpportunitiesPageVm }) 
                       查看项目
                     </Link>
                   ) : null}
-                  <button type="button" className="text-[10px] text-red-600 hover:underline" onClick={() => onDelete(opp)}>
-                    删除
-                  </button>
+                  {canWriteOpportunity && (
+                    <button type="button" className="text-[10px] text-red-600 hover:underline" onClick={() => onDelete(opp)}>
+                      删除
+                    </button>
+                  )}
                 </div>
               </div>
             ))}

@@ -2,12 +2,14 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api";
+import { useBizPermissions } from "@/features/business/lib/biz-permissions";
 import type { BizMilestone, BizWorkPackage } from "@/lib/types";
 import { SERVICE_LINE_LABELS, SERVICE_LINES, WP_STATUS_LABELS } from "@/features/projects/lib/biz-labels";
 import type { ProjectDetailPageVm } from "@/features/projects/hooks/use-project-detail-page";
 
 export function ProjectWorkPackagesTab({ vm }: { vm: ProjectDetailPageVm }) {
   const { project, projectId, updateWpStatus, advanceWpStage, rollbackWpStage, refreshProject } = vm;
+  const { canWriteProject } = useBizPermissions();
   const [serviceLine, setServiceLine] = useState("");
   const [wpName, setWpName] = useState("");
   const [saving, setSaving] = useState(false);
@@ -30,7 +32,8 @@ export function ProjectWorkPackagesTab({ vm }: { vm: ProjectDetailPageVm }) {
 
   return (
     <div className="mt-4 space-y-4">
-      <form onSubmit={handleAdd} className="card flex flex-wrap items-end gap-3 p-4">
+      {canWriteProject && (
+        <form onSubmit={handleAdd} className="card flex flex-wrap items-end gap-3 p-4">
         <label>
           <span className="text-xs text-ink-muted">服务线</span>
           <select className="input-field mt-1 text-sm" value={serviceLine} onChange={(e) => setServiceLine(e.target.value)} required>
@@ -43,7 +46,8 @@ export function ProjectWorkPackagesTab({ vm }: { vm: ProjectDetailPageVm }) {
           <input className="input-field mt-1 w-full text-sm" value={wpName} onChange={(e) => setWpName(e.target.value)} placeholder="如：主视觉设计" required />
         </label>
         <button type="submit" disabled={saving || !serviceLine || !wpName.trim()} className="btn-primary text-sm">{saving ? "添加中…" : "添加工作包"}</button>
-      </form>
+        </form>
+      )}
 
       {(project.work_packages ?? []).length === 0 && <p className="text-sm text-ink-faint">暂无工作包</p>}
       {project.work_packages?.map((wp) => (
@@ -51,6 +55,7 @@ export function ProjectWorkPackagesTab({ vm }: { vm: ProjectDetailPageVm }) {
           key={wp.id}
           wp={wp}
           projectId={projectId}
+          canWrite={canWriteProject}
           updateWpStatus={updateWpStatus}
           advanceWpStage={advanceWpStage}
           rollbackWpStage={rollbackWpStage}
@@ -63,12 +68,14 @@ export function ProjectWorkPackagesTab({ vm }: { vm: ProjectDetailPageVm }) {
 function WorkPackageCard({
   wp,
   projectId,
+  canWrite,
   updateWpStatus,
   advanceWpStage,
   rollbackWpStage,
 }: {
   wp: BizWorkPackage;
   projectId: string;
+  canWrite: boolean;
   updateWpStatus: (wp: BizWorkPackage, next: string) => Promise<void>;
   advanceWpStage: (wp: BizWorkPackage) => Promise<void>;
   rollbackWpStage: (wp: BizWorkPackage) => Promise<void>;
@@ -140,19 +147,19 @@ function WorkPackageCard({
           <span className={`rounded px-2 py-0.5 text-xs ${wp.status === "in_progress" ? "bg-brand-light text-brand" : wp.status === "done" ? "bg-green-50 text-green-700" : "bg-surface-muted text-ink-muted"}`}>
             {WP_STATUS_LABELS[wp.status] ?? wp.status}
           </span>
-          {wp.stage && wp.stage_index > 0 && (
+          {canWrite && wp.stage && wp.stage_index > 0 && (
             <button type="button" className="text-xs text-ink-muted hover:underline" disabled={rollingBack} onClick={() => void handleRollback()}>
               {rollingBack ? "回退中…" : "回退阶段"}
             </button>
           )}
-          {wp.stage && (
+          {canWrite && wp.stage && (
             <button type="button" className="text-xs text-brand hover:underline" disabled={advancing} onClick={() => void handleAdvance()}>
               {advancing ? "推进中…" : "推进阶段"}
             </button>
           )}
-          {wp.status === "pending" && <button type="button" className="text-xs text-brand hover:underline" onClick={() => updateWpStatus(wp, "in_progress")}>开始</button>}
-          {wp.status === "in_progress" && (<><button type="button" className="text-xs text-brand hover:underline" onClick={() => updateWpStatus(wp, "review")}>送审</button><button type="button" className="text-xs text-ink-muted hover:underline" onClick={() => updateWpStatus(wp, "done")}>完成</button></>)}
-          {wp.status === "review" && <button type="button" className="text-xs text-brand hover:underline" onClick={() => updateWpStatus(wp, "done")}>通过</button>}
+          {canWrite && wp.status === "pending" && <button type="button" className="text-xs text-brand hover:underline" onClick={() => updateWpStatus(wp, "in_progress")}>开始</button>}
+          {canWrite && wp.status === "in_progress" && (<><button type="button" className="text-xs text-brand hover:underline" onClick={() => updateWpStatus(wp, "review")}>送审</button><button type="button" className="text-xs text-ink-muted hover:underline" onClick={() => updateWpStatus(wp, "done")}>完成</button></>)}
+          {canWrite && wp.status === "review" && <button type="button" className="text-xs text-brand hover:underline" onClick={() => updateWpStatus(wp, "done")}>通过</button>}
         </div>
       </div>
       {wp.stage && <p className="mt-1 text-xs text-ink-faint">阶段：{wp.stage}（序号 {wp.stage_index}）</p>}
@@ -168,18 +175,21 @@ function WorkPackageCard({
 
       {expanded && (
         <div className="mt-3 border-t border-line pt-3">
-          <form onSubmit={handleAddMilestone} className="flex flex-wrap items-end gap-2">
+          {canWrite && (
+            <form onSubmit={handleAddMilestone} className="flex flex-wrap items-end gap-2">
             <input className="input-field text-sm" placeholder="里程碑标题" value={msTitle} onChange={(e) => setMsTitle(e.target.value)} required />
             <input type="date" className="input-field text-sm" value={msDue} onChange={(e) => setMsDue(e.target.value)} />
             <button type="submit" disabled={loadingMs} className="btn-sm-outline text-xs">{loadingMs ? "…" : "添加"}</button>
-          </form>
+            </form>
+          )}
           {milestones.length === 0 ? (
             <p className="mt-2 text-xs text-ink-faint">暂无里程碑</p>
           ) : (
             <ul className="mt-2 space-y-1">
               {milestones.map((m) => (
                 <li key={m.id} className="flex items-center gap-2 text-sm">
-                  <input type="checkbox" checked={!!m.completed_at} onChange={() => void toggleComplete(m)} />
+                  {canWrite && <input type="checkbox" checked={!!m.completed_at} onChange={() => void toggleComplete(m)} />}
+                  {!canWrite && m.completed_at && <span className="text-xs text-green-600">✓</span>}
                   <span className={m.completed_at ? "text-ink-muted line-through" : "text-ink"}>{m.title}</span>
                   {m.due_date && <span className="text-xs text-ink-faint">截止 {m.due_date}</span>}
                 </li>

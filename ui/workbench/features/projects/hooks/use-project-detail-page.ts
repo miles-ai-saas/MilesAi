@@ -7,15 +7,19 @@ import type { BizDeliverable, BizProject, BizProjectCostSummary, BizProjectMembe
 
 export type ProjectDetailTab = "info" | "workpackages" | "deliverables" | "members" | "suppliers" | "cost" | "ai";
 
-export function useProjectDetailPage(projectId: string) {
+export function useProjectDetailPage(projectId: string, options?: { initialTab?: ProjectDetailTab }) {
   const router = useRouter();
+  const initialTab = options?.initialTab;
+  const validTabs: ProjectDetailTab[] = ["info", "workpackages", "deliverables", "members", "suppliers", "cost", "ai"];
+  const [tab, setTab] = useState<ProjectDetailTab>(
+    initialTab && validTabs.includes(initialTab) ? initialTab : "info",
+  );
   const [project, setProject] = useState<BizProject | null>(null);
   const [deliverables, setDeliverables] = useState<BizDeliverable[]>([]);
   const [members, setMembers] = useState<BizProjectMember[]>([]);
   const [users, setUsers] = useState<TenantUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [tab, setTab] = useState<ProjectDetailTab>("info");
   const [costSummary, setCostSummary] = useState<BizProjectCostSummary | null>(null);
   const [closing, setClosing] = useState(false);
   const [archiving, setArchiving] = useState(false);
@@ -40,6 +44,11 @@ export function useProjectDetailPage(projectId: string) {
 
   const loadDeliverables = useCallback(() => api.listDeliverables(projectId).then(setDeliverables), [projectId]);
   const loadMembers = useCallback(() => api.listProjectMembers(projectId).then(setMembers), [projectId]);
+  const loadCostSummary = useCallback(async () => {
+    const data = await api.getProjectCostSummary(projectId);
+    setCostSummary(data);
+    return data;
+  }, [projectId]);
 
   useEffect(() => {
     api.getProject(projectId)
@@ -58,10 +67,13 @@ export function useProjectDetailPage(projectId: string) {
   }, [projectId]);
 
   useEffect(() => {
-    if (tab !== "members") return;
-    void loadMembers();
-    void api.listUsers(1, 100).then((r) => setUsers(r.items));
-  }, [tab, loadMembers]);
+    if (tab === "deliverables") void loadDeliverables();
+    if (tab === "cost") void loadCostSummary();
+    if (tab === "members") {
+      void loadMembers();
+      void api.listUsers(1, 100).then((r) => setUsers(r.items));
+    }
+  }, [tab, loadDeliverables, loadCostSummary, loadMembers]);
 
   const updateWpStatus = async (wp: BizWorkPackage, nextStatus: string) => {
     await api.updateWorkPackage(projectId, wp.id, { status: nextStatus });
@@ -78,12 +90,6 @@ export function useProjectDetailPage(projectId: string) {
     await api.rollbackWorkPackageStage(wp.id);
     await refreshProject();
   };
-
-  const loadCostSummary = useCallback(async () => {
-    const data = await api.getProjectCostSummary(projectId);
-    setCostSummary(data);
-    return data;
-  }, [projectId]);
 
   const closeProject = async () => {
     if (!window.confirm("确定结项？结项后项目状态将变为「已结项」。")) return;

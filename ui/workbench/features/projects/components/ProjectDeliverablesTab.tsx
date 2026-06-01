@@ -1,14 +1,15 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
+import { useBizPermissions } from "@/features/business/lib/biz-permissions";
 import type { BizDeliverable } from "@/lib/types";
 import { DELIV_STATUS_LABELS, DELIV_TYPE_LABELS } from "@/features/projects/lib/biz-labels";
 import type { ProjectDetailPageVm } from "@/features/projects/hooks/use-project-detail-page";
 
 export function ProjectDeliverablesTab({ vm }: { vm: ProjectDetailPageVm }) {
   const { projectId, deliverables, loadDeliverables } = vm;
+  const { canWriteProject } = useBizPermissions();
   const [name, setName] = useState("");
   const [type, setType] = useState("document");
   const [version, setVersion] = useState("");
@@ -58,7 +59,8 @@ export function ProjectDeliverablesTab({ vm }: { vm: ProjectDetailPageVm }) {
 
   return (
     <div className="mt-4 space-y-4">
-      <form onSubmit={handleAdd} className="card flex flex-wrap items-end gap-3 p-4">
+      {canWriteProject && (
+        <form onSubmit={handleAdd} className="card flex flex-wrap items-end gap-3 p-4">
         <label className="flex-1">
           <span className="text-xs text-ink-muted">名称</span>
           <input className="input-field mt-1 w-full text-sm" value={name} onChange={(e) => setName(e.target.value)} placeholder="交付物名称" required />
@@ -78,7 +80,8 @@ export function ProjectDeliverablesTab({ vm }: { vm: ProjectDetailPageVm }) {
           <input type="file" className="mt-1 block w-full text-xs text-ink-muted file:mr-2 file:rounded file:border-0 file:bg-surface-muted file:px-2 file:py-1 file:text-xs" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
         </label>
         <button type="submit" disabled={saving || !name.trim()} className="btn-primary text-sm">{saving ? "添加中…" : "添加"}</button>
-      </form>
+        </form>
+      )}
       {deliverables.length === 0 && <p className="text-sm text-ink-faint">暂无交付物</p>}
       {deliverables.map((d) => (
         <DeliverableRow
@@ -86,6 +89,7 @@ export function ProjectDeliverablesTab({ vm }: { vm: ProjectDetailPageVm }) {
           deliverable={d}
           uploading={uploadingId === d.id}
           actionLoading={actionId === d.id}
+          canWrite={canWriteProject}
           onDelete={async () => { await api.deleteDeliverable(d.id); await loadDeliverables(); }}
           onAttach={(selected) => void handleAttachFile(d.id, selected)}
           onSubmit={async () => { setActionId(d.id); try { await api.submitDeliverable(d.id); await loadDeliverables(); } finally { setActionId(null); } }}
@@ -97,7 +101,7 @@ export function ProjectDeliverablesTab({ vm }: { vm: ProjectDetailPageVm }) {
   );
 }
 
-function DeliverableRow({ deliverable, uploading, onDelete, onAttach, onSubmit, onAccept, onReject, actionLoading }: {
+function DeliverableRow({ deliverable, uploading, onDelete, onAttach, onSubmit, onAccept, onReject, actionLoading, canWrite }: {
   deliverable: BizDeliverable;
   uploading: boolean;
   onDelete: () => void;
@@ -106,6 +110,7 @@ function DeliverableRow({ deliverable, uploading, onDelete, onAttach, onSubmit, 
   onAccept: () => void;
   onReject: () => void;
   actionLoading: boolean;
+  canWrite: boolean;
 }) {
   const [filename, setFilename] = useState<string | null>(null);
 
@@ -136,12 +141,12 @@ function DeliverableRow({ deliverable, uploading, onDelete, onAttach, onSubmit, 
         </p>
       </div>
       <div className="flex flex-wrap items-center gap-2">
-        {(deliverable.status === "draft" || deliverable.status === "rejected") && (
+        {canWrite && (deliverable.status === "draft" || deliverable.status === "rejected") && (
           <button type="button" className="btn-sm-outline text-xs" disabled={actionLoading} onClick={onSubmit}>
             {actionLoading ? "处理中…" : "提交验收"}
           </button>
         )}
-        {deliverable.status === "submitted" && (
+        {canWrite && deliverable.status === "submitted" && (
           <>
             <button type="button" className="btn-primary text-xs" disabled={actionLoading} onClick={onAccept}>
               {actionLoading ? "处理中…" : "验收通过"}
@@ -151,13 +156,15 @@ function DeliverableRow({ deliverable, uploading, onDelete, onAttach, onSubmit, 
             </button>
           </>
         )}
-        {!deliverable.attachment_id ? (
+        {canWrite && !deliverable.attachment_id ? (
           <>
             <input type="file" className="max-w-[10rem] text-xs text-ink-muted file:mr-1 file:rounded file:border-0 file:bg-surface-muted file:px-2 file:py-1 file:text-xs" disabled={uploading} onChange={(e) => { onAttach(e.target.files?.[0] ?? null); e.target.value = ""; }} />
             {uploading ? <span className="text-xs text-ink-muted">上传中…</span> : null}
           </>
         ) : null}
-        <button type="button" className="text-xs text-red-600 hover:underline" onClick={onDelete}>删除</button>
+        {canWrite && (
+          <button type="button" className="text-xs text-red-600 hover:underline" onClick={onDelete}>删除</button>
+        )}
       </div>
     </div>
   );

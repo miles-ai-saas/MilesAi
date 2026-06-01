@@ -9,7 +9,7 @@ from datetime import date, timedelta
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.biz.schemas.dashboard import DashboardSummaryOut, DueMilestoneItem, RecentProjectItem
+from app.biz.schemas.dashboard import DashboardSummaryOut, DueMilestoneItem, PendingDeliverableItem, RecentProjectItem
 from app.core.service import BaseService
 from app.core.soft_delete import not_deleted
 from app.core.tenant import TenantContext, tenant_filters
@@ -25,10 +25,12 @@ class DashboardService(BaseService):
     async def get_summary(self) -> DashboardSummaryOut:
         """返回租户级业务总览：客户/项目/工作包/交付物四维统计。"""
         due_items = await self._due_milestones(limit=5)
+        pending_deliv_items = await self._pending_deliverables(limit=5)
         return DashboardSummaryOut(
             total_clients=await self._count(BizClient),
             active_projects=await self._count_active_projects(),
             pending_deliverables=await self._count(BizDeliverable, BizDeliverable.status == "submitted"),
+            pending_deliverable_items=pending_deliv_items,
             work_packages_in_progress=await self._count(BizWorkPackage, BizWorkPackage.status == "in_progress"),
             due_milestones=await self._count_due_milestones(),
             due_milestone_items=due_items,
@@ -59,6 +61,30 @@ class DashboardService(BaseService):
         )
         rows = (await self.db.execute(stmt)).all()
         return [RecentProjectItem(id=str(r.BizProject.id), name=r.BizProject.name, status=r.BizProject.status, client_name=r.client_name or "-") for r in rows]
+
+    async def _pending_deliverables(self, limit: int = 5) -> list[PendingDeliverableItem]:
+        stmt = (
+            select(BizDeliverable, BizProject.name.label("project_name"))
+            .join(BizProject, BizProject.id == BizDeliverable.project_id)
+            .where(
+                BizDeliverable.tenant_id == self.ctx.tenant_id,
+                not_deleted(BizDeliverable),
+                not_deleted(BizProject),
+                BizDeliverable.status == "submitted",
+            )
+            .order_by(BizDeliverable.updated_at.desc())
+            .limit(limit)
+        )
+        rows = (await self.db.execute(stmt)).all()
+        return [
+            PendingDeliverableItem(
+                id=str(r.BizDeliverable.id),
+                project_id=str(r.BizDeliverable.project_id),
+                project_name=r.project_name or "-",
+                name=r.BizDeliverable.name,
+            )
+            for r in rows
+        ]
 
     async def _count_due_milestones(self) -> int:
         due_before = date.today() + timedelta(days=7)

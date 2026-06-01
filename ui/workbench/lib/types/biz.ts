@@ -91,6 +91,7 @@ export interface DashboardSummary {
   total_clients: number;
   active_projects: number;          // 在制项目数（草稿+进行中+暂停）
   pending_deliverables: number;     // 已提交待验收交付物
+  pending_deliverable_items: PendingDeliverableItem[];
   work_packages_in_progress: number;
   due_milestones: number;
   due_milestone_items: DueMilestoneItem[];
@@ -100,6 +101,13 @@ export interface DashboardSummary {
     status: string;
     client_name: string;            // 关联客户名称
   }[];
+}
+
+export interface PendingDeliverableItem {
+  id: string;
+  project_id: string;
+  project_name: string;
+  name: string;
 }
 
 export interface DueMilestoneItem {
