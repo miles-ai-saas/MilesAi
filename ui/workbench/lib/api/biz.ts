@@ -1,6 +1,6 @@
 import { get, getPage, post, patch, http } from "./client";
 import { buildPageQuery } from "../pagination";
-import type { BizClient, BizClientContact, BizContract, BizDeliverable, BizOpportunity, BizPayment, BizProject, BizProjectMember, BizWorkPackage, DashboardSummary, FinancialSummary } from "../types";
+import type { BizArchiveCaseResult, BizClient, BizClientContact, BizContract, BizDeliverable, BizMilestone, BizOpportunity, BizPayment, BizProject, BizProjectCostSummary, BizProjectMember, BizQuote, BizWorkPackage, DashboardSummary, FinancialSummary } from "../types";
 
 export const bizApi = {
   // ── 业务仪表盘 ──
@@ -44,6 +44,21 @@ export const bizApi = {
     post<BizWorkPackage>(`/biz/projects/${projectId}/work-packages`, p),
   updateWorkPackage: (projectId: string, wpId: string, p: { name?: string; stage?: string; status?: string; owner_id?: string; budget?: number; actual_cost?: number }) => patch<BizWorkPackage>(`/biz/projects/${projectId}/work-packages/${wpId}`, p),
   deleteWorkPackage: (projectId: string, wpId: string) => http.delete(`/biz/projects/${projectId}/work-packages/${wpId}`).then(() => undefined),
+  advanceWorkPackageStage: (wpId: string) => post<BizWorkPackage>(`/biz/work-packages/${wpId}/advance-stage`, {}),
+
+  getProjectCostSummary: (projectId: string) => get<BizProjectCostSummary>(`/biz/projects/${projectId}/cost-summary`),
+  closeProject: (projectId: string) => post<{ id: string; status: string }>(`/biz/projects/${projectId}/close`, {}),
+  archiveProjectCase: (projectId: string, p: { kb_id: string; run_parse?: boolean }) =>
+    post<BizArchiveCaseResult>(`/biz/projects/${projectId}/archive-case`, p),
+
+  listMilestones: (projectId: string, wpId: string) =>
+    get<BizMilestone[]>(`/biz/projects/${projectId}/work-packages/${wpId}/milestones`),
+  createMilestone: (projectId: string, wpId: string, p: { title: string; due_date?: string; sort_order?: number }) =>
+    post<BizMilestone>(`/biz/projects/${projectId}/work-packages/${wpId}/milestones`, p),
+  updateMilestone: (projectId: string, wpId: string, milestoneId: string, p: { title?: string; due_date?: string; completed_at?: string | null; sort_order?: number }) =>
+    patch<BizMilestone>(`/biz/projects/${projectId}/work-packages/${wpId}/milestones/${milestoneId}`, p),
+  deleteMilestone: (projectId: string, wpId: string, milestoneId: string) =>
+    http.delete(`/biz/projects/${projectId}/work-packages/${wpId}/milestones/${milestoneId}`).then(() => undefined),
 
   listProjectMembers: (projectId: string) => get<BizProjectMember[]>(`/biz/projects/${projectId}/members`),
   addProjectMember: (projectId: string, p: { user_id: string; role_in_project?: string }) =>
@@ -67,10 +82,22 @@ export const bizApi = {
     return getPage<BizOpportunity>(`/biz/opportunities?${q}`);
   },
 
+  listOpportunityPipeline: () => get<BizOpportunity[]>("/biz/opportunities/pipeline"),
+
   getOpportunity: (id: string) => get<BizOpportunity>(`/biz/opportunities/${id}`),
   createOpportunity: (p: { client_id: string; name: string; code?: string; stage?: string; expected_value?: number; probability?: number; expected_close_date?: string; owner_id?: string; description?: string }) => post<BizOpportunity>("/biz/opportunities", p),
   updateOpportunity: (id: string, p: { name?: string; code?: string; stage?: string; expected_value?: number; probability?: number; expected_close_date?: string; owner_id?: string; description?: string }) => patch<BizOpportunity>(`/biz/opportunities/${id}`, p),
   deleteOpportunity: (id: string) => http.delete(`/biz/opportunities/${id}`).then(() => undefined),
+  convertOpportunityToProject: (id: string) =>
+    post<{ opportunity: BizOpportunity; project_id: string }>(`/biz/opportunities/${id}/convert-to-project`, {}),
+
+  listQuotes: (opportunityId: string) => get<BizQuote[]>(`/biz/opportunities/${opportunityId}/quotes`),
+  createQuote: (opportunityId: string, p: { name: string; amount?: number; status?: string; version?: string; valid_until?: string; remark?: string }) =>
+    post<BizQuote>(`/biz/opportunities/${opportunityId}/quotes`, p),
+  updateQuote: (opportunityId: string, quoteId: string, p: { name?: string; amount?: number; status?: string; version?: string; valid_until?: string; remark?: string }) =>
+    patch<BizQuote>(`/biz/opportunities/${opportunityId}/quotes/${quoteId}`, p),
+  deleteQuote: (opportunityId: string, quoteId: string) =>
+    http.delete(`/biz/opportunities/${opportunityId}/quotes/${quoteId}`).then(() => undefined),
 
   // ── 合同管理 ──
 

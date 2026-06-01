@@ -45,3 +45,9 @@ class BizOpportunityOut:
     owner_id: Optional[UUID] = None
     description: Optional[str] = None
     converted_to_project_id: Optional[UUID] = None
+
+
+@dataclass
+class BizOpportunityConvertOut:
+    opportunity: BizOpportunityOut
+    project_id: UUID

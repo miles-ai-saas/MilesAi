@@ -19,6 +19,9 @@ from app.biz.schemas.project import (
     BizProjectMemberOut,
     BizProjectOut,
     BizProjectUpdate,
+    BizProjectCostSummaryOut,
+    BizProjectCloseOut,
+    BizWorkPackageCostLine,
     BizWorkPackageCreate,
     BizWorkPackageOut,
     BizWorkPackageUpdate,
@@ -32,6 +35,7 @@ from app.core.service import BaseService
 from app.core.soft_delete import mark_deleted, not_deleted
 from app.core.tenant import TenantContext, assert_tenant_access, tenant_filters
 from app.models.biz import BizProject, BizProjectMember, BizWorkPackage
+from app.models.biz.enums import ProjectStatus
 from app.models.platform.user import User
 
 
@@ -259,6 +263,88 @@ class ProjectService(BaseService):
             resource_id=project_id,
             detail={"user_id": str(user_id)},
         )
+
+    async def advance_work_package_stage(self, wp_id: UUID) -> BizWorkPackageOut:
+        """按服务线模板推进工作包到下一阶段。"""
+        wp = await self.repo.get_work_package(wp_id)
+        if not wp:
+            raise NotFoundError("工作包不存在")
+        assert_tenant_access(self.ctx, wp.tenant_id)
+
+        nxt = await self.template_svc.next_stage(self.ctx.tenant_id, wp.service_line, wp.stage_index)
+        if nxt is None:
+            raise BadRequestError("已在最后阶段，无法继续推进")
+
+        old_stage, old_index = wp.stage, wp.stage_index
+        wp.stage, wp.stage_index = nxt
+        await self.db.flush()
+        await self.db.refresh(wp)
+        await log_biz_action(
+            self.db, self.ctx,
+            action="biz.work_package.advance_stage",
+            resource_type="biz_work_package",
+            resource_id=wp.id,
+            detail={
+                "project_id": str(wp.project_id),
+                "from_stage": old_stage,
+                "from_index": old_index,
+                "to_stage": wp.stage,
+                "to_index": wp.stage_index,
+            },
+        )
+        return self._wp_to_out(wp)
+
+    async def get_cost_summary(self, project_id: UUID) -> BizProjectCostSummaryOut:
+        """汇总项目与各工作包预算/实际成本。"""
+        row = await self._get_or_raise(project_id)
+        wps = await self.repo.get_work_packages(self.ctx.tenant_id, project_id)
+
+        budget_total = sum(w.budget or 0 for w in wps) if wps else None
+        actual_total = sum(w.actual_cost or 0 for w in wps) if wps else None
+        variance = None
+        if row.total_budget is not None and actual_total is not None:
+            variance = row.total_budget - actual_total
+
+        lines = [
+            BizWorkPackageCostLine(
+                id=w.id,
+                name=w.name,
+                service_line=w.service_line,
+                budget=w.budget,
+                actual_cost=w.actual_cost,
+                variance=(w.budget - w.actual_cost) if w.budget is not None and w.actual_cost is not None else None,
+            )
+            for w in wps
+        ]
+
+        return BizProjectCostSummaryOut(
+            project_id=row.id,
+            total_budget=row.total_budget,
+            work_package_budget_total=budget_total,
+            work_package_actual_total=actual_total,
+            budget_variance=variance,
+            work_packages=lines,
+        )
+
+    async def close_project(self, project_id: UUID) -> BizProjectCloseOut:
+        """结项：将项目状态置为 closed。"""
+        row = await self._get_or_raise(project_id)
+        if row.status == ProjectStatus.CLOSED.value:
+            raise BadRequestError("项目已结项")
+        if row.status == ProjectStatus.CANCELLED.value:
+            raise BadRequestError("已取消的项目不能结项")
+
+        old_status = row.status
+        row.status = ProjectStatus.CLOSED.value
+        await self.db.flush()
+        await log_biz_action(
+            self.db, self.ctx,
+            action="biz.project.close",
+            resource_type="biz_project",
+            resource_id=row.id,
+            detail={"from": old_status, "to": row.status},
+        )
+        return BizProjectCloseOut(id=row.id, status=row.status)
 
     # ── internal ──
 

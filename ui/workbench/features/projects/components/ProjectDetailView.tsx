@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { AI_CARDS, PROJECT_STATUS_LABELS } from "@/features/projects/lib/biz-labels";
+import { useEffect, useState } from "react";
+import { api } from "@/lib/api";
+import { AI_CARDS, PROJECT_STATUS_LABELS, SERVICE_LINE_LABELS } from "@/features/projects/lib/biz-labels";
 import { ProjectDeliverablesTab } from "@/features/projects/components/ProjectDeliverablesTab";
 import { ProjectMembersTab } from "@/features/projects/components/ProjectMembersTab";
 import { ProjectWorkPackagesTab } from "@/features/projects/components/ProjectWorkPackagesTab";
@@ -13,11 +15,12 @@ const TABS = [
   { id: "workpackages" as const, label: "工作包" },
   { id: "deliverables" as const, label: "交付物" },
   { id: "members" as const, label: "成员" },
+  { id: "cost" as const, label: "成本" },
   { id: "ai" as const, label: "AI 服务" },
 ];
 
 export function ProjectDetailView({ vm }: { vm: ProjectDetailPageVm }) {
-  const { router, project, loading, error, tab, deliverables, members, handleTabChange } = vm;
+  const { router, project, loading, error, tab, deliverables, members, costSummary, handleTabChange } = vm;
 
   if (loading) return <p className="text-sm text-ink-muted">加载中…</p>;
   if (error || !project) return <p className="text-sm text-red-600">{error || "项目不存在"}</p>;
@@ -51,22 +54,101 @@ export function ProjectDetailView({ vm }: { vm: ProjectDetailPageVm }) {
         ))}
       </div>
 
-      {tab === "info" && <ProjectInfoTab project={project} />}
+      {tab === "info" && <ProjectInfoTab project={project} vm={vm} />}
       {tab === "workpackages" && <ProjectWorkPackagesTab vm={vm} />}
       {tab === "deliverables" && <ProjectDeliverablesTab vm={vm} />}
       {tab === "members" && <ProjectMembersTab vm={vm} />}
+      {tab === "cost" && <ProjectCostTab costSummary={costSummary} />}
       {tab === "ai" && <ProjectAiTab />}
     </div>
   );
 }
 
-function ProjectInfoTab({ project }: { project: BizProject }) {
+function ProjectInfoTab({ project, vm }: { project: BizProject; vm: ProjectDetailPageVm }) {
+  const canClose = project.status !== "closed" && project.status !== "cancelled";
+  const [kbId, setKbId] = useState("");
+  const [kbs, setKbs] = useState<{ id: string; name: string }[]>([]);
+
+  useEffect(() => {
+    void api.listKbs(1, 50).then((r) => setKbs(r.items.map((k) => ({ id: k.id, name: k.name }))));
+  }, []);
+
   return (
-    <div className="mt-6 grid gap-4 sm:grid-cols-2">
-      <InfoCard label="描述" value={project.description || "—"} />
-      <InfoCard label="总预算" value={project.total_budget ? `¥${project.total_budget.toLocaleString()}` : "—"} />
-      <InfoCard label="工作包数" value={`${project.work_packages?.length ?? 0}`} />
-      <InfoCard label="项目编号" value={project.code || "—"} />
+    <div className="mt-6 space-y-4">
+      <div className="grid gap-4 sm:grid-cols-2">
+        <InfoCard label="描述" value={project.description || "—"} />
+        <InfoCard label="总预算" value={project.total_budget ? `¥${project.total_budget.toLocaleString()}` : "—"} />
+        <InfoCard label="工作包数" value={`${project.work_packages?.length ?? 0}`} />
+        <InfoCard label="项目编号" value={project.code || "—"} />
+      </div>
+
+      {(canClose || kbs.length > 0) && (
+        <div className="card flex flex-wrap items-end gap-3 p-4">
+          {canClose && (
+            <button type="button" className="btn-sm-outline text-sm" disabled={vm.closing} onClick={() => void vm.closeProject()}>
+              {vm.closing ? "结项中…" : "结项"}
+            </button>
+          )}
+          {kbs.length > 0 && (
+            <>
+              <label className="min-w-[12rem] flex-1">
+                <span className="text-xs text-ink-muted">案例入库目标知识库</span>
+                <select className="input-field mt-1 w-full text-sm" value={kbId} onChange={(e) => setKbId(e.target.value)}>
+                  <option value="">— 选择知识库 —</option>
+                  {kbs.map((k) => <option key={k.id} value={k.id}>{k.name}</option>)}
+                </select>
+              </label>
+              <button
+                type="button"
+                className="btn-primary text-sm"
+                disabled={!kbId || vm.archiving}
+                onClick={() => void vm.archiveCase(kbId)}
+              >
+                {vm.archiving ? "入库中…" : "案例沉淀至 KB"}
+              </button>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ProjectCostTab({ costSummary }: { costSummary: import("@/lib/types").BizProjectCostSummary | null }) {
+  if (!costSummary) return <p className="mt-4 text-sm text-ink-muted">加载中…</p>;
+
+  return (
+    <div className="mt-4 space-y-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <InfoCard label="项目总预算" value={costSummary.total_budget != null ? `¥${costSummary.total_budget.toLocaleString()}` : "—"} />
+        <InfoCard label="工作包预算合计" value={costSummary.work_package_budget_total != null ? `¥${costSummary.work_package_budget_total.toLocaleString()}` : "—"} />
+        <InfoCard label="工作包实际合计" value={costSummary.work_package_actual_total != null ? `¥${costSummary.work_package_actual_total.toLocaleString()}` : "—"} />
+        <InfoCard label="预算偏差" value={costSummary.budget_variance != null ? `¥${costSummary.budget_variance.toLocaleString()}` : "—"} />
+      </div>
+      <div className="card overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-line text-left text-xs text-ink-muted">
+              <th className="p-3">工作包</th>
+              <th className="p-3">服务线</th>
+              <th className="p-3">预算</th>
+              <th className="p-3">实际</th>
+              <th className="p-3">偏差</th>
+            </tr>
+          </thead>
+          <tbody>
+            {costSummary.work_packages.map((line) => (
+              <tr key={line.id} className="border-b border-line last:border-0">
+                <td className="p-3">{line.name}</td>
+                <td className="p-3">{SERVICE_LINE_LABELS[line.service_line] ?? line.service_line}</td>
+                <td className="p-3">{line.budget != null ? `¥${line.budget.toLocaleString()}` : "—"}</td>
+                <td className="p-3">{line.actual_cost != null ? `¥${line.actual_cost.toLocaleString()}` : "—"}</td>
+                <td className="p-3">{line.variance != null ? `¥${line.variance.toLocaleString()}` : "—"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

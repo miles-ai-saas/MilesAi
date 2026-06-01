@@ -4,11 +4,8 @@ import Link from "next/link";
 import { ResourceListFooter } from "@/components/resource/ResourceListFooter";
 import type { OpportunitiesPageVm } from "@/features/opportunities/hooks/use-opportunities-page";
 import type { BizOpportunity } from "@/lib/types";
-
-const STAGE_LABELS: Record<string, string> = {
-  prospecting: "线索", qualification: "资质确认", proposal: "方案报价",
-  negotiation: "谈判", won: "赢单", lost: "丢单",
-};
+import { OPPORTUNITY_STAGE_LABELS, stageBadgeClass } from "@/features/opportunities/lib/opportunity-labels";
+import type { OpportunitiesPageVm } from "@/features/opportunities/hooks/use-opportunities-page";
 
 export function OpportunitiesTable({ vm }: { vm: OpportunitiesPageVm }) {
   const { list, onDelete } = vm;
@@ -34,12 +31,9 @@ export function OpportunitiesTable({ vm }: { vm: OpportunitiesPageVm }) {
                   <Link href={`/business/opportunities/${o.id}`} className="font-medium text-ink hover:text-brand">{o.name}</Link>
                 </td>
                 <td className="px-4 py-3">
-                  <span className={`rounded px-2 py-0.5 text-xs ${
-                    o.stage === "won" ? "bg-green-50 text-green-700" :
-                    o.stage === "lost" ? "bg-red-50 text-red-600" :
-                    o.stage === "negotiation" ? "bg-amber-50 text-amber-700" :
-                    "bg-brand-light text-brand"
-                  }`}>{STAGE_LABELS[o.stage] ?? o.stage}</span>
+                  <span className={`rounded px-2 py-0.5 text-xs ${stageBadgeClass(o.stage)}`}>
+                    {OPPORTUNITY_STAGE_LABELS[o.stage] ?? o.stage}
+                  </span>
                 </td>
                 <td className="px-4 py-3 text-ink-muted text-xs">
                   {o.expected_value != null ? `¥${o.expected_value.toLocaleString()}` : "—"}

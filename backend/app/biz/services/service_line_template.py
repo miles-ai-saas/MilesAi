@@ -47,3 +47,19 @@ class ServiceLineTemplateService:
         if not row:
             return None, 0
         return initial_stage(row.stages)
+
+    async def resolve_stage_names(self, tenant_id: UUID, service_line: str) -> list[str]:
+        row = await self.repo.get_active_template(tenant_id, service_line)
+        if not row:
+            return []
+        return parse_stage_names(row.stages)
+
+    async def next_stage(self, tenant_id: UUID, service_line: str, current_index: int) -> tuple[str | None, int] | None:
+        """返回下一阶段名称与序号；已在最后阶段时返回 None。"""
+        names = await self.resolve_stage_names(tenant_id, service_line)
+        if not names:
+            return None
+        next_index = current_index + 1
+        if next_index >= len(names):
+            return None
+        return names[next_index], next_index

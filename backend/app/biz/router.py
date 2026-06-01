@@ -14,12 +14,14 @@ from app.biz.views.meta import router as meta_router
 from app.biz.views.opportunity import router as opportunity_router
 from app.biz.views.payment import router as payment_router
 from app.biz.views.project import router as project_router
+from app.biz.views.work_package import router as work_package_router
 
 biz_router = APIRouter()
 biz_router.include_router(dashboard_router, prefix="/dashboard", tags=["business-dashboard"])
 biz_router.include_router(meta_router, prefix="/meta", tags=["business-meta"])
 biz_router.include_router(client_router, prefix="/clients", tags=["business-clients"])
 biz_router.include_router(project_router, prefix="/projects", tags=["business-projects"])
+biz_router.include_router(work_package_router, prefix="/work-packages", tags=["business-work-packages"])
 biz_router.include_router(deliverable_router, prefix="/deliverables", tags=["business-deliverables"])
 biz_router.include_router(opportunity_router, prefix="/opportunities", tags=["business-opportunities"])
 biz_router.include_router(contract_router, prefix="/contracts", tags=["business-contracts"])

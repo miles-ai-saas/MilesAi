@@ -14,17 +14,24 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.biz.schemas.milestone import BizMilestoneCreate, BizMilestoneOut, BizMilestoneUpdate
 from app.biz.schemas.project import (
+    BizArchiveCaseOut,
+    BizArchiveCaseRequest,
     BizProjectCreate,
     BizProjectMemberCreate,
     BizProjectMemberOut,
     BizProjectOut,
     BizProjectUpdate,
+    BizProjectCostSummaryOut,
+    BizProjectCloseOut,
     BizWorkPackageCreate,
     BizWorkPackageOut,
     BizWorkPackageUpdate,
 )
+from app.biz.services.milestone import MilestoneService
 from app.biz.services.project import ProjectService
+from app.biz.services.project_archive import ProjectArchiveService
 from app.common.response import ok, page_ok
 from app.common.schema import ApiResponse, PageResult
 from app.core.deps import require_permissions
@@ -36,6 +43,14 @@ router = APIRouter()
 
 def _svc(db: AsyncSession, ctx: TenantContext) -> ProjectService:
     return ProjectService(db, ctx)
+
+
+def _milestone_svc(db: AsyncSession, ctx: TenantContext) -> MilestoneService:
+    return MilestoneService(db, ctx)
+
+
+def _archive_svc(db: AsyncSession, ctx: TenantContext) -> ProjectArchiveService:
+    return ProjectArchiveService(db, ctx)
 
 
 # ── projects ──
@@ -97,6 +112,37 @@ async def delete_project(
     return ok(message="已删除")
 
 
+@router.get("/{project_id}/cost-summary", response_model=ApiResponse[BizProjectCostSummaryOut])
+async def get_cost_summary(
+    project_id: UUID,
+    ctx: TenantContext = Depends(require_permissions("biz:project:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    """项目成本汇总：总预算 vs 工作包实际成本。"""
+    return ok(await _svc(db, ctx).get_cost_summary(project_id))
+
+
+@router.post("/{project_id}/close", response_model=ApiResponse[BizProjectCloseOut])
+async def close_project(
+    project_id: UUID,
+    ctx: TenantContext = Depends(require_permissions("biz:project:write")),
+    db: AsyncSession = Depends(get_db),
+):
+    """结项：将项目状态置为 closed。"""
+    return ok(await _svc(db, ctx).close_project(project_id))
+
+
+@router.post("/{project_id}/archive-case", response_model=ApiResponse[BizArchiveCaseOut])
+async def archive_case(
+    project_id: UUID,
+    body: BizArchiveCaseRequest,
+    ctx: TenantContext = Depends(require_permissions("biz:project:write")),
+    db: AsyncSession = Depends(get_db),
+):
+    """将已验收交付物附件沉淀至知识库（涉密客户禁止）。"""
+    return ok(await _archive_svc(db, ctx).archive_case(project_id, body))
+
+
 # ── work packages (nested under project) ──
 
 @router.get("/{project_id}/work-packages", response_model=ApiResponse[list[BizWorkPackageOut]])
@@ -141,6 +187,53 @@ async def delete_work_package(
 ):
     """软删除工作包。"""
     await _svc(db, ctx).delete_work_package(wp_id)
+    return ok(message="已删除")
+
+
+# ── milestones (nested under work package) ──
+
+@router.get("/{project_id}/work-packages/{wp_id}/milestones", response_model=ApiResponse[list[BizMilestoneOut]])
+async def list_milestones(
+    project_id: UUID,
+    wp_id: UUID,
+    ctx: TenantContext = Depends(require_permissions("biz:project:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    return ok(await _milestone_svc(db, ctx).list_milestones(project_id, wp_id))
+
+
+@router.post("/{project_id}/work-packages/{wp_id}/milestones", response_model=ApiResponse[BizMilestoneOut])
+async def create_milestone(
+    project_id: UUID,
+    wp_id: UUID,
+    body: BizMilestoneCreate,
+    ctx: TenantContext = Depends(require_permissions("biz:project:write")),
+    db: AsyncSession = Depends(get_db),
+):
+    return ok(await _milestone_svc(db, ctx).create(project_id, wp_id, body))
+
+
+@router.patch("/{project_id}/work-packages/{wp_id}/milestones/{milestone_id}", response_model=ApiResponse[BizMilestoneOut])
+async def update_milestone(
+    project_id: UUID,
+    wp_id: UUID,
+    milestone_id: UUID,
+    body: BizMilestoneUpdate,
+    ctx: TenantContext = Depends(require_permissions("biz:project:write")),
+    db: AsyncSession = Depends(get_db),
+):
+    return ok(await _milestone_svc(db, ctx).update(project_id, wp_id, milestone_id, body))
+
+
+@router.delete("/{project_id}/work-packages/{wp_id}/milestones/{milestone_id}", response_model=ApiResponse[None])
+async def delete_milestone(
+    project_id: UUID,
+    wp_id: UUID,
+    milestone_id: UUID,
+    ctx: TenantContext = Depends(require_permissions("biz:project:write")),
+    db: AsyncSession = Depends(get_db),
+):
+    await _milestone_svc(db, ctx).delete(project_id, wp_id, milestone_id)
     return ok(message="已删除")
 
 

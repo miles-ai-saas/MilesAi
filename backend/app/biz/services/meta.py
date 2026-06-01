@@ -44,6 +44,23 @@ CONFIDENTIALITY_LEVELS = [
     EnumItem("restricted", "涉密"),
 ]
 
+OPPORTUNITY_STAGES = [
+    EnumItem("prospecting", "线索"),
+    EnumItem("qualification", "资质确认"),
+    EnumItem("proposal", "方案报价"),
+    EnumItem("negotiation", "谈判"),
+    EnumItem("won", "赢单"),
+    EnumItem("lost", "丢单"),
+]
+
+QUOTE_STATUSES = [
+    EnumItem("draft", "草稿"),
+    EnumItem("sent", "已发送"),
+    EnumItem("accepted", "已接受"),
+    EnumItem("rejected", "已拒绝"),
+    EnumItem("expired", "已过期"),
+]
+
 
 class BizMetaService:
     @staticmethod
@@ -54,4 +71,6 @@ class BizMetaService:
             work_package_statuses=WORK_PACKAGE_STATUSES,
             industries=INDUSTRIES,
             confidentiality_levels=CONFIDENTIALITY_LEVELS,
+            opportunity_stages=OPPORTUNITY_STAGES,
+            quote_statuses=QUOTE_STATUSES,
         )

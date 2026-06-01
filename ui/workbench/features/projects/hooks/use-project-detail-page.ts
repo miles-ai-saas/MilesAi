@@ -3,9 +3,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
-import type { BizDeliverable, BizProject, BizProjectMember, BizWorkPackage, TenantUser } from "@/lib/types";
+import type { BizDeliverable, BizProject, BizProjectCostSummary, BizProjectMember, BizWorkPackage, TenantUser } from "@/lib/types";
 
-export type ProjectDetailTab = "info" | "workpackages" | "deliverables" | "members" | "ai";
+export type ProjectDetailTab = "info" | "workpackages" | "deliverables" | "members" | "cost" | "ai";
 
 export function useProjectDetailPage(projectId: string) {
   const router = useRouter();
@@ -16,6 +16,9 @@ export function useProjectDetailPage(projectId: string) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [tab, setTab] = useState<ProjectDetailTab>("info");
+  const [costSummary, setCostSummary] = useState<BizProjectCostSummary | null>(null);
+  const [closing, setClosing] = useState(false);
+  const [archiving, setArchiving] = useState(false);
 
   const refreshProject = useCallback(async () => {
     const updated = await api.getProject(projectId);
@@ -44,10 +47,43 @@ export function useProjectDetailPage(projectId: string) {
     await refreshProject();
   };
 
+  const advanceWpStage = async (wp: BizWorkPackage) => {
+    await api.advanceWorkPackageStage(wp.id);
+    await refreshProject();
+  };
+
+  const loadCostSummary = useCallback(async () => {
+    const data = await api.getProjectCostSummary(projectId);
+    setCostSummary(data);
+    return data;
+  }, [projectId]);
+
+  const closeProject = async () => {
+    if (!window.confirm("确定结项？结项后项目状态将变为「已结项」。")) return;
+    setClosing(true);
+    try {
+      await api.closeProject(projectId);
+      await refreshProject();
+    } finally {
+      setClosing(false);
+    }
+  };
+
+  const archiveCase = async (kbId: string) => {
+    setArchiving(true);
+    try {
+      const result = await api.archiveProjectCase(projectId, { kb_id: kbId, run_parse: true });
+      alert(`已入库 ${result.archived_count} 份交付物`);
+    } finally {
+      setArchiving(false);
+    }
+  };
+
   const handleTabChange = (t: ProjectDetailTab) => {
     setTab(t);
     if (t === "deliverables") void loadDeliverables();
     if (t === "members") void loadMembers();
+    if (t === "cost") void loadCostSummary();
   };
 
   const addMember = async (userId: string, role: string) => {
@@ -73,10 +109,17 @@ export function useProjectDetailPage(projectId: string) {
     projectId,
     handleTabChange,
     updateWpStatus,
+    advanceWpStage,
     refreshProject,
     loadDeliverables,
     addMember,
     removeMember,
+    costSummary,
+    loadCostSummary,
+    closeProject,
+    archiveCase,
+    closing,
+    archiving,
   };
 }
 

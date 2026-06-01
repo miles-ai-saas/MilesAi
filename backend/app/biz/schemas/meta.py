@@ -14,3 +14,5 @@ class BizMetaOut:
     work_package_statuses: list[EnumItem] = field(default_factory=list)
     industries: list[EnumItem] = field(default_factory=list)
     confidentiality_levels: list[EnumItem] = field(default_factory=list)
+    opportunity_stages: list[EnumItem] = field(default_factory=list)
+    quote_statuses: list[EnumItem] = field(default_factory=list)

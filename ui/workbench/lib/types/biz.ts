@@ -149,3 +149,53 @@ export interface FinancialSummary {
   total_pending_out: number;  // 待付款
   contract_count: number;     // 合同总数
 }
+
+/** 工作包里程碑 */
+export interface BizMilestone {
+  id: string;
+  project_id: string;
+  work_package_id: string;
+  title: string;
+  due_date?: string;
+  completed_at?: string;
+  sort_order: number;
+}
+
+/** 商机报价 */
+export interface BizQuote {
+  id: string;
+  opportunity_id: string;
+  client_id: string;
+  name: string;
+  amount?: number;
+  status: string;
+  version?: string;
+  valid_until?: string;
+  remark?: string;
+  created_by?: string;
+}
+
+/** 项目成本汇总 */
+export interface BizProjectCostSummary {
+  project_id: string;
+  total_budget?: number;
+  work_package_budget_total?: number;
+  work_package_actual_total?: number;
+  budget_variance?: number;
+  work_packages: {
+    id: string;
+    name: string;
+    service_line: string;
+    budget?: number;
+    actual_cost?: number;
+    variance?: number;
+  }[];
+}
+
+/** 案例入库结果 */
+export interface BizArchiveCaseResult {
+  project_id: string;
+  kb_id: string;
+  archived_count: number;
+  document_ids: string[];
+}

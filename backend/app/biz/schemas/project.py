@@ -107,3 +107,43 @@ class BizProjectMemberOut:
 class BizProjectMemberCreate:
     user_id: UUID
     role_in_project: str = "viewer"
+
+
+@dataclass
+class BizWorkPackageCostLine:
+    id: UUID
+    name: str
+    service_line: str
+    budget: Optional[float] = None
+    actual_cost: Optional[float] = None
+    variance: Optional[float] = None
+
+
+@dataclass
+class BizProjectCostSummaryOut:
+    project_id: UUID
+    total_budget: Optional[float] = None
+    work_package_budget_total: Optional[float] = None
+    work_package_actual_total: Optional[float] = None
+    budget_variance: Optional[float] = None
+    work_packages: list[BizWorkPackageCostLine] = field(default_factory=list)
+
+
+@dataclass
+class BizProjectCloseOut:
+    id: UUID
+    status: str
+
+
+@dataclass
+class BizArchiveCaseRequest:
+    kb_id: UUID
+    run_parse: bool = True
+
+
+@dataclass
+class BizArchiveCaseOut:
+    project_id: UUID
+    kb_id: UUID
+    archived_count: int
+    document_ids: list[UUID] = field(default_factory=list)

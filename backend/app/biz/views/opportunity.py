@@ -9,11 +9,14 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.biz.schemas.opportunity import (
+    BizOpportunityConvertOut,
     BizOpportunityCreate,
     BizOpportunityOut,
     BizOpportunityUpdate,
 )
+from app.biz.schemas.quote import BizQuoteCreate, BizQuoteOut, BizQuoteUpdate
 from app.biz.services.opportunity import OpportunityService
+from app.biz.services.quote import QuoteService
 from app.common.response import ok, page_ok
 from app.common.schema import ApiResponse, PageResult
 from app.core.deps import require_permissions
@@ -25,6 +28,10 @@ router = APIRouter()
 
 def _svc(db: AsyncSession, ctx: TenantContext) -> OpportunityService:
     return OpportunityService(db, ctx)
+
+
+def _quote_svc(db: AsyncSession, ctx: TenantContext) -> QuoteService:
+    return QuoteService(db, ctx)
 
 
 @router.get("", response_model=ApiResponse[PageResult[BizOpportunityOut]])
@@ -39,6 +46,15 @@ async def list_opportunities(
     """分页查询商机列表，支持按客户和阶段筛选。"""
     result = await _svc(db, ctx).list_opportunities(page=page, size=size, client_id=client_id, stage=stage)
     return page_ok(result.items, result.total, result.page, result.size)
+
+
+@router.get("/pipeline", response_model=ApiResponse[list[BizOpportunityOut]])
+async def list_opportunity_pipeline(
+    ctx: TenantContext = Depends(require_permissions("biz:opportunity:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    """看板用：返回最近更新的商机列表（不分页）。"""
+    return ok(await _svc(db, ctx).list_pipeline())
 
 
 @router.post("", response_model=ApiResponse[BizOpportunityOut])
@@ -83,17 +99,54 @@ async def delete_opportunity(
     return ok(message="已删除")
 
 
-@router.post("/{opportunity_id}/convert-to-project", response_model=ApiResponse[BizOpportunityOut])
+@router.post("/{opportunity_id}/convert-to-project", response_model=ApiResponse[BizOpportunityConvertOut])
 async def convert_to_project(
     opportunity_id: UUID,
     ctx: TenantContext = Depends(require_permissions("biz:opportunity:write")),
     db: AsyncSession = Depends(get_db),
 ):
-    """将已赢单商机转为项目——Phase 3 占位，后续实现完整转换逻辑。"""
-    svc = _svc(db, ctx)
-    opp = await svc.get(opportunity_id)
-    if opp.stage not in ("won",):
-        return ok(message="仅已赢单的商机可转为项目", data=opp)
-    # 占位：更新商机状态
-    await svc.update(opportunity_id, BizOpportunityUpdate(stage="won"))
-    return ok(await svc.get(opportunity_id))
+    """将赢单商机转为项目，并回写 converted_to_project_id。"""
+    return ok(await _svc(db, ctx).convert_to_project(opportunity_id))
+
+
+# ── quotes ──
+
+@router.get("/{opportunity_id}/quotes", response_model=ApiResponse[list[BizQuoteOut]])
+async def list_quotes(
+    opportunity_id: UUID,
+    ctx: TenantContext = Depends(require_permissions("biz:opportunity:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    return ok(await _quote_svc(db, ctx).list_quotes(opportunity_id))
+
+
+@router.post("/{opportunity_id}/quotes", response_model=ApiResponse[BizQuoteOut])
+async def create_quote(
+    opportunity_id: UUID,
+    body: BizQuoteCreate,
+    ctx: TenantContext = Depends(require_permissions("biz:opportunity:write")),
+    db: AsyncSession = Depends(get_db),
+):
+    return ok(await _quote_svc(db, ctx).create(opportunity_id, body))
+
+
+@router.patch("/{opportunity_id}/quotes/{quote_id}", response_model=ApiResponse[BizQuoteOut])
+async def update_quote(
+    opportunity_id: UUID,
+    quote_id: UUID,
+    body: BizQuoteUpdate,
+    ctx: TenantContext = Depends(require_permissions("biz:opportunity:write")),
+    db: AsyncSession = Depends(get_db),
+):
+    return ok(await _quote_svc(db, ctx).update(opportunity_id, quote_id, body))
+
+
+@router.delete("/{opportunity_id}/quotes/{quote_id}", response_model=ApiResponse[None])
+async def delete_quote(
+    opportunity_id: UUID,
+    quote_id: UUID,
+    ctx: TenantContext = Depends(require_permissions("biz:opportunity:write")),
+    db: AsyncSession = Depends(get_db),
+):
+    await _quote_svc(db, ctx).delete(opportunity_id, quote_id)
+    return ok(message="已删除")
