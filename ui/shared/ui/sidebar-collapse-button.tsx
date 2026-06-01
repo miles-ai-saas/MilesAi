@@ -1,3 +1,5 @@
+"use client";
+
 type Props = {
   side: "left" | "right";
   collapsed: boolean;
@@ -25,7 +27,7 @@ export function SidebarCollapseButton({ side, collapsed, onToggle, hidden }: Pro
       onClick={onToggle}
       aria-label={label}
       title={label}
-      className={`absolute top-1/2 z-40 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full border border-line bg-surface text-ink-muted shadow-sm transition hover:border-brand/30 hover:text-brand ${
+      className={`absolute top-1/2 z-50 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full border border-line bg-surface text-ink-muted shadow-sm transition hover:border-brand/30 hover:text-brand ${
         side === "left" ? "-right-3.5" : "-left-3.5"
       }`}
     >

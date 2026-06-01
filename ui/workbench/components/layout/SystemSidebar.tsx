@@ -5,7 +5,7 @@
 import Link from "next/link";
 import { BrandHeader } from "@/components/brand/brand-header";
 import { CompanyLogo } from "@/components/brand/company-logo";
-import { SidebarCollapseButton } from "@/components/layout/SidebarCollapseButton";
+import { SidebarCollapseButton } from "@milesai/ui-shared/ui/sidebar-collapse-button";
 import { SystemNavIcon } from "@/components/layout/SystemNavIcon";
 import { filterSystemNav, isNavActive, type SystemNavItem } from "@/lib/nav-config";
 import { useAuthStore } from "@/lib/auth-store";
@@ -60,7 +60,7 @@ export function SystemSidebar({
   const width = collapsed ? SYSTEM_SIDEBAR_COLLAPSED : SYSTEM_SIDEBAR_EXPANDED;
 
   return (
-    <div className="relative shrink-0 transition-[width] duration-200 ease-out" style={{ width }}>
+    <div className="relative shrink-0 overflow-visible transition-[width] duration-200 ease-out" style={{ width }}>
       <aside className="flex min-h-screen w-full flex-col border-r border-line bg-surface">
         <div
           className={`flex h-14 shrink-0 items-center border-b border-line ${collapsed ? "justify-center px-2" : "px-4"}`}

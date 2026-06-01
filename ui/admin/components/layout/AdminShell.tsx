@@ -70,7 +70,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex min-h-screen bg-surface-muted">
-      <div className="hidden shrink-0 lg:block">
+      <div className="relative z-30 hidden shrink-0 overflow-visible lg:block">
         <AdminSidebar
           pathname={pathname}
           collapsed={sidebarCollapsed}
@@ -87,7 +87,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         </div>
       )}
 
-      <div className="flex min-h-screen min-w-0 flex-1 flex-col">
+      <div className="relative z-0 flex min-h-screen min-w-0 flex-1 flex-col">
         <AdminTopBar breadcrumbs={breadcrumbs} username={admin?.username} role={admin?.role} onMenuOpen={() => setMobileNavOpen(true)} onLogout={logout} />
         <main className="min-h-0 flex-1 overflow-auto">
           <div className="admin-page-shell">{children}</div>

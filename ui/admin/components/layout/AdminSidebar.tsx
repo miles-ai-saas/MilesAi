@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { BrandHeader } from "@/components/brand/brand-header";
 import { CompanyLogo } from "@/components/brand/company-logo";
-import { SidebarCollapseButton } from "@/components/layout/SidebarCollapseButton";
 import { ADMIN_NAV, isAdminNavActive, type AdminNavGroup, type AdminNavItem } from "@/lib/admin-nav";
 import { AdminNavIcon } from "@/components/layout/AdminNavIcon";
 import { adminApi } from "@/lib/api";
@@ -13,6 +12,34 @@ import { useAdminAuthStore } from "@/lib/auth-store";
 export const ADMIN_SIDEBAR_EXPANDED = 240;
 export const ADMIN_SIDEBAR_COLLAPSED = 64;
 export const ADMIN_SIDEBAR_STORAGE_KEY = "admin-sidebar-collapsed";
+
+function AdminSidebarCollapseToggle({
+  collapsed,
+  onToggle,
+}: {
+  collapsed: boolean;
+  onToggle: () => void;
+}) {
+  const label = collapsed ? "展开侧栏" : "收起侧栏";
+
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-label={label}
+      title={label}
+      className="absolute top-1/2 -right-3.5 z-50 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full border border-line bg-surface text-ink-muted shadow-sm transition hover:border-brand/30 hover:text-brand"
+    >
+      <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d={collapsed ? "M9 6l6 6-6 6" : "M15 6l-6 6 6 6"}
+        />
+      </svg>
+    </button>
+  );
+}
 
 function NavLink({
   item,
@@ -77,8 +104,8 @@ export function AdminSidebar({
   const width = collapsed ? ADMIN_SIDEBAR_COLLAPSED : ADMIN_SIDEBAR_EXPANDED;
 
   return (
-    <div className="relative shrink-0 transition-[width] duration-200 ease-out" style={{ width }}>
-      <aside className="flex min-h-screen w-full flex-col border-r border-line bg-surface">
+    <div className="relative min-h-screen shrink-0 overflow-visible transition-[width] duration-200 ease-out" style={{ width }}>
+      <aside className="relative flex min-h-screen w-full flex-col overflow-visible border-r border-line bg-surface">
         <div
           className={`flex h-14 shrink-0 items-center border-b border-line ${collapsed ? "justify-center px-2" : "px-4"}`}
         >
@@ -110,16 +137,11 @@ export function AdminSidebar({
             </div>
           ))}
         </nav>
-      </aside>
 
-      {onToggleCollapse ? (
-        <SidebarCollapseButton
-          side="left"
-          collapsed={collapsed}
-          onToggle={onToggleCollapse}
-          hidden={hideCollapseButton}
-        />
-      ) : null}
+        {!hideCollapseButton && onToggleCollapse ? (
+          <AdminSidebarCollapseToggle collapsed={collapsed} onToggle={onToggleCollapse} />
+        ) : null}
+      </aside>
     </div>
   );
 }

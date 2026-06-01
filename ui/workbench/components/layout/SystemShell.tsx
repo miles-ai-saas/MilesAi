@@ -48,7 +48,7 @@ export function SystemShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex min-h-screen bg-surface-muted">
-      <div className="hidden shrink-0 lg:block">
+      <div className="relative z-30 hidden shrink-0 overflow-visible lg:block">
         <SystemSidebar
           pathname={pathname}
           collapsed={sidebarCollapsed}
