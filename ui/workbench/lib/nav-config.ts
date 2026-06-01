@@ -18,7 +18,7 @@ export type SystemNavItem = NavItem & {
   permission?: string;
 };
 
-export type BizNavIcon = "clients" | "projects" | "dashboard" | "opportunities" | "contracts";
+export type BizNavIcon = "clients" | "projects" | "dashboard" | "opportunities" | "contracts" | "suppliers";
 
 export type BizNavItem = NavItem & {
   icon: BizNavIcon;
@@ -109,6 +109,12 @@ export const BUSINESS_NAV: { title: string; items: BizNavItem[] }[] = [
       { href: "/business/contracts", label: "合同", icon: "contracts", permission: "biz:contract:read" },
     ],
   },
+  {
+    title: "资源",
+    items: [
+      { href: "/business/suppliers", label: "供应商", icon: "suppliers", permission: "biz:supplier:read" },
+    ],
+  },
 ];
 
 export const SYSTEM_NAV: { title: string; items: SystemNavItem[] }[] = [
@@ -189,6 +195,9 @@ export function getBusinessBreadcrumbs(pathname: string): BreadcrumbItem[] {
   if (pathname === "/business/contracts" || pathname.startsWith("/business/contracts/")) {
     return [home, { label: "合同" }];
   }
+  if (pathname === "/business/suppliers" || pathname.startsWith("/business/suppliers/")) {
+    return [home, { label: "供应商" }];
+  }
 
   return [home];
 }
@@ -233,6 +242,9 @@ export function isNavActive(pathname: string, href: string): boolean {
   }
   if (href === "/business/contracts") {
     return pathname === "/business/contracts" || pathname.startsWith("/business/contracts/");
+  }
+  if (href === "/business/suppliers") {
+    return pathname === "/business/suppliers" || pathname.startsWith("/business/suppliers/");
   }
   return pathname === href || pathname.startsWith(`${href}/`);
 }

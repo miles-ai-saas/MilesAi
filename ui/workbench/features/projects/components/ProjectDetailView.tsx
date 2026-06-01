@@ -6,6 +6,7 @@ import { api } from "@/lib/api";
 import { AI_CARDS, PROJECT_STATUS_LABELS, SERVICE_LINE_LABELS } from "@/features/projects/lib/biz-labels";
 import { ProjectDeliverablesTab } from "@/features/projects/components/ProjectDeliverablesTab";
 import { ProjectMembersTab } from "@/features/projects/components/ProjectMembersTab";
+import { ProjectSuppliersTab } from "@/features/projects/components/ProjectSuppliersTab";
 import { ProjectWorkPackagesTab } from "@/features/projects/components/ProjectWorkPackagesTab";
 import type { ProjectDetailPageVm } from "@/features/projects/hooks/use-project-detail-page";
 import type { BizProject } from "@/lib/types";
@@ -15,6 +16,7 @@ const TABS = [
   { id: "workpackages" as const, label: "工作包" },
   { id: "deliverables" as const, label: "交付物" },
   { id: "members" as const, label: "成员" },
+  { id: "suppliers" as const, label: "供应商" },
   { id: "cost" as const, label: "成本" },
   { id: "ai" as const, label: "AI 服务" },
 ];
@@ -29,6 +31,7 @@ export function ProjectDetailView({ vm }: { vm: ProjectDetailPageVm }) {
     if (id === "workpackages") return `工作包 (${project.work_packages?.length ?? 0})`;
     if (id === "deliverables") return `交付物 (${deliverables.length})`;
     if (id === "members") return `成员 (${members.length})`;
+    if (id === "suppliers") return "供应商";
     return TABS.find((t) => t.id === id)?.label ?? id;
   };
 
@@ -58,6 +61,7 @@ export function ProjectDetailView({ vm }: { vm: ProjectDetailPageVm }) {
       {tab === "workpackages" && <ProjectWorkPackagesTab vm={vm} />}
       {tab === "deliverables" && <ProjectDeliverablesTab vm={vm} />}
       {tab === "members" && <ProjectMembersTab vm={vm} />}
+      {tab === "suppliers" && <ProjectSuppliersTab vm={vm} />}
       {tab === "cost" && <ProjectCostTab costSummary={costSummary} />}
       {tab === "ai" && <ProjectAiTab />}
     </div>

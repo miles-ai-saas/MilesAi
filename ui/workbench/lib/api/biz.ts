@@ -1,6 +1,6 @@
 import { get, getPage, post, patch, http } from "./client";
 import { buildPageQuery } from "../pagination";
-import type { BizArchiveCaseResult, BizClient, BizClientContact, BizContract, BizDeliverable, BizMilestone, BizOpportunity, BizPayment, BizProject, BizProjectCostSummary, BizProjectMember, BizQuote, BizWorkPackage, DashboardSummary, FinancialSummary } from "../types";
+import type { BizArchiveCaseResult, BizClient, BizClientContact, BizContract, BizDeliverable, BizMilestone, BizOpportunity, BizPayment, BizProject, BizProjectCostSummary, BizProjectMember, BizProjectSupplier, BizQuote, BizSupplier, BizSupplierContact, BizWorkPackage, DashboardSummary, FinancialSummary } from "../types";
 
 export const bizApi = {
   // ── 业务仪表盘 ──
@@ -126,4 +126,37 @@ export const bizApi = {
     patch<BizPayment>(`/biz/payments/${id}`, p),
 
   deletePayment: (id: string) => http.delete(`/biz/payments/${id}`).then(() => undefined),
+
+  // ── 供应商管理 ──
+
+  listSuppliers: (page = 1, size = 20, search?: string, category?: string, status?: string) => {
+    let q = buildPageQuery(page, size);
+    if (search) q += `&search=${encodeURIComponent(search)}`;
+    if (category) q += `&category=${category}`;
+    if (status) q += `&status=${status}`;
+    return getPage<BizSupplier>(`/biz/suppliers?${q}`);
+  },
+
+  getSupplier: (id: string) => get<BizSupplier>(`/biz/suppliers/${id}`),
+  createSupplier: (p: { name: string; short_name?: string; category?: string; status?: string; contact_name?: string; contact_phone?: string; contact_email?: string; address?: string; bank_name?: string; bank_account?: string; remark?: string }) =>
+    post<BizSupplier>("/biz/suppliers", p),
+  updateSupplier: (id: string, p: { name?: string; short_name?: string; category?: string; status?: string; contact_name?: string; contact_phone?: string; contact_email?: string; address?: string; bank_name?: string; bank_account?: string; remark?: string }) =>
+    patch<BizSupplier>(`/biz/suppliers/${id}`, p),
+  deleteSupplier: (id: string) => http.delete(`/biz/suppliers/${id}`).then(() => undefined),
+
+  listSupplierContacts: (supplierId: string) => get<BizSupplierContact[]>(`/biz/suppliers/${supplierId}/contacts`),
+  createSupplierContact: (supplierId: string, p: { name: string; title?: string; phone?: string; email?: string; is_primary?: boolean }) =>
+    post<BizSupplierContact>(`/biz/suppliers/${supplierId}/contacts`, p),
+  updateSupplierContact: (supplierId: string, contactId: string, p: { name: string; title?: string; phone?: string; email?: string; is_primary?: boolean }) =>
+    patch<BizSupplierContact>(`/biz/suppliers/${supplierId}/contacts/${contactId}`, p),
+  deleteSupplierContact: (supplierId: string, contactId: string) =>
+    http.delete(`/biz/suppliers/${supplierId}/contacts/${contactId}`).then(() => undefined),
+
+  listProjectSuppliers: (projectId: string) => get<BizProjectSupplier[]>(`/biz/projects/${projectId}/suppliers`),
+  addProjectSupplier: (projectId: string, p: { supplier_id: string; work_package_id?: string; role_description?: string; contracted_amount?: number; status?: string; remark?: string }) =>
+    post<BizProjectSupplier>(`/biz/projects/${projectId}/suppliers`, p),
+  updateProjectSupplier: (projectId: string, supplierId: string, p: { work_package_id?: string; role_description?: string; contracted_amount?: number; status?: string; remark?: string }) =>
+    patch<BizProjectSupplier>(`/biz/projects/${projectId}/suppliers/${supplierId}`, p),
+  removeProjectSupplier: (projectId: string, supplierId: string) =>
+    http.delete(`/biz/projects/${projectId}/suppliers/${supplierId}`).then(() => undefined),
 };

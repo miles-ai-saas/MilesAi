@@ -16,3 +16,6 @@ class BizMetaOut:
     confidentiality_levels: list[EnumItem] = field(default_factory=list)
     opportunity_stages: list[EnumItem] = field(default_factory=list)
     quote_statuses: list[EnumItem] = field(default_factory=list)
+    supplier_categories: list[EnumItem] = field(default_factory=list)
+    supplier_statuses: list[EnumItem] = field(default_factory=list)
+    project_supplier_statuses: list[EnumItem] = field(default_factory=list)

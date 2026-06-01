@@ -61,6 +61,28 @@ QUOTE_STATUSES = [
     EnumItem("expired", "已过期"),
 ]
 
+SUPPLIER_CATEGORIES = [
+    EnumItem("print", "印刷"),
+    EnumItem("video", "影视拍摄"),
+    EnumItem("construction", "搭建施工"),
+    EnumItem("event", "活动执行"),
+    EnumItem("design", "设计外包"),
+    EnumItem("logistics", "物流运输"),
+    EnumItem("other", "其他"),
+]
+
+SUPPLIER_STATUSES = [
+    EnumItem("active", "合作中"),
+    EnumItem("inactive", "暂停合作"),
+    EnumItem("blacklisted", "黑名单"),
+]
+
+PROJECT_SUPPLIER_STATUSES = [
+    EnumItem("active", "进行中"),
+    EnumItem("completed", "已完成"),
+    EnumItem("cancelled", "已取消"),
+]
+
 
 class BizMetaService:
     @staticmethod
@@ -73,4 +95,7 @@ class BizMetaService:
             confidentiality_levels=CONFIDENTIALITY_LEVELS,
             opportunity_stages=OPPORTUNITY_STAGES,
             quote_statuses=QUOTE_STATUSES,
+            supplier_categories=SUPPLIER_CATEGORIES,
+            supplier_statuses=SUPPLIER_STATUSES,
+            project_supplier_statuses=PROJECT_SUPPLIER_STATUSES,
         )

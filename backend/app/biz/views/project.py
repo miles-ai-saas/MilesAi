@@ -29,9 +29,11 @@ from app.biz.schemas.project import (
     BizWorkPackageOut,
     BizWorkPackageUpdate,
 )
+from app.biz.schemas.supplier import BizProjectSupplierCreate, BizProjectSupplierOut, BizProjectSupplierUpdate
 from app.biz.services.milestone import MilestoneService
 from app.biz.services.project import ProjectService
 from app.biz.services.project_archive import ProjectArchiveService
+from app.biz.services.supplier import SupplierService
 from app.common.response import ok, page_ok
 from app.common.schema import ApiResponse, PageResult
 from app.core.deps import require_permissions
@@ -51,6 +53,10 @@ def _milestone_svc(db: AsyncSession, ctx: TenantContext) -> MilestoneService:
 
 def _archive_svc(db: AsyncSession, ctx: TenantContext) -> ProjectArchiveService:
     return ProjectArchiveService(db, ctx)
+
+
+def _supplier_svc(db: AsyncSession, ctx: TenantContext) -> SupplierService:
+    return SupplierService(db, ctx)
 
 
 # ── projects ──
@@ -235,6 +241,49 @@ async def delete_milestone(
 ):
     await _milestone_svc(db, ctx).delete(project_id, wp_id, milestone_id)
     return ok(message="已删除")
+
+
+# ── suppliers ──
+
+@router.get("/{project_id}/suppliers", response_model=ApiResponse[list[BizProjectSupplierOut]])
+async def list_project_suppliers(
+    project_id: UUID,
+    ctx: TenantContext = Depends(require_permissions("biz:project:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    return ok(await _supplier_svc(db, ctx).list_project_suppliers(project_id))
+
+
+@router.post("/{project_id}/suppliers", response_model=ApiResponse[BizProjectSupplierOut])
+async def add_project_supplier(
+    project_id: UUID,
+    body: BizProjectSupplierCreate,
+    ctx: TenantContext = Depends(require_permissions("biz:project:write")),
+    db: AsyncSession = Depends(get_db),
+):
+    return ok(await _supplier_svc(db, ctx).add_project_supplier(project_id, body))
+
+
+@router.patch("/{project_id}/suppliers/{supplier_id}", response_model=ApiResponse[BizProjectSupplierOut])
+async def update_project_supplier(
+    project_id: UUID,
+    supplier_id: UUID,
+    body: BizProjectSupplierUpdate,
+    ctx: TenantContext = Depends(require_permissions("biz:project:write")),
+    db: AsyncSession = Depends(get_db),
+):
+    return ok(await _supplier_svc(db, ctx).update_project_supplier(project_id, supplier_id, body))
+
+
+@router.delete("/{project_id}/suppliers/{supplier_id}", response_model=ApiResponse[None])
+async def remove_project_supplier(
+    project_id: UUID,
+    supplier_id: UUID,
+    ctx: TenantContext = Depends(require_permissions("biz:project:write")),
+    db: AsyncSession = Depends(get_db),
+):
+    await _supplier_svc(db, ctx).remove_project_supplier(project_id, supplier_id)
+    return ok(message="已移除")
 
 
 # ── members ──

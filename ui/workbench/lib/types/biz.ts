@@ -199,3 +199,45 @@ export interface BizArchiveCaseResult {
   archived_count: number;
   document_ids: string[];
 }
+
+/** 供应商联系人 */
+export interface BizSupplierContact {
+  id: string;
+  supplier_id: string;
+  name: string;
+  title?: string;
+  phone?: string;
+  email?: string;
+  is_primary: boolean;
+}
+
+/** 外包供应商 */
+export interface BizSupplier {
+  id: string;
+  name: string;
+  category: string;
+  status: string;
+  short_name?: string;
+  contact_name?: string;
+  contact_phone?: string;
+  contact_email?: string;
+  address?: string;
+  bank_name?: string;
+  bank_account?: string;
+  remark?: string;
+  project_count: number;
+  contacts: BizSupplierContact[];
+}
+
+/** 项目-供应商关联 */
+export interface BizProjectSupplier {
+  project_id: string;
+  supplier_id: string;
+  supplier_name: string;
+  supplier_category: string;
+  work_package_id?: string;
+  role_description?: string;
+  contracted_amount?: number;
+  status: string;
+  remark?: string;
+}

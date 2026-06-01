@@ -13,6 +13,24 @@ class ConfidentialityLevel(str, enum.Enum):
     RESTRICTED = "restricted"  # 受限客户，需显式授权才能查看
 
 
+class SupplierCategory(str, enum.Enum):
+    """供应商类型——广告/文创行业常见外包品类。"""
+    PRINT = "print"
+    VIDEO = "video"
+    CONSTRUCTION = "construction"
+    EVENT = "event"
+    DESIGN = "design"
+    LOGISTICS = "logistics"
+    OTHER = "other"
+
+
+class SupplierStatus(str, enum.Enum):
+    """供应商合作状态。"""
+    ACTIVE = "active"
+    INACTIVE = "inactive"
+    BLACKLISTED = "blacklisted"
+
+
 class ProjectStatus(str, enum.Enum):
     """项目生命周期状态。
 

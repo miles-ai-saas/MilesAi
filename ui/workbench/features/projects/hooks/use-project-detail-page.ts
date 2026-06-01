@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import type { BizDeliverable, BizProject, BizProjectCostSummary, BizProjectMember, BizWorkPackage, TenantUser } from "@/lib/types";
 
-export type ProjectDetailTab = "info" | "workpackages" | "deliverables" | "members" | "cost" | "ai";
+export type ProjectDetailTab = "info" | "workpackages" | "deliverables" | "members" | "suppliers" | "cost" | "ai";
 
 export function useProjectDetailPage(projectId: string) {
   const router = useRouter();

@@ -15,6 +15,8 @@ const iconPaths: Record<BizNavIcon, string> = {
     "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4",
   contracts:
     "M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zM6 20V4h7v5h5v11H6zm2-5h8v2H8v-2zm0-4h8v2H8v-2z",
+  suppliers:
+    "M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0H5m14 0h2m-16 0H3m2-16h10M9 7h1m-1 4h1m4-4h1m-1 4h1",
 };
 
 export function BizNavIcon({ icon, className = "" }: { icon: BizNavIcon; className?: string }) {

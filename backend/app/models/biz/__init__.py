@@ -10,6 +10,7 @@ from app.models.biz.enums import ConfidentialityLevel, ProjectStatus
 from app.models.biz.milestone import BizMilestone
 from app.models.biz.opportunity import BizOpportunity
 from app.models.biz.quote import BizQuote
+from app.models.biz.supplier import BizProjectSupplier, BizSupplier, BizSupplierContact
 from app.models.biz.project import (
     BizDeliverable,
     BizProject,
@@ -33,4 +34,7 @@ __all__ = [
     "BizPayment",
     "BizMilestone",
     "BizQuote",
+    "BizSupplier",
+    "BizSupplierContact",
+    "BizProjectSupplier",
 ]

@@ -14,6 +14,7 @@ from app.biz.views.meta import router as meta_router
 from app.biz.views.opportunity import router as opportunity_router
 from app.biz.views.payment import router as payment_router
 from app.biz.views.project import router as project_router
+from app.biz.views.supplier import router as supplier_router
 from app.biz.views.work_package import router as work_package_router
 
 biz_router = APIRouter()
@@ -25,4 +26,5 @@ biz_router.include_router(work_package_router, prefix="/work-packages", tags=["b
 biz_router.include_router(deliverable_router, prefix="/deliverables", tags=["business-deliverables"])
 biz_router.include_router(opportunity_router, prefix="/opportunities", tags=["business-opportunities"])
 biz_router.include_router(contract_router, prefix="/contracts", tags=["business-contracts"])
+biz_router.include_router(supplier_router, prefix="/suppliers", tags=["business-suppliers"])
 biz_router.include_router(payment_router, prefix="/payments", tags=["business-payments"])
