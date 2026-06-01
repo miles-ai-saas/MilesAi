@@ -2,6 +2,7 @@
 
 import { ProjectCloseWizard } from "@/features/projects/components/ProjectCloseWizard";
 import { useBizPermissions } from "@/features/business/lib/biz-permissions";
+import { ProjectActivityTab } from "@/features/projects/components/ProjectActivityTab";
 import { ProjectAiTab } from "@/features/projects/components/ProjectAiTab";
 import { ProjectDeliverablesTab } from "@/features/projects/components/ProjectDeliverablesTab";
 import { ProjectMembersTab } from "@/features/projects/components/ProjectMembersTab";
@@ -18,6 +19,7 @@ const TABS = [
   { id: "members" as const, label: "成员" },
   { id: "suppliers" as const, label: "供应商" },
   { id: "cost" as const, label: "成本" },
+  { id: "activity" as const, label: "动态" },
   { id: "ai" as const, label: "AI 服务" },
 ];
 
@@ -63,6 +65,7 @@ export function ProjectDetailView({ vm }: { vm: ProjectDetailPageVm }) {
       {tab === "members" && <ProjectMembersTab vm={vm} />}
       {tab === "suppliers" && <ProjectSuppliersTab vm={vm} />}
       {tab === "cost" && <ProjectCostTab costSummary={costSummary} />}
+      {tab === "activity" && <ProjectActivityTab vm={vm} />}
       {tab === "ai" && <ProjectAiTab vm={vm} />}
     </div>
   );

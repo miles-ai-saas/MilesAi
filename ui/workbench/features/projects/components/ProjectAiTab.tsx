@@ -48,6 +48,29 @@ export function ProjectAiTab({ vm }: { vm: ProjectDetailPageVm }) {
         <QuickLinkCard href={buildFlowsDeepLink()} icon="🔄" label="工作流" desc="编排审批与创作流水线" external />
       </div>
 
+      {(ctx.related_cases?.length ?? 0) > 0 && ctx.rag_enabled && (
+        <section>
+          <h2 className="text-sm font-semibold text-ink">相关案例（知识库）</h2>
+          <p className="mt-1 text-xs text-ink-muted">同客户或同服务线已结项入库的参考材料</p>
+          <div className="mt-3 space-y-2">
+            {ctx.related_cases!.map((c) => (
+              <div key={c.document_id} className="card flex flex-wrap items-center justify-between gap-2 p-3">
+                <div>
+                  <p className="text-sm font-medium text-ink">{c.document_title}</p>
+                  <p className="text-xs text-ink-muted">
+                    来自「{c.project_name}」· {c.kb_name}
+                    {c.service_line ? ` · ${c.service_line}` : ""}
+                  </p>
+                </div>
+                <Link href={buildKbDeepLink(c.kb_id)} className="text-xs text-brand hover:underline" target="_blank">
+                  打开知识库
+                </Link>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
       {ctx.recommendations.length === 0 ? (
         <p className="text-sm text-ink-faint">暂无工作包，请先添加工作包以获取服务线 AI 推荐。</p>
       ) : (

@@ -24,6 +24,18 @@ class BizServiceLineAiRecommendation:
 
 
 @dataclass
+class BizRelatedCaseOut:
+    kb_id: UUID
+    kb_name: str
+    document_id: UUID
+    document_title: str
+    project_id: UUID
+    project_name: str
+    service_line: str | None = None
+    deliverable_name: str = ""
+
+
+@dataclass
 class BizProjectAiContextOut:
     project_id: UUID
     project_name: str
@@ -36,3 +48,4 @@ class BizProjectAiContextOut:
     retrospective_available: bool = False
     retrospective_prompt: Optional[str] = None
     recommendations: list[BizServiceLineAiRecommendation] = field(default_factory=list)
+    related_cases: list[BizRelatedCaseOut] = field(default_factory=list)

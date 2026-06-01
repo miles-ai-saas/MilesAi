@@ -1,6 +1,6 @@
 import { get, getPage, post, patch, put, http, unwrap } from "./client";
 import { buildPageQuery } from "../pagination";
-import type { BizArchiveCaseResult, BizClient, BizClientContact, BizClosePreview, BizCloseWizardResult, BizContract, BizDeliverable, BizMilestone, BizOpportunity, BizPayment, BizProject, BizProjectAiContext, BizProjectCostSummary, BizProjectMember, BizProjectSupplier, BizQuote, BizServiceLineTemplate, BizSupplier, BizSupplierContact, BizWorkPackage, BizWorkPackageKanban, DashboardSummary, DueMilestoneItem, FinancialSummary } from "../types";
+import type { BizArchiveCaseResult, BizClient, BizClientContact, BizClosePreview, BizCloseWizardResult, BizContract, BizDeliverable, BizMilestone, BizOpportunity, BizPayment, BizProject, BizProjectActivityItem, BizProjectAiContext, BizProjectCostSummary, BizProjectMember, BizProjectSupplier, BizQuote, BizSearchResult, BizServiceLineAiConfig, BizServiceLineTemplate, BizSupplier, BizSupplierContact, BizWorkPackage, BizWorkPackageKanban, DashboardSummary, DueMilestoneItem, FinancialSummary } from "../types";
 
 export const bizApi = {
   // ── 业务仪表盘 ──
@@ -209,8 +209,13 @@ export const bizApi = {
   // ── 服务线模板 ──
 
   listServiceLineTemplates: () => get<BizServiceLineTemplate[]>("/biz/service-line-templates"),
-  upsertServiceLineTemplate: (serviceLine: string, p: { stages: string[]; is_active?: boolean }) =>
+  upsertServiceLineTemplate: (serviceLine: string, p: { stages: string[]; is_active?: boolean; ai_config?: BizServiceLineAiConfig }) =>
     put<BizServiceLineTemplate>(`/biz/service-line-templates/${serviceLine}`, p),
   resetServiceLineTemplate: (serviceLine: string) =>
     http.delete(`/biz/service-line-templates/${serviceLine}`).then((r) => unwrap<BizServiceLineTemplate>(r.data)),
+
+  searchBiz: (q: string, limit = 12) => get<BizSearchResult>(`/biz/search?q=${encodeURIComponent(q)}&limit=${limit}`),
+
+  listProjectActivity: (projectId: string, limit = 30) =>
+    get<BizProjectActivityItem[]>(`/biz/projects/${projectId}/activity?limit=${limit}`),
 };

@@ -5,12 +5,12 @@ import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import type { BizDeliverable, BizProject, BizProjectCostSummary, BizProjectMember, BizWorkPackage, TenantUser } from "@/lib/types";
 
-export type ProjectDetailTab = "info" | "workpackages" | "deliverables" | "members" | "suppliers" | "cost" | "ai";
+export type ProjectDetailTab = "info" | "workpackages" | "deliverables" | "members" | "suppliers" | "cost" | "activity" | "ai";
 
 export function useProjectDetailPage(projectId: string, options?: { initialTab?: ProjectDetailTab }) {
   const router = useRouter();
   const initialTab = options?.initialTab;
-  const validTabs: ProjectDetailTab[] = ["info", "workpackages", "deliverables", "members", "suppliers", "cost", "ai"];
+  const validTabs: ProjectDetailTab[] = ["info", "workpackages", "deliverables", "members", "suppliers", "cost", "activity", "ai"];
   const [tab, setTab] = useState<ProjectDetailTab>(
     initialTab && validTabs.includes(initialTab) ? initialTab : "info",
   );

@@ -59,7 +59,9 @@ export function BusinessDashboardView({ vm }: { vm: BusinessDashboardPageVm }) {
       show: data.due_milestones > 0,
       label: "到期里程碑",
       value: data.due_milestones,
-      href: "/business/work-packages",
+      href: (data.due_milestone_items?.[0])
+        ? `/business/projects/${data.due_milestone_items[0].project_id}?tab=workpackages`
+        : "/business/work-packages",
       hint: "查看工作包看板",
       color: "amber" as const,
     },
@@ -166,7 +168,7 @@ export function BusinessDashboardView({ vm }: { vm: BusinessDashboardPageVm }) {
             {data.due_milestone_items.map((m) => (
               <Link
                 key={m.id}
-                href={`/business/projects/${m.project_id}`}
+                href={`/business/projects/${m.project_id}?tab=workpackages`}
                 className={`card flex items-center justify-between p-3 transition hover:shadow-md ${m.overdue ? "border-l-4 border-l-red-400" : ""}`}
               >
                 <div>

@@ -32,10 +32,12 @@ from app.biz.schemas.project import (
     BizWorkPackageOut,
     BizWorkPackageUpdate,
 )
+from app.biz.schemas.project_activity import BizProjectActivityItem
 from app.biz.schemas.project_ai import BizProjectAiContextOut
 from app.biz.schemas.supplier import BizProjectSupplierCreate, BizProjectSupplierOut, BizProjectSupplierUpdate
 from app.biz.services.milestone import MilestoneService
 from app.biz.services.project import ProjectService
+from app.biz.services.project_activity import ProjectActivityService
 from app.biz.services.project_ai import ProjectAiContextService
 from app.biz.services.project_archive import ProjectArchiveService
 from app.biz.services.project_close import ProjectCloseService
@@ -71,6 +73,10 @@ def _supplier_svc(db: AsyncSession, ctx: TenantContext) -> SupplierService:
 
 def _ai_svc(db: AsyncSession, ctx: TenantContext) -> ProjectAiContextService:
     return ProjectAiContextService(db, ctx)
+
+
+def _activity_svc(db: AsyncSession, ctx: TenantContext) -> ProjectActivityService:
+    return ProjectActivityService(db, ctx)
 
 
 # ── projects ──
@@ -193,6 +199,17 @@ async def get_project_ai_context(
 ):
     """项目 AI 上下文：服务线 Agent/Flow 推荐、RAG 策略、结项复盘提示。"""
     return ok(await _ai_svc(db, ctx).get_ai_context(project_id, work_package_id))
+
+
+@router.get("/{project_id}/activity", response_model=ApiResponse[list[BizProjectActivityItem]])
+async def list_project_activity(
+    project_id: UUID,
+    limit: int = Query(30, ge=1, le=100),
+    ctx: TenantContext = Depends(require_permissions("biz:project:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    """项目业务动态（审计日志聚合）。"""
+    return ok(await _activity_svc(db, ctx).list_activity(project_id, limit=limit))
 
 
 # ── work packages (nested under project) ──

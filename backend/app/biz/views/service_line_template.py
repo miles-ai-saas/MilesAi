@@ -18,6 +18,7 @@ router = APIRouter()
 class ServiceLineTemplateUpsertBody(BaseModel):
     stages: list[str] = Field(min_length=1)
     is_active: bool = True
+    ai_config: dict | None = None
 
 
 def _svc(db: AsyncSession, ctx: TenantContext) -> ServiceLineTemplateAdminService:
@@ -39,7 +40,7 @@ async def upsert_service_line_template(
     ctx: TenantContext = Depends(require_permissions("biz:project:write")),
     db: AsyncSession = Depends(get_db),
 ):
-    payload = BizServiceLineTemplateUpsert(stages=body.stages, is_active=body.is_active)
+    payload = BizServiceLineTemplateUpsert(stages=body.stages, is_active=body.is_active, ai_config=body.ai_config)
     return ok(await _svc(db, ctx).upsert(service_line, payload))
 
 

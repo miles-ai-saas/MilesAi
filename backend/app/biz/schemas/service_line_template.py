@@ -15,9 +15,11 @@ class BizServiceLineTemplateOut:
     template_id: str | None = None
     is_active: bool = True
     is_editable: bool = False
+    ai_config: dict = field(default_factory=dict)
 
 
 @dataclass
 class BizServiceLineTemplateUpsert:
     stages: list[str]
     is_active: bool = True
+    ai_config: dict | None = None

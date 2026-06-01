@@ -69,7 +69,8 @@ export function buildFlowsDeepLink(flowTemplateId?: string): string {
   return "/workbench/flows";
 }
 
-export function buildKbDeepLink(): string {
+export function buildKbDeepLink(kbId?: string): string {
+  if (kbId) return `/workbench/knowledge-base/${kbId}`;
   return "/workbench/knowledge-base";
 }
 

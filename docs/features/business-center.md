@@ -1,7 +1,7 @@
 # 业务中心
 
 **日期：** 2026-06-01  
-**状态：** 设计稿（未实现）  
+**状态：** 已实现（Phase 0–4）；Phase 5 按需  
 **架构：** [business-center-design.md](../architecture/business-center-design.md)  
 **试点场景：** 广告公司（八条服务线：品牌、影视、展览、活动、培训、标识、文创、印刷）
 

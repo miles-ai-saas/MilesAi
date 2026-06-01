@@ -11,6 +11,7 @@ from app.biz.repositories.client import ClientRepository
 from app.biz.repositories.deliverable import DeliverableRepository
 from app.biz.repositories.project import ProjectRepository
 from app.biz.repositories.service_line_template import ServiceLineTemplateRepository
+from app.biz.services.project_related_cases import ProjectRelatedCasesService
 from app.biz.schemas.project_ai import BizProjectAiContextOut, BizServiceLineAiRecommendation
 from app.biz.services.meta import SERVICE_LINES
 from app.common.exceptions import NotFoundError
@@ -79,6 +80,10 @@ class ProjectAiContextService(BaseService):
                 "请从目标达成、亮点、不足、可复用经验四方面总结，语气专业简洁。"
             )
 
+        related_cases = []
+        if rag_enabled:
+            related_cases = await ProjectRelatedCasesService(self.db, self.ctx).list_related_cases(project_id)
+
         return BizProjectAiContextOut(
             project_id=project.id,
             project_name=project.name,
@@ -91,6 +96,7 @@ class ProjectAiContextService(BaseService):
             retrospective_available=retrospective_available,
             retrospective_prompt=retrospective_prompt,
             recommendations=recommendations,
+            related_cases=related_cases,
         )
 
     async def _build_recommendation(

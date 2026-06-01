@@ -54,12 +54,17 @@ class ServiceLineTemplateAdminService(BaseService):
         if row:
             row.stages = stages
             row.is_active = body.is_active
+            if body.ai_config is not None:
+                row.ai_config = body.ai_config
         else:
+            global_row = await self._get_global_template(service_line)
+            base_ai = global_row.ai_config if global_row and isinstance(global_row.ai_config, dict) else {}
             row = BizServiceLineTemplate(
                 tenant_id=self.ctx.tenant_id,
                 service_line=service_line,
                 stages=stages,
                 is_active=body.is_active,
+                ai_config=body.ai_config if body.ai_config is not None else base_ai,
             )
             self.db.add(row)
         await self.db.flush()
@@ -109,4 +114,5 @@ class ServiceLineTemplateAdminService(BaseService):
             template_id=str(row.id),
             is_active=row.is_active,
             is_editable=editable,
+            ai_config=row.ai_config if isinstance(row.ai_config, dict) else {},
         )

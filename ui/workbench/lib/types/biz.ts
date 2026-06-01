@@ -318,6 +318,7 @@ export interface BizProjectAiContext {
   retrospective_available: boolean;
   retrospective_prompt?: string;
   recommendations: BizServiceLineAiRecommendation[];
+  related_cases: BizRelatedCase[];
 }
 
 /** 服务线阶段模板（租户可覆盖全局） */
@@ -329,4 +330,44 @@ export interface BizServiceLineTemplate {
   template_id?: string | null;
   is_active: boolean;
   is_editable: boolean;
+  ai_config: BizServiceLineAiConfig;
+}
+
+export interface BizServiceLineAiConfig {
+  agent_tag?: string;
+  flow_template_id?: string;
+  chat_hint?: string;
+  quick_prompts?: string[];
+}
+
+export interface BizRelatedCase {
+  kb_id: string;
+  kb_name: string;
+  document_id: string;
+  document_title: string;
+  project_id: string;
+  project_name: string;
+  service_line?: string | null;
+  deliverable_name: string;
+}
+
+export interface BizSearchHit {
+  kind: "client" | "project" | "opportunity" | "contract";
+  id: string;
+  title: string;
+  subtitle: string;
+}
+
+export interface BizSearchResult {
+  query: string;
+  items: BizSearchHit[];
+}
+
+export interface BizProjectActivityItem {
+  id: string;
+  action: string;
+  label: string;
+  username?: string | null;
+  created_at: string;
+  detail: Record<string, unknown>;
 }
