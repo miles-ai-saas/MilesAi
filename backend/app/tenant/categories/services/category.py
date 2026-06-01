@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.common.exceptions import BadRequestError, NotFoundError
 from app.core.tenant import TenantContext
-from app.models.category import CategoryDomain, SysCategory
+from app.models.meta.category import CategoryDomain, SysCategory
 from app.tenant.categories.meta import categories_meta_dict
 from app.tenant.categories.schemas.category import CategoryOut
 from app.tenant.categories.schemas.meta import CategoryMetaOut

@@ -10,8 +10,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.common.exceptions import NotFoundError
 from app.core.tenant import TenantContext, assert_tenant_access, tenant_filters
-from app.models.category import CategoryDomain
-from app.models.tag import TagEntityType
+from app.models.meta.category import CategoryDomain
+from app.models.meta.tag import TagEntityType
 from app.tenant.categories.services.category import CategoryService
 from app.tenant.tags.schemas.tag import TagRefOut
 from app.tenant.tags.services.tag import TagService

@@ -17,7 +17,7 @@ PENDING/PARSING/EMBEDDING 的文档标为 EMBED_FAILED。
 """
 
 from app.workers.app import celery_app
-from app.models.task import TaskStatus
+from app.models.task.task_record import TaskStatus
 from app.tenant.kb.services.ingest import run_ingest
 from app.tenant.kb.services.ingest_failure import ensure_document_failure_if_still_processing
 from app.tenant.tasks.services.sync import sync_task_by_celery_id

@@ -13,8 +13,8 @@ from app.infra.db import get_db
 from app.common.exceptions import UnauthorizedError
 from app.core.security import safe_decode_token
 from app.core.tenant import TenantContext
-from app.models.role import Role
-from app.models.user import User
+from app.models.platform.role import Role
+from app.models.platform.user import User
 from app.common.schema import PageParams
 from app.tenant.auth.services import session_store
 

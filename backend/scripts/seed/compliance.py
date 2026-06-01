@@ -6,7 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.soft_delete import not_deleted
-from app.models.tenant import Tenant
+from app.models.platform.tenant import Tenant
 from app.tenant.compliance.models import (
     COMPLIANCE_SCOPE_TENANT,
     DEFAULT_WORD_LIBRARY_NAME,

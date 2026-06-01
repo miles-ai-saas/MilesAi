@@ -5,7 +5,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-from app.models.category import CategoryDomain
+from app.models.meta.category import CategoryDomain
 
 
 class CategoryOut(BaseModel):

@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.workers.app import celery_app
 from app.common.exceptions import BadRequestError, NotFoundError
 from app.core.tenant import TenantContext, assert_tenant_access, tenant_filters
-from app.models.task import CeleryTaskRecord, TaskStatus
+from app.models.task.task_record import CeleryTaskRecord, TaskStatus
 from app.common.schema import PageParams, PageResult
 from app.tenant.tasks.meta import tasks_meta_dict
 from app.tenant.tasks.schemas.meta import TaskMetaOut

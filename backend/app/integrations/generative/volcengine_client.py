@@ -17,7 +17,7 @@ from app.integrations.generative.constants import (
 )
 from app.integrations.http_constants import HTTP_DEFAULT_TIMEOUT_SEC
 from app.models.model import ModelConfig
-from app.models.model_catalog import DEFAULT_API_BASES, ModelVendor
+from app.models.model.catalog import DEFAULT_API_BASES, ModelVendor
 
 DEFAULT_VIDEO_SUBMIT_PATH = "/contents/generations/tasks"
 DEFAULT_VIDEO_POLL_PATH = "/contents/generations/tasks/{task_id}"

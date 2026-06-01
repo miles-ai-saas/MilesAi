@@ -15,7 +15,7 @@ from app.core.tenant import TenantContext, assert_tenant_access
 from app.infra.storage import build_attachment_object_key
 from app.infra.storage.resolve import resolve_object_storage_async
 from app.rag.parse.media import is_image_file
-from app.models.attachment import Attachment
+from app.models.media.attachment import Attachment
 from app.core.logging import get_logger
 from app.tenant.attachments.repositories.attachment import AttachmentRepository
 from app.tenant.attachments.meta import attachments_meta_dict

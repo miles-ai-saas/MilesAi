@@ -20,9 +20,9 @@ from app.core.tenant import TenantContext, tenant_filters
 from app.models.agent import Agent
 from app.models.flow import Flow
 from app.models.kb import Document, DocumentStatus, KnowledgeBase
-from app.models.model_usage_log import ModelUsageLog
-from app.models.system import SystemConfig
-from app.models.task import CeleryTaskRecord, TaskStatus
+from app.models.model.usage_log import ModelUsageLog
+from app.models.platform.system import SystemConfig
+from app.models.task.task_record import CeleryTaskRecord, TaskStatus
 from app.tenant.compliance.models import InterceptLog
 from app.tenant.marketplace.models import AppInstall
 from app.tenant.monitor.meta import monitor_meta_dict

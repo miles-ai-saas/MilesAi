@@ -26,7 +26,7 @@ from app.integrations.generative.types import VideoGenerateResult
 from app.integrations.generative.video.providers.dashscope_wan import generate_dashscope_video
 from app.integrations.generative.video.providers.volcengine_video import generate_volcengine_video
 from app.models.model import ModelConfig
-from app.models.model_catalog import ModelCapabilityType
+from app.models.model.catalog import ModelCapabilityType
 from app.tenant.models.services.model_resolve import resolve_model_for_invoke
 
 

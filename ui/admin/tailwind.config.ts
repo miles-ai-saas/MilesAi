@@ -7,6 +7,7 @@ const config: Config = {
     "./app/**/*.{js,ts,jsx,tsx}",
     "./components/**/*.{js,ts,jsx,tsx}",
     "../shared/**/*.{js,ts,jsx,tsx}",
+    "!../shared/node_modules/**",
   ],
   theme: {
     extend: {

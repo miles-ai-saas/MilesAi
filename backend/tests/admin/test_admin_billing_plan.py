@@ -7,7 +7,7 @@ import pytest
 
 from app.common.exceptions import BadRequestError
 from app.admin.app_ops.services.tenant import AdminTenantService
-from app.models.tenant import Tenant
+from app.models.platform.tenant import Tenant
 
 
 @pytest.mark.asyncio

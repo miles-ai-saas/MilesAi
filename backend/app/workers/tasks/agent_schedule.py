@@ -17,9 +17,9 @@ from sqlalchemy import select
 from app.common.cron import compute_next_run
 from app.core.tenant import TenantContext
 from app.infra.db import AsyncSessionLocal, get_sync_db
-from app.models.agent_schedule import AgentSchedule
-from app.models.agent_schedule_run import AgentScheduleRun, AgentScheduleRunStatus
-from app.models.user import User
+from app.models.agent.schedule import AgentSchedule
+from app.models.agent.schedule_run import AgentScheduleRun, AgentScheduleRunStatus
+from app.models.platform.user import User
 from app.core.soft_delete import not_deleted
 from app.tenant.agents.schemas.agent import ChatRequest
 from app.tenant.agents.services.agent import AgentService

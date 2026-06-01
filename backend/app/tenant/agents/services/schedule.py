@@ -12,8 +12,8 @@ from app.common.exceptions import BadRequestError, NotFoundError
 from app.core.service import BaseService
 from app.core.soft_delete import append_not_deleted, is_marked_deleted, mark_deleted
 from app.core.tenant import TenantContext, assert_tenant_access, tenant_filters
-from app.models.agent_schedule import AgentSchedule
-from app.models.agent_schedule_run import AgentScheduleRun
+from app.models.agent.schedule import AgentSchedule
+from app.models.agent.schedule_run import AgentScheduleRun
 from app.common.schema import PageParams, PageResult
 from app.tenant.agents.schemas.schedule import AgentScheduleCreate, AgentScheduleOut, AgentScheduleUpdate
 from app.tenant.agents.schemas.schedule_run import AgentScheduleRunOut

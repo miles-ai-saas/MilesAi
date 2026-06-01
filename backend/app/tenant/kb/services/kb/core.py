@@ -13,7 +13,7 @@ from app.deletion.cascade import before_delete_kb
 from app.integrations.embeddings.model_meta import embedding_dimension_from_model
 from app.integrations.langchain.visual_embeddings import ensure_clip_model
 from app.models.kb import Document, KnowledgeBase
-from app.models.kb_search_log import KbSearchLog
+from app.models.kb.search_log import KbSearchLog
 from app.models.model import ModelConfig
 from app.tenant.kb.repositories.kb import KnowledgeBaseRepository
 from app.tenant.kb.schemas.kb import (

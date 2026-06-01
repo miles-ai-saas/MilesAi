@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from app.core.config import Settings, get_settings
 from app.core.field_crypto import decrypt_secret
 from app.infra.storage.s3 import S3CompatibleObjectStorage
-from app.models.tenant_object_storage import TenantObjectStorageConfig
+from app.models.storage.tenant_object_storage import TenantObjectStorageConfig
 
 
 @dataclass(frozen=True)

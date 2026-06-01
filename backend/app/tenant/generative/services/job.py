@@ -20,8 +20,8 @@ from app.integrations.generative.jobs.submit import (
     submit_image_generative_job,
     submit_video_generative_job,
 )
-from app.models.generative_job import GenerativeJob, GenerativeJobStatus
-from app.models.task import CeleryTaskRecord, TaskStatus
+from app.models.model.generative_job import GenerativeJob, GenerativeJobStatus
+from app.models.task.task_record import CeleryTaskRecord, TaskStatus
 from app.tenant.generative.schemas.job import (
     GenerativeJobBatchCancelResult,
     GenerativeJobOut,

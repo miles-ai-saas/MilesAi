@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import get_settings
 from app.core.security import hash_password
 from app.models import Permission, Role, Tenant, User
-from app.models.role import role_permissions, user_roles
+from app.models.platform.role import role_permissions, user_roles
 
 DEFAULT_PERMISSIONS = [
     ("system:tenant:read", "查看租户", "system"),

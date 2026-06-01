@@ -20,8 +20,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.common.exceptions import BadRequestError
 from app.core.soft_delete import not_deleted
 from app.models.model import ModelConfig
-from app.models.model_catalog import ModelPublishStatus
-from app.models.model_tenant_credential import ModelTenantCredential
+from app.models.model.catalog import ModelPublishStatus
+from app.models.model.tenant_credential import ModelTenantCredential
 from app.tenant.models.services.api_key_validation import assert_usable_api_key
 
 
@@ -43,7 +43,7 @@ def credential_status(model: ModelConfig, cred: ModelTenantCredential | None) ->
     """返回 platform / tenant / missing，供模型列表 UI 展示。"""
     from app.integrations.embeddings.constants import INVOKE_MODE_LOCAL
     from app.integrations.embeddings.model_meta import invoke_mode_from_model
-    from app.models.model_catalog import ModelCapabilityType
+    from app.models.model.catalog import ModelCapabilityType
 
     if model.model_type == ModelCapabilityType.EMBEDDING.value:
         if invoke_mode_from_model(model) == INVOKE_MODE_LOCAL:

@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 from app.models.model import ModelConfig
-from app.models.model_catalog import ModelCapabilityType, ModelVendor
+from app.models.model.catalog import ModelCapabilityType, ModelVendor
 from app.rag.retrieve.rerank import apply_rerank_to_hits, compute_rerank_fetch_limit
 
 

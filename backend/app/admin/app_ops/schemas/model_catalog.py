@@ -3,7 +3,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-from app.models.model_catalog import ModelCapabilityType, ModelVendor
+from app.models.model.catalog import ModelCapabilityType, ModelVendor
 
 
 class ModelCatalogCreate(BaseModel):

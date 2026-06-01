@@ -1,6 +1,6 @@
 """生成任务取消与进度字段。"""
 
-from app.models.generative_job import GenerativeJobStatus
+from app.models.model.generative_job import GenerativeJobStatus
 
 
 def test_generative_job_status_includes_cancelled():

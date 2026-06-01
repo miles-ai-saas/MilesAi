@@ -30,7 +30,7 @@ from app.integrations.generative.model_resolve import pick_default_generative_mo
 from app.integrations.generative.registry import resolve_invoke_mode
 from app.integrations.generative.types import ImageGenerateResult
 from app.models.model import ModelConfig
-from app.models.model_catalog import ModelCapabilityType
+from app.models.model.catalog import ModelCapabilityType
 from app.tenant.models.services.model_resolve import resolve_model_for_invoke
 
 

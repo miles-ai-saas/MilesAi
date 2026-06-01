@@ -6,8 +6,8 @@ from sqlalchemy.orm import selectinload
 
 from app.core.repository import BaseRepository
 from app.core.soft_delete import not_deleted
-from app.models.role import Role
-from app.models.user import User
+from app.models.platform.role import Role
+from app.models.platform.user import User
 
 
 class UserRepository(BaseRepository[User]):

@@ -25,7 +25,7 @@ from app.flow_runtime.subflow.validate import validate_subflow_references
 from app.flow_runtime.runtime_factory import get_flow_runtime
 from app.flow_runtime.types import RunContext
 from app.models.flow import Flow, FlowStatus, FlowVersion
-from app.models.tag import TagEntityType
+from app.models.meta.tag import TagEntityType
 from app.tenant.tags.schemas.tag import TagRefOut
 from app.tenant.tags.services.tag import TagService
 from app.tenant.flows.repositories.flow import FlowRepository, FlowVersionRepository

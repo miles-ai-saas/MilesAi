@@ -6,7 +6,7 @@
 """
 
 from app.common.schemas.enum_meta import META_SCHEMA_VERSION, enum_options, literal_options
-from app.models.task import TaskStatus
+from app.models.task.task_record import TaskStatus
 
 TASK_STATUS_LABELS: dict[str, tuple[str, str | None]] = {
     TaskStatus.PENDING.value: ("等待中", "已投递，尚未执行"),

@@ -19,7 +19,7 @@ from app.integrations.rerank.constants import (
     RERANK_REQUEST_FORMAT_NESTED,
 )
 from app.models.model import ModelConfig
-from app.models.model_catalog import (
+from app.models.model.catalog import (
     DEFAULT_RERANK_API_ENDPOINTS,
     DEFAULT_RERANK_OPENAI_COMPAT_BASES,
     ModelCapabilityType,

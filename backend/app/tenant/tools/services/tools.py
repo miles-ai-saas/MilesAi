@@ -21,9 +21,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.common.exceptions import BadRequestError, ConflictError, NotFoundError
 from app.common.url_security import validate_outbound_url
 from app.core.tenant import TenantContext, assert_tenant_access, tenant_filters
-from app.models.category import CategoryDomain
+from app.models.meta.category import CategoryDomain
 from app.tenant.categories.services.category import CategoryService
-from app.models.tag import TagEntityType
+from app.models.meta.tag import TagEntityType
 from app.tenant.tags.schemas.tag import TagRefOut
 from app.tenant.tags.services.tag import TagService
 from app.tenant.tools.builtin_registry import BUILTIN_REGISTRY, BUILTIN_SLUGS
@@ -230,7 +230,7 @@ class ToolsService(BaseService):
         category_id: UUID | None = None,
         tag_ids: list[UUID] | None = None,
     ) -> list[ToolCatalogItem]:
-        from app.models.category import SysCategory
+        from app.models.meta.category import SysCategory
 
         cat_rows = (
             await self.db.execute(

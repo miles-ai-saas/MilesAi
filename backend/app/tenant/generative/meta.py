@@ -1,7 +1,7 @@
 """生成任务枚举展示元数据（GET /generative/jobs/meta）。"""
 
 from app.common.schemas.enum_meta import META_SCHEMA_VERSION, enum_options, literal_options
-from app.models.generative_job import GenerativeJobStatus
+from app.models.model.generative_job import GenerativeJobStatus
 
 GENERATIVE_JOB_STATUS_LABELS: dict[str, tuple[str, str | None]] = {
     GenerativeJobStatus.PENDING.value: ("等待中", "排队中"),

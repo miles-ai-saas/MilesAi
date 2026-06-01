@@ -1,7 +1,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.repository import BaseRepository
-from app.models.tenant import Tenant
+from app.models.platform.tenant import Tenant
 
 
 class TenantRepository(BaseRepository[Tenant]):

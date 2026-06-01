@@ -12,7 +12,7 @@ from app.tenant.audit_log.schemas.audit_log import TenantAuditLogOut
 from app.tenant.audit_log.schemas.meta import AuditMetaOut
 from app.common.schema import PageParams, PageResult
 from app.core.tenant import TenantContext
-from app.models.user import User
+from app.models.platform.user import User
 
 
 async def write_tenant_audit_log(

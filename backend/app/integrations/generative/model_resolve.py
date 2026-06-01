@@ -8,7 +8,7 @@ from sqlalchemy import case, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.model import ModelConfig
-from app.models.model_catalog import ModelVendor
+from app.models.model.catalog import ModelVendor
 
 # 未显式指定 model_config_id 时的厂商优先顺序：万相(qwen) → 豆包 → 其它
 _VENDOR_PRIORITY = case(

@@ -9,8 +9,8 @@ from app.common.schema import PageParams, PageResult
 from app.models.agent import Agent
 from app.models.flow import Flow
 from app.models.kb import Document, KnowledgeBase
-from app.models.tenant import Tenant, TenantStatus
-from app.models.user import User
+from app.models.platform.tenant import Tenant, TenantStatus
+from app.models.platform.user import User
 
 
 class AdminTenantRepository(TenantRepository):

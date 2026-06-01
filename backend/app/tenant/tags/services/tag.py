@@ -19,7 +19,7 @@ from app.common.exceptions import BadRequestError, ConflictError, NotFoundError
 from app.core.service import BaseService
 from app.core.soft_delete import is_marked_deleted, mark_deleted, not_deleted
 from app.core.tenant import TenantContext, assert_tenant_access, tenant_filters
-from app.models.tag import EntityTagBinding, TagEntityType, TenantTag
+from app.models.meta.tag import EntityTagBinding, TagEntityType, TenantTag
 from app.tenant.categories.services.category import slugify
 from app.tenant.tags.meta import tags_meta_dict
 from app.tenant.tags.schemas.meta import TagMetaOut

@@ -10,7 +10,7 @@ from app.common.exceptions import NotFoundError
 from app.core.service import BaseService
 from app.core.soft_delete import is_marked_deleted
 from app.core.tenant import TenantContext, assert_tenant_access, tenant_filters
-from app.models.agent_chat_call import AgentChatCall
+from app.models.agent.chat_call import AgentChatCall
 from app.tenant.agents.repositories.agent import AgentRepository
 from app.tenant.agents.schemas.stats import AgentStatsOut, AgentStatsPoint
 

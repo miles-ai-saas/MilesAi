@@ -4,7 +4,7 @@
 
 import type { BreadcrumbItem } from "@/lib/nav-config";
 import { AppBreadcrumb } from "@/components/layout/AppBreadcrumb";
-import { SectionLink } from "@/components/layout/SectionLink";
+import { SectionLinks } from "@/components/layout/SectionLink";
 import { UserMenu } from "@/components/layout/UserMenu";
 
 export function SystemTopBar({ breadcrumbs, onMenuOpen }: { breadcrumbs: BreadcrumbItem[]; onMenuOpen: () => void }) {
@@ -25,7 +25,7 @@ export function SystemTopBar({ breadcrumbs, onMenuOpen }: { breadcrumbs: Breadcr
       </div>
 
       <div className="flex shrink-0 items-center gap-3 border-l border-line-soft pl-3">
-        <SectionLink section="system" />
+        <SectionLinks current="system" />
         <UserMenu variant="header" />
       </div>
     </header>

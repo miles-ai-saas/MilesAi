@@ -23,8 +23,8 @@ from app.common.exceptions import BadRequestError
 from app.core.soft_delete import not_deleted
 from app.integrations.rerank.model_meta import ensure_rerank_model_type
 from app.models.model import ModelConfig
-from app.models.model_catalog import ModelPublishStatus
-from app.models.model_tenant_credential import ModelTenantCredential
+from app.models.model.catalog import ModelPublishStatus
+from app.models.model.tenant_credential import ModelTenantCredential
 from app.tenant.models.services.model_resolve import load_tenant_credential
 
 

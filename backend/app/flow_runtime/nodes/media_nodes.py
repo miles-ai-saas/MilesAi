@@ -20,7 +20,7 @@ from app.flow_runtime.types import RunContext
 from app.infra.db import AsyncSessionLocal
 from app.rag.parse.audio_parser import parse_audio
 from app.rag.parse.image_parser import parse_image
-from app.models.attachment import Attachment
+from app.models.media.attachment import Attachment
 from app.tenant.attachments.services.attachment import AttachmentService
 
 

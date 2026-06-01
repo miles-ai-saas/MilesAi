@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.soft_delete import not_deleted
 from app.flow_runtime.templates.registry import load_flow_template_graph
 from app.models.flow import Flow, FlowStatus, FlowVersion
-from app.models.tenant import Tenant
+from app.models.platform.tenant import Tenant
 
 SEED_FLOW_SPECS: list[dict] = [
     {

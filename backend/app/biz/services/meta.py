@@ -1,0 +1,57 @@
+from app.biz.schemas.meta import BizMetaOut, EnumItem
+
+# 八条服务线（与设计文档一致）
+SERVICE_LINES = [
+    EnumItem("brand_identity", "品牌形象"),
+    EnumItem("video_production", "影视拍摄"),
+    EnumItem("exhibition", "展览展示"),
+    EnumItem("event", "活动策划"),
+    EnumItem("training", "会务培训"),
+    EnumItem("signage", "标识设计"),
+    EnumItem("cultural_product", "文创产品"),
+    EnumItem("print", "宣传品设计印刷"),
+]
+
+PROJECT_STATUSES = [
+    EnumItem("draft", "草稿"),
+    EnumItem("active", "进行中"),
+    EnumItem("on_hold", "暂停"),
+    EnumItem("delivered", "已交付"),
+    EnumItem("closed", "已结项"),
+    EnumItem("cancelled", "已取消"),
+]
+
+WORK_PACKAGE_STATUSES = [
+    EnumItem("pending", "待开始"),
+    EnumItem("in_progress", "进行中"),
+    EnumItem("review", "审核中"),
+    EnumItem("done", "已完成"),
+    EnumItem("cancelled", "已取消"),
+]
+
+INDUSTRIES = [
+    EnumItem("government", "政府机关"),
+    EnumItem("enterprise", "企业"),
+    EnumItem("park", "园区"),
+    EnumItem("commercial", "商业综合体"),
+    EnumItem("tourism", "文旅"),
+    EnumItem("other", "其他"),
+]
+
+CONFIDENTIALITY_LEVELS = [
+    EnumItem("normal", "普通"),
+    EnumItem("internal", "内部"),
+    EnumItem("restricted", "涉密"),
+]
+
+
+class BizMetaService:
+    @staticmethod
+    def get_meta() -> BizMetaOut:
+        return BizMetaOut(
+            service_lines=SERVICE_LINES,
+            project_statuses=PROJECT_STATUSES,
+            work_package_statuses=WORK_PACKAGE_STATUSES,
+            industries=INDUSTRIES,
+            confidentiality_levels=CONFIDENTIALITY_LEVELS,
+        )

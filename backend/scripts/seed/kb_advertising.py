@@ -20,8 +20,8 @@ from app.infra.storage import build_object_key, upload_bytes
 from app.integrations.embeddings.model_meta import embedding_dimension_from_model
 from app.models.kb import Document, DocumentStatus, KnowledgeBase
 from app.models.model import ModelConfig
-from app.models.model_catalog import ModelCapabilityType
-from app.models.tenant import Tenant
+from app.models.model.catalog import ModelCapabilityType
+from app.models.platform.tenant import Tenant
 from app.tenant.kb.services.ingest import run_ingest
 from app.tenant.kb.services.quota import apply_storage_delta
 

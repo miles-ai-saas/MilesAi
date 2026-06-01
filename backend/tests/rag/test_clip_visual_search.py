@@ -14,7 +14,7 @@ from app.integrations.langchain.visual_embeddings import (
 )
 from app.models.kb import KnowledgeBase
 from app.models.model import ModelConfig
-from app.models.model_catalog import ModelCapabilityType
+from app.models.model.catalog import ModelCapabilityType
 
 
 def _clip_model() -> ModelConfig:

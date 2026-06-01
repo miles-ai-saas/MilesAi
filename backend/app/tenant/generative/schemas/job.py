@@ -3,7 +3,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-from app.models.generative_job import GenerativeJobStatus
+from app.models.model.generative_job import GenerativeJobStatus
 
 
 class GenerativeJobOut(BaseModel):

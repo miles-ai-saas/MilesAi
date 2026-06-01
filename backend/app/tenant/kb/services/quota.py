@@ -15,10 +15,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.common.exceptions import BadRequestError, ForbiddenError
 from app.core.soft_delete import not_deleted
-from app.models.attachment import Attachment
+from app.models.media.attachment import Attachment
 from app.models.kb import Document, KnowledgeBase
-from app.models.system import SystemConfig
-from app.models.tenant import Tenant
+from app.models.platform.system import SystemConfig
+from app.models.platform.tenant import Tenant
 
 DEFAULT_MAX_FILE_MB = 50
 

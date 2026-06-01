@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
 from app.core.tenant import TenantContext
-from app.models.system import SystemConfig
+from app.models.platform.system import SystemConfig
 from app.tenant.system.schemas.config import (
     ConfigDefinitionOut,
     RuntimeInfoOut,

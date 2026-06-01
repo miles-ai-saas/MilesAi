@@ -13,7 +13,7 @@ from app.infra.db import Base
 from app.models.base import TimestampMixin, UUIDPrimaryKeyMixin
 
 if TYPE_CHECKING:
-    from app.models.user import User
+    from app.models.platform.user import User
 
 
 class TenantStatus(str, enum.Enum):

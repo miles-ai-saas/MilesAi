@@ -9,7 +9,7 @@ from jose import JWTError, jwt
 
 from app.core.config import get_settings
 from app.common.exceptions import UnauthorizedError
-from app.models.user import User
+from app.models.platform.user import User
 
 settings = get_settings()
 

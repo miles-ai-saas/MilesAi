@@ -6,7 +6,7 @@
 """
 
 from app.common.schemas.enum_meta import META_SCHEMA_VERSION, enum_options
-from app.models.tag import TagEntityType
+from app.models.meta.tag import TagEntityType
 
 ENTITY_TYPE_LABELS: dict[str, tuple[str, str | None]] = {
     TagEntityType.AGENT.value: ("智能体", "绑定 agt_agents"),

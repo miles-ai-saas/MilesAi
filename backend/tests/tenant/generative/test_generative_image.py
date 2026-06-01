@@ -10,7 +10,7 @@ from app.integrations.generative.registry import resolve_invoke_mode
 from app.integrations.generative.types import ImageGenerateResult
 from app.integrations.langchain.tool_agent import _artifacts_from_tool_output
 from app.models.model import ModelConfig
-from app.models.model_catalog import ModelCapabilityType, ModelVendor
+from app.models.model.catalog import ModelCapabilityType, ModelVendor
 from app.integrations.generative.constants import (
     INVOKE_DASHSCOPE_T2I,
     INVOKE_OPENAI_IMAGES,

@@ -7,7 +7,7 @@
 """
 
 from app.common.schemas.enum_meta import META_SCHEMA_VERSION, enum_options
-from app.models.category import CategoryDomain
+from app.models.meta.category import CategoryDomain
 
 # value 与 CategoryDomain 存库一致
 DOMAIN_LABELS: dict[str, tuple[str, str | None]] = {

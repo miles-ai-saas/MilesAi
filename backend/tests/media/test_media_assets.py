@@ -22,8 +22,8 @@ def test_source_from_purpose():
 def test_video_promote_builds_markdown():
     from uuid import uuid4
 
-    from app.models.attachment import Attachment
-    from app.models.media_asset import MediaAsset
+    from app.models.media.attachment import Attachment
+    from app.models.media.media_asset import MediaAsset
     from app.tenant.media_assets.schemas.media_asset import PromoteToKbRequest
     from app.tenant.media_assets.services.media_asset import MediaAssetService
 

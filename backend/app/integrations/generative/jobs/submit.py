@@ -7,7 +7,7 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.tenant import TenantContext
-from app.models.generative_job import GenerativeJob, GenerativeJobStatus
+from app.models.model.generative_job import GenerativeJob, GenerativeJobStatus
 
 
 async def submit_video_generative_job(

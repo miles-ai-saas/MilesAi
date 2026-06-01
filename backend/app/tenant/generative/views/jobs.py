@@ -11,7 +11,7 @@ from app.common.schema import ApiResponse, PageParams, PageResult
 from app.core.deps import get_page_params, require_permissions
 from app.core.tenant import TenantContext
 from app.infra.db import get_db
-from app.models.generative_job import GenerativeJobStatus
+from app.models.model.generative_job import GenerativeJobStatus
 from app.tenant.generative.schemas.job import (
     GenerativeJobBatchCancelBody,
     GenerativeJobBatchCancelResult,

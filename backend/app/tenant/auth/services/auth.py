@@ -9,8 +9,8 @@ from sqlalchemy.orm import selectinload
 from app.common.exceptions import BadRequestError, UnauthorizedError
 from app.core.security import decode_token, issue_tokens_for_user, verify_password
 from app.core.tenant import TenantContext
-from app.models.role import Role
-from app.models.user import User
+from app.models.platform.role import Role
+from app.models.platform.user import User
 from app.tenant.system.repositories.user import UserRepository
 from app.tenant.auth.schemas.auth import LoginRequest, TokenResponse, UserInfo, UserSessionOut
 from app.tenant.auth.services import session_store

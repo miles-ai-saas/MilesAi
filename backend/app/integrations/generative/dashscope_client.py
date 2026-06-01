@@ -11,7 +11,7 @@ import httpx
 from app.common.exceptions import AppError, BadRequestError
 from app.integrations.http_constants import HTTP_DEFAULT_TIMEOUT_SEC
 from app.models.model import ModelConfig
-from app.models.model_catalog import DEFAULT_API_BASES, ModelVendor
+from app.models.model.catalog import DEFAULT_API_BASES, ModelVendor
 
 
 def dashscope_api_base(model: ModelConfig) -> str:

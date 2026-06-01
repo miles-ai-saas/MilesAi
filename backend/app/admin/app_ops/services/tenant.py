@@ -15,7 +15,7 @@ from app.admin.app_ops.schemas.tenant import (
     TenantQuotaUpdate,
     TenantUsageStats,
 )
-from app.models.tenant import Tenant, TenantStatus
+from app.models.platform.tenant import Tenant, TenantStatus
 from app.common.schema import PageParams, PageResult
 
 

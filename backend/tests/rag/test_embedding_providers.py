@@ -19,7 +19,7 @@ from app.integrations.embeddings.providers.openai_compatible import (
 )
 from app.integrations.embeddings.registry import embed_texts_for_model, known_invoke_modes
 from app.models.model import ModelConfig
-from app.models.model_catalog import ModelCapabilityType, ModelVendor
+from app.models.model.catalog import ModelCapabilityType, ModelVendor
 
 
 def _qwen_embedding_model(**kwargs) -> ModelConfig:

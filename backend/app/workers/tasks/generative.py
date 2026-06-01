@@ -11,7 +11,7 @@ from app.integrations.generative.jobs.runner import (
     run_generative_image_job_async,
     run_generative_video_job_async,
 )
-from app.models.task import TaskStatus
+from app.models.task.task_record import TaskStatus
 from app.tenant.tasks.services.sync import sync_task_by_celery_id
 from app.workers.app import celery_app
 

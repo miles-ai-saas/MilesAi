@@ -14,7 +14,7 @@ from app.common.exceptions import AppError, UnauthorizedError
 from app.core.config import get_settings
 from app.core.tenant import TenantContext
 from app.infra.db import AsyncSessionLocal
-from app.models.generative_job import GenerativeJobStatus
+from app.models.model.generative_job import GenerativeJobStatus
 from app.tenant.agents.schemas.agent import ChatMediaIn, ChatRequest, ChatResponse
 from app.tenant.agents.services.agent import AgentService
 from app.tenant.agents.ws import protocol as proto

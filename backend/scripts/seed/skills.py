@@ -12,7 +12,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.soft_delete import not_deleted
-from app.models.category import CategoryDomain
+from app.models.meta.category import CategoryDomain
 from app.tenant.skills.models import SkillPackage
 from app.tenant.skills.skill_layout import build_layout_index, merge_layout_into_config
 from app.tenant.skills.skill_md import build_skill_md

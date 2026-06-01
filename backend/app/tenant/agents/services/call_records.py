@@ -14,8 +14,8 @@ from app.common.trace import get_trace_id
 from app.core.service import BaseService
 from app.core.soft_delete import is_marked_deleted
 from app.core.tenant import TenantContext, assert_tenant_access, tenant_filters
-from app.models.agent_chat_call import AgentChatCall
-from app.models.user import User
+from app.models.agent.chat_call import AgentChatCall
+from app.models.platform.user import User
 from app.tenant.agents.repositories.agent import AgentRepository
 from app.tenant.agents.schemas.agent import ChatRequest, ChatResponse
 from app.tenant.agents.schemas.call_records import AgentCallRecordDetailOut, AgentCallRecordOut

@@ -30,12 +30,12 @@ from app.integrations.embeddings.model_meta import (
 from app.common.exceptions import BadRequestError
 from app.core.soft_delete import not_deleted
 from app.models.model import ModelConfig
-from app.models.model_catalog import (
+from app.models.model.catalog import (
     BUILTIN_EMBEDDING_DEFAULT_CODE,
     ModelCapabilityType,
     ModelPublishStatus,
 )
-from app.models.model_tenant_credential import ModelTenantCredential
+from app.models.model.tenant_credential import ModelTenantCredential
 from app.tenant.models.services.model_resolve import load_tenant_credential
 
 

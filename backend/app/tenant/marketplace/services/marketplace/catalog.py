@@ -6,7 +6,7 @@ from sqlalchemy import exists, func, or_, select
 from sqlalchemy.orm import selectinload
 
 from app.common.exceptions import BadRequestError, NotFoundError
-from app.models.tag import EntityTagBinding, TagEntityType, TenantTag
+from app.models.meta.tag import EntityTagBinding, TagEntityType, TenantTag
 from app.common.schema import PageParams, PageResult
 from app.tenant.marketplace.models import (
     AppCategory,

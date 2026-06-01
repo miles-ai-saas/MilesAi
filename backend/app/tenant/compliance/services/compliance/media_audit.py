@@ -20,7 +20,7 @@ from sqlalchemy import select
 from app.integrations.langchain.chat_models import ainvoke_chat
 from app.core.logging import get_logger
 from app.models.model import ModelConfig
-from app.models.model_catalog import ModelCapabilityType
+from app.models.model.catalog import ModelCapabilityType
 from app.tenant.attachments.services.attachment import AttachmentService
 
 logger = get_logger(__name__)

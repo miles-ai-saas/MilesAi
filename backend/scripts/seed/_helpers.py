@@ -6,8 +6,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.soft_delete import not_deleted
-from app.models.category import CategoryDomain, SysCategory
-from app.models.tenant import Tenant
+from app.models.meta.category import CategoryDomain, SysCategory
+from app.models.platform.tenant import Tenant
 
 
 async def list_tenant_ids(session: AsyncSession) -> list:

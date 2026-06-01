@@ -5,7 +5,7 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.tenant import TenantContext
-from app.models.tenant import Tenant
+from app.models.platform.tenant import Tenant
 from app.tenant.system.repositories.tenant import TenantRepository
 from app.common.schema import PageParams, PageResult
 from app.tenant.system.schemas.tenant import TenantCreate, TenantOut, TenantUpdate

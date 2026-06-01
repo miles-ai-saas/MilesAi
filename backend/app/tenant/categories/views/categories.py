@@ -13,7 +13,7 @@ from app.infra.db import get_db
 from app.core.deps import get_tenant_context
 from app.common.response import ok
 from app.core.tenant import TenantContext
-from app.models.category import CategoryDomain
+from app.models.meta.category import CategoryDomain
 from app.common.exceptions import BadRequestError
 from app.common.schema import ApiResponse
 from app.tenant.categories.schemas.category import CategoryOut

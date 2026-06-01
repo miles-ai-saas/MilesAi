@@ -3,7 +3,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-from app.models.tenant import TenantStatus
+from app.models.platform.tenant import TenantStatus
 
 
 class AdminTenantCreate(BaseModel):

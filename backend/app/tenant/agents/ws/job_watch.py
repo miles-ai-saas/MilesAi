@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.tenant import TenantContext
 from app.infra.db import AsyncSessionLocal
-from app.models.generative_job import GenerativeJobStatus
+from app.models.model.generative_job import GenerativeJobStatus
 from app.tenant.agents.ws import protocol as proto
 from app.integrations.generative.jobs.runner import get_generative_job_for_tenant
 from app.tenant.generative.schemas.job import GenerativeJobOut

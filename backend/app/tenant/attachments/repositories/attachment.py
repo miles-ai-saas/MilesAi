@@ -3,7 +3,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.repository import BaseRepository
-from app.models.attachment import Attachment
+from app.models.media.attachment import Attachment
 
 
 class AttachmentRepository(BaseRepository[Attachment]):

@@ -1,12 +1,12 @@
 /**
- * 路由导航配置（链路 §7）：工作台/系统管理分区、侧栏项、面包屑、全幅页面判定。
- * 壳层消费方：`AppShell`、`SystemShell`、`WorkbenchHeaderNav`。
+ * 路由导航配置（链路 §7）：工作台/业务中心/组织设置分区、侧栏项、面包屑、全幅页面判定。
+ * 壳层消费方：`AppShell`、`BusinessShell`、`SystemShell`、`WorkbenchHeaderNav`。
  */
 
 import type { UserInfo } from "./types";
 import { hasPermission } from "./permissions";
 
-export type AppSection = "workbench" | "system";
+export type AppSection = "workbench" | "business" | "system";
 
 export type NavItem = { href: string; label: string };
 
@@ -18,6 +18,13 @@ export type SystemNavItem = NavItem & {
   permission?: string;
 };
 
+export type BizNavIcon = "clients" | "projects" | "dashboard" | "opportunities" | "contracts";
+
+export type BizNavItem = NavItem & {
+  icon: BizNavIcon;
+  permission?: string;
+};
+
 export type BreadcrumbItem = { label: string; href?: string };
 
 export type NavGroup = { title: string; items: NavItem[] };
@@ -26,7 +33,8 @@ export const WORKBENCH_PREFIX = "/workbench";
 
 export const APP_SECTIONS: { id: AppSection; label: string; home: string }[] = [
   { id: "workbench", label: "AI 工作台", home: "/workbench/dashboard" },
-  { id: "system", label: "系统管理", home: "/system/users" },
+  { id: "business", label: "业务中心", home: "/business/dashboard" },
+  { id: "system", label: "组织设置", home: "/system/users" },
 ];
 
 export const WORKBENCH_NAV: NavGroup[] = [
@@ -80,6 +88,29 @@ export const WORKBENCH_NAV: NavGroup[] = [
   },
 ];
 
+export const BUSINESS_NAV: { title: string; items: BizNavItem[] }[] = [
+  {
+    title: "业务总览",
+    items: [
+      { href: "/business/dashboard", label: "仪表盘", icon: "dashboard", permission: "biz:dashboard:read" },
+    ],
+  },
+  {
+    title: "销售",
+    items: [
+      { href: "/business/clients", label: "客户", icon: "clients", permission: "biz:client:read" },
+      { href: "/business/opportunities", label: "商机", icon: "opportunities", permission: "biz:opportunity:read" },
+    ],
+  },
+  {
+    title: "交付",
+    items: [
+      { href: "/business/projects", label: "项目", icon: "projects", permission: "biz:project:read" },
+      { href: "/business/contracts", label: "合同", icon: "contracts", permission: "biz:contract:read" },
+    ],
+  },
+];
+
 export const SYSTEM_NAV: { title: string; items: SystemNavItem[] }[] = [
   {
     title: "权限管理",
@@ -117,6 +148,14 @@ export function filterSystemNav(user: UserInfo | null | undefined): { title: str
   })).filter((g) => g.items.length > 0);
 }
 
+/** 按用户权限过滤业务中心侧栏。 */
+export function filterBusinessNav(user: UserInfo | null | undefined): { title: string; items: BizNavItem[] }[] {
+  return BUSINESS_NAV.map((group) => ({
+    ...group,
+    items: group.items.filter((item) => !item.permission || hasPermission(user, item.permission)),
+  })).filter((g) => g.items.length > 0);
+}
+
 export function getSystemBreadcrumbs(pathname: string): BreadcrumbItem[] {
   const home: BreadcrumbItem = { label: "用户管理", href: "/system/users" };
 
@@ -132,17 +171,42 @@ export function getSystemBreadcrumbs(pathname: string): BreadcrumbItem[] {
   return [home];
 }
 
+export function getBusinessBreadcrumbs(pathname: string): BreadcrumbItem[] {
+  const home: BreadcrumbItem = { label: "仪表盘", href: "/business/dashboard" };
+
+  if (pathname === "/business/dashboard" || pathname === "/business") {
+    return [{ label: "仪表盘" }];
+  }
+  if (pathname === "/business/clients" || pathname.startsWith("/business/clients/")) {
+    return [home, { label: "客户" }];
+  }
+  if (pathname === "/business/opportunities" || pathname.startsWith("/business/opportunities/")) {
+    return [home, { label: "商机" }];
+  }
+  if (pathname === "/business/projects" || pathname.startsWith("/business/projects/")) {
+    return [home, { label: "项目" }];
+  }
+  if (pathname === "/business/contracts" || pathname.startsWith("/business/contracts/")) {
+    return [home, { label: "合同" }];
+  }
+
+  return [home];
+}
+
 export function getAppSection(pathname: string): AppSection {
   if (pathname.startsWith("/system")) return "system";
+  if (pathname.startsWith("/business")) return "business";
   return "workbench";
 }
 
-export function getNavForSection(section: AppSection): { title: string; items: NavItem[] }[] {
-  return section === "system" ? SYSTEM_NAV : WORKBENCH_NAV;
+export function getNavForSection(section: AppSection): NavGroup[] {
+  if (section === "system") return SYSTEM_NAV;
+  if (section === "business") return BUSINESS_NAV;
+  return WORKBENCH_NAV;
 }
 
-export function getOtherSection(current: AppSection) {
-  return APP_SECTIONS.find((s) => s.id !== current)!;
+export function getOtherSections(current: AppSection) {
+  return APP_SECTIONS.filter((s) => s.id !== current);
 }
 
 export function isNavActive(pathname: string, href: string): boolean {
@@ -155,6 +219,21 @@ export function isNavActive(pathname: string, href: string): boolean {
   if (href === "/workbench/agents/chat") {
     return pathname === "/workbench/agents/chat" || pathname.startsWith("/workbench/agents/chat/");
   }
+  if (href === "/business/dashboard") {
+    return pathname === "/business/dashboard" || pathname === "/business";
+  }
+  if (href === "/business/clients") {
+    return pathname === "/business/clients" || pathname.startsWith("/business/clients/");
+  }
+  if (href === "/business/opportunities") {
+    return pathname === "/business/opportunities" || pathname.startsWith("/business/opportunities/");
+  }
+  if (href === "/business/projects") {
+    return pathname === "/business/projects" || pathname.startsWith("/business/projects/");
+  }
+  if (href === "/business/contracts") {
+    return pathname === "/business/contracts" || pathname.startsWith("/business/contracts/");
+  }
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
@@ -164,12 +243,14 @@ export function isNavGroupActive(pathname: string, group: NavGroup): boolean {
 
 export function getPageTitle(pathname: string): string {
   const section = getAppSection(pathname);
-  const groups = section === "system" ? SYSTEM_NAV : WORKBENCH_NAV;
+  const groups = section === "system" ? SYSTEM_NAV : section === "business" ? BUSINESS_NAV : WORKBENCH_NAV;
   for (const g of groups) {
     const item = g.items.find((i) => isNavActive(pathname, i.href));
     if (item) return item.label;
   }
-  return section === "system" ? "系统管理" : "AI 工作台";
+  if (section === "system") return "组织设置";
+  if (section === "business") return "业务中心";
+  return "AI 工作台";
 }
 
 const FLOW_EDIT_PATH = /\/workbench\/flows\/[^/]+\/edit\/?$/;

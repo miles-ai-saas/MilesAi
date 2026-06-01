@@ -3,7 +3,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.repository import BaseRepository
-from app.models.media_asset import MediaAsset
+from app.models.media.media_asset import MediaAsset
 
 
 class MediaAssetRepository(BaseRepository[MediaAsset]):

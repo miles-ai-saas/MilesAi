@@ -10,7 +10,7 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.model import ModelConfig
-from app.models.model_usage_log import ModelUsageLog
+from app.models.model.usage_log import ModelUsageLog
 
 _chat_usage_acc: ContextVar[tuple[int, int] | None] = ContextVar("_chat_usage_acc", default=None)
 

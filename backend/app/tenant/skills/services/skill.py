@@ -12,8 +12,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.common.exceptions import BadRequestError, ConflictError, NotFoundError
 from app.core.tenant import TenantContext, assert_tenant_access, tenant_filters
-from app.models.category import CategoryDomain, SysCategory
-from app.models.tag import TagEntityType
+from app.models.meta.category import CategoryDomain, SysCategory
+from app.models.meta.tag import TagEntityType
 from app.tenant.categories.services.category import CategoryService
 from app.tenant.tags.services.tag import TagService
 from app.tenant.skills.models import SkillPackage

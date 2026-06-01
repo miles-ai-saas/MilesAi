@@ -12,7 +12,7 @@ from app.common.exceptions import BadRequestError, NotFoundError
 from app.core.service import BaseService
 from app.core.soft_delete import is_marked_deleted
 from app.core.tenant import TenantContext, assert_tenant_access, tenant_filters
-from app.models.agent_chat_session import AgentChatMessage, AgentChatSession
+from app.models.agent.chat_session import AgentChatMessage, AgentChatSession
 from app.tenant.agents.repositories.agent import AgentRepository
 from app.tenant.agents.schemas.agent import ChatRequest, ChatResponse
 from app.tenant.agents.schemas.chat_sessions import (

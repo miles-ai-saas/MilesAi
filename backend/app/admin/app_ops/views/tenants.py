@@ -13,7 +13,7 @@ from app.common.response import ok, page_ok
 from app.common.schema import PageParams
 from app.infra.db import get_db
 from app.core.deps import get_page_params
-from app.models.tenant import TenantStatus
+from app.models.platform.tenant import TenantStatus
 
 router = APIRouter()
 

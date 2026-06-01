@@ -11,7 +11,7 @@ from app.integrations.generative.registry import resolve_invoke_mode
 from app.integrations.generative.types import VideoGenerateResult
 from app.integrations.langchain.tool_agent import _artifacts_from_tool_output
 from app.models.model import ModelConfig
-from app.models.model_catalog import ModelCapabilityType, ModelVendor
+from app.models.model.catalog import ModelCapabilityType, ModelVendor
 
 
 def _video_model(**kwargs) -> ModelConfig:

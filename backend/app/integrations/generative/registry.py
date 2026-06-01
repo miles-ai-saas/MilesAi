@@ -20,7 +20,7 @@ from app.integrations.generative.constants import (
     INVOKE_VOLCENGINE_VIDEO,
 )
 from app.models.model import ModelConfig
-from app.models.model_catalog import ModelCapabilityType, ModelVendor
+from app.models.model.catalog import ModelCapabilityType, ModelVendor
 
 
 def resolve_invoke_mode(model: ModelConfig, *, capability: str) -> str:

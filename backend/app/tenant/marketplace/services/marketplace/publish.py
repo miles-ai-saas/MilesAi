@@ -17,7 +17,7 @@ from app.tenant.marketplace.schemas.marketplace import (
     MarketplaceAppOut,
     MarketplaceAppUpdate,
 )
-from app.models.tag import TagEntityType
+from app.models.meta.tag import TagEntityType
 from app.tenant.marketplace.util import load_flow_template_graph
 from app.tenant.tags.services.tag import TagService
 

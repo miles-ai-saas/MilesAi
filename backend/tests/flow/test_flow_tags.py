@@ -8,7 +8,7 @@ import pytest
 
 from app.core.tenant import TenantContext
 from app.models.flow import Flow, FlowStatus
-from app.models.tag import TagEntityType
+from app.models.meta.tag import TagEntityType
 from app.tenant.flows.schemas.flow import FlowCreate, FlowUpdate
 from app.tenant.flows.services.flow import FlowService
 from app.tenant.tags.schemas.tag import TagRefOut

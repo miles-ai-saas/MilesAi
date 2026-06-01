@@ -7,6 +7,7 @@ import { agentsApi } from "./agents";
 import { attachmentsApi } from "./attachments";
 import { auditApi } from "./audit";
 import { authApi } from "./auth";
+import { bizApi } from "./biz";
 import { complianceApi } from "./compliance";
 import { flowsApi } from "./flows";
 import { generativeApi } from "./generative";
@@ -32,6 +33,7 @@ export const api = {
   ...systemApi,
   ...monitorApi,
   ...auditApi,
+  ...bizApi,
   ...complianceApi,
   ...tagsApi,
   ...promptsApi,

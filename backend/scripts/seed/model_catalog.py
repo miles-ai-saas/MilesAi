@@ -24,7 +24,7 @@ from app.integrations.rerank.constants import (
     INVOKE_MODE_DASHSCOPE,
 )
 from app.models.model import ModelConfig
-from app.models.model_catalog import (
+from app.models.model.catalog import (
     DEFAULT_API_BASES,
     ModelCapabilityType,
     ModelPublishStatus,

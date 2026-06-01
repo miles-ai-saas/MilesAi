@@ -22,7 +22,7 @@ from app.integrations.embeddings.constants import (
     INVOKE_MODE_OPENAI_COMPATIBLE,
 )
 from app.models.model import ModelConfig
-from app.models.model_catalog import DEFAULT_API_BASES, ModelCapabilityType, ModelVendor
+from app.models.model.catalog import DEFAULT_API_BASES, ModelCapabilityType, ModelVendor
 
 # 未显式配置 invoke_mode 时，按 vendor 选择默认后端
 _VENDOR_DEFAULT_INVOKE_MODE: dict[str, str] = {

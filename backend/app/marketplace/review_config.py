@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.common.exceptions import ForbiddenError
 from app.core.config import get_settings
 from app.core.tenant import TenantContext
-from app.models.system import SystemConfig
+from app.models.platform.system import SystemConfig
 
 ReviewMode = Literal["platform", "tenant", "off"]
 VALID_REVIEW_MODES = frozenset({"platform", "tenant", "off"})

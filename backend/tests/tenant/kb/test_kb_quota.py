@@ -6,7 +6,7 @@ from uuid import uuid4
 import pytest
 
 from app.common.exceptions import ForbiddenError
-from app.models.tenant import Tenant
+from app.models.platform.tenant import Tenant
 from app.tenant.kb.services.quota import assert_can_create_kb, assert_can_upload_bytes
 
 

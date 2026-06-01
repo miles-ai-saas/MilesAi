@@ -6,7 +6,7 @@ from uuid import UUID
 
 from app.infra.db import AsyncSessionLocal
 from app.integrations.generative.jobs.errors import GenerativeJobCancelled
-from app.models.generative_job import GenerativeJob, GenerativeJobStatus
+from app.models.model.generative_job import GenerativeJob, GenerativeJobStatus
 
 
 async def update_generative_job_progress(

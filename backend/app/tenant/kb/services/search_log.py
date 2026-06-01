@@ -15,7 +15,7 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.kb_search_log import KbSearchLog
+from app.models.kb.search_log import KbSearchLog
 from app.rag.retrieve.constants import RETRIEVAL_VECTOR
 
 _QUERY_MAX_LEN = 2000

@@ -14,7 +14,7 @@ from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.agent import Agent
-from app.models.category import CategoryDomain, SysCategory
+from app.models.meta.category import CategoryDomain, SysCategory
 from app.tenant.prompts.models import PromptTemplate
 from app.tenant.skills.models import SkillPackage
 from app.tenant.tools.models import Tool

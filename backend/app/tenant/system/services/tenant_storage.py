@@ -8,7 +8,7 @@ from app.core.service import BaseService
 from app.core.tenant import TenantContext
 from app.infra.storage.resolve import resolve_object_storage_async
 from app.infra.storage.s3 import S3CompatibleObjectStorage
-from app.models.tenant_object_storage import TenantObjectStorageConfig
+from app.models.storage.tenant_object_storage import TenantObjectStorageConfig
 from app.tenant.audit_log.services.audit_log import write_tenant_audit_log
 from app.tenant.system.schemas.tenant_storage import (
     TenantObjectStorageOut,

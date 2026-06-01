@@ -11,7 +11,7 @@ from app.integrations.litellm.adapter import (
 )
 from app.common.exceptions import AppError, BadRequestError
 from app.models.model import ModelConfig
-from app.models.model_catalog import ModelCapabilityType, ModelVendor
+from app.models.model.catalog import ModelCapabilityType, ModelVendor
 
 
 def _model(**kwargs) -> ModelConfig:

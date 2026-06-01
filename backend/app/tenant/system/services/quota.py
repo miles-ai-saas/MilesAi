@@ -15,7 +15,7 @@ from app.integrations.generative.quota import (
 )
 from app.models.agent import Agent
 from app.models.flow import Flow
-from app.models.tenant import Tenant
+from app.models.platform.tenant import Tenant
 from app.tenant.kb.services.quota import (
     get_kb_quota_out,
 )

@@ -10,8 +10,8 @@ from sqlalchemy.orm import selectinload
 from app.common.exceptions import UnauthorizedError
 from app.core.security import safe_decode_token
 from app.core.tenant import TenantContext
-from app.models.role import Role
-from app.models.user import User
+from app.models.platform.role import Role
+from app.models.platform.user import User
 
 
 def extract_bearer_token(websocket: WebSocket) -> str | None:

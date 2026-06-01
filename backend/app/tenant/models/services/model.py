@@ -24,8 +24,8 @@ from app.tenant.models.services.model_resolve import (
 from app.core.soft_delete import is_marked_deleted, mark_deleted, not_deleted
 from app.core.service import BaseService
 from app.models.model import ModelConfig
-from app.models.model_tenant_credential import ModelTenantCredential
-from app.models.model_catalog import (
+from app.models.model.tenant_credential import ModelTenantCredential
+from app.models.model.catalog import (
     CATALOG_MODEL_TYPES,
     MODEL_TYPE_LABELS,
     ModelCapabilityType,

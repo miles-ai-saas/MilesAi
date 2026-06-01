@@ -18,7 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.common.exceptions import BadRequestError
 from app.core.tenant import TenantContext
-from app.models.category import CategoryDomain
+from app.models.meta.category import CategoryDomain
 from app.tenant.categories.services.category import CategoryService
 from app.tenant.skills.models import SkillPackage
 from app.tenant.skills.schemas.skill import SkillImportResult

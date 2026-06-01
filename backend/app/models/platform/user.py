@@ -9,11 +9,11 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.infra.db import Base
 from app.models.base import TimestampMixin, UUIDPrimaryKeyMixin
-from app.models.role import user_roles
+from app.models.platform.role import user_roles
 
 if TYPE_CHECKING:
-    from app.models.role import Role
-    from app.models.tenant import Tenant
+    from app.models.platform.role import Role
+    from app.models.platform.tenant import Tenant
 
 
 class User(UUIDPrimaryKeyMixin, TimestampMixin, Base):

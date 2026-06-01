@@ -14,7 +14,7 @@ from app.integrations.rerank.model_meta import (
 from app.integrations.rerank.providers.dashscope import DashScopeRerankProvider
 from app.integrations.rerank.registry import known_invoke_modes, rerank_documents_for_model
 from app.models.model import ModelConfig
-from app.models.model_catalog import ModelCapabilityType, ModelVendor
+from app.models.model.catalog import ModelCapabilityType, ModelVendor
 
 
 def _qwen_rerank_model(**kwargs) -> ModelConfig:

@@ -20,7 +20,7 @@ from app.integrations.generative.persist import PURPOSE_CHAT_GENERATED, persist_
 from app.integrations.generative.registry import resolve_invoke_mode
 from app.integrations.generative.tts.providers.dashscope_tts import generate_dashscope_tts
 from app.models.model import ModelConfig
-from app.models.model_catalog import ModelCapabilityType
+from app.models.model.catalog import ModelCapabilityType
 from app.tenant.models.services.model_resolve import resolve_model_for_invoke
 
 

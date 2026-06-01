@@ -10,6 +10,7 @@ const config: Config = {
     "./hooks/**/*.{js,ts,jsx,tsx}",
     "./lib/**/*.{js,ts,jsx,tsx}",
     "../shared/**/*.{js,ts,jsx,tsx}",
+    "!../shared/node_modules/**",
   ],
   theme: {
     extend: {

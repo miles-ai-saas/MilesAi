@@ -8,7 +8,7 @@ import pytest
 from app.common.exceptions import BadRequestError
 from app.integrations.generative.image.providers.volcengine_image import generate_volcengine_image
 from app.models.model import ModelConfig
-from app.models.model_catalog import ModelCapabilityType, ModelVendor
+from app.models.model.catalog import ModelCapabilityType, ModelVendor
 
 
 def _doubao_image_model(**kwargs) -> ModelConfig:

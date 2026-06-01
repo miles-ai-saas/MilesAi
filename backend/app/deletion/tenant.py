@@ -34,9 +34,9 @@ from app.models.agent import Agent
 from app.models.model import ModelConfig
 from app.models.flow import Flow
 from app.models.kb import Document, KnowledgeBase
-from app.models.role import Role, role_permissions, user_roles
-from app.models.task import CeleryTaskRecord
-from app.models.user import User
+from app.models.platform.role import Role, role_permissions, user_roles
+from app.models.task.task_record import CeleryTaskRecord
+from app.models.platform.user import User
 
 
 async def purge_tenant_data(db: AsyncSession, tenant_id: UUID) -> None:

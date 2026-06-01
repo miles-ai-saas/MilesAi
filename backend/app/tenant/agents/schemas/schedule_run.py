@@ -7,7 +7,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-from app.models.agent_schedule_run import AgentScheduleRun
+from app.models.agent.schedule_run import AgentScheduleRun
 
 
 class AgentScheduleRunOut(BaseModel):

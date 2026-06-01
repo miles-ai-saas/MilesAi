@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.admin.app_ops.schemas.dashboard import AdminDashboardSummaryOut
 from app.admin.models import AuditLog, BillingPlan, RiskEvent, TenantBill
-from app.models.tenant import Tenant, TenantStatus
+from app.models.platform.tenant import Tenant, TenantStatus
 
 
 class AdminDashboardService:

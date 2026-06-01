@@ -15,8 +15,8 @@ from app.integrations.generative import (
 )
 from app.integrations.generative.jobs.errors import GenerativeJobCancelled
 from app.integrations.generative.persist import PURPOSE_CHAT_GENERATED, PURPOSE_FLOW_GENERATED
-from app.models.generative_job import GenerativeJob, GenerativeJobStatus
-from app.models.user import User
+from app.models.model.generative_job import GenerativeJob, GenerativeJobStatus
+from app.models.platform.user import User
 
 logger = get_logger(__name__)
 

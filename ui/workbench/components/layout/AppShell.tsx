@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * 根布局壳层（链路 §7）：按路径选择工作台顶栏或 `SystemShell`；登录页无壳。
+ * 根布局壳层（链路 §7）：按路径选择工作台顶栏、`BusinessShell` 或 `SystemShell`；登录页无壳。
  * 鉴权补全见 §1：`fetchMe` 填充 user。
  */
 
@@ -11,8 +11,9 @@ import { useEffect } from "react";
 import { api } from "@/lib/api";
 import { useAuthHydrated, useAuthStore } from "@/lib/auth-store";
 import { BrandHeader } from "@/components/brand/brand-header";
+import { BusinessShell } from "@/components/layout/BusinessShell";
 import { SystemShell } from "@/components/layout/SystemShell";
-import { SectionLink } from "@/components/layout/SectionLink";
+import { SectionLinks } from "@/components/layout/SectionLink";
 import { UserMenu } from "@/components/layout/UserMenu";
 import { WorkbenchHeaderNav } from "@/components/layout/WorkbenchHeaderNav";
 import { getAppSection, isFullBleedPage, isFullHeightPage } from "@/lib/nav-config";
@@ -42,6 +43,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return <>{children}</>;
   }
 
+  if (section === "business") {
+    return (
+      <MetaCacheProvider>
+        <BusinessShell>{children}</BusinessShell>
+      </MetaCacheProvider>
+    );
+  }
+
   if (section === "system") {
     return (
       <MetaCacheProvider>
@@ -59,7 +68,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           {isWorkbench ? <WorkbenchHeaderNav pathname={pathname} /> : <div className="min-w-0 flex-1" />}
 
           <div className="flex shrink-0 items-center gap-3 border-l border-line-soft pl-3">
-            <SectionLink section={section} />
+            <SectionLinks current={section} />
             <UserMenu variant="header" />
           </div>
         </header>

@@ -13,7 +13,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.soft_delete import mark_deleted, not_deleted
-from app.models.category import CategoryDomain
+from app.models.meta.category import CategoryDomain
 from app.tenant.tools.builtin_registry import BUILTIN_SLUGS
 from app.tenant.tools.models import Tool, ToolType
 from app.tenant.tools.parameters import normalize_parameters

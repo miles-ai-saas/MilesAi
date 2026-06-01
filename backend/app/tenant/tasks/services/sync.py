@@ -9,7 +9,7 @@ from uuid import UUID
 from sqlalchemy import select
 
 from app.infra.db import get_sync_db
-from app.models.task import CeleryTaskRecord, TaskStatus
+from app.models.task.task_record import CeleryTaskRecord, TaskStatus
 
 
 def sync_task_by_celery_id(

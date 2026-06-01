@@ -17,8 +17,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
 from app.flow_runtime.templates.registry import load_flow_template_graph
-from app.models.tag import EntityTagBinding, TagEntityType, TenantTag
-from app.models.tenant import Tenant
+from app.models.meta.tag import EntityTagBinding, TagEntityType, TenantTag
+from app.models.platform.tenant import Tenant
 from app.tenant.categories.services.category import slugify
 from app.tenant.marketplace.models import AppCategory, MarketplaceApp, MarketplaceAppStatus
 

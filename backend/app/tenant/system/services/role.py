@@ -9,7 +9,7 @@ from sqlalchemy.orm import selectinload
 from app.common.exceptions import BadRequestError, NotFoundError
 from app.core.soft_delete import is_marked_deleted, mark_deleted, not_deleted
 from app.core.tenant import TenantContext, assert_tenant_access, tenant_filters
-from app.models.role import Permission, Role
+from app.models.platform.role import Permission, Role
 from app.tenant.system.repositories.role import RoleRepository
 from app.common.schema import PageParams, PageResult
 from app.tenant.system.schemas.role import (

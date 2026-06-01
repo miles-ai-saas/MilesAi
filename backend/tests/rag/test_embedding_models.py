@@ -12,7 +12,7 @@ from app.integrations.embeddings.runtime import build_embeddings
 from app.integrations.langchain.embeddings import embed_query_for_kb_sync
 from app.models.kb import KnowledgeBase
 from app.models.model import ModelConfig
-from app.models.model_catalog import ModelCapabilityType
+from app.models.model.catalog import ModelCapabilityType
 from app.tenant.kb.schemas.kb import KnowledgeBaseUpdate
 
 

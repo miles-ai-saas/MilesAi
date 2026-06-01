@@ -8,6 +8,7 @@ export type * from "./agents";
 export type * from "./attachments";
 export type * from "./audit";
 export type * from "./auth";
+export type * from "./biz";
 export type * from "./common";
 export type * from "./compliance";
 export type * from "./flows";

@@ -11,7 +11,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from app.infra.db import Base
 from app.models.base import TimestampMixin, UUIDPrimaryKeyMixin
-from app.models.model_catalog import ModelCapabilityType, ModelPublishStatus, ModelVendor
+from app.models.model.catalog import ModelCapabilityType, ModelPublishStatus, ModelVendor
 
 
 class ModelConfig(UUIDPrimaryKeyMixin, TimestampMixin, Base):

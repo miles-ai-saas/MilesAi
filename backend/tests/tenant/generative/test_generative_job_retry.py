@@ -1,6 +1,6 @@
 """生成任务重试规则。"""
 
-from app.models.generative_job import GenerativeJobStatus
+from app.models.model.generative_job import GenerativeJobStatus
 from app.tenant.generative.schemas.job import GenerativeJobOut
 
 

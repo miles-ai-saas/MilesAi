@@ -34,6 +34,7 @@ from app.tenant.system.views import (
 from app.tenant.tasks.views import tasks
 from app.tenant.tools.views import tools
 from app.tenant.workbench.views import overview as workbench_overview
+from app.biz.router import biz_router
 
 api_router = APIRouter(prefix="/api/v1")
 api_router.include_router(health.router, tags=["health"])
@@ -72,3 +73,4 @@ api_router.include_router(monitor.router, prefix="/monitor", tags=["monitor"])
 api_router.include_router(marketplace.router, prefix="/marketplace", tags=["marketplace"])
 api_router.include_router(audit_log.router, prefix="/audit", tags=["audit"])
 api_router.include_router(workbench_overview.router, prefix="/workbench", tags=["workbench"])
+api_router.include_router(biz_router, prefix="/biz", tags=["business"])

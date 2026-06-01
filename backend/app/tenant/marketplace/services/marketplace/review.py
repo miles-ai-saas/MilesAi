@@ -23,7 +23,7 @@ class MarketplaceReviewMixin:
         """审核队列：PENDING_REVIEW 状态应用。"""
         await require_tenant_review_allowed(self.db, self.ctx)
 
-        from app.models.tag import TagEntityType
+        from app.models.meta.tag import TagEntityType
         from app.tenant.tags.services.tag import TagService
 
         filters = [MarketplaceApp.status == MarketplaceAppStatus.PENDING_REVIEW]

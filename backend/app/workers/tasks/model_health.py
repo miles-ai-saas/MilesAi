@@ -12,7 +12,7 @@ from app.core.soft_delete import not_deleted
 from app.infra.db import AsyncSessionLocal
 from app.integrations.litellm.adapter import CHAT_MODEL_TYPES, litellm_chat_completion
 from app.models.model import ModelConfig
-from app.models.model_catalog import ModelPublishStatus
+from app.models.model.catalog import ModelPublishStatus
 from app.workers.app import celery_app
 
 logger = get_logger(__name__)

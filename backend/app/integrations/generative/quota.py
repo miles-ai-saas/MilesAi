@@ -16,8 +16,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.common.exceptions import ForbiddenError
 from app.core.soft_delete import not_deleted
 from app.integrations.generative.persist import PURPOSE_CHAT_GENERATED, PURPOSE_FLOW_GENERATED
-from app.models.attachment import Attachment
-from app.models.system import SystemConfig
+from app.models.media.attachment import Attachment
+from app.models.platform.system import SystemConfig
 
 _CONFIG_KEY = "generative.daily_limit_per_tenant"
 _GENERATED_PURPOSES = (PURPOSE_CHAT_GENERATED, PURPOSE_FLOW_GENERATED)

@@ -5,7 +5,7 @@ from app.integrations.generative.registry import (
     default_video_invoke_mode,
 )
 from app.models.model import ModelConfig
-from app.models.model_catalog import ModelCapabilityType, ModelVendor
+from app.models.model.catalog import ModelCapabilityType, ModelVendor
 from uuid import uuid4
 
 

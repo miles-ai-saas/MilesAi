@@ -18,8 +18,8 @@ from app.core.soft_delete import append_not_deleted, is_marked_deleted, mark_del
 from app.core.tenant import TenantContext, assert_tenant_access, tenant_filters
 from app.deletion.cascade import before_delete_agent
 from app.models.agent import Agent, AgentStatus, AgentSubAgentBinding, AgentType
-from app.models.category import CategoryDomain
-from app.models.tag import TagEntityType
+from app.models.meta.category import CategoryDomain
+from app.models.meta.tag import TagEntityType
 from app.tenant.a2a.services.host_bindings import (
     normalize_host_peers,
     validate_and_sync_host_peer_bindings,

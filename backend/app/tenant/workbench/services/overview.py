@@ -12,8 +12,8 @@ from app.models.agent import Agent
 from app.models.flow import Flow
 from app.models.kb import KnowledgeBase
 from app.models.model import ModelConfig
-from app.models.model_catalog import ModelPublishStatus
-from app.models.task import CeleryTaskRecord
+from app.models.model.catalog import ModelPublishStatus
+from app.models.task.task_record import CeleryTaskRecord
 
 
 class WorkbenchOverviewService(BaseService):

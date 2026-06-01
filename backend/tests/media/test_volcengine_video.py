@@ -18,7 +18,7 @@ from app.integrations.generative.volcengine_client import (
     volcengine_submit_url,
 )
 from app.models.model import ModelConfig
-from app.models.model_catalog import ModelCapabilityType, ModelVendor
+from app.models.model.catalog import ModelCapabilityType, ModelVendor
 
 
 def _doubao_video_model(**kwargs) -> ModelConfig:

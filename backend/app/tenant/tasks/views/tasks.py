@@ -7,7 +7,7 @@ from app.infra.db import get_db
 from app.core.deps import get_page_params, require_permissions
 from app.common.response import ok, page_ok
 from app.core.tenant import TenantContext
-from app.models.task import TaskStatus
+from app.models.task.task_record import TaskStatus
 from app.common.schema import ApiResponse, PageParams, PageResult
 from app.tenant.tasks.schemas.meta import TaskMetaOut
 from app.tenant.tasks.schemas.task import TaskBatchCancelBody, TaskBatchCancelResult, TaskRecordOut

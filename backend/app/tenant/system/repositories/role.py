@@ -6,7 +6,7 @@ from sqlalchemy.orm import selectinload
 
 from app.core.repository import BaseRepository
 from app.core.soft_delete import not_deleted
-from app.models.role import Permission, Role
+from app.models.platform.role import Permission, Role
 
 
 class RoleRepository(BaseRepository[Role]):
