@@ -1,10 +1,11 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { PendingChatMedia } from "@/features/agents/components/AgentChatComposer";
 import { useAgentsChatComposerMedia } from "@/features/agents/hooks/use-agents-chat-composer-media";
 import { useAgentsChatGenerativeStatus } from "@/features/agents/hooks/use-agents-chat-generative-status";
 import { useAgentChatWs } from "@/features/agents/hooks/use-agent-chat-ws";
+import { prependBusinessContext, type BusinessContext } from "@/features/projects/lib/business-context";
 import { api } from "@/lib/api";
 import { appendTurn, getSession, type ChatMessage, type ChatMessageMedia } from "@/features/agents/lib/chat-sessions";
 import { generativeToolBusyLabel } from "@/lib/generative-tool-ui";
@@ -21,6 +22,8 @@ type Params = {
   setSessionTitle: (title: string) => void;
   refreshSessions: (agentId: string) => void;
   carryForwardMedia: boolean;
+  businessContext?: BusinessContext | null;
+  initialPrompt?: string | null;
 };
 
 export function useAgentsChatMessaging({
@@ -31,10 +34,19 @@ export function useAgentsChatMessaging({
   setSessionTitle,
   refreshSessions,
   carryForwardMedia,
+  businessContext = null,
+  initialPrompt,
 }: Params) {
   const [query, setQuery] = useState("");
   const [chatting, setChatting] = useState(false);
   const [pendingTool, setPendingTool] = useState<PendingToolCall | null>(null);
+  const [promptApplied, setPromptApplied] = useState(false);
+
+  useEffect(() => {
+    if (promptApplied || !initialPrompt) return;
+    setQuery(initialPrompt);
+    setPromptApplied(true);
+  }, [initialPrompt, promptApplied]);
 
   const { wsEnabled, wsReady, client: wsClientRef } = useAgentChatWs(selectedAgent, conversationId);
 
@@ -118,6 +130,8 @@ export function useAgentsChatMessaging({
     const { payload: mediaPayload, carriedFromPrevious } = resolveOutgoingChatMedia(pendingPayload, messages, carryForwardMedia);
     if (!userText && mediaPayload.length === 0) return;
 
+    const apiQuery = userText ? prependBusinessContext(userText, businessContext) : userText;
+
     const userMedia = buildUserMedia(media.pendingMedia, media.carriedMedia, carriedFromPrevious);
 
     setChatting(true);
@@ -139,14 +153,14 @@ export function useAgentsChatMessaging({
       if (useWs && wsClientRef.current) {
         const res = await runWsChat(
           {
-            query: userText,
+            query: apiQuery,
             media: mediaPayload.length ? mediaPayload : undefined,
           },
           optimistic,
         );
         applyChatResponse(res, optimistic, userText, userMedia, true);
       } else {
-        const res = await api.chatAgent(selectedAgent, userText, {
+        const res = await api.chatAgent(selectedAgent, apiQuery, {
           conversationId,
           media: mediaPayload.length ? mediaPayload : undefined,
         });

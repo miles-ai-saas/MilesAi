@@ -1,14 +1,14 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
-import { AI_CARDS, PROJECT_STATUS_LABELS, SERVICE_LINE_LABELS } from "@/features/projects/lib/biz-labels";
+import { ProjectAiTab } from "@/features/projects/components/ProjectAiTab";
 import { ProjectDeliverablesTab } from "@/features/projects/components/ProjectDeliverablesTab";
 import { ProjectMembersTab } from "@/features/projects/components/ProjectMembersTab";
 import { ProjectSuppliersTab } from "@/features/projects/components/ProjectSuppliersTab";
 import { ProjectWorkPackagesTab } from "@/features/projects/components/ProjectWorkPackagesTab";
 import type { ProjectDetailPageVm } from "@/features/projects/hooks/use-project-detail-page";
+import { PROJECT_STATUS_LABELS, SERVICE_LINE_LABELS } from "@/features/projects/lib/biz-labels";
 import type { BizProject } from "@/lib/types";
 
 const TABS = [
@@ -63,7 +63,7 @@ export function ProjectDetailView({ vm }: { vm: ProjectDetailPageVm }) {
       {tab === "members" && <ProjectMembersTab vm={vm} />}
       {tab === "suppliers" && <ProjectSuppliersTab vm={vm} />}
       {tab === "cost" && <ProjectCostTab costSummary={costSummary} />}
-      {tab === "ai" && <ProjectAiTab />}
+      {tab === "ai" && <ProjectAiTab vm={vm} />}
     </div>
   );
 }
@@ -153,24 +153,6 @@ function ProjectCostTab({ costSummary }: { costSummary: import("@/lib/types").Bi
           </tbody>
         </table>
       </div>
-    </div>
-  );
-}
-
-function ProjectAiTab() {
-  return (
-    <div className="mt-4 space-y-3">
-      <p className="text-sm text-ink-muted">从业务项目深度链接 AI 工作台，进行策划分析、文案创作、设计生成</p>
-      {AI_CARDS.map((card) => (
-        <Link key={card.href} href={card.href} className="card flex items-center gap-4 p-4 transition hover:shadow-md" target="_blank">
-          <span className="text-2xl">{card.icon}</span>
-          <div>
-            <p className="font-medium text-ink">{card.label}</p>
-            <p className="text-xs text-ink-muted">{card.desc}</p>
-          </div>
-          <span className="ml-auto text-xs text-brand">前往 →</span>
-        </Link>
-      ))}
     </div>
   );
 }

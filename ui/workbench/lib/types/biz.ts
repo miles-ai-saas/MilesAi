@@ -241,3 +241,34 @@ export interface BizProjectSupplier {
   status: string;
   remark?: string;
 }
+
+/** 服务线 AI 推荐 */
+export interface BizServiceLineAiRecommendation {
+  service_line: string;
+  service_line_label: string;
+  work_package_id?: string;
+  work_package_name?: string;
+  stage?: string;
+  agent_tag?: string;
+  recommended_agent_id?: string;
+  recommended_agent_name?: string;
+  flow_template_id?: string;
+  flow_template_label?: string;
+  chat_hint?: string;
+  quick_prompts: string[];
+}
+
+/** 项目 AI 上下文（P4 deep link） */
+export interface BizProjectAiContext {
+  project_id: string;
+  project_name: string;
+  client_id: string;
+  client_name: string;
+  confidentiality_level: string;
+  rag_enabled: boolean;
+  project_status: string;
+  context_text: string;
+  retrospective_available: boolean;
+  retrospective_prompt?: string;
+  recommendations: BizServiceLineAiRecommendation[];
+}

@@ -29,9 +29,11 @@ from app.biz.schemas.project import (
     BizWorkPackageOut,
     BizWorkPackageUpdate,
 )
+from app.biz.schemas.project_ai import BizProjectAiContextOut
 from app.biz.schemas.supplier import BizProjectSupplierCreate, BizProjectSupplierOut, BizProjectSupplierUpdate
 from app.biz.services.milestone import MilestoneService
 from app.biz.services.project import ProjectService
+from app.biz.services.project_ai import ProjectAiContextService
 from app.biz.services.project_archive import ProjectArchiveService
 from app.biz.services.supplier import SupplierService
 from app.common.response import ok, page_ok
@@ -57,6 +59,10 @@ def _archive_svc(db: AsyncSession, ctx: TenantContext) -> ProjectArchiveService:
 
 def _supplier_svc(db: AsyncSession, ctx: TenantContext) -> SupplierService:
     return SupplierService(db, ctx)
+
+
+def _ai_svc(db: AsyncSession, ctx: TenantContext) -> ProjectAiContextService:
+    return ProjectAiContextService(db, ctx)
 
 
 # ── projects ──
@@ -147,6 +153,17 @@ async def archive_case(
 ):
     """将已验收交付物附件沉淀至知识库（涉密客户禁止）。"""
     return ok(await _archive_svc(db, ctx).archive_case(project_id, body))
+
+
+@router.get("/{project_id}/ai-context", response_model=ApiResponse[BizProjectAiContextOut])
+async def get_project_ai_context(
+    project_id: UUID,
+    work_package_id: UUID | None = Query(None),
+    ctx: TenantContext = Depends(require_permissions("biz:project:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    """项目 AI 上下文：服务线 Agent/Flow 推荐、RAG 策略、结项复盘提示。"""
+    return ok(await _ai_svc(db, ctx).get_ai_context(project_id, work_package_id))
 
 
 # ── work packages (nested under project) ──

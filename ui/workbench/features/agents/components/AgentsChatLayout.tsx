@@ -1,6 +1,7 @@
 "use client";
 
 import { AgentChatDebugHeader } from "@/features/agents/components/AgentChatDebugHeader";
+import { BusinessContextBanner } from "@/features/agents/components/BusinessContextBanner";
 import { AgentChatComposer } from "@/features/agents/components/AgentChatComposer";
 import { AgentChatLeftSidebar } from "@/features/agents/components/AgentChatLeftSidebar";
 import { AgentWorkbenchOverlay } from "@/features/agents/components/AgentWorkbenchOverlay";
@@ -62,6 +63,8 @@ export function AgentsChatLayout({ vm }: Props) {
     confirmPendingTool,
     onPickAttachments,
     removePendingMedia,
+    businessContext,
+    clearBusinessContext,
   } = vm;
 
   return (
@@ -117,6 +120,10 @@ export function AgentsChatLayout({ vm }: Props) {
             persistSidebar({ agentsColumnCompact: next });
           }}
         />
+
+        {businessContext ? (
+          <BusinessContextBanner ctx={businessContext} onDismiss={clearBusinessContext} />
+        ) : null}
 
         <div className="min-h-0 flex-1 overflow-y-auto px-3 py-4 sm:px-4">
           <div className="mx-auto w-full max-w-4xl">

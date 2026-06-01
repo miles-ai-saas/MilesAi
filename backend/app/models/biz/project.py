@@ -115,6 +115,7 @@ class BizServiceLineTemplate(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     tenant_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)  # NULL=全局模板, 非NULL=租户自定义
     service_line: Mapped[str] = mapped_column(String(64), nullable=False)  # 服务线标识
     stages: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)  # 阶段定义，用于驱动工作包的 stage/stage_index
+    ai_config: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)  # 服务线 AI 模板：agent_tag、flow_template_id、quick_prompts 等
     is_active: Mapped[bool] = mapped_column(default=True, nullable=False)  # 是否启用，禁用的模板不再用于新建工作包
 
 

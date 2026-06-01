@@ -26,11 +26,13 @@ const FLOWS_PAGE_DESC = "可视化编排智能体执行流程，支持 RAG、工
 function FlowCreateDialog({
   open,
   busy = false,
+  initialTemplateId,
   onClose,
   onCreate,
 }: {
   open: boolean;
   busy?: boolean;
+  initialTemplateId?: string | null;
   onClose: () => void;
   onCreate: (payload: { name: string; description: string; tag_ids: string[]; graph_json: FlowGraph }) => Promise<void>;
 }) {
@@ -45,12 +47,13 @@ function FlowCreateDialog({
 
   useEffect(() => {
     if (!open || templates.length === 0) return;
-    const initial = defaultTemplate ?? templates[0];
+    const preferred = initialTemplateId ? templates.find((t) => t.id === initialTemplateId) : null;
+    const initial = preferred ?? defaultTemplate ?? templates[0];
     setTemplateId(initial.id);
     setName(initial.default_name);
     setDescription("");
     setTagIds([]);
-  }, [open, templates, defaultTemplate]);
+  }, [open, templates, defaultTemplate, initialTemplateId]);
 
   const onTemplateChange = (next: FlowTemplate) => {
     setTemplateId(next.id);
@@ -354,6 +357,7 @@ export function FlowsPageView({ vm }: { vm: FlowsPageVm }) {
     onPublish,
     onDelete,
     onCreate,
+    templateFromUrl,
   } = vm;
 
   return (
@@ -415,7 +419,7 @@ export function FlowsPageView({ vm }: { vm: FlowsPageVm }) {
         ))}
       </ResourceListLayout>
 
-      <FlowCreateDialog open={createOpen} busy={creating} onClose={() => setCreateOpen(false)} onCreate={onCreate} />
+      <FlowCreateDialog open={createOpen} busy={creating} initialTemplateId={templateFromUrl} onClose={() => setCreateOpen(false)} onCreate={onCreate} />
 
       <FlowMetaDialog
         open={Boolean(metaTarget)}

@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { api } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth-store";
 import { usePagedList } from "@/hooks/use-paged-list";
@@ -12,6 +12,8 @@ import type { Flow, FlowGraph } from "@/lib/types";
 
 export function useFlowsPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const templateFromUrl = searchParams.get("template");
   const { ready } = useRequireAuth();
   const flowMeta = useFlowMeta(ready);
   const { requestConfirm, confirmDialog } = useConfirmAction();
@@ -23,6 +25,10 @@ export function useFlowsPage() {
   const [publishingId, setPublishingId] = useState<string | null>(null);
   const [viewing, setViewing] = useState<Flow | null>(null);
   const [metaTarget, setMetaTarget] = useState<Flow | null>(null);
+
+  useEffect(() => {
+    if (templateFromUrl) setCreateOpen(true);
+  }, [templateFromUrl]);
 
   const list = usePagedList(useCallback((p, s) => api.listFlows(p, s, tagFilterIds.length ? tagFilterIds : undefined), [tagFilterIds]), {
     enabled: ready,
@@ -141,6 +147,7 @@ export function useFlowsPage() {
     onPublish,
     onDelete,
     onCreate,
+    templateFromUrl,
   };
 }
 

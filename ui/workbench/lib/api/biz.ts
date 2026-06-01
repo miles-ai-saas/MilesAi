@@ -1,6 +1,6 @@
 import { get, getPage, post, patch, http } from "./client";
 import { buildPageQuery } from "../pagination";
-import type { BizArchiveCaseResult, BizClient, BizClientContact, BizContract, BizDeliverable, BizMilestone, BizOpportunity, BizPayment, BizProject, BizProjectCostSummary, BizProjectMember, BizProjectSupplier, BizQuote, BizSupplier, BizSupplierContact, BizWorkPackage, DashboardSummary, FinancialSummary } from "../types";
+import type { BizArchiveCaseResult, BizClient, BizClientContact, BizContract, BizDeliverable, BizMilestone, BizOpportunity, BizPayment, BizProject, BizProjectAiContext, BizProjectCostSummary, BizProjectMember, BizProjectSupplier, BizQuote, BizSupplier, BizSupplierContact, BizWorkPackage, DashboardSummary, FinancialSummary } from "../types";
 
 export const bizApi = {
   // ── 业务仪表盘 ──
@@ -159,4 +159,10 @@ export const bizApi = {
     patch<BizProjectSupplier>(`/biz/projects/${projectId}/suppliers/${supplierId}`, p),
   removeProjectSupplier: (projectId: string, supplierId: string) =>
     http.delete(`/biz/projects/${projectId}/suppliers/${supplierId}`).then(() => undefined),
+
+  getProjectAiContext: (projectId: string, workPackageId?: string) => {
+    let q = `/biz/projects/${projectId}/ai-context`;
+    if (workPackageId) q += `?work_package_id=${workPackageId}`;
+    return get<BizProjectAiContext>(q);
+  },
 };

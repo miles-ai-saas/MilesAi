@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTraceTurnSelection } from "@/features/agents/components/AgentTracePanel";
 import { agentCarryForwardMediaEnabled, lastUserMessageMedia } from "@/features/agents/lib/chat-media-forward";
+import { loadBusinessContext, type BusinessContext } from "@/features/projects/lib/business-context";
 import { api } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth-store";
 import { useInfiniteList } from "@/hooks/use-infinite-list";
@@ -17,7 +18,17 @@ export function useAgentsChatPage() {
   const agentFromUrl = searchParams.get("agent");
   const convFromUrl = searchParams.get("conv");
   const tabFromUrl = searchParams.get("tab");
+  const promptFromUrl = searchParams.get("prompt");
+  const bizFromUrl = searchParams.get("biz");
   const { ready } = useRequireAuth();
+
+  const [businessContext, setBusinessContext] = useState<BusinessContext | null>(null);
+
+  useEffect(() => {
+    if (bizFromUrl === "1" || searchParams.get("projectId")) {
+      setBusinessContext(loadBusinessContext());
+    }
+  }, [bizFromUrl, searchParams]);
 
   const [selectedAgent, setSelectedAgent] = useState<string>(agentFromUrl ?? "");
 
@@ -31,9 +42,14 @@ export function useAgentsChatPage() {
       const params = new URLSearchParams();
       params.set("agent", agentId);
       if (convId) params.set("conv", convId);
+      const projectId = searchParams.get("projectId");
+      const wpId = searchParams.get("wpId");
+      if (projectId) params.set("projectId", projectId);
+      if (wpId) params.set("wpId", wpId);
+      if (bizFromUrl === "1") params.set("biz", "1");
       router.replace(`/workbench/agents/chat?${params.toString()}`);
     },
-    [router],
+    [router, searchParams, bizFromUrl],
   );
 
   const session = useAgentsChatSessionSync({
@@ -68,6 +84,8 @@ export function useAgentsChatPage() {
     setSessionTitle: session.setSessionTitle,
     refreshSessions: session.refreshSessions,
     carryForwardMedia,
+    businessContext,
+    initialPrompt: promptFromUrl,
   });
 
   const carriedMedia = useMemo(() => {
@@ -157,6 +175,8 @@ export function useAgentsChatPage() {
     onPickAttachments: messaging.onPickAttachments,
     removePendingMedia: messaging.removePendingMedia,
     handleAgentRenamed,
+    businessContext,
+    clearBusinessContext: () => setBusinessContext(null),
   };
 }
 
