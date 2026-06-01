@@ -11,7 +11,6 @@ import {
   OpportunitiesListFooter,
   OpportunitiesTable,
 } from "@/features/opportunities/components/OpportunitiesTable";
-import { OpportunityDetailDialog } from "@/features/opportunities/components/OpportunityDetailDialog";
 import { OpportunityFormDialog } from "@/features/opportunities/components/OpportunityFormDialog";
 import type { OpportunitiesPageVm } from "@/features/opportunities/hooks/use-opportunities-page";
 import { OPPORTUNITY_STAGE_LABELS } from "@/features/opportunities/lib/opportunity-labels";
@@ -62,8 +61,6 @@ export function OpportunitiesPageView({ vm }: { vm: OpportunitiesPageVm }) {
     saving,
     openCreate,
     handleCreateSave,
-    detailId,
-    closeDetail,
     refreshList,
     list,
     pipeline,
@@ -139,11 +136,6 @@ export function OpportunitiesPageView({ vm }: { vm: OpportunitiesPageVm }) {
         onClose={() => setCreateOpen(false)}
         onChange={setCreateForm}
         onSave={() => void handleCreateSave()}
-      />
-      <OpportunityDetailDialog
-        opportunityId={detailId}
-        onClose={closeDetail}
-        onMutated={() => void refreshList()}
       />
     </div>
   );

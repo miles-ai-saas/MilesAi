@@ -48,6 +48,35 @@ async def export_opportunities(
     )
 
 
+@router.get("/clients.csv")
+async def export_clients(
+    search: str | None = Query(None),
+    ctx: TenantContext = Depends(require_permissions("biz:client:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    csv_text = await _svc(db, ctx).export_clients_csv(search=search)
+    return PlainTextResponse(
+        csv_text,
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": "attachment; filename=biz-clients.csv"},
+    )
+
+
+@router.get("/contracts.csv")
+async def export_contracts(
+    client_id: UUID | None = Query(None),
+    status: str | None = Query(None),
+    ctx: TenantContext = Depends(require_permissions("biz:contract:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    csv_text = await _svc(db, ctx).export_contracts_csv(client_id=client_id, status=status)
+    return PlainTextResponse(
+        csv_text,
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": "attachment; filename=biz-contracts.csv"},
+    )
+
+
 @router.get("/payments.csv")
 async def export_payments(
     ctx: TenantContext = Depends(require_permissions("biz:finance:read")),

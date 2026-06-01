@@ -1,7 +1,7 @@
 """收付款管理 HTTP API，路由前缀 `/biz/payments`。
 
 提供收付款记录的 CRUD 接口；包含 GET /financial-summary 财务概览端点，汇总收付款统计数据。
-列表查询需要 contract_id 必填参数。
+列表查询 contract_id 可选；不传则返回跨合同台账（可筛 direction/status）。
 """
 
 from uuid import UUID
@@ -49,12 +49,17 @@ async def list_pending_payments(
 
 @router.get("", response_model=ApiResponse[list[BizPaymentOut]])
 async def list_payments(
-    contract_id: UUID = Query(...),
+    contract_id: UUID | None = Query(None),
+    direction: str | None = Query(None),
+    status: str | None = Query(None),
+    limit: int = Query(200, ge=1, le=500),
     ctx: TenantContext = Depends(require_permissions("biz:payment:read")),
     db: AsyncSession = Depends(get_db),
 ):
-    """按合同查询收付款记录列表，contract_id 必填。"""
-    return ok(await _svc(db, ctx).list_by_contract(contract_id))
+    """查询收付款：传 contract_id 时按合同；否则返回跨合同台账。"""
+    if contract_id is not None:
+        return ok(await _svc(db, ctx).list_by_contract(contract_id))
+    return ok(await _svc(db, ctx).list_payments(direction=direction, status=status, limit=limit))
 
 
 @router.post("", response_model=ApiResponse[BizPaymentOut])

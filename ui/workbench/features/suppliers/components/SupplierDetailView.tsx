@@ -12,7 +12,8 @@ export function SupplierDetailView({
   onClose?: () => void;
 }) {
   const {
-    supplier, loading, error, contactForm, setContactForm,
+    supplier, loading, error, tab, handleTabChange,
+    contactForm, setContactForm,
     editingContactId, savingContact, resetContactForm, startEditContact,
     handleContactSubmit, handleDeleteContact,
   } = vm;
@@ -40,6 +41,22 @@ export function SupplierDetailView({
         </div>
       )}
 
+      {!embedded && (
+        <div className="mt-6 flex gap-1 border-b border-line">
+          {(["info", "contacts"] as const).map((t) => (
+            <button
+              key={t}
+              type="button"
+              className={`px-4 py-2 text-sm font-medium transition ${tab === t ? "-mb-px border-b-2 border-brand text-brand" : "text-ink-muted hover:text-ink"}`}
+              onClick={() => handleTabChange(t)}
+            >
+              {t === "info" ? "基本信息" : `联系人 (${supplier.contacts.length})`}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {(embedded || tab === "info") && (
       <div className={`grid gap-4 sm:grid-cols-2 ${embedded ? "mt-0" : "mt-6"}`}>
         <InfoCard label="类型" value={SUPPLIER_CATEGORY_LABELS[supplier.category] ?? supplier.category} />
         <InfoCard label="合作项目" value={`${supplier.project_count}`} />
@@ -51,8 +68,10 @@ export function SupplierDetailView({
         <InfoCard label="银行账号" value={supplier.bank_account || "—"} />
         <InfoCard label="备注" value={supplier.remark || "—"} className="sm:col-span-2" />
       </div>
+      )}
 
-      <div className="mt-8">
+      {(embedded || tab === "contacts") && (
+      <div className={`${tab === "contacts" && !embedded ? "mt-4" : "mt-8"}`}>
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-sm font-semibold text-ink">联系人</h2>
           {editingContactId ? (
@@ -108,6 +127,7 @@ export function SupplierDetailView({
           </ul>
         )}
       </div>
+      )}
     </div>
   );
 }

@@ -5,13 +5,14 @@ import { usePagedList } from "@/hooks/use-paged-list";
 import { useConfirmAction } from "@/hooks/use-confirm-action";
 import { useRequireAuth } from "@/lib/auth-store";
 import { api } from "@/lib/api";
-import { useBizDetailQuery } from "@/features/business/lib/use-biz-detail-query";
+import { useBizDetailNavigation, useBizLegacyDetailRedirect } from "@/features/business/lib/use-biz-detail-tab";
 import { EMPTY_SUPPLIER_FORM, type SupplierFormValues } from "@/features/suppliers/lib/supplier-form-options";
 import type { BizSupplier } from "@/lib/types";
 
 export function useSuppliersPage() {
   const { ready } = useRequireAuth();
-  const { detailId, openDetail, closeDetail } = useBizDetailQuery("/business/suppliers");
+  useBizLegacyDetailRedirect("/business/suppliers");
+  const { openDetail } = useBizDetailNavigation("/business/suppliers");
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("");
   const [status, setStatus] = useState("");
@@ -64,12 +65,11 @@ export function useSuppliersPage() {
         description: `确定删除「${supplier.name}」？`,
         onConfirm: async () => {
           await api.deleteSupplier(supplier.id);
-          if (detailId === supplier.id) closeDetail();
           list.reload();
         },
       });
     },
-    [requestConfirm, list, detailId, closeDetail],
+    [requestConfirm, list],
   );
 
   const clearFilters = useCallback(() => {
@@ -93,9 +93,7 @@ export function useSuppliersPage() {
     list,
     onDelete: handleDelete,
     confirmDialog,
-    detailId,
     openDetail,
-    closeDetail,
     createOpen,
     setCreateOpen,
     createForm,

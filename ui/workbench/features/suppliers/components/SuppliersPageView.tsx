@@ -2,7 +2,6 @@
 
 import { BizPageHero } from "@/features/business-dashboard/components/BizPageHero";
 import { useBizPermissions } from "@/features/business/lib/biz-permissions";
-import { SupplierDetailDialog } from "@/features/suppliers/components/SupplierDetailDialog";
 import { SupplierFormDialog } from "@/features/suppliers/components/SupplierFormDialog";
 import {
   SuppliersFilters,
@@ -33,8 +32,6 @@ export function SuppliersPageView({ vm }: { vm: SuppliersPageVm }) {
   const {
     ready,
     confirmDialog,
-    detailId,
-    closeDetail,
     list,
     createOpen,
     setCreateOpen,
@@ -97,11 +94,6 @@ export function SuppliersPageView({ vm }: { vm: SuppliersPageVm }) {
         onClose={() => setCreateOpen(false)}
         onChange={setCreateForm}
         onSave={() => void handleCreateSave()}
-      />
-      <SupplierDetailDialog
-        supplierId={detailId}
-        onClose={closeDetail}
-        onMutated={() => void list.reload()}
       />
     </div>
   );

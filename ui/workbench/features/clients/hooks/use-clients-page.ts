@@ -7,13 +7,14 @@ import { usePagedList } from "@/hooks/use-paged-list";
 import { useConfirmAction } from "@/hooks/use-confirm-action";
 import { useRequireAuth } from "@/lib/auth-store";
 import { api } from "@/lib/api";
-import { useBizDetailQuery } from "@/features/business/lib/use-biz-detail-query";
+import { useBizDetailNavigation, useBizLegacyDetailRedirect } from "@/features/business/lib/use-biz-detail-tab";
 import { EMPTY_CLIENT_FORM, type ClientFormValues } from "@/features/clients/lib/client-form-options";
 import type { BizClient } from "@/lib/types";
 
 export function useClientsPage() {
   const { ready } = useRequireAuth();
-  const { detailId, openDetail, closeDetail } = useBizDetailQuery("/business/clients");
+  useBizLegacyDetailRedirect("/business/clients");
+  const { openDetail } = useBizDetailNavigation("/business/clients");
   const [search, setSearch] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
   const [createForm, setCreateForm] = useState<ClientFormValues>(EMPTY_CLIENT_FORM);
@@ -59,12 +60,11 @@ export function useClientsPage() {
         description: `确定删除「${client.name}」？`,
         onConfirm: async () => {
           await api.deleteClient(client.id);
-          if (detailId === client.id) closeDetail();
           list.reload();
         },
       });
     },
-    [requestConfirm, list, detailId, closeDetail],
+    [requestConfirm, list],
   );
 
   const clearFilters = useCallback(() => setSearch(""), []);
@@ -85,9 +85,7 @@ export function useClientsPage() {
     saving,
     openCreate,
     handleCreateSave,
-    detailId,
     openDetail,
-    closeDetail,
   };
 }
 

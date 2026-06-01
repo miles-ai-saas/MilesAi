@@ -15,13 +15,13 @@ const KIND_LABELS: Record<BizSearchHit["kind"], string> = {
 function hitHref(hit: BizSearchHit): string {
   switch (hit.kind) {
     case "client":
-      return `/business/clients?id=${hit.id}`;
+      return `/business/clients/${hit.id}`;
     case "project":
       return `/business/projects/${hit.id}`;
     case "opportunity":
-      return `/business/opportunities?id=${hit.id}`;
+      return `/business/opportunities/${hit.id}`;
     case "contract":
-      return `/business/contracts?id=${hit.id}`;
+      return `/business/contracts/${hit.id}`;
   }
 }
 

@@ -3,14 +3,24 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import { useBizDetailTab } from "@/features/business/lib/use-biz-detail-tab";
 import { useBizPermissions } from "@/features/business/lib/biz-permissions";
 import { OPPORTUNITY_STAGES, OPPORTUNITY_STAGE_LABELS, QUOTE_STATUS_LABELS, stageBadgeClass } from "@/features/opportunities/lib/opportunity-labels";
 import { api } from "@/lib/api";
 import type { BizOpportunity, BizQuote, TenantUser } from "@/lib/types";
 
-export function useOpportunityDetailPage(opportunityId: string | null, options?: { onMutated?: () => void }) {
+const VALID_TABS = ["info", "quotes"] as const;
+export type OpportunityDetailTab = (typeof VALID_TABS)[number];
+
+export function useOpportunityDetailPage(opportunityId: string, options?: { onMutated?: () => void }) {
   const router = useRouter();
   const onMutated = options?.onMutated;
+  const { tab, handleTabChange } = useBizDetailTab(
+    "/business/opportunities",
+    opportunityId,
+    VALID_TABS,
+    "info",
+  );
   const [opp, setOpp] = useState<BizOpportunity | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -58,7 +68,6 @@ export function useOpportunityDetailPage(opportunityId: string | null, options?:
   }, [opportunityId]);
 
   const load = useCallback(async () => {
-    if (!opportunityId) return null;
     const data = await api.getOpportunity(opportunityId);
     setOpp(data);
     syncEditForm(data);
@@ -68,14 +77,17 @@ export function useOpportunityDetailPage(opportunityId: string | null, options?:
 
   useEffect(() => {
     if (!opportunityId) {
-      resetLocalState();
       setLoading(false);
       return;
     }
     setLoading(true);
     setError("");
     load().catch((e) => setError(e?.message ?? "加载失败")).finally(() => setLoading(false));
-  }, [opportunityId, load, resetLocalState]);
+  }, [opportunityId, load]);
+
+  useEffect(() => {
+    if (tab === "quotes") void loadQuotes();
+  }, [tab, loadQuotes]);
 
   useEffect(() => {
     if (!editing) return;
@@ -160,6 +172,8 @@ export function useOpportunityDetailPage(opportunityId: string | null, options?:
     opp,
     loading,
     error,
+    tab,
+    handleTabChange,
     converting,
     handleConvert,
     reload: load,
@@ -198,6 +212,8 @@ export function OpportunityDetailView({
     opp,
     loading,
     error,
+    tab,
+    handleTabChange,
     converting,
     handleConvert,
     quotes,
@@ -271,6 +287,22 @@ export function OpportunityDetailView({
         </div>
       )}
 
+      {!embedded && (
+        <div className="mt-6 flex gap-1 border-b border-line">
+          {(["info", "quotes"] as const).map((t) => (
+            <button
+              key={t}
+              type="button"
+              className={`px-4 py-2 text-sm font-medium transition ${tab === t ? "-mb-px border-b-2 border-brand text-brand" : "text-ink-muted hover:text-ink"}`}
+              onClick={() => handleTabChange(t)}
+            >
+              {t === "info" ? "基本信息" : `报价单 (${quotes.length})`}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {(embedded || tab === "info") && (
       <section className={`${embedded ? "mt-4" : "mt-6"}`}>
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-sm font-semibold text-ink">商机信息</h2>
@@ -326,8 +358,10 @@ export function OpportunityDetailView({
           </div>
         )}
       </section>
+      )}
 
-      <section className="mt-8">
+      {(embedded || tab === "quotes") && (
+      <section className={`${tab === "quotes" && !embedded ? "mt-4" : "mt-8"}`}>
         <h2 className="text-sm font-semibold text-ink">报价单</h2>
         {canEdit && (
           <form onSubmit={handleAddQuote} className="card mt-3 flex flex-wrap items-end gap-3 p-4">
@@ -374,6 +408,7 @@ export function OpportunityDetailView({
           </ul>
         )}
       </section>
+      )}
     </div>
   );
 }

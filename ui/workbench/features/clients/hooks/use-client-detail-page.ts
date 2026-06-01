@@ -1,8 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useBizDetailTab } from "@/features/business/lib/use-biz-detail-tab";
 import { api } from "@/lib/api";
 import type { BizClient, BizClientContact, BizContract, BizOpportunity, BizProject } from "@/lib/types";
+
+const VALID_TABS = ["info", "related", "contacts"] as const;
+export type ClientDetailTab = (typeof VALID_TABS)[number];
 
 type ContactForm = {
   name: string;
@@ -29,8 +33,14 @@ type Options = {
   onMutated?: () => void;
 };
 
-export function useClientDetailPage(clientId: string | null, options?: Options) {
+export function useClientDetailPage(clientId: string, options?: Options) {
   const onMutated = options?.onMutated;
+  const { tab, handleTabChange } = useBizDetailTab(
+    "/business/clients",
+    clientId,
+    VALID_TABS,
+    "info",
+  );
   const [client, setClient] = useState<BizClient | null>(null);
   const [projects, setProjects] = useState<BizProject[]>([]);
   const [opportunities, setOpportunities] = useState<BizOpportunity[]>([]);
@@ -58,7 +68,6 @@ export function useClientDetailPage(clientId: string | null, options?: Options) 
   }, []);
 
   const loadClient = useCallback(async () => {
-    if (!clientId) return null;
     const data = await api.getClient(clientId);
     setClient(data);
     setClientForm({
@@ -73,7 +82,6 @@ export function useClientDetailPage(clientId: string | null, options?: Options) 
   }, [clientId]);
 
   const loadRelated = useCallback(async () => {
-    if (!clientId) return;
     const [proj, opp, con] = await Promise.all([
       api.listProjects(1, 50, clientId),
       api.listOpportunities(1, 50, clientId),
@@ -86,7 +94,6 @@ export function useClientDetailPage(clientId: string | null, options?: Options) 
 
   useEffect(() => {
     if (!clientId) {
-      resetLocalState();
       setLoading(false);
       return;
     }
@@ -95,7 +102,7 @@ export function useClientDetailPage(clientId: string | null, options?: Options) 
     Promise.all([loadClient(), loadRelated()])
       .catch((e) => setError(e?.message ?? "加载失败"))
       .finally(() => setLoading(false));
-  }, [clientId, loadClient, loadRelated, resetLocalState]);
+  }, [clientId, loadClient, loadRelated]);
 
   const resetContactForm = () => {
     setContactForm(emptyContactForm());
@@ -168,7 +175,8 @@ export function useClientDetailPage(clientId: string | null, options?: Options) 
   };
 
   return {
-    client, projects, opportunities, contracts, loading, error, contactForm, setContactForm,
+    client, projects, opportunities, contracts, loading, error, tab, handleTabChange,
+    contactForm, setContactForm,
     editingContactId, savingContact, resetContactForm, startEditContact,
     handleContactSubmit, handleDeleteContact,
     editingClient, setEditingClient, clientForm, setClientForm,

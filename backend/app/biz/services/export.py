@@ -83,6 +83,66 @@ class BizExportService(BaseService):
             ])
         return _csv_text(data)
 
+    async def export_clients_csv(self, *, search: str | None = None) -> str:
+        filters = tenant_filters(self.ctx, BizClient.tenant_id) + [not_deleted(BizClient)]
+        if search:
+            filters.append(BizClient.name.ilike(f"%{search}%"))
+        stmt = (
+            select(BizClient)
+            .where(*filters)
+            .order_by(BizClient.updated_at.desc())
+            .limit(5000)
+        )
+        rows = (await self.db.execute(stmt)).scalars().all()
+        data = [["客户名称", "简称", "行业", "保密级别", "地址", "备注"]]
+        for c in rows:
+            data.append([
+                c.name,
+                c.short_name or "",
+                c.industry or "",
+                c.confidentiality_level,
+                c.address or "",
+                (c.remark or "").replace("\n", " "),
+            ])
+        return _csv_text(data)
+
+    async def export_contracts_csv(
+        self,
+        *,
+        client_id: UUID | None = None,
+        status: str | None = None,
+    ) -> str:
+        filters = tenant_filters(self.ctx, BizContract.tenant_id) + [not_deleted(BizContract)]
+        if client_id:
+            filters.append(BizContract.client_id == client_id)
+        if status:
+            filters.append(BizContract.status == status)
+        stmt = (
+            select(BizContract, BizClient.name.label("client_name"), BizProject.name.label("project_name"))
+            .join(BizClient, BizClient.id == BizContract.client_id, isouter=True)
+            .join(BizProject, BizProject.id == BizContract.project_id, isouter=True)
+            .where(*filters)
+            .order_by(BizContract.updated_at.desc())
+            .limit(5000)
+        )
+        rows = (await self.db.execute(stmt)).all()
+        data = [["合同名称", "合同编号", "客户", "项目", "类型", "状态", "金额", "签署日期", "开始", "结束"]]
+        for r in rows:
+            c = r.BizContract
+            data.append([
+                c.name,
+                c.contract_no or "",
+                r.client_name or "",
+                r.project_name or "",
+                c.type,
+                c.status,
+                str(c.total_amount) if c.total_amount is not None else "",
+                c.signed_date or "",
+                c.start_date or "",
+                c.end_date or "",
+            ])
+        return _csv_text(data)
+
     async def export_payments_csv(self) -> str:
         filters = tenant_filters(self.ctx, BizPayment.tenant_id) + [not_deleted(BizPayment)]
         stmt = (

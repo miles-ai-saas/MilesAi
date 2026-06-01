@@ -10,7 +10,7 @@ type Props = {
 };
 
 export function OpportunityDetailDialog({ opportunityId, onClose, onMutated }: Props) {
-  const vm = useOpportunityDetailPage(opportunityId, { onMutated });
+  const vm = useOpportunityDetailPage(opportunityId ?? "", { onMutated });
 
   return (
     <ResourceDialog

@@ -12,7 +12,7 @@ type Props = {
 };
 
 export function ContractDetailDialog({ contractId, onClose, onMutated }: Props) {
-  const vm = useContractDetailPage(contractId, { onMutated });
+  const vm = useContractDetailPage(contractId ?? "", { onMutated });
   const contract = vm.contract;
 
   const description = contract

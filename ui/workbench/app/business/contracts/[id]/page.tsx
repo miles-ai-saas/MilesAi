@@ -1,17 +1,21 @@
 "use client";
 
-/** 兼容旧链接：重定向至列表页详情抽屉（`?id=`）。 */
+import { useParams } from "next/navigation";
+import { BizDetailPageShell } from "@/features/business/components/BizDetailPageShell";
+import { ContractDetailView, useContractDetailPage } from "@/features/contracts";
 
-import { useEffect } from "react";
-import { useParams, useRouter } from "next/navigation";
-
-export default function ContractDetailRedirectPage() {
+export default function ContractDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const router = useRouter();
-
-  useEffect(() => {
-    router.replace(`/business/contracts?id=${encodeURIComponent(id)}`);
-  }, [id, router]);
-
-  return null;
+  const vm = useContractDetailPage(id);
+  return (
+    <BizDetailPageShell
+      backHref="/business/contracts"
+      backLabel="返回合同列表"
+      loading={vm.loading}
+      error={vm.error}
+      notFoundLabel="合同不存在"
+    >
+      {vm.contract ? <ContractDetailView vm={vm} /> : null}
+    </BizDetailPageShell>
+  );
 }

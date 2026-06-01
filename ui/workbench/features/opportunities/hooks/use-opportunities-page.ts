@@ -8,7 +8,7 @@ import { usePagedList } from "@/hooks/use-paged-list";
 import { useConfirmAction } from "@/hooks/use-confirm-action";
 import { useRequireAuth } from "@/lib/auth-store";
 import { api } from "@/lib/api";
-import { useBizDetailQuery } from "@/features/business/lib/use-biz-detail-query";
+import { useBizDetailNavigation, useBizLegacyDetailRedirect } from "@/features/business/lib/use-biz-detail-tab";
 import {
   EMPTY_OPPORTUNITY_FORM,
   type OpportunityFormValues,
@@ -21,7 +21,8 @@ export function useOpportunitiesPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { ready } = useRequireAuth();
-  const { detailId, openDetail, closeDetail } = useBizDetailQuery("/business/opportunities");
+  useBizLegacyDetailRedirect("/business/opportunities");
+  const { openDetail } = useBizDetailNavigation("/business/opportunities");
   const [viewMode, setViewMode] = useState<OpportunitiesViewMode>("board");
   const [pipeline, setPipeline] = useState<BizOpportunity[]>([]);
   const [pipelineLoading, setPipelineLoading] = useState(false);
@@ -113,11 +114,10 @@ export function useOpportunitiesPage() {
       description: `确定删除「${o.name}」？`,
       onConfirm: async () => {
         await api.deleteOpportunity(o.id);
-        if (detailId === o.id) closeDetail();
         await refreshList();
       },
     }),
-    [requestConfirm, detailId, closeDetail, refreshList],
+    [requestConfirm, refreshList],
   );
 
   const onStageChange = useCallback(async (id: string, stage: string) => {
@@ -158,9 +158,7 @@ export function useOpportunitiesPage() {
     saving,
     openCreate,
     handleCreateSave,
-    detailId,
     openDetail,
-    closeDetail,
     refreshList,
   };
 }

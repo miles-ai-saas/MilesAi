@@ -36,6 +36,24 @@ class PaymentService(BaseService):
         rows = await self.repo.list_by_contract(self.ctx.tenant_id, contract_id)
         return [self._to_out(r) for r in rows]
 
+    async def list_payments(
+        self,
+        *,
+        contract_id: UUID | None = None,
+        direction: str | None = None,
+        status: str | None = None,
+        limit: int = 200,
+    ) -> list[BizPaymentOut]:
+        """跨合同查询收付款台账，支持方向/状态筛选。"""
+        rows = await self.repo.list_all(
+            self.ctx.tenant_id,
+            contract_id=contract_id,
+            direction=direction,
+            status=status,
+            limit=limit,
+        )
+        return [self._to_out(r) for r in rows]
+
     async def create(self, body: BizPaymentCreate) -> BizPaymentOut:
         """创建收付款记录，direction 区分收款(in)和付款(out)。"""
         row = BizPayment(

@@ -1,17 +1,21 @@
 "use client";
 
-/** 兼容旧链接：重定向至列表页详情抽屉（`?id=`）。 */
+import { useParams } from "next/navigation";
+import { BizDetailPageShell } from "@/features/business/components/BizDetailPageShell";
+import { ClientDetailView, useClientDetailPage } from "@/features/clients";
 
-import { useEffect } from "react";
-import { useParams, useRouter } from "next/navigation";
-
-export default function ClientDetailRedirectPage() {
+export default function ClientDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const router = useRouter();
-
-  useEffect(() => {
-    router.replace(`/business/clients?id=${encodeURIComponent(id)}`);
-  }, [id, router]);
-
-  return null;
+  const vm = useClientDetailPage(id);
+  return (
+    <BizDetailPageShell
+      backHref="/business/clients"
+      backLabel="返回客户列表"
+      loading={vm.loading}
+      error={vm.error}
+      notFoundLabel="客户不存在"
+    >
+      {vm.client ? <ClientDetailView vm={vm} /> : null}
+    </BizDetailPageShell>
+  );
 }

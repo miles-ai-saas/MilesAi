@@ -1,17 +1,21 @@
 "use client";
 
-/** 兼容旧链接：重定向至列表页详情抽屉（`?id=`）。 */
+import { useParams } from "next/navigation";
+import { BizDetailPageShell } from "@/features/business/components/BizDetailPageShell";
+import { SupplierDetailView, useSupplierDetailPage } from "@/features/suppliers";
 
-import { useEffect } from "react";
-import { useParams, useRouter } from "next/navigation";
-
-export default function SupplierDetailRedirectPage() {
+export default function SupplierDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const router = useRouter();
-
-  useEffect(() => {
-    router.replace(`/business/suppliers?id=${encodeURIComponent(id)}`);
-  }, [id, router]);
-
-  return null;
+  const vm = useSupplierDetailPage(id);
+  return (
+    <BizDetailPageShell
+      backHref="/business/suppliers"
+      backLabel="返回供应商列表"
+      loading={vm.loading}
+      error={vm.error}
+      notFoundLabel="供应商不存在"
+    >
+      {vm.supplier ? <SupplierDetailView vm={vm} /> : null}
+    </BizDetailPageShell>
+  );
 }

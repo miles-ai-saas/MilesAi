@@ -137,6 +137,19 @@ export const bizApi = {
 
   listPayments: (contractId: string) => get<BizPayment[]>(`/biz/payments?contract_id=${contractId}`),
 
+  listPaymentLedger: (p?: { direction?: string; status?: string; limit?: number }) => {
+    const params: string[] = [];
+    if (p?.direction) params.push(`direction=${encodeURIComponent(p.direction)}`);
+    if (p?.status) params.push(`status=${encodeURIComponent(p.status)}`);
+    if (p?.limit) params.push(`limit=${p.limit}`);
+    const q = params.length ? `?${params.join("&")}` : "";
+    return get<BizPayment[]>(`/biz/payments${q}`);
+  },
+
+  getBizNotifications: (days = 7) => get<{ due_milestone_count: number; due_milestones: DueMilestoneItem[] }>(
+    `/biz/notifications?days=${days}`,
+  ),
+
   createPayment: (p: { contract_id: string; project_id: string; name: string; direction?: string; amount?: number; planned_date?: string; method?: string; remark?: string }) =>
     post<BizPayment>("/biz/payments", p),
 
@@ -200,6 +213,21 @@ export const bizApi = {
     const params: string[] = [];
     if (clientId) params.push(`client_id=${clientId}`);
     if (stage) params.push(`stage=${stage}`);
+    if (params.length) q += `?${params.join("&")}`;
+    return q;
+  },
+
+  exportClientsCsv: (search?: string) => {
+    let q = "/biz/export/clients.csv";
+    if (search) q += `?search=${encodeURIComponent(search)}`;
+    return q;
+  },
+
+  exportContractsCsv: (clientId?: string, status?: string) => {
+    let q = "/biz/export/contracts.csv";
+    const params: string[] = [];
+    if (clientId) params.push(`client_id=${clientId}`);
+    if (status) params.push(`status=${status}`);
     if (params.length) q += `?${params.join("&")}`;
     return q;
   },

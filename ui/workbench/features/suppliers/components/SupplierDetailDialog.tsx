@@ -11,7 +11,7 @@ type Props = {
 };
 
 export function SupplierDetailDialog({ supplierId, onClose, onMutated }: Props) {
-  const vm = useSupplierDetailPage(supplierId, { onMutated });
+  const vm = useSupplierDetailPage(supplierId ?? "", { onMutated });
 
   return (
     <ResourceDialog

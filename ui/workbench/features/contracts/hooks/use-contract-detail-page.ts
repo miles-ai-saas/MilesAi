@@ -1,20 +1,29 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useBizDetailTab } from "@/features/business/lib/use-biz-detail-tab";
 import { api } from "@/lib/api";
 import type { BizContract, BizPayment } from "@/lib/types";
+
+const VALID_TABS = ["info", "payments"] as const;
+export type ContractDetailTab = (typeof VALID_TABS)[number];
 
 type Options = {
   onMutated?: () => void;
 };
 
-export function useContractDetailPage(contractId: string | null, options?: Options) {
+export function useContractDetailPage(contractId: string, options?: Options) {
   const onMutated = options?.onMutated;
+  const { tab, handleTabChange } = useBizDetailTab(
+    "/business/contracts",
+    contractId,
+    VALID_TABS,
+    "info",
+  );
   const [contract, setContract] = useState<BizContract | null>(null);
   const [payments, setPayments] = useState<BizPayment[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [tab, setTab] = useState<"info" | "payments">("info");
   const [editingInfo, setEditingInfo] = useState(false);
   const [savingInfo, setSavingInfo] = useState(false);
   const [infoForm, setInfoForm] = useState({
@@ -49,12 +58,10 @@ export function useContractDetailPage(contractId: string | null, options?: Optio
     setContract(null);
     setPayments([]);
     setError("");
-    setTab("info");
     setEditingInfo(false);
   }, []);
 
   const loadContract = useCallback(async () => {
-    if (!contractId) return null;
     const data = await api.getContract(contractId);
     setContract(data);
     syncInfoForm(data);
@@ -62,13 +69,11 @@ export function useContractDetailPage(contractId: string | null, options?: Optio
   }, [contractId, syncInfoForm]);
 
   const loadPayments = useCallback(async () => {
-    if (!contractId) return;
     setPayments(await api.listPayments(contractId));
   }, [contractId]);
 
   useEffect(() => {
     if (!contractId) {
-      resetLocalState();
       setLoading(false);
       return;
     }
@@ -77,15 +82,11 @@ export function useContractDetailPage(contractId: string | null, options?: Optio
     loadContract()
       .catch((e) => setError(e?.message ?? "加载失败"))
       .finally(() => setLoading(false));
-  }, [contractId, loadContract, resetLocalState]);
+  }, [contractId, loadContract]);
 
-  const handleTabChange = useCallback(
-    (t: "info" | "payments") => {
-      setTab(t);
-      if (t === "payments") void loadPayments();
-    },
-    [loadPayments],
-  );
+  useEffect(() => {
+    if (tab === "payments") void loadPayments();
+  }, [tab, loadPayments]);
 
   const saveContractInfo = async (e: React.FormEvent) => {
     e.preventDefault();

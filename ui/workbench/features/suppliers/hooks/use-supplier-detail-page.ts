@@ -1,16 +1,25 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useBizDetailTab } from "@/features/business/lib/use-biz-detail-tab";
 import { api } from "@/lib/api";
 import type { BizSupplier, BizSupplierContact } from "@/lib/types";
+
+const VALID_TABS = ["info", "contacts"] as const;
+export type SupplierDetailTab = (typeof VALID_TABS)[number];
 
 type Options = {
   onMutated?: () => void;
 };
 
-export function useSupplierDetailPage(supplierId: string | null, options?: Options) {
+export function useSupplierDetailPage(supplierId: string, options?: Options) {
   const onMutated = options?.onMutated;
+  const { tab, handleTabChange } = useBizDetailTab(
+    "/business/suppliers",
+    supplierId,
+    VALID_TABS,
+    "info",
+  );
   const [supplier, setSupplier] = useState<BizSupplier | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -26,7 +35,6 @@ export function useSupplierDetailPage(supplierId: string | null, options?: Optio
   }, []);
 
   const load = useCallback(async () => {
-    if (!supplierId) return null;
     const data = await api.getSupplier(supplierId);
     setSupplier(data);
     return data;
@@ -34,14 +42,13 @@ export function useSupplierDetailPage(supplierId: string | null, options?: Optio
 
   useEffect(() => {
     if (!supplierId) {
-      resetLocalState();
       setLoading(false);
       return;
     }
     setLoading(true);
     setError("");
     load().catch((e) => setError(e?.message ?? "加载失败")).finally(() => setLoading(false));
-  }, [supplierId, load, resetLocalState]);
+  }, [supplierId, load]);
 
   const resetContactForm = () => {
     setContactForm({ name: "", title: "", phone: "", email: "", is_primary: false });
@@ -89,6 +96,8 @@ export function useSupplierDetailPage(supplierId: string | null, options?: Optio
     supplier,
     loading,
     error,
+    tab,
+    handleTabChange,
     contactForm,
     setContactForm,
     editingContactId,

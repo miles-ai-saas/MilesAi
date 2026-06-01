@@ -2,8 +2,8 @@
 
 import { BizPageHero } from "@/features/business-dashboard/components/BizPageHero";
 import { BizListPageSkeleton } from "@/features/business/components/BizListSkeleton";
+import { ExportCsvButton } from "@/features/business/components/ExportCsvButton";
 import { useBizPermissions } from "@/features/business/lib/biz-permissions";
-import { ContractDetailDialog } from "@/features/contracts/components/ContractDetailDialog";
 import { ContractFormDialog } from "@/features/contracts/components/ContractFormDialog";
 import {
   ContractsFilters,
@@ -13,6 +13,7 @@ import {
 import type { ContractsPageVm } from "@/features/contracts/hooks/use-contracts-page";
 import { CONTRACT_STATUS_LABELS } from "@/features/contracts/lib/contract-labels";
 import { StatChip } from "@/components/ui/StatChip";
+import { api } from "@/lib/api";
 
 export function ContractsPageView({ vm }: { vm: ContractsPageVm }) {
   const {
@@ -28,8 +29,6 @@ export function ContractsPageView({ vm }: { vm: ContractsPageVm }) {
     saving,
     openCreate,
     handleCreateSave,
-    detailId,
-    closeDetail,
     list,
     status,
     hasActiveFilters,
@@ -49,11 +48,14 @@ export function ContractsPageView({ vm }: { vm: ContractsPageVm }) {
         compact
         subtitle="管理签约、履约条款与收付款计划"
         actions={
-          canWriteContract ? (
-            <button type="button" onClick={() => openCreate()} className="btn-primary text-sm">
-              新建合同
-            </button>
-          ) : undefined
+          <>
+            <ExportCsvButton url={api.exportContractsCsv(undefined, status || undefined)} filename="biz-contracts.csv" />
+            {canWriteContract ? (
+              <button type="button" onClick={() => openCreate()} className="btn-primary text-sm">
+                新建合同
+              </button>
+            ) : null}
+          </>
         }
       />
 
@@ -84,11 +86,6 @@ export function ContractsPageView({ vm }: { vm: ContractsPageVm }) {
         onClose={() => setCreateOpen(false)}
         onChange={setCreateForm}
         onSave={() => void handleCreateSave()}
-      />
-      <ContractDetailDialog
-        contractId={detailId}
-        onClose={closeDetail}
-        onMutated={() => void list.reload()}
       />
     </div>
   );

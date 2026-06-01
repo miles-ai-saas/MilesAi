@@ -11,7 +11,7 @@ type Props = {
 };
 
 export function ClientDetailDialog({ clientId, onClose, onMutated }: Props) {
-  const vm = useClientDetailPage(clientId, { onMutated });
+  const vm = useClientDetailPage(clientId ?? "", { onMutated });
 
   return (
     <ResourceDialog

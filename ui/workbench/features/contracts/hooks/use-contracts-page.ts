@@ -6,7 +6,7 @@ import { usePagedList } from "@/hooks/use-paged-list";
 import { useConfirmAction } from "@/hooks/use-confirm-action";
 import { useRequireAuth } from "@/lib/auth-store";
 import { api } from "@/lib/api";
-import { useBizDetailQuery } from "@/features/business/lib/use-biz-detail-query";
+import { useBizDetailNavigation, useBizLegacyDetailRedirect } from "@/features/business/lib/use-biz-detail-tab";
 import { EMPTY_CONTRACT_FORM, type ContractFormValues } from "@/features/contracts/lib/contract-form-options";
 import type { BizClient, BizContract, BizProject } from "@/lib/types";
 
@@ -14,7 +14,8 @@ export function useContractsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { ready } = useRequireAuth();
-  const { detailId, openDetail, closeDetail } = useBizDetailQuery("/business/contracts");
+  useBizLegacyDetailRedirect("/business/contracts");
+  const { openDetail } = useBizDetailNavigation("/business/contracts");
   const [status, setStatus] = useState("");
   const list = usePagedList(
     (page, size) => api.listContracts(page, size, undefined, status || undefined),
@@ -99,11 +100,10 @@ export function useContractsPage() {
       description: `确定删除「${c.name}」？`,
       onConfirm: async () => {
         await api.deleteContract(c.id);
-        if (detailId === c.id) closeDetail();
         list.reload();
       },
     }),
-    [requestConfirm, list, detailId, closeDetail],
+    [requestConfirm, list],
   );
 
   const clearFilters = useCallback(() => setStatus(""), []);
@@ -127,9 +127,7 @@ export function useContractsPage() {
     saving,
     openCreate,
     handleCreateSave,
-    detailId,
     openDetail,
-    closeDetail,
   };
 }
 

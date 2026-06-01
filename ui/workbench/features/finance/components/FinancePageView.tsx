@@ -23,6 +23,10 @@ export function useFinancePage() {
   const { ready } = useRequireAuth();
   const [summary, setSummary] = useState<FinancialSummary | null>(null);
   const [pending, setPending] = useState<BizPayment[]>([]);
+  const [ledger, setLedger] = useState<BizPayment[]>([]);
+  const [ledgerDirection, setLedgerDirection] = useState("");
+  const [ledgerStatus, setLedgerStatus] = useState("");
+  const [ledgerLoading, setLedgerLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [actionId, setActionId] = useState<string | null>(null);
 
@@ -32,10 +36,30 @@ export function useFinancePage() {
     setPending(p);
   }, []);
 
+  const reloadLedger = useCallback(async () => {
+    setLedgerLoading(true);
+    try {
+      setLedger(
+        await api.listPaymentLedger({
+          direction: ledgerDirection || undefined,
+          status: ledgerStatus || undefined,
+          limit: 200,
+        }),
+      );
+    } finally {
+      setLedgerLoading(false);
+    }
+  }, [ledgerDirection, ledgerStatus]);
+
   useEffect(() => {
     if (!ready) return;
     reload().finally(() => setLoading(false));
   }, [ready, reload]);
+
+  useEffect(() => {
+    if (!ready) return;
+    void reloadLedger();
+  }, [ready, reloadLedger]);
 
   const markPaid = async (paymentId: string) => {
     setActionId(paymentId);
@@ -50,7 +74,7 @@ export function useFinancePage() {
     }
   };
 
-  return { ready, summary, pending, loading, actionId, markPaid, reload };
+  return { ready, summary, pending, ledger, ledgerDirection, setLedgerDirection, ledgerStatus, setLedgerStatus, ledgerLoading, loading, actionId, markPaid, reload, reloadLedger };
 }
 
 export type FinancePageVm = ReturnType<typeof useFinancePage>;
@@ -93,7 +117,7 @@ function PendingPaymentMobileCard({
           </button>
         ) : null}
         <Link
-          href={`/business/contracts?id=${payment.contract_id}`}
+          href={`/business/contracts/${payment.contract_id}`}
           className="text-xs text-ink-muted hover:text-brand hover:underline"
         >
           查看合同
@@ -176,7 +200,7 @@ function PendingPaymentsList({
                       </button>
                     ) : null}
                     <Link
-                      href={`/business/contracts?id=${payment.contract_id}`}
+                      href={`/business/contracts/${payment.contract_id}`}
                       className="text-xs text-ink-muted hover:text-brand hover:underline"
                     >
                       查看合同
@@ -193,7 +217,20 @@ function PendingPaymentsList({
 }
 
 export function FinancePageView({ vm }: { vm: FinancePageVm }) {
-  const { summary, pending, loading, actionId, markPaid, ready } = vm;
+  const {
+    summary,
+    pending,
+    ledger,
+    ledgerDirection,
+    setLedgerDirection,
+    ledgerStatus,
+    setLedgerStatus,
+    ledgerLoading,
+    loading,
+    actionId,
+    markPaid,
+    ready,
+  } = vm;
   const { canWritePayment } = useBizPermissions();
 
   const pendingIn = useMemo(
@@ -254,6 +291,81 @@ export function FinancePageView({ vm }: { vm: FinancePageVm }) {
           actionId={actionId}
           onMarkPaid={(id) => void markPaid(id)}
         />
+      </section>
+
+      <section className="card mt-6 overflow-hidden">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line bg-surface-muted/30 px-4 py-3">
+          <div>
+            <h2 className="text-sm font-semibold text-ink">收付款台账</h2>
+            <p className="text-xs text-ink-muted">全部收付款记录，可按方向与状态筛选</p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <select
+              className="input-field text-xs"
+              value={ledgerDirection}
+              onChange={(e) => setLedgerDirection(e.target.value)}
+            >
+              <option value="">全部方向</option>
+              <option value="in">收款</option>
+              <option value="out">付款</option>
+            </select>
+            <select
+              className="input-field text-xs"
+              value={ledgerStatus}
+              onChange={(e) => setLedgerStatus(e.target.value)}
+            >
+              <option value="">全部状态</option>
+              <option value="pending">待收付</option>
+              <option value="paid">已结清</option>
+              <option value="cancelled">已取消</option>
+            </select>
+          </div>
+        </div>
+        {ledgerLoading ? (
+          <div className="h-40 animate-pulse bg-surface-muted" />
+        ) : ledger.length === 0 ? (
+          <div className="px-4 py-12 text-center text-sm text-ink-muted">暂无收付款记录</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[720px] text-left text-sm">
+              <thead className="border-b border-line bg-surface-muted/60 text-xs text-ink-muted">
+                <tr>
+                  <th className="px-4 py-2.5 font-medium">摘要</th>
+                  <th className="px-4 py-2.5 font-medium">方向</th>
+                  <th className="px-4 py-2.5 font-medium">金额</th>
+                  <th className="px-4 py-2.5 font-medium">计划日期</th>
+                  <th className="px-4 py-2.5 font-medium">状态</th>
+                  <th className="px-4 py-2.5 text-right font-medium">合同</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-line-soft">
+                {ledger.map((payment) => (
+                  <tr key={payment.id} className="transition hover:bg-surface-muted/40">
+                    <td className="px-4 py-3 font-medium text-ink">{payment.name}</td>
+                    <td className="px-4 py-3">
+                      <span className={`rounded-full px-2 py-0.5 text-xs ${paymentDirectionBadge(payment.direction)}`}>
+                        {PAYMENT_DIRECTION_LABELS[payment.direction] ?? payment.direction}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 tabular-nums text-ink-muted">¥{payment.amount.toLocaleString()}</td>
+                    <td className="px-4 py-3 text-ink-muted">{payment.planned_date ?? "—"}</td>
+                    <td className="px-4 py-3 text-xs text-ink-muted">
+                      {PAYMENT_STATUS_LABELS[payment.status] ?? payment.status}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <Link
+                        href={`/business/contracts/${payment.contract_id}`}
+                        className="text-xs text-brand hover:underline"
+                      >
+                        查看
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </section>
     </div>
   );

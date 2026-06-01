@@ -2,8 +2,8 @@
 
 import { BizPageHero } from "@/features/business-dashboard/components/BizPageHero";
 import { BizListPageSkeleton } from "@/features/business/components/BizListSkeleton";
+import { ExportCsvButton } from "@/features/business/components/ExportCsvButton";
 import { useBizPermissions } from "@/features/business/lib/biz-permissions";
-import { ClientDetailDialog } from "@/features/clients/components/ClientDetailDialog";
 import { ClientFormDialog } from "@/features/clients/components/ClientFormDialog";
 import {
   ClientsFilters,
@@ -12,6 +12,7 @@ import {
 } from "@/features/clients/components/ClientsTable";
 import type { ClientsPageVm } from "@/features/clients/hooks/use-clients-page";
 import { StatChip } from "@/components/ui/StatChip";
+import { api } from "@/lib/api";
 
 export function ClientsPageView({ vm }: { vm: ClientsPageVm }) {
   const {
@@ -24,9 +25,9 @@ export function ClientsPageView({ vm }: { vm: ClientsPageVm }) {
     saving,
     openCreate,
     handleCreateSave,
-    detailId,
-    closeDetail,
+    openDetail,
     list,
+    search,
     hasActiveFilters,
   } = vm;
   const { canWriteClient } = useBizPermissions();
@@ -42,11 +43,14 @@ export function ClientsPageView({ vm }: { vm: ClientsPageVm }) {
         compact
         subtitle="维护甲方档案、联系人与保密等级，关联商机与项目"
         actions={
-          canWriteClient ? (
-            <button type="button" onClick={openCreate} className="btn-primary text-sm">
-              新建客户
-            </button>
-          ) : undefined
+          <>
+            <ExportCsvButton url={api.exportClientsCsv(search || undefined)} filename="biz-clients.csv" />
+            {canWriteClient ? (
+              <button type="button" onClick={openCreate} className="btn-primary text-sm">
+                新建客户
+              </button>
+            ) : null}
+          </>
         }
       />
 
@@ -74,11 +78,6 @@ export function ClientsPageView({ vm }: { vm: ClientsPageVm }) {
         onClose={() => setCreateOpen(false)}
         onChange={setCreateForm}
         onSave={() => void handleCreateSave()}
-      />
-      <ClientDetailDialog
-        clientId={detailId}
-        onClose={closeDetail}
-        onMutated={() => void list.reload()}
       />
     </div>
   );

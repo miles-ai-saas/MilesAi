@@ -3,6 +3,7 @@
 /** 业务中心顶栏与面包屑。 */
 
 import { BizGlobalSearch } from "@/features/business/components/BizGlobalSearch";
+import { BizNotificationBell } from "@/features/business/components/BizNotificationBell";
 import type { BreadcrumbItem } from "@/lib/nav-config";
 import { AppBreadcrumb } from "@/components/layout/AppBreadcrumb";
 import { SectionLinks } from "@/components/layout/SectionLink";
@@ -27,6 +28,7 @@ export function BizTopBar({ breadcrumbs, onMenuOpen }: { breadcrumbs: Breadcrumb
 
       <div className="flex shrink-0 items-center gap-3 border-l border-line-soft pl-3">
         <BizGlobalSearch />
+        <BizNotificationBell />
         <SectionLinks current="business" />
         <UserMenu variant="header" />
       </div>

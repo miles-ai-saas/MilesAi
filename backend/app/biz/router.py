@@ -13,6 +13,7 @@ from app.biz.views.deliverable import router as deliverable_router
 from app.biz.views.export import router as export_router
 from app.biz.views.search import router as search_router
 from app.biz.views.service_line_template import router as service_line_template_router
+from app.biz.views.notification import router as notification_router
 from app.biz.views.meta import router as meta_router
 from app.biz.views.opportunity import router as opportunity_router
 from app.biz.views.milestone import router as milestone_router
@@ -24,6 +25,7 @@ from app.biz.views.work_package import router as work_package_router
 
 biz_router = APIRouter()
 biz_router.include_router(dashboard_router, prefix="/dashboard", tags=["business-dashboard"])
+biz_router.include_router(notification_router, prefix="/notifications", tags=["business-notifications"])
 biz_router.include_router(meta_router, prefix="/meta", tags=["business-meta"])
 biz_router.include_router(client_router, prefix="/clients", tags=["business-clients"])
 biz_router.include_router(project_router, prefix="/projects", tags=["business-projects"])

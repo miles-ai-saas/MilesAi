@@ -38,3 +38,27 @@ class PaymentRepository(BaseRepository[BizPayment]):
             .limit(limit)
         )
         return (await self.db.execute(stmt)).scalars().all()
+
+    async def list_all(
+        self,
+        tenant_id: UUID,
+        *,
+        contract_id: UUID | None = None,
+        direction: str | None = None,
+        status: str | None = None,
+        limit: int = 200,
+    ) -> list[BizPayment]:
+        filters = [BizPayment.tenant_id == tenant_id, not_deleted(BizPayment)]
+        if contract_id:
+            filters.append(BizPayment.contract_id == contract_id)
+        if direction:
+            filters.append(BizPayment.direction == direction)
+        if status:
+            filters.append(BizPayment.status == status)
+        stmt = (
+            select(BizPayment)
+            .where(*filters)
+            .order_by(BizPayment.planned_date.desc().nulls_last(), BizPayment.updated_at.desc())
+            .limit(limit)
+        )
+        return (await self.db.execute(stmt)).scalars().all()
