@@ -58,7 +58,7 @@ export function ProjectDeliverablesTab({ vm }: { vm: ProjectDetailPageVm }) {
   };
 
   return (
-    <div className="mt-4 space-y-4">
+    <div className="space-y-4">
       {canWriteProject && (
         <form onSubmit={handleAdd} className="card flex flex-wrap items-end gap-3 p-4">
         <label className="flex-1">
@@ -90,7 +90,11 @@ export function ProjectDeliverablesTab({ vm }: { vm: ProjectDetailPageVm }) {
           uploading={uploadingId === d.id}
           actionLoading={actionId === d.id}
           canWrite={canWriteProject}
-          onDelete={async () => { await api.deleteDeliverable(d.id); await loadDeliverables(); }}
+          onDelete={async () => {
+            if (!window.confirm(`确定删除交付物「${d.name}」？`)) return;
+            await api.deleteDeliverable(d.id);
+            await loadDeliverables();
+          }}
           onAttach={(selected) => void handleAttachFile(d.id, selected)}
           onSubmit={async () => { setActionId(d.id); try { await api.submitDeliverable(d.id); await loadDeliverables(); } finally { setActionId(null); } }}
           onAccept={async () => { setActionId(d.id); try { await api.acceptDeliverable(d.id); await loadDeliverables(); } finally { setActionId(null); } }}

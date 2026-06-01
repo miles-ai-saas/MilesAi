@@ -17,11 +17,11 @@ export function ProjectActivityTab({ vm }: { vm: ProjectDetailPageVm }) {
       .finally(() => setLoading(false));
   }, [projectId]);
 
-  if (loading) return <p className="mt-4 text-sm text-ink-muted">加载动态…</p>;
-  if (items.length === 0) return <p className="mt-4 text-sm text-ink-faint">暂无业务操作记录</p>;
+  if (loading) return <p className="text-sm text-ink-muted">加载动态…</p>;
+  if (items.length === 0) return <p className="text-sm text-ink-faint">暂无业务操作记录</p>;
 
   return (
-    <div className="mt-4 space-y-2">
+    <div className="space-y-2">
       {items.map((item) => (
         <div key={item.id} className="card p-3 text-sm">
           <div className="flex flex-wrap items-center justify-between gap-2">

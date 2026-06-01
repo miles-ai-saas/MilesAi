@@ -29,7 +29,7 @@ export function ProjectMembersTab({ vm }: { vm: ProjectDetailPageVm }) {
   };
 
   return (
-    <div className="mt-4 space-y-4">
+    <div className="space-y-4">
       {canWriteProject && (
         <form onSubmit={handleAdd} className="card flex flex-wrap items-end gap-3 p-4">
         <label className="min-w-[12rem] flex-1">

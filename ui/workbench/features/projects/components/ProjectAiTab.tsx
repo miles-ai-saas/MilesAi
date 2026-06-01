@@ -27,11 +27,11 @@ export function ProjectAiTab({ vm }: { vm: ProjectDetailPageVm }) {
   }, [projectId]);
 
   if (!project) return null;
-  if (loading) return <p className="mt-4 text-sm text-ink-muted">加载 AI 推荐…</p>;
-  if (error || !ctx) return <p className="mt-4 text-sm text-red-600">{error || "无法加载 AI 上下文"}</p>;
+  if (loading) return <p className="text-sm text-ink-muted">加载 AI 推荐…</p>;
+  if (error || !ctx) return <p className="text-sm text-red-600">{error || "无法加载 AI 上下文"}</p>;
 
   return (
-    <div className="mt-4 space-y-6">
+    <div className="space-y-6">
       <div className="card p-4">
         <div className="flex flex-wrap items-center gap-2">
           <span className={`rounded px-2 py-0.5 text-xs ${ctx.rag_enabled ? "bg-green-50 text-green-700" : "bg-red-50 text-red-600"}`}>

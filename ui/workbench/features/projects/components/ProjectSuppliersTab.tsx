@@ -8,7 +8,7 @@ import { PROJECT_SUPPLIER_STATUS_LABELS, SUPPLIER_CATEGORY_LABELS } from "@/feat
 import type { ProjectDetailPageVm } from "@/features/projects/hooks/use-project-detail-page";
 
 export function ProjectSuppliersTab({ vm }: { vm: ProjectDetailPageVm }) {
-  const { project, projectId } = vm;
+  const { project, projectId, loadSupplierCount } = vm;
   const [rows, setRows] = useState<BizProjectSupplier[]>([]);
   const [suppliers, setSuppliers] = useState<BizSupplier[]>([]);
   const [supplierId, setSupplierId] = useState("");
@@ -45,6 +45,7 @@ export function ProjectSuppliersTab({ vm }: { vm: ProjectDetailPageVm }) {
       setRole("");
       setAmount("");
       await load();
+      await loadSupplierCount();
     } finally {
       setSaving(false);
     }
@@ -54,13 +55,14 @@ export function ProjectSuppliersTab({ vm }: { vm: ProjectDetailPageVm }) {
     if (!window.confirm("确定移除此供应商？")) return;
     await api.removeProjectSupplier(projectId, sid);
     await load();
+    await loadSupplierCount();
   };
 
   const linkedIds = new Set(rows.map((r) => r.supplier_id));
   const available = suppliers.filter((s) => !linkedIds.has(s.id) && s.status === "active");
 
   return (
-    <div className="mt-4 space-y-4">
+    <div className="space-y-4">
       <form onSubmit={handleAdd} className="card flex flex-wrap items-end gap-3 p-4">
         <label className="min-w-[12rem] flex-1">
           <span className="text-xs text-ink-muted">供应商</span>

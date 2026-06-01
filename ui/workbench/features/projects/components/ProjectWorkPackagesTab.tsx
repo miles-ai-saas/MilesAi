@@ -31,7 +31,7 @@ export function ProjectWorkPackagesTab({ vm }: { vm: ProjectDetailPageVm }) {
   };
 
   return (
-    <div className="mt-4 space-y-4">
+    <div className="space-y-4">
       {canWriteProject && (
         <form onSubmit={handleAdd} className="card flex flex-wrap items-end gap-3 p-4">
         <label>
@@ -138,12 +138,15 @@ function WorkPackageCard({
 
   return (
     <div className="card p-4">
-      <div className="flex items-start justify-between">
-        <div>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
           <span className="font-medium text-ink">{wp.name}</span>
-          <span className="ml-2 rounded bg-surface-muted px-2 py-0.5 text-xs text-ink-muted">{SERVICE_LINE_LABELS[wp.service_line] ?? wp.service_line}</span>
+          <span className="ml-2 rounded-full bg-surface-muted px-2 py-0.5 text-xs text-ink-muted">
+            {SERVICE_LINE_LABELS[wp.service_line] ?? wp.service_line}
+          </span>
+          {wp.stage ? <p className="mt-1 text-xs text-ink-faint">阶段：{wp.stage}（{wp.stage_index + 1}）</p> : null}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <span className={`rounded px-2 py-0.5 text-xs ${wp.status === "in_progress" ? "bg-brand-light text-brand" : wp.status === "done" ? "bg-green-50 text-green-700" : "bg-surface-muted text-ink-muted"}`}>
             {WP_STATUS_LABELS[wp.status] ?? wp.status}
           </span>
@@ -162,8 +165,7 @@ function WorkPackageCard({
           {canWrite && wp.status === "review" && <button type="button" className="text-xs text-brand hover:underline" onClick={() => updateWpStatus(wp, "done")}>通过</button>}
         </div>
       </div>
-      {wp.stage && <p className="mt-1 text-xs text-ink-faint">阶段：{wp.stage}（序号 {wp.stage_index}）</p>}
-      <div className="mt-2 flex gap-4 text-xs text-ink-muted">
+      <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-ink-muted">
         {wp.budget != null && <span>预算 ¥{wp.budget.toLocaleString()}</span>}
         {wp.actual_cost != null && <span>实际 ¥{wp.actual_cost.toLocaleString()}</span>}
         {wp.planned_start && <span>{wp.planned_start} ~ {wp.planned_end || "—"}</span>}

@@ -1,22 +1,31 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { api } from "@/lib/api";
 import type { BizDeliverable, BizProject, BizProjectCostSummary, BizProjectMember, BizWorkPackage, TenantUser } from "@/lib/types";
 
 export type ProjectDetailTab = "info" | "workpackages" | "deliverables" | "members" | "suppliers" | "cost" | "activity" | "ai";
 
-export function useProjectDetailPage(projectId: string, options?: { initialTab?: ProjectDetailTab }) {
+const VALID_TABS: ProjectDetailTab[] = ["info", "workpackages", "deliverables", "members", "suppliers", "cost", "activity", "ai"];
+
+function parseTab(raw: string | null): ProjectDetailTab {
+  if (raw && VALID_TABS.includes(raw as ProjectDetailTab)) {
+    return raw as ProjectDetailTab;
+  }
+  return "info";
+}
+
+export function useProjectDetailPage(projectId: string) {
   const router = useRouter();
-  const initialTab = options?.initialTab;
-  const validTabs: ProjectDetailTab[] = ["info", "workpackages", "deliverables", "members", "suppliers", "cost", "activity", "ai"];
-  const [tab, setTab] = useState<ProjectDetailTab>(
-    initialTab && validTabs.includes(initialTab) ? initialTab : "info",
-  );
+  const searchParams = useSearchParams();
+  const tab = parseTab(searchParams.get("tab"));
+
   const [project, setProject] = useState<BizProject | null>(null);
+  const [clientName, setClientName] = useState("");
   const [deliverables, setDeliverables] = useState<BizDeliverable[]>([]);
   const [members, setMembers] = useState<BizProjectMember[]>([]);
+  const [supplierCount, setSupplierCount] = useState(0);
   const [users, setUsers] = useState<TenantUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -44,6 +53,10 @@ export function useProjectDetailPage(projectId: string, options?: { initialTab?:
 
   const loadDeliverables = useCallback(() => api.listDeliverables(projectId).then(setDeliverables), [projectId]);
   const loadMembers = useCallback(() => api.listProjectMembers(projectId).then(setMembers), [projectId]);
+  const loadSupplierCount = useCallback(
+    () => api.listProjectSuppliers(projectId).then((rows) => setSupplierCount(rows.length)),
+    [projectId],
+  );
   const loadCostSummary = useCallback(async () => {
     const data = await api.getProjectCostSummary(projectId);
     setCostSummary(data);
@@ -51,8 +64,10 @@ export function useProjectDetailPage(projectId: string, options?: { initialTab?:
   }, [projectId]);
 
   useEffect(() => {
+    setLoading(true);
+    setError("");
     api.getProject(projectId)
-      .then((p) => {
+      .then(async (p) => {
         setProject(p);
         setInfoForm({
           name: p.name,
@@ -61,19 +76,35 @@ export function useProjectDetailPage(projectId: string, options?: { initialTab?:
           total_budget: p.total_budget != null ? String(p.total_budget) : "",
           status: p.status,
         });
+        try {
+          const client = await api.getClient(p.client_id);
+          setClientName(client.name);
+        } catch {
+          setClientName("");
+        }
+        await Promise.all([loadDeliverables(), loadMembers(), loadSupplierCount()]);
       })
       .catch((e) => setError(e?.message ?? "加载失败"))
       .finally(() => setLoading(false));
-  }, [projectId]);
+  }, [projectId, loadDeliverables, loadMembers, loadSupplierCount]);
 
   useEffect(() => {
-    if (tab === "deliverables") void loadDeliverables();
     if (tab === "cost") void loadCostSummary();
-    if (tab === "members") {
-      void loadMembers();
+    if (tab === "members" && users.length === 0) {
       void api.listUsers(1, 100).then((r) => setUsers(r.items));
     }
-  }, [tab, loadDeliverables, loadCostSummary, loadMembers]);
+  }, [tab, loadCostSummary, users.length]);
+
+  const handleTabChange = useCallback(
+    (next: ProjectDetailTab) => {
+      const params = new URLSearchParams(searchParams.toString());
+      if (next === "info") params.delete("tab");
+      else params.set("tab", next);
+      const q = params.toString();
+      router.replace(`/business/projects/${projectId}${q ? `?${q}` : ""}`, { scroll: false });
+    },
+    [router, projectId, searchParams],
+  );
 
   const updateWpStatus = async (wp: BizWorkPackage, nextStatus: string) => {
     await api.updateWorkPackage(projectId, wp.id, { status: nextStatus });
@@ -131,13 +162,6 @@ export function useProjectDetailPage(projectId: string, options?: { initialTab?:
     }
   };
 
-  const handleTabChange = (t: ProjectDetailTab) => {
-    setTab(t);
-    if (t === "deliverables") void loadDeliverables();
-    if (t === "members") void loadMembers();
-    if (t === "cost") void loadCostSummary();
-  };
-
   const addMember = async (userId: string, role: string) => {
     await api.addProjectMember(projectId, { user_id: userId, role_in_project: role });
     await loadMembers();
@@ -149,11 +173,16 @@ export function useProjectDetailPage(projectId: string, options?: { initialTab?:
     await loadMembers();
   };
 
+  const pendingDeliverables = deliverables.filter((d) => d.status === "submitted").length;
+
   return {
     router,
     project,
+    clientName,
     deliverables,
     members,
+    supplierCount,
+    pendingDeliverables,
     users,
     loading,
     error,
@@ -165,6 +194,8 @@ export function useProjectDetailPage(projectId: string, options?: { initialTab?:
     rollbackWpStage,
     refreshProject,
     loadDeliverables,
+    loadMembers,
+    loadSupplierCount,
     addMember,
     removeMember,
     costSummary,
