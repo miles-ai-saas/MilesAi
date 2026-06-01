@@ -363,6 +363,29 @@ export interface BizSearchResult {
   items: BizSearchHit[];
 }
 
+/** 服务线模板市场条目 */
+export interface BizServiceLineTemplatePack {
+  id: string;
+  service_line: string;
+  service_line_label: string;
+  name: string;
+  description?: string | null;
+  stages: string[];
+  ai_config: BizServiceLineAiConfig;
+  publisher_name: string;
+  publisher_type: "platform" | "partner" | string;
+  tags: string[];
+  is_featured: boolean;
+  install_count: number;
+}
+
+export interface BizServiceLineTemplatePackApplyResult {
+  pack_id: string;
+  pack_name: string;
+  service_line: string;
+  template: BizServiceLineTemplate;
+}
+
 export interface BizProjectActivityItem {
   id: string;
   action: string;

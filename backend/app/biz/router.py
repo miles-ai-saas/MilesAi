@@ -19,6 +19,7 @@ from app.biz.views.milestone import router as milestone_router
 from app.biz.views.payment import router as payment_router
 from app.biz.views.project import router as project_router
 from app.biz.views.supplier import router as supplier_router
+from app.biz.views.template_pack_market import router as template_pack_market_router
 from app.biz.views.work_package import router as work_package_router
 
 biz_router = APIRouter()
@@ -31,6 +32,7 @@ biz_router.include_router(milestone_router, prefix="/milestones", tags=["busines
 biz_router.include_router(export_router, prefix="/export", tags=["business-export"])
 biz_router.include_router(search_router, prefix="/search", tags=["business-search"])
 biz_router.include_router(service_line_template_router, prefix="/service-line-templates", tags=["business-service-line-templates"])
+biz_router.include_router(template_pack_market_router, prefix="/service-line-template-packs", tags=["business-service-line-template-packs"])
 biz_router.include_router(deliverable_router, prefix="/deliverables", tags=["business-deliverables"])
 biz_router.include_router(opportunity_router, prefix="/opportunities", tags=["business-opportunities"])
 biz_router.include_router(contract_router, prefix="/contracts", tags=["business-contracts"])

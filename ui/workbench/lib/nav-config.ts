@@ -108,6 +108,7 @@ export const BUSINESS_NAV: { title: string; items: BizNavItem[] }[] = [
       { href: "/business/projects", label: "项目", icon: "projects", permission: "biz:project:read" },
       { href: "/business/work-packages", label: "工作包看板", icon: "workpackages", permission: "biz:project:read" },
       { href: "/business/service-templates", label: "服务线模板", icon: "templates", permission: "biz:project:read" },
+      { href: "/business/service-templates/market", label: "模板市场", icon: "templates", permission: "biz:project:read" },
     ],
   },
   {
@@ -203,7 +204,10 @@ export function getBusinessBreadcrumbs(pathname: string): BreadcrumbItem[] {
   if (pathname === "/business/work-packages") {
     return [home, { label: "工作包看板" }];
   }
-  if (pathname === "/business/service-templates") {
+  if (pathname === "/business/service-templates" || pathname.startsWith("/business/service-templates/")) {
+    if (pathname === "/business/service-templates/market") {
+      return [home, { label: "服务线模板", href: "/business/service-templates" }, { label: "模板市场" }];
+    }
     return [home, { label: "服务线模板" }];
   }
   if (pathname === "/business/contracts" || pathname.startsWith("/business/contracts/")) {

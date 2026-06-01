@@ -18,6 +18,7 @@ from app.models.biz.project import (
     BizServiceLineTemplate,
     BizWorkPackage,
 )
+from app.models.biz.template_pack import BizServiceLineTemplatePack
 
 __all__ = [
     "ConfidentialityLevel",
@@ -29,6 +30,7 @@ __all__ = [
     "BizWorkPackage",
     "BizDeliverable",
     "BizServiceLineTemplate",
+    "BizServiceLineTemplatePack",
     "BizProjectMember",
     "BizContract",
     "BizPayment",

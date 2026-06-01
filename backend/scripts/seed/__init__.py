@@ -12,7 +12,7 @@ from scripts.seed.skills import seed_skills
 from scripts.seed.tools import seed_tools
 from scripts.seed.mcp import seed_mcp
 from scripts.seed.flows import seed_flows
-from scripts.seed.biz import seed_biz_service_line_templates
+from scripts.seed.biz import seed_biz_service_line_template_packs, seed_biz_service_line_templates
 from scripts.seed.biz_demo import seed_biz_demo_data
 from scripts.seed.biz_ai import seed_biz_service_line_agents
 from scripts.seed.biz_roles import seed_biz_roles
@@ -21,6 +21,7 @@ from scripts.seed.tenant import seed_tenant
 __all__ = [
     "seed_tenant",
     "seed_biz_service_line_templates",
+    "seed_biz_service_line_template_packs",
     "seed_biz_demo_data",
     "seed_biz_roles",
     "seed_biz_service_line_agents",
@@ -44,6 +45,7 @@ async def seed_all(session) -> None:
     """按依赖顺序写入全部种子数据。"""
     await seed_tenant(session)
     await seed_biz_service_line_templates(session)
+    await seed_biz_service_line_template_packs(session)
     await seed_biz_roles(session)
     await seed_biz_demo_data(session)
     await seed_categories(session)

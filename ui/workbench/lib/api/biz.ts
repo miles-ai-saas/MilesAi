@@ -1,6 +1,6 @@
 import { get, getPage, post, patch, put, http, unwrap } from "./client";
 import { buildPageQuery } from "../pagination";
-import type { BizArchiveCaseResult, BizClient, BizClientContact, BizClosePreview, BizCloseWizardResult, BizContract, BizDeliverable, BizMilestone, BizOpportunity, BizPayment, BizProject, BizProjectActivityItem, BizProjectAiContext, BizProjectCostSummary, BizProjectMember, BizProjectSupplier, BizQuote, BizSearchResult, BizServiceLineAiConfig, BizServiceLineTemplate, BizSupplier, BizSupplierContact, BizWorkPackage, BizWorkPackageKanban, DashboardSummary, DueMilestoneItem, FinancialSummary } from "../types";
+import type { BizArchiveCaseResult, BizClient, BizClientContact, BizClosePreview, BizCloseWizardResult, BizContract, BizDeliverable, BizMilestone, BizOpportunity, BizPayment, BizProject, BizProjectActivityItem, BizProjectAiContext, BizProjectCostSummary, BizProjectMember, BizProjectSupplier, BizQuote, BizSearchResult, BizServiceLineAiConfig, BizServiceLineTemplate, BizServiceLineTemplatePack, BizServiceLineTemplatePackApplyResult, BizSupplier, BizSupplierContact, BizWorkPackage, BizWorkPackageKanban, DashboardSummary, DueMilestoneItem, FinancialSummary } from "../types";
 
 export const bizApi = {
   // ── 业务仪表盘 ──
@@ -213,6 +213,21 @@ export const bizApi = {
     put<BizServiceLineTemplate>(`/biz/service-line-templates/${serviceLine}`, p),
   resetServiceLineTemplate: (serviceLine: string) =>
     http.delete(`/biz/service-line-templates/${serviceLine}`).then((r) => unwrap<BizServiceLineTemplate>(r.data)),
+
+  listServiceLineTemplatePacks: (p?: { serviceLine?: string; search?: string; featured?: boolean }) => {
+    const params: string[] = [];
+    if (p?.serviceLine) params.push(`service_line=${encodeURIComponent(p.serviceLine)}`);
+    if (p?.search) params.push(`search=${encodeURIComponent(p.search)}`);
+    if (p?.featured) params.push("featured=true");
+    const q = params.length ? `?${params.join("&")}` : "";
+    return get<BizServiceLineTemplatePack[]>(`/biz/service-line-template-packs${q}`);
+  },
+
+  getServiceLineTemplatePack: (packId: string) =>
+    get<BizServiceLineTemplatePack>(`/biz/service-line-template-packs/${packId}`),
+
+  applyServiceLineTemplatePack: (packId: string) =>
+    post<BizServiceLineTemplatePackApplyResult>(`/biz/service-line-template-packs/${packId}/apply`, {}),
 
   searchBiz: (q: string, limit = 12) => get<BizSearchResult>(`/biz/search?q=${encodeURIComponent(q)}&limit=${limit}`),
 

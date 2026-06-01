@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { BizPageHero } from "@/features/business-dashboard/components/BizPageHero";
 import type { ServiceTemplatesPageVm } from "@/features/service-templates/hooks/use-service-templates-page";
 
@@ -42,6 +43,11 @@ export function ServiceTemplatesPageView({ vm }: { vm: ServiceTemplatesPageVm })
         compact
         title="服务线模板"
         subtitle="配置八条服务线的阶段流水线与 AI 推荐，新建工作包时自动继承"
+        actions={
+          <Link href="/business/service-templates/market" className="text-xs text-brand hover:underline">
+            浏览模板市场 →
+          </Link>
+        }
       />
 
       <div className="space-y-3">
