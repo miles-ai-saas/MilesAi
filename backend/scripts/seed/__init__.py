@@ -13,11 +13,15 @@ from scripts.seed.tools import seed_tools
 from scripts.seed.mcp import seed_mcp
 from scripts.seed.flows import seed_flows
 from scripts.seed.biz import seed_biz_service_line_templates
+from scripts.seed.biz_ai import seed_biz_service_line_agents
+from scripts.seed.biz_roles import seed_biz_roles
 from scripts.seed.tenant import seed_tenant
 
 __all__ = [
     "seed_tenant",
     "seed_biz_service_line_templates",
+    "seed_biz_roles",
+    "seed_biz_service_line_agents",
     "seed_categories",
     "seed_compliance",
     "seed_prompts",
@@ -38,6 +42,7 @@ async def seed_all(session) -> None:
     """按依赖顺序写入全部种子数据。"""
     await seed_tenant(session)
     await seed_biz_service_line_templates(session)
+    await seed_biz_roles(session)
     await seed_categories(session)
     await seed_compliance(session)
     await seed_prompts(session)
@@ -50,3 +55,4 @@ async def seed_all(session) -> None:
     await seed_admin_ops(session)
     await seed_model_catalog(session)
     await seed_advertising_kb(session)
+    await seed_biz_service_line_agents(session)
