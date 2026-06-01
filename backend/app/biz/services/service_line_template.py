@@ -63,3 +63,13 @@ class ServiceLineTemplateService:
         if next_index >= len(names):
             return None
         return names[next_index], next_index
+
+    async def previous_stage(self, tenant_id: UUID, service_line: str, current_index: int) -> tuple[str | None, int] | None:
+        """返回上一阶段名称与序号；已在第一阶段时返回 None。"""
+        names = await self.resolve_stage_names(tenant_id, service_line)
+        if not names:
+            return None
+        if current_index <= 0:
+            return None
+        prev_index = current_index - 1
+        return names[prev_index], prev_index

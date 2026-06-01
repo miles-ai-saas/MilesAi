@@ -48,3 +48,13 @@ async def advance_work_package_stage(
 ):
     """推进工作包到服务线模板的下一阶段。"""
     return ok(await _project_svc(db, ctx).advance_work_package_stage(wp_id))
+
+
+@router.post("/{wp_id}/rollback-stage", response_model=ApiResponse[BizWorkPackageOut])
+async def rollback_work_package_stage(
+    wp_id: UUID,
+    ctx: TenantContext = Depends(require_permissions("biz:project:write")),
+    db: AsyncSession = Depends(get_db),
+):
+    """将工作包回退到服务线模板的上一阶段。"""
+    return ok(await _project_svc(db, ctx).rollback_work_package_stage(wp_id))

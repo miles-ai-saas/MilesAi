@@ -29,7 +29,7 @@ function NewProjectForm() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    api.listClients(1, 200).then((r) => setClients(r.items));
+    api.listClients(1, 100).then((r) => setClients(r.items));
   }, []);
 
   const addWorkPackage = () => setWps([...wps, { service_line: "", name: "" }]);

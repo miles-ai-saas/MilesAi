@@ -52,6 +52,7 @@ export const bizApi = {
   updateWorkPackage: (projectId: string, wpId: string, p: { name?: string; stage?: string; status?: string; owner_id?: string; budget?: number; actual_cost?: number }) => patch<BizWorkPackage>(`/biz/projects/${projectId}/work-packages/${wpId}`, p),
   deleteWorkPackage: (projectId: string, wpId: string) => http.delete(`/biz/projects/${projectId}/work-packages/${wpId}`).then(() => undefined),
   advanceWorkPackageStage: (wpId: string) => post<BizWorkPackage>(`/biz/work-packages/${wpId}/advance-stage`, {}),
+  rollbackWorkPackageStage: (wpId: string) => post<BizWorkPackage>(`/biz/work-packages/${wpId}/rollback-stage`, {}),
 
   getProjectCostSummary: (projectId: string) => get<BizProjectCostSummary>(`/biz/projects/${projectId}/cost-summary`),
   getClosePreview: (projectId: string) => get<BizClosePreview>(`/biz/projects/${projectId}/close-preview`),

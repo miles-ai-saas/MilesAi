@@ -294,6 +294,36 @@ class ProjectService(BaseService):
         )
         return self._wp_to_out(wp)
 
+    async def rollback_work_package_stage(self, wp_id: UUID) -> BizWorkPackageOut:
+        """按服务线模板将工作包回退到上一阶段。"""
+        wp = await self.repo.get_work_package(wp_id)
+        if not wp:
+            raise NotFoundError("工作包不存在")
+        assert_tenant_access(self.ctx, wp.tenant_id)
+
+        prev = await self.template_svc.previous_stage(self.ctx.tenant_id, wp.service_line, wp.stage_index)
+        if prev is None:
+            raise BadRequestError("已在第一阶段，无法回退")
+
+        old_stage, old_index = wp.stage, wp.stage_index
+        wp.stage, wp.stage_index = prev
+        await self.db.flush()
+        await self.db.refresh(wp)
+        await log_biz_action(
+            self.db, self.ctx,
+            action="biz.work_package.rollback_stage",
+            resource_type="biz_work_package",
+            resource_id=wp.id,
+            detail={
+                "project_id": str(wp.project_id),
+                "from_stage": old_stage,
+                "from_index": old_index,
+                "to_stage": wp.stage,
+                "to_index": wp.stage_index,
+            },
+        )
+        return self._wp_to_out(wp)
+
     async def get_cost_summary(self, project_id: UUID) -> BizProjectCostSummaryOut:
         """汇总项目与各工作包预算/实际成本。"""
         row = await self._get_or_raise(project_id)

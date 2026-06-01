@@ -7,7 +7,7 @@ import { SERVICE_LINE_LABELS, SERVICE_LINES, WP_STATUS_LABELS } from "@/features
 import type { ProjectDetailPageVm } from "@/features/projects/hooks/use-project-detail-page";
 
 export function ProjectWorkPackagesTab({ vm }: { vm: ProjectDetailPageVm }) {
-  const { project, projectId, updateWpStatus, advanceWpStage, refreshProject } = vm;
+  const { project, projectId, updateWpStatus, advanceWpStage, rollbackWpStage, refreshProject } = vm;
   const [serviceLine, setServiceLine] = useState("");
   const [wpName, setWpName] = useState("");
   const [saving, setSaving] = useState(false);
@@ -53,6 +53,7 @@ export function ProjectWorkPackagesTab({ vm }: { vm: ProjectDetailPageVm }) {
           projectId={projectId}
           updateWpStatus={updateWpStatus}
           advanceWpStage={advanceWpStage}
+          rollbackWpStage={rollbackWpStage}
         />
       ))}
     </div>
@@ -64,11 +65,13 @@ function WorkPackageCard({
   projectId,
   updateWpStatus,
   advanceWpStage,
+  rollbackWpStage,
 }: {
   wp: BizWorkPackage;
   projectId: string;
   updateWpStatus: (wp: BizWorkPackage, next: string) => Promise<void>;
   advanceWpStage: (wp: BizWorkPackage) => Promise<void>;
+  rollbackWpStage: (wp: BizWorkPackage) => Promise<void>;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [milestones, setMilestones] = useState<BizMilestone[]>([]);
@@ -76,6 +79,7 @@ function WorkPackageCard({
   const [msDue, setMsDue] = useState("");
   const [loadingMs, setLoadingMs] = useState(false);
   const [advancing, setAdvancing] = useState(false);
+  const [rollingBack, setRollingBack] = useState(false);
 
   const loadMilestones = useCallback(async () => {
     const rows = await api.listMilestones(projectId, wp.id);
@@ -116,6 +120,15 @@ function WorkPackageCard({
     }
   };
 
+  const handleRollback = async () => {
+    setRollingBack(true);
+    try {
+      await rollbackWpStage(wp);
+    } finally {
+      setRollingBack(false);
+    }
+  };
+
   return (
     <div className="card p-4">
       <div className="flex items-start justify-between">
@@ -127,6 +140,11 @@ function WorkPackageCard({
           <span className={`rounded px-2 py-0.5 text-xs ${wp.status === "in_progress" ? "bg-brand-light text-brand" : wp.status === "done" ? "bg-green-50 text-green-700" : "bg-surface-muted text-ink-muted"}`}>
             {WP_STATUS_LABELS[wp.status] ?? wp.status}
           </span>
+          {wp.stage && wp.stage_index > 0 && (
+            <button type="button" className="text-xs text-ink-muted hover:underline" disabled={rollingBack} onClick={() => void handleRollback()}>
+              {rollingBack ? "回退中…" : "回退阶段"}
+            </button>
+          )}
           {wp.stage && (
             <button type="button" className="text-xs text-brand hover:underline" disabled={advancing} onClick={() => void handleAdvance()}>
               {advancing ? "推进中…" : "推进阶段"}

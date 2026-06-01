@@ -64,3 +64,59 @@ async def test_advance_work_package_stage_at_last_stage():
 
     with pytest.raises(BadRequestError, match="最后阶段"):
         await svc.advance_work_package_stage(wp.id)
+
+
+@pytest.mark.asyncio
+async def test_rollback_work_package_stage_success(monkeypatch):
+    ctx = make_tenant_ctx()
+    tenant_id = ctx.tenant_id
+
+    wp = MagicMock()
+    wp.id = uuid4()
+    wp.tenant_id = tenant_id
+    wp.project_id = uuid4()
+    wp.service_line = "exhibition"
+    wp.stage = "深化设计"
+    wp.stage_index = 1
+    wp.name = "主包"
+    wp.status = "in_progress"
+    wp.owner_id = None
+    wp.budget = None
+    wp.actual_cost = None
+    wp.planned_start = None
+    wp.planned_end = None
+
+    db = AsyncMock()
+    svc = ProjectService(db, ctx)
+    svc.repo.get_work_package = AsyncMock(return_value=wp)
+    svc.template_svc.previous_stage = AsyncMock(return_value=("概念设计", 0))
+
+    audit = AsyncMock()
+    monkeypatch.setattr("app.biz.services.project.log_biz_action", audit)
+
+    out = await svc.rollback_work_package_stage(wp.id)
+    assert out.stage == "概念设计"
+    assert out.stage_index == 0
+    assert wp.stage == "概念设计"
+    assert wp.stage_index == 0
+    audit.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_rollback_work_package_stage_at_first_stage():
+    ctx = make_tenant_ctx()
+    tenant_id = ctx.tenant_id
+
+    wp = MagicMock()
+    wp.id = uuid4()
+    wp.tenant_id = tenant_id
+    wp.service_line = "exhibition"
+    wp.stage_index = 0
+
+    db = AsyncMock()
+    svc = ProjectService(db, ctx)
+    svc.repo.get_work_package = AsyncMock(return_value=wp)
+    svc.template_svc.previous_stage = AsyncMock(return_value=None)
+
+    with pytest.raises(BadRequestError, match="第一阶段"):
+        await svc.rollback_work_package_stage(wp.id)

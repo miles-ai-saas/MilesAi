@@ -19,7 +19,7 @@ export function ProjectSuppliersTab({ vm }: { vm: ProjectDetailPageVm }) {
   const load = async () => {
     const [ps, all] = await Promise.all([
       api.listProjectSuppliers(projectId),
-      api.listSuppliers(1, 200),
+      api.listSuppliers(1, 100),
     ]);
     setRows(ps);
     setSuppliers(all.items);

@@ -22,3 +22,12 @@ def test_initial_stage_empty():
     stage, index = initial_stage([])
     assert stage is None
     assert index == 0
+
+
+def test_previous_stage_logic():
+    from app.biz.services.service_line_template import parse_stage_names
+
+    names = parse_stage_names(["概念", "深化", "落地"])
+    assert names[1] == "深化"
+    prev_index = 1 - 1
+    assert names[prev_index] == "概念"

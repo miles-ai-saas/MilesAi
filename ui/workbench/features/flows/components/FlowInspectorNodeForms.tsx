@@ -232,7 +232,7 @@ function SubFlowInspector({
   useEffect(() => {
     setLoading(true);
     api
-      .listFlows(1, 200)
+      .listFlows(1, 100)
       .then((page) => {
         setFlows(page.items.filter((f) => f.status === "published" && (!currentFlowId || f.id !== currentFlowId)));
       })

@@ -19,6 +19,7 @@ from scripts.seed.flows import seed_flows
 from scripts.seed.skills import seed_skills
 from scripts.seed.tools import seed_tools
 from scripts.seed.mcp import seed_mcp
+from scripts.seed.biz_demo import seed_biz_demo_data
 from scripts.seed.tenant import seed_tenant
 
 SeedFn = Callable[[AsyncSession], Awaitable[None]]
@@ -38,6 +39,7 @@ SEED_TARGETS: dict[str, SeedFn] = {
     "admin": seed_admin_ops,
     "model-catalog": seed_model_catalog,
     "kb-advertising": seed_advertising_kb,
+    "biz-demo": seed_biz_demo_data,
 }
 
 

@@ -21,7 +21,7 @@ function NewContractForm() {
   const [desc, setDesc] = useState("");
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => { api.listProjects(1, 200).then((r) => setProjects(r.items)); api.listClients(1, 200).then((r) => setClients(r.items)); }, []);
+  useEffect(() => { api.listProjects(1, 100).then((r) => setProjects(r.items)); api.listClients(1, 100).then((r) => setClients(r.items)); }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

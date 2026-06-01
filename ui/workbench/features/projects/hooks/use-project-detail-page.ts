@@ -60,7 +60,7 @@ export function useProjectDetailPage(projectId: string) {
   useEffect(() => {
     if (tab !== "members") return;
     void loadMembers();
-    void api.listUsers(1, 200).then((r) => setUsers(r.items));
+    void api.listUsers(1, 100).then((r) => setUsers(r.items));
   }, [tab, loadMembers]);
 
   const updateWpStatus = async (wp: BizWorkPackage, nextStatus: string) => {
@@ -70,6 +70,12 @@ export function useProjectDetailPage(projectId: string) {
 
   const advanceWpStage = async (wp: BizWorkPackage) => {
     await api.advanceWorkPackageStage(wp.id);
+    await refreshProject();
+  };
+
+  const rollbackWpStage = async (wp: BizWorkPackage) => {
+    if (!window.confirm(`确定将「${wp.name}」回退到上一阶段？`)) return;
+    await api.rollbackWorkPackageStage(wp.id);
     await refreshProject();
   };
 
@@ -150,6 +156,7 @@ export function useProjectDetailPage(projectId: string) {
     handleTabChange,
     updateWpStatus,
     advanceWpStage,
+    rollbackWpStage,
     refreshProject,
     loadDeliverables,
     addMember,

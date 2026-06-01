@@ -26,7 +26,7 @@ function NewOpportunityForm() {
   const [desc, setDesc] = useState("");
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => { api.listClients(1, 200).then((r) => setClients(r.items)); }, []);
+  useEffect(() => { api.listClients(1, 100).then((r) => setClients(r.items)); }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
