@@ -69,9 +69,10 @@ DEFAULT_SERVICE_LINE_AI: dict[str, dict] = {
 }
 
 
-# 模板市场：同服务线的可选流水线方案（平台发布）
+# 模板市场：场景分类 + 客户类型标签（industry key）
 MARKETPLACE_TEMPLATE_PACKS: list[dict] = [
     {
+        "category": "exhibition",
         "service_line": "exhibition",
         "name": "政府展馆精简版",
         "description": "适用于政府/国企展馆项目，压缩为概念—效果图—落地三阶段，加快审批节奏。",
@@ -84,11 +85,12 @@ MARKETPLACE_TEMPLATE_PACKS: list[dict] = [
         },
         "publisher_name": "Miles 官方",
         "publisher_type": "platform",
-        "tags": ["政府", "精简", "展馆"],
+        "tags": ["government"],
         "is_featured": True,
         "sort_order": 10,
     },
     {
+        "category": "exhibition",
         "service_line": "exhibition",
         "name": "沉浸式体验全案版",
         "description": "文旅/商业沉浸式展陈，增加数字内容与运营交接阶段。",
@@ -101,11 +103,12 @@ MARKETPLACE_TEMPLATE_PACKS: list[dict] = [
         },
         "publisher_name": "Miles 官方",
         "publisher_type": "platform",
-        "tags": ["文旅", "沉浸式"],
+        "tags": ["tourism", "commercial"],
         "is_featured": False,
         "sort_order": 20,
     },
     {
+        "category": "event",
         "service_line": "event",
         "name": "大型峰会版",
         "description": "千人级峰会/论坛，含嘉宾、媒体与复盘完整链路。",
@@ -118,11 +121,12 @@ MARKETPLACE_TEMPLATE_PACKS: list[dict] = [
         },
         "publisher_name": "Miles 官方",
         "publisher_type": "platform",
-        "tags": ["峰会", "大型活动"],
+        "tags": ["enterprise", "government"],
         "is_featured": True,
         "sort_order": 10,
     },
     {
+        "category": "event",
         "service_line": "event",
         "name": "小型沙龙版",
         "description": "50 人以内精品沙龙，三阶段快速交付。",
@@ -135,11 +139,12 @@ MARKETPLACE_TEMPLATE_PACKS: list[dict] = [
         },
         "publisher_name": "Miles 官方",
         "publisher_type": "platform",
-        "tags": ["沙龙", "精简"],
+        "tags": ["enterprise"],
         "is_featured": False,
         "sort_order": 20,
     },
     {
+        "category": "brand",
         "service_line": "brand_identity",
         "name": "快启 VI 精简版",
         "description": "初创/快消品牌快速 VI 交付，压缩调研与实施周期。",
@@ -152,11 +157,12 @@ MARKETPLACE_TEMPLATE_PACKS: list[dict] = [
         },
         "publisher_name": "Miles 官方",
         "publisher_type": "platform",
-        "tags": ["VI", "快启"],
+        "tags": ["enterprise"],
         "is_featured": True,
         "sort_order": 10,
     },
     {
+        "category": "video",
         "service_line": "video_production",
         "name": "短视频快产版",
         "description": "15–60 秒短视频/信息流广告，四阶段快速出片。",
@@ -169,11 +175,12 @@ MARKETPLACE_TEMPLATE_PACKS: list[dict] = [
         },
         "publisher_name": "Miles 官方",
         "publisher_type": "platform",
-        "tags": ["短视频", "快产"],
+        "tags": ["commercial", "enterprise"],
         "is_featured": True,
         "sort_order": 10,
     },
     {
+        "category": "training",
         "service_line": "training",
         "name": "企业内训标准版",
         "description": "企业内部培训项目标准五阶段，含评估与跟进。",
@@ -186,11 +193,12 @@ MARKETPLACE_TEMPLATE_PACKS: list[dict] = [
         },
         "publisher_name": "Miles 官方",
         "publisher_type": "partner",
-        "tags": ["内训", "标准"],
+        "tags": ["enterprise"],
         "is_featured": False,
         "sort_order": 10,
     },
     {
+        "category": "print",
         "service_line": "print",
         "name": "画册精装版",
         "description": "高端画册/年报印刷，增加装帧工艺与色彩管理阶段。",
@@ -203,7 +211,7 @@ MARKETPLACE_TEMPLATE_PACKS: list[dict] = [
         },
         "publisher_name": "印刷工艺联盟",
         "publisher_type": "partner",
-        "tags": ["画册", "精装"],
+        "tags": ["enterprise", "government"],
         "is_featured": False,
         "sort_order": 10,
     },
@@ -221,6 +229,7 @@ async def seed_biz_service_line_template_packs(session: AsyncSession) -> None:
             )
         )
         if existing:
+            existing.category = spec.get("category", existing.category or "general")
             existing.description = spec.get("description")
             existing.stages = spec["stages"]
             existing.ai_config = spec.get("ai_config", {})
@@ -235,6 +244,7 @@ async def seed_biz_service_line_template_packs(session: AsyncSession) -> None:
         session.add(
             BizServiceLineTemplatePack(
                 tenant_id=None,
+                category=spec.get("category", "general"),
                 service_line=spec["service_line"],
                 name=spec["name"],
                 description=spec.get("description"),

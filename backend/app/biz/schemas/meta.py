@@ -19,3 +19,4 @@ class BizMetaOut:
     supplier_categories: list[EnumItem] = field(default_factory=list)
     supplier_statuses: list[EnumItem] = field(default_factory=list)
     project_supplier_statuses: list[EnumItem] = field(default_factory=list)
+    template_pack_categories: list[EnumItem] = field(default_factory=list)

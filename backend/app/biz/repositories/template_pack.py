@@ -31,7 +31,9 @@ class ServiceLineTemplatePackRepository(BaseRepository[BizServiceLineTemplatePac
         self,
         viewer_tenant_id: UUID,
         *,
+        category: str | None = None,
         service_line: str | None = None,
+        customer_type: str | None = None,
         search: str | None = None,
         featured_only: bool = False,
         limit: int = 100,
@@ -46,8 +48,12 @@ class ServiceLineTemplatePackRepository(BaseRepository[BizServiceLineTemplatePac
             )
             .limit(limit)
         )
+        if category:
+            stmt = stmt.where(BizServiceLineTemplatePack.category == category)
         if service_line:
             stmt = stmt.where(BizServiceLineTemplatePack.service_line == service_line)
+        if customer_type:
+            stmt = stmt.where(BizServiceLineTemplatePack.tags.contains([customer_type]))
         if featured_only:
             stmt = stmt.where(BizServiceLineTemplatePack.is_featured.is_(True))
         if search:

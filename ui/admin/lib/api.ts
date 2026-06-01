@@ -224,6 +224,8 @@ export interface AdminMarketplaceAppDetail extends AdminMarketplaceApp {
 
 export interface AdminTemplatePack {
   id: string;
+  category: string;
+  category_label: string;
   service_line: string;
   service_line_label: string;
   name: string;
@@ -234,6 +236,7 @@ export interface AdminTemplatePack {
   publisher_type: string;
   publisher_tenant_id?: string | null;
   tags: string[];
+  tag_labels: string[];
   status: string;
   review_note?: string | null;
   submitted_at?: string | null;

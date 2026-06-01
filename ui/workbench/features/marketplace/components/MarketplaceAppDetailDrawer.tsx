@@ -1,6 +1,6 @@
 "use client";
 
-/** 应用市场详情：右侧抽屉（链路 §12）。 */
+/** 应用市场详情：居中弹窗（链路 §12）。 */
 
 import { ResourceDialog } from "@/components/resource/ResourceDialog";
 import { MarketplaceStarDisplay } from "@/features/marketplace/components/MarketplaceAppCardParts";
@@ -104,7 +104,7 @@ export function MarketplaceAppDetailDrawer({
   return (
     <ResourceDialog
       open={open}
-      size="drawer"
+      size="lg"
       title={title}
       description={description}
       onClose={onClose}

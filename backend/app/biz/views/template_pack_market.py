@@ -26,6 +26,7 @@ router = APIRouter()
 class TemplatePackCreateBody(BaseModel):
     service_line: str
     name: str = Field(min_length=1, max_length=128)
+    category: str | None = None
     description: str | None = None
     tags: list[str] = Field(default_factory=list)
 
@@ -33,6 +34,7 @@ class TemplatePackCreateBody(BaseModel):
 class TemplatePackUpdateBody(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=128)
     description: str | None = None
+    category: str | None = None
     tags: list[str] | None = None
     stages: list[str] | None = None
     ai_config: dict | None = None
@@ -63,6 +65,7 @@ async def create_my_template_pack(
     payload = BizServiceLineTemplatePackCreate(
         service_line=body.service_line,
         name=body.name,
+        category=body.category,
         description=body.description,
         tags=body.tags,
     )
@@ -79,6 +82,7 @@ async def update_my_template_pack(
     payload = BizServiceLineTemplatePackUpdate(
         name=body.name,
         description=body.description,
+        category=body.category,
         tags=body.tags,
         stages=body.stages,
         ai_config=body.ai_config,
@@ -116,13 +120,23 @@ async def withdraw_my_template_pack(
 
 @router.get("", response_model=ApiResponse[list[BizServiceLineTemplatePackOut]])
 async def list_template_packs(
-    service_line: str | None = Query(None),
+    category: str | None = Query(None, description="场景分类"),
+    service_line: str | None = Query(None, description="适用服务线"),
+    customer_type: str | None = Query(None, description="客户类型标签"),
     search: str | None = Query(None),
     featured: bool = Query(False),
     ctx: TenantContext = Depends(require_permissions("biz:project:read")),
     db: AsyncSession = Depends(get_db),
 ):
-    return ok(await _market_svc(db, ctx).list_packs(service_line=service_line, search=search, featured_only=featured))
+    return ok(
+        await _market_svc(db, ctx).list_packs(
+            category=category,
+            service_line=service_line,
+            customer_type=customer_type,
+            search=search,
+            featured_only=featured,
+        )
+    )
 
 
 @router.get("/{pack_id}", response_model=ApiResponse[BizServiceLineTemplatePackOut])

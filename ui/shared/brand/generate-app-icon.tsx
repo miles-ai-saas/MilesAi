@@ -1,16 +1,23 @@
+import { readFile } from "node:fs/promises";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
 import { ImageResponse } from "next/og";
 
 import { COMPANY_ORANGE } from "./company-logo";
 
-const NOTO_SANS_SC_BOLD =
-  "https://fonts.gstatic.com/s/notosanssc/v40/k3kCo84MPvpLmixcA63oeAL7Iqp5IZJF9bmaGzjCnYw.ttf";
+const FONT_PATH = path.join(
+  path.dirname(fileURLToPath(import.meta.url)),
+  "fonts/noto-sans-sc-bold-subset.ttf",
+);
+
+let fontCache: ArrayBuffer | null = null;
 
 async function loadBoldFont() {
-  const response = await fetch(NOTO_SANS_SC_BOLD);
-  if (!response.ok) {
-    throw new Error("Failed to load Noto Sans SC for app icon");
-  }
-  return response.arrayBuffer();
+  if (fontCache) return fontCache;
+  const buf = await readFile(FONT_PATH);
+  fontCache = buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
+  return fontCache;
 }
 
 /** 生成品牌应用图标（favicon / Apple Touch Icon）：行千里 mark。 */

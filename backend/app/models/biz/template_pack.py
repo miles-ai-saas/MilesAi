@@ -23,11 +23,13 @@ class BizServiceLineTemplatePack(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __tablename__ = "biz_service_line_template_packs"
     __table_args__ = (
         Index("idx_biz_sltp_service_line", "service_line"),
+        Index("idx_biz_sltp_category", "category"),
         Index("idx_biz_sltp_active", "is_active"),
         Index("idx_biz_sltp_status", "status"),
     )
 
     tenant_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    category: Mapped[str] = mapped_column(String(64), nullable=False, default="general")
     service_line: Mapped[str] = mapped_column(String(64), nullable=False)
     name: Mapped[str] = mapped_column(String(128), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)

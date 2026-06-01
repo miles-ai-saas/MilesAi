@@ -48,59 +48,79 @@ export function TemplatePackReviewPageView({ vm }: { vm: TemplatePackReviewPageV
       {msg ? <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">{msg}</div> : null}
       {err ? <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{err}</div> : null}
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <section className="card p-4">
-          <h2 className="text-sm font-semibold text-ink">{tab === "pending" ? "待审核" : "已上架"}</h2>
-          {list.loading ? (
-            <p className="mt-3 text-sm text-ink-muted">加载中…</p>
-          ) : list.items.length === 0 ? (
-            <p className="mt-3 text-sm text-ink-faint">暂无数据</p>
-          ) : (
-            <ul className="mt-3 divide-y divide-line">
-              {list.items.map((item) => (
-                <PackListRow
-                  key={item.id}
-                  item={item}
-                  tab={tab}
-                  busy={busyId === item.id}
-                  onSelect={() => void loadDetail(item.id)}
-                  onApprove={() => void onApprove(item.id)}
-                  onReject={() => setRejectTarget({ id: item.id, name: item.name })}
-                  onUnpublish={() => void onUnpublish(item.id)}
-                  onToggleFeatured={(featured) => void onToggleFeatured(item.id, featured)}
-                />
-              ))}
-            </ul>
-          )}
-          {!list.loading && list.total > list.size && (
-            <div className="mt-3 flex items-center justify-between text-xs text-ink-muted">
-              <span>共 {list.total} 条</span>
-              <div className="flex gap-2">
-                <button type="button" className="disabled:opacity-40" disabled={list.page <= 1} onClick={() => list.setPage(list.page - 1)}>上一页</button>
-                <span>{list.page}</span>
-                <button type="button" className="disabled:opacity-40" disabled={list.page * list.size >= list.total} onClick={() => list.setPage(list.page + 1)}>下一页</button>
-              </div>
+      <section className="card p-4">
+        <h2 className="text-sm font-semibold text-ink">{tab === "pending" ? "待审核" : "已上架"}</h2>
+        {list.loading ? (
+          <p className="mt-3 text-sm text-ink-muted">加载中…</p>
+        ) : list.items.length === 0 ? (
+          <p className="mt-3 text-sm text-ink-faint">暂无数据</p>
+        ) : (
+          <ul className="mt-3 divide-y divide-line">
+            {list.items.map((item) => (
+              <PackListRow
+                key={item.id}
+                item={item}
+                tab={tab}
+                busy={busyId === item.id}
+                onSelect={() => void loadDetail(item.id)}
+                onApprove={() => void onApprove(item.id)}
+                onReject={() => setRejectTarget({ id: item.id, name: item.name })}
+                onUnpublish={() => void onUnpublish(item.id)}
+                onToggleFeatured={(featured) => void onToggleFeatured(item.id, featured)}
+              />
+            ))}
+          </ul>
+        )}
+        {!list.loading && list.total > list.size && (
+          <div className="mt-3 flex items-center justify-between text-xs text-ink-muted">
+            <span>共 {list.total} 条</span>
+            <div className="flex gap-2">
+              <button type="button" className="disabled:opacity-40" disabled={list.page <= 1} onClick={() => list.setPage(list.page - 1)}>上一页</button>
+              <span>{list.page}</span>
+              <button type="button" className="disabled:opacity-40" disabled={list.page * list.size >= list.total} onClick={() => list.setPage(list.page + 1)}>下一页</button>
             </div>
-          )}
-        </section>
+          </div>
+        )}
+      </section>
 
-        <section className="card p-4">
-          <h2 className="text-sm font-semibold text-ink">详情</h2>
-          {!detail ? (
-            <p className="mt-3 text-sm text-ink-faint">点击左侧条目查看</p>
-          ) : (
-            <PackDetailPanel
-              detail={detail}
-              tab={tab}
-              busy={busyId === detail.id}
-              onApprove={() => void onApprove(detail.id)}
-              onReject={() => setRejectTarget({ id: detail.id, name: detail.name })}
-              onUnpublish={() => void onUnpublish(detail.id)}
-              onToggleFeatured={(featured) => void onToggleFeatured(detail.id, featured)}
-            />
-          )}
-        </section>
-      </div>
+      {detail && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <button type="button" className="absolute inset-0 bg-ink/30" aria-label="关闭" onClick={() => setDetail(null)} />
+          <div
+            role="dialog"
+            aria-modal="true"
+            className="relative z-10 flex max-h-[90vh] w-full max-w-2xl flex-col rounded-xl border border-line bg-surface shadow-panel"
+          >
+            <header className="flex shrink-0 items-start justify-between gap-3 border-b border-line px-6 py-4">
+              <div className="min-w-0">
+                <h2 className="text-lg font-semibold text-ink">{detail.name}</h2>
+                <p className="mt-1 text-sm text-ink-muted">
+                  {detail.category_label} · 适用于 {detail.service_line_label} · {detail.publisher_name}
+                </p>
+              </div>
+              <button type="button" className="btn-ghost shrink-0 text-ink-faint" aria-label="关闭" onClick={() => setDetail(null)}>
+                ✕
+              </button>
+            </header>
+            <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
+              <PackDetailPanel
+                detail={detail}
+                tab={tab}
+                busy={busyId === detail.id}
+                onApprove={() => void onApprove(detail.id)}
+                onReject={() => setRejectTarget({ id: detail.id, name: detail.name })}
+                onUnpublish={() => void onUnpublish(detail.id)}
+                onToggleFeatured={(featured) => void onToggleFeatured(detail.id, featured)}
+              />
+            </div>
+            <footer className="shrink-0 border-t border-line px-6 py-4">
+              <div className="flex justify-end">
+                <button type="button" className="btn-ghost text-sm" onClick={() => setDetail(null)}>关闭</button>
+              </div>
+            </footer>
+          </div>
+        </div>
+      )}
 
       {rejectTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
@@ -153,7 +173,7 @@ function PackListRow({
           {item.is_featured && tab === "published" ? <span className="ml-2 text-xs text-amber-600">精选</span> : null}
           {tab === "published" && !item.is_active ? <span className="ml-2 text-xs text-ink-muted">已下架</span> : null}
         </p>
-        <p className="text-xs text-ink-muted">{item.service_line_label} · {item.publisher_name}</p>
+        <p className="text-xs text-ink-muted">{item.category_label} · 适用于 {item.service_line_label} · {item.publisher_name}</p>
       </button>
       <div className="flex shrink-0 flex-wrap justify-end gap-2">
         {tab === "pending" ? (
@@ -196,9 +216,10 @@ function PackDetailPanel({
   onToggleFeatured: (featured: boolean) => void;
 }) {
   return (
-    <div className="mt-3 space-y-3 text-sm">
-      <p><span className="text-ink-muted">服务线：</span>{detail.service_line_label}</p>
-      <p><span className="text-ink-muted">发布方：</span>{detail.publisher_name}</p>
+    <div className="mt-1 space-y-3 text-sm">
+      {detail.tag_labels.length > 0 && (
+        <p><span className="text-ink-muted">客户类型：</span>{detail.tag_labels.join("、")}</p>
+      )}
       {detail.description && <p className="text-ink-muted">{detail.description}</p>}
       <div>
         <p className="font-medium text-ink">阶段</p>

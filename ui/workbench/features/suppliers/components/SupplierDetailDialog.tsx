@@ -19,7 +19,7 @@ export function SupplierDetailDialog({ supplierId, onClose, onMutated }: Props) 
       title={vm.supplier?.name ?? "供应商详情"}
       description={vm.supplier?.short_name ?? undefined}
       onClose={onClose}
-      size="drawer"
+      size="lg"
     >
       <SupplierDetailView vm={vm} embedded onClose={onClose} />
     </ResourceDialog>

@@ -27,7 +27,13 @@ export const PROJECT_SUPPLIER_STATUS_LABELS: Record<string, string> = {
 };
 
 export function supplierStatusBadgeClass(status: string): string {
-  if (status === "active") return "bg-green-50 text-green-700";
+  if (status === "active") return "bg-emerald-50 text-emerald-700";
   if (status === "blacklisted") return "bg-red-50 text-red-600";
   return "bg-surface-muted text-ink-muted";
 }
+
+export const SUPPLIER_STATUSES = [
+  { key: "active", label: "合作中" },
+  { key: "inactive", label: "暂停合作" },
+  { key: "blacklisted", label: "黑名单" },
+] as const;

@@ -18,7 +18,7 @@ export function OpportunityDetailDialog({ opportunityId, onClose, onMutated }: P
       title={vm.opp?.name ?? "商机详情"}
       description={vm.opp?.code ?? undefined}
       onClose={onClose}
-      size="drawer"
+      size="lg"
     >
       <OpportunityDetailView vm={vm} embedded onClose={onClose} />
     </ResourceDialog>

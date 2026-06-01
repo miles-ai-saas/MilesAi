@@ -1,6 +1,6 @@
 import { get, getPage, post, patch, put, http, unwrap } from "./client";
 import { buildPageQuery } from "../pagination";
-import type { BizArchiveCaseResult, BizClient, BizClientContact, BizClosePreview, BizCloseWizardResult, BizContract, BizDeliverable, BizMilestone, BizOpportunity, BizPayment, BizProject, BizProjectActivityItem, BizProjectAiContext, BizProjectCostSummary, BizProjectMember, BizProjectSupplier, BizQuote, BizSearchResult, BizServiceLineAiConfig, BizServiceLineTemplate, BizServiceLineTemplatePack, BizServiceLineTemplatePackApplyResult, BizSupplier, BizSupplierContact, BizWorkPackage, BizWorkPackageKanban, DashboardSummary, DueMilestoneItem, FinancialSummary } from "../types";
+import type { BizArchiveCaseResult, BizClient, BizClientContact, BizClosePreview, BizCloseWizardResult, BizContract, BizDeliverable, BizMilestone, BizMeta, BizOpportunity, BizPayment, BizProject, BizProjectActivityItem, BizProjectAiContext, BizProjectCostSummary, BizProjectMember, BizProjectSupplier, BizQuote, BizSearchResult, BizServiceLineAiConfig, BizServiceLineTemplate, BizServiceLineTemplatePack, BizServiceLineTemplatePackApplyResult, BizSupplier, BizSupplierContact, BizWorkPackage, BizWorkPackageKanban, DashboardSummary, DueMilestoneItem, FinancialSummary } from "../types";
 
 export const bizApi = {
   // ── 业务仪表盘 ──
@@ -214,9 +214,19 @@ export const bizApi = {
   resetServiceLineTemplate: (serviceLine: string) =>
     http.delete(`/biz/service-line-templates/${serviceLine}`).then((r) => unwrap<BizServiceLineTemplate>(r.data)),
 
-  listServiceLineTemplatePacks: (p?: { serviceLine?: string; search?: string; featured?: boolean }) => {
+  getBizMeta: () => get<BizMeta>("/biz/meta"),
+
+  listServiceLineTemplatePacks: (p?: {
+    category?: string;
+    serviceLine?: string;
+    customerType?: string;
+    search?: string;
+    featured?: boolean;
+  }) => {
     const params: string[] = [];
+    if (p?.category) params.push(`category=${encodeURIComponent(p.category)}`);
     if (p?.serviceLine) params.push(`service_line=${encodeURIComponent(p.serviceLine)}`);
+    if (p?.customerType) params.push(`customer_type=${encodeURIComponent(p.customerType)}`);
     if (p?.search) params.push(`search=${encodeURIComponent(p.search)}`);
     if (p?.featured) params.push("featured=true");
     const q = params.length ? `?${params.join("&")}` : "";
@@ -231,12 +241,18 @@ export const bizApi = {
 
   listMyServiceLineTemplatePacks: () => get<BizServiceLineTemplatePack[]>("/biz/service-line-template-packs/mine"),
 
-  createMyServiceLineTemplatePack: (p: { service_line: string; name: string; description?: string; tags?: string[] }) =>
-    post<BizServiceLineTemplatePack>("/biz/service-line-template-packs/mine", p),
+  createMyServiceLineTemplatePack: (p: {
+    service_line: string;
+    name: string;
+    category?: string;
+    description?: string;
+    tags?: string[];
+  }) => post<BizServiceLineTemplatePack>("/biz/service-line-template-packs/mine", p),
 
   updateMyServiceLineTemplatePack: (packId: string, p: {
     name?: string;
     description?: string;
+    category?: string;
     tags?: string[];
     stages?: string[];
     ai_config?: BizServiceLineAiConfig;

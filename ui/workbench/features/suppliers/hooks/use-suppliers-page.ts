@@ -19,9 +19,10 @@ export function useSuppliersPage() {
   const [createForm, setCreateForm] = useState<SupplierFormValues>(EMPTY_SUPPLIER_FORM);
   const [saving, setSaving] = useState(false);
 
+  const filterKey = `${search}|${category}|${status}`;
   const list = usePagedList(
     (page, size) => api.listSuppliers(page, size, search || undefined, category || undefined, status || undefined),
-    { enabled: ready },
+    { enabled: ready, resetKey: filterKey },
   );
 
   const { requestConfirm, confirmDialog } = useConfirmAction();
@@ -71,6 +72,14 @@ export function useSuppliersPage() {
     [requestConfirm, list, detailId, closeDetail],
   );
 
+  const clearFilters = useCallback(() => {
+    setSearch("");
+    setCategory("");
+    setStatus("");
+  }, []);
+
+  const hasActiveFilters = Boolean(search || category || status);
+
   return {
     ready,
     search,
@@ -79,6 +88,8 @@ export function useSuppliersPage() {
     onSearch: setSearch,
     onCategory: setCategory,
     onStatus: setStatus,
+    clearFilters,
+    hasActiveFilters,
     list,
     onDelete: handleDelete,
     confirmDialog,

@@ -25,7 +25,7 @@ export function ContractDetailDialog({ contractId, onClose, onMutated }: Props) 
       title={contract?.name ?? "合同详情"}
       description={description}
       onClose={onClose}
-      size="drawer"
+      size="lg"
     >
       <ContractDetailView vm={vm} embedded />
     </ResourceDialog>

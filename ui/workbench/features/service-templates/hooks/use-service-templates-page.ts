@@ -30,6 +30,7 @@ export function useServiceTemplatesPage() {
   const { templates: flowTemplates, loading: flowTemplatesLoading } = useFlowTemplates(ready);
   const [items, setItems] = useState<BizServiceLineTemplate[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedLine, setSelectedLine] = useState<string | null>(null);
   const [editingLine, setEditingLine] = useState<string | null>(null);
   const [stageText, setStageText] = useState("");
   const [aiConfig, setAiConfig] = useState<BizServiceLineAiConfig>(emptyAiConfig);
@@ -49,6 +50,23 @@ export function useServiceTemplatesPage() {
     if (!ready) return;
     void reload();
   }, [ready, reload]);
+
+  useEffect(() => {
+    if (items.length === 0) return;
+    setSelectedLine((prev) => {
+      if (prev && items.some((row) => row.service_line === prev)) return prev;
+      return items[0]?.service_line ?? null;
+    });
+  }, [items]);
+
+  const selectedRow = items.find((row) => row.service_line === selectedLine) ?? null;
+  const editingRow = items.find((row) => row.service_line === editingLine) ?? null;
+  const customizedCount = items.filter((row) => row.source === "tenant").length;
+  const configuredCount = items.filter((row) => row.stages.length > 0).length;
+  const aiReadyCount = items.filter((row) => {
+    const ai = row.ai_config ?? {};
+    return Boolean(ai.agent_tag || ai.flow_template_id || ai.chat_hint || (ai.quick_prompts?.length ?? 0) > 0);
+  }).length;
 
   const startEdit = (row: BizServiceLineTemplate) => {
     const ai = aiConfigFromRow(row);
@@ -105,6 +123,13 @@ export function useServiceTemplatesPage() {
     ready,
     items,
     loading,
+    selectedLine,
+    setSelectedLine,
+    selectedRow,
+    editingRow,
+    customizedCount,
+    configuredCount,
+    aiReadyCount,
     canWriteProject,
     editingLine,
     stageText,

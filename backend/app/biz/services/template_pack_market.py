@@ -27,13 +27,17 @@ class ServiceLineTemplatePackMarketService(BaseService):
     async def list_packs(
         self,
         *,
+        category: str | None = None,
         service_line: str | None = None,
+        customer_type: str | None = None,
         search: str | None = None,
         featured_only: bool = False,
     ) -> list[BizServiceLineTemplatePackOut]:
         rows = await self.repo.list_catalog(
             self.ctx.tenant_id,
+            category=category,
             service_line=service_line,
+            customer_type=customer_type,
             search=search,
             featured_only=featured_only,
         )

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { BizPageHero } from "@/features/business-dashboard/components/BizPageHero";
+import { PackDetailDialog } from "@/features/service-template-market/components/PackDetailDialog";
 import type { ServiceTemplateMarketPageVm } from "@/features/service-template-market/hooks/use-service-template-market-page";
 import type { BizServiceLineTemplatePack } from "@/lib/types";
 
@@ -37,6 +38,12 @@ export function ServiceTemplateMarketPageView({ vm }: { vm: ServiceTemplateMarke
     mineLoading,
     search,
     setSearch,
+    category,
+    setCategory,
+    customerType,
+    setCustomerType,
+    categoryTabs,
+    industries,
     serviceLine,
     setServiceLine,
     featuredOnly,
@@ -57,7 +64,12 @@ export function ServiceTemplateMarketPageView({ vm }: { vm: ServiceTemplateMarke
     setPublishOpen,
     openPublish,
     publishServiceLine,
-    setPublishServiceLine,
+    onPublishServiceLineChange,
+    publishCategory,
+    setPublishCategory,
+    publishTags,
+    togglePublishTag,
+    categories,
     publishName,
     setPublishName,
     publishDesc,
@@ -73,6 +85,10 @@ export function ServiceTemplateMarketPageView({ vm }: { vm: ServiceTemplateMarke
     setEditName,
     editDesc,
     setEditDesc,
+    editCategory,
+    setEditCategory,
+    editTags,
+    toggleEditTag,
     editStageText,
     setEditStageText,
     editChatHint,
@@ -131,6 +147,50 @@ export function ServiceTemplateMarketPageView({ vm }: { vm: ServiceTemplateMarke
 
       {tab === "plaza" ? (
         <>
+          <div className="mb-3 flex flex-wrap gap-2">
+            {categoryTabs.map((c) => (
+              <button
+                key={c.key || "all"}
+                type="button"
+                className={`rounded-full px-3 py-1 text-xs transition ${
+                  category === c.key
+                    ? "bg-brand text-white"
+                    : "border border-line bg-surface text-ink-muted hover:border-brand/40 hover:text-ink"
+                }`}
+                onClick={() => setCategory(c.key)}
+              >
+                {c.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="mb-4 flex flex-wrap items-center gap-2">
+            <span className="text-xs text-ink-muted">客户类型</span>
+            <button
+              type="button"
+              className={`rounded-full px-2.5 py-0.5 text-xs ${
+                !customerType ? "bg-surface-muted font-medium text-ink" : "text-ink-muted hover:text-ink"
+              }`}
+              onClick={() => setCustomerType("")}
+            >
+              全部
+            </button>
+            {industries.map((item) => (
+              <button
+                key={item.key}
+                type="button"
+                className={`rounded-full px-2.5 py-0.5 text-xs ${
+                  customerType === item.key
+                    ? "bg-brand/10 font-medium text-brand"
+                    : "border border-line text-ink-muted hover:border-brand/40 hover:text-ink"
+                }`}
+                onClick={() => setCustomerType(customerType === item.key ? "" : item.key)}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+
           <div className="mb-4 flex flex-wrap items-center gap-3">
             <input
               type="search"
@@ -148,9 +208,9 @@ export function ServiceTemplateMarketPageView({ vm }: { vm: ServiceTemplateMarke
               value={serviceLine}
               onChange={(e) => setServiceLine(e.target.value)}
             >
-              <option value="">全部服务线</option>
-              {serviceLineOptions.map(([sl, label]) => (
-                <option key={sl} value={sl}>{label}</option>
+              <option value="">全部适用服务线</option>
+              {serviceLineOptions.map((sl) => (
+                <option key={sl.key} value={sl.key}>{sl.label}</option>
               ))}
             </select>
           </div>
@@ -202,15 +262,14 @@ export function ServiceTemplateMarketPageView({ vm }: { vm: ServiceTemplateMarke
         </>
       )}
 
-      {detailPack && (
-        <PackDetailDialog
-          pack={detailPack}
-          applying={applyingId === detailPack.id}
-          canApply={canWriteProject && tab === "plaza"}
-          onClose={() => setDetailId(null)}
-          onApply={() => void applyPack(detailPack)}
-        />
-      )}
+      <PackDetailDialog
+        open={Boolean(detailPack)}
+        pack={detailPack}
+        applying={detailPack ? applyingId === detailPack.id : false}
+        canApply={canWriteProject && tab === "plaza"}
+        onClose={() => setDetailId(null)}
+        onApply={() => detailPack && void applyPack(detailPack)}
+      />
 
       {publishOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setPublishOpen(false)}>
@@ -219,11 +278,11 @@ export function ServiceTemplateMarketPageView({ vm }: { vm: ServiceTemplateMarke
             <p className="mt-1 text-xs text-ink-muted">将当前租户某条服务线的阶段与 AI 配置打包为草稿，提交后由平台审核上架。</p>
             <div className="mt-4 space-y-3">
               <label className="block">
-                <span className="text-xs text-ink-muted">服务线</span>
+                <span className="text-xs text-ink-muted">适用服务线</span>
                 <select
                   className="input-field mt-1 w-full text-sm"
                   value={publishServiceLine}
-                  onChange={(e) => setPublishServiceLine(e.target.value)}
+                  onChange={(e) => onPublishServiceLineChange(e.target.value)}
                 >
                   {templates.map((t) => (
                     <option key={t.service_line} value={t.service_line}>
@@ -232,6 +291,33 @@ export function ServiceTemplateMarketPageView({ vm }: { vm: ServiceTemplateMarke
                   ))}
                 </select>
               </label>
+              <label className="block">
+                <span className="text-xs text-ink-muted">场景分类</span>
+                <select
+                  className="input-field mt-1 w-full text-sm"
+                  value={publishCategory}
+                  onChange={(e) => setPublishCategory(e.target.value)}
+                >
+                  {categories.map((c) => (
+                    <option key={c.key} value={c.key}>{c.label}</option>
+                  ))}
+                </select>
+              </label>
+              <fieldset>
+                <legend className="text-xs text-ink-muted">客户类型（可多选）</legend>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {industries.map((item) => (
+                    <label key={item.key} className="flex cursor-pointer items-center gap-1.5 text-xs text-ink">
+                      <input
+                        type="checkbox"
+                        checked={publishTags.includes(item.key)}
+                        onChange={() => togglePublishTag(item.key)}
+                      />
+                      {item.label}
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
               <label className="block">
                 <span className="text-xs text-ink-muted">模板名称</span>
                 <input className="input-field mt-1 w-full text-sm" value={publishName} onChange={(e) => setPublishName(e.target.value)} placeholder="如：政府活动精简版" />
@@ -255,7 +341,9 @@ export function ServiceTemplateMarketPageView({ vm }: { vm: ServiceTemplateMarke
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setEditPack(null)}>
           <div className="card max-h-[85vh] w-full max-w-lg overflow-y-auto p-5" onClick={(e) => e.stopPropagation()}>
             <h2 className="text-lg font-semibold text-ink">编辑模板包</h2>
-            <p className="mt-1 text-xs text-ink-muted">{editPack.service_line_label} · {editPack.status === "rejected" ? "已驳回，修改后可重新提交" : "草稿"}</p>
+            <p className="mt-1 text-xs text-ink-muted">
+              {editPack.category_label} · 适用于 {editPack.service_line_label} · {editPack.status === "rejected" ? "已驳回，修改后可重新提交" : "草稿"}
+            </p>
             {editPack.review_note && editPack.status === "rejected" && (
               <p className="mt-2 text-xs text-red-600">驳回原因：{editPack.review_note}</p>
             )}
@@ -268,6 +356,29 @@ export function ServiceTemplateMarketPageView({ vm }: { vm: ServiceTemplateMarke
                 <span className="text-xs text-ink-muted">简介</span>
                 <textarea className="input-field mt-1 w-full text-sm" rows={2} value={editDesc} onChange={(e) => setEditDesc(e.target.value)} />
               </label>
+              <label className="block">
+                <span className="text-xs text-ink-muted">场景分类</span>
+                <select className="input-field mt-1 w-full text-sm" value={editCategory} onChange={(e) => setEditCategory(e.target.value)}>
+                  {categories.map((c) => (
+                    <option key={c.key} value={c.key}>{c.label}</option>
+                  ))}
+                </select>
+              </label>
+              <fieldset>
+                <legend className="text-xs text-ink-muted">客户类型（可多选）</legend>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {industries.map((item) => (
+                    <label key={item.key} className="flex cursor-pointer items-center gap-1.5 text-xs text-ink">
+                      <input
+                        type="checkbox"
+                        checked={editTags.includes(item.key)}
+                        onChange={() => toggleEditTag(item.key)}
+                      />
+                      {item.label}
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
               <label className="block">
                 <span className="text-xs text-ink-muted">阶段（每行一个）</span>
                 <textarea className="input-field mt-1 w-full font-mono text-sm" rows={6} value={editStageText} onChange={(e) => setEditStageText(e.target.value)} />
@@ -314,7 +425,7 @@ function MineRow({
     <div className="card flex flex-wrap items-center justify-between gap-3 p-4">
       <div>
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs text-ink-muted">{pack.service_line_label}</span>
+          <span className="text-xs text-ink-muted">{pack.category_label}</span>
           <span className={`rounded px-2 py-0.5 text-xs ${STATUS_COLORS[status] ?? STATUS_COLORS.draft}`}>
             {STATUS_LABELS[status] ?? status}
           </span>
@@ -323,6 +434,7 @@ function MineRow({
           )}
         </div>
         <p className="mt-1 font-medium text-ink">{pack.name}</p>
+        <p className="mt-0.5 text-xs text-ink-faint">适用于 {pack.service_line_label}</p>
         {pack.review_note && status === "rejected" && (
           <p className="mt-1 text-xs text-red-600">驳回原因：{pack.review_note}</p>
         )}
@@ -366,8 +478,9 @@ function PackCard({
     <div className="card flex flex-col p-4">
       <div className="flex items-start justify-between gap-2">
         <div>
-          <p className="text-xs text-ink-muted">{pack.service_line_label}</p>
+          <p className="text-xs text-ink-muted">{pack.category_label}</p>
           <h2 className="mt-0.5 text-sm font-semibold text-ink">{pack.name}</h2>
+          <p className="mt-0.5 text-xs text-ink-faint">适用于 {pack.service_line_label}</p>
         </div>
         {pack.is_featured && (
           <span className="shrink-0 rounded bg-amber-50 px-2 py-0.5 text-xs text-amber-700">精选</span>
@@ -387,8 +500,8 @@ function PackCard({
         )}
       </ol>
       <div className="mt-3 flex flex-wrap gap-1">
-        {pack.tags.map((tag) => (
-          <span key={tag} className="rounded-full border border-line px-2 py-0.5 text-xs text-ink-muted">{tag}</span>
+        {(pack.tag_labels.length ? pack.tag_labels : pack.tags).map((tag, i) => (
+          <span key={`${pack.id}-tag-${i}`} className="rounded-full border border-line px-2 py-0.5 text-xs text-ink-muted">{tag}</span>
         ))}
       </div>
       <div className="mt-auto flex items-center justify-between pt-4 text-xs text-ink-faint">
@@ -406,68 +519,6 @@ function PackCard({
               onClick={onApply}
             >
               {applying ? "应用中…" : "应用"}
-            </button>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function PackDetailDialog({
-  pack,
-  applying,
-  canApply,
-  onClose,
-  onApply,
-}: {
-  pack: BizServiceLineTemplatePack;
-  applying: boolean;
-  canApply: boolean;
-  onClose: () => void;
-  onApply: () => void;
-}) {
-  const ai = pack.ai_config ?? {};
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
-      <div className="card max-h-[85vh] w-full max-w-lg overflow-y-auto p-5" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="text-xs text-ink-muted">{pack.service_line_label}</p>
-            <h2 className="text-lg font-semibold text-ink">{pack.name}</h2>
-            <p className="mt-1 text-xs text-ink-faint">
-              {PUBLISHER_LABELS[pack.publisher_type] ?? pack.publisher_type} · {pack.publisher_name}
-            </p>
-          </div>
-          <button type="button" className="text-ink-muted hover:text-ink" onClick={onClose} aria-label="关闭">✕</button>
-        </div>
-        {pack.description && <p className="mt-3 text-sm text-ink-muted">{pack.description}</p>}
-
-        <section className="mt-4">
-          <h3 className="text-xs font-medium text-ink">阶段流水线</h3>
-          <ol className="mt-2 space-y-1">
-            {pack.stages.map((s, i) => (
-              <li key={i} className="text-sm text-ink">{i + 1}. {s}</li>
-            ))}
-          </ol>
-        </section>
-
-        {(ai.agent_tag || ai.chat_hint || (ai.quick_prompts?.length ?? 0) > 0) && (
-          <section className="mt-4 rounded-lg bg-surface-muted/60 p-3">
-            <h3 className="text-xs font-medium text-ink">AI 推荐配置</h3>
-            {ai.agent_tag && <p className="mt-1 text-xs text-ink-muted">智能体标签：{ai.agent_tag}</p>}
-            {ai.chat_hint && <p className="mt-1 text-xs text-ink-muted">对话提示：{ai.chat_hint}</p>}
-            {(ai.quick_prompts?.length ?? 0) > 0 && (
-              <p className="mt-1 text-xs text-ink-muted">快捷提示：{ai.quick_prompts!.join(" · ")}</p>
-            )}
-          </section>
-        )}
-
-        <div className="mt-5 flex justify-end gap-2">
-          <button type="button" className="btn-ghost text-sm" onClick={onClose}>关闭</button>
-          {canApply && (
-            <button type="button" className="btn-primary text-sm" disabled={applying} onClick={onApply}>
-              {applying ? "应用中…" : "应用到我的租户"}
             </button>
           )}
         </div>

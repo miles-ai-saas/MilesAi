@@ -1,20 +1,40 @@
 "use client";
 
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { api } from "@/lib/api";
-import { useRequireAuth } from "@/lib/auth-store";
-import { BUSINESS_MAIN_FLOW, BUSINESS_RESOURCE_FLOW } from "@/features/business-dashboard/lib/business-flow";
+import { BizPageHero } from "@/features/business-dashboard/components/BizPageHero";
+import {
+  BUSINESS_MAIN_FLOW,
+  BUSINESS_RESOURCE_FLOW,
+} from "@/features/business-dashboard/lib/business-flow";
 import { PROJECT_STATUS_LABELS } from "@/features/projects/lib/biz-labels";
+import { StatChip } from "@/components/ui/StatChip";
+import { api } from "@/lib/api";
+import { useRequireAuth, useAuthStore } from "@/lib/auth-store";
 import { hasPermission } from "@/lib/permissions";
-import { useAuthStore } from "@/lib/auth-store";
 import type { DashboardSummary, FinancialSummary } from "@/lib/types";
 
-const COLOR_MAP: Record<string, string> = {
-  brand: "bg-brand-light text-brand",
-  amber: "bg-amber-50 text-amber-700",
-  emerald: "bg-emerald-50 text-emerald-700",
-  slate: "bg-slate-100 text-slate-700",
+const DELIVERY_TOOL_LINKS = [
+  {
+    id: "service-templates",
+    label: "服务线模板",
+    href: "/business/service-templates",
+    description: "配置阶段流水线与 AI 助手",
+    permission: "biz:project:read",
+  },
+  {
+    id: "template-market",
+    label: "模板市场",
+    href: "/business/template-market",
+    description: "浏览与应用行业模板",
+    permission: "biz:project:read",
+  },
+] as const;
+
+const STATUS_BADGE: Record<string, string> = {
+  active: "bg-brand-light text-brand",
+  delivered: "bg-emerald-50 text-emerald-700",
 };
 
 export function useBusinessDashboardPage() {
@@ -26,7 +46,10 @@ export function useBusinessDashboardPage() {
   useEffect(() => {
     if (!ready) return;
     Promise.all([api.getDashboardSummary(), api.getFinancialSummary()])
-      .then(([d, f]) => { setData(d); setFinance(f); })
+      .then(([d, f]) => {
+        setData(d);
+        setFinance(f);
+      })
       .finally(() => setLoading(false));
   }, [ready]);
 
@@ -35,221 +58,371 @@ export function useBusinessDashboardPage() {
 
 export type BusinessDashboardPageVm = ReturnType<typeof useBusinessDashboardPage>;
 
+function DashboardSkeleton() {
+  return (
+    <div className="space-y-6">
+      <div className="space-y-3">
+        <div className="h-8 w-48 animate-pulse rounded-lg bg-surface-muted" />
+        <div className="h-4 w-72 animate-pulse rounded bg-surface-muted" />
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        {[1, 2, 3, 4].map((i) => (
+          <div key={i} className="h-24 animate-pulse rounded-xl bg-surface-muted" />
+        ))}
+      </div>
+      <div className="grid gap-6 xl:grid-cols-12">
+        <div className="h-80 animate-pulse rounded-xl bg-surface-muted xl:col-span-8" />
+        <div className="h-80 animate-pulse rounded-xl bg-surface-muted xl:col-span-4" />
+      </div>
+    </div>
+  );
+}
+
+function KpiLink({
+  href,
+  label,
+  value,
+  hint,
+}: {
+  href: string;
+  label: string;
+  value: string;
+  hint?: string;
+}) {
+  return (
+    <Link href={href} className="block transition hover:opacity-90">
+      <StatChip label={label} value={value} hint={hint} />
+    </Link>
+  );
+}
+
+function SectionCard({
+  title,
+  action,
+  children,
+}: {
+  title: string;
+  action?: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <section className="card overflow-hidden">
+      <div className="flex items-center justify-between border-b border-line bg-surface-muted/30 px-4 py-3">
+        <h2 className="text-sm font-semibold text-ink">{title}</h2>
+        {action}
+      </div>
+      <div className="p-4">{children}</div>
+    </section>
+  );
+}
+
+function AttentionBanner({
+  items,
+}: {
+  items: Array<{
+    label: string;
+    value: string;
+    href: string;
+    hint: string;
+    tone: "amber" | "emerald";
+  }>;
+}) {
+  if (items.length === 0) return null;
+
+  const toneClass = {
+    amber: "border-amber-200 bg-amber-50/80 text-amber-800",
+    emerald: "border-emerald-200 bg-emerald-50/80 text-emerald-800",
+  };
+
+  return (
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      {items.map((item) => (
+        <Link
+          key={item.label}
+          href={item.href}
+          className={`rounded-xl border p-4 transition hover:shadow-md ${toneClass[item.tone]}`}
+        >
+          <p className="text-xs opacity-80">{item.label}</p>
+          <p className="mt-1 text-2xl font-bold tabular-nums">{item.value}</p>
+          <p className="mt-1 text-xs font-medium">{item.hint} →</p>
+        </Link>
+      ))}
+    </div>
+  );
+}
+
+function QuickNavList({
+  links,
+}: {
+  links: Array<{ id: string; label: string; href: string; description: string }>;
+}) {
+  return (
+    <ul className="divide-y divide-line-soft -mx-4 -my-4">
+      {links.map((link) => (
+        <li key={link.id}>
+          <Link
+            href={link.href}
+            className="flex items-center justify-between gap-3 px-4 py-3 transition hover:bg-surface-muted/50"
+          >
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-ink">{link.label}</p>
+              <p className="truncate text-xs text-ink-muted">{link.description}</p>
+            </div>
+            <span className="shrink-0 text-ink-faint" aria-hidden>
+              →
+            </span>
+          </Link>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function FinanceMiniGrid({
+  finance,
+  pendingPay,
+}: {
+  finance: FinancialSummary;
+  pendingPay: number;
+}) {
+  const rows = [
+    { label: "合同总数", value: String(finance.contract_count) },
+    { label: "应收合计", value: `¥${finance.total_income.toLocaleString()}` },
+    { label: "已结清", value: `¥${finance.total_paid.toLocaleString()}` },
+    { label: "待收付", value: `¥${pendingPay.toLocaleString()}`, highlight: pendingPay > 0 },
+  ];
+
+  return (
+    <dl className="grid grid-cols-2 gap-3">
+      {rows.map((row) => (
+        <div key={row.label} className="rounded-lg border border-line bg-surface-muted/30 px-3 py-2.5">
+          <dt className="text-xs text-ink-muted">{row.label}</dt>
+          <dd className={`mt-0.5 text-lg font-semibold tabular-nums ${row.highlight ? "text-amber-700" : "text-ink"}`}>
+            {row.value}
+          </dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
 export function BusinessDashboardView({ vm }: { vm: BusinessDashboardPageVm }) {
   const { data, finance, loading } = vm;
   const user = useAuthStore((s) => s.user);
 
   if (loading || !data) {
-    return <p className="text-sm text-ink-muted">加载中…</p>;
+    return <DashboardSkeleton />;
   }
 
   const pendingPay = finance ? finance.total_pending_in + finance.total_pending_out : 0;
+  const deliverableHref = data.pending_deliverable_items?.[0]
+    ? `/business/projects/${data.pending_deliverable_items[0].project_id}?tab=deliverables`
+    : "/business/projects";
+  const milestoneHref = data.due_milestone_items?.[0]
+    ? `/business/projects/${data.due_milestone_items[0].project_id}?tab=workpackages`
+    : "/business/work-packages";
+
   const attentionItems = [
     {
       show: data.pending_deliverables > 0,
       label: "待验收交付物",
-      value: data.pending_deliverables,
-      href: (data.pending_deliverable_items?.[0])
-        ? `/business/projects/${data.pending_deliverable_items[0].project_id}?tab=deliverables`
-        : "/business/projects",
-      hint: "进入项目交付物 Tab",
-      color: "amber" as const,
+      value: String(data.pending_deliverables),
+      href: deliverableHref,
+      hint: "进入项目交付物",
+      tone: "amber" as const,
     },
     {
       show: data.due_milestones > 0,
       label: "到期里程碑",
-      value: data.due_milestones,
-      href: (data.due_milestone_items?.[0])
-        ? `/business/projects/${data.due_milestone_items[0].project_id}?tab=workpackages`
-        : "/business/work-packages",
+      value: String(data.due_milestones),
+      href: milestoneHref,
       hint: "查看工作包看板",
-      color: "amber" as const,
+      tone: "amber" as const,
     },
     {
       show: finance != null && pendingPay > 0,
       label: "待收付金额",
-      value: pendingPay,
+      value: `¥${pendingPay.toLocaleString()}`,
       href: "/business/finance",
       hint: "财务概览",
-      color: "emerald" as const,
-      formatAmount: true,
+      tone: "emerald" as const,
     },
   ].filter((i) => i.show);
 
-  const quickLinks = [
-    ...BUSINESS_MAIN_FLOW.filter((s) => !s.permission || hasPermission(user, s.permission)),
-    ...(hasPermission(user, BUSINESS_RESOURCE_FLOW.permission!) ? [BUSINESS_RESOURCE_FLOW] : []),
-  ];
+  const funnelLinks = BUSINESS_MAIN_FLOW.filter((s) => !s.permission || hasPermission(user, s.permission));
+  const deliveryLinks = DELIVERY_TOOL_LINKS.filter((s) => !s.permission || hasPermission(user, s.permission));
+  const resourceLinks = hasPermission(user, BUSINESS_RESOURCE_FLOW.permission!)
+    ? [BUSINESS_RESOURCE_FLOW]
+    : [];
+  const quickLinks = [...funnelLinks, ...deliveryLinks, ...resourceLinks];
+
+  const hasTodoLists =
+    (data.pending_deliverable_items?.length ?? 0) > 0 || data.due_milestone_items.length > 0;
 
   return (
     <div className="w-full">
-      <header className="mb-6">
-        <h1 className="text-xl font-semibold text-ink">业务工作台</h1>
-      </header>
+      <BizPageHero
+        flowStep="dashboard"
+        flowHighlight
+        subtitle="销售漏斗、项目交付与商务结算一屏总览"
+      />
 
-      {attentionItems.length > 0 && (
-        <section className="mb-8">
-          <h2 className="mb-3 text-sm font-semibold text-ink">待办关注</h2>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {attentionItems.map((item) => (
-              <Link
-                key={item.label}
-                href={item.href}
-                className="card flex flex-col gap-1 p-4 transition hover:shadow-md"
-              >
-                <span className="text-xs text-ink-muted">{item.label}</span>
-                <span className={`text-2xl font-bold ${COLOR_MAP[item.color] ?? "text-ink"} inline-block rounded px-1`}>
-                  {item.formatAmount ? `¥${item.value.toLocaleString()}` : item.value}
-                </span>
-                <span className="text-xs text-brand">{item.hint} →</span>
-              </Link>
-            ))}
-          </div>
-        </section>
-      )}
+      <div className="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <KpiLink
+          label="在制项目"
+          value={String(data.active_projects)}
+          hint="进行中与执行阶段"
+          href="/business/projects"
+        />
+        <KpiLink
+          label="待验收交付物"
+          value={String(data.pending_deliverables)}
+          hint="已提交待确认"
+          href={deliverableHref}
+        />
+        <KpiLink
+          label="进行中工作包"
+          value={String(data.work_packages_in_progress)}
+          hint="按服务线推进"
+          href="/business/work-packages"
+        />
+        <KpiLink
+          label="客户数"
+          value={String(data.total_clients)}
+          hint="全部有效客户"
+          href="/business/clients"
+        />
+      </div>
 
-      <section className="mb-8">
-        <h2 className="mb-3 text-sm font-semibold text-ink">快捷入口</h2>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {quickLinks.map((link) => (
-            <Link
-              key={link.id}
-              href={link.href}
-              className="card p-4 transition hover:border-brand/30 hover:shadow-md"
+      {attentionItems.length > 0 ? (
+        <div className="mb-6">
+          <AttentionBanner items={attentionItems} />
+        </div>
+      ) : null}
+
+      <div className="grid gap-6 xl:grid-cols-12">
+        <div className="space-y-6 xl:col-span-8">
+          {hasTodoLists ? (
+            <SectionCard
+              title="待办明细"
+              action={
+                <Link href="/business/work-packages" className="text-xs text-brand hover:underline">
+                  工作包看板
+                </Link>
+              }
             >
-              <p className="font-medium text-ink">{link.label}</p>
-              <p className="mt-1 text-xs text-ink-muted">{link.description}</p>
-            </Link>
-          ))}
-        </div>
-      </section>
+              <div className="space-y-6">
+                {(data.pending_deliverable_items?.length ?? 0) > 0 ? (
+                  <div>
+                    <h3 className="mb-2 text-xs font-medium text-ink-muted">待验收交付物</h3>
+                    <ul className="space-y-2">
+                      {data.pending_deliverable_items?.map((d) => (
+                        <li key={d.id}>
+                          <Link
+                            href={`/business/projects/${d.project_id}?tab=deliverables`}
+                            className="flex items-center justify-between rounded-lg border border-line px-3 py-2.5 transition hover:border-brand/30 hover:bg-surface-muted/40"
+                          >
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-medium text-ink">{d.name}</p>
+                              <p className="truncate text-xs text-ink-muted">{d.project_name}</p>
+                            </div>
+                            <span className="ml-3 shrink-0 text-xs text-amber-700">待验收</span>
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
 
-      <section className="mb-8">
-        <h2 className="mb-3 text-sm font-semibold text-ink">执行概览</h2>
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <StatCard label="在制项目" value={data.active_projects} color="brand" href="/business/projects" />
-          <StatCard label="待验收交付物" value={data.pending_deliverables} color="amber" href={data.pending_deliverable_items?.[0] ? `/business/projects/${data.pending_deliverable_items[0].project_id}?tab=deliverables` : "/business/projects"} />
-          <StatCard label="进行中工作包" value={data.work_packages_in_progress} color="emerald" href="/business/work-packages" />
-          <StatCard label="客户数" value={data.total_clients} color="slate" href="/business/clients" />
-        </div>
-      </section>
+                {data.due_milestone_items.length > 0 ? (
+                  <div>
+                    <h3 className="mb-2 text-xs font-medium text-ink-muted">里程碑提醒</h3>
+                    <ul className="space-y-2">
+                      {data.due_milestone_items.map((m) => (
+                        <li key={m.id}>
+                          <Link
+                            href={`/business/projects/${m.project_id}?tab=workpackages`}
+                            className={`flex items-center justify-between rounded-lg border border-line px-3 py-2.5 transition hover:border-brand/30 hover:bg-surface-muted/40 ${
+                              m.overdue ? "border-l-4 border-l-red-400" : ""
+                            }`}
+                          >
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-medium text-ink">{m.title}</p>
+                              <p className="truncate text-xs text-ink-muted">{m.project_name}</p>
+                            </div>
+                            <span className={`ml-3 shrink-0 text-xs ${m.overdue ? "text-red-600" : "text-amber-700"}`}>
+                              {m.overdue ? "已逾期" : "即将到期"} · {m.due_date}
+                            </span>
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+              </div>
+            </SectionCard>
+          ) : (
+            <SectionCard title="待办明细">
+              <p className="py-6 text-center text-sm text-ink-faint">暂无待验收交付物或到期里程碑</p>
+            </SectionCard>
+          )}
 
-      {(data.pending_deliverable_items?.length ?? 0) > 0 && (
-        <section className="mb-8">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-ink">待验收交付物</h2>
-            <Link href="/business/projects" className="text-xs text-brand hover:underline">全部项目</Link>
-          </div>
-          <div className="space-y-2">
-            {data.pending_deliverable_items?.map((d) => (
-              <Link
-                key={d.id}
-                href={`/business/projects/${d.project_id}?tab=deliverables`}
-                className="card flex items-center justify-between p-3 transition hover:shadow-md"
-              >
-                <div>
-                  <p className="text-sm font-medium text-ink">{d.name}</p>
-                  <p className="text-xs text-ink-muted">{d.project_name}</p>
-                </div>
-                <span className="text-xs text-amber-700">待验收 →</span>
+          <SectionCard
+            title="最近更新项目"
+            action={
+              <Link href="/business/projects" className="text-xs text-brand hover:underline">
+                全部项目
               </Link>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {data.due_milestone_items.length > 0 && (
-        <section className="mb-8">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-ink">里程碑提醒</h2>
-            <Link href="/business/work-packages" className="text-xs text-brand hover:underline">工作包看板</Link>
-          </div>
-          <div className="space-y-2">
-            {data.due_milestone_items.map((m) => (
-              <Link
-                key={m.id}
-                href={`/business/projects/${m.project_id}?tab=workpackages`}
-                className={`card flex items-center justify-between p-3 transition hover:shadow-md ${m.overdue ? "border-l-4 border-l-red-400" : ""}`}
-              >
-                <div>
-                  <p className="text-sm font-medium text-ink">{m.title}</p>
-                  <p className="text-xs text-ink-muted">{m.project_name}</p>
-                </div>
-                <span className={`text-xs ${m.overdue ? "text-red-600" : "text-amber-700"}`}>
-                  {m.overdue ? "已逾期" : "即将到期"} · {m.due_date}
-                </span>
-              </Link>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {finance && hasPermission(user, "biz:finance:read") && (
-        <section className="mb-8">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-ink">商务结算</h2>
-            <Link href="/business/finance" className="text-xs text-brand hover:underline">财务概览</Link>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <StatCard label="合同总数" value={finance.contract_count} color="slate" href="/business/contracts" />
-            <StatCard label="应收合计" value={finance.total_income} color="emerald" formatAmount href="/business/finance" />
-            <StatCard label="已结清" value={finance.total_paid} color="brand" formatAmount href="/business/finance" />
-            <StatCard label="待收付" value={pendingPay} color="amber" formatAmount href="/business/finance" />
-          </div>
-        </section>
-      )}
-
-      <section>
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-ink">最近更新项目</h2>
-          <Link href="/business/projects" className="text-xs text-brand hover:underline">全部项目</Link>
+            }
+          >
+            {data.recent_projects.length === 0 ? (
+              <p className="py-6 text-center text-sm text-ink-faint">暂无项目，可从商机赢单后转化</p>
+            ) : (
+              <ul className="space-y-2">
+                {data.recent_projects.map((p) => (
+                  <li key={p.id}>
+                    <Link
+                      href={`/business/projects/${p.id}`}
+                      className="flex items-center justify-between rounded-lg border border-line px-3 py-3 transition hover:border-brand/30 hover:bg-surface-muted/40"
+                    >
+                      <div className="min-w-0">
+                        <p className="truncate font-medium text-ink">{p.name}</p>
+                        <p className="truncate text-xs text-ink-muted">{p.client_name}</p>
+                      </div>
+                      <span
+                        className={`ml-3 shrink-0 rounded-full px-2 py-0.5 text-xs ${
+                          STATUS_BADGE[p.status] ?? "bg-surface-muted text-ink-muted"
+                        }`}
+                      >
+                        {PROJECT_STATUS_LABELS[p.status] ?? p.status}
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </SectionCard>
         </div>
-        {data.recent_projects.length === 0 ? (
-          <p className="text-sm text-ink-faint">暂无项目，可从商机赢单后转化</p>
-        ) : (
-          <div className="space-y-2">
-            {data.recent_projects.map((p) => (
-              <Link key={p.id} href={`/business/projects/${p.id}`} className="card flex items-center justify-between p-4 transition hover:shadow-md">
-                <div>
-                  <p className="font-medium text-ink">{p.name}</p>
-                  <p className="text-xs text-ink-muted">{p.client_name}</p>
-                </div>
-                <span className={`rounded px-2 py-0.5 text-xs ${
-                  p.status === "active" ? "bg-brand-light text-brand" :
-                  p.status === "delivered" ? "bg-green-50 text-green-700" :
-                  "bg-surface-muted text-ink-muted"
-                }`}>
-                  {PROJECT_STATUS_LABELS[p.status] ?? p.status}
-                </span>
-              </Link>
-            ))}
-          </div>
-        )}
-      </section>
+
+        <aside className="space-y-6 xl:col-span-4">
+          <SectionCard title="快捷入口">
+            <QuickNavList links={quickLinks} />
+          </SectionCard>
+
+          {finance && hasPermission(user, "biz:finance:read") ? (
+            <SectionCard
+              title="商务结算"
+              action={
+                <Link href="/business/finance" className="text-xs text-brand hover:underline">
+                  财务概览
+                </Link>
+              }
+            >
+              <FinanceMiniGrid finance={finance} pendingPay={pendingPay} />
+            </SectionCard>
+          ) : null}
+        </aside>
+      </div>
     </div>
   );
-}
-
-function StatCard({ label, value, color, formatAmount, href }: {
-  label: string;
-  value: number;
-  color: string;
-  formatAmount?: boolean;
-  href?: string;
-}) {
-  const display = formatAmount ? `¥${value.toLocaleString()}` : String(value);
-  const inner = (
-    <>
-      <p className="text-sm text-ink-muted">{label}</p>
-      <p className={`mt-1 ${formatAmount ? "text-2xl" : "text-3xl"} font-bold ${COLOR_MAP[color] ?? "text-ink"}`}>{display}</p>
-    </>
-  );
-  if (href) {
-    return (
-      <Link href={href} className="card block p-5 transition hover:shadow-md">
-        {inner}
-      </Link>
-    );
-  }
-  return <div className="card p-5">{inner}</div>;
 }

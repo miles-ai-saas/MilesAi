@@ -18,6 +18,11 @@ from app.biz.schemas.template_pack import (
 from app.biz.services.meta import SERVICE_LINES
 from app.biz.services.service_line_template import parse_stage_names
 from app.biz.services.service_line_template_admin import ServiceLineTemplateAdminService
+from app.biz.services.template_pack_meta import (
+    default_category_for_service_line,
+    normalize_customer_type_tags,
+    validate_category,
+)
 from app.biz.services.template_pack_serialize import pack_to_out
 from app.common.exceptions import BadRequestError, NotFoundError
 from app.core.service import BaseService
@@ -56,6 +61,7 @@ class ServiceLineTemplatePackPublishService(BaseService):
 
         row = BizServiceLineTemplatePack(
             tenant_id=self.ctx.tenant_id,
+            category=validate_category(body.category or default_category_for_service_line(body.service_line)),
             service_line=body.service_line,
             name=name,
             description=(body.description or "").strip() or None,
@@ -63,7 +69,7 @@ class ServiceLineTemplatePackPublishService(BaseService):
             ai_config=dict(current.ai_config or {}),
             publisher_name=publisher_name,
             publisher_type="tenant",
-            tags=body.tags or [],
+            tags=normalize_customer_type_tags(body.tags),
             is_featured=False,
             install_count=0,
             is_active=True,
@@ -83,8 +89,10 @@ class ServiceLineTemplatePackPublishService(BaseService):
             row.name = name
         if body.description is not None:
             row.description = body.description.strip() or None
+        if body.category is not None:
+            row.category = validate_category(body.category)
         if body.tags is not None:
-            row.tags = body.tags
+            row.tags = normalize_customer_type_tags(body.tags)
         if body.stages is not None:
             stages = [s.strip() for s in body.stages if s.strip()]
             if not stages:

@@ -87,6 +87,8 @@ PROJECT_SUPPLIER_STATUSES = [
 class BizMetaService:
     @staticmethod
     def get_meta() -> BizMetaOut:
+        from app.biz.services.template_pack_meta import TEMPLATE_PACK_CATEGORIES
+
         return BizMetaOut(
             service_lines=SERVICE_LINES,
             project_statuses=PROJECT_STATUSES,
@@ -98,4 +100,5 @@ class BizMetaService:
             supplier_categories=SUPPLIER_CATEGORIES,
             supplier_statuses=SUPPLIER_STATUSES,
             project_supplier_statuses=PROJECT_SUPPLIER_STATUSES,
+            template_pack_categories=TEMPLATE_PACK_CATEGORIES,
         )

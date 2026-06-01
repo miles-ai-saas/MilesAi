@@ -363,9 +363,24 @@ export interface BizSearchResult {
   items: BizSearchHit[];
 }
 
+/** 业务中心枚举项 */
+export interface BizEnumItem {
+  key: string;
+  label: string;
+}
+
+/** 业务中心元数据（/biz/meta） */
+export interface BizMeta {
+  service_lines: BizEnumItem[];
+  industries: BizEnumItem[];
+  template_pack_categories: BizEnumItem[];
+}
+
 /** 服务线模板市场条目 */
 export interface BizServiceLineTemplatePack {
   id: string;
+  category: string;
+  category_label: string;
   service_line: string;
   service_line_label: string;
   name: string;
@@ -376,6 +391,7 @@ export interface BizServiceLineTemplatePack {
   publisher_type: "platform" | "partner" | "tenant" | string;
   publisher_tenant_id?: string | null;
   tags: string[];
+  tag_labels: string[];
   is_featured: boolean;
   is_active?: boolean;
   install_count: number;

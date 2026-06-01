@@ -1,23 +1,31 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { api } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth-store";
 import { useBizPermissions } from "@/features/business/lib/biz-permissions";
-import type { BizServiceLineTemplate, BizServiceLineTemplatePack } from "@/lib/types";
+import { defaultCategoryForServiceLine } from "@/features/service-template-market/lib/template-pack-meta";
+import type { BizEnumItem, BizServiceLineTemplate, BizServiceLineTemplatePack } from "@/lib/types";
 
 export type MarketTab = "plaza" | "mine";
 
 export function useServiceTemplateMarketPage() {
   const { ready } = useRequireAuth();
+  const searchParams = useSearchParams();
   const { canWriteProject } = useBizPermissions();
   const [tab, setTab] = useState<MarketTab>("plaza");
   const [allItems, setAllItems] = useState<BizServiceLineTemplatePack[]>([]);
   const [mineItems, setMineItems] = useState<BizServiceLineTemplatePack[]>([]);
   const [templates, setTemplates] = useState<BizServiceLineTemplate[]>([]);
+  const [categories, setCategories] = useState<BizEnumItem[]>([]);
+  const [industries, setIndustries] = useState<BizEnumItem[]>([]);
+  const [serviceLineOptions, setServiceLineOptions] = useState<BizEnumItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [mineLoading, setMineLoading] = useState(false);
   const [search, setSearch] = useState("");
+  const [category, setCategory] = useState("");
+  const [customerType, setCustomerType] = useState("");
   const [serviceLine, setServiceLine] = useState("");
   const [featuredOnly, setFeaturedOnly] = useState(false);
   const [applyingId, setApplyingId] = useState<string | null>(null);
@@ -26,12 +34,16 @@ export function useServiceTemplateMarketPage() {
   const [detailId, setDetailId] = useState<string | null>(null);
   const [publishOpen, setPublishOpen] = useState(false);
   const [publishServiceLine, setPublishServiceLine] = useState("");
+  const [publishCategory, setPublishCategory] = useState("");
+  const [publishTags, setPublishTags] = useState<string[]>([]);
   const [publishName, setPublishName] = useState("");
   const [publishDesc, setPublishDesc] = useState("");
   const [publishing, setPublishing] = useState(false);
   const [editPack, setEditPack] = useState<BizServiceLineTemplatePack | null>(null);
   const [editName, setEditName] = useState("");
   const [editDesc, setEditDesc] = useState("");
+  const [editCategory, setEditCategory] = useState("");
+  const [editTags, setEditTags] = useState<string[]>([]);
   const [editStageText, setEditStageText] = useState("");
   const [editChatHint, setEditChatHint] = useState("");
   const [editSaving, setEditSaving] = useState(false);
@@ -39,11 +51,19 @@ export function useServiceTemplateMarketPage() {
   const reloadPlaza = useCallback(async () => {
     setLoading(true);
     try {
-      setAllItems(await api.listServiceLineTemplatePacks());
+      setAllItems(
+        await api.listServiceLineTemplatePacks({
+          category: category || undefined,
+          serviceLine: serviceLine || undefined,
+          customerType: customerType || undefined,
+          search: search.trim() || undefined,
+          featured: featuredOnly || undefined,
+        }),
+      );
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [category, serviceLine, customerType, search, featuredOnly]);
 
   const reloadMine = useCallback(async () => {
     setMineLoading(true);
@@ -55,30 +75,28 @@ export function useServiceTemplateMarketPage() {
   }, []);
 
   useEffect(() => {
+    if (searchParams.get("tab") === "mine") setTab("mine");
+    const sl = searchParams.get("service_line");
+    if (sl) setServiceLine(sl);
+  }, [searchParams]);
+
+  useEffect(() => {
     if (!ready) return;
-    void reloadPlaza();
+    void api.getBizMeta().then((meta) => {
+      setCategories(meta.template_pack_categories ?? []);
+      setIndustries(meta.industries ?? []);
+      setServiceLineOptions(meta.service_lines ?? []);
+    });
     void reloadMine();
     void api.listServiceLineTemplates().then(setTemplates);
-  }, [ready, reloadPlaza, reloadMine]);
+  }, [ready, reloadMine]);
 
-  const serviceLineOptions = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const item of allItems) {
-      map.set(item.service_line, item.service_line_label);
-    }
-    return Array.from(map.entries()).sort((a, b) => a[1].localeCompare(b[1], "zh-CN"));
-  }, [allItems]);
+  useEffect(() => {
+    if (!ready || tab !== "plaza") return;
+    void reloadPlaza();
+  }, [ready, tab, reloadPlaza]);
 
-  const items = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return allItems.filter((pack) => {
-      if (serviceLine && pack.service_line !== serviceLine) return false;
-      if (featuredOnly && !pack.is_featured) return false;
-      if (!q) return true;
-      const hay = `${pack.name} ${pack.description ?? ""} ${pack.tags.join(" ")}`.toLowerCase();
-      return hay.includes(q);
-    });
-  }, [allItems, serviceLine, featuredOnly, search]);
+  const items = allItems;
 
   const detailPack = detailId
     ? [...allItems, ...mineItems].find((p) => p.id === detailId) ?? null
@@ -103,21 +121,39 @@ export function useServiceTemplateMarketPage() {
 
   const openPublish = () => {
     const first = templates.find((t) => t.stages.length > 0);
-    setPublishServiceLine(first?.service_line ?? templates[0]?.service_line ?? "");
+    const sl = first?.service_line ?? templates[0]?.service_line ?? "";
+    setPublishServiceLine(sl);
+    setPublishCategory(defaultCategoryForServiceLine(sl));
+    setPublishTags([]);
     setPublishName("");
     setPublishDesc("");
     setPublishOpen(true);
   };
 
+  const onPublishServiceLineChange = (sl: string) => {
+    setPublishServiceLine(sl);
+    setPublishCategory(defaultCategoryForServiceLine(sl));
+  };
+
+  const togglePublishTag = (key: string) => {
+    setPublishTags((prev) => (prev.includes(key) ? prev.filter((t) => t !== key) : [...prev, key]));
+  };
+
+  const toggleEditTag = (key: string) => {
+    setEditTags((prev) => (prev.includes(key) ? prev.filter((t) => t !== key) : [...prev, key]));
+  };
+
   const createPublish = async () => {
-    if (!publishServiceLine || !publishName.trim()) return;
+    if (!publishServiceLine || !publishName.trim() || !publishCategory) return;
     setPublishing(true);
     setMsg("");
     try {
       await api.createMyServiceLineTemplatePack({
         service_line: publishServiceLine,
+        category: publishCategory,
         name: publishName.trim(),
         description: publishDesc.trim() || undefined,
+        tags: publishTags,
       });
       setPublishOpen(false);
       setTab("mine");
@@ -160,6 +196,8 @@ export function useServiceTemplateMarketPage() {
     setEditPack(pack);
     setEditName(pack.name);
     setEditDesc(pack.description ?? "");
+    setEditCategory(pack.category);
+    setEditTags([...pack.tags]);
     setEditStageText(pack.stages.join("\n"));
     setEditChatHint(pack.ai_config?.chat_hint ?? "");
   };
@@ -167,13 +205,15 @@ export function useServiceTemplateMarketPage() {
   const saveEdit = async () => {
     if (!editPack) return;
     const stages = editStageText.split("\n").map((s) => s.trim()).filter(Boolean);
-    if (!editName.trim() || stages.length === 0) return;
+    if (!editName.trim() || stages.length === 0 || !editCategory) return;
     setEditSaving(true);
     try {
       const ai = { ...(editPack.ai_config ?? {}), chat_hint: editChatHint.trim() || undefined };
       await api.updateMyServiceLineTemplatePack(editPack.id, {
         name: editName.trim(),
         description: editDesc.trim() || undefined,
+        category: editCategory,
+        tags: editTags,
         stages,
         ai_config: ai,
       });
@@ -202,6 +242,11 @@ export function useServiceTemplateMarketPage() {
     }
   };
 
+  const categoryTabs = useMemo(
+    () => [{ key: "", label: "全部" }, ...categories.map((c) => ({ key: c.key, label: c.label }))],
+    [categories],
+  );
+
   return {
     ready,
     tab,
@@ -209,10 +254,17 @@ export function useServiceTemplateMarketPage() {
     items,
     mineItems,
     templates,
+    categories,
+    industries,
+    categoryTabs,
     loading,
     mineLoading,
     search,
     setSearch,
+    category,
+    setCategory,
+    customerType,
+    setCustomerType,
     serviceLine,
     setServiceLine,
     featuredOnly,
@@ -233,6 +285,10 @@ export function useServiceTemplateMarketPage() {
     setEditName,
     editDesc,
     setEditDesc,
+    editCategory,
+    setEditCategory,
+    editTags,
+    toggleEditTag,
     editStageText,
     setEditStageText,
     editChatHint,
@@ -247,7 +303,11 @@ export function useServiceTemplateMarketPage() {
     setPublishOpen,
     openPublish,
     publishServiceLine,
-    setPublishServiceLine,
+    onPublishServiceLineChange,
+    publishCategory,
+    setPublishCategory,
+    publishTags,
+    togglePublishTag,
     publishName,
     setPublishName,
     publishDesc,

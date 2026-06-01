@@ -10,6 +10,8 @@ from app.biz.schemas.service_line_template import BizServiceLineTemplateOut
 @dataclass
 class BizServiceLineTemplatePackOut:
     id: str
+    category: str
+    category_label: str
     service_line: str
     service_line_label: str
     name: str
@@ -20,6 +22,7 @@ class BizServiceLineTemplatePackOut:
     publisher_type: str = "platform"
     publisher_tenant_id: str | None = None
     tags: list[str] = field(default_factory=list)
+    tag_labels: list[str] = field(default_factory=list)
     is_featured: bool = False
     is_active: bool = True
     install_count: int = 0
@@ -42,6 +45,7 @@ class BizServiceLineTemplatePackApplyResult:
 class BizServiceLineTemplatePackCreate:
     service_line: str
     name: str
+    category: str | None = None
     description: str | None = None
     tags: list[str] = field(default_factory=list)
 
@@ -50,6 +54,7 @@ class BizServiceLineTemplatePackCreate:
 class BizServiceLineTemplatePackUpdate:
     name: str | None = None
     description: str | None = None
+    category: str | None = None
     tags: list[str] | None = None
     stages: list[str] | None = None
     ai_config: dict | None = None
