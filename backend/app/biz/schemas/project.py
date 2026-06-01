@@ -80,6 +80,12 @@ class BizWorkPackageOut:
     planned_end: Optional[str] = None
 
 
+@dataclass
+class BizWorkPackageKanbanOut(BizWorkPackageOut):
+    project_name: str = ""
+    client_name: str = ""
+
+
 # ── project out ──
 
 @dataclass
@@ -146,4 +152,43 @@ class BizArchiveCaseOut:
     project_id: UUID
     kb_id: UUID
     archived_count: int
+    document_ids: list[UUID] = field(default_factory=list)
+
+
+@dataclass
+class BizArchivableDeliverableOut:
+    id: UUID
+    name: str
+    version: Optional[str] = None
+    has_attachment: bool = False
+
+
+@dataclass
+class BizClosePreviewOut:
+    project_id: UUID
+    project_name: str
+    status: str
+    client_confidentiality: str
+    pending_deliverables: int
+    submitted_deliverables: int
+    incomplete_work_packages: int
+    archivable_deliverables: list[BizArchivableDeliverableOut] = field(default_factory=list)
+    can_archive: bool = False
+    archive_blocked_reason: Optional[str] = None
+
+
+@dataclass
+class BizCloseWizardRequest:
+    kb_id: Optional[UUID] = None
+    deliverable_ids: list[UUID] = field(default_factory=list)
+    run_parse: bool = True
+    skip_archive: bool = False
+    confirm_desensitized: bool = False
+
+
+@dataclass
+class BizCloseWizardOut:
+    project_id: UUID
+    status: str
+    archived_count: int = 0
     document_ids: list[UUID] = field(default_factory=list)

@@ -47,6 +47,36 @@ async def create_deliverable(
     return ok(await _svc(db, ctx).create(body))
 
 
+@router.post("/{deliverable_id}/submit", response_model=ApiResponse[BizDeliverableOut])
+async def submit_deliverable(
+    deliverable_id: UUID,
+    ctx: TenantContext = Depends(require_permissions("biz:project:write")),
+    db: AsyncSession = Depends(get_db),
+):
+    """提交交付物进入待验收状态。"""
+    return ok(await _svc(db, ctx).submit(deliverable_id))
+
+
+@router.post("/{deliverable_id}/accept", response_model=ApiResponse[BizDeliverableOut])
+async def accept_deliverable(
+    deliverable_id: UUID,
+    ctx: TenantContext = Depends(require_permissions("biz:project:write")),
+    db: AsyncSession = Depends(get_db),
+):
+    """验收通过交付物。"""
+    return ok(await _svc(db, ctx).accept(deliverable_id))
+
+
+@router.post("/{deliverable_id}/reject", response_model=ApiResponse[BizDeliverableOut])
+async def reject_deliverable(
+    deliverable_id: UUID,
+    ctx: TenantContext = Depends(require_permissions("biz:project:write")),
+    db: AsyncSession = Depends(get_db),
+):
+    """驳回已提交的交付物。"""
+    return ok(await _svc(db, ctx).reject(deliverable_id))
+
+
 @router.patch("/{deliverable_id}", response_model=ApiResponse[BizDeliverableOut])
 async def update_deliverable(
     deliverable_id: UUID,

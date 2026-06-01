@@ -18,7 +18,7 @@ export type SystemNavItem = NavItem & {
   permission?: string;
 };
 
-export type BizNavIcon = "clients" | "projects" | "dashboard" | "opportunities" | "contracts" | "suppliers";
+export type BizNavIcon = "clients" | "projects" | "dashboard" | "opportunities" | "contracts" | "suppliers" | "finance" | "workpackages";
 
 export type BizNavItem = NavItem & {
   icon: BizNavIcon;
@@ -106,7 +106,14 @@ export const BUSINESS_NAV: { title: string; items: BizNavItem[] }[] = [
     title: "交付",
     items: [
       { href: "/business/projects", label: "项目", icon: "projects", permission: "biz:project:read" },
+      { href: "/business/work-packages", label: "工作包看板", icon: "workpackages", permission: "biz:project:read" },
       { href: "/business/contracts", label: "合同", icon: "contracts", permission: "biz:contract:read" },
+    ],
+  },
+  {
+    title: "财务",
+    items: [
+      { href: "/business/finance", label: "财务概览", icon: "finance", permission: "biz:finance:read" },
     ],
   },
   {
@@ -192,11 +199,17 @@ export function getBusinessBreadcrumbs(pathname: string): BreadcrumbItem[] {
   if (pathname === "/business/projects" || pathname.startsWith("/business/projects/")) {
     return [home, { label: "项目" }];
   }
+  if (pathname === "/business/work-packages") {
+    return [home, { label: "工作包看板" }];
+  }
   if (pathname === "/business/contracts" || pathname.startsWith("/business/contracts/")) {
     return [home, { label: "合同" }];
   }
   if (pathname === "/business/suppliers" || pathname.startsWith("/business/suppliers/")) {
     return [home, { label: "供应商" }];
+  }
+  if (pathname === "/business/finance") {
+    return [home, { label: "财务概览" }];
   }
 
   return [home];
@@ -240,11 +253,17 @@ export function isNavActive(pathname: string, href: string): boolean {
   if (href === "/business/projects") {
     return pathname === "/business/projects" || pathname.startsWith("/business/projects/");
   }
+  if (href === "/business/work-packages") {
+    return pathname === "/business/work-packages";
+  }
   if (href === "/business/contracts") {
     return pathname === "/business/contracts" || pathname.startsWith("/business/contracts/");
   }
   if (href === "/business/suppliers") {
     return pathname === "/business/suppliers" || pathname.startsWith("/business/suppliers/");
+  }
+  if (href === "/business/finance") {
+    return pathname === "/business/finance";
   }
   return pathname === href || pathname.startsWith(`${href}/`);
 }

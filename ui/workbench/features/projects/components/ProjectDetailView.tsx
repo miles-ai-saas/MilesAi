@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { api } from "@/lib/api";
+import { ProjectCloseWizard } from "@/features/projects/components/ProjectCloseWizard";
 import { ProjectAiTab } from "@/features/projects/components/ProjectAiTab";
 import { ProjectDeliverablesTab } from "@/features/projects/components/ProjectDeliverablesTab";
 import { ProjectMembersTab } from "@/features/projects/components/ProjectMembersTab";
@@ -70,48 +69,62 @@ export function ProjectDetailView({ vm }: { vm: ProjectDetailPageVm }) {
 
 function ProjectInfoTab({ project, vm }: { project: BizProject; vm: ProjectDetailPageVm }) {
   const canClose = project.status !== "closed" && project.status !== "cancelled";
-  const [kbId, setKbId] = useState("");
-  const [kbs, setKbs] = useState<{ id: string; name: string }[]>([]);
-
-  useEffect(() => {
-    void api.listKbs(1, 50).then((r) => setKbs(r.items.map((k) => ({ id: k.id, name: k.name }))));
-  }, []);
 
   return (
     <div className="mt-6 space-y-4">
-      <div className="grid gap-4 sm:grid-cols-2">
-        <InfoCard label="描述" value={project.description || "—"} />
-        <InfoCard label="总预算" value={project.total_budget ? `¥${project.total_budget.toLocaleString()}` : "—"} />
-        <InfoCard label="工作包数" value={`${project.work_packages?.length ?? 0}`} />
-        <InfoCard label="项目编号" value={project.code || "—"} />
+      <div className="flex items-center justify-between">
+        <h2 className="text-sm font-semibold text-ink">基本信息</h2>
+        {!vm.editingInfo && (
+          <button type="button" className="text-xs text-brand hover:underline" onClick={() => vm.setEditingInfo(true)}>编辑</button>
+        )}
       </div>
 
-      {(canClose || kbs.length > 0) && (
-        <div className="card flex flex-wrap items-end gap-3 p-4">
-          {canClose && (
-            <button type="button" className="btn-sm-outline text-sm" disabled={vm.closing} onClick={() => void vm.closeProject()}>
-              {vm.closing ? "结项中…" : "结项"}
+      {vm.editingInfo ? (
+        <form onSubmit={(e) => void vm.saveProjectInfo(e)} className="card space-y-3 p-4">
+          <label>
+            <span className="text-xs text-ink-muted">项目名称</span>
+            <input className="input-field mt-1 w-full text-sm" value={vm.infoForm.name} onChange={(e) => vm.setInfoForm({ ...vm.infoForm, name: e.target.value })} required />
+          </label>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label>
+              <span className="text-xs text-ink-muted">项目编号</span>
+              <input className="input-field mt-1 w-full text-sm" value={vm.infoForm.code} onChange={(e) => vm.setInfoForm({ ...vm.infoForm, code: e.target.value })} />
+            </label>
+            <label>
+              <span className="text-xs text-ink-muted">状态</span>
+              <select className="input-field mt-1 w-full text-sm" value={vm.infoForm.status} onChange={(e) => vm.setInfoForm({ ...vm.infoForm, status: e.target.value })}>
+                {Object.entries(PROJECT_STATUS_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+              </select>
+            </label>
+          </div>
+          <label>
+            <span className="text-xs text-ink-muted">总预算</span>
+            <input type="number" min="0" step="0.01" className="input-field mt-1 w-full text-sm" value={vm.infoForm.total_budget} onChange={(e) => vm.setInfoForm({ ...vm.infoForm, total_budget: e.target.value })} />
+          </label>
+          <label>
+            <span className="text-xs text-ink-muted">描述</span>
+            <textarea className="input-field mt-1 w-full text-sm" rows={3} value={vm.infoForm.description} onChange={(e) => vm.setInfoForm({ ...vm.infoForm, description: e.target.value })} />
+          </label>
+          <div className="flex gap-2">
+            <button type="submit" disabled={vm.savingInfo || !vm.infoForm.name.trim()} className="btn-primary text-sm">
+              {vm.savingInfo ? "保存中…" : "保存"}
             </button>
-          )}
-          {kbs.length > 0 && (
-            <>
-              <label className="min-w-[12rem] flex-1">
-                <span className="text-xs text-ink-muted">案例入库目标知识库</span>
-                <select className="input-field mt-1 w-full text-sm" value={kbId} onChange={(e) => setKbId(e.target.value)}>
-                  <option value="">— 选择知识库 —</option>
-                  {kbs.map((k) => <option key={k.id} value={k.id}>{k.name}</option>)}
-                </select>
-              </label>
-              <button
-                type="button"
-                className="btn-primary text-sm"
-                disabled={!kbId || vm.archiving}
-                onClick={() => void vm.archiveCase(kbId)}
-              >
-                {vm.archiving ? "入库中…" : "案例沉淀至 KB"}
-              </button>
-            </>
-          )}
+            <button type="button" className="btn-sm-outline text-sm" onClick={() => vm.setEditingInfo(false)}>取消</button>
+          </div>
+        </form>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <InfoCard label="描述" value={project.description || "—"} />
+          <InfoCard label="总预算" value={project.total_budget ? `¥${project.total_budget.toLocaleString()}` : "—"} />
+          <InfoCard label="工作包数" value={`${project.work_packages?.length ?? 0}`} />
+          <InfoCard label="项目编号" value={project.code || "—"} />
+        </div>
+      )}
+
+      {canClose && (
+        <div className="card flex flex-wrap items-center gap-3 p-4">
+          <ProjectCloseWizard vm={vm} onDone={() => {}} />
+          <p className="text-xs text-ink-muted">通过向导检查交付与工作包后再结项，可选案例入库。</p>
         </div>
       )}
     </div>

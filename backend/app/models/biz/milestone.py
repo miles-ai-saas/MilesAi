@@ -26,4 +26,5 @@ class BizMilestone(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     title: Mapped[str] = mapped_column(String(256), nullable=False)
     due_date: Mapped[str | None] = mapped_column(Date, nullable=True)
     completed_at: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    due_reminder_sent_at: Mapped[str | None] = mapped_column(String(32), nullable=True)
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)

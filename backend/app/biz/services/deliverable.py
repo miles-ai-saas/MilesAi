@@ -5,6 +5,7 @@
 可关联到附件表、媒体资产表、知识库文档。
 """
 
+from datetime import datetime, timezone
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,7 +17,7 @@ from app.biz.schemas.deliverable import (
     BizDeliverableOut,
     BizDeliverableUpdate,
 )
-from app.common.exceptions import NotFoundError
+from app.common.exceptions import BadRequestError, NotFoundError
 from app.core.service import BaseService
 from app.core.soft_delete import mark_deleted
 from app.core.tenant import TenantContext, assert_tenant_access
@@ -85,6 +86,60 @@ class DeliverableService(BaseService):
         row = await self._get_or_raise(deliverable_id)
         await mark_deleted(self.db, row)
 
+    async def submit(self, deliverable_id: UUID) -> BizDeliverableOut:
+        """提交交付物：draft/rejected → submitted。"""
+        row = await self._get_or_raise(deliverable_id)
+        if row.status not in ("draft", "rejected"):
+            raise BadRequestError("仅草稿或已驳回状态可提交")
+        row.status = "submitted"
+        row.submitted_at = _now_iso()
+        await self.db.flush()
+        await self.db.refresh(row)
+        await log_biz_action(
+            self.db, self.ctx,
+            action="biz.deliverable.submit",
+            resource_type="biz_deliverable",
+            resource_id=row.id,
+            detail={"project_id": str(row.project_id), "name": row.name},
+        )
+        return self._to_out(row)
+
+    async def accept(self, deliverable_id: UUID) -> BizDeliverableOut:
+        """验收通过：submitted → accepted。"""
+        row = await self._get_or_raise(deliverable_id)
+        if row.status != "submitted":
+            raise BadRequestError("仅已提交状态可验收")
+        row.status = "accepted"
+        row.accepted_at = _now_iso()
+        await self.db.flush()
+        await self.db.refresh(row)
+        await log_biz_action(
+            self.db, self.ctx,
+            action="biz.deliverable.accept",
+            resource_type="biz_deliverable",
+            resource_id=row.id,
+            detail={"project_id": str(row.project_id), "name": row.name},
+        )
+        return self._to_out(row)
+
+    async def reject(self, deliverable_id: UUID) -> BizDeliverableOut:
+        """驳回交付物：submitted → rejected。"""
+        row = await self._get_or_raise(deliverable_id)
+        if row.status != "submitted":
+            raise BadRequestError("仅已提交状态可驳回")
+        row.status = "rejected"
+        row.accepted_at = None
+        await self.db.flush()
+        await self.db.refresh(row)
+        await log_biz_action(
+            self.db, self.ctx,
+            action="biz.deliverable.reject",
+            resource_type="biz_deliverable",
+            resource_id=row.id,
+            detail={"project_id": str(row.project_id), "name": row.name},
+        )
+        return self._to_out(row)
+
     async def _get_or_raise(self, deliverable_id: UUID) -> BizDeliverable:
         row = await self.repo.get_by_id(deliverable_id)
         if not row:
@@ -102,3 +157,7 @@ class DeliverableService(BaseService):
             version=row.version,
             submitted_at=row.submitted_at, accepted_at=row.accepted_at,
         )
+
+
+def _now_iso() -> str:
+    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")

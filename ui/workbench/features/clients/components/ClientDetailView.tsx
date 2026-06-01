@@ -1,6 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import type { ClientDetailPageVm } from "@/features/clients/hooks/use-client-detail-page";
+import { PROJECT_STATUS_LABELS } from "@/features/projects/lib/biz-labels";
 
 const INDUSTRY_LABELS: Record<string, string> = {
   government: "政府机关", enterprise: "企业", park: "园区",
@@ -12,9 +14,11 @@ const CONF_LABELS: Record<string, string> = {
 
 export function ClientDetailView({ vm }: { vm: ClientDetailPageVm }) {
   const {
-    router, client, loading, error, contactForm, setContactForm,
+    router, client, projects, loading, error, contactForm, setContactForm,
     editingContactId, savingContact, resetContactForm, startEditContact,
     handleContactSubmit, handleDeleteContact,
+    editingClient, setEditingClient, clientForm, setClientForm,
+    savingClient, handleClientSubmit,
   } = vm;
 
   if (loading) return <p className="text-sm text-ink-muted">加载中…</p>;
@@ -24,25 +28,95 @@ export function ClientDetailView({ vm }: { vm: ClientDetailPageVm }) {
     <div className="mx-auto max-w-2xl">
       <button type="button" onClick={() => router.back()} className="mb-4 text-xs text-brand hover:underline">← 返回客户列表</button>
 
-      <div className="flex items-start justify-between">
+      <div className="flex items-start justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold text-ink">{client.name}</h1>
           {client.short_name && <p className="text-sm text-ink-muted">{client.short_name}</p>}
         </div>
-        <span className={`rounded px-2 py-0.5 text-xs ${
-          client.confidentiality_level === "restricted" ? "bg-red-50 text-red-600" :
-          client.confidentiality_level === "internal" ? "bg-yellow-50 text-yellow-700" :
-          "bg-surface-muted text-ink-muted"
-        }`}>
-          {CONF_LABELS[client.confidentiality_level] ?? client.confidentiality_level}
-        </span>
+        <div className="flex items-center gap-2">
+          <span className={`rounded px-2 py-0.5 text-xs ${
+            client.confidentiality_level === "restricted" ? "bg-red-50 text-red-600" :
+            client.confidentiality_level === "internal" ? "bg-yellow-50 text-yellow-700" :
+            "bg-surface-muted text-ink-muted"
+          }`}>
+            {CONF_LABELS[client.confidentiality_level] ?? client.confidentiality_level}
+          </span>
+          {!editingClient && (
+            <button type="button" className="text-xs text-brand hover:underline" onClick={() => setEditingClient(true)}>编辑</button>
+          )}
+        </div>
       </div>
 
-      <div className="mt-6 grid gap-4 sm:grid-cols-2">
-        <InfoCard label="行业" value={INDUSTRY_LABELS[client.industry ?? ""] ?? client.industry ?? "—"} />
-        <InfoCard label="项目数" value={`${client.project_count}`} />
-        <InfoCard label="地址" value={client.address || "—"} />
-        <InfoCard label="备注" value={client.remark || "—"} />
+      {editingClient ? (
+        <form onSubmit={handleClientSubmit} className="card mt-6 space-y-3 p-4">
+          <label>
+            <span className="text-xs text-ink-muted">名称 <span className="text-red-500">*</span></span>
+            <input className="input-field mt-1 w-full text-sm" value={clientForm.name} onChange={(e) => setClientForm({ ...clientForm, name: e.target.value })} required />
+          </label>
+          <label>
+            <span className="text-xs text-ink-muted">简称</span>
+            <input className="input-field mt-1 w-full text-sm" value={clientForm.short_name} onChange={(e) => setClientForm({ ...clientForm, short_name: e.target.value })} />
+          </label>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label>
+              <span className="text-xs text-ink-muted">行业</span>
+              <select className="input-field mt-1 w-full text-sm" value={clientForm.industry} onChange={(e) => setClientForm({ ...clientForm, industry: e.target.value })}>
+                {Object.entries(INDUSTRY_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+              </select>
+            </label>
+            <label>
+              <span className="text-xs text-ink-muted">保密级别</span>
+              <select className="input-field mt-1 w-full text-sm" value={clientForm.confidentiality_level} onChange={(e) => setClientForm({ ...clientForm, confidentiality_level: e.target.value })}>
+                {Object.entries(CONF_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+              </select>
+            </label>
+          </div>
+          <label>
+            <span className="text-xs text-ink-muted">地址</span>
+            <input className="input-field mt-1 w-full text-sm" value={clientForm.address} onChange={(e) => setClientForm({ ...clientForm, address: e.target.value })} />
+          </label>
+          <label>
+            <span className="text-xs text-ink-muted">备注</span>
+            <textarea className="input-field mt-1 w-full text-sm" rows={2} value={clientForm.remark} onChange={(e) => setClientForm({ ...clientForm, remark: e.target.value })} />
+          </label>
+          <div className="flex gap-2">
+            <button type="submit" disabled={savingClient || !clientForm.name.trim()} className="btn-primary text-sm">
+              {savingClient ? "保存中…" : "保存"}
+            </button>
+            <button type="button" className="btn-sm-outline text-sm" onClick={() => setEditingClient(false)}>取消</button>
+          </div>
+        </form>
+      ) : (
+        <div className="mt-6 grid gap-4 sm:grid-cols-2">
+          <InfoCard label="行业" value={INDUSTRY_LABELS[client.industry ?? ""] ?? client.industry ?? "—"} />
+          <InfoCard label="项目数" value={`${client.project_count}`} />
+          <InfoCard label="地址" value={client.address || "—"} />
+          <InfoCard label="备注" value={client.remark || "—"} />
+        </div>
+      )}
+
+      <div className="mt-8">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-ink">历史项目</h2>
+          <Link href={`/business/projects?client_id=${client.id}`} className="text-xs text-brand hover:underline">查看全部</Link>
+        </div>
+        {projects.length === 0 ? (
+          <p className="text-sm text-ink-faint">暂无项目</p>
+        ) : (
+          <div className="space-y-2">
+            {projects.map((p) => (
+              <Link key={p.id} href={`/business/projects/${p.id}`} className="card flex items-center justify-between p-3 transition hover:shadow-md">
+                <div>
+                  <p className="text-sm font-medium text-ink">{p.name}</p>
+                  {p.code && <p className="text-xs text-ink-muted">{p.code}</p>}
+                </div>
+                <span className="rounded bg-surface-muted px-2 py-0.5 text-xs text-ink-muted">
+                  {PROJECT_STATUS_LABELS[p.status] ?? p.status}
+                </span>
+              </Link>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="mt-8">

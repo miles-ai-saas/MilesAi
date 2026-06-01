@@ -50,14 +50,40 @@ export function BusinessDashboardView({ vm }: { vm: BusinessDashboardPageVm }) {
         <StatCard label="在制项目" value={data.active_projects} color="brand" />
         <StatCard label="待验收交付物" value={data.pending_deliverables} color="amber" />
         <StatCard label="进行中工作包" value={data.work_packages_in_progress} color="emerald" />
-        <StatCard label="客户数" value={data.total_clients} color="slate" />
+        <StatCard label="到期里程碑" value={data.due_milestones} color="amber" />
       </div>
+
+      {data.due_milestone_items.length > 0 && (
+        <div className="mt-8">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-base font-medium text-ink">里程碑提醒</h2>
+            <Link href="/business/work-packages" className="text-xs text-brand hover:underline">工作包看板</Link>
+          </div>
+          <div className="space-y-2">
+            {data.due_milestone_items.map((m) => (
+              <Link
+                key={m.id}
+                href={`/business/projects/${m.project_id}`}
+                className={`card flex items-center justify-between p-3 transition hover:shadow-md ${m.overdue ? "border-l-4 border-l-red-400" : ""}`}
+              >
+                <div>
+                  <p className="text-sm font-medium text-ink">{m.title}</p>
+                  <p className="text-xs text-ink-muted">{m.project_name}</p>
+                </div>
+                <span className={`text-xs ${m.overdue ? "text-red-600" : "text-amber-700"}`}>
+                  {m.overdue ? "已逾期" : "即将到期"} · {m.due_date}
+                </span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
 
       {finance && (
         <div className="mt-8">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-base font-medium text-ink">财务概览</h2>
-            <Link href="/business/contracts" className="text-xs text-brand hover:underline">合同管理</Link>
+            <Link href="/business/finance" className="text-xs text-brand hover:underline">财务概览</Link>
           </div>
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <StatCard label="合同总数" value={finance.contract_count} color="slate" />

@@ -71,6 +71,11 @@ class PaymentService(BaseService):
         row = await self._get_or_raise(payment_id)
         await mark_deleted(self.db, row)
 
+    async def list_pending_payments(self, *, limit: int = 50) -> list[BizPaymentOut]:
+        """跨合同列出待收付记录，按计划日期排序。"""
+        rows = await self.repo.list_pending(self.ctx.tenant_id, limit=limit)
+        return [self._to_out(r) for r in rows]
+
     async def financial_summary(self) -> FinancialSummaryOut:
         """财务概览聚合统计：
         - total_income: 所有收付款总额

@@ -44,6 +44,12 @@ export interface BizWorkPackage {
   planned_end?: string;
 }
 
+/** 看板工作包（含项目/客户名称） */
+export interface BizWorkPackageKanban extends BizWorkPackage {
+  project_name: string;
+  client_name: string;
+}
+
 /** 项目——交付的核心组织单元 */
 export interface BizProject {
   id: string;
@@ -86,12 +92,23 @@ export interface DashboardSummary {
   active_projects: number;          // 在制项目数（草稿+进行中+暂停）
   pending_deliverables: number;     // 已提交待验收交付物
   work_packages_in_progress: number;
+  due_milestones: number;
+  due_milestone_items: DueMilestoneItem[];
   recent_projects: {
     id: string;
     name: string;
     status: string;
     client_name: string;            // 关联客户名称
   }[];
+}
+
+export interface DueMilestoneItem {
+  id: string;
+  project_id: string;
+  project_name: string;
+  title: string;
+  due_date: string;
+  overdue: boolean;
 }
 
 /** 商机——销售漏斗管理 */
@@ -196,6 +213,28 @@ export interface BizProjectCostSummary {
 export interface BizArchiveCaseResult {
   project_id: string;
   kb_id: string;
+  archived_count: number;
+  document_ids: string[];
+}
+
+/** 结项向导预览 */
+export interface BizClosePreview {
+  project_id: string;
+  project_name: string;
+  status: string;
+  client_confidentiality: string;
+  pending_deliverables: number;
+  submitted_deliverables: number;
+  incomplete_work_packages: number;
+  archivable_deliverables: { id: string; name: string; version?: string; has_attachment: boolean }[];
+  can_archive: boolean;
+  archive_blocked_reason?: string;
+}
+
+/** 结项向导结果 */
+export interface BizCloseWizardResult {
+  project_id: string;
+  status: string;
   archived_count: number;
   document_ids: string[];
 }

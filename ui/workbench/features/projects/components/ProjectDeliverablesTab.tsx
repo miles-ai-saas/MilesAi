@@ -15,6 +15,7 @@ export function ProjectDeliverablesTab({ vm }: { vm: ProjectDetailPageVm }) {
   const [file, setFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
   const [uploadingId, setUploadingId] = useState<string | null>(null);
+  const [actionId, setActionId] = useState<string | null>(null);
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -84,19 +85,27 @@ export function ProjectDeliverablesTab({ vm }: { vm: ProjectDetailPageVm }) {
           key={d.id}
           deliverable={d}
           uploading={uploadingId === d.id}
+          actionLoading={actionId === d.id}
           onDelete={async () => { await api.deleteDeliverable(d.id); await loadDeliverables(); }}
           onAttach={(selected) => void handleAttachFile(d.id, selected)}
+          onSubmit={async () => { setActionId(d.id); try { await api.submitDeliverable(d.id); await loadDeliverables(); } finally { setActionId(null); } }}
+          onAccept={async () => { setActionId(d.id); try { await api.acceptDeliverable(d.id); await loadDeliverables(); } finally { setActionId(null); } }}
+          onReject={async () => { if (!window.confirm("确定驳回该交付物？")) return; setActionId(d.id); try { await api.rejectDeliverable(d.id); await loadDeliverables(); } finally { setActionId(null); } }}
         />
       ))}
     </div>
   );
 }
 
-function DeliverableRow({ deliverable, uploading, onDelete, onAttach }: {
+function DeliverableRow({ deliverable, uploading, onDelete, onAttach, onSubmit, onAccept, onReject, actionLoading }: {
   deliverable: BizDeliverable;
   uploading: boolean;
   onDelete: () => void;
   onAttach: (file: File | null) => void;
+  onSubmit: () => void;
+  onAccept: () => void;
+  onReject: () => void;
+  actionLoading: boolean;
 }) {
   const [filename, setFilename] = useState<string | null>(null);
 
@@ -126,7 +135,22 @@ function DeliverableRow({ deliverable, uploading, onDelete, onAttach }: {
           {filename ? <span className="ml-2 text-ink-faint">· 📎 {filename}</span> : null}
         </p>
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
+        {(deliverable.status === "draft" || deliverable.status === "rejected") && (
+          <button type="button" className="btn-sm-outline text-xs" disabled={actionLoading} onClick={onSubmit}>
+            {actionLoading ? "处理中…" : "提交验收"}
+          </button>
+        )}
+        {deliverable.status === "submitted" && (
+          <>
+            <button type="button" className="btn-primary text-xs" disabled={actionLoading} onClick={onAccept}>
+              {actionLoading ? "处理中…" : "验收通过"}
+            </button>
+            <button type="button" className="btn-sm-outline text-xs text-red-600" disabled={actionLoading} onClick={onReject}>
+              驳回
+            </button>
+          </>
+        )}
         {!deliverable.attachment_id ? (
           <>
             <input type="file" className="max-w-[10rem] text-xs text-ink-muted file:mr-1 file:rounded file:border-0 file:bg-surface-muted file:px-2 file:py-1 file:text-xs" disabled={uploading} onChange={(e) => { onAttach(e.target.files?.[0] ?? null); e.target.value = ""; }} />

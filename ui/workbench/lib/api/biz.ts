@@ -1,6 +1,6 @@
 import { get, getPage, post, patch, http } from "./client";
 import { buildPageQuery } from "../pagination";
-import type { BizArchiveCaseResult, BizClient, BizClientContact, BizContract, BizDeliverable, BizMilestone, BizOpportunity, BizPayment, BizProject, BizProjectAiContext, BizProjectCostSummary, BizProjectMember, BizProjectSupplier, BizQuote, BizSupplier, BizSupplierContact, BizWorkPackage, DashboardSummary, FinancialSummary } from "../types";
+import type { BizArchiveCaseResult, BizClient, BizClientContact, BizClosePreview, BizCloseWizardResult, BizContract, BizDeliverable, BizMilestone, BizOpportunity, BizPayment, BizProject, BizProjectAiContext, BizProjectCostSummary, BizProjectMember, BizProjectSupplier, BizQuote, BizSupplier, BizSupplierContact, BizWorkPackage, BizWorkPackageKanban, DashboardSummary, DueMilestoneItem, FinancialSummary } from "../types";
 
 export const bizApi = {
   // ── 业务仪表盘 ──
@@ -40,6 +40,13 @@ export const bizApi = {
   deleteProject: (id: string) => http.delete(`/biz/projects/${id}`).then(() => undefined),
 
   listWorkPackages: (projectId: string) => get<BizWorkPackage[]>(`/biz/projects/${projectId}/work-packages`),
+  listWorkPackagesKanban: (projectId?: string, serviceLine?: string, status?: string) => {
+    let q = "/biz/work-packages?limit=200";
+    if (projectId) q += `&project_id=${projectId}`;
+    if (serviceLine) q += `&service_line=${serviceLine}`;
+    if (status) q += `&status=${status}`;
+    return get<BizWorkPackageKanban[]>(q);
+  },
   createWorkPackage: (projectId: string, p: { service_line: string; name: string; stage?: string; stage_index?: number; status?: string; owner_id?: string; budget?: number; planned_start?: string; planned_end?: string }) =>
     post<BizWorkPackage>(`/biz/projects/${projectId}/work-packages`, p),
   updateWorkPackage: (projectId: string, wpId: string, p: { name?: string; stage?: string; status?: string; owner_id?: string; budget?: number; actual_cost?: number }) => patch<BizWorkPackage>(`/biz/projects/${projectId}/work-packages/${wpId}`, p),
@@ -47,12 +54,16 @@ export const bizApi = {
   advanceWorkPackageStage: (wpId: string) => post<BizWorkPackage>(`/biz/work-packages/${wpId}/advance-stage`, {}),
 
   getProjectCostSummary: (projectId: string) => get<BizProjectCostSummary>(`/biz/projects/${projectId}/cost-summary`),
+  getClosePreview: (projectId: string) => get<BizClosePreview>(`/biz/projects/${projectId}/close-preview`),
+  executeCloseWizard: (projectId: string, p: { kb_id?: string; deliverable_ids?: string[]; run_parse?: boolean; skip_archive?: boolean; confirm_desensitized?: boolean }) =>
+    post<BizCloseWizardResult>(`/biz/projects/${projectId}/close-wizard`, p),
   closeProject: (projectId: string) => post<{ id: string; status: string }>(`/biz/projects/${projectId}/close`, {}),
   archiveProjectCase: (projectId: string, p: { kb_id: string; run_parse?: boolean }) =>
     post<BizArchiveCaseResult>(`/biz/projects/${projectId}/archive-case`, p),
 
   listMilestones: (projectId: string, wpId: string) =>
     get<BizMilestone[]>(`/biz/projects/${projectId}/work-packages/${wpId}/milestones`),
+  listDueMilestones: (days = 7) => get<DueMilestoneItem[]>(`/biz/milestones/due?days=${days}`),
   createMilestone: (projectId: string, wpId: string, p: { title: string; due_date?: string; sort_order?: number }) =>
     post<BizMilestone>(`/biz/projects/${projectId}/work-packages/${wpId}/milestones`, p),
   updateMilestone: (projectId: string, wpId: string, milestoneId: string, p: { title?: string; due_date?: string; completed_at?: string | null; sort_order?: number }) =>
@@ -71,6 +82,9 @@ export const bizApi = {
   listDeliverables: (projectId: string) => get<BizDeliverable[]>(`/biz/deliverables?project_id=${projectId}`),
   createDeliverable: (p: { project_id: string; name: string; type?: string; work_package_id?: string; attachment_id?: string; version?: string }) => post<BizDeliverable>("/biz/deliverables", p),
   updateDeliverable: (id: string, p: { name?: string; type?: string; status?: string; work_package_id?: string; attachment_id?: string; media_asset_id?: string; version?: string }) => patch<BizDeliverable>(`/biz/deliverables/${id}`, p),
+  submitDeliverable: (id: string) => post<BizDeliverable>(`/biz/deliverables/${id}/submit`, {}),
+  acceptDeliverable: (id: string) => post<BizDeliverable>(`/biz/deliverables/${id}/accept`, {}),
+  rejectDeliverable: (id: string) => post<BizDeliverable>(`/biz/deliverables/${id}/reject`, {}),
   deleteDeliverable: (id: string) => http.delete(`/biz/deliverables/${id}`).then(() => undefined),
 
   // ── 商机管理 ──
@@ -116,6 +130,8 @@ export const bizApi = {
   // ── 收付款管理 ──
 
   getFinancialSummary: () => get<FinancialSummary>("/biz/payments/financial-summary"),
+
+  listPendingPayments: () => get<BizPayment[]>("/biz/payments/pending"),
 
   listPayments: (contractId: string) => get<BizPayment[]>(`/biz/payments?contract_id=${contractId}`),
 

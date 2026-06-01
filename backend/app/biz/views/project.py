@@ -18,6 +18,9 @@ from app.biz.schemas.milestone import BizMilestoneCreate, BizMilestoneOut, BizMi
 from app.biz.schemas.project import (
     BizArchiveCaseOut,
     BizArchiveCaseRequest,
+    BizClosePreviewOut,
+    BizCloseWizardOut,
+    BizCloseWizardRequest,
     BizProjectCreate,
     BizProjectMemberCreate,
     BizProjectMemberOut,
@@ -35,6 +38,7 @@ from app.biz.services.milestone import MilestoneService
 from app.biz.services.project import ProjectService
 from app.biz.services.project_ai import ProjectAiContextService
 from app.biz.services.project_archive import ProjectArchiveService
+from app.biz.services.project_close import ProjectCloseService
 from app.biz.services.supplier import SupplierService
 from app.common.response import ok, page_ok
 from app.common.schema import ApiResponse, PageResult
@@ -55,6 +59,10 @@ def _milestone_svc(db: AsyncSession, ctx: TenantContext) -> MilestoneService:
 
 def _archive_svc(db: AsyncSession, ctx: TenantContext) -> ProjectArchiveService:
     return ProjectArchiveService(db, ctx)
+
+
+def _close_svc(db: AsyncSession, ctx: TenantContext) -> ProjectCloseService:
+    return ProjectCloseService(db, ctx)
 
 
 def _supplier_svc(db: AsyncSession, ctx: TenantContext) -> SupplierService:
@@ -132,6 +140,27 @@ async def get_cost_summary(
 ):
     """项目成本汇总：总预算 vs 工作包实际成本。"""
     return ok(await _svc(db, ctx).get_cost_summary(project_id))
+
+
+@router.get("/{project_id}/close-preview", response_model=ApiResponse[BizClosePreviewOut])
+async def get_close_preview(
+    project_id: UUID,
+    ctx: TenantContext = Depends(require_permissions("biz:project:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    """结项向导：返回检查清单与可入库交付物。"""
+    return ok(await _close_svc(db, ctx).get_close_preview(project_id))
+
+
+@router.post("/{project_id}/close-wizard", response_model=ApiResponse[BizCloseWizardOut])
+async def execute_close_wizard(
+    project_id: UUID,
+    body: BizCloseWizardRequest,
+    ctx: TenantContext = Depends(require_permissions("biz:project:write")),
+    db: AsyncSession = Depends(get_db),
+):
+    """结项向导：可选案例入库后结项。"""
+    return ok(await _close_svc(db, ctx).execute_close_wizard(project_id, body))
 
 
 @router.post("/{project_id}/close", response_model=ApiResponse[BizProjectCloseOut])

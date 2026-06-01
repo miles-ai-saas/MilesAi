@@ -25,3 +25,16 @@ class PaymentRepository(BaseRepository[BizPayment]):
             .order_by(BizPayment.planned_date.asc().nulls_last(), BizPayment.name.asc())
         )
         return (await self.db.execute(stmt)).scalars().all()
+
+    async def list_pending(self, tenant_id: UUID, *, limit: int = 50) -> list[BizPayment]:
+        stmt = (
+            select(BizPayment)
+            .where(
+                BizPayment.tenant_id == tenant_id,
+                BizPayment.status == "pending",
+                not_deleted(BizPayment),
+            )
+            .order_by(BizPayment.planned_date.asc().nulls_last(), BizPayment.name.asc())
+            .limit(limit)
+        )
+        return (await self.db.execute(stmt)).scalars().all()

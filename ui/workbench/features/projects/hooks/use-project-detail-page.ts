@@ -19,10 +19,22 @@ export function useProjectDetailPage(projectId: string) {
   const [costSummary, setCostSummary] = useState<BizProjectCostSummary | null>(null);
   const [closing, setClosing] = useState(false);
   const [archiving, setArchiving] = useState(false);
+  const [editingInfo, setEditingInfo] = useState(false);
+  const [savingInfo, setSavingInfo] = useState(false);
+  const [infoForm, setInfoForm] = useState({
+    name: "", code: "", description: "", total_budget: "", status: "draft",
+  });
 
   const refreshProject = useCallback(async () => {
     const updated = await api.getProject(projectId);
     setProject(updated);
+    setInfoForm({
+      name: updated.name,
+      code: updated.code ?? "",
+      description: updated.description ?? "",
+      total_budget: updated.total_budget != null ? String(updated.total_budget) : "",
+      status: updated.status,
+    });
     return updated;
   }, [projectId]);
 
@@ -31,7 +43,16 @@ export function useProjectDetailPage(projectId: string) {
 
   useEffect(() => {
     api.getProject(projectId)
-      .then(setProject)
+      .then((p) => {
+        setProject(p);
+        setInfoForm({
+          name: p.name,
+          code: p.code ?? "",
+          description: p.description ?? "",
+          total_budget: p.total_budget != null ? String(p.total_budget) : "",
+          status: p.status,
+        });
+      })
       .catch((e) => setError(e?.message ?? "加载失败"))
       .finally(() => setLoading(false));
   }, [projectId]);
@@ -79,6 +100,25 @@ export function useProjectDetailPage(projectId: string) {
     }
   };
 
+  const saveProjectInfo = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!infoForm.name.trim()) return;
+    setSavingInfo(true);
+    try {
+      await api.updateProject(projectId, {
+        name: infoForm.name.trim(),
+        code: infoForm.code.trim() || undefined,
+        description: infoForm.description.trim() || undefined,
+        total_budget: infoForm.total_budget ? Number(infoForm.total_budget) : undefined,
+        status: infoForm.status,
+      });
+      await refreshProject();
+      setEditingInfo(false);
+    } finally {
+      setSavingInfo(false);
+    }
+  };
+
   const handleTabChange = (t: ProjectDetailTab) => {
     setTab(t);
     if (t === "deliverables") void loadDeliverables();
@@ -120,6 +160,12 @@ export function useProjectDetailPage(projectId: string) {
     archiveCase,
     closing,
     archiving,
+    editingInfo,
+    setEditingInfo,
+    infoForm,
+    setInfoForm,
+    savingInfo,
+    saveProjectInfo,
   };
 }
 

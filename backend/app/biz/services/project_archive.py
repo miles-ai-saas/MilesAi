@@ -33,7 +33,7 @@ class ProjectArchiveService(BaseService):
         self.deliverable_repo = DeliverableRepository(db)
         self.att_repo = AttachmentRepository(db)
 
-    async def archive_case(self, project_id: UUID, body: BizArchiveCaseRequest) -> BizArchiveCaseOut:
+    async def archive_case(self, project_id: UUID, body: BizArchiveCaseRequest, *, deliverable_ids: list[UUID] | None = None) -> BizArchiveCaseOut:
         project = await self.project_repo.get_by_id(project_id)
         if not project:
             raise NotFoundError("项目不存在")
@@ -56,6 +56,9 @@ class ProjectArchiveService(BaseService):
             d for d in deliverables
             if d.status == "accepted" and d.attachment_id and not d.kb_document_id
         ]
+        if deliverable_ids is not None:
+            allowed = set(deliverable_ids)
+            candidates = [d for d in candidates if d.id in allowed]
         if not candidates:
             raise BadRequestError("没有可入库的已验收交付物（需含附件且尚未入库）")
 

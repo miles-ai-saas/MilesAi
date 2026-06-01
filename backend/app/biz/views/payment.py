@@ -38,6 +38,15 @@ async def get_financial_summary(
     return ok(await _svc(db, ctx).financial_summary())
 
 
+@router.get("/pending", response_model=ApiResponse[list[BizPaymentOut]])
+async def list_pending_payments(
+    ctx: TenantContext = Depends(require_permissions("biz:payment:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    """列出全部待收付记录（跨合同）。"""
+    return ok(await _svc(db, ctx).list_pending_payments())
+
+
 @router.get("", response_model=ApiResponse[list[BizPaymentOut]])
 async def list_payments(
     contract_id: UUID = Query(...),
