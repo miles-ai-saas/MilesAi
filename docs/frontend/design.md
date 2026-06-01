@@ -1,6 +1,6 @@
 # MilesAi 前端设计规范
 
-> 适用范围：`ui/workbench/`（租户 AI 工作台）、`ui/admin/`（平台运营后台）  
+> 适用范围：`ui/workbench/`（租户 AI 工作台 + **业务中心** + 组织设置）、`ui/admin/`（平台运营后台）  
 > 技术栈：Next.js 14 · Tailwind CSS 3 · 组件级 CSS（`globals.css`）  
 > 品牌主色与公司 Logo「行千里」保持一致。
 
@@ -153,7 +153,25 @@ var(--font-sans), "PingFang SC", "Microsoft YaHei", "Segoe UI", system-ui, -appl
 └─────────────────────────────────────────────────────────┘
 ```
 
-### 4.2 系统管理（`/system/*`）
+### 4.2 业务中心（`/business/*`，设计稿）
+
+与组织设置相同侧栏壳层；顶栏三分区切换（AI 工作台 · 业务中心 · 组织设置）。
+
+```
+┌──────────┬──────────────────────────────────────────────┐
+│ 侧栏 w-60 │ 主内容                                        │
+│ BrandHeader│  仪表盘 / 客户 / 项目 / …                   │
+│ BUSINESS_NAV                                              │
+└──────────┴──────────────────────────────────────────────┘
+```
+
+- 壳层：`BusinessShell` + `BusinessSidebar`（目标，参考 `SystemShell`）
+- 导航：`nav-config.ts` → `BUSINESS_NAV` + `filterBusinessNav`
+- 列表页：复用 `resource-page-shell`、`.card` 与租户端 token
+
+详见 [business-center-design.md §5](../architecture/business-center-design.md#5-前端目标架构)。
+
+### 4.3 组织设置（`/system/*`，原「系统管理」）
 
 ```
 ┌──────────┬──────────────────────────────────────────────┐
@@ -163,12 +181,14 @@ var(--font-sans), "PingFang SC", "Microsoft YaHei", "Segoe UI", system-ui, -appl
 └──────────┴──────────────────────────────────────────────┘
 ```
 
-### 4.3 运营后台（`admin`）
+产品文案逐步由「系统管理」改为 **「组织设置」**；路由仍为 `/system/*`。
+
+### 4.4 运营后台（`admin`）
 
 - 侧栏 `w-60`，顶栏 `h-12`，配色 token 与租户端一致。
 - 管理类组件前缀：`admin-nav-item` / `admin-nav-item-active`（定义于 `ui/admin/app/globals.css`）。
 
-### 4.4 登录页
+### 4.5 登录页
 
 - 左侧 Hero（`lg` 以上）：`CompanyLogo` `full` + MilesAi 产品文案 + 渐变 `from-brand-light`。
 - 右侧表单：`card` 容器，`max-w-md` 居中。
@@ -392,7 +412,7 @@ var(--font-sans), "PingFang SC", "Microsoft YaHei", "Segoe UI", system-ui, -appl
 | Logo 组件 | `components/brand/*` | 副本同步维护 |
 | 导航类名 | `nav-item-*` | `admin-nav-item-*` |
 | 顶栏高度 | `h-14` | `h-12` |
-| 产品线文案 | `MilesAi · 工作台` / `系统管理` | `MilesAi · 管理后台` |
+| 产品线文案 | `MilesAi · 工作台` / `MilesAi · 业务中心` / `组织设置` | `MilesAi · 管理后台` |
 
 修改品牌色时，**须同时更新** 两端 `tailwind.config.ts` 与 `globals.css`。
 

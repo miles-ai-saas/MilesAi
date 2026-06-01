@@ -39,7 +39,7 @@ docs/
 └── guides/                   # 功能专题（实现说明）
 
 ui/                           # 前端应用源码（与 docs/ 并列，见仓库根目录）
-├── workbench/                # 租户 AI 工作台 :3000
+├── workbench/                # 租户端：AI 工作台 + 业务中心 + 组织设置 :3000
 └── admin/                    # 运营后台 :3001
 ```
 
@@ -66,6 +66,7 @@ ui/                           # 前端应用源码（与 docs/ 并列，见仓�
 | [flow-orchestration-enhancement.md](./architecture/flow-orchestration-enhancement.md) | **流程编排增强**：属性面板、调试、RAG 节点（已实现） |
 | [flow-subflow-design.md](./architecture/flow-subflow-design.md) | **子流程 SubFlow**（已实现） |
 | [system-management-design.md](./architecture/system-management-design.md) | **系统管理增强**：RBAC/会话/配额/审计分期方案 |
+| [business-center-design.md](./architecture/business-center-design.md) | **业务中心**：租户项目制交付（广告公司试点）；workbench 第三分区 |
 | [admin-ops-design.md](./architecture/admin-ops-design.md) | **运营后台增强**：安全闭环/计费/风控生效/管理员治理 |
 | [marketplace-review-design.md](./architecture/marketplace-review-design.md) | **应用市场审核**：SaaS 平台审 / 私有化租户审（`review_mode`） |
 | [multimodal-roadmap.md](./architecture/multimodal-roadmap.md) | **多模态技术总览**：文档地图、附件无签名约定、实施顺序 |
@@ -95,6 +96,7 @@ ui/                           # 前端应用源码（与 docs/ 并列，见仓�
 | [tags-categories.md](./features/tags-categories.md) | 横切 | 租户标签 + 系统分类 |
 | [marketplace.md](./features/marketplace.md) | 模块7 应用市场 | 打包、审核、安装、评分 |
 | [system-management.md](./features/system-management.md) | 模块1 系统管理 | RBAC、用户、租户、配置、审计 |
+| [business-center.md](./features/business-center.md) | 业务中心（租户） | 客户、项目、工作包、交付物；设计稿 |
 | [compliance.md](./features/compliance.md) | 模块2 合规 | 敏感词库、扫描、拦截日志 |
 | [monitor.md](./features/monitor.md) | 模块9 监控 | 统计、趋势、告警 Webhook |
 | [admin-ops.md](./features/admin-ops.md) | 模块1 系统管理（平台侧） | 运营后台：租户、计费、风控、模型目录、分类 |
@@ -153,6 +155,7 @@ ui/                           # 前端应用源码（与 docs/ 并列，见仓�
 | # | 功能节点 | 架构 | 指南 | features |
 |---|----------|------|------|----------|
 | 1 | 系统管理（租户） | [technical-design §4–5](./architecture/technical-design.md) | — | [system-management.md](./features/system-management.md) |
+| 1b | 业务中心（租户） | [business-center-design.md](./architecture/business-center-design.md) | — | [business-center.md](./features/business-center.md) |
 | 1a | 运营后台 | §4 运营域 | — | [admin-ops.md](./features/admin-ops.md) |
 | 2 | 安全合规 | §11 | [compliance-word-libraries.md](./guides/compliance-word-libraries.md) | [compliance.md](./features/compliance.md)、[hooks.md](./features/hooks.md) |
 | 3 | 模型与提示词 | §4 | [model-providers.md](./guides/model-providers.md) | [models-prompts.md](./features/models-prompts.md) |
@@ -188,7 +191,8 @@ ui/                           # 前端应用源码（与 docs/ 并列，见仓�
 
 | 能力 | 路径 |
 |------|------|
-| 租户 API | `backend/app/tenant/` |
+| 租户 API（AI + 组织） | `backend/app/tenant/` |
+| 业务中心 API | `backend/app/biz/`（设计稿，`/api/v1/biz`） |
 | 智能体对话 | `tenant/agents/services/agent.py` |
 | A2A | `tenant/a2a/` |
 | 流程 | `app/flow_runtime/`（节点、[templates/rag_flow.json](../backend/app/flow_runtime/templates/rag_flow.json)）、`app/integrations/langgraph/`（画布 compiler、Agent RAG 图） |

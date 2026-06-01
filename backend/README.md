@@ -25,6 +25,8 @@ app/
 │   ├── monitor/            # 监控报表
 │   ├── tasks/              # Celery 任务管理
 │   └── audit_log/          # 租户操作审计
+├── biz/                    # 业务中心（/api/v1/biz，设计稿；与 tenant 同级）
+│   └── router.py           # 由 tenant/router.py include
 ├── admin/                  # 运营后台 (/api/admin/v1)
 │   ├── router.py
 │   ├── models/             # 运营 ORM（sys / billing / risk / audit）

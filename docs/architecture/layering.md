@@ -1,6 +1,6 @@
 # 后端分层与代码规范
 
-> 版本：v1.0 | 日期：2026-05-22  
+> 版本：v1.0 | 日期：2026-05-22（2026-06-01 增补 `app/biz/`）  
 > 状态：**规范已定稿**；目录迁移见 [rag-module-migration.md](./rag-module-migration.md)  
 > 关联：[technical-design.md](./technical-design.md)、[guides/knowledge-base.md](../guides/knowledge-base.md)、[guides/ai-stack.md](../guides/ai-stack.md)
 
@@ -23,7 +23,7 @@
 1. **RAG 能力**集中在 `app/rag/`（Parse → Chunk → Index → Retrieve → Generate）。
 2. **`infra/`** 只对接外部系统原语（DB、S3、向量库客户端）。
 3. **`integrations/`**（L3）只封装 LangChain / LangGraph / LiteLLM / DeepAgents。
-4. **`tenant/`** 只做 API、权限、配额、状态机、编排调用 `rag.*`。
+4. **`tenant/`** 承载 AI 平台与组织设置 API；**`biz/`** 承载行业业务运营 API；二者均为 L0/L1，挂载同一 `/api/v1`。
 5. 依赖单向：**L0 → L1 → L2 → L3 → L4**，禁止反向。
 
 ---
@@ -32,12 +32,12 @@
 
 ```mermaid
 flowchart TB
-    subgraph L0["L0 API — tenant/*/views"]
+    subgraph L0["L0 API — tenant/*/views · biz/*/views"]
         API[HTTP / 鉴权 / DTO]
     end
 
-    subgraph L1["L1 用例 — tenant/*/services"]
-        UC[KB 状态机 / 配额 / 搜索日志 / Agent 编排]
+    subgraph L1["L1 用例 — tenant/*/services · biz/*/services"]
+        UC[KB 状态机 / 配额 / Agent 编排 / 项目交付]
     end
 
     subgraph L2["L2 RAG — app/rag/"]
@@ -74,8 +74,8 @@ flowchart TB
 
 | 层 | 路径 | 做什么 | 不做什么 |
 |----|------|--------|----------|
-| **L0** | `tenant/*/views`、`schemas` | 路由、校验、响应 | 解析 PDF、拼向量 Filter |
-| **L1** | `tenant/*/services` | 事务、软删、配额、`task_records`、调 `rag` | 直接 `PyPDFLoader` |
+| **L0** | `tenant/*/views`、`biz/*/views`、`schemas` | 路由、校验、响应 | 解析 PDF、拼向量 Filter |
+| **L1** | `tenant/*/services`、`biz/*/services` | 事务、软删、配额、调 `rag`、业务状态机 | 直接 `PyPDFLoader` |
 | **L2** | `app/rag/` | 文档解析、分片、向量索引门面、检索策略、RAG prompt/answer | FastAPI、HTTP |
 | **L3** | `app/integrations/` | LC Loader/Splitter 封装、LangGraph 图、LiteLLM | `tenant_id` 业务规则 |
 | **L4** | `app/infra/` | 连接池、S3 put/get、向量库 upsert/search/delete | `hybrid_alpha`、RRF、KB 状态机 |
@@ -91,6 +91,8 @@ L0 → L1 → L2 → L3 → L4
 | `infra` → `tenant` / `rag` | 基础设施不得了解业务 |
 | `integrations` → `tenant` | 集成层通过 L2 传入参数，不 import 用例 |
 | `rag` → `tenant` | RAG 层可 import `models`、可用 `AsyncSession` 做 PG 关键词检索，但 **不** import `tenant.kb.services.kb` |
+| `tenant` → `biz` | AI / 组织层 **不** 依赖 CRM（如 agents、flows 不得 import `app.biz`） |
+| `biz` → `tenant` | 允许单向：交付物 → `tenant.attachments`；案例 → `tenant.kb`；审计 → `tenant.audit_log` |
 | 新增 `app/ai/*` 仅 re-export | 已废弃，见迁移文档 |
 
 **允许**：`rag` → `models`、`core`、`infra`、`integrations`（仅 L3 技术封装）。
@@ -101,11 +103,16 @@ L0 → L1 → L2 → L3 → L4
 
 ```text
 backend/app/
-├── tenant/                      # L0/L1 多租户产品
+├── tenant/                      # L0/L1：AI 平台 + 组织设置（/api/v1）
 │   └── kb/
 │       ├── views/
 │       ├── services/            # 薄用例：调 rag + 写日志/配额
 │       └── repositories/
+│
+├── biz/                         # L0/L1：业务中心（/api/v1/biz，由 tenant/router 挂载）
+│   ├── clients/ projects/ …
+│   ├── views/ services/ repositories/ schemas/
+│   └── router.py
 │
 ├── rag/                         # L2 RAG 能力（核心）
 │   ├── parse/                   # loaders + backends（pypdf / docling / 图 / 音）
@@ -129,8 +136,10 @@ backend/app/
 │
 ├── flow_runtime/                # 流程节点 → 调 rag / integrations
 ├── deletion/                    # 删除编排 → infra.vector + PG
-└── models/                      # ORM 实体
+└── models/                      # ORM 实体（含 biz.py 等业务表）
 ```
+
+> **业务中心**：规格见 [business-center-design.md](./business-center-design.md)；`app/biz/` 与 `app/tenant/` **同级**，非 `tenant/biz/`。
 
 ### 3.1 `app/rag/` 子模块
 
