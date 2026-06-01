@@ -34,6 +34,7 @@ export function ClientsPageView({ vm }: { vm: ClientsPageVm }) {
     <div className="w-full">
       <BizPageHero
         flowStep="clients"
+        compact
         actions={
           canWriteClient ? (
             <button type="button" onClick={openCreate} className="btn-primary text-sm">

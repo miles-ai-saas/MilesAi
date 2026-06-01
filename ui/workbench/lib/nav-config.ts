@@ -18,7 +18,7 @@ export type SystemNavItem = NavItem & {
   permission?: string;
 };
 
-export type BizNavIcon = "clients" | "projects" | "dashboard" | "opportunities" | "contracts" | "suppliers" | "finance" | "workpackages";
+export type BizNavIcon = "clients" | "projects" | "dashboard" | "opportunities" | "contracts" | "suppliers" | "finance" | "workpackages" | "templates";
 
 export type BizNavItem = NavItem & {
   icon: BizNavIcon;
@@ -107,6 +107,7 @@ export const BUSINESS_NAV: { title: string; items: BizNavItem[] }[] = [
     items: [
       { href: "/business/projects", label: "项目", icon: "projects", permission: "biz:project:read" },
       { href: "/business/work-packages", label: "工作包看板", icon: "workpackages", permission: "biz:project:read" },
+      { href: "/business/service-templates", label: "服务线模板", icon: "templates", permission: "biz:project:read" },
     ],
   },
   {
@@ -201,6 +202,9 @@ export function getBusinessBreadcrumbs(pathname: string): BreadcrumbItem[] {
   }
   if (pathname === "/business/work-packages") {
     return [home, { label: "工作包看板" }];
+  }
+  if (pathname === "/business/service-templates") {
+    return [home, { label: "服务线模板" }];
   }
   if (pathname === "/business/contracts" || pathname.startsWith("/business/contracts/")) {
     return [home, { label: "合同" }];

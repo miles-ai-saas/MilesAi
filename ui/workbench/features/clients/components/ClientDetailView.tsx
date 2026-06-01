@@ -1,7 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import { useMemo } from "react";
+import { useBizPermissions } from "@/features/business/lib/biz-permissions";
 import type { ClientDetailPageVm } from "@/features/clients/hooks/use-client-detail-page";
+import { buildClientTimeline, TIMELINE_KIND_LABELS } from "@/features/clients/lib/client-timeline";
+import { CONTRACT_STATUS_LABELS } from "@/features/contracts/lib/contract-labels";
+import { OPPORTUNITY_STAGE_LABELS } from "@/features/opportunities/lib/opportunity-labels";
 import { PROJECT_STATUS_LABELS } from "@/features/projects/lib/biz-labels";
 
 const INDUSTRY_LABELS: Record<string, string> = {
@@ -21,12 +26,17 @@ export function ClientDetailView({
   onClose?: () => void;
 }) {
   const {
-    client, projects, loading, error, contactForm, setContactForm,
+    client, projects, opportunities, contracts, loading, error, contactForm, setContactForm,
     editingContactId, savingContact, resetContactForm, startEditContact,
     handleContactSubmit, handleDeleteContact,
     editingClient, setEditingClient, clientForm, setClientForm,
     savingClient, handleClientSubmit,
   } = vm;
+  const { canWriteProject } = useBizPermissions();
+  const timeline = useMemo(
+    () => buildClientTimeline(projects, opportunities, contracts),
+    [projects, opportunities, contracts],
+  );
 
   if (loading) return <p className="text-sm text-ink-muted">加载中…</p>;
   if (error || !client) return <p className="text-sm text-red-600">{error || "客户不存在"}</p>;
@@ -116,9 +126,45 @@ export function ClientDetailView({
       )}
 
       <div className="mt-8">
-        <div className="mb-3 flex items-center justify-between">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-sm font-semibold text-ink">业务时间线</h2>
+          <span className="text-xs text-ink-muted">{timeline.length} 条记录</span>
+        </div>
+        {timeline.length === 0 ? (
+          <p className="text-sm text-ink-faint">暂无关联商机、项目或合同</p>
+        ) : (
+          <div className="space-y-2">
+            {timeline.slice(0, 12).map((item) => (
+              <Link key={`${item.kind}-${item.id}`} href={item.href} className="card flex items-center justify-between gap-3 p-3 transition hover:shadow-md">
+                <div>
+                  <p className="text-sm font-medium text-ink">{item.title}</p>
+                  <p className="text-xs text-ink-muted">
+                    {TIMELINE_KIND_LABELS[item.kind]}
+                    {item.date ? ` · ${item.date}` : ""}
+                  </p>
+                </div>
+                <span className="shrink-0 rounded bg-surface-muted px-2 py-0.5 text-xs text-ink-muted">
+                  {item.kind === "project" ? (PROJECT_STATUS_LABELS[item.status] ?? item.status)
+                    : item.kind === "opportunity" ? (OPPORTUNITY_STAGE_LABELS[item.status] ?? item.status)
+                    : (CONTRACT_STATUS_LABELS[item.status] ?? item.status)}
+                </span>
+              </Link>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="mt-8">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-sm font-semibold text-ink">历史项目</h2>
-          <Link href={`/business/projects?client_id=${client.id}`} className="text-xs text-brand hover:underline">查看全部</Link>
+          <div className="flex items-center gap-3">
+            {canWriteProject && (
+              <Link href={`/business/projects?client_id=${client.id}&create=1`} className="text-xs text-brand hover:underline">
+                新建项目
+              </Link>
+            )}
+            <Link href={`/business/projects?client_id=${client.id}`} className="text-xs text-brand hover:underline">查看全部</Link>
+          </div>
         </div>
         {projects.length === 0 ? (
           <p className="text-sm text-ink-faint">暂无项目</p>
@@ -138,6 +184,40 @@ export function ClientDetailView({
           </div>
         )}
       </div>
+
+      {opportunities.length > 0 && (
+        <div className="mt-8">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-ink">关联商机</h2>
+            <Link href={`/business/opportunities?client_id=${client.id}`} className="text-xs text-brand hover:underline">全部商机</Link>
+          </div>
+          <div className="space-y-2">
+            {opportunities.slice(0, 5).map((o) => (
+              <Link key={o.id} href={`/business/opportunities?id=${o.id}`} className="card flex items-center justify-between p-3 text-sm transition hover:shadow-md">
+                <span className="font-medium text-ink">{o.name}</span>
+                <span className="text-xs text-ink-muted">{OPPORTUNITY_STAGE_LABELS[o.stage] ?? o.stage}</span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {contracts.length > 0 && (
+        <div className="mt-8">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-ink">关联合同</h2>
+            <Link href={`/business/contracts?client_id=${client.id}`} className="text-xs text-brand hover:underline">全部合同</Link>
+          </div>
+          <div className="space-y-2">
+            {contracts.slice(0, 5).map((c) => (
+              <Link key={c.id} href={`/business/contracts?id=${c.id}`} className="card flex items-center justify-between p-3 text-sm transition hover:shadow-md">
+                <span className="font-medium text-ink">{c.name}</span>
+                <span className="text-xs text-ink-muted">{CONTRACT_STATUS_LABELS[c.status] ?? c.status}</span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="mt-8">
         <div className="mb-3 flex items-center justify-between">

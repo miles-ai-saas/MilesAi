@@ -11,16 +11,18 @@ type Props = {
   actions?: ReactNode;
   /** 资源类页面仍展示主链路，但不强制高亮当前步（如供应商） */
   flowHighlight?: boolean;
+  /** 精简模式：不展示主链路条，副标题仅在有 subtitle 时显示 */
+  compact?: boolean;
 };
 
-export function BizPageHero({ flowStep, title, subtitle, actions, flowHighlight = true }: Props) {
+export function BizPageHero({ flowStep, title, subtitle, actions, flowHighlight = true, compact = false }: Props) {
   const step = getFlowStep(flowStep);
   const heading = title ?? step?.label ?? "业务中心";
-  const desc = subtitle ?? step?.description;
+  const desc = compact ? subtitle : (subtitle ?? step?.description);
 
   return (
     <div className="mb-6 space-y-4">
-      <BusinessFlowStrip current={flowHighlight ? flowStep : undefined} />
+      {!compact ? <BusinessFlowStrip current={flowHighlight ? flowStep : undefined} /> : null}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold text-ink">{heading}</h1>

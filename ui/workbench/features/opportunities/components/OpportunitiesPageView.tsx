@@ -1,12 +1,14 @@
 "use client";
 
 import { BizPageHero } from "@/features/business-dashboard/components/BizPageHero";
+import { ExportCsvButton } from "@/features/business/components/ExportCsvButton";
 import { useBizPermissions } from "@/features/business/lib/biz-permissions";
 import { OpportunitiesPipelineBoard } from "@/features/opportunities/components/OpportunitiesPipelineBoard";
 import { OpportunitiesTable } from "@/features/opportunities/components/OpportunitiesTable";
 import { OpportunityDetailDialog } from "@/features/opportunities/components/OpportunityDetailDialog";
 import { OpportunityFormDialog } from "@/features/opportunities/components/OpportunityFormDialog";
 import type { OpportunitiesPageVm } from "@/features/opportunities/hooks/use-opportunities-page";
+import { api } from "@/lib/api";
 
 export function OpportunitiesPageView({ vm }: { vm: OpportunitiesPageVm }) {
   const {
@@ -34,12 +36,14 @@ export function OpportunitiesPageView({ vm }: { vm: OpportunitiesPageVm }) {
     <div className="w-full">
       <BizPageHero
         flowStep="opportunities"
+        compact
         actions={
           <>
             <div className="flex rounded-lg border border-line p-0.5 text-xs">
               <button type="button" className={`rounded-md px-3 py-1.5 ${viewMode === "board" ? "bg-brand-light text-brand" : "text-ink-muted"}`} onClick={() => setViewMode("board")}>看板</button>
               <button type="button" className={`rounded-md px-3 py-1.5 ${viewMode === "table" ? "bg-brand-light text-brand" : "text-ink-muted"}`} onClick={() => setViewMode("table")}>列表</button>
             </div>
+            <ExportCsvButton url={api.exportOpportunitiesCsv()} filename="biz-opportunities.csv" />
             {canWriteOpportunity && (
               <button type="button" onClick={() => openCreate()} className="btn-primary text-sm">
                 新建商机

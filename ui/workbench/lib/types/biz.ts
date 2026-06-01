@@ -319,3 +319,14 @@ export interface BizProjectAiContext {
   retrospective_prompt?: string;
   recommendations: BizServiceLineAiRecommendation[];
 }
+
+/** 服务线阶段模板（租户可覆盖全局） */
+export interface BizServiceLineTemplate {
+  service_line: string;
+  label: string;
+  stages: string[];
+  source: "global" | "tenant" | "none";
+  template_id?: string | null;
+  is_active: boolean;
+  is_editable: boolean;
+}

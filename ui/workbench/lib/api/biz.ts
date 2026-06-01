@@ -1,6 +1,6 @@
-import { get, getPage, post, patch, http } from "./client";
+import { get, getPage, post, patch, put, http, unwrap } from "./client";
 import { buildPageQuery } from "../pagination";
-import type { BizArchiveCaseResult, BizClient, BizClientContact, BizClosePreview, BizCloseWizardResult, BizContract, BizDeliverable, BizMilestone, BizOpportunity, BizPayment, BizProject, BizProjectAiContext, BizProjectCostSummary, BizProjectMember, BizProjectSupplier, BizQuote, BizSupplier, BizSupplierContact, BizWorkPackage, BizWorkPackageKanban, DashboardSummary, DueMilestoneItem, FinancialSummary } from "../types";
+import type { BizArchiveCaseResult, BizClient, BizClientContact, BizClosePreview, BizCloseWizardResult, BizContract, BizDeliverable, BizMilestone, BizOpportunity, BizPayment, BizProject, BizProjectAiContext, BizProjectCostSummary, BizProjectMember, BizProjectSupplier, BizQuote, BizServiceLineTemplate, BizSupplier, BizSupplierContact, BizWorkPackage, BizWorkPackageKanban, DashboardSummary, DueMilestoneItem, FinancialSummary } from "../types";
 
 export const bizApi = {
   // ── 业务仪表盘 ──
@@ -116,9 +116,10 @@ export const bizApi = {
 
   // ── 合同管理 ──
 
-  listContracts: (page = 1, size = 20, projectId?: string, status?: string) => {
+  listContracts: (page = 1, size = 20, projectId?: string, status?: string, clientId?: string) => {
     let q = buildPageQuery(page, size);
     if (projectId) q += `&project_id=${projectId}`;
+    if (clientId) q += `&client_id=${clientId}`;
     if (status) q += `&status=${status}`;
     return getPage<BizContract>(`/biz/contracts?${q}`);
   },
@@ -182,4 +183,34 @@ export const bizApi = {
     if (workPackageId) q += `?work_package_id=${workPackageId}`;
     return get<BizProjectAiContext>(q);
   },
+
+  // ── 导出 ──
+
+  exportProjectsCsv: (clientId?: string, status?: string) => {
+    let q = "/biz/export/projects.csv";
+    const params: string[] = [];
+    if (clientId) params.push(`client_id=${clientId}`);
+    if (status) params.push(`status=${status}`);
+    if (params.length) q += `?${params.join("&")}`;
+    return q;
+  },
+
+  exportOpportunitiesCsv: (clientId?: string, stage?: string) => {
+    let q = "/biz/export/opportunities.csv";
+    const params: string[] = [];
+    if (clientId) params.push(`client_id=${clientId}`);
+    if (stage) params.push(`stage=${stage}`);
+    if (params.length) q += `?${params.join("&")}`;
+    return q;
+  },
+
+  exportPaymentsCsv: () => "/biz/export/payments.csv",
+
+  // ── 服务线模板 ──
+
+  listServiceLineTemplates: () => get<BizServiceLineTemplate[]>("/biz/service-line-templates"),
+  upsertServiceLineTemplate: (serviceLine: string, p: { stages: string[]; is_active?: boolean }) =>
+    put<BizServiceLineTemplate>(`/biz/service-line-templates/${serviceLine}`, p),
+  resetServiceLineTemplate: (serviceLine: string) =>
+    http.delete(`/biz/service-line-templates/${serviceLine}`).then((r) => unwrap<BizServiceLineTemplate>(r.data)),
 };

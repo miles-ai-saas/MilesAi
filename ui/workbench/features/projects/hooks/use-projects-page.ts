@@ -124,6 +124,10 @@ export function useProjectsPage() {
     ? clients.find((c) => c.id === clientFilter)?.name
     : undefined;
 
+  const clearClientFilter = useCallback(() => {
+    router.replace("/business/projects");
+  }, [router]);
+
   return {
     ready,
     list,
@@ -131,6 +135,7 @@ export function useProjectsPage() {
     confirmDialog,
     clientFilter,
     filterClientName,
+    clearClientFilter,
     createOpen,
     closeCreate,
     createForm,

@@ -6,6 +6,7 @@ import { api } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth-store";
 import { useBizPermissions } from "@/features/business/lib/biz-permissions";
 import { BizPageHero } from "@/features/business-dashboard/components/BizPageHero";
+import { ExportCsvButton } from "@/features/business/components/ExportCsvButton";
 import type { BizPayment, FinancialSummary } from "@/lib/types";
 
 const COLOR_MAP: Record<string, string> = {
@@ -69,7 +70,13 @@ export function FinancePageView({ vm }: { vm: FinancePageVm }) {
     <div>
       <BizPageHero
         flowStep="finance"
-        actions={<Link href="/business/contracts" className="btn-sm-outline text-sm">合同管理</Link>}
+        compact
+        actions={
+          <>
+            <ExportCsvButton url={api.exportPaymentsCsv()} filename="biz-payments.csv" />
+            <Link href="/business/contracts" className="btn-sm-outline text-sm">合同管理</Link>
+          </>
+        }
       />
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">

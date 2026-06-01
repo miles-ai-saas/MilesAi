@@ -28,12 +28,13 @@ async def list_contracts(
     page: int = Query(1, ge=1),
     size: int = Query(20, ge=1, le=100),
     project_id: UUID | None = Query(None),
+    client_id: UUID | None = Query(None),
     status: str | None = Query(None),
     ctx: TenantContext = Depends(require_permissions("biz:contract:read")),
     db: AsyncSession = Depends(get_db),
 ):
-    """分页查询合同列表，支持按项目和状态筛选。"""
-    result = await _svc(db, ctx).list_contracts(page=page, size=size, project_id=project_id, status=status)
+    """分页查询合同列表，支持按项目、客户和状态筛选。"""
+    result = await _svc(db, ctx).list_contracts(page=page, size=size, project_id=project_id, client_id=client_id, status=status)
     return page_ok(result.items, result.total, result.page, result.size)
 
 

@@ -33,7 +33,7 @@ export function ContractsPageView({ vm }: { vm: ContractsPageVm }) {
     <div className="w-full">
       <BizPageHero
         flowStep="contracts"
-        subtitle="项目签约后登记合同，并关联收付款计划"
+        compact
         actions={
           canWriteContract ? (
             <button type="button" onClick={() => openCreate()} className="btn-primary text-sm">

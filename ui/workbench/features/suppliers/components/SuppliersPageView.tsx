@@ -31,7 +31,7 @@ export function SuppliersPageView({ vm }: { vm: SuppliersPageVm }) {
       <BizPageHero
         flowStep="suppliers"
         flowHighlight={false}
-        subtitle="与主链路并行：为项目关联印刷、拍摄、搭建等外包方"
+        compact
         actions={
           canWriteSupplier ? (
             <button type="button" onClick={openCreate} className="btn-primary text-sm">

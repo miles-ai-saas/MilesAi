@@ -27,12 +27,14 @@ class ContractService(BaseService):
         self.repo = ContractRepository(db)
 
     async def list_contracts(
-        self, *, page: int = 1, size: int = 20, project_id: UUID | None = None, status: str | None = None,
+        self, *, page: int = 1, size: int = 20, project_id: UUID | None = None, client_id: UUID | None = None, status: str | None = None,
     ) -> PageResult[BizContractOut]:
-        """分页查询合同列表，可按所属项目、合同状态过滤。"""
+        """分页查询合同列表，可按所属项目、客户、合同状态过滤。"""
         filters = tenant_filters(self.ctx, BizContract.tenant_id)
         if project_id:
             filters.append(BizContract.project_id == project_id)
+        if client_id:
+            filters.append(BizContract.client_id == client_id)
         if status:
             filters.append(BizContract.status == status)
         result = await paginate(
