@@ -1,10 +1,17 @@
 "use client";
 
-import { useParams } from "next/navigation";
-import { OpportunityDetailView, useOpportunityDetailPage } from "@/features/opportunities";
+/** 兼容旧链接：重定向至列表页详情抽屉（`?id=`）。 */
 
-export default function OpportunityDetailPage() {
+import { useEffect } from "react";
+import { useParams, useRouter } from "next/navigation";
+
+export default function OpportunityDetailRedirectPage() {
   const { id } = useParams<{ id: string }>();
-  const vm = useOpportunityDetailPage(id);
-  return <OpportunityDetailView vm={vm} />;
+  const router = useRouter();
+
+  useEffect(() => {
+    router.replace(`/business/opportunities?id=${encodeURIComponent(id)}`);
+  }, [id, router]);
+
+  return null;
 }

@@ -47,8 +47,8 @@ export function SystemShell({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <div className="flex min-h-screen bg-surface-muted">
-      <div className="relative z-30 hidden shrink-0 overflow-visible lg:block">
+    <div className="flex h-dvh overflow-hidden bg-surface-muted">
+      <div className="relative z-30 hidden h-full shrink-0 overflow-visible lg:block">
         <SystemSidebar
           pathname={pathname}
           collapsed={sidebarCollapsed}
@@ -65,10 +65,10 @@ export function SystemShell({ children }: { children: React.ReactNode }) {
         </div>
       )}
 
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         <SystemTopBar breadcrumbs={breadcrumbs} onMenuOpen={() => setMobileNavOpen(true)} />
-        <main className="min-h-0 flex-1 overflow-auto">
-          <div className="system-page-shell">{children}</div>
+        <main className="min-h-0 flex-1 overflow-y-auto bg-surface-muted">
+          <div className="system-page-shell min-h-full">{children}</div>
         </main>
       </div>
     </div>

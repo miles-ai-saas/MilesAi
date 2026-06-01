@@ -1,24 +1,61 @@
 "use client";
 
-import Link from "next/link";
+import { BizPageHero } from "@/features/business-dashboard/components/BizPageHero";
+import { ContractDetailDialog } from "@/features/contracts/components/ContractDetailDialog";
+import { ContractFormDialog } from "@/features/contracts/components/ContractFormDialog";
 import { ContractsTable } from "@/features/contracts/components/ContractsTable";
 import type { ContractsPageVm } from "@/features/contracts/hooks/use-contracts-page";
 
 export function ContractsPageView({ vm }: { vm: ContractsPageVm }) {
-  const { ready, confirmDialog } = vm;
+  const {
+    ready,
+    confirmDialog,
+    createOpen,
+    setCreateOpen,
+    createForm,
+    setCreateForm,
+    projects,
+    clients,
+    optionsLoading,
+    saving,
+    openCreate,
+    handleCreateSave,
+    detailId,
+    closeDetail,
+    list,
+  } = vm;
+
   if (!ready) return <p className="text-sm text-ink-muted">加载中…</p>;
 
   return (
     <div className="w-full">
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-semibold text-ink">合同</h1>
-          <p className="mt-1 text-sm text-ink-muted">管理项目合同签署、履约与收付款</p>
-        </div>
-        <Link href="/business/contracts/new" className="btn-primary text-sm">新建合同</Link>
-      </div>
+      <BizPageHero
+        flowStep="contracts"
+        subtitle="项目签约后登记合同，并关联收付款计划"
+        actions={
+          <button type="button" onClick={() => openCreate()} className="btn-primary text-sm">
+            新建合同
+          </button>
+        }
+      />
       <ContractsTable vm={vm} />
       {confirmDialog}
+      <ContractFormDialog
+        open={createOpen}
+        form={createForm}
+        projects={projects}
+        clients={clients}
+        optionsLoading={optionsLoading}
+        saving={saving}
+        onClose={() => setCreateOpen(false)}
+        onChange={setCreateForm}
+        onSave={() => void handleCreateSave()}
+      />
+      <ContractDetailDialog
+        contractId={detailId}
+        onClose={closeDetail}
+        onMutated={() => void list.reload()}
+      />
     </div>
   );
 }

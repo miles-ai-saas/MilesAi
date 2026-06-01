@@ -7,10 +7,11 @@ import { api } from "@/lib/api";
 import type { BizOpportunity, BizQuote } from "@/lib/types";
 import { OPPORTUNITY_STAGE_LABELS, QUOTE_STATUS_LABELS, stageBadgeClass } from "@/features/opportunities/lib/opportunity-labels";
 
-export function useOpportunityDetailPage(opportunityId: string) {
+export function useOpportunityDetailPage(opportunityId: string | null, options?: { onMutated?: () => void }) {
   const router = useRouter();
+  const onMutated = options?.onMutated;
   const [opp, setOpp] = useState<BizOpportunity | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [converting, setConverting] = useState(false);
   const [quotes, setQuotes] = useState<BizQuote[]>([]);
@@ -18,12 +19,22 @@ export function useOpportunityDetailPage(opportunityId: string) {
   const [quoteAmount, setQuoteAmount] = useState("");
   const [quoteSaving, setQuoteSaving] = useState(false);
 
+  const resetLocalState = useCallback(() => {
+    setOpp(null);
+    setError("");
+    setQuotes([]);
+    setQuoteName("");
+    setQuoteAmount("");
+  }, []);
+
   const loadQuotes = useCallback(async () => {
+    if (!opportunityId) return;
     const rows = await api.listQuotes(opportunityId);
     setQuotes(rows);
   }, [opportunityId]);
 
   const load = useCallback(async () => {
+    if (!opportunityId) return null;
     const data = await api.getOpportunity(opportunityId);
     setOpp(data);
     await loadQuotes();
@@ -31,13 +42,22 @@ export function useOpportunityDetailPage(opportunityId: string) {
   }, [opportunityId, loadQuotes]);
 
   useEffect(() => {
+    if (!opportunityId) {
+      resetLocalState();
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    setError("");
     load().catch((e) => setError(e?.message ?? "加载失败")).finally(() => setLoading(false));
-  }, [load]);
+  }, [opportunityId, load, resetLocalState]);
 
   const handleConvert = async () => {
+    if (!opportunityId) return;
     setConverting(true);
     try {
       const result = await api.convertOpportunityToProject(opportunityId);
+      onMutated?.();
       router.push(`/business/projects/${result.project_id}`);
     } finally {
       setConverting(false);
@@ -46,7 +66,7 @@ export function useOpportunityDetailPage(opportunityId: string) {
 
   const handleAddQuote = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!quoteName.trim()) return;
+    if (!opportunityId || !quoteName.trim()) return;
     setQuoteSaving(true);
     try {
       await api.createQuote(opportunityId, {
@@ -56,18 +76,26 @@ export function useOpportunityDetailPage(opportunityId: string) {
       setQuoteName("");
       setQuoteAmount("");
       await loadQuotes();
+      onMutated?.();
     } finally {
       setQuoteSaving(false);
     }
   };
 
-  return { router, opp, loading, error, converting, handleConvert, reload: load, quotes, quoteName, setQuoteName, quoteAmount, setQuoteAmount, quoteSaving, handleAddQuote };
+  return { opp, loading, error, converting, handleConvert, reload: load, quotes, quoteName, setQuoteName, quoteAmount, setQuoteAmount, quoteSaving, handleAddQuote };
 }
 
 export type OpportunityDetailPageVm = ReturnType<typeof useOpportunityDetailPage>;
 
-export function OpportunityDetailView({ vm }: { vm: OpportunityDetailPageVm }) {
-  const { router, opp, loading, error, converting, handleConvert, quotes, quoteName, setQuoteName, quoteAmount, setQuoteAmount, quoteSaving, handleAddQuote } = vm;
+export function OpportunityDetailView({
+  vm,
+  embedded = false,
+}: {
+  vm: OpportunityDetailPageVm;
+  embedded?: boolean;
+  onClose?: () => void;
+}) {
+  const { opp, loading, error, converting, handleConvert, quotes, quoteName, setQuoteName, quoteAmount, setQuoteAmount, quoteSaving, handleAddQuote } = vm;
 
   if (loading) return <p className="text-sm text-ink-muted">加载中…</p>;
   if (error || !opp) return <p className="text-sm text-red-600">{error || "商机不存在"}</p>;
@@ -75,14 +103,29 @@ export function OpportunityDetailView({ vm }: { vm: OpportunityDetailPageVm }) {
   const canConvert = opp.stage === "won" && !opp.converted_to_project_id;
 
   return (
-    <div>
-      <button type="button" onClick={() => router.back()} className="mb-4 text-xs text-brand hover:underline">← 返回商机列表</button>
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold text-ink">{opp.name}</h1>
-          {opp.code && <p className="text-sm text-ink-muted">{opp.code}</p>}
+    <div className={embedded ? "w-full" : undefined}>
+      {!embedded ? (
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h1 className="text-xl font-semibold text-ink">{opp.name}</h1>
+            {opp.code && <p className="text-sm text-ink-muted">{opp.code}</p>}
+          </div>
+          <div className="flex items-center gap-3">
+            <span className={`rounded px-2 py-0.5 text-xs ${stageBadgeClass(opp.stage)}`}>
+              {OPPORTUNITY_STAGE_LABELS[opp.stage] ?? opp.stage}
+            </span>
+            {canConvert && (
+              <button type="button" className="btn-primary text-xs" disabled={converting} onClick={() => void handleConvert()}>
+                {converting ? "转化中…" : "转为项目"}
+              </button>
+            )}
+            {opp.converted_to_project_id && (
+              <Link href={`/business/projects/${opp.converted_to_project_id}`} className="btn-sm-outline text-xs">查看项目</Link>
+            )}
+          </div>
         </div>
-        <div className="flex items-center gap-3">
+      ) : (
+        <div className="mb-4 flex flex-wrap items-center justify-end gap-2">
           <span className={`rounded px-2 py-0.5 text-xs ${stageBadgeClass(opp.stage)}`}>
             {OPPORTUNITY_STAGE_LABELS[opp.stage] ?? opp.stage}
           </span>
@@ -95,9 +138,9 @@ export function OpportunityDetailView({ vm }: { vm: OpportunityDetailPageVm }) {
             <Link href={`/business/projects/${opp.converted_to_project_id}`} className="btn-sm-outline text-xs">查看项目</Link>
           )}
         </div>
-      </div>
+      )}
 
-      <div className="mt-6 grid gap-4 sm:grid-cols-2">
+      <div className={`grid gap-4 sm:grid-cols-2 ${embedded ? "mt-4" : "mt-6"}`}>
         <InfoCard label="预估金额" value={opp.expected_value != null ? `¥${opp.expected_value.toLocaleString()}` : "—"} />
         <InfoCard label="赢单概率" value={opp.probability != null ? `${opp.probability}%` : "—"} />
         <InfoCard label="预计结单" value={opp.expected_close_date || "—"} />

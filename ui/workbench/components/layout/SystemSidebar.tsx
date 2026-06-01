@@ -60,8 +60,8 @@ export function SystemSidebar({
   const width = collapsed ? SYSTEM_SIDEBAR_COLLAPSED : SYSTEM_SIDEBAR_EXPANDED;
 
   return (
-    <div className="relative shrink-0 overflow-visible transition-[width] duration-200 ease-out" style={{ width }}>
-      <aside className="flex min-h-screen w-full flex-col border-r border-line bg-surface">
+    <div className="relative h-full shrink-0 overflow-visible transition-[width] duration-200 ease-out" style={{ width }}>
+      <aside className="flex h-full w-full flex-col border-r border-line bg-surface shadow-sm">
         <div
           className={`flex h-14 shrink-0 items-center border-b border-line ${collapsed ? "justify-center px-2" : "px-4"}`}
         >

@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { ResourceListFooter } from "@/components/resource/ResourceListFooter";
 import type { ClientsPageVm } from "@/features/clients/hooks/use-clients-page";
 import type { BizClient } from "@/lib/types";
@@ -21,7 +20,7 @@ const CONF_LABELS: Record<string, string> = {
 };
 
 export function ClientsTable({ vm }: { vm: ClientsPageVm }) {
-  const { list, onDelete } = vm;
+  const { list, onDelete, openDetail } = vm;
 
   if (list.loading) {
     return <p className="text-sm text-ink-muted">加载中…</p>;
@@ -51,9 +50,9 @@ export function ClientsTable({ vm }: { vm: ClientsPageVm }) {
             {list.items.map((c: BizClient) => (
               <tr key={c.id}>
                 <td className="px-4 py-3">
-                  <Link href={`/business/clients/${c.id}`} className="font-medium text-ink hover:text-brand">
+                  <button type="button" onClick={() => openDetail(c.id)} className="font-medium text-ink hover:text-brand text-left">
                     {c.name}
-                  </Link>
+                  </button>
                   {c.short_name && <span className="ml-2 text-xs text-ink-faint">{c.short_name}</span>}
                 </td>
                 <td className="px-4 py-3 text-ink-muted">{INDUSTRY_LABELS[c.industry ?? ""] ?? c.industry ?? "—"}</td>
@@ -68,9 +67,9 @@ export function ClientsTable({ vm }: { vm: ClientsPageVm }) {
                 </td>
                 <td className="px-4 py-3 text-ink-muted">{c.project_count}</td>
                 <td className="px-4 py-3 text-right">
-                  <Link href={`/business/clients/${c.id}`} className="mr-3 text-xs text-brand hover:underline">
+                  <button type="button" className="mr-3 text-xs text-brand hover:underline" onClick={() => openDetail(c.id)}>
                     详情
-                  </Link>
+                  </button>
                   <button type="button" className="text-xs text-red-600 hover:underline" onClick={() => onDelete(c)}>
                     删除
                   </button>

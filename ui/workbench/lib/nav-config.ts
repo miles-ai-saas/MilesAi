@@ -90,34 +90,34 @@ export const WORKBENCH_NAV: NavGroup[] = [
 
 export const BUSINESS_NAV: { title: string; items: BizNavItem[] }[] = [
   {
-    title: "业务总览",
+    title: "工作总览",
     items: [
-      { href: "/business/dashboard", label: "仪表盘", icon: "dashboard", permission: "biz:dashboard:read" },
+      { href: "/business/dashboard", label: "业务工作台", icon: "dashboard", permission: "biz:dashboard:read" },
     ],
   },
   {
-    title: "销售",
+    title: "销售漏斗",
     items: [
       { href: "/business/clients", label: "客户", icon: "clients", permission: "biz:client:read" },
       { href: "/business/opportunities", label: "商机", icon: "opportunities", permission: "biz:opportunity:read" },
     ],
   },
   {
-    title: "交付",
+    title: "项目交付",
     items: [
       { href: "/business/projects", label: "项目", icon: "projects", permission: "biz:project:read" },
       { href: "/business/work-packages", label: "工作包看板", icon: "workpackages", permission: "biz:project:read" },
-      { href: "/business/contracts", label: "合同", icon: "contracts", permission: "biz:contract:read" },
     ],
   },
   {
-    title: "财务",
+    title: "商务结算",
     items: [
+      { href: "/business/contracts", label: "合同", icon: "contracts", permission: "biz:contract:read" },
       { href: "/business/finance", label: "财务概览", icon: "finance", permission: "biz:finance:read" },
     ],
   },
   {
-    title: "资源",
+    title: "外包资源",
     items: [
       { href: "/business/suppliers", label: "供应商", icon: "suppliers", permission: "biz:supplier:read" },
     ],
@@ -185,10 +185,10 @@ export function getSystemBreadcrumbs(pathname: string): BreadcrumbItem[] {
 }
 
 export function getBusinessBreadcrumbs(pathname: string): BreadcrumbItem[] {
-  const home: BreadcrumbItem = { label: "仪表盘", href: "/business/dashboard" };
+  const home: BreadcrumbItem = { label: "业务工作台", href: "/business/dashboard" };
 
   if (pathname === "/business/dashboard" || pathname === "/business") {
-    return [{ label: "仪表盘" }];
+    return [{ label: "业务工作台" }];
   }
   if (pathname === "/business/clients" || pathname.startsWith("/business/clients/")) {
     return [home, { label: "客户" }];

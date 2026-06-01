@@ -1,14 +1,12 @@
 "use client";
 
-import Link from "next/link";
 import { ResourceListFooter } from "@/components/resource/ResourceListFooter";
 import type { OpportunitiesPageVm } from "@/features/opportunities/hooks/use-opportunities-page";
 import type { BizOpportunity } from "@/lib/types";
 import { OPPORTUNITY_STAGE_LABELS, stageBadgeClass } from "@/features/opportunities/lib/opportunity-labels";
-import type { OpportunitiesPageVm } from "@/features/opportunities/hooks/use-opportunities-page";
 
 export function OpportunitiesTable({ vm }: { vm: OpportunitiesPageVm }) {
-  const { list, onDelete } = vm;
+  const { list, onDelete, openDetail } = vm;
   if (list.loading) return <p className="text-sm text-ink-muted">加载中…</p>;
 
   return (
@@ -28,7 +26,9 @@ export function OpportunitiesTable({ vm }: { vm: OpportunitiesPageVm }) {
             {list.items.map((o: BizOpportunity) => (
               <tr key={o.id}>
                 <td className="px-4 py-3">
-                  <Link href={`/business/opportunities/${o.id}`} className="font-medium text-ink hover:text-brand">{o.name}</Link>
+                  <button type="button" onClick={() => openDetail(o.id)} className="font-medium text-ink hover:text-brand text-left">
+                    {o.name}
+                  </button>
                 </td>
                 <td className="px-4 py-3">
                   <span className={`rounded px-2 py-0.5 text-xs ${stageBadgeClass(o.stage)}`}>
@@ -40,7 +40,7 @@ export function OpportunitiesTable({ vm }: { vm: OpportunitiesPageVm }) {
                   {o.probability != null ? ` / ${o.probability}%` : ""}
                 </td>
                 <td className="px-4 py-3 text-right">
-                  <Link href={`/business/opportunities/${o.id}`} className="mr-3 text-xs text-brand hover:underline">详情</Link>
+                  <button type="button" className="mr-3 text-xs text-brand hover:underline" onClick={() => openDetail(o.id)}>详情</button>
                   <button type="button" className="text-xs text-red-600 hover:underline" onClick={() => onDelete(o)}>删除</button>
                 </td>
               </tr>

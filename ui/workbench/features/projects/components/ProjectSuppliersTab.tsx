@@ -101,7 +101,7 @@ export function ProjectSuppliersTab({ vm }: { vm: ProjectDetailPageVm }) {
               {rows.map((r) => (
                 <tr key={r.supplier_id}>
                   <td className="px-4 py-3">
-                    <Link href={`/business/suppliers/${r.supplier_id}`} className="text-brand hover:underline">{r.supplier_name}</Link>
+                    <Link href={`/business/suppliers?id=${r.supplier_id}`} className="text-brand hover:underline">{r.supplier_name}</Link>
                   </td>
                   <td className="px-4 py-3 text-ink-muted">{SUPPLIER_CATEGORY_LABELS[r.supplier_category] ?? r.supplier_category}</td>
                   <td className="px-4 py-3">{r.role_description || "—"}</td>

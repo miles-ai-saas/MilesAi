@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth-store";
+import { BizPageHero } from "@/features/business-dashboard/components/BizPageHero";
 import type { BizPayment, FinancialSummary } from "@/lib/types";
 
 const COLOR_MAP: Record<string, string> = {
@@ -46,13 +47,10 @@ export function FinancePageView({ vm }: { vm: FinancePageVm }) {
 
   return (
     <div>
-      <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold text-ink">财务概览</h1>
-          <p className="mt-1 text-sm text-ink-muted">合同、收付款与待办款项汇总</p>
-        </div>
-        <Link href="/business/contracts" className="btn-sm-outline text-sm">合同管理</Link>
-      </div>
+      <BizPageHero
+        flowStep="finance"
+        actions={<Link href="/business/contracts" className="btn-sm-outline text-sm">合同管理</Link>}
+      />
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         <StatCard label="合同总数" value={summary.contract_count} color="slate" />
@@ -91,7 +89,7 @@ export function FinancePageView({ vm }: { vm: FinancePageVm }) {
                     <td className="p-3">{p.planned_date ?? "—"}</td>
                     <td className="p-3">{PAYMENT_STATUS_LABELS[p.status] ?? p.status}</td>
                     <td className="p-3">
-                      <Link href={`/business/contracts/${p.contract_id}`} className="text-xs text-brand hover:underline">
+                      <Link href={`/business/contracts?id=${p.contract_id}`} className="text-xs text-brand hover:underline">
                         查看合同
                       </Link>
                     </td>

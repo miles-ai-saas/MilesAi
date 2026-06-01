@@ -12,9 +12,16 @@ const CONF_LABELS: Record<string, string> = {
   normal: "普通", internal: "内部", restricted: "涉密",
 };
 
-export function ClientDetailView({ vm }: { vm: ClientDetailPageVm }) {
+export function ClientDetailView({
+  vm,
+  embedded = false,
+}: {
+  vm: ClientDetailPageVm;
+  embedded?: boolean;
+  onClose?: () => void;
+}) {
   const {
-    router, client, projects, loading, error, contactForm, setContactForm,
+    client, projects, loading, error, contactForm, setContactForm,
     editingContactId, savingContact, resetContactForm, startEditContact,
     handleContactSubmit, handleDeleteContact,
     editingClient, setEditingClient, clientForm, setClientForm,
@@ -25,15 +32,28 @@ export function ClientDetailView({ vm }: { vm: ClientDetailPageVm }) {
   if (error || !client) return <p className="text-sm text-red-600">{error || "客户不存在"}</p>;
 
   return (
-    <div className="mx-auto max-w-2xl">
-      <button type="button" onClick={() => router.back()} className="mb-4 text-xs text-brand hover:underline">← 返回客户列表</button>
-
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold text-ink">{client.name}</h1>
-          {client.short_name && <p className="text-sm text-ink-muted">{client.short_name}</p>}
+    <div className={embedded ? "w-full" : "mx-auto max-w-2xl"}>
+      {!embedded ? (
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h1 className="text-xl font-semibold text-ink">{client.name}</h1>
+            {client.short_name && <p className="text-sm text-ink-muted">{client.short_name}</p>}
+          </div>
+          <div className="flex items-center gap-2">
+            <span className={`rounded px-2 py-0.5 text-xs ${
+              client.confidentiality_level === "restricted" ? "bg-red-50 text-red-600" :
+              client.confidentiality_level === "internal" ? "bg-yellow-50 text-yellow-700" :
+              "bg-surface-muted text-ink-muted"
+            }`}>
+              {CONF_LABELS[client.confidentiality_level] ?? client.confidentiality_level}
+            </span>
+            {!editingClient && (
+              <button type="button" className="text-xs text-brand hover:underline" onClick={() => setEditingClient(true)}>编辑</button>
+            )}
+          </div>
         </div>
-        <div className="flex items-center gap-2">
+      ) : (
+        <div className="mb-4 flex items-center justify-end gap-2">
           <span className={`rounded px-2 py-0.5 text-xs ${
             client.confidentiality_level === "restricted" ? "bg-red-50 text-red-600" :
             client.confidentiality_level === "internal" ? "bg-yellow-50 text-yellow-700" :
@@ -45,10 +65,10 @@ export function ClientDetailView({ vm }: { vm: ClientDetailPageVm }) {
             <button type="button" className="text-xs text-brand hover:underline" onClick={() => setEditingClient(true)}>编辑</button>
           )}
         </div>
-      </div>
+      )}
 
       {editingClient ? (
-        <form onSubmit={handleClientSubmit} className="card mt-6 space-y-3 p-4">
+        <form onSubmit={handleClientSubmit} className={`card space-y-3 p-4 ${embedded ? "mt-0" : "mt-6"}`}>
           <label>
             <span className="text-xs text-ink-muted">名称 <span className="text-red-500">*</span></span>
             <input className="input-field mt-1 w-full text-sm" value={clientForm.name} onChange={(e) => setClientForm({ ...clientForm, name: e.target.value })} required />
@@ -87,7 +107,7 @@ export function ClientDetailView({ vm }: { vm: ClientDetailPageVm }) {
           </div>
         </form>
       ) : (
-        <div className="mt-6 grid gap-4 sm:grid-cols-2">
+        <div className={`grid gap-4 sm:grid-cols-2 ${embedded ? "mt-0" : "mt-6"}`}>
           <InfoCard label="行业" value={INDUSTRY_LABELS[client.industry ?? ""] ?? client.industry ?? "—"} />
           <InfoCard label="项目数" value={`${client.project_count}`} />
           <InfoCard label="地址" value={client.address || "—"} />

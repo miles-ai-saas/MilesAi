@@ -7,7 +7,7 @@ import { OPPORTUNITY_STAGES, stageBadgeClass } from "@/features/opportunities/li
 import type { OpportunitiesPageVm } from "@/features/opportunities/hooks/use-opportunities-page";
 
 export function OpportunitiesPipelineBoard({ vm }: { vm: OpportunitiesPageVm }) {
-  const { pipeline, pipelineLoading, onStageChange, onConvert, onDelete } = vm;
+  const { pipeline, pipelineLoading, onStageChange, onConvert, onDelete, openDetail } = vm;
 
   const grouped = useMemo(() => {
     const map: Record<string, BizOpportunity[]> = {};
@@ -48,9 +48,13 @@ export function OpportunitiesPipelineBoard({ vm }: { vm: OpportunitiesPageVm }) 
                 onDragStart={(e) => e.dataTransfer.setData("text/opportunity-id", opp.id)}
                 className="card cursor-grab p-3 active:cursor-grabbing"
               >
-                <Link href={`/business/opportunities/${opp.id}`} className="font-medium text-sm text-ink hover:text-brand">
+                <button
+                  type="button"
+                  onClick={() => openDetail(opp.id)}
+                  className="font-medium text-sm text-ink hover:text-brand text-left"
+                >
                   {opp.name}
-                </Link>
+                </button>
                 <p className="mt-1 text-xs text-ink-muted">
                   {opp.expected_value != null ? `¥${opp.expected_value.toLocaleString()}` : "—"}
                   {opp.probability != null ? ` · ${opp.probability}%` : ""}

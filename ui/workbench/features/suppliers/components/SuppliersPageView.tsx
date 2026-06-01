@@ -1,26 +1,57 @@
 "use client";
 
-import Link from "next/link";
+import { BizPageHero } from "@/features/business-dashboard/components/BizPageHero";
+import { SupplierDetailDialog } from "@/features/suppliers/components/SupplierDetailDialog";
+import { SupplierFormDialog } from "@/features/suppliers/components/SupplierFormDialog";
 import { SuppliersFilters, SuppliersTable } from "@/features/suppliers/components/SuppliersTable";
 import type { SuppliersPageVm } from "@/features/suppliers/hooks/use-suppliers-page";
 
 export function SuppliersPageView({ vm }: { vm: SuppliersPageVm }) {
-  const { ready, confirmDialog } = vm;
+  const {
+    ready,
+    confirmDialog,
+    detailId,
+    closeDetail,
+    list,
+    createOpen,
+    setCreateOpen,
+    createForm,
+    setCreateForm,
+    saving,
+    openCreate,
+    handleCreateSave,
+  } = vm;
 
   if (!ready) return <p className="text-sm text-ink-muted">加载中…</p>;
 
   return (
     <div className="w-full">
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-semibold text-ink">供应商</h1>
-          <p className="mt-1 text-sm text-ink-muted">管理印刷、拍摄、搭建、场务等外包合作方</p>
-        </div>
-        <Link href="/business/suppliers/new" className="btn-primary text-sm">新建供应商</Link>
-      </div>
+      <BizPageHero
+        flowStep="suppliers"
+        flowHighlight={false}
+        subtitle="与主链路并行：为项目关联印刷、拍摄、搭建等外包方"
+        actions={
+          <button type="button" onClick={openCreate} className="btn-primary text-sm">
+            新建供应商
+          </button>
+        }
+      />
       <SuppliersFilters vm={vm} />
       <SuppliersTable vm={vm} />
       {confirmDialog}
+      <SupplierFormDialog
+        open={createOpen}
+        form={createForm}
+        saving={saving}
+        onClose={() => setCreateOpen(false)}
+        onChange={setCreateForm}
+        onSave={() => void handleCreateSave()}
+      />
+      <SupplierDetailDialog
+        supplierId={detailId}
+        onClose={closeDetail}
+        onMutated={() => void list.reload()}
+      />
     </div>
   );
 }

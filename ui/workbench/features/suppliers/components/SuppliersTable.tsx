@@ -1,13 +1,12 @@
 "use client";
 
-import Link from "next/link";
 import { ResourceListFooter } from "@/components/resource/ResourceListFooter";
 import { SUPPLIER_CATEGORIES, SUPPLIER_CATEGORY_LABELS, SUPPLIER_STATUS_LABELS, supplierStatusBadgeClass } from "@/features/suppliers/lib/supplier-labels";
 import type { SuppliersPageVm } from "@/features/suppliers/hooks/use-suppliers-page";
 import type { BizSupplier } from "@/lib/types";
 
 export function SuppliersTable({ vm }: { vm: SuppliersPageVm }) {
-  const { list, onDelete } = vm;
+  const { list, onDelete, openDetail } = vm;
 
   if (list.loading) return <p className="text-sm text-ink-muted">加载中…</p>;
 
@@ -32,7 +31,9 @@ export function SuppliersTable({ vm }: { vm: SuppliersPageVm }) {
             {list.items.map((s: BizSupplier) => (
               <tr key={s.id}>
                 <td className="px-4 py-3">
-                  <Link href={`/business/suppliers/${s.id}`} className="font-medium text-ink hover:text-brand">{s.name}</Link>
+                  <button type="button" onClick={() => openDetail(s.id)} className="font-medium text-ink hover:text-brand text-left">
+                    {s.name}
+                  </button>
                   {s.short_name && <span className="ml-2 text-xs text-ink-faint">{s.short_name}</span>}
                 </td>
                 <td className="px-4 py-3 text-ink-muted">{SUPPLIER_CATEGORY_LABELS[s.category] ?? s.category}</td>
@@ -44,7 +45,7 @@ export function SuppliersTable({ vm }: { vm: SuppliersPageVm }) {
                 <td className="px-4 py-3 text-ink-muted">{s.project_count}</td>
                 <td className="px-4 py-3 text-ink-muted">{s.contact_name || s.contacts.find((c) => c.is_primary)?.name || "—"}</td>
                 <td className="px-4 py-3 text-right">
-                  <Link href={`/business/suppliers/${s.id}`} className="mr-3 text-xs text-brand hover:underline">详情</Link>
+                  <button type="button" className="mr-3 text-xs text-brand hover:underline" onClick={() => openDetail(s.id)}>详情</button>
                   <button type="button" className="text-xs text-red-600 hover:underline" onClick={() => onDelete(s)}>删除</button>
                 </td>
               </tr>

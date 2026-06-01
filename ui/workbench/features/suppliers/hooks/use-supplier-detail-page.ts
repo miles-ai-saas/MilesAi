@@ -5,24 +5,43 @@ import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import type { BizSupplier, BizSupplierContact } from "@/lib/types";
 
-export function useSupplierDetailPage(supplierId: string) {
-  const router = useRouter();
+type Options = {
+  onMutated?: () => void;
+};
+
+export function useSupplierDetailPage(supplierId: string | null, options?: Options) {
+  const onMutated = options?.onMutated;
   const [supplier, setSupplier] = useState<BizSupplier | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [contactForm, setContactForm] = useState({ name: "", title: "", phone: "", email: "", is_primary: false });
   const [editingContactId, setEditingContactId] = useState<string | null>(null);
   const [savingContact, setSavingContact] = useState(false);
 
+  const resetLocalState = useCallback(() => {
+    setSupplier(null);
+    setError("");
+    setContactForm({ name: "", title: "", phone: "", email: "", is_primary: false });
+    setEditingContactId(null);
+  }, []);
+
   const load = useCallback(async () => {
+    if (!supplierId) return null;
     const data = await api.getSupplier(supplierId);
     setSupplier(data);
     return data;
   }, [supplierId]);
 
   useEffect(() => {
+    if (!supplierId) {
+      resetLocalState();
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    setError("");
     load().catch((e) => setError(e?.message ?? "加载失败")).finally(() => setLoading(false));
-  }, [load]);
+  }, [supplierId, load, resetLocalState]);
 
   const resetContactForm = () => {
     setContactForm({ name: "", title: "", phone: "", email: "", is_primary: false });
@@ -36,7 +55,7 @@ export function useSupplierDetailPage(supplierId: string) {
 
   const handleContactSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!contactForm.name.trim()) return;
+    if (!supplierId || !contactForm.name.trim()) return;
     setSavingContact(true);
     try {
       const payload = {
@@ -53,19 +72,20 @@ export function useSupplierDetailPage(supplierId: string) {
       }
       resetContactForm();
       await load();
+      onMutated?.();
     } finally {
       setSavingContact(false);
     }
   };
 
   const handleDeleteContact = async (contactId: string) => {
-    if (!window.confirm("确定删除该联系人？")) return;
+    if (!supplierId || !window.confirm("确定删除该联系人？")) return;
     await api.deleteSupplierContact(supplierId, contactId);
     await load();
+    onMutated?.();
   };
 
   return {
-    router,
     supplier,
     loading,
     error,

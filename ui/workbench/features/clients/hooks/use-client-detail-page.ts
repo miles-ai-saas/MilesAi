@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import type { BizClient, BizClientContact, BizProject } from "@/lib/types";
 
@@ -26,11 +25,15 @@ const emptyContactForm = (): ContactForm => ({
   name: "", title: "", phone: "", email: "", is_primary: false,
 });
 
-export function useClientDetailPage(clientId: string) {
-  const router = useRouter();
+type Options = {
+  onMutated?: () => void;
+};
+
+export function useClientDetailPage(clientId: string | null, options?: Options) {
+  const onMutated = options?.onMutated;
   const [client, setClient] = useState<BizClient | null>(null);
   const [projects, setProjects] = useState<BizProject[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [contactForm, setContactForm] = useState<ContactForm>(emptyContactForm);
   const [editingContactId, setEditingContactId] = useState<string | null>(null);
@@ -41,7 +44,17 @@ export function useClientDetailPage(clientId: string) {
   });
   const [savingClient, setSavingClient] = useState(false);
 
+  const resetLocalState = useCallback(() => {
+    setClient(null);
+    setProjects([]);
+    setError("");
+    setContactForm(emptyContactForm());
+    setEditingContactId(null);
+    setEditingClient(false);
+  }, []);
+
   const loadClient = useCallback(async () => {
+    if (!clientId) return null;
     const data = await api.getClient(clientId);
     setClient(data);
     setClientForm({
@@ -56,15 +69,23 @@ export function useClientDetailPage(clientId: string) {
   }, [clientId]);
 
   const loadProjects = useCallback(async () => {
+    if (!clientId) return;
     const data = await api.listProjects(1, 50, clientId);
     setProjects(data.items);
   }, [clientId]);
 
   useEffect(() => {
+    if (!clientId) {
+      resetLocalState();
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    setError("");
     Promise.all([loadClient(), loadProjects()])
       .catch((e) => setError(e?.message ?? "加载失败"))
       .finally(() => setLoading(false));
-  }, [loadClient, loadProjects]);
+  }, [clientId, loadClient, loadProjects, resetLocalState]);
 
   const resetContactForm = () => {
     setContactForm(emptyContactForm());
@@ -84,7 +105,7 @@ export function useClientDetailPage(clientId: string) {
 
   const handleContactSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!contactForm.name.trim()) return;
+    if (!clientId || !contactForm.name.trim()) return;
     setSavingContact(true);
     try {
       const payload = {
@@ -101,21 +122,23 @@ export function useClientDetailPage(clientId: string) {
       }
       await loadClient();
       resetContactForm();
+      onMutated?.();
     } finally {
       setSavingContact(false);
     }
   };
 
   const handleDeleteContact = async (contactId: string) => {
-    if (!window.confirm("确定删除该联系人？")) return;
+    if (!clientId || !window.confirm("确定删除该联系人？")) return;
     await api.deleteContact(clientId, contactId);
     if (editingContactId === contactId) resetContactForm();
     await loadClient();
+    onMutated?.();
   };
 
   const handleClientSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!clientForm.name.trim()) return;
+    if (!clientId || !clientForm.name.trim()) return;
     setSavingClient(true);
     try {
       await api.updateClient(clientId, {
@@ -128,13 +151,14 @@ export function useClientDetailPage(clientId: string) {
       });
       await loadClient();
       setEditingClient(false);
+      onMutated?.();
     } finally {
       setSavingClient(false);
     }
   };
 
   return {
-    router, client, projects, loading, error, contactForm, setContactForm,
+    client, projects, loading, error, contactForm, setContactForm,
     editingContactId, savingContact, resetContactForm, startEditContact,
     handleContactSubmit, handleDeleteContact,
     editingClient, setEditingClient, clientForm, setClientForm,

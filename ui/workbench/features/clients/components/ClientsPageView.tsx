@@ -1,11 +1,28 @@
 "use client";
 
-import Link from "next/link";
+import { BizPageHero } from "@/features/business-dashboard/components/BizPageHero";
+import { ClientDetailDialog } from "@/features/clients/components/ClientDetailDialog";
+import { ClientFormDialog } from "@/features/clients/components/ClientFormDialog";
 import { ClientsTable } from "@/features/clients/components/ClientsTable";
 import type { ClientsPageVm } from "@/features/clients/hooks/use-clients-page";
 
 export function ClientsPageView({ vm }: { vm: ClientsPageVm }) {
-  const { ready, search, onSearch, confirmDialog } = vm;
+  const {
+    ready,
+    search,
+    onSearch,
+    confirmDialog,
+    createOpen,
+    setCreateOpen,
+    createForm,
+    setCreateForm,
+    saving,
+    openCreate,
+    handleCreateSave,
+    detailId,
+    closeDetail,
+    list,
+  } = vm;
 
   if (!ready) {
     return <p className="text-sm text-ink-muted">加载中…</p>;
@@ -13,15 +30,14 @@ export function ClientsPageView({ vm }: { vm: ClientsPageVm }) {
 
   return (
     <div className="w-full">
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-semibold text-ink">客户</h1>
-          <p className="mt-1 text-sm text-ink-muted">管理服务的政府机关、企事业单位及其他客户</p>
-        </div>
-        <Link href="/business/clients/new" className="btn-primary text-sm">
-          新建客户
-        </Link>
-      </div>
+      <BizPageHero
+        flowStep="clients"
+        actions={
+          <button type="button" onClick={openCreate} className="btn-primary text-sm">
+            新建客户
+          </button>
+        }
+      />
 
       <div className="mb-4">
         <input
@@ -35,6 +51,19 @@ export function ClientsPageView({ vm }: { vm: ClientsPageVm }) {
 
       <ClientsTable vm={vm} />
       {confirmDialog}
+      <ClientFormDialog
+        open={createOpen}
+        form={createForm}
+        saving={saving}
+        onClose={() => setCreateOpen(false)}
+        onChange={setCreateForm}
+        onSave={() => void handleCreateSave()}
+      />
+      <ClientDetailDialog
+        clientId={detailId}
+        onClose={closeDetail}
+        onMutated={() => void list.reload()}
+      />
     </div>
   );
 }

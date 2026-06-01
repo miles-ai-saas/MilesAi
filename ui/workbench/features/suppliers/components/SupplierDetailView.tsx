@@ -3,9 +3,16 @@
 import type { SupplierDetailPageVm } from "@/features/suppliers/hooks/use-supplier-detail-page";
 import { SUPPLIER_CATEGORY_LABELS, SUPPLIER_STATUS_LABELS, supplierStatusBadgeClass } from "@/features/suppliers/lib/supplier-labels";
 
-export function SupplierDetailView({ vm }: { vm: SupplierDetailPageVm }) {
+export function SupplierDetailView({
+  vm,
+  embedded = false,
+}: {
+  vm: SupplierDetailPageVm;
+  embedded?: boolean;
+  onClose?: () => void;
+}) {
   const {
-    router, supplier, loading, error, contactForm, setContactForm,
+    supplier, loading, error, contactForm, setContactForm,
     editingContactId, savingContact, resetContactForm, startEditContact,
     handleContactSubmit, handleDeleteContact,
   } = vm;
@@ -14,20 +21,26 @@ export function SupplierDetailView({ vm }: { vm: SupplierDetailPageVm }) {
   if (error || !supplier) return <p className="text-sm text-red-600">{error || "供应商不存在"}</p>;
 
   return (
-    <div className="mx-auto max-w-2xl">
-      <button type="button" onClick={() => router.back()} className="mb-4 text-xs text-brand hover:underline">← 返回供应商列表</button>
-
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-xl font-semibold text-ink">{supplier.name}</h1>
-          {supplier.short_name && <p className="text-sm text-ink-muted">{supplier.short_name}</p>}
+    <div className={embedded ? "w-full" : "mx-auto max-w-2xl"}>
+      {!embedded ? (
+        <div className="flex items-start justify-between">
+          <div>
+            <h1 className="text-xl font-semibold text-ink">{supplier.name}</h1>
+            {supplier.short_name && <p className="text-sm text-ink-muted">{supplier.short_name}</p>}
+          </div>
+          <span className={`rounded px-2 py-0.5 text-xs ${supplierStatusBadgeClass(supplier.status)}`}>
+            {SUPPLIER_STATUS_LABELS[supplier.status] ?? supplier.status}
+          </span>
         </div>
-        <span className={`rounded px-2 py-0.5 text-xs ${supplierStatusBadgeClass(supplier.status)}`}>
-          {SUPPLIER_STATUS_LABELS[supplier.status] ?? supplier.status}
-        </span>
-      </div>
+      ) : (
+        <div className="mb-4 flex justify-end">
+          <span className={`rounded px-2 py-0.5 text-xs ${supplierStatusBadgeClass(supplier.status)}`}>
+            {SUPPLIER_STATUS_LABELS[supplier.status] ?? supplier.status}
+          </span>
+        </div>
+      )}
 
-      <div className="mt-6 grid gap-4 sm:grid-cols-2">
+      <div className={`grid gap-4 sm:grid-cols-2 ${embedded ? "mt-0" : "mt-6"}`}>
         <InfoCard label="类型" value={SUPPLIER_CATEGORY_LABELS[supplier.category] ?? supplier.category} />
         <InfoCard label="合作项目" value={`${supplier.project_count}`} />
         <InfoCard label="主联系人" value={supplier.contact_name || "—"} />

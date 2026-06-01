@@ -1,10 +1,17 @@
 "use client";
 
-import { useParams } from "next/navigation";
-import { SupplierDetailView, useSupplierDetailPage } from "@/features/suppliers";
+/** 兼容旧链接：重定向至列表页详情抽屉（`?id=`）。 */
 
-export default function SupplierDetailPage() {
+import { useEffect } from "react";
+import { useParams, useRouter } from "next/navigation";
+
+export default function SupplierDetailRedirectPage() {
   const { id } = useParams<{ id: string }>();
-  const vm = useSupplierDetailPage(id);
-  return <SupplierDetailView vm={vm} />;
+  const router = useRouter();
+
+  useEffect(() => {
+    router.replace(`/business/suppliers?id=${encodeURIComponent(id)}`);
+  }, [id, router]);
+
+  return null;
 }

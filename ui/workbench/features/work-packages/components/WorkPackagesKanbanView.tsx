@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth-store";
+import { BizPageHero } from "@/features/business-dashboard/components/BizPageHero";
 import { SERVICE_LINE_LABELS, WP_STATUS_LABELS } from "@/features/projects/lib/biz-labels";
 import type { BizWorkPackageKanban } from "@/lib/types";
 
@@ -55,19 +56,20 @@ export function WorkPackagesKanbanView({ vm }: { vm: WorkPackagesPageVm }) {
 
   return (
     <div>
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold text-ink">工作包看板</h1>
-          <p className="mt-1 text-sm text-ink-muted">按状态查看跨项目工作包，拖拽卡片可变更状态</p>
-        </div>
-        <label>
-          <span className="text-xs text-ink-muted">服务线筛选</span>
-          <select className="input-field mt-1 text-sm" value={serviceLine} onChange={(e) => setServiceLine(e.target.value)}>
-            <option value="">全部</option>
-            {Object.entries(SERVICE_LINE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-          </select>
-        </label>
-      </div>
+      <BizPageHero
+        flowStep="work-packages"
+        title="工作包看板"
+        subtitle="跨项目按状态查看工作包；项目内交付物与里程碑请在项目详情维护"
+        actions={
+          <label>
+            <span className="sr-only">服务线筛选</span>
+            <select className="input-field text-sm" value={serviceLine} onChange={(e) => setServiceLine(e.target.value)}>
+              <option value="">全部服务线</option>
+              {Object.entries(SERVICE_LINE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+            </select>
+          </label>
+        }
+      />
 
       <div className="grid gap-4 lg:grid-cols-4">
         {KANBAN_COLUMNS.map((col) => {
