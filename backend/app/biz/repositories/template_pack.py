@@ -114,13 +114,37 @@ class ServiceLineTemplatePackRepository(BaseRepository[BizServiceLineTemplatePac
         return rows, int(total or 0)
 
     async def get_for_admin_review(self, pack_id: UUID) -> BizServiceLineTemplatePack | None:
+        return await self.get_by_id(pack_id)
+
+    async def get_by_id(self, pack_id: UUID) -> BizServiceLineTemplatePack | None:
         stmt = (
             select(BizServiceLineTemplatePack)
             .where(
                 BizServiceLineTemplatePack.id == pack_id,
                 not_deleted(BizServiceLineTemplatePack),
-                BizServiceLineTemplatePack.tenant_id.is_not(None),
             )
             .limit(1)
         )
         return (await self.db.execute(stmt)).scalar_one_or_none()
+
+    async def list_published_for_admin(self, *, offset: int, limit: int) -> tuple[list[BizServiceLineTemplatePack], int]:
+        from sqlalchemy import func
+
+        filters = [
+            BizServiceLineTemplatePack.status == TemplatePackStatus.PUBLISHED.value,
+            not_deleted(BizServiceLineTemplatePack),
+        ]
+        total = await self.db.scalar(select(func.count(BizServiceLineTemplatePack.id)).where(*filters))
+        stmt = (
+            select(BizServiceLineTemplatePack)
+            .where(*filters)
+            .order_by(
+                BizServiceLineTemplatePack.is_active.desc(),
+                BizServiceLineTemplatePack.is_featured.desc(),
+                BizServiceLineTemplatePack.install_count.desc(),
+            )
+            .offset(offset)
+            .limit(limit)
+        )
+        rows = list((await self.db.scalars(stmt)).all())
+        return rows, int(total or 0)

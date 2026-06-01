@@ -23,6 +23,8 @@ const iconPaths: Record<BizNavIcon, string> = {
     "M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v2M7 7h10",
   templates:
     "M4 6h16M4 12h16M4 18h10",
+  market:
+    "M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z",
 };
 
 export function BizNavIcon({ icon, className = "" }: { icon: BizNavIcon; className?: string }) {

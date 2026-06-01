@@ -187,6 +187,14 @@ export const adminApi = {
   getTemplatePackForReview: (id: string) => get<AdminTemplatePack>(`/template-packs/${id}`),
   approveTemplatePack: (id: string) => post<AdminTemplatePack>(`/template-packs/${id}/approve`),
   rejectTemplatePack: (id: string, note?: string) => post<AdminTemplatePack>(`/template-packs/${id}/reject`, { note }),
+
+  listPublishedTemplatePacks: (page = 1, size = DEFAULT_PAGE_SIZE) =>
+    get<PageResult<AdminTemplatePack>>(`/template-packs/published?${buildPageQuery(page, size)}`),
+
+  unpublishTemplatePack: (id: string) => post<AdminTemplatePack>(`/template-packs/${id}/unpublish`),
+
+  setTemplatePackFeatured: (id: string, isFeatured: boolean) =>
+    patch<AdminTemplatePack>(`/template-packs/${id}`, { is_featured: isFeatured }),
 };
 
 export interface PlatformAdmin {
@@ -230,6 +238,8 @@ export interface AdminTemplatePack {
   review_note?: string | null;
   submitted_at?: string | null;
   install_count: number;
+  is_featured: boolean;
+  is_active: boolean;
 }
 
 export interface AdminSysCategory {

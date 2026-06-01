@@ -64,3 +64,44 @@ async def test_create_from_template_requires_stages(monkeypatch):
     with pytest.raises(Exception) as exc:
         await svc.create_from_template(BizServiceLineTemplatePackCreate(service_line="event", name="我的模板"))
     assert "阶段" in str(exc.value)
+
+
+@pytest.mark.asyncio
+async def test_update_mine_stages_after_reject():
+    ctx = make_tenant_ctx()
+    db = AsyncMock()
+    pack_id = uuid4()
+
+    row = MagicMock()
+    row.id = pack_id
+    row.tenant_id = ctx.tenant_id
+    row.service_line = "event"
+    row.name = "旧名"
+    row.stages = ["方案"]
+    row.ai_config = {}
+    row.status = TemplatePackStatus.REJECTED.value
+    row.tags = []
+    row.description = None
+    row.publisher_name = "租户"
+    row.publisher_type = "tenant"
+    row.is_featured = False
+    row.is_active = True
+    row.install_count = 0
+    row.review_note = "阶段过少"
+    row.submitted_at = None
+    row.reviewed_at = None
+
+    svc = ServiceLineTemplatePackPublishService(db, ctx)
+    svc.repo.get_mine = AsyncMock(return_value=row)
+    db.refresh = AsyncMock()
+
+    from app.biz.schemas.template_pack import BizServiceLineTemplatePackUpdate
+
+    out = await svc.update_mine(
+        pack_id,
+        BizServiceLineTemplatePackUpdate(stages=["方案", "执行", "复盘"], name="新名"),
+    )
+
+    assert row.stages == ["方案", "执行", "复盘"]
+    assert row.name == "新名"
+    assert out.name == "新名"

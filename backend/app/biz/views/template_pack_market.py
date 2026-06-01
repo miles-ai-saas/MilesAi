@@ -34,6 +34,8 @@ class TemplatePackUpdateBody(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=128)
     description: str | None = None
     tags: list[str] | None = None
+    stages: list[str] | None = None
+    ai_config: dict | None = None
 
 
 def _market_svc(db: AsyncSession, ctx: TenantContext) -> ServiceLineTemplatePackMarketService:
@@ -74,8 +76,23 @@ async def update_my_template_pack(
     ctx: TenantContext = Depends(require_permissions("biz:project:write")),
     db: AsyncSession = Depends(get_db),
 ):
-    payload = BizServiceLineTemplatePackUpdate(name=body.name, description=body.description, tags=body.tags)
+    payload = BizServiceLineTemplatePackUpdate(
+        name=body.name,
+        description=body.description,
+        tags=body.tags,
+        stages=body.stages,
+        ai_config=body.ai_config,
+    )
     return ok(await _publish_svc(db, ctx).update_mine(pack_id, payload))
+
+
+@router.post("/mine/{pack_id}/unpublish", response_model=ApiResponse[BizServiceLineTemplatePackOut])
+async def unpublish_my_template_pack(
+    pack_id: UUID,
+    ctx: TenantContext = Depends(require_permissions("biz:project:write")),
+    db: AsyncSession = Depends(get_db),
+):
+    return ok(await _publish_svc(db, ctx).unpublish_mine(pack_id))
 
 
 @router.post("/mine/{pack_id}/submit", response_model=ApiResponse[BizServiceLineTemplatePackOut])

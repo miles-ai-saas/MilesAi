@@ -234,8 +234,16 @@ export const bizApi = {
   createMyServiceLineTemplatePack: (p: { service_line: string; name: string; description?: string; tags?: string[] }) =>
     post<BizServiceLineTemplatePack>("/biz/service-line-template-packs/mine", p),
 
-  updateMyServiceLineTemplatePack: (packId: string, p: { name?: string; description?: string; tags?: string[] }) =>
-    patch<BizServiceLineTemplatePack>(`/biz/service-line-template-packs/mine/${packId}`, p),
+  updateMyServiceLineTemplatePack: (packId: string, p: {
+    name?: string;
+    description?: string;
+    tags?: string[];
+    stages?: string[];
+    ai_config?: BizServiceLineAiConfig;
+  }) => patch<BizServiceLineTemplatePack>(`/biz/service-line-template-packs/mine/${packId}`, p),
+
+  unpublishMyServiceLineTemplatePack: (packId: string) =>
+    post<BizServiceLineTemplatePack>(`/biz/service-line-template-packs/mine/${packId}/unpublish`, {}),
 
   submitMyServiceLineTemplatePack: (packId: string) =>
     post<BizServiceLineTemplatePack>(`/biz/service-line-template-packs/mine/${packId}/submit`, {}),

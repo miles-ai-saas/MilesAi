@@ -1,8 +1,6 @@
-"use client";
+import { redirect } from "next/navigation";
 
-import { ServiceTemplateMarketPageView, useServiceTemplateMarketPage } from "@/features/service-template-market";
-
-export default function ServiceTemplateMarketPage() {
-  const vm = useServiceTemplateMarketPage();
-  return <ServiceTemplateMarketPageView vm={vm} />;
+/** 旧路径兼容：/business/service-templates/market → /business/template-market */
+export default function ServiceTemplatesMarketRedirectPage() {
+  redirect("/business/template-market");
 }

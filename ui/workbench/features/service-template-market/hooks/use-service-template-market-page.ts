@@ -29,6 +29,12 @@ export function useServiceTemplateMarketPage() {
   const [publishName, setPublishName] = useState("");
   const [publishDesc, setPublishDesc] = useState("");
   const [publishing, setPublishing] = useState(false);
+  const [editPack, setEditPack] = useState<BizServiceLineTemplatePack | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editDesc, setEditDesc] = useState("");
+  const [editStageText, setEditStageText] = useState("");
+  const [editChatHint, setEditChatHint] = useState("");
+  const [editSaving, setEditSaving] = useState(false);
 
   const reloadPlaza = useCallback(async () => {
     setLoading(true);
@@ -150,6 +156,52 @@ export function useServiceTemplateMarketPage() {
     }
   };
 
+  const openEdit = (pack: BizServiceLineTemplatePack) => {
+    setEditPack(pack);
+    setEditName(pack.name);
+    setEditDesc(pack.description ?? "");
+    setEditStageText(pack.stages.join("\n"));
+    setEditChatHint(pack.ai_config?.chat_hint ?? "");
+  };
+
+  const saveEdit = async () => {
+    if (!editPack) return;
+    const stages = editStageText.split("\n").map((s) => s.trim()).filter(Boolean);
+    if (!editName.trim() || stages.length === 0) return;
+    setEditSaving(true);
+    try {
+      const ai = { ...(editPack.ai_config ?? {}), chat_hint: editChatHint.trim() || undefined };
+      await api.updateMyServiceLineTemplatePack(editPack.id, {
+        name: editName.trim(),
+        description: editDesc.trim() || undefined,
+        stages,
+        ai_config: ai,
+      });
+      setEditPack(null);
+      setMsg("已保存修改");
+      await reloadMine();
+    } catch (e: unknown) {
+      setMsg(e instanceof Error ? e.message : "保存失败");
+    } finally {
+      setEditSaving(false);
+    }
+  };
+
+  const unpublishMine = async (pack: BizServiceLineTemplatePack) => {
+    if (!window.confirm(`下架「${pack.name}」？下架后可编辑并重新提交审核。`)) return;
+    setBusyMineId(pack.id);
+    try {
+      await api.unpublishMyServiceLineTemplatePack(pack.id);
+      setMsg("已下架，可在草稿中修改后重新提交");
+      await reloadMine();
+      await reloadPlaza();
+    } catch (e: unknown) {
+      setMsg(e instanceof Error ? e.message : "下架失败");
+    } finally {
+      setBusyMineId(null);
+    }
+  };
+
   return {
     ready,
     tab,
@@ -172,6 +224,20 @@ export function useServiceTemplateMarketPage() {
     busyMineId,
     submitMine,
     withdrawMine,
+    openEdit,
+    saveEdit,
+    unpublishMine,
+    editPack,
+    setEditPack,
+    editName,
+    setEditName,
+    editDesc,
+    setEditDesc,
+    editStageText,
+    setEditStageText,
+    editChatHint,
+    setEditChatHint,
+    editSaving,
     msg,
     setMsg,
     detailId,

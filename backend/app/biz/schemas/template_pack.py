@@ -21,6 +21,7 @@ class BizServiceLineTemplatePackOut:
     publisher_tenant_id: str | None = None
     tags: list[str] = field(default_factory=list)
     is_featured: bool = False
+    is_active: bool = True
     install_count: int = 0
     status: str = "published"
     review_note: str | None = None
@@ -50,3 +51,5 @@ class BizServiceLineTemplatePackUpdate:
     name: str | None = None
     description: str | None = None
     tags: list[str] | None = None
+    stages: list[str] | None = None
+    ai_config: dict | None = None

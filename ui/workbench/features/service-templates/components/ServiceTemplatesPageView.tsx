@@ -45,10 +45,10 @@ export function ServiceTemplatesPageView({ vm }: { vm: ServiceTemplatesPageVm })
         subtitle="配置八条服务线的阶段流水线与 AI 推荐，新建工作包时自动继承"
         actions={
           <div className="flex flex-wrap gap-3">
-            <Link href="/business/service-templates/market" className="text-xs text-brand hover:underline self-center">
+            <Link href="/business/template-market" className="text-xs text-brand hover:underline self-center">
               浏览模板市场 →
             </Link>
-            <Link href="/business/service-templates/market" className="text-xs text-ink-muted hover:text-brand self-center">
+            <Link href="/business/template-market" className="text-xs text-ink-muted hover:text-brand self-center">
               发布到市场 →
             </Link>
           </div>

@@ -85,6 +85,26 @@ class ServiceLineTemplatePackPublishService(BaseService):
             row.description = body.description.strip() or None
         if body.tags is not None:
             row.tags = body.tags
+        if body.stages is not None:
+            stages = [s.strip() for s in body.stages if s.strip()]
+            if not stages:
+                raise BadRequestError("至少保留一个阶段")
+            row.stages = stages
+        if body.ai_config is not None:
+            row.ai_config = body.ai_config
+        await self.db.flush()
+        await self.db.refresh(row)
+        return pack_to_out(row, viewer_tenant_id=self.ctx.tenant_id)
+
+    async def unpublish_mine(self, pack_id: UUID) -> BizServiceLineTemplatePackOut:
+        row = await self.repo.get_mine(self.ctx.tenant_id, pack_id)
+        if not row:
+            raise NotFoundError("模板包不存在")
+        if row.status != TemplatePackStatus.PUBLISHED.value:
+            raise BadRequestError("仅已上架模板可主动下架")
+        row.status = TemplatePackStatus.DRAFT.value
+        row.is_active = False
+        row.is_featured = False
         await self.db.flush()
         await self.db.refresh(row)
         return pack_to_out(row, viewer_tenant_id=self.ctx.tenant_id)
@@ -107,7 +127,7 @@ class ServiceLineTemplatePackPublishService(BaseService):
         if not row:
             raise NotFoundError("模板包不存在")
         if row.status == TemplatePackStatus.PUBLISHED.value:
-            raise BadRequestError("已上架模板请下架后再删除（联系平台运营）")
+            raise BadRequestError("已上架模板请先下架再删除")
         mark_deleted(row)
         await self.db.flush()
 

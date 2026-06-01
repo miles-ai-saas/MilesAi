@@ -25,6 +25,7 @@ def pack_to_out(row: BizServiceLineTemplatePack, *, viewer_tenant_id=None) -> Bi
         publisher_tenant_id=str(row.tenant_id) if row.tenant_id else None,
         tags=[str(t) for t in tags],
         is_featured=row.is_featured,
+        is_active=row.is_active,
         install_count=row.install_count or 0,
         status=row.status,
         review_note=row.review_note,

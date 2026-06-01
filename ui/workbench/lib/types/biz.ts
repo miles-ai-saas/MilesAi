@@ -377,6 +377,7 @@ export interface BizServiceLineTemplatePack {
   publisher_tenant_id?: string | null;
   tags: string[];
   is_featured: boolean;
+  is_active?: boolean;
   install_count: number;
   status?: "draft" | "pending_review" | "published" | "rejected" | string;
   review_note?: string | null;

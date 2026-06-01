@@ -64,6 +64,20 @@ export function ServiceTemplateMarketPageView({ vm }: { vm: ServiceTemplateMarke
     setPublishDesc,
     publishing,
     createPublish,
+    openEdit,
+    saveEdit,
+    unpublishMine,
+    editPack,
+    setEditPack,
+    editName,
+    setEditName,
+    editDesc,
+    setEditDesc,
+    editStageText,
+    setEditStageText,
+    editChatHint,
+    setEditChatHint,
+    editSaving,
   } = vm;
 
   if (!ready) {
@@ -177,8 +191,10 @@ export function ServiceTemplateMarketPageView({ vm }: { vm: ServiceTemplateMarke
                   busy={busyMineId === pack.id}
                   canWrite={canWriteProject}
                   onDetail={() => setDetailId(pack.id)}
+                  onEdit={() => openEdit(pack)}
                   onSubmit={() => void submitMine(pack)}
                   onWithdraw={() => void withdrawMine(pack)}
+                  onUnpublish={() => void unpublishMine(pack)}
                 />
               ))}
             </div>
@@ -234,6 +250,42 @@ export function ServiceTemplateMarketPageView({ vm }: { vm: ServiceTemplateMarke
           </div>
         </div>
       )}
+
+      {editPack && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setEditPack(null)}>
+          <div className="card max-h-[85vh] w-full max-w-lg overflow-y-auto p-5" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-lg font-semibold text-ink">编辑模板包</h2>
+            <p className="mt-1 text-xs text-ink-muted">{editPack.service_line_label} · {editPack.status === "rejected" ? "已驳回，修改后可重新提交" : "草稿"}</p>
+            {editPack.review_note && editPack.status === "rejected" && (
+              <p className="mt-2 text-xs text-red-600">驳回原因：{editPack.review_note}</p>
+            )}
+            <div className="mt-4 space-y-3">
+              <label className="block">
+                <span className="text-xs text-ink-muted">名称</span>
+                <input className="input-field mt-1 w-full text-sm" value={editName} onChange={(e) => setEditName(e.target.value)} />
+              </label>
+              <label className="block">
+                <span className="text-xs text-ink-muted">简介</span>
+                <textarea className="input-field mt-1 w-full text-sm" rows={2} value={editDesc} onChange={(e) => setEditDesc(e.target.value)} />
+              </label>
+              <label className="block">
+                <span className="text-xs text-ink-muted">阶段（每行一个）</span>
+                <textarea className="input-field mt-1 w-full font-mono text-sm" rows={6} value={editStageText} onChange={(e) => setEditStageText(e.target.value)} />
+              </label>
+              <label className="block">
+                <span className="text-xs text-ink-muted">AI 对话提示</span>
+                <textarea className="input-field mt-1 w-full text-sm" rows={2} value={editChatHint} onChange={(e) => setEditChatHint(e.target.value)} />
+              </label>
+            </div>
+            <div className="mt-5 flex justify-end gap-2">
+              <button type="button" className="btn-ghost text-sm" onClick={() => setEditPack(null)}>取消</button>
+              <button type="button" className="btn-primary text-sm" disabled={editSaving || !editName.trim()} onClick={() => void saveEdit()}>
+                {editSaving ? "保存中…" : "保存"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -243,15 +295,19 @@ function MineRow({
   busy,
   canWrite,
   onDetail,
+  onEdit,
   onSubmit,
   onWithdraw,
+  onUnpublish,
 }: {
   pack: BizServiceLineTemplatePack;
   busy: boolean;
   canWrite: boolean;
   onDetail: () => void;
+  onEdit: () => void;
   onSubmit: () => void;
   onWithdraw: () => void;
+  onUnpublish: () => void;
 }) {
   const status = pack.status ?? "draft";
   return (
@@ -262,6 +318,9 @@ function MineRow({
           <span className={`rounded px-2 py-0.5 text-xs ${STATUS_COLORS[status] ?? STATUS_COLORS.draft}`}>
             {STATUS_LABELS[status] ?? status}
           </span>
+          {status === "published" && pack.is_active === false && (
+            <span className="rounded bg-surface-muted px-2 py-0.5 text-xs text-ink-muted">已下架</span>
+          )}
         </div>
         <p className="mt-1 font-medium text-ink">{pack.name}</p>
         {pack.review_note && status === "rejected" && (
@@ -271,15 +330,19 @@ function MineRow({
           <p className="mt-1 text-xs text-ink-faint">{pack.install_count} 次被其他租户应用</p>
         )}
       </div>
-      <div className="flex gap-2 text-xs">
+      <div className="flex flex-wrap gap-2 text-xs">
         <button type="button" className="text-brand hover:underline" onClick={onDetail}>详情</button>
         {canWrite && (status === "draft" || status === "rejected") && (
           <>
+            <button type="button" className="text-brand hover:underline" onClick={onEdit}>编辑</button>
             <button type="button" className="text-brand hover:underline disabled:opacity-50" disabled={busy} onClick={onSubmit}>
               {busy ? "…" : "提交审核"}
             </button>
             <button type="button" className="text-ink-muted hover:underline disabled:opacity-50" disabled={busy} onClick={onWithdraw}>删除</button>
           </>
+        )}
+        {canWrite && status === "published" && pack.is_active !== false && (
+          <button type="button" className="text-ink-muted hover:underline disabled:opacity-50" disabled={busy} onClick={onUnpublish}>下架</button>
         )}
       </div>
     </div>

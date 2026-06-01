@@ -18,7 +18,7 @@ export type SystemNavItem = NavItem & {
   permission?: string;
 };
 
-export type BizNavIcon = "clients" | "projects" | "dashboard" | "opportunities" | "contracts" | "suppliers" | "finance" | "workpackages" | "templates";
+export type BizNavIcon = "clients" | "projects" | "dashboard" | "opportunities" | "contracts" | "suppliers" | "finance" | "workpackages" | "templates" | "market";
 
 export type BizNavItem = NavItem & {
   icon: BizNavIcon;
@@ -108,7 +108,7 @@ export const BUSINESS_NAV: { title: string; items: BizNavItem[] }[] = [
       { href: "/business/projects", label: "项目", icon: "projects", permission: "biz:project:read" },
       { href: "/business/work-packages", label: "工作包看板", icon: "workpackages", permission: "biz:project:read" },
       { href: "/business/service-templates", label: "服务线模板", icon: "templates", permission: "biz:project:read" },
-      { href: "/business/service-templates/market", label: "模板市场", icon: "templates", permission: "biz:project:read" },
+      { href: "/business/template-market", label: "模板市场", icon: "market", permission: "biz:project:read" },
     ],
   },
   {
@@ -204,11 +204,11 @@ export function getBusinessBreadcrumbs(pathname: string): BreadcrumbItem[] {
   if (pathname === "/business/work-packages") {
     return [home, { label: "工作包看板" }];
   }
-  if (pathname === "/business/service-templates" || pathname.startsWith("/business/service-templates/")) {
-    if (pathname === "/business/service-templates/market") {
-      return [home, { label: "服务线模板", href: "/business/service-templates" }, { label: "模板市场" }];
-    }
+  if (pathname === "/business/service-templates") {
     return [home, { label: "服务线模板" }];
+  }
+  if (pathname === "/business/template-market") {
+    return [home, { label: "模板市场" }];
   }
   if (pathname === "/business/contracts" || pathname.startsWith("/business/contracts/")) {
     return [home, { label: "合同" }];
@@ -272,6 +272,12 @@ export function isNavActive(pathname: string, href: string): boolean {
   }
   if (href === "/business/finance") {
     return pathname === "/business/finance";
+  }
+  if (href === "/business/service-templates") {
+    return pathname === "/business/service-templates";
+  }
+  if (href === "/business/template-market") {
+    return pathname === "/business/template-market";
   }
   return pathname === href || pathname.startsWith(`${href}/`);
 }
