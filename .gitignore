@@ -27,4 +27,5 @@ out/
 .cursor/*
 !.cursor/rules/
 !.cursor/rules/**
-celerybeat-schedule.db
+celerybeat-schedule.db.worktrees/
+.superpowers/
