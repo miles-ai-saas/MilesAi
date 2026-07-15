@@ -1,6 +1,7 @@
 "use client";
 
 import { AgentArchitecturePanel } from "@/features/agents/components/AgentArchitecturePanel";
+import { AgentApiPanel } from "@/features/agents/components/AgentApiPanel";
 import { AgentCallRecordsPanel } from "@/features/agents/components/AgentCallRecordsPanel";
 import { AgentSchedulePanel } from "@/features/agents/components/AgentSchedulePanel";
 import { AgentStatsPanel } from "@/features/agents/components/AgentStatsPanel";
@@ -62,7 +63,9 @@ export function AgentWorkbenchOverlay({
               ? "会话、用户与消息趋势"
               : activeTab === "call_records"
                 ? "智能体对话调用流水"
-                : "功能开发中";
+                : activeTab === "api"
+                  ? "对接文档与调试 Token"
+                  : "功能开发中";
 
   return (
     <div
@@ -108,6 +111,8 @@ export function AgentWorkbenchOverlay({
           <AgentSchedulePanel agentId={agentId} />
         ) : activeTab === "architecture" && agentId ? (
           <AgentArchitecturePanel agentId={agentId} agentName={agent?.name} />
+        ) : activeTab === "api" && agentId ? (
+          <AgentApiPanel agentId={agentId} />
         ) : activeTab === "call_records" && agentId ? (
           <AgentCallRecordsPanel
             agentId={agentId}

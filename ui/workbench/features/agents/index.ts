@@ -10,6 +10,7 @@ export { AgentsChatLayout } from "./components/AgentsChatLayout";
 export { AgentDetailDialog } from "./components/AgentDetailDialog";
 export { AgentFormDialog } from "./components/AgentFormDialog";
 export { AgentSchedulePanel } from "./components/AgentSchedulePanel";
+export { AgentApiPanel } from "./components/AgentApiPanel";
 
 export { ChatArtifactMedia } from "./components/ChatArtifactMedia";
 export { ChatGenerativeCard } from "./components/ChatGenerativeCard";
