@@ -3,6 +3,7 @@
 子模块：core（Agent 主体）/ chat_session / chat_call / schedule / schedule_run。
 """
 
+from app.models.agent.api_key import AgentApiKey
 from app.models.agent.chat_call import AgentChatCall
 from app.models.agent.chat_session import AgentChatMessage, AgentChatSession
 from app.models.agent.agent import (
@@ -21,6 +22,7 @@ __all__ = [
     "AgentType",
     "AgentSubAgentBinding",
     "agent_kb_bindings",
+    "AgentApiKey",
     "AgentChatSession",
     "AgentChatMessage",
     "AgentChatCall",
