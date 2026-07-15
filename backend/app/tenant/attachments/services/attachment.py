@@ -27,6 +27,12 @@ from app.common.schema import PageParams, PageResult
 logger = get_logger(__name__)
 settings = get_settings()
 
+# 1x1 透明 PNG（脏数据兜底，避免前端 broken image）
+_EMPTY_PNG = bytes.fromhex(
+    "89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c489"
+    "0000000a49444154789c6260000000000500013fd608ec0000000049454e44ae426082"
+)
+
 
 class AttachmentService(BaseService):
     """通用附件上传/列表/删除；object_key 与 KB 文档路径分离，仍扣 storage 配额。"""
@@ -110,15 +116,27 @@ class AttachmentService(BaseService):
         return AttachmentOut.model_validate(att)
 
     async def read_image_bytes(self, attachment_id: UUID) -> tuple[bytes, str]:
-        """校验租户与图片类型后，从对象存储读取字节（供 vision / 内容 API）。"""
+        """校验租户与图片类型后，从对象存储读取字节（供 vision / 内容 API）。
+        若文件已不存在（脏数据），返回透明占位图而非 500。"""
         att = await self._get_or_raise(attachment_id)
         if not is_image_file(att.filename, att.mime_type):
             raise BadRequestError("附件不是支持的图片格式（jpeg/png/webp）")
         if not att.object_key or att.object_key == "pending":
             raise BadRequestError("附件文件未就绪")
-        storage = await resolve_object_storage_async(att.tenant_id, self.db)
-        data = storage.storage.download_bytes(att.object_key, att.object_bucket)
-        return data, att.mime_type
+        try:
+            storage = await resolve_object_storage_async(att.tenant_id, self.db)
+            data = storage.storage.download_bytes(att.object_key, att.object_bucket)
+        except Exception:
+            logger.warning(
+                "读取附件对象存储失败 attachment_id=%s object_key=%s",
+                attachment_id,
+                att.object_key,
+                exc_info=True,
+            )
+            data = b""
+        if not data:
+            data = _EMPTY_PNG
+        return data, "image/png"
 
     async def delete(self, attachment_id: UUID) -> None:
         """软删并尝试删除 OSS 对象（存储回退由 quota 层处理）。"""

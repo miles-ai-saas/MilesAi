@@ -27,6 +27,9 @@ function formatMediaBytes(n: number) {
   return `${(n / 1024 / 1024).toFixed(2)} MB`;
 }
 
+const MEDIA_PREVIEW_CLASS =
+  "max-h-full max-w-full h-full w-full cursor-pointer rounded-md object-contain ring-1 ring-line transition-opacity hover:opacity-85";
+
 export function MediaAssetCard({
   asset,
   kbs,
@@ -39,39 +42,46 @@ export function MediaAssetCard({
   onDelete: () => void;
 }) {
   return (
-    <article className="flex flex-col rounded-lg border border-line bg-surface p-3 shadow-sm">
-      <div className="mb-2 flex min-h-[120px] items-center justify-center rounded-md bg-surface-muted">
-        <ChatArtifactMedia
-          kind={asset.kind}
-          attachmentId={asset.attachment_id}
-          mimeType={asset.attachment?.mime_type}
-          caption={asset.title ?? undefined}
-          posterAttachmentId={asset.kind === "video" ? (asset.cover_attachment_id ?? asset.cover_attachment?.id) : undefined}
-        />
+    <article className="group flex min-w-0 flex-col overflow-hidden rounded-xl border border-line bg-surface shadow-sm transition-shadow hover:shadow-md">
+      <div className="aspect-[4/3] w-full shrink-0 bg-surface-muted">
+        <div className="flex h-full w-full items-center justify-center p-2">
+          <ChatArtifactMedia
+            kind={asset.kind}
+            attachmentId={asset.attachment_id}
+            mimeType={asset.attachment?.mime_type}
+            caption={asset.title ?? undefined}
+            posterAttachmentId={asset.kind === "video" ? (asset.cover_attachment_id ?? asset.cover_attachment?.id) : undefined}
+            className={MEDIA_PREVIEW_CLASS}
+          />
+        </div>
       </div>
-      <p className="truncate text-sm font-medium text-ink">{asset.title ?? asset.attachment?.filename ?? "未命名"}</p>
-      <p className="mt-1 text-xs text-ink-muted">
-        {mediaAssetKindLabel(asset.kind)} · {mediaAssetSourceLabel(asset.source)}
-        {asset.attachment?.file_size != null ? ` · ${formatMediaBytes(asset.attachment.file_size)}` : ""}
-      </p>
-      {asset.prompt && (
-        <p className="mt-2 line-clamp-2 text-xs text-ink-faint" title={asset.prompt}>
-          {asset.prompt}
+      <div className="flex min-w-0 flex-1 flex-col gap-1 p-4">
+        <p className="truncate text-sm font-medium text-ink" title={asset.title ?? asset.attachment?.filename ?? undefined}>
+          {asset.title ?? asset.attachment?.filename ?? "未命名"}
         </p>
-      )}
-      <p className="mt-1 text-[10px] text-ink-faint">
-        {new Date(asset.created_at).toLocaleString()}
-        {asset.kb_document_id ? " · 已入库" : ""}
-      </p>
-      <div className="mt-3 flex flex-wrap gap-2">
-        {!asset.kb_document_id && (asset.kind === "image" || asset.kind === "video") && kbs.length > 0 && (
-          <button type="button" className="btn-sm-primary text-xs" onClick={onPromote}>
-            加入知识库
-          </button>
+        <p className="truncate text-xs text-ink-muted">
+          {mediaAssetKindLabel(asset.kind)} · {mediaAssetSourceLabel(asset.source)}
+          {asset.attachment?.file_size != null ? ` · ${formatMediaBytes(asset.attachment.file_size)}` : ""}
+        </p>
+        {asset.prompt && (
+          <p className="line-clamp-2 text-xs leading-relaxed text-ink-faint" title={asset.prompt}>
+            {asset.prompt}
+          </p>
         )}
-        <button type="button" className="btn-sm-ghost text-xs text-red-600" onClick={onDelete}>
-          删除
-        </button>
+        <p className="text-[11px] text-ink-faint">
+          {new Date(asset.created_at).toLocaleString()}
+          {asset.kb_document_id ? " · 已入库" : ""}
+        </p>
+        <div className="mt-auto flex flex-wrap items-center gap-2 pt-3">
+          {!asset.kb_document_id && (asset.kind === "image" || asset.kind === "video") && kbs.length > 0 && (
+            <button type="button" className="btn-sm-primary text-xs" onClick={onPromote}>
+              加入知识库
+            </button>
+          )}
+          <button type="button" className="btn-sm-ghost text-xs text-red-600" onClick={onDelete}>
+            删除
+          </button>
+        </div>
       </div>
     </article>
   );

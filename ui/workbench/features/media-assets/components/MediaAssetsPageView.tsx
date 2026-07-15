@@ -60,11 +60,14 @@ export function MediaAssetsPageView({ vm }: { vm: MediaAssetsPageVm }) {
           ) : null
         }
       >
-        {msg && <p className="mb-4 text-sm text-ink-muted">{msg}</p>}
+        {/* ResourceListLayout 会包一层 resource-card-grid；必须 col-span-full，否则整表会挤进单列 */}
+        {msg && <p className="col-span-full mb-4 text-sm text-ink-muted">{msg}</p>}
         {filtered.length === 0 && !list.loading ? (
-          <p className="text-sm text-ink-muted">暂无生成素材。在智能体中开启生成工具并生图/生视频，或在流程中使用生图/生视频节点。</p>
+          <p className="col-span-full text-sm text-ink-muted">
+            暂无生成素材。在智能体中开启生成工具并生图/生视频，或在流程中使用生图/生视频节点。
+          </p>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="col-span-full grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {filtered.map((a) => (
               <MediaAssetCard key={a.id} asset={a} kbs={kbs} onPromote={() => openPromote(a)} onDelete={() => onDelete(a)} />
             ))}

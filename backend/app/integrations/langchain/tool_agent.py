@@ -10,6 +10,7 @@ LiteLLM function calling + 平台内置工具（``integrations.langchain.tools``
 
 from __future__ import annotations
 
+import ast
 import json
 import re
 from typing import Any
@@ -150,68 +151,135 @@ def _looks_like_tool_call_simulation(content: Any, tool_names: list[str]) -> boo
     return False
 
 
-def _extract_tool_params_from_text(content: str, tool_names: list[str]) -> tuple[str, dict] | None:
-    """从 LLM 文本输出中提取工具名和参数。
+# ---------------------------------------------------------------------------
+# Python kwargs 解析：用 ast 替代正则，天然覆盖所有 Python 字面量语法
+# ---------------------------------------------------------------------------
 
-    支持的格式：
-    - ``{"tool": "generate_image", "prompt": "...", "size": "..."}``
-    - ``{"function": "generate_image", "arguments": {"prompt": "..."}}``
-    - ``generate_image({"prompt": "...", "size": "..."})``
-    - 裸 ``{"prompt": "...", "size": "1024x1024"}``（根据参数特征推断工具）
-    """
-    content_stripped = content.strip()
-
-    # 先尝试匹配 `工具名(JSON)` 格式
-    for name in tool_names:
-        m = re.search(rf"{re.escape(name)}\s*\(\s*(\{{.+?\}})\s*\)", content_stripped, re.DOTALL)
-        if m:
-            try:
-                params = json.loads(m.group(1))
-                if isinstance(params, dict):
-                    return name, _clean_uuid_params(params)
-            except (json.JSONDecodeError, TypeError):
-                pass
-
-    # 再尝试解析完整 JSON（可能是 {"tool": ..., "prompt": ...} 格式）
-    # 去掉 markdown 代码块标记
-    clean = re.sub(r"```(?:json)?\s*", "", content_stripped).rstrip("` \n\r\t")
-    candidates = _JSON_OBJECT_PATTERN.findall(clean)
-    for candidate in candidates:
+def _parse_as_python_kwargs(params_text: str) -> dict[str, Any] | None:
+    """通过构造 ``_dummy(key=..., ...)`` 并用 ``ast`` 解析，
+    可靠提取 Python 风格关键字参数，无需手写正则。"""
+    source = f"_dummy({params_text})"
+    try:
+        tree = ast.parse(source)
+    except SyntaxError:
+        return None
+    if not tree.body:
+        return None
+    call = tree.body[0].value
+    if not isinstance(call, ast.Call):
+        return None
+    result: dict[str, Any] = {}
+    for kw in call.keywords:
         try:
-            parsed = json.loads(candidate)
-            if not isinstance(parsed, dict):
-                continue
+            result[kw.arg] = ast.literal_eval(kw.value)
+        except (ValueError, TypeError):
+            result[kw.arg] = ast.unparse(kw.value)
+    return result if result else None
 
-            # 格式 1: {"tool": "generate_image", "prompt": "...", ...}
-            tool_from_key = parsed.get("tool")
-            if isinstance(tool_from_key, str) and tool_from_key in tool_names:
-                params = {k: v for k, v in parsed.items() if k != "tool"}
-                return tool_from_key, _clean_uuid_params(params)
 
-            # 格式 2: {"function": "generate_image", "arguments": {...}}
-            func_name = parsed.get("function")
-            if isinstance(func_name, str) and func_name in tool_names:
-                inner = parsed.get("arguments")
-                if isinstance(inner, dict):
-                    return func_name, _clean_uuid_params(inner)
-                # 也可能整个 JSON 就是参数
-                params = {k: v for k, v in parsed.items() if k != "function"}
-                return func_name, _clean_uuid_params(params)
+def _get_schema_for(tools_by_name: dict[str, Any], tool_name: str) -> type | None:
+    """从工具名查找 Pydantic args_schema 类。"""
+    tool = tools_by_name.get(tool_name)
+    if tool is None or not hasattr(tool, "args_schema"):
+        return None
+    schema = tool.args_schema
+    return type(schema) if schema is not None else None
 
-            # 格式 3: 裸参数，尝试推断工具名
-            if any(k in parsed for k in _GENERATIVE_PARAM_KEYS):
-                cleaned = _clean_uuid_params(parsed)
-                # 根据参数特征推断：有 duration/resolution → video，否则 → image
-                has_video_keys = "duration" in cleaned or "resolution" in cleaned
-                for name in tool_names:
-                    if has_video_keys and "video" in name:
-                        return name, cleaned
-                    if not has_video_keys and "image" in name and "video" not in name:
-                        return name, cleaned
-                # 兜底：用第一个提到的工具名
-                return tool_names[0], cleaned
+
+def _validate_and_clean(
+    params: dict[str, Any],
+    tools_by_name: dict[str, Any],
+    tool_name: str,
+) -> dict[str, Any]:
+    """清理 UUID + 用工具 schema 校验/转换，schema 失败时保留原始提取结果。"""
+    cleaned = _clean_uuid_params(params)
+    schema_cls = _get_schema_for(tools_by_name, tool_name)
+    if schema_cls is None:
+        return cleaned
+    try:
+        return schema_cls(**cleaned).model_dump(exclude_unset=False)
+    except Exception:
+        return cleaned
+
+
+# ---------------------------------------------------------------------------
+# 从 LLM 文本输出中提取工具调用信息
+# ---------------------------------------------------------------------------
+
+def _extract_tool_params_from_text(
+    content: str,
+    tools_by_name: dict[str, Any],
+) -> tuple[str, dict] | None:
+    """从 LLM 文本中提取工具名 + 参数，支持以下格式：
+
+    - ``generate_image(prompt="...", size="...", n=1)``    ← Python kwargs（ast 解析 → schema 校验）
+    - ``generate_image({"prompt": ..., "size": ...})``     ← JSON 内嵌 → schema 校验
+    - ``{"tool": "generate_image", ...}``                  ← tool-keyed JSON
+    - ``{"function": "generate_image", "arguments": {...}}`` ← OpenAI-style
+    - 裸 ``{"prompt": "...", "size": "1024x1024"}``       ← 按参数特征推断工具名
+    """
+    tool_names = list(tools_by_name.keys())
+    clean = re.sub(r"```(?:json|python)?\s*", "", content).strip("` \n\r\t")
+
+    # 1) tool_name( ... ) —— 平衡括号匹配 → JSON / ast kwargs
+    for name in sorted(set(tool_names), key=len, reverse=True):
+        m = re.search(rf"\b{re.escape(name)}\s*\(", clean)
+        if not m:
+            continue
+        body_start = m.end()
+        depth, body_end = 1, body_start
+        for i, ch in enumerate(clean[body_start:], body_start):
+            if ch == "(":
+                depth += 1
+            elif ch == ")":
+                depth -= 1
+                if depth == 0:
+                    body_end = i
+                    break
+        body = clean[body_start:body_end].strip()
+        # JSON 优先
+        try:
+            parsed = json.loads(body)
+            if isinstance(parsed, dict):
+                return name, _validate_and_clean(parsed, tools_by_name, name)
         except (json.JSONDecodeError, TypeError):
             pass
+        # 回退 ast kwargs
+        kwargs = _parse_as_python_kwargs(body)
+        if kwargs:
+            return name, _validate_and_clean(kwargs, tools_by_name, name)
+
+    # 2) 独立 JSON 对象（无工具名前缀）
+    for candidate in _JSON_OBJECT_PATTERN.findall(clean):
+        try:
+            parsed = json.loads(candidate)
+        except (json.JSONDecodeError, TypeError):
+            continue
+        if not isinstance(parsed, dict):
+            continue
+
+        # {"tool": "generate_image", ...}
+        tool_key = parsed.get("tool")
+        if isinstance(tool_key, str) and tool_key in tools_by_name:
+            params = {k: v for k, v in parsed.items() if k != "tool"}
+            return tool_key, _validate_and_clean(params, tools_by_name, tool_key)
+
+        # {"function": "generate_image", "arguments": {...}}
+        func = parsed.get("function")
+        if isinstance(func, str) and func in tools_by_name:
+            inner = parsed.get("arguments")
+            params = inner if isinstance(inner, dict) else {k: v for k, v in parsed.items() if k != "function"}
+            return func, _validate_and_clean(params, tools_by_name, func)
+
+        # 裸参数 → 按特征推断工具名
+        if any(k in parsed for k in _GENERATIVE_PARAM_KEYS):
+            has_video = "duration" in parsed or "resolution" in parsed
+            for n in tool_names:
+                if has_video and "video" in n:
+                    return n, _validate_and_clean(parsed, tools_by_name, n)
+                if not has_video and "image" in n and "video" not in n:
+                    return n, _validate_and_clean(parsed, tools_by_name, n)
+            return tool_names[0], _validate_and_clean(parsed, tools_by_name, tool_names[0])
 
     return None
 
@@ -386,6 +454,7 @@ async def run_tool_calling_chat(
     artifacts: list[ChatArtifact] = []
     _tool_sim_retried = False
     _tool_names = [t.name for t in tools]
+    _tools_by_name = {t.name: t for t in tools}
 
     if body_media_count > 0 and model.model_type != "vision" and messages_contain_image(messages):
         steps.append({"type": "multimodal_warning", "message": f"当前模型类型为 {model.model_type}（非 vision），图片可能无法被模型识别", "model_type": model.model_type})
@@ -402,7 +471,7 @@ async def run_tool_calling_chat(
             if not _tool_sim_retried and _looks_like_tool_call_simulation(content, _tool_names):
                 _tool_sim_retried = True
                 # 优先尝试从文本中提取工具参数并直接执行（自救助）
-                extracted = _extract_tool_params_from_text(content, _tool_names)
+                extracted = _extract_tool_params_from_text(content, _tools_by_name)
                 if extracted:
                     slug, params = extracted
                     try:

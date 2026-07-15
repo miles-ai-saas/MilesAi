@@ -79,7 +79,7 @@ class S3CompatibleObjectStorage:
         )
 
     def download_bytes(self, object_key: str, bucket: str | None = None) -> bytes:
-        """get_object 读取全文；S3Error 转为 AppError。"""
+        """get_object 读取全文；文件不存在时返回空字节（允许脏数据兼容）。"""
         client = self._get_client()
         name = bucket or self._default_bucket
         try:
@@ -90,6 +90,8 @@ class S3CompatibleObjectStorage:
                 response.close()
                 response.release_conn()
         except S3Error as exc:
+            if getattr(exc, "code", "") == "NoSuchKey":
+                return b""
             raise AppError(f"对象存储读取失败: {exc.message}", status_code=500) from exc
 
     def delete_object(self, object_key: str, bucket: str | None = None) -> None:
