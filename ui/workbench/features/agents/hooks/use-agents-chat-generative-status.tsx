@@ -1,30 +1,58 @@
 "use client";
 
 import { useCallback, useMemo, useState, type Dispatch, type SetStateAction } from "react";
-import type { ChatMessage } from "@/features/agents/lib/chat-sessions";
+import type { ChatMessage, ChatMessageArtifact } from "@/features/agents/lib/chat-sessions";
 import { useGenerativeJobPoll } from "@/hooks/use-generative-job-poll";
-import { generativeJobToArtifacts, extractPendingGenerativeJobs } from "@/lib/generative-jobs";
+import {
+  generativeJobToArtifacts,
+  extractPendingGenerativeJobs,
+  replaceArtifactsForJob,
+  patchArtifactsForJobProgress,
+} from "@/lib/generative-jobs";
 import type { ChatAgentResult, ChatArtifact, GenerativeJobOut } from "@/lib/types";
 
 export type GenerativePollJob = { jobId: string; kind: string };
 
-export function mergeArtifactsIntoLastAssistant(prev: ChatMessage[], artifacts: ChatArtifact[]): ChatMessage[] {
-  if (!artifacts.length || !prev.length) return prev;
+function applyToLastAssistant(
+  prev: ChatMessage[],
+  updater: (arts: ChatMessageArtifact[]) => ChatMessageArtifact[],
+): ChatMessage[] {
+  if (!prev.length) return prev;
   const lastIdx = prev.length - 1;
   if (prev[lastIdx].role !== "assistant") return prev;
-  const merged = [...(prev[lastIdx].artifacts ?? [])];
-  for (const a of artifacts) {
-    if (!merged.some((m) => m.attachment_id === a.attachment_id)) {
-      merged.push({
-        kind: a.kind,
-        attachment_id: a.attachment_id,
-        mime_type: a.mime_type ?? undefined,
-      });
-    }
-  }
   const next = [...prev];
-  next[lastIdx] = { ...prev[lastIdx], artifacts: merged };
+  next[lastIdx] = {
+    ...prev[lastIdx],
+    artifacts: updater([...(prev[lastIdx].artifacts ?? [])]),
+  };
   return next;
+}
+
+/** 兼容旧逻辑：按 attachment 去重 append；有 job_id 时用替换 */
+export function mergeArtifactsIntoLastAssistant(prev: ChatMessage[], artifacts: ChatArtifact[]): ChatMessage[] {
+  if (!artifacts.length || !prev.length) return prev;
+  return applyToLastAssistant(prev, (merged) => {
+    let arts = merged;
+    const byJob = new Map<string, ChatArtifact[]>();
+    const plain: ChatArtifact[] = [];
+    for (const a of artifacts) {
+      if (a.job_id) {
+        const list = byJob.get(a.job_id) ?? [];
+        list.push(a);
+        byJob.set(a.job_id, list);
+      } else {
+        plain.push(a);
+      }
+    }
+    for (const [jobId, list] of byJob) {
+      arts = replaceArtifactsForJob(arts, jobId, list);
+    }
+    for (const a of plain) {
+      if (a.attachment_id && arts.some((m) => m.attachment_id === a.attachment_id)) continue;
+      arts = [...arts, a];
+    }
+    return arts;
+  });
 }
 
 export function collectPendingGenerativeJobs(res: ChatAgentResult): GenerativePollJob[] {
@@ -44,11 +72,18 @@ export function collectPendingGenerativeJobIds(res: ChatAgentResult): string[] {
   ];
 }
 
-export function mapResponseArtifacts(res: ChatAgentResult) {
+export function mapResponseArtifacts(res: ChatAgentResult): ChatMessageArtifact[] | undefined {
   return res.artifacts?.map((a) => ({
     kind: a.kind,
     attachment_id: a.attachment_id,
     mime_type: a.mime_type,
+    caption: a.caption,
+    status: a.status,
+    job_id: a.job_id,
+    media_asset_id: a.media_asset_id,
+    progress_percent: a.progress_percent,
+    progress_message: a.progress_message,
+    error_message: a.error_message,
   }));
 }
 
@@ -93,10 +128,11 @@ export function useAgentsChatGenerativeStatus({ setMessages, wsClientRef }: Para
   const [wsGenerativeProgress, setWsGenerativeProgress] = useState<number | null>(null);
   const [wsActiveJobIds, setWsActiveJobIds] = useState<string[]>([]);
 
-  const mergeGenerativeArtifacts = useCallback(
-    (artifacts: Parameters<typeof mergeArtifactsIntoLastAssistant>[1]) => {
-      if (!artifacts.length) return;
-      setMessages((prev) => mergeArtifactsIntoLastAssistant(prev, artifacts));
+  const applyJobToMessages = useCallback(
+    (job: GenerativeJobOut) => {
+      const nextArts = generativeJobToArtifacts(job);
+      if (!nextArts.length) return;
+      setMessages((prev) => applyToLastAssistant(prev, (arts) => replaceArtifactsForJob(arts, job.id, nextArts)));
     },
     [setMessages],
   );
@@ -117,10 +153,24 @@ export function useAgentsChatGenerativeStatus({ setMessages, wsClientRef }: Para
       if (job.progress_percent != null) setWsGenerativeProgress(job.progress_percent);
       const label = job.progress_message || "生成中…";
       setWsGenerativeMsg(job.progress_percent != null ? `${label}（${job.progress_percent}%）` : label);
+
+      if (phase === "queued" || phase === "progress") {
+        setMessages((prev) =>
+          applyToLastAssistant(prev, (arts) =>
+            patchArtifactsForJobProgress(arts, job.id, {
+              kind: job.kind === "image" ? "image" : "video",
+              status: job.status === "pending" ? "pending" : "running",
+              progress_percent: job.progress_percent,
+              progress_message: job.progress_message,
+            }),
+          ),
+        );
+      }
+
       if (phase === "done") {
         setWsActiveJobIds((prev) => prev.filter((id) => id !== job.id));
+        applyJobToMessages(job);
         if (job.status === "success") {
-          mergeGenerativeArtifacts(generativeJobToArtifacts(job));
           setWsGenerativeMsg(null);
           setWsGenerativeProgress(null);
         } else if (job.status === "failed") {
@@ -130,12 +180,13 @@ export function useAgentsChatGenerativeStatus({ setMessages, wsClientRef }: Para
         }
       }
     },
-    [mergeGenerativeArtifacts],
+    [applyJobToMessages, setMessages],
   );
 
   const applyResponseGenerativeJobs = useCallback((res: ChatAgentResult, useWsJobs: boolean) => {
+    const pendingJobs = collectPendingGenerativeJobs(res);
     if (!useWsJobs) {
-      setPollJobs(collectPendingGenerativeJobs(res));
+      setPollJobs(pendingJobs);
       return;
     }
     setPollJobs([]);
@@ -146,16 +197,64 @@ export function useAgentsChatGenerativeStatus({ setMessages, wsClientRef }: Para
     }
   }, []);
 
+  /** 响应 artifacts + 缺失 job 的 pending 占位 */
+  const artifactsFromResponse = useCallback((res: ChatAgentResult): ChatMessageArtifact[] => {
+    const fromRes = mapResponseArtifacts(res) ?? [];
+    const existingJobIds = new Set(fromRes.map((a) => a.job_id).filter(Boolean));
+    const placeholders: ChatMessageArtifact[] = [];
+    for (const j of collectPendingGenerativeJobs(res)) {
+      if (!existingJobIds.has(j.jobId)) {
+        placeholders.push({ kind: j.kind, job_id: j.jobId, status: "pending" });
+      }
+    }
+    return [...fromRes, ...placeholders];
+  }, []);
+
+
+  const cancelJobById = useCallback(
+    (jobId: string) => {
+      if (wsClientRef.current?.connected) {
+        wsClientRef.current.cancelGenerativeJob(jobId);
+      } else {
+        void cancelGenerativeJob(jobId);
+      }
+      setMessages((prev) =>
+        applyToLastAssistant(prev, (arts) =>
+          patchArtifactsForJobProgress(arts, jobId, { status: "cancelled", progress_message: "已取消" }),
+        ),
+      );
+      setWsActiveJobIds((prev) => prev.filter((id) => id !== jobId));
+    },
+    [cancelGenerativeJob, setMessages, wsClientRef],
+  );
+
   const handleCancelGenerative = useCallback(() => {
     if (wsActiveJobIds.length && wsClientRef.current?.connected) {
       for (const id of wsActiveJobIds) {
         wsClientRef.current.cancelGenerativeJob(id);
+        setMessages((prev) =>
+          applyToLastAssistant(prev, (arts) =>
+            patchArtifactsForJobProgress(arts, id, { status: "cancelled", progress_message: "已取消" }),
+          ),
+        );
       }
       setWsGenerativeMsg("已请求取消…");
+      setWsActiveJobIds([]);
     } else {
       for (const j of pollJobs) void cancelGenerativeJob(j.jobId);
     }
-  }, [cancelGenerativeJob, pollJobs, wsActiveJobIds, wsClientRef]);
+  }, [cancelGenerativeJob, pollJobs, setMessages, wsActiveJobIds, wsClientRef]);
+
+  const handleGenerativeJobRetried = useCallback(
+    (job: GenerativeJobOut) => {
+      applyJobToMessages(job);
+      setWsActiveJobIds((prev) => (prev.includes(job.id) ? prev : [...prev, job.id]));
+      if (!wsClientRef.current?.connected) {
+        setPollJobs((prev) => (prev.some((p) => p.jobId === job.id) ? prev : [...prev, { jobId: job.id, kind: job.kind }]));
+      }
+    },
+    [applyJobToMessages, wsClientRef],
+  );
 
   const generativeStatusMessage = wsGenerativeMsg ?? generativePollMsg;
   const generativeProgressValue = generativeProgress ?? wsGenerativeProgress;
@@ -176,6 +275,9 @@ export function useAgentsChatGenerativeStatus({ setMessages, wsClientRef }: Para
   return {
     handleWsGenerativeJob,
     applyResponseGenerativeJobs,
+    artifactsFromResponse,
     generativeStatusEl,
+    cancelJobById,
+    handleGenerativeJobRetried,
   };
 }

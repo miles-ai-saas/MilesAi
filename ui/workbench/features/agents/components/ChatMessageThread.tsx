@@ -4,12 +4,13 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AgentExecutionSkeleton, AgentExecutionTimeline } from "@/features/agents/components/AgentExecutionTimeline";
-import { ChatArtifactMedia } from "@/features/agents/components/ChatArtifactMedia";
+import { ChatGenerativeCard } from "@/features/agents/components/ChatGenerativeCard";
 import { ImagePreviewDialog } from "@/features/agents/components/ImagePreviewDialog";
 import type { ChatMessage } from "@/features/agents/lib/chat-sessions";
 import { turnIndexForMessageIndex } from "@/features/agents/lib/agent-trace";
+import { effectiveArtifactStatus } from "@/lib/generative-jobs";
 import { api } from "@/lib/api";
-import type { PendingToolCall } from "@/lib/types";
+import type { GenerativeJobOut, PendingToolCall } from "@/lib/types";
 import type { ReactNode } from "react";
 
 type Props = {
@@ -20,8 +21,10 @@ type Props = {
   confirmPendingToolDisabled?: boolean;
   /** 覆盖默认「思考中…」 */
   chattingStatusLabel?: string | null;
-  /** 异步生成进度（显示在最后一条助手消息下方或流式骨架下方） */
+  /** 异步生成进度（显示在最后一条助手消息下方或流式骨架下方；有进行中卡片时由 Thread 隐藏） */
   generativeStatus?: ReactNode;
+  onCancelGenerativeJob?: (jobId: string) => void;
+  onGenerativeJobRetried?: (job: GenerativeJobOut) => void;
   /** 点击助手消息打开 Trace（传入轮次下标） */
   onOpenTraceTurn?: (turnIndex: number) => void;
   /** 加载更早的消息 */
@@ -101,6 +104,8 @@ export function ChatMessageThread({
   confirmPendingToolDisabled,
   chattingStatusLabel,
   generativeStatus,
+  onCancelGenerativeJob,
+  onGenerativeJobRetried,
   onOpenTraceTurn,
   onLoadMore,
   loadingMore,
@@ -153,6 +158,16 @@ export function ChatMessageThread({
     }
     return -1;
   })();
+
+  const lastAssistantHasInFlight =
+    lastAssistantIndex >= 0 &&
+    (messages[lastAssistantIndex].artifacts?.some((a) => {
+      const s = effectiveArtifactStatus(a);
+      return s === "pending" || s === "running";
+    }) ??
+      false);
+
+  const showGenerativeBanner = Boolean(generativeStatus) && !lastAssistantHasInFlight;
 
   if (messages.length === 0 && !chatting) {
     return (
@@ -225,14 +240,19 @@ export function ChatMessageThread({
                   />
                 )}
                 {msg.artifacts && msg.artifacts.length > 0 && (
-                  <div className="mb-3 flex flex-wrap gap-2">
-                    {msg.artifacts.map((a) => (
-                      <ChatArtifactMedia key={a.attachment_id} kind={a.kind} attachmentId={a.attachment_id} mimeType={a.mime_type} caption={a.caption} />
+                  <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+                    {msg.artifacts.map((a, idx) => (
+                      <ChatGenerativeCard
+                        key={a.job_id ?? a.attachment_id ?? `art-${idx}`}
+                        artifact={a}
+                        onCancel={onCancelGenerativeJob}
+                        onRetried={onGenerativeJobRetried}
+                      />
                     ))}
                   </div>
                 )}
                 <div className="whitespace-pre-wrap text-sm leading-relaxed text-ink">{msg.content}</div>
-                {i === lastAssistantIndex && generativeStatus ? <div className="mt-3">{generativeStatus}</div> : null}
+                {i === lastAssistantIndex && showGenerativeBanner ? <div className="mt-3">{generativeStatus}</div> : null}
               </div>
             )}
           </div>
@@ -243,10 +263,10 @@ export function ChatMessageThread({
           <p className="mb-2 text-xs font-medium text-brand">助手</p>
           <AgentExecutionSkeleton />
           <p className="mt-1 text-sm text-ink-muted">{chattingStatusLabel ?? "思考中…"}</p>
-          {generativeStatus ? <div className="mt-3">{generativeStatus}</div> : null}
+          {showGenerativeBanner ? <div className="mt-3">{generativeStatus}</div> : null}
         </div>
       )}
-      {!chatting && lastAssistantIndex < 0 && generativeStatus ? <div>{generativeStatus}</div> : null}
+      {!chatting && lastAssistantIndex < 0 && showGenerativeBanner ? <div>{generativeStatus}</div> : null}
     </div>
   );
 }

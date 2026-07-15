@@ -1,6 +1,7 @@
 """生图集成与工具。"""
 
 from unittest.mock import AsyncMock, patch
+from types import SimpleNamespace
 from uuid import uuid4
 
 import pytest
@@ -63,6 +64,39 @@ def test_artifacts_from_tool_output():
     assert arts[0].attachment_id == aid
 
 
+def test_artifacts_from_tool_output_pending_job():
+    jid = uuid4()
+    arts = _artifacts_from_tool_output(
+        {
+            "kind": "video",
+            "status": "pending",
+            "generative_job_id": str(jid),
+            "message": "已提交",
+        }
+    )
+    assert len(arts) == 1
+    assert arts[0].attachment_id is None
+    assert arts[0].status == "pending"
+    assert arts[0].job_id == str(jid)
+    assert arts[0].kind == "video"
+
+
+def test_artifacts_from_tool_output_with_media_asset_id():
+    aid = uuid4()
+    mid = uuid4()
+    arts = _artifacts_from_tool_output(
+        {
+            "kind": "image",
+            "attachment_ids": [str(aid)],
+            "media_asset_ids": [str(mid)],
+            "mime_type": "image/png",
+        }
+    )
+    assert arts[0].attachment_id == aid
+    assert arts[0].media_asset_id == mid
+    assert arts[0].status == "success"
+
+
 @pytest.mark.asyncio
 async def test_generate_image_for_model_with_reference():
     ctx = TenantContext(
@@ -99,6 +133,7 @@ async def test_generate_image_for_model_with_reference():
         patch(
             "app.tenant.media_assets.services.media_asset.register_media_asset",
             new_callable=AsyncMock,
+            return_value=SimpleNamespace(id=uuid4()),
         ),
         patch(
             "app.integrations.generative.compliance.check_generative_prompt",
@@ -149,6 +184,7 @@ async def test_generate_image_for_model_persists():
         patch(
             "app.tenant.media_assets.services.media_asset.register_media_asset",
             new_callable=AsyncMock,
+            return_value=SimpleNamespace(id=uuid4()),
         ),
         patch(
             "app.integrations.generative.compliance.check_generative_prompt",

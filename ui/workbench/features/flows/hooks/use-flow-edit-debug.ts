@@ -74,12 +74,14 @@ export function useFlowEditDebug({ id, graphRef, graphTick, setBusy }: DebugSlic
     canCancel: canCancelGenerative,
   } = useGenerativeJobPoll(pollJobs, (artifacts) => {
     setExtraRunArtifacts(
-      artifacts.map((a) => ({
-        attachmentId: a.attachment_id,
-        kind: a.kind as "image" | "video",
-        mimeType: a.mime_type,
-        label: "异步生成",
-      })),
+      artifacts
+        .filter((a): a is typeof a & { attachment_id: string } => Boolean(a.attachment_id))
+        .map((a) => ({
+          attachmentId: a.attachment_id,
+          kind: a.kind as "image" | "video",
+          mimeType: a.mime_type,
+          label: "异步生成",
+        })),
     );
     setPollJobs([]);
   });

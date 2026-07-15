@@ -205,9 +205,18 @@ class ChatArtifact(BaseModel):
         default="image",
         description="产物类型：image | video | audio（扩展）",
     )
-    attachment_id: UUID = Field(description="附件 ID，用于鉴权内容 API")
+    attachment_id: UUID | None = Field(default=None, description="附件 ID；pending 时可空")
     mime_type: str | None = Field(default=None, description="MIME 类型")
     caption: str | None = Field(default=None, description="展示说明")
+    status: str | None = Field(
+        default=None,
+        description="pending | running | success | failed | cancelled；缺省且有 attachment 视为 success",
+    )
+    job_id: str | None = Field(default=None, description="异步 generative job id")
+    media_asset_id: UUID | None = Field(default=None, description="生成素材 ID")
+    progress_percent: int | None = Field(default=None, description="0-100")
+    progress_message: str | None = Field(default=None, description="进度文案")
+    error_message: str | None = Field(default=None, description="失败文案")
 
 
 class ChatResponse(BaseModel):

@@ -181,6 +181,7 @@ async def handle_generate_video(
         "mime_type": result.mime_type,
         "message": "视频已生成",
         "duration_sec": result.duration_sec,
+        "media_asset_id": str(result.media_asset_id) if result.media_asset_id else None,
     }
 
 
@@ -265,10 +266,13 @@ async def handle_generate_image(
         trace_id=get_trace_id(),
     )
     ids = [str(i) for i in result.attachment_ids]
+    mids = [str(i) for i in (result.media_asset_ids or [])]
     return {
         "kind": "image",
         "attachment_id": ids[0],
         "attachment_ids": ids,
+        "media_asset_id": mids[0] if mids else None,
+        "media_asset_ids": mids,
         "mime_type": result.mime_type,
         "message": f"已生成 {len(ids)} 张图片",
     }

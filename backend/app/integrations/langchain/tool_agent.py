@@ -288,20 +288,58 @@ def _artifacts_from_tool_output(output: dict) -> list[ChatArtifact]:
     """将 invoke 返回的 generate_* 字典转为 ChatArtifact（供前端预览）。"""
     if not isinstance(output, dict):
         return []
-    kind = output.get("kind") or "image"
+    kind = str(output.get("kind") or "image")
+    status = output.get("status")
+    job_id = output.get("generative_job_id") or output.get("job_id")
+    job_id_str = str(job_id) if job_id else None
+
+    if status == "pending" and job_id_str:
+        return [
+            ChatArtifact(
+                kind=kind if kind in ("image", "video") else "video",
+                status="pending",
+                job_id=job_id_str,
+                caption=output.get("message"),
+                progress_message=output.get("progress_message") or output.get("message"),
+            )
+        ]
+
+    if status == "failed":
+        return [
+            ChatArtifact(
+                kind=kind if kind in ("image", "video") else "image",
+                status="failed",
+                job_id=job_id_str,
+                error_message=str(output.get("error_message") or output.get("message") or "生成失败"),
+                caption=output.get("message"),
+            )
+        ]
+
+    def _uuid_or_none(v) -> UUID | None:
+        if v is None or v == "":
+            return None
+        return UUID(str(v))
+
     if kind == "image":
         ids = output.get("attachment_ids") or []
         if not ids and output.get("attachment_id"):
             ids = [output["attachment_id"]]
+        mids = output.get("media_asset_ids") or []
+        if not mids and output.get("media_asset_id"):
+            mids = [output["media_asset_id"]]
         mime = output.get("mime_type")
         return [
             ChatArtifact(
-                attachment_id=UUID(str(aid)),
+                attachment_id=_uuid_or_none(aid),
                 kind="image",
                 mime_type=mime,
                 caption=output.get("message"),
+                status="success",
+                job_id=job_id_str,
+                media_asset_id=_uuid_or_none(mids[i] if i < len(mids) else (mids[0] if mids else None)),
             )
-            for aid in ids
+            for i, aid in enumerate(ids)
+            if aid
         ]
     if kind == "video" and output.get("attachment_id"):
         return [
@@ -310,6 +348,9 @@ def _artifacts_from_tool_output(output: dict) -> list[ChatArtifact]:
                 kind="video",
                 mime_type=output.get("mime_type") or "video/mp4",
                 caption=output.get("message"),
+                status="success",
+                job_id=job_id_str,
+                media_asset_id=_uuid_or_none(output.get("media_asset_id")),
             )
         ]
     return []
@@ -701,6 +742,15 @@ async def run_tool_calling_chat(
                         "content": str(exc),
                     }
                 )
+                if slug in ("generate_image", "generate_video"):
+                    artifacts.append(
+                        ChatArtifact(
+                            kind="image" if slug == "generate_image" else "video",
+                            status="failed",
+                            error_message=str(exc),
+                            caption=str(exc),
+                        )
+                    )
                 return ChatResponse(
                     answer=f"工具「{slug}」执行失败：{exc}",
                     steps=steps,
@@ -719,9 +769,15 @@ async def run_tool_calling_chat(
                 )
                 job_kind = str(output.get("kind") or "video")
                 default_msg = "图片生成任务已提交，完成后将自动展示预览。" if job_kind == "image" else "视频生成任务已提交，完成后将自动展示预览。"
+                pending_out = dict(output) if isinstance(output, dict) else {}
+                pending_out.setdefault("status", "pending")
+                pending_out.setdefault("kind", job_kind)
+                pending_out.setdefault("generative_job_id", pending_job_id)
+                artifacts.extend(_artifacts_from_tool_output(pending_out))
                 return ChatResponse(
                     answer=str(output.get("message") or default_msg),
                     steps=steps,
+                    artifacts=artifacts,
                     generative_jobs=[
                         {
                             "id": pending_job_id,

@@ -12,6 +12,7 @@ export { AgentFormDialog } from "./components/AgentFormDialog";
 export { AgentSchedulePanel } from "./components/AgentSchedulePanel";
 
 export { ChatArtifactMedia } from "./components/ChatArtifactMedia";
+export { ChatGenerativeCard } from "./components/ChatGenerativeCard";
 export { ApiErrorDialog } from "./components/ApiErrorDialog";
 
 export { agentModeLabel, agentStatusLabel, agentTypeLabel } from "./lib/agent-utils";
