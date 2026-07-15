@@ -4,9 +4,10 @@
  * 智能体对话输入区：附件在框内左下，发送在右下；统一白底无分栏。
  */
 
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ChatMessageMedia } from "@/features/agents/lib/chat-sessions";
 import { CHAT_ATTACHMENT_ACCEPT } from "@/lib/chat-attachments";
+import { api } from "@/lib/api";
 
 export type PendingChatMedia = ChatMessageMedia & { local_preview: string };
 
@@ -38,6 +39,46 @@ function AttachIcon({ className }: { className?: string }) {
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
       <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" />
     </svg>
+  );
+}
+
+/** 沿用附图：消息里的 preview_url 常为 blob（刷新后失效），统一走鉴权 content API。 */
+function CarriedAttachmentThumb({ attachmentId, filename, previewUrl }: { attachmentId: string; filename?: string; previewUrl?: string }) {
+  const [src, setSrc] = useState<string | null>(null);
+
+  useEffect(() => {
+    let objectUrl: string | null = null;
+    let cancelled = false;
+    const isBlob = previewUrl?.startsWith("blob:");
+    if (previewUrl && !isBlob) {
+      setSrc(previewUrl);
+      return;
+    }
+    void api.fetchAttachmentPreviewUrl(attachmentId).then((u) => {
+      if (!cancelled) {
+        objectUrl = u;
+        setSrc(u);
+      } else {
+        URL.revokeObjectURL(u);
+      }
+    });
+    return () => {
+      cancelled = true;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [attachmentId, previewUrl]);
+
+  return (
+    <div
+      className="h-12 w-12 overflow-hidden rounded-md ring-1 ring-dashed ring-brand/35"
+      title={filename ?? "上一轮附图"}
+    >
+      {src ? (
+        <img src={src} alt={filename ?? "上一轮附图"} className="h-full w-full object-cover opacity-90" />
+      ) : (
+        <div className="flex h-full w-full items-center justify-center bg-surface-muted text-[10px] text-ink-faint">…</div>
+      )}
+    </div>
   );
 }
 
@@ -84,17 +125,12 @@ export function AgentChatComposer({
               </div>
             ))}
             {carriedMedia.map((m) => (
-              <div
+              <CarriedAttachmentThumb
                 key={`carry-${m.attachment_id}`}
-                className="h-12 w-12 overflow-hidden rounded-md ring-1 ring-dashed ring-brand/35"
-                title={m.filename ?? "上一轮附图"}
-              >
-                {m.preview_url ? (
-                  <img src={m.preview_url} alt={m.filename ?? "上一轮附图"} className="h-full w-full object-cover opacity-90" />
-                ) : (
-                  <div className="flex h-full w-full items-center justify-center bg-surface-muted text-[10px] text-ink-faint">附图</div>
-                )}
-              </div>
+                attachmentId={m.attachment_id}
+                filename={m.filename}
+                previewUrl={m.preview_url}
+              />
             ))}
           </div>
         </div>
@@ -135,7 +171,6 @@ export function AgentChatComposer({
         />
 
         <div className="absolute bottom-2 left-2 flex items-center gap-1">
-          {/* 附件按钮 */}
           <button
             type="button"
             className="flex h-8 w-8 items-center justify-center rounded-lg text-ink-muted transition hover:bg-brand-light/80 hover:text-brand disabled:pointer-events-none disabled:opacity-40"
@@ -151,7 +186,6 @@ export function AgentChatComposer({
             )}
           </button>
 
-          {/* 生图数量 */}
           {onImageNChange != null && (
             <div className="flex items-center rounded-full border border-line/60 px-1.5 py-0.5 text-[11px]">
               <button
@@ -184,7 +218,6 @@ export function AgentChatComposer({
             </div>
           )}
 
-          {/* 生视频时长 */}
           {onVideoDurationChange != null && (
             <div className="flex items-center rounded-full border border-line/60 px-1.5 py-0.5 text-[11px]">
               <div className="relative">
