@@ -9,6 +9,7 @@ import { AgentWorkbenchSidebar } from "@/features/agents/components/AgentWorkben
 import { ChatMessageThread } from "@/features/agents/components/ChatMessageThread";
 import type { AgentsChatPageVm } from "@/features/agents/hooks/use-agents-chat-page";
 import { generativeToolBusyLabel } from "@/lib/generative-tool-ui";
+import { useRef } from "react";
 
 type Props = {
   vm: AgentsChatPageVm;
@@ -71,7 +72,12 @@ export function AgentsChatLayout({ vm }: Props) {
     removePendingMedia,
     businessContext,
     clearBusinessContext,
+    loadMoreMessages,
+    loadingMore,
+    hasMore,
   } = vm;
+
+  const chatScrollRef = useRef<HTMLDivElement>(null);
 
   return (
     <div className="relative flex h-full min-h-0 w-full flex-1 overflow-hidden">
@@ -131,7 +137,7 @@ export function AgentsChatLayout({ vm }: Props) {
           <BusinessContextBanner ctx={businessContext} onDismiss={clearBusinessContext} />
         ) : null}
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-3 py-4 sm:px-4">
+        <div className="min-h-0 flex-1 overflow-y-auto px-3 py-4 sm:px-4" ref={chatScrollRef}>
           <div className="mx-auto w-full max-w-4xl">
             <ChatMessageThread
               messages={messages}
@@ -142,6 +148,10 @@ export function AgentsChatLayout({ vm }: Props) {
               confirmPendingToolDisabled={chatting}
               generativeStatus={generativeStatusEl}
               onOpenTraceTurn={openTraceAtTurn}
+              onLoadMore={loadMoreMessages}
+              loadingMore={loadingMore}
+              hasMore={hasMore}
+              scrollContainerRef={chatScrollRef}
             />
           </div>
         </div>

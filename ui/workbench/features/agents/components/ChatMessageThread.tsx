@@ -24,14 +24,20 @@ type Props = {
   generativeStatus?: ReactNode;
   /** 点击助手消息打开 Trace（传入轮次下标） */
   onOpenTraceTurn?: (turnIndex: number) => void;
+  /** 加载更早的消息 */
+  onLoadMore?: () => void;
+  loadingMore?: boolean;
+  hasMore?: boolean;
+  /** 滚动容器 ref，用于 IntersectionObserver */
+  scrollContainerRef?: React.RefObject<HTMLDivElement | null>;
 };
 
 function hasPendingConfirmationStep(steps?: Record<string, unknown>[]) {
   return steps?.some((s) => s.type === "tool_confirmation_required") ?? false;
 }
 
-/** 用户上传图片的可靠预览：优先用 preview_url，加载失败时回退 API fetch。
- *  解决 blob URL 刷新后失效的问题。 */
+/** 用户上传图片的可靠预览：preview_url 是 blob URL（刷新后必然失效），
+ *  检测到 blob 协议时直接走 API fetch，不再依赖 onError 回退。 */
 function ChatMediaImage({ attachmentId, previewUrl, filename }: { attachmentId: string; previewUrl?: string; filename?: string }) {
   const [src, setSrc] = useState<string | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
@@ -51,19 +57,15 @@ function ChatMediaImage({ attachmentId, previewUrl, filename }: { attachmentId: 
   }, [attachmentId]);
 
   useEffect(() => {
-    // 如果没有 preview_url，直接走 API fetch
-    if (!previewUrl) {
+    // preview_url 是 blob: URL，刷新后必然失效——直接 API fetch
+    const isBlobUrl = previewUrl && previewUrl.startsWith("blob:");
+    if (!previewUrl || isBlobUrl) {
       void fetchFromApi();
       return;
     }
-    // 有 preview_url 但可能是失效的 blob URL，先直接用，失败再 fetch
+    // 非 blob URL（如持久化的签名 URL），直接使用
     setSrc(previewUrl);
   }, [previewUrl, fetchFromApi]);
-
-  // 图片加载失败时回退 API fetch
-  const handleError = useCallback(() => {
-    void fetchFromApi();
-  }, [fetchFromApi]);
 
   // 卸载时清理 blob URL
   useEffect(() => {
@@ -83,7 +85,6 @@ function ChatMediaImage({ attachmentId, previewUrl, filename }: { attachmentId: 
         src={src}
         alt={filename ?? "附图"}
         className="max-h-32 max-w-[140px] cursor-pointer rounded-lg object-cover transition-opacity hover:opacity-80"
-        onError={handleError}
         onClick={() => setPreviewOpen(true)}
         title="点击查看大图"
       />
@@ -101,7 +102,51 @@ export function ChatMessageThread({
   chattingStatusLabel,
   generativeStatus,
   onOpenTraceTurn,
+  onLoadMore,
+  loadingMore,
+  hasMore,
+  scrollContainerRef,
 }: Props) {
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  const prevScrollHeightRef = useRef(0);
+
+  // IntersectionObserver：顶部哨兵进入视口时触发加载更早消息
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    const root = scrollContainerRef?.current ?? null;
+    if (!sentinel || !onLoadMore || !hasMore) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting && !loadingMore) {
+          onLoadMore();
+        }
+      },
+      { root, rootMargin: "128px", threshold: 0 },
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [hasMore, loadingMore, onLoadMore, scrollContainerRef]);
+
+  // 加载更早消息后保持滚动位置（防止内容向上跳）
+  useEffect(() => {
+    const container = scrollContainerRef?.current;
+    if (!container || prevScrollHeightRef.current === 0) return;
+    const newHeight = container.scrollHeight;
+    const delta = newHeight - prevScrollHeightRef.current;
+    if (delta > 0) {
+      container.scrollTop += delta;
+    }
+  }, [messages.length, scrollContainerRef]);
+
+  // 记录 messages 变化前的 scrollHeight
+  useEffect(() => {
+    const container = scrollContainerRef?.current;
+    if (container) {
+      prevScrollHeightRef.current = container.scrollHeight;
+    }
+  }, [messages.length, scrollContainerRef]);
+
   const lastAssistantIndex = (() => {
     for (let i = messages.length - 1; i >= 0; i -= 1) {
       if (messages[i].role === "assistant") return i;
@@ -123,6 +168,20 @@ export function ChatMessageThread({
 
   return (
     <div className="space-y-4">
+      {/* 顶部哨兵：触发加载更早消息 */}
+      {hasMore !== false ? (
+        <div ref={sentinelRef} className="flex items-center justify-center py-2">
+          {loadingMore ? (
+            <span className="text-xs text-ink-muted">加载更早的消息…</span>
+          ) : (
+            <span className="text-xs text-ink-faint">向上滚动加载更多</span>
+          )}
+        </div>
+      ) : messages.length > 0 ? (
+        <div className="flex items-center justify-center py-2">
+          <span className="text-xs text-ink-faint">— 已显示全部消息 —</span>
+        </div>
+      ) : null}
       {messages.map((msg, i) => {
         const traceTurn = msg.role === "assistant" ? turnIndexForMessageIndex(messages, i) : null;
         const showTraceBtn = traceTurn != null && onOpenTraceTurn && ((msg.steps?.length ?? 0) > 0 || Boolean(msg.traceId));

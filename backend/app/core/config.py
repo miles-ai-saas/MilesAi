@@ -58,7 +58,7 @@ class Settings(BaseSettings):
     object_storage_secret_key: str = "minioadmin"
     object_storage_bucket: str = "milesai"
     object_storage_secure: bool = False
-    object_storage_region: str | None = None
+    object_storage_region: str = ""
 
     # 向量存储：weaviate | milvus | pgvector（均经 LangChain 集成）
     vector_store_backend: str = "weaviate"

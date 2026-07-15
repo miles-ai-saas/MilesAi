@@ -20,6 +20,8 @@ export type ChatMessageArtifact = {
 export type ChatMessage = {
   role: "user" | "assistant";
   content: string;
+  /** 服务端 sort_index，用于游标分页；本地消息可能为 undefined */
+  sortIndex?: number;
   media?: ChatMessageMedia[];
   artifacts?: ChatMessageArtifact[];
   steps?: Record<string, unknown>[];
@@ -33,6 +35,8 @@ export type ChatSession = {
   createdAt: number;
   updatedAt: number;
   messages: ChatMessage[];
+  /** 服务端消息总数（可能大于本地 messages 数量，用于判断是否需要从服务端拉取更多） */
+  messageCount?: number;
 };
 
 type AgentSessionBucket = {
@@ -44,7 +48,30 @@ type Store = Record<string, AgentSessionBucket>;
 
 const STORAGE_KEY = "agents-chat-sessions-v1";
 const MAX_SESSIONS_PER_AGENT = 80;
+export const MESSAGES_PAGE_SIZE = 10;
 export const MAX_SESSION_TITLE_LENGTH = 64;
+
+/** 获取 session 中最新 N 条消息（用于初始加载）。 */
+export function getLatestMessages(session: ChatSession, limit = MESSAGES_PAGE_SIZE): ChatMessage[] {
+  const total = session.messages.length;
+  if (total <= limit) return [...session.messages];
+  return session.messages.slice(total - limit);
+}
+
+/** 判断本地是否还有更多消息未展示（相对于当前 UI 消息数）。 */
+export function hasMoreLocalMessages(session: ChatSession, uiMessageCount: number): boolean {
+  return session.messages.length > uiMessageCount;
+}
+
+/** 获取当前 UI 消息之前的一批本地消息（最早的那批）。 */
+export function getPreviousMessages(session: ChatSession, uiMessageCount: number, limit = MESSAGES_PAGE_SIZE): ChatMessage[] {
+  const localCount = session.messages.length;
+  const remaining = localCount - uiMessageCount;
+  if (remaining <= 0) return [];
+  const start = Math.max(0, localCount - uiMessageCount - limit);
+  const end = localCount - uiMessageCount;
+  return session.messages.slice(start, end);
+}
 
 function loadStore(): Store {
   if (typeof window === "undefined") return {};
@@ -176,6 +203,7 @@ export function appendTurn(
     title,
     messages,
     updatedAt: Date.now(),
+    ...(session.messageCount != null ? { messageCount: session.messageCount + 2 } : {}),
   };
   saveStore(store);
 }

@@ -7,6 +7,7 @@
 
 import { Suspense } from "react";
 import { AgentsChatLayout, useAgentsChatPage } from "@/features/agents";
+import { ApiErrorDialog } from "@/features/agents/components/ApiErrorDialog";
 
 function AgentsChatLoading() {
   return <div className="flex h-full min-h-0 flex-1 items-center justify-center text-ink-muted">加载对话工作台…</div>;
@@ -29,5 +30,14 @@ function AgentsChatMain() {
     return <AgentsChatLoading />;
   }
 
-  return <AgentsChatLayout vm={vm} />;
+  return (
+    <>
+      <AgentsChatLayout vm={vm} />
+      <ApiErrorDialog
+        open={!!vm.apiError}
+        message={vm.apiError ?? ""}
+        onClose={vm.clearApiError}
+      />
+    </>
+  );
 }

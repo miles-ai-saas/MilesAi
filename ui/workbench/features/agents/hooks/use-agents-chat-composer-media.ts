@@ -10,9 +10,10 @@ import { lastUserMessageMedia } from "@/features/agents/lib/chat-media-forward";
 type Params = {
   messages: ChatMessage[];
   carryForwardMedia: boolean;
+  onError?: (message: string) => void;
 };
 
-export function useAgentsChatComposerMedia({ messages, carryForwardMedia }: Params) {
+export function useAgentsChatComposerMedia({ messages, carryForwardMedia, onError }: Params) {
   const [pendingMedia, setPendingMedia] = useState<PendingChatMedia[]>([]);
   const [uploadingMedia, setUploadingMedia] = useState(false);
 
@@ -21,11 +22,15 @@ export function useAgentsChatComposerMedia({ messages, carryForwardMedia }: Para
     return lastUserMessageMedia(messages);
   }, [carryForwardMedia, messages, pendingMedia.length]);
 
+  const showError = useCallback((msg: string) => {
+    onError?.(msg);
+  }, [onError]);
+
   const onPickAttachments = async (files: FileList | null) => {
     if (!files?.length || uploadingMedia) return;
     const picked = filterChatUploadFiles(files);
     if (!picked.length) {
-      window.alert("当前仅支持上传图片（JPEG / PNG / WebP / GIF）");
+      showError("当前仅支持上传图片（JPEG / PNG / WebP / GIF）");
       return;
     }
     setUploadingMedia(true);
@@ -46,7 +51,7 @@ export function useAgentsChatComposerMedia({ messages, carryForwardMedia }: Para
       }
     } catch (e) {
       const err = e instanceof Error ? e.message : "附件上传失败";
-      window.alert(err);
+      showError(err);
     } finally {
       setUploadingMedia(false);
     }

@@ -72,8 +72,15 @@ export const agentsApi = {
   listAgentChatSessions: (agentId: string, page = 1, size = DEFAULT_PAGE_SIZE) =>
     getPage<import("../types").AgentChatSessionSummary>(`/agents/${agentId}/chat-sessions?${buildPageQuery(page, size)}`),
 
-  getAgentChatSession: (agentId: string, sessionId: string) =>
-    get<import("../types").ChatSessionDetail>(`/agents/${agentId}/chat-sessions/${sessionId}`),
+  getAgentChatSession: (
+    agentId: string,
+    sessionId: string,
+    opts?: { before_sort_index?: number; limit?: number },
+  ) => {
+    let url = `/agents/${agentId}/chat-sessions/${sessionId}?limit=${opts?.limit ?? 10}`;
+    if (opts?.before_sort_index != null) url += `&before_sort_index=${opts.before_sort_index}`;
+    return get<import("../types").ChatSessionDetail>(url);
+  },
 
   createAgentChatSession: (agentId: string, payload: { id?: string; title?: string }) =>
     post<import("../types").AgentChatSessionSummary>(`/agents/${agentId}/chat-sessions`, payload),

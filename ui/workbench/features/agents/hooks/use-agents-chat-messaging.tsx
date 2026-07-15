@@ -45,6 +45,7 @@ export function useAgentsChatMessaging({
   const [chatting, setChatting] = useState(false);
   const [pendingTool, setPendingTool] = useState<PendingToolCall | null>(null);
   const [promptApplied, setPromptApplied] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
 
   useEffect(() => {
     if (promptApplied || !initialPrompt) return;
@@ -54,7 +55,7 @@ export function useAgentsChatMessaging({
 
   const { wsEnabled, wsReady, client: wsClientRef } = useAgentChatWs(selectedAgent, conversationId);
 
-  const media = useAgentsChatComposerMedia({ messages, carryForwardMedia });
+  const media = useAgentsChatComposerMedia({ messages, carryForwardMedia, onError: setApiError });
   const generative = useAgentsChatGenerativeStatus({ setMessages, wsClientRef });
 
   const applyChatResponse = useCallback(
@@ -174,7 +175,7 @@ export function useAgentsChatMessaging({
       }
     } catch (e) {
       const err = e instanceof Error ? e.message : "对话失败";
-      setMessages([...optimistic, { role: "assistant", content: err }]);
+      setApiError(err);
     } finally {
       setChatting(false);
     }
@@ -221,7 +222,7 @@ export function useAgentsChatMessaging({
       });
     } catch (e) {
       const err = e instanceof Error ? e.message : "工具确认失败";
-      setMessages((prev) => [...prev, { role: "assistant", content: err }]);
+      setApiError(err);
     } finally {
       setChatting(false);
     }
@@ -245,6 +246,8 @@ export function useAgentsChatMessaging({
     wsReady,
     chattingStatusLabel,
     generativeStatusEl: generative.generativeStatusEl,
+    apiError,
+    clearApiError: () => setApiError(null),
     chat,
     confirmPendingTool,
     onPickAttachments: media.onPickAttachments,

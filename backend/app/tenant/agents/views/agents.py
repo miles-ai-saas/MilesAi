@@ -191,10 +191,16 @@ async def create_agent_chat_session(
 async def get_agent_chat_session(
     agent_id: UUID,
     session_id: str,
+    before_sort_index: int | None = Query(None, description="游标：获取 sort_index 小于此值的更早消息"),
+    limit: int = Query(10, ge=1, le=100, description="返回消息数量，默认 10"),
     ctx: TenantContext = Depends(require_permissions("agent:read")),
     db: AsyncSession = Depends(get_db),
 ):
-    return ok(await _chat_session_svc(db, ctx).get_session(agent_id, session_id))
+    return ok(await _chat_session_svc(db, ctx).get_session(
+        agent_id, session_id,
+        before_sort_index=before_sort_index,
+        limit=limit,
+    ))
 
 
 @router.patch("/{agent_id}/chat-sessions/{session_id}", response_model=ApiResponse[ChatSessionOut])

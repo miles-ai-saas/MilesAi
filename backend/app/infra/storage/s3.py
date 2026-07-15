@@ -42,13 +42,14 @@ class S3CompatibleObjectStorage:
         return self._default_bucket
 
     def _get_client(self) -> Minio:
-        """每次调用新建 Minio 客户端（轻量，无长连接池）。"""
+        """每次调用新建 Minio 客户端（轻量，无长连接池）。
+        region 传空字符串避免 SDK 自动调 GetBucketLocation（RAM 用户通常无此权限）。"""
         return Minio(
             self._endpoint,
             access_key=self._access_key,
             secret_key=self._secret_key,
             secure=self._secure,
-            region=self._region,
+            region=self._region or "",
         )
 
     def ensure_bucket(self, bucket: str | None = None) -> None:

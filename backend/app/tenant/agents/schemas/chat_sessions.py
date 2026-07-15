@@ -19,6 +19,7 @@ class ChatMessageOut(BaseModel):
     id: UUID
     role: str
     content: str
+    sort_index: int
     media: list[dict] | None = None
     artifacts: list[dict] | None = None
     steps: list[dict] | None = None
@@ -39,3 +40,4 @@ class ChatSessionOut(BaseModel):
 
 class ChatSessionDetailOut(ChatSessionOut):
     messages: list[ChatMessageOut] = Field(default_factory=list)
+    has_more: bool = Field(default=False, description="是否还有更早的消息（游标分页）")

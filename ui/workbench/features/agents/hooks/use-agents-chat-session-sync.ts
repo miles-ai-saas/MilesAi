@@ -6,10 +6,15 @@ import {
   createSession,
   deleteSession,
   ensureActiveSession,
+  getLatestMessages,
+  getPreviousMessages,
   getSession,
+  hasMoreLocalMessages,
   listSessions,
+  MESSAGES_PAGE_SIZE,
   renameSession,
   setActiveSessionId,
+  updateSession,
   type ChatMessage,
   type ChatSession,
 } from "@/features/agents/lib/chat-sessions";
@@ -40,6 +45,8 @@ export function useAgentsChatSessionSync({
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [sessionTitle, setSessionTitle] = useState("新对话");
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
   const { requestConfirm, confirmDialog } = useConfirmAction();
 
   const refreshSessions = useCallback((agentId: string) => {
@@ -51,12 +58,91 @@ export function useAgentsChatSessionSync({
       const session = getSession(agentId, sessionId);
       if (!session) return;
       setConversationId(session.id);
-      setMessages([...session.messages]);
+      const latest = getLatestMessages(session);
+      setMessages(latest);
       setSessionTitle(session.title);
+      setHasMore(session.messages.length > latest.length || (session.messageCount ?? 0) > session.messages.length);
       clearComposer?.();
     },
     [],
   );
+
+  /** 向上滚动加载更早的消息。先从本地取，本地取完再请求服务端。 */
+  const loadMoreMessages = useCallback(async () => {
+    if (!selectedAgent || !conversationId) return;
+    if (loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const session = getSession(selectedAgent, conversationId);
+      if (!session) return;
+
+      // 1) 先从本地缓存加载
+      setMessages((prev) => {
+        if (hasMoreLocalMessages(session, prev.length)) {
+          const older = getPreviousMessages(session, prev.length);
+          if (older.length > 0) {
+            const newTotal = prev.length + older.length;
+            setHasMore(hasMoreLocalMessages(session, newTotal)
+              || (session.messageCount ?? 0) > newTotal);
+            return [...older, ...prev];
+          }
+        }
+        return prev;
+      });
+
+      // 2) 本地已空，从服务端拉取
+      setMessages((prev) => {
+        const oldestInUi = prev[0];
+        const beforeSortIndex = oldestInUi?.sortIndex;
+        if (beforeSortIndex == null) {
+          setHasMore(false);
+          return prev;
+        }
+
+        // 发起异步请求
+        void (async () => {
+          try {
+            const detail = await api.getAgentChatSession(selectedAgent, conversationId, {
+              before_sort_index: beforeSortIndex,
+              limit: MESSAGES_PAGE_SIZE,
+            });
+            const serverMsgs: ChatMessage[] = detail.messages.map((m) => ({
+              role: m.role as "user" | "assistant",
+              content: m.content,
+              sortIndex: m.sort_index,
+              ...(m.media?.length ? { media: m.media as ChatMessage["media"] } : {}),
+              ...(m.artifacts?.length ? { artifacts: m.artifacts as ChatMessage["artifacts"] } : {}),
+              ...(m.steps?.length ? { steps: m.steps as Record<string, unknown>[] } : {}),
+              ...(m.trace_id ? { traceId: m.trace_id } : {}),
+            }));
+            if (serverMsgs.length > 0) {
+              // 合并到 localStorage
+              const existing = getSession(selectedAgent, conversationId);
+              if (existing) {
+                const existingKeys = new Set(existing.messages.map((m) => `${m.role}|${m.content?.slice(0, 80)}`));
+                const newOnly = serverMsgs.filter((m) => !existingKeys.has(`${m.role}|${m.content?.slice(0, 80)}`));
+                if (newOnly.length > 0) {
+                  const merged = [...newOnly, ...existing.messages];
+                  updateSession(selectedAgent, conversationId, { messages: merged });
+                }
+              }
+              setMessages((p) => [...serverMsgs, ...p]);
+              setHasMore(detail.has_more ?? false);
+            } else {
+              setHasMore(false);
+            }
+          } catch {
+            setHasMore(false);
+          } finally {
+            setLoadingMore(false);
+          }
+        })();
+        return prev;
+      });
+    } catch {
+      setLoadingMore(false);
+    }
+  }, [selectedAgent, conversationId, loadingMore]);
 
   useEffect(() => {
     if (agentFromUrl) setSelectedAgent(agentFromUrl);
@@ -189,6 +275,9 @@ export function useAgentsChatSessionSync({
     sessionTitle,
     setSessionTitle,
     refreshSessions,
+    loadMoreMessages,
+    loadingMore,
+    hasMore,
     handleNewSession,
     handleSelectSession,
     handleRenameSession,

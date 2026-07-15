@@ -120,25 +120,39 @@ class AgentChatSessionService(BaseService):
         await self.db.flush()
         return await self._session_out(row)
 
-    async def get_session(self, agent_id: UUID, session_id: str) -> ChatSessionDetailOut:
+    async def get_session(
+        self,
+        agent_id: UUID,
+        session_id: str,
+        *,
+        before_sort_index: int | None = None,
+        limit: int = 10,
+    ) -> ChatSessionDetailOut:
+        """获取会话详情，默认返回最新 N 条消息；传 before_sort_index 可向前翻页。"""
         await self._ensure_agent(agent_id)
         row = await self.db.get(AgentChatSession, session_id)
         if not row or row.agent_id != agent_id:
             raise NotFoundError("会话不存在")
         assert_tenant_access(self.ctx, row.tenant_id)
         base = await self._session_out(row)
-        msg_rows = list(
-            (
-                await self.db.scalars(
-                    select(AgentChatMessage)
-                    .where(AgentChatMessage.session_id == session_id)
-                    .order_by(AgentChatMessage.sort_index.asc(), AgentChatMessage.created_at.asc())
-                )
-            ).all()
+
+        stmt = select(AgentChatMessage).where(
+            AgentChatMessage.session_id == session_id,
         )
+        if before_sort_index is not None:
+            stmt = stmt.where(AgentChatMessage.sort_index < before_sort_index)
+        stmt = stmt.order_by(AgentChatMessage.sort_index.desc()).limit(limit + 1)
+
+        rows = list((await self.db.scalars(stmt)).all())
+        has_more = len(rows) > limit
+        msg_rows = rows[:limit]
+        # 数据库返回的是 sort_index desc，翻转回 asc 顺序
+        msg_rows.reverse()
+
         return ChatSessionDetailOut(
             **base.model_dump(),
             messages=[ChatMessageOut.model_validate(m) for m in msg_rows],
+            has_more=has_more,
         )
 
     async def update_session(self, agent_id: UUID, session_id: str, body: ChatSessionUpdate) -> ChatSessionOut:

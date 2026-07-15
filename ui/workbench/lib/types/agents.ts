@@ -169,6 +169,7 @@ export interface AgentChatSessionMessage {
   id: string;
   role: string;
   content: string;
+  sort_index: number;
   media?: { attachment_id: string; detail?: string; filename?: string; preview_url?: string }[] | null;
   artifacts?: ChatArtifact[] | null;
   steps?: Record<string, unknown>[] | null;
@@ -187,6 +188,7 @@ export interface AgentChatSessionSummary {
 
 export interface ChatSessionDetail extends AgentChatSessionSummary {
   messages: AgentChatSessionMessage[];
+  has_more?: boolean;
 }
 
 export interface PendingToolCall {
