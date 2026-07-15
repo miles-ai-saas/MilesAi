@@ -31,9 +31,16 @@ def _encode(payload: dict[str, Any]) -> str:
     return jwt.encode(payload, settings.secret_key, algorithm=settings.jwt_algorithm)
 
 
-def create_access_token(subject: str, extra: dict[str, Any] | None = None) -> str:
+def create_access_token(
+    subject: str,
+    extra: dict[str, Any] | None = None,
+    *,
+    expires_delta: timedelta | None = None,
+) -> str:
     """签发 access JWT（type=access，含 tenant_id 等 extra）。"""
-    expire = datetime.now(timezone.utc) + timedelta(minutes=settings.access_token_expire_minutes)
+    if expires_delta is None:
+        expires_delta = timedelta(minutes=settings.access_token_expire_minutes)
+    expire = datetime.now(timezone.utc) + expires_delta
     payload = {
         "sub": subject,
         "type": "access",

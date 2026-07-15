@@ -37,6 +37,7 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 60
     refresh_token_expire_days: int = 7
+    agent_api_debug_token_ttl_hours: int = 24
 
     postgres_host: str = "localhost"
     postgres_port: int = 5432
