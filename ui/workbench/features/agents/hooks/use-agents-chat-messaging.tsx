@@ -10,7 +10,6 @@ import { api } from "@/lib/api";
 import { appendTurn, getSession, type ChatMessage, type ChatMessageMedia } from "@/features/agents/lib/chat-sessions";
 import { generativeToolBusyLabel } from "@/lib/generative-tool-ui";
 import { resolveOutgoingChatMedia } from "@/features/agents/lib/chat-media-forward";
-import { mapResponseArtifacts } from "@/features/agents/hooks/use-agents-chat-generative-status";
 import type { ChatAgentResult, ChatMediaIn, PendingToolCall } from "@/lib/types";
 import type { Dispatch, SetStateAction } from "react";
 
@@ -62,18 +61,19 @@ export function useAgentsChatMessaging({
     (res: ChatAgentResult, optimistic: ChatMessage[], userText: string, userMedia: ChatMessageMedia[], useWsJobs: boolean) => {
       setPendingTool(res.pending_tool ?? null);
       generative.applyResponseGenerativeJobs(res, useWsJobs);
+      const arts = generative.artifactsFromResponse(res);
       const nextMessages: ChatMessage[] = [
         ...optimistic,
         {
           role: "assistant",
           content: res.answer,
-          artifacts: mapResponseArtifacts(res),
+          artifacts: arts.length ? arts : undefined,
           steps: res.steps?.length ? res.steps : undefined,
           traceId: res.trace_id,
         },
       ];
       setMessages(nextMessages);
-      appendTurn(selectedAgent, conversationId, userText, res.answer, res.steps ?? [], res.trace_id, userMedia.length ? userMedia : undefined, mapResponseArtifacts(res));
+      appendTurn(selectedAgent, conversationId, userText, res.answer, res.steps ?? [], res.trace_id, userMedia.length ? userMedia : undefined, arts.length ? arts : undefined);
       refreshSessions(selectedAgent);
       const updated = getSession(selectedAgent, conversationId);
       if (updated) setSessionTitle(updated.title);
@@ -207,6 +207,7 @@ export function useAgentsChatMessaging({
       }
       setPendingTool(res.pending_tool ?? null);
       generative.applyResponseGenerativeJobs(res, Boolean(useWs));
+      const arts = generative.artifactsFromResponse(res);
       setMessages((prev) => {
         const withoutEmptyTail = prev.length && prev[prev.length - 1].role === "assistant" && !prev[prev.length - 1].content ? prev.slice(0, -1) : prev;
         return [
@@ -214,7 +215,7 @@ export function useAgentsChatMessaging({
           {
             role: "assistant",
             content: res.answer,
-            artifacts: mapResponseArtifacts(res),
+            artifacts: arts.length ? arts : undefined,
             steps: res.steps?.length ? res.steps : undefined,
             traceId: res.trace_id,
           },
@@ -246,6 +247,8 @@ export function useAgentsChatMessaging({
     wsReady,
     chattingStatusLabel,
     generativeStatusEl: generative.generativeStatusEl,
+    cancelGenerativeJobById: generative.cancelJobById,
+    onGenerativeJobRetried: generative.handleGenerativeJobRetried,
     apiError,
     clearApiError: () => setApiError(null),
     chat,

@@ -11,10 +11,16 @@ export type ChatMessageMedia = {
 
 export type ChatMessageArtifact = {
   kind: string;
-  attachment_id: string;
+  attachment_id?: string | null;
   mime_type?: string | null;
   preview_url?: string;
   caption?: string | null;
+  status?: "pending" | "running" | "success" | "failed" | "cancelled" | null;
+  job_id?: string | null;
+  media_asset_id?: string | null;
+  progress_percent?: number | null;
+  progress_message?: string | null;
+  error_message?: string | null;
 };
 
 export type ChatMessage = {

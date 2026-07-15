@@ -64,6 +64,8 @@ export function AgentsChatLayout({ vm }: Props) {
     carriedMedia,
     chattingStatusLabel,
     generativeStatusEl,
+    cancelGenerativeJobById,
+    onGenerativeJobRetried,
     handleNewSession,
     handleRenameSession,
     chat,
@@ -147,6 +149,8 @@ export function AgentsChatLayout({ vm }: Props) {
               onConfirmPendingTool={() => void confirmPendingTool()}
               confirmPendingToolDisabled={chatting}
               generativeStatus={generativeStatusEl}
+              onCancelGenerativeJob={cancelGenerativeJobById}
+              onGenerativeJobRetried={onGenerativeJobRetried}
               onOpenTraceTurn={openTraceAtTurn}
               onLoadMore={loadMoreMessages}
               loadingMore={loadingMore}

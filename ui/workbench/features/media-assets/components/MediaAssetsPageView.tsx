@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { MediaAssetCard } from "@/features/media-assets/components/MediaAssetCard";
 import { MediaAssetPromoteDialog } from "@/features/media-assets/components/MediaAssetPromoteDialog";
 import { ResourceListFooter } from "@/components/resource/ResourceListFooter";
@@ -31,6 +33,24 @@ export function MediaAssetsPageView({ vm }: { vm: MediaAssetsPageVm }) {
     onPromote,
   } = vm;
 
+  const searchParams = useSearchParams();
+  const highlightId = searchParams.get("id");
+  const [activeHighlight, setActiveHighlight] = useState<string | null>(null);
+  const [missingHint, setMissingHint] = useState(false);
+
+  useEffect(() => {
+    if (!highlightId || list.loading) return;
+    const el = document.getElementById(`media-asset-${highlightId}`);
+    if (el) {
+      setMissingHint(false);
+      setActiveHighlight(highlightId);
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      const t = window.setTimeout(() => setActiveHighlight(null), 3000);
+      return () => window.clearTimeout(t);
+    }
+    if (filtered.length > 0) setMissingHint(true);
+  }, [highlightId, filtered, list.loading]);
+
   return (
     <>
       <ResourceListLayout
@@ -60,8 +80,10 @@ export function MediaAssetsPageView({ vm }: { vm: MediaAssetsPageVm }) {
           ) : null
         }
       >
-        {/* ResourceListLayout 会包一层 resource-card-grid；必须 col-span-full，否则整表会挤进单列 */}
         {msg && <p className="col-span-full mb-4 text-sm text-ink-muted">{msg}</p>}
+        {missingHint && highlightId ? (
+          <p className="col-span-full mb-4 text-sm text-ink-muted">未在当前列表找到该素材，可清除筛选后重试。</p>
+        ) : null}
         {filtered.length === 0 && !list.loading ? (
           <p className="col-span-full text-sm text-ink-muted">
             暂无生成素材。在智能体中开启生成工具并生图/生视频，或在流程中使用生图/生视频节点。
@@ -69,7 +91,14 @@ export function MediaAssetsPageView({ vm }: { vm: MediaAssetsPageVm }) {
         ) : (
           <div className="col-span-full grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {filtered.map((a) => (
-              <MediaAssetCard key={a.id} asset={a} kbs={kbs} onPromote={() => openPromote(a)} onDelete={() => onDelete(a)} />
+              <MediaAssetCard
+                key={a.id}
+                asset={a}
+                kbs={kbs}
+                highlighted={activeHighlight === a.id}
+                onPromote={() => openPromote(a)}
+                onDelete={() => onDelete(a)}
+              />
             ))}
           </div>
         )}

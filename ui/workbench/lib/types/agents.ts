@@ -223,9 +223,15 @@ export interface ChatMediaIn {
 
 export interface ChatArtifact {
   kind: string; // image | video
-  attachment_id: string;
+  attachment_id?: string | null;
   mime_type?: string | null;
   caption?: string | null;
+  status?: "pending" | "running" | "success" | "failed" | "cancelled" | null;
+  job_id?: string | null;
+  media_asset_id?: string | null;
+  progress_percent?: number | null;
+  progress_message?: string | null;
+  error_message?: string | null;
 }
 
 export interface ChatResponse {
