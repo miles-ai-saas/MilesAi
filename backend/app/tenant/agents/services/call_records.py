@@ -136,6 +136,7 @@ class ChatCallRecorder:
             tool_call_count=count_tool_calls(steps),
             meta={"media_count": self.media_count},
             steps_summary=build_steps_summary(steps),
+            source=self.ctx.auth_via,
         )
         self.db.add(row)
         await self.db.flush()
@@ -182,6 +183,7 @@ class ChatCallRecorder:
             error_message=preview_text(getattr(exc, "message", str(exc)), max_len=500),
             meta={"media_count": self.media_count},
             steps_summary=build_steps_summary(steps) if steps else None,
+            source=self.ctx.auth_via,
         )
         self.db.add(row)
         await self.db.flush()

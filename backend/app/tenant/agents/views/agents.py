@@ -15,7 +15,13 @@ from app.core.deps import get_page_params, require_permissions
 from app.common.response import ok, page_ok
 from app.core.tenant import TenantContext
 from app.tenant.agents.schemas.agent import AgentCreate, AgentOut, AgentPackage, AgentUpdate, ChatRequest, ChatResponse
-from app.tenant.agents.schemas.api_access import AgentDebugTokenOut
+from app.tenant.agents.schemas.api_access import (
+    AgentApiKeyCreate,
+    AgentApiKeyCreatedOut,
+    AgentApiKeyOut,
+    AgentDebugTokenOut,
+)
+from app.tenant.agents.deps_api_auth import require_agent_chat_auth
 from app.tenant.agents.schemas.meta import AgentMetaOut
 from app.tenant.agents.schemas.architecture import AgentArchitectureOut
 from app.tenant.agents.schemas.call_records import AgentCallRecordDetailOut, AgentCallRecordOut
@@ -303,7 +309,7 @@ async def list_agent_schedule_runs(
 async def chat_agent(
     agent_id: UUID,
     body: ChatRequest,
-    ctx: TenantContext = Depends(require_permissions("agent:read")),
+    ctx: TenantContext = Depends(require_agent_chat_auth),
     db: AsyncSession = Depends(get_db),
 ):
     """主对话入口：合规 → 钩子 → A2A/子 Agent/流程/RAG 路由（见 AgentService.chat）。"""
@@ -328,6 +334,45 @@ async def create_agent_debug_token(
         ip=request.client.host if request.client else None,
     )
     return ok(out)
+
+
+@router.get(
+    "/{agent_id}/api-access/keys",
+    response_model=ApiResponse[list[AgentApiKeyOut]],
+)
+async def list_agent_api_keys(
+    agent_id: UUID,
+    include_revoked: bool = Query(False, description="是否包含已吊销密钥"),
+    ctx: TenantContext = Depends(require_permissions("agent:write")),
+    db: AsyncSession = Depends(get_db),
+):
+    return ok(await _api_access_svc(db, ctx).list_api_keys(agent_id, include_revoked=include_revoked))
+
+
+@router.post(
+    "/{agent_id}/api-access/keys",
+    response_model=ApiResponse[AgentApiKeyCreatedOut],
+)
+async def create_agent_api_key(
+    agent_id: UUID,
+    body: AgentApiKeyCreate,
+    ctx: TenantContext = Depends(require_permissions("agent:write")),
+    db: AsyncSession = Depends(get_db),
+):
+    return ok(await _api_access_svc(db, ctx).create_api_key(agent_id, body))
+
+
+@router.post(
+    "/{agent_id}/api-access/keys/{key_id}/revoke",
+    response_model=ApiResponse[AgentApiKeyOut],
+)
+async def revoke_agent_api_key(
+    agent_id: UUID,
+    key_id: UUID,
+    ctx: TenantContext = Depends(require_permissions("agent:write")),
+    db: AsyncSession = Depends(get_db),
+):
+    return ok(await _api_access_svc(db, ctx).revoke_api_key(agent_id, key_id))
 
 
 @router.get("/{agent_id}/export", response_model=ApiResponse[AgentPackage])

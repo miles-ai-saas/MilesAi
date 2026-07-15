@@ -21,6 +21,7 @@ class TenantContext:
     is_superuser: bool
     permissions: frozenset[str]
     token_jti: str | None = None
+    auth_via: str | None = None  # workbench | debug_token | api_key
 
     def has_permission(self, *codes: str) -> bool:
         """是否拥有全部给定 permission code。"""
