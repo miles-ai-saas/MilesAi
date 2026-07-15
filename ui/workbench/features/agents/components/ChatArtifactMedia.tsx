@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api";
+import { ImagePreviewDialog } from "@/features/agents/components/ImagePreviewDialog";
 
 type Props = {
   kind: string;
@@ -25,6 +26,7 @@ export function ChatArtifactMedia({ kind, attachmentId, mimeType, caption, poste
 
 function ChatArtifactImage({ attachmentId, alt }: { attachmentId: string; alt?: string }) {
   const [src, setSrc] = useState<string | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   useEffect(() => {
     let url: string | null = null;
@@ -41,11 +43,26 @@ function ChatArtifactImage({ attachmentId, alt }: { attachmentId: string; alt?: 
     };
   }, [attachmentId]);
 
+  const openPreview = useCallback(() => {
+    if (src) setPreviewOpen(true);
+  }, [src]);
+
   if (!src) {
     return <div className="flex h-24 w-24 items-center justify-center rounded-lg bg-surface-muted text-xs text-ink-faint">加载中…</div>;
   }
 
-  return <img src={src} alt={alt ?? "生成图片"} className="max-h-48 max-w-full rounded-lg object-contain ring-1 ring-line" />;
+  return (
+    <>
+      <img
+        src={src}
+        alt={alt ?? "生成图片"}
+        className="max-h-48 max-w-full cursor-pointer rounded-lg object-contain ring-1 ring-line transition-opacity hover:opacity-85"
+        onClick={openPreview}
+        title="点击查看大图"
+      />
+      <ImagePreviewDialog open={previewOpen} src={src} alt={alt} onClose={() => setPreviewOpen(false)} />
+    </>
+  );
 }
 
 function ChatArtifactVideo({

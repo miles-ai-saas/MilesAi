@@ -410,7 +410,7 @@ class AgentChatMixin:
                         "\n当用户要求生成图片时，你必须通过 function calling 发起 generate_image 调用，"
                         "\n将用户的描述作为 prompt 参数传入。不要输出任何文本说明或 JSON，直接发起 tool_call。"
                         f"\n参数说明：prompt（画面描述，必填）、size（如 1024x1024）、n（张数{n_hint}，必传）。"
-                        f"\n注意：尺寸 >=1280 边长或 >=3 张需用户二次确认。{dur_hint}"
+                        f"\n注意：尺寸 >=1280 边长或 >=3 张需用户二次确认。同一轮对话中仅允许调用一次 generate_image，禁止重复调用。{dur_hint}"
                     )
                 # 将输入区参数注入 agent.config，供 handle_generate_image / handle_generate_video
                 # 在 LLM 未传 n/duration 时作为实际默认值使用

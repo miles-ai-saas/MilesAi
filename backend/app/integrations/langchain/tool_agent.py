@@ -526,7 +526,24 @@ async def run_tool_calling_chat(
             }
         )
 
+        # 防重复：同一轮对话中 generate_image / generate_video 只执行首次调用，
+        # 避免 LLM 因多张参考图而发起多次 tool_call 导致生成数量翻倍。
+        _generative_deduplicated: list = []
+        _seen_generative: set[str] = set()
         for tc in tool_calls:
+            slug = tc.function.name
+            if slug in ("generate_image", "generate_video"):
+                if slug in _seen_generative:
+                    messages.append({
+                        "role": "tool",
+                        "tool_call_id": tc.id,
+                        "content": f"工具 {slug} 已执行，本次重复调用自动合并。",
+                    })
+                    continue
+                _seen_generative.add(slug)
+            _generative_deduplicated.append(tc)
+
+        for tc in _generative_deduplicated:
             slug = tc.function.name
             try:
                 args = json.loads(tc.function.arguments or "{}")

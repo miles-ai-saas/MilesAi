@@ -5,6 +5,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AgentExecutionSkeleton, AgentExecutionTimeline } from "@/features/agents/components/AgentExecutionTimeline";
 import { ChatArtifactMedia } from "@/features/agents/components/ChatArtifactMedia";
+import { ImagePreviewDialog } from "@/features/agents/components/ImagePreviewDialog";
 import type { ChatMessage } from "@/features/agents/lib/chat-sessions";
 import { turnIndexForMessageIndex } from "@/features/agents/lib/agent-trace";
 import { api } from "@/lib/api";
@@ -33,6 +34,7 @@ function hasPendingConfirmationStep(steps?: Record<string, unknown>[]) {
  *  解决 blob URL 刷新后失效的问题。 */
 function ChatMediaImage({ attachmentId, previewUrl, filename }: { attachmentId: string; previewUrl?: string; filename?: string }) {
   const [src, setSrc] = useState<string | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
   const triedRef = useRef(false);
 
   const fetchFromApi = useCallback(async () => {
@@ -75,13 +77,18 @@ function ChatMediaImage({ attachmentId, previewUrl, filename }: { attachmentId: 
   }
 
   return (
-    <img
-      key={attachmentId}
-      src={src}
-      alt={filename ?? "附图"}
-      className="max-h-32 max-w-[140px] rounded-lg object-cover"
-      onError={handleError}
-    />
+    <>
+      <img
+        key={attachmentId}
+        src={src}
+        alt={filename ?? "附图"}
+        className="max-h-32 max-w-[140px] cursor-pointer rounded-lg object-cover transition-opacity hover:opacity-80"
+        onError={handleError}
+        onClick={() => setPreviewOpen(true)}
+        title="点击查看大图"
+      />
+      <ImagePreviewDialog open={previewOpen} src={src} alt={filename ?? "附图"} onClose={() => setPreviewOpen(false)} />
+    </>
   );
 }
 
