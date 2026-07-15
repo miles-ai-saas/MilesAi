@@ -248,3 +248,13 @@ export interface ChatResponse {
 export interface ChatAgentResult extends ChatResponse {
   trace_id?: string;
 }
+
+export interface AgentDebugToken {
+  access_token: string;
+  token_type: string;
+  expires_in: number;
+  expires_at: string;
+  agent_id: string;
+  purpose: string;
+  warning: string;
+}

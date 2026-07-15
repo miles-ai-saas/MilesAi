@@ -127,6 +127,10 @@ export const agentsApi = {
   ) => patch<Agent>(`/agents/${agentId}`, payload),
 
   deleteAgent: (agentId: string) => http.delete(`/agents/${agentId}`).then(() => undefined),
+
+  createAgentDebugToken: (agentId: string) =>
+    post<import("../types").AgentDebugToken>(`/agents/${agentId}/api-access/debug-token`, {}),
+
   // --- 智能体对话（chains §5；conversation_id 与 chat-sessions 会话 id 一致）---,
 
   chatAgent: (
