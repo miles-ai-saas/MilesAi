@@ -19,7 +19,7 @@ export const CHAT_ATTACHMENT_PICKERS: ChatAttachmentPicker[] = [
     kind: "image",
     accept: "image/jpeg,image/png,image/webp,image/gif",
     label: "图片",
-    maxCount: 4,
+    maxCount: 10,
   },
 ];
 

@@ -16,7 +16,7 @@ from sqlalchemy import select
 
 from app.common.cron import compute_next_run
 from app.core.tenant import TenantContext
-from app.infra.db import AsyncSessionLocal, get_sync_db
+from app.infra.db import get_worker_session, get_sync_db
 from app.models.agent.schedule import AgentSchedule
 from app.models.agent.schedule_run import AgentScheduleRun, AgentScheduleRunStatus
 from app.models.platform.user import User
@@ -30,7 +30,7 @@ logger = get_logger(__name__)
 
 async def _run_schedule_async(schedule_id: UUID) -> None:
     started = datetime.now(timezone.utc)
-    async with AsyncSessionLocal() as db:
+    async with get_worker_session() as db:
         schedule = await db.get(AgentSchedule, schedule_id)
         if not schedule or schedule.deleted_at is not None or not schedule.enabled:
             return

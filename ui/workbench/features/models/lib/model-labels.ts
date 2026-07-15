@@ -15,6 +15,9 @@ const MODEL_TYPE_LABELS: Record<string, string> = {
   other: "其它",
 };
 
+/** 对话类模型类型（与后端 integrations.litellm.adapter.CHAT_MODEL_TYPES 对齐） */
+export const CHAT_MODEL_TYPES = new Set<string>(["llm", "reasoning", "vision"]);
+
 const SOURCE_LABELS: Record<string, string> = {
   builtin: "内置模型",
   custom: "自定义模型",

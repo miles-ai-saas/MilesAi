@@ -13,8 +13,19 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.common.exceptions import BadRequestError
+from app.common.trace import get_trace_id
 from app.core.tenant import TenantContext
 from app.integrations.generative import generate_speech_for_model, resolve_tts_model
+
+
+def _parse_optional_uuid(value: object) -> UUID | None:
+    """安全解析可选 UUID，无效值返回 None 而非崩溃。"""
+    if value is None:
+        return None
+    try:
+        return UUID(str(value))
+    except (ValueError, AttributeError):
+        return None
 
 
 async def _load_agent_model_context(
@@ -44,6 +55,8 @@ async def handle_generate_speech(
     db: AsyncSession,
     ctx: TenantContext,
     agent_id: UUID | None,
+    bound_skill_id: UUID | None = None,
+    actor_user_id: UUID | None = None,
 ) -> dict:
     """TTS 语音合成：text → WAV 附件。
 
@@ -55,7 +68,7 @@ async def handle_generate_speech(
         raise BadRequestError("generate_speech 需要 text 参数")
 
     raw_model = params.get("model_config_id")
-    model_uuid = UUID(str(raw_model)) if raw_model else None
+    model_uuid = _parse_optional_uuid(raw_model)
     agent_model, agent_config = await _load_agent_model_context(db, agent_id)
 
     model = await resolve_tts_model(
@@ -73,7 +86,7 @@ async def handle_generate_speech(
         voice=params.get("voice", "longxiaochun"),
         speech_rate=float(params.get("speech_rate", 1.0)),
         agent_id=agent_id,
-        source="agent_tool",
+        trace_id=get_trace_id(),
     )
 
 
@@ -83,6 +96,8 @@ async def handle_generate_video(
     db: AsyncSession,
     ctx: TenantContext,
     agent_id: UUID | None,
+    bound_skill_id: UUID | None = None,
+    actor_user_id: UUID | None = None,
 ) -> dict:
     """文/图生视频：提交异步任务或同步生成视频附件。
 
@@ -95,18 +110,31 @@ async def handle_generate_video(
     from app.tenant.generative.services.job import GenerativeJobService
 
     prompt = str(params.get("prompt") or "")
-    raw_model = params.get("model_config_id")
-    model_uuid = UUID(str(raw_model)) if raw_model else None
-    raw_first = params.get("image_attachment_id")
-    raw_last = params.get("last_frame_attachment_id")
-    first_att = UUID(str(raw_first)) if raw_first else None
-    last_att = UUID(str(raw_last)) if raw_last else None
+    model_uuid = _parse_optional_uuid(params.get("model_config_id"))
+    first_att = _parse_optional_uuid(params.get("image_attachment_id"))
+    last_att = _parse_optional_uuid(params.get("last_frame_attachment_id"))
     agent_model, agent_config = await _load_agent_model_context(db, agent_id)
+
+    raw_dur = params.get("duration")
+    try:
+        duration = int(raw_dur) if raw_dur is not None else 5
+    except (TypeError, ValueError):
+        duration = 5
+
+    # 用户输入区主动设置的时长优先于 LLM 参数
+    preset_dur = agent_config.get("_generative_video_duration")
+    if preset_dur is not None:
+        try:
+            preset_dur = int(preset_dur)
+            if preset_dur > 0:
+                duration = preset_dur
+        except (TypeError, ValueError):
+            pass
 
     if GenerativeJobService.video_async_enabled():
         body = VideoGenerativeJobCreate(
             prompt=prompt,
-            duration=int(params.get("duration") or 5),
+            duration=duration,
             resolution=params.get("resolution"),
             image_attachment_id=first_att,
             last_frame_attachment_id=last_att,
@@ -119,6 +147,7 @@ async def handle_generate_video(
             source_ref_id=agent_id,
             agent_id=agent_id,
             agent_config=agent_config,
+            trace_id=get_trace_id(),
         )
         return {
             "kind": "video",
@@ -139,11 +168,12 @@ async def handle_generate_video(
         ctx,
         model,
         prompt=prompt,
-        duration=int(params.get("duration") or 5),
+        duration=duration,
         resolution=params.get("resolution"),
         image_attachment_id=first_att,
         last_frame_attachment_id=last_att,
         agent_id=agent_id,
+        trace_id=get_trace_id(),
     )
     return {
         "kind": "video",
@@ -160,6 +190,8 @@ async def handle_generate_image(
     db: AsyncSession,
     ctx: TenantContext,
     agent_id: UUID | None,
+    bound_skill_id: UUID | None = None,
+    actor_user_id: UUID | None = None,
 ) -> dict:
     """文/图生图：提交异步任务或同步生成图片附件。
 
@@ -171,16 +203,24 @@ async def handle_generate_image(
     from app.tenant.generative.services.job import GenerativeJobService
 
     prompt = params.get("prompt") or params.get("description") or ""
-    raw_model = params.get("model_config_id")
-    model_uuid = UUID(str(raw_model)) if raw_model else None
-    raw_img = params.get("image_attachment_id")
-    image_att = UUID(str(raw_img)) if raw_img else None
+    model_uuid = _parse_optional_uuid(params.get("model_config_id"))
+    image_att = _parse_optional_uuid(params.get("image_attachment_id"))
     agent_model, agent_config = await _load_agent_model_context(db, agent_id)
     raw_n = params.get("n")
     try:
         n = int(raw_n) if raw_n is not None else 1
     except (TypeError, ValueError):
         n = 1
+
+    # 用户输入区主动设置的数量优先于 LLM 参数（LLM 可能无视提示词传了错误的值）
+    preset_n = agent_config.get("_generative_image_n")
+    if preset_n is not None:
+        try:
+            preset_n = int(preset_n)
+            if preset_n > 1:
+                n = preset_n
+        except (TypeError, ValueError):
+            pass
 
     if GenerativeJobService.image_async_enabled():
         body = ImageGenerativeJobCreate(
@@ -197,6 +237,7 @@ async def handle_generate_image(
             source_ref_id=agent_id,
             agent_id=agent_id,
             agent_config=agent_config,
+            trace_id=get_trace_id(),
         )
         return {
             "kind": "image",
@@ -221,6 +262,7 @@ async def handle_generate_image(
         n=n,
         reference_attachment_id=image_att,
         agent_id=agent_id,
+        trace_id=get_trace_id(),
     )
     ids = [str(i) for i in result.attachment_ids]
     return {

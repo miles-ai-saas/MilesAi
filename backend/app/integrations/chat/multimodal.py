@@ -16,7 +16,7 @@ from app.common.exceptions import BadRequestError
 from app.common.schemas.media import MediaRefIn
 from app.core.tenant import TenantContext
 
-MAX_MEDIA_PER_TURN = 4
+MAX_MEDIA_PER_TURN = 10
 MAX_IMAGE_BYTES = 10 * 1024 * 1024
 _IMAGE_DETAIL_VALUES = frozenset({"auto", "low", "high"})
 

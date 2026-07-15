@@ -24,7 +24,10 @@ class GenerativeJob(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __table_args__ = (
         Index("idx_generative_jobs_tenant_id", "tenant_id"),
         Index("idx_generative_jobs_status", "status"),
+        Index("idx_generative_jobs_trace_id", "trace_id"),
     )
+
+    trace_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
 
     tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
     kind: Mapped[str] = mapped_column(String(16), nullable=False)

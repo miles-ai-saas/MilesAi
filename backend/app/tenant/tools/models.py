@@ -46,6 +46,7 @@ class ToolInvocationLog(UUIDPrimaryKeyMixin, Base):
     __table_args__ = (
         Index("idx_tool_invocation_logs_tenant_created", "tenant_id", "created_at"),
         Index("idx_tool_invocation_logs_tool_slug", "tenant_id", "tool_slug"),
+        Index("idx_tool_invocation_logs_trace_id", "trace_id"),
     )
 
     tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
@@ -60,4 +61,5 @@ class ToolInvocationLog(UUIDPrimaryKeyMixin, Base):
     actor_user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     agent_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     invoke_source: Mapped[str] = mapped_column(String(32), default="api", nullable=False)
+    trace_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)

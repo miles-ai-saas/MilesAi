@@ -53,9 +53,9 @@ def test_messages_contain_image():
 async def test_resolve_media_refs_too_many():
     ctx = MagicMock()
     ctx.tenant_id = uuid4()
-    refs = [MediaRefIn(attachment_id=uuid4()) for _ in range(5)]
+    refs = [MediaRefIn(attachment_id=uuid4()) for _ in range(11)]
     with pytest.raises(BadRequestError, match="最多"):
-        await resolve_media_refs(AsyncMock(), ctx, refs, max_count=4)
+        await resolve_media_refs(AsyncMock(), ctx, refs, max_count=10)
 
 
 @pytest.mark.asyncio

@@ -10,6 +10,7 @@ from typing import Any
 from uuid import UUID
 
 from app.common.exceptions import BadRequestError
+from app.common.trace import get_trace_id
 from app.flow_runtime.context_utils import tenant_context_from_run
 from app.flow_runtime.types import RunContext
 from app.infra.db import AsyncSessionLocal
@@ -64,6 +65,7 @@ async def image_generate(
                 source="flow_node",
                 agent_id=_optional_uuid(ctx.agent_id),
                 agent_config=ctx.agent_config,
+                trace_id=get_trace_id(),
             )
             await db.commit()
         return {
@@ -91,6 +93,7 @@ async def image_generate(
             reference_attachment_id=image_att,
             purpose=PURPOSE_FLOW_GENERATED,
             agent_id=_optional_uuid(ctx.agent_id),
+            trace_id=get_trace_id(),
         )
         await db.commit()
         primary = result.attachment_ids[0]

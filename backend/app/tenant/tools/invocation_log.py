@@ -24,6 +24,7 @@ async def write_tool_invocation_log(
     actor_user_id: UUID | None = None,
     agent_id: UUID | None = None,
     invoke_source: str = "api",
+    trace_id: str | None = None,
 ) -> None:
     row = ToolInvocationLog(
         tenant_id=tenant_id,
@@ -38,6 +39,7 @@ async def write_tool_invocation_log(
         actor_user_id=actor_user_id,
         agent_id=agent_id,
         invoke_source=invoke_source,
+        trace_id=trace_id,
     )
     db.add(row)
     await db.flush()

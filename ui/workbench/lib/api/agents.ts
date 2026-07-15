@@ -131,6 +131,8 @@ export const agentsApi = {
       toolConfirmed?: boolean;
       pendingToolSlug?: string;
       pendingToolParams?: Record<string, unknown>;
+      generativeImageN?: number;
+      generativeVideoDuration?: number;
     },
   ) =>
     postWithTrace<ChatResponse>(`/agents/${agentId}/chat`, {
@@ -140,6 +142,8 @@ export const agentsApi = {
       ...(opts?.toolConfirmed ? { tool_confirmed: true } : {}),
       ...(opts?.pendingToolSlug ? { pending_tool_slug: opts.pendingToolSlug } : {}),
       ...(opts?.pendingToolParams ? { pending_tool_params: opts.pendingToolParams } : {}),
+      ...(opts?.generativeImageN != null ? { generative_image_n: opts.generativeImageN } : {}),
+      ...(opts?.generativeVideoDuration != null ? { generative_video_duration: opts.generativeVideoDuration } : {}),
     }) as Promise<ChatAgentResult>,
 
   /** 鉴权拉取附件字节并返回 blob URL（用于对话缩略图，非签名 OSS） */

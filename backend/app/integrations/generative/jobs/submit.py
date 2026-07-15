@@ -19,6 +19,7 @@ async def submit_video_generative_job(
     source_ref_type: str | None = None,
     source_ref_id: UUID | None = None,
     agent_id: UUID | None = None,
+    trace_id: str | None = None,
 ) -> GenerativeJob:
     """创建 PENDING 任务记录；调用方负责 commit 与 Celery dispatch。"""
     job = GenerativeJob(
@@ -32,6 +33,7 @@ async def submit_video_generative_job(
         progress_message="排队中",
         progress_percent=0,
         created_by=ctx.user_id,
+        trace_id=trace_id,
     )
     db.add(job)
     await db.flush()
@@ -47,6 +49,7 @@ async def submit_image_generative_job(
     source_ref_type: str | None = None,
     source_ref_id: UUID | None = None,
     agent_id: UUID | None = None,
+    trace_id: str | None = None,
 ) -> GenerativeJob:
     """创建 PENDING 生图任务；调用方负责 commit 与 Celery dispatch。"""
     job = GenerativeJob(
@@ -60,6 +63,7 @@ async def submit_image_generative_job(
         progress_message="排队中",
         progress_percent=0,
         created_by=ctx.user_id,
+        trace_id=trace_id,
     )
     db.add(job)
     await db.flush()

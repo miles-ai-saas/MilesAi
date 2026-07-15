@@ -33,6 +33,18 @@ from app.models.model import ModelConfig
 from app.models.model.catalog import ModelCapabilityType
 from app.tenant.models.services.model_resolve import resolve_model_for_invoke
 
+# 生图 Provider 注册表：新增 Provider 只需注册即可，无需修改分发逻辑
+IMAGE_PROVIDERS = {
+    INVOKE_DASHSCOPE_T2I: generate_dashscope_t2i,
+    INVOKE_VOLCENGINE_IMAGE: generate_volcengine_image,
+    INVOKE_OPENAI_IMAGES: generate_openai_images,
+}
+
+IMAGE_PROVIDER_ALIASES: dict[str, str] = {
+    "openai": INVOKE_OPENAI_IMAGES,
+    "dalle": INVOKE_OPENAI_IMAGES,
+}
+
 
 async def _generate_bytes(
     model: ModelConfig,
@@ -41,34 +53,25 @@ async def _generate_bytes(
     size: str,
     n: int,
     reference_image_data_url: str | None = None,
+    progress: object | None = None,
 ) -> list[bytes]:
     """按 invoke_mode 分发到具体 Provider，返回原始图片字节列表。"""
     mode = resolve_invoke_mode(model, capability=ModelCapabilityType.IMAGE_GEN.value)
+    provider_key = IMAGE_PROVIDER_ALIASES.get(mode, mode)
+    provider = IMAGE_PROVIDERS.get(provider_key)
+    if not provider:
+        raise BadRequestError(f"不支持的生图 invoke_mode: {mode}")
+
+    kwargs = {
+        "prompt": prompt,
+        "size": size,
+        "n": n,
+        "reference_image_data_url": reference_image_data_url,
+    }
     if mode == INVOKE_DASHSCOPE_T2I:
-        return await generate_dashscope_t2i(
-            model,
-            prompt=prompt,
-            size=size,
-            n=n,
-            reference_image_url=reference_image_data_url,
-        )
-    if mode == INVOKE_VOLCENGINE_IMAGE:
-        return await generate_volcengine_image(
-            model,
-            prompt=prompt,
-            size=size,
-            n=n,
-            reference_image_data_url=reference_image_data_url,
-        )
-    if mode in (INVOKE_OPENAI_IMAGES, "openai", "dalle"):
-        return await generate_openai_images(
-            model,
-            prompt=prompt,
-            size=size,
-            n=n,
-            reference_image_data_url=reference_image_data_url,
-        )
-    raise BadRequestError(f"不支持的生图 invoke_mode: {mode}")
+        kwargs["progress"] = progress
+
+    return await provider(model, **kwargs)
 
 
 async def resolve_image_gen_model(
@@ -125,6 +128,7 @@ async def generate_image_for_model(
     purpose: str = PURPOSE_CHAT_GENERATED,
     agent_id: UUID | None = None,
     generative_job_id: UUID | None = None,
+    trace_id: str | None = None,
 ) -> ImageGenerateResult:
     """调用厂商生图并持久化为附件；可选参考图 attachment 实现图生图。"""
     prompt = (prompt or "").strip()
@@ -145,11 +149,12 @@ async def generate_image_for_model(
     count = min(max(int(n), 1), MAX_IMAGES_PER_REQUEST)
     await assert_generative_quota(db, ctx.tenant_id, units=count)
 
+    job_progress = None
     if generative_job_id:
         from app.integrations.generative.jobs.progress import GenerativeJobProgress
 
-        progress = GenerativeJobProgress(generative_job_id)
-        await progress.update(10, "调用生图 API")
+        job_progress = GenerativeJobProgress(generative_job_id)
+        await job_progress.update(10, "调用生图 API")
 
     blobs = await _generate_bytes(
         model,
@@ -157,14 +162,16 @@ async def generate_image_for_model(
         size=resolved_size,
         n=count,
         reference_image_data_url=ref_url,
+        progress=job_progress,
     )
-    if generative_job_id:
-        from app.integrations.generative.jobs.progress import GenerativeJobProgress
-
-        await GenerativeJobProgress(generative_job_id).update(80, "保存生成物")
+    if job_progress:
+        await job_progress.update(80, "保存生成物")
 
     attachment_ids: list[UUID] = []
     mime = "image/png"
+    import logging
+    _log = logging.getLogger(__name__)
+    _log.info("生图 → blobs=%d, n=%d", len(blobs), count)
     for i, data in enumerate(blobs):
         ext = "png"
         if data[:3] == b"\xff\xd8\xff":

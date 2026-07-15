@@ -25,6 +25,12 @@ type Props = {
   chatting?: boolean;
   sendLabel?: string;
   placeholder?: string;
+  /** 生图数量（1–4） */
+  imageN?: number;
+  onImageNChange?: (n: number) => void;
+  /** 生视频时长（秒，1–15） */
+  videoDuration?: number;
+  onVideoDurationChange?: (d: number) => void;
 };
 
 function AttachIcon({ className }: { className?: string }) {
@@ -50,6 +56,10 @@ export function AgentChatComposer({
   chatting = false,
   sendLabel = "发送",
   placeholder = "输入消息，Enter 发送，Shift+Enter 换行",
+  imageN = 1,
+  onImageNChange,
+  videoDuration = 5,
+  onVideoDurationChange,
 }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const attachDisabled = disabled || uploadingMedia || chatting;
@@ -124,7 +134,8 @@ export function AgentChatComposer({
           }}
         />
 
-        <div className="absolute bottom-2.5 left-2.5">
+        <div className="absolute bottom-2 left-2 flex items-center gap-1">
+          {/* 附件按钮 */}
           <button
             type="button"
             className="flex h-8 w-8 items-center justify-center rounded-lg text-ink-muted transition hover:bg-brand-light/80 hover:text-brand disabled:pointer-events-none disabled:opacity-40"
@@ -139,9 +150,71 @@ export function AgentChatComposer({
               <AttachIcon className="h-[18px] w-[18px]" />
             )}
           </button>
+
+          {/* 生图数量 */}
+          {onImageNChange != null && (
+            <div className="flex items-center rounded-full border border-line/60 px-1.5 py-0.5 text-[11px]">
+              <button
+                type="button"
+                className="flex h-5 w-5 items-center justify-center rounded-full text-ink-muted transition hover:bg-surface-muted hover:text-ink disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-ink-muted"
+                disabled={imageN <= 1 || chatting}
+                onClick={() => onImageNChange(imageN - 1)}
+                aria-label="减少图片数量"
+              >
+                <svg className="h-2.5 w-2.5" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
+                  <path d="M4 8h8" />
+                </svg>
+              </button>
+              <span
+                className={`min-w-[1.2em] text-center text-xs font-semibold tabular-nums ${imageN >= 3 ? "text-amber-600" : imageN > 1 ? "text-brand" : "text-ink"}`}
+              >
+                {imageN}
+              </span>
+              <button
+                type="button"
+                className="flex h-5 w-5 items-center justify-center rounded-full text-ink-muted transition hover:bg-surface-muted hover:text-ink disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-ink-muted"
+                disabled={imageN >= 4 || chatting}
+                onClick={() => onImageNChange(imageN + 1)}
+                aria-label="增加图片数量"
+              >
+                <svg className="h-2.5 w-2.5" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
+                  <path d="M4 8h8M8 4v8" />
+                </svg>
+              </button>
+            </div>
+          )}
+
+          {/* 生视频时长 */}
+          {onVideoDurationChange != null && (
+            <div className="flex items-center rounded-full border border-line/60 px-1.5 py-0.5 text-[11px]">
+              <div className="relative">
+                <select
+                  className="appearance-none rounded bg-transparent py-px pl-0.5 pr-4 text-xs font-semibold text-ink outline-none disabled:opacity-40 cursor-pointer"
+                  value={videoDuration}
+                  disabled={chatting}
+                  onChange={(e) => onVideoDurationChange(Number(e.target.value))}
+                  aria-label="生视频时长"
+                >
+                  {[3, 5, 10, 15].map((d) => (
+                    <option key={d} value={d}>
+                      {d}s
+                    </option>
+                  ))}
+                </select>
+                <svg className="pointer-events-none absolute right-0.5 top-1/2 h-2 w-2 -translate-y-1/2 text-ink-muted" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
+                  <path d="M4 6l4 4 4-4" />
+                </svg>
+              </div>
+            </div>
+          )}
         </div>
 
-        <div className="absolute bottom-2.5 right-2.5">
+        <div className="absolute bottom-2 right-2 flex items-center gap-1.5">
+          {imageN > 1 && (
+            <span className="mr-0.5 rounded-full bg-brand-light px-1.5 py-px text-[10px] font-medium text-brand-dark">
+              {imageN} 张
+            </span>
+          )}
           <button
             type="button"
             onClick={onSend}

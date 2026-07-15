@@ -14,7 +14,9 @@ from app.common.exceptions import BadRequestError, NotFoundError
 from app.common.schema import PageParams, PageResult
 from app.core.tenant import tenant_filters
 from app.core.config import get_settings
+from app.core.logging import get_logger
 from app.core.tenant import TenantContext
+from app.integrations.generative.jobs.progress import publish_generative_job_update
 from app.integrations.generative.jobs.runner import get_generative_job_for_tenant
 from app.integrations.generative.jobs.submit import (
     submit_image_generative_job,
@@ -31,6 +33,8 @@ from app.tenant.generative.schemas.job import (
 from app.core.service import BaseService
 from app.tenant.tasks.services.task import TaskService
 from app.workers.app import celery_app
+
+logger = get_logger(__name__)
 
 _TERMINAL = frozenset(
     {
@@ -118,6 +122,9 @@ class GenerativeJobService(BaseService):
         celery_task,
         task_name: str,
     ) -> GenerativeJob:
+        # 先 commit 确保 job 已持久化到 DB，再入队 Celery 任务，
+        # 避免 Worker 拿到任务时事务未提交导致找不到 job 记录。
+        await self.db.commit()
         task = celery_task.delay(str(job.id))
         job.celery_task_id = task.id
         await TaskService(self.db, self.ctx).create_record(
@@ -126,7 +133,7 @@ class GenerativeJobService(BaseService):
             resource_type="generative_job",
             resource_id=job.id,
         )
-        await self.db.flush()
+        await self.db.commit()
         await self.db.refresh(job)
         return job
 
@@ -139,6 +146,7 @@ class GenerativeJobService(BaseService):
         source_ref_id: UUID | None = None,
         agent_id: UUID | None = None,
         agent_config: dict | None = None,
+        trace_id: str | None = None,
     ) -> GenerativeJobOut:
         params = {
             "prompt": body.prompt.strip(),
@@ -158,6 +166,7 @@ class GenerativeJobService(BaseService):
             source_ref_type=source_ref_type,
             source_ref_id=source_ref_id,
             agent_id=agent_id,
+            trace_id=trace_id,
         )
         from app.workers.tasks.generative import run_generative_video_job
 
@@ -178,6 +187,7 @@ class GenerativeJobService(BaseService):
         source_ref_id: UUID | None = None,
         agent_id: UUID | None = None,
         agent_config: dict | None = None,
+        trace_id: str | None = None,
     ) -> GenerativeJobOut:
         params = {
             "prompt": body.prompt.strip(),
@@ -196,6 +206,7 @@ class GenerativeJobService(BaseService):
             source_ref_type=source_ref_type,
             source_ref_id=source_ref_id,
             agent_id=agent_id,
+            trace_id=trace_id,
         )
         from app.workers.tasks.generative import run_generative_image_job
 
@@ -224,6 +235,11 @@ class GenerativeJobService(BaseService):
         job.status = GenerativeJobStatus.CANCELLED
         job.progress_message = "已取消"
         await self.db.flush()
+        await publish_generative_job_update(
+            job.tenant_id, job_id,
+            status=job.status.value,
+            message=job.progress_message,
+        )
         await self.db.refresh(job)
         record_map = await self._celery_record_ids_for_jobs([job.id])
         return self._job_out(job, celery_task_record_id=record_map.get(job.id))
@@ -292,17 +308,67 @@ class GenerativeJobService(BaseService):
         return self._job_out(job, celery_task_record_id=record_map.get(job.id))
 
     async def stream_job_events(self, job_id: UUID) -> AsyncIterator[str]:
-        """SSE：推送任务状态/进度，终态后结束。"""
-        idle_ticks = 0
-        while idle_ticks < 120:
-            self.db.expire_all()
-            job = await get_generative_job_for_tenant(self.db, self.ctx, job_id)
-            payload = GenerativeJobOut.model_validate(job).model_dump(mode="json")
-            yield f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
-            if job.status in _TERMINAL:
-                break
-            idle_ticks += 1
-            await asyncio.sleep(1)
+        """SSE：通过 Redis Pub/Sub 推送任务状态/进度，终态后结束。Redis 不可用时自动回退 DB 轮询。"""
+        import time
+
+        # 先推送当前状态
+        self.db.expire_all()
+        job = await get_generative_job_for_tenant(self.db, self.ctx, job_id)
+        payload = GenerativeJobOut.model_validate(job).model_dump(mode="json")
+        yield f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
+        if job.status in _TERMINAL:
+            return
+
+        pubsub = None
+        channel = None
+
+        try:
+            from app.infra.redis import get_redis
+            from app.utils.redis_keys import RedisKeys
+
+            redis = get_redis()
+            channel = RedisKeys.generative_job_progress(str(self.ctx.tenant_id), str(job_id))
+            pubsub = redis.pubsub()
+            await pubsub.subscribe(channel)
+
+            start = time.monotonic()
+            terminal_yielded = False
+            while time.monotonic() - start < 120:
+                msg = await pubsub.get_message(timeout=1.0)
+                if msg and msg["type"] == "message":
+                    self.db.expire_all()
+                    job = await get_generative_job_for_tenant(self.db, self.ctx, job_id)
+                    payload = GenerativeJobOut.model_validate(job).model_dump(mode="json")
+                    yield f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
+                    if job.status in _TERMINAL:
+                        terminal_yielded = True
+                        break
+            # 兜底：Pub/Sub 超时或消息丢失时，做一次最终 DB 查询避免前端永久等待
+            if not terminal_yielded:
+                self.db.expire_all()
+                job = await get_generative_job_for_tenant(self.db, self.ctx, job_id)
+                if job.status in _TERMINAL:
+                    payload = GenerativeJobOut.model_validate(job).model_dump(mode="json")
+                    yield f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
+        except Exception:
+            # Redis 不可用时回退 DB 轮询
+            logger.debug("Redis Pub/Sub 不可用，回退 DB 轮询 (job_id=%s)", job_id)
+            idle_ticks = 0
+            while idle_ticks < 120:
+                self.db.expire_all()
+                job = await get_generative_job_for_tenant(self.db, self.ctx, job_id)
+                payload = GenerativeJobOut.model_validate(job).model_dump(mode="json")
+                yield f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
+                if job.status in _TERMINAL:
+                    break
+                idle_ticks += 1
+                await asyncio.sleep(1)
+        finally:
+            if pubsub is not None and channel is not None:
+                try:
+                    await pubsub.unsubscribe(channel)
+                except Exception:
+                    pass
 
     @staticmethod
     def video_async_enabled() -> bool:

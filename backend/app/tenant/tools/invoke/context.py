@@ -10,6 +10,7 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.common.exceptions import BadRequestError, NotFoundError
+from app.common.trace import get_trace_id
 from app.core.soft_delete import is_marked_deleted
 from app.core.tenant import TenantContext
 from app.tenant.hooks.models import HookScope, HookTrigger
@@ -120,6 +121,7 @@ async def invoke_tool_with_context(
             actor_user_id=actor_user_id,
             agent_id=agent_id,
             invoke_source=invoke_source,
+            trace_id=get_trace_id(),
         )
         raise ToolConfirmationRequired(slug, meta["name"], meta.get("description"), params)
 
@@ -141,6 +143,7 @@ async def invoke_tool_with_context(
                 actor_user_id=actor_user_id,
                 agent_id=agent_id,
                 invoke_source=invoke_source,
+                trace_id=get_trace_id(),
             )
             raise ToolConfirmationRequired(
                 slug,
@@ -200,6 +203,7 @@ async def invoke_tool_with_context(
             actor_user_id=actor_user_id,
             agent_id=agent_id,
             invoke_source=invoke_source,
+            trace_id=get_trace_id(),
         )
         await hook_runner.run(
             HookTrigger.AFTER_TOOL,
@@ -231,5 +235,6 @@ async def invoke_tool_with_context(
             actor_user_id=actor_user_id,
             agent_id=agent_id,
             invoke_source=invoke_source,
+            trace_id=get_trace_id(),
         )
         raise

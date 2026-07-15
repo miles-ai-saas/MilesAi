@@ -23,6 +23,8 @@ export function useAgentsChatPage() {
   const { ready } = useRequireAuth();
 
   const [businessContext, setBusinessContext] = useState<BusinessContext | null>(null);
+  const [imageN, setImageN] = useState(1);
+  const [videoDuration, setVideoDuration] = useState(5);
 
   useEffect(() => {
     if (bizFromUrl === "1" || searchParams.get("projectId")) {
@@ -76,6 +78,14 @@ export function useAgentsChatPage() {
   const selected = list.items.find((a) => a.id === selectedAgent);
   const carryForwardMedia = agentCarryForwardMediaEnabled((selected?.config ?? null) as Record<string, unknown> | null);
 
+  const toolSlugs: string[] = useMemo(() => {
+    const slugs = selected?.config?.tool_slugs;
+    if (Array.isArray(slugs)) return slugs.map(String);
+    return [];
+  }, [selected?.config?.tool_slugs]);
+  const hasImageTool = toolSlugs.includes("generate_image");
+  const hasVideoTool = toolSlugs.includes("generate_video");
+
   const messaging = useAgentsChatMessaging({
     selectedAgent,
     conversationId: session.conversationId,
@@ -86,6 +96,8 @@ export function useAgentsChatPage() {
     carryForwardMedia,
     businessContext,
     initialPrompt: promptFromUrl,
+    generativeImageN: imageN,
+    generativeVideoDuration: videoDuration,
   });
 
   const carriedMedia = useMemo(() => {
@@ -141,6 +153,12 @@ export function useAgentsChatPage() {
     setLeftDrawerOpen: layout.setLeftDrawerOpen,
     query: messaging.query,
     setQuery: messaging.setQuery,
+    imageN,
+    setImageN,
+    videoDuration,
+    setVideoDuration,
+    hasImageTool,
+    hasVideoTool,
     pendingMedia: messaging.pendingMedia,
     uploadingMedia: messaging.uploadingMedia,
     chatting: messaging.chatting,

@@ -95,8 +95,9 @@ class AgentChatMixin:
         return response
 
     def _resolve_rag_route(self, agent: Agent, kb_ids: list[str]) -> str:
+        cfg = agent.config if isinstance(agent.config, dict) else {}
         if not kb_ids:
-            if (agent.config or {}).get("enable_tool_calling") and agent.model_config_id:
+            if (cfg.get("enable_tool_calling") or cfg.get("enable_generative_tools")) and agent.model_config_id:
                 return "tool_agent"
             return "direct_llm"
         if should_use_skill_tools_with_kb(agent, kb_ids):
@@ -317,7 +318,7 @@ class AgentChatMixin:
 
     async def resolve_chat_media_parts(self, agent: Agent, body: ChatRequest) -> tuple[str, list]:
         """解析附图，返回生成用 query 文本与 multimodal content parts。"""
-        max_media = int((agent.config or {}).get("max_media_per_turn", 4))
+        max_media = int((agent.config or {}).get("max_media_per_turn", 10))
         parts: list = []
         if body.media:
             parts = await resolve_media_refs(self.db, self.ctx, body.media, max_count=max_media)
@@ -349,6 +350,7 @@ class AgentChatMixin:
             chat_query, media_parts = await self.resolve_chat_media_parts(agent, body)
             if reasoning_query == body.query:
                 reasoning_query = chat_query
+            body_media_count = len(body.media) if body.media else 0
             user_msg = build_user_message(query=reasoning_query, media_parts=media_parts)
             answer = await ainvoke_chat(
                 agent.model_config,
@@ -367,7 +369,10 @@ class AgentChatMixin:
                 agent_id,
                 {"module": SCAN_MODULE_AGENT_CHAT, "agent_id": str(agent_id), "text": answer[:500]},
             )
-            return ChatResponse(answer=answer, sources=[])
+            steps: list[dict] = [{"type": "direct_chat", "media_count": body_media_count, "media_resolved": len(media_parts), "model_type": agent.model_config.model_type}]
+            if body_media_count > 0 and agent.model_config.model_type != "vision" and media_parts:
+                steps.append({"type": "multimodal_warning", "message": f"当前模型类型为 {agent.model_config.model_type}（非 vision），图片可能无法被模型识别"})
+            return ChatResponse(answer=answer, sources=[], steps=steps)
 
         return ChatResponse(
             answer="当前智能体未配置大模型。请在「模型供应商」中配置并关联，或绑定知识库/流程后使用。",
@@ -391,17 +396,37 @@ class AgentChatMixin:
         - 有 KB 无大模型：仅检索摘要
         """
         if not kb_ids:
-            if (agent.config or {}).get("enable_tool_calling") and agent.model_config_id:
+            cfg = agent.config if isinstance(agent.config, dict) else {}
+            if (cfg.get("enable_tool_calling") or cfg.get("enable_generative_tools")) and agent.model_config_id:
                 from app.integrations.langchain.tool_agent import run_tool_calling_chat
 
                 base = await self.resolve_system_prompt(agent)
+                kb_hint = ""
+                if cfg.get("enable_generative_tools"):
+                    n_hint = f"，张数为 {body.generative_image_n}" if body.generative_image_n != 1 else ""
+                    dur_hint = f"，时长为 {body.generative_video_duration}s" if body.generative_video_duration != 5 else ""
+                    kb_hint = (
+                        "\n【生成工具】你拥有 generate_image（生图）功能。"
+                        "\n当用户要求生成图片时，你必须通过 function calling 发起 generate_image 调用，"
+                        "\n将用户的描述作为 prompt 参数传入。不要输出任何文本说明或 JSON，直接发起 tool_call。"
+                        f"\n参数说明：prompt（画面描述，必填）、size（如 1024x1024）、n（张数{n_hint}，必传）。"
+                        f"\n注意：尺寸 >=1280 边长或 >=3 张需用户二次确认。{dur_hint}"
+                    )
+                # 将输入区参数注入 agent.config，供 handle_generate_image / handle_generate_video
+                # 在 LLM 未传 n/duration 时作为实际默认值使用
+                agent_config_with_defaults = dict(cfg)
+                if body.generative_image_n != 1:
+                    agent_config_with_defaults["_generative_image_n"] = body.generative_image_n
+                if body.generative_video_duration != 5:
+                    agent_config_with_defaults["_generative_video_duration"] = body.generative_video_duration
+                agent.config = agent_config_with_defaults
                 return await run_tool_calling_chat(
                     self.db,
                     self.ctx,
                     agent,
                     body,
                     agent_id=agent_id,
-                    system_prompt=base,
+                    system_prompt=f"{base}{kb_hint}",
                 )
             return await self.direct_chat(agent, body, agent_id, hooks)
 
@@ -412,7 +437,22 @@ class AgentChatMixin:
             cfg = agent.config if isinstance(agent.config, dict) else {}
             kb_hint = f"\n【知识库】请使用 knowledge_search 工具检索；可用 kb_id：{', '.join(kb_ids)}"
             if cfg.get("enable_generative_tools"):
-                kb_hint += "\n【生成】可按需调用 generate_image / generate_video；生视频耗时长且默认需用户确认。"
+                n_hint = f"，张数为 {body.generative_image_n}" if body.generative_image_n != 1 else ""
+                dur_hint = f"，时长为 {body.generative_video_duration}s" if body.generative_video_duration != 5 else ""
+                kb_hint += (
+                    "\n【生成工具】你拥有 generate_image（生图）功能。"
+                    "\n当用户要求生成图片时，你必须通过 function calling 发起 generate_image 调用，"
+                    "\n将用户的描述作为 prompt 参数传入。不要输出任何文本说明或 JSON，直接发起 tool_call。"
+                    f"\n参数说明：prompt（画面描述，必填）、size（如 1024x1024）、n（张数{n_hint}，必传）。"
+                    f"\n注意：尺寸 >=1280 边长或 >=3 张需用户二次确认。{dur_hint}"
+                )
+            # 将输入区参数注入 agent.config，供 handle_generate_image / handle_generate_video
+            agent_config_with_defaults = dict(cfg)
+            if body.generative_image_n != 1:
+                agent_config_with_defaults["_generative_image_n"] = body.generative_image_n
+            if body.generative_video_duration != 5:
+                agent_config_with_defaults["_generative_video_duration"] = body.generative_video_duration
+            agent.config = agent_config_with_defaults
             return await run_tool_calling_chat(
                 self.db,
                 self.ctx,

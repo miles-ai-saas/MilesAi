@@ -6,7 +6,7 @@ import asyncio
 from app.core.logging import get_logger
 from uuid import UUID
 
-from app.integrations.generative.jobs.errors import GenerativeJobCancelled
+from app.integrations.generative.jobs.errors import GenerativeJobCancelled, GenerativeJobNotFound
 from app.integrations.generative.jobs.runner import (
     run_generative_image_job_async,
     run_generative_video_job_async,
@@ -32,6 +32,11 @@ def run_generative_video_job(self, job_id: str) -> str:
     except GenerativeJobCancelled:
         sync_task_by_celery_id(self.request.id, TaskStatus.CANCELLED, fail_reason="用户取消")
         return "cancelled"
+    except GenerativeJobNotFound as exc:
+        reason = str(exc)[:2000]
+        sync_task_by_celery_id(self.request.id, TaskStatus.FAILED, fail_reason=reason)
+        logger.exception("run_generative_video_job failed: %s", job_id)
+        raise
     except Exception as exc:
         reason = str(exc)[:2000]
         sync_task_by_celery_id(self.request.id, TaskStatus.FAILED, fail_reason=reason)
@@ -53,6 +58,11 @@ def run_generative_image_job(self, job_id: str) -> str:
     except GenerativeJobCancelled:
         sync_task_by_celery_id(self.request.id, TaskStatus.CANCELLED, fail_reason="用户取消")
         return "cancelled"
+    except GenerativeJobNotFound as exc:
+        reason = str(exc)[:2000]
+        sync_task_by_celery_id(self.request.id, TaskStatus.FAILED, fail_reason=reason)
+        logger.exception("run_generative_image_job failed: %s", job_id)
+        raise
     except Exception as exc:
         reason = str(exc)[:2000]
         sync_task_by_celery_id(self.request.id, TaskStatus.FAILED, fail_reason=reason)

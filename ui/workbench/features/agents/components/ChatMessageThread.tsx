@@ -2,10 +2,12 @@
 
 /** 对话消息区（链路 §5）：渲染消息 + `AgentExecutionTimeline`（steps）。 */
 
+import { useCallback, useEffect, useRef, useState } from "react";
 import { AgentExecutionSkeleton, AgentExecutionTimeline } from "@/features/agents/components/AgentExecutionTimeline";
 import { ChatArtifactMedia } from "@/features/agents/components/ChatArtifactMedia";
 import type { ChatMessage } from "@/features/agents/lib/chat-sessions";
 import { turnIndexForMessageIndex } from "@/features/agents/lib/agent-trace";
+import { api } from "@/lib/api";
 import type { PendingToolCall } from "@/lib/types";
 import type { ReactNode } from "react";
 
@@ -25,6 +27,62 @@ type Props = {
 
 function hasPendingConfirmationStep(steps?: Record<string, unknown>[]) {
   return steps?.some((s) => s.type === "tool_confirmation_required") ?? false;
+}
+
+/** 用户上传图片的可靠预览：优先用 preview_url，加载失败时回退 API fetch。
+ *  解决 blob URL 刷新后失效的问题。 */
+function ChatMediaImage({ attachmentId, previewUrl, filename }: { attachmentId: string; previewUrl?: string; filename?: string }) {
+  const [src, setSrc] = useState<string | null>(null);
+  const triedRef = useRef(false);
+
+  const fetchFromApi = useCallback(async () => {
+    if (triedRef.current) return;
+    triedRef.current = true;
+    let url: string | null = null;
+    try {
+      url = await api.fetchAttachmentPreviewUrl(attachmentId);
+    } catch {
+      // 加载失败，显示占位
+    }
+    if (url) setSrc(url);
+    return url;
+  }, [attachmentId]);
+
+  useEffect(() => {
+    // 如果没有 preview_url，直接走 API fetch
+    if (!previewUrl) {
+      void fetchFromApi();
+      return;
+    }
+    // 有 preview_url 但可能是失效的 blob URL，先直接用，失败再 fetch
+    setSrc(previewUrl);
+  }, [previewUrl, fetchFromApi]);
+
+  // 图片加载失败时回退 API fetch
+  const handleError = useCallback(() => {
+    void fetchFromApi();
+  }, [fetchFromApi]);
+
+  // 卸载时清理 blob URL
+  useEffect(() => {
+    return () => {
+      if (src) URL.revokeObjectURL(src);
+    };
+  }, [src]);
+
+  if (!src) {
+    return <div className="flex h-24 w-24 items-center justify-center rounded-lg bg-white/20 text-xs text-white/50">加载中…</div>;
+  }
+
+  return (
+    <img
+      key={attachmentId}
+      src={src}
+      alt={filename ?? "附图"}
+      className="max-h-32 max-w-[140px] rounded-lg object-cover"
+      onError={handleError}
+    />
+  );
 }
 
 export function ChatMessageThread({
@@ -69,16 +127,14 @@ export function ChatMessageThread({
                 <div className="max-w-[85%] rounded-2xl rounded-tr-sm bg-brand px-4 py-2.5 text-sm text-brand-foreground">
                   {msg.media && msg.media.length > 0 && (
                     <div className="mb-2 flex flex-wrap justify-end gap-2">
-                      {msg.media.map((m) =>
-                        m.preview_url ? (
-                          <img
-                            key={m.attachment_id}
-                            src={m.preview_url}
-                            alt={m.filename ?? "附图"}
-                            className="max-h-32 max-w-[140px] rounded-lg object-cover"
-                          />
-                        ) : null,
-                      )}
+                      {msg.media.map((m) => (
+                        <ChatMediaImage
+                          key={m.attachment_id}
+                          attachmentId={m.attachment_id}
+                          previewUrl={m.preview_url}
+                          filename={m.filename}
+                        />
+                      ))}
                     </div>
                   )}
                   {msg.content ? <p className="whitespace-pre-wrap leading-relaxed">{msg.content}</p> : null}

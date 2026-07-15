@@ -171,6 +171,18 @@ class ChatRequest(BaseModel):
         default_factory=dict,
         description="待确认工具的参数",
     )
+    generative_image_n: int = Field(
+        default=1,
+        ge=1,
+        le=4,
+        description="输入区生图数量预设，LLM 不指定 n 时用此值；1–4",
+    )
+    generative_video_duration: int = Field(
+        default=5,
+        ge=1,
+        le=15,
+        description="输入区视频时长预设（秒），LLM 不指定 duration 时用此值；1–15",
+    )
 
     @model_validator(mode="after")
     def validate_query_or_media(self) -> "ChatRequest":

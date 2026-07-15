@@ -105,9 +105,9 @@ BUILTIN_REGISTRY: list[dict] = [
     {
         "slug": "generate_image",
         "name": "生图",
-        "description": "根据文字描述生成图片；可选参考图实现图生图；大尺寸或多张需确认",
+        "description": "根据文字描述生成图片；可选参考图实现图生图。默认生成 1 张，单次最多 4 张。3 张及以上或高分辨率将需要用户确认。",
         "category_slug": "general",
-        "version": "1.2.0",
+        "version": "1.3.0",
         "require_confirmation": False,
         "generative_only": True,
         "parameters": [
@@ -128,7 +128,7 @@ BUILTIN_REGISTRY: list[dict] = [
             {
                 "name": "n",
                 "type": "integer",
-                "description": "生成张数 1–4；≥3 张需确认",
+                "description": "生成张数，默认 1。仅用户明确要求时设为 >1（如'多来几张'、'给两个版本'）。1–4 张，≥3 张需确认。",
                 "required": False,
                 "default": 1,
             },

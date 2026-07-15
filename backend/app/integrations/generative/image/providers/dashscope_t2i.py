@@ -25,6 +25,7 @@ async def generate_dashscope_t2i(
     size: str,
     n: int = 1,
     reference_image_url: str | None = None,
+    progress: object | None = None,
 ) -> list[bytes]:
     api_key = model.api_key_encrypted
     if not api_key:
@@ -55,37 +56,47 @@ async def generate_dashscope_t2i(
         "Content-Type": "application/json",
     }
 
+    import logging
+    _log = logging.getLogger(__name__)
+
+    should_cancel = progress.is_cancelled if progress and hasattr(progress, "is_cancelled") else None
+
     async with httpx.AsyncClient(timeout=HTTP_DEFAULT_TIMEOUT_SEC) as client:
+        _log.info("万相生图请求 → POST %s\nheaders: %s\nbody: %s", url, {**headers, "Authorization": f"Bearer {api_key}"}, body)
         submit = await client.post(url, headers=headers, json=body)
-    if submit.status_code >= 400:
-        raise AppError(f"万相生图失败 ({submit.status_code}): {submit.text[:500]}", status_code=502)
+        if submit.status_code >= 400:
+            _log.warning("万相生图失败 (%s): %s", submit.status_code, submit.text[:1000])
+            raise AppError(f"万相生图失败 ({submit.status_code}): {submit.text[:500]}", status_code=502)
 
-    task = submit.json()
-    task_id = (task.get("output") or {}).get("task_id") or task.get("task_id")
-    if not task_id:
-        return await _parse_results_async(task, api_key, api_base)
+        task = submit.json()
+        task_id = (task.get("output") or {}).get("task_id") or task.get("task_id")
+        if not task_id:
+            return await _parse_results_async(task, client)
 
-    task_url = f"{api_base}/tasks/{task_id}"
-    import asyncio
+        task_url = f"{api_base}/tasks/{task_id}"
+        import asyncio
 
-    for _ in range(120):
-        await asyncio.sleep(2)
-        async with httpx.AsyncClient(timeout=HTTP_DEFAULT_TIMEOUT_SEC) as client:
+        for _ in range(120):
+            if should_cancel and await should_cancel():
+                from app.integrations.generative.jobs.errors import GenerativeJobCancelled
+
+                raise GenerativeJobCancelled()
+            await asyncio.sleep(2)
             poll = await client.get(task_url, headers={"Authorization": f"Bearer {api_key}"})
-        if poll.status_code >= 400:
-            raise AppError(f"万相任务查询失败: {poll.text[:300]}", status_code=502)
-        data = poll.json()
-        status = (data.get("output") or {}).get("task_status") or data.get("task_status")
-        if status == "SUCCEEDED":
-            return await _parse_results_async(data, api_key, api_base)
-        if status in ("FAILED", "CANCELED"):
-            msg = (data.get("output") or {}).get("message") or data.get("message") or status
-            raise AppError(f"万相生图失败: {msg}", status_code=502)
+            if poll.status_code >= 400:
+                raise AppError(f"万相任务查询失败: {poll.text[:300]}", status_code=502)
+            data = poll.json()
+            status = (data.get("output") or {}).get("task_status") or data.get("task_status")
+            if status == "SUCCEEDED":
+                return await _parse_results_async(data, client)
+            if status in ("FAILED", "CANCELED"):
+                msg = (data.get("output") or {}).get("message") or data.get("message") or status
+                raise AppError(f"万相生图失败: {msg}", status_code=502)
 
     raise AppError("万相生图任务超时", status_code=504)
 
 
-async def _parse_results_async(payload: dict, api_key: str, api_base: str) -> list[bytes]:
+async def _parse_results_async(payload: dict, client: httpx.AsyncClient) -> list[bytes]:
     output = payload.get("output") or payload
     results = output.get("results") or output.get("images") or []
     if not results and "results" in payload:
@@ -99,8 +110,7 @@ async def _parse_results_async(payload: dict, api_key: str, api_base: str) -> li
                 continue
             img_url = item.get("url")
             if img_url:
-                async with httpx.AsyncClient(timeout=HTTP_DEFAULT_TIMEOUT_SEC) as client:
-                    resp = await client.get(img_url)
+                resp = await client.get(img_url)
                 if resp.status_code < 400:
                     out.append(resp.content)
     if not out:

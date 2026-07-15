@@ -57,7 +57,13 @@ def image_tool_confirmation_message(params: dict) -> str:
         count = int(n) if n is not None else 1
     except (TypeError, ValueError):
         count = 1
-    parts = [f"尺寸 {size}"]
-    if count >= _HIGH_RES_MIN_COUNT:
-        parts.append(f"共 {count} 张")
-    return "高分辨率或多张生图将消耗更多额度与时间，确认后执行。" + "（" + "，".join(parts) + "）"
+    count = min(max(count, 1), MAX_IMAGES_PER_REQUEST)
+
+    high_res = is_high_resolution_image_size(size)
+    multi = count >= _HIGH_RES_MIN_COUNT
+
+    if high_res and multi:
+        return f"将生成 {count} 张高分辨率图片（{size}），资源消耗较大。确认后执行。"
+    if high_res:
+        return f"将生成高分辨率图片（{size}），资源消耗较大。确认后执行。"
+    return f"将生成 {count} 张图片，消耗 {count}x 资源。确认后执行。"

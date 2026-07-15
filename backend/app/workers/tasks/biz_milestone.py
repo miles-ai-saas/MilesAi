@@ -9,7 +9,7 @@ from sqlalchemy import select
 
 from app.core.logging import get_logger
 from app.core.tenant import TenantContext
-from app.infra.db import AsyncSessionLocal
+from app.infra.db import get_worker_session
 from app.biz.services.milestone_due import MilestoneDueService
 from app.models.platform.user import User
 from app.workers.app import celery_app
@@ -33,7 +33,7 @@ async def _tenant_ctx(db, tenant_id) -> TenantContext | None:
 
 
 async def _check_milestone_due_async() -> int:
-    async with AsyncSessionLocal() as db:
+    async with get_worker_session() as db:
         from app.models.biz import BizMilestone
         from app.core.soft_delete import not_deleted
 

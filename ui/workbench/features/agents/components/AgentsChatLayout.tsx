@@ -50,6 +50,12 @@ export function AgentsChatLayout({ vm }: Props) {
     lastTraceId,
     query,
     setQuery,
+    imageN,
+    setImageN,
+    videoDuration,
+    setVideoDuration,
+    hasImageTool,
+    hasVideoTool,
     pendingMedia,
     uploadingMedia,
     chatting,
@@ -150,6 +156,10 @@ export function AgentsChatLayout({ vm }: Props) {
               pendingMedia={pendingMedia}
               carriedMedia={carriedMedia}
               onRemovePending={removePendingMedia}
+              imageN={imageN}
+              onImageNChange={hasImageTool ? setImageN : undefined}
+              videoDuration={videoDuration}
+              onVideoDurationChange={hasVideoTool ? setVideoDuration : undefined}
               carryForwardHint={carriedMedia.length > 0 && pendingMedia.length === 0 ? "将沿用上一轮附图（可在智能体配置中关闭）" : undefined}
               disabled={!selectedAgent || !conversationId}
               sendDisabled={

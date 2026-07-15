@@ -145,6 +145,7 @@ export function appendTurn(
   steps: Record<string, unknown>[] = [],
   traceId?: string,
   userMedia?: ChatMessageMedia[],
+  artifacts?: ChatMessageArtifact[],
 ) {
   const store = loadStore();
   const b = bucket(agentId, store);
@@ -163,6 +164,7 @@ export function appendTurn(
       content: assistantText,
       steps: steps.length ? steps : undefined,
       traceId: traceId || undefined,
+      ...(artifacts?.length ? { artifacts } : {}),
     },
   ];
   let title = session.title;

@@ -24,6 +24,8 @@ type Params = {
   carryForwardMedia: boolean;
   businessContext?: BusinessContext | null;
   initialPrompt?: string | null;
+  generativeImageN?: number;
+  generativeVideoDuration?: number;
 };
 
 export function useAgentsChatMessaging({
@@ -36,6 +38,8 @@ export function useAgentsChatMessaging({
   carryForwardMedia,
   businessContext = null,
   initialPrompt,
+  generativeImageN,
+  generativeVideoDuration,
 }: Params) {
   const [query, setQuery] = useState("");
   const [chatting, setChatting] = useState(false);
@@ -68,7 +72,7 @@ export function useAgentsChatMessaging({
         },
       ];
       setMessages(nextMessages);
-      appendTurn(selectedAgent, conversationId, userText, res.answer, res.steps ?? [], res.trace_id, userMedia.length ? userMedia : undefined);
+      appendTurn(selectedAgent, conversationId, userText, res.answer, res.steps ?? [], res.trace_id, userMedia.length ? userMedia : undefined, mapResponseArtifacts(res));
       refreshSessions(selectedAgent);
       const updated = getSession(selectedAgent, conversationId);
       if (updated) setSessionTitle(updated.title);
@@ -163,6 +167,8 @@ export function useAgentsChatMessaging({
         const res = await api.chatAgent(selectedAgent, apiQuery, {
           conversationId,
           media: mediaPayload.length ? mediaPayload : undefined,
+          generativeImageN,
+          generativeVideoDuration,
         });
         applyChatResponse(res, optimistic, userText, userMedia, false);
       }

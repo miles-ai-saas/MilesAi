@@ -9,7 +9,7 @@ from sqlalchemy import select
 
 from app.core.logging import get_logger
 from app.core.soft_delete import not_deleted
-from app.infra.db import AsyncSessionLocal
+from app.infra.db import get_worker_session
 from app.integrations.litellm.adapter import CHAT_MODEL_TYPES, litellm_chat_completion
 from app.models.model import ModelConfig
 from app.models.model.catalog import ModelPublishStatus
@@ -24,7 +24,7 @@ async def _probe_models_async() -> str:
     checked = 0
     ok_count = 0
     now = datetime.now(timezone.utc).isoformat()
-    async with AsyncSessionLocal() as db:
+    async with get_worker_session() as db:
         stmt = (
             select(ModelConfig)
             .where(

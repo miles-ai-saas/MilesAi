@@ -40,9 +40,13 @@ export function generativeToolConfirmNote(slug: string | undefined | null, param
   return null;
 }
 
-export function generativeToolConfirmButtonLabel(slug: string | undefined | null): string {
+export function generativeToolConfirmButtonLabel(slug: string | undefined | null, params?: Record<string, unknown>): string {
   if (slug === GENERATIVE_TOOL_SLUGS.video) return "确认并生成视频";
-  if (slug === GENERATIVE_TOOL_SLUGS.image) return "确认并生图";
+  if (slug === GENERATIVE_TOOL_SLUGS.image) {
+    const n = Number(params?.n ?? 1);
+    if (n >= 2) return `确认并生成 ${n} 张`;
+    return "确认并生成";
+  }
   return "确认执行";
 }
 

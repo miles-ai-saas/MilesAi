@@ -28,44 +28,8 @@ def _volcengine_image_size(size: str | None, *, has_reference: bool) -> str:
     return raw or "2K"
 
 
-async def generate_volcengine_image(
-    model: ModelConfig,
-    *,
-    prompt: str,
-    size: str,
-    n: int = 1,
-    reference_image_data_url: str | None = None,
-) -> list[bytes]:
-    """``/v1/images/generations``；有参考图时在 body 中传 ``image``（data URL 或 URL）。"""
-    api_key = require_volcengine_api_key(model)
-    url = f"{volcengine_api_base(model)}/images/generations"
-    model_name = model.model_name or "doubao-seedream-4-0-250828"
-    # seededit 图生图必须带参考图
-    if "seededit" in model_name.lower() or "-i2i" in model_name.lower():
-        if not reference_image_data_url:
-            raise BadRequestError(f"模型「{model.name}」为图生图，需提供参考图 attachment")
-
-    body: dict[str, Any] = {
-        "model": model_name,
-        "prompt": prompt,
-        "size": _volcengine_image_size(size, has_reference=bool(reference_image_data_url)),
-        "n": min(max(n, 1), 4),
-        "response_format": "b64_json",
-        "watermark": False,
-    }
-    if reference_image_data_url:
-        body["image"] = reference_image_data_url
-
-    async with httpx.AsyncClient(timeout=HTTP_DEFAULT_TIMEOUT_SEC) as client:
-        resp = await client.post(url, headers=volcengine_headers(api_key), json=body)
-    if resp.status_code >= 400:
-        raise AppError(f"豆包生图失败 ({resp.status_code}): {resp.text[:500]}", status_code=502)
-
-    payload = resp.json()
-    items = payload.get("data") or []
-    if not items:
-        raise AppError("豆包生图返回为空", status_code=502)
-
+async def _decode_image_items(items: list[dict], client: httpx.AsyncClient) -> list[bytes]:
+    """从响应 data 数组中解码 b64_json / url 为 bytes。"""
     out: list[bytes] = []
     for item in items:
         b64 = item.get("b64_json")
@@ -74,10 +38,81 @@ async def generate_volcengine_image(
             continue
         img_url = item.get("url")
         if img_url:
-            async with httpx.AsyncClient(timeout=HTTP_DEFAULT_TIMEOUT_SEC) as client:
-                img_resp = await client.get(img_url)
+            img_resp = await client.get(img_url)
             if img_resp.status_code < 400:
                 out.append(img_resp.content)
-    if not out:
-        raise AppError("豆包生图未返回可用图片数据", status_code=502)
     return out
+
+
+async def generate_volcengine_image(
+    model: ModelConfig,
+    *,
+    prompt: str,
+    size: str,
+    n: int = 1,
+    reference_image_data_url: str | None = None,
+) -> list[bytes]:
+    """``/v1/images/generations``。
+
+    n=1 时单次调用。n>1 时多次调用（每次 n=1），确保精确控制数量。
+    Seedream 的 ``sequential_image_generation`` 为 auto 模式，模型会自主决定张数，
+    对单场景 prompt 不可靠，因此不走组图模式。
+    """
+    import logging
+
+    _log = logging.getLogger(__name__)
+    api_key = require_volcengine_api_key(model)
+    url = f"{volcengine_api_base(model)}/images/generations"
+    model_name = model.model_name or "doubao-seedream-4-0-250828"
+
+    is_seededit = "seededit" in model_name.lower() or "-i2i" in model_name.lower()
+    if is_seededit and not reference_image_data_url:
+        raise BadRequestError(f"模型「{model.name}」为图生图，需提供参考图 attachment")
+
+    n = min(max(n, 1), 4)
+
+    async with httpx.AsyncClient(timeout=HTTP_DEFAULT_TIMEOUT_SEC) as client:
+        req_headers = volcengine_headers(api_key)
+        out: list[bytes] = []
+
+        for call_idx in range(n):
+            body: dict[str, Any] = {
+                "model": model_name,
+                "prompt": prompt,
+                "size": _volcengine_image_size(size, has_reference=bool(reference_image_data_url)),
+                "n": 1,
+                "response_format": "b64_json",
+                "watermark": False,
+            }
+            if reference_image_data_url:
+                body["image"] = reference_image_data_url
+
+            _log.info(
+                "豆包生图请求（%d/%d）→ POST %s\nheaders: %s\nbody: %s",
+                call_idx + 1,
+                n,
+                url,
+                {**req_headers, "Authorization": f"Bearer {api_key}"},
+                body,
+            )
+            resp = await client.post(url, headers=req_headers, json=body)
+            if resp.status_code >= 400:
+                _log.warning("豆包生图失败 (%s): %s", resp.status_code, resp.text[:1000])
+                if call_idx == 0:
+                    raise AppError(f"豆包生图失败 ({resp.status_code}): {resp.text[:500]}", status_code=502)
+                continue
+
+            payload = resp.json()
+            items = payload.get("data") or []
+            _log.info("豆包生图响应（%d/%d）→ data 条目数=%d", call_idx + 1, n, len(items))
+            if not items:
+                _log.warning("豆包生图返回 data 为空（%d/%d）", call_idx + 1, n)
+                continue
+
+            blobs = await _decode_image_items(items, client)
+            out.extend(blobs)
+
+        _log.info("豆包生图完成 → 请求 n=%d, 解码成功=%d", n, len(out))
+        if not out:
+            raise AppError("豆包生图未返回可用图片数据", status_code=502)
+        return out

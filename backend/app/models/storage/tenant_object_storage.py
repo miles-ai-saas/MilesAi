@@ -7,10 +7,10 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.infra.db import Base
-from app.models.base import TimestampMixin
+from app.models.base import AuditTimestampMixin
 
 
-class TenantObjectStorageConfig(TimestampMixin, Base):
+class TenantObjectStorageConfig(AuditTimestampMixin, Base):
     """每租户可选独立对象存储桶与凭证；未启用时走 L1 部署级 MinIO/OSS。"""
 
     __tablename__ = "sys_tenant_object_storage"

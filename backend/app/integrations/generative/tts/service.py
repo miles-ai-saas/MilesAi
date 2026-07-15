@@ -76,7 +76,7 @@ async def generate_speech_for_model(
     speech_rate: float = 1.0,
     purpose: str = PURPOSE_CHAT_GENERATED,
     agent_id: UUID | None = None,
-    source: str = "agent_tool",
+    trace_id: str | None = None,
 ) -> dict:
     """调用 TTS 模型生成语音，持久化为附件并返回结果。"""
     mode = resolve_invoke_mode(model, capability=ModelCapabilityType.TTS.value) or INVOKE_DASHSCOPE_TTS
@@ -91,19 +91,19 @@ async def generate_speech_for_model(
     else:
         raise BadRequestError(f"不支持的 TTS invoke_mode: {mode}")
 
-    attachment = await persist_generated_bytes(
+    attachment_id = await persist_generated_bytes(
         db,
         ctx,
-        audio_bytes,
+        data=audio_bytes,
         filename=f"speech-{UUID(int=hash(text) & ((1 << 128) - 1))}.wav",
         mime_type="audio/wav",
         purpose=purpose,
-        agent_id=agent_id,
-        source=source,
+        resource_type="agent" if agent_id else None,
+        resource_id=agent_id,
     )
 
     return {
-        "attachment_id": str(attachment.id),
+        "attachment_id": str(attachment_id),
         "mime_type": "audio/wav",
         "text_length": len(text),
     }

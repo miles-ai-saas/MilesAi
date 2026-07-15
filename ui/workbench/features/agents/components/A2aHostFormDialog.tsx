@@ -2,9 +2,11 @@
 
 /** A2A 互联宿主表单（链路 §4 `useA2aMeta`）。 */
 
+import { useMemo } from "react";
 import { ResourceDialog } from "@/components/resource/ResourceDialog";
 import type { A2aHostFormValues, A2aHostFormDialogVm } from "@/features/agents/hooks/use-a2a-host-form-dialog";
 import { useA2aHostFormDialog } from "@/features/agents/hooks/use-a2a-host-form-dialog";
+import { CHAT_MODEL_TYPES } from "@/features/models/lib/model-labels";
 import type { EnumOption } from "@/lib/enum-meta";
 import type { Agent, A2aPeer, ModelConfig, PromptTemplate } from "@/lib/types";
 
@@ -52,18 +54,30 @@ function A2aHostFormModelStep({
   models: ModelConfig[];
   prompts: PromptTemplate[];
 }) {
+  const chatModels = useMemo(() => {
+    const filtered = models.filter((m) => m.is_active !== false && CHAT_MODEL_TYPES.has(m.model_type));
+    if (form.model_config_id) {
+      const selected = models.find((m) => m.id === form.model_config_id);
+      if (selected && !CHAT_MODEL_TYPES.has(selected.model_type)) {
+        filtered.push(selected);
+      }
+    }
+    return filtered;
+  }, [models, form.model_config_id]);
+
   return (
     <div className="space-y-4">
       <label className="block text-sm">
         <span className="mb-1 block text-ink-muted">编排模型（必填）</span>
         <select className="input-field w-full" value={form.model_config_id} onChange={(e) => setForm((f) => ({ ...f, model_config_id: e.target.value }))}>
           <option value="">请选择</option>
-          {models.map((m) => (
+          {chatModels.map((m) => (
             <option key={m.id} value={m.id}>
               {m.name}
             </option>
           ))}
         </select>
+        <span className="mt-0.5 block text-xs text-ink-faint">仅显示对话类模型（llm / reasoning / vision）</span>
       </label>
       <label className="block text-sm">
         <span className="mb-1 block text-ink-muted">提示词模版</span>

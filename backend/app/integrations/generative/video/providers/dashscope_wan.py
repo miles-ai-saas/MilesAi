@@ -71,7 +71,7 @@ async def generate_dashscope_video(
 
     wan_model = model.model_name or "wan2.1-t2v-plus"
     if (first_frame_data_url or last_frame_data_url) and "i2v" not in wan_model and "t2v" in wan_model:
-        wan_model = wan_model.replace("t2v", "i2v", 1)
+        wan_model = wan_model.replace("t2v", "i2v")
 
     input_body: dict[str, Any] = {"prompt": prompt}
     media = _build_media(first_frame_data_url, last_frame_data_url)

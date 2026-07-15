@@ -126,13 +126,20 @@ function StepRow({
 
         {showConfirm && pendingTool ? (
           <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50/80 p-2.5">
-            <p className="text-[11px] font-medium text-amber-900">{pendingTool.name}</p>
+            <div className="flex items-start gap-2">
+              <span className="text-[11px] font-medium text-amber-900">{pendingTool.name}</span>
+              {(() => {
+                const n = Number(pendingTool.params?.n ?? 1);
+                if (n >= 2) return <span className="shrink-0 rounded-full bg-amber-200 px-1.5 py-px text-[10px] font-medium text-amber-800">{n} 张</span>;
+                return null;
+              })()}
+            </div>
             {pendingTool.description ? <p className="mt-0.5 text-[11px] text-amber-800/80">{pendingTool.description}</p> : null}
             {confirmNote ? <p className="mt-1.5 text-[11px] leading-relaxed text-amber-900/90">{confirmNote}</p> : null}
             <p className="mt-1.5 font-mono text-[10px] text-amber-900/90">{formatToolParams(pendingTool.params)}</p>
             {onConfirmTool ? (
               <button type="button" className="btn-primary mt-2 px-3 py-1 text-xs" disabled={confirmToolDisabled} onClick={onConfirmTool}>
-                {generativeToolConfirmButtonLabel(pendingTool.slug)}
+                {generativeToolConfirmButtonLabel(pendingTool.slug, pendingTool.params)}
               </button>
             ) : null}
           </div>

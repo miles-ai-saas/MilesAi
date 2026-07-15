@@ -68,21 +68,21 @@ class KnowledgeSearchInput(BaseModel):
 class GenerateImageInput(BaseModel):
     prompt: str = Field(..., description="画面描述")
     size: str | None = Field(None, description="如 1024x1024；≥1280 边长或多张需用户确认")
-    image_attachment_id: str | None = Field(None, description="参考图 attachment_id（图生图）")
+    image_attachment_id: str | None = Field(None, description="参考图 attachment_id（如用户上传了图片并提供其 ID 时才填，通常不填）")
     n: int | None = Field(None, description="生成张数 1–4；≥3 需用户确认")
-    model_config_id: str | None = Field(None, description="image_gen 模型配置 UUID")
+    model_config_id: str | None = Field(None, description="生图模型 ID，留空自动使用默认模型，通常不需要填写")
 
 
 class GenerateVideoInput(BaseModel):
     prompt: str = Field(..., description="视频描述")
     duration: int | None = Field(None, description="时长秒数，默认 5")
     resolution: str | None = Field(None, description="720P 或 1080P")
-    image_attachment_id: str | None = Field(None, description="首帧图 attachment_id")
+    image_attachment_id: str | None = Field(None, description="首帧图 attachment_id（如用户上传了图片并提供其 ID 时才填，通常不填）")
     last_frame_attachment_id: str | None = Field(
         None,
-        description="尾帧图 attachment_id（首尾帧生视频，须与首帧同传）",
+        description="尾帧图 attachment_id（首尾帧生视频，须与首帧同传，通常不填）",
     )
-    model_config_id: str | None = Field(None, description="video_gen 模型配置 UUID")
+    model_config_id: str | None = Field(None, description="生视频模型 ID，留空自动使用默认模型，通常不需要填写")
 
 
 class DateTimeInput(BaseModel):
@@ -223,7 +223,7 @@ def _make_generate_image_tool() -> StructuredTool:
     return StructuredTool.from_function(
         coroutine=_arun,
         name="generate_image",
-        description="根据文字描述生成图片，结果保存为附件",
+        description="生成图片（文生图/图生图）。直接通过 function calling 调用，传入 prompt 等参数即可，禁止在文字中描述调用过程。",
         args_schema=GenerateImageInput,
     )
 
@@ -244,7 +244,7 @@ def _make_generate_video_tool() -> StructuredTool:
     return StructuredTool.from_function(
         coroutine=_arun,
         name="generate_video",
-        description="根据文字描述生成短视频（万相/豆包 Seedance；耗时长，需用户确认）",
+        description="生成短视频（文/图生视频）。直接通过 function calling 调用，传入 prompt 等参数即可，禁止在文字中描述调用过程。耗时长，需用户确认。",
         args_schema=GenerateVideoInput,
     )
 

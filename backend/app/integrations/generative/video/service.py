@@ -104,6 +104,7 @@ async def generate_video_for_model(
     purpose: str = PURPOSE_CHAT_GENERATED,
     agent_id: UUID | None = None,
     generative_job_id: UUID | None = None,
+    trace_id: str | None = None,
 ) -> VideoGenerateResult:
     """调用厂商生视频并持久化为 mp4 附件（可能阻塞数分钟）。"""
     prompt = (prompt or "").strip()

@@ -6,7 +6,7 @@ import re
 
 from app.common.exceptions import BadRequestError
 
-_SK_PREFIX_VENDORS = frozenset({"qwen", "deepseek", "openai", "doubao"})
+_SK_PREFIX_VENDORS = frozenset({"qwen", "deepseek", "openai"})
 
 _INVALID_PATTERNS = (
     re.compile(r"^error\s*:", re.I),

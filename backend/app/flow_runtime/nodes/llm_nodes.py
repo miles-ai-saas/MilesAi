@@ -61,7 +61,7 @@ async def llm_call(
         max_tokens = int(max_tokens_raw) if max_tokens_raw is not None else 2048
 
         tenant_ctx = tenant_context_from_run(ctx)
-        max_media = int((ctx.agent_config or {}).get("max_media_per_turn", 4))
+        max_media = int((ctx.agent_config or {}).get("max_media_per_turn", 10))
         media_parts: list[dict[str, Any]] = []
         if media_refs:
             media_parts = await resolve_media_refs(db, tenant_ctx, media_refs, max_count=max_media)

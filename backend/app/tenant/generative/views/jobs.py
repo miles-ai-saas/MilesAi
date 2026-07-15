@@ -7,6 +7,7 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.common.response import ok, page_ok
+from app.common.trace import get_trace_id
 from app.common.schema import ApiResponse, PageParams, PageResult
 from app.core.deps import get_page_params, require_permissions
 from app.core.tenant import TenantContext
@@ -56,7 +57,7 @@ async def submit_video_job(
     ctx: TenantContext = Depends(require_permissions("attachment:upload")),
     db: AsyncSession = Depends(get_db),
 ):
-    return ok(await _svc(db, ctx).submit_video(body, source="api"))
+    return ok(await _svc(db, ctx).submit_video(body, source="api", trace_id=get_trace_id()))
 
 
 @router.post("/image", response_model=ApiResponse[GenerativeJobOut])
@@ -65,7 +66,7 @@ async def submit_image_job(
     ctx: TenantContext = Depends(require_permissions("attachment:upload")),
     db: AsyncSession = Depends(get_db),
 ):
-    return ok(await _svc(db, ctx).submit_image(body, source="api"))
+    return ok(await _svc(db, ctx).submit_image(body, source="api", trace_id=get_trace_id()))
 
 
 @router.post("/batch-cancel", response_model=ApiResponse[GenerativeJobBatchCancelResult])
