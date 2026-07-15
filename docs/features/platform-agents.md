@@ -104,9 +104,12 @@ GET  /agents/{id}/stats
 GET  /agents/{id}/call-records      # 见 agent-call-records.md
 GET  /agents/{id}/architecture      # 拓扑与主路径预览
 POST /agents/{id}/chat
+POST /agents/{id}/api-access/debug-token  # 见 agent-api-access.md
 WS   /agents/{id}/chat/ws
 …/schedules                         # 见 agent-schedules.md
 ```
+
+工作台「API」Tab：见 [agent-api-access.md](./agent-api-access.md)。
 
 ---
 
