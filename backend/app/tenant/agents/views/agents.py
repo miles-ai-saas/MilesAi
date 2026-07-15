@@ -7,7 +7,7 @@
 
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.infra.db import get_db
@@ -15,6 +15,7 @@ from app.core.deps import get_page_params, require_permissions
 from app.common.response import ok, page_ok
 from app.core.tenant import TenantContext
 from app.tenant.agents.schemas.agent import AgentCreate, AgentOut, AgentPackage, AgentUpdate, ChatRequest, ChatResponse
+from app.tenant.agents.schemas.api_access import AgentDebugTokenOut
 from app.tenant.agents.schemas.meta import AgentMetaOut
 from app.tenant.agents.schemas.architecture import AgentArchitectureOut
 from app.tenant.agents.schemas.call_records import AgentCallRecordDetailOut, AgentCallRecordOut
@@ -24,6 +25,7 @@ from app.tenant.agents.schemas.schedule_run import AgentScheduleRunOut
 from app.tenant.agents.schemas.stats import AgentStatsOut
 from app.common.schema import ApiResponse, PageParams, PageResult
 from app.tenant.agents.services.agent import AgentService
+from app.tenant.agents.services.api_access import AgentApiAccessService
 from app.tenant.agents.services.call_records import AgentCallRecordService, parse_call_record_datetime
 from app.tenant.agents.services.chat_sessions import AgentChatSessionService
 from app.tenant.agents.ws import agent_chat_ws_router
@@ -38,6 +40,10 @@ router.include_router(agent_chat_ws_router)
 
 def _svc(db: AsyncSession, ctx: TenantContext) -> AgentService:
     return AgentService(db, ctx)
+
+
+def _api_access_svc(db: AsyncSession, ctx: TenantContext) -> AgentApiAccessService:
+    return AgentApiAccessService(db, ctx)
 
 
 def _stats_svc(db: AsyncSession, ctx: TenantContext) -> AgentStatsService:
@@ -302,6 +308,26 @@ async def chat_agent(
 ):
     """主对话入口：合规 → 钩子 → A2A/子 Agent/流程/RAG 路由（见 AgentService.chat）。"""
     return ok(await _svc(db, ctx).chat(agent_id, body))
+
+
+@router.post(
+    "/{agent_id}/api-access/debug-token",
+    response_model=ApiResponse[AgentDebugTokenOut],
+)
+async def create_agent_debug_token(
+    agent_id: UUID,
+    request: Request,
+    ctx: TenantContext = Depends(require_permissions("agent:write")),
+    db: AsyncSession = Depends(get_db),
+):
+    """签发短期调试 access JWT，供外部脚本调用 POST …/chat。"""
+    ua = request.headers.get("user-agent")
+    out = await _api_access_svc(db, ctx).create_debug_token(
+        agent_id,
+        user_agent=f"agent-api-debug;{ua}" if ua else "agent-api-debug",
+        ip=request.client.host if request.client else None,
+    )
+    return ok(out)
 
 
 @router.get("/{agent_id}/export", response_model=ApiResponse[AgentPackage])
