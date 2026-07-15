@@ -258,3 +258,18 @@ export interface AgentDebugToken {
   purpose: string;
   warning: string;
 }
+
+export interface AgentApiKey {
+  id: string;
+  name: string;
+  key_prefix: string;
+  status: "active" | "revoked";
+  created_at: string;
+  last_used_at?: string | null;
+  revoked_at?: string | null;
+}
+
+export interface AgentApiKeyCreated extends AgentApiKey {
+  secret: string;
+  warning: string;
+}

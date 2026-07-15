@@ -131,6 +131,17 @@ export const agentsApi = {
   createAgentDebugToken: (agentId: string) =>
     post<import("../types").AgentDebugToken>(`/agents/${agentId}/api-access/debug-token`, {}),
 
+  listAgentApiKeys: (agentId: string, includeRevoked = false) =>
+    get<import("../types").AgentApiKey[]>(
+      `/agents/${agentId}/api-access/keys${includeRevoked ? "?include_revoked=true" : ""}`,
+    ),
+
+  createAgentApiKey: (agentId: string, name: string) =>
+    post<import("../types").AgentApiKeyCreated>(`/agents/${agentId}/api-access/keys`, { name }),
+
+  revokeAgentApiKey: (agentId: string, keyId: string) =>
+    post<import("../types").AgentApiKey>(`/agents/${agentId}/api-access/keys/${keyId}/revoke`, {}),
+
   // --- 智能体对话（chains §5；conversation_id 与 chat-sessions 会话 id 一致）---,
 
   chatAgent: (

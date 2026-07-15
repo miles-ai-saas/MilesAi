@@ -1,7 +1,7 @@
 # 智能体工作台「API」Tab：对接调试（一期）与正式 Key（二期边界）
 
 **日期：** 2026-07-15  
-**状态：** 一期已落地；二期见 [2026-07-15-agent-api-keys-design.md](./2026-07-15-agent-api-keys-design.md)  
+**状态：** 一期已落地；二期 [agent-api-keys](./2026-07-15-agent-api-keys-design.md) 实现中/已落地  
 **范围：** 工作台右侧「API」Tab（一期：文档 + 调试 Token）  
 **选定方案：** 一期 = 文档页 + 短期调试 JWT；二期 = 智能体 API Key + 独立调用入口
 

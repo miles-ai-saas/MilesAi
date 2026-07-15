@@ -1,58 +1,43 @@
-# 智能体 API 对接调试
+# 智能体 API 对接
 
 **日期：** 2026-07-15  
-**状态：** 一期已实现  
-**PRD 对照：** 模块4 智能体管理（工作台 API Tab）  
-**设计：** [2026-07-15-agent-api-access-design.md](../superpowers/specs/2026-07-15-agent-api-access-design.md)
+**状态：** 一期调试 Token ✅ · 二期正式 API Key ✅  
+**设计：** [agent-api-access](../superpowers/specs/2026-07-15-agent-api-access-design.md) · [agent-api-keys](../superpowers/specs/2026-07-15-agent-api-keys-design.md)
 
 ---
 
-## 1. 背景与目标
+## 正式对接（推荐）
 
-工作台右侧「API」Tab 提供 HTTP 对话对接说明，并签发短期调试 Token，便于用 curl / 脚本试通 `POST …/chat`，无需抄浏览器登录态。
+```http
+POST /api/v1/open/agents/{agent_id}/chat
+X-API-Key: mil_<prefix>_<secret>
+Content-Type: application/json
+```
 
-## 2. 一期交付
+工作台「API」Tab 可创建 / 列表 / 吊销密钥。明文仅创建时返回一次；不过期，靠吊销失效。每智能体最多 8 个有效密钥。
 
-| 项 | 说明 |
-|----|------|
-| UI | `AgentApiPanel`：Endpoint、鉴权、请求/响应、curl / Python、生成调试 Token |
-| 接口 | `POST /api/v1/agents/{agent_id}/api-access/debug-token` |
-| 对话 | 复用 `POST /api/v1/agents/{agent_id}/chat` |
+兼容：`POST /api/v1/agents/{id}/chat` 亦可使用同一 `X-API-Key`（也仍支持登录 JWT / 调试 Token）。
 
-## 3. API
+调用记录 `source`：`workbench` | `debug_token` | `api_key`。
 
-### 3.1 签发调试 Token
+## 调试 Token（一期，非生产）
 
 ```http
 POST /api/v1/agents/{agent_id}/api-access/debug-token
-Authorization: Bearer <工作台登录 JWT>
+Authorization: Bearer <工作台 JWT>
 Permission: agent:write
 ```
 
-响应 `data`：`access_token`、`token_type`（bearer）、`expires_in`、`expires_at`、`agent_id`、`purpose`（`agent_api_debug`）、`warning`。
+返回 24h access JWT（`purpose=agent_api_debug`），用于本地 curl 试通。
 
-TTL：配置 `agent_api_debug_token_ttl_hours`（默认 24）。JWT claim 含 `purpose`、`agent_id`（一期仅审计，不收窄路由权限）。签发后登记 Redis 会话（`user-agent` 含 `agent-api-debug`）。
+## 密钥管理 API
 
-### 3.2 对话（复用）
+| 方法 | 路径 | 权限 |
+|------|------|------|
+| GET | `/agents/{id}/api-access/keys` | `agent:write` |
+| POST | `/agents/{id}/api-access/keys` | `agent:write` |
+| POST | `/agents/{id}/api-access/keys/{key_id}/revoke` | `agent:write` |
 
-```http
-POST /api/v1/agents/{agent_id}/chat
-Authorization: Bearer <debug_token>
-Permission: agent:read
-```
-
-## 4. UI 入口
+## UI
 
 `/workbench/agents/chat?agent={id}&tab=api`
-
-## 5. 明确不做（二期）
-
-- 智能体 API Key 表与吊销列表  
-- 独立对外路由（如 `/open/agents/...`）  
-- WebSocket / 会话 / 调用记录对接文档  
-- 页内直接发起真实 chat  
-
-## 6. 相关文档
-
-- [platform-agents.md](./platform-agents.md)  
-- [agent-chat-websocket.md](./agent-chat-websocket.md)（WS 仍仅工作台）  
