@@ -99,6 +99,7 @@ async def run_generative_video_job_async(job_id: UUID) -> None:
                 "attachment_id": str(result.attachment_id),
                 "mime_type": result.mime_type,
                 "duration_sec": result.duration_sec,
+                "media_asset_id": str(result.media_asset_id) if result.media_asset_id else None,
             }
             job.error_message = None
             await db.commit()
@@ -203,6 +204,7 @@ async def run_generative_image_job_async(job_id: UUID) -> None:
             if not job or job.status == GenerativeJobStatus.CANCELLED:
                 return
             ids = [str(i) for i in result.attachment_ids]
+            mids = [str(i) for i in (result.media_asset_ids or [])]
             logger.info("生成图片任务完成 job_id=%s, attachment_ids=%d, ids=%s", job_id, len(ids), ids)
             job.status = GenerativeJobStatus.SUCCESS
             job.progress_message = "已完成"
@@ -211,6 +213,8 @@ async def run_generative_image_job_async(job_id: UUID) -> None:
                 "kind": "image",
                 "attachment_id": ids[0] if ids else None,
                 "attachment_ids": ids,
+                "media_asset_id": mids[0] if mids else None,
+                "media_asset_ids": mids,
                 "mime_type": result.mime_type,
             }
             job.error_message = None

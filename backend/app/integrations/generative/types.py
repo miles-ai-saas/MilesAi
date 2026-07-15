@@ -12,6 +12,7 @@ class ImageGenerateResult:
     mime_type: str  # 图片 MIME 类型
     width: int | None = None  # 宽度（像素，可选）
     height: int | None = None  # 高度（像素，可选）
+    media_asset_ids: list[UUID] | None = None  # 对应生成素材 ID
 
 
 @dataclass
@@ -22,3 +23,4 @@ class VideoGenerateResult:
     mime_type: str = "video/mp4"  # 视频 MIME 类型
     provider_task_id: str | None = None  # 供应商异步任务 ID（如有）
     duration_sec: int | None = None  # 视频时长（秒，可选）
+    media_asset_id: UUID | None = None  # 生成素材 ID

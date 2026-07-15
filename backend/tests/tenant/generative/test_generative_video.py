@@ -1,6 +1,7 @@
 """生视频集成（万相 / 豆包 HTTP）。"""
 
 from unittest.mock import AsyncMock, patch
+from types import SimpleNamespace
 from uuid import uuid4
 
 import pytest
@@ -85,6 +86,7 @@ async def test_generate_video_for_model_persists():
         patch(
             "app.tenant.media_assets.services.media_asset.register_media_asset",
             new_callable=AsyncMock,
+            return_value=SimpleNamespace(id=uuid4()),
         ),
         patch(
             "app.integrations.generative.compliance.check_generative_prompt",

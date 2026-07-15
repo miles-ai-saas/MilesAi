@@ -187,7 +187,7 @@ async def generate_video_for_model(
 
     from app.tenant.media_assets.services.media_asset import register_media_asset
 
-    await register_media_asset(
+    row = await register_media_asset(
         db,
         ctx,
         attachment_id=att_id,
@@ -199,4 +199,9 @@ async def generate_video_for_model(
         source_ref_id=agent_id,
         cover_attachment_id=cover_att_id,
     )
-    return VideoGenerateResult(attachment_id=att_id, mime_type="video/mp4", duration_sec=duration)
+    return VideoGenerateResult(
+        attachment_id=att_id,
+        mime_type="video/mp4",
+        duration_sec=duration,
+        media_asset_id=row.id,
+    )
