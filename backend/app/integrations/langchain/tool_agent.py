@@ -742,6 +742,15 @@ async def run_tool_calling_chat(
                         "content": str(exc),
                     }
                 )
+                if slug in ("generate_image", "generate_video"):
+                    artifacts.append(
+                        ChatArtifact(
+                            kind="image" if slug == "generate_image" else "video",
+                            status="failed",
+                            error_message=str(exc),
+                            caption=str(exc),
+                        )
+                    )
                 return ChatResponse(
                     answer=f"工具「{slug}」执行失败：{exc}",
                     steps=steps,
@@ -760,9 +769,15 @@ async def run_tool_calling_chat(
                 )
                 job_kind = str(output.get("kind") or "video")
                 default_msg = "图片生成任务已提交，完成后将自动展示预览。" if job_kind == "image" else "视频生成任务已提交，完成后将自动展示预览。"
+                pending_out = dict(output) if isinstance(output, dict) else {}
+                pending_out.setdefault("status", "pending")
+                pending_out.setdefault("kind", job_kind)
+                pending_out.setdefault("generative_job_id", pending_job_id)
+                artifacts.extend(_artifacts_from_tool_output(pending_out))
                 return ChatResponse(
                     answer=str(output.get("message") or default_msg),
                     steps=steps,
+                    artifacts=artifacts,
                     generative_jobs=[
                         {
                             "id": pending_job_id,
