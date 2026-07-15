@@ -35,14 +35,21 @@ export function MediaAssetCard({
   kbs,
   onPromote,
   onDelete,
+  highlighted = false,
 }: {
   asset: MediaAsset;
   kbs: KnowledgeBase[];
   onPromote: () => void;
   onDelete: () => void;
+  highlighted?: boolean;
 }) {
   return (
-    <article className="group flex min-w-0 flex-col overflow-hidden rounded-xl border border-line bg-surface shadow-sm transition-shadow hover:shadow-md">
+    <article
+      id={`media-asset-${asset.id}`}
+      className={`group flex min-w-0 flex-col overflow-hidden rounded-xl border bg-surface shadow-sm transition-shadow hover:shadow-md ${
+        highlighted ? "border-brand ring-2 ring-brand/40" : "border-line"
+      }`}
+    >
       <div className="aspect-[4/3] w-full shrink-0 bg-surface-muted">
         <div className="flex h-full w-full items-center justify-center p-2">
           <ChatArtifactMedia

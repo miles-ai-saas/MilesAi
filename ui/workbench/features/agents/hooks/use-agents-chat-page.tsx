@@ -171,6 +171,8 @@ export function useAgentsChatPage() {
     chattingStatusLabel: messaging.chattingStatusLabel,
     lastTraceId,
     generativeStatusEl: messaging.generativeStatusEl,
+    cancelGenerativeJobById: messaging.cancelGenerativeJobById,
+    onGenerativeJobRetried: messaging.onGenerativeJobRetried,
     apiError: messaging.apiError,
     clearApiError: messaging.clearApiError,
     loadMoreMessages: session.loadMoreMessages,

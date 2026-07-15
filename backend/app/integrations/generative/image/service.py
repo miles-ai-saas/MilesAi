@@ -168,6 +168,7 @@ async def generate_image_for_model(
         await job_progress.update(80, "保存生成物")
 
     attachment_ids: list[UUID] = []
+    media_asset_ids: list[UUID] = []
     mime = "image/png"
     import logging
     _log = logging.getLogger(__name__)
@@ -189,7 +190,7 @@ async def generate_image_for_model(
         )
         from app.tenant.media_assets.services.media_asset import register_media_asset
 
-        await register_media_asset(
+        row = await register_media_asset(
             db,
             ctx,
             attachment_id=att_id,
@@ -201,5 +202,6 @@ async def generate_image_for_model(
             source_ref_id=agent_id,
         )
         attachment_ids.append(att_id)
+        media_asset_ids.append(row.id)
 
-    return ImageGenerateResult(attachment_ids=attachment_ids, mime_type=mime)
+    return ImageGenerateResult(attachment_ids=attachment_ids, mime_type=mime, media_asset_ids=media_asset_ids)

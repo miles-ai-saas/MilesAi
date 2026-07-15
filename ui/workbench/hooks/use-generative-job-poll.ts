@@ -61,9 +61,9 @@ export function useGenerativeJobPoll(jobs: JobPollTarget[], onComplete?: (artifa
       if (job.status === "success") {
         finishJob(job.id, generativeJobToArtifacts(job), null);
       } else if (job.status === "failed") {
-        finishJob(job.id, [], job.error_message ?? "生成失败");
+        finishJob(job.id, generativeJobToArtifacts(job), job.error_message ?? "生成失败");
       } else if (job.status === "cancelled") {
-        finishJob(job.id, [], "任务已取消");
+        finishJob(job.id, generativeJobToArtifacts(job), "任务已取消");
       }
     };
 
