@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import type { PendingChatMedia } from "@/features/agents/components/AgentChatComposer";
+import type { PendingChatMedia } from "@/features/agents/lib/chat-sessions";
 import { useAgentsChatComposerMedia } from "@/features/agents/hooks/use-agents-chat-composer-media";
 import { useAgentsChatGenerativeStatus } from "@/features/agents/hooks/use-agents-chat-generative-status";
 import { useAgentChatWs } from "@/features/agents/hooks/use-agent-chat-ws";
@@ -160,6 +160,8 @@ export function useAgentsChatMessaging({
           {
             query: apiQuery,
             media: mediaPayload.length ? mediaPayload : undefined,
+            generativeImageN,
+            generativeVideoDuration,
           },
           optimistic,
         );

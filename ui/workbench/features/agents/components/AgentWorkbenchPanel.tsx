@@ -5,10 +5,11 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AGENT_FORM_STEPS, agentToFormValues, buildAgentConfig, emptyAgentForm, type AgentFormValues } from "@/features/agents/lib/agent-form-types";
 import type { AgentWorkbenchTab } from "@/features/agents/hooks/use-agents-chat-layout";
+import { useAgentFormResources } from "@/features/agents/hooks/use-agent-form-resources";
 import { AgentFormStepContent } from "@/features/agents/components/AgentFormStepContent";
 import { AgentFormStepper } from "@/features/agents/components/AgentFormStepper";
 import { api } from "@/lib/api";
-import type { Agent, Flow, KnowledgeBase, McpService, ModelConfig, PromptTemplate, SkillPackage, A2aPeer, SysCategory, ToolCatalogItem } from "@/lib/types";
+import type { Agent } from "@/lib/types";
 
 type Props = {
   agentId: string | null;
@@ -20,62 +21,31 @@ type Props = {
 
 export function AgentWorkbenchPanel({ agentId, agentName, activeTab, onSaved }: Props) {
   const router = useRouter();
-  const [agent, setAgent] = useState<Agent | null>(null);
   const [form, setForm] = useState<AgentFormValues>(emptyAgentForm());
   const [step, setStep] = useState(0);
-  const [kbs, setKbs] = useState<KnowledgeBase[]>([]);
-  const [flows, setFlows] = useState<Flow[]>([]);
-  const [prompts, setPrompts] = useState<PromptTemplate[]>([]);
-  const [models, setModels] = useState<ModelConfig[]>([]);
-  const [skills, setSkills] = useState<SkillPackage[]>([]);
-  const [mcps, setMcps] = useState<McpService[]>([]);
-  const [allAgents, setAllAgents] = useState<Agent[]>([]);
-  const [a2aPeers, setA2aPeers] = useState<A2aPeer[]>([]);
-  const [categories, setCategories] = useState<SysCategory[]>([]);
-  const [toolCatalog, setToolCatalog] = useState<ToolCatalogItem[]>([]);
   const [busy, setBusy] = useState(false);
-  const [loading, setLoading] = useState(false);
+
+  const { kbs, flows, prompts, models, skills, mcps, toolCatalog, allAgents, a2aPeers, categories, agent, loading } = useAgentFormResources(Boolean(agentId), {
+    loadAgent: agentId ?? undefined,
+    loadToolCatalog: true,
+    loadPeers: true,
+  });
 
   const isLastStep = step === AGENT_FORM_STEPS.length - 1;
   const canNext = step === 0 ? form.name.trim().length > 0 : true;
 
   useEffect(() => {
     if (!agentId) {
-      setAgent(null);
       setForm(emptyAgentForm());
       return;
     }
     setStep(0);
-    setLoading(true);
-    Promise.all([
-      api.getAgent(agentId),
-      api.listKbs(1, 100),
-      api.listFlows(1, 100),
-      api.listPromptTemplates(1, 100),
-      api.listModelConfigs(),
-      api.listSkillPackages(1, 100),
-      api.listMcpServices(1, 100),
-      api.listAgents(1, 100),
-      api.listA2aPeers(1, 100),
-      api.listCategories("agent"),
-      api.listToolCatalog(),
-    ])
-      .then(([fresh, kbRes, flowRes, promptRes, modelRes, skillRes, mcpRes, agentRes, a2aRes, catRes, catalogRes]) => {
-        setAgent(fresh);
-        setForm(agentToFormValues(fresh));
-        setKbs(kbRes.items);
-        setFlows(flowRes.items.filter((f) => f.status === "published"));
-        setPrompts(promptRes.items);
-        setModels(modelRes);
-        setSkills(skillRes.items.filter((s) => s.is_active));
-        setMcps(mcpRes.items);
-        setAllAgents(agentRes.items);
-        setA2aPeers(a2aRes.items.filter((p) => p.status === "active"));
-        setCategories(catRes);
-        setToolCatalog(catalogRes);
-      })
-      .finally(() => setLoading(false));
-  }, [agentId, agentName]);
+  }, [agentId]);
+
+  // agent 数据加载完成后同步到表单
+  useEffect(() => {
+    if (agent) setForm(agentToFormValues(agent));
+  }, [agent, agentName]);
 
   const onSubmit = async () => {
     if (!agent || !form.name.trim()) return;
@@ -94,7 +64,6 @@ export function AgentWorkbenchPanel({ agentId, agentName, activeTab, onSaved }: 
         config: buildAgentConfig(form, agent.config as Record<string, unknown>),
       });
       const fresh = await api.getAgent(agent.id);
-      setAgent(fresh);
       setForm(agentToFormValues(fresh));
       onSaved?.();
     } finally {

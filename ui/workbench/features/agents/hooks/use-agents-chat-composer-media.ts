@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
-import type { PendingChatMedia } from "@/features/agents/components/AgentChatComposer";
+import type { PendingChatMedia } from "@/features/agents/lib/chat-sessions";
 import { api } from "@/lib/api";
 import type { ChatMessage, ChatMessageMedia } from "@/features/agents/lib/chat-sessions";
 import { CHAT_ATTACHMENT_MAX_COUNT, filterChatUploadFiles } from "@/lib/chat-attachments";

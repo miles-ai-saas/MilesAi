@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useTraceTurnSelection } from "@/features/agents/components/AgentTracePanel";
+import { useTraceTurnSelection } from "@/features/agents/hooks/use-agent-trace-turn-selection";
 import { agentCarryForwardMediaEnabled, lastUserMessageMedia } from "@/features/agents/lib/chat-media-forward";
 import { loadBusinessContext, type BusinessContext } from "@/features/projects/lib/business-context";
 import { api } from "@/lib/api";
@@ -135,6 +135,12 @@ export function useAgentsChatPage() {
     onDeleteSession: session.handleDeleteSession,
   };
 
+  const effectiveApiError = messaging.apiError || session.sessionError;
+  const effectiveClearApiError = useCallback(() => {
+    messaging.clearApiError();
+    session.clearSessionError();
+  }, [messaging, session]);
+
   return {
     ready,
     list,
@@ -173,8 +179,8 @@ export function useAgentsChatPage() {
     generativeStatusEl: messaging.generativeStatusEl,
     cancelGenerativeJobById: messaging.cancelGenerativeJobById,
     onGenerativeJobRetried: messaging.onGenerativeJobRetried,
-    apiError: messaging.apiError,
-    clearApiError: messaging.clearApiError,
+    apiError: effectiveApiError,
+    clearApiError: effectiveClearApiError,
     loadMoreMessages: session.loadMoreMessages,
     loadingMore: session.loadingMore,
     hasMore: session.hasMore,

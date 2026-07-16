@@ -157,7 +157,7 @@ export function ensureActiveSession(agentId: string): ChatSession {
   return createSession(agentId);
 }
 
-export function updateSession(agentId: string, sessionId: string, patch: Partial<Pick<ChatSession, "title" | "messages" | "updatedAt">>) {
+export function updateSession(agentId: string, sessionId: string, patch: Partial<Pick<ChatSession, "title" | "messages" | "updatedAt" | "messageCount">>) {
   const store = loadStore();
   const b = bucket(agentId, store);
   const idx = b.sessions.findIndex((s) => s.id === sessionId);
@@ -167,6 +167,14 @@ export function updateSession(agentId: string, sessionId: string, patch: Partial
     ...patch,
     updatedAt: patch.updatedAt ?? Date.now(),
   };
+  saveStore(store);
+}
+
+/** 导入一条已在服务端存在的会话（覆盖本地同 ID 记录）。 */
+export function importSession(agentId: string, session: ChatSession) {
+  const store = loadStore();
+  const b = bucket(agentId, store);
+  b.sessions = [session, ...b.sessions.filter((s) => s.id !== session.id)].slice(0, MAX_SESSIONS_PER_AGENT);
   saveStore(store);
 }
 
@@ -237,6 +245,8 @@ export function deleteSession(agentId: string, sessionId: string) {
 }
 
 export type SessionGroup = { label: string; sessions: ChatSession[] };
+
+export type PendingChatMedia = ChatMessageMedia & { local_preview: string };
 
 export function groupSessionsByDate(sessions: ChatSession[]): SessionGroup[] {
   const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();

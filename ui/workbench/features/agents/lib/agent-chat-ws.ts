@@ -15,6 +15,8 @@ export type WsChatSendOptions = {
   toolConfirmed?: boolean;
   pendingToolSlug?: string;
   pendingToolParams?: Record<string, unknown>;
+  generativeImageN?: number;
+  generativeVideoDuration?: number;
 };
 
 export type AgentChatWsCallbacks = {
@@ -132,6 +134,8 @@ export class AgentChatWsClient {
         query: opts.query,
       };
       if (opts.media?.length) payload.media = opts.media;
+      if (opts.generativeImageN != null) payload.generative_image_n = opts.generativeImageN;
+      if (opts.generativeVideoDuration != null) payload.generative_video_duration = opts.generativeVideoDuration;
       if (opts.toolConfirmed) {
         payload.tool_confirmed = true;
         payload.pending_tool_slug = opts.pendingToolSlug;

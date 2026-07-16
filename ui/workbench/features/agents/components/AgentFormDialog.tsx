@@ -6,9 +6,10 @@ import { useEffect, useState } from "react";
 import { AGENT_FORM_STEPS, agentToFormValues, buildAgentConfig, emptyAgentForm, type AgentFormValues } from "@/features/agents/lib/agent-form-types";
 import { AgentFormStepContent } from "@/features/agents/components/AgentFormStepContent";
 import { AgentFormStepper } from "@/features/agents/components/AgentFormStepper";
+import { useAgentFormResources } from "@/features/agents/hooks/use-agent-form-resources";
 import { ResourceDialog } from "@/components/resource/ResourceDialog";
 import { api } from "@/lib/api";
-import type { Agent, A2aPeer, Flow, KnowledgeBase, McpService, ModelConfig, PromptTemplate, SkillPackage, SysCategory, ToolCatalogItem } from "@/lib/types";
+import type { Agent } from "@/lib/types";
 
 export type { AgentFormValues } from "@/features/agents/lib/agent-form-types";
 
@@ -23,48 +24,15 @@ type Props = {
 export function AgentFormDialog({ open, title, agent, onClose, onSaved }: Props) {
   const [form, setForm] = useState<AgentFormValues>(emptyAgentForm());
   const [step, setStep] = useState(0);
-  const [kbs, setKbs] = useState<KnowledgeBase[]>([]);
-  const [flows, setFlows] = useState<Flow[]>([]);
-  const [prompts, setPrompts] = useState<PromptTemplate[]>([]);
-  const [models, setModels] = useState<ModelConfig[]>([]);
-  const [skills, setSkills] = useState<SkillPackage[]>([]);
-  const [mcps, setMcps] = useState<McpService[]>([]);
-  const [toolCatalog, setToolCatalog] = useState<ToolCatalogItem[]>([]);
-  const [allAgents, setAllAgents] = useState<Agent[]>([]);
-  const [a2aPeers, setA2aPeers] = useState<A2aPeer[]>([]);
-  const [categories, setCategories] = useState<SysCategory[]>([]);
   const [busy, setBusy] = useState(false);
+
+  const { kbs, flows, prompts, models, skills, mcps, toolCatalog, allAgents, a2aPeers, categories } = useAgentFormResources(open, {
+    loadToolCatalog: true,
+    loadPeers: true,
+  });
 
   const isLastStep = step === AGENT_FORM_STEPS.length - 1;
   const canNext = step === 0 ? form.name.trim().length > 0 : true;
-
-  useEffect(() => {
-    if (!open) return;
-    setStep(0);
-    Promise.all([
-      api.listKbs(1, 100),
-      api.listFlows(1, 100),
-      api.listPromptTemplates(1, 100),
-      api.listModelConfigs(),
-      api.listSkillPackages(1, 100),
-      api.listMcpServices(1, 100),
-      api.listToolCatalog(),
-      api.listAgents(1, 100),
-      api.listA2aPeers(1, 100),
-      api.listCategories("agent"),
-    ]).then(([kbRes, flowRes, promptRes, modelRes, skillRes, mcpRes, catalogRes, agentRes, a2aRes, catRes]) => {
-      setKbs(kbRes.items);
-      setFlows(flowRes.items.filter((f) => f.status === "published"));
-      setPrompts(promptRes.items);
-      setModels(modelRes);
-      setSkills(skillRes.items.filter((s) => s.is_active));
-      setMcps(mcpRes.items);
-      setToolCatalog(catalogRes);
-      setAllAgents(agentRes.items);
-      setA2aPeers(a2aRes.items.filter((p) => p.status === "active"));
-      setCategories(catRes);
-    });
-  }, [open]);
 
   useEffect(() => {
     if (!open) return;

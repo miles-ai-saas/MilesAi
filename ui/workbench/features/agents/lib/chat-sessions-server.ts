@@ -5,10 +5,10 @@
 import { api } from "@/lib/api";
 import {
   getSession,
-  listSessions,
+  importSession,
+  updateSession,
   type ChatMessage,
   type ChatSession,
-  updateSession,
 } from "@/features/agents/lib/chat-sessions";
 import type { ChatSessionDetail } from "@/lib/types";
 
@@ -59,21 +59,11 @@ export function importServerSession(agentId: string, detail: ChatSessionDetail):
       title: detail.title,
       messages: merged,
       updatedAt,
-    } as Parameters<typeof updateSession>[2]);
-    const patched = getSession(agentId, detail.id);
-    if (patched && msgCount !== patched.messages.length) {
-      // 通过原生的 localStorage 路径 patch messageCount
-      patchSessionMeta(agentId, detail.id, { messageCount: msgCount });
-    }
-    return patched ?? { ...local, title: detail.title, messages: merged, updatedAt };
+      messageCount: msgCount,
+    });
+    return getSession(agentId, detail.id) ?? { ...local, title: detail.title, messages: merged, updatedAt };
   }
 
-  const storeKey = "agents-chat-sessions-v1";
-  const raw = localStorage.getItem(storeKey);
-  const store = raw ? (JSON.parse(raw) as Record<string, { activeSessionId: string | null; sessions: ChatSession[] }>) : {};
-  if (!store[agentId]) {
-    store[agentId] = { activeSessionId: null, sessions: [] };
-  }
   const session: ChatSession = {
     id: detail.id,
     agentId,
@@ -82,8 +72,7 @@ export function importServerSession(agentId: string, detail: ChatSessionDetail):
     updatedAt,
     messages: serverMessages,
   };
-  store[agentId].sessions = [session, ...store[agentId].sessions.filter((s) => s.id !== detail.id)].slice(0, 80);
-  localStorage.setItem(storeKey, JSON.stringify(store));
+  importSession(agentId, session);
   return session;
 }
 
@@ -94,24 +83,6 @@ function mergeMessages(localMessages: ChatMessage[], serverMessages: ChatMessage
   return [...localOlder, ...serverMessages];
 }
 
-/** 更新 session 的 messageCount 元数据（不改变 messages 数组）。 */
-function patchSessionMeta(agentId: string, sessionId: string, patch: { messageCount: number }) {
-  const storeKey = "agents-chat-sessions-v1";
-  const raw = localStorage.getItem(storeKey);
-  if (!raw) return;
-  try {
-    const store = JSON.parse(raw) as Record<string, { activeSessionId: string | null; sessions: ChatSession[] }>;
-    const b = store[agentId];
-    if (!b) return;
-    const idx = b.sessions.findIndex((s) => s.id === sessionId);
-    if (idx < 0) return;
-    b.sessions[idx] = { ...b.sessions[idx], messageCount: patch.messageCount };
-    localStorage.setItem(storeKey, JSON.stringify(store));
-  } catch {
-    /* ignore */
-  }
-}
-
 export async function fetchServerSessionIntoLocal(agentId: string, sessionId: string): Promise<ChatSession | null> {
   try {
     const detail = await api.getAgentChatSession(agentId, sessionId);
@@ -119,8 +90,4 @@ export async function fetchServerSessionIntoLocal(agentId: string, sessionId: st
   } catch {
     return getSession(agentId, sessionId);
   }
-}
-
-export function listMergedSessions(agentId: string): ChatSession[] {
-  return listSessions(agentId);
 }

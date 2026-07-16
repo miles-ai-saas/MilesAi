@@ -3,7 +3,7 @@
 /** Trace 侧栏（链路 §5）：`agent-trace` 轮次 + steps 明细。 */
 
 import { useEffect, useMemo, useState } from "react";
-import { copyText, defaultTraceTurnIndex, listTraceTurns } from "@/features/agents/lib/agent-trace";
+import { copyText } from "@/features/agents/lib/agent-trace";
 import type { ChatMessage } from "@/features/agents/lib/chat-sessions";
 
 type Props = {
@@ -103,15 +103,4 @@ export function AgentTracePanel({ messages, selectedTurnIndex, onSelectTurnIndex
       </div>
     </div>
   );
-}
-
-export function useTraceTurnSelection(messages: ChatMessage[], sessionKey?: string) {
-  const turns = useMemo(() => listTraceTurns(messages), [messages]);
-  const [selectedTurnIndex, setSelectedTurnIndex] = useState(0);
-
-  useEffect(() => {
-    setSelectedTurnIndex(defaultTraceTurnIndex(turns));
-  }, [turns.length, sessionKey]);
-
-  return { turns, selectedTurnIndex, setSelectedTurnIndex };
 }

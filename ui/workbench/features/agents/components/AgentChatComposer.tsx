@@ -5,11 +5,9 @@
  */
 
 import { useEffect, useRef, useState } from "react";
-import type { ChatMessageMedia } from "@/features/agents/lib/chat-sessions";
+import type { ChatMessageMedia, PendingChatMedia } from "@/features/agents/lib/chat-sessions";
 import { CHAT_ATTACHMENT_ACCEPT } from "@/lib/chat-attachments";
 import { api } from "@/lib/api";
-
-export type PendingChatMedia = ChatMessageMedia & { local_preview: string };
 
 type Props = {
   query: string;

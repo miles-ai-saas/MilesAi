@@ -47,6 +47,7 @@ export function useAgentsChatSessionSync({
   const [sessionTitle, setSessionTitle] = useState("新对话");
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(false);
+  const [sessionError, setSessionError] = useState<string | null>(null);
   const { requestConfirm, confirmDialog } = useConfirmAction();
 
   const refreshSessions = useCallback((agentId: string) => {
@@ -212,7 +213,9 @@ export function useAgentsChatSessionSync({
     (sessionId: string, title: string) => {
       if (!selectedAgent) return;
       if (!renameSession(selectedAgent, sessionId, title)) return;
-      void api.updateAgentChatSession(selectedAgent, sessionId, { title: title.trim() }).catch(() => undefined);
+      void api.updateAgentChatSession(selectedAgent, sessionId, { title: title.trim() }).catch((e) => {
+        setSessionError(e instanceof Error ? e.message : "重命名同步失败");
+      });
       refreshSessions(selectedAgent);
       if (sessionId === conversationId) {
         const updated = getSession(selectedAgent, sessionId);
@@ -232,7 +235,9 @@ export function useAgentsChatSessionSync({
         destructive: true,
         confirmLabel: "确认删除",
         onConfirm: async () => {
-          await api.deleteAgentChatSession(selectedAgent, sessionId).catch(() => undefined);
+          await api.deleteAgentChatSession(selectedAgent, sessionId).catch((e) => {
+            setSessionError(e instanceof Error ? e.message : "删除会话同步失败");
+          });
           deleteSession(selectedAgent, sessionId);
           refreshSessions(selectedAgent);
           const next = ensureActiveSession(selectedAgent);
@@ -278,6 +283,8 @@ export function useAgentsChatSessionSync({
     loadMoreMessages,
     loadingMore,
     hasMore,
+    sessionError,
+    clearSessionError: () => setSessionError(null),
     handleNewSession,
     handleSelectSession,
     handleRenameSession,

@@ -61,6 +61,8 @@ def _build_chat_request(
         tool_confirmed=bool(payload.get("tool_confirmed")),
         pending_tool_slug=payload.get("pending_tool_slug"),
         pending_tool_params=dict(payload.get("pending_tool_params") or {}),
+        generative_image_n=int(payload.get("generative_image_n", 1)),
+        generative_video_duration=int(payload.get("generative_video_duration", 5)),
     )
 
 

@@ -20,7 +20,7 @@ export const AGENTS_TAB_ITEMS = [
 ];
 
 function agentsTabToApiType(tab: AgentsTab): AgentType | undefined {
-  if (tab === "custom") return "custom";
+  if (tab === "all" || tab === "custom") return "custom";
   if (tab === "a2a") return "a2a";
   return undefined;
 }
@@ -40,7 +40,7 @@ export function useAgentsPage() {
 
   const list = usePagedList(
     useCallback(
-      (p, s) => api.listAgents(p, s, tab === "all" ? undefined : agentsTabToApiType(tab), cat.activeCategoryId, tagFilterIds.length ? tagFilterIds : undefined),
+      (p, s) => api.listAgents(p, s, agentsTabToApiType(tab), cat.activeCategoryId, tagFilterIds.length ? tagFilterIds : undefined),
       [tab, cat.activeCategoryId, tagFilterIds],
     ),
     { enabled: ready && tab !== "a2a", resetKey: `${tab}-${cat.activeId}-${tagFilterIds.join(",")}` },
@@ -48,12 +48,8 @@ export function useAgentsPage() {
   const { requestConfirm, confirmDialog } = useConfirmAction();
 
   const filtered = useMemo(() => {
-    let items = list.items;
-    if (tab === "all") {
-      items = items.filter((a) => a.agent_type !== "a2a");
-    }
-    return filterBySearch(items, search, (a) => `${a.name} ${a.description ?? ""}`);
-  }, [list.items, search, tab]);
+    return filterBySearch(list.items, search, (a) => `${a.name} ${a.description ?? ""}`);
+  }, [list.items, search]);
 
   const pageStats = useMemo(() => {
     let enabled = 0;
