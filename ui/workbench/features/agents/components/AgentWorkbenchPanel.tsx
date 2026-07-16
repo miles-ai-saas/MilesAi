@@ -61,7 +61,7 @@ export function AgentWorkbenchPanel({ agentId, agentName, activeTab, onSaved }: 
         published_flow_id: form.published_flow_id || null,
         prompt_template_id: form.prompt_template_id || null,
         model_config_id: form.model_config_id || null,
-        config: buildAgentConfig(form, agent.config as Record<string, unknown>),
+        config: buildAgentConfig(form, agent.config),
       });
       const fresh = await api.getAgent(agent.id);
       setForm(agentToFormValues(fresh));

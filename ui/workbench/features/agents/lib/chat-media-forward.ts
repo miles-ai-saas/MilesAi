@@ -2,7 +2,7 @@
  * 识图多轮：未上传新图时沿用上一轮用户消息中的附图。
  */
 
-import type { ChatMediaIn } from "@/lib/types";
+import type { AgentConfig, ChatMediaIn } from "@/lib/types";
 import type { ChatMessage, ChatMessageMedia } from "./chat-sessions";
 
 export function lastUserMessageMedia(messages: ChatMessage[]): ChatMessageMedia[] {
@@ -36,7 +36,7 @@ export function resolveOutgoingChatMedia(
   };
 }
 
-export function agentCarryForwardMediaEnabled(config: Record<string, unknown> | undefined | null): boolean {
+export function agentCarryForwardMediaEnabled(config: AgentConfig | undefined | null): boolean {
   if (!config) return true;
   return config.carry_forward_media !== false;
 }

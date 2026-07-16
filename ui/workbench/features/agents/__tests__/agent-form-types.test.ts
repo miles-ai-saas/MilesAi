@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { emptyAgentForm, agentToFormValues, buildAgentConfig, formatAgentCode } from "@/features/agents/lib/agent-form-types";
-import type { Agent } from "@/lib/types";
+import type { Agent, AgentConfig } from "@/lib/types";
 
 function mockAgent(overrides: Partial<Agent> = {}): Agent {
   return {
@@ -14,7 +14,7 @@ function mockAgent(overrides: Partial<Agent> = {}): Agent {
     published_flow_id: "flow-1",
     prompt_template_id: "pt-1",
     model_config_id: "model-1",
-    config: {} as Record<string, unknown>,
+    config: {} as AgentConfig,
     sub_agents: [],
     a2a_peers: [],
     agent_type: "custom" as const,
@@ -53,7 +53,7 @@ describe("agentToFormValues", () => {
 
   it("处理 config.skill_package_id 和 mcp_service_ids", () => {
     const agent = mockAgent({
-      config: { skill_package_id: "sk-1", mcp_service_ids: ["mcp-1", "mcp-2"] } as Record<string, unknown>,
+      config: { skill_package_id: "sk-1", mcp_service_ids: ["mcp-1", "mcp-2"] } as AgentConfig,
     });
     const form = agentToFormValues(agent);
     expect(form.skill_package_id).toBe("sk-1");
@@ -61,12 +61,12 @@ describe("agentToFormValues", () => {
   });
 
   it("默认 carry_forward_media 为 true", () => {
-    const agent = mockAgent({ config: {} as Record<string, unknown> });
+    const agent = mockAgent({ config: {} as AgentConfig });
     expect(agentToFormValues(agent).carry_forward_media).toBe(true);
   });
 
   it("carry_forward_media 显式 false 时保持 false", () => {
-    const agent = mockAgent({ config: { carry_forward_media: false } as Record<string, unknown> });
+    const agent = mockAgent({ config: { carry_forward_media: false } as AgentConfig });
     expect(agentToFormValues(agent).carry_forward_media).toBe(false);
   });
 
@@ -154,7 +154,7 @@ describe("buildAgentConfig", () => {
   });
 
   it("保留 baseConfig 中的其他字段", () => {
-    const base = { custom_field: "keep", agent_tag: "remove-me" } as Record<string, unknown>;
+    const base: AgentConfig = { custom_field: "keep", agent_tag: "remove-me" };
     const config = buildAgentConfig(emptyAgentForm(), base);
     expect(config.custom_field).toBe("keep");
     expect(config.agent_tag).toBeUndefined();

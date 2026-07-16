@@ -35,7 +35,35 @@ export interface Agent {
   model_config_id?: string | null;
   prompt_template_id?: string | null;
   system_prompt?: string | null;
-  config?: Record<string, unknown>;
+  config?: AgentConfig;
+}
+
+/** 智能体 config 字段（与 backend schemas/agent.py 对齐，所有字段可选以兼容增量更新）。 */
+export interface AgentConfig {
+  skill_package_id?: string;
+  mcp_service_ids?: string[];
+  a2a_invoke_policy?: "rules_then_plan" | "rules_only" | "plan_only";
+  use_langgraph_rag?: boolean;
+  relevance_threshold?: number;
+  rag_max_retries?: number;
+  use_llm_grade?: boolean;
+  subagent_parallel?: boolean;
+  force_platform_planner?: boolean;
+  enable_tool_calling?: boolean;
+  tool_slugs?: string[];
+  enable_generative_tools?: boolean;
+  generative_image_model_id?: string;
+  generative_video_model_id?: string;
+  carry_forward_media?: boolean;
+  runtime_mode?: string;
+  planner?: string;
+  max_plan_iterations?: number;
+  max_subagent_calls?: number;
+  max_a2a_calls_per_turn?: number;
+  a2a_peer_count?: number;
+  a2a_host_peer_count?: number;
+  /** 保留后端可能返回的未登记字段 */
+  [key: string]: unknown;
 }
 
 export interface AgentStatsPoint {

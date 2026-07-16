@@ -38,6 +38,45 @@ def test_build_chat_request_media_and_conversation():
     assert len(body.media) == 1
 
 
+def test_build_chat_request_generative_params():
+    """WS 补齐生图/生视频参数，与 HTTP 路径对齐。"""
+    body = _build_chat_request(
+        {
+            "query": "画一只猫",
+            "generative_image_n": 3,
+            "generative_video_duration": 10,
+        },
+        conversation_id="conv-2",
+    )
+    assert body.generative_image_n == 3
+    assert body.generative_video_duration == 10
+
+
+def test_build_chat_request_generative_params_defaults():
+    """不传生成参数时使用 ChatRequest 的 field default。"""
+    body = _build_chat_request(
+        {"query": "你好"},
+        conversation_id="conv-3",
+    )
+    assert body.generative_image_n == 1
+    assert body.generative_video_duration == 5
+
+
+def test_build_chat_request_tool_confirm():
+    body = _build_chat_request(
+        {
+            "query": "确认执行工具",
+            "tool_confirmed": True,
+            "pending_tool_slug": "search",
+            "pending_tool_params": {"q": "test"},
+        },
+        conversation_id="conv-4",
+    )
+    assert body.tool_confirmed is True
+    assert body.pending_tool_slug == "search"
+    assert body.pending_tool_params == {"q": "test"}
+
+
 def test_extract_bearer_from_query():
     ws = _FakeWebSocket(query="token=abc123")
     assert extract_bearer_token(ws) == "abc123"

@@ -18,7 +18,7 @@ import {
   type ChatMessage,
   type ChatSession,
 } from "@/features/agents/lib/chat-sessions";
-import { mergeServerChatSessions, fetchServerSessionIntoLocal } from "@/features/agents/lib/chat-sessions-server";
+import { fetchServerSessionIntoLocal, mapServerMessages, mergeMessages, mergeServerChatSessions } from "@/features/agents/lib/chat-sessions-server";
 import { api } from "@/lib/api";
 import { useConfirmAction } from "@/hooks/use-confirm-action";
 
@@ -107,25 +107,13 @@ export function useAgentsChatSessionSync({
               before_sort_index: beforeSortIndex,
               limit: MESSAGES_PAGE_SIZE,
             });
-            const serverMsgs: ChatMessage[] = detail.messages.map((m) => ({
-              role: m.role as "user" | "assistant",
-              content: m.content,
-              sortIndex: m.sort_index,
-              ...(m.media?.length ? { media: m.media as ChatMessage["media"] } : {}),
-              ...(m.artifacts?.length ? { artifacts: m.artifacts as ChatMessage["artifacts"] } : {}),
-              ...(m.steps?.length ? { steps: m.steps as Record<string, unknown>[] } : {}),
-              ...(m.trace_id ? { traceId: m.trace_id } : {}),
-            }));
+            const serverMsgs: ChatMessage[] = mapServerMessages(detail.messages);
             if (serverMsgs.length > 0) {
               // 合并到 localStorage
               const existing = getSession(selectedAgent, conversationId);
               if (existing) {
-                const existingKeys = new Set(existing.messages.map((m) => `${m.role}|${m.content?.slice(0, 80)}`));
-                const newOnly = serverMsgs.filter((m) => !existingKeys.has(`${m.role}|${m.content?.slice(0, 80)}`));
-                if (newOnly.length > 0) {
-                  const merged = [...newOnly, ...existing.messages];
-                  updateSession(selectedAgent, conversationId, { messages: merged });
-                }
+                const merged = mergeMessages(existing.messages, serverMsgs);
+                updateSession(selectedAgent, conversationId, { messages: merged });
               }
               setMessages((p) => [...serverMsgs, ...p]);
               setHasMore(detail.has_more ?? false);
@@ -191,11 +179,13 @@ export function useAgentsChatSessionSync({
     (clearComposer?: () => void) => {
       if (!selectedAgent) return;
       const session = createSession(selectedAgent);
+      void api.createAgentChatSession(selectedAgent, { id: session.id, title: session.title })
+        .catch((e) => setSessionError(e instanceof Error ? e.message : "会话创建同步失败"));
       refreshSessions(selectedAgent);
       loadSessionIntoUi(selectedAgent, session.id, clearComposer);
       syncUrl(selectedAgent, session.id);
     },
-    [loadSessionIntoUi, refreshSessions, selectedAgent, syncUrl],
+    [loadSessionIntoUi, refreshSessions, selectedAgent, setSessionError, syncUrl],
   );
 
   const handleSelectSession = useCallback(

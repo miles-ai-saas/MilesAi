@@ -1,7 +1,7 @@
 /** 智能体表单类型、默认值与配置映射（链路 §3）。 */
 
 import { AGENT_PLANNER, AGENT_RUNTIME_MODE } from "@/features/agents/lib/agent-config";
-import type { Agent, A2aPeerRefInput, SubAgentBindingInput } from "@/lib/types";
+import type { Agent, A2aPeerRefInput, AgentConfig, SubAgentBindingInput } from "@/lib/types";
 
 export type AgentFormValues = {
   name: string;
@@ -72,7 +72,7 @@ export function emptyAgentForm(): AgentFormValues {
 }
 
 export function agentToFormValues(agent: Agent): AgentFormValues {
-  const cfg = (agent.config ?? {}) as Record<string, unknown>;
+  const cfg = (agent.config ?? {}) as AgentConfig;
   return {
     name: agent.name,
     description: agent.description ?? "",
@@ -117,7 +117,7 @@ export function formatAgentCode(agentId: string): string {
   return `AGENT-${year}-${short}`;
 }
 
-export function buildAgentConfig(form: AgentFormValues, baseConfig: Record<string, unknown> | undefined): Record<string, unknown> {
+export function buildAgentConfig(form: AgentFormValues, baseConfig: AgentConfig | undefined): Record<string, unknown> {
   const config: Record<string, unknown> = { ...(baseConfig ?? {}) };
   delete config.agent_tag;
   if (form.skill_package_id) config.skill_package_id = form.skill_package_id;

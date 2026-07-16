@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTraceTurnSelection } from "@/features/agents/hooks/use-agent-trace-turn-selection";
 import { agentCarryForwardMediaEnabled, lastUserMessageMedia } from "@/features/agents/lib/chat-media-forward";
-import { loadBusinessContext, type BusinessContext } from "@/features/projects/lib/business-context";
+import { loadBusinessContext, type BusinessContext } from "@/features/projects";
 import { api } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth-store";
 import { useInfiniteList } from "@/hooks/use-infinite-list";
@@ -76,7 +76,7 @@ export function useAgentsChatPage() {
   });
 
   const selected = list.items.find((a) => a.id === selectedAgent);
-  const carryForwardMedia = agentCarryForwardMediaEnabled((selected?.config ?? null) as Record<string, unknown> | null);
+  const carryForwardMedia = agentCarryForwardMediaEnabled(selected?.config);
 
   const toolSlugs: string[] = useMemo(() => {
     const slugs = selected?.config?.tool_slugs;

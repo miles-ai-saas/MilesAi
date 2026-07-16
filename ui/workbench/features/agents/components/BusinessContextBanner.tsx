@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { clearBusinessContext, type BusinessContext } from "@/features/projects/lib/business-context";
+import { clearBusinessContext, type BusinessContext } from "@/features/projects";
 
 export function BusinessContextBanner({ ctx, onDismiss }: { ctx: BusinessContext; onDismiss: () => void }) {
   return (

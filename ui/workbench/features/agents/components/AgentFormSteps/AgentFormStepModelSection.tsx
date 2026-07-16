@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { agentFormStepWidth, type AgentFormStepContentProps } from "@/features/agents/components/AgentFormStepContent";
-import { CHAT_MODEL_TYPES } from "@/features/models/lib/model-labels";
+import { CHAT_MODEL_TYPES } from "@/features/models";
 
 type Props = Pick<AgentFormStepContentProps, "form" | "setForm" | "models" | "prompts" | "designMode">;
 

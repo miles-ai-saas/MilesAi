@@ -38,7 +38,7 @@ export function emptyHostAgentForm(): A2aHostFormValues {
 }
 
 export function agentToHostFormValues(agent: Agent): A2aHostFormValues {
-  const cfg = (agent.config ?? {}) as Record<string, unknown>;
+  const cfg = (agent.config ?? {}) as AgentConfig;
   return {
     name: agent.name,
     description: agent.description ?? "",
@@ -141,7 +141,7 @@ export function useA2aHostFormDialog({ open, agent, onClose, onSaved }: Params) 
         a2a_peers: form.a2a_peers,
         kb_ids: [] as string[],
         sub_agents: [],
-        config: buildHostAgentConfig(form, (agent?.config as Record<string, unknown>) ?? {}),
+        config: buildHostAgentConfig(form, agent?.config ?? {}),
       };
       if (agent) {
         await api.updateAgent(agent.id, payload);

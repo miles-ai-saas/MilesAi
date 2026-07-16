@@ -5,7 +5,7 @@ import type { PendingChatMedia } from "@/features/agents/lib/chat-sessions";
 import { useAgentsChatComposerMedia } from "@/features/agents/hooks/use-agents-chat-composer-media";
 import { useAgentsChatGenerativeStatus } from "@/features/agents/hooks/use-agents-chat-generative-status";
 import { useAgentChatWs } from "@/features/agents/hooks/use-agent-chat-ws";
-import { prependBusinessContext, type BusinessContext } from "@/features/projects/lib/business-context";
+import { prependBusinessContext, type BusinessContext } from "@/features/projects";
 import { api } from "@/lib/api";
 import { appendTurn, getSession, type ChatMessage, type ChatMessageMedia } from "@/features/agents/lib/chat-sessions";
 import { generativeToolBusyLabel } from "@/lib/generative-tool-ui";

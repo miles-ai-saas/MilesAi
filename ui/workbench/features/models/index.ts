@@ -6,3 +6,5 @@ export { ModelCatalogGrid } from "./components/ModelCatalogGrid";
 export { ModelFilterPanel } from "./components/ModelFilterPanel";
 export { ModelDetailDialog } from "./components/ModelDetailDialog";
 export { ModelsPageOverlays } from "./components/ModelsPageOverlays";
+
+export { CHAT_MODEL_TYPES } from "./lib/model-labels";

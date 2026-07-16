@@ -13,10 +13,10 @@ export { agentStatusLabel, agentTypeLabel, subAgentRoleLabel, subAgentRoleOption
 export function agentModeLabel(agent: Agent): string {
   if (agent.agent_type === "a2a") {
     const n =
-      agent.a2a_peers?.filter((p) => p.enabled !== false).length ?? Number((agent.config as Record<string, unknown> | undefined)?.a2a_host_peer_count ?? 0);
+      agent.a2a_peers?.filter((p) => p.enabled !== false).length ?? Number(agent.config?.a2a_host_peer_count ?? 0);
     return n > 0 ? `外部编排 · ${n} 个成员` : "外部编排 · 未绑成员";
   }
-  const a2a = agent.a2a_peers?.filter((p) => p.enabled !== false).length ?? Number((agent.config as Record<string, unknown> | undefined)?.a2a_peer_count ?? 0);
+  const a2a = agent.a2a_peers?.filter((p) => p.enabled !== false).length ?? Number(agent.config?.a2a_peer_count ?? 0);
   const subs = agent.sub_agents?.length ?? 0;
   const parts: string[] = [];
   if (subs > 0) parts.push(`内部协同 · ${subs}`);

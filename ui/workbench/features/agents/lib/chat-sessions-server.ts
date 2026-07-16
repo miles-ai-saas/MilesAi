@@ -24,6 +24,8 @@ function mapServerMessages(messages: ChatSessionDetail["messages"]): ChatMessage
   }));
 }
 
+export { mapServerMessages };
+
 function shouldReplaceLocal(local: ChatSession, serverUpdatedMs: number, serverCount: number): boolean {
   if (serverCount > (local.messageCount ?? local.messages.length)) return true;
   if (serverUpdatedMs > local.updatedAt) return true;
@@ -53,7 +55,7 @@ export function importServerSession(agentId: string, detail: ChatSessionDetail):
     // 服务端返回的是最新 N 条，merge 到本地（保留本地已有的更早消息）
     const merged = mergeMessages(local.messages, serverMessages);
     const msgCount = detail.has_more
-      ? ((detail as { message_count?: number }).message_count ?? (local.messageCount ?? merged.length))
+      ? (detail.message_count ?? (local.messageCount ?? merged.length))
       : merged.length;
     updateSession(agentId, detail.id, {
       title: detail.title,
@@ -76,10 +78,21 @@ export function importServerSession(agentId: string, detail: ChatSessionDetail):
   return session;
 }
 
-/** 合并本地与服务端消息：以服务端为准，去重（按 role+content 粗略去重）。 */
-function mergeMessages(localMessages: ChatMessage[], serverMessages: ChatMessage[]): ChatMessage[] {
-  const serverKeys = new Set(serverMessages.map((m) => `${m.role}|${m.content?.slice(0, 80)}`));
-  const localOlder = localMessages.filter((m) => !serverKeys.has(`${m.role}|${m.content?.slice(0, 80)}`));
+/** 合并本地与服务端消息：优先用 sortIndex 去重，无 sortIndex 时回退到 role+content 模糊匹配。 */
+export function mergeMessages(localMessages: ChatMessage[], serverMessages: ChatMessage[]): ChatMessage[] {
+  const serverSortIndices = new Set<number>();
+  const serverContentKeys = new Set<string>();
+  for (const m of serverMessages) {
+    if (m.sortIndex != null) {
+      serverSortIndices.add(m.sortIndex);
+    } else {
+      serverContentKeys.add(`${m.role}|${m.content.slice(0, 80)}`);
+    }
+  }
+  const localOlder = localMessages.filter((m) => {
+    if (m.sortIndex != null) return !serverSortIndices.has(m.sortIndex);
+    return !serverContentKeys.has(`${m.role}|${m.content.slice(0, 80)}`);
+  });
   return [...localOlder, ...serverMessages];
 }
 

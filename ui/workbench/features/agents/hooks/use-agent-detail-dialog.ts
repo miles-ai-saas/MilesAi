@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAgentFormResources } from "@/features/agents/hooks/use-agent-form-resources";
 import { useAgentMeta } from "@/features/agents/hooks/use-agent-meta";
-import type { Agent } from "@/lib/types";
+import type { Agent, AgentConfig } from "@/lib/types";
 
 export function useAgentDetailDialog(open: boolean, agentId: string | null) {
   const agentMeta = useAgentMeta(open);
@@ -21,7 +21,7 @@ export function useAgentDetailDialog(open: boolean, agentId: string | null) {
 
   const resolved = useMemo(() => {
     if (!agent) return null;
-    const cfg = (agent.config ?? {}) as Record<string, unknown>;
+    const cfg = (agent.config ?? {}) as AgentConfig;
     const skillId = String(cfg.skill_package_id ?? "");
     const mcpIds = (cfg.mcp_service_ids as string[] | undefined) ?? [];
     return {
