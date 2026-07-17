@@ -1,10 +1,12 @@
-# 应用栈：API / Celery Worker / 前端 / Flower
-# 前置：先启动基础设施
+# 应用栈：API / Celery Worker / Beat / MCP Runner / 前端
+# 前置：先启动基础设施（含 Flower）
 #   docker compose -f docker-compose.infra.yml up -d
 # 启动：
 #   docker compose up -d --build
 # 全量构建启动：
 #   docker compose -f docker-compose.infra.yml -f docker-compose.yml up -d --build
+#
+# 环境变量优先从 .env 读取；未定义时回退 Docker 内部服务名（见 ${VAR:-default}）。
 
 name: milesai-app
 
@@ -17,13 +19,13 @@ services:
     env_file:
       - ../.env
     environment:
-      POSTGRES_HOST: postgres
-      REDIS_HOST: redis
-      OBJECT_STORAGE_ENDPOINT: minio:9000
-      VECTOR_STORE_BACKEND: milvus
-      MILVUS_URI: http://milvus:19530
-      CELERY_BROKER_URL: redis://redis:6379/1
-      CELERY_RESULT_BACKEND: redis://redis:6379/2
+      POSTGRES_HOST: ${POSTGRES_HOST:-postgres}
+      REDIS_HOST: ${REDIS_HOST:-redis}
+      OBJECT_STORAGE_ENDPOINT: ${OBJECT_STORAGE_ENDPOINT:-minio:9000}
+      VECTOR_STORE_BACKEND: ${VECTOR_STORE_BACKEND:-milvus}
+      MILVUS_URI: ${MILVUS_URI:-http://milvus:19530}
+      CELERY_BROKER_URL: ${CELERY_BROKER_URL:-redis://redis:6379/1}
+      CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND:-redis://redis:6379/2}
       MCP_RUNNER_ENABLED: ${MCP_RUNNER_ENABLED:-true}
       MCP_RUNNER_URL: http://mcp-runner:8090
       MCP_RUNNER_TOKEN: ${MCP_RUNNER_TOKEN:-dev-runner-token-change-me}
@@ -49,13 +51,13 @@ services:
     env_file:
       - ../.env
     environment:
-      POSTGRES_HOST: postgres
-      REDIS_HOST: redis
-      OBJECT_STORAGE_ENDPOINT: minio:9000
-      VECTOR_STORE_BACKEND: milvus
-      MILVUS_URI: http://milvus:19530
-      CELERY_BROKER_URL: redis://redis:6379/1
-      CELERY_RESULT_BACKEND: redis://redis:6379/2
+      POSTGRES_HOST: ${POSTGRES_HOST:-postgres}
+      REDIS_HOST: ${REDIS_HOST:-redis}
+      OBJECT_STORAGE_ENDPOINT: ${OBJECT_STORAGE_ENDPOINT:-minio:9000}
+      VECTOR_STORE_BACKEND: ${VECTOR_STORE_BACKEND:-milvus}
+      MILVUS_URI: ${MILVUS_URI:-http://milvus:19530}
+      CELERY_BROKER_URL: ${CELERY_BROKER_URL:-redis://redis:6379/1}
+      CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND:-redis://redis:6379/2}
     networks:
       - milesai-net
     command: celery -A app.workers.app worker -l info -Q default,parse,ocr,asr,embed
@@ -69,13 +71,13 @@ services:
     env_file:
       - ../.env
     environment:
-      POSTGRES_HOST: postgres
-      REDIS_HOST: redis
-      OBJECT_STORAGE_ENDPOINT: minio:9000
-      VECTOR_STORE_BACKEND: milvus
-      MILVUS_URI: http://milvus:19530
-      CELERY_BROKER_URL: redis://redis:6379/1
-      CELERY_RESULT_BACKEND: redis://redis:6379/2
+      POSTGRES_HOST: ${POSTGRES_HOST:-postgres}
+      REDIS_HOST: ${REDIS_HOST:-redis}
+      OBJECT_STORAGE_ENDPOINT: ${OBJECT_STORAGE_ENDPOINT:-minio:9000}
+      VECTOR_STORE_BACKEND: ${VECTOR_STORE_BACKEND:-milvus}
+      MILVUS_URI: ${MILVUS_URI:-http://milvus:19530}
+      CELERY_BROKER_URL: ${CELERY_BROKER_URL:-redis://redis:6379/1}
+      CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND:-redis://redis:6379/2}
     networks:
       - milesai-net
     command: celery -A app.workers.app beat -l info
@@ -134,19 +136,6 @@ services:
     depends_on:
       api:
         condition: service_healthy
-    restart: unless-stopped
-
-  flower:
-    image: mher/flower:2.0
-    container_name: milesai-flower
-    environment:
-      CELERY_BROKER_URL: redis://redis:6379/1
-    ports:
-      - "${FLOWER_PORT:-5555}:5555"
-    networks:
-      - milesai-net
-    depends_on:
-      - worker
     restart: unless-stopped
 
 networks:

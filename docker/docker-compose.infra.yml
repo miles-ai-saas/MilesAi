@@ -1,4 +1,4 @@
-# 包含: PostgreSQL (pgvector) / Redis / MinIO / etcd / Milvus / Weaviate
+# 包含: PostgreSQL (pgvector) / Redis / Flower / MinIO / etcd / Milvus / Weaviate
 # 启动方式:
 #   仅基础设施:    docker compose -f docker-compose.infra.yml up -d
 #   基础设施+应用:  docker compose -f docker-compose.infra.yml -f docker-compose.yml up -d
@@ -42,6 +42,20 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
+    restart: unless-stopped
+
+  flower:
+    image: mher/flower:2.0
+    container_name: milesai-flower
+    environment:
+      CELERY_BROKER_URL: ${CELERY_BROKER_URL:-redis://redis:6379/1}
+    ports:
+      - "${FLOWER_PORT:-5555}:5555"
+    networks:
+      - milesai-net
+    depends_on:
+      redis:
+        condition: service_healthy
     restart: unless-stopped
 
   minio:
