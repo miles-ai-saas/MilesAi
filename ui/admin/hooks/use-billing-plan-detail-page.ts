@@ -1,13 +1,11 @@
 "use client";
 
-import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { adminApi, type AdminTenant, type BillingPlan } from "@/lib/api";
 import { useRequireAdmin } from "@/lib/auth-store";
 import { planFormFromPlan, type PlanForm } from "@/lib/billing-plan-detail-shared";
 
-export function useBillingPlanDetailPage() {
-  const { id } = useParams<{ id: string }>();
+export function useBillingPlanDetailPage(id: string) {
   const ready = useRequireAdmin();
   const [plan, setPlan] = useState<BillingPlan | null>(null);
   const [form, setForm] = useState<PlanForm | null>(null);

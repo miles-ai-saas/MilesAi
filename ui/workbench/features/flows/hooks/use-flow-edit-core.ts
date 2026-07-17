@@ -1,6 +1,5 @@
 "use client";
 
-import { useParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useElementFullscreen } from "@/hooks/use-element-fullscreen";
 import { api } from "@/lib/api";
@@ -8,8 +7,7 @@ import { useRequireAuth } from "@/lib/auth-store";
 import type { FlowCanvasHandle } from "@/features/flows/components/FlowCanvas";
 import type { FlowGraph, KnowledgeBase, ModelConfig, PromptTemplate, ToolCatalogItem } from "@/lib/types";
 
-export function useFlowEditCore() {
-  const { id } = useParams<{ id: string }>();
+export function useFlowEditCore({ id }: { id: string }) {
   const { ready } = useRequireAuth();
   const graphRef = useRef<FlowGraph>({ nodes: [], edges: [] });
   const canvasRef = useRef<FlowCanvasHandle>(null);

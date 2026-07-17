@@ -1,9 +1,7 @@
-"use client";
+import Content from "./detail-content";
 
-import { TenantDetailPageView } from "@/components/tenant/TenantDetailPageView";
-import { useTenantDetailPage } from "@/hooks/use-tenant-detail-page";
+export function generateStaticParams() { return [{ id: "_" }]; }
 
-export default function TenantDetailPage() {
-  const vm = useTenantDetailPage();
-  return <TenantDetailPageView vm={vm} />;
+export default function Page({ params }: { params: { id: string } }) {
+  return <Content id={params.id} />;
 }

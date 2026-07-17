@@ -1,9 +1,7 @@
-"use client";
+import Content from "./detail-content";
 
-import { ModelCatalogDetailPageView } from "@/components/model-catalog/ModelCatalogDetailPageView";
-import { useModelCatalogDetailPage } from "@/hooks/use-model-catalog-detail-page";
+export function generateStaticParams() { return [{ id: "_" }]; }
 
-export default function ModelCatalogDetailPage() {
-  const vm = useModelCatalogDetailPage();
-  return <ModelCatalogDetailPageView vm={vm} />;
+export default function Page({ params }: { params: { id: string } }) {
+  return <Content id={params.id} />;
 }

@@ -2,7 +2,7 @@
 
 /** 智能体表单资源加载 hook — 消除 FormDialog / WorkbenchPanel / DetailDialog 的重复请求。 */
 
-import { useEffect, useState } from "react";
+import { Dispatch, SetStateAction, useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import type { Agent, A2aPeer, Flow, KnowledgeBase, McpService, ModelConfig, PromptTemplate, SkillPackage, SysCategory, ToolCatalogItem } from "@/lib/types";
 
@@ -27,6 +27,7 @@ type ResourceData = {
   a2aPeers: A2aPeer[];
   categories: SysCategory[];
   agent: Agent | null;
+  setAgent: Dispatch<SetStateAction<Agent | null>>;
   loading: boolean;
 };
 
@@ -118,5 +119,5 @@ export function useAgentFormResources(when: boolean, opts: ResourceOptions = {})
     });
   }, [when, loadAgent, loadToolCatalog, loadPeers]);
 
-  return { kbs, flows, prompts, models, skills, mcps, toolCatalog, allAgents, a2aPeers, categories, agent, loading };
+  return { kbs, flows, prompts, models, skills, mcps, toolCatalog, allAgents, a2aPeers, categories, agent, setAgent, loading };
 }

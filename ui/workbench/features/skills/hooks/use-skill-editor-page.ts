@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useParams } from "next/navigation";
 import { api, getApiErrorMessage } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth-store";
 import type { SkillFileNode, SkillPackage } from "@/lib/types";
@@ -81,9 +80,7 @@ def run(params):
   }),
 };
 
-export function useSkillEditorPage() {
-  const params = useParams();
-  const id = String(params.id ?? "");
+export function useSkillEditorPage(id: string) {
   const { ready } = useRequireAuth();
   const [skill, setSkill] = useState<SkillPackage | null>(null);
   const [files, setFiles] = useState<SkillFileNode[]>([]);

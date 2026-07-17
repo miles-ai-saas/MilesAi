@@ -1,13 +1,12 @@
 "use client";
 
-import { useParams, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { fromRow, toPayload, type ModelCatalogFormValues } from "@/components/model-catalog/form-utils";
 import { adminApi, type AdminModelCatalog } from "@/lib/api";
 import { useRequireAdmin } from "@/lib/auth-store";
 
-export function useModelCatalogDetailPage() {
-  const { id } = useParams<{ id: string }>();
+export function useModelCatalogDetailPage(id: string) {
   const router = useRouter();
   const ready = useRequireAdmin();
   const [model, setModel] = useState<AdminModelCatalog | null>(null);

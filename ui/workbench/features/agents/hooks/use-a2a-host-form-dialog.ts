@@ -5,7 +5,7 @@ import { AGENT_PLANNER, AGENT_RUNTIME_MODE } from "@/features/agents/lib/agent-c
 import { api } from "@/lib/api";
 import { a2aInvokePolicyOptions } from "@/lib/a2a-labels";
 import { useA2aMeta } from "@/hooks/use-a2a-meta";
-import type { Agent, A2aPeer, A2aPeerRefInput, ModelConfig, PromptTemplate } from "@/lib/types";
+import type { Agent, AgentConfig, A2aPeer, A2aPeerRefInput, ModelConfig, PromptTemplate } from "@/lib/types";
 
 export type A2aHostFormValues = {
   name: string;

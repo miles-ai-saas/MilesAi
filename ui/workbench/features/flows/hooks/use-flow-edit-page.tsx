@@ -3,8 +3,8 @@
 import { useFlowEditCore } from "@/features/flows/hooks/use-flow-edit-core";
 import { useFlowEditDebug } from "@/features/flows/hooks/use-flow-edit-debug";
 
-export function useFlowEditPage() {
-  const core = useFlowEditCore();
+export function useFlowEditPage(id: string) {
+  const core = useFlowEditCore({ id });
   const debug = useFlowEditDebug({
     id: core.id,
     graphRef: core.graphRef,

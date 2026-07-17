@@ -1,21 +1,12 @@
-"use client";
+import { Suspense } from "react";
+import Content from "./detail-content";
 
-import { useParams } from "next/navigation";
-import { BizDetailPageShell } from "@/features/business/components/BizDetailPageShell";
-import { OpportunityDetailView, useOpportunityDetailPage } from "@/features/opportunities";
+export function generateStaticParams() { return [{ id: "_" }]; }
 
-export default function OpportunityDetailPage() {
-  const { id } = useParams<{ id: string }>();
-  const vm = useOpportunityDetailPage(id);
+export default function Page({ params }: { params: { id: string } }) {
   return (
-    <BizDetailPageShell
-      backHref="/business/opportunities"
-      backLabel="返回商机列表"
-      loading={vm.loading}
-      error={vm.error}
-      notFoundLabel="商机不存在"
-    >
-      {vm.opp ? <OpportunityDetailView vm={vm} /> : null}
-    </BizDetailPageShell>
+    <Suspense fallback={null}>
+      <Content id={params.id} />
+    </Suspense>
   );
 }

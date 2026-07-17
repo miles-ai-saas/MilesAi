@@ -1,21 +1,12 @@
-"use client";
+import { Suspense } from "react";
+import Content from "./detail-content";
 
-import { useParams } from "next/navigation";
-import { BizDetailPageShell } from "@/features/business/components/BizDetailPageShell";
-import { ContractDetailView, useContractDetailPage } from "@/features/contracts";
+export function generateStaticParams() { return [{ id: "_" }]; }
 
-export default function ContractDetailPage() {
-  const { id } = useParams<{ id: string }>();
-  const vm = useContractDetailPage(id);
+export default function Page({ params }: { params: { id: string } }) {
   return (
-    <BizDetailPageShell
-      backHref="/business/contracts"
-      backLabel="返回合同列表"
-      loading={vm.loading}
-      error={vm.error}
-      notFoundLabel="合同不存在"
-    >
-      {vm.contract ? <ContractDetailView vm={vm} /> : null}
-    </BizDetailPageShell>
+    <Suspense fallback={null}>
+      <Content id={params.id} />
+    </Suspense>
   );
 }

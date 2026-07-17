@@ -43,9 +43,9 @@ export function matchKbDocFilter(status: string, filter: KbDocFilter): boolean {
   return true;
 }
 
-export function useKbDetailPage() {
+export function useKbDetailPage(id: string) {
   const [tab, setTab] = useState<KbDetailTabKey>("documents");
-  const core = useKbDetailCore();
+  const core = useKbDetailCore({ id });
   const documents = useKbDetailDocuments({
     id: core.id,
     ready: core.ready,

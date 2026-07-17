@@ -9,7 +9,7 @@ export function useAgentDetailDialog(open: boolean, agentId: string | null) {
   const agentMeta = useAgentMeta(open);
   const [error, setError] = useState("");
 
-  const { kbs, flows, prompts, models, skills, mcps, agent, loading } = useAgentFormResources(open && Boolean(agentId), {
+  const { kbs, flows, prompts, models, skills, mcps, agent, setAgent, loading } = useAgentFormResources(open && Boolean(agentId), {
     loadAgent: agentId ?? undefined,
   });
 

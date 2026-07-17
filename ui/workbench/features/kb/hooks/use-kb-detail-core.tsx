@@ -1,6 +1,6 @@
 "use client";
 
-import { useParams, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth-store";
@@ -9,8 +9,7 @@ import { useKbMeta } from "@/features/kb/hooks/use-kb-meta";
 import type { KbDetailAlertState } from "@/features/kb/hooks/use-kb-detail-page";
 import type { KnowledgeBase, KbQuota } from "@/lib/types";
 
-export function useKbDetailCore() {
-  const { id } = useParams<{ id: string }>();
+export function useKbDetailCore({ id }: { id: string }) {
   const router = useRouter();
   const { ready } = useRequireAuth();
   const kbMeta = useKbMeta(ready && !!id);

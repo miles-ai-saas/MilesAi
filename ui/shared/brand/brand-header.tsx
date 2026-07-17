@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { CompanyLogo } from "./company-logo";
 
 type Props = {
@@ -14,9 +13,9 @@ export function BrandHeader({ href, className = "" }: Props) {
 
   if (href) {
     return (
-      <Link href={href} className="flex shrink-0 items-center transition opacity-95 hover:opacity-100">
+      <a href={href} className="flex shrink-0 items-center transition opacity-95 hover:opacity-100">
         {content}
-      </Link>
+      </a>
     );
   }
 

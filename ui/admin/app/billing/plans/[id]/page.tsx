@@ -1,9 +1,7 @@
-"use client";
+import Content from "./detail-content";
 
-import { BillingPlanDetailPageView } from "@/components/billing/BillingPlanDetailPageView";
-import { useBillingPlanDetailPage } from "@/hooks/use-billing-plan-detail-page";
+export function generateStaticParams() { return [{ id: "_" }]; }
 
-export default function BillingPlanDetailPage() {
-  const vm = useBillingPlanDetailPage();
-  return <BillingPlanDetailPageView vm={vm} />;
+export default function Page({ params }: { params: { id: string } }) {
+  return <Content id={params.id} />;
 }

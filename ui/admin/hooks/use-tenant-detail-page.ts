@@ -1,13 +1,12 @@
 "use client";
 
-import { useParams, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { adminApi, type AdminTenantDetail, type BillingPlan, type TenantBill } from "@/lib/api";
 import { useRequireAdmin } from "@/lib/auth-store";
 import { applyPlanQuotas } from "@/lib/tenant-detail-shared";
 
-export function useTenantDetailPage() {
-  const { id } = useParams<{ id: string }>();
+export function useTenantDetailPage(id: string) {
   const router = useRouter();
   const ready = useRequireAdmin();
   const [tenant, setTenant] = useState<AdminTenantDetail | null>(null);

@@ -1,21 +1,12 @@
-"use client";
+import { Suspense } from "react";
+import Content from "./detail-content";
 
-import { useParams } from "next/navigation";
-import { BizDetailPageShell } from "@/features/business/components/BizDetailPageShell";
-import { SupplierDetailView, useSupplierDetailPage } from "@/features/suppliers";
+export function generateStaticParams() { return [{ id: "_" }]; }
 
-export default function SupplierDetailPage() {
-  const { id } = useParams<{ id: string }>();
-  const vm = useSupplierDetailPage(id);
+export default function Page({ params }: { params: { id: string } }) {
   return (
-    <BizDetailPageShell
-      backHref="/business/suppliers"
-      backLabel="返回供应商列表"
-      loading={vm.loading}
-      error={vm.error}
-      notFoundLabel="供应商不存在"
-    >
-      {vm.supplier ? <SupplierDetailView vm={vm} /> : null}
-    </BizDetailPageShell>
+    <Suspense fallback={null}>
+      <Content id={params.id} />
+    </Suspense>
   );
 }

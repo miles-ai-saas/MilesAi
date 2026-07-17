@@ -1,10 +1,12 @@
-"use client";
+import { Suspense } from "react";
+import Content from "./detail-content";
 
-import { useParams } from "next/navigation";
-import { ProjectDetailView, useProjectDetailPage } from "@/features/projects";
+export function generateStaticParams() { return [{ id: "_" }]; }
 
-export default function ProjectDetailPage() {
-  const { id } = useParams<{ id: string }>();
-  const vm = useProjectDetailPage(id);
-  return <ProjectDetailView vm={vm} />;
+export default function Page({ params }: { params: { id: string } }) {
+  return (
+    <Suspense fallback={null}>
+      <Content id={params.id} />
+    </Suspense>
+  );
 }

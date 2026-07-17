@@ -1,21 +1,7 @@
-"use client";
+import Content from "./detail-content";
 
-/** 旧详情页路由：重定向到列表并打开详情弹窗（`?model=id`）。 */
+export function generateStaticParams() { return [{ id: "_" }]; }
 
-import { useEffect } from "react";
-import { useParams, useRouter } from "next/navigation";
-
-export default function ModelDetailRedirectPage() {
-  const { id } = useParams<{ id: string }>();
-  const router = useRouter();
-
-  useEffect(() => {
-    if (!id) {
-      router.replace("/workbench/models");
-      return;
-    }
-    router.replace(`/workbench/models?model=${encodeURIComponent(id)}`);
-  }, [id, router]);
-
-  return <p className="py-12 text-center text-sm text-ink-muted">正在打开模型详情…</p>;
+export default function Page({ params }: { params: { id: string } }) {
+  return <Content id={params.id} />;
 }
