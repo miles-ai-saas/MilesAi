@@ -24,6 +24,7 @@
     color: var(--ink);
     background: var(--surface-muted);
     font-family:
+      var(--font-sans),
       "PingFang SC",
       "Microsoft YaHei",
       "Segoe UI",
