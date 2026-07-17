@@ -15,6 +15,7 @@ services:
     build:
       context: ..
       dockerfile: docker/images/api/Dockerfile
+    image: registry.cn-shenzhen.aliyuncs.com/kye_secure/milesai-api:latest
     container_name: milesai-api
     env_file:
       - ../.env
@@ -47,6 +48,7 @@ services:
     build:
       context: ..
       dockerfile: docker/images/worker/Dockerfile
+    image: registry.cn-shenzhen.aliyuncs.com/kye_secure/milesai-worker:latest
     container_name: milesai-worker
     env_file:
       - ../.env
@@ -67,6 +69,7 @@ services:
     build:
       context: ..
       dockerfile: docker/images/worker/Dockerfile
+    image: registry.cn-shenzhen.aliyuncs.com/kye_secure/milesai-worker:latest
     container_name: milesai-beat
     env_file:
       - ../.env
@@ -89,6 +92,7 @@ services:
     build:
       context: ..
       dockerfile: docker/images/mcp-runner/Dockerfile
+    image: registry.cn-shenzhen.aliyuncs.com/kye_secure/milesai-mcp-runner:latest
     container_name: milesai-mcp-runner
     environment:
       MCP_RUNNER_TOKEN: ${MCP_RUNNER_TOKEN:-dev-runner-token-change-me}
@@ -109,11 +113,12 @@ services:
     build:
       context: ..
       dockerfile: docker/images/web/Dockerfile
+    image: registry.cn-shenzhen.aliyuncs.com/kye_secure/milesai-web:latest
     container_name: milesai-web
     environment:
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000/api/v1}
     ports:
-      - "${WEB_PORT:-3000}:3000"
+      - "${WEB_PORT:-3000}:80"
     networks:
       - milesai-net
     depends_on:
@@ -128,9 +133,10 @@ services:
       args:
         NEXT_PUBLIC_ADMIN_API_URL: ${NEXT_PUBLIC_ADMIN_API_URL:-http://localhost:8000/api/admin/v1}
         NEXT_PUBLIC_TENANT_WEB_URL: ${NEXT_PUBLIC_TENANT_WEB_URL:-http://localhost:3000}
+    image: registry.cn-shenzhen.aliyuncs.com/kye_secure/milesai-admin-web:latest
     container_name: milesai-admin-web
     ports:
-      - "${ADMIN_WEB_PORT:-3001}:3001"
+      - "${ADMIN_WEB_PORT:-3001}:80"
     networks:
       - milesai-net
     depends_on:

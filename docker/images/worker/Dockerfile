@@ -1,4 +1,4 @@
-FROM python:3.11-slim
+FROM registry.cn-shenzhen.aliyuncs.com/kye_secure/python:3.11.9
 
 WORKDIR /app
 
