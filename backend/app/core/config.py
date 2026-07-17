@@ -10,8 +10,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 _BACKEND_DIR = Path(__file__).resolve().parents[2]
 _PROJECT_ROOT = _BACKEND_DIR.parent
 _ENV_FILES = (
-    _BACKEND_DIR / ".env",
     _PROJECT_ROOT / ".env",
+    _BACKEND_DIR / ".env",
 )
 
 

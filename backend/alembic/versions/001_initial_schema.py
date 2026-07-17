@@ -1,17 +1,20 @@
-"""全量初始 schema（唯一迁移，按当前 ORM 一次性建表）
+"""全量初始 schema（合并所有迁移，按当前 ORM 一次性建表）
 
 Revision ID: 001
 Revises:
 Create Date: 2026-05-21
 
-表结构与索引以各 ORM 模型的 ``__tablename__`` / ``__table_args__`` 为准；
-通过 ``Base.metadata.create_all`` 建表（逻辑外键，无数据库 FK）。
+通过 ``Base.metadata.create_all`` 按当前 ORM 模型全量建表，
+等价于原 001–008、ae613709947f–h4i0k8f7g569 共计 18 个增量迁移的效果。
 
-新环境：``alembic upgrade head``。
+新环境：
+    alembic upgrade head
 
-已有库（曾跑过旧版 002–015 增量链且 schema 已对齐当前 ORM）：
-``alembic stamp 001``，勿重复 upgrade。
-清库重建：drop database 或 ``drop_all`` 后 ``alembic upgrade head``。
+已有库（曾跑过旧版增量链且 schema 已对齐当前 ORM）：
+    alembic stamp 001
+
+清库重建：
+    drop database 或 drop_all 后 alembic upgrade head
 """
 
 from typing import Sequence, Union
