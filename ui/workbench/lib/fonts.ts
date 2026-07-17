@@ -1,16 +1,5 @@
-/** Noto Sans SC 字体加载（设计规范 §3，非业务 API 链路）。 */
-
-import { Noto_Sans_SC } from "next/font/google";
+/** 系统字体栈（优先系统自带中文字体，无外部依赖）。 */
 
 import { fontFamilySans } from "./font-family";
 
 export { fontFamilySans };
-
-/** 与 docs/frontend/design.md 一致的应用字体（租户端 / 运营端共用配置） */
-export const appFont = Noto_Sans_SC({
-  weight: ["400", "500", "600", "700"],
-  subsets: ["latin"],
-  variable: "--font-sans",
-  display: "swap",
-  preload: true,
-});
