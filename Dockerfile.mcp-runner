@@ -12,7 +12,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 COPY . /app
 
-RUN pip install --no-cache-dir -e /app/backend \
+RUN pip install --no-cache-dir uv \
+      -i https://mirrors.aliyun.com/pypi/simple \
+      --trusted-host mirrors.aliyun.com \
+    && uv pip install --system -e /app/backend \
       -i https://mirrors.aliyun.com/pypi/simple \
       --trusted-host mirrors.aliyun.com
 

@@ -6,8 +6,11 @@ WORKDIR /app
 #   docker buildx build --platform linux/amd64 -t <镜像> -f Dockerfile.api .
 COPY . /app
 
-RUN pip install --upgrade pip \
-    && pip install --no-cache-dir -e /app/backend \
+# uv 比 pip 快 10-100 倍，显著缩短 Docker 构建时间
+RUN pip install --no-cache-dir uv \
+      -i https://mirrors.aliyun.com/pypi/simple \
+      --trusted-host mirrors.aliyun.com \
+    && uv pip install --system -e /app/backend \
       -i https://mirrors.aliyun.com/pypi/simple \
       --trusted-host mirrors.aliyun.com
 

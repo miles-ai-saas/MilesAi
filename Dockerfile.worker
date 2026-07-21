@@ -2,9 +2,16 @@ FROM registry.cn-shenzhen.aliyuncs.com/kye_secure/python:3.11.9
 
 WORKDIR /app
 
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ffmpeg \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY . /app
 
-RUN pip install --no-cache-dir -e /app/backend \
+RUN pip install --no-cache-dir uv \
+      -i https://mirrors.aliyun.com/pypi/simple \
+      --trusted-host mirrors.aliyun.com \
+    && uv pip install --system -e /app/backend \
       -i https://mirrors.aliyun.com/pypi/simple \
       --trusted-host mirrors.aliyun.com
 
