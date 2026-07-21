@@ -27,7 +27,15 @@ docker compose -f docker-compose.infra.yml -f docker-compose.yml up -d --build
 cd backend && python cli.py init-db
 ```
 
-应用栈含 `api`、`worker`、`beat`（智能体定时任务）、`mcp-runner`。前端已部署到 OSS，不在此处管理。也可分步：先 `docker compose -f docker-compose.infra.yml up -d`，再 `docker compose up -d --build`。
+应用栈含 `api`、`worker`、`beat`（智能体定时任务）、`mcp-runner`。前端已部署到 OSS，不在此处管理。
+
+也可分步：先 `docker compose -f docker-compose.infra.yml up -d`，再 `docker compose up -d --build`。
+
+**本地开发**：如需挂载 `./backend` 目录实现代码热重载，加上 `--profile dev`：
+
+```bash
+docker compose --profile dev up -d --build
+```
 
 | 服务 | 地址 |
 |------|------|

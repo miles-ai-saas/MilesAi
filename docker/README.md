@@ -34,6 +34,9 @@ docker compose -f docker-compose.infra.yml up -d
 ```bash
 docker compose -f docker-compose.infra.yml up -d   # 若未启动
 docker compose up -d --build
+
+# 开发模式：挂载本地 backend/ 实现热重载
+docker compose --profile dev up -d --build
 ```
 
 ### 3. 一键全栈（推荐）
