@@ -19,16 +19,15 @@ Compose 拆分为 **中间件** 与 **应用**，详见 [docker/README.md](docke
 
 ```bash
 cp .env.example .env
-cd docker
 
 # 一键全栈
 docker compose -f docker-compose.infra.yml -f docker-compose.yml up -d --build
 
 # 初始化数据库（迁移 + 种子）
-cd ../backend && python cli.py init-db
+cd backend && python cli.py init-db
 ```
 
-应用栈含 `api`、`worker`、`beat`（智能体定时任务）、`mcp-runner`、`web`、`admin-web`、`flower`。也可分步：先 `docker compose -f docker-compose.infra.yml up -d`，再 `docker compose up -d --build`。
+应用栈含 `api`、`worker`、`beat`（智能体定时任务）、`mcp-runner`。前端已部署到 OSS，不在此处管理。也可分步：先 `docker compose -f docker-compose.infra.yml up -d`，再 `docker compose up -d --build`。
 
 | 服务 | 地址 |
 |------|------|
@@ -98,7 +97,7 @@ docker buildx build --platform linux/amd64 --progress=plain \
 ### 仅后端
 
 ```bash
-cd docker && docker compose -f docker-compose.infra.yml up -d   # 或本机 PG/Redis
+docker compose -f docker-compose.infra.yml up -d   # 或本机 PG/Redis
 
 cp backend/.env.example backend/.env   # POSTGRES_HOST=localhost
 cd backend
@@ -149,8 +148,13 @@ MilesAi/
 ├── ui/                      # 前端应用
 │   ├── workbench/           # 租户工作台
 │   └── admin/               # 运营后台
-├── docker/
-└── docs/                    # → docs/README.md（product / features / architecture / guides / operations）
+├── docker/                  # 基础设施说明与配置
+├── docker-compose.yml       # 应用栈 Compose
+├── docker-compose.infra.yml # 中间件 Compose
+├── Dockerfile.api
+├── Dockerfile.worker
+├── Dockerfile.mcp-runner
+└── docs/                    # → docs/README.md
 ```
 
 **分层**：`tenant/*/views` → `services` → `app/rag`（RAG）/ `app/integrations`（模型与图）→ `app/infra`（详见 [docs/architecture/layering.md](docs/architecture/layering.md)）。

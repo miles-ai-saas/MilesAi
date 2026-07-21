@@ -1,4 +1,4 @@
-# 应用栈：API / Celery Worker / Beat / MCP Runner / 前端
+# 应用栈：API / Celery Worker / Beat / MCP Runner
 # 前置：先启动基础设施（含 Flower）
 #   docker compose -f docker-compose.infra.yml up -d
 # 启动：
@@ -6,6 +6,7 @@
 # 全量构建启动：
 #   docker compose -f docker-compose.infra.yml -f docker-compose.yml up -d --build
 #
+# 前端已部署到 OSS，不在此处管理。
 # 环境变量优先从 .env 读取；未定义时回退 Docker 内部服务名（见 ${VAR:-default}）。
 
 name: milesai-app
@@ -13,12 +14,12 @@ name: milesai-app
 services:
   api:
     build:
-      context: ..
-      dockerfile: ../Dockerfile.api
+      context: .
+      dockerfile: Dockerfile.api
     image: registry.cn-shenzhen.aliyuncs.com/kye_secure/milesai-api:latest
     container_name: milesai-api
     env_file:
-      - ../.env
+      - .env
     environment:
       POSTGRES_HOST: ${POSTGRES_HOST:-postgres}
       REDIS_HOST: ${REDIS_HOST:-redis}
@@ -35,7 +36,7 @@ services:
     networks:
       - milesai-net
     volumes:
-      - ../backend:/app/backend:ro
+      - ./backend:/app/backend:ro
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
       interval: 15s
@@ -46,12 +47,12 @@ services:
 
   worker:
     build:
-      context: ..
-      dockerfile: ../Dockerfile.worker
+      context: .
+      dockerfile: Dockerfile.worker
     image: registry.cn-shenzhen.aliyuncs.com/kye_secure/milesai-worker:latest
     container_name: milesai-worker
     env_file:
-      - ../.env
+      - .env
     environment:
       POSTGRES_HOST: ${POSTGRES_HOST:-postgres}
       REDIS_HOST: ${REDIS_HOST:-redis}
@@ -67,12 +68,12 @@ services:
 
   beat:
     build:
-      context: ..
-      dockerfile: ../Dockerfile.worker
+      context: .
+      dockerfile: Dockerfile.worker
     image: registry.cn-shenzhen.aliyuncs.com/kye_secure/milesai-worker:latest
     container_name: milesai-beat
     env_file:
-      - ../.env
+      - .env
     environment:
       POSTGRES_HOST: ${POSTGRES_HOST:-postgres}
       REDIS_HOST: ${REDIS_HOST:-redis}
@@ -90,8 +91,8 @@ services:
 
   mcp-runner:
     build:
-      context: ..
-      dockerfile: ../Dockerfile.mcp-runner
+      context: .
+      dockerfile: Dockerfile.mcp-runner
     image: registry.cn-shenzhen.aliyuncs.com/kye_secure/milesai-mcp-runner:latest
     container_name: milesai-mcp-runner
     environment:
@@ -107,32 +108,6 @@ services:
       - no-new-privileges:true
     cap_drop:
       - ALL
-    restart: unless-stopped
-
-  web:
-    image: registry.cn-shenzhen.aliyuncs.com/kye_secure/milesai-web:latest
-    container_name: milesai-web
-    environment:
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000/api/v1}
-    ports:
-      - "${WEB_PORT:-3000}:80"
-    networks:
-      - milesai-net
-    depends_on:
-      api:
-        condition: service_healthy
-    restart: unless-stopped
-
-  admin-web:
-    image: registry.cn-shenzhen.aliyuncs.com/kye_secure/milesai-admin-web:latest
-    container_name: milesai-admin-web
-    ports:
-      - "${ADMIN_WEB_PORT:-3001}:80"
-    networks:
-      - milesai-net
-    depends_on:
-      api:
-        condition: service_healthy
     restart: unless-stopped
 
 networks:

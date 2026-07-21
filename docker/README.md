@@ -7,24 +7,23 @@ Compose 已拆分为 **基础设施（infra）** 与 **应用** 两个文件，�
 | 文件 | 服务 | 说明 |
 |------|------|------|
 | `docker-compose.infra.yml` | pgvector、redis、minio、etcd、milvus、weaviate | 数据与基础设施 |
-| `docker-compose.yml` | api, worker, beat, mcp-runner, web, admin-web, flower | 业务应用 |
+| `docker-compose.yml` | api, worker, beat, mcp-runner | 业务应用（前端已部署 OSS） |
 
 ## 环境变量
 
 在项目根目录准备 `.env`（可由 `.env.example` 复制）：
 
 ```bash
-cp ../.env.example ../.env
+cp .env.example .env
 ```
 
-在 `docker` 目录执行 compose 时会自动读取 `../.env`。
-
 ## 启动顺序
+
+Compose 文件位于项目根目录，所有命令均在项目根目录执行。
 
 ### 1. 仅中间件（本地跑后端 / 前端时常用）
 
 ```bash
-cd docker
 docker compose -f docker-compose.infra.yml up -d
 ```
 
@@ -33,7 +32,6 @@ docker compose -f docker-compose.infra.yml up -d
 ### 2. 仅应用（需中间件已运行）
 
 ```bash
-cd docker
 docker compose -f docker-compose.infra.yml up -d   # 若未启动
 docker compose up -d --build
 ```
@@ -41,7 +39,6 @@ docker compose up -d --build
 ### 3. 一键全栈（推荐）
 
 ```bash
-cd docker
 docker compose -f docker-compose.infra.yml -f docker-compose.yml up -d --build
 ```
 
@@ -69,7 +66,6 @@ docker compose -f docker-compose.infra.yml down -v
 Compose 使用 **Weaviate 1.27.26**（`weaviate-client` 4.x 要求服务端 **≥ 1.27.0**）。若仍报 `Weaviate version 1.24.x is not supported`：
 
 ```bash
-cd docker
 docker compose -f docker-compose.infra.yml pull weaviate
 docker compose -f docker-compose.infra.yml up -d weaviate
 ```
@@ -103,16 +99,16 @@ MILVUS_URI=http://milvus:19530   # 容器内；本地直连用 http://localhost:
 | `MILVUS_PORT` | 19530 | Milvus gRPC |
 | `MILVUS_METRICS_PORT` | 19531 | Milvus 指标/健康检查（宿主机） |
 | `API_PORT` | 8000 | FastAPI |
-| `WEB_PORT` | 3000 | 租户 AI 工作台 |
-| `ADMIN_WEB_PORT` | 3001 | 平台运营后台 |
 | `FLOWER_PORT` | 5555 | Celery Flower |
+
+> 前端端口见 `ui/workbench` / `ui/admin` 本地开发，生产已部署到 OSS。
 
 ## 数据库
 
 PostgreSQL（pgvector 镜像）由 infra 自动建库（`POSTGRES_DB`），首次启动执行 `deploy/scripts/init_db.sql` 启用 `vector` 扩展。表结构与种子需手动执行（API 启动仅跑迁移，不写种子）：
 
 ```bash
-cd ../backend && python cli.py init-db
+cd backend && python cli.py init-db
 # 或：python cli.py migrate && python cli.py init-db --seed-only
 ```
 
