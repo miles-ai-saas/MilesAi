@@ -55,13 +55,13 @@ cd ../backend && python cli.py init-db
 
 | 服务 | 镜像 | 构建命令 |
 |------|------|----------|
-| API | `milesai-api` | `docker buildx build --platform linux/amd64 --progress=plain -t <仓库>/milesai-api:latest -f docker/images/api/Dockerfile . --push` |
-| Worker / Beat | `milesai-worker` | `docker buildx build --platform linux/amd64 --progress=plain -t <仓库>/milesai-worker:latest -f docker/images/worker/Dockerfile . --push` |
-| MCP Runner | `milesai-mcp-runner` | `docker buildx build --platform linux/amd64 --progress=plain -t <仓库>/milesai-mcp-runner:latest -f docker/images/mcp-runner/Dockerfile . --push` |
-| 租户工作台 | `milesai-web` | `docker buildx build --platform linux/amd64 --progress=plain -t <仓库>/milesai-web:latest -f docker/images/web/Dockerfile . --push` |
-| 运营后台 | `milesai-admin-web` | `docker buildx build --platform linux/amd64 --progress=plain --build-arg NEXT_PUBLIC_ADMIN_API_URL=<管理端 API 地址> --build-arg NEXT_PUBLIC_TENANT_WEB_URL=<租户端地址> -t <仓库>/milesai-admin-web:latest -f docker/images/admin-web/Dockerfile . --push` |
+| API | `milesai-api` | `docker buildx build --platform linux/amd64 --progress=plain -t <仓库>/milesai-api:latest -f Dockerfile.api . --push` |
+| Worker / Beat | `milesai-worker` | `docker buildx build --platform linux/amd64 --progress=plain -t <仓库>/milesai-worker:latest -f Dockerfile.worker . --push` |
+| MCP Runner | `milesai-mcp-runner` | `docker buildx build --platform linux/amd64 --progress=plain -t <仓库>/milesai-mcp-runner:latest -f Dockerfile.mcp-runner . --push` |
 
-**注意**：构建上下文 `.` 必须是项目根目录，否则 Dockerfile 中 `COPY backend/...` / `COPY ui/...` 会因找不到路径而失败。
+前端（web / admin-web）已通过 `npm run build` 产出静态文件部署到 OSS，无需构建 Docker 镜像。
+
+**注意**：构建上下文 `.` 必须是项目根目录，Dockerfile 通过 `-f Dockerfile.<服务名>` 指定。`COPY` 路径相对于项目根目录，不需要关心 Dockerfile 的位置。
 
 **`--platform linux/amd64`**：生产环境服务器通常为 x86_64 架构。在 Apple Silicon（arm64）Mac 上构建时不指定平台会产出 arm64 镜像，部署到 amd64 服务器将无法启动。所有构建命令均已包含此参数。
 
@@ -71,15 +71,12 @@ cd ../backend && python cli.py init-db
 # 单次构建并推送（需已登录 registry）
 REGISTRY=registry.cn-shenzhen.aliyuncs.com/kye_secure
 
-docker buildx build --platform linux/amd64 --progress=plain -t $REGISTRY/milesai-api:latest -f docker/images/api/Dockerfile . --push
-docker buildx build --platform linux/amd64 --progress=plain -t $REGISTRY/milesai-worker:latest -f docker/images/worker/Dockerfile . --push
-docker buildx build --platform linux/amd64 --progress=plain -t $REGISTRY/milesai-mcp-runner:latest -f docker/images/mcp-runner/Dockerfile . --push
-docker buildx build --platform linux/amd64 --progress=plain -t $REGISTRY/milesai-web:latest -f docker/images/web/Dockerfile . --push
-docker buildx build --platform linux/amd64 --progress=plain \
-  --build-arg NEXT_PUBLIC_ADMIN_API_URL=https://your-admin-api.example.com/api/admin/v1 \
-  --build-arg NEXT_PUBLIC_TENANT_WEB_URL=https://your-workbench.example.com \
-  -t $REGISTRY/milesai-admin-web:latest -f docker/images/admin-web/Dockerfile . --push
+docker buildx build --platform linux/amd64 --progress=plain -t $REGISTRY/milesai-api:latest -f Dockerfile.api . --push
+docker buildx build --platform linux/amd64 --progress=plain -t $REGISTRY/milesai-worker:latest -f Dockerfile.worker . --push
+docker buildx build --platform linux/amd64 --progress=plain -t $REGISTRY/milesai-mcp-runner:latest -f Dockerfile.mcp-runner . --push
 ```
+
+前端部署到 OSS，不走 Docker 镜像。
 
 ### 使用 BuildKit 缓存加速 CI
 
@@ -88,7 +85,7 @@ docker buildx build --platform linux/amd64 --progress=plain \
 ```bash
 docker buildx build --platform linux/amd64 --progress=plain \
   -t registry.cn-shenzhen.aliyuncs.com/kye_secure/milesai-api:latest \
-  -f docker/images/api/Dockerfile . \
+  -f Dockerfile.api . \
   --push \
   --cache-from registry.cn-shenzhen.aliyuncs.com/kye_secure/milesai-api:flow-docker-build-cache \
   --cache-to registry.cn-shenzhen.aliyuncs.com/kye_secure/milesai-api:flow-docker-build-cache
