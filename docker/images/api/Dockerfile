@@ -10,7 +10,7 @@ COPY . /app
 ENV PYTHONPATH=/app/backend
 WORKDIR /app/backend
 
-RUN pip install --no-cache-dir -e /app/backend/ -i https://mirrors.aliyun.com/pypi/simple --trusted-host mirrors.aliyun.com
+RUN pip install --no-cache-dir -e . -i https://mirrors.aliyun.com/pypi/simple --trusted-host mirrors.aliyun.com
 
 
 EXPOSE 8000
