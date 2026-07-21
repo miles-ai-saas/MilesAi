@@ -1,3 +1,5 @@
+# 注意：构建上下文必须为项目根目录（MilesAi/），确保 backend/ 在上下文中。
+# 命令示例：docker buildx build --platform linux/amd64 -t <镜像> -f docker/images/api/Dockerfile .
 FROM registry.cn-shenzhen.aliyuncs.com/kye_secure/python:3.11.9
 
 WORKDIR /app
@@ -6,14 +8,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-COPY . /app
+# 复制整个项目（上下文中需包含 backend/、ui/ 等）
+COPY . .
+
+# 安装 backend 包
+RUN pip install --no-cache-dir -e backend -i https://mirrors.aliyun.com/pypi/simple --trusted-host mirrors.aliyun.com
+
 ENV PYTHONPATH=/app/backend
 WORKDIR /app/backend
-
-RUN echo "===== backend inner files =====" && ls -la .
-
-RUN pip install --no-cache-dir -e . -i https://mirrors.aliyun.com/pypi/simple --trusted-host mirrors.aliyun.com
-
 
 EXPOSE 8000
 
