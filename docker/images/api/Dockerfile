@@ -6,11 +6,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-COPY backend /app/backend/
-RUN pip install --no-cache-dir -e /app/backend/ -i https://mirrors.aliyun.com/pypi/simple --trusted-host mirrors.aliyun.com
-
+COPY . /app
 ENV PYTHONPATH=/app/backend
 WORKDIR /app/backend
+
+RUN pip install --no-cache-dir -e /app/backend/ -i https://mirrors.aliyun.com/pypi/simple --trusted-host mirrors.aliyun.com
+
 
 EXPOSE 8000
 
