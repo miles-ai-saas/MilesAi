@@ -5,9 +5,9 @@ FROM registry.cn-shenzhen.aliyuncs.com/kye_secure/python:3.11.9
 WORKDIR /src
 
 # 复制整个项目（上下文中需包含 backend/、ui/ 等）
-COPY . .
+COPY . /src
 
-RUN echo "===== backend inner files =====" && ls -la .
+RUN echo "===== backend inner files =====" && ls -la /src
 
 # 安装 backend 包
 RUN pip install --upgrade pip
