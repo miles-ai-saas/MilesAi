@@ -10,6 +10,8 @@ COPY . /app
 ENV PYTHONPATH=/app/backend
 WORKDIR /app/backend
 
+RUN echo "===== backend inner files =====" && ls -la .
+
 RUN pip install --no-cache-dir -e . -i https://mirrors.aliyun.com/pypi/simple --trusted-host mirrors.aliyun.com
 
 
