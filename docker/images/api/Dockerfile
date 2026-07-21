@@ -6,10 +6,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-COPY backend/pyproject.toml backend/README.md /app/backend/
-RUN pip install --no-cache-dir -e /app/backend/
-
 COPY backend /app/backend/
+RUN pip install --no-cache-dir -e /app/backend/ -i https://mirrors.aliyun.com/pypi/simple --trusted-host mirrors.aliyun.com
 
 ENV PYTHONPATH=/app/backend
 WORKDIR /app/backend
