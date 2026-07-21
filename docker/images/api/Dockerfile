@@ -8,7 +8,7 @@ WORKDIR /app
 COPY . .
 
 # 安装 backend 包
-RUN pip install --no-cache-dir -e backend -i https://mirrors.aliyun.com/pypi/simple --trusted-host mirrors.aliyun.com
+RUN pip install --no-cache-dir -e /app/backend -i https://mirrors.aliyun.com/pypi/simple --trusted-host mirrors.aliyun.com
 
 ENV PYTHONPATH=/app/backend
 WORKDIR /app/backend
