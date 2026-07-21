@@ -6,7 +6,8 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
-COPY . /app
+# 先只复制依赖文件，让 pip 层可缓存
+COPY backend/pyproject.toml /app/backend/pyproject.toml
 
 RUN pip install --no-cache-dir uv \
       -i https://mirrors.aliyun.com/pypi/simple \
@@ -14,6 +15,9 @@ RUN pip install --no-cache-dir uv \
     && uv pip install --system -e /app/backend \
       -i https://mirrors.aliyun.com/pypi/simple \
       --trusted-host mirrors.aliyun.com
+
+# 最后复制代码（只有这层因代码变更而重建）
+COPY backend /app/backend
 
 ENV PYTHONPATH=/app/backend
 WORKDIR /app/backend
