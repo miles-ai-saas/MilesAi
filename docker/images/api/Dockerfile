@@ -2,17 +2,19 @@
 # 命令示例：docker buildx build --platform linux/amd64 -t <镜像> -f docker/images/api/Dockerfile .
 FROM registry.cn-shenzhen.aliyuncs.com/kye_secure/python:3.11.9
 
-WORKDIR /app
+WORKDIR /src
 
 # 复制整个项目（上下文中需包含 backend/、ui/ 等）
 COPY . .
 
+RUN echo "===== backend inner files =====" && ls -la .
+
 # 安装 backend 包
 RUN pip install --upgrade pip
-RUN pip install --no-cache-dir -e /app/backend -i https://mirrors.aliyun.com/pypi/simple --trusted-host mirrors.aliyun.com
+RUN pip install --no-cache-dir -e /src/backend -i https://mirrors.aliyun.com/pypi/simple --trusted-host mirrors.aliyun.com
 
-ENV PYTHONPATH=/app/backend
-WORKDIR /app/backend
+ENV PYTHONPATH=/src/backend
+WORKDIR /src/backend
 
 EXPOSE 8000
 
