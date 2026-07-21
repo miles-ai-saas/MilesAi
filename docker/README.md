@@ -1,6 +1,7 @@
 # Docker Compose 说明
 
-Compose 已拆分为 **基础设施（infra）** 与 **应用** 两个文件，通过共享网络 `milesai-net` 通信。
+基础设施（`docker-compose.infra.yml`）与业务应用（`docker-compose.yml`）为**独立部署单元**，通常不在同一台服务器上。
+本地开发时可通过端口映射互访；生产环境请通过 `.env` 配置外部地址。
 
 ## 文件
 
@@ -60,9 +61,23 @@ docker compose -f docker-compose.infra.yml down -v
 
 ## 网络与服务发现
 
-- 中间件创建网络：`milesai-net`
-- 应用栈加入同一外部网络后，容器内可通过服务名访问：`postgres`、`redis`、`minio`、`etcd`、`milvus`、`weaviate`
-- 宿主机访问仍用映射端口：`5432`、`6379`、`9000`、`8080`、`19530`、`19531`（Milvus 指标）等
+基础设施与应用**不在同一 Docker 网络**内。两者通过宿主机映射端口通信：
+
+- 应用通过 `.env` 中的 `POSTGRES_HOST` / `REDIS_HOST` 等变量连接基础设施
+- 本地开发时通常设为 `localhost`，生产部署时改为实际 IP 或域名
+
+常用端口映射：
+
+| 服务 | 端口 |
+|------|------|
+| PostgreSQL | 5432 |
+| Redis | 6379 |
+| MinIO API | 9000 |
+| MinIO Console | 9001 |
+| Milvus | 19530 |
+| Weaviate | 8080 |
+| API | 8000 |
+| MCP Runner | 8090 |
 
 ### Weaviate 版本（默认向量库）
 

@@ -15,21 +15,28 @@
 
 ## 快速启动（Docker）
 
-Compose 拆分为 **中间件** 与 **应用**，详见 [docker/README.md](docker/README.md)。
+基础设施（PG/Redis/MinIO/Milvus）与业务应用是独立集群。如需在本地一键启动所有组件，见 `docker-compose.infra.yml`。
+
+**仅启动业务应用**（基础设施已就绪）：
 
 ```bash
 cp .env.example .env
+# 编辑 .env，填入基础设施地址（POSTGRES_HOST、REDIS_HOST 等）
 
-# 一键全栈
-docker compose -f docker-compose.infra.yml -f docker-compose.yml up -d --build
+docker compose up -d --build
 
 # 初始化数据库（迁移 + 种子）
 cd backend && python cli.py init-db
 ```
 
-应用栈含 `api`、`worker`、`beat`（智能体定时任务）、`mcp-runner`。前端已部署到 OSS，不在此处管理。
+如果基础设施也在本地测试，可一并启动：
 
-也可分步：先 `docker compose -f docker-compose.infra.yml up -d`，再 `docker compose up -d --build`。
+```bash
+docker compose -f docker-compose.infra.yml up -d    # 先启中间件
+docker compose up -d --build                        # 再启动应用
+```
+
+应用栈含 `api`、`worker`、`beat`（智能体定时任务）、`mcp-runner`。前端已部署到 OSS，不在此处管理。
 
 **本地开发**：如需挂载 `./backend` 目录实现代码热重载，加上 `--profile dev`：
 
