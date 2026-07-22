@@ -21,7 +21,7 @@ export function buildClientTimeline(
       title: p.name,
       status: p.status,
       date: "",
-      href: `/business/projects/${p.id}`,
+      href: `/business/projects/detail?id=${p.id}`,
     })),
     ...opportunities.map((o) => ({
       id: o.id,
@@ -29,7 +29,7 @@ export function buildClientTimeline(
       title: o.name,
       status: o.stage,
       date: o.expected_close_date ?? "",
-      href: `/business/opportunities/${o.id}`,
+      href: `/business/opportunities/detail?id=${o.id}`,
     })),
     ...contracts.map((c) => ({
       id: c.id,
@@ -37,7 +37,7 @@ export function buildClientTimeline(
       title: c.name,
       status: c.status,
       date: c.signed_date ?? "",
-      href: `/business/contracts/${c.id}`,
+      href: `/business/contracts/detail?id=${c.id}`,
     })),
   ];
   return items.sort((a, b) => (b.date || "9999").localeCompare(a.date || "9999"));

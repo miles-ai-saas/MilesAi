@@ -66,12 +66,12 @@ export function MarketplaceInstallsView({ vm }: { vm: MarketplacePageVm }) {
                 </button>
                 <span className="flex flex-wrap gap-3 text-brand">
                   {ins.kb_id ? (
-                    <Link href={`/workbench/kb/${ins.kb_id}`} className="hover:underline">
+                    <Link href={`/workbench/kb/detail?id=${ins.kb_id}`} className="hover:underline">
                       知识库
                     </Link>
                   ) : null}
                   {ins.flow_id ? (
-                    <Link href={`/workbench/flows/${ins.flow_id}/edit`} className="hover:underline">
+                    <Link href={`/workbench/flows/edit?id=${ins.flow_id}`} className="hover:underline">
                       流程
                     </Link>
                   ) : null}

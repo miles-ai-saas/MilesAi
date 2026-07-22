@@ -117,7 +117,7 @@ function PendingPaymentMobileCard({
           </button>
         ) : null}
         <Link
-          href={`/business/contracts/${payment.contract_id}`}
+          href={`/business/contracts/detail?id=${payment.contract_id}`}
           className="text-xs text-ink-muted hover:text-brand hover:underline"
         >
           查看合同
@@ -200,7 +200,7 @@ function PendingPaymentsList({
                       </button>
                     ) : null}
                     <Link
-                      href={`/business/contracts/${payment.contract_id}`}
+                      href={`/business/contracts/detail?id=${payment.contract_id}`}
                       className="text-xs text-ink-muted hover:text-brand hover:underline"
                     >
                       查看合同
@@ -354,7 +354,7 @@ export function FinancePageView({ vm }: { vm: FinancePageVm }) {
                     </td>
                     <td className="px-4 py-3 text-right">
                       <Link
-                        href={`/business/contracts/${payment.contract_id}`}
+                        href={`/business/contracts/detail?id=${payment.contract_id}`}
                         className="text-xs text-brand hover:underline"
                       >
                         查看

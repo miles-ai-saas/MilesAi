@@ -49,11 +49,11 @@ export function useSkillsPage() {
       category_id: categoryId,
       tag_ids: tagIds,
     });
-    router.push(`/workbench/skills/${row.id}`);
+    router.push(`/workbench/skills/detail?id=${row.id}`);
   };
 
   const openSkill = (id: string) => {
-    router.push(`/workbench/skills/${id}`);
+    router.push(`/workbench/skills/detail?id=${id}`);
   };
 
   const onDeleteSkill = async (id: string) => {

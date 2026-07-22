@@ -101,7 +101,7 @@ export function useProjectsPage() {
       } catch {
         /* 创建已成功，列表刷新失败不阻断跳转 */
       }
-      router.push(`/business/projects/${project.id}`);
+      router.push(`/business/projects/detail?id=${project.id}`);
     } catch (e) {
       setCreateError(e instanceof Error ? e.message : "保存失败");
     } finally {

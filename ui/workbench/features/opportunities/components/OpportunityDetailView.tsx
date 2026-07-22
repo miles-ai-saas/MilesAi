@@ -100,7 +100,7 @@ export function useOpportunityDetailPage(opportunityId: string, options?: { onMu
     try {
       const result = await api.convertOpportunityToProject(opportunityId);
       onMutated?.();
-      router.push(`/business/projects/${result.project_id}`);
+      router.push(`/business/projects/detail?id=${result.project_id}`);
     } finally {
       setConverting(false);
     }
@@ -260,7 +260,7 @@ export function OpportunityDetailView({
               </button>
             )}
             {opp.converted_to_project_id && (
-              <Link href={`/business/projects/${opp.converted_to_project_id}`} className="btn-sm-outline text-xs">查看项目</Link>
+              <Link href={`/business/projects/detail?id=${opp.converted_to_project_id}`} className="btn-sm-outline text-xs">查看项目</Link>
             )}
           </div>
         </div>
@@ -275,7 +275,7 @@ export function OpportunityDetailView({
             </button>
           )}
           {opp.converted_to_project_id && (
-            <Link href={`/business/projects/${opp.converted_to_project_id}`} className="btn-sm-outline text-xs">查看项目</Link>
+            <Link href={`/business/projects/detail?id=${opp.converted_to_project_id}`} className="btn-sm-outline text-xs">查看项目</Link>
           )}
         </div>
       )}

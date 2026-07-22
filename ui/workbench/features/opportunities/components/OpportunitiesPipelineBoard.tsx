@@ -78,7 +78,7 @@ export function OpportunitiesPipelineBoard({ vm }: { vm: OpportunitiesPageVm }) 
                     </button>
                   ) : null}
                   {opp.converted_to_project_id ? (
-                    <Link href={`/business/projects/${opp.converted_to_project_id}`} className="text-[10px] text-brand hover:underline">
+                    <Link href={`/business/projects/detail?id=${opp.converted_to_project_id}`} className="text-[10px] text-brand hover:underline">
                       查看项目
                     </Link>
                   ) : null}

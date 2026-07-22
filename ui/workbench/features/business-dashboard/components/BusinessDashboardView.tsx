@@ -216,10 +216,10 @@ export function BusinessDashboardView({ vm }: { vm: BusinessDashboardPageVm }) {
 
   const pendingPay = finance ? finance.total_pending_in + finance.total_pending_out : 0;
   const deliverableHref = data.pending_deliverable_items?.[0]
-    ? `/business/projects/${data.pending_deliverable_items[0].project_id}?tab=deliverables`
+    ? `/business/projects/detail?id=${data.pending_deliverable_items[0].project_id}&tab=deliverables`
     : "/business/projects";
   const milestoneHref = data.due_milestone_items?.[0]
-    ? `/business/projects/${data.due_milestone_items[0].project_id}?tab=workpackages`
+    ? `/business/projects/detail?id=${data.due_milestone_items[0].project_id}&tab=workpackages`
     : "/business/work-packages";
 
   const attentionItems = [
@@ -319,7 +319,7 @@ export function BusinessDashboardView({ vm }: { vm: BusinessDashboardPageVm }) {
                       {data.pending_deliverable_items?.map((d) => (
                         <li key={d.id}>
                           <Link
-                            href={`/business/projects/${d.project_id}?tab=deliverables`}
+                            href={`/business/projects/detail?id=${d.project_id}&tab=deliverables`}
                             className="flex items-center justify-between rounded-lg border border-line px-3 py-2.5 transition hover:border-brand/30 hover:bg-surface-muted/40"
                           >
                             <div className="min-w-0">
@@ -341,7 +341,7 @@ export function BusinessDashboardView({ vm }: { vm: BusinessDashboardPageVm }) {
                       {data.due_milestone_items.map((m) => (
                         <li key={m.id}>
                           <Link
-                            href={`/business/projects/${m.project_id}?tab=workpackages`}
+                            href={`/business/projects/detail?id=${m.project_id}&tab=workpackages`}
                             className={`flex items-center justify-between rounded-lg border border-line px-3 py-2.5 transition hover:border-brand/30 hover:bg-surface-muted/40 ${
                               m.overdue ? "border-l-4 border-l-red-400" : ""
                             }`}
@@ -382,7 +382,7 @@ export function BusinessDashboardView({ vm }: { vm: BusinessDashboardPageVm }) {
                 {data.recent_projects.map((p) => (
                   <li key={p.id}>
                     <Link
-                      href={`/business/projects/${p.id}`}
+                      href={`/business/projects/detail?id=${p.id}`}
                       className="flex items-center justify-between rounded-lg border border-line px-3 py-3 transition hover:border-brand/30 hover:bg-surface-muted/40"
                     >
                       <div className="min-w-0">

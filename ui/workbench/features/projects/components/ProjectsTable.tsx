@@ -22,7 +22,7 @@ function RowActions({
 }) {
   return (
     <div className="flex justify-end gap-2">
-      <Link href={`/business/projects/${projectId}`} className="text-xs text-brand hover:underline" onClick={(e) => e.stopPropagation()}>
+      <Link href={`/business/projects/detail?id=${projectId}`} className="text-xs text-brand hover:underline" onClick={(e) => e.stopPropagation()}>
         详情
       </Link>
       <button
@@ -49,7 +49,7 @@ function ProjectMobileCard({
   return (
     <article className="card p-4">
       <div className="flex items-start justify-between gap-3">
-        <Link href={`/business/projects/${project.id}`} className="min-w-0">
+        <Link href={`/business/projects/detail?id=${project.id}`} className="min-w-0">
           <h3 className="truncate font-medium text-ink hover:text-brand">{project.name}</h3>
           {project.code ? <p className="truncate text-xs text-ink-faint">{project.code}</p> : null}
         </Link>
@@ -179,7 +179,7 @@ export function ProjectsTable({ vm }: { vm: ProjectsPageVm }) {
               <tr
                 key={project.id}
                 className="cursor-pointer transition hover:bg-surface-muted/40"
-                onClick={() => router.push(`/business/projects/${project.id}`)}
+                onClick={() => router.push(`/business/projects/detail?id=${project.id}`)}
               >
                 <td className="px-4 py-3">
                   <p className="font-medium text-ink">{project.name}</p>

@@ -199,7 +199,7 @@ export function ClientDetailView({
         ) : (
           <div className="space-y-2">
             {projects.map((p) => (
-              <Link key={p.id} href={`/business/projects/${p.id}`} className="card flex items-center justify-between p-3 transition hover:shadow-md">
+              <Link key={p.id} href={`/business/projects/detail?id=${p.id}`} className="card flex items-center justify-between p-3 transition hover:shadow-md">
                 <div>
                   <p className="text-sm font-medium text-ink">{p.name}</p>
                   {p.code && <p className="text-xs text-ink-muted">{p.code}</p>}
@@ -221,7 +221,7 @@ export function ClientDetailView({
           </div>
           <div className="space-y-2">
             {opportunities.slice(0, 5).map((o) => (
-              <Link key={o.id} href={`/business/opportunities/${o.id}`} className="card flex items-center justify-between p-3 text-sm transition hover:shadow-md">
+              <Link key={o.id} href={`/business/opportunities/detail?id=${o.id}`} className="card flex items-center justify-between p-3 text-sm transition hover:shadow-md">
                 <span className="font-medium text-ink">{o.name}</span>
                 <span className="text-xs text-ink-muted">{OPPORTUNITY_STAGE_LABELS[o.stage] ?? o.stage}</span>
               </Link>
@@ -238,7 +238,7 @@ export function ClientDetailView({
           </div>
           <div className="space-y-2">
             {contracts.slice(0, 5).map((c) => (
-              <Link key={c.id} href={`/business/contracts/${c.id}`} className="card flex items-center justify-between p-3 text-sm transition hover:shadow-md">
+              <Link key={c.id} href={`/business/contracts/detail?id=${c.id}`} className="card flex items-center justify-between p-3 text-sm transition hover:shadow-md">
                 <span className="font-medium text-ink">{c.name}</span>
                 <span className="text-xs text-ink-muted">{CONTRACT_STATUS_LABELS[c.status] ?? c.status}</span>
               </Link>

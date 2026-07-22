@@ -38,7 +38,7 @@ export function useFlowsPage() {
   const filtered = useMemo(() => filterBySearch(list.items, search, (f) => `${f.name} ${f.description ?? ""}`), [list.items, search]);
 
   const openEdit = (flow: Flow) => {
-    router.push(`/workbench/flows/${flow.id}/edit`);
+    router.push(`/workbench/flows/edit?id=${flow.id}`);
   };
 
   const saveFlowMeta = async (flowId: string, name: string, description: string, tagIds: string[]) => {
@@ -116,7 +116,7 @@ export function useFlowsPage() {
         tag_ids: payload.tag_ids,
         graph_json: payload.graph_json,
       });
-      router.push(`/workbench/flows/${flow.id}/edit`);
+      router.push(`/workbench/flows/edit?id=${flow.id}`);
     } finally {
       setCreating(false);
     }

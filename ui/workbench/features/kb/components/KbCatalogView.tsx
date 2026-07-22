@@ -40,7 +40,7 @@ export function KbCatalogView({ vm }: { vm: KbPageVm }) {
       {filtered.map((kb) => (
         <ResourceItemCard
           key={kb.id}
-          href={`/workbench/kb/${kb.id}`}
+          href={`/workbench/kb/detail?id=${kb.id}`}
           title={kb.name}
           description={kb.description || "管理文档、检索测试与入库状态"}
           meta={
@@ -62,7 +62,7 @@ export function KbCatalogView({ vm }: { vm: KbPageVm }) {
                 {
                   label: "管理",
                   variant: "primary",
-                  onClick: () => router.push(`/workbench/kb/${kb.id}`),
+                  onClick: () => router.push(`/workbench/kb/detail?id=${kb.id}`),
                 },
               ]}
               onEdit={() => openEdit(kb)}

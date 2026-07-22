@@ -101,7 +101,7 @@ export function useProjectDetailPage(projectId: string) {
       if (next === "info") params.delete("tab");
       else params.set("tab", next);
       const q = params.toString();
-      router.replace(`/business/projects/${projectId}${q ? `?${q}` : ""}`, { scroll: false });
+      router.replace(`/business/projects/detail?id=${projectId}${q ? `&${q}` : ""}`, { scroll: false });
     },
     [router, projectId, searchParams],
   );

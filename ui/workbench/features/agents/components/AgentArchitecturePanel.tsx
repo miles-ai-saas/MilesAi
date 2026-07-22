@@ -74,7 +74,7 @@ export function AgentArchitecturePanel({ agentId, agentName }: Props) {
 
   const openFlowCanvas = () => {
     const flowId = data?.attachments.flow?.id;
-    if (flowId) router.push(`/workbench/flows/${flowId}/edit`);
+    if (flowId) router.push(`/workbench/flows/edit?id=${flowId}`);
   };
 
   if (loading) {

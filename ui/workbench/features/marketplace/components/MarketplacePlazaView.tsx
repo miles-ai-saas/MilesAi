@@ -25,7 +25,7 @@ function MarketplaceInstallSuccessBanner({ result, onDismiss }: { result: AppIns
         {result.kb_id ? (
           <li>
             知识库 →{" "}
-            <Link href={`/workbench/kb/${result.kb_id}`} className="underline">
+            <Link href={`/workbench/kb/detail?id=${result.kb_id}`} className="underline">
               管理文档
             </Link>
           </li>
@@ -33,7 +33,7 @@ function MarketplaceInstallSuccessBanner({ result, onDismiss }: { result: AppIns
         {result.flow_id ? (
           <li>
             流程 →{" "}
-            <Link href={`/workbench/flows/${result.flow_id}/edit`} className="underline">
+            <Link href={`/workbench/flows/edit?id=${result.flow_id}`} className="underline">
               编辑画布
             </Link>
           </li>

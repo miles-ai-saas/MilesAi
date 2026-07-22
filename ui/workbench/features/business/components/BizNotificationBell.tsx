@@ -103,7 +103,7 @@ export function BizNotificationBell() {
                 {items.map((m) => (
                   <li key={m.id}>
                     <Link
-                      href={`/business/projects/${m.project_id}?tab=workpackages`}
+                      href={`/business/projects/detail?id=${m.project_id}&tab=workpackages`}
                       className="block rounded-lg px-3 py-2 transition hover:bg-surface-muted"
                       onClick={() => setOpen(false)}
                     >

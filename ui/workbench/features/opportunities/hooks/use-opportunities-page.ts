@@ -128,7 +128,7 @@ export function useOpportunitiesPage() {
   const onConvert = useCallback(async (o: BizOpportunity) => {
     const result = await api.convertOpportunityToProject(o.id);
     await loadPipeline();
-    router.push(`/business/projects/${result.project_id}`);
+    router.push(`/business/projects/detail?id=${result.project_id}`);
   }, [loadPipeline, router]);
 
   const clearFilters = useCallback(() => setStage(""), []);

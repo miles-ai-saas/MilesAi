@@ -79,7 +79,7 @@ export function AgentWorkbenchPanel({ agentId, agentName, activeTab, onSaved }: 
 
   const openFlowCanvas = () => {
     if (form.published_flow_id) {
-      router.push(`/workbench/flows/${form.published_flow_id}/edit`);
+      router.push(`/workbench/flows/edit?id=${form.published_flow_id}`);
     }
   };
 

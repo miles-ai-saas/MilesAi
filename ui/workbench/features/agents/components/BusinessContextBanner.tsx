@@ -10,7 +10,7 @@ export function BusinessContextBanner({ ctx, onDismiss }: { ctx: BusinessContext
         <div className="min-w-0 text-xs text-ink">
           <span className="font-medium text-brand">业务项目上下文</span>
           <span className="mx-2 text-ink-muted">·</span>
-          <Link href={`/business/projects/${ctx.projectId}`} className="text-brand hover:underline">
+          <Link href={`/business/projects/detail?id=${ctx.projectId}`} className="text-brand hover:underline">
             {ctx.projectName}
           </Link>
           {ctx.workPackageName && (

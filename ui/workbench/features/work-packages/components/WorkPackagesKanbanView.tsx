@@ -175,7 +175,7 @@ function KanbanCard({ wp, busy }: { wp: BizWorkPackageKanban; busy: boolean }) {
       }`}
     >
       <Link
-        href={`/business/projects/${wp.project_id}?tab=workpackages`}
+        href={`/business/projects/detail?id=${wp.project_id}&tab=workpackages`}
         className="font-medium text-ink hover:text-brand"
         onClick={(e) => e.stopPropagation()}
       >
