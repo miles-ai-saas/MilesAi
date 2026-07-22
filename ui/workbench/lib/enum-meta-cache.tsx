@@ -23,8 +23,11 @@ export function createMetaCacheStore(): MetaCacheStore {
   return { states: new Map(), inflight: new Map(), listeners: new Map() };
 }
 
+/** 稳定的空状态引用，避免 useSyncExternalStore 因 Object.is 不匹配导致无限循环 */
+const EMPTY_CACHE_STATE: CacheState = Object.freeze({ data: null, loading: false, settled: false });
+
 export function getCacheState(store: MetaCacheStore, key: string): CacheState {
-  return store.states.get(key) ?? { data: null, loading: false, settled: false };
+  return store.states.get(key) ?? EMPTY_CACHE_STATE;
 }
 
 export function notifyCache(store: MetaCacheStore, key: string) {

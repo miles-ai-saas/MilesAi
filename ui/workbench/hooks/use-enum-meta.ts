@@ -5,7 +5,7 @@
  * AppShell 内 MetaCacheProvider 按 cacheKey 去重；无 Provider 时退化为组件内单次请求。
  */
 
-import { useContext, useEffect, useState, useSyncExternalStore } from "react";
+import { useContext, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { MetaCacheContext, getCacheState, loadIntoCache, subscribeStore } from "@/lib/enum-meta-cache";
 
 export function useEnumMeta<T>(cacheKey: string, fetcher: () => Promise<T>, enabled = true): T | null {
@@ -20,9 +20,15 @@ export function useEnumMeta<T>(cacheKey: string, fetcher: () => Promise<T>, enab
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [store, cacheKey, enabled]);
 
+  /** store 不存在时，用 useMemo 保持 getSnapshot 返回引用稳定，避免 useSyncExternalStore 无限循环 */
+  const fallbackSnapshot = useMemo(
+    () => ({ data: fallback, loading: false, settled: fallback !== null }),
+    [fallback],
+  );
+
   const cachedState = useSyncExternalStore(
     (onChange) => (store ? subscribeStore(store, cacheKey, onChange) : () => {}),
-    () => (store ? getCacheState(store, cacheKey) : { data: fallback, loading: false, settled: fallback !== null }),
+    () => (store ? getCacheState(store, cacheKey) : fallbackSnapshot),
     () => ({ data: null, loading: false, settled: false }),
   );
 
