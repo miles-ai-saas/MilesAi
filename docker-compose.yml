@@ -21,6 +21,7 @@ x-backend-env: &backend-env
   MILVUS_URI: ${MILVUS_URI:-http://localhost:19530}
   CELERY_BROKER_URL: ${CELERY_BROKER_URL:-redis://localhost:6379/1}
   CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND:-redis://localhost:6379/2}
+  CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000,http://localhost:3001,http://127.0.0.1:3001,http://localhost:3002,http://127.0.0.1:3002}
 
 services:
   api:

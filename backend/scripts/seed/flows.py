@@ -11,7 +11,7 @@ from __future__ import annotations
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.soft_delete import not_deleted
+from app.core.soft_delete import is_marked_deleted, not_deleted
 from app.flow_runtime.templates.registry import load_flow_template_graph
 from app.models.flow import Flow, FlowStatus, FlowVersion
 from app.models.platform.tenant import Tenant
@@ -41,6 +41,7 @@ async def _get_or_create_flow(
     template_id: str,
     publish: bool,
 ) -> Flow:
+    # 1. 优先复用未删除的已有 flow
     row = await session.scalar(
         select(Flow).where(
             Flow.tenant_id == tenant_id,
@@ -51,6 +52,20 @@ async def _get_or_create_flow(
     if row:
         return row
 
+    # 2. 若已存在同名但被软删的 flow → 恢复它（保持 UUID 不变，避免前端缓存 ID 404）
+    deleted_row = await session.scalar(
+        select(Flow).where(
+            Flow.tenant_id == tenant_id,
+            Flow.name == name,
+        )
+    )
+    if deleted_row and is_marked_deleted(deleted_row):
+        deleted_row.deleted_at = None
+        deleted_row.status = FlowStatus.PUBLISHED if publish else FlowStatus.DRAFT
+        await session.flush()
+        return deleted_row
+
+    # 3. 全新创建
     graph = load_flow_template_graph(template_id)
     flow = Flow(
         tenant_id=tenant_id,
