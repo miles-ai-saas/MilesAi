@@ -1,13 +1,11 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { CompanyLogo } from "@/components/brand/company-logo";
 import { AdminLoginHero } from "@/components/layout/AdminLoginHero";
 import { adminApi } from "@/lib/api";
 
 export default function LoginPage() {
-  const router = useRouter();
   const [username, setUsername] = useState("platform");
   const [password, setPassword] = useState("admin123");
   const [error, setError] = useState("");
@@ -19,7 +17,7 @@ export default function LoginPage() {
     setError("");
     try {
       await adminApi.login(username, password);
-      router.push("/");
+      window.location.href = "/";
     } catch (err) {
       setError(err instanceof Error ? err.message : "登录失败");
     } finally {

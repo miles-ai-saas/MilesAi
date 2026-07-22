@@ -1,6 +1,6 @@
 "use client";
 
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { AdminSidebar, ADMIN_SIDEBAR_STORAGE_KEY } from "@/components/layout/AdminSidebar";
 import { AdminTopBar } from "@/components/layout/AdminTopBar";
@@ -26,7 +26,6 @@ function saveSidebarCollapsed(collapsed: boolean) {
 
 export function AdminShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const router = useRouter();
   const hydrated = useAdminHydrated();
   const token = useAdminAuthStore((s) => s.accessToken);
   const admin = useAdminAuthStore((s) => s.admin);
@@ -40,8 +39,8 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!hydrated) return;
     if (pathname === "/login") return;
-    if (!token) router.replace("/login");
-  }, [hydrated, token, pathname, router]);
+    if (!token) window.location.href = "/login";
+  }, [hydrated, token, pathname]);
 
   useEffect(() => {
     setMobileNavOpen(false);
@@ -65,7 +64,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     await adminApi.logout();
-    router.push("/login");
+    window.location.href = "/login";
   };
 
   return (
