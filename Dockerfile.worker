@@ -1,18 +1,11 @@
-FROM registry.cn-shenzhen.aliyuncs.com/kye_secure/python:3.11.9
+FROM registry.cn-shenzhen.aliyuncs.com/kye_secure/python:3.11.9-uv-ffmpeg
 
 WORKDIR /app
-
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends ffmpeg \
-    && rm -rf /var/lib/apt/lists/*
 
 # 先只复制依赖文件，让 pip 层可缓存
 COPY backend/pyproject.toml /app/backend/pyproject.toml
 
-RUN pip install --no-cache-dir uv \
-      -i https://mirrors.aliyun.com/pypi/simple \
-      --trusted-host mirrors.aliyun.com \
-    && uv pip install --system -e /app/backend \
+RUN uv pip install --system -e /app/backend \
       -i https://mirrors.aliyun.com/pypi/simple \
       --trusted-host mirrors.aliyun.com
 
