@@ -1,14 +1,6 @@
-FROM registry.cn-shenzhen.aliyuncs.com/kye_secure/python:3.11.9-uv-ffmpeg
+registry.cn-shenzhen.aliyuncs.com/kye_secure/python:3.11.9-full
 
 WORKDIR /app
-
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl \
-    nodejs \
-    npm \
-    && rm -rf /var/lib/apt/lists/* \
-    && npm install -g @modelcontextprotocol/server-everything@0.6.2 \
-    && npm cache clean --force
 
 # 先只复制依赖文件，让 pip 层可缓存
 COPY backend/pyproject.toml /app/backend/pyproject.toml
