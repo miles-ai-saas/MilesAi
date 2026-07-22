@@ -77,6 +77,7 @@ function HealthComponents({ components, monitorMeta }: { components: Record<stri
 
 export function MonitorHealthTab({ vm }: { vm: MonitorPageVm }) {
   const { health, monitorMeta, redisInfo, workerInfo } = vm;
+  if (!health) return null;
   const components = health?.components ?? {};
 
   return (
@@ -93,7 +94,7 @@ export function MonitorHealthTab({ vm }: { vm: MonitorPageVm }) {
       <section className="rounded-xl border border-line bg-surface p-5 shadow-panel">
         <h3 className="text-sm font-semibold text-ink">组件明细</h3>
         <div className="mt-4">
-          {health ? <HealthComponents components={components} monitorMeta={monitorMeta} /> : <p className="text-sm text-ink-muted">加载中…</p>}
+          <HealthComponents components={components} monitorMeta={monitorMeta} />
         </div>
       </section>
       {redisInfo && !("error" in redisInfo) && (

@@ -18,9 +18,7 @@ function ChartPanel({ title, subtitle, children }: { title: string; subtitle?: s
 
 export function MonitorTrendsTab({ vm }: { vm: MonitorPageVm }) {
   const { report, trends, trendDays, monitorMeta, kbMeta } = vm;
-  if (!report || !trends) {
-    return <p className="col-span-full py-12 text-center text-sm text-ink-muted">加载趋势数据…</p>;
-  }
+  if (!report || !trends) return null;
 
   const trendHint = monitorTrendDayOptions(monitorMeta).find((o) => o.value === String(trendDays))?.label ?? `近 ${trendDays} 天`;
 

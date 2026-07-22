@@ -22,7 +22,7 @@ from app.models.flow import Flow
 from app.models.kb import Document, DocumentStatus, KnowledgeBase
 from app.models.model.usage_log import ModelUsageLog
 from app.models.platform.system import SystemConfig
-from app.models.task.task_record import CeleryTaskRecord, TaskStatus
+from app.models.task.task_record import CeleryTaskRecord
 from app.tenant.compliance.models import InterceptLog
 from app.tenant.marketplace.models import AppInstall
 from app.tenant.monitor.meta import monitor_meta_dict
@@ -60,24 +60,24 @@ class MonitorService(BaseService):
         return report.stats
 
     async def _task_summary(self) -> TaskSummary:
-        """按状态统计租户 Celery 任务数量。"""
+        """按状态统计租户 Celery 任务数量（单次 GROUP BY 查询）。"""
         filters = tenant_filters(self.ctx, CeleryTaskRecord.tenant_id)
-        summary = TaskSummary()
-        for status in TaskStatus:
-            count = await self.db.scalar(select(func.count()).select_from(CeleryTaskRecord).where(*filters, CeleryTaskRecord.status == status))
-            n = count or 0
-            summary.total += n
-            if status == TaskStatus.PENDING:
-                summary.pending = n
-            elif status == TaskStatus.RUNNING:
-                summary.running = n
-            elif status == TaskStatus.SUCCESS:
-                summary.success = n
-            elif status == TaskStatus.FAILED:
-                summary.failed = n
-            elif status == TaskStatus.CANCELLED:
-                summary.cancelled = n
-        return summary
+        rows = await self.db.execute(
+            select(CeleryTaskRecord.status, func.count(CeleryTaskRecord.id))
+            .where(*filters)
+            .group_by(CeleryTaskRecord.status)
+        )
+        status_map: dict[str, int] = {row[0].value if hasattr(row[0], "value") else str(row[0]): int(row[1]) for row in rows.all()}
+
+        total = sum(status_map.values())
+        return TaskSummary(
+            total=total,
+            pending=status_map.get("pending", 0),
+            running=status_map.get("running", 0),
+            success=status_map.get("success", 0),
+            failed=status_map.get("failed", 0),
+            cancelled=status_map.get("cancelled", 0),
+        )
 
     async def report(self) -> MonitorReport:
         """聚合租户资源统计、任务摘要、文档状态与多模态处理量。"""
