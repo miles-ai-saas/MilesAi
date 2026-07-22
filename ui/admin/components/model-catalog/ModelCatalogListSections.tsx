@@ -63,7 +63,7 @@ export function ModelCatalogTableSection({ vm }: { vm: ModelCatalogPageVm }) {
               return (
                 <tr key={m.id}>
                   <td className="cell-stack">
-                    <Link href={`/model-catalog/${m.id}`} className="cell-stack-title hover:text-brand">
+                    <Link href={`/model-catalog/detail?id=${m.id}`} className="cell-stack-title hover:text-brand">
                       {m.name}
                     </Link>
                     {modelId && (
@@ -81,7 +81,7 @@ export function ModelCatalogTableSection({ vm }: { vm: ModelCatalogPageVm }) {
                     <span className={m.has_api_key ? "key-badge-ready" : "key-badge-missing"}>{m.has_api_key ? "已配置" : "未配置"}</span>
                   </td>
                   <td className="col-actions">
-                    <Link href={`/model-catalog/${m.id}`} className="text-brand hover:underline">
+                    <Link href={`/model-catalog/detail?id=${m.id}`} className="text-brand hover:underline">
                       管理
                     </Link>
                   </td>

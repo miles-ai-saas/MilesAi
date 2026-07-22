@@ -64,7 +64,7 @@ export function getAdminBreadcrumbs(pathname: string): BreadcrumbItem[] {
   if (pathname === "/model-catalog/new") {
     return [home, { label: "模型目录", href: "/model-catalog" }, { label: "新建模型" }];
   }
-  if (pathname.startsWith("/model-catalog/")) {
+  if (pathname.startsWith("/model-catalog/detail")) {
     return [home, { label: "模型目录", href: "/model-catalog" }, { label: "模型详情" }];
   }
   if (pathname === "/marketplace-review") return [home, { label: "应用审核" }];
@@ -72,10 +72,10 @@ export function getAdminBreadcrumbs(pathname: string): BreadcrumbItem[] {
   if (pathname === "/marketplace-categories") return [home, { label: "市场分类" }];
   if (pathname === "/sys-categories") return [home, { label: "工作台分类" }];
   if (pathname === "/tenants") return [home, { label: "租户管理" }];
-  if (pathname.startsWith("/tenants/")) return [home, { label: "租户管理", href: "/tenants" }, { label: "租户详情" }];
+  if (pathname.startsWith("/tenants/detail")) return [home, { label: "租户管理", href: "/tenants" }, { label: "租户详情" }];
 
   if (pathname === "/billing/plans") return [home, { label: "套餐管理" }];
-  if (pathname.startsWith("/billing/plans/")) {
+  if (pathname.startsWith("/billing/plans/detail")) {
     return [home, { label: "套餐管理", href: "/billing/plans" }, { label: "套餐详情" }];
   }
   if (pathname === "/billing/bills") return [home, { label: "账单管理" }];

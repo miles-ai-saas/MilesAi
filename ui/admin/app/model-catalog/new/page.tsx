@@ -26,7 +26,7 @@ export default function ModelCatalogNewPage() {
     setErr("");
     try {
       const created = await adminApi.createModelCatalog(toPayload(form, true));
-      router.push(`/model-catalog/${created.id}`);
+      router.push(`/model-catalog/detail?id=${created.id}`);
     } catch (e) {
       setErr(e instanceof Error ? e.message : "创建失败");
       setSaving(false);

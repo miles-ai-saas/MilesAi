@@ -88,7 +88,7 @@ export function TenantsTableSection({ vm }: { vm: TenantsPageVm }) {
                   {t.storage_used_mb}/{t.max_storage_mb} MB · Token {t.tokens_used_month.toLocaleString()}
                 </td>
                 <td className="col-actions">
-                  <Link href={`/tenants/${t.id}`} className="text-brand hover:underline">
+                  <Link href={`/tenants/detail?id=${t.id}`} className="text-brand hover:underline">
                     详情
                   </Link>
                 </td>

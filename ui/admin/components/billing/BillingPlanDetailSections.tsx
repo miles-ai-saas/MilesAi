@@ -151,7 +151,7 @@ export function BillingPlanDetailAside({ vm }: { vm: BillingPlanDetailPageVm }) 
           <ul className="admin-data-list mt-3">
             {tenants.map((t) => (
               <li key={t.id} className="admin-data-row">
-                <Link href={`/tenants/${t.id}`} className="cell-primary hover:text-brand">
+                <Link href={`/tenants/detail?id=${t.id}`} className="cell-primary hover:text-brand">
                   {t.name}
                 </Link>
               </li>

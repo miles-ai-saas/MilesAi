@@ -29,7 +29,7 @@ export function BillingPlansGridSection({ vm }: { vm: BillingPlansPageVm }) {
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
       {plans.map((p) => (
         <div key={p.id} className="card p-4 text-sm">
-          <Link href={`/billing/plans/${p.id}`} className="font-bold text-ink hover:text-brand">
+          <Link href={`/billing/plans/detail?id=${p.id}`} className="font-bold text-ink hover:text-brand">
             {p.name}
           </Link>
           <p className="mt-1 font-mono text-xs cell-muted">{p.code}</p>
@@ -39,7 +39,7 @@ export function BillingPlansGridSection({ vm }: { vm: BillingPlansPageVm }) {
           </p>
           {!p.is_active && <span className="mt-2 inline-block text-xs text-ink-faint">已停用</span>}
           <div className="mt-3 flex flex-wrap gap-3">
-            <Link href={`/billing/plans/${p.id}`} className="text-xs text-brand hover:underline">
+            <Link href={`/billing/plans/detail?id=${p.id}`} className="text-xs text-brand hover:underline">
               查看详情
             </Link>
             <button type="button" className="text-xs cell-muted hover:text-brand" onClick={() => void togglePlanActive(p)}>
