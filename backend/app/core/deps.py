@@ -3,7 +3,7 @@
 租户 API 通过 require_permissions 声明 RBAC；运营端使用 admin.app_sys.deps。
 """
 
-from fastapi import Depends, Query
+from fastapi import Depends, Query, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,12 +11,15 @@ from sqlalchemy.orm import selectinload
 
 from app.infra.db import get_db
 from app.common.exceptions import UnauthorizedError
+from app.core.logging import get_logger
 from app.core.security import safe_decode_token
 from app.core.tenant import TenantContext
 from app.models.platform.role import Role
 from app.models.platform.user import User
 from app.common.schema import PageParams
 from app.tenant.auth.services import session_store
+
+logger = get_logger(__name__)
 
 bearer_scheme = HTTPBearer(auto_error=False)
 
@@ -30,10 +33,22 @@ async def get_page_params(
 
 
 async def get_current_user(
+    request: Request,
     credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
     db: AsyncSession = Depends(get_db),
 ) -> User:
     """Bearer access JWT → 活跃用户（预加载 roles.permissions）。"""
+    # 临时日志：排查阿里云 API 网关是否吃掉 Authorization header
+    auth_header = request.headers.get("Authorization", "(missing)")
+    auth_token = request.headers.get("X-Auth-Token", "(missing)")
+    logger.info(
+        "auth_header_check authorization=%s x_auth_token=%s path=%s method=%s",
+        auth_header[:50] if auth_header != "(missing)" else auth_header,
+        auth_token[:50] if auth_token != "(missing)" else auth_token,
+        request.url.path,
+        request.method,
+    )
+
     if not credentials:
         raise UnauthorizedError("未提供认证令牌")
     payload = safe_decode_token(credentials.credentials)
