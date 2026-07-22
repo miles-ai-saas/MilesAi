@@ -1,13 +1,11 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { adminApi, type AdminTenantDetail, type BillingPlan, type TenantBill } from "@/lib/api";
 import { useRequireAdmin } from "@/lib/auth-store";
 import { applyPlanQuotas } from "@/lib/tenant-detail-shared";
 
 export function useTenantDetailPage(id: string) {
-  const router = useRouter();
   const ready = useRequireAdmin();
   const [tenant, setTenant] = useState<AdminTenantDetail | null>(null);
   const [plans, setPlans] = useState<BillingPlan[]>([]);
@@ -86,7 +84,7 @@ export function useTenantDetailPage(id: string) {
   const onDelete = async () => {
     if (!tenant || !confirm(`确定删除租户「${tenant.name}」？将清空其业务数据。`)) return;
     await adminApi.deleteTenant(id);
-    router.push("/tenants");
+    window.location.href = "/tenants";
   };
 
   const copyTenantId = async () => {

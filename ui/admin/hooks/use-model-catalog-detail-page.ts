@@ -1,13 +1,11 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { fromRow, toPayload, type ModelCatalogFormValues } from "@/components/model-catalog/form-utils";
 import { adminApi, type AdminModelCatalog } from "@/lib/api";
 import { useRequireAdmin } from "@/lib/auth-store";
 
 export function useModelCatalogDetailPage(id: string) {
-  const router = useRouter();
   const ready = useRequireAdmin();
   const [model, setModel] = useState<AdminModelCatalog | null>(null);
   const [form, setForm] = useState<ModelCatalogFormValues | null>(null);
@@ -83,7 +81,7 @@ export function useModelCatalogDetailPage(id: string) {
     setActionBusy(true);
     try {
       await adminApi.deleteModelCatalog(id);
-      router.push("/model-catalog");
+      window.location.href = "/model-catalog";
     } catch (e) {
       setErr(e instanceof Error ? e.message : "删除失败");
       setActionBusy(false);

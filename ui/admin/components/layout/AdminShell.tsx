@@ -38,7 +38,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!hydrated) return;
-    if (pathname === "/login") return;
+    if (pathname === "/login" || pathname === "/login/") return;
     if (!token) window.location.href = "/login";
   }, [hydrated, token, pathname]);
 
@@ -54,7 +54,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
-  if (pathname === "/login") return <>{children}</>;
+  if (pathname === "/login" || pathname === "/login/") return <>{children}</>;
 
   if (!hydrated || !token) {
     return <p className="flex min-h-screen items-center justify-center text-ink-muted">加载中…</p>;

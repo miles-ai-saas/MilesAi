@@ -1,13 +1,11 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { adminApi } from "@/lib/api";
 import { useAdminAuthStore, useRequireAdmin } from "@/lib/auth-store";
 
 export function useProfilePage() {
   const ready = useRequireAdmin();
-  const router = useRouter();
   const currentAdmin = useAdminAuthStore((s) => s.admin);
   const [me, setMe] = useState<{ username: string; role: string } | null>(null);
   const [sessions, setSessions] = useState<{ admin_id: string; username: string; role: string; is_current: boolean }[]>([]);
@@ -34,7 +32,7 @@ export function useProfilePage() {
     try {
       await adminApi.changePassword(oldPwd, newPwd);
       await adminApi.logout();
-      router.push("/login?msg=password_changed");
+      window.location.href = "/login?msg=password_changed";
     } catch (e) {
       setErr(e instanceof Error ? e.message : "修改失败");
     }
@@ -47,7 +45,7 @@ export function useProfilePage() {
       await adminApi.revokeSession(adminId);
       if (adminId === currentAdmin?.id) {
         await adminApi.logout();
-        router.push("/login");
+        window.location.href = "/login";
         return;
       }
       await reload();

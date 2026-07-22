@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { AdminDetailHeader } from "@/components/layout/AdminDetailHeader";
 import { ModelCatalogEditor } from "@/components/model-catalog/ModelCatalogEditor";
@@ -9,7 +8,6 @@ import { adminApi } from "@/lib/api";
 import { useRequireAdmin } from "@/lib/auth-store";
 
 export default function ModelCatalogNewPage() {
-  const router = useRouter();
   const ready = useRequireAdmin();
   const [form, setForm] = useState<ModelCatalogFormValues>(emptyForm());
   const [err, setErr] = useState("");
@@ -26,7 +24,7 @@ export default function ModelCatalogNewPage() {
     setErr("");
     try {
       const created = await adminApi.createModelCatalog(toPayload(form, true));
-      router.push(`/model-catalog/detail?id=${created.id}`);
+      window.location.href = `/model-catalog/detail?id=${created.id}`;
     } catch (e) {
       setErr(e instanceof Error ? e.message : "创建失败");
       setSaving(false);
