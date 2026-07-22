@@ -1,4 +1,4 @@
-registry.cn-shenzhen.aliyuncs.com/kye_secure/python:3.11.9-full
+FROM registry.cn-shenzhen.aliyuncs.com/kye_secure/python:3.11.9-full
 
 WORKDIR /app
 
