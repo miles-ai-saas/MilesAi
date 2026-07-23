@@ -7,8 +7,8 @@ import { adminApi } from "@/lib/api";
 import { redirectToHome } from "@/lib/auth-store";
 
 export default function LoginPage() {
-  const [username, setUsername] = useState("platform");
-  const [password, setPassword] = useState("admin123");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -58,8 +58,6 @@ export default function LoginPage() {
             <button type="submit" disabled={loading} className="btn-primary w-full">
               {loading ? "登录中…" : "进入管理后台"}
             </button>
-
-            <p className="mt-5 text-center text-xs text-ink-faint">默认账号 platform / admin123</p>
           </form>
         </div>
       </div>
