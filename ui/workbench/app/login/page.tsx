@@ -10,8 +10,8 @@ import { LoginHero } from "@/components/layout/LoginHero";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [username, setUsername] = useState("admin");
-  const [password, setPassword] = useState("admin123");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -61,8 +61,6 @@ export default function LoginPage() {
             <button type="submit" disabled={loading} className="btn-primary w-full">
               {loading ? "登录中…" : "进入工作台"}
             </button>
-
-            <p className="mt-5 text-center text-xs text-ink-faint">默认账号 admin / admin123</p>
           </form>
         </div>
       </div>
