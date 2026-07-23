@@ -4,6 +4,7 @@ import { useState } from "react";
 import { CompanyLogo } from "@/components/brand/company-logo";
 import { AdminLoginHero } from "@/components/layout/AdminLoginHero";
 import { adminApi } from "@/lib/api";
+import { redirectToHome } from "@/lib/auth-store";
 
 export default function LoginPage() {
   const [username, setUsername] = useState("platform");
@@ -17,7 +18,7 @@ export default function LoginPage() {
     setError("");
     try {
       await adminApi.login(username, password);
-      window.location.href = "/";
+      redirectToHome();
     } catch (err) {
       setError(err instanceof Error ? err.message : "登录失败");
     } finally {

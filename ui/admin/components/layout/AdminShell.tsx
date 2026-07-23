@@ -6,7 +6,7 @@ import { AdminSidebar, ADMIN_SIDEBAR_STORAGE_KEY } from "@/components/layout/Adm
 import { AdminTopBar } from "@/components/layout/AdminTopBar";
 import { getAdminBreadcrumbs } from "@/lib/admin-nav";
 import { adminApi } from "@/lib/api";
-import { useAdminAuthStore, useAdminHydrated } from "@/lib/auth-store";
+import { isLoginPath, redirectToLogin, useAdminAuthStore, useAdminHydrated } from "@/lib/auth-store";
 
 function loadSidebarCollapsed(): boolean {
   try {
@@ -25,22 +25,30 @@ function saveSidebarCollapsed(collapsed: boolean) {
 }
 
 export function AdminShell({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
+  const pathname = usePathname() ?? "";
   const hydrated = useAdminHydrated();
   const token = useAdminAuthStore((s) => s.accessToken);
   const admin = useAdminAuthStore((s) => s.admin);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  // SSR/静态导出用 usePathname；客户端再以真实 URL 兜底，避免尾斜杠不一致
+  const [browserLogin, setBrowserLogin] = useState(
+    () => typeof window !== "undefined" && isLoginPath(window.location.pathname),
+  );
+  const onLoginPage = isLoginPath(pathname) || browserLogin;
+
+  useEffect(() => {
+    setBrowserLogin(isLoginPath(window.location.pathname));
+  }, [pathname]);
 
   useEffect(() => {
     setSidebarCollapsed(loadSidebarCollapsed());
   }, []);
 
   useEffect(() => {
-    if (!hydrated) return;
-    if (pathname === "/login" || pathname === "/login/") return;
-    if (!token) window.location.href = "/login";
-  }, [hydrated, token, pathname]);
+    if (!hydrated || onLoginPage || token) return;
+    redirectToLogin();
+  }, [hydrated, onLoginPage, token]);
 
   useEffect(() => {
     setMobileNavOpen(false);
@@ -54,7 +62,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
-  if (pathname === "/login" || pathname === "/login/") return <>{children}</>;
+  if (onLoginPage) return <>{children}</>;
 
   if (!hydrated || !token) {
     return <p className="flex min-h-screen items-center justify-center text-ink-muted">加载中…</p>;
@@ -64,7 +72,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     await adminApi.logout();
-    window.location.href = "/login";
+    redirectToLogin();
   };
 
   return (

@@ -1,6 +1,6 @@
 import axios from "axios";
 import type { ApiResponse, PageResult } from "./types";
-import { getAdminToken, useAdminAuthStore } from "./auth-store";
+import { getAdminToken, redirectToLogin, useAdminAuthStore } from "./auth-store";
 import { getApiErrorMessage } from "./api-error";
 import { buildPageQuery, DEFAULT_PAGE_SIZE } from "./pagination";
 
@@ -22,7 +22,7 @@ http.interceptors.response.use(
     if (err.response?.status === 401 && typeof window !== "undefined") {
       if (getAdminToken()) {
         useAdminAuthStore.getState().logout();
-        window.location.href = "/login";
+        redirectToLogin();
       }
     }
     return Promise.reject(new Error(getApiErrorMessage(err)));

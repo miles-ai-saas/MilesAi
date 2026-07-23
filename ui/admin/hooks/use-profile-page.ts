@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { adminApi } from "@/lib/api";
-import { useAdminAuthStore, useRequireAdmin } from "@/lib/auth-store";
+import { redirectToLogin, useAdminAuthStore, useRequireAdmin } from "@/lib/auth-store";
 
 export function useProfilePage() {
   const ready = useRequireAdmin();
@@ -32,7 +32,7 @@ export function useProfilePage() {
     try {
       await adminApi.changePassword(oldPwd, newPwd);
       await adminApi.logout();
-      window.location.href = "/login?msg=password_changed";
+      redirectToLogin("msg=password_changed");
     } catch (e) {
       setErr(e instanceof Error ? e.message : "修改失败");
     }
@@ -45,7 +45,7 @@ export function useProfilePage() {
       await adminApi.revokeSession(adminId);
       if (adminId === currentAdmin?.id) {
         await adminApi.logout();
-        window.location.href = "/login";
+        redirectToLogin();
         return;
       }
       await reload();

@@ -38,6 +38,33 @@ export function getAdminToken(): string | null {
   }
 }
 
+/** 去掉尾斜杠，兼容 trailingSlash + OSS 静态托管。 */
+export function normalizePath(path: string): string {
+  if (!path) return "/";
+  const trimmed = path.replace(/\/+$/, "");
+  return trimmed === "" ? "/" : trimmed;
+}
+
+export function isLoginPath(path: string): boolean {
+  return normalizePath(path) === "/login";
+}
+
+/**
+ * 静态导出 + trailingSlash 下必须跳 `/login/`。
+ * 若已在登录页则不再跳转，避免 `/login` ↔ `/login/` 死循环。
+ */
+export function redirectToLogin(query = ""): void {
+  if (typeof window === "undefined") return;
+  if (isLoginPath(window.location.pathname)) return;
+  const qs = query.startsWith("?") ? query : query ? `?${query}` : "";
+  window.location.replace(`/login/${qs}`);
+}
+
+export function redirectToHome(): void {
+  if (typeof window === "undefined") return;
+  window.location.replace("/");
+}
+
 export function useAdminHydrated(): boolean {
   const [hydrated, setHydrated] = useState(false);
   useEffect(() => {
