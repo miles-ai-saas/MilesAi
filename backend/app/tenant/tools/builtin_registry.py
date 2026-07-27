@@ -105,13 +105,18 @@ BUILTIN_REGISTRY: list[dict] = [
     {
         "slug": "generate_image",
         "name": "生图",
-        "description": "根据文字描述生成图片；可选参考图实现图生图。默认生成 1 张，单次最多 4 张。3 张及以上或高分辨率将需要用户确认。",
+        "description": "根据文字描述生成图片；可选参考图实现图生图。n 为多张时表示多张独立单图（非组图拼贴）。默认 1 张，最多 4 张；≥3 张或高分辨率需用户确认。",
         "category_slug": "general",
-        "version": "1.3.0",
+        "version": "1.4.0",
         "require_confirmation": False,
         "generative_only": True,
         "parameters": [
-            {"name": "prompt", "type": "string", "description": "画面描述或编辑指令", "required": True},
+            {
+                "name": "prompt",
+                "type": "string",
+                "description": "单幅画面描述。n>1 时仍描述「一张独立成片」的内容；除非用户明确要求组图/宫格/拼接，禁止写四宫格、分镜拼贴。",
+                "required": True,
+            },
             {
                 "name": "size",
                 "type": "string",
@@ -128,7 +133,7 @@ BUILTIN_REGISTRY: list[dict] = [
             {
                 "name": "n",
                 "type": "integer",
-                "description": "生成张数，默认 1。仅用户明确要求时设为 >1（如'多来几张'、'给两个版本'）。1–4 张，≥3 张需确认。",
+                "description": "生成张数，默认 1。表示彼此独立的完整单图张数，不是一张里的格子数。1–4，≥3 需确认。",
                 "required": False,
                 "default": 1,
             },

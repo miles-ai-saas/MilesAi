@@ -211,6 +211,7 @@ async def run_generative_image_job_async(job_id: UUID) -> None:
                 reference_attachment_id=_optional_uuid(params.get("image_attachment_id")),
                 purpose=purpose, agent_id=agent_id, generative_job_id=job_id,
                 trace_id=job.trace_id,
+                allow_collage=bool(params.get("allow_collage") or agent_cfg.get("_image_allow_collage")),
             )
             job = await db.get(GenerativeJob, job_id)
             if not job or job.status == GenerativeJobStatus.CANCELLED:

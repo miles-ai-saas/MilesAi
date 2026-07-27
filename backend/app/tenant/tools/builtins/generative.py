@@ -200,6 +200,7 @@ async def handle_generate_image(
     异步返回 generative_job_id；同步返回 attachment_id / attachment_ids。
     """
     from app.integrations.generative import generate_image_for_model, resolve_image_gen_model
+    from app.integrations.generative.image.prompt_guard import sanitize_image_prompt
     from app.tenant.generative.schemas.job import ImageGenerativeJobCreate
     from app.tenant.generative.services.job import GenerativeJobService
 
@@ -221,9 +222,12 @@ async def handle_generate_image(
         except (TypeError, ValueError):
             pass
 
+    allow_collage = bool(agent_config.get("_image_allow_collage"))
+    prompt_text = sanitize_image_prompt(str(prompt), allow_collage=allow_collage)
+
     if GenerativeJobService.image_async_enabled():
         body = ImageGenerativeJobCreate(
-            prompt=str(prompt),
+            prompt=prompt_text,
             size=params.get("size"),
             n=n,
             image_attachment_id=image_att,
@@ -256,12 +260,13 @@ async def handle_generate_image(
         db,
         ctx,
         model,
-        prompt=str(prompt),
+        prompt=prompt_text,
         size=params.get("size"),
         n=n,
         reference_attachment_id=image_att,
         agent_id=agent_id,
         trace_id=get_trace_id(),
+        allow_collage=allow_collage,
     )
     ids = [str(i) for i in result.attachment_ids]
     mids = [str(i) for i in (result.media_asset_ids or [])]

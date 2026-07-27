@@ -66,10 +66,16 @@ class KnowledgeSearchInput(BaseModel):
 
 
 class GenerateImageInput(BaseModel):
-    prompt: str = Field(..., description="画面描述")
+    prompt: str = Field(
+        ...,
+        description="单幅完整画面描述。n>1 时仍写单图内容；除非用户明确要求组图/宫格/拼接，禁止四宫格或分镜拼贴",
+    )
     size: str | None = Field(None, description="如 1024x1024；≥1280 边长或多张需用户确认")
     image_attachment_id: str | None = Field(None, description="参考图 attachment_id（如用户上传了图片并提供其 ID 时才填，通常不填）")
-    n: int | None = Field(None, description="生成张数 1–4；≥3 需用户确认")
+    n: int | None = Field(
+        None,
+        description="独立单图张数 1–4（不是一张图里的格子数）；≥3 需用户确认",
+    )
     model_config_id: str | None = Field(None, description="生图模型 ID，留空自动使用默认模型，通常不需要填写")
 
 

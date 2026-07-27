@@ -209,6 +209,7 @@ class GenerativeJobService(BaseService):
             "agent_id": str(agent_id) if agent_id else None,
             "agent_config": agent_config or {},
             "conversation_id": (agent_config or {}).get("_conversation_id"),
+            "allow_collage": bool((agent_config or {}).get("_image_allow_collage")),
         }
         job = await submit_image_generative_job(
             self.db,

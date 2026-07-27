@@ -28,6 +28,7 @@ from app.tenant.compliance.services.compliance import ComplianceService
 from app.tenant.flows.repositories.flow import FlowRepository
 from app.tenant.hooks.models import HookScope, HookTrigger
 from app.tenant.hooks.services.runner import HookRunner
+from app.integrations.generative.image.prompt_guard import user_requests_image_collage
 
 
 def _generative_tools_system_hint(*, image_n: int = 1, video_duration: int = 5) -> str:
@@ -49,6 +50,9 @@ def _generative_tools_system_hint(*, image_n: int = 1, video_duration: int = 5) 
         f"本次输入区指定 n={image_n}，调用 generate_image 时必须传入该 n；"
         "size 仅在用户明确要求时填写，否则可省略（用模型默认）。"
         "\n用户自然语言里若另行指定张数/尺寸，以用户当轮表述为准并覆盖输入区默认值。"
+        "\nn>1 表示生成多张彼此独立的完整单图（每张一个主体画面），"
+        "禁止在 prompt 里写四宫格/九宫格/分镜拼贴/组图拼接；"
+        "除非用户本轮明确要求组图、拼贴或宫格布局。"
         "\n注意：尺寸单边 ≥1280 或 n≥3 需用户二次确认；确认前勿重复调用。"
         "\n同一轮用户消息仅允许调用一次 generate_image / generate_video。"
         f"{dur_hint}"
@@ -439,6 +443,7 @@ class AgentChatMixin:
                     agent_config_with_defaults["_conversation_id"] = body.conversation_id
                 # 始终注入输入区张数（含 1），供 generate_image 强制覆盖 LLM 的 n
                 agent_config_with_defaults["_generative_image_n"] = body.generative_image_n
+                agent_config_with_defaults["_image_allow_collage"] = user_requests_image_collage(body.query)
                 if body.generative_video_duration != 5:
                     agent_config_with_defaults["_generative_video_duration"] = body.generative_video_duration
                 agent.config = agent_config_with_defaults
@@ -468,6 +473,7 @@ class AgentChatMixin:
             if body.conversation_id:
                 agent_config_with_defaults["_conversation_id"] = body.conversation_id
             agent_config_with_defaults["_generative_image_n"] = body.generative_image_n
+            agent_config_with_defaults["_image_allow_collage"] = user_requests_image_collage(body.query)
             if body.generative_video_duration != 5:
                 agent_config_with_defaults["_generative_video_duration"] = body.generative_video_duration
             agent.config = agent_config_with_defaults

@@ -25,6 +25,7 @@ from app.integrations.generative.image.providers.dashscope_t2i import generate_d
 from app.integrations.generative.image.providers.openai_images import generate_openai_images
 from app.integrations.generative.image.providers.volcengine_image import generate_volcengine_image
 from app.integrations.generative.reference import reference_image_data_url
+from app.integrations.generative.image.prompt_guard import sanitize_image_prompt
 from app.integrations.generative.persist import PURPOSE_CHAT_GENERATED, persist_generated_bytes
 from app.integrations.generative.model_resolve import pick_default_generative_model
 from app.integrations.generative.registry import resolve_invoke_mode
@@ -143,6 +144,7 @@ async def generate_image_for_model(
     agent_id: UUID | None = None,
     generative_job_id: UUID | None = None,
     trace_id: str | None = None,
+    allow_collage: bool = False,
 ) -> ImageGenerateResult:
     """调用厂商生图并持久化为附件；可选参考图 attachment 实现图生图。"""
     prompt = (prompt or "").strip()
@@ -153,6 +155,7 @@ async def generate_image_for_model(
     from app.integrations.generative.quota import assert_generative_quota
 
     prompt = await check_generative_prompt(db, ctx, prompt)
+    prompt = sanitize_image_prompt(prompt, allow_collage=allow_collage)
 
     ref_url: str | None = None
     if reference_attachment_id:
