@@ -33,6 +33,8 @@ type Props = {
   hasMore?: boolean;
   /** 会话 id：切换时复位「向上加载」武装，避免多消息会话一进页就刷接口 */
   conversationId?: string;
+  /** 是否已选智能体（空态文案） */
+  agentSelected?: boolean;
   /** 滚动容器 ref，用于 IntersectionObserver */
   scrollContainerRef?: React.RefObject<HTMLDivElement | null>;
 };
@@ -113,6 +115,7 @@ export function ChatMessageThread({
   loadingMore,
   hasMore,
   conversationId,
+  agentSelected,
   scrollContainerRef,
 }: Props) {
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -206,10 +209,15 @@ export function ChatMessageThread({
             <p className="text-sm text-ink-muted">输入问题开始对话</p>
             <p className="mt-1 text-xs text-ink-faint">支持直连、RAG、流程与多模态；助手卡片可点「Trace」查看执行步骤</p>
           </>
-        ) : (
+        ) : agentSelected ? (
           <>
             <p className="text-sm text-ink-muted">请从左侧选择会话，或新建对话</p>
-            <p className="mt-1 text-xs text-ink-faint">选定会话后会加载消息；地址栏将带上对应的会话 ID</p>
+            <p className="mt-1 text-xs text-ink-faint">选定会话后加载消息，地址栏会带上会话 ID</p>
+          </>
+        ) : (
+          <>
+            <p className="text-sm text-ink-muted">请从左侧选择智能体</p>
+            <p className="mt-1 text-xs text-ink-faint">也可从智能体列表点击「对话」进入</p>
           </>
         )}
       </div>

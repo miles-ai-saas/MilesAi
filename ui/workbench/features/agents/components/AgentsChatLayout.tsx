@@ -171,6 +171,7 @@ export function AgentsChatLayout({ vm }: Props) {
               loadingMore={loadingMore}
               hasMore={hasMore}
               conversationId={conversationId}
+              agentSelected={Boolean(selectedAgent)}
               scrollContainerRef={chatScrollRef}
             />
           </div>

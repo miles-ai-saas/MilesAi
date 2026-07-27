@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
 import { useTraceTurnSelection } from "@/features/agents/hooks/use-agent-trace-turn-selection";
 import { agentCarryForwardMediaEnabled, lastUserMessageMedia } from "@/features/agents/lib/chat-media-forward";
 import { loadBusinessContext, type BusinessContext } from "@/features/projects";
@@ -10,37 +9,25 @@ import { useRequireAuth } from "@/lib/auth-store";
 import { useInfiniteList } from "@/hooks/use-infinite-list";
 import { useAgentsChatLayout } from "@/features/agents/hooks/use-agents-chat-layout";
 import { useAgentsChatMessaging } from "@/features/agents/hooks/use-agents-chat-messaging";
-import { useAgentsChatSessionSync } from "@/features/agents/hooks/use-agents-chat-session-sync";
-import { replaceAgentsChat, loadLastAgentsChat } from "@/features/agents/lib/agents-chat-href";
+import { useAgentsChatRoute } from "@/features/agents/hooks/use-agents-chat-route";
+import { useAgentsChatSession } from "@/features/agents/hooks/use-agents-chat-session";
 import type { Agent } from "@/lib/types";
 
 export function useAgentsChatPage() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const agentFromUrl = searchParams.get("agent");
-  const convFromUrl = searchParams.get("conv");
-  const tabFromUrl = searchParams.get("tab");
-  const promptFromUrl = searchParams.get("prompt");
-  const bizFromUrl = searchParams.get("biz");
-  const projectIdFromUrl = searchParams.get("projectId");
-  const wpIdFromUrl = searchParams.get("wpId");
   const { ready } = useRequireAuth();
+  const route = useAgentsChatRoute();
+  const selectedAgent = route.agentId;
 
   const [businessContext, setBusinessContext] = useState<BusinessContext | null>(null);
   const [imageN, setImageN] = useState(1);
   const [videoDuration, setVideoDuration] = useState(5);
+  const [agentDetail, setAgentDetail] = useState<Agent | null>(null);
 
   useEffect(() => {
-    if (bizFromUrl === "1" || projectIdFromUrl) {
+    if (route.biz === "1" || route.projectId) {
       setBusinessContext(loadBusinessContext());
     }
-  }, [bizFromUrl, projectIdFromUrl]);
-
-  const [selectedAgent, setSelectedAgent] = useState<string>(() => {
-    if (agentFromUrl) return agentFromUrl;
-    return loadLastAgentsChat()?.agentId ?? "";
-  });
-  const [agentDetail, setAgentDetail] = useState<Agent | null>(null);
+  }, [route.biz, route.projectId]);
 
   const list = useInfiniteList(useCallback((p, s) => api.listAgents(p, s), []), {
     enabled: ready,
@@ -52,7 +39,6 @@ export function useAgentsChatPage() {
     [list.items, selectedAgent],
   );
 
-  // URL / 选中智能体变化时：优先用列表项，否则按需 getAgent，避免整表阻塞对话
   useEffect(() => {
     if (!ready || !selectedAgent) {
       setAgentDetail(null);
@@ -76,42 +62,18 @@ export function useAgentsChatPage() {
     };
   }, [ready, selectedAgent, listedSelected]);
 
-  const syncUrl = useCallback(
-    (agentId: string, convId?: string) => {
-      // 保留当前 tab，避免会话同步把工作台面板参数冲掉并引发反复 replace
-      const tab =
-        typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("tab") : tabFromUrl;
-      replaceAgentsChat(router, {
-        agent: agentId,
-        conv: convId,
-        tab: tab && tab !== "config" ? tab : null,
-        projectId: projectIdFromUrl,
-        wpId: wpIdFromUrl,
-        biz: bizFromUrl === "1" ? "1" : null,
-      });
-    },
-    [router, projectIdFromUrl, wpIdFromUrl, bizFromUrl, tabFromUrl],
-  );
-
-  const session = useAgentsChatSessionSync({
-    selectedAgent,
-    setSelectedAgent,
-    agentFromUrl,
-    convFromUrl,
-    router,
-    // 无 URL/书签 agent 时才用列表首项兜底，避免入口已指定 agent 时被列表首项抢选
-    listDefaultAgentId: agentFromUrl || selectedAgent ? undefined : list.items[0]?.id,
-    syncUrl,
+  const session = useAgentsChatSession(selectedAgent, route.conversationId, {
+    selectAgent: route.selectAgent,
+    selectConversation: route.selectConversation,
+    clearConversation: route.clearConversation,
   });
 
   const { selectedTurnIndex, setSelectedTurnIndex } = useTraceTurnSelection(session.messages, session.conversationId);
 
   const layout = useAgentsChatLayout({
-    tabFromUrl,
-    selectedAgent,
-    conversationId: session.conversationId,
+    tabFromUrl: route.tab,
     messages: session.messages,
-    router,
+    replaceQuery: route.replaceQuery,
     setSelectedTurnIndex,
   });
 
@@ -135,7 +97,7 @@ export function useAgentsChatPage() {
     refreshSessions: session.refreshSessions,
     carryForwardMedia,
     businessContext,
-    initialPrompt: promptFromUrl,
+    initialPrompt: route.prompt,
     generativeImageN: imageN,
     generativeVideoDuration: videoDuration,
   });

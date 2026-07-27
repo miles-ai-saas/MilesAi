@@ -1,9 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import type { AppRouterInstance } from "next/dist/shared/lib/app-router-context.shared-runtime";
 import { defaultTraceTurnIndex, listTraceTurns } from "@/features/agents/lib/agent-trace";
-import { replaceAgentsChat } from "@/features/agents/lib/agents-chat-href";
+import type { AgentsChatQuery } from "@/features/agents/lib/agents-chat-href";
 import type { ChatMessage } from "@/features/agents/lib/chat-sessions";
 
 export type AgentWorkbenchTab = "config" | "trace" | "schedule" | "architecture" | "api" | "call_records" | "stats";
@@ -75,14 +74,17 @@ export function saveChatSidebarPrefs(prefs: ChatSidebarPrefs) {
 
 type Params = {
   tabFromUrl: string | null;
-  selectedAgent: string;
-  conversationId: string;
   messages: ChatMessage[];
-  router: AppRouterInstance;
+  replaceQuery: (patch: AgentsChatQuery) => void;
   setSelectedTurnIndex: (index: number) => void;
 };
 
-export function useAgentsChatLayout({ tabFromUrl, selectedAgent, conversationId, messages, router, setSelectedTurnIndex }: Params) {
+export function useAgentsChatLayout({
+  tabFromUrl,
+  messages,
+  replaceQuery,
+  setSelectedTurnIndex,
+}: Params) {
   const [workbenchTab, setWorkbenchTab] = useState<AgentWorkbenchTab>("config");
   const [panelOpen, setPanelOpen] = useState(false);
   const [leftCollapsed, setLeftCollapsed] = useState(false);
@@ -123,13 +125,12 @@ export function useAgentsChatLayout({ tabFromUrl, selectedAgent, conversationId,
     (tab: AgentWorkbenchTab) => {
       setWorkbenchTab(tab);
       setPanelOpen(true);
-      replaceAgentsChat(router, {
-        agent: selectedAgent || null,
-        conv: conversationId || null,
+      // 只改 tab，保留地址栏现有 agent/conv
+      replaceQuery({
         tab: tab !== "config" ? tab : null,
       });
     },
-    [conversationId, router, selectedAgent],
+    [replaceQuery],
   );
 
   const openTraceAtTurn = useCallback(
@@ -148,11 +149,8 @@ export function useAgentsChatLayout({ tabFromUrl, selectedAgent, conversationId,
 
   const closePanel = useCallback(() => {
     setPanelOpen(false);
-    replaceAgentsChat(router, {
-      agent: selectedAgent || null,
-      conv: conversationId || null,
-    });
-  }, [conversationId, router, selectedAgent]);
+    replaceQuery({ tab: null });
+  }, [replaceQuery]);
 
   const closeTransientPanels = useCallback(() => {
     setPanelOpen(false);
