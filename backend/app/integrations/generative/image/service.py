@@ -55,21 +55,35 @@ async def _generate_bytes(
     reference_image_data_url: str | None = None,
     progress: object | None = None,
 ) -> list[bytes]:
-    """按 invoke_mode 分发到具体 Provider，返回原始图片字节列表。"""
+    """按 invoke_mode 分发到具体 Provider，返回原始图片字节列表。
+
+    按 Provider 函数签名过滤 kwargs，避免各厂商参数名不一致导致 TypeError。
+    """
+    import inspect
+
     mode = resolve_invoke_mode(model, capability=ModelCapabilityType.IMAGE_GEN.value)
     provider_key = IMAGE_PROVIDER_ALIASES.get(mode, mode)
     provider = IMAGE_PROVIDERS.get(provider_key)
     if not provider:
         raise BadRequestError(f"不支持的生图 invoke_mode: {mode}")
 
-    kwargs = {
+    candidates = {
         "prompt": prompt,
         "size": size,
         "n": n,
         "reference_image_data_url": reference_image_data_url,
+        # 兼容旧 Provider 参数名
+        "reference_image_url": reference_image_data_url,
+        "progress": progress,
     }
-    if mode == INVOKE_DASHSCOPE_T2I:
-        kwargs["progress"] = progress
+    try:
+        accepted = set(inspect.signature(provider).parameters)
+    except (TypeError, ValueError):
+        accepted = set(candidates)
+    kwargs = {k: v for k, v in candidates.items() if k in accepted}
+    # 同一参考图只传一个参数，避免重复
+    if "reference_image_data_url" in kwargs and "reference_image_url" in kwargs:
+        del kwargs["reference_image_url"]
 
     return await provider(model, **kwargs)
 
