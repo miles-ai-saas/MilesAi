@@ -110,18 +110,11 @@ async def invoke_tool_with_context(
     resolved_tool_id = meta.get("tool_id") or tool_id
     tool_params = dict(params)
 
-    # 生图：输入区张数覆盖 LLM 参数（须在确认门槛前生效，避免误弹「生成 4 张」）
-    if slug == "generate_image" and agent_id:
-        from app.models.agent import Agent
+    # 生图：输入区张数覆盖 LLM 参数（须在确认门槛前生效）
+    if slug == "generate_image":
+        from app.integrations.generative.request_prefs import resolve_image_n
 
-        agent = await db.get(Agent, agent_id)
-        cfg = agent.config if agent and isinstance(agent.config, dict) else {}
-        preset_n = cfg.get("_generative_image_n")
-        if preset_n is not None:
-            try:
-                tool_params["n"] = min(max(int(preset_n), 1), 4)
-            except (TypeError, ValueError):
-                pass
+        tool_params["n"] = resolve_image_n(tool_params.get("n"))
 
     if meta["require_confirmation"] and not confirmed:
         await write_tool_invocation_log(

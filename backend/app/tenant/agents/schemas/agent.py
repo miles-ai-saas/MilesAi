@@ -175,7 +175,7 @@ class ChatRequest(BaseModel):
         default=1,
         ge=1,
         le=4,
-        description="输入区生图数量预设，LLM 不指定 n 时用此值；1–4",
+        description="输入区生图数量；平台强制覆盖 tool 入参 n，1–4",
     )
     generative_video_duration: int = Field(
         default=5,

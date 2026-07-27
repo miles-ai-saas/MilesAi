@@ -201,6 +201,10 @@ async def handle_generate_image(
     """
     from app.integrations.generative import generate_image_for_model, resolve_image_gen_model
     from app.integrations.generative.image.prompt_guard import sanitize_image_prompt
+    from app.integrations.generative.request_prefs import (
+        get_request_allow_collage,
+        resolve_image_n,
+    )
     from app.tenant.generative.schemas.job import ImageGenerativeJobCreate
     from app.tenant.generative.services.job import GenerativeJobService
 
@@ -208,22 +212,13 @@ async def handle_generate_image(
     model_uuid = _parse_optional_uuid(params.get("model_config_id"))
     image_att = _parse_optional_uuid(params.get("image_attachment_id"))
     agent_model, agent_config = await _load_agent_model_context(db, agent_id)
-    raw_n = params.get("n")
-    try:
-        n = int(raw_n) if raw_n is not None else 1
-    except (TypeError, ValueError):
-        n = 1
-
-    # 用户输入区张数始终优先：含 n=1，防止模型擅自传 n=4
-    preset_n = agent_config.get("_generative_image_n")
-    if preset_n is not None:
-        try:
-            n = min(max(int(preset_n), 1), 4)
-        except (TypeError, ValueError):
-            pass
-
-    allow_collage = bool(agent_config.get("_image_allow_collage"))
+    n = resolve_image_n(params.get("n"))
+    allow_collage = get_request_allow_collage() or bool(agent_config.get("_image_allow_collage"))
     prompt_text = sanitize_image_prompt(str(prompt), allow_collage=allow_collage)
+    # 任务参数里带上当轮偏好，Celery worker 无 ContextVar
+    job_agent_config = dict(agent_config)
+    job_agent_config["_generative_image_n"] = n
+    job_agent_config["_image_allow_collage"] = allow_collage
 
     if GenerativeJobService.image_async_enabled():
         body = ImageGenerativeJobCreate(
@@ -239,7 +234,7 @@ async def handle_generate_image(
             source_ref_type="agent" if agent_id else None,
             source_ref_id=agent_id,
             agent_id=agent_id,
-            agent_config=agent_config,
+            agent_config=job_agent_config,
             trace_id=get_trace_id(),
         )
         return {

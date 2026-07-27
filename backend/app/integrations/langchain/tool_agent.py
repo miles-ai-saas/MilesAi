@@ -442,11 +442,16 @@ async def run_tool_calling_chat(
     # 用户确认后继续执行挂起的工具
     if body.tool_confirmed and body.pending_tool_slug:
         try:
+            confirm_params = dict(body.pending_tool_params or {})
+            if body.pending_tool_slug == "generate_image":
+                from app.integrations.generative.request_prefs import resolve_image_n
+
+                confirm_params["n"] = resolve_image_n(confirm_params.get("n"))
             output = await invoke_tool_with_context(
                 db,
                 ctx,
                 body.pending_tool_slug,
-                body.pending_tool_params or {},
+                confirm_params,
                 confirmed=True,
                 agent_id=agent_id,
                 actor_user_id=ctx.user_id,

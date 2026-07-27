@@ -201,6 +201,8 @@ export function useAgentsChatMessaging({
             toolConfirmed: true,
             pendingToolSlug: pendingTool.slug,
             pendingToolParams: pendingTool.params,
+            generativeImageN,
+            generativeVideoDuration,
           },
           messages,
         );
@@ -210,6 +212,8 @@ export function useAgentsChatMessaging({
           toolConfirmed: true,
           pendingToolSlug: pendingTool.slug,
           pendingToolParams: pendingTool.params,
+          generativeImageN,
+          generativeVideoDuration,
         });
       }
       setPendingTool(res.pending_tool ?? null);
