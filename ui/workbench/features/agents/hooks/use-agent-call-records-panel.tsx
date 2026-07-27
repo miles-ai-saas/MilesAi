@@ -16,7 +16,7 @@ const DEFAULT_FILTERS: AgentCallRecordFilters = {
   q: "",
 };
 
-export function useAgentCallRecordsPanel(agentId: string, conversationId?: string) {
+export function useAgentCallRecordsPanel(agentId: string, conversationId?: string, enabled = true) {
   const [filters, setFilters] = useState<AgentCallRecordFilters>(() => ({
     ...DEFAULT_FILTERS,
     conversationId: conversationId ?? "",
@@ -39,7 +39,7 @@ export function useAgentCallRecordsPanel(agentId: string, conversationId?: strin
         }),
       [agentId, filters.conversationId, filters.q, filters.status],
     ),
-    { resetKey, pageSize: 20 },
+    { enabled: enabled && Boolean(agentId), resetKey, pageSize: 20 },
   );
 
   const hasActiveFilters = Boolean(filters.status || filters.conversationId || filters.q);

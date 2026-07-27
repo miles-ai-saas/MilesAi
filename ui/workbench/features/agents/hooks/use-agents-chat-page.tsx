@@ -12,6 +12,7 @@ import { useAgentsChatLayout } from "@/features/agents/hooks/use-agents-chat-lay
 import { useAgentsChatMessaging } from "@/features/agents/hooks/use-agents-chat-messaging";
 import { useAgentsChatSessionSync } from "@/features/agents/hooks/use-agents-chat-session-sync";
 import { replaceAgentsChat } from "@/features/agents/lib/agents-chat-href";
+import type { Agent } from "@/lib/types";
 
 export function useAgentsChatPage() {
   const router = useRouter();
@@ -36,11 +37,37 @@ export function useAgentsChatPage() {
   }, [bizFromUrl, projectIdFromUrl]);
 
   const [selectedAgent, setSelectedAgent] = useState<string>(agentFromUrl ?? "");
+  const [agentDetail, setAgentDetail] = useState<Agent | null>(null);
 
   const list = useInfiniteList(useCallback((p, s) => api.listAgents(p, s), []), {
     enabled: ready,
     pageSize: 30,
   });
+
+  // URL / 选中智能体变化时：优先用列表项，否则按需 getAgent，避免整表阻塞对话
+  useEffect(() => {
+    if (!ready || !selectedAgent) {
+      setAgentDetail(null);
+      return;
+    }
+    const fromList = list.items.find((a) => a.id === selectedAgent);
+    if (fromList) {
+      setAgentDetail(fromList);
+      return;
+    }
+    let cancelled = false;
+    void api
+      .getAgent(selectedAgent)
+      .then((agent) => {
+        if (!cancelled) setAgentDetail(agent);
+      })
+      .catch(() => {
+        if (!cancelled) setAgentDetail(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [ready, selectedAgent, list.items]);
 
   const syncUrl = useCallback(
     (agentId: string, convId?: string) => {
@@ -65,7 +92,8 @@ export function useAgentsChatPage() {
     agentFromUrl,
     convFromUrl,
     router,
-    listDefaultAgentId: list.items[0]?.id,
+    // 无 URL agent 时才用列表首项兜底，避免入口已指定 agent 时被列表首项抢选
+    listDefaultAgentId: agentFromUrl ? undefined : list.items[0]?.id,
     syncUrl,
   });
 
@@ -80,7 +108,9 @@ export function useAgentsChatPage() {
     setSelectedTurnIndex,
   });
 
-  const selected = list.items.find((a) => a.id === selectedAgent);
+  const selected = useMemo(() => {
+    return list.items.find((a) => a.id === selectedAgent) ?? agentDetail;
+  }, [agentDetail, list.items, selectedAgent]);
   const carryForwardMedia = agentCarryForwardMediaEnabled(selected?.config);
 
   const toolSlugs: string[] = useMemo(() => {
@@ -120,7 +150,12 @@ export function useAgentsChatPage() {
 
   const handleAgentRenamed = useCallback(() => {
     void list.reload();
-  }, [list]);
+    if (!selectedAgent) return;
+    void api
+      .getAgent(selectedAgent)
+      .then(setAgentDetail)
+      .catch(() => undefined);
+  }, [list, selectedAgent]);
 
   const leftSidebarProps = {
     agents: list.items,

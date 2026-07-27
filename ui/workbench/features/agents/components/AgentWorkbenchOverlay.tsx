@@ -43,7 +43,11 @@ export function AgentWorkbenchOverlay({
   onClose,
   onSaved,
 }: Props) {
-  const callRecordsVm = useAgentCallRecordsPanel(agentId ?? "", conversationId);
+  const callRecordsVm = useAgentCallRecordsPanel(
+    agentId ?? "",
+    conversationId,
+    open && activeTab === "call_records",
+  );
 
   if (!open) return null;
 

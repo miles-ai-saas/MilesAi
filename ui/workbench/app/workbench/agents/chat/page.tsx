@@ -25,7 +25,9 @@ export default function AgentsChatPage() {
 function AgentsChatMain() {
   const vm = useAgentsChatPage();
 
-  if (!vm.ready || vm.list.loading) {
+  // 从智能体列表「对话」入口进入时 URL 已带 agent，不必等整表 listAgents
+  const waitingDefaultAgent = !vm.selectedAgent && vm.list.loading;
+  if (!vm.ready || waitingDefaultAgent) {
     return <AgentsChatLoading />;
   }
 

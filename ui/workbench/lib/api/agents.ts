@@ -56,6 +56,9 @@ export const agentsApi = {
       to?: string;
     },
   ) => {
+    if (!agentId) {
+      return Promise.resolve({ items: [], total: 0, page, size });
+    }
     let q = buildPageQuery(page, size);
     if (opts?.status) q += `&status=${encodeURIComponent(opts.status)}`;
     if (opts?.conversation_id) q += `&conversation_id=${encodeURIComponent(opts.conversation_id)}`;
@@ -66,8 +69,12 @@ export const agentsApi = {
     return getPage<import("../types").AgentCallRecord>(`/agents/${agentId}/call-records?${q}`);
   },
 
-  getAgentCallRecord: (agentId: string, callId: string) =>
-    get<import("../types").AgentCallRecordDetail>(`/agents/${agentId}/call-records/${callId}`),
+  getAgentCallRecord: (agentId: string, callId: string) => {
+    if (!agentId || !callId) {
+      return Promise.reject(new Error("缺少智能体或调用记录 ID"));
+    }
+    return get<import("../types").AgentCallRecordDetail>(`/agents/${agentId}/call-records/${callId}`);
+  },
 
   listAgentChatSessions: (agentId: string, page = 1, size = DEFAULT_PAGE_SIZE) =>
     getPage<import("../types").AgentChatSessionSummary>(`/agents/${agentId}/chat-sessions?${buildPageQuery(page, size)}`),
