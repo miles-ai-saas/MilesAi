@@ -6,7 +6,7 @@ import json
 from uuid import UUID
 
 from app.core.logging import get_logger
-from app.infra.db import AsyncSessionLocal
+from app.infra.db import generative_job_db_session
 from app.integrations.generative.jobs.errors import GenerativeJobCancelled
 from app.models.model.generative_job import GenerativeJob, GenerativeJobStatus
 from app.utils.redis_keys import RedisKeys
@@ -50,7 +50,7 @@ async def update_generative_job_progress(
     percent: int | None = None,
     message: str | None = None,
 ) -> None:
-    async with AsyncSessionLocal() as db:
+    async with generative_job_db_session() as db:
         job = await db.get(GenerativeJob, job_id)
         if not job:
             return
@@ -70,7 +70,7 @@ async def update_generative_job_progress(
 
 
 async def is_generative_job_cancelled(job_id: UUID) -> bool:
-    async with AsyncSessionLocal() as db:
+    async with generative_job_db_session() as db:
         job = await db.get(GenerativeJob, job_id)
         return job is not None and job.status == GenerativeJobStatus.CANCELLED
 

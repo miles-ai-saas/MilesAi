@@ -1,11 +1,12 @@
-"""异步生视频 Celery 任务。"""
+"""异步生图/生视频 Celery 任务。"""
 
 from __future__ import annotations
 
 import asyncio
-from app.core.logging import get_logger
 from uuid import UUID
 
+from app.core.logging import get_logger
+from app.infra.redis import reset_redis
 from app.integrations.generative.jobs.errors import GenerativeJobCancelled, GenerativeJobNotFound
 from app.integrations.generative.jobs.runner import (
     run_generative_image_job_async,
@@ -18,6 +19,14 @@ from app.workers.app import celery_app
 logger = get_logger(__name__)
 
 
+def _run_coro(coro) -> None:
+    """在独立事件循环中跑异步任务，结束后丢弃 Redis 单例以免绑到已关闭的 loop。"""
+    try:
+        asyncio.run(coro)
+    finally:
+        reset_redis()
+
+
 @celery_app.task(
     name="app.workers.tasks.generative.run_generative_video_job",
     bind=True,
@@ -26,7 +35,7 @@ logger = get_logger(__name__)
 def run_generative_video_job(self, job_id: str) -> str:
     sync_task_by_celery_id(self.request.id, TaskStatus.RUNNING)
     try:
-        asyncio.run(run_generative_video_job_async(UUID(job_id)))
+        _run_coro(run_generative_video_job_async(UUID(job_id)))
         sync_task_by_celery_id(self.request.id, TaskStatus.SUCCESS)
         return "ok"
     except GenerativeJobCancelled:
@@ -52,7 +61,7 @@ def run_generative_video_job(self, job_id: str) -> str:
 def run_generative_image_job(self, job_id: str) -> str:
     sync_task_by_celery_id(self.request.id, TaskStatus.RUNNING)
     try:
-        asyncio.run(run_generative_image_job_async(UUID(job_id)))
+        _run_coro(run_generative_image_job_async(UUID(job_id)))
         sync_task_by_celery_id(self.request.id, TaskStatus.SUCCESS)
         return "ok"
     except GenerativeJobCancelled:
