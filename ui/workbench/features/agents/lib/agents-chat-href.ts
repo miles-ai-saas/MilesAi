@@ -1,5 +1,7 @@
 /** 对话页路由（静态导出 trailingSlash: true，须带尾斜杠）。 */
 
+import { ensureActiveSession } from "@/features/agents/lib/chat-sessions";
+
 export const AGENTS_CHAT_PATH = "/workbench/agents/chat/";
 
 export function buildAgentsChatHref(params?: URLSearchParams | Record<string, string | null | undefined>): string {
@@ -62,4 +64,21 @@ export function pushAgentsChat(
   const href = buildAgentsChatHref(params);
   if (agentsChatUrlMatches(href)) return;
   router.push(href);
+}
+
+/**
+ * 从智能体列表进对话：先解析本地活跃会话，URL 立刻带上 agent+conv，
+ * 避免进页后才 replaceState（失败/卡住时地址栏会停在裸 /chat/）。
+ */
+export function pushAgentsChatForAgent(
+  router: { push: (href: string) => void },
+  agentId: string,
+  extra?: Record<string, string | null | undefined>,
+): void {
+  if (!agentId) {
+    pushAgentsChat(router);
+    return;
+  }
+  const session = ensureActiveSession(agentId);
+  pushAgentsChat(router, { agent: agentId, conv: session.id, ...extra });
 }

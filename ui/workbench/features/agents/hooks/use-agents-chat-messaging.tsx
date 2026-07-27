@@ -7,7 +7,7 @@ import { useAgentsChatGenerativeStatus } from "@/features/agents/hooks/use-agent
 import { useAgentChatWs } from "@/features/agents/hooks/use-agent-chat-ws";
 import { prependBusinessContext, type BusinessContext } from "@/features/projects";
 import { api } from "@/lib/api";
-import { appendTurn, getSession, type ChatMessage, type ChatMessageMedia } from "@/features/agents/lib/chat-sessions";
+import { appendTurn, appendAssistantMessage, getSession, type ChatMessage, type ChatMessageMedia } from "@/features/agents/lib/chat-sessions";
 import { generativeToolBusyLabel } from "@/lib/generative-tool-ui";
 import { resolveOutgoingChatMedia } from "@/features/agents/lib/chat-media-forward";
 import type { ChatAgentResult, ChatMediaIn, PendingToolCall } from "@/lib/types";
@@ -55,7 +55,12 @@ export function useAgentsChatMessaging({
   const { wsEnabled, wsReady, client: wsClientRef } = useAgentChatWs(selectedAgent, conversationId);
 
   const media = useAgentsChatComposerMedia({ messages, carryForwardMedia, onError: setApiError });
-  const generative = useAgentsChatGenerativeStatus({ setMessages, wsClientRef });
+  const generative = useAgentsChatGenerativeStatus({
+    setMessages,
+    wsClientRef,
+    selectedAgent,
+    conversationId,
+  });
 
   const applyChatResponse = useCallback(
     (res: ChatAgentResult, optimistic: ChatMessage[], userText: string, userMedia: ChatMessageMedia[], useWsJobs: boolean) => {
@@ -223,6 +228,18 @@ export function useAgentsChatMessaging({
           },
         ];
       });
+      // 工具确认成功必须落本地，否则切会话后「最后一条成功消息」会丢失
+      appendAssistantMessage(
+        selectedAgent,
+        conversationId,
+        res.answer,
+        res.steps ?? [],
+        res.trace_id,
+        arts.length ? arts : undefined,
+      );
+      refreshSessions(selectedAgent);
+      const updated = getSession(selectedAgent, conversationId);
+      if (updated) setSessionTitle(updated.title);
     } catch (e) {
       const err = e instanceof Error ? e.message : "工具确认失败";
       setApiError(err);

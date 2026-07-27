@@ -22,6 +22,7 @@ from app.tenant.agents.schemas.chat_sessions import (
     ChatSessionOut,
     ChatSessionUpdate,
 )
+from app.tenant.agents.services.chat_artifact_sync import hydrate_chat_messages_artifacts
 from app.common.schema import PageParams, PageResult
 
 MAX_SESSION_TITLE = 128
@@ -148,6 +149,8 @@ class AgentChatSessionService(BaseService):
         msg_rows = rows[:limit]
         # 数据库返回的是 sort_index desc，翻转回 asc 顺序
         msg_rows.reverse()
+
+        await hydrate_chat_messages_artifacts(self.db, msg_rows)
 
         return ChatSessionDetailOut(
             **base.model_dump(),

@@ -6,7 +6,7 @@ import { useCategoryTabs } from "@/components/category/useCategoryTabs";
 import { useConfirmAction } from "@/hooks/use-confirm-action";
 import { usePagedList } from "@/hooks/use-paged-list";
 import { useAgentMeta } from "@/features/agents/hooks/use-agent-meta";
-import { pushAgentsChat } from "@/features/agents/lib/agents-chat-href";
+import { pushAgentsChatForAgent } from "@/features/agents/lib/agents-chat-href";
 import { api } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth-store";
 import { filterBySearch } from "@/lib/filter-search";
@@ -114,12 +114,12 @@ export function useAgentsPage() {
   };
 
   const onChat = (agent: Agent) => {
-    pushAgentsChat(router, { agent: agent.id });
+    pushAgentsChatForAgent(router, agent.id);
   };
 
   const onDesign = (agent: Agent) => {
     setViewingId(null);
-    pushAgentsChat(router, { agent: agent.id, tab: "config" });
+    pushAgentsChatForAgent(router, agent.id, { tab: "config" });
   };
 
   return {

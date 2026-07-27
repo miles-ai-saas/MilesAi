@@ -213,13 +213,11 @@ async def handle_generate_image(
     except (TypeError, ValueError):
         n = 1
 
-    # 用户输入区主动设置的数量优先于 LLM 参数（LLM 可能无视提示词传了错误的值）
+    # 用户输入区张数始终优先：含 n=1，防止模型擅自传 n=4
     preset_n = agent_config.get("_generative_image_n")
     if preset_n is not None:
         try:
-            preset_n = int(preset_n)
-            if preset_n > 1:
-                n = preset_n
+            n = min(max(int(preset_n), 1), 4)
         except (TypeError, ValueError):
             pass
 

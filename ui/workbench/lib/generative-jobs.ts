@@ -5,11 +5,12 @@ import type { ChatArtifact, GenerativeJobOut } from "./types";
 export function effectiveArtifactStatus(a: {
   status?: string | null;
   attachment_id?: string | null;
+  media_asset_id?: string | null;
 }): "pending" | "running" | "success" | "failed" | "cancelled" {
   if (a.status === "pending" || a.status === "running" || a.status === "success" || a.status === "failed" || a.status === "cancelled") {
     return a.status;
   }
-  if (a.attachment_id) return "success";
+  if (a.attachment_id || a.media_asset_id) return "success";
   return "pending";
 }
 
@@ -28,7 +29,10 @@ export function generativeJobToArtifacts(job: GenerativeJobOut): ChatArtifact[] 
   if (job.status === "cancelled" || job.status === "failed") {
     return [{ kind, status: job.status, ...base }];
   }
-  if (job.status !== "success" || !job.result) return [];
+  if (job.status !== "success") return [];
+  if (!job.result) {
+    return [{ kind, status: "success", caption: "生成完成", ...base }];
+  }
 
   const resultKind = (job.result.kind as string) || kind;
   const mime = (job.result.mime_type as string) ?? undefined;

@@ -88,6 +88,16 @@ class GenerativeJobService(BaseService):
 
     async def get_job(self, job_id: UUID) -> GenerativeJobOut:
         job = await get_generative_job_for_tenant(self.db, self.ctx, job_id)
+        # 已结束任务：补写会话 artifacts（修复「任务中心有、会话没有」的历史数据）
+        if job.status in _TERMINAL:
+            try:
+                from app.tenant.agents.services.chat_artifact_sync import sync_job_result_to_chat_messages
+
+                await sync_job_result_to_chat_messages(self.db, job)
+                await self.db.flush()
+            except Exception:
+                # 回写失败不影响任务详情查询
+                pass
         record_map = await self._celery_record_ids_for_jobs([job.id])
         return self._job_out(job, celery_task_record_id=record_map.get(job.id))
 
@@ -157,6 +167,7 @@ class GenerativeJobService(BaseService):
             "model_config_id": str(body.model_config_id) if body.model_config_id else None,
             "agent_id": str(agent_id) if agent_id else None,
             "agent_config": agent_config or {},
+            "conversation_id": (agent_config or {}).get("_conversation_id"),
         }
         job = await submit_video_generative_job(
             self.db,
@@ -197,6 +208,7 @@ class GenerativeJobService(BaseService):
             "model_config_id": str(body.model_config_id) if body.model_config_id else None,
             "agent_id": str(agent_id) if agent_id else None,
             "agent_config": agent_config or {},
+            "conversation_id": (agent_config or {}).get("_conversation_id"),
         }
         job = await submit_image_generative_job(
             self.db,

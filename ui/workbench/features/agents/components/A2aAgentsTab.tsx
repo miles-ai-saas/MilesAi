@@ -13,7 +13,7 @@ import { ResourceListFooter } from "@/components/resource/ResourceListFooter";
 import { usePagedList } from "@/hooks/use-paged-list";
 import { useConfirmAction } from "@/hooks/use-confirm-action";
 import { agentModeLabel, agentStatusLabel, agentTypeLabel } from "@/features/agents/lib/agent-utils";
-import { pushAgentsChat } from "@/features/agents/lib/agents-chat-href";
+import { pushAgentsChatForAgent } from "@/features/agents/lib/agents-chat-href";
 import { useAgentMeta } from "@/features/agents/hooks/use-agent-meta";
 import { useRequireAuth } from "@/lib/auth-store";
 import { filterBySearch } from "@/lib/filter-search";
@@ -112,7 +112,7 @@ export function A2aAgentsTab() {
                 actions={
                   <CardActions
                     actions={[
-                      { label: "对话", variant: "primary", disabled, onClick: () => pushAgentsChat(router, { agent: a.id }) },
+                      { label: "对话", variant: "primary", disabled, onClick: () => pushAgentsChatForAgent(router, a.id) },
                       {
                         label: disabled ? "启用" : "禁用",
                         variant: disabled ? "primary" : "danger",

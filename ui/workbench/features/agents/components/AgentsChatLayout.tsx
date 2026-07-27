@@ -9,7 +9,7 @@ import { AgentWorkbenchSidebar } from "@/features/agents/components/AgentWorkben
 import { ChatMessageThread } from "@/features/agents/components/ChatMessageThread";
 import type { AgentsChatPageVm } from "@/features/agents/hooks/use-agents-chat-page";
 import { generativeToolBusyLabel } from "@/lib/generative-tool-ui";
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 
 type Props = {
   vm: AgentsChatPageVm;
@@ -80,6 +80,21 @@ export function AgentsChatLayout({ vm }: Props) {
   } = vm;
 
   const chatScrollRef = useRef<HTMLDivElement>(null);
+  const scrolledForConvRef = useRef<string | null>(null);
+
+  // 切会话后等消息落入 DOM 再滚到底，避免顶部哨兵落在视口内立刻连刷接口
+  useEffect(() => {
+    if (!conversationId) return;
+    if (scrolledForConvRef.current === conversationId) return;
+    if (messages.length === 0 && !chatting) return;
+    scrolledForConvRef.current = conversationId;
+    const el = chatScrollRef.current;
+    if (!el) return;
+    const id = requestAnimationFrame(() => {
+      el.scrollTop = el.scrollHeight;
+    });
+    return () => cancelAnimationFrame(id);
+  }, [conversationId, messages.length, chatting]);
 
   return (
     <div className="relative flex h-full min-h-0 w-full flex-1 overflow-hidden">
@@ -155,6 +170,7 @@ export function AgentsChatLayout({ vm }: Props) {
               onLoadMore={loadMoreMessages}
               loadingMore={loadingMore}
               hasMore={hasMore}
+              conversationId={conversationId}
               scrollContainerRef={chatScrollRef}
             />
           </div>

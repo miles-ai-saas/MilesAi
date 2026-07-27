@@ -2,6 +2,7 @@
 
 import { useCallback, useMemo, useState, type Dispatch, type SetStateAction } from "react";
 import type { ChatMessage, ChatMessageArtifact } from "@/features/agents/lib/chat-sessions";
+import { replaceJobArtifactsInSession } from "@/features/agents/lib/chat-sessions";
 import { useGenerativeJobPoll } from "@/hooks/use-generative-job-poll";
 import {
   generativeJobToArtifacts,
@@ -90,6 +91,8 @@ export function mapResponseArtifacts(res: ChatAgentResult): ChatMessageArtifact[
 type Params = {
   setMessages: Dispatch<SetStateAction<ChatMessage[]>>;
   wsClientRef: React.MutableRefObject<{ connected?: boolean; cancelGenerativeJob: (id: string) => void } | null>;
+  selectedAgent: string;
+  conversationId: string;
 };
 
 function ChatGenerativeStatusBanner({
@@ -122,19 +125,28 @@ function ChatGenerativeStatusBanner({
   );
 }
 
-export function useAgentsChatGenerativeStatus({ setMessages, wsClientRef }: Params) {
+export function useAgentsChatGenerativeStatus({ setMessages, wsClientRef, selectedAgent, conversationId }: Params) {
   const [pollJobs, setPollJobs] = useState<GenerativePollJob[]>([]);
   const [wsGenerativeMsg, setWsGenerativeMsg] = useState<string | null>(null);
   const [wsGenerativeProgress, setWsGenerativeProgress] = useState<number | null>(null);
   const [wsActiveJobIds, setWsActiveJobIds] = useState<string[]>([]);
+
+  const persistJobArts = useCallback(
+    (jobId: string, arts: ChatMessageArtifact[]) => {
+      if (!selectedAgent || !conversationId || !arts.length) return;
+      replaceJobArtifactsInSession(selectedAgent, conversationId, jobId, arts);
+    },
+    [conversationId, selectedAgent],
+  );
 
   const applyJobToMessages = useCallback(
     (job: GenerativeJobOut) => {
       const nextArts = generativeJobToArtifacts(job);
       if (!nextArts.length) return;
       setMessages((prev) => applyToLastAssistant(prev, (arts) => replaceArtifactsForJob(arts, job.id, nextArts)));
+      persistJobArts(job.id, nextArts);
     },
-    [setMessages],
+    [persistJobArts, setMessages],
   );
 
   const {
@@ -144,6 +156,17 @@ export function useAgentsChatGenerativeStatus({ setMessages, wsClientRef }: Para
     canCancel: canCancelGenerative,
   } = useGenerativeJobPoll(pollJobs, (artifacts) => {
     setMessages((prev) => mergeArtifactsIntoLastAssistant(prev, artifacts));
+    const byJob = new Map<string, typeof artifacts>();
+    for (const a of artifacts) {
+      if (!a.job_id) continue;
+      const list = byJob.get(a.job_id) ?? [];
+      list.push(a);
+      byJob.set(a.job_id, list);
+    }
+    for (const [jobId, list] of byJob) {
+      if (!selectedAgent || !conversationId) continue;
+      replaceJobArtifactsInSession(selectedAgent, conversationId, jobId, list);
+    }
     setPollJobs([]);
   });
 

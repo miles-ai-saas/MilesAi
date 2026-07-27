@@ -28,6 +28,17 @@ def _optional_uuid(raw) -> UUID | None:
     return UUID(str(raw))
 
 
+async def _sync_chat_after_job(db, job: GenerativeJob) -> None:
+    """任务终态写回对话消息，失败不影响主流程。"""
+    try:
+        from app.tenant.agents.services.chat_artifact_sync import sync_job_result_to_chat_messages
+
+        await sync_job_result_to_chat_messages(db, job)
+        await db.commit()
+    except Exception:
+        logger.exception("sync chat artifacts for generative job %s failed", job.id)
+
+
 async def run_generative_video_job_async(job_id: UUID) -> None:
     # Celery fork 后父进程的全局 engine 不可复用；用 get_worker_session 创建全新的 engine
     async with get_worker_session() as db:
@@ -109,6 +120,7 @@ async def run_generative_video_job_async(job_id: UUID) -> None:
                 percent=job.progress_percent,
                 message=job.progress_message,
             )
+            await _sync_chat_after_job(db, job)
         except GenerativeJobCancelled:
             job = await db.get(GenerativeJob, job_id)
             if job and job.status != GenerativeJobStatus.CANCELLED:
@@ -120,6 +132,7 @@ async def run_generative_video_job_async(job_id: UUID) -> None:
                     status=job.status.value,
                     message=job.progress_message,
                 )
+                await _sync_chat_after_job(db, job)
         except Exception as exc:
             logger.exception("generative video job %s failed", job_id)
             job = await db.get(GenerativeJob, job_id)
@@ -135,6 +148,7 @@ async def run_generative_video_job_async(job_id: UUID) -> None:
                     status=job.status.value,
                     message=job.progress_message,
                 )
+                await _sync_chat_after_job(db, job)
             raise
 
 
@@ -178,14 +192,12 @@ async def run_generative_image_job_async(job_id: UUID) -> None:
                 n = int(raw_n) if raw_n is not None else 1
             except (TypeError, ValueError):
                 n = 1
-            # 用户输入区主动设置的 n 优先（双重兜底）  
+            # 用户输入区主动设置的 n 始终优先（含 n=1）
             agent_cfg = params.get("agent_config") if isinstance(params.get("agent_config"), dict) else {}
             preset_n = agent_cfg.get("_generative_image_n")
             if preset_n is not None:
                 try:
-                    preset_n = int(preset_n)
-                    if preset_n > 1:
-                        n = preset_n
+                    n = min(max(int(preset_n), 1), 4)
                 except (TypeError, ValueError):
                     pass
             model = await resolve_image_gen_model(
@@ -225,6 +237,7 @@ async def run_generative_image_job_async(job_id: UUID) -> None:
                 percent=job.progress_percent,
                 message=job.progress_message,
             )
+            await _sync_chat_after_job(db, job)
         except GenerativeJobCancelled:
             job = await db.get(GenerativeJob, job_id)
             if job and job.status != GenerativeJobStatus.CANCELLED:
@@ -236,6 +249,7 @@ async def run_generative_image_job_async(job_id: UUID) -> None:
                     status=job.status.value,
                     message=job.progress_message,
                 )
+                await _sync_chat_after_job(db, job)
         except Exception as exc:
             logger.exception("generative image job %s failed", job_id)
             job = await db.get(GenerativeJob, job_id)
@@ -251,6 +265,7 @@ async def run_generative_image_job_async(job_id: UUID) -> None:
                     status=job.status.value,
                     message=job.progress_message,
                 )
+                await _sync_chat_after_job(db, job)
             raise
 
 

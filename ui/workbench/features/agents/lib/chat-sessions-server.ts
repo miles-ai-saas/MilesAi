@@ -3,6 +3,7 @@
  */
 
 import { api } from "@/lib/api";
+import { effectiveArtifactStatus } from "@/lib/generative-jobs";
 import {
   getSession,
   importSession,
@@ -30,6 +31,37 @@ function shouldReplaceLocal(local: ChatSession, serverUpdatedMs: number, serverC
   if (serverCount > (local.messageCount ?? local.messages.length)) return true;
   if (serverUpdatedMs > local.updatedAt) return true;
   return false;
+}
+
+function messageContentKey(m: ChatMessage): string {
+  return `${m.role}|${m.content.slice(0, 80)}`;
+}
+
+/** 本地已把生图校正为 success 时，勿被服务端仍存的 pending 覆盖。 */
+function artifactCompleteness(m: ChatMessage): number {
+  let best = 0;
+  for (const a of m.artifacts ?? []) {
+    const s = effectiveArtifactStatus(a);
+    if (s === "success" && (a.attachment_id || a.media_asset_id)) best = Math.max(best, 4);
+    else if (s === "success") best = Math.max(best, 3);
+    else if (s === "failed" || s === "cancelled") best = Math.max(best, 2);
+    else if (s === "running") best = Math.max(best, 1);
+  }
+  return best;
+}
+
+function preferRicherArtifacts(base: ChatMessage, other?: ChatMessage): ChatMessage {
+  if (!other) return base;
+  if (artifactCompleteness(other) > artifactCompleteness(base)) {
+    return {
+      ...base,
+      artifacts: other.artifacts,
+      content: base.content || other.content,
+      steps: base.steps?.length ? base.steps : other.steps,
+      traceId: base.traceId || other.traceId,
+    };
+  }
+  return base;
 }
 
 export async function mergeServerChatSessions(agentId: string): Promise<void> {
@@ -65,7 +97,8 @@ export function importServerSession(agentId: string, detail: ChatSessionDetail):
     updateSession(agentId, detail.id, {
       title: detail.title,
       messages: merged,
-      updatedAt,
+      // 保留较新的 updatedAt，避免随后又被陈旧服务端时间反复覆盖
+      updatedAt: Math.max(local.updatedAt, updatedAt),
       messageCount: msgCount,
     });
     return getSession(agentId, detail.id) ?? { ...local, title: detail.title, messages: merged, updatedAt };
@@ -85,20 +118,29 @@ export function importServerSession(agentId: string, detail: ChatSessionDetail):
 
 /** 合并本地与服务端消息：优先用 sortIndex 去重，无 sortIndex 时回退到 role+content 模糊匹配。 */
 export function mergeMessages(localMessages: ChatMessage[], serverMessages: ChatMessage[]): ChatMessage[] {
+  const localBySort = new Map<number, ChatMessage>();
+  const localByContent = new Map<string, ChatMessage>();
+  for (const m of localMessages) {
+    if (m.sortIndex != null) localBySort.set(m.sortIndex, m);
+    localByContent.set(messageContentKey(m), m);
+  }
+
   const serverSortIndices = new Set<number>();
   const serverContentKeys = new Set<string>();
-  for (const m of serverMessages) {
-    if (m.sortIndex != null) {
-      serverSortIndices.add(m.sortIndex);
-    } else {
-      serverContentKeys.add(`${m.role}|${m.content.slice(0, 80)}`);
+  const mergedServer = serverMessages.map((sm) => {
+    if (sm.sortIndex != null) {
+      serverSortIndices.add(sm.sortIndex);
+      return preferRicherArtifacts(sm, localBySort.get(sm.sortIndex) ?? localByContent.get(messageContentKey(sm)));
     }
-  }
+    serverContentKeys.add(messageContentKey(sm));
+    return preferRicherArtifacts(sm, localByContent.get(messageContentKey(sm)));
+  });
+
   const localOlder = localMessages.filter((m) => {
     if (m.sortIndex != null) return !serverSortIndices.has(m.sortIndex);
-    return !serverContentKeys.has(`${m.role}|${m.content.slice(0, 80)}`);
+    return !serverContentKeys.has(messageContentKey(m));
   });
-  return [...localOlder, ...serverMessages];
+  return [...localOlder, ...mergedServer];
 }
 
 export async function fetchServerSessionIntoLocal(agentId: string, sessionId: string): Promise<ChatSession | null> {

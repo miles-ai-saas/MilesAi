@@ -247,6 +247,47 @@ export function updateSession(agentId: string, sessionId: string, patch: Partial
   saveStore(store);
 }
 
+/**
+ * 按 job_id 替换会话内全部消息的 artifacts（生图完成后须写回 localStorage，
+ * 否则刷新/切会话会仍显示「排队中」）。
+ */
+export function replaceJobArtifactsInSession(
+  agentId: string,
+  sessionId: string,
+  jobId: string,
+  nextForJob: ChatMessageArtifact[],
+): ChatMessage[] | null {
+  const session = getSession(agentId, sessionId);
+  if (!session) return null;
+  let changed = false;
+  const messages = session.messages.map((m) => {
+    if (!m.artifacts?.some((a) => a.job_id === jobId)) return m;
+    changed = true;
+    return {
+      ...m,
+      artifacts: [
+        ...m.artifacts.filter((a) => a.job_id !== jobId),
+        ...nextForJob,
+      ],
+    };
+  });
+  if (!changed) {
+    // 可能尚未写入 pending 占位：挂到最后一条助手消息
+    for (let i = messages.length - 1; i >= 0; i -= 1) {
+      if (messages[i].role !== "assistant") continue;
+      messages[i] = {
+        ...messages[i],
+        artifacts: [...(messages[i].artifacts ?? []), ...nextForJob],
+      };
+      changed = true;
+      break;
+    }
+  }
+  if (!changed) return null;
+  updateSession(agentId, sessionId, { messages });
+  return messages;
+}
+
 /** 导入一条已在服务端存在的会话（覆盖本地同 ID 记录）。 */
 export function importSession(agentId: string, session: ChatSession) {
   const store = loadStore();
@@ -296,6 +337,39 @@ export function appendTurn(
     messages,
     updatedAt: Date.now(),
     ...(session.messageCount != null ? { messageCount: session.messageCount + 2 } : {}),
+  };
+  saveStore(store);
+}
+
+/** 仅追加助手消息（工具确认等场景：UI 不展示「确认执行工具」用户气泡，但仍需落库）。 */
+export function appendAssistantMessage(
+  agentId: string,
+  sessionId: string,
+  assistantText: string,
+  steps: Record<string, unknown>[] = [],
+  traceId?: string,
+  artifacts?: ChatMessageArtifact[],
+) {
+  const store = loadStore();
+  const b = bucket(agentId, store);
+  const idx = b.sessions.findIndex((s) => s.id === sessionId);
+  if (idx < 0) return;
+  const session = b.sessions[idx];
+  const messages = [
+    ...session.messages,
+    {
+      role: "assistant" as const,
+      content: assistantText,
+      steps: steps.length ? steps : undefined,
+      traceId: traceId || undefined,
+      ...(artifacts?.length ? { artifacts } : {}),
+    },
+  ];
+  b.sessions[idx] = {
+    ...session,
+    messages,
+    updatedAt: Date.now(),
+    ...(session.messageCount != null ? { messageCount: session.messageCount + 1 } : {}),
   };
   saveStore(store);
 }

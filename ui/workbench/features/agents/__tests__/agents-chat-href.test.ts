@@ -33,11 +33,13 @@ describe("agents-chat-href", () => {
     expect(window.location.search).toContain("agent=a1");
   });
 
-  it("replaceAgentsChat never calls router.replace", () => {
-    window.history.replaceState({}, "", "/workbench/dashboard/");
+  it("pushAgentsChatForAgent includes agent and conv", async () => {
+    window.history.replaceState({}, "", "/workbench/agents/");
+    const { ensureActiveSession } = await import("@/features/agents/lib/chat-sessions");
+    const { pushAgentsChatForAgent } = await import("@/features/agents/lib/agents-chat-href");
+    const session = ensureActiveSession("agent-x");
     const router = { replace: vi.fn(), push: vi.fn() };
-    replaceAgentsChat(router, { agent: "a1" });
-    expect(router.replace).not.toHaveBeenCalled();
-    expect(window.location.pathname + window.location.search).toContain("agents/chat");
+    pushAgentsChatForAgent(router, "agent-x");
+    expect(router.push).toHaveBeenCalledWith(`/workbench/agents/chat/?agent=agent-x&conv=${session.id}`);
   });
 });

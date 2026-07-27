@@ -108,6 +108,20 @@ async def invoke_tool_with_context(
     meta = await resolve_tool_meta(db, ctx, name, tool_id=tool_id)
     slug = meta["slug"]
     resolved_tool_id = meta.get("tool_id") or tool_id
+    tool_params = dict(params)
+
+    # 生图：输入区张数覆盖 LLM 参数（须在确认门槛前生效，避免误弹「生成 4 张」）
+    if slug == "generate_image" and agent_id:
+        from app.models.agent import Agent
+
+        agent = await db.get(Agent, agent_id)
+        cfg = agent.config if agent and isinstance(agent.config, dict) else {}
+        preset_n = cfg.get("_generative_image_n")
+        if preset_n is not None:
+            try:
+                tool_params["n"] = min(max(int(preset_n), 1), 4)
+            except (TypeError, ValueError):
+                pass
 
     if meta["require_confirmation"] and not confirmed:
         await write_tool_invocation_log(
@@ -117,13 +131,13 @@ async def invoke_tool_with_context(
             tool_id=resolved_tool_id,
             source=meta["source"],
             status="confirmation_required",
-            params=params,
+            params=tool_params,
             actor_user_id=actor_user_id,
             agent_id=agent_id,
             invoke_source=invoke_source,
             trace_id=get_trace_id(),
         )
-        raise ToolConfirmationRequired(slug, meta["name"], meta.get("description"), params)
+        raise ToolConfirmationRequired(slug, meta["name"], meta.get("description"), tool_params)
 
     if slug == "generate_image":
         from app.integrations.generative.policy import (
@@ -131,7 +145,7 @@ async def invoke_tool_with_context(
             needs_image_tool_confirmation,
         )
 
-        if needs_image_tool_confirmation(params) and not confirmed:
+        if needs_image_tool_confirmation(tool_params) and not confirmed:
             await write_tool_invocation_log(
                 db,
                 tenant_id=ctx.tenant_id,
@@ -139,7 +153,7 @@ async def invoke_tool_with_context(
                 tool_id=resolved_tool_id,
                 source=meta["source"],
                 status="confirmation_required",
-                params=params,
+                params=tool_params,
                 actor_user_id=actor_user_id,
                 agent_id=agent_id,
                 invoke_source=invoke_source,
@@ -148,11 +162,10 @@ async def invoke_tool_with_context(
             raise ToolConfirmationRequired(
                 slug,
                 meta["name"],
-                image_tool_confirmation_message(params),
-                params,
+                image_tool_confirmation_message(tool_params),
+                tool_params,
             )
 
-    tool_params = dict(params)
     bound_skill_id: UUID | None = None
     if slug in SKILL_BOUND_SLUGS:
         bound_skill_id = await resolve_bound_skill_id_from_agent(db, agent_id)

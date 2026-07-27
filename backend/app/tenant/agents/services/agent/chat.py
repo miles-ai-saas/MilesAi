@@ -435,8 +435,10 @@ class AgentChatMixin:
                 # 将输入区参数注入 agent.config，供 handle_generate_image / handle_generate_video
                 # 在 LLM 未传 n/duration 时作为实际默认值使用
                 agent_config_with_defaults = dict(cfg)
-                if body.generative_image_n != 1:
-                    agent_config_with_defaults["_generative_image_n"] = body.generative_image_n
+                if body.conversation_id:
+                    agent_config_with_defaults["_conversation_id"] = body.conversation_id
+                # 始终注入输入区张数（含 1），供 generate_image 强制覆盖 LLM 的 n
+                agent_config_with_defaults["_generative_image_n"] = body.generative_image_n
                 if body.generative_video_duration != 5:
                     agent_config_with_defaults["_generative_video_duration"] = body.generative_video_duration
                 agent.config = agent_config_with_defaults
@@ -463,8 +465,9 @@ class AgentChatMixin:
                 )
             # 将输入区参数注入 agent.config，供 handle_generate_image / handle_generate_video
             agent_config_with_defaults = dict(cfg)
-            if body.generative_image_n != 1:
-                agent_config_with_defaults["_generative_image_n"] = body.generative_image_n
+            if body.conversation_id:
+                agent_config_with_defaults["_conversation_id"] = body.conversation_id
+            agent_config_with_defaults["_generative_image_n"] = body.generative_image_n
             if body.generative_video_duration != 5:
                 agent_config_with_defaults["_generative_video_duration"] = body.generative_video_duration
             agent.config = agent_config_with_defaults

@@ -19,6 +19,7 @@ import {
   type ChatSession,
 } from "@/features/agents/lib/chat-sessions";
 import { fetchServerSessionIntoLocal, mapServerMessages, mergeMessages, mergeServerChatSessions } from "@/features/agents/lib/chat-sessions-server";
+import { reconcileInFlightGenerativeArtifacts } from "@/features/agents/lib/reconcile-generative-artifacts";
 import { replaceAgentsChat } from "@/features/agents/lib/agents-chat-href";
 import { api } from "@/lib/api";
 import { useConfirmAction } from "@/hooks/use-confirm-action";
@@ -69,71 +70,74 @@ export function useAgentsChatSessionSync({
       setSessionTitle(session.title);
       setHasMore(session.messages.length > latest.length || (session.messageCount ?? 0) > session.messages.length);
       clearComposer?.();
+
+      // 校正仍显示「排队中」但任务已成功的生图卡片
+      void reconcileInFlightGenerativeArtifacts(agentId, sessionId, latest).then((reconciled) => {
+        if (reconciled === latest) return;
+        setConversationId((cid) => {
+          if (cid === sessionId) setMessages(reconciled);
+          return cid;
+        });
+      });
     },
     [],
   );
 
   /** 向上滚动加载更早的消息。先从本地取，本地取完再请求服务端。 */
+  const messagesRef = useRef(messages);
+  messagesRef.current = messages;
+
   const loadMoreMessages = useCallback(async () => {
     if (!selectedAgent || !conversationId) return;
     if (loadingMore) return;
     setLoadingMore(true);
     try {
       const session = getSession(selectedAgent, conversationId);
-      if (!session) return;
+      if (!session) {
+        setHasMore(false);
+        return;
+      }
+
+      const current = messagesRef.current;
 
       // 1) 先从本地缓存加载
-      setMessages((prev) => {
-        if (hasMoreLocalMessages(session, prev.length)) {
-          const older = getPreviousMessages(session, prev.length);
-          if (older.length > 0) {
-            const newTotal = prev.length + older.length;
-            setHasMore(hasMoreLocalMessages(session, newTotal)
-              || (session.messageCount ?? 0) > newTotal);
-            return [...older, ...prev];
-          }
+      if (hasMoreLocalMessages(session, current.length)) {
+        const older = getPreviousMessages(session, current.length);
+        if (older.length > 0) {
+          const newTotal = current.length + older.length;
+          setMessages((prev) => [...older, ...prev]);
+          setHasMore(hasMoreLocalMessages(session, newTotal) || (session.messageCount ?? 0) > newTotal);
+          return;
         }
-        return prev;
-      });
+      }
 
       // 2) 本地已空，从服务端拉取
-      setMessages((prev) => {
-        const oldestInUi = prev[0];
-        const beforeSortIndex = oldestInUi?.sortIndex;
-        if (beforeSortIndex == null) {
-          setHasMore(false);
-          return prev;
-        }
+      const oldestInUi = current[0];
+      const beforeSortIndex = oldestInUi?.sortIndex;
+      if (beforeSortIndex == null) {
+        setHasMore(false);
+        return;
+      }
 
-        // 发起异步请求
-        void (async () => {
-          try {
-            const detail = await api.getAgentChatSession(selectedAgent, conversationId, {
-              before_sort_index: beforeSortIndex,
-              limit: MESSAGES_PAGE_SIZE,
-            });
-            const serverMsgs: ChatMessage[] = mapServerMessages(detail.messages);
-            if (serverMsgs.length > 0) {
-              // 合并到 localStorage
-              const existing = getSession(selectedAgent, conversationId);
-              if (existing) {
-                const merged = mergeMessages(existing.messages, serverMsgs);
-                updateSession(selectedAgent, conversationId, { messages: merged });
-              }
-              setMessages((p) => [...serverMsgs, ...p]);
-              setHasMore(detail.has_more ?? false);
-            } else {
-              setHasMore(false);
-            }
-          } catch {
-            setHasMore(false);
-          } finally {
-            setLoadingMore(false);
-          }
-        })();
-        return prev;
+      const detail = await api.getAgentChatSession(selectedAgent, conversationId, {
+        before_sort_index: beforeSortIndex,
+        limit: MESSAGES_PAGE_SIZE,
       });
+      const serverMsgs: ChatMessage[] = mapServerMessages(detail.messages);
+      if (serverMsgs.length > 0) {
+        const existing = getSession(selectedAgent, conversationId);
+        if (existing) {
+          const merged = mergeMessages(existing.messages, serverMsgs);
+          updateSession(selectedAgent, conversationId, { messages: merged });
+        }
+        setMessages((p) => [...serverMsgs, ...p]);
+        setHasMore(detail.has_more ?? false);
+      } else {
+        setHasMore(false);
+      }
     } catch {
+      setHasMore(false);
+    } finally {
       setLoadingMore(false);
     }
   }, [selectedAgent, conversationId, loadingMore]);
@@ -208,11 +212,17 @@ export function useAgentsChatSessionSync({
     (sessionId: string, onClosePanels: () => void, clearComposer?: () => void) => {
       if (!selectedAgent) return;
       setActiveSessionId(selectedAgent, sessionId);
-      loadSessionIntoUi(selectedAgent, sessionId, clearComposer);
       syncUrl(selectedAgent, sessionId);
       onClosePanels();
+      // 先展示本地，再拉服务端补齐可能未落本地的确认回合 / 成功消息
+      loadSessionIntoUi(selectedAgent, sessionId, clearComposer);
+      void (async () => {
+        await fetchServerSessionIntoLocal(selectedAgent, sessionId);
+        loadSessionIntoUi(selectedAgent, sessionId);
+        refreshSessions(selectedAgent);
+      })();
     },
-    [loadSessionIntoUi, selectedAgent, syncUrl],
+    [loadSessionIntoUi, refreshSessions, selectedAgent, syncUrl],
   );
 
   const handleRenameSession = useCallback(
@@ -271,7 +281,8 @@ export function useAgentsChatSessionSync({
     (id: string, onClosePanel: () => void) => {
       setSelectedAgent(id);
       onClosePanel();
-      replaceAgentsChat(router, { agent: id });
+      const session = ensureActiveSession(id);
+      replaceAgentsChat(router, { agent: id, conv: session.id });
     },
     [router, setSelectedAgent],
   );

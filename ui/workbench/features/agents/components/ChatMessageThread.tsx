@@ -31,6 +31,8 @@ type Props = {
   onLoadMore?: () => void;
   loadingMore?: boolean;
   hasMore?: boolean;
+  /** 会话 id：切换时复位「向上加载」武装，避免多消息会话一进页就刷接口 */
+  conversationId?: string;
   /** 滚动容器 ref，用于 IntersectionObserver */
   scrollContainerRef?: React.RefObject<HTMLDivElement | null>;
 };
@@ -110,10 +112,34 @@ export function ChatMessageThread({
   onLoadMore,
   loadingMore,
   hasMore,
+  conversationId,
   scrollContainerRef,
 }: Props) {
   const sentinelRef = useRef<HTMLDivElement>(null);
   const prevScrollHeightRef = useRef(0);
+  /** 仅在用户真正向上滚过之后才自动 loadMore，避免内容不足一屏时哨兵常驻视口刷接口 */
+  const loadMoreArmedRef = useRef(false);
+  const loadingMoreRef = useRef(!!loadingMore);
+  loadingMoreRef.current = !!loadingMore;
+
+  useEffect(() => {
+    loadMoreArmedRef.current = false;
+  }, [conversationId]);
+
+  useEffect(() => {
+    const root = scrollContainerRef?.current;
+    if (!root || !hasMore) return;
+    const onScroll = () => {
+      const distBottom = root.scrollHeight - root.scrollTop - root.clientHeight;
+      if (distBottom < 48) {
+        loadMoreArmedRef.current = false;
+      } else if (root.scrollTop < 120) {
+        loadMoreArmedRef.current = true;
+      }
+    };
+    root.addEventListener("scroll", onScroll, { passive: true });
+    return () => root.removeEventListener("scroll", onScroll);
+  }, [hasMore, scrollContainerRef, conversationId]);
 
   // IntersectionObserver：顶部哨兵进入视口时触发加载更早消息
   useEffect(() => {
@@ -123,15 +149,15 @@ export function ChatMessageThread({
 
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0]?.isIntersecting && !loadingMore) {
-          onLoadMore();
-        }
+        if (!entries[0]?.isIntersecting) return;
+        if (!loadMoreArmedRef.current || loadingMoreRef.current) return;
+        onLoadMore();
       },
-      { root, rootMargin: "128px", threshold: 0 },
+      { root, rootMargin: "64px", threshold: 0 },
     );
     observer.observe(sentinel);
     return () => observer.disconnect();
-  }, [hasMore, loadingMore, onLoadMore, scrollContainerRef]);
+  }, [hasMore, onLoadMore, scrollContainerRef, conversationId]);
 
   // 加载更早消息后保持滚动位置（防止内容向上跳）
   useEffect(() => {
