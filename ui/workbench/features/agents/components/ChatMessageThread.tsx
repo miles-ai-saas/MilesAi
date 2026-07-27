@@ -201,8 +201,17 @@ export function ChatMessageThread({
         <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-brand-light">
           <span className="text-2xl text-brand">◇</span>
         </div>
-        <p className="text-sm text-ink-muted">输入问题开始对话</p>
-        <p className="mt-1 text-xs text-ink-faint">支持直连、RAG、流程与多模态；助手卡片可点「Trace」查看执行步骤</p>
+        {conversationId ? (
+          <>
+            <p className="text-sm text-ink-muted">输入问题开始对话</p>
+            <p className="mt-1 text-xs text-ink-faint">支持直连、RAG、流程与多模态；助手卡片可点「Trace」查看执行步骤</p>
+          </>
+        ) : (
+          <>
+            <p className="text-sm text-ink-muted">请从左侧选择会话，或新建对话</p>
+            <p className="mt-1 text-xs text-ink-faint">选定会话后会加载消息；地址栏将带上对应的会话 ID</p>
+          </>
+        )}
       </div>
     );
   }

@@ -11,7 +11,7 @@ import { useInfiniteList } from "@/hooks/use-infinite-list";
 import { useAgentsChatLayout } from "@/features/agents/hooks/use-agents-chat-layout";
 import { useAgentsChatMessaging } from "@/features/agents/hooks/use-agents-chat-messaging";
 import { useAgentsChatSessionSync } from "@/features/agents/hooks/use-agents-chat-session-sync";
-import { replaceAgentsChat } from "@/features/agents/lib/agents-chat-href";
+import { replaceAgentsChat, loadLastAgentsChat } from "@/features/agents/lib/agents-chat-href";
 import type { Agent } from "@/lib/types";
 
 export function useAgentsChatPage() {
@@ -36,7 +36,10 @@ export function useAgentsChatPage() {
     }
   }, [bizFromUrl, projectIdFromUrl]);
 
-  const [selectedAgent, setSelectedAgent] = useState<string>(agentFromUrl ?? "");
+  const [selectedAgent, setSelectedAgent] = useState<string>(() => {
+    if (agentFromUrl) return agentFromUrl;
+    return loadLastAgentsChat()?.agentId ?? "";
+  });
   const [agentDetail, setAgentDetail] = useState<Agent | null>(null);
 
   const list = useInfiniteList(useCallback((p, s) => api.listAgents(p, s), []), {
@@ -96,8 +99,8 @@ export function useAgentsChatPage() {
     agentFromUrl,
     convFromUrl,
     router,
-    // 无 URL agent 时才用列表首项兜底，避免入口已指定 agent 时被列表首项抢选
-    listDefaultAgentId: agentFromUrl ? undefined : list.items[0]?.id,
+    // 无 URL/书签 agent 时才用列表首项兜底，避免入口已指定 agent 时被列表首项抢选
+    listDefaultAgentId: agentFromUrl || selectedAgent ? undefined : list.items[0]?.id,
     syncUrl,
   });
 

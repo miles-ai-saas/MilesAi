@@ -5,7 +5,6 @@ import type { AppRouterInstance } from "next/dist/shared/lib/app-router-context.
 import {
   createSession,
   deleteSession,
-  ensureActiveSession,
   getLatestMessages,
   getPreviousMessages,
   getSession,
@@ -20,7 +19,7 @@ import {
 } from "@/features/agents/lib/chat-sessions";
 import { fetchServerSessionIntoLocal, mapServerMessages, mergeMessages, mergeServerChatSessions } from "@/features/agents/lib/chat-sessions-server";
 import { reconcileInFlightGenerativeArtifacts } from "@/features/agents/lib/reconcile-generative-artifacts";
-import { replaceAgentsChat } from "@/features/agents/lib/agents-chat-href";
+import { loadLastAgentsChat, replaceAgentsChat } from "@/features/agents/lib/agents-chat-href";
 import { api } from "@/lib/api";
 import { useConfirmAction } from "@/hooks/use-confirm-action";
 
@@ -60,6 +59,13 @@ export function useAgentsChatSessionSync({
     setSessions(listSessions(agentId));
   }, []);
 
+  const clearConversationUi = useCallback(() => {
+    setConversationId("");
+    setMessages([]);
+    setSessionTitle("新对话");
+    setHasMore(false);
+  }, []);
+
   const loadSessionIntoUi = useCallback(
     (agentId: string, sessionId: string, clearComposer?: () => void) => {
       const session = getSession(agentId, sessionId);
@@ -81,6 +87,20 @@ export function useAgentsChatSessionSync({
       });
     },
     [],
+  );
+
+  /** 选中会话后：本地先展示，再拉服务端详情补齐。 */
+  const openSession = useCallback(
+    (agentId: string, sessionId: string, clearComposer?: () => void) => {
+      setActiveSessionId(agentId, sessionId);
+      loadSessionIntoUi(agentId, sessionId, clearComposer);
+      void (async () => {
+        await fetchServerSessionIntoLocal(agentId, sessionId);
+        loadSessionIntoUi(agentId, sessionId);
+        refreshSessions(agentId);
+      })();
+    },
+    [loadSessionIntoUi, refreshSessions],
   );
 
   /** 向上滚动加载更早的消息。先从本地取，本地取完再请求服务端。 */
@@ -143,7 +163,13 @@ export function useAgentsChatSessionSync({
   }, [selectedAgent, conversationId, loadingMore]);
 
   useEffect(() => {
-    if (agentFromUrl) setSelectedAgent(agentFromUrl);
+    if (agentFromUrl) {
+      setSelectedAgent(agentFromUrl);
+      return;
+    }
+    // 裸 /chat/：先用书签恢复，不依赖 listAgents
+    const last = loadLastAgentsChat();
+    if (last?.agentId) setSelectedAgent(last.agentId);
   }, [agentFromUrl, setSelectedAgent]);
 
   useEffect(() => {
@@ -152,11 +178,11 @@ export function useAgentsChatSessionSync({
     }
   }, [listDefaultAgentId, selectedAgent, setSelectedAgent]);
 
-  // 顺序：选定 agent → 本地会话落 UI → 写 URL（replaceState）→ 后台合并服务端会话
-  // 每个 agent 只 syncUrl + merge 一次；重复 effect 只刷新 UI，避免反复建会话
+  // 选定 agent → 只同步 ?agent= 并拉会话列表；有 ?conv= 时才打开会话并查详情
   useEffect(() => {
     if (!selectedAgent) {
       bootstrappedAgentRef.current = null;
+      clearConversationUi();
       return;
     }
 
@@ -167,19 +193,34 @@ export function useAgentsChatSessionSync({
 
     refreshSessions(selectedAgent);
 
-    let session: ChatSession | null = null;
-    if (convFromUrl) {
-      session = getSession(selectedAgent, convFromUrl);
-      if (session) setActiveSessionId(selectedAgent, convFromUrl);
+    const search = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
+    const urlAgent = search?.get("agent") ?? "";
+    const urlConv = search?.get("conv") ?? "";
+    // 入口/切智能体：URL 只保证 agent；去掉不应出现的 conv
+    const wantConv = convFromUrl || null;
+    const urlNeedsSync = urlAgent !== selectedAgent || urlConv !== (wantConv ?? "");
+
+    if (isNewAgent || urlNeedsSync) {
+      syncUrlRef.current(selectedAgent, wantConv ?? undefined);
     }
-    if (!session) {
-      session = ensureActiveSession(selectedAgent);
+
+    if (wantConv) {
+      const local = getSession(selectedAgent, wantConv);
+      if (local) {
+        loadSessionIntoUi(selectedAgent, wantConv);
+      } else {
+        clearConversationUi();
+      }
+      void (async () => {
+        await fetchServerSessionIntoLocal(selectedAgent, wantConv);
+        loadSessionIntoUi(selectedAgent, wantConv);
+        refreshSessions(selectedAgent);
+      })();
+    } else {
+      clearConversationUi();
     }
-    loadSessionIntoUi(selectedAgent, session.id);
 
     if (!isNewAgent) return;
-
-    syncUrlRef.current(selectedAgent, session.id);
 
     let cancelled = false;
     void (async () => {
@@ -193,7 +234,7 @@ export function useAgentsChatSessionSync({
     return () => {
       cancelled = true;
     };
-  }, [selectedAgent, convFromUrl, refreshSessions, loadSessionIntoUi]);
+  }, [selectedAgent, convFromUrl, refreshSessions, loadSessionIntoUi, clearConversationUi]);
 
   const handleNewSession = useCallback(
     (clearComposer?: () => void) => {
@@ -211,18 +252,11 @@ export function useAgentsChatSessionSync({
   const handleSelectSession = useCallback(
     (sessionId: string, onClosePanels: () => void, clearComposer?: () => void) => {
       if (!selectedAgent) return;
-      setActiveSessionId(selectedAgent, sessionId);
       syncUrl(selectedAgent, sessionId);
       onClosePanels();
-      // 先展示本地，再拉服务端补齐可能未落本地的确认回合 / 成功消息
-      loadSessionIntoUi(selectedAgent, sessionId, clearComposer);
-      void (async () => {
-        await fetchServerSessionIntoLocal(selectedAgent, sessionId);
-        loadSessionIntoUi(selectedAgent, sessionId);
-        refreshSessions(selectedAgent);
-      })();
+      openSession(selectedAgent, sessionId, clearComposer);
     },
-    [loadSessionIntoUi, refreshSessions, selectedAgent, syncUrl],
+    [openSession, selectedAgent, syncUrl],
   );
 
   const handleRenameSession = useCallback(
@@ -256,35 +290,34 @@ export function useAgentsChatSessionSync({
           });
           deleteSession(selectedAgent, sessionId);
           refreshSessions(selectedAgent);
-          const next = ensureActiveSession(selectedAgent);
-          loadSessionIntoUi(selectedAgent, next.id);
-          syncUrl(selectedAgent, next.id);
+          if (sessionId === conversationId) {
+            clearConversationUi();
+            syncUrl(selectedAgent);
+          }
         },
       });
     },
-    [loadSessionIntoUi, refreshSessions, requestConfirm, selectedAgent, syncUrl],
+    [clearConversationUi, conversationId, refreshSessions, requestConfirm, selectedAgent, syncUrl],
   );
 
   const handleOpenTraceFromRecord = useCallback(
     async (sessionId: string) => {
       if (!selectedAgent) return;
-      await fetchServerSessionIntoLocal(selectedAgent, sessionId);
-      refreshSessions(selectedAgent);
-      setActiveSessionId(selectedAgent, sessionId);
-      loadSessionIntoUi(selectedAgent, sessionId);
       syncUrl(selectedAgent, sessionId);
+      openSession(selectedAgent, sessionId);
     },
-    [loadSessionIntoUi, refreshSessions, selectedAgent, syncUrl],
+    [openSession, selectedAgent, syncUrl],
   );
 
   const onSelectAgent = useCallback(
     (id: string, onClosePanel: () => void) => {
       setSelectedAgent(id);
       onClosePanel();
-      const session = ensureActiveSession(id);
-      replaceAgentsChat(router, { agent: id, conv: session.id });
+      // 切智能体：只带 agent，清空会话选中
+      replaceAgentsChat(router, { agent: id });
+      clearConversationUi();
     },
-    [router, setSelectedAgent],
+    [clearConversationUi, router, setSelectedAgent],
   );
 
   return {

@@ -11,7 +11,11 @@ import { MarketplaceAppCardActions, MarketplaceAppCardMeta } from "@/features/ma
 import { marketplaceCatalogSortOptions } from "@/features/marketplace/lib/marketplace-labels";
 import type { MarketplacePageVm } from "@/features/marketplace/hooks/use-marketplace-page";
 import type { AppInstallResult } from "@/lib/types";
+import { buildAgentsChatHref } from "@/features/agents/lib/agents-chat-href";
 
+function agentChatHref(agentId: string): string {
+  return buildAgentsChatHref({ agent: agentId });
+}
 function MarketplaceInstallSuccessBanner({ result, onDismiss }: { result: AppInstallResult; onDismiss: () => void }) {
   return (
     <div className="col-span-full rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
@@ -41,7 +45,7 @@ function MarketplaceInstallSuccessBanner({ result, onDismiss }: { result: AppIns
         {result.agent_id ? (
           <li>
             智能体 →{" "}
-            <Link href="/workbench/agents/chat/" className="underline">
+            <Link href={agentChatHref(result.agent_id)} className="underline">
               去对话
             </Link>
           </li>

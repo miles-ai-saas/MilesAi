@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { isAgentsChatNavHref, resolveAgentsChatEntryHref } from "@/features/agents/lib/agents-chat-href";
 import type { QuotaMetric } from "@/lib/types";
 import type { DashboardPageVm } from "@/features/dashboard/hooks/use-dashboard-page";
 
@@ -15,6 +16,10 @@ const DASHBOARD_QUICK_LINKS = [
   { href: "/workbench/compliance", label: "合规", desc: "敏感词库与内容安全" },
   { href: "/workbench/monitor", label: "监控", desc: "运行指标与告警" },
 ] as const;
+
+function resolveDashboardHref(href: string): string {
+  return isAgentsChatNavHref(href) ? resolveAgentsChatEntryHref() : href;
+}
 
 function quotaLabel(metric: QuotaMetric) {
   if (metric.max <= 0) return `${metric.used}${metric.unit ? ` ${metric.unit}` : ""}`;
@@ -68,7 +73,7 @@ export function DashboardOverview({ vm }: { vm: DashboardPageVm }) {
       <h2 className="mb-3 text-sm font-semibold text-ink">快捷入口</h2>
       <div className="resource-card-grid">
         {DASHBOARD_QUICK_LINKS.map((item) => (
-          <Link key={item.href} href={item.href} className="resource-card">
+          <Link key={item.href} href={resolveDashboardHref(item.href)} className="resource-card">
             <p className="font-medium text-ink">{item.label}</p>
             <p className="mt-1 text-xs text-ink-muted">{item.desc}</p>
           </Link>

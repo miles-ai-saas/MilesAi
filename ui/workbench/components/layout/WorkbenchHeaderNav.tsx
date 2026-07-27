@@ -4,7 +4,12 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { isAgentsChatNavHref, resolveAgentsChatEntryHref } from "@/features/agents/lib/agents-chat-href";
 import { WORKBENCH_NAV, isNavActive, isNavGroupActive, type NavGroup } from "@/lib/nav-config";
+
+function resolveNavItemHref(href: string): string {
+  return isAgentsChatNavHref(href) ? resolveAgentsChatEntryHref() : href;
+}
 
 function NavChevron({ open }: { open: boolean }) {
   return (
@@ -56,7 +61,10 @@ function WorkbenchNavGroup({
   if (singleItem) {
     const active = isNavActive(pathname, singleItem.href);
     return (
-      <Link href={singleItem.href} className={`header-nav-item shrink-0 ${active ? "header-nav-item-active" : ""}`}>
+      <Link
+        href={resolveNavItemHref(singleItem.href)}
+        className={`header-nav-item shrink-0 ${active ? "header-nav-item-active" : ""}`}
+      >
         {group.title}
       </Link>
     );
@@ -82,7 +90,7 @@ function WorkbenchNavGroup({
               <Link
                 key={item.href}
                 role="menuitem"
-                href={item.href}
+                href={resolveNavItemHref(item.href)}
                 onClick={onClose}
                 className={`block px-3 py-2 text-sm transition ${active ? "bg-brand-light font-medium text-brand" : "text-ink-muted hover:bg-surface-muted hover:text-ink"}`}
               >

@@ -7,7 +7,11 @@ import { ResourceListLayout } from "@/components/resource/ResourceListLayout";
 import { PageMessage } from "@/components/ui/PageMessage";
 import { StatChip } from "@/components/ui/StatChip";
 import type { MarketplacePageVm } from "@/features/marketplace/hooks/use-marketplace-page";
+import { buildAgentsChatHref } from "@/features/agents/lib/agents-chat-href";
 
+function agentChatHref(agentId: string): string {
+  return buildAgentsChatHref({ agent: agentId });
+}
 export function MarketplaceInstallsView({ vm }: { vm: MarketplacePageVm }) {
   return (
     <ResourceListLayout
@@ -76,7 +80,7 @@ export function MarketplaceInstallsView({ vm }: { vm: MarketplacePageVm }) {
                     </Link>
                   ) : null}
                   {ins.agent_id ? (
-                    <Link href="/workbench/agents/chat/" className="hover:underline">
+                    <Link href={agentChatHref(ins.agent_id)} className="hover:underline">
                       智能体
                     </Link>
                   ) : null}
