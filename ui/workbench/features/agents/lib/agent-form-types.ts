@@ -74,15 +74,16 @@ export function emptyAgentForm(): AgentFormValues {
 export function agentToFormValues(agent: Agent): AgentFormValues {
   const cfg = (agent.config ?? {}) as AgentConfig;
   return {
-    name: agent.name,
-    description: agent.description ?? "",
-    category_id: agent.category_id ?? "",
+    ...emptyAgentForm(),
+    name: String(agent.name ?? ""),
+    description: String(agent.description ?? ""),
+    category_id: String(agent.category_id ?? ""),
     tag_ids: (agent.tags ?? []).map((t) => t.id),
-    system_prompt: agent.system_prompt ?? "",
+    system_prompt: String(agent.system_prompt ?? ""),
     kb_ids: agent.kb_ids ?? [],
-    published_flow_id: agent.published_flow_id ?? "",
-    prompt_template_id: agent.prompt_template_id ?? "",
-    model_config_id: agent.model_config_id ?? "",
+    published_flow_id: String(agent.published_flow_id ?? ""),
+    prompt_template_id: String(agent.prompt_template_id ?? ""),
+    model_config_id: String(agent.model_config_id ?? ""),
     skill_package_id: String(cfg.skill_package_id ?? ""),
     mcp_service_ids: ((cfg.mcp_service_ids as string[]) ?? []).map(String),
     sub_agents: (agent.sub_agents ?? []).map((s) => ({

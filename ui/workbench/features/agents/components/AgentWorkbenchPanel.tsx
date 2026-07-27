@@ -32,7 +32,8 @@ export function AgentWorkbenchPanel({ agentId, agentName, activeTab, onSaved }: 
   });
 
   const isLastStep = step === AGENT_FORM_STEPS.length - 1;
-  const canNext = step === 0 ? form.name.trim().length > 0 : true;
+  const formName = form.name ?? "";
+  const canNext = step === 0 ? formName.trim().length > 0 : true;
 
   useEffect(() => {
     if (!agentId) {
@@ -40,21 +41,22 @@ export function AgentWorkbenchPanel({ agentId, agentName, activeTab, onSaved }: 
       return;
     }
     setStep(0);
+    setForm(emptyAgentForm());
   }, [agentId]);
 
-  // agent 数据加载完成后同步到表单
+  // agent 数据加载完成后同步到表单（校验 id，避免错位数据写入）
   useEffect(() => {
-    if (agent) setForm(agentToFormValues(agent));
-  }, [agent, agentName]);
+    if (agent && (!agentId || agent.id === agentId)) setForm(agentToFormValues(agent));
+  }, [agent, agentId, agentName]);
 
   const onSubmit = async () => {
-    if (!agent || !form.name.trim()) return;
+    if (!agent || !formName.trim()) return;
     setBusy(true);
     try {
       await api.updateAgent(agent.id, {
-        name: form.name.trim(),
-        description: form.description.trim() || undefined,
-        system_prompt: form.system_prompt.trim() || undefined,
+        name: formName.trim(),
+        description: (form.description ?? "").trim() || undefined,
+        system_prompt: (form.system_prompt ?? "").trim() || undefined,
         kb_ids: form.kb_ids,
         sub_agents: form.sub_agents,
         a2a_peers: form.a2a_peers,
@@ -129,7 +131,7 @@ export function AgentWorkbenchPanel({ agentId, agentName, activeTab, onSaved }: 
           </span>
           <div className="flex items-center gap-2">
             {!isLastStep && (
-              <button type="button" className="btn-sm-ghost" disabled={busy || !form.name.trim()} onClick={() => void onSubmit()}>
+              <button type="button" className="btn-sm-ghost" disabled={busy || !formName.trim()} onClick={() => void onSubmit()}>
                 保存
               </button>
             )}

@@ -32,7 +32,8 @@ export function AgentFormDialog({ open, title, agent, onClose, onSaved }: Props)
   });
 
   const isLastStep = step === AGENT_FORM_STEPS.length - 1;
-  const canNext = step === 0 ? form.name.trim().length > 0 : true;
+  const formName = form.name ?? "";
+  const canNext = step === 0 ? formName.trim().length > 0 : true;
 
   useEffect(() => {
     if (!open) return;
@@ -44,15 +45,15 @@ export function AgentFormDialog({ open, title, agent, onClose, onSaved }: Props)
   }, [open, agent]);
 
   const onSubmit = async () => {
-    if (!form.name.trim()) return;
+    if (!formName.trim()) return;
     setBusy(true);
     try {
       const payload = {
-        name: form.name.trim(),
-        description: form.description.trim() || undefined,
+        name: formName.trim(),
+        description: (form.description ?? "").trim() || undefined,
         category_id: form.category_id || null,
         tag_ids: form.tag_ids,
-        system_prompt: form.system_prompt.trim() || undefined,
+        system_prompt: (form.system_prompt ?? "").trim() || undefined,
         kb_ids: form.kb_ids,
         sub_agents: form.sub_agents,
         a2a_peers: form.a2a_peers,

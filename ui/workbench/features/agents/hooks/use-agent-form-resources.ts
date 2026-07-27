@@ -49,6 +49,10 @@ export function clearAgentResourceCache(): void {
   cached = {};
 }
 
+function isAgentDetail(value: unknown): value is Agent {
+  return Boolean(value && typeof value === "object" && "id" in value && "name" in value && !("items" in value));
+}
+
 export function useAgentFormResources(when: boolean, opts: ResourceOptions = {}): ResourceData {
   const { loadAgent, loadToolCatalog = false, loadPeers = false } = opts;
 
@@ -68,6 +72,9 @@ export function useAgentFormResources(when: boolean, opts: ResourceOptions = {})
   useEffect(() => {
     if (!when) return;
 
+    // 切换智能体时先清空，避免旧详情短暂写入表单
+    setAgent(null);
+
     const baseHits =
       cached.kbs != null && cached.flows != null && cached.prompts != null && cached.models != null && cached.skills != null && cached.mcps != null;
     const toolHit = !loadToolCatalog || cached.toolCatalog != null;
@@ -76,47 +83,130 @@ export function useAgentFormResources(when: boolean, opts: ResourceOptions = {})
     if (baseHits && toolHit && peerHit && !loadAgent) return;
 
     setLoading(true);
-    const baseRequests: Promise<unknown>[] = [];
-    baseRequests.push(...(cached.kbs == null ? [api.listKbs(1, 100)] : [Promise.resolve(null)]));
-    baseRequests.push(...(cached.flows == null ? [api.listFlows(1, 100)] : [Promise.resolve(null)]));
-    baseRequests.push(...(cached.prompts == null ? [api.listPromptTemplates(1, 100)] : [Promise.resolve(null)]));
-    baseRequests.push(...(cached.models == null ? [api.listModelConfigs()] : [Promise.resolve(null)]));
-    baseRequests.push(...(cached.skills == null ? [api.listSkillPackages(1, 100)] : [Promise.resolve(null)]));
-    baseRequests.push(...(cached.mcps == null ? [api.listMcpServices(1, 100)] : [Promise.resolve(null)]));
 
-    if (loadToolCatalog && cached.toolCatalog == null) baseRequests.push(api.listToolCatalog());
-    if (loadPeers && cached.agents == null) baseRequests.push(api.listAgents(1, 100));
-    if (loadPeers && cached.a2aPeers == null) baseRequests.push(api.listA2aPeers(1, 100));
-    if (loadPeers && cached.categories == null) baseRequests.push(api.listCategories("agent"));
-    // agent 不缓存，每次 agentId 变化都重新获取
-    if (loadAgent) baseRequests.push(api.getAgent(loadAgent));
+    type Slot =
+      | { kind: "kb" }
+      | { kind: "flow" }
+      | { kind: "prompt" }
+      | { kind: "model" }
+      | { kind: "skill" }
+      | { kind: "mcp" }
+      | { kind: "toolCatalog" }
+      | { kind: "agents" }
+      | { kind: "a2aPeers" }
+      | { kind: "categories" }
+      | { kind: "agent" };
 
-    void Promise.all(baseRequests).then((results) => {
-      let i = 0;
-      const maybeKb = results[i++];
-      const maybeFlow = results[i++];
-      const maybePrompt = results[i++];
-      const maybeModel = results[i++];
-      const maybeSkill = results[i++];
-      const maybeMcp = results[i++];
+    const slots: Slot[] = [];
+    const requests: Promise<unknown>[] = [];
 
-      if (maybeKb && !cached.kbs) { cached.kbs = (maybeKb as { items: KnowledgeBase[] }).items; setKbs(cached.kbs); }
-      if (maybeFlow && !cached.flows) { cached.flows = (maybeFlow as { items: Flow[] }).items.filter((f) => f.status === "published"); setFlows(cached.flows); }
-      if (maybePrompt && !cached.prompts) { cached.prompts = (maybePrompt as { items: PromptTemplate[] }).items; setPrompts(cached.prompts); }
-      if (maybeModel && !cached.models) { cached.models = maybeModel as ModelConfig[]; setModels(cached.models); }
-      if (maybeSkill && !cached.skills) { cached.skills = (maybeSkill as { items: SkillPackage[] }).items.filter((s) => s.is_active); setSkills(cached.skills); }
-      if (maybeMcp && !cached.mcps) { cached.mcps = (maybeMcp as { items: McpService[] }).items; setMcps(cached.mcps); }
+    const pushCachedOrFetch = (kind: Slot["kind"], hit: boolean, fetch: () => Promise<unknown>) => {
+      slots.push({ kind } as Slot);
+      requests.push(hit ? Promise.resolve(null) : fetch());
+    };
 
-      if (loadToolCatalog && results[i] && !cached.toolCatalog) { cached.toolCatalog = results[i] as ToolCatalogItem[]; setToolCatalog(cached.toolCatalog); i++; }
-      if (loadPeers && results[i] && !cached.agents) { cached.agents = (results[i] as { items: Agent[] }).items; setAllAgents(cached.agents); i++; }
-      if (loadPeers && results[i] && !cached.a2aPeers) { cached.a2aPeers = (results[i] as { items: A2aPeer[] }).items.filter((p) => p.status === "active"); setA2aPeers(cached.a2aPeers); i++; }
-      if (loadPeers && results[i] && !cached.categories) { cached.categories = results[i] as SysCategory[]; setCategories(cached.categories); i++; }
-      if (loadAgent && results[i] != null) setAgent(results[i] as Agent);
+    pushCachedOrFetch("kb", cached.kbs != null, () => api.listKbs(1, 100));
+    pushCachedOrFetch("flow", cached.flows != null, () => api.listFlows(1, 100));
+    pushCachedOrFetch("prompt", cached.prompts != null, () => api.listPromptTemplates(1, 100));
+    pushCachedOrFetch("model", cached.models != null, () => api.listModelConfigs());
+    pushCachedOrFetch("skill", cached.skills != null, () => api.listSkillPackages(1, 100));
+    pushCachedOrFetch("mcp", cached.mcps != null, () => api.listMcpServices(1, 100));
 
-      setLoading(false);
-    }).catch(() => {
-      setLoading(false);
-    });
+    if (loadToolCatalog) pushCachedOrFetch("toolCatalog", cached.toolCatalog != null, () => api.listToolCatalog());
+    if (loadPeers) {
+      pushCachedOrFetch("agents", cached.agents != null, () => api.listAgents(1, 100));
+      pushCachedOrFetch("a2aPeers", cached.a2aPeers != null, () => api.listA2aPeers(1, 100));
+      pushCachedOrFetch("categories", cached.categories != null, () => api.listCategories("agent"));
+    }
+    if (loadAgent) {
+      slots.push({ kind: "agent" });
+      requests.push(api.getAgent(loadAgent));
+    }
+
+    let cancelled = false;
+    void Promise.all(requests)
+      .then((results) => {
+        if (cancelled) return;
+        results.forEach((result, idx) => {
+          const kind = slots[idx]?.kind;
+          if (!kind || result == null) return;
+          switch (kind) {
+            case "kb":
+              if (!cached.kbs) {
+                cached.kbs = (result as { items: KnowledgeBase[] }).items;
+                setKbs(cached.kbs);
+              }
+              break;
+            case "flow":
+              if (!cached.flows) {
+                cached.flows = (result as { items: Flow[] }).items.filter((f) => f.status === "published");
+                setFlows(cached.flows);
+              }
+              break;
+            case "prompt":
+              if (!cached.prompts) {
+                cached.prompts = (result as { items: PromptTemplate[] }).items;
+                setPrompts(cached.prompts);
+              }
+              break;
+            case "model":
+              if (!cached.models) {
+                cached.models = result as ModelConfig[];
+                setModels(cached.models);
+              }
+              break;
+            case "skill":
+              if (!cached.skills) {
+                cached.skills = (result as { items: SkillPackage[] }).items.filter((s) => s.is_active);
+                setSkills(cached.skills);
+              }
+              break;
+            case "mcp":
+              if (!cached.mcps) {
+                cached.mcps = (result as { items: McpService[] }).items;
+                setMcps(cached.mcps);
+              }
+              break;
+            case "toolCatalog":
+              if (!cached.toolCatalog) {
+                cached.toolCatalog = result as ToolCatalogItem[];
+                setToolCatalog(cached.toolCatalog);
+              }
+              break;
+            case "agents":
+              if (!cached.agents) {
+                cached.agents = (result as { items: Agent[] }).items;
+                setAllAgents(cached.agents);
+              }
+              break;
+            case "a2aPeers":
+              if (!cached.a2aPeers) {
+                cached.a2aPeers = (result as { items: A2aPeer[] }).items.filter((p) => p.status === "active");
+                setA2aPeers(cached.a2aPeers);
+              }
+              break;
+            case "categories":
+              if (!cached.categories) {
+                cached.categories = result as SysCategory[];
+                setCategories(cached.categories);
+              }
+              break;
+            case "agent":
+              if (isAgentDetail(result) && (!loadAgent || result.id === loadAgent)) {
+                setAgent(result);
+              }
+              break;
+          }
+        });
+        setLoading(false);
+      })
+      .catch(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [when, loadAgent, loadToolCatalog, loadPeers]);
 
   return { kbs, flows, prompts, models, skills, mcps, toolCatalog, allAgents, a2aPeers, categories, agent, setAgent, loading };
