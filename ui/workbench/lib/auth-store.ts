@@ -75,7 +75,7 @@ export function useRequireAuth(): { ready: boolean; token: string | null; user: 
 
   useEffect(() => {
     if (!hydrated) return;
-    if (!token) router.replace("/login");
+    if (!token) router.replace("/login/");
   }, [hydrated, token, router]);
 
   return { ready: hydrated && !!token, token: hydrated ? token : null, user };

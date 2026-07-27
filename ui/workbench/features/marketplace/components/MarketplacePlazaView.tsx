@@ -41,7 +41,7 @@ function MarketplaceInstallSuccessBanner({ result, onDismiss }: { result: AppIns
         {result.agent_id ? (
           <li>
             智能体 →{" "}
-            <Link href="/workbench/agents/chat" className="underline">
+            <Link href="/workbench/agents/chat/" className="underline">
               去对话
             </Link>
           </li>

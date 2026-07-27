@@ -44,7 +44,7 @@ export const MEMBER_ROLE_LABELS: Record<string, string> = {
 };
 
 export const AI_CARDS = [
-  { label: "AI 对话", desc: "在智能体中生成文案、脚本、设计说明", href: "/workbench/agents/chat", icon: "💬" },
+  { label: "AI 对话", desc: "在智能体中生成文案、脚本、设计说明", href: "/workbench/agents/chat/", icon: "💬" },
   { label: "知识库管理", desc: "管理品牌手册、参考资料库", href: "/workbench/knowledge-base", icon: "📚" },
   { label: "工作流编排", desc: "编排审批、创作流水线", href: "/workbench/flows", icon: "🔄" },
 ];

@@ -8,7 +8,7 @@ import type { DashboardPageVm } from "@/features/dashboard/hooks/use-dashboard-p
 const DASHBOARD_PAGE_DESC = "AI 能力资源一览，快速进入常用功能";
 
 const DASHBOARD_QUICK_LINKS = [
-  { href: "/workbench/agents/chat", label: "对话工作台", desc: "与智能体对话调试" },
+  { href: "/workbench/agents/chat/", label: "对话工作台", desc: "与智能体对话调试" },
   { href: "/workbench/agents", label: "智能体", desc: "查看与管理智能体" },
   { href: "/workbench/kb", label: "知识库", desc: "文档与检索能力" },
   { href: "/workbench/flows", label: "流程编排", desc: "可视化编排与发布" },

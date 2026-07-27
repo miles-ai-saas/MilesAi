@@ -25,9 +25,11 @@ export default function AgentsChatPage() {
 function AgentsChatMain() {
   const vm = useAgentsChatPage();
 
-  // 从智能体列表「对话」入口进入时 URL 已带 agent，不必等整表 listAgents
-  const waitingDefaultAgent = !vm.selectedAgent && vm.list.loading;
-  if (!vm.ready || waitingDefaultAgent) {
+  // 鉴权未完成才全屏等待；有 URL agent 或已选出智能体后不再因 list 刷新回到 loading（避免 remount 循环）
+  if (!vm.ready) {
+    return <AgentsChatLoading />;
+  }
+  if (!vm.selectedAgent && vm.list.loading) {
     return <AgentsChatLoading />;
   }
 

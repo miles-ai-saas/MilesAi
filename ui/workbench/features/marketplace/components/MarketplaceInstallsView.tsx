@@ -76,7 +76,7 @@ export function MarketplaceInstallsView({ vm }: { vm: MarketplacePageVm }) {
                     </Link>
                   ) : null}
                   {ins.agent_id ? (
-                    <Link href="/workbench/agents/chat" className="hover:underline">
+                    <Link href="/workbench/agents/chat/" className="hover:underline">
                       智能体
                     </Link>
                   ) : null}

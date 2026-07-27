@@ -39,12 +39,28 @@ export function agentsChatUrlMatches(href: string): boolean {
   return true;
 }
 
+/**
+ * 更新对话页 URL。
+ * 同 path 只改 query 时用 history.replaceState，避免 Next router.replace
+ * 在静态导出 + useSearchParams 下整页 remount，从而反复 listAgents。
+ */
 export function replaceAgentsChat(
   router: { replace: (href: string) => void },
   params?: URLSearchParams | Record<string, string | null | undefined>,
 ): void {
   const href = buildAgentsChatHref(params);
+  if (typeof window === "undefined") {
+    router.replace(href);
+    return;
+  }
   if (agentsChatUrlMatches(href)) return;
+
+  const next = new URL(href, window.location.origin);
+  const samePath = normalizePathname(window.location.pathname) === normalizePathname(next.pathname);
+  if (samePath) {
+    window.history.replaceState(window.history.state, "", href);
+    return;
+  }
   router.replace(href);
 }
 

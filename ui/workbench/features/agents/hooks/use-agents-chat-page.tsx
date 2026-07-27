@@ -44,15 +44,19 @@ export function useAgentsChatPage() {
     pageSize: 30,
   });
 
+  const listedSelected = useMemo(
+    () => list.items.find((a) => a.id === selectedAgent) ?? null,
+    [list.items, selectedAgent],
+  );
+
   // URL / 选中智能体变化时：优先用列表项，否则按需 getAgent，避免整表阻塞对话
   useEffect(() => {
     if (!ready || !selectedAgent) {
       setAgentDetail(null);
       return;
     }
-    const fromList = list.items.find((a) => a.id === selectedAgent);
-    if (fromList) {
-      setAgentDetail(fromList);
+    if (listedSelected) {
+      setAgentDetail(listedSelected);
       return;
     }
     let cancelled = false;
@@ -67,7 +71,7 @@ export function useAgentsChatPage() {
     return () => {
       cancelled = true;
     };
-  }, [ready, selectedAgent, list.items]);
+  }, [ready, selectedAgent, listedSelected]);
 
   const syncUrl = useCallback(
     (agentId: string, convId?: string) => {
@@ -108,9 +112,7 @@ export function useAgentsChatPage() {
     setSelectedTurnIndex,
   });
 
-  const selected = useMemo(() => {
-    return list.items.find((a) => a.id === selectedAgent) ?? agentDetail;
-  }, [agentDetail, list.items, selectedAgent]);
+  const selected = listedSelected ?? agentDetail;
   const carryForwardMedia = agentCarryForwardMediaEnabled(selected?.config);
 
   const toolSlugs: string[] = useMemo(() => {

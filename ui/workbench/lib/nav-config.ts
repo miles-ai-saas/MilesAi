@@ -46,7 +46,7 @@ export const WORKBENCH_NAV: NavGroup[] = [
     title: "智能体",
     items: [
       { href: "/workbench/agents", label: "智能体" },
-      { href: "/workbench/agents/chat", label: "对话工作台" },
+      { href: "/workbench/agents/chat/", label: "对话工作台" },
     ],
   },
   {
