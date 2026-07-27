@@ -32,4 +32,12 @@ describe("agents-chat-href", () => {
     expect(router.replace).not.toHaveBeenCalled();
     expect(window.location.search).toContain("agent=a1");
   });
+
+  it("replaceAgentsChat never calls router.replace", () => {
+    window.history.replaceState({}, "", "/workbench/dashboard/");
+    const router = { replace: vi.fn(), push: vi.fn() };
+    replaceAgentsChat(router, { agent: "a1" });
+    expect(router.replace).not.toHaveBeenCalled();
+    expect(window.location.pathname + window.location.search).toContain("agents/chat");
+  });
 });

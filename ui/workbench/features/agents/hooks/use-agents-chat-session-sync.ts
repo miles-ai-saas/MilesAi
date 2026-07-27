@@ -52,6 +52,8 @@ export function useAgentsChatSessionSync({
   const { requestConfirm, confirmDialog } = useConfirmAction();
   const syncUrlRef = useRef(syncUrl);
   syncUrlRef.current = syncUrl;
+  /** 每个 agent 只自动 bootstrap 一次，避免 merge/URL 写回触发重复建会话 */
+  const bootstrappedAgentRef = useRef<string | null>(null);
 
   const refreshSessions = useCallback((agentId: string) => {
     setSessions(listSessions(agentId));
@@ -146,8 +148,35 @@ export function useAgentsChatSessionSync({
     }
   }, [listDefaultAgentId, selectedAgent, setSelectedAgent]);
 
+  // 顺序：选定 agent → 本地会话落 UI → 写 URL（replaceState）→ 后台合并服务端会话
+  // 每个 agent 只 syncUrl + merge 一次；重复 effect 只刷新 UI，避免反复建会话
   useEffect(() => {
-    if (!selectedAgent) return;
+    if (!selectedAgent) {
+      bootstrappedAgentRef.current = null;
+      return;
+    }
+
+    const isNewAgent = bootstrappedAgentRef.current !== selectedAgent;
+    if (isNewAgent) {
+      bootstrappedAgentRef.current = selectedAgent;
+    }
+
+    refreshSessions(selectedAgent);
+
+    let session: ChatSession | null = null;
+    if (convFromUrl) {
+      session = getSession(selectedAgent, convFromUrl);
+      if (session) setActiveSessionId(selectedAgent, convFromUrl);
+    }
+    if (!session) {
+      session = ensureActiveSession(selectedAgent);
+    }
+    loadSessionIntoUi(selectedAgent, session.id);
+
+    if (!isNewAgent) return;
+
+    syncUrlRef.current(selectedAgent, session.id);
+
     let cancelled = false;
     void (async () => {
       try {
@@ -160,23 +189,6 @@ export function useAgentsChatSessionSync({
     return () => {
       cancelled = true;
     };
-  }, [refreshSessions, selectedAgent]);
-
-  useEffect(() => {
-    if (!selectedAgent) return;
-    refreshSessions(selectedAgent);
-
-    let session: ChatSession | null = null;
-    if (convFromUrl) {
-      session = getSession(selectedAgent, convFromUrl);
-      if (session) setActiveSessionId(selectedAgent, convFromUrl);
-    }
-    if (!session) {
-      session = ensureActiveSession(selectedAgent);
-    }
-    loadSessionIntoUi(selectedAgent, session.id);
-    // 用 ref，避免 syncUrl 引用变化反复触发本 effect（OSS trailingSlash 下会打满 listAgents）
-    syncUrlRef.current(selectedAgent, session.id);
   }, [selectedAgent, convFromUrl, refreshSessions, loadSessionIntoUi]);
 
   const handleNewSession = useCallback(

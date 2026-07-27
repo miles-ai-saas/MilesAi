@@ -25,11 +25,8 @@ export default function AgentsChatPage() {
 function AgentsChatMain() {
   const vm = useAgentsChatPage();
 
-  // 鉴权未完成才全屏等待；有 URL agent 或已选出智能体后不再因 list 刷新回到 loading（避免 remount 循环）
+  // 只等鉴权。不要等 listAgents：全屏 loading 会在 URL/Suspense remount 时反复触发请求循环
   if (!vm.ready) {
-    return <AgentsChatLoading />;
-  }
-  if (!vm.selectedAgent && vm.list.loading) {
     return <AgentsChatLoading />;
   }
 
