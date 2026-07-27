@@ -4,12 +4,17 @@
  */
 
 import { api } from "@/lib/api";
-import { effectiveArtifactStatus, generativeJobToArtifacts } from "@/lib/generative-jobs";
+import { generativeJobToArtifacts } from "@/lib/generative-jobs";
+import { effectiveArtifactStatus } from "@/lib/generative-jobs";
 import {
+  getSession,
   replaceJobArtifactsInSession,
+  updateSession,
   type ChatMessage,
   type ChatMessageArtifact,
 } from "@/features/agents/lib/chat-sessions";
+
+const PENDING_SUBMIT_RE = /生图任务已提交|生视频任务已提交|完成后将自动展示/;
 
 function collectInFlightJobIds(messages: ChatMessage[]): string[] {
   const ids: string[] = [];
@@ -27,13 +32,21 @@ function collectInFlightJobIds(messages: ChatMessage[]): string[] {
   return ids;
 }
 
-function applyJobToUiMessages(messages: ChatMessage[], jobId: string, nextArts: ChatMessageArtifact[]): ChatMessage[] {
+function patchMessagesForJob(
+  messages: ChatMessage[],
+  jobId: string,
+  nextArts: ChatMessageArtifact[],
+): ChatMessage[] {
   let touched = false;
   const next = messages.map((m) => {
     if (!m.artifacts?.some((a) => a.job_id === jobId)) return m;
     touched = true;
+    const succeeded = nextArts.some((a) => a.status === "success");
+    const content =
+      m.role === "assistant" && succeeded && PENDING_SUBMIT_RE.test(m.content) ? "生成完成" : m.content;
     return {
       ...m,
+      content,
       artifacts: [...m.artifacts.filter((a) => a.job_id !== jobId), ...nextArts],
     };
   });
@@ -56,8 +69,18 @@ export async function reconcileInFlightGenerativeArtifacts(
       if (job.status === "pending" || job.status === "running") continue;
       const nextArts = generativeJobToArtifacts(job) as ChatMessageArtifact[];
       if (!nextArts.length) continue;
+
       replaceJobArtifactsInSession(agentId, sessionId, jobId, nextArts);
-      nextUi = applyJobToUiMessages(nextUi, jobId, nextArts);
+      nextUi = patchMessagesForJob(nextUi, jobId, nextArts);
+
+      // 正文「已提交」占位一并写回 localStorage
+      const stored = getSession(agentId, sessionId);
+      if (stored) {
+        const patchedStore = patchMessagesForJob(stored.messages, jobId, nextArts);
+        if (patchedStore !== stored.messages) {
+          updateSession(agentId, sessionId, { messages: patchedStore });
+        }
+      }
     } catch {
       /* 离线或 job 已删：保留本地展示 */
     }

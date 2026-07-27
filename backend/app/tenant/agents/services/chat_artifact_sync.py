@@ -11,6 +11,7 @@ from uuid import UUID
 
 from sqlalchemy import String, cast, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm.attributes import flag_modified
 
 from app.models.agent.chat_call import AgentChatCall
 from app.models.agent.chat_session import AgentChatMessage, AgentChatSession
@@ -134,6 +135,7 @@ async def sync_job_result_to_chat_messages(db: AsyncSession, job: GenerativeJob)
         if not _job_id_in_payload(row.artifacts, job_id) and not _job_id_in_payload(row.steps, job_id):
             continue
         row.artifacts = _replace_job_artifacts(row.artifacts if isinstance(row.artifacts, list) else [], job_id, next_arts)
+        flag_modified(row, "artifacts")
         patched += 1
 
     if patched:
@@ -240,6 +242,7 @@ async def hydrate_chat_messages_artifacts(db: AsyncSession, messages: list[Agent
             msg_changed = True
         if msg_changed:
             msg.artifacts = next_arts
+            flag_modified(msg, "artifacts")
             changed = True
 
     if changed:

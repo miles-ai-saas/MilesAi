@@ -44,9 +44,35 @@ def _media_payload(body: ChatRequest) -> list[dict] | None:
 
 
 def _artifacts_payload(response: ChatResponse) -> list[dict] | None:
-    if not response.artifacts:
-        return None
-    return [a.model_dump(mode="json") for a in response.artifacts]
+    """持久化 artifacts；若仅有 generative_jobs 占位也要写入 job_id，便于任务完成后回写。"""
+    arts: list[dict] = []
+    seen: set[str] = set()
+    for a in response.artifacts or []:
+        dumped = a.model_dump(mode="json")
+        arts.append(dumped)
+        jid = dumped.get("job_id")
+        if jid:
+            seen.add(str(jid))
+    for job in response.generative_jobs or []:
+        if isinstance(job, dict):
+            jid = str(job.get("id") or "")
+            kind = job.get("kind") or "image"
+            status = job.get("status") or "pending"
+        else:
+            jid = str(getattr(job, "id", "") or "")
+            kind = getattr(job, "kind", None) or "image"
+            status = getattr(job, "status", None) or "pending"
+        if not jid or jid in seen:
+            continue
+        seen.add(jid)
+        arts.append(
+            {
+                "kind": "image" if kind == "image" else "video",
+                "job_id": jid,
+                "status": status if status in ("pending", "running", "success", "failed", "cancelled") else "pending",
+            }
+        )
+    return arts or None
 
 
 class AgentChatSessionService(BaseService):

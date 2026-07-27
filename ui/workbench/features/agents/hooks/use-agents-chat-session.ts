@@ -68,15 +68,33 @@ export function useAgentsChatSession(
     setSessionTitle(session.title);
     setHasMore(session.messages.length > latest.length || (session.messageCount ?? 0) > session.messages.length);
     clearComposer?.();
-    void reconcileInFlightGenerativeArtifacts(agent, sessionId, latest).then((reconciled) => {
-      if (reconciled === latest) return;
-      setConversationId((cid) => {
-        if (cid === sessionId) setMessages(reconciled);
-        return cid;
-      });
-    });
     return true;
   }, []);
+
+  /** 打开会话：先拉服务端（hydrate），再展示，再 reconcile 终态任务，避免刷新后仍显示排队中。 */
+  const openSession = useCallback(
+    async (agent: string, sessionId: string, clearComposer?: () => void, isCancelled?: () => boolean) => {
+      setActiveSessionId(agent, sessionId);
+      applySessionToUi(agent, sessionId, clearComposer);
+      await fetchServerSessionIntoLocal(agent, sessionId);
+      if (isCancelled?.()) return;
+      const session = getSession(agent, sessionId);
+      if (!session) {
+        if (!isCancelled?.()) clearConversationUi();
+        return;
+      }
+      setConversationId(session.id);
+      setSessionTitle(session.title);
+      const latest = getLatestMessages(session);
+      setHasMore(session.messages.length > latest.length || (session.messageCount ?? 0) > session.messages.length);
+      setMessages(latest);
+      refreshSessions(agent);
+      const reconciled = await reconcileInFlightGenerativeArtifacts(agent, sessionId, latest);
+      if (isCancelled?.()) return;
+      setMessages(reconciled);
+    },
+    [applySessionToUi, clearConversationUi, refreshSessions],
+  );
 
   // agent 变化：刷新列表并后台合并
   useEffect(() => {
@@ -107,18 +125,11 @@ export function useAgentsChatSession(
       return;
     }
     let cancelled = false;
-    setActiveSessionId(agentId, conversationIdFromUrl);
-    applySessionToUi(agentId, conversationIdFromUrl);
-    void (async () => {
-      await fetchServerSessionIntoLocal(agentId, conversationIdFromUrl);
-      if (cancelled) return;
-      applySessionToUi(agentId, conversationIdFromUrl);
-      refreshSessions(agentId);
-    })();
+    void openSession(agentId, conversationIdFromUrl, undefined, () => cancelled);
     return () => {
       cancelled = true;
     };
-  }, [agentId, conversationIdFromUrl, applySessionToUi, refreshSessions, clearConversationUi]);
+  }, [agentId, conversationIdFromUrl, openSession, clearConversationUi]);
 
   const messagesRef = useRef(messages);
   messagesRef.current = messages;
@@ -188,10 +199,10 @@ export function useAgentsChatSession(
     (sessionId: string, onClosePanels: () => void, clearComposer?: () => void) => {
       if (!agentId) return;
       onClosePanels();
-      applySessionToUi(agentId, sessionId, clearComposer);
       routeRef.current.selectConversation(sessionId);
+      void openSession(agentId, sessionId, clearComposer);
     },
-    [agentId, applySessionToUi],
+    [agentId, openSession],
   );
 
   const handleRenameSession = useCallback(
@@ -238,10 +249,10 @@ export function useAgentsChatSession(
   const handleOpenTraceFromRecord = useCallback(
     (sessionId: string) => {
       if (!agentId) return;
-      applySessionToUi(agentId, sessionId);
       routeRef.current.selectConversation(sessionId);
+      void openSession(agentId, sessionId);
     },
-    [agentId, applySessionToUi],
+    [agentId, openSession],
   );
 
   const onSelectAgent = useCallback((id: string, onClosePanel: () => void) => {

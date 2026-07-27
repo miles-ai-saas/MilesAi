@@ -143,7 +143,15 @@ export function useAgentsChatGenerativeStatus({ setMessages, wsClientRef, select
     (job: GenerativeJobOut) => {
       const nextArts = generativeJobToArtifacts(job);
       if (!nextArts.length) return;
-      setMessages((prev) => applyToLastAssistant(prev, (arts) => replaceArtifactsForJob(arts, job.id, nextArts)));
+      setMessages((prev) => {
+        const patched = applyToLastAssistant(prev, (arts) => replaceArtifactsForJob(arts, job.id, nextArts));
+        return patched.map((m, i) => {
+          if (i !== patched.length - 1 || m.role !== "assistant") return m;
+          if (job.status !== "success") return m;
+          if (!/生图任务已提交|生视频任务已提交|完成后将自动展示/.test(m.content)) return m;
+          return { ...m, content: "生成完成" };
+        });
+      });
       persistJobArts(job.id, nextArts);
     },
     [persistJobArts, setMessages],
