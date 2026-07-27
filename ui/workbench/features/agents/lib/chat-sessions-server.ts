@@ -33,15 +33,20 @@ function shouldReplaceLocal(local: ChatSession, serverUpdatedMs: number, serverC
 }
 
 export async function mergeServerChatSessions(agentId: string): Promise<void> {
-  const page = await api.listAgentChatSessions(agentId, 1, 80);
+  // 首屏只拉最近一页摘要，且最多补齐少量详情，避免本地已有大量会话时刷爆 API / localStorage
+  const page = await api.listAgentChatSessions(agentId, 1, 30);
+  let fetched = 0;
+  const MAX_DETAIL_FETCH = 8;
   for (const summary of page.items) {
     const local = getSession(agentId, summary.id);
     const serverUpdatedMs = new Date(summary.updated_at).getTime();
     if (local && !shouldReplaceLocal(local, serverUpdatedMs, summary.message_count)) {
       continue;
     }
+    if (fetched >= MAX_DETAIL_FETCH) break;
     const detail = await api.getAgentChatSession(agentId, summary.id);
     importServerSession(agentId, detail);
+    fetched += 1;
   }
 }
 

@@ -54,6 +54,10 @@ type Store = Record<string, AgentSessionBucket>;
 
 const STORAGE_KEY = "agents-chat-sessions-v1";
 const MAX_SESSIONS_PER_AGENT = 80;
+/** 单会话本地最多保留的消息条数（超出由服务端游标补齐），避免 localStorage 撑爆后写失败引发会话/URL 抖动 */
+const MAX_MESSAGES_PER_SESSION = 80;
+/** 超过此字节数视为脏/过大，丢弃后重建，避免配额写失败导致反复新建会话 */
+const MAX_STORE_CHARS = 2_500_000;
 export const MESSAGES_PAGE_SIZE = 10;
 export const MAX_SESSION_TITLE_LENGTH = 64;
 
@@ -79,21 +83,74 @@ export function getPreviousMessages(session: ChatSession, uiMessageCount: number
   return session.messages.slice(start, end);
 }
 
+function trimSessionMessages(session: ChatSession): ChatSession {
+  if (session.messages.length <= MAX_MESSAGES_PER_SESSION) return session;
+  const kept = session.messages.slice(-MAX_MESSAGES_PER_SESSION);
+  return {
+    ...session,
+    messages: kept,
+    messageCount: Math.max(session.messageCount ?? session.messages.length, session.messages.length),
+  };
+}
+
+function pruneStore(store: Store): Store {
+  const next: Store = {};
+  for (const [agentId, b] of Object.entries(store)) {
+    const sessions = [...(b.sessions ?? [])]
+      .sort((a, c) => c.updatedAt - a.updatedAt)
+      .slice(0, Math.min(MAX_SESSIONS_PER_AGENT, 20))
+      .map(trimSessionMessages);
+    const active =
+      b.activeSessionId && sessions.some((s) => s.id === b.activeSessionId)
+        ? b.activeSessionId
+        : (sessions[0]?.id ?? null);
+    next[agentId] = { activeSessionId: active, sessions };
+  }
+  return next;
+}
+
 function loadStore(): Store {
   if (typeof window === "undefined") return {};
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? (JSON.parse(raw) as Store) : {};
+    if (!raw) return {};
+    if (raw.length > MAX_STORE_CHARS) {
+      localStorage.removeItem(STORAGE_KEY);
+      return {};
+    }
+    const parsed = JSON.parse(raw) as Store;
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      localStorage.removeItem(STORAGE_KEY);
+      return {};
+    }
+    return parsed;
   } catch {
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch {
+      /* ignore */
+    }
     return {};
   }
 }
 
 function saveStore(store: Store) {
+  const write = (data: Store) => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  };
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
+    write(store);
   } catch {
-    /* ignore quota */
+    try {
+      const pruned = pruneStore(store);
+      write(pruned);
+    } catch {
+      try {
+        localStorage.removeItem(STORAGE_KEY);
+      } catch {
+        /* ignore */
+      }
+    }
   }
 }
 
@@ -181,11 +238,12 @@ export function updateSession(agentId: string, sessionId: string, patch: Partial
   const b = bucket(agentId, store);
   const idx = b.sessions.findIndex((s) => s.id === sessionId);
   if (idx < 0) return;
-  b.sessions[idx] = {
+  const merged = {
     ...b.sessions[idx],
     ...patch,
     updatedAt: patch.updatedAt ?? Date.now(),
   };
+  b.sessions[idx] = patch.messages ? trimSessionMessages(merged) : merged;
   saveStore(store);
 }
 
@@ -193,7 +251,8 @@ export function updateSession(agentId: string, sessionId: string, patch: Partial
 export function importSession(agentId: string, session: ChatSession) {
   const store = loadStore();
   const b = bucket(agentId, store);
-  b.sessions = [session, ...b.sessions.filter((s) => s.id !== session.id)].slice(0, MAX_SESSIONS_PER_AGENT);
+  const trimmed = trimSessionMessages(session);
+  b.sessions = [trimmed, ...b.sessions.filter((s) => s.id !== session.id)].slice(0, MAX_SESSIONS_PER_AGENT);
   saveStore(store);
 }
 
