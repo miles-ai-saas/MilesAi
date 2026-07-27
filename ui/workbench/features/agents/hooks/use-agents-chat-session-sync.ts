@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { AppRouterInstance } from "next/dist/shared/lib/app-router-context.shared-runtime";
 import {
   createSession,
@@ -19,6 +19,7 @@ import {
   type ChatSession,
 } from "@/features/agents/lib/chat-sessions";
 import { fetchServerSessionIntoLocal, mapServerMessages, mergeMessages, mergeServerChatSessions } from "@/features/agents/lib/chat-sessions-server";
+import { replaceAgentsChat } from "@/features/agents/lib/agents-chat-href";
 import { api } from "@/lib/api";
 import { useConfirmAction } from "@/hooks/use-confirm-action";
 
@@ -49,6 +50,8 @@ export function useAgentsChatSessionSync({
   const [hasMore, setHasMore] = useState(false);
   const [sessionError, setSessionError] = useState<string | null>(null);
   const { requestConfirm, confirmDialog } = useConfirmAction();
+  const syncUrlRef = useRef(syncUrl);
+  syncUrlRef.current = syncUrl;
 
   const refreshSessions = useCallback((agentId: string) => {
     setSessions(listSessions(agentId));
@@ -172,8 +175,9 @@ export function useAgentsChatSessionSync({
       session = ensureActiveSession(selectedAgent);
     }
     loadSessionIntoUi(selectedAgent, session.id);
-    syncUrl(selectedAgent, session.id);
-  }, [selectedAgent, convFromUrl, refreshSessions, loadSessionIntoUi, syncUrl]);
+    // 用 ref，避免 syncUrl 引用变化反复触发本 effect（OSS trailingSlash 下会打满 listAgents）
+    syncUrlRef.current(selectedAgent, session.id);
+  }, [selectedAgent, convFromUrl, refreshSessions, loadSessionIntoUi]);
 
   const handleNewSession = useCallback(
     (clearComposer?: () => void) => {
@@ -255,9 +259,7 @@ export function useAgentsChatSessionSync({
     (id: string, onClosePanel: () => void) => {
       setSelectedAgent(id);
       onClosePanel();
-      const params = new URLSearchParams();
-      params.set("agent", id);
-      router.replace(`/workbench/agents/chat?${params.toString()}`);
+      replaceAgentsChat(router, { agent: id });
     },
     [router, setSelectedAgent],
   );

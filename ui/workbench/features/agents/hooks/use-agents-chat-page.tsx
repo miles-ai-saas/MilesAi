@@ -11,6 +11,7 @@ import { useInfiniteList } from "@/hooks/use-infinite-list";
 import { useAgentsChatLayout } from "@/features/agents/hooks/use-agents-chat-layout";
 import { useAgentsChatMessaging } from "@/features/agents/hooks/use-agents-chat-messaging";
 import { useAgentsChatSessionSync } from "@/features/agents/hooks/use-agents-chat-session-sync";
+import { replaceAgentsChat } from "@/features/agents/lib/agents-chat-href";
 
 export function useAgentsChatPage() {
   const router = useRouter();
@@ -20,6 +21,8 @@ export function useAgentsChatPage() {
   const tabFromUrl = searchParams.get("tab");
   const promptFromUrl = searchParams.get("prompt");
   const bizFromUrl = searchParams.get("biz");
+  const projectIdFromUrl = searchParams.get("projectId");
+  const wpIdFromUrl = searchParams.get("wpId");
   const { ready } = useRequireAuth();
 
   const [businessContext, setBusinessContext] = useState<BusinessContext | null>(null);
@@ -27,10 +30,10 @@ export function useAgentsChatPage() {
   const [videoDuration, setVideoDuration] = useState(5);
 
   useEffect(() => {
-    if (bizFromUrl === "1" || searchParams.get("projectId")) {
+    if (bizFromUrl === "1" || projectIdFromUrl) {
       setBusinessContext(loadBusinessContext());
     }
-  }, [bizFromUrl, searchParams]);
+  }, [bizFromUrl, projectIdFromUrl]);
 
   const [selectedAgent, setSelectedAgent] = useState<string>(agentFromUrl ?? "");
 
@@ -41,17 +44,19 @@ export function useAgentsChatPage() {
 
   const syncUrl = useCallback(
     (agentId: string, convId?: string) => {
-      const params = new URLSearchParams();
-      params.set("agent", agentId);
-      if (convId) params.set("conv", convId);
-      const projectId = searchParams.get("projectId");
-      const wpId = searchParams.get("wpId");
-      if (projectId) params.set("projectId", projectId);
-      if (wpId) params.set("wpId", wpId);
-      if (bizFromUrl === "1") params.set("biz", "1");
-      router.replace(`/workbench/agents/chat?${params.toString()}`);
+      // 保留当前 tab，避免会话同步把工作台面板参数冲掉并引发反复 replace
+      const tab =
+        typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("tab") : tabFromUrl;
+      replaceAgentsChat(router, {
+        agent: agentId,
+        conv: convId,
+        tab: tab && tab !== "config" ? tab : null,
+        projectId: projectIdFromUrl,
+        wpId: wpIdFromUrl,
+        biz: bizFromUrl === "1" ? "1" : null,
+      });
     },
-    [router, searchParams, bizFromUrl],
+    [router, projectIdFromUrl, wpIdFromUrl, bizFromUrl, tabFromUrl],
   );
 
   const session = useAgentsChatSessionSync({

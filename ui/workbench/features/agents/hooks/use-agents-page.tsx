@@ -6,6 +6,7 @@ import { useCategoryTabs } from "@/components/category/useCategoryTabs";
 import { useConfirmAction } from "@/hooks/use-confirm-action";
 import { usePagedList } from "@/hooks/use-paged-list";
 import { useAgentMeta } from "@/features/agents/hooks/use-agent-meta";
+import { pushAgentsChat } from "@/features/agents/lib/agents-chat-href";
 import { api } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth-store";
 import { filterBySearch } from "@/lib/filter-search";
@@ -113,12 +114,12 @@ export function useAgentsPage() {
   };
 
   const onChat = (agent: Agent) => {
-    router.push(`/workbench/agents/chat?agent=${agent.id}`);
+    pushAgentsChat(router, { agent: agent.id });
   };
 
   const onDesign = (agent: Agent) => {
     setViewingId(null);
-    router.push(`/workbench/agents/chat?agent=${agent.id}&tab=config`);
+    pushAgentsChat(router, { agent: agent.id, tab: "config" });
   };
 
   return {

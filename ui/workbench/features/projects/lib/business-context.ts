@@ -61,7 +61,8 @@ export function buildAgentChatDeepLink(params: AgentChatDeepLinkParams): string 
   if (params.workPackageId) q.set("wpId", params.workPackageId);
   if (params.prompt) q.set("prompt", params.prompt);
   q.set("biz", "1");
-  return `/workbench/agents/chat?${q.toString()}`;
+  // 静态导出 trailingSlash: true
+  return `/workbench/agents/chat/?${q.toString()}`;
 }
 
 export function buildFlowsDeepLink(flowTemplateId?: string): string {

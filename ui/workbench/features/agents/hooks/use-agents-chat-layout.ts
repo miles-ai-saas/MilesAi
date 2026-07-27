@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { AppRouterInstance } from "next/dist/shared/lib/app-router-context.shared-runtime";
 import { defaultTraceTurnIndex, listTraceTurns } from "@/features/agents/lib/agent-trace";
+import { replaceAgentsChat } from "@/features/agents/lib/agents-chat-href";
 import type { ChatMessage } from "@/features/agents/lib/chat-sessions";
 
 export type AgentWorkbenchTab = "config" | "trace" | "schedule" | "architecture" | "api" | "call_records" | "stats";
@@ -122,11 +123,11 @@ export function useAgentsChatLayout({ tabFromUrl, selectedAgent, conversationId,
     (tab: AgentWorkbenchTab) => {
       setWorkbenchTab(tab);
       setPanelOpen(true);
-      const params = new URLSearchParams();
-      if (selectedAgent) params.set("agent", selectedAgent);
-      if (conversationId) params.set("conv", conversationId);
-      if (tab !== "config") params.set("tab", tab);
-      router.replace(`/workbench/agents/chat?${params.toString()}`);
+      replaceAgentsChat(router, {
+        agent: selectedAgent || null,
+        conv: conversationId || null,
+        tab: tab !== "config" ? tab : null,
+      });
     },
     [conversationId, router, selectedAgent],
   );
@@ -147,10 +148,10 @@ export function useAgentsChatLayout({ tabFromUrl, selectedAgent, conversationId,
 
   const closePanel = useCallback(() => {
     setPanelOpen(false);
-    const params = new URLSearchParams();
-    if (selectedAgent) params.set("agent", selectedAgent);
-    if (conversationId) params.set("conv", conversationId);
-    router.replace(`/workbench/agents/chat?${params.toString()}`);
+    replaceAgentsChat(router, {
+      agent: selectedAgent || null,
+      conv: conversationId || null,
+    });
   }, [conversationId, router, selectedAgent]);
 
   const closeTransientPanels = useCallback(() => {
