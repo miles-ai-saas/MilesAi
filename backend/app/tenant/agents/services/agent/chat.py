@@ -30,6 +30,31 @@ from app.tenant.hooks.models import HookScope, HookTrigger
 from app.tenant.hooks.services.runner import HookRunner
 
 
+def _generative_tools_system_hint(*, image_n: int = 1, video_duration: int = 5) -> str:
+    """按配置注入的生图/生视频协议；业务 system prompt 不应再手写 tool_call 规则。
+
+    张数 / 时长以用户输入区参数为准，注入时写明当前值，供模型填入 tool 参数。
+    """
+    dur_hint = (
+        f"\n若用户要求生成视频：调用 generate_video；duration 取用户输入区当前值 {video_duration}。"
+        if video_duration != 5
+        else "\n若用户要求生成视频：调用 generate_video；duration 以用户输入为准。"
+    )
+    return (
+        "\n【生成工具·平台协议】"
+        "\n你已挂载 generate_image（以及可用时的 generate_video）。"
+        "\n当用户要求生成图片时：必须通过 function calling 发起真正的 tool_call，"
+        "把画面描述写入参数 prompt；禁止在回复正文输出生图提示词、JSON、代码块或伪调用。"
+        "\n出图数量与尺寸由用户控制："
+        f"本次输入区指定 n={image_n}，调用 generate_image 时必须传入该 n；"
+        "size 仅在用户明确要求时填写，否则可省略（用模型默认）。"
+        "\n用户自然语言里若另行指定张数/尺寸，以用户当轮表述为准并覆盖输入区默认值。"
+        "\n注意：尺寸单边 ≥1280 或 n≥3 需用户二次确认；确认前勿重复调用。"
+        "\n同一轮用户消息仅允许调用一次 generate_image / generate_video。"
+        f"{dur_hint}"
+    )
+
+
 class AgentChatMixin:
     """对话路由与 RAG；依赖 AgentCrudMixin 的加载与 prompt 解析。"""
 
@@ -403,14 +428,9 @@ class AgentChatMixin:
                 base = await self.resolve_system_prompt(agent)
                 kb_hint = ""
                 if cfg.get("enable_generative_tools"):
-                    n_hint = f"，张数为 {body.generative_image_n}" if body.generative_image_n != 1 else ""
-                    dur_hint = f"，时长为 {body.generative_video_duration}s" if body.generative_video_duration != 5 else ""
-                    kb_hint = (
-                        "\n【生成工具】你拥有 generate_image（生图）功能。"
-                        "\n当用户要求生成图片时，你必须通过 function calling 发起 generate_image 调用，"
-                        "\n将用户的描述作为 prompt 参数传入。不要输出任何文本说明或 JSON，直接发起 tool_call。"
-                        f"\n参数说明：prompt（画面描述，必填）、size（如 1024x1024）、n（张数{n_hint}，必传）。"
-                        f"\n注意：尺寸 >=1280 边长或 >=3 张需用户二次确认。同一轮对话中仅允许调用一次 generate_image，禁止重复调用。{dur_hint}"
+                    kb_hint = _generative_tools_system_hint(
+                        image_n=body.generative_image_n,
+                        video_duration=body.generative_video_duration,
                     )
                 # 将输入区参数注入 agent.config，供 handle_generate_image / handle_generate_video
                 # 在 LLM 未传 n/duration 时作为实际默认值使用
@@ -437,14 +457,9 @@ class AgentChatMixin:
             cfg = agent.config if isinstance(agent.config, dict) else {}
             kb_hint = f"\n【知识库】请使用 knowledge_search 工具检索；可用 kb_id：{', '.join(kb_ids)}"
             if cfg.get("enable_generative_tools"):
-                n_hint = f"，张数为 {body.generative_image_n}" if body.generative_image_n != 1 else ""
-                dur_hint = f"，时长为 {body.generative_video_duration}s" if body.generative_video_duration != 5 else ""
-                kb_hint += (
-                    "\n【生成工具】你拥有 generate_image（生图）功能。"
-                    "\n当用户要求生成图片时，你必须通过 function calling 发起 generate_image 调用，"
-                    "\n将用户的描述作为 prompt 参数传入。不要输出任何文本说明或 JSON，直接发起 tool_call。"
-                    f"\n参数说明：prompt（画面描述，必填）、size（如 1024x1024）、n（张数{n_hint}，必传）。"
-                    f"\n注意：尺寸 >=1280 边长或 >=3 张需用户二次确认。{dur_hint}"
+                kb_hint += _generative_tools_system_hint(
+                    image_n=body.generative_image_n,
+                    video_duration=body.generative_video_duration,
                 )
             # 将输入区参数注入 agent.config，供 handle_generate_image / handle_generate_video
             agent_config_with_defaults = dict(cfg)
