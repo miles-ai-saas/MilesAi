@@ -24,9 +24,10 @@ async def generate_dashscope_t2i(
     prompt: str,
     size: str,
     n: int = 1,
-    reference_image_url: str | None = None,
+    reference_image_data_url: str | None = None,
     progress: object | None = None,
 ) -> list[bytes]:
+    """与 openai/volcengine Provider 对齐：参考图参数名为 ``reference_image_data_url``。"""
     api_key = model.api_key_encrypted
     if not api_key:
         raise BadRequestError(f"模型「{model.name}」未配置 API Key")
@@ -36,9 +37,9 @@ async def generate_dashscope_t2i(
 
     wan_model = model.model_name or "wanx-v1"
     input_body: dict = {"prompt": prompt}
-    if reference_image_url:
+    if reference_image_data_url:
         # wanx-v1 等：垫图 ref_image（URL 或 data URL）
-        input_body["ref_image"] = reference_image_url
+        input_body["ref_image"] = reference_image_data_url
     body = {
         "model": wan_model,
         "input": input_body,
@@ -47,7 +48,7 @@ async def generate_dashscope_t2i(
             "n": min(max(n, 1), 4),
         },
     }
-    if reference_image_url:
+    if reference_image_data_url:
         body["parameters"]["ref_strength"] = 0.85
         body["parameters"]["ref_mode"] = "repaint"
 
