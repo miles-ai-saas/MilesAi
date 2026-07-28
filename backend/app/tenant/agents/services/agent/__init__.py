@@ -5,7 +5,10 @@ Agent 聚合：CRUD + 对话编排。
 --------
 - ``service.py``：``AgentService`` 门面（组合 CRUD / 对话 Mixin）。
 - ``crud.py``：元数据、列表/创建/更新/删除、``resolve_system_prompt``。
-- ``chat.py``：``chat`` / ``chat_as_child`` / ``rag_chat`` / 流程与 A2A 路由。
+- ``chat.py``：``AgentChatMixin`` 组合门面。
+- ``chat_entry.py``：``chat`` / ``chat_as_child`` 入口。
+- ``chat_rag.py``：``rag_chat`` / ``direct_chat`` / 流程 RunContext / A2A 增强。
+- ``chat_turn.py``：单轮收尾、RAG 路由解析、调用记录。
 - ``serialization.py``：``agent_out``、``should_use_skill_tools_with_kb``。
 
 不在此包内（位于 ``services/`` 根目录）
