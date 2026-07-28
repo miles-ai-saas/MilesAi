@@ -1,4 +1,5 @@
 """伪 tool_call 文本检测与参数提取（供 tool_agent 循环兜底）。"""
+
 from __future__ import annotations
 
 import ast
@@ -77,16 +78,12 @@ def _looks_like_tool_call_simulation(content: Any, tool_names: list[str]) -> boo
         if re.search(r"```(?:json)?\s*\{", content_stripped, re.DOTALL):
             return True
         # A2: 类似 "generate_image({\"prompt\": ...})" 的直接调用写法
-        tool_call_like = any(
-            re.search(rf"{re.escape(name)}\s*\(", content_stripped) for name in tool_names
-        )
+        tool_call_like = any(re.search(rf"{re.escape(name)}\s*\(", content_stripped) for name in tool_names)
         if tool_call_like:
             return True
         # A3: 输出含 "function"+"arguments"/"params" 键——典型的 function call JSON
         #     无论是否有中文提示，都应拦截
-        has_function_args = '"function"' in content_stripped and (
-            '"arguments"' in content_stripped or '"params"' in content_stripped
-        )
+        has_function_args = '"function"' in content_stripped and ('"arguments"' in content_stripped or '"params"' in content_stripped)
         if has_function_args:
             return True
 
@@ -118,6 +115,7 @@ def _looks_like_tool_call_simulation(content: Any, tool_names: list[str]) -> boo
 # ---------------------------------------------------------------------------
 # Python kwargs 解析：用 ast 替代正则，天然覆盖所有 Python 字面量语法
 # ---------------------------------------------------------------------------
+
 
 def _parse_as_python_kwargs(params_text: str) -> dict[str, Any] | None:
     """通过构造 ``_dummy(key=..., ...)`` 并用 ``ast`` 解析，
@@ -169,6 +167,7 @@ def _validate_and_clean(
 # ---------------------------------------------------------------------------
 # 从 LLM 文本输出中提取工具调用信息
 # ---------------------------------------------------------------------------
+
 
 def _extract_tool_params_from_text(
     content: str,

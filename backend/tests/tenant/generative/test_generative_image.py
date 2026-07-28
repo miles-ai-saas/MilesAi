@@ -50,7 +50,7 @@ def test_resolve_invoke_mode_explicit():
     assert resolve_invoke_mode(m, capability=ModelCapabilityType.IMAGE_GEN.value) == INVOKE_OPENAI_IMAGES
 
 
-def testartifacts_from_tool_output():
+def test_artifacts_from_tool_output():
     aid = uuid4()
     arts = artifacts_from_tool_output(
         {
@@ -64,7 +64,7 @@ def testartifacts_from_tool_output():
     assert arts[0].attachment_id == aid
 
 
-def testartifacts_from_tool_output_pending_job():
+def test_artifacts_from_tool_output_pending_job():
     jid = uuid4()
     arts = artifacts_from_tool_output(
         {
@@ -81,7 +81,7 @@ def testartifacts_from_tool_output_pending_job():
     assert arts[0].kind == "video"
 
 
-def testartifacts_from_tool_output_with_media_asset_id():
+def test_artifacts_from_tool_output_with_media_asset_id():
     aid = uuid4()
     mid = uuid4()
     arts = artifacts_from_tool_output(

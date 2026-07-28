@@ -1,4 +1,5 @@
 """LiteLLM 多轮 function calling 主循环。"""
+
 from __future__ import annotations
 
 import json
@@ -101,11 +102,13 @@ async def run_tool_calling_chat(
             confirm_message = str(output.get("message") if isinstance(output, dict) else output)
             confirm_jobs: list[dict] = []
             if isinstance(output, dict) and output.get("status") == "pending":
-                confirm_jobs.append({
-                    "id": output.get("generative_job_id", ""),
-                    "kind": output.get("kind", "image"),
-                    "status": "pending",
-                })
+                confirm_jobs.append(
+                    {
+                        "id": output.get("generative_job_id", ""),
+                        "kind": output.get("kind", "image"),
+                        "status": "pending",
+                    }
+                )
             return ChatResponse(
                 answer=confirm_message or f"工具 `{body.pending_tool_slug}` 已执行。",
                 steps=[
@@ -136,14 +139,18 @@ async def run_tool_calling_chat(
         user_msg,
     ]
     max_iter = int((agent.config or {}).get("max_tool_iterations", 5))
-    steps: list[dict] = [{"type": "tool_agent", "engine": "litellm_tools", "media_count": body_media_count, "media_resolved": len(media_parts), "model_type": model.model_type}]
+    steps: list[dict] = [
+        {"type": "tool_agent", "engine": "litellm_tools", "media_count": body_media_count, "media_resolved": len(media_parts), "model_type": model.model_type}
+    ]
     artifacts: list[ChatArtifact] = []
     _tool_sim_retried = False
     _tool_names = [t.name for t in tools]
     _tools_by_name = {t.name: t for t in tools}
 
     if body_media_count > 0 and model.model_type != "vision" and messages_contain_image(messages):
-        steps.append({"type": "multimodal_warning", "message": f"当前模型类型为 {model.model_type}（非 vision），图片可能无法被模型识别", "model_type": model.model_type})
+        steps.append(
+            {"type": "multimodal_warning", "message": f"当前模型类型为 {model.model_type}（非 vision），图片可能无法被模型识别", "model_type": model.model_type}
+        )
 
     for _ in range(max_iter):
         response = await _litellm_with_tools(model, messages, openai_tools, temperature=temperature)
@@ -168,7 +175,10 @@ async def run_tool_calling_chat(
                         # 无需确认：直接执行并返回结果
                         try:
                             output = await invoke_tool_with_context(
-                                db, ctx, slug, params,
+                                db,
+                                ctx,
+                                slug,
+                                params,
                                 confirmed=True,
                                 agent_id=agent_id,
                                 actor_user_id=ctx.user_id,
@@ -177,25 +187,29 @@ async def run_tool_calling_chat(
                         except Exception as exc:
                             steps.append({"type": "tool_simulation_corrected", "message": f"提取 JSON 参数后执行 {slug} 失败: {exc}，追加纠正提示"})
                             messages.append({"role": "assistant", "content": content})
-                            messages.append({
-                                "role": "user",
-                                "content": (
-                                    "你刚才输出的 JSON 无法被系统正确解析执行。"
-                                    "请直接通过 function calling 机制（tool_use）调用工具，"
-                                    "而不是在文字中输出 JSON 参数。"
-                                    "如需生图，请发起真正的 tool_call。"
-                                ),
-                            })
+                            messages.append(
+                                {
+                                    "role": "user",
+                                    "content": (
+                                        "你刚才输出的 JSON 无法被系统正确解析执行。"
+                                        "请直接通过 function calling 机制（tool_use）调用工具，"
+                                        "而不是在文字中输出 JSON 参数。"
+                                        "如需生图，请发起真正的 tool_call。"
+                                    ),
+                                }
+                            )
                             continue
                         exec_artifacts = artifacts_from_tool_output(output) if isinstance(output, dict) else []
                         exec_jobs: list[dict] = []
                         exec_message = str(output.get("message") if isinstance(output, dict) else output) or f"已执行工具 {slug}"
                         if isinstance(output, dict) and output.get("status") == "pending":
-                            exec_jobs.append({
-                                "id": output.get("generative_job_id", ""),
-                                "kind": output.get("kind", "image"),
-                                "status": "pending",
-                            })
+                            exec_jobs.append(
+                                {
+                                    "id": output.get("generative_job_id", ""),
+                                    "kind": output.get("kind", "image"),
+                                    "status": "pending",
+                                }
+                            )
                         steps.append({"type": "tool_simulation_extracted", "slug": slug, "message": "从 LLM 文本输出中提取 JSON 参数并直接执行了工具"})
                         return ChatResponse(
                             answer=exec_message,
@@ -219,7 +233,10 @@ async def run_tool_calling_chat(
                     if meta and not meta.get("require_confirmation"):
                         try:
                             output = await invoke_tool_with_context(
-                                db, ctx, image_tool, {"prompt": fallback_query},
+                                db,
+                                ctx,
+                                image_tool,
+                                {"prompt": fallback_query},
                                 confirmed=True,
                                 agent_id=agent_id,
                                 actor_user_id=ctx.user_id,
@@ -228,21 +245,32 @@ async def run_tool_calling_chat(
                         except Exception as exc:
                             steps.append({"type": "tool_simulation_corrected", "message": f"用原始 query 兜底执行 {image_tool} 失败: {exc}"})
                             messages.append({"role": "assistant", "content": content})
-                            messages.append({
-                                "role": "user",
-                                "content": "请直接通过 function calling 调用 generate_image 工具。",
-                            })
+                            messages.append(
+                                {
+                                    "role": "user",
+                                    "content": "请直接通过 function calling 调用 generate_image 工具。",
+                                }
+                            )
                             continue
                         exec_artifacts = artifacts_from_tool_output(output) if isinstance(output, dict) else []
                         exec_jobs: list[dict] = []
                         exec_message = str(output.get("message") if isinstance(output, dict) else output) or "已开始生成图片"
                         if isinstance(output, dict) and output.get("status") == "pending":
-                            exec_jobs.append({
-                                "id": output.get("generative_job_id", ""),
-                                "kind": output.get("kind", "image"),
-                                "status": "pending",
-                            })
-                        steps.append({"type": "tool_simulation_intent_fallback", "slug": image_tool, "message": f"LLM 表达了生成意图但无 JSON，用原始 query 作为 prompt 兜底执行", "fallback_query_preview": fallback_query[:200]})
+                            exec_jobs.append(
+                                {
+                                    "id": output.get("generative_job_id", ""),
+                                    "kind": output.get("kind", "image"),
+                                    "status": "pending",
+                                }
+                            )
+                        steps.append(
+                            {
+                                "type": "tool_simulation_intent_fallback",
+                                "slug": image_tool,
+                                "message": "LLM 表达了生成意图但无 JSON，用原始 query 作为 prompt 兜底执行",
+                                "fallback_query_preview": fallback_query[:200],
+                            }
+                        )
                         return ChatResponse(
                             answer=exec_message,
                             steps=steps,
@@ -252,14 +280,16 @@ async def run_tool_calling_chat(
                 # 其他提取失败：回退到纠正提示重试
                 steps.append({"type": "tool_simulation_corrected", "message": "LLM 在文字中模拟了工具调用，已追加纠正提示"})
                 messages.append({"role": "assistant", "content": content})
-                messages.append({
-                    "role": "user",
-                    "content": (
-                        "你刚才在文字中描述了工具调用，但并未真正发起 function call。"
-                        "请直接通过 tool_use 机制调用工具，不要用文字描述调用过程。"
-                        "如需生图，立即调用 generate_image 工具并传入参数。"
-                    ),
-                })
+                messages.append(
+                    {
+                        "role": "user",
+                        "content": (
+                            "你刚才在文字中描述了工具调用，但并未真正发起 function call。"
+                            "请直接通过 tool_use 机制调用工具，不要用文字描述调用过程。"
+                            "如需生图，立即调用 generate_image 工具并传入参数。"
+                        ),
+                    }
+                )
                 continue
             return ChatResponse(answer=str(content), steps=steps, artifacts=artifacts)
 
@@ -289,11 +319,13 @@ async def run_tool_calling_chat(
             slug = tc.function.name
             if slug in ("generate_image", "generate_video"):
                 if slug in _seen_generative:
-                    messages.append({
-                        "role": "tool",
-                        "tool_call_id": tc.id,
-                        "content": f"工具 {slug} 已执行，本次重复调用自动合并。",
-                    })
+                    messages.append(
+                        {
+                            "role": "tool",
+                            "tool_call_id": tc.id,
+                            "content": f"工具 {slug} 已执行，本次重复调用自动合并。",
+                        }
+                    )
                     continue
                 _seen_generative.add(slug)
             _generative_deduplicated.append(tc)

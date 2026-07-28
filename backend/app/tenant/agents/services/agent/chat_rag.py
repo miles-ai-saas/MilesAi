@@ -147,7 +147,9 @@ class AgentChatRagMixin:
                 agent_id,
                 {"module": SCAN_MODULE_AGENT_CHAT, "agent_id": str(agent_id), "text": answer[:500]},
             )
-            steps: list[dict] = [{"type": "direct_chat", "media_count": body_media_count, "media_resolved": len(media_parts), "model_type": agent.model_config.model_type}]
+            steps: list[dict] = [
+                {"type": "direct_chat", "media_count": body_media_count, "media_resolved": len(media_parts), "model_type": agent.model_config.model_type}
+            ]
             if body_media_count > 0 and agent.model_config.model_type != "vision" and media_parts:
                 steps.append({"type": "multimodal_warning", "message": f"当前模型类型为 {agent.model_config.model_type}（非 vision），图片可能无法被模型识别"})
             return ChatResponse(answer=answer, sources=[], steps=steps)

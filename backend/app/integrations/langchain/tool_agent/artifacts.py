@@ -1,4 +1,5 @@
 """generate_* 工具输出 → ChatArtifact。"""
+
 from __future__ import annotations
 
 from uuid import UUID
