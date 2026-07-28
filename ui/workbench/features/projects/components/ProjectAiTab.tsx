@@ -8,6 +8,7 @@ import {
   buildAgentChatDeepLink,
   buildFlowsDeepLink,
   buildKbDeepLink,
+  projectAiContextToStored,
 } from "@/features/projects/lib/business-context";
 import type { ProjectDetailPageVm } from "@/features/projects/hooks/use-project-detail-page";
 
@@ -32,18 +33,20 @@ export function ProjectAiTab({ vm }: { vm: ProjectDetailPageVm }) {
 
   return (
     <div className="space-y-6">
-      <div className="card p-4">
-        <div className="flex flex-wrap items-center gap-2">
+      <div className="rounded-xl border border-line bg-surface-muted/20 px-4 py-3">
+        <p className="text-sm text-ink">日常对话请用页头「打开对话」；本页用于查看可注入上下文、相关案例与按服务线的推荐入口。</p>
+        <div className="mt-2 flex flex-wrap items-center gap-2">
           <span className={`rounded px-2 py-0.5 text-xs ${ctx.rag_enabled ? "bg-green-50 text-green-700" : "bg-red-50 text-red-600"}`}>
             {ctx.rag_enabled ? "可引用知识库与案例" : "涉密项目 · 禁止外部 RAG"}
           </span>
           <span className="text-xs text-ink-muted">客户：{ctx.client_name}</span>
         </div>
-        <pre className="mt-3 max-h-32 overflow-auto whitespace-pre-wrap rounded bg-surface-muted p-3 text-xs text-ink-muted">{ctx.context_text}</pre>
+        <pre className="mt-3 max-h-32 overflow-auto whitespace-pre-wrap rounded-lg bg-surface p-3 text-xs text-ink-muted ring-1 ring-line">
+          {ctx.context_text}
+        </pre>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-3">
-        <QuickLinkCard href={buildAgentChatDeepLink({ projectId, bizContext: toStoredContext(ctx) })} icon="💬" label="AI 对话" desc="带项目上下文打开智能体" />
+      <div className="grid gap-3 sm:grid-cols-2">
         <QuickLinkCard href={buildKbDeepLink()} icon="📚" label="知识库" desc="管理品牌手册与案例库" external />
         <QuickLinkCard href={buildFlowsDeepLink()} icon="🔄" label="工作流" desc="编排审批与创作流水线" external />
       </div>
@@ -76,6 +79,7 @@ export function ProjectAiTab({ vm }: { vm: ProjectDetailPageVm }) {
       ) : (
         <section>
           <h2 className="text-sm font-semibold text-ink">按服务线推荐</h2>
+          <p className="mt-1 text-xs text-ink-muted">针对具体工作包打开对话，比页头全局入口更贴场景</p>
           <div className="mt-3 space-y-3">
             {ctx.recommendations.map((rec) => (
               <div key={`${rec.work_package_id}-${rec.service_line}`} className="card p-4">
@@ -98,11 +102,11 @@ export function ProjectAiTab({ vm }: { vm: ProjectDetailPageVm }) {
                       agentId: rec.recommended_agent_id,
                       projectId,
                       workPackageId: rec.work_package_id,
-                      bizContext: toStoredContext(ctx, rec),
+                      bizContext: projectAiContextToStored(ctx, rec),
                     })}
                     className="btn-primary text-xs"
                   >
-                    打开对话
+                    针对此工作包提问
                   </Link>
                 </div>
                 {rec.chat_hint && <p className="mt-2 text-xs text-ink-muted">{rec.chat_hint}</p>}
@@ -116,7 +120,7 @@ export function ProjectAiTab({ vm }: { vm: ProjectDetailPageVm }) {
                           projectId,
                           workPackageId: rec.work_package_id,
                           prompt: p,
-                          bizContext: toStoredContext(ctx, rec),
+                          bizContext: projectAiContextToStored(ctx, rec),
                         })}
                         className="rounded-full border border-line px-3 py-1 text-xs text-ink hover:border-brand hover:text-brand"
                       >
@@ -144,7 +148,7 @@ export function ProjectAiTab({ vm }: { vm: ProjectDetailPageVm }) {
             href={buildAgentChatDeepLink({
               projectId,
               prompt: ctx.retrospective_prompt,
-              bizContext: toStoredContext(ctx),
+              bizContext: projectAiContextToStored(ctx),
             })}
             className="btn-primary mt-3 text-xs"
           >
@@ -154,24 +158,6 @@ export function ProjectAiTab({ vm }: { vm: ProjectDetailPageVm }) {
       )}
     </div>
   );
-}
-
-function toStoredContext(
-  ctx: BizProjectAiContext,
-  rec?: BizProjectAiContext["recommendations"][number],
-) {
-  return {
-    projectId: ctx.project_id,
-    projectName: ctx.project_name,
-    clientName: ctx.client_name,
-    workPackageId: rec?.work_package_id,
-    workPackageName: rec?.work_package_name,
-    serviceLine: rec?.service_line,
-    serviceLineLabel: rec?.service_line_label,
-    contextText: ctx.context_text,
-    chatHint: rec?.chat_hint,
-    ragEnabled: ctx.rag_enabled,
-  };
 }
 
 function QuickLinkCard({

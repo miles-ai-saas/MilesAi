@@ -8,6 +8,7 @@ import { ProjectActivityTab } from "@/features/projects/components/ProjectActivi
 import { ProjectAiTab } from "@/features/projects/components/ProjectAiTab";
 import { ProjectDeliverablesTab } from "@/features/projects/components/ProjectDeliverablesTab";
 import { ProjectMembersTab } from "@/features/projects/components/ProjectMembersTab";
+import { ProjectOpenChatButton } from "@/features/projects/components/ProjectOpenChatButton";
 import { ProjectSuppliersTab } from "@/features/projects/components/ProjectSuppliersTab";
 import { ProjectWorkPackagesTab } from "@/features/projects/components/ProjectWorkPackagesTab";
 import type { ProjectDetailPageVm, ProjectDetailTab } from "@/features/projects/hooks/use-project-detail-page";
@@ -28,12 +29,13 @@ const TABS: { id: ProjectDetailTab; label: string }[] = [
   { id: "suppliers", label: "供应商" },
   { id: "cost", label: "成本" },
   { id: "activity", label: "动态" },
-  { id: "ai", label: "AI 服务" },
+  { id: "ai", label: "AI 推荐" },
 ];
 
 export function ProjectDetailView({ vm }: { vm: ProjectDetailPageVm }) {
   const {
     project,
+    projectId,
     clientName,
     loading,
     error,
@@ -99,9 +101,12 @@ export function ProjectDetailView({ vm }: { vm: ProjectDetailPageVm }) {
             ) : null}
           </div>
         </div>
-        <Link href="/business/work-packages" className="btn-ghost shrink-0 text-xs">
-          工作包看板
-        </Link>
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
+          <Link href="/business/work-packages" className="btn-ghost text-xs">
+            工作包看板
+          </Link>
+          <ProjectOpenChatButton projectId={projectId} />
+        </div>
       </div>
 
       <div className="mb-4 grid gap-3 sm:grid-cols-3">

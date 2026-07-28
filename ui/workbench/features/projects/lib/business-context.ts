@@ -2,6 +2,8 @@
  * 业务中心 → AI 工作台跨分区上下文与 deep link。
  */
 
+import type { BizProjectAiContext } from "@/lib/types";
+
 const STORAGE_KEY = "miles:biz-context";
 
 export type BusinessContext = {
@@ -80,4 +82,23 @@ export function prependBusinessContext(userText: string, ctx: BusinessContext | 
   if (!ctx || !ctx.ragEnabled) return userText;
   const header = `[项目上下文]\n${ctx.contextText}${ctx.chatHint ? `\n\n[协作提示]\n${ctx.chatHint}` : ""}\n\n[用户问题]\n`;
   return `${header}${userText}`;
+}
+
+/** API AI 上下文 → sessionStorage 业务上下文。 */
+export function projectAiContextToStored(
+  ctx: BizProjectAiContext,
+  rec?: BizProjectAiContext["recommendations"][number],
+): Omit<BusinessContext, "savedAt"> {
+  return {
+    projectId: ctx.project_id,
+    projectName: ctx.project_name,
+    clientName: ctx.client_name,
+    workPackageId: rec?.work_package_id,
+    workPackageName: rec?.work_package_name,
+    serviceLine: rec?.service_line,
+    serviceLineLabel: rec?.service_line_label,
+    contextText: ctx.context_text,
+    chatHint: rec?.chat_hint,
+    ragEnabled: ctx.rag_enabled,
+  };
 }
