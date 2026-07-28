@@ -6,17 +6,17 @@ import { ClientDetailView, useClientDetailPage } from "@/features/clients";
 
 export default function ClientDetailPage({ id }: { id: string }) {
   const vm = useClientDetailPage(id);
-  if (!vm.client) return null;
+  const missingId = !id || id === "_";
   return (
     <Suspense fallback={null}>
       <BizDetailPageShell
         backHref="/business/clients"
         backLabel="返回客户列表"
-        loading={vm.loading}
-        error={vm.error}
+        loading={!missingId && vm.loading}
+        error={missingId ? "缺少客户 ID" : vm.error}
         notFoundLabel="客户不存在"
       >
-        <ClientDetailView vm={vm} />
+        {vm.client ? <ClientDetailView vm={vm} /> : null}
       </BizDetailPageShell>
     </Suspense>
   );

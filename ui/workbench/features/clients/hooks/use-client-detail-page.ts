@@ -93,8 +93,10 @@ export function useClientDetailPage(clientId: string, options?: Options) {
   }, [clientId]);
 
   useEffect(() => {
-    if (!clientId) {
+    if (!clientId || clientId === "_") {
       setLoading(false);
+      setError("缺少客户 ID");
+      setClient(null);
       return;
     }
     setLoading(true);

@@ -93,7 +93,7 @@ export function ProjectDetailView({ vm }: { vm: ProjectDetailPageVm }) {
           <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-ink-muted">
             {project.code ? <span>{project.code}</span> : null}
             {clientName ? (
-              <Link href={`/business/clients?id=${project.client_id}`} className="text-brand hover:underline">
+              <Link href={`/business/clients/detail/?id=${project.client_id}`} className="text-brand hover:underline">
                 客户：{clientName}
               </Link>
             ) : null}
