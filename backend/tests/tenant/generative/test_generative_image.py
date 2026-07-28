@@ -9,7 +9,7 @@ import pytest
 from app.core.tenant import TenantContext
 from app.integrations.generative.registry import resolve_invoke_mode
 from app.integrations.generative.types import ImageGenerateResult
-from app.integrations.langchain.tool_agent import _artifacts_from_tool_output
+from app.integrations.langchain.tool_agent import artifacts_from_tool_output
 from app.models.model import ModelConfig
 from app.models.model.catalog import ModelCapabilityType, ModelVendor
 from app.integrations.generative.constants import (
@@ -50,9 +50,9 @@ def test_resolve_invoke_mode_explicit():
     assert resolve_invoke_mode(m, capability=ModelCapabilityType.IMAGE_GEN.value) == INVOKE_OPENAI_IMAGES
 
 
-def test_artifacts_from_tool_output():
+def testartifacts_from_tool_output():
     aid = uuid4()
-    arts = _artifacts_from_tool_output(
+    arts = artifacts_from_tool_output(
         {
             "kind": "image",
             "attachment_id": str(aid),
@@ -64,9 +64,9 @@ def test_artifacts_from_tool_output():
     assert arts[0].attachment_id == aid
 
 
-def test_artifacts_from_tool_output_pending_job():
+def testartifacts_from_tool_output_pending_job():
     jid = uuid4()
-    arts = _artifacts_from_tool_output(
+    arts = artifacts_from_tool_output(
         {
             "kind": "video",
             "status": "pending",
@@ -81,10 +81,10 @@ def test_artifacts_from_tool_output_pending_job():
     assert arts[0].kind == "video"
 
 
-def test_artifacts_from_tool_output_with_media_asset_id():
+def testartifacts_from_tool_output_with_media_asset_id():
     aid = uuid4()
     mid = uuid4()
-    arts = _artifacts_from_tool_output(
+    arts = artifacts_from_tool_output(
         {
             "kind": "image",
             "attachment_ids": [str(aid)],

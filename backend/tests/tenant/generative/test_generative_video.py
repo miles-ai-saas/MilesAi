@@ -10,7 +10,7 @@ from app.core.tenant import TenantContext
 from app.integrations.generative.constants import INVOKE_DASHSCOPE_T2V, INVOKE_VOLCENGINE_VIDEO
 from app.integrations.generative.registry import resolve_invoke_mode
 from app.integrations.generative.types import VideoGenerateResult
-from app.integrations.langchain.tool_agent import _artifacts_from_tool_output
+from app.integrations.langchain.tool_agent import artifacts_from_tool_output
 from app.models.model import ModelConfig
 from app.models.model.catalog import ModelCapabilityType, ModelVendor
 
@@ -43,7 +43,7 @@ def test_resolve_video_invoke_mode_doubao():
 
 def test_artifacts_from_video_tool_output():
     aid = uuid4()
-    arts = _artifacts_from_tool_output(
+    arts = artifacts_from_tool_output(
         {
             "kind": "video",
             "attachment_id": str(aid),
