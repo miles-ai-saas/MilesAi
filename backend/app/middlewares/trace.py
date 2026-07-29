@@ -12,10 +12,22 @@ from starlette.responses import Response
 from app.common.trace import reset_trace_id, set_trace_id
 
 
+def _attach_trace_id_to_span(trace_id: str) -> None:
+    try:
+        from opentelemetry import trace
+
+        span = trace.get_current_span()
+        if span.is_recording():
+            span.set_attribute("miles.trace_id", trace_id)
+    except ImportError:
+        pass
+
+
 class TraceMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         trace_id = request.headers.get("X-Trace-Id") or str(uuid.uuid4())
         request.state.trace_id = trace_id
+        _attach_trace_id_to_span(trace_id)
         token = set_trace_id(trace_id)
         try:
             response = await call_next(request)

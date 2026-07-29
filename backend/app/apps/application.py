@@ -15,15 +15,18 @@ from app.middlewares import register_http_middlewares
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    from app.infra.otel import setup_otel, shutdown_otel
     from app.integrations.langgraph.checkpointer import init_langgraph_checkpointer, shutdown_langgraph_checkpointer
 
     setup_logging()
+    setup_otel(get_settings(), app=app)
     # 启动时只做 schema 迁移；业务种子由 cli.py init-db 单独执行
     run_migrations()
     # 初始化 RAG / DeepAgents 共用 checkpointer（redis | memory），见 langgraph.checkpointer
     app.state.langgraph_checkpoint = await init_langgraph_checkpointer()
     yield
     await shutdown_langgraph_checkpointer()
+    shutdown_otel()
 
 
 def create_app() -> FastAPI:
