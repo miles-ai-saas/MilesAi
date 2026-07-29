@@ -262,6 +262,49 @@ python cli.py init-db
 python cli.py worker -Q parse,default
 ```
 
+## OpenAPI 快照
+
+仓库内维护 FastAPI 契约快照，防止 API schema 无意漂移；CI（`.github/workflows/lint.yml`）会执行校验。
+
+| 命令 | 说明 |
+|------|------|
+| `python scripts/export_openapi.py --check` | 与 `openapi/openapi.snapshot.json` 比对（**默认**；CI 同款） |
+| `python scripts/export_openapi.py --write` | 重写快照（改路由/Schema 后本地执行并提交） |
+
+脚本调用 `create_app().openapi()`，**无需启动 uvicorn**，也不依赖 Postgres/Redis 等中间件。
+
+```bash
+cd backend
+python scripts/export_openapi.py --check   # 校验
+python scripts/export_openapi.py --write   # 更新 openapi/openapi.snapshot.json
+```
+
+## OpenTelemetry（OTel）
+
+API 进程可选向 OTLP Collector 导出 HTTP 请求 trace；**默认关闭**，Celery Worker/Beat **未**接入。
+
+### 安装
+
+```bash
+pip install -e ".[otel]"
+```
+
+未安装 `[otel]` extra 时应用仍可正常启动；`OTEL_ENABLED=true` 但缺包时仅打 warning。
+
+### 环境变量
+
+| 变量 | 默认 | 说明 |
+|------|------|------|
+| `OTEL_ENABLED` | `false` | 总开关 |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | 空 | 启用时必填；空则 no-op |
+| `OTEL_SERVICE_NAME` | `milesai-api` | resource `service.name` |
+
+### 导出协议
+
+当前实现使用 **gRPC OTLP**（`opentelemetry.exporter.otlp.proto.grpc`），Collector 常见端口为 **4317**。设计稿曾提及 HTTP/protobuf（4318）为可选方案，**尚未实现**；若 Collector 仅监听 HTTP 4318，需后续增加协议配置或换 HTTP exporter。
+
+请求头 `X-Trace-Id` 会写入 span attribute `miles.trace_id`，与现有 `TraceMiddleware` 并存，不替换 W3C `traceparent`。
+
 ## API 前缀
 
 - 租户端：`/api/v1`
