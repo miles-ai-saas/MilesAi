@@ -12,7 +12,10 @@ ModelConfig → LiteLLM 调用封装（L3）。
 
 from __future__ import annotations
 
+from collections.abc import Awaitable, Callable
 from typing import Any
+
+OnDelta = Callable[[str], Awaitable[None]]
 
 from app.common.exceptions import AppError, BadRequestError
 from app.integrations.http_constants import HTTP_DEFAULT_TIMEOUT_SEC
@@ -133,6 +136,91 @@ def extract_litellm_usage(response: Any) -> tuple[int, int, int]:
     completion = int(getattr(usage, "completion_tokens", 0) or 0)
     total = int(getattr(usage, "total_tokens", 0) or prompt + completion)
     return prompt, completion, total
+
+
+def _extract_stream_delta_content(chunk: Any) -> str | None:
+    choices = getattr(chunk, "choices", None) or []
+    if not choices:
+        return None
+    first = choices[0]
+    delta = getattr(first, "delta", None)
+    if delta is None and isinstance(first, dict):
+        delta = first.get("delta")
+    if delta is None:
+        return None
+    content = getattr(delta, "content", None)
+    if content is None and isinstance(delta, dict):
+        content = delta.get("content")
+    if not content:
+        return None
+    return content if isinstance(content, str) else str(content)
+
+
+async def litellm_chat_completion_stream(
+    model: ModelConfig,
+    messages: list[dict[str, Any]],
+    *,
+    temperature: float = 0.7,
+    max_tokens: int = 2048,
+    timeout: float = HTTP_DEFAULT_TIMEOUT_SEC,
+    usage_ctx: Any | None = None,
+    on_delta: OnDelta | None = None,
+) -> str:
+    """通过 LiteLLM 发起流式 Chat Completions，可选 on_delta 推送 token。"""
+    litellm = _import_litellm()
+
+    _ensure_messages_valid_for_chat(model, messages)
+
+    litellm_model = resolve_litellm_model(model)
+    kwargs: dict[str, Any] = {
+        "model": litellm_model,
+        "messages": messages,
+        "temperature": temperature,
+        "max_tokens": max_tokens,
+        "timeout": timeout,
+        "stream": True,
+    }
+    api_key = model.api_key_encrypted
+    if api_key:
+        kwargs["api_key"] = api_key
+    api_base = _resolve_api_base(model)
+    if api_base:
+        kwargs["api_base"] = api_base
+
+    try:
+        response = await litellm.acompletion(**kwargs)
+    except BadRequestError:
+        raise
+    except Exception as exc:
+        raise AppError(_litellm_error_message(exc), status_code=502) from exc
+
+    parts: list[str] = []
+    usage_response: Any | None = None
+    async for chunk in response:
+        piece = _extract_stream_delta_content(chunk)
+        if piece:
+            parts.append(piece)
+            if on_delta is not None:
+                await on_delta(piece)
+        usage = getattr(chunk, "usage", None)
+        if usage is None and isinstance(chunk, dict):
+            usage = chunk.get("usage")
+        if usage is not None:
+            usage_response = chunk
+
+    if not parts:
+        raise AppError("模型返回为空", status_code=502)
+
+    if usage_ctx is not None and usage_response is not None:
+        prompt_t, completion_t, _ = _extract_usage(usage_response)
+        from app.tenant.models.services.usage import record_model_usage
+
+        await record_model_usage(
+            usage_ctx,
+            prompt_tokens=prompt_t,
+            completion_tokens=completion_t,
+        )
+    return "".join(parts)
 
 
 async def litellm_chat_completion(

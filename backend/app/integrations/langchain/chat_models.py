@@ -14,8 +14,11 @@ LangChain ChatModel 适配：平台 ModelConfig → LiteLLM 对话。
 
 from __future__ import annotations
 
+from collections.abc import Awaitable, Callable
 from typing import Any
 from uuid import UUID
+
+OnDelta = Callable[[str], Awaitable[None]]
 
 from langchain_core.callbacks import AsyncCallbackManagerForLLMRun, CallbackManagerForLLMRun
 from langchain_core.language_models.chat_models import BaseChatModel
@@ -23,7 +26,7 @@ from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, System
 from langchain_core.outputs import ChatGeneration, ChatResult
 from pydantic import ConfigDict
 
-from app.integrations.litellm.adapter import litellm_chat_completion
+from app.integrations.litellm.adapter import litellm_chat_completion, litellm_chat_completion_stream
 from app.models.model import ModelConfig
 
 
@@ -110,6 +113,7 @@ async def ainvoke_chat(
     db: Any | None = None,
     tenant_id: Any | None = None,
     source_id: UUID | None = None,
+    on_delta: OnDelta | None = None,
 ) -> str:
     """
     异步对话（OpenAI 形状 ``{"role","content"}`` 列表）。
@@ -141,6 +145,15 @@ async def ainvoke_chat(
         role = m.get("role", "user")
         content = m.get("content", "")
         openai_msgs.append({"role": role, "content": content})
+    if on_delta is not None:
+        return await litellm_chat_completion_stream(
+            model,
+            openai_msgs,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            usage_ctx=usage_ctx,
+            on_delta=on_delta,
+        )
     return await litellm_chat_completion(
         model,
         openai_msgs,
