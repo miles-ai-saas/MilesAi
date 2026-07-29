@@ -194,6 +194,7 @@ async def generate(state: RAGGraphState, config: RunnableConfig) -> dict[str, An
             )
         else:
             messages = [{"role": "user", "content": prompt}]
+        on_delta = config.get("configurable", {}).get("on_delta") if config else None
         answer = await ainvoke_chat(
             model,
             messages,
@@ -201,6 +202,7 @@ async def generate(state: RAGGraphState, config: RunnableConfig) -> dict[str, An
             db=db,
             tenant_id=UUID(state["tenant_id"]),
             source_id=UUID(state["agent_id"]) if state.get("agent_id") else None,
+            on_delta=on_delta,
         )
     return {
         "answer": answer,
@@ -245,6 +247,7 @@ async def fallback(state: RAGGraphState, config: RunnableConfig) -> dict[str, An
             )
         else:
             messages = [{"role": "user", "content": prompt}]
+        on_delta = config.get("configurable", {}).get("on_delta") if config else None
         answer = await ainvoke_chat(
             model,
             messages,
@@ -252,6 +255,7 @@ async def fallback(state: RAGGraphState, config: RunnableConfig) -> dict[str, An
             db=db,
             tenant_id=UUID(state["tenant_id"]),
             source_id=UUID(state["agent_id"]) if state.get("agent_id") else None,
+            on_delta=on_delta,
         )
     return {
         "answer": answer,

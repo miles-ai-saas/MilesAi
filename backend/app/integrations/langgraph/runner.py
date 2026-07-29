@@ -22,6 +22,7 @@ from uuid import UUID
 
 from langgraph.checkpoint.memory import MemorySaver
 
+from app.integrations.langchain.chat_models import OnDelta
 from app.integrations.langgraph.checkpointer import checkpoint_backend, get_compiled_rag_graph
 from app.integrations.langgraph.graphs.rag_qa import build_rag_qa_graph
 from app.common.schemas.media import MediaRefIn
@@ -71,6 +72,7 @@ async def run_rag_workflow(
     agent_config: dict | None = None,
     media: list[MediaRefIn] | None = None,
     user_id: UUID | None = None,
+    on_delta: OnDelta | None = None,
 ) -> tuple[str, list[dict[str, Any]], list[dict[str, Any]]]:
     """执行 RAG LangGraph，返回 (answer, hits, steps)。
 
@@ -118,6 +120,7 @@ async def run_rag_workflow(
         "configurable": {
             "thread_id": tid,
             "model": model,
+            "on_delta": on_delta,
         }
     }
     final = await graph.ainvoke(initial, run_config)

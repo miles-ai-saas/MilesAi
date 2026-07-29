@@ -22,7 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.common.schemas.media import MediaRefIn
 from app.core.tenant import TenantContext
 from app.integrations.chat.multimodal import build_invoke_messages_with_media
-from app.integrations.langchain.chat_models import ainvoke_chat
+from app.integrations.langchain.chat_models import OnDelta, ainvoke_chat
 from app.integrations.langchain.vectorstores import search_multi_kb_async
 from app.models.model import ModelConfig
 from app.rag.generate.context import build_rag_user_prompt
@@ -92,6 +92,7 @@ async def rag_answer(
     ctx: TenantContext | None = None,
     retrieve_query: str | None = None,
     source_id: UUID | None = None,
+    on_delta: OnDelta | None = None,
 ) -> tuple[str, list[dict[str, Any]]]:
     """
     端到端 RAG：检索 → 拼 prompt → LLM 生成。
@@ -133,5 +134,6 @@ async def rag_answer(
         db=db,
         tenant_id=tenant_id,
         source_id=source_id,
+        on_delta=on_delta,
     )
     return answer, hits
