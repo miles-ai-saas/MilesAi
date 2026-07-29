@@ -17,11 +17,11 @@
 
 ## 常用命令
 
-先在各应用目录安装依赖（workbench 常用 npm，admin 常用 pnpm）：
+先在各应用目录安装依赖：
 
 ```bash
 cd ui/workbench && npm install
-cd ui/admin && pnpm install   # 或 npm install
+cd ui/admin && npm install
 ```
 
 在 `ui/` 目录可聚合执行（需两侧均已安装依赖）：
