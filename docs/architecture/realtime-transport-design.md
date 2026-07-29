@@ -1,7 +1,7 @@
 # 实时通道技术设计 — 对话 WebSocket + 资源 SSE
 
 **日期：** 2026-05-26  
-**状态：** 部分已实施（工作台 WS v1 ✅；LLM 真 token 流式、对外 HTTP 流式仍待做）  
+**状态：** 部分已实施（工作台 WS v1 ✅；直连/RAG 真 token 流式 ✅；tool 路径仍切块；HTTP 整包流式仍待做）  
 **As-Is 规格：** [features/agent-chat-websocket.md](../features/agent-chat-websocket.md)  
 **关联：** [multimodal-roadmap.md](./multimodal-roadmap.md)、[agent-multimodal-design.md](./agent-multimodal-design.md)、[platform-agents.md](../guides/platform-agents.md)、[flow-generative-media-design.md](./flow-generative-media-design.md)、[technical-design.md](./technical-design.md)
 
@@ -13,7 +13,7 @@ MilesAI 已具备两类「实时」需求：
 
 | 需求 | 现状（As-Is） | 痛点 |
 |------|----------------|------|
-| **智能体对话** | `POST /api/v1/agents/{id}/chat` 一次性返回 | 无 LLM **token 流式**；工具确认、异步生成物靠多轮 HTTP + 前端轮询/SSE 拼装 |
+| **智能体对话** | WS 直连/RAG 真 token 流式；HTTP `POST …/chat` 仍一次性返回 | HTTP 无 token 流式；tool 路径 WS 仍切块；工具确认、异步生成物靠 WS 或 HTTP + SSE 拼装 |
 | **生成任务进度** | `GET /generative/jobs/{id}/stream`（SSE）+ `POST cancel/retry` | 模型清晰；对话内每个 job 可能再开 SSE，与轮询兜底并存 |
 | **任务中心 / 流程调试** | 列表 HTTP 分页 + 手动刷新；详情 SSE | 合理；不宜绑到某一条「对话连接」 |
 
@@ -228,7 +228,7 @@ Authorization: Bearer <token>
 |------|------|------|-----------|
 | **R0** | 本文档评审 | — | — |
 | **R1** | 对话 WS 基础设施：握手鉴权、心跳、连接管理 | `ping`/`pong` | ✅ `GET …/agents/{id}/chat/ws` |
-| **R2** | LLM 流式：`chat.send` → `chat.delta` + `chat.done` | 切块 delta（全路径）；真 token 流待接 LiteLLM stream | REST `POST /chat` 保留兼容 |
+| **R2** | LLM 流式：`chat.send` → `chat.delta` + `chat.done` | ✅ 直连/RAG 真 token（LiteLLM stream）；tool/flow/A2A 仍 `emit_answer_deltas` 切块 | REST `POST /chat` 保留兼容（整包） |
 | **R3** | 工具确认：`tool.confirm_required` / `tool.confirm` | 替代确认轮 POST | — |
 | **R4** | 对话内 `generative_job.*` 走 WS | ✅ 轮询推送 job 事件 | 任务中心仍 SSE |
 | **R5** | 断线续传、`last_event_id`、服务端会话快照（可选） | v2 | — |
@@ -337,3 +337,4 @@ AGENT_CHAT_WEBSOCKET_ENABLED=false   # 默认关，灰度开启
 |------|------|
 | 2026-05-26 | 初版：对话 WebSocket + 资源 SSE 分场景方案、协议草案与分阶段实施 |
 | 2026-05-26 | v1：`/agents/{id}/chat/ws`、工作台前端 `AgentChatWsClient`；`AGENT_CHAT_WEBSOCKET_ENABLED` |
+| 2026-07-29 | R2 部分完成：直连/RAG 经 LiteLLM stream 真 token；tool 路径仍切块；HTTP 不变 |

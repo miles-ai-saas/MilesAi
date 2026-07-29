@@ -1,7 +1,7 @@
 # 智能体对话 WebSocket
 
 **日期：** 2026-05-27  
-**状态：** v1 已实现（工作台）；LLM 真流式待演进  
+**状态：** v1 已实现（工作台）；直连/RAG 真 token 流式 ✅；tool 路径仍切块  
 **PRD 对照：** 模块4 智能体对话  
 **架构：** [realtime-transport-design.md](../architecture/realtime-transport-design.md) · [technical-design.md §10](../architecture/technical-design.md#10-智能体对话)
 
@@ -25,8 +25,18 @@
 ### 1.2 明确不做（v1）
 
 - 对外 OpenAPI 第三方集成的 WS（仅工作台）
-- 真 LLM token 流（当前 `chat.delta` 为完整 answer 切块模拟）
+- tool_agent / 工具确认 / flow / A2A 路径的真 token 流（仍走 `emit_answer_deltas` 切块兜底）
 - 全站统一 WebSocket 网关
+
+### 1.3 流式 As-Is（2026-07-29）
+
+| 路径 | `chat.delta` 来源 |
+|------|-------------------|
+| 直连 LLM（`direct_chat`） | LiteLLM `stream=True` 真 token |
+| RAG 最终生成（`rag_answer`、LangGraph `generate`/`fallback`） | 同上 |
+| tool_agent / pending_tool / flow / A2A | 整段 answer 后 `emit_answer_deltas` 切块 |
+
+HTTP `POST …/chat` 不传 `on_delta`，仍整包返回。合规改写后以 `chat.done.answer` 为准；前端 `applyChatResponse` 用 `res.answer` 覆盖气泡。
 
 ---
 
@@ -71,7 +81,7 @@ Header: Authorization: Bearer {jwt}
 |------|------|
 | `chat.step` | 编排步骤（与 HTTP `steps` 一致） |
 | `tool.confirm_required` | 待用户确认的工具 |
-| `chat.delta` | 回答文本片段（v1 模拟流式） |
+| `chat.delta` | 回答文本片段（直连/RAG 为 LiteLLM 真 token；tool 等路径为切块兜底） |
 | `chat.done` | 完整 `ChatResponse` JSON |
 | `generative_job.progress` / `generative_job.done` | job watcher 推送 |
 | `chat.error` | 业务或校验错误 |
@@ -83,12 +93,14 @@ Header: Authorization: Bearer {jwt}
 
 ```
 客户端 chat.send
-    → AgentService.chat(agent_id, ChatRequest)
+    → AgentService.chat(agent_id, ChatRequest, on_delta?)
     → 合规 / 钩子 / 编排（与 HTTP 相同）
     → tool.confirm_required? → 等待 tool.confirm
     → chat.step × N
-    → chat.delta × N（emit_answer_deltas）
-    → chat.done
+    → chat.delta × N
+        · 直连/RAG：LiteLLM stream → on_delta → chat.delta（真 token）
+        · 其他路径：无 on_delta → emit_answer_deltas 切块
+    → chat.done（含最终 answer；合规后可能与 delta 累计略有差异）
     → spawn_job_watchers(pending generative_job ids)
 ```
 
