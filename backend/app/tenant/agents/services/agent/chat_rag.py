@@ -6,7 +6,7 @@ from uuid import UUID
 
 from app.flow_runtime.types import RunContext
 from app.integrations.chat.multimodal import build_user_message, resolve_media_refs
-from app.integrations.langchain.chat_models import ainvoke_chat
+from app.integrations.langchain.chat_models import OnDelta, ainvoke_chat
 from app.integrations.langgraph.runner import run_rag_workflow, should_use_langgraph_rag
 from app.integrations.generative.image.prompt_guard import user_requests_image_collage
 from app.models.agent import Agent
@@ -109,6 +109,8 @@ class AgentChatRagMixin:
         body: ChatRequest,
         agent_id: UUID,
         hooks: HookRunner,
+        *,
+        on_delta: OnDelta | None = None,
     ) -> ChatResponse:
         """无知识库时直连大模型（可选 reasoning Hook）。"""
         base = await self.resolve_system_prompt(agent)
@@ -140,6 +142,7 @@ class AgentChatRagMixin:
                 db=self.db,
                 tenant_id=self.ctx.tenant_id,
                 source_id=agent_id,
+                on_delta=on_delta,
             )
             await hooks.run(
                 HookTrigger.AFTER_REASONING,
@@ -167,6 +170,8 @@ class AgentChatRagMixin:
         top_k: int,
         agent_id: UUID,
         hooks: HookRunner,
+        *,
+        on_delta: OnDelta | None = None,
     ) -> ChatResponse:
         """
         知识库增强对话。
@@ -206,7 +211,7 @@ class AgentChatRagMixin:
                     agent_id=agent_id,
                     system_prompt=f"{base}{kb_hint}",
                 )
-            return await self.direct_chat(agent, body, agent_id, hooks)
+            return await self.direct_chat(agent, body, agent_id, hooks, on_delta=on_delta)
 
         if should_use_skill_tools_with_kb(agent, kb_ids):
             from app.integrations.langchain.tool_agent import run_tool_calling_chat
@@ -274,6 +279,7 @@ class AgentChatRagMixin:
                     conversation_id=body.conversation_id,
                     media=body.media or None,
                     user_id=self.ctx.user_id,
+                    on_delta=on_delta,
                 )
             else:
                 answer, all_hits = await rag_answer(
@@ -289,6 +295,7 @@ class AgentChatRagMixin:
                     ctx=self.ctx,
                     retrieve_query=retrieve_query,
                     source_id=agent_id,
+                    on_delta=on_delta,
                 )
                 steps = [{"type": "rag_linear", "engine": "langchain"}]
             await hooks.run(

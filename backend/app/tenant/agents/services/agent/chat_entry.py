@@ -11,6 +11,7 @@ from app.integrations.generative.request_prefs import (
     clear_generative_request_prefs,
     set_generative_request_prefs,
 )
+from app.integrations.langchain.chat_models import OnDelta
 from app.models.agent import AgentStatus, AgentType
 from app.tenant.a2a.services.peer_refs import list_agent_a2a_peer_refs
 from app.tenant.agents.schemas.agent import ChatRequest, ChatResponse
@@ -26,7 +27,13 @@ from app.tenant.models.services.usage import begin_chat_usage_accumulation, end_
 class AgentChatEntryMixin:
     """``chat`` / ``chat_as_child`` 入口；依赖 Turn / Rag Mixin 收尾与 RAG。"""
 
-    async def chat(self, agent_id: UUID, body: ChatRequest) -> ChatResponse:
+    async def chat(
+        self,
+        agent_id: UUID,
+        body: ChatRequest,
+        *,
+        on_delta: OnDelta | None = None,
+    ) -> ChatResponse:
         """租户侧智能体对话入口：合规与 Hook 包裹整条调用链。"""
         agent = await self.get_agent_or_raise(agent_id)
         if agent.status != AgentStatus.ENABLED:
@@ -162,7 +169,9 @@ class AgentChatEntryMixin:
                         )
 
             route = self._resolve_rag_route(agent, kb_ids)
-            response = await self.rag_chat(agent, chat_body, kb_ids, top_k, agent_id, hooks)
+            response = await self.rag_chat(
+                agent, chat_body, kb_ids, top_k, agent_id, hooks, on_delta=on_delta
+            )
             response = await self.maybe_augment_a2a(agent, chat_body, response)
             return await self._complete_chat_turn(
                 recorder,

@@ -1,12 +1,17 @@
 """智能体对话 WebSocket 协议与请求构造。"""
 
 import json
+from unittest.mock import AsyncMock, patch
+from uuid import uuid4
 
 import pytest
 
+from app.tenant.agents.schemas.agent import ChatRequest, ChatResponse
+from app.tenant.agents.services.agent import AgentService
 from app.tenant.agents.ws import protocol as proto
-from app.tenant.agents.ws.chat import _build_chat_request
+from app.tenant.agents.ws.chat import _build_chat_request, _run_chat_turn
 from app.tenant.agents.ws.auth import extract_bearer_token
+from tests.conftest import make_tenant_ctx
 
 
 class _FakeWebSocket:
@@ -98,3 +103,49 @@ async def test_emit_answer_deltas_chunks():
     await proto.emit_answer_deltas(FakeWs(), "abcdefgh", chunk_size=3)
     texts = [s["payload"]["text"] for s in sent if s["type"] == proto.CHAT_DELTA]
     assert "".join(texts) == "abcdefgh"
+
+
+class _FakeAsyncSession:
+    async def __aenter__(self):
+        db = AsyncMock()
+        db.commit = AsyncMock()
+        return db
+
+    async def __aexit__(self, *args):
+        return None
+
+
+@pytest.mark.asyncio
+async def test_run_chat_turn_skips_emit_answer_deltas_when_streamed():
+    """已推送 token delta 时不再整段切块。"""
+    sent: list[tuple[str, dict]] = []
+
+    async def fake_send_json(_ws, event_type, payload):
+        sent.append((event_type, payload))
+
+    async def mock_chat(_self, _agent_id, _body, *, on_delta=None):
+        if on_delta:
+            await on_delta("a")
+        return ChatResponse(answer="a")
+
+    with (
+        patch("app.tenant.agents.ws.chat.AsyncSessionLocal", _FakeAsyncSession),
+        patch.object(AgentService, "chat", mock_chat),
+        patch("app.tenant.agents.ws.chat.proto.send_json", side_effect=fake_send_json),
+        patch("app.tenant.agents.ws.chat.proto.emit_answer_deltas", new_callable=AsyncMock) as emit_mock,
+        patch("app.tenant.agents.ws.chat.spawn_job_watchers"),
+    ):
+        await _run_chat_turn(
+            AsyncMock(),
+            make_tenant_ctx(),
+            uuid4(),
+            ChatRequest(query="hi"),
+            set(),
+        )
+
+    delta_texts = [p["text"] for t, p in sent if t == proto.CHAT_DELTA]
+    assert delta_texts == ["a"]
+    emit_mock.assert_not_called()
+    done_payloads = [p for t, p in sent if t == proto.CHAT_DONE]
+    assert len(done_payloads) == 1
+    assert done_payloads[0]["answer"] == "a"

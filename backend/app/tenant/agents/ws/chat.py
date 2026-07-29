@@ -73,9 +73,17 @@ async def _run_chat_turn(
     body: ChatRequest,
     job_tasks: set[asyncio.Task],
 ) -> None:
+    streamed = False
+
+    async def on_delta(text: str) -> None:
+        nonlocal streamed
+        if text:
+            streamed = True
+            await proto.send_json(ws, proto.CHAT_DELTA, {"text": text})
+
     async with AsyncSessionLocal() as db:
         try:
-            response = await AgentService(db, ctx).chat(agent_id, body)
+            response = await AgentService(db, ctx).chat(agent_id, body, on_delta=on_delta)
             await db.commit()
         except AppError as exc:
             await db.rollback()
@@ -108,7 +116,8 @@ async def _run_chat_turn(
         if isinstance(step, dict):
             await proto.send_json(ws, proto.CHAT_STEP, step)
 
-    await proto.emit_answer_deltas(ws, response.answer)
+    if not streamed:
+        await proto.emit_answer_deltas(ws, response.answer)
 
     done_payload = response.model_dump(mode="json")
     await proto.send_json(ws, proto.CHAT_DONE, done_payload)
