@@ -62,6 +62,7 @@ export function useAgentsChatSession(
   const applySessionToUi = useCallback((agent: string, sessionId: string, clearComposer?: () => void) => {
     const session = getSession(agent, sessionId);
     if (!session) return false;
+    setActiveSessionId(agent, sessionId);
     setConversationId(session.id);
     const latest = getLatestMessages(session);
     setMessages(latest);
@@ -118,21 +119,82 @@ export function useAgentsChatSession(
     };
   }, [agentId, refreshSessions, clearConversationUi]);
 
+  const messagesRef = useRef(messages);
+  messagesRef.current = messages;
+  const conversationIdRef = useRef(conversationId);
+  conversationIdRef.current = conversationId;
+
   // conv 是打开会话的唯一信号
   useEffect(() => {
     if (!agentId || !conversationIdFromUrl) {
       clearConversationUi();
       return;
     }
+    // 已由 ensureConversation / 新建会话同步落到 UI 时，勿整页 openSession 清空进行中的乐观消息
+    if (conversationIdRef.current === conversationIdFromUrl) {
+      let cancelled = false;
+      void (async () => {
+        await fetchServerSessionIntoLocal(agentId, conversationIdFromUrl);
+        if (cancelled) return;
+        const session = getSession(agentId, conversationIdFromUrl);
+        if (!session) return;
+        const latest = getLatestMessages(session);
+        setSessionTitle(session.title);
+        setHasMore(session.messages.length > latest.length || (session.messageCount ?? 0) > session.messages.length);
+        setMessages((prev) => (prev.length > latest.length ? prev : latest));
+        refreshSessions(agentId);
+        const reconciled = await reconcileInFlightGenerativeArtifacts(agentId, conversationIdFromUrl, latest);
+        if (cancelled) return;
+        setMessages((prev) => (prev.length > reconciled.length ? prev : reconciled));
+      })();
+      return () => {
+        cancelled = true;
+      };
+    }
     let cancelled = false;
     void openSession(agentId, conversationIdFromUrl, undefined, () => cancelled);
     return () => {
       cancelled = true;
     };
-  }, [agentId, conversationIdFromUrl, openSession, clearConversationUi]);
+  }, [agentId, conversationIdFromUrl, openSession, clearConversationUi, refreshSessions]);
 
-  const messagesRef = useRef(messages);
-  messagesRef.current = messages;
+  /**
+   * 仅有 agent、无 conv 时：合并服务端会话后自动选最近一条，没有则新建。
+   * 否则「对话」入口只带 agent，输入框因 !conversationId 一直禁用。
+   */
+  useEffect(() => {
+    if (!agentId || conversationIdFromUrl) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        await mergeServerChatSessions(agentId);
+      } catch {
+        /* 离线用本地 */
+      }
+      if (cancelled) return;
+      if (typeof window !== "undefined") {
+        const conv = new URLSearchParams(window.location.search).get("conv");
+        if (conv) return;
+      }
+      refreshSessions(agentId);
+      const list = listSessions(agentId);
+      if (cancelled) return;
+      if (list.length > 0) {
+        const latest = [...list].sort((a, b) => b.updatedAt - a.updatedAt)[0];
+        routeRef.current.selectConversation(latest.id);
+        return;
+      }
+      const session = createSession(agentId);
+      void api.createAgentChatSession(agentId, { id: session.id, title: session.title }).catch((e) => {
+        if (!cancelled) setSessionError(e instanceof Error ? e.message : "会话创建同步失败");
+      });
+      refreshSessions(agentId);
+      if (!cancelled) routeRef.current.selectConversation(session.id);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [agentId, conversationIdFromUrl, refreshSessions]);
 
   const loadMoreMessages = useCallback(async () => {
     if (!agentId || !conversationId || loadingMore) return;
@@ -180,6 +242,27 @@ export function useAgentsChatSession(
       setLoadingMore(false);
     }
   }, [agentId, conversationId, loadingMore]);
+
+  /** 保证有可用会话 id（发送前兜底；已有则原样返回）。 */
+  const ensureConversation = useCallback((): string | null => {
+    if (!agentId) return null;
+    if (conversationId) return conversationId;
+    const list = listSessions(agentId);
+    if (list.length > 0) {
+      const latest = [...list].sort((a, b) => b.updatedAt - a.updatedAt)[0];
+      applySessionToUi(agentId, latest.id);
+      routeRef.current.selectConversation(latest.id);
+      return latest.id;
+    }
+    const session = createSession(agentId);
+    void api.createAgentChatSession(agentId, { id: session.id, title: session.title }).catch((e) => {
+      setSessionError(e instanceof Error ? e.message : "会话创建同步失败");
+    });
+    refreshSessions(agentId);
+    applySessionToUi(agentId, session.id);
+    routeRef.current.selectConversation(session.id);
+    return session.id;
+  }, [agentId, conversationId, applySessionToUi, refreshSessions]);
 
   const handleNewSession = useCallback(
     (clearComposer?: () => void) => {
@@ -276,6 +359,7 @@ export function useAgentsChatSession(
     sessionError,
     clearSessionError: () => setSessionError(null),
     handleNewSession,
+    ensureConversation,
     handleSelectSession,
     handleRenameSession,
     handleDeleteSession,

@@ -211,8 +211,8 @@ export function ChatMessageThread({
           </>
         ) : agentSelected ? (
           <>
-            <p className="text-sm text-ink-muted">请从左侧选择会话，或新建对话</p>
-            <p className="mt-1 text-xs text-ink-faint">选定会话后加载消息，地址栏会带上会话 ID</p>
+            <p className="text-sm text-ink-muted">正在准备会话…</p>
+            <p className="mt-1 text-xs text-ink-faint">也可从左侧选择历史会话，或点击「新建对话」</p>
           </>
         ) : (
           <>

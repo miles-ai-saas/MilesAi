@@ -85,8 +85,10 @@ export function useAgentsChatPage() {
     if (Array.isArray(slugs)) return slugs.map(String);
     return [];
   }, [selected?.config?.tool_slugs]);
-  const hasImageTool = toolSlugs.includes("generate_image");
-  const hasVideoTool = toolSlugs.includes("generate_video");
+  // 生图/生视频由 enable_generative_tools 挂载，不一定写入 tool_slugs
+  const hasGenerativeTools = Boolean(selected?.config?.enable_generative_tools);
+  const hasImageTool = hasGenerativeTools || toolSlugs.includes("generate_image");
+  const hasVideoTool = hasGenerativeTools || toolSlugs.includes("generate_video");
 
   const messaging = useAgentsChatMessaging({
     selectedAgent,
@@ -95,6 +97,7 @@ export function useAgentsChatPage() {
     setMessages: session.setMessages,
     setSessionTitle: session.setSessionTitle,
     refreshSessions: session.refreshSessions,
+    ensureConversation: session.ensureConversation,
     carryForwardMedia,
     businessContext,
     initialPrompt: route.prompt,

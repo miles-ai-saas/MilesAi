@@ -20,6 +20,8 @@ type Params = {
   setMessages: Dispatch<SetStateAction<ChatMessage[]>>;
   setSessionTitle: (title: string) => void;
   refreshSessions: (agentId: string) => void;
+  /** 无会话时发送前创建/选中会话，返回会话 id */
+  ensureConversation?: () => string | null;
   carryForwardMedia: boolean;
   businessContext?: BusinessContext | null;
   initialPrompt?: string | null;
@@ -34,6 +36,7 @@ export function useAgentsChatMessaging({
   setMessages,
   setSessionTitle,
   refreshSessions,
+  ensureConversation,
   carryForwardMedia,
   businessContext = null,
   initialPrompt,
@@ -63,7 +66,14 @@ export function useAgentsChatMessaging({
   });
 
   const applyChatResponse = useCallback(
-    (res: ChatAgentResult, optimistic: ChatMessage[], userText: string, userMedia: ChatMessageMedia[], useWsJobs: boolean) => {
+    (
+      res: ChatAgentResult,
+      optimistic: ChatMessage[],
+      userText: string,
+      userMedia: ChatMessageMedia[],
+      useWsJobs: boolean,
+      convId: string,
+    ) => {
       setPendingTool(res.pending_tool ?? null);
       generative.applyResponseGenerativeJobs(res, useWsJobs);
       const arts = generative.artifactsFromResponse(res);
@@ -78,12 +88,12 @@ export function useAgentsChatMessaging({
         },
       ];
       setMessages(nextMessages);
-      appendTurn(selectedAgent, conversationId, userText, res.answer, res.steps ?? [], res.trace_id, userMedia.length ? userMedia : undefined, arts.length ? arts : undefined);
+      appendTurn(selectedAgent, convId, userText, res.answer, res.steps ?? [], res.trace_id, userMedia.length ? userMedia : undefined, arts.length ? arts : undefined);
       refreshSessions(selectedAgent);
-      const updated = getSession(selectedAgent, conversationId);
+      const updated = getSession(selectedAgent, convId);
       if (updated) setSessionTitle(updated.title);
     },
-    [conversationId, generative, refreshSessions, selectedAgent, setMessages, setSessionTitle],
+    [generative, refreshSessions, selectedAgent, setMessages, setSessionTitle],
   );
 
   const runWsChat = useCallback(
@@ -132,7 +142,9 @@ export function useAgentsChatMessaging({
   };
 
   const chat = async () => {
-    if (!selectedAgent || !conversationId) return;
+    if (!selectedAgent) return;
+    const convId = conversationId || ensureConversation?.() || "";
+    if (!convId) return;
     const userText = query.trim();
     const pendingPayload: ChatMediaIn[] = media.pendingMedia.map((m) => ({
       attachment_id: m.attachment_id,
@@ -157,7 +169,10 @@ export function useAgentsChatMessaging({
     ];
     setMessages(optimistic);
 
-    const useWs = wsEnabled && wsReady && wsClientRef.current?.connected;
+    // 刚 ensure 出的会话 WS 可能尚未就绪，回退 HTTP
+    const useWs = Boolean(
+      conversationId === convId && wsEnabled && wsReady && wsClientRef.current?.connected,
+    );
 
     try {
       if (useWs && wsClientRef.current) {
@@ -170,15 +185,15 @@ export function useAgentsChatMessaging({
           },
           optimistic,
         );
-        applyChatResponse(res, optimistic, userText, userMedia, true);
+        applyChatResponse(res, optimistic, userText, userMedia, true, convId);
       } else {
         const res = await api.chatAgent(selectedAgent, apiQuery, {
-          conversationId,
+          conversationId: convId,
           media: mediaPayload.length ? mediaPayload : undefined,
           generativeImageN,
           generativeVideoDuration,
         });
-        applyChatResponse(res, optimistic, userText, userMedia, false);
+        applyChatResponse(res, optimistic, userText, userMedia, false, convId);
       }
     } catch (e) {
       const err = e instanceof Error ? e.message : "对话失败";

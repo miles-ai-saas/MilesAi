@@ -192,9 +192,12 @@ export function AgentsChatLayout({ vm }: Props) {
               videoDuration={videoDuration}
               onVideoDurationChange={hasVideoTool ? setVideoDuration : undefined}
               carryForwardHint={carriedMedia.length > 0 && pendingMedia.length === 0 ? "将沿用上一轮附图（可在智能体配置中关闭）" : undefined}
-              disabled={!selectedAgent || !conversationId}
+              disabled={!selectedAgent}
+              placeholder={
+                !selectedAgent ? "请先选择智能体" : !conversationId ? "输入消息，发送时自动创建会话" : undefined
+              }
               sendDisabled={
-                chatting || uploadingMedia || !selectedAgent || !conversationId || (!query.trim() && pendingMedia.length === 0 && carriedMedia.length === 0)
+                chatting || uploadingMedia || !selectedAgent || (!query.trim() && pendingMedia.length === 0 && carriedMedia.length === 0)
               }
               uploadingMedia={uploadingMedia}
               chatting={chatting}
@@ -257,7 +260,10 @@ export function AgentsChatLayout({ vm }: Props) {
           openTraceLatest();
         }}
         onClose={closePanel}
-        onSaved={() => list.reload()}
+        onSaved={() => {
+          void list.reload();
+          closePanel();
+        }}
       />
       {confirmDialog}
     </div>
