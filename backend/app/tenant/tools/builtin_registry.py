@@ -2,7 +2,7 @@
 内置工具注册表（不入库，由代码维护）。
 
 ``generative_only``：仅当智能体 ``enable_generative_tools`` 时出现在工具列表；
-``generate_video`` 默认 ``require_confirmation=True``（耗时长、费用高）。
+``generate_video`` 默认 ``require_confirmation=False``（开启生视频即同意直接调用；可取消进行中任务）。
 """
 
 BUILTIN_REGISTRY: list[dict] = [
@@ -61,10 +61,10 @@ BUILTIN_REGISTRY: list[dict] = [
     {
         "slug": "generate_video",
         "name": "生视频",
-        "description": "文生视频、图生视频或首尾帧生视频（万相/豆包）；通常需 1–5 分钟，调用前需确认",
+        "description": "文生视频、图生视频或首尾帧生视频（万相/豆包）；通常需 1–5 分钟，调用后异步排队",
         "category_slug": "general",
         "version": "1.1.0",
-        "require_confirmation": True,
+        "require_confirmation": False,
         "generative_only": True,
         "parameters": [
             {"name": "prompt", "type": "string", "description": "视频描述", "required": True},

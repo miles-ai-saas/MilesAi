@@ -235,7 +235,7 @@ def _make_generate_image_tool() -> StructuredTool:
 
 
 def _make_generate_video_tool() -> StructuredTool:
-    """generate_video schema；异步 Celery 任务，常需用户确认。"""
+    """generate_video schema；异步 Celery 任务，对话中直接入队。"""
 
     async def _arun(
         prompt: str,
@@ -250,7 +250,7 @@ def _make_generate_video_tool() -> StructuredTool:
     return StructuredTool.from_function(
         coroutine=_arun,
         name="generate_video",
-        description="生成短视频（文/图生视频）。直接通过 function calling 调用，传入 prompt 等参数即可，禁止在文字中描述调用过程。耗时长，需用户确认。",
+        description="生成短视频（文/图生视频）。直接通过 function calling 调用，传入 prompt 等参数即可，禁止在文字中描述调用过程。耗时长，异步排队。",
         args_schema=GenerateVideoInput,
     )
 

@@ -233,7 +233,7 @@ class ChatResponse(BaseModel):
 
 ### 5.4 确认策略
 
-`generate_video` 耗时长、费用高：默认走 **`ToolConfirmationRequired`**（与 `skill_run_script` 相同），用户确认后执行。
+`generate_video` 默认 **不**要求确认（开启生视频工具即同意直接入队）；进行中任务可取消。生图在 `n≥2` 等条件下仍可触发确认。其它高风险工具（如 `skill_run_script`）仍可 `require_confirmation=True`。
 
 ---
 
