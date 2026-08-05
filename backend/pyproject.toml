@@ -58,6 +58,12 @@ multimodal = [
 parse-docling = [
     "docling>=2.0.0",
 ]
+otel = [
+    "opentelemetry-api>=1.28.0",
+    "opentelemetry-sdk>=1.28.0",
+    "opentelemetry-exporter-otlp>=1.28.0",
+    "opentelemetry-instrumentation-fastapi>=0.49b0",
+]
 
 [project.scripts]
 milesai = "cli:main"

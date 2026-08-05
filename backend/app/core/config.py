@@ -142,6 +142,11 @@ class Settings(BaseSettings):
     # docling 失败或未安装时，PDF 是否回退 pypdf（Office 无 docling 则直接报错）
     parse_docling_fallback_pypdf: bool = True
 
+    # OpenTelemetry OTLP 导出（需 pip install 'milesai[otel]' 且配置 endpoint）
+    otel_enabled: bool = False
+    otel_exporter_otlp_endpoint: str = ""
+    otel_service_name: str = "milesai-api"
+
     @property
     def database_url(self) -> str:
         return f"postgresql+asyncpg://{self.postgres_user}:{self.postgres_password}@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
