@@ -14,7 +14,7 @@ from app.integrations.langgraph.compiler import validate_graph_for_compile
 
 def test_registry_has_expected_ids():
     ids = {spec.id for spec in FLOW_TEMPLATE_REGISTRY}
-    assert ids == {"blank", "rag", "simple_llm", "rag_with_grade"}
+    assert ids == {"blank", "rag", "simple_llm", "video_t2v", "video_i2v", "rag_with_grade"}
 
 
 def test_blank_template_empty_graph():
@@ -28,11 +28,20 @@ def test_rag_with_grade_template_compilable():
     assert report.compilable, report.errors
 
 
-@pytest.mark.parametrize("template_id", ["rag", "simple_llm"])
+@pytest.mark.parametrize("template_id", ["rag", "simple_llm", "video_t2v", "video_i2v"])
 def test_non_blank_templates_compilable(template_id: str):
     graph = load_flow_template_graph(template_id)
     report = validate_graph_for_compile(graph)
     assert report.compilable, report.errors
+
+
+def test_video_templates_preset_params():
+    for tid in ("video_t2v", "video_i2v"):
+        graph = load_flow_template_graph(tid)
+        video = next(n for n in graph["nodes"] if n["type"] == "VideoGenerate")
+        assert video["data"]["duration"] == 5
+        assert video["data"]["resolution"] == "720P"
+        assert not video["data"].get("model_config_id")
 
 
 def test_list_flow_templates_includes_graph_json():

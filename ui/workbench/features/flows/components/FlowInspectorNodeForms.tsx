@@ -7,6 +7,10 @@ import { api } from "@/lib/api";
 import type { Flow, KnowledgeBase, ModelConfig, PromptTemplate, ToolCatalogItem, ToolParameterSpec } from "@/lib/types";
 
 import { CONDITION_MODES, MERGE_STRATEGIES } from "@/features/flows/lib/flow-node-schemas";
+import {
+  VIDEO_GENERATE_PARAM_PRESETS,
+  matchVideoGeneratePreset,
+} from "@/features/flows/lib/video-generate-presets";
 
 const IMAGE_SIZE_OPTIONS = ["1024x1024", "1280x720", "720x1280"] as const;
 const VIDEO_RESOLUTION_OPTIONS = ["720P", "1080P"] as const;
@@ -512,19 +516,41 @@ export function ImageGenerateInspectorForm({ data, patch, labelField, models }: 
 }
 
 export function VideoGenerateInspectorForm({ data, patch, labelField, models }: InspectorFormContext) {
+  const presetId = matchVideoGeneratePreset(data.duration, data.resolution);
+
   return (
     <>
       {labelField}
-      <GenerativeInspectorField label="生视频模型 (video_gen) *">
+      <GenerativeInspectorField label="参数配方">
+        <select
+          className="input-field w-full text-sm"
+          value={presetId}
+          onChange={(e) => {
+            const preset = VIDEO_GENERATE_PARAM_PRESETS.find((p) => p.id === e.target.value);
+            if (!preset) return;
+            patch({ duration: preset.duration, resolution: preset.resolution });
+          }}
+        >
+          <option value="">自定义（当前值）</option>
+          {VIDEO_GENERATE_PARAM_PRESETS.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.label}
+            </option>
+          ))}
+        </select>
+      </GenerativeInspectorField>
+      <GenerativeInspectorField label="生视频模型 (video_gen)">
         <GenerativeModelSelect
           models={models}
           modelType="video_gen"
           value={String(data.model_config_id ?? "")}
           onChange={(id) => patch({ model_config_id: id ?? "" })}
-          required
         />
       </GenerativeInspectorField>
       {data.model_config_id && <p className="-mt-2 mb-3 text-[10px] text-ink-muted">已选：{modelLabel(models, data.model_config_id)}（万相优先）</p>}
+      {!data.model_config_id && (
+        <p className="-mt-2 mb-3 text-[10px] text-ink-muted">未选时运行将使用租户默认 video_gen 模型</p>
+      )}
       <GenerativeInspectorField label="固定 prompt（可选）">
         <textarea
           className="input-field min-h-[72px] w-full text-sm"

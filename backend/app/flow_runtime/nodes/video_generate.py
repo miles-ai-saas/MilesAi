@@ -42,9 +42,8 @@ async def video_generate(
     if not prompt:
         raise BadRequestError("生视频节点缺少 prompt")
 
-    model_id = node_data.get("model_config_id")
-    if not model_id:
-        raise BadRequestError("生视频节点未配置 video_gen 模型")
+    raw_model = node_data.get("model_config_id")
+    model_id: UUID | None = UUID(str(raw_model)) if raw_model else None
 
     first_att = _optional_uuid(inputs.get("image_attachment_id") or node_data.get("image_attachment_id"))
     last_att = _optional_uuid(inputs.get("last_frame_attachment_id") or node_data.get("last_frame_attachment_id"))
@@ -52,13 +51,14 @@ async def video_generate(
     resolution = node_data.get("resolution") or inputs.get("resolution")
 
     if ctx.generative_video_async and GenerativeJobService.video_async_enabled():
+        # 异步入队：未显式配模型时交给 JobService / resolve 取租户默认
         body = VideoGenerativeJobCreate(
             prompt=prompt,
             duration=duration,
             resolution=str(resolution) if resolution else None,
             image_attachment_id=first_att,
             last_frame_attachment_id=last_att,
-            model_config_id=UUID(str(model_id)),
+            model_config_id=model_id,
         )
         async with AsyncSessionLocal() as db:
             tenant_ctx = tenant_context_from_run(ctx)
@@ -82,7 +82,7 @@ async def video_generate(
         model = await resolve_video_gen_model(
             db,
             tenant_ctx,
-            model_config_id=UUID(str(model_id)),
+            model_config_id=model_id,
             agent_config=ctx.agent_config,
         )
         result = await generate_video_for_model(

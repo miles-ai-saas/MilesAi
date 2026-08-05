@@ -53,6 +53,20 @@ FLOW_TEMPLATE_REGISTRY: tuple[FlowTemplateSpec, ...] = (
         graph_file="simple_llm.json",
     ),
     FlowTemplateSpec(
+        id="video_t2v",
+        label="文生视频",
+        hint="描述 → 生视频（默认 5s·720P）→ 输出；请确认 video_gen 模型",
+        default_name="文生视频流程",
+        graph_file="video_t2v.json",
+    ),
+    FlowTemplateSpec(
+        id="video_i2v",
+        label="图生视频（首帧）",
+        hint="描述 → 生视频；请在节点配置首帧图（默认 5s·720P）",
+        default_name="图生视频流程",
+        graph_file="video_i2v.json",
+    ),
+    FlowTemplateSpec(
         id="rag_with_grade",
         label="RAG 问答（评分分支）",
         hint="检索 → 相关性评分 → 条件分支",
