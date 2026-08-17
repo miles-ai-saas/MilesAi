@@ -58,6 +58,7 @@ ui/                           # 前端应用源码（与 docs/ 并列，见仓�
 | 文档 | 说明 |
 |------|------|
 | [technical-design.md](./architecture/technical-design.md) | 架构、分层、库表、API、**对象/向量存储与配置策略（§6.5）**（**主文档**，v2.1） |
+| [backend-reference-framework.md](./architecture/backend-reference-framework.md) | **后端参考框架**：面向其他 LLM 的可复用骨架（分层、横切设施代码模板、业务域四件套、规范护栏、搭建 Checklist） |
 | [layering.md](./architecture/layering.md) | 后端分层、import 规范；**单文件 ≥500 行须按子包拆分**（§5.4，细则见 [backend/README.md](../backend/README.md)） |
 | [rag-module-migration.md](./architecture/rag-module-migration.md) | RAG 模块迁移清单（已完成）与后续插件位 |
 | [vector-database-selection.md](./architecture/vector-database-selection.md) | 向量数据库选型：pgvector / Weaviate / Milvus / Qdrant / OpenSearch / ES |
