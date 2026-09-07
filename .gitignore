@@ -31,3 +31,5 @@ celerybeat-schedule.db
 celerybeat-schedule*
 .worktrees/
 .superpowers/
+# 运行时技能包数据（seed skills 按租户/技能包 UUID 写入，不入库）
+backend/.data/skills/

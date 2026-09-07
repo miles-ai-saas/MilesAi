@@ -123,7 +123,7 @@ MILVUS_URI=http://milvus:19530   # 容器内；本地直连用 http://localhost:
 
 ## 数据库
 
-PostgreSQL（pgvector 镜像）由 infra 自动建库（`POSTGRES_DB`），首次启动执行 `deploy/scripts/init_db.sql` 启用 `vector` 扩展。表结构与种子需手动执行（API 启动仅跑迁移，不写种子）：
+PostgreSQL（pgvector 镜像）由 infra 自动建库（`POSTGRES_DB`），首次启动执行 `docker/deploy/scripts/init_db.sql` 启用 `vector` 扩展。表结构与种子需手动执行（API 启动仅跑迁移，不写种子）：
 
 ```bash
 cd backend && python cli.py init-db
