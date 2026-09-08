@@ -135,16 +135,16 @@ class AgentChatRagMixin:
                 reasoning_query = chat_query
             body_media_count = len(body.media) if body.media else 0
             user_msg = build_user_message(query=reasoning_query, media_parts=media_parts)
+            model = await self.resolve_invoke_model(agent.model_config)
+            usage_sink = self.chat_usage_sink(model, source_id=agent_id)
             answer = await ainvoke_chat(
-                agent.model_config,
+                model,
                 [
                     {"role": "system", "content": base},
                     user_msg,
                 ],
                 temperature=float((agent.config or {}).get("temperature", 0.7)),
-                db=self.db,
-                tenant_id=self.ctx.tenant_id,
-                source_id=agent_id,
+                usage_sink=usage_sink,
                 on_delta=on_delta,
             )
             await hooks.run(
