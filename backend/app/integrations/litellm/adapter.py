@@ -19,6 +19,7 @@ OnDelta = Callable[[str], Awaitable[None]]
 
 from app.common.exceptions import AppError, BadRequestError
 from app.integrations.http_constants import HTTP_DEFAULT_TIMEOUT_SEC
+from app.integrations.litellm.usage_sink import UsageSink
 from app.models.model import ModelConfig
 from app.models.model.catalog import (
     DEFAULT_API_BASES,
@@ -163,7 +164,7 @@ async def litellm_chat_completion_stream(
     temperature: float = 0.7,
     max_tokens: int = 2048,
     timeout: float = HTTP_DEFAULT_TIMEOUT_SEC,
-    usage_ctx: Any | None = None,
+    usage_sink: UsageSink | None = None,
     on_delta: OnDelta | None = None,
 ) -> str:
     """通过 LiteLLM 发起流式 Chat Completions，可选 on_delta 推送 token。"""
@@ -211,12 +212,9 @@ async def litellm_chat_completion_stream(
     if not parts:
         raise AppError("模型返回为空", status_code=502)
 
-    if usage_ctx is not None and usage_response is not None:
+    if usage_sink is not None and usage_response is not None:
         prompt_t, completion_t, _ = _extract_usage(usage_response)
-        from app.tenant.models.services.usage import record_model_usage
-
-        await record_model_usage(
-            usage_ctx,
+        await usage_sink.record(
             prompt_tokens=prompt_t,
             completion_tokens=completion_t,
         )
@@ -230,7 +228,7 @@ async def litellm_chat_completion(
     temperature: float = 0.7,
     max_tokens: int = 2048,
     timeout: float = HTTP_DEFAULT_TIMEOUT_SEC,
-    usage_ctx: Any | None = None,
+    usage_sink: UsageSink | None = None,
 ) -> str:
     """通过 LiteLLM 发起异步 Chat Completions（content 可为 str 或多模态 part 数组）。"""
     litellm = _import_litellm()
@@ -270,12 +268,9 @@ async def litellm_chat_completion(
         content = (first.get("message") or {}).get("content")
     if content is None:
         raise AppError("模型返回为空", status_code=502)
-    if usage_ctx is not None:
+    if usage_sink is not None:
         prompt_t, completion_t, _ = _extract_usage(response)
-        from app.tenant.models.services.usage import record_model_usage
-
-        await record_model_usage(
-            usage_ctx,
+        await usage_sink.record(
             prompt_tokens=prompt_t,
             completion_tokens=completion_t,
         )
