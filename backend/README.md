@@ -212,6 +212,8 @@ tenant/tools/
 - `app_ops/schemas/{tenant,billing,risk,audit}.py` — 对应 API 请求/响应
 - `app_sys/views/`、`app_ops/views/` — 路由薄层（`router.py` 仅汇总 include）
 
+> **运营面读租户域数据**（审核/监管）：仅限 `admin → tenant` 单向，且优先经共享 ORM（`app/models/`）与下沉的纯函数/Repository；合规形态与过渡期例外见 [layering.md §2.3](../docs/architecture/layering.md#23-运营后台admin访问租户域)。
+
 ### 删除编排（`app/deletion/`）
 
 无数据库外键时，删除顺序由编排模块保证：

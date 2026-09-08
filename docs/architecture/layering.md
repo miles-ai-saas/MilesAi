@@ -1,7 +1,7 @@
 # 后端分层与代码规范
 
 > **注（2026-09-07）**：业务中心（`app/biz/`、`app/models/biz/`）代码已从主分支摘除归档，见 [business-center-design.md](./business-center-design.md) 归档头注；恢复可用 tag `archive/business-center-p0-p4`。
-> 版本：v1.0 | 日期：2026-05-22（2026-06-01 增补 `app/biz/`）  
+> 版本：v1.0 | 日期：2026-05-22（2026-06-01 增补 `app/biz/`；2026-09-08 增补 §2.3 admin 访问租户域）  
 > 状态：**规范已定稿**；目录迁移见 [rag-module-migration.md](./rag-module-migration.md)  
 > 关联：[technical-design.md](./technical-design.md)、[guides/knowledge-base.md](../guides/knowledge-base.md)、[guides/ai-stack.md](../guides/ai-stack.md)
 
@@ -97,6 +97,23 @@ L0 → L1 → L2 → L3 → L4
 | 新增 `app/ai/*` 仅 re-export | 已废弃，见迁移文档 |
 
 **允许**：`rag` → `models`、`core`、`infra`、`integrations`（仅 L3 技术封装）。
+
+### 2.3 运营后台（`admin/`）访问租户域
+
+`admin/`（L0/L1，`/api/admin/v1`）为平台运营面：审核租户内容、管理租户与配额时须读取租户域数据。允许 `admin → tenant` **单向**访问，但只能走下列合规形态：
+
+| 形态 | 合规目标 | 当前过渡期例外（待收敛） |
+|------|----------|--------------------------|
+| 读共享 ORM | 跨面共读的 ORM 上移 `app/models/<域>/`，admin 经共享模型读取 | `tenant.marketplace.models`（市场审核）等暂直接引用 |
+| 复用纯函数 | 下沉 `common/` 或 `utils/` | `tenant.categories.services.category.slugify`、`tenant.models.services.api_key_validation.validate_api_key` |
+| 复用 Repository | 允许复用管理**同域数据**的租户 Repository（运营即该数据管理面） | `tenant.system.repositories.tenant.TenantRepository` |
+
+**禁止**：
+
+- admin import 租户域 **service 业务用例**（事务 / 状态机 / 编排入口）
+- `tenant/` 反向依赖 `admin/`
+
+> 过渡期例外应随「模型解析下沉」等重构收敛；新增 admin 读取统一先评估上移共享层，勿继续加码深层 import。
 
 ---
 
@@ -324,3 +341,4 @@ backend/tests/
 | 2026-05-22 | 初版：分层定义、rag 目录、infra 瘦身、无 MinerU/图谱 |
 | 2026-05-22 | 入库链：`pipeline/ingest`、Docling/pypdf、multimodal 接入、`chunk_documents` + `page_no` |
 | 2026-05-26 | §5.4：单文件 ≥500 行强制按子包拆分；§5.5：类/方法/函数 docstring 强制 |
+| 2026-09-08 | §2.3：新增运营后台（admin）访问租户域的合规形态与过渡期例外 |
