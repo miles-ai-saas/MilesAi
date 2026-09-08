@@ -474,12 +474,7 @@ from app.tenant.kb.services.embeddings import (
 )
 ```
 
-并将 `run_ingest_pipeline(...)` 调用追加视觉注入（配合 Task 4 Step 2 的 pipeline 形参）：
-
-```python
-                embed_texts=embed_texts_for_kb_sync,
-                embed_visual_chunks=embed_image_chunks_vectors_sync,
-```
+`run_ingest_pipeline(...)` 调用本体**本 Task 不改**（视觉注入 `embed_visual_chunks=embed_image_chunks_vectors_sync` 与 L2 pipeline 新增形参在 Task 4 Step 2 同批落地，避免形参未定义中间态）。
 
 - [ ] **Step 3: 删除 L3 embeddings.py 全部函数并移除文件**
 
@@ -511,7 +506,7 @@ git commit -m "refactor(kb): kb 向量化解析迁入 L1 kb 域并移除 L3 embe
 ### Task 4: rag_answer/retrieve_hits 显式 bindings + L2 pipeline 视觉注入
 
 **Files:**
-- Modify: `backend/app/rag/generate/answer.py`、`backend/app/rag/pipeline/ingest.py`
+- Modify: `backend/app/rag/generate/answer.py`、`backend/app/rag/pipeline/ingest.py`、`backend/app/tenant/kb/services/ingest.py`
 - Test: `backend/tests/rag/test_rag_answer_stream.py`（既有 mock 适配）、`backend/tests/rag/test_rag_pipeline_ingest.py`
 
 **Interfaces:**
@@ -572,6 +567,7 @@ class EmbedVisualChunks(Protocol):
 ```
 
 模块 docstring「4. embed_texts」说明同步更新为含视觉注入。
+3. 同批落库注入：`backend/app/tenant/kb/services/ingest.py` 的 `run_ingest_pipeline(...)` 调用在 `embed_texts=embed_texts_for_kb_sync,` 行后加 `embed_visual_chunks=embed_image_chunks_vectors_sync,`（import 已在 Task 3 Step 2 引入）——L1 注入与 L2 形参同 commit，不留未定义形参中间态。
 
 - [ ] **Step 3: 回归适配**
 
