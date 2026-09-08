@@ -24,6 +24,7 @@ from app.core.tenant import TenantContext
 from app.integrations.chat.multimodal import build_invoke_messages_with_media
 from app.integrations.langchain.chat_models import OnDelta, ainvoke_chat
 from app.integrations.langchain.vectorstores import search_multi_kb_async
+from app.integrations.litellm.usage_sink import UsageSink
 from app.models.model import ModelConfig
 from app.rag.generate.context import build_rag_user_prompt
 from app.rag.load import load_kbs_for_tenant
@@ -91,12 +92,14 @@ async def rag_answer(
     media: list[MediaRefIn] | None = None,
     ctx: TenantContext | None = None,
     retrieve_query: str | None = None,
-    source_id: UUID | None = None,
     on_delta: OnDelta | None = None,
+    usage_sink: UsageSink | None = None,
 ) -> tuple[str, list[dict[str, Any]]]:
     """
     端到端 RAG：检索 → 拼 prompt → LLM 生成。
 
+    ``model`` 由调用方 resolve（装配点语义，见 ``resolve_invoke_model``），
+    直接用于生成；用量经 ``usage_sink`` 注入。
     ``retrieve_query`` 仅用于向量检索；``query`` 写入生成 prompt（可含「请根据附图回答」）。
     返回 (answer 文本, hits) 便于调用方展示引用来源。
     """
@@ -131,9 +134,7 @@ async def rag_answer(
         model,
         messages,
         temperature=temperature,
-        db=db,
-        tenant_id=tenant_id,
-        source_id=source_id,
+        usage_sink=usage_sink,
         on_delta=on_delta,
     )
     return answer, hits

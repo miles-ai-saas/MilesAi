@@ -25,6 +25,7 @@ from langgraph.checkpoint.memory import MemorySaver
 from app.integrations.langchain.chat_models import OnDelta
 from app.integrations.langgraph.checkpointer import checkpoint_backend, get_compiled_rag_graph
 from app.integrations.langgraph.graphs.rag_qa import build_rag_qa_graph
+from app.integrations.litellm.usage_sink import UsageSink
 from app.common.schemas.media import MediaRefIn
 from app.models.agent import Agent
 from app.models.model import ModelConfig
@@ -73,17 +74,15 @@ async def run_rag_workflow(
     media: list[MediaRefIn] | None = None,
     user_id: UUID | None = None,
     on_delta: OnDelta | None = None,
+    usage_sink: UsageSink | None = None,
 ) -> tuple[str, list[dict[str, Any]], list[dict[str, Any]]]:
     """执行 RAG LangGraph，返回 (answer, hits, steps)。
 
-    ``thread_id`` 写入 checkpointer；``configurable.model`` 供各节点 ``_cfg_model`` 读取。
+    ``model`` 由调用方 resolve（装配点语义，见 ``resolve_invoke_model``），
+    直接写入 ``configurable.model`` 供各节点 ``_cfg_model`` 读取；
+    ``usage_sink`` 同写入 configurable，由 generate/fallback 透传给 ``ainvoke_chat``。
+    ``thread_id`` 写入 checkpointer。
     """
-    from app.infra.db import AsyncSessionLocal
-    from app.tenant.models.services.model_resolve import resolve_model_for_invoke
-
-    async with AsyncSessionLocal() as db:
-        model = await resolve_model_for_invoke(db, model, tenant_id)
-
     graph = get_compiled_rag_graph()
     cfg = agent_config or {}
     tid = thread_id or build_rag_thread_id(
@@ -121,6 +120,7 @@ async def run_rag_workflow(
             "thread_id": tid,
             "model": model,
             "on_delta": on_delta,
+            "usage_sink": usage_sink,
         }
     }
     final = await graph.ainvoke(initial, run_config)

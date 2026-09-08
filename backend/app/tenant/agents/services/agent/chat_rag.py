@@ -275,9 +275,11 @@ class AgentChatRagMixin:
             chat_query, _ = await self.resolve_chat_media_parts(agent, body)
             prompt_query = reasoning_query.strip() or chat_query
             temperature = float((agent.config or {}).get("temperature", 0.7))
+            model = await self.resolve_invoke_model(agent.model_config)
+            usage_sink = self.chat_usage_sink(model, source_id=agent_id)
             if should_use_langgraph_rag(agent, kb_ids=kb_ids):
                 answer, all_hits, steps = await run_rag_workflow(
-                    model=agent.model_config,
+                    model=model,
                     system_prompt=base,
                     query=retrieve_query,
                     prompt_query=prompt_query,
@@ -291,10 +293,11 @@ class AgentChatRagMixin:
                     media=body.media or None,
                     user_id=self.ctx.user_id,
                     on_delta=on_delta,
+                    usage_sink=usage_sink,
                 )
             else:
                 answer, all_hits = await rag_answer(
-                    model=agent.model_config,
+                    model=model,
                     system_prompt=base,
                     query=prompt_query,
                     kb_ids=kb_ids,
@@ -305,8 +308,8 @@ class AgentChatRagMixin:
                     media=body.media or None,
                     ctx=self.ctx,
                     retrieve_query=retrieve_query,
-                    source_id=agent_id,
                     on_delta=on_delta,
+                    usage_sink=usage_sink,
                 )
                 steps = [{"type": "rag_linear", "engine": "langchain"}]
             await hooks.run(
