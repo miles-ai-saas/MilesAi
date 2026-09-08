@@ -74,3 +74,34 @@ async def record_litellm_response_usage(ctx: UsageRecordContext, response: Any) 
 
     prompt_t, completion_t, _ = extract_litellm_usage(response)
     await record_model_usage(ctx, prompt_tokens=prompt_t, completion_tokens=completion_t)
+
+
+class ChatUsageSink:
+    """对话链路的用量记录器：会话 token 累计 + 落 ModelUsageLog。
+
+    实现 L3 ``UsageSink`` 协议，由 L1 装配（如 AgentService、flow 运行入口）
+    构造并注入引擎；``source_id`` 为对话 agent_id，用于 chat 用量累计。
+    """
+
+    def __init__(
+        self,
+        *,
+        db: AsyncSession,
+        tenant_id: UUID,
+        model: ModelConfig,
+        source_id: UUID | None = None,
+    ) -> None:
+        self._ctx = UsageRecordContext(
+            db=db,
+            tenant_id=tenant_id,
+            model=model,
+            source="chat",
+            source_id=source_id,
+        )
+
+    async def record(self, *, prompt_tokens: int = 0, completion_tokens: int = 0) -> None:
+        await record_model_usage(
+            self._ctx,
+            prompt_tokens=prompt_tokens,
+            completion_tokens=completion_tokens,
+        )
