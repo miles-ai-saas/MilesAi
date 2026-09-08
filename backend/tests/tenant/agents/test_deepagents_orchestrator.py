@@ -43,9 +43,23 @@ def test_slug_for_binding():
     assert slug.startswith("retrieval_")
 
 
-def test_general_purpose_guard_name():
-    from app.integrations.deepagents.subagent_graphs import _build_general_purpose_guard
+def test_general_purpose_guard_name(monkeypatch):
+    """guard 名字为 general-purpose（deepagents 为 optional 依赖，用替身验证）。"""
+    from app.integrations.deepagents import subagent_graphs
     from app.models.agent import AgentSubAgentBinding
+
+    class FakeCompiledSubAgent:
+        """极简替身：记录构造参数，兼容属性与下标访问。"""
+
+        def __init__(self, **kwargs):
+            self._data = dict(kwargs)
+            self.name = kwargs.get("name")
+
+        def __getitem__(self, key):
+            return self._data[key]
+
+    # 未安装 agent-stack extras 时模块级 CompiledSubAgent 为 None，此处注入替身
+    monkeypatch.setattr(subagent_graphs, "CompiledSubAgent", FakeCompiledSubAgent)
 
     class Child:
         id = uuid4()
@@ -59,6 +73,6 @@ def test_general_purpose_guard_name():
         sort_order=0,
     )
     b.child_agent = Child()  # type: ignore[attr-defined]
-    guard = _build_general_purpose_guard([b])
+    guard = subagent_graphs._build_general_purpose_guard([b])
     assert guard is not None
     assert guard["name"] == "general-purpose"
