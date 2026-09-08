@@ -577,7 +577,7 @@ Expected: PASS。既有 pipeline 测试若为图片文档，需在调用处补 `
 - [ ] **Step 4: Commit**
 
 ```bash
-git add backend/app/rag/generate/answer.py backend/app/rag/pipeline/ingest.py
+git add backend/app/rag/generate/answer.py backend/app/rag/pipeline/ingest.py backend/app/tenant/kb/services/ingest.py backend/tests/rag/test_rag_answer_stream.py backend/tests/rag/test_rag_pipeline_ingest.py
 git commit -m "refactor(rag): retrieve_hits/入库管道改收 kb 绑定与视觉向量化回调"
 ```
 
