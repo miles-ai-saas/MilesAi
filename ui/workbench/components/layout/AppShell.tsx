@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * 根布局壳层（链路 §7）：按路径选择工作台顶栏、`BusinessShell` 或 `SystemShell`；登录页无壳。
+ * 根布局壳层（链路 §7）：按路径选择工作台顶栏或 `SystemShell`；登录页无壳。
  * 鉴权补全见 §1：`fetchMe` 填充 user。
  */
 
@@ -11,7 +11,6 @@ import { useEffect } from "react";
 import { api } from "@/lib/api";
 import { useAuthHydrated, useAuthStore } from "@/lib/auth-store";
 import { BrandHeader } from "@/components/brand/brand-header";
-import { BusinessShell } from "@/components/layout/BusinessShell";
 import { SystemShell } from "@/components/layout/SystemShell";
 import { SectionLinks } from "@/components/layout/SectionLink";
 import { UserMenu } from "@/components/layout/UserMenu";
@@ -41,14 +40,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   if (pathname === "/login") {
     return <>{children}</>;
-  }
-
-  if (section === "business") {
-    return (
-      <MetaCacheProvider>
-        <BusinessShell>{children}</BusinessShell>
-      </MetaCacheProvider>
-    );
   }
 
   if (section === "system") {

@@ -62,9 +62,5 @@ celery_app.conf.update(
             "task": "app.workers.tasks.model_health.probe_models_health",
             "schedule": 900.0,
         },
-        "check-milestone-due": {
-            "task": "app.workers.tasks.biz_milestone.check_milestone_due",
-            "schedule": 86400.0,
-        },
     },
 )

@@ -56,20 +56,6 @@ DEFAULT_PERMISSIONS = [
     ("marketplace:review", "审核应用上架", "marketplace"),
     ("marketplace:rate", "评价应用", "marketplace"),
     ("audit:read", "查看审计日志", "audit"),
-    ("biz:dashboard:read", "查看业务仪表盘", "biz"),
-    ("biz:client:read", "查看客户", "biz"),
-    ("biz:client:write", "管理客户", "biz"),
-    ("biz:opportunity:read", "查看商机", "biz"),
-    ("biz:opportunity:write", "管理商机", "biz"),
-    ("biz:project:read", "查看项目", "biz"),
-    ("biz:project:write", "管理项目", "biz"),
-    ("biz:contract:read", "查看合同", "biz"),
-    ("biz:contract:write", "管理合同", "biz"),
-    ("biz:payment:read", "查看收付款", "biz"),
-    ("biz:payment:write", "管理收付款", "biz"),
-    ("biz:supplier:read", "查看供应商", "biz"),
-    ("biz:supplier:write", "管理供应商", "biz"),
-    ("biz:finance:read", "查看业务财务", "biz"),
 ]
 
 

@@ -12,7 +12,6 @@ def load_all_models() -> None:
     import app.models.task  # noqa: F401 — task_records
     import app.models.storage  # noqa: F401 — 对象存储配置
     import app.models.agent  # noqa: F401 — agt_* 智能体
-    import app.models.biz  # noqa: F401 — biz_* 业务中心
     import app.models  # noqa: F401 — 聚合 re-export（不新增表）
     import app.admin.models  # noqa: F401
     import app.tenant.compliance.models  # noqa: F401

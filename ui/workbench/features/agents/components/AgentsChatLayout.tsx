@@ -1,7 +1,6 @@
 "use client";
 
 import { AgentChatDebugHeader } from "@/features/agents/components/AgentChatDebugHeader";
-import { BusinessContextBanner } from "@/features/agents/components/BusinessContextBanner";
 import { AgentChatComposer } from "@/features/agents/components/AgentChatComposer";
 import { AgentChatLeftSidebar } from "@/features/agents/components/AgentChatLeftSidebar";
 import { AgentWorkbenchOverlay } from "@/features/agents/components/AgentWorkbenchOverlay";
@@ -72,8 +71,6 @@ export function AgentsChatLayout({ vm }: Props) {
     confirmPendingTool,
     onPickAttachments,
     removePendingMedia,
-    businessContext,
-    clearBusinessContext,
     loadMoreMessages,
     loadingMore,
     hasMore,
@@ -150,10 +147,6 @@ export function AgentsChatLayout({ vm }: Props) {
           }}
         />
 
-        {businessContext ? (
-          <BusinessContextBanner ctx={businessContext} onDismiss={clearBusinessContext} />
-        ) : null}
-
         <div className="min-h-0 flex-1 overflow-y-auto px-3 py-4 sm:px-4" ref={chatScrollRef}>
           <div className="mx-auto w-full max-w-4xl">
             <ChatMessageThread
@@ -193,12 +186,8 @@ export function AgentsChatLayout({ vm }: Props) {
               onVideoDurationChange={hasVideoTool ? setVideoDuration : undefined}
               carryForwardHint={carriedMedia.length > 0 && pendingMedia.length === 0 ? "将沿用上一轮附图（可在智能体配置中关闭）" : undefined}
               disabled={!selectedAgent}
-              placeholder={
-                !selectedAgent ? "请先选择智能体" : !conversationId ? "输入消息，发送时自动创建会话" : undefined
-              }
-              sendDisabled={
-                chatting || uploadingMedia || !selectedAgent || (!query.trim() && pendingMedia.length === 0 && carriedMedia.length === 0)
-              }
+              placeholder={!selectedAgent ? "请先选择智能体" : !conversationId ? "输入消息，发送时自动创建会话" : undefined}
+              sendDisabled={chatting || uploadingMedia || !selectedAgent || (!query.trim() && pendingMedia.length === 0 && carriedMedia.length === 0)}
               uploadingMedia={uploadingMedia}
               chatting={chatting}
               sendLabel={generativeToolBusyLabel(pendingTool?.slug) ?? "思考中…"}

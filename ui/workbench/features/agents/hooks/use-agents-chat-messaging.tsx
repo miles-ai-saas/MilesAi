@@ -5,7 +5,6 @@ import type { PendingChatMedia } from "@/features/agents/lib/chat-sessions";
 import { useAgentsChatComposerMedia } from "@/features/agents/hooks/use-agents-chat-composer-media";
 import { useAgentsChatGenerativeStatus } from "@/features/agents/hooks/use-agents-chat-generative-status";
 import { useAgentChatWs } from "@/features/agents/hooks/use-agent-chat-ws";
-import { prependBusinessContext, type BusinessContext } from "@/features/projects";
 import { api } from "@/lib/api";
 import { appendTurn, appendAssistantMessage, getSession, type ChatMessage, type ChatMessageMedia } from "@/features/agents/lib/chat-sessions";
 import { generativeToolBusyLabel } from "@/lib/generative-tool-ui";
@@ -23,7 +22,6 @@ type Params = {
   /** 无会话时发送前创建/选中会话，返回会话 id */
   ensureConversation?: () => string | null;
   carryForwardMedia: boolean;
-  businessContext?: BusinessContext | null;
   initialPrompt?: string | null;
   generativeImageN?: number;
   generativeVideoDuration?: number;
@@ -38,7 +36,6 @@ export function useAgentsChatMessaging({
   refreshSessions,
   ensureConversation,
   carryForwardMedia,
-  businessContext = null,
   initialPrompt,
   generativeImageN,
   generativeVideoDuration,
@@ -66,14 +63,7 @@ export function useAgentsChatMessaging({
   });
 
   const applyChatResponse = useCallback(
-    (
-      res: ChatAgentResult,
-      optimistic: ChatMessage[],
-      userText: string,
-      userMedia: ChatMessageMedia[],
-      useWsJobs: boolean,
-      convId: string,
-    ) => {
+    (res: ChatAgentResult, optimistic: ChatMessage[], userText: string, userMedia: ChatMessageMedia[], useWsJobs: boolean, convId: string) => {
       setPendingTool(res.pending_tool ?? null);
       generative.applyResponseGenerativeJobs(res, useWsJobs);
       const arts = generative.artifactsFromResponse(res);
@@ -88,7 +78,16 @@ export function useAgentsChatMessaging({
         },
       ];
       setMessages(nextMessages);
-      appendTurn(selectedAgent, convId, userText, res.answer, res.steps ?? [], res.trace_id, userMedia.length ? userMedia : undefined, arts.length ? arts : undefined);
+      appendTurn(
+        selectedAgent,
+        convId,
+        userText,
+        res.answer,
+        res.steps ?? [],
+        res.trace_id,
+        userMedia.length ? userMedia : undefined,
+        arts.length ? arts : undefined,
+      );
       refreshSessions(selectedAgent);
       const updated = getSession(selectedAgent, convId);
       if (updated) setSessionTitle(updated.title);
@@ -119,11 +118,7 @@ export function useAgentsChatMessaging({
     [generative.handleWsGenerativeJob, setMessages, wsClientRef],
   );
 
-  const buildUserMedia = (
-    pendingMedia: PendingChatMedia[],
-    carriedMedia: ChatMessageMedia[],
-    carriedFromPrevious: boolean,
-  ): ChatMessageMedia[] => {
+  const buildUserMedia = (pendingMedia: PendingChatMedia[], carriedMedia: ChatMessageMedia[], carriedFromPrevious: boolean): ChatMessageMedia[] => {
     if (pendingMedia.length) {
       return pendingMedia.map((m) => ({
         attachment_id: m.attachment_id,
@@ -152,7 +147,7 @@ export function useAgentsChatMessaging({
     const { payload: mediaPayload, carriedFromPrevious } = resolveOutgoingChatMedia(pendingPayload, messages, carryForwardMedia);
     if (!userText && mediaPayload.length === 0) return;
 
-    const apiQuery = userText ? prependBusinessContext(userText, businessContext) : userText;
+    const apiQuery = userText;
 
     const userMedia = buildUserMedia(media.pendingMedia, media.carriedMedia, carriedFromPrevious);
 
@@ -170,9 +165,7 @@ export function useAgentsChatMessaging({
     setMessages(optimistic);
 
     // 刚 ensure 出的会话 WS 可能尚未就绪，回退 HTTP
-    const useWs = Boolean(
-      conversationId === convId && wsEnabled && wsReady && wsClientRef.current?.connected,
-    );
+    const useWs = Boolean(conversationId === convId && wsEnabled && wsReady && wsClientRef.current?.connected);
 
     try {
       if (useWs && wsClientRef.current) {
@@ -248,14 +241,7 @@ export function useAgentsChatMessaging({
         ];
       });
       // 工具确认成功必须落本地，否则切会话后「最后一条成功消息」会丢失
-      appendAssistantMessage(
-        selectedAgent,
-        conversationId,
-        res.answer,
-        res.steps ?? [],
-        res.trace_id,
-        arts.length ? arts : undefined,
-      );
+      appendAssistantMessage(selectedAgent, conversationId, res.answer, res.steps ?? [], res.trace_id, arts.length ? arts : undefined);
       refreshSessions(selectedAgent);
       const updated = getSession(selectedAgent, conversationId);
       if (updated) setSessionTitle(updated.title);

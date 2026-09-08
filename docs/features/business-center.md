@@ -1,5 +1,8 @@
 # 业务中心
 
+> **⚠️ 已归档（2026-09-07）**：业务中心（广告试点）全量代码已从主分支摘除，进入重设计。
+> 本文档保留作为重设计素材；实现代码恢复见 tag `archive/business-center-p0-p4`。
+
 **日期：** 2026-06-01  
 **状态：** 已实现（Phase 0–4）；Phase 5 按需  
 **架构：** [business-center-design.md](../architecture/business-center-design.md)  

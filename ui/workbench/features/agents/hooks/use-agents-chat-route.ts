@@ -2,11 +2,7 @@
 
 import { useCallback } from "react";
 import { useSearchParams } from "next/navigation";
-import {
-  type AgentsChatQuery,
-  buildAgentsChatHref,
-  replaceAgentsChat,
-} from "@/features/agents/lib/agents-chat-href";
+import { type AgentsChatQuery, buildAgentsChatHref, replaceAgentsChat } from "@/features/agents/lib/agents-chat-href";
 
 /**
  * 对话页 URL 状态机：?agent / ?conv 是唯一真相。
@@ -20,9 +16,6 @@ export function useAgentsChatRoute() {
   const conversationId = searchParams.get("conv") ?? "";
   const tab = searchParams.get("tab");
   const prompt = searchParams.get("prompt");
-  const biz = searchParams.get("biz");
-  const projectId = searchParams.get("projectId");
-  const wpId = searchParams.get("wpId");
 
   const currentQuery = useCallback((): AgentsChatQuery => {
     // 以地址栏为准，避免 Suspense remount 后 searchParams 瞬间滞后
@@ -33,13 +26,10 @@ export function useAgentsChatRoute() {
         conv: s.get("conv"),
         tab: s.get("tab"),
         prompt: s.get("prompt"),
-        biz: s.get("biz"),
-        projectId: s.get("projectId"),
-        wpId: s.get("wpId"),
       };
     }
-    return { agent: agentId || null, conv: conversationId || null, tab, prompt, biz, projectId, wpId };
-  }, [agentId, conversationId, tab, prompt, biz, projectId, wpId]);
+    return { agent: agentId || null, conv: conversationId || null, tab, prompt };
+  }, [agentId, conversationId, tab, prompt]);
 
   const replaceQuery = useCallback(
     (patch: AgentsChatQuery) => {
@@ -49,9 +39,6 @@ export function useAgentsChatRoute() {
         conv: patch.conv !== undefined ? patch.conv : base.conv,
         tab: patch.tab !== undefined ? patch.tab : base.tab,
         prompt: patch.prompt !== undefined ? patch.prompt : base.prompt,
-        biz: patch.biz !== undefined ? patch.biz : base.biz,
-        projectId: patch.projectId !== undefined ? patch.projectId : base.projectId,
-        wpId: patch.wpId !== undefined ? patch.wpId : base.wpId,
       });
     },
     [currentQuery],
@@ -86,9 +73,6 @@ export function useAgentsChatRoute() {
     conversationId,
     tab,
     prompt,
-    biz,
-    projectId,
-    wpId,
     replaceQuery,
     selectAgent,
     selectConversation,

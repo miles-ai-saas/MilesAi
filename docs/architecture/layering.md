@@ -1,5 +1,6 @@
 # 后端分层与代码规范
 
+> **注（2026-09-07）**：业务中心（`app/biz/`、`app/models/biz/`）代码已从主分支摘除归档，见 [business-center-design.md](./business-center-design.md) 归档头注；恢复可用 tag `archive/business-center-p0-p4`。
 > 版本：v1.0 | 日期：2026-05-22（2026-06-01 增补 `app/biz/`）  
 > 状态：**规范已定稿**；目录迁移见 [rag-module-migration.md](./rag-module-migration.md)  
 > 关联：[technical-design.md](./technical-design.md)、[guides/knowledge-base.md](../guides/knowledge-base.md)、[guides/ai-stack.md](../guides/ai-stack.md)

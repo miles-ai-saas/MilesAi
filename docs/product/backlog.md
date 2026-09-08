@@ -3,11 +3,13 @@
 **日期：** 2026-05-28  
 **来源：** [prd.md](./prd.md) 文首各模块「实现对照」表中标记为 ⬜ / 部分 的项  
 **维护：** 立项排期时更新优先级与状态；合入后同步改 prd 对照表与对应 `features/`  
-**最近同步：** 2026-06-01 业务中心 Phase 0–4 已落地；其余与 2026-05-28 对齐
+**最近同步：** 2026-09-07 业务中心（广告试点）已从主分支摘除归档（tag `archive/business-center-p0-p4`），进入重设计；本文 §业务中心 保留为历史排期记录
 
 ---
 
-## 业务中心 — 广告公司试点
+## 业务中心 — 广告公司试点（已归档 2026-09-07，待重设计）
+
+> ⚠️ 该分节为历史记录：实现代码已摘除（tag `archive/business-center-p0-p4`）。下述「设计稿/规格」仅作重设计素材。
 
 > 设计稿：[business-center-design.md](../architecture/business-center-design.md) · 规格：[business-center.md](../features/business-center.md)  
 > 前端：**扩 `ui/workbench` 第三分区** `/business/*`，不另建 `ui/business`。  

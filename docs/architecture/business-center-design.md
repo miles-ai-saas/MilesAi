@@ -1,5 +1,8 @@
 # 业务中心 — 技术方案
 
+> **⚠️ 已归档（2026-09-07）**：业务中心（广告试点）全量代码已从主分支摘除，进入重设计。
+> 本文档保留作为重设计素材；实现代码恢复见 tag `archive/business-center-p0-p4`。
+
 **日期：** 2026-06-01（2026-06-01 修订：后端 `app/biz/` 与 `tenant` 同级）  
 **状态：** 设计稿（待分期实施）  
 **As-Is 规格：** [features/business-center.md](../features/business-center.md)（未实现，目标规格）  

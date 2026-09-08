@@ -6,9 +6,6 @@ export type AgentsChatQuery = {
   agent?: string | null;
   conv?: string | null;
   tab?: string | null;
-  projectId?: string | null;
-  wpId?: string | null;
-  biz?: string | null;
   prompt?: string | null;
 };
 
@@ -61,21 +58,14 @@ export function replaceAgentsChat(params?: AgentsChatQuery | URLSearchParams): v
   window.history.replaceState(null, "", href);
 }
 
-export function pushAgentsChat(
-  router: { push: (href: string) => void },
-  params?: AgentsChatQuery | URLSearchParams,
-): void {
+export function pushAgentsChat(router: { push: (href: string) => void }, params?: AgentsChatQuery | URLSearchParams): void {
   const href = buildAgentsChatHref(params);
   if (agentsChatUrlMatches(href)) return;
   router.push(href);
 }
 
 /** 从智能体列表进对话：只带 agent。 */
-export function pushAgentsChatForAgent(
-  router: { push: (href: string) => void },
-  agentId: string,
-  extra?: Omit<AgentsChatQuery, "agent" | "conv">,
-): void {
+export function pushAgentsChatForAgent(router: { push: (href: string) => void }, agentId: string, extra?: Omit<AgentsChatQuery, "agent" | "conv">): void {
   if (!agentId) {
     pushAgentsChat(router);
     return;

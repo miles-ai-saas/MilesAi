@@ -3,7 +3,7 @@
 租户域表（``tenant/*/models``）不在此 re-export，避免循环引用；
 统一由 ``app.models.registry.load_all_models`` 按序导入。
 
-域目录：platform / kb / flow / model / media / meta / task / storage / agent / biz。
+域目录：platform / kb / flow / model / media / meta / task / storage / agent。
 """
 
 from app.models.agent import (

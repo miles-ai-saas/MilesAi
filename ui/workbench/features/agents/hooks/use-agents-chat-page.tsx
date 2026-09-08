@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTraceTurnSelection } from "@/features/agents/hooks/use-agent-trace-turn-selection";
 import { agentCarryForwardMediaEnabled, lastUserMessageMedia } from "@/features/agents/lib/chat-media-forward";
-import { loadBusinessContext, type BusinessContext } from "@/features/projects";
 import { api } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth-store";
 import { useInfiniteList } from "@/hooks/use-infinite-list";
@@ -18,26 +17,19 @@ export function useAgentsChatPage() {
   const route = useAgentsChatRoute();
   const selectedAgent = route.agentId;
 
-  const [businessContext, setBusinessContext] = useState<BusinessContext | null>(null);
   const [imageN, setImageN] = useState(1);
   const [videoDuration, setVideoDuration] = useState(5);
   const [agentDetail, setAgentDetail] = useState<Agent | null>(null);
 
-  useEffect(() => {
-    if (route.biz === "1" || route.projectId) {
-      setBusinessContext(loadBusinessContext());
-    }
-  }, [route.biz, route.projectId]);
-
-  const list = useInfiniteList(useCallback((p, s) => api.listAgents(p, s), []), {
-    enabled: ready,
-    pageSize: 30,
-  });
-
-  const listedSelected = useMemo(
-    () => list.items.find((a) => a.id === selectedAgent) ?? null,
-    [list.items, selectedAgent],
+  const list = useInfiniteList(
+    useCallback((p, s) => api.listAgents(p, s), []),
+    {
+      enabled: ready,
+      pageSize: 30,
+    },
   );
+
+  const listedSelected = useMemo(() => list.items.find((a) => a.id === selectedAgent) ?? null, [list.items, selectedAgent]);
 
   useEffect(() => {
     if (!ready || !selectedAgent) {
@@ -99,7 +91,6 @@ export function useAgentsChatPage() {
     refreshSessions: session.refreshSessions,
     ensureConversation: session.ensureConversation,
     carryForwardMedia,
-    businessContext,
     initialPrompt: route.prompt,
     generativeImageN: imageN,
     generativeVideoDuration: videoDuration,
@@ -216,8 +207,6 @@ export function useAgentsChatPage() {
     onPickAttachments: messaging.onPickAttachments,
     removePendingMedia: messaging.removePendingMedia,
     handleAgentRenamed,
-    businessContext,
-    clearBusinessContext: () => setBusinessContext(null),
   };
 }
 
