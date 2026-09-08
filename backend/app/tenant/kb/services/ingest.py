@@ -28,9 +28,12 @@ from uuid import UUID
 from app.deletion.document import clear_document_derived_data_sync
 from app.infra.db import get_sync_db
 from app.infra.storage import download_bytes
-from app.integrations.langchain.embeddings import embed_texts_for_kb_sync
 from app.models.kb import Document, DocumentStatus, KnowledgeBase
 from app.rag.pipeline import IngestInput, run_ingest_pipeline
+from app.tenant.kb.services.embeddings import (
+    embed_image_chunks_vectors_sync,  # noqa: F401 视觉注入回调；Task 4 在 run_ingest_pipeline 调用处注入后使用
+    embed_texts_for_kb_sync,
+)
 from app.tenant.kb.services.ingest_failure import persist_document_ingest_failure
 
 

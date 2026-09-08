@@ -9,11 +9,6 @@ from app.common.exceptions import BadRequestError, NotFoundError
 from app.core.soft_delete import is_marked_deleted
 from app.core.tenant import TenantContext, assert_tenant_access
 from app.infra.storage.resolve import resolve_object_storage_async
-from app.integrations.langchain.embeddings import embed_query_for_kb
-from app.integrations.langchain.visual_embeddings import (
-    embed_image_bytes_async,
-    embed_query_visual_async,
-)
 from app.models.kb import DocumentStatus, KnowledgeBase
 from app.rag.parse import is_image_file, is_video_file
 from app.rag.parse.image_parser import parse_image
@@ -22,6 +17,11 @@ from app.rag.retrieve import resolve_retrieval_mode, search_kb_chunks
 from app.rag.retrieve.media_filter import filter_hits_by_media_types_async
 from app.tenant.kb.repositories.kb import DocumentChunkRepository, DocumentRepository
 from app.tenant.kb.schemas.kb import SearchHit, SearchRequest, SearchResponse
+from app.tenant.kb.services.embeddings import (
+    embed_image_bytes_async,
+    embed_query_for_kb,
+    embed_query_visual_async,
+)
 from app.tenant.kb.services.search_log import write_kb_search_log
 from app.tenant.models.services.rerank_resolve import resolve_rerank_model_by_id
 

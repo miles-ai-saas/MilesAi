@@ -3,7 +3,7 @@ LangChain 统一 AI 能力层（L3，惰性 ``__getattr__`` 导出）。
 
 分层对应
 --------
-- embeddings：真实调用 embedding API（入库/检索 query）
+- embeddings 解析/向量化：L1 ``tenant.kb.services.embeddings``（按 KB 绑定模型 resolve 后调 L3 纯 provider）
 - vectorstores：检索 → rag.retrieve
 - chat_models：对话生成
 - generate.*：简单 RAG 问答（re-export）
@@ -14,10 +14,6 @@ LangChain 统一 AI 能力层（L3，惰性 ``__getattr__`` 导出）。
 __all__ = [
     "ainvoke_chat",
     "build_rag_user_prompt",
-    "embed_query_for_kb",
-    "embed_query_for_kb_sync",
-    "embed_texts_for_kb",
-    "embed_texts_for_kb_sync",
     "format_hits_context",
     "get_chat_model",
     "rag_answer",
@@ -33,15 +29,6 @@ def __getattr__(name: str):
         from app.integrations.langchain.chat_models import ainvoke_chat, get_chat_model
 
         return {"ainvoke_chat": ainvoke_chat, "get_chat_model": get_chat_model}[name]
-    if name in (
-        "embed_query_for_kb",
-        "embed_query_for_kb_sync",
-        "embed_texts_for_kb",
-        "embed_texts_for_kb_sync",
-    ):
-        from app.integrations.langchain import embeddings as emb
-
-        return getattr(emb, name)
     if name == "split_text":
         from app.rag.chunk import split_text
 
