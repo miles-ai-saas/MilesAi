@@ -98,6 +98,8 @@ L0 → L1 → L2 → L3 → L4
 
 **允许**：`rag` → `models`、`core`、`infra`、`integrations`（仅 L3 技术封装）。
 
+> **收敛记录（2026-09-08）**：对话/画布调用链的模型解析与用量 sink 已改由 L1 装配注入——`ainvoke_chat`/litellm `adapter`/`tool_agent.loop`/langgraph `runner`+`rag_qa`/deepagents `orchestrator`/flow `llm_nodes` 不再 import `tenant.models.services`（见 plan [`2026-09-08-engine-di-chat-invoke-chain`](../superpowers/plans/2026-09-08-engine-di-chat-invoke-chain.md)）；残留在 `integrations`（embeddings/vectorstores/generative）与 flow `grade_nodes` 的反依赖归入 B-2 收敛。
+
 ### 2.3 运营后台（`admin/`）访问租户域
 
 `admin/`（L0/L1，`/api/admin/v1`）为平台运营面：审核租户内容、管理租户与配额时须读取租户域数据。允许 `admin → tenant` **单向**访问，但只能走下列合规形态：
@@ -342,3 +344,4 @@ backend/tests/
 | 2026-05-22 | 入库链：`pipeline/ingest`、Docling/pypdf、multimodal 接入、`chunk_documents` + `page_no` |
 | 2026-05-26 | §5.4：单文件 ≥500 行强制按子包拆分；§5.5：类/方法/函数 docstring 强制 |
 | 2026-09-08 | §2.3：新增运营后台（admin）访问租户域的合规形态与过渡期例外 |
+| 2026-09-08 | B-1：ainvoke_chat/runner/rag_qa/tool_agent/deepagents/llm_nodes 模型解析与用量 sink 注入，收敛 integrations/flow_runtime → tenant.models.services 反依赖 |
