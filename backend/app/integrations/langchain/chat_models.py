@@ -8,7 +8,7 @@ LangChain ChatModel 适配：平台 ModelConfig → LiteLLM 对话。
 - ``flow_runtime.nodes.llm_nodes.llm_call``
 - ``tool_agent`` 多轮 function calling
 
-``ainvoke_chat`` 在传入 ``db`` + ``tenant_id`` 时会 ``resolve_model_for_invoke`` 合并 BYOK。
+``ainvoke_chat`` 要求调用方先 resolve 模型（合并 BYOK）；用量经 ``usage_sink`` 注入。
 ``PlatformChatModel`` 供需要 LangChain Runnable 链的场景；多数路径直接用 ``ainvoke_chat``。
 """
 
@@ -16,7 +16,6 @@ from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
 from typing import Any
-from uuid import UUID
 
 OnDelta = Callable[[str], Awaitable[None]]
 
@@ -27,6 +26,7 @@ from langchain_core.outputs import ChatGeneration, ChatResult
 from pydantic import ConfigDict
 
 from app.integrations.litellm.adapter import litellm_chat_completion, litellm_chat_completion_stream
+from app.integrations.litellm.usage_sink import UsageSink
 from app.models.model import ModelConfig
 
 
@@ -110,36 +110,16 @@ async def ainvoke_chat(
     *,
     temperature: float = 0.7,
     max_tokens: int = 2048,
-    db: Any | None = None,
-    tenant_id: Any | None = None,
-    source_id: UUID | None = None,
+    usage_sink: UsageSink | None = None,
     on_delta: OnDelta | None = None,
 ) -> str:
     """
     异步对话（OpenAI 形状 ``{"role","content"}`` 列表）。
 
+    ``model`` 须为调用方已解析（合并 BYOK）的配置；用量记录经
+    ``usage_sink`` 注入（见 ``litellm.usage_sink.UsageSink``）。
     ``content`` 可为字符串或多模态 part 数组（见 ``integrations.chat.multimodal``）。
-    RAG 路径常将 system+参考+问题拼成单条 user message 传入（见 ``build_rag_user_prompt``）。
     """
-    if db is not None and tenant_id is not None:
-        from uuid import UUID
-
-        from app.tenant.models.services.model_resolve import resolve_model_for_invoke
-
-        model = await resolve_model_for_invoke(db, model, UUID(str(tenant_id)))
-
-    usage_ctx = None
-    if db is not None and tenant_id is not None:
-        from app.tenant.models.services.usage import UsageRecordContext
-
-        usage_ctx = UsageRecordContext(
-            db=db,
-            tenant_id=UUID(str(tenant_id)),
-            model=model,
-            source="chat",
-            source_id=source_id,
-        )
-
     openai_msgs: list[dict[str, Any]] = []
     for m in messages:
         role = m.get("role", "user")
@@ -151,7 +131,7 @@ async def ainvoke_chat(
             openai_msgs,
             temperature=temperature,
             max_tokens=max_tokens,
-            usage_ctx=usage_ctx,
+            usage_sink=usage_sink,
             on_delta=on_delta,
         )
     return await litellm_chat_completion(
@@ -159,7 +139,7 @@ async def ainvoke_chat(
         openai_msgs,
         temperature=temperature,
         max_tokens=max_tokens,
-        usage_ctx=usage_ctx,
+        usage_sink=usage_sink,
     )
 
 
