@@ -84,3 +84,38 @@ ui/workbench/features/<域>/
 - 目录用复数域名：`agents`、`flows`、`kb`
 - 组件前缀保持现有风格：`Agent*`、`Flow*`、`Kb*`
 
+---
+
+## Admin UI：`features/<域>/` 目录约定
+
+适用于 `ui/admin/`（自 2026-09-08 起迁移）。与 workbench 同构：运营域单域代码落 `features/<域>/`，**禁止**再往旧路径 `components/<域>/`、`hooks/use-<域>-page.ts`、`lib/<域>-page-shared.ts` 添加文件。
+
+### 结构
+
+```text
+ui/admin/features/<域>/
+├── index.ts          # 对外 barrel（页面从此 import）
+├── hooks/            # use<域>Page 等页面 VM
+├── components/       # <域>PageView、<域>Sections、detail 内容组件
+└── lib/              # <域>-page-shared、labels、present、纯函数
+```
+
+页面保持薄壳：`app/<域>/page.tsx` 只做 `use<域>Page()` + 渲染 `<域>PageView vm`；详情页仅 `page.tsx` + 从 `features/<域>/components/` 引入内容组件（页面目录不放业务组件）。
+
+### 已迁移域
+
+- `features/tenant/`、`features/admins/`、`features/audit/`、`features/billing/`
+- `features/marketplace/`、`features/model-catalog/`、`features/profile/`、`features/risk/`、`features/sys-categories/`
+
+### 保留在根
+
+| 位置 | 内容 |
+|------|------|
+| `components/` | `layout/`（AdminShell 等）、`brand/`、`ui/`、`list/` 跨 feature 组件 |
+| `hooks/` | `use-paged-list.ts` 等跨域通用 hook |
+| `lib/` | `api.ts`、`api-error.ts`、`auth-store.ts`、`admin-nav.ts`、`pagination.ts`、`types.ts` 全局 |
+
+### import 约定
+
+与 workbench 相同：页面走 `@/features/<域>`（或 `@/features/<域>/components/...`）；feature 内引用全局走 `@/lib/api`、`@/hooks/use-paged-list`；禁止跨 feature 深 import。
+
