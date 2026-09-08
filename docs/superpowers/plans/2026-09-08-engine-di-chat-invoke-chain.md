@@ -880,3 +880,74 @@ git commit -m "docs: 记录对话链模型解析与用量记录依赖反转（B-
 - `UsageSink` 协议：Task 1 定义（仅 `record`），Task 2 `ChatUsageSink` 实现，Task 4-9 均按 `usage_sink: UsageSink | None` 传参；adapter 参数名统一 `usage_sink`。
 - `resolve_invoke_model(model: ModelConfig | None) -> ModelConfig`、`chat_usage_sink(model, *, source_id) -> ChatUsageSink` 由 Task 3 定义，Task 5/6/7/9 一致引用。
 - `RunContext.resolve_model: Callable[[str], Awaitable[ModelConfig]] | None` 由 Task 8 定义并被 `llm_nodes` 以 `str(model_id)` 调用、helper 返回同签名。✅
+
+---
+
+### Task 11: 迁移 a2a 与媒体审核的 `ainvoke_chat` 调用方
+
+> 执行 Task 4 时审计发现的新缺口（Task 5-9 之外的存量调用方），补齐于此。
+
+**Files:**
+- Modify: `backend/app/tenant/a2a/invoke.py`（4 处：`plan_a2a_peers` L148、`augment_response_with_a2a` L311、`run_a2a_augmented_chat` L373、`run_a2a_host_chat` L395）
+- Modify: `backend/app/tenant/compliance/services/compliance/media_audit.py`（1 处：`check_media_safety` L74）
+- Test: 所在域测试 + 全量回归（`tests/tenant/a2a`、`tests/tenant/compliance`）
+
+**Interfaces:**
+- Consumes: Task 2 `ChatUsageSink`、`model_resolve.resolve_model_for_invoke`（两个文件均属 L1，直接 import L1 服务合规）
+- Produces: 无新接口
+
+- [ ] **Step 1: 迁移 a2a/invoke.py 四处调用**
+
+每处函数内，先读取该函数签名确认 `db`/`ctx`/`tenant_id` 变量来源：
+- `plan_a2a_peers`（L120 起）接收 `db` 与 `tenant_id` 参数（L148 直接使用）；
+- `augment_response_with_a2a` / `run_a2a_augmented_chat` / `run_a2a_host_chat` 经 `svc`（AgentService）访问 `svc.db` / `svc.ctx.tenant_id`，可改用 Task 3 门面 `await svc.resolve_invoke_model(agent.model_config)` 与 `svc.chat_usage_sink(model, source_id=agent.id)`（`plan_a2a_peers` 无 svc，用 L1 import 的 `resolve_model_for_invoke(db, model, tenant_id)` 与 `ChatUsageSink`）。
+
+每处统一替换为「resolve 一次 → 构造 sink → `ainvoke_chat(model, ..., usage_sink=sink)`」，模板：
+
+```python
+    model = await <resolve 入口>(<model_config>, <tenant 参数>)
+    usage_sink = ChatUsageSink(
+        db=<db>,
+        tenant_id=<tenant_id>,
+        model=model,
+        source_id=<agent/parent id>,
+    )
+    raw = await ainvoke_chat(
+        model,
+        [{"role": "user", "content": prompt}],
+        temperature=0.2,
+        usage_sink=usage_sink,
+    )
+```
+
+删除原 `db=`/`tenant_id=`/`source_id=` 参数。`model_config` 传入仍为 `parent.model_config` / `agent.model_config`。文件顶部补 import（`resolve_model_for_invoke`、`ChatUsageSink`）。
+
+- [ ] **Step 2: 迁移 media_audit.py `check_media_safety`**
+
+先读函数签名（`db`/`ctx`/`model` 参数来源）。该函数用 `model`（可能是未 resolve 的 ModelConfig）经 `ainvoke_chat(model, ..., db=db, tenant_id=ctx.tenant_id)` 审核图片。改为函数内先 resolve：
+
+```python
+    model = await resolve_model_for_invoke(db, model, ctx.tenant_id)
+    usage_sink = ChatUsageSink(db=db, tenant_id=ctx.tenant_id, model=model)
+    raw = await ainvoke_chat(
+        model,
+        messages,
+        temperature=0.1,
+        max_tokens=256,
+        usage_sink=usage_sink,
+    )
+```
+
+文件顶部补 import（`resolve_model_for_invoke`、`ChatUsageSink`）。
+
+- [ ] **Step 3: 运行域测试**
+
+Run: `cd backend && .venv/bin/python -m pytest tests/tenant/a2a tests/tenant/compliance -q`
+Expected: PASS（无这两域测试则记录为空跑，以全量回归为准）
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add backend/app/tenant/a2a/invoke.py backend/app/tenant/compliance/services/compliance/media_audit.py
+git commit -m "refactor(agents): a2a 与媒体审核调用点改为注入模型解析与用量 sink"
+```
