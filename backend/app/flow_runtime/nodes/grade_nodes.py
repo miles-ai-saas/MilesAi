@@ -2,20 +2,19 @@
 
 输出 ``relevance`` 为 good / poor / none，compiler 映射为三路条件边 handle。
 ``use_llm_grade=True`` 时委托 ``integrations.langgraph.grading.llm_grade_relevance``。
+
+模型解析由运行入口注入的 ``RunContext.resolve_model`` 回调完成（同 ``llm_nodes``，
+见 ``tenant.flows.services.run_context.make_flow_model_resolver``）；节点不再自行查询。
+LLM 评分所需模型缺失或回调缺失时抛 ``BadRequestError``，便于调试与兜底。
 """
 
 from __future__ import annotations
 
 from typing import Any
-from uuid import UUID
 
-from sqlalchemy import select
-
+from app.common.exceptions import BadRequestError
 from app.flow_runtime.types import RunContext
-from app.infra.db import AsyncSessionLocal
 from app.integrations.langgraph.grading import evaluate_relevance
-from app.models.model import ModelConfig
-from app.tenant.models.services.model_resolve import resolve_model_for_invoke
 
 
 async def relevance_grade(
@@ -34,20 +33,12 @@ async def relevance_grade(
     use_llm = bool(node_data.get("use_llm_grade", False))
     query = str(inputs.get("query") or ctx.inputs.get("query", ""))
 
-    model: ModelConfig | None = None
+    model = None
     model_id = node_data.get("model_config_id") or ctx.model_config_id
     if use_llm and model_id:
-        async with AsyncSessionLocal() as db:
-            model = (
-                await db.execute(
-                    select(ModelConfig).where(
-                        ModelConfig.id == model_id,
-                        ModelConfig.is_active.is_(True),
-                    )
-                )
-            ).scalar_one_or_none()
-            if model:
-                model = await resolve_model_for_invoke(db, model, UUID(str(ctx.tenant_id)))
+        if ctx.resolve_model is None:
+            raise BadRequestError("运行上下文未提供模型解析回调")
+        model = await ctx.resolve_model(str(model_id))
 
     result = await evaluate_relevance(
         hits,
