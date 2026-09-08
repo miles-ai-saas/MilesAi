@@ -31,7 +31,7 @@ from app.infra.storage import download_bytes
 from app.models.kb import Document, DocumentStatus, KnowledgeBase
 from app.rag.pipeline import IngestInput, run_ingest_pipeline
 from app.tenant.kb.services.embeddings import (
-    embed_image_chunks_vectors_sync,  # noqa: F401 视觉注入回调；Task 4 在 run_ingest_pipeline 调用处注入后使用
+    embed_image_chunks_vectors_sync,
     embed_texts_for_kb_sync,
 )
 from app.tenant.kb.services.ingest_failure import persist_document_ingest_failure
@@ -75,6 +75,7 @@ def run_ingest(document_id: str) -> None:
                     chunk_overlap=kb.chunk_overlap,
                 ),
                 embed_texts=embed_texts_for_kb_sync,
+                embed_visual_chunks=embed_image_chunks_vectors_sync,
                 load_bytes=lambda key, bucket: download_bytes(key, bucket, tenant_id=doc.tenant_id, db=db),
                 on_before_index=clear_document_derived_data_sync,
             )

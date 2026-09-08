@@ -23,6 +23,7 @@ from app.common.schemas.media import MediaRefIn
 from app.core.tenant import TenantContext
 from app.integrations.chat.multimodal import build_invoke_messages_with_media
 from app.integrations.langchain.chat_models import OnDelta, ainvoke_chat
+from app.integrations.langchain.kb_retrieval import KbRetrievalBindings
 from app.integrations.langchain.vectorstores import search_multi_kb_async
 from app.integrations.litellm.usage_sink import UsageSink
 from app.models.model import ModelConfig
@@ -38,14 +39,17 @@ async def retrieve_hits(
     db: AsyncSession,
     top_k: int = 5,
     mode: str = "default",
+    bindings: KbRetrievalBindings | None = None,
 ) -> list[dict[str, Any]]:
     """
     多 KB 检索（LangGraph retrieve 节点、线性 RAG 共用）。
 
-    ``write_log=False`` 等价路径：不记 actor/agent，不写 ``kb_search_logs``。
-    需审计时请用 ``retrieve_hits_with_ctx``。
+    ``write_log=False`` 语义：本模块不写 ``kb_search_logs``（审计由 L1 检索 API 负责）；
+    需带 actor/agent 审计的检索请走带 ctx 的 L1 检索入口。
     """
     kbs = await load_kbs_for_tenant(db, tenant_id, kb_ids)
+    if bindings is None:
+        raise ValueError("检索链路缺少 KB 检索绑定（bindings），需由 L1 装配")
     return await search_multi_kb_async(
         query,
         kbs=kbs,
@@ -53,29 +57,7 @@ async def retrieve_hits(
         tenant_id=tenant_id,
         top_k=top_k,
         mode=mode,
-        write_log=False,
-    )
-
-
-async def retrieve_hits_with_ctx(
-    query: str,
-    *,
-    ctx: TenantContext,
-    kb_ids: list[str],
-    db: AsyncSession,
-    top_k: int = 5,
-    agent_id: UUID | None = None,
-) -> list[dict[str, Any]]:
-    """带租户用户/agent 的检索；完成后可写 search_log（由 vectorstores 回调）。"""
-    kbs = await load_kbs_for_tenant(db, ctx.tenant_id, kb_ids)
-    return await search_multi_kb_async(
-        query,
-        kbs=kbs,
-        db=db,
-        tenant_id=ctx.tenant_id,
-        top_k=top_k,
-        actor_user_id=ctx.user_id,
-        agent_id=agent_id,
+        bindings=bindings,
     )
 
 
@@ -94,6 +76,7 @@ async def rag_answer(
     retrieve_query: str | None = None,
     on_delta: OnDelta | None = None,
     usage_sink: UsageSink | None = None,
+    bindings: KbRetrievalBindings | None = None,
 ) -> tuple[str, list[dict[str, Any]]]:
     """
     端到端 RAG：检索 → 拼 prompt → LLM 生成。
@@ -101,6 +84,7 @@ async def rag_answer(
     ``model`` 由调用方 resolve（装配点语义，见 ``resolve_invoke_model``），
     直接用于生成；用量经 ``usage_sink`` 注入。
     ``retrieve_query`` 仅用于向量检索；``query`` 写入生成 prompt（可含「请根据附图回答」）。
+    ``bindings`` 透传给 ``retrieve_hits``（embed/rerank 由 L1 装配注入）。
     返回 (answer 文本, hits) 便于调用方展示引用来源。
     """
     search_q = (retrieve_query if retrieve_query is not None else query).strip()
@@ -110,6 +94,7 @@ async def rag_answer(
         kb_ids=kb_ids,
         db=db,
         top_k=top_k,
+        bindings=bindings,
     )
     if not hits:
         prompt = f"{system_prompt}\n\n用户问题：{query}"
