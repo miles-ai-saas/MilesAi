@@ -171,8 +171,9 @@ Run: `cd backend && .venv/bin/python -m pytest -q && .venv/bin/ruff check app/fl
 Expected: 全量 PASS（433 基线）；ruff 无报错。
 Run: `cd backend && rg -n "tenant\.models\.services\.model_resolve|tenant\." app/flow_runtime/nodes/grade_nodes.py`
 Expected: 无输出（`grade_nodes.py` 已无任何 `app.tenant` import）。
-Run: `cd backend && rg -rn "resolve_model_for_invoke" app/flow_runtime app/integrations`
-Expected: 无输出（B-1 + 本任务后 L3/flow_runtime 对 model_resolve 依赖清零）。
+Run: `cd backend && rg -rn "resolve_model_for_invoke" app/flow_runtime`
+Expected: 无输出（B-1 + 本任务后 flow_runtime 对 model_resolve 依赖清零）。
+（注：`integrations/generative/{image,video,tts}/service.py` 对 `model_resolve` 的引用是**既有残留、属 B-2c 计划范围**，不在本任务验收内；本计划只保证 `grade_nodes.py` 与 `app/flow_runtime` 域清零。）
 
 - [ ] **Step 7: Commit**
 
