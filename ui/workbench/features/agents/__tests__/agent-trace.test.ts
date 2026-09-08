@@ -73,8 +73,9 @@ describe("listTraceTurns", () => {
   });
 
   it("系统消息被忽略", () => {
+    // ChatMessage 运行时只有 user/assistant；此处构造类型外的脏数据（如服务端扩展 role），验证不会当作 turn
     const msgs: ChatMessage[] = [
-      { role: "system", content: "系统提示" } as ChatMessage,
+      { role: "system", content: "系统提示" } as unknown as ChatMessage,
       { role: "user", content: "提问" },
       { role: "assistant", content: "回答" },
     ];
