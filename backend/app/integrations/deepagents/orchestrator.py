@@ -19,7 +19,7 @@ from __future__ import annotations
 import asyncio
 import json
 import re
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 from uuid import UUID
 
 from app.tenant.agents.schemas.agent import ChatRequest, ChatResponse
@@ -74,8 +74,7 @@ async def _platform_plan(
     bindings: list[AgentSubAgentBinding],
     query: str,
     *,
-    db: Any = None,
-    tenant_id: Any = None,
+    svc: AgentService,
 ) -> list[dict]:
     """平台 JSON 规划器：主模型输出 sub_agent_id + task 列表。"""
     if not parent.model_config:
@@ -91,13 +90,13 @@ async def _platform_plan(
         '仅输出 JSON：{"steps":[{"sub_agent_id":"uuid","task":"子任务描述"}]}\n\n'
         f"子智能体列表：\n{catalog}\n\n用户问题：{query}"
     )
+    model = await svc.resolve_invoke_model(parent.model_config)
+    usage_sink = svc.chat_usage_sink(model, source_id=parent.id)
     raw = await ainvoke_chat(
-        parent.model_config,
+        model,
         [{"role": "user", "content": prompt}],
         temperature=0.2,
-        db=db,
-        tenant_id=tenant_id,
-        source_id=parent.id,
+        usage_sink=usage_sink,
     )
     plan = _parse_plan(raw)
     if plan:
@@ -120,7 +119,7 @@ async def _run_platform_planned(
         }
     ]
     allowed = {str(b.child_agent_id) for b in bindings}
-    plan = await _platform_plan(parent, bindings, body.query, db=svc.db, tenant_id=svc.ctx.tenant_id)
+    plan = await _platform_plan(parent, bindings, body.query, svc=svc)
     steps.append({"type": "plan", "steps": plan})
 
     parallel = bool((parent.config or {}).get("subagent_parallel", False))
@@ -175,13 +174,13 @@ async def _run_platform_planned(
             f"用户问题：{body.query}\n\n"
             "各子智能体结果：\n" + "\n\n---\n\n".join(sub_answers) + "\n\n请综合以上结果，给用户一个完整、简洁的最终回答。"
         )
+        model = await svc.resolve_invoke_model(parent.model_config)
+        usage_sink = svc.chat_usage_sink(model, source_id=parent.id)
         final = await ainvoke_chat(
-            parent.model_config,
+            model,
             [{"role": "user", "content": synth_prompt}],
             temperature=float((parent.config or {}).get("temperature", 0.7)),
-            db=svc.db,
-            tenant_id=svc.ctx.tenant_id,
-            source_id=parent.id,
+            usage_sink=usage_sink,
         )
     else:
         final = "\n\n---\n\n".join(sub_answers)
