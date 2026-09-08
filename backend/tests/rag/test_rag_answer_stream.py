@@ -66,22 +66,10 @@ async def test_run_rag_workflow_forwards_on_delta_to_config():
         return_value={"answer": "ok", "hits": [], "steps": []},
     )
 
-    with (
-        patch(
-            "app.integrations.langgraph.runner.get_compiled_rag_graph",
-            return_value=mock_graph,
-        ),
-        patch(
-            "app.tenant.models.services.model_resolve.resolve_model_for_invoke",
-            new_callable=AsyncMock,
-            return_value=model,
-        ),
-        patch("app.infra.db.AsyncSessionLocal") as session_cls,
+    with patch(
+        "app.integrations.langgraph.runner.get_compiled_rag_graph",
+        return_value=mock_graph,
     ):
-        db = MagicMock()
-        session_cls.return_value.__aenter__ = AsyncMock(return_value=db)
-        session_cls.return_value.__aexit__ = AsyncMock(return_value=None)
-
         await run_rag_workflow(
             model=model,
             system_prompt="sys",
@@ -104,6 +92,7 @@ async def test_generate_node_forwards_on_delta():
     async def delta(_: str) -> None:
         pass
 
+    usage_sink = object()
     state = {
         "tenant_id": str(tenant_id),
         "system_prompt": "你是助手",
@@ -112,7 +101,7 @@ async def test_generate_node_forwards_on_delta():
         "hits": [{"content": "片段", "score": 0.9}],
         "temperature": 0.7,
     }
-    config = {"configurable": {"model": model, "on_delta": delta}}
+    config = {"configurable": {"model": model, "on_delta": delta, "usage_sink": usage_sink}}
 
     with (
         patch(
@@ -129,6 +118,7 @@ async def test_generate_node_forwards_on_delta():
 
     assert out["answer"] == "答案"
     assert mock_chat.await_args.kwargs["on_delta"] is delta
+    assert mock_chat.await_args.kwargs["usage_sink"] is usage_sink
 
 
 @pytest.mark.asyncio
@@ -139,6 +129,7 @@ async def test_fallback_node_forwards_on_delta():
     async def delta(_: str) -> None:
         pass
 
+    usage_sink = object()
     state = {
         "tenant_id": str(tenant_id),
         "system_prompt": "你是助手",
@@ -147,7 +138,7 @@ async def test_fallback_node_forwards_on_delta():
         "hits": [],
         "temperature": 0.7,
     }
-    config = {"configurable": {"model": model, "on_delta": delta}}
+    config = {"configurable": {"model": model, "on_delta": delta, "usage_sink": usage_sink}}
 
     with (
         patch(
@@ -164,6 +155,7 @@ async def test_fallback_node_forwards_on_delta():
 
     assert out["answer"] == "兜底"
     assert mock_chat.await_args.kwargs["on_delta"] is delta
+    assert mock_chat.await_args.kwargs["usage_sink"] is usage_sink
 
 
 @pytest.mark.asyncio

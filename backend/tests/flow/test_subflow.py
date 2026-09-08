@@ -65,5 +65,33 @@ def test_build_child_context_input_mapping():
     assert child.kb_ids == ["kb-1"]
 
 
+def test_build_child_context_forwards_resolve_model_and_usage_sink():
+    """SubFlow 子 RunContext 透传 resolve_model / usage_sink（画布 LLM 注入链到子流程）。"""
+
+    async def fake_resolve(model_config_id: str):
+        return None
+
+    usage_sink = object()
+    parent = RunContext(
+        tenant_id=str(uuid4()),
+        inputs={"query": "hello"},
+        resolve_model=fake_resolve,
+        usage_sink=usage_sink,
+    )
+    child = build_child_context(
+        parent,
+        {"input": "from-edge"},
+        {
+            "input_mapping": {"query": "input"},
+            "sub_flow_id": str(uuid4()),
+        },
+        parent_flow_id=parent.current_flow_id,
+        parent_node_id="sf1",
+        child_flow_id=str(uuid4()),
+    )
+    assert child.resolve_model is fake_resolve
+    assert child.usage_sink is usage_sink
+
+
 def test_max_subflow_depth_constant():
     assert MAX_SUBFLOW_DEPTH == 3

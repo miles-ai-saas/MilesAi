@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from contextvars import ContextVar, Token
 from dataclasses import dataclass
-from typing import Any
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -66,14 +65,6 @@ async def record_model_usage(
     )
     ctx.db.add(row)
     await ctx.db.flush()
-
-
-async def record_litellm_response_usage(ctx: UsageRecordContext, response: Any) -> None:
-    """从 LiteLLM completion 响应提取 Token 并写入用量日志。"""
-    from app.integrations.litellm.adapter import extract_litellm_usage
-
-    prompt_t, completion_t, _ = extract_litellm_usage(response)
-    await record_model_usage(ctx, prompt_tokens=prompt_t, completion_tokens=completion_t)
 
 
 class ChatUsageSink:

@@ -98,7 +98,7 @@ L0 → L1 → L2 → L3 → L4
 
 **允许**：`rag` → `models`、`core`、`infra`、`integrations`（仅 L3 技术封装）。
 
-> **收敛记录（2026-09-08）**：对话/画布调用链的模型解析与用量 sink 已改由 L1 装配注入——`ainvoke_chat`/litellm `adapter`/`tool_agent.loop`/langgraph `runner`+`rag_qa`/deepagents `orchestrator`/flow `llm_nodes` 不再 import `tenant.models.services`（见 plan [`2026-09-08-engine-di-chat-invoke-chain`](../superpowers/plans/2026-09-08-engine-di-chat-invoke-chain.md)）；残留在 `integrations`（embeddings/vectorstores/generative）与 flow `grade_nodes` 的反依赖归入 B-2 收敛。
+> **收敛记录（2026-09-08）**：对话/画布调用链的模型解析与用量 sink 已改由 L1 装配注入——`ainvoke_chat`/litellm `adapter`/`tool_agent.loop`/langgraph `runner`+`rag_qa`/deepagents `orchestrator`/flow `llm_nodes` 不再 import `tenant.models.services`（见 plan [`2026-09-08-engine-di-chat-invoke-chain`](../superpowers/plans/2026-09-08-engine-di-chat-invoke-chain.md)）；残留在 `integrations`（embeddings/visual_embeddings/vectorstores/generative）与 flow `grade_nodes` 的反依赖归入 B-2 收敛。
 
 ### 2.3 运营后台（`admin/`）访问租户域
 

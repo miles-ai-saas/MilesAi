@@ -5,7 +5,7 @@ from uuid import uuid4
 
 import pytest
 
-from app.models.model import ModelConfig
+from app.models.model import ModelConfig, ModelUsageLog
 from app.tenant.models.services import usage as usage_mod
 from app.tenant.models.services.usage import (
     ChatUsageSink,
@@ -36,12 +36,22 @@ def test_chat_usage_accumulation():
 @pytest.mark.asyncio
 async def test_chat_usage_sink_accumulates_and_flushes(db_session):
     begin_chat_usage_accumulation()
+    model_id = uuid4()
+    source_id = uuid4()
     sink = ChatUsageSink(
         db=db_session,
         tenant_id=uuid4(),
-        model=ModelConfig(name="m", provider="openai", model_name="x"),
-        source_id=uuid4(),
+        model=ModelConfig(id=model_id, name="m", provider="openai", model_name="x"),
+        source_id=source_id,
     )
     await sink.record(prompt_tokens=100, completion_tokens=20)
     assert get_chat_usage_totals() == (100, 20)
     db_session.add.assert_called_once()
+    row = db_session.add.call_args[0][0]
+    assert isinstance(row, ModelUsageLog)
+    assert row.model_config_id == model_id
+    assert row.source == "chat"
+    assert row.source_id == source_id
+    assert row.prompt_tokens == 100
+    assert row.completion_tokens == 20
+    db_session.flush.assert_awaited_once()

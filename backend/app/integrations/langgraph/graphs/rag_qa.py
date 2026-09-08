@@ -195,7 +195,7 @@ async def generate(state: RAGGraphState, config: RunnableConfig) -> dict[str, An
         else:
             messages = [{"role": "user", "content": prompt}]
         on_delta = config.get("configurable", {}).get("on_delta") if config else None
-        usage_sink = config["configurable"].get("usage_sink") if config else None
+        usage_sink = config.get("configurable", {}).get("usage_sink") if config else None
         answer = await ainvoke_chat(
             model,
             messages,
@@ -247,7 +247,7 @@ async def fallback(state: RAGGraphState, config: RunnableConfig) -> dict[str, An
         else:
             messages = [{"role": "user", "content": prompt}]
         on_delta = config.get("configurable", {}).get("on_delta") if config else None
-        usage_sink = config["configurable"].get("usage_sink") if config else None
+        usage_sink = config.get("configurable", {}).get("usage_sink") if config else None
         answer = await ainvoke_chat(
             model,
             messages,

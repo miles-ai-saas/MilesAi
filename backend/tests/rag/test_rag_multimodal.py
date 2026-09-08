@@ -93,22 +93,10 @@ async def test_run_rag_workflow_passes_media_in_initial():
         return_value={"answer": "ok", "hits": [], "steps": []},
     )
 
-    with (
-        patch(
-            "app.integrations.langgraph.runner.get_compiled_rag_graph",
-            return_value=mock_graph,
-        ),
-        patch(
-            "app.tenant.models.services.model_resolve.resolve_model_for_invoke",
-            new_callable=AsyncMock,
-            return_value=model,
-        ),
-        patch("app.infra.db.AsyncSessionLocal") as session_cls,
+    with patch(
+        "app.integrations.langgraph.runner.get_compiled_rag_graph",
+        return_value=mock_graph,
     ):
-        db = MagicMock()
-        session_cls.return_value.__aenter__ = AsyncMock(return_value=db)
-        session_cls.return_value.__aexit__ = AsyncMock(return_value=None)
-
         await run_rag_workflow(
             model=model,
             system_prompt="sys",

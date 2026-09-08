@@ -11,6 +11,8 @@ from app.common.schemas.media import MediaRefIn
 from app.flow_runtime.context_utils import media_refs_from_run
 from app.flow_runtime.nodes.llm_nodes import llm_call
 from app.flow_runtime.types import RunContext
+from app.integrations.langgraph.compiler import run_compiled_canvas
+from app.models.model import ModelConfig
 from app.tenant.flows.schemas.flow import FlowRunRequest
 
 
@@ -51,6 +53,7 @@ async def test_llm_call_with_media_builds_multimodal_message():
     async def fake_resolve(model_id: str):
         return model_row
 
+    usage_sink = object()
     ctx = RunContext(
         tenant_id=str(tenant_id),
         user_id=str(user_id),
@@ -59,6 +62,7 @@ async def test_llm_call_with_media_builds_multimodal_message():
         media=[{"attachment_id": str(att_id), "detail": "auto"}],
         permissions=frozenset(),
         resolve_model=fake_resolve,
+        usage_sink=usage_sink,
     )
     mock_msg = {
         "role": "user",
@@ -92,6 +96,7 @@ async def test_llm_call_with_media_builds_multimodal_message():
     sent_messages = mock_chat.await_args.args[1]
     user = sent_messages[-1]
     assert isinstance(user["content"], list)
+    assert mock_chat.await_args.kwargs["usage_sink"] is usage_sink
 
 
 @pytest.mark.asyncio
@@ -99,3 +104,84 @@ async def test_llm_call_no_input_raises():
     ctx = RunContext(tenant_id=str(uuid4()), user_id=str(uuid4()))
     with pytest.raises(BadRequestError, match="缺少输入"):
         await llm_call({}, {}, ctx)
+
+
+@pytest.mark.asyncio
+async def test_run_compiled_canvas_forwards_resolver_and_usage_sink():
+    """编译画布端到端回归：LLMCall 经 ctx.resolve_model 解析，usage_sink 透传到 ainvoke_chat。
+
+    ``run_compiled_canvas`` 把 ctx.resolve_model / ctx.usage_sink 写入 graph state，
+    节点层（``llm_nodes.llm_call``）从子 RunContext 读取后调用；此处用假回调/假 sink
+    固定该注入链，防止回归到节点自行查库。
+    """
+    tenant_id = uuid4()
+    model_id = uuid4()
+    model = ModelConfig(name="推理", provider="openai", model_name="gpt-4o-mini")
+    resolved_ids: list[str] = []
+    usage_sink = object()
+
+    async def fake_resolve(model_config_id: str):
+        resolved_ids.append(model_config_id)
+        return model
+
+    graph = {
+        "nodes": [
+            {
+                "id": "in_1",
+                "type": "TextInput",
+                "data": {"type": "TextInput", "input_key": "query", "label": "输入"},
+            },
+            {
+                "id": "llm_1",
+                "type": "LLMCall",
+                "data": {
+                    "type": "LLMCall",
+                    "model_config_id": str(model_id),
+                    "temperature": 0.7,
+                    "label": "大模型",
+                },
+            },
+            {
+                "id": "out_1",
+                "type": "TextOutput",
+                "data": {"type": "TextOutput", "label": "输出"},
+            },
+        ],
+        "edges": [
+            {
+                "id": "e1",
+                "source": "in_1",
+                "target": "llm_1",
+                "sourceHandle": "output",
+                "targetHandle": "query",
+            },
+            {
+                "id": "e2",
+                "source": "llm_1",
+                "target": "out_1",
+                "sourceHandle": "output",
+                "targetHandle": "input",
+            },
+        ],
+    }
+    ctx = RunContext(
+        tenant_id=str(tenant_id),
+        user_id=str(uuid4()),
+        inputs={"query": "画布链路测试"},
+        resolve_model=fake_resolve,
+        usage_sink=usage_sink,
+    )
+
+    with patch(
+        "app.flow_runtime.nodes.llm_nodes.ainvoke_chat",
+        new_callable=AsyncMock,
+        return_value="ok",
+    ) as mock_chat:
+        output, steps = await run_compiled_canvas(graph, ctx)
+
+    assert output == "ok"
+    assert resolved_ids == [str(model_id)]
+    assert any(s.get("node_type") == "LLMCall" for s in steps if isinstance(s, dict))
+    mock_chat.assert_awaited_once()
+    assert mock_chat.await_args.args[0] is model
+    assert mock_chat.await_args.kwargs["usage_sink"] is usage_sink
