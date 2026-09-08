@@ -72,8 +72,8 @@ class KbRetrievalBindings:
     """
 
     embed_query_sync: EmbedQuerySync
-    resolve_rerank_sync: ResolveRerankSync | None = None
     embed_query: EmbedQueryAsync
+    resolve_rerank_sync: ResolveRerankSync | None = None
     resolve_rerank: ResolveRerankAsync | None = None
 ```
 
@@ -174,7 +174,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
 from app.integrations.embeddings.constants import INVOKE_MODE_CLIP
-from app.integrations.embeddings.model_meta import invoke_mode_from_model
 from app.integrations.embeddings.registry import get_embedding_provider
 from app.integrations.embeddings.runtime import build_embeddings
 from app.integrations.langchain.kb_retrieval import KbRetrievalBindings
