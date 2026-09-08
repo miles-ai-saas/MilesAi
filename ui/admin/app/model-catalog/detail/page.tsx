@@ -4,7 +4,7 @@
 
 import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import Content from "./detail-content";
+import Content from "@/features/model-catalog/components/ModelCatalogDetailContent";
 
 export default function ModelCatalogDetailPage() {
   return (

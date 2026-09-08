@@ -2,8 +2,7 @@
 
 import { useState } from "react";
 import { AdminDetailHeader } from "@/components/layout/AdminDetailHeader";
-import { ModelCatalogEditor } from "@/components/model-catalog/ModelCatalogEditor";
-import { emptyForm, toPayload, type ModelCatalogFormValues } from "@/components/model-catalog/form-utils";
+import { ModelCatalogEditor, emptyForm, toPayload, type ModelCatalogFormValues } from "@/features/model-catalog";
 import { adminApi } from "@/lib/api";
 import { useRequireAdmin } from "@/lib/auth-store";
 
