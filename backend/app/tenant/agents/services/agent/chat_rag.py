@@ -10,6 +10,7 @@ from app.integrations.langchain.chat_models import OnDelta, ainvoke_chat
 from app.integrations.langgraph.runner import run_rag_workflow, should_use_langgraph_rag
 from app.integrations.generative.image.prompt_guard import user_requests_image_collage
 from app.models.agent import Agent
+from app.models.model import ModelConfig
 from app.rag.generate import format_hits_context, rag_answer, retrieve_hits
 from app.tenant.a2a.services.peer_refs import list_agent_a2a_peer_refs
 from app.tenant.agents.schemas.agent import ChatRequest, ChatResponse
@@ -18,6 +19,8 @@ from app.tenant.compliance.constants import SCAN_MODULE_AGENT_CHAT
 from app.tenant.flows.repositories.flow import FlowRepository
 from app.tenant.hooks.models import HookScope, HookTrigger
 from app.tenant.hooks.services.runner import HookRunner
+from app.tenant.models.services.model_resolve import resolve_model_for_invoke
+from app.tenant.models.services.usage import ChatUsageSink
 
 
 def _generative_tools_system_hint(*, image_n: int = 1, video_duration: int = 5) -> str:
@@ -316,3 +319,23 @@ class AgentChatRagMixin:
             steps = []
 
         return ChatResponse(answer=answer, sources=all_hits, steps=steps)
+
+    async def resolve_invoke_model(self, model: ModelConfig | None) -> ModelConfig:
+        """按当前租户解析可用模型（合并 BYOK）；无模型时抛 ValueError。"""
+        if model is None:
+            raise ValueError("未配置可用模型")
+        return await resolve_model_for_invoke(self.db, model, self.ctx.tenant_id)
+
+    def chat_usage_sink(
+        self,
+        model: ModelConfig,
+        *,
+        source_id: UUID | None = None,
+    ) -> ChatUsageSink:
+        """构造注入引擎的用量记录器（chat 累计 + 落库）。"""
+        return ChatUsageSink(
+            db=self.db,
+            tenant_id=self.ctx.tenant_id,
+            model=model,
+            source_id=source_id,
+        )
