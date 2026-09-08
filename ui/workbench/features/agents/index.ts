@@ -18,3 +18,5 @@ export { ApiErrorDialog } from "./components/ApiErrorDialog";
 
 export { agentModeLabel, agentStatusLabel, agentTypeLabel } from "./lib/agent-utils";
 export { agentRuntimeModeLabel, agentPlannerLabel } from "./lib/agent-labels";
+
+export { buildAgentsChatHref, type AgentsChatQuery } from "./lib/agents-chat-href";

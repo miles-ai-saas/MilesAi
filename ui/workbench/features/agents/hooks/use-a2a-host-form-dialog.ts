@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { AGENT_PLANNER, AGENT_RUNTIME_MODE } from "@/features/agents/lib/agent-config";
 import { api } from "@/lib/api";
-import { a2aInvokePolicyOptions } from "@/lib/a2a-labels";
+import { a2aInvokePolicyOptions } from "@/features/agents/lib/a2a-labels";
 import { useA2aMeta } from "@/hooks/use-a2a-meta";
 import type { Agent, AgentConfig, A2aPeer, A2aPeerRefInput, ModelConfig, PromptTemplate } from "@/lib/types";
 

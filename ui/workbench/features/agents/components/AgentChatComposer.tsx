@@ -6,7 +6,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { ChatMessageMedia, PendingChatMedia } from "@/features/agents/lib/chat-sessions";
-import { CHAT_ATTACHMENT_ACCEPT } from "@/lib/chat-attachments";
+import { CHAT_ATTACHMENT_ACCEPT } from "@/features/agents/lib/chat-attachments";
 import { api } from "@/lib/api";
 
 type Props = {
@@ -67,10 +67,7 @@ function CarriedAttachmentThumb({ attachmentId, filename, previewUrl }: { attach
   }, [attachmentId, previewUrl]);
 
   return (
-    <div
-      className="h-12 w-12 overflow-hidden rounded-md ring-1 ring-dashed ring-brand/35"
-      title={filename ?? "上一轮附图"}
-    >
+    <div className="h-12 w-12 overflow-hidden rounded-md ring-1 ring-dashed ring-brand/35" title={filename ?? "上一轮附图"}>
       {src ? (
         <img src={src} alt={filename ?? "上一轮附图"} className="h-full w-full object-cover opacity-90" />
       ) : (
@@ -123,12 +120,7 @@ export function AgentChatComposer({
               </div>
             ))}
             {carriedMedia.map((m) => (
-              <CarriedAttachmentThumb
-                key={`carry-${m.attachment_id}`}
-                attachmentId={m.attachment_id}
-                filename={m.filename}
-                previewUrl={m.preview_url}
-              />
+              <CarriedAttachmentThumb key={`carry-${m.attachment_id}`} attachmentId={m.attachment_id} filename={m.filename} previewUrl={m.preview_url} />
             ))}
           </div>
         </div>
@@ -232,7 +224,15 @@ export function AgentChatComposer({
                     </option>
                   ))}
                 </select>
-                <svg className="pointer-events-none absolute right-0.5 top-1/2 h-2 w-2 -translate-y-1/2 text-ink-muted" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
+                <svg
+                  className="pointer-events-none absolute right-0.5 top-1/2 h-2 w-2 -translate-y-1/2 text-ink-muted"
+                  viewBox="0 0 16 16"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  aria-hidden
+                >
                   <path d="M4 6l4 4 4-4" />
                 </svg>
               </div>
@@ -241,11 +241,7 @@ export function AgentChatComposer({
         </div>
 
         <div className="absolute bottom-2 right-2 flex items-center gap-1.5">
-          {imageN > 1 && (
-            <span className="mr-0.5 rounded-full bg-brand-light px-1.5 py-px text-[10px] font-medium text-brand-dark">
-              {imageN} 张
-            </span>
-          )}
+          {imageN > 1 && <span className="mr-0.5 rounded-full bg-brand-light px-1.5 py-px text-[10px] font-medium text-brand-dark">{imageN} 张</span>}
           <button
             type="button"
             onClick={onSend}

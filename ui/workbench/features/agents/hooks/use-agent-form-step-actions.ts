@@ -6,7 +6,7 @@ import type { AgentFormValues } from "@/features/agents/lib/agent-form-types";
 import { subAgentRoleOptions } from "@/features/agents/lib/agent-labels";
 import { useAgentMeta } from "@/features/agents/hooks/use-agent-meta";
 import { useA2aMeta } from "@/hooks/use-a2a-meta";
-import { a2aInvokePolicyOptions } from "@/lib/a2a-labels";
+import { a2aInvokePolicyOptions } from "@/features/agents/lib/a2a-labels";
 import type { ModelConfig } from "@/lib/types";
 
 export function useAgentFormStepActions(form: AgentFormValues, setForm: Dispatch<SetStateAction<AgentFormValues>>, models: ModelConfig[]) {

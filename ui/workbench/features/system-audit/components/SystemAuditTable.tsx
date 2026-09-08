@@ -4,7 +4,7 @@ import { ResourceListFooter } from "@/components/resource/ResourceListFooter";
 import type { SystemAuditPageVm } from "@/features/system-audit/hooks/use-system-audit-page";
 import { buildAuditLogSummary, resolveAuditOperatorLabel } from "@/features/system-audit/lib/audit-log-present";
 import { formatAuditTime, shortenId } from "@/features/system-audit/lib/system-audit-shared";
-import { auditActionLabel, auditResourceTypeLabel } from "@/lib/audit-labels";
+import { auditActionLabel, auditResourceTypeLabel } from "@/features/system-audit/lib/audit-labels";
 import type { TenantAuditLog } from "@/lib/types";
 
 export function SystemAuditTable({ vm }: { vm: SystemAuditPageVm }) {

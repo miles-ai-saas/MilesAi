@@ -7,7 +7,7 @@ import { ResourceDialog } from "@/components/resource/ResourceDialog";
 import { ResourceItemCard } from "@/components/resource/ResourceItemCard";
 import { ResourceListFooter } from "@/components/resource/ResourceListFooter";
 import { useA2aPeersPanel } from "@/features/agents/hooks/use-a2a-peers-panel";
-import { a2aPeerStatusLabel } from "@/lib/a2a-labels";
+import { a2aPeerStatusLabel } from "@/features/agents/lib/a2a-labels";
 
 export function A2aPeersPanel() {
   const vm = useA2aPeersPanel();

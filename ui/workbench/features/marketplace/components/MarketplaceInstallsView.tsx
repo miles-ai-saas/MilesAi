@@ -7,7 +7,7 @@ import { ResourceListLayout } from "@/components/resource/ResourceListLayout";
 import { PageMessage } from "@/components/ui/PageMessage";
 import { StatChip } from "@/components/ui/StatChip";
 import type { MarketplacePageVm } from "@/features/marketplace/hooks/use-marketplace-page";
-import { buildAgentsChatHref } from "@/features/agents/lib/agents-chat-href";
+import { buildAgentsChatHref } from "@/features/agents";
 
 function agentChatHref(agentId: string): string {
   return buildAgentsChatHref({ agent: agentId });

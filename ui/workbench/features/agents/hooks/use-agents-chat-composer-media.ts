@@ -4,7 +4,7 @@ import { useCallback, useMemo, useState } from "react";
 import type { PendingChatMedia } from "@/features/agents/lib/chat-sessions";
 import { api } from "@/lib/api";
 import type { ChatMessage, ChatMessageMedia } from "@/features/agents/lib/chat-sessions";
-import { CHAT_ATTACHMENT_MAX_COUNT, filterChatUploadFiles } from "@/lib/chat-attachments";
+import { CHAT_ATTACHMENT_MAX_COUNT, filterChatUploadFiles } from "@/features/agents/lib/chat-attachments";
 import { lastUserMessageMedia } from "@/features/agents/lib/chat-media-forward";
 
 type Params = {
@@ -22,9 +22,12 @@ export function useAgentsChatComposerMedia({ messages, carryForwardMedia, onErro
     return lastUserMessageMedia(messages);
   }, [carryForwardMedia, messages, pendingMedia.length]);
 
-  const showError = useCallback((msg: string) => {
-    onError?.(msg);
-  }, [onError]);
+  const showError = useCallback(
+    (msg: string) => {
+      onError?.(msg);
+    },
+    [onError],
+  );
 
   const onPickAttachments = async (files: FileList | null) => {
     if (!files?.length || uploadingMedia) return;

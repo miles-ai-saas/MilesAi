@@ -11,7 +11,7 @@ import { MarketplaceAppCardActions, MarketplaceAppCardMeta } from "@/features/ma
 import { marketplaceCatalogSortOptions } from "@/features/marketplace/lib/marketplace-labels";
 import type { MarketplacePageVm } from "@/features/marketplace/hooks/use-marketplace-page";
 import type { AppInstallResult } from "@/lib/types";
-import { buildAgentsChatHref } from "@/features/agents/lib/agents-chat-href";
+import { buildAgentsChatHref } from "@/features/agents";
 
 function agentChatHref(agentId: string): string {
   return buildAgentsChatHref({ agent: agentId });
