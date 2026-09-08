@@ -41,6 +41,16 @@ async def test_llm_call_with_media_builds_multimodal_message():
     user_id = uuid4()
     att_id = uuid4()
     model_id = uuid4()
+    model_row = SimpleNamespace(
+        id=model_id,
+        name="vision",
+        model_type="vision",
+        is_active=True,
+    )
+
+    async def fake_resolve(model_id: str):
+        return model_row
+
     ctx = RunContext(
         tenant_id=str(tenant_id),
         user_id=str(user_id),
@@ -48,12 +58,7 @@ async def test_llm_call_with_media_builds_multimodal_message():
         model_config_id=str(model_id),
         media=[{"attachment_id": str(att_id), "detail": "auto"}],
         permissions=frozenset(),
-    )
-    model_row = SimpleNamespace(
-        id=model_id,
-        name="vision",
-        model_type="vision",
-        is_active=True,
+        resolve_model=fake_resolve,
     )
     mock_msg = {
         "role": "user",
@@ -66,11 +71,6 @@ async def test_llm_call_with_media_builds_multimodal_message():
     with (
         patch("app.flow_runtime.nodes.llm_nodes.AsyncSessionLocal") as session_cls,
         patch(
-            "app.flow_runtime.nodes.llm_nodes.resolve_model_for_invoke",
-            new_callable=AsyncMock,
-            return_value=model_row,
-        ),
-        patch(
             "app.flow_runtime.nodes.llm_nodes.resolve_media_refs",
             new_callable=AsyncMock,
             return_value=mock_msg["content"][1:],
@@ -82,7 +82,6 @@ async def test_llm_call_with_media_builds_multimodal_message():
         ) as mock_chat,
     ):
         db = MagicMock()
-        db.execute = AsyncMock(return_value=MagicMock(scalar_one_or_none=MagicMock(return_value=model_row)))
         session_cls.return_value.__aenter__ = AsyncMock(return_value=db)
         session_cls.return_value.__aexit__ = AsyncMock(return_value=None)
 

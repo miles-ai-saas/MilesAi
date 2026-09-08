@@ -6,9 +6,9 @@ from uuid import UUID
 
 from app.flow_runtime.types import RunContext
 from app.integrations.chat.multimodal import build_user_message, resolve_media_refs
+from app.integrations.generative.image.prompt_guard import user_requests_image_collage
 from app.integrations.langchain.chat_models import OnDelta, ainvoke_chat
 from app.integrations.langgraph.runner import run_rag_workflow, should_use_langgraph_rag
-from app.integrations.generative.image.prompt_guard import user_requests_image_collage
 from app.models.agent import Agent
 from app.models.model import ModelConfig
 from app.rag.generate import format_hits_context, rag_answer, retrieve_hits
@@ -17,6 +17,7 @@ from app.tenant.agents.schemas.agent import ChatRequest, ChatResponse
 from app.tenant.agents.services.agent.serialization import should_use_skill_tools_with_kb
 from app.tenant.compliance.constants import SCAN_MODULE_AGENT_CHAT
 from app.tenant.flows.repositories.flow import FlowRepository
+from app.tenant.flows.services.run_context import make_flow_model_resolver
 from app.tenant.hooks.models import HookScope, HookTrigger
 from app.tenant.hooks.services.runner import HookRunner
 from app.tenant.models.services.model_resolve import resolve_model_for_invoke
@@ -86,6 +87,8 @@ class AgentChatRagMixin:
             agent_id=str(agent_id),
             agent_config=dict(agent.config or {}),
             media=media_payload,
+            resolve_model=make_flow_model_resolver(agent.tenant_id),
+            usage_sink=None,
         )
 
     async def maybe_augment_a2a(self, agent: Agent, body: ChatRequest, response: ChatResponse) -> ChatResponse:

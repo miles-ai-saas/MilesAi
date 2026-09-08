@@ -13,6 +13,14 @@ from app.flow_runtime.constants import CanvasNodeType
 from app.flow_runtime.nodes.registry import execute_node
 from app.flow_runtime.step_record import build_flow_node_step
 from app.flow_runtime.types import FlowGraph, RunContext
+from app.integrations.langgraph.compiler.report import resolve_node_type
+from app.integrations.langgraph.compiler.state import (
+    gather_node_inputs,
+    make_condition_router,
+    make_relevance_grade_router,
+    merge_outputs,
+)
+from app.integrations.langgraph.compiler.validate import validate_graph_for_compile
 from app.integrations.langgraph.graph_analysis import (
     GRADE_BRANCH_HANDLES,
     build_incoming,
@@ -22,14 +30,6 @@ from app.integrations.langgraph.graph_analysis import (
     normalize_branch_handle,
     normalize_grade_handle,
 )
-from app.integrations.langgraph.compiler.report import resolve_node_type
-from app.integrations.langgraph.compiler.state import (
-    gather_node_inputs,
-    make_condition_router,
-    make_relevance_grade_router,
-    merge_outputs,
-)
-from app.integrations.langgraph.compiler.validate import validate_graph_for_compile
 
 
 def build_canvas_graph(graph_json: dict[str, Any]):
@@ -37,7 +37,8 @@ def build_canvas_graph(graph_json: dict[str, Any]):
     将 ``graph_json`` 编译为未 compile 的 ``StateGraph``。
 
     状态字段：``tenant_id``、``inputs``、``kb_ids``（供 KnowledgeSearch）、
-    ``outputs``（reducer 合并）、``steps``（operator.add 累积审计）。
+    ``outputs``（reducer 合并）、``steps``（operator.add 累积审计）；
+    ``resolve_model`` / ``usage_sink`` 为 L1 注入的画布 LLM 回调，随 ctx 透传。
     调用方需 ``.compile()`` 后 ``ainvoke``（见 ``run_compiled_canvas``）。
     """
     report = validate_graph_for_compile(graph_json)
@@ -77,6 +78,8 @@ def build_canvas_graph(graph_json: dict[str, Any]):
                     subflow_depth=int(state.get("subflow_depth") or 0),
                 ),
                 executing_node_id=node_id,
+                resolve_model=state.get("resolve_model"),
+                usage_sink=state.get("usage_sink"),
             )
             node_inputs = gather_node_inputs(node_id, incoming, state.get("outputs") or {})
             result = await execute_node(ntype, node_data, node_inputs, ctx)
@@ -110,6 +113,9 @@ def build_canvas_graph(graph_json: dict[str, Any]):
         agent_config: dict[str, Any]
         current_flow_id: str | None
         subflow_depth: int
+        # L1 注入的画布 LLM 解析回调与用量记录器（随 ctx 透传，编译图单次内存执行）
+        resolve_model: Any
+        usage_sink: Any
         outputs: Annotated[dict[str, Any], merge_outputs]
         steps: Annotated[list[dict[str, Any]], operator.add]
         answer: Any

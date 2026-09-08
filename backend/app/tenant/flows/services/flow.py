@@ -15,25 +15,22 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.common.exceptions import BadRequestError, NotFoundError
+from app.common.schema import PageParams, PageResult
+from app.core.service import BaseService
+from app.core.soft_delete import is_marked_deleted, mark_deleted
 from app.core.tenant import TenantContext, assert_tenant_access, tenant_filters
-from app.tenant.compliance.constants import SCAN_MODULE_FLOW_RUN
-from app.tenant.compliance.services.compliance import ComplianceService
-from app.tenant.hooks.models import HookScope, HookTrigger
-from app.tenant.hooks.services.runner import HookRunner
-from app.integrations.langgraph.compiler import validate_graph_for_compile
-from app.flow_runtime.subflow.validate import validate_subflow_references
+from app.deletion.cascade import before_delete_flow
 from app.flow_runtime.runtime_factory import get_flow_runtime
+from app.flow_runtime.subflow.validate import validate_subflow_references
+from app.flow_runtime.templates.registry import list_flow_templates
 from app.flow_runtime.types import RunContext
+from app.integrations.langgraph.compiler import validate_graph_for_compile
 from app.models.flow import Flow, FlowStatus, FlowVersion
 from app.models.meta.tag import TagEntityType
-from app.tenant.tags.schemas.tag import TagRefOut
-from app.tenant.tags.services.tag import TagService
-from app.tenant.flows.repositories.flow import FlowRepository, FlowVersionRepository
-from app.common.schema import PageParams, PageResult
-from app.flow_runtime.templates.registry import list_flow_templates
+from app.tenant.compliance.constants import SCAN_MODULE_FLOW_RUN
+from app.tenant.compliance.services.compliance import ComplianceService
 from app.tenant.flows.meta import flow_meta_dict
-from app.tenant.flows.schemas.meta import FlowMetaOut
-from app.tenant.flows.schemas.template import FlowTemplateOut, FlowTemplatesOut
+from app.tenant.flows.repositories.flow import FlowRepository, FlowVersionRepository
 from app.tenant.flows.schemas.flow import (
     FlowCreate,
     FlowOut,
@@ -44,9 +41,13 @@ from app.tenant.flows.schemas.flow import (
     FlowVersionOut,
     FlowVersionSummaryOut,
 )
-from app.core.soft_delete import is_marked_deleted, mark_deleted
-from app.core.service import BaseService
-from app.deletion.cascade import before_delete_flow
+from app.tenant.flows.schemas.meta import FlowMetaOut
+from app.tenant.flows.schemas.template import FlowTemplateOut, FlowTemplatesOut
+from app.tenant.flows.services.run_context import make_flow_model_resolver
+from app.tenant.hooks.models import HookScope, HookTrigger
+from app.tenant.hooks.services.runner import HookRunner
+from app.tenant.tags.schemas.tag import TagRefOut
+from app.tenant.tags.services.tag import TagService
 
 
 class FlowService(BaseService):
@@ -253,6 +254,8 @@ class FlowService(BaseService):
                 generative_image_async=body.async_generative,
                 current_flow_id=str(flow_id),
                 subflow_depth=0,
+                resolve_model=make_flow_model_resolver(self.ctx.tenant_id),
+                usage_sink=None,
             )
             if "query" not in ctx.inputs and run_inputs:
                 ctx.inputs.setdefault("query", run_inputs.get("message", ""))

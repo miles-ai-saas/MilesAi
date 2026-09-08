@@ -13,11 +13,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.common.exceptions import BadRequestError, NotFoundError
 from app.core.soft_delete import is_marked_deleted
+from app.flow_runtime.constants import CanvasNodeType
 from app.flow_runtime.types import RunContext
 from app.models.flow import FlowStatus
 from app.tenant.flows.repositories.flow import FlowRepository
-
-from app.flow_runtime.constants import CanvasNodeType
 
 VERSION_POLICY_PUBLISHED = "published"
 VERSION_POLICY_PINNED = "pinned"
@@ -154,6 +153,8 @@ def build_child_context(
         parent_node_id=parent_node_id,
         subflow_depth=parent_ctx.subflow_depth + 1,
         run_subflow=parent_ctx.run_subflow,  # 传播子流程回调到子 context
+        resolve_model=parent_ctx.resolve_model,  # 画布 LLM 模型解析回调透传到子流程
+        usage_sink=parent_ctx.usage_sink,  # 画布 LLM 用量记录器透传到子流程
     )
 
 

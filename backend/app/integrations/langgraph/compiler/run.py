@@ -35,6 +35,8 @@ async def run_compiled_canvas(
         "current_flow_id": ctx.current_flow_id,
         "subflow_depth": ctx.subflow_depth,
         "media": list(ctx.media),
+        "resolve_model": ctx.resolve_model,
+        "usage_sink": ctx.usage_sink,
         "outputs": {},
         "steps": [
             {
