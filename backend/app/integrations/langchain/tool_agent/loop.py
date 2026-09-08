@@ -21,15 +21,16 @@ from app.integrations.langchain.tool_agent.parse import (
     _looks_like_tool_call_simulation,
 )
 from app.integrations.langchain.tools import get_all_platform_tools, get_skill_bound_tools
+from app.integrations.litellm.adapter import extract_litellm_usage
+from app.integrations.litellm.usage_sink import UsageSink
 from app.models.agent import Agent
+from app.models.model import ModelConfig
 from app.tenant.agents.schemas.agent import (
     ChatArtifact,
     ChatRequest,
     ChatResponse,
     PendingToolCall,
 )
-from app.tenant.models.services.model_resolve import resolve_model_for_invoke
-from app.tenant.models.services.usage import UsageRecordContext, record_litellm_response_usage
 from app.tenant.tools.confirmation import ToolConfirmationRequired, resolve_tool_meta
 from app.tenant.tools.invoke import invoke_tool_with_context
 
@@ -42,25 +43,18 @@ async def run_tool_calling_chat(
     *,
     agent_id: UUID,
     system_prompt: str,
+    model: ModelConfig,
+    usage_sink: UsageSink | None = None,
 ) -> ChatResponse:
     """
     LiteLLM 多轮 function calling 主循环。
 
-    流程：解析模型 → 按 ``tool_slugs`` 过滤工具 → 多轮 ``acompletion`` →
+    流程：按 ``tool_slugs`` 过滤工具 → 多轮 ``acompletion`` →
     ``invoke_tool_with_context`` 执行；需确认时返回 ``pending_tool``；
     ``generate_*`` 异步任务返回 ``generative_jobs``；同步附件写入 ``artifacts``。
     """
     if not agent.model_config:
         raise ValueError("工具调用需要配置大模型")
-
-    model = await resolve_model_for_invoke(db, agent.model_config, ctx.tenant_id)
-    usage_ctx = UsageRecordContext(
-        db=db,
-        tenant_id=ctx.tenant_id,
-        model=model,
-        source="chat",
-        source_id=agent_id,
-    )
 
     all_tools = await get_all_platform_tools(db, ctx, agent_config=agent.config or {})
     allowed = agent.config.get("tool_slugs") if isinstance(agent.config, dict) else None
@@ -154,7 +148,9 @@ async def run_tool_calling_chat(
 
     for _ in range(max_iter):
         response = await _litellm_with_tools(model, messages, openai_tools, temperature=temperature)
-        await record_litellm_response_usage(usage_ctx, response)
+        if usage_sink is not None:
+            p, c, _ = extract_litellm_usage(response)
+            await usage_sink.record(prompt_tokens=p, completion_tokens=c)
         choice = response.choices[0]
         message = choice.message
         tool_calls = getattr(message, "tool_calls", None) or []

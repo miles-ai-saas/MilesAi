@@ -206,6 +206,8 @@ class AgentChatRagMixin:
                 if body.generative_video_duration != 5:
                     agent_config_with_defaults["_generative_video_duration"] = body.generative_video_duration
                 agent.config = agent_config_with_defaults
+                model = await self.resolve_invoke_model(agent.model_config)
+                usage_sink = self.chat_usage_sink(model, source_id=agent_id)
                 return await run_tool_calling_chat(
                     self.db,
                     self.ctx,
@@ -213,6 +215,8 @@ class AgentChatRagMixin:
                     body,
                     agent_id=agent_id,
                     system_prompt=f"{base}{kb_hint}",
+                    model=model,
+                    usage_sink=usage_sink,
                 )
             return await self.direct_chat(agent, body, agent_id, hooks, on_delta=on_delta)
 
@@ -236,6 +240,8 @@ class AgentChatRagMixin:
             if body.generative_video_duration != 5:
                 agent_config_with_defaults["_generative_video_duration"] = body.generative_video_duration
             agent.config = agent_config_with_defaults
+            model = await self.resolve_invoke_model(agent.model_config)
+            usage_sink = self.chat_usage_sink(model, source_id=agent_id)
             return await run_tool_calling_chat(
                 self.db,
                 self.ctx,
@@ -243,6 +249,8 @@ class AgentChatRagMixin:
                 body,
                 agent_id=agent_id,
                 system_prompt=f"{base}{kb_hint}",
+                model=model,
+                usage_sink=usage_sink,
             )
 
         base = await self.resolve_system_prompt(agent)
