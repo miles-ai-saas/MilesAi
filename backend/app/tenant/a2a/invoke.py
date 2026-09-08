@@ -30,6 +30,8 @@ from app.tenant.a2a.services.peer_refs import list_agent_a2a_peer_refs
 from app.tenant.agents.schemas.agent import ChatRequest, ChatResponse
 from app.integrations.langchain.chat_models import ainvoke_chat
 from app.models.agent import Agent
+from app.tenant.models.services.model_resolve import resolve_model_for_invoke
+from app.tenant.models.services.usage import ChatUsageSink
 
 if TYPE_CHECKING:
     from app.tenant.agents.services.agent import AgentService
@@ -145,13 +147,18 @@ async def plan_a2a_peers(
         '若需要，输出 {"a2a_steps":[{"peer_id":"uuid","task":"发给外部 Agent 的子任务"}]}\n'
         f"可选外部 Agent：\n{catalog}\n\n用户问题：{query}"
     )
-    raw = await ainvoke_chat(
-        parent.model_config,
-        [{"role": "user", "content": prompt}],
-        temperature=0.2,
+    model = await resolve_model_for_invoke(db, parent.model_config, tenant_id)
+    usage_sink = ChatUsageSink(
         db=db,
         tenant_id=tenant_id,
+        model=model,
         source_id=parent.id,
+    )
+    raw = await ainvoke_chat(
+        model,
+        [{"role": "user", "content": prompt}],
+        temperature=0.2,
+        usage_sink=usage_sink,
     )
     plan = _parse_a2a_plan(raw)
     allowed = {str(r.peer.id) for r in candidates if r.peer}
@@ -308,13 +315,13 @@ async def augment_response_with_a2a(
             f"本智能体初步回答：\n{base.answer}\n\n"
             "外部 A2A 智能体补充：\n" + "\n\n---\n\n".join(blocks) + "\n\n请综合以上内容，给用户完整、简洁的最终回答。"
         )
+        model = await svc.resolve_invoke_model(agent.model_config)
+        usage_sink = svc.chat_usage_sink(model, source_id=agent.id)
         final = await ainvoke_chat(
-            agent.model_config,
+            model,
             [{"role": "user", "content": synth}],
             temperature=float((agent.config or {}).get("temperature", 0.7)),
-            db=svc.db,
-            tenant_id=svc.ctx.tenant_id,
-            source_id=agent.id,
+            usage_sink=usage_sink,
         )
     else:
         final = base.answer + "\n\n---\n\n" + "\n\n".join(blocks)
@@ -370,13 +377,13 @@ async def run_a2a_host_chat(
             "当前未命中外部调用规则，且规划器未选择外部 Agent。"
             "请根据你的编排提示，直接回答或说明需要用户补充信息。"
         )
+        model = await svc.resolve_invoke_model(agent.model_config)
+        usage_sink = svc.chat_usage_sink(model, source_id=agent.id)
         answer = await ainvoke_chat(
-            agent.model_config,
+            model,
             [{"role": "user", "content": prompt}],
             temperature=float((agent.config or {}).get("temperature", 0.7)),
-            db=svc.db,
-            tenant_id=svc.ctx.tenant_id,
-            source_id=agent.id,
+            usage_sink=usage_sink,
         )
         return ChatResponse(answer=answer, steps=steps)
 
@@ -392,12 +399,12 @@ async def run_a2a_host_chat(
         f"用户问题：{body.query}\n\n"
         "各外部 A2A 智能体结果：\n" + "\n\n---\n\n".join(blocks) + "\n\n请综合以上外部结果，给用户完整、简洁的最终回答。"
     )
+    model = await svc.resolve_invoke_model(agent.model_config)
+    usage_sink = svc.chat_usage_sink(model, source_id=agent.id)
     final = await ainvoke_chat(
-        agent.model_config,
+        model,
         [{"role": "user", "content": synth}],
         temperature=float((agent.config or {}).get("temperature", 0.7)),
-        db=svc.db,
-        tenant_id=svc.ctx.tenant_id,
-        source_id=agent.id,
+        usage_sink=usage_sink,
     )
     return ChatResponse(answer=final, sources=[], steps=steps)

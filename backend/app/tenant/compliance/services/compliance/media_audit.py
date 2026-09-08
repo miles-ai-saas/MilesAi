@@ -22,6 +22,8 @@ from app.core.logging import get_logger
 from app.models.model import ModelConfig
 from app.models.model.catalog import ModelCapabilityType
 from app.tenant.attachments.services.attachment import AttachmentService
+from app.tenant.models.services.model_resolve import resolve_model_for_invoke
+from app.tenant.models.services.usage import ChatUsageSink
 
 logger = get_logger(__name__)
 
@@ -71,13 +73,14 @@ async def check_media_safety(
     ]
 
     try:
+        model = await resolve_model_for_invoke(db, model, ctx.tenant_id)
+        usage_sink = ChatUsageSink(db=db, tenant_id=ctx.tenant_id, model=model)
         raw = await ainvoke_chat(
             model,
             messages,
             temperature=0.1,
             max_tokens=256,
-            db=db,
-            tenant_id=ctx.tenant_id,
+            usage_sink=usage_sink,
         )
     except Exception as exc:
         logger.warning("视觉审核调用失败: %s", exc)
