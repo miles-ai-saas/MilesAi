@@ -20,6 +20,7 @@ from app.core.tenant import TenantContext
 from app.infra.db import get_sync_db
 from app.integrations.langchain.vectorstores import search_kb
 from app.rag.load import load_kb_sync
+from app.tenant.kb.services.embeddings import build_kb_retrieval_bindings
 from app.tenant.skills.runtime import skill_read_reference, skill_run_script
 from app.tenant.tools.builtins.calculator import safe_calculate
 from app.tenant.tools.builtins.code_exec import DEFAULT_MAX_MEMORY_MB, DEFAULT_TIMEOUT_SEC, execute_code
@@ -66,7 +67,13 @@ async def handle_knowledge_search(
 
     with get_sync_db() as sync_db:
         kb = load_kb_sync(sync_db, ctx.tenant_id, UUID(str(kb_id)))
-        hits = search_kb(str(query), kb=kb, db=sync_db, limit=int(params.get("limit", 5)))
+        hits = search_kb(
+            str(query),
+            kb=kb,
+            db=sync_db,
+            limit=int(params.get("limit", 5)),
+            bindings=build_kb_retrieval_bindings(),
+        )
     return {"hits": hits}
 
 

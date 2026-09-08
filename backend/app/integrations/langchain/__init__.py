@@ -13,20 +13,18 @@ LangChain 统一 AI 能力层（L3，惰性 ``__getattr__`` 导出）。
 
 __all__ = [
     "ainvoke_chat",
-    "get_chat_model",
+    "build_rag_user_prompt",
     "embed_query_for_kb",
     "embed_query_for_kb_sync",
     "embed_texts_for_kb",
     "embed_texts_for_kb_sync",
-    "split_text",
-    "search_kb",
-    "search_multi_kb",
-    "search_multi_kb_async",
-    "search_as_documents",
-    "retrieve_hits",
     "format_hits_context",
-    "build_rag_user_prompt",
+    "get_chat_model",
     "rag_answer",
+    "retrieve_hits",
+    "search_kb",
+    "search_multi_kb_async",
+    "split_text",
 ]
 
 
@@ -50,9 +48,7 @@ def __getattr__(name: str):
         return split_text
     if name in (
         "search_kb",
-        "search_multi_kb",
         "search_multi_kb_async",
-        "search_as_documents",
     ):
         from app.integrations.langchain import vectorstores as vs
 

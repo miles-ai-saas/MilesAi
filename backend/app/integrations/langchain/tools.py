@@ -8,7 +8,8 @@
 
 与知识库相关
 ------------
-- ``knowledge_search``：单 KB 同步检索（``integrations.langchain.vectorstores.search_kb``）
+- ``knowledge_search``：schema 壳仅供 LLM 工具描述，执行经 builtin 注册表
+  ``handle_knowledge_search``（L1，走 ``vectorstores.search_kb``）
 - 与 Agent ``_rag_chat`` 多 KB 路径独立；tool calling 模式下由 LLM 决定是否检索
 
 生成类 / 技能类
@@ -34,9 +35,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.soft_delete import append_not_deleted
 from app.core.tenant import TenantContext, tenant_filters
-from app.infra.db import get_sync_db
-from app.integrations.langchain.vectorstores import search_kb
-from app.rag.load import load_kb_sync
 from app.tenant.tools.invoke import (
     invoke_custom_http,
     invoke_tool_with_context,
@@ -155,18 +153,17 @@ def _make_datetime_tool() -> StructuredTool:
 
 def make_knowledge_search_tool(ctx: TenantContext) -> StructuredTool:
     """
-    内置「知识库检索」工具（单库、同步会话）。
+    内置「知识库检索」工具 schema 壳（单库、同步会话）。
 
-    走 ``search_kb`` → ``retriever.search_kb_chunks``，返回 hit 字典列表；
-    不自动调用 LLM 生成答案（由 tool_agent 多轮对话决定后续）。
+    仅供 LLM 工具描述/选型；实际执行经 builtin 注册表 ``handle_knowledge_search``（L1），
+    本壳 ``_run`` 明确报错，避免被当作可执行工具直接调用。
     """
-    tenant_id = ctx.tenant_id
 
     def _run(query: str, kb_id: str, limit: int = 5) -> dict:
-        with get_sync_db() as db:
-            kb = load_kb_sync(db, tenant_id, UUID(kb_id))
-            hits = search_kb(query, kb=kb, db=db, limit=limit)
-        return {"hits": hits}
+        raise NotImplementedError(
+            "knowledge_search 工具执行经 builtin 注册表 handle_knowledge_search（L1），"
+            "本 schema 壳仅供 LLM 工具描述。"
+        )
 
     return StructuredTool.from_function(
         func=_run,
