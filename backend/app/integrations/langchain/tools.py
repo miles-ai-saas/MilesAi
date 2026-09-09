@@ -26,9 +26,9 @@ from dataclasses import dataclass
 from typing import Any
 
 from langchain_core.tools import StructuredTool
-from pydantic import BaseModel, Field, create_model
+from pydantic import BaseModel, Field
 
-from app.common.exceptions import BadRequestError
+from app.models.tool.parameters import parameters_to_pydantic
 
 
 @dataclass(frozen=True)
@@ -40,45 +40,6 @@ class CustomToolSpec:
     description: str | None
     tool_type: str  # "http" | "script"
     parameters: list[dict]
-
-
-# --- 参数列表 → Pydantic schema（纯函数，本地复刻 tenant.tools.parameters
-# --- 以保证本模块对 tenant 引用清零；schema 语义与原实现完全一致）---
-
-
-_ALLOWED_TYPES = {"string", "number", "integer", "boolean"}
-
-
-def _normalize_parameters(raw: list | None) -> list[dict]:
-    if not raw:
-        return []
-    names: set[str] = set()
-    out: list[dict] = []
-    for i, p in enumerate(raw):
-        if not isinstance(p, dict):
-            raise BadRequestError(f"parameters[{i}] 必须是对象")
-        name = str(p.get("name", "")).strip()
-        if not name or not name.replace("_", "").isalnum() or not name[0].isalpha():
-            raise BadRequestError(f"parameters[{i}].name 无效: {name!r}")
-        if name in names:
-            raise BadRequestError(f"参数名重复: {name}")
-        names.add(name)
-        ptype = str(p.get("type", "string"))
-        if ptype not in _ALLOWED_TYPES:
-            raise BadRequestError(f"parameters[{i}].type 不支持: {ptype}")
-        out.append({**p, "name": name, "type": ptype})
-    return out
-
-
-def parameters_to_pydantic(schema: list[dict]) -> type[BaseModel]:
-    """将自定义工具参数列表动态构建为 Pydantic 模型（本地纯函数，schema 语义一致）。"""
-    schema = _normalize_parameters(schema)
-    fields: dict[str, Any] = {}
-    for p in schema:
-        py_type = {"string": str, "integer": int, "number": float, "boolean": bool}[p["type"]]
-        default = ... if p.get("required") else p.get("default", None)
-        fields[p["name"]] = (py_type, Field(default=default, description=p.get("description")))
-    return create_model("ToolParams", **fields)
 
 
 class CalculatorInput(BaseModel):
