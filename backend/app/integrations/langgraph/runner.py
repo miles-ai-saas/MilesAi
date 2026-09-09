@@ -29,8 +29,8 @@ from app.integrations.langgraph.graphs.rag_qa import build_rag_qa_graph
 from app.integrations.litellm.usage_sink import UsageSink
 from app.common.schemas.media import MediaRefIn
 from app.models.agent import Agent
+from app.models.agent.constants import AgentRuntimeMode
 from app.models.model import ModelConfig
-from app.tenant.agents.constants import AgentRuntimeMode
 
 
 def should_use_langgraph_rag(agent: Agent, *, kb_ids: list[str]) -> bool:

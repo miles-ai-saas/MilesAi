@@ -19,9 +19,9 @@ from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from app.integrations.deepagents.subagent_graphs import _slug_for_binding, build_compiled_subagents
 from app.integrations.langchain.chat_models import get_chat_model
 from app.integrations.langgraph.checkpointer import get_checkpointer
-from app.tenant.agents.constants import AgentPlanner
 from app.tenant.agents.schemas.agent import ChatRequest, ChatResponse
 from app.models.agent import Agent, AgentSubAgentBinding
+from app.models.agent.constants import AgentPlanner
 
 try:
     from deepagents import create_deep_agent

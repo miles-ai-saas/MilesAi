@@ -1,42 +1,24 @@
-"""智能体 runtime_mode / planner 与子智能体 role_hint 枚举（校验、meta、编排共用）。"""
+"""智能体 runtime_mode / planner 与子智能体 role_hint 枚举（re-export）。
 
-import enum
+定义已下沉中立域 ``app.models.agent.constants``；本模块保持既有引用路径
+（``agents/meta.py``、``a2a/services/host_bindings.py``、``services/sub_agents.py`` 等 L1 内部），
+禁止再在 L3/新代码 import 本模块——L3 应指向 ``app.models.agent.constants``。
+"""
 
+from app.models.agent.constants import (
+    SUB_AGENT_ROLE_DISPLAY,
+    SUB_AGENT_ROLE_HINTS,
+    SUB_AGENT_ROLE_LABELS,
+    AgentPlanner,
+    AgentRuntimeMode,
+    SubAgentRoleHint,
+)
 
-class AgentRuntimeMode(str, enum.Enum):
-    """``agent.config.runtime_mode``：RAG 与编排路径开关。"""
-
-    LEGACY = "legacy"
-    AUTONOMOUS = "autonomous"
-    WORKFLOW = "workflow"
-
-
-class AgentPlanner(str, enum.Enum):
-    """``agent.config.planner``：子智能体 / A2A 宿主编排引擎。"""
-
-    DEEPAGENTS = "deepagents"
-    PLATFORM = "platform"
-    A2A_ORCHESTRATOR = "a2a_orchestrator"
-
-
-class SubAgentRoleHint(str, enum.Enum):
-    RETRIEVAL = "retrieval"
-    OCR = "ocr"
-    SUMMARY = "summary"
-    COMPLIANCE = "compliance"
-    CUSTOM = "custom"
-
-
-SUB_AGENT_ROLE_HINTS = frozenset(h.value for h in SubAgentRoleHint)
-
-# value -> (label, hint)
-SUB_AGENT_ROLE_DISPLAY: dict[str, tuple[str, str | None]] = {
-    SubAgentRoleHint.RETRIEVAL.value: ("检索", "知识检索"),
-    SubAgentRoleHint.OCR.value: ("OCR", "OCR 识别"),
-    SubAgentRoleHint.SUMMARY.value: ("总结", "摘要归纳"),
-    SubAgentRoleHint.COMPLIANCE.value: ("合规", "合规审查"),
-    SubAgentRoleHint.CUSTOM.value: ("自定义", "自定义"),
-}
-
-# DeepAgents 子智能体描述（优先 hint 长文案）
-SUB_AGENT_ROLE_LABELS: dict[str, str] = {role: (hint or label) for role, (label, hint) in SUB_AGENT_ROLE_DISPLAY.items()}
+__all__ = [
+    "AgentRuntimeMode",
+    "AgentPlanner",
+    "SubAgentRoleHint",
+    "SUB_AGENT_ROLE_HINTS",
+    "SUB_AGENT_ROLE_DISPLAY",
+    "SUB_AGENT_ROLE_LABELS",
+]

@@ -18,9 +18,9 @@ from uuid import UUID
 from langchain_core.messages import AIMessage, HumanMessage
 from langgraph.graph import END, START, MessagesState, StateGraph
 
-from app.tenant.agents.constants import SUB_AGENT_ROLE_HINTS, SUB_AGENT_ROLE_LABELS
 from app.tenant.agents.schemas.agent import ChatRequest
 from app.models.agent import AgentSubAgentBinding
+from app.models.agent.constants import SUB_AGENT_ROLE_HINTS, SUB_AGENT_ROLE_LABELS
 
 try:
     from deepagents.middleware.subagents import CompiledSubAgent

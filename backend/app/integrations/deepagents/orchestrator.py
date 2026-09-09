@@ -23,10 +23,10 @@ from typing import TYPE_CHECKING
 from uuid import UUID
 
 from app.tenant.agents.schemas.agent import ChatRequest, ChatResponse
-from app.tenant.agents.constants import AgentPlanner
 from app.integrations.deepagents.runner import deepagents_importable, run_deepagents_chat
 from app.integrations.langchain.chat_models import ainvoke_chat
 from app.models.agent import Agent, AgentSubAgentBinding
+from app.models.agent.constants import AgentPlanner
 
 if TYPE_CHECKING:
     from app.tenant.agents.services.agent import AgentService
