@@ -300,13 +300,13 @@ Expected：ruff 全绿；rg 无命中（若 loop.py 仍命中 `tenant.tools.{con
 - 在 F2a 收敛记录（`收敛记录（2026-09-09，F2a）`）之后追加：
 
 ```markdown
-> **收敛记录（2026-09-09，F2b）**：自定义工具契约收敛——租户 `Tool` 表 HTTP/SCRIPT 行 DB 加载上移 L1（`tenant/tools/services/custom_tools.py` 的 `load_custom_tool_specs`/`assemble_agent_tools`），产出中性 `CustomToolSpec`；`integrations/langchain/tools.py` 净化为纯 schema 构造库（`build_platform_tools`，内置/技能/生成壳与自定义 spec→StructuredTool，func 全占位——主循环从不执行 StructuredTool，执行统一走 `invoke_tool_with_context`），删除 DB 版 `get_all_platform_tools` 与 dead wrapper `invoke_platform_tool`；`tool_agent/loop.py` 改收 L1 装配的 `platform_tools` 入参，不再查 `Tool` 表（见 plan [`2026-09-09-engine-di-custom-tool-contract`](../superpowers/plans/2026-09-09-engine-di-custom-tool-contract.md)）。`loop.py` 剩余 `tenant.tools.{confirmation,invoke}` 执行/确认行为面与画布 `tool_nodes` 注入待 F2c。
+> **收敛记录（2026-09-09，F2b）**：自定义工具契约收敛——租户 `Tool` 表 HTTP/SCRIPT 行 DB 加载上移 L1（`tenant/tools/services/custom_tools.py` 的 `load_custom_tool_specs`/`assemble_agent_tools`），产出中性 `CustomToolSpec`；`integrations/langchain/tools.py` 净化为纯 schema 构造库（`build_platform_tools`，内置/技能/生成壳与自定义 spec→StructuredTool，func 全占位——主循环从不执行 StructuredTool，执行统一走 `invoke_tool_with_context`），删除 DB 版 `get_all_platform_tools` 与 dead wrapper `invoke_platform_tool`；`tool_agent/loop.py` 改收 L1 装配的 `platform_tools` 入参，不再查 `Tool` 表；工具参数三纯函数（`normalize_parameters`/`validate_tool_params`/`parameters_to_pydantic`）下沉中立 `models/tool/parameters.py`（`tenant/tools/parameters.py` 转 re-export shim，消除 Task 1 复刻 drift）（见 plan [`2026-09-09-engine-di-custom-tool-contract`](../superpowers/plans/2026-09-09-engine-di-custom-tool-contract.md)）。`loop.py` 剩余 `tenant.tools.{confirmation,invoke}` 执行/确认行为面与画布 `tool_nodes` 注入待 F2c。
 ```
 
 - §8 修订记录表（F2a 行之后）追加：
 
 ```markdown
-| 2026-09-09 | F2b：自定义工具 DB 加载上移 L1 `custom_tools` loader；`langchain/tools.py` 净化为纯 schema 构造（CustomToolSpec/占位壳），loop 工具列表 L1 装配注入 |
+| 2026-09-09 | F2b：自定义工具 DB 加载上移 L1 `custom_tools` loader；`langchain/tools.py` 净化为纯 schema 构造（CustomToolSpec/占位壳），loop 工具列表 L1 装配注入；工具参数三纯函数下沉 `models/tool/parameters.py` |
 ```
 
 - [ ] **Step 3: Commit**
@@ -314,6 +314,60 @@ Expected：ruff 全绿；rg 无命中（若 loop.py 仍命中 `tenant.tools.{con
 ```bash
 git add docs/architecture/layering.md
 git commit -m "docs(architecture): 记录 F2b 自定义工具契约收敛"
+```
+
+---
+
+### Task 5: 工具参数三纯函数下沉中立 `models/tool/parameters.py`（消除 Task 1 复刻）
+
+> 排序说明：Task 1 review 判 [Important] 复刻 drift 风险。本任务紧随 Task 1 完成，消除双份 schema 规则源；Task 3（loop 接线）不受影响。
+
+**Files:**
+- Create: `backend/app/models/tool/__init__.py`、`backend/app/models/tool/parameters.py`
+- Modify: `backend/app/tenant/tools/parameters.py`（转 re-export shim）、`backend/app/integrations/langchain/tools.py`（删复刻块、改指 models）
+
+**Interfaces:**
+- Produces: 中立 `models/tool/parameters.py` 原样承载三函数。
+- Consumes: `tools.py` 复刻版删除后改 `from app.models.tool.parameters import parameters_to_pydantic`；`tenant/tools/parameters.py` 变 shim（re-export 三函数，加 `# noqa: F401`，docstring 说明下沉），既有 L1 consumer（`tenant/tools/services/tools.py`、`tenant/tools/invoke/custom.py`）import 路径不变。
+
+- [ ] **Step 1: 中立模块落地**
+
+- 建 `backend/app/models/tool/__init__.py`（空或一行域说明）。
+- 新建 `backend/app/models/tool/parameters.py`：正文**逐字节**取自 `tenant/tools/parameters.py` 现文（模块 docstring 改为「工具输入参数 schema 中立规范——校验与动态 Pydantic 模型；L1 `tenant.tools.parameters` 为其 re-export shim，L3 `langchain/tools` 直接引用本模块」），函数体与常量不动。
+- `tenant/tools/parameters.py` 改为 shim：
+  ```python
+  """工具输入参数 schema 校验与动态 Pydantic 模型（re-export shim）。
+
+  三函数已下沉中立 ``models/tool/parameters.py``；本模块保留 L1 import 路径。
+  """
+
+  from app.models.tool.parameters import (  # noqa: F401
+      normalize_parameters,
+      parameters_to_pydantic,
+      validate_tool_params,
+  )
+  ```
+- `integrations/langchain/tools.py`：删除「本地复刻」注释块与 `parameters_to_pydantic` 复刻函数（`BaseModel`/`Field`/`create_model`/`BadRequestError` 若仅复刻用则一并清），改 `from app.models.tool.parameters import parameters_to_pydantic`（按现有 import 分组排序）。
+
+- [ ] **Step 2: 验证**
+
+Run（backend/ 下）：
+```bash
+rg -n "def parameters_to_pydantic|def normalize_parameters|def validate_tool_params" app/integrations/langchain/tools.py app/models/tool/parameters.py app/tenant/tools/parameters.py
+diff <(sed -n '/^def /,$p' app/models/tool/parameters.py) <(git show HEAD:app/tenant/tools/parameters.py | sed -n '/^def /,$p') && echo "函数体与下沉前一致" || echo "存在差异（docstring 变更属预期，函数体必须逐字节一致）"
+uv run ruff check app/models/tool app/tenant/tools/parameters.py app/integrations/langchain/tools.py
+uv run python -c "import app.models.tool.parameters, app.tenant.tools.parameters, app.integrations.langchain.tools"
+```
+Expected：每个函数仅一处 `def`（tools.py 无）；diff 输出仅 docstring 差异或全一致（若不区分 docstring，直接 diff 全文核对 shim 头部除外）；ruff 全绿；import 成功。shim 守卫测试（断言 `tenant.tools.parameters.normalize_parameters is models.tool.parameters.normalize_parameters`）可选加 `tests/tenant/tools/test_parameters_shim.py`（TDD 不强制）。
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add backend/app/models/tool backend/app/tenant/tools/parameters.py backend/app/integrations/langchain/tools.py
+git commit -m "refactor(engine): 工具参数纯函数下沉 models/tool，消除 L3 复刻
+
+normalize_parameters/validate_tool_params/parameters_to_pydantic 落中立域，
+tenant.tools.parameters 转 shim，langchain/tools 改指共享源。"
 ```
 
 ---
