@@ -66,6 +66,7 @@ async def retrieve(state: RAGGraphState, config: RunnableConfig) -> dict[str, An
     """节点：多 KB retrieve_hits，写入 hits 与 steps（仅用文本 query，不用附图）。"""
     tenant_id = UUID(state["tenant_id"])
     search_q = (state.get("query") or "").strip()
+    kb_retrieval = config.get("configurable", {}).get("kb_retrieval") if config else None
     async with AsyncSessionLocal() as db:
         hits = await retrieve_hits(
             search_q,
@@ -73,6 +74,7 @@ async def retrieve(state: RAGGraphState, config: RunnableConfig) -> dict[str, An
             kb_ids=state["kb_ids"],
             db=db,
             top_k=state.get("top_k", 5),
+            bindings=kb_retrieval,
         )
     return {
         "hits": hits,
