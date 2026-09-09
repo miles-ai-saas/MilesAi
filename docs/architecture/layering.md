@@ -100,6 +100,8 @@ L0 → L1 → L2 → L3 → L4
 
 > **收敛记录（2026-09-08）**：对话/画布调用链的模型解析与用量 sink 已改由 L1 装配注入——`ainvoke_chat`/litellm `adapter`/`tool_agent.loop`/langgraph `runner`+`rag_qa`/deepagents `orchestrator`/flow `llm_nodes` 不再 import `tenant.models.services`（见 plan [`2026-09-08-engine-di-chat-invoke-chain`](../superpowers/plans/2026-09-08-engine-di-chat-invoke-chain.md)）；残留在 `integrations`（embeddings/visual_embeddings/vectorstores/generative）与 flow `grade_nodes` 的反依赖归入 B-2 收敛。
 
+> **收敛记录（2026-09-09，B-2b）**：KB 检索绑定装配上移 L1——kb 级向量化与 `KbRetrievalBindings` 装配落 `tenant/kb/services/embeddings.py`（`build_kb_retrieval_bindings`）；`integrations/langchain/embeddings.py` 已删除，`visual_embeddings.py`/`vectorstores.py` 与 `rag/`、`flow_runtime` 不再 import `tenant.models.services.{embedding_resolve,rerank_resolve}` 与 `tenant.kb.services.search_log`；bindings 经 `vectorstores` 壳、LangGraph `configurable` 与 `RunContext` 注入 L2 检索（见 plan [`2026-09-08-engine-di-kb-embed-vector-chain`](../superpowers/plans/2026-09-08-engine-di-kb-embed-vector-chain.md)）。
+
 ### 2.3 运营后台（`admin/`）访问租户域
 
 `admin/`（L0/L1，`/api/admin/v1`）为平台运营面：审核租户内容、管理租户与配额时须读取租户域数据。允许 `admin → tenant` **单向**访问，但只能走下列合规形态：
@@ -262,8 +264,8 @@ from app.rag.index.gateway import upsert_chunk_vector, search_vectors
 from app.rag.retrieve import search_kb_chunks, resolve_retrieval_mode
 from app.rag.generate import format_hits_context, rag_answer
 
-# L3 集成（检索封装仍在此，内部调 rag.retrieve.multi_kb）
-from app.integrations.langchain.embeddings import embed_query_for_kb
+# L1/L3 检索（kb 域向量化 embed_query_for_kb；检索封装仍在 vectorstores 壳）
+from app.tenant.kb.services.embeddings import embed_query_for_kb
 from app.integrations.langchain.vectorstores import search_kb
 
 # L4（仅向量库客户端，不含 upsert/search 门面）
@@ -345,3 +347,4 @@ backend/tests/
 | 2026-05-26 | §5.4：单文件 ≥500 行强制按子包拆分；§5.5：类/方法/函数 docstring 强制 |
 | 2026-09-08 | §2.3：新增运营后台（admin）访问租户域的合规形态与过渡期例外 |
 | 2026-09-08 | B-1：ainvoke_chat/runner/rag_qa/tool_agent/deepagents/llm_nodes 模型解析与用量 sink 注入，收敛 integrations/flow_runtime → tenant.models.services 反依赖 |
+| 2026-09-09 | B-2b：KB 检索绑定上移 L1——`tenant.kb.services.embeddings` 承载向量化与 `KbRetrievalBindings` 装配，L3 `vectorstores`/`rag`/`flow_runtime` 对 `embedding_resolve`/`rerank_resolve`/`search_log` 反依赖收敛 |
