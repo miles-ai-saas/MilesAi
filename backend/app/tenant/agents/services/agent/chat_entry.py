@@ -195,6 +195,19 @@ class AgentChatEntryMixin:
             clear_generative_request_prefs()
             end_chat_usage_accumulation(usage_acc)
 
+    async def chat_as_child_simple(
+        self,
+        child_id: UUID,
+        *,
+        query: str,
+        inputs: dict | None = None,
+    ) -> ChatResponse:
+        """子智能体工位简化入口：免构造 ``ChatRequest``（供 L3 deepagents 契约调用）。"""
+        return await self.chat_as_child(
+            child_id,
+            ChatRequest(query=query, inputs=inputs or {}),
+        )
+
     async def chat_as_child(self, child_id: UUID, body: ChatRequest) -> ChatResponse:
         """子智能体工位：不再走子智能体规划，仅 RAG/流程/直连。"""
         child = await self.get_agent_or_raise(child_id)
