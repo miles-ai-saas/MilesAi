@@ -1,47 +1,84 @@
 """
-平台内置工具注册为 LangChain ``StructuredTool``。
+平台内置工具注册为 LangChain ``StructuredTool``（纯 schema 构造库，无 DB、无执行）。
 
-调用链
-------
-``run_tool_calling_chat`` → ``get_all_platform_tools`` → 本模块 ``StructuredTool`` 列表
-→ LLM 选工具 → ``invoke_tool_with_context``（实际执行在 ``tenant.tools.builtins``）。
+职责
+----
+- 内置工具 / 技能 ``skill_*`` / 生成 ``generate_*`` 的 schema 壳：``name``/
+  ``description``/``args_schema`` 仅供 LLM 选型填参，不承载执行；
+- 租户自定义 HTTP/SCRIPT 工具经 L1 loader 产出中性 ``CustomToolSpec``，再由
+  ``build_platform_tools`` 聚合为 ``StructuredTool`` 列表；
+- 本模块 ``func``/``_arun`` 均为占位——主循环从不直接执行 ``StructuredTool``，
+  实际执行统一走 L1 ``invoke_tool_with_context``（含确认与审计），误调用即抛错提示。
 
 与知识库相关
 ------------
-- ``knowledge_search``：schema 壳仅供 LLM 工具描述，执行经 builtin 注册表
-  ``handle_knowledge_search``（L1，走 ``vectorstores.search_kb``）
-- 与 Agent ``_rag_chat`` 多 KB 路径独立；tool calling 模式下由 LLM 决定是否检索
+``knowledge_search``：schema 壳仅供 LLM 工具描述，执行经 builtin 注册表
+``handle_knowledge_search``（L1，走 ``vectorstores.search_kb``）。
 
 生成类 / 技能类
 ---------------
-``generate_*``、``skill_*`` 的 ``_arun`` 仅占位（抛错提示走 invoke）；
-schema 供 LLM 填参，执行统一经 ``invoke_tool_with_context`` 与确认策略。
-
-其它内置：计算器、HTTP、日期时间等；租户自定义工具从 DB ``Tool`` 表加载。
+``generate_*``、``skill_*`` 的 ``_arun`` 仅占位；schema 供 LLM 填参。
 """
 
 from __future__ import annotations
 
-from datetime import datetime
+from dataclasses import dataclass
 from typing import Any
-from uuid import UUID
-from zoneinfo import ZoneInfo
 
-import httpx
 from langchain_core.tools import StructuredTool
-from pydantic import BaseModel, Field
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+from pydantic import BaseModel, Field, create_model
 
-from app.core.soft_delete import append_not_deleted
-from app.core.tenant import TenantContext, tenant_filters
-from app.tenant.tools.invoke import (
-    invoke_custom_http,
-    invoke_tool_with_context,
-    safe_calculate,
-)
-from app.tenant.tools.models import Tool, ToolType
-from app.tenant.tools.parameters import parameters_to_pydantic
+from app.common.exceptions import BadRequestError
+
+
+@dataclass(frozen=True)
+class CustomToolSpec:
+    """租户自定义工具的 L3 中性描述（L1 loader 自 ORM 构造）。"""
+
+    slug: str
+    name: str
+    description: str | None
+    tool_type: str  # "http" | "script"
+    parameters: list[dict]
+
+
+# --- 参数列表 → Pydantic schema（纯函数，本地复刻 tenant.tools.parameters
+# --- 以保证本模块对 tenant 引用清零；schema 语义与原实现完全一致）---
+
+
+_ALLOWED_TYPES = {"string", "number", "integer", "boolean"}
+
+
+def _normalize_parameters(raw: list | None) -> list[dict]:
+    if not raw:
+        return []
+    names: set[str] = set()
+    out: list[dict] = []
+    for i, p in enumerate(raw):
+        if not isinstance(p, dict):
+            raise BadRequestError(f"parameters[{i}] 必须是对象")
+        name = str(p.get("name", "")).strip()
+        if not name or not name.replace("_", "").isalnum() or not name[0].isalpha():
+            raise BadRequestError(f"parameters[{i}].name 无效: {name!r}")
+        if name in names:
+            raise BadRequestError(f"参数名重复: {name}")
+        names.add(name)
+        ptype = str(p.get("type", "string"))
+        if ptype not in _ALLOWED_TYPES:
+            raise BadRequestError(f"parameters[{i}].type 不支持: {ptype}")
+        out.append({**p, "name": name, "type": ptype})
+    return out
+
+
+def parameters_to_pydantic(schema: list[dict]) -> type[BaseModel]:
+    """将自定义工具参数列表动态构建为 Pydantic 模型（本地纯函数，schema 语义一致）。"""
+    schema = _normalize_parameters(schema)
+    fields: dict[str, Any] = {}
+    for p in schema:
+        py_type = {"string": str, "integer": int, "number": float, "boolean": bool}[p["type"]]
+        default = ... if p.get("required") else p.get("default", None)
+        fields[p["name"]] = (py_type, Field(default=default, description=p.get("description")))
+    return create_model("ToolParams", **fields)
 
 
 class CalculatorInput(BaseModel):
@@ -60,7 +97,7 @@ class KnowledgeSearchInput(BaseModel):
     limit: int = 5
 
 
-# --- 生成类工具 schema（实际执行在 tenant.tools.invoke，需 enable_generative_tools）---
+# --- 生成类工具 schema（执行走 L1 invoke_tool_with_context，需 enable_generative_tools）---
 
 
 class GenerateImageInput(BaseModel):
@@ -106,10 +143,10 @@ class SkillRunScriptInput(BaseModel):
 
 
 def _make_calculator_tool() -> StructuredTool:
-    """内置 calculator；同步 ``safe_calculate``。"""
+    """内置 calculator schema 壳；执行走 L1 invoke_tool_with_context。"""
 
     def _run(expression: str) -> dict:
-        return {"result": safe_calculate(expression)}
+        raise RuntimeError("请通过 invoke_tool_with_context 执行 calculator")
 
     return StructuredTool.from_function(
         func=_run,
@@ -120,11 +157,10 @@ def _make_calculator_tool() -> StructuredTool:
 
 
 def _make_http_request_tool() -> StructuredTool:
-    """内置 http_request；直连 httpx（tool_agent 路径不经 outbound URL 校验）。"""
+    """内置 http_request schema 壳；执行走 L1 invoke_tool_with_context。"""
 
     def _run(url: str, method: str = "GET", timeout: float = 10.0) -> dict:
-        resp = httpx.request(method.upper(), url, timeout=timeout)
-        return {"status_code": resp.status_code, "body": resp.text[:4000]}
+        raise RuntimeError("请通过 invoke_tool_with_context 执行 http_request")
 
     return StructuredTool.from_function(
         func=_run,
@@ -135,13 +171,10 @@ def _make_http_request_tool() -> StructuredTool:
 
 
 def _make_datetime_tool() -> StructuredTool:
-    """内置 get_current_datetime；IANA 时区，默认 UTC。"""
+    """内置 get_current_datetime schema 壳；执行走 L1 invoke_tool_with_context。"""
 
     def _run(timezone: str | None = None) -> dict:
-        tz_name = timezone or "UTC"
-        tz = ZoneInfo(tz_name)
-        now = datetime.now(tz)
-        return {"datetime": now.isoformat(), "timezone": tz_name}
+        raise RuntimeError("请通过 invoke_tool_with_context 执行 get_current_datetime")
 
     return StructuredTool.from_function(
         func=_run,
@@ -151,7 +184,7 @@ def _make_datetime_tool() -> StructuredTool:
     )
 
 
-def make_knowledge_search_tool(ctx: TenantContext) -> StructuredTool:
+def make_knowledge_search_tool() -> StructuredTool:
     """
     内置「知识库检索」工具 schema 壳（单库、同步会话）。
 
@@ -160,10 +193,7 @@ def make_knowledge_search_tool(ctx: TenantContext) -> StructuredTool:
     """
 
     def _run(query: str, kb_id: str, limit: int = 5) -> dict:
-        raise NotImplementedError(
-            "knowledge_search 工具执行经 builtin 注册表 handle_knowledge_search（L1），"
-            "本 schema 壳仅供 LLM 工具描述。"
-        )
+        raise RuntimeError("请通过 invoke_tool_with_context 执行 knowledge_search")
 
     return StructuredTool.from_function(
         func=_run,
@@ -174,10 +204,10 @@ def make_knowledge_search_tool(ctx: TenantContext) -> StructuredTool:
 
 
 def _make_skill_read_reference_tool() -> StructuredTool:
-    """技能包 references/ 读取；执行走 invoke，此处仅暴露 schema。"""
+    """技能包 references/ 读取；执行走 L1 invoke_tool_with_context，此处仅暴露 schema。"""
 
     async def _arun(path: str, max_chars: int | None = None) -> dict:
-        raise RuntimeError("请通过 invoke_tool_with_context 执行技能工具")
+        raise RuntimeError("请通过 invoke_tool_with_context 执行 skill_read_reference")
 
     return StructuredTool.from_function(
         coroutine=_arun,
@@ -188,7 +218,7 @@ def _make_skill_read_reference_tool() -> StructuredTool:
 
 
 def _make_skill_run_script_tool() -> StructuredTool:
-    """技能包 scripts/ 沙箱执行；执行走 invoke，此处仅暴露 schema。"""
+    """技能包 scripts/ 沙箱执行；执行走 L1 invoke_tool_with_context，此处仅暴露 schema。"""
 
     async def _arun(
         path: str,
@@ -196,7 +226,7 @@ def _make_skill_run_script_tool() -> StructuredTool:
         timeout_sec: int | None = None,
         max_memory_mb: int | None = None,
     ) -> dict:
-        raise RuntimeError("请通过 invoke_tool_with_context 执行技能工具")
+        raise RuntimeError("请通过 invoke_tool_with_context 执行 skill_run_script")
 
     return StructuredTool.from_function(
         coroutine=_arun,
@@ -253,28 +283,28 @@ def _make_generate_video_tool() -> StructuredTool:
 
 
 def get_generative_tools() -> list[StructuredTool]:
-    """由 ``get_all_platform_tools`` 在 ``agent.config.enable_generative_tools`` 时挂载。"""
+    """由 ``build_platform_tools`` 在 ``agent.config.enable_generative_tools`` 时挂载。"""
     return [_make_generate_image_tool(), _make_generate_video_tool()]
 
 
-def get_platform_tools(ctx: TenantContext) -> list[StructuredTool]:
-    """返回当前租户可用的内置 StructuredTool 列表。"""
+def get_platform_tools() -> list[StructuredTool]:
+    """返回内置工具列表（纯 schema 壳，无 DB/租户参数）。"""
     return [
         _make_calculator_tool(),
         _make_http_request_tool(),
         _make_datetime_tool(),
-        make_knowledge_search_tool(ctx),
+        make_knowledge_search_tool(),
     ]
 
 
-def make_custom_http_tool(tool: Tool) -> StructuredTool:
-    """将租户 HTTP 工具转为 StructuredTool。"""
-    schema = parameters_to_pydantic(tool.parameters or [])
-    description = tool.description or tool.name
-    slug = tool.slug
+def make_custom_http_tool(spec: CustomToolSpec) -> StructuredTool:
+    """将租户 HTTP 工具（``CustomToolSpec``）转为 StructuredTool（schema 供 LLM；执行走 invoke）。"""
+    schema = parameters_to_pydantic(spec.parameters)
+    description = spec.description or spec.name
+    slug = spec.slug
 
     async def _arun(**kwargs: Any) -> dict:
-        return await invoke_custom_http(tool, kwargs)
+        raise RuntimeError(f"请通过 invoke_tool_with_context 执行 {slug}")
 
     return StructuredTool.from_function(
         coroutine=_arun,
@@ -284,14 +314,14 @@ def make_custom_http_tool(tool: Tool) -> StructuredTool:
     )
 
 
-def make_custom_script_tool(tool: Tool) -> StructuredTool:
-    """将租户 Python 脚本工具转为 StructuredTool（schema 供 LLM；执行走 invoke）。"""
-    schema = parameters_to_pydantic(tool.parameters or [])
-    description = tool.description or tool.name
-    slug = tool.slug
+def make_custom_script_tool(spec: CustomToolSpec) -> StructuredTool:
+    """将租户 Python 脚本工具（``CustomToolSpec``）转为 StructuredTool（schema 供 LLM；执行走 invoke）。"""
+    schema = parameters_to_pydantic(spec.parameters)
+    description = spec.description or spec.name
+    slug = spec.slug
 
     async def _arun(**kwargs: Any) -> dict:
-        raise RuntimeError("请通过 invoke_tool_with_context 执行脚本工具")
+        raise RuntimeError(f"请通过 invoke_tool_with_context 执行 {slug}")
 
     return StructuredTool.from_function(
         coroutine=_arun,
@@ -301,69 +331,25 @@ def make_custom_script_tool(tool: Tool) -> StructuredTool:
     )
 
 
-async def load_tenant_custom_tools(db: AsyncSession, ctx: TenantContext) -> list[StructuredTool]:
-    """加载租户启用的自定义 HTTP / 脚本工具。"""
-    filters = append_not_deleted(tenant_filters(ctx, Tool.tenant_id), Tool)
-    rows = (
-        (
-            await db.execute(
-                select(Tool).where(
-                    *filters,
-                    Tool.is_active.is_(True),
-                    Tool.tool_type.in_([ToolType.HTTP, ToolType.SCRIPT]),
-                )
-            )
-        )
-        .scalars()
-        .all()
-    )
-    out: list[StructuredTool] = []
-    for t in rows:
-        if t.tool_type == ToolType.HTTP:
-            out.append(make_custom_http_tool(t))
-        elif t.tool_type == ToolType.SCRIPT:
-            out.append(make_custom_script_tool(t))
-    return out
-
-
-async def get_all_platform_tools(
-    db: AsyncSession,
-    ctx: TenantContext,
-    *,
-    agent_config: dict | None = None,
+def build_platform_tools(
+    agent_config: dict | None,
+    custom_specs: list[CustomToolSpec] | None = None,
 ) -> list[StructuredTool]:
-    """内置 + 租户自定义 HTTP / 脚本工具；绑定技能包时追加 skill_* 工具。"""
-    tools = get_platform_tools(ctx)
+    """构造画布/对话工具 schema 列表（纯函数，不查 DB、不执行）。
+
+    内置工具 + 绑定技能包 ``skill_*`` + ``enable_generative_tools`` 时的
+    ``generate_*`` + 租户自定义 HTTP/SCRIPT 工具（``CustomToolSpec``）。
+    ``agent_config`` 缺失时仅内置工具。
+    """
     cfg = agent_config if isinstance(agent_config, dict) else {}
+    tools = get_platform_tools()
     if cfg.get("skill_package_id"):
         tools = [*tools, *get_skill_bound_tools()]
     if cfg.get("enable_generative_tools"):
-        # 与 RAG 可共存：仍走 tool_agent，由 LLM 决定是否调用 generate_*
         tools = [*tools, *get_generative_tools()]
-    tools.extend(await load_tenant_custom_tools(db, ctx))
+    for spec in custom_specs or []:
+        if spec.tool_type == "http":
+            tools.append(make_custom_http_tool(spec))
+        elif spec.tool_type == "script":
+            tools.append(make_custom_script_tool(spec))
     return tools
-
-
-async def invoke_platform_tool(
-    db: AsyncSession,
-    ctx: TenantContext,
-    name: str,
-    params: dict[str, Any],
-    *,
-    tool_id: UUID | None = None,
-    confirmed: bool = False,
-    agent_id: UUID | None = None,
-    invoke_source: str = "agent",
-) -> dict:
-    """LangChain/流程侧统一入口：委托 ``invoke_tool_with_context``（含确认与审计）。"""
-    return await invoke_tool_with_context(
-        db,
-        ctx,
-        name,
-        params,
-        tool_id=tool_id,
-        confirmed=confirmed,
-        actor_user_id=ctx.user_id,
-        agent_id=agent_id,
-        invoke_source=invoke_source,
-    )
