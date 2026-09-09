@@ -104,6 +104,8 @@ L0 → L1 → L2 → L3 → L4
 
 > **收敛记录（2026-09-09，B-2c）**：generative 模型解析与 job 执行编排上移 L1——`resolve_image_gen_model`/`resolve_tts_model`/`resolve_video_gen_model`/`pick_default_generative_model` 落 `tenant/models/services/generative_model_resolve.py`，`integrations/generative/{image,tts,video}/service.py` 只保留生成引擎，`integrations/generative/model_resolve.py` 已删除；worker 编排 `run_generative_{image,video}_job_async` 由 L3 `jobs/runner.py` 上移 L1 `tenant/generative/services/job_execution.py`；画布生图/生视频节点经 `RunContext.resolve_generative_image/video` 注入（见 plan [`2026-09-09-engine-di-generative-model-resolve`](../superpowers/plans/2026-09-09-engine-di-generative-model-resolve.md)）。`integrations`/`rag`/`flow_runtime` 对 `tenant.models.services` 引用清零。
 
+> **收敛记录（2026-09-09，B-2d）**：deepagents 编排契约反依赖收敛——`AgentPlanner`/`AgentRuntimeMode`/`SubAgentRoleHint` 及 `SUB_AGENT_ROLE_*` 常量下沉中立域 `models/agent/constants.py`（`tenant.agents.constants` 改 re-export），`integrations/deepagents` 与 `langgraph/runner` 不再运行期 import `tenant.agents.constants`；deepagents 对话 DTO 依赖收口为 L3 中性契约 `deepagents/io.py`（`ParentChatInput`/`SubAgentPlanResult`）+ `AgentService.chat_as_child_simple` 窄入口 + L1 `chat_entry` 边界解包/包回，`orchestrator`/`runner`/`subagent_graphs` 不再运行期 import `tenant.agents.schemas`（TYPE_CHECKING `AgentService` 注解保留）（见 plan [`2026-09-09-engine-di-deepagents-contract`](../superpowers/plans/2026-09-09-engine-di-deepagents-contract.md)）。
+
 ### 2.3 运营后台（`admin/`）访问租户域
 
 `admin/`（L0/L1，`/api/admin/v1`）为平台运营面：审核租户内容、管理租户与配额时须读取租户域数据。允许 `admin → tenant` **单向**访问，但只能走下列合规形态：
@@ -351,3 +353,4 @@ backend/tests/
 | 2026-09-08 | B-1：ainvoke_chat/runner/rag_qa/tool_agent/deepagents/llm_nodes 模型解析与用量 sink 注入，收敛 integrations/flow_runtime → tenant.models.services 反依赖 |
 | 2026-09-09 | B-2b：KB 检索绑定上移 L1——`tenant.kb.services.embeddings` 承载向量化与 `KbRetrievalBindings` 装配，L3 `vectorstores`/`rag`/`flow_runtime` 对 `embedding_resolve`/`rerank_resolve`/`search_log` 反依赖收敛 |
 | 2026-09-09 | B-2c：generative 模型解析收敛 L1 `generative_model_resolve`，`integrations/generative` 三 service 只留生成引擎；job 执行编排上移 L1 `job_execution`；画布生图/生视频节点解析器经 `RunContext` 注入 |
+| 2026-09-09 | B-2d：agent 域枚举下沉 `models.agent.constants`，deepagents 契约收敛——`ParentChatInput`/`SubAgentPlanResult` 中性 DTO + `chat_as_child_simple` 窄入口，deepagents/`langgraph/runner` 对 `tenant.agents.{schemas,constants}` 运行期引用清零 |
