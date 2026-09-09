@@ -78,6 +78,11 @@ class RunContext:
     # 回调内部完成 TenantContext 构造与短会话工具执行。新建画布 RunContext
     # 根装配点须随 resolve_generative_* 一并注入（见 chat_rag/flow debug-run）。
     invoke_platform_tool: Callable[..., Awaitable[Any]] | None = None
+    # 画布 PromptTemplate 节点模板库 live 引用解析回调（L1 注入；
+    # 签名 (prompt_template_id, tenant_id) -> content|None；None 表示未装配，
+    # 节点引用 prompt_template_id 时报错）。新建画布 RunContext 根装配点
+    # 须随 resolve_generative_* 一并注入（见 chat_rag/flow debug-run）。
+    resolve_prompt_template: Callable[[str, str], Awaitable[str | None]] | None = None
 
 
 @dataclass

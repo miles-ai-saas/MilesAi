@@ -86,6 +86,7 @@ def build_canvas_graph(graph_json: dict[str, Any]):
                 submit_generative_image=state.get("submit_generative_image"),
                 submit_generative_video=state.get("submit_generative_video"),
                 invoke_platform_tool=state.get("invoke_platform_tool"),
+                resolve_prompt_template=state.get("resolve_prompt_template"),
             )
             node_inputs = gather_node_inputs(node_id, incoming, state.get("outputs") or {})
             result = await execute_node(ntype, node_data, node_inputs, ctx)
@@ -131,6 +132,7 @@ def build_canvas_graph(graph_json: dict[str, Any]):
         submit_generative_image: Any
         submit_generative_video: Any
         invoke_platform_tool: Any
+        resolve_prompt_template: Any
         outputs: Annotated[dict[str, Any], merge_outputs]
         steps: Annotated[list[dict[str, Any]], operator.add]
         answer: Any

@@ -74,6 +74,9 @@ def test_build_child_context_forwards_resolve_model_and_usage_sink():
     async def fake_invoker(slug: str):
         return None
 
+    async def fake_prompt_loader(prompt_template_id: str, tenant_id: str):
+        return None
+
     usage_sink = object()
     kb_retrieval = object()
     parent = RunContext(
@@ -83,6 +86,7 @@ def test_build_child_context_forwards_resolve_model_and_usage_sink():
         usage_sink=usage_sink,
         kb_retrieval=kb_retrieval,
         invoke_platform_tool=fake_invoker,
+        resolve_prompt_template=fake_prompt_loader,
     )
     child = build_child_context(
         parent,
@@ -99,6 +103,7 @@ def test_build_child_context_forwards_resolve_model_and_usage_sink():
     assert child.usage_sink is usage_sink
     assert child.kb_retrieval is kb_retrieval
     assert child.invoke_platform_tool is fake_invoker
+    assert child.resolve_prompt_template is fake_prompt_loader
 
 
 def test_max_subflow_depth_constant():

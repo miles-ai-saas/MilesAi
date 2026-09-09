@@ -218,6 +218,7 @@ class FlowService(BaseService):
 
         ``body.kb_ids`` 用于测试带 KnowledgeSearch 节点的画布。
         """
+        from app.tenant.prompts.services.template_loader import build_prompt_template_loader
         from app.tenant.tools.services.flow_invoker import build_flow_tool_invoker
 
         flow = await self._get_flow_or_raise(flow_id)
@@ -275,6 +276,7 @@ class FlowService(BaseService):
                 submit_generative_image=submit_generative_image_job if GenerativeJobService.image_async_enabled() else None,
                 submit_generative_video=submit_generative_video_job if GenerativeJobService.video_async_enabled() else None,
                 invoke_platform_tool=build_flow_tool_invoker(),
+                resolve_prompt_template=build_prompt_template_loader(),
             )
             if "query" not in ctx.inputs and run_inputs:
                 ctx.inputs.setdefault("query", run_inputs.get("message", ""))
