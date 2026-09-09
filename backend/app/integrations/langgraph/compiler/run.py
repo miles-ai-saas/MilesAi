@@ -43,6 +43,7 @@ async def run_compiled_canvas(
         "submit_generative_image": ctx.submit_generative_image,
         "submit_generative_video": ctx.submit_generative_video,
         "invoke_platform_tool": ctx.invoke_platform_tool,
+        "resolve_prompt_template": ctx.resolve_prompt_template,
         "outputs": {},
         "steps": [
             {

@@ -78,6 +78,7 @@ class AgentChatRagMixin:
         media: list | None = None,
     ) -> RunContext:
         """构造流程画布 ``RunContext``（含 system_prompt、KB、附图 payload）。"""
+        from app.tenant.prompts.services.template_loader import build_prompt_template_loader
         from app.tenant.tools.services.flow_invoker import build_flow_tool_invoker
 
         media_payload: list[dict] = []
@@ -108,6 +109,7 @@ class AgentChatRagMixin:
             submit_generative_image=submit_generative_image_job if GenerativeJobService.image_async_enabled() else None,
             submit_generative_video=submit_generative_video_job if GenerativeJobService.video_async_enabled() else None,
             invoke_platform_tool=build_flow_tool_invoker(),
+            resolve_prompt_template=build_prompt_template_loader(),
         )
 
     async def maybe_augment_a2a(self, agent: Agent, body: ChatRequest, response: ChatResponse) -> ChatResponse:
