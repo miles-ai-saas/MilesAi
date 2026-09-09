@@ -53,12 +53,11 @@
 
 import asyncio
 from types import SimpleNamespace
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 import pytest
 
 from app.core.tenant import TenantContext
-from app.infra.db import AsyncSession
 from app.tenant.generative.services import job_execution
 
 
