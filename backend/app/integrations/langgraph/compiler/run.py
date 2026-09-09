@@ -38,6 +38,8 @@ async def run_compiled_canvas(
         "resolve_model": ctx.resolve_model,
         "usage_sink": ctx.usage_sink,
         "kb_retrieval": ctx.kb_retrieval,
+        "resolve_generative_image": ctx.resolve_generative_image,
+        "resolve_generative_video": ctx.resolve_generative_video,
         "outputs": {},
         "steps": [
             {

@@ -47,6 +47,10 @@ from app.tenant.flows.services.run_context import make_flow_model_resolver
 from app.tenant.hooks.models import HookScope, HookTrigger
 from app.tenant.hooks.services.runner import HookRunner
 from app.tenant.kb.services.embeddings import build_kb_retrieval_bindings
+from app.tenant.models.services.generative_model_resolve import (
+    resolve_image_gen_model,
+    resolve_video_gen_model,
+)
 from app.tenant.tags.schemas.tag import TagRefOut
 from app.tenant.tags.services.tag import TagService
 
@@ -258,6 +262,8 @@ class FlowService(BaseService):
                 resolve_model=make_flow_model_resolver(self.ctx.tenant_id),
                 usage_sink=None,
                 kb_retrieval=build_kb_retrieval_bindings(),
+                resolve_generative_image=resolve_image_gen_model,
+                resolve_generative_video=resolve_video_gen_model,
             )
             if "query" not in ctx.inputs and run_inputs:
                 ctx.inputs.setdefault("query", run_inputs.get("message", ""))

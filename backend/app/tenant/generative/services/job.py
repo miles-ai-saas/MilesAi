@@ -17,7 +17,7 @@ from app.core.config import get_settings
 from app.core.logging import get_logger
 from app.core.tenant import TenantContext
 from app.integrations.generative.jobs.progress import publish_generative_job_update
-from app.integrations.generative.jobs.runner import get_generative_job_for_tenant
+from app.tenant.generative.services.job_execution import get_generative_job_for_tenant
 from app.integrations.generative.jobs.submit import (
     submit_image_generative_job,
     submit_video_generative_job,

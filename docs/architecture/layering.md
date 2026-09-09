@@ -98,9 +98,11 @@ L0 → L1 → L2 → L3 → L4
 
 **允许**：`rag` → `models`、`core`、`infra`、`integrations`（仅 L3 技术封装）。
 
-> **收敛记录（2026-09-08）**：对话/画布调用链的模型解析与用量 sink 已改由 L1 装配注入——`ainvoke_chat`/litellm `adapter`/`tool_agent.loop`/langgraph `runner`+`rag_qa`/deepagents `orchestrator`/flow `llm_nodes` 不再 import `tenant.models.services`（见 plan [`2026-09-08-engine-di-chat-invoke-chain`](../superpowers/plans/2026-09-08-engine-di-chat-invoke-chain.md)）；残留在 `integrations`（embeddings/visual_embeddings/vectorstores/generative）与 flow `grade_nodes` 的反依赖归入 B-2 收敛。
+> **收敛记录（2026-09-08）**：对话/画布调用链的模型解析与用量 sink 已改由 L1 装配注入——`ainvoke_chat`/litellm `adapter`/`tool_agent.loop`/langgraph `runner`+`rag_qa`/deepagents `orchestrator`/flow `llm_nodes` 不再 import `tenant.models.services`（见 plan [`2026-09-08-engine-di-chat-invoke-chain`](../superpowers/plans/2026-09-08-engine-di-chat-invoke-chain.md)）；`grade_nodes`、KB 向量化/检索绑定（B-2b，见下）与 `generative` 模型解析（B-2c，见下）已随后收敛。
 
 > **收敛记录（2026-09-09，B-2b）**：KB 检索绑定装配上移 L1——kb 级向量化与 `KbRetrievalBindings` 装配落 `tenant/kb/services/embeddings.py`（`build_kb_retrieval_bindings`）；`integrations/langchain/embeddings.py` 已删除，`visual_embeddings.py`/`vectorstores.py` 与 `rag/`、`flow_runtime` 不再 import `tenant.models.services.{embedding_resolve,rerank_resolve}` 与 `tenant.kb.services.search_log`；bindings 经 `vectorstores` 壳、LangGraph `configurable` 与 `RunContext` 注入 L2 检索（见 plan [`2026-09-08-engine-di-kb-embed-vector-chain`](../superpowers/plans/2026-09-08-engine-di-kb-embed-vector-chain.md)）。
+
+> **收敛记录（2026-09-09，B-2c）**：generative 模型解析与 job 执行编排上移 L1——`resolve_image_gen_model`/`resolve_tts_model`/`resolve_video_gen_model`/`pick_default_generative_model` 落 `tenant/models/services/generative_model_resolve.py`，`integrations/generative/{image,tts,video}/service.py` 只保留生成引擎，`integrations/generative/model_resolve.py` 已删除；worker 编排 `run_generative_{image,video}_job_async` 由 L3 `jobs/runner.py` 上移 L1 `tenant/generative/services/job_execution.py`；画布生图/生视频节点经 `RunContext.resolve_generative_image/video` 注入（见 plan [`2026-09-09-engine-di-generative-model-resolve`](../superpowers/plans/2026-09-09-engine-di-generative-model-resolve.md)）。`integrations`/`rag`/`flow_runtime` 对 `tenant.models.services` 引用清零。
 
 ### 2.3 运营后台（`admin/`）访问租户域
 
@@ -348,3 +350,4 @@ backend/tests/
 | 2026-09-08 | §2.3：新增运营后台（admin）访问租户域的合规形态与过渡期例外 |
 | 2026-09-08 | B-1：ainvoke_chat/runner/rag_qa/tool_agent/deepagents/llm_nodes 模型解析与用量 sink 注入，收敛 integrations/flow_runtime → tenant.models.services 反依赖 |
 | 2026-09-09 | B-2b：KB 检索绑定上移 L1——`tenant.kb.services.embeddings` 承载向量化与 `KbRetrievalBindings` 装配，L3 `vectorstores`/`rag`/`flow_runtime` 对 `embedding_resolve`/`rerank_resolve`/`search_log` 反依赖收敛 |
+| 2026-09-09 | B-2c：generative 模型解析收敛 L1 `generative_model_resolve`，`integrations/generative` 三 service 只留生成引擎；job 执行编排上移 L1 `job_execution`；画布生图/生视频节点解析器经 `RunContext` 注入 |

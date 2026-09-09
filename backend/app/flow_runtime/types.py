@@ -64,6 +64,11 @@ class RunContext:
     usage_sink: Any = None
     # KB 检索能力载体（L1 注入；None 表示未装配，KnowledgeSearch 节点报错）
     kb_retrieval: Any = None
+    # 生图/生视频模型解析回调（L1 注入；签名同
+    # ``tenant.models.services.generative_model_resolve.resolve_{image,video}_gen_model``；
+    # None 表示未装配，ImageGenerate/VideoGenerate 同步分支直接报错）
+    resolve_generative_image: Callable[..., Awaitable[ModelConfig]] | None = None
+    resolve_generative_video: Callable[..., Awaitable[ModelConfig]] | None = None
 
 
 @dataclass
