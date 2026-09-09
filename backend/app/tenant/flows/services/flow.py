@@ -218,6 +218,8 @@ class FlowService(BaseService):
 
         ``body.kb_ids`` 用于测试带 KnowledgeSearch 节点的画布。
         """
+        from app.tenant.tools.services.flow_invoker import build_flow_tool_invoker
+
         flow = await self._get_flow_or_raise(flow_id)
         version = await self.repo.get_version(flow.id, flow.current_version)
         if not version:
@@ -272,6 +274,7 @@ class FlowService(BaseService):
                 # settings generative_*_async 关闭时不注入 ⇒ 节点落同步 resolver 兜底（不产生生成任务）
                 submit_generative_image=submit_generative_image_job if GenerativeJobService.image_async_enabled() else None,
                 submit_generative_video=submit_generative_video_job if GenerativeJobService.video_async_enabled() else None,
+                invoke_platform_tool=build_flow_tool_invoker(),
             )
             if "query" not in ctx.inputs and run_inputs:
                 ctx.inputs.setdefault("query", run_inputs.get("message", ""))

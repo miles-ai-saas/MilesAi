@@ -78,6 +78,8 @@ class AgentChatRagMixin:
         media: list | None = None,
     ) -> RunContext:
         """构造流程画布 ``RunContext``（含 system_prompt、KB、附图 payload）。"""
+        from app.tenant.tools.services.flow_invoker import build_flow_tool_invoker
+
         media_payload: list[dict] = []
         if media:
             for m in media:
@@ -105,6 +107,7 @@ class AgentChatRagMixin:
             # settings generative_*_async 关闭时不注入 ⇒ 节点落同步 resolver 兜底（不产生生成任务）
             submit_generative_image=submit_generative_image_job if GenerativeJobService.image_async_enabled() else None,
             submit_generative_video=submit_generative_video_job if GenerativeJobService.video_async_enabled() else None,
+            invoke_platform_tool=build_flow_tool_invoker(),
         )
 
     async def maybe_augment_a2a(self, agent: Agent, body: ChatRequest, response: ChatResponse) -> ChatResponse:
