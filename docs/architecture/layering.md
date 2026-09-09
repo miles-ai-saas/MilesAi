@@ -114,6 +114,8 @@ L0 → L1 → L2 → L3 → L4
 
 > **收敛记录（2026-09-09，F2c-A）**：画布 `platform_tool` 节点执行回调注入——工具执行迁入 L1 `tenant/tools/services/flow_invoker.py::build_flow_tool_invoker`（构造 `TenantContext` + 短会话 + 委托 `invoke_tool_with_context`），`RunContext.invoke_platform_tool` 由两根装配点（`chat_rag.flow_run_context`/`flow.py` debug-run）注入并经 LangGraph state（`compiler/run.py`+`build.py`）与 subflow `build_child_context` 透传；`flow_runtime/nodes/tool_nodes.py` 只保留参数合并与调度，对 `tenant.tools.invoke`/`infra.db`/`TenantContext` 依赖清零（见 plan [`2026-09-09-engine-di-flow-tool-invoke`](../superpowers/plans/2026-09-09-engine-di-flow-tool-invoke.md)）。`integrations/langchain/tool_agent/loop.py` 剩余 `tenant.tools.{confirmation,invoke}` 对话执行/确认面待 F2c-B。
 
+> **收敛记录（2026-09-09，F2c-B）**：agent 对话工具执行/确认面收敛——L3 中性契约 `tool_agent/tool_contract.py`（`ToolConfirmationSignal`/`ToolExecutor`），L1 executor `tenant/tools/services/agent_executor.py::build_agent_tool_executor`（meta 委托 `resolve_tool_meta`；invoke 委托 `invoke_tool_with_context`，确认信号转中性）；`tool_agent/loop.py` 增 `tool_executor` 入参由 chat_rag 两分支注入，`resolve_tool_meta`/`invoke_tool_with_context`/`ToolConfirmationRequired` 运行期引用清零（见 plan [`2026-09-09-engine-di-tool-agent-executor`](../superpowers/plans/2026-09-09-engine-di-tool-agent-executor.md)）。tools 契约计划（F2）完成：schema 面（F2b）+ 画布执行（F2c-A）+ 对话执行（F2c-B）三段收敛，`integrations/langchain/tool_agent` 与 `flow_runtime/nodes/tool_nodes` 对 `tenant.tools` 依赖清零。
+
 ### 2.3 运营后台（`admin/`）访问租户域
 
 `admin/`（L0/L1，`/api/admin/v1`）为平台运营面：审核租户内容、管理租户与配额时须读取租户域数据。允许 `admin → tenant` **单向**访问，但只能走下列合规形态：
@@ -366,3 +368,4 @@ backend/tests/
 | 2026-09-09 | F2a：agent 对话 IO DTO 下沉 `models/agent/chat_io`，schemas 转 shim；tool_agent loop/artifacts 改指中立模块，artifacts 对 tenant 引用清零 |
 | 2026-09-09 | F2b：自定义工具 DB 加载上移 L1 `custom_tools` loader；`langchain/tools.py` 净化为纯 schema 构造（CustomToolSpec/占位壳），loop 工具列表 L1 装配注入；工具参数三纯函数下沉 `models/tool/parameters.py` |
 | 2026-09-09 | F2c-A：画布 `platform_tool` 执行回调 L1 `flow_invoker` 注入 `RunContext`，langgraph/subflow 透传；tool_nodes 对 `tenant.tools` 清零 |
+| 2026-09-09 | F2c-B：agent 对话工具执行面收敛——L3 `tool_contract` 中性契约 + L1 `agent_executor` 注入 loop，tool_agent 包对 `tenant` 依赖清零，F2 tools 契约计划收尾 |
