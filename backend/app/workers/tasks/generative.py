@@ -8,7 +8,7 @@ from uuid import UUID
 from app.core.logging import get_logger
 from app.infra.redis import reset_redis
 from app.integrations.generative.jobs.errors import GenerativeJobCancelled, GenerativeJobNotFound
-from app.integrations.generative.jobs.runner import (
+from app.tenant.generative.services.job_execution import (
     run_generative_image_job_async,
     run_generative_video_job_async,
 )

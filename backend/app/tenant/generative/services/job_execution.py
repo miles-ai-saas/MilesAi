@@ -1,4 +1,9 @@
-"""Worker 内执行 generative_jobs（asyncio）。"""
+"""Worker 内执行 generative_jobs（asyncio）。
+
+执行编排用例上移 L1（原 ``integrations/generative/jobs/runner.py``）：
+worker 进程内取 job → 合成最小 TenantContext → 解析模型 → 调用 L3 生成引擎 → 落库/推送进度。
+供 ``workers/tasks/generative.py``（Celery 任务）与 ``tenant.generative.services.job`` 查询复用。
+"""
 
 from __future__ import annotations
 
