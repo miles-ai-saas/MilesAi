@@ -7,7 +7,7 @@ DeepAgents 原生规划与 ``task`` 工具委派。
 - ``build_compiled_subagents``：每个 binding 一个 CompiledSubAgent runnable
 - ``checkpointer``：与 RAG 图共用 ``integrations.langgraph.checkpointer``（``thread_id`` 前缀 ``deep:``）
 
-子工位内仅调用 ``AgentService.chat_as_child``（可含 KB RAG / 子流程，不再嵌套子 Agent 规划）。
+子工位内仅调用 ``AgentService.chat_as_child_simple``（内部委托 ``AgentService.chat_as_child``；可含 KB RAG / 子流程，不再嵌套子 Agent 规划）。
 """
 
 from __future__ import annotations

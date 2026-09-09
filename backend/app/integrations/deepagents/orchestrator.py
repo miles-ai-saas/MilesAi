@@ -5,7 +5,7 @@
 -------------------------------------------------
 1. ``_should_use_deepagents``：``config.planner=deepagents`` 且已安装 ``deepagents`` 包
    → ``run_deepagents_chat``（task 工具委派，共用 ``get_checkpointer()``）
-2. 失败或未安装 → ``_run_platform_planned``：主模型输出 JSON ``steps``，依次 ``chat_as_child``
+2. 失败或未安装 → ``_run_platform_planned``：主模型输出 JSON ``steps``，依次 ``chat_as_child_simple``
 
 与 A2A / 发布流程
 -----------------
@@ -110,7 +110,7 @@ async def _run_platform_planned(
     bindings: list[AgentSubAgentBinding],
     body: ParentChatInput,
 ) -> SubAgentPlanResult:
-    """按规划依次 chat_as_child，最后主模型综合子回答。"""
+    """按规划依次 chat_as_child_simple，最后主模型综合子回答。"""
     steps: list[dict] = [
         {
             "type": "planner",

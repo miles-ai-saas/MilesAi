@@ -2,7 +2,7 @@
 子智能体 → DeepAgents ``CompiledSubAgent`` 适配。
 
 每个 ``AgentSubAgentBinding``：
-- 编译为单节点 LangGraph：``HumanMessage`` → ``chat_as_child`` → ``AIMessage``
+- 编译为单节点 LangGraph：``HumanMessage`` → ``chat_as_child_simple`` → ``AIMessage``
 - ``_slug_for_binding``：``role_hint`` + child_id 前缀，作为 ``task(subagent_type=...)`` 名
 - ``role_hint`` 可选：retrieval / ocr / summary / compliance / custom（见 ``_ROLE_LABELS``）
 
@@ -57,7 +57,7 @@ def _description(binding: AgentSubAgentBinding) -> str:
 
 
 def _make_child_node(svc: AgentService, child_id: UUID):
-    """单节点图：HumanMessage → chat_as_child → AIMessage。"""
+    """单节点图：HumanMessage → chat_as_child_simple → AIMessage。"""
 
     async def _run(state: MessagesState) -> dict[str, Any]:
         query = ""
