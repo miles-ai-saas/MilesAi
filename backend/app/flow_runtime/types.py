@@ -69,6 +69,10 @@ class RunContext:
     # None 表示未装配，ImageGenerate/VideoGenerate 同步分支直接报错）
     resolve_generative_image: Callable[..., Awaitable[ModelConfig]] | None = None
     resolve_generative_video: Callable[..., Awaitable[ModelConfig]] | None = None
+    # 生图/生视频异步 job 提交回调（L1 注入；None 表示 Celery 异步未启用/未装配，
+    # ImageGenerate/VideoGenerate 节点落同步 resolver 分支）
+    submit_generative_image: Callable[..., Awaitable[Any]] | None = None
+    submit_generative_video: Callable[..., Awaitable[Any]] | None = None
 
 
 @dataclass

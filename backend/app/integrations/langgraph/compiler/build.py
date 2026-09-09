@@ -83,6 +83,8 @@ def build_canvas_graph(graph_json: dict[str, Any]):
                 kb_retrieval=state.get("kb_retrieval"),
                 resolve_generative_image=state.get("resolve_generative_image"),
                 resolve_generative_video=state.get("resolve_generative_video"),
+                submit_generative_image=state.get("submit_generative_image"),
+                submit_generative_video=state.get("submit_generative_video"),
             )
             node_inputs = gather_node_inputs(node_id, incoming, state.get("outputs") or {})
             result = await execute_node(ntype, node_data, node_inputs, ctx)
@@ -124,6 +126,9 @@ def build_canvas_graph(graph_json: dict[str, Any]):
         # L1 注入的生图/生视频模型解析回调（随 ctx 透传，ImageGenerate/VideoGenerate 同步分支）
         resolve_generative_image: Any
         resolve_generative_video: Any
+        # L1 注入的生图/生视频异步 job 提交回调（随 ctx 透传，ImageGenerate/VideoGenerate 异步分支）
+        submit_generative_image: Any
+        submit_generative_video: Any
         outputs: Annotated[dict[str, Any], merge_outputs]
         steps: Annotated[list[dict[str, Any]], operator.add]
         answer: Any

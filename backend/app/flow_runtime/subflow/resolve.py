@@ -158,6 +158,8 @@ def build_child_context(
         kb_retrieval=parent_ctx.kb_retrieval,  # KB 检索绑定透传到子流程
         resolve_generative_image=parent_ctx.resolve_generative_image,  # 画布生图模型解析器透传到子流程
         resolve_generative_video=parent_ctx.resolve_generative_video,  # 画布生视频模型解析器透传到子流程
+        submit_generative_image=parent_ctx.submit_generative_image,  # 生图异步提交回调透传到子流程
+        submit_generative_video=parent_ctx.submit_generative_video,  # 生视频异步提交回调透传到子流程
     )
 
 
