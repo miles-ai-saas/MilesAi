@@ -46,6 +46,7 @@ from app.tenant.flows.schemas.template import FlowTemplateOut, FlowTemplatesOut
 from app.tenant.flows.services.run_context import make_flow_model_resolver
 from app.tenant.hooks.models import HookScope, HookTrigger
 from app.tenant.hooks.services.runner import HookRunner
+from app.tenant.kb.services.embeddings import build_kb_retrieval_bindings
 from app.tenant.tags.schemas.tag import TagRefOut
 from app.tenant.tags.services.tag import TagService
 
@@ -256,6 +257,7 @@ class FlowService(BaseService):
                 subflow_depth=0,
                 resolve_model=make_flow_model_resolver(self.ctx.tenant_id),
                 usage_sink=None,
+                kb_retrieval=build_kb_retrieval_bindings(),
             )
             if "query" not in ctx.inputs and run_inputs:
                 ctx.inputs.setdefault("query", run_inputs.get("message", ""))

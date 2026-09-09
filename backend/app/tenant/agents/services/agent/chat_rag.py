@@ -20,6 +20,7 @@ from app.tenant.flows.repositories.flow import FlowRepository
 from app.tenant.flows.services.run_context import make_flow_model_resolver
 from app.tenant.hooks.models import HookScope, HookTrigger
 from app.tenant.hooks.services.runner import HookRunner
+from app.tenant.kb.services.embeddings import build_kb_retrieval_bindings
 from app.tenant.models.services.model_resolve import resolve_model_for_invoke
 from app.tenant.models.services.usage import ChatUsageSink
 
@@ -89,6 +90,7 @@ class AgentChatRagMixin:
             media=media_payload,
             resolve_model=make_flow_model_resolver(agent.tenant_id),
             usage_sink=None,
+            kb_retrieval=build_kb_retrieval_bindings(),
         )
 
     async def maybe_augment_a2a(self, agent: Agent, body: ChatRequest, response: ChatResponse) -> ChatResponse:
@@ -186,6 +188,7 @@ class AgentChatRagMixin:
         - 有 KB + 大模型：LangGraph 或 ``rag_answer``
         - 有 KB 无大模型：仅检索摘要
         """
+        kb_bindings = build_kb_retrieval_bindings()
         if not kb_ids:
             cfg = agent.config if isinstance(agent.config, dict) else {}
             if (cfg.get("enable_tool_calling") or cfg.get("enable_generative_tools")) and agent.model_config_id:
@@ -297,6 +300,7 @@ class AgentChatRagMixin:
                     user_id=self.ctx.user_id,
                     on_delta=on_delta,
                     usage_sink=usage_sink,
+                    bindings=kb_bindings,
                 )
             else:
                 answer, all_hits = await rag_answer(
@@ -313,6 +317,7 @@ class AgentChatRagMixin:
                     retrieve_query=retrieve_query,
                     on_delta=on_delta,
                     usage_sink=usage_sink,
+                    bindings=kb_bindings,
                 )
                 steps = [{"type": "rag_linear", "engine": "langchain"}]
             await hooks.run(
@@ -328,6 +333,7 @@ class AgentChatRagMixin:
                 kb_ids=kb_ids,
                 db=self.db,
                 top_k=top_k,
+                bindings=kb_bindings,
             )
             answer = f"（未配置大模型，以下为检索摘要）\n\n{format_hits_context(all_hits)}"
             steps = []
