@@ -4,7 +4,8 @@
 写入方
 ------
 - ``tenant.kb.services.search_log.write_kb_search_log``
-- Agent 路径经 ``integrations.langchain.vectorstores._write_search_log``
+- 唯一调用方为 kb 服务检索入口 ``KnowledgeBaseService.search``（source=api）；
+  L3 ``vectorstores`` / L2 ``multi_kb`` 检索壳不写审计（B-2b 收敛）。
 
 ``retrieval_mode`` 可能带 ``+rerank`` 后缀；``source`` 区分 api / agent 等。
 """

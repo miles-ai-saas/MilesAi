@@ -1,5 +1,5 @@
 """
-多知识库检索（Agent 工具链、``generate.answer`` 等）。
+KB 检索实现（L2）：同步单 KB ``search_kb``、异步多 KB ``search_multi_kb_async``。
 
 行为
 ----
@@ -7,7 +7,8 @@
 - 每个 KB 调用 ``search_kb_chunks``（vector/hybrid/rerank 按 KB 配置）。
 - 合并所有 hit 后按 ``score`` 全局降序，截断 ``top_k``。
 
-同步版 ``search_multi_kb`` 供 Worker/脚本；异步版可挂 ``on_complete`` 写 ``kb_search_log``。
+同步 ``search_kb`` 由 L3 ``vectorstores`` 壳转发（内置工具用）；
+异步 ``search_multi_kb_async`` 经 L3 壳注入 bindings 供问答/检索链路用。
 """
 
 from __future__ import annotations
@@ -69,36 +70,6 @@ def search_kb(
         mode=mode,
         rerank_model=rerank_model,
     )
-
-
-def search_multi_kb(
-    query: str,
-    *,
-    kbs: list[KnowledgeBase],
-    db: Session,
-    top_k: int = 5,
-    mode: str = "default",
-    embed_query_sync: EmbedQuerySync,
-    resolve_rerank_sync: ResolveRerankSync | None = None,
-) -> list[dict[str, Any]]:
-    """多 KB 分别检索后按 score 全局排序截断。"""
-    if not kbs:
-        return []
-    all_hits: list[dict[str, Any]] = []
-    for kb in kbs:
-        all_hits.extend(
-            search_kb(
-                query,
-                kb=kb,
-                db=db,
-                limit=top_k,
-                mode=mode,
-                embed_query_sync=embed_query_sync,
-                resolve_rerank_sync=resolve_rerank_sync,
-            )
-        )
-    all_hits.sort(key=lambda h: h.get("score", 0), reverse=True)
-    return all_hits[:top_k]
 
 
 async def search_multi_kb_async(

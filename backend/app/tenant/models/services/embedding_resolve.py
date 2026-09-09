@@ -9,7 +9,7 @@
 
 链路
 ----
-``integrations.langchain.embeddings.embed_*_for_kb``
+L1 kb 域 ``tenant.kb.services.embeddings.embed_*``
 → ``resolve_embedding_model_*`` → ``build_embeddings`` → ``registry`` Provider
 """
 

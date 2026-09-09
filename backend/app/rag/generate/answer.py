@@ -44,8 +44,8 @@ async def retrieve_hits(
     """
     多 KB 检索（LangGraph retrieve 节点、线性 RAG 共用）。
 
-    ``write_log=False`` 语义：本模块不写 ``kb_search_logs``（审计由 L1 检索 API 负责）；
-    需带 actor/agent 审计的检索请走带 ctx 的 L1 检索入口。
+    ``bindings`` 由 L1 装配注入，为 None 时抛 ValueError；
+    本模块不写 ``kb_search_logs``（审计写入收敛在 L1 kb 服务检索入口）。
     """
     kbs = await load_kbs_for_tenant(db, tenant_id, kb_ids)
     if bindings is None:
