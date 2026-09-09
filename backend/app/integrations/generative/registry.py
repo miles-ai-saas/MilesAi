@@ -6,8 +6,7 @@
 - video_gen：qwen → dashscope_t2v，doubao → volcengine_video
 - tts：默认 dashscope_tts（CosyVoice）
 
-未指定 ``model_config_id`` 时默认模型由 ``model_resolve.pick_default_generative_model``
-按 **qwen → doubao → 其它** 选取（租户配置优先于平台种子）。
+未指定 ``model_config_id`` 时默认模型由 L1 ``tenant.models.services.generative_model_resolve.pick_default_generative_model`` 选取
 """
 
 from app.common.constants.model_extra import EXTRA_INVOKE_MODE

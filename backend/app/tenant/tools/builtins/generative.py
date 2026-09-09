@@ -1,7 +1,7 @@
 """内置生图 / 生视频 / TTS 工具 handler。
 
 Agent 工具调用链：``invoke_tool_with_context`` → ``handlers.BUILTIN_HANDLERS``
-→ 本模块 ``handle_generate_*`` → ``integrations.generative`` 解析模型并生成附件。
+→ 本模块 ``handle_generate_*`` → L1 解析模型 + ``integrations.generative`` 生成引擎。
 
 模型解析优先级：显式 ``model_config_id`` > 智能体绑定模型 > 租户/平台默认。
 异步开关：生图/生视频在 ``GenerativeJobService.*_async_enabled()`` 为真时提交 Celery 任务。
@@ -15,7 +15,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.common.exceptions import BadRequestError
 from app.common.trace import get_trace_id
 from app.core.tenant import TenantContext
-from app.integrations.generative import generate_speech_for_model, resolve_tts_model
+from app.integrations.generative import generate_speech_for_model
+from app.tenant.models.services.generative_model_resolve import resolve_tts_model
 
 
 def _parse_optional_uuid(value: object) -> UUID | None:
@@ -105,9 +106,10 @@ async def handle_generate_video(
             model_config_id（可选）
     异步返回 generative_job_id；同步返回 attachment_id。
     """
-    from app.integrations.generative import generate_video_for_model, resolve_video_gen_model
+    from app.integrations.generative import generate_video_for_model
     from app.tenant.generative.schemas.job import VideoGenerativeJobCreate
     from app.tenant.generative.services.job import GenerativeJobService
+    from app.tenant.models.services.generative_model_resolve import resolve_video_gen_model
 
     prompt = str(params.get("prompt") or "")
     model_uuid = _parse_optional_uuid(params.get("model_config_id"))
@@ -199,7 +201,7 @@ async def handle_generate_image(
     params: prompt/description, size, n, image_attachment_id, model_config_id（可选）
     异步返回 generative_job_id；同步返回 attachment_id / attachment_ids。
     """
-    from app.integrations.generative import generate_image_for_model, resolve_image_gen_model
+    from app.integrations.generative import generate_image_for_model
     from app.integrations.generative.image.prompt_guard import sanitize_image_prompt
     from app.integrations.generative.request_prefs import (
         get_request_allow_collage,
@@ -207,6 +209,7 @@ async def handle_generate_image(
     )
     from app.tenant.generative.schemas.job import ImageGenerativeJobCreate
     from app.tenant.generative.services.job import GenerativeJobService
+    from app.tenant.models.services.generative_model_resolve import resolve_image_gen_model
 
     prompt = params.get("prompt") or params.get("description") or ""
     model_uuid = _parse_optional_uuid(params.get("model_config_id"))
