@@ -94,3 +94,73 @@ def test_video_generate_sync_with_injected_resolver(monkeypatch):
     out = _run(video_node.video_generate(node, {}, ctx))
     assert out["kind"] == "video"
     assert str(out["attachment_id"]) == str(att)
+
+
+def test_image_generate_async_submits_via_callback(monkeypatch):
+    monkeypatch.setattr(image_node, "AsyncSessionLocal", _FakeSession)
+
+    mid, job = uuid4(), uuid4()
+
+    async def fake_submit(db, tenant_ctx, *, prompt, size, n, image_attachment_id,
+                          model_config_id, agent_id=None, agent_config=None):
+        assert model_config_id == mid
+        return job
+
+    ctx = RunContext(
+        tenant_id=str(uuid4()),
+        user_id=str(uuid4()),
+        agent_id=str(uuid4()),
+        generative_image_async=True,
+        agent_config={},
+        submit_generative_image=fake_submit,
+    )
+    node = {"prompt": "画一只猫", "model_config_id": str(mid)}
+    out = _run(image_node.image_generate(node, {}, ctx))
+    assert out == {
+        "kind": "image",
+        "status": "pending",
+        "generative_job_id": str(job),
+        "message": "生图任务已提交，请通过 generative_job_id 查询进度",
+    }
+
+
+def test_video_generate_async_submits_via_callback(monkeypatch):
+    monkeypatch.setattr(video_node, "AsyncSessionLocal", _FakeSession)
+
+    mid, job = uuid4(), uuid4()
+
+    async def fake_submit(db, tenant_ctx, *, prompt, duration, resolution,
+                          image_attachment_id, last_frame_attachment_id,
+                          model_config_id, agent_id=None, agent_config=None):
+        assert duration == 5
+        assert model_config_id == mid
+        return job
+
+    ctx = RunContext(
+        tenant_id=str(uuid4()),
+        user_id=str(uuid4()),
+        agent_id=str(uuid4()),
+        generative_video_async=True,
+        submit_generative_video=fake_submit,
+    )
+    node = {"prompt": "一段小短片", "model_config_id": str(mid)}
+    out = _run(video_node.video_generate(node, {}, ctx))
+    assert out == {
+        "kind": "video",
+        "status": "pending",
+        "generative_job_id": str(job),
+        "message": "生视频任务已提交，请通过 generative_job_id 查询进度",
+    }
+
+
+def test_image_generate_async_without_submitter_falls_back_to_sync():
+    """async 打开但未注入 submit（Celery 未启用）→ 落同步分支；无 resolver 时报未装配。"""
+    ctx = RunContext(
+        tenant_id=str(uuid4()),
+        user_id=str(uuid4()),
+        generative_image_async=True,
+        agent_config={},
+    )
+    node = {"prompt": "画一只猫", "model_config_id": str(uuid4())}
+    with pytest.raises(BadRequestError, match="未装配"):
+        _run(image_node.image_generate(node, {}, ctx))
