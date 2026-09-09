@@ -62,6 +62,8 @@ class RunContext:
     resolve_model: Callable[[str], Awaitable[ModelConfig]] | None = None
     # 画布 LLM 调用用量记录（L1 注入；None 表示不记录）
     usage_sink: Any = None
+    # KB 检索能力载体（L1 注入；None 表示未装配，KnowledgeSearch 节点报错）
+    kb_retrieval: Any = None
 
 
 @dataclass

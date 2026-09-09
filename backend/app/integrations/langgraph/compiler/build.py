@@ -80,6 +80,7 @@ def build_canvas_graph(graph_json: dict[str, Any]):
                 executing_node_id=node_id,
                 resolve_model=state.get("resolve_model"),
                 usage_sink=state.get("usage_sink"),
+                kb_retrieval=state.get("kb_retrieval"),
             )
             node_inputs = gather_node_inputs(node_id, incoming, state.get("outputs") or {})
             result = await execute_node(ntype, node_data, node_inputs, ctx)
@@ -116,6 +117,8 @@ def build_canvas_graph(graph_json: dict[str, Any]):
         # L1 注入的画布 LLM 解析回调与用量记录器（随 ctx 透传，编译图单次内存执行）
         resolve_model: Any
         usage_sink: Any
+        # L1 注入的 KB 检索绑定载体（随 ctx 透传，KnowledgeSearch 节点装配）
+        kb_retrieval: Any
         outputs: Annotated[dict[str, Any], merge_outputs]
         steps: Annotated[list[dict[str, Any]], operator.add]
         answer: Any

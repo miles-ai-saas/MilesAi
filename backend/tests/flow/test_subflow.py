@@ -66,17 +66,19 @@ def test_build_child_context_input_mapping():
 
 
 def test_build_child_context_forwards_resolve_model_and_usage_sink():
-    """SubFlow 子 RunContext 透传 resolve_model / usage_sink（画布 LLM 注入链到子流程）。"""
+    """SubFlow 子 RunContext 透传 resolve_model / usage_sink / kb_retrieval（画布 LLM/KB 注入链到子流程）。"""
 
     async def fake_resolve(model_config_id: str):
         return None
 
     usage_sink = object()
+    kb_retrieval = object()
     parent = RunContext(
         tenant_id=str(uuid4()),
         inputs={"query": "hello"},
         resolve_model=fake_resolve,
         usage_sink=usage_sink,
+        kb_retrieval=kb_retrieval,
     )
     child = build_child_context(
         parent,
@@ -91,6 +93,7 @@ def test_build_child_context_forwards_resolve_model_and_usage_sink():
     )
     assert child.resolve_model is fake_resolve
     assert child.usage_sink is usage_sink
+    assert child.kb_retrieval is kb_retrieval
 
 
 def test_max_subflow_depth_constant():

@@ -37,6 +37,7 @@ async def run_compiled_canvas(
         "media": list(ctx.media),
         "resolve_model": ctx.resolve_model,
         "usage_sink": ctx.usage_sink,
+        "kb_retrieval": ctx.kb_retrieval,
         "outputs": {},
         "steps": [
             {

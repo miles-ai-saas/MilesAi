@@ -17,10 +17,11 @@
 from typing import Any
 from uuid import UUID
 
+from app.common.exceptions import BadRequestError
 from app.core.soft_delete import is_marked_deleted
+from app.flow_runtime.types import RunContext
 from app.infra.db import AsyncSessionLocal
 from app.rag.generate import format_hits_context, retrieve_hits
-from app.flow_runtime.types import RunContext
 from app.tenant.prompts.models import PromptTemplate
 
 _DEFAULT_PROMPT_TEMPLATE = "基于以下检索结果回答问题：\n\n{{检索结果}}\n\n问题：{{用户提问}}"
@@ -40,6 +41,10 @@ async def knowledge_search(
     retrieval_mode = str(node_data.get("retrieval_mode") or "default").strip() or "default"
     kb_ids = [str(kb_id)] if kb_id else ctx.kb_ids
 
+    if not kb_ids:
+        return []
+    if ctx.kb_retrieval is None:
+        raise BadRequestError("运行上下文未提供知识库检索绑定")
     async with AsyncSessionLocal() as db:
         return await retrieve_hits(
             query,
@@ -48,6 +53,7 @@ async def knowledge_search(
             db=db,
             top_k=top_k,
             mode=retrieval_mode,
+            bindings=ctx.kb_retrieval,
         )
 
 
