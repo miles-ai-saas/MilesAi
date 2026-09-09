@@ -9,7 +9,7 @@
 - **下沉目标** `models/agent/chat_io.py`：纯 pydantic DTO 集合，仅依赖 `pydantic`/`uuid`/`app.common.schemas.media.MediaRefIn`；与 `models/agent/constants.py`（B-2d 下沉的枚举）同域同风格。L3 指向本模块（中立域）；L1 经 `tenant.agents.schemas.agent` re-export shim 保持既有 import（与 `tenant.agents.constants` 对 `models.agent.constants` 的 shim 先例一致）。
 - **抽取区块**：`backend/app/tenant/agents/schemas/agent.py` L137-242 为连续自包含区块（`class ChatMediaIn` 至 `class ChatResponse` 结束），5 个类互相引用但**不引用**文件内其它类、不引用 `tenant` 其它模块。整段复制。
 - **L3 消费点改造**：`tool_agent/loop.py`（`ChatArtifact`/`ChatRequest`/`ChatResponse`/`PendingToolCall`）与 `tool_agent/artifacts.py`（`ChatArtifact`）改从 `app.models.agent.chat_io` import。
-- **L1 消费点**：`schemas.agent` 的 shim 让所有 `from app.tenant.agents.schemas.agent import Chat*` 继续工作（含 `tenant/tools/services/tools.py:45`、`chat_entry`、各类 views/ws）。**零调用点改动**。
+- **L1 消费点**：`schemas.agent` 的 shim 让所有 `from app.tenant.agents.schemas.agent import Chat*` 继续工作（含 `chat_entry`、各类 views/ws、`tenant/tools` 对 agent 侧 `PendingToolCall` 的引用等）。**零调用点改动**。
 
 **Tech Stack:** FastAPI / pydantic v2（后端 `backend/`，pytest 回归验证）。
 
