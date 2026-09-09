@@ -25,7 +25,7 @@ from app.integrations.litellm.adapter import extract_litellm_usage
 from app.integrations.litellm.usage_sink import UsageSink
 from app.models.agent import Agent
 from app.models.model import ModelConfig
-from app.tenant.agents.schemas.agent import (
+from app.models.agent.chat_io import (
     ChatArtifact,
     ChatRequest,
     ChatResponse,
