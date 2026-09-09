@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from app.tenant.agents.schemas.agent import ChatArtifact
+from app.models.agent.chat_io import ChatArtifact
 
 
 def artifacts_from_tool_output(output: dict) -> list[ChatArtifact]:

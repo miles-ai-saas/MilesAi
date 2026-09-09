@@ -24,13 +24,13 @@ from app.integrations.langchain.tools import get_all_platform_tools, get_skill_b
 from app.integrations.litellm.adapter import extract_litellm_usage
 from app.integrations.litellm.usage_sink import UsageSink
 from app.models.agent import Agent
-from app.models.model import ModelConfig
-from app.tenant.agents.schemas.agent import (
+from app.models.agent.chat_io import (
     ChatArtifact,
     ChatRequest,
     ChatResponse,
     PendingToolCall,
 )
+from app.models.model import ModelConfig
 from app.tenant.tools.confirmation import ToolConfirmationRequired, resolve_tool_meta
 from app.tenant.tools.invoke import invoke_tool_with_context
 
