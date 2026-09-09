@@ -156,6 +156,8 @@ def build_child_context(
         resolve_model=parent_ctx.resolve_model,  # 画布 LLM 模型解析回调透传到子流程
         usage_sink=parent_ctx.usage_sink,  # 画布 LLM 用量记录器透传到子流程
         kb_retrieval=parent_ctx.kb_retrieval,  # KB 检索绑定透传到子流程
+        resolve_generative_image=parent_ctx.resolve_generative_image,  # 画布生图模型解析器透传到子流程
+        resolve_generative_video=parent_ctx.resolve_generative_video,  # 画布生视频模型解析器透传到子流程
     )
 
 

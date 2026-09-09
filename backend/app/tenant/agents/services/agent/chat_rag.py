@@ -21,6 +21,10 @@ from app.tenant.flows.services.run_context import make_flow_model_resolver
 from app.tenant.hooks.models import HookScope, HookTrigger
 from app.tenant.hooks.services.runner import HookRunner
 from app.tenant.kb.services.embeddings import build_kb_retrieval_bindings
+from app.tenant.models.services.generative_model_resolve import (
+    resolve_image_gen_model,
+    resolve_video_gen_model,
+)
 from app.tenant.models.services.model_resolve import resolve_model_for_invoke
 from app.tenant.models.services.usage import ChatUsageSink
 
@@ -91,6 +95,8 @@ class AgentChatRagMixin:
             resolve_model=make_flow_model_resolver(agent.tenant_id),
             usage_sink=None,
             kb_retrieval=build_kb_retrieval_bindings(),
+            resolve_generative_image=resolve_image_gen_model,
+            resolve_generative_video=resolve_video_gen_model,
         )
 
     async def maybe_augment_a2a(self, agent: Agent, body: ChatRequest, response: ChatResponse) -> ChatResponse:
