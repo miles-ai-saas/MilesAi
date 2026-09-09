@@ -74,6 +74,10 @@ class RunContext:
     # 根装配点须随 resolve_generative_* 一并注入（见 chat_rag/flow debug-run）。
     submit_generative_image: Callable[..., Awaitable[Any]] | None = None
     submit_generative_video: Callable[..., Awaitable[Any]] | None = None
+    # 画布平台工具执行回调（L1 注入；None 表示未装配，platform_tool 节点报错）。
+    # 回调内部完成 TenantContext 构造与短会话工具执行。新建画布 RunContext
+    # 根装配点须随 resolve_generative_* 一并注入（见 chat_rag/flow debug-run）。
+    invoke_platform_tool: Callable[..., Awaitable[Any]] | None = None
 
 
 @dataclass
