@@ -70,7 +70,8 @@ class RunContext:
     resolve_generative_image: Callable[..., Awaitable[ModelConfig]] | None = None
     resolve_generative_video: Callable[..., Awaitable[ModelConfig]] | None = None
     # 生图/生视频异步 job 提交回调（L1 注入；None 表示 Celery 异步未启用/未装配，
-    # ImageGenerate/VideoGenerate 节点落同步 resolver 分支）
+    # ImageGenerate/VideoGenerate 节点落同步 resolver 分支）。新建画布 RunContext
+    # 根装配点须随 resolve_generative_* 一并注入（见 chat_rag/flow debug-run）。
     submit_generative_image: Callable[..., Awaitable[Any]] | None = None
     submit_generative_video: Callable[..., Awaitable[Any]] | None = None
 

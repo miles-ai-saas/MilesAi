@@ -102,6 +102,7 @@ class AgentChatRagMixin:
             kb_retrieval=build_kb_retrieval_bindings(),
             resolve_generative_image=resolve_image_gen_model,
             resolve_generative_video=resolve_video_gen_model,
+            # settings generative_*_async 关闭时不注入 ⇒ 节点落同步 resolver 兜底（不产生生成任务）
             submit_generative_image=submit_generative_image_job if GenerativeJobService.image_async_enabled() else None,
             submit_generative_video=submit_generative_video_job if GenerativeJobService.video_async_enabled() else None,
         )
