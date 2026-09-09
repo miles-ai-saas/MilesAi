@@ -228,6 +228,9 @@ class AgentChatRagMixin:
                 agent.config = agent_config_with_defaults
                 model = await self.resolve_invoke_model(agent.model_config)
                 usage_sink = self.chat_usage_sink(model, source_id=agent_id)
+                from app.tenant.tools.services.custom_tools import assemble_agent_tools
+
+                platform_tools = await assemble_agent_tools(self.db, self.ctx, agent.config or {})
                 return await run_tool_calling_chat(
                     self.db,
                     self.ctx,
@@ -237,6 +240,7 @@ class AgentChatRagMixin:
                     system_prompt=f"{base}{kb_hint}",
                     model=model,
                     usage_sink=usage_sink,
+                    platform_tools=platform_tools,
                 )
             return await self.direct_chat(agent, body, agent_id, hooks, on_delta=on_delta)
 
@@ -262,6 +266,9 @@ class AgentChatRagMixin:
             agent.config = agent_config_with_defaults
             model = await self.resolve_invoke_model(agent.model_config)
             usage_sink = self.chat_usage_sink(model, source_id=agent_id)
+            from app.tenant.tools.services.custom_tools import assemble_agent_tools
+
+            platform_tools = await assemble_agent_tools(self.db, self.ctx, agent.config or {})
             return await run_tool_calling_chat(
                 self.db,
                 self.ctx,
@@ -271,6 +278,7 @@ class AgentChatRagMixin:
                 system_prompt=f"{base}{kb_hint}",
                 model=model,
                 usage_sink=usage_sink,
+                platform_tools=platform_tools,
             )
 
         base = await self.resolve_system_prompt(agent)

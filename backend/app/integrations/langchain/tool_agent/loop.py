@@ -1,4 +1,4 @@
-"""LiteLLM 多轮 function calling 主循环。"""
+"""LiteLLM 多轮 function calling 主循环（工具 schema 由 L1 装配注入）。"""
 
 from __future__ import annotations
 
@@ -20,7 +20,7 @@ from app.integrations.langchain.tool_agent.parse import (
     _extract_tool_params_from_text,
     _looks_like_tool_call_simulation,
 )
-from app.integrations.langchain.tools import get_all_platform_tools, get_skill_bound_tools
+from app.integrations.langchain.tools import get_skill_bound_tools
 from app.integrations.litellm.adapter import extract_litellm_usage
 from app.integrations.litellm.usage_sink import UsageSink
 from app.models.agent import Agent
@@ -45,10 +45,12 @@ async def run_tool_calling_chat(
     system_prompt: str,
     model: ModelConfig,
     usage_sink: UsageSink | None = None,
+    platform_tools: list,
 ) -> ChatResponse:
     """
     LiteLLM 多轮 function calling 主循环。
 
+    工具 schema 由 L1 装配后以 ``platform_tools`` 传入（本函数不再查 Tool 表）；
     流程：按 ``tool_slugs`` 过滤工具 → 多轮 ``acompletion`` →
     ``invoke_tool_with_context`` 执行；需确认时返回 ``pending_tool``；
     ``generate_*`` 异步任务返回 ``generative_jobs``；同步附件写入 ``artifacts``。
@@ -56,7 +58,7 @@ async def run_tool_calling_chat(
     if not agent.model_config:
         raise ValueError("工具调用需要配置大模型")
 
-    all_tools = await get_all_platform_tools(db, ctx, agent_config=agent.config or {})
+    all_tools = platform_tools
     allowed = agent.config.get("tool_slugs") if isinstance(agent.config, dict) else None
     if allowed:
         allowed_set = {str(s) for s in allowed}

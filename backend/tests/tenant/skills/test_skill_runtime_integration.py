@@ -74,20 +74,11 @@ def skill_tree(tmp_path, monkeypatch):
     }
 
 
-@pytest.mark.asyncio
-async def test_get_all_platform_tools_skill_bound(monkeypatch):
-    async def _no_custom(*_args, **_kwargs):
-        return []
+def test_build_platform_tools_skill_bound():
+    """绑定 ``skill_package_id`` 时装配工具应含 ``skill_*``；否则不含。"""
+    without = lc_tools.build_platform_tools({}, [])
+    with_skill = lc_tools.build_platform_tools({"skill_package_id": str(uuid4())}, [])
 
-    monkeypatch.setattr(lc_tools, "load_tenant_custom_tools", _no_custom)
-    ctx = _test_ctx(uuid4())
-
-    without = await lc_tools.get_all_platform_tools(None, ctx, agent_config={})
-    with_skill = await lc_tools.get_all_platform_tools(
-        None,
-        ctx,
-        agent_config={"skill_package_id": str(uuid4())},
-    )
     names_without = {t.name for t in without}
     names_with = {t.name for t in with_skill}
 
