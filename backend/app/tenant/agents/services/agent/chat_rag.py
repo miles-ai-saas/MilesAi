@@ -232,8 +232,16 @@ class AgentChatRagMixin:
                 model = await self.resolve_invoke_model(agent.model_config)
                 usage_sink = self.chat_usage_sink(model, source_id=agent_id)
                 from app.tenant.tools.services.custom_tools import assemble_agent_tools
+                from app.tenant.tools.services.agent_executor import build_agent_tool_executor
 
                 platform_tools = await assemble_agent_tools(self.db, self.ctx, agent.config or {})
+                tool_executor = build_agent_tool_executor(
+                    self.db,
+                    self.ctx,
+                    agent_id=agent_id,
+                    actor_user_id=self.ctx.user_id,
+                    invoke_source="agent",
+                )
                 return await run_tool_calling_chat(
                     self.db,
                     self.ctx,
@@ -244,6 +252,7 @@ class AgentChatRagMixin:
                     model=model,
                     usage_sink=usage_sink,
                     platform_tools=platform_tools,
+                    tool_executor=tool_executor,
                 )
             return await self.direct_chat(agent, body, agent_id, hooks, on_delta=on_delta)
 
@@ -270,8 +279,16 @@ class AgentChatRagMixin:
             model = await self.resolve_invoke_model(agent.model_config)
             usage_sink = self.chat_usage_sink(model, source_id=agent_id)
             from app.tenant.tools.services.custom_tools import assemble_agent_tools
+            from app.tenant.tools.services.agent_executor import build_agent_tool_executor
 
             platform_tools = await assemble_agent_tools(self.db, self.ctx, agent.config or {})
+            tool_executor = build_agent_tool_executor(
+                self.db,
+                self.ctx,
+                agent_id=agent_id,
+                actor_user_id=self.ctx.user_id,
+                invoke_source="agent",
+            )
             return await run_tool_calling_chat(
                 self.db,
                 self.ctx,
@@ -282,6 +299,7 @@ class AgentChatRagMixin:
                 model=model,
                 usage_sink=usage_sink,
                 platform_tools=platform_tools,
+                tool_executor=tool_executor,
             )
 
         base = await self.resolve_system_prompt(agent)
