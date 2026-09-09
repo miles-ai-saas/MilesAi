@@ -18,6 +18,11 @@ from app.tenant.agents.services.agent.serialization import should_use_skill_tool
 from app.tenant.compliance.constants import SCAN_MODULE_AGENT_CHAT
 from app.tenant.flows.repositories.flow import FlowRepository
 from app.tenant.flows.services.run_context import make_flow_model_resolver
+from app.tenant.generative.services.job import GenerativeJobService
+from app.tenant.generative.services.job_execution import (
+    submit_generative_image_job,
+    submit_generative_video_job,
+)
 from app.tenant.hooks.models import HookScope, HookTrigger
 from app.tenant.hooks.services.runner import HookRunner
 from app.tenant.kb.services.embeddings import build_kb_retrieval_bindings
@@ -97,6 +102,8 @@ class AgentChatRagMixin:
             kb_retrieval=build_kb_retrieval_bindings(),
             resolve_generative_image=resolve_image_gen_model,
             resolve_generative_video=resolve_video_gen_model,
+            submit_generative_image=submit_generative_image_job if GenerativeJobService.image_async_enabled() else None,
+            submit_generative_video=submit_generative_video_job if GenerativeJobService.video_async_enabled() else None,
         )
 
     async def maybe_augment_a2a(self, agent: Agent, body: ChatRequest, response: ChatResponse) -> ChatResponse:

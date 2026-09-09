@@ -44,6 +44,11 @@ from app.tenant.flows.schemas.flow import (
 from app.tenant.flows.schemas.meta import FlowMetaOut
 from app.tenant.flows.schemas.template import FlowTemplateOut, FlowTemplatesOut
 from app.tenant.flows.services.run_context import make_flow_model_resolver
+from app.tenant.generative.services.job import GenerativeJobService
+from app.tenant.generative.services.job_execution import (
+    submit_generative_image_job,
+    submit_generative_video_job,
+)
 from app.tenant.hooks.models import HookScope, HookTrigger
 from app.tenant.hooks.services.runner import HookRunner
 from app.tenant.kb.services.embeddings import build_kb_retrieval_bindings
@@ -264,6 +269,8 @@ class FlowService(BaseService):
                 kb_retrieval=build_kb_retrieval_bindings(),
                 resolve_generative_image=resolve_image_gen_model,
                 resolve_generative_video=resolve_video_gen_model,
+                submit_generative_image=submit_generative_image_job if GenerativeJobService.image_async_enabled() else None,
+                submit_generative_video=submit_generative_video_job if GenerativeJobService.video_async_enabled() else None,
             )
             if "query" not in ctx.inputs and run_inputs:
                 ctx.inputs.setdefault("query", run_inputs.get("message", ""))

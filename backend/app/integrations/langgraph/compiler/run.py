@@ -40,6 +40,8 @@ async def run_compiled_canvas(
         "kb_retrieval": ctx.kb_retrieval,
         "resolve_generative_image": ctx.resolve_generative_image,
         "resolve_generative_video": ctx.resolve_generative_video,
+        "submit_generative_image": ctx.submit_generative_image,
+        "submit_generative_video": ctx.submit_generative_video,
         "outputs": {},
         "steps": [
             {
