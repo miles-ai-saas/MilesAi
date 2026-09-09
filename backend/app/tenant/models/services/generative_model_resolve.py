@@ -1,8 +1,9 @@
 """生成类模型（image_gen / video_gen / tts）解析入口（L1）。
 
 对话/工具/画布链路解析可用生成模型的唯一 L1 归口：显式 ``model_config_id``
-> agent 绑定模型（若类型匹配）> ``agent_config`` 中 ``generative_*_model_id``
-> 租户/平台默认（``pick_default_generative_model``，vendor 优先），最后经
+（未指定时回落 ``agent_config`` 中 ``generative_*_model_id``，二者同分支）
+> agent 绑定模型（若类型匹配）> 租户/平台默认
+（``pick_default_generative_model``，vendor 优先），最后经
 ``resolve_model_for_invoke`` 合并 BYOK 凭证。
 
 调用方：

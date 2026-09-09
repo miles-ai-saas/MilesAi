@@ -118,3 +118,34 @@ def test_video_resolve_falls_back_to_tenant_default(monkeypatch):
     out = _run(gm.resolve_video_gen_model(db, ctx, model_config_id=None, agent_model=wrong))
     assert out is default_row
     assert seen == [default_row.id]
+
+
+def test_image_resolve_prefers_agent_config_default_over_agent_model(monkeypatch):
+    cfg_model = _model(ModelVendor.QWEN.value, ModelCapabilityType.IMAGE_GEN.value)
+    agent_model = _model(ModelVendor.DOUBAO.value, ModelCapabilityType.IMAGE_GEN.value)
+    seen: list = []
+
+    async def fake_resolve(_db, model, _tenant_id):
+        seen.append(model.id)
+        return model
+
+    monkeypatch.setattr(gm, "resolve_model_for_invoke", fake_resolve)
+
+    async def forbidden_default(**kwargs):
+        raise AssertionError("agent_config 默认 id 落入显式 id 分支后不应再取默认模型")
+
+    monkeypatch.setattr(gm, "pick_default_generative_model", forbidden_default)
+    ctx = SimpleNamespace(tenant_id=uuid4())
+
+    db = _async_db(row=cfg_model)
+    out = _run(
+        gm.resolve_image_gen_model(
+            db,
+            ctx,
+            model_config_id=None,
+            agent_model=agent_model,
+            agent_config={"generative_image_model_id": str(cfg_model.id)},
+        )
+    )
+    assert out is cfg_model
+    assert seen == [cfg_model.id]

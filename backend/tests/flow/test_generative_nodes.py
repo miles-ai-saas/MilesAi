@@ -9,7 +9,7 @@ from app.common.exceptions import BadRequestError
 from app.flow_runtime.nodes import image_generate as image_node
 from app.flow_runtime.nodes import video_generate as video_node
 from app.flow_runtime.types import RunContext
-from app.integrations.generative.types import ImageGenerateResult
+from app.integrations.generative.types import ImageGenerateResult, VideoGenerateResult
 
 
 def _run(coro):
@@ -32,14 +32,14 @@ class _FakeSession:
 def test_image_generate_sync_without_resolver_raises():
     ctx = RunContext(tenant_id=str(uuid4()), generative_image_async=False, agent_config={})
     node = {"prompt": "画一只猫", "model_config_id": str(uuid4())}
-    with pytest.raises(BadRequestError):
+    with pytest.raises(BadRequestError, match="未装配"):
         _run(image_node.image_generate(node, {}, ctx))
 
 
 def test_video_generate_sync_without_resolver_raises():
     ctx = RunContext(tenant_id=str(uuid4()), generative_video_async=False)
     node = {"prompt": "一段小短片"}
-    with pytest.raises(BadRequestError):
+    with pytest.raises(BadRequestError, match="未装配"):
         _run(video_node.video_generate(node, {}, ctx))
 
 
@@ -67,4 +67,30 @@ def test_image_generate_sync_with_injected_resolver(monkeypatch):
     node = {"prompt": "画一只猫", "model_config_id": str(mid)}
     out = _run(image_node.image_generate(node, {}, ctx))
     assert out["kind"] == "image"
+    assert str(out["attachment_id"]) == str(att)
+
+
+def test_video_generate_sync_with_injected_resolver(monkeypatch):
+    monkeypatch.setattr(video_node, "AsyncSessionLocal", _FakeSession)
+
+    mid, att = uuid4(), uuid4()
+
+    async def fake_resolve(db, ctx, *, model_config_id, agent_config=None):
+        assert model_config_id == mid
+        return type("Model", (), {"id": mid})()
+
+    async def fake_generate(db, ctx, model, **kwargs):
+        return VideoGenerateResult(attachment_id=att, mime_type="video/mp4", duration_sec=5, media_asset_id=None)
+
+    monkeypatch.setattr(video_node, "generate_video_for_model", fake_generate)
+
+    ctx = RunContext(
+        tenant_id=str(uuid4()),
+        user_id=str(uuid4()),  # tenant_context_from_run 要求 user_id 非空
+        generative_video_async=False,
+        resolve_generative_video=fake_resolve,
+    )
+    node = {"prompt": "一段小短片", "model_config_id": str(mid)}
+    out = _run(video_node.video_generate(node, {}, ctx))
+    assert out["kind"] == "video"
     assert str(out["attachment_id"]) == str(att)
