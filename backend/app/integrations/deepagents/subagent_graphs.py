@@ -18,7 +18,6 @@ from uuid import UUID
 from langchain_core.messages import AIMessage, HumanMessage
 from langgraph.graph import END, START, MessagesState, StateGraph
 
-from app.tenant.agents.schemas.agent import ChatRequest
 from app.models.agent import AgentSubAgentBinding
 from app.models.agent.constants import SUB_AGENT_ROLE_HINTS, SUB_AGENT_ROLE_LABELS
 
@@ -70,9 +69,9 @@ def _make_child_node(svc: AgentService, child_id: UUID):
             msgs = state.get("messages") or []
             if msgs:
                 query = str(getattr(msgs[-1], "content", "") or "")
-        resp = await svc.chat_as_child(
+        resp = await svc.chat_as_child_simple(
             child_id,
-            ChatRequest(query=query or "请根据上下文完成任务"),
+            query=query or "请根据上下文完成任务",
         )
         return {"messages": [AIMessage(content=resp.answer)]}
 

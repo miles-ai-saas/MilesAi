@@ -95,10 +95,21 @@ class AgentChatEntryMixin:
             bindings = await list_sub_agent_bindings(self.db, agent_id)
             peer_refs = await list_agent_a2a_peer_refs(self.db, agent_id)
             if bindings:
+                from app.integrations.deepagents.io import ParentChatInput
                 from app.integrations.deepagents.orchestrator import run_subagent_planned_chat
 
                 route = "subagent"
-                response = await run_subagent_planned_chat(self, agent, bindings, chat_body)
+                result = await run_subagent_planned_chat(
+                    self,
+                    agent,
+                    bindings,
+                    ParentChatInput(
+                        query=chat_body.query,
+                        inputs=chat_body.inputs,
+                        conversation_id=chat_body.conversation_id,
+                    ),
+                )
+                response = ChatResponse(answer=result.answer, sources=[], steps=result.steps)
                 if peer_refs:
                     response = await self.maybe_augment_a2a(agent, chat_body, response)
                 return await self._complete_chat_turn(

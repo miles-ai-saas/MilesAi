@@ -16,10 +16,10 @@ from typing import TYPE_CHECKING, Any
 
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 
+from app.integrations.deepagents.io import ParentChatInput, SubAgentPlanResult
 from app.integrations.deepagents.subagent_graphs import _slug_for_binding, build_compiled_subagents
 from app.integrations.langchain.chat_models import get_chat_model
 from app.integrations.langgraph.checkpointer import get_checkpointer
-from app.tenant.agents.schemas.agent import ChatRequest, ChatResponse
 from app.models.agent import Agent, AgentSubAgentBinding
 from app.models.agent.constants import AgentPlanner
 
@@ -37,7 +37,7 @@ def deepagents_importable() -> bool:
     return create_deep_agent is not None
 
 
-def _thread_id(parent: Agent, body: ChatRequest) -> str:
+def _thread_id(parent: Agent, body: ParentChatInput) -> str:
     """DeepAgents checkpointer 线程 id。"""
     suffix = (body.conversation_id or "default").strip()[:128] or "default"
     return f"deep:{parent.tenant_id}:{parent.id}:{suffix}"
@@ -102,10 +102,13 @@ async def run_deepagents_chat(
     svc: AgentService,
     parent: Agent,
     bindings: list[AgentSubAgentBinding],
-    body: ChatRequest,
-) -> ChatResponse:
+    body: ParentChatInput,
+) -> SubAgentPlanResult:
     """
     DeepAgents 主循环：主模型通过 ``task`` 工具委派 ``CompiledSubAgent``。
+
+    ``body`` 为 L1 ``chat_entry`` 从 ``ChatRequest`` 解包的中性输入；
+    返回 ``SubAgentPlanResult``，由 L1 包回 ``ChatResponse``。
 
     ``recursion_limit`` 来自 ``config.max_plan_iterations``（默认 12）。
     """
@@ -160,4 +163,4 @@ async def run_deepagents_chat(
         answer = "DeepAgents 未产生有效回答，请检查子智能体配置与模型。"
 
     steps = _extract_steps(messages, bindings)
-    return ChatResponse(answer=answer, sources=[], steps=steps)
+    return SubAgentPlanResult(answer=answer, steps=steps)

@@ -22,7 +22,7 @@ import re
 from typing import TYPE_CHECKING
 from uuid import UUID
 
-from app.tenant.agents.schemas.agent import ChatRequest, ChatResponse
+from app.integrations.deepagents.io import ParentChatInput, SubAgentPlanResult
 from app.integrations.deepagents.runner import deepagents_importable, run_deepagents_chat
 from app.integrations.langchain.chat_models import ainvoke_chat
 from app.models.agent import Agent, AgentSubAgentBinding
@@ -108,8 +108,8 @@ async def _run_platform_planned(
     svc: AgentService,
     parent: Agent,
     bindings: list[AgentSubAgentBinding],
-    body: ChatRequest,
-) -> ChatResponse:
+    body: ParentChatInput,
+) -> SubAgentPlanResult:
     """按规划依次 chat_as_child，最后主模型综合子回答。"""
     steps: list[dict] = [
         {
@@ -134,7 +134,7 @@ async def _run_platform_planned(
                 None,
             )
         task = item.get("task", body.query)
-        child_resp = await svc.chat_as_child(UUID(sid), ChatRequest(query=task, inputs=body.inputs))
+        child_resp = await svc.chat_as_child_simple(UUID(sid), query=task, inputs=body.inputs)
         binding = next((b for b in bindings if str(b.child_agent_id) == sid), None)
         name = binding.child_agent.name if binding and binding.child_agent else sid
         step = {
@@ -162,9 +162,8 @@ async def _run_platform_planned(
                 sub_answers.append(block)
 
     if not sub_answers:
-        return ChatResponse(
+        return SubAgentPlanResult(
             answer="未能委派子智能体完成任务，请检查绑定与模型配置。",
-            sources=[],
             steps=steps,
         )
 
@@ -185,7 +184,7 @@ async def _run_platform_planned(
     else:
         final = "\n\n---\n\n".join(sub_answers)
 
-    return ChatResponse(answer=final, sources=[], steps=steps)
+    return SubAgentPlanResult(answer=final, steps=steps)
 
 
 def _should_use_deepagents(parent: Agent) -> bool:
@@ -202,8 +201,8 @@ async def run_subagent_planned_chat(
     svc: AgentService,
     parent: Agent,
     bindings: list[AgentSubAgentBinding],
-    body: ChatRequest,
-) -> ChatResponse:
+    body: ParentChatInput,
+) -> SubAgentPlanResult:
     """有子智能体绑定时，由 DeepAgents 或平台规划器拆解并委派子智能体。"""
     if _should_use_deepagents(parent) and parent.model_config:
         try:
