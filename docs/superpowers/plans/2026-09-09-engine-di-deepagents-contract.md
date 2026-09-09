@@ -172,7 +172,7 @@ Run（backend/ 下）：
 ```bash
 uv run ruff check app/models/agent/constants.py app/tenant/agents/constants.py app/integrations/deepagents app/integrations/langgraph/runner.py app/tenant/a2a/services/host_bindings.py app/tenant/agents/meta.py app/tenant/agents/services/sub_agents.py
 rg -n "from app.tenant.agents.constants|from app.tenant.agents import constants" app/integrations || echo "L3 对 tenant.agents.constants 引用清零"
-uv run python -m pytest tests/tenant/agents/test_deepagents_orchestrator.py tests/flow/test_langgraph_rag.py tests/flow/test_langgraph_runner.py -q 2>/dev/null
+uv run python -m pytest tests/tenant/agents/test_deepagents_orchestrator.py tests/flow/test_langgraph_rag.py -q
 uv run python -m pytest -q | tail -1
 ```
 Expected：ruff 全绿；rg 无命中；定向与全量测试均 445 passed 不变（L1 引用方经 re-export 行为不变）。
