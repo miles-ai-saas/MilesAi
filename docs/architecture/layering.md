@@ -108,6 +108,8 @@ L0 → L1 → L2 → L3 → L4
 
 > **收敛记录（2026-09-09，B-2e）**：画布生图/生视频节点异步 job 提交上移 L1——`submit_generative_{image,video}_job` 落 `tenant/generative/services/job_execution.py`（构造 JobCreate 委托 `GenerativeJobService`，函数级 import 防循环），`ImageGenerate`/`VideoGenerate` 节点经 `RunContext.submit_generative_image/video`（L1 装配点按 settings `generative_*_async` 注入回调或 None）提交，节点不再 import `tenant.generative.{schemas.job, services.job}`（见 plan [`2026-09-09-engine-di-flow-generative-job`](../superpowers/plans/2026-09-09-engine-di-flow-generative-job.md)）。`flow_runtime` 对 `tenant` 引用继续收窄至 media/compliance/tools/rag 节点与 subflow 仓库面。新建画布 `RunContext` 根装配点必须随 `resolve_generative_*` 一并注入 `submit_generative_*`（settings 关闭时不注入 → 节点落同步 resolver 兜底），装配门控不变式已由 `test_agent_chat_rag_flow_context` 固化。
 
+> **收敛记录（2026-09-09，F2a）**：agent 对话 IO DTO 下沉中立域——`ChatMediaIn`/`ChatRequest`/`ChatResponse`/`ChatArtifact`/`PendingToolCall` 落 `models/agent/chat_io.py`（纯 pydantic，依赖仅 pydantic/uuid/`common.schemas.media`），`tenant/agents/schemas/agent.py` 转 re-export shim（L1 路径稳定）；`integrations/langchain/tool_agent/{loop,artifacts}` 改指 `models.agent.chat_io`，`artifacts.py` 对 `tenant` 依赖清零（见 plan [`2026-09-09-engine-di-chat-io-dto`](../superpowers/plans/2026-09-09-engine-di-chat-io-dto.md)）。`tool_agent/loop.py` 剩余 `tenant.tools.{confirmation,invoke}` 执行/确认行为面待 tools 契约计划（F2c）。
+
 ### 2.3 运营后台（`admin/`）访问租户域
 
 `admin/`（L0/L1，`/api/admin/v1`）为平台运营面：审核租户内容、管理租户与配额时须读取租户域数据。允许 `admin → tenant` **单向**访问，但只能走下列合规形态：
@@ -357,3 +359,4 @@ backend/tests/
 | 2026-09-09 | B-2c：generative 模型解析收敛 L1 `generative_model_resolve`，`integrations/generative` 三 service 只留生成引擎；job 执行编排上移 L1 `job_execution`；画布生图/生视频节点解析器经 `RunContext` 注入 |
 | 2026-09-09 | B-2d：agent 域枚举下沉 `models.agent.constants`，deepagents 契约收敛——`ParentChatInput`/`SubAgentPlanResult` 中性 DTO + `chat_as_child_simple` 窄入口，deepagents/`langgraph/runner` 对 `tenant.agents.{schemas,constants}` 运行期引用清零 |
 | 2026-09-09 | B-2e：画布生图/生视频节点异步提交收敛——job 提交流程落 L1 `job_execution` submit 回调，`RunContext.submit_generative_*` 注入，节点对 `tenant.generative.{schemas.job,services.job}` 运行期引用清零 |
+| 2026-09-09 | F2a：agent 对话 IO DTO 下沉 `models/agent/chat_io`，schemas 转 shim；tool_agent loop/artifacts 改指中立模块，artifacts 对 tenant 引用清零 |
