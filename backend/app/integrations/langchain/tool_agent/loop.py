@@ -1,4 +1,4 @@
-"""LiteLLM 多轮 function calling 主循环（工具 schema 由 L1 装配注入）。"""
+"""LiteLLM 多轮 function calling 主循环（工具 schema 与执行器由 L1 装配注入）。"""
 
 from __future__ import annotations
 
@@ -20,6 +20,7 @@ from app.integrations.langchain.tool_agent.parse import (
     _extract_tool_params_from_text,
     _looks_like_tool_call_simulation,
 )
+from app.integrations.langchain.tool_agent.tool_contract import ToolConfirmationSignal, ToolExecutor
 from app.integrations.langchain.tools import get_skill_bound_tools
 from app.integrations.litellm.adapter import extract_litellm_usage
 from app.integrations.litellm.usage_sink import UsageSink
@@ -31,8 +32,6 @@ from app.models.agent.chat_io import (
     PendingToolCall,
 )
 from app.models.model import ModelConfig
-from app.tenant.tools.confirmation import ToolConfirmationRequired, resolve_tool_meta
-from app.tenant.tools.invoke import invoke_tool_with_context
 
 
 async def run_tool_calling_chat(
@@ -45,15 +44,20 @@ async def run_tool_calling_chat(
     system_prompt: str,
     model: ModelConfig,
     usage_sink: UsageSink | None = None,
+    tool_executor: ToolExecutor,
     platform_tools: list,
 ) -> ChatResponse:
     """
     LiteLLM 多轮 function calling 主循环。
 
-    工具 schema 由 L1 装配后以 ``platform_tools`` 传入（本函数不再查 Tool 表）；
+    工具 schema 与执行器由 L1 装配后以 ``platform_tools`` / ``tool_executor`` 注入
+    （本函数不再查 Tool 表、不直接接触 L1 执行面）；
     流程：按 ``tool_slugs`` 过滤工具 → 多轮 ``acompletion`` →
-    ``invoke_tool_with_context`` 执行；需确认时返回 ``pending_tool``；
-    ``generate_*`` 异步任务返回 ``generative_jobs``；同步附件写入 ``artifacts``。
+    ``tool_executor.invoke`` 执行；需确认时抛 ``ToolConfirmationSignal`` 并返回
+    ``pending_tool``；``generate_*`` 异步任务返回 ``generative_jobs``；同步附件写入 ``artifacts``。
+
+    ``tool_executor``：L1 注入的执行器（``ToolExecutor`` 契约，见 ``tool_contract``），
+    ``meta`` 解析工具元数据、``invoke`` 执行工具（确认信号为 ``ToolConfirmationSignal``）。
     """
     if not agent.model_config:
         raise ValueError("工具调用需要配置大模型")
@@ -84,16 +88,7 @@ async def run_tool_calling_chat(
                 from app.integrations.generative.request_prefs import resolve_image_n
 
                 confirm_params["n"] = resolve_image_n(confirm_params.get("n"))
-            output = await invoke_tool_with_context(
-                db,
-                ctx,
-                body.pending_tool_slug,
-                confirm_params,
-                confirmed=True,
-                agent_id=agent_id,
-                actor_user_id=ctx.user_id,
-                invoke_source="agent",
-            )
+            output = await tool_executor.invoke(body.pending_tool_slug, confirm_params, confirmed=True)
             confirm_artifacts = artifacts_from_tool_output(output) if isinstance(output, dict) else []
             confirm_message = str(output.get("message") if isinstance(output, dict) else output)
             confirm_jobs: list[dict] = []
@@ -166,22 +161,13 @@ async def run_tool_calling_chat(
                 if extracted:
                     slug, params = extracted
                     try:
-                        meta = await resolve_tool_meta(db, ctx, slug)
+                        meta = await tool_executor.meta(slug)
                     except Exception:
                         meta = None
                     if meta and not meta.get("require_confirmation"):
                         # 无需确认：直接执行并返回结果
                         try:
-                            output = await invoke_tool_with_context(
-                                db,
-                                ctx,
-                                slug,
-                                params,
-                                confirmed=True,
-                                agent_id=agent_id,
-                                actor_user_id=ctx.user_id,
-                                invoke_source="agent",
-                            )
+                            output = await tool_executor.invoke(slug, params, confirmed=True)
                         except Exception as exc:
                             steps.append({"type": "tool_simulation_corrected", "message": f"提取 JSON 参数后执行 {slug} 失败: {exc}，追加纠正提示"})
                             messages.append({"role": "assistant", "content": content})
@@ -225,21 +211,12 @@ async def run_tool_calling_chat(
                         steps.append({"type": "tool_simulation_no_query", "message": "LLM 表达了生成意图但无法提取参数，且用户 query 为空"})
                         return ChatResponse(answer="请描述您想要生成的图片内容。", steps=steps)
                     try:
-                        meta = await resolve_tool_meta(db, ctx, image_tool)
+                        meta = await tool_executor.meta(image_tool)
                     except Exception:
                         meta = None
                     if meta and not meta.get("require_confirmation"):
                         try:
-                            output = await invoke_tool_with_context(
-                                db,
-                                ctx,
-                                image_tool,
-                                {"prompt": fallback_query},
-                                confirmed=True,
-                                agent_id=agent_id,
-                                actor_user_id=ctx.user_id,
-                                invoke_source="agent",
-                            )
+                            output = await tool_executor.invoke(image_tool, {"prompt": fallback_query}, confirmed=True)
                         except Exception as exc:
                             steps.append({"type": "tool_simulation_corrected", "message": f"用原始 query 兜底执行 {image_tool} 失败: {exc}"})
                             messages.append({"role": "assistant", "content": content})
@@ -336,7 +313,7 @@ async def run_tool_calling_chat(
                 args = {}
 
             try:
-                meta = await resolve_tool_meta(db, ctx, slug)
+                meta = await tool_executor.meta(slug)
             except BadRequestError as exc:
                 steps.append({"type": "tool_call", "slug": slug, "status": "error", "error": str(exc)})
                 messages.append(
@@ -352,7 +329,7 @@ async def run_tool_calling_chat(
                     artifacts=artifacts,
                 )
             except Exception:
-                steps.append({"type": "tool_call", "slug": slug, "status": "error", "error": "resolve_tool_meta 失败"})
+                steps.append({"type": "tool_call", "slug": slug, "status": "error", "error": "工具元数据解析失败"})
                 messages.append(
                     {
                         "role": "tool",
@@ -363,17 +340,8 @@ async def run_tool_calling_chat(
                 raise
             if meta["require_confirmation"]:
                 try:
-                    await invoke_tool_with_context(
-                        db,
-                        ctx,
-                        slug,
-                        args,
-                        confirmed=False,
-                        agent_id=agent_id,
-                        actor_user_id=ctx.user_id,
-                        invoke_source="agent",
-                    )
-                except ToolConfirmationRequired as exc:
+                    await tool_executor.invoke(slug, args, confirmed=False)
+                except ToolConfirmationSignal as exc:
                     pending = PendingToolCall(
                         slug=exc.slug,
                         name=exc.tool_name,
@@ -396,17 +364,8 @@ async def run_tool_calling_chat(
                     )
 
             try:
-                output = await invoke_tool_with_context(
-                    db,
-                    ctx,
-                    slug,
-                    args,
-                    confirmed=True,
-                    agent_id=agent_id,
-                    actor_user_id=ctx.user_id,
-                    invoke_source="agent",
-                )
-            except ToolConfirmationRequired:
+                output = await tool_executor.invoke(slug, args, confirmed=True)
+            except ToolConfirmationSignal:
                 raise
             except BadRequestError as exc:
                 steps.append({"type": "tool_call", "slug": slug, "status": "error", "error": str(exc)})
