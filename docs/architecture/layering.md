@@ -110,6 +110,8 @@ L0 → L1 → L2 → L3 → L4
 
 > **收敛记录（2026-09-09，F2a）**：agent 对话 IO DTO 下沉中立域——`ChatMediaIn`/`ChatRequest`/`ChatResponse`/`ChatArtifact`/`PendingToolCall` 落 `models/agent/chat_io.py`（纯 pydantic，依赖仅 pydantic/uuid/`common.schemas.media`），`tenant/agents/schemas/agent.py` 转 re-export shim（L1 路径稳定）；`integrations/langchain/tool_agent/{loop,artifacts}` 改指 `models.agent.chat_io`，`artifacts.py` 对 `tenant` 依赖清零（见 plan [`2026-09-09-engine-di-chat-io-dto`](../superpowers/plans/2026-09-09-engine-di-chat-io-dto.md)）。`tool_agent/loop.py` 剩余 `tenant.tools.{confirmation,invoke}` 执行/确认行为面待 tools 契约计划（F2c）。
 
+> **收敛记录（2026-09-09，F2b）**：自定义工具契约收敛——租户 `Tool` 表 HTTP/SCRIPT 行 DB 加载上移 L1（`tenant/tools/services/custom_tools.py` 的 `load_custom_tool_specs`/`assemble_agent_tools`），产出中性 `CustomToolSpec`；`integrations/langchain/tools.py` 净化为纯 schema 构造库（`build_platform_tools`，内置/技能/生成壳与自定义 spec→StructuredTool，func 全占位——主循环从不执行 StructuredTool，执行统一走 `invoke_tool_with_context`），删除 DB 版 `get_all_platform_tools` 与 dead wrapper `invoke_platform_tool`；`tool_agent/loop.py` 改收 L1 装配的 `platform_tools` 入参，不再查 `Tool` 表；工具参数三纯函数（`normalize_parameters`/`validate_tool_params`/`parameters_to_pydantic`）下沉中立 `models/tool/parameters.py`（`tenant/tools/parameters.py` 转 re-export shim，消除 Task 1 复刻 drift）（见 plan [`2026-09-09-engine-di-custom-tool-contract`](../superpowers/plans/2026-09-09-engine-di-custom-tool-contract.md)）。`loop.py` 剩余 `tenant.tools.{confirmation,invoke}` 执行/确认行为面与画布 `tool_nodes` 注入待 F2c。
+
 ### 2.3 运营后台（`admin/`）访问租户域
 
 `admin/`（L0/L1，`/api/admin/v1`）为平台运营面：审核租户内容、管理租户与配额时须读取租户域数据。允许 `admin → tenant` **单向**访问，但只能走下列合规形态：
@@ -360,3 +362,4 @@ backend/tests/
 | 2026-09-09 | B-2d：agent 域枚举下沉 `models.agent.constants`，deepagents 契约收敛——`ParentChatInput`/`SubAgentPlanResult` 中性 DTO + `chat_as_child_simple` 窄入口，deepagents/`langgraph/runner` 对 `tenant.agents.{schemas,constants}` 运行期引用清零 |
 | 2026-09-09 | B-2e：画布生图/生视频节点异步提交收敛——job 提交流程落 L1 `job_execution` submit 回调，`RunContext.submit_generative_*` 注入，节点对 `tenant.generative.{schemas.job,services.job}` 运行期引用清零 |
 | 2026-09-09 | F2a：agent 对话 IO DTO 下沉 `models/agent/chat_io`，schemas 转 shim；tool_agent loop/artifacts 改指中立模块，artifacts 对 tenant 引用清零 |
+| 2026-09-09 | F2b：自定义工具 DB 加载上移 L1 `custom_tools` loader；`langchain/tools.py` 净化为纯 schema 构造（CustomToolSpec/占位壳），loop 工具列表 L1 装配注入；工具参数三纯函数下沉 `models/tool/parameters.py` |
