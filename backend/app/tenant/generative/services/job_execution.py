@@ -3,10 +3,12 @@
 执行编排用例上移 L1（原 ``integrations/generative/jobs/runner.py``）：
 worker 进程内取 job → 合成最小 TenantContext → 解析模型 → 调用 L3 生成引擎 → 落库/推送进度。
 供 ``workers/tasks/generative.py``（Celery 任务）与 ``tenant.generative.services.job`` 查询复用。
+画布异步提交回调亦在本模块装配（``RunContext.submit_generative_*``）。
 """
 
 from __future__ import annotations
 
+from app.common.trace import get_trace_id
 from app.core.logging import get_logger
 from uuid import UUID
 
@@ -287,3 +289,75 @@ async def get_generative_job_for_tenant(
         raise NotFoundError("生成任务不存在")
     assert_tenant_access(ctx, job.tenant_id)
     return job
+
+
+async def submit_generative_image_job(
+    db,
+    tenant_ctx: TenantContext,
+    *,
+    prompt: str,
+    size: str | None,
+    n: int,
+    image_attachment_id: UUID | None,
+    model_config_id: UUID,
+    agent_id: UUID | None,
+    agent_config: dict | None = None,
+) -> UUID:
+    """画布 ImageGenerate 异步分支提交回调（L1 装配注入 RunContext）。
+
+    函数级 import ``GenerativeJobService`` 避免 ``services.job`` 顶层循环依赖；
+    仅构造 JobCreate 并提交，会话提交（``db.commit``）由节点统一执行。
+    """
+    from app.tenant.generative.schemas.job import ImageGenerativeJobCreate
+    from app.tenant.generative.services.job import GenerativeJobService
+
+    body = ImageGenerativeJobCreate(
+        prompt=prompt,
+        size=size,
+        n=n,
+        image_attachment_id=image_attachment_id,
+        model_config_id=model_config_id,
+    )
+    out = await GenerativeJobService(db, tenant_ctx).submit_image(
+        body,
+        source="flow_node",
+        agent_id=agent_id,
+        agent_config=agent_config or {},
+        trace_id=get_trace_id(),
+    )
+    return out.id
+
+
+async def submit_generative_video_job(
+    db,
+    tenant_ctx: TenantContext,
+    *,
+    prompt: str,
+    duration: int,
+    resolution: str | None,
+    image_attachment_id: UUID | None,
+    last_frame_attachment_id: UUID | None,
+    model_config_id: UUID | None,
+    agent_id: UUID | None,
+    agent_config: dict | None = None,
+) -> UUID:
+    """画布 VideoGenerate 异步分支提交回调（L1 装配注入 RunContext）。"""
+    from app.tenant.generative.schemas.job import VideoGenerativeJobCreate
+    from app.tenant.generative.services.job import GenerativeJobService
+
+    body = VideoGenerativeJobCreate(
+        prompt=prompt,
+        duration=duration,
+        resolution=resolution,
+        image_attachment_id=image_attachment_id,
+        last_frame_attachment_id=last_frame_attachment_id,
+        model_config_id=model_config_id,
+    )
+    out = await GenerativeJobService(db, tenant_ctx).submit_video(
+        body,
+        source="flow_node",
+        agent_id=agent_id,
+        agent_config=agent_config or {},
+        trace_id=get_trace_id(),
+    )
+    return out.id
