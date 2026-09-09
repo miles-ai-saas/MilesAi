@@ -11,18 +11,18 @@
 1. 节点 ``data.kb_id`` 指定单库（优先）
 2. 否则使用 ``RunContext.kb_ids``（Agent 发布流程对话时由 ``AgentService`` 注入）
 
-会话：节点内 ``AsyncSessionLocal`` 独立开库，避免与外层 HTTP 事务纠缠。
+模板库 live 引用经 ``RunContext.resolve_prompt_template``（L1 注入）加载，节点层不再直接 import
+tenant 模板模型。会话：KnowledgeSearch 节点内 ``AsyncSessionLocal`` 独立开库，避免与外层 HTTP
+事务纠缠。
 """
 
 from typing import Any
 from uuid import UUID
 
 from app.common.exceptions import BadRequestError
-from app.core.soft_delete import is_marked_deleted
 from app.flow_runtime.types import RunContext
 from app.infra.db import AsyncSessionLocal
 from app.rag.generate import format_hits_context, retrieve_hits
-from app.tenant.prompts.models import PromptTemplate
 
 _DEFAULT_PROMPT_TEMPLATE = "基于以下检索结果回答问题：\n\n{{检索结果}}\n\n问题：{{用户提问}}"
 
@@ -57,32 +57,16 @@ async def knowledge_search(
         )
 
 
-async def _load_prompt_template_content(
-    prompt_template_id: str,
-    tenant_id: str,
-) -> str | None:
-    """运行时从模板库加载 content（live 引用，非快照）。"""
-    try:
-        tid = UUID(str(prompt_template_id))
-        tenant_uuid = UUID(tenant_id)
-    except (ValueError, TypeError):
-        return None
-
-    async with AsyncSessionLocal() as db:
-        tpl = await db.get(PromptTemplate, tid)
-        if tpl and tpl.tenant_id == tenant_uuid and tpl.is_active and not is_marked_deleted(tpl):
-            return tpl.content
-    return None
-
-
 async def _resolve_node_template(
     node_data: dict[str, Any],
     ctx: RunContext,
 ) -> str:
-    """优先 ``prompt_template_id`` 运行时引用，否则内联 ``template``。"""
+    """优先 ``prompt_template_id`` 运行时引用（经 ctx 回调），否则内联 ``template``。"""
     prompt_template_id = node_data.get("prompt_template_id")
     if prompt_template_id:
-        loaded = await _load_prompt_template_content(str(prompt_template_id), ctx.tenant_id)
+        if ctx.resolve_prompt_template is None:
+            raise BadRequestError("运行上下文未提供 prompt 模板解析回调")
+        loaded = await ctx.resolve_prompt_template(str(prompt_template_id), ctx.tenant_id)
         if loaded:
             return loaded
     inline = node_data.get("template")

@@ -1,9 +1,10 @@
-"""画布 PromptTemplate 节点：内联模板与模板库 live 引用。"""
+"""画布 PromptTemplate 节点：内联模板与模板库 live 引用（经 RunContext 回调注入）。"""
 
 from uuid import uuid4
 
 import pytest
 
+from app.common.exceptions import BadRequestError
 from app.flow_runtime.nodes import rag_nodes
 from app.flow_runtime.types import RunContext
 
@@ -30,19 +31,17 @@ async def test_prompt_template_inline():
 
 
 @pytest.mark.asyncio
-async def test_prompt_template_live_reference(monkeypatch):
+async def test_prompt_template_live_reference():
     tenant_id = str(uuid4())
     template_id = str(uuid4())
     live_content = "LIVE {{用户提问}} / {{检索结果}}"
 
-    async def _fake_load(prompt_template_id: str, tid: str) -> str | None:
+    async def _fake_resolve(prompt_template_id: str, tid: str) -> str | None:
         assert prompt_template_id == template_id
         assert tid == tenant_id
         return live_content
 
-    monkeypatch.setattr(rag_nodes, "_load_prompt_template_content", _fake_load)
-
-    ctx = RunContext(tenant_id=tenant_id)
+    ctx = RunContext(tenant_id=tenant_id, resolve_prompt_template=_fake_resolve)
     out = await rag_nodes.prompt_template(
         {
             "prompt_template_id": template_id,
@@ -55,15 +54,13 @@ async def test_prompt_template_live_reference(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_prompt_template_live_reference_fallback_to_inline(monkeypatch):
+async def test_prompt_template_live_reference_fallback_to_inline():
     tenant_id = str(uuid4())
 
     async def _missing(_prompt_template_id: str, _tid: str) -> str | None:
         return None
 
-    monkeypatch.setattr(rag_nodes, "_load_prompt_template_content", _missing)
-
-    ctx = RunContext(tenant_id=tenant_id)
+    ctx = RunContext(tenant_id=tenant_id, resolve_prompt_template=_missing)
     out = await rag_nodes.prompt_template(
         {
             "prompt_template_id": str(uuid4()),
@@ -73,6 +70,29 @@ async def test_prompt_template_live_reference_fallback_to_inline(monkeypatch):
         ctx,
     )
     assert out == "备用 fallback"
+
+
+@pytest.mark.asyncio
+async def test_prompt_template_live_reference_without_callback_raises():
+    ctx = RunContext(tenant_id=str(uuid4()))
+    with pytest.raises(BadRequestError, match="prompt 模板解析回调"):
+        await rag_nodes.prompt_template(
+            {
+                "prompt_template_id": str(uuid4()),
+                "template": "内联不救 live 引用",
+            },
+            {"query": "q"},
+            ctx,
+        )
+
+    # 无回调 + 无 prompt_template_id：inline template 照常渲染，不报错
+    ctx_inline = RunContext(tenant_id=str(uuid4()))
+    out = await rag_nodes.prompt_template(
+        {"template": "问题：{{用户提问}}"},
+        {"query": "内联ok"},
+        ctx_inline,
+    )
+    assert out == "问题：内联ok"
 
 
 @pytest.mark.asyncio
