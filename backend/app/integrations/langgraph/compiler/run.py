@@ -42,6 +42,7 @@ async def run_compiled_canvas(
         "resolve_generative_video": ctx.resolve_generative_video,
         "submit_generative_image": ctx.submit_generative_image,
         "submit_generative_video": ctx.submit_generative_video,
+        "invoke_platform_tool": ctx.invoke_platform_tool,
         "outputs": {},
         "steps": [
             {
