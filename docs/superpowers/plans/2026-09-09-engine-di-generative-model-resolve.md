@@ -909,7 +909,7 @@ Expected：ruff 无错误；rg 无输出；pytest 条数 ≥ Task 1 基线。
 - 在 L103（B-2b 收敛记录）之后追加一段：
 
 ```markdown
-> **收敛记录（2026-09-09，B-2c）**：generative 模型解析与 job 执行编排上移 L1——`resolve_image_gen_model`/`resolve_tts_model`/`resolve_video_gen_model`/`pick_default_generative_model` 落 `tenant/models/services/generative_model_resolve.py`，`integrations/generative/{image,tts,video}/service.py` 只保留生成引擎，`generative/model_resolve.py` 已删除；worker 编排 `run_generative_{image,video}_job_async` 由 L3 `jobs/runner.py` 上移 L1 `tenant/generative/services/job_execution.py`；画布生图/生视频节点经 `RunContext.resolve_generative_image/video` 注入（见 plan [`2026-09-09-engine-di-generative-model-resolve`](../superpowers/plans/2026-09-09-engine-di-generative-model-resolve.md)）。`integrations`/`rag`/`flow_runtime` 对 `tenant.models.services` 引用清零。
+> **收敛记录（2026-09-09，B-2c）**：generative 模型解析与 job 执行编排上移 L1——`resolve_image_gen_model`/`resolve_tts_model`/`resolve_video_gen_model`/`pick_default_generative_model` 落 `tenant/models/services/generative_model_resolve.py`，`integrations/generative/{image,tts,video}/service.py` 只保留生成引擎，`generative/model_resolve.py` 已删除；worker 编排 `run_generative_{image,video}_job_async` 由 L3 `jobs/runner.py` 上移 L1 `tenant/generative/services/job_execution.py`；画布生图/生视频节点经 `RunContext.resolve_generative_image/video` 注入（见 plan [`2026-09-09-engine-di-generative-model-resolve`](../plans/2026-09-09-engine-di-generative-model-resolve.md)）。`integrations`/`rag`/`flow_runtime` 对 `tenant.models.services` 引用清零。
 ```
 
 - §8 修订记录表（L350 B-2b 行后）追加一行：

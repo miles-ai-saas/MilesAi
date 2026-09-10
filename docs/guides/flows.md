@@ -39,8 +39,8 @@ React Flow → PUT /flows/{id}/graph → flow_versions
 
 | 位置 | 说明 |
 |------|------|
-| 后端 JSON | [`flow_runtime/templates/rag_flow.json`](../backend/app/flow_runtime/templates/rag_flow.json) |
-| 结构说明 | [`templates/README.md`](../backend/app/flow_runtime/templates/README.md) |
+| 后端 JSON | [`flow_runtime/templates/rag_flow.json`](../../backend/app/flow_runtime/templates/rag_flow.json) |
+| 结构说明 | [`templates/README.md`](../../backend/app/flow_runtime/templates/README.md) |
 | 前端创建/插入 | `GET /flows/templates` ← `flow_runtime/templates/registry.py` |
 | 市场种子 | `tenant.marketplace.util.load_rag_graph_template()` |
 

@@ -542,7 +542,7 @@ Expected：ruff 全绿；第一条 rg 无命中（TYPE_CHECKING `services.agent`
 - 在 L105（B-2c 收敛记录）之后追加：
 
 ```markdown
-> **收敛记录（2026-09-09，B-2d）**：deepagents 编排契约反依赖收敛——`AgentPlanner`/`AgentRuntimeMode`/`SubAgentRoleHint` 及 `SUB_AGENT_ROLE_*` 常量下沉中立域 `models/agent/constants.py`（`tenant.agents.constants` 改 re-export），`integrations/deepagents` 与 `langgraph/runner` 不再运行期 import `tenant.agents.constants`；deepagents 对话 DTO 依赖收口为 L3 中性契约 `deepagents/io.py`（`ParentChatInput`/`SubAgentPlanResult`）+ `AgentService.chat_as_child_simple` 窄入口 + L1 `chat_entry` 边界解包/包回，`orchestrator`/`runner`/`subagent_graphs` 不再运行期 import `tenant.agents.schemas`（TYPE_CHECKING `AgentService` 注解保留）（见 plan [`2026-09-09-engine-di-deepagents-contract`](../superpowers/plans/2026-09-09-engine-di-deepagents-contract.md)）。
+> **收敛记录（2026-09-09，B-2d）**：deepagents 编排契约反依赖收敛——`AgentPlanner`/`AgentRuntimeMode`/`SubAgentRoleHint` 及 `SUB_AGENT_ROLE_*` 常量下沉中立域 `models/agent/constants.py`（`tenant.agents.constants` 改 re-export），`integrations/deepagents` 与 `langgraph/runner` 不再运行期 import `tenant.agents.constants`；deepagents 对话 DTO 依赖收口为 L3 中性契约 `deepagents/io.py`（`ParentChatInput`/`SubAgentPlanResult`）+ `AgentService.chat_as_child_simple` 窄入口 + L1 `chat_entry` 边界解包/包回，`orchestrator`/`runner`/`subagent_graphs` 不再运行期 import `tenant.agents.schemas`（TYPE_CHECKING `AgentService` 注解保留）（见 plan [`2026-09-09-engine-di-deepagents-contract`](../plans/2026-09-09-engine-di-deepagents-contract.md)）。
 ```
 
 - §8 修订记录表追加一行：

@@ -18,7 +18,7 @@ v1 目标：对齐参考 UI，交付可用的 HTTP 自定义工具管理，并�
 - 统一工具工作台 UI（全部 / 内置 / 自定义 Tab + 分类筛选）
 - 内置工具注册表（含参数 schema、新增 `get_current_datetime`）
 - 自定义 HTTP 工具 CRUD：slug、分类、版本、参数 schema、试调用
-- catalog API 合并 builtin + custom（**不含 MCP**，见 [tools.md](../guides/tools.md) §6）
+- catalog API 合并 builtin + custom（**不含 MCP**，见 [tools.md](../../guides/tools.md) §6）
 - Agent LangChain 动态 StructuredTool（自定义 HTTP）
 
 ### 1.2 v1 不做
@@ -232,7 +232,7 @@ Agent / 流程 / 试调用
 | 内置 | 仅 builtin | 只读 + 试调用 |
 | 自定义 | custom HTTP | CRUD + 试调用 |
 
-MCP 工具在 [MCP 工作台](/workbench/mcp) 管理，不在工具页展示。
+MCP 工具在 MCP 工作台（`/workbench/mcp`）管理，不在工具页展示。
 
 ---
 

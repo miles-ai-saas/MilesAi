@@ -274,7 +274,7 @@ Expected：rg 零命中；ruff 绿；定向全过；pytest ≥ 469 passed。
 `docs/architecture/layering.md`：在 G2-2 收敛记录之后追加：
 
 ```markdown
-> **收敛记录（2026-09-09，G2-3）**：画布 ComplianceCheck 节点收敛——纯算法 `CompliancePipeline`/`ScanMatch`/`ScanResult`/`SensitiveAction` 下沉中立域 `app.models.compliance`（`tenant.compliance.{models,services.pipeline}` 转 re-export shim），租户词表加载经 `RunContext.load_scan_words` 回调（L1 `tenant/compliance/services/scan_words_loader.py::build_scan_words_loader`）注入；`flow_runtime/nodes/compliance_nodes.py` 对 `tenant.*` import 与同步 `get_sync_db` 阻塞清零（见 plan [`2026-09-09-engine-di-flow-compliance-node`](../superpowers/plans/2026-09-09-engine-di-flow-compliance-node.md)）。
+> **收敛记录（2026-09-09，G2-3）**：画布 ComplianceCheck 节点收敛——纯算法 `CompliancePipeline`/`ScanMatch`/`ScanResult`/`SensitiveAction` 下沉中立域 `app.models.compliance`（`tenant.compliance.{models,services.pipeline}` 转 re-export shim），租户词表加载经 `RunContext.load_scan_words` 回调（L1 `tenant/compliance/services/scan_words_loader.py::build_scan_words_loader`）注入；`flow_runtime/nodes/compliance_nodes.py` 对 `tenant.*` import 与同步 `get_sync_db` 阻塞清零（见 plan [`2026-09-09-engine-di-flow-compliance-node`](../plans/2026-09-09-engine-di-flow-compliance-node.md)）。
 ```
 
 §8 修订表 G2-2 行之后追加：

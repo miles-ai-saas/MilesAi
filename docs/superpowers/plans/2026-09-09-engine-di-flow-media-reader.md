@@ -324,7 +324,7 @@ Expected：rg 零命中；ruff 绿；定向全过；全量 ≥ 497 passed。
 `docs/architecture/layering.md`：G2-1 收敛记录之后追加：
 
 ```markdown
-> **收敛记录（2026-09-09，G2-4a）**：画布媒体读取收敛——L3 中性契约 `app/models/media/reader.py`（`MediaReader`/`AttachmentBytes`）+ L1 短会话实现 `tenant/attachments/services/media_reader.py::build_flow_media_reader`（`AttachmentService` 增 `read_attachment_bytes`），经 `RunContext.media_reader` 注入；`flow_runtime/nodes/` 对 `tenant.*` import 清零，G2 画布节点面收官（AudioTranscribe 顺带修复误用图片读取的缺陷）。见 plan [`2026-09-09-engine-di-flow-media-reader`](../superpowers/plans/2026-09-09-engine-di-flow-media-reader.md)。
+> **收敛记录（2026-09-09，G2-4a）**：画布媒体读取收敛——L3 中性契约 `app/models/media/reader.py`（`MediaReader`/`AttachmentBytes`）+ L1 短会话实现 `tenant/attachments/services/media_reader.py::build_flow_media_reader`（`AttachmentService` 增 `read_attachment_bytes`），经 `RunContext.media_reader` 注入；`flow_runtime/nodes/` 对 `tenant.*` import 清零，G2 画布节点面收官（AudioTranscribe 顺带修复误用图片读取的缺陷）。见 plan [`2026-09-09-engine-di-flow-media-reader`](../plans/2026-09-09-engine-di-flow-media-reader.md)。
 ```
 
 §8 修订表加固行之后追加：

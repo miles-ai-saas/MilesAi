@@ -231,7 +231,7 @@ Expected：rg 零命中；ruff 绿；pytest ≥ 464 passed（含 prompt 节点�
 `docs/architecture/layering.md`：找 F2c-B 收敛记录，其后追加：
 
 ```markdown
-> **收敛记录（2026-09-09，G2-2）**：画布 PromptTemplate 节点模板库 live 引用收敛——`RunContext.resolve_prompt_template` 回调（L1 注入），loader `tenant/prompts/services/template_loader.py::build_prompt_template_loader` 承载原租户校验/短会话逻辑；`flow_runtime/nodes/rag_nodes.py` 删 `tenant.prompts.models` import（见 plan [`2026-09-09-engine-di-flow-prompt-loader`](../superpowers/plans/2026-09-09-engine-di-flow-prompt-loader.md)）。flow 画布节点面（G2）收敛起点。
+> **收敛记录（2026-09-09，G2-2）**：画布 PromptTemplate 节点模板库 live 引用收敛——`RunContext.resolve_prompt_template` 回调（L1 注入），loader `tenant/prompts/services/template_loader.py::build_prompt_template_loader` 承载原租户校验/短会话逻辑；`flow_runtime/nodes/rag_nodes.py` 删 `tenant.prompts.models` import（见 plan [`2026-09-09-engine-di-flow-prompt-loader`](../plans/2026-09-09-engine-di-flow-prompt-loader.md)）。flow 画布节点面（G2）收敛起点。
 ```
 
 §8 修订表 F2c-B 行之后追加：

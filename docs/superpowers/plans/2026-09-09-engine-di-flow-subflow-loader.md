@@ -254,7 +254,7 @@ Expected：rg 零命中；ruff 绿；定向全过；全量 ≥ 481 passed。
 `docs/architecture/layering.md`：G2-3 收敛记录之后追加：
 
 ```markdown
-> **收敛记录（2026-09-09，G2-1）**：画布 SubFlow/LoopNode 子图加载与编译期校验收敛——L3 中性仓储契约 `flow_runtime/subflow/contracts.py::FlowRepoLike`；运行期加载经 `RunContext.load_subflow_graph` 回调（L1 `tenant/flows/services/subflow_loader.py::build_subflow_graph_loader` 注入短会话 `FlowRepository`），编译期 `validate_subflow_references(repo, ...)` 由 L1 `FlowService` 传 `self.repo`；`flow_runtime/subflow/` 对 `tenant.*` import 清零（见 plan [`2026-09-09-engine-di-flow-subflow-loader`](../superpowers/plans/2026-09-09-engine-di-flow-subflow-loader.md)）。
+> **收敛记录（2026-09-09，G2-1）**：画布 SubFlow/LoopNode 子图加载与编译期校验收敛——L3 中性仓储契约 `flow_runtime/subflow/contracts.py::FlowRepoLike`；运行期加载经 `RunContext.load_subflow_graph` 回调（L1 `tenant/flows/services/subflow_loader.py::build_subflow_graph_loader` 注入短会话 `FlowRepository`），编译期 `validate_subflow_references(repo, ...)` 由 L1 `FlowService` 传 `self.repo`；`flow_runtime/subflow/` 对 `tenant.*` import 清零（见 plan [`2026-09-09-engine-di-flow-subflow-loader`](../plans/2026-09-09-engine-di-flow-subflow-loader.md)）。
 ```
 
 §8 修订表 G2-3 行之后追加：

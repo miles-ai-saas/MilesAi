@@ -345,7 +345,7 @@ Expected：rg 零命中（tool_agent 包现含 artifacts/loop/tool_contract—�
 `docs/architecture/layering.md`：在 F2c-A 收敛记录之后追加：
 
 ```markdown
-> **收敛记录（2026-09-09，F2c-B）**：agent 对话工具执行/确认面收敛——L3 中性契约 `tool_agent/tool_contract.py`（`ToolConfirmationSignal`/`ToolExecutor`），L1 executor `tenant/tools/services/agent_executor.py::build_agent_tool_executor`（meta 委托 `resolve_tool_meta`；invoke 委托 `invoke_tool_with_context`，确认信号转中性）；`tool_agent/loop.py` 增 `tool_executor` 入参由 chat_rag 两分支注入，`resolve_tool_meta`/`invoke_tool_with_context`/`ToolConfirmationRequired` 运行期引用清零（见 plan [`2026-09-09-engine-di-tool-agent-executor`](../superpowers/plans/2026-09-09-engine-di-tool-agent-executor.md)）。tools 契约计划（F2）完成：schema 面（F2b）+ 画布执行（F2c-A）+ 对话执行（F2c-B）三段收敛，`integrations/langchain/tool_agent` 与 `flow_runtime/nodes/tool_nodes` 对 `tenant.tools` 依赖清零。
+> **收敛记录（2026-09-09，F2c-B）**：agent 对话工具执行/确认面收敛——L3 中性契约 `tool_agent/tool_contract.py`（`ToolConfirmationSignal`/`ToolExecutor`），L1 executor `tenant/tools/services/agent_executor.py::build_agent_tool_executor`（meta 委托 `resolve_tool_meta`；invoke 委托 `invoke_tool_with_context`，确认信号转中性）；`tool_agent/loop.py` 增 `tool_executor` 入参由 chat_rag 两分支注入，`resolve_tool_meta`/`invoke_tool_with_context`/`ToolConfirmationRequired` 运行期引用清零（见 plan [`2026-09-09-engine-di-tool-agent-executor`](../plans/2026-09-09-engine-di-tool-agent-executor.md)）。tools 契约计划（F2）完成：schema 面（F2b）+ 画布执行（F2c-A）+ 对话执行（F2c-B）三段收敛，`integrations/langchain/tool_agent` 与 `flow_runtime/nodes/tool_nodes` 对 `tenant.tools` 依赖清零。
 ```
 
 §8 修订表 F2c-A 行之后追加：

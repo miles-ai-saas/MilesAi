@@ -95,7 +95,7 @@ Agent 启用条件（`app/tenant/agents/services/agent.py`）：
 - Tab：**工具列表** / **调用日志**
 - 来源筛选：全部 / 内置 / 自定义
 - 创建/编辑：sheet 布局；HTTP / Python 变换脚本
-- 顶部说明：外部 MCP 服务请前往 [MCP 工作台](/workbench/mcp)
+- 顶部说明：外部 MCP 服务请前往 MCP 工作台（`/workbench/mcp`）
 
 智能体表单「工具与能力」步骤：
 

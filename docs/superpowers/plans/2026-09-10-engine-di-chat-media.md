@@ -498,7 +498,7 @@ Expected：全部零命中；全量 ≥ 513 passed。
 `docs/architecture/layering.md`：G1-2 收敛记录之后追加：
 
 ```markdown
-> **收敛记录（2026-09-10，G1-3）**：`integrations/chat` 媒体读取收敛——多模态 I/O（`resolve_media_refs` / `build_invoke_messages_with_media`）首参由 `(db, ctx)` 改为 L3 中性 `MediaReader`，L1 新增 `SessionMediaReader`（复用调用方会话，`tenant.attachments.services.media_reader`）并注入 Agent 对话 / RAG / 工具循环 / 画布 LLMCall；`rag_qa` 顺带移除仅供读图的会话与 `_tenant_from_state`。至此 **`integrations/**` 与 `flow_runtime/**` 对 `tenant` 全域清零**，engine DI 反依赖收敛收官。见 plan [`2026-09-10-engine-di-chat-media`](../superpowers/plans/2026-09-10-engine-di-chat-media.md)。
+> **收敛记录（2026-09-10，G1-3）**：`integrations/chat` 媒体读取收敛——多模态 I/O（`resolve_media_refs` / `build_invoke_messages_with_media`）首参由 `(db, ctx)` 改为 L3 中性 `MediaReader`，L1 新增 `SessionMediaReader`（复用调用方会话，`tenant.attachments.services.media_reader`）并注入 Agent 对话 / RAG / 工具循环 / 画布 LLMCall；`rag_qa` 顺带移除仅供读图的会话与 `_tenant_from_state`。至此 **`integrations/**` 与 `flow_runtime/**` 对 `tenant` 全域清零**，engine DI 反依赖收敛收官。见 plan [`2026-09-10-engine-di-chat-media`](../plans/2026-09-10-engine-di-chat-media.md)。
 ```
 
 §8 修订表 G1-2 行之后追加：

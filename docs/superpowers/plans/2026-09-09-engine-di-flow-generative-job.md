@@ -642,7 +642,7 @@ Expected：ruff 全绿；两条 rg 无命中；pytest ≥ 447 passed。
 - 在 L105（B-2d 收敛记录）之后追加：
 
 ```markdown
-> **收敛记录（2026-09-09，B-2e）**：画布生图/生视频节点异步 job 提交上移 L1——`submit_generative_{image,video}_job` 落 `tenant/generative/services/job_execution.py`（构造 JobCreate 委托 `GenerativeJobService`，函数级 import 防循环），`ImageGenerate`/`VideoGenerate` 节点经 `RunContext.submit_generative_image/video`（L1 装配点按 settings `generative_*_async` 注入回调或 None）提交，节点不再 import `tenant.generative.{schemas.job, services.job}`（见 plan [`2026-09-09-engine-di-flow-generative-job`](../superpowers/plans/2026-09-09-engine-di-flow-generative-job.md)）。`flow_runtime` 对 `tenant` 引用继续收窄至 media/compliance/tools/rag 节点与 subflow 仓库面。
+> **收敛记录（2026-09-09，B-2e）**：画布生图/生视频节点异步 job 提交上移 L1——`submit_generative_{image,video}_job` 落 `tenant/generative/services/job_execution.py`（构造 JobCreate 委托 `GenerativeJobService`，函数级 import 防循环），`ImageGenerate`/`VideoGenerate` 节点经 `RunContext.submit_generative_image/video`（L1 装配点按 settings `generative_*_async` 注入回调或 None）提交，节点不再 import `tenant.generative.{schemas.job, services.job}`（见 plan [`2026-09-09-engine-di-flow-generative-job`](../plans/2026-09-09-engine-di-flow-generative-job.md)）。`flow_runtime` 对 `tenant` 引用继续收窄至 media/compliance/tools/rag 节点与 subflow 仓库面。
 ```
 
 - §8 修订记录表追加一行：

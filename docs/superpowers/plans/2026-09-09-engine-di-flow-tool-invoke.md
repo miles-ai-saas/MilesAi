@@ -291,7 +291,7 @@ Expected：rg 零命中、ruff 绿、pytest ≥ 456。
 `docs/architecture/layering.md`：在 F2b 收敛记录之后追加：
 
 ```markdown
-> **收敛记录（2026-09-09，F2c-A）**：画布 `platform_tool` 节点执行回调注入——工具执行迁入 L1 `tenant/tools/services/flow_invoker.py::build_flow_tool_invoker`（构造 `TenantContext` + 短会话 + 委托 `invoke_tool_with_context`），`RunContext.invoke_platform_tool` 由两根装配点（`chat_rag.flow_run_context`/`flow.py` debug-run）注入并经 LangGraph state（`compiler/run.py`+`build.py`）与 subflow `build_child_context` 透传；`flow_runtime/nodes/tool_nodes.py` 只保留参数合并与调度，对 `tenant.tools.invoke`/`infra.db`/`TenantContext` 依赖清零（见 plan [`2026-09-09-engine-di-flow-tool-invoke`](../superpowers/plans/2026-09-09-engine-di-flow-tool-invoke.md)）。`integrations/langchain/tool_agent/loop.py` 剩余 `tenant.tools.{confirmation,invoke}` 对话执行/确认面待 F2c-B。
+> **收敛记录（2026-09-09，F2c-A）**：画布 `platform_tool` 节点执行回调注入——工具执行迁入 L1 `tenant/tools/services/flow_invoker.py::build_flow_tool_invoker`（构造 `TenantContext` + 短会话 + 委托 `invoke_tool_with_context`），`RunContext.invoke_platform_tool` 由两根装配点（`chat_rag.flow_run_context`/`flow.py` debug-run）注入并经 LangGraph state（`compiler/run.py`+`build.py`）与 subflow `build_child_context` 透传；`flow_runtime/nodes/tool_nodes.py` 只保留参数合并与调度，对 `tenant.tools.invoke`/`infra.db`/`TenantContext` 依赖清零（见 plan [`2026-09-09-engine-di-flow-tool-invoke`](../plans/2026-09-09-engine-di-flow-tool-invoke.md)）。`integrations/langchain/tool_agent/loop.py` 剩余 `tenant.tools.{confirmation,invoke}` 对话执行/确认面待 F2c-B。
 ```
 
 §8 修订表 F2b 行之后追加：
