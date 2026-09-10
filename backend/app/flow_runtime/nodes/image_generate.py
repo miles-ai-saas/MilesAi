@@ -15,7 +15,7 @@ from app.flow_runtime.context_utils import tenant_context_from_run
 from app.flow_runtime.types import RunContext
 from app.infra.db import AsyncSessionLocal
 from app.integrations.generative import generate_image_for_model
-from app.integrations.generative.persist import PURPOSE_FLOW_GENERATED
+from app.integrations.generative.constants import PURPOSE_FLOW_GENERATED
 
 
 def _optional_uuid(raw: Any) -> UUID | None:

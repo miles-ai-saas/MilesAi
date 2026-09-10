@@ -8,14 +8,14 @@ from app.core.config import get_settings
 from app.core.tenant import TenantContext
 from app.infra.storage import build_attachment_object_key
 from app.infra.storage.resolve import resolve_object_storage_async
+from app.integrations.generative.constants import (  # noqa: F401  # re-export 保路径
+    PURPOSE_CHAT_GENERATED,
+    PURPOSE_FLOW_GENERATED,
+)
 from app.tenant.attachments.repositories.attachment import AttachmentRepository
 from app.tenant.kb.services.quota import apply_storage_delta, assert_can_upload_bytes
 
 settings = get_settings()
-
-# sys_attachments.purpose：区分对话工具产出与画布节点产出
-PURPOSE_CHAT_GENERATED = "chat_generated"
-PURPOSE_FLOW_GENERATED = "flow_generated"
 
 
 async def persist_generated_bytes(

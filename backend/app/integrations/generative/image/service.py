@@ -25,7 +25,8 @@ from app.integrations.generative.image.providers.openai_images import generate_o
 from app.integrations.generative.image.providers.volcengine_image import generate_volcengine_image
 from app.integrations.generative.reference import reference_image_data_url
 from app.integrations.generative.image.prompt_guard import sanitize_image_prompt
-from app.integrations.generative.persist import PURPOSE_CHAT_GENERATED, persist_generated_bytes
+from app.integrations.generative.constants import PURPOSE_CHAT_GENERATED
+from app.integrations.generative.persist import persist_generated_bytes
 from app.integrations.generative.registry import resolve_invoke_mode
 from app.integrations.generative.types import ImageGenerateResult
 from app.models.model import ModelConfig

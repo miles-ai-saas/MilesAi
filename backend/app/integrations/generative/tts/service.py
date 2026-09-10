@@ -14,7 +14,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.common.exceptions import BadRequestError
 from app.core.tenant import TenantContext
 from app.integrations.generative.constants import INVOKE_DASHSCOPE_TTS
-from app.integrations.generative.persist import PURPOSE_CHAT_GENERATED, persist_generated_bytes
+from app.integrations.generative.constants import PURPOSE_CHAT_GENERATED
+from app.integrations.generative.persist import persist_generated_bytes
 from app.integrations.generative.registry import resolve_invoke_mode
 from app.integrations.generative.tts.providers.dashscope_tts import generate_dashscope_tts
 from app.models.model import ModelConfig

@@ -5,7 +5,7 @@ from __future__ import annotations
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.tenant import TenantContext
-from app.tenant.compliance.constants import SCAN_MODULE_GENERATIVE
+from app.models.compliance.constants import SCAN_MODULE_GENERATIVE
 from app.tenant.compliance.services.compliance import ComplianceService
 
 

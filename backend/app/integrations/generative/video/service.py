@@ -17,7 +17,8 @@ from app.integrations.generative.constants import (
     INVOKE_DASHSCOPE_T2V,
     INVOKE_VOLCENGINE_VIDEO,
 )
-from app.integrations.generative.persist import PURPOSE_CHAT_GENERATED, persist_generated_bytes
+from app.integrations.generative.constants import PURPOSE_CHAT_GENERATED
+from app.integrations.generative.persist import persist_generated_bytes
 from app.integrations.generative.registry import resolve_invoke_mode
 from app.integrations.generative.reference import reference_image_data_url
 from app.integrations.generative.types import VideoGenerateResult

@@ -20,7 +20,7 @@ from app.core.soft_delete import is_marked_deleted, mark_deleted, not_deleted
 from app.core.tenant import TenantContext, assert_tenant_access
 from app.infra.storage import build_object_key
 from app.infra.storage.resolve import resolve_object_storage_async
-from app.integrations.generative.persist import PURPOSE_FLOW_GENERATED
+from app.integrations.generative.constants import PURPOSE_FLOW_GENERATED
 from app.models.media.attachment import Attachment
 from app.models.kb import DocumentStatus
 from app.models.media.media_asset import MediaAsset

@@ -1,5 +1,9 @@
 """生成类 ``ModelConfig.extra`` 键与 ``invoke_mode`` 常量。"""
 
+# --- 生成物附件 purpose（附件表 + 媒体资产登记 + 日配额口径共用）---
+PURPOSE_CHAT_GENERATED = "chat_generated"
+PURPOSE_FLOW_GENERATED = "flow_generated"
+
 # --- 生图 extra ---
 EXTRA_IMAGE_SIZE = "image_size"
 EXTRA_IMAGE_STYLE = "image_style"

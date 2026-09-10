@@ -1,6 +1,6 @@
 """媒体资产登记与升格规则。"""
 
-from app.integrations.generative.persist import PURPOSE_CHAT_GENERATED, PURPOSE_FLOW_GENERATED
+from app.integrations.generative.constants import PURPOSE_CHAT_GENERATED, PURPOSE_FLOW_GENERATED
 from app.tenant.media_assets.services.media_asset import (
     SOURCE_AGENT_TOOL,
     SOURCE_FLOW_NODE,
