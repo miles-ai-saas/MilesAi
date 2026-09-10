@@ -10,6 +10,8 @@ RAG 检索增强生成（线性路径，无 LangGraph）。
 ----
 - 检索：``integrations.langchain.vectorstores.search_multi_kb_async`` → ``rag.retrieve.multi_kb``。
 - 上下文：``generate.context.build_rag_user_prompt``。
+
+有附图但未传 ``media_reader`` 时显式 ``BadRequestError``，避免静默丢图。
 """
 
 from __future__ import annotations
@@ -19,6 +21,7 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.common.exceptions import BadRequestError
 from app.common.schemas.media import MediaRefIn
 from app.integrations.chat.multimodal import build_invoke_messages_with_media
 from app.integrations.langchain.chat_models import OnDelta, ainvoke_chat
@@ -106,7 +109,9 @@ async def rag_answer(
             hits=hits,
         )
     messages: list[dict[str, Any]]
-    if media and media_reader:
+    if media:
+        if media_reader is None:
+            raise BadRequestError("媒体读取器未装配（media_reader），无法解析附图")
         messages = await build_invoke_messages_with_media(
             media_reader,
             prompt_text=prompt,

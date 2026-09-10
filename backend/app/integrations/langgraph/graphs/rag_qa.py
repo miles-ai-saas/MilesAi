@@ -11,6 +11,7 @@ START → retrieve（``retrieve_hits`` 多 KB；仅用 ``query`` 文本，不用
          - none / 重试耗尽 → fallback（低相关或无命中话术）
 
 ``query`` 用于检索；``prompt_query`` 写入生成 prompt（Agent 附图场景可与 query 不同）。
+有附图（``state.media``）但 configurable 缺 ``media_reader`` 时显式报错，避免静默丢图。
 
 状态字段见 ``integrations.langgraph.state.RAGGraphState``；
 ``agent.config`` 可设 ``rag_max_retries``、``relevance_threshold``、``use_llm_grade``。
@@ -24,6 +25,7 @@ from uuid import UUID
 from langchain_core.runnables import RunnableConfig
 from langgraph.graph import END, START, StateGraph
 
+from app.common.exceptions import BadRequestError
 from app.integrations.chat.multimodal import (
     build_invoke_messages_with_media,
     media_refs_from_items,
@@ -168,7 +170,9 @@ async def generate(state: RAGGraphState, config: RunnableConfig) -> dict[str, An
 
     media_refs = media_refs_from_items(state.get("media"))
     media_reader = config.get("configurable", {}).get("media_reader") if config else None
-    if media_refs and media_reader:
+    if media_refs:
+        if media_reader is None:
+            raise BadRequestError("媒体读取器未装配（media_reader），无法解析附图")
         messages = await build_invoke_messages_with_media(
             media_reader,
             prompt_text=prompt,
@@ -215,7 +219,9 @@ async def fallback(state: RAGGraphState, config: RunnableConfig) -> dict[str, An
         )
     media_refs = media_refs_from_items(state.get("media"))
     media_reader = config.get("configurable", {}).get("media_reader") if config else None
-    if media_refs and media_reader:
+    if media_refs:
+        if media_reader is None:
+            raise BadRequestError("媒体读取器未装配（media_reader），无法解析附图")
         messages = await build_invoke_messages_with_media(
             media_reader,
             prompt_text=prompt,
