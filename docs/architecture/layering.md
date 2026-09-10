@@ -122,6 +122,8 @@ L0 → L1 → L2 → L3 → L4
 
 > **收敛记录（2026-09-09，G2-1）**：画布 SubFlow/LoopNode 子图加载与编译期校验收敛——L3 中性仓储契约 `flow_runtime/subflow/contracts.py::FlowRepoLike`；运行期加载经 `RunContext.load_subflow_graph` 回调（L1 `tenant/flows/services/subflow_loader.py::build_subflow_graph_loader` 注入短会话 `FlowRepository`），编译期 `validate_subflow_references(repo, ...)` 由 L1 `FlowService` 传 `self.repo`；`flow_runtime/subflow/` 对 `tenant.*` import 清零（见 plan [`2026-09-09-engine-di-flow-subflow-loader`](../superpowers/plans/2026-09-09-engine-di-flow-subflow-loader.md)）。
 
+> **收敛记录（2026-09-09，G2-4a）**：画布媒体读取收敛——L3 中性契约 `app/models/media/reader.py`（`MediaReader`/`AttachmentBytes`）+ L1 短会话实现 `tenant/attachments/services/media_reader.py::build_flow_media_reader`（`AttachmentService` 增 `read_attachment_bytes`），经 `RunContext.media_reader` 注入；`flow_runtime/nodes/` 对 `tenant.*` import 清零，G2 画布节点面收官（AudioTranscribe 顺带修复误用图片读取的缺陷）。见 plan [`2026-09-09-engine-di-flow-media-reader`](../superpowers/plans/2026-09-09-engine-di-flow-media-reader.md)。
+
 ### 2.3 运营后台（`admin/`）访问租户域
 
 `admin/`（L0/L1，`/api/admin/v1`）为平台运营面：审核租户内容、管理租户与配额时须读取租户域数据。允许 `admin → tenant` **单向**访问，但只能走下列合规形态：
@@ -379,3 +381,4 @@ backend/tests/
 | 2026-09-09 | G2-3：flow ComplianceCheck 节点收敛——合规纯算法下沉 models/compliance + 词表加载 RunContext 回调，compliance_nodes 对 tenant 清零 |
 | 2026-09-09 | G2-1：flow 子流程加载/校验收敛——FlowRepoLike 契约 + RunContext.load_subflow_graph 回调，subflow 包对 tenant 清零 |
 | 2026-09-09 | 加固：deepagents 三文件 `TYPE_CHECKING` 残留收敛——`io.AgentServiceLike` 中性 Protocol 取代租户 `AgentService` 注解，deepagents 包（含类型引用）对 tenant 全清；新增源码守卫测试 `tests/test_l3_neutral_imports.py` |
+| 2026-09-09 | G2-4a：画布媒体读取收敛——MediaReader 中立契约 + RunContext.media_reader + L1 短会话读取器，flow_runtime/nodes 对 tenant 清零（G2 画布节点面收官） |

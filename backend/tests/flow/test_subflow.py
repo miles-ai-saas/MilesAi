@@ -85,6 +85,7 @@ def test_build_child_context_forwards_resolve_model_and_usage_sink():
 
     usage_sink = object()
     kb_retrieval = object()
+    media_reader = object()
     parent = RunContext(
         tenant_id=str(uuid4()),
         inputs={"query": "hello"},
@@ -95,6 +96,7 @@ def test_build_child_context_forwards_resolve_model_and_usage_sink():
         resolve_prompt_template=fake_prompt_loader,
         load_scan_words=fake_words_loader,
         load_subflow_graph=fake_subflow_loader,
+        media_reader=media_reader,
     )
     child = build_child_context(
         parent,
@@ -114,6 +116,7 @@ def test_build_child_context_forwards_resolve_model_and_usage_sink():
     assert child.resolve_prompt_template is fake_prompt_loader
     assert child.load_scan_words is fake_words_loader
     assert child.load_subflow_graph is fake_subflow_loader
+    assert child.media_reader is media_reader
 
 
 def test_max_subflow_depth_constant():

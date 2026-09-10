@@ -218,6 +218,7 @@ class FlowService(BaseService):
 
         ``body.kb_ids`` 用于测试带 KnowledgeSearch 节点的画布。
         """
+        from app.tenant.attachments.services.media_reader import build_flow_media_reader
         from app.tenant.compliance.services.scan_words_loader import build_scan_words_loader
         from app.tenant.flows.services.subflow_loader import build_subflow_graph_loader
         from app.tenant.prompts.services.template_loader import build_prompt_template_loader
@@ -281,6 +282,7 @@ class FlowService(BaseService):
                 resolve_prompt_template=build_prompt_template_loader(),
                 load_scan_words=build_scan_words_loader(),
                 load_subflow_graph=build_subflow_graph_loader(),
+                media_reader=build_flow_media_reader(tenant_id=str(self.ctx.tenant_id), user_id=self.ctx.user_id),
             )
             if "query" not in ctx.inputs and run_inputs:
                 ctx.inputs.setdefault("query", run_inputs.get("message", ""))

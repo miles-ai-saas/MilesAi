@@ -46,6 +46,7 @@ async def run_compiled_canvas(
         "resolve_prompt_template": ctx.resolve_prompt_template,
         "load_scan_words": ctx.load_scan_words,
         "load_subflow_graph": ctx.load_subflow_graph,
+        "media_reader": ctx.media_reader,
         "outputs": {},
         "steps": [
             {

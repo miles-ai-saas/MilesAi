@@ -78,6 +78,7 @@ class AgentChatRagMixin:
         media: list | None = None,
     ) -> RunContext:
         """构造流程画布 ``RunContext``（含 system_prompt、KB、附图 payload）。"""
+        from app.tenant.attachments.services.media_reader import build_flow_media_reader
         from app.tenant.compliance.services.scan_words_loader import build_scan_words_loader
         from app.tenant.flows.services.subflow_loader import build_subflow_graph_loader
         from app.tenant.prompts.services.template_loader import build_prompt_template_loader
@@ -114,6 +115,7 @@ class AgentChatRagMixin:
             resolve_prompt_template=build_prompt_template_loader(),
             load_scan_words=build_scan_words_loader(),
             load_subflow_graph=build_subflow_graph_loader(),
+            media_reader=build_flow_media_reader(tenant_id=str(self.ctx.tenant_id), user_id=self.ctx.user_id),
         )
 
     async def maybe_augment_a2a(self, agent: Agent, body: ChatRequest, response: ChatResponse) -> ChatResponse:

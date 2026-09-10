@@ -70,6 +70,8 @@ def test_flow_run_context_injects_resolvers_and_bindings_always():
     # 子流程图加载回调恒定注入（画布 SubFlow/LoopNode 节点装配）
     assert ctx.load_subflow_graph is not None
     assert callable(ctx.load_subflow_graph)
+    # 媒体读取器恒定注入（画布 OcrExtract/AudioTranscribe 节点装配）
+    assert ctx.media_reader is not None
 
 
 def test_flow_run_context_injects_submitters_when_async_enabled(monkeypatch):
