@@ -35,17 +35,12 @@ async def generate_speech_for_model(
     trace_id: str | None = None,
 ) -> dict:
     """调用 TTS 模型生成语音，持久化为附件并返回结果。"""
-    mode = resolve_invoke_mode(model, capability=ModelCapabilityType.TTS.value) or INVOKE_DASHSCOPE_TTS
-
-    if mode == INVOKE_DASHSCOPE_TTS:
-        audio_bytes = await generate_dashscope_tts(
-            model,
-            text=text,
-            voice=voice,
-            speech_rate=speech_rate,
-        )
-    else:
-        raise BadRequestError(f"不支持的 TTS invoke_mode: {mode}")
+    audio_bytes = await generate_tts_bytes(
+        model,
+        text=text,
+        voice=voice,
+        speech_rate=speech_rate,
+    )
 
     attachment_id = await persist_generated_bytes(
         db,
@@ -63,3 +58,23 @@ async def generate_speech_for_model(
         "mime_type": "audio/wav",
         "text_length": len(text),
     }
+
+
+async def generate_tts_bytes(
+    model: ModelConfig,
+    *,
+    text: str,
+    voice: str = "longxiaochun",
+    speech_rate: float = 1.0,
+) -> bytes:
+    """按 invoke_mode 分发到 TTS Provider，返回音频字节。仅厂商派发，无租户副作用。"""
+    mode = resolve_invoke_mode(model, capability=ModelCapabilityType.TTS.value) or INVOKE_DASHSCOPE_TTS
+
+    if mode == INVOKE_DASHSCOPE_TTS:
+        return await generate_dashscope_tts(
+            model,
+            text=text,
+            voice=voice,
+            speech_rate=speech_rate,
+        )
+    raise BadRequestError(f"不支持的 TTS invoke_mode: {mode}")

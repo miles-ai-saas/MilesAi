@@ -121,7 +121,7 @@ async def test_generate_image_for_model_with_reference():
             return_value="data:image/png;base64,abc",
         ),
         patch(
-            "app.integrations.generative.image.service._generate_bytes",
+            "app.integrations.generative.image.service.generate_image_bytes",
             new_callable=AsyncMock,
             return_value=[b"\x89PNG\r\n"],
         ) as gen,
@@ -172,7 +172,7 @@ async def test_generate_image_for_model_persists():
             new_callable=AsyncMock,
         ),
         patch(
-            "app.integrations.generative.image.service._generate_bytes",
+            "app.integrations.generative.image.service.generate_image_bytes",
             new_callable=AsyncMock,
             return_value=[b"\x89PNG\r\n"],
         ),

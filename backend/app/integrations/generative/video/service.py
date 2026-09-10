@@ -88,29 +88,15 @@ async def generate_video_for_model(
         progress = GenerativeJobProgress(generative_job_id)
         await progress.update(8, "已提交厂商任务")
 
-    mode = resolve_invoke_mode(model, capability=ModelCapabilityType.VIDEO_GEN.value)
-    if mode == INVOKE_DASHSCOPE_T2V:
-        video_bytes = await generate_dashscope_video(
-            model,
-            prompt=prompt,
-            duration=duration,
-            resolution=resolution,
-            first_frame_data_url=first_frame,
-            last_frame_data_url=last_frame,
-            progress=progress,
-        )
-    elif mode == INVOKE_VOLCENGINE_VIDEO:
-        video_bytes = await generate_volcengine_video(
-            model,
-            prompt=prompt,
-            duration=duration,
-            resolution=resolution,
-            first_frame_data_url=first_frame,
-            last_frame_data_url=last_frame,
-            progress=progress,
-        )
-    else:
-        raise BadRequestError(f"不支持的生视频 invoke_mode: {mode}")
+    video_bytes = await generate_video_bytes(
+        model,
+        prompt=prompt,
+        duration=duration,
+        resolution=resolution,
+        first_frame_data_url=first_frame,
+        last_frame_data_url=last_frame,
+        progress=progress,
+    )
 
     if progress:
         await progress.update(96, "保存生成物…")
@@ -161,3 +147,41 @@ async def generate_video_for_model(
         duration_sec=duration,
         media_asset_id=row.id,
     )
+
+
+async def generate_video_bytes(
+    model: ModelConfig,
+    *,
+    prompt: str,
+    duration: int = 5,
+    resolution: str | None = None,
+    first_frame_data_url: str | None = None,
+    last_frame_data_url: str | None = None,
+    progress: object | None = None,
+) -> bytes:
+    """按 invoke_mode 分发到具体厂商，返回 mp4 字节（节点内同步轮询至完成）。
+
+    仅厂商派发，不含租户副作用（合规/配额/持久化）。
+    """
+    mode = resolve_invoke_mode(model, capability=ModelCapabilityType.VIDEO_GEN.value)
+    if mode == INVOKE_DASHSCOPE_T2V:
+        return await generate_dashscope_video(
+            model,
+            prompt=prompt,
+            duration=duration,
+            resolution=resolution,
+            first_frame_data_url=first_frame_data_url,
+            last_frame_data_url=last_frame_data_url,
+            progress=progress,
+        )
+    if mode == INVOKE_VOLCENGINE_VIDEO:
+        return await generate_volcengine_video(
+            model,
+            prompt=prompt,
+            duration=duration,
+            resolution=resolution,
+            first_frame_data_url=first_frame_data_url,
+            last_frame_data_url=last_frame_data_url,
+            progress=progress,
+        )
+    raise BadRequestError(f"不支持的生视频 invoke_mode: {mode}")

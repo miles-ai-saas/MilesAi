@@ -45,7 +45,7 @@ IMAGE_PROVIDER_ALIASES: dict[str, str] = {
 }
 
 
-async def _generate_bytes(
+async def generate_image_bytes(
     model: ModelConfig,
     *,
     prompt: str,
@@ -57,6 +57,7 @@ async def _generate_bytes(
     """按 invoke_mode 分发到具体 Provider，返回原始图片字节列表。
 
     按 Provider 函数签名过滤 kwargs，避免各厂商参数名不一致导致 TypeError。
+    仅厂商派发，不含租户副作用（合规/配额/持久化）。
     """
     import inspect
 
@@ -129,7 +130,7 @@ async def generate_image_for_model(
         job_progress = GenerativeJobProgress(generative_job_id)
         await job_progress.update(10, "调用生图 API")
 
-    blobs = await _generate_bytes(
+    blobs = await generate_image_bytes(
         model,
         prompt=prompt,
         size=resolved_size,
