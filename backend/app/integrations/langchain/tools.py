@@ -22,13 +22,73 @@
 
 from __future__ import annotations
 
+import hashlib
+import re
 from dataclasses import dataclass
 from typing import Any
 
 from langchain_core.tools import StructuredTool
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, create_model
 
 from app.models.tool.parameters import parameters_to_pydantic
+
+# --- MCP 工具 → LLM function name（OpenAI 仅允许 [A-Za-z0-9_-]，≤64 字符）---
+
+MCP_FUNCTION_PREFIX = "mcp__"
+_MAX_FUNCTION_NAME = 64
+_INVALID_IDENT_CHARS = re.compile(r"[^A-Za-z0-9_]")
+_INVALID_FIELD_CHARS = re.compile(r"\W")
+
+
+def sanitize_ident(raw: str) -> str:
+    """把任意名称清洗为 `[A-Za-z0-9_]`；全非法时返回空串。"""
+    return _INVALID_IDENT_CHARS.sub("_", str(raw or "")).strip("_")
+
+
+def _service_ident(service_name: str) -> str:
+    """服务标识：纯 ASCII 名称直接用；含中文等被清洗字符时追加 4 位哈希防塌缩碰撞。"""
+    raw = str(service_name or "")
+    cleaned = sanitize_ident(raw)
+    if cleaned and cleaned == raw:
+        return cleaned
+    digest = hashlib.sha1(raw.encode("utf-8")).hexdigest()[:4]
+    return f"{cleaned or 'svc'}_{digest}"
+
+
+def compose_mcp_tool_name(service_name: str, tool_name: str) -> str:
+    """组合 MCP 工具的 function name：``mcp__{service}__{tool}``（超长则截断 + 短哈希）。
+
+    服务名清洗有损（如含中文）时追加 4 位哈希；整体超长时追加 6 位摘要，
+    保证同一 (service, tool) 稳定且几乎不碰撞。
+    """
+    svc = _service_ident(service_name)
+    tool = sanitize_ident(tool_name) or "tool"
+    name = f"{MCP_FUNCTION_PREFIX}{svc}__{tool}"
+    if len(name) <= _MAX_FUNCTION_NAME:
+        return name
+    digest = hashlib.sha1(f"{service_name}\x00{tool_name}".encode("utf-8")).hexdigest()[:6]
+    # prefix + svc + "__" + tool + "_" + digest ≤ 64
+    budget = _MAX_FUNCTION_NAME - len(MCP_FUNCTION_PREFIX) - 2 - 1 - len(digest)
+    svc_budget = min(len(svc), max(4, budget // 3))
+    tool_budget = max(4, budget - svc_budget)
+    return f"{MCP_FUNCTION_PREFIX}{svc[:svc_budget]}__{tool[:tool_budget]}_{digest}"
+
+
+def is_mcp_tool_name(name: str | None) -> bool:
+    """是否为绑定 MCP 服务的 function name。"""
+    return bool(name) and str(name).startswith(MCP_FUNCTION_PREFIX)
+
+
+def select_agent_tools(tools: list, allowed_slugs: list | None) -> list:
+    """按 ``tool_slugs`` 白名单过滤工具列表。
+
+    MCP 工具经 ``config.mcp_service_ids`` 绑定即视为启用，不受白名单过滤
+    （未绑定时工具集合中本就不含 MCP，故不会意外放开）。
+    """
+    if not allowed_slugs:
+        return list(tools)
+    allowed = {str(s) for s in allowed_slugs}
+    return [t for t in tools if t.name in allowed or is_mcp_tool_name(t.name)]
 
 
 @dataclass(frozen=True)
@@ -40,6 +100,84 @@ class CustomToolSpec:
     description: str | None
     tool_type: str  # "http" | "script"
     parameters: list[dict]
+
+
+@dataclass(frozen=True)
+class McpToolSpec:
+    """绑定 MCP 服务中单个 tool 的 L3 中性描述（L1 loader 自 ``tools_cache`` 构造）。"""
+
+    slug: str  # LLM function name，mcp__{service}__{tool}
+    tool_name: str  # MCP tools/call 的原始 name
+    service_id: str
+    service_name: str
+    description: str | None
+    input_schema: dict | None  # MCP tools/list 的 inputSchema（JSON Schema）
+
+
+def _field_name(raw: str) -> str:
+    """把 JSON Schema 属性名转为合法 pydantic 字段名（保留可映射的清洗结果）。"""
+    name = _INVALID_FIELD_CHARS.sub("_", str(raw or "")).strip("_")
+    if not name or name[0].isdigit() or name.startswith("model_"):
+        name = f"f_{name}" if name else "f_field"
+    return name
+
+
+def mcp_param_alias(input_schema: dict | None) -> dict[str, str]:
+    """返回「pydantic 字段名 → JSON Schema 原始属性名」映射（仅含被清洗的键）。"""
+    if not isinstance(input_schema, dict):
+        return {}
+    props = input_schema.get("properties")
+    if not isinstance(props, dict):
+        return {}
+    return {_field_name(raw): raw for raw in props if _field_name(raw) != raw}
+
+
+def json_schema_to_pydantic(input_schema: dict | None, *, model_name: str = "McpToolParams") -> type[BaseModel] | None:
+    """把 MCP ``inputSchema``（JSON Schema）转为 pydantic 模型，供 LLM function schema 使用。
+
+    支持 string/integer/number/boolean/object/array 与 enum；无可解析属性时返回 ``None``。
+    仅用于生成 LLM 可见的 parameters schema，执行不经本模型。
+    """
+    if not isinstance(input_schema, dict):
+        return None
+    props = input_schema.get("properties")
+    if not isinstance(props, dict) or not props:
+        return None
+    required = {str(r) for r in (input_schema.get("required") or [])}
+    fields: dict[str, Any] = {}
+    for raw_name, raw_prop in props.items():
+        prop = raw_prop if isinstance(raw_prop, dict) else {}
+        py_type = _json_scalar_type(prop.get("type"))
+        is_required = raw_name in required
+        if is_required:
+            annotation: Any = py_type
+            default: Any = ...
+        else:
+            annotation = py_type | None
+            default = prop.get("default", None)
+        extra: dict[str, Any] = {}
+        enum = prop.get("enum")
+        if isinstance(enum, list) and enum:
+            extra["enum"] = enum
+        fields[_field_name(raw_name)] = (
+            annotation,
+            Field(default=default, description=prop.get("description"), json_schema_extra=extra or None),
+        )
+    return create_model(model_name, **fields)
+
+
+def _json_scalar_type(json_type: Any) -> Any:
+    """JSON Schema type → python 类型；联合类型取首个非 null。"""
+    if isinstance(json_type, list):
+        json_type = next((t for t in json_type if t != "null"), None)
+    return {
+        "string": str,
+        "integer": int,
+        "number": float,
+        "boolean": bool,
+        "object": dict,
+        "array": list,
+    }.get(json_type, Any)
 
 
 class CalculatorInput(BaseModel):
@@ -292,14 +430,38 @@ def make_custom_script_tool(spec: CustomToolSpec) -> StructuredTool:
     )
 
 
+def make_mcp_tool(spec: McpToolSpec) -> StructuredTool:
+    """将绑定 MCP 的单个 tool（``McpToolSpec``）转为 StructuredTool。
+
+    schema 取自 ``inputSchema``（JSON Schema → pydantic），仅供 LLM 选型填参；
+    实际执行走 L1 ``invoke_tool_with_context``（``source=mcp``）。
+    """
+    schema = json_schema_to_pydantic(spec.input_schema)
+    description = spec.description or f"{spec.service_name} · {spec.tool_name}"
+    slug = spec.slug
+
+    async def _arun(**kwargs: Any) -> dict:
+        raise RuntimeError(f"请通过 invoke_tool_with_context 执行 {slug}")
+
+    kwargs: dict[str, Any] = {
+        "coroutine": _arun,
+        "name": slug,
+        "description": description,
+    }
+    if schema is not None:
+        kwargs["args_schema"] = schema
+    return StructuredTool.from_function(**kwargs)
+
+
 def build_platform_tools(
     agent_config: dict | None,
     custom_specs: list[CustomToolSpec] | None = None,
+    mcp_specs: list[McpToolSpec] | None = None,
 ) -> list[StructuredTool]:
     """构造画布/对话工具 schema 列表（纯函数，不查 DB、不执行）。
 
     内置工具 + 绑定技能包 ``skill_*`` + ``enable_generative_tools`` 时的
-    ``generate_*`` + 租户自定义 HTTP/SCRIPT 工具（``CustomToolSpec``）。
+    ``generate_*`` + 租户自定义 HTTP/SCRIPT 工具 + 绑定 MCP 服务的 tools。
     ``agent_config`` 缺失时仅内置工具。
     """
     cfg = agent_config if isinstance(agent_config, dict) else {}
@@ -313,4 +475,6 @@ def build_platform_tools(
             tools.append(make_custom_http_tool(spec))
         elif spec.tool_type == "script":
             tools.append(make_custom_script_tool(spec))
+    for spec in mcp_specs or []:
+        tools.append(make_mcp_tool(spec))
     return tools

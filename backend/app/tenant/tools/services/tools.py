@@ -26,6 +26,7 @@ from app.tenant.categories.services.category import CategoryService
 from app.models.meta.tag import TagEntityType
 from app.tenant.tags.schemas.tag import TagRefOut
 from app.tenant.tags.services.tag import TagService
+from app.integrations.langchain.tools import is_mcp_tool_name
 from app.tenant.tools.builtin_registry import BUILTIN_REGISTRY, BUILTIN_SLUGS
 from app.tenant.tools.confirmation import ToolConfirmationRequired
 from app.tenant.tools.invoke import invoke_tool_with_context
@@ -46,6 +47,15 @@ from app.tenant.tools.schemas.tools import (
 )
 from app.core.soft_delete import append_not_deleted, is_marked_deleted, mark_deleted, not_deleted
 from app.core.service import BaseService
+
+
+def _tool_source_of(name: str, *, has_tool_id: bool = False) -> str:
+    """试调用结果来源标注：builtin / custom / mcp。"""
+    if is_mcp_tool_name(name):
+        return "mcp"
+    if name in BUILTIN_SLUGS and not has_tool_id:
+        return "builtin"
+    return "custom"
 
 
 class ToolsService(BaseService):
@@ -192,7 +202,7 @@ class ToolsService(BaseService):
                 invoke_source="api",
             )
         except ToolConfirmationRequired as exc:
-            source = "builtin" if exc.slug in BUILTIN_SLUGS else "custom"
+            source = _tool_source_of(exc.slug)
             return ToolInvokeResult(
                 tool=exc.slug,
                 source=source,
@@ -204,7 +214,7 @@ class ToolsService(BaseService):
                     params=exc.params,
                 ),
             )
-        source = "custom" if body.tool_id else ("builtin" if name in BUILTIN_SLUGS else "custom")
+        source = _tool_source_of(name, has_tool_id=bool(body.tool_id))
         return ToolInvokeResult(tool=name, source=source, status="success", output=output)
 
     async def list_invocation_logs(self, params: PageParams, *, tool_slug: str | None = None) -> PageResult[ToolInvocationLogOut]:

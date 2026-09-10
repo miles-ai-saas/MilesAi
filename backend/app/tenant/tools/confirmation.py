@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.common.exceptions import BadRequestError
 from app.core.tenant import TenantContext
+from app.integrations.langchain.tools import is_mcp_tool_name
 from app.tenant.tools.builtin_registry import get_builtin
 from app.tenant.tools.models import Tool
 from app.core.soft_delete import is_marked_deleted
@@ -54,6 +55,14 @@ async def resolve_tool_meta(
             "source": "builtin",
             "tool_id": None,
         }
+
+    if is_mcp_tool_name(slug):
+        from app.tenant.tools.services.mcp_tools import resolve_mcp_tool_meta
+
+        meta = await resolve_mcp_tool_meta(db, ctx, slug)
+        if not meta:
+            raise BadRequestError("MCP 工具不存在或服务未同步")
+        return meta
 
     tool = await db.scalar(
         select(Tool).where(

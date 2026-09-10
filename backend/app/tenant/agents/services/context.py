@@ -16,6 +16,7 @@ from app.tenant.mcp.models import McpService
 from app.tenant.skills.models import SkillPackage
 from app.tenant.skills.skill_layout import format_layout_prompt_blocks
 from app.tenant.skills.storage import read_skill_md
+from app.integrations.langchain.tools import compose_mcp_tool_name
 from app.tenant.tools.builtin_registry import BUILTIN_REGISTRY
 from app.tenant.tools.models import Tool
 from app.core.soft_delete import is_marked_deleted, not_deleted
@@ -135,13 +136,22 @@ async def build_skill_mcp_prompt_block(
         filters = tenant_filters(ctx, McpService.tenant_id)
         stmt = select(McpService).where(McpService.id.in_(mcp_ids), *filters)
         services = (await db.execute(stmt)).scalars().all()
+        callable_hint = bool(config.get("enable_tool_calling") or config.get("enable_generative_tools"))
         for svc in services:
-            tools = svc.tools_cache or []
+            tools = [
+                t
+                for t in (svc.tools_cache or [])
+                if isinstance(t, dict) and str(t.get("name") or "").strip() and not str(t["name"]).endswith("_placeholder")
+            ]
             if not tools:
                 parts.append(f"【MCP · {svc.name}】尚未同步工具，请先在市场/MCP 页同步。")
                 continue
-            lines = [f"- {t.get('name', 'tool')}: {t.get('description', '')}" for t in tools[:12]]
-            parts.append(f"【MCP · {svc.name}】（仅说明，对话内不自动调用；试调用请用 MCP 页）\n" + "\n".join(lines))
+            lines = [
+                f"- {compose_mcp_tool_name(svc.name, str(t.get('name')))}: {t.get('description', '')}"
+                for t in tools[:12]
+            ]
+            suffix = "（可 function calling 自动调用）" if callable_hint else "（启用工具调用后可自动调用）"
+            parts.append(f"【MCP · {svc.name}】{suffix}\n" + "\n".join(lines))
 
     await _append_platform_tools_block(db, ctx, config, parts)
 

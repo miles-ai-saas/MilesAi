@@ -13,6 +13,7 @@ from app.common.exceptions import BadRequestError, NotFoundError
 from app.common.trace import get_trace_id
 from app.core.soft_delete import is_marked_deleted
 from app.core.tenant import TenantContext
+from app.integrations.langchain.tools import is_mcp_tool_name
 from app.tenant.hooks.models import HookScope, HookTrigger
 from app.tenant.hooks.services.runner import HookRunner
 from app.tenant.tools.builtin_registry import BUILTIN_SLUGS, SKILL_BOUND_SLUGS
@@ -56,6 +57,11 @@ async def invoke_tool_by_name(
     agent_id: UUID | None = None,
 ) -> dict:
     """按 slug 执行；不含确认与日志（内部用）。"""
+    if is_mcp_tool_name(name):
+        from app.tenant.tools.services.mcp_tools import invoke_mcp_tool_by_slug
+
+        return await invoke_mcp_tool_by_slug(db, ctx, name, params)
+
     if name in BUILTIN_SLUGS and not tool_id:
         return await invoke_builtin(
             name,

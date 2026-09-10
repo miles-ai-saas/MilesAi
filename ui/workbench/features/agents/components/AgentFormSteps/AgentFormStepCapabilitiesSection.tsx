@@ -136,8 +136,8 @@ export function AgentFormStepCapabilitiesSection({ form, setForm, flows, skills,
         )}
       </div>
       <div className="rounded-lg border border-line-soft p-4 lg:col-span-2">
-        <p className="mb-1 text-xs font-medium text-ink-muted">MCP 服务（可多选，仅注入提示词）</p>
-        <p className="mb-2 text-xs text-ink-faint">MCP 与平台工具分离；绑定后写入系统提示，对话内暂不自动调用。</p>
+        <p className="mb-1 text-xs font-medium text-ink-muted">MCP 服务（可多选，绑定后工具可 function calling 调用）</p>
+        <p className="mb-2 text-xs text-ink-faint">MCP 与平台工具分离；绑定并同步后，其工具加入本智能体可调用集合（只读工具免确认，其余需用户确认）。</p>
         <div className="flex max-h-32 flex-wrap gap-2 overflow-y-auto">
           {mcps.length === 0 && <span className="text-xs text-ink-faint">暂无 MCP 服务</span>}
           {mcps.map((m) => (

@@ -2,7 +2,7 @@
 
 **功能规格：** [features/tools-mcp-skills.md](../features/tools-mcp-skills.md) · 沙箱设计：[mcp-sandbox.md](../architecture/mcp-sandbox.md)
 
-Model Context Protocol（MCP）在 MilesAI 中用于**注册远程工具服务**、**同步 `tools/list`**、**试调用 `tools/call`**，并通过智能体 `config.mcp_service_ids` 将工具说明注入对话上下文。
+Model Context Protocol（MCP）在 MilesAI 中用于**注册远程工具服务**、**同步 `tools/list`**、**试调用 `tools/call`**，并可通过智能体 `config.mcp_service_ids` 绑定为可 **function calling** 自动调用的工具。
 
 ## 1. 能力范围
 
@@ -153,8 +153,8 @@ POST /mcp/{id}/sync | .../invoke
 ## 6. 与智能体集成
 
 - **平台工具**：`config.enable_tool_calling` + 可选 `config.tool_slugs` → `tool_agent` function calling（无 KB 时）。详见 [tools.md](./tools.md)。
-- **MCP**：`config.mcp_service_ids` → 提示词注入已同步工具名称与描述（**不**自动 invoke）。
-- **二者分离**：工具目录 `GET /tools/catalog` **不含** MCP；MCP 见 `GET /mcp`。
+- **MCP**：`config.mcp_service_ids` 绑定的服务，其 `tools_cache` 展开为 function name `mcp__{service}__{tool}`，与内置/自定义工具一同进入 `tool_agent`；执行走 `McpServiceManager.invoke_tool`，写入 `tool_invocation_logs`（`source=mcp`）。只读工具（`annotations.readOnlyHint`）免确认，其余默认需用户确认。
+- **二者分离**：工具目录 `GET /tools/catalog` **不含** MCP；MCP 见 `GET /mcp`。`tool_slugs` 白名单不作用于 MCP（绑定服务即启用）。
 
 ## 7. 连接安全（非沙箱）
 

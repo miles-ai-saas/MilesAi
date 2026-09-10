@@ -175,7 +175,7 @@ invoke_builtin(slug, params)    → 分发到各 Service
 | **存储** | `tool_mcp_services` + 同步后的 `tools_cache` |
 | **传输** | HTTP / SSE / STDIO（STDIO 经 [MCP Runner](./mcp-sandbox.md)） |
 | **管理 UI** | `/workbench/mcp`（独立 CRUD、同步、试调用） |
-| **目标：Agent 调用** | 绑定 MCP 后，将其 tools **动态注册**为可调用 Tool（见 §4） |
+| **Agent 调用** | 绑定 MCP 后，其 tools 动态注册为可调用 Tool（function name `mcp__{service}__{tool}`） |
 
 ---
 
@@ -194,7 +194,7 @@ invoke_tool_with_context(...)      # Agent tool_agent、确认流、日志
 resolve_tool_meta(name, tool_id?)
   ├─ source=builtin     → invoke_builtin
   ├─ source=custom      → tool_type=http | script
-  └─ source=mcp         → McpServiceManager.invoke_tool（规划）
+  └─ source=mcp         → McpServiceManager.invoke_tool
 
 require_confirmation? → pending / 用户确认后继续
 write_tool_invocation_log（+ MCP 时关联 runner session）
@@ -227,16 +227,18 @@ tool_slugs: ["calculator", "weather_api", "transform_script"]
 mcp_service_ids: ["uuid-1", "uuid-2"]
 ```
 
-### 4.2 MCP 工具命名（规划）
+### 4.2 MCP 工具命名
 
-避免与 builtin/custom slug 冲突，建议：
+避免与 builtin/custom slug 冲突，组合为 LLM 合法的 function name：
 
 ```text
-mcp.{service_slug}.{tool_name}
-# 例：mcp.github.create_issue
+mcp__{service}__{tool_name}
+# 例：mcp__github__create_issue
 ```
 
-解析时：`source=mcp`，携带 `service_id` + `tool_name`。
+- 服务/工具名做标识符清洗；含中文等有损清洗时给服务名追加 4 位哈希防塌缩碰撞
+- 整体超 64 字符时截断并追加 6 位摘要（OpenAI function name 上限）
+- 解析时按租户服务列表重新组合匹配，`source=mcp`，携带 `service_id` + 原始 `tool_name`
 
 ### 4.3 与 RAG 的关系（目标）
 
@@ -258,7 +260,7 @@ mcp.{service_slug}.{tool_name}
 |------|------------------|-----------------|
 | **内置工具** | 工具列表只读展示 | 可 call |
 | **HTTP / 脚本** | `/workbench/tools` CRUD | 可 call |
-| **MCP** | `/workbench/mcp` 注册与同步 | **目标：可 call**；现状：仅 prompt 注入 |
+| **MCP** | `/workbench/mcp` 注册与同步 | 绑定 `mcp_service_ids` 后可 call |
 | **Catalog API** | `GET /tools/catalog` 仅 builtin+custom | Agent 加载 = catalog + 展开 MCP tools |
 
 **刻意不做**：把 MCP 行塞进 `tool_tools` 表做 CRUD——生命周期与传输层不同，管理 UI 分离更清晰。
@@ -281,14 +283,6 @@ mcp.{service_slug}.{tool_name}
 ---
 
 ## 7. 演进路线
-
-### P0 — 对齐「内置 + 自定义 + MCP 均可调用」
-
-| 项 | 说明 |
-|----|------|
-| Agent 自动调 MCP | `tools_cache` → LangChain StructuredTool → `invoke` 走 MCP client |
-| 文档与 UI 文案 | 四类能力边界；脚本称「变换脚本」 |
-| 审计统一 | MCP 调用可选写入 `tool_invocation_logs`（`source=mcp`） |
 
 ### P1 — 提升自定义与 RAG 协同
 
@@ -315,16 +309,11 @@ mcp.{service_slug}.{tool_name}
 
 ---
 
-## 8. 待实现（规划）
+## 8. 已实现与代码入口
 
-| 能力 | 状态 |
-|------|------|
-| MCP → Agent function calling | ❌ 规划 P0 |
-| 脚本预注入 stdlib（`datetime` / `re` / `math`） | ❌ 规划 P1 |
-| RAG 与 tool calling 共存 | ❌ 规划 P1 |
-| L2 内置工具扩充（合规检测、列附件、触发流程） | ❌ 规划 |
-
-已实现能力（builtin/custom catalog、变换脚本 v2、`tool_agent`、MCP 工作台）见 [guides/tools.md](../guides/tools.md)。
+已实现：builtin/custom catalog、变换脚本 v2、`tool_agent`、MCP 工作台，以及
+**MCP → Agent function calling**（`mcp__{service}__{tool}`，审计 `source=mcp`）；见 [guides/tools.md](../guides/tools.md)。
+未尽项见 §7 演进路线。
 
 代码入口：
 

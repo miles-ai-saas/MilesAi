@@ -26,35 +26,133 @@ _TOOLS_FETCH = [
     {
         "name": "fetch",
         "description": "HTTP GET 抓取 URL 正文（Streamable HTTP 示例）",
+        "inputSchema": {
+            "type": "object",
+            "properties": {"url": {"type": "string", "description": "要抓取的 URL"}},
+            "required": ["url"],
+        },
+        "annotations": {"readOnlyHint": True},
     },
     {
         "name": "fetch_json",
         "description": "GET JSON API 并解析为结构化结果",
+        "inputSchema": {
+            "type": "object",
+            "properties": {"url": {"type": "string", "description": "JSON API 地址"}},
+            "required": ["url"],
+        },
+        "annotations": {"readOnlyHint": True},
     },
 ]
 
 _TOOLS_FILESYSTEM = [
-    {"name": "read_file", "description": "读取允许目录内的文件内容"},
-    {"name": "write_file", "description": "写入或覆盖文件"},
-    {"name": "list_directory", "description": "列出目录条目"},
-    {"name": "search_files", "description": "按 glob 搜索文件"},
+    {
+        "name": "read_file",
+        "description": "读取允许目录内的文件内容",
+        "inputSchema": {
+            "type": "object",
+            "properties": {"path": {"type": "string", "description": "相对根目录的路径"}},
+            "required": ["path"],
+        },
+        "annotations": {"readOnlyHint": True},
+    },
+    {
+        "name": "write_file",
+        "description": "写入或覆盖文件",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "path": {"type": "string", "description": "相对根目录的路径"},
+                "content": {"type": "string", "description": "文件内容"},
+            },
+            "required": ["path", "content"],
+        },
+    },
+    {
+        "name": "list_directory",
+        "description": "列出目录条目",
+        "inputSchema": {
+            "type": "object",
+            "properties": {"path": {"type": "string", "description": "目录路径"}},
+            "required": ["path"],
+        },
+        "annotations": {"readOnlyHint": True},
+    },
+    {
+        "name": "search_files",
+        "description": "按 glob 搜索文件",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "pattern": {"type": "string", "description": "glob 模式"},
+                "path": {"type": "string", "description": "起始目录，默认根目录"},
+            },
+            "required": ["pattern"],
+        },
+        "annotations": {"readOnlyHint": True},
+    },
 ]
 
 _TOOLS_MEMORY = [
-    {"name": "create_entities", "description": "在知识图谱中创建实体"},
-    {"name": "create_relations", "description": "创建实体间关系"},
-    {"name": "search_nodes", "description": "搜索节点"},
-    {"name": "read_graph", "description": "读取当前图快照"},
+    {
+        "name": "create_entities",
+        "description": "在知识图谱中创建实体",
+        "inputSchema": {
+            "type": "object",
+            "properties": {"entities": {"type": "array", "description": "实体数组"}},
+            "required": ["entities"],
+        },
+    },
+    {
+        "name": "create_relations",
+        "description": "创建实体间关系",
+        "inputSchema": {
+            "type": "object",
+            "properties": {"relations": {"type": "array", "description": "关系数组"}},
+            "required": ["relations"],
+        },
+    },
+    {
+        "name": "search_nodes",
+        "description": "搜索节点",
+        "inputSchema": {
+            "type": "object",
+            "properties": {"query": {"type": "string", "description": "搜索关键词"}},
+            "required": ["query"],
+        },
+        "annotations": {"readOnlyHint": True},
+    },
+    {
+        "name": "read_graph",
+        "description": "读取当前图快照",
+        "inputSchema": {"type": "object", "properties": {}},
+        "annotations": {"readOnlyHint": True},
+    },
 ]
 
 _TOOLS_KB = [
     {
         "name": "search_documents",
         "description": "在已连接知识库中检索相关片段（演示用）",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "query": {"type": "string", "description": "检索问题"},
+                "limit": {"type": "integer", "description": "返回条数", "default": 5},
+            },
+            "required": ["query"],
+        },
+        "annotations": {"readOnlyHint": True},
     },
     {
         "name": "get_document",
         "description": "按 document_id 获取文档元数据与摘要",
+        "inputSchema": {
+            "type": "object",
+            "properties": {"document_id": {"type": "string", "description": "文档 ID"}},
+            "required": ["document_id"],
+        },
+        "annotations": {"readOnlyHint": True},
     },
 ]
 

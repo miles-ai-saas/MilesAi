@@ -18,7 +18,7 @@ from app.integrations.langchain.tool_agent.parse import (
     _looks_like_tool_call_simulation,
 )
 from app.integrations.langchain.tool_agent.tool_contract import ToolConfirmationSignal, ToolExecutor
-from app.integrations.langchain.tools import get_skill_bound_tools
+from app.integrations.langchain.tools import get_skill_bound_tools, select_agent_tools
 from app.integrations.litellm.adapter import extract_litellm_usage
 from app.integrations.litellm.usage_sink import UsageSink
 from app.models.agent import Agent
@@ -63,15 +63,11 @@ async def run_tool_calling_chat(
 
     all_tools = platform_tools
     allowed = agent.config.get("tool_slugs") if isinstance(agent.config, dict) else None
-    if allowed:
-        allowed_set = {str(s) for s in allowed}
-        tools = [t for t in all_tools if t.name in allowed_set]
-        if (agent.config or {}).get("skill_package_id"):
-            for st in get_skill_bound_tools():
-                if st.name not in {t.name for t in tools}:
-                    tools.append(st)
-    else:
-        tools = all_tools
+    tools = select_agent_tools(all_tools, allowed)
+    if allowed and (agent.config or {}).get("skill_package_id"):
+        for st in get_skill_bound_tools():
+            if st.name not in {t.name for t in tools}:
+                tools.append(st)
 
     if not tools:
         return ChatResponse(

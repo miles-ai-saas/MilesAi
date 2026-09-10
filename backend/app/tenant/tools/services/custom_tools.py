@@ -50,6 +50,13 @@ async def assemble_agent_tools(
     ctx: TenantContext,
     agent_config: dict | None,
 ) -> list:
-    """装配对话工具 schema 列表（specs 上移 L1 + L3 纯构造）。"""
+    """装配对话工具 schema 列表（specs 上移 L1 + L3 纯构造）。
+
+    含内置/技能/生成、租户自定义 HTTP/SCRIPT，以及 ``config.mcp_service_ids``
+    绑定 MCP 服务的工具（source=mcp，执行走 McpServiceManager）。
+    """
+    from app.tenant.tools.services.mcp_tools import load_mcp_tool_specs
+
     specs = await load_custom_tool_specs(db, ctx)
-    return build_platform_tools(agent_config, specs)
+    mcp_specs = await load_mcp_tool_specs(db, ctx, agent_config)
+    return build_platform_tools(agent_config, specs, mcp_specs)

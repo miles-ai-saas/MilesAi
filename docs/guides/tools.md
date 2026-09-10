@@ -19,7 +19,7 @@ MilesAI **工具模块**管理租户可用的**平台内置工具**（含 **L2 �
 | **内置** | 代码 `BUILTIN_REGISTRY` | `invoke_builtin` | ✅ |
 | **自定义 HTTP** | `tool_tools` 表 | `invoke_custom_http` | ✅ |
 | **变换脚本 script** | `tool_tools` 表 | MCP Runner `script/exec` | ✅（需 `MCP_RUNNER_ENABLED`） |
-| **MCP tools** | `tool_mcp_services.tools_cache` | `McpServiceManager.invoke_tool` | 🔶 工作台试调用 ✅；智能体 **prompt 注入** tool 说明；**未**纳入 `tool_agent` function calling（见 [tools-runtime.md](../architecture/tools-runtime.md)） |
+| **MCP tools** | `tool_mcp_services.tools_cache` | `McpServiceManager.invoke_tool` | ✅ 绑定 `config.mcp_service_ids` 后按 `mcp__{service}__{tool}` 纳入 function calling |
 
 内置工具（v1）：
 
@@ -106,35 +106,25 @@ Agent 启用条件（`app/tenant/agents/services/agent.py`）：
 
 ## 6. 与 MCP 的关系
 
-### 6.1 设计分工（目标）
+### 6.1 设计分工
 
 | 维度 | 工具（Tools） | MCP |
 |------|---------------|-----|
 | **定位** | 平台托管 + 租户 HTTP/脚本 | 外部 MCP Server 生态 |
 | **管理 UI** | `/workbench/tools` | `/workbench/mcp` |
 | **Catalog API** | `GET /tools/catalog` | `GET /mcp` + sync |
-| **Agent 执行（目标）** | ✅ function calling | ✅ 绑定后同样 function calling |
-| **Agent 执行（现状）** | ✅ | ❌ 仅 prompt 文本 |
+| **Agent 执行** | ✅ function calling | ✅ 绑定后同样 function calling |
 
 详见 [工具运行时架构 §5](../architecture/tools-runtime.md#5-管理面-vs-运行面)。
 
 ### 6.2 架构示意
 
-**现状：**
-
-```text
-Agent
-  ├─ tool_slugs → tool_agent → invoke_tool_with_context  ✅
-  └─ mcp_service_ids → context 提示词（tools_cache 摘要）  ❌ 不自动 call
-```
-
-**目标（P0）：**
-
 ```text
 Agent
   └─ Tool Runtime
-        ├─ builtin / custom（tool_slugs）
-        └─ mcp.{service}.{tool}（mcp_service_ids 展开）
+        ├─ builtin / custom（tool_slugs 白名单）
+        └─ mcp__{service}__{tool}（mcp_service_ids 绑定服务展开）
+              → 只读工具免确认；其余需用户确认
 ```
 
 ### 6.3 何时用哪个
