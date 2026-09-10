@@ -31,6 +31,7 @@ from app.models.agent.chat_io import (
     ChatResponse,
     PendingToolCall,
 )
+from app.models.media.reader import MediaReader
 from app.models.model import ModelConfig
 
 
@@ -46,6 +47,7 @@ async def run_tool_calling_chat(
     usage_sink: UsageSink | None = None,
     tool_executor: ToolExecutor,
     platform_tools: list,
+    media_reader: MediaReader,
 ) -> ChatResponse:
     """
     LiteLLM 多轮 function calling 主循环。
@@ -58,6 +60,8 @@ async def run_tool_calling_chat(
 
     ``tool_executor``：L1 注入的执行器（``ToolExecutor`` 契约，见 ``tool_contract``），
     ``meta`` 解析工具元数据、``invoke`` 执行工具（确认信号为 ``ToolConfirmationSignal``）。
+    ``media_reader``：L1 注入的媒体读取器（``tenant.attachments.services.media_reader``），
+    用于把本轮附图解析为 ``data URL`` multimodal content parts。
     """
     if not agent.model_config:
         raise ValueError("工具调用需要配置大模型")
@@ -122,7 +126,7 @@ async def run_tool_calling_chat(
     temperature = float((agent.config or {}).get("temperature", 0.7))
     max_media = int((agent.config or {}).get("max_media_per_turn", 10))
     body_media_count = len(body.media) if body.media else 0
-    media_parts = await resolve_media_refs(db, ctx, body.media, max_count=max_media) if body.media else []
+    media_parts = await resolve_media_refs(media_reader, body.media, max_count=max_media) if body.media else []
     chat_query = body.query.strip() or ("请根据附图回答。" if media_parts else body.query)
     user_msg = build_user_message(query=chat_query, media_parts=media_parts)
     messages: list[dict] = [

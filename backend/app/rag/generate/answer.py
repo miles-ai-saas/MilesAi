@@ -20,12 +20,12 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.common.schemas.media import MediaRefIn
-from app.core.tenant import TenantContext
 from app.integrations.chat.multimodal import build_invoke_messages_with_media
 from app.integrations.langchain.chat_models import OnDelta, ainvoke_chat
 from app.integrations.langchain.kb_retrieval import KbRetrievalBindings
 from app.integrations.langchain.vectorstores import search_multi_kb_async
 from app.integrations.litellm.usage_sink import UsageSink
+from app.models.media.reader import MediaReader
 from app.models.model import ModelConfig
 from app.rag.generate.context import build_rag_user_prompt
 from app.rag.load import load_kbs_for_tenant
@@ -72,7 +72,7 @@ async def rag_answer(
     top_k: int = 5,
     temperature: float = 0.7,
     media: list[MediaRefIn] | None = None,
-    ctx: TenantContext | None = None,
+    media_reader: MediaReader | None = None,
     retrieve_query: str | None = None,
     on_delta: OnDelta | None = None,
     usage_sink: UsageSink | None = None,
@@ -85,6 +85,7 @@ async def rag_answer(
     直接用于生成；用量经 ``usage_sink`` 注入。
     ``retrieve_query`` 仅用于向量检索；``query`` 写入生成 prompt（可含「请根据附图回答」）。
     ``bindings`` 透传给 ``retrieve_hits``（embed/rerank 由 L1 装配注入）。
+    ``media_reader`` 由 L1 注入，用于解析 ``media`` 附图。
     返回 (answer 文本, hits) 便于调用方展示引用来源。
     """
     search_q = (retrieve_query if retrieve_query is not None else query).strip()
@@ -105,10 +106,9 @@ async def rag_answer(
             hits=hits,
         )
     messages: list[dict[str, Any]]
-    if media and ctx:
+    if media and media_reader:
         messages = await build_invoke_messages_with_media(
-            db,
-            ctx,
+            media_reader,
             prompt_text=prompt,
             media=media,
         )

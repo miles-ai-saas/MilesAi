@@ -15,6 +15,7 @@ from app.rag.generate import format_hits_context, rag_answer, retrieve_hits
 from app.tenant.a2a.services.peer_refs import list_agent_a2a_peer_refs
 from app.tenant.agents.schemas.agent import ChatRequest, ChatResponse
 from app.tenant.agents.services.agent.serialization import should_use_skill_tools_with_kb
+from app.tenant.attachments.services.media_reader import build_session_media_reader
 from app.tenant.compliance.constants import SCAN_MODULE_AGENT_CHAT
 from app.tenant.flows.repositories.flow import FlowRepository
 from app.tenant.flows.services.run_context import make_flow_model_resolver
@@ -138,7 +139,11 @@ class AgentChatRagMixin:
         max_media = int((agent.config or {}).get("max_media_per_turn", 10))
         parts: list = []
         if body.media:
-            parts = await resolve_media_refs(self.db, self.ctx, body.media, max_count=max_media)
+            parts = await resolve_media_refs(
+                build_session_media_reader(self.db, self.ctx),
+                body.media,
+                max_count=max_media,
+            )
         query = body.query.strip() or ("请根据附图回答。" if parts else body.query.strip())
         return query, parts
 
@@ -267,6 +272,7 @@ class AgentChatRagMixin:
                     usage_sink=usage_sink,
                     platform_tools=platform_tools,
                     tool_executor=tool_executor,
+                    media_reader=build_session_media_reader(self.db, self.ctx),
                 )
             return await self.direct_chat(agent, body, agent_id, hooks, on_delta=on_delta)
 
@@ -314,6 +320,7 @@ class AgentChatRagMixin:
                 usage_sink=usage_sink,
                 platform_tools=platform_tools,
                 tool_executor=tool_executor,
+                media_reader=build_session_media_reader(self.db, self.ctx),
             )
 
         base = await self.resolve_system_prompt(agent)
@@ -358,6 +365,7 @@ class AgentChatRagMixin:
                     on_delta=on_delta,
                     usage_sink=usage_sink,
                     bindings=kb_bindings,
+                    media_reader=build_session_media_reader(self.db, self.ctx),
                 )
             else:
                 answer, all_hits = await rag_answer(
@@ -370,7 +378,7 @@ class AgentChatRagMixin:
                     top_k=top_k,
                     temperature=temperature,
                     media=body.media or None,
-                    ctx=self.ctx,
+                    media_reader=build_session_media_reader(self.db, self.ctx),
                     retrieve_query=retrieve_query,
                     on_delta=on_delta,
                     usage_sink=usage_sink,

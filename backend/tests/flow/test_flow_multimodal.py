@@ -1,7 +1,7 @@
 """流程 LLMCall 多模态与 FlowRunRequest。"""
 
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 from uuid import uuid4
 
 import pytest
@@ -63,6 +63,7 @@ async def test_llm_call_with_media_builds_multimodal_message():
         permissions=frozenset(),
         resolve_model=fake_resolve,
         usage_sink=usage_sink,
+        media_reader=object(),
     )
     mock_msg = {
         "role": "user",
@@ -73,7 +74,6 @@ async def test_llm_call_with_media_builds_multimodal_message():
     }
 
     with (
-        patch("app.flow_runtime.nodes.llm_nodes.AsyncSessionLocal") as session_cls,
         patch(
             "app.flow_runtime.nodes.llm_nodes.resolve_media_refs",
             new_callable=AsyncMock,
@@ -85,10 +85,6 @@ async def test_llm_call_with_media_builds_multimodal_message():
             return_value="ok",
         ) as mock_chat,
     ):
-        db = MagicMock()
-        session_cls.return_value.__aenter__ = AsyncMock(return_value=db)
-        session_cls.return_value.__aexit__ = AsyncMock(return_value=None)
-
         out = await llm_call({}, {"prompt": "描述图片"}, ctx)
 
     assert out == "ok"

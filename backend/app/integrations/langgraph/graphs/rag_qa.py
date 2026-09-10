@@ -24,7 +24,6 @@ from uuid import UUID
 from langchain_core.runnables import RunnableConfig
 from langgraph.graph import END, START, StateGraph
 
-from app.core.tenant import TenantContext
 from app.integrations.chat.multimodal import (
     build_invoke_messages_with_media,
     media_refs_from_items,
@@ -36,20 +35,6 @@ from app.integrations.langgraph.constants import RELEVANCE_NONE, RELEVANCE_POOR
 from app.integrations.langgraph.grading import _score_grade, llm_grade_relevance
 from app.integrations.langgraph.state import RAGGraphState
 from app.models.model import ModelConfig
-
-
-def _tenant_from_state(state: RAGGraphState) -> TenantContext:
-    """RAG 图内解析附件需租户 user_id（由 run_rag_workflow 注入）。"""
-    uid = state.get("user_id")
-    if not uid:
-        raise ValueError("RAG 状态缺少 user_id，无法解析附图")
-    return TenantContext(
-        user_id=UUID(uid),
-        tenant_id=UUID(state["tenant_id"]),
-        username="rag-graph",
-        is_superuser=False,
-        permissions=frozenset(),
-    )
 
 
 def _cfg_model(config: RunnableConfig | None) -> ModelConfig:
@@ -182,29 +167,24 @@ async def generate(state: RAGGraphState, config: RunnableConfig) -> dict[str, An
         prompt = f"{state['system_prompt']}\n\n用户问题：{user_q}"
 
     media_refs = media_refs_from_items(state.get("media"))
-    async with AsyncSessionLocal() as db:
-        try:
-            tenant_ctx = _tenant_from_state(state)
-        except ValueError:
-            tenant_ctx = None
-        if media_refs and tenant_ctx:
-            messages = await build_invoke_messages_with_media(
-                db,
-                tenant_ctx,
-                prompt_text=prompt,
-                media=media_refs,
-            )
-        else:
-            messages = [{"role": "user", "content": prompt}]
-        on_delta = config.get("configurable", {}).get("on_delta") if config else None
-        usage_sink = config.get("configurable", {}).get("usage_sink") if config else None
-        answer = await ainvoke_chat(
-            model,
-            messages,
-            temperature=float(state.get("temperature", 0.7)),
-            usage_sink=usage_sink,
-            on_delta=on_delta,
+    media_reader = config.get("configurable", {}).get("media_reader") if config else None
+    if media_refs and media_reader:
+        messages = await build_invoke_messages_with_media(
+            media_reader,
+            prompt_text=prompt,
+            media=media_refs,
         )
+    else:
+        messages = [{"role": "user", "content": prompt}]
+    on_delta = config.get("configurable", {}).get("on_delta") if config else None
+    usage_sink = config.get("configurable", {}).get("usage_sink") if config else None
+    answer = await ainvoke_chat(
+        model,
+        messages,
+        temperature=float(state.get("temperature", 0.7)),
+        usage_sink=usage_sink,
+        on_delta=on_delta,
+    )
     return {
         "answer": answer,
         "steps": [
@@ -234,29 +214,24 @@ async def fallback(state: RAGGraphState, config: RunnableConfig) -> dict[str, An
             f"并明确说明未命中企业知识库。\n\n用户问题：{_prompt_user_query(state)}"
         )
     media_refs = media_refs_from_items(state.get("media"))
-    async with AsyncSessionLocal() as db:
-        try:
-            tenant_ctx = _tenant_from_state(state)
-        except ValueError:
-            tenant_ctx = None
-        if media_refs and tenant_ctx:
-            messages = await build_invoke_messages_with_media(
-                db,
-                tenant_ctx,
-                prompt_text=prompt,
-                media=media_refs,
-            )
-        else:
-            messages = [{"role": "user", "content": prompt}]
-        on_delta = config.get("configurable", {}).get("on_delta") if config else None
-        usage_sink = config.get("configurable", {}).get("usage_sink") if config else None
-        answer = await ainvoke_chat(
-            model,
-            messages,
-            temperature=float(state.get("temperature", 0.7)),
-            usage_sink=usage_sink,
-            on_delta=on_delta,
+    media_reader = config.get("configurable", {}).get("media_reader") if config else None
+    if media_refs and media_reader:
+        messages = await build_invoke_messages_with_media(
+            media_reader,
+            prompt_text=prompt,
+            media=media_refs,
         )
+    else:
+        messages = [{"role": "user", "content": prompt}]
+    on_delta = config.get("configurable", {}).get("on_delta") if config else None
+    usage_sink = config.get("configurable", {}).get("usage_sink") if config else None
+    answer = await ainvoke_chat(
+        model,
+        messages,
+        temperature=float(state.get("temperature", 0.7)),
+        usage_sink=usage_sink,
+        on_delta=on_delta,
+    )
     return {
         "answer": answer,
         "steps": [

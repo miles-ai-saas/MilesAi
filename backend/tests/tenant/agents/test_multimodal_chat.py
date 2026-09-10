@@ -1,7 +1,7 @@
 """多模态消息组装与附件解析单测。"""
 
 import base64
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock
 from uuid import uuid4
 
 import pytest
@@ -51,36 +51,41 @@ def test_messages_contain_image():
 
 @pytest.mark.asyncio
 async def test_resolve_media_refs_too_many():
-    ctx = MagicMock()
-    ctx.tenant_id = uuid4()
     refs = [MediaRefIn(attachment_id=uuid4()) for _ in range(11)]
     with pytest.raises(BadRequestError, match="最多"):
-        await resolve_media_refs(AsyncMock(), ctx, refs, max_count=10)
+        await resolve_media_refs(MagicMock(), refs, max_count=10)
 
 
 @pytest.mark.asyncio
 async def test_resolve_media_refs_builds_data_url():
-    tenant_id = uuid4()
+    from app.models.media.reader import AttachmentBytes
+
     att_id = uuid4()
-    ctx = MagicMock()
-    ctx.tenant_id = tenant_id
     png = b"\x89PNG\r\n\x1a\n"
-    with patch(
-        "app.tenant.attachments.services.attachment.AttachmentService",
-    ) as svc_cls:
-        svc = MagicMock()
-        svc.read_image_bytes = AsyncMock(return_value=(png, "image/png"))
-        svc_cls.return_value = svc
-        parts = await resolve_media_refs(
-            AsyncMock(),
-            ctx,
-            [MediaRefIn(attachment_id=att_id)],
-        )
+
+    class FakeReader:
+        async def read_image_bytes(self, attachment_id):
+            return AttachmentBytes(data=png, mime="image/png")
+
+    parts = await resolve_media_refs(FakeReader(), [MediaRefIn(attachment_id=att_id)])
     assert len(parts) == 1
     url = parts[0]["image_url"]["url"]
     assert url.startswith("data:image/png;base64,")
     decoded = base64.standard_b64decode(url.split(",", 1)[1])
     assert decoded == png
+
+
+@pytest.mark.asyncio
+async def test_resolve_media_refs_rejects_oversize_image():
+    from app.models.media.reader import AttachmentBytes
+    from app.integrations.chat.multimodal import MAX_IMAGE_BYTES
+
+    class FakeReader:
+        async def read_image_bytes(self, attachment_id):
+            return AttachmentBytes(data=b"x" * (MAX_IMAGE_BYTES + 1), mime="image/png")
+
+    with pytest.raises(BadRequestError, match="不能超过"):
+        await resolve_media_refs(FakeReader(), [MediaRefIn(attachment_id=uuid4())])
 
 
 def test_chat_request_requires_query_or_media():

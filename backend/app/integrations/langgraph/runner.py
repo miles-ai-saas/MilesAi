@@ -30,6 +30,7 @@ from app.integrations.litellm.usage_sink import UsageSink
 from app.common.schemas.media import MediaRefIn
 from app.models.agent import Agent
 from app.models.agent.constants import AgentRuntimeMode
+from app.models.media.reader import MediaReader
 from app.models.model import ModelConfig
 
 
@@ -77,13 +78,16 @@ async def run_rag_workflow(
     on_delta: OnDelta | None = None,
     usage_sink: UsageSink | None = None,
     bindings: KbRetrievalBindings | None = None,
+    media_reader: MediaReader | None = None,
 ) -> tuple[str, list[dict[str, Any]], list[dict[str, Any]]]:
     """执行 RAG LangGraph，返回 (answer, hits, steps)。
 
     ``model`` 由调用方 resolve（装配点语义，见 ``resolve_invoke_model``），
     直接写入 ``configurable.model`` 供各节点 ``_cfg_model`` 读取；
     ``usage_sink`` 同写入 configurable，由 generate/fallback 透传给 ``ainvoke_chat``；
-    ``bindings``（KB 检索绑定）同写入 configurable，由 retrieve 节点透传 ``retrieve_hits``。
+    ``bindings``（KB 检索绑定）同写入 configurable，由 retrieve 节点透传 ``retrieve_hits``；
+    ``media_reader``（L1 注入的媒体读取器）写入 configurable，由 generate/fallback
+    节点读取以解析附图。
     ``thread_id`` 写入 checkpointer。
     """
     graph = get_compiled_rag_graph()
@@ -125,6 +129,7 @@ async def run_rag_workflow(
             "on_delta": on_delta,
             "usage_sink": usage_sink,
             "kb_retrieval": bindings,
+            "media_reader": media_reader,
         }
     }
     final = await graph.ainvoke(initial, run_config)

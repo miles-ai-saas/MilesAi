@@ -7,16 +7,16 @@
 模型解析由运行入口注入的 ``RunContext.resolve_model`` 回调完成（见
 ``tenant.flows.services.run_context.make_flow_model_resolver``）；节点不再自行查询。
 未配置模型或回调缺失时返回占位字符串 / 抛 ``BadRequestError``，便于调试与兜底。
-支持 ``RunContext.media`` 附图（vision，base64 data URL）。
+支持 ``RunContext.media`` 附图（vision，base64 data URL）；附图字节经
+``RunContext.media_reader``（L1 注入）读取。
 """
 
 from typing import Any
 
 from app.common.exceptions import BadRequestError
 from app.common.schemas.media import MediaRefIn
-from app.flow_runtime.context_utils import media_refs_from_run, tenant_context_from_run
+from app.flow_runtime.context_utils import media_refs_from_run
 from app.flow_runtime.types import RunContext
-from app.infra.db import AsyncSessionLocal
 from app.integrations.chat.multimodal import build_user_message, resolve_media_refs
 from app.integrations.langchain.chat_models import ainvoke_chat
 
@@ -49,12 +49,12 @@ async def llm_call(
     max_tokens_raw = node_data.get("max_tokens")
     max_tokens = int(max_tokens_raw) if max_tokens_raw is not None else 2048
 
-    tenant_ctx = tenant_context_from_run(ctx)
     max_media = int((ctx.agent_config or {}).get("max_media_per_turn", 10))
     media_parts: list[dict[str, Any]] = []
     if media_refs:
-        async with AsyncSessionLocal() as db:
-            media_parts = await resolve_media_refs(db, tenant_ctx, media_refs, max_count=max_media)
+        if ctx.media_reader is None:
+            raise BadRequestError("运行上下文未提供媒体读取器")
+        media_parts = await resolve_media_refs(ctx.media_reader, media_refs, max_count=max_media)
 
     user_msg = build_user_message(
         query=prompt or "请根据附图回答。",
