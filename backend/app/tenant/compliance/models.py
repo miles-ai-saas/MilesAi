@@ -1,6 +1,5 @@
 """合规：词库、词条、库-词关联、租户扫描绑定、拦截日志。"""
 
-import enum
 import uuid
 
 from sqlalchemy import Boolean, Index, Integer, String, Text, UniqueConstraint
@@ -10,14 +9,10 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from app.infra.db import Base
 from app.models.base import TimestampMixin, UUIDPrimaryKeyMixin
+from app.models.compliance.constants import SensitiveAction
 
 DEFAULT_WORD_LIBRARY_NAME = "默认词库"
 COMPLIANCE_SCOPE_TENANT = "tenant"
-
-
-class SensitiveAction(str, enum.Enum):
-    WARN = "warn"
-    BLOCK = "block"
 
 
 _sensitive_action_enum = SAEnum(
