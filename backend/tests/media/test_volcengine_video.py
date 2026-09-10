@@ -166,11 +166,11 @@ async def test_generate_video_for_model_doubao_route():
 
     with (
         patch(
-            "app.integrations.generative.quota.assert_generative_quota",
+            "app.tenant.generative.services.orchestration.assert_generative_quota",
             new_callable=AsyncMock,
         ),
         patch(
-            "app.integrations.generative.compliance.check_generative_prompt",
+            "app.tenant.generative.services.orchestration.check_generative_prompt",
             new_callable=AsyncMock,
             side_effect=lambda _db, _ctx, p: p,
         ),
@@ -180,16 +180,16 @@ async def test_generate_video_for_model_doubao_route():
             return_value=b"\x00\x00\x00\x18ftypmp42",
         ),
         patch(
-            "app.integrations.generative.video.service.persist_generated_bytes",
+            "app.tenant.generative.services.orchestration.persist_generated_bytes",
             new_callable=AsyncMock,
             return_value=att_id,
         ),
         patch(
-            "app.tenant.media_assets.services.media_asset.register_media_asset",
+            "app.tenant.generative.services.orchestration.register_media_asset",
             new_callable=AsyncMock,
         ),
     ):
-        from app.integrations.generative.video.service import generate_video_for_model
+        from app.tenant.generative.services.orchestration import generate_video_for_model
 
         result = await generate_video_for_model(
             AsyncMock(),

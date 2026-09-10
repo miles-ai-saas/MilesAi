@@ -112,36 +112,36 @@ async def test_generate_image_for_model_with_reference():
 
     with (
         patch(
-            "app.integrations.generative.quota.assert_generative_quota",
+            "app.tenant.generative.services.orchestration.assert_generative_quota",
             new_callable=AsyncMock,
         ),
         patch(
-            "app.integrations.generative.image.service.reference_image_data_url",
+            "app.tenant.generative.services.orchestration.reference_image_data_url",
             new_callable=AsyncMock,
             return_value="data:image/png;base64,abc",
         ),
         patch(
-            "app.integrations.generative.image.service.generate_image_bytes",
+            "app.tenant.generative.services.orchestration.generate_image_bytes",
             new_callable=AsyncMock,
             return_value=[b"\x89PNG\r\n"],
         ) as gen,
         patch(
-            "app.integrations.generative.image.service.persist_generated_bytes",
+            "app.tenant.generative.services.orchestration.persist_generated_bytes",
             new_callable=AsyncMock,
             return_value=att_id,
         ),
         patch(
-            "app.tenant.media_assets.services.media_asset.register_media_asset",
+            "app.tenant.generative.services.orchestration.register_media_asset",
             new_callable=AsyncMock,
             return_value=SimpleNamespace(id=uuid4()),
         ),
         patch(
-            "app.integrations.generative.compliance.check_generative_prompt",
+            "app.tenant.generative.services.orchestration.check_generative_prompt",
             new_callable=AsyncMock,
             side_effect=lambda _db, _ctx, p: p,
         ),
     ):
-        from app.integrations.generative.image.service import generate_image_for_model
+        from app.tenant.generative.services.orchestration import generate_image_for_model
 
         await generate_image_for_model(
             AsyncMock(),
@@ -168,31 +168,31 @@ async def test_generate_image_for_model_persists():
 
     with (
         patch(
-            "app.integrations.generative.quota.assert_generative_quota",
+            "app.tenant.generative.services.orchestration.assert_generative_quota",
             new_callable=AsyncMock,
         ),
         patch(
-            "app.integrations.generative.image.service.generate_image_bytes",
+            "app.tenant.generative.services.orchestration.generate_image_bytes",
             new_callable=AsyncMock,
             return_value=[b"\x89PNG\r\n"],
         ),
         patch(
-            "app.integrations.generative.image.service.persist_generated_bytes",
+            "app.tenant.generative.services.orchestration.persist_generated_bytes",
             new_callable=AsyncMock,
             return_value=att_id,
         ),
         patch(
-            "app.tenant.media_assets.services.media_asset.register_media_asset",
+            "app.tenant.generative.services.orchestration.register_media_asset",
             new_callable=AsyncMock,
             return_value=SimpleNamespace(id=uuid4()),
         ),
         patch(
-            "app.integrations.generative.compliance.check_generative_prompt",
+            "app.tenant.generative.services.orchestration.check_generative_prompt",
             new_callable=AsyncMock,
             side_effect=lambda _db, _ctx, p: p,
         ),
     ):
-        from app.integrations.generative.image.service import generate_image_for_model
+        from app.tenant.generative.services.orchestration import generate_image_for_model
 
         result = await generate_image_for_model(
             AsyncMock(),

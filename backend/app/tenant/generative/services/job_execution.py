@@ -14,12 +14,12 @@ from uuid import UUID
 
 from app.core.tenant import TenantContext
 from app.infra.db import get_worker_session
-from app.integrations.generative import generate_image_for_model, generate_video_for_model
 from app.integrations.generative.jobs.errors import GenerativeJobCancelled, GenerativeJobNotFound
 from app.integrations.generative.jobs.progress import publish_generative_job_update
 from app.integrations.generative.constants import PURPOSE_CHAT_GENERATED, PURPOSE_FLOW_GENERATED
 from app.models.model.generative_job import GenerativeJob, GenerativeJobStatus
 from app.models.platform.user import User
+from app.tenant.generative.services.orchestration import generate_image_for_model, generate_video_for_model
 from app.tenant.models.services.generative_model_resolve import (
     resolve_image_gen_model,
     resolve_video_gen_model,

@@ -15,7 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.common.exceptions import BadRequestError
 from app.common.trace import get_trace_id
 from app.core.tenant import TenantContext
-from app.integrations.generative import generate_speech_for_model
+from app.tenant.generative.services.orchestration import generate_speech_for_model
 from app.tenant.models.services.generative_model_resolve import resolve_tts_model
 
 
@@ -106,7 +106,7 @@ async def handle_generate_video(
             model_config_id（可选）
     异步返回 generative_job_id；同步返回 attachment_id。
     """
-    from app.integrations.generative import generate_video_for_model
+    from app.tenant.generative.services.orchestration import generate_video_for_model
     from app.tenant.generative.schemas.job import VideoGenerativeJobCreate
     from app.tenant.generative.services.job import GenerativeJobService
     from app.tenant.models.services.generative_model_resolve import resolve_video_gen_model
@@ -201,7 +201,7 @@ async def handle_generate_image(
     params: prompt/description, size, n, image_attachment_id, model_config_id（可选）
     异步返回 generative_job_id；同步返回 attachment_id / attachment_ids。
     """
-    from app.integrations.generative import generate_image_for_model
+    from app.tenant.generative.services.orchestration import generate_image_for_model
     from app.integrations.generative.image.prompt_guard import sanitize_image_prompt
     from app.integrations.generative.request_prefs import (
         get_request_allow_collage,
