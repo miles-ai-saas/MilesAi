@@ -87,7 +87,6 @@ async def handle_generate_speech(
         voice=params.get("voice", "longxiaochun"),
         speech_rate=float(params.get("speech_rate", 1.0)),
         agent_id=agent_id,
-        trace_id=get_trace_id(),
     )
 
 
@@ -175,7 +174,6 @@ async def handle_generate_video(
         image_attachment_id=first_att,
         last_frame_attachment_id=last_att,
         agent_id=agent_id,
-        trace_id=get_trace_id(),
     )
     return {
         "kind": "video",
@@ -263,7 +261,6 @@ async def handle_generate_image(
         n=n,
         reference_attachment_id=image_att,
         agent_id=agent_id,
-        trace_id=get_trace_id(),
         allow_collage=allow_collage,
     )
     ids = [str(i) for i in result.attachment_ids]

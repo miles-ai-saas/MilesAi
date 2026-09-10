@@ -3,8 +3,9 @@
 
 调用链
 ------
-``embed_*_for_kb`` → ``resolve_embedding_model_*`` → ``build_embeddings``
-→ ``ModelConfigEmbeddings`` → ``registry.embed_texts_for_model`` → 具体 Provider。
+L1 ``tenant/kb/services/embeddings.py``（``resolve_embedding_model_*``，含 BYOK 合并）
+→ ``build_embeddings`` → ``ModelConfigEmbeddings`` → ``registry.embed_texts_for_model``
+→ 具体 Provider。本模块为纯运行时门面，不做模型解析/租户查询。
 
 与 ``PrecomputedEmbeddings`` 的分工
 ----------------------------------

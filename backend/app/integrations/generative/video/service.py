@@ -1,7 +1,8 @@
 """
 生视频厂商派发（``model_type=video_gen``）。
 
-万相 / 豆包：节点内同步轮询至完成（``dashscope_t2v`` / ``volcengine_video``）。
+万相 / 豆包：节点内同步轮询至完成；``invoke_mode`` 取值 ``dashscope_t2v``（派发到模块
+``dashscope_wan``）/ ``volcengine_video``。
 只做 invoke_mode 分发；租户副作用见 L1 ``tenant.generative.services.orchestration``。
 """
 

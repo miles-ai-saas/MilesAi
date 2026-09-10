@@ -109,7 +109,6 @@ async def run_generative_video_job_async(job_id: UUID) -> None:
                 purpose=purpose,
                 agent_id=agent_id,
                 generative_job_id=job_id,
-                trace_id=job.trace_id,
             )
             job = await db.get(GenerativeJob, job_id)
             if not job or job.status == GenerativeJobStatus.CANCELLED:
@@ -233,7 +232,6 @@ async def run_generative_image_job_async(job_id: UUID) -> None:
                 purpose=purpose,
                 agent_id=agent_id,
                 generative_job_id=job_id,
-                trace_id=job.trace_id,
                 allow_collage=bool(params.get("allow_collage") or agent_cfg.get("_image_allow_collage")),
             )
             job = await db.get(GenerativeJob, job_id)

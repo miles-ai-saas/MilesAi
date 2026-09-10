@@ -10,6 +10,7 @@ L3 ``integrations/generative`` 只保留纯厂商派发（``generate_{image,vide
 from __future__ import annotations
 
 import base64
+import logging
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -35,6 +36,8 @@ from app.tenant.attachments.services.attachment import AttachmentService
 from app.tenant.compliance.services.compliance import ComplianceService
 from app.tenant.generative.services.persist import persist_generated_bytes
 from app.tenant.media_assets.services.media_asset import register_media_asset
+
+logger = logging.getLogger(__name__)
 
 
 async def check_generative_prompt(
@@ -89,7 +92,6 @@ async def generate_image_for_model(
     purpose: str = PURPOSE_CHAT_GENERATED,
     agent_id: UUID | None = None,
     generative_job_id: UUID | None = None,
-    trace_id: str | None = None,
     allow_collage: bool = False,
 ) -> ImageGenerateResult:
     """调用厂商生图并持久化为附件；可选参考图 attachment 实现图生图。"""
@@ -130,10 +132,7 @@ async def generate_image_for_model(
     attachment_ids: list[UUID] = []
     media_asset_ids: list[UUID] = []
     mime = "image/png"
-    import logging
-
-    _log = logging.getLogger(__name__)
-    _log.info("生图 → blobs=%d, n=%d", len(blobs), count)
+    logger.info("生图 → blobs=%d, n=%d", len(blobs), count)
     for i, data in enumerate(blobs):
         ext = "png"
         if data[:3] == b"\xff\xd8\xff":
@@ -179,7 +178,6 @@ async def generate_video_for_model(
     purpose: str = PURPOSE_CHAT_GENERATED,
     agent_id: UUID | None = None,
     generative_job_id: UUID | None = None,
-    trace_id: str | None = None,
 ) -> VideoGenerateResult:
     """调用厂商生视频并持久化为 mp4 附件（可能阻塞数分钟）。"""
     prompt = (prompt or "").strip()
@@ -271,7 +269,6 @@ async def generate_speech_for_model(
     speech_rate: float = 1.0,
     purpose: str = PURPOSE_CHAT_GENERATED,
     agent_id: UUID | None = None,
-    trace_id: str | None = None,
 ) -> dict:
     """调用 TTS 模型生成语音，持久化为附件并返回结果。"""
     audio_bytes = await generate_tts_bytes(
