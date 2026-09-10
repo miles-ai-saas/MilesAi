@@ -17,7 +17,7 @@ from app.tenant.compliance.models import (
     WordLibrary,
 )
 from app.tenant.hooks.models import HookBinding, HookDefinition, HookExecutionLog
-from app.tenant.marketplace.models import AppInstall
+from app.models.marketplace import AppInstall
 from app.tenant.mcp.models import McpRunnerSession, McpService
 from app.tenant.prompts.models import PromptTemplate
 from app.tenant.skills.models import SkillPackage

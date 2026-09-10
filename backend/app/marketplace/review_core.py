@@ -9,7 +9,7 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.common.exceptions import BadRequestError
-from app.tenant.marketplace.models import MarketplaceApp, MarketplaceAppStatus
+from app.models.marketplace import MarketplaceApp, MarketplaceAppStatus
 
 
 async def approve_marketplace_app(

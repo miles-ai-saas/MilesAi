@@ -3,7 +3,7 @@
 租户域表（``tenant/*/models``）不在此 re-export，避免循环引用；
 统一由 ``app.models.registry.load_all_models`` 按序导入。
 
-域目录：platform / kb / flow / model / media / meta / task / storage / agent。
+域目录：platform / kb / flow / model / media / meta / task / storage / agent / marketplace。
 """
 
 from app.models.agent import (
@@ -19,6 +19,15 @@ from app.models.agent import (
 )
 from app.models.flow import Flow, FlowStatus, FlowVersion
 from app.models.kb import Document, DocumentChunk, DocumentStatus, KnowledgeBase, KbSearchLog, VectorRef
+from app.models.marketplace import (
+    AppCategory,
+    AppInstall,
+    AppInstallSnapshot,
+    AppRating,
+    MarketplaceApp,
+    MarketplaceAppStatus,
+    MarketplaceAppVisibility,
+)
 from app.models.media import Attachment, MediaAsset
 from app.models.meta import CategoryDomain, SysCategory
 from app.models.model import (
@@ -47,6 +56,13 @@ __all__ = [
     "KbSearchLog",
     "Attachment",
     "MediaAsset",
+    "AppCategory",
+    "AppInstall",
+    "AppInstallSnapshot",
+    "AppRating",
+    "MarketplaceApp",
+    "MarketplaceAppStatus",
+    "MarketplaceAppVisibility",
     "Agent",
     "AgentStatus",
     "AgentSubAgentBinding",

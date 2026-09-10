@@ -1,10 +1,4 @@
-"""应用市场 ORM 的 L1 兼容入口。
-
-实现已上移 ``app.models.marketplace``（admin 与 tenant 共读的共享 ORM）；
-本模块仅 re-export，保持既有 ``app.tenant.marketplace.models`` import 稳定。
-"""
-
-from __future__ import annotations
+"""应用市场共享 ORM（admin 审核与 tenant 市场共读）。"""
 
 from app.models.marketplace.models import (
     AppCategory,

@@ -12,6 +12,7 @@ def load_all_models() -> None:
     import app.models.task  # noqa: F401 — task_records
     import app.models.storage  # noqa: F401 — 对象存储配置
     import app.models.agent  # noqa: F401 — agt_* 智能体
+    import app.models.marketplace  # noqa: F401 — mkt_* 市场（admin/tenant 共读）
     import app.models  # noqa: F401 — 聚合 re-export（不新增表）
     import app.admin.models  # noqa: F401
     import app.tenant.compliance.models  # noqa: F401
@@ -20,6 +21,5 @@ def load_all_models() -> None:
     import app.tenant.skills.models  # noqa: F401
     import app.tenant.mcp.models  # noqa: F401
     import app.tenant.a2a.models  # noqa: F401
-    import app.tenant.marketplace.models  # noqa: F401
     import app.tenant.tools.models  # noqa: F401
     import app.tenant.audit_log.models  # noqa: F401
