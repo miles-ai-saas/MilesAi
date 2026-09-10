@@ -118,6 +118,8 @@ L0 → L1 → L2 → L3 → L4
 
 > **收敛记录（2026-09-09，G2-2）**：画布 PromptTemplate 节点模板库 live 引用收敛——`RunContext.resolve_prompt_template` 回调（L1 注入），loader `tenant/prompts/services/template_loader.py::build_prompt_template_loader` 承载原租户校验/短会话逻辑；`flow_runtime/nodes/rag_nodes.py` 删 `tenant.prompts.models` import（见 plan [`2026-09-09-engine-di-flow-prompt-loader`](../superpowers/plans/2026-09-09-engine-di-flow-prompt-loader.md)）。flow 画布节点面（G2）收敛起点。
 
+> **收敛记录（2026-09-09，G2-3）**：画布 ComplianceCheck 节点收敛——纯算法 `CompliancePipeline`/`ScanMatch`/`ScanResult`/`SensitiveAction` 下沉中立域 `app.models.compliance`（`tenant.compliance.{models,services.pipeline}` 转 re-export shim），租户词表加载经 `RunContext.load_scan_words` 回调（L1 `tenant/compliance/services/scan_words_loader.py::build_scan_words_loader`）注入；`flow_runtime/nodes/compliance_nodes.py` 对 `tenant.*` import 与同步 `get_sync_db` 阻塞清零（见 plan [`2026-09-09-engine-di-flow-compliance-node`](../superpowers/plans/2026-09-09-engine-di-flow-compliance-node.md)）。
+
 ### 2.3 运营后台（`admin/`）访问租户域
 
 `admin/`（L0/L1，`/api/admin/v1`）为平台运营面：审核租户内容、管理租户与配额时须读取租户域数据。允许 `admin → tenant` **单向**访问，但只能走下列合规形态：
@@ -372,3 +374,4 @@ backend/tests/
 | 2026-09-09 | F2c-A：画布 `platform_tool` 执行回调 L1 `flow_invoker` 注入 `RunContext`，langgraph/subflow 透传；tool_nodes 对 `tenant.tools` 清零 |
 | 2026-09-09 | F2c-B：agent 对话工具执行面收敛——L3 `tool_contract` 中性契约 + L1 `agent_executor` 注入 loop，tool_agent 包对 `tenant` 依赖清零，F2 tools 契约计划收尾 |
 | 2026-09-09 | G2-2：flow PromptTemplate 节点模板 live 引用收敛——RunContext.resolve_prompt_template 回调 + L1 template_loader，rag_nodes 对 tenant 清零（G2 画布节点面起点） |
+| 2026-09-09 | G2-3：flow ComplianceCheck 节点收敛——合规纯算法下沉 models/compliance + 词表加载 RunContext 回调，compliance_nodes 对 tenant 清零 |
