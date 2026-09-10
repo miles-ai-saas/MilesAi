@@ -18,7 +18,10 @@ logger = get_logger(__name__)
 # 导出 Markdown 时插入的分页标记（用于拆分 page_no）
 PAGE_BREAK_PLACEHOLDER = "\n\n<!-- MILESAI_PAGE_BREAK -->\n\n"
 
-# Docling 常见可转换扩展名（与 DocumentConverter 默认允许格式对齐）
+# Docling 常见可转换扩展名（与 DocumentConverter 默认允许格式对齐）。
+# 这是**解析能力**声明，不等于上传白名单：TIFF/BMP 可解析但白名单刻意不收
+# （``parse_image`` 不认，收了会「可上传却必解析失败」）；图片类扩展名在此仅声明
+# 底层能力，入库实际由 ``loaders`` 的 ``is_image_file`` 分支先拦截。
 DOCLING_EXTENSIONS = frozenset(
     {
         ".pdf",

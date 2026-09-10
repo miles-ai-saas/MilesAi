@@ -57,5 +57,10 @@ test ! -d app/ai_stack && test ! -d app/ai && echo OK
 | 项 | 说明 |
 |----|------|
 | `embedding_resolve` 边界 | 评估是否从 `tenant.models` 抽到 `integrations` |
-| 上传白名单 | Office（docx/pptx/xlsx）与 `DOCLING_EXTENSIONS` 对齐 |
 | Parse 插件 | PaddleOCR 等仅增 `rag/parse/backends/*`，不含 MinerU/RAG-Anything |
+
+> **已闭环（2026-09-10）**：上传白名单与解析能力对齐——图/音/视频的扩展名与 MIME 改由
+> [parse/media.py](../../../backend/app/rag/parse/media.py) 单一来源导出、`upload_policy` 复用；
+> `OFFICE_EXTENSIONS ⊆ DOCLING_EXTENSIONS`、media 判定 ⊆ 白名单、白名单扩展名/MIME 往返可接受、
+> 前端 `accept` 全覆盖等不变式由 `tests/rag/test_upload_policy_alignment.py` 守卫。Docling 可读但
+> 白名单刻意不收的 TIFF/BMP 归「允许上传 ≠ 一定能解析」边界，保持现状（见 `upload_policy` 模块注释）。

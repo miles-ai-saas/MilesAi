@@ -2,33 +2,42 @@
 多模态文件类型判定。
 
 用于 loaders 路由（image/audio）与 ``vector_type_for_document``（写入 VectorRef.vector_type）。
+
+``*_MIMES`` / ``*_EXTENSIONS`` 为公开常量：``upload_policy`` 直接复用同一来源，
+避免上传白名单与判定逻辑各写一份导致漂移。
 """
 
-_IMAGE_MIMES = {
-    "image/jpeg",
-    "image/jpg",
-    "image/png",
-    "image/webp",
-}
-_IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
+IMAGE_MIMES = frozenset(
+    {
+        "image/jpeg",
+        "image/jpg",
+        "image/png",
+        "image/webp",
+    }
+)
+IMAGE_EXTENSIONS = frozenset({".jpg", ".jpeg", ".png", ".webp"})
 
-_AUDIO_MIMES = {
-    "audio/mpeg",
-    "audio/mp3",
-    "audio/wav",
-    "audio/x-wav",
-    "audio/webm",
-    "audio/ogg",
-}
-_AUDIO_EXTENSIONS = {".mp3", ".wav", ".m4a", ".ogg", ".webm"}
+AUDIO_MIMES = frozenset(
+    {
+        "audio/mpeg",
+        "audio/mp3",
+        "audio/wav",
+        "audio/x-wav",
+        "audio/webm",
+        "audio/ogg",
+    }
+)
+AUDIO_EXTENSIONS = frozenset({".mp3", ".wav", ".m4a", ".ogg", ".webm"})
 
-_VIDEO_MIMES = {
-    "video/mp4",
-    "video/quicktime",
-    "video/webm",
-    "video/x-matroska",
-}
-_VIDEO_EXTENSIONS = {".mp4", ".mov", ".m4v", ".webm", ".mkv"}
+VIDEO_MIMES = frozenset(
+    {
+        "video/mp4",
+        "video/quicktime",
+        "video/webm",
+        "video/x-matroska",
+    }
+)
+VIDEO_EXTENSIONS = frozenset({".mp4", ".mov", ".m4v", ".webm", ".mkv"})
 
 
 def file_extension(filename: str) -> str:
@@ -41,19 +50,19 @@ def file_extension(filename: str) -> str:
 def is_image_file(filename: str, mime_type: str) -> bool:
     """是否按图片解析（OCR 或占位文本）。"""
     ext = file_extension(filename)
-    return mime_type in _IMAGE_MIMES or ext in _IMAGE_EXTENSIONS
+    return mime_type in IMAGE_MIMES or ext in IMAGE_EXTENSIONS
 
 
 def is_audio_file(filename: str, mime_type: str) -> bool:
     """是否按音频解析（Whisper 或占位文本）。"""
     ext = file_extension(filename)
-    return mime_type in _AUDIO_MIMES or ext in _AUDIO_EXTENSIONS
+    return mime_type in AUDIO_MIMES or ext in AUDIO_EXTENSIONS
 
 
 def is_video_file(filename: str, mime_type: str) -> bool:
     """是否按视频解析（抽帧 + 音轨转写）。"""
     ext = file_extension(filename)
-    return mime_type in _VIDEO_MIMES or ext in _VIDEO_EXTENSIONS
+    return mime_type in VIDEO_MIMES or ext in VIDEO_EXTENSIONS
 
 
 def vector_type_for_document(filename: str, mime_type: str) -> str:
