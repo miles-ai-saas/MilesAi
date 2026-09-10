@@ -126,6 +126,8 @@ L0 → L1 → L2 → L3 → L4
 
 > **收敛记录（2026-09-10，G1-2）**：生成面租户编排下沉——`integrations/generative` 前零 tenant 引用：合规扫描 / 日配额 / 参考图 data URL / 生成物持久化 / 媒体资产登记从 L3 迁入 L1 `tenant/generative/services/orchestration.py`（`persist.py` 同步下沉），L3 `*/service.py` 只保留纯厂商派发 `generate_{image,video,tts}_bytes`；画布 `ImageGenerate`/`VideoGenerate` 同步分支改经 `RunContext.generate_{image,video}_sync`（L1 注入），与 `submit_generative_*` 同族。守卫测试纳入 `integrations/generative`。见 plan [`2026-09-10-engine-di-generative-orchestration`](../superpowers/plans/2026-09-10-engine-di-generative-orchestration.md)。
 
+> **收敛记录（2026-09-10，G1-3）**：`integrations/chat` 媒体读取收敛——多模态 I/O（`resolve_media_refs` / `build_invoke_messages_with_media`）首参由 `(db, ctx)` 改为 L3 中性 `MediaReader`，L1 新增 `SessionMediaReader`（复用调用方会话，`tenant.attachments.services.media_reader`）并注入 Agent 对话 / RAG / 工具循环 / 画布 LLMCall；`rag_qa` 顺带移除仅供读图的会话与 `_tenant_from_state`。至此 **`integrations/**` 与 `flow_runtime/**` 对 `tenant` 全域清零**，engine DI 反依赖收敛收官。见 plan [`2026-09-10-engine-di-chat-media`](../superpowers/plans/2026-09-10-engine-di-chat-media.md)。
+
 ### 2.3 运营后台（`admin/`）访问租户域
 
 `admin/`（L0/L1，`/api/admin/v1`）为平台运营面：审核租户内容、管理租户与配额时须读取租户域数据。允许 `admin → tenant` **单向**访问，但只能走下列合规形态：
@@ -385,3 +387,4 @@ backend/tests/
 | 2026-09-09 | 加固：deepagents 三文件 `TYPE_CHECKING` 残留收敛——`io.AgentServiceLike` 中性 Protocol 取代租户 `AgentService` 注解，deepagents 包（含类型引用）对 tenant 全清；新增源码守卫测试 `tests/test_l3_neutral_imports.py` |
 | 2026-09-09 | G2-4a：画布媒体读取收敛——MediaReader 中立契约 + RunContext.media_reader + L1 短会话读取器，flow_runtime/nodes 对 tenant 清零（G2 画布节点面收官） |
 | 2026-09-10 | G1-2：生成面租户编排下沉 L1——`integrations/generative` 只留纯厂商派发，`RunContext.generate_{image,video}_sync` 注入画布同步分支，L3 生成面对 tenant 清零 |
+| 2026-09-10 | G1-3：`integrations/chat` 媒体读取收敛——MediaReader 注入多模态 I/O + L1 SessionMediaReader，**L3（integrations + flow_runtime）对 tenant 全域清零，engine DI 收官** |
