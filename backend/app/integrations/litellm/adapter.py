@@ -15,8 +15,6 @@ from __future__ import annotations
 from collections.abc import Awaitable, Callable
 from typing import Any
 
-OnDelta = Callable[[str], Awaitable[None]]
-
 from app.common.exceptions import AppError, BadRequestError
 from app.integrations.http_constants import HTTP_DEFAULT_TIMEOUT_SEC
 from app.integrations.litellm.usage_sink import UsageSink
@@ -26,6 +24,8 @@ from app.models.model.catalog import (
     ModelCapabilityType,
     ModelVendor,
 )
+
+OnDelta = Callable[[str], Awaitable[None]]
 
 # 一期对话链仅支持以下 model_type（与 PRD / model-providers 一致）
 CHAT_MODEL_TYPES: frozenset[str] = frozenset(

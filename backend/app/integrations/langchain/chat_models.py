@@ -17,17 +17,16 @@ from __future__ import annotations
 from collections.abc import Awaitable, Callable
 from typing import Any
 
-OnDelta = Callable[[str], Awaitable[None]]
-
+from app.integrations.litellm.adapter import litellm_chat_completion, litellm_chat_completion_stream
+from app.integrations.litellm.usage_sink import UsageSink
+from app.models.model import ModelConfig
 from langchain_core.callbacks import AsyncCallbackManagerForLLMRun, CallbackManagerForLLMRun
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage
 from langchain_core.outputs import ChatGeneration, ChatResult
 from pydantic import ConfigDict
 
-from app.integrations.litellm.adapter import litellm_chat_completion, litellm_chat_completion_stream
-from app.integrations.litellm.usage_sink import UsageSink
-from app.models.model import ModelConfig
+OnDelta = Callable[[str], Awaitable[None]]
 
 
 def _messages_to_openai(messages: list[BaseMessage]) -> list[dict[str, str]]:

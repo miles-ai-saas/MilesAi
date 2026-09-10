@@ -5,8 +5,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from app.integrations.litellm.adapter import litellm_chat_completion_stream
-from app.models.model import ModelConfig
-from app.models.model.catalog import ModelCapabilityType, ModelVendor
 from tests.infra.test_litellm_adapter import _model
 
 

@@ -12,6 +12,7 @@ from app.core.config import get_settings
 from app.core.security import create_access_token
 from app.core.service import BaseService
 from app.core.tenant import TenantContext, assert_tenant_access
+from app.models.agent.api_key import AgentApiKey
 from app.tenant.agents.repositories.agent import AgentRepository
 from app.tenant.agents.repositories.api_key import AgentApiKeyRepository
 from app.tenant.agents.schemas.api_access import (
