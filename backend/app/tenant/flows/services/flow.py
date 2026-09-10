@@ -310,7 +310,7 @@ class FlowService(BaseService):
             raise BadRequestError("流程无可用版本")
         report = validate_graph_for_compile(version.graph_json)
         sub_errors = await validate_subflow_references(
-            self.db,
+            self.repo,
             version.graph_json,
             tenant_id=self.ctx.tenant_id,
             current_flow_id=flow.id,
