@@ -163,6 +163,7 @@ def build_child_context(
         resolve_prompt_template=parent_ctx.resolve_prompt_template,  # prompt 模板解析回调透传到子流程
         load_scan_words=parent_ctx.load_scan_words,  # 敏感词表加载回调透传到子流程
         load_subflow_graph=parent_ctx.load_subflow_graph,  # 子流程图加载回调透传到子流程
+        media_reader=parent_ctx.media_reader,  # 媒体读取器透传到子流程
     )
 
 
