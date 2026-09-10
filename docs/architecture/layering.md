@@ -378,3 +378,4 @@ backend/tests/
 | 2026-09-09 | G2-2：flow PromptTemplate 节点模板 live 引用收敛——RunContext.resolve_prompt_template 回调 + L1 template_loader，rag_nodes 对 tenant 清零（G2 画布节点面起点） |
 | 2026-09-09 | G2-3：flow ComplianceCheck 节点收敛——合规纯算法下沉 models/compliance + 词表加载 RunContext 回调，compliance_nodes 对 tenant 清零 |
 | 2026-09-09 | G2-1：flow 子流程加载/校验收敛——FlowRepoLike 契约 + RunContext.load_subflow_graph 回调，subflow 包对 tenant 清零 |
+| 2026-09-09 | 加固：deepagents 三文件 `TYPE_CHECKING` 残留收敛——`io.AgentServiceLike` 中性 Protocol 取代租户 `AgentService` 注解，deepagents 包（含类型引用）对 tenant 全清；新增源码守卫测试 `tests/test_l3_neutral_imports.py` |
