@@ -7,7 +7,7 @@ import { TENANTS_PAGE_DESCRIPTION } from "@/features/tenant/lib/tenants-page-sha
 
 export function TenantsPageView({ vm }: { vm: TenantsPageVm }) {
   return (
-    <div>
+    <div className="admin-page-stack">
       <PageHeader title="租户管理" description={TENANTS_PAGE_DESCRIPTION} />
       <TenantsStatusFilterSection vm={vm} />
       <TenantsCreateSection vm={vm} />

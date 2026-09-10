@@ -8,7 +8,7 @@ export function AdminsCreateFormSection({ vm }: { vm: AdminsPageVm }) {
   if (!showForm) return null;
 
   return (
-    <section className="card mb-6 p-4">
+    <section className="card p-5">
       <h2 className="text-sm font-semibold text-ink">新建管理员</h2>
       <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
         <input className="input-field" placeholder="用户名" value={username} onChange={(e) => setUsername(e.target.value)} />

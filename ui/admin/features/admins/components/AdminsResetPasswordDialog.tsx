@@ -8,7 +8,7 @@ export function AdminsResetPasswordDialog({ vm }: { vm: AdminsPageVm }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
-      <div className="card w-full max-w-sm p-4">
+      <div className="card w-full max-w-sm p-5">
         <h3 className="font-semibold text-ink">重置密码</h3>
         <input
           className="input-field mt-3 w-full"

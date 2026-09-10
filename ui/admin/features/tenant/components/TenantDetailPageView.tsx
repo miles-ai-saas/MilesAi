@@ -13,7 +13,7 @@ export function TenantDetailPageView({ vm }: { vm: TenantDetailPageVm }) {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="admin-page-stack">
       <TenantDetailHeaderSection vm={vm} />
 
       {msg && <p className="text-sm text-emerald-600">{msg}</p>}

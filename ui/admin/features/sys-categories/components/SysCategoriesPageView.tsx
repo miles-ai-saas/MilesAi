@@ -9,20 +9,22 @@ export function SysCategoriesPageView({ vm }: { vm: SysCategoriesPageVm }) {
   const { openCreate } = vm;
 
   return (
-    <div>
-      <PageHeader
-        title="工作台分类"
-        description={SYS_CATEGORIES_PAGE_DESCRIPTION}
-        action={
-          <button type="button" className="btn-primary" onClick={openCreate}>
-            新建分类
-          </button>
-        }
-      />
+    <>
+      <div className="admin-page-stack">
+        <PageHeader
+          title="工作台分类"
+          description={SYS_CATEGORIES_PAGE_DESCRIPTION}
+          action={
+            <button type="button" className="btn-primary" onClick={openCreate}>
+              新建分类
+            </button>
+          }
+        />
 
-      <SysCategoriesDomainTabs vm={vm} />
-      <SysCategoriesTableSection vm={vm} />
+        <SysCategoriesDomainTabs vm={vm} />
+        <SysCategoriesTableSection vm={vm} />
+      </div>
       <SysCategoryFormDialog vm={vm} />
-    </div>
+    </>
   );
 }

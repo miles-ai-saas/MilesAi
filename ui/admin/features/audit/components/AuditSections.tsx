@@ -33,7 +33,7 @@ export function AuditFiltersSection({ vm }: { vm: AuditPageVm }) {
   } = vm;
 
   return (
-    <div className="mb-4 flex flex-wrap items-end gap-2">
+    <div className="admin-filter-bar items-end">
       <label className="flex flex-col gap-1">
         <span className="text-xs text-ink-muted">操作类型</span>
         <select className="input-field w-auto min-w-[10rem]" value={actionFilter} onChange={(e) => setActionFilter(e.target.value)}>
@@ -89,7 +89,7 @@ export function AuditLogListSection({ vm }: { vm: AuditPageVm }) {
   const { list, hasActiveFilters } = vm;
 
   return (
-    <section className="card p-4">
+    <section className="card p-5">
       {list.loading ? (
         <p className="text-sm text-ink-muted">加载中…</p>
       ) : (

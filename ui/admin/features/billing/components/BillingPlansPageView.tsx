@@ -9,7 +9,7 @@ export function BillingPlansPageView({ vm }: { vm: BillingPlansPageVm }) {
   const { showPlanForm, setShowPlanForm, msg, err } = vm;
 
   return (
-    <div>
+    <div className="admin-page-stack">
       <PageHeader
         title="套餐管理"
         description={BILLING_PLANS_PAGE_DESCRIPTION}
@@ -20,8 +20,8 @@ export function BillingPlansPageView({ vm }: { vm: BillingPlansPageVm }) {
         }
       />
 
-      {msg && <p className="mb-4 text-sm text-emerald-600">{msg}</p>}
-      {err && <p className="mb-4 text-sm text-red-600">{err}</p>}
+      {msg && <p className="admin-alert-ok">{msg}</p>}
+      {err && <p className="admin-alert-err">{err}</p>}
 
       <BillingPlansCreateSection vm={vm} />
       <BillingPlansGridSection vm={vm} />

@@ -8,7 +8,7 @@ import { MODEL_CATALOG_PAGE_DESCRIPTION } from "@/features/model-catalog/lib/mod
 
 export function ModelCatalogPageView({ vm }: { vm: ModelCatalogPageVm }) {
   return (
-    <div>
+    <div className="admin-page-stack">
       <PageHeader
         title="内置模型目录"
         description={MODEL_CATALOG_PAGE_DESCRIPTION}

@@ -10,13 +10,13 @@ export function ModelCatalogVendorFilterSection({ vm }: { vm: ModelCatalogPageVm
   const { vendor, setVendor } = vm;
 
   return (
-    <div className="mb-4 flex flex-wrap gap-2">
+    <div className="admin-filter-bar">
       {MODEL_CATALOG_VENDOR_FILTERS.map((v) => (
         <button
           key={v || "all"}
           type="button"
           onClick={() => setVendor(v)}
-          className={`rounded-full px-3 py-1 text-xs ${vendor === v ? "bg-brand text-white" : "border bg-surface text-ink-muted"}`}
+          className={`admin-chip ${vendor === v ? "admin-chip-active" : ""}`}
         >
           {v ? (VENDOR_LABEL[v] ?? v) : "全部"}
         </button>

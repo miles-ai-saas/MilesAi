@@ -8,7 +8,7 @@ export function RiskRateLimitEditDialog({ vm }: { vm: RiskPageVm }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
-      <div className="card w-full max-w-md p-4">
+      <div className="card w-full max-w-md p-5">
         <h3 className="font-semibold text-ink">编辑限流规则</h3>
         <div className="mt-3 grid gap-2">
           <input className="input-field" placeholder="规则名称" value={editForm.name} onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))} />

@@ -6,7 +6,7 @@ export function ProfilePasswordSection({ vm }: { vm: ProfilePageVm }) {
   const { oldPwd, setOldPwd, newPwd, setNewPwd, err, changePwd } = vm;
 
   return (
-    <section className="card mb-6 p-4">
+    <section className="card p-5">
       <h2 className="text-sm font-semibold text-ink">修改密码</h2>
       <p className="mt-1 text-xs text-ink-muted">修改成功后将退出所有设备，需重新登录。</p>
       <input
@@ -37,7 +37,7 @@ export function ProfileSessionsSection({ vm }: { vm: ProfilePageVm }) {
   const { sessions, msg, revoking, revokeSession } = vm;
 
   return (
-    <section className="card p-4">
+    <section className="card p-5">
       <h2 className="text-sm font-semibold text-ink">在线会话</h2>
       <ul className="admin-data-list mt-3">
         {sessions.map((s) => (

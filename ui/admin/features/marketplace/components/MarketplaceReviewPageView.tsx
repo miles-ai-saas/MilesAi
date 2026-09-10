@@ -14,7 +14,7 @@ export function MarketplaceReviewPageView({ vm }: { vm: MarketplaceReviewPageVm 
 
   if (forbidden) {
     return (
-      <div>
+      <div className="admin-page-stack">
         <PageHeader title="应用审核" description={MARKETPLACE_REVIEW_FORBIDDEN_DESCRIPTION} />
         <p className="text-sm text-ink-muted">当前 review_mode={reviewMode}，请在工作台由租户侧审核。</p>
       </div>
@@ -22,15 +22,17 @@ export function MarketplaceReviewPageView({ vm }: { vm: MarketplaceReviewPageVm 
   }
 
   return (
-    <div>
-      <PageHeader title="应用审核" description={MARKETPLACE_REVIEW_PAGE_DESCRIPTION} />
+    <>
+      <div className="admin-page-stack">
+        <PageHeader title="应用审核" description={MARKETPLACE_REVIEW_PAGE_DESCRIPTION} />
 
-      {msg && <p className="mb-4 text-sm text-emerald-600">{msg}</p>}
-      {err && <p className="mb-4 text-sm text-red-600">{err}</p>}
+        {msg && <p className="admin-alert-ok">{msg}</p>}
+        {err && <p className="admin-alert-err">{err}</p>}
 
-      <MarketplaceReviewListSection vm={vm} />
-      <MarketplaceReviewDetailSection vm={vm} />
+        <MarketplaceReviewListSection vm={vm} />
+        <MarketplaceReviewDetailSection vm={vm} />
+      </div>
       <MarketplaceReviewRejectDialog vm={vm} />
-    </div>
+    </>
   );
 }

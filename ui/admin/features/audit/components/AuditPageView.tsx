@@ -7,7 +7,7 @@ import { AUDIT_PAGE_DESCRIPTION } from "@/features/audit/lib/audit-page-shared";
 
 export function AuditPageView({ vm }: { vm: AuditPageVm }) {
   return (
-    <div>
+    <div className="admin-page-stack">
       <PageHeader title="审计日志" description={AUDIT_PAGE_DESCRIPTION} />
       <AuditFiltersSection vm={vm} />
       <AuditLogListSection vm={vm} />

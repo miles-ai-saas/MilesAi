@@ -16,7 +16,7 @@ export function ModelCatalogDetailPageView({ vm }: { vm: ModelCatalogDetailPageV
   const modelId = model.model_code ?? model.model_name;
 
   return (
-    <div className="space-y-6">
+    <div className="admin-page-stack">
       <AdminDetailHeader
         backHref="/model-catalog"
         backLabel="返回模型列表"

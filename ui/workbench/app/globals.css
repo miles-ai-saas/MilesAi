@@ -64,6 +64,12 @@
     @apply rounded-lg px-3 py-1.5 text-sm text-ink-muted transition hover:bg-brand-light hover:text-brand;
   }
 
+  /* 次级按钮：与 btn-primary 同尺寸，用于弹层「取消」等中性操作 */
+  .btn-secondary {
+    @apply rounded-lg border border-line bg-surface px-4 py-2 text-sm font-medium text-ink transition
+      hover:border-brand/30 hover:bg-brand-light hover:text-brand disabled:cursor-not-allowed disabled:opacity-45;
+  }
+
   .btn-sm {
     @apply inline-flex items-center justify-center rounded-md px-3 py-1.5 text-xs font-medium transition
       disabled:cursor-not-allowed disabled:opacity-45;

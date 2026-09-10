@@ -22,7 +22,7 @@ export function AdminDetailHeader({ backHref, backLabel, title, description, bad
       <div className="mt-3 flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-2xl font-bold tracking-tight text-ink">{title}</h1>
+            <h1 className="text-xl font-bold tracking-tight text-ink sm:text-2xl">{title}</h1>
             {badges}
           </div>
           {description ? <div className="mt-1.5 text-sm cell-muted">{description}</div> : null}

@@ -8,7 +8,7 @@ export function BillingBillsGenerateSection({ vm }: { vm: BillingBillsPageVm }) 
   const { tenants, genTenantId, setGenTenantId, periodStart, setPeriodStart, periodEnd, setPeriodEnd, onGenerateBill } = vm;
 
   return (
-    <section className="card mb-6 p-4">
+    <section className="card p-5">
       <h2 className="text-sm font-semibold text-ink">生成账单</h2>
       <div className="mt-3 flex flex-wrap items-end gap-2">
         <select className="input-field w-auto min-w-[12rem]" value={genTenantId} onChange={(e) => setGenTenantId(e.target.value)}>
@@ -34,7 +34,7 @@ export function BillingBillsTableSection({ vm }: { vm: BillingBillsPageVm }) {
   const { list, billDetail, viewBill, markPaid, voidBill } = vm;
 
   return (
-    <section className="card p-4">
+    <section className="card p-5">
       <h2 className="text-sm font-semibold text-ink">账单列表</h2>
       {list.loading ? (
         <p className="mt-4 text-sm text-ink-muted">加载中…</p>

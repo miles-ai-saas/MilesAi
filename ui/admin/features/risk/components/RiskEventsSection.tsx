@@ -7,7 +7,7 @@ export function RiskEventsSection({ vm }: { vm: RiskPageVm }) {
   const { events, onResolveEvent } = vm;
 
   return (
-    <section className="card p-4">
+    <section className="card p-5">
       <h2 className="text-sm font-semibold text-ink">风险事件</h2>
       {events.loading ? (
         <p className="mt-3 text-sm text-ink-muted">加载中…</p>

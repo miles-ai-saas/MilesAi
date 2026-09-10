@@ -9,19 +9,21 @@ export function MarketplaceCategoriesPageView({ vm }: { vm: MarketplaceCategorie
   const { openCreate } = vm;
 
   return (
-    <div>
-      <PageHeader
-        title="应用市场分类"
-        description={MARKETPLACE_CATEGORIES_PAGE_DESCRIPTION}
-        action={
-          <button type="button" className="btn-primary" onClick={openCreate}>
-            新建分类
-          </button>
-        }
-      />
+    <>
+      <div className="admin-page-stack">
+        <PageHeader
+          title="应用市场分类"
+          description={MARKETPLACE_CATEGORIES_PAGE_DESCRIPTION}
+          action={
+            <button type="button" className="btn-primary" onClick={openCreate}>
+              新建分类
+            </button>
+          }
+        />
 
-      <MarketplaceCategoriesTableSection vm={vm} />
+        <MarketplaceCategoriesTableSection vm={vm} />
+      </div>
       <MarketplaceCategoryFormDialog vm={vm} />
-    </div>
+    </>
   );
 }

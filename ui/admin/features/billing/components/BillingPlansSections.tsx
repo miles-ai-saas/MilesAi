@@ -8,7 +8,7 @@ export function BillingPlansCreateSection({ vm }: { vm: BillingPlansPageVm }) {
   if (!showPlanForm) return null;
 
   return (
-    <section className="card mb-6 p-4">
+    <section className="card p-5">
       <h2 className="text-sm font-semibold text-ink">新建套餐</h2>
       <div className="mt-3 grid gap-2 sm:grid-cols-3">
         <input className="input-field" placeholder="code（如 pro）" value={planCode} onChange={(e) => setPlanCode(e.target.value)} />

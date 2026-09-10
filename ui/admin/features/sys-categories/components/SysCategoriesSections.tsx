@@ -7,7 +7,7 @@ export function SysCategoriesDomainTabs({ vm }: { vm: SysCategoriesPageVm }) {
   const { domain, setDomain } = vm;
 
   return (
-    <div className="mb-4 flex flex-wrap gap-2 border-b border-line pb-3">
+    <div className="admin-filter-bar border-b border-line pb-3">
       {SYS_CATEGORY_DOMAINS.map((d) => (
         <button
           key={d.key}

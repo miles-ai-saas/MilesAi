@@ -12,7 +12,7 @@ export function AdminsPageView({ vm }: { vm: AdminsPageVm }) {
 
   if (forbidden) {
     return (
-      <div>
+      <div className="admin-page-stack">
         <PageHeader title="平台管理员" description={ADMINS_FORBIDDEN_DESCRIPTION} />
         <p className="text-sm text-ink-muted">当前账号无权限查看此页面。</p>
       </div>
@@ -20,23 +20,25 @@ export function AdminsPageView({ vm }: { vm: AdminsPageVm }) {
   }
 
   return (
-    <div>
-      <PageHeader
-        title="平台管理员"
-        description={ADMINS_PAGE_DESCRIPTION}
-        action={
-          <button type="button" className="btn-primary" onClick={() => setShowForm((v) => !v)}>
-            {showForm ? "取消" : "新建管理员"}
-          </button>
-        }
-      />
+    <>
+      <div className="admin-page-stack">
+        <PageHeader
+          title="平台管理员"
+          description={ADMINS_PAGE_DESCRIPTION}
+          action={
+            <button type="button" className="btn-primary" onClick={() => setShowForm((v) => !v)}>
+              {showForm ? "取消" : "新建管理员"}
+            </button>
+          }
+        />
 
-      {msg && <p className="mb-4 text-sm text-emerald-600">{msg}</p>}
-      {err && <p className="mb-4 text-sm text-red-600">{err}</p>}
+        {msg && <p className="admin-alert-ok">{msg}</p>}
+        {err && <p className="admin-alert-err">{err}</p>}
 
-      <AdminsCreateFormSection vm={vm} />
-      <AdminsTableSection vm={vm} />
+        <AdminsCreateFormSection vm={vm} />
+        <AdminsTableSection vm={vm} />
+      </div>
       <AdminsResetPasswordDialog vm={vm} />
-    </div>
+    </>
   );
 }

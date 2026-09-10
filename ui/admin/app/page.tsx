@@ -38,7 +38,7 @@ export default function DashboardPage() {
   ];
 
   return (
-    <div>
+    <div className="admin-page-stack">
       <PageHeader title="控制台" description="平台租户、计费与风控数据一览" />
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {cards.map((c) => (
@@ -48,7 +48,7 @@ export default function DashboardPage() {
           </Link>
         ))}
       </div>
-      <section className="card mt-8 p-5">
+      <section className="card p-5">
         <h2 className="text-sm font-semibold text-ink">快捷操作</h2>
         <div className="mt-4 flex flex-wrap gap-3">
           <Link href="/tenants" className="btn-primary">

@@ -7,7 +7,7 @@ export function RiskIpBlacklistSection({ vm }: { vm: RiskPageVm }) {
   const { ips, newIp, setNewIp, ipReason, setIpReason, onAddIp, onToggleIp } = vm;
 
   return (
-    <section className="card p-4">
+    <section className="card p-5">
       <h2 className="text-sm font-semibold text-ink">IP 黑名单</h2>
       <div className="mt-3 flex flex-wrap gap-2">
         <input className="input-field max-w-xs" placeholder="IP 地址" value={newIp} onChange={(e) => setNewIp(e.target.value)} />

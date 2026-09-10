@@ -16,7 +16,7 @@ export function BillingPlanDetailPageView({ vm }: { vm: BillingPlanDetailPageVm 
   }
 
   return (
-    <div className="space-y-6">
+    <div className="admin-page-stack">
       <BillingPlanDetailHeaderSection vm={vm} />
 
       {msg && <p className="text-sm text-emerald-600">{msg}</p>}

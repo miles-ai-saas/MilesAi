@@ -7,7 +7,7 @@ export function RiskRateLimitSection({ vm }: { vm: RiskPageVm }) {
   const { rules, showRuleForm, setShowRuleForm, ruleForm, setRuleForm, onCreateRule, openEditRule, onToggleRule } = vm;
 
   return (
-    <section className="card p-4">
+    <section className="card p-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-sm font-semibold text-ink">限流配置</h2>
         <button type="button" className="btn-primary text-xs" onClick={() => setShowRuleForm((v) => !v)}>

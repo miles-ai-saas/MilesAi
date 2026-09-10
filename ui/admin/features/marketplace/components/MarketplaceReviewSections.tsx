@@ -7,7 +7,7 @@ export function MarketplaceReviewListSection({ vm }: { vm: MarketplaceReviewPage
   const { list, busyId, onView, onApprove, setRejectTarget } = vm;
 
   return (
-    <section className="card p-4">
+    <section className="card p-5">
       <p className="text-sm text-ink-muted">待审核 {list.total} 个</p>
       {list.loading ? (
         <p className="mt-4 text-sm text-ink-muted">加载中…</p>
@@ -61,7 +61,7 @@ export function MarketplaceReviewDetailSection({ vm }: { vm: MarketplaceReviewPa
   if (!detail) return null;
 
   return (
-    <section className="card mt-6 p-4">
+    <section className="card p-5">
       <div className="flex items-start justify-between gap-3">
         <h2 className="text-sm font-semibold text-ink">Manifest 摘要</h2>
         <button type="button" className="text-xs text-ink-muted" onClick={() => setDetail(null)}>
@@ -79,7 +79,7 @@ export function MarketplaceReviewRejectDialog({ vm }: { vm: MarketplaceReviewPag
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
-      <div className="card w-full max-w-sm p-4">
+      <div className="card w-full max-w-sm p-5">
         <h3 className="font-semibold text-ink">驳回应用</h3>
         <p className="mt-1 text-xs text-ink-muted">驳回原因将展示给发布方。</p>
         <textarea

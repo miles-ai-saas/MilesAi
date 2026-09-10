@@ -7,7 +7,7 @@ export function AdminsTableSection({ vm }: { vm: AdminsPageVm }) {
   const { list, currentId, setResetId, onDisable } = vm;
 
   return (
-    <section className="card p-4">
+    <section className="card p-5">
       {list.loading ? (
         <p className="text-sm text-ink-muted">加载中…</p>
       ) : (

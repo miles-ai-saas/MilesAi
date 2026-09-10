@@ -12,16 +12,18 @@ export function RiskPageView({ vm }: { vm: RiskPageVm }) {
   const { ruleMsg, ruleErr } = vm;
 
   return (
-    <div className="space-y-8">
-      <PageHeader title="风控管理" description={RISK_PAGE_DESC} />
+    <>
+      <div className="admin-page-stack">
+        <PageHeader title="风控管理" description={RISK_PAGE_DESC} />
 
-      {ruleMsg && <p className="text-sm text-emerald-600">{ruleMsg}</p>}
-      {ruleErr && <p className="text-sm text-red-600">{ruleErr}</p>}
+        {ruleMsg && <p className="admin-alert-ok">{ruleMsg}</p>}
+        {ruleErr && <p className="admin-alert-err">{ruleErr}</p>}
 
-      <RiskEventsSection vm={vm} />
-      <RiskIpBlacklistSection vm={vm} />
-      <RiskRateLimitSection vm={vm} />
+        <RiskEventsSection vm={vm} />
+        <RiskIpBlacklistSection vm={vm} />
+        <RiskRateLimitSection vm={vm} />
+      </div>
       <RiskRateLimitEditDialog vm={vm} />
-    </div>
+    </>
   );
 }

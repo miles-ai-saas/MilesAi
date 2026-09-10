@@ -10,13 +10,13 @@ export function TenantsStatusFilterSection({ vm }: { vm: TenantsPageVm }) {
   const { statusFilter, setStatusFilter } = vm;
 
   return (
-    <div className="mb-4 flex flex-wrap gap-2">
+    <div className="admin-filter-bar">
       {TENANT_STATUS_FILTERS.map((s) => (
         <button
           key={s || "all"}
           type="button"
           onClick={() => setStatusFilter(s)}
-          className={`rounded-full px-3 py-1 text-xs ${statusFilter === s ? "bg-brand text-white" : "border bg-white text-ink-muted"}`}
+          className={`admin-chip ${statusFilter === s ? "admin-chip-active" : ""}`}
         >
           {s ? TENANT_STATUS_LABEL[s] || s : "全部"}
         </button>
@@ -29,8 +29,8 @@ export function TenantsCreateSection({ vm }: { vm: TenantsPageVm }) {
   const { plans, name, setName, planId, setPlanId, create } = vm;
 
   return (
-    <section className="card mb-6 p-4">
-      <h2 className="text-sm font-semibold">新建租户</h2>
+    <section className="card p-5">
+      <h2 className="text-sm font-semibold text-ink">新建租户</h2>
       <div className="mt-3 flex flex-wrap gap-2">
         <input className="input-field max-w-xs" placeholder="租户名称" value={name} onChange={(e) => setName(e.target.value)} />
         <select className="input-field max-w-xs" value={planId} onChange={(e) => setPlanId(e.target.value)}>
