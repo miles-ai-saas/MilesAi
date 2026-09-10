@@ -19,6 +19,7 @@ _CONVERGED: list[tuple[str, str]] = [
     ("flow_runtime/nodes/compliance_nodes.py", "flow_runtime/nodes/compliance_nodes.py"),
     ("models/compliance", "models/compliance"),
     ("models/media", "models/media"),
+    ("integrations/generative", "integrations/generative"),
 ]
 
 

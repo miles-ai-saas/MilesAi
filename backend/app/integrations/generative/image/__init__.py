@@ -1,1 +1,1 @@
-"""生图（``model_type=image_gen``）Provider 与服务；入口见 ``image.service``。"""
+"""生图（``model_type=image_gen``）Provider 与厂商派发（``image.service.generate_image_bytes``）。"""

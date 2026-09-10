@@ -1,34 +1,22 @@
 """
-生图服务入口（``model_type=image_gen``）。
+生图厂商派发（``model_type=image_gen``）。
 
-与对话/RAG 分离：不走 ``litellm_chat_completion``；结果写入附件供 ``ChatResponse.artifacts`` 或流程下游使用。
+只做 invoke_mode → Provider 分发与参数过滤；租户副作用（合规/配额/持久化/媒体资产
+登记）见 L1 ``tenant.generative.services.orchestration``。
 """
 
 from __future__ import annotations
 
-from uuid import UUID
-
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.common.exceptions import BadRequestError
-from app.core.tenant import TenantContext
 from app.integrations.generative.constants import (
-    DEFAULT_IMAGE_SIZE,
-    EXTRA_IMAGE_SIZE,
     INVOKE_DASHSCOPE_T2I,
     INVOKE_OPENAI_IMAGES,
     INVOKE_VOLCENGINE_IMAGE,
-    MAX_IMAGES_PER_REQUEST,
 )
 from app.integrations.generative.image.providers.dashscope_t2i import generate_dashscope_t2i
 from app.integrations.generative.image.providers.openai_images import generate_openai_images
 from app.integrations.generative.image.providers.volcengine_image import generate_volcengine_image
-from app.integrations.generative.reference import reference_image_data_url
-from app.integrations.generative.image.prompt_guard import sanitize_image_prompt
-from app.integrations.generative.constants import PURPOSE_CHAT_GENERATED
-from app.integrations.generative.persist import persist_generated_bytes
 from app.integrations.generative.registry import resolve_invoke_mode
-from app.integrations.generative.types import ImageGenerateResult
 from app.models.model import ModelConfig
 from app.models.model.catalog import ModelCapabilityType
 
@@ -86,96 +74,3 @@ async def generate_image_bytes(
         del kwargs["reference_image_url"]
 
     return await provider(model, **kwargs)
-
-
-async def generate_image_for_model(
-    db: AsyncSession,
-    ctx: TenantContext,
-    model: ModelConfig,
-    *,
-    prompt: str,
-    size: str | None = None,
-    n: int = 1,
-    reference_attachment_id: UUID | None = None,
-    purpose: str = PURPOSE_CHAT_GENERATED,
-    agent_id: UUID | None = None,
-    generative_job_id: UUID | None = None,
-    trace_id: str | None = None,
-    allow_collage: bool = False,
-) -> ImageGenerateResult:
-    """调用厂商生图并持久化为附件；可选参考图 attachment 实现图生图。"""
-    prompt = (prompt or "").strip()
-    if not prompt:
-        raise BadRequestError("生图 prompt 不能为空")
-
-    from app.integrations.generative.compliance import check_generative_prompt
-    from app.integrations.generative.quota import assert_generative_quota
-
-    prompt = await check_generative_prompt(db, ctx, prompt)
-    prompt = sanitize_image_prompt(prompt, allow_collage=allow_collage)
-
-    ref_url: str | None = None
-    if reference_attachment_id:
-        ref_url = await reference_image_data_url(db, ctx, reference_attachment_id)
-
-    extra = model.extra or {}
-    resolved_size = size or str(extra.get(EXTRA_IMAGE_SIZE) or DEFAULT_IMAGE_SIZE)
-    count = min(max(int(n), 1), MAX_IMAGES_PER_REQUEST)
-    await assert_generative_quota(db, ctx.tenant_id, units=count)
-
-    job_progress = None
-    if generative_job_id:
-        from app.integrations.generative.jobs.progress import GenerativeJobProgress
-
-        job_progress = GenerativeJobProgress(generative_job_id)
-        await job_progress.update(10, "调用生图 API")
-
-    blobs = await generate_image_bytes(
-        model,
-        prompt=prompt,
-        size=resolved_size,
-        n=count,
-        reference_image_data_url=ref_url,
-        progress=job_progress,
-    )
-    if job_progress:
-        await job_progress.update(80, "保存生成物")
-
-    attachment_ids: list[UUID] = []
-    media_asset_ids: list[UUID] = []
-    mime = "image/png"
-    import logging
-    _log = logging.getLogger(__name__)
-    _log.info("生图 → blobs=%d, n=%d", len(blobs), count)
-    for i, data in enumerate(blobs):
-        ext = "png"
-        if data[:3] == b"\xff\xd8\xff":
-            mime = "image/jpeg"
-            ext = "jpg"
-        att_id = await persist_generated_bytes(
-            db,
-            ctx,
-            data=data,
-            filename=f"generated-{i + 1}.{ext}",
-            mime_type=mime,
-            purpose=purpose,
-            resource_type="agent" if agent_id else None,
-            resource_id=agent_id,
-        )
-        from app.tenant.media_assets.services.media_asset import register_media_asset
-
-        row = await register_media_asset(
-            db,
-            ctx,
-            attachment_id=att_id,
-            purpose=purpose,
-            prompt=prompt,
-            model_config_id=model.id,
-            kind="image",
-            source_ref_type="agent" if agent_id else None,
-            source_ref_id=agent_id,
-        )
-        attachment_ids.append(att_id)
-        media_asset_ids.append(row.id)
-
-    return ImageGenerateResult(attachment_ids=attachment_ids, mime_type=mime, media_asset_ids=media_asset_ids)

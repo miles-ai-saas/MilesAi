@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.soft_delete import is_marked_deleted, not_deleted
 from app.core.tenant import TenantContext
-from app.integrations.generative.persist import PURPOSE_CHAT_GENERATED, PURPOSE_FLOW_GENERATED
+from app.integrations.generative.constants import PURPOSE_CHAT_GENERATED, PURPOSE_FLOW_GENERATED
 from app.models.media.attachment import Attachment
 from app.models.media.media_asset import MediaAsset
 from app.tenant.media_assets.repositories.media_asset import MediaAssetRepository
