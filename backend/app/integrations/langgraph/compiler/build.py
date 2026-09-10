@@ -38,7 +38,7 @@ def build_canvas_graph(graph_json: dict[str, Any]):
 
     状态字段：``tenant_id``、``inputs``、``kb_ids``（供 KnowledgeSearch）、
     ``outputs``（reducer 合并）、``steps``（operator.add 累积审计）；
-    ``resolve_model`` / ``usage_sink`` 为 L1 注入的画布 LLM 回调，随 ctx 透传。
+    ``resolve_model`` / ``usage_sink_factory`` 为 L1 注入的画布 LLM 回调，随 ctx 透传。
     调用方需 ``.compile()`` 后 ``ainvoke``（见 ``run_compiled_canvas``）。
     """
     report = validate_graph_for_compile(graph_json)
@@ -79,7 +79,7 @@ def build_canvas_graph(graph_json: dict[str, Any]):
                 ),
                 executing_node_id=node_id,
                 resolve_model=state.get("resolve_model"),
-                usage_sink=state.get("usage_sink"),
+                usage_sink_factory=state.get("usage_sink_factory"),
                 kb_retrieval=state.get("kb_retrieval"),
                 resolve_generative_image=state.get("resolve_generative_image"),
                 resolve_generative_video=state.get("resolve_generative_video"),
@@ -125,9 +125,9 @@ def build_canvas_graph(graph_json: dict[str, Any]):
         agent_config: dict[str, Any]
         current_flow_id: str | None
         subflow_depth: int
-        # L1 注入的画布 LLM 解析回调与用量记录器（随 ctx 透传，编译图单次内存执行）
+        # L1 注入的画布 LLM 解析回调与用量 sink 工厂（随 ctx 透传，编译图单次内存执行）
         resolve_model: Any
-        usage_sink: Any
+        usage_sink_factory: Any
         # L1 注入的 KB 检索绑定载体（随 ctx 透传，KnowledgeSearch 节点装配）
         kb_retrieval: Any
         # L1 注入的生图/生视频模型解析回调（随 ctx 透传，ImageGenerate/VideoGenerate 同步分支）

@@ -36,7 +36,7 @@ async def run_compiled_canvas(
         "subflow_depth": ctx.subflow_depth,
         "media": list(ctx.media),
         "resolve_model": ctx.resolve_model,
-        "usage_sink": ctx.usage_sink,
+        "usage_sink_factory": ctx.usage_sink_factory,
         "kb_retrieval": ctx.kb_retrieval,
         "resolve_generative_image": ctx.resolve_generative_image,
         "resolve_generative_video": ctx.resolve_generative_video,

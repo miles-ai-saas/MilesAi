@@ -60,7 +60,8 @@ def test_flow_run_context_injects_resolvers_and_bindings_always():
     assert ctx.resolve_generative_video is chat_rag_mod.resolve_video_gen_model
     assert callable(ctx.resolve_model)
     assert ctx.kb_retrieval is not None
-    assert ctx.usage_sink is None
+    assert ctx.usage_sink_factory is not None
+    assert callable(ctx.usage_sink_factory)
     # prompt 模板 live 引用回调恒定注入（画布 PromptTemplate/RagPrompt 节点装配）
     assert ctx.resolve_prompt_template is not None
     assert callable(ctx.resolve_prompt_template)

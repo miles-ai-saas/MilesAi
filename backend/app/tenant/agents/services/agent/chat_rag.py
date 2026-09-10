@@ -32,7 +32,7 @@ from app.tenant.models.services.generative_model_resolve import (
     resolve_video_gen_model,
 )
 from app.tenant.models.services.model_resolve import resolve_model_for_invoke
-from app.tenant.models.services.usage import ChatUsageSink
+from app.tenant.models.services.usage import ChatUsageSink, make_flow_usage_sink_factory
 
 
 def _generative_tools_system_hint(*, image_n: int = 1, video_duration: int = 5) -> str:
@@ -109,7 +109,7 @@ class AgentChatRagMixin:
             agent_config=dict(agent.config or {}),
             media=media_payload,
             resolve_model=make_flow_model_resolver(agent.tenant_id),
-            usage_sink=None,
+            usage_sink_factory=make_flow_usage_sink_factory(agent.tenant_id, source_id=agent_id),
             kb_retrieval=build_kb_retrieval_bindings(),
             resolve_generative_image=resolve_image_gen_model,
             resolve_generative_video=resolve_video_gen_model,

@@ -44,6 +44,7 @@ from app.tenant.flows.schemas.flow import (
 from app.tenant.flows.schemas.meta import FlowMetaOut
 from app.tenant.flows.schemas.template import FlowTemplateOut, FlowTemplatesOut
 from app.tenant.flows.services.run_context import make_flow_model_resolver
+from app.tenant.models.services.usage import make_flow_usage_sink_factory
 from app.tenant.generative.services.job import GenerativeJobService
 from app.tenant.generative.services.job_execution import (
     submit_generative_image_job,
@@ -275,7 +276,7 @@ class FlowService(BaseService):
                 current_flow_id=str(flow_id),
                 subflow_depth=0,
                 resolve_model=make_flow_model_resolver(self.ctx.tenant_id),
-                usage_sink=None,
+                usage_sink_factory=make_flow_usage_sink_factory(self.ctx.tenant_id, source_id=flow.id),
                 kb_retrieval=build_kb_retrieval_bindings(),
                 resolve_generative_image=resolve_image_gen_model,
                 resolve_generative_video=resolve_video_gen_model,

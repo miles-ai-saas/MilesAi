@@ -60,8 +60,9 @@ class RunContext:
     run_subflow: Callable[[dict[str, Any], "RunContext"], Awaitable["RunResult"]] | None = None  # 子流程执行回调（由 flow_runner 注入，避免节点层循环引用）
     # 画布 LLM 节点按 model_config_id 解析可用模型的回调（L1 注入；None 表示不支持）
     resolve_model: Callable[[str], Awaitable[ModelConfig]] | None = None
-    # 画布 LLM 调用用量记录（L1 注入；None 表示不记录）
-    usage_sink: Any = None
+    # 画布 LLM 调用用量记录工厂（L1 注入；签名 (ModelConfig) -> UsageSink；None 表示不记录）。
+    # 画布各节点可指定不同模型，故由节点解析后按模型构造 sink，避免归因错误。
+    usage_sink_factory: Callable[[ModelConfig], Any] | None = None
     # KB 检索能力载体（L1 注入；None 表示未装配，KnowledgeSearch 节点报错）
     kb_retrieval: Any = None
     # 生图/生视频模型解析回调（L1 注入；签名同

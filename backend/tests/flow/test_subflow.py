@@ -66,7 +66,7 @@ def test_build_child_context_input_mapping():
 
 
 def test_build_child_context_forwards_resolve_model_and_usage_sink():
-    """SubFlow 子 RunContext 透传 resolve_model / usage_sink / kb_retrieval（画布 LLM/KB 注入链到子流程）。"""
+    """SubFlow 子 RunContext 透传 resolve_model / usage_sink_factory / kb_retrieval（画布 LLM/KB 注入链到子流程）。"""
 
     async def fake_resolve(model_config_id: str):
         return None
@@ -85,6 +85,10 @@ def test_build_child_context_forwards_resolve_model_and_usage_sink():
 
     usage_sink = object()
     kb_retrieval = object()
+
+    def sink_factory(model):
+        return usage_sink
+
     media_reader = object()
     fake_sync_generator = object()
     fake_video_sync = object()
@@ -92,7 +96,7 @@ def test_build_child_context_forwards_resolve_model_and_usage_sink():
         tenant_id=str(uuid4()),
         inputs={"query": "hello"},
         resolve_model=fake_resolve,
-        usage_sink=usage_sink,
+        usage_sink_factory=sink_factory,
         kb_retrieval=kb_retrieval,
         invoke_platform_tool=fake_invoker,
         resolve_prompt_template=fake_prompt_loader,
@@ -114,7 +118,7 @@ def test_build_child_context_forwards_resolve_model_and_usage_sink():
         child_flow_id=str(uuid4()),
     )
     assert child.resolve_model is fake_resolve
-    assert child.usage_sink is usage_sink
+    assert child.usage_sink_factory is sink_factory
     assert child.kb_retrieval is kb_retrieval
     assert child.invoke_platform_tool is fake_invoker
     assert child.resolve_prompt_template is fake_prompt_loader

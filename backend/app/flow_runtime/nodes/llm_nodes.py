@@ -69,10 +69,11 @@ async def llm_call(
         messages.append({"role": "system", "content": system})
     messages.append(user_msg)
 
+    usage_sink = ctx.usage_sink_factory(model) if ctx.usage_sink_factory is not None else None
     return await ainvoke_chat(
         model,
         messages,
         temperature=temperature,
         max_tokens=max_tokens,
-        usage_sink=ctx.usage_sink,
+        usage_sink=usage_sink,
     )

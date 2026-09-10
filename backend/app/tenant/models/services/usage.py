@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from contextvars import ContextVar, Token
 from dataclasses import dataclass
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.infra.db import AsyncSessionLocal
+from app.integrations.litellm.usage_sink import UsageSink
 from app.models.model import ModelConfig
 from app.models.model.usage_log import ModelUsageLog
 
@@ -96,3 +99,54 @@ class ChatUsageSink:
             prompt_tokens=prompt_tokens,
             completion_tokens=completion_tokens,
         )
+
+
+class FlowUsageSink:
+    """画布 LLM 节点的用量记录器（实现 L3 ``UsageSink`` 协议）。
+
+    与 ``ChatUsageSink`` 的差异：画布节点可各自指定模型，故本 sink 按**解析后的
+    模型**构造（经 ``RunContext.usage_sink_factory`` 逐次产出）；``record`` 自开
+    短会话落 ``ModelUsageLog``（``source="flow"``）并提交，不依赖调用方会话存续。
+    因 ``source`` 非 ``chat``，不参与会话 token 累计。
+    """
+
+    def __init__(
+        self,
+        *,
+        tenant_id: UUID,
+        model: ModelConfig,
+        source_id: UUID | None = None,
+    ) -> None:
+        self._tenant_id = tenant_id
+        self._model = model
+        self._source_id = source_id
+
+    async def record(self, *, prompt_tokens: int = 0, completion_tokens: int = 0) -> None:
+        if max(0, prompt_tokens) + max(0, completion_tokens) <= 0:
+            return
+        async with AsyncSessionLocal() as db:
+            await record_model_usage(
+                UsageRecordContext(
+                    db=db,
+                    tenant_id=self._tenant_id,
+                    model=self._model,
+                    source="flow",
+                    source_id=self._source_id,
+                ),
+                prompt_tokens=prompt_tokens,
+                completion_tokens=completion_tokens,
+            )
+            await db.commit()
+
+
+def make_flow_usage_sink_factory(
+    tenant_id: UUID,
+    *,
+    source_id: UUID | None = None,
+) -> Callable[[ModelConfig], UsageSink]:
+    """构造画布用量 sink 工厂：LLM 节点解析出模型后按模型产出 sink。"""
+
+    def _factory(model: ModelConfig) -> UsageSink:
+        return FlowUsageSink(tenant_id=tenant_id, model=model, source_id=source_id)
+
+    return _factory

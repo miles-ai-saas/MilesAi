@@ -54,6 +54,12 @@ async def test_llm_call_with_media_builds_multimodal_message():
         return model_row
 
     usage_sink = object()
+    sink_models: list[object] = []
+
+    def sink_factory(model):
+        sink_models.append(model)
+        return usage_sink
+
     ctx = RunContext(
         tenant_id=str(tenant_id),
         user_id=str(user_id),
@@ -62,7 +68,7 @@ async def test_llm_call_with_media_builds_multimodal_message():
         media=[{"attachment_id": str(att_id), "detail": "auto"}],
         permissions=frozenset(),
         resolve_model=fake_resolve,
-        usage_sink=usage_sink,
+        usage_sink_factory=sink_factory,
         media_reader=object(),
     )
     mock_msg = {
@@ -93,6 +99,7 @@ async def test_llm_call_with_media_builds_multimodal_message():
     user = sent_messages[-1]
     assert isinstance(user["content"], list)
     assert mock_chat.await_args.kwargs["usage_sink"] is usage_sink
+    assert sink_models == [model_row]
 
 
 @pytest.mark.asyncio
@@ -127,7 +134,7 @@ async def test_llm_call_no_input_raises():
 async def test_run_compiled_canvas_forwards_resolver_and_usage_sink():
     """编译画布端到端回归：LLMCall 经 ctx.resolve_model 解析，usage_sink 透传到 ainvoke_chat。
 
-    ``run_compiled_canvas`` 把 ctx.resolve_model / ctx.usage_sink 写入 graph state，
+    ``run_compiled_canvas`` 把 ctx.resolve_model / ctx.usage_sink_factory 写入 graph state，
     节点层（``llm_nodes.llm_call``）从子 RunContext 读取后调用；此处用假回调/假 sink
     固定该注入链，防止回归到节点自行查库。
     """
@@ -136,6 +143,9 @@ async def test_run_compiled_canvas_forwards_resolver_and_usage_sink():
     model = ModelConfig(name="推理", provider="openai", model_name="gpt-4o-mini")
     resolved_ids: list[str] = []
     usage_sink = object()
+
+    def sink_factory(model):
+        return usage_sink
 
     async def fake_resolve(model_config_id: str):
         resolved_ids.append(model_config_id)
@@ -186,7 +196,7 @@ async def test_run_compiled_canvas_forwards_resolver_and_usage_sink():
         user_id=str(uuid4()),
         inputs={"query": "画布链路测试"},
         resolve_model=fake_resolve,
-        usage_sink=usage_sink,
+        usage_sink_factory=sink_factory,
     )
 
     with patch(
