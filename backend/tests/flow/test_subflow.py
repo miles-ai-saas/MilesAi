@@ -87,6 +87,7 @@ def test_build_child_context_forwards_resolve_model_and_usage_sink():
     kb_retrieval = object()
     media_reader = object()
     fake_sync_generator = object()
+    fake_video_sync = object()
     parent = RunContext(
         tenant_id=str(uuid4()),
         inputs={"query": "hello"},
@@ -99,6 +100,7 @@ def test_build_child_context_forwards_resolve_model_and_usage_sink():
         load_subflow_graph=fake_subflow_loader,
         media_reader=media_reader,
         generate_image_sync=fake_sync_generator,
+        generate_video_sync=fake_video_sync,
     )
     child = build_child_context(
         parent,
@@ -120,6 +122,7 @@ def test_build_child_context_forwards_resolve_model_and_usage_sink():
     assert child.load_subflow_graph is fake_subflow_loader
     assert child.media_reader is media_reader
     assert child.generate_image_sync is fake_sync_generator
+    assert child.generate_video_sync is fake_video_sync
 
 
 def test_max_subflow_depth_constant():

@@ -1,9 +1,10 @@
 """生成类租户编排（L1）：合规扫描 → 配额 → 参考图 → 厂商派发 → 持久化 → 媒体资产登记。
 
 L3 ``integrations/generative`` 只保留纯厂商派发（``generate_{image,video,tts}_bytes``）；
-租户副作用全部在本模块：``ComplianceService`` / 日配额 / ``AttachmentService`` /
-附件仓储 / 媒体资产登记。画布同步分支经 ``RunContext.generate_{image,video}_sync``
-（即本模块 ``generate_{image,video}_for_model``）注入执行。
+租户副作用（``ComplianceService`` / ``AttachmentService`` / 附件仓储 / 媒体资产登记）全在本模块；
+日配额仅由本模块调用（本模块是**调用点/编排点**），纯额度实现仍在 L3
+``integrations.generative.quota``（``assert_generative_quota``）。画布同步分支经
+``RunContext.generate_{image,video}_sync``（即本模块 ``generate_{image,video}_for_model``）注入执行。
 """
 
 from __future__ import annotations
