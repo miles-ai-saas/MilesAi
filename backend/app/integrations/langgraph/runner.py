@@ -74,7 +74,6 @@ async def run_rag_workflow(
     conversation_id: str | None = None,
     agent_config: dict | None = None,
     media: list[MediaRefIn] | None = None,
-    user_id: UUID | None = None,
     on_delta: OnDelta | None = None,
     usage_sink: UsageSink | None = None,
     bindings: KbRetrievalBindings | None = None,
@@ -110,7 +109,6 @@ async def run_rag_workflow(
         "relevance_threshold": float(cfg.get("relevance_threshold", 0.35)),
         "use_llm_grade": bool(cfg.get("use_llm_grade", False)),
         "media": [m.model_dump(mode="json") for m in (media or [])],
-        "user_id": str(user_id) if user_id else "",
         "agent_id": str(agent_id),
         "hits": [],
         "steps": [

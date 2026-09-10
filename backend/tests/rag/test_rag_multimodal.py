@@ -36,11 +36,9 @@ async def test_build_invoke_messages_with_media():
 @pytest.mark.asyncio
 async def test_generate_node_with_media():
     tenant_id = uuid4()
-    user_id = uuid4()
     model = MagicMock()
     state = {
         "tenant_id": str(tenant_id),
-        "user_id": str(user_id),
         "system_prompt": "你是助手",
         "query": "检索词",
         "prompt_query": "描述图片",
@@ -73,7 +71,6 @@ async def test_generate_node_with_media():
 async def test_run_rag_workflow_passes_media_in_initial():
     model = MagicMock()
     att_id = uuid4()
-    uid = uuid4()
     tid = uuid4()
     aid = uuid4()
 
@@ -96,7 +93,6 @@ async def test_run_rag_workflow_passes_media_in_initial():
             tenant_id=tid,
             agent_id=aid,
             media=[MediaRefIn(attachment_id=att_id)],
-            user_id=uid,
             media_reader=reader,
         )
 
@@ -104,6 +100,5 @@ async def test_run_rag_workflow_passes_media_in_initial():
     assert initial["query"] == "检索"
     assert initial["prompt_query"] == "生成问题"
     assert len(initial["media"]) == 1
-    assert initial["user_id"] == str(uid)
     run_config = mock_graph.ainvoke.await_args.args[1]
     assert run_config["configurable"]["media_reader"] is reader

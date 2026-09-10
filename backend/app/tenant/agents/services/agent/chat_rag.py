@@ -357,7 +357,6 @@ class AgentChatRagMixin:
                     agent_config=agent.config or {},
                     conversation_id=body.conversation_id,
                     media=body.media or None,
-                    user_id=self.ctx.user_id,
                     on_delta=on_delta,
                     usage_sink=usage_sink,
                     bindings=kb_bindings,
