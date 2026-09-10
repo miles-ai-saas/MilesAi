@@ -120,6 +120,8 @@ L0 → L1 → L2 → L3 → L4
 
 > **收敛记录（2026-09-09，G2-3）**：画布 ComplianceCheck 节点收敛——纯算法 `CompliancePipeline`/`ScanMatch`/`ScanResult`/`SensitiveAction` 下沉中立域 `app.models.compliance`（`tenant.compliance.{models,services.pipeline}` 转 re-export shim），租户词表加载经 `RunContext.load_scan_words` 回调（L1 `tenant/compliance/services/scan_words_loader.py::build_scan_words_loader`）注入；`flow_runtime/nodes/compliance_nodes.py` 对 `tenant.*` import 与同步 `get_sync_db` 阻塞清零（见 plan [`2026-09-09-engine-di-flow-compliance-node`](../superpowers/plans/2026-09-09-engine-di-flow-compliance-node.md)）。
 
+> **收敛记录（2026-09-09，G2-1）**：画布 SubFlow/LoopNode 子图加载与编译期校验收敛——L3 中性仓储契约 `flow_runtime/subflow/contracts.py::FlowRepoLike`；运行期加载经 `RunContext.load_subflow_graph` 回调（L1 `tenant/flows/services/subflow_loader.py::build_subflow_graph_loader` 注入短会话 `FlowRepository`），编译期 `validate_subflow_references(repo, ...)` 由 L1 `FlowService` 传 `self.repo`；`flow_runtime/subflow/` 对 `tenant.*` import 清零（见 plan [`2026-09-09-engine-di-flow-subflow-loader`](../superpowers/plans/2026-09-09-engine-di-flow-subflow-loader.md)）。
+
 ### 2.3 运营后台（`admin/`）访问租户域
 
 `admin/`（L0/L1，`/api/admin/v1`）为平台运营面：审核租户内容、管理租户与配额时须读取租户域数据。允许 `admin → tenant` **单向**访问，但只能走下列合规形态：
@@ -375,3 +377,4 @@ backend/tests/
 | 2026-09-09 | F2c-B：agent 对话工具执行面收敛——L3 `tool_contract` 中性契约 + L1 `agent_executor` 注入 loop，tool_agent 包对 `tenant` 依赖清零，F2 tools 契约计划收尾 |
 | 2026-09-09 | G2-2：flow PromptTemplate 节点模板 live 引用收敛——RunContext.resolve_prompt_template 回调 + L1 template_loader，rag_nodes 对 tenant 清零（G2 画布节点面起点） |
 | 2026-09-09 | G2-3：flow ComplianceCheck 节点收敛——合规纯算法下沉 models/compliance + 词表加载 RunContext 回调，compliance_nodes 对 tenant 清零 |
+| 2026-09-09 | G2-1：flow 子流程加载/校验收敛——FlowRepoLike 契约 + RunContext.load_subflow_graph 回调，subflow 包对 tenant 清零 |
