@@ -1,13 +1,21 @@
-"""画布媒体节点附件读取器（L1，实现 L3 中性 MediaReader 契约）。
+"""媒体附件读取器（L1，实现 L3 中性 MediaReader 契约）。
 
-``FlowMediaReader`` 持有 tenant_id/user_id，每次读取开短会话并构造带
-``attachment:read`` 权限的 TenantContext，委托 ``AttachmentService`` 完成租户
-鉴权 + 对象存储读取；装配点为 chat_rag.flow_run_context 与 flows flow debug-run。
+两种实现互补：
+
+- ``FlowMediaReader``：持有 tenant_id/user_id，每次读取开短会话并构造带
+  ``attachment:read`` 权限的 TenantContext；装配点为 chat_rag.flow_run_context
+  与 flows flow debug-run。
+- ``SessionMediaReader``：复用调用方 ``db``/``ctx``，适用于已持有租户会话的
+  请求/图节点场景（Agent 对话、RAG、工具循环）。
+
+两者均委托 ``AttachmentService`` 完成租户鉴权 + 对象存储读取。
 """
 
 from __future__ import annotations
 
 from uuid import UUID
+
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.tenant import TenantContext
 from app.infra.db import AsyncSessionLocal
@@ -52,3 +60,28 @@ def build_flow_media_reader(
         tenant_id=UUID(str(tenant_id)),
         user_id=UUID(str(user_id)) if user_id else None,
     )
+
+
+class SessionMediaReader:
+    """会话绑定的媒体读取器（复用调用方 ``db``/``ctx``，不再开短会话）。
+
+    适用于请求/图节点已持有租户会话的场景（Agent 对话、RAG、工具循环），
+    与 ``FlowMediaReader``（自开 ``AsyncSessionLocal``）互补。
+    """
+
+    def __init__(self, *, db: AsyncSession, ctx: TenantContext) -> None:
+        self._db = db
+        self._ctx = ctx
+
+    async def read_image_bytes(self, attachment_id: UUID) -> AttachmentBytes:
+        data, mime = await AttachmentService(self._db, self._ctx).read_image_bytes(attachment_id)
+        return AttachmentBytes(data=data, mime=mime)
+
+    async def read_attachment_bytes(self, attachment_id: UUID) -> AttachmentBytes:
+        data, mime, filename = await AttachmentService(self._db, self._ctx).read_attachment_bytes(attachment_id)
+        return AttachmentBytes(data=data, mime=mime, filename=filename)
+
+
+def build_session_media_reader(db: AsyncSession, ctx: TenantContext) -> SessionMediaReader:
+    """构造复用既有会话的 ``MediaReader``（装配点：chat_rag / RAG / 工具循环）。"""
+    return SessionMediaReader(db=db, ctx=ctx)
