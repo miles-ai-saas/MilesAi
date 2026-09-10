@@ -1,10 +1,10 @@
 # MCP 沙箱与执行隔离方案
 
-**状态：** 目标架构（mcp-runner 已部分落地；STDIO 沙箱 MVP 进行中）  
+**状态：** HTTP/SSE 与 STDIO 沙箱已落地；Phase 4 规划中  
 **As-Is 规格：** [features/tools-mcp-skills.md](../features/tools-mcp-skills.md) · **实现指南：** [guides/mcp.md](../guides/mcp.md)
 
 本文描述 **STDIO 传输**、**平台内执行用户命令**、以及 **高敏感工具调用** 所需的隔离边界。  
-**HTTP/SSE 远程 invoke（Phase 2）不经过本沙箱**，仅受 [连接安全](../guides/mcp.md#7-连接安全phase-2非沙箱) 约束。
+**HTTP/SSE 远程 invoke 不经过本沙箱**，仅受 [连接安全](../guides/mcp.md#7-连接安全非沙箱) 约束。
 
 ## 1. 为什么要沙箱
 
@@ -15,7 +15,7 @@
 | 未来：平台托管 MCP 进程 | 多租户抢占、资源耗尽 | **必须** |
 | Agent 循环调用 MCP 工具 | 滥用配额、无限调用 | 配额 + 审计（可与沙箱并列） |
 
-结论：**Phase 2 不做沙箱也能上线 HTTP/SSE invoke**；**STDIO 或平台代跑进程前必须先落地沙箱 MVP**。
+结论：**HTTP/SSE invoke 不经过沙箱即可上线**；**STDIO 或平台代跑进程前必须先落地沙箱 MVP**。
 
 ## 2. 目标与非目标
 
@@ -82,13 +82,13 @@
 | `endpoint_url=stdio://...` | 占位，不参与 HTTP 客户端 |
 | `tools_cache` | 由 Runner 完成 `tools/list` 后写回 |
 
-## 6. 分阶段落地
+## 6. 待落地
 
 | 阶段 | 内容 | 状态 |
 |------|------|------|
-| **Phase 2** | HTTP/SSE `tools/call` + `security.py` | 已完成 |
-| **Phase 3** | Runner 独立服务 + STDIO sync + invoke | **已完成** |
 | **Phase 4** | 预置市场 MCP 模板、npx 域名白名单、script v2 | 规划中 |
+
+已落地：HTTP/SSE `tools/call` + `security.py`；Runner 独立服务 + STDIO sync + invoke。
 
 部署与运行详见 [guides/mcp.md §8](../guides/mcp.md#8-mcp-runner-部署stdio-沙箱)。
 
@@ -175,4 +175,4 @@ MCP_RUNNER_MAX_CONCURRENT_PER_TENANT=3
 
 ---
 
-**状态**：HTTP/SSE invoke（Phase 2）与 STDIO Runner 沙箱（Phase 3）均已实现。部署步骤见 [guides/mcp.md §8](../guides/mcp.md#8-mcp-runner-部署stdio-沙箱)。
+**状态**：HTTP/SSE invoke 与 STDIO Runner 沙箱均已实现。部署步骤见 [guides/mcp.md §8](../guides/mcp.md#8-mcp-runner-部署stdio-沙箱)。

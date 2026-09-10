@@ -77,7 +77,7 @@ python cli.py init-db           # 含 seed all
 | PATCH | `/mcp/{id}` | 编辑 |
 | DELETE | `/mcp/{id}` | 软删 |
 | POST | `/mcp/{id}/sync` | `tools/list` 写入 `tools_cache` |
-| POST | `/mcp/{id}/tools/{tool_name}/invoke` | **`tools/call`（Phase 2 真远程调用）** |
+| POST | `/mcp/{id}/tools/{tool_name}/invoke` | **`tools/call`（真远程调用）** |
 
 ### invoke 请求 / 响应
 
@@ -136,7 +136,7 @@ POST /mcp/{id}/sync | .../invoke
 
 | 模块 | 路径 | 说明 |
 |------|------|------|
-| 包说明 | `app/tenant/mcp/__init__.py` | 分层与 Phase |
+| 包说明 | `app/tenant/mcp/__init__.py` | 分层 |
 | 模型 | `app/tenant/mcp/models.py` | `tool_mcp_services` |
 | JSON-RPC 客户端 | `app/tenant/mcp/client.py` | **降级链入口** `mcp_json_rpc` |
 | Legacy / Streamable SSE | `app/tenant/mcp/sse_transport.py` | 长连接与 Streamable POST |
@@ -156,7 +156,7 @@ POST /mcp/{id}/sync | .../invoke
 - **MCP**：`config.mcp_service_ids` → 提示词注入已同步工具名称与描述（**不**自动 invoke）。
 - **二者分离**：工具目录 `GET /tools/catalog` **不含** MCP；MCP 见 `GET /mcp`。
 
-## 7. 连接安全（Phase 2，非沙箱）
+## 7. 连接安全（非沙箱）
 
 配置项：`MCP_ALLOW_PRIVATE_HOSTS`（默认 `true`，开发可连 `127.0.0.1`）。
 

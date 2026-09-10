@@ -221,15 +221,14 @@ Authorization: Bearer <token>
 
 ---
 
-## 6. 实施阶段（建议）
+## 6. 待实施阶段
 
-| 阶段 | 内容 | 对话 | 任务/其它 |
-|------|------|------|-----------|
-| **R1** | 对话 WS 基础设施：握手鉴权、心跳、连接管理 | `ping`/`pong` | ✅ `GET …/agents/{id}/chat/ws` |
-| **R2** | LLM 流式：`chat.send` → `chat.delta` + `chat.done` | ✅ 直连/RAG 真 token（LiteLLM stream）；tool/flow/A2A 仍 `emit_answer_deltas` 切块 | REST `POST /chat` 保留兼容（整包） |
-| **R3** | 工具确认：`tool.confirm_required` / `tool.confirm` | 替代确认轮 POST | — |
-| **R4** | 对话内 `generative_job.*` 走 WS | ✅ 轮询推送 job 事件 | 任务中心仍 SSE |
-| **R5** | 断线续传、`last_event_id`、服务端会话快照（可选） | v2 | — |
+| 阶段 | 内容 | 说明 |
+|------|------|------|
+| **R3** | 工具确认：`tool.confirm_required` / `tool.confirm` 走 WS | 现为替代确认轮 POST |
+| **R5** | 断线续传、`last_event_id`、服务端会话快照（可选） | v2 |
+
+已实施：R1 对话 WS 基础设施（`GET …/agents/{id}/chat/ws`）、R2 直连/RAG 真 token 流式（tool/flow/A2A 仍切块）、R4 对话内 `generative_job.*` 走 WS。
 
 **不做（v1）：**
 

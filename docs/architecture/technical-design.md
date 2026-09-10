@@ -279,7 +279,7 @@ ingest / kb 检索 / deletion
         └─ 读工厂：app.infra.vector_store.get_vector_store()
         │
         ├── weaviate  → WeaviateVectorStore（已实现）
-        ├── pgvector  → PgVectorStore（占位，未实现）
+        ├── pgvector  → PgVectorStore（已实现）
         └── milvus    → MilvusVectorStore（已实现，按维度分 Collection）
 ```
 
@@ -354,16 +354,17 @@ ingest / search / delete
     └─ load_kb_embedding_profile(kb_id)    → L3 kb_bases 维度与模型
 ```
 
-当前代码：`get_object_storage()` / `get_vector_store()` **无 tenant 参数**（L1 only）。演进时保持工厂签名，增加可选 `tenant_id`、`kb_id` 上下文。
+工厂 `get_object_storage()` / `get_vector_store()` 保持无 tenant 参数（L1）；租户级覆盖经 `resolve_object_storage_sync/async(tenant_id, db)` 解析（L2 BYOK）。
 
-#### 6.5.4 分阶段实施
+#### 6.5.4 落地现状
 
-| 阶段 | 内容 | 优先级 |
-|------|------|--------|
-| **Phase 1（当前）** | L1 环境变量；`kb_bases.embedding_dimension`；`object_bucket` / `object_key` / `vector_id` 通用字段名 | 已交付 |
-| **Phase 2** | L2 租户对象存储 BYOK（`resolve_object_storage_async/sync`）；`/system/object-storage` UI | ✅ |
-| **Phase 3** | L3 `kb_bases` 绑定 `embedding_profile` / `embedding_model_name`；`GET /kb/embedding-profiles`；创建 KB 选规格，**创建后不可改**；ingest/检索 `get_embeddings_for_kb` | ✅ 已交付 |
-| **Phase 4** | pgvector / Milvus 实现；仍通过 L1 切换，不做 per-tenant 混用 | 按需 |
+| 层 | 内容 |
+|----|------|
+| L1 | 环境变量默认端点；`kb_bases.embedding_dimension`；`object_bucket` / `object_key` / `vector_id` 通用字段名 |
+| L2 | 租户对象存储 BYOK：`resolve_object_storage_sync/async`；`/system/object-storage` UI |
+| L3 | `kb_bases` 绑定 `embedding_profile` / `embedding_model_name`；`GET /kb/embedding-profiles`；创建 KB 选规格（**创建后不可改**）；ingest/检索 `get_embeddings_for_kb` |
+
+向量后端 weaviate / pgvector / milvus **均已实现**，经 L1 切换，不做 per-tenant 混用。
 
 **明确不做（除非单独立项）**：同一部署实例内，租户 A 用 Weaviate、租户 B 用 Milvus 并存。
 
@@ -373,7 +374,7 @@ ingest / search / delete
 |------|----------|------|
 | 对话大模型 | `agt_model_configs` + 租户 BYOK | 已上线 |
 | 向量化模型 | **KB 级** `embedding_profile` + 全局默认 env | 类似「目录 + 库级绑定」 |
-| 对象存储 | L1 端点 + L2 租户 AK（规划） | 类似 BYOK，但无多引擎 |
+| 对象存储 | L1 端点 + L2 租户 AK（已上线） | 类似 BYOK，但无多引擎 |
 
 对话模型与向量模型 **分开配置**：对话走 LiteLLM `acompletion`；向量走 `get_embeddings_for_kb(kb)`（无 KB 时 `get_embeddings()` 兜底）。
 
@@ -637,39 +638,33 @@ flowchart TD
 
 **大模型 API Key** 存在 `agt_model_configs.api_key_encrypted`，由工作台「模型供应商」配置（租户 BYOK），非环境变量。
 
-**对象/向量引擎类型** 不计划开放为租户自助切换；租户级存储凭证见 §6.5.4 Phase 2。
+**对象/向量引擎类型** 不计划开放为租户自助切换；租户级存储凭证见 §6.5.4。
 
 前端：`NEXT_PUBLIC_API_URL`（租户）、`NEXT_PUBLIC_ADMIN_API_URL`（运营）。
 
 ---
 
-## 16. 实施状态
+## 16. 未完成项（汇总）
 
-| 能力 | 状态 | 备注 |
-|------|------|------|
-| 多租户 / RBAC / JWT | ✅ | |
-| 知识库入库与检索 | ✅ | `rag.pipeline` + hybrid；可选 `[parse-docling]` / `[multimodal]` |
-| 存储配置分层（L1/L2/L3）文档 | ✅ | §6.5；L3 embedding 已落地；L2 待开发 |
-| 流程画布与 LangGraph 执行 | ✅ | 见 [flows.md](../guides/flows.md) |
-| 智能体 RAG / 画布 / 直连 LLM | ✅ | |
-| 对话/流程 **识图、生图、生视频** | ✅ | 见 §10.1；生图/生视频默认 `generative_jobs` 异步 |
-| 附件 / 媒体资产 / 升格 KB | ✅ | 见 [features/attachments-media-generative.md](../features/attachments-media-generative.md) |
-| 智能体定时任务（Celery Beat） | ✅ | 见 [features/agent-schedules.md](../features/agent-schedules.md)；Beat 需独立进程 |
-| 租户标签 / 资源分类 | ✅ | `/tags`、`/categories`；列表 `tag_ids` 筛选 |
-| 对话 WebSocket v1 | 🔶 | `WS …/chat/ws` 已落地；全站实时方案见 [realtime-transport-design.md](./realtime-transport-design.md) |
-| DeepAgents 内部协同 | ✅ | 可选依赖，可降级 |
-| A2A Peer / 宿主 / custom 引用 | ✅ | 对外暴露本平台 Card：未做 |
-| 合规 / HTTP / Python 钩子 | ✅ | 文本扫描 + `media_audit`；Python 见 `hooks.plugins` |
-| 工具 / MCP / 技能包 | ✅ | 内置含 web_search/code_execution；MCP HTTP/SSE/STDIO/custom |
-| 应用市场审核与安装 | ✅ | 含试用、升级 diff、租户内可见 |
-| 任务中心（入库 + 生成） | ✅ | 含批量取消；见 [features/task-center.md](../features/task-center.md) |
-| 监控报表 / 告警 | ✅ | 模型用量、多模态计数、infra 探测、SMTP 邮件；短信/PDF 按需 |
-| 基础设施只读面板 | ✅ | `/system/infra/status` · `redis-info` · `worker-info` |
-| 运营计费 / 风控 | ✅ | 后台 UI + API |
-| 模型供应商目录（运营发布内置 + 租户自定义） | ✅ | 见 [model-providers.md](../guides/model-providers.md) |
+已实现能力的完整清单见 [features/](../features/) 与各模块章节；以下为尚未完成的能力：
+
+| 能力 | 状态 | 说明 / 文档 |
+|------|------|-------------|
+| MCP → 智能体 function calling | ❌ | MCP 现仅 prompt 注入 + 工作台试调用，未纳入 `tool_agent`；见 [tools-runtime.md](./tools-runtime.md) §8 |
+| RAG 与 tool calling 完整共存 | 🔶 | 仅「有 KB + `enable_generative_tools`」部分路径；见 [platform-agents.md](../guides/platform-agents.md) |
+| L2 内置工具扩充（合规检测、列附件、触发流程） | ⬜ | 见 [tools-runtime.md](./tools-runtime.md) §7 |
+| 对话 HTTP 整包流式；tool/flow/A2A 路径真 token 流式 | 🔶 | WS 直连/RAG 已真流式；见 [realtime-transport-design.md](./realtime-transport-design.md) |
+| WS 断线续传、服务端会话快照 | ⬜ | v2，见 [realtime-transport-design.md](./realtime-transport-design.md) |
+| A2A 对外暴露本平台 Agent Card | ⬜ | 现仅能拉取远端 Card；见 [a2a.md](../guides/a2a.md) |
+| 技能包 ZIP 导出 / 后端打包 | ⬜ | 见 [skill-packages.md](../guides/skill-packages.md) |
+| MCP STDIO 沙箱 MVP 收尾；预置模板/域名白名单 | 🔶 | 见 [mcp-sandbox.md](./mcp-sandbox.md) |
+| 视频逐帧 / 流式预览 | ⬜ | 见 [multimodal-capabilities.md](../product/multimodal-capabilities.md) |
+| 模型供应商 M4：批量导入、图标资源 | ⬜ | 见 [model-providers.md](../guides/model-providers.md) |
 | 离线 OpenAPI 导出 / 离线部署手册 | ⬜ | 文档待补充 |
+| 按需延后：短信告警、PDF/Excel 报表、违规统计报表、导出水印、提示词模板 A/B、智能体导出包 | 🔜 | 见 [backlog.md](../product/backlog.md) |
+| 按需立项：PaddleOCR / 云 OCR、老格式 Office | 按需 | 见 [backlog.md](../product/backlog.md) |
 
-**后端测试**（`backend/tests/`）：health、deletion、langgraph、deepagents、a2a 等；无 marketplace/compliance 端到端测试文件。
+**后端测试**（`backend/tests/`）：按域分子目录（api / rag / flow / tenant / admin / infra / mcp / a2a 等），详见 [tests/README.md](../../backend/tests/README.md)。
 
 ---
 

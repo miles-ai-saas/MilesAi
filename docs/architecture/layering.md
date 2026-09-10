@@ -158,7 +158,7 @@ backend/app/
 - `langchain_base.py`、`precomputed.py`：LC 向量库桥接；Document 映射在 `integrations.langchain.vector.documents`
 - `get_vector_store()` 工厂
 
-**迁出到 `rag/`**（已完成或进行中，见迁移文档）：
+**已迁出到 `rag/`**：
 
 - `upsert_chunk_vector` / `search_vectors` → `rag.index.gateway`（勿从 `infra.vector_store` 导入）
 - `hybrid.rrf_fuse` → `rag.retrieve.hybrid`

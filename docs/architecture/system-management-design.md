@@ -1,6 +1,6 @@
 # 系统管理 — 技术方案
 
-**状态：** 设计稿（Phase 0–3 排期）  
+**状态：** 核心已实现；远期项见 §7  
 **As-Is 规格：** [features/system-management.md](../features/system-management.md)（已实现基线）  
 **关联：** [technical-design.md §5](./technical-design.md#5-多租户与权限)、[admin-ops.md](../features/admin-ops.md)、[prd.md §模块1](../product/prd.md#模块1系统管理)
 
@@ -36,7 +36,7 @@ flowchart LR
 ### 1.1 设计原则
 
 - 租户数据一律带 `tenant_id`；Service 层 `tenant_filters` + `assert_tenant_access`（见 `app/core/tenant.py`）。
-- 基础设施（PG / Redis / MinIO / 向量库 / Celery）为**部署级** `.env`，不进租户 UI 写库（见 [technical-design §6.5](./technical-design.md#65-配置分层策略)）。
+- 基础设施（PG / Redis / MinIO / 向量库 / Celery）为**部署级** `.env`，不进租户 UI 写库（见 [technical-design §6.5](./technical-design.md#65-存储与向量化配置策略)）。
 - 租户可配的是**业务参数**（分片大小、平台名等）；**配额仅可查看用量与上限**，不可在租户后台修改（改配额仅在运营 `ui/admin`）。
 
 ---
@@ -85,9 +85,9 @@ auth:blacklist:{jti}              → 登出/撤销
 | 项 | 优先级 | 说明 |
 |----|--------|------|
 | 批量用户操作 | ✅ | `POST /users/batch` 启用/禁用/赋角色 |
-| 管理员重置密码 | P1 | 无独立 API，仅创建时设密 |
-| 登录日志（独立） | P1 | 仅有会话 + 审计，无专用 `login_logs` |
-| 配额 hard limit | P1 | `sys_tenants` 字段已有，部分创建路径未拦截 |
+| 管理员重置密码 | ✅ | `POST /users/{id}/reset-password` |
+| 登录日志 | ✅ | 登录写审计 `auth.login`（无独立 `login_logs` 表） |
+| 配额 hard limit | ✅ | KB / Agent / 存储创建路径已拦截（`tenant/*/services/quota.py`） |
 | 菜单权限细粒度 | P2 | 前端靠 `permissions` 隐式过滤，无 `menu:*` 码 |
 | 多角色继承 | P2 | 用户多角色并集，无 `parent_role_id` |
 | 基础设施配置 UI | ✅ P2 | `GET /system/infra/status` 只读 + 监控面板 |
@@ -130,7 +130,7 @@ system:config:read | system:config:write
 audit:read
 ```
 
-**权限**：角色 API 现复用 `system:user:read/write`；Phase 0 补齐 `system:role:*` 并迁移路由依赖。
+**权限**：角色 API 使用 `system:role:read/write`。
 
 **前端门禁（三层）**
 
@@ -207,7 +207,7 @@ GET  /roles/assignable      # 当前用户可分配角色
 CRUD /roles                 # tenant_id scoped
 ```
 
-**种子权限扩展（Phase 0）**
+**种子权限扩展**
 
 ```python
 ("system:role:read", "查看角色", "system"),
@@ -216,7 +216,7 @@ CRUD /roles                 # tenant_id scoped
 ("system:session:write", "管理会话", "system"),
 ```
 
-**Phase 2 可选**：`sys_roles.parent_role_id` 角色继承。
+**远期可选**：`sys_roles.parent_role_id` 角色继承。
 
 **前端**（`/system/roles`）
 
@@ -249,7 +249,7 @@ GET /system/quota          # 本租户汇总：KB/存储/Agent/Flow/Token/生成
 
 **禁止路径（租户 API）**
 
-- 不在租户 `/system` 暴露 `PATCH /tenants/{id}` 的 `max_*` 字段；若保留超管租户 API，Service 层应拒绝非运营上下文写入配额字段（Phase 1 加固）。
+- 不在租户 `/system` 暴露 `PATCH /tenants/{id}` 的 `max_*` 字段；若保留超管租户 API，Service 层应拒绝非运营上下文写入配额字段。
 
 **配额 enforcement（P1，后端）**
 
@@ -281,7 +281,7 @@ class QuotaService:
 |------|------|------|-----|
 | L1 部署 | `.env` / K8s Secret | `POSTGRES_HOST`, `MILVUS_URI` | 只读脱敏（已有 runtime preview） |
 | L2 平台业务 | `sys_configs` | `rag.default_chunk_size` | 可编辑 ✅ |
-| L3 租户 | 未来 `tenant_configs` | 租户级覆盖 | Phase 3 |
+| L3 租户 | 未来 `tenant_configs` | 租户级覆盖 | 远期 |
 
 **`CONFIG_DEFINITIONS` 扩展方向**
 
@@ -388,39 +388,15 @@ const SYSTEM_NAV = [
 
 ---
 
-## 7. 实施分期
+## 7. 待实现
 
-### Phase 0 — 文档与规范对齐（1–2 天）
-
-- [ ] 补齐 `system:role:*` / `system:session:*` 种子与路由依赖
-- [ ] 统一 `aud_logs` action 命名规范
-- [ ] 同步 [system-management.md](../features/system-management.md) 与 PRD 对照表
-
-### Phase 1 — 企业交付必需（1–2 周）
-
-| 任务 | 说明 |
-|------|------|
-| 管理员重置密码 API + UI | |
-| 登录审计 | `auth.login` 写 aud_logs |
-| 配额 hard limit | KB / Agent / Flow / 存储（后端拦截） |
-| 租户配额只读页 | `/system/quota`，无编辑 |
-| 导航 permission 过滤 | `SYSTEM_NAV` |
-| 批量禁用用户 | 可选 |
-
-### Phase 2 — 运维增强（2–3 周）
-
-| 任务 | 说明 |
-|------|------|
-| 审计 CSV 导出 | |
-| 基础设施只读面板 + test-connection | |
-| Redis 缓存前缀清理（超管） | |
-| 工作台 Dashboard 配额摘要（只读链接 → `/system/quota`） | |
-
-### Phase 3 — PRD 远期
-
-- 角色继承、`menu:*` 权限码
-- 租户级 `tenant_configs`
-- Celery / 向量库专日志
+| 项 | 说明 |
+|----|------|
+| Redis 缓存前缀清理（超管） | 现仅只读 `GET /system/infra/redis-info`；有运维场景再立项 |
+| 角色继承 / `menu:*` 权限码 | 现为多角色权限并集，前端靠 `permissions` 过滤 |
+| 租户级 `tenant_configs` | 现仅平台级 `sys_configs` |
+| Celery / 向量库专日志页 | 现经基础设施面板观测 |
+| 审计 / 日志导出 | 产品确认不立项；保留 `GET /audit/logs` 在线查询 |
 
 ---
 
@@ -439,11 +415,11 @@ const SYSTEM_NAV = [
 
 ## 9. 关键决策摘要
 
-1. **不在租户 UI 改基础设施连接** — 与 [technical-design §6.5](./technical-design.md#65-配置分层策略) 一致；P2 只做探测与只读。
+1. **不在租户 UI 改基础设施连接** — 与 [technical-design §6.5](./technical-design.md#65-存储与向量化配置策略) 一致；P2 只做探测与只读。
 2. **租户管理主入口在运营后台** — 租户 `/system` 聚焦本租户用户与配置；**配额仅查看，修改仅在 `ui/admin`**。
 3. **会话放 Redis 不放 PG** — 现实现合理；登录日志可 PG 持久化。
 4. **权限码细化为 role/session** — 便于导航与按钮级控制。
-5. **配额从「字段存在」到「创建拦截」** — Phase 1 优先落地。
+5. **配额从「字段存在」到「创建拦截」** — 创建路径强制校验。
 
 ---
 

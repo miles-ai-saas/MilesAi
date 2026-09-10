@@ -20,7 +20,7 @@ docs/
 ├── README.md                 # 本索引
 ├── product/                  # 产品与需求
 │   ├── prd.md
-│   ├── backlog.md            # PRD ⬜ 项排期 backlog
+│   ├── backlog.md            # 未完成 / 按需立项项
 │   └── multimodal-capabilities.md
 ├── architecture/             # 架构与技术方案
 │   ├── technical-design.md
@@ -48,7 +48,7 @@ ui/                           # 前端应用源码（与 docs/ 并列，见仓�
 | 文档 | 说明 |
 |------|------|
 | [prd.md](./product/prd.md) | 立项需求原文 + **文首实现对照**（锚点 `as-is-module-*`） |
-| [backlog.md](./product/backlog.md) | PRD 差距项 **P0/P1/P2 排期 backlog**（源自对照表 ⬜） |
+| [backlog.md](./product/backlog.md) | **未完成 / 按需立项**项（源自 PRD 对照表 ⬜） |
 | [multimodal-capabilities.md](./product/multimodal-capabilities.md) | **多模态产品能力**：生文/识图/生图·视频/知识库入库、场景与发布节奏 |
 
 ## 架构 (`architecture/`)
@@ -62,10 +62,10 @@ ui/                           # 前端应用源码（与 docs/ 并列，见仓�
 | [vector-database-selection.md](./architecture/vector-database-selection.md) | 向量数据库选型：pgvector / Weaviate / Milvus / Qdrant / OpenSearch / ES |
 | [mcp-sandbox.md](./architecture/mcp-sandbox.md) | MCP STDIO / 平台执行：沙箱与 Runner 隔离方案 |
 | [tools-runtime.md](./architecture/tools-runtime.md) | **工具运行时**：内置 / HTTP / 脚本 / MCP 统一执行平面（目标架构） |
-| [system-management-design.md](./architecture/system-management-design.md) | **系统管理增强**：RBAC/会话/配额/审计分期方案 |
+| [system-management-design.md](./architecture/system-management-design.md) | **系统管理**：RBAC/会话/配额/审计设计 |
 | [admin-ops-design.md](./architecture/admin-ops-design.md) | **运营后台增强**：安全闭环/计费/风控生效/管理员治理 |
 | [marketplace-review-design.md](./architecture/marketplace-review-design.md) | **应用市场审核**：SaaS 平台审 / 私有化租户审（`review_mode`） |
-| [realtime-transport-design.md](./architecture/realtime-transport-design.md) | **实时通道**：对话 WebSocket、生成任务 SSE、协议草案与分期 |
+| [realtime-transport-design.md](./architecture/realtime-transport-design.md) | **实时通道**：对话 WebSocket、生成任务 SSE、协议与待实施阶段 |
 
 ## 功能节点 (`features/`)
 

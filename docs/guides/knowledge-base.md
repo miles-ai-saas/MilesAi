@@ -1,7 +1,7 @@
 # 知识库（RAG）技术方案
 
 > **功能规格：** [features/kb-ingest-retrieval.md](../features/kb-ingest-retrieval.md)  
-> 与主架构 [technical-design.md §6](../architecture/technical-design.md#6-数据与存储) 互补：本文聚焦 **知识库领域模型、入库流水线、检索与删除编排**。  
+> 与主架构 [technical-design.md §6](../architecture/technical-design.md#6-数据存储) 互补：本文聚焦 **知识库领域模型、入库流水线、检索与删除编排**。  
 > 配置分层（对象存储 / 向量库 / 向量化规格）见 [§6.5 存储与向量化配置策略](../architecture/technical-design.md#65-存储与向量化配置策略)。
 
 ---
@@ -227,7 +227,7 @@ OpenAPI：`/docs`（运行实例）。
 
 ### 6.2 环境变量（L1）
 
-见 [technical-design.md §15](../architecture/technical-design.md#15-环境变量)：`OBJECT_STORAGE_*`、`VECTOR_STORE_BACKEND`、`EMBEDDING_*`（仅作新建 KB 默认 profile 参考）。
+见 [technical-design.md §15](../architecture/technical-design.md#15-配置与环境变量)：`OBJECT_STORAGE_*`、`VECTOR_STORE_BACKEND`、`EMBEDDING_*`（仅作新建 KB 默认 profile 参考）。
 
 ### 6.3 分片参数
 

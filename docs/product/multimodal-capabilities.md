@@ -208,19 +208,13 @@ flowchart TB
 
 ---
 
-## 7. 发布节奏（与技术 Phase 对齐）
+## 7. 后续
 
 | 阶段 | 用户可见能力 | 状态 |
 |------|----------------|------|
-| **基础** | 生文、知识库多模态入库 | ✅ |
-| **Phase 1–2** | 对话/流程识图、RAG 带图 | ✅ |
-| **Phase 3–4** | 生图/图生图、生视频/首尾帧、媒体资产、生成工具与节点、生视频确认、日配额 | ✅ |
-| **已上线（P2）** | 生视频 Celery 异步（`generative_jobs`）；`GET/POST /generative/jobs`、SSE 进度、取消；对话/流程轮询；视频升格 KB（描述 Markdown） |
-| **已上线（运营）** | 工作台 **任务中心** → **生成任务** Tab（列表、筛选、详情、取消） |
-| **已上线（生图异步）** | `kind=image` 的 `generative_jobs` + Celery；工具/流程节点默认异步 |
-| **已上线（P3）** | 视频封面、识图多轮附图、流程模板 API |
-| **已上线（TTS）** | 内置工具 `generate_speech`（CosyVoice） |
 | **后续** | LLM 真 token 流式、视频逐帧预览 | 📋 [realtime-transport-design.md](../architecture/realtime-transport-design.md)（WS v1 见 [features/agent-chat-websocket.md](../features/agent-chat-websocket.md)） |
+
+生文、多模态入库、识图、生图/生视频、媒体资产、生成任务、TTS 等均已上线。
 
 技术定位、代码域与运维命令见 §8。
 

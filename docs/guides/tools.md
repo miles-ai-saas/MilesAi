@@ -2,7 +2,7 @@
 
 **功能规格：** [features/tools-mcp-skills.md](../features/tools-mcp-skills.md)
 
-MilesAI **工具模块**管理租户可用的**平台内置工具**（含规划中的 **L2 复杂内置**）与**自定义 HTTP / 变换脚本工具**，供技能包引用、工作台试调用、以及智能体 **function calling** 自动执行。
+MilesAI **工具模块**管理租户可用的**平台内置工具**（含 **L2 复杂内置**，如 `knowledge_search`、`generate_*`）与**自定义 HTTP / 变换脚本工具**，供技能包引用、工作台试调用、以及智能体 **function calling** 自动执行。
 
 **内置复杂工具**（多库检索、合规检测等，平台实现、租户选用）见 **[工具运行时架构 §2.1](../architecture/tools-runtime.md#21-平台内置built-in)**。
 

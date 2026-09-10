@@ -315,18 +315,16 @@ mcp.{service_slug}.{tool_name}
 
 ---
 
-## 8. 现状与规划对照
+## 8. 待实现（规划）
 
 | 能力 | 状态 |
 |------|------|
-| builtin + custom HTTP catalog & invoke | ✅ |
-| 变换脚本 v2（Runner、AST 校验） | ✅ |
-| `tool_invocation_logs`、确认策略 | ✅ |
-| Agent `tool_agent`（builtin + custom） | ✅（无 KB 时） |
-| MCP 独立工作台、sync、试调用 | ✅ |
 | MCP → Agent function calling | ❌ 规划 P0 |
-| 脚本预注入 stdlib | ❌ 规划 P1 |
+| 脚本预注入 stdlib（`datetime` / `re` / `math`） | ❌ 规划 P1 |
 | RAG 与 tool calling 共存 | ❌ 规划 P1 |
+| L2 内置工具扩充（合规检测、列附件、触发流程） | ❌ 规划 |
+
+已实现能力（builtin/custom catalog、变换脚本 v2、`tool_agent`、MCP 工作台）见 [guides/tools.md](../guides/tools.md)。
 
 代码入口：
 

@@ -2,7 +2,7 @@
 
 **状态：** 已实现  
 **PRD 对照：** 模块6 多模态文件管理（会话侧）· 模块4 生图/生视频节点  
-**架构：** [technical-design.md §10.1](../architecture/technical-design.md#101-多模态规划)
+**架构：** [technical-design.md §10.1](../architecture/technical-design.md#101-多模态已实现)
 
 ---
 

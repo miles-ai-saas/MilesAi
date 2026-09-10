@@ -1,6 +1,6 @@
 # 应用市场上架审核 — 双部署模式方案
 
-**状态：** R0–R3 已实现  
+**状态：** 已实现  
 **关联：** [marketplace.md](../features/marketplace.md) · [admin-ops-design.md](./admin-ops-design.md) · [technical-design.md §12](./technical-design.md#12-应用市场)
 
 ---
@@ -118,7 +118,7 @@ if get_review_mode() == "platform":
 
 ### 4.3 审核人字段（兼容迁移）
 
-`mkt_apps` 扩展（可选列，Phase 1 可仅用 detail JSON）：
+`mkt_apps` 扩展（可选列，亦可先用 detail JSON）：
 
 | 字段 | 说明 |
 |------|------|

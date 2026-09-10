@@ -206,6 +206,6 @@ backend/app/models/{tenant,user,role,system}.py
 
 ## 8. 参考
 
-- [system-management-design.md](../architecture/system-management-design.md) — Phase 0–3 增强技术方案
+- [system-management-design.md](../architecture/system-management-design.md) — 技术方案
 - [operations/database-setup.md](../operations/database-setup.md) — 种子与迁移
 - [admin-ops.md](./admin-ops.md) — 运营后台

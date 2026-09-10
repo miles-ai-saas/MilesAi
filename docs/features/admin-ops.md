@@ -1,6 +1,6 @@
 # 运营后台（Admin）
 
-**状态：** 基线 + Phase 0–5 已实现（见 [admin-ops-design.md](../architecture/admin-ops-design.md)）  
+**状态：** 已实现（见 [admin-ops-design.md](../architecture/admin-ops-design.md)）  
 **PRD 对照：** 模块1 系统管理（平台侧）· 模块7 市场分类  
 **架构：** [technical-design.md §运营域](../architecture/technical-design.md#4-分层与模块) · **增强方案：** [admin-ops-design.md](../architecture/admin-ops-design.md)
 
@@ -164,7 +164,7 @@ ui/admin/
 
 ## 9. 参考
 
-- [admin-ops-design.md](../architecture/admin-ops-design.md) — Phase 0–4 增强技术方案
+- [admin-ops-design.md](../architecture/admin-ops-design.md) — 技术方案
 - [features/system-management.md](./system-management.md) — 租户侧系统管理
 - [features/tags-categories.md](./tags-categories.md) — sys_categories 消费方
 - [features/marketplace.md](./marketplace.md) — mkt_categories

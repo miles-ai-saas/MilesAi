@@ -298,11 +298,10 @@ effective_api_base  = tenant_credentials.api_base ?? model_config.api_base
 
 ---
 
-## 9. 实施分期
+## 9. 后续（M4）
 
 | 阶段 | 交付 | 验收 |
 |------|------|------|
-| **M1 数据与运营** | 迁移 013、运营 CRUD + publish、种子若干内置 | 运营可发布 DeepSeek/GPT 等卡片 |
-| **M2 租户目录 UI** | `GET /models` 筛选 + 卡片页 + 自定义 CRUD | 与参考图一致的分类与来源展示 |
-| **M3 BYOK** | `agt_model_tenant_credentials` + 配置 Key UI + `ModelResolveService` | 租户选内置模型并配 Key 后智能体对话成功 |
 | **M4 强化** | 下架校验（智能体引用检查）、批量导入、图标资源 | 下架内置已引用时提示 |
+
+M1–M3（运营 CRUD + publish、租户目录 UI、BYOK）均已交付。
