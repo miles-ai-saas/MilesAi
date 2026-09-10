@@ -2,6 +2,7 @@
 
 - ``TenantTagOut`` / ``TenantTagCreate``：标签管理接口
 - ``TagRefOut``：嵌入 Agent、Prompt、Skill、Tool、Flow 的 ``tags`` 字段
+  （实现已下沉中立域 ``common.schemas.tag``，此处 re-export 保持既有 import 稳定）
 """
 
 from datetime import datetime
@@ -9,13 +10,9 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
+from app.common.schemas.tag import TagRefOut
 
-class TagRefOut(BaseModel):
-    """资源上挂载的标签摘要（列表/详情）。"""
-
-    id: UUID = Field(description="标签 ID")
-    name: str = Field(description="展示名")
-    slug: str = Field(description="租户内唯一标识（slug）")
+__all__ = ["TagRefOut", "TenantTagCreate", "TenantTagOut"]
 
 
 class TenantTagOut(BaseModel):

@@ -149,7 +149,7 @@ L0 → L1 → L2 → L3 → L4
 
 > 过渡期例外应随「模型解析下沉」等重构收敛；新增 admin 读取统一先评估上移共享层，勿继续加码深层 import。
 
-> 收敛后 admin 仅剩 `tenant.marketplace.schemas.*` 共享 DTO 引用（layering 未将 schemas 列为例外；如需 admin 对 tenant 零引用，可另评估下沉共享 DTO 层）。
+> 收敛后 admin 对 tenant 的引用仅剩 `tenant.system.repositories.tenant.TenantRepository`（上表合规形态）；共享 DTO 已下沉中立域（`common.schemas.tag` / `models.marketplace.dto`），admin 不再 import `tenant.*` schemas。
 
 ---
 
@@ -398,3 +398,4 @@ backend/tests/
 | 2026-09-10 | CI 门禁：`ruff check` / `ruff format --check` / OpenAPI 快照 / L3 反依赖守卫 + 全量 `pytest` 纳入 `lint.yml`；同时清掉遗留 F841/E402/F401 并统一 24 文件格式 |
 | 2026-09-10 | §2.3：admin→tenant 过渡期例外收敛——`mkt_*` ORM 上移 `app/models/marketplace`、`slugify`/`validate_api_key` 下沉 `app/common`；`TenantRepository` 判定属合规形态豁免 |
 | 2026-09-10 | 画布用量：`RunContext.usage_sink` 改为 `usage_sink_factory`——LLM 节点按解析后的模型构造 sink，新增 L1 `FlowUsageSink`（`source=flow`，自开短会话落库），画布多模型归因正确 |
+| 2026-09-10 | §2.3 续收敛：admin 共享 DTO 下沉——`TagRefOut` → `common.schemas.tag`、市场 DTO 整包 → `models/marketplace/dto`（tenant 原路径转 re-export），admin 对 `tenant.*` 引用归零（仅剩 Repository 合规复用） |

@@ -11,7 +11,7 @@ from app.common.schema import PageParams, PageResult
 from app.marketplace.review_config import require_platform_review_allowed
 from app.marketplace.review_core import approve_marketplace_app, reject_marketplace_app
 from app.models.marketplace import MarketplaceApp, MarketplaceAppStatus
-from app.tenant.marketplace.schemas.marketplace import MarketplaceAppDetail, MarketplaceAppOut
+from app.models.marketplace.dto import MarketplaceAppDetail, MarketplaceAppOut
 
 
 class AdminMarketplaceReviewService:

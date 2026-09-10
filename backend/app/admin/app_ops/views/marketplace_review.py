@@ -12,7 +12,7 @@ from app.common.response import ok, page_ok
 from app.common.schema import PageParams
 from app.core.deps import get_page_params
 from app.infra.db import get_db
-from app.tenant.marketplace.schemas.marketplace import AppReviewBody
+from app.models.marketplace.dto import AppReviewBody
 
 router = APIRouter()
 
