@@ -64,6 +64,9 @@ def test_flow_run_context_injects_resolvers_and_bindings_always():
     # prompt 模板 live 引用回调恒定注入（画布 PromptTemplate/RagPrompt 节点装配）
     assert ctx.resolve_prompt_template is not None
     assert callable(ctx.resolve_prompt_template)
+    # 租户敏感词表加载回调恒定注入（画布 ComplianceCheck 节点装配）
+    assert ctx.load_scan_words is not None
+    assert callable(ctx.load_scan_words)
 
 
 def test_flow_run_context_injects_submitters_when_async_enabled(monkeypatch):

@@ -87,6 +87,7 @@ def build_canvas_graph(graph_json: dict[str, Any]):
                 submit_generative_video=state.get("submit_generative_video"),
                 invoke_platform_tool=state.get("invoke_platform_tool"),
                 resolve_prompt_template=state.get("resolve_prompt_template"),
+                load_scan_words=state.get("load_scan_words"),
             )
             node_inputs = gather_node_inputs(node_id, incoming, state.get("outputs") or {})
             result = await execute_node(ntype, node_data, node_inputs, ctx)
@@ -133,6 +134,8 @@ def build_canvas_graph(graph_json: dict[str, Any]):
         submit_generative_video: Any
         invoke_platform_tool: Any
         resolve_prompt_template: Any
+        # L1 注入的租户敏感词表加载回调（随 ctx 透传，ComplianceCheck 节点装配）
+        load_scan_words: Any
         outputs: Annotated[dict[str, Any], merge_outputs]
         steps: Annotated[list[dict[str, Any]], operator.add]
         answer: Any

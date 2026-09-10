@@ -1,6 +1,7 @@
 """ComplianceCheck 画布节点：对上游文本进行敏感词扫描。
 
-读取租户已绑定词库，使用 CompliancePipeline（子串匹配）扫描输入文本。
+词表经 ``RunContext.load_scan_words``（L1 注入）加载；扫描算法取中立域
+``CompliancePipeline``（``app.models.compliance.pipeline``，子串匹配）。
 返回 {passed, hits, hit_count, blocked, mode}。
 mode=warn 仅标记，mode=block 时 has_block=True 可接入 ConditionBranch 做路由分流。
 """
@@ -8,12 +9,10 @@ mode=warn 仅标记，mode=block 时 has_block=True 可接入 ConditionBranch �
 from __future__ import annotations
 
 from typing import Any
-from uuid import UUID
 
+from app.common.exceptions import BadRequestError
 from app.flow_runtime.types import RunContext
-from app.infra.db import get_sync_db
-from app.tenant.compliance.services.pipeline import CompliancePipeline
-from app.tenant.compliance.services.word_resolve import load_tenant_scan_words
+from app.models.compliance.pipeline import CompliancePipeline
 
 
 async def compliance_check(
@@ -41,8 +40,9 @@ async def compliance_check(
 
     mode = node_data.get("mode") or "warn"
 
-    with get_sync_db() as db:
-        words = load_tenant_scan_words(db, UUID(ctx.tenant_id))
+    if ctx.load_scan_words is None:
+        raise BadRequestError("运行上下文未提供敏感词加载回调")
+    words = await ctx.load_scan_words(ctx.tenant_id)
 
     if not words:
         return {"passed": True, "reason": "未配置敏感词库", "text": text[:200]}
