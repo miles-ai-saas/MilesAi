@@ -91,6 +91,10 @@ class RunContext:
     # None 表示未装配，节点报错）。新建画布 RunContext 根装配点须随 resolve_generative_*
     # 一并注入（见 chat_rag/flow debug-run）。
     load_subflow_graph: Callable[[dict[str, Any], str], Awaitable[dict[str, Any]]] | None = None
+    # 画布媒体节点附件读取器（L1 注入，实现 models.media.reader.MediaReader；
+    # None 表示未装配，OcrExtract/AudioTranscribe 节点报错）。新建画布 RunContext
+    # 根装配点须随 resolve_generative_* 一并注入（见 chat_rag/flow debug-run）。
+    media_reader: Any = None
 
 
 @dataclass

@@ -3,8 +3,9 @@
 OcrExtract — 读取图片附件 → OCR 文字提取 → 返回纯文本
 AudioTranscribe — 读取音频附件 → Whisper 转写 → 返回纯文本
 
-两者均通过 AttachmentService 鉴权读取对象存储中的附件字节，
-再委托 rag.parse 模块进行实际解析。可在流程画布中作为 LLMCall 的前置节点。
+媒体字节经 ``RunContext.media_reader``（L1 注入，实现见
+``tenant.attachments.services.media_reader``）鉴权读取；OCR/音频解析仍委托
+``rag.parse`` 模块。可在流程画布中作为 LLMCall 的前置节点。
 """
 
 from __future__ import annotations
@@ -12,16 +13,11 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import select
-
 from app.common.exceptions import BadRequestError
-from app.core.tenant import TenantContext
 from app.flow_runtime.types import RunContext
-from app.infra.db import AsyncSessionLocal
+from app.models.media.reader import MediaReader
 from app.rag.parse.audio_parser import parse_audio
 from app.rag.parse.image_parser import parse_image
-from app.models.media.attachment import Attachment
-from app.tenant.attachments.services.attachment import AttachmentService
 
 
 async def ocr_extract(
@@ -35,16 +31,15 @@ async def ocr_extract(
     if not attachment_id:
         raise BadRequestError("OcrExtract 节点需要 attachment_id")
 
-    async with AsyncSessionLocal() as db:
-        tctx = _make_ctx(ctx)
-        data, mime = await AttachmentService(db, tctx).read_image_bytes(UUID(attachment_id))
+    reader = _require_media_reader(ctx)
+    att = await reader.read_image_bytes(UUID(attachment_id))
 
-    text = parse_image(data, f"ocr-{attachment_id}")
+    text = parse_image(att.data, f"ocr-{attachment_id}")
 
     return {
         "output": text,
         "attachment_id": str(attachment_id),
-        "mime_type": mime,
+        "mime_type": att.mime,
     }
 
 
@@ -59,16 +54,11 @@ async def audio_transcribe(
     if not attachment_id:
         raise BadRequestError("AudioTranscribe 节点需要 attachment_id")
 
-    async with AsyncSessionLocal() as db:
-        tctx = _make_ctx(ctx)
-        att = await db.scalar(select(Attachment).where(Attachment.id == UUID(attachment_id)))
-        if not att:
-            raise BadRequestError(f"附件不存在: {attachment_id}")
-
-        data, _ = await AttachmentService(db, tctx).read_image_bytes(UUID(attachment_id))
+    reader = _require_media_reader(ctx)
+    att = await reader.read_attachment_bytes(UUID(attachment_id))
 
     filename = att.filename or f"audio-{attachment_id}"
-    text = parse_audio(data, filename)
+    text = parse_audio(att.data, filename)
 
     return {
         "output": text,
@@ -98,12 +88,8 @@ def _resolve_attachment_id(
     return None
 
 
-def _make_ctx(ctx: RunContext):
-    """构造带 attachment:read 权限的 TenantContext，供 AttachmentService 鉴权读取。"""
-    return TenantContext(
-        user_id=UUID(ctx.user_id) if ctx.user_id else None,
-        tenant_id=UUID(ctx.tenant_id),
-        username="flow_media",
-        is_superuser=False,
-        permissions=frozenset(["attachment:read"]),
-    )
+def _require_media_reader(ctx: RunContext) -> MediaReader:
+    """取运行上下文注入的媒体读取器；未装配时报错。"""
+    if ctx.media_reader is None:
+        raise BadRequestError("运行上下文未提供媒体读取器")
+    return ctx.media_reader
