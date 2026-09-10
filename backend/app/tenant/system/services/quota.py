@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.common.exceptions import ForbiddenError
 from app.core.soft_delete import not_deleted
-from app.integrations.generative.quota import (
+from app.tenant.generative.services.quota import (
     count_generative_today,
     get_generative_daily_limit,
 )

@@ -7,7 +7,7 @@ from uuid import uuid4
 import pytest
 
 from app.common.exceptions import ForbiddenError
-from app.integrations.generative.quota import (
+from app.tenant.generative.services.quota import (
     assert_generative_quota,
     get_generative_daily_limit,
 )
@@ -45,7 +45,7 @@ async def test_assert_generative_quota_exceeded():
 
 
 def test_utc_day_start_used_in_count_query():
-    from app.integrations.generative import quota as mod
+    from app.tenant.generative.services import quota as mod
 
     start = mod._utc_day_start()
     assert start.tzinfo == timezone.utc

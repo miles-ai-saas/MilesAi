@@ -3,7 +3,7 @@
 L3 ``integrations/generative`` 只保留纯厂商派发（``generate_{image,video,tts}_bytes``）；
 租户副作用（``ComplianceService`` / ``AttachmentService`` / 附件仓储 / 媒体资产登记）全在本模块；
 日配额仅由本模块调用（本模块是**调用点/编排点**），纯额度实现仍在 L3
-``integrations.generative.quota``（``assert_generative_quota``）。画布同步分支经
+``tenant.generative.services.quota``（``assert_generative_quota``）。画布同步分支经
 ``RunContext.generate_{image,video}_sync``（即本模块 ``generate_{image,video}_for_model``）注入执行。
 """
 
@@ -24,7 +24,7 @@ from app.integrations.generative.constants import (
 )
 from app.integrations.generative.image.prompt_guard import sanitize_image_prompt
 from app.integrations.generative.image.service import generate_image_bytes
-from app.integrations.generative.quota import assert_generative_quota
+from app.tenant.generative.services.quota import assert_generative_quota
 from app.integrations.generative.tts.service import generate_tts_bytes
 from app.integrations.generative.types import ImageGenerateResult, VideoGenerateResult
 from app.integrations.generative.video.cover import extract_video_cover_jpeg

@@ -1,8 +1,11 @@
 """
-生成类 API 日配额（次数，非 KB 存储）。
+生成类 API 日配额（次数，非 KB 存储）——L1 租户策略。
 
 配置键 ``generative.daily_limit_per_tenant``（system_config JSON，整数；0 或未配置表示不限）。
 计数口径：当日 UTC 内 ``purpose ∈ {chat_generated, flow_generated}`` 的附件条数。
+``PURPOSE_*`` 常量取自 L3 中立常量模块 ``integrations.generative.constants``；
+消费方：``tenant.generative.services.orchestration``（生成前校验）与
+``tenant.system.services.quota``（配额页汇总）。
 """
 
 from __future__ import annotations
