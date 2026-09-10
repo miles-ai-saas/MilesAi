@@ -1,5 +1,7 @@
 # G2-4a 实施计划：flow 画布媒体读取收敛——MediaReader 契约 + RunContext 注入（G2 收官）
 
+> **归档：** 已实施并合并（engine DI 收敛，2026-09-10 校核）。**收敛记录：** [layering.md](../../architecture/layering.md) §8；执行明细见 `.superpowers/sdd/progress.md`。
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 消除 `flow_runtime/nodes/media_nodes.py`（L3）对 `tenant.attachments.services.attachment.AttachmentService` 的运行期 import——媒体读取改经 L3 中性契约 `MediaReader`（`app/models/media/reader.py`）+ L1 实现 `tenant/attachments/services/media_reader.py`，经 `RunContext.media_reader` 注入。完成后 `flow_runtime/nodes/` 对 `tenant.*` 直接 import 清零，**G2 画布节点面收官**。

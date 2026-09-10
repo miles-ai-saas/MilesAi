@@ -1,5 +1,7 @@
 # B-2c 实施计划：generative 模型解析上移 L1（含 flow ctx 注入与 job 执行编排收口）
 
+> **归档：** 已实施并合并（engine DI 收敛，2026-09-10 校核）。**收敛记录：** [layering.md](../../architecture/layering.md) §8；执行明细见 `.superpowers/sdd/progress.md`。
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 消除 `integrations/generative/{image,tts,video}/service.py` 对 `tenant.models.services.model_resolve` 的反向 import——把 `resolve_image_gen_model`/`resolve_tts_model`/`resolve_video_gen_model` 与默认模型选取 `pick_default_generative_model` 收敛到 L1 新模块 `tenant/models/services/generative_model_resolve.py`；同步把 generative job 执行编排从 L3 `jobs/runner.py` 上移 L1，flow 画布生图/生视频节点改经 `RunContext` 注入解析器。

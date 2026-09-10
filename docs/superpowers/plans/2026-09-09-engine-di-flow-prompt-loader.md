@@ -1,5 +1,7 @@
 # G2-2 实施计划：flow PromptTemplate 节点模板库 live 引用收敛——RunContext 回调注入
 
+> **归档：** 已实施并合并（engine DI 收敛，2026-09-10 校核）。**收敛记录：** [layering.md](../../architecture/layering.md) §8；执行明细见 `.superpowers/sdd/progress.md`。
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 消除 `flow_runtime/nodes/rag_nodes.py`（L3）对 `tenant.prompts.models.PromptTemplate` 的运行期 import——模板库 live 引用加载经 L3 中性回调（`RunContext.resolve_prompt_template`）+ L1 loader（`tenant/prompts/services/template_loader.py::build_prompt_template_loader`）注入。这是 flow 画布节点面（G2）收敛的第一个子计划。

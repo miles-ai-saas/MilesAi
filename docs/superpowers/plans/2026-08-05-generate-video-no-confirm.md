@@ -1,5 +1,7 @@
 # 生视频取消确认 Implementation Plan
 
+> **归档：** 实施 checklist（2026-08-05）。**现网实现：** `backend/app/tenant/tools/builtin_registry.py`（`generate_video.require_confirmation=False`）、`backend/tests/tenant/tools/test_tools_confirmation.py`
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** `generate_video` 默认不再要求用户确认，对话调用直接入队。

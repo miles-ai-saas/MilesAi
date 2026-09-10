@@ -1,5 +1,7 @@
 # G2-1 实施计划：flow 子流程加载/校验面收敛——L3 仓储契约 + RunContext 回调注入
 
+> **归档：** 已实施并合并（engine DI 收敛，2026-09-10 校核）。**收敛记录：** [layering.md](../../architecture/layering.md) §8；执行明细见 `.superpowers/sdd/progress.md`。
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 消除 `flow_runtime/subflow/{resolve,validate}.py`（L3）对 `tenant.flows.repositories.flow.FlowRepository` 的运行期 import——运行期子图加载（`subflow_nodes`/`loop_nodes`）改经 L3 中性回调 `RunContext.load_subflow_graph` + L1 loader 注入；编译期校验（`validate_subflow_references`，由 L1 `FlowService` 调用）改接收 L3 中性仓储契约 `FlowRepoLike`（结构由 `FlowRepository` 满足，L1 传 `self.repo`）。这是 flow 画布节点面（G2）收敛第三个子计划。

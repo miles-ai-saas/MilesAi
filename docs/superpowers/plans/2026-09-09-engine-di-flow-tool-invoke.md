@@ -1,5 +1,7 @@
 # F2c-A 实施计划：画布 `platform_tool` 节点执行回调注入——L3 不再 import `tenant.tools.invoke`
 
+> **归档：** 已实施并合并（engine DI 收敛，2026-09-10 校核）。**收敛记录：** [layering.md](../../architecture/layering.md) §8；执行明细见 `.superpowers/sdd/progress.md`。
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 消除 `flow_runtime/nodes/tool_nodes.py`（L3）对 `tenant.tools.invoke.invoke_tool_with_context`、`tenant.core.tenant.TenantContext`（构造迁移）与 `infra.db.AsyncSessionLocal` 的运行期 import——工具执行经 `RunContext` 注入的 L1 回调 `invoke_platform_tool` 完成（与 B-2e 的 `submit_generative_*` 注入同构），节点保持纯调度职责。

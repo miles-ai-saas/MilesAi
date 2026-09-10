@@ -1,5 +1,7 @@
 # 对话生成结果卡片化 Implementation Plan
 
+> **归档：** 实施 checklist（2026-07-15）。**现网规格：** [features/attachments-media-generative.md](../../features/attachments-media-generative.md)、[features/agent-chat-websocket.md](../../features/agent-chat-websocket.md)
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 在智能体对话消息内用同一张生成卡片完成「进度 → 结果预览 → 素材库轻链」，并扩展 ChatArtifact / job.result 契约以支持落库与刷新恢复。

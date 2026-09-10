@@ -1,5 +1,7 @@
 # 流程视频参数配方 Implementation Plan
 
+> **归档：** 实施 checklist（2026-08-05）。**现网规格：** [features/flow-orchestration.md](../../features/flow-orchestration.md)；模板见 `backend/app/flow_runtime/templates/video_{t2v,i2v}.json`、前端预设见 `ui/workbench/features/flows/lib/video-generate-presets.ts`
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 内置文生/图生视频流程模板 + VideoGenerate 检查器参数预设下拉；未配模型时回退租户默认 video_gen。

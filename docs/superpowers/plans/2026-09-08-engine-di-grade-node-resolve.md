@@ -1,5 +1,7 @@
 # B-2a 实施计划：画布 RelevanceGrade 节点模型解析改走 RunContext.resolve_model 回调
 
+> **归档：** 已实施并合并（engine DI 收敛，2026-09-10 校核）。**收敛记录：** [layering.md](../../architecture/layering.md) §8；执行明细见 `.superpowers/sdd/progress.md`。
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 消除 `flow_runtime/nodes/grade_nodes.py` 对 `app.tenant.models.services.model_resolve` 的反向 import，使其模型解析改走 B-1 已注入的 `RunContext.resolve_model` 回调。

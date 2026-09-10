@@ -1,5 +1,7 @@
 # 智能体正式 API Key 与开放调用 Implementation Plan
 
+> **归档：** 实施 checklist（2026-07-15）。**现网规格：** [features/agent-api-access.md](../../features/agent-api-access.md)；实现见 `backend/app/tenant/agents/services/api_access.py`、`views/open_chat.py`
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 为智能体提供可吊销、不过期的 API Key；支持 `X-API-Key` 调用既有 `POST …/chat` 与专用 `POST /open/agents/{id}/chat`；工作台 API Tab 完成密钥管理与正式对接文档。

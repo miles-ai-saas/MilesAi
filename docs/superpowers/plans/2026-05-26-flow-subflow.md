@@ -1,10 +1,10 @@
-# 画布子流程（SubFlow）— 实施计划占位
+# 画布子流程（SubFlow）— 实施计划
 
-> **归档：** 未开工占位（2026-05-26）。**目标规格：** [flow-subflow-design.md](../../architecture/flow-subflow-design.md)（**未实施**，无 features 文档）
+> **归档：** 已实施（2026-05-27 `feat(flow): 支持SubFlow`；2026-09-10 校核）。**现网规格：** [features/flow-orchestration.md](../../features/flow-orchestration.md)；**目标规格：** [flow-subflow-design.md](../../architecture/flow-subflow-design.md)（Phase A–C 已落地）
 
 **日期：** 2026-05-26  
 **立项规格：** [flow-subflow-design.md](../../architecture/flow-subflow-design.md)  
-**状态：** 归档 · **未开工**
+**状态：** 归档 · **已实施**
 
 ---
 

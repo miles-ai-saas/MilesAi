@@ -1,5 +1,7 @@
 # B-2b 实施计划：KB 向量化/检索链的 embed·rerank·日志绑定上移 L1
 
+> **归档：** 已实施并合并（engine DI 收敛，2026-09-10 校核）。**收敛记录：** [layering.md](../../architecture/layering.md) §8；执行明细见 `.superpowers/sdd/progress.md`。
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 消除 `integrations/langchain/{embeddings,visual_embeddings,vectorstores}.py` 对 `tenant.models.services.{embedding_resolve,rerank_resolve}` 与 `tenant.kb.services.search_log` 的反向 import，把"按 KB 绑定模型解析向量化/重排 + 检索审计"收敛到 L1 装配点。

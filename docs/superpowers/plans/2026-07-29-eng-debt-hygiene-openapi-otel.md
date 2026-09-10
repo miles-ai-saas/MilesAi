@@ -1,5 +1,7 @@
 # 工程债三项 Implementation Plan
 
+> **归档：** 实施 checklist（2026-07-29）。**现网门禁：** `.github/workflows/lint.yml`（OpenAPI 快照 `backend/openapi/openapi.snapshot.json`、`scripts/export_openapi.py --check`）；OTel 见 `backend/app/infra/otel.py`（`pyproject.toml` 可选 extra `otel`）
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 落地工程卫生、OpenAPI schema CI、API 侧 OTel traces（默认关闭）。

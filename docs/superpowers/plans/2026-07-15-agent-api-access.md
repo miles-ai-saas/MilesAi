@@ -1,5 +1,7 @@
 # 智能体工作台 API Tab（对接调试）Implementation Plan
 
+> **归档：** 实施 checklist（2026-07-15）。**现网规格：** [features/agent-api-access.md](../../features/agent-api-access.md)
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 落地智能体工作台右侧「API」Tab：展示 `POST …/chat` 对接文档，并提供 24h 调试 JWT 签发，复用现有对话路由完成外部 curl/脚本试通。

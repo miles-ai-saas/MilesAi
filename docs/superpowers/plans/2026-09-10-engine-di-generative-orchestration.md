@@ -1,5 +1,7 @@
 # G1-2 实施计划：生成面租户编排下沉 L1——`integrations/generative` 对 tenant 清零
 
+> **归档：** 已实施并合并（engine DI 收敛，2026-09-10 校核）。**收敛记录：** [layering.md](../../architecture/layering.md) §8；执行明细见 `.superpowers/sdd/progress.md`。
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 消除 L3 `app/integrations/generative` 对 `app.tenant` 的全部运行期 import——把租户副作用编排（合规扫描 / 日配额 / 参考图 data URL / 生成物持久化 / 媒体资产登记）从 L3 下沉 L1 `tenant/generative/services/orchestration.py`；L3 `*/service.py` 只保留纯厂商派发（`generate_image_bytes` / `generate_video_bytes` / `generate_tts_bytes`）；画布生图/生视频同步分支改经 `RunContext.generate_image_sync` / `generate_video_sync`（L1 注入）执行。

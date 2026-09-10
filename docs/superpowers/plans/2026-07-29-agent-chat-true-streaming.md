@@ -1,5 +1,7 @@
 # 对话 WebSocket 真 token 流式 Implementation Plan
 
+> **归档：** 实施 checklist（2026-07-29）。**现网规格：** [features/agent-chat-websocket.md](../../features/agent-chat-websocket.md)；实现见 `backend/app/integrations/litellm/adapter.py::litellm_chat_completion_stream`
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 直连 LLM 与 RAG 最终生成经 LiteLLM `stream=True` 推送真 `chat.delta`；tool 路径仍切块兜底；HTTP 整包不变。

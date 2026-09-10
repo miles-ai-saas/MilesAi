@@ -1,5 +1,7 @@
 # F2b 实施计划：自定义工具契约收敛——DB 加载上移 L1，`langchain/tools.py` 净化为纯 schema 构造
 
+> **归档：** 已实施并合并（engine DI 收敛，2026-09-10 校核）。**收敛记录：** [layering.md](../../architecture/layering.md) §8；执行明细见 `.superpowers/sdd/progress.md`。
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 消除 `integrations/langchain/tools.py` 对 `tenant.tools.{invoke,models,parameters}` 的全部运行期 import，并把租户自定义工具（`Tool` 表 HTTP/SCRIPT 行）的 **DB 加载上移 L1**——`tools.py` 变为纯 schema 构造库（无 DB、无执行），自定义工具经**中性 spec**（L1 loader 产出自 ORM）构造 StructuredTool；`tool_agent/loop.py` 不再调 DB 版 `get_all_platform_tools`，改由 L1 装配后经新入参 `platform_tools` 传入。

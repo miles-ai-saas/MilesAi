@@ -1,5 +1,7 @@
 # B-1 实施计划：对话/画布 LLM 调用链的模型解析与用量记录依赖反转
 
+> **归档：** 已实施并合并（engine DI 收敛，2026-09-10 校核）。**收敛记录：** [layering.md](../../architecture/layering.md) §8；执行明细见 `.superpowers/sdd/progress.md`。
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 消除 `integrations/`（chat_models、litellm adapter、tool_agent loop、langgraph runner/graph、deepagents orchestrator）与 `flow_runtime/nodes/llm_nodes.py` 对 `app.tenant.models.services.{model_resolve,usage}` 的反向 import，把"按租户解析可用模型 + Token 用量记录"职责收敛到 L1 装配点。

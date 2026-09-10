@@ -1,5 +1,7 @@
 # G2-3 实施计划：flow ComplianceCheck 节点收敛——纯算法下沉 models + 词表加载回调注入
 
+> **归档：** 已实施并合并（engine DI 收敛，2026-09-10 校核）。**收敛记录：** [layering.md](../../architecture/layering.md) §8；执行明细见 `.superpowers/sdd/progress.md`。
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 消除 `flow_runtime/nodes/compliance_nodes.py`（L3）对 `tenant.compliance.services.{pipeline,word_resolve}` 的运行期 import——纯算法（`CompliancePipeline`/`ScanMatch`/`ScanResult`/`SensitiveAction`）下沉中立域 `app/models/compliance/`，租户词表加载（原 `get_sync_db` + `load_tenant_scan_words`）改经 L3 中性回调 `RunContext.load_scan_words` + L1 loader 注入。这是 flow 画布节点面（G2）收敛第二个子计划。

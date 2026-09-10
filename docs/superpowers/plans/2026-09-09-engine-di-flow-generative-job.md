@@ -1,5 +1,7 @@
 # B-2e 实施计划：画布生图/生视频节点异步 job 提交上移 L1（RunContext.submit_* 注入）
 
+> **归档：** 已实施并合并（engine DI 收敛，2026-09-10 校核）。**收敛记录：** [layering.md](../../architecture/layering.md) §8；执行明细见 `.superpowers/sdd/progress.md`。
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 消除 `flow_runtime/nodes/{image_generate,video_generate}.py` 对 `tenant.generative.{schemas.job, services.job}` 的运行期反依赖——把画布生图/生视频节点的**异步 job 提交流程**从 L3 节点上移 L1（`tenant/generative/services/job_execution.py`），节点经 `RunContext.submit_generative_image/video` 注入回调提交（与 B-2c 已收敛的同步 resolver 注入同构）。

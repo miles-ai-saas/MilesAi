@@ -1,5 +1,7 @@
 # F2c-B 实施计划：agent 对话工具执行/确认面收敛——L3 中性契约 + L1 executor 注入
 
+> **归档：** 已实施并合并（engine DI 收敛，2026-09-10 校核）。**收敛记录：** [layering.md](../../architecture/layering.md) §8；执行明细见 `.superpowers/sdd/progress.md`。
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 消除 `integrations/langchain/tool_agent/loop.py`（L3）对 `tenant.tools.confirmation`（`resolve_tool_meta`/`ToolConfirmationRequired`）与 `tenant.tools.invoke`（`invoke_tool_with_context`）的运行期 import——执行/确认经 L3 中性契约（`tool_agent/tool_contract.py`）+ L1 executor（`tenant/tools/services/agent_executor.py`）注入 `run_tool_calling_chat`。这是 tools 契约计划（F2）最终收尾：`loop.py` 对 `tenant.*` import **清零**。

@@ -1,5 +1,7 @@
 # tool_agent / agent.chat 超标拆分 Implementation Plan
 
+> **归档：** 实施 checklist（2026-07-28，纯内部拆分，无 features 文档）。**现网代码：** `backend/app/integrations/langchain/tool_agent/`、`backend/app/tenant/agents/services/agent/`
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 将超标的 `tool_agent.py`（808）与 `agent/chat.py`（571）按职责拆到子模块，行为不变，单文件 &lt;500 行。

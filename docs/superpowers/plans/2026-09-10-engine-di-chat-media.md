@@ -1,5 +1,7 @@
 # G1-3 实施计划：`integrations/chat` 媒体读取收敛——L3 对 tenant 全域清零收官
 
+> **归档：** 已实施并合并（engine DI 收敛，2026-09-10 校核）。**收敛记录：** [layering.md](../../architecture/layering.md) §8；执行明细见 `.superpowers/sdd/progress.md`。
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 消除 `app/integrations/chat/multimodal.py`（L3）对 `tenant.attachments.services.attachment.AttachmentService` 的运行期 import——图片字节读取改经已存在的 L3 中性契约 `models.media.reader.MediaReader`（G2-4a 引入），由 L1 会话绑定实现 `SessionMediaReader` 注入；完成后 `app/integrations/**` 与 `app/flow_runtime/**` 对 `app.tenant` **全域清零**（engine DI 收官）。

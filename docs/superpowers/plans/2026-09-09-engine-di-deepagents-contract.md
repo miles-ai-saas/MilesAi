@@ -1,5 +1,7 @@
 # B-2d 实施计划：deepagents 编排契约反依赖收敛（schemas/constants 中立化）
 
+> **归档：** 已实施并合并（engine DI 收敛，2026-09-10 校核）。**收敛记录：** [layering.md](../../architecture/layering.md) §8；执行明细见 `.superpowers/sdd/progress.md`。
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 消除 `integrations/deepagents/{orchestrator,runner,subagent_graphs}.py` 对 `tenant.agents.{schemas,constants}` 的运行期 import——把 deepagents 使用的 agent 域枚举/常量下沉到中立 `models` 域、把对话 DTO 依赖收敛为「L3 包内中性契约 + L1 装配适配」。

@@ -2,7 +2,7 @@
 
 **日期：** 2026-05-26  
 **状态：** 已实现（Phase A–C）  
-**As-Is 规格：** 无 — 子流程节点尚未落地；现网流程见 [features/flow-orchestration.md](../features/flow-orchestration.md)  
+**As-Is 规格：** 已落地（Phase A–C）— 见 [features/flow-orchestration.md](../features/flow-orchestration.md)
 **优先级：** P2（待 Phase 1–4 稳定运行后排期）  
 **关联：** [flows.md](../guides/flows.md)、[technical-design.md](./technical-design.md) §9、[flow-orchestration-enhancement.md](./flow-orchestration-enhancement.md)
 
@@ -213,7 +213,7 @@ async def sub_flow(node_data, inputs, ctx):
 
 ---
 
-## 6. 分阶段实施建议（立项排期，未开工）
+## 6. 分阶段实施建议（立项排期；A–C 已实施）
 
 | 阶段 | 内容 | 依赖 |
 |------|------|------|

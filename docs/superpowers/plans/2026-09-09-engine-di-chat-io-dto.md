@@ -1,5 +1,7 @@
 # F2a 实施计划：agent 对话 IO DTO 下沉中立域 `models/agent/chat_io`
 
+> **归档：** 已实施并合并（engine DI 收敛，2026-09-10 校核）。**收敛记录：** [layering.md](../../architecture/layering.md) §8；执行明细见 `.superpowers/sdd/progress.md`。
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 消除 `integrations/langchain/tool_agent/{loop,artifacts}.py` 对 `tenant.agents.schemas.agent` 的运行期 import——把智能体对话 IO 契约（`ChatMediaIn`/`ChatRequest`/`ChatResponse`/`ChatArtifact`/`PendingToolCall`）下沉中立域 `app/models/agent/chat_io.py`，原 `tenant.agents.schemas.agent` 变 re-export shim（L1 既有 import 路径稳定）。完成标准：`tool_agent/artifacts.py` 对 `tenant` 依赖**清零**，`tool_agent/loop.py` 仅剩 F2c 执行/确认行为面（`tenant.tools.{confirmation,invoke}`）待后续计划。
