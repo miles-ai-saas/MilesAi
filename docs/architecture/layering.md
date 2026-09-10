@@ -98,6 +98,8 @@ L0 → L1 → L2 → L3 → L4
 
 **允许**：`rag` → `models`、`core`、`infra`、`integrations`（仅 L3 技术封装）。
 
+> 逐阶段收敛复盘（成因、契约下沉/注入三形态、全量清单、画布 `RunContext` 装配 checklist、CI 守卫）见 [engine-di-convergence.md](./engine-di-convergence.md)。
+
 > **收敛记录（2026-09-08）**：对话/画布调用链的模型解析与用量 sink 已改由 L1 装配注入——`ainvoke_chat`/litellm `adapter`/`tool_agent.loop`/langgraph `runner`+`rag_qa`/deepagents `orchestrator`/flow `llm_nodes` 不再 import `tenant.models.services`（见 plan [`2026-09-08-engine-di-chat-invoke-chain`](../superpowers/plans/2026-09-08-engine-di-chat-invoke-chain.md)）；`grade_nodes`、KB 向量化/检索绑定（B-2b，见下）与 `generative` 模型解析（B-2c，见下）已随后收敛。
 
 > **收敛记录（2026-09-09，B-2b）**：KB 检索绑定装配上移 L1——kb 级向量化与 `KbRetrievalBindings` 装配落 `tenant/kb/services/embeddings.py`（`build_kb_retrieval_bindings`）；`integrations/langchain/embeddings.py` 已删除，`visual_embeddings.py`/`vectorstores.py` 与 `rag/`、`flow_runtime` 不再 import `tenant.models.services.{embedding_resolve,rerank_resolve}` 与 `tenant.kb.services.search_log`；bindings 经 `vectorstores` 壳、LangGraph `configurable` 与 `RunContext` 注入 L2 检索（见 plan [`2026-09-08-engine-di-kb-embed-vector-chain`](../superpowers/plans/2026-09-08-engine-di-kb-embed-vector-chain.md)）。
