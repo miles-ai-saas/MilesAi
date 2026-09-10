@@ -2,6 +2,8 @@
 
 SubFlow / LoopNode 共用：``resolve_subflow_graph`` 按 published/pinned 加载子图；
 ``build_child_context`` 处理 input_mapping 与 subflow_depth 递增。
+
+子图加载经 ``FlowRepoLike`` 契约（L1 ``build_subflow_graph_loader`` 注入短会话仓储）。
 """
 
 from __future__ import annotations
@@ -9,14 +11,12 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.common.exceptions import BadRequestError, NotFoundError
 from app.core.soft_delete import is_marked_deleted
 from app.flow_runtime.constants import CanvasNodeType
+from app.flow_runtime.subflow.contracts import FlowRepoLike
 from app.flow_runtime.types import RunContext
 from app.models.flow import FlowStatus
-from app.tenant.flows.repositories.flow import FlowRepository
 
 VERSION_POLICY_PUBLISHED = "published"
 VERSION_POLICY_PINNED = "pinned"
@@ -57,13 +57,12 @@ def _parse_sub_flow_id(node_data: dict[str, Any]) -> UUID:
 
 
 async def resolve_subflow_graph(
-    db: AsyncSession,
+    repo: FlowRepoLike,
     node_data: dict[str, Any],
     tenant_id: UUID,
 ) -> dict[str, Any]:
     """按 version_policy 加载子流程 graph_json。"""
     sub_flow_id = _parse_sub_flow_id(node_data)
-    repo = FlowRepository(db)
     flow = await repo.get_by_id(sub_flow_id)
     if not flow or is_marked_deleted(flow) or flow.tenant_id != tenant_id:
         raise NotFoundError("子流程不存在")
@@ -163,6 +162,7 @@ def build_child_context(
         invoke_platform_tool=parent_ctx.invoke_platform_tool,  # 平台工具执行回调透传到子流程
         resolve_prompt_template=parent_ctx.resolve_prompt_template,  # prompt 模板解析回调透传到子流程
         load_scan_words=parent_ctx.load_scan_words,  # 敏感词表加载回调透传到子流程
+        load_subflow_graph=parent_ctx.load_subflow_graph,  # 子流程图加载回调透传到子流程
     )
 
 

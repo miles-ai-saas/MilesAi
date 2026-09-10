@@ -80,6 +80,9 @@ def test_build_child_context_forwards_resolve_model_and_usage_sink():
     async def fake_words_loader(tenant_id: str):
         return None
 
+    async def fake_subflow_loader(node_data, tenant_id):
+        return {}
+
     usage_sink = object()
     kb_retrieval = object()
     parent = RunContext(
@@ -91,6 +94,7 @@ def test_build_child_context_forwards_resolve_model_and_usage_sink():
         invoke_platform_tool=fake_invoker,
         resolve_prompt_template=fake_prompt_loader,
         load_scan_words=fake_words_loader,
+        load_subflow_graph=fake_subflow_loader,
     )
     child = build_child_context(
         parent,
@@ -109,6 +113,7 @@ def test_build_child_context_forwards_resolve_model_and_usage_sink():
     assert child.invoke_platform_tool is fake_invoker
     assert child.resolve_prompt_template is fake_prompt_loader
     assert child.load_scan_words is fake_words_loader
+    assert child.load_subflow_graph is fake_subflow_loader
 
 
 def test_max_subflow_depth_constant():

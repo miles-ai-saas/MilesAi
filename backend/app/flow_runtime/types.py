@@ -87,6 +87,10 @@ class RunContext:
     # None 表示未装配，节点报错）。新建画布 RunContext 根装配点须随 resolve_generative_*
     # 一并注入（见 chat_rag/flow debug-run）。
     load_scan_words: Callable[[str], Awaitable[Any]] | None = None
+    # 画布 SubFlow/LoopNode 子流程图加载回调（L1 注入；签名 (node_data, tenant_id) -> graph_json；
+    # None 表示未装配，节点报错）。新建画布 RunContext 根装配点须随 resolve_generative_*
+    # 一并注入（见 chat_rag/flow debug-run）。
+    load_subflow_graph: Callable[[dict[str, Any], str], Awaitable[dict[str, Any]]] | None = None
 
 
 @dataclass

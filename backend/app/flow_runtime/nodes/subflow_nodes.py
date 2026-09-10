@@ -7,18 +7,15 @@
 from __future__ import annotations
 
 from typing import Any
-from uuid import UUID
 
 from app.common.exceptions import BadRequestError
 from app.flow_runtime.constants import MAX_SUBFLOW_DEPTH
 from app.flow_runtime.subflow.resolve import (
     build_child_context,
     pick_subflow_output,
-    resolve_subflow_graph,
     summarize_child_steps,
 )
 from app.flow_runtime.types import RunContext
-from app.infra.db import AsyncSessionLocal
 
 
 async def sub_flow(
@@ -37,12 +34,9 @@ async def sub_flow(
     parent_flow_id = ctx.current_flow_id or ctx.parent_flow_id
     parent_node_id = ctx.executing_node_id or ""
 
-    async with AsyncSessionLocal() as db:
-        graph_json = await resolve_subflow_graph(
-            db,
-            node_data,
-            UUID(ctx.tenant_id),
-        )
+    if ctx.load_subflow_graph is None:
+        raise BadRequestError("运行上下文未提供子流程图加载回调")
+    graph_json = await ctx.load_subflow_graph(node_data, ctx.tenant_id)
 
     child_ctx = build_child_context(
         ctx,
