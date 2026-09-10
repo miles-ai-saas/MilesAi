@@ -79,7 +79,9 @@ DeepAgents 默认注入 `general-purpose` 子智能体；本平台用占位 `Com
 |--------|------|
 | `skill_package_id` | 绑定单个技能包；`SKILL.md` 全文 + `references/scripts` **索引**注入 system prompt |
 | `enable_tool_calling` | 开启 LiteLLM function calling 循环（`tool_agent`） |
-| `tool_slugs` | 可选白名单；未配置时使用全部内置 + 租户自定义工具 |
+| `tool_slugs` | 可选白名单；未配置时使用全部内置 + 租户自定义工具（MCP、绑定 KB 的 `knowledge_search` 不受其约束） |
+| `mcp_service_ids` | 绑定 MCP 服务，其同步出的 tools 一并可 function calling |
+| 知识库绑定 | 与 tool calling **共存**：`knowledge_search` 强制可用，命中片段回填 `sources` |
 
 ### 技能运行时工具
 
@@ -97,8 +99,8 @@ DeepAgents 默认注入 `general-purpose` 子智能体；本平台用占位 `Com
 | 场景 | 技能 Prompt | skill_* 工具 |
 |------|-------------|--------------|
 | 无 KB + `enable_tool_calling` | ✅ | ✅ |
-| 绑定 KB（RAG / LangGraph） | ✅ | ❌（走检索增强，不进入 `tool_agent`） |
-| 绑定 KB + `skill_package_id` + `enable_tool_calling` | ✅ | ✅（tool_agent + `knowledge_search`） |
+| 绑定 KB + `enable_tool_calling` | ✅ | ✅（`tool_agent` + `knowledge_search`） |
+| 绑定 KB（未开工具调用） | ✅ | ❌（走 LangGraph / `rag_answer` 检索增强） |
 | 仅 `_direct_chat` | ✅ | ❌ |
 
 流程画布可使用 **PlatformTool** 节点（`data.tool_slug`）调用 `skill_read_reference` / `skill_run_script`；须由绑定技能包的智能体发布流程执行（注入 `agent_id`）。

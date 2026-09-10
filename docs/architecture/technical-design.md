@@ -650,7 +650,6 @@ flowchart TD
 
 | 能力 | 状态 | 说明 / 文档 |
 |------|------|-------------|
-| RAG 与 tool calling 完整共存 | 🔶 | 仅「有 KB + `enable_generative_tools`」部分路径；见 [platform-agents.md](../guides/platform-agents.md) |
 | L2 内置工具扩充（合规检测、列附件、触发流程） | ⬜ | 见 [tools-runtime.md](./tools-runtime.md) §7 |
 | 对话 HTTP 整包流式；tool/flow/A2A 路径真 token 流式 | 🔶 | WS 直连/RAG 已真流式；见 [realtime-transport-design.md](./realtime-transport-design.md) |
 | WS 断线续传、服务端会话快照 | ⬜ | v2，见 [realtime-transport-design.md](./realtime-transport-design.md) |

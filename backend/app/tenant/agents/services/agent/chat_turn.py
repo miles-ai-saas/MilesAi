@@ -7,7 +7,7 @@ from uuid import UUID
 from app.integrations.langgraph.runner import should_use_langgraph_rag
 from app.models.agent import Agent
 from app.tenant.agents.schemas.agent import ChatResponse
-from app.tenant.agents.services.agent.serialization import should_use_skill_tools_with_kb
+from app.tenant.agents.services.agent.serialization import should_use_tools_with_kb
 from app.tenant.agents.services.call_records import ChatCallRecorder
 from app.tenant.compliance.constants import SCAN_MODULE_AGENT_CHAT
 from app.tenant.compliance.services.compliance import ComplianceService
@@ -43,7 +43,7 @@ class AgentChatTurnMixin:
             if (cfg.get("enable_tool_calling") or cfg.get("enable_generative_tools")) and agent.model_config_id:
                 return "tool_agent"
             return "direct_llm"
-        if should_use_skill_tools_with_kb(agent, kb_ids):
+        if should_use_tools_with_kb(agent, kb_ids):
             return "tool_agent"
         if should_use_langgraph_rag(agent, kb_ids=kb_ids):
             return "rag"

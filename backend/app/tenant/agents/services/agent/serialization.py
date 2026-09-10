@@ -18,10 +18,15 @@ if TYPE_CHECKING:
     from app.tenant.agents.services.agent.service import AgentService
 
 
-def should_use_skill_tools_with_kb(agent: Agent, kb_ids: list[str]) -> bool:
-    """绑定 KB 且开启 tool calling 时走 tool_agent（技能包和/或生图生视频工具）。"""
+def should_use_tools_with_kb(agent: Agent, kb_ids: list[str]) -> bool:
+    """绑定 KB 且开启工具调用时走 tool_agent（RAG 与 tool calling 共存）。
+
+    只要 ``enable_tool_calling`` 或 ``enable_generative_tools`` 打开，KB 检索即作为
+    内置工具 ``knowledge_search`` 交由 LLM 自行决定是否调用，不再强制走线性 RAG。
+    """
     cfg = agent.config if isinstance(agent.config, dict) else {}
-    return bool(kb_ids and agent.model_config_id and cfg.get("enable_tool_calling") and (cfg.get("skill_package_id") or cfg.get("enable_generative_tools")))
+    tools_on = bool(cfg.get("enable_tool_calling") or cfg.get("enable_generative_tools"))
+    return bool(kb_ids and agent.model_config_id and tools_on)
 
 
 def _sub_agents_out(agent: Agent) -> list[SubAgentRefOut]:

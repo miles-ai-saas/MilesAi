@@ -17,9 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.common.exceptions import BadRequestError
 from app.common.url_security import validate_outbound_url
 from app.core.tenant import TenantContext
-from app.infra.db import get_sync_db
-from app.integrations.langchain.vectorstores import search_kb
-from app.rag.load import load_kb_sync
+from app.rag.generate import retrieve_hits
 from app.tenant.kb.services.embeddings import build_kb_retrieval_bindings
 from app.tenant.skills.runtime import skill_read_reference, skill_run_script
 from app.tenant.tools.builtins.calculator import safe_calculate
@@ -55,26 +53,86 @@ async def handle_knowledge_search(
     *,
     db: AsyncSession,
     ctx: TenantContext,
+    agent_id: UUID | None = None,
     **_: Any,
 ) -> dict:
-    """知识库语义检索；同步加载 KB 后调用 ``search_kb``。"""
+    """知识库语义检索（多库）。
+
+    知识库来源优先级：``kb_ids`` 列表 → 单个 ``kb_id`` → 智能体已绑定知识库
+    （由对话装配注入 ``agent.config._bound_kb_ids``）。检索按各 KB 自身
+    vector/hybrid/rerank 配置执行并全局排序，与线性 RAG / LangGraph 路径一致。
+    """
     query = params.get("query") or params.get("q", "")
-    kb_id = params.get("kb_id")
     if not query:
         raise BadRequestError("knowledge_search 需要 query 参数")
-    if not kb_id:
-        raise BadRequestError("knowledge_search 需要 kb_id 参数")
 
-    with get_sync_db() as sync_db:
-        kb = load_kb_sync(sync_db, ctx.tenant_id, UUID(str(kb_id)))
-        hits = search_kb(
-            str(query),
-            kb=kb,
-            db=sync_db,
-            limit=int(params.get("limit", 5)),
-            bindings=build_kb_retrieval_bindings(),
-        )
-    return {"hits": hits}
+    bound_ids, bound_top_k = await _bound_kb_config(db, agent_id)
+    kb_ids = _resolve_kb_ids(params) or bound_ids
+    if not kb_ids:
+        raise BadRequestError("knowledge_search 需要 kb_id / kb_ids，或智能体需绑定知识库")
+
+    try:
+        top_k = int(params.get("limit") or bound_top_k or 5)
+    except (TypeError, ValueError):
+        top_k = 5
+    hits = await retrieve_hits(
+        str(query),
+        tenant_id=ctx.tenant_id,
+        kb_ids=kb_ids,
+        db=db,
+        top_k=top_k,
+        bindings=build_kb_retrieval_bindings(),
+    )
+    return {"hits": hits, "kb_ids": kb_ids, "hit_count": len(hits)}
+
+
+def _resolve_kb_ids(params: dict) -> list[str]:
+    """解析 ``kb_ids`` / ``kb_id`` 参数为字符串列表（去重、保序）。"""
+    raw = params.get("kb_ids")
+    if isinstance(raw, str):
+        candidates: list[Any] = [p.strip() for p in raw.split(",")]
+    elif isinstance(raw, (list, tuple)):
+        candidates = list(raw)
+    else:
+        candidates = []
+    single = params.get("kb_id")
+    if single:
+        candidates.append(single)
+    out: list[str] = []
+    for item in candidates:
+        text = str(item).strip()
+        if text and text not in out:
+            out.append(text)
+    return out
+
+
+async def _bound_kb_config(db: AsyncSession, agent_id: UUID | None) -> tuple[list[str], int | None]:
+    """读取智能体绑定知识库与默认条数。
+
+    优先使用对话装配注入的 ``agent.config._bound_kb_*``；缺失（如子智能体、
+    A2A 等跨会话调用）时回退到 DB 中智能体实际绑定的知识库。
+    """
+    if not agent_id:
+        return [], None
+    from sqlalchemy.orm import selectinload
+
+    from app.models.agent import Agent
+
+    agent = await db.get(Agent, agent_id, options=[selectinload(Agent.knowledge_bases)])
+    if not agent:
+        return [], None
+    cfg = agent.config if isinstance(agent.config, dict) else {}
+    raw = cfg.get("_bound_kb_ids") or []
+    if isinstance(raw, str):
+        raw = [raw]
+    kb_ids = [str(i) for i in raw if str(i).strip()]
+    if not kb_ids:
+        kb_ids = [str(kb.id) for kb in agent.knowledge_bases]
+    try:
+        top_k = int(cfg.get("_bound_kb_top_k")) if cfg.get("_bound_kb_top_k") else None
+    except (TypeError, ValueError):
+        top_k = None
+    return kb_ids, top_k
 
 
 async def handle_get_current_datetime(params: dict, **_: Any) -> dict:

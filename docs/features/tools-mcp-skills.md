@@ -97,7 +97,8 @@ invoke_tool_with_context
     → tool_invocation_logs
 ```
 
-智能体 `config.skill_package_id`、`config.mcp_service_ids` 注入可用工具集。
+智能体 `config.skill_package_id`、`config.mcp_service_ids` 注入可用工具集；
+绑定知识库时 `knowledge_search` 强制可用（RAG 与 function calling 共存），命中回填 `sources`。
 
 ---
 

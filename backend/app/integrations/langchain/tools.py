@@ -79,15 +79,21 @@ def is_mcp_tool_name(name: str | None) -> bool:
     return bool(name) and str(name).startswith(MCP_FUNCTION_PREFIX)
 
 
-def select_agent_tools(tools: list, allowed_slugs: list | None) -> list:
+def select_agent_tools(
+    tools: list,
+    allowed_slugs: list | None,
+    *,
+    always_allow: set[str] | None = None,
+) -> list:
     """按 ``tool_slugs`` 白名单过滤工具列表。
 
     MCP 工具经 ``config.mcp_service_ids`` 绑定即视为启用，不受白名单过滤
     （未绑定时工具集合中本就不含 MCP，故不会意外放开）。
+    ``always_allow`` 用于强制保留必需工具（如绑定 KB 时的 ``knowledge_search``）。
     """
     if not allowed_slugs:
         return list(tools)
-    allowed = {str(s) for s in allowed_slugs}
+    allowed = {str(s) for s in allowed_slugs} | set(always_allow or ())
     return [t for t in tools if t.name in allowed or is_mcp_tool_name(t.name)]
 
 
@@ -191,9 +197,10 @@ class HttpRequestInput(BaseModel):
 
 
 class KnowledgeSearchInput(BaseModel):
-    query: str
-    kb_id: str
-    limit: int = 5
+    query: str = Field(..., description="检索问题")
+    kb_id: str | None = Field(None, description="单个知识库 ID（与 kb_ids 二选一；可省略用智能体已绑定知识库）")
+    kb_ids: list[str] | None = Field(None, description="多个知识库 ID；多库检索时优先使用")
+    limit: int = Field(5, description="返回片段数")
 
 
 # --- 生成类工具 schema（执行走 L1 invoke_tool_with_context，需 enable_generative_tools）---
@@ -291,7 +298,12 @@ def make_knowledge_search_tool() -> StructuredTool:
     本壳 ``_run`` 明确报错，避免被当作可执行工具直接调用。
     """
 
-    def _run(query: str, kb_id: str, limit: int = 5) -> dict:
+    def _run(
+        query: str,
+        kb_id: str | None = None,
+        kb_ids: list[str] | None = None,
+        limit: int = 5,
+    ) -> dict:
         raise RuntimeError("请通过 invoke_tool_with_context 执行 knowledge_search")
 
     return StructuredTool.from_function(

@@ -67,7 +67,7 @@ export function AgentFormStepCapabilitiesSection({ form, setForm, flows, skills,
           />
           启用平台工具自动调用（function calling）
         </label>
-        <p className="mt-1 text-xs text-ink-muted">与 MCP 独立。未勾选下方工具则允许全部内置 + 自定义 HTTP。生图/生视频亦依赖本项。</p>
+        <p className="mt-1 text-xs text-ink-muted">与 MCP 独立。未勾选下方工具则允许全部内置 + 自定义 HTTP。生图/生视频亦依赖本项；绑定知识库时 knowledge_search 自动可用。</p>
         <label className="mt-3 flex cursor-pointer items-center gap-2 text-sm text-ink">
           <input
             type="checkbox"

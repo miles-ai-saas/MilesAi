@@ -14,7 +14,7 @@ from app.models.model import ModelConfig
 from app.rag.generate import format_hits_context, rag_answer, retrieve_hits
 from app.tenant.a2a.services.peer_refs import list_agent_a2a_peer_refs
 from app.tenant.agents.schemas.agent import ChatRequest, ChatResponse
-from app.tenant.agents.services.agent.serialization import should_use_skill_tools_with_kb
+from app.tenant.agents.services.agent.serialization import should_use_tools_with_kb
 from app.tenant.attachments.services.media_reader import build_session_media_reader
 from app.tenant.compliance.constants import SCAN_MODULE_AGENT_CHAT
 from app.tenant.flows.repositories.flow import FlowRepository
@@ -61,6 +61,18 @@ def _generative_tools_system_hint(*, image_n: int = 1, video_duration: int = 5) 
         "\n注意：尺寸单边 ≥1280 或 n≥3 需用户二次确认；确认前勿重复调用。"
         "\n同一轮用户消息仅允许调用一次 generate_image / generate_video。"
         f"{dur_hint}"
+    )
+
+
+def _knowledge_tools_system_hint(kb_ids: list[str]) -> str:
+    """知识库工具协议：RAG 与 tool calling 共存时由 LLM 自行决定是否检索。"""
+    ids = "、".join(kb_ids)
+    return (
+        "\n【知识库工具】本智能体已绑定知识库（kb_ids："
+        f"{ids}）。"
+        "\n回答与知识库内容相关的问题时，先通过 function calling 调用 knowledge_search"
+        "（query 用用户问题或关键词；kb_ids 可省略，默认检索全部绑定库）。"
+        "\n请依据返回片段作答，并在正文中自然引用来源；片段不足以回答时如实说明，不要编造。"
     )
 
 
@@ -206,6 +218,71 @@ class AgentChatRagMixin:
             sources=[],
         )
 
+    async def _run_tool_agent(
+        self,
+        agent: Agent,
+        body: ChatRequest,
+        *,
+        agent_id: UUID,
+        system_prompt: str,
+        kb_ids: list[str] | None = None,
+        kb_top_k: int | None = None,
+    ) -> ChatResponse:
+        """装配并运行 tool_agent（RAG 与 tool calling 共存路径）。
+
+        注入运行时默认值到 ``agent.config``：输入区生图/时长偏好、会话 id，
+        以及在绑定 KB 时注入 ``_bound_kb_ids`` / ``_bound_kb_top_k``，
+        供 ``knowledge_search`` 省略 kb 与条数参数时回退。
+        """
+        from app.integrations.langchain.tool_agent import run_tool_calling_chat
+        from app.tenant.tools.services.agent_executor import build_agent_tool_executor
+        from app.tenant.tools.services.custom_tools import assemble_agent_tools
+
+        cfg = agent.config if isinstance(agent.config, dict) else {}
+        hint = _knowledge_tools_system_hint(list(kb_ids)) if kb_ids else ""
+        if cfg.get("enable_generative_tools"):
+            hint += _generative_tools_system_hint(
+                image_n=body.generative_image_n,
+                video_duration=body.generative_video_duration,
+            )
+
+        agent_config_with_defaults = dict(cfg)
+        if body.conversation_id:
+            agent_config_with_defaults["_conversation_id"] = body.conversation_id
+        # 始终注入输入区张数（含 1），供 generate_image 强制覆盖 LLM 的 n
+        agent_config_with_defaults["_generative_image_n"] = body.generative_image_n
+        agent_config_with_defaults["_image_allow_collage"] = user_requests_image_collage(body.query)
+        if body.generative_video_duration != 5:
+            agent_config_with_defaults["_generative_video_duration"] = body.generative_video_duration
+        if kb_ids:
+            agent_config_with_defaults["_bound_kb_ids"] = [str(i) for i in kb_ids]
+            if kb_top_k:
+                agent_config_with_defaults["_bound_kb_top_k"] = int(kb_top_k)
+        agent.config = agent_config_with_defaults
+
+        model = await self.resolve_invoke_model(agent.model_config)
+        usage_sink = self.chat_usage_sink(model, source_id=agent_id)
+        platform_tools = await assemble_agent_tools(self.db, self.ctx, agent.config or {})
+        tool_executor = build_agent_tool_executor(
+            self.db,
+            self.ctx,
+            agent_id=agent_id,
+            actor_user_id=self.ctx.user_id,
+            invoke_source="agent",
+        )
+        return await run_tool_calling_chat(
+            agent,
+            body,
+            agent_id=agent_id,
+            system_prompt=f"{system_prompt}{hint}",
+            model=model,
+            usage_sink=usage_sink,
+            platform_tools=platform_tools,
+            tool_executor=tool_executor,
+            media_reader=build_session_media_reader(self.db, self.ctx),
+            kb_ids=list(kb_ids) if kb_ids else None,
+        )
+
     async def rag_chat(
         self,
         agent: Agent,
@@ -228,95 +305,19 @@ class AgentChatRagMixin:
         if not kb_ids:
             cfg = agent.config if isinstance(agent.config, dict) else {}
             if (cfg.get("enable_tool_calling") or cfg.get("enable_generative_tools")) and agent.model_config_id:
-                from app.integrations.langchain.tool_agent import run_tool_calling_chat
-
                 base = await self.resolve_system_prompt(agent)
-                kb_hint = ""
-                if cfg.get("enable_generative_tools"):
-                    kb_hint = _generative_tools_system_hint(
-                        image_n=body.generative_image_n,
-                        video_duration=body.generative_video_duration,
-                    )
-                # 将输入区参数注入 agent.config，供 handle_generate_image / handle_generate_video
-                # 在 LLM 未传 n/duration 时作为实际默认值使用
-                agent_config_with_defaults = dict(cfg)
-                if body.conversation_id:
-                    agent_config_with_defaults["_conversation_id"] = body.conversation_id
-                # 始终注入输入区张数（含 1），供 generate_image 强制覆盖 LLM 的 n
-                agent_config_with_defaults["_generative_image_n"] = body.generative_image_n
-                agent_config_with_defaults["_image_allow_collage"] = user_requests_image_collage(body.query)
-                if body.generative_video_duration != 5:
-                    agent_config_with_defaults["_generative_video_duration"] = body.generative_video_duration
-                agent.config = agent_config_with_defaults
-                model = await self.resolve_invoke_model(agent.model_config)
-                usage_sink = self.chat_usage_sink(model, source_id=agent_id)
-                from app.tenant.tools.services.custom_tools import assemble_agent_tools
-                from app.tenant.tools.services.agent_executor import build_agent_tool_executor
-
-                platform_tools = await assemble_agent_tools(self.db, self.ctx, agent.config or {})
-                tool_executor = build_agent_tool_executor(
-                    self.db,
-                    self.ctx,
-                    agent_id=agent_id,
-                    actor_user_id=self.ctx.user_id,
-                    invoke_source="agent",
-                )
-                return await run_tool_calling_chat(
-                    agent,
-                    body,
-                    agent_id=agent_id,
-                    system_prompt=f"{base}{kb_hint}",
-                    model=model,
-                    usage_sink=usage_sink,
-                    platform_tools=platform_tools,
-                    tool_executor=tool_executor,
-                    media_reader=build_session_media_reader(self.db, self.ctx),
-                )
+                return await self._run_tool_agent(agent, body, agent_id=agent_id, system_prompt=base)
             return await self.direct_chat(agent, body, agent_id, hooks, on_delta=on_delta)
 
-        if should_use_skill_tools_with_kb(agent, kb_ids):
-            from app.integrations.langchain.tool_agent import run_tool_calling_chat
-
+        if should_use_tools_with_kb(agent, kb_ids):
             base = await self.resolve_system_prompt(agent)
-            cfg = agent.config if isinstance(agent.config, dict) else {}
-            kb_hint = f"\n【知识库】请使用 knowledge_search 工具检索；可用 kb_id：{', '.join(kb_ids)}"
-            if cfg.get("enable_generative_tools"):
-                kb_hint += _generative_tools_system_hint(
-                    image_n=body.generative_image_n,
-                    video_duration=body.generative_video_duration,
-                )
-            # 将输入区参数注入 agent.config，供 handle_generate_image / handle_generate_video
-            agent_config_with_defaults = dict(cfg)
-            if body.conversation_id:
-                agent_config_with_defaults["_conversation_id"] = body.conversation_id
-            agent_config_with_defaults["_generative_image_n"] = body.generative_image_n
-            agent_config_with_defaults["_image_allow_collage"] = user_requests_image_collage(body.query)
-            if body.generative_video_duration != 5:
-                agent_config_with_defaults["_generative_video_duration"] = body.generative_video_duration
-            agent.config = agent_config_with_defaults
-            model = await self.resolve_invoke_model(agent.model_config)
-            usage_sink = self.chat_usage_sink(model, source_id=agent_id)
-            from app.tenant.tools.services.custom_tools import assemble_agent_tools
-            from app.tenant.tools.services.agent_executor import build_agent_tool_executor
-
-            platform_tools = await assemble_agent_tools(self.db, self.ctx, agent.config or {})
-            tool_executor = build_agent_tool_executor(
-                self.db,
-                self.ctx,
-                agent_id=agent_id,
-                actor_user_id=self.ctx.user_id,
-                invoke_source="agent",
-            )
-            return await run_tool_calling_chat(
+            return await self._run_tool_agent(
                 agent,
                 body,
                 agent_id=agent_id,
-                system_prompt=f"{base}{kb_hint}",
-                model=model,
-                usage_sink=usage_sink,
-                platform_tools=platform_tools,
-                tool_executor=tool_executor,
-                media_reader=build_session_media_reader(self.db, self.ctx),
+                system_prompt=base,
+                kb_ids=kb_ids,
+                kb_top_k=top_k,
             )
 
         base = await self.resolve_system_prompt(agent)

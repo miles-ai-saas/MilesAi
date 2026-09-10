@@ -9,7 +9,7 @@ Agent 聚合：CRUD + 对话编排。
 - ``chat_entry.py``：``chat`` / ``chat_as_child`` 入口。
 - ``chat_rag.py``：``rag_chat`` / ``direct_chat`` / 流程 RunContext / A2A 增强。
 - ``chat_turn.py``：单轮收尾、RAG 路由解析、调用记录。
-- ``serialization.py``：``agent_out``、``should_use_skill_tools_with_kb``。
+- ``serialization.py``：``agent_out``、``should_use_tools_with_kb``。
 
 不在此包内（位于 ``services/`` 根目录）
 --------------------------------------
@@ -17,18 +17,18 @@ Agent 聚合：CRUD + 对话编排。
 
 对外请使用::
 
-    from app.tenant.agents.services.agent import AgentService, should_use_skill_tools_with_kb
+    from app.tenant.agents.services.agent import AgentService, should_use_tools_with_kb
 """
 
 from app.tenant.agents.services.agent.serialization import (
     agent_out,
-    should_use_skill_tools_with_kb,
+    should_use_tools_with_kb,
 )
 from app.tenant.agents.services.agent.service import AgentService, _agent_out
 
 __all__ = [
     "AgentService",
     "agent_out",
-    "should_use_skill_tools_with_kb",
+    "should_use_tools_with_kb",
     "_agent_out",
 ]

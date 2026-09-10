@@ -91,8 +91,7 @@ MilesAI 是**企业级多租户 AI 中台**（RAG、流程编排、智能体、�
 
 | 优先级 | slug（建议） | 能力 | 复用代码 | 默认确认 |
 |--------|--------------|------|----------|----------|
-| P1 | `knowledge_search` | 单库检索 | 已有 | 否 |
-| P1 | `knowledge_search_multi` | 多库 / 混合检索 | `rag/retrieve`、Agent KB 绑定 | 否 |
+| ✅ | `knowledge_search` | 知识库检索（单库/多库、混合/rerank；省略 kb 用绑定库） | 已有 | 否 |
 | P1 | `compliance_check_text` | 敏感词/策略检测 | `ComplianceService.check_*` | 否 |
 | P2 | `list_knowledge_bases` | 列出本租户 KB | `tenant/kb` | 否 |
 | P2 | `get_attachment_meta` | 附件元数据 | `tenant/attachments` | 否 |
@@ -140,7 +139,7 @@ BUILTIN_REGISTRY  （元数据 + schema）
 integrations/langchain/tools.py  → StructuredTool（Agent）
        ↓
 invoke_builtin(slug, params)    → 分发到各 Service
-       ├─ knowledge_search      → search_kb / load_kb
+       ├─ knowledge_search      → rag.retrieve（多库 + 各库 hybrid/rerank）
        ├─ compliance_check_text → ComplianceService
        ├─ list_knowledge_bases  → KbService.list...
        └─ ...
@@ -240,12 +239,11 @@ mcp__{service}__{tool_name}
 - 整体超 64 字符时截断并追加 6 位摘要（OpenAI function name 上限）
 - 解析时按租户服务列表重新组合匹配，`source=mcp`，携带 `service_id` + 原始 `tool_name`
 
-### 4.3 与 RAG 的关系（目标）
+### 4.3 与 RAG 的关系
 
-| 阶段 | 行为 |
-|------|------|
-| **现状** | 智能体绑定 KB 时优先 `_rag_chat`，与 `tool_agent` 路径互斥 |
-| **目标** | **RAG 与 tools 可并存**：`knowledge_search` 作为内置工具之一，LLM 自行决定是否检索 |
+绑定 KB 且开启工具调用时走 `tool_agent`：`knowledge_search` 作为内置工具之一，
+由 LLM 自行决定是否检索（`kb_ids` 可省略，默认检索智能体绑定的全部知识库），
+命中片段回填 `ChatResponse.sources`。未开启工具调用时仍走 LangGraph / `rag_answer` 线性 RAG。
 
 ### 4.4 与技能包
 
@@ -289,7 +287,6 @@ mcp__{service}__{tool_name}
 | 项 | 说明 |
 |----|------|
 | 脚本预注入 stdlib | Runner 注入 `json`、`datetime`、`re`、`math`；仍禁用户 `import` |
-| RAG + tools 共存 | 有 KB 时仍可 function calling |
 | **内置复杂工具（首批）** | `compliance_check_text`、`list_knowledge_bases`、增强 `knowledge_search` |
 | 工具分组/标签 | 工作台区分 L1/L2 内置 |
 
@@ -311,7 +308,8 @@ mcp__{service}__{tool_name}
 
 ## 8. 已实现与代码入口
 
-已实现：builtin/custom catalog、变换脚本 v2、`tool_agent`、MCP 工作台，以及
+已实现：builtin/custom catalog、变换脚本 v2、`tool_agent`、MCP 工作台、**RAG 与 tool calling 共存**
+（绑定 KB 时 `knowledge_search` 由 LLM 自行调用，命中回填 `sources`），以及
 **MCP → Agent function calling**（`mcp__{service}__{tool}`，审计 `source=mcp`）；见 [guides/tools.md](../guides/tools.md)。
 未尽项见 §7 演进路线。
 

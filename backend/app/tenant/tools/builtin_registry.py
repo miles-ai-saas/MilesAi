@@ -32,13 +32,13 @@ BUILTIN_REGISTRY: list[dict] = [
     {
         "slug": "knowledge_search",
         "name": "知识库检索",
-        "description": "在指定知识库中语义检索",
+        "description": "在已绑定知识库中语义检索（可传 kb_id 或 kb_ids；省略则用智能体绑定知识库）",
         "category_slug": "data",
-        "version": "1.0.0",
+        "version": "1.1.0",
         "require_confirmation": False,
         "parameters": [
             {"name": "query", "type": "string", "required": True},
-            {"name": "kb_id", "type": "string", "required": True},
+            {"name": "kb_id", "type": "string", "required": False},
             {"name": "limit", "type": "integer", "required": False, "default": 5},
         ],
     },

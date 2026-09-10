@@ -43,6 +43,7 @@ async def run_tool_calling_chat(
     tool_executor: ToolExecutor,
     platform_tools: list,
     media_reader: MediaReader,
+    kb_ids: list[str] | None = None,
 ) -> ChatResponse:
     """
     LiteLLM 多轮 function calling 主循环。
@@ -57,13 +58,16 @@ async def run_tool_calling_chat(
     ``meta`` 解析工具元数据、``invoke`` 执行工具（确认信号为 ``ToolConfirmationSignal``）。
     ``media_reader``：L1 注入的媒体读取器（``tenant.attachments.services.media_reader``），
     用于把本轮附图解析为 ``data URL`` multimodal content parts。
+    ``kb_ids``：绑定知识库；非空时强制保留 ``knowledge_search`` 工具（不受 ``tool_slugs``
+    白名单约束），并把命中片段回填 ``ChatResponse.sources``，实现 RAG 与 tool calling 共存。
     """
     if not agent.model_config:
         raise ValueError("工具调用需要配置大模型")
 
     all_tools = platform_tools
     allowed = agent.config.get("tool_slugs") if isinstance(agent.config, dict) else None
-    tools = select_agent_tools(all_tools, allowed)
+    always_allow = {"knowledge_search"} if kb_ids else None
+    tools = select_agent_tools(all_tools, allowed, always_allow=always_allow)
     if allowed and (agent.config or {}).get("skill_package_id"):
         for st in get_skill_bound_tools():
             if st.name not in {t.name for t in tools}:
@@ -129,6 +133,7 @@ async def run_tool_calling_chat(
         {"type": "tool_agent", "engine": "litellm_tools", "media_count": body_media_count, "media_resolved": len(media_parts), "model_type": model.model_type}
     ]
     artifacts: list[ChatArtifact] = []
+    knowledge_hits: list[dict] = []
     _tool_sim_retried = False
     _tool_names = [t.name for t in tools]
     _tools_by_name = {t.name: t for t in tools}
@@ -261,7 +266,7 @@ async def run_tool_calling_chat(
                     }
                 )
                 continue
-            return ChatResponse(answer=str(content), steps=steps, artifacts=artifacts)
+            return ChatResponse(answer=str(content), steps=steps, artifacts=artifacts, sources=knowledge_hits)
 
         messages.append(
             {
@@ -416,6 +421,8 @@ async def run_tool_calling_chat(
                     ],
                 )
             artifacts.extend(artifacts_from_tool_output(output))
+            if slug == "knowledge_search" and isinstance(output, dict) and isinstance(output.get("hits"), list):
+                knowledge_hits.extend(output["hits"])
             steps.append({"type": "tool_call", "slug": slug, "status": "success"})
             messages.append(
                 {
@@ -429,4 +436,5 @@ async def run_tool_calling_chat(
         answer="工具调用达到最大轮次，请简化问题后重试。",
         steps=steps + [{"type": "tool_agent", "error": "max_iterations"}],
         artifacts=artifacts,
+        sources=knowledge_hits,
     )
