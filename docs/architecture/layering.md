@@ -138,9 +138,9 @@ L0 → L1 → L2 → L3 → L4
 
 | 形态 | 合规目标 | 当前过渡期例外（待收敛） |
 |------|----------|--------------------------|
-| 读共享 ORM | 跨面共读的 ORM 上移 `app/models/<域>/`，admin 经共享模型读取 | `tenant.marketplace.models`（市场审核）等暂直接引用 |
-| 复用纯函数 | 下沉 `common/` 或 `utils/` | `tenant.categories.services.category.slugify`、`tenant.models.services.api_key_validation.validate_api_key` |
-| 复用 Repository | 允许复用管理**同域数据**的租户 Repository（运营即该数据管理面） | `tenant.system.repositories.tenant.TenantRepository` |
+| 读共享 ORM | 跨面共读的 ORM 上移 `app/models/<域>/`，admin 经共享模型读取 | 已收敛（2026-09-10）：`mkt_*` 上移 `app/models/marketplace`，admin 改经共享模型读取 |
+| 复用纯函数 | 下沉 `common/` 或 `utils/` | 已收敛（2026-09-10）：`slugify` → `app.common.slug`、`validate_api_key` → `app.common.api_key` |
+| 复用 Repository | 允许复用管理**同域数据**的租户 Repository（运营即该数据管理面） | `tenant.system.repositories.tenant.TenantRepository`（属本行合规形态，非待收敛项） |
 
 **禁止**：
 
@@ -148,6 +148,8 @@ L0 → L1 → L2 → L3 → L4
 - `tenant/` 反向依赖 `admin/`
 
 > 过渡期例外应随「模型解析下沉」等重构收敛；新增 admin 读取统一先评估上移共享层，勿继续加码深层 import。
+
+> 收敛后 admin 仅剩 `tenant.marketplace.schemas.*` 共享 DTO 引用（layering 未将 schemas 列为例外；如需 admin 对 tenant 零引用，可另评估下沉共享 DTO 层）。
 
 ---
 
@@ -394,3 +396,5 @@ backend/tests/
 | 2026-09-10 | G1-3：`integrations/chat` 媒体读取收敛——MediaReader 注入多模态 I/O + L1 SessionMediaReader，**L3（integrations + flow_runtime）对 tenant 全域清零，engine DI 收官** |
 | 2026-09-10 | G1-3 收尾：生成日配额策略 `quota.py` L3→L1 内聚性归位；RAG 有附图但缺 `media_reader` 改显式 `BadRequestError`（不再静默丢图） |
 | 2026-09-10 | CI 门禁：`ruff check` / `ruff format --check` / OpenAPI 快照 / L3 反依赖守卫 + 全量 `pytest` 纳入 `lint.yml`；同时清掉遗留 F841/E402/F401 并统一 24 文件格式 |
+| 2026-09-10 | §2.3：admin→tenant 过渡期例外收敛——`mkt_*` ORM 上移 `app/models/marketplace`、`slugify`/`validate_api_key` 下沉 `app/common`；`TenantRepository` 判定属合规形态豁免 |
+| 2026-09-10 | 画布用量：`RunContext.usage_sink` 改为 `usage_sink_factory`——LLM 节点按解析后的模型构造 sink，新增 L1 `FlowUsageSink`（`source=flow`，自开短会话落库），画布多模型归因正确 |

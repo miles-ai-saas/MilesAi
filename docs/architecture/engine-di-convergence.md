@@ -77,7 +77,7 @@ from app.tenant.attachments.services.attachment import AttachmentService
 | 字段 | 用途 | L1 提供方 | 未装配行为 |
 |------|------|-----------|------------|
 | `resolve_model` | LLM 节点按 `model_config_id` 解析（含 BYOK） | `flows/services/run_context.py::make_flow_model_resolver` | 节点报错 |
-| `usage_sink` | 画布 LLM 用量记录 | 契约 `UsageSink` | 当前两根装配点为 `None`（画布未走该 sink） |
+| `usage_sink_factory` | 画布 LLM 用量记录（按节点解析出的模型构造 sink） | `tenant/models/services/usage.py::make_flow_usage_sink_factory` | 未装配 ⇒ 该次调用不记录 |
 | `kb_retrieval` | KB 向量化/重排/检索日志绑定 | `kb/services/embeddings.py::build_kb_retrieval_bindings` | `KnowledgeSearch` 节点报错 |
 | `resolve_generative_image/video` | 生图/生视频模型解析 | `generative_model_resolve.py` | 同步分支报错 |
 | `submit_generative_image/video` | 异步 job 提交 | `generative/services/job_execution.py` | `None` ⇒ 落同步 resolver 兜底 |
@@ -127,7 +127,7 @@ backend/tests/test_l3_neutral_imports.py
 - **`quota.py` 归位属内聚性，不是反依赖**：它本就无 `tenant` import，但内容是「租户配置 + 附件计数 + 调用前校验」，与 `integrations/generative/__init__.py` 声明的「本层不含配额」矛盾，故 2026-09-10 从 L3 迁至 `tenant/generative/services/quota.py`。判断标准是**职责归属**，不是「能否 import」。
 - **L2 `rag/` 也需保持对 tenant 清零**：`rag → tenant` 在 §2.2 同样禁止；G1-3 顺带移除了 `rag_qa`/`rag_answer` 仅用于读图的会话与 `_tenant_from_state`。
 - **缺装配不是降级理由**：RAG 有附图但 `media_reader` 为 `None` 时显式 `BadRequestError`（`rag_qa.generate/fallback`、`rag/generate/answer.py`），避免静默丢图。
-- **画布 `usage_sink` 目前为 `None`**：字段保留，若后续要统计画布 LLM 用量，按 §5 checklist 注入 `ChatUsageSink` 即可。
+- **画布用量已按模型记录**：`RunContext.usage_sink_factory(ModelConfig) -> UsageSink` 由 L1 `tenant/models/services/usage.py::make_flow_usage_sink_factory` 装配；LLM 节点解析出模型后构造 `FlowUsageSink`（`source="flow"`，`record` 自开短会话落 `ModelUsageLog` 并提交）。画布各节点可指定不同模型，故按模型逐次构造，避免归因到单一模型；未装配时该次调用不记录。
 - **守卫是目录级覆盖**：`_CONVERGED` 直接登记 `integrations`、`flow_runtime` 两个目录，新增子包自动纳入扫描；只有出现新的**顶层 L3 目录**时才需要登记。
 
 ## 8. 相关文档
