@@ -5,10 +5,7 @@ from __future__ import annotations
 import json
 from uuid import UUID
 
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.common.exceptions import BadRequestError
-from app.core.tenant import TenantContext
 from app.integrations.chat.multimodal import build_user_message, messages_contain_image, resolve_media_refs
 from app.integrations.langchain.tool_agent.artifacts import artifacts_from_tool_output
 from app.integrations.langchain.tool_agent.litellm_tools import (
@@ -36,8 +33,6 @@ from app.models.model import ModelConfig
 
 
 async def run_tool_calling_chat(
-    db: AsyncSession,
-    ctx: TenantContext,
     agent: Agent,
     body: ChatRequest,
     *,

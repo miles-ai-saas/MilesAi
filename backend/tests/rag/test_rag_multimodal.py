@@ -66,6 +66,7 @@ async def test_generate_node_with_media():
 
     assert out["answer"] == "答案"
     mock_build.assert_awaited_once()
+    assert mock_build.await_args.args[0] is config["configurable"]["media_reader"]
 
 
 @pytest.mark.asyncio

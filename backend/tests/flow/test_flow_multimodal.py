@@ -96,6 +96,27 @@ async def test_llm_call_with_media_builds_multimodal_message():
 
 
 @pytest.mark.asyncio
+async def test_llm_call_with_media_without_reader_raises():
+    """附图运行未装配 media_reader 时必须显式报错，而非静默忽略图片。"""
+    model_row = SimpleNamespace(id=uuid4(), name="vision", model_type="vision", is_active=True)
+
+    async def fake_resolve(model_id: str):
+        return model_row
+
+    ctx = RunContext(
+        tenant_id=str(uuid4()),
+        user_id=str(uuid4()),
+        inputs={"query": "看图"},
+        model_config_id=str(uuid4()),
+        media=[{"attachment_id": str(uuid4()), "detail": "auto"}],
+        resolve_model=fake_resolve,
+    )
+
+    with pytest.raises(BadRequestError, match="媒体读取器"):
+        await llm_call({}, {"prompt": "看图"}, ctx)
+
+
+@pytest.mark.asyncio
 async def test_llm_call_no_input_raises():
     ctx = RunContext(tenant_id=str(uuid4()), user_id=str(uuid4()))
     with pytest.raises(BadRequestError, match="缺少输入"):

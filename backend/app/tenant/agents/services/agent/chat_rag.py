@@ -262,8 +262,6 @@ class AgentChatRagMixin:
                     invoke_source="agent",
                 )
                 return await run_tool_calling_chat(
-                    self.db,
-                    self.ctx,
                     agent,
                     body,
                     agent_id=agent_id,
@@ -310,8 +308,6 @@ class AgentChatRagMixin:
                 invoke_source="agent",
             )
             return await run_tool_calling_chat(
-                self.db,
-                self.ctx,
                 agent,
                 body,
                 agent_id=agent_id,

@@ -1,7 +1,9 @@
 """媒体/附件读取中立契约（L3 与 L1 实现共用）。
 
 ``AttachmentBytes``：读取结果的 L3 最小视图；``MediaReader`` 由 L1
-``tenant.attachments.services.media_reader`` 实现（租户鉴权 + 对象存储短会话）。
+``tenant.attachments.services.media_reader`` 实现，同时提供短会话读取器
+（``FlowMediaReader``，租户鉴权 + 对象存储短会话）与复用调用方会话的读取器
+（``SessionMediaReader``）。
 """
 
 from __future__ import annotations

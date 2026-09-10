@@ -9,7 +9,7 @@ from app.flow_runtime.types import RunContext
 
 
 def tenant_context_from_run(ctx: RunContext) -> TenantContext:
-    """由 RunContext 构造租户上下文，供 AttachmentService / resolve_media_refs。"""
+    """由 RunContext 构造租户上下文，供 AttachmentService / 画布生成编排回调。"""
     if not ctx.user_id:
         raise BadRequestError("流程运行缺少 user_id，无法读取附件")
     return TenantContext(

@@ -9,6 +9,9 @@
 未配置模型或回调缺失时返回占位字符串 / 抛 ``BadRequestError``，便于调试与兜底。
 支持 ``RunContext.media`` 附图（vision，base64 data URL）；附图字节经
 ``RunContext.media_reader``（L1 注入）读取。
+
+媒体读取器守卫仅在本次运行确实携带附图时触发，因此无附件的匿名运行不再要求
+``user_id``（有意放宽，原实现无条件构造租户上下文）。
 """
 
 from typing import Any
