@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-import operator
 from dataclasses import replace
-from typing import Annotated, Any
+from typing import Any
 
 from langchain_core.runnables import RunnableConfig
 from langgraph.graph import END, START, StateGraph
@@ -15,10 +14,10 @@ from app.flow_runtime.step_record import build_flow_node_step
 from app.flow_runtime.types import FlowGraph, RunContext
 from app.integrations.langgraph.compiler.report import resolve_node_type
 from app.integrations.langgraph.compiler.state import (
+    CanvasGraphState,
     gather_node_inputs,
     make_condition_router,
     make_relevance_grade_router,
-    merge_outputs,
 )
 from app.integrations.langgraph.compiler.validate import validate_graph_for_compile
 from app.integrations.langgraph.graph_analysis import (
@@ -108,50 +107,7 @@ def build_canvas_graph(graph_json: dict[str, Any]):
 
         return run_node
 
-    from typing import TypedDict
-
-    class _State(TypedDict, total=False):
-        """LangGraph 画布状态；outputs/steps 使用 reducer 合并并行分支。"""
-
-        tenant_id: str
-        inputs: dict[str, Any]
-        kb_ids: list[str]
-        model_config_id: str | None
-        system_prompt: str | None
-        user_id: str | None
-        permissions: list[str]
-        is_superuser: bool
-        agent_id: str | None
-        agent_config: dict[str, Any]
-        current_flow_id: str | None
-        subflow_depth: int
-        # L1 注入的画布 LLM 解析回调与用量 sink 工厂（随 ctx 透传，编译图单次内存执行）
-        resolve_model: Any
-        usage_sink_factory: Any
-        # L1 注入的 KB 检索绑定载体（随 ctx 透传，KnowledgeSearch 节点装配）
-        kb_retrieval: Any
-        # L1 注入的生图/生视频模型解析回调（随 ctx 透传，ImageGenerate/VideoGenerate 同步分支）
-        resolve_generative_image: Any
-        resolve_generative_video: Any
-        # L1 注入的生图/生视频异步 job 提交回调（随 ctx 透传，ImageGenerate/VideoGenerate 异步分支）
-        submit_generative_image: Any
-        submit_generative_video: Any
-        invoke_platform_tool: Any
-        resolve_prompt_template: Any
-        # L1 注入的租户敏感词表加载回调（随 ctx 透传，ComplianceCheck 节点装配）
-        load_scan_words: Any
-        # L1 注入的子流程图加载回调（随 ctx 透传，SubFlow/LoopNode 节点装配）
-        load_subflow_graph: Any
-        # L1 注入的附件读取器（随 ctx 透传，OcrExtract/AudioTranscribe 装配）
-        media_reader: Any
-        # L1 注入的同步生成编排回调（随 ctx 透传）
-        generate_image_sync: Any
-        generate_video_sync: Any
-        outputs: Annotated[dict[str, Any], merge_outputs]
-        steps: Annotated[list[dict[str, Any]], operator.add]
-        answer: Any
-
-    g = StateGraph(_State)
+    g = StateGraph(CanvasGraphState)
 
     for nid in node_map:
         g.add_node(nid, _make_node_runner(nid))

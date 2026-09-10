@@ -212,3 +212,53 @@ async def test_run_compiled_canvas_forwards_resolver_and_usage_sink():
     mock_chat.assert_awaited_once()
     assert mock_chat.await_args.args[0] is model
     assert mock_chat.await_args.kwargs["usage_sink"] is usage_sink
+
+
+_TEXT_TO_LLM_GRAPH = {
+    "nodes": [
+        {"id": "in_1", "type": "TextInput", "data": {"type": "TextInput", "input_key": "query", "label": "输入"}},
+        {
+            "id": "llm_1",
+            "type": "LLMCall",
+            "data": {"type": "LLMCall", "model_config_id": "11111111-1111-1111-1111-111111111111", "temperature": 0.7, "label": "大模型"},
+        },
+        {"id": "out_1", "type": "TextOutput", "data": {"type": "TextOutput", "label": "输出"}},
+    ],
+    "edges": [
+        {"id": "e1", "source": "in_1", "target": "llm_1", "sourceHandle": "output", "targetHandle": "query"},
+        {"id": "e2", "source": "llm_1", "target": "out_1", "sourceHandle": "output", "targetHandle": "input"},
+    ],
+}
+
+
+@pytest.mark.asyncio
+async def test_run_compiled_canvas_forwards_media_channel():
+    """编译画布端到端回归：``ctx.media`` 必须经 graph state 抵达节点。
+
+    LangGraph 仅按 ``CanvasGraphState`` 注解建立通道，未声明的键会被静默丢弃；历史上
+    ``media`` 漏声明时节点读到的 ``ctx.media`` 恒为空。此处用「带附图但未装配
+    ``media_reader``」触发 ``llm_call`` 的显式报错，反向证明附图确实传到了节点
+    （若被丢弃则不会报错，而是落到 ``ainvoke_chat`` 分支）。
+    """
+    model = ModelConfig(name="视觉", provider="openai", model_name="gpt-4o-mini")
+
+    async def fake_resolve(model_config_id: str):
+        return model
+
+    ctx = RunContext(
+        tenant_id=str(uuid4()),
+        user_id=str(uuid4()),
+        inputs={"query": "看图"},
+        media=[{"attachment_id": str(uuid4()), "detail": "auto"}],
+        resolve_model=fake_resolve,
+    )
+
+    with patch(
+        "app.flow_runtime.nodes.llm_nodes.ainvoke_chat",
+        new_callable=AsyncMock,
+        return_value="ok",
+    ) as mock_chat:
+        with pytest.raises(BadRequestError, match="媒体读取器"):
+            await run_compiled_canvas(_TEXT_TO_LLM_GRAPH, ctx)
+
+    mock_chat.assert_not_awaited()

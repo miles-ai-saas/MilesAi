@@ -1,6 +1,7 @@
-"""LangGraph 状态 reducer、入边聚合与条件路由。"""
+"""LangGraph 状态通道、reducer、入边聚合与条件路由。"""
 
-from typing import Any
+import operator
+from typing import Annotated, Any, TypedDict
 
 from app.flow_runtime.constants import TEXT_OUTPUT_NODE_TYPES
 from app.flow_runtime.types import FlowGraph
@@ -12,6 +13,57 @@ from app.integrations.langgraph.compiler.report import resolve_node_type
 def merge_outputs(left: dict[str, Any], right: dict[str, Any]) -> dict[str, Any]:
     """LangGraph State 中 outputs 字段的 reducer。"""
     return {**left, **right}
+
+
+class CanvasGraphState(TypedDict, total=False):
+    """LangGraph 画布状态通道定义。
+
+    ``total=False``：初始 state 与节点返回值都是局部更新，缺键即缺省。
+    但**凡需跨节点传递的键必须在此声明**——LangGraph 只按本 TypedDict 注解建立通道，
+    未声明的键在 ``ainvoke`` 时会被**静默丢弃**（不报错，读取端得 ``None``）。
+    新增 ``RunContext`` 透传字段时需同步登记，`tests/infra/test_canvas_state_contract.py`
+    会锁死「初始 state / 节点读取键 ⊆ 本声明」这一不变式。
+    """
+
+    tenant_id: str
+    inputs: dict[str, Any]
+    kb_ids: list[str]
+    model_config_id: str | None
+    system_prompt: str | None
+    user_id: str | None
+    permissions: list[str]
+    is_superuser: bool
+    agent_id: str | None
+    agent_config: dict[str, Any]
+    current_flow_id: str | None
+    subflow_depth: int
+    # 调试/对话注入的附图 [{attachment_id, detail}]，供 LLMCall vision 与媒体节点
+    media: list[dict[str, Any]]
+    # L1 注入的画布 LLM 解析回调与用量 sink 工厂（随 ctx 透传，编译图单次内存执行）
+    resolve_model: Any
+    usage_sink_factory: Any
+    # L1 注入的 KB 检索绑定载体（随 ctx 透传，KnowledgeSearch 节点装配）
+    kb_retrieval: Any
+    # L1 注入的生图/生视频模型解析回调（随 ctx 透传，ImageGenerate/VideoGenerate 同步分支）
+    resolve_generative_image: Any
+    resolve_generative_video: Any
+    # L1 注入的生图/生视频异步 job 提交回调（随 ctx 透传，ImageGenerate/VideoGenerate 异步分支）
+    submit_generative_image: Any
+    submit_generative_video: Any
+    invoke_platform_tool: Any
+    resolve_prompt_template: Any
+    # L1 注入的租户敏感词表加载回调（随 ctx 透传，ComplianceCheck 节点装配）
+    load_scan_words: Any
+    # L1 注入的子流程图加载回调（随 ctx 透传，SubFlow/LoopNode 节点装配）
+    load_subflow_graph: Any
+    # L1 注入的附件读取器（随 ctx 透传，OcrExtract/AudioTranscribe 装配）
+    media_reader: Any
+    # L1 注入的同步生成编排回调（随 ctx 透传）
+    generate_image_sync: Any
+    generate_video_sync: Any
+    outputs: Annotated[dict[str, Any], merge_outputs]
+    steps: Annotated[list[dict[str, Any]], operator.add]
+    answer: Any
 
 
 def gather_node_inputs(
