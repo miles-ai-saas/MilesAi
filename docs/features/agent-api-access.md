@@ -2,7 +2,6 @@
 
 **日期：** 2026-07-15  
 **状态：** 一期调试 Token ✅ · 二期正式 API Key ✅  
-**设计：** [agent-api-access](../superpowers/specs/2026-07-15-agent-api-access-design.md) · [agent-api-keys](../superpowers/specs/2026-07-15-agent-api-keys-design.md)
 
 ---
 

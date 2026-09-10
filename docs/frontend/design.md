@@ -153,12 +153,7 @@ var(--font-sans), "PingFang SC", "Microsoft YaHei", "Segoe UI", system-ui, -appl
 └─────────────────────────────────────────────────────────┘
 ```
 
-### 4.2 业务中心（`/business/*`）— 已摘除归档
-
-> 业务中心分区（`BusinessShell` / `BUSINESS_NAV` / 三分区顶栏）已于 2026-09 从 `ui/workbench` 摘除，平台回归「AI 工作台 + 组织设置」双分区，原广告试点进入**多行业业务平台**重设计。
-> 历史设计与前端目标架构见 [business-center-design.md §5](../architecture/business-center-design.md#5-前端目标架构)；实现代码见 tag `archive/business-center-p0-p4`。
-
-### 4.3 组织设置（`/system/*`，原「系统管理」）
+### 4.2 组织设置（`/system/*`，原「系统管理」）
 
 ```
 ┌──────────┬──────────────────────────────────────────────┐
@@ -426,7 +421,7 @@ var(--font-sans), "PingFang SC", "Microsoft YaHei", "Segoe UI", system-ui, -appl
 | §3 | 工作台 CRUD 列表 | `use-paged-list.ts`、`ResourceListLayout`、`use-confirm-action.tsx` |
 | §4 | 枚举展示 | `enum-meta.ts`、`use-*-meta.ts`、`*-labels.ts` |
 | §5 | 智能体对话 | `chat-sessions.ts`、`agents/chat`、`agent-steps.ts` |
-| §6 | 流程编排 | `flow-nodes.ts`、`flows/[id]/edit`；增强见 [flow-orchestration-enhancement.md](../architecture/flow-orchestration-enhancement.md) |
+| §6 | 流程编排 | `flow-nodes.ts`、`flows/[id]/edit`；见 [flows.md](../guides/flows.md) |
 | §7 | 导航壳层 | `nav-config.ts`、`AppShell`、`SystemShell` |
 | §8 | KB 文档入库 | `document-status.ts`、`kb/[id]` |
 | §9 | 技能包编辑器 | `skills/[id]`、`skill-md.ts`；references/scripts 分组、layout 索引、`reindexSkillPackage` |

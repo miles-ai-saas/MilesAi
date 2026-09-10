@@ -15,15 +15,13 @@
 
 - 流程 CRUD、保存画布、版本列表、发布
 - `POST …/run` 调试、`POST …/compile` DAG 校验
-- 14 类节点（含生图/生视频）
+- 17 类节点（含 SubFlow / Loop / 合规 / 媒体 / 生图·生视频）
 - 流程模板 `GET /flows/templates`
 - 标签筛选；前端 `/workbench/flows/[id]/edit`
 
 ### 1.2 明确不做
 
-- 子流程 SubFlow（见 [flow-subflow-design.md](../architecture/flow-subflow-design.md)）
 - iframe 嵌入画布
-- 循环节点（PRD 提及，未注册）
 
 ---
 
@@ -51,6 +49,11 @@
 | `PlatformTool` | 平台工具 |
 | `ConditionBranch` | 条件分支 |
 | `ParallelJoin` | 并行汇聚 |
+| `SubFlow` | 调用同租户已发布流程（`published`/`pinned`；环校验、最大嵌套 3 层） |
+| `LoopNode` | 循环（最大 100 次迭代） |
+| `ComplianceCheck` | 合规扫描 |
+| `OcrExtract` | OCR 文本抽取 |
+| `AudioTranscribe` | 音频转写（Whisper） |
 | `ImageGenerate` / `VideoGenerate` | 生图/生视频（默认异步 job） |
 
 注册表：`backend/app/flow_runtime/nodes/registry.py`。
@@ -131,6 +134,5 @@ backend/app/flow_runtime/templates/rag_flow.json
 
 ## 9. 参考
 
-- [flow-orchestration-enhancement.md](../architecture/flow-orchestration-enhancement.md)
-- [flow-generative-media-design.md](../architecture/flow-generative-media-design.md)
+- [multimodal-capabilities.md](../product/multimodal-capabilities.md)
 - [flows.md](../guides/flows.md)

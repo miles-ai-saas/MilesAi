@@ -3,7 +3,7 @@
 **日期：** 2026-05-27  
 **状态：** 已实现  
 **PRD 对照：** 模块6 多模态文件管理（会话侧）· 模块4 生图/生视频节点  
-**架构：** [technical-design.md §10.1](../architecture/technical-design.md#101-多模态规划) · [media-assets-design.md](../architecture/media-assets-design.md)
+**架构：** [technical-design.md §10.1](../architecture/technical-design.md#101-多模态规划)
 
 ---
 
@@ -30,7 +30,7 @@ kb_documents        → 可选「升格入库」后的 RAG 语料
 
 ### 1.2 明确不做
 
-- 附件公开 CDN / 预签名 URL（见 [multimodal-roadmap.md](../architecture/multimodal-roadmap.md)）
+- 附件公开 CDN / 预签名 URL（见 [multimodal-capabilities.md §3.4](../product/multimodal-capabilities.md)）
 - 生成物自动全量 ingest 进 KB
 - 视频原生向量检索（升格为文本描述）
 
@@ -145,7 +145,7 @@ POST /media-assets/{id}/promote-to-kb { kb_id }
 
 ### 5.2 读图约定
 
-模型侧由 **服务端读存储** 转 data URL，前端预览走 `GET …/content`，不做 OSS 预签名。详见 [multimodal-roadmap.md §2.1](../architecture/multimodal-roadmap.md)。
+模型侧由 **服务端读存储** 转 data URL，前端预览走 `GET …/content`，不做 OSS 预签名。详见 [multimodal-capabilities.md §3.4](../product/multimodal-capabilities.md)。
 
 ---
 
@@ -187,7 +187,5 @@ backend/cli.py                          # backfill-media-assets（历史回填�
 
 ## 9. 参考
 
-- [media-assets-design.md](../architecture/media-assets-design.md) — 设计决策
-- [flow-generative-media-design.md](../architecture/flow-generative-media-design.md) — 流程节点
-- [agent-multimodal-design.md](../architecture/agent-multimodal-design.md) — 对话多模态
+- [multimodal-capabilities.md](../product/multimodal-capabilities.md) — 多模态能力总览（含代码域与运维）
 - [task-center.md](./task-center.md) — 生成任务 API 与 Worker

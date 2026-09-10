@@ -3,10 +3,8 @@
 > 类型：流程编排 | 状态：已实现  
 > **功能规格：** [features/flow-orchestration.md](../features/flow-orchestration.md)  
 > 关联：[technical-design.md](../architecture/technical-design.md) §9  
-> **编排增强（已实现）：** [flow-orchestration-enhancement.md](../architecture/flow-orchestration-enhancement.md)  
-> **子流程 SubFlow：** [flow-subflow-design.md](../architecture/flow-subflow-design.md)  
-> **多模态（已实现）：** 产品说明 [multimodal-capabilities.md](../product/multimodal-capabilities.md) · 路线图 [multimodal-roadmap.md](../architecture/multimodal-roadmap.md)  
-> **设计归档：** [flow-llm-multimodal-design.md](../architecture/flow-llm-multimodal-design.md)（识图）、[flow-generative-media-design.md](../architecture/flow-generative-media-design.md)（生图/生视频）、[agent-multimodal-design.md](../architecture/agent-multimodal-design.md)（对话）
+> **编排增强 / 子流程 SubFlow（已实现）：** 见 [features/flow-orchestration.md](../features/flow-orchestration.md)  
+> **多模态（已实现）：** 产品与技术说明 [multimodal-capabilities.md](../product/multimodal-capabilities.md)
 
 画布 `graph_json` **仅由 LangGraph 编译执行**；`flow_runtime` 提供节点 handler，编译与执行在 `integrations.langgraph`。
 
@@ -63,7 +61,7 @@ React Flow → PUT /flows/{id}/graph → flow_versions
 
 ### PlatformTool（`data.tool_slug`）
 
-调用 `invoke_tool_with_context`（`invoke_source=flow`）。常用 slug：`knowledge_search`、`skill_read_reference`、`skill_run_script`、`http_request` 等。节点 `data` 字段与前端属性面板规划见 [flow-orchestration-enhancement.md](../architecture/flow-orchestration-enhancement.md) §4.3。
+调用 `invoke_tool_with_context`（`invoke_source=flow`）。常用 slug：`knowledge_search`、`skill_read_reference`、`skill_run_script`、`http_request` 等。节点 `data` 字段与前端属性面板见 `ui/workbench/features/flows/lib/flow-node-schemas.ts`。
 
 ### RelevanceGrade（`data.relevance_threshold`）
 

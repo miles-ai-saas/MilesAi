@@ -346,4 +346,3 @@ mcp.{service_slug}.{tool_name}
 - [工具指南（API 与现网行为）](../guides/tools.md)
 - [MCP 服务指南](../guides/mcp.md)
 - [MCP Runner 沙箱](./mcp-sandbox.md)
-- [工具 v1 历史规格](../superpowers/specs/2026-05-25-tools-design.md)

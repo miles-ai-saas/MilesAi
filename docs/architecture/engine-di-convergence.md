@@ -46,7 +46,7 @@ from app.tenant.attachments.services.attachment import AttachmentService
 
 ## 3. 收敛清单
 
-各阶段对应 plan 见 [`docs/superpowers/plans/`](../superpowers/plans/)（文件名前缀 `engine-di-`）。
+各阶段收敛记录见 [layering.md](./layering.md) §8 修订记录；本文按阶段汇总成因与契约。
 
 | 阶段 | 反依赖点 | 中立契约 | L1 实现/装配 | 形态 |
 |------|----------|----------|--------------|------|
@@ -133,5 +133,5 @@ backend/tests/test_l3_neutral_imports.py
 ## 8. 相关文档
 
 - 分层规则与逐条收敛记录：[layering.md](./layering.md)（§2.2 依赖规则、§8 修订记录）
-- 实施计划（按阶段）：[`docs/superpowers/plans/`](../superpowers/plans/) 下 `engine-di-*.md`
+- 实施记录（按阶段）：[layering.md](./layering.md) §8 修订记录
 - 后端参考框架（新域四件套与横切模板）：[backend-reference-framework.md](./backend-reference-framework.md)

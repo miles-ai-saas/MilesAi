@@ -203,4 +203,4 @@ backend/app/integrations/generative/jobs/runner.py
 - [knowledge-base.md](../guides/knowledge-base.md) — 入库流水线
 - [attachments-media-generative.md](./attachments-media-generative.md) — 生成物与媒体资产
 - [agent-schedules.md](./agent-schedules.md) — 定时任务（Beat）
-- [multimodal-roadmap.md](../architecture/multimodal-roadmap.md) — 生成任务演进
+- [multimodal-capabilities.md](../product/multimodal-capabilities.md) — 多模态能力与生成任务

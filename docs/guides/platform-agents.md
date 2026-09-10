@@ -3,7 +3,7 @@
 > 类型：智能体 | 状态：已实现  
 > **功能规格：** [features/platform-agents.md](../features/platform-agents.md) · [features/agent-chat-websocket.md](../features/agent-chat-websocket.md)  
 > 关联：[a2a.md](./a2a.md)（外部协议，语义不同）  
-> **多模态（已实现）：** [multimodal-capabilities.md](../product/multimodal-capabilities.md) · 设计归档 [agent-multimodal-design.md](../architecture/agent-multimodal-design.md)
+> **多模态（已实现）：** [multimodal-capabilities.md](../product/multimodal-capabilities.md)
 
 ## 产品语义
 

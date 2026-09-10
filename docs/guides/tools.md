@@ -166,4 +166,3 @@ Agent
 - **[工具运行时架构（目标方案）](../architecture/tools-runtime.md)**
 - [MCP 服务指南](./mcp.md)
 - [MCP Runner 沙箱](../architecture/mcp-sandbox.md)
-- [工具 v1 历史规格](../superpowers/specs/2026-05-25-tools-design.md)

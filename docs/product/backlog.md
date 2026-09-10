@@ -2,31 +2,7 @@
 
 **日期：** 2026-05-28  
 **来源：** [prd.md](./prd.md) 文首各模块「实现对照」表中标记为 ⬜ / 部分 的项  
-**维护：** 立项排期时更新优先级与状态；合入后同步改 prd 对照表与对应 `features/`  
-**最近同步：** 2026-09-07 业务中心（广告试点）已从主分支摘除归档（tag `archive/business-center-p0-p4`），进入重设计；本文 §业务中心 保留为历史排期记录
-
----
-
-## 业务中心 — 广告公司试点（已归档 2026-09-07，待重设计）
-
-> ⚠️ 该分节为历史记录：实现代码已摘除（tag `archive/business-center-p0-p4`）。下述「设计稿/规格」仅作重设计素材。
-
-> 设计稿：[business-center-design.md](../architecture/business-center-design.md) · 规格：[business-center.md](../features/business-center.md)  
-> 前端：**扩 `ui/workbench` 第三分区** `/business/*`，不另建 `ui/business`。  
-> 后端：**`app/biz/` 与 `app/tenant/` 同级**，ORM 在 `app/models/biz.py`，路由由 `tenant/router.py` 挂载 `/biz`。
-
-| 阶段 | 项 | 优先级 | 状态 |
-|------|-----|--------|------|
-| Phase 0 | 设计文档 + 空壳 `BusinessShell` + 三分区导航 | P1 | ✅ |
-| Phase 1 MVP | 客户 / 项目 / 工作包 / 交付物 / 仪表盘 / `biz:*` RBAC | P1 | ✅ |
-| Phase 1 | 项目 → AI 对话 deep link | P2 | ✅ |
-| Phase 1 | 「系统管理」UI 文案 →「组织设置」 | P2 | ✅ |
-| Phase 2 | 商机 pipeline、报价、里程碑、结项案例沉淀 KB | P1 | ✅ |
-| Phase 3 | 合同、回款、供应商、成本汇总 | P2 | ✅ |
-| Phase 4 | 服务线 Agent/Flow 模板、项目上下文 RAG、全局搜索、业务动态 | P2 | ✅ |
-| Phase 5 | 服务线模板市场、ERP 对接 | 按需 | 模板市场 ✅ · ERP ⬜ |
-
-**验收（Phase 1）：** 试点租户用 2–3 个真实组合项目跑通录入 → 阶段更新 → 交付物上传。
+**维护：** 立项排期时更新优先级与状态；合入后同步改 prd 对照表与对应 `features/`
 
 ---
 
@@ -149,7 +125,5 @@ PRD 原文提及、现网已有替代路径，**不阻塞交付**。
 ## 相关文档
 
 - [prd.md](./prd.md) — 立项原文 + 文首对照表（锚点 `as-is-module-*`）
-- [business-center-design.md](../architecture/business-center-design.md) — 业务中心架构与分期
-- [business-center.md](../features/business-center.md) — 表、API、前端清单
 - [multimodal-capabilities.md](./multimodal-capabilities.md) — 多模态产品状态
 - [docs/README.md](../README.md) — features 索引

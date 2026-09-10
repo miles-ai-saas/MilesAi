@@ -3,7 +3,7 @@
 **日期：** 2026-05-26  
 **状态：** 部分已实施（工作台 WS v1 ✅；直连/RAG 真 token 流式 ✅；tool 路径仍切块；HTTP 整包流式仍待做）  
 **As-Is 规格：** [features/agent-chat-websocket.md](../features/agent-chat-websocket.md)  
-**关联：** [multimodal-roadmap.md](./multimodal-roadmap.md)、[agent-multimodal-design.md](./agent-multimodal-design.md)、[platform-agents.md](../guides/platform-agents.md)、[flow-generative-media-design.md](./flow-generative-media-design.md)、[technical-design.md](./technical-design.md)
+**关联：** [multimodal-capabilities.md](../product/multimodal-capabilities.md)、[platform-agents.md](../guides/platform-agents.md)、[technical-design.md](./technical-design.md)
 
 ---
 
@@ -212,7 +212,7 @@ Authorization: Bearer <token>
 ### 5.3 流程调试
 
 - `FlowRunPanel` 对 `generative_job_id` 可继续 **SSE**（用户不在对话页）。
-- 流程 **LLM 流式** 若单独立项，可与对话 WS 共用事件形状，但连接仍按页面隔离（见 [flow-orchestration-enhancement.md](./flow-orchestration-enhancement.md)）。
+- 流程 **LLM 流式** 若单独立项，可与对话 WS 共用事件形状，但连接仍按页面隔离（见 [flows.md](../guides/flows.md)）。
 
 ### 5.4 明确不用 SSE/WebSocket 的场景
 
@@ -324,8 +324,7 @@ AGENT_CHAT_WEBSOCKET_ENABLED=false   # 默认关，灰度开启
 
 | 文档 | 关系 |
 |------|------|
-| [multimodal-roadmap.md](./multimodal-roadmap.md) | 总路线图；§待做 WebSocket 以本文为准 |
-| [agent-multimodal-design.md](./agent-multimodal-design.md) | 对话多模态；流式列为与本文 R2 对齐 |
+| [multimodal-capabilities.md](../product/multimodal-capabilities.md) | 多模态总览；流式列为与本文 R2 对齐 |
 | [platform-agents.md](../guides/platform-agents.md) | 对话执行路径 |
 | [flows.md](../guides/flows.md) | 流程调试与模板 |
 

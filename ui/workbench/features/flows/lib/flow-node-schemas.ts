@@ -1,6 +1,6 @@
 /**
  * 流程节点 Handle 与属性面板 schema（链路 §6）。
- * 须与 backend compiler._gather_node_inputs、flow-orchestration-enhancement.md §4.4 一致。
+ * 须与 backend compiler._gather_node_inputs、docs/features/flow-orchestration.md 一致。
  */
 import type { NodeType } from "./flow-nodes";
 

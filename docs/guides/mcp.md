@@ -16,7 +16,7 @@ Model Context Protocol（MCP）在 MilesAI 中用于**注册远程工具服务**
 
 - **HTTP**：优先 [Streamable HTTP](https://modelcontextprotocol.io/specification/2025-03-26/basic/transports#streamable-http)（`Accept: application/json, text/event-stream`），POST 响应可为 JSON 或 SSE；失败则回退单 POST JSON。
 - **SSE（transport=sse）**：优先 **Legacy HTTP+SSE**（2024-11-05）：`GET endpoint_url` 收 `event: endpoint` → 向返回的 message URL `POST` JSON-RPC → 在 `event: message` 中收响应；可选 `initialize` + `notifications/initialized`。若未收到 endpoint 事件，自动回退 Streamable HTTP / 简单 POST。
-- **STDIO**：经独立 **mcp-runner** 服务在沙箱内 `execve` 子进程，API 不直接 subprocess。见 [沙箱方案](../architecture/mcp-sandbox.md) 与 [Runner 设计](../superpowers/specs/2026-05-25-mcp-runner-sandbox-design.md)。
+- **STDIO**：经独立 **mcp-runner** 服务在沙箱内 `execve` 子进程，API 不直接 subprocess。见 [沙箱方案](../architecture/mcp-sandbox.md)。
 
 ## 2. 数据模型
 

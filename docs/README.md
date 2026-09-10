@@ -10,7 +10,6 @@
 | **功能规格** | `features/` |  onboarding、测试、API/表/文件清单 | **功能合入时同步** |
 | **实现指南** | `guides/` | 排错、调用链、契约细节 | 行为/契约变更时 |
 | **架构** | `architecture/` | 设计决策、目标架构、路线图 | 大改或归档时；**As-Is 以 features 为准** |
-| **立项归档** | `superpowers/` | 历史 spec/plan，过程稿 | 不再更新，勿与现网混淆 |
 
 推荐路径：**features → guides → architecture/technical-design.md**。
 
@@ -35,7 +34,6 @@ docs/
 │   ├── marketplace.md
 │   └── …
 ├── operations/               # 运维与部署
-├── superpowers/              # 立项过程稿
 └── guides/                   # 功能专题（实现说明）
 
 ui/                           # 前端应用源码（与 docs/ 并列，见仓库根目录）
@@ -65,18 +63,10 @@ ui/                           # 前端应用源码（与 docs/ 并列，见仓�
 | [vector-database-selection.md](./architecture/vector-database-selection.md) | 向量数据库选型：pgvector / Weaviate / Milvus / Qdrant / OpenSearch / ES |
 | [mcp-sandbox.md](./architecture/mcp-sandbox.md) | MCP STDIO / 平台执行：沙箱与 Runner 隔离方案 |
 | [tools-runtime.md](./architecture/tools-runtime.md) | **工具运行时**：内置 / HTTP / 脚本 / MCP 统一执行平面（目标架构） |
-| [flow-orchestration-enhancement.md](./architecture/flow-orchestration-enhancement.md) | **流程编排增强**：属性面板、调试、RAG 节点（已实现） |
-| [flow-subflow-design.md](./architecture/flow-subflow-design.md) | **子流程 SubFlow**（已实现） |
 | [system-management-design.md](./architecture/system-management-design.md) | **系统管理增强**：RBAC/会话/配额/审计分期方案 |
-| [business-center-design.md](./architecture/business-center-design.md) | ~~**业务中心**~~ **已归档（2026-09-07）**：租户项目制交付（广告公司试点）；代码摘除重设计，恢复 tag `archive/business-center-p0-p4` |
 | [admin-ops-design.md](./architecture/admin-ops-design.md) | **运营后台增强**：安全闭环/计费/风控生效/管理员治理 |
 | [marketplace-review-design.md](./architecture/marketplace-review-design.md) | **应用市场审核**：SaaS 平台审 / 私有化租户审（`review_mode`） |
-| [multimodal-roadmap.md](./architecture/multimodal-roadmap.md) | **多模态技术总览**：文档地图、附件无签名约定、实施顺序 |
 | [realtime-transport-design.md](./architecture/realtime-transport-design.md) | **实时通道**：对话 WebSocket、生成任务 SSE、协议草案与分期 |
-| [agent-multimodal-design.md](./architecture/agent-multimodal-design.md) | 智能体对话多模态（设计归档） |
-| [flow-llm-multimodal-design.md](./architecture/flow-llm-multimodal-design.md) | 流程 `LLMCall` 识图输入（设计归档） |
-| [flow-generative-media-design.md](./architecture/flow-generative-media-design.md) | 流程生图/生视频节点（设计归档） |
-| [media-assets-design.md](./architecture/media-assets-design.md) | **生成物媒体资产**（设计归档 → [features/attachments-media-generative.md](./features/attachments-media-generative.md)） |
 
 ## 功能节点 (`features/`)
 
@@ -98,7 +88,6 @@ ui/                           # 前端应用源码（与 docs/ 并列，见仓�
 | [tags-categories.md](./features/tags-categories.md) | 横切 | 租户标签 + 系统分类 |
 | [marketplace.md](./features/marketplace.md) | 模块7 应用市场 | 打包、审核、安装、评分 |
 | [system-management.md](./features/system-management.md) | 模块1 系统管理 | RBAC、用户、租户、配置、审计 |
-| [business-center.md](./features/business-center.md) | ~~业务中心（租户）~~ **已归档（2026-09-07）** |
 | [compliance.md](./features/compliance.md) | 模块2 合规 | 敏感词库、扫描、拦截日志 |
 | [monitor.md](./features/monitor.md) | 模块9 监控 | 统计、趋势、告警 Webhook |
 | [admin-ops.md](./features/admin-ops.md) | 模块1 系统管理（平台侧） | 运营后台：租户、计费、风控、模型目录、分类 |
@@ -138,18 +127,6 @@ ui/                           # 前端应用源码（与 docs/ 并列，见仓�
 
 部署拓扑与 Celery 进程见 [operations/deployment.md](./operations/deployment.md)；Compose 细节与 **Worker / RAG 可选依赖** 见 [../docker/README.md](../docker/README.md)；后端 [../backend/README.md](../backend/README.md)。
 
-## 立项归档 (`superpowers/`)
-
-历史设计 spec 与实施 plan，**不作为现网规格**。入口：[superpowers/README.md](./superpowers/README.md)（清单与现网对照）。对照现网请读 `features/` 与同主题 `architecture/` / `guides/`。
-
-| 文档 | 现网对照 |
-|------|----------|
-| [specs/2026-05-25-mcp-runner-sandbox-design.md](./superpowers/specs/2026-05-25-mcp-runner-sandbox-design.md) | [mcp-sandbox.md](./architecture/mcp-sandbox.md)、[features/tools-mcp-skills.md](./features/tools-mcp-skills.md) |
-| [specs/2026-05-25-tools-design.md](./superpowers/specs/2026-05-25-tools-design.md) | [tools-runtime.md](./architecture/tools-runtime.md)、[guides/tools.md](./guides/tools.md) |
-| [plans/2026-05-26-flow-orchestration-enhancement.md](./superpowers/plans/2026-05-26-flow-orchestration-enhancement.md) | [flow-orchestration-enhancement.md](./architecture/flow-orchestration-enhancement.md) |
-| [plans/2026-05-26-flow-subflow.md](./superpowers/plans/2026-05-26-flow-subflow.md) | [flow-subflow-design.md](./architecture/flow-subflow-design.md)（暂不实施） |
-| [plans/2026-05-25-tools-v1.md](./superpowers/plans/2026-05-25-tools-v1.md) | [features/tools-mcp-skills.md](./features/tools-mcp-skills.md) |
-
 ---
 
 ## 功能节点 ↔ 文档速查
@@ -157,7 +134,6 @@ ui/                           # 前端应用源码（与 docs/ 并列，见仓�
 | # | 功能节点 | 架构 | 指南 | features |
 |---|----------|------|------|----------|
 | 1 | 系统管理（租户） | [technical-design §4–5](./architecture/technical-design.md) | — | [system-management.md](./features/system-management.md) |
-| 1b | ~~业务中心~~（租户，已归档 2026-09-07） | [business-center-design.md](./architecture/business-center-design.md) | — | [business-center.md](./features/business-center.md) |
 | 1a | 运营后台 | §4 运营域 | — | [admin-ops.md](./features/admin-ops.md) |
 | 2 | 安全合规 | §11 | [compliance-word-libraries.md](./guides/compliance-word-libraries.md) | [compliance.md](./features/compliance.md)、[hooks.md](./features/hooks.md) |
 | 3 | 模型与提示词 | §4 | [model-providers.md](./guides/model-providers.md) | [models-prompts.md](./features/models-prompts.md) |
@@ -194,7 +170,6 @@ ui/                           # 前端应用源码（与 docs/ 并列，见仓�
 | 能力 | 路径 |
 |------|------|
 | 租户 API（AI + 组织） | `backend/app/tenant/` |
-| ~~业务中心 API~~（已归档 2026-09-07，恢复见 tag `archive/business-center-p0-p4`） | ~~`backend/app/biz/`~~ |
 | 智能体对话 | `tenant/agents/services/agent.py` |
 | A2A | `tenant/a2a/` |
 | 流程 | `app/flow_runtime/`（节点、[templates/rag_flow.json](../backend/app/flow_runtime/templates/rag_flow.json)）、`app/integrations/langgraph/`（画布 compiler、Agent RAG 图） |

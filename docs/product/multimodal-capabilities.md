@@ -1,7 +1,6 @@
 # 多模态产品能力说明
 
 > 类型：产品能力 | 状态：**核心能力已上线**（识图、生图/图生图、生视频/首尾帧、媒体资产、生视频异步任务、SSE 进度/取消、任务中心、视频升格 KB）  
-> 技术方案：[multimodal-roadmap.md](../architecture/multimodal-roadmap.md)  
 > 立项对照：[prd.md](./prd.md)（§模块6b 多模态差异速查；PRD 愿景较全，以本文「实现状态」为准）
 
 本文从 **产品视角** 说明平台多模态能力：用户能做什么、在哪里做、与知识库入库的区别。不涉及签名下载等实现细节。
@@ -223,20 +222,46 @@ flowchart TB
 | **已上线（TTS）** | 内置工具 `generate_speech`（CosyVoice） |
 | **后续** | LLM 真 token 流式、视频逐帧预览 | 📋 [realtime-transport-design.md](../architecture/realtime-transport-design.md)（WS v1 见 [features/agent-chat-websocket.md](../features/agent-chat-websocket.md)） |
 
-技术拆解见 [multimodal-roadmap.md](../architecture/multimodal-roadmap.md)。
+技术定位、代码域与运维命令见 §8。
 
 ---
 
-## 8. 相关文档
+## 8. 技术定位、代码域与运维（研发）
+
+### 8.1 能力 → 代码域
+
+| 能力 | 主要代码域 |
+|------|------------|
+| 生文 | `ainvoke_chat`、`tenant/agents/services/agent/` |
+| 识图（输入） | `integrations/chat/multimodal.py`、`flow_runtime/nodes/llm_nodes.py` |
+| 生图 / 生视频（输出） | `integrations/generative/`（万相 + 豆包 `volcengine_video`） |
+| 资料入库 | `app/rag/parse/`、`media_assets` |
+
+共享基础设施：
+
+```text
+integrations/chat/multimodal.py   # build_user_message、resolve_media_refs
+tenant/attachments/...            # 上传、GET .../content 读字节
+integrations/generative/          # 生图/生视频 + quota + volcengine_client
+media_assets                      # 生成物目录 + promote-to-kb（图片）
+```
+
+### 8.2 运维
+
+| 操作 | 命令 / 配置 |
+|------|-------------|
+| 历史生成物登记 | `python cli.py backfill-media-assets [--dry-run]` |
+| 生成日限额 | `system_config` → `generative.daily_limit_per_tenant`（0=不限） |
+| 迁移 | `python cli.py migrate`（含 `media_assets` 表） |
+
+### 8.3 相关文档
 
 | 文档 | 读者 |
 |------|------|
-| [multimodal-roadmap.md](../architecture/multimodal-roadmap.md) | 研发：总览与实施顺序 |
-| [agent-multimodal-design.md](../architecture/agent-multimodal-design.md) | 研发：智能体对话 |
-| [flow-llm-multimodal-design.md](../architecture/flow-llm-multimodal-design.md) | 研发：流程识图 |
-| [flow-generative-media-design.md](../architecture/flow-generative-media-design.md) | 研发：生图/生视频 |
 | [model-providers.md](../guides/model-providers.md) | 模型类型说明 |
 | [platform-agents.md](../guides/platform-agents.md) | 智能体执行路径 |
+| [knowledge-base.md](../guides/knowledge-base.md) | 知识库入库与检索 |
+| [flows.md](../guides/flows.md) | 流程画布与生成节点 |
 
 ---
 
@@ -250,3 +275,4 @@ flowchart TB
 | 2026-05-26 | 文档同步：异步/SSE/取消/任务中心/视频升格 KB 与实现对齐 |
 | 2026-05-26 | 生图异步任务与文档更新 |
 | 2026-05-28 | 文档同步：TTS `generate_speech`；与 prd/backlog 对照表对齐 |
+| 2026-09-10 | 收敛：吸收原 `architecture/multimodal-roadmap.md` 的技术总览、代码域与运维命令（§8），该文移除 |

@@ -466,8 +466,7 @@ React Flow 画布 → PUT /flows/{id}/graph → flow_versions.graph_json
 - 编译预览：`POST /flows/{id}/compile`（DAG 校验、并行层分析）。
 - 智能体绑定 `published_flow_id` 时，对话走同一 LangGraph 执行链。
 - 用户指南：[flows.md](../guides/flows.md)。
-- **增强设计（属性面板、调试、RAG 节点）：** [flow-orchestration-enhancement.md](./flow-orchestration-enhancement.md)。
-- **子流程 SubFlow（已立项，暂不实施）：** [flow-subflow-design.md](./flow-subflow-design.md)。
+- **流程编排（属性面板、调试、RAG 节点、SubFlow 已实现）：** [features/flow-orchestration.md](../features/flow-orchestration.md)。
 
 ---
 
@@ -510,15 +509,12 @@ flowchart TD
 
 ### 10.1 多模态（已实现）
 
-识图、生图/生视频、媒体资产、生视频异步任务与任务中心 **已上线**。产品矩阵见 [multimodal-capabilities.md](../product/multimodal-capabilities.md)；实施状态见 [multimodal-roadmap.md](./multimodal-roadmap.md)。
+识图、生图/生视频、媒体资产、生视频异步任务与任务中心 **已上线**。产品矩阵、代码域与运维见 [multimodal-capabilities.md](../product/multimodal-capabilities.md) §8。
 
 | 文档 | 说明 |
 |------|------|
 | [multimodal-capabilities.md](../product/multimodal-capabilities.md) | 产品能力矩阵与场景 |
-| [multimodal-roadmap.md](./multimodal-roadmap.md) | 技术总览、实施顺序；**附件 v1 不做签名 URL**，服务端读存储转 data URL |
-| [agent-multimodal-design.md](./agent-multimodal-design.md) | 智能体 `ChatRequest.media`、生成工具 |
-| [flow-llm-multimodal-design.md](./flow-llm-multimodal-design.md) | 流程 `LLMCall` 识图 |
-| [flow-generative-media-design.md](./flow-generative-media-design.md) | 流程生图/生视频节点 |
+| [features/attachments-media-generative.md](../features/attachments-media-generative.md) | 附件、媒体资产、生成节点实现规格；**附件 v1 不做签名 URL** |
 
 ---
 

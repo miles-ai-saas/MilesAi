@@ -69,7 +69,7 @@ api_base, api_key_encrypted, is_active, extra (JSONB), deleted_at
 
 向量化 / 重排序模型的 `extra.invoke_mode` 与字段对照见 **[model-config-extra.md](./model-config-extra.md)**。
 
-生成类在流程画布中的节点与集成层见 **[flow-generative-media-design.md](../architecture/flow-generative-media-design.md)**。工作台流程编辑左侧调色板已提供 **生图**、**生视频** 节点及右侧属性配置（`image_gen` / `video_gen` 模型必选）。
+生成类在流程画布中的节点与集成层见 **[multimodal-capabilities.md §4](../product/multimodal-capabilities.md)**。工作台流程编辑左侧调色板已提供 **生图**、**生视频** 节点及右侧属性配置（`image_gen` / `video_gen` 模型必选）。
 
 ---
 
