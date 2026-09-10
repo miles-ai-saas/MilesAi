@@ -200,6 +200,31 @@ BUILTIN_REGISTRY: list[dict] = [
             {"name": "memory", "type": "integer", "required": False, "default": 256},
         ],
     },
+    # P2: 触发流程 — 仅本租户「已发布」流程；默认需确认，带递归/超时护栏
+    {
+        "slug": "run_flow_once",
+        "name": "触发已发布流程",
+        "description": "执行本租户一个已发布流程一次并返回其输出；仅限已发布流程，执行前需用户确认",
+        "category_slug": "general",
+        "version": "1.0.0",
+        "require_confirmation": True,
+        "parameters": [
+            {"name": "flow_id", "type": "string", "description": "已发布流程的 UUID", "required": True},
+            {
+                "name": "inputs",
+                "type": "object",
+                "description": '流程入口变量字典（如 {"query": "..."}）',
+                "required": False,
+            },
+            {"name": "query", "type": "string", "description": "便捷传入流程 query 入口变量", "required": False},
+            {
+                "name": "timeout_sec",
+                "type": "integer",
+                "description": "执行超时（秒），默认 120，上限 300",
+                "required": False,
+            },
+        ],
+    },
     {
         "slug": "skill_read_reference",
         "name": "读取技能参考",

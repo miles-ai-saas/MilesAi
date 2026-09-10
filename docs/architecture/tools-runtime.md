@@ -93,11 +93,20 @@ MilesAI 是**企业级多租户 AI 中台**（RAG、流程编排、智能体、�
 |--------|--------------|------|----------|----------|
 | ✅ | `knowledge_search` | 知识库检索（单库/多库、混合/rerank；省略 kb 用绑定库） | 已有 | 否 |
 | ✅ | `compliance_check_text` | 敏感词检测（只读，不写拦截审计） | `CompliancePipeline` + `load_tenant_scan_words` | 否 |
+| ✅ | `run_flow_once` | 触发本租户**已发布**流程一次 | `FlowService.run` + 递归/超时护栏 | **是** |
 | 不做 | `list_knowledge_bases` | 列出本租户 KB | — | — （绑定 KB 的 `kb_ids` 已注入 system prompt，工具冗余） |
 | 缓做 | `get_attachment_meta` | 附件元数据 | `tenant/attachments` | 否（需先有「当前会话/资源范围」语义，否则会列出整租户附件） |
 | P2 | `invoke_tenant_hook` | 触发已注册 HTTP 钩子 | `tenant/hooks` | **是** |
-| P2 | `run_flow_once` | 单次执行已发布流程 | `flow_runtime` | **是**（限智能体自身发布流程 + 递归/超时护栏） |
 | P3 | `http_request` | 通用外呼（SSRF 防护） | 已有；建议弱化宣传 | 可选 |
+
+`run_flow_once` 的护栏（实现于 `tenant/tools/services/flow_once.py`）：
+
+- **仅已发布**：`FlowStatus.PUBLISHED` 且 `current_version > 0`，草稿不可被 Agent 触发；
+- **仅本租户**：`FlowRepository` + `assert_tenant_access`；
+- **递归防护**：`ContextVar` 计数嵌套触发，超过 `MAX_FLOW_ONCE_DEPTH`（2）拒绝——
+  流程内 `PlatformTool` 节点默认 `confirmed=True`，故无此护栏会无限递归；
+- **超时**：`asyncio.wait_for` 默认 120s、上限 300s；执行复用 `FlowService.run`
+  （合规扫描 + FLOW 级 Hook + 审计一致）。
 
 **不宜做成内置复杂工具**（仍走 MCP 或专属页面）：
 
@@ -294,7 +303,7 @@ mcp__{service}__{tool_name}
 
 | 项 | 说明 |
 |----|------|
-| 内置复杂工具（扩展） | `run_flow_once`（需护栏）、钩子触发等；附件类需先补「会话/资源范围」语义 |
+| 内置复杂工具（扩展） | ✅ `run_flow_once` 已实现（已发布流程 + 递归/超时护栏）；钩子触发待做；附件类需先补「会话/资源范围」语义 |
 | 租户套餐级 builtin 开关 | `tenant_toggle` / 套餐位 |
 | 调用限流 | 租户级 QPS / 复杂工具配额 |
 | 流程节点 | 复用同一 Runtime |
@@ -310,7 +319,8 @@ mcp__{service}__{tool_name}
 
 已实现：builtin/custom catalog、变换脚本 v2（预注入 `json`/`re`/`math`/`datetime`）、`tool_agent`、
 MCP 工作台、**RAG 与 tool calling 共存**（绑定 KB 时 `knowledge_search` 由 LLM 自行调用，命中回填 `sources`）、
-**L2 内置 `compliance_check_text`**（复用租户词库，只读不写审计），以及
+**L2 内置 `compliance_check_text`**（复用租户词库，只读不写审计）、
+**L2 内置 `run_flow_once`**（仅已发布流程 + 确认 + 递归/超时护栏），以及
 **MCP → Agent function calling**（`mcp__{service}__{tool}`，审计 `source=mcp`）；见 [guides/tools.md](../guides/tools.md)。
 未尽项见 §7 演进路线。
 

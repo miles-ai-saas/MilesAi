@@ -539,7 +539,7 @@ flowchart TD
 
 | 类型 | 状态 |
 |------|------|
-| 内置工具 | `calculator`、`http_request`、`knowledge_search`、`compliance_check_text`、`web_search`、`code_execution`、`generate_*`（`tools/invoke.py` + `BUILTIN_REGISTRY`） |
+| 内置工具 | `calculator`、`http_request`、`knowledge_search`、`compliance_check_text`、`run_flow_once`、`web_search`、`code_execution`、`generate_*`（`tools/invoke.py` + `BUILTIN_REGISTRY`） |
 | 自定义 HTTP 工具 | `tool_tools` 表配置 |
 | MCP | `tools/list` 同步；HTTP/SSE **`tools/call` 真 invoke**；STDIO 经 `mcp-runner`；`custom` transport，见 [mcp.md](../guides/mcp.md)、[mcp-sandbox.md](./mcp-sandbox.md) |
 | 技能包 | `skl_skill_packages` + 磁盘 `SKILL.md`；导入与注入见 [skill-packages.md](../guides/skill-packages.md) |
@@ -650,7 +650,7 @@ flowchart TD
 
 | 能力 | 状态 | 说明 / 文档 |
 |------|------|-------------|
-| L2 内置工具扩充（合规检测、列附件、触发流程） | 🔶 | `compliance_check_text` ✅；列附件需先补会话/资源范围语义、`run_flow_once` 需护栏；见 [tools-runtime.md](./tools-runtime.md) §7 |
+| L2 内置工具扩充（合规检测、列附件、触发流程） | 🔶 | `compliance_check_text`、`run_flow_once` ✅；列附件需先补会话/资源范围语义；见 [tools-runtime.md](./tools-runtime.md) §7 |
 | 对话 HTTP 整包流式；tool/flow/A2A 路径真 token 流式 | 🔶 | WS 直连/RAG 已真流式；见 [realtime-transport-design.md](./realtime-transport-design.md) |
 | WS 断线续传、服务端会话快照 | ⬜ | v2，见 [realtime-transport-design.md](./realtime-transport-design.md) |
 | A2A 对外暴露本平台 Agent Card | ⬜ | 现仅能拉取远端 Card；见 [a2a.md](../guides/a2a.md) |

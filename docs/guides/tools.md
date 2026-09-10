@@ -32,6 +32,7 @@ MilesAI **工具模块**管理租户可用的**平台内置工具**（含 **L2 �
 | `web_search` | DuckDuckGo 网页搜索 |
 | `code_execution` | Runner 沙箱执行 Python 片段 |
 | `compliance_check_text` | 租户敏感词检测（只读，不写拦截审计） |
+| `run_flow_once` | 触发本租户已发布流程一次（需确认，带递归/超时护栏） |
 | `generate_image` / `generate_video` / `generate_speech` | 生成物（`generative_only`） |
 | `skill_read_reference` / `skill_run_script` | 技能包引用与脚本（`skill_bound_only`） |
 

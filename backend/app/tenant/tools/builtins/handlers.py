@@ -219,6 +219,31 @@ async def handle_code_execution(params: dict, **_: Any) -> dict:
     return await execute_code(code, timeout_sec=timeout, max_memory_mb=memory)
 
 
+async def handle_run_flow_once(
+    params: dict,
+    *,
+    db: AsyncSession,
+    ctx: TenantContext,
+    **_: Any,
+) -> dict:
+    """触发本租户已发布流程一次；委托 ``flow_once.run_published_flow_once``。"""
+    from app.tenant.tools.services.flow_once import run_published_flow_once
+
+    inputs = params.get("inputs")
+    if not isinstance(inputs, dict):
+        inputs = {}
+    query = params.get("query")
+    if query and "query" not in inputs:
+        inputs["query"] = query
+    return await run_published_flow_once(
+        db,
+        ctx,
+        flow_id=params.get("flow_id"),
+        inputs=inputs,
+        timeout_sec=params.get("timeout_sec"),
+    )
+
+
 async def handle_skill_run_script(
     params: dict,
     *,
@@ -247,6 +272,7 @@ BUILTIN_HANDLERS: dict[str, BuiltinHandler] = {
     "web_search": handle_web_search,  # DuckDuckGo
     "compliance_check_text": handle_compliance_check_text,  # 租户敏感词自检（只读）
     "code_execution": handle_code_execution,  # Runner 沙箱
+    "run_flow_once": handle_run_flow_once,  # 触发已发布流程（需确认）
     "generate_speech": handle_generate_speech,  # P2: CosyVoice
     "generate_video": handle_generate_video,
     "generate_image": handle_generate_image,
