@@ -13,7 +13,7 @@ from app.admin.app_ops.schemas.sys_category import (
 from app.common.exceptions import BadRequestError, ConflictError, NotFoundError
 from app.core.soft_delete import is_marked_deleted, mark_deleted, not_deleted
 from app.models.meta.category import CategoryDomain, SysCategory
-from app.tenant.categories.services.category import slugify
+from app.common.slug import slugify
 
 DOMAINS = [d.value for d in CategoryDomain]
 

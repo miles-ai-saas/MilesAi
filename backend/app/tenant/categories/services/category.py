@@ -1,13 +1,12 @@
 """租户工作台分类：只读列表与资源绑定校验（全平台全局字典）。"""
 
-import hashlib
-import re
 from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.common.exceptions import BadRequestError, NotFoundError
+from app.common.slug import slugify  # noqa: F401  # re-export：保持 L1 import 路径稳定
 from app.core.tenant import TenantContext
 from app.models.meta.category import CategoryDomain, SysCategory
 from app.tenant.categories.meta import categories_meta_dict
@@ -15,18 +14,6 @@ from app.tenant.categories.schemas.category import CategoryOut
 from app.tenant.categories.schemas.meta import CategoryMetaOut
 from app.core.soft_delete import is_marked_deleted, not_deleted
 from app.core.service import BaseService
-
-_SLUG_RE = re.compile(r"[^a-z0-9]+")
-
-
-def slugify(name: str) -> str:
-    """将展示名转为 slug；供运营端与标签模块复用。"""
-    raw = name.strip().lower()
-    s = _SLUG_RE.sub("-", raw).strip("-")
-    if s:
-        return s[:64]
-    digest = hashlib.sha256(raw.encode("utf-8")).hexdigest()[:12]
-    return f"c-{digest}"
 
 
 def _parse_domain(domain: str) -> CategoryDomain:

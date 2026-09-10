@@ -11,8 +11,8 @@ from app.admin.app_ops.schemas.marketplace_category import (
     MarketplaceCategoryUpdate,
 )
 from app.common.exceptions import BadRequestError, ConflictError, NotFoundError
+from app.common.slug import slugify
 from app.core.soft_delete import is_marked_deleted, mark_deleted, not_deleted
-from app.tenant.categories.services.category import slugify
 from app.tenant.marketplace.models import AppCategory, MarketplaceApp
 
 
