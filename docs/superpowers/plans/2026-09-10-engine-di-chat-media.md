@@ -471,10 +471,15 @@ MediaReader；Agent 对话/RAG/工具循环/画布 LLMCall 全部切换，rag_qa
 
 ---
 
-### Task 3: 文档闭环 + engine DI 全域终检
+### Task 3: 测试卫生清理 + 文档闭环 + engine DI 全域终检
 
 **Files:**
+- Modify: `backend/tests/rag/test_rag_answer_stream.py`
 - Modify: `docs/architecture/layering.md`
+
+- [ ] **Step 0: 清理死 mock（Task 2 评审 Minor）**
+
+`tests/rag/test_rag_answer_stream.py` 的 `test_generate_node_forwards_on_delta` 与 `test_fallback_node_forwards_on_delta` 仍 patch `app.integrations.langgraph.graphs.rag_qa.AsyncSessionLocal`，但 `generate`/`fallback` 已不再开会话（仅 `retrieve` 用）。删除两处 `patch("...rag_qa.AsyncSessionLocal")` 及其 `session_cls`/`db` 设置，保留其余 patch 与断言。
 
 - [ ] **Step 1: 全域终检**
 
@@ -501,6 +506,9 @@ Expected：全部零命中；全量 ≥ 513 passed。
 ```
 
 ```bash
+git add backend/tests/rag/test_rag_answer_stream.py
+git commit -m "test(engine): 清理 rag_qa 生成节点已失效的会话 mock"
+
 git add docs/architecture/layering.md
 git commit -m "docs(architecture): 记录 G1-3 chat 媒体读取收敛与 L3 全域清零"
 ```
