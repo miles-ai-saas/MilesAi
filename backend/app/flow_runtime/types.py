@@ -83,6 +83,10 @@ class RunContext:
     # 节点引用 prompt_template_id 时报错）。新建画布 RunContext 根装配点
     # 须随 resolve_generative_* 一并注入（见 chat_rag/flow debug-run）。
     resolve_prompt_template: Callable[[str, str], Awaitable[str | None]] | None = None
+    # 画布 ComplianceCheck 节点敏感词表加载回调（L1 注入；签名 (tenant_id) -> [(word, action)]；
+    # None 表示未装配，节点报错）。新建画布 RunContext 根装配点须随 resolve_generative_*
+    # 一并注入（见 chat_rag/flow debug-run）。
+    load_scan_words: Callable[[str], Awaitable[Any]] | None = None
 
 
 @dataclass
