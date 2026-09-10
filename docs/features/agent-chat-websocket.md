@@ -1,6 +1,5 @@
 # 智能体对话 WebSocket
 
-**日期：** 2026-05-27  
 **状态：** v1 已实现（工作台）；直连/RAG 真 token 流式 ✅；tool 路径仍切块  
 **PRD 对照：** 模块4 智能体对话  
 **架构：** [realtime-transport-design.md](../architecture/realtime-transport-design.md) · [technical-design.md §10](../architecture/technical-design.md#10-智能体对话)

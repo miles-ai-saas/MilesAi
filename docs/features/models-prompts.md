@@ -1,6 +1,5 @@
 # 模型供应商与提示词
 
-**日期：** 2026-05-27  
 **状态：** 已实现  
 **PRD 对照：** 模块3 AI模型与提示词中心  
 **架构：** [model-providers.md](../guides/model-providers.md)

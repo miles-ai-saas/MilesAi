@@ -1,6 +1,5 @@
 # 任务中心
 
-**日期：** 2026-05-27  
 **状态：** 已实现  
 **PRD 对照：** 模块8 异步任务中心  
 **架构：** [technical-design.md §8](../architecture/technical-design.md#8-异步任务)

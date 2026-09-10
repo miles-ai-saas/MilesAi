@@ -1,6 +1,5 @@
 # 安全合规
 
-**日期：** 2026-05-28  
 **状态：** 已实现  
 **PRD 对照：** 模块2 安全合规模块  
 **架构：** [technical-design.md §11.1](../architecture/technical-design.md#111-合规) · [compliance-word-libraries.md](../guides/compliance-word-libraries.md)

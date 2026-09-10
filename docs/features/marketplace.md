@@ -1,6 +1,5 @@
 # 应用市场
 
-**日期：** 2026-05-27  
 **状态：** 已实现  
 **PRD 对照：** 模块7 AI应用市场  
 **架构：** [technical-design.md §12](../architecture/technical-design.md#12-应用市场)

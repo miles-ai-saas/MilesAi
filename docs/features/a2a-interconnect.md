@@ -1,6 +1,5 @@
 # A2A 外部互联
 
-**日期：** 2026-05-27  
 **状态：** 部分实现（登记/引用/宿主 ✅；对外 Card 待做）  
 **PRD 对照：** 模块4 A2A 互联智能体  
 **协议：** [A2A Protocol v1.0](https://a2a-protocol.org/v1.0.0/specification/) · [a2a.md](../guides/a2a.md)

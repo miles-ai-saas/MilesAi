@@ -1,6 +1,5 @@
 # 监控与统计
 
-**日期：** 2026-05-28  
 **状态：** 已实现（导出类报表按需）  
 **PRD 对照：** 模块9 监控与统计  
 **架构：** [technical-design.md §4 monitor](../architecture/technical-design.md#4-分层与模块)

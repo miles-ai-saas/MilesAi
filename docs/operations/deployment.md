@@ -1,6 +1,5 @@
 # 部署与运行
 
-**日期：** 2026-05-27  
 **状态：** 已实现  
 **关联：** [database-setup.md](./database-setup.md) · [../../docker/README.md](../../docker/README.md) · [technical-design.md §14](../architecture/technical-design.md#14-部署)
 

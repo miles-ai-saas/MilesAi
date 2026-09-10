@@ -1,6 +1,5 @@
 # 智能体对话调用记录
 
-**日期：** 2026-05-29  
 **状态：** P0–P3 与 P2 会话持久化已实现  
 **PRD 对照：** 模块4 智能体管理 · 运维配置「调用统计、日志记录」  
 **架构：** [platform-agents.md](./platform-agents.md) · [agent-chat-websocket.md](./agent-chat-websocket.md) · [realtime-transport-design.md](../architecture/realtime-transport-design.md)

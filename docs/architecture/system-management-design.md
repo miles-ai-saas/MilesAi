@@ -1,6 +1,5 @@
 # 系统管理 — 技术方案
 
-**日期：** 2026-05-27  
 **状态：** 设计稿（Phase 0–3 排期）  
 **As-Is 规格：** [features/system-management.md](../features/system-management.md)（已实现基线）  
 **关联：** [technical-design.md §5](./technical-design.md#5-多租户与权限)、[admin-ops.md](../features/admin-ops.md)、[prd.md §模块1](../product/prd.md#模块1系统管理)

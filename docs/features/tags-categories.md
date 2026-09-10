@@ -1,6 +1,5 @@
 # 标签与分类
 
-**日期：** 2026-05-27  
 **状态：** 已实现  
 **PRD 对照：** 各模块「分类管理」（横切能力）  
 **架构：** [technical-design.md §4](../architecture/technical-design.md#4-分层与模块)

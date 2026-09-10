@@ -306,30 +306,3 @@ effective_api_base  = tenant_credentials.api_base ?? model_config.api_base
 | **M2 租户目录 UI** | `GET /models` 筛选 + 卡片页 + 自定义 CRUD | 与参考图一致的分类与来源展示 |
 | **M3 BYOK** | `agt_model_tenant_credentials` + 配置 Key UI + `ModelResolveService` | 租户选内置模型并配 Key 后智能体对话成功 |
 | **M4 强化** | 下架校验（智能体引用检查）、批量导入、图标资源 | 下架内置已引用时提示 |
-
----
-
-## 10. 模块落点（实现时）
-
-| 层 | 路径 |
-|----|------|
-| ORM | `app/models/model.py` 扩展；`app/models/model_tenant_credential.py` 新增 |
-| 租户服务 | `tenant/models/services/model.py`、`model_resolve.py` |
-| 运营服务 | `admin/app_ops/services/model_catalog.py`（新建） |
-| 视图 | `tenant/models/views/models.py`；`admin/app_ops/views/model_catalog.py` |
-| 前端租户 | `ui/workbench/app/workbench/models/page.tsx` + `components/model/*` |
-| 前端运营 | `ui/admin/app/model-catalog/page.tsx` |
-| 调用链改造点 | `chat_models._http_chat_completion` 入口改为 `get_effective_config` |
-
----
-
-## 11. 与现有文档关系
-
-| 文档 | 更新点 |
-|------|--------|
-| [technical-design.md](../architecture/technical-design.md) §6 / §7 | 补充表 `agt_model_tenant_credentials`、运营 API（实施后） |
-| [README.md](../README.md) | 文档列表增加本页 |
-
----
-
-*评审通过后可按 M1→M4 拆任务实现；实现完成后将本文「状态」改为已实现并回填 As-Is。*

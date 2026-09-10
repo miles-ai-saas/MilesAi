@@ -1,6 +1,5 @@
 # 平台内智能体与内部协同
 
-**日期：** 2026-05-27  
 **状态：** 已实现  
 **PRD 对照：** 模块4 智能体管理  
 **架构：** [technical-design.md §10](../architecture/technical-design.md#10-智能体对话) · [platform-agents.md](../guides/platform-agents.md)

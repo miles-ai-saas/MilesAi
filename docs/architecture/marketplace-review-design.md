@@ -1,6 +1,5 @@
 # 应用市场上架审核 — 双部署模式方案
 
-**日期：** 2026-05-27  
 **状态：** R0–R3 已实现  
 **关联：** [marketplace.md](../features/marketplace.md) · [admin-ops-design.md](./admin-ops-design.md) · [technical-design.md §12](./technical-design.md#12-应用市场)
 
@@ -160,20 +159,7 @@ MARKETPLACE_REVIEW_TENANT_ID: ${PLATFORM_TENANT_ID}
 
 ---
 
-## 6. 分阶段实施
-
-| 阶段 | 内容 | 依赖 |
-|------|------|------|
-| **R0** | `review_mode` 配置读取 + `/marketplace/meta` 暴露；租户 approve 在 `platform` 下 403 | 无 |
-| **R1** | Admin API + `ui/admin/app/marketplace-review`；`reviewed_by_admin_id`；adm 审计 | R0 |
-| **R2** | `tenant` 模式审核范围加固（策略 A/B）；种子与文档 | R0 |
-| **R3** | `off` 模式；发布方「待平台审核」只读 UI | R1 |
-
-与 [admin-ops-design.md](./admin-ops-design.md) **Phase 5** 对齐：R1 并入运营后台迭代。
-
----
-
-## 7. 权限与种子调整
+## 6. 权限与种子调整
 
 | 模式 | `marketplace:review` |
 |------|----------------------|
@@ -185,7 +171,7 @@ MARKETPLACE_REVIEW_TENANT_ID: ${PLATFORM_TENANT_ID}
 
 ---
 
-## 8. 测试要点
+## 7. 测试要点
 
 1. `platform`：租户 review API 403；admin approve 后广场可见；`reviewed_by_admin_id` 正确。
 2. `tenant` + 策略 A：非审核租户 review 用户 403；审核租户可审全队列。
@@ -195,15 +181,7 @@ MARKETPLACE_REVIEW_TENANT_ID: ${PLATFORM_TENANT_ID}
 
 ---
 
-## 9. 文档同步
-
-- [technical-design.md §12](./technical-design.md#12-应用市场) — 「运营通过/驳回」改为「按 review_mode」
-- [features/marketplace.md](../features/marketplace.md) — §3.3 审核按模式分支
-- [features/admin-ops.md](../features/admin-ops.md) — 增加应用审核页（platform 模式）
-
----
-
-## 10. 决策摘要
+## 8. 决策摘要
 
 **SaaS + 私有化并存时，不要二选一，而要：**
 

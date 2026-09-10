@@ -1,6 +1,6 @@
 # MilesAi 技术方案
 
-> 版本：v2.2 | 日期：2026-05-28 | 与当前代码库对齐  
+> 版本：v2.2 | 与当前代码库对齐  
 > 需求基线：[prd.md](../product/prd.md) · 专题文档：[README.md](../README.md)
 
 本文描述**仓库已实现**的架构与行为；**功能规格**见 [features/](../features/)，专题见 [guides/](../guides/)。
@@ -704,5 +704,3 @@ flowchart TD
 | [features/hooks.md](../features/hooks.md) | 智能体钩子 |
 
 ---
-
-*变更实现时请同步更新本文「实施状态」与对应专题文档。*

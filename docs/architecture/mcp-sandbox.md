@@ -1,6 +1,5 @@
 # MCP 沙箱与执行隔离方案
 
-**日期：** 2026-05-25  
 **状态：** 目标架构（mcp-runner 已部分落地；STDIO 沙箱 MVP 进行中）  
 **As-Is 规格：** [features/tools-mcp-skills.md](../features/tools-mcp-skills.md) · **实现指南：** [guides/mcp.md](../guides/mcp.md)
 

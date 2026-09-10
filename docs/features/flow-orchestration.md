@@ -1,6 +1,5 @@
 # 流程编排
 
-**日期：** 2026-05-27  
 **状态：** 已实现  
 **PRD 对照：** 模块4 可视化流程编排  
 **架构：** [technical-design.md §9](../architecture/technical-design.md#9-流程编排) · [flows.md](../guides/flows.md)

@@ -1,6 +1,5 @@
 # 实时通道技术设计 — 对话 WebSocket + 资源 SSE
 
-**日期：** 2026-05-26  
 **状态：** 部分已实施（工作台 WS v1 ✅；直连/RAG 真 token 流式 ✅；tool 路径仍切块；HTTP 整包流式仍待做）  
 **As-Is 规格：** [features/agent-chat-websocket.md](../features/agent-chat-websocket.md)  
 **关联：** [multimodal-capabilities.md](../product/multimodal-capabilities.md)、[platform-agents.md](../guides/platform-agents.md)、[technical-design.md](./technical-design.md)
@@ -226,7 +225,6 @@ Authorization: Bearer <token>
 
 | 阶段 | 内容 | 对话 | 任务/其它 |
 |------|------|------|-----------|
-| **R0** | 本文档评审 | — | — |
 | **R1** | 对话 WS 基础设施：握手鉴权、心跳、连接管理 | `ping`/`pong` | ✅ `GET …/agents/{id}/chat/ws` |
 | **R2** | LLM 流式：`chat.send` → `chat.delta` + `chat.done` | ✅ 直连/RAG 真 token（LiteLLM stream）；tool/flow/A2A 仍 `emit_answer_deltas` 切块 | REST `POST /chat` 保留兼容（整包） |
 | **R3** | 工具确认：`tool.confirm_required` / `tool.confirm` | 替代确认轮 POST | — |

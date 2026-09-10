@@ -1,6 +1,5 @@
 # 系统管理
 
-**日期：** 2026-05-27  
 **状态：** 已实现  
 **PRD 对照：** 模块1 系统管理  
 **架构：** [technical-design.md §5](../architecture/technical-design.md#5-多租户与权限) · **增强方案：** [system-management-design.md](../architecture/system-management-design.md)

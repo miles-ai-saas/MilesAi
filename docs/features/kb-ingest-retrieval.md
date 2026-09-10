@@ -1,6 +1,5 @@
 # RAG 知识库
 
-**日期：** 2026-05-27  
 **状态：** 已实现  
 **PRD 对照：** 模块6 RAG多模态知识库  
 **架构：** [layering.md](../architecture/layering.md) · [knowledge-base.md](../guides/knowledge-base.md)

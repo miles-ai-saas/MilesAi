@@ -1,6 +1,5 @@
 # 工具、MCP 与技能包
 
-**日期：** 2026-05-27  
 **状态：** 已实现  
 **PRD 对照：** 模块5 工具与MCP协议生态  
 **架构：** [tools-runtime.md](../architecture/tools-runtime.md) · [mcp-sandbox.md](../architecture/mcp-sandbox.md)

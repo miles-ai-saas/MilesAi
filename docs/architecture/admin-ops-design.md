@@ -1,6 +1,5 @@
 # 运营后台 — 技术增强方案
 
-**日期：** 2026-05-27  
 **状态：** Phase 0–5 已实现；Phase 4 计费/审计产品化已完成  
 **As-Is 规格：** [features/admin-ops.md](../features/admin-ops.md)（基线能力）  
 **关联：** [technical-design.md §运营域](./technical-design.md#42-运营域)、[system-management-design.md](./system-management-design.md)、[prd.md §模块1a](../product/prd.md#as-is-module-1)
@@ -346,7 +345,7 @@ async def get_platform_admin(...):
 - 列表返回 `plan_name`、`agents_used/max_agents` 等摘要（Service 层 join / 子查询）。
 - 详情页「用量趋势」只读图表（Phase 4）。
 
-**不变约束：** 租户 API `PATCH /tenants/{id}` 若存在，Service 继续 strip `max_*`（非运营上下文不可写配额）。
+**不变约束：** 租户 API `PATCH /tenants/{id}` 若存在，Service 继续 strip `max_*`（非运营上下文不可写配额）；租户侧 [system-management-design](./system-management-design.md) 配额只读，运营配额页为唯一写入口。
 
 ### 5.3 计费（Phase 1 + 4）
 
@@ -444,42 +443,7 @@ draft → issued → paid
 
 ---
 
-## 8. 里程碑与依赖
-
-```mermaid
-gantt
-    title 运营后台增强排期（示意）
-    dateFormat YYYY-MM-DD
-    section P0 安全
-    会话 jti 校验           :p0, 2026-05-27, 5d
-    section P1 产品化
-    计费 UI + Dashboard     :p1, after p0, 10d
-    平台管理员 CRUD         :p2, after p0, 7d
-    section P1 风控
-    中间件生效              :p3, after p1, 14d
-    section P2
-    账单状态 + 审计导出     :p4, after p3, 10d
-```
-
-**依赖：**
-
-- Phase 3 依赖 Redis 可用（与现网一致）。
-- Phase 2 可与 Phase 1 并行（不同开发者）。
-- 租户 [system-management-design](./system-management-design.md) Phase 1 配额只读已落地，运营配额页为唯一写入口。
-
----
-
-## 9. 文档与状态维护
-
-实施后同步更新：
-
-- [features/admin-ops.md](../features/admin-ops.md) — API 列表、页面表、分层状态
-- [product/prd.md](../product/prd.md) As-Is 模块 1a — 风控/管理员/计费描述
-- 本文件 **状态** 字段：Phase 完成后改为「Phase 0–N 已实现」
-
----
-
-## 10. 参考
+## 8. 参考
 
 - [features/admin-ops.md](../features/admin-ops.md)
 - [features/system-management.md](../features/system-management.md)

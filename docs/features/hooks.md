@@ -1,6 +1,5 @@
 # 智能体钩子（Hook）
 
-**日期：** 2026-05-28  
 **状态：** HTTP / Python 钩子已实现  
 **PRD 对照：** 模块2 全局执行钩子  
 **架构：** [technical-design.md §11.2](../architecture/technical-design.md#112-钩子) · [hooks.md](../guides/hooks.md)
