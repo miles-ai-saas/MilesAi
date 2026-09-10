@@ -103,17 +103,11 @@ async def test_generate_node_forwards_on_delta():
     }
     config = {"configurable": {"model": model, "on_delta": delta, "usage_sink": usage_sink}}
 
-    with (
-        patch(
-            "app.integrations.langgraph.graphs.rag_qa.ainvoke_chat",
-            new_callable=AsyncMock,
-            return_value="答案",
-        ) as mock_chat,
-        patch("app.integrations.langgraph.graphs.rag_qa.AsyncSessionLocal") as session_cls,
-    ):
-        db = MagicMock()
-        session_cls.return_value.__aenter__ = AsyncMock(return_value=db)
-        session_cls.return_value.__aexit__ = AsyncMock(return_value=None)
+    with patch(
+        "app.integrations.langgraph.graphs.rag_qa.ainvoke_chat",
+        new_callable=AsyncMock,
+        return_value="答案",
+    ) as mock_chat:
         out = await generate(state, config)
 
     assert out["answer"] == "答案"
@@ -140,17 +134,11 @@ async def test_fallback_node_forwards_on_delta():
     }
     config = {"configurable": {"model": model, "on_delta": delta, "usage_sink": usage_sink}}
 
-    with (
-        patch(
-            "app.integrations.langgraph.graphs.rag_qa.ainvoke_chat",
-            new_callable=AsyncMock,
-            return_value="兜底",
-        ) as mock_chat,
-        patch("app.integrations.langgraph.graphs.rag_qa.AsyncSessionLocal") as session_cls,
-    ):
-        db = MagicMock()
-        session_cls.return_value.__aenter__ = AsyncMock(return_value=db)
-        session_cls.return_value.__aexit__ = AsyncMock(return_value=None)
+    with patch(
+        "app.integrations.langgraph.graphs.rag_qa.ainvoke_chat",
+        new_callable=AsyncMock,
+        return_value="兜底",
+    ) as mock_chat:
         out = await fallback(state, config)
 
     assert out["answer"] == "兜底"
