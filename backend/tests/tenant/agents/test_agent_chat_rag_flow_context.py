@@ -67,6 +67,9 @@ def test_flow_run_context_injects_resolvers_and_bindings_always():
     # 租户敏感词表加载回调恒定注入（画布 ComplianceCheck 节点装配）
     assert ctx.load_scan_words is not None
     assert callable(ctx.load_scan_words)
+    # 子流程图加载回调恒定注入（画布 SubFlow/LoopNode 节点装配）
+    assert ctx.load_subflow_graph is not None
+    assert callable(ctx.load_subflow_graph)
 
 
 def test_flow_run_context_injects_submitters_when_async_enabled(monkeypatch):
