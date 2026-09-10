@@ -21,10 +21,7 @@ _LLM_COLLAGE_DIRECTIVE_RE = re.compile(
     re.IGNORECASE,
 )
 
-_SINGLE_SHOT_SUFFIX = (
-    "。成片要求：仅一幅独立完整画面，禁止四宫格/九宫格/分镜拼贴/多图拼接；"
-    "不要在同一张图内排列多个视角、多款产品或多种构图。"
-)
+_SINGLE_SHOT_SUFFIX = "。成片要求：仅一幅独立完整画面，禁止四宫格/九宫格/分镜拼贴/多图拼接；不要在同一张图内排列多个视角、多款产品或多种构图。"
 
 
 def user_requests_image_collage(text: str | None) -> bool:

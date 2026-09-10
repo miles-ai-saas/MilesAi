@@ -37,9 +37,7 @@ async def _ctx_from_api_key(
     if row.agent_id != agent_id:
         raise ForbiddenError("API Key 与目标智能体不匹配")
     result = await db.execute(
-        select(User)
-        .where(User.id == row.created_by, User.is_active.is_(True))
-        .options(selectinload(User.roles).selectinload(Role.permissions))
+        select(User).where(User.id == row.created_by, User.is_active.is_(True)).options(selectinload(User.roles).selectinload(Role.permissions))
     )
     user = result.scalar_one_or_none()
     if not user:

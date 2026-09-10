@@ -95,9 +95,7 @@ class AgentChatSessionService(BaseService):
         return int(current or -1) + 1
 
     async def _session_out(self, row: AgentChatSession) -> ChatSessionOut:
-        count = await self.db.scalar(
-            select(func.count()).select_from(AgentChatMessage).where(AgentChatMessage.session_id == row.id)
-        )
+        count = await self.db.scalar(select(func.count()).select_from(AgentChatMessage).where(AgentChatMessage.session_id == row.id))
         return ChatSessionOut(
             id=row.id,
             agent_id=row.agent_id,
@@ -111,13 +109,7 @@ class AgentChatSessionService(BaseService):
         await self._ensure_agent(agent_id)
         filters = tenant_filters(self.ctx, AgentChatSession.tenant_id) + [AgentChatSession.agent_id == agent_id]
         total = await self.db.scalar(select(func.count()).select_from(AgentChatSession).where(*filters))
-        stmt = (
-            select(AgentChatSession)
-            .where(*filters)
-            .order_by(AgentChatSession.updated_at.desc())
-            .offset((params.page - 1) * params.size)
-            .limit(params.size)
-        )
+        stmt = select(AgentChatSession).where(*filters).order_by(AgentChatSession.updated_at.desc()).offset((params.page - 1) * params.size).limit(params.size)
         rows = list((await self.db.scalars(stmt)).all())
         items = [await self._session_out(row) for row in rows]
         return PageResult(items=items, total=int(total or 0), page=params.page, size=params.size)

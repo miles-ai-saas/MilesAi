@@ -33,9 +33,7 @@ def test_loader_delegates_with_short_session_and_tenant(monkeypatch):
         calls.append((db, tenant_id))
         return [("foo", SensitiveAction.WARN)]
 
-    monkeypatch.setattr(
-        loader_mod, "AsyncSessionLocal", lambda: _FakeSessionCtx(fake_db)
-    )
+    monkeypatch.setattr(loader_mod, "AsyncSessionLocal", lambda: _FakeSessionCtx(fake_db))
     monkeypatch.setattr(loader_mod, "load_tenant_scan_words", fake_load_tenant_scan_words)
 
     tenant_uuid = uuid4()

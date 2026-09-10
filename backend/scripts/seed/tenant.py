@@ -101,7 +101,6 @@ async def seed_tenant(session: AsyncSession) -> None:
         return
 
     permissions = (await session.execute(select(Permission).where(Permission.code.in_([c for c, _, _ in DEFAULT_PERMISSIONS])))).scalars().all()
-    perm_by_code = {p.code: p for p in permissions}
 
     tenant = Tenant(name=settings.seed_tenant_name, description="系统默认租户")
     session.add(tenant)

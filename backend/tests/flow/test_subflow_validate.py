@@ -58,6 +58,7 @@ class RaisingRepo:
 
 # ---- A：无需 repo 的校验 ----
 
+
 @pytest.mark.asyncio
 async def test_missing_sub_flow_id_no_repo_call():
     errors = await validate_subflow_references(
@@ -96,6 +97,7 @@ async def test_invalid_sub_flow_id_no_repo_call():
 
 # ---- B：子流程不存在 ----
 
+
 @pytest.mark.asyncio
 async def test_subflow_not_found():
     tenant_id = uuid4()
@@ -112,6 +114,7 @@ async def test_subflow_not_found():
 
 # ---- C：子流程未发布 ----
 
+
 @pytest.mark.asyncio
 async def test_subflow_not_published():
     tenant_id = uuid4()
@@ -126,6 +129,7 @@ async def test_subflow_not_published():
 
 
 # ---- D：pinned 版本缺失 ----
+
 
 @pytest.mark.asyncio
 async def test_subflow_pinned_missing():
@@ -143,6 +147,7 @@ async def test_subflow_pinned_missing():
 
 
 # ---- E：通过 ----
+
 
 @pytest.mark.asyncio
 async def test_validate_subflow_references_passes():

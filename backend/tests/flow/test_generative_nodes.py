@@ -137,8 +137,7 @@ def test_image_generate_async_submits_via_callback(monkeypatch):
 
     mid, job = uuid4(), uuid4()
 
-    async def fake_submit(db, tenant_ctx, *, prompt, size, n, image_attachment_id,
-                          model_config_id, agent_id=None, agent_config=None):
+    async def fake_submit(db, tenant_ctx, *, prompt, size, n, image_attachment_id, model_config_id, agent_id=None, agent_config=None):
         assert model_config_id == mid
         return job
 
@@ -165,9 +164,9 @@ def test_video_generate_async_submits_via_callback(monkeypatch):
 
     mid, job = uuid4(), uuid4()
 
-    async def fake_submit(db, tenant_ctx, *, prompt, duration, resolution,
-                          image_attachment_id, last_frame_attachment_id,
-                          model_config_id, agent_id=None, agent_config=None):
+    async def fake_submit(
+        db, tenant_ctx, *, prompt, duration, resolution, image_attachment_id, last_frame_attachment_id, model_config_id, agent_id=None, agent_config=None
+    ):
         assert duration == 5
         assert model_config_id == mid
         return job

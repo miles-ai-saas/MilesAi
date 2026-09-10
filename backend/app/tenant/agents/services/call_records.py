@@ -230,12 +230,7 @@ class AgentCallRecordService(BaseService):
             ToolInvocationLog.created_at >= start,
             ToolInvocationLog.created_at <= end,
         ]
-        stmt = (
-            select(ToolInvocationLog)
-            .where(*filters)
-            .order_by(ToolInvocationLog.created_at.asc())
-            .limit(RELATED_LOG_LIMIT)
-        )
+        stmt = select(ToolInvocationLog).where(*filters).order_by(ToolInvocationLog.created_at.asc()).limit(RELATED_LOG_LIMIT)
         items = list((await self.db.scalars(stmt)).all())
         return [ToolInvocationLogOut.model_validate(i) for i in items]
 
@@ -245,12 +240,7 @@ class AgentCallRecordService(BaseService):
         filters = tenant_filters(self.ctx, HookExecutionLog.tenant_id) + [
             HookExecutionLog.trace_id == row.trace_id,
         ]
-        stmt = (
-            select(HookExecutionLog)
-            .where(*filters)
-            .order_by(HookExecutionLog.created_at.asc())
-            .limit(RELATED_LOG_LIMIT)
-        )
+        stmt = select(HookExecutionLog).where(*filters).order_by(HookExecutionLog.created_at.asc()).limit(RELATED_LOG_LIMIT)
         items = list((await self.db.scalars(stmt)).all())
         return [HookExecutionLogOut.model_validate(i) for i in items]
 
@@ -289,13 +279,7 @@ class AgentCallRecordService(BaseService):
             filters.append(AgentChatCall.created_at <= to_dt)
 
         total = await self.db.scalar(select(func.count()).select_from(AgentChatCall).where(*filters))
-        stmt = (
-            select(AgentChatCall)
-            .where(*filters)
-            .order_by(AgentChatCall.created_at.desc())
-            .offset((params.page - 1) * params.size)
-            .limit(params.size)
-        )
+        stmt = select(AgentChatCall).where(*filters).order_by(AgentChatCall.created_at.desc()).offset((params.page - 1) * params.size).limit(params.size)
         items = list((await self.db.scalars(stmt)).all())
         return PageResult(
             items=await self._attach_usernames(items),

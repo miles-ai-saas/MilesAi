@@ -77,14 +77,9 @@ class AgentStatsService(BaseService):
             AgentChatCall.conversation_id != "",
         ]
 
-        messages_total = int(
-            await self.db.scalar(select(func.count()).select_from(AgentChatCall).where(*base_filters)) or 0
-        )
+        messages_total = int(await self.db.scalar(select(func.count()).select_from(AgentChatCall).where(*base_filters)) or 0)
         sessions_total = int(
-            await self.db.scalar(
-                select(func.count(func.distinct(AgentChatCall.conversation_id))).select_from(AgentChatCall).where(*session_filters)
-            )
-            or 0
+            await self.db.scalar(select(func.count(func.distinct(AgentChatCall.conversation_id))).select_from(AgentChatCall).where(*session_filters)) or 0
         )
         active_users_total = int(
             await self.db.scalar(
@@ -96,15 +91,11 @@ class AgentStatsService(BaseService):
         )
 
         day_col = cast(AgentChatCall.created_at, Date)
-        msg_rows = await self.db.execute(
-            select(day_col.label("day"), func.count(AgentChatCall.id)).where(*base_filters).group_by(day_col)
-        )
+        msg_rows = await self.db.execute(select(day_col.label("day"), func.count(AgentChatCall.id)).where(*base_filters).group_by(day_col))
         messages_by_day = {row.day.isoformat(): int(row[1]) for row in msg_rows.all()}
 
         sess_rows = await self.db.execute(
-            select(day_col.label("day"), func.count(func.distinct(AgentChatCall.conversation_id)))
-            .where(*session_filters)
-            .group_by(day_col)
+            select(day_col.label("day"), func.count(func.distinct(AgentChatCall.conversation_id))).where(*session_filters).group_by(day_col)
         )
         sessions_by_day = {row.day.isoformat(): int(row[1]) for row in sess_rows.all()}
 
@@ -115,9 +106,7 @@ class AgentStatsService(BaseService):
         )
         active_users_by_day = {row.day.isoformat(): int(row[1]) for row in user_rows.all()}
 
-        avg_rounds_by_day = {
-            d: _avg_rounds(int(messages_by_day.get(d, 0)), int(sessions_by_day.get(d, 0))) for d in day_labels
-        }
+        avg_rounds_by_day = {d: _avg_rounds(int(messages_by_day.get(d, 0)), int(sessions_by_day.get(d, 0))) for d in day_labels}
 
         return AgentStatsOut(
             days=n,

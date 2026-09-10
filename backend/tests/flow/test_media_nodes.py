@@ -61,9 +61,7 @@ async def test_ocr_extract_reads_image_via_reader(monkeypatch):
 @pytest.mark.asyncio
 async def test_audio_transcribe_reads_attachment_filename(monkeypatch):
     aid = uuid4()
-    reader = FakeReader(
-        attachment=AttachmentBytes(data=b"AUD", mime="audio/mpeg", filename="a.mp3")
-    )
+    reader = FakeReader(attachment=AttachmentBytes(data=b"AUD", mime="audio/mpeg", filename="a.mp3"))
     ctx = RunContext(tenant_id=str(uuid4()), media_reader=reader)
 
     seen: list[tuple[bytes, str]] = []
@@ -87,9 +85,7 @@ async def test_audio_transcribe_reads_attachment_filename(monkeypatch):
 @pytest.mark.asyncio
 async def test_audio_transcribe_filename_fallback(monkeypatch):
     aid = uuid4()
-    reader = FakeReader(
-        attachment=AttachmentBytes(data=b"AUD", mime="audio/mpeg", filename=None)
-    )
+    reader = FakeReader(attachment=AttachmentBytes(data=b"AUD", mime="audio/mpeg", filename=None))
     ctx = RunContext(tenant_id=str(uuid4()), media_reader=reader)
 
     monkeypatch.setattr(media_nodes, "parse_audio", lambda data, filename: "ASR")
@@ -129,15 +125,11 @@ async def test_resolve_attachment_id_variants(monkeypatch):
     reader = FakeReader(image=AttachmentBytes(data=b"IMG", mime="image/png"))
     ctx = RunContext(tenant_id=str(uuid4()), media_reader=reader)
     monkeypatch.setattr(media_nodes, "parse_image", lambda data, name: "OCR-TEXT")
-    out = await media_nodes.ocr_extract(
-        {}, {"media": [{"attachment_id": str(aid)}]}, ctx
-    )
+    out = await media_nodes.ocr_extract({}, {"media": [{"attachment_id": str(aid)}]}, ctx)
     assert out["attachment_id"] == str(aid)
 
     # node_data.input_key 命中 inputs 键
     reader2 = FakeReader(image=AttachmentBytes(data=b"IMG", mime="image/png"))
     ctx2 = RunContext(tenant_id=str(uuid4()), media_reader=reader2)
-    out2 = await media_nodes.ocr_extract(
-        {"input_key": "file"}, {"file": str(aid)}, ctx2
-    )
+    out2 = await media_nodes.ocr_extract({"input_key": "file"}, {"file": str(aid)}, ctx2)
     assert out2["attachment_id"] == str(aid)

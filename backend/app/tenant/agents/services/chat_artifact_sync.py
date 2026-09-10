@@ -45,17 +45,9 @@ def artifacts_payload_from_job(job: GenerativeJob) -> list[dict]:
     result_kind = str(result.get("kind") or kind)
     mime = result.get("mime_type")
     raw_ids = result.get("attachment_ids")
-    ids = (
-        [str(i) for i in raw_ids]
-        if isinstance(raw_ids, list) and raw_ids
-        else ([str(result["attachment_id"])] if result.get("attachment_id") else [])
-    )
+    ids = [str(i) for i in raw_ids] if isinstance(raw_ids, list) and raw_ids else ([str(result["attachment_id"])] if result.get("attachment_id") else [])
     raw_mids = result.get("media_asset_ids")
-    mids = (
-        [str(i) for i in raw_mids]
-        if isinstance(raw_mids, list) and raw_mids
-        else ([str(result["media_asset_id"])] if result.get("media_asset_id") else [])
-    )
+    mids = [str(i) for i in raw_mids] if isinstance(raw_mids, list) and raw_mids else ([str(result["media_asset_id"])] if result.get("media_asset_id") else [])
     if not ids:
         return [{**base, "kind": result_kind, "status": "success", "caption": "生成完成"}]
     return [
@@ -163,10 +155,7 @@ async def sync_job_result_to_chat_messages(db: AsyncSession, job: GenerativeJob)
         agent_id = job.source_ref_id
 
     max_sort = await db.scalar(
-        select(AgentChatMessage.sort_index)
-        .where(AgentChatMessage.session_id == conversation_id)
-        .order_by(AgentChatMessage.sort_index.desc())
-        .limit(1)
+        select(AgentChatMessage.sort_index).where(AgentChatMessage.session_id == conversation_id).order_by(AgentChatMessage.sort_index.desc()).limit(1)
     )
     sort_index = int(max_sort or -1) + 1
     prompt = str(params.get("prompt") or "").strip()

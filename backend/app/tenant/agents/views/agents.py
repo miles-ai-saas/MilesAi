@@ -208,11 +208,14 @@ async def get_agent_chat_session(
     ctx: TenantContext = Depends(require_permissions("agent:read")),
     db: AsyncSession = Depends(get_db),
 ):
-    return ok(await _chat_session_svc(db, ctx).get_session(
-        agent_id, session_id,
-        before_sort_index=before_sort_index,
-        limit=limit,
-    ))
+    return ok(
+        await _chat_session_svc(db, ctx).get_session(
+            agent_id,
+            session_id,
+            before_sort_index=before_sort_index,
+            limit=limit,
+        )
+    )
 
 
 @router.patch("/{agent_id}/chat-sessions/{session_id}", response_model=ApiResponse[ChatSessionOut])

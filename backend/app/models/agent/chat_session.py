@@ -17,9 +17,7 @@ class AgentChatSession(Base):
     """对话会话；``id`` 与前端 ``conversation_id`` 一致。"""
 
     __tablename__ = "agt_chat_sessions"
-    __table_args__ = (
-        Index("idx_agt_chat_sessions_tenant_agent_updated", "tenant_id", "agent_id", "updated_at"),
-    )
+    __table_args__ = (Index("idx_agt_chat_sessions_tenant_agent_updated", "tenant_id", "agent_id", "updated_at"),)
 
     id: Mapped[str] = mapped_column(String(128), primary_key=True)
     tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)

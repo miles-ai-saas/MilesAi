@@ -28,16 +28,12 @@ def _ctx(tenant_id) -> TenantContext:
 
 def _install(monkeypatch, att: SimpleNamespace):
     async def fake_resolve_object_storage_async(tenant_id, db):
-        return SimpleNamespace(
-            storage=SimpleNamespace(download_bytes=lambda key, bucket: b"raw")
-        )
+        return SimpleNamespace(storage=SimpleNamespace(download_bytes=lambda key, bucket: b"raw"))
 
     async def fake_get_or_raise(self, attachment_id):
         return att
 
-    monkeypatch.setattr(
-        attachment_mod, "resolve_object_storage_async", fake_resolve_object_storage_async
-    )
+    monkeypatch.setattr(attachment_mod, "resolve_object_storage_async", fake_resolve_object_storage_async)
     monkeypatch.setattr(AttachmentService, "_get_or_raise", fake_get_or_raise)
 
 

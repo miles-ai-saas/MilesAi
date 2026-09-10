@@ -68,7 +68,8 @@ async def run_generative_video_job_async(job_id: UUID) -> None:
         job.progress_percent = 5
         await db.commit()
         await publish_generative_job_update(
-            job.tenant_id, job_id,
+            job.tenant_id,
+            job_id,
             status=job.status.value,
             percent=job.progress_percent,
             message=job.progress_message,
@@ -91,18 +92,23 @@ async def run_generative_video_job_async(job_id: UUID) -> None:
                 except (TypeError, ValueError):
                     pass
             model = await resolve_video_gen_model(
-                db, ctx,
+                db,
+                ctx,
                 model_config_id=_optional_uuid(params.get("model_config_id")),
                 agent_config=agent_cfg,
             )
             result = await generate_video_for_model(
-                db, ctx, model,
+                db,
+                ctx,
+                model,
                 prompt=prompt,
                 duration=duration,
                 resolution=params.get("resolution"),
                 image_attachment_id=_optional_uuid(params.get("image_attachment_id")),
                 last_frame_attachment_id=_optional_uuid(params.get("last_frame_attachment_id")),
-                purpose=purpose, agent_id=agent_id, generative_job_id=job_id,
+                purpose=purpose,
+                agent_id=agent_id,
+                generative_job_id=job_id,
                 trace_id=job.trace_id,
             )
             job = await db.get(GenerativeJob, job_id)
@@ -121,7 +127,8 @@ async def run_generative_video_job_async(job_id: UUID) -> None:
             job.error_message = None
             await db.commit()
             await publish_generative_job_update(
-                job.tenant_id, job_id,
+                job.tenant_id,
+                job_id,
                 status=job.status.value,
                 percent=job.progress_percent,
                 message=job.progress_message,
@@ -134,7 +141,8 @@ async def run_generative_video_job_async(job_id: UUID) -> None:
                 job.progress_message = "已取消"
                 await db.commit()
                 await publish_generative_job_update(
-                    job.tenant_id, job_id,
+                    job.tenant_id,
+                    job_id,
                     status=job.status.value,
                     message=job.progress_message,
                 )
@@ -150,7 +158,8 @@ async def run_generative_video_job_async(job_id: UUID) -> None:
                 job.error_message = str(exc)[:2000]
                 await db.commit()
                 await publish_generative_job_update(
-                    job.tenant_id, job_id,
+                    job.tenant_id,
+                    job_id,
                     status=job.status.value,
                     message=job.progress_message,
                 )
@@ -181,7 +190,8 @@ async def run_generative_image_job_async(job_id: UUID) -> None:
         job.progress_percent = 5
         await db.commit()
         await publish_generative_job_update(
-            job.tenant_id, job_id,
+            job.tenant_id,
+            job_id,
             status=job.status.value,
             percent=job.progress_percent,
             message=job.progress_message,
@@ -207,15 +217,22 @@ async def run_generative_image_job_async(job_id: UUID) -> None:
                 except (TypeError, ValueError):
                     pass
             model = await resolve_image_gen_model(
-                db, ctx,
+                db,
+                ctx,
                 model_config_id=_optional_uuid(params.get("model_config_id")),
                 agent_config=params.get("agent_config") if isinstance(params.get("agent_config"), dict) else {},
             )
             result = await generate_image_for_model(
-                db, ctx, model,
-                prompt=prompt, size=params.get("size"), n=n,
+                db,
+                ctx,
+                model,
+                prompt=prompt,
+                size=params.get("size"),
+                n=n,
                 reference_attachment_id=_optional_uuid(params.get("image_attachment_id")),
-                purpose=purpose, agent_id=agent_id, generative_job_id=job_id,
+                purpose=purpose,
+                agent_id=agent_id,
+                generative_job_id=job_id,
                 trace_id=job.trace_id,
                 allow_collage=bool(params.get("allow_collage") or agent_cfg.get("_image_allow_collage")),
             )
@@ -239,7 +256,8 @@ async def run_generative_image_job_async(job_id: UUID) -> None:
             job.error_message = None
             await db.commit()
             await publish_generative_job_update(
-                job.tenant_id, job_id,
+                job.tenant_id,
+                job_id,
                 status=job.status.value,
                 percent=job.progress_percent,
                 message=job.progress_message,
@@ -252,7 +270,8 @@ async def run_generative_image_job_async(job_id: UUID) -> None:
                 job.progress_message = "已取消"
                 await db.commit()
                 await publish_generative_job_update(
-                    job.tenant_id, job_id,
+                    job.tenant_id,
+                    job_id,
                     status=job.status.value,
                     message=job.progress_message,
                 )
@@ -268,7 +287,8 @@ async def run_generative_image_job_async(job_id: UUID) -> None:
                 job.error_message = str(exc)[:2000]
                 await db.commit()
                 await publish_generative_job_update(
-                    job.tenant_id, job_id,
+                    job.tenant_id,
+                    job_id,
                     status=job.status.value,
                     message=job.progress_message,
                 )

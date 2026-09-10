@@ -64,9 +64,7 @@ def test_invoke_delegates_params_and_confirmed(monkeypatch):
         )
         return {"ok": True}
 
-    monkeypatch.setattr(
-        executor_mod, "invoke_tool_with_context", fake_invoke_tool_with_context
-    )
+    monkeypatch.setattr(executor_mod, "invoke_tool_with_context", fake_invoke_tool_with_context)
 
     db, ctx = object(), object()
     agent_id, actor_user_id = uuid4(), uuid4()
@@ -101,9 +99,7 @@ def test_invoke_converts_confirmation_required_to_signal(monkeypatch):
     async def fake_invoke_tool_with_context(*args, **kwargs):
         raise ToolConfirmationRequired("calc", "计算器", None, {"a": 1})
 
-    monkeypatch.setattr(
-        executor_mod, "invoke_tool_with_context", fake_invoke_tool_with_context
-    )
+    monkeypatch.setattr(executor_mod, "invoke_tool_with_context", fake_invoke_tool_with_context)
 
     executor = AgentToolExecutor(object(), object(), agent_id=None, actor_user_id=None)
 

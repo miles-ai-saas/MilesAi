@@ -390,3 +390,5 @@ backend/tests/
 | 2026-09-09 | G2-4a：画布媒体读取收敛——MediaReader 中立契约 + RunContext.media_reader + L1 短会话读取器，flow_runtime/nodes 对 tenant 清零（G2 画布节点面收官） |
 | 2026-09-10 | G1-2：生成面租户编排下沉 L1——`integrations/generative` 只留纯厂商派发，`RunContext.generate_{image,video}_sync` 注入画布同步分支，L3 生成面对 tenant 清零 |
 | 2026-09-10 | G1-3：`integrations/chat` 媒体读取收敛——MediaReader 注入多模态 I/O + L1 SessionMediaReader，**L3（integrations + flow_runtime）对 tenant 全域清零，engine DI 收官** |
+| 2026-09-10 | G1-3 收尾：生成日配额策略 `quota.py` L3→L1 内聚性归位；RAG 有附图但缺 `media_reader` 改显式 `BadRequestError`（不再静默丢图） |
+| 2026-09-10 | CI 门禁：`ruff check` / `ruff format --check` / OpenAPI 快照 / L3 反依赖守卫 + 全量 `pytest` 纳入 `lint.yml`；同时清掉遗留 F841/E402/F401 并统一 24 文件格式 |

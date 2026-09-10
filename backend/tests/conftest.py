@@ -69,4 +69,3 @@ async def api_client(api_app):
     transport = ASGITransport(app=api_app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         yield client
-

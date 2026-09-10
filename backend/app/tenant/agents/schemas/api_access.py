@@ -6,15 +6,9 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-DEBUG_TOKEN_WARNING = (
-    "此令牌等效于当前登录用户凭据，请勿提交到代码仓库或分享；"
-    "过期或登出相关会话后失效。正式对外请使用 API Key。"
-)
+DEBUG_TOKEN_WARNING = "此令牌等效于当前登录用户凭据，请勿提交到代码仓库或分享；过期或登出相关会话后失效。正式对外请使用 API Key。"
 
-API_KEY_CREATED_WARNING = (
-    "请立即复制并安全保存完整密钥；关闭后将无法再次查看明文。"
-    "密钥不过期，可在工作台吊销。"
-)
+API_KEY_CREATED_WARNING = "请立即复制并安全保存完整密钥；关闭后将无法再次查看明文。密钥不过期，可在工作台吊销。"
 
 MAX_ACTIVE_AGENT_API_KEYS = 8
 

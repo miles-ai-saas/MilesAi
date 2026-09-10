@@ -24,6 +24,10 @@ jobs:
         run: ruff check .
       - name: OpenAPI snapshot check
         run: python scripts/export_openapi.py --check
+      - name: L3 reverse-dependency guard（integrations/flow_runtime 不得 import tenant）
+        run: python -m pytest tests/test_l3_neutral_imports.py -q
+      - name: Backend tests
+        run: python -m pytest -q
 
   workbench:
     runs-on: ubuntu-latest

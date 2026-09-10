@@ -62,11 +62,7 @@ class MonitorService(BaseService):
     async def _task_summary(self) -> TaskSummary:
         """按状态统计租户 Celery 任务数量（单次 GROUP BY 查询）。"""
         filters = tenant_filters(self.ctx, CeleryTaskRecord.tenant_id)
-        rows = await self.db.execute(
-            select(CeleryTaskRecord.status, func.count(CeleryTaskRecord.id))
-            .where(*filters)
-            .group_by(CeleryTaskRecord.status)
-        )
+        rows = await self.db.execute(select(CeleryTaskRecord.status, func.count(CeleryTaskRecord.id)).where(*filters).group_by(CeleryTaskRecord.status))
         status_map: dict[str, int] = {row[0].value if hasattr(row[0], "value") else str(row[0]): int(row[1]) for row in rows.all()}
 
         total = sum(status_map.values())

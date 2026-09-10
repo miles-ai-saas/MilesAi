@@ -5,6 +5,7 @@
 ``flow_runtime/subflow``、``flow_runtime/nodes/compliance_nodes.py`` 等具体模块）
 以及 ``models/compliance``、``models/media`` 均已对 tenant 域清零；
 这里以源码扫描（覆盖全部 ``integrations/**`` 与 ``flow_runtime/**``）防止回归。
+已接入 CI 门禁（``.github/workflows/lint.yml`` 的 ``L3 reverse-dependency guard`` 步骤）。
 """
 
 from __future__ import annotations

@@ -52,9 +52,7 @@ async def test_litellm_chat_completion_stream_calls_on_delta_and_returns_full():
         litellm = MagicMock()
         litellm.acompletion = AsyncMock(side_effect=fake_stream)
         imp.return_value = litellm
-        text = await litellm_chat_completion_stream(
-            m, [{"role": "user", "content": "hi"}], on_delta=on_delta
-        )
+        text = await litellm_chat_completion_stream(m, [{"role": "user", "content": "hi"}], on_delta=on_delta)
 
     assert text == "你好"
     assert chunks == ["你", "好"]
@@ -70,14 +68,17 @@ async def test_ainvoke_chat_uses_stream_when_on_delta_set():
     async def on_delta(t: str) -> None:
         captured["delta"] = t
 
-    with patch(
-        "app.integrations.langchain.chat_models.litellm_chat_completion_stream",
-        new_callable=AsyncMock,
-        return_value="streamed",
-    ) as mock_stream, patch(
-        "app.integrations.langchain.chat_models.litellm_chat_completion",
-        new_callable=AsyncMock,
-    ) as mock_non_stream:
+    with (
+        patch(
+            "app.integrations.langchain.chat_models.litellm_chat_completion_stream",
+            new_callable=AsyncMock,
+            return_value="streamed",
+        ) as mock_stream,
+        patch(
+            "app.integrations.langchain.chat_models.litellm_chat_completion",
+            new_callable=AsyncMock,
+        ) as mock_non_stream,
+    ):
         out = await ainvoke_chat(
             m,
             [{"role": "user", "content": "hi"}],
@@ -97,14 +98,17 @@ async def test_ainvoke_chat_uses_non_stream_when_on_delta_none():
 
     m = _model()
 
-    with patch(
-        "app.integrations.langchain.chat_models.litellm_chat_completion_stream",
-        new_callable=AsyncMock,
-    ) as mock_stream, patch(
-        "app.integrations.langchain.chat_models.litellm_chat_completion",
-        new_callable=AsyncMock,
-        return_value="non-streamed",
-    ) as mock_non_stream:
+    with (
+        patch(
+            "app.integrations.langchain.chat_models.litellm_chat_completion_stream",
+            new_callable=AsyncMock,
+        ) as mock_stream,
+        patch(
+            "app.integrations.langchain.chat_models.litellm_chat_completion",
+            new_callable=AsyncMock,
+            return_value="non-streamed",
+        ) as mock_non_stream,
+    ):
         out = await ainvoke_chat(m, [{"role": "user", "content": "hi"}])
 
     assert out == "non-streamed"

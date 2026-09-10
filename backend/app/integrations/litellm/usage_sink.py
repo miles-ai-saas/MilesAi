@@ -13,5 +13,4 @@ class UsageSink(Protocol):
     随引擎调用注入；adapter 只调用本协议，不感知落库/累计细节。
     """
 
-    async def record(self, *, prompt_tokens: int, completion_tokens: int) -> None:
-        ...
+    async def record(self, *, prompt_tokens: int, completion_tokens: int) -> None: ...

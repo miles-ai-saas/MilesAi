@@ -58,6 +58,7 @@ async def generate_dashscope_t2i(
     }
 
     import logging
+
     _log = logging.getLogger(__name__)
 
     should_cancel = progress.is_cancelled if progress and hasattr(progress, "is_cancelled") else None

@@ -249,7 +249,8 @@ class GenerativeJobService(BaseService):
         job.progress_message = "已取消"
         await self.db.flush()
         await publish_generative_job_update(
-            job.tenant_id, job_id,
+            job.tenant_id,
+            job_id,
             status=job.status.value,
             message=job.progress_message,
         )

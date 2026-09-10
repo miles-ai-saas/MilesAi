@@ -180,9 +180,7 @@ class AgentChatEntryMixin:
                         )
 
             route = self._resolve_rag_route(agent, kb_ids)
-            response = await self.rag_chat(
-                agent, chat_body, kb_ids, top_k, agent_id, hooks, on_delta=on_delta
-            )
+            response = await self.rag_chat(agent, chat_body, kb_ids, top_k, agent_id, hooks, on_delta=on_delta)
             response = await self.maybe_augment_a2a(agent, chat_body, response)
             return await self._complete_chat_turn(
                 recorder,

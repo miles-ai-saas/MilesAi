@@ -17944,6 +17944,7 @@
         "type": "object"
       },
       "SensitiveAction": {
+        "description": "敏感词处置动作。",
         "enum": [
           "warn",
           "block"
