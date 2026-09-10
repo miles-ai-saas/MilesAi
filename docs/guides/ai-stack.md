@@ -1,6 +1,6 @@
 # AI 栈（LangChain / LangGraph / DeepAgents）
 
-> 类型：实现说明 | 状态：已实现 | 关联：[layering.md](../architecture/layering.md)、[rag-module-migration.md](../architecture/rag-module-migration.md)、[flows.md](./flows.md)
+> 类型：实现说明 | 状态：已实现 | 关联：[layering.md](../architecture/layering.md)、[flows.md](./flows.md)
 
 | 层级 | 路径 | 技术 | 职责 |
 |------|------|------|------|

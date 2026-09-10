@@ -1,24 +1,13 @@
 # 后端分层与代码规范
 
-> 版本：v1.0 | 日期：2026-05-22（2026-09-08 增补 §2.3 admin 访问租户域）  
-> 状态：**规范已定稿**；目录迁移见 [rag-module-migration.md](./rag-module-migration.md)  
+> 状态：**规范已定稿**（现行）  
 > 关联：[technical-design.md](./technical-design.md)、[guides/knowledge-base.md](../guides/knowledge-base.md)、[guides/ai-stack.md](../guides/ai-stack.md)
 
 本文定义 MilesAI 后端 **包职责、依赖方向、命名约定**。RAG 入库：**LangChain Document** + **pypdf / Docling（可选）** + **图/音 multimodal（可选）**；**不包含** RAG-Anything / MinerU / 知识图谱旁路。
 
 ---
 
-## 1. 问题与目标
-
-### 1.1 现状问题
-
-| 现象 | 影响 |
-|------|------|
-| 历史：多层转发（`app/ai`、`app/ai_stack`） | 已删除，收敛为 `rag` + `integrations` |
-| 历史：`infra/vector_store` 含 RRF、KB 入库门面 | 已迁至 `rag/index`、`rag/retrieve` |
-| 历史：`vectorstores` 依赖 `tenant.kb.retrieval` | 已迁至 `app.rag.retrieve` |
-
-### 1.2 目标
+## 1. 目标
 
 1. **RAG 能力**集中在 `app/rag/`（Parse → Chunk → Index → Retrieve → Generate）。
 2. **`infra/`** 只对接外部系统原语（DB、S3、向量库客户端）。
@@ -91,62 +80,25 @@ L0 → L1 → L2 → L3 → L4
 | `infra` → `tenant` / `rag` | 基础设施不得了解业务 |
 | `integrations` → `tenant` | 集成层通过 L2 传入参数，不 import 用例 |
 | `rag` → `tenant` | RAG 层可 import `models`、可用 `AsyncSession` 做 PG 关键词检索，但 **不** import `tenant.kb.services.kb` |
-| 新增 `app/ai/*` 仅 re-export | 已废弃，见迁移文档 |
 
 **允许**：`rag` → `models`、`core`、`infra`、`integrations`（仅 L3 技术封装）。
-
-> 逐阶段收敛复盘（成因、契约下沉/注入三形态、全量清单、画布 `RunContext` 装配 checklist、CI 守卫）见 [engine-di-convergence.md](./engine-di-convergence.md)。
-
-> **收敛记录（2026-09-08）**：对话/画布调用链的模型解析与用量 sink 已改由 L1 装配注入——`ainvoke_chat`/litellm `adapter`/`tool_agent.loop`/langgraph `runner`+`rag_qa`/deepagents `orchestrator`/flow `llm_nodes` 不再 import `tenant.models.services`；`grade_nodes`、KB 向量化/检索绑定（B-2b，见下）与 `generative` 模型解析（B-2c，见下）已随后收敛。
-
-> **收敛记录（2026-09-09，B-2b）**：KB 检索绑定装配上移 L1——kb 级向量化与 `KbRetrievalBindings` 装配落 `tenant/kb/services/embeddings.py`（`build_kb_retrieval_bindings`）；`integrations/langchain/embeddings.py` 已删除，`visual_embeddings.py`/`vectorstores.py` 与 `rag/`、`flow_runtime` 不再 import `tenant.models.services.{embedding_resolve,rerank_resolve}` 与 `tenant.kb.services.search_log`；bindings 经 `vectorstores` 壳、LangGraph `configurable` 与 `RunContext` 注入 L2 检索。
-
-> **收敛记录（2026-09-09，B-2c）**：generative 模型解析与 job 执行编排上移 L1——`resolve_image_gen_model`/`resolve_tts_model`/`resolve_video_gen_model`/`pick_default_generative_model` 落 `tenant/models/services/generative_model_resolve.py`，`integrations/generative/{image,tts,video}/service.py` 只保留生成引擎，`integrations/generative/model_resolve.py` 已删除；worker 编排 `run_generative_{image,video}_job_async` 由 L3 `jobs/runner.py` 上移 L1 `tenant/generative/services/job_execution.py`；画布生图/生视频节点经 `RunContext.resolve_generative_image/video` 注入。`integrations`/`rag`/`flow_runtime` 对 `tenant.models.services` 引用清零。
-
-> **收敛记录（2026-09-09，B-2d）**：deepagents 编排契约反依赖收敛——`AgentPlanner`/`AgentRuntimeMode`/`SubAgentRoleHint` 及 `SUB_AGENT_ROLE_*` 常量下沉中立域 `models/agent/constants.py`（`tenant.agents.constants` 改 re-export），`integrations/deepagents` 与 `langgraph/runner` 不再运行期 import `tenant.agents.constants`；deepagents 对话 DTO 依赖收口为 L3 中性契约 `deepagents/io.py`（`ParentChatInput`/`SubAgentPlanResult`）+ `AgentService.chat_as_child_simple` 窄入口 + L1 `chat_entry` 边界解包/包回，`orchestrator`/`runner`/`subagent_graphs` 不再运行期 import `tenant.agents.schemas`（TYPE_CHECKING `AgentService` 注解保留）。
-
-> **收敛记录（2026-09-09，B-2e）**：画布生图/生视频节点异步 job 提交上移 L1——`submit_generative_{image,video}_job` 落 `tenant/generative/services/job_execution.py`（构造 JobCreate 委托 `GenerativeJobService`，函数级 import 防循环），`ImageGenerate`/`VideoGenerate` 节点经 `RunContext.submit_generative_image/video`（L1 装配点按 settings `generative_*_async` 注入回调或 None）提交，节点不再 import `tenant.generative.{schemas.job, services.job}`。`flow_runtime` 对 `tenant` 引用继续收窄至 media/compliance/tools/rag 节点与 subflow 仓库面。新建画布 `RunContext` 根装配点必须随 `resolve_generative_*` 一并注入 `submit_generative_*`（settings 关闭时不注入 → 节点落同步 resolver 兜底），装配门控不变式已由 `test_agent_chat_rag_flow_context` 固化。
-
-> **收敛记录（2026-09-09，F2a）**：agent 对话 IO DTO 下沉中立域——`ChatMediaIn`/`ChatRequest`/`ChatResponse`/`ChatArtifact`/`PendingToolCall` 落 `models/agent/chat_io.py`（纯 pydantic，依赖仅 pydantic/uuid/`common.schemas.media`），`tenant/agents/schemas/agent.py` 转 re-export shim（L1 路径稳定）；`integrations/langchain/tool_agent/{loop,artifacts}` 改指 `models.agent.chat_io`，`artifacts.py` 对 `tenant` 依赖清零。`tool_agent/loop.py` 剩余 `tenant.tools.{confirmation,invoke}` 执行/确认行为面待 tools 契约计划（F2c）。
-
-> **收敛记录（2026-09-09，F2b）**：自定义工具契约收敛——租户 `Tool` 表 HTTP/SCRIPT 行 DB 加载上移 L1（`tenant/tools/services/custom_tools.py` 的 `load_custom_tool_specs`/`assemble_agent_tools`），产出中性 `CustomToolSpec`；`integrations/langchain/tools.py` 净化为纯 schema 构造库（`build_platform_tools`，内置/技能/生成壳与自定义 spec→StructuredTool，func 全占位——主循环从不执行 StructuredTool，执行统一走 `invoke_tool_with_context`），删除 DB 版 `get_all_platform_tools` 与 dead wrapper `invoke_platform_tool`；`tool_agent/loop.py` 改收 L1 装配的 `platform_tools` 入参，不再查 `Tool` 表；工具参数三纯函数（`normalize_parameters`/`validate_tool_params`/`parameters_to_pydantic`）下沉中立 `models/tool/parameters.py`（`tenant/tools/parameters.py` 转 re-export shim，消除 Task 1 复刻 drift）。`loop.py` 剩余 `tenant.tools.{confirmation,invoke}` 执行/确认行为面与画布 `tool_nodes` 注入待 F2c。
-
-> **收敛记录（2026-09-09，F2c-A）**：画布 `platform_tool` 节点执行回调注入——工具执行迁入 L1 `tenant/tools/services/flow_invoker.py::build_flow_tool_invoker`（构造 `TenantContext` + 短会话 + 委托 `invoke_tool_with_context`），`RunContext.invoke_platform_tool` 由两根装配点（`chat_rag.flow_run_context`/`flow.py` debug-run）注入并经 LangGraph state（`compiler/run.py`+`build.py`）与 subflow `build_child_context` 透传；`flow_runtime/nodes/tool_nodes.py` 只保留参数合并与调度，对 `tenant.tools.invoke`/`infra.db`/`TenantContext` 依赖清零。`integrations/langchain/tool_agent/loop.py` 剩余 `tenant.tools.{confirmation,invoke}` 对话执行/确认面待 F2c-B。
-
-> **收敛记录（2026-09-09，F2c-B）**：agent 对话工具执行/确认面收敛——L3 中性契约 `tool_agent/tool_contract.py`（`ToolConfirmationSignal`/`ToolExecutor`），L1 executor `tenant/tools/services/agent_executor.py::build_agent_tool_executor`（meta 委托 `resolve_tool_meta`；invoke 委托 `invoke_tool_with_context`，确认信号转中性）；`tool_agent/loop.py` 增 `tool_executor` 入参由 chat_rag 两分支注入，`resolve_tool_meta`/`invoke_tool_with_context`/`ToolConfirmationRequired` 运行期引用清零。tools 契约计划（F2）完成：schema 面（F2b）+ 画布执行（F2c-A）+ 对话执行（F2c-B）三段收敛，`integrations/langchain/tool_agent` 与 `flow_runtime/nodes/tool_nodes` 对 `tenant.tools` 依赖清零。
-
-> **收敛记录（2026-09-09，G2-2）**：画布 PromptTemplate 节点模板库 live 引用收敛——`RunContext.resolve_prompt_template` 回调（L1 注入），loader `tenant/prompts/services/template_loader.py::build_prompt_template_loader` 承载原租户校验/短会话逻辑；`flow_runtime/nodes/rag_nodes.py` 删 `tenant.prompts.models` import。flow 画布节点面（G2）收敛起点。
-
-> **收敛记录（2026-09-09，G2-3）**：画布 ComplianceCheck 节点收敛——纯算法 `CompliancePipeline`/`ScanMatch`/`ScanResult`/`SensitiveAction` 下沉中立域 `app.models.compliance`（`tenant.compliance.{models,services.pipeline}` 转 re-export shim），租户词表加载经 `RunContext.load_scan_words` 回调（L1 `tenant/compliance/services/scan_words_loader.py::build_scan_words_loader`）注入；`flow_runtime/nodes/compliance_nodes.py` 对 `tenant.*` import 与同步 `get_sync_db` 阻塞清零。
-
-> **收敛记录（2026-09-09，G2-1）**：画布 SubFlow/LoopNode 子图加载与编译期校验收敛——L3 中性仓储契约 `flow_runtime/subflow/contracts.py::FlowRepoLike`；运行期加载经 `RunContext.load_subflow_graph` 回调（L1 `tenant/flows/services/subflow_loader.py::build_subflow_graph_loader` 注入短会话 `FlowRepository`），编译期 `validate_subflow_references(repo, ...)` 由 L1 `FlowService` 传 `self.repo`；`flow_runtime/subflow/` 对 `tenant.*` import 清零。
-
-> **收敛记录（2026-09-09，G2-4a）**：画布媒体读取收敛——L3 中性契约 `app/models/media/reader.py`（`MediaReader`/`AttachmentBytes`）+ L1 短会话实现 `tenant/attachments/services/media_reader.py::build_flow_media_reader`（`AttachmentService` 增 `read_attachment_bytes`），经 `RunContext.media_reader` 注入；`flow_runtime/nodes/` 对 `tenant.*` import 清零，G2 画布节点面收官（AudioTranscribe 顺带修复误用图片读取的缺陷）。
-
-> **收敛记录（2026-09-10，G1-2）**：生成面租户编排下沉——`integrations/generative` 前零 tenant 引用：合规扫描 / 日配额 / 参考图 data URL / 生成物持久化 / 媒体资产登记从 L3 迁入 L1 `tenant/generative/services/orchestration.py`（`persist.py` 同步下沉），L3 `*/service.py` 只保留纯厂商派发 `generate_{image,video,tts}_bytes`；画布 `ImageGenerate`/`VideoGenerate` 同步分支改经 `RunContext.generate_{image,video}_sync`（L1 注入），与 `submit_generative_*` 同族。守卫测试纳入 `integrations/generative`。
-
-> **收敛记录（2026-09-10，G1-3）**：`integrations/chat` 媒体读取收敛——多模态 I/O（`resolve_media_refs` / `build_invoke_messages_with_media`）首参由 `(db, ctx)` 改为 L3 中性 `MediaReader`，L1 新增 `SessionMediaReader`（复用调用方会话，`tenant.attachments.services.media_reader`）并注入 Agent 对话 / RAG / 工具循环 / 画布 LLMCall；`rag_qa` 顺带移除仅供读图的会话与 `_tenant_from_state`。至此 **`integrations/**` 与 `flow_runtime/**` 对 `tenant` 全域清零**，engine DI 反依赖收敛收官。
->
-> **同批清理**：租户日配额策略 `quota.py` 由 L3 迁入 L1 `tenant/generative/services/quota.py`（本无 tenant import，属内聚性归位——L3 只留厂商派发，与 `generative/__init__` 声明的「不含配额」一致）；有附图但缺 `media_reader` 时 `rag_qa` / `rag_answer` 改为显式 `BadRequestError`，不再静默丢图。
 
 ### 2.3 运营后台（`admin/`）访问租户域
 
 `admin/`（L0/L1，`/api/admin/v1`）为平台运营面：审核租户内容、管理租户与配额时须读取租户域数据。允许 `admin → tenant` **单向**访问，但只能走下列合规形态：
 
-| 形态 | 合规目标 | 当前过渡期例外（待收敛） |
-|------|----------|--------------------------|
-| 读共享 ORM | 跨面共读的 ORM 上移 `app/models/<域>/`，admin 经共享模型读取 | 已收敛（2026-09-10）：`mkt_*` 上移 `app/models/marketplace`，admin 改经共享模型读取 |
-| 复用纯函数 | 下沉 `common/` 或 `utils/` | 已收敛（2026-09-10）：`slugify` → `app.common.slug`、`validate_api_key` → `app.common.api_key` |
-| 复用 Repository | 允许复用管理**同域数据**的租户 Repository（运营即该数据管理面） | `tenant.system.repositories.tenant.TenantRepository`（属本行合规形态，非待收敛项） |
+| 形态 | 合规目标 | 现网 |
+|------|----------|------|
+| 读共享 ORM | 跨面共读的 ORM 上移 `app/models/<域>/`，admin 经共享模型读取 | `mkt_*` → `app/models/marketplace` |
+| 复用纯函数 | 下沉 `common/` | `slugify` → `app.common.slug`、`validate_api_key` → `app.common.api_key` |
+| 复用 Repository | 允许复用管理**同域数据**的租户 Repository（运营即该数据管理面） | `tenant.system.repositories.tenant.TenantRepository` |
 
 **禁止**：
 
 - admin import 租户域 **service 业务用例**（事务 / 状态机 / 编排入口）
 - `tenant/` 反向依赖 `admin/`
 
-> 过渡期例外应随「模型解析下沉」等重构收敛；新增 admin 读取统一先评估上移共享层，勿继续加码深层 import。
-
-> 收敛后 admin 对 tenant 的引用仅剩 `tenant.system.repositories.tenant.TenantRepository`（上表合规形态）；共享 DTO 已下沉中立域（`common.schemas.tag` / `models.marketplace.dto`），admin 不再 import `tenant.*` schemas。
+> 新增 admin 读取统一先评估上移共享层（`app/models/<域>/` / `app/common/`），勿加深层 import。当前 admin 对 tenant 的引用仅剩 `TenantRepository`（上表合规形态）；共享 DTO 位于中立域（`common.schemas.tag` / `models.marketplace.dto`）。
 
 ---
 
@@ -337,7 +289,6 @@ from app.infra.vector_store import get_vector_store
 |----|------|
 | `app/rag` | L2：Parse / Chunk / Index / Retrieve / Generate / pipeline |
 | `app/integrations` | L3：LangChain、LangGraph、LiteLLM、DeepAgents |
-| `app/ai`、`app/ai_stack` | **已删除** |
 
 ---
 
@@ -358,34 +309,3 @@ backend/tests/
 
 单测 `rag` 模块时 **不启动** FastAPI；向量库测试 mock `get_vector_store`。详见 [tests/README.md](../../backend/tests/README.md)。
 
----
-
-## 8. 修订记录
-
-| 日期 | 说明 |
-|------|------|
-| 2026-05-22 | 初版：分层定义、rag 目录、infra 瘦身、无 MinerU/图谱 |
-| 2026-05-22 | 入库链：`pipeline/ingest`、Docling/pypdf、multimodal 接入、`chunk_documents` + `page_no` |
-| 2026-05-26 | §5.4：单文件 ≥500 行强制按子包拆分；§5.5：类/方法/函数 docstring 强制 |
-| 2026-09-08 | §2.3：新增运营后台（admin）访问租户域的合规形态与过渡期例外 |
-| 2026-09-08 | B-1：ainvoke_chat/runner/rag_qa/tool_agent/deepagents/llm_nodes 模型解析与用量 sink 注入，收敛 integrations/flow_runtime → tenant.models.services 反依赖 |
-| 2026-09-09 | B-2b：KB 检索绑定上移 L1——`tenant.kb.services.embeddings` 承载向量化与 `KbRetrievalBindings` 装配，L3 `vectorstores`/`rag`/`flow_runtime` 对 `embedding_resolve`/`rerank_resolve`/`search_log` 反依赖收敛 |
-| 2026-09-09 | B-2c：generative 模型解析收敛 L1 `generative_model_resolve`，`integrations/generative` 三 service 只留生成引擎；job 执行编排上移 L1 `job_execution`；画布生图/生视频节点解析器经 `RunContext` 注入 |
-| 2026-09-09 | B-2d：agent 域枚举下沉 `models.agent.constants`，deepagents 契约收敛——`ParentChatInput`/`SubAgentPlanResult` 中性 DTO + `chat_as_child_simple` 窄入口，deepagents/`langgraph/runner` 对 `tenant.agents.{schemas,constants}` 运行期引用清零 |
-| 2026-09-09 | B-2e：画布生图/生视频节点异步提交收敛——job 提交流程落 L1 `job_execution` submit 回调，`RunContext.submit_generative_*` 注入，节点对 `tenant.generative.{schemas.job,services.job}` 运行期引用清零 |
-| 2026-09-09 | F2a：agent 对话 IO DTO 下沉 `models/agent/chat_io`，schemas 转 shim；tool_agent loop/artifacts 改指中立模块，artifacts 对 tenant 引用清零 |
-| 2026-09-09 | F2b：自定义工具 DB 加载上移 L1 `custom_tools` loader；`langchain/tools.py` 净化为纯 schema 构造（CustomToolSpec/占位壳），loop 工具列表 L1 装配注入；工具参数三纯函数下沉 `models/tool/parameters.py` |
-| 2026-09-09 | F2c-A：画布 `platform_tool` 执行回调 L1 `flow_invoker` 注入 `RunContext`，langgraph/subflow 透传；tool_nodes 对 `tenant.tools` 清零 |
-| 2026-09-09 | F2c-B：agent 对话工具执行面收敛——L3 `tool_contract` 中性契约 + L1 `agent_executor` 注入 loop，tool_agent 包对 `tenant` 依赖清零，F2 tools 契约计划收尾 |
-| 2026-09-09 | G2-2：flow PromptTemplate 节点模板 live 引用收敛——RunContext.resolve_prompt_template 回调 + L1 template_loader，rag_nodes 对 tenant 清零（G2 画布节点面起点） |
-| 2026-09-09 | G2-3：flow ComplianceCheck 节点收敛——合规纯算法下沉 models/compliance + 词表加载 RunContext 回调，compliance_nodes 对 tenant 清零 |
-| 2026-09-09 | G2-1：flow 子流程加载/校验收敛——FlowRepoLike 契约 + RunContext.load_subflow_graph 回调，subflow 包对 tenant 清零 |
-| 2026-09-09 | 加固：deepagents 三文件 `TYPE_CHECKING` 残留收敛——`io.AgentServiceLike` 中性 Protocol 取代租户 `AgentService` 注解，deepagents 包（含类型引用）对 tenant 全清；新增源码守卫测试 `tests/test_l3_neutral_imports.py` |
-| 2026-09-09 | G2-4a：画布媒体读取收敛——MediaReader 中立契约 + RunContext.media_reader + L1 短会话读取器，flow_runtime/nodes 对 tenant 清零（G2 画布节点面收官） |
-| 2026-09-10 | G1-2：生成面租户编排下沉 L1——`integrations/generative` 只留纯厂商派发，`RunContext.generate_{image,video}_sync` 注入画布同步分支，L3 生成面对 tenant 清零 |
-| 2026-09-10 | G1-3：`integrations/chat` 媒体读取收敛——MediaReader 注入多模态 I/O + L1 SessionMediaReader，**L3（integrations + flow_runtime）对 tenant 全域清零，engine DI 收官** |
-| 2026-09-10 | G1-3 收尾：生成日配额策略 `quota.py` L3→L1 内聚性归位；RAG 有附图但缺 `media_reader` 改显式 `BadRequestError`（不再静默丢图） |
-| 2026-09-10 | CI 门禁：`ruff check` / `ruff format --check` / OpenAPI 快照 / L3 反依赖守卫 + 全量 `pytest` 纳入 `lint.yml`；同时清掉遗留 F841/E402/F401 并统一 24 文件格式 |
-| 2026-09-10 | §2.3：admin→tenant 过渡期例外收敛——`mkt_*` ORM 上移 `app/models/marketplace`、`slugify`/`validate_api_key` 下沉 `app/common`；`TenantRepository` 判定属合规形态豁免 |
-| 2026-09-10 | 画布用量：`RunContext.usage_sink` 改为 `usage_sink_factory`——LLM 节点按解析后的模型构造 sink，新增 L1 `FlowUsageSink`（`source=flow`，自开短会话落库），画布多模型归因正确 |
-| 2026-09-10 | §2.3 续收敛：admin 共享 DTO 下沉——`TagRefOut` → `common.schemas.tag`、市场 DTO 整包 → `models/marketplace/dto`（tenant 原路径转 re-export），admin 对 `tenant.*` 引用归零（仅剩 Repository 合规复用） |

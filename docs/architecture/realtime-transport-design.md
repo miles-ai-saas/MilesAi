@@ -328,12 +328,3 @@ AGENT_CHAT_WEBSOCKET_ENABLED=false   # 默认关，灰度开启
 | [platform-agents.md](../guides/platform-agents.md) | 对话执行路径 |
 | [flows.md](../guides/flows.md) | 流程调试与模板 |
 
----
-
-## 13. 变更记录
-
-| 日期 | 说明 |
-|------|------|
-| 2026-05-26 | 初版：对话 WebSocket + 资源 SSE 分场景方案、协议草案与分阶段实施 |
-| 2026-05-26 | v1：`/agents/{id}/chat/ws`、工作台前端 `AgentChatWsClient`；`AGENT_CHAT_WEBSOCKET_ENABLED` |
-| 2026-07-29 | R2 部分完成：直连/RAG 经 LiteLLM stream 真 token；tool 路径仍切块；HTTP 不变 |

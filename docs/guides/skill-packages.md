@@ -108,7 +108,7 @@ description: 通过技能你可以获取当前时间
 约束：
 
 - `uk_skl_skill_packages_tenant_slug`：`(tenant_id, slug)` 唯一
-- 已移除旧版 `(tenant_id, name)` 唯一索引，改为普通索引 `idx_skl_skill_packages_tenant_name`
+- `idx_skl_skill_packages_tenant_name`：`(tenant_id, name)` 普通索引（非唯一）
 
 ### 3.2 分类 `sys_categories`
 

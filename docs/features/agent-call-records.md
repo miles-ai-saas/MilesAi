@@ -252,14 +252,3 @@ OpenTelemetry Span 树  ←→  HTTP trace_id  ←→  agt_agent_chat_calls.trac
 - OTel 负责火焰图、延迟分解、跨服务传播；业务表负责「谁调了哪个 agent、成败、Token、合规状态」。  
 - 接入时优先：HTTP / LLM / 工具调用 Span；`trace_id` 与 OTel Trace ID 对齐或映射。
 
----
-
-## 9. 变更记录
-
-| 日期 | 说明 |
-|------|------|
-| 2026-05-29 | P2：agt_chat_sessions/messages、chat 自动持久化、会话 API、本地合并与调用记录 Trace 回放 |
-| 2026-05-29 | P3：blocked 快捷筛选；详情关联 tool/hook 日志；hook trace_id 索引 |
-| 2026-05-29 | P1：stats 从 call-records 聚合；ModelUsageLog source_id=agent_id；调用记录写入 Token |
-| 2026-05-29 | P0：agt_agent_chat_calls 表、chat 写入、列表/详情 API、工作台表格与详情弹窗 |
-| 2026-05-29 | 初版：业务调用记录设计；明确 v1 不做 CSV 导出、不接入 OpenTelemetry |

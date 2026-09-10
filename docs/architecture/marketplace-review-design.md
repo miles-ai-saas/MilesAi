@@ -1,7 +1,7 @@
 # 应用市场上架审核 — 双部署模式方案
 
 **日期：** 2026-05-27  
-**状态：** R0–R3 已实现（2026-05-27）  
+**状态：** R0–R3 已实现  
 **关联：** [marketplace.md](../features/marketplace.md) · [admin-ops-design.md](./admin-ops-design.md) · [technical-design.md §12](./technical-design.md#12-应用市场)
 
 ---

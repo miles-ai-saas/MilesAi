@@ -147,8 +147,3 @@ flowchart TD
 ### Checkpoint
 
 `conversation_id` → `thread_id = {tenant_id}:{agent_id}:{conversation_id}`。需 **Redis Stack 或 Redis 8+**，`LANGGRAPH_REDIS_DB=0`；否则回退 `MemorySaver`（重启不保留状态）。依赖：`langgraph-checkpoint-redis`（见 `backend/.env.example`）。
-
-## 历史
-
-- 已移除内置 DAG 执行器（`BuiltinFlowRuntime`）及第三方流程产品适配层
-- 已移除 `flow_flows.external_flow_id`（原外部流程 ID 预留列）

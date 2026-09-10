@@ -58,8 +58,7 @@ ui/                           # 前端应用源码（与 docs/ 并列，见仓�
 | [technical-design.md](./architecture/technical-design.md) | 架构、分层、库表、API、**对象/向量存储与配置策略（§6.5）**（**主文档**，v2.1） |
 | [backend-reference-framework.md](./architecture/backend-reference-framework.md) | **后端参考框架**：面向其他 LLM 的可复用骨架（分层、横切设施代码模板、业务域四件套、规范护栏、搭建 Checklist） |
 | [layering.md](./architecture/layering.md) | 后端分层、import 规范；**单文件 ≥500 行须按子包拆分**（§5.4，细则见 [backend/README.md](../backend/README.md)） |
-| [engine-di-convergence.md](./architecture/engine-di-convergence.md) | **Engine DI 收敛复盘**：L3 对 L1 反依赖的成因、契约下沉/注入三形态、全量收敛清单、画布 `RunContext` 装配 checklist 与 CI 守卫 |
-| [rag-module-migration.md](./architecture/rag-module-migration.md) | RAG 模块迁移清单（已完成）与后续插件位 |
+| [engine-di-convergence.md](./architecture/engine-di-convergence.md) | **Engine DI 契约**：L3 只依赖中立契约、L1 装配注入三形态、`RunContext` 回调总览与新增画布能力 checklist、CI 守卫 |
 | [vector-database-selection.md](./architecture/vector-database-selection.md) | 向量数据库选型：pgvector / Weaviate / Milvus / Qdrant / OpenSearch / ES |
 | [mcp-sandbox.md](./architecture/mcp-sandbox.md) | MCP STDIO / 平台执行：沙箱与 Runner 隔离方案 |
 | [tools-runtime.md](./architecture/tools-runtime.md) | **工具运行时**：内置 / HTTP / 脚本 / MCP 统一执行平面（目标架构） |

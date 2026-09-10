@@ -28,7 +28,7 @@
 - tool_agent / 工具确认 / flow / A2A 路径的真 token 流（仍走 `emit_answer_deltas` 切块兜底）
 - 全站统一 WebSocket 网关
 
-### 1.3 流式 As-Is（2026-07-29）
+### 1.3 流式现状
 
 | 路径 | `chat.delta` 来源 |
 |------|-------------------|

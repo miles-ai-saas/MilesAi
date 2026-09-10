@@ -251,6 +251,8 @@ OpenAPI：`/docs`（运行实例）。
 
 白名单实现：`app/rag/parse/upload_policy.py`（KB 与通用附件共用）。
 
+白名单与解析能力对齐：图/音/视频扩展名与 MIME 由 `app/rag/parse/media.py` 单一来源导出、`upload_policy.py` 复用；`OFFICE_EXTENSIONS ⊆ DOCLING_EXTENSIONS`、media 判定 ⊆ 白名单、白名单扩展名/MIME 往返可接受、前端 `accept` 全覆盖等不变式由 `tests/rag/test_upload_policy_alignment.py` 守卫。Docling 可读但白名单刻意不收的 TIFF/BMP 属「允许上传 ≠ 一定能解析」边界。
+
 | 配置 | 说明 |
 |------|------|
 | `PARSE_PDF_BACKEND` | `pypdf`（默认，CI/轻量部署）或 `docling`（版式/Markdown，需额外依赖） |
@@ -320,10 +322,3 @@ celery -A app.workers.app worker -l info -Q default,parse,ocr,asr,embed
 | 二期-C ✅ | 向量库统一 LangChain 实现（weaviate / milvus / pgvector） |
 | 三期 | 多模态向量（图文）、文档预览、批量导入 |
 
----
-
-## 11. 修订记录
-
-| 日期 | 说明 |
-|------|------|
-| 2026-05-22 | 初版：领域模型、流水线、API、删除编排、与 infra 分层对齐 |

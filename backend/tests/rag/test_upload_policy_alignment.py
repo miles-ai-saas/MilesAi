@@ -1,9 +1,7 @@
 """上传白名单 ↔ 解析能力对齐守卫。
 
-对应 [rag-module-migration.md](../../../docs/architecture/rag-module-migration.md) 「可选后续」中
-的「上传白名单与 ``DOCLING_EXTENSIONS`` 对齐」项：白名单与各解析后端的能力声明分散在不同
-模块，容易各写一份而漂移（Office 收进来了但 Docling 读不了 / media 认得的类型却不让上传）。
-此处以集合关系与往返断言锁死不变式。
+白名单与各解析后端的能力声明分散在不同模块，容易各写一份而漂移（Office 收进来了但
+Docling 读不了 / media 认得的类型却不让上传）。此处以集合关系与往返断言锁死不变式。
 """
 
 from __future__ import annotations

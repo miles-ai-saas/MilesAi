@@ -1,7 +1,7 @@
 # 运营后台 — 技术增强方案
 
 **日期：** 2026-05-27  
-**状态：** Phase 0–5 已实现；Phase 4 计费/审计产品化已完成（2026-05-27）  
+**状态：** Phase 0–5 已实现；Phase 4 计费/审计产品化已完成  
 **As-Is 规格：** [features/admin-ops.md](../features/admin-ops.md)（基线能力）  
 **关联：** [technical-design.md §运营域](./technical-design.md#42-运营域)、[system-management-design.md](./system-management-design.md)、[prd.md §模块1a](../product/prd.md#as-is-module-1)
 
@@ -297,7 +297,6 @@ GET /dashboard/summary
 | 4.1 | 账单状态 API | `PATCH /billing/bills/{id}` → `paid` / `void` |
 | 4.2 | 套餐停用 | `is_active` 字段；停用后不可新绑租户 |
 | 4.3 | 审计全覆盖 | Phase 0–3 所有写操作补 audit |
-| 4.4 | ~~审计 CSV 导出~~ | 已移除；产品不立项审计导出 |
 | 4.5 | 租户用量报表 | `GET /tenants/{id}/usage` 或详情页图表（KB/Agent/Flow/Token） |
 | 4.6 | 模型目录 list 性能 | `count()` 替代 `len(all rows)` |
 

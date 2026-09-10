@@ -398,12 +398,3 @@ embedding / rerank 的 `invoke_mode` 与 `extra` 字段对照见 **[model-config
 | Agent 挂载 | `app/tenant/agents/services/agent.py` |
 | Flow 挂载 | `app/tenant/flows/services/flow.py` |
 
----
-
-## 12. 变更记录
-
-| 日期 | 说明 |
-|------|------|
-| 2026-05-26 | 初版：产品边界、挂载对照表、Event v1 目标契约 |
-| 2026-05-26 | P0/P1：Event v1 执行、block/modify、`hook_execution_logs`、tool 钩子、Flow on_error |
-| 2026-05-26 | §9.1：`schema_version` 双轨说明；§9.2 链至 model-config-extra |

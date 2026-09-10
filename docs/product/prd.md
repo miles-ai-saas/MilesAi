@@ -1,6 +1,6 @@
 # 一体化AI智能编排与RAG应用平台（多模态企业版）完整项目需求
 
-> **与代码实现对齐说明（2026-05-28）**  
+> **与代码实现对齐说明**  
 > 类型：需求基线 | 状态：只读参考（下文为立项原文，能力以「实现对照」为准；与 [backlog.md](./backlog.md) 同步）  
 > **各模块实现规格（As-Is）：** [README.md §功能节点 ↔ 文档速查](../README.md#功能节点--文档速查) · [features/](../features/)  
 > - **多模态产品能力（生文/识图/生成/入库）**：→ [multimodal-capabilities.md](./multimodal-capabilities.md)（**以该文实现状态为准**）  

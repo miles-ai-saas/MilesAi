@@ -80,8 +80,6 @@ load_tenant_scan_words(tenant_id)
 | POST | `/scan` | 试跑；`scanning_enabled=false` 表示未绑定 |
 | GET | `/logs` | 拦截日志 |
 
-**已移除**（迁移 003 后）：`/compliance/words` 扁平 CRUD。
-
 权限：`compliance:read` / `compliance:write`。
 
 ## 5. 前端

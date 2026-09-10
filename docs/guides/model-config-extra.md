@@ -110,10 +110,3 @@ embedding/rerank **不要**与 LLM 混用同一套 `invoke_mode` 枚举；创建
 
 集成层出站 HTTP 默认超时：`integrations/http_constants.HTTP_DEFAULT_TIMEOUT_SEC`（120s），用于 embedding/rerank OpenAI 兼容客户端与 LiteLLM adapter。
 
----
-
-## 7. 变更记录
-
-| 日期 | 说明 |
-|------|------|
-| 2026-05-26 | 初版：extra 键对照、`invoke_mode` 分类型说明 |

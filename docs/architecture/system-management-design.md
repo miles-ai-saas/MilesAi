@@ -131,7 +131,7 @@ system:config:read | system:config:write
 audit:read
 ```
 
-**现状注意点**：角色 API 当前复用 `system:user:read/write`；文档曾写 `system:role:*`，种子未包含 — Phase 0 补齐并迁移路由依赖。
+**权限**：角色 API 现复用 `system:user:read/write`；Phase 0 补齐 `system:role:*` 并迁移路由依赖。
 
 **前端门禁（三层）**
 
