@@ -2,7 +2,7 @@
 
 L3 ``integrations/generative`` 只保留纯厂商派发（``generate_{image,video,tts}_bytes``）；
 租户副作用（``ComplianceService`` / ``AttachmentService`` / 附件仓储 / 媒体资产登记）全在本模块；
-日配额仅由本模块调用（本模块是**调用点/编排点**），纯额度实现仍在 L3
+日配额仅由本模块调用（本模块是**调用点/编排点**），纯额度实现仍在同域
 ``tenant.generative.services.quota``（``assert_generative_quota``）。画布同步分支经
 ``RunContext.generate_{image,video}_sync``（即本模块 ``generate_{image,video}_for_model``）注入执行。
 """
@@ -10,6 +10,7 @@ L3 ``integrations/generative`` 只保留纯厂商派发（``generate_{image,vide
 from __future__ import annotations
 
 import base64
+import hashlib
 import logging
 from uuid import UUID
 
@@ -282,7 +283,7 @@ async def generate_speech_for_model(
         db,
         ctx,
         data=audio_bytes,
-        filename=f"speech-{UUID(int=hash(text) & ((1 << 128) - 1))}.wav",
+        filename=f"speech-{UUID(hashlib.sha256(text.encode()).hexdigest()[:32])}.wav",
         mime_type="audio/wav",
         purpose=purpose,
         resource_type="agent" if agent_id else None,
