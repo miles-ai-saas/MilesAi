@@ -12,11 +12,11 @@ DeepAgents 原生规划与 ``task`` 工具委派。
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 
-from app.integrations.deepagents.io import ParentChatInput, SubAgentPlanResult
+from app.integrations.deepagents.io import AgentServiceLike, ParentChatInput, SubAgentPlanResult
 from app.integrations.deepagents.subagent_graphs import _slug_for_binding, build_compiled_subagents
 from app.integrations.langchain.chat_models import get_chat_model
 from app.integrations.langgraph.checkpointer import get_checkpointer
@@ -27,9 +27,6 @@ try:
     from deepagents import create_deep_agent
 except ImportError:
     create_deep_agent = None  # type: ignore[misc, assignment]
-
-if TYPE_CHECKING:
-    from app.tenant.agents.services.agent import AgentService
 
 
 def deepagents_importable() -> bool:
@@ -99,7 +96,7 @@ def _extract_steps(messages: list[Any], bindings: list[AgentSubAgentBinding]) ->
 
 
 async def run_deepagents_chat(
-    svc: AgentService,
+    svc: AgentServiceLike,
     parent: Agent,
     bindings: list[AgentSubAgentBinding],
     body: ParentChatInput,

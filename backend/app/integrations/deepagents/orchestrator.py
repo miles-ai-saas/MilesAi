@@ -19,17 +19,13 @@ from __future__ import annotations
 import asyncio
 import json
 import re
-from typing import TYPE_CHECKING
 from uuid import UUID
 
-from app.integrations.deepagents.io import ParentChatInput, SubAgentPlanResult
+from app.integrations.deepagents.io import AgentServiceLike, ParentChatInput, SubAgentPlanResult
 from app.integrations.deepagents.runner import deepagents_importable, run_deepagents_chat
 from app.integrations.langchain.chat_models import ainvoke_chat
 from app.models.agent import Agent, AgentSubAgentBinding
 from app.models.agent.constants import AgentPlanner
-
-if TYPE_CHECKING:
-    from app.tenant.agents.services.agent import AgentService
 
 
 def _catalog_text(bindings: list[AgentSubAgentBinding]) -> str:
@@ -74,7 +70,7 @@ async def _platform_plan(
     bindings: list[AgentSubAgentBinding],
     query: str,
     *,
-    svc: AgentService,
+    svc: AgentServiceLike,
 ) -> list[dict]:
     """平台 JSON 规划器：主模型输出 sub_agent_id + task 列表。"""
     if not parent.model_config:
@@ -105,7 +101,7 @@ async def _platform_plan(
 
 
 async def _run_platform_planned(
-    svc: AgentService,
+    svc: AgentServiceLike,
     parent: Agent,
     bindings: list[AgentSubAgentBinding],
     body: ParentChatInput,
@@ -198,7 +194,7 @@ def _should_use_deepagents(parent: Agent) -> bool:
 
 
 async def run_subagent_planned_chat(
-    svc: AgentService,
+    svc: AgentServiceLike,
     parent: Agent,
     bindings: list[AgentSubAgentBinding],
     body: ParentChatInput,

@@ -12,12 +12,13 @@
 from __future__ import annotations
 
 import re
-from typing import TYPE_CHECKING, Any
+from typing import Any
 from uuid import UUID
 
 from langchain_core.messages import AIMessage, HumanMessage
 from langgraph.graph import END, START, MessagesState, StateGraph
 
+from app.integrations.deepagents.io import AgentServiceLike
 from app.models.agent import AgentSubAgentBinding
 from app.models.agent.constants import SUB_AGENT_ROLE_HINTS, SUB_AGENT_ROLE_LABELS
 
@@ -25,9 +26,6 @@ try:
     from deepagents.middleware.subagents import CompiledSubAgent
 except ImportError:
     CompiledSubAgent = None  # type: ignore[misc, assignment]
-
-if TYPE_CHECKING:
-    from app.tenant.agents.services.agent import AgentService
 
 _ROLE_LABELS = SUB_AGENT_ROLE_LABELS
 
@@ -56,7 +54,7 @@ def _description(binding: AgentSubAgentBinding) -> str:
     return "；".join(parts)
 
 
-def _make_child_node(svc: AgentService, child_id: UUID):
+def _make_child_node(svc: AgentServiceLike, child_id: UUID):
     """单节点图：HumanMessage → chat_as_child_simple → AIMessage。"""
 
     async def _run(state: MessagesState) -> dict[str, Any]:
@@ -105,7 +103,7 @@ def _build_general_purpose_guard(
 
 
 def build_compiled_subagents(
-    svc: AgentService,
+    svc: AgentServiceLike,
     bindings: list[AgentSubAgentBinding],
 ) -> list[dict[str, Any]]:
     """DeepAgents CompiledSubAgent 列表。"""
