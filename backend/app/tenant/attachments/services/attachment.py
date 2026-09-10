@@ -138,6 +138,20 @@ class AttachmentService(BaseService):
             data = _EMPTY_PNG
         return data, "image/png"
 
+    async def read_attachment_bytes(self, attachment_id: UUID) -> tuple[bytes, str, str | None]:
+        """按租户鉴权读取任意附件字节（不做图片类型校验）。
+
+        返回 ``(data, mime_type, filename)``；不存在/已删抛 ``NotFoundError``，
+        文件未就绪抛 ``BadRequestError``。读取失败不吞异常（与 ``read_image_bytes``
+        的图片占位兜底不同，音频等需真实字节）。
+        """
+        att = await self._get_or_raise(attachment_id)
+        if not att.object_key or att.object_key == "pending":
+            raise BadRequestError("附件文件未就绪")
+        storage = await resolve_object_storage_async(att.tenant_id, self.db)
+        data = storage.storage.download_bytes(att.object_key, att.object_bucket)
+        return data, att.mime_type or "application/octet-stream", att.filename
+
     async def delete(self, attachment_id: UUID) -> None:
         """软删并尝试删除 OSS 对象（存储回退由 quota 层处理）。"""
         att = await self._get_or_raise(attachment_id)
