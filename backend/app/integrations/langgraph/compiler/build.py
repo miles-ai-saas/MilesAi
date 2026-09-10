@@ -90,6 +90,8 @@ def build_canvas_graph(graph_json: dict[str, Any]):
                 load_scan_words=state.get("load_scan_words"),
                 load_subflow_graph=state.get("load_subflow_graph"),
                 media_reader=state.get("media_reader"),
+                generate_image_sync=state.get("generate_image_sync"),
+                generate_video_sync=state.get("generate_video_sync"),
             )
             node_inputs = gather_node_inputs(node_id, incoming, state.get("outputs") or {})
             result = await execute_node(ntype, node_data, node_inputs, ctx)
@@ -142,6 +144,9 @@ def build_canvas_graph(graph_json: dict[str, Any]):
         load_subflow_graph: Any
         # L1 注入的附件读取器（随 ctx 透传，OcrExtract/AudioTranscribe 装配）
         media_reader: Any
+        # L1 注入的同步生成编排回调（随 ctx 透传）
+        generate_image_sync: Any
+        generate_video_sync: Any
         outputs: Annotated[dict[str, Any], merge_outputs]
         steps: Annotated[list[dict[str, Any]], operator.add]
         answer: Any

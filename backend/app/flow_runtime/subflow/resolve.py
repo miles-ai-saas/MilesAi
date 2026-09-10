@@ -164,6 +164,8 @@ def build_child_context(
         load_scan_words=parent_ctx.load_scan_words,  # 敏感词表加载回调透传到子流程
         load_subflow_graph=parent_ctx.load_subflow_graph,  # 子流程图加载回调透传到子流程
         media_reader=parent_ctx.media_reader,  # 媒体读取器透传到子流程
+        generate_image_sync=parent_ctx.generate_image_sync,  # 同步生图编排回调透传到子流程
+        generate_video_sync=parent_ctx.generate_video_sync,  # 同步生视频编排回调透传到子流程
     )
 
 

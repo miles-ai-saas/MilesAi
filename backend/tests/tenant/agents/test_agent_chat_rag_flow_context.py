@@ -72,6 +72,11 @@ def test_flow_run_context_injects_resolvers_and_bindings_always():
     assert callable(ctx.load_subflow_graph)
     # 媒体读取器恒定注入（画布 OcrExtract/AudioTranscribe 节点装配）
     assert ctx.media_reader is not None
+    # 同步生成编排回调恒定注入（画布 ImageGenerate/VideoGenerate 同步分支装配）
+    assert ctx.generate_image_sync is not None
+    assert callable(ctx.generate_image_sync)
+    assert ctx.generate_video_sync is not None
+    assert callable(ctx.generate_video_sync)
 
 
 def test_flow_run_context_injects_submitters_when_async_enabled(monkeypatch):

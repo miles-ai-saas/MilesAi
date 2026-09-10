@@ -95,6 +95,12 @@ class RunContext:
     # None 表示未装配，OcrExtract/AudioTranscribe 节点报错）。新建画布 RunContext
     # 根装配点须随 resolve_generative_* 一并注入（见 chat_rag/flow debug-run）。
     media_reader: Any = None
+    # 画布同步生图/生视频编排回调（L1 注入，即 orchestration.generate_{image,video}_for_model；
+    # 签名 (db, ctx, model, **kwargs) -> Result；None 表示未装配，
+    # ImageGenerate/VideoGenerate 同步分支报错）。新建画布 RunContext 根装配点
+    # 须随 resolve_generative_* 一并注入（见 chat_rag/flow debug-run）。
+    generate_image_sync: Callable[..., Awaitable[Any]] | None = None
+    generate_video_sync: Callable[..., Awaitable[Any]] | None = None
 
 
 @dataclass

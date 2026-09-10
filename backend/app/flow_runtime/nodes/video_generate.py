@@ -1,7 +1,7 @@
 """
 画布生视频节点 ``VideoGenerate``。
 
-默认异步：经 ``RunContext.submit_generative_video``（L1 注入）提交 ``generative_jobs`` + Celery；未注入（异步未启用）或 ``generative_video_async=False`` 时同步轮询。
+默认异步：经 ``RunContext.submit_generative_video``（L1 注入）提交 ``generative_jobs`` + Celery；未注入（异步未启用）或 ``generative_video_async=False`` 时同步轮询，同步分支经 ``RunContext.generate_video_sync``（L1 注入）。
 """
 
 from __future__ import annotations
@@ -14,7 +14,6 @@ from app.common.trace import get_trace_id
 from app.flow_runtime.context_utils import tenant_context_from_run
 from app.flow_runtime.types import RunContext
 from app.infra.db import AsyncSessionLocal
-from app.integrations.generative import generate_video_for_model
 from app.integrations.generative.constants import PURPOSE_FLOW_GENERATED
 
 
@@ -77,6 +76,10 @@ async def video_generate(
     if resolver is None:
         raise BadRequestError("生视频模型解析器未装配（resolve_generative_video），无法同步生视频")
 
+    generate = ctx.generate_video_sync
+    if generate is None:
+        raise BadRequestError("生视频编排未装配（generate_video_sync），无法同步生视频")
+
     async with AsyncSessionLocal() as db:
         tenant_ctx = tenant_context_from_run(ctx)
         model = await resolver(
@@ -85,7 +88,7 @@ async def video_generate(
             model_config_id=model_id,
             agent_config=ctx.agent_config,
         )
-        result = await generate_video_for_model(
+        result = await generate(
             db,
             tenant_ctx,
             model,

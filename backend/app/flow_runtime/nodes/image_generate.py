@@ -1,7 +1,7 @@
 """
 画布生图节点 ``ImageGenerate``。
 
-默认异步：经 ``RunContext.submit_generative_image``（L1 注入）提交 ``generative_jobs`` + Celery；未注入（异步未启用）或 ``generative_image_async=False`` 时同步阻塞。
+默认异步：经 ``RunContext.submit_generative_image``（L1 注入）提交 ``generative_jobs`` + Celery；未注入（异步未启用）或 ``generative_image_async=False`` 时同步阻塞，同步分支经 ``RunContext.generate_image_sync``（L1 注入）。
 """
 
 from __future__ import annotations
@@ -14,7 +14,6 @@ from app.common.trace import get_trace_id
 from app.flow_runtime.context_utils import tenant_context_from_run
 from app.flow_runtime.types import RunContext
 from app.infra.db import AsyncSessionLocal
-from app.integrations.generative import generate_image_for_model
 from app.integrations.generative.constants import PURPOSE_FLOW_GENERATED
 
 
@@ -75,6 +74,10 @@ async def image_generate(
     if resolver is None:
         raise BadRequestError("生图模型解析器未装配（resolve_generative_image），无法同步生图")
 
+    generate = ctx.generate_image_sync
+    if generate is None:
+        raise BadRequestError("生图编排未装配（generate_image_sync），无法同步生图")
+
     async with AsyncSessionLocal() as db:
         tenant_ctx = tenant_context_from_run(ctx)
         model = await resolver(
@@ -83,7 +86,7 @@ async def image_generate(
             model_config_id=UUID(str(model_id)),
             agent_config=ctx.agent_config,
         )
-        result = await generate_image_for_model(
+        result = await generate(
             db,
             tenant_ctx,
             model,

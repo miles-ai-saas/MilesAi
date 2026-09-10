@@ -221,6 +221,10 @@ class FlowService(BaseService):
         from app.tenant.attachments.services.media_reader import build_flow_media_reader
         from app.tenant.compliance.services.scan_words_loader import build_scan_words_loader
         from app.tenant.flows.services.subflow_loader import build_subflow_graph_loader
+        from app.tenant.generative.services.orchestration import (
+            generate_image_for_model,
+            generate_video_for_model,
+        )
         from app.tenant.prompts.services.template_loader import build_prompt_template_loader
         from app.tenant.tools.services.flow_invoker import build_flow_tool_invoker
 
@@ -283,6 +287,8 @@ class FlowService(BaseService):
                 load_scan_words=build_scan_words_loader(),
                 load_subflow_graph=build_subflow_graph_loader(),
                 media_reader=build_flow_media_reader(tenant_id=str(self.ctx.tenant_id), user_id=self.ctx.user_id),
+                generate_image_sync=generate_image_for_model,
+                generate_video_sync=generate_video_for_model,
             )
             if "query" not in ctx.inputs and run_inputs:
                 ctx.inputs.setdefault("query", run_inputs.get("message", ""))
