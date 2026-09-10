@@ -1,6 +1,7 @@
 """SubFlow 编译期校验（published/pinned、环、深度）。
 
 FlowService 保存/发布前调用；LoopNode 与 SubFlow 共用 sub_flow_id 校验逻辑。
+仓储以 ``FlowRepoLike`` 契约注入（L1 ``FlowService`` 传 ``FlowRepository``）。
 """
 
 from __future__ import annotations
@@ -8,17 +9,15 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.core.soft_delete import is_marked_deleted
 from app.flow_runtime.constants import MAX_SUBFLOW_DEPTH
+from app.flow_runtime.subflow.contracts import FlowRepoLike
 from app.flow_runtime.subflow.resolve import (
     VERSION_POLICY_PINNED,
     VERSION_POLICY_PUBLISHED,
     iter_subflow_nodes,
 )
 from app.models.flow import Flow, FlowStatus
-from app.tenant.flows.repositories.flow import FlowRepository
 
 
 def _compile_error(
@@ -39,7 +38,7 @@ def _sub_flow_id_from_data(node_data: dict[str, Any]) -> str | None:
 
 
 async def _load_flow_graph_for_analysis(
-    repo: FlowRepository,
+    repo: FlowRepoLike,
     flow: Flow,
     *,
     pinned_version: int | None = None,
@@ -54,7 +53,7 @@ async def _load_flow_graph_for_analysis(
 
 
 async def _direct_subflow_ids(
-    repo: FlowRepository,
+    repo: FlowRepoLike,
     flow: Flow,
     graph: dict[str, Any],
 ) -> set[str]:
@@ -67,7 +66,7 @@ async def _direct_subflow_ids(
 
 
 async def _max_chain_depth(
-    repo: FlowRepository,
+    repo: FlowRepoLike,
     tenant_id: UUID,
     start_flow_id: UUID,
     start_graph: dict[str, Any],
@@ -114,14 +113,13 @@ async def _max_chain_depth(
 
 
 async def validate_subflow_references(
-    db: AsyncSession,
+    repo: FlowRepoLike,
     graph: dict[str, Any],
     *,
     tenant_id: UUID,
     current_flow_id: UUID | None,
 ) -> list[dict[str, Any]]:
     """校验画布中所有 SubFlow 引用；返回结构化错误列表（空表示通过）。"""
-    repo = FlowRepository(db)
     errors: list[dict[str, Any]] = []
 
     for node_id, data in iter_subflow_nodes(graph):

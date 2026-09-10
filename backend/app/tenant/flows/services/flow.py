@@ -219,6 +219,7 @@ class FlowService(BaseService):
         ``body.kb_ids`` 用于测试带 KnowledgeSearch 节点的画布。
         """
         from app.tenant.compliance.services.scan_words_loader import build_scan_words_loader
+        from app.tenant.flows.services.subflow_loader import build_subflow_graph_loader
         from app.tenant.prompts.services.template_loader import build_prompt_template_loader
         from app.tenant.tools.services.flow_invoker import build_flow_tool_invoker
 
@@ -279,6 +280,7 @@ class FlowService(BaseService):
                 invoke_platform_tool=build_flow_tool_invoker(),
                 resolve_prompt_template=build_prompt_template_loader(),
                 load_scan_words=build_scan_words_loader(),
+                load_subflow_graph=build_subflow_graph_loader(),
             )
             if "query" not in ctx.inputs and run_inputs:
                 ctx.inputs.setdefault("query", run_inputs.get("message", ""))
@@ -310,7 +312,7 @@ class FlowService(BaseService):
             raise BadRequestError("流程无可用版本")
         report = validate_graph_for_compile(version.graph_json)
         sub_errors = await validate_subflow_references(
-            self.db,
+            self.repo,
             version.graph_json,
             tenant_id=self.ctx.tenant_id,
             current_flow_id=flow.id,
