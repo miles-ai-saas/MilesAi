@@ -1,4 +1,8 @@
-"""Python 脚本工具源码 AST 校验（API 与 Runner 共用）。"""
+"""Python 脚本工具源码 AST 校验（API 与 Runner 共用）。
+
+脚本禁止 ``import``；Runner 运行时预注入 ``json`` / ``math`` / ``re`` /
+``datetime`` 四个白名单模块，脚本可直接引用。
+"""
 
 from __future__ import annotations
 

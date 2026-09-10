@@ -18,6 +18,8 @@ from app.common.exceptions import BadRequestError
 from app.common.url_security import validate_outbound_url
 from app.core.tenant import TenantContext
 from app.rag.generate import retrieve_hits
+from app.tenant.compliance.services.pipeline import CompliancePipeline
+from app.tenant.compliance.services.word_resolve import load_tenant_scan_words
 from app.tenant.kb.services.embeddings import build_kb_retrieval_bindings
 from app.tenant.skills.runtime import skill_read_reference, skill_run_script
 from app.tenant.tools.builtins.calculator import safe_calculate
@@ -167,6 +169,48 @@ async def handle_web_search(params: dict, **_: Any) -> dict:
     return search(query, max_results=max_results)
 
 
+async def handle_compliance_check_text(
+    params: dict,
+    *,
+    db: AsyncSession,
+    ctx: TenantContext,
+    **_: Any,
+) -> dict:
+    """租户敏感词检测（只读）。
+
+    复用 Agent 对话同一套词库与 ``CompliancePipeline``，但**不写 InterceptLog**：
+    本工具是 Agent 主动自检，不等同于入出站拦截，不应污染拦截审计。
+    未绑定/未启用词库时返回 ``scanning_enabled=False``。
+    """
+    text = params.get("text")
+    if text is None:
+        text = params.get("content") or params.get("query") or ""
+    if not isinstance(text, str) or not text.strip():
+        raise BadRequestError("compliance_check_text 需要 text 参数")
+
+    words = await load_tenant_scan_words(db, ctx.tenant_id)
+    if not words:
+        return {
+            "scanning_enabled": False,
+            "blocked": False,
+            "warned": False,
+            "worst_action": None,
+            "matches": [],
+            "match_count": 0,
+        }
+
+    result = CompliancePipeline(words).scan(text)
+    matches = [{"word": m.word, "action": m.action.value} for m in result.matches]
+    return {
+        "scanning_enabled": True,
+        "blocked": result.has_block,
+        "warned": result.has_warn,
+        "worst_action": result.worst_action.value if result.worst_action else None,
+        "matches": matches,
+        "match_count": len(matches),
+    }
+
+
 async def handle_code_execution(params: dict, **_: Any) -> dict:
     """Runner 沙箱执行 Python；委托 ``code_exec.execute_code``。"""
     code = params.get("code") or ""
@@ -201,6 +245,7 @@ BUILTIN_HANDLERS: dict[str, BuiltinHandler] = {
     "get_current_datetime": handle_get_current_datetime,
     # P2: 内置工具扩展
     "web_search": handle_web_search,  # DuckDuckGo
+    "compliance_check_text": handle_compliance_check_text,  # 租户敏感词自检（只读）
     "code_execution": handle_code_execution,  # Runner 沙箱
     "generate_speech": handle_generate_speech,  # P2: CosyVoice
     "generate_video": handle_generate_video,

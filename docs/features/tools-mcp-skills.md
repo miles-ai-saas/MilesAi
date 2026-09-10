@@ -13,7 +13,7 @@
 ### 1.1 交付范围
 
 - 工具目录：builtin + custom CRUD、`POST /tools/{name}/invoke`
-- 内置：calculator、http_request、knowledge_search、generate_image/video 等（见 registry）
+- 内置：calculator、http_request、knowledge_search、compliance_check_text、web_search、code_execution、generate_* 等（见 registry）
 - MCP：CRUD、sync tools/list、HTTP/SSE/STDIO invoke（STDIO 经 mcp-runner）
 - 技能包：导入（本地/ZIP/Git）、SKILL.md 编辑、分类
 - 钩子：`before_tool` / `after_tool`
@@ -97,6 +97,7 @@ invoke_tool_with_context
     → tool_invocation_logs
 ```
 
+变换脚本在 Runner 沙箱子进程执行，预注入 `json` / `re` / `math` / `datetime`（仍禁用户 `import`）。
 智能体 `config.skill_package_id`、`config.mcp_service_ids` 注入可用工具集；
 绑定知识库时 `knowledge_search` 强制可用（RAG 与 function calling 共存），命中回填 `sources`。
 

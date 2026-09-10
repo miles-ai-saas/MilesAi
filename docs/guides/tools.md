@@ -29,6 +29,11 @@ MilesAI **工具模块**管理租户可用的**平台内置工具**（含 **L2 �
 | `http_request` | 通用 HTTP 请求 |
 | `knowledge_search` | 知识库语义检索（单库/多库；可省略 kb 用智能体绑定库） |
 | `get_current_datetime` | 当前日期时间 |
+| `web_search` | DuckDuckGo 网页搜索 |
+| `code_execution` | Runner 沙箱执行 Python 片段 |
+| `compliance_check_text` | 租户敏感词检测（只读，不写拦截审计） |
+| `generate_image` / `generate_video` / `generate_speech` | 生成物（`generative_only`） |
+| `skill_read_reference` / `skill_run_script` | 技能包引用与脚本（`skill_bound_only`） |
 
 ---
 
@@ -147,6 +152,7 @@ Agent
 
 - `tool_type=script`，`config`: `{ "language": "python", "source": "...", "timeout_sec": 30 }`
 - 须定义 `def run(params: dict) -> dict`；禁止用户 `import` / `eval` 等
+- **预注入 stdlib**：Runner 提供 `json`、`re`、`math`、`datetime`，脚本直接引用即可
 - **能力边界**：轻量变换，非通用 Python；详见 [架构 §2.2](../architecture/tools-runtime.md#22-租户集成custom)
 - 执行：`POST /runner/v1/sessions/script/exec`
 - 审计：`mcp_runner_sessions.purpose=script_exec` + `tool_invocation_logs`

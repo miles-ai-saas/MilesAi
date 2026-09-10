@@ -57,7 +57,7 @@ MilesAI 是**企业级多租户 AI 中台**（RAG、流程编排、智能体、�
 | **执行** | `invoke_builtin` → 复用现有 `tenant/*` Service（RAG、合规、附件等） |
 | **扩展** | 发版新增；租户**不可改实现**，可按租户/智能体**启用** |
 | **租户使用** | 与自定义工具相同：`tool_slugs` 白名单、试调用、调用日志、`require_confirmation` |
-| **现状 slug** | `calculator`、`http_request`、`knowledge_search`、`get_current_datetime`（偏 **L1 轻量**） |
+| **现状 slug** | L1 轻量：`calculator`、`http_request`、`get_current_datetime`、`web_search`；L2 复杂：`knowledge_search`、`compliance_check_text`、`code_execution`、`generate_*`、`skill_read_reference` / `skill_run_script` |
 
 **推荐方向：系统内置一批「复杂工具」（L2）**，把已在平台内实现的能力（多库检索、合规检测、附件查询等）封装为 Agent 可调用的 builtin，租户**直接选用**即可，无需每个租户重复配 HTTP 或写脚本。
 
@@ -92,11 +92,11 @@ MilesAI 是**企业级多租户 AI 中台**（RAG、流程编排、智能体、�
 | 优先级 | slug（建议） | 能力 | 复用代码 | 默认确认 |
 |--------|--------------|------|----------|----------|
 | ✅ | `knowledge_search` | 知识库检索（单库/多库、混合/rerank；省略 kb 用绑定库） | 已有 | 否 |
-| P1 | `compliance_check_text` | 敏感词/策略检测 | `ComplianceService.check_*` | 否 |
-| P2 | `list_knowledge_bases` | 列出本租户 KB | `tenant/kb` | 否 |
-| P2 | `get_attachment_meta` | 附件元数据 | `tenant/attachments` | 否 |
+| ✅ | `compliance_check_text` | 敏感词检测（只读，不写拦截审计） | `CompliancePipeline` + `load_tenant_scan_words` | 否 |
+| 不做 | `list_knowledge_bases` | 列出本租户 KB | — | — （绑定 KB 的 `kb_ids` 已注入 system prompt，工具冗余） |
+| 缓做 | `get_attachment_meta` | 附件元数据 | `tenant/attachments` | 否（需先有「当前会话/资源范围」语义，否则会列出整租户附件） |
 | P2 | `invoke_tenant_hook` | 触发已注册 HTTP 钩子 | `tenant/hooks` | **是** |
-| P3 | `run_flow_once` | 单次执行已发布流程 | `flow_runtime` | **是** |
+| P2 | `run_flow_once` | 单次执行已发布流程 | `flow_runtime` | **是**（限智能体自身发布流程 + 递归/超时护栏） |
 | P3 | `http_request` | 通用外呼（SSRF 防护） | 已有；建议弱化宣传 | 可选 |
 
 **不宜做成内置复杂工具**（仍走 MCP 或专属页面）：
@@ -139,9 +139,8 @@ BUILTIN_REGISTRY  （元数据 + schema）
 integrations/langchain/tools.py  → StructuredTool（Agent）
        ↓
 invoke_builtin(slug, params)    → 分发到各 Service
-       ├─ knowledge_search      → rag.retrieve（多库 + 各库 hybrid/rerank）
-       ├─ compliance_check_text → ComplianceService
-       ├─ list_knowledge_bases  → KbService.list...
+       ├─ knowledge_search      → rag.generate.retrieve_hits（多库 + 各库 hybrid/rerank）
+       ├─ compliance_check_text → CompliancePipeline.scan（租户词库，只读）
        └─ ...
 ```
 
@@ -164,8 +163,9 @@ invoke_builtin(slug, params)    → 分发到各 Service
 
 - 须定义 `run(params: dict) -> dict`
 - AST 校验：禁止 `import`、`eval`、`open` 等
-- 适用：格式化、过滤、简单算术、字段映射
-- 不适用：联网、读写盘、复杂 JSON/正则（规划 v2.1 预注入 `json`/`re`/`datetime`/`math`）
+- Runner 预注入白名单 stdlib：`json`、`re`、`math`、`datetime`，脚本直接引用即可（**不开放** `import`）
+- 适用：格式化、过滤、简单算术、字段映射、正则解析、时间处理
+- 不适用：联网、读写盘、需要白名单外模块
 
 ### 2.3 外部 MCP（MCP Tools）
 
@@ -286,15 +286,15 @@ mcp__{service}__{tool_name}
 
 | 项 | 说明 |
 |----|------|
-| 脚本预注入 stdlib | Runner 注入 `json`、`datetime`、`re`、`math`；仍禁用户 `import` |
-| **内置复杂工具（首批）** | `compliance_check_text`、`list_knowledge_bases`、增强 `knowledge_search` |
+| 脚本预注入 stdlib | ✅ 已实现：Runner 注入 `json`、`datetime`、`re`、`math`；仍禁用户 `import` |
+| 内置复杂工具（首批） | ✅ `compliance_check_text` 已实现；`knowledge_search` 已增强为多库 + 回填 `sources`；`list_knowledge_bases` 决定**不做**（prompt 已注入 `kb_ids`） |
 | 工具分组/标签 | 工作台区分 L1/L2 内置 |
 
 ### P2 — 平台厚度
 
 | 项 | 说明 |
 |----|------|
-| 内置复杂工具（扩展） | 附件、流程单次执行、钩子触发等 |
+| 内置复杂工具（扩展） | `run_flow_once`（需护栏）、钩子触发等；附件类需先补「会话/资源范围」语义 |
 | 租户套餐级 builtin 开关 | `tenant_toggle` / 套餐位 |
 | 调用限流 | 租户级 QPS / 复杂工具配额 |
 | 流程节点 | 复用同一 Runtime |
@@ -308,8 +308,9 @@ mcp__{service}__{tool_name}
 
 ## 8. 已实现与代码入口
 
-已实现：builtin/custom catalog、变换脚本 v2、`tool_agent`、MCP 工作台、**RAG 与 tool calling 共存**
-（绑定 KB 时 `knowledge_search` 由 LLM 自行调用，命中回填 `sources`），以及
+已实现：builtin/custom catalog、变换脚本 v2（预注入 `json`/`re`/`math`/`datetime`）、`tool_agent`、
+MCP 工作台、**RAG 与 tool calling 共存**（绑定 KB 时 `knowledge_search` 由 LLM 自行调用，命中回填 `sources`）、
+**L2 内置 `compliance_check_text`**（复用租户词库，只读不写审计），以及
 **MCP → Agent function calling**（`mcp__{service}__{tool}`，审计 `source=mcp`）；见 [guides/tools.md](../guides/tools.md)。
 未尽项见 §7 演进路线。
 

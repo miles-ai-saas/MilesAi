@@ -45,7 +45,9 @@ export function ToolCreateDialogEntityForm(props: ToolCreateDialogEntityFormProp
   const { toolKind, parameters, onParametersChange, ...fieldProps } = props;
   const isScript = toolKind === "script";
   const paramHint = isScript ? "传入 run(params) 的字典；试调用与 Agent 共用。" : "URL 可用 {{参数名}} 占位；试调用与 Agent 共用。";
-  const execHint = isScript ? "MCP Runner 沙箱执行；须定义 run(params: dict) -> dict，禁止 import。" : "REST 调用配置；支持 URL 模板与 JSON Body。";
+  const execHint = isScript
+    ? "MCP Runner 沙箱执行；须定义 run(params: dict) -> dict，禁止 import；已预注入 json / re / math / datetime。"
+    : "REST 调用配置；支持 URL 模板与 JSON Body。";
 
   return (
     <div className="grid gap-5 lg:grid-cols-[minmax(260px,300px)_minmax(0,1fr)] lg:items-start">

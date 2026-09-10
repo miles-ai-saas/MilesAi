@@ -1,4 +1,8 @@
-"""Runner 内 Python 脚本执行。"""
+"""Runner 内 Python 脚本执行。
+
+用户脚本禁止 ``import``，但 Runner 预注入 ``json`` / ``math`` / ``re`` /
+``datetime`` 四个白名单模块（见 ``_BOOTSTRAP``），脚本可直接引用。
+"""
 
 from __future__ import annotations
 
@@ -14,12 +18,21 @@ from app.tenant.tools.script_validate import validate_script_source
 
 _BOOTSTRAP = textwrap.dedent(
     """
-    import json
-    import sys
+    import datetime
     import importlib.util
+    import json
+    import math
+    import re
+    import sys
+
+    # 预注入白名单 stdlib：脚本禁止 import，常用模块由 Runner 直接提供。
+    # 注入发生在 exec_module 之前，脚本自身的同名赋值仍以脚本为准。
+    _STDLIB = {"json": json, "math": math, "re": re, "datetime": datetime}
 
     spec = importlib.util.spec_from_file_location("user_tool", "user_script.py")
     mod = importlib.util.module_from_spec(spec)
+    for _name, _module in _STDLIB.items():
+        setattr(mod, _name, _module)
     spec.loader.exec_module(mod)
     run = getattr(mod, "run", None)
     if not callable(run):

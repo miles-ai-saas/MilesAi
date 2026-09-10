@@ -174,6 +174,18 @@ BUILTIN_REGISTRY: list[dict] = [
             {"name": "max_results", "type": "integer", "required": False, "default": 5},
         ],
     },
+    # P2: 合规检测 — 复用租户敏感词库，只读自检、不写拦截审计
+    {
+        "slug": "compliance_check_text",
+        "name": "合规检测",
+        "description": "检测文本是否命中租户敏感词库，返回命中词与 warn/block 处置建议（只读）",
+        "category_slug": "general",
+        "version": "1.0.0",
+        "require_confirmation": False,
+        "parameters": [
+            {"name": "text", "type": "string", "description": "待检测文本", "required": True},
+        ],
+    },
     # P2: 代码执行 — Runner 隔离子进程，30s/256MB 限制
     {
         "slug": "code_execution",
