@@ -49,7 +49,8 @@ agent-stack = [
 dev = [
     "pytest>=8.3.0",
     "pytest-asyncio>=0.24.0",
-    "ruff>=0.8.0",
+    # 固定 ruff：格式化规则随版本演进，未固定会让 `ruff format --check` 在 CI 无预兆变红
+    "ruff==0.15.13",
 ]
 multimodal = [
     "pytesseract>=0.3.10",
