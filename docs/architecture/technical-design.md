@@ -258,7 +258,7 @@ tenant/kb、workers/ingest、deletion
 
 | 项 | 说明 |
 |----|------|
-| 包路径 | `app/infra/storage/`（`base.py` 协议、`s3.py` 实现、`factory.py`） |
+| 包路径 | `backend/packages/miles-core/src/miles_core/infra/storage/`（`base.py` 协议、`s3.py` 实现、`factory.py`） |
 | 配置 | `OBJECT_STORAGE_BACKEND=s3`；`OBJECT_STORAGE_ENDPOINT` / `ACCESS_KEY` / `SECRET_KEY` / `BUCKET` / `SECURE` |
 | OSS 示例 | `OBJECT_STORAGE_ENDPOINT=oss-cn-hangzhou.aliyuncs.com`，`OBJECT_STORAGE_SECURE=true`，`OBJECT_STORAGE_REGION=cn-hangzhou` |
 | PG 字段 | `kb_documents.object_bucket` / `object_key` |
@@ -285,7 +285,7 @@ ingest / kb 检索 / deletion
 
 | 项 | 说明 |
 |----|------|
-| 包路径 | `app/infra/vector_store/`（`ChunkVectorRecord`、`weaviate.py`、`factory.py`） |
+| 包路径 | `backend/packages/miles-core/src/miles_core/infra/vector_store/`（`ChunkVectorRecord`、`weaviate.py`、`factory.py`） |
 | 配置 | `VECTOR_STORE_BACKEND=weaviate` \| `pgvector` \| `milvus` |
 | Weaviate | Collection `DocumentChunk`；`Vectorizer.none()` + 客户端 embedding；Filter `tenant_id` + `kb_id` |
 | Milvus | Collection `document_chunk_{dimension}`；COSINE；Filter `tenant_id` / `kb_id` / `document_id`；`MILVUS_URI` |
@@ -384,7 +384,7 @@ ingest / search / delete
 
 | 项 | 说明 |
 |----|------|
-| 包路径 | `app/integrations/langchain/embeddings.py`、`app/integrations/litellm/`（对话，非向量） |
+| 包路径 | `app/integrations/langchain/embeddings.py`、`backend/packages/miles-ai/src/miles_ai/integrations/litellm/`（对话，非向量） |
 | 全局默认 | `EMBEDDING_BACKEND=local` \| `litellm`；`EMBEDDING_MODEL_NAME` / `EMBEDDING_LITELLM_*` |
 | 新建 KB | 请求体 `embedding_profile`（默认见 `default_embedding_profile_id()`）；目录 `GET /api/v1/kb/embedding-profiles` |
 | 规格目录 | `app/integrations/embedding_profiles.py`：`local-bge-zh`（768）、`dashscope-v3`（1024） |

@@ -35,7 +35,7 @@ flowchart LR
 
 ### 1.1 设计原则
 
-- 租户数据一律带 `tenant_id`；Service 层 `tenant_filters` + `assert_tenant_access`（见 `app/core/tenant.py`）。
+- 租户数据一律带 `tenant_id`；Service 层 `tenant_filters` + `assert_tenant_access`（见 `backend/packages/miles-core/src/miles_core/tenant.py`）。
 - 基础设施（PG / Redis / MinIO / 向量库 / Celery）为**部署级** `.env`，不进租户 UI 写库（见 [technical-design §6.5](./technical-design.md#65-存储与向量化配置策略)）。
 - 租户可配的是**业务参数**（分片大小、平台名等）；**配额仅可查看用量与上限**，不可在租户后台修改（改配额仅在运营 `ui/admin`）。
 
@@ -76,7 +76,7 @@ auth:session:{user_id}:{jti}      → { ip, user_agent, created_at, last_seen_at
 auth:blacklist:{jti}              → 登出/撤销
 ```
 
-实现：`app/tenant/auth/services/session_store.py`。
+实现：`backend/packages/miles-core/src/miles_core/auth/session_store.py`。
 
 ### 2.3 PRD 差距
 

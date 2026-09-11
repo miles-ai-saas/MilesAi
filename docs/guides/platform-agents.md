@@ -26,7 +26,7 @@ UI：列表可显示 `内部协同 · N 子智能体`；配置在创建/编辑�
 | `sub_agent_role_hints` | 子智能体 `role_hint`（含空值「未指定」） |
 | `primary_paths` | 架构预览主路径（与 `AgentArchitectureOut` 一致） |
 
-文案维护在 `app/tenant/agents/meta.py`；DeepAgents 子智能体描述与 `sub_agent_role_hints` 共用 `SUB_AGENT_ROLE_LABELS`。
+文案维护在 `backend/packages/miles-portal/src/miles_portal/tenant/agents/meta.py`；DeepAgents 子智能体描述与 `sub_agent_role_hints` 共用 `SUB_AGENT_ROLE_LABELS`。
 
 ## 数据与约束
 
@@ -63,7 +63,7 @@ cd backend && uv sync --all-packages --group dev   # deepagents、langgraph>=1.2
 
 `steps` 类型：`planner`、`subagent_dispatch`、`subagent`、`planner_fallback`。
 
-模块：`app/integrations/deepagents/orchestrator.py`、`runner.py`、`subagent_graphs.py`。
+模块：`backend/packages/miles-ai/src/miles_ai/integrations/deepagents/orchestrator.py`、`runner.py`、`subagent_graphs.py`。
 
 `ChatRequest.conversation_id` 用于 DeepAgents `thread_id`（前缀 `deep:`，与 RAG checkpoint 隔离）。
 

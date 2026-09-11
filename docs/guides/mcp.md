@@ -20,7 +20,7 @@ Model Context Protocol（MCP）在 MilesAI 中用于**注册远程工具服务**
 
 ## 2. 数据模型
 
-表：`tool_mcp_services`（`app/tenant/mcp/models.py`）
+表：`tool_mcp_services`（`backend/packages/miles-portal/src/miles_portal/tenant/mcp/models.py`）
 
 | 字段 | 说明 |
 |------|------|
@@ -136,18 +136,18 @@ POST /mcp/{id}/sync | .../invoke
 
 | 模块 | 路径 | 说明 |
 |------|------|------|
-| 包说明 | `app/tenant/mcp/__init__.py` | 分层 |
-| 模型 | `app/tenant/mcp/models.py` | `tool_mcp_services` |
-| JSON-RPC 客户端 | `app/tenant/mcp/client.py` | **降级链入口** `mcp_json_rpc` |
-| Legacy / Streamable SSE | `app/tenant/mcp/sse_transport.py` | 长连接与 Streamable POST |
-| JSON-RPC 解析 | `app/tenant/mcp/rpc.py` | `parse_jsonrpc_result` |
-| 连接安全 | `app/tenant/mcp/security.py` | SSRF、`MCP_ALLOW_PRIVATE_HOSTS` |
-| 业务 | `app/tenant/mcp/services/mcp.py` | sync / invoke 落库 |
-| 路由 | `app/tenant/mcp/views/mcp.py` | REST API |
-| 传输归一化 | `app/tenant/mcp/transport.py` | http / sse / stdio |
-| **Runner 客户端** | `app/tenant/mcp/runner/client.py` | API → Runner HTTP |
-| **RunSpec** | `app/tenant/mcp/runner/spec.py` | 命令校验与构建 |
-| **Runner 服务** | `app/runner/main.py` | 独立 uvicorn 入口 |
+| 包说明 | `backend/packages/miles-portal/src/miles_portal/tenant/mcp/__init__.py` | 分层 |
+| 模型 | `backend/packages/miles-portal/src/miles_portal/tenant/mcp/models.py` | `tool_mcp_services` |
+| JSON-RPC 客户端 | `backend/packages/miles-portal/src/miles_portal/tenant/mcp/client.py` | **降级链入口** `mcp_json_rpc` |
+| Legacy / Streamable SSE | `backend/packages/miles-portal/src/miles_portal/tenant/mcp/sse_transport.py` | 长连接与 Streamable POST |
+| JSON-RPC 解析 | `backend/packages/miles-exec/src/miles_exec/mcp/rpc.py` | `parse_jsonrpc_result` |
+| 连接安全 | `backend/packages/miles-portal/src/miles_portal/tenant/mcp/security.py` | SSRF、`MCP_ALLOW_PRIVATE_HOSTS` |
+| 业务 | `backend/packages/miles-portal/src/miles_portal/tenant/mcp/services/mcp.py` | sync / invoke 落库 |
+| 路由 | `backend/packages/miles-portal/src/miles_portal/tenant/mcp/views/mcp.py` | REST API |
+| 传输归一化 | `backend/packages/miles-portal/src/miles_portal/tenant/mcp/transport.py` | http / sse / stdio |
+| **Runner 客户端** | `backend/packages/miles-portal/src/miles_portal/tenant/mcp/runner/client.py` | API → Runner HTTP |
+| **RunSpec** | `backend/packages/miles-exec/src/miles_exec/mcp/spec.py` | 命令校验与构建 |
+| **Runner 服务** | `backend/packages/miles-runner/src/miles_runner/main.py` | 独立 uvicorn 入口 |
 | 前端 | `ui/workbench/app/workbench/mcp/`，`ui/workbench/components/mcp/` | Tab 与卡片 |
 
 ## 6. 与智能体集成

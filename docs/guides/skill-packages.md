@@ -50,7 +50,7 @@ description: 通过技能你可以获取当前时间
 
 ### 2.2 解析实现
 
-- 模块：`app/tenant/skills/skill_md.py`
+- 模块：`backend/packages/miles-portal/src/miles_portal/tenant/skills/skill_md.py`
 - `parse_skill_md`：提取 frontmatter 与正文（行级 `key: value`，无 PyYAML 依赖）
 - `build_skill_md`：创建空白包时生成模板
 - 保存 `SKILL.md` 时：`SkillService.write_file_content` 调用 `sync_meta_from_skill_md` 回写 DB
@@ -74,7 +74,7 @@ description: 通过技能你可以获取当前时间
 | `scripts/` | 路径索引 | 内置工具 `skill_run_script`（`run(params)`） |
 | `assets/` | 路径索引 | `skill_read_reference`（文本类） |
 
-- 索引构建：`app/tenant/skills/skill_layout.py` → 写入 `SkillPackage.config.layout`
+- 索引构建：`backend/packages/miles-portal/src/miles_portal/tenant/skills/skill_layout.py` → 写入 `SkillPackage.config.layout`
 - 刷新时机：保存文件、空白创建、导入后自动 reindex
 - 空白创建：`POST /skill-packages/blank` 会生成 `references/guide.md` 与 `scripts/example_validate.py` 示例
 
@@ -86,7 +86,7 @@ description: 通过技能你可以获取当前时间
 
 ### 3.1 表 `skl_skill_packages`
 
-模型：`app/tenant/skills/models.py`  
+模型：`backend/packages/miles-portal/src/miles_portal/tenant/skills/models.py`  
 迁移：表结构由 ORM 定义，唯一 Alembic 文件 `alembic/versions/001_initial_schema.py`（`create_all`）。
 
 | 字段 | 类型 | 说明 |
@@ -141,9 +141,9 @@ description: 通过技能你可以获取当前时间
 
 实现：
 
-- `app/tenant/skills/storage.py` — 磁盘读写、扫描、导入路径
-- `app/tenant/skills/skill_layout.py` — 布局索引、资源读取、Prompt 块
-- `app/tenant/skills/runtime.py` — `skill_read_reference` / `skill_run_script` 执行
+- `backend/packages/miles-portal/src/miles_portal/tenant/skills/storage.py` — 磁盘读写、扫描、导入路径
+- `backend/packages/miles-portal/src/miles_portal/tenant/skills/skill_layout.py` — 布局索引、资源读取、Prompt 块
+- `backend/packages/miles-portal/src/miles_portal/tenant/skills/runtime.py` — `skill_read_reference` / `skill_run_script` 执行
 
 - `skills_data_root()`：解析绝对/相对路径并 `mkdir`
 - `skill_package_dir(tenant_id, slug)`：单技能根路径
@@ -157,7 +157,7 @@ description: 通过技能你可以获取当前时间
 ## 5. HTTP API
 
 前缀：`/api/v1/skill-packages`（租户 JWT + `skill:read` / `skill:write`）  
-路由：`app/tenant/skills/views/skills.py`
+路由：`backend/packages/miles-portal/src/miles_portal/tenant/skills/views/skills.py`
 
 ### 5.1 CRUD 与列表
 
@@ -340,7 +340,7 @@ backend/packages/miles-portal/src/miles_portal/tenant/skills/
 
 | 模块 | 路径 |
 |------|------|
-| 分类域扩展 | `app/models/category.py`（`CategoryDomain.SKILL`） |
+| 分类域扩展 | `backend/packages/miles-core/src/miles_core/models/meta/category.py`（`CategoryDomain.SKILL`） |
 | 分类清空引用 | `tenant/categories/services/category.py` |
 | 租户硬删 | `app/deletion/tenant.py` |
 | 种子 | `scripts/seed/categories.py` |

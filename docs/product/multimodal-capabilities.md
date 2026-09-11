@@ -229,7 +229,7 @@ flowchart TB
 | 生文 | `ainvoke_chat`、`tenant/agents/services/agent/` |
 | 识图（输入） | `integrations/chat/multimodal.py`、`flow_runtime/nodes/llm_nodes.py` |
 | 生图 / 生视频（输出） | `integrations/generative/`（万相 + 豆包 `volcengine_video`） |
-| 资料入库 | `app/rag/parse/`、`media_assets` |
+| 资料入库 | `backend/packages/miles-ai/src/miles_ai/rag/parse/`、`media_assets` |
 
 共享基础设施：
 

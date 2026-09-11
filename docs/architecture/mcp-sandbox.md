@@ -164,14 +164,14 @@ MCP_RUNNER_MAX_CONCURRENT_PER_TENANT=3
 
 | 组件 | 路径 |
 |------|------|
-| Runner HTTP 服务 | `app/runner/main.py` |
-| 子进程会话 | `app/runner/session.py`、`app/runner/mcp_stdio.py` |
-| RunSpec 校验 | `app/tenant/mcp/runner/spec.py` |
-| API 侧客户端 | `app/tenant/mcp/runner/client.py` |
-| 业务接入 | `app/tenant/mcp/services/mcp.py`（stdio 分支） |
+| Runner HTTP 服务 | `backend/packages/miles-runner/src/miles_runner/main.py` |
+| 子进程会话 | `backend/packages/miles-exec/src/miles_exec/sandbox/session.py`、`backend/packages/miles-exec/src/miles_exec/mcp/stdio.py` |
+| RunSpec 校验 | `backend/packages/miles-exec/src/miles_exec/mcp/spec.py` |
+| API 侧客户端 | `backend/packages/miles-portal/src/miles_portal/tenant/mcp/runner/client.py` |
+| 业务接入 | `backend/packages/miles-portal/src/miles_portal/tenant/mcp/services/mcp.py`（stdio 分支） |
 | Docker 镜像 | `docker/images/mcp-runner/Dockerfile` |
-| 现有 HTTP 客户端 | `app/tenant/mcp/client.py` |
-| 连接安全 | `app/tenant/mcp/security.py` |
+| 现有 HTTP 客户端 | `backend/packages/miles-portal/src/miles_portal/tenant/mcp/client.py` |
+| 连接安全 | `backend/packages/miles-portal/src/miles_portal/tenant/mcp/security.py` |
 
 ---
 

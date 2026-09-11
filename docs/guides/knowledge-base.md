@@ -164,8 +164,8 @@ embed_query_for_kb(kb, query) → search_kb_chunks（Weaviate hybrid 或 向量+
 
 | 层 | 路径 | 职责 |
 |----|------|------|
-| API | `app/tenant/kb/views/kb.py` | 路由、权限 `kb:*` |
-| 业务 | `app/tenant/kb/services/kb.py` | CRUD、上传、检索、删除编排 |
+| API | `backend/packages/miles-portal/src/miles_portal/tenant/kb/views/kb.py` | 路由、权限 `kb:*` |
+| 业务 | `backend/packages/miles-portal/src/miles_portal/tenant/kb/services/kb/` | CRUD、上传、检索、删除编排 |
 | 入库 | `tenant/kb/services/ingest.py` | Celery 状态机，调 `rag.pipeline.run_ingest_pipeline` |
 | 管道 | `rag/pipeline/ingest.py` | Parse → Chunk → Embed → Index |
 | 解析 | `rag/parse/loaders.py`、`backends/*` | 统一 `load_documents_from_bytes` |
@@ -249,9 +249,9 @@ OpenAPI：`/docs`（运行实例）。
 | 视频 | `.mp4`、`.mov`、`.m4v`、`.webm`、`.mkv` | ffmpeg 抽音轨（Whisper）+ 关键帧 OCR；无 ffmpeg 时占位文本 |
 | Office | `.docx`、`.pptx`、`.xlsx`、`.html`、`.htm` | **可上传**；解析需 `PARSE_PDF_BACKEND=docling` 且安装 `[parse-docling]` |
 
-白名单实现：`app/rag/parse/upload_policy.py`（KB 与通用附件共用）。
+白名单实现：`backend/packages/miles-ai/src/miles_ai/rag/parse/upload_policy.py`（KB 与通用附件共用）。
 
-白名单与解析能力对齐：图/音/视频扩展名与 MIME 由 `app/rag/parse/media.py` 单一来源导出、`upload_policy.py` 复用；`OFFICE_EXTENSIONS ⊆ DOCLING_EXTENSIONS`、media 判定 ⊆ 白名单、白名单扩展名/MIME 往返可接受、前端 `accept` 全覆盖等不变式由 `tests/rag/test_upload_policy_alignment.py` 守卫。Docling 可读但白名单刻意不收的 TIFF/BMP 属「允许上传 ≠ 一定能解析」边界。
+白名单与解析能力对齐：图/音/视频扩展名与 MIME 由 `backend/packages/miles-ai/src/miles_ai/rag/parse/media.py` 单一来源导出、`upload_policy.py` 复用；`OFFICE_EXTENSIONS ⊆ DOCLING_EXTENSIONS`、media 判定 ⊆ 白名单、白名单扩展名/MIME 往返可接受、前端 `accept` 全覆盖等不变式由 `tests/rag/test_upload_policy_alignment.py` 守卫。Docling 可读但白名单刻意不收的 TIFF/BMP 属「允许上传 ≠ 一定能解析」边界。
 
 | 配置 | 说明 |
 |------|------|
