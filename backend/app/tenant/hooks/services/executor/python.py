@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.logging import get_logger
 from app.tenant.hooks.events import BEFORE_TRIGGERS, apply_modify, build_event_envelope, parse_hook_response
 from app.tenant.hooks.models import HookBinding, HookDefinition, HookScope, HookTrigger
-from app.utils.idgen import generate_uuid
+from app.common.idgen import generate_uuid
 
 logger = get_logger(__name__)
 

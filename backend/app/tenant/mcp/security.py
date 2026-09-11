@@ -6,7 +6,7 @@ MCP 出站连接安全（HTTP/SSE：连接层校验，非 STDIO 执行沙箱）�
 """
 
 from app.common.exceptions import BadRequestError
-from app.common.url_security import validate_outbound_url
+from app.core.url_security import validate_outbound_url
 
 
 def validate_mcp_endpoint_url(url: str) -> str:

@@ -5,7 +5,7 @@
 """
 
 import httpx
-from app.common.url_security import validate_outbound_url
+from app.core.url_security import validate_outbound_url
 
 _DDG_API = "https://api.duckduckgo.com/"
 

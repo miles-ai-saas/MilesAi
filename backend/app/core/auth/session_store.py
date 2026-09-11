@@ -8,7 +8,7 @@ from uuid import UUID
 
 from app.core.security import safe_decode_token
 from app.infra.redis import get_redis
-from app.utils.redis_keys import RedisKeys
+from app.common.redis_keys import RedisKeys
 
 SESSION_TTL_SECONDS = 60 * 60 * 24 * 7
 

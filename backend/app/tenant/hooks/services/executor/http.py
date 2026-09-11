@@ -18,7 +18,7 @@ from app.tenant.hooks.events import (
 )
 from app.tenant.hooks.exceptions import HookBlockedError
 from app.tenant.hooks.models import HookBinding, HookDefinition, HookScope, HookTrigger
-from app.utils.idgen import generate_uuid
+from app.common.idgen import generate_uuid
 
 logger = get_logger(__name__)
 

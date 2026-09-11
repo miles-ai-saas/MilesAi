@@ -7,7 +7,7 @@ import pytest
 
 from app.core.tenant import TenantContext
 from app.tenant.system.services.infra import InfraService
-from app.utils.health_checks import (
+from app.core.utils.health_checks import (
     COMPONENT_IDS,
     build_infra_settings_preview,
     probe_component,
@@ -24,7 +24,7 @@ async def test_probe_component_unknown():
 
 @pytest.mark.asyncio
 async def test_probe_component_postgres_ok():
-    with patch("app.utils.health_checks.check_postgres", new_callable=AsyncMock, return_value=True):
+    with patch("app.core.utils.health_checks.check_postgres", new_callable=AsyncMock, return_value=True):
         result = await probe_component("postgres")
     assert result["status"] == "ok"
     assert result["id"] == "postgres"
@@ -34,7 +34,7 @@ async def test_probe_component_postgres_ok():
 @pytest.mark.asyncio
 async def test_probe_components_default_all():
     with patch(
-        "app.utils.health_checks.probe_component",
+        "app.core.utils.health_checks.probe_component",
         new_callable=AsyncMock,
         side_effect=lambda cid: {"id": cid, "status": "ok"},
     ):

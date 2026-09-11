@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.elements import ColumnElement
 
 from app.common.exceptions import ConflictError, NotFoundError
-from app.common.pagination import paginate
+from app.core.pagination import paginate
 from app.common.schema import PageResult
 from app.core.soft_delete import append_not_deleted, has_soft_delete, is_marked_deleted, mark_deleted, not_deleted
 

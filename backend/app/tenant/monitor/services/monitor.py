@@ -37,7 +37,7 @@ from app.tenant.monitor.schemas.monitor import (
     TaskTrendPoint,
 )
 from app.tenant.tasks.schemas.task import TaskSummary
-from app.utils.health_checks import collect_health_status
+from app.core.utils.health_checks import collect_health_status
 
 logger = get_logger(__name__)
 

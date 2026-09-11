@@ -17,7 +17,7 @@ from app.tenant.system.schemas.infra import (
     InfraTestConnectionOut,
 )
 from app.tenant.system.services.infra import InfraService
-from app.utils.health_checks import get_redis_info, get_worker_info
+from app.core.utils.health_checks import get_redis_info, get_worker_info
 
 router = APIRouter()
 

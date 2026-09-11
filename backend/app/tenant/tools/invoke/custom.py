@@ -7,7 +7,7 @@ import httpx
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.common.exceptions import BadRequestError
-from app.common.url_security import validate_outbound_url
+from app.core.url_security import validate_outbound_url
 from app.core.config import get_settings
 from app.core.tenant import TenantContext
 from app.tenant.mcp.runner.audit import write_script_runner_session

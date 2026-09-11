@@ -15,7 +15,7 @@ import httpx
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.common.exceptions import BadRequestError
-from app.common.url_security import validate_outbound_url
+from app.core.url_security import validate_outbound_url
 from app.core.tenant import TenantContext
 from app.rag.generate import retrieve_hits
 from app.tenant.compliance.services.pipeline import CompliancePipeline

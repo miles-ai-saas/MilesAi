@@ -9,7 +9,7 @@ from app.core.logging import get_logger
 from app.infra.db import generative_job_db_session
 from app.integrations.generative.jobs.errors import GenerativeJobCancelled
 from app.models.model.generative_job import GenerativeJob, GenerativeJobStatus
-from app.utils.redis_keys import RedisKeys
+from app.common.redis_keys import RedisKeys
 
 logger = get_logger(__name__)
 

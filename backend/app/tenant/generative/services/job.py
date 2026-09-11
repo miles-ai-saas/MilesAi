@@ -347,7 +347,7 @@ class GenerativeJobService(BaseService):
 
         try:
             from app.infra.redis import get_redis
-            from app.utils.redis_keys import RedisKeys
+            from app.common.redis_keys import RedisKeys
 
             redis = get_redis()
             channel = RedisKeys.generative_job_progress(str(self.ctx.tenant_id), str(job_id))

@@ -6,7 +6,7 @@ from app.tenant.system.schemas.infra import (
     InfraStatusOut,
     InfraTestConnectionOut,
 )
-from app.utils.health_checks import (
+from app.core.utils.health_checks import (
     COMPONENT_IDS,
     collect_infra_status,
     probe_components,

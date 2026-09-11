@@ -15,7 +15,7 @@ from app.tenant.hooks.services.executor.http import HookHttpMixin
 from app.tenant.hooks.services.executor.log import HookLogMixin
 from app.tenant.hooks.services.executor.python import HookPythonMixin
 from app.tenant.hooks.services.result import HookRunResult
-from app.utils.idgen import generate_uuid
+from app.common.idgen import generate_uuid
 
 logger = get_logger(__name__)
 

@@ -109,7 +109,7 @@ class KnowledgeBaseCoreMixin:
     async def list_search_logs(self, kb_id: UUID, params: PageParams) -> PageResult[KbSearchLogOut]:
         """分页列出该知识库的检索日志。"""
         await self._get_kb_or_raise(kb_id)
-        from app.common.pagination import paginate
+        from app.core.pagination import paginate
 
         page = await paginate(
             self.db,

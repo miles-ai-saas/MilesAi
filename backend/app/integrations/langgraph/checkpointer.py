@@ -90,7 +90,7 @@ async def init_langgraph_checkpointer() -> str:
     if settings.langgraph_redis_checkpoint:
         try:
             AsyncRedisSaver = _import_async_redis_saver()
-            from app.utils.health_checks import check_redis
+            from app.core.utils.health_checks import check_redis
 
             if await check_redis():
                 stack = AsyncExitStack()

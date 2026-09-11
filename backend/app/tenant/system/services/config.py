@@ -13,7 +13,7 @@ from app.tenant.system.schemas.config import (
     SystemConfigUpsert,
 )
 from app.core.service import BaseService
-from app.utils.health_checks import collect_health_status
+from app.core.utils.health_checks import collect_health_status
 
 CONFIG_DEFINITIONS: list[dict] = [
     {

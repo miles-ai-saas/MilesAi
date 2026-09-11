@@ -19,7 +19,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.common.exceptions import BadRequestError, ConflictError, NotFoundError
-from app.common.url_security import validate_outbound_url
+from app.core.url_security import validate_outbound_url
 from app.core.tenant import TenantContext, assert_tenant_access, tenant_filters
 from app.models.meta.category import CategoryDomain
 from app.tenant.categories.services.category import CategoryService

@@ -3,7 +3,7 @@
 from uuid import UUID
 
 from app.infra.redis import get_redis
-from app.utils.redis_keys import RedisKeys
+from app.common.redis_keys import RedisKeys
 
 
 async def validate_admin_session(admin_id: UUID, jti: str | None) -> bool:

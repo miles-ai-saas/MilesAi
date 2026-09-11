@@ -8,7 +8,7 @@ from typing import Any
 from uuid import UUID
 
 from app.tenant.hooks.models import HookScope, HookTrigger
-from app.utils.idgen import generate_uuid
+from app.common.idgen import generate_uuid
 
 SCHEMA_VERSION = "1"
 

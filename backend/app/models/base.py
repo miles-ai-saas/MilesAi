@@ -7,7 +7,7 @@ from sqlalchemy import DateTime, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.utils.idgen import generate_uuid
+from app.common.idgen import generate_uuid
 
 
 class TimestampMixin:
@@ -39,7 +39,7 @@ class AuditTimestampMixin:
 
 
 class UUIDPrimaryKeyMixin:
-    """主键默认 UUIDv7（时间有序，见 app.utils.idgen）。"""
+    """主键默认 UUIDv7（时间有序，见 app.common.idgen）。"""
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=generate_uuid)
     from typing import TYPE_CHECKING

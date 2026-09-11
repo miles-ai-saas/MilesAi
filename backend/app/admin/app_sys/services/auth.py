@@ -17,7 +17,7 @@ from app.core.config import get_settings
 from app.core.security import hash_password, verify_password
 from app.admin.app_sys.schemas.auth import AdminInfo, AdminLoginRequest, AdminSessionOut, AdminTokenResponse, PasswordChangeRequest
 from app.admin.app_sys.session_store import revoke_admin_session
-from app.utils.redis_keys import RedisKeys
+from app.common.redis_keys import RedisKeys
 
 
 class AdminAuthService:
