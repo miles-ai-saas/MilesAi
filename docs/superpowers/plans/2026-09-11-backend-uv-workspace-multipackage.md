@@ -10,22 +10,28 @@
 
 ## Global Constraints
 
-- **行为不变**：`scripts/export_openapi.py --check` 零漂移；全量 `pytest` 通过；`/api/v1`、`/api/admin/v1`、`/api/v1/open/*` 路径不变；数据库表名不变。
+- **行为不变**：迁移前后由 `scripts/export_openapi.py` 生成的 schema **逐字节相同**；全量 `pytest` 通过；`/api/v1`、`/api/admin/v1`、`/api/v1/open/*` 路径不变；数据库表名不变。
+- **解释器（极易踩坑，务必遵守）**：所有 Python/ruff 命令必须用 `backend/.venv/bin/python`、`backend/.venv/bin/ruff`（或表格 `$(PY)`/`uv run`）。**禁止裸用 `python`/`ruff`**——PATH 上是 miniconda（pydantic 2.12.5 / fastapi 0.128.8），与 venv（2.13.4 / 0.136.1）的 schema 渲染不同，会让 `export_openapi.py --check` **误报漂移**（实测差异 13 处：`format: binary` vs `contentMediaType`、`AgentPackage` vs `-Input/-Output`）。
 - **依赖方向**（spec §2）：`miles_common`/`miles_exec` 为叶子；`miles_core → common`；`miles_ai → core`；`miles_portal → ai`；`miles_admin → portal`；`miles_openapi → portal`；`miles_server → openapi`；`miles_worker → portal`；`miles_runner → exec`。
 - **硬判据**：`miles_ai ✗→ miles_portal`；`miles_openapi ✗→ miles_admin`；`miles_portal ✗→ miles_admin`；`miles_runner ✗→ core/portal/admin/openapi/ai`；`miles_core ✗→ ai`；`miles_server` 内无 views/schemas。
 - **只声明真正 import 的依赖**（spec §5.1）。多声明一个包 = 白拆。
-- **本计划是行为保持型重构**，因此不写"先失败的新单测"；每个任务的验证闸门是：既有 `pytest` + `ruff` + `export_openapi.py --check`（阶段 2 起加 `lint-imports`）。新增不变量（包分层、server 无 views）才新增真实测试代码。
+- **本计划是行为保持型重构**，因此不写"先失败的新单测"；每个任务的验证闸门是：既有 `pytest` + `ruff` + schema 逐字节比对（阶段 2 起加 `lint-imports`）。新增不变量（包分层、server 无 views）才新增真实测试代码。
 - **单一提交原子性**：阶段 2 的搬迁必须一次提交完成（中途仓库不可 import），见 Task 2.2 顶部说明与 Task 2.4 Step 6。
 - 提交信息遵循仓库规范：`<type>(<scope>): <简体中文简述>`。
 
 ## 验证闸门（每个任务复用）
 
 ```bash
-# 在 backend/ 下执行（$(PY) = backend/.venv/bin/python，或 uv run python）
-GATE_LINT='cd backend && ruff check . && ruff format --check .'
-GATE_TEST='cd backend && python -m pytest -q'
-GATE_OPENAPI='cd backend && python scripts/export_openapi.py --check'   # Task 3.1 后改为 python -m miles_server.scripts.export_openapi --check
-GATE_LAYERS='cd backend && lint-imports'                                # Task 3.4 后可用
+# 一律显式用 venv 解释器（见 Global Constraints 的「解释器」条目）
+PY=backend/.venv/bin/python          # 或 backend/.venv/bin/ruff
+GATE_LINT='cd backend && .venv/bin/.venv/bin/ruff check . && .venv/bin/.venv/bin/ruff format --check .'
+GATE_TEST='cd backend && .venv/bin/.venv/bin/python -m pytest -q'
+GATE_OPENAPI='cd backend && .venv/bin/.venv/bin/python scripts/export_openapi.py --check'  # Task 3.1 后改为 .venv/bin/.venv/bin/python -m miles_server.scripts.export_openapi --check
+GATE_LAYERS='cd backend && uv run lint-imports'                                  # Task 3.4 后可用
+# schema 逐字节比对（比快照检查更强，迁移期间主闸门）：
+# 迁移前先存档：cd backend && .venv/bin/.venv/bin/python scripts/export_openapi.py --write && cp openapi/openapi.snapshot.json ../.superpowers/sdd/openapi.ref.json
+# 每任务后比对：cd backend && .venv/bin/python -c "import json,sys;from app.apps.application import create_app" ... 或直接 diff 生成结果
+GATE_SCHEMA_REF='cd backend && .venv/bin/.venv/bin/python scripts/export_openapi.py --write && diff openapi/openapi.snapshot.json ../.superpowers/sdd/openapi.ref.json && echo SCHEMA_OK'
 ```
 
 ---
@@ -48,10 +54,10 @@ git rev-parse --short HEAD        # 记为本分支 merge-base
 
 ```bash
 cd /Users/xiezhigang/Projects/miles/MilesAI/backend
-python -m pytest -q 2>&1 | tail -5
-ruff check . && ruff format --check .
-python scripts/export_openapi.py --check
-python -m pytest --collect-only -q 2>&1 | tail -3    # 记录测试用例数
+.venv/bin/python -m pytest -q 2>&1 | tail -5
+.venv/bin/ruff check . && .venv/bin/ruff format --check .
+.venv/bin/python scripts/export_openapi.py --check
+.venv/bin/python -m pytest --collect-only -q 2>&1 | tail -3    # 记录测试用例数
 sha256sum openapi/openapi.snapshot.json
 ```
 
@@ -119,9 +125,9 @@ Expected: `OK: 无残留`
 - [ ] **Step 4: 跑闸门**
 
 ```bash
-ruff check . && ruff format --check .
-python -m pytest -q
-python scripts/export_openapi.py --check
+.venv/bin/ruff check . && .venv/bin/ruff format --check .
+.venv/bin/python -m pytest -q
+.venv/bin/python scripts/export_openapi.py --check
 ```
 
 Expected: 全绿、`OpenAPI snapshot OK`。
@@ -197,7 +203,7 @@ Expected: `OK: common 已是叶子`
 - [ ] **Step 5: 跑闸门 + 提交**
 
 ```bash
-ruff check . && ruff format --check . && python -m pytest -q && python scripts/export_openapi.py --check
+.venv/bin/ruff check . && .venv/bin/ruff format --check . && .venv/bin/python -m pytest -q && .venv/bin/python scripts/export_openapi.py --check
 git add -A
 git commit -F - <<'EOF'
 refactor(common): common 瘦身为纯叶子并拆分 utils
@@ -295,8 +301,8 @@ rg -rn "app\.middlewares|app\.admin\.models\.risk|app\.admin\.app_ops\.services\
 
 ```bash
 rg -n "app\.middlewares\b" app tests -g '*.py' || echo "OK: 无残留"
-ruff check . && ruff format --check . && python -m pytest -q && python scripts/export_openapi.py --check
-python -m pytest tests/api -q
+.venv/bin/ruff check . && .venv/bin/ruff format --check . && .venv/bin/python -m pytest -q && .venv/bin/python scripts/export_openapi.py --check
+.venv/bin/python -m pytest tests/api -q
 ```
 
 Expected: 全绿；`tests/api` 通过（覆盖 403/429 信封）。
@@ -400,8 +406,8 @@ Expected: 只出现 `app.common.*`（无 core/infra/tenant/rag）。
 - [ ] **Step 6: 跑闸门（沙箱 + MCP 专项）**
 
 ```bash
-ruff check . && ruff format --check . && python -m pytest -q
-python -m pytest tests/mcp tests/tenant/tools -q
+.venv/bin/ruff check . && .venv/bin/ruff format --check . && .venv/bin/python -m pytest -q
+.venv/bin/python -m pytest tests/mcp tests/tenant/tools -q
 ```
 
 - [ ] **Step 7: 提交**
@@ -583,8 +589,8 @@ Expected: `OK: 业务侧零 worker 依赖`
 - [ ] **Step 5: 跑闸门（celery 配置 + 全量）**
 
 ```bash
-ruff check . && ruff format --check . && python -m pytest -q
-python -m pytest tests/infra/test_celery_config.py tests/tenant/generative tests/tenant/kb tests/tenant/tasks -q
+.venv/bin/ruff check . && .venv/bin/ruff format --check . && .venv/bin/python -m pytest -q
+.venv/bin/python -m pytest tests/infra/test_celery_config.py tests/tenant/generative tests/tenant/kb tests/tenant/tasks -q
 ```
 
 - [ ] **Step 6: 提交**
@@ -726,7 +732,7 @@ done
 ```bash
 uv lock 2>&1 | tail -5
 uv sync --all-packages --group dev 2>&1 | tail -5
-python -c "import miles_common, miles_core, miles_ai, miles_portal, miles_admin, miles_openapi, miles_server, miles_worker, miles_runner, miles_exec; print('workspace OK')"
+.venv/bin/python -c "import miles_common, miles_core, miles_ai, miles_portal, miles_admin, miles_openapi, miles_server, miles_worker, miles_runner, miles_exec; print('workspace OK')"
 ```
 
 Expected: `workspace OK`
@@ -848,8 +854,8 @@ Expected: 全部命中；`miles_admin/admin/` 与 `miles_core/core/` 之类的�
 
 用法：
   cd backend
-  python tools/rename_to_workspace.py --dry-run
-  python tools/rename_to_workspace.py --apply
+  .venv/bin/python tools/rename_to_workspace.py --dry-run
+  .venv/bin/python tools/rename_to_workspace.py --apply
 """
 
 from __future__ import annotations
@@ -974,7 +980,7 @@ if __name__ == "__main__":
 
 ```bash
 cd backend
-python tools/rename_to_workspace.py --dry-run
+.venv/bin/python tools/rename_to_workspace.py --dry-run
 ```
 
 Expected: 列出全部含 `app.*` 的文件（预期 ≈700 个）。
@@ -982,7 +988,7 @@ Expected: 列出全部含 `app.*` 的文件（预期 ≈700 个）。
 - [ ] **Step 3: 应用**
 
 ```bash
-python tools/rename_to_workspace.py --apply
+.venv/bin/python tools/rename_to_workspace.py --apply
 git diff --stat | tail -3
 ```
 
@@ -1004,7 +1010,7 @@ Expected: 两条均 `OK`；`cli.py` 内 `miles_server.scripts` 计数 ≥ 6。�
 - [ ] **Step 5: 校验包可编译**
 
 ```bash
-python -m compileall -q packages && echo "compile OK"
+.venv/bin/python -m compileall -q packages && echo "compile OK"
 ```
 
 ---
@@ -1384,8 +1390,8 @@ def create_app() -> FastAPI:
 
 ```bash
 cd backend
-python -m compileall -q packages && echo "compile OK"
-python -m miles_server.scripts.export_openapi --check
+.venv/bin/python -m compileall -q packages && echo "compile OK"
+.venv/bin/python -m miles_server.scripts.export_openapi --check
 ```
 
 Expected: `OpenAPI snapshot OK`（**关键闸门**：若漂移说明路由/前缀有变）。
@@ -1394,7 +1400,7 @@ Expected: `OpenAPI snapshot OK`（**关键闸门**：若漂移说明路由/前�
 
 ```bash
 find packages/miles-server/src -name views -o -name schemas | grep . && echo "FAIL" || echo "OK: server 无 views/schemas"
-python -m pytest tests/test_l3_neutral_imports.py -q
+.venv/bin/python -m pytest tests/test_l3_neutral_imports.py -q
 ```
 
 - [ ] **Step 7: 提交**
@@ -1500,7 +1506,7 @@ openapi-write: ## 重写 OpenAPI 快照（改路由/Schema 后执行并提交）
 - [ ] **Step 4: 跑闸门**
 
 ```bash
-cd backend && python -m pytest -q && python -m miles_server.scripts.export_openapi --check
+cd backend && .venv/bin/python -m pytest -q && .venv/bin/python -m miles_server.scripts.export_openapi --check
 cd .. && make openapi-check
 ```
 
