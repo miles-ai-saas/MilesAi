@@ -922,6 +922,25 @@ EOF
 
 ## Phase 2: 工作区与搬迁
 
+> **状态：已完成（2026-09-11）**。本阶段步骤复选框保持未勾选，完成情况以本节与本块为准：
+>
+> | 任务 | 提交 | 说明 |
+> |------|------|------|
+> | 2.1 uv workspace 骨架与 10 包声明 | `1cb5971` | 根 pyproject 转 workspace、10 个成员声明（依赖由 AST 扫描实际 import 得出，非人工猜测）、旧 `app/` 保持不动 |
+> | 2.2+2.3+2.4 物理搬迁 + 全量 codemod + 特殊引用修正 | `16037c5` | 合并为一次原子提交，947 文件；`backend/app/` 删除 |
+> | 2.5 域自持 API 层与 `register_*` 装配 | `ede6f5a` | 7 文件 |
+>
+> 每个提交的闸门均为：`compileall OK` / `ruff check + format --check` clean / `pytest -q` → `586 passed, 2 warnings` / `export_openapi --check` → `OpenAPI snapshot OK` / `create_app()` 冒烟 226 路由。
+>
+> 执行期对计划原文的修正（已全部落实，详见 `.superpowers/sdd/progress.md` 与各任务 brief）：
+> - 2.2：先摘 `open_chat.py` 与 `openapi/` 再搬 `app/tenant`；`rm` 掉 `miles_openapi/__init__.py` 占位再 `git mv`。
+> - 2.3：codemod 正则须为 `(?<![\w.])(?:ALT)(?![\w])`（否则环视只作用于首/末分支，`app.tenant.mcp.runner.spec_build` 会被截断成 `miles_exec.mcp.spec_build`）；`SKIP_PARTS` 只排除 backend 顶层 `tools/`（否则连业务 `tenant/tools` 一起漏改）；`app.workers.app → miles_worker.app`（计划原文误写 `miles_core.jobs.celery_app`）。
+> - 2.4：`find_backend_root()` 兜底为 `parents[5]`。
+> - 2.5：`miles_core/web/__init__.py` 未 re-export，须用 `from miles_core.web.middlewares import register_http_middlewares`；`task_routes` 由 Task 1.5 置于 `miles_core/jobs/celery_app.py`（投递侧语义），`miles_worker/app.py` 只有 `include` / `task_annotations` / `beat_schedule`。
+>
+> Phase 2 退出时的包级图（`.superpowers/sdd/phase2-package-graph.py`）：**无环**。唯一越界边为 `miles_runner -> miles_core`（`miles_runner/main.py` 的 `RunnerSettings`），已排期 **Task 3.2** 消除。
+
+
 ### Task 2.1: 建立 uv workspace 骨架与 10 个包声明
 
 **Files:**
@@ -2222,7 +2241,7 @@ rg -n "分页|全局异常处理" packages/miles-common/src/miles_common/__init_
 - `packages/miles-common/src/miles_common/__init__.py` docstring 仍写「响应、异常、分页、全局异常处理」，但 `pagination` 与 `handlers` 已迁出。改为「跨模块公共能力：响应、异常与通用 schema。」（Phase 1 Task 1.2 的 scope 未授权改它，故留到这里。）
 - `packages/miles-core/src/miles_core/models/__init__.py` 的域目录列表 `platform / kb / flow / model / media / meta / task / storage / agent / marketplace` 需补 `risk`（Task 1.3 新增 `models/risk.py`，其 scope 未授权改 docstring）。
 - `packages/miles-portal/src/miles_portal/tenant/mcp/runner/__init__.py` docstring 仍写「MCP Runner 客户端与 RunSpec（API 侧）」，但 `RunSpec`/`validate_run_spec` 已随 Task 1.4 迁至 `miles_exec.mcp.spec`，`build_run_spec` 随 Task 1.7 迁至同包的 `spec_build.py`，需改写。
-- `packages/miles-server/src/miles_server/apps/main.py` docstring 写「租户 API 前缀见 apps.routers.api_router」，但 `apps/routers.py` 已在 Task 2.5 删除（改为各域 `register_*`），需改写为指向 `miles_portal.registration.register_portal`。
+- `packages/miles-server/src/miles_server/main.py` docstring 写「租户 API 前缀见 apps.routers.api_router」，但 `apps/routers.py` 已在 Task 2.5 删除（改为各域 `register_*`），需改写为指向 `miles_portal.registration.register_portal`。
 - `backend/tools/rename_to_workspace.py` 的 `RULES` 仍留过时映射 `("app.workers.app", "miles_core.jobs.celery_app")`（正确应为 `miles_worker.app`；该工具已执行完毕，仅作为记录误导后来者）。要么修正该行，要么在文件头注明「一次性工具，`app.workers.app` 一条已由人工修正，勿直接重跑」。
 - `.github/workflows/lint.yml` 的 step 名称/注释仍按旧单包布局描述（按文件路径调用仍有效，属措辞过时）。
 - `packages/*/pyproject.toml` 的注释若含旧 `app/` 路径（如 miles-core 关于 `app/infra/db/sync.py` 的注释），改为新路径。
