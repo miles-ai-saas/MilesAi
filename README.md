@@ -109,6 +109,21 @@ docker buildx build --platform linux/amd64 --progress=plain \
 
 ## 本地开发
 
+### 快捷命令（Makefile）
+
+项目根提供 `Makefile` 封装常用开发/运维操作（需已安装 `make`）：
+
+```bash
+make help          # 查看全部命令
+make env           # 生成 .env（.env.example → .env）
+make infra-up      # 启动中间件（PG/Redis/MinIO/Milvus）
+make init-db       # 迁移 + 全量种子
+make serve         # 启动 API
+make check         # 复刻 CI 后端 job 质量门禁
+```
+
+镜像构建/推送：`make push-api`、`make push-worker`、`make push-mcp-runner`（可用 `REGISTRY=`、`TAG=`、`PLATFORM=` 覆盖）。
+
 ### 仅后端
 
 ```bash
