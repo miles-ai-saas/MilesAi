@@ -66,7 +66,7 @@ def search_vectors(
     """
     语义向量检索。
 
-    返回 hit 列表，字段见 ``integrations.langchain.vector.documents._doc_to_hit_row``
+    返回 hit 列表，字段见 ``infra.vector_store.documents._doc_to_hit_row``
     （chunk_id、document_id、score、score_vector 等）。
     """
     return get_vector_store().search(query_vector, tenant_id=tenant_id, kb_id=kb_id, limit=limit)

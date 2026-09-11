@@ -24,7 +24,7 @@ from pymilvus import DataType, MilvusClient
 from app.core.config import get_settings
 from app.infra.vector_store.base import ChunkVectorRecord, validate_dimension
 from app.common.exceptions import AppError
-from app.integrations.langchain.vector.documents import (
+from app.infra.vector_store.documents import (
     METADATA_CHUNK_ID,
     METADATA_DOCUMENT_ID,
     METADATA_KB_ID,
@@ -113,7 +113,7 @@ def _ensure_collection(client: MilvusClient, dimension: int) -> str:
     """确保 collection 存在、已建索引并 load（与 langchain_milvus 字段一致）。"""
     name = collection_name_for_dimension(dimension)
     if not client.has_collection(name):
-        # 关闭 dynamic_field，字段集与 integrations.langchain.vector.documents 常量一致
+        # 关闭 dynamic_field，字段集与 infra.vector_store.documents 常量一致
         schema = client.create_schema(auto_id=False, enable_dynamic_field=False)
         schema.add_field(
             field_name=TEXT_KEY,

@@ -25,7 +25,7 @@ from weaviate.classes.query import Filter
 
 from app.core.config import Settings, get_settings
 from app.infra.vector_store.base import ChunkVectorRecord, validate_dimension
-from app.integrations.langchain.vector.documents import (
+from app.infra.vector_store.documents import (
     METADATA_CHUNK_ID,
     METADATA_DOCUMENT_ID,
     METADATA_KB_ID,

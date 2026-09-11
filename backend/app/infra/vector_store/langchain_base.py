@@ -9,7 +9,7 @@ from collections.abc import Callable
 from typing import Any
 
 from app.infra.vector_store.base import ChunkVectorRecord, validate_dimension
-from app.integrations.langchain.vector.documents import (
+from app.infra.vector_store.documents import (
     chunk_record_to_document,
     known_embedding_dimensions,
 )

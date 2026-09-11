@@ -1,7 +1,7 @@
 """
 RAG 上下文拼装：将检索 hit 格式化为 LLM 可读的参考片段。
 
-hit 字段来自 ``integrations.langchain.vector.documents._doc_to_hit_row``；
+hit 字段来自 ``infra.vector_store.documents._doc_to_hit_row``；
 ``content_preview`` 多为向量库写入时的截断预览，可能短于 PG ``DocumentChunk.content`` 全文。
 """
 
