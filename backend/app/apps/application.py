@@ -10,7 +10,7 @@ from app.apps.routers import admin_router, api_router
 from app.core.web.handlers import exception_handlers
 from app.core.config import get_settings
 from app.core.logging import setup_logging
-from app.middlewares import register_http_middlewares
+from app.core.web.middlewares import register_http_middlewares
 
 
 @asynccontextmanager

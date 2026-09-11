@@ -2,7 +2,7 @@
 
 from app.admin.models.audit import AuditLog
 from app.admin.models.billing import BillLineItem, BillStatus, BillingPlan, TenantBill
-from app.admin.models.risk import IpBlacklist, RateLimitRule, RiskEvent, RiskSeverity
+from app.models.risk import IpBlacklist, RateLimitRule, RiskEvent, RiskSeverity  # noqa: F401
 from app.admin.models.sys import PlatformAdmin
 
 __all__ = [

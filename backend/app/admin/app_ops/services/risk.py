@@ -9,7 +9,7 @@ from app.admin.app_ops.repositories.risk import (
     RateLimitRuleRepository,
     RiskEventRepository,
 )
-from app.admin.app_ops.services.risk_enforce import platform_risk_enforcer
+from app.core.risk.enforce import platform_risk_enforcer
 from app.admin.models import IpBlacklist, RateLimitRule, RiskEvent, RiskSeverity
 from app.admin.app_ops.schemas.risk import (
     IpBlacklistCreate,

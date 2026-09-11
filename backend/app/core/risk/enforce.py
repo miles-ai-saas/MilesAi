@@ -9,7 +9,7 @@ from uuid import UUID
 
 from sqlalchemy import select
 
-from app.admin.models import IpBlacklist, RateLimitRule, RiskEvent, RiskSeverity
+from app.models.risk import IpBlacklist, RateLimitRule, RiskEvent, RiskSeverity
 from app.infra.db.async_session import AsyncSessionLocal
 from app.infra.redis import get_redis
 

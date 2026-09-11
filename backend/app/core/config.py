@@ -29,7 +29,7 @@ class Settings(BaseSettings):
     debug: bool = True
     # 应用日志级别：DEBUG | INFO | WARNING | ERROR（见 app.core.logging）
     log_level: str = "INFO"
-    # HTTP 访问日志中间件（见 app.middlewares.access_log）
+    # HTTP 访问日志中间件（见 app.core.web.middlewares.access_log）
     log_http_access: bool = True
     secret_key: str = "change-me"
     api_host: str = "0.0.0.0"

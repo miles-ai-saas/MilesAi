@@ -6,9 +6,9 @@
 
 from fastapi import FastAPI
 
-from app.middlewares.access_log import AccessLogMiddleware
-from app.middlewares.platform_risk import PlatformRiskMiddleware
-from app.middlewares.trace import TraceMiddleware
+from app.core.web.middlewares.access_log import AccessLogMiddleware
+from app.core.web.middlewares.platform_risk import PlatformRiskMiddleware
+from app.core.web.middlewares.trace import TraceMiddleware
 
 __all__ = [
     "AccessLogMiddleware",

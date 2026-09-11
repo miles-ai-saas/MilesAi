@@ -8,8 +8,8 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 
-from app.admin.app_ops.services.risk_enforce import platform_risk_enforcer
-from app.admin.models import RiskSeverity
+from app.core.risk.enforce import platform_risk_enforcer
+from app.models.risk import RiskSeverity
 from app.common.trace import get_trace_id
 
 _SKIP_PREFIXES = ("/health", "/docs", "/redoc", "/openapi.json", "/favicon.ico")

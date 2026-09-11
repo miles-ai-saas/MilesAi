@@ -33,12 +33,12 @@ def disable_platform_risk() -> Iterator[None]:
     """API 测试绕过 Redis 限流/黑名单中间件。"""
     with (
         patch(
-            "app.middlewares.platform_risk.platform_risk_enforcer.is_ip_blocked",
+            "app.core.web.middlewares.platform_risk.platform_risk_enforcer.is_ip_blocked",
             new_callable=AsyncMock,
             return_value=False,
         ),
         patch(
-            "app.middlewares.platform_risk.platform_risk_enforcer.check_rate_limit",
+            "app.core.web.middlewares.platform_risk.platform_risk_enforcer.check_rate_limit",
             new_callable=AsyncMock,
             return_value=(False, None),
         ),
