@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 from app.common.cron import describe_cron
 
 
+# 创建定时任务入参。
 class AgentScheduleCreate(BaseModel):
     content: str = Field(
         ...,
@@ -24,6 +25,7 @@ class AgentScheduleCreate(BaseModel):
     enabled: bool = Field(default=True, description="创建后是否立即启用")
 
 
+# 更新定时任务入参，所有字段可选。
 class AgentScheduleUpdate(BaseModel):
     content: str | None = Field(
         default=None,
@@ -40,6 +42,7 @@ class AgentScheduleUpdate(BaseModel):
     enabled: bool | None = Field(default=None, description="是否启用")
 
 
+# 定时任务对外展示，含 Cron 人类可读说明与下次执行时间。
 class AgentScheduleOut(BaseModel):
     id: UUID = Field(description="定时任务 ID")
     agent_id: UUID = Field(description="所属智能体 ID")
@@ -56,6 +59,7 @@ class AgentScheduleOut(BaseModel):
 
     @classmethod
     def from_model(cls, entity) -> "AgentScheduleOut":
+        """由 ``AgentSchedule`` ORM 实体转换，并补充 Cron 可读说明。"""
         return cls(
             id=entity.id,
             agent_id=entity.agent_id,

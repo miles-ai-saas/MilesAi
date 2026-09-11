@@ -1,9 +1,12 @@
+"""租户审计日志对外输出模型。"""
+
 from datetime import datetime
 from uuid import UUID
 
 from pydantic import BaseModel, Field
 
 
+# 审计日志输出（含回填的操作用户名）。
 class TenantAuditLogOut(BaseModel):
     id: UUID = Field(description="审计日志 ID")
     tenant_id: UUID = Field(description="租户 ID")

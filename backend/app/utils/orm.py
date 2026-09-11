@@ -21,10 +21,12 @@ def ref_uuid(*, nullable: bool = False) -> Mapped[uuid.UUID | None]:
 
 
 def idx(name: str, *columns: str) -> Index:
+    """普通索引 ``idx_*``。"""
     return Index(name, *columns)
 
 
 def uk(name: str, *columns: str) -> UniqueConstraint:
+    """唯一约束 ``uk_*``。"""
     return UniqueConstraint(*columns, name=name)
 
 

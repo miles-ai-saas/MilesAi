@@ -12,6 +12,8 @@ from app.models.base import TimestampMixin, UUIDPrimaryKeyMixin
 
 
 class MediaAsset(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    """生成物目录：元数据 + 引用 blob 附件，可提升入库知识库。"""
+
     __tablename__ = "media_assets"
     __table_args__ = (
         UniqueConstraint("attachment_id", name="uk_media_assets_attachment_id"),

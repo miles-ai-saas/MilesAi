@@ -123,6 +123,7 @@ def _extract_usage(response: Any) -> tuple[int, int, int]:
 
 
 def extract_litellm_usage(response: Any) -> tuple[int, int, int]:
+    """提取 ``(prompt_tokens, completion_tokens, total_tokens)``；缺失字段补 0，total 缺失时取前两者之和。"""
     usage = getattr(response, "usage", None)
     if usage is None and isinstance(response, dict):
         usage = response.get("usage")

@@ -11,10 +11,13 @@ from app.models.platform.tenant import Tenant, TenantStatus
 
 
 class AdminDashboardService:
+    """控制台概览统计服务。"""
+
     def __init__(self, db: AsyncSession) -> None:
         self.db = db
 
     async def get_summary(self) -> AdminDashboardSummaryOut:
+        """聚合租户、风险、账单、审计与套餐的概览指标。"""
         now = datetime.now(timezone.utc)
         today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
         month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)

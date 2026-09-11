@@ -78,11 +78,13 @@ def _public_message(exc: Exception) -> str:
 
 
 async def validation_error_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
+    """Pydantic 校验失败：取首条错误格式化为 422 响应。"""
     detail = _format_validation_message(exc)
     return _error_envelope(request, status_code=422, code=422, message=detail)
 
 
 async def app_error_handler(request: Request, exc: AppError) -> JSONResponse:
+    """业务异常：沿用异常自带的 status_code / code 输出统一信封。"""
     return _error_envelope(
         request,
         status_code=exc.status_code,
@@ -92,6 +94,7 @@ async def app_error_handler(request: Request, exc: AppError) -> JSONResponse:
 
 
 async def sqlalchemy_error_handler(request: Request, exc: SQLAlchemyError) -> JSONResponse:
+    """数据库异常：记录堆栈后返回 500（文案经 ``_public_message`` 脱敏）。"""
     logger.exception(
         "SQLAlchemy error path=%s trace_id=%s",
         request.url.path,
@@ -106,6 +109,7 @@ async def sqlalchemy_error_handler(request: Request, exc: SQLAlchemyError) -> JS
 
 
 async def unhandled_error_handler(request: Request, exc: Exception) -> JSONResponse:
+    """兜底异常：记录堆栈后返回 500（非 debug 隐藏细节）。"""
     logger.exception(
         "Unhandled error path=%s trace_id=%s",
         request.url.path,

@@ -19,26 +19,31 @@ def set_generative_request_prefs(
     allow_collage: bool = False,
     video_duration: int | None = None,
 ) -> None:
+    """写入本请求的生图/生视频偏好（ContextVar，随请求结束由 ``clear_generative_request_prefs`` 清除）。"""
     _image_n.set(image_n)
     _allow_collage.set(bool(allow_collage))
     _video_duration.set(video_duration)
 
 
 def clear_generative_request_prefs() -> None:
+    """清空本请求偏好，避免 ContextVar 残留影响后续请求。"""
     _image_n.set(None)
     _allow_collage.set(False)
     _video_duration.set(None)
 
 
 def get_request_image_n() -> int | None:
+    """读取输入区指定的生图张数；未设置时返回 ``None``。"""
     return _image_n.get()
 
 
 def get_request_allow_collage() -> bool:
+    """输入区是否允许拼图（默认 ``False``）。"""
     return bool(_allow_collage.get())
 
 
 def get_request_video_duration() -> int | None:
+    """读取输入区指定的视频时长（秒）；未设置时返回 ``None``。"""
     return _video_duration.get()
 
 

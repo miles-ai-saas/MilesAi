@@ -15,6 +15,7 @@ from app.models.platform.user import User
 
 
 def extract_bearer_token(websocket: WebSocket) -> str | None:
+    """依次从查询参数 ``token``、``Authorization`` 头提取 Bearer Token。"""
     token = websocket.query_params.get("token")
     if token and token.strip():
         return token.strip()
@@ -25,6 +26,7 @@ def extract_bearer_token(websocket: WebSocket) -> str | None:
 
 
 async def resolve_tenant_context(db: AsyncSession, token: str) -> TenantContext:
+    """校验访问令牌并加载用户角色权限，构造租户上下文；失败抛 ``UnauthorizedError``。"""
     payload = safe_decode_token(token)
     if not payload or payload.get("type") != "access":
         raise UnauthorizedError("无效或过期的令牌")

@@ -45,6 +45,7 @@ class AccessLogMiddleware(BaseHTTPMiddleware):
     """记录 method、path、status、耗时、client、trace_id；不记录 Authorization / body。"""
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
+        """记录 method/path/status/耗时/client/trace_id；被跳过路径直接透传，异常记日志后原样抛出。"""
         settings = get_settings()
         if not settings.log_http_access:
             return await call_next(request)

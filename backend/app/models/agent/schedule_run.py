@@ -14,12 +14,15 @@ from app.infra.db import Base
 from app.models.base import AuditTimestampMixin, UUIDPrimaryKeyMixin
 
 
+# 单次定时任务的执行结果状态。
 class AgentScheduleRunStatus(str, enum.Enum):
     SUCCESS = "success"
     FAILED = "failed"
 
 
 class AgentScheduleRun(UUIDPrimaryKeyMixin, AuditTimestampMixin, Base):
+    """智能体定时任务执行历史，供列表展示与失败告警。"""
+
     __tablename__ = "agt_schedule_runs"
     __table_args__ = (
         Index("idx_agt_schedule_runs_schedule_id", "schedule_id"),

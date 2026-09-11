@@ -22,6 +22,7 @@ from app.models.agent.chat_io import (  # noqa: F401 — re-export（Chat* 五�
 from app.tenant.tags.schemas.tag import TagRefOut
 
 
+# 子智能体绑定入参。
 class SubAgentBindingIn(BaseModel):
     child_agent_id: UUID = Field(description="子智能体 ID")
     role_hint: str | None = Field(
@@ -31,6 +32,7 @@ class SubAgentBindingIn(BaseModel):
     )
 
 
+# 子智能体绑定的对外展示。
 class SubAgentRefOut(BaseModel):
     id: UUID = Field(description="子智能体 ID")
     name: str = Field(description="子智能体名称")
@@ -39,6 +41,7 @@ class SubAgentRefOut(BaseModel):
     description: str | None = Field(default=None, description="子智能体描述")
 
 
+# A2A 对端绑定入参。
 class A2aPeerRefIn(BaseModel):
     peer_id: UUID = Field(description="A2A 对端 ID")
     role_hint: str | None = Field(
@@ -54,6 +57,7 @@ class A2aPeerRefIn(BaseModel):
     enabled: bool = Field(default=True, description="是否启用该对端绑定")
 
 
+# A2A 对端绑定的对外展示，含连接状态与 Agent Card。
 class A2aPeerRefOut(BaseModel):
     id: UUID = Field(description="A2A 对端 ID")
     name: str = Field(description="对端名称")
@@ -95,6 +99,7 @@ class AgentCreate(BaseModel):
     config: dict = Field(default_factory=dict, description="扩展配置 JSON")
 
 
+# 更新智能体；未提供字段保持不变，列表类字段为全量替换。
 class AgentUpdate(BaseModel):
     agent_type: AgentType | None = Field(default=None, description="智能体类型")
     category_id: UUID | None = Field(default=None, description="分类 ID")
@@ -118,6 +123,7 @@ class AgentUpdate(BaseModel):
     config: dict | None = Field(default=None, description="扩展配置 JSON")
 
 
+# 智能体详情/列表的对外展示。
 class AgentOut(BaseModel):
     id: UUID = Field(description="智能体 ID")
     tenant_id: UUID = Field(description="租户 ID")

@@ -45,6 +45,7 @@ class HookService(BaseService):
         return HookMetaOut.model_validate(hook_meta_dict())
 
     async def list_hooks(self, params: PageParams) -> PageResult[HookDefinitionOut]:
+        """分页列出当前租户钩子定义，按创建时间倒序。"""
         filters = append_not_deleted(tenant_filters(self.ctx, HookDefinition.tenant_id), HookDefinition)
         total = await self.db.scalar(select(func.count()).select_from(HookDefinition).where(*filters))
         stmt = select(HookDefinition).where(*filters).order_by(HookDefinition.created_at.desc()).offset((params.page - 1) * params.size).limit(params.size)
@@ -57,6 +58,7 @@ class HookService(BaseService):
         )
 
     async def create_hook(self, body: HookDefinitionCreate) -> HookDefinitionOut:
+        """创建钩子定义，并附带一条 scope/trigger 来自请求体的初始绑定。"""
         hook = HookDefinition(
             tenant_id=self.ctx.tenant_id,
             name=body.name,
@@ -79,6 +81,7 @@ class HookService(BaseService):
         return HookDefinitionOut.model_validate(hook)
 
     async def update_hook(self, hook_id: UUID, body: HookDefinitionUpdate) -> HookDefinitionOut:
+        """仅更新显式传入的字段（``exclude_unset``）。"""
         hook = await self._get_hook_or_raise(hook_id)
         for k, v in body.model_dump(exclude_unset=True).items():
             setattr(hook, k, v)
@@ -87,6 +90,7 @@ class HookService(BaseService):
         return HookDefinitionOut.model_validate(hook)
 
     async def delete_hook(self, hook_id: UUID) -> None:
+        """软删钩子定义及其全部绑定。"""
         hook = await self._get_hook_or_raise(hook_id)
         await mark_deleted_where(
             self.db,
@@ -97,6 +101,7 @@ class HookService(BaseService):
         await mark_deleted(self.db, hook)
 
     async def list_bindings(self, hook_id: UUID) -> list[HookBindingOut]:
+        """列出指定钩子的有效绑定，按 priority 升序。"""
         await self._get_hook_or_raise(hook_id)
         rows = (
             (
@@ -116,6 +121,7 @@ class HookService(BaseService):
         return [HookBindingOut.model_validate(b) for b in rows]
 
     async def create_binding(self, hook_id: UUID, body: HookBindingCreate) -> HookBindingOut:
+        """为指定钩子新增绑定。"""
         await self._get_hook_or_raise(hook_id)
         binding = HookBinding(
             tenant_id=self.ctx.tenant_id,
@@ -131,6 +137,7 @@ class HookService(BaseService):
         return HookBindingOut.model_validate(binding)
 
     async def delete_binding(self, binding_id: UUID) -> None:
+        """软删绑定；不存在、已删或跨租户时抛 ``NotFoundError``。"""
         binding = await self.db.get(HookBinding, binding_id)
         if not binding or binding.tenant_id != self.ctx.tenant_id or is_marked_deleted(binding):
             raise NotFoundError("绑定不存在")
@@ -142,6 +149,7 @@ class HookService(BaseService):
         *,
         hook_id: UUID | None = None,
     ) -> PageResult[HookExecutionLogOut]:
+        """分页查询执行日志，可按 hook_id 过滤；指定时先校验钩子归属。"""
         if hook_id:
             await self._get_hook_or_raise(hook_id)
         filters = append_not_deleted(

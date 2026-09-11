@@ -44,6 +44,7 @@ _TOOL_STEP_TYPES = frozenset(
 
 
 def preview_text(text: str, *, max_len: int = PREVIEW_MAX_LEN) -> str:
+    """截断文本用于列表预览，超长时追加省略号。"""
     cleaned = (text or "").strip()
     if len(cleaned) <= max_len:
         return cleaned
@@ -51,6 +52,7 @@ def preview_text(text: str, *, max_len: int = PREVIEW_MAX_LEN) -> str:
 
 
 def build_steps_summary(steps: list[dict] | None) -> list[dict]:
+    """抽取步骤的 type/label 生成精简摘要（最多 50 条）。"""
     out: list[dict] = []
     for step in steps or []:
         step_type = str(step.get("type") or "step")
@@ -62,10 +64,12 @@ def build_steps_summary(steps: list[dict] | None) -> list[dict]:
 
 
 def count_tool_calls(steps: list[dict] | None) -> int:
+    """统计步骤中属于工具调用类型的数量。"""
     return sum(1 for step in steps or [] if str(step.get("type") or "") in _TOOL_STEP_TYPES)
 
 
 def is_compliance_block(exc: Exception) -> bool:
+    """判断异常是否为合规敏感词拦截（据此将状态记为 blocked）。"""
     return isinstance(exc, BadRequestError) and "敏感词" in exc.message
 
 
@@ -104,16 +108,19 @@ class ChatCallRecorder:
         self._written = False
 
     def set_route(self, route: str) -> None:
+        """记录本轮实际命中的路由标识。"""
         self._route = route
 
     @property
     def route(self) -> str:
+        """返回本轮实际命中的路由标识。"""
         return self._route
 
     def _latency_ms(self) -> int:
         return max(0, int((time.perf_counter() - self._started) * 1000))
 
     async def record_success(self, response: ChatResponse, *, route: str) -> None:
+        """写入成功记录并持久化本轮会话；同一实例只写入一次。"""
         if self._written:
             return
         self._written = True
@@ -157,6 +164,7 @@ class ChatCallRecorder:
         route: str,
         response: ChatResponse | None = None,
     ) -> None:
+        """写入失败记录；合规拦截记为 blocked，其余记为 failed。"""
         if self._written:
             return
         self._written = True
@@ -199,6 +207,8 @@ class ChatCallRecorder:
 
 
 class AgentCallRecordService(BaseService):
+    """对话调用记录的查询服务（列表、详情及关联日志）。"""
+
     def __init__(self, db: AsyncSession, ctx: TenantContext) -> None:
         super().__init__(db, ctx)
         self._agent_repo = AgentRepository(db)
@@ -256,6 +266,7 @@ class AgentCallRecordService(BaseService):
         from_dt: datetime | None = None,
         to_dt: datetime | None = None,
     ) -> PageResult[AgentCallRecordOut]:
+        """分页查询调用记录，支持状态/会话/路由/关键词/时间范围过滤。"""
         await self._ensure_agent(agent_id)
         filters = tenant_filters(self.ctx, AgentChatCall.tenant_id) + [AgentChatCall.agent_id == agent_id]
         if status:
@@ -289,6 +300,7 @@ class AgentCallRecordService(BaseService):
         )
 
     async def get_record(self, agent_id: UUID, call_id: UUID) -> AgentCallRecordDetailOut:
+        """获取调用记录详情，并附带时间窗内关联的工具与钩子日志。"""
         await self._ensure_agent(agent_id)
         row = await self.db.get(AgentChatCall, call_id)
         if not row or row.agent_id != agent_id:
@@ -306,6 +318,7 @@ class AgentCallRecordService(BaseService):
 
 
 def parse_call_record_datetime(value: str | None) -> datetime | None:
+    """解析查询参数中的日期/时间串为 UTC ``datetime``，支持仅日期（按当日 0 点）。"""
     if not value:
         return None
     text = value.strip()

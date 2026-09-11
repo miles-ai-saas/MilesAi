@@ -18,4 +18,5 @@ async def validate_admin_session(admin_id: UUID, jti: str | None) -> bool:
 
 
 async def revoke_admin_session(admin_id: UUID) -> None:
+    """删除管理员 Redis 会话键，使其 token 立即失效。"""
     await get_redis().delete(RedisKeys.admin_session(admin_id))

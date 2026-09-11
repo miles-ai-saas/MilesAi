@@ -41,7 +41,9 @@ def validate_dimension(dimension: int) -> int:
 class VectorStore(Protocol):
     """向量检索后端：默认 Weaviate，可扩展 pgvector / Milvus。"""
 
-    def ensure_schema(self, dimension: int) -> None: ...
+    def ensure_schema(self, dimension: int) -> None:
+        """确保 collection/schema 存在且维度匹配（幂等）。"""
+        ...
 
     def upsert_chunk(self, record: ChunkVectorRecord) -> str:
         """返回外部向量 ID（写入 PG `kb_vector_refs`）。"""
@@ -54,10 +56,18 @@ class VectorStore(Protocol):
         tenant_id: UUID,
         kb_id: UUID | None = None,
         limit: int = 10,
-    ) -> list[dict[str, Any]]: ...
+    ) -> list[dict[str, Any]]:
+        """按查询向量做租户隔离的相似度检索，返回命中 chunk 元数据与分数。"""
+        ...
 
-    def delete_by_document(self, document_id: UUID) -> None: ...
+    def delete_by_document(self, document_id: UUID) -> None:
+        """删除某文档的全部向量。"""
+        ...
 
-    def delete_by_chunk_ids(self, chunk_ids: list[str]) -> None: ...
+    def delete_by_chunk_ids(self, chunk_ids: list[str]) -> None:
+        """按外部向量 ID 批量删除。"""
+        ...
 
-    def health_check(self) -> bool: ...
+    def health_check(self) -> bool:
+        """探测向量后端连通性。"""
+        ...

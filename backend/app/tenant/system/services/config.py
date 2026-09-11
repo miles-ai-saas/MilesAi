@@ -78,6 +78,7 @@ class SystemConfigService(BaseService):
         return out
 
     async def list_configs(self) -> list[SystemConfigOut]:
+        """列出库中已显式保存的配置项（按 key 排序）。"""
         rows = (await self.db.execute(select(SystemConfig).order_by(SystemConfig.key))).scalars().all()
         return [
             SystemConfigOut(
@@ -90,6 +91,7 @@ class SystemConfigService(BaseService):
         ]
 
     async def upsert_config(self, key: str, body: SystemConfigUpsert) -> SystemConfigOut:
+        """按键插入或更新配置；非 dict 值包装为 ``{"value": ...}``，随后 flush+refresh。"""
         row = await self.db.scalar(select(SystemConfig).where(SystemConfig.key == key))
         payload = body.value if isinstance(body.value, dict) else {"value": body.value}
         if row:
@@ -113,6 +115,7 @@ class SystemConfigService(BaseService):
         )
 
     async def runtime_info(self) -> RuntimeInfoOut:
+        """汇总组件健康状态与脱敏后的关键配置预览。"""
         settings = get_settings()
         health = await collect_health_status()
         components = {k: _format_component_status(v) for k, v in health.get("components", {}).items()}

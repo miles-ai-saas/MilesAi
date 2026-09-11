@@ -37,16 +37,19 @@ def _verify_token(x_runner_token: str | None = Header(default=None, alias="X-Run
         raise HTTPException(status_code=401, detail="Runner token 无效")
 
 
+# MCP 会话请求：RunSpec 与可选连接配置。
 class McpSessionRequest(BaseModel):
     run_spec: RunSpec
     connection_config: dict = Field(default_factory=dict)
 
 
+# 会话执行元信息：耗时（毫秒）与子进程退出码。
 class SessionMeta(BaseModel):
     duration_ms: int
     exit_code: int | None = None
 
 
+# ``tools/list`` 响应：工具列表或错误码 / 说明。
 class ListToolsResponse(BaseModel):
     ok: bool
     tools: list[dict] = Field(default_factory=list)
@@ -55,11 +58,13 @@ class ListToolsResponse(BaseModel):
     message: str | None = None
 
 
+# ``tools/call`` 请求：在会话请求上追加工具名与参数。
 class CallToolRequest(McpSessionRequest):
     tool_name: str
     arguments: dict = Field(default_factory=dict)
 
 
+# ``tools/call`` 响应：工具输出或错误码 / 说明。
 class CallToolResponse(BaseModel):
     ok: bool
     output: dict | None = None
@@ -68,6 +73,7 @@ class CallToolResponse(BaseModel):
     message: str | None = None
 
 
+# 脚本执行请求：源码、参数与运行时 / 内存上限。
 class ScriptExecRequest(BaseModel):
     tenant_id: UUID
     tool_id: UUID | None = None
@@ -78,6 +84,7 @@ class ScriptExecRequest(BaseModel):
     max_memory_mb: int = 512
 
 
+# 脚本执行响应：输出或错误码 / 说明。
 class ScriptExecResponse(BaseModel):
     ok: bool
     output: dict | None = None
@@ -101,11 +108,13 @@ def _error_response(result: SessionResult) -> dict[str, Any]:
 
 @app.get("/health")
 async def health() -> dict[str, str]:
+    """服务存活探针。"""
     return {"status": "ok"}
 
 
 @app.get("/runner/v1/health")
 async def runner_health() -> dict[str, str]:
+    """Runner 版本化健康检查（供探测是否已升级到 ``/runner/v1`` 路径）。"""
     return {"status": "ok"}
 
 
@@ -114,6 +123,7 @@ async def list_tools(
     body: McpSessionRequest,
     _: None = Depends(_verify_token),
 ) -> ListToolsResponse:
+    """在沙箱会话中执行 MCP ``tools/list``；spec 非法时返回 ``INVALID_SPEC``。"""
     spec = body.run_spec
     try:
         validate_run_spec(spec, command_whitelist=COMMAND_WHITELIST)
@@ -150,6 +160,7 @@ async def call_tool(
     body: CallToolRequest,
     _: None = Depends(_verify_token),
 ) -> CallToolResponse:
+    """在沙箱会话中执行 MCP ``tools/call``；spec 非法时返回 ``INVALID_SPEC``。"""
     spec = body.run_spec
     spec.purpose = "mcp_invoke"
     try:
@@ -192,6 +203,7 @@ async def exec_script(
     body: ScriptExecRequest,
     _: None = Depends(_verify_token),
 ) -> ScriptExecResponse:
+    """在沙箱中执行租户 Python 脚本；源码非法返回 ``INVALID_SCRIPT``，运行时 / 内存夹取到安全区间。"""
     try:
         validate_script_source(body.source)
     except Exception as e:

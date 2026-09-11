@@ -28,6 +28,7 @@ class RunnerClient:
         return self._settings.mcp_runner_url.rstrip("/")
 
     async def list_tools(self, spec: RunSpec, connection_config: dict | None) -> list[dict]:
+        """经 Runner 拉取 STDIO MCP 工具列表；Runner 报错时抛 ``BadRequestError``。"""
         payload = {
             "run_spec": spec.model_dump(mode="json"),
             "connection_config": connection_config or {},
@@ -44,6 +45,7 @@ class RunnerClient:
         arguments: dict,
         connection_config: dict | None,
     ) -> dict:
+        """经 Runner 调用 STDIO MCP 工具；输出统一规整为 dict。"""
         payload = {
             "run_spec": spec.model_dump(mode="json"),
             "connection_config": connection_config or {},
@@ -67,6 +69,7 @@ class RunnerClient:
         max_runtime_sec: int = 30,
         max_memory_mb: int = 512,
     ) -> dict:
+        """经 Runner 在沙箱执行脚本工具；输出统一规整为 dict。"""
         payload = {
             "tenant_id": str(tenant_id),
             "tool_id": str(tool_id) if tool_id else None,

@@ -12,6 +12,7 @@ _ALLOWED_TYPES = {"string", "number", "integer", "boolean"}
 
 
 def normalize_parameters(raw: list | None) -> list[dict]:
+    """校验并规范化参数 schema（名称合法且唯一、类型受支持），非法时抛 ``BadRequestError``。"""
     if not raw:
         return []
     names: set[str] = set()
@@ -33,6 +34,7 @@ def normalize_parameters(raw: list | None) -> list[dict]:
 
 
 def validate_tool_params(schema: list[dict], params: dict[str, Any]) -> dict[str, Any]:
+    """按 schema 校验入参：填充默认值、类型强转、必填缺失抛 ``BadRequestError``。"""
     schema = normalize_parameters(schema)
     coerced: dict[str, Any] = {}
     for p in schema:
@@ -70,6 +72,7 @@ def _coerce(val: Any, spec: dict) -> Any:
 
 
 def parameters_to_pydantic(schema: list[dict]) -> type[BaseModel]:
+    """由 schema 动态生成 ``ToolParams`` Pydantic 模型（供 LLM tool 定义）。"""
     schema = normalize_parameters(schema)
     fields: dict[str, Any] = {}
     for p in schema:

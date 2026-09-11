@@ -52,6 +52,7 @@ class AttachmentService(BaseService):
         resource_type: str | None = None,
         resource_id: UUID | None = None,
     ) -> PageResult[AttachmentOut]:
+        """按用途/关联资源过滤，分页列出当前租户未删附件（时间倒序）。"""
         filters: list[ColumnElement[bool]] = [
             Attachment.tenant_id == self.ctx.tenant_id,
             not_deleted(Attachment),
@@ -111,6 +112,7 @@ class AttachmentService(BaseService):
         return AttachmentOut.model_validate(att)
 
     async def get(self, attachment_id: UUID) -> AttachmentOut:
+        """读取附件详情（租户鉴权；不存在/已删抛 ``NotFoundError``）。"""
         att = await self._get_or_raise(attachment_id)
         return AttachmentOut.model_validate(att)
 
@@ -169,6 +171,7 @@ class AttachmentService(BaseService):
         await apply_storage_delta(self.db, att.tenant_id, 0)
 
     async def _get_or_raise(self, attachment_id: UUID) -> Attachment:
+        """按 ID 取未删附件并校验租户归属；缺失或跨租户均抛 ``NotFoundError``。"""
         att = await self.repo.get_by_id(attachment_id)
         if not att or is_marked_deleted(att):
             raise NotFoundError("附件不存在")

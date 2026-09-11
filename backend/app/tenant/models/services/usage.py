@@ -23,10 +23,12 @@ def begin_chat_usage_accumulation() -> Token[tuple[int, int] | None]:
 
 
 def end_chat_usage_accumulation(token: Token[tuple[int, int] | None]) -> None:
+    """恢复到本轮 chat 累计前的上下文状态。"""
     _chat_usage_acc.reset(token)
 
 
 def get_chat_usage_totals() -> tuple[int, int]:
+    """返回当前轮次累计的 (prompt_tokens, completion_tokens)。"""
     val = _chat_usage_acc.get()
     if val is None:
         return (0, 0)
@@ -35,6 +37,8 @@ def get_chat_usage_totals() -> tuple[int, int]:
 
 @dataclass(frozen=True)
 class UsageRecordContext:
+    """记录一次模型用量所需的上下文（会话、租户、模型、来源）。"""
+
     db: AsyncSession
     tenant_id: UUID
     model: ModelConfig
@@ -48,6 +52,7 @@ async def record_model_usage(
     prompt_tokens: int = 0,
     completion_tokens: int = 0,
 ) -> None:
+    """写 ``ModelUsageLog`` 并 flush；chat 来源同时累加到上下文变量。"""
     total = max(0, prompt_tokens) + max(0, completion_tokens)
     if total <= 0:
         return
@@ -94,6 +99,7 @@ class ChatUsageSink:
         )
 
     async def record(self, *, prompt_tokens: int = 0, completion_tokens: int = 0) -> None:
+        """实现 ``UsageSink`` 协议：写入 chat 来源用量（随调用方会话）。"""
         await record_model_usage(
             self._ctx,
             prompt_tokens=prompt_tokens,
@@ -122,6 +128,7 @@ class FlowUsageSink:
         self._source_id = source_id
 
     async def record(self, *, prompt_tokens: int = 0, completion_tokens: int = 0) -> None:
+        """实现 ``UsageSink`` 协议：自开短会话写 flow 来源用量并提交。"""
         if max(0, prompt_tokens) + max(0, completion_tokens) <= 0:
             return
         async with AsyncSessionLocal() as db:

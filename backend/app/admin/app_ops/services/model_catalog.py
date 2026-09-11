@@ -61,6 +61,7 @@ class AdminModelCatalogService:
         return m
 
     async def get(self, model_id: UUID) -> ModelCatalogOut:
+        """按 ID 取内置模型目录项，不存在抛 ``NotFoundError``。"""
         m = await self._get_builtin(model_id)
         return _admin_out(m)
 
@@ -71,6 +72,7 @@ class AdminModelCatalogService:
         vendor: str | None = None,
         publish_status: str | None = None,
     ) -> PageResult[ModelCatalogOut]:
+        """分页查询内置模型，可按厂商/发布状态筛选。"""
         stmt = select(ModelConfig).where(
             ModelConfig.tenant_id.is_(None),
             not_deleted(ModelConfig),
@@ -91,6 +93,7 @@ class AdminModelCatalogService:
         )
 
     async def create(self, body: ModelCatalogCreate) -> ModelCatalogOut:
+        """创建内置模型（草稿态）；model_code 重复时抛 ``BadRequestError``。"""
         dup = (
             await self.db.execute(
                 select(ModelConfig).where(
@@ -128,6 +131,7 @@ class AdminModelCatalogService:
         return _admin_out(m)
 
     async def update(self, model_id: UUID, body: ModelCatalogUpdate) -> ModelCatalogOut:
+        """按需更新内置模型字段；支持传入或显式清除 API Key。"""
         m = await self._get_builtin(model_id)
         data = body.model_dump(exclude_unset=True)
         clear_key = data.pop("clear_api_key", None)
@@ -145,12 +149,14 @@ class AdminModelCatalogService:
         return _admin_out(m)
 
     async def publish(self, model_id: UUID) -> ModelCatalogOut:
+        """发布内置模型。"""
         m = await self._get_builtin(model_id)
         m.publish_status = ModelPublishStatus.PUBLISHED.value
         await self.db.flush()
         return _admin_out(m)
 
     async def deprecate(self, model_id: UUID) -> ModelCatalogOut:
+        """下架内置模型并置为停用。"""
         m = await self._get_builtin(model_id)
         m.publish_status = ModelPublishStatus.DEPRECATED.value
         m.is_active = False
@@ -158,6 +164,7 @@ class AdminModelCatalogService:
         return _admin_out(m)
 
     async def delete(self, model_id: UUID) -> None:
+        """软删内置模型；已发布模型需先下架。"""
         m = await self._get_builtin(model_id)
         if m.publish_status == ModelPublishStatus.PUBLISHED.value:
             raise BadRequestError("已发布模型请先下架再删除")

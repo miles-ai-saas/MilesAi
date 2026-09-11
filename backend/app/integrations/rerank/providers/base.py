@@ -23,4 +23,6 @@ class RerankProvider(Protocol):
         query: str,
         documents: list[str],
         top_n: int | None = None,
-    ) -> list[RerankHit]: ...
+    ) -> list[RerankHit]:
+        """按 query 对 documents 重排，返回带原始下标的相关度结果（``top_n`` 为空则全量返回）。"""
+        ...

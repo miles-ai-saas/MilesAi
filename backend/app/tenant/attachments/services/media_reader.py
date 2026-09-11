@@ -40,11 +40,13 @@ class FlowMediaReader:
         )
 
     async def read_image_bytes(self, attachment_id: UUID) -> AttachmentBytes:
+        """自开短会话读取图片字节；脏数据由 ``AttachmentService`` 兜底占位图。"""
         async with AsyncSessionLocal() as db:
             data, mime = await AttachmentService(db, self._ctx()).read_image_bytes(attachment_id)
         return AttachmentBytes(data=data, mime=mime)
 
     async def read_attachment_bytes(self, attachment_id: UUID) -> AttachmentBytes:
+        """自开短会话读取任意附件字节（不做图片类型校验）。"""
         async with AsyncSessionLocal() as db:
             data, mime, filename = await AttachmentService(db, self._ctx()).read_attachment_bytes(attachment_id)
         return AttachmentBytes(data=data, mime=mime, filename=filename)
@@ -74,10 +76,12 @@ class SessionMediaReader:
         self._ctx = ctx
 
     async def read_image_bytes(self, attachment_id: UUID) -> AttachmentBytes:
+        """复用调用方会话读取图片字节。"""
         data, mime = await AttachmentService(self._db, self._ctx).read_image_bytes(attachment_id)
         return AttachmentBytes(data=data, mime=mime)
 
     async def read_attachment_bytes(self, attachment_id: UUID) -> AttachmentBytes:
+        """复用调用方会话读取任意附件字节（不做图片类型校验）。"""
         data, mime, filename = await AttachmentService(self._db, self._ctx).read_attachment_bytes(attachment_id)
         return AttachmentBytes(data=data, mime=mime, filename=filename)
 

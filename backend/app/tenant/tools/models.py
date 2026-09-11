@@ -1,3 +1,5 @@
+"""工具注册表 ORM：租户自定义工具与调用审计。"""
+
 import enum
 import uuid
 from datetime import datetime
@@ -11,12 +13,15 @@ from app.infra.db import Base
 from app.models.base import TimestampMixin, UUIDPrimaryKeyMixin
 
 
+# 工具类型：HTTP 出站调用或 Runner 沙箱脚本。
 class ToolType(str, enum.Enum):
     HTTP = "http"
     SCRIPT = "script"  # v2：MCP Runner 沙箱执行
 
 
 class Tool(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    """租户自定义工具定义；HTTP/脚本周配置存于 ``config``。"""
+
     __tablename__ = "tool_tools"
     __table_args__ = (
         Index("idx_tool_tools_tenant_id", "tenant_id"),

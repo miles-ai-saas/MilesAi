@@ -20,6 +20,7 @@ def dashscope_api_base(model: ModelConfig) -> str:
 
 
 def dashscope_headers(api_key: str, *, async_enable: bool = True) -> dict[str, str]:
+    """构造 DashScope 请求头；``async_enable`` 时附加 ``X-DashScope-Async`` 走异步任务。"""
     headers = {
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
@@ -93,6 +94,7 @@ async def download_remote_bytes(url: str) -> bytes:
 
 
 def require_api_key(model: ModelConfig) -> str:
+    """取模型已配置的 API Key；缺失时抛 ``BadRequestError``。"""
     key = model.api_key_encrypted
     if not key:
         raise BadRequestError(f"模型「{model.name}」未配置 API Key")

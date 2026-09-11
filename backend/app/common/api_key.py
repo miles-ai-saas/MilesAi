@@ -17,6 +17,7 @@ _INVALID_PATTERNS = (
 
 
 def normalize_api_key(raw: str | None) -> str | None:
+    """去除首尾空白；None 或空白串归一为 None。"""
     if raw is None:
         return None
     key = raw.strip()

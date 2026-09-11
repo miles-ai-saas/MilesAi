@@ -50,6 +50,7 @@ async def update_generative_job_progress(
     percent: int | None = None,
     message: str | None = None,
 ) -> None:
+    """更新任务进度（percent 夹取到 0–100、message 截断 256 字符）并向 Redis 广播，供 SSE 即时感知。"""
     async with generative_job_db_session() as db:
         job = await db.get(GenerativeJob, job_id)
         if not job:
@@ -70,12 +71,14 @@ async def update_generative_job_progress(
 
 
 async def is_generative_job_cancelled(job_id: UUID) -> bool:
+    """任务是否已被取消（任务不存在时视为未取消）。"""
     async with generative_job_db_session() as db:
         job = await db.get(GenerativeJob, job_id)
         return job is not None and job.status == GenerativeJobStatus.CANCELLED
 
 
 async def assert_generative_job_active(job_id: UUID) -> None:
+    """任务已取消则抛 ``GenerativeJobCancelled``，让轮询/执行及时中断。"""
     if await is_generative_job_cancelled(job_id):
         raise GenerativeJobCancelled()
 
@@ -87,6 +90,7 @@ class GenerativeJobProgress:
         self.job_id = job_id
 
     async def update(self, percent: int | None, message: str) -> None:
+        """先确认任务未被取消，再写入进度并向 Redis 广播。"""
         await assert_generative_job_active(self.job_id)
         await update_generative_job_progress(
             self.job_id,
@@ -95,7 +99,9 @@ class GenerativeJobProgress:
         )
 
     async def ensure_active(self) -> None:
+        """任务已取消则抛 ``GenerativeJobCancelled``。"""
         await assert_generative_job_active(self.job_id)
 
     async def is_cancelled(self) -> bool:
+        """查询任务是否已取消。"""
         return await is_generative_job_cancelled(self.job_id)

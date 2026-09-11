@@ -32,6 +32,7 @@ class PlatformRiskEnforcer:
         self._rate_rules: list[_RateRule] = []
 
     def invalidate_cache(self) -> None:
+        """使内存缓存立即失效，下次访问时重新从库加载。"""
         self._loaded_at = 0.0
 
     async def _ensure_cache(self) -> None:
@@ -53,6 +54,7 @@ class PlatformRiskEnforcer:
         return path == pattern or fnmatch.fnmatch(path, pattern)
 
     async def is_ip_blocked(self, ip: str) -> bool:
+        """判断 IP 是否命中黑名单（基于内存缓存）。"""
         await self._ensure_cache()
         return ip in self._blocked_ips
 
@@ -81,6 +83,7 @@ class PlatformRiskEnforcer:
         detail: dict,
         tenant_id: UUID | None = None,
     ) -> None:
+        """将风险事件写入独立会话，并自行 commit。"""
         async with AsyncSessionLocal() as db:
             db.add(
                 RiskEvent(

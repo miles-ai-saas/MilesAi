@@ -68,6 +68,7 @@ class KnowledgeBaseCreate(BaseModel):
     )
 
 
+# 更新知识库入参；禁止修改 embedding 模型/维度（见 ``reject_embedding_changes``）。
 class KnowledgeBaseUpdate(BaseModel):
     name: str | None = Field(default=None, description="知识库名称")
     description: str | None = Field(default=None, description="描述")
@@ -91,6 +92,7 @@ class KnowledgeBaseUpdate(BaseModel):
     @model_validator(mode="before")
     @classmethod
     def reject_embedding_changes(cls, data: object) -> object:
+        """在解析前拦截携带非空 embedding 模型/维度的更新请求。"""
         if isinstance(data, dict):
             forbidden = {
                 k
@@ -105,6 +107,7 @@ class KnowledgeBaseUpdate(BaseModel):
         return data
 
 
+# 知识库详情输出（含已解析的模型名与向量维度）。
 class KnowledgeBaseOut(BaseModel):
     id: UUID = Field(description="知识库 ID")
     tenant_id: UUID = Field(description="租户 ID")
@@ -128,6 +131,7 @@ class KnowledgeBaseOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+# 文档输出；``chunk_count`` 仅列表接口填充，其余场景为 null。
 class DocumentOut(BaseModel):
     id: UUID = Field(description="文档 ID")
     kb_id: UUID = Field(description="所属知识库 ID")
@@ -147,6 +151,7 @@ class DocumentOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+# 文档分片输出。
 class DocumentChunkOut(BaseModel):
     id: UUID = Field(description="分片 ID")
     document_id: UUID = Field(description="所属文档 ID")
@@ -183,11 +188,13 @@ class SearchRequest(BaseModel):
 
     @model_validator(mode="after")
     def require_query_or_document(self) -> SearchRequest:
+        """要求 ``query`` 与 ``query_document_id`` 至少提供一个。"""
         if not (self.query or "").strip() and not self.query_document_id:
             raise ValueError("query 与 query_document_id 至少提供一项")
         return self
 
 
+# 单条检索命中（多路分数 + 来源元信息）。
 class SearchHit(BaseModel):
     chunk_id: UUID = Field(description="分片 ID")
     document_id: UUID = Field(description="来源文档 ID")
@@ -201,12 +208,14 @@ class SearchHit(BaseModel):
     mime_type: str | None = Field(default=None, description="来源文档 MIME")
 
 
+# 检索响应：实际使用的检索模式与命中列表。
 class SearchResponse(BaseModel):
     query: str = Field(description="检索查询文本")
     mode: str = Field(description="实际使用的检索模式")
     hits: list[SearchHit] = Field(default_factory=list, description="命中结果列表")
 
 
+# 知识库配额用量与上限。
 class KbQuotaOut(BaseModel):
     used_knowledge_bases: int = Field(description="已用知识库数量")
     max_knowledge_bases: int = Field(description="知识库数量上限")
@@ -215,6 +224,7 @@ class KbQuotaOut(BaseModel):
     max_file_mb: int = Field(description="单文件大小上限（MB）")
 
 
+# 检索日志输出。
 class KbSearchLogOut(BaseModel):
     id: UUID = Field(description="日志 ID")
     tenant_id: UUID = Field(description="租户 ID")

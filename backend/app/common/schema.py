@@ -16,15 +16,18 @@ class ApiResponse(BaseModel, Generic[T]):
     trace_id: str | None = Field(default=None, description="请求追踪 ID（错误时便于排查）")
 
 
+# 分页请求参数：页码从 1 开始，单页上限 100。
 class PageParams(BaseModel):
     page: int = Field(default=1, ge=1, description="页码，从 1 开始")
     size: int = Field(default=10, ge=1, le=100, description="每页条数")
 
     @property
     def offset(self) -> int:
+        """SQL OFFSET 偏移量（基于页码与每页条数换算）。"""
         return (self.page - 1) * self.size
 
 
+# 分页结果信封。
 class PageResult(BaseModel, Generic[T]):
     items: list[T] = Field(description="当前页数据")
     total: int = Field(description="总记录数")

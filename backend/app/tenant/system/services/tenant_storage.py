@@ -18,10 +18,13 @@ from app.tenant.system.schemas.tenant_storage import (
 
 
 class TenantObjectStorageService(BaseService):
+    """租户自有对象存储（BYOK）配置读写与连通性探测。"""
+
     def __init__(self, db: AsyncSession, ctx: TenantContext) -> None:
         super().__init__(db, ctx)
 
     async def get_config(self) -> TenantObjectStorageOut:
+        """读取租户对象存储配置；未配置或未启用时 source 为 platform。"""
         row = await self.db.get(TenantObjectStorageConfig, self.ctx.tenant_id)
         if not row:
             return TenantObjectStorageOut(
@@ -69,6 +72,7 @@ class TenantObjectStorageService(BaseService):
             raise BadRequestError("启用租户对象存储时必须填写 Secret Key")
 
     async def upsert_config(self, body: TenantObjectStorageUpsert, *, request=None) -> TenantObjectStorageOut:
+        """保存租户对象存储配置（密钥加密存储），并写审计日志。"""
         row = await self.db.get(TenantObjectStorageConfig, self.ctx.tenant_id)
         self._validate_upsert(body, row)
 

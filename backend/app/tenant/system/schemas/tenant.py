@@ -1,3 +1,5 @@
+"""租户主数据请求与响应模型。"""
+
 from datetime import datetime
 from uuid import UUID
 
@@ -6,6 +8,7 @@ from pydantic import BaseModel, Field
 from app.models.platform.tenant import TenantStatus
 
 
+# 创建租户请求。
 class TenantCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=128, description="租户名称")
     description: str | None = Field(default=None, description="租户描述")
@@ -13,6 +16,7 @@ class TenantCreate(BaseModel):
     max_storage_mb: int = Field(default=10240, description="存储空间上限（MB）")
 
 
+# 更新租户请求（配额类字段仅超管可改）。
 class TenantUpdate(BaseModel):
     name: str | None = Field(default=None, description="租户名称")
     description: str | None = Field(default=None, description="租户描述")
@@ -21,6 +25,7 @@ class TenantUpdate(BaseModel):
     max_storage_mb: int | None = Field(default=None, description="存储空间上限（MB）")
 
 
+# 租户输出（含配额与本月用量）。
 class TenantOut(BaseModel):
     id: UUID = Field(description="租户 ID")
     name: str = Field(description="租户名称")

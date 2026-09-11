@@ -20,6 +20,7 @@ class TenantService(BaseService):
         self.repo = TenantRepository(db)
 
     async def list_tenants(self, params: PageParams) -> PageResult[TenantOut]:
+        """分页列出全部租户（按创建时间倒序）。"""
         page = await self.repo.list_page(
             page=params.page,
             size=params.size,
@@ -33,16 +34,19 @@ class TenantService(BaseService):
         )
 
     async def create_tenant(self, body: TenantCreate) -> TenantOut:
+        """创建租户；名称重复抛 BadRequestError。"""
         await self.repo.ensure_name_unique(body.name)
         tenant = await self.repo.create(**body.model_dump())
         await self.db.refresh(tenant)
         return TenantOut.model_validate(tenant)
 
     async def get_tenant(self, tenant_id: UUID) -> TenantOut:
+        """按 ID 获取租户，不存在抛 NotFoundError。"""
         tenant = await self.repo.get_by_id_or_raise(tenant_id, label="租户不存在")
         return TenantOut.model_validate(tenant)
 
     async def update_tenant(self, tenant_id: UUID, body: TenantUpdate) -> TenantOut:
+        """更新租户；非超管会被剔除配额类字段，改名时校验唯一性。"""
         tenant = await self.repo.get_by_id_or_raise(tenant_id, label="租户不存在")
         data = body.model_dump(exclude_unset=True)
         if not self.ctx.is_superuser:

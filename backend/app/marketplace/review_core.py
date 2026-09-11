@@ -20,6 +20,7 @@ async def approve_marketplace_app(
     reviewer_user_id: UUID | None = None,
     reviewer_admin_id: UUID | None = None,
 ) -> MarketplaceApp:
+    """将待审核应用置为已发布并记录审核人；非 PENDING_REVIEW 时抛 ``BadRequestError``。"""
     if app.status != MarketplaceAppStatus.PENDING_REVIEW:
         raise BadRequestError("仅待审核应用可通过")
     app.status = MarketplaceAppStatus.PUBLISHED
@@ -45,6 +46,7 @@ async def reject_marketplace_app(
     reviewer_user_id: UUID | None = None,
     reviewer_admin_id: UUID | None = None,
 ) -> MarketplaceApp:
+    """将待审核应用置为已驳回并记录原因/审核人；仅 PENDING_REVIEW 可驳回。"""
     if app.status != MarketplaceAppStatus.PENDING_REVIEW:
         raise BadRequestError("仅待审核应用可驳回")
     app.status = MarketplaceAppStatus.REJECTED

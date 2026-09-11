@@ -67,11 +67,14 @@ def _to_out(model: ModelConfig, cred: ModelTenantCredential | None) -> ModelConf
 
 
 class ModelService(BaseService):
+    """租户模型配置：选用内置模型、自定义模型 CRUD 与 BYOK 凭证绑定。"""
+
     def __init__(self, db: AsyncSession, ctx: TenantContext) -> None:
         super().__init__(db, ctx)
         self.repo = ModelConfigRepository(db)
 
     async def catalog_meta(self) -> ModelCatalogMetaOut:
+        """返回支持的厂商与能力类型选项（无 DB 查询）。"""
         return ModelCatalogMetaOut(
             vendors=[ModelVendorOption(value=v.value, label=VENDOR_LABELS[v.value]) for v in SUPPORTED_VENDORS],
             model_types=[ModelTypeOption(value=t.value, label=MODEL_TYPE_LABELS[t.value]) for t in CATALOG_MODEL_TYPES],
@@ -102,6 +105,7 @@ class ModelService(BaseService):
         source: str | None = None,
         q: str | None = None,
     ) -> list[ModelConfigOut]:
+        """列出对租户可见的内置（已发布）与自定义模型；``q`` 为内存模糊匹配。"""
         stmt = self._tenant_visible_stmt().order_by(
             ModelConfig.sort_order.asc(),
             ModelConfig.created_at.desc(),
@@ -127,6 +131,7 @@ class ModelService(BaseService):
         return out
 
     async def get_config(self, config_id: UUID) -> ModelConfigOut:
+        """返回单个模型配置详情；内置模型未发布视为不存在。"""
         model = await self._get_or_raise(config_id)
         if model.tenant_id is None and model.publish_status != ModelPublishStatus.PUBLISHED.value:
             raise NotFoundError("模型配置不存在")
@@ -136,6 +141,7 @@ class ModelService(BaseService):
         return _to_out(model, cred)
 
     async def create_config(self, body: ModelConfigCreate) -> ModelConfigOut:
+        """创建自定义模型配置；embedding/rerank 类型额外校验维度与 invoke_mode。"""
         vendor = body.vendor or ModelVendor.OTHER.value
         provider = body.provider or vendor
         if body.model_type == ModelCapabilityType.EMBEDDING.value:
@@ -176,6 +182,7 @@ class ModelService(BaseService):
         return _to_out(model, None)
 
     async def update_config(self, config_id: UUID, body: ModelConfigUpdate) -> ModelConfigOut:
+        """更新自定义模型配置；API Key 经校验后加密落库。"""
         model = await self._get_or_raise(config_id)
         if model.tenant_id is None:
             raise BadRequestError("系统内置模型不可修改")
@@ -191,12 +198,14 @@ class ModelService(BaseService):
         return _to_out(model, None)
 
     async def delete_config(self, config_id: UUID) -> None:
+        """软删除自定义模型配置；内置模型不可删除。"""
         model = await self._get_or_raise(config_id)
         if model.tenant_id is None:
             raise BadRequestError("系统内置模型不可删除")
         await mark_deleted(self.db, model)
 
     async def upsert_builtin_credentials(self, config_id: UUID, body: ModelBuiltinCredentialsIn) -> ModelConfigOut:
+        """写入/更新内置模型的租户 BYOK 凭证并启用。"""
         model = await self._get_or_raise(config_id)
         if not model.is_builtin:
             raise BadRequestError("仅内置模型可配置租户密钥")
@@ -222,6 +231,7 @@ class ModelService(BaseService):
         return _to_out(model, cred)
 
     async def delete_builtin_credentials(self, config_id: UUID) -> ModelConfigOut:
+        """删除内置模型的租户 BYOK 凭证。"""
         model = await self._get_or_raise(config_id)
         if not model.is_builtin:
             raise BadRequestError("仅内置模型可删除租户密钥")

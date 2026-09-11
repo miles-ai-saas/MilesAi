@@ -68,11 +68,13 @@ class ChatRequest(BaseModel):
 
     @model_validator(mode="after")
     def validate_query_or_media(self) -> "ChatRequest":
+        """query 与 media 至少一项非空，否则校验失败。"""
         if not self.query.strip() and not self.media:
             raise ValueError("query 与 media 不能同时为空")
         return self
 
 
+# 待用户确认后执行的工具调用（slug 与参数）。
 class PendingToolCall(BaseModel):
     slug: str = Field(description="工具 slug")
     name: str = Field(description="工具展示名")
@@ -101,6 +103,7 @@ class ChatArtifact(BaseModel):
     error_message: str | None = Field(default=None, description="失败文案")
 
 
+# 对话响应：正文、RAG 来源、步骤轨迹与工具产出物。
 class ChatResponse(BaseModel):
     answer: str = Field(description="助手回复正文")
     sources: list[dict] = Field(

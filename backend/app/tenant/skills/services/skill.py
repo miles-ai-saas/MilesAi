@@ -73,6 +73,7 @@ class SkillService(BaseService):
         return SkillMetaOut.model_validate(skills_meta_dict())
 
     async def get_skill(self, skill_id: UUID) -> SkillPackageOut:
+        """按 ID 取技能包详情（含 category_name 与标签）。"""
         return await self._to_out(await self._get_or_raise(skill_id))
 
     async def list_skills(
@@ -183,11 +184,13 @@ class SkillService(BaseService):
         await mark_deleted(self.db, row)
 
     async def list_files(self, skill_id: UUID) -> list[SkillFileNode]:
+        """返回技能包磁盘文件树。"""
         row = await self._get_or_raise(skill_id)
         tree = list_file_tree(self.ctx.tenant_id, row.slug)
         return [SkillFileNode.model_validate(n) for n in tree]
 
     async def read_file_content(self, skill_id: UUID, path: str) -> SkillFileContent:
+        """读取技能包内文件；文件不存在抛 ``NotFoundError``。"""
         row = await self._get_or_raise(skill_id)
         rel = path.strip().lstrip("/")
         try:
@@ -221,6 +224,7 @@ class SkillService(BaseService):
         return await self._to_out(row)
 
     async def delete_file_content(self, skill_id: UUID, path: str) -> None:
+        """删除技能包内文件（SKILL.md 不可删），随后刷新 layout 索引。"""
         row = await self._get_or_raise(skill_id)
         rel = path.strip().lstrip("/")
         if not rel or rel == SKILL_MD_FILENAME:

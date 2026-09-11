@@ -34,14 +34,17 @@ async def _load_tenant(db: AsyncSession, tenant_id: UUID) -> Tenant:
 
 
 async def count_agents(db: AsyncSession, tenant_id: UUID) -> int:
+    """统计租户未软删智能体数。"""
     return int(await db.scalar(select(func.count()).select_from(Agent).where(Agent.tenant_id == tenant_id, not_deleted(Agent))) or 0)
 
 
 async def count_flows(db: AsyncSession, tenant_id: UUID) -> int:
+    """统计租户未软删流程数。"""
     return int(await db.scalar(select(func.count()).select_from(Flow).where(Flow.tenant_id == tenant_id, not_deleted(Flow))) or 0)
 
 
 async def assert_can_create_agent(db: AsyncSession, tenant_id: UUID) -> None:
+    """校验智能体配额；超限抛 ForbiddenError，租户不存在同样抛错。"""
     tenant = await _load_tenant(db, tenant_id)
     count = await count_agents(db, tenant_id)
     if count >= tenant.max_agents:
@@ -49,6 +52,7 @@ async def assert_can_create_agent(db: AsyncSession, tenant_id: UUID) -> None:
 
 
 async def assert_can_create_flow(db: AsyncSession, tenant_id: UUID) -> None:
+    """校验流程配额；超限抛 ForbiddenError。"""
     tenant = await _load_tenant(db, tenant_id)
     count = await count_flows(db, tenant_id)
     if count >= tenant.max_flows:
@@ -56,6 +60,7 @@ async def assert_can_create_flow(db: AsyncSession, tenant_id: UUID) -> None:
 
 
 async def get_tenant_quota_out(db: AsyncSession, tenant_id: UUID) -> TenantQuotaOut:
+    """汇总知识库/存储/智能体/流程/Token/生图各项配额用量。"""
     tenant = await _load_tenant(db, tenant_id)
     kb = await get_kb_quota_out(db, tenant_id)
     used_agents = await count_agents(db, tenant_id)

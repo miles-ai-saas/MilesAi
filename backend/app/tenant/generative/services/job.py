@@ -53,6 +53,8 @@ _RETRYABLE = frozenset(
 
 
 class GenerativeJobService(BaseService):
+    """生成任务应用服务：提交、查询、取消、重试与 SSE 进度推送。"""
+
     def __init__(self, db: AsyncSession, ctx: TenantContext) -> None:
         super().__init__(db, ctx)
 
@@ -87,6 +89,7 @@ class GenerativeJobService(BaseService):
         return base
 
     async def get_job(self, job_id: UUID) -> GenerativeJobOut:
+        """返回任务详情；终态任务顺带回写对话 artifacts（失败静默忽略）。"""
         job = await get_generative_job_for_tenant(self.db, self.ctx, job_id)
         # 已结束任务：补写会话 artifacts（修复「任务中心有、会话没有」的历史数据）
         if job.status in _TERMINAL:
@@ -108,6 +111,7 @@ class GenerativeJobService(BaseService):
         status: GenerativeJobStatus | None = None,
         kind: str | None = None,
     ) -> PageResult[GenerativeJobOut]:
+        """分页列出任务，可按状态与类型筛选。"""
         filters = list(tenant_filters(self.ctx, GenerativeJob.tenant_id))
         if status is not None:
             filters.append(GenerativeJob.status == status)
@@ -158,6 +162,7 @@ class GenerativeJobService(BaseService):
         agent_config: dict | None = None,
         trace_id: str | None = None,
     ) -> GenerativeJobOut:
+        """提交生视频任务：快照参数落库后入队 Celery worker。"""
         params = {
             "prompt": body.prompt.strip(),
             "duration": body.duration or 5,
@@ -200,6 +205,7 @@ class GenerativeJobService(BaseService):
         agent_config: dict | None = None,
         trace_id: str | None = None,
     ) -> GenerativeJobOut:
+        """提交生图任务：快照参数落库后入队 Celery worker。"""
         params = {
             "prompt": body.prompt.strip(),
             "size": body.size,
@@ -232,6 +238,7 @@ class GenerativeJobService(BaseService):
         return self._job_out(job, celery_task_record_id=record_map.get(job.id))
 
     async def cancel_job(self, job_id: UUID) -> GenerativeJobOut:
+        """取消未结束任务：revoke Celery 任务并推送状态；已结束则拒绝。"""
         job = await get_generative_job_for_tenant(self.db, self.ctx, job_id)
         if job.status in _TERMINAL:
             raise BadRequestError("任务已结束，无法取消")
@@ -259,6 +266,7 @@ class GenerativeJobService(BaseService):
         return self._job_out(job, celery_task_record_id=record_map.get(job.id))
 
     async def batch_cancel_jobs(self, job_ids: list[UUID]) -> GenerativeJobBatchCancelResult:
+        """批量取消任务，逐项容错；不存在或已结束的 ID 记入 ``skipped``。"""
         cancelled: list[GenerativeJobOut] = []
         skipped: list[str] = []
         for job_id in job_ids:
@@ -289,6 +297,7 @@ class GenerativeJobService(BaseService):
         return GenerativeJobBatchCancelResult(cancelled=cancelled, skipped=skipped)
 
     async def retry_job(self, job_id: UUID) -> GenerativeJobOut:
+        """重置失败/已取消任务状态，并按 kind 重新入队。"""
         job = await get_generative_job_for_tenant(self.db, self.ctx, job_id)
         if job.status not in _RETRYABLE:
             raise BadRequestError("仅失败或已取消的生成任务可重试")
@@ -386,8 +395,10 @@ class GenerativeJobService(BaseService):
 
     @staticmethod
     def video_async_enabled() -> bool:
+        """settings 是否开启生视频异步任务。"""
         return bool(get_settings().generative_video_async)
 
     @staticmethod
     def image_async_enabled() -> bool:
+        """settings 是否开启生图异步任务。"""
         return bool(get_settings().generative_image_async)

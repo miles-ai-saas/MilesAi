@@ -1,3 +1,5 @@
+"""提示词模板 HTTP 请求/响应模型。"""
+
 from datetime import datetime
 from uuid import UUID
 
@@ -6,6 +8,7 @@ from pydantic import BaseModel, Field
 from app.tenant.tags.schemas.tag import TagRefOut
 
 
+# 创建提示词模板的入参。
 class PromptTemplateCreate(BaseModel):
     category_id: UUID | None = Field(default=None, description="分类 ID")
     tag_ids: list[UUID] = Field(default_factory=list, description="标签 ID 列表")
@@ -14,6 +17,7 @@ class PromptTemplateCreate(BaseModel):
     content: str = Field(..., min_length=1, description="提示词正文")
 
 
+# 更新提示词模板入参；字段均可选。
 class PromptTemplateUpdate(BaseModel):
     category_id: UUID | None = Field(default=None, description="分类 ID")
     tag_ids: list[UUID] | None = Field(default=None, description="标签 ID 列表")
@@ -23,6 +27,7 @@ class PromptTemplateUpdate(BaseModel):
     is_active: bool | None = Field(default=None, description="是否启用")
 
 
+# 提示词模板输出（含分类名与标签）。
 class PromptTemplateOut(BaseModel):
     id: UUID = Field(description="模板 ID")
     tenant_id: UUID = Field(description="租户 ID")

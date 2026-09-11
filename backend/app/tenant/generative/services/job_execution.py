@@ -46,6 +46,7 @@ async def _sync_chat_after_job(db, job: GenerativeJob) -> None:
 
 
 async def run_generative_video_job_async(job_id: UUID) -> None:
+    """Worker 内执行生视频任务：置运行中 → 生成 → 落库并推送终态。"""
     # Celery fork 后父进程的全局 engine 不可复用；用 get_worker_session 创建全新的 engine
     async with get_worker_session() as db:
         job = await db.get(GenerativeJob, job_id)
@@ -167,6 +168,7 @@ async def run_generative_video_job_async(job_id: UUID) -> None:
 
 
 async def run_generative_image_job_async(job_id: UUID) -> None:
+    """Worker 内执行生图任务：置运行中 → 生成 → 落库并推送终态。"""
     # Celery fork 后父进程的全局 engine 不可复用；用 get_worker_session 创建全新的 engine
     async with get_worker_session() as db:
         job = await db.get(GenerativeJob, job_id)
@@ -299,6 +301,7 @@ async def get_generative_job_for_tenant(
     ctx: TenantContext,
     job_id: UUID,
 ) -> GenerativeJob:
+    """按租户校验后加载生成任务；不存在或越权抛错。"""
     from app.common.exceptions import NotFoundError
     from app.core.tenant import assert_tenant_access
 

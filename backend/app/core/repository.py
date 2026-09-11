@@ -26,6 +26,7 @@ class BaseRepository(Generic[T]):
         return append_not_deleted(filters or [], self.model)
 
     async def get_by_id(self, entity_id: UUID, *, include_deleted: bool = False) -> T | None:
+        """按主键查询；默认把软删行视为不存在（``include_deleted=True`` 可覆盖）。"""
         entity = await self.db.get(self.model, entity_id)
         if entity is None:
             return None
@@ -34,12 +35,14 @@ class BaseRepository(Generic[T]):
         return entity
 
     async def get_by_id_or_raise(self, entity_id: UUID, *, label: str | None = None) -> T:
+        """同 ``get_by_id``，未命中抛 ``NotFoundError``（``label`` 自定义文案）。"""
         entity = await self.get_by_id(entity_id)
         if entity is None:
             raise NotFoundError(label or "资源不存在")
         return entity
 
     async def get_one(self, *filters: ColumnElement[bool], include_deleted: bool = False) -> T | None:
+        """按条件查询首条记录；默认过滤软删行。"""
         where = list(filters)
         if not include_deleted:
             where = self._apply_not_deleted(where)
@@ -49,6 +52,7 @@ class BaseRepository(Generic[T]):
         return (await self.db.execute(stmt)).scalar_one_or_none()
 
     async def exists(self, *filters: ColumnElement[bool]) -> bool:
+        """是否存在满足条件的未删除记录。"""
         return (await self.get_one(*filters)) is not None
 
     async def list_page(
@@ -61,6 +65,7 @@ class BaseRepository(Generic[T]):
         options: list[Any] | None = None,
         include_deleted: bool = False,
     ) -> PageResult[T]:
+        """分页查询并返回 ``PageResult``；默认排除软删行。"""
         return await paginate(
             self.db,
             self.model,
@@ -73,18 +78,21 @@ class BaseRepository(Generic[T]):
         )
 
     async def create(self, **fields: Any) -> T:
+        """实例化模型并 flush（不 commit；主键在 flush 后可用）。"""
         entity = self.model(**fields)
         self.db.add(entity)
         await self.db.flush()
         return entity
 
     async def update_fields(self, entity: T, data: dict[str, Any]) -> T:
+        """按 dict 批量 ``setattr`` 并 flush（不 commit）。"""
         for key, value in data.items():
             setattr(entity, key, value)
         await self.db.flush()
         return entity
 
     async def soft_delete(self, entity: T) -> None:
+        """写入 ``deleted_at`` 并 flush；已软删则直接返回（幂等）。"""
         if is_marked_deleted(entity):
             return
         await mark_deleted(self.db, entity)
@@ -97,6 +105,10 @@ class BaseRepository(Generic[T]):
         message: str,
         exclude_id: UUID | None = None,
     ) -> None:
+        """校验 ``field == value`` 未被占用；冲突抛 ``ConflictError``。
+
+        软删行不参与校验，``exclude_id`` 用于更新时排除自身。
+        """
         stmt = select(self.model).where(field == value)
         if has_soft_delete(self.model):
             stmt = stmt.where(not_deleted(self.model))

@@ -11,6 +11,7 @@ from app.infra.db import Base
 from app.models.base import TimestampMixin, UUIDPrimaryKeyMixin
 
 
+# 任务状态，与 Celery 任务状态映射。
 class TaskStatus(str, enum.Enum):
     PENDING = "pending"
     RUNNING = "running"

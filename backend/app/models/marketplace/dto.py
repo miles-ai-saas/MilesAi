@@ -14,6 +14,7 @@ from app.common.schemas.tag import TagRefOut
 from app.models.marketplace.models import MarketplaceAppStatus, MarketplaceAppVisibility
 
 
+# 应用分类出参。
 class AppCategoryOut(BaseModel):
     id: UUID = Field(description="分类 ID")
     name: str = Field(description="分类名称")
@@ -23,6 +24,7 @@ class AppCategoryOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+# 市场应用列表出参（含当前租户安装态与评分）。
 class MarketplaceAppOut(BaseModel):
     id: UUID = Field(description="应用 ID")
     name: str = Field(description="应用名称")
@@ -47,11 +49,13 @@ class MarketplaceAppOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+# 应用详情出参：列表字段 + manifest 与当前用户评分。
 class MarketplaceAppDetail(MarketplaceAppOut):
     manifest: dict = Field(description="应用清单（资源引用与配置）")
     my_rating: "AppRatingOut | None" = Field(default=None, description="当前用户的评分记录")
 
 
+# 审核请求体（审核意见）。
 class AppReviewBody(BaseModel):
     note: str | None = Field(
         default=None,
@@ -60,6 +64,7 @@ class AppReviewBody(BaseModel):
     )
 
 
+# 提交应用评分入参。
 class AppRatingCreate(BaseModel):
     score: int = Field(..., ge=1, le=5, description="评分（1–5）")
     comment: str | None = Field(
@@ -69,6 +74,7 @@ class AppRatingCreate(BaseModel):
     )
 
 
+# 应用评分记录出参。
 class AppRatingOut(BaseModel):
     id: UUID = Field(description="评分记录 ID")
     app_id: UUID = Field(description="应用 ID")
@@ -84,6 +90,7 @@ class AppRatingOut(BaseModel):
 MarketplaceAppDetail.model_rebuild()
 
 
+# 创建应用（草稿）入参。
 class MarketplaceAppCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=128, description="应用名称")
     description: str | None = Field(default=None, description="应用描述")
@@ -102,6 +109,7 @@ class MarketplaceAppCreate(BaseModel):
     )
 
 
+# 更新应用入参；字段均可选，None 表示不修改。
 class MarketplaceAppUpdate(BaseModel):
     name: str | None = Field(
         default=None,
@@ -136,6 +144,7 @@ class MarketplaceAppCreateFromResources(BaseModel):
     )
 
 
+# 应用安装记录出参。
 class AppInstallOut(BaseModel):
     id: UUID = Field(description="安装记录 ID")
     app_id: UUID = Field(description="应用 ID")
@@ -151,6 +160,7 @@ class AppInstallOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+# 安装结果：安装记录 + 新克隆的资源 ID。
 class AppInstallResult(BaseModel):
     install: AppInstallOut = Field(description="安装记录")
     flow_id: UUID | None = Field(default=None, description="新创建的流程 ID")
@@ -159,6 +169,7 @@ class AppInstallResult(BaseModel):
     message: str = Field(default="安装成功", description="结果说明")
 
 
+# 升级结果：安装记录 + 版本变化。
 class AppUpgradeResult(BaseModel):
     install: AppInstallOut = Field(description="安装记录")
     previous_version: str = Field(description="升级前版本")
@@ -166,6 +177,7 @@ class AppUpgradeResult(BaseModel):
     message: str = Field(default="升级成功", description="结果说明")
 
 
+# 单个字段的升级前后对比。
 class UpgradeFieldChange(BaseModel):
     field: str = Field(description="字段键")
     label: str = Field(description="展示标签")
@@ -174,6 +186,7 @@ class UpgradeFieldChange(BaseModel):
     changed: bool = Field(description="是否有差异")
 
 
+# 单资源（KB/Flow/Agent）的字段差异集合。
 class UpgradeResourceDiff(BaseModel):
     resource_type: str = Field(description="knowledge_base | flow | agent")
     resource_id: UUID | None = Field(default=None, description="租户内资源 ID")
@@ -182,6 +195,7 @@ class UpgradeResourceDiff(BaseModel):
     has_changes: bool = Field(default=False, description="该资源是否存在差异")
 
 
+# 升级预览：目标版本与资源 diff，供前端确认。
 class AppUpgradePreview(BaseModel):
     app_id: UUID = Field(description="应用 ID")
     app_name: str = Field(description="应用名称")
@@ -193,6 +207,7 @@ class AppUpgradePreview(BaseModel):
     resources: list[UpgradeResourceDiff] = Field(default_factory=list, description="资源 diff")
 
 
+# 回滚预览：目标版本与资源 diff。
 class AppRollbackPreview(BaseModel):
     app_id: UUID = Field(description="应用 ID")
     app_name: str = Field(description="应用名称")
@@ -203,6 +218,7 @@ class AppRollbackPreview(BaseModel):
     message: str = Field(default="", description="说明")
 
 
+# 回滚结果：安装记录 + 版本变化。
 class AppRollbackResult(BaseModel):
     install: AppInstallOut = Field(description="安装记录")
     previous_version: str = Field(description="回滚前版本")

@@ -76,6 +76,7 @@ class SkillFileNode(BaseModel):
     )
 
 
+# 单个文件的内容（path 为相对技能根路径）。
 class SkillFileContent(BaseModel):
     path: str = Field(description="文件相对路径")
     content: str = Field(description="文件内容")
@@ -88,6 +89,7 @@ class SkillFileWrite(BaseModel):
     content: str = Field(default="", description="文件内容")
 
 
+# 从本地目录导入技能包的请求。
 class SkillImportLocal(BaseModel):
     local_path: str = Field(
         ...,
@@ -102,6 +104,7 @@ class SkillImportLocal(BaseModel):
     )
 
 
+# 从 Git 仓库导入技能包的请求。
 class SkillImportGit(BaseModel):
     repo_url: str = Field(
         ...,

@@ -32,19 +32,23 @@ class AdminBillingService:
         self.tenants = AdminTenantRepository(db)
 
     async def list_plans(self) -> list[BillingPlanOut]:
+        """按价格升序列出套餐。"""
         rows = await self.plans.list_ordered()
         return [BillingPlanOut.model_validate(p) for p in rows]
 
     async def get_plan(self, plan_id: UUID) -> BillingPlanOut:
+        """按 ID 取套餐，不存在抛 ``NotFoundError``。"""
         plan = await self.plans.get_by_id_or_raise(plan_id, label="套餐不存在")
         return BillingPlanOut.model_validate(plan)
 
     async def create_plan(self, body: BillingPlanCreate) -> BillingPlanOut:
+        """创建套餐。"""
         plan = await self.plans.create(**body.model_dump())
         await self.db.refresh(plan)
         return BillingPlanOut.model_validate(plan)
 
     async def update_plan(self, plan_id: UUID, body: BillingPlanUpdate) -> BillingPlanOut:
+        """按需更新套餐字段。"""
         plan = await self.plans.get_by_id_or_raise(plan_id, label="套餐不存在")
         plan = await self.plans.update_fields(plan, body.model_dump(exclude_unset=True))
         return BillingPlanOut.model_validate(plan)
@@ -56,6 +60,7 @@ class AdminBillingService:
         tenant_id: UUID | None = None,
         status: BillStatus | None = None,
     ) -> PageResult[TenantBillOut]:
+        """分页查询账单，可按租户/状态筛选并补全租户名。"""
         filters = []
         if tenant_id:
             filters.append(TenantBill.tenant_id == tenant_id)
@@ -87,6 +92,7 @@ class AdminBillingService:
         return PageResult(items=items, total=page.total, page=page.page, size=page.size)
 
     async def get_bill(self, bill_id: UUID) -> TenantBillDetail:
+        """取账单详情（含明细与租户名），不存在抛 ``NotFoundError``。"""
         bill = await self.bills.get_with_line_items(bill_id)
         if not bill:
             raise NotFoundError("账单不存在")
@@ -110,6 +116,7 @@ class AdminBillingService:
         )
 
     async def generate_bill(self, tenant_id: UUID, period_start: date, period_end: date) -> TenantBillDetail:
+        """按账期生成账单：套餐月费 + Token/存储超量费，写入明细后返回详情。"""
         tenant = await self.tenants.get_by_id_or_raise(tenant_id, label="租户不存在")
         plan = await self.plans.get_by_id(tenant.plan_id) if tenant.plan_id else None
         base_price = plan.price_monthly if plan else Decimal("0")
@@ -167,6 +174,7 @@ class AdminBillingService:
         return await self.get_bill(bill.id)
 
     async def update_bill_status(self, bill_id: UUID, body: TenantBillStatusUpdate) -> TenantBillDetail:
+        """将账单标记为 paid/void；仅 issued/draft 状态允许变更。"""
         if body.status not in (BillStatus.PAID, BillStatus.VOID):
             raise BadRequestError("仅支持标记为 paid 或 void")
         bill = await self.bills.get_by_id_or_raise(bill_id, label="账单不存在")

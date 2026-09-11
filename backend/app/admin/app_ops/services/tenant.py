@@ -75,12 +75,14 @@ class AdminTenantService:
         plan_id: UUID | None = None,
         is_active: bool | None = None,
     ) -> PageResult[AdminTenantOut]:
+        """分页列出租户，可按状态/套餐/启停筛选并补全套餐名。"""
         page = await self.repo.list_for_admin(params, status=status, plan_id=plan_id, is_active=is_active)
         plans = await self.repo.plan_names_by_ids({t.plan_id for t in page.items if t.plan_id})
         items = [self._out(t, plans.get(t.plan_id)) for t in page.items]
         return PageResult(items=items, total=page.total, page=page.page, size=page.size)
 
     async def create_tenant(self, body: AdminTenantCreate) -> AdminTenantOut:
+        """创建租户；校验名称唯一并应用套餐配额。"""
         await self.repo.ensure_name_unique(body.name)
         tenant = await self.repo.create(
             name=body.name,
@@ -106,10 +108,12 @@ class AdminTenantService:
         )
 
     async def get_tenant_usage(self, tenant_id: UUID) -> TenantUsageStats:
+        """查询租户资源用量，不存在抛 ``NotFoundError``。"""
         await self.repo.get_by_id_or_raise(tenant_id, label="租户不存在")
         return await self._usage(tenant_id)
 
     async def get_tenant_detail(self, tenant_id: UUID) -> AdminTenantDetail:
+        """取租户详情，回写存储用量并附带用量统计。"""
         tenant = await self.repo.get_by_id_or_raise(tenant_id, label="租户不存在")
         usage = await self._usage(tenant_id)
         tenant.storage_used_mb = usage.storage_used_mb
@@ -118,6 +122,7 @@ class AdminTenantService:
         return AdminTenantDetail(**base.model_dump(), usage=usage)
 
     async def update_tenant(self, tenant_id: UUID, body: AdminTenantUpdate) -> AdminTenantOut:
+        """更新租户资料、状态与配额；变更 plan_id 时同步套餐配额字段。"""
         tenant = await self.repo.get_by_id_or_raise(tenant_id, label="租户不存在")
         data = body.model_dump(exclude_unset=True)
         plan_id = data.pop("plan_id", None)
@@ -130,6 +135,7 @@ class AdminTenantService:
         return self._out(tenant, await self._plan_name(tenant.plan_id))
 
     async def update_quota(self, tenant_id: UUID, body: TenantQuotaUpdate) -> AdminTenantOut:
+        """仅更新租户配额字段。"""
         tenant = await self.repo.get_by_id_or_raise(tenant_id, label="租户不存在")
         await self.repo.update_fields(tenant, body.model_dump(exclude_unset=True))
         await self.db.flush()

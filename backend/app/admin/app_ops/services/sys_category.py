@@ -30,16 +30,20 @@ def _to_out(row: SysCategory) -> SysCategoryAdminOut:
 
 
 class AdminSysCategoryService:
+    """全平台全局分类维护；domain 白名单校验，删除为软删。"""
+
     def __init__(self, db: AsyncSession) -> None:
         self.db = db
 
     async def list_by_domain(self, domain: str) -> list[SysCategoryAdminOut]:
+        """按域列出未删除分类（排序权重、名称升序）。"""
         dom = _parse_domain(domain)
         stmt = select(SysCategory).where(SysCategory.domain == dom, not_deleted(SysCategory)).order_by(SysCategory.sort_order.asc(), SysCategory.name.asc())
         rows = (await self.db.execute(stmt)).scalars().all()
         return [_to_out(r) for r in rows]
 
     async def create(self, domain: str, body: SysCategoryAdminCreate) -> SysCategoryAdminOut:
+        """在指定域创建分类；slug 缺省由名称生成并校验同域唯一。"""
         dom = _parse_domain(domain)
         slug = (body.slug or "").strip() or slugify(body.name)
         await self._ensure_slug_unique(slug, dom)
@@ -56,6 +60,7 @@ class AdminSysCategoryService:
         return _to_out(row)
 
     async def update(self, category_id: UUID, body: SysCategoryAdminUpdate) -> SysCategoryAdminOut:
+        """按需更新分类；slug 变更时校验同域唯一。"""
         row = await self._get_or_raise(category_id)
         data = body.model_dump(exclude_unset=True)
         if "name" in data and data["name"]:
@@ -70,6 +75,7 @@ class AdminSysCategoryService:
         return _to_out(row)
 
     async def delete(self, category_id: UUID) -> None:
+        """软删分类。"""
         row = await self._get_or_raise(category_id)
         await mark_deleted(self.db, row)
 

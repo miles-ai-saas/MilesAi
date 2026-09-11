@@ -1,3 +1,5 @@
+"""租户主表仓储。"""
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.repository import BaseRepository
@@ -11,4 +13,5 @@ class TenantRepository(BaseRepository[Tenant]):
         super().__init__(db, Tenant)
 
     async def ensure_name_unique(self, name: str, *, exclude_id=None) -> None:
+        """校验租户名称全局唯一，冲突抛 BadRequestError；更新时用 exclude_id 排除自身。"""
         await self.ensure_unique(Tenant.name, name, message="租户名称已存在", exclude_id=exclude_id)

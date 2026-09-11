@@ -1,3 +1,5 @@
+"""平台 RBAC：角色、权限及 user/role/permission 关联表。"""
+
 import uuid
 from typing import TYPE_CHECKING
 
@@ -29,6 +31,8 @@ role_permissions = Table(
 
 
 class Role(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    """角色；``tenant_id`` 为空表示平台级角色。"""
+
     __tablename__ = "sys_roles"
     __table_args__ = (
         Index("idx_sys_roles_tenant_id", "tenant_id"),
@@ -58,6 +62,8 @@ class Role(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
 
 class Permission(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    """权限点（``code`` 全局唯一，按 ``module`` 分组）。"""
+
     __tablename__ = "sys_permissions"
     __table_args__ = (
         UniqueConstraint("code", name="uk_sys_permissions_code"),

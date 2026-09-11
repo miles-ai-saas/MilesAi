@@ -1,3 +1,5 @@
+"""运营后台风控 ORM：风险事件、IP 黑名单与限流规则。"""
+
 import enum
 import uuid
 
@@ -10,6 +12,7 @@ from app.infra.db import Base
 from app.models.base import TimestampMixin, UUIDPrimaryKeyMixin
 
 
+# 风险事件严重级别。
 class RiskSeverity(str, enum.Enum):
     LOW = "low"
     MEDIUM = "medium"
@@ -18,6 +21,8 @@ class RiskSeverity(str, enum.Enum):
 
 
 class RiskEvent(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    """平台风险事件记录。"""
+
     __tablename__ = "adm_risk_events"
     __table_args__ = (
         Index("idx_adm_risk_events_tenant_id", "tenant_id"),
@@ -39,6 +44,8 @@ class RiskEvent(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
 
 class IpBlacklist(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    """平台 IP 黑名单。"""
+
     __tablename__ = "adm_ip_blacklist"
     __table_args__ = (UniqueConstraint("ip_address", name="uk_adm_ip_blacklist_ip_address"),)
 
@@ -49,6 +56,8 @@ class IpBlacklist(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
 
 class RateLimitRule(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    """API 路径限流规则。"""
+
     __tablename__ = "adm_rate_limit_rules"
     __table_args__ = (Index("idx_adm_rate_limit_rules_path_pattern", "path_pattern"),)
 

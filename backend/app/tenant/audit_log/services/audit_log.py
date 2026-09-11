@@ -85,6 +85,7 @@ class TenantAuditLogService:
         action: str | None = None,
         resource_type: str | None = None,
     ) -> PageResult[TenantAuditLogOut]:
+        """按租户分页查询日志，并批量回填操作用户名。"""
         page = await self.repo.list_by_tenant(
             self.ctx.tenant_id,
             page=params.page,

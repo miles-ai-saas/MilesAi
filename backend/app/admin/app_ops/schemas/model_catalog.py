@@ -1,3 +1,5 @@
+"""运营端内置模型目录 DTO。"""
+
 from datetime import datetime
 from uuid import UUID
 
@@ -6,6 +8,7 @@ from pydantic import BaseModel, Field
 from app.models.model.catalog import ModelCapabilityType, ModelVendor
 
 
+# 创建内置模型入参。
 class ModelCatalogCreate(BaseModel):
     name: str = Field(description="模型展示名称")
     vendor: str = Field(default=ModelVendor.DEEPSEEK.value, description="模型厂商")
@@ -22,6 +25,7 @@ class ModelCatalogCreate(BaseModel):
     is_featured: bool = Field(False, description="是否推荐")
 
 
+# 更新内置模型入参（含显式清除 API Key 开关）。
 class ModelCatalogUpdate(BaseModel):
     name: str | None = Field(None, description="模型展示名称")
     vendor: str | None = Field(None, description="模型厂商")
@@ -40,6 +44,7 @@ class ModelCatalogUpdate(BaseModel):
     is_active: bool | None = Field(None, description="是否启用")
 
 
+# 内置模型目录输出（不返回明文 API Key）。
 class ModelCatalogOut(BaseModel):
     id: UUID = Field(description="模型目录项 ID")
     name: str = Field(description="模型展示名称")

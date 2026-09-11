@@ -1,3 +1,5 @@
+"""运营后台计费 ORM：套餐、账单与明细项。"""
+
 import enum
 import uuid
 from datetime import date
@@ -12,6 +14,7 @@ from app.infra.db import Base
 from app.models.base import TimestampMixin, UUIDPrimaryKeyMixin
 
 
+# 账单状态：草稿 / 已出账 / 已支付 / 作废。
 class BillStatus(str, enum.Enum):
     DRAFT = "draft"
     ISSUED = "issued"
@@ -20,6 +23,8 @@ class BillStatus(str, enum.Enum):
 
 
 class BillingPlan(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    """计费套餐定义及各项配额上限。"""
+
     __tablename__ = "adm_billing_plans"
     __table_args__ = (UniqueConstraint("code", name="uk_adm_billing_plans_code"),)
 
@@ -37,6 +42,8 @@ class BillingPlan(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
 
 class TenantBill(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    """租户账期账单，含用量快照与明细项。"""
+
     __tablename__ = "adm_tenant_bills"
     __table_args__ = (
         Index("idx_adm_tenant_bills_tenant_id", "tenant_id"),
@@ -67,6 +74,8 @@ class TenantBill(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
 
 class BillLineItem(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    """账单明细项（订阅月费 / Token 超量 / 存储超量等）。"""
+
     __tablename__ = "adm_bill_line_items"
     __table_args__ = (Index("idx_adm_bill_line_items_bill_id", "bill_id"),)
 

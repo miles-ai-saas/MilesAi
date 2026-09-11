@@ -11,6 +11,8 @@ from app.models.base import AuditTimestampMixin, UUIDPrimaryKeyMixin
 
 
 class ModelUsageLog(UUIDPrimaryKeyMixin, AuditTimestampMixin, Base):
+    """模型调用 token 用量流水（供计量与配额）。"""
+
     __tablename__ = "agt_model_usage_logs"
     __table_args__ = (
         Index("idx_agt_model_usage_logs_tenant_id", "tenant_id"),

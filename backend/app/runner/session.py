@@ -57,6 +57,7 @@ async def run_mcp_session(
     command_whitelist: frozenset[str],
     work_dir: str = "/tmp",
 ) -> SessionResult:
+    """启动 MCP 子进程并跑完 ``handler``：设置内存 / CPU 限额与独立进程组，超时或崩溃转为失败结果返回。"""
     validate_run_spec(spec, command_whitelist=command_whitelist)
     started = time.monotonic()
     proc: asyncio.subprocess.Process | None = None

@@ -11,6 +11,7 @@ from app.infra.db import Base
 from app.models.base import TimestampMixin, UUIDPrimaryKeyMixin
 
 
+# 异步生成任务状态。
 class GenerativeJobStatus(str, enum.Enum):
     PENDING = "pending"
     RUNNING = "running"
@@ -20,6 +21,8 @@ class GenerativeJobStatus(str, enum.Enum):
 
 
 class GenerativeJob(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    """异步生成任务（生图/生视频）记录与进度。"""
+
     __tablename__ = "generative_jobs"
     __table_args__ = (
         Index("idx_generative_jobs_tenant_id", "tenant_id"),

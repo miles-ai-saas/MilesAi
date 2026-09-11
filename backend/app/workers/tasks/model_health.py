@@ -65,6 +65,7 @@ async def _probe_models_async() -> str:
 
 @celery_app.task(name="app.workers.tasks.model_health.probe_models_health")
 def probe_models_health() -> str:
+    """定时任务：探测活跃对话模型可用性并写回 ``ModelConfig.extra``，返回 ``checked=… ok=…`` 摘要。"""
     try:
         return asyncio.run(_probe_models_async())
     except Exception:

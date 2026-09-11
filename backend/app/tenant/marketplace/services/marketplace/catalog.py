@@ -118,6 +118,7 @@ class MarketplaceCatalogMixin:
         )
 
     async def apps_to_out(self, apps: list[MarketplaceApp], *, installed_ids: set[UUID]) -> list[MarketplaceAppOut]:
+        """批量组装 ``MarketplaceAppOut``；标签一次加载，避免逐条查询。"""
         tags_map = await self.tags_map_for_apps(apps)
         return [
             self.app_out(

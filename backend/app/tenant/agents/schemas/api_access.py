@@ -13,6 +13,7 @@ API_KEY_CREATED_WARNING = "请立即复制并安全保存完整密钥；关闭�
 MAX_ACTIVE_AGENT_API_KEYS = 8
 
 
+# 调试 Token 响应；JWT 明文仅在此响应返回一次。
 class AgentDebugTokenOut(BaseModel):
     access_token: str = Field(description="调试 JWT，仅此响应返回明文")
     token_type: str = Field(default="bearer", description="固定 bearer")
@@ -23,10 +24,12 @@ class AgentDebugTokenOut(BaseModel):
     warning: str = Field(description="安全提示")
 
 
+# 创建 API Key 入参。
 class AgentApiKeyCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=64, description="密钥名称")
 
 
+# API Key 元数据输出，不含任何明文或哈希。
 class AgentApiKeyOut(BaseModel):
     id: UUID
     name: str
@@ -39,6 +42,7 @@ class AgentApiKeyOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+# 创建 API Key 的响应，额外携带一次性明文与安全提示。
 class AgentApiKeyCreatedOut(AgentApiKeyOut):
     secret: str = Field(description="完整明文，仅创建时返回一次")
     warning: str = Field(description="安全提示")

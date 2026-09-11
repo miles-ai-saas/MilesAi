@@ -1,3 +1,5 @@
+"""运营后台审计日志 ORM（adm_audit_logs）。"""
+
 import uuid
 
 from sqlalchemy import Index, String
@@ -9,6 +11,8 @@ from app.models.base import TimestampMixin, UUIDPrimaryKeyMixin
 
 
 class AuditLog(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    """管理员操作审计日志，记录操作者/租户/资源/IP/UA/详情。"""
+
     __tablename__ = "adm_audit_logs"
     __table_args__ = (
         Index("idx_adm_audit_logs_admin_id", "admin_id"),

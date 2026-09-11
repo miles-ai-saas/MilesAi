@@ -40,11 +40,14 @@ _FORBIDDEN_AST = (
 
 
 class _ScriptVisitor(ast.NodeVisitor):
+    """遍历脚本 AST，收集禁用语法并确认存在合法的 ``run`` 入口。"""
+
     def __init__(self) -> None:
         self.has_run = False
         self.errors: list[str] = []
 
     def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
+        """识别 ``run`` 入口并校验其至少接收一个 params 参数。"""
         if node.name == "run":
             if len(node.args.args) < 1:
                 self.errors.append("run() 须至少接受一个 params 参数")
@@ -53,12 +56,15 @@ class _ScriptVisitor(ast.NodeVisitor):
         self.generic_visit(node)
 
     def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> None:
+        """禁止 async 定义（Runner 以同步方式调用 ``run``）。"""
         self.errors.append("不支持 async def")
 
     def visit_ClassDef(self, node: ast.ClassDef) -> None:
+        """禁止 class 定义。"""
         self.errors.append("不支持 class 定义")
 
     def generic_visit(self, node: ast.AST) -> None:
+        """拦截禁用语法与危险内置调用，其余节点继续递归遍历。"""
         if isinstance(node, _FORBIDDEN_AST):
             self.errors.append(f"不允许的语法: {type(node).__name__}")
             return

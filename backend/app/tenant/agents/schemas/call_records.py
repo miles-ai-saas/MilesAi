@@ -9,6 +9,7 @@ from app.tenant.hooks.schemas.execution import HookExecutionLogOut
 from app.tenant.tools.schemas.tools import ToolInvocationLogOut
 
 
+# 单条对话调用记录的列表输出。
 class AgentCallRecordOut(BaseModel):
     id: UUID
     agent_id: UUID
@@ -32,6 +33,7 @@ class AgentCallRecordOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+# 调用记录详情，附带步骤摘要与关联的工具/钩子日志。
 class AgentCallRecordDetailOut(AgentCallRecordOut):
     meta: dict = Field(default_factory=dict)
     steps_summary: list[dict] | None = None

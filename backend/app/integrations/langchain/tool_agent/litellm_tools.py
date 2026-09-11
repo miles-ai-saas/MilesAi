@@ -1,3 +1,11 @@
+"""LangChain ``StructuredTool`` 与 LiteLLM/OpenAI function calling 的桥接。
+
+职责
+----
+- 把 ``StructuredTool`` 的 name/description/args_schema 转成 OpenAI ``tools`` 数组；
+- 封装带 ``tools`` / ``tool_choice=auto`` 的 ``litellm.acompletion`` 调用。
+"""
+
 from __future__ import annotations
 
 from typing import Any

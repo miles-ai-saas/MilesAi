@@ -1,3 +1,5 @@
+"""异步任务记录与批量取消相关的 schema。"""
+
 from datetime import datetime
 from uuid import UUID
 
@@ -6,6 +8,7 @@ from pydantic import BaseModel, Field
 from app.models.task.task_record import TaskStatus
 
 
+# 异步任务记录输出。
 class TaskRecordOut(BaseModel):
     id: UUID = Field(description="任务记录 ID")
     tenant_id: UUID = Field(description="租户 ID")
@@ -22,6 +25,7 @@ class TaskRecordOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+# 按状态聚合的任务计数汇总。
 class TaskSummary(BaseModel):
     pending: int = Field(default=0, description="待处理任务数")
     running: int = Field(default=0, description="运行中任务数")
@@ -31,10 +35,12 @@ class TaskSummary(BaseModel):
     total: int = Field(default=0, description="任务总数")
 
 
+# 批量取消任务的入参（单次上限 50）。
 class TaskBatchCancelBody(BaseModel):
     task_ids: list[str] = Field(..., min_length=1, max_length=50, description="任务 ID 列表")
 
 
+# 批量取消结果：已取消记录与跳过 ID。
 class TaskBatchCancelResult(BaseModel):
     cancelled: list[TaskRecordOut] = Field(default_factory=list, description="已取消")
     skipped: list[str] = Field(default_factory=list, description="跳过（不存在或已结束）")

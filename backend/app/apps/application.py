@@ -15,6 +15,7 @@ from app.middlewares import register_http_middlewares
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    """应用生命周期钩子：启动时初始化日志 / OTel、执行 schema 迁移并建 LangGraph checkpointer，关闭时逆序释放。"""
     from app.infra.otel import setup_otel, shutdown_otel
     from app.integrations.langgraph.checkpointer import init_langgraph_checkpointer, shutdown_langgraph_checkpointer
 
@@ -30,6 +31,7 @@ async def lifespan(app: FastAPI):
 
 
 def create_app() -> FastAPI:
+    """构造 FastAPI 应用：装配 CORS、HTTP 中间件、统一异常处理并挂载 api / admin 路由。"""
     settings = get_settings()
     app = FastAPI(
         title=settings.app_name,

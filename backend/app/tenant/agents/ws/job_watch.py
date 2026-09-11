@@ -75,6 +75,7 @@ def spawn_job_watchers(
     job_ids: list[UUID],
     tasks: set[asyncio.Task],
 ) -> None:
+    """为每个任务 ID 创建后台轮询任务，并登记到 ``tasks`` 集合以便统一取消。"""
     for job_id in job_ids:
         task = asyncio.create_task(watch_generative_job(ws, ctx, job_id))
         tasks.add(task)
@@ -82,6 +83,7 @@ def spawn_job_watchers(
 
 
 async def cancel_generative_job_ws(db: AsyncSession, ctx: TenantContext, job_id: UUID) -> GenerativeJobOut:
+    """取消生成任务并返回最新任务视图。"""
     svc = GenerativeJobService(db, ctx)
     job = await svc.cancel_job(job_id)
     return GenerativeJobOut.model_validate(job)

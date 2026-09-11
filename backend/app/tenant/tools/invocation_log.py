@@ -26,6 +26,7 @@ async def write_tool_invocation_log(
     invoke_source: str = "api",
     trace_id: str | None = None,
 ) -> None:
+    """写入工具调用审计行（试调用 / Agent / 流程共用）。"""
     row = ToolInvocationLog(
         tenant_id=tenant_id,
         tool_slug=tool_slug,

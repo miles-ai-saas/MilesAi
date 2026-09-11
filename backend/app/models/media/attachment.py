@@ -1,3 +1,5 @@
+"""租户通用附件 ORM（sys_attachments）。"""
+
 import uuid
 
 from sqlalchemy import Index, Integer, String

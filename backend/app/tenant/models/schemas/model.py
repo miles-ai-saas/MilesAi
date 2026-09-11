@@ -1,3 +1,5 @@
+"""模型配置 HTTP 请求/响应模型。"""
+
 from datetime import datetime
 from uuid import UUID
 
@@ -6,6 +8,7 @@ from pydantic import BaseModel, Field
 from app.models.model.catalog import ModelCapabilityType, ModelVendor
 
 
+# 创建自定义模型配置的入参。
 class ModelConfigCreate(BaseModel):
     name: str = Field(description="配置名称")
     vendor: str = Field(
@@ -25,6 +28,7 @@ class ModelConfigCreate(BaseModel):
     extra: dict = Field(default={}, description="扩展配置 JSON")
 
 
+# 更新模型配置入参；字段均可选。
 class ModelConfigUpdate(BaseModel):
     name: str | None = Field(default=None, description="配置名称")
     vendor: str | None = Field(default=None, description="厂商标识")
@@ -39,11 +43,13 @@ class ModelConfigUpdate(BaseModel):
     extra: dict | None = Field(default=None, description="扩展配置 JSON")
 
 
+# 为内置模型绑定租户 BYOK 凭证的入参。
 class ModelBuiltinCredentialsIn(BaseModel):
     api_base: str | None = Field(default=None, description="API Base URL")
     api_key: str = Field(description="API Key")
 
 
+# 模型配置输出（含来源与凭证状态）。
 class ModelConfigOut(BaseModel):
     id: UUID = Field(description="模型配置 ID")
     source: str = Field(description="来源：builtin | custom")
@@ -70,16 +76,19 @@ class ModelConfigOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+# 厂商下拉项。
 class ModelVendorOption(BaseModel):
     value: str = Field(description="厂商值")
     label: str = Field(description="厂商展示名")
 
 
+# 能力类型下拉项。
 class ModelTypeOption(BaseModel):
     value: str = Field(description="能力类型值")
     label: str = Field(description="能力类型展示名")
 
 
+# 模型目录元数据（厂商与能力类型选项）。
 class ModelCatalogMetaOut(BaseModel):
     vendors: list[ModelVendorOption] = Field(description="厂商选项列表")
     model_types: list[ModelTypeOption] = Field(description="能力类型选项列表")

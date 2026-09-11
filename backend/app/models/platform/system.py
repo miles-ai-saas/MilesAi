@@ -1,3 +1,5 @@
+"""平台系统配置键值 ORM（sys_configs）。"""
+
 from sqlalchemy import Boolean, String, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
@@ -7,6 +9,8 @@ from app.models.base import TimestampMixin, UUIDPrimaryKeyMixin
 
 
 class SystemConfig(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    """系统配置项；``key`` 唯一，``value`` 以 JSONB 存储。"""
+
     __tablename__ = "sys_configs"
     __table_args__ = (UniqueConstraint("key", name="uk_sys_configs_key"),)
 

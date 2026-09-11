@@ -6,6 +6,7 @@ from uuid import UUID
 from app.tenant.tasks.schemas.task import TaskSummary
 
 
+# 资源与合规概览计数。
 class MonitorStats(BaseModel):
     knowledge_bases: int = Field(description="知识库数量")
     documents: int = Field(description="文档数量")
@@ -18,6 +19,7 @@ class MonitorStats(BaseModel):
     pending_documents: int = Field(description="待处理文档数量")
 
 
+# 监控总览响应（资源统计 + 任务汇总 + 文档状态）。
 class MonitorReport(BaseModel):
     stats: MonitorStats = Field(description="资源统计概览")
     tasks: TaskSummary = Field(description="异步任务汇总")
@@ -28,6 +30,7 @@ class MonitorReport(BaseModel):
     marketplace_installs: int = Field(default=0, description="应用广场安装次数")
 
 
+# 告警开关与通知渠道配置。
 class AlertConfig(BaseModel):
     enabled: bool = Field(default=False, description="是否启用告警")
     webhook_url: str = Field(default="", description="Webhook 通知地址")
@@ -36,6 +39,7 @@ class AlertConfig(BaseModel):
     notify_on_health_degraded: bool = Field(default=True, description="健康检查降级时通知")
 
 
+# 单日任务状态分布。
 class TaskTrendPoint(BaseModel):
     date: str = Field(description="日期（YYYY-MM-DD）")
     pending: int = Field(default=0, description="待处理任务数")
@@ -46,6 +50,7 @@ class TaskTrendPoint(BaseModel):
     total: int = Field(default=0, description="任务总数")
 
 
+# 任务与合规拦截的按日趋势。
 class MonitorTrends(BaseModel):
     task_by_day: list[TaskTrendPoint] = Field(
         default_factory=list,
@@ -57,6 +62,7 @@ class MonitorTrends(BaseModel):
     )
 
 
+# 单模型 Token 用量聚合行。
 class ModelUsageRow(BaseModel):
     model_config_id: UUID | None = Field(default=None, description="模型配置 ID")
     model_name: str = Field(description="模型名称")
@@ -66,6 +72,7 @@ class ModelUsageRow(BaseModel):
     total_tokens: int = Field(description="总 Token")
 
 
+# 按天统计的模型 Token 用量报表。
 class ModelUsageReport(BaseModel):
     days: int = Field(description="统计天数")
     rows: list[ModelUsageRow] = Field(default_factory=list, description="按模型聚合")

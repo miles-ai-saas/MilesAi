@@ -1,8 +1,11 @@
+"""角色与权限请求/响应模型。"""
+
 from uuid import UUID
 
 from pydantic import BaseModel, Field
 
 
+# 权限项输出。
 class PermissionOut(BaseModel):
     id: UUID = Field(description="权限 ID")
     code: str = Field(description="权限编码")
@@ -13,11 +16,13 @@ class PermissionOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+# 按模块分组的权限列表。
 class PermissionGroupOut(BaseModel):
     module: str = Field(description="模块名称")
     permissions: list[PermissionOut] = Field(description="该模块下的权限列表")
 
 
+# 角色输出（含权限编码）。
 class RoleOut(BaseModel):
     id: UUID = Field(description="角色 ID")
     tenant_id: UUID | None = Field(default=None, description="租户 ID（系统角色为空）")
@@ -30,6 +35,7 @@ class RoleOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+# 创建角色请求。
 class RoleCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=64, description="角色名称")
     code: str = Field(..., min_length=1, max_length=64, description="角色编码")
@@ -37,6 +43,7 @@ class RoleCreate(BaseModel):
     permission_ids: list[UUID] = Field(default_factory=list, description="权限 ID 列表")
 
 
+# 更新角色请求（permission_ids 为全量替换）。
 class RoleUpdate(BaseModel):
     name: str | None = Field(default=None, description="角色名称")
     description: str | None = Field(default=None, description="角色说明")

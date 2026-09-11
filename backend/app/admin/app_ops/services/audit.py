@@ -81,6 +81,7 @@ class AdminAuditService:
         created_from: date | None = None,
         created_to: date | None = None,
     ) -> PageResult[AuditLogOut]:
+        """按操作者/action/租户/日期筛选分页查询，并补全操作者用户名。"""
         filters = []
         if admin_id:
             filters.append(AuditLog.admin_id == admin_id)
@@ -104,6 +105,7 @@ class AdminAuditService:
         )
 
     async def get_meta(self) -> AuditMetaOut:
+        """返回审计筛选元数据（去重 action 与有记录的管理员）。"""
         actions = await self.repo.list_distinct_actions()
         admins = await self.repo.list_audit_admins()
         return AuditMetaOut(

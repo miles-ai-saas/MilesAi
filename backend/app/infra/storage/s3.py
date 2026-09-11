@@ -39,6 +39,7 @@ class S3CompatibleObjectStorage:
 
     @property
     def default_bucket(self) -> str:
+        """当前客户端使用的默认桶名。"""
         return self._default_bucket
 
     def _get_client(self) -> Minio:

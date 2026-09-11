@@ -5,6 +5,7 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 
+# 内置画布模板项（含完整 graph_json）。
 class FlowTemplateOut(BaseModel):
     id: str = Field(description="模板标识")
     label: str = Field(description="展示名称")
@@ -20,5 +21,6 @@ class FlowTemplateOut(BaseModel):
     )
 
 
+# 内置模板列表响应。
 class FlowTemplatesOut(BaseModel):
     items: list[FlowTemplateOut] = Field(description="内置模板列表")

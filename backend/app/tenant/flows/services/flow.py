@@ -103,6 +103,7 @@ class FlowService(BaseService):
         *,
         tag_ids: list[UUID] | None = None,
     ) -> PageResult[FlowOut]:
+        """分页列出流程，可按标签筛选，并批量补全标签引用。"""
         filters = tenant_filters(self.ctx, Flow.tenant_id)
         tag_subq = TagService(self.db, self.ctx).entity_id_filter(TagEntityType.FLOW, tag_ids or [])
         if tag_subq is not None:
@@ -122,6 +123,7 @@ class FlowService(BaseService):
         )
 
     async def create_flow(self, body: FlowCreate) -> FlowOut:
+        """创建流程并写入初始版本；受租户流程数配额约束。"""
         from app.tenant.system.services.quota import assert_can_create_flow
 
         await assert_can_create_flow(self.db, self.ctx.tenant_id)
@@ -154,11 +156,13 @@ class FlowService(BaseService):
         return version
 
     async def get_flow(self, flow_id: UUID) -> FlowOut:
+        """返回流程详情并附标签。"""
         flow = await self._get_flow_or_raise(flow_id)
         tags_map = await TagService(self.db, self.ctx).get_refs_map(TagEntityType.FLOW, {flow.id})
         return self._to_out(flow, tags_map.get(flow.id, []))
 
     async def update_flow(self, flow_id: UUID, body: FlowUpdate) -> FlowOut:
+        """更新流程元信息与标签（标签为全量替换）。"""
         flow = await self._get_flow_or_raise(flow_id)
         data = body.model_dump(exclude_unset=True)
         tag_ids = data.pop("tag_ids", None)
@@ -177,6 +181,7 @@ class FlowService(BaseService):
         return FlowVersionOut.model_validate(version)
 
     async def get_current_graph(self, flow_id: UUID) -> FlowVersionOut:
+        """返回当前版本画布；尚无版本或版本缺失时抛 ``NotFoundError``。"""
         flow = await self._get_flow_or_raise(flow_id)
         if flow.current_version == 0:
             raise NotFoundError("流程尚无版本")
@@ -186,11 +191,13 @@ class FlowService(BaseService):
         return FlowVersionOut.model_validate(version)
 
     async def list_versions(self, flow_id: UUID) -> list[FlowVersionSummaryOut]:
+        """返回流程的版本摘要列表。"""
         flow = await self._get_flow_or_raise(flow_id)
         versions = await self.repo.list_versions(flow.id)
         return [FlowVersionSummaryOut.model_validate(v) for v in versions]
 
     async def get_version_graph(self, flow_id: UUID, version: int) -> FlowVersionOut:
+        """按版本号返回画布；版本不存在时抛 ``NotFoundError``。"""
         flow = await self._get_flow_or_raise(flow_id)
         row = await self.repo.get_version(flow.id, version)
         if not row:
@@ -198,12 +205,14 @@ class FlowService(BaseService):
         return FlowVersionOut.model_validate(row)
 
     async def delete_flow(self, flow_id: UUID) -> None:
+        """软删除流程：先清标签与级联依赖，再打删除标记。"""
         flow = await self._get_flow_or_raise(flow_id)
         await TagService(self.db, self.ctx).clear_entity_tags(TagEntityType.FLOW, flow.id)
         await before_delete_flow(self.db, flow.id)
         await mark_deleted(self.db, flow)
 
     async def publish(self, flow_id: UUID) -> FlowOut:
+        """发布流程；尚未保存任何版本时拒绝。"""
         flow = await self._get_flow_or_raise(flow_id)
         if flow.current_version == 0:
             raise BadRequestError("请先保存流程图")

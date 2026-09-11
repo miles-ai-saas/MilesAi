@@ -17,10 +17,12 @@ def _fernet() -> Fernet:
 
 
 def encrypt_secret(plain: str) -> str:
+    """Fernet 加密明文，返回可入库的 ASCII 密文。"""
     return _fernet().encrypt(plain.encode("utf-8")).decode("ascii")
 
 
 def decrypt_secret(cipher: str) -> str:
+    """解密 Fernet 密文；密钥不匹配或密文损坏时抛 ``ValueError``。"""
     try:
         return _fernet().decrypt(cipher.encode("ascii")).decode("utf-8")
     except InvalidToken as exc:
@@ -28,6 +30,7 @@ def decrypt_secret(cipher: str) -> str:
 
 
 def mask_secret(value: str | None, *, visible_tail: int = 4) -> str | None:
+    """保留末 ``visible_tail`` 位、其余以 ``*`` 遮蔽；空值返回 None。"""
     if not value:
         return None
     if len(value) <= visible_tail:

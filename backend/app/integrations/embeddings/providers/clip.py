@@ -30,6 +30,7 @@ class ClipEmbeddingProvider:
     """registry 注册的 CLIP Provider；文本与图像向量处于同一语义空间。"""
 
     def embed_texts(self, model: ModelConfig, texts: list[str]) -> list[list[float]]:
+        """把文本编码到 CLIP 语义空间（向量已 L2 归一化，空输入返回空列表）。"""
         if not texts:
             return []
         encoder = _load_clip(model.model_name)
@@ -37,4 +38,5 @@ class ClipEmbeddingProvider:
         return [v.tolist() for v in vectors]
 
     def embed_images(self, model: ModelConfig, images: list[bytes]) -> list[list[float]]:
+        """把图片字节编码到同一 CLIP 语义空间（供图文互检；空输入返回空列表）。"""
         return _encode_images(model.model_name, images)

@@ -45,13 +45,16 @@ class AdminAuthService:
         return AdminTokenResponse(access_token=token)
 
     async def logout(self, admin_id: UUID) -> None:
+        """吊销指定管理员的 Redis 会话。"""
         await revoke_admin_session(admin_id)
 
     async def get_me(self, admin_id: UUID) -> AdminInfo:
+        """返回当前管理员信息，不存在抛 ``NotFoundError``。"""
         admin = await self.repo.get_by_id_or_raise(admin_id, label="管理员不存在")
         return AdminInfo.model_validate(admin)
 
     async def change_password(self, admin_id: UUID, body: PasswordChangeRequest) -> None:
+        """校验原密码后更新密码，并吊销会话强制重新登录。"""
         admin = await self.repo.get_by_id_or_raise(admin_id, label="管理员不存在")
         if not verify_password(body.old_password, admin.hashed_password):
             raise BadRequestError("原密码错误")
@@ -60,6 +63,7 @@ class AdminAuthService:
         await revoke_admin_session(admin_id)
 
     async def list_sessions(self, *, current_admin_id: UUID | None = None) -> list[AdminSessionOut]:
+        """扫描 Redis 会话键列出活跃管理员会话，并标记当前会话。"""
         redis = get_redis()
         sessions: list[AdminSessionOut] = []
         async for key in redis.scan_iter(match=RedisKeys.admin_session_scan_pattern()):

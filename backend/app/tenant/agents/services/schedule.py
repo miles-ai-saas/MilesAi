@@ -21,6 +21,8 @@ from app.tenant.agents.services.agent import AgentService
 
 
 class AgentScheduleService(BaseService):
+    """智能体定时任务的 CRUD 与执行历史查询。"""
+
     def __init__(self, db: AsyncSession, ctx: TenantContext) -> None:
         super().__init__(db, ctx)
         self._agents = AgentService(db, ctx)
@@ -34,6 +36,7 @@ class AgentScheduleService(BaseService):
         return schedule
 
     async def list_schedules(self, agent_id: UUID, params: PageParams) -> PageResult[AgentScheduleOut]:
+        """分页列出智能体未删除的定时任务，按创建时间倒序。"""
         await self._agents.get_agent_or_raise(agent_id)
         filters = append_not_deleted(
             tenant_filters(self.ctx, AgentSchedule.tenant_id) + [AgentSchedule.agent_id == agent_id],
@@ -50,6 +53,7 @@ class AgentScheduleService(BaseService):
         )
 
     async def create_schedule(self, agent_id: UUID, body: AgentScheduleCreate) -> AgentScheduleOut:
+        """创建定时任务；Cron 非法抛 ``BadRequestError``，启用时计算下次执行时间。"""
         agent = await self._agents.get_agent_or_raise(agent_id)
         try:
             cron = validate_cron(body.cron)
@@ -71,6 +75,7 @@ class AgentScheduleService(BaseService):
         return AgentScheduleOut.from_model(schedule)
 
     async def update_schedule(self, agent_id: UUID, schedule_id: UUID, body: AgentScheduleUpdate) -> AgentScheduleOut:
+        """更新定时任务；按启用状态与 Cron 重算下次执行时间。"""
         schedule = await self._get_schedule_or_raise(agent_id, schedule_id)
 
         if body.content is not None:
@@ -93,11 +98,13 @@ class AgentScheduleService(BaseService):
         return AgentScheduleOut.from_model(schedule)
 
     async def delete_schedule(self, agent_id: UUID, schedule_id: UUID) -> None:
+        """软删除定时任务。"""
         schedule = await self._get_schedule_or_raise(agent_id, schedule_id)
         mark_deleted(schedule)
         await self.db.flush()
 
     async def list_runs(self, agent_id: UUID, schedule_id: UUID, params: PageParams) -> PageResult[AgentScheduleRunOut]:
+        """分页查询定时任务执行历史，按开始时间倒序。"""
         await self._get_schedule_or_raise(agent_id, schedule_id)
         filters = tenant_filters(self.ctx, AgentScheduleRun.tenant_id) + [
             AgentScheduleRun.schedule_id == schedule_id,

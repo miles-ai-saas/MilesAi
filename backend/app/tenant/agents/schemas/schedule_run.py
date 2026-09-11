@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 from app.models.agent.schedule_run import AgentScheduleRun
 
 
+# 定时任务单次执行记录输出。
 class AgentScheduleRunOut(BaseModel):
     id: UUID = Field(description="执行记录 ID")
     schedule_id: UUID = Field(description="定时任务 ID")
@@ -23,4 +24,5 @@ class AgentScheduleRunOut(BaseModel):
 
     @classmethod
     def from_model(cls, entity: AgentScheduleRun) -> AgentScheduleRunOut:
+        """由 ``AgentScheduleRun`` ORM 实体校验转换为输出模型。"""
         return cls.model_validate(entity)

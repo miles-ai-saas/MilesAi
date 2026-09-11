@@ -35,6 +35,10 @@ class HookExecutor(HookHttpMixin, HookPythonMixin, HookLogMixin):
         target_id: UUID | None,
         payload: dict,
     ) -> HookRunResult:
+        """按优先级串行 dispatch 命中的绑定；payload 随 modify 钩子逐步演进。
+
+        任一钩子返回 block 时立即抛 ``HookBlockedError``，后续钩子不再执行。
+        """
         bindings = await self._load_bindings(trigger, scope, target_id)
         current_payload = dict(payload)
         results: list[dict] = []

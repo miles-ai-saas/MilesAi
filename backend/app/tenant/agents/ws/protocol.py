@@ -29,10 +29,12 @@ PONG = "pong"
 
 
 def utc_now_iso() -> str:
+    """返回秒级精度的 UTC ISO8601 时间戳（``Z`` 结尾）。"""
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 
 def envelope(event_type: str, payload: dict[str, Any]) -> dict[str, Any]:
+    """构造统一事件包：``type`` / ``id`` / ``ts`` / ``payload``。"""
     return {
         "type": event_type,
         "id": str(uuid.uuid4()),
@@ -42,6 +44,7 @@ def envelope(event_type: str, payload: dict[str, Any]) -> dict[str, Any]:
 
 
 async def send_json(ws: WebSocket, event_type: str, payload: dict[str, Any]) -> None:
+    """按统一事件包格式向 WebSocket 发送一次 JSON。"""
     await ws.send_json(envelope(event_type, payload))
 
 
@@ -56,6 +59,7 @@ async def emit_answer_deltas(ws: WebSocket, text: str, *, chunk_size: int = 32) 
 
 
 def parse_client_frame(raw: str) -> tuple[str, dict[str, Any]]:
+    """解析客户端帧为 ``(type, payload)``；结构非法时抛 ``ValueError``。"""
     data = json.loads(raw)
     if not isinstance(data, dict):
         raise ValueError("帧须为 JSON 对象")

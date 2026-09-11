@@ -32,6 +32,7 @@ class AuthService(BaseService):
         user_agent: str | None = None,
         ip: str | None = None,
     ) -> TokenResponse:
+        """校验用户名密码并签发双令牌；写登录审计、登记 Redis 会话。"""
         user = await self.users.get_by_username(body.username)
         if not user or not verify_password(body.password, user.hashed_password):
             raise UnauthorizedError("用户名或密码错误")
@@ -57,6 +58,7 @@ class AuthService(BaseService):
         access_token: str | None = None,
         current_jti: str | None = None,
     ) -> None:
+        """登出：将 access 加入 jti 黑名单并吊销当前会话。"""
         if access_token:
             await session_store.blacklist_token(access_token)
         if current_jti:
@@ -69,6 +71,7 @@ class AuthService(BaseService):
         user_agent: str | None = None,
         ip: str | None = None,
     ) -> TokenResponse:
+        """用 refresh 令牌换新双令牌；缺失或类型错误分别抛 BadRequest/Unauthorized。"""
         if not refresh_token:
             raise BadRequestError("缺少 refresh_token")
         payload = decode_token(refresh_token)
@@ -86,6 +89,7 @@ class AuthService(BaseService):
         return TokenResponse(access_token=access, refresh_token=new_refresh)
 
     async def get_me(self, ctx: TenantContext) -> UserInfo:
+        """返回当前用户资料与权限（超管为 ``["*"]``）。"""
         result = await self.db.execute(select(User).where(User.id == ctx.user_id).options(selectinload(User.roles).selectinload(Role.permissions)))
         user = result.scalar_one()
         perms = sorted(ctx.permissions) if not ctx.is_superuser else ["*"]
@@ -99,6 +103,7 @@ class AuthService(BaseService):
         )
 
     async def list_sessions(self, user_id: UUID, *, current_jti: str | None = None) -> list[UserSessionOut]:
+        """列出用户多设备会话，标记当前 jti。"""
         rows = await session_store.list_sessions(user_id)
         return [
             UserSessionOut(
@@ -113,12 +118,15 @@ class AuthService(BaseService):
         ]
 
     async def revoke_session(self, user_id: UUID, jti: str, *, current_jti: str | None = None) -> None:
+        """下线指定会话；不允许下线当前会话（抛 BadRequestError）。"""
         if current_jti and jti == current_jti:
             raise BadRequestError("不能下线当前会话，请使用登出")
         await session_store.revoke_session(user_id, jti)
 
     async def revoke_other_sessions(self, user_id: UUID, *, keep_jti: str | None) -> int:
+        """保留 keep_jti 会话，吊销其余会话并返回吊销数。"""
         return await session_store.revoke_all_sessions(user_id, keep_jti=keep_jti)
 
     async def admin_revoke_user_sessions(self, user_id: UUID) -> int:
+        """管理员吊销目标用户全部会话，返回吊销数。"""
         return await session_store.revoke_all_sessions(user_id)

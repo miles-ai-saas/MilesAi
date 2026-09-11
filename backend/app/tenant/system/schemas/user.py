@@ -1,9 +1,12 @@
+"""租户用户请求与响应模型。"""
+
 from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, EmailStr, Field, model_validator
 
 
+# 创建用户请求。
 class UserCreate(BaseModel):
     username: str = Field(..., min_length=3, max_length=64, description="用户名")
     email: EmailStr = Field(description="邮箱地址")
@@ -13,6 +16,7 @@ class UserCreate(BaseModel):
     role_ids: list[UUID] = Field(default_factory=list, description="角色 ID 列表")
 
 
+# 更新用户请求（role_ids 为全量替换）。
 class UserUpdate(BaseModel):
     email: EmailStr | None = Field(default=None, description="邮箱地址")
     phone: str | None = Field(default=None, description="手机号")
@@ -20,14 +24,17 @@ class UserUpdate(BaseModel):
     role_ids: list[UUID] | None = Field(default=None, description="角色 ID 列表（全量替换）")
 
 
+# 重置密码请求。
 class UserResetPassword(BaseModel):
     password: str = Field(..., min_length=6, description="新登录密码")
 
 
+# 批量软删用户请求。
 class UserBatchDeactivate(BaseModel):
     user_ids: list[UUID] = Field(..., min_length=1, description="待删除用户 ID 列表")
 
 
+# 批量操作请求（启用/禁用/赋角色/软删）。
 class UserBatchRequest(BaseModel):
     user_ids: list[UUID] = Field(..., min_length=1, description="目标用户 ID 列表")
     action: Literal["enable", "disable", "assign_roles", "deactivate"] = Field(description="enable/disable 仅改状态；assign_roles 批量赋角色；deactivate 软删")
@@ -43,6 +50,7 @@ class UserBatchRequest(BaseModel):
         return self
 
 
+# 用户输出（含角色编码）。
 class UserOut(BaseModel):
     id: UUID = Field(description="用户 ID")
     username: str = Field(description="用户名")

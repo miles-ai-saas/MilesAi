@@ -66,6 +66,7 @@ async def touch_session(user_id: UUID, jti: str) -> None:
 
 
 async def is_token_blacklisted(jti: str) -> bool:
+    """判断 jti 是否在 Redis 黑名单中（空 jti 恒为 False）。"""
     if not jti:
         return False
     redis = await get_redis()
@@ -89,6 +90,7 @@ async def blacklist_token(access_token: str) -> None:
 
 
 async def list_sessions(user_id: UUID) -> list[dict]:
+    """列出用户会话元数据（按创建时间倒序），顺带清理索引中已失效的 jti。"""
     redis = await get_redis()
     jtis = await redis.smembers(_index_key(user_id))
     out: list[dict] = []
@@ -106,6 +108,7 @@ async def list_sessions(user_id: UUID) -> list[dict]:
 
 
 async def revoke_session(user_id: UUID, jti: str, *, access_token: str | None = None) -> None:
+    """吊销单会话；传入 access_token 时按其原过期时间加黑名单。"""
     redis = await get_redis()
     if access_token:
         await blacklist_token(access_token)
@@ -116,6 +119,7 @@ async def revoke_session(user_id: UUID, jti: str, *, access_token: str | None = 
 
 
 async def revoke_all_sessions(user_id: UUID, *, keep_jti: str | None = None) -> int:
+    """吊销用户全部会话（可保留 keep_jti），逐个加入黑名单并返回吊销数。"""
     redis = await get_redis()
     jtis = await redis.smembers(_index_key(user_id))
     revoked = 0

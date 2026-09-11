@@ -16,6 +16,7 @@ from app.infra.db import Base
 from app.models.base import TimestampMixin, UUIDPrimaryKeyMixin
 
 
+# 外部对端连接状态：待同步、可用、同步失败、已停用。
 class A2aPeerStatus(str, enum.Enum):
     PENDING = "pending"
     ACTIVE = "active"

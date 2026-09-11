@@ -56,6 +56,10 @@ async def run_python_script(
     max_memory_mb: int = 512,
     work_dir: str = "/tmp",
 ) -> SessionResult:
+    """在受限子进程中执行用户脚本：校验源码、注入白名单 stdlib，限制内存 / CPU / 超时，stdout 须输出 JSON。
+
+    各类失败（超时、崩溃、输出非法）统一转为 ``SessionResult`` 返回，不向调用方抛异常。
+    """
     validate_script_source(source)
     started = time.monotonic()
     proc: asyncio.subprocess.Process | None = None

@@ -1,3 +1,5 @@
+"""运营端审计日志仓储：写入与查询。"""
+
 from datetime import date, datetime, time, timedelta, timezone
 from uuid import UUID
 
@@ -18,6 +20,8 @@ def _day_end_exclusive(d: date) -> datetime:
 
 
 class AuditLogRepository(BaseRepository[AuditLog]):
+    """审计日志读写仓储。"""
+
     def __init__(self, db: AsyncSession) -> None:
         super().__init__(db, AuditLog)
 
@@ -32,6 +36,7 @@ class AuditLogRepository(BaseRepository[AuditLog]):
         request: Request | None = None,
         detail: dict | None = None,
     ) -> AuditLog:
+        """新增一条审计记录；传入 Request 时自动提取客户端 IP 与 User-Agent。"""
         ip = None
         ua = None
         if request:
@@ -71,14 +76,17 @@ class AuditLogRepository(BaseRepository[AuditLog]):
         return filters
 
     async def list_distinct_actions(self) -> list[str]:
+        """返回已出现过的 action 去重列表（按字典序升序）。"""
         stmt = select(distinct(AuditLog.action)).order_by(AuditLog.action)
         return list((await self.db.execute(stmt)).scalars().all())
 
     async def list_audit_admins(self) -> list[PlatformAdmin]:
+        """返回产生过审计记录的管理员（按用户名升序）。"""
         stmt = select(PlatformAdmin).join(AuditLog, AuditLog.admin_id == PlatformAdmin.id).distinct().order_by(PlatformAdmin.username)
         return list((await self.db.execute(stmt)).scalars().all())
 
     async def load_admin_usernames(self, admin_ids: set[UUID]) -> dict[UUID, str]:
+        """按 admin_id 批量查询用户名映射，供列表补全展示。"""
         if not admin_ids:
             return {}
         stmt = select(PlatformAdmin.id, PlatformAdmin.username).where(PlatformAdmin.id.in_(admin_ids))

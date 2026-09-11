@@ -20,11 +20,13 @@ _ENV_KEY_RE = re.compile(r"^[A-Z_][A-Z0-9_]*$")
 _DEFAULT_COMMAND_WHITELIST = frozenset({"npx", "node", "python", "python3"})
 
 
+# Runner 容器网络开关。
 class NetworkMode(str, Enum):
     DENY = "deny"
     ALLOW = "allow"
 
 
+# 一次 Runner 调用的完整指令（命令、资源上限、网络模式）。
 class RunSpec(BaseModel):
     tenant_id: UUID
     service_id: UUID
@@ -41,6 +43,7 @@ class RunSpec(BaseModel):
     @field_validator("args")
     @classmethod
     def validate_args(cls, v: list[str]) -> list[str]:
+        """校验 args 数量/长度，并拒绝 shell 元字符与 ``..`` 路径片段。"""
         if len(v) > 32:
             raise ValueError("args 数量不能超过 32")
         for i, arg in enumerate(v):
@@ -78,6 +81,7 @@ def build_run_spec(
     *,
     purpose: Literal["mcp_sync", "mcp_invoke", "script_exec"],
 ) -> RunSpec:
+    """由 MCP 服务 ``connection_config`` 组装 RunSpec，超时夹取到 1..120 秒。"""
     cfg = service.connection_config or {}
     command = str(cfg.get("command") or "").strip()
     if not command:

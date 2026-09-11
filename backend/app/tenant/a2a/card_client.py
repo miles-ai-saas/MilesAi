@@ -19,6 +19,12 @@ WELL_KNOWN_CARD = "/.well-known/agent-card.json"
 
 
 def resolve_agent_card_url(base_or_card_url: str) -> str:
+    """把用户填写的根地址或 Card URL 规范化为标准 Agent Card 地址。
+
+    缺协议时补 ``https://``；已是 ``agent-card.json`` 或 ``/.well-known/`` 路径时
+    原样返回（去除 query），否则拼接 ``WELL_KNOWN_CARD``。空或非法地址抛
+    ``BadRequestError``。
+    """
     raw = (base_or_card_url or "").strip()
     if not raw:
         raise BadRequestError("请填写外部 Agent 根地址或 Agent Card URL")

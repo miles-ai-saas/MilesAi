@@ -31,7 +31,10 @@ def _should_skip(path: str) -> bool:
 
 
 class PlatformRiskMiddleware(BaseHTTPMiddleware):
+    """进入路由前拦截黑名单 IP，并对 ``/api/v1`` 做租户限流，命中即返回 403 / 429。"""
+
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
+        """执行 IP 封禁与限流检查；命中时记录风控事件并直接返回统一信封的 JSON 响应。"""
         path = request.url.path
         if _should_skip(path):
             return await call_next(request)

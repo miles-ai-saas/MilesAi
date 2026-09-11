@@ -86,4 +86,5 @@ async def resolve_object_storage_async(
 
 
 async def resolve_default_bucket_async(tenant_id: UUID, db: AsyncSession) -> str:
+    """仅取租户解析后的默认桶名（供上传路径拼接）。"""
     return (await resolve_object_storage_async(tenant_id, db)).default_bucket

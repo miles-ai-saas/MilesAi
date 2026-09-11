@@ -209,6 +209,7 @@ async def unlink_sub_agent_bindings(
     parent_agent_id: UUID | None = None,
     child_agent_id: UUID | None = None,
 ) -> None:
+    """删除与指定父/子智能体相关的绑定；两个条件均为 ``None`` 时不执行任何操作。"""
     if parent_agent_id is None and child_agent_id is None:
         return
     stmt = delete(AgentSubAgentBinding)

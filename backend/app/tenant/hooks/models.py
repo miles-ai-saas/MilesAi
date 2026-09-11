@@ -12,6 +12,7 @@ from app.infra.db import Base
 from app.models.base import AuditTimestampMixin, TimestampMixin, UUIDPrimaryKeyMixin
 
 
+# 钩子实现类型：HTTP 回调或内置 Python 函数。
 class HookType(str, enum.Enum):
     HTTP = "http"
     PYTHON = "python"
@@ -29,6 +30,7 @@ class HookTrigger(str, enum.Enum):
     ON_ERROR = "on_error"
 
 
+# 钩子作用域：全局、智能体、流程、工具、应用。
 class HookScope(str, enum.Enum):
     GLOBAL = "global"
     AGENT = "agent"
@@ -38,6 +40,8 @@ class HookScope(str, enum.Enum):
 
 
 class HookDefinition(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    """钩子定义：承载类型与配置 JSON，通过绑定挂到具体作用域。"""
+
     __tablename__ = "hook_definitions"
     __table_args__ = (Index("idx_hook_definitions_tenant_id", "tenant_id"),)
 
@@ -59,6 +63,8 @@ class HookDefinition(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
 
 class HookBinding(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    """定义与作用域/触发时机的绑定；``priority`` 越小越先执行。"""
+
     __tablename__ = "hook_bindings"
     __table_args__ = (
         Index("idx_hook_bindings_tenant_id", "tenant_id"),

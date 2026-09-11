@@ -1,3 +1,5 @@
+"""工具 API 请求/响应模型与参数规格。"""
+
 import re
 from datetime import datetime
 from typing import Any
@@ -11,6 +13,7 @@ from app.tenant.tags.schemas.tag import TagRefOut
 SLUG_RE = re.compile(r"^[a-z][a-z0-9_]{0,62}$")
 
 
+# 单个工具参数的 JSON Schema 风格描述。
 class ToolParameterSpec(BaseModel):
     name: str = Field(description="参数名称")
     type: str = Field(default="string", description="参数类型")
@@ -20,6 +23,7 @@ class ToolParameterSpec(BaseModel):
     enum: list | None = Field(default=None, description="枚举可选值列表")
 
 
+# 创建工具请求；slug 与内置工具冲突会被服务层拒绝。
 class ToolCreate(BaseModel):
     slug: str = Field(..., min_length=1, max_length=64, description="工具唯一标识（小写字母开头）")
     name: str = Field(..., min_length=1, max_length=128, description="工具名称")
@@ -35,12 +39,14 @@ class ToolCreate(BaseModel):
     @field_validator("slug")
     @classmethod
     def validate_slug(cls, v: str) -> str:
+        """校验 slug 命名规则：小写字母开头，仅含小写字母/数字/下划线。"""
         s = v.strip()
         if not SLUG_RE.match(s):
             raise ValueError("slug 须为小写字母开头，仅含小写字母、数字、下划线")
         return s
 
 
+# 工具局部更新请求。
 class ToolUpdate(BaseModel):
     slug: str | None = Field(default=None, description="工具唯一标识")
     name: str | None = Field(default=None, description="工具名称")
@@ -56,6 +62,7 @@ class ToolUpdate(BaseModel):
     @field_validator("slug")
     @classmethod
     def validate_slug(cls, v: str | None) -> str | None:
+        """同 ``ToolCreate.validate_slug``，但允许 ``None`` 表示不更新。"""
         if v is None:
             return v
         s = v.strip()
@@ -64,6 +71,7 @@ class ToolUpdate(BaseModel):
         return s
 
 
+# 工具详情/列表输出。
 class ToolOut(BaseModel):
     id: UUID = Field(description="工具 ID")
     tenant_id: UUID = Field(description="租户 ID")
@@ -85,12 +93,14 @@ class ToolOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+# 工具试调用请求。
 class ToolInvokeRequest(BaseModel):
     params: dict = Field(default_factory=dict, description="调用参数")
     tool_id: UUID | None = Field(default=None, description="指定工具 ID")
     confirmed: bool = Field(default=False, description="是否已确认执行")
 
 
+# 等待用户确认的工具调用描述。
 class PendingToolCall(BaseModel):
     slug: str = Field(description="工具 slug")
     name: str = Field(description="工具展示名")
@@ -98,6 +108,7 @@ class PendingToolCall(BaseModel):
     params: dict = Field(default_factory=dict, description="待执行参数")
 
 
+# 试调用结果；``pending`` 非空表示需确认后才执行。
 class ToolInvokeResult(BaseModel):
     tool: str = Field(description="工具标识")
     source: str = Field(description="工具来源")
@@ -106,6 +117,7 @@ class ToolInvokeResult(BaseModel):
     pending: PendingToolCall | None = Field(default=None, description="待确认的工具调用")
 
 
+# 工具调用审计输出。
 class ToolInvocationLogOut(BaseModel):
     id: UUID = Field(description="日志 ID")
     tool_slug: str = Field(description="工具 slug")
@@ -122,6 +134,7 @@ class ToolInvocationLogOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+# 工具目录项：内置与租户工具合并后的统一结构。
 class ToolCatalogItem(BaseModel):
     source: str = Field(description="目录来源")
     slug: str = Field(description="工具 slug")

@@ -24,12 +24,14 @@ def not_deleted(model: type[Any]) -> ColumnElement[bool]:
 
 
 def append_not_deleted(filters: list[ColumnElement[bool]], model: type[Any]) -> list[ColumnElement[bool]]:
+    """模型支持软删时，向过滤条件追加 ``deleted_at IS NULL``。"""
     if has_soft_delete(model):
         return [*filters, not_deleted(model)]
     return filters
 
 
 def is_marked_deleted(entity: Any) -> bool:
+    """实体的 ``deleted_at`` 是否已写入（即已软删）。"""
     return getattr(entity, "deleted_at", None) is not None
 
 

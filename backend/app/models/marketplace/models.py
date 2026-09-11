@@ -13,6 +13,7 @@ from app.infra.db import Base
 from app.models.base import TimestampMixin, UUIDPrimaryKeyMixin
 
 
+# 应用上架/审核状态。
 class MarketplaceAppStatus(str, enum.Enum):
     DRAFT = "draft"
     PENDING_REVIEW = "pending_review"
@@ -21,12 +22,15 @@ class MarketplaceAppStatus(str, enum.Enum):
     ARCHIVED = "archived"
 
 
+# 应用可见范围：公开或仅指定租户。
 class MarketplaceAppVisibility(str, enum.Enum):
     PUBLIC = "public"
     TENANT_ONLY = "tenant_only"
 
 
 class AppCategory(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    """应用分类（``slug`` 全局唯一）。"""
+
     __tablename__ = "mkt_categories"
     __table_args__ = (UniqueConstraint("slug", name="uk_mkt_categories_slug"),)
 
@@ -93,6 +97,8 @@ class MarketplaceApp(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
 
 class AppRating(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    """租户用户对应用的评分（租户 + 应用 + 用户唯一）。"""
+
     __tablename__ = "mkt_ratings"
     __table_args__ = (
         Index("idx_mkt_ratings_app_id", "app_id"),

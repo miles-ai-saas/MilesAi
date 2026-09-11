@@ -19,6 +19,7 @@ class McpStdioClient:
         self._next_id = 1
 
     async def initialize(self) -> dict:
+        """发送 ``initialize`` 并回 ``notifications/initialized``，返回服务端 capabilities。"""
         result = await self.request(
             "initialize",
             {
@@ -31,10 +32,12 @@ class McpStdioClient:
         return result if isinstance(result, dict) else {}
 
     async def notify(self, method: str, params: dict | None = None) -> None:
+        """发送无 id 的 JSON-RPC 通知，不等待响应。"""
         msg = {"jsonrpc": "2.0", "method": method, "params": params or {}}
         await self._write(msg)
 
     async def request(self, method: str, params: dict | None = None) -> Any:
+        """发送带自增 id 的 JSON-RPC 请求并等待同 id 响应（跳过通知与其他 id 的消息）。"""
         req_id = self._next_id
         self._next_id += 1
         msg = {

@@ -1,3 +1,5 @@
+"""运营后台管理员 ORM（adm_admins）。"""
+
 from sqlalchemy import Boolean, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -6,6 +8,8 @@ from app.models.base import TimestampMixin, UUIDPrimaryKeyMixin
 
 
 class PlatformAdmin(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    """平台管理员账号，含角色与启停状态。"""
+
     __tablename__ = "adm_admins"
     __table_args__ = (UniqueConstraint("username", name="uk_adm_admins_username"),)
 

@@ -10,6 +10,7 @@ _ALPHABET = string.ascii_letters + string.digits
 
 
 def hash_agent_api_key(plaintext: str) -> str:
+    """返回明文密钥的 SHA-256 十六进制摘要（库中只保存哈希）。"""
     return hashlib.sha256(plaintext.encode("utf-8")).hexdigest()
 
 

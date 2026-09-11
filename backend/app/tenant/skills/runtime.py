@@ -23,6 +23,7 @@ async def resolve_bound_skill(
     skill_package_id: UUID | str | None,
     skill_slug: str | None = None,
 ) -> SkillPackage:
+    """解析绑定的技能包：优先按 ID，其次按 slug；不存在或已停用抛 ``NotFoundError``。"""
     if not skill_package_id and not skill_slug:
         raise BadRequestError("未指定技能包")
     row: SkillPackage | None = None
@@ -56,6 +57,7 @@ async def skill_read_reference(
     *,
     bound_skill_id: UUID | str | None = None,
 ) -> dict:
+    """读取技能包内文本资源；``max_chars`` 夹取到 256..32000，越界路径抛异常。"""
     skill = await resolve_bound_skill(
         db,
         ctx,
@@ -83,6 +85,7 @@ async def skill_run_script(
     bound_skill_id: UUID | str | None = None,
     actor_user_id: UUID | None = None,
 ) -> dict:
+    """在 Runner 沙箱执行技能脚本，并写入会话审计；需启用 ``MCP_RUNNER_ENABLED``。"""
     settings = get_settings()
     if not settings.mcp_runner_enabled:
         raise BadRequestError("脚本执行需要启用 MCP Runner（MCP_RUNNER_ENABLED=true）")

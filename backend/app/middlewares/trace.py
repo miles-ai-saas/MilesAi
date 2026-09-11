@@ -24,7 +24,10 @@ def _attach_trace_id_to_span(trace_id: str) -> None:
 
 
 class TraceMiddleware(BaseHTTPMiddleware):
+    """为每个请求生成 / 透传 trace_id，写入 state 与 ContextVar，并在响应头回写 ``X-Trace-Id``。"""
+
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
+        """解析或生成 trace_id，注入 OTel span / request.state / ContextVar，响应结束后重置 ContextVar。"""
         trace_id = request.headers.get("X-Trace-Id") or str(uuid.uuid4())
         request.state.trace_id = trace_id
         _attach_trace_id_to_span(trace_id)

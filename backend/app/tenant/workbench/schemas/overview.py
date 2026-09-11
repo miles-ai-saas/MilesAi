@@ -1,3 +1,5 @@
+"""工作台概览统计 schema。"""
+
 from pydantic import BaseModel, Field
 
 

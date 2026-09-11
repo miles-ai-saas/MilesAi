@@ -28,6 +28,7 @@ class AgentPlanner(str, enum.Enum):
     A2A_ORCHESTRATOR = "a2a_orchestrator"
 
 
+# 子智能体 role_hint 取值（用于校验与展示）。
 class SubAgentRoleHint(str, enum.Enum):
     RETRIEVAL = "retrieval"
     OCR = "ocr"

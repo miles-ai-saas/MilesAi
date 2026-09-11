@@ -24,6 +24,7 @@ class TenantAuditLogRepository(BaseRepository[TenantAuditLog]):
         action: str | None = None,
         resource_type: str | None = None,
     ):
+        """按租户分页查询审计日志，可按用户、动作、资源类型过滤（时间倒序）。"""
         filters = [TenantAuditLog.tenant_id == tenant_id]
         if user_id:
             filters.append(TenantAuditLog.user_id == user_id)

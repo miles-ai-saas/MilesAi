@@ -21,14 +21,17 @@ class ScanResult:
 
     @property
     def has_block(self) -> bool:
+        """是否存在 BLOCK 级命中。"""
         return any(m.action == SensitiveAction.BLOCK for m in self.matches)
 
     @property
     def has_warn(self) -> bool:
+        """是否存在 WARN 级命中。"""
         return any(m.action == SensitiveAction.WARN for m in self.matches)
 
     @property
     def worst_action(self) -> SensitiveAction | None:
+        """命中最严动作：BLOCK 优先于 WARN；无命中返回 None。"""
         if self.has_block:
             return SensitiveAction.BLOCK
         if self.has_warn:

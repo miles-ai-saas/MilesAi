@@ -1,3 +1,5 @@
+"""媒体资产元数据与入库知识库的 schema。"""
+
 from datetime import datetime
 from uuid import UUID
 
@@ -6,6 +8,7 @@ from pydantic import BaseModel, Field
 from app.tenant.attachments.schemas.attachment import AttachmentOut
 
 
+# 媒体资产输出，可选携带关联附件与视频封面附件详情。
 class MediaAssetOut(BaseModel):
     id: UUID = Field(description="媒体资产 ID")
     tenant_id: UUID = Field(description="租户 ID")
@@ -36,6 +39,7 @@ class MediaAssetOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+# 更新媒体资产的可编辑元数据（标题/标签）。
 class MediaAssetUpdate(BaseModel):
     title: str | None = Field(
         default=None,
@@ -45,6 +49,7 @@ class MediaAssetUpdate(BaseModel):
     tags: list[str] | None = Field(default=None, description="标签列表")
 
 
+# 将媒体资产入库到指定知识库的入参。
 class PromoteToKbRequest(BaseModel):
     kb_id: UUID = Field(description="目标知识库 ID")
     filename: str | None = Field(

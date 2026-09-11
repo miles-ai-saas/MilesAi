@@ -6,18 +6,21 @@ from uuid import UUID
 from pydantic import BaseModel, Field
 
 
+# 运营端创建全局分类入参。
 class SysCategoryAdminCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=64, description="分类名称")
     slug: str | None = Field(None, max_length=64, description="URL 标识（slug）")
     sort_order: int = Field(0, description="排序权重")
 
 
+# 运营端更新全局分类入参（仅传需变更字段）。
 class SysCategoryAdminUpdate(BaseModel):
     name: str | None = Field(None, min_length=1, max_length=64, description="分类名称")
     slug: str | None = Field(None, max_length=64, description="URL 标识（slug）")
     sort_order: int | None = Field(None, description="排序权重")
 
 
+# 全局分类输出。
 class SysCategoryAdminOut(BaseModel):
     id: UUID = Field(description="分类 ID")
     domain: str = Field(description="所属业务域")

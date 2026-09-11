@@ -45,6 +45,7 @@ class UserService(BaseService):
         *,
         tenant_id: UUID | None = None,
     ) -> PageResult[UserOut]:
+        """分页查询可见租户用户并预加载角色。"""
         filters = tenant_filters(
             self.ctx,
             User.tenant_id,
@@ -64,6 +65,7 @@ class UserService(BaseService):
         )
 
     async def create_user(self, body: UserCreate, *, request: Request | None = None) -> UserOut:
+        """创建用户并绑定角色、写审计；用户名重复抛 BadRequestError。"""
         tenant_id = resolve_tenant_id(self.ctx, body.tenant_id)
         await self.repo.ensure_username_unique(body.username)
         user = await self.repo.create(
@@ -89,6 +91,7 @@ class UserService(BaseService):
         return to_user_out(user)
 
     async def update_user(self, user_id: UUID, body: UserUpdate, *, request: Request | None = None) -> UserOut:
+        """更新用户基础字段与角色，并写审计；跨租户访问抛 ForbiddenError。"""
         user = await self.repo.get_with_roles(user_id)
         if not user or is_marked_deleted(user):
             raise NotFoundError("用户不存在")
@@ -112,6 +115,7 @@ class UserService(BaseService):
         return to_user_out(user)
 
     async def reset_password(self, user_id: UUID, password: str, *, request: Request | None = None) -> UserOut:
+        """重置密码并吊销该用户全部会话，随后写审计。"""
         user = await self.repo.get_with_roles(user_id)
         if not user or is_marked_deleted(user):
             raise NotFoundError("用户不存在")
@@ -133,6 +137,7 @@ class UserService(BaseService):
         return to_user_out(user)
 
     async def get_user_or_raise(self, user_id: UUID) -> User:
+        """按 ID 取用户并做租户访问校验；不存在或已软删抛 NotFoundError。"""
         user = await self.repo.get_with_roles(user_id)
         if not user or is_marked_deleted(user):
             raise NotFoundError("用户不存在")
@@ -140,6 +145,7 @@ class UserService(BaseService):
         return user
 
     async def deactivate_user(self, user_id: UUID, *, request: Request | None = None) -> UserOut:
+        """软删用户：改名/改邮箱释放唯一键并吊销会话，写审计；禁止删除当前用户。"""
         user = await self.repo.get_with_roles(user_id)
         if not user or is_marked_deleted(user):
             raise NotFoundError("用户不存在")
@@ -164,6 +170,7 @@ class UserService(BaseService):
         return to_user_out(user)
 
     async def batch_deactivate(self, user_ids: list[UUID], *, request: Request | None = None) -> dict:
+        """批量软删；跳过当前用户、越权或已删用户，返回成功/跳过计数。"""
         deactivated = 0
         skipped = 0
         for uid in user_ids:

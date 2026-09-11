@@ -1,3 +1,5 @@
+"""运营端平台管理员账号 DTO。"""
+
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -5,6 +7,7 @@ from pydantic import BaseModel, Field
 ADMIN_ROLES = frozenset({"super_admin", "ops", "billing", "security", "viewer", "operator"})
 
 
+# 管理员列表/详情输出。
 class PlatformAdminOut(BaseModel):
     id: UUID = Field(description="管理员 ID")
     username: str = Field(description="用户名")
@@ -16,6 +19,7 @@ class PlatformAdminOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+# 创建管理员入参。
 class PlatformAdminCreate(BaseModel):
     username: str = Field(min_length=2, max_length=64, description="用户名")
     password: str = Field(min_length=6, description="初始密码")
@@ -24,6 +28,7 @@ class PlatformAdminCreate(BaseModel):
     role: str = Field(default="ops", description="角色")
 
 
+# 更新管理员入参（仅传需变更字段）。
 class PlatformAdminUpdate(BaseModel):
     email: str | None = Field(None, description="邮箱")
     display_name: str | None = Field(None, description="显示名称")
@@ -31,5 +36,6 @@ class PlatformAdminUpdate(BaseModel):
     is_active: bool | None = Field(None, description="是否启用")
 
 
+# 重置管理员密码入参。
 class AdminResetPasswordRequest(BaseModel):
     new_password: str = Field(min_length=6, description="新密码")

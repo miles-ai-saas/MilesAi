@@ -11,12 +11,15 @@ from app.infra.db import Base
 from app.models.base import TimestampMixin, UUIDPrimaryKeyMixin
 
 
+# 流程发布状态：草稿 / 已发布。
 class FlowStatus(str, enum.Enum):
     DRAFT = "draft"
     PUBLISHED = "published"
 
 
 class Flow(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    """流程画布主表；``current_version`` 指向最新 graph_json 版本。"""
+
     __tablename__ = "flow_flows"
     __table_args__ = (Index("idx_flow_flows_tenant_id", "tenant_id"),)
 

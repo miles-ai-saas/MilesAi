@@ -1,3 +1,5 @@
+"""运营端租户仓储：分页查询与资源计数。"""
+
 from uuid import UUID
 
 from sqlalchemy import func, select
@@ -24,6 +26,7 @@ class AdminTenantRepository(TenantRepository):
         plan_id: UUID | None = None,
         is_active: bool | None = None,
     ) -> PageResult:
+        """按状态/套餐/启停筛选分页返回租户，并预取用户列表。"""
         filters = []
         if status:
             filters.append(Tenant.status == status)
@@ -40,18 +43,21 @@ class AdminTenantRepository(TenantRepository):
         )
 
     async def plan_names_by_ids(self, plan_ids: set[UUID]) -> dict[UUID, str]:
+        """批量查询套餐 ID → 名称映射。"""
         if not plan_ids:
             return {}
         rows = (await self.db.execute(select(BillingPlan).where(BillingPlan.id.in_(plan_ids)))).scalars().all()
         return {p.id: p.name for p in rows}
 
     async def tenant_names_by_ids(self, tenant_ids: set[UUID]) -> dict[UUID, str]:
+        """批量查询租户 ID → 名称映射。"""
         if not tenant_ids:
             return {}
         rows = (await self.db.execute(select(Tenant.id, Tenant.name).where(Tenant.id.in_(tenant_ids)))).all()
         return {r[0]: r[1] for r in rows}
 
     async def usage_counts(self, tenant_id: UUID) -> dict[str, int]:
+        """统计租户各资源用量（知识库/文档/智能体/工作流/用户/存储）。"""
         kbs = await self.db.scalar(select(func.count()).select_from(KnowledgeBase).where(KnowledgeBase.tenant_id == tenant_id))
         docs = await self.db.scalar(select(func.count()).select_from(Document).where(Document.tenant_id == tenant_id))
         agents = await self.db.scalar(select(func.count()).select_from(Agent).where(Agent.tenant_id == tenant_id))

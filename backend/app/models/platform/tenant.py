@@ -16,6 +16,7 @@ if TYPE_CHECKING:
     from app.models.platform.user import User
 
 
+# 租户状态。
 class TenantStatus(str, enum.Enum):
     ACTIVE = "active"
     SUSPENDED = "suspended"

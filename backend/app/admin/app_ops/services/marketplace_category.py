@@ -17,10 +17,13 @@ from app.models.marketplace import AppCategory, MarketplaceApp
 
 
 class AdminMarketplaceCategoryService:
+    """应用市场分类 CRUD；删除前校验无应用引用（软删）。"""
+
     def __init__(self, db: AsyncSession) -> None:
         self.db = db
 
     async def list_categories(self) -> list[MarketplaceCategoryOut]:
+        """列出未删除分类，并统计各分类下未删除应用数。"""
         stmt = select(AppCategory).where(not_deleted(AppCategory)).order_by(AppCategory.sort_order.asc(), AppCategory.name.asc())
         rows = (await self.db.execute(stmt)).scalars().all()
         out: list[MarketplaceCategoryOut] = []
@@ -45,6 +48,7 @@ class AdminMarketplaceCategoryService:
         return out
 
     async def create(self, body: MarketplaceCategoryCreate) -> MarketplaceCategoryOut:
+        """创建分类；slug 缺省由名称生成并校验唯一。"""
         slug = (body.slug or "").strip() or slugify(body.name)
         await self._ensure_slug_unique(slug)
         row = AppCategory(name=body.name.strip(), slug=slug, sort_order=body.sort_order)
@@ -60,6 +64,7 @@ class AdminMarketplaceCategoryService:
         )
 
     async def update(self, category_id: UUID, body: MarketplaceCategoryUpdate) -> MarketplaceCategoryOut:
+        """按需更新分类名称/slug/排序；slug 变更时校验唯一。"""
         row = await self._get_or_raise(category_id)
         data = body.model_dump(exclude_unset=True)
         if "name" in data and data["name"]:
@@ -82,6 +87,7 @@ class AdminMarketplaceCategoryService:
         )
 
     async def delete(self, category_id: UUID) -> None:
+        """软删分类；仍有应用引用时抛 ``BadRequestError``。"""
         row = await self._get_or_raise(category_id)
         count = await self._app_count(row.id)
         if count > 0:

@@ -1,9 +1,12 @@
+"""运营端审计日志 DTO。"""
+
 from datetime import datetime
 from uuid import UUID
 
 from pydantic import BaseModel, Field
 
 
+# 审计日志输出（含补全的操作者用户名）。
 class AuditLogOut(BaseModel):
     id: UUID = Field(description="审计日志 ID")
     admin_id: UUID | None = Field(description="操作管理员 ID")
@@ -19,11 +22,13 @@ class AuditLogOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+# 审计筛选项中的管理员选项。
 class AuditAdminOption(BaseModel):
     id: UUID = Field(description="管理员 ID")
     username: str = Field(description="用户名")
 
 
+# 审计筛选元数据（action 与管理员的去重集合）。
 class AuditMetaOut(BaseModel):
     actions: list[str] = Field(description="已出现的 action 列表")
     admins: list[AuditAdminOption] = Field(description="有审计记录的管理员")

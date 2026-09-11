@@ -1,3 +1,5 @@
+"""流程（Flow）HTTP 请求/响应模型：画布、版本、发布、调试运行与编译报告。"""
+
 from datetime import datetime
 from uuid import UUID
 
@@ -8,6 +10,7 @@ from app.models.flow import FlowStatus
 from app.tenant.tags.schemas.tag import TagRefOut
 
 
+# 创建流程的入参，可携带初始画布。
 class FlowCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=128, description="流程名称")
     description: str | None = Field(default=None, description="描述")
@@ -18,17 +21,20 @@ class FlowCreate(BaseModel):
     )
 
 
+# 更新流程元信息的入参；标签为全量替换。
 class FlowUpdate(BaseModel):
     name: str | None = Field(default=None, description="流程名称")
     description: str | None = Field(default=None, description="描述")
     tag_ids: list[UUID] | None = Field(default=None, description="标签 ID 列表（全量替换）")
 
 
+# 保存画布入参；每次保存递增版本号。
 class FlowSaveGraph(BaseModel):
     graph_json: dict = Field(description="画布 graph_json")
     remark: str | None = Field(default=None, description="版本备注")
 
 
+# 流程版本摘要（不含 graph_json）。
 class FlowVersionSummaryOut(BaseModel):
     id: UUID = Field(description="版本记录 ID")
     flow_id: UUID = Field(description="流程 ID")
@@ -40,6 +46,7 @@ class FlowVersionSummaryOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+# 流程版本详情（含完整 graph_json）。
 class FlowVersionOut(BaseModel):
     id: UUID = Field(description="版本记录 ID")
     flow_id: UUID = Field(description="流程 ID")
@@ -52,6 +59,7 @@ class FlowVersionOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+# 流程列表/详情输出。
 class FlowOut(BaseModel):
     id: UUID = Field(description="流程 ID")
     tenant_id: UUID = Field(description="租户 ID")
@@ -63,6 +71,7 @@ class FlowOut(BaseModel):
     created_at: datetime = Field(description="创建时间")
 
 
+# 工作台调试运行入参；含生视频节点时可选异步提交。
 class FlowRunRequest(BaseModel):
     inputs: dict = Field(
         default_factory=dict,
@@ -83,18 +92,22 @@ class FlowRunRequest(BaseModel):
 
     @model_validator(mode="after")
     def validate_inputs_or_media(self) -> "FlowRunRequest":
+        """要求 inputs 含 query/message/input，或至少提供一张附图。"""
+
         q = str(self.inputs.get("query") or self.inputs.get("message") or self.inputs.get("input") or "").strip()
         if not q and not self.media:
             raise ValueError("inputs 需包含 query（或 message/input），或提供 media 附图")
         return self
 
 
+# 单条编译错误详情。
 class FlowCompileErrorDetail(BaseModel):
     code: str = Field(description="错误码")
     message: str = Field(description="错误说明")
     node_id: str | None = Field(default=None, description="关联节点 ID")
 
 
+# LangGraph 编译预览报告（拓扑序、分层、错误）。
 class FlowCompileReport(BaseModel):
     compilable: bool = Field(description="是否可编译执行")
     engine: str = Field(description="执行引擎标识")
@@ -119,6 +132,7 @@ class FlowCompileReport(BaseModel):
     )
 
 
+# 调试运行输出（终点输出 + 节点执行轨迹）。
 class FlowRunResponse(BaseModel):
     output: str | dict | list | None = Field(description="流程终点输出")
     steps: list[dict] = Field(default_factory=list, description="节点执行步骤轨迹")

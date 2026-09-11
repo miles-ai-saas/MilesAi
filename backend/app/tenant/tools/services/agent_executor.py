@@ -39,6 +39,7 @@ class AgentToolExecutor:
         self._invoke_source = invoke_source
 
     async def meta(self, slug: str, *, tool_id: UUID | None = None) -> dict[str, Any]:
+        """解析工具元信息（内置/custom/MCP 统一结构），委托 ``resolve_tool_meta``。"""
         return await resolve_tool_meta(self._db, self._ctx, slug, tool_id=tool_id)
 
     async def invoke(
@@ -49,6 +50,7 @@ class AgentToolExecutor:
         confirmed: bool = False,
         tool_id: UUID | None = None,
     ) -> dict[str, Any]:
+        """执行工具；需确认时把 ``ToolConfirmationRequired`` 转 L3 中性信号。"""
         try:
             return await invoke_tool_with_context(
                 self._db,

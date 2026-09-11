@@ -1,9 +1,12 @@
+"""钩子执行日志 API 响应模型。"""
+
 from datetime import datetime
 from uuid import UUID
 
 from pydantic import BaseModel, Field
 
 
+# 单次钩子执行审计输出。
 class HookExecutionLogOut(BaseModel):
     id: UUID = Field(description="执行日志 ID")
     hook_id: UUID = Field(description="钩子定义 ID")

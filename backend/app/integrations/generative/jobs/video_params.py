@@ -16,6 +16,7 @@ def build_video_job_params(
     agent_id: UUID | None = None,
     agent_config: dict | None = None,
 ) -> dict:
+    """把生视频工具/节点参数规范为异步任务 payload：UUID 序列化为字符串、prompt 去空白。"""
     return {
         "prompt": (prompt or "").strip(),
         "duration": duration,

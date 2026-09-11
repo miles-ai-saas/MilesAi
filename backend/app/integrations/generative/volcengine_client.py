@@ -31,6 +31,7 @@ def volcengine_api_base(model: ModelConfig) -> str:
 
 
 def volcengine_headers(api_key: str) -> dict[str, str]:
+    """构造方舟 Bearer 鉴权请求头。"""
     return {
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
@@ -38,6 +39,7 @@ def volcengine_headers(api_key: str) -> dict[str, str]:
 
 
 def volcengine_submit_url(model: ModelConfig) -> str:
+    """生成任务提交 URL（路径可被 ``model.extra`` 覆盖，自动补前导斜杠）。"""
     extra = model.extra or {}
     path = str(extra.get(EXTRA_VIDEO_SUBMIT_PATH) or DEFAULT_VIDEO_SUBMIT_PATH).strip()
     if not path.startswith("/"):
@@ -46,6 +48,7 @@ def volcengine_submit_url(model: ModelConfig) -> str:
 
 
 def volcengine_poll_url(model: ModelConfig, task_id: str) -> str:
+    """生成任务轮询 URL（路径模板可被 ``model.extra`` 覆盖并填入 task_id）。"""
     extra = model.extra or {}
     template = str(extra.get(EXTRA_VIDEO_POLL_PATH) or DEFAULT_VIDEO_POLL_PATH).strip()
     path = template.format(task_id=task_id)
@@ -55,6 +58,7 @@ def volcengine_poll_url(model: ModelConfig, task_id: str) -> str:
 
 
 def require_volcengine_api_key(model: ModelConfig) -> str:
+    """取模型已配置的方舟 API Key；缺失时抛 ``BadRequestError``。"""
     key = model.api_key_encrypted
     if not key:
         raise BadRequestError(f"模型「{model.name}」未配置 API Key")
@@ -110,6 +114,7 @@ async def poll_volcengine_video_task(
 
 
 def extract_volcengine_video_url(payload: dict[str, Any]) -> str:
+    """从任务响应解析 ``content.video_url``（回退顶层 ``video_url``）；缺失时抛 ``AppError``（502）。"""
     content = payload.get("content") or {}
     url = content.get("video_url") if isinstance(content, dict) else None
     if not url:

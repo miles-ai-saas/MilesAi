@@ -32,6 +32,7 @@ PRIMARY_PATH_LABELS: dict[str, str] = {
 }
 
 
+# 架构图中的一个路由决策步骤。
 class ArchitectureDecisionStep(BaseModel):
     id: str = Field(description="决策步骤标识")
     label: str = Field(description="步骤展示名")
@@ -39,11 +40,13 @@ class ArchitectureDecisionStep(BaseModel):
     active: bool = Field(default=False, description="当前请求是否命中该步骤")
 
 
+# 架构图中引用的知识库。
 class ArchitectureKbRef(BaseModel):
     id: str = Field(description="知识库 ID")
     name: str = Field(description="知识库名称")
 
 
+# 架构图中引用的流程。
 class ArchitectureFlowRef(BaseModel):
     id: str = Field(description="流程 ID")
     name: str = Field(description="流程名称")
@@ -55,12 +58,14 @@ class ArchitectureFlowRef(BaseModel):
     )
 
 
+# 架构图中引用的子智能体。
 class ArchitectureSubAgentRef(BaseModel):
     id: str = Field(description="子智能体 ID")
     name: str = Field(description="子智能体名称")
     role_hint: str | None = Field(default=None, description="角色提示")
 
 
+# 架构图中引用的 A2A 对端。
 class ArchitectureA2aPeerRef(BaseModel):
     id: str = Field(description="A2A 对端 ID")
     name: str = Field(description="对端名称")
@@ -68,11 +73,13 @@ class ArchitectureA2aPeerRef(BaseModel):
     enabled: bool = Field(default=True, description="绑定是否启用")
 
 
+# 架构图中引用的模型配置。
 class ArchitectureModelRef(BaseModel):
     id: str = Field(description="模型配置 ID")
     name: str = Field(description="模型展示名")
 
 
+# 智能体绑定的模型、知识库、流程等资源集合。
 class ArchitectureAttachments(BaseModel):
     model: ArchitectureModelRef | None = Field(default=None, description="绑定的大模型")
     kbs: list[ArchitectureKbRef] = Field(default_factory=list, description="绑定的知识库")
@@ -87,6 +94,7 @@ class ArchitectureAttachments(BaseModel):
     flow: ArchitectureFlowRef | None = Field(default=None, description="绑定的流程")
 
 
+# 智能体执行架构的只读视图，供工作台架构图展示。
 class AgentArchitectureOut(BaseModel):
     agent_id: str = Field(description="智能体 ID")
     primary_path: PrimaryPath = Field(description="主执行路径标识")

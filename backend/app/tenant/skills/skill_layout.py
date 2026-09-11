@@ -128,6 +128,7 @@ def read_skill_resource(
 
 
 def read_skill_script_source(tenant_id, slug: str, rel_path: str) -> str:
+    """读取 ``scripts/`` 下的脚本源码，仅允许 .py/.sh，越界路径抛 ``ValueError``。"""
     rel = rel_path.strip().lstrip("/")
     if not rel.startswith(f"{SCRIPTS_DIR}/"):
         raise ValueError(f"脚本路径须位于 {SCRIPTS_DIR}/ 下")

@@ -45,8 +45,10 @@ class ModelConfig(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
     @property
     def source(self) -> str:
+        """来源标识：``tenant_id`` 为空即平台内置，否则租户自定义。"""
         return "builtin" if self.tenant_id is None else "custom"
 
     @property
     def is_builtin(self) -> bool:
+        """是否平台内置（无租户归属）。"""
         return self.tenant_id is None

@@ -29,6 +29,7 @@ from app.tenant.auth.services import session_store
 
 
 def _key_out(row: AgentApiKey) -> AgentApiKeyOut:
+    """将密钥实体转为输出模型，状态按是否已吊销推导。"""
     return AgentApiKeyOut(
         id=row.id,
         name=row.name,
@@ -41,6 +42,8 @@ def _key_out(row: AgentApiKey) -> AgentApiKeyOut:
 
 
 class AgentApiAccessService(BaseService):
+    """智能体调试 Token 与正式 API Key 的签发、查询与吊销服务。"""
+
     def __init__(self, db: AsyncSession, ctx: TenantContext) -> None:
         super().__init__(db, ctx)
         self.repo = AgentRepository(db)
@@ -53,6 +56,7 @@ class AgentApiAccessService(BaseService):
         user_agent: str | None = None,
         ip: str | None = None,
     ) -> AgentDebugTokenOut:
+        """签发调试 JWT，并登记用户会话以便登出时联动失效。"""
         assert self.ctx is not None
         agent = await self.repo.get_by_id(agent_id)
         if not agent:
@@ -98,6 +102,7 @@ class AgentApiAccessService(BaseService):
         return agent
 
     async def create_api_key(self, agent_id: UUID, body: AgentApiKeyCreate) -> AgentApiKeyCreatedOut:
+        """创建 API Key；超有效上限抛 ``BadRequestError``，明文仅本次返回。"""
         assert self.ctx is not None
         agent = await self._require_agent(agent_id)
         active = await self.keys.count_active(agent.tenant_id, agent_id)
@@ -125,11 +130,13 @@ class AgentApiAccessService(BaseService):
         *,
         include_revoked: bool = False,
     ) -> list[AgentApiKeyOut]:
+        """列出智能体 API Key，默认不含已吊销。"""
         agent = await self._require_agent(agent_id)
         rows = await self.keys.list_by_agent(agent.tenant_id, agent_id, include_revoked=include_revoked)
         return [_key_out(r) for r in rows]
 
     async def revoke_api_key(self, agent_id: UUID, key_id: UUID) -> AgentApiKeyOut:
+        """吊销 API Key（重复吊销幂等）；记录不存在或不属于该智能体抛 ``NotFoundError``。"""
         assert self.ctx is not None
         await self._require_agent(agent_id)
         row = await self.keys.get_by_id(key_id)

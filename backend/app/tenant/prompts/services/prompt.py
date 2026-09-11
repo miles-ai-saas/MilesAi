@@ -88,6 +88,7 @@ class PromptService(BaseService):
         )
 
     async def create_template(self, body: PromptTemplateCreate) -> PromptTemplateOut:
+        """创建模板并绑定标签；分类须属于 prompt 域。"""
         await CategoryService(self.db, self.ctx).validate_category_for_domain(body.category_id, CategoryDomain.PROMPT)
         row = PromptTemplate(
             tenant_id=self.ctx.tenant_id,
@@ -105,6 +106,7 @@ class PromptService(BaseService):
         return self._to_out(row, {}, tags_map.get(row.id, []))
 
     async def update_template(self, template_id: UUID, body: PromptTemplateUpdate) -> PromptTemplateOut:
+        """更新模板与标签；切换分类时校验分类域。"""
         row = await self._get_or_raise(template_id)
         data = body.model_dump(exclude_unset=True)
         tag_ids = data.pop("tag_ids", None)
@@ -124,6 +126,7 @@ class PromptService(BaseService):
         return self._to_out(row, cat_names, tags_map.get(row.id, []))
 
     async def delete_template(self, template_id: UUID) -> None:
+        """清标签后软删模板。"""
         row = await self._get_or_raise(template_id)
         await TagService(self.db, self.ctx).clear_entity_tags(TagEntityType.PROMPT, row.id)
         await mark_deleted(self.db, row)

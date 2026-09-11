@@ -36,11 +36,13 @@ agent_kb_bindings = Table(
 )
 
 
+# 智能体启用/停用状态。
 class AgentStatus(str, enum.Enum):
     ENABLED = "enabled"
     DISABLED = "disabled"
 
 
+# 智能体类型：CUSTOM 本地编排 / A2A 远程。
 class AgentType(str, enum.Enum):
     CUSTOM = "custom"
     A2A = "a2a"
@@ -107,6 +109,8 @@ class Agent(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
 
 class AgentSubAgentBinding(Base):
+    """父/子智能体绑定（复合主键，含 role_hint 与展示排序）。"""
+
     __tablename__ = "agt_sub_agent_bindings"
     __table_args__ = (
         Index("idx_agt_sub_agent_bindings_parent", "parent_agent_id"),

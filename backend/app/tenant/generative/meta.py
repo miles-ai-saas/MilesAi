@@ -24,6 +24,7 @@ STATUS_FILTER_OPTIONS: list[tuple[str, str, str | None]] = [
 
 
 def generative_jobs_meta_dict() -> dict:
+    """构造生成任务枚举元数据（状态、筛选、来源、类型、版本）。"""
     return {
         "statuses": enum_options(GenerativeJobStatus, GENERATIVE_JOB_STATUS_LABELS),
         "status_filters": literal_options(STATUS_FILTER_OPTIONS),

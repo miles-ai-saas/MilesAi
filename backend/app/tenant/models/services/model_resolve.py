@@ -92,6 +92,7 @@ async def resolve_model_for_invoke(
 
 
 async def resolve_model_by_id(db: AsyncSession, model_id: UUID, tenant_id: UUID) -> ModelConfig:
+    """按 id 加载并解析为可调用配置；不存在或不可用抛 ``BadRequestError``。"""
     model = (await db.execute(select(ModelConfig).where(ModelConfig.id == model_id, not_deleted(ModelConfig)))).scalar_one_or_none()
     if not model:
         raise BadRequestError("模型配置不存在")

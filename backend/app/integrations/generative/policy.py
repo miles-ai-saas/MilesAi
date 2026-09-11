@@ -16,6 +16,7 @@ _HIGH_RES_MIN_COUNT = 3
 
 
 def parse_image_size(size: str | None) -> tuple[int, int] | None:
+    """解析 ``宽x高`` 尺寸串（分隔符支持 x/X/×）；为空或无法解析时返回 ``None``。"""
     if not size:
         return None
     m = _SIZE_RE.match(str(size).strip())
@@ -25,6 +26,7 @@ def parse_image_size(size: str | None) -> tuple[int, int] | None:
 
 
 def is_high_resolution_image_size(size: str | None) -> bool:
+    """是否为高分辨率尺寸（单边 ≥1280 或总像素 >1024²）。"""
     dims = parse_image_size(size)
     if not dims:
         return False
@@ -51,6 +53,7 @@ def needs_image_tool_confirmation(params: dict) -> bool:
 
 
 def image_tool_confirmation_message(params: dict) -> str:
+    """按尺寸与张数生成生图二次确认文案（高分辨率 / 多张分别措辞）。"""
     size = str(params.get("size") or DEFAULT_IMAGE_SIZE)
     n = params.get("n")
     try:

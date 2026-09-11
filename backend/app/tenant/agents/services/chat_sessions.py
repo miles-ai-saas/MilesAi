@@ -76,6 +76,8 @@ def _artifacts_payload(response: ChatResponse) -> list[dict] | None:
 
 
 class AgentChatSessionService(BaseService):
+    """对话会话与消息的服务端持久化及查询服务。"""
+
     def __init__(self, db: AsyncSession, ctx: TenantContext) -> None:
         super().__init__(db, ctx)
         self._agent_repo = AgentRepository(db)
@@ -106,6 +108,7 @@ class AgentChatSessionService(BaseService):
         )
 
     async def list_sessions(self, agent_id: UUID, params: PageParams) -> PageResult[ChatSessionOut]:
+        """分页列出智能体的会话，按更新时间倒序。"""
         await self._ensure_agent(agent_id)
         filters = tenant_filters(self.ctx, AgentChatSession.tenant_id) + [AgentChatSession.agent_id == agent_id]
         total = await self.db.scalar(select(func.count()).select_from(AgentChatSession).where(*filters))
@@ -115,6 +118,7 @@ class AgentChatSessionService(BaseService):
         return PageResult(items=items, total=int(total or 0), page=params.page, size=params.size)
 
     async def create_session(self, agent_id: UUID, body: ChatSessionCreate) -> ChatSessionOut:
+        """创建会话；同 ID 已存在且属于同一智能体时直接复用，否则报错。"""
         await self._ensure_agent(agent_id)
         session_id = (body.id or str(uuid4())).strip()
         if not session_id:
@@ -177,6 +181,7 @@ class AgentChatSessionService(BaseService):
         )
 
     async def update_session(self, agent_id: UUID, session_id: str, body: ChatSessionUpdate) -> ChatSessionOut:
+        """更新会话标题并刷新更新时间。"""
         await self._ensure_agent(agent_id)
         row = await self.db.get(AgentChatSession, session_id)
         if not row or row.agent_id != agent_id:
@@ -188,6 +193,7 @@ class AgentChatSessionService(BaseService):
         return await self._session_out(row)
 
     async def delete_session(self, agent_id: UUID, session_id: str) -> None:
+        """物理删除会话及其全部消息。"""
         await self._ensure_agent(agent_id)
         row = await self.db.get(AgentChatSession, session_id)
         if not row or row.agent_id != agent_id:
@@ -274,6 +280,7 @@ async def persist_chat_turn(
     trace_id: str | None,
     user_query: str,
 ) -> None:
+    """写入一轮对话（用户消息 + 可选助手消息）的便捷入口。"""
     await AgentChatSessionService(db, ctx).persist_turn(
         agent_id,
         body,

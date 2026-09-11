@@ -72,6 +72,7 @@ class McpServiceManager(BaseService):
         return endpoint, transport.value, cfg
 
     async def get_service(self, service_id: UUID) -> McpServiceOut:
+        """读取服务详情；缺失/已删抛 ``NotFoundError``，跨租户拒绝访问。"""
         row = await self.db.get(McpService, service_id)
         if not row or is_marked_deleted(row):
             raise NotFoundError("MCP 服务不存在")
@@ -79,6 +80,7 @@ class McpServiceManager(BaseService):
         return McpServiceOut.model_validate(row)
 
     async def delete_service(self, service_id: UUID) -> None:
+        """软删 MCP 服务。"""
         row = await self.db.get(McpService, service_id)
         if not row or is_marked_deleted(row):
             raise NotFoundError("MCP 服务不存在")
@@ -86,6 +88,7 @@ class McpServiceManager(BaseService):
         await mark_deleted(self.db, row)
 
     async def list_services(self, params: PageParams, transport_tab: str | None = None) -> PageResult[McpServiceOut]:
+        """分页列出服务，可按 transport tab 过滤，按更新时间倒序。"""
         filters = [*tenant_filters(self.ctx, McpService.tenant_id), not_deleted(McpService)]
         values = transport_filter_values(transport_tab) if transport_tab else None
         if values:
@@ -101,6 +104,7 @@ class McpServiceManager(BaseService):
         )
 
     async def create_service(self, body: McpServiceCreate) -> McpServiceOut:
+        """创建服务；endpoint/transport/connection_config 由 ``_resolve_endpoint`` 归一化。"""
         endpoint, transport, cfg = self._resolve_endpoint(body)
         row = McpService(
             tenant_id=self.ctx.tenant_id,
@@ -116,6 +120,7 @@ class McpServiceManager(BaseService):
         return McpServiceOut.model_validate(row)
 
     async def update_service(self, service_id: UUID, body: McpServiceUpdate) -> McpServiceOut:
+        """局部更新；切到 STDIO 时校验 command 并回填 ``stdio://`` endpoint。"""
         row = await self.db.get(McpService, service_id)
         if not row or is_marked_deleted(row):
             raise NotFoundError("MCP 服务不存在")

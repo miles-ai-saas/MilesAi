@@ -1,3 +1,5 @@
+"""运营端计费 DTO：套餐、账单与明细项。"""
+
 from datetime import date, datetime
 from decimal import Decimal
 from uuid import UUID
@@ -7,6 +9,7 @@ from pydantic import BaseModel, Field
 from app.admin.models import BillStatus
 
 
+# 计费套餐输出。
 class BillingPlanOut(BaseModel):
     id: UUID = Field(description="计费方案 ID")
     code: str = Field(description="方案编码")
@@ -23,6 +26,7 @@ class BillingPlanOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+# 创建套餐入参。
 class BillingPlanCreate(BaseModel):
     code: str = Field(description="方案编码")
     name: str = Field(description="方案名称")
@@ -35,6 +39,7 @@ class BillingPlanCreate(BaseModel):
     max_flows: int = Field(default=20, description="工作流数量上限")
 
 
+# 更新套餐入参（仅传需变更字段）。
 class BillingPlanUpdate(BaseModel):
     name: str | None = Field(None, description="方案名称")
     description: str | None = Field(None, description="方案描述")
@@ -47,6 +52,7 @@ class BillingPlanUpdate(BaseModel):
     is_active: bool | None = Field(None, description="是否启用")
 
 
+# 账单明细项输出。
 class BillLineItemOut(BaseModel):
     id: UUID = Field(description="账单明细项 ID")
     item_type: str = Field(description="明细类型")
@@ -58,6 +64,7 @@ class BillLineItemOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+# 租户账单输出。
 class TenantBillOut(BaseModel):
     id: UUID = Field(description="账单 ID")
     tenant_id: UUID = Field(description="租户 ID")
@@ -74,9 +81,11 @@ class TenantBillOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+# 账单详情，附带明细项列表。
 class TenantBillDetail(TenantBillOut):
     line_items: list[BillLineItemOut] = Field(default=[], description="账单明细列表")
 
 
+# 账单状态变更入参。
 class TenantBillStatusUpdate(BaseModel):
     status: BillStatus = Field(description="目标状态（paid / void）")

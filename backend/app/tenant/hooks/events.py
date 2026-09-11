@@ -53,6 +53,7 @@ def build_event_envelope(
     payload: dict[str, Any],
     event_id: UUID | None = None,
 ) -> dict[str, Any]:
+    """构建发给钩子的请求 envelope（schema 版本、事件 ID、触发时机与 payload）。"""
     return {
         "schema_version": SCHEMA_VERSION,
         "event_id": str(event_id or generate_uuid()),
@@ -68,6 +69,7 @@ def build_event_envelope(
 
 
 def parse_hook_response(body: Any) -> ParsedHookResponse:
+    """解析钩子 HTTP 响应；非 dict、版本不符或 action 非法时退化为默认 continue。"""
     if not isinstance(body, dict):
         return ParsedHookResponse()
     version = body.get("schema_version")
@@ -86,6 +88,7 @@ def parse_hook_response(body: Any) -> ParsedHookResponse:
 
 
 def apply_modify(payload: dict[str, Any], trigger: HookTrigger, modify: dict[str, Any]) -> dict[str, Any]:
+    """按 trigger 白名单合并 modify 字段，避免钩子越权改写 payload 其它键。"""
     allowed = MODIFY_ALLOWLIST.get(trigger, frozenset())
     if not allowed or not modify:
         return payload

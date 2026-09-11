@@ -33,6 +33,7 @@ def _run_coro(coro) -> None:
     max_retries=0,
 )
 def run_generative_video_job(self, job_id: str) -> str:
+    """Celery 入口：跑异步生视频任务并同步 TaskRecord 状态；用户取消返回 ``cancelled``，异常记日志后重抛。"""
     sync_task_by_celery_id(self.request.id, TaskStatus.RUNNING)
     try:
         _run_coro(run_generative_video_job_async(UUID(job_id)))
@@ -59,6 +60,7 @@ def run_generative_video_job(self, job_id: str) -> str:
     max_retries=0,
 )
 def run_generative_image_job(self, job_id: str) -> str:
+    """Celery 入口：跑异步生图任务并同步 TaskRecord 状态；用户取消返回 ``cancelled``，异常记日志后重抛。"""
     sync_task_by_celery_id(self.request.id, TaskStatus.RUNNING)
     try:
         _run_coro(run_generative_image_job_async(UUID(job_id)))

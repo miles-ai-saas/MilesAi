@@ -20,6 +20,10 @@ class MarketplaceRollbackMixin:
     """回滚预览与执行。"""
 
     async def preview_rollback(self, app_id: UUID) -> AppRollbackPreview:
+        """回滚预览：对比当前资源与最近快照，输出各资源 diff。
+
+        无历史快照时抛 ``BadRequestError``；仅构造差异，不落库。
+        """
         install, app = await self._get_install_for_upgrade(app_id)
         snap = await self._get_latest_snapshot(install.id)
         if not snap:
@@ -96,6 +100,7 @@ class MarketplaceRollbackMixin:
         )
 
     async def rollback_app(self, app_id: UUID) -> AppRollbackResult:
+        """执行回滚：恢复最近快照并刷新安装记录，返回前后版本信息。"""
         install, app = await self._get_install_for_upgrade(app_id)
         prev = install.installed_version
         snap = await self._restore_latest_snapshot(install)

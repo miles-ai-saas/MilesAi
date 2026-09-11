@@ -3,12 +3,14 @@
 from pydantic import BaseModel, Field
 
 
+# 单项配额的已用量与上限（max=0 表示不限）。
 class QuotaMetricOut(BaseModel):
     used: int = Field(description="已用量")
     max: int = Field(description="上限；0 表示不限")
     unit: str = Field(default="", description="单位说明，如 MB、次")
 
 
+# 租户各资源配额汇总。
 class TenantQuotaOut(BaseModel):
     knowledge_bases: QuotaMetricOut
     storage_mb: QuotaMetricOut

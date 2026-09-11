@@ -48,6 +48,7 @@ class RoleService(BaseService):
         ]
 
     async def list_permissions(self) -> list[PermissionGroupOut]:
+        """按模块分组返回全部未软删权限。"""
         rows = (await self.db.execute(select(Permission).where(not_deleted(Permission)).order_by(Permission.module, Permission.code))).scalars().all()
         groups: dict[str, list[PermissionOut]] = {}
         for p in rows:
@@ -55,6 +56,7 @@ class RoleService(BaseService):
         return [PermissionGroupOut(module=m, permissions=perms) for m, perms in sorted(groups.items())]
 
     async def list_roles(self, params: PageParams) -> PageResult[RoleOut]:
+        """分页返回本租户角色（系统角色优先），预加载权限。"""
         filters = self._tenant_role_filters()
         total = await self.db.scalar(select(func.count(Role.id)).where(*filters))
         stmt = (
@@ -92,6 +94,7 @@ class RoleService(BaseService):
         return role
 
     async def create_role(self, body: RoleCreate) -> RoleOut:
+        """创建租户内角色；code 在租户内唯一，冲突抛 BadRequestError。"""
         code = body.code.strip()
         existing = await self.db.scalar(
             select(Role).where(
@@ -118,6 +121,7 @@ class RoleService(BaseService):
         return _role_out(role)
 
     async def update_role(self, role_id: UUID, body: RoleUpdate) -> RoleOut:
+        """更新角色；系统内置或跨租户角色拒绝修改（抛 BadRequestError）。"""
         role = await self._get_role_or_raise(role_id)
         if role.is_system or role.tenant_id is None:
             raise BadRequestError("系统内置角色不可修改")
@@ -134,6 +138,7 @@ class RoleService(BaseService):
         return _role_out(role)
 
     async def delete_role(self, role_id: UUID) -> None:
+        """软删租户角色；系统内置或跨租户角色拒绝删除。"""
         role = await self._get_role_or_raise(role_id)
         if role.is_system or role.tenant_id is None:
             raise BadRequestError("系统内置角色不可删除")

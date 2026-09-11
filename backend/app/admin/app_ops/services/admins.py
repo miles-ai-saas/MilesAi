@@ -20,6 +20,8 @@ from app.core.security import hash_password
 
 
 class AdminManagementService:
+    """平台管理员账号管理：角色白名单校验，禁用/改密后吊销会话。"""
+
     def __init__(self, db: AsyncSession) -> None:
         self.db = db
         self.repo = PlatformAdminRepository(db)
@@ -29,6 +31,7 @@ class AdminManagementService:
             raise BadRequestError(f"无效角色，可选: {', '.join(sorted(ADMIN_ROLES))}")
 
     async def list_admins(self, params: PageParams) -> PageResult[PlatformAdminOut]:
+        """分页列出管理员（按创建时间倒序）。"""
         page = await self.repo.list_page(
             page=params.page,
             size=params.size,
@@ -42,6 +45,7 @@ class AdminManagementService:
         )
 
     async def create_admin(self, body: PlatformAdminCreate) -> PlatformAdminOut:
+        """创建管理员；校验角色合法与用户名唯一，密码哈希后入库。"""
         self._validate_role(body.role)
         if await self.repo.get_by_username(body.username):
             raise BadRequestError("用户名已存在")
@@ -63,6 +67,7 @@ class AdminManagementService:
         *,
         actor_id: UUID,
     ) -> PlatformAdminOut:
+        """更新管理员资料/角色/启停；禁止禁用当前账号，禁用时吊销其会话。"""
         admin = await self.repo.get_by_id_or_raise(admin_id, label="管理员不存在")
         if body.role is not None:
             self._validate_role(body.role)
@@ -81,6 +86,7 @@ class AdminManagementService:
         return PlatformAdminOut.model_validate(admin)
 
     async def disable_admin(self, admin_id: UUID, *, actor_id: UUID) -> None:
+        """禁用管理员并吊销其会话；不允许禁用当前登录账号。"""
         if admin_id == actor_id:
             raise ForbiddenError("不能禁用当前登录账号")
         admin = await self.repo.get_by_id_or_raise(admin_id, label="管理员不存在")
@@ -89,6 +95,7 @@ class AdminManagementService:
         await self.db.flush()
 
     async def reset_password(self, admin_id: UUID, body: AdminResetPasswordRequest) -> None:
+        """重置管理员密码并吊销其会话。"""
         admin = await self.repo.get_by_id_or_raise(admin_id, label="管理员不存在")
         admin.hashed_password = hash_password(body.new_password)
         await revoke_admin_session(admin_id)

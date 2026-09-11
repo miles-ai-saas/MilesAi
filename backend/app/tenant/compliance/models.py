@@ -23,6 +23,8 @@ _sensitive_action_enum = SAEnum(
 
 
 class WordLibrary(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    """租户内敏感词库；同一租户下名称唯一。"""
+
     __tablename__ = "cmp_word_libraries"
     __table_args__ = (
         Index("idx_cmp_word_libraries_tenant_id", "tenant_id"),
@@ -50,6 +52,8 @@ class SensitiveWordEntry(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
 
 class LibraryWordBinding(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    """词库-词条绑定；记录该词在指定词库内的处理策略与启用态。"""
+
     __tablename__ = "cmp_library_word_bindings"
     __table_args__ = (
         Index("idx_cmp_library_word_bindings_library_id", "library_id"),
@@ -83,6 +87,8 @@ class ComplianceLibraryBinding(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
 
 class InterceptLog(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    """合规拦截日志；记录命中词、动作与内容摘要，供审计追溯。"""
+
     __tablename__ = "cmp_intercept_logs"
     __table_args__ = (
         Index("idx_cmp_intercept_logs_tenant_id", "tenant_id"),

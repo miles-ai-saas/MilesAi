@@ -45,6 +45,8 @@ def _avg_rounds(messages: int, sessions: int) -> float:
 
 
 class AgentStatsService(BaseService):
+    """智能体使用统计服务，按日聚合对话调用记录。"""
+
     def __init__(self, db: AsyncSession, ctx: TenantContext) -> None:
         super().__init__(db, ctx)
         self._repo = AgentRepository(db)
@@ -64,6 +66,7 @@ class AgentStatsService(BaseService):
         return labels, start_dt, end_dt
 
     async def overview(self, agent_id: UUID, *, days: int) -> AgentStatsOut:
+        """返回指定窗口内的总量与按日序列；``days`` 会先夹取到允许值。"""
         await self._ensure_agent(agent_id)
         n = _normalize_days(days)
         day_labels, start_dt, end_dt = self._window_bounds(n)

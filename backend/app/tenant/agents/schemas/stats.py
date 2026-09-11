@@ -3,11 +3,13 @@
 from pydantic import BaseModel, Field
 
 
+# 按日统计的单个数据点。
 class AgentStatsPoint(BaseModel):
     date: str = Field(description="ISO 日期 YYYY-MM-DD")
     value: float = Field(default=0, description="当日指标值")
 
 
+# 智能体使用统计总览：窗口内总量与按日序列。
 class AgentStatsOut(BaseModel):
     days: int = Field(description="统计窗口天数")
     sessions_total: int = Field(default=0, description="会话总数")

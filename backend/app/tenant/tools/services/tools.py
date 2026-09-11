@@ -78,6 +78,7 @@ class ToolsService(BaseService):
         category_id: UUID | None = None,
         tag_ids: list[UUID] | None = None,
     ) -> PageResult[ToolOut]:
+        """分页列出当前租户工具，可按分类/标签过滤，按创建时间倒序。"""
         filters = append_not_deleted(tenant_filters(self.ctx, Tool.tenant_id), Tool)
         if category_id:
             filters.append(Tool.category_id == category_id)
@@ -97,6 +98,7 @@ class ToolsService(BaseService):
         )
 
     async def get_tool(self, tool_id: UUID) -> ToolOut:
+        """按 ID 取工具详情（含 category_name 与标签）。"""
         row = await self._get_or_raise(tool_id)
         cat_name = await self._category_name(row.category_id)
         tags_map = await TagService(self.db, self.ctx).get_refs_map(TagEntityType.TOOL, {row.id})
@@ -115,6 +117,7 @@ class ToolsService(BaseService):
         }
 
     async def create_tool(self, body: ToolCreate) -> ToolOut:
+        """创建工具；校验内置 slug 冲突、出站 URL 安全与脚本沙箱开关。"""
         if body.tool_type == ToolType.SCRIPT:
             if not get_settings().mcp_runner_enabled:
                 raise BadRequestError("脚本工具需要启用 MCP Runner（MCP_RUNNER_ENABLED=true）")
@@ -154,6 +157,7 @@ class ToolsService(BaseService):
         return self._to_out(row, cat_name, tags_map.get(row.id, []))
 
     async def update_tool(self, tool_id: UUID, body: ToolUpdate) -> ToolOut:
+        """局部更新；改 slug/config 时重新做冲突与 URL/脚本校验。"""
         row = await self._get_or_raise(tool_id)
         data = body.model_dump(exclude_unset=True)
         tag_ids = data.pop("tag_ids", None)
@@ -185,11 +189,13 @@ class ToolsService(BaseService):
         return self._to_out(row, cat_name, tags_map.get(row.id, []))
 
     async def delete_tool(self, tool_id: UUID) -> None:
+        """软删工具并清理其标签关联。"""
         row = await self._get_or_raise(tool_id)
         await TagService(self.db, self.ctx).clear_entity_tags(TagEntityType.TOOL, row.id)
         await mark_deleted(self.db, row)
 
     async def invoke(self, name: str, body: ToolInvokeRequest) -> ToolInvokeResult:
+        """试调用工具；需确认时返回 ``confirmation_required`` 与待确认信息，不实际执行。"""
         try:
             output = await invoke_tool_with_context(
                 self.db,
@@ -218,6 +224,7 @@ class ToolsService(BaseService):
         return ToolInvokeResult(tool=name, source=source, status="success", output=output)
 
     async def list_invocation_logs(self, params: PageParams, *, tool_slug: str | None = None) -> PageResult[ToolInvocationLogOut]:
+        """分页查询调用日志，可按工具 slug 过滤，按创建时间倒序。"""
         filters = [ToolInvocationLog.tenant_id == self.ctx.tenant_id]
         if tool_slug:
             filters.append(ToolInvocationLog.tool_slug == tool_slug)
@@ -240,6 +247,7 @@ class ToolsService(BaseService):
         category_id: UUID | None = None,
         tag_ids: list[UUID] | None = None,
     ) -> list[ToolCatalogItem]:
+        """合并内置与租户工具为目录；``source`` 仅接受 builtin/custom（MCP 不在此）。"""
         from app.models.meta.category import SysCategory
 
         cat_rows = (
@@ -317,6 +325,7 @@ class ToolsService(BaseService):
         return catalog
 
     async def list_builtin(self) -> list[dict]:
+        """返回内置工具注册表原始定义。"""
         return BUILTIN_REGISTRY
 
     async def _get_or_raise(self, tool_id: UUID) -> Tool:

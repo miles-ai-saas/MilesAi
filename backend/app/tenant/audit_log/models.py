@@ -1,3 +1,5 @@
+"""租户操作审计 ORM 模型（append-only 操作流水）。"""
+
 import uuid
 
 from sqlalchemy import Index, String

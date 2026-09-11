@@ -15,6 +15,7 @@ _ENV_FILES = (
 )
 
 
+# 从环境变量 / ``.env`` 加载的全局配置；经 ``get_settings`` 缓存为单例。
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=[str(p) for p in _ENV_FILES if p.exists()] or ".env",
@@ -149,47 +150,57 @@ class Settings(BaseSettings):
 
     @property
     def database_url(self) -> str:
+        """异步驱动（asyncpg）SQLAlchemy DSN。"""
         return f"postgresql+asyncpg://{self.postgres_user}:{self.postgres_password}@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
 
     @property
     def database_url_sync(self) -> str:
+        """同步驱动 SQLAlchemy DSN（脚本 / Celery Worker）。"""
         return f"postgresql://{self.postgres_user}:{self.postgres_password}@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
 
     @property
     def redis_url(self) -> str:
+        """通用 Redis DSN（缓存 / Celery broker），按需拼接密码。"""
         if self.redis_password:
             return f"redis://:{self.redis_password}@{self.redis_host}:{self.redis_port}/{self.redis_db}"
         return f"redis://{self.redis_host}:{self.redis_port}/{self.redis_db}"
 
     @property
     def langgraph_redis_url(self) -> str:
+        """LangGraph checkpoint 专用 Redis DSN（可独立 db）。"""
         if self.redis_password:
             return f"redis://:{self.redis_password}@{self.redis_host}:{self.redis_port}/{self.langgraph_redis_db}"
         return f"redis://{self.redis_host}:{self.redis_port}/{self.langgraph_redis_db}"
 
     @property
     def cors_origin_list(self) -> list[str]:
+        """CORS 白名单：按逗号拆分并去除空白项。"""
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
 
     @property
     def APP_DESCRIPTION(self) -> str:
+        """``app_description`` 的大写别名（兼容旧配置名）。"""
         return self.app_description
 
     @property
     def DEBUG(self) -> bool:
+        """``debug`` 的大写别名（兼容旧配置名）。"""
         return self.debug
 
     @property
     def weaviate_url(self) -> str:
+        """拼接 Weaviate HTTP 端点。"""
         return f"{self.weaviate_scheme}://{self.weaviate_host}:{self.weaviate_port}"
 
     @property
     def mcp_runner_command_whitelist_set(self) -> frozenset[str]:
+        """MCP Runner 命令白名单集合（逗号分隔字符串转 frozenset）。"""
         return frozenset(c.strip() for c in self.mcp_runner_command_whitelist.split(",") if c.strip())
 
 
 @lru_cache
 def get_settings() -> Settings:
+    """进程级缓存的 ``Settings`` 单例；同时兜底注入 ``LITELLM_LOG`` 环境变量。"""
     settings = Settings()
     os.environ.setdefault("LITELLM_LOG", settings.litellm_log.upper())
     return settings

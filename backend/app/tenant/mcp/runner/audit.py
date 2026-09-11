@@ -27,6 +27,7 @@ async def write_mcp_runner_session(
     error_message: str | None = None,
     tool_name: str | None = None,
 ) -> None:
+    """写入一次 MCP Runner 会话审计；args 仅存摘要，不落明文。"""
     row = McpRunnerSession(
         tenant_id=spec.tenant_id,
         service_id=spec.service_id,

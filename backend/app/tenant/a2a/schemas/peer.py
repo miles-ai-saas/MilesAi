@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field
 from app.tenant.a2a.models import A2aPeerStatus
 
 
+# 创建外部 A2A 对端的入参。
 class A2aPeerCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=128, description="对端名称")
     description: str | None = Field(default=None, description="对端描述")
@@ -24,6 +25,7 @@ class A2aPeerCreate(BaseModel):
     auth_config: dict = Field(default_factory=dict, description="认证配置 JSON")
 
 
+# 更新外部 A2A 对端的入参；字段均可选。
 class A2aPeerUpdate(BaseModel):
     name: str | None = Field(
         default=None,
@@ -42,6 +44,7 @@ class A2aPeerUpdate(BaseModel):
     status: A2aPeerStatus | None = Field(default=None, description="连接状态")
 
 
+# 外部 A2A 对端详情（含 Agent Card 展示名与技能数）。
 class A2aPeerOut(BaseModel):
     id: UUID = Field(description="对端 ID")
     tenant_id: UUID = Field(description="租户 ID")
@@ -59,12 +62,14 @@ class A2aPeerOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+# 同步 Agent Card 的结果：对端详情、实际 URL 与说明。
 class A2aPeerSyncResult(BaseModel):
     peer: A2aPeerOut = Field(description="同步后的对端详情")
     card_url: str = Field(description="使用的 Agent Card URL")
     message: str = Field(description="同步结果说明")
 
 
+# 探测外部 Agent Card 的结果（不落库、不改对端状态）。
 class A2aPeerProbeResult(BaseModel):
     ok: bool = Field(description="探测是否成功")
     card_url: str = Field(description="探测使用的 Card URL")
