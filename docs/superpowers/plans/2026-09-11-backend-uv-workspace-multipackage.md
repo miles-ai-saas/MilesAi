@@ -1875,8 +1875,8 @@ EOF
 
 **Files:**
 - Create: `packages/miles-runner/src/miles_runner/settings.py`
-- Modify: `packages/miles-runner/src/miles_runner/runner/main.py`
-- Modify: `packages/miles-runner/pyproject.toml`（移除 `miles-core` 依赖，若曾声明）
+- Modify: `packages/miles-runner/src/miles_runner/main.py`（**注意**：计划旧稿写 `miles_runner/runner/main.py`，Task 2.2 的 flatten 已剥掉一层，实际路径是 `miles_runner/main.py`）
+- `packages/miles-runner/pyproject.toml` **无需改动**：`miles-core` 从未被声明（现有 dependencies = miles-exec / miles-common / fastapi / pydantic / pydantic-settings），越界只存在于源码 import。`backend/uv.lock` 同理不变。
 
 **Interfaces:**
 - Produces: `miles_runner.settings.RunnerSettings`（`mcp_runner_token` / `mcp_runner_max_concurrent_per_tenant` / `mcp_runner_command_whitelist_set`）
@@ -1903,12 +1903,12 @@ class RunnerSettings(BaseSettings):
 
     mcp_runner_token: str = ""
     mcp_runner_max_concurrent_per_tenant: int = 3
-    mcp_runner_command_whitelist: str = ""
+    mcp_runner_command_whitelist: str = "npx,node,python,python3"
 
     @property
-    def mcp_runner_command_whitelist_set(self) -> set[str]:
+    def mcp_runner_command_whitelist_set(self) -> frozenset[str]:
         """命令白名单集合（逗号分隔，忽略空白）。"""
-        return {item.strip() for item in self.mcp_runner_command_whitelist.split(",") if item.strip()}
+        return frozenset(item.strip() for item in self.mcp_runner_command_whitelist.split(",") if item.strip())
 
 
 @lru_cache
@@ -1928,15 +1928,19 @@ def get_runner_settings() -> RunnerSettings:
 
 ```bash
 cd backend
-uv sync --package miles-runner
-uv tree --package miles-runner
+uv tree --package miles-runner --no-dev
 ```
 
-Expected: 依赖闭包**不含** langchain / langgraph / litellm / weaviate / pymilvus / torch / sqlalchemy / celery。
+Expected: 依赖闭包**不含** langchain / langgraph / litellm / weaviate / pymilvus / torch / sqlalchemy / celery，**也不含 miles-core**。
+
+> **切勿使用 `uv sync --package miles-runner`**（计划旧稿）：uv sync 默认精确同步，`--package` 只保留该包依赖，会把其余 9 个 workspace 成员从 `.venv` 卸载。`uv tree` 是只读的，足够验证。
 
 ```bash
-uv run --package miles-runner python -c "import miles_runner.main; print('runner imports OK')"
+.venv/bin/python -c "import miles_runner.main; print('runner imports OK')"
+.venv/bin/python ../.superpowers/sdd/phase2-package-graph.py
 ```
+
+包级图应显示 `VIOLATION` / `FORBIDDEN` 两段为空（`miles_runner -> miles_core` 是 Phase 2 收口时的唯一越界边，本任务消除），SCC 仍无环。
 
 - [ ] **Step 4: 提交**
 
