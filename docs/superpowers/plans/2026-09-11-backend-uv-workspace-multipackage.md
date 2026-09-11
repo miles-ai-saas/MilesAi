@@ -2402,6 +2402,72 @@ EOF
 
 ---
 
+### Task 3.7: 文档裸 `app/…` 简写收口
+
+**背景**：Task 3.6 已清零带 `backend/` 前缀的 126 处旧路径与 42 处旧命令，但文档正文里还有一种**裸简写**形式（不带 `backend/` 前缀，直接写 `app/tenant/...`），Task 3.6 未纳入其正则量程。现状实测：
+
+- 全仓命中 **275** 处，其中 `docs/superpowers/**` 占 **131**（plan 122 + spec 9）→ **不可动**（历史记录保留原文）。
+- **真实文档约 144 处**，分布：`docs/guides/mcp.md` 13、`docs/guides/hooks.md` 12、`docs/guides/skill-packages.md` 8、`docs/architecture/mcp-sandbox.md` 7、`docs/guides/ai-stack.md` 6、`docs/architecture/admin-ops-design.md` 5、`docs/guides/knowledge-base.md` 4、`docs/architecture/technical-design.md` 4、`docs/guides/model-config-extra.md` 3、`docs/architecture/realtime-transport-design.md` 3，其余零散。
+
+**Files:** `docs/**`（排除 `docs/superpowers/**`）、`README.md`、`backend/README.md`、`docker/README.md`
+
+- [ ] **Step 1: 枚举并映射**
+
+```bash
+cd /Users/xiezhigang/Projects/miles/MilesAI
+rg -o --pcre2 "(?<![\w/])app/(tenant|admin|core|infra|models|rag|integrations|flow_runtime|common|utils|apps|middlewares|workers|runner|exec)(/[A-Za-z0-9_./-]+)?" \
+  docs README.md backend/README.md docker/README.md -g '!superpowers/**' | sort -u
+```
+
+按 spec §4 映射表（`app/` 目录 → `packages/<pkg>/src/<module>/`），**每条新路径都要 `test -e` 验证**（写法与 Task 3.6 相同，注意 flatten 导致的改名/目录化）。
+
+- [ ] **Step 2: 替换**
+
+只替换真实文档，**绝不触碰 `docs/superpowers/**`**。区分两类语境：
+
+- **目录/文件路径指代** → 换成 `backend/packages/<pkg>/src/<module>/...`（与 Task 3.6 保持一致的写法）。
+- **纯模块名叙述**（如「`app/core/risk/` 建立」这类描述历史演进的句子）→ 若指代现结构就直接用新路径；若是在讲「当时怎么拆的」，改成 `miles_core` 这类包名而不带路径。
+
+无法确定映射的**保持原样并在报告中列出**（宁留勿错）。
+
+- [ ] **Step 3: 校验**
+
+```bash
+cd /Users/xiezhigang/Projects/miles/MilesAI
+echo "--- 裸 app/ 残留（排除 superpowers）---"
+rg -n --pcre2 "(?<![\w/])app/(tenant|admin|core|infra|models|rag|integrations|flow_runtime|common|utils|apps|middlewares|workers|runner|exec)" \
+  docs README.md backend/README.md docker/README.md -g '!superpowers/**' || echo "OK: 真实文档无裸 app/ 简写"
+echo "--- superpowers 未被动过（应为 131 处，仅作确认）---"
+rg -c --pcre2 "(?<![\w/])app/(tenant|admin|core|infra)" docs/superpowers -g '*.md' | wc -l
+echo "--- 新路径存在性 ---"
+rg -o --pcre2 "backend/packages/[A-Za-z0-9_./-]+" docs README.md backend/README.md docker/README.md -g '!superpowers/**' \
+  | sed 's/.*://' | sort -u | while read -r p; do [ -e "$p" ] || echo "MISSING: $p"; done; echo "存在性检查完成"
+```
+
+Expected：第一项 `OK`（或仅剩报告中明确说明的例外）；第三项无 `MISSING`。
+
+- [ ] **Step 4: 闸门 + 提交**
+
+```bash
+cd backend && .venv/bin/ruff check . && .venv/bin/python -m pytest -q && .venv/bin/python -m miles_server.scripts.export_openapi --check
+cd .. && make layers-check
+```
+
+Expected：ruff clean；`586 passed, 2 warnings`；`OpenAPI snapshot OK`；6 契约 KEPT。
+
+```bash
+git add -A
+git commit -F - <<'EOF'
+docs: 收敛文档中的裸 app/ 简写路径
+
+Task 3.6 只覆盖带 backend/ 前缀的写法，正文里的裸简写仍指向
+单包目录；统一改为 packages/ 新路径并逐个校验存在性，
+docs/superpowers 历史记录保持原文。
+EOF
+```
+
+---
+
 ## Phase 4: 终验
 
 ### Task 4.1: 全量验证与收尾
