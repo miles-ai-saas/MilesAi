@@ -128,9 +128,7 @@ def test_json_schema_to_pydantic_none_when_empty():
 
 
 def test_mcp_param_alias_only_lossy_keys():
-    assert mcp_param_alias({"properties": {"file-path": {"type": "string"}, "ok": {"type": "string"}}}) == {
-        "file_path": "file-path"
-    }
+    assert mcp_param_alias({"properties": {"file-path": {"type": "string"}, "ok": {"type": "string"}}}) == {"file_path": "file-path"}
 
 
 # --- 装配 ---
