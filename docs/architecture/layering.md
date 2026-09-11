@@ -156,6 +156,14 @@ flowchart LR
 
 **强制机制**：上述 DAG 与硬判据由 `backend/.importlinter` 固化为 6 条契约（1 条 `layers` + 5 条 `forbidden`），在 CI 与本地经 `make layers-check`（即 `import-linter`）执行；`make check` 已包含该步。
 
+**物理布局（`packages/<dist>/src/<module>/`）**：`packages/` 与 `src/` 两层**仅为物理组织，不进 `sys.path`**——映射由各包 wheel 的 `packages = ["src/miles_*"]` 决定，因此代码里的模块路径始终是 `miles_core.…` 这类形式，**与物理层数无关**；分层契约的 `root_packages` 同样只写模块名。`src/` 采用 PyPA 推荐的 src layout，用于阻止 cwd 影子导入、确保测试跑的是**已安装**的包（而非裸源码）。
+
+故文件路径偏长（最深如 `packages/miles-portal/src/miles_portal/tenant/marketplace/services/marketplace/upgrade.py`）属纯外观代价，**不要为缩短路径而合并层级**：`parents[N]` 已在 `miles_server/apps/migrate.py`、`miles_portal/tenant/skills/storage.py`、`miles_core/config.py` 中按此深度硬编码，改深度会静默改错这些路径推导。定位某模块的实际文件用：
+
+```bash
+python -c "import miles_core; print(miles_core.__file__)"
+```
+
 ### 2.5 API 层归属
 
 「API 入口」拆成三件事，各有明确归属：

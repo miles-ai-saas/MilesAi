@@ -27,6 +27,8 @@ backend/
 ```
 
 > `cli.py`、`scripts/`（db_ops、verify_db、seed/*、export_openapi）已迁入 `miles-server`；旧单包目录 `backend/app` 与 `backend/cli.py` 已不存在。包边界与 API 层归属见 [layering.md §2.4 / §2.5](../docs/architecture/layering.md)。
+>
+> `packages/` 与 `src/` 两层只为物理组织，**不进 `sys.path`**，故导入路径始终是 `miles_core.…` 这类形式，与层数无关（`src/` 用 PyPA 推荐的 src layout 防 cwd 影子导入）。**不要为缩短路径而合并层级**——`parents[N]` 已按此深度硬编码在 `miles_server/apps/migrate.py` 等处。查模块实际位置：`python -c "import miles_core; print(miles_core.__file__)"`。
 
 ## 安装与运行
 
