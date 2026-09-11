@@ -2,17 +2,35 @@ FROM registry.cn-shenzhen.aliyuncs.com/kye_secure/python:3.11.9-uv-ffmpeg
 
 WORKDIR /app
 
-# 先只复制依赖文件，让 pip 层可缓存
+# 仅复制 workspace 元数据，让依赖安装层可缓存（成员清单 = miles-worker 的依赖闭包）
 COPY backend/pyproject.toml /app/backend/pyproject.toml
+COPY backend/uv.lock /app/backend/uv.lock
+COPY backend/packages/miles-common/pyproject.toml  /app/backend/packages/miles-common/pyproject.toml
+COPY backend/packages/miles-exec/pyproject.toml    /app/backend/packages/miles-exec/pyproject.toml
+COPY backend/packages/miles-core/pyproject.toml    /app/backend/packages/miles-core/pyproject.toml
+COPY backend/packages/miles-ai/pyproject.toml      /app/backend/packages/miles-ai/pyproject.toml
+COPY backend/packages/miles-portal/pyproject.toml  /app/backend/packages/miles-portal/pyproject.toml
+COPY backend/packages/miles-worker/pyproject.toml  /app/backend/packages/miles-worker/pyproject.toml
 
-RUN uv pip install --system -e /app/backend \
-      -i https://mirrors.aliyun.com/pypi/simple \
-      --trusted-host mirrors.aliyun.com
+# 第三方依赖走 lock 导出（--no-emit-workspace：本地成员包不在此处安装）
+RUN cd /app/backend \
+ && uv export --frozen --no-dev --no-emit-workspace --package miles-worker -o /tmp/req.txt \
+ && uv pip install --system -r /tmp/req.txt \
+      -i https://mirrors.aliyun.com/pypi/simple --trusted-host mirrors.aliyun.com
 
 # 最后复制代码（只有这层因代码变更而重建）
 COPY backend /app/backend
 
-ENV PYTHONPATH=/app/backend
+# 本地成员包以 editable 安装：dev profile 挂载 ./backend 后仍能读到挂载代码
+RUN uv pip install --system --no-deps \
+      -e /app/backend/packages/miles-common \
+      -e /app/backend/packages/miles-exec \
+      -e /app/backend/packages/miles-core \
+      -e /app/backend/packages/miles-ai \
+      -e /app/backend/packages/miles-portal \
+      -e /app/backend/packages/miles-worker \
+      -i https://mirrors.aliyun.com/pypi/simple --trusted-host mirrors.aliyun.com
+
 WORKDIR /app/backend
 
-CMD ["celery", "-A", "app.workers.app", "worker", "-l", "info", "-Q", "default,parse,ocr,asr,embed"]
+CMD ["celery", "-A", "miles_worker.app", "worker", "-l", "info", "-Q", "default,parse,ocr,asr,embed"]

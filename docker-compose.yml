@@ -60,7 +60,7 @@ services:
       - .env
     environment:
       <<: *backend-env
-    command: celery -A app.workers.app worker -l info -Q default,parse,ocr,asr,embed
+    command: celery -A miles_worker.app worker -l info -Q default,parse,ocr,asr,embed
     restart: unless-stopped
 
   beat:
@@ -73,7 +73,7 @@ services:
       - .env
     environment:
       <<: *backend-env
-    command: celery -A app.workers.app beat -l info
+    command: celery -A miles_worker.app beat -l info
     restart: unless-stopped
 
   mcp-runner:
