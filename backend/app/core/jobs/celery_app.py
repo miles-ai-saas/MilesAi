@@ -1,7 +1,10 @@
 """最小 Celery 应用：仅供业务侧按任务名投递，不含任务注册与调度。
 
-任务注册（include）、队列路由、beat 调度由 worker 启动模块补齐，
+任务注册（include）、执行期时限（task_annotations）、beat 调度由 worker 启动模块补齐，
 以使 L1 业务代码投递任务时无需依赖 worker 包。
+
+注意：队列路由（task_routes）**留在本模块**——它由投递方求值（send_task → amqp router），
+API 进程不再 import worker 模块，路由若挪到 worker 会导致任务落错队列。
 """
 
 from celery import Celery

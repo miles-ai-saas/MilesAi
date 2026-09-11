@@ -1,7 +1,5 @@
 """Celery 任务名常量：投递方与注册方共用的唯一来源。"""
 
-from __future__ import annotations
-
 TASK_NAMES = {
     "ingest_document": "app.workers.tasks.ingest.ingest_document",
     "run_generative_video_job": "app.workers.tasks.generative.run_generative_video_job",

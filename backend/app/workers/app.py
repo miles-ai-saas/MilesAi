@@ -1,6 +1,7 @@
-"""Celery Worker/Beat 启动模块：在最小 app 上补齐任务注册、队列路由与调度。
+"""Celery Worker/Beat 启动模块：在最小 app 上补齐任务注册、执行期时限与调度。
 
-任务名见 app.core.jobs.tasks.TASK_NAMES。启动示例：
+任务名见 app.core.jobs.tasks.TASK_NAMES。队列路由由最小 app 自带（投递侧语义），
+本模块不再设置 task_routes。启动示例：
   celery -A app.workers.app worker -Q parse,default
 """
 

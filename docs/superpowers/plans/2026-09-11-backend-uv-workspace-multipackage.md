@@ -486,8 +486,11 @@ EOF
 ```python
 """最小 Celery 应用：仅供业务侧按任务名投递，不含任务注册与调度。
 
-任务注册（include）、队列路由、beat 调度由 worker 启动模块补齐，
+任务注册（include）、执行期时限（task_annotations）、beat 调度由 worker 启动模块补齐，
 以使 L1 业务代码投递任务时无需依赖 worker 包。
+
+注意：队列路由（task_routes）留在本模块——它由投递方求值（send_task → amqp router），
+API 进程不再 import worker 模块，路由若挪到 worker 会导致任务落错队列。
 """
 
 from celery import Celery
@@ -532,8 +535,6 @@ celery_app.conf.update(
 ```python
 """Celery 任务名常量：投递方与注册方共用的唯一来源。"""
 
-from __future__ import annotations
-
 TASK_NAMES = {
     "ingest_document": "app.workers.tasks.ingest.ingest_document",
     "run_generative_video_job": "app.workers.tasks.generative.run_generative_video_job",
@@ -555,9 +556,10 @@ RUN_GENERATIVE_IMAGE_JOB = TASK_NAMES["run_generative_image_job"]
 `app/workers/app.py` 改为：
 
 ```python
-"""Celery Worker/Beat 启动模块：在最小 app 上补齐任务注册、队列路由与调度。
+"""Celery Worker/Beat 启动模块：在最小 app 上补齐任务注册、执行期时限与调度。
 
-任务名见 app.core.jobs.tasks.TASK_NAMES。启动示例：
+任务名见 app.core.jobs.tasks.TASK_NAMES。队列路由由最小 app 自带（投递侧语义），
+本模块不再设置 task_routes。启动示例：
   celery -A app.workers.app worker -Q parse,default
 """
 
