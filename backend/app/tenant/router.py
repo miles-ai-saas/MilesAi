@@ -4,7 +4,6 @@ from fastapi import APIRouter
 
 from app.tenant.a2a.views import peers as a2a_peers
 from app.tenant.agents.views import agents
-from app.tenant.agents.views import open_chat as agents_open_chat
 from app.tenant.audit_log.views import audit_log
 from app.tenant.auth.views import auth
 from app.tenant.categories.views import categories
@@ -58,7 +57,6 @@ api_router.include_router(compliance.router, prefix="/compliance", tags=["compli
 api_router.include_router(prompts.router, prefix="/prompt-templates", tags=["prompt-templates"])
 api_router.include_router(model_views.router, prefix="/models", tags=["models"])
 api_router.include_router(agents.router, prefix="/agents", tags=["agents"])
-api_router.include_router(agents_open_chat.router, prefix="/open", tags=["open-agents"])
 api_router.include_router(a2a_peers.router, prefix="/a2a/peers", tags=["a2a-peers"])
 api_router.include_router(hooks.router, prefix="/hooks", tags=["hooks"])
 api_router.include_router(tools.router, prefix="/tools", tags=["tools"])

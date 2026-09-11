@@ -6,7 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.apps.migrate import run_migrations
-from app.apps.routers import admin_router, api_router
+from app.apps.routers import admin_router, api_router, openapi_router
 from app.core.web.handlers import exception_handlers
 from app.core.config import get_settings
 from app.core.logging import setup_logging
@@ -58,5 +58,6 @@ def create_app() -> FastAPI:
     register_http_middlewares(app)
 
     app.include_router(api_router)
+    app.include_router(openapi_router)
     app.include_router(admin_router)
     return app
