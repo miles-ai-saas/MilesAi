@@ -238,11 +238,13 @@ EOF
 
 **Files:**
 - Move: `backend/app/middlewares/{__init__,trace,access_log,platform_risk}.py` → `backend/app/core/web/middlewares/`
-- Move: `backend/app/admin/models/risk.py` → `backend/app/core/models/risk.py`
+- Move: `backend/app/admin/models/risk.py` → `backend/app/models/risk.py`
 - Move: `backend/app/admin/app_ops/services/risk_enforce.py` → `backend/app/core/risk/enforce.py`
 - Create: `backend/app/core/risk/__init__.py`
 - Modify: `backend/app/admin/models/__init__.py`（re-export 保路径）
 - Modify: `backend/app/admin/app_ops/services/risk.py`（改为从 core 引用）
+
+> **为什么风控 ORM 落 `app/models/` 而不是 `app/core/models/`**：Phase 2 会同时执行 `app/models/ → miles_core/models/`（保留包装层）与 `app/core/ → miles_core/`（剥离包装层），若把 risk 放在 `app/core/models/`，两处都会产出 `miles_core/models/`，导致 `git mv` 目标冲突、需手工合并目录。放入 `app/models/risk.py` 后 Phase 2 自然得到 `miles_core/models/risk.py`，与 spec §3.5 的映射表一致，零冲突。
 
 依据：`PlatformRiskMiddleware` 属全局管道且**对 `/api/v1`（portal）限流**；其 ORM/服务在 admin 会造成 `portal → admin`（spec §3.5）。
 
@@ -260,52 +262,47 @@ sed -i '' 's/from app\.middlewares\.\(access_log\|platform_risk\|trace\)/from ap
 - [ ] **Step 2: 搬风控 ORM 与服务**
 
 ```bash
+git mv app/admin/models/risk.py app/models/risk.py
 mkdir -p app/core/risk
-git mv app/admin/models/risk.py app/core/models/risk.py
 git mv app/admin/app_ops/services/risk_enforce.py app/core/risk/enforce.py
 printf '"""平台风控能力（IP 黑名单 / 限流规则 / 风险事件）；下沉自 admin，供全局中间件与运营面共用。"""\n' > app/core/risk/__init__.py
 ```
 
-- [ ] **Step 3: 修正内部 import 与新表名无关性**
+- [ ] **Step 3: 修正内部 import 与表名不变性**
 
-`core/models/risk.py` 内 `from app.infra.db import Base` / `from app.models.base import ...` 保持不变（同包内路径未变，Phase 2 才改名）。
-`core/risk/enforce.py` 内：
-- `from app.admin.models import IpBlacklist, RateLimitRule, RiskEvent, RiskSeverity` → `from app.core.models.risk import IpBlacklist, RateLimitRule, RiskEvent, RiskSeverity`
+`app/models/risk.py` 内 `from app.infra.db import Base` / `from app.models.base import ...` 保持不变（位于 `app/models/` 包内，路径未变）。
+
+`app/core/risk/enforce.py` 内：
+- `from app.admin.models import IpBlacklist, RateLimitRule, RiskEvent, RiskSeverity` → `from app.models.risk import IpBlacklist, RateLimitRule, RiskEvent, RiskSeverity`
+- 若还有其他 `app.admin.*` 引用，逐一改为对应新位置（`rg -n "app\.admin" app/core/risk/enforce.py` 核对到零）
 
 **表名必须保持** `adm_risk_events` / `adm_ip_blacklist` / `adm_rate_limit_rules`（不要改）。
 
 - [ ] **Step 4: admin 侧留 re-export 薄壳**
 
-`app/admin/models/__init__.py`：
+`app/admin/models/__init__.py` 第 5 行改为：
 
 ```python
-"""运营后台 ORM（与 app_sys / app_ops 平级）。"""
-
-from app.admin.models.audit import AuditLog
-from app.admin.models.billing import BillLineItem, BillStatus, BillingPlan, TenantBill
-from app.admin.models.sys import PlatformAdmin
-# 风控 ORM 已下沉中立域，此处 re-export 保持 admin 域既有引用路径稳定
-from app.core.models.risk import IpBlacklist, RateLimitRule, RiskEvent, RiskSeverity  # noqa: F401
-
-__all__ = [
-    "PlatformAdmin",
-    "BillingPlan",
-    "BillStatus",
-    "TenantBill",
-    "BillLineItem",
-    "AuditLog",
-    "RiskSeverity",
-    "RiskEvent",
-    "IpBlacklist",
-    "RateLimitRule",
-]
+from app.models.risk import IpBlacklist, RateLimitRule, RiskEvent, RiskSeverity  # noqa: F401
 ```
 
-`app/admin/app_ops/services/risk_enforce.py` 已移走，`app/admin/app_ops/services/risk.py` 改为：
+（`__all__` 保持不变；该 re-export 让 `from app.admin.models import RiskEvent` 等既有引用继续可用。）
+
+`app/admin/app_ops/services/risk.py:12` 改为：
 
 ```python
 from app.core.risk.enforce import platform_risk_enforcer
 ```
+
+- [ ] **Step 4b: 让 ORM registry 显式登记风控表**
+
+`app/models/registry.py` 目前靠 `import app.admin.models` 间接带入风控表；下沉后应显式登记，避免依赖 admin 的 re-export：
+
+```python
+    import app.models.risk  # noqa: F401 — 风控表（adm_risk_events / adm_ip_blacklist / adm_rate_limit_rules）
+```
+
+插在 `import app.models.marketplace` 之后、`import app.models` 之前（`load_all_models` 内）。
 
 - [ ] **Step 5: 全量改写引用**
 
@@ -313,7 +310,7 @@ from app.core.risk.enforce import platform_risk_enforcer
 rg -n "app\.middlewares|app\.admin\.models\.risk|app\.admin\.app_ops\.services\.risk_enforce" app tests scripts -g '*.py'
 ```
 
-替换：`app.middlewares.*`→`app.core.web.middlewares.*`；`app.admin.models.risk`→`app.core.models.risk`；`app.admin.app_ops.services.risk_enforce`→`app.core.risk.enforce`。
+替换：`app.middlewares.*`→`app.core.web.middlewares.*`；`app.admin.models.risk`→`app.models.risk`；`app.admin.app_ops.services.risk_enforce`→`app.core.risk.enforce`。
 `tests/conftest.py:36,41` 的 patch 目标字符串 `"app.middlewares.platform_risk.platform_risk_enforcer.*"` → `"app.core.web.middlewares.platform_risk.platform_risk_enforcer.*"`。
 
 - [ ] **Step 6: 跑闸门（含风控回归）**
@@ -1072,6 +1069,7 @@ def load_all_models() -> None:
     import miles_core.models.storage  # noqa: F401
     import miles_core.models.agent  # noqa: F401
     import miles_core.models.marketplace  # noqa: F401
+    import miles_core.models.risk  # noqa: F401 — 风控表（adm_risk_events / adm_ip_blacklist / adm_rate_limit_rules）
     import miles_core.models  # noqa: F401
     import miles_admin.admin.models  # noqa: F401
     import miles_portal.tenant.compliance.models  # noqa: F401
