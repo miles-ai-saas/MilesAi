@@ -724,11 +724,13 @@ sed -i '' 's/from app\.integrations\.langchain\.vector\.documents import/from ap
 - [ ] **Step 4: 残留与边界检查**
 
 ```bash
-rg -n "app\.integrations\.langchain\.vector" app tests -g '*.py' || echo "OK: 旧路径无残留"
+rg -n "app\.integrations\.langchain\.vector\.documents" app tests -g '*.py' || echo "OK: 旧路径无残留"
 rg -n "from app\.integrations|import app\.integrations" app/infra -g '*.py' || echo "OK: core 不再依赖 ai"
 ```
 
 两条都必须打印 OK。
+
+> 第一条必须带上 `.documents`（或加词界）：`app\.integrations\.langchain\.vector` 会前缀误命中合法的 `app/integrations/langchain/vectorstores.py`。
 
 - [ ] **Step 5: 闸门**
 
