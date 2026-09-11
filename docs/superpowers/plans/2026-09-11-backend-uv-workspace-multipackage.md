@@ -181,8 +181,26 @@ git mv app/utils/health_checks.py app/core/utils/health_checks.py
 git mv app/common/handlers.py app/core/web/handlers.py
 git mv app/utils/idgen.py app/common/idgen.py
 git mv app/utils/redis_keys.py app/common/redis_keys.py
+# app/utils/__init__.py 会 re-export 上述被搬走的符号（RedisKeys / generate_id /
+# generate_uuid / uuid7_version / is_uuid7 / ref_uuid / idx / uk / un / rel_foreign_keys），
+# 且这些符号现已分拆到 miles_common 与 miles_core 两个包，包级 re-export 无法保留——
+# 必须删除该 __init__.py，否则留下悬空 import（`rmdir` 删不掉含文件目录）。
+git rm app/utils/__init__.py
 rmdir app/utils 2>/dev/null || true
 ```
+
+> 已核实：全仓**没有** `from app.utils import X` 形式的调用点（只有 `from app.utils.<mod> import X`），故删除包级 re-export 不会破坏任何调用方。
+
+- [ ] **Step 2b: 修正过时 docstring**
+
+`app/core/__init__.py:5` 的「通用工具见 app.utils。」改为指向新位置：
+
+```python
+通用工具：纯函数见 miles_common（app.common.idgen / app.common.redis_keys），
+ORM 与健康检查见 app.core.utils。
+```
+
+其余提及 `app.utils.*` 的 docstring 一并按 Step 3 的映射改写。
 
 - [ ] **Step 3: 全量改写引用**
 
@@ -196,9 +214,10 @@ rg -n "app\.common\.(pagination|url_security|handlers)|app\.utils\.(idgen|redis_
 
 ```bash
 rg -n "app\.(core|infra|integrations|rag|flow_runtime)" app/common -g '*.py' || echo "OK: common 已是叶子"
+rg -n "app\.[a-z_]+" app/common/__init__.py -g '*.py' || echo "OK: common/__init__ 无 import"
 ```
 
-Expected: `OK: common 已是叶子`
+Expected: `OK: common 已是叶子`。**已核实**：搬走 `pagination.py` / `url_security.py` / `handlers.py` 后，`app/common` 剩余文件中不再出现任何 core/infra 引用（搬走前仅这 3 个文件越界），故此闸门应当直接通过；若仍命中，说明有第四个越界文件，需停下报告而非顺手改动。
 
 - [ ] **Step 5: 跑闸门 + 提交**
 
