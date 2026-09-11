@@ -8,22 +8,24 @@
 ## 1. 部署拓扑
 
 ```text
-┌─ docker-compose.infra.yml ─────────────────────────────┐
+┌─ docker-compose.infra.yml（独立部署单元）─────────────┐
 │  postgres (pgvector) · redis · minio · etcd            │
-│  milvus · weaviate                                     │
+│  milvus · weaviate · flower                            │
 └───────────────────────────┬────────────────────────────┘
-                            │ milesai-net
-┌─ docker-compose.yml ──────┴────────────────────────────┐
-│  api · worker · beat · mcp-runner · web · admin-web · flower │
+                            │ 经外部地址/端口互访（.env 配置）
+┌─ docker-compose.yml（独立部署单元）───────────────────┐
+│  api · worker · beat · mcp-runner                      │
 └────────────────────────────────────────────────────────┘
 ```
 
+前端（`ui/workbench`、`ui/admin`）**不随 Compose 部署**：本地 `npm run dev`，生产由 `npm run build` 产出静态文件托管到 OSS。
+
 | 组件 | 端口（默认） | 说明 |
 |------|-------------|------|
-| 租户工作台 | 3000 | `web` |
-| 运营后台 | 3001 | `admin-web` |
+| 租户工作台 | 3000 | `ui/workbench` 本地 dev；生产为 OSS 静态资源 |
+| 运营后台 | 3001 | `ui/admin` 本地 dev；生产为 OSS 静态资源 |
 | FastAPI | 8000 | `api` |
-| Flower | 5555 | Celery 监控 |
+| Flower | 5555 | `flower`（在 infra Compose 中） |
 | PostgreSQL | 5432 | |
 | Redis | 6379 | broker db1 / result db2 |
 | MinIO | 9000 / 9001 | API / Console |

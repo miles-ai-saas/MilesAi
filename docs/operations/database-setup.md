@@ -31,7 +31,6 @@ POSTGRES_DB=milesai
 
 ```bash
 cp .env.example .env
-cd docker
 docker compose -f docker-compose.infra.yml up -d
 ```
 
@@ -81,7 +80,6 @@ psql -h localhost -U postgres -d milesai -c "SELECT 1;"
 ### 方式 C：仅启动中间件容器，后端仍在本机跑
 
 ```bash
-cd docker
 docker compose -f docker-compose.infra.yml up -d
 ```
 

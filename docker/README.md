@@ -7,7 +7,7 @@
 
 | 文件 | 服务 | 说明 |
 |------|------|------|
-| `docker-compose.infra.yml` | pgvector、redis、minio、etcd、milvus、weaviate | 数据与基础设施 |
+| `docker-compose.infra.yml` | pgvector、redis、minio、etcd、milvus、weaviate、flower | 数据与基础设施 |
 | `docker-compose.yml` | api, worker, beat, mcp-runner | 业务应用（前端已部署 OSS） |
 
 ## 环境变量

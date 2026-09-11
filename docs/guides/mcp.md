@@ -257,20 +257,18 @@ npm install -g @modelcontextprotocol/server-everything
 **步骤 1 — 启动基础设施**
 
 ```bash
-cd docker
 docker compose -f docker-compose.infra.yml up -d
 ```
 
 **步骤 2 — 启动应用栈（含 api + mcp-runner）**
 
 ```bash
-cd docker
 docker compose up -d --build
 ```
 
-`docker/docker-compose.yml` 中相关配置：
+`docker-compose.yml`（项目根）中相关配置：
 
-- 服务 **`mcp-runner`**：内网监听 `8090`，只读根文件系统 + `tmpfs`，不映射 host 端口
+- 服务 **`mcp-runner`**：容器内监听 `8090`，映射 host `8090`；只读根文件系统 + `tmpfs`
 - 服务 **`api`**：默认 `MCP_RUNNER_ENABLED=true`，`MCP_RUNNER_URL=http://mcp-runner:8090`
 
 **步骤 3 — 配置密钥（项目根 `.env`）**

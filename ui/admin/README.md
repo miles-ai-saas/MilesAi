@@ -41,13 +41,16 @@ npm run dev
 | `/marketplace-categories` | 应用市场分类（mkt_categories）                 |
 | `/sys-categories`         | 工作台分类（全平台全局字典）                   |
 
-## Docker
+## 本地运行与部署
 
-在 `docker/docker-compose.yml` 中已包含 `admin-web` 服务（端口 3001）。全栈启动：
+运营后台**不随 Docker Compose 部署**，本地开发直接启动：
 
 ```bash
-cd docker
-docker compose -f docker-compose.infra.yml -f docker-compose.yml up -d --build
+npm install && npm run dev   # http://localhost:3001
 ```
 
-运营后台：http://localhost:3001
+生产由 `npm run build` 产出静态文件部署到 OSS。全栈后端（`api` / `worker` / `beat` / `mcp-runner`）启动方式见 [operations/deployment.md](../../docs/operations/deployment.md)。
+
+```bash
+docker compose -f docker-compose.infra.yml -f docker-compose.yml up -d --build
+```

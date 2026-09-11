@@ -594,9 +594,9 @@ flowchart TD
 
 ### 14.1 Compose 服务（实际）
 
-**基础设施** `docker/docker-compose.infra.yml`：`pgvector/pg16`、`redis:8-alpine`、`minio`、`etcd`、`milvus:v2.4.17`、`weaviate:1.24.1`，网络 `milesai-net`。
+**基础设施** `docker-compose.infra.yml`（项目根）：`pgvector/pg16`、`redis:8-alpine`、`minio`、`etcd`、`milvus:v2.4.17`、`weaviate:1.24.1`、`flower`（Celery 监控 `:5555`），网络 `milesai-net`。
 
-**应用** `docker/docker-compose.yml`：
+**应用** `docker-compose.yml`（项目根）：
 
 | 服务 | 说明 |
 |------|------|
@@ -604,9 +604,8 @@ flowchart TD
 | `worker` | 单 Celery 进程，多队列（ingest / generative / schedule） |
 | `beat` | Celery Beat，智能体定时任务扫描 |
 | `mcp-runner` | MCP STDIO 沙箱（`MCP_RUNNER_ENABLED` 时 API 转发 invoke） |
-| `web` | 租户 Next.js |
-| `admin-web` | 运营 Next.js `:3001` |
-| `flower` | Celery 监控 `:5555` |
+
+前端 `web` / `admin-web` **不在此 Compose**：由 `npm run build` 产出静态文件部署到 OSS（本地开发各自 `npm run dev`）。
 
 **不是** 多个独立 `worker-parse` / `worker-ocr` 容器；解析/OCR/ASR/向量化由同一 worker 按队列消费。
 

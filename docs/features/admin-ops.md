@@ -145,7 +145,7 @@ ui/admin/
 
 ## 7. 部署
 
-- Docker：`admin-web` 服务，端口 `ADMIN_WEB_PORT`（默认 3001）
+- 前端不随 Docker 部署：`ui/admin` 本地 `npm run dev`（`:3001`），生产由 `npm run build` 产出静态文件部署到 OSS
 - 环境变量：`NEXT_PUBLIC_ADMIN_API_URL=http://localhost:8000/api/admin/v1`
 - 种子平台管理员：`scripts/seed/admin_ops.py`（默认见 database-setup）
 
