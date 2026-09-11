@@ -4,6 +4,7 @@
 > 关联：[layering.md](../../architecture/layering.md)、[engine-di-convergence.md](../../architecture/engine-di-convergence.md)
 > 目标形态：`backend/` 由单一 `milesai` 包拆为 10 个独立 distribution，用根 `pyproject.toml` 的 `[tool.uv.workspace]` 统一管理。
 > 入口策略：**方案 1**（域自持 API 层 + 薄装配根）；§10 写明通往方案 2（双应用）的演进路径。
+> 后续项：§11 列明拆出 `miles_integration`（第 11 包）的归属与判据，本次不实施。
 
 ---
 
@@ -106,6 +107,8 @@ flowchart LR
 
 > 强制性判据（进 CI 契约）：
 > `miles_ai` 不得 import `miles_portal`；`miles_openapi` 不得 import `miles_admin`；**`miles_portal` 不得 import `miles_admin`**；`miles_runner` 不得 import `miles_core` / `miles_portal`；`miles_core` 不得 import `miles_ai`；`miles_server` 不含任何路由处理器（views）。
+
+> **已知折衷（本次处理）**：`miles_ai` 同时装入了文档中分属两层的 `rag`（L2）与 `integrations`（L3），目的是把 `rag ↔ integrations` 环吞进包内、避免改引擎装配。这是本次的**临时合并**，后续按 §11 拆出 `miles_integration`。
 
 ### 2.1 各包内部结构要点
 
@@ -357,6 +360,7 @@ miles-exec = { workspace = true }
 
 ## 9. 暂缓 / 后续独立立项
 
+- **拆分 `miles_integration`**（本次保持合并，见 §11 ——**优先级最高的后续项**）。
 - 对外 API 的**路径与版本策略**（`/api/open/v1` 与 `/api/v1/open/*` 的取舍、弃用期、双挂）。
 - `miles_openapi` 的**对外 DTO 精简与稳定化**（与管理 DTO 解耦、限流、对外错误码规范、对外独立文档）。
 - 各包**独立版本号与发布节奏**（当前统一 0.1.0，随工作区走）。
@@ -375,3 +379,34 @@ miles-exec = { workspace = true }
 5. 若仍需单一入口（如外部只暴露一个域名），保留 `miles_server` 做反向代理前的组合，或改为网关路由。
 
 触发条件（满足其一再考虑）：admin 与 portal 需要**独立扩缩容 / 独立发布节奏 / 独立故障隔离**，或安全上需要把运营面与租户面**网络隔离**。
+
+---
+
+## 11. 后续立项：拆分 `miles_integration`（本次不做）
+
+本次 `miles_ai` 把 `rag`（L2）与 `integrations`（L3）合并，是为吞掉 `rag ↔ integrations` 环的**临时折衷**。拆出 `miles_integration` 是紧随其后的第一步后续工作。
+
+### 11.1 为什么不能只做一次 `git mv`
+
+`integrations/`（94 文件）当前混装三类职责，其中 **20 条反向边**指向 `rag` / `flow_runtime`：
+
+| 桶 | 内容 | 反向边 | 归属 |
+|----|------|--------|------|
+| ① 纯第三方适配（≈72 文件） | `generative/`(31)、`embeddings/`(11)、`rerank/`(10)、`deepagents/`(5)、`litellm/`(3)、`chat/`(2)、`http_constants.py`，以及 `langchain/`、`langgraph/` 中的纯适配文件 | 无 | **`miles_integration`** |
+| ② Flow 引擎（16 文件） | `langgraph/compiler/{state,build,report,validate,run}.py`、`flow_runner.py`、`graph_analysis.py` | 12 条 → `flow_runtime` | **`miles_ai`** |
+| ③ RAG 编排 | `langchain/vectorstores.py`、`langchain/kb_retrieval.py`、`langgraph/graphs/rag_qa.py`、`langgraph/grading.py` | 8 条 → `rag` | **`miles_ai`** |
+
+另有两处需一并处理：`langchain/visual_embeddings.py → rag.parse.media.is_image_file`（纯函数，应下沉 `miles_common`）；`langchain/__init__.py` 的惰性 shim 需按新归属清理。
+
+> 佐证归属：`flow_runtime/runtime_factory.py` 已 import `integrations.langgraph.flow_runner`，`flow_runtime/nodes/grade_nodes.py` 已 import `integrations.langgraph.grading`——②③ 与 L2 本应同包。剔除 ②③ 后，`miles_ai → miles_integration` 的剩余引用（`generative.constants`、`chat.multimodal`、`langchain.chat_models` 等）才是真正的 L3 适配依赖。
+
+### 11.2 目标形态（11 包）
+
+新增 `miles_integration`（`src/miles_integration/`，承接 ① 桶），依赖 `miles_core`、`miles_common`，**不得 import `miles_ai`**。依赖图在 §2 基础上插入一条：`miles_ai → miles_integration`。
+
+### 11.3 判据与验收
+
+1. `miles_integration` 对 `miles_ai` 引用为 **0**（import-linter `forbidden` 契约）；反向 `miles_ai → miles_integration` 保留。
+2. ②③ 文件完成归位；`flow_runtime` 与 `rag` 的引擎装配（`runtime_factory`、模块级 `flow_runner` 引用）全部转为包内引用。
+3. OpenAPI 快照零漂移、全量 `pytest` 通过；Flow 调试运行与 Agent RAG 对话专项回归。
+4. 与 §2 一致的 `miles_ai` 判据（不得 import `miles_portal`）继续成立。
