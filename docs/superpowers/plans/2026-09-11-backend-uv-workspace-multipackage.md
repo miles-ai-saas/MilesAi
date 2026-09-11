@@ -32,51 +32,44 @@ GATE_LAYERS='cd backend && lint-imports'                                # Task 3
 
 ## Task 0.1: 基线快照与隔离分支
 
-**Files:**
-- Create: `.worktrees/workspace-migration/`（worktree，若使用）
+**执行者**：由主控（controller）直接执行，不派 subagent——本任务不产生代码改动，只记录基线。
 
-- [ ] **Step 1: 建隔离 worktree**
+**决策（已与用户确认）**：在主 checkout 直接开分支（不建 worktree）；跳过镜像体积基线与 compose 运行时冒烟，瘦身改用 `uv tree --package miles-runner` 断言。
+
+- [ ] **Step 1: 建隔离分支**
 
 ```bash
 cd /Users/xiezhigang/Projects/miles/MilesAI
-git worktree add .worktrees/workspace-migration -b refactor/backend-uv-workspace
-cd .worktrees/workspace-migration/backend
+git checkout -b refactor/backend-uv-workspace
+git rev-parse --short HEAD        # 记为本分支 merge-base
 ```
 
 - [ ] **Step 2: 记录绿色基线**
 
 ```bash
+cd /Users/xiezhigang/Projects/miles/MilesAI/backend
 python -m pytest -q 2>&1 | tail -5
 ruff check . && ruff format --check .
 python scripts/export_openapi.py --check
 python -m pytest --collect-only -q 2>&1 | tail -3    # 记录测试用例数
+sha256sum openapi/openapi.snapshot.json
 ```
 
-Expected: 全部通过；把用例数、失败数（应为 0）记录到本任务下方。
+Expected: 全部通过；把用例数、失败数（应为 0）、快照 sha256 记入下方"基线记录"。
 
-- [ ] **Step 3: 记录 runner 镜像体积（迁移后对比用）**
+- [ ] **Step 3: 确认分支状态**
 
 ```bash
 cd /Users/xiezhigang/Projects/miles/MilesAI
-docker buildx build --platform linux/amd64 -f Dockerfile.mcp-runner -t milesai-mcp-runner:baseline --load . 2>&1 | tail -5
-docker image inspect milesai-mcp-runner:baseline --format '{{.Size}}'
-```
-
-Expected: 输出镜像字节数。**记入下方"基线记录"。**
-
-- [ ] **Step 4: 提交基线记录**
-
-```bash
-cd /Users/xiezhigang/Projects/miles/MilesAI
-git checkout -b refactor/backend-uv-workspace 2>/dev/null || true
-# 仅在有改动时提交
-git status --short
+git branch --show-current          # 应为 refactor/backend-uv-workspace
+git status --short                 # 应为空
 ```
 
 **基线记录（执行后填写）：**
 - 测试用例数：____
-- runner 镜像体积（bytes）：____
-- OpenAPI 快照 sha256：____（`sha256sum backend/openapi/openapi.snapshot.json`）
+- OpenAPI 快照 sha256：____
+- **merge-base commit**：____
+- runner 镜像体积：**跳过**（用户决策；改用 `uv tree --package miles-runner` 断言依赖闭包）
 
 ---
 
@@ -354,38 +347,30 @@ git mv app/runner/session.py app/exec/sandbox/session.py
 git mv app/runner/script_exec.py app/exec/sandbox/script_exec.py
 ```
 
-- [ ] **Step 2: 抽 `normalize_tools`**
-
-先看现状：
+- [ ] **Step 2: 抽 `normalize_tools`（必须逐行等价搬运，禁止重写）**
 
 ```bash
 rg -n "_normalize_tools" app/tenant/mcp/client.py app/runner/main.py
 ```
 
-在 `app/exec/mcp/tools.py` 写入：
+在 `app/exec/mcp/tools.py` 写入模块头，然后把 `app/tenant/mcp/client.py` 中 `_normalize_tools` 的**函数实现整段**（含 docstring）**原样**搬入并重命名为 `normalize_tools`：
 
 ```python
 """MCP 工具列表归一化（下沉自 tenant.mcp.client，供 Runner 复用）。"""
 
 from __future__ import annotations
 
-from typing import Any
-
-# 把 MCP tools/list 的原始响应归一为 [{name, description, inputSchema}, ...]
-def normalize_tools(raw: Any) -> list[dict]:
-    """归一化 MCP ``tools/list`` 结果；非预期结构返回空列表。"""
-    if isinstance(raw, dict):
-        raw = raw.get("tools", [])
-    if not isinstance(raw, list):
-        return []
-    out: list[dict] = []
-    for item in raw:
-        if isinstance(item, dict) and item.get("name"):
-            out.append(item)
-    return out
+# ← 此处粘贴 client.py 中 _normalize_tools 的原始实现（docstring 与全部
+#   分支：list / dict["tools"] / item.name-or-id-or-"tool" / description-or-summary /
+#   inputSchema-or-input_schema / annotations / 字符串项），仅把函数名
+#   _normalize_tools 改为 normalize_tools。禁止简化分支或改默认值。
 ```
 
-> 落地要求：把 `tenant/mcp/client.py` 中 `_normalize_tools` 的**原始实现**整段搬入 `normalize_tools`（保持逐行等价），并在 `client.py` 内改为 `from app.exec.mcp.tools import normalize_tools` 后调用，删除本地私有实现。`app/runner/main.py` 改 import `normalize_tools`，并把调用点 `_normalize_tools(...)` 改名。
+> 该函数现有 4 类输入形状与 2 类 item 形态（dict / str），是**行为契约**；任何简化（如去掉 `id`/`summary` 回退、去掉字符串分支、忽略 `annotations`）都会造成静默回归。
+
+然后：
+- `app/tenant/mcp/client.py`：删除本地 `_normalize_tools` 定义，顶部改 `from app.exec.mcp.tools import normalize_tools`，并把 3 处调用点（约 225/229/241 行）改名。
+- `app/runner/main.py`：改 import `normalize_tools`，调用点 `_normalize_tools(...)` 改名。
 
 - [ ] **Step 3: 修正被搬文件的内部 import**
 
@@ -717,7 +702,15 @@ miles-exec = { workspace = true }
 | `miles-worker` | `miles-worker` | `miles-portal`, `miles-ai`, `miles-core`, `miles-common` |
 | `miles-runner` | `miles-runner` | `miles-exec`, `miles-common` |
 
-第三方依赖从原 `backend/pyproject.toml` 的 `dependencies` / `optional-dependencies` 里**按实际 import 分配**；extras 落点：`parse-docling`、`multimodal` → `miles-ai`；`otel` → `miles-server`。
+第三方依赖从原 `backend/pyproject.toml` 的 `dependencies` / `optional-dependencies` 里**按实际 import 分配**。原文件 extras 共 5 个，落点必须全部覆盖（漏一个 = 该域可选能力装不上）：
+
+| 原 extra | 落点包 | 内容 |
+|----------|--------|------|
+| `agent-stack` | `miles-ai` | `langchain-openai` / `langchain-community` / `deepagents`（integrations/deepagents 用） |
+| `parse-docling` | `miles-ai` | `docling`（rag/parse/loaders 用） |
+| `multimodal` | `miles-ai` | `pytesseract` / `openai-whisper`（rag 解析与 OCR/ASR 用） |
+| `otel` | `miles-server` | `opentelemetry-*`（`miles_core.infra.otel` 由 lifespan 调用，故由装配包声明） |
+| `dev` | workspace 根 `[dependency-groups]` | `pytest` / `pytest-asyncio` / `ruff==0.15.13` / `import-linter` |
 
 - [ ] **Step 4: 建包目录与占位 `__init__.py`**
 
@@ -926,8 +919,19 @@ SKIP_PARTS = {".venv", "__pycache__", "milesai.egg-info", ".ruff_cache", ".pytes
 
 
 def rewrite(text: str) -> str:
-    """按最长前缀规则改写文本中的 app.* 模块路径。"""
+    """改写文本中的 app.* 模块路径（含字符串字面量）。"""
     return _RE.sub(lambda m: _MAP[m.group(0)], text)
+
+
+# `scripts` 是 backend 根级包（无 app. 前缀），codemod 的 app.* 规则覆盖不到；
+# 但它有 43 处 `from scripts.x import` 根引用（cli.py / scripts 内部 / tests）。
+# 用「仅匹配 import 语句」的定向正则，避免误伤普通字符串里的 "scripts.xxx"。
+_RE_SCRIPTS = re.compile(r"(?<![\w.])(from|import)([ \t]+)scripts(?=[.\s])")
+
+
+def rewrite_scripts_imports(text: str) -> str:
+    """把 ``from scripts.x import`` / ``import scripts`` 改为 ``miles_server.scripts.*``。"""
+    return _RE_SCRIPTS.sub(lambda m: f"{m.group(1)}{m.group(2)}miles_server.scripts", text)
 
 
 def iter_files() -> list[Path]:
@@ -951,7 +955,7 @@ def main() -> int:
     changed = 0
     for path in iter_files():
         src = path.read_text(encoding="utf-8")
-        new = rewrite(src)
+        new = rewrite_scripts_imports(rewrite(src))
         if new != src:
             changed += 1
             rel = path.relative_to(BACKEND)
@@ -987,10 +991,15 @@ git diff --stat | tail -3
 ```bash
 rg -n "(?<![\w.])app\.(tenant|admin|core|infra|models|rag|integrations|flow_runtime|common|utils|apps|middlewares|workers|runner|deletion|marketplace|exec|main)\b" \
   --glob '!**/.venv/**' --glob '!**/__pycache__/**' --glob '!**/tools/rename_to_workspace.py' \
-  packages tests scripts alembic . 2>/dev/null | head -20 || echo "OK: 无残留"
+  packages tests scripts alembic . 2>/dev/null | head -20 || echo "OK: app.* 无残留"
+
+# scripts 根引用（codemod 的第二趟）
+rg -n "(?<![\w.])(from|import)[ \t]+scripts(?=[.\s])" packages tests alembic -g '*.py' | head -20 \
+  || echo "OK: scripts.* 无残留"
+rg -c "miles_server\.scripts" packages/miles-server/src/miles_server/cli.py
 ```
 
-Expected: 仅剩 `tools/rename_to_workspace.py` 自身与文档；Python 代码零残留。
+Expected: 两条均 `OK`；`cli.py` 内 `miles_server.scripts` 计数 ≥ 6。若 scripts 命中里出现 `tests/`，也一并改为 `miles_server.scripts.*`。
 
 - [ ] **Step 5: 校验包可编译**
 
@@ -1421,7 +1430,27 @@ milesai = "miles_server.cli:main"
 
 并把 `alembic`、`psycopg2-binary`、`click`、`uvicorn[standard]`、`python-multipart`、`python-jose[cryptography]`、`bcrypt`、`email-validator`、`croniter` 等运行入口所需依赖补入 `dependencies`（按实际 import 补齐）。
 
-- [ ] **Step 2: 验证 CLI**
+- [ ] **Step 2: 修 CLI 三处硬编码（否则运行即报错）**
+
+`packages/miles-server/src/miles_server/cli.py`：
+
+1. **`click.version_option` 的包名**：`package_name="milesai"` 在改包后已不是发行版名，会取不到版本。改为：
+
+```python
+@click.version_option(package_name="miles-server", prog_name="milesai")
+```
+
+2. **删除 `_BACKEND_ROOT` / `sys.path.insert` 块**（工作区安装后无需，且 `parents[1]` 已指向错误位置）。
+
+3. **`scripts.*` 根引用**（共 6 处：`db_ops` ×4、`verify_db`、`backfill_media_assets`）→ `miles_server.scripts.*`：
+
+```bash
+rg -n "(from|import)[ \t]+scripts(?=[.\s])" packages/miles-server/src/miles_server/cli.py
+```
+
+若仍有命中，逐个改为 `from miles_server.scripts.<mod> import ...`（Task 2.3 的 codemod 应已处理，此处为核对兜底）。
+
+- [ ] **Step 3: 验证 CLI**
 
 ```bash
 cd backend
@@ -1682,15 +1711,16 @@ CMD ["uvicorn", "miles_runner.main:app", "--host", "0.0.0.0", "--port", "8090"]
 cd /Users/xiezhigang/Projects/miles/MilesAI
 docker build -f Dockerfile.api -t milesai-api:ws . 2>&1 | tail -5
 docker build -f Dockerfile.mcp-runner -t milesai-mcp-runner:ws . 2>&1 | tail -5
-docker image inspect milesai-mcp-runner:ws --format '{{.Size}}'
 ```
 
-Expected: 构建成功；记录 runner 体积并与 Task 0.1 基线对比（应显著下降）。
+Expected: 构建成功。
 
 ```bash
-docker run --rm milesai-mcp-runner:ws python -c "import miles_runner.main, sys; print('runner OK')"
+docker run --rm milesai-mcp-runner:ws python -c "import miles_runner.main; print('runner OK')"
 docker run --rm milesai-api:ws python -c "import miles_server.main; print('api OK')"
 ```
+
+Expected: `runner OK` / `api OK`。镜像体积基线已按用户决策跳过，瘦身证据由 Task 3.2 Step 3 与 Task 4.1 Step 6 的 `uv tree` 断言提供。
 
 - [ ] **Step 6: 提交**
 
@@ -1912,7 +1942,7 @@ sha256sum openapi/openapi.snapshot.json    # 与 Task 0.1 基线一致
 
 Expected: `OpenAPI snapshot OK`；sha256 与基线一致。
 
-- [ ] **Step 3: 三镜像构建与冒烟**
+- [ ] **Step 3: 三镜像构建与 import 冒烟**
 
 ```bash
 cd /Users/xiezhigang/Projects/miles/MilesAI
@@ -1920,22 +1950,29 @@ make build-all
 docker run --rm milesai-api:latest python -c "import miles_server.main; print('api OK')"
 docker run --rm milesai-worker:latest python -c "import miles_worker.app; print('worker OK')"
 docker run --rm milesai-mcp-runner:latest python -c "import miles_runner.main; print('runner OK')"
-docker image inspect registry.cn-shenzhen.aliyuncs.com/kye_secure/milesai-mcp-runner:latest --format '{{.Size}}'
 ```
 
-- [ ] **Step 4: 运行时冒烟（起 compose 应用栈）**
+Expected: 三个 `* OK`。（镜像体积对比按用户决策跳过。）
+
+- [ ] **Step 4: 应用装配冒烟（本地 ASGI，无需基础设施）**
+
+compose 运行时冒烟按用户决策**跳过**（需外部 PG/Redis/MinIO/Milvus 与 `.env`，延后至人工在具备基础设施的环境执行）。改用本地 ASGI 装配冒烟，等价验证"装配根可构造、路由已挂载"：
 
 ```bash
-cd /Users/xiezhigang/Projects/miles/MilesAI
-docker compose up -d --build
-sleep 20
-curl -fsS http://localhost:8000/api/v1/health
-curl -fsS http://localhost:8090/runner/v1/health
-docker compose logs --tail=50 worker | rg -i "ready|error" | tail -5
-docker compose down
+cd backend
+uv run python - <<'PY'
+from miles_server.apps.application import create_app
+app = create_app()
+paths = sorted(app.openapi()["paths"])
+for must in ("/api/v1/health", "/api/v1/open/agents/{agent_id}/chat"):
+    assert must in paths, f"缺路由: {must}\n{paths[:20]}"
+admin = [p for p in paths if p.startswith("/api/admin/v1")]
+assert admin, "缺 /api/admin/v1 路由"
+print(f"routes OK: total={len(paths)} admin={len(admin)}")
+PY
 ```
 
-Expected: 两个 health 返回 `{"status":"ok"...}`；worker 无 import 错误并 ready。
+Expected: `routes OK: total=<N> admin=<M>`（N/M 与迁移前一致；`test_api_e2e.py` 已覆盖同一 `create_app()` 的请求级行为）。
 
 - [ ] **Step 5: 风控与开放面回归**
 
@@ -1946,14 +1983,14 @@ uv run python -m pytest tests/api tests/tenant/agents/test_api_access.py tests/t
 
 Expected: 通过（覆盖 403/429 信封与 `/api/v1/open/*` 的 X-API-Key 鉴权）。
 
-- [ ] **Step 6: runner 依赖闭包与体积对比**
+- [ ] **Step 6: runner 依赖闭包断言（瘦身证据）**
 
 ```bash
 cd backend
 uv tree --package miles-runner | rg -i "langchain|langgraph|litellm|weaviate|pymilvus|torch|sqlalchemy|celery" && echo "FAIL: 含重依赖" || echo "OK: 依赖闭包最小"
 ```
 
-Expected: `OK: 依赖闭包最小`；runner 镜像体积较基线下降（记录前后数值）。
+Expected: `OK: 依赖闭包最小`（这是沙箱瘦身与安全收益的主证据；镜像体积基线按用户决策跳过）。
 
 - [ ] **Step 7: 最终提交与合并准备**
 
@@ -1970,9 +2007,10 @@ git log --oneline main..HEAD
 
 **终验记录（执行后填写）：**
 - 测试用例数：____（基线 ____）
-- runner 镜像体积：____（基线 ____，降幅 ____%）
 - `lint-imports`：6 契约 PASSED
 - OpenAPI sha256：____（与基线一致）
+- runner 依赖闭包：`uv tree` 无重依赖（体积基线与 compose 冒烟按用户决策跳过）
+- 延后人工执行：`docker compose up -d --build` 运行时冒烟（需外部基础设施与 `.env`）
 
 ---
 
