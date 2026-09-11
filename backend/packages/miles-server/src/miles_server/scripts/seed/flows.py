@@ -1,6 +1,6 @@
 """租户流程画布种子（幂等，可重复执行）。
 
-命令：`python cli.py seed flows`
+命令：`milesai seed flows`
 依赖：先执行 `seed tenant`（需存在租户）。
 
 每个租户写入 2 条已发布示例流程（RAG + 简单对话）。

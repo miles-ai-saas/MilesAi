@@ -1,6 +1,6 @@
 """租户 MCP 服务种子（多传输/状态场景，幂等）。
 
-命令：``python cli.py seed mcp``
+命令：``milesai seed mcp``
 依赖：``seed tenant``（需已有租户）。
 
 预置 ``tools_cache`` 便于工作台演示；真实调用需本地 MCP 或点击「同步」。

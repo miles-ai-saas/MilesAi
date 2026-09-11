@@ -43,7 +43,7 @@ Celery 任务在租户侧的镜像记录，主要由 **文档入库** 写入。
 | `id` | UUID 主键 |
 | `tenant_id` | 租户隔离 |
 | `celery_task_id` | Celery 任务 ID |
-| `task_name` | 如 `app.workers.tasks.ingest.ingest_document` |
+| `task_name` | 如 `miles_worker.tasks.ingest.ingest_document` |
 | `status` | `pending` / `running` / `success` / `failed` / `cancelled` |
 | `resource_type` / `resource_id` | 关联资源（如 `kb_document`） |
 | `fail_reason` | 失败原因 |
@@ -129,13 +129,13 @@ Worker → integrations/generative/jobs/runner
 Celery Beat (60s) → tick_agent_schedules → run_agent_schedule → AgentService.chat
 ```
 
-需独立启动：`python cli.py beat`。详见 [agent-schedules.md](./agent-schedules.md)。
+需独立启动：`milesai beat`。详见 [agent-schedules.md](./agent-schedules.md)。
 
 ### 4.4 启动命令
 
 ```bash
-python cli.py worker    # 消费 default,parse,ocr,asr,embed
-python cli.py beat      # 定时任务扫描（可选）
+milesai worker    # 消费 default,parse,ocr,asr,embed
+milesai beat      # 定时任务扫描（可选）
 ```
 
 ---

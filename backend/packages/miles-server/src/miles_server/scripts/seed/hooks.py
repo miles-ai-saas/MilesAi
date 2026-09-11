@@ -1,7 +1,7 @@
 """租户 HTTP 钩子种子（幂等，可重复执行）。
 
 写入 HookDefinition + HookBinding；示例 Webhook 默认 **停用**，避免开发环境误打外网。
-命令：``python cli.py seed hooks``
+命令：``milesai seed hooks``
 依赖：``seed tenant``。
 """
 

@@ -1,6 +1,6 @@
 """租户提示词模板种子（幂等，可重复执行）。
 
-命令：`python cli.py seed prompts`
+命令：`milesai seed prompts`
 依赖：先执行 `seed tenant`、`seed categories`。
 """
 

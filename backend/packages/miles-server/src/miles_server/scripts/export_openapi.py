@@ -42,7 +42,10 @@ def main() -> int:
         return 1
     current = SNAPSHOT.read_text(encoding="utf-8")
     if current != text:
-        print("OpenAPI snapshot drift. Run: python scripts/export_openapi.py --write", file=sys.stderr)
+        print(
+            "OpenAPI snapshot drift. Run: python -m miles_server.scripts.export_openapi --write",
+            file=sys.stderr,
+        )
         return 1
     print("OpenAPI snapshot OK")
     return 0

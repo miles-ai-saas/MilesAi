@@ -77,7 +77,7 @@ Worker:
     → status READY
 ```
 
-入口 L1：`tenant.kb.services.ingest`；L2：`app.rag.pipeline.run_ingest_pipeline`。
+入口 L1：`tenant.kb.services.ingest`；L2：`miles_ai.rag.pipeline.run_ingest_pipeline`。
 
 ---
 

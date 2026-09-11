@@ -1,6 +1,6 @@
 """广告知识库种子：创建 KB、上传示例文档并同步向量化入库。
 
-命令：``python cli.py seed kb-advertising``
+命令：``milesai seed kb-advertising``
 依赖：``seed tenant``、``seed model-catalog``；对象存储与向量库需可用。
 
 幂等：按租户 + 知识库名「广告知识库」、文档文件名去重；已 READY 的文档跳过。
@@ -49,7 +49,7 @@ async def _resolve_seed_embedding_model(session: AsyncSession) -> ModelConfig:
         )
     )
     if not model:
-        raise RuntimeError("未找到通义 text-embedding-v4 内置模型，请先执行: python cli.py seed model-catalog")
+        raise RuntimeError("未找到通义 text-embedding-v4 内置模型，请先执行: milesai seed model-catalog")
     return model
 
 
@@ -153,7 +153,7 @@ async def _ensure_document(
 async def _prepare_advertising_kb(session: AsyncSession) -> list[str]:
     tenant_ids = list((await session.execute(select(Tenant.id))).scalars().all())
     if not tenant_ids:
-        raise RuntimeError("无租户，请先执行: python cli.py seed tenant")
+        raise RuntimeError("无租户，请先执行: milesai seed tenant")
 
     doc_ids: list[str] = []
     for tenant_id in tenant_ids:

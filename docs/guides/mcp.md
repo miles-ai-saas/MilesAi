@@ -47,8 +47,8 @@ Model Context Protocol（MCP）在 MilesAI 中用于**注册远程工具服务**
 
 ```bash
 cd backend
-python cli.py seed mcp          # 仅 MCP
-python cli.py init-db           # 含 seed all
+milesai seed mcp          # 仅 MCP
+milesai init-db           # 含 seed all
 ```
 
 每个租户幂等写入 **8 条**示例（按 `name` 去重，重复执行会更新配置）：
@@ -206,7 +206,7 @@ cd backend && alembic upgrade head   # 唯一迁移 001，按 ORM 建表
 ```bash
 cd backend
 export MCP_RUNNER_TOKEN=dev-runner-token   # 与 API 侧保持一致
-uvicorn app.runner.main:app --host 0.0.0.0 --port 8090 --reload
+uvicorn miles_runner.main:app --host 0.0.0.0 --port 8090 --reload
 ```
 
 验证：
@@ -228,7 +228,7 @@ MCP_RUNNER_TOKEN=dev-runner-token
 
 ```bash
 cd backend
-uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+uvicorn miles_server.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
 **步骤 5 — 准备 STDIO MCP 命令**
@@ -305,7 +305,7 @@ docker exec milesai-api curl -s http://mcp-runner:8090/health
 
 | 项 | 本地开发 | Docker Compose |
 |----|----------|----------------|
-| Runner 启动 | 手动 `uvicorn app.runner.main:app` | `mcp-runner` 容器自动起 |
+| Runner 启动 | 手动 `uvicorn miles_runner.main:app` | `mcp-runner` 容器自动起 |
 | API 连 Runner | `http://localhost:8090` | `http://mcp-runner:8090` |
 | 预装 MCP | 需本机 `npm install -g` | 镜像内已装 `server-everything` |
 | 隔离强度 | 与 API 同机，开发够用 | 只读 FS、cap_drop、独立容器 |

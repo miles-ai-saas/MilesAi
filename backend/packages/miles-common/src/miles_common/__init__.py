@@ -1,4 +1,4 @@
-"""跨模块公共能力：响应、异常、分页、全局异常处理。"""
+"""跨模块公共能力：响应、异常与通用 schema。"""
 
 from miles_common.exceptions import (
     AppError,

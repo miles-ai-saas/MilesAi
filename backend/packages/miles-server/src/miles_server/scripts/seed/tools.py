@@ -3,7 +3,7 @@
 内置工具见 ``miles_portal.tenant.tools.builtin_registry``。本脚本写入少量**可直连第三方 API** 的 HTTP 工具模板；
 创建后请在工具详情中填写 ``headers`` / 参数中的 API Key（见各工具描述）。
 
-命令：``python cli.py seed tools``
+命令：``milesai seed tools``
 依赖：``seed tenant``、``seed categories``。
 """
 

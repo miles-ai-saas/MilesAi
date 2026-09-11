@@ -9,7 +9,7 @@
 
 ## 1. 目标
 
-1. **RAG 能力**集中在 `app/rag/`（Parse → Chunk → Index → Retrieve → Generate）。
+1. **RAG 能力**集中在 `miles_ai.rag`（Parse → Chunk → Index → Retrieve → Generate）。
 2. **`infra/`** 只对接外部系统原语（DB、S3、向量库客户端）。
 3. **`integrations/`**（L3）只封装 LangChain / LangGraph / LiteLLM / DeepAgents。
 4. **`tenant/`** 承载 AI 平台与组织设置 API，为 L0/L1，挂载 `/api/v1`。
@@ -29,7 +29,7 @@ flowchart TB
         UC[KB 状态机 / 配额 / Agent 编排]
     end
 
-    subgraph L2["L2 RAG — app/rag/"]
+    subgraph L2["L2 RAG — miles_ai/rag/"]
         P[parse]
         C[chunk]
         I[index]
@@ -39,13 +39,13 @@ flowchart TB
         R --> G
     end
 
-    subgraph L3["L3 集成 — app/integrations/"]
+    subgraph L3["L3 集成 — miles_ai/integrations/"]
         LC[langchain]
         LG[langgraph]
         LLM[litellm]
     end
 
-    subgraph L4["L4 基础设施 — app/infra/"]
+    subgraph L4["L4 基础设施 — miles_core/infra/"]
         DB[(db)]
         OSS[(storage)]
         VS[(vector_store 客户端)]
@@ -63,11 +63,11 @@ flowchart TB
 
 | 层 | 路径 | 做什么 | 不做什么 |
 |----|------|--------|----------|
-| **L0** | `tenant/*/views`、`schemas` | 路由、校验、响应 | 解析 PDF、拼向量 Filter |
-| **L1** | `tenant/*/services` | 事务、软删、配额、调 `rag`、业务状态机 | 直接 `PyPDFLoader` |
-| **L2** | `app/rag/` | 文档解析、分片、向量索引门面、检索策略、RAG prompt/answer | FastAPI、HTTP |
-| **L3** | `app/integrations/` | LC Loader/Splitter 封装、LangGraph 图、LiteLLM | `tenant_id` 业务规则 |
-| **L4** | `app/infra/` | 连接池、S3 put/get、向量库 upsert/search/delete | `hybrid_alpha`、RRF、KB 状态机 |
+| **L0** | `miles_portal/tenant/*/views`、`schemas` | 路由、校验、响应 | 解析 PDF、拼向量 Filter |
+| **L1** | `miles_portal/tenant/*/services` | 事务、软删、配额、调 `rag`、业务状态机 | 直接 `PyPDFLoader` |
+| **L2** | `miles_ai/rag/` | 文档解析、分片、向量索引门面、检索策略、RAG prompt/answer | FastAPI、HTTP |
+| **L3** | `miles_ai/integrations/` | LC Loader/Splitter 封装、LangGraph 图、LiteLLM | `tenant_id` 业务规则 |
+| **L4** | `miles_core/infra/` | 连接池、S3 put/get、向量库 upsert/search/delete | `hybrid_alpha`、RRF、KB 状态机 |
 
 ### 2.2 依赖规则（强制）
 
@@ -89,8 +89,8 @@ L0 → L1 → L2 → L3 → L4
 
 | 形态 | 合规目标 | 现网 |
 |------|----------|------|
-| 读共享 ORM | 跨面共读的 ORM 上移 `app/models/<域>/`，admin 经共享模型读取 | `mkt_*` → `app/models/marketplace` |
-| 复用纯函数 | 下沉 `common/` | `slugify` → `app.common.slug`、`validate_api_key` → `app.common.api_key` |
+| 读共享 ORM | 跨面共读的 ORM 上移 `miles_core.models.<域>`，admin 经共享模型读取 | `mkt_*` → `miles_core.models.marketplace` |
+| 复用纯函数 | 下沉 `common/` | `slugify` → `miles_common.slug`、`validate_api_key` → `miles_common.api_key` |
 | 复用 Repository | 允许复用管理**同域数据**的租户 Repository（运营即该数据管理面） | `tenant.system.repositories.tenant.TenantRepository` |
 
 **禁止**：
@@ -98,52 +98,112 @@ L0 → L1 → L2 → L3 → L4
 - admin import 租户域 **service 业务用例**（事务 / 状态机 / 编排入口）
 - `tenant/` 反向依赖 `admin/`
 
-> 新增 admin 读取统一先评估上移共享层（`app/models/<域>/` / `app/common/`），勿加深层 import。当前 admin 对 tenant 的引用仅剩 `TenantRepository`（上表合规形态）；共享 DTO 位于中立域（`common.schemas.tag` / `models.marketplace.dto`）。
+> 新增 admin 读取统一先评估上移共享层（`miles_core.models.<域>` / `miles_common`），勿加深层 import。当前 admin 对 tenant 的引用仅剩 `TenantRepository`（上表合规形态）；共享 DTO 位于中立域（`miles_common.schemas.tag` / `miles_core.models.marketplace.dto`）。
+
+### 2.4 包边界（uv workspace）
+
+自 2026-09-11 的 uv workspace 重构起，后端由单包 `app/` 拆为 `backend/packages/` 下的 **10 个包**；源码位于 `backend/packages/<pkg>/src/<module>/`，`backend/app/`、`backend/cli.py`、`backend/scripts/` 均已不存在。
+
+| 包 | 职责 | 层位 |
+|----|------|------|
+| `miles_common` | 跨模块公共能力：响应 / 异常 / 通用 schema、`idgen`、`redis_keys`、`cron`、`slug` | 最底层 |
+| `miles_exec` | 沙箱与 MCP 协议内核（`mcp.spec/constants/rpc`、`sandbox.session/script_exec`） | 叶子 |
+| `miles_core` | L4 基础设施 + 核心 ORM + 配置 / 安全 / 租户上下文 + `web/`（通用 Web 管道）+ `risk/` + `jobs/` | L4 |
+| `miles_ai` | L2 RAG + L3 集成（LangChain / LangGraph / LiteLLM / DeepAgents）+ `flow_runtime` | L2/L3 |
+| `miles_portal` | L0/L1 租户域（`tenant/`）+ `deletion/` + `marketplace/` + 域 API 注册 | L0/L1 |
+| `miles_admin` | L0/L1 运营域（`admin/`）+ 域 API 注册 | L0/L1 |
+| `miles_openapi` | 对外开放面 `/api/v1/open/*` 的视图与鉴权依赖 | L0 |
+| `miles_server` | 装配根：`create_app`、`main`、`cli`、`scripts/`（**零域端点**） | 装配 |
+| `miles_worker` | Celery app 与任务 | 装配 |
+| `miles_runner` | MCP / 脚本沙箱独立 HTTP 服务（自带 settings） | 装配 |
+
+**依赖 DAG（严格单向）**：
+
+```mermaid
+flowchart LR
+    common[miles_common]
+    exec[miles_exec]
+    core[miles_core]
+    ai[miles_ai]
+    portal[miles_portal]
+    admin[miles_admin]
+    openapi[miles_openapi]
+    server[miles_server]
+    worker[miles_worker]
+    runner[miles_runner]
+
+    exec --> common
+    core --> common
+    ai --> core
+    portal --> ai
+    admin --> portal
+    openapi --> portal
+    server --> openapi
+    server --> admin
+    worker --> portal
+    runner --> exec
+```
+
+**硬判据（CI 契约，违反即失败）**：
+
+| # | 判据 |
+|---|------|
+| 1 | `miles_ai` 不得 import `miles_portal` |
+| 2 | `miles_openapi` 不得 import `miles_admin` |
+| 3 | `miles_portal` 不得 import `miles_admin` |
+| 4 | `miles_runner` 只依赖 `miles_exec` / `miles_common`（不得 import `miles_core` / `miles_ai` / `miles_portal` / `miles_admin` / `miles_openapi`） |
+| 5 | `miles_core` 不得 import `miles_ai` |
+
+**强制机制**：上述 DAG 与硬判据由 `backend/.importlinter` 固化为 6 条契约（1 条 `layers` + 5 条 `forbidden`），在 CI 与本地经 `make layers-check`（即 `import-linter`）执行；`make check` 已包含该步。
+
+### 2.5 API 层归属
+
+「API 入口」拆成三件事，各有明确归属：
+
+| 层次 | 内容 | 归属 |
+|------|------|------|
+| ① 域自持 API 层 | 路由、views、域 DTO（schemas）、域依赖与中间件 | `miles_portal.registration.register_portal(app)`（`/api/v1`）、`miles_admin.registration.register_admin(app)`（`/api/admin/v1`）、`miles_openapi.registration.register_open(app)`（`/api/v1/open/*`） |
+| ② 通用 Web 管道 | 统一异常信封（`exception_handlers`）、trace / access_log / 风控中间件（`register_http_middlewares`） | `miles_core.web` |
+| ③ 装配根 | ASGI `app` 对象、CORS、lifespan、路由 include 顺序、uvicorn 目标、CLI | `miles_server.apps.application.create_app`（仅组合 + CORS + lifespan，**不放 views**） |
+
+**对外路径契约不变**：`/api/v1`（租户）、`/api/admin/v1`（运营）、`/api/v1/open/*`（开放面）；拆分包与调整 API 层归属**不改变**任何 URL。
 
 ---
 
 ## 3. 目标目录结构
 
 ```text
-backend/app/
-├── tenant/                      # L0/L1：AI 平台 + 组织设置（/api/v1）
-│   └── kb/
-│       ├── views/
-│       ├── services/            # 薄用例：调 rag + 写日志/配额
-│       └── repositories/
+backend/packages/
+├── miles-common/src/miles_common/       # 跨模块公共能力（响应/异常/schema、idgen、redis_keys）
+├── miles-exec/src/miles_exec/           # 沙箱 + MCP 协议内核
+├── miles-core/src/miles_core/           # L4
+│   ├── infra/                           # db / redis / storage / vector_store
+│   ├── models/                          # 核心 ORM（按域分子包）
+│   ├── web/                             # 通用 Web 管道（异常处理、中间件）
+│   ├── risk/  jobs/  utils/
 │
-├── rag/                         # L2 RAG 能力（核心）
-│   ├── parse/                   # loaders + backends（pypdf / docling / 图 / 音）
-│   ├── chunk/                   # chunk_documents、TextChunk、page_no
-│   ├── index/                   # upsert_chunk_vector、search_vectors 门面
-│   ├── retrieve/                # search_kb_chunks、hybrid、RRF、multi_kb
-│   ├── generate/                # context、retrieve_hits、rag_answer
-│   ├── load/                    # 按租户加载 KB（供 Agent/流程）
-│   └── pipeline/                # run_ingest_pipeline（Parse → Chunk → Index）
+├── miles-ai/src/miles_ai/               # L2/L3
+│   ├── rag/                             # parse / chunk / index / retrieve / generate / load / pipeline
+│   ├── integrations/                    # langchain / langgraph / litellm / deepagents
+│   └── flow_runtime/                    # 流程节点 → 调 rag / integrations
 │
-├── integrations/                # L3
-│   ├── langchain/
-│   ├── langgraph/
-│   ├── litellm/
-│   └── deepagents/
-│
-├── infra/                       # L4
-│   ├── db/
-│   ├── storage/
-│   └── vector_store/            # Protocol + weaviate|milvus|pgvector 适配器
-│
-├── flow_runtime/                # 流程节点 → 调 rag / integrations
-├── deletion/                    # 删除编排 → infra.vector + PG
-└── models/                      # ORM 实体
+├── miles-portal/src/miles_portal/       # L0/L1：tenant/ + deletion/ + marketplace/ + register_portal
+├── miles-admin/src/miles_admin/         # L0/L1：admin/ + register_admin
+├── miles-openapi/src/miles_openapi/     # /api/v1/open/* + register_open
+├── miles-server/src/miles_server/       # 装配根：apps/application.py、main.py、cli.py、scripts/
+├── miles-worker/src/miles_worker/       # Celery app + tasks/
+└── miles-runner/src/miles_runner/       # 沙箱 HTTP 服务（自带 settings）
 ```
 
-### 3.1 `app/rag/` 子模块
+> 目录树只列关键子路径；完整职责与依赖见 §2.4。
+
+### 3.1 `miles_ai.rag` 子模块
 
 | 子包 | 职责 | 要点 |
 |------|------|------|
 | `rag.parse` | `load_documents_from_bytes`（`loaders.py`） | `backends/pypdf`、`backends/docling`；`image_parser` / `audio_parser` |
 | `rag.chunk` | `chunk_documents`、`split_text` | Docling→MarkdownHeader+Recursive；pypdf 按页；`TextChunk.page_no` |
-| `rag.index` | `upsert_chunk_vector`、`search_vectors` | 门面；业务代码直引 `app.rag.index.gateway` |
+| `rag.index` | `upsert_chunk_vector`、`search_vectors` | 门面；业务代码直引 `miles_ai.rag.index.gateway` |
 | `rag.retrieve` | `search_kb_chunks`、`multi_kb`、RRF | vector / hybrid；PG 关键词回退 |
 | `rag.generate` | `format_hits_context`、`rag_answer` | Agent / 流程 RAG 上下文 |
 | `rag.pipeline` | `run_ingest_pipeline` | L1 `tenant.kb.ingest` 调用 |
@@ -223,27 +283,27 @@ query
 | 领域服务 | `*Service` | `KbIngestService`（L1） |
 | 管道步骤 | 动词短语 | `load_documents_from_bytes`、`chunk_documents` |
 | 模块级常量 | `UPPER_SNAKE` | `RETRIEVAL_HYBRID` |
-| 禁止 | 无逻辑 re-export 包 | 业务代码应 `import app.rag.*`，勿在 `tenant`/`integrations` 再套一层转发 |
+| 禁止 | 无逻辑 re-export 包 | 业务代码应 `import miles_ai.rag.*`，勿在 `tenant`/`integrations` 再套一层转发 |
 
 ### 5.2 Import 示例
 
 ```python
 # L1 入库
-from app.rag.pipeline import run_ingest_pipeline, IngestInput
+from miles_ai.rag.pipeline import run_ingest_pipeline, IngestInput
 
 # L2 RAG
-from app.rag.parse.loaders import load_documents_from_bytes
-from app.rag.chunk import chunk_documents
-from app.rag.index.gateway import upsert_chunk_vector, search_vectors
-from app.rag.retrieve import search_kb_chunks, resolve_retrieval_mode
-from app.rag.generate import format_hits_context, rag_answer
+from miles_ai.rag.parse.loaders import load_documents_from_bytes
+from miles_ai.rag.chunk import chunk_documents
+from miles_ai.rag.index.gateway import upsert_chunk_vector, search_vectors
+from miles_ai.rag.retrieve import search_kb_chunks, resolve_retrieval_mode
+from miles_ai.rag.generate import format_hits_context, rag_answer
 
 # L1/L3 检索（kb 域向量化 embed_query_for_kb；检索封装仍在 vectorstores 壳）
-from app.tenant.kb.services.embeddings import embed_query_for_kb
-from app.integrations.langchain.vectorstores import search_kb
+from miles_portal.tenant.kb.services.embeddings import embed_query_for_kb
+from miles_ai.integrations.langchain.vectorstores import search_kb
 
 # L4（仅向量库客户端，不含 upsert/search 门面）
-from app.infra.vector_store import get_vector_store
+from miles_core.infra.vector_store import get_vector_store
 ```
 
 ### 5.3 类型
@@ -253,7 +313,7 @@ from app.infra.vector_store import get_vector_store
 
 ### 5.4 单文件体量与子包拆分（强制）
 
-**规范**：`app/` 下单个 `.py` 源文件 **不得超过 500 行**（`wc -l`；测试、`alembic/versions/` 除外）。达到或超过 500 行时，**必须**在合入前拆分，禁止在同文件继续叠加业务逻辑。
+**规范**：`backend/packages/*/src/` 下单个 `.py` 源文件 **不得超过 500 行**（`wc -l`；测试、`alembic/versions/` 除外）。达到或超过 500 行时，**必须**在合入前拆分，禁止在同文件继续叠加业务逻辑。
 
 **推荐拆分方式（L1 `tenant/*/services`）**：按**聚合**建子包 `services/{aggregate}/`，与领域目录同名或语义一致（如 `agent`、`compliance`、`marketplace`）。详见 [backend/README.md](../../backend/README.md) § 单文件体量、§ services/ 子包。
 
@@ -262,7 +322,7 @@ from app.infra.vector_store import get_vector_store
 | 门面 | `{aggregate}/service.py` 用 Mixin 组合；`{aggregate}/__init__.py` 唯一对外 export |
 | 子模块命名 | 职责名即可（`crud.py`、`chat.py`），避免 `agent_crud.py` 重复前缀 |
 | 共享代码 | 多聚合共用的模块留在 `services/` 根（如 `context.py`、`pipeline.py`） |
-| import | 对外路径保持稳定，例如 `from app.tenant.agents.services.agent import AgentService` |
+| import | 对外路径保持稳定，例如 `from miles_portal.tenant.agents.services.agent import AgentService` |
 | 拆分后体量 | 每个子文件宜 **300–400 行**；仍 ≥500 则继续按职责切文件 |
 | 其它路径 | `integrations/`、`flow_runtime/`、`rag/` 大文件同理：按子包或子模块拆，不引入 `tenant` 依赖 |
 
@@ -270,7 +330,7 @@ from app.infra.vector_store import get_vector_store
 
 ### 5.5 文档注释（类 / 方法 / 函数）
 
-**强制**：`app/` 业务代码中，每个 **模块**、**类（含 Mixin）**、**方法**、**模块级函数** 须有 **中文 docstring**（三引号字符串，紧接在定义下一行）。
+**强制**：`backend/packages/*/src/` 业务代码中，每个 **模块**、**类（含 Mixin）**、**方法**、**模块级函数** 须有 **中文 docstring**（三引号字符串，紧接在定义下一行）。
 
 | 类型 | 内容要点 |
 |------|----------|
@@ -287,8 +347,8 @@ from app.infra.vector_store import get_vector_store
 
 | 包 | 职责 |
 |----|------|
-| `app/rag` | L2：Parse / Chunk / Index / Retrieve / Generate / pipeline |
-| `app/integrations` | L3：LangChain、LangGraph、LiteLLM、DeepAgents |
+| `miles_ai.rag` | L2：Parse / Chunk / Index / Retrieve / Generate / pipeline |
+| `miles_ai.integrations` | L3：LangChain、LangGraph、LiteLLM、DeepAgents |
 
 ---
 

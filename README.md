@@ -26,7 +26,7 @@ cp .env.example .env
 docker compose up -d --build
 
 # 初始化数据库（迁移 + 种子）
-cd backend && python cli.py init-db
+cd backend && uv run milesai init-db
 ```
 
 如果基础设施也在本地测试，可一并启动：
@@ -131,13 +131,12 @@ docker compose -f docker-compose.infra.yml up -d   # 或本机 PG/Redis
 
 cp backend/.env.example backend/.env   # POSTGRES_HOST=localhost
 cd backend
-python3 -m venv .venv && source .venv/bin/activate
-pip install -e ".[dev]"
-python cli.py init-db              # 迁移 + 种子（API 启动不会自动写种子）
-python cli.py serve                # 启动 API（debug 时默认热重载）
+uv sync --all-packages --group dev
+uv run milesai init-db              # 迁移 + 种子（API 启动不会自动写种子）
+uv run milesai serve                # 启动 API（debug 时默认热重载）
 # 另开终端：
-python cli.py worker               # Celery Worker（入库 / 生成 / 定时执行）
-python cli.py beat                 # Celery Beat（智能体 Cron；Docker 全栈已含 beat 服务）
+uv run milesai worker               # Celery Worker（入库 / 生成 / 定时执行）
+uv run milesai beat                 # Celery Beat（智能体 Cron；Docker 全栈已含 beat 服务）
 ```
 
 建库、迁移与种子：[docs/operations/database-setup.md](docs/operations/database-setup.md)。项目根：`./scripts/milesai.sh serve`、`./scripts/init-db.sh`。
@@ -166,15 +165,14 @@ curl -s -X POST http://localhost:8000/api/v1/auth/login \
 
 ```
 MilesAi/
-├── backend/                 # FastAPI
-│   ├── app/
-│   │   ├── tenant/          # 租户 API（kb、agents、flows…）
-│   │   ├── rag/             # L2：parse / chunk / index / retrieve / generate / pipeline
-│   │   ├── integrations/  # L3：LangChain、LangGraph、DeepAgents
-│   │   ├── infra/           # DB、Redis、对象存储、向量库客户端
-│   │   ├── flow_runtime/    # 画布节点 registry
-│   │   └── models/
-│   └── alembic/
+├── backend/                 # FastAPI（uv workspace）
+│   ├── packages/            # 10 个包：miles-common/exec/core/ai/portal/admin/openapi/server/worker/runner
+│   │   ├── miles-portal/    # 租户 API（kb、agents、flows…）+ deletion + marketplace
+│   │   ├── miles-ai/        # L2 rag / L3 integrations / flow_runtime
+│   │   ├── miles-core/      # L4 infra + models + web
+│   │   └── miles-server/    # 装配根：apps、main、cli、scripts
+│   ├── alembic/
+│   └── tests/
 ├── ui/                      # 前端应用
 │   ├── workbench/           # 租户工作台
 │   └── admin/               # 运营后台
@@ -187,7 +185,7 @@ MilesAi/
 └── docs/                    # → docs/README.md
 ```
 
-**分层**：`tenant/*/views` → `services` → `app/rag`（RAG）/ `app/integrations`（模型与图）→ `app/infra`（详见 [docs/architecture/layering.md](docs/architecture/layering.md)）。
+**分层**：`miles_portal/tenant/*/views` → `services` → `miles_ai/rag`（RAG）/ `miles_ai/integrations`（模型与图）→ `miles_core/infra`（详见 [docs/architecture/layering.md](docs/architecture/layering.md)）。
 
 ---
 
@@ -253,14 +251,15 @@ REST 接口以运行中的 **OpenAPI**（`/docs`）为准。
 **多模态 Worker**（OCR / 转写）：
 
 ```bash
-cd backend && pip install -e ".[multimodal]"
+cd backend && uv sync --all-packages
+# 多模态依赖（OCR / Whisper 等）已在 miles-ai 无条件声明，随 uv sync 安装
 # macOS: brew install tesseract tesseract-lang
 ```
 
 **智能体 AI 栈**（LangGraph / DeepAgents）：
 
 ```bash
-cd backend && pip install -e ".[agent-stack]"
+cd backend && uv sync --all-packages
 ```
 
 **E2E 脚本**：`scripts/p2-e2e.sh`（需 API 已启动）。

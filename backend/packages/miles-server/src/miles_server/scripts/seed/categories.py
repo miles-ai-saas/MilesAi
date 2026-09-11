@@ -1,7 +1,7 @@
 """工作台分类种子：全平台全局字典（幂等 upsert）。
 
 数据：`scripts/seed/data/sys_categories_defaults.json`
-命令：`python cli.py seed categories`
+命令：`milesai seed categories`
 """
 
 from __future__ import annotations

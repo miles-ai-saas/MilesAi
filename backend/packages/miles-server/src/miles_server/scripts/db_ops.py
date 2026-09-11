@@ -1,4 +1,4 @@
-"""数据库迁移与种子（供 cli.py 与 scripts/*.py 共用）。"""
+"""数据库迁移与种子（供 `miles_server.cli` 与 `miles_server.scripts.*` 共用）。"""
 
 from __future__ import annotations
 

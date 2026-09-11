@@ -11,7 +11,7 @@
 | 目标 | 说明 |
 |------|------|
 | 多租户隔离 | `tenant_id` 贯穿 PG、对象 key、向量 Filter |
-| 可替换基础设施 | 对象存储 `app.infra.storage`；向量库 `app.infra.vector_store` |
+| 可替换基础设施 | 对象存储 `miles_core.infra.storage`；向量库 `miles_core.infra.vector_store` |
 | KB 级向量模型 | 创建时绑定 `embedding_model_config_id`（`model_type=embedding`），**创建后不可改** |
 | 异步入库 | 上传 → Celery `ingest_document` → 解析 → 分片 → 向量化 → 向量库 |
 | 可观测 | 文档状态机 + `fail_reason` + 任务表 `task_records` |
@@ -147,7 +147,7 @@ embed_query_for_kb(kb, query) → search_kb_chunks（Weaviate hybrid 或 向量+
 按 chunk_id 回表 kb_document_chunks + kb_documents → SearchHit[]
 ```
 
-智能体 / 流程 RAG：`search_kb` / `search_multi_kb`（`app.integrations.langchain.vectorstores`），多库时 **每个 KB 独立生成查询向量** 后合并按 score 排序。
+智能体 / 流程 RAG：`search_kb` / `search_multi_kb`（`miles_ai.integrations.langchain.vectorstores`），多库时 **每个 KB 独立生成查询向量** 后合并按 score 排序。
 
 ### 3.4 删除编排
 
@@ -175,8 +175,8 @@ embed_query_for_kb(kb, query) → search_kb_chunks（Weaviate hybrid 或 向量+
 | 生成 | `rag/generate/` | 上下文与 `rag_answer` |
 | 加载 | `rag/load/knowledge_bases.py` | 租户 KB 列表（Agent/流程用） |
 | 集成 | `integrations/langchain/embeddings.py`、`vectorstores.py` | 按 KB 维度 embed；`search_kb` 封装 |
-| 删除 | `app.deletion.document` / `cascade.before_delete_kb` | 衍生数据与引用 |
-| 任务 | `app.workers.tasks.ingest` | Celery 入口 |
+| 删除 | `miles_portal.deletion.document` / `cascade.before_delete_kb` | 衍生数据与引用 |
+| 任务 | `miles_worker.tasks.ingest` | Celery 入口 |
 
 ---
 
@@ -236,7 +236,7 @@ OpenAPI：`/docs`（运行实例）。
 
 ### 6.4 文档解析（Parse）
 
-入库 **Parse** 在 `app.rag.parse`（`load_documents_from_bytes` → `chunk_documents`），与检索/向量库解耦。
+入库 **Parse** 在 `miles_ai.rag.parse`（`load_documents_from_bytes` → `chunk_documents`），与检索/向量库解耦。
 
 **当前支持上传并入库的格式：**
 
@@ -261,7 +261,7 @@ OpenAPI：`/docs`（运行实例）。
 **安装 Docling（Worker 与 API 若走 docling 需一致）：**
 
 ```bash
-cd backend && pip install -e ".[parse-docling]"
+cd backend && uv sync --all-packages   # 解析 / 多模态依赖已在 miles-ai 声明
 ```
 
 `docling` 模式下除 PDF 外还可解析 `DOCLING_EXTENSIONS` 中的版式/图片扩展名；**API 上传白名单**已包含 Office（docx/pptx/xlsx）与多模态常用格式（见 `upload_policy.py`）。
@@ -297,7 +297,7 @@ cd backend && pip install -e ".[parse-docling]"
 **Worker 启动**（示例）：
 
 ```bash
-celery -A app.workers.app worker -l info -Q default,parse,ocr,asr,embed
+celery -A miles_worker.app worker -l info -Q default,parse,ocr,asr,embed
 ```
 
 ---

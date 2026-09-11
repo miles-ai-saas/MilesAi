@@ -86,7 +86,7 @@ async def get_default_embedding_model(db: AsyncSession) -> ModelConfig:
         )
     ).scalar_one_or_none()
     if not model:
-        raise BadRequestError("未找到默认向量化内置模型，请执行: python cli.py seed model-catalog")
+        raise BadRequestError("未找到默认向量化内置模型，请执行: `milesai seed model-catalog`")
     return model
 
 
@@ -102,7 +102,7 @@ def get_default_embedding_model_sync(db: Session) -> ModelConfig:
         )
     ).scalar_one_or_none()
     if not model:
-        raise BadRequestError("未找到默认向量化内置模型，请执行: python cli.py seed model-catalog")
+        raise BadRequestError("未找到默认向量化内置模型，请执行: `milesai seed model-catalog`")
     return model
 
 

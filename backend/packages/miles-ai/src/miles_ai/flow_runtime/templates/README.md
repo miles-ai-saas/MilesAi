@@ -19,7 +19,7 @@
 ## 租户种子
 
 ```bash
-python cli.py seed flows   # 每租户 2 条【示例】流程：RAG 问答、简单对话
+milesai seed flows   # 每租户 2 条【示例】流程：RAG 问答、简单对话
 ```
 
 ## `rag_flow.json` 数据流

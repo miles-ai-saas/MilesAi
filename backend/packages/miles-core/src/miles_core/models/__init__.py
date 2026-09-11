@@ -3,7 +3,7 @@
 租户域表（``tenant/*/models``）不在此 re-export，避免循环引用；
 统一由 ``miles_server.registry.load_all_models`` 按序导入。
 
-域目录：platform / kb / flow / model / media / meta / task / storage / agent / marketplace。
+域目录：platform / kb / flow / model / media / meta / task / storage / agent / marketplace / risk。
 """
 
 from miles_core.models.agent import (

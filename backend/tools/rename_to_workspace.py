@@ -8,6 +8,9 @@
   cd backend
   .venv/bin/python tools/rename_to_workspace.py --dry-run
   .venv/bin/python tools/rename_to_workspace.py --apply
+
+注意：本脚本为一次性 codemod，已在 Task 2.2 执行完毕；`app.workers.app`
+一条当时为人工修正（映射到 `miles_worker.app`），保留此处仅为记录，**勿直接重跑**。
 """
 
 from __future__ import annotations
@@ -38,7 +41,7 @@ RULES: list[tuple[str, str]] = [
     ("app.utils.health_checks", "miles_core.utils.health_checks"),
     ("app.utils.idgen", "miles_common.idgen"),
     ("app.utils.orm", "miles_core.utils.orm"),
-    ("app.workers.app", "miles_core.jobs.celery_app"),
+    ("app.workers.app", "miles_worker.app"),
     ("app.runner.script_exec", "miles_exec.sandbox.script_exec"),
     ("app.runner.session", "miles_exec.sandbox.session"),
     ("app.runner.limits", "miles_runner.limits"),
@@ -72,7 +75,7 @@ _RE = re.compile(rf"(?<![\w.])(?:{_ALT})(?![\w])")
 
 # 说明：
 # 1) 规则按长度降序匹配，故 `app.workers.app` 先于 `app.workers` 命中，前者映射到
-#    miles_core.jobs.celery_app（投递方），后者映射到 miles_worker（任务实现包）。
+#    miles_worker.app（投递方），后者映射到 miles_worker（任务实现包）。
 # 2) 同一 regex 同时作用于 import 语句与字符串字面量（patch 目标、celery 任务名、
 #    include 列表），因此任务名会一致地变为 miles_worker.tasks.*。
 

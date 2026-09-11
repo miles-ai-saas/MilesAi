@@ -97,8 +97,8 @@
 ### 7.1 本地开发
 
 ```text
-终端 1: uvicorn app.runner.main:app --port 8090
-终端 2: uvicorn app.main:app --port 8000  (MCP_RUNNER_URL=http://localhost:8090)
+终端 1: uvicorn miles_runner.main:app --port 8090
+终端 2: uvicorn miles_server.main:app --port 8000  (MCP_RUNNER_URL=http://localhost:8090)
 ```
 
 - Runner 与 API 同机，隔离弱于容器，适合日常开发。

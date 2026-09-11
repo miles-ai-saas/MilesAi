@@ -72,7 +72,7 @@ def _public_message(exc: Exception) -> str:
         orig = getattr(exc, "orig", None)
         detail = str(orig or exc).lower()
         if "does not exist" in detail or "undefinedcolumn" in detail:
-            return "数据库结构未同步，请执行 python cli.py migrate 后重试"
+            return "数据库结构未同步，请执行 `milesai migrate` 后重试"
         return "数据库操作失败，请稍后重试或联系管理员"
     return "服务器内部错误"
 

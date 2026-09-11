@@ -7,7 +7,7 @@ dependencies = [
     "miles-common",
     "sqlalchemy[asyncio]>=2.0.36",
     "asyncpg>=0.30.0",
-    # app/infra/db/sync.py 在模块级 create_engine 同步引擎，导入即需要 psycopg2
+    # packages/miles-core/src/miles_core/infra/db/sync.py 在模块级 create_engine 同步引擎，导入即需要 psycopg2
     "psycopg2-binary>=2.9.10",
     "alembic>=1.14.0",
     "pydantic-settings>=2.6.0",

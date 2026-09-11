@@ -2,7 +2,7 @@
 
 写入 ORM，并在 ``SKILLS_DATA_ROOT/{tenant_id}/{slug}/`` 落盘完整技能目录：
 ``SKILL.md``、``references/``、``scripts/``（已存在的附属文件不覆盖）。
-命令：``python cli.py seed skills``
+命令：``milesai seed skills``
 依赖：``seed tenant``、``seed categories``。
 """
 

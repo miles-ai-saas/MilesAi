@@ -54,7 +54,7 @@ hook_bindings        挂载（hook_id, scope, target_id?, trigger, priority, is_
 | 值 | 说明 | 状态 |
 |----|------|------|
 | `http` | 向 `config.url` 发 HTTP 请求，body 为 payload（见 §5 现状 / §6 目标契约） | **已实现** |
-| `python` | 租户级 Python 扩展 | ✅ `app.tenant.hooks.plugins.*` 模块 + `handle` |
+| `python` | 租户级 Python 扩展 | ✅ `miles_portal.tenant.hooks.plugins.*` 模块 + `handle` |
 
 ### 3.2 挂载时机 `trigger`
 
