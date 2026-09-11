@@ -1963,6 +1963,16 @@ EOF
 
 **统一方案**：先用 `uv export` 把该入口包的**第三方**依赖导出为固定版本的 requirements（`--no-emit-workspace` 排除本地包），安装后再以 `--no-deps` 逐个安装本地包。这样既走 lock 保证可复现，又让各镜像只装所需成员包。
 
+**执行期对原稿的 5 处修正（已实测）**：
+
+1. **保持各镜像原有 `FROM`**：api/worker 用 `python:3.11.9-uv-ffmpeg`，runner **保持 `python:3.11.9-full`**（需更全的基础镜像跑 MCP stdio/node）。原稿只贴 RUN 片段，未指示改基础镜像。
+2. **本地成员包用 `-e`（editable）安装**：compose 的 api 服务带 `profiles: [dev]` 且挂载 `./backend:/app/backend:ro`，非 editable 会让挂载代码完全不生效（行为退化）。
+3. **成员包安装也要带 `-i https://mirrors.aliyun.com/pypi/simple --trusted-host mirrors.aliyun.com`**：editable 安装需现场构建，hatchling 由 build isolation 拉取，否则构建期打 pypi.org。
+4. **删除 `ENV PYTHONPATH=/app/backend`**：新布局下该目录不是可 import 的根，保留只会误导。
+5. **新增仓库根 `.dockerignore`**（排除 `.git`/`.superpowers`/`docs`/`ui`/`**/__pycache__`/`**/.venv`/`**/node_modules`/cache）：上下文当前 3.6GB（`ui/` 2.1GB + `backend/.venv` 1.5GB），不排除则构建闸门不可用，且 `COPY backend` 会把 1.5GB `.venv` 烤进镜像。
+
+**已验证**：`uv export --frozen --no-dev --no-emit-workspace --package miles-server` → 4468 行；`--package miles-runner` → **166 行 / 13 个包**（无 langchain/langgraph/litellm/weaviate/pymilvus/torch/sqlalchemy/celery/alembic/psycopg2）。`/tmp` 实测仅 COPY 依赖闭包的成员 pyproject 即可成功 export（api 8 个 / worker 6 个 / runner 3 个）。
+
 - [ ] **Step 1: 重写 Dockerfile.api**
 
 ```dockerfile
