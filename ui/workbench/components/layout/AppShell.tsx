@@ -11,6 +11,7 @@ import { useEffect } from "react";
 import { api } from "@/lib/api";
 import { useAuthHydrated, useAuthStore } from "@/lib/auth-store";
 import { BrandHeader } from "@/components/brand/brand-header";
+import { RouteProgress } from "@/components/layout/RouteProgress";
 import { SystemShell } from "@/components/layout/SystemShell";
 import { SectionLinks } from "@/components/layout/SectionLink";
 import { UserMenu } from "@/components/layout/UserMenu";
@@ -42,16 +43,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return <>{children}</>;
   }
 
-  if (section === "system") {
-    return (
-      <MetaCacheProvider>
-        <SystemShell>{children}</SystemShell>
-      </MetaCacheProvider>
-    );
-  }
-
-  return (
-    <MetaCacheProvider>
+  const content =
+    section === "system" ? (
+      <SystemShell>{children}</SystemShell>
+    ) : (
       <div className={`flex flex-col bg-surface-muted ${fullHeight ? "h-dvh overflow-hidden" : "min-h-screen"}`}>
         <header className="flex h-14 shrink-0 items-center gap-3 border-b border-line bg-surface px-4">
           <BrandHeader href="/workbench/dashboard" />
@@ -64,10 +59,19 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
         </header>
 
-        <main className={`min-h-0 flex-1 ${fullHeight ? "flex h-0 flex-col overflow-hidden" : "overflow-auto"} ${fullBleed ? "" : "p-4 lg:px-6"}`}>
+        <main
+          key={pathname}
+          className={`animate-page-enter min-h-0 flex-1 ${fullHeight ? "flex h-0 flex-col overflow-hidden" : "overflow-auto"} ${fullBleed ? "" : "p-4 lg:px-6"}`}
+        >
           {children}
         </main>
       </div>
+    );
+
+  return (
+    <MetaCacheProvider>
+      <RouteProgress />
+      {content}
     </MetaCacheProvider>
   );
 }

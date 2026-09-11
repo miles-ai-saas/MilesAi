@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { AdminSidebar, ADMIN_SIDEBAR_STORAGE_KEY } from "@/components/layout/AdminSidebar";
 import { AdminTopBar } from "@/components/layout/AdminTopBar";
+import { RouteProgress } from "@/components/layout/RouteProgress";
 import { getAdminBreadcrumbs } from "@/lib/admin-nav";
 import { adminApi } from "@/lib/api";
 import { isLoginPath, redirectToLogin, useAdminAuthStore, useAdminHydrated } from "@/lib/auth-store";
@@ -65,7 +66,12 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   if (onLoginPage) return <>{children}</>;
 
   if (!hydrated || !token) {
-    return <p className="flex min-h-screen items-center justify-center text-ink-muted">加载中…</p>;
+    return (
+      <>
+        <RouteProgress />
+        <p className="flex min-h-screen items-center justify-center text-ink-muted">加载中…</p>
+      </>
+    );
   }
 
   const breadcrumbs = getAdminBreadcrumbs(pathname);
@@ -76,30 +82,33 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <div className="flex min-h-screen bg-surface-muted">
-      <div className="relative z-30 hidden shrink-0 overflow-visible lg:block">
-        <AdminSidebar
-          pathname={pathname}
-          collapsed={sidebarCollapsed}
-          onToggleCollapse={toggleSidebarCollapsed}
-        />
-      </div>
-
-      {mobileNavOpen && (
-        <div className="fixed inset-0 z-40 flex lg:hidden">
-          <button type="button" className="absolute inset-0 bg-black/40" aria-label="关闭菜单" onClick={() => setMobileNavOpen(false)} />
-          <div className="relative z-50 flex h-full shadow-panel">
-            <AdminSidebar pathname={pathname} hideCollapseButton onNavigate={() => setMobileNavOpen(false)} />
-          </div>
+    <>
+      <RouteProgress />
+      <div className="flex min-h-screen bg-surface-muted">
+        <div className="relative z-30 hidden shrink-0 overflow-visible lg:block">
+          <AdminSidebar
+            pathname={pathname}
+            collapsed={sidebarCollapsed}
+            onToggleCollapse={toggleSidebarCollapsed}
+          />
         </div>
-      )}
 
-      <div className="relative z-0 flex min-h-screen min-w-0 flex-1 flex-col">
-        <AdminTopBar breadcrumbs={breadcrumbs} username={admin?.username} role={admin?.role} onMenuOpen={() => setMobileNavOpen(true)} onLogout={logout} />
-        <main className="min-h-0 flex-1 overflow-auto">
-          <div className="admin-page-shell">{children}</div>
-        </main>
+        {mobileNavOpen && (
+          <div className="fixed inset-0 z-40 flex lg:hidden">
+            <button type="button" className="absolute inset-0 bg-black/40" aria-label="关闭菜单" onClick={() => setMobileNavOpen(false)} />
+            <div className="relative z-50 flex h-full shadow-panel">
+              <AdminSidebar pathname={pathname} hideCollapseButton onNavigate={() => setMobileNavOpen(false)} />
+            </div>
+          </div>
+        )}
+
+        <div className="relative z-0 flex min-h-screen min-w-0 flex-1 flex-col">
+          <AdminTopBar breadcrumbs={breadcrumbs} username={admin?.username} role={admin?.role} onMenuOpen={() => setMobileNavOpen(true)} onLogout={logout} />
+          <main key={pathname} className="animate-page-enter min-h-0 flex-1 overflow-auto">
+            <div className="admin-page-shell">{children}</div>
+          </main>
+        </div>
       </div>
-    </div>
+    </>
   );
 }
