@@ -1902,6 +1902,17 @@ EOF
 - Modify: `backend/README.md`、`README.md`、`docker/README.md`
 - Modify: 其余引用 `app.*` 路径的 docs（`docs/architecture/technical-design.md`、`docs/guides/*.md`、`docs/features/*.md`）
 
+- [ ] **Step 0: 清掉 Phase 1/2 中登记的过时 docstring（逐步累积，勿漏）**
+
+```bash
+cd backend
+rg -n "分页|全局异常处理" app/common/__init__.py
+```
+
+- `app/common/__init__.py` docstring 仍写「响应、异常、分页、全局异常处理」，但 `pagination` 与 `handlers` 已迁出。改为「跨模块公共能力：响应、异常与通用 schema。」（Phase 1 Task 1.2 的 scope 未授权改它，故留到这里。）
+
+> 后续任务若再发现同类过时 docstring，追加到本 Step 列表，不要就地偷偷扩大该任务 scope。
+
 - [ ] **Step 1: 批量替换文档中的模块路径**
 
 ```bash
