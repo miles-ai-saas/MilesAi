@@ -1,14 +1,14 @@
 """内置 code_execution 工具：Runner 沙箱执行 Python 代码片段。
 
 将用户输入的 Python 代码包装为 ``run(params)`` 函数，
-通过 ``app.runner.script_exec.run_python_script`` 在隔离子进程中执行。
+通过 ``app.exec.sandbox.script_exec.run_python_script`` 在隔离子进程中执行。
 限制：30s 超时、256MB 内存、8000 字符 stdout 截断。
 """
 
 import asyncio
 
 from app.common.exceptions import BadRequestError
-from app.runner.script_exec import run_python_script
+from app.exec.sandbox.script_exec import run_python_script
 
 DEFAULT_TIMEOUT_SEC = 30
 DEFAULT_MAX_MEMORY_MB = 256

@@ -1,15 +1,15 @@
 import pytest
 
 from app.common.exceptions import BadRequestError
-from app.tenant.mcp.client import _normalize_tools
-from app.tenant.mcp.rpc import normalize_tool_call_result
+from app.exec.mcp.rpc import normalize_tool_call_result
+from app.exec.mcp.tools import normalize_tools
 from app.tenant.mcp.sse_transport import _assert_same_origin, _json_from_sse_data
 from app.tenant.mcp.security import validate_mcp_endpoint_url
 
 
 def test_normalize_tools_from_list():
     raw = [{"name": "search", "description": "Search places"}]
-    assert _normalize_tools(raw) == [{"name": "search", "description": "Search places"}]
+    assert normalize_tools(raw) == [{"name": "search", "description": "Search places"}]
 
 
 def test_normalize_tool_call_result_text():

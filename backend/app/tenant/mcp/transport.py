@@ -8,7 +8,7 @@ MCP 传输类型归一化（HTTP / SSE / STDIO / Custom）。
 - custom：自定义协议适配器，通过 connection_config.adapter_url 转发 JSON-RPC
 """
 
-from app.tenant.mcp.constants import McpTransport
+from app.exec.mcp.constants import McpTransport
 
 
 def normalize_transport(transport: str | McpTransport | None) -> McpTransport:

@@ -9,7 +9,7 @@ import httpx
 
 from app.common.exceptions import BadRequestError
 from app.core.config import get_settings
-from app.tenant.mcp.runner.spec import RunSpec
+from app.exec.mcp.spec import RunSpec
 
 
 class RunnerClient:

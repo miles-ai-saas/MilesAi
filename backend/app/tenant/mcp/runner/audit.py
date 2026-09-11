@@ -9,7 +9,7 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.tenant.mcp.models import McpRunnerSession
-from app.tenant.mcp.runner.spec import RunSpec
+from app.exec.mcp.spec import RunSpec
 
 
 def _args_digest(args: list[str]) -> str:

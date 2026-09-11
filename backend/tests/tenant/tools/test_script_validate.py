@@ -1,7 +1,7 @@
 import pytest
 
 from app.common.exceptions import BadRequestError
-from app.tenant.tools.script_validate import validate_script_source
+from app.exec.sandbox.validate import validate_script_source
 
 
 def test_validate_script_accepts_run():

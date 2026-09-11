@@ -28,8 +28,9 @@ from typing import Any
 import httpx
 
 from app.common.exceptions import BadRequestError
-from app.tenant.mcp.constants import McpTransport
-from app.tenant.mcp.rpc import normalize_tool_call_result, parse_jsonrpc_result
+from app.exec.mcp.constants import McpTransport
+from app.exec.mcp.rpc import normalize_tool_call_result, parse_jsonrpc_result
+from app.exec.mcp.tools import normalize_tools
 from app.tenant.mcp.security import validate_mcp_endpoint_url
 from app.tenant.mcp.sse_transport import legacy_sse_json_rpc, streamable_http_json_rpc
 from app.tenant.mcp.transport import normalize_transport
@@ -59,36 +60,6 @@ def _request_headers(connection_config: dict | None) -> dict[str, str]:
             if k and v is not None:
                 base[str(k)] = str(v)
     return base
-
-
-def _normalize_tools(raw: list | dict) -> list[dict]:
-    """将 tools/list 的多种返回形状统一为 ``[{name, description, inputSchema?, annotations?}]``。
-
-    ``inputSchema`` / ``annotations`` 供智能体 function calling 构造参数 schema 与确认策略；
-    旧缓存（无这两键）仍可解析，只是参数为空、默认需确认。
-    """
-    if isinstance(raw, list):
-        items = raw
-    elif isinstance(raw, dict) and "tools" in raw:
-        items = raw["tools"]
-    else:
-        return []
-    out: list[dict] = []
-    for item in items:
-        if isinstance(item, dict):
-            name = item.get("name") or item.get("id") or "tool"
-            desc = item.get("description") or item.get("summary") or ""
-            entry: dict = {"name": str(name), "description": str(desc)}
-            schema = item.get("inputSchema") or item.get("input_schema")
-            if isinstance(schema, dict):
-                entry["inputSchema"] = schema
-            annotations = item.get("annotations")
-            if isinstance(annotations, dict):
-                entry["annotations"] = annotations
-            out.append(entry)
-        elif isinstance(item, str):
-            out.append({"name": item, "description": ""})
-    return out
 
 
 async def _simple_post_json_rpc(
@@ -222,11 +193,11 @@ async def fetch_mcp_tools(
             timeout=timeout,
         )
         if isinstance(result, dict) and "tools" in result:
-            tools = _normalize_tools(result["tools"])
+            tools = normalize_tools(result["tools"])
             if tools:
                 return tools
         if isinstance(result, list):
-            tools = _normalize_tools(result)
+            tools = normalize_tools(result)
             if tools:
                 return tools
     except BadRequestError:
@@ -238,7 +209,7 @@ async def fetch_mcp_tools(
         async with httpx.AsyncClient(timeout=timeout, follow_redirects=False) as client:
             resp = await client.get(url, headers={"Accept": "application/json"})
             if resp.is_success and "json" in resp.headers.get("content-type", ""):
-                tools = _normalize_tools(resp.json())
+                tools = normalize_tools(resp.json())
                 if tools:
                     return tools
     except Exception:

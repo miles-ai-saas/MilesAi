@@ -5,7 +5,7 @@ from uuid import uuid4
 import pytest
 
 from app.common.exceptions import BadRequestError
-from app.tenant.mcp.runner.spec import NetworkMode, RunSpec, validate_run_spec
+from app.exec.mcp.spec import NetworkMode, RunSpec, validate_run_spec
 
 
 def _base_spec(**kwargs) -> RunSpec:

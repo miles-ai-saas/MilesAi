@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 
 from app.common.exceptions import BadRequestError
-from app.runner.script_exec import run_python_script
+from app.exec.sandbox.script_exec import run_python_script
 
 _STDLIB_SCRIPT = """
 def run(params):

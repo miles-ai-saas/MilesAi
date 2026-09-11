@@ -10,9 +10,9 @@ from uuid import UUID
 from pydantic import BaseModel, Field, field_validator
 
 from app.common.exceptions import BadRequestError
-from app.core.tenant import TenantContext
 
 if TYPE_CHECKING:
+    from app.core.tenant import TenantContext
     from app.tenant.mcp.models import McpService
 
 _SHELL_METACHAR_RE = re.compile(r"[;|&$`<>\\n\r]")

@@ -13,8 +13,8 @@ import textwrap
 import time
 import uuid
 
-from app.runner.session import SessionResult, _kill, _preexec
-from app.tenant.tools.script_validate import validate_script_source
+from app.exec.sandbox.session import SessionResult, _kill, _preexec
+from app.exec.sandbox.validate import validate_script_source
 
 _BOOTSTRAP = textwrap.dedent(
     """

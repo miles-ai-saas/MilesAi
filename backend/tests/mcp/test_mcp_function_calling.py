@@ -19,7 +19,7 @@ from app.integrations.langchain.tools import (
     mcp_param_alias,
     select_agent_tools,
 )
-from app.tenant.mcp.client import _normalize_tools
+from app.exec.mcp.tools import normalize_tools
 from app.tenant.tools.invoke import context as invoke_context
 from app.tenant.tools.services import mcp_tools
 
@@ -85,7 +85,7 @@ def test_compose_mcp_tool_name_is_stable_and_capped():
 
 
 def test_normalize_tools_preserves_schema_and_annotations():
-    out = _normalize_tools(
+    out = normalize_tools(
         [
             {
                 "name": "search",

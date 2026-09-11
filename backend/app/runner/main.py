@@ -10,13 +10,13 @@ from fastapi import Depends, FastAPI, Header, HTTPException
 from pydantic import BaseModel, Field
 
 from app.core.config import get_settings
+from app.exec.mcp.rpc import normalize_tool_call_result
+from app.exec.mcp.spec import RunSpec, validate_run_spec
+from app.exec.mcp.tools import normalize_tools
+from app.exec.sandbox.script_exec import run_python_script
+from app.exec.sandbox.session import SessionResult, run_mcp_session
+from app.exec.sandbox.validate import validate_script_source
 from app.runner.limits import RunnerLimits
-from app.runner.script_exec import run_python_script
-from app.runner.session import SessionResult, run_mcp_session
-from app.tenant.mcp.client import _normalize_tools
-from app.tenant.mcp.rpc import normalize_tool_call_result
-from app.tenant.mcp.runner.spec import RunSpec, validate_run_spec
-from app.tenant.tools.script_validate import validate_script_source
 
 settings = get_settings()
 limits = RunnerLimits(
@@ -135,7 +135,7 @@ async def list_tools(
 
         async def handler(client):
             raw = await client.request("tools/list", {})
-            return _normalize_tools(raw if isinstance(raw, (list, dict)) else [])
+            return normalize_tools(raw if isinstance(raw, (list, dict)) else [])
 
         result = await run_mcp_session(
             spec,

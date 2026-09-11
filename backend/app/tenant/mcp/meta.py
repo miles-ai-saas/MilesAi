@@ -7,7 +7,7 @@
 """
 
 from app.common.schemas.enum_meta import META_SCHEMA_VERSION, enum_options, literal_options
-from app.tenant.mcp.constants import McpTransport
+from app.exec.mcp.constants import McpTransport
 from app.tenant.mcp.models import McpStatus
 
 MCP_STATUS_LABELS: dict[str, tuple[str, str | None]] = {

@@ -11,8 +11,8 @@ from dataclasses import dataclass
 from typing import Any
 
 from app.common.exceptions import BadRequestError
-from app.runner.mcp_stdio import McpStdioClient
-from app.tenant.mcp.runner.spec import RunSpec, validate_run_spec
+from app.exec.mcp.spec import RunSpec, validate_run_spec
+from app.exec.mcp.stdio import McpStdioClient
 
 
 @dataclass

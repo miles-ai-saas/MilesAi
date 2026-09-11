@@ -5,7 +5,7 @@ from io import BytesIO
 
 import pytest
 
-from app.runner.mcp_stdio import McpStdioClient
+from app.exec.mcp.stdio import McpStdioClient
 
 
 class _FakeStreamWriter:

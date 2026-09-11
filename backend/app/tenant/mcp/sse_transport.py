@@ -29,8 +29,8 @@ import httpx
 from httpx_sse import EventSource, aconnect_sse
 
 from app.common.exceptions import BadRequestError
-from app.tenant.mcp.rpc import parse_jsonrpc_result
-from app.tenant.mcp.constants import (
+from app.exec.mcp.rpc import parse_jsonrpc_result
+from app.exec.mcp.constants import (
     MCP_CLIENT_INFO,
     MCP_PROTOCOL_VERSION,
     MCP_SESSION_HEADER,

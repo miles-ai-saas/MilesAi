@@ -33,7 +33,7 @@ from app.tenant.tools.invoke import invoke_tool_with_context
 from app.tenant.tools.models import Tool, ToolInvocationLog, ToolType
 from app.core.config import get_settings
 from app.tenant.tools.parameters import normalize_parameters
-from app.tenant.tools.script_validate import validate_script_source
+from app.exec.sandbox.validate import validate_script_source
 from app.common.schema import PageParams, PageResult
 from app.tenant.tools.schemas.tools import (
     ToolCatalogItem,

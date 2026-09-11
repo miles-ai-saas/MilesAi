@@ -13,7 +13,7 @@ from app.core.soft_delete import is_marked_deleted
 from app.core.tenant import TenantContext, assert_tenant_access
 from app.tenant.skills.models import SkillPackage
 from app.tenant.skills.skill_layout import read_skill_resource, read_skill_script_source
-from app.tenant.tools.script_validate import validate_script_source
+from app.exec.sandbox.validate import validate_script_source
 
 
 async def resolve_bound_skill(

@@ -6,8 +6,8 @@ import json
 from typing import Any
 
 from app.common.exceptions import BadRequestError
-from app.tenant.mcp.constants import MCP_PROTOCOL_VERSION
-from app.tenant.mcp.rpc import parse_jsonrpc_result
+from app.exec.mcp.constants import MCP_PROTOCOL_VERSION
+from app.exec.mcp.rpc import parse_jsonrpc_result
 
 
 class McpStdioClient:
