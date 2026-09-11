@@ -91,6 +91,45 @@ class HookExecutor(HookHttpMixin, HookPythonMixin, HookLogMixin):
 
         return HookRunResult(results=results, payload=current_payload)
 
+    async def run_manual_http(
+        self,
+        *,
+        trigger: HookTrigger,
+        scope: HookScope,
+        target_id: UUID | None,
+        payload: dict,
+    ) -> tuple[list[dict], dict]:
+        """手动触发已绑定的 **HTTP** 钩子（Agent 工具调用，非生命周期自动挂载）。
+
+        与 ``run`` 的差异：
+        - 只执行 HTTP 钩子，跳过 Python 钩子（避免工具调用执行平台插件代码）；
+        - ``block`` / ``on_failure=fail_request`` 不抛异常，作为结果项返回，
+          由调用方决定如何呈现；
+        - 结果项附带截断响应体，便于 Agent 读取外部系统返回。
+
+        返回 ``(results, 合并后的 payload)``。
+        """
+        pairs = [(binding, hook) for binding, hook in await self._load_bindings(trigger, scope, target_id) if hook.hook_type == HookType.HTTP]
+        current_payload = dict(payload)
+        results: list[dict] = []
+        trace_id = get_trace_id()
+        for binding, hook in pairs:
+            try:
+                item, current_payload = await self._run_http(
+                    hook,
+                    binding=binding,
+                    trigger=trigger,
+                    scope=scope,
+                    target_id=target_id,
+                    payload=current_payload,
+                    trace_id=trace_id,
+                    include_body=True,
+                )
+            except HookBlockedError as exc:
+                item = {"hook": hook.name, "status": "blocked", "message": str(exc)}
+            results.append(item)
+        return results, current_payload
+
     async def _load_bindings(
         self,
         trigger: HookTrigger,

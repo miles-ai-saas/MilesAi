@@ -39,7 +39,13 @@ class HookHttpMixin:
         target_id: UUID | None,
         payload: dict,
         trace_id: str | None,
+        include_body: bool = False,
     ) -> tuple[dict, dict]:
+        """执行 HTTP 钩子。
+
+        ``include_body=True`` 时在结果项附带截断后的响应体（供 Agent 手动触发时读取
+        外部系统返回；生命周期钩子保持默认 False，避免结果膨胀）。
+        """
         cfg = hook.config or {}
         url = cfg.get("url")
         event_id = generate_uuid()
@@ -114,14 +120,14 @@ class HookHttpMixin:
                         f"钩子 {hook.name} 调用失败（HTTP {resp.status_code}）",
                         hook_name=hook.name,
                     )
-                return (
-                    {
-                        "hook": hook.name,
-                        "status": "error",
-                        "http_status": resp.status_code,
-                    },
-                    current_payload,
-                )
+                item = {
+                    "hook": hook.name,
+                    "status": "error",
+                    "http_status": resp.status_code,
+                }
+                if include_body:
+                    item["body"] = resp.text[:4000]
+                return (item, current_payload)
 
             parsed = ParsedHookResponse()
             if resp.content:
@@ -178,6 +184,7 @@ class HookHttpMixin:
                     "status": "ok",
                     "http_status": http_status,
                     "action": response_action or "continue",
+                    **({"body": resp.text[:4000]} if include_body else {}),
                 },
                 current_payload,
             )

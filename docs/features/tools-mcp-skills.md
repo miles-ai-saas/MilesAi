@@ -13,7 +13,8 @@
 ### 1.1 交付范围
 
 - 工具目录：builtin + custom CRUD、`POST /tools/{name}/invoke`
-- 内置：calculator、http_request、knowledge_search、compliance_check_text、run_flow_once、web_search、code_execution、generate_* 等（见 registry）
+- 内置：calculator、http_request、knowledge_search、compliance_check_text、run_flow_once、invoke_tenant_hook、web_search、code_execution、generate_* 等（见 registry）
+  - 外呼/执行类标 `opt_in`，须在 `agent.config.tool_slugs` 勾选才进入 function schema
 - MCP：CRUD、sync tools/list、HTTP/SSE/STDIO invoke（STDIO 经 mcp-runner）
 - 技能包：导入（本地/ZIP/Git）、SKILL.md 编辑、分类
 - 钩子：`before_tool` / `after_tool`

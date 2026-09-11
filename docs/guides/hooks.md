@@ -208,6 +208,20 @@ HTTP 请求体为 **Event v1 信封**（§6.1）；下列字段在 `payload` 对
 | `on_failure` | `ignore`（默认）或 `fail_request`（仅 `before_*`，HTTP/网络失败时阻断） |
 | 审计 | 每次调用写入 `hook_execution_logs` |
 
+### 5.1 由 Agent 主动触发（内置工具 `invoke_tenant_hook`）
+
+除生命周期自动挂载外，注册的 **HTTP** 钩子可由智能体显式调用：
+
+- 入参 `trigger` + `scope`（默认 `global`）+ 可选 `target_id` + `payload`；
+- 只执行匹配的 HTTP 钩子（**不执行 Python 钩子**），串行、按 `priority`；
+- `block` / `on_failure=fail_request` **不抛异常**，作为结果项返回，不中断对话；
+- 结果含各钩子状态、`http_status`、截断响应体（≤4000 字符）与合并后的 `payload`（`modify` 白名单键）；
+- `require_confirmation=True`，且属 opt-in 工具：须在 `agent.config.tool_slugs` 勾选才进入 function schema；
+- 执行同样写入 `hook_execution_logs`（`trigger` / `scope` 为入参值）。
+
+实现：`app/tenant/hooks/services/executor/service.py` 的 `run_manual_http` +
+`app/tenant/tools/services/hook_once.py`。
+
 ---
 
 ## 6. Hook Event 契约 v1（已实现）
@@ -392,8 +406,9 @@ embedding / rerank 的 `invoke_mode` 与 `extra` 字段对照见 **[model-config
 |------|------|
 | ORM | `app/tenant/hooks/models.py` |
 | CRUD | `app/tenant/hooks/services/hook.py` |
-| 执行 | `app/tenant/hooks/services/executor.py` |
+| 执行 | `app/tenant/hooks/services/executor/`（`service.py` 门面 · `http.py`/`python.py` · `log.py`） |
 | 门面 | `app/tenant/hooks/services/runner.py` |
+| Agent 主动触发 | `app/tenant/tools/services/hook_once.py`（内置工具 `invoke_tenant_hook`） |
 | API | `app/tenant/hooks/views/hooks.py` |
 | Agent 挂载 | `app/tenant/agents/services/agent.py` |
 | Flow 挂载 | `app/tenant/flows/services/flow.py` |

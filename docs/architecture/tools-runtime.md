@@ -57,7 +57,7 @@ MilesAI 是**企业级多租户 AI 中台**（RAG、流程编排、智能体、�
 | **执行** | `invoke_builtin` → 复用现有 `tenant/*` Service（RAG、合规、附件等） |
 | **扩展** | 发版新增；租户**不可改实现**，可按租户/智能体**启用** |
 | **租户使用** | 与自定义工具相同：`tool_slugs` 白名单、试调用、调用日志、`require_confirmation` |
-| **现状 slug** | L1 轻量：`calculator`、`http_request`、`get_current_datetime`、`web_search`；L2 复杂：`knowledge_search`、`compliance_check_text`、`code_execution`、`generate_*`、`skill_read_reference` / `skill_run_script` |
+| **现状 slug** | L1 轻量：`calculator`、`http_request`、`get_current_datetime`、`web_search`；L2 复杂：`knowledge_search`、`compliance_check_text`、`code_execution`、`run_flow_once`、`invoke_tenant_hook`、`generate_*`、`skill_read_reference` / `skill_run_script` |
 
 **推荐方向：系统内置一批「复杂工具」（L2）**，把已在平台内实现的能力（多库检索、合规检测、附件查询等）封装为 Agent 可调用的 builtin，租户**直接选用**即可，无需每个租户重复配 HTTP 或写脚本。
 
@@ -94,9 +94,9 @@ MilesAI 是**企业级多租户 AI 中台**（RAG、流程编排、智能体、�
 | ✅ | `knowledge_search` | 知识库检索（单库/多库、混合/rerank；省略 kb 用绑定库） | 已有 | 否 |
 | ✅ | `compliance_check_text` | 敏感词检测（只读，不写拦截审计） | `CompliancePipeline` + `load_tenant_scan_words` | 否 |
 | ✅ | `run_flow_once` | 触发本租户**已发布**流程一次 | `FlowService.run` + 递归/超时护栏 | **是** |
+| ✅ | `invoke_tenant_hook` | 手动触发已绑定 **HTTP** 钩子链 | `HookExecutor.run_manual_http` | **是** |
 | 不做 | `list_knowledge_bases` | 列出本租户 KB | — | — （绑定 KB 的 `kb_ids` 已注入 system prompt，工具冗余） |
 | 缓做 | `get_attachment_meta` | 附件元数据 | `tenant/attachments` | 否（需先有「当前会话/资源范围」语义，否则会列出整租户附件） |
-| P2 | `invoke_tenant_hook` | 触发已注册 HTTP 钩子 | `tenant/hooks` | **是** |
 | P3 | `http_request` | 通用外呼（SSRF 防护） | 已有；建议弱化宣传 | 可选 |
 
 `run_flow_once` 的护栏（实现于 `tenant/tools/services/flow_once.py`）：
@@ -108,37 +108,60 @@ MilesAI 是**企业级多租户 AI 中台**（RAG、流程编排、智能体、�
 - **超时**：`asyncio.wait_for` 默认 120s、上限 300s；执行复用 `FlowService.run`
   （合规扫描 + FLOW 级 Hook + 审计一致）。
 
+`invoke_tenant_hook` 的边界（实现于 `tenant/hooks/services/executor/service.py`
+的 `run_manual_http` + `tenant/tools/services/hook_once.py`）：
+
+- **仅 HTTP**：跳过 Python 钩子（工具调用不执行平台插件代码）；
+- **仅本租户**：`HookExecutor` 以 `tenant_id` 过滤绑定；按 `trigger` + `scope`
+  （+ 可选 `target_id`）匹配，`priority` 升序串行；
+- **不抛阻断**：`block` / `on_failure=fail_request` 作为结果项返回，不中断对话；
+- **结果可用**：附带截断响应体（≤4000 字符）与 `modify` 后的 `payload`；
+- 执行同样写入 `hook_execution_logs`。
+
 **不宜做成内置复杂工具**（仍走 MCP 或专属页面）：
 
 - 任意 Shell、读写租户服务器文件
 - 未集成的第三方 SaaS（应用市场模板、外部 A2A 除非封装）
 - 需租户自填 API Key 的云端搜网（可做成**可选插件** + 平台配置，非默认 builtin）
 
-#### 2.1.3 治理与开关（复杂工具必备）
+#### 2.1.3 启用与治理
 
-复杂工具上线须带治理字段（可扩展 registry 元数据，无需入库）：
+**opt-in 机制**：外呼/执行类 L2 工具在 registry 标 `opt_in: True`，**默认不进入 function schema**，
+须在 `agent.config.tool_slugs` 显式勾选才注入。原因：`tool_slugs` 为空时白名单不生效（= 全部），
+若把 `run_flow_once` / `invoke_tenant_hook` 直接放进基线列表，会对所有智能体默认放开执行与外呼能力。
+
+| 集合 | 内容 | 注入条件 |
+|------|------|----------|
+| **基线** | `calculator`、`http_request`、`get_current_datetime`、`knowledge_search` | 始终 |
+| **opt-in** | `web_search`、`code_execution`、`compliance_check_text`、`run_flow_once`、`invoke_tenant_hook` | 出现在 `tool_slugs` 时 |
+| **技能壳** | `skill_read_reference`、`skill_run_script` | `config.skill_package_id` |
+| **生成壳** | `generate_image/video/speech` | `config.enable_generative_tools` |
+| **MCP** | `mcp__{service}__{tool}` | `config.mcp_service_ids` |
+
+system prompt 的内置工具摘要（`agents/services/context.py`）与 function schema 同集合：
+未勾选的 opt-in、未开启的 `generative_only` 均不宣传，避免 LLM 调用不存在的工具。
+
+| 机制 | 说明 |
+|------|------|
+| **租户可见** | 工具列表 `source=builtin` 展示；复杂工具带「平台」标签 |
+| **按智能体启用** | 基线常驻；opt-in 走 `tool_slugs` 白名单 |
+| **按租户套餐（可选）** | 未来 `tenant.config.enabled_builtin_slugs` 或套餐位 |
+| **确认策略** | 写操作、外呼、执行、流程类默认 `require_confirmation=true` |
+| **限流与配额** | 复杂工具单独计数（检索条数、合规 QPS） |
+| **审计** | 统一 `tool_invocation_logs`，`source=builtin` |
+
+复杂工具上线还可扩展 registry 治理字段（无需入库）：
 
 ```python
-# builtin_registry 条目建议字段（规划）
+# builtin_registry 条目可选治理字段（规划）
 {
     "slug": "compliance_check_text",
     "tier": "complex",           # light | complex
-    "require_confirmation": False,
-    "tenant_toggle": True,       # 是否允许租户在智能体里勾选
     "platform_only": False,      # True 时仅运营开关，租户不可见
     "rate_limit_key": "compliance",
     "max_timeout_sec": 30,
 }
 ```
-
-| 机制 | 说明 |
-|------|------|
-| **租户可见** | 工具列表 `source=builtin` 展示；复杂工具带「平台」标签 |
-| **按智能体启用** | `tool_slugs` 白名单；未勾选则不出现在 function schema |
-| **按租户套餐（可选）** | 未来 `tenant.config.enabled_builtin_slugs` 或套餐位 |
-| **确认策略** | 写操作、外呼、流程类默认 `require_confirmation=true` |
-| **限流与配额** | 复杂工具单独计数（检索条数、合规 QPS） |
-| **审计** | 统一 `tool_invocation_logs`，`source=builtin` |
 
 #### 2.1.4 实现模式（保持一套 Runtime）
 
@@ -147,10 +170,11 @@ BUILTIN_REGISTRY  （元数据 + schema）
        ↓
 integrations/langchain/tools.py  → StructuredTool（Agent）
        ↓
-invoke_builtin(slug, params)    → 分发到各 Service
+    invoke_builtin(slug, params)    → 分发到各 Service
        ├─ knowledge_search      → rag.generate.retrieve_hits（多库 + 各库 hybrid/rerank）
        ├─ compliance_check_text → CompliancePipeline.scan（租户词库，只读）
-       └─ ...
+       ├─ run_flow_once         → FlowService.run（已发布流程 + 递归/超时护栏）
+       └─ invoke_tenant_hook    → HookExecutor.run_manual_http（仅 HTTP 钩子）
 ```
 
 原则：
@@ -303,7 +327,7 @@ mcp__{service}__{tool_name}
 
 | 项 | 说明 |
 |----|------|
-| 内置复杂工具（扩展） | ✅ `run_flow_once` 已实现（已发布流程 + 递归/超时护栏）；钩子触发待做；附件类需先补「会话/资源范围」语义 |
+| 内置复杂工具（扩展） | ✅ `run_flow_once`、`invoke_tenant_hook` 已实现；附件类需先补「会话/资源范围」语义 |
 | 租户套餐级 builtin 开关 | `tenant_toggle` / 套餐位 |
 | 调用限流 | 租户级 QPS / 复杂工具配额 |
 | 流程节点 | 复用同一 Runtime |
@@ -320,7 +344,9 @@ mcp__{service}__{tool_name}
 已实现：builtin/custom catalog、变换脚本 v2（预注入 `json`/`re`/`math`/`datetime`）、`tool_agent`、
 MCP 工作台、**RAG 与 tool calling 共存**（绑定 KB 时 `knowledge_search` 由 LLM 自行调用，命中回填 `sources`）、
 **L2 内置 `compliance_check_text`**（复用租户词库，只读不写审计）、
-**L2 内置 `run_flow_once`**（仅已发布流程 + 确认 + 递归/超时护栏），以及
+**L2 内置 `run_flow_once`**（仅已发布流程 + 确认 + 递归/超时护栏）、
+**L2 内置 `invoke_tenant_hook`**（仅 HTTP 钩子 + 确认 + 手动触发结果回传），
+**opt-in 内置工具机制**（`tool_slugs` 显式勾选才注入，基线与 opt-in 分离），以及
 **MCP → Agent function calling**（`mcp__{service}__{tool}`，审计 `source=mcp`）；见 [guides/tools.md](../guides/tools.md)。
 未尽项见 §7 演进路线。
 
@@ -330,7 +356,9 @@ MCP 工作台、**RAG 与 tool calling 共存**（绑定 KB 时 `knowledge_searc
 |------|------|
 | 工具 Service / API | `backend/app/tenant/tools/` |
 | 执行 | `tenant/tools/invoke.py` |
+| 内置复杂工具 | `tenant/tools/services/flow_once.py`、`tenant/tools/services/hook_once.py` |
 | LangChain 加载 | `integrations/langchain/tools.py`、`tool_agent.py` |
+| 平台 Hook 执行 | `app/tenant/hooks/services/executor/` |
 | MCP | `backend/app/tenant/mcp/` |
 | Runner | `backend/app/runner/` |
 

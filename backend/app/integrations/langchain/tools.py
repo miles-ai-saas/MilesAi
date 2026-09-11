@@ -248,6 +248,118 @@ class SkillRunScriptInput(BaseModel):
     max_memory_mb: int | None = Field(None, description="内存上限 MB，默认 512")
 
 
+# --- L2 opt-in 内置工具 schema（须在 agent.config.tool_slugs 显式勾选才注入）---
+
+
+class WebSearchInput(BaseModel):
+    query: str = Field(..., description="搜索关键词")
+    max_results: int | None = Field(None, description="返回条数，默认 5")
+
+
+class CodeExecutionInput(BaseModel):
+    code: str = Field(..., description="Python 代码片段（须定义 run(params) 语义的片段；禁止 import）")
+    timeout: int | None = Field(None, description="超时秒数，默认 30")
+    memory: int | None = Field(None, description="内存上限 MB，默认 256")
+
+
+class ComplianceCheckTextInput(BaseModel):
+    text: str = Field(..., description="待检测文本")
+
+
+class RunFlowOnceInput(BaseModel):
+    flow_id: str = Field(..., description="已发布流程的 UUID")
+    inputs: dict | None = Field(None, description='流程入口变量字典，如 {"query": "..."}')
+    query: str | None = Field(None, description="便捷传入流程 query 入口变量")
+    timeout_sec: int | None = Field(None, description="执行超时秒数，默认 120，上限 300")
+
+
+class InvokeTenantHookInput(BaseModel):
+    trigger: str = Field(
+        ...,
+        description="触发时机：before_call / after_call / before_reasoning / after_reasoning / before_tool / after_tool / on_error",
+    )
+    payload: dict | None = Field(None, description='传给钩子的载荷，如 {"query": "..."}')
+    scope: str | None = Field(None, description="作用域：global（默认）/ agent / flow / tool / app")
+    target_id: str | None = Field(None, description="作用域目标 ID（非 global 时使用）")
+
+
+def _opt_in_marker(slug: str):
+    """构造 opt-in 内置工具的占位 _arun（schema 供 LLM；执行走 L1 invoke_tool_with_context）。"""
+
+    async def _arun(**kwargs: Any) -> dict:  # noqa: ARG001
+        raise RuntimeError(f"请通过 invoke_tool_with_context 执行 {slug}")
+
+    return _arun
+
+
+def _make_web_search_tool() -> StructuredTool:
+    return StructuredTool.from_function(
+        coroutine=_opt_in_marker("web_search"),
+        name="web_search",
+        description="使用 DuckDuckGo 搜索网页，返回摘要与相关链接",
+        args_schema=WebSearchInput,
+    )
+
+
+def _make_code_execution_tool() -> StructuredTool:
+    return StructuredTool.from_function(
+        coroutine=_opt_in_marker("code_execution"),
+        name="code_execution",
+        description="在 Runner 沙箱中执行 Python 代码片段（须符合安全校验）",
+        args_schema=CodeExecutionInput,
+    )
+
+
+def _make_compliance_check_text_tool() -> StructuredTool:
+    return StructuredTool.from_function(
+        coroutine=_opt_in_marker("compliance_check_text"),
+        name="compliance_check_text",
+        description="检测文本是否命中租户敏感词库，返回命中词与 warn/block 处置建议（只读）",
+        args_schema=ComplianceCheckTextInput,
+    )
+
+
+def _make_run_flow_once_tool() -> StructuredTool:
+    return StructuredTool.from_function(
+        coroutine=_opt_in_marker("run_flow_once"),
+        name="run_flow_once",
+        description="执行本租户一个已发布流程一次并返回其输出；仅限已发布流程，执行前需用户确认",
+        args_schema=RunFlowOnceInput,
+    )
+
+
+def _make_invoke_tenant_hook_tool() -> StructuredTool:
+    return StructuredTool.from_function(
+        coroutine=_opt_in_marker("invoke_tenant_hook"),
+        name="invoke_tenant_hook",
+        description="手动触发本租户已绑定的 HTTP 钩子（按触发时机与作用域），返回各钩子状态与改写后的载荷",
+        args_schema=InvokeTenantHookInput,
+    )
+
+
+_OPT_IN_BUILTIN_MAKERS: dict[str, Any] = {
+    "web_search": _make_web_search_tool,
+    "code_execution": _make_code_execution_tool,
+    "compliance_check_text": _make_compliance_check_text_tool,
+    "run_flow_once": _make_run_flow_once_tool,
+    "invoke_tenant_hook": _make_invoke_tenant_hook_tool,
+}
+
+
+def select_opt_in_builtin_tools(agent_config: dict | None) -> list[StructuredTool]:
+    """按 ``config.tool_slugs`` 白名单返回 L2 opt-in 内置工具 schema（未勾选不注入）。
+
+    这些工具默认不进入 function schema：外呼/执行类能力须由租户在智能体「能力」
+    中显式勾选，避免 ``tool_slugs`` 为空（= 全部）时被默认放开。
+    """
+    cfg = agent_config if isinstance(agent_config, dict) else {}
+    raw = cfg.get("tool_slugs") or []
+    if isinstance(raw, str):
+        raw = [raw]
+    wanted = {str(s) for s in raw if s}
+    return [maker() for slug, maker in _OPT_IN_BUILTIN_MAKERS.items() if slug in wanted]
+
+
 def _make_calculator_tool() -> StructuredTool:
     """内置 calculator schema 壳；执行走 L1 invoke_tool_with_context。"""
 
@@ -477,7 +589,7 @@ def build_platform_tools(
     ``agent_config`` 缺失时仅内置工具。
     """
     cfg = agent_config if isinstance(agent_config, dict) else {}
-    tools = get_platform_tools()
+    tools = [*get_platform_tools(), *select_opt_in_builtin_tools(cfg)]
     if cfg.get("skill_package_id"):
         tools = [*tools, *get_skill_bound_tools()]
     if cfg.get("enable_generative_tools"):

@@ -29,12 +29,17 @@ MilesAI **工具模块**管理租户可用的**平台内置工具**（含 **L2 �
 | `http_request` | 通用 HTTP 请求 |
 | `knowledge_search` | 知识库语义检索（单库/多库；可省略 kb 用智能体绑定库） |
 | `get_current_datetime` | 当前日期时间 |
-| `web_search` | DuckDuckGo 网页搜索 |
-| `code_execution` | Runner 沙箱执行 Python 片段 |
-| `compliance_check_text` | 租户敏感词检测（只读，不写拦截审计） |
-| `run_flow_once` | 触发本租户已发布流程一次（需确认，带递归/超时护栏） |
+| `web_search` | DuckDuckGo 网页搜索（opt-in） |
+| `code_execution` | Runner 沙箱执行 Python 片段（opt-in） |
+| `compliance_check_text` | 租户敏感词检测（只读，不写拦截审计；opt-in） |
+| `run_flow_once` | 触发本租户已发布流程一次（需确认，带递归/超时护栏；opt-in） |
+| `invoke_tenant_hook` | 手动触发已绑定 HTTP 钩子链（需确认，仅 HTTP；opt-in） |
 | `generate_image` / `generate_video` / `generate_speech` | 生成物（`generative_only`） |
 | `skill_read_reference` / `skill_run_script` | 技能包引用与脚本（`skill_bound_only`） |
+
+> **opt-in**：registry 标 `opt_in: True` 的工具默认不进入 function schema，须在智能体 `config.tool_slugs`
+> 显式勾选（避免 `tool_slugs` 为空时默认放开外呼/执行能力）。基线工具（`calculator`、`http_request`、
+> `get_current_datetime`、`knowledge_search`）始终可用。
 
 ---
 
@@ -89,7 +94,10 @@ Agent 启用条件（`app/tenant/agents/services/agent.py`）：
 
 - `config.enable_tool_calling = true`（或 `enable_generative_tools`）
 - 已配置大模型
-- 可选 `config.tool_slugs` 白名单；未配置则加载全部 builtin + 活跃 custom（HTTP + script）
+- 可选 `config.tool_slugs` 白名单；未配置则加载**基线** builtin（`calculator`/`http_request`/`get_current_datetime`/`knowledge_search`）
+  + 活跃 custom（HTTP + script）；配置后按白名单过滤
+  - **opt-in 内置**（`web_search` / `code_execution` / `compliance_check_text` / `run_flow_once` / `invoke_tenant_hook`）
+    仅在白名单显式勾选时注入，未勾选不进入 function schema（system prompt 摘要同集合）
 - 可选 `config.mcp_service_ids`：绑定 MCP 服务的 tools 一并可调用
 - **绑定知识库时与 RAG 共存**：`knowledge_search` 强制加入工具集（不受白名单约束），
   命中片段回填 `ChatResponse.sources`，由模型自行决定是否检索

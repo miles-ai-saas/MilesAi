@@ -53,9 +53,16 @@ async def _append_platform_tools_block(
 
     lines: list[str] = []
     skill_bound = bool(config.get("skill_package_id"))
+    generative_on = bool(config.get("enable_generative_tools"))
     for t in BUILTIN_REGISTRY:
         slug = t["slug"]
         if t.get("skill_bound_only") and not skill_bound:
+            continue
+        # 与 function schema 保持一致：未开启生成则不宣传 generate_*，
+        # opt-in 工具未勾选则不出现在 prompt（否则 LLM 会调用不存在的工具）。
+        if t.get("generative_only") and not generative_on:
+            continue
+        if t.get("opt_in") and slug not in slug_filter:
             continue
         if slug_filter and slug not in slug_filter:
             continue
@@ -139,17 +146,12 @@ async def build_skill_mcp_prompt_block(
         callable_hint = bool(config.get("enable_tool_calling") or config.get("enable_generative_tools"))
         for svc in services:
             tools = [
-                t
-                for t in (svc.tools_cache or [])
-                if isinstance(t, dict) and str(t.get("name") or "").strip() and not str(t["name"]).endswith("_placeholder")
+                t for t in (svc.tools_cache or []) if isinstance(t, dict) and str(t.get("name") or "").strip() and not str(t["name"]).endswith("_placeholder")
             ]
             if not tools:
                 parts.append(f"【MCP · {svc.name}】尚未同步工具，请先在市场/MCP 页同步。")
                 continue
-            lines = [
-                f"- {compose_mcp_tool_name(svc.name, str(t.get('name')))}: {t.get('description', '')}"
-                for t in tools[:12]
-            ]
+            lines = [f"- {compose_mcp_tool_name(svc.name, str(t.get('name')))}: {t.get('description', '')}" for t in tools[:12]]
             suffix = "（可 function calling 自动调用）" if callable_hint else "（启用工具调用后可自动调用）"
             parts.append(f"【MCP · {svc.name}】{suffix}\n" + "\n".join(lines))
 

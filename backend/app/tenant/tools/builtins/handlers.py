@@ -244,6 +244,32 @@ async def handle_run_flow_once(
     )
 
 
+async def handle_invoke_tenant_hook(
+    params: dict,
+    *,
+    db: AsyncSession,
+    ctx: TenantContext,
+    **_: Any,
+) -> dict:
+    """手动触发本租户已注册的 HTTP 钩子；委托 ``hook_once.run_registered_http_hooks``。"""
+    from app.tenant.tools.services.hook_once import run_registered_http_hooks
+
+    payload = params.get("payload")
+    if not isinstance(payload, dict):
+        payload = {}
+    query = params.get("query")
+    if query and "query" not in payload:
+        payload["query"] = query
+    return await run_registered_http_hooks(
+        db,
+        ctx,
+        trigger=params.get("trigger"),
+        scope=params.get("scope"),
+        target_id=params.get("target_id"),
+        payload=payload,
+    )
+
+
 async def handle_skill_run_script(
     params: dict,
     *,
@@ -273,6 +299,7 @@ BUILTIN_HANDLERS: dict[str, BuiltinHandler] = {
     "compliance_check_text": handle_compliance_check_text,  # 租户敏感词自检（只读）
     "code_execution": handle_code_execution,  # Runner 沙箱
     "run_flow_once": handle_run_flow_once,  # 触发已发布流程（需确认）
+    "invoke_tenant_hook": handle_invoke_tenant_hook,  # 触发已注册 HTTP 钩子（需确认）
     "generate_speech": handle_generate_speech,  # P2: CosyVoice
     "generate_video": handle_generate_video,
     "generate_image": handle_generate_image,

@@ -3,6 +3,9 @@
 
 ``generative_only``：仅当智能体 ``enable_generative_tools`` 时出现在工具列表；
 ``generate_video`` 默认 ``require_confirmation=False``（开启生视频即同意直接调用；可取消进行中任务）。
+
+``opt_in``：高风险/重资源类 L2 工具，须在 ``agent.config.tool_slugs`` 显式勾选才进入
+function schema（未勾选时不注入，避免默认放开外呼/执行能力）。
 """
 
 BUILTIN_REGISTRY: list[dict] = [
@@ -169,6 +172,7 @@ BUILTIN_REGISTRY: list[dict] = [
         "category_slug": "data",
         "version": "1.0.0",
         "require_confirmation": False,
+        "opt_in": True,
         "parameters": [
             {"name": "query", "type": "string", "description": "搜索关键词", "required": True},
             {"name": "max_results", "type": "integer", "required": False, "default": 5},
@@ -182,6 +186,7 @@ BUILTIN_REGISTRY: list[dict] = [
         "category_slug": "general",
         "version": "1.0.0",
         "require_confirmation": False,
+        "opt_in": True,
         "parameters": [
             {"name": "text", "type": "string", "description": "待检测文本", "required": True},
         ],
@@ -194,6 +199,7 @@ BUILTIN_REGISTRY: list[dict] = [
         "category_slug": "general",
         "version": "1.0.0",
         "require_confirmation": True,
+        "opt_in": True,
         "parameters": [
             {"name": "code", "type": "string", "description": "Python 代码片段", "required": True},
             {"name": "timeout", "type": "integer", "required": False, "default": 30},
@@ -208,6 +214,7 @@ BUILTIN_REGISTRY: list[dict] = [
         "category_slug": "general",
         "version": "1.0.0",
         "require_confirmation": True,
+        "opt_in": True,
         "parameters": [
             {"name": "flow_id", "type": "string", "description": "已发布流程的 UUID", "required": True},
             {
@@ -223,6 +230,33 @@ BUILTIN_REGISTRY: list[dict] = [
                 "description": "执行超时（秒），默认 120，上限 300",
                 "required": False,
             },
+        ],
+    },
+    # P2: 触发钩子 — 手动执行本租户已绑定的 HTTP 钩子链（不执行 Python 钩子）
+    {
+        "slug": "invoke_tenant_hook",
+        "name": "触发已注册钩子",
+        "description": "手动触发本租户已绑定的 HTTP 钩子（按触发时机与作用域），返回各钩子状态与改写后的载荷；执行前需用户确认",
+        "category_slug": "integration",
+        "version": "1.0.0",
+        "require_confirmation": True,
+        "opt_in": True,
+        "parameters": [
+            {
+                "name": "trigger",
+                "type": "string",
+                "description": "触发时机：before_call / after_call / before_reasoning / after_reasoning / before_tool / after_tool / on_error",
+                "required": True,
+            },
+            {"name": "payload", "type": "object", "description": '传给钩子的载荷（如 {"query": "..."}）', "required": False},
+            {
+                "name": "scope",
+                "type": "string",
+                "description": "作用域：global（默认）/ agent / flow / tool / app",
+                "required": False,
+                "default": "global",
+            },
+            {"name": "target_id", "type": "string", "description": "作用域目标 ID（非 global 时使用）", "required": False},
         ],
     },
     {
@@ -258,6 +292,7 @@ BUILTIN_REGISTRY: list[dict] = [
 BUILTIN_SLUGS = {t["slug"] for t in BUILTIN_REGISTRY}
 SKILL_BOUND_SLUGS = {t["slug"] for t in BUILTIN_REGISTRY if t.get("skill_bound_only")}
 GENERATIVE_SLUGS = {t["slug"] for t in BUILTIN_REGISTRY if t.get("generative_only")}
+OPT_IN_SLUGS = {t["slug"] for t in BUILTIN_REGISTRY if t.get("opt_in")}
 
 
 def get_builtin(slug: str) -> dict | None:
