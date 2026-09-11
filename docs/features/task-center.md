@@ -43,7 +43,7 @@ Celery 任务在租户侧的镜像记录，主要由 **文档入库** 写入。
 | `id` | UUID 主键 |
 | `tenant_id` | 租户隔离 |
 | `celery_task_id` | Celery 任务 ID |
-| `task_name` | 如 `miles_worker.tasks.ingest.ingest_document` |
+| `task_name` | 逻辑短名，如 `ingest_document`、`run_generative_image_job`（**非**完整协议名；协议名见 `miles_core.jobs.tasks.TASK_NAMES`，形如 `milesai.tasks.ingest.ingest_document`） |
 | `status` | `pending` / `running` / `success` / `failed` / `cancelled` |
 | `resource_type` / `resource_id` | 关联资源（如 `kb_document`） |
 | `fail_reason` | 失败原因 |

@@ -13,6 +13,7 @@ from miles_core.infra.db import get_worker_session
 from miles_ai.integrations.litellm.adapter import CHAT_MODEL_TYPES, litellm_chat_completion
 from miles_core.models.model import ModelConfig
 from miles_core.models.model.catalog import ModelPublishStatus
+from miles_core.jobs.tasks import TASK_NAMES
 from miles_worker.app import celery_app
 
 logger = get_logger(__name__)
@@ -63,7 +64,7 @@ async def _probe_models_async() -> str:
     return f"checked={checked} ok={ok_count}"
 
 
-@celery_app.task(name="miles_worker.tasks.model_health.probe_models_health")
+@celery_app.task(name=TASK_NAMES["probe_models_health"])
 def probe_models_health() -> str:
     """定时任务：探测活跃对话模型可用性并写回 ``ModelConfig.extra``，返回 ``checked=… ok=…`` 摘要。"""
     try:

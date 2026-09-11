@@ -10,6 +10,7 @@ API 进程不再 import worker 模块，路由若挪到 worker 会导致任务�
 from celery import Celery
 
 from miles_core.config import get_settings
+from miles_core.jobs.tasks import TASK_NAMESPACE
 
 _settings = get_settings()
 
@@ -34,9 +35,10 @@ celery_app.conf.update(
     # 队列路由必须在最小 app 内：task_routes 由**投递方**求值
     # （send_task → amqp router），API 进程不再 import worker 模块，
     # 若把路由留在 worker，ingest 会被投到 default 而非 parse 队列。
+    # 模式取自 miles_core.jobs.tasks.TASK_NAMESPACE（线级协议，勿改成模块路径）。
     task_routes={
-        "miles_worker.tasks.ingest.*": {"queue": "parse"},
-        "miles_worker.tasks.ocr.*": {"queue": "ocr"},
-        "miles_worker.tasks.embed.*": {"queue": "embed"},
+        f"{TASK_NAMESPACE}ingest.*": {"queue": "parse"},
+        f"{TASK_NAMESPACE}ocr.*": {"queue": "ocr"},
+        f"{TASK_NAMESPACE}embed.*": {"queue": "embed"},
     },
 )

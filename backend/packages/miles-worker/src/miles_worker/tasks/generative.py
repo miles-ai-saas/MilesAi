@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 from uuid import UUID
 
+from miles_core.jobs.tasks import TASK_NAMES
 from miles_core.logging import get_logger
 from miles_core.infra.redis import reset_redis
 from miles_ai.integrations.generative.jobs.errors import GenerativeJobCancelled, GenerativeJobNotFound
@@ -28,7 +29,7 @@ def _run_coro(coro) -> None:
 
 
 @celery_app.task(
-    name="miles_worker.tasks.generative.run_generative_video_job",
+    name=TASK_NAMES["run_generative_video_job"],
     bind=True,
     max_retries=0,
 )
@@ -55,7 +56,7 @@ def run_generative_video_job(self, job_id: str) -> str:
 
 
 @celery_app.task(
-    name="miles_worker.tasks.generative.run_generative_image_job",
+    name=TASK_NAMES["run_generative_image_job"],
     bind=True,
     max_retries=0,
 )

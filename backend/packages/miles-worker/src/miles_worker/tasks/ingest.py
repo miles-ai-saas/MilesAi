@@ -17,6 +17,7 @@ PENDING/PARSING/EMBEDDING 的文档标为 EMBED_FAILED。
 """
 
 from miles_worker.app import celery_app
+from miles_core.jobs.tasks import TASK_NAMES
 from miles_core.models.task.task_record import TaskStatus
 from miles_portal.tenant.kb.services.ingest import run_ingest
 from miles_portal.tenant.kb.services.ingest_failure import ensure_document_failure_if_still_processing
@@ -26,7 +27,7 @@ from miles_portal.tenant.tasks.services.sync import sync_task_by_celery_id
 INGEST_RETRY_COUNTDOWN_SEC = 30
 
 
-@celery_app.task(name="miles_worker.tasks.ingest.ingest_document", bind=True, max_retries=3)
+@celery_app.task(name=TASK_NAMES["ingest_document"], bind=True, max_retries=3)
 def ingest_document(self, document_id: str) -> str:
     """
     异步执行单文档入库。

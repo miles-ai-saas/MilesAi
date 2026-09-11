@@ -665,7 +665,7 @@ celery_app.conf.update(
     task_track_started=True, task_acks_late=True,
     worker_prefetch_multiplier=1,                 # 长任务避免抢占
     task_soft_time_limit=..., task_time_limit=...,
-    task_routes={"miles_worker.tasks.ingest.*": {"queue": "parse"}},  # 按任务分流队列
+    task_routes={"milesai.tasks.ingest.*": {"queue": "parse"}},  # 按任务分流队列；协议名见 TASK_NAMES
     beat_schedule={"tick-schedules": {"task": "...", "schedule": 60.0}},  # 定时
 )
 ```

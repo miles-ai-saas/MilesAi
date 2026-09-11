@@ -445,3 +445,38 @@ miles_server -> miles_admin, miles_ai, miles_core, miles_openapi, miles_portal
 ```
 
 唯一偏离 §2 硬判据的边是 `miles_runner → miles_core`（`app/runner/main.py:12` 取 `get_settings`），**非环**且已排期由 **Task 3.2**（`miles_runner` 自带 `RunnerSettings`）消除，不属 Phase 1 范围。Phase 1 退出闸门通过；Phase 2 起按计划执行。
+
+### 2026-09-11：合并到 main 后发现的线级协议破坏（任务名）
+
+**症状**：手动启动 worker 时，处理 broker 中的存量消息报
+`KeyError: 'app.workers.tasks.generative.run_generative_image_job'`。
+
+**根因**：任务名曾取自模块路径。Task 2.2–2.4 的 codemod（commit `16037c5`）把
+`app.workers.tasks.*` **一致地**改成 `miles_worker.tasks.*`。投递方（`TASK_NAMES`）
+与注册方（装饰器 `name=`）随之同步，两侧仍自洽，**故全量 pytest 绿灯**——因为
+`tests/infra/test_celery_config.py` 里的断言字面量也在同一次 codemod 射程内被改掉，
+没有任何测试能拦住这次协议破坏。但 broker 中的在途消息仍带旧名，新 worker 未注册
+即 `KeyError`。
+
+**计划自身的矛盾**（执行者无从判断，是流程缺陷而非执行失误）：
+- 第 552 / 650 行（Task 1.5）：任务名**必须保留** `app.workers.tasks.*`，理由写明是「在途消息的线级协议」
+- 第 1478 / 1479 行（Task 2.4）：**改为** `miles_worker.tasks.*`
+- 前者被后者覆盖 → 原本想护住的不变量丢失
+
+**定论与修复**：
+1. 任务名是**线级协议，不得由模块 / 包路径派生**。命名空间统一为与目录无关的
+   **`milesai.tasks.*`**，常量 `TASK_NAMESPACE` 写入 `miles_core.jobs.tasks`。
+2. `TASK_NAMES` 成为**唯一真相源**：装饰器一律 `name=TASK_NAMES["…"]`，不再硬编码字符串
+   （原先同一字符串在装饰器 / `TASK_NAMES` / `task_routes` 三处重复，靠 codemod「碰巧改全」）。
+3. 新增 `tests/infra/test_celery_task_names.py`：冻结字面量（改名必须显式改测试）、禁止协议名含包路径片段、
+   断言「每个投递名都已注册」与「注册侧无未登记任务名」、`task_routes` 与 `beat_schedule` 一致性。
+   已做红绿验证：装饰器漂移与回退成模块路径两种情况均被拦住。
+4. `backend/tools/rename_to_workspace.py` 头部补事故记录，标明该一次性 codemod 勿再重跑。
+
+**不受影响 / 部署注意**：
+- 数据库不受影响——`tenant_tasks.task_name` 存的是**逻辑短名**（如 `ingest_document`），非协议名，无需数据迁移。
+- 本次改名（`miles_worker.tasks.*` → `milesai.tasks.*`）同属破坏性协议变更。因尚未部署且
+  broker 已空，成本为零；**但若任何环境已有旧代码投递方在运行，部署前必须排空相关队列
+  （`default` 与 `parse`）或为旧名注册别名**，否则同样 `KeyError`。
+- 已知遗留：`task_routes` 中的 `ocr.*` / `embed.*` 两条模式当前无对应任务（历史遗留的
+  前瞻配置），本次仅随命名空间一并改写，未改变行为。

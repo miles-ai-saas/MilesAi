@@ -550,6 +550,10 @@ RUN_GENERATIVE_IMAGE_JOB = TASK_NAMES["run_generative_image_job"]
 ```
 
 > 任务名**保持现有字面量不变**（`app.workers.tasks.*`），因为装饰器 `name=` 已显式写死这些字符串；改字面量会牵动 `task_annotations`/`task_routes`/`beat_schedule` 与在途消息。阶段 2 的 codemod 会一致地重写字符串，届时统一变为 `miles_worker.tasks.*`。
+>
+> **⚠️ 更正（2026-09-11，合并到 main 后发现真实故障）**：上面最后一句「codemod 会一致地重写字符串」是**错误决策**，且与下面 Step 4 的「必须保留 `app.workers.tasks.*` 字面量（在途消息的线级协议）」直接矛盾。执行者跟了「改名」，后果：任务名被一致改成 `miles_worker.tasks.*` 后，投递/注册两侧仍自洽（故全量 pytest 绿灯，因为测试里的字面量也在同一次 codemod 射程内被改掉），**但 broker 中在途消息全部 `KeyError: 'app.workers.tasks...'`**——正是本行原本想避免的事。
+>
+> **后续定论**：任务名是**线级协议，不得由模块/包路径派生**。已统一为与目录无关的 `milesai.tasks.*`，写入 `miles_core.jobs.tasks.TASK_NAMES` 作为唯一真相源（装饰器改为引用常量而非硬编码字符串），并由 `tests/infra/test_celery_task_names.py` 冻结字面量 + 断言「每个投递名都已注册」。改名一律按破坏性协议变更处理（需排空 broker 在途消息或注册旧名别名）。
 
 - [ ] **Step 2: worker 启动模块补齐注册**
 
@@ -1258,6 +1262,8 @@ _RE = re.compile(rf"(?<![\w.]){_ALT}(?![\w])")
 #    app.exec.mcp.tools 提供），若预演输出中出现该前缀即为遗漏，需回到 Task 1.4 修。
 # 3) 同一 regex 同时作用于 import 语句与字符串字面量（patch 目标、celery 任务名、
 #    include 列表），因此任务名会一致地变为 miles_worker.tasks.*。
+#    ⚠️ 更正（2026-09-11）：这条「顺手改字符串」正是事故根源，见 Task 1.5 Step 1 的更正说明；
+#    任务名现为与目录无关的 milesai.tasks.*，勿再纳入 codemod 射程。
 
 SKIP_PARTS = {".venv", "__pycache__", "milesai.egg-info", ".ruff_cache", ".pytest_cache", "node_modules"}
 
@@ -1477,6 +1483,12 @@ rg -n "app\.workers|miles_worker\.workers" packages -g '*.py' || echo "OK: 无�
 - `packages/miles-worker/src/miles_worker/app.py`：`include=["miles_worker.tasks"]`；`task_routes` 三个前缀 → `"miles_worker.tasks.ingest.*"` / `".ocr.*"` / `".embed.*"`；`beat_schedule` 的 `task` 值用 `TASK_NAMES[...]`（Task 1.5 已引入）。
 - `packages/miles-worker/src/miles_worker/tasks/*.py`：`@celery_app.task(name="miles_worker.tasks...")`（codemod 已改，核对；`generative.py` 的多行装饰器也需确认 name 形参存在）。
 - `packages/miles-core/src/miles_core/jobs/tasks.py`：`TASK_NAMES` 各值改为 `"miles_worker.tasks.*"` 字面量（与装饰器 `name=` 严格一致）。
+
+> **⚠️ 更正（2026-09-11，合并后发现真实故障）**：上面三条都被执行了，但**方向错误**——任务名不该带包名前缀。事后定论：`name=` 改为引用 `TASK_NAMES`（单一真相源，见下），命名空间统一为 **`milesai.tasks.*`**，并加 `tests/infra/test_celery_task_names.py` 冻结。当前实际状态以代码为准：
+> - `packages/miles-core/src/miles_core/jobs/tasks.py`：`TASK_NAMES` + `TASK_NAMESPACE = "milesai.tasks."`（协议唯一真相源）
+> - `packages/miles-worker/src/miles_worker/tasks/*.py`：全部 `@celery_app.task(name=TASK_NAMES["…"])`，不再硬编码字符串
+> - `packages/miles-core/src/miles_core/jobs/celery_app.py`：`task_routes` 用 `f"{TASK_NAMESPACE}ingest.*"` 拼出
+> - `include=["miles_worker.tasks"]` **不变**（那是模块路径，不是任务名）
 
 - [ ] **Step 3b: 校验 worker 启动入口可被 Celery 定位**
 

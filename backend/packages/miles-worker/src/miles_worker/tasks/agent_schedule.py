@@ -15,6 +15,7 @@ from uuid import UUID
 from sqlalchemy import select
 
 from miles_common.cron import compute_next_run
+from miles_core.jobs.tasks import TASK_NAMES
 from miles_core.tenant import TenantContext
 from miles_core.infra.db import get_worker_session, get_sync_db
 from miles_core.models.agent.schedule import AgentSchedule
@@ -76,7 +77,7 @@ async def _run_schedule_async(schedule_id: UUID) -> None:
         await db.commit()
 
 
-@celery_app.task(name="miles_worker.tasks.agent_schedule.run_agent_schedule")
+@celery_app.task(name=TASK_NAMES["run_agent_schedule"])
 def run_agent_schedule(schedule_id: str) -> str:
     """执行单条智能体定时任务。"""
     try:
@@ -87,7 +88,7 @@ def run_agent_schedule(schedule_id: str) -> str:
         raise
 
 
-@celery_app.task(name="miles_worker.tasks.agent_schedule.tick_agent_schedules")
+@celery_app.task(name=TASK_NAMES["tick_agent_schedules"])
 def tick_agent_schedules() -> str:
     """扫描到期定时任务并派发执行。"""
     now = datetime.now(timezone.utc)
