@@ -2216,14 +2216,18 @@ EOF
 
 ```bash
 cd backend
-rg -n "分页|全局异常处理" app/common/__init__.py
+rg -n "分页|全局异常处理" packages/miles-common/src/miles_common/__init__.py
 ```
 
-- `app/common/__init__.py` docstring 仍写「响应、异常、分页、全局异常处理」，但 `pagination` 与 `handlers` 已迁出。改为「跨模块公共能力：响应、异常与通用 schema。」（Phase 1 Task 1.2 的 scope 未授权改它，故留到这里。）
-- `app/models/__init__.py:6` 的域目录列表 `platform / kb / flow / model / media / meta / task / storage / agent / marketplace` 需补 `risk`（Task 1.3 新增 `app/models/risk.py`，其 scope 未授权改 docstring）。
-- `app/tenant/mcp/runner/__init__.py:1` docstring 仍写「MCP Runner 客户端与 RunSpec（API 侧）」，但 `RunSpec`/`validate_run_spec`/`build_run_spec` 已随 Task 1.4/1.7 迁至 `app/exec/mcp/spec.py` 与 `app/tenant/mcp/runner/spec_build.py`，需改写。
-- `app/apps/routers.py:1` docstring 仍写「汇总租户端（/api/v1）与运营端（/api/admin/v1）路由」，漏了 Task 1.8 新增的 `openapi_router`（开放面 `/api/v1/open/*`），需补。
-- `app/apps/application.py` 的 `create_app` docstring 仍写「挂载 api / admin 路由」，Task 1.8 后为 api / openapi / admin 三处，需补。
+- `packages/miles-common/src/miles_common/__init__.py` docstring 仍写「响应、异常、分页、全局异常处理」，但 `pagination` 与 `handlers` 已迁出。改为「跨模块公共能力：响应、异常与通用 schema。」（Phase 1 Task 1.2 的 scope 未授权改它，故留到这里。）
+- `packages/miles-core/src/miles_core/models/__init__.py` 的域目录列表 `platform / kb / flow / model / media / meta / task / storage / agent / marketplace` 需补 `risk`（Task 1.3 新增 `models/risk.py`，其 scope 未授权改 docstring）。
+- `packages/miles-portal/src/miles_portal/tenant/mcp/runner/__init__.py` docstring 仍写「MCP Runner 客户端与 RunSpec（API 侧）」，但 `RunSpec`/`validate_run_spec` 已随 Task 1.4 迁至 `miles_exec.mcp.spec`，`build_run_spec` 随 Task 1.7 迁至同包的 `spec_build.py`，需改写。
+- `packages/miles-server/src/miles_server/apps/main.py` docstring 写「租户 API 前缀见 apps.routers.api_router」，但 `apps/routers.py` 已在 Task 2.5 删除（改为各域 `register_*`），需改写为指向 `miles_portal.registration.register_portal`。
+- `backend/tools/rename_to_workspace.py` 的 `RULES` 仍留过时映射 `("app.workers.app", "miles_core.jobs.celery_app")`（正确应为 `miles_worker.app`；该工具已执行完毕，仅作为记录误导后来者）。要么修正该行，要么在文件头注明「一次性工具，`app.workers.app` 一条已由人工修正，勿直接重跑」。
+- `.github/workflows/lint.yml` 的 step 名称/注释仍按旧单包布局描述（按文件路径调用仍有效，属措辞过时）。
+- `packages/*/pyproject.toml` 的注释若含旧 `app/` 路径（如 miles-core 关于 `app/infra/db/sync.py` 的注释），改为新路径。
+
+> Task 2.5 已顺带修正 `packages/miles-server/.../apps/application.py` 的 `create_app` docstring（原 Task 1.8 登记的「漏 openapi」一项已随重构解决），无需在此重复。
 
 > 后续任务若再发现同类过时 docstring，追加到本 Step 列表，不要就地偷偷扩大该任务 scope。
 
