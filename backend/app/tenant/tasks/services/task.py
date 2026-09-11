@@ -9,8 +9,9 @@ from uuid import UUID
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.workers.app import celery_app
 from app.common.exceptions import BadRequestError, NotFoundError
+from app.core.jobs.celery_app import celery_app
+from app.core.jobs.tasks import INGEST_DOCUMENT
 from app.core.tenant import TenantContext, assert_tenant_access, tenant_filters
 from app.models.task.task_record import CeleryTaskRecord, TaskStatus
 from app.common.schema import PageParams, PageResult
@@ -160,7 +161,6 @@ class TaskService(BaseService):
         if record.status == TaskStatus.RUNNING:
             raise BadRequestError("任务运行中，请稍后再试")
 
-        from app.workers.tasks.ingest import ingest_document
         from app.models.kb import Document, DocumentStatus
 
         from app.core.soft_delete import is_marked_deleted
@@ -169,7 +169,7 @@ class TaskService(BaseService):
         if not doc or is_marked_deleted(doc):
             raise NotFoundError("关联文档不存在")
 
-        new_task = ingest_document.delay(str(doc.id))
+        new_task = celery_app.send_task(INGEST_DOCUMENT, args=[str(doc.id)])
         record.celery_task_id = new_task.id
         record.status = TaskStatus.PENDING
         record.fail_reason = None

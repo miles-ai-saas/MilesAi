@@ -125,7 +125,7 @@ async def probe_components(component_ids: list[str] | None = None) -> list[dict]
 
 
 def _collect_worker_info_sync() -> dict:
-    from app.workers.app import celery_app
+    from app.core.jobs.celery_app import celery_app
 
     inspect = celery_app.control.inspect()
     stats = inspect.stats() or {}

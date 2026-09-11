@@ -112,10 +112,11 @@ class KnowledgeBaseDocumentMixin:
         storage.storage.upload_bytes(content, object_key, mime)
         await self.db.flush()
 
-        from app.workers.tasks.ingest import ingest_document
+        from app.core.jobs.celery_app import celery_app
+        from app.core.jobs.tasks import INGEST_DOCUMENT
         from app.tenant.tasks.services.task import TaskService
 
-        task = ingest_document.delay(str(doc.id))
+        task = celery_app.send_task(INGEST_DOCUMENT, args=[str(doc.id)])
         doc.celery_task_id = task.id
         await TaskService(self.db, self.ctx).create_record(
             celery_task_id=task.id,
@@ -165,12 +166,13 @@ class KnowledgeBaseDocumentMixin:
         if not doc.object_key or doc.object_key == "pending":
             raise BadRequestError("文档文件不可用，请重新上传")
 
-        from app.workers.tasks.ingest import ingest_document
+        from app.core.jobs.celery_app import celery_app
+        from app.core.jobs.tasks import INGEST_DOCUMENT
         from app.tenant.tasks.services.task import TaskService
 
         doc.status = DocumentStatus.PENDING
         doc.fail_reason = None
-        task = ingest_document.delay(str(doc.id))
+        task = celery_app.send_task(INGEST_DOCUMENT, args=[str(doc.id)])
         doc.celery_task_id = task.id
         await TaskService(self.db, self.ctx).create_record(
             celery_task_id=task.id,

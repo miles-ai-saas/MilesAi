@@ -219,10 +219,11 @@ class MediaAssetService(BaseService):
         await self.db.flush()
 
         if body.run_parse:
+            from app.core.jobs.celery_app import celery_app
+            from app.core.jobs.tasks import INGEST_DOCUMENT
             from app.tenant.tasks.services.task import TaskService
-            from app.workers.tasks.ingest import ingest_document
 
-            task = ingest_document.delay(str(doc.id))
+            task = celery_app.send_task(INGEST_DOCUMENT, args=[str(doc.id)])
             doc.celery_task_id = task.id
             await TaskService(self.db, self.ctx).create_record(
                 celery_task_id=task.id,

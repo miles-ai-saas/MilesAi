@@ -30,9 +30,10 @@ from app.tenant.generative.schemas.job import (
     ImageGenerativeJobCreate,
     VideoGenerativeJobCreate,
 )
+from app.core.jobs.celery_app import celery_app
+from app.core.jobs.tasks import RUN_GENERATIVE_IMAGE_JOB, RUN_GENERATIVE_VIDEO_JOB
 from app.core.service import BaseService
 from app.tenant.tasks.services.task import TaskService
-from app.workers.app import celery_app
 
 logger = get_logger(__name__)
 
@@ -133,13 +134,13 @@ class GenerativeJobService(BaseService):
         self,
         job: GenerativeJob,
         *,
-        celery_task,
+        celery_task_name: str,
         task_name: str,
     ) -> GenerativeJob:
         # 先 commit 确保 job 已持久化到 DB，再入队 Celery 任务，
         # 避免 Worker 拿到任务时事务未提交导致找不到 job 记录。
         await self.db.commit()
-        task = celery_task.delay(str(job.id))
+        task = celery_app.send_task(celery_task_name, args=[str(job.id)])
         job.celery_task_id = task.id
         await TaskService(self.db, self.ctx).create_record(
             celery_task_id=task.id,
@@ -184,11 +185,9 @@ class GenerativeJobService(BaseService):
             agent_id=agent_id,
             trace_id=trace_id,
         )
-        from app.workers.tasks.generative import run_generative_video_job
-
         await self._dispatch_job(
             job,
-            celery_task=run_generative_video_job,
+            celery_task_name=RUN_GENERATIVE_VIDEO_JOB,
             task_name="run_generative_video_job",
         )
         record_map = await self._celery_record_ids_for_jobs([job.id])
@@ -227,11 +226,9 @@ class GenerativeJobService(BaseService):
             agent_id=agent_id,
             trace_id=trace_id,
         )
-        from app.workers.tasks.generative import run_generative_image_job
-
         await self._dispatch_job(
             job,
-            celery_task=run_generative_image_job,
+            celery_task_name=RUN_GENERATIVE_IMAGE_JOB,
             task_name="run_generative_image_job",
         )
         record_map = await self._celery_record_ids_for_jobs([job.id])
@@ -309,19 +306,15 @@ class GenerativeJobService(BaseService):
         job.error_message = None
 
         if job.kind == "video":
-            from app.workers.tasks.generative import run_generative_video_job
-
             await self._dispatch_job(
                 job,
-                celery_task=run_generative_video_job,
+                celery_task_name=RUN_GENERATIVE_VIDEO_JOB,
                 task_name="run_generative_video_job",
             )
         elif job.kind == "image":
-            from app.workers.tasks.generative import run_generative_image_job
-
             await self._dispatch_job(
                 job,
-                celery_task=run_generative_image_job,
+                celery_task_name=RUN_GENERATIVE_IMAGE_JOB,
                 task_name="run_generative_image_job",
             )
         else:
