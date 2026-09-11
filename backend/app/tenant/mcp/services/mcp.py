@@ -34,7 +34,7 @@ from app.tenant.mcp.schemas.mcp import (
 from app.tenant.mcp.client import fetch_mcp_tools, invoke_mcp_tool as remote_invoke_mcp_tool
 from app.tenant.mcp.runner.audit import write_mcp_runner_session
 from app.tenant.mcp.runner.client import RunnerClient
-from app.exec.mcp.spec import build_run_spec
+from app.tenant.mcp.runner.spec_build import build_run_spec
 from app.exec.mcp.constants import McpTransport
 from app.tenant.mcp.transport import normalize_transport, transport_filter_values
 from app.common.schema import PageParams, PageResult
