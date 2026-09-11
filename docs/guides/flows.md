@@ -12,8 +12,8 @@
 
 | 名称 | 路径 |
 |------|------|
-| flow_runtime | `backend/app/flow_runtime/` |
-| LangGraph 编译/执行 | `backend/app/integrations/langgraph/` |
+| flow_runtime | `backend/packages/miles-ai/src/miles_ai/flow_runtime/` |
+| LangGraph 编译/执行 | `backend/packages/miles-ai/src/miles_ai/integrations/langgraph/` |
 | 前端画布 | `@xyflow/react` |
 
 ```
@@ -37,8 +37,8 @@ React Flow → PUT /flows/{id}/graph → flow_versions
 
 | 位置 | 说明 |
 |------|------|
-| 后端 JSON | [`flow_runtime/templates/rag_flow.json`](../../backend/app/flow_runtime/templates/rag_flow.json) |
-| 结构说明 | [`templates/README.md`](../../backend/app/flow_runtime/templates/README.md) |
+| 后端 JSON | [`flow_runtime/templates/rag_flow.json`](../../backend/packages/miles-ai/src/miles_ai/flow_runtime/templates/rag_flow.json) |
+| 结构说明 | [`templates/README.md`](../../backend/packages/miles-ai/src/miles_ai/flow_runtime/templates/README.md) |
 | 前端创建/插入 | `GET /flows/templates` ← `flow_runtime/templates/registry.py` |
 | 市场种子 | `tenant.marketplace.util.load_rag_graph_template()` |
 

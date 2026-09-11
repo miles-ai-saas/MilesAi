@@ -6,15 +6,15 @@ from uuid import uuid4
 import numpy as np
 import pytest
 
-from app.integrations.embeddings.constants import EXTRA_EMBEDDING_DIMENSION, INVOKE_MODE_CLIP
-from app.integrations.embeddings.providers.clip import ClipEmbeddingProvider
-from app.integrations.langchain.visual_embeddings import (
+from miles_ai.integrations.embeddings.constants import EXTRA_EMBEDDING_DIMENSION, INVOKE_MODE_CLIP
+from miles_ai.integrations.embeddings.providers.clip import ClipEmbeddingProvider
+from miles_ai.integrations.langchain.visual_embeddings import (
     ensure_clip_model,
     should_use_visual_image_embedding,
 )
-from app.models.kb import KnowledgeBase
-from app.models.model import ModelConfig
-from app.models.model.catalog import ModelCapabilityType
+from miles_core.models.kb import KnowledgeBase
+from miles_core.models.model import ModelConfig
+from miles_core.models.model.catalog import ModelCapabilityType
 
 
 def _clip_model() -> ModelConfig:
@@ -53,7 +53,7 @@ def test_clip_embed_texts():
     mock_encoder = MagicMock()
     mock_encoder.encode.return_value = np.array([[0.2] * 512], dtype=np.float32)
     with patch(
-        "app.integrations.embeddings.providers.clip._load_clip",
+        "miles_ai.integrations.embeddings.providers.clip._load_clip",
         return_value=mock_encoder,
     ):
         vectors = ClipEmbeddingProvider().embed_texts(model, ["一只猫"])

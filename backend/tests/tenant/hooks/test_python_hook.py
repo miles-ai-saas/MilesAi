@@ -2,7 +2,7 @@
 
 import pytest
 
-from app.tenant.hooks.plugins.echo import handle
+from miles_portal.tenant.hooks.plugins.echo import handle
 
 
 @pytest.mark.asyncio

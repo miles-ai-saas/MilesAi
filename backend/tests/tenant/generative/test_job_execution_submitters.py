@@ -6,8 +6,8 @@ from uuid import uuid4
 
 import pytest
 
-from app.core.tenant import TenantContext
-from app.tenant.generative.services import job_execution
+from miles_core.tenant import TenantContext
+from miles_portal.tenant.generative.services import job_execution
 
 
 def _run(coro):
@@ -44,7 +44,7 @@ def _make_fake(job_id, captures):
 
 @pytest.fixture()
 def fake_job_service(monkeypatch):
-    import app.tenant.generative.services.job as job_module
+    import miles_portal.tenant.generative.services.job as job_module
 
     job_id = uuid4()
     captures = []

@@ -3,9 +3,9 @@
 import asyncio
 from uuid import uuid4
 
-from app.core.tenant import TenantContext
-from app.models.media.reader import AttachmentBytes
-from app.tenant.attachments.services import media_reader as mod
+from miles_core.tenant import TenantContext
+from miles_core.models.media.reader import AttachmentBytes
+from miles_portal.tenant.attachments.services import media_reader as mod
 
 
 def _run(coro):

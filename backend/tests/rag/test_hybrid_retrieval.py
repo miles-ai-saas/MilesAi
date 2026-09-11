@@ -2,7 +2,7 @@
 
 from types import SimpleNamespace
 
-from app.rag.retrieve import resolve_retrieval_mode, rrf_fuse
+from miles_ai.rag.retrieve import resolve_retrieval_mode, rrf_fuse
 
 
 def test_rrf_fuse_merges_two_rankings():

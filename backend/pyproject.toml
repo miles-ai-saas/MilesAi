@@ -1,84 +1,19 @@
 [project]
-name = "milesai"
+name = "milesai-workspace"
 version = "0.1.0"
-description = "一体化AI智能编排与RAG应用平台"
-readme = "README.md"
+description = "一体化AI智能编排与RAG应用平台（多包工作区根）"
 requires-python = ">=3.11"
-dependencies = [
-    "click>=8.1.0",
-    "fastapi>=0.115.0",
-    "uvicorn[standard]>=0.32.0",
-    "sqlalchemy[asyncio]>=2.0.36",
-    "asyncpg>=0.30.0",
-    "alembic>=1.14.0",
-    "pydantic>=2.10.0",
-    "pydantic-settings>=2.6.0",
-    "python-jose[cryptography]>=3.3.0",
-    "bcrypt>=4.0,<5",
-    "python-multipart>=0.0.12",
-    "redis>=5.2.0",
-    "httpx>=0.28.0",
-    "httpx-sse>=0.4.0",
-    "celery>=5.4.0",
-    "croniter>=2.0.0",
-    "minio>=7.2.0",
-    "weaviate-client>=4.9.0",
-    "pymilvus>=2.5.0",
-    "email-validator>=2.2.0",
-    "sentence-transformers>=3.3.0",
-    "pypdf>=5.1.0",
-    "Pillow>=10.0.0",
-    "psycopg2-binary>=2.9.10",
-    "langchain-core>=0.3.0",
-    "langchain-text-splitters>=0.3.0",
-    "langchain-community>=0.3.0",
-    "langchain-weaviate>=0.0.6",
-    "langchain-milvus>=0.3.0",
-    "pgvector>=0.3.0",
-    "langgraph>=1.2.0",
-    "langgraph-checkpoint-redis>=0.4.0",
-    "litellm>=1.85.1",
-]
 
-[project.optional-dependencies]
-agent-stack = [
-    "langchain-openai>=0.2.0",
-    "langchain-community>=0.3.0",
-    "deepagents>=0.5.0",
-]
+[tool.uv.workspace]
+members = ["packages/*"]
+
+[dependency-groups]
 dev = [
     "pytest>=8.3.0",
     "pytest-asyncio>=0.24.0",
-    # 固定 ruff：格式化规则随版本演进，未固定会让 `ruff format --check` 在 CI 无预兆变红
     "ruff==0.15.13",
+    "import-linter>=2.0",
 ]
-multimodal = [
-    "pytesseract>=0.3.10",
-    "openai-whisper>=20231117",
-]
-parse-docling = [
-    "docling>=2.0.0",
-]
-otel = [
-    "opentelemetry-api>=1.28.0",
-    "opentelemetry-sdk>=1.28.0",
-    "opentelemetry-exporter-otlp>=1.28.0",
-    "opentelemetry-instrumentation-fastapi>=0.49b0",
-]
-
-[project.scripts]
-milesai = "cli:main"
-
-[build-system]
-requires = ["setuptools>=75.0"]
-build-backend = "setuptools.build_meta"
-
-[tool.setuptools]
-py-modules = ["cli"]
-
-[tool.setuptools.packages.find]
-where = ["."]
-include = ["app*"]
 
 [tool.ruff]
 line-length = 160

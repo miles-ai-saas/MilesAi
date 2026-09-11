@@ -1,6 +1,6 @@
 """平台风控运行时单元测试。"""
 
-from app.admin.app_ops.services.risk_enforce import PlatformRiskEnforcer
+from miles_core.risk.enforce import PlatformRiskEnforcer
 
 
 def test_match_path_wildcard():

@@ -1,7 +1,7 @@
 import pytest
 
-from app.common.exceptions import BadRequestError
-from app.tenant.tools.parameters import normalize_parameters, parameters_to_pydantic, validate_tool_params
+from miles_common.exceptions import BadRequestError
+from miles_portal.tenant.tools.parameters import normalize_parameters, parameters_to_pydantic, validate_tool_params
 
 SAMPLE = [
     {"name": "city", "type": "string", "description": "城市", "required": True},

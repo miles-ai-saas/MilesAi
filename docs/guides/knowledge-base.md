@@ -11,7 +11,7 @@
 | 目标 | 说明 |
 |------|------|
 | 多租户隔离 | `tenant_id` 贯穿 PG、对象 key、向量 Filter |
-| 可替换基础设施 | 对象存储 `app.infra.storage`；向量库 `app.infra.vector_store` |
+| 可替换基础设施 | 对象存储 `miles_core.infra.storage`；向量库 `miles_core.infra.vector_store` |
 | KB 级向量模型 | 创建时绑定 `embedding_model_config_id`（`model_type=embedding`），**创建后不可改** |
 | 异步入库 | 上传 → Celery `ingest_document` → 解析 → 分片 → 向量化 → 向量库 |
 | 可观测 | 文档状态机 + `fail_reason` + 任务表 `task_records` |
@@ -147,7 +147,7 @@ embed_query_for_kb(kb, query) → search_kb_chunks（Weaviate hybrid 或 向量+
 按 chunk_id 回表 kb_document_chunks + kb_documents → SearchHit[]
 ```
 
-智能体 / 流程 RAG：`search_kb` / `search_multi_kb`（`app.integrations.langchain.vectorstores`），多库时 **每个 KB 独立生成查询向量** 后合并按 score 排序。
+智能体 / 流程 RAG：`search_kb` / `search_multi_kb`（`miles_ai.integrations.langchain.vectorstores`），多库时 **每个 KB 独立生成查询向量** 后合并按 score 排序。
 
 ### 3.4 删除编排
 
@@ -164,8 +164,8 @@ embed_query_for_kb(kb, query) → search_kb_chunks（Weaviate hybrid 或 向量+
 
 | 层 | 路径 | 职责 |
 |----|------|------|
-| API | `app/tenant/kb/views/kb.py` | 路由、权限 `kb:*` |
-| 业务 | `app/tenant/kb/services/kb.py` | CRUD、上传、检索、删除编排 |
+| API | `backend/packages/miles-portal/src/miles_portal/tenant/kb/views/kb.py` | 路由、权限 `kb:*` |
+| 业务 | `backend/packages/miles-portal/src/miles_portal/tenant/kb/services/kb/` | CRUD、上传、检索、删除编排 |
 | 入库 | `tenant/kb/services/ingest.py` | Celery 状态机，调 `rag.pipeline.run_ingest_pipeline` |
 | 管道 | `rag/pipeline/ingest.py` | Parse → Chunk → Embed → Index |
 | 解析 | `rag/parse/loaders.py`、`backends/*` | 统一 `load_documents_from_bytes` |
@@ -175,8 +175,8 @@ embed_query_for_kb(kb, query) → search_kb_chunks（Weaviate hybrid 或 向量+
 | 生成 | `rag/generate/` | 上下文与 `rag_answer` |
 | 加载 | `rag/load/knowledge_bases.py` | 租户 KB 列表（Agent/流程用） |
 | 集成 | `integrations/langchain/embeddings.py`、`vectorstores.py` | 按 KB 维度 embed；`search_kb` 封装 |
-| 删除 | `app.deletion.document` / `cascade.before_delete_kb` | 衍生数据与引用 |
-| 任务 | `app.workers.tasks.ingest` | Celery 入口 |
+| 删除 | `miles_portal.deletion.document` / `cascade.before_delete_kb` | 衍生数据与引用 |
+| 任务 | `miles_worker.tasks.ingest` | Celery 入口 |
 
 ---
 
@@ -236,7 +236,7 @@ OpenAPI：`/docs`（运行实例）。
 
 ### 6.4 文档解析（Parse）
 
-入库 **Parse** 在 `app.rag.parse`（`load_documents_from_bytes` → `chunk_documents`），与检索/向量库解耦。
+入库 **Parse** 在 `miles_ai.rag.parse`（`load_documents_from_bytes` → `chunk_documents`），与检索/向量库解耦。
 
 **当前支持上传并入库的格式：**
 
@@ -249,9 +249,9 @@ OpenAPI：`/docs`（运行实例）。
 | 视频 | `.mp4`、`.mov`、`.m4v`、`.webm`、`.mkv` | ffmpeg 抽音轨（Whisper）+ 关键帧 OCR；无 ffmpeg 时占位文本 |
 | Office | `.docx`、`.pptx`、`.xlsx`、`.html`、`.htm` | **可上传**；解析需 `PARSE_PDF_BACKEND=docling` 且安装 `[parse-docling]` |
 
-白名单实现：`app/rag/parse/upload_policy.py`（KB 与通用附件共用）。
+白名单实现：`backend/packages/miles-ai/src/miles_ai/rag/parse/upload_policy.py`（KB 与通用附件共用）。
 
-白名单与解析能力对齐：图/音/视频扩展名与 MIME 由 `app/rag/parse/media.py` 单一来源导出、`upload_policy.py` 复用；`OFFICE_EXTENSIONS ⊆ DOCLING_EXTENSIONS`、media 判定 ⊆ 白名单、白名单扩展名/MIME 往返可接受、前端 `accept` 全覆盖等不变式由 `tests/rag/test_upload_policy_alignment.py` 守卫。Docling 可读但白名单刻意不收的 TIFF/BMP 属「允许上传 ≠ 一定能解析」边界。
+白名单与解析能力对齐：图/音/视频扩展名与 MIME 由 `backend/packages/miles-ai/src/miles_ai/rag/parse/media.py` 单一来源导出、`upload_policy.py` 复用；`OFFICE_EXTENSIONS ⊆ DOCLING_EXTENSIONS`、media 判定 ⊆ 白名单、白名单扩展名/MIME 往返可接受、前端 `accept` 全覆盖等不变式由 `tests/rag/test_upload_policy_alignment.py` 守卫。Docling 可读但白名单刻意不收的 TIFF/BMP 属「允许上传 ≠ 一定能解析」边界。
 
 | 配置 | 说明 |
 |------|------|
@@ -261,7 +261,7 @@ OpenAPI：`/docs`（运行实例）。
 **安装 Docling（Worker 与 API 若走 docling 需一致）：**
 
 ```bash
-cd backend && pip install -e ".[parse-docling]"
+cd backend && uv sync --all-packages   # 解析 / 多模态依赖已在 miles-ai 声明
 ```
 
 `docling` 模式下除 PDF 外还可解析 `DOCLING_EXTENSIONS` 中的版式/图片扩展名；**API 上传白名单**已包含 Office（docx/pptx/xlsx）与多模态常用格式（见 `upload_policy.py`）。
@@ -297,7 +297,7 @@ cd backend && pip install -e ".[parse-docling]"
 **Worker 启动**（示例）：
 
 ```bash
-celery -A app.workers.app worker -l info -Q default,parse,ocr,asr,embed
+celery -A miles_worker.app worker -l info -Q default,parse,ocr,asr,embed
 ```
 
 ---

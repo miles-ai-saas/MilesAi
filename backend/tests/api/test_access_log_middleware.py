@@ -5,7 +5,7 @@ import logging
 from fastapi import APIRouter
 from fastapi.testclient import TestClient
 
-from app.apps.application import create_app
+from miles_server.apps.application import create_app
 
 
 def test_access_log_emits_for_api_route(caplog):

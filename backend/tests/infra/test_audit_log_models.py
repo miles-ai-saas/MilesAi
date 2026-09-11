@@ -1,8 +1,8 @@
 """审计/日志 ORM 与迁移列一致（无 deleted_at）。"""
 
-from app.models.agent.schedule_run import AgentScheduleRun
-from app.models.model.usage_log import ModelUsageLog
-from app.tenant.hooks.models import HookExecutionLog
+from miles_core.models.agent.schedule_run import AgentScheduleRun
+from miles_core.models.model.usage_log import ModelUsageLog
+from miles_portal.tenant.hooks.models import HookExecutionLog
 
 
 def test_audit_log_models_have_no_deleted_at_column():

@@ -7,10 +7,10 @@ from uuid import uuid4
 
 import pytest
 
-from app.flow_runtime.types import RunContext
-from app.integrations.langgraph.compiler import run_compiled_canvas, validate_graph_for_compile
-from app.models.kb import Document, DocumentStatus, KnowledgeBase
-from app.tenant.kb.services.ingest import run_ingest
+from miles_ai.flow_runtime.types import RunContext
+from miles_ai.integrations.langgraph.compiler import run_compiled_canvas, validate_graph_for_compile
+from miles_core.models.kb import Document, DocumentStatus, KnowledgeBase
+from miles_portal.tenant.kb.services.ingest import run_ingest
 
 ECHO_GRAPH = {
     "nodes": [
@@ -132,8 +132,8 @@ def test_run_ingest_orchestration_marks_ready():
         yield db
 
     with (
-        patch("app.tenant.kb.services.ingest.get_sync_db", _fake_sync_db),
-        patch("app.tenant.kb.services.ingest.run_ingest_pipeline", return_value=_FakeIngestResult(chunk_count=2)) as pipeline,
+        patch("miles_portal.tenant.kb.services.ingest.get_sync_db", _fake_sync_db),
+        patch("miles_portal.tenant.kb.services.ingest.run_ingest_pipeline", return_value=_FakeIngestResult(chunk_count=2)) as pipeline,
     ):
         run_ingest(str(doc.id))
 
@@ -163,9 +163,9 @@ def test_run_ingest_orchestration_persists_failure():
         yield db
 
     with (
-        patch("app.tenant.kb.services.ingest.get_sync_db", _fake_sync_db),
-        patch("app.tenant.kb.services.ingest.run_ingest_pipeline", side_effect=RuntimeError("embed failed")),
-        patch("app.tenant.kb.services.ingest.persist_document_ingest_failure") as persist,
+        patch("miles_portal.tenant.kb.services.ingest.get_sync_db", _fake_sync_db),
+        patch("miles_portal.tenant.kb.services.ingest.run_ingest_pipeline", side_effect=RuntimeError("embed failed")),
+        patch("miles_portal.tenant.kb.services.ingest.persist_document_ingest_failure") as persist,
     ):
         with pytest.raises(RuntimeError, match="embed failed"):
             run_ingest(str(doc.id))

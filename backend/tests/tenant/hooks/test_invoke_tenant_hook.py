@@ -8,12 +8,12 @@ from uuid import uuid4
 
 import pytest
 
-from app.common.exceptions import BadRequestError
-from app.tenant.hooks.exceptions import HookBlockedError
-from app.tenant.hooks.models import HookScope, HookTrigger, HookType
-from app.tenant.hooks.services.executor import http as http_mod
-from app.tenant.hooks.services.executor.service import HookExecutor
-from app.tenant.tools.services import hook_once
+from miles_common.exceptions import BadRequestError
+from miles_portal.tenant.hooks.exceptions import HookBlockedError
+from miles_portal.tenant.hooks.models import HookScope, HookTrigger, HookType
+from miles_portal.tenant.hooks.services.executor import http as http_mod
+from miles_portal.tenant.hooks.services.executor.service import HookExecutor
+from miles_portal.tenant.tools.services import hook_once
 
 
 def _ctx(tenant_id=None) -> SimpleNamespace:

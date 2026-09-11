@@ -6,11 +6,11 @@ from uuid import uuid4
 
 import pytest
 
-from app.tenant.agents.schemas.agent import ChatRequest, ChatResponse
-from app.tenant.agents.services.agent import AgentService
-from app.tenant.agents.ws import protocol as proto
-from app.tenant.agents.ws.chat import _build_chat_request, _run_chat_turn
-from app.tenant.agents.ws.auth import extract_bearer_token
+from miles_portal.tenant.agents.schemas.agent import ChatRequest, ChatResponse
+from miles_portal.tenant.agents.services.agent import AgentService
+from miles_portal.tenant.agents.ws import protocol as proto
+from miles_portal.tenant.agents.ws.chat import _build_chat_request, _run_chat_turn
+from miles_portal.tenant.agents.ws.auth import extract_bearer_token
 from tests.conftest import make_tenant_ctx
 
 
@@ -129,11 +129,11 @@ async def test_run_chat_turn_skips_emit_answer_deltas_when_streamed():
         return ChatResponse(answer="a")
 
     with (
-        patch("app.tenant.agents.ws.chat.AsyncSessionLocal", _FakeAsyncSession),
+        patch("miles_portal.tenant.agents.ws.chat.AsyncSessionLocal", _FakeAsyncSession),
         patch.object(AgentService, "chat", mock_chat),
-        patch("app.tenant.agents.ws.chat.proto.send_json", side_effect=fake_send_json),
-        patch("app.tenant.agents.ws.chat.proto.emit_answer_deltas", new_callable=AsyncMock) as emit_mock,
-        patch("app.tenant.agents.ws.chat.spawn_job_watchers"),
+        patch("miles_portal.tenant.agents.ws.chat.proto.send_json", side_effect=fake_send_json),
+        patch("miles_portal.tenant.agents.ws.chat.proto.emit_answer_deltas", new_callable=AsyncMock) as emit_mock,
+        patch("miles_portal.tenant.agents.ws.chat.spawn_job_watchers"),
     ):
         await _run_chat_turn(
             AsyncMock(),

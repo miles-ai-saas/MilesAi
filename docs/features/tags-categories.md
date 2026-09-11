@@ -153,12 +153,12 @@ ui/workbench/lib/api.ts                       # tags + categories
 ## 6. 后端文件清单
 
 ```
-backend/app/models/tag.py
-backend/app/models/category.py
-backend/app/tenant/tags/
-backend/app/tenant/categories/
-backend/app/tenant/agents/services/agent/   # 绑定 tag/category
-backend/app/tenant/marketplace/services/    # marketplace_app 标签
+backend/packages/miles-core/src/miles_core/models/meta/tag.py
+backend/packages/miles-core/src/miles_core/models/meta/category.py
+backend/packages/miles-portal/src/miles_portal/tenant/tags/
+backend/packages/miles-portal/src/miles_portal/tenant/categories/
+backend/packages/miles-portal/src/miles_portal/tenant/agents/services/agent/   # 绑定 tag/category
+backend/packages/miles-portal/src/miles_portal/tenant/marketplace/services/    # marketplace_app 标签
 ```
 
 ---

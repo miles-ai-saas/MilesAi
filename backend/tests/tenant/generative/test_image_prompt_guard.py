@@ -1,6 +1,6 @@
 """生图 prompt 护栏测试。"""
 
-from app.integrations.generative.image.prompt_guard import (
+from miles_ai.integrations.generative.image.prompt_guard import (
     sanitize_image_prompt,
     user_requests_image_collage,
 )

@@ -1,0 +1,112 @@
+"""运行监控 HTTP API：统计、趋势、健康报告与告警配置。"""
+
+from fastapi import APIRouter, Depends, Query
+from fastapi.responses import PlainTextResponse
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from miles_core.infra.db import get_db
+from miles_core.deps import require_permissions
+from miles_common.response import ok
+from miles_core.tenant import TenantContext
+from miles_common.schema import ApiResponse
+from miles_portal.tenant.monitor.schemas.meta import MonitorMetaOut
+from miles_portal.tenant.monitor.schemas.monitor import (
+    AlertConfig,
+    ModelUsageReport,
+    MonitorReport,
+    MonitorStats,
+    MonitorTrends,
+)
+from miles_portal.tenant.monitor.services.monitor import MonitorService
+
+router = APIRouter()
+
+
+# GET */meta：枚举展示字典，须在 /{id} 等路径参数路由之前注册
+@router.get("/meta", response_model=ApiResponse[MonitorMetaOut])
+async def monitor_meta(
+    ctx: TenantContext = Depends(require_permissions("monitor:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    return ok(await MonitorService(db, ctx).get_meta())
+
+
+@router.get("/stats", response_model=ApiResponse[MonitorStats])
+async def monitor_stats(
+    ctx: TenantContext = Depends(require_permissions("monitor:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    return ok(await MonitorService(db, ctx).stats())
+
+
+@router.get("/trends", response_model=ApiResponse[MonitorTrends])
+async def monitor_trends(
+    days: int = Query(7, ge=1, le=30),
+    ctx: TenantContext = Depends(require_permissions("monitor:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    return ok(await MonitorService(db, ctx).trends(days=days))
+
+
+@router.get("/model-usage", response_model=ApiResponse[ModelUsageReport])
+async def monitor_model_usage(
+    days: int = Query(7, ge=1, le=30),
+    ctx: TenantContext = Depends(require_permissions("monitor:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    return ok(await MonitorService(db, ctx).model_usage(days=days))
+
+
+@router.get("/report", response_model=ApiResponse[MonitorReport])
+async def monitor_report(
+    ctx: TenantContext = Depends(require_permissions("monitor:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    return ok(await MonitorService(db, ctx).report())
+
+
+@router.get("/report/export")
+async def export_report(
+    ctx: TenantContext = Depends(require_permissions("monitor:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    csv_text = await MonitorService(db, ctx).export_report_csv()
+    return PlainTextResponse(
+        csv_text,
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": "attachment; filename=milesai-report.csv"},
+    )
+
+
+@router.get("/health", response_model=ApiResponse[dict])
+async def monitor_health(
+    ctx: TenantContext = Depends(require_permissions("monitor:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    return ok(await MonitorService(db, ctx).health())
+
+
+@router.get("/alerts", response_model=ApiResponse[AlertConfig])
+async def get_alerts(
+    ctx: TenantContext = Depends(require_permissions("monitor:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    return ok(await MonitorService(db, ctx).get_alert_config())
+
+
+@router.put("/alerts", response_model=ApiResponse[AlertConfig])
+async def save_alerts(
+    body: AlertConfig,
+    ctx: TenantContext = Depends(require_permissions("monitor:write")),
+    db: AsyncSession = Depends(get_db),
+):
+    return ok(await MonitorService(db, ctx).save_alert_config(body))
+
+
+@router.post("/alerts/test", response_model=ApiResponse[dict])
+async def test_alerts(
+    body: AlertConfig,
+    ctx: TenantContext = Depends(require_permissions("monitor:write")),
+    db: AsyncSession = Depends(get_db),
+):
+    return ok(await MonitorService(db, ctx).test_alert(body))

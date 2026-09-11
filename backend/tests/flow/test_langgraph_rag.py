@@ -3,12 +3,12 @@
 from uuid import uuid4
 
 
-from app.integrations.langgraph.constants import RELEVANCE_GOOD, RELEVANCE_NONE, RELEVANCE_POOR
-from app.integrations.langgraph.grading import _score_grade, parse_llm_grade_response
-from app.integrations.langgraph.graphs.rag_qa import route_after_grade
-from app.integrations.langgraph.runner import build_rag_thread_id, should_use_langgraph_rag
-from app.models.agent import Agent
-from app.tenant.agents.constants import AgentRuntimeMode
+from miles_ai.integrations.langgraph.constants import RELEVANCE_GOOD, RELEVANCE_NONE, RELEVANCE_POOR
+from miles_ai.integrations.langgraph.grading import _score_grade, parse_llm_grade_response
+from miles_ai.integrations.langgraph.graphs.rag_qa import route_after_grade
+from miles_ai.integrations.langgraph.runner import build_rag_thread_id, should_use_langgraph_rag
+from miles_core.models.agent import Agent
+from miles_portal.tenant.agents.constants import AgentRuntimeMode
 
 
 def test_route_none_goes_fallback():

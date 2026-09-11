@@ -1,6 +1,6 @@
 """上传白名单与 parse 能力对齐。"""
 
-from app.rag.parse.upload_policy import is_kb_upload_allowed, kb_upload_accept_attribute
+from miles_ai.rag.parse.upload_policy import is_kb_upload_allowed, kb_upload_accept_attribute
 
 
 def test_office_extensions_allowed():

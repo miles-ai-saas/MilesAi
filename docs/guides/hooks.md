@@ -54,7 +54,7 @@ hook_bindings        挂载（hook_id, scope, target_id?, trigger, priority, is_
 | 值 | 说明 | 状态 |
 |----|------|------|
 | `http` | 向 `config.url` 发 HTTP 请求，body 为 payload（见 §5 现状 / §6 目标契约） | **已实现** |
-| `python` | 租户级 Python 扩展 | ✅ `app.tenant.hooks.plugins.*` 模块 + `handle` |
+| `python` | 租户级 Python 扩展 | ✅ `miles_portal.tenant.hooks.plugins.*` 模块 + `handle` |
 
 ### 3.2 挂载时机 `trigger`
 
@@ -131,7 +131,7 @@ sequenceDiagram
     Note over A,H: 异常时 H: ON_ERROR 再抛出
 ```
 
-代码入口：`backend/app/tenant/agents/services/agent.py`、`backend/app/tenant/flows/services/flow.py`（`run`）。
+代码入口：`backend/packages/miles-portal/src/miles_portal/tenant/agents/services/agent/`、`backend/packages/miles-portal/src/miles_portal/tenant/flows/services/flow.py`（`run`）。
 
 ### 4.4 业务 payload（位于 envelope.payload 内）
 
@@ -219,8 +219,8 @@ HTTP 请求体为 **Event v1 信封**（§6.1）；下列字段在 `payload` 对
 - `require_confirmation=True`，且属 opt-in 工具：须在 `agent.config.tool_slugs` 勾选才进入 function schema；
 - 执行同样写入 `hook_execution_logs`（`trigger` / `scope` 为入参值）。
 
-实现：`app/tenant/hooks/services/executor/service.py` 的 `run_manual_http` +
-`app/tenant/tools/services/hook_once.py`。
+实现：`backend/packages/miles-portal/src/miles_portal/tenant/hooks/services/executor/service.py` 的 `run_manual_http` +
+`backend/packages/miles-portal/src/miles_portal/tenant/tools/services/hook_once.py`。
 
 ---
 
@@ -320,7 +320,7 @@ HTTP 请求体为 **Event v1 信封**（§6.1）；下列字段在 `payload` 对
 
 - 路径：`/workbench/hooks`
 - 能力：HTTP 钩子 CRUD、`on_failure`、绑定规则、最近执行记录
-- 枚举展示：进入页面前请求 `GET /hooks/meta`，下拉与列表标签均用后端字典（与 `/models/meta` 同模式）；文案维护在 `app/tenant/hooks/meta.py`
+- 枚举展示：进入页面前请求 `GET /hooks/meta`，下拉与列表标签均用后端字典（与 `/models/meta` 同模式）；文案维护在 `backend/packages/miles-portal/src/miles_portal/tenant/hooks/meta.py`
 
 ### 9.1 `schema_version`：Hook Event 与 `GET */meta`（勿混用）
 
@@ -349,7 +349,7 @@ Hook 出站 POST body          GET /hooks/meta 响应
 
 embedding / rerank 的 `invoke_mode` 与 `extra` 字段对照见 **[model-config-extra.md](./model-config-extra.md)**（`EXTRA_INVOKE_MODE` 等在 `common/constants/model_extra.py` 与 `integrations/*/constants.py`）。
 
-**全站 `/meta` 约定**（`app/common/schemas/enum_meta.EnumOption`）：
+**全站 `/meta` 约定**（`backend/packages/miles-common/src/miles_common/schemas/enum_meta.py` 的 `EnumOption`）：
 
 | 模块 | 路径 | 维护位置 |
 |------|------|----------|
@@ -378,7 +378,7 @@ embedding / rerank 的 `invoke_mode` 与 `extra` 字段对照见 **[model-config
 
 | 层级 | 位置 | 内容 |
 |------|------|------|
-| 文案源 | `backend/app/tenant/<module>/meta.py` | 模块 docstring：API 路径、返回字段、前端消费文件、`docs/guides/hooks.md` §9 |
+| 文案源 | `backend/packages/miles-portal/src/miles_portal/tenant/<module>/meta.py` | 模块 docstring：API 路径、返回字段、前端消费文件、`docs/guides/hooks.md` §9 |
 | 构建 | `*_meta_dict()` | 「供 *MetaOut.model_validate 与单测使用」 |
 | 服务 | `Service.get_meta()` | 「无 DB，文案来自 meta.py」 |
 | 路由 | `views` 的 `@router.get("/meta")` | 须在 `/{id}` 等路径参数路由**之前**注册 |
@@ -404,12 +404,12 @@ embedding / rerank 的 `invoke_mode` 与 `extra` 字段对照见 **[model-config
 
 | 模块 | 路径 |
 |------|------|
-| ORM | `app/tenant/hooks/models.py` |
-| CRUD | `app/tenant/hooks/services/hook.py` |
-| 执行 | `app/tenant/hooks/services/executor/`（`service.py` 门面 · `http.py`/`python.py` · `log.py`） |
-| 门面 | `app/tenant/hooks/services/runner.py` |
-| Agent 主动触发 | `app/tenant/tools/services/hook_once.py`（内置工具 `invoke_tenant_hook`） |
-| API | `app/tenant/hooks/views/hooks.py` |
-| Agent 挂载 | `app/tenant/agents/services/agent.py` |
-| Flow 挂载 | `app/tenant/flows/services/flow.py` |
+| ORM | `backend/packages/miles-portal/src/miles_portal/tenant/hooks/models.py` |
+| CRUD | `backend/packages/miles-portal/src/miles_portal/tenant/hooks/services/hook.py` |
+| 执行 | `backend/packages/miles-portal/src/miles_portal/tenant/hooks/services/executor/`（`service.py` 门面 · `http.py`/`python.py` · `log.py`） |
+| 门面 | `backend/packages/miles-portal/src/miles_portal/tenant/hooks/services/runner.py` |
+| Agent 主动触发 | `backend/packages/miles-portal/src/miles_portal/tenant/tools/services/hook_once.py`（内置工具 `invoke_tenant_hook`） |
+| API | `backend/packages/miles-portal/src/miles_portal/tenant/hooks/views/hooks.py` |
+| Agent 挂载 | `backend/packages/miles-portal/src/miles_portal/tenant/agents/services/agent/` |
+| Flow 挂载 | `backend/packages/miles-portal/src/miles_portal/tenant/flows/services/flow.py` |
 

@@ -5,8 +5,8 @@ from uuid import uuid4
 
 import pytest
 
-from app.infra.vector_store.base import ChunkVectorRecord
-from app.infra.vector_store.milvus import (
+from miles_core.infra.vector_store.base import ChunkVectorRecord
+from miles_core.infra.vector_store.milvus import (
     MilvusVectorStore,
     _record_to_row,
     collection_name_for_dimension,
@@ -41,8 +41,8 @@ def test_record_to_row_includes_required_metadata():
     assert row["vector"] == record.vector
 
 
-@patch("app.infra.vector_store.milvus._client")
-@patch("app.infra.vector_store.milvus._ensure_collection")
+@patch("miles_core.infra.vector_store.milvus._client")
+@patch("miles_core.infra.vector_store.milvus._ensure_collection")
 def test_upsert_chunk_returns_id(mock_ensure, mock_client_fn):
     client = MagicMock()
     mock_client_fn.return_value = client
@@ -59,8 +59,8 @@ def test_upsert_chunk_returns_id(mock_ensure, mock_client_fn):
     assert call.kwargs["data"][0]["vector"] == record.vector
 
 
-@patch("app.infra.vector_store.milvus._client")
-@patch("app.infra.vector_store.milvus._ensure_collection")
+@patch("miles_core.infra.vector_store.milvus._client")
+@patch("miles_core.infra.vector_store.milvus._ensure_collection")
 def test_search_maps_hits(mock_ensure, mock_client_fn):
     client = MagicMock()
     mock_client_fn.return_value = client
@@ -95,7 +95,7 @@ def test_search_maps_hits(mock_ensure, mock_client_fn):
     assert hits[0]["score"] == pytest.approx(0.8, rel=1e-3)
 
 
-@patch("app.infra.vector_store.milvus._client")
+@patch("miles_core.infra.vector_store.milvus._client")
 def test_delete_by_document(mock_client_fn):
     client = MagicMock()
     mock_client_fn.return_value = client
@@ -106,7 +106,7 @@ def test_delete_by_document(mock_client_fn):
     assert client.delete.called
 
 
-@patch("app.infra.vector_store.milvus._client")
+@patch("miles_core.infra.vector_store.milvus._client")
 def test_delete_by_chunk_ids(mock_client_fn):
     client = MagicMock()
     mock_client_fn.return_value = client
@@ -117,7 +117,7 @@ def test_delete_by_chunk_ids(mock_client_fn):
     client.delete.assert_called()
 
 
-@patch("app.infra.vector_store.milvus.MilvusClient")
+@patch("miles_core.infra.vector_store.milvus.MilvusClient")
 def test_health_check(mock_client_cls):
     mock_client_cls.return_value.list_collections.return_value = []
     assert MilvusVectorStore().health_check() is True

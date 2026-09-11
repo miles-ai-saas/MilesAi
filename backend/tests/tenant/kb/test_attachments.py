@@ -7,7 +7,7 @@ from uuid import uuid4
 
 import pytest
 
-from app.tenant.attachments.services.attachment import AttachmentService
+from miles_portal.tenant.attachments.services.attachment import AttachmentService
 
 
 @pytest.mark.asyncio
@@ -45,17 +45,17 @@ async def test_upload_attachment_stores_object_and_updates_quota():
     svc.repo = MagicMock()
     svc.repo.create = AsyncMock(return_value=created)
 
-    from app.tenant.attachments.schemas.attachment import AttachmentUploadMeta
+    from miles_portal.tenant.attachments.schemas.attachment import AttachmentUploadMeta
 
     meta = AttachmentUploadMeta()
 
     with (
         patch(
-            "app.tenant.attachments.services.attachment.assert_can_upload_bytes",
+            "miles_portal.tenant.attachments.services.attachment.assert_can_upload_bytes",
             new_callable=AsyncMock,
         ),
         patch(
-            "app.tenant.attachments.services.attachment.resolve_object_storage_async",
+            "miles_portal.tenant.attachments.services.attachment.resolve_object_storage_async",
             new_callable=AsyncMock,
             return_value=SimpleNamespace(
                 default_bucket="bucket",
@@ -63,7 +63,7 @@ async def test_upload_attachment_stores_object_and_updates_quota():
             ),
         ),
         patch(
-            "app.tenant.attachments.services.attachment.apply_storage_delta",
+            "miles_portal.tenant.attachments.services.attachment.apply_storage_delta",
             new_callable=AsyncMock,
         ),
     ):

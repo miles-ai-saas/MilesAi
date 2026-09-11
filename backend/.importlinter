@@ -1,0 +1,66 @@
+[importlinter]
+root_packages =
+    miles_common
+    miles_exec
+    miles_core
+    miles_ai
+    miles_portal
+    miles_admin
+    miles_openapi
+    miles_server
+    miles_worker
+    miles_runner
+
+# 包分层方向：上层可 import 下层，同层互不可见。
+# 与 design §2 的 DAG 一致；真实边见 .superpowers/sdd/phase2-package-graph.py。
+# 注意：`A | B` 表示 A 与 B **互相独立**，故 exec 不可与 common 同层（exec -> common 真实存在）。
+[importlinter:contract:layers]
+name = 包分层方向（上层可 import 下层）
+type = layers
+layers =
+    miles_server | miles_worker | miles_runner
+    miles_openapi | miles_admin
+    miles_portal
+    miles_ai
+    miles_core
+    miles_exec
+    miles_common
+
+[importlinter:contract:no-ai-to-portal]
+name = L3/L2 不得依赖租户域
+type = forbidden
+source_modules = miles_ai
+forbidden_modules = miles_portal
+
+# miles_exec 是**无豁免**叶子（Task 1.7 已把 build_run_spec 迁回 portal）：
+# 见 layers 契约的尾层，无需 ignore_imports。
+# 若将来确实需要豁免注解型引用，必须在此处显式列出并写明原因。
+
+[importlinter:contract:openapi-no-admin]
+name = 开放面不得依赖运营面
+type = forbidden
+source_modules = miles_openapi
+forbidden_modules = miles_admin
+
+[importlinter:contract:portal-no-admin]
+name = 租户域不得依赖运营面
+type = forbidden
+source_modules = miles_portal
+forbidden_modules = miles_admin
+
+[importlinter:contract:runner-minimal]
+name = 沙箱仅依赖 exec/common
+type = forbidden
+source_modules = miles_runner
+forbidden_modules =
+    miles_core
+    miles_ai
+    miles_portal
+    miles_admin
+    miles_openapi
+
+[importlinter:contract:core-no-ai]
+name = 基础设施/模型层不得依赖 AI 编排层
+type = forbidden
+source_modules = miles_core
+forbidden_modules = miles_ai

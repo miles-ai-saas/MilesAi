@@ -5,9 +5,9 @@ from uuid import uuid4
 
 import pytest
 
-from app.common.exceptions import ForbiddenError
-from app.models.platform.tenant import Tenant
-from app.tenant.kb.services.quota import assert_can_create_kb, assert_can_upload_bytes
+from miles_common.exceptions import ForbiddenError
+from miles_core.models.platform.tenant import Tenant
+from miles_portal.tenant.kb.services.quota import assert_can_create_kb, assert_can_upload_bytes
 
 
 @pytest.mark.asyncio
@@ -23,7 +23,7 @@ async def test_assert_can_create_kb_raises_when_at_limit():
     db.get = AsyncMock(return_value=tenant)
 
     with patch(
-        "app.tenant.kb.services.quota.count_knowledge_bases",
+        "miles_portal.tenant.kb.services.quota.count_knowledge_bases",
         new_callable=AsyncMock,
         return_value=2,
     ):
@@ -45,12 +45,12 @@ async def test_assert_can_upload_bytes_raises_when_storage_full():
 
     with (
         patch(
-            "app.tenant.kb.services.quota.get_max_file_mb",
+            "miles_portal.tenant.kb.services.quota.get_max_file_mb",
             new_callable=AsyncMock,
             return_value=50,
         ),
         patch(
-            "app.tenant.kb.services.quota.sum_storage_bytes",
+            "miles_portal.tenant.kb.services.quota.sum_storage_bytes",
             new_callable=AsyncMock,
             return_value=1024 * 1024,
         ),

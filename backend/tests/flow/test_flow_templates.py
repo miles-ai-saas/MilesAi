@@ -4,12 +4,12 @@ import json
 
 import pytest
 
-from app.flow_runtime.templates.registry import (
+from miles_ai.flow_runtime.templates.registry import (
     FLOW_TEMPLATE_REGISTRY,
     list_flow_templates,
     load_flow_template_graph,
 )
-from app.integrations.langgraph.compiler import validate_graph_for_compile
+from miles_ai.integrations.langgraph.compiler import validate_graph_for_compile
 
 
 def test_registry_has_expected_ids():
@@ -59,9 +59,9 @@ def test_insertable_only_excludes_blank_and_rag_with_grade():
 
 
 def test_rag_grade_file_for_marketplace():
-    from tests.paths import BACKEND_ROOT
+    from tests.paths import MILES_AI
 
-    graph = json.loads((BACKEND_ROOT / "app/flow_runtime/templates/rag_flow_with_grade.json").read_text(encoding="utf-8"))
+    graph = json.loads((MILES_AI / "flow_runtime/templates/rag_flow_with_grade.json").read_text(encoding="utf-8"))
     report = validate_graph_for_compile(graph)
     assert report.compilable
     assert "grade_1" in report.conditional_nodes

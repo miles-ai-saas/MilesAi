@@ -1,0 +1,126 @@
+"""
+LangGraph Checkpointer：优先 Redis，不可用时回退内存。
+
+用途
+----
+- Agent RAG 图（``get_compiled_rag_graph``）：``thread_id = tenant:agent:conversation_id``
+- DeepAgents / 其它需多轮状态恢复的 LangGraph 应用
+
+应用启动时 ``init_checkpointer``；未初始化时 ``get_checkpointer()`` 回退 ``MemorySaver``。
+"""
+
+from __future__ import annotations
+
+from miles_core.logging import get_logger
+import warnings
+from contextlib import AsyncExitStack
+from typing import Any
+
+from langgraph.checkpoint.memory import MemorySaver
+
+from miles_core.config import get_settings
+
+logger = get_logger(__name__)
+
+# redisvl（langgraph-checkpoint-redis 依赖）在 asetup 时的已知告警，待上游改为 async API
+warnings.filterwarnings(
+    "ignore",
+    message=r"get_async_redis_connection will become async",
+    category=DeprecationWarning,
+    module=r"redisvl\.redis\.connection",
+)
+
+_checkpointer: Any = None
+_compiled_rag_graph: Any = None  # 进程内单例，随 checkpointer 后端初始化
+_exit_stack: AsyncExitStack | None = None
+_backend: str = "memory"
+
+
+def _import_async_redis_saver():
+    """langgraph-checkpoint-redis 为独立 PyPI 包，提供 langgraph.checkpoint.redis。"""
+    try:
+        from langgraph.checkpoint.redis import AsyncRedisSaver
+
+        return AsyncRedisSaver
+    except ImportError as exc:
+        raise ImportError('未安装 langgraph-checkpoint-redis。请执行: pip install -e ".[dev]" 或 pip install langgraph-checkpoint-redis>=0.4') from exc
+
+
+def get_checkpointer() -> Any:
+    """返回已初始化的 checkpointer，未 init 时回退 MemorySaver。"""
+    if _checkpointer is None:
+        return MemorySaver()
+    return _checkpointer
+
+
+def get_compiled_rag_graph() -> Any:
+    """
+    带 checkpointer 的 RAG QA 编译图单例。
+
+    由 ``init_langgraph_checkpointer`` 在启动时绑定 Redis/Memory；
+    未 init 时回退 ``build_rag_qa_graph().compile(MemorySaver())``。
+    """
+    if _compiled_rag_graph is None:
+        from miles_ai.integrations.langgraph.graphs.rag_qa import build_rag_qa_graph
+
+        return build_rag_qa_graph().compile(checkpointer=MemorySaver())
+    return _compiled_rag_graph
+
+
+def checkpoint_backend() -> str:
+    """当前后端：redis 或 memory。"""
+    return _backend
+
+
+async def init_langgraph_checkpointer() -> str:
+    """
+    应用 lifespan 启动时调用；返回实际后端 ``redis`` | ``memory``。
+
+    受 ``Settings.langgraph_redis_checkpoint`` 与 Redis 健康检查控制；
+    失败时降级 MemorySaver 并打日志，不阻塞进程启动。
+    """
+    global _checkpointer, _compiled_rag_graph, _exit_stack, _backend
+
+    from miles_ai.integrations.langgraph.graphs.rag_qa import build_rag_qa_graph
+
+    settings = get_settings()
+    saver: Any = MemorySaver()
+    backend = "memory"
+
+    if settings.langgraph_redis_checkpoint:
+        try:
+            AsyncRedisSaver = _import_async_redis_saver()
+            from miles_core.utils.health_checks import check_redis
+
+            if await check_redis():
+                stack = AsyncExitStack()
+                saver = await stack.enter_async_context(AsyncRedisSaver.from_conn_string(settings.langgraph_redis_url))
+                await saver.asetup()
+                _exit_stack = stack
+                backend = "redis"
+                logger.info("LangGraph checkpointer: Redis (%s)", settings.langgraph_redis_url)
+            else:
+                logger.warning("LangGraph checkpointer: Redis 不可用，使用 MemorySaver")
+        except ImportError as exc:
+            logger.warning(
+                "LangGraph checkpointer: %s；使用 MemorySaver。（安装后重启: pip install langgraph-checkpoint-redis）",
+                exc,
+            )
+        except Exception as exc:
+            logger.warning("LangGraph checkpointer: Redis 初始化失败 (%s)，使用 MemorySaver", exc)
+
+    _checkpointer = saver
+    _backend = backend
+    _compiled_rag_graph = build_rag_qa_graph().compile(checkpointer=saver)
+    return backend
+
+
+async def shutdown_langgraph_checkpointer() -> None:
+    """应用关闭时释放 Redis checkpointer 连接。"""
+    global _checkpointer, _compiled_rag_graph, _exit_stack, _backend
+    if _exit_stack is not None:
+        await _exit_stack.aclose()
+        _exit_stack = None
+    _checkpointer = None
+    _compiled_rag_graph = None
+    _backend = "memory"

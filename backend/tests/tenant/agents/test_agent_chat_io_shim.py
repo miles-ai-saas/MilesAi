@@ -3,14 +3,14 @@
 防未来有人在 shim 内另起炉灶复制 DTO 定义导致双身份漂移（同字段不同类）。
 """
 
-from app.models.agent.chat_io import (
+from miles_core.models.agent.chat_io import (
     ChatArtifact,
     ChatMediaIn,
     ChatRequest,
     ChatResponse,
     PendingToolCall,
 )
-from app.tenant.agents.schemas import agent as schemas_agent
+from miles_portal.tenant.agents.schemas import agent as schemas_agent
 
 
 def test_chat_io_shim_exports_same_objects():

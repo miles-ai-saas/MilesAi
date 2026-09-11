@@ -77,7 +77,7 @@ Worker:
     → status READY
 ```
 
-入口 L1：`tenant.kb.services.ingest`；L2：`app.rag.pipeline.run_ingest_pipeline`。
+入口 L1：`tenant.kb.services.ingest`；L2：`miles_ai.rag.pipeline.run_ingest_pipeline`。
 
 ---
 
@@ -119,11 +119,11 @@ ui/workbench/app/workbench/kb/[id]/page.tsx
 ## 8. 后端文件清单
 
 ```
-backend/app/models/kb.py
-backend/app/tenant/kb/
-backend/app/rag/{parse,chunk,index,retrieve,generate,pipeline}/
-backend/app/workers/tasks/ingest.py
-backend/app/deletion/cascade.py          # 删 KB 级联
+backend/packages/miles-core/src/miles_core/models/kb/knowledge_base.py
+backend/packages/miles-portal/src/miles_portal/tenant/kb/
+backend/packages/miles-ai/src/miles_ai/rag/{parse,chunk,index,retrieve,generate,pipeline}/
+backend/packages/miles-worker/src/miles_worker/tasks/ingest.py
+backend/packages/miles-portal/src/miles_portal/deletion/cascade.py   # 删 KB 级联
 ```
 
 ---

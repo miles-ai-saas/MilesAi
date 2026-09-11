@@ -1,6 +1,6 @@
 """生成任务列表与 meta。"""
 
-from app.tenant.generative.meta import generative_jobs_meta_dict
+from miles_portal.tenant.generative.meta import generative_jobs_meta_dict
 
 
 def test_generative_jobs_meta_has_filters():

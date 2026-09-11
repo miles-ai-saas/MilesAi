@@ -2,8 +2,8 @@
 
 from uuid import uuid4
 
-from app.integrations.deepagents.orchestrator import _parse_plan, _should_use_deepagents
-from app.models.agent import Agent
+from miles_ai.integrations.deepagents.orchestrator import _parse_plan, _should_use_deepagents
+from miles_core.models.agent import Agent
 
 
 def test_parse_plan_json():
@@ -24,8 +24,8 @@ def test_should_use_deepagents_without_package():
 
 
 def test_slug_for_binding():
-    from app.integrations.deepagents.subagent_graphs import _slug_for_binding
-    from app.models.agent import AgentSubAgentBinding
+    from miles_ai.integrations.deepagents.subagent_graphs import _slug_for_binding
+    from miles_core.models.agent import AgentSubAgentBinding
 
     class Child:
         id = uuid4()
@@ -45,8 +45,8 @@ def test_slug_for_binding():
 
 def test_general_purpose_guard_name(monkeypatch):
     """guard 名字为 general-purpose（deepagents 为 optional 依赖，用替身验证）。"""
-    from app.integrations.deepagents import subagent_graphs
-    from app.models.agent import AgentSubAgentBinding
+    from miles_ai.integrations.deepagents import subagent_graphs
+    from miles_core.models.agent import AgentSubAgentBinding
 
     class FakeCompiledSubAgent:
         """极简替身：记录构造参数，兼容属性与下标访问。"""

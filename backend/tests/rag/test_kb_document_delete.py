@@ -5,8 +5,8 @@ from uuid import uuid4
 
 import pytest
 
-from app.models.kb import Document, DocumentStatus
-from app.tenant.kb.services.kb import KnowledgeBaseService
+from miles_core.models.kb import Document, DocumentStatus
+from miles_portal.tenant.kb.services.kb import KnowledgeBaseService
 
 
 @pytest.mark.asyncio
@@ -39,20 +39,20 @@ async def test_delete_document_clears_derived_and_object():
 
     with (
         patch(
-            "app.tenant.kb.services.kb.documents.clear_document_derived_data_async",
+            "miles_portal.tenant.kb.services.kb.documents.clear_document_derived_data_async",
             new_callable=AsyncMock,
         ) as mock_clear,
         patch(
-            "app.tenant.kb.services.kb.documents.resolve_object_storage_async",
+            "miles_portal.tenant.kb.services.kb.documents.resolve_object_storage_async",
             new_callable=AsyncMock,
             return_value=storage,
         ),
         patch(
-            "app.tenant.kb.services.kb.documents.mark_deleted",
+            "miles_portal.tenant.kb.services.kb.documents.mark_deleted",
             new_callable=AsyncMock,
         ) as mock_mark,
         patch(
-            "app.tenant.kb.services.kb.documents.apply_storage_delta",
+            "miles_portal.tenant.kb.services.kb.documents.apply_storage_delta",
             new_callable=AsyncMock,
         ),
     ):

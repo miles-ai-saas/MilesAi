@@ -1,10 +1,10 @@
 """内置模型目录种子：退役项与 rerank 条目。"""
 
-from tests.paths import BACKEND_ROOT
+from tests.paths import MILES_SERVER
 
 
 def test_catalog_excludes_retired_deepseek_compat():
-    catalog_src = BACKEND_ROOT / "scripts" / "seed" / "model_catalog.py"
+    catalog_src = MILES_SERVER / "scripts" / "seed" / "model_catalog.py"
     text = catalog_src.read_text(encoding="utf-8")
     assert '"model_code": "deepseek-reasoner"' not in text
     assert '"model_code": "deepseek-chat"' not in text
@@ -12,7 +12,7 @@ def test_catalog_excludes_retired_deepseek_compat():
 
 
 def test_catalog_contains_rerank_models():
-    catalog_src = BACKEND_ROOT / "scripts" / "seed" / "model_catalog.py"
+    catalog_src = MILES_SERVER / "scripts" / "seed" / "model_catalog.py"
     text = catalog_src.read_text(encoding="utf-8")
     assert '"model_code": "qwen3-rerank"' in text
     assert '"model_code": "gte-rerank-v2"' in text

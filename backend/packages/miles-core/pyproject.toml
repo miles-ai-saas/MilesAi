@@ -1,0 +1,38 @@
+[project]
+name = "miles-core"
+version = "0.1.0"
+description = "核心领域模型与基础设施（数据库、向量库、LLM 基础设施）"
+requires-python = ">=3.11"
+dependencies = [
+    "miles-common",
+    "sqlalchemy[asyncio]>=2.0.36",
+    "asyncpg>=0.30.0",
+    # packages/miles-core/src/miles_core/infra/db/sync.py 在模块级 create_engine 同步引擎，导入即需要 psycopg2
+    "psycopg2-binary>=2.9.10",
+    "alembic>=1.14.0",
+    "pydantic-settings>=2.6.0",
+    "celery>=5.4.0",
+    "minio>=7.2.0",
+    "weaviate-client>=4.9.0",
+    "pymilvus>=2.5.0",
+    "pgvector>=0.3.0",
+    "fastapi>=0.115.0",
+    "pydantic>=2.10.0",
+    "redis>=5.2.0",
+    "python-jose[cryptography]>=3.3.0",
+    "bcrypt>=4.0,<5",
+    "httpx>=0.28.0",
+    "langchain-core>=0.3.0",
+    "langchain-community>=0.3.0",
+    "langchain-weaviate>=0.0.6",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/miles_core"]
+
+[tool.uv.sources]
+miles-common = { workspace = true }

@@ -5,9 +5,9 @@ from uuid import uuid4
 
 import pytest
 
-from app.common.exceptions import ForbiddenError
-from app.core.tenant import TenantContext
-from app.marketplace.review_config import (
+from miles_common.exceptions import ForbiddenError
+from miles_core.tenant import TenantContext
+from miles_portal.marketplace.review_config import (
     normalize_review_mode,
     require_platform_review_allowed,
     require_tenant_review_allowed,
@@ -31,7 +31,7 @@ async def test_tenant_review_blocked_in_platform_mode():
         permissions=frozenset({"marketplace:review"}),
     )
     with patch(
-        "app.marketplace.review_config.get_marketplace_review_mode",
+        "miles_portal.marketplace.review_config.get_marketplace_review_mode",
         new_callable=AsyncMock,
         return_value="platform",
     ):
@@ -43,7 +43,7 @@ async def test_tenant_review_blocked_in_platform_mode():
 async def test_admin_review_blocked_in_tenant_mode():
     db = AsyncMock()
     with patch(
-        "app.marketplace.review_config.get_marketplace_review_mode",
+        "miles_portal.marketplace.review_config.get_marketplace_review_mode",
         new_callable=AsyncMock,
         return_value="tenant",
     ):

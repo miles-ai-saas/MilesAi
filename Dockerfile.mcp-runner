@@ -2,17 +2,28 @@ FROM registry.cn-shenzhen.aliyuncs.com/kye_secure/python:3.11.9-full
 
 WORKDIR /app
 
-# 先只复制依赖文件，让 pip 层可缓存
+# 仅复制 workspace 元数据，让依赖安装层可缓存（成员清单 = miles-runner 的依赖闭包）
 COPY backend/pyproject.toml /app/backend/pyproject.toml
+COPY backend/uv.lock /app/backend/uv.lock
+COPY backend/packages/miles-common/pyproject.toml  /app/backend/packages/miles-common/pyproject.toml
+COPY backend/packages/miles-exec/pyproject.toml    /app/backend/packages/miles-exec/pyproject.toml
+COPY backend/packages/miles-runner/pyproject.toml  /app/backend/packages/miles-runner/pyproject.toml
 
-RUN uv pip install --system -e /app/backend \
-      -i https://mirrors.aliyun.com/pypi/simple \
-      --trusted-host mirrors.aliyun.com
+# runner 的第三方依赖只有 13 个包（无 AI 栈），这是拆包的核心安全收益
+RUN cd /app/backend \
+ && uv export --frozen --no-dev --no-emit-workspace --package miles-runner -o /tmp/req.txt \
+ && uv pip install --system -r /tmp/req.txt \
+      -i https://mirrors.aliyun.com/pypi/simple --trusted-host mirrors.aliyun.com
 
 # 最后复制代码
 COPY backend /app/backend
 
-ENV PYTHONPATH=/app/backend
+RUN uv pip install --system --no-deps \
+      -e /app/backend/packages/miles-common \
+      -e /app/backend/packages/miles-exec \
+      -e /app/backend/packages/miles-runner \
+      -i https://mirrors.aliyun.com/pypi/simple --trusted-host mirrors.aliyun.com
+
 WORKDIR /app/backend
 
 RUN useradd -m -u 10001 runner && chown -R runner:runner /app /tmp
@@ -20,4 +31,4 @@ USER runner
 
 EXPOSE 8090
 
-CMD ["uvicorn", "app.runner.main:app", "--host", "0.0.0.0", "--port", "8090"]
+CMD ["uvicorn", "miles_runner.main:app", "--host", "0.0.0.0", "--port", "8090"]

@@ -1,6 +1,6 @@
-"""MCP 种子脚本（不直接 import ORM，避免与 app.models 循环依赖）。"""
+"""MCP 种子脚本（不直接 import ORM，避免与 miles_core.models 循环依赖）。"""
 
-from scripts.seed.mcp import SEED_MCP_SERVICES
+from miles_server.scripts.seed.mcp import SEED_MCP_SERVICES
 
 
 def _status_value(raw: object) -> str:

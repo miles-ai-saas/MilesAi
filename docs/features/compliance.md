@@ -93,11 +93,11 @@ FlowService.run
 ## 6. 后端文件清单
 
 ```
-backend/app/tenant/compliance/models.py
-backend/app/tenant/compliance/views/compliance.py
-backend/app/tenant/compliance/services/compliance/
-backend/app/tenant/compliance/services/word_resolve.py
-backend/app/tenant/agents/services/agent/   # 调用合规
+backend/packages/miles-portal/src/miles_portal/tenant/compliance/models.py
+backend/packages/miles-portal/src/miles_portal/tenant/compliance/views/compliance.py
+backend/packages/miles-portal/src/miles_portal/tenant/compliance/services/compliance/
+backend/packages/miles-portal/src/miles_portal/tenant/compliance/services/word_resolve.py
+backend/packages/miles-portal/src/miles_portal/tenant/agents/services/agent/   # 调用合规
 ```
 
 ---

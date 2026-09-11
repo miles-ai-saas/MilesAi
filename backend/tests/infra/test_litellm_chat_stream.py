@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.integrations.litellm.adapter import litellm_chat_completion_stream
+from miles_ai.integrations.litellm.adapter import litellm_chat_completion_stream
 from tests.infra.test_litellm_adapter import _model
 
 
@@ -44,10 +44,10 @@ async def test_litellm_chat_completion_stream_calls_on_delta_and_returns_full():
     m = _model()
 
     with (
-        patch("app.integrations.litellm.adapter._import_litellm") as imp,
-        patch("app.integrations.litellm.adapter.resolve_litellm_model", return_value="openai/gpt-test"),
-        patch("app.integrations.litellm.adapter._ensure_messages_valid_for_chat"),
-        patch("app.integrations.litellm.adapter._resolve_api_base", return_value=None),
+        patch("miles_ai.integrations.litellm.adapter._import_litellm") as imp,
+        patch("miles_ai.integrations.litellm.adapter.resolve_litellm_model", return_value="openai/gpt-test"),
+        patch("miles_ai.integrations.litellm.adapter._ensure_messages_valid_for_chat"),
+        patch("miles_ai.integrations.litellm.adapter._resolve_api_base", return_value=None),
     ):
         litellm = MagicMock()
         litellm.acompletion = AsyncMock(side_effect=fake_stream)
@@ -60,7 +60,7 @@ async def test_litellm_chat_completion_stream_calls_on_delta_and_returns_full():
 
 @pytest.mark.asyncio
 async def test_ainvoke_chat_uses_stream_when_on_delta_set():
-    from app.integrations.langchain.chat_models import ainvoke_chat
+    from miles_ai.integrations.langchain.chat_models import ainvoke_chat
 
     m = _model()
     captured: dict[str, object] = {}
@@ -70,12 +70,12 @@ async def test_ainvoke_chat_uses_stream_when_on_delta_set():
 
     with (
         patch(
-            "app.integrations.langchain.chat_models.litellm_chat_completion_stream",
+            "miles_ai.integrations.langchain.chat_models.litellm_chat_completion_stream",
             new_callable=AsyncMock,
             return_value="streamed",
         ) as mock_stream,
         patch(
-            "app.integrations.langchain.chat_models.litellm_chat_completion",
+            "miles_ai.integrations.langchain.chat_models.litellm_chat_completion",
             new_callable=AsyncMock,
         ) as mock_non_stream,
     ):
@@ -94,17 +94,17 @@ async def test_ainvoke_chat_uses_stream_when_on_delta_set():
 
 @pytest.mark.asyncio
 async def test_ainvoke_chat_uses_non_stream_when_on_delta_none():
-    from app.integrations.langchain.chat_models import ainvoke_chat
+    from miles_ai.integrations.langchain.chat_models import ainvoke_chat
 
     m = _model()
 
     with (
         patch(
-            "app.integrations.langchain.chat_models.litellm_chat_completion_stream",
+            "miles_ai.integrations.langchain.chat_models.litellm_chat_completion_stream",
             new_callable=AsyncMock,
         ) as mock_stream,
         patch(
-            "app.integrations.langchain.chat_models.litellm_chat_completion",
+            "miles_ai.integrations.langchain.chat_models.litellm_chat_completion",
             new_callable=AsyncMock,
             return_value="non-streamed",
         ) as mock_non_stream,

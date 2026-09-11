@@ -4,9 +4,9 @@ from uuid import uuid4
 
 import pytest
 
-from app.common.exceptions import BadRequestError
-from app.flow_runtime.nodes import rag_nodes
-from app.flow_runtime.types import RunContext
+from miles_common.exceptions import BadRequestError
+from miles_ai.flow_runtime.nodes import rag_nodes
+from miles_ai.flow_runtime.types import RunContext
 
 
 def test_apply_prompt_placeholders():

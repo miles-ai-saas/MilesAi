@@ -4,7 +4,7 @@ import asyncio
 from types import SimpleNamespace
 from uuid import uuid4
 
-from app.tenant.agents.schemas.agent import ChatRequest, ChatResponse
+from miles_portal.tenant.agents.schemas.agent import ChatRequest, ChatResponse
 
 
 def _run(coro):
@@ -20,7 +20,7 @@ class _ChildEntry(SimpleNamespace):
 
 
 def test_chat_as_child_simple_builds_chat_request():
-    from app.tenant.agents.services.agent.chat_entry import AgentChatEntryMixin
+    from miles_portal.tenant.agents.services.agent.chat_entry import AgentChatEntryMixin
 
     entry = _ChildEntry()
     entry.calls = []
@@ -37,7 +37,7 @@ def test_chat_as_child_simple_builds_chat_request():
 
 
 def test_chat_as_child_simple_defaults_inputs_empty():
-    from app.tenant.agents.services.agent.chat_entry import AgentChatEntryMixin
+    from miles_portal.tenant.agents.services.agent.chat_entry import AgentChatEntryMixin
 
     entry = _ChildEntry()
     entry.calls = []

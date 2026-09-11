@@ -2,12 +2,12 @@
 
 from langchain_core.documents import Document
 
-from app.rag.chunk.splitter import (
+from miles_ai.rag.chunk.splitter import (
     chunk_documents,
     page_no_from_metadata,
     split_text,
 )
-from app.rag.parse.backends.docling import (
+from miles_ai.rag.parse.backends.docling import (
     PAGE_BREAK_PLACEHOLDER,
     markdown_pages_to_documents,
 )

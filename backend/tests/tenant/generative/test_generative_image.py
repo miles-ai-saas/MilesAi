@@ -6,13 +6,13 @@ from uuid import uuid4
 
 import pytest
 
-from app.core.tenant import TenantContext
-from app.integrations.generative.registry import resolve_invoke_mode
-from app.integrations.generative.types import ImageGenerateResult
-from app.integrations.langchain.tool_agent import artifacts_from_tool_output
-from app.models.model import ModelConfig
-from app.models.model.catalog import ModelCapabilityType, ModelVendor
-from app.integrations.generative.constants import (
+from miles_core.tenant import TenantContext
+from miles_ai.integrations.generative.registry import resolve_invoke_mode
+from miles_ai.integrations.generative.types import ImageGenerateResult
+from miles_ai.integrations.langchain.tool_agent import artifacts_from_tool_output
+from miles_core.models.model import ModelConfig
+from miles_core.models.model.catalog import ModelCapabilityType, ModelVendor
+from miles_ai.integrations.generative.constants import (
     INVOKE_DASHSCOPE_T2I,
     INVOKE_OPENAI_IMAGES,
     INVOKE_VOLCENGINE_IMAGE,
@@ -112,36 +112,36 @@ async def test_generate_image_for_model_with_reference():
 
     with (
         patch(
-            "app.tenant.generative.services.orchestration.assert_generative_quota",
+            "miles_portal.tenant.generative.services.orchestration.assert_generative_quota",
             new_callable=AsyncMock,
         ),
         patch(
-            "app.tenant.generative.services.orchestration.reference_image_data_url",
+            "miles_portal.tenant.generative.services.orchestration.reference_image_data_url",
             new_callable=AsyncMock,
             return_value="data:image/png;base64,abc",
         ),
         patch(
-            "app.tenant.generative.services.orchestration.generate_image_bytes",
+            "miles_portal.tenant.generative.services.orchestration.generate_image_bytes",
             new_callable=AsyncMock,
             return_value=[b"\x89PNG\r\n"],
         ) as gen,
         patch(
-            "app.tenant.generative.services.orchestration.persist_generated_bytes",
+            "miles_portal.tenant.generative.services.orchestration.persist_generated_bytes",
             new_callable=AsyncMock,
             return_value=att_id,
         ),
         patch(
-            "app.tenant.generative.services.orchestration.register_media_asset",
+            "miles_portal.tenant.generative.services.orchestration.register_media_asset",
             new_callable=AsyncMock,
             return_value=SimpleNamespace(id=uuid4()),
         ),
         patch(
-            "app.tenant.generative.services.orchestration.check_generative_prompt",
+            "miles_portal.tenant.generative.services.orchestration.check_generative_prompt",
             new_callable=AsyncMock,
             side_effect=lambda _db, _ctx, p: p,
         ),
     ):
-        from app.tenant.generative.services.orchestration import generate_image_for_model
+        from miles_portal.tenant.generative.services.orchestration import generate_image_for_model
 
         await generate_image_for_model(
             AsyncMock(),
@@ -168,31 +168,31 @@ async def test_generate_image_for_model_persists():
 
     with (
         patch(
-            "app.tenant.generative.services.orchestration.assert_generative_quota",
+            "miles_portal.tenant.generative.services.orchestration.assert_generative_quota",
             new_callable=AsyncMock,
         ),
         patch(
-            "app.tenant.generative.services.orchestration.generate_image_bytes",
+            "miles_portal.tenant.generative.services.orchestration.generate_image_bytes",
             new_callable=AsyncMock,
             return_value=[b"\x89PNG\r\n"],
         ),
         patch(
-            "app.tenant.generative.services.orchestration.persist_generated_bytes",
+            "miles_portal.tenant.generative.services.orchestration.persist_generated_bytes",
             new_callable=AsyncMock,
             return_value=att_id,
         ),
         patch(
-            "app.tenant.generative.services.orchestration.register_media_asset",
+            "miles_portal.tenant.generative.services.orchestration.register_media_asset",
             new_callable=AsyncMock,
             return_value=SimpleNamespace(id=uuid4()),
         ),
         patch(
-            "app.tenant.generative.services.orchestration.check_generative_prompt",
+            "miles_portal.tenant.generative.services.orchestration.check_generative_prompt",
             new_callable=AsyncMock,
             side_effect=lambda _db, _ctx, p: p,
         ),
     ):
-        from app.tenant.generative.services.orchestration import generate_image_for_model
+        from miles_portal.tenant.generative.services.orchestration import generate_image_for_model
 
         result = await generate_image_for_model(
             AsyncMock(),

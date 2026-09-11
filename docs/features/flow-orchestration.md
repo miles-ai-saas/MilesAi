@@ -55,7 +55,7 @@
 | `AudioTranscribe` | 音频转写（Whisper） |
 | `ImageGenerate` / `VideoGenerate` | 生图/生视频（默认异步 job） |
 
-注册表：`backend/app/flow_runtime/nodes/registry.py`。
+注册表：`backend/packages/miles-ai/src/miles_ai/flow_runtime/nodes/registry.py`。
 
 ---
 
@@ -113,11 +113,11 @@ ui/workbench/components/flow/FlowCanvas.tsx
 ## 7. 后端文件清单
 
 ```
-backend/app/models/flow.py
-backend/app/tenant/flows/
-backend/app/flow_runtime/
-backend/app/integrations/langgraph/
-backend/app/flow_runtime/templates/rag_flow.json
+backend/packages/miles-core/src/miles_core/models/flow/flow.py
+backend/packages/miles-portal/src/miles_portal/tenant/flows/
+backend/packages/miles-ai/src/miles_ai/flow_runtime/
+backend/packages/miles-ai/src/miles_ai/integrations/langgraph/
+backend/packages/miles-ai/src/miles_ai/flow_runtime/templates/rag_flow.json
 ```
 
 ---

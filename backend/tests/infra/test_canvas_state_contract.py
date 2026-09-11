@@ -15,11 +15,11 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
-from app.integrations.langgraph.compiler.state import CanvasGraphState
+from miles_ai.integrations.langgraph.compiler.state import CanvasGraphState
 
 # tests/infra/<this> → backend/（显式路径单跑时 ``tests.paths`` 不可导入，故本地推导）
 _BACKEND_DIR = Path(__file__).resolve().parents[2]
-_COMPILER_DIR = _BACKEND_DIR / "app" / "integrations" / "langgraph" / "compiler"
+_COMPILER_DIR = _BACKEND_DIR / "packages" / "miles-ai" / "src" / "miles_ai" / "integrations" / "langgraph" / "compiler"
 
 
 def _declared_keys() -> set[str]:

@@ -45,7 +45,7 @@ MilesAI **工具模块**管理租户可用的**平台内置工具**（含 **L2 �
 
 ## 2. 数据模型
 
-表：`tool_tools`（`app/tenant/tools/models.py`）
+表：`tool_tools`（`backend/packages/miles-portal/src/miles_portal/tenant/tools/models.py`）
 
 | 字段 | 说明 |
 |------|------|
@@ -90,7 +90,7 @@ MilesAI **工具模块**管理租户可用的**平台内置工具**（含 **L2 �
       → require_confirmation → 返回 pending / 写 invocation_log
 ```
 
-Agent 启用条件（`app/tenant/agents/services/agent.py`）：
+Agent 启用条件（`backend/packages/miles-portal/src/miles_portal/tenant/agents/services/agent/`）：
 
 - `config.enable_tool_calling = true`（或 `enable_generative_tools`）
 - 已配置大模型

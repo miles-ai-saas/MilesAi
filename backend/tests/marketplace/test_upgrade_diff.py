@@ -2,7 +2,7 @@
 
 from uuid import uuid4
 
-from app.tenant.marketplace.util.upgrade_diff import (
+from miles_portal.tenant.marketplace.util.upgrade_diff import (
     build_upgrade_preview,
     diff_agent,
     diff_flow,

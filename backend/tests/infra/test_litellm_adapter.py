@@ -5,13 +5,13 @@ from uuid import uuid4
 
 import pytest
 
-from app.integrations.litellm.adapter import (
+from miles_ai.integrations.litellm.adapter import (
     litellm_chat_completion,
     resolve_litellm_model,
 )
-from app.common.exceptions import AppError, BadRequestError
-from app.models.model import ModelConfig
-from app.models.model.catalog import ModelCapabilityType, ModelVendor
+from miles_common.exceptions import AppError, BadRequestError
+from miles_core.models.model import ModelConfig
+from miles_core.models.model.catalog import ModelCapabilityType, ModelVendor
 
 
 def _model(**kwargs) -> ModelConfig:
@@ -106,7 +106,7 @@ async def test_litellm_chat_maps_litellm_error():
 
 
 def test_litellm_embed_texts_success():
-    from app.integrations.litellm.adapter import litellm_embed_texts
+    from miles_ai.integrations.litellm.adapter import litellm_embed_texts
 
     item = MagicMock()
     item.embedding = [0.1, 0.2]

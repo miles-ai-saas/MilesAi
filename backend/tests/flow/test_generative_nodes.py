@@ -5,11 +5,11 @@ from uuid import uuid4
 
 import pytest
 
-from app.common.exceptions import BadRequestError
-from app.flow_runtime.nodes import image_generate as image_node
-from app.flow_runtime.nodes import video_generate as video_node
-from app.flow_runtime.types import RunContext
-from app.integrations.generative.types import ImageGenerateResult, VideoGenerateResult
+from miles_common.exceptions import BadRequestError
+from miles_ai.flow_runtime.nodes import image_generate as image_node
+from miles_ai.flow_runtime.nodes import video_generate as video_node
+from miles_ai.flow_runtime.types import RunContext
+from miles_ai.integrations.generative.types import ImageGenerateResult, VideoGenerateResult
 
 
 def _run(coro):

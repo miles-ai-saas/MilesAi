@@ -354,13 +354,13 @@ MCP 工作台、**RAG 与 tool calling 共存**（绑定 KB 时 `knowledge_searc
 
 | 模块 | 路径 |
 |------|------|
-| 工具 Service / API | `backend/app/tenant/tools/` |
+| 工具 Service / API | `backend/packages/miles-portal/src/miles_portal/tenant/tools/` |
 | 执行 | `tenant/tools/invoke.py` |
 | 内置复杂工具 | `tenant/tools/services/flow_once.py`、`tenant/tools/services/hook_once.py` |
 | LangChain 加载 | `integrations/langchain/tools.py`、`tool_agent.py` |
-| 平台 Hook 执行 | `app/tenant/hooks/services/executor/` |
-| MCP | `backend/app/tenant/mcp/` |
-| Runner | `backend/app/runner/` |
+| 平台 Hook 执行 | `backend/packages/miles-portal/src/miles_portal/tenant/hooks/services/executor/` |
+| MCP | `backend/packages/miles-portal/src/miles_portal/tenant/mcp/` |
+| Runner | `backend/packages/miles-runner/src/miles_runner/`（MCP runner 进程）、`backend/packages/miles-exec/src/miles_exec/sandbox/`（工具沙箱） |
 
 ---
 

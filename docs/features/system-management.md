@@ -183,14 +183,14 @@ GET /api/v1/health
 ## 6. 后端文件清单
 
 ```
-backend/app/tenant/auth/
-backend/app/tenant/system/views/{users,roles,tenants,configs,quota,health}.py
-backend/app/tenant/system/services/quota.py
-backend/app/tenant/system/services/
-backend/app/tenant/audit_log/
-backend/app/core/deps.py              # get_tenant_context, require_permissions
-backend/app/core/tenant.py
-backend/app/models/{tenant,user,role,system}.py
+backend/packages/miles-portal/src/miles_portal/tenant/auth/
+backend/packages/miles-portal/src/miles_portal/tenant/system/views/{users,roles,tenants,configs,quota,health}.py
+backend/packages/miles-portal/src/miles_portal/tenant/system/services/quota.py
+backend/packages/miles-portal/src/miles_portal/tenant/system/services/
+backend/packages/miles-portal/src/miles_portal/tenant/audit_log/
+backend/packages/miles-core/src/miles_core/deps.py              # get_tenant_context, require_permissions
+backend/packages/miles-core/src/miles_core/tenant.py
+backend/packages/miles-core/src/miles_core/models/platform/{tenant,user,role,system}.py
 ```
 
 ---

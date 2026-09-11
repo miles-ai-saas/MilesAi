@@ -90,7 +90,7 @@ flowchart TB
 ### 2.2 后端结构（保持并扩展）
 
 ```
-backend/app/admin/
+backend/packages/miles-admin/src/miles_admin/
 ├── router.py                    # /api/admin/v1
 ├── app_sys/
 │   ├── views/auth.py
@@ -125,7 +125,7 @@ backend/app/admin/
 admin:session:{admin_id}   → jti（当前实现仅存字符串，鉴权未读）
 ```
 
-实现：`app/admin/app_sys/services/auth.py` · `app/utils/redis_keys.py`。
+实现：`backend/packages/miles-admin/src/miles_admin/app_sys/services/auth.py` · `backend/packages/miles-common/src/miles_common/redis_keys.py`。
 
 ### 2.4 前端页面（`ui/admin/app/`）
 
@@ -173,7 +173,7 @@ HTTP Request
 | `adm_ip_blacklist` | 全站或 `/api/v1/*` | 命中返回 403 + 写 RiskEvent |
 | Admin 登录 | `POST /api/admin/v1/auth/login` | 独立登录失败计数 → RiskEvent |
 
-租户 API 中间件可复用 `app/middlewares/` 新模块，与 admin 路由解耦配置。
+租户 API 中间件可复用 `backend/packages/miles-core/src/miles_core/web/middlewares/` 新模块，与 admin 路由解耦配置。
 
 ### 3.2 审计写入规范
 
@@ -189,7 +189,7 @@ HTTP Request
 | 风控 resolve / 规则变更 | `risk.resolve/rule.*` | ❌ |
 | 管理员 CRUD | `admin.create/update/disable` | ❌ |
 
-统一 helper：`app/admin/app_ops/services/audit.py` → `write_audit_log(db, ctx, ...)`。
+统一 helper：`backend/packages/miles-admin/src/miles_admin/app_ops/services/audit.py` → `write_audit_log(db, ctx, ...)`。
 
 ### 3.3 角色模型
 
@@ -221,7 +221,7 @@ async def get_platform_admin(...):
     ...
 ```
 
-**与租户对齐：** 参考 `app/tenant/auth/services/session_store.py` 黑名单模式（可选 `admin:blacklist:{jti}`）。
+**与租户对齐：** 参考 `backend/packages/miles-core/src/miles_core/auth/session_store.py` 黑名单模式（可选 `admin:blacklist:{jti}`）。
 
 ### 4.2 租户与配额
 
@@ -313,7 +313,7 @@ draft → issued → paid
 |------|--------------------|
 | `app_sys/{deps.py,session_store.py,services/auth.py}` | `lib/api.ts`, `AdminUserMenu`, `app/profile/page.tsx` |
 | `app_ops/views/{dashboard,admins,billing,tenants}.py` | `app/{page.tsx,billing/,admins/,tenants/}` |
-| `app/middlewares/platform_risk.py`, `app_ops/services/risk_enforce.py` | `app/risk/page.tsx`, `app/audit/page.tsx` |
+| `backend/packages/miles-core/src/miles_core/web/middlewares/platform_risk.py`, `app_ops/services/risk_enforce.py` | `app/risk/page.tsx`, `app/audit/page.tsx` |
 | `app_ops/views/marketplace_review.py`, `app/marketplace/review_*.py` | `app/marketplace-review/page.tsx` |
 
 ---

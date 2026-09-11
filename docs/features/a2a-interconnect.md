@@ -123,11 +123,11 @@ POST /agents/{id}/chat            # 宿主或 custom 增强
 ## 6. 后端文件清单
 
 ```
-backend/app/tenant/a2a/models.py
-backend/app/tenant/a2a/views/peers.py
-backend/app/tenant/a2a/card_client.py
-backend/app/tenant/a2a/invoke.py
-backend/app/tenant/a2a/services/
+backend/packages/miles-portal/src/miles_portal/tenant/a2a/models.py
+backend/packages/miles-portal/src/miles_portal/tenant/a2a/views/peers.py
+backend/packages/miles-portal/src/miles_portal/tenant/a2a/card_client.py
+backend/packages/miles-portal/src/miles_portal/tenant/a2a/invoke.py
+backend/packages/miles-portal/src/miles_portal/tenant/a2a/services/
 ```
 
 ---

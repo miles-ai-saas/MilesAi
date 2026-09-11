@@ -5,9 +5,9 @@ from uuid import uuid4
 
 import pytest
 
-from app.models.model import ModelConfig, ModelUsageLog
-from app.tenant.models.services import usage as usage_mod
-from app.tenant.models.services.usage import (
+from miles_core.models.model import ModelConfig, ModelUsageLog
+from miles_portal.tenant.models.services import usage as usage_mod
+from miles_portal.tenant.models.services.usage import (
     ChatUsageSink,
     begin_chat_usage_accumulation,
     end_chat_usage_accumulation,

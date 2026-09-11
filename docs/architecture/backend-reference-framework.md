@@ -62,7 +62,7 @@
 ```
 
 要点：
-- **API 与 Worker 共享同一份 `app/` 代码**，只是入口不同（`cli.py serve` vs `cli.py worker`）。
+- **API 与 Worker 共享同一套 workspace 包代码**，只是入口不同（`milesai serve` vs `milesai worker`）。
 - **迁移只由 API 启动时执行**；种子数据单独由 CLI 显式写入（见 §6.4）。
 - 可选独立进程（如 MCP 沙箱、多模态 OCR）通过额外容器部署，**不**塞进 API 进程。
 
@@ -95,51 +95,38 @@ L4 基础设施    infra/  （db / redis / storage / vector_store）     连接�
 
 ```text
 {project}/backend/
-├── cli.py                       # 统一 CLI：serve / worker / migrate / init-db / seed
-├── pyproject.toml               # 依赖与 [project.scripts]
+├── pyproject.toml               # uv workspace 根 + [dependency-groups].dev
+├── uv.lock
 ├── alembic.ini
 ├── alembic/
 │   └── versions/                # 001_initial_schema.py 等
 ├── openapi/                     # openapi.snapshot.json（契约快照，防漂移）
-├── scripts/                     # export_openapi.py、seed/、db_ops
 ├── tests/                       # api/ integration/ rag/ tenant/ …
-└── app/
-    ├── main.py                  # ASGI 入口：from app.apps.application import create_app
-    ├── apps/
-    │   ├── application.py       # create_app() 工厂 + lifespan
-    │   ├── routers.py           # 汇总 api_router / admin_router
-    │   └── migrate.py           # 启动期 alembic upgrade head
-    ├── common/                  # 跨域横切：响应/异常/分页/处理器/常量
-    │   ├── response.py  exceptions.py  handlers.py  pagination.py  schema.py
-    │   ├── trace.py             # trace_id ContextVar
-    │   └── constants/           # 跨模型 extra 键等
-    ├── core/                    # 配置/安全/依赖注入/基类
+└── packages/                    # 10 个 uv workspace 包，源码在 <pkg>/src/<module>/
+    ├── miles-common/src/miles_common/   # 跨域横切：响应/异常/schema、idgen、redis_keys、constants/
+    ├── miles-exec/src/miles_exec/       # 沙箱 + MCP 协议内核
+    ├── miles-core/src/miles_core/       # L4 基础设施 + 核心 ORM + 配置/安全/依赖注入
     │   ├── config.py  security.py  deps.py  tenant.py  logging.py
     │   ├── repository.py  service.py  soft_delete.py  field_crypto.py
-    ├── infra/                   # L4 基础设施（仅外部系统原语）
-    │   ├── db/  redis/  storage/  vector_store/  otel.py
-    ├── models/                  # 核心 ORM（按域分子包）+ registry.py + base.py
-    ├── middlewares/             # trace / access_log / 风控
-    ├── rag/                     # L2（可选）：parse / chunk / index / retrieve / generate / pipeline
-    ├── integrations/            # L3：langchain / langgraph / litellm / …
-    ├── flow_runtime/            # L2（可选）：节点 registry + 执行引擎
-    ├── deletion/                # 无外键时的级联删除编排
-    ├── workers/                 # Celery：app.py + tasks/
-    ├── utils/                   # idgen / orm / redis_keys / health_checks
-    ├── tenant/                  # L0/L1 租户业务域（/api/v1）
-    │   ├── router.py            # 汇总 include 各域
-    │   ├── auth/  system/  {domain}/  …   # 每域 views/services/repositories/schemas
-    │   └── {domain}/
-    │       ├── views/  services/  repositories/  schemas/
-    │       ├── models.py         # 仅该域私有 ORM
-    │       ├── meta.py           # GET /{domain}/meta 枚举字典
-    │       └── constants.py      # 域内多文件共用字面量
-    ├── admin/                   # L0/L1 运营后台（/api/admin/v1）
-    │   ├── router.py
-    │   ├── models/              # 运营 ORM
-    │   ├── app_sys/             # 管理员认证
-    │   └── app_ops/             # 运营业务
-    └── biz/                     # 可选：与 tenant 平级的行业业务域
+    │   ├── infra/                       # db/ redis/ storage/ vector_store/ otel.py
+    │   ├── models/                      # 核心 ORM（按域分子包）+ base.py
+    │   ├── web/                         # 通用 Web 管道：handlers.py + middlewares/
+    │   └── risk/  jobs/  utils/         # orm / health_checks
+    ├── miles-ai/src/miles_ai/           # L2/L3：rag/、integrations/、flow_runtime/
+    ├── miles-portal/src/miles_portal/   # L0/L1 租户业务域（/api/v1）
+    │   ├── registration.py              # register_portal(app)
+    │   ├── tenant/                      # 每域 views/services/repositories/schemas
+    │   │   └── {domain}/                # models.py / meta.py / constants.py
+    │   ├── deletion/                    # 无外键时的级联删除编排
+    │   └── marketplace/
+    ├── miles-admin/src/miles_admin/     # L0/L1 运营后台（/api/admin/v1）
+    │   ├── registration.py              # register_admin(app)
+    │   ├── models/                      # 运营 ORM
+    │   └── app_sys/  app_ops/           # 管理员认证 / 运营业务
+    ├── miles-openapi/src/miles_openapi/ # /api/v1/open/* + registration.py
+    ├── miles-server/src/miles_server/   # 装配根：apps/application.py、main.py、cli.py、scripts/
+    ├── miles-worker/src/miles_worker/   # Celery：app.py + tasks/
+    └── miles-runner/src/miles_runner/   # 沙箱 HTTP 服务（自带 settings）
 ```
 
 **域内四件套约定**（每个 `{domain}/` 都遵守）：
@@ -160,19 +147,22 @@ L4 基础设施    infra/  （db / redis / storage / vector_store）     连接�
 ### 4.1 应用装配（`apps/application.py` + `main.py`）
 
 ```python
-# app/main.py
-from app.apps.application import create_app
+# miles_server/main.py
+from miles_server.apps.application import create_app
 app = create_app()
 ```
 
 ```python
-# app/apps/application.py
+# miles_server/apps/application.py
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.apps.migrate import run_migrations
-from app.common.handlers import exception_handlers
-from app.middlewares import register_http_middlewares
+from miles_admin.registration import register_admin
+from miles_core.web.handlers import exception_handlers
+from miles_core.web.middlewares import register_http_middlewares
+from miles_openapi.registration import register_open
+from miles_portal.registration import register_portal
+from miles_server.apps.migrate import run_migrations
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -191,9 +181,9 @@ def create_app() -> FastAPI:
                        allow_credentials=True, allow_methods=["*"],
                        allow_headers=["*"], expose_headers=["X-Trace-Id"])
     register_http_middlewares(app)
-    from app.apps.routers import api_router, admin_router
-    app.include_router(api_router)
-    app.include_router(admin_router)
+    register_open(app)      # /api/v1/open/*
+    register_portal(app)    # /api/v1
+    register_admin(app)     # /api/admin/v1
     return app
 ```
 
@@ -242,7 +232,7 @@ def get_settings() -> Settings:
 ### 4.3 统一响应与异常
 
 ```python
-# app/common/schema.py
+# miles_common/schema.py
 from typing import Generic, TypeVar
 from pydantic import BaseModel, Field
 T = TypeVar("T")
@@ -264,9 +254,9 @@ class PageResult(BaseModel, Generic[T]):
 ```
 
 ```python
-# app/common/response.py
-from app.common.schema import ApiResponse, PageResult
-from app.common.trace import get_trace_id
+# miles_common/response.py
+from miles_common.schema import ApiResponse, PageResult
+from miles_common.trace import get_trace_id
 
 def ok(data=None, message="ok", code=0) -> ApiResponse:
     return ApiResponse(code=code, message=message, data=data, trace_id=get_trace_id())
@@ -276,7 +266,7 @@ def page_ok(items, total, page, size) -> ApiResponse[PageResult]:
 ```
 
 ```python
-# app/common/exceptions.py
+# miles_common/exceptions.py
 class AppError(Exception):
     def __init__(self, message, *, code=None, status_code=400):
         self.message = message
@@ -299,7 +289,7 @@ class ConflictError(AppError):
 **要点**：业务代码**只抛** `AppError` 子类，绝不散落 `HTTPException`；处理器统一映射 JSON 信封。
 
 ```python
-# app/common/handlers.py（全局异常处理器注册）
+# miles_core/web/handlers.py（全局异常处理器注册）
 exception_handlers = {
     RequestValidationError: validation_error_handler,   # 422
     AppError: app_error_handler,                        # 映射 status_code
@@ -455,15 +445,15 @@ def mask_secret(value: str | None, *, visible_tail=4) -> str | None: ...  # 响�
 ### 5.1 views（薄路由）
 
 ```python
-# app/tenant/{domain}/views/{resource}.py
+# miles_portal/tenant/{domain}/views/{resource}.py
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.common.response import ok
-from app.core.deps import require_permissions
-from app.core.tenant import TenantContext
-from app.infra.db import get_db
-from app.tenant.{domain}.schemas.item import ItemCreate, ItemOut
-from app.tenant.{domain}.services.item import ItemService
+from miles_common.response import ok
+from miles_core.deps import require_permissions
+from miles_core.tenant import TenantContext
+from miles_core.infra.db import get_db
+from miles_portal.tenant.{domain}.schemas.item import ItemCreate, ItemOut
+from miles_portal.tenant.{domain}.services.item import ItemService
 
 router = APIRouter()
 
@@ -498,7 +488,7 @@ async def delete_item(
 ### 5.2 schemas
 
 ```python
-# app/tenant/{domain}/schemas/item.py
+# miles_portal/tenant/{domain}/schemas/item.py
 class ItemOut(BaseModel):
     id: UUID; tenant_id: UUID; name: str; created_at: datetime
     model_config = {"from_attributes": True}   # 支持 ORM 对象直接 validate
@@ -510,7 +500,7 @@ class ItemCreate(BaseModel):
 ### 5.3 services（业务逻辑 + 租户校验）
 
 ```python
-# app/tenant/{domain}/services/item.py
+# miles_portal/tenant/{domain}/services/item.py
 class ItemService(BaseService):
     async def list_items(self) -> list[ItemOut]:
         stmt = select(Item).where(*tenant_filters(self.ctx, Item.tenant_id), not_deleted(Item)).order_by(Item.name.asc())
@@ -592,8 +582,8 @@ class User(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
 ```python
 def load_all_models() -> None:
-    import app.models.platform  # noqa: F401
-    import app.models.{domain}  # noqa: F401
+    import miles_core.models.platform  # noqa: F401
+    import miles_core.models.{domain}  # noqa: F401
     ...
 ```
 
@@ -604,7 +594,7 @@ def load_all_models() -> None:
 - 只保留 `001_initial_schema.py`（按 ORM metadata 一次性 `create_all`），后续大改为增量版本。
 - **启动期**：API lifespan 调 `alembic upgrade head`（`apps/migrate.py`）。
 - **种子**：CLI `init-db` 显式写入，API 启动**不**自动写种子。
-- **契约快照**：`scripts/export_openapi.py --check` 比对 `openapi.snapshot.json`，CI 校验，防 API 漂移。
+- **契约快照**：`python -m miles_server.scripts.export_openapi --check` 比对 `openapi.snapshot.json`，CI 校验，防 API 漂移。
 
 ---
 
@@ -668,14 +658,14 @@ def get_redis() -> aioredis.Redis:
 ## 8. 异步任务（Celery）
 
 ```python
-# workers/app.py
+# miles_worker/app.py
 celery_app = Celery("myapp", broker=settings.celery_broker_url,
-                    backend=settings.celery_result_backend, include=["app.workers.tasks"])
+                    backend=settings.celery_result_backend, include=["miles_worker.tasks"])
 celery_app.conf.update(
     task_track_started=True, task_acks_late=True,
     worker_prefetch_multiplier=1,                 # 长任务避免抢占
     task_soft_time_limit=..., task_time_limit=...,
-    task_routes={"app.workers.tasks.ingest.*": {"queue": "parse"}},  # 按任务分流队列
+    task_routes={"miles_worker.tasks.ingest.*": {"queue": "parse"}},  # 按任务分流队列
     beat_schedule={"tick-schedules": {"task": "...", "schedule": 60.0}},  # 定时
 )
 ```
@@ -694,11 +684,11 @@ celery_app.conf.update(
 
 | 护栏 | 阈值/规则 |
 |------|-----------|
-| 单文件体量 | `app/` 下业务 `.py` **≥ 500 行禁止合入**，按职责拆子包/子文件；拆分后宜 300–400 行 |
+| 单文件体量 | `backend/packages/*/src/` 下业务 `.py` **≥ 500 行禁止合入**，按职责拆子包/子文件；拆分后宜 300–400 行 |
 | services 子包聚合 | 单个 Service 超 500 行或 Mixin 增多时，拆 `services/{aggregate}/` + `service.py` 门面 + `__init__.py` 唯一导出 |
 | docstring | 模块/类/公开方法/模块级函数必须有**中文 docstring**；禁止无信息量的 `#` 注释 |
 | import 方向 | 严格 L0→L4；`infra`/`integrations` 不得 import `tenant`；同级域不互 import 内部文件 |
-| 常量分家 | `models.Enum` 为持久化真源；`{domain}/meta.py` 仅 label/hint；Redis 键集中 `utils/redis_keys.py` |
+| 常量分家 | `models.Enum` 为持久化真源；`{domain}/meta.py` 仅 label/hint；Redis 键集中 `miles_common/redis_keys.py` |
 | 类型 | 跨层优先 `@dataclass`/`TypedDict`，少用裸 `dict[str, Any]` |
 | 异常 | 只抛 `AppError` 子类；不散落 `HTTPException` |
 | 事务 | Service 只 `flush`，`get_db` 统一 commit/rollback |
@@ -707,8 +697,8 @@ celery_app.conf.update(
 
 ```bash
 cd backend
-find app -name '*.py' -exec wc -l {} + | awk '$1 >= 500'   # 找出超标文件
-python scripts/export_openapi.py --check                    # 契约漂移校验
+find packages -path '*/src/*' -name '*.py' -exec wc -l {} + | awk '$1 >= 500'   # 找出超标文件
+python -m miles_server.scripts.export_openapi --check                           # 契约漂移校验
 ```
 
 ---
@@ -718,17 +708,17 @@ python scripts/export_openapi.py --check                    # 契约漂移校验
 按顺序执行，完成后即得到一个可运行的骨架：
 
 - [ ] 1. 建目录树（§3），补齐各层 `__init__.py`。
-- [ ] 2. `pyproject.toml` 声明依赖与 `[project.scripts]`；`cli.py` 提供 `serve/worker/migrate/init-db/seed`。
-- [ ] 3. 落地 `core/`（config、security、deps、tenant、repository、service、soft_delete、field_crypto、logging）。
-- [ ] 4. 落地 `common/`（response、exceptions、handlers、pagination、schema、trace）。
+- [ ] 2. uv workspace 根 `pyproject.toml` 声明 `[dependency-groups].dev` 与成员；`miles-server` 声明 `[project.scripts] milesai = "miles_server.cli:main"`。
+- [ ] 3. 落地 `miles_core`（config、security、deps、tenant、repository、service、soft_delete、field_crypto、logging）。
+- [ ] 4. 落地 `miles_common`（response、exceptions、schema、trace）+ `miles_core/`（`web/handlers.py`、`pagination.py`）。
 - [ ] 5. 落地 `infra/db`（engine + `get_db` + `get_worker_session`）。
-- [ ] 6. 落地 `models/`（base Mixin + `registry.py` + 核心表）。
-- [ ] 7. 落地 `apps/`（`application.py` 工厂、`routers.py`、`migrate.py`）+ `main.py` + `middlewares/`。
-- [ ] 8. `alembic` 初始化 + `001_initial_schema`；`init-db` 写入种子账号。
-- [ ] 9. 落地 `workers/`（Celery app + 至少一个任务）+ Beat 配置。
+- [ ] 6. 落地 `models/`（base Mixin + 核心表）+ `miles_server/registry.py`。
+- [ ] 7. 落地 `miles_server/apps/`（`application.py` 工厂、`migrate.py`）+ `main.py`；域 API 经 `register_portal` / `register_admin` / `register_open` 装配；`miles_core/web/middlewares/`。
+- [ ] 8. `alembic` 初始化 + `001_initial_schema`；`milesai init-db` 写入种子账号。
+- [ ] 9. 落地 `miles_worker/`（Celery app + 至少一个任务）+ Beat 配置。
 - [ ] 10. 按 §5 模板实现**第一个域**（auth 或 system），验证「登录 → 权限 → 租户隔离 → 软删 → 分页」闭环。
-- [ ] 11. 如需 RAG/编排，按 §2.2 分层接入 `rag/`、`integrations/`、`flow_runtime/`。
-- [ ] 12. `export_openapi.py --write` 生成契约快照；补测试。
+- [ ] 11. 如需 RAG/编排，按 §2.2 分层接入 `miles_ai/` 的 `rag/`、`integrations/`、`flow_runtime/`。
+- [ ] 12. `python -m miles_server.scripts.export_openapi --write` 生成契约快照；补测试。
 
 ---
 
@@ -988,7 +978,7 @@ async def api_client(api_app):
 | 散落 `HTTPException` | 信封不一致 | 只抛 `AppError` 子类 |
 | 大文件不拆 | 单文件 >500 行难以维护 | 按 §9 拆子包/子文件 |
 | 列表逐条查 username | N+1 查询 | 一次 `IN` 查询批量映射 |
-| 魔法字符串散落 | key 冲突难排 | 集中 `utils/redis_keys.py` / `constants.py` |
+| 魔法字符串散落 | key 冲突难排 | 集中 `miles_common/redis_keys.py` / `constants.py` |
 | 向量/对象引擎 per-tenant 混用 | 运维复杂、检索不可跨库 | 全局环境变量定引擎，隔离靠 Filter |
 
 ---
@@ -997,26 +987,26 @@ async def api_client(api_app):
 
 | 框架条目 | MilesAi 实际路径 |
 |----------|------------------|
-| 应用装配 | `backend/app/apps/application.py`、`main.py` |
-| 配置 | `backend/app/core/config.py` |
-| 统一信封/异常 | `backend/app/common/{response,exceptions,handlers,schema}.py` |
-| 依赖注入/权限 | `backend/app/core/{deps,security,tenant}.py` |
-| 仓储/服务基类 | `backend/app/core/{repository,service,soft_delete}.py` |
-| ORM Mixin | `backend/app/models/base.py`、`registry.py` |
-| 对象/向量抽象 | `backend/app/infra/{storage,vector_store}/` |
-| 域模板最小示例 | `backend/app/tenant/tags/` |
-| Celery | `backend/app/workers/app.py` |
-| 认证/会话 | `backend/app/tenant/auth/services/{auth,session_store}.py` |
-| RBAC | `backend/app/core/{deps,tenant}.py`、`backend/app/models/platform/role.py` |
-| 审计 | `backend/app/tenant/audit_log/services/audit_log.py` |
-| 删除编排 | `backend/app/deletion/{cascade,document,tenant}.py` |
-| 任务状态机 | `backend/app/tenant/tasks/services/task.py`、`backend/app/models/task/task_record.py` |
-| SSE 进度 | `backend/app/tenant/generative/views/jobs.py` |
-| Hook 切面 | `backend/app/tenant/hooks/services/{runner,executor,result}.py` |
-| 风控中间件 | `backend/app/middlewares/platform_risk.py` |
-| Redis Key 集中管理 | `backend/app/utils/redis_keys.py` |
-| 大服务 Mixin 门面 | `backend/app/tenant/agents/services/agent/{service,__init__}.py` |
-| 可选能力降级 | `backend/app/integrations/langgraph/checkpointer.py` |
+| 应用装配 | `backend/packages/miles-server/src/miles_server/apps/application.py`、`main.py` |
+| 配置 | `backend/packages/miles-core/src/miles_core/config.py` |
+| 统一信封/异常 | `backend/packages/miles-common/src/miles_common/{response,exceptions,schema}.py`、`miles-core/src/miles_core/web/handlers.py` |
+| 依赖注入/权限 | `backend/packages/miles-core/src/miles_core/{deps,security,tenant}.py` |
+| 仓储/服务基类 | `backend/packages/miles-core/src/miles_core/{repository,service,soft_delete}.py` |
+| ORM Mixin | `backend/packages/miles-core/src/miles_core/models/base.py`、`miles-server/src/miles_server/registry.py` |
+| 对象/向量抽象 | `backend/packages/miles-core/src/miles_core/infra/{storage,vector_store}/` |
+| 域模板最小示例 | `backend/packages/miles-portal/src/miles_portal/tenant/tags/` |
+| Celery | `backend/packages/miles-worker/src/miles_worker/app.py` |
+| 认证/会话 | `backend/packages/miles-portal/src/miles_portal/tenant/auth/services/auth.py`、`miles-core/src/miles_core/auth/session_store.py` |
+| RBAC | `backend/packages/miles-core/src/miles_core/{deps,tenant}.py`、`miles-core/src/miles_core/models/platform/role.py` |
+| 审计 | `backend/packages/miles-portal/src/miles_portal/tenant/audit_log/services/audit_log.py` |
+| 删除编排 | `backend/packages/miles-portal/src/miles_portal/deletion/{cascade,document,tenant}.py` |
+| 任务状态机 | `backend/packages/miles-portal/src/miles_portal/tenant/tasks/services/task.py`、`miles-core/src/miles_core/models/task/task_record.py` |
+| SSE 进度 | `backend/packages/miles-portal/src/miles_portal/tenant/generative/views/jobs.py` |
+| Hook 切面 | `backend/packages/miles-portal/src/miles_portal/tenant/hooks/services/{runner,executor,result}.py` |
+| 风控中间件 | `backend/packages/miles-core/src/miles_core/web/middlewares/platform_risk.py` |
+| Redis Key 集中管理 | `backend/packages/miles-common/src/miles_common/redis_keys.py` |
+| 大服务 Mixin 门面 | `backend/packages/miles-portal/src/miles_portal/tenant/agents/services/agent/{service,__init__}.py` |
+| 可选能力降级 | `backend/packages/miles-ai/src/miles_ai/integrations/langgraph/checkpointer.py` |
 | 测试 fixture | `backend/tests/conftest.py` |
 | 分层规范原文 | `docs/architecture/layering.md` |
 | As-Is 架构总纲 | `docs/architecture/technical-design.md` |

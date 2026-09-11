@@ -8,14 +8,14 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 from jose import jwt
 
-from app.apps.application import create_app
-from app.core.config import get_settings
-from app.core.deps import get_tenant_context
-from app.core.security import create_access_token, safe_decode_token
-from app.core.tenant import TenantContext
-from app.infra.db import get_db
-from app.tenant.agents.schemas.api_access import AgentDebugTokenOut
-from app.tenant.agents.services.api_access import AgentApiAccessService
+from miles_server.apps.application import create_app
+from miles_core.config import get_settings
+from miles_core.deps import get_tenant_context
+from miles_core.security import create_access_token, safe_decode_token
+from miles_core.tenant import TenantContext
+from miles_core.infra.db import get_db
+from miles_portal.tenant.agents.schemas.api_access import AgentDebugTokenOut
+from miles_portal.tenant.agents.services.api_access import AgentApiAccessService
 from tests.conftest import disable_platform_risk, make_tenant_ctx
 
 
@@ -122,7 +122,7 @@ async def test_create_debug_token_registers_session_and_claims():
     with (
         patch.object(svc.repo, "get_by_id", new_callable=AsyncMock, return_value=agent),
         patch(
-            "app.tenant.agents.services.api_access.session_store.register_session",
+            "miles_portal.tenant.agents.services.api_access.session_store.register_session",
             new_callable=AsyncMock,
         ) as reg,
     ):

@@ -7,10 +7,10 @@ from uuid import uuid4
 
 import pytest
 
-from app.common.exceptions import BadRequestError, NotFoundError
-from app.models.flow import FlowStatus
-from app.tenant.flows.schemas.flow import FlowRunResponse
-from app.tenant.tools.services import flow_once
+from miles_common.exceptions import BadRequestError, NotFoundError
+from miles_core.models.flow import FlowStatus
+from miles_portal.tenant.flows.schemas.flow import FlowRunResponse
+from miles_portal.tenant.tools.services import flow_once
 
 
 def _ctx(tenant_id=None) -> SimpleNamespace:
@@ -25,7 +25,7 @@ def _patch_flow_repo(monkeypatch, flow) -> None:
         async def get_by_id(self, flow_id):  # noqa: ARG002
             return flow
 
-    monkeypatch.setattr("app.tenant.flows.repositories.flow.FlowRepository", _Repo)
+    monkeypatch.setattr("miles_portal.tenant.flows.repositories.flow.FlowRepository", _Repo)
 
 
 def _published_flow(tenant_id):
@@ -95,7 +95,7 @@ async def test_runs_published_flow_and_shapes_output(monkeypatch):
             calls.update({"flow_id": flow_id, "inputs": body.inputs})
             return FlowRunResponse(output="流程结果", steps=[{"node": "TextOutput"}])
 
-    monkeypatch.setattr("app.tenant.flows.services.flow.FlowService", _Service)
+    monkeypatch.setattr("miles_portal.tenant.flows.services.flow.FlowService", _Service)
 
     out = await flow_once.run_published_flow_once(
         object(),
@@ -124,7 +124,7 @@ async def test_timeout_is_clamped_and_maps_to_bad_request(monkeypatch):
             await asyncio.sleep(5)
             return FlowRunResponse(output="late")
 
-    monkeypatch.setattr("app.tenant.flows.services.flow.FlowService", _Service)
+    monkeypatch.setattr("miles_portal.tenant.flows.services.flow.FlowService", _Service)
 
     async def fake_wait_for(coro, *, timeout):
         seen["timeout"] = timeout

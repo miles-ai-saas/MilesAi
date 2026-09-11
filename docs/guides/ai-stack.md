@@ -4,9 +4,9 @@
 
 | 层级 | 路径 | 技术 | 职责 |
 |------|------|------|------|
-| L2 | `app/rag/` | — | Parse / Chunk / Index / Retrieve / Generate |
-| L3 | `app/integrations/` | LangChain、LangGraph、LiteLLM、DeepAgents | 模型调用、图编排、工具 |
-| L4 | `app/infra/` | DB、S3、向量库客户端 | 外部系统原语 |
+| L2 | `backend/packages/miles-ai/src/miles_ai/rag/` | — | Parse / Chunk / Index / Retrieve / Generate |
+| L3 | `backend/packages/miles-ai/src/miles_ai/integrations/` | LangChain、LangGraph、LiteLLM、DeepAgents | 模型调用、图编排、工具 |
+| L4 | `backend/packages/miles-core/src/miles_core/infra/` | DB、S3、向量库客户端 | 外部系统原语 |
 
 分层与依赖规则见 [layering.md](../architecture/layering.md)。**不含** RAG-Anything / MinerU。
 
@@ -14,16 +14,13 @@
 
 ```bash
 cd backend
-pip install -e ".[dev]"
-pip install -e ".[agent-stack]"       # 可选：deepagents
-pip install -e ".[parse-docling]"     # 可选：Docling PDF/Office
-pip install -e ".[multimodal]"        # 可选：图 OCR / 音 Whisper
+uv sync --all-packages --group dev    # 安装工作区 10 个包；解析 / 多模态等能力已无条件声明
 ```
 
 ## 目录（当前）
 
 ```
-app/rag/
+backend/packages/miles-ai/src/miles_ai/rag/
 ├── parse/
 │   ├── loaders.py              # 入库主入口：text / pdf / docling / image / audio
 │   ├── backends/pypdf.py
@@ -39,7 +36,7 @@ app/rag/
 ├── load/knowledge_bases.py
 └── pipeline/ingest.py          # run_ingest_pipeline
 
-app/integrations/
+backend/packages/miles-ai/src/miles_ai/integrations/
 ├── langchain/
 │   ├── embeddings.py
 │   ├── vectorstores.py         # → rag.retrieve.multi_kb
@@ -48,7 +45,7 @@ app/integrations/
 ├── litellm/
 └── deepagents/
 
-app/infra/vector_store/
+backend/packages/miles-core/src/miles_core/infra/vector_store/
 ├── factory.py                  # get_vector_store()
 ├── base.py
 ├── weaviate|milvus|pgvector.py # import integrations.langchain.vector.documents

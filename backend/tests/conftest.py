@@ -12,10 +12,10 @@ from unittest.mock import AsyncMock, patch
 # LiteLLM 在 import 时会尝试预加载 AWS Bedrock/SageMaker schema；未装 botocore 时会打 WARNING。
 os.environ.setdefault("LITELLM_LOG", "ERROR")
 
-from app.apps.application import create_app
-from app.core.deps import get_tenant_context
-from app.core.tenant import TenantContext
-from app.infra.db import get_db
+from miles_server.apps.application import create_app
+from miles_core.deps import get_tenant_context
+from miles_core.tenant import TenantContext
+from miles_core.infra.db import get_db
 
 
 def make_tenant_ctx(*, permissions: frozenset[str] | None = None, is_superuser: bool = True) -> TenantContext:
@@ -33,12 +33,12 @@ def disable_platform_risk() -> Iterator[None]:
     """API 测试绕过 Redis 限流/黑名单中间件。"""
     with (
         patch(
-            "app.middlewares.platform_risk.platform_risk_enforcer.is_ip_blocked",
+            "miles_core.web.middlewares.platform_risk.platform_risk_enforcer.is_ip_blocked",
             new_callable=AsyncMock,
             return_value=False,
         ),
         patch(
-            "app.middlewares.platform_risk.platform_risk_enforcer.check_rate_limit",
+            "miles_core.web.middlewares.platform_risk.platform_risk_enforcer.check_rate_limit",
             new_callable=AsyncMock,
             return_value=(False, None),
         ),

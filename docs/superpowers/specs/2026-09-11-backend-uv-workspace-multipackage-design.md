@@ -114,7 +114,7 @@ flowchart LR
 
 - `miles_portal`：保留现有 `tenant/*/views`、`tenant/router.py`；新增对外注册函数 `register_portal(app: FastAPI)`（挂载 `api_router`、域内依赖与域内中间件）。`deletion/`、`marketplace/` 平铺其下。
 - `miles_admin`：保留 `admin/app_sys`、`admin/app_ops`、`admin/router.py`；新增 `register_admin(app)`。
-- `miles_openapi`：承接现有 `tenant/agents/views/open_chat.py` 与 `tenant/agents/deps_api_auth.py`，新增 `register_open(app)`（挂载 `/api/v1/open/*`，**路径不变**）。
+- `miles_openapi`：承接现有 `tenant/agents/views/open_chat.py` 及开放面装配模块，新增 `register_open(app)`（挂载 `/api/v1/open/*`，**路径不变**）。`tenant/agents/deps_api_auth.py` **不迁入**，留在 `miles_portal`（见 §4 与 §12）。
 - `miles_server`：`apps/application.py`（`create_app` 依次 `register_open` / `register_portal` / `register_admin`）、`apps/migrate.py`、`apps/routers.py`、`main.py`、`cli.py`、`scripts/`。**不放 views / schemas / repositories。**
 
 ### 2.2 API 层归属（关键约定）
@@ -244,7 +244,8 @@ from app.admin.models import RiskSeverity
 | `app.workers.app.celery_app` | `miles_core.jobs.celery_app` |
 | `app.runner.limits` / `app.runner.main` | `miles_runner.limits` / `miles_runner.main` |
 | `app.tenant.agents.views.open_chat` | `miles_openapi.views.open_chat` |
-| `app.tenant.agents.deps_api_auth` | `miles_openapi.deps_api_auth` |
+| `app.openapi.*` | `miles_openapi.*` |
+| ~~`app.tenant.agents.deps_api_auth`~~ | ~~`miles_openapi.deps_api_auth`~~ → **`miles_portal.tenant.agents.deps_api_auth`**（2026-09-11 修订，见 §11） |
 | `app.tenant.mcp.runner.spec` | `miles_exec.mcp.spec` |
 | `app.tenant.mcp.constants` | `miles_exec.mcp.constants` |
 | `app.tenant.mcp.rpc` | `miles_exec.mcp.rpc` |
@@ -256,7 +257,8 @@ from app.admin.models import RiskSeverity
 
 对外 API 的代码归属调整：
 
-- 移入 `miles_openapi`：`tenant/agents/views/open_chat.py`、`tenant/agents/deps_api_auth.py`（`require_agent_api_key`）及对应用例编排；
+- 移入 `miles_openapi`：`tenant/agents/views/open_chat.py` 及开放面装配模块（`register_open(app)` 挂载 `/api/v1/open/*`）；
+- **`tenant/agents/deps_api_auth.py` 留在 `miles_portal`**（2026-09-11 修订，见 §11）：它同时被 `open_chat.py`（openapi）与 `agents.py`（portal 工作台）使用，是共享鉴权依赖；openapi 位于 portal 之上，反向引用合法。若把它放进 openapi，会造成 `portal → openapi` 上向依赖；
 - 留在 `miles_portal`：API Key 的**管理面**（创建/列表/吊销，工作台 `/agents/{id}/api-keys`）；`AgentApiKey` ORM 归 `miles_core.models.agent`；
 - `miles_openapi` 经 `miles_portal` 的既有服务完成鉴权与调用，**不改 URL、不改响应结构**。
 
@@ -410,3 +412,36 @@ miles-exec = { workspace = true }
 2. ②③ 文件完成归位；`flow_runtime` 与 `rag` 的引擎装配（`runtime_factory`、模块级 `flow_runner` 引用）全部转为包内引用。
 3. OpenAPI 快照零漂移、全量 `pytest` 通过；Flow 调试运行与 Agent RAG 对话专项回归。
 4. 与 §2 一致的 `miles_ai` 判据（不得 import `miles_portal`）继续成立。
+
+---
+
+## 12. 修订记录
+
+### 2026-09-11：Phase 1 退出闸门发现的遗留环与三处修订
+
+Phase 1 五个任务完成后，用 `app.*`→包的映射构建包级 import 图复核，发现五条目标环均已断开，但另有 3 处 Phase 2 物理搬迁无法修复的上向依赖（`app/models/registry.py` 贡献的 4 条随 registry 迁 `miles_server` 自然消解，不计）。据此增设 Task 1.6–1.8：
+
+1. **`core → ai`**：`app/infra/vector_store/{weaviate,langchain_base,pgvector,milvus}.py` 从 `app.integrations.langchain.vector.documents` 取转换工具，而后者反向依赖 `app.infra.vector_store.base.ChunkVectorRecord`。经核实 `documents.py` 只依赖 `langchain_core` / `app.core.config` / `app.infra.vector_store.base`，**不依赖 `app.integrations`**，属放错层的 infra 工具 → 迁入 `app/infra/vector_store/documents.py`（Task 1.6）。
+2. **`exec → core/portal`**：`app/exec/mcp/spec.py` 的 `build_run_spec` 依赖 `McpService` 与 `TenantContext`，属业务侧组装，却留在 exec。→ 迁回 `app/tenant/mcp/runner/spec_build.py`，`exec` 因此成为**无豁免**真叶子（Task 1.7）；原计划 Task 3.4 为 exec 预留的 `ignore_imports` 豁免已删除。
+3. **`portal → openapi`**：`app/tenant/router.py` include 了 `open_chat` 视图，且 `agents.py` 从 `deps_api_auth` 取共享鉴权依赖。→ 开放面路由改由装配层（`app/openapi/registration.py`，Phase 2 归 `miles_server` 调用的 `register_open`）挂载；`deps_api_auth.py` 归属修正为 `miles_portal`（§4 映射表与本节为准）。
+
+### 2026-09-11：Phase 1 收口复核（Task 1.6–1.8 落地）
+
+Task 1.6（commit `6cf45b8`）、1.7（`6d21094`）、1.8（`1717fb6`）落地后重跑退出闸门（`.superpowers/sdd/phase1-exit-gate.py`，AST 解析 `app/**/*.py`，按 §4 映射 + `app.models.registry → miles_server.registry`）：**强连通分量无环（OK: 无环）**。
+
+包级邻接（仅包间边）：
+
+```text
+miles_common -> (leaf)
+miles_exec   -> miles_common
+miles_core   -> miles_common
+miles_runner -> miles_core, miles_exec
+miles_ai     -> miles_common, miles_core
+miles_portal -> miles_ai, miles_common, miles_core, miles_exec
+miles_openapi-> miles_common, miles_core, miles_portal
+miles_admin  -> miles_common, miles_core, miles_portal
+miles_worker -> miles_ai, miles_common, miles_core, miles_portal
+miles_server -> miles_admin, miles_ai, miles_core, miles_openapi, miles_portal
+```
+
+唯一偏离 §2 硬判据的边是 `miles_runner → miles_core`（`app/runner/main.py:12` 取 `get_settings`），**非环**且已排期由 **Task 3.2**（`miles_runner` 自带 `RunnerSettings`）消除，不属 Phase 1 范围。Phase 1 退出闸门通过；Phase 2 起按计划执行。

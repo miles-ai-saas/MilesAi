@@ -2,8 +2,8 @@
 
 import pytest
 
-from app.flow_runtime.nodes.control_nodes import condition_branch, parallel_join
-from app.flow_runtime.types import RunContext
+from miles_ai.flow_runtime.nodes.control_nodes import condition_branch, parallel_join
+from miles_ai.flow_runtime.types import RunContext
 
 
 @pytest.mark.asyncio

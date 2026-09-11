@@ -93,10 +93,10 @@ load_tenant_scan_words(tenant_id)
 
 - **Alembic**：`alembic/versions/003_compliance_word_libraries.py`
   - 建新表；从 `cmp_sensitive_words` 迁数据；删旧表
-- **种子**：`scripts/seed/compliance.py` — 多词库示例（默认 / 广告法 / 客服外呼 / 观察名单）+ 一词多库演示 + tenant 绑定  
-  - 命令：`cd backend && python cli.py seed compliance`
+- **种子**：`backend/packages/miles-server/src/miles_server/scripts/seed/compliance.py` — 多词库示例（默认 / 广告法 / 客服外呼 / 观察名单）+ 一词多库演示 + tenant 绑定  
+  - 命令：`cd backend && milesai seed compliance`
 
-新环境：`alembic upgrade head` 后执行 `cli.py seed`（或等价种子流程）。
+新环境：`alembic upgrade head` 后执行 `milesai seed`（或等价种子流程）。
 
 ## 7. 后续扩展（未实现）
 

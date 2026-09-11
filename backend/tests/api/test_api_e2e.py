@@ -6,11 +6,11 @@ from uuid import uuid4
 import pytest
 from httpx import ASGITransport, AsyncClient
 
-from app.apps.application import create_app
-from app.core.deps import get_tenant_context
-from app.core.tenant import TenantContext
-from app.infra.db import get_db
-from app.tenant.flows.schemas.flow import FlowRunResponse
+from miles_server.apps.application import create_app
+from miles_core.deps import get_tenant_context
+from miles_core.tenant import TenantContext
+from miles_core.infra.db import get_db
+from miles_portal.tenant.flows.schemas.flow import FlowRunResponse
 from tests.conftest import disable_platform_risk, make_tenant_ctx
 
 
@@ -93,7 +93,7 @@ async def test_flow_compile_endpoint(api_client):
         "error_details": [],
     }
     with patch(
-        "app.tenant.flows.views.flows.FlowService.compile_preview",
+        "miles_portal.tenant.flows.views.flows.FlowService.compile_preview",
         new_callable=AsyncMock,
         return_value=report,
     ):
@@ -111,7 +111,7 @@ async def test_flow_run_endpoint(api_client):
     flow_id = uuid4()
     run_result = FlowRunResponse(output="hello api", steps=[{"type": "graph_start"}])
     with patch(
-        "app.tenant.flows.views.flows.FlowService.run",
+        "miles_portal.tenant.flows.views.flows.FlowService.run",
         new_callable=AsyncMock,
         return_value=run_result,
     ):

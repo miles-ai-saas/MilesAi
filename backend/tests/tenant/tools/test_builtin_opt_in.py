@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from app.integrations.langchain.tools import (
+from miles_ai.integrations.langchain.tools import (
     build_platform_tools,
     get_platform_tools,
     select_opt_in_builtin_tools,

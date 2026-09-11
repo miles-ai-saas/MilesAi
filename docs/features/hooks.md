@@ -30,7 +30,7 @@ BEFORE_CALL → 合规 check_input → … 推理/工具/流程 …
 
 - 画布内每个 LLM 节点独立 reasoning 钩子
 - `scope=tool` 绑定（执行点未接）
-- Python 模块路径仅限 `app.tenant.hooks.plugins.*`
+- Python 模块路径仅限 `miles_portal.tenant.hooks.plugins.*`
 
 ---
 
@@ -118,7 +118,7 @@ GET  /hooks/executions?page=
 HookRunner.run(trigger, scope, target_id, payload)
     → HookExecutor 按 priority 串行
     → http: POST config.url
-    → python: import app.tenant.hooks.plugins.*
+    → python: import miles_portal.tenant.hooks.plugins.*
     → 写 hook_execution_logs
 ```
 
@@ -143,13 +143,13 @@ ui/workbench/app/workbench/hooks/page.tsx
 ## 7. 后端文件清单
 
 ```
-backend/app/tenant/hooks/models.py
-backend/app/tenant/hooks/views/hooks.py
-backend/app/tenant/hooks/services/hook_runner.py
-backend/app/tenant/hooks/services/hook_executor.py
-backend/app/tenant/agents/services/agent/
-backend/app/tenant/flows/services/flow.py
-backend/app/tenant/tools/invoke/
+backend/packages/miles-portal/src/miles_portal/tenant/hooks/models.py
+backend/packages/miles-portal/src/miles_portal/tenant/hooks/views/hooks.py
+backend/packages/miles-portal/src/miles_portal/tenant/hooks/services/runner.py
+backend/packages/miles-portal/src/miles_portal/tenant/hooks/services/executor/
+backend/packages/miles-portal/src/miles_portal/tenant/agents/services/agent/
+backend/packages/miles-portal/src/miles_portal/tenant/flows/services/flow.py
+backend/packages/miles-portal/src/miles_portal/tenant/tools/invoke/
 ```
 
 ---

@@ -1,6 +1,6 @@
 """生图工具确认策略。"""
 
-from app.integrations.generative.policy import (
+from miles_ai.integrations.generative.policy import (
     image_tool_confirmation_message,
     is_high_resolution_image_size,
     needs_image_tool_confirmation,

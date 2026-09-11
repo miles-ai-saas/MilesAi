@@ -2,8 +2,8 @@
 
 from uuid import uuid4
 
-from app.models.agent import Agent
-from app.tenant.agents.services.agent import should_use_tools_with_kb
+from miles_core.models.agent import Agent
+from miles_portal.tenant.agents.services.agent import should_use_tools_with_kb
 
 
 def _agent(**config):

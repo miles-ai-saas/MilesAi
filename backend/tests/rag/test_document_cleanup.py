@@ -3,7 +3,7 @@ from uuid import uuid4
 
 import pytest
 
-from app.deletion.document import (
+from miles_portal.deletion.document import (
     clear_document_derived_data_async,
     clear_document_derived_data_sync,
 )
@@ -17,7 +17,7 @@ async def test_clear_document_derived_data_async_order() -> None:
     db = AsyncMock()
     db.execute = AsyncMock(return_value=MagicMock(scalars=MagicMock(return_value=MagicMock(all=lambda: [chunk_id]))))
 
-    with patch("app.deletion.document.delete_by_document") as mock_wv:
+    with patch("miles_portal.deletion.document.delete_by_document") as mock_wv:
         await clear_document_derived_data_async(db, document_id)
 
     assert db.execute.await_count == 3  # select chunk ids + delete vector_refs + delete chunks
@@ -31,7 +31,7 @@ def test_clear_document_derived_data_sync_order() -> None:
     db = MagicMock()
     db.scalars.return_value = [chunk_id]
 
-    with patch("app.deletion.document.delete_by_document") as mock_wv:
+    with patch("miles_portal.deletion.document.delete_by_document") as mock_wv:
         clear_document_derived_data_sync(db, document_id)
 
     assert db.execute.call_count == 2

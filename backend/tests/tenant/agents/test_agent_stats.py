@@ -1,6 +1,6 @@
 """智能体统计聚合辅助函数测试。"""
 
-from app.tenant.agents.services.stats import _avg_rounds, _day_range, _normalize_days, _series_from_map
+from miles_portal.tenant.agents.services.stats import _avg_rounds, _day_range, _normalize_days, _series_from_map
 
 
 def test_normalize_days():

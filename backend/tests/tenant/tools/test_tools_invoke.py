@@ -1,8 +1,8 @@
 import pytest
 
-from app.tenant.tools.builtin_registry import BUILTIN_SLUGS
-from app.tenant.tools.builtins.handlers import BUILTIN_HANDLERS
-from app.tenant.tools.invoke import invoke_builtin, safe_calculate
+from miles_portal.tenant.tools.builtin_registry import BUILTIN_SLUGS
+from miles_portal.tenant.tools.builtins.handlers import BUILTIN_HANDLERS
+from miles_portal.tenant.tools.invoke import invoke_builtin, safe_calculate
 
 
 def test_builtin_handlers_cover_registry():

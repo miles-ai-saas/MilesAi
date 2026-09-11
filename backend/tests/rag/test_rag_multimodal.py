@@ -5,12 +5,12 @@ from uuid import uuid4
 
 import pytest
 
-from app.common.exceptions import BadRequestError
-from app.common.schemas.media import MediaRefIn
-from app.integrations.chat.multimodal import build_invoke_messages_with_media
-from app.integrations.langgraph.graphs.rag_qa import _prompt_user_query, fallback, generate
-from app.integrations.langgraph.runner import run_rag_workflow
-from app.rag.generate.answer import rag_answer
+from miles_common.exceptions import BadRequestError
+from miles_common.schemas.media import MediaRefIn
+from miles_ai.integrations.chat.multimodal import build_invoke_messages_with_media
+from miles_ai.integrations.langgraph.graphs.rag_qa import _prompt_user_query, fallback, generate
+from miles_ai.integrations.langgraph.runner import run_rag_workflow
+from miles_ai.rag.generate.answer import rag_answer
 
 
 def test_prompt_user_query_prefers_prompt_query():
@@ -22,7 +22,7 @@ def test_prompt_user_query_prefers_prompt_query():
 async def test_build_invoke_messages_with_media():
     class FakeReader:
         async def read_image_bytes(self, attachment_id):
-            from app.models.media.reader import AttachmentBytes
+            from miles_core.models.media.reader import AttachmentBytes
 
             return AttachmentBytes(data=b"\x89PNG\r\n\x1a\n", mime="image/png")
 
@@ -52,12 +52,12 @@ async def test_generate_node_with_media():
 
     with (
         patch(
-            "app.integrations.langgraph.graphs.rag_qa.build_invoke_messages_with_media",
+            "miles_ai.integrations.langgraph.graphs.rag_qa.build_invoke_messages_with_media",
             new_callable=AsyncMock,
             return_value=[{"role": "user", "content": [{"type": "text", "text": "x"}]}],
         ) as mock_build,
         patch(
-            "app.integrations.langgraph.graphs.rag_qa.ainvoke_chat",
+            "miles_ai.integrations.langgraph.graphs.rag_qa.ainvoke_chat",
             new_callable=AsyncMock,
             return_value="答案",
         ),
@@ -83,7 +83,7 @@ async def test_run_rag_workflow_passes_media_in_initial():
     reader = object()
 
     with patch(
-        "app.integrations.langgraph.runner.get_compiled_rag_graph",
+        "miles_ai.integrations.langgraph.runner.get_compiled_rag_graph",
         return_value=mock_graph,
     ):
         await run_rag_workflow(
@@ -137,7 +137,7 @@ async def test_fallback_node_with_media_without_reader_raises():
 @pytest.mark.asyncio
 async def test_rag_answer_media_without_reader_raises():
     with patch(
-        "app.rag.generate.answer.retrieve_hits",
+        "miles_ai.rag.generate.answer.retrieve_hits",
         new_callable=AsyncMock,
         return_value=[],
     ):

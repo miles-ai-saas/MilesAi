@@ -9,14 +9,14 @@ from uuid import uuid4
 
 import pytest
 
-from app.integrations.langchain.tool_agent import loop as loop_mod
-from app.integrations.langchain.tools import (
+from miles_ai.integrations.langchain.tool_agent import loop as loop_mod
+from miles_ai.integrations.langchain.tools import (
     get_platform_tools,
     make_knowledge_search_tool,
     select_agent_tools,
 )
-from app.models.agent.chat_io import ChatRequest
-from app.tenant.tools.builtins import handlers as handlers_mod
+from miles_core.models.agent.chat_io import ChatRequest
+from miles_portal.tenant.tools.builtins import handlers as handlers_mod
 
 
 class _Tool:

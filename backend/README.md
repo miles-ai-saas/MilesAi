@@ -5,52 +5,47 @@
 ## 目录结构
 
 ```
-cli.py                      # 统一 CLI：serve / worker / migrate / init-db / seed
-app/
-├── main.py                 # ASGI 入口 (由 cli.py serve 或 uvicorn 加载)
-├── apps/
-│   ├── application.py      # FastAPI 工厂、生命周期、中间件
-│   ├── routers.py          # 路由汇总
-│   └── migrate.py          # 启动时 Alembic upgrade
-├── tenant/                 # 租户端业务 (/api/v1)
-│   ├── router.py
-│   ├── auth/               # 登录、Token
-│   ├── system/             # 用户、租户、模型、健康检查
-│   ├── kb/                 # 知识库与文档摄入
-│   ├── flows/              # 编排流程
-│   ├── agents/             # 智能体
-│   ├── marketplace/        # 应用市场
-│   ├── compliance/         # 合规与 Hook
-│   ├── tools/              # 工具与 MCP
-│   ├── monitor/            # 监控报表
-│   ├── tasks/              # Celery 任务管理
-│   └── audit_log/          # 租户操作审计
-├── admin/                  # 运营后台 (/api/admin/v1)
-│   ├── router.py
-│   ├── models/             # 运营 ORM（sys / billing / risk / audit）
-│   ├── app_sys/            # 平台管理员认证（views / services / repositories）
-│   └── app_ops/            # 租户、计费、风控、审计（views / services / repositories）
-scripts/                    # db_ops、verify_db、seed/*（由 cli.py 调用）
-├── common/                 # 跨模块：响应封装、异常、分页、全局 Handler
-├── deletion/               # 删除编排（文档/Agent/KB/Flow/租户级联）
-├── utils/                  # 通用工具：idgen、redis_keys、health_checks、orm 索引辅助
-├── core/                   # 配置、安全、依赖注入、租户上下文
-├── infra/                  # 外部中间件连接
-│   ├── db/                 # PostgreSQL（async / sync）
-│   ├── redis/
-│   ├── storage/            # 对象存储（S3 兼容）
-│   └── vector_store/       # 向量库（Weaviate / Milvus / pgvector）
-├── models/                 # 核心 ORM（用户、租户、KB、Flow、Agent…）
-├── rag/                    # RAG：parse / chunk / index / retrieve / generate / pipeline
-├── integrations/           # LangChain / LangGraph / LiteLLM / DeepAgents（L3）
-│   ├── langchain/
-│   ├── langgraph/
-│   └── deepagents/
-├── workers/                # Celery 应用与任务
-│   ├── app.py
-│   └── tasks/
-└── middlewares/            # HTTP 中间件（trace、access_log；由 register_http_middlewares 挂载）
+backend/
+├── pyproject.toml           # uv workspace 根（成员 packages/*，收敛 ruff/pytest 配置）
+├── uv.lock                  # 工作区唯一锁文件
+├── .importlinter            # 6 条包分层契约（make layers-check）
+├── alembic/                 # 迁移（env.py 引用 miles_core）
+├── openapi/openapi.snapshot.json
+├── tests/                   # 单一测试套件
+├── tools/                   # 一次性 codemod（rename_to_workspace.py）
+└── packages/                # 10 个 uv workspace 包，源码在 <pkg>/src/<module>/
+    ├── miles-common/   → src/miles_common/    # 跨模块公共能力：响应/异常/schema、idgen、redis_keys
+    ├── miles-exec/     → src/miles_exec/      # 沙箱 + MCP 协议内核
+    ├── miles-core/     → src/miles_core/      # L4：infra/、models/、web/、risk/、jobs/、utils/
+    ├── miles-ai/       → src/miles_ai/        # L2/L3：rag/、integrations/、flow_runtime/
+    ├── miles-portal/   → src/miles_portal/    # L0/L1：tenant/、deletion/、marketplace/ + register_portal
+    ├── miles-admin/    → src/miles_admin/     # L0/L1：admin/ + register_admin
+    ├── miles-openapi/  → src/miles_openapi/   # /api/v1/open/* + register_open
+    ├── miles-server/   → src/miles_server/    # 装配根：apps/、main.py、cli.py、scripts/
+    ├── miles-worker/   → src/miles_worker/    # Celery app + tasks/
+    └── miles-runner/   → src/miles_runner/    # 沙箱 HTTP 服务（自带 settings）
 ```
+
+> `cli.py`、`scripts/`（db_ops、verify_db、seed/*、export_openapi）已迁入 `miles-server`；旧单包目录 `backend/app` 与 `backend/cli.py` 已不存在。包边界与 API 层归属见 [layering.md §2.4 / §2.5](../docs/architecture/layering.md)。
+>
+> `packages/` 与 `src/` 两层只为物理组织，**不进 `sys.path`**，故导入路径始终是 `miles_core.…` 这类形式，与层数无关（`src/` 用 PyPA 推荐的 src layout 防 cwd 影子导入）。**不要为缩短路径而合并层级**——`parents[N]` 已按此深度硬编码在 `miles_server/apps/migrate.py` 等处。查模块实际位置：`python -c "import miles_core; print(miles_core.__file__)"`。
+
+## 安装与运行
+
+```bash
+cd backend
+uv sync --all-packages --group dev          # 安装 10 个包 + dev 依赖（pytest / ruff / import-linter）
+uv run milesai migrate                      # alembic upgrade head
+uv run milesai init-db                      # 迁移 + 全量种子
+uv run milesai serve                        # 启动 API（debug 默认热重载）
+uv run milesai worker                       # Celery Worker
+uv run milesai beat                         # Celery Beat（可选，独立进程）
+uv run milesai verify-db                    # 检查核心表
+```
+
+`milesai` 由 `packages/miles-server/pyproject.toml` 的 `[project.scripts]` 声明（`miles_server.cli:main`）；也可用 `python -m miles_server.cli <cmd>`。解析 / 多模态 / OTel 等可选能力已按所属包无条件声明（`miles-ai` / `miles-server`），随 `uv sync` 一并安装。
+
+**质量门禁**：`make check`（= ruff check + ruff format --check + layers-check + openapi-check + pytest），单独跑分层契约用 `make layers-check`。
 
 ## 模块约定
 
@@ -66,7 +61,7 @@ scripts/                    # db_ops、verify_db、seed/*（由 cli.py 调用）
 
 ### 单文件体量（强制）
 
-适用于 `app/` 下 **Python 业务与集成代码**（`tenant/`、`rag/`、`integrations/`、`flow_runtime/` 等；测试文件、`alembic/` 版本脚本除外）。
+适用于 `backend/packages/*/src/` 下 **Python 业务与集成代码**（如 `miles_portal` 的 `tenant/*`、`miles_ai` 的 `rag/` 与 `integrations/`、`miles_ai/flow_runtime/` 等；测试文件、`alembic/` 版本脚本除外）。
 
 | 阈值 | 要求 |
 |------|------|
@@ -74,7 +69,7 @@ scripts/                    # db_ops、verify_db、seed/*（由 cli.py 调用）
 | **400–499 行** | 新增逻辑时优先拆文件或子包，避免继续膨胀 |
 | **拆分后** | 单个子模块宜 **300–400 行**；仍超 500 则继续按职责切分 |
 
-自检：在 `backend/` 目录执行 `find app -name '*.py' -exec wc -l {} + | awk '$1 >= 500'`。
+自检：在 `backend/` 目录执行 `find packages -path '*/src/*' -name '*.py' -exec wc -l {} + | awk '$1 >= 500'`。
 
 ### `services/` 子包（按聚合拆分）
 
@@ -90,7 +85,7 @@ scripts/                    # db_ops、verify_db、seed/*（由 cli.py 调用）
 | 一个聚合一个目录 | 如 `services/agent/`、`services/compliance/`；目录名与对外 import 模块名一致 |
 | 门面 + 导出 | `service.py` 组装 Mixin；`__init__.py` **唯一对外出口**，re-export 公共 API |
 | 共享模块上浮 | 被多个聚合引用的代码留在 `services/` 根（如 `agents/services/context.py`、`compliance/services/pipeline.py`） |
-| import 稳定 | Views / 集成层继续 `from app.tenant.agents.services.agent import AgentService`，勿改为深层路径 |
+| import 稳定 | Views / 集成层继续 `from miles_portal.tenant.agents.services.agent import AgentService`，勿改为深层路径 |
 | 目录深度 | 一般 **一层子包**即可（`services/agent/chat.py`），避免 `agent/chat/rag/` 等多级套娃 |
 
 **已落地的聚合包**
@@ -117,7 +112,7 @@ tenant/tools/
 
 ### 文档注释（类 / 方法 / 函数）
 
-`app/` 下业务代码须为 **模块、类、公开方法、模块级函数** 编写 **中文 docstring**（`"""..."""`），不写无意义的 `#` 行注释堆砌。
+`backend/packages/*/src/` 下业务代码须为 **模块、类、公开方法、模块级函数** 编写 **中文 docstring**（`"""..."""`），不写无意义的 `#` 行注释堆砌。
 
 | 对象 | 要求 |
 |------|------|
@@ -128,12 +123,12 @@ tenant/tools/
 
 新增或拆出的子包代码 **合入前** 应补全 docstring；与 [layering.md](../docs/architecture/layering.md) §5.5 一致。
 
-**常量分家**（勿建全局 `app/constants/`）：`models.Enum` 为持久化真源；`tenant/*/meta.py` 仅 label/hint；`integrations/*/constants.py` 为协议与 `ModelConfig.extra` 键；跨模型 extra 键见 `common/constants/model_extra.py`；Redis 键见 `utils/redis_keys.py`。
+**常量分家**（勿建全局 `constants/` 包）：`models.Enum` 为持久化真源；`tenant/*/meta.py` 仅 label/hint；`integrations/*/constants.py` 为协议与 `ModelConfig.extra` 键；跨模型 extra 键见 `miles_common/constants/model_extra.py`；Redis 键见 `miles_common/redis_keys.py`。
 
 - Hook Event `schema_version`（`hooks/events.SCHEMA_VERSION`）与 `GET */meta` 的 `META_SCHEMA_VERSION` 为两套契约，见 [docs/guides/hooks.md](../docs/guides/hooks.md) §9.1。
 - embedding/rerank 的 `extra` 键对照见 [docs/guides/model-config-extra.md](../docs/guides/model-config-extra.md)。
 
-共享 ORM 放在 `app/models/`；租户子域表在 `tenant/*/models.py`；运营表在 `admin/models/`（按域拆分文件）。**表名与索引在各模型文件的 `__tablename__` / `__table_args__` 中定义**（无 `common/tables.py`）。
+共享 ORM 放在 `miles_core/models/`；租户子域表在 `miles_portal/tenant/*/models.py`；运营表在 `miles_admin/models/`（按域拆分文件）。**表名与索引在各模型文件的 `__tablename__` / `__table_args__` 中定义**（无集中式 `tables.py`）。
 
 **表名域前缀**：
 
@@ -152,7 +147,7 @@ tenant/tools/
 
 数据库迁移仅保留 `alembic/versions/001_initial_schema.py`（按 ORM metadata 一次性建表）。
 
-- **新环境 / 清库后**：`alembic upgrade head` 或 `python cli.py init-db`
+- **新环境 / 清库后**：`milesai init-db`（或 `alembic upgrade head`）
 - **已有库且 schema 已与当前 ORM 一致**（曾跑过旧 002–015 链）：`alembic stamp 001`，勿重复 upgrade
 
 **逻辑外键**：ORM 列使用 UUID，不建数据库 `FOREIGN KEY`；关联用 `relationship(..., foreign_keys=..., primaryjoin=...)`。删除级联由应用层或 `relationship(cascade=...)` 负责。
@@ -165,15 +160,15 @@ tenant/tools/
 | `uk_` | 唯一索引/约束 |
 | `un_` | 联合非唯一索引 |
 
-辅助模块：`app/utils/orm.py`（`idx` / `uk` / `un` 工厂函数，可选使用）。
+辅助模块：`miles_core/utils/orm.py`（`idx` / `uk` / `un` 工厂函数，可选使用）。
 
-**主键 ID**：数据库主键与 Weaviate 对象 ID 均使用 **UUIDv7**（`app/utils/idgen.py`），时间有序，利于 B-tree / 向量库索引；JWT `jti`、HTTP `X-Trace-Id` 仍可用随机 UUID。
+**主键 ID**：数据库主键与 Weaviate 对象 ID 均使用 **UUIDv7**（`miles_common/idgen.py`），时间有序，利于 B-tree / 向量库索引；JWT `jti`、HTTP `X-Trace-Id` 仍可用随机 UUID。
 
-**Alembic 模型登记**：勿在 `models/__init__.py` 反向导入 `admin`（会循环引用）。新增 ORM 模块后，在 `app/models/registry.py` 的 `load_all_models()` 中补一行 import。
+**Alembic 模型登记**：勿在 `miles_core/models/__init__.py` 反向导入 `admin`（会循环引用）。新增 ORM 模块后，在 `miles_server/registry.py` 的 `load_all_models()` 中补一行 import。
 
 **包 `__init__.py`**：各层目录均已补齐；`flow_runtime/templates/` 仅存放 JSON 模板，无需 `__init__.py`。顶层 `admin/`、`tenant/` 的 `__init__.py` 仅作文档，不在此 eager import 路由，避免循环依赖。
 
-### RAG（`app/rag/`）
+### RAG（`miles_ai.rag`）
 
 | 模块 | 说明 |
 |------|------|
@@ -184,9 +179,9 @@ tenant/tools/
 | `retrieve/` | `search_kb_chunks`、hybrid、多 KB |
 | `generate/` | RAG 上下文与回答 |
 
-可选依赖：`pip install -e ".[parse-docling]"`、`pip install -e ".[multimodal]"`。详见 [docs/guides/knowledge-base.md](../docs/guides/knowledge-base.md)、[docs/architecture/layering.md](../docs/architecture/layering.md)。
+解析 / 多模态依赖（`pypdf`、`docling`、`pytesseract`、`openai-whisper`）已在 `miles-ai` 中无条件声明，随 `uv sync` 安装。详见 [docs/guides/knowledge-base.md](../docs/guides/knowledge-base.md)、[docs/architecture/layering.md](../docs/architecture/layering.md)。
 
-### 流程运行时（`flow_runtime/`）
+### 流程运行时（`miles_ai.flow_runtime`）
 
 | 模块 | 说明 |
 |------|------|
@@ -197,7 +192,7 @@ tenant/tools/
 
 ### Admin 布局
 
-**ORM**（`admin/models/`，与 `app_sys` / `app_ops` 平级）：
+**ORM**（`miles_admin/models/`，与 `app_sys` / `app_ops` 平级）：
 
 | 文件 | 表 |
 |------|-----|
@@ -206,15 +201,15 @@ tenant/tools/
 | `risk.py` | `adm_risk_events`、`adm_ip_blacklist`、`adm_rate_limit_rules` |
 | `audit.py` | `adm_audit_logs` |
 
-**DTO**（仍在各 app 子包内）：
+**DTO**（在各 admin 子包内）：
 
 - `app_sys/schemas/auth.py` — 登录、Token、改密、会话
 - `app_ops/schemas/{tenant,billing,risk,audit}.py` — 对应 API 请求/响应
 - `app_sys/views/`、`app_ops/views/` — 路由薄层（`router.py` 仅汇总 include）
 
-> **运营面读租户域数据**（审核/监管）：仅限 `admin → tenant` 单向，且优先经共享 ORM（`app/models/`）与下沉的纯函数/Repository；合规形态与过渡期例外见 [layering.md §2.3](../docs/architecture/layering.md#23-运营后台admin访问租户域)。
+> **运营面读租户域数据**（审核/监管）：仅限 `admin → tenant` 单向，且优先经共享 ORM（`miles_core/models/`）与下沉的纯函数/Repository；合规形态与过渡期例外见 [layering.md §2.3](../docs/architecture/layering.md#23-运营后台admin访问租户域)。
 
-### 删除编排（`app/deletion/`）
+### 删除编排（`miles_portal.deletion`）
 
 无数据库外键时，删除顺序由编排模块保证：
 
@@ -235,33 +230,33 @@ tenant/tools/
 | 中间件落地 | trace / access_log 已在 `middlewares/`；IP 黑名单、限流等待补充 |
 | 运营删租户 | 在 `AdminTenantService` 中调用 `purge_tenant_data` 后再删租户记录 |
 
-## 统一 CLI（`cli.py`）
+## 统一 CLI（`milesai` / `miles_server.cli`）
 
-运维与启动统一入口；种子实现仍在 `scripts/seed/`（与 `app` 解耦）。API lifespan **只跑迁移**，不自动写种子。
+运维与启动统一入口；种子实现仍在 `miles_server/scripts/seed/`（与各域包解耦）。API lifespan **只跑迁移**，不自动写种子。
 
-> 项目根 `Makefile` 已封装以下命令（`make help` 查看全部）：`make init-db`、`make serve`、`make worker`、`make beat`、`make check`、`make openapi-check` 等，会自动探测 `backend/.venv` 下的解释器与 ruff。
+> 项目根 `Makefile` 已封装以下命令（`make help` 查看全部）：`make init-db`、`make serve`、`make worker`、`make beat`、`make check`、`make layers-check`、`make openapi-check` 等，会自动探测 `backend/.venv` 下的解释器与 ruff。
 
 ```bash
 cd backend
-python cli.py serve              # uvicorn（debug 默认 --reload）
-python cli.py serve --no-reload
-python cli.py worker             # Celery worker
-python cli.py migrate            # alembic upgrade head
-python cli.py init-db            # 迁移 + 全量种子
-python cli.py init-db --seed-only
-python cli.py seed tenant        # 单域种子：tenant | tools | mcp | flows | skills | hooks | … | all
-python cli.py verify-db          # 检查核心表
-python cli.py backfill-media-assets [--dry-run] [--tenant-id UUID]  # 历史生成物登记
+uv run milesai serve              # uvicorn（debug 默认 --reload）
+uv run milesai serve --no-reload
+uv run milesai worker             # Celery worker
+uv run milesai migrate            # alembic upgrade head
+uv run milesai init-db            # 迁移 + 全量种子
+uv run milesai init-db --seed-only
+uv run milesai seed tenant        # 单域种子：tenant | tools | mcp | flows | skills | hooks | … | all
+uv run milesai verify-db          # 检查核心表
+uv run milesai backfill-media-assets [--dry-run] [--tenant-id UUID]  # 历史生成物登记
 ```
 
-`pip install -e .` 后可使用全局命令 `milesai serve`。
+`uv sync --all-packages --group dev` 后即可使用 `milesai`；也可用 `python -m miles_server.cli <cmd>`。
 
 ## 常用命令
 
 ```bash
-python cli.py serve
-python cli.py init-db
-python cli.py worker -Q parse,default
+uv run milesai serve
+uv run milesai init-db
+uv run milesai worker -Q parse,default
 ```
 
 ## OpenAPI 快照
@@ -270,8 +265,8 @@ python cli.py worker -Q parse,default
 
 | 命令 | 说明 |
 |------|------|
-| `python scripts/export_openapi.py --check` | 与 `openapi/openapi.snapshot.json` 比对（**默认**；CI 同款） |
-| `python scripts/export_openapi.py --write` | 重写快照（改路由/Schema 后本地执行并提交） |
+| `python -m miles_server.scripts.export_openapi --check` | 与 `openapi/openapi.snapshot.json` 比对（**默认**；CI 同款） |
+| `python -m miles_server.scripts.export_openapi --write` | 重写快照（改路由/Schema 后本地执行并提交） |
 
 脚本调用 `create_app().openapi()`，**无需启动 uvicorn**，也不依赖 Postgres/Redis 等中间件。
 
@@ -279,8 +274,8 @@ python cli.py worker -Q parse,default
 
 ```bash
 cd backend
-python scripts/export_openapi.py --check   # 校验
-python scripts/export_openapi.py --write   # 更新 openapi/openapi.snapshot.json
+python -m miles_server.scripts.export_openapi --check   # 校验
+python -m miles_server.scripts.export_openapi --write   # 更新 openapi/openapi.snapshot.json
 ```
 
 ## OpenTelemetry（OTel）
@@ -289,11 +284,7 @@ API 进程可选向 OTLP Collector 导出 HTTP 请求 trace；**默认关闭**�
 
 ### 安装
 
-```bash
-pip install -e ".[otel]"
-```
-
-未安装 `[otel]` extra 时应用仍可正常启动；`OTEL_ENABLED=true` 但缺包时仅打 warning。
+OTel 依赖（`opentelemetry-api` / `sdk` / `exporter-otlp` / `instrumentation-fastapi`）已在 `miles-server` 中无条件声明，随 `uv sync --all-packages` 安装；`OTEL_ENABLED=false`（默认）时仅 no-op。
 
 ### 环境变量
 

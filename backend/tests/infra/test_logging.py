@@ -2,7 +2,7 @@
 
 import logging
 
-from app.core.logging import get_logger, setup_logging
+from miles_core.logging import get_logger, setup_logging
 
 
 def test_setup_logging_idempotent():

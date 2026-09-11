@@ -2,8 +2,8 @@
 
 from uuid import uuid4
 
-from app.infra.vector_store.base import ChunkVectorRecord
-from app.integrations.langchain.vector.documents import (
+from miles_core.infra.vector_store.base import ChunkVectorRecord
+from miles_core.infra.vector_store.documents import (
     METADATA_CHUNK_ID,
     METADATA_KB_ID,
     METADATA_TENANT_ID,
@@ -12,8 +12,8 @@ from app.integrations.langchain.vector.documents import (
     documents_to_hits,
     hit_to_document,
 )
-from app.infra.vector_store import get_vector_store
-from app.infra.vector_store.precomputed import PrecomputedEmbeddings
+from miles_core.infra.vector_store import get_vector_store
+from miles_core.infra.vector_store.precomputed import PrecomputedEmbeddings
 
 
 def test_chunk_record_document_roundtrip_metadata():
@@ -67,10 +67,10 @@ def test_precomputed_embeddings_batch():
 
 
 def _clear_factory_cache(monkeypatch, backend: str):
-    from app.core.config import get_settings
+    from miles_core.config import get_settings
 
     monkeypatch.setenv("VECTOR_STORE_BACKEND", backend)
-    from app.infra.vector_store import get_vector_store as gvs
+    from miles_core.infra.vector_store import get_vector_store as gvs
 
     get_settings.cache_clear()
     gvs.cache_clear()
@@ -78,20 +78,20 @@ def _clear_factory_cache(monkeypatch, backend: str):
 
 def test_factory_weaviate(monkeypatch):
     _clear_factory_cache(monkeypatch, "weaviate")
-    from app.infra.vector_store.weaviate import WeaviateVectorStore
+    from miles_core.infra.vector_store.weaviate import WeaviateVectorStore
 
     assert isinstance(get_vector_store(), WeaviateVectorStore)
 
 
 def test_factory_milvus(monkeypatch):
     _clear_factory_cache(monkeypatch, "milvus")
-    from app.infra.vector_store.milvus import MilvusVectorStore
+    from miles_core.infra.vector_store.milvus import MilvusVectorStore
 
     assert isinstance(get_vector_store(), MilvusVectorStore)
 
 
 def test_factory_pgvector(monkeypatch):
     _clear_factory_cache(monkeypatch, "pgvector")
-    from app.infra.vector_store.pgvector import PgVectorStore
+    from miles_core.infra.vector_store.pgvector import PgVectorStore
 
     assert isinstance(get_vector_store(), PgVectorStore)

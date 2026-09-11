@@ -113,7 +113,7 @@ flowchart TB
     Worker --> PG
 ```
 
-**启动顺序**（`apps/application.py` lifespan）：Alembic `upgrade head` → LangGraph checkpointer 初始化。种子数据由部署流程显式执行 `backend/cli.py init-db`（或 `cli.py seed <target>`），不在 API 启动时写入。日常开发/API/Worker 亦可通过 `cli.py serve` / `cli.py worker` 启动。
+**启动顺序**（`apps/application.py` lifespan）：Alembic `upgrade head` → LangGraph checkpointer 初始化。种子数据由部署流程显式执行 `milesai init-db`（或 `milesai seed <target>`），不在 API 启动时写入。日常开发/API/Worker 亦可通过 `milesai serve` / `milesai worker` 启动。
 
 ---
 
@@ -200,7 +200,7 @@ MilesAi/
 - 权限：角色-权限表 `sys_roles` / `sys_permissions` / `role_permissions`；路由依赖 `require_permissions`。
 - 软删除：多数业务表 `deleted_at`（迁移 `004`）；删除智能体/KB 等走 `deletion/cascade.py`。
 
-默认种子（`backend/scripts/seed/`）：租户 `admin` / `admin123`；运营 `platform` / `admin123`（`scripts/seed/admin_ops.py`）。
+默认种子（`backend/packages/miles-server/src/miles_server/scripts/seed/`）：租户 `admin` / `admin123`；运营 `platform` / `admin123`（`backend/packages/miles-server/src/miles_server/scripts/seed/admin_ops.py`）。
 
 ---
 
@@ -244,13 +244,13 @@ ORM **不在库级声明外键**（`001` 使用 `create_all`）；关联由应�
 
 **配置策略**：引擎类型由 **部署级环境变量** 全局决定；租户级仅扩展 **凭证与桶命名空间**（二期），见 §6.5。
 
-**设计原则**：业务只依赖 `app.infra.storage.ObjectStorage` 门面；实现优先 **MinIO**，协议为 **S3 API**，可切换至阿里云 OSS、AWS S3 等兼容端点（同一 SDK，不同 `endpoint` / `region`）。
+**设计原则**：业务只依赖 `miles_core.infra.storage.ObjectStorage` 门面；实现优先 **MinIO**，协议为 **S3 API**，可切换至阿里云 OSS、AWS S3 等兼容端点（同一 SDK，不同 `endpoint` / `region`）。
 
 ```
 tenant/kb、workers/ingest、deletion
         │
         ▼
- app.infra.storage.get_object_storage()
+ miles_core.infra.storage.get_object_storage()
         │
         ▼
  S3CompatibleObjectStorage  ← MinIO Python SDK（put/get/delete）
@@ -258,11 +258,11 @@ tenant/kb、workers/ingest、deletion
 
 | 项 | 说明 |
 |----|------|
-| 包路径 | `app/infra/storage/`（`base.py` 协议、`s3.py` 实现、`factory.py`） |
+| 包路径 | `backend/packages/miles-core/src/miles_core/infra/storage/`（`base.py` 协议、`s3.py` 实现、`factory.py`） |
 | 配置 | `OBJECT_STORAGE_BACKEND=s3`；`OBJECT_STORAGE_ENDPOINT` / `ACCESS_KEY` / `SECRET_KEY` / `BUCKET` / `SECURE` |
 | OSS 示例 | `OBJECT_STORAGE_ENDPOINT=oss-cn-hangzhou.aliyuncs.com`，`OBJECT_STORAGE_SECURE=true`，`OBJECT_STORAGE_REGION=cn-hangzhou` |
 | PG 字段 | `kb_documents.object_bucket` / `object_key` |
-| 入口 | `from app.infra.storage import get_object_storage, upload_bytes, …` |
+| 入口 | `from miles_core.infra.storage import get_object_storage, upload_bytes, …` |
 
 ### 6.3 向量存储
 
@@ -270,13 +270,13 @@ tenant/kb、workers/ingest、deletion
 
 **配置策略**：向量引擎类型（weaviate / pgvector / milvus）由 **部署级环境变量** 全局决定；**不**按租户混用多种引擎。向量化模型与维度绑在 **知识库**，见 §6.5、§6.6。
 
-**设计原则**：业务只依赖 `app.infra.vector_store.VectorStore`；默认 **Weaviate**，预留 **pgvector**（PostgreSQL 扩展）、**Milvus**。
+**设计原则**：业务只依赖 `miles_core.infra.vector_store.VectorStore`；默认 **Weaviate**，预留 **pgvector**（PostgreSQL 扩展）、**Milvus**。
 
 ```
 ingest / kb 检索 / deletion
         │
-        ├─ 写向量：app.rag.index.upsert_chunk_vector / search_vectors（推荐）
-        └─ 读工厂：app.infra.vector_store.get_vector_store()
+        ├─ 写向量：miles_ai.rag.index.upsert_chunk_vector / search_vectors（推荐）
+        └─ 读工厂：miles_core.infra.vector_store.get_vector_store()
         │
         ├── weaviate  → WeaviateVectorStore（已实现）
         ├── pgvector  → PgVectorStore（已实现）
@@ -285,7 +285,7 @@ ingest / kb 检索 / deletion
 
 | 项 | 说明 |
 |----|------|
-| 包路径 | `app/infra/vector_store/`（`ChunkVectorRecord`、`weaviate.py`、`factory.py`） |
+| 包路径 | `backend/packages/miles-core/src/miles_core/infra/vector_store/`（`ChunkVectorRecord`、`weaviate.py`、`factory.py`） |
 | 配置 | `VECTOR_STORE_BACKEND=weaviate` \| `pgvector` \| `milvus` |
 | Weaviate | Collection `DocumentChunk`；`Vectorizer.none()` + 客户端 embedding；Filter `tenant_id` + `kb_id` |
 | Milvus | Collection `document_chunk_{dimension}`；COSINE；Filter `tenant_id` / `kb_id` / `document_id`；`MILVUS_URI` |
@@ -293,7 +293,7 @@ ingest / kb 检索 / deletion
 | PG 引用 | `kb_vector_refs.vector_id` 为向量库中的外部记录 ID |
 | 检索门面 | `rag.retrieve.search_kb_chunks`；混合检索 RRF 在 `rag.retrieve.hybrid` |
 | LangChain 封装 | `integrations/langchain/vectorstores.py` → `rag.retrieve.multi_kb` |
-| 索引门面 | `app.rag.index.gateway`（`upsert_chunk_vector` / `search_vectors` / 删除） |
+| 索引门面 | `miles_ai.rag.index.gateway`（`upsert_chunk_vector` / `search_vectors` / 删除） |
 
 ### 6.5 存储与向量化配置策略
 
@@ -384,7 +384,7 @@ ingest / search / delete
 
 | 项 | 说明 |
 |----|------|
-| 包路径 | `app/integrations/langchain/embeddings.py`、`app/integrations/litellm/`（对话，非向量） |
+| 包路径 | `app/integrations/langchain/embeddings.py`、`backend/packages/miles-ai/src/miles_ai/integrations/litellm/`（对话，非向量） |
 | 全局默认 | `EMBEDDING_BACKEND=local` \| `litellm`；`EMBEDDING_MODEL_NAME` / `EMBEDDING_LITELLM_*` |
 | 新建 KB | 请求体 `embedding_profile`（默认见 `default_embedding_profile_id()`）；目录 `GET /api/v1/kb/embedding-profiles` |
 | 规格目录 | `app/integrations/embedding_profiles.py`：`local-bge-zh`（768）、`dashscope-v3`（1024） |
@@ -440,8 +440,8 @@ ingest / search / delete
 | 组件 | 说明 |
 |------|------|
 | Broker | `CELERY_BROKER_URL`（通常 Redis） |
-| Worker 命令 | `python cli.py worker` 或 `celery -A app.workers.app worker -Q default,parse,ocr,asr,embed` |
-| Beat 命令 | `python cli.py beat`（**独立进程**；Docker Compose 默认未含 beat 服务） |
+| Worker 命令 | `milesai worker` 或 `celery -A miles_worker.app worker -Q default,parse,ocr,asr,embed` |
+| Beat 命令 | `milesai beat`（**独立进程**；Docker Compose 默认未含 beat 服务） |
 | 入库 | `ingest_document` → `tenant.kb.ingest.run_ingest` → `rag.pipeline.run_ingest_pipeline`（队列 `parse`） |
 | 生成 | `run_generative_image_job` / `run_generative_video_job`（队列 `default`；见 [features/task-center.md](../features/task-center.md)） |
 | 定时 | Beat 每 60s → `tick_agent_schedules` → `run_agent_schedule` → `AgentService.chat`（见 [features/agent-schedules.md](../features/agent-schedules.md)） |
@@ -532,7 +532,7 @@ flowchart TD
 - 表：`hook_definitions`、`hook_bindings`、`hook_execution_logs`。
 - **HTTP 钩子**：Event v1 信封；支持 `block` / `modify`；`config.on_failure`（`ignore` | `fail_request`）。
 - **挂载**：Agent chat、Flow run、工具 `invoke_tool_with_context`（`before_tool` / `after_tool`）。
-- **Python 钩子**：✅ `hook_type=python`，模块限定 `app.tenant.hooks.plugins.*`。
+- **Python 钩子**：✅ `hook_type=python`，模块限定 `miles_portal.tenant.hooks.plugins.*`。
 - **专题**：[hooks.md](../guides/hooks.md)。
 
 ### 11.3 工具与 MCP
@@ -613,7 +613,7 @@ flowchart TD
 
 ### 14.2 本地仅后端
 
-中间件 Compose + `backend/.env`（`POSTGRES_HOST=localhost`）+ `alembic upgrade head` + `uvicorn app.main:app`。
+中间件 Compose + `backend/.env`（`POSTGRES_HOST=localhost`）+ `alembic upgrade head` + `uvicorn miles_server.main:app`。
 
 详见 [operations/deployment.md](../operations/deployment.md)、[database-setup.md](../operations/database-setup.md)、[docker/README.md](../../docker/README.md)。
 
@@ -621,7 +621,7 @@ flowchart TD
 
 ## 15. 配置与环境变量
 
-定义：`backend/app/core/config.py`、`backend/.env.example`、根 `.env.example`。
+定义：`backend/packages/miles-core/src/miles_core/config.py`、`backend/.env.example`、根 `.env.example`。
 
 | 类别 | 变量示例 | 层级（§6.5） |
 |------|----------|--------------|

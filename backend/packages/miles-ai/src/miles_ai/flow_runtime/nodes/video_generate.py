@@ -1,0 +1,110 @@
+"""
+画布生视频节点 ``VideoGenerate``。
+
+默认异步：经 ``RunContext.submit_generative_video``（L1 注入）提交 ``generative_jobs`` + Celery；未注入（异步未启用）或 ``generative_video_async=False`` 时同步轮询，同步分支经 ``RunContext.generate_video_sync``（L1 注入）。
+"""
+
+from __future__ import annotations
+
+from typing import Any
+from uuid import UUID
+
+from miles_common.exceptions import BadRequestError
+from miles_common.trace import get_trace_id
+from miles_ai.flow_runtime.context_utils import tenant_context_from_run
+from miles_ai.flow_runtime.types import RunContext
+from miles_core.infra.db import AsyncSessionLocal
+from miles_ai.integrations.generative.constants import PURPOSE_FLOW_GENERATED
+
+
+def _optional_uuid(raw: Any) -> UUID | None:
+    """将节点/入边中的 attachment id 转为 UUID，空值返回 None。"""
+    if not raw:
+        return None
+    return UUID(str(raw))
+
+
+async def video_generate(
+    node_data: dict[str, Any],
+    inputs: dict[str, Any],
+    ctx: RunContext,
+) -> dict[str, Any]:
+    """文生视频 / 首帧图生视频 / 首尾帧生视频。"""
+    fixed = str(node_data.get("prompt") or "").strip()
+    if fixed:
+        prompt = fixed
+    else:
+        upstream = inputs.get("prompt") or inputs.get("input")
+        prompt = str(upstream or "").strip()
+    if not prompt:
+        raise BadRequestError("生视频节点缺少 prompt")
+
+    raw_model = node_data.get("model_config_id")
+    model_id: UUID | None = UUID(str(raw_model)) if raw_model else None
+
+    first_att = _optional_uuid(inputs.get("image_attachment_id") or node_data.get("image_attachment_id"))
+    last_att = _optional_uuid(inputs.get("last_frame_attachment_id") or node_data.get("last_frame_attachment_id"))
+    duration = int(node_data.get("duration") or inputs.get("duration") or 5)
+    resolution = node_data.get("resolution") or inputs.get("resolution")
+
+    submit = ctx.submit_generative_video
+    if ctx.generative_video_async and submit is not None:
+        # 异步入队：未显式配模型时交给 L1 回调 / resolve 取租户默认
+        async with AsyncSessionLocal() as db:
+            tenant_ctx = tenant_context_from_run(ctx)
+            job_id = await submit(
+                db,
+                tenant_ctx,
+                prompt=prompt,
+                duration=duration,
+                resolution=str(resolution) if resolution else None,
+                image_attachment_id=first_att,
+                last_frame_attachment_id=last_att,
+                model_config_id=model_id,
+                agent_id=_optional_uuid(ctx.agent_id),
+                agent_config=ctx.agent_config,
+            )
+            await db.commit()
+        return {
+            "kind": "video",
+            "status": "pending",
+            "generative_job_id": str(job_id),
+            "message": "生视频任务已提交，请通过 generative_job_id 查询进度",
+        }
+
+    resolver = ctx.resolve_generative_video
+    if resolver is None:
+        raise BadRequestError("生视频模型解析器未装配（resolve_generative_video），无法同步生视频")
+
+    generate = ctx.generate_video_sync
+    if generate is None:
+        raise BadRequestError("生视频编排未装配（generate_video_sync），无法同步生视频")
+
+    async with AsyncSessionLocal() as db:
+        tenant_ctx = tenant_context_from_run(ctx)
+        model = await resolver(
+            db,
+            tenant_ctx,
+            model_config_id=model_id,
+            agent_config=ctx.agent_config,
+        )
+        result = await generate(
+            db,
+            tenant_ctx,
+            model,
+            prompt=prompt,
+            duration=duration,
+            resolution=resolution,
+            image_attachment_id=first_att,
+            last_frame_attachment_id=last_att,
+            purpose=PURPOSE_FLOW_GENERATED,
+            agent_id=_optional_uuid(ctx.agent_id),
+            trace_id=get_trace_id(),
+        )
+        await db.commit()
+        return {
+            "kind": "video",
+            "attachment_id": str(result.attachment_id),
+            "mime_type": result.mime_type,
+            "duration_sec": result.duration_sec,
+        }

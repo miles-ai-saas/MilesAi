@@ -6,13 +6,13 @@ from uuid import uuid4
 
 import pytest
 
-from app.common.schemas.media import MediaRefIn
-from app.integrations.chat.multimodal import (
+from miles_common.schemas.media import MediaRefIn
+from miles_ai.integrations.chat.multimodal import (
     build_user_message,
     messages_contain_image,
     resolve_media_refs,
 )
-from app.common.exceptions import BadRequestError
+from miles_common.exceptions import BadRequestError
 
 
 def test_build_user_message_text_only():
@@ -58,7 +58,7 @@ async def test_resolve_media_refs_too_many():
 
 @pytest.mark.asyncio
 async def test_resolve_media_refs_builds_data_url():
-    from app.models.media.reader import AttachmentBytes
+    from miles_core.models.media.reader import AttachmentBytes
 
     att_id = uuid4()
     png = b"\x89PNG\r\n\x1a\n"
@@ -77,8 +77,8 @@ async def test_resolve_media_refs_builds_data_url():
 
 @pytest.mark.asyncio
 async def test_resolve_media_refs_rejects_oversize_image():
-    from app.models.media.reader import AttachmentBytes
-    from app.integrations.chat.multimodal import MAX_IMAGE_BYTES
+    from miles_core.models.media.reader import AttachmentBytes
+    from miles_ai.integrations.chat.multimodal import MAX_IMAGE_BYTES
 
     class FakeReader:
         async def read_image_bytes(self, attachment_id):
@@ -89,7 +89,7 @@ async def test_resolve_media_refs_rejects_oversize_image():
 
 
 def test_chat_request_requires_query_or_media():
-    from app.tenant.agents.schemas.agent import ChatMediaIn, ChatRequest
+    from miles_portal.tenant.agents.schemas.agent import ChatMediaIn, ChatRequest
 
     with pytest.raises(ValueError, match="不能同时为空"):
         ChatRequest(query="", media=[])

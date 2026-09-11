@@ -43,7 +43,7 @@ Celery 任务在租户侧的镜像记录，主要由 **文档入库** 写入。
 | `id` | UUID 主键 |
 | `tenant_id` | 租户隔离 |
 | `celery_task_id` | Celery 任务 ID |
-| `task_name` | 如 `app.workers.tasks.ingest.ingest_document` |
+| `task_name` | 如 `miles_worker.tasks.ingest.ingest_document` |
 | `status` | `pending` / `running` / `success` / `failed` / `cancelled` |
 | `resource_type` / `resource_id` | 关联资源（如 `kb_document`） |
 | `fail_reason` | 失败原因 |
@@ -129,13 +129,13 @@ Worker → integrations/generative/jobs/runner
 Celery Beat (60s) → tick_agent_schedules → run_agent_schedule → AgentService.chat
 ```
 
-需独立启动：`python cli.py beat`。详见 [agent-schedules.md](./agent-schedules.md)。
+需独立启动：`milesai beat`。详见 [agent-schedules.md](./agent-schedules.md)。
 
 ### 4.4 启动命令
 
 ```bash
-python cli.py worker    # 消费 default,parse,ocr,asr,embed
-python cli.py beat      # 定时任务扫描（可选）
+milesai worker    # 消费 default,parse,ocr,asr,embed
+milesai beat      # 定时任务扫描（可选）
 ```
 
 ---
@@ -172,18 +172,18 @@ ui/workbench/lib/api.ts                     # tasks + generative jobs CRUD
 ## 6. 后端文件清单
 
 ```
-backend/app/models/task.py
-backend/app/models/generative_job.py
-backend/app/tenant/tasks/views/tasks.py
-backend/app/tenant/tasks/services/task.py
-backend/app/tenant/tasks/services/sync.py
-backend/app/tenant/generative/views/jobs.py
-backend/app/tenant/generative/services/job.py
-backend/app/workers/tasks/ingest.py
-backend/app/workers/tasks/generative.py
-backend/app/workers/tasks/agent_schedule.py
-backend/app/workers/app.py              # beat_schedule + task_routes
-backend/app/integrations/generative/jobs/runner.py
+backend/packages/miles-core/src/miles_core/models/task/task_record.py
+backend/packages/miles-core/src/miles_core/models/model/generative_job.py
+backend/packages/miles-portal/src/miles_portal/tenant/tasks/views/tasks.py
+backend/packages/miles-portal/src/miles_portal/tenant/tasks/services/task.py
+backend/packages/miles-portal/src/miles_portal/tenant/tasks/services/sync.py
+backend/packages/miles-portal/src/miles_portal/tenant/generative/views/jobs.py
+backend/packages/miles-portal/src/miles_portal/tenant/generative/services/job.py
+backend/packages/miles-worker/src/miles_worker/tasks/ingest.py
+backend/packages/miles-worker/src/miles_worker/tasks/generative.py
+backend/packages/miles-worker/src/miles_worker/tasks/agent_schedule.py
+backend/packages/miles-worker/src/miles_worker/app.py              # beat_schedule + task_routes
+backend/packages/miles-portal/src/miles_portal/tenant/generative/services/job_execution.py
 ```
 
 ---

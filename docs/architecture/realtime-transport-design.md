@@ -241,15 +241,15 @@ Authorization: Bearer <token>
 ## 7. 后端模块划分（规划）
 
 ```text
-app/tenant/agents/ws/           # 新建：对话 WebSocket 路由与 ConnectionManager
+backend/packages/miles-portal/src/miles_portal/tenant/agents/ws/           # 新建：对话 WebSocket 路由与 ConnectionManager
   chat.py                       # 端点、鉴权、生命周期
   protocol.py                   # type 常量、信封 pydantic
   bridge.py                     # 调用 AgentService 流式回调 → 推帧
 
-app/tenant/generative/          # 保持
+backend/packages/miles-portal/src/miles_portal/tenant/generative/          # 保持
   views/jobs.py                 # SSE + REST（任务中心）
 
-app/integrations/generative/jobs/
+backend/packages/miles-ai/src/miles_ai/integrations/generative/jobs/
   notify.py                     # 可选：job 更新时 publish（DB→WS 桥接）
 ```
 

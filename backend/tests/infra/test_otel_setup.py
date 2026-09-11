@@ -2,7 +2,7 @@
 
 from unittest.mock import MagicMock
 
-from app.infra import otel
+from miles_core.infra import otel
 
 
 def test_setup_otel_disabled_is_noop():

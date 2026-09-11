@@ -20,7 +20,7 @@ Model Context Protocol（MCP）在 MilesAI 中用于**注册远程工具服务**
 
 ## 2. 数据模型
 
-表：`tool_mcp_services`（`app/tenant/mcp/models.py`）
+表：`tool_mcp_services`（`backend/packages/miles-portal/src/miles_portal/tenant/mcp/models.py`）
 
 | 字段 | 说明 |
 |------|------|
@@ -47,8 +47,8 @@ Model Context Protocol（MCP）在 MilesAI 中用于**注册远程工具服务**
 
 ```bash
 cd backend
-python cli.py seed mcp          # 仅 MCP
-python cli.py init-db           # 含 seed all
+milesai seed mcp          # 仅 MCP
+milesai init-db           # 含 seed all
 ```
 
 每个租户幂等写入 **8 条**示例（按 `name` 去重，重复执行会更新配置）：
@@ -136,18 +136,18 @@ POST /mcp/{id}/sync | .../invoke
 
 | 模块 | 路径 | 说明 |
 |------|------|------|
-| 包说明 | `app/tenant/mcp/__init__.py` | 分层 |
-| 模型 | `app/tenant/mcp/models.py` | `tool_mcp_services` |
-| JSON-RPC 客户端 | `app/tenant/mcp/client.py` | **降级链入口** `mcp_json_rpc` |
-| Legacy / Streamable SSE | `app/tenant/mcp/sse_transport.py` | 长连接与 Streamable POST |
-| JSON-RPC 解析 | `app/tenant/mcp/rpc.py` | `parse_jsonrpc_result` |
-| 连接安全 | `app/tenant/mcp/security.py` | SSRF、`MCP_ALLOW_PRIVATE_HOSTS` |
-| 业务 | `app/tenant/mcp/services/mcp.py` | sync / invoke 落库 |
-| 路由 | `app/tenant/mcp/views/mcp.py` | REST API |
-| 传输归一化 | `app/tenant/mcp/transport.py` | http / sse / stdio |
-| **Runner 客户端** | `app/tenant/mcp/runner/client.py` | API → Runner HTTP |
-| **RunSpec** | `app/tenant/mcp/runner/spec.py` | 命令校验与构建 |
-| **Runner 服务** | `app/runner/main.py` | 独立 uvicorn 入口 |
+| 包说明 | `backend/packages/miles-portal/src/miles_portal/tenant/mcp/__init__.py` | 分层 |
+| 模型 | `backend/packages/miles-portal/src/miles_portal/tenant/mcp/models.py` | `tool_mcp_services` |
+| JSON-RPC 客户端 | `backend/packages/miles-portal/src/miles_portal/tenant/mcp/client.py` | **降级链入口** `mcp_json_rpc` |
+| Legacy / Streamable SSE | `backend/packages/miles-portal/src/miles_portal/tenant/mcp/sse_transport.py` | 长连接与 Streamable POST |
+| JSON-RPC 解析 | `backend/packages/miles-exec/src/miles_exec/mcp/rpc.py` | `parse_jsonrpc_result` |
+| 连接安全 | `backend/packages/miles-portal/src/miles_portal/tenant/mcp/security.py` | SSRF、`MCP_ALLOW_PRIVATE_HOSTS` |
+| 业务 | `backend/packages/miles-portal/src/miles_portal/tenant/mcp/services/mcp.py` | sync / invoke 落库 |
+| 路由 | `backend/packages/miles-portal/src/miles_portal/tenant/mcp/views/mcp.py` | REST API |
+| 传输归一化 | `backend/packages/miles-portal/src/miles_portal/tenant/mcp/transport.py` | http / sse / stdio |
+| **Runner 客户端** | `backend/packages/miles-portal/src/miles_portal/tenant/mcp/runner/client.py` | API → Runner HTTP |
+| **RunSpec** | `backend/packages/miles-exec/src/miles_exec/mcp/spec.py` | 命令校验与构建 |
+| **Runner 服务** | `backend/packages/miles-runner/src/miles_runner/main.py` | 独立 uvicorn 入口 |
 | 前端 | `ui/workbench/app/workbench/mcp/`，`ui/workbench/components/mcp/` | Tab 与卡片 |
 
 ## 6. 与智能体集成
@@ -206,7 +206,7 @@ cd backend && alembic upgrade head   # 唯一迁移 001，按 ORM 建表
 ```bash
 cd backend
 export MCP_RUNNER_TOKEN=dev-runner-token   # 与 API 侧保持一致
-uvicorn app.runner.main:app --host 0.0.0.0 --port 8090 --reload
+uvicorn miles_runner.main:app --host 0.0.0.0 --port 8090 --reload
 ```
 
 验证：
@@ -228,7 +228,7 @@ MCP_RUNNER_TOKEN=dev-runner-token
 
 ```bash
 cd backend
-uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+uvicorn miles_server.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
 **步骤 5 — 准备 STDIO MCP 命令**
@@ -305,7 +305,7 @@ docker exec milesai-api curl -s http://mcp-runner:8090/health
 
 | 项 | 本地开发 | Docker Compose |
 |----|----------|----------------|
-| Runner 启动 | 手动 `uvicorn app.runner.main:app` | `mcp-runner` 容器自动起 |
+| Runner 启动 | 手动 `uvicorn miles_runner.main:app` | `mcp-runner` 容器自动起 |
 | API 连 Runner | `http://localhost:8090` | `http://mcp-runner:8090` |
 | 预装 MCP | 需本机 `npm install -g` | 镜像内已装 `server-everything` |
 | 隔离强度 | 与 API 同机，开发够用 | 只读 FS、cap_drop、独立容器 |

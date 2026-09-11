@@ -5,7 +5,7 @@
 > **各模块实现规格（As-Is）：** [README.md §功能节点 ↔ 文档速查](../README.md#功能节点--文档速查) · [features/](../features/)  
 > - **多模态产品能力（生文/识图/生成/入库）**：→ [multimodal-capabilities.md](./multimodal-capabilities.md)（**以该文实现状态为准**）  
 > - **流程编排**：React Flow + `flow_runtime` + LangGraph → [flows.md](../guides/flows.md)  
-> - **RAG / 知识库**：`app/rag`（parse → chunk → index → retrieve）+ `tenant/kb` → [knowledge-base.md](../guides/knowledge-base.md)、[layering.md](../architecture/layering.md)  
+> - **RAG / 知识库**：`backend/packages/miles-ai/src/miles_ai/rag`（parse → chunk → index → retrieve）+ `tenant/kb` → [knowledge-base.md](../guides/knowledge-base.md)、[layering.md](../architecture/layering.md)  
 > - **Docker Worker**：队列与可选依赖 → [docker/README.md](../../docker/README.md) § Celery Worker  
 
 > - **差距 backlog（⬜ 排期）：** [backlog.md](./backlog.md)
@@ -92,7 +92,7 @@
 | OCR/音视频内容安全检测 | ✅ | `media_audit.py` Vision 审核 |
 | 违规统计报表与导出 | 部分 | 拦截日志查询；专报表导出按需 |
 | HTTP 钩子（前后置/on_error） | ✅ | Event v1；Agent/Flow/Tool 挂载 |
-| Python 脚本钩子 | ✅ | `app.tenant.hooks.plugins.*` |
+| Python 脚本钩子 | ✅ | `miles_portal.tenant.hooks.plugins.*` |
 | 数据脱敏、水印 | 部分 | PII 掩码 `desensitize.py`；导出水印按需 |
 | 按智能体/流程/应用绑定钩子 | 部分 | scope 支持；`scope=tool` 绑定未接 |
 

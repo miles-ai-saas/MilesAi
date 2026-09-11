@@ -4,8 +4,8 @@ from uuid import uuid4
 
 import pytest
 
-from app.common.exceptions import BadRequestError
-from app.tenant.skills.storage import SKILL_MD_FILENAME, delete_file, write_file
+from miles_common.exceptions import BadRequestError
+from miles_portal.tenant.skills.storage import SKILL_MD_FILENAME, delete_file, write_file
 
 
 @pytest.fixture
@@ -16,7 +16,7 @@ def skill_dir(tmp_path, monkeypatch):
     def _dir(tid_arg, s):
         return tmp_path / str(tid_arg) / s
 
-    monkeypatch.setattr("app.tenant.skills.storage.skill_package_dir", _dir)
+    monkeypatch.setattr("miles_portal.tenant.skills.storage.skill_package_dir", _dir)
     base = _dir(tid, slug)
     base.mkdir(parents=True)
     (base / SKILL_MD_FILENAME).write_text("---\nname: x\n---\n", encoding="utf-8")
@@ -39,7 +39,7 @@ def test_delete_skill_md_forbidden(skill_dir):
 
 @pytest.mark.asyncio
 async def test_delete_file_content_service(skill_dir, monkeypatch):
-    from app.tenant.skills.services.skill import SkillService
+    from miles_portal.tenant.skills.services.skill import SkillService
 
     tid, slug_name = skill_dir
     row_id = uuid4()

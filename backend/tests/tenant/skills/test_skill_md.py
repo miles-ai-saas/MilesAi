@@ -1,6 +1,6 @@
 """SKILL.md frontmatter 解析与元数据同步（skill_md 模块）。"""
 
-from app.tenant.skills.skill_md import build_skill_md, parse_skill_md, sync_meta_from_skill_md
+from miles_portal.tenant.skills.skill_md import build_skill_md, parse_skill_md, sync_meta_from_skill_md
 
 
 def test_parse_skill_md_frontmatter():

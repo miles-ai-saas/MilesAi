@@ -1,6 +1,6 @@
 """对话会话持久化辅助函数测试。"""
 
-from app.tenant.agents.services.chat_sessions import _derive_title
+from miles_portal.tenant.agents.services.chat_sessions import _derive_title
 
 
 def test_derive_title_from_first_message():

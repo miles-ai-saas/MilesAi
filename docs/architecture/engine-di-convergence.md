@@ -4,17 +4,17 @@
 
 ## 1. 原则
 
-分层方向是 `L0 → L1 → L2 → L3 → L4`。**能力实现留在 L1**（`app/tenant/**`），**L3 只依赖中立契约**，由 L1 在装配点注入：
+分层方向是 `L0 → L1 → L2 → L3 → L4`。**能力实现留在 L1**（`miles_portal/tenant/**`），**L3 只依赖中立契约**，由 L1 在装配点注入：
 
 ```python
 # 反例：L3 直接 import L1 用例
-from app.tenant.models.services.model_resolve import resolve_invoke_model
-from app.tenant.tools.invoke import invoke_tool_with_context
+from miles_portal.tenant.models.services.model_resolve import resolve_invoke_model
+from miles_portal.tenant.tools.invoke import invoke_tool_with_context
 ```
 
 直接把 L1 用例 import 进 L3 会导致依赖方向倒置（L3 无法脱离业务单测/复用）、装配点分散、以及只能靠函数级 import 绕过的循环引用。
 
-**收官判据**：`integrations/**` 与 `flow_runtime/**` 对 `app.tenant` 引用为零（含 `TYPE_CHECKING` 与惰性 import）；L2 `app/rag/**` 同样为零。该判据由 §4 的源码扫描守卫固化。
+**收官判据**：`integrations/**` 与 `flow_runtime/**` 对 `miles_portal.tenant` 引用为零（含 `TYPE_CHECKING` 与惰性 import）；L2 `miles_ai/rag/**` 同样为零。该判据由 §4 的源码扫描守卫固化。
 
 ## 2. 三种注入形态
 
@@ -22,14 +22,14 @@ from app.tenant.tools.invoke import invoke_tool_with_context
 
 | 形态 | 适用 | 契约位置 | 典型例子 |
 |------|------|----------|----------|
-| **A. 入参注入 + Protocol** | 调用链上一次性传入的能力/数据 | 跨层纯数据放 `app/models/**`；仅 L3 内部用的放 L3 包内 `io.py` / `*_contract.py` / `contracts.py` | `UsageSink`、`MediaReader`、`ToolExecutor`、`FlowRepoLike`、`CustomToolSpec`、`AgentServiceLike` |
+| **A. 入参注入 + Protocol** | 调用链上一次性传入的能力/数据 | 跨层纯数据放 `miles_core/models/**`；仅 L3 内部用的放 L3 包内 `io.py` / `*_contract.py` / `contracts.py` | `UsageSink`、`MediaReader`、`ToolExecutor`、`FlowRepoLike`、`CustomToolSpec`、`AgentServiceLike` |
 | **B. `RunContext` 回调** | 画布运行时按节点动态需要、且需随流程透传的能力 | `flow_runtime/types.py` 字段声明 | `resolve_model`、`media_reader`、`load_subflow_graph` … |
-| **C. 中立下沉** | 值/枚举/纯算法/纯函数，无 I/O | `app/models/**` | `models/agent/constants.py`、`models/agent/chat_io.py`、`models/tool/parameters.py`、`models/compliance/{pipeline,constants}.py`、`models/media/reader.py` |
+| **C. 中立下沉** | 值/枚举/纯算法/纯函数，无 I/O | `miles_core/models/**` | `models/agent/constants.py`、`models/agent/chat_io.py`、`models/tool/parameters.py`、`models/compliance/{pipeline,constants}.py`、`models/media/reader.py` |
 
 放置判据：
 
-- **纯数据 / 纯算法**？→ 下沉 `app/models/**`（L0~L3 都可 import）。
-- **需要租户会话 / DB 的实现**？→ 留 L1 `app/tenant/**`，对外只暴露函数或 `build_*` 工厂。
+- **纯数据 / 纯算法**？→ 下沉 `miles_core/models/**`（L0~L3 都可 import）。
+- **需要租户会话 / DB 的实现**？→ 留 L1 `miles_portal/tenant/**`，对外只暴露函数或 `build_*` 工厂。
 - **只有 L3 内部需要的窄契约**？→ 放 L3 包内（如 `integrations/deepagents/io.py`）。
 - **L1 侧原有 import 路径要保稳**？→ 转 re-export shim（`# noqa: F401`），例如 `tenant/agents/schemas/agent.py`、`tenant/tools/parameters.py`。
 
@@ -37,7 +37,7 @@ from app.tenant.tools.invoke import invoke_tool_with_context
 
 ## 3. `RunContext` 回调总览
 
-画布节点拿到的是能力回调，而非模块。字段声明见 [`backend/app/flow_runtime/types.py`](../../backend/app/flow_runtime/types.py)：
+画布节点拿到的是能力回调，而非模块。字段声明见 [`backend/packages/miles-ai/src/miles_ai/flow_runtime/types.py`](../../backend/packages/miles-ai/src/miles_ai/flow_runtime/types.py)：
 
 | 字段 | 用途 | L1 提供方 | 未装配行为 |
 |------|------|-----------|------------|
@@ -59,8 +59,8 @@ from app.tenant.tools.invoke import invoke_tool_with_context
 
 **两根 ROOT 装配点**（新建 `RunContext` 只能在这两处或其新增同族点）：
 
-1. `app/tenant/agents/services/agent/chat_rag.py::flow_run_context` —— Agent 对话触发画布
-2. `app/tenant/flows/services/flow.py`（debug-run）—— 流程调试运行
+1. `miles_portal/tenant/agents/services/agent/chat_rag.py::flow_run_context` —— Agent 对话触发画布
+2. `miles_portal/tenant/flows/services/flow.py`（debug-run）—— 流程调试运行
 
 **透传**（派生，不重新解析 L1 依赖）：
 
@@ -70,7 +70,7 @@ from app.tenant.tools.invoke import invoke_tool_with_context
 **新增画布能力 checklist**：
 
 1. `flow_runtime/types.py` 加回调字段 + docstring 说明签名与未装配行为；
-2. 节点改为 `ctx.<回调>`，删掉 `app.tenant` import；
+2. 节点改为 `ctx.<回调>`，删掉 `miles_portal.tenant` import；
 3. L1 写 `build_*` 工厂（内部可用 `AsyncSessionLocal` / `TenantContext`）；
 4. **两处 ROOT 装配点都注入**，并把字段加入 LangGraph state 与 subflow 透传；
 5. 未装配时报显式错误（`BadRequestError`），不要静默降级；
@@ -82,7 +82,7 @@ from app.tenant.tools.invoke import invoke_tool_with_context
 
 ```text
 backend/tests/test_l3_neutral_imports.py
-禁止子串：app.tenant / from app import tenant / import app.tenant
+禁止子串：miles_portal.tenant / from miles_portal import tenant / import miles_portal.tenant
 ```
 
 已接入 CI（`.github/workflows/lint.yml` 的 backend job）：`L3 reverse-dependency guard` 独立成步，随后跑全量 `pytest`；同一 job 还跑 `ruff check` / `ruff format --check` / OpenAPI 快照。守卫为**目录级覆盖**：登记 `integrations`、`flow_runtime` 两个目录，新增子包自动纳入扫描，只有出现新的顶层 L3 目录时才需登记。

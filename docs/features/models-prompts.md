@@ -95,12 +95,12 @@ ui/workbench/app/workbench/prompts/page.tsx
 ## 6. 后端文件清单
 
 ```
-backend/app/models/model.py
-backend/app/models/model_tenant_credential.py
-backend/app/tenant/models/
-backend/app/tenant/prompts/
-backend/app/integrations/litellm/
-backend/app/integrations/embedding_profiles.py
+backend/packages/miles-core/src/miles_core/models/model/
+backend/packages/miles-core/src/miles_core/models/model/tenant_credential.py
+backend/packages/miles-portal/src/miles_portal/tenant/models/
+backend/packages/miles-portal/src/miles_portal/tenant/prompts/
+backend/packages/miles-ai/src/miles_ai/integrations/litellm/
+backend/packages/miles-ai/src/miles_ai/integrations/embeddings/
 ```
 
 ---

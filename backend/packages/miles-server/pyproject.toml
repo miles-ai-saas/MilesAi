@@ -1,0 +1,39 @@
+[project]
+name = "miles-server"
+version = "0.1.0"
+description = "服务装配与启动（HTTP 服务、CLI 与可观测性）"
+requires-python = ">=3.11"
+dependencies = [
+    "miles-openapi",
+    "miles-portal",
+    "miles-admin",
+    "miles-ai",
+    "miles-core",
+    "miles-common",
+    "uvicorn[standard]>=0.32.0",
+    "click>=8.1.0",
+    "fastapi>=0.115.0",
+    "sqlalchemy[asyncio]>=2.0.36",
+    "opentelemetry-api>=1.28.0",
+    "opentelemetry-sdk>=1.28.0",
+    "opentelemetry-exporter-otlp>=1.28.0",
+    "opentelemetry-instrumentation-fastapi>=0.49b0",
+]
+
+[project.scripts]
+milesai = "miles_server.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/miles_server"]
+
+[tool.uv.sources]
+miles-openapi = { workspace = true }
+miles-portal = { workspace = true }
+miles-admin = { workspace = true }
+miles-ai = { workspace = true }
+miles-core = { workspace = true }
+miles-common = { workspace = true }

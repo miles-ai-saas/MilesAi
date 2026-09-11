@@ -8,8 +8,8 @@ from __future__ import annotations
 from types import SimpleNamespace
 from uuid import uuid4
 
-from app.core.tenant import TenantContext
-from app.integrations.langchain.tools import (
+from miles_core.tenant import TenantContext
+from miles_ai.integrations.langchain.tools import (
     MCP_FUNCTION_PREFIX,
     McpToolSpec,
     build_platform_tools,
@@ -19,9 +19,9 @@ from app.integrations.langchain.tools import (
     mcp_param_alias,
     select_agent_tools,
 )
-from app.tenant.mcp.client import _normalize_tools
-from app.tenant.tools.invoke import context as invoke_context
-from app.tenant.tools.services import mcp_tools
+from miles_exec.mcp.tools import normalize_tools
+from miles_portal.tenant.tools.invoke import context as invoke_context
+from miles_portal.tenant.tools.services import mcp_tools
 
 
 def _ctx() -> TenantContext:
@@ -85,7 +85,7 @@ def test_compose_mcp_tool_name_is_stable_and_capped():
 
 
 def test_normalize_tools_preserves_schema_and_annotations():
-    out = _normalize_tools(
+    out = normalize_tools(
         [
             {
                 "name": "search",
@@ -128,9 +128,7 @@ def test_json_schema_to_pydantic_none_when_empty():
 
 
 def test_mcp_param_alias_only_lossy_keys():
-    assert mcp_param_alias({"properties": {"file-path": {"type": "string"}, "ok": {"type": "string"}}}) == {
-        "file_path": "file-path"
-    }
+    assert mcp_param_alias({"properties": {"file-path": {"type": "string"}, "ok": {"type": "string"}}}) == {"file_path": "file-path"}
 
 
 # --- 装配 ---

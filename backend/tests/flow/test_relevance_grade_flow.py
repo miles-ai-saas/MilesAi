@@ -4,12 +4,12 @@ import json
 
 import pytest
 
-import app.flow_runtime.nodes.grade_nodes as grade_nodes_module
-from app.common.exceptions import BadRequestError
-from app.flow_runtime.nodes.grade_nodes import relevance_grade
-from app.flow_runtime.types import RunContext
-from app.integrations.langgraph.compiler import validate_graph_for_compile
-from tests.paths import BACKEND_ROOT
+import miles_ai.flow_runtime.nodes.grade_nodes as grade_nodes_module
+from miles_common.exceptions import BadRequestError
+from miles_ai.flow_runtime.nodes.grade_nodes import relevance_grade
+from miles_ai.flow_runtime.types import RunContext
+from miles_ai.integrations.langgraph.compiler import validate_graph_for_compile
+from tests.paths import MILES_AI
 
 
 @pytest.mark.asyncio
@@ -38,7 +38,7 @@ async def test_relevance_grade_good_score():
 
 
 def test_rag_with_grade_template_compilable():
-    path = BACKEND_ROOT / "app/flow_runtime/templates/rag_flow_with_grade.json"
+    path = MILES_AI / "flow_runtime/templates/rag_flow_with_grade.json"
     graph = json.loads(path.read_text(encoding="utf-8"))
     report = validate_graph_for_compile(graph)
     assert report.compilable, report.errors

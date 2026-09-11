@@ -5,11 +5,11 @@ from uuid import uuid4
 
 import numpy as np
 
-from app.integrations.embeddings.constants import EXTRA_EMBEDDING_DIMENSION
-from app.models.kb import KnowledgeBase
-from app.models.model import ModelConfig
-from app.models.model.catalog import ModelCapabilityType
-from app.tenant.kb.services.embeddings import (
+from miles_ai.integrations.embeddings.constants import EXTRA_EMBEDDING_DIMENSION
+from miles_core.models.kb import KnowledgeBase
+from miles_core.models.model import ModelConfig
+from miles_core.models.model.catalog import ModelCapabilityType
+from miles_portal.tenant.kb.services.embeddings import (
     build_kb_retrieval_bindings,
     embed_query_for_kb_sync,
 )
@@ -41,7 +41,7 @@ def test_embed_query_for_kb_sync_local():
     db = MagicMock()
     with (
         patch(
-            "app.tenant.kb.services.embeddings.resolve_embedding_model_sync",
+            "miles_portal.tenant.kb.services.embeddings.resolve_embedding_model_sync",
             return_value=model,
         ),
         patch(

@@ -1,7 +1,7 @@
 """视频解析与 media_types 检索过滤测试。"""
 
-from app.rag.parse.upload_policy import is_kb_upload_allowed, kb_upload_accept_attribute
-from app.rag.parse.video_parser import parse_video
+from miles_ai.rag.parse.upload_policy import is_kb_upload_allowed, kb_upload_accept_attribute
+from miles_ai.rag.parse.video_parser import parse_video
 
 
 def test_video_extensions_allowed():

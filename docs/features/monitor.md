@@ -82,8 +82,8 @@ ui/workbench/app/workbench/dashboard/page.tsx
 ## 5. 后端文件清单
 
 ```
-backend/app/tenant/monitor/
-backend/app/tenant/workbench/services/overview.py
+backend/packages/miles-portal/src/miles_portal/tenant/monitor/
+backend/packages/miles-portal/src/miles_portal/tenant/workbench/services/overview.py
 ```
 
 ---

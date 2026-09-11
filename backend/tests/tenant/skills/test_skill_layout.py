@@ -4,14 +4,14 @@ from uuid import uuid4
 
 import pytest
 
-from app.tenant.skills.skill_layout import (
+from miles_portal.tenant.skills.skill_layout import (
     build_layout_index,
     format_layout_prompt_blocks,
     merge_layout_into_config,
     read_skill_resource,
     read_skill_script_source,
 )
-from app.tenant.skills.storage import SKILL_MD_FILENAME
+from miles_portal.tenant.skills.storage import SKILL_MD_FILENAME
 
 
 @pytest.fixture
@@ -22,8 +22,8 @@ def skill_tree(tmp_path, monkeypatch):
     def _dir(tid, s):
         return tmp_path / str(tid) / s
 
-    monkeypatch.setattr("app.tenant.skills.skill_layout.skill_package_dir", _dir)
-    monkeypatch.setattr("app.tenant.skills.storage.skill_package_dir", _dir)
+    monkeypatch.setattr("miles_portal.tenant.skills.skill_layout.skill_package_dir", _dir)
+    monkeypatch.setattr("miles_portal.tenant.skills.storage.skill_package_dir", _dir)
 
     base = _dir(tenant_id, slug)
     base.mkdir(parents=True)

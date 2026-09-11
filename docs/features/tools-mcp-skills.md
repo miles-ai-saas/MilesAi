@@ -118,12 +118,12 @@ invoke_tool_with_context
 ## 6. 后端文件清单
 
 ```
-backend/app/tenant/tools/
+backend/packages/miles-portal/src/miles_portal/tenant/tools/
     builtin_registry.py
     builtins/
     invoke/
-backend/app/tenant/mcp/
-backend/app/tenant/skills/
+backend/packages/miles-portal/src/miles_portal/tenant/mcp/
+backend/packages/miles-portal/src/miles_portal/tenant/skills/
 docker/images/mcp-runner/
 ```
 

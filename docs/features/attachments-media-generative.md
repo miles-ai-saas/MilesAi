@@ -151,16 +151,16 @@ POST /media-assets/{id}/promote-to-kb { kb_id }
 ## 6. 后端文件清单
 
 ```
-backend/app/models/attachment.py
-backend/app/models/media_asset.py
-backend/app/models/generative_job.py
-backend/app/tenant/attachments/
-backend/app/tenant/media_assets/
-backend/app/tenant/generative/
-backend/app/integrations/chat/multimodal.py
-backend/app/integrations/generative/
-backend/app/workers/tasks/generative.py
-backend/cli.py                          # backfill-media-assets（历史回填）
+backend/packages/miles-core/src/miles_core/models/media/attachment.py
+backend/packages/miles-core/src/miles_core/models/media/media_asset.py
+backend/packages/miles-core/src/miles_core/models/model/generative_job.py
+backend/packages/miles-portal/src/miles_portal/tenant/attachments/
+backend/packages/miles-portal/src/miles_portal/tenant/media_assets/
+backend/packages/miles-portal/src/miles_portal/tenant/generative/
+backend/packages/miles-ai/src/miles_ai/integrations/chat/multimodal.py
+backend/packages/miles-ai/src/miles_ai/integrations/generative/
+backend/packages/miles-worker/src/miles_worker/tasks/generative.py
+backend/packages/miles-server/src/miles_server/cli.py   # backfill-media-assets（历史回填）
 ```
 
 ---
