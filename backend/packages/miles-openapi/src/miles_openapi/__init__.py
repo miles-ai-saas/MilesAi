@@ -1,1 +1,1 @@
-"""开放面（OpenAPI）路由装配；Phase 2 迁入 miles_openapi。"""
+"""对外 API 面（/api/v1/open/*）：开放接口视图与 X-API-Key 鉴权。"""

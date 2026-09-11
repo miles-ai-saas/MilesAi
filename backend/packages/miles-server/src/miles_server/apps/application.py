@@ -5,19 +5,24 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from miles_server.apps.migrate import run_migrations
-from miles_server.apps.routers import admin_router, api_router, openapi_router
-from miles_core.web.handlers import exception_handlers
+from miles_admin.registration import register_admin
 from miles_core.config import get_settings
 from miles_core.logging import setup_logging
+from miles_core.web.handlers import exception_handlers
 from miles_core.web.middlewares import register_http_middlewares
+from miles_openapi.registration import register_open
+from miles_portal.registration import register_portal
+from miles_server.apps.migrate import run_migrations
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """应用生命周期钩子：启动时初始化日志 / OTel、执行 schema 迁移并建 LangGraph checkpointer，关闭时逆序释放。"""
+    from miles_ai.integrations.langgraph.checkpointer import (
+        init_langgraph_checkpointer,
+        shutdown_langgraph_checkpointer,
+    )
     from miles_core.infra.otel import setup_otel, shutdown_otel
-    from miles_ai.integrations.langgraph.checkpointer import init_langgraph_checkpointer, shutdown_langgraph_checkpointer
 
     setup_logging()
     setup_otel(get_settings(), app=app)
@@ -31,7 +36,7 @@ async def lifespan(app: FastAPI):
 
 
 def create_app() -> FastAPI:
-    """构造 FastAPI 应用：装配 CORS、HTTP 中间件、统一异常处理并挂载 api / admin 路由。"""
+    """构造 FastAPI 应用：装配 CORS、HTTP 中间件、统一异常处理并挂载 open / portal / admin 路由。"""
     settings = get_settings()
     app = FastAPI(
         title=settings.app_name,
@@ -57,7 +62,7 @@ def create_app() -> FastAPI:
     )
     register_http_middlewares(app)
 
-    app.include_router(api_router)
-    app.include_router(openapi_router)
-    app.include_router(admin_router)
+    register_open(app)
+    register_portal(app)
+    register_admin(app)
     return app

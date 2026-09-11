@@ -1,13 +1,12 @@
-"""开放面路由：与租户工作台同前缀 /api/v1，独立挂载以保持分层单向。
+"""对外 API 面（/api/v1/open/*）注册。路径保持不变，仅调整代码归属。"""
 
-openapi 位于 portal 之上，故此处可以 import portal 的视图与依赖。
-"""
+from __future__ import annotations
 
-from fastapi import APIRouter
+from fastapi import FastAPI
 
-from miles_openapi.views import open_chat as agents_open_chat
+from miles_openapi.views import open_chat
 
-openapi_router = APIRouter(prefix="/api/v1")
-openapi_router.include_router(agents_open_chat.router, prefix="/open", tags=["open-agents"])
 
-__all__ = ["openapi_router"]
+def register_open(app: FastAPI) -> None:
+    """挂载对外开放接口（X-API-Key 鉴权），不引入 admin 依赖。"""
+    app.include_router(open_chat.router, prefix="/api/v1/open", tags=["open-agents"])
