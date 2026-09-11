@@ -1778,7 +1778,7 @@ EOF
 milesai = "miles_server.cli:main"
 ```
 
-并把 `alembic`、`psycopg2-binary`、`click`、`uvicorn[standard]`、`python-multipart`、`python-jose[cryptography]`、`bcrypt`、`email-validator`、`croniter` 等运行入口所需依赖补入 `dependencies`（按实际 import 补齐）。
+**不要**按旧稿补 `alembic` / `psycopg2-binary` / `python-multipart` / `python-jose[cryptography]` / `bcrypt` / `email-validator` / `croniter`。实测（AST 全扫描 miles-server 源码）：本包自身只 import `click` / `fastapi` / `sqlalchemy` / `uvicorn`，均已在 dependencies 中；上述 7 项分别已由 `miles-core`（alembic、psycopg2-binary、bcrypt、python-jose）、`miles-portal`（python-multipart、email-validator）、`miles-admin`（python-jose）、`miles-common`（croniter）声明，workspace 闭包在运行期即可解析。`alembic` 甚至不是被 import 的：`miles_server/apps/migrate.py` 与 `scripts/db_ops.py` 走 `subprocess.run([sys.executable, "-m", "alembic", ...])`，同一 venv 内可解析。
 
 - [ ] **Step 2: 修 CLI 三处硬编码（否则运行即报错）**
 
@@ -1805,13 +1805,16 @@ rg -n "(from|import)[ \t]+scripts(?=[.\s])" packages/miles-server/src/miles_serv
 ```bash
 cd backend
 uv sync --all-packages --group dev
-uv run milesai --help
-uv run python -m miles_server.cli --help
+.venv/bin/milesai --help
+.venv/bin/python -m miles_server.cli --help
 ```
 
 Expected: 打印命令帮助（serve/worker/beat/migrate/init-db/seed/verify-db/backfill-media-assets）。
 
-- [ ] **Step 3: 改造 Makefile**
+> **必须带 `--all-packages --group dev`，绝不能裸跑 `uv sync` / `uv run`**：根项目 `milesai-workspace` 的 `[project]` 无 dependencies 也无 `[build-system]`，裸 `uv sync` 会把 10 个成员判定为多余并逐个卸载（`uv sync --dry-run` 实测输出上百行 `- xxx`）。`uv sync --all-packages --group dev --dry-run` 当前为纯 no-op。
+> 同理，脚本内不要用 `uv run ...`（它会触发一次不带 `--all-packages` 的同步）。验证一律用 `.venv/bin/*` 绝对路径。
+
+- [ ] **Step 4: 改造 Makefile**
 
 替换 `install-backend`、`openapi-check`、`openapi-write` 与各 `cli.py` 调用：
 
@@ -1847,14 +1850,14 @@ openapi-write: ## 重写 OpenAPI 快照（改路由/Schema 后执行并提交）
 	cd $(BACKEND) && $(PY) -m miles_server.scripts.export_openapi --write
 ```
 
-- [ ] **Step 4: 跑闸门**
+- [ ] **Step 5: 跑闸门**
 
 ```bash
 cd backend && .venv/bin/python -m pytest -q && .venv/bin/python -m miles_server.scripts.export_openapi --check
 cd .. && make openapi-check
 ```
 
-- [ ] **Step 5: 提交**
+- [ ] **Step 6: 提交**
 
 ```bash
 git add -A
