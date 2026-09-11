@@ -514,8 +514,18 @@ celery_app.conf.update(
     task_default_queue="default",
     task_soft_time_limit=_settings.celery_task_soft_time_limit_sec,
     task_time_limit=_settings.celery_task_time_limit_sec,
+    # 队列路由必须在最小 app 内：task_routes 由**投递方**求值
+    # （send_task → amqp router），API 进程不再 import worker 模块，
+    # 若把路由留在 worker，ingest 会被投到 default 而非 parse 队列。
+    task_routes={
+        "app.workers.tasks.ingest.*": {"queue": "parse"},
+        "app.workers.tasks.ocr.*": {"queue": "ocr"},
+        "app.workers.tasks.embed.*": {"queue": "embed"},
+    },
 )
 ```
+
+> **为什么路由下沉**：`task_routes` 是 producer-side 语义；`include`（任务注册）、`task_annotations`（执行期软/硬时限）、`beat_schedule`（调度）才是 worker-side，留在 Step 2。此点由控制器修正过原设计。
 
 `app/core/jobs/tasks.py`：
 
@@ -575,11 +585,6 @@ celery_app.conf.update(
             "time_limit": settings.celery_generative_time_limit_sec,
         },
     },
-    task_routes={
-        "app.workers.tasks.ingest.*": {"queue": "parse"},
-        "app.workers.tasks.ocr.*": {"queue": "ocr"},
-        "app.workers.tasks.embed.*": {"queue": "embed"},
-    },
     beat_schedule={
         "tick-agent-schedules": {"task": TASK_NAMES["tick_agent_schedules"], "schedule": 60.0},
         "probe-models-health": {"task": TASK_NAMES["probe_models_health"], "schedule": 900.0},
@@ -589,46 +594,79 @@ celery_app.conf.update(
 __all__ = ["celery_app"]
 ```
 
+> `task_routes` **不在这里** —— 见 Step 1：路由是投递侧语义，已在最小 app 内定义。`include`/`task_annotations`/`beat_schedule` 是 worker-side（注册、执行时限、调度），留在本模块。已实证 celery 5.6.3 下构造后 `conf.update(include=[...])` 生效（`loader.default_modules` 会读取 `conf.include`）。
+
 - [ ] **Step 3: 业务侧改按任务名投递**
 
-`app/tenant/generative/services/job.py`：
+**已核实的完整引用面（穷举，`app/` 内除 `app/workers/` 外的全部 worker 依赖）**：
+
+| 文件 | 行 | 现状 | 改法 |
+|------|----|------|------|
+| `app/tenant/generative/services/job.py` | 35 | `from app.workers.app import celery_app` | → `app.core.jobs.celery_app`；另 import `RUN_GENERATIVE_IMAGE_JOB, RUN_GENERATIVE_VIDEO_JOB` |
+| 同上 | 187 / 230 / 312 / 320 | `from app.workers.tasks.generative import run_generative_*`，作 `celery_task=` 传入 `_dispatch_job` | 传**任务名字符串常量**（见下「`_dispatch_job` 必须改签名」） |
+| `app/tenant/tasks/services/task.py` | 12 | `from app.workers.app import celery_app` | → `app.core.jobs.celery_app`（第 100/130/148 行 `AsyncResult(app=...)` / `control.revoke` 沿用） |
+| 同上 | 163 | `ingest_document.delay(str(doc.id))` | `celery_app.send_task(INGEST_DOCUMENT, args=[str(doc.id)])` |
+| `app/tenant/kb/services/kb/documents.py` | 115 / 168 | 同上（`task = ingest_document.delay(str(doc.id))`） | 同上；`task.id` 语义不变 |
+| `app/tenant/media_assets/services/media_asset.py` | 223 | 同上 | 同上 |
+| **`app/core/utils/health_checks.py`** | 128 | `from app.workers.app import celery_app` | → `app.core.jobs.celery_app`（**`core → worker` 越界，Step 4 的 grep 范围必须含 `app/core`**） |
+
+`app/tenant/generative/services/job_execution.py:5` 的 docstring 提到 `workers/tasks/generative.py`——该模块仍在，prose 保持有效，**不改**。
+
+**`_dispatch_job` 必须改签名（原计划示例过简，勿照抄 `.delay(...)` 替换）**：`job.py:132-152` 现为
 
 ```python
-from app.core.jobs.celery_app import celery_app
-from app.core.jobs.tasks import RUN_GENERATIVE_IMAGE_JOB, RUN_GENERATIVE_VIDEO_JOB
+async def _dispatch_job(self, job, *, celery_task, task_name: str) -> GenerativeJob:
+    await self.db.commit()
+    task = celery_task.delay(str(job.id))
+    ...
+    await TaskService(...).create_record(task_name=task_name, ...)   # 短名写 DB，勿动
 ```
 
-把 `from app.workers.app import celery_app` 删掉；把 `run_generative_video_job.delay(...)` 之类改为：
+即 `celery_task` 是**任务对象**、而 `task_name` 是写 `CeleryTaskRecord` 的**短逻辑名**（`"ingest_document"` / `"run_generative_video_job"`），两者不可混用。改为：
 
 ```python
-celery_app.send_task(RUN_GENERATIVE_VIDEO_JOB, args=[...])   # 参数与原 delay 调用一致
+async def _dispatch_job(self, job, *, celery_task_name: str, task_name: str) -> GenerativeJob:
+    await self.db.commit()
+    task = celery_app.send_task(celery_task_name, args=[str(job.id)])   # 与原 .delay(str(job.id)) 等价
+    ...
+    await TaskService(...).create_record(task_name=task_name, ...)       # 短名保持原值
 ```
 
-`app/tenant/tasks/services/task.py`、`app/tenant/kb/services/kb/documents.py`、`app/tenant/media_assets/services/media_asset.py`：
+4 个调用点各传 `celery_task_name=RUN_GENERATIVE_VIDEO_JOB`（或 `..._IMAGE_JOB`），**并保留原有的 `task_name="run_generative_*"` 短名实参不变**。
 
-```python
-from app.core.jobs.celery_app import celery_app
-from app.core.jobs.tasks import INGEST_DOCUMENT
-# 原 `from app.workers.tasks.ingest import ingest_document` + `.delay(...)`
-celery_app.send_task(INGEST_DOCUMENT, args=[...])
-```
+> 等价性说明：`celery_task.delay(x)` ≡ `celery_app.send_task(<task 的 name>, args=[x])`；`bind=True` 的 `self` 由 worker 绑定，不占 `args`。`send_task` 返回的 `AsyncResult.id` 即原 `task.id`。
+> 队列路由已随 Step 1 下沉到最小 app，故 `send_task` 仍按 `app.workers.tasks.ingest.*` → `parse` 路由，与改动前一致。
 
-> 参数列表必须与改动前 `.delay(...)` / `.apply_async(...)` 的实参逐一对齐（逐个调用点核对，勿改语义）。
-
-- [ ] **Step 4: 校验 portal 不再 import worker**
+- [ ] **Step 4: 校验业务侧（含 core）不再 import worker**
 
 ```bash
-rg -n "app\.workers" app/tenant app/deletion app/marketplace app/admin -g '*.py' || echo "OK: 业务侧零 worker 依赖"
+rg -n "app\.workers" app -g '*.py' | rg -v "^app/workers/" || echo "OK: 业务侧零 worker 依赖"
 ```
 
-Expected: `OK: 业务侧零 worker 依赖`
+Expected: `OK: 业务侧零 worker 依赖`（**注意**：原计划只 grep `app/tenant app/deletion app/marketplace app/admin`，漏掉了 `app/core/utils/health_checks.py:128` 这条 `core → worker` 越界，故改为全 `app/` 减去 `app/workers/`。`tests/` 允许 import worker——`tests/infra/test_celery_config.py` 依赖 `app.workers.app` 的 conf。）
 
-- [ ] **Step 5: 跑闸门（celery 配置 + 全量）**
+- [ ] **Step 5: 跑闸门（celery 配置 + 路由等价 + 全量）**
 
 ```bash
 .venv/bin/ruff check . && .venv/bin/ruff format --check . && .venv/bin/python -m pytest -q
 .venv/bin/python -m pytest tests/infra/test_celery_config.py tests/tenant/generative tests/tenant/kb tests/tenant/tasks -q
 ```
+
+**路由等价闸门（投递侧行为不变的核心证据）**：
+
+```bash
+.venv/bin/python -c "
+from app.core.jobs.celery_app import celery_app
+r = lambda n: getattr(celery_app.amqp.router.route({}, n).get('queue'), 'name', None)
+assert r('app.workers.tasks.ingest.ingest_document') == 'parse', 'ingest 路由漂移'
+assert r('app.workers.tasks.generative.run_generative_video_job') == 'default', '生成任务路由漂移'
+print('OK: 路由等价（ingest→parse, generative→default）')
+"
+```
+
+基线（改动前实测）：`ingest → parse`、`generative → default`（生成任务无匹配路由，落 `default` 是**基线行为**，勿"顺手修"）。
+
+`tests/infra/test_celery_config.py` 必须仍然通过（它断言 `app.workers.app` 的 `conf.task_annotations`，故 `task_annotations` 必须留在 worker 模块）。
 
 - [ ] **Step 6: 提交**
 
