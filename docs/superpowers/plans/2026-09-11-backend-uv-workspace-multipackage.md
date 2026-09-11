@@ -109,7 +109,7 @@ printf '"""认证会话存储（Redis）：下沉自 tenant.auth，供 core.deps
 - [ ] **Step 2: 更新引用**
 
 ```bash
-rg -rn "tenant\.auth\.services\.session_store|auth\.services import session_store|auth\.services\.session_store" app tests -g '*.py'
+rg -n "tenant\.auth\.services\.session_store|auth\.services import session_store|auth\.services\.session_store" app tests -g '*.py'
 ```
 
 把 `app/core/deps.py` 的 `from app.tenant.auth.services import session_store` 改为 `from app.core.auth import session_store`；其余命中处（`app/tenant/auth/**`、`scripts/**`、`tests/**`）一并改为 `app.core.auth.session_store`（或 `from app.core.auth import session_store`）。
@@ -187,7 +187,7 @@ rmdir app/utils 2>/dev/null || true
 - [ ] **Step 3: 全量改写引用**
 
 ```bash
-rg -rn "app\.common\.(pagination|url_security|handlers)|app\.utils\.(idgen|redis_keys|orm|health_checks)" app tests scripts alembic -g '*.py'
+rg -n "app\.common\.(pagination|url_security|handlers)|app\.utils\.(idgen|redis_keys|orm|health_checks)" app tests scripts alembic -g '*.py'
 ```
 
 逐条替换为：`app.common.pagination`→`app.core.pagination`；`app.common.url_security`→`app.core.url_security`；`app.common.handlers`→`app.core.web.handlers`；`app.utils.idgen`→`app.common.idgen`；`app.utils.redis_keys`→`app.common.redis_keys`；`app.utils.orm`→`app.core.utils.orm`；`app.utils.health_checks`→`app.core.utils.health_checks`。同时修正 `app/core/web/handlers.py` 内部 import 与 `tests/tenant/tools/test_url_security.py:9` 的 patch 字符串（`"app.common.url_security.get_settings"` → `"app.core.url_security.get_settings"`）。
@@ -291,7 +291,7 @@ from app.core.risk.enforce import platform_risk_enforcer
 - [ ] **Step 5: 全量改写引用**
 
 ```bash
-rg -rn "app\.middlewares|app\.admin\.models\.risk|app\.admin\.app_ops\.services\.risk_enforce" app tests scripts -g '*.py'
+rg -n "app\.middlewares|app\.admin\.models\.risk|app\.admin\.app_ops\.services\.risk_enforce" app tests scripts -g '*.py'
 ```
 
 替换：`app.middlewares.*`→`app.core.web.middlewares.*`；`app.admin.models.risk`→`app.core.models.risk`；`app.admin.app_ops.services.risk_enforce`→`app.core.risk.enforce`。
@@ -390,7 +390,7 @@ sed -i '' 's/from app\.tenant\.mcp\.\(constants\|rpc\) import/from app.exec.mcp.
 - [ ] **Step 4: 全量改写引用**
 
 ```bash
-rg -rn "app\.tenant\.mcp\.(runner\.spec|constants|rpc|client)|app\.tenant\.tools\.script_validate|app\.runner\.(session|script_exec)" app tests -g '*.py'
+rg -n "app\.tenant\.mcp\.(runner\.spec|constants|rpc|client)|app\.tenant\.tools\.script_validate|app\.runner\.(session|script_exec)" app tests -g '*.py'
 ```
 
 替换：`app.tenant.mcp.runner.spec`→`app.exec.mcp.spec`；`app.tenant.mcp.constants`→`app.exec.mcp.constants`；`app.tenant.mcp.rpc`→`app.exec.mcp.rpc`；`app.tenant.mcp.client._normalize_tools`→`app.exec.mcp.tools.normalize_tools`；`app.tenant.tools.script_validate`→`app.exec.sandbox.validate`；`app.runner.session`→`app.exec.sandbox.session`；`app.runner.script_exec`→`app.exec.sandbox.script_exec`。
