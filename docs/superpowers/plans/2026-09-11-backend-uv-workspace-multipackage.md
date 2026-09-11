@@ -343,6 +343,7 @@ EOF
 - Move: `backend/app/tenant/mcp/runner/spec.py` → `backend/app/exec/mcp/spec.py`
 - Move: `backend/app/tenant/mcp/constants.py` → `backend/app/exec/mcp/constants.py`
 - Move: `backend/app/tenant/mcp/rpc.py` → `backend/app/exec/mcp/rpc.py`
+- Move: `backend/app/runner/mcp_stdio.py` → `backend/app/exec/mcp/stdio.py`（**必须随迁**：`session.py` 依赖 `McpStdioClient`，若留在 runner 则 `exec → runner` 反向依赖）
 - Create: `backend/app/exec/mcp/tools.py`（从 `tenant/mcp/client.py` 取 `_normalize_tools`）
 - Move: `backend/app/tenant/tools/script_validate.py` → `backend/app/exec/sandbox/validate.py`
 - Move: `backend/app/runner/session.py` → `backend/app/exec/sandbox/session.py`
@@ -400,7 +401,7 @@ from __future__ import annotations
 sed -i '' 's/from app\.runner\.session import/from app.exec.sandbox.session import/' app/exec/sandbox/script_exec.py
 sed -i '' 's/from app\.tenant\.tools\.script_validate import/from app.exec.sandbox.validate import/' app/exec/sandbox/script_exec.py
 sed -i '' 's/from app\.tenant\.mcp\.runner\.spec import/from app.exec.mcp.spec import/' app/exec/sandbox/session.py
-sed -i '' 's/from app\.tenant\.mcp\.\(constants\|rpc\) import/from app.exec.mcp.\1 import/' app/runner/mcp_stdio.py
+sed -i '' 's/from app\.tenant\.mcp\.\(constants\|rpc\) import/from app.exec.mcp.\1 import/' app/exec/mcp/stdio.py
 ```
 
 - [ ] **Step 4: 全量改写引用**
@@ -416,8 +417,8 @@ rg -n "app\.tenant\.mcp\.(runner\.spec|constants|rpc|client)|app\.tenant\.tools\
 | 旧路径 | 引用点 |
 |--------|--------|
 | `app.tenant.mcp.runner.spec` | `tests/mcp/test_runner_spec.py:8`、`app/runner/main.py:18`、`app/runner/session.py:15`、`app/tenant/mcp/services/mcp.py:37`（`build_run_spec`）、`app/tenant/mcp/runner/client.py:12`、`app/tenant/mcp/runner/audit.py:12` |
-| `app.tenant.mcp.constants` | `app/runner/mcp_stdio.py:9`、`app/tenant/mcp/meta.py:10`、`app/tenant/mcp/services/mcp.py:38`、`app/tenant/mcp/sse_transport.py:33`、`app/tenant/mcp/client.py:31`、`app/tenant/mcp/transport.py:11` |
-| `app.tenant.mcp.rpc` | `tests/mcp/test_mcp_client.py:5`、`app/runner/main.py:17`、`app/runner/mcp_stdio.py:10`、`app/tenant/mcp/sse_transport.py:32`、`app/tenant/mcp/client.py:32` |
+| `app.tenant.mcp.constants` | `app/exec/mcp/stdio.py:9`（随迁）、`app/tenant/mcp/meta.py:10`、`app/tenant/mcp/services/mcp.py:38`、`app/tenant/mcp/sse_transport.py:33`、`app/tenant/mcp/client.py:31`、`app/tenant/mcp/transport.py:11` |
+| `app.tenant.mcp.rpc` | `tests/mcp/test_mcp_client.py:5`、`app/runner/main.py:17`、`app/exec/mcp/stdio.py:10`（随迁）、`app/tenant/mcp/sse_transport.py:32`、`app/tenant/mcp/client.py:32` |
 | `app.tenant.tools.script_validate` | `tests/tenant/tools/test_script_validate.py:4`、`app/runner/main.py:19`、`app/runner/script_exec.py:17`、`app/tenant/skills/runtime.py:16`、`app/tenant/tools/invoke/custom.py:18`、`app/tenant/tools/services/tools.py:36` |
 | `app.runner.session` | `app/runner/main.py:15`、`app/runner/script_exec.py:16` |
 | `app.runner.script_exec` | `app/runner/main.py:14`、`tests/tenant/tools/test_script_stdlib.py:8`、`app/tenant/tools/builtins/code_exec.py:11`（+ docstring 第 4 行） |
@@ -428,6 +429,8 @@ rg -n "app\.tenant\.mcp\.(runner\.spec|constants|rpc|client)|app\.tenant\.tools\
 - `tests/mcp/test_mcp_function_calling.py:22`：同上改 import；第 88 行 `_normalize_tools(` 改名。
 
 另需注意：`app/tenant/mcp/client.py` **整体留在 tenant**（`fetch_mcp_tools` / `invoke_mcp_tool` 等不迁），只把 `_normalize_tools` 抽走并改 import；`app/tenant/mcp/views/mcp.py:5` 的 docstring 提到 `app.tenant.mcp.client` 保持不变（该模块仍在）。
+
+**`app/exec/mcp/spec.py` 的两处 TYPE_CHECKING 注解引用（Phase 2 需照旧映射）**：搬迁时 `TenantContext`（原为模块级运行期 import）被移入该文件**已有的** `if TYPE_CHECKING:` 块，与原本就在其中的 `McpService` 并列 —— 文件已 `from __future__ import annotations`，运行期不求值，故行为不变、runner 镜像无需装 core/portal。Phase 2 codemod 会把这行映射为 `from miles_core.tenant import TenantContext`、`from miles_portal.tenant.mcp.models import McpService`；这两条**必须**由 Task 3.4 的 `.importlinter` `exec-leaf` 契约 `ignore_imports` 豁免，否则分层校验会误报 `miles_exec → miles_core/miles_portal`。
 
 - [ ] **Step 5: 校验 exec 无重依赖**
 
@@ -1817,6 +1820,29 @@ name = L3/L2 不得依赖租户域
 type = forbidden
 source_modules = miles_ai
 forbidden_modules = miles_portal
+
+# --- TYPE_CHECKING 注解豁免（Task 1.4 遗留，必须保留并附注释）---
+# miles_exec.mcp.spec 的 build_run_spec(service: McpService, ctx: TenantContext)
+# 只用注解引用租户域/core 类型；文件已 `from __future__ import annotations`，
+# 运行期不求值，runner 镜像无需装 core/portal。
+# import-linter 仍会静态计入这些 TYPE_CHECKING import，故显式豁免：
+[importlinter:contract:exec-leaf]
+name = miles_exec 仅在运行期是叶子（TYPE_CHECKING 注解除外）
+type = forbidden
+source_modules = miles_exec
+forbidden_modules =
+    miles_core
+    miles_ai
+    miles_portal
+    miles_admin
+    miles_openapi
+    miles_server
+    miles_worker
+    miles_runner
+ignore_imports =
+    # 注解专用；见上方说明
+    miles_exec.mcp.spec -> miles_core.tenant
+    miles_exec.mcp.spec -> miles_portal.tenant.mcp.models
 
 [importlinter:contract:openapi-no-admin]
 name = 开放面不得依赖运营面
