@@ -9,7 +9,6 @@ from uuid import UUID
 from fastapi import Depends, FastAPI, Header, HTTPException
 from pydantic import BaseModel, Field
 
-from miles_core.config import get_settings
 from miles_exec.mcp.rpc import normalize_tool_call_result
 from miles_exec.mcp.spec import RunSpec, validate_run_spec
 from miles_exec.mcp.tools import normalize_tools
@@ -17,8 +16,9 @@ from miles_exec.sandbox.script_exec import run_python_script
 from miles_exec.sandbox.session import SessionResult, run_mcp_session
 from miles_exec.sandbox.validate import validate_script_source
 from miles_runner.limits import RunnerLimits
+from miles_runner.settings import get_runner_settings
 
-settings = get_settings()
+settings = get_runner_settings()
 limits = RunnerLimits(
     max_global=int(os.environ.get("MCP_RUNNER_MAX_CONCURRENT", "20")),
     max_per_tenant=settings.mcp_runner_max_concurrent_per_tenant,
