@@ -1,0 +1,25 @@
+[project]
+name = "miles-worker"
+version = "0.1.0"
+description = "异步任务 worker（Celery 任务与调度）"
+requires-python = ">=3.11"
+dependencies = [
+    "miles-portal",
+    "miles-ai",
+    "miles-core",
+    "miles-common",
+    "sqlalchemy[asyncio]>=2.0.36",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/miles_worker"]
+
+[tool.uv.sources]
+miles-portal = { workspace = true }
+miles-ai = { workspace = true }
+miles-core = { workspace = true }
+miles-common = { workspace = true }

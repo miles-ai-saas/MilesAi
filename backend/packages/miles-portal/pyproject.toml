@@ -1,0 +1,32 @@
+[project]
+name = "miles-portal"
+version = "0.1.0"
+description = "租户 AI 平台域（/api/v1）"
+requires-python = ">=3.11"
+dependencies = [
+    "miles-ai",
+    "miles-core",
+    "miles-common",
+    "miles-exec",
+    "fastapi>=0.115.0",
+    "pydantic>=2.10.0",
+    "sqlalchemy[asyncio]>=2.0.36",
+    "celery>=5.4.0",
+    "httpx>=0.28.0",
+    "httpx-sse>=0.4.0",
+    "python-multipart>=0.0.12",
+    "email-validator>=2.2.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/miles_portal"]
+
+[tool.uv.sources]
+miles-ai = { workspace = true }
+miles-core = { workspace = true }
+miles-common = { workspace = true }
+miles-exec = { workspace = true }
