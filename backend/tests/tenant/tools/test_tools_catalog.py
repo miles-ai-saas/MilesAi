@@ -4,8 +4,8 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from app.common.exceptions import BadRequestError
-from app.tenant.tools.services.tools import ToolsService
+from miles_common.exceptions import BadRequestError
+from miles_portal.tenant.tools.services.tools import ToolsService
 
 
 @pytest.mark.asyncio

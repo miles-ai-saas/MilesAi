@@ -1,6 +1,6 @@
 import time
 
-from app.common.idgen import generate_id, generate_uuid, is_uuid7, uuid7_version
+from miles_common.idgen import generate_id, generate_uuid, is_uuid7, uuid7_version
 
 
 def test_generate_uuid_is_version_7() -> None:

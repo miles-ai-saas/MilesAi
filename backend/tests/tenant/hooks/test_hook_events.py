@@ -3,8 +3,8 @@
 from uuid import uuid4
 
 
-from app.tenant.hooks.events import apply_modify, build_event_envelope, parse_hook_response
-from app.tenant.hooks.models import HookScope, HookTrigger
+from miles_portal.tenant.hooks.events import apply_modify, build_event_envelope, parse_hook_response
+from miles_portal.tenant.hooks.models import HookScope, HookTrigger
 
 
 def test_build_event_envelope():

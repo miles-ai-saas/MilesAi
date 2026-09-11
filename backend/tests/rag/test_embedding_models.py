@@ -6,14 +6,14 @@ from uuid import uuid4
 import numpy as np
 import pytest
 
-from app.integrations.embeddings.constants import EXTRA_EMBEDDING_DIMENSION
-from app.integrations.embeddings.model_meta import embedding_dimension_from_model
-from app.integrations.embeddings.runtime import build_embeddings
-from app.models.kb import KnowledgeBase
-from app.models.model import ModelConfig
-from app.models.model.catalog import ModelCapabilityType
-from app.tenant.kb.schemas.kb import KnowledgeBaseUpdate
-from app.tenant.kb.services.embeddings import embed_query_for_kb_sync
+from miles_ai.integrations.embeddings.constants import EXTRA_EMBEDDING_DIMENSION
+from miles_ai.integrations.embeddings.model_meta import embedding_dimension_from_model
+from miles_ai.integrations.embeddings.runtime import build_embeddings
+from miles_core.models.kb import KnowledgeBase
+from miles_core.models.model import ModelConfig
+from miles_core.models.model.catalog import ModelCapabilityType
+from miles_portal.tenant.kb.schemas.kb import KnowledgeBaseUpdate
+from miles_portal.tenant.kb.services.embeddings import embed_query_for_kb_sync
 
 
 def _local_bge_model() -> ModelConfig:
@@ -52,7 +52,7 @@ def test_embed_query_for_kb_sync_local():
     db = MagicMock()
     with (
         patch(
-            "app.tenant.kb.services.embeddings.resolve_embedding_model_sync",
+            "miles_portal.tenant.kb.services.embeddings.resolve_embedding_model_sync",
             return_value=model,
         ),
         patch(

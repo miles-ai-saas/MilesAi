@@ -2,8 +2,8 @@
 
 from uuid import uuid4
 
-from app.models.model.generative_job import GenerativeJob, GenerativeJobStatus
-from app.tenant.agents.services.chat_artifact_sync import artifacts_payload_from_job
+from miles_core.models.model.generative_job import GenerativeJob, GenerativeJobStatus
+from miles_portal.tenant.agents.services.chat_artifact_sync import artifacts_payload_from_job
 
 
 def test_artifacts_payload_from_success_image_job():

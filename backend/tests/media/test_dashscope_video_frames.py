@@ -2,8 +2,8 @@
 
 import pytest
 
-from app.common.exceptions import BadRequestError
-from app.integrations.generative.video.providers.dashscope_wan import _build_media
+from miles_common.exceptions import BadRequestError
+from miles_ai.integrations.generative.video.providers.dashscope_wan import _build_media
 
 
 def test_build_media_first_only():

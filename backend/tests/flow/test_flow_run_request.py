@@ -2,8 +2,8 @@
 
 from uuid import uuid4
 
-from app.common.schemas.media import MediaRefIn
-from app.tenant.flows.schemas.flow import FlowRunRequest
+from miles_common.schemas.media import MediaRefIn
+from miles_portal.tenant.flows.schemas.flow import FlowRunRequest
 
 
 def test_flow_run_request_kb_ids_default():

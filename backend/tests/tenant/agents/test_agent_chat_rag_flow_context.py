@@ -10,8 +10,8 @@ import asyncio
 from types import SimpleNamespace
 from uuid import uuid4
 
-from app.tenant.agents.services.agent import chat_rag as chat_rag_mod
-from app.tenant.agents.services.agent.chat_rag import AgentChatRagMixin
+from miles_portal.tenant.agents.services.agent import chat_rag as chat_rag_mod
+from miles_portal.tenant.agents.services.agent.chat_rag import AgentChatRagMixin
 
 
 def _run(coro):

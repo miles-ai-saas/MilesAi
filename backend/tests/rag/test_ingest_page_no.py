@@ -5,7 +5,7 @@ from uuid import uuid4
 
 from langchain_core.documents import Document
 
-from app.rag.pipeline.ingest import IngestInput, run_ingest_pipeline
+from miles_ai.rag.pipeline.ingest import IngestInput, run_ingest_pipeline
 
 
 def test_ingest_sets_page_no_on_chunk_and_vector():
@@ -35,11 +35,11 @@ def test_ingest_sets_page_no_on_chunk_and_vector():
 
     with (
         patch(
-            "app.rag.pipeline.ingest.load_documents_from_bytes",
+            "miles_ai.rag.pipeline.ingest.load_documents_from_bytes",
             return_value=fake_docs,
         ),
         patch(
-            "app.rag.pipeline.ingest.upsert_chunk_vector",
+            "miles_ai.rag.pipeline.ingest.upsert_chunk_vector",
             side_effect=lambda **kw: vector_calls.append(kw) or "vec-1",
         ),
     ):

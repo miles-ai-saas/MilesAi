@@ -7,9 +7,9 @@ monkeypatch 打到 ``media_reader`` 模块命名空间（from-import 绑定）�
 import asyncio
 from uuid import UUID, uuid4
 
-from app.models.media.reader import AttachmentBytes
-from app.tenant.attachments.services import media_reader as media_reader_mod
-from app.tenant.attachments.services.media_reader import (
+from miles_core.models.media.reader import AttachmentBytes
+from miles_portal.tenant.attachments.services import media_reader as media_reader_mod
+from miles_portal.tenant.attachments.services.media_reader import (
     FlowMediaReader,
     build_flow_media_reader,
 )

@@ -6,12 +6,12 @@ from uuid import uuid4
 
 import pytest
 
-from app.core.tenant import TenantContext
-from app.models.flow import Flow, FlowStatus
-from app.models.meta.tag import TagEntityType
-from app.tenant.flows.schemas.flow import FlowCreate, FlowUpdate
-from app.tenant.flows.services.flow import FlowService
-from app.tenant.tags.schemas.tag import TagRefOut
+from miles_core.tenant import TenantContext
+from miles_core.models.flow import Flow, FlowStatus
+from miles_core.models.meta.tag import TagEntityType
+from miles_portal.tenant.flows.schemas.flow import FlowCreate, FlowUpdate
+from miles_portal.tenant.flows.services.flow import FlowService
+from miles_portal.tenant.tags.schemas.tag import TagRefOut
 
 
 @pytest.mark.asyncio
@@ -44,15 +44,15 @@ async def test_create_flow_with_tags(monkeypatch):
     replace = AsyncMock()
     get_refs = AsyncMock(return_value={flow_id: [TagRefOut(id=tag_id, name="客服", slug="kefu")]})
     monkeypatch.setattr(
-        "app.tenant.flows.services.flow.TagService.replace_entity_tags",
+        "miles_portal.tenant.flows.services.flow.TagService.replace_entity_tags",
         replace,
     )
     monkeypatch.setattr(
-        "app.tenant.flows.services.flow.TagService.get_refs_map",
+        "miles_portal.tenant.flows.services.flow.TagService.get_refs_map",
         get_refs,
     )
     monkeypatch.setattr(
-        "app.tenant.system.services.quota.assert_can_create_flow",
+        "miles_portal.tenant.system.services.quota.assert_can_create_flow",
         AsyncMock(),
     )
 
@@ -91,11 +91,11 @@ async def test_update_flow_replaces_tags(monkeypatch):
     replace = AsyncMock()
     get_refs = AsyncMock(return_value={flow_id: []})
     monkeypatch.setattr(
-        "app.tenant.flows.services.flow.TagService.replace_entity_tags",
+        "miles_portal.tenant.flows.services.flow.TagService.replace_entity_tags",
         replace,
     )
     monkeypatch.setattr(
-        "app.tenant.flows.services.flow.TagService.get_refs_map",
+        "miles_portal.tenant.flows.services.flow.TagService.get_refs_map",
         get_refs,
     )
 

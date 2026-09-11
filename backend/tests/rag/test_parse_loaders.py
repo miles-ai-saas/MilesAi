@@ -5,9 +5,9 @@ from unittest.mock import patch
 import pytest
 from langchain_core.documents import Document
 
-from app.common.exceptions import BadRequestError
-from app.core.config import get_settings
-from app.rag.parse.loaders import documents_to_plain_text, load_documents_from_bytes
+from miles_common.exceptions import BadRequestError
+from miles_core.config import get_settings
+from miles_ai.rag.parse.loaders import documents_to_plain_text, load_documents_from_bytes
 
 
 @pytest.fixture(autouse=True)
@@ -31,7 +31,7 @@ def test_pdf_uses_pypdf_by_default(monkeypatch):
     fake_docs = [Document(page_content="page1", metadata={})]
 
     with patch(
-        "app.rag.parse.loaders.load_pdf_documents",
+        "miles_ai.rag.parse.loaders.load_pdf_documents",
         return_value=fake_docs,
     ) as mock_pypdf:
         docs = load_documents_from_bytes(b"%PDF", "f.pdf", "application/pdf")
@@ -45,9 +45,9 @@ def test_pdf_uses_docling_when_configured(monkeypatch):
     fake_docs = [Document(page_content="# Title\n\nbody", metadata={"parser": "docling"})]
 
     with (
-        patch("app.rag.parse.loaders.docling_available", return_value=True),
+        patch("miles_ai.rag.parse.loaders.docling_available", return_value=True),
         patch(
-            "app.rag.parse.loaders.load_documents_with_docling",
+            "miles_ai.rag.parse.loaders.load_documents_with_docling",
             return_value=fake_docs,
         ) as mock_docling,
     ):
@@ -63,13 +63,13 @@ def test_docling_failure_falls_back_to_pypdf(monkeypatch):
     fake_pypdf = [Document(page_content="fallback", metadata={})]
 
     with (
-        patch("app.rag.parse.loaders.docling_available", return_value=True),
+        patch("miles_ai.rag.parse.loaders.docling_available", return_value=True),
         patch(
-            "app.rag.parse.loaders.load_documents_with_docling",
+            "miles_ai.rag.parse.loaders.load_documents_with_docling",
             side_effect=RuntimeError("docling boom"),
         ),
         patch(
-            "app.rag.parse.loaders.load_pdf_documents",
+            "miles_ai.rag.parse.loaders.load_pdf_documents",
             return_value=fake_pypdf,
         ) as mock_pypdf,
     ):
@@ -80,7 +80,7 @@ def test_docling_failure_falls_back_to_pypdf(monkeypatch):
 
 
 def test_load_image_returns_document():
-    with patch("app.rag.parse.loaders.parse_image", return_value="[图片 OCR]\n\nhello"):
+    with patch("miles_ai.rag.parse.loaders.parse_image", return_value="[图片 OCR]\n\nhello"):
         docs = load_documents_from_bytes(b"\xff\xd8", "a.jpg", "image/jpeg")
     assert len(docs) == 1
     assert docs[0].metadata.get("parser") == "image"
@@ -88,7 +88,7 @@ def test_load_image_returns_document():
 
 
 def test_load_audio_returns_document():
-    with patch("app.rag.parse.loaders.parse_audio", return_value="[音频转写]\n\ntranscript"):
+    with patch("miles_ai.rag.parse.loaders.parse_audio", return_value="[音频转写]\n\ntranscript"):
         docs = load_documents_from_bytes(b"ID3", "a.mp3", "audio/mpeg")
     assert len(docs) == 1
     assert docs[0].metadata.get("parser") == "audio"

@@ -10,10 +10,10 @@ from uuid import uuid4
 
 import pytest
 
-from app.common.exceptions import BadRequestError
-from app.core.tenant import TenantContext
-from app.tenant.attachments.services import attachment as attachment_mod
-from app.tenant.attachments.services.attachment import AttachmentService
+from miles_common.exceptions import BadRequestError
+from miles_core.tenant import TenantContext
+from miles_portal.tenant.attachments.services import attachment as attachment_mod
+from miles_portal.tenant.attachments.services.attachment import AttachmentService
 
 
 def _ctx(tenant_id) -> TenantContext:

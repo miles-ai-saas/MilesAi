@@ -1,8 +1,8 @@
 """生图异步任务参数与配置。"""
 
-from app.integrations.generative.jobs.image_params import build_image_job_params
-from app.tenant.generative.meta import generative_jobs_meta_dict
-from app.tenant.generative.services.job import GenerativeJobService
+from miles_ai.integrations.generative.jobs.image_params import build_image_job_params
+from miles_portal.tenant.generative.meta import generative_jobs_meta_dict
+from miles_portal.tenant.generative.services.job import GenerativeJobService
 
 
 def test_build_image_job_params():

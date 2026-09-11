@@ -7,9 +7,9 @@ AsyncSessionLocal 用假 async 上下文管理器替换，不落真实 DB。
 import asyncio
 from uuid import uuid4
 
-from app.models.compliance.constants import SensitiveAction
-from app.tenant.compliance.services import scan_words_loader as loader_mod
-from app.tenant.compliance.services.scan_words_loader import build_scan_words_loader
+from miles_core.models.compliance.constants import SensitiveAction
+from miles_portal.tenant.compliance.services import scan_words_loader as loader_mod
+from miles_portal.tenant.compliance.services.scan_words_loader import build_scan_words_loader
 
 
 class _FakeSessionCtx:

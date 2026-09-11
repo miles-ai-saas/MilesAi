@@ -8,9 +8,9 @@ import asyncio
 from types import SimpleNamespace
 from uuid import UUID
 
-from app.tenant.prompts.models import PromptTemplate
-from app.tenant.prompts.services import template_loader
-from app.tenant.prompts.services.template_loader import build_prompt_template_loader
+from miles_portal.tenant.prompts.models import PromptTemplate
+from miles_portal.tenant.prompts.services import template_loader
+from miles_portal.tenant.prompts.services.template_loader import build_prompt_template_loader
 
 _TENANT_UUID = UUID("11111111-1111-1111-1111-111111111111")
 _TEMPLATE_UUID = UUID("22222222-2222-2222-2222-222222222222")

@@ -5,10 +5,10 @@ from uuid import uuid4
 
 import pytest
 
-from app.common.exceptions import BadRequestError
-from app.integrations.generative.image.providers.volcengine_image import generate_volcengine_image
-from app.models.model import ModelConfig
-from app.models.model.catalog import ModelCapabilityType, ModelVendor
+from miles_common.exceptions import BadRequestError
+from miles_ai.integrations.generative.image.providers.volcengine_image import generate_volcengine_image
+from miles_core.models.model import ModelConfig
+from miles_core.models.model.catalog import ModelCapabilityType, ModelVendor
 
 
 def _doubao_image_model(**kwargs) -> ModelConfig:
@@ -50,7 +50,7 @@ async def test_volcengine_image_passes_reference_in_body():
     mock_client.__aexit__ = AsyncMock(return_value=None)
 
     with patch(
-        "app.integrations.generative.image.providers.volcengine_image.httpx.AsyncClient",
+        "miles_ai.integrations.generative.image.providers.volcengine_image.httpx.AsyncClient",
         return_value=mock_client,
     ):
         blobs = await generate_volcengine_image(

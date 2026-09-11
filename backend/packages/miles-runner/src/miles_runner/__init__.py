@@ -1,1 +1,1 @@
-"""miles-runner 包（迁移中）。"""
+"""MCP Runner 独立进程（STDIO 沙箱）。"""

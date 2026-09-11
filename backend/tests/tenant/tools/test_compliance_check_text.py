@@ -7,9 +7,9 @@ from uuid import uuid4
 
 import pytest
 
-from app.common.exceptions import BadRequestError
-from app.models.compliance.constants import SensitiveAction
-from app.tenant.tools.builtins import handlers as handlers_mod
+from miles_common.exceptions import BadRequestError
+from miles_core.models.compliance.constants import SensitiveAction
+from miles_portal.tenant.tools.builtins import handlers as handlers_mod
 
 
 def _ctx() -> SimpleNamespace:

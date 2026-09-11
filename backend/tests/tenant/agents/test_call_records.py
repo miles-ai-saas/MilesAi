@@ -2,14 +2,14 @@
 
 from datetime import datetime, timedelta, timezone
 
-from app.tenant.agents.services.call_records import (
+from miles_portal.tenant.agents.services.call_records import (
     build_steps_summary,
     correlation_window,
     count_tool_calls,
     is_compliance_block,
     preview_text,
 )
-from app.common.exceptions import BadRequestError
+from miles_common.exceptions import BadRequestError
 
 
 def test_preview_text_truncates():

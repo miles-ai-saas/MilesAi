@@ -1,6 +1,6 @@
 """字段加解密与脱敏。"""
 
-from app.core.field_crypto import decrypt_secret, encrypt_secret, mask_secret
+from miles_core.field_crypto import decrypt_secret, encrypt_secret, mask_secret
 
 
 def test_encrypt_roundtrip():

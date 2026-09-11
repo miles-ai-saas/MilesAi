@@ -5,8 +5,8 @@ from uuid import UUID, uuid4
 
 import pytest
 
-from app.flow_runtime.subflow.validate import validate_subflow_references
-from app.models.flow import FlowStatus
+from miles_ai.flow_runtime.subflow.validate import validate_subflow_references
+from miles_core.models.flow import FlowStatus
 
 
 def _graph(sub_flow_id: str | None = None, **data_extra: object) -> dict:

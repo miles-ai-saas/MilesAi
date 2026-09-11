@@ -5,16 +5,16 @@ from uuid import uuid4
 
 import pytest
 
-from app.common.exceptions import BadRequestError
-from app.integrations.rerank.constants import INVOKE_MODE_DASHSCOPE, INVOKE_MODE_OPENAI_COMPATIBLE
-from app.integrations.rerank.model_meta import (
+from miles_common.exceptions import BadRequestError
+from miles_ai.integrations.rerank.constants import INVOKE_MODE_DASHSCOPE, INVOKE_MODE_OPENAI_COMPATIBLE
+from miles_ai.integrations.rerank.model_meta import (
     invoke_mode_from_model,
     resolve_rerank_openai_compat_url,
 )
-from app.integrations.rerank.providers.dashscope import DashScopeRerankProvider
-from app.integrations.rerank.registry import known_invoke_modes, rerank_documents_for_model
-from app.models.model import ModelConfig
-from app.models.model.catalog import ModelCapabilityType, ModelVendor
+from miles_ai.integrations.rerank.providers.dashscope import DashScopeRerankProvider
+from miles_ai.integrations.rerank.registry import known_invoke_modes, rerank_documents_for_model
+from miles_core.models.model import ModelConfig
+from miles_core.models.model.catalog import ModelCapabilityType, ModelVendor
 
 
 def _qwen_rerank_model(**kwargs) -> ModelConfig:

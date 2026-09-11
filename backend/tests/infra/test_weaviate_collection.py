@@ -4,14 +4,14 @@ from unittest.mock import MagicMock, patch
 
 from weaviate.classes.config import VectorDistances
 
-from app.infra.vector_store.weaviate import CLASS_NAME, _ensure_collection
+from miles_core.infra.vector_store.weaviate import CLASS_NAME, _ensure_collection
 
 
 def test_ensure_collection_uses_cosine_distance_enum():
     client = MagicMock()
     client.collections.exists.return_value = False
 
-    with patch("app.infra.vector_store.weaviate._client", return_value=client):
+    with patch("miles_core.infra.vector_store.weaviate._client", return_value=client):
         _ensure_collection()
 
     client.collections.create.assert_called_once()
@@ -25,7 +25,7 @@ def test_ensure_collection_skips_when_exists():
     client = MagicMock()
     client.collections.exists.return_value = True
 
-    with patch("app.infra.vector_store.weaviate._client", return_value=client):
+    with patch("miles_core.infra.vector_store.weaviate._client", return_value=client):
         _ensure_collection()
 
     client.collections.create.assert_not_called()

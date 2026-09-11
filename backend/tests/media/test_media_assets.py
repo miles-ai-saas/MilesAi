@@ -1,7 +1,7 @@
 """媒体资产登记与升格规则。"""
 
-from app.integrations.generative.constants import PURPOSE_CHAT_GENERATED, PURPOSE_FLOW_GENERATED
-from app.tenant.media_assets.services.media_asset import (
+from miles_ai.integrations.generative.constants import PURPOSE_CHAT_GENERATED, PURPOSE_FLOW_GENERATED
+from miles_portal.tenant.media_assets.services.media_asset import (
     SOURCE_AGENT_TOOL,
     SOURCE_FLOW_NODE,
     _kind_from_mime,
@@ -22,10 +22,10 @@ def test_source_from_purpose():
 def test_video_promote_builds_markdown():
     from uuid import uuid4
 
-    from app.models.media.attachment import Attachment
-    from app.models.media.media_asset import MediaAsset
-    from app.tenant.media_assets.schemas.media_asset import PromoteToKbRequest
-    from app.tenant.media_assets.services.media_asset import MediaAssetService
+    from miles_core.models.media.attachment import Attachment
+    from miles_core.models.media.media_asset import MediaAsset
+    from miles_portal.tenant.media_assets.schemas.media_asset import PromoteToKbRequest
+    from miles_portal.tenant.media_assets.services.media_asset import MediaAssetService
 
     row = MediaAsset(
         id=uuid4(),

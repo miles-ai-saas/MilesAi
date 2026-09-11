@@ -6,10 +6,10 @@ from uuid import uuid4
 
 import pytest
 
-from app.common.exceptions import ForbiddenError, UnauthorizedError
-from app.core.tenant import TenantContext
-from app.tenant.agents.deps_api_auth import _ctx_from_api_key
-from app.tenant.agents.services.api_key_crypto import generate_agent_api_key_secret, hash_agent_api_key
+from miles_common.exceptions import ForbiddenError, UnauthorizedError
+from miles_core.tenant import TenantContext
+from miles_portal.tenant.agents.deps_api_auth import _ctx_from_api_key
+from miles_portal.tenant.agents.services.api_key_crypto import generate_agent_api_key_secret, hash_agent_api_key
 
 
 def test_generate_agent_api_key_secret_format():
@@ -37,7 +37,7 @@ async def test_ctx_from_api_key_agent_mismatch():
     row.created_by = uuid4()
     db = AsyncMock()
     with patch(
-        "app.tenant.agents.deps_api_auth.AgentApiKeyRepository.get_by_hash",
+        "miles_portal.tenant.agents.deps_api_auth.AgentApiKeyRepository.get_by_hash",
         new_callable=AsyncMock,
         return_value=row,
     ):
@@ -54,7 +54,7 @@ async def test_ctx_from_api_key_revoked():
     row.agent_id = agent_id
     db = AsyncMock()
     with patch(
-        "app.tenant.agents.deps_api_auth.AgentApiKeyRepository.get_by_hash",
+        "miles_portal.tenant.agents.deps_api_auth.AgentApiKeyRepository.get_by_hash",
         new_callable=AsyncMock,
         return_value=row,
     ):
@@ -85,12 +85,12 @@ async def test_ctx_from_api_key_success():
     db.execute = AsyncMock(return_value=result)
     with (
         patch(
-            "app.tenant.agents.deps_api_auth.AgentApiKeyRepository.get_by_hash",
+            "miles_portal.tenant.agents.deps_api_auth.AgentApiKeyRepository.get_by_hash",
             new_callable=AsyncMock,
             return_value=row,
         ),
         patch(
-            "app.tenant.agents.deps_api_auth.AgentApiKeyRepository.touch_last_used",
+            "miles_portal.tenant.agents.deps_api_auth.AgentApiKeyRepository.touch_last_used",
             new_callable=AsyncMock,
         ),
     ):

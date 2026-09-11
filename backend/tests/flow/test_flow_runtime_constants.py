@@ -1,14 +1,14 @@
 """flow_runtime 画布节点与 LangGraph 评分常量一致性。"""
 
-from app.flow_runtime.constants import (
+from miles_ai.flow_runtime.constants import (
     CANVAS_NODE_TYPES,
     CONDITIONAL_NODE_TYPES,
     CanvasNodeType,
 )
-from app.flow_runtime.nodes.registry import NODE_REGISTRY
-from app.integrations.langgraph import constants as lg_constants
-from app.integrations.langgraph.constants import GRADE_BRANCH_HANDLES
-from app.tenant.compliance.constants import COMPLIANCE_SCAN_MODULES
+from miles_ai.flow_runtime.nodes.registry import NODE_REGISTRY
+from miles_ai.integrations.langgraph import constants as lg_constants
+from miles_ai.integrations.langgraph.constants import GRADE_BRANCH_HANDLES
+from miles_portal.tenant.compliance.constants import COMPLIANCE_SCAN_MODULES
 
 
 def test_node_registry_matches_canvas_node_types():
@@ -39,6 +39,6 @@ def test_grade_branch_handles_match_relevance_constants():
 
 
 def test_compliance_scan_modules_cover_meta_options():
-    from app.tenant.compliance.meta import SCAN_MODULE_OPTIONS
+    from miles_portal.tenant.compliance.meta import SCAN_MODULE_OPTIONS
 
     assert {v for v, _, _ in SCAN_MODULE_OPTIONS} == COMPLIANCE_SCAN_MODULES

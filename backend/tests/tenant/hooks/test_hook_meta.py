@@ -1,6 +1,6 @@
 """钩子元数据 API。"""
 
-from app.tenant.hooks.meta import hook_meta_dict
+from miles_portal.tenant.hooks.meta import hook_meta_dict
 
 
 def test_hook_meta_dict_covers_enums():

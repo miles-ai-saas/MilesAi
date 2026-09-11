@@ -4,7 +4,7 @@
 覆盖 ``rag_flow.json`` 模板可编译、内置 RAG_GRAPH 拓扑序与并行层诊断。
 """
 
-from app.integrations.langgraph.compiler import can_compile_flow_graph, validate_graph_for_compile
+from miles_ai.integrations.langgraph.compiler import can_compile_flow_graph, validate_graph_for_compile
 
 RAG_GRAPH = {
     "nodes": [
@@ -27,9 +27,9 @@ RAG_GRAPH = {
 def test_rag_template_compilable():
     import json
 
-    from tests.paths import BACKEND_ROOT
+    from tests.paths import MILES_AI
 
-    tpl_path = BACKEND_ROOT / "app/flow_runtime/templates/rag_flow.json"
+    tpl_path = MILES_AI / "flow_runtime/templates/rag_flow.json"
     graph = json.loads(tpl_path.read_text())
     assert can_compile_flow_graph(graph)
 

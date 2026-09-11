@@ -1,7 +1,7 @@
 """异步生成任务模型与策略。"""
 
-from app.integrations.generative.jobs.video_params import build_video_job_params
-from app.models.model.generative_job import GenerativeJobStatus
+from miles_ai.integrations.generative.jobs.video_params import build_video_job_params
+from miles_core.models.model.generative_job import GenerativeJobStatus
 
 
 def test_build_video_job_params():

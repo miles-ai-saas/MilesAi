@@ -2,9 +2,9 @@
 
 import pytest
 
-from app.infra.storage import S3CompatibleObjectStorage, get_object_storage
-from app.infra.vector_store import WeaviateVectorStore
-from app.infra.vector_store.pgvector import PgVectorStore
+from miles_core.infra.storage import S3CompatibleObjectStorage, get_object_storage
+from miles_core.infra.vector_store import WeaviateVectorStore
+from miles_core.infra.vector_store.pgvector import PgVectorStore
 
 
 def test_object_storage_default_s3():
@@ -13,12 +13,12 @@ def test_object_storage_default_s3():
 
 
 def test_vector_store_default_weaviate(monkeypatch):
-    from app.core.config import Settings
-    from app.infra.vector_store import get_vector_store as gvs
+    from miles_core.config import Settings
+    from miles_core.infra.vector_store import get_vector_store as gvs
 
     gvs.cache_clear()
     monkeypatch.setattr(
-        "app.infra.vector_store.factory.get_settings",
+        "miles_core.infra.vector_store.factory.get_settings",
         lambda: Settings(vector_store_backend="weaviate"),
     )
     store = gvs()
@@ -27,12 +27,12 @@ def test_vector_store_default_weaviate(monkeypatch):
 
 
 def test_vector_store_pgvector_factory(monkeypatch):
-    from app.core.config import Settings
-    from app.infra.vector_store import get_vector_store as gvs
+    from miles_core.config import Settings
+    from miles_core.infra.vector_store import get_vector_store as gvs
 
     gvs.cache_clear()
     monkeypatch.setattr(
-        "app.infra.vector_store.factory.get_settings",
+        "miles_core.infra.vector_store.factory.get_settings",
         lambda: Settings(vector_store_backend="pgvector"),
     )
     store = gvs()
@@ -43,13 +43,13 @@ def test_vector_store_pgvector_factory(monkeypatch):
 def test_vector_store_milvus_factory(monkeypatch):
     pytest.importorskip("pymilvus")
 
-    from app.core.config import Settings
-    from app.infra.vector_store import get_vector_store as gvs
-    from app.infra.vector_store.milvus import MilvusVectorStore
+    from miles_core.config import Settings
+    from miles_core.infra.vector_store import get_vector_store as gvs
+    from miles_core.infra.vector_store.milvus import MilvusVectorStore
 
     gvs.cache_clear()
     monkeypatch.setattr(
-        "app.infra.vector_store.factory.get_settings",
+        "miles_core.infra.vector_store.factory.get_settings",
         lambda: Settings(vector_store_backend="milvus"),
     )
     store = gvs()

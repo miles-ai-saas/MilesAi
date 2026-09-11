@@ -6,9 +6,9 @@ Docling 读不了 / media 认得的类型却不让上传）。此处以集合关
 
 from __future__ import annotations
 
-from app.rag.parse.backends.docling import DOCLING_EXTENSIONS
-from app.rag.parse.media import AUDIO_EXTENSIONS, IMAGE_EXTENSIONS, VIDEO_EXTENSIONS
-from app.rag.parse.upload_policy import (
+from miles_ai.rag.parse.backends.docling import DOCLING_EXTENSIONS
+from miles_ai.rag.parse.media import AUDIO_EXTENSIONS, IMAGE_EXTENSIONS, VIDEO_EXTENSIONS
+from miles_ai.rag.parse.upload_policy import (
     KB_ALLOWED_EXTENSIONS,
     KB_ALLOWED_MIMES,
     OFFICE_EXTENSIONS,

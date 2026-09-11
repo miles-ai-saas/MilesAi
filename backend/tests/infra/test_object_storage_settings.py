@@ -1,6 +1,6 @@
 """对象存储配置 OBJECT_STORAGE_*。"""
 
-from app.core.config import Settings
+from miles_core.config import Settings
 
 
 def test_object_storage_env(monkeypatch):

@@ -3,8 +3,8 @@
 from unittest.mock import MagicMock
 from uuid import uuid4
 
-from app.models.kb import Document, DocumentStatus
-from app.tenant.kb.services.ingest_failure import persist_document_ingest_failure
+from miles_core.models.kb import Document, DocumentStatus
+from miles_portal.tenant.kb.services.ingest_failure import persist_document_ingest_failure
 
 
 def test_persist_document_ingest_failure_commits_embed_failed():

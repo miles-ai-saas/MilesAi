@@ -4,8 +4,8 @@ from uuid import uuid4
 
 import pytest
 
-from app.admin.app_sys.deps import AdminContext, require_admin_role
-from app.common.exceptions import BadRequestError, ForbiddenError
+from miles_admin.app_sys.deps import AdminContext, require_admin_role
+from miles_common.exceptions import BadRequestError, ForbiddenError
 
 
 @pytest.mark.asyncio
@@ -32,7 +32,7 @@ async def test_require_admin_role_denies_other_roles():
 
 @pytest.mark.asyncio
 async def test_admin_management_validate_role():
-    from app.admin.app_ops.services.admins import AdminManagementService
+    from miles_admin.app_ops.services.admins import AdminManagementService
 
     svc = AdminManagementService(db=None)  # type: ignore[arg-type]
     with pytest.raises(BadRequestError):

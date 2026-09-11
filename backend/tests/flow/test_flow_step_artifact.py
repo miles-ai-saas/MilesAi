@@ -1,6 +1,6 @@
 """流程 step 生成物字段。"""
 
-from app.flow_runtime.step_record import build_flow_node_step
+from miles_ai.flow_runtime.step_record import build_flow_node_step
 
 
 def test_build_flow_node_step_image():

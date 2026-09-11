@@ -5,9 +5,9 @@ from uuid import uuid4
 
 import pytest
 
-from app.integrations.langgraph.graphs.rag_qa import fallback, generate
-from app.integrations.langgraph.runner import run_rag_workflow
-from app.rag.generate.answer import rag_answer
+from miles_ai.integrations.langgraph.graphs.rag_qa import fallback, generate
+from miles_ai.integrations.langgraph.runner import run_rag_workflow
+from miles_ai.rag.generate.answer import rag_answer
 from tests.infra.test_litellm_adapter import _model
 
 
@@ -27,12 +27,12 @@ async def test_rag_answer_forwards_on_delta(monkeypatch):
 
     with (
         patch(
-            "app.rag.generate.answer.retrieve_hits",
+            "miles_ai.rag.generate.answer.retrieve_hits",
             new_callable=AsyncMock,
             return_value=[],
         ),
         patch(
-            "app.rag.generate.answer.ainvoke_chat",
+            "miles_ai.rag.generate.answer.ainvoke_chat",
             new_callable=AsyncMock,
             side_effect=fake_ainvoke,
         ),
@@ -67,7 +67,7 @@ async def test_run_rag_workflow_forwards_on_delta_to_config():
     )
 
     with patch(
-        "app.integrations.langgraph.runner.get_compiled_rag_graph",
+        "miles_ai.integrations.langgraph.runner.get_compiled_rag_graph",
         return_value=mock_graph,
     ):
         await run_rag_workflow(
@@ -104,7 +104,7 @@ async def test_generate_node_forwards_on_delta():
     config = {"configurable": {"model": model, "on_delta": delta, "usage_sink": usage_sink}}
 
     with patch(
-        "app.integrations.langgraph.graphs.rag_qa.ainvoke_chat",
+        "miles_ai.integrations.langgraph.graphs.rag_qa.ainvoke_chat",
         new_callable=AsyncMock,
         return_value="答案",
     ) as mock_chat:
@@ -135,7 +135,7 @@ async def test_fallback_node_forwards_on_delta():
     config = {"configurable": {"model": model, "on_delta": delta, "usage_sink": usage_sink}}
 
     with patch(
-        "app.integrations.langgraph.graphs.rag_qa.ainvoke_chat",
+        "miles_ai.integrations.langgraph.graphs.rag_qa.ainvoke_chat",
         new_callable=AsyncMock,
         return_value="兜底",
     ) as mock_chat:
@@ -149,7 +149,7 @@ async def test_fallback_node_forwards_on_delta():
 @pytest.mark.asyncio
 async def test_llm_grade_does_not_forward_on_delta():
     """grade 节点 LLM 评判不应透传 on_delta。"""
-    from app.integrations.langgraph.graphs.rag_qa import grade_documents
+    from miles_ai.integrations.langgraph.graphs.rag_qa import grade_documents
 
     tenant_id = uuid4()
     model = _model()
@@ -168,7 +168,7 @@ async def test_llm_grade_does_not_forward_on_delta():
     config = {"configurable": {"model": model, "on_delta": delta}}
 
     with patch(
-        "app.integrations.langgraph.graphs.rag_qa.llm_grade_relevance",
+        "miles_ai.integrations.langgraph.graphs.rag_qa.llm_grade_relevance",
         new_callable=AsyncMock,
         return_value=("good", "ok"),
     ) as mock_grade:

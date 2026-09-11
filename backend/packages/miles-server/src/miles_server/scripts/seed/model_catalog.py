@@ -1,0 +1,519 @@
+"""内置大模型目录（深度求索 / 豆包 / 通义千问）。
+
+数据来源（2026-05 核对）：
+- DeepSeek: https://api-docs.deepseek.com/quick_start/pricing
+- 通义千问: https://help.aliyun.com/zh/model-studio/compatibility-of-openai-with-dashscope
+- 豆包方舟: https://www.volcengine.com/docs/82379/1099475
+"""
+
+from __future__ import annotations
+
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from miles_common.constants.model_extra import EXTRA_INVOKE_MODE
+from miles_ai.integrations.embeddings.constants import (
+    EXTRA_EMBEDDING_BATCH_SIZE,
+    EXTRA_EMBEDDING_DIMENSION,
+    INVOKE_MODE_CLIP,
+    INVOKE_MODE_LOCAL,
+    INVOKE_MODE_OPENAI_COMPATIBLE,
+)
+from miles_ai.integrations.rerank.constants import (
+    EXTRA_RERANK_REQUEST_FORMAT,
+    INVOKE_MODE_DASHSCOPE,
+)
+from miles_core.models.model import ModelConfig
+from miles_core.models.model.catalog import (
+    DEFAULT_API_BASES,
+    ModelCapabilityType,
+    ModelPublishStatus,
+    ModelVendor,
+)
+
+# model_code 与 API model_name 一致，便于租户直接填写调用
+BUILTIN_CATALOG: list[dict] = [
+    # --- 向量化（知识库绑定）---
+    {
+        "model_code": "bge-base-zh-v1.5",
+        "name": "本地 BGE 中文",
+        "vendor": ModelVendor.OTHER.value,
+        "provider": "local",
+        "model_name": "BAAI/bge-base-zh-v1.5",
+        "model_type": ModelCapabilityType.EMBEDDING.value,
+        "description": "离线 Sentence-Transformers，无需 API Key，适合私有化默认知识库。",
+        "context_window": "—",
+        "sort_order": 1,
+        "is_featured": True,
+        "extra": {
+            EXTRA_INVOKE_MODE: INVOKE_MODE_LOCAL,
+            EXTRA_EMBEDDING_DIMENSION: 768,
+        },
+    },
+    {
+        "model_code": "qwen-text-embedding-v4",
+        "name": "通义 text-embedding-v4",
+        "vendor": ModelVendor.QWEN.value,
+        "provider": "qwen",
+        "model_name": "text-embedding-v4",
+        "model_type": ModelCapabilityType.EMBEDDING.value,
+        "description": "阿里云 DashScope 文本向量（Qwen3-Embedding），OpenAI 兼容接口；需在模型页配置 API Key。",
+        "context_window": "—",
+        "sort_order": 2,
+        "is_featured": True,
+        "extra": {
+            EXTRA_INVOKE_MODE: INVOKE_MODE_OPENAI_COMPATIBLE,
+            EXTRA_EMBEDDING_DIMENSION: 1024,
+            EXTRA_EMBEDDING_BATCH_SIZE: 10,
+        },
+    },
+    {
+        "model_code": "clip-vit-b-32",
+        "name": "本地 CLIP ViT-B-32",
+        "vendor": ModelVendor.OTHER.value,
+        "provider": "local",
+        "model_name": "clip-ViT-B-32",
+        "model_type": ModelCapabilityType.EMBEDDING.value,
+        "description": "视觉相似度检索（以图搜图/文本搜图）；图片入库时写入 CLIP 向量。",
+        "context_window": "—",
+        "sort_order": 3,
+        "is_featured": False,
+        "extra": {
+            EXTRA_INVOKE_MODE: INVOKE_MODE_CLIP,
+            EXTRA_EMBEDDING_DIMENSION: 512,
+        },
+    },
+    # --- 重排序（RAG 精排，模型页配置 API Key 后可用于测试）---
+    {
+        "model_code": "qwen3-rerank",
+        "name": "通义 qwen3-rerank",
+        "vendor": ModelVendor.QWEN.value,
+        "provider": "qwen",
+        "model_name": "qwen3-rerank",
+        "model_type": ModelCapabilityType.RERANK.value,
+        "description": "DashScope Qwen3 文本重排；使用 compatible-api/v1/reranks（flat 请求体）。",
+        "context_window": "—",
+        "sort_order": 3,
+        "is_featured": True,
+        "api_base": "https://dashscope.aliyuncs.com/compatible-api/v1",
+        "extra": {
+            EXTRA_INVOKE_MODE: INVOKE_MODE_OPENAI_COMPATIBLE,
+        },
+    },
+    {
+        "model_code": "gte-rerank-v2",
+        "name": "通义 gte-rerank-v2",
+        "vendor": ModelVendor.QWEN.value,
+        "provider": "qwen",
+        "model_name": "gte-rerank-v2",
+        "model_type": ModelCapabilityType.RERANK.value,
+        "description": "DashScope 经典文本重排模型，nested 请求格式；适合多语言语义检索。",
+        "context_window": "—",
+        "sort_order": 4,
+        "is_featured": False,
+        "api_base": "https://dashscope.aliyuncs.com/api/v1/services/rerank/text-rerank/text-rerank",
+        "extra": {
+            EXTRA_INVOKE_MODE: INVOKE_MODE_DASHSCOPE,
+            EXTRA_RERANK_REQUEST_FORMAT: "nested",
+        },
+    },
+    # --- 深度求索 ---
+    {
+        "model_code": "deepseek-v4-pro",
+        "name": "DeepSeek-V4-Pro",
+        "vendor": ModelVendor.DEEPSEEK.value,
+        "provider": "deepseek",
+        "model_name": "deepseek-v4-pro",
+        "model_type": ModelCapabilityType.LLM.value,
+        "description": "V4 旗舰（1.6T MoE），1M 上下文，支持思考模式，适合复杂推理与编程。",
+        "context_window": "1M",
+        "badge": "latest",
+        "sort_order": 10,
+        "is_featured": True,
+    },
+    {
+        "model_code": "deepseek-v4-flash",
+        "name": "DeepSeek-V4-Flash",
+        "vendor": ModelVendor.DEEPSEEK.value,
+        "provider": "deepseek",
+        "model_name": "deepseek-v4-flash",
+        "model_type": ModelCapabilityType.LLM.value,
+        "description": "V4 高速版（284B MoE），1M 上下文，默认对话与高性价比场景。",
+        "context_window": "1M",
+        "sort_order": 11,
+        "is_featured": True,
+    },
+    # --- 豆包（火山方舟 OpenAI 兼容，model 填模型 ID 或接入点 ep-xxx）---
+    {
+        "model_code": "doubao-seed-1-6-251015",
+        "name": "豆包-Seed-1.6",
+        "vendor": ModelVendor.DOUBAO.value,
+        "provider": "doubao",
+        "model_name": "doubao-seed-1-6-251015",
+        "model_type": ModelCapabilityType.LLM.value,
+        "description": "豆包 1.6 综合模型，256K 上下文，支持思考/非思考模式。",
+        "context_window": "256K",
+        "badge": "latest",
+        "sort_order": 20,
+        "is_featured": True,
+    },
+    {
+        "model_code": "doubao-seed-1-6-thinking-251015",
+        "name": "豆包-Seed-1.6-Thinking",
+        "vendor": ModelVendor.DOUBAO.value,
+        "provider": "doubao",
+        "model_name": "doubao-seed-1-6-thinking-251015",
+        "model_type": ModelCapabilityType.REASONING.value,
+        "description": "豆包 1.6 深度思考版，适合数学、推理与复杂规划。",
+        "context_window": "256K",
+        "sort_order": 21,
+        "is_featured": True,
+    },
+    {
+        "model_code": "doubao-seed-1-6-flash-251015",
+        "name": "豆包-Seed-1.6-Flash",
+        "vendor": ModelVendor.DOUBAO.value,
+        "provider": "doubao",
+        "model_name": "doubao-seed-1-6-flash-251015",
+        "model_type": ModelCapabilityType.LLM.value,
+        "description": "豆包 1.6 超低延迟版，适合实时对话。",
+        "context_window": "256K",
+        "sort_order": 22,
+    },
+    {
+        "model_code": "doubao-seed-1-6-lite-251015",
+        "name": "豆包-Seed-1.6-Lite",
+        "vendor": ModelVendor.DOUBAO.value,
+        "provider": "doubao",
+        "model_name": "doubao-seed-1-6-lite-251015",
+        "model_type": ModelCapabilityType.LLM.value,
+        "description": "豆包 1.6 轻量版，性价比高。",
+        "context_window": "256K",
+        "sort_order": 23,
+    },
+    {
+        "model_code": "doubao-pro-32k",
+        "name": "豆包-Pro-32k",
+        "vendor": ModelVendor.DOUBAO.value,
+        "provider": "doubao",
+        "model_name": "doubao-pro-32k",
+        "model_type": ModelCapabilityType.LLM.value,
+        "description": "经典 Pro 系列（32K），火山方舟需创建对应推理接入点。",
+        "context_window": "32K",
+        "sort_order": 24,
+    },
+    {
+        "model_code": "doubao-lite-32k",
+        "name": "豆包-Lite-32k",
+        "vendor": ModelVendor.DOUBAO.value,
+        "provider": "doubao",
+        "model_name": "doubao-lite-32k",
+        "model_type": ModelCapabilityType.LLM.value,
+        "description": "经典 Lite 系列（32K），低成本对话。",
+        "context_window": "32K",
+        "sort_order": 25,
+    },
+    {
+        "model_code": "doubao-1-5-vision-pro-32k-250115",
+        "name": "豆包-1.5-Vision-Pro",
+        "vendor": ModelVendor.DOUBAO.value,
+        "provider": "doubao",
+        "model_name": "doubao-1-5-vision-pro-32k-250115",
+        "model_type": ModelCapabilityType.VISION.value,
+        "description": "豆包多模态视觉理解，图文对话与图像分析。",
+        "context_window": "32K",
+        "sort_order": 26,
+        "is_featured": True,
+    },
+    {
+        "model_code": "doubao-seedream-4-0-250828",
+        "name": "豆包-Seedream-4.0",
+        "vendor": ModelVendor.DOUBAO.value,
+        "provider": "doubao",
+        "model_name": "doubao-seedream-4-0-250828",
+        "model_type": ModelCapabilityType.IMAGE_GEN.value,
+        "description": "豆包文生图模型 Seedream 4.0。",
+        "context_window": "—",
+        "sort_order": 27,
+    },
+    {
+        "model_code": "doubao-seededit-3-0-i2i-250628",
+        "name": "豆包-SeedEdit-3.0",
+        "vendor": ModelVendor.DOUBAO.value,
+        "provider": "doubao",
+        "model_name": "doubao-seededit-3-0-i2i-250628",
+        "model_type": ModelCapabilityType.IMAGE_GEN.value,
+        "description": "豆包图生图 / 图像编辑。",
+        "context_window": "—",
+        "sort_order": 28,
+    },
+    # --- 通义千问 ---
+    {
+        "model_code": "qwen3-max",
+        "name": "通义千问3-Max",
+        "vendor": ModelVendor.QWEN.value,
+        "provider": "qwen",
+        "model_name": "qwen3-max",
+        "model_type": ModelCapabilityType.LLM.value,
+        "description": "千问 Max 系列旗舰，复杂任务与 Agent 场景。",
+        "context_window": "256K",
+        "badge": "latest",
+        "sort_order": 40,
+        "is_featured": True,
+    },
+    {
+        "model_code": "qwen3.5-plus",
+        "name": "通义千问3.5-Plus",
+        "vendor": ModelVendor.QWEN.value,
+        "provider": "qwen",
+        "model_name": "qwen3.5-plus",
+        "model_type": ModelCapabilityType.LLM.value,
+        "description": "千问 3.5 Plus，均衡能力，OpenAI 兼容接口推荐默认选型。",
+        "context_window": "128K",
+        "sort_order": 41,
+        "is_featured": True,
+    },
+    {
+        "model_code": "qwen3.5-flash",
+        "name": "通义千问3.5-Flash",
+        "vendor": ModelVendor.QWEN.value,
+        "provider": "qwen",
+        "model_name": "qwen3.5-flash",
+        "model_type": ModelCapabilityType.LLM.value,
+        "description": "千问 3.5 Flash，低延迟高吞吐。",
+        "context_window": "128K",
+        "sort_order": 42,
+    },
+    {
+        "model_code": "qwen-plus",
+        "name": "通义千问-Plus",
+        "vendor": ModelVendor.QWEN.value,
+        "provider": "qwen",
+        "model_name": "qwen-plus",
+        "model_type": ModelCapabilityType.LLM.value,
+        "description": "Plus 稳定版（指向最新快照），通用对话与工具调用。",
+        "context_window": "128K",
+        "sort_order": 43,
+    },
+    {
+        "model_code": "qwen-turbo",
+        "name": "通义千问-Turbo",
+        "vendor": ModelVendor.QWEN.value,
+        "provider": "qwen",
+        "model_name": "qwen-turbo",
+        "model_type": ModelCapabilityType.LLM.value,
+        "description": "Turbo 高速版，适合大规模并发。",
+        "context_window": "128K",
+        "sort_order": 44,
+    },
+    {
+        "model_code": "qwen3-235b-a22b-instruct-2507",
+        "name": "通义千问3-235B-Instruct",
+        "vendor": ModelVendor.QWEN.value,
+        "provider": "qwen",
+        "model_name": "qwen3-235b-a22b-instruct-2507",
+        "model_type": ModelCapabilityType.LLM.value,
+        "description": "千问 3 开源级大规模 Instruct 模型。",
+        "context_window": "128K",
+        "sort_order": 45,
+    },
+    {
+        "model_code": "qwen3-235b-a22b-thinking-2507",
+        "name": "通义千问3-235B-Thinking",
+        "vendor": ModelVendor.QWEN.value,
+        "provider": "qwen",
+        "model_name": "qwen3-235b-a22b-thinking-2507",
+        "model_type": ModelCapabilityType.REASONING.value,
+        "description": "千问 3 235B 思考链推理模型。",
+        "context_window": "128K",
+        "sort_order": 46,
+    },
+    {
+        "model_code": "qwen-vl-max",
+        "name": "通义千问-VL-Max",
+        "vendor": ModelVendor.QWEN.value,
+        "provider": "qwen",
+        "model_name": "qwen-vl-max",
+        "model_type": ModelCapabilityType.VISION.value,
+        "description": "千问视觉理解旗舰，图文、文档、图表解析。",
+        "context_window": "128K",
+        "sort_order": 47,
+        "is_featured": True,
+    },
+    {
+        "model_code": "qwen-vl-plus",
+        "name": "通义千问-VL-Plus",
+        "vendor": ModelVendor.QWEN.value,
+        "provider": "qwen",
+        "model_name": "qwen-vl-plus",
+        "model_type": ModelCapabilityType.VISION.value,
+        "description": "千问视觉理解增强版，性价比视觉任务。",
+        "context_window": "128K",
+        "sort_order": 48,
+    },
+    {
+        "model_code": "qwen3-coder-plus",
+        "name": "通义千问3-Coder-Plus",
+        "vendor": ModelVendor.QWEN.value,
+        "provider": "qwen",
+        "model_name": "qwen3-coder-plus",
+        "model_type": ModelCapabilityType.LLM.value,
+        "description": "面向代码生成与 Agentic 编程优化。",
+        "context_window": "128K",
+        "sort_order": 49,
+    },
+    {
+        "model_code": "paraformer-v2",
+        "name": "通义-Paraformer-v2",
+        "vendor": ModelVendor.QWEN.value,
+        "provider": "qwen",
+        "model_name": "paraformer-v2",
+        "model_type": ModelCapabilityType.ASR.value,
+        "description": "语音识别（非实时/录音文件），中英等多语种。",
+        "context_window": "—",
+        "sort_order": 50,
+    },
+    {
+        "model_code": "paraformer-realtime-v2",
+        "name": "通义-Paraformer-实时-v2",
+        "vendor": ModelVendor.QWEN.value,
+        "provider": "qwen",
+        "model_name": "paraformer-realtime-v2",
+        "model_type": ModelCapabilityType.ASR.value,
+        "description": "实时语音识别 WebSocket/SDK。",
+        "context_window": "—",
+        "sort_order": 51,
+    },
+    {
+        "model_code": "cosyvoice-v3",
+        "name": "通义-CosyVoice-v3",
+        "vendor": ModelVendor.QWEN.value,
+        "provider": "qwen",
+        "model_name": "cosyvoice-v3",
+        "model_type": ModelCapabilityType.TTS.value,
+        "description": "语音合成，多音色与流式输出。",
+        "context_window": "—",
+        "sort_order": 52,
+    },
+    {
+        "model_code": "wan2.2-t2i-flash",
+        "name": "通义万相2.2-文生图-Flash",
+        "vendor": ModelVendor.QWEN.value,
+        "provider": "qwen",
+        "model_name": "wan2.2-t2i-flash",
+        "model_type": ModelCapabilityType.IMAGE_GEN.value,
+        "description": "万相文生图快速版（异步任务 API）。",
+        "context_window": "—",
+        "sort_order": 53,
+    },
+    {
+        "model_code": "wan2.2-s2v",
+        "name": "通义万相2.2-数字人",
+        "vendor": ModelVendor.QWEN.value,
+        "provider": "qwen",
+        "model_name": "wan2.2-s2v",
+        "model_type": ModelCapabilityType.VIDEO_GEN.value,
+        "description": "图+音频生成对口型说话/唱歌视频（异步 API）。",
+        "context_window": "—",
+        "sort_order": 54,
+    },
+    {
+        "model_code": "wan2.2-i2v-plus",
+        "name": "通义万相2.2-图生视频",
+        "vendor": ModelVendor.QWEN.value,
+        "provider": "qwen",
+        "model_name": "wan2.2-i2v-plus",
+        "model_type": ModelCapabilityType.VIDEO_GEN.value,
+        "description": "图生视频增强版（异步 API）。",
+        "context_window": "—",
+        "sort_order": 55,
+    },
+]
+
+_RETIRED_BUILTIN_MODEL_CODES = frozenset({"deepseek-reasoner", "deepseek-chat"})
+_RETIRED_MODEL_DESCRIPTION = "已退役；请迁移至 deepseek-v4-flash（对话/思考）或 deepseek-v4-pro（复杂推理）。"
+
+_UPDATABLE = (
+    "name",
+    "provider",
+    "model_name",
+    "model_type",
+    "description",
+    "context_window",
+    "publish_status",
+    "is_featured",
+    "badge",
+    "sort_order",
+    "api_base",
+    "is_active",
+)
+
+
+async def _deprecate_retired_catalog_models(session: AsyncSession) -> int:
+    """将已移出种子的内置模型标记为 deprecated（保留行以免租户引用断裂）。"""
+    rows = (
+        (
+            await session.execute(
+                select(ModelConfig).where(
+                    ModelConfig.tenant_id.is_(None),
+                    ModelConfig.model_code.in_(_RETIRED_BUILTIN_MODEL_CODES),
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    for row in rows:
+        row.publish_status = ModelPublishStatus.DEPRECATED.value
+        row.is_active = False
+        row.is_featured = False
+        row.description = _RETIRED_MODEL_DESCRIPTION
+    return len(rows)
+
+
+async def seed_model_catalog(session: AsyncSession) -> None:
+    """插入或更新内置目录（按 model_code 幂等）。"""
+    for item in BUILTIN_CATALOG:
+        code = item["model_code"]
+        existing = (
+            await session.execute(
+                select(ModelConfig).where(
+                    ModelConfig.tenant_id.is_(None),
+                    ModelConfig.model_code == code,
+                )
+            )
+        ).scalar_one_or_none()
+        vendor = item["vendor"]
+        values = {
+            "name": item["name"],
+            "vendor": vendor,
+            "provider": item["provider"],
+            "model_name": item["model_name"],
+            "model_type": item["model_type"],
+            "description": item.get("description"),
+            "context_window": item.get("context_window"),
+            "publish_status": ModelPublishStatus.PUBLISHED.value,
+            "is_featured": item.get("is_featured", False),
+            "badge": item.get("badge"),
+            "sort_order": item.get("sort_order", 0),
+            "api_base": item.get("api_base") or DEFAULT_API_BASES.get(vendor),
+            "is_active": True,
+        }
+        if existing:
+            for key in _UPDATABLE:
+                setattr(existing, key, values[key])
+            if item.get("extra"):
+                existing.extra = item["extra"]
+            continue
+        session.add(
+            ModelConfig(
+                tenant_id=None,
+                model_code=code,
+                capabilities=[],
+                extra=item.get("extra") or {},
+                **values,
+            )
+        )
+    retired = await _deprecate_retired_catalog_models(session)
+    if retired:
+        print(f">>> model catalog: deprecated {retired} retired builtin model(s)")

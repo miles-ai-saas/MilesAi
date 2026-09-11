@@ -1,11 +1,11 @@
 """拆分后模块 import smoke：KB 服务与 LangGraph 编译器。"""
 
-from app.integrations.langgraph.compiler import (
+from miles_ai.integrations.langgraph.compiler import (
     FlowCompileReport,
     build_canvas_graph,
     validate_graph_for_compile,
 )
-from app.tenant.kb.services.kb import KnowledgeBaseService
+from miles_portal.tenant.kb.services.kb import KnowledgeBaseService
 
 
 def test_kb_service_and_compiler_imports():

@@ -6,14 +6,14 @@ from uuid import uuid4
 
 import pytest
 
-from app.common.exceptions import BadRequestError
-from app.common.schemas.media import MediaRefIn
-from app.flow_runtime.context_utils import media_refs_from_run
-from app.flow_runtime.nodes.llm_nodes import llm_call
-from app.flow_runtime.types import RunContext
-from app.integrations.langgraph.compiler import run_compiled_canvas
-from app.models.model import ModelConfig
-from app.tenant.flows.schemas.flow import FlowRunRequest
+from miles_common.exceptions import BadRequestError
+from miles_common.schemas.media import MediaRefIn
+from miles_ai.flow_runtime.context_utils import media_refs_from_run
+from miles_ai.flow_runtime.nodes.llm_nodes import llm_call
+from miles_ai.flow_runtime.types import RunContext
+from miles_ai.integrations.langgraph.compiler import run_compiled_canvas
+from miles_core.models.model import ModelConfig
+from miles_portal.tenant.flows.schemas.flow import FlowRunRequest
 
 
 def test_flow_run_request_media_only():
@@ -81,12 +81,12 @@ async def test_llm_call_with_media_builds_multimodal_message():
 
     with (
         patch(
-            "app.flow_runtime.nodes.llm_nodes.resolve_media_refs",
+            "miles_ai.flow_runtime.nodes.llm_nodes.resolve_media_refs",
             new_callable=AsyncMock,
             return_value=mock_msg["content"][1:],
         ),
         patch(
-            "app.flow_runtime.nodes.llm_nodes.ainvoke_chat",
+            "miles_ai.flow_runtime.nodes.llm_nodes.ainvoke_chat",
             new_callable=AsyncMock,
             return_value="ok",
         ) as mock_chat,
@@ -200,7 +200,7 @@ async def test_run_compiled_canvas_forwards_resolver_and_usage_sink():
     )
 
     with patch(
-        "app.flow_runtime.nodes.llm_nodes.ainvoke_chat",
+        "miles_ai.flow_runtime.nodes.llm_nodes.ainvoke_chat",
         new_callable=AsyncMock,
         return_value="ok",
     ) as mock_chat:
@@ -254,7 +254,7 @@ async def test_run_compiled_canvas_forwards_media_channel():
     )
 
     with patch(
-        "app.flow_runtime.nodes.llm_nodes.ainvoke_chat",
+        "miles_ai.flow_runtime.nodes.llm_nodes.ainvoke_chat",
         new_callable=AsyncMock,
         return_value="ok",
     ) as mock_chat:

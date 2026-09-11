@@ -5,9 +5,9 @@ from uuid import uuid4
 
 import pytest
 
-from app.common.exceptions import ForbiddenError
-from app.models.platform.tenant import Tenant
-from app.tenant.system.services.quota import assert_can_create_agent, assert_can_create_flow
+from miles_common.exceptions import ForbiddenError
+from miles_core.models.platform.tenant import Tenant
+from miles_portal.tenant.system.services.quota import assert_can_create_agent, assert_can_create_flow
 
 
 @pytest.mark.asyncio
@@ -18,7 +18,7 @@ async def test_assert_can_create_agent_raises_when_at_limit():
     db.get = AsyncMock(return_value=tenant)
 
     with patch(
-        "app.tenant.system.services.quota.count_agents",
+        "miles_portal.tenant.system.services.quota.count_agents",
         new_callable=AsyncMock,
         return_value=1,
     ):
@@ -34,7 +34,7 @@ async def test_assert_can_create_flow_raises_when_at_limit():
     db.get = AsyncMock(return_value=tenant)
 
     with patch(
-        "app.tenant.system.services.quota.count_flows",
+        "miles_portal.tenant.system.services.quota.count_flows",
         new_callable=AsyncMock,
         return_value=2,
     ):
@@ -45,7 +45,7 @@ async def test_assert_can_create_flow_raises_when_at_limit():
 def test_user_reset_password_schema_min_length():
     from pydantic import ValidationError
 
-    from app.tenant.system.schemas.user import UserBatchDeactivate, UserResetPassword
+    from miles_portal.tenant.system.schemas.user import UserBatchDeactivate, UserResetPassword
 
     with pytest.raises(ValidationError):
         UserResetPassword(password="12345")

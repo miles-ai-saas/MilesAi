@@ -28,8 +28,8 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    from app.infra.db import Base
-    from app.models.registry import load_all_models
+    from miles_core.infra.db import Base
+    from miles_server.registry import load_all_models
 
     load_all_models()
     bind = op.get_bind()
@@ -37,8 +37,8 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    from app.infra.db import Base
-    from app.models.registry import load_all_models
+    from miles_core.infra.db import Base
+    from miles_server.registry import load_all_models
 
     load_all_models()
     bind = op.get_bind()

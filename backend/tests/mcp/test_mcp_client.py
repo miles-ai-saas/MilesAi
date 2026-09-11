@@ -1,10 +1,10 @@
 import pytest
 
-from app.common.exceptions import BadRequestError
-from app.exec.mcp.rpc import normalize_tool_call_result
-from app.exec.mcp.tools import normalize_tools
-from app.tenant.mcp.sse_transport import _assert_same_origin, _json_from_sse_data
-from app.tenant.mcp.security import validate_mcp_endpoint_url
+from miles_common.exceptions import BadRequestError
+from miles_exec.mcp.rpc import normalize_tool_call_result
+from miles_exec.mcp.tools import normalize_tools
+from miles_portal.tenant.mcp.sse_transport import _assert_same_origin, _json_from_sse_data
+from miles_portal.tenant.mcp.security import validate_mcp_endpoint_url
 
 
 def test_normalize_tools_from_list():
@@ -24,7 +24,7 @@ def test_normalize_tool_call_result_text():
 
 def test_validate_rejects_localhost_when_disabled(monkeypatch):
     monkeypatch.setenv("MCP_ALLOW_PRIVATE_HOSTS", "false")
-    from app.core.config import get_settings
+    from miles_core.config import get_settings
 
     get_settings.cache_clear()
     try:

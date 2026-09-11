@@ -2,7 +2,7 @@
 
 import pytest
 
-from app.common.cron import compute_next_run, describe_cron, validate_cron
+from miles_common.cron import compute_next_run, describe_cron, validate_cron
 
 
 def test_validate_cron_accepts_five_part_expr():

@@ -5,9 +5,9 @@ from uuid import uuid4
 
 import pytest
 
-from app.common.exceptions import BadRequestError
-from app.admin.app_ops.services.tenant import AdminTenantService
-from app.models.platform.tenant import Tenant
+from miles_common.exceptions import BadRequestError
+from miles_admin.app_ops.services.tenant import AdminTenantService
+from miles_core.models.platform.tenant import Tenant
 
 
 @pytest.mark.asyncio

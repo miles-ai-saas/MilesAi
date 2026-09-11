@@ -3,7 +3,7 @@
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
-from app.rag.pipeline.ingest import IngestInput, run_ingest_pipeline
+from miles_ai.rag.pipeline.ingest import IngestInput, run_ingest_pipeline
 
 
 def test_run_ingest_pipeline_parses_and_chunks():
@@ -27,7 +27,7 @@ def test_run_ingest_pipeline_parses_and_chunks():
         assert bucket == "bkt"
         return b"hello world " * 20
 
-    with patch("app.rag.pipeline.ingest.upsert_chunk_vector", return_value="vec-1"):
+    with patch("miles_ai.rag.pipeline.ingest.upsert_chunk_vector", return_value="vec-1"):
         result = run_ingest_pipeline(
             db,
             doc=doc,

@@ -1,39 +1,26 @@
-"""L3 反依赖守卫：已收敛模块源码中不得出现 ``app.tenant``。
+"""多包布局守卫：L3 叶子包不得反向依赖上层装配/门户包。
 
-对应 [layering.md](../../docs/architecture/layering.md) 的 engine DI 收敛记录：
-``integrations`` 与 ``flow_runtime`` 两整棵子树（含 ``integrations/deepagents``、
-``flow_runtime/subflow``、``flow_runtime/nodes/compliance_nodes.py`` 等具体模块）
-以及 ``models/compliance``、``models/media`` 均已对 tenant 域清零；
-这里以源码扫描（覆盖全部 ``integrations/**`` 与 ``flow_runtime/**``）防止回归。
-已接入 CI 门禁（``.github/workflows/lint.yml`` 的 ``L3 reverse-dependency guard`` 步骤）。
+Phase 2 把 ``app/`` 拆成 10 个 uv workspace 包后，原有的单包源码扫描改为按包扫描：
+
+- ``miles-ai``（L3 引擎层）不得 import ``miles_portal``；
+- ``miles-server``（装配层）不得含 ``views/`` 目录，也不得直接构造 ``APIRouter(``
+  （路由装配应下沉到各域视图包）。
+
+风格与原守卫一致：直接扫描源码文本（import 检查只匹配 import 语句，避免误伤
+docstring 中的说明性提及）。
 """
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
-_BACKEND_DIR = Path(__file__).resolve().parents[1]
-_APP_DIR = _BACKEND_DIR / "app"
+_PKG = Path(__file__).resolve().parents[1] / "packages"
+_MILES_AI = _PKG / "miles-ai" / "src" / "miles_ai"
+_MILES_SERVER = _PKG / "miles-server" / "src" / "miles_server"
 
-# (显示名, 相对 app/ 的路径)
-_CONVERGED: list[tuple[str, str]] = [
-    ("integrations", "integrations"),
-    ("flow_runtime", "flow_runtime"),
-    ("integrations/deepagents", "integrations/deepagents"),
-    ("flow_runtime/subflow", "flow_runtime/subflow"),
-    ("flow_runtime/nodes/compliance_nodes.py", "flow_runtime/nodes/compliance_nodes.py"),
-    ("models/compliance", "models/compliance"),
-    ("models/media", "models/media"),
-    ("integrations/generative", "integrations/generative"),
-    ("integrations/chat", "integrations/chat"),
-]
-
-# 出现任一子串即判定为 tenant 依赖（含 ``from app import tenant`` / ``import app.tenant`` 别名写法）。
-_FORBIDDEN_SUBSTRINGS: tuple[str, ...] = (
-    "app.tenant",
-    "from app import tenant",
-    "import app.tenant",
-)
+# 仅匹配真正的 import 语句（含缩进的惰性/TYPE_CHECKING import），不匹配 docstring 提及。
+_MILES_PORTAL_IMPORT_RE = re.compile(r"^\s*(?:from|import)\s+.*\bmiles_portal\b")
 
 
 def _iter_py_files(target: Path) -> list[Path]:
@@ -42,15 +29,21 @@ def _iter_py_files(target: Path) -> list[Path]:
     return sorted(p for p in target.rglob("*.py") if "__pycache__" not in p.parts)
 
 
-def test_converged_l3_modules_have_no_tenant_imports():
-    """已收敛区不得再 import app.tenant（含惰性/TYPE_CHECKING 引用）。
-
-    扫描范围覆盖全部 ``integrations/**`` 与 ``flow_runtime/**``。
-    """
+def test_multi_package_layout_guard():
+    """miles-ai 不得依赖 miles_portal；miles-server 只装配、不自建 views/router。"""
     offenders: list[str] = []
-    for label, rel in _CONVERGED:
-        for path in _iter_py_files(_APP_DIR / rel):
-            for lineno, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
-                if any(fragment in line for fragment in _FORBIDDEN_SUBSTRINGS):
-                    offenders.append(f"{label}: {path.relative_to(_BACKEND_DIR)}:{lineno}: {line.strip()}")
-    assert not offenders, "已收敛 L3 模块出现 app.tenant 引用：\n" + "\n".join(offenders)
+    for path in _iter_py_files(_MILES_AI):
+        for lineno, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
+            if _MILES_PORTAL_IMPORT_RE.match(line):
+                offenders.append(f"miles-ai→portal {path.relative_to(_PKG)}:{lineno}: {line.strip()}")
+    assert not offenders, "miles-ai 出现 miles_portal import：\n" + "\n".join(offenders)
+
+    views_dirs = sorted(str(p.relative_to(_PKG)) for p in _MILES_SERVER.rglob("views") if p.is_dir())
+    assert not views_dirs, "miles-server 下不应有 views/ 目录：\n" + "\n".join(views_dirs)
+
+    offenders = []
+    for path in _iter_py_files(_MILES_SERVER):
+        for lineno, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
+            if "APIRouter(" in line:
+                offenders.append(f"{path.relative_to(_PKG)}:{lineno}: {line.strip()}")
+    assert not offenders, "miles-server 不应直接构造 APIRouter：\n" + "\n".join(offenders)

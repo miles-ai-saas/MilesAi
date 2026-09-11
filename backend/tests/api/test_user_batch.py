@@ -4,7 +4,7 @@ import pytest
 from pydantic import ValidationError
 from uuid import uuid4
 
-from app.tenant.system.schemas.user import UserBatchRequest
+from miles_portal.tenant.system.schemas.user import UserBatchRequest
 
 
 def test_batch_assign_roles_requires_role_ids():

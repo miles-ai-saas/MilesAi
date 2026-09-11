@@ -4,7 +4,7 @@ from fastapi import APIRouter
 from fastapi.testclient import TestClient
 from sqlalchemy.exc import ProgrammingError
 
-from app.apps.application import create_app
+from miles_server.apps.application import create_app
 
 
 def test_unhandled_db_error_returns_api_envelope_not_plaintext_traceback():

@@ -1,0 +1,25 @@
+"""运营端 Repository 包导出。"""
+
+from miles_admin.app_ops.repositories.audit import AuditLogRepository
+from miles_admin.app_ops.repositories.billing import (
+    BillLineItemRepository,
+    BillingPlanRepository,
+    TenantBillRepository,
+)
+from miles_admin.app_ops.repositories.risk import (
+    IpBlacklistRepository,
+    RateLimitRuleRepository,
+    RiskEventRepository,
+)
+from miles_admin.app_ops.repositories.tenant import AdminTenantRepository
+
+__all__ = [
+    "AdminTenantRepository",
+    "AuditLogRepository",
+    "BillingPlanRepository",
+    "TenantBillRepository",
+    "BillLineItemRepository",
+    "RiskEventRepository",
+    "IpBlacklistRepository",
+    "RateLimitRuleRepository",
+]

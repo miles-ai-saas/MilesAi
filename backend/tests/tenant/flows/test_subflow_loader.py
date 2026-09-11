@@ -7,8 +7,8 @@ AsyncSessionLocal/FlowRepository/resolve_subflow_graph 用假实现替换，不�
 import asyncio
 from uuid import UUID, uuid4
 
-from app.tenant.flows.services import subflow_loader as loader_mod
-from app.tenant.flows.services.subflow_loader import build_subflow_graph_loader
+from miles_portal.tenant.flows.services import subflow_loader as loader_mod
+from miles_portal.tenant.flows.services.subflow_loader import build_subflow_graph_loader
 
 
 class _FakeSession:

@@ -6,9 +6,9 @@ from uuid import uuid4
 
 import pytest
 
-from app.core.tenant import TenantContext
-from app.models.flow import Flow, FlowStatus, FlowVersion
-from app.tenant.flows.services.flow import FlowService
+from miles_core.tenant import TenantContext
+from miles_core.models.flow import Flow, FlowStatus, FlowVersion
+from miles_portal.tenant.flows.services.flow import FlowService
 
 
 @pytest.mark.asyncio

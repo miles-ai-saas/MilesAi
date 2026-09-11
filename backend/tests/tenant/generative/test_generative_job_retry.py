@@ -1,7 +1,7 @@
 """生成任务重试规则。"""
 
-from app.models.model.generative_job import GenerativeJobStatus
-from app.tenant.generative.schemas.job import GenerativeJobOut
+from miles_core.models.model.generative_job import GenerativeJobStatus
+from miles_portal.tenant.generative.schemas.job import GenerativeJobOut
 
 
 def test_retryable_statuses():

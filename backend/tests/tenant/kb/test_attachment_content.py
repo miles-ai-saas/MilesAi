@@ -6,8 +6,8 @@ from uuid import uuid4
 
 import pytest
 
-from app.common.exceptions import BadRequestError
-from app.tenant.attachments.services.attachment import AttachmentService
+from miles_common.exceptions import BadRequestError
+from miles_portal.tenant.attachments.services.attachment import AttachmentService
 
 
 @pytest.mark.asyncio
@@ -54,7 +54,7 @@ async def test_read_image_bytes_downloads():
 
     with (
         patch(
-            "app.tenant.attachments.services.attachment.resolve_object_storage_async",
+            "miles_portal.tenant.attachments.services.attachment.resolve_object_storage_async",
             new_callable=AsyncMock,
             return_value=SimpleNamespace(storage=SimpleNamespace(download_bytes=lambda *_a, **_k: b"png-bytes")),
         ),

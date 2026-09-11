@@ -5,21 +5,21 @@ from uuid import uuid4
 
 import pytest
 
-from app.common.exceptions import BadRequestError
-from app.integrations.embeddings.constants import (
+from miles_common.exceptions import BadRequestError
+from miles_ai.integrations.embeddings.constants import (
     EXTRA_EMBEDDING_DIMENSION,
     INVOKE_MODE_OPENAI_COMPATIBLE,
 )
-from app.integrations.embeddings.model_meta import (
+from miles_ai.integrations.embeddings.model_meta import (
     embedding_batch_size_from_model,
     invoke_mode_from_model,
 )
-from app.integrations.embeddings.providers.openai_compatible import (
+from miles_ai.integrations.embeddings.providers.openai_compatible import (
     OpenAICompatibleEmbeddingProvider,
 )
-from app.integrations.embeddings.registry import embed_texts_for_model, known_invoke_modes
-from app.models.model import ModelConfig
-from app.models.model.catalog import ModelCapabilityType, ModelVendor
+from miles_ai.integrations.embeddings.registry import embed_texts_for_model, known_invoke_modes
+from miles_core.models.model import ModelConfig
+from miles_core.models.model.catalog import ModelCapabilityType, ModelVendor
 
 
 def _qwen_embedding_model(**kwargs) -> ModelConfig:

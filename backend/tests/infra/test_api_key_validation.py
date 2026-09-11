@@ -2,8 +2,8 @@
 
 import pytest
 
-from app.common.exceptions import BadRequestError
-from app.tenant.models.services.api_key_validation import validate_api_key
+from miles_common.exceptions import BadRequestError
+from miles_portal.tenant.models.services.api_key_validation import validate_api_key
 
 
 def test_validate_accepts_dashscope_key():

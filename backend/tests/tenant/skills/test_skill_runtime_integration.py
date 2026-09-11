@@ -4,12 +4,12 @@ from uuid import uuid4
 
 import pytest
 
-from app.integrations.langchain import tools as lc_tools
-from app.tenant.agents.services.context import build_skill_mcp_prompt_block
-from app.tenant.skills.skill_layout import build_layout_index, merge_layout_into_config
-from app.tenant.skills.storage import SKILL_MD_FILENAME
-from app.tenant.tools.invoke import invoke_builtin
-from app.core.tenant import TenantContext
+from miles_ai.integrations.langchain import tools as lc_tools
+from miles_portal.tenant.agents.services.context import build_skill_mcp_prompt_block
+from miles_portal.tenant.skills.skill_layout import build_layout_index, merge_layout_into_config
+from miles_portal.tenant.skills.storage import SKILL_MD_FILENAME
+from miles_portal.tenant.tools.invoke import invoke_builtin
+from miles_core.tenant import TenantContext
 
 
 def _test_ctx(tenant_id):
@@ -31,8 +31,8 @@ def skill_tree(tmp_path, monkeypatch):
     def _dir(tid_arg, s):
         return tmp_path / str(tid_arg) / s
 
-    monkeypatch.setattr("app.tenant.skills.skill_layout.skill_package_dir", _dir)
-    monkeypatch.setattr("app.tenant.skills.storage.skill_package_dir", _dir)
+    monkeypatch.setattr("miles_portal.tenant.skills.skill_layout.skill_package_dir", _dir)
+    monkeypatch.setattr("miles_portal.tenant.skills.storage.skill_package_dir", _dir)
 
     base = _dir(tid, slug)
     base.mkdir(parents=True)
@@ -60,9 +60,9 @@ def skill_tree(tmp_path, monkeypatch):
         },
     )()
 
-    monkeypatch.setattr("app.tenant.agents.services.context.is_marked_deleted", lambda _s: False)
+    monkeypatch.setattr("miles_portal.tenant.agents.services.context.is_marked_deleted", lambda _s: False)
     monkeypatch.setattr(
-        "app.tenant.agents.services.context.read_skill_md",
+        "miles_portal.tenant.agents.services.context.read_skill_md",
         lambda _tid, _s: (base / SKILL_MD_FILENAME).read_text(encoding="utf-8"),
     )
 
@@ -115,7 +115,7 @@ async def test_invoke_skill_read_reference(skill_tree, monkeypatch):
     async def _resolve(*_args, **_kwargs):
         return data["skill"]
 
-    monkeypatch.setattr("app.tenant.skills.runtime.resolve_bound_skill", _resolve)
+    monkeypatch.setattr("miles_portal.tenant.skills.runtime.resolve_bound_skill", _resolve)
 
     out = await invoke_builtin(
         "skill_read_reference",

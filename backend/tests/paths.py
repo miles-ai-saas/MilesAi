@@ -3,3 +3,6 @@
 from pathlib import Path
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
+PACKAGES = BACKEND_ROOT / "packages"
+MILES_AI = PACKAGES / "miles-ai" / "src" / "miles_ai"
+MILES_SERVER = PACKAGES / "miles-server" / "src" / "miles_server"

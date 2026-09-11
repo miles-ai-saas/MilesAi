@@ -1,7 +1,7 @@
 """P1 能力冒烟测试。"""
 
-from app.tenant.tasks.schemas.task import TaskBatchCancelBody
-from app.tenant.generative.schemas.job import GenerativeJobBatchCancelBody
+from miles_portal.tenant.tasks.schemas.task import TaskBatchCancelBody
+from miles_portal.tenant.generative.schemas.job import GenerativeJobBatchCancelBody
 from uuid import uuid4
 
 

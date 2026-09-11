@@ -5,20 +5,20 @@ from uuid import uuid4
 
 import pytest
 
-from app.common.exceptions import BadRequestError
-from app.core.tenant import TenantContext
-from app.integrations.generative.types import VideoGenerateResult
-from app.integrations.generative.video.providers.volcengine_video import (
+from miles_common.exceptions import BadRequestError
+from miles_core.tenant import TenantContext
+from miles_ai.integrations.generative.types import VideoGenerateResult
+from miles_ai.integrations.generative.video.providers.volcengine_video import (
     _build_request_body,
     generate_volcengine_video,
 )
-from app.integrations.generative.volcengine_client import (
+from miles_ai.integrations.generative.volcengine_client import (
     normalize_volcengine_resolution,
     volcengine_poll_url,
     volcengine_submit_url,
 )
-from app.models.model import ModelConfig
-from app.models.model.catalog import ModelCapabilityType, ModelVendor
+from miles_core.models.model import ModelConfig
+from miles_core.models.model.catalog import ModelCapabilityType, ModelVendor
 
 
 def _doubao_video_model(**kwargs) -> ModelConfig:
@@ -99,7 +99,7 @@ def test_build_request_body_first_last_frame():
 
 def test_build_content_last_without_first_raises():
     with pytest.raises(BadRequestError, match="首尾帧"):
-        from app.integrations.generative.video.providers.volcengine_video import _build_content
+        from miles_ai.integrations.generative.video.providers.volcengine_video import _build_content
 
         _build_content("x", None, "data:image/png;base64,last")
 
@@ -129,12 +129,12 @@ async def test_generate_volcengine_video_happy_path():
     with (
         patch("httpx.AsyncClient") as client_cls,
         patch(
-            "app.integrations.generative.video.providers.volcengine_video.poll_volcengine_video_task",
+            "miles_ai.integrations.generative.video.providers.volcengine_video.poll_volcengine_video_task",
             new_callable=AsyncMock,
             return_value={"status": "succeeded", "content": {"video_url": "https://example.com/v.mp4"}},
         ),
         patch(
-            "app.integrations.generative.video.providers.volcengine_video.download_remote_bytes",
+            "miles_ai.integrations.generative.video.providers.volcengine_video.download_remote_bytes",
             new_callable=AsyncMock,
             return_value=mp4,
         ),
@@ -166,30 +166,30 @@ async def test_generate_video_for_model_doubao_route():
 
     with (
         patch(
-            "app.tenant.generative.services.orchestration.assert_generative_quota",
+            "miles_portal.tenant.generative.services.orchestration.assert_generative_quota",
             new_callable=AsyncMock,
         ),
         patch(
-            "app.tenant.generative.services.orchestration.check_generative_prompt",
+            "miles_portal.tenant.generative.services.orchestration.check_generative_prompt",
             new_callable=AsyncMock,
             side_effect=lambda _db, _ctx, p: p,
         ),
         patch(
-            "app.integrations.generative.video.service.generate_volcengine_video",
+            "miles_ai.integrations.generative.video.service.generate_volcengine_video",
             new_callable=AsyncMock,
             return_value=b"\x00\x00\x00\x18ftypmp42",
         ),
         patch(
-            "app.tenant.generative.services.orchestration.persist_generated_bytes",
+            "miles_portal.tenant.generative.services.orchestration.persist_generated_bytes",
             new_callable=AsyncMock,
             return_value=att_id,
         ),
         patch(
-            "app.tenant.generative.services.orchestration.register_media_asset",
+            "miles_portal.tenant.generative.services.orchestration.register_media_asset",
             new_callable=AsyncMock,
         ),
     ):
-        from app.tenant.generative.services.orchestration import generate_video_for_model
+        from miles_portal.tenant.generative.services.orchestration import generate_video_for_model
 
         result = await generate_video_for_model(
             AsyncMock(),

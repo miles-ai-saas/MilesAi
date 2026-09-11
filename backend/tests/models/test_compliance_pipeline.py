@@ -1,7 +1,7 @@
 """中立域合规流水线单测（纯算法，无 ORM/DB）。"""
 
-from app.models.compliance.constants import SensitiveAction
-from app.models.compliance.pipeline import CompliancePipeline
+from miles_core.models.compliance.constants import SensitiveAction
+from miles_core.models.compliance.pipeline import CompliancePipeline
 
 
 def test_scan_hits_and_block_priority() -> None:
@@ -44,12 +44,12 @@ def test_scan_empty_text_and_empty_words() -> None:
 
 def test_shim_equivalence() -> None:
     """tenant 侧路径与中立域指向同一对象。"""
-    from app.models.compliance.pipeline import CompliancePipeline as NeutralPipeline
-    from app.tenant.compliance.services.pipeline import CompliancePipeline as ShimPipeline
+    from miles_core.models.compliance.pipeline import CompliancePipeline as NeutralPipeline
+    from miles_portal.tenant.compliance.services.pipeline import CompliancePipeline as ShimPipeline
 
     assert NeutralPipeline is ShimPipeline
 
-    from app.models.compliance.constants import SensitiveAction as NeutralAction
-    from app.tenant.compliance.models import SensitiveAction as ShimAction
+    from miles_core.models.compliance.constants import SensitiveAction as NeutralAction
+    from miles_portal.tenant.compliance.models import SensitiveAction as ShimAction
 
     assert NeutralAction is ShimAction
