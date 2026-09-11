@@ -424,3 +424,24 @@ Phase 1 五个任务完成后，用 `app.*`→包的映射构建包级 import �
 1. **`core → ai`**：`app/infra/vector_store/{weaviate,langchain_base,pgvector,milvus}.py` 从 `app.integrations.langchain.vector.documents` 取转换工具，而后者反向依赖 `app.infra.vector_store.base.ChunkVectorRecord`。经核实 `documents.py` 只依赖 `langchain_core` / `app.core.config` / `app.infra.vector_store.base`，**不依赖 `app.integrations`**，属放错层的 infra 工具 → 迁入 `app/infra/vector_store/documents.py`（Task 1.6）。
 2. **`exec → core/portal`**：`app/exec/mcp/spec.py` 的 `build_run_spec` 依赖 `McpService` 与 `TenantContext`，属业务侧组装，却留在 exec。→ 迁回 `app/tenant/mcp/runner/spec_build.py`，`exec` 因此成为**无豁免**真叶子（Task 1.7）；原计划 Task 3.4 为 exec 预留的 `ignore_imports` 豁免已删除。
 3. **`portal → openapi`**：`app/tenant/router.py` include 了 `open_chat` 视图，且 `agents.py` 从 `deps_api_auth` 取共享鉴权依赖。→ 开放面路由改由装配层（`app/openapi/registration.py`，Phase 2 归 `miles_server` 调用的 `register_open`）挂载；`deps_api_auth.py` 归属修正为 `miles_portal`（§4 映射表与本节为准）。
+
+### 2026-09-11：Phase 1 收口复核（Task 1.6–1.8 落地）
+
+Task 1.6（commit `6cf45b8`）、1.7（`6d21094`）、1.8（`1717fb6`）落地后重跑退出闸门（`.superpowers/sdd/phase1-exit-gate.py`，AST 解析 `app/**/*.py`，按 §4 映射 + `app.models.registry → miles_server.registry`）：**强连通分量无环（OK: 无环）**。
+
+包级邻接（仅包间边）：
+
+```text
+miles_common -> (leaf)
+miles_exec   -> miles_common
+miles_core   -> miles_common
+miles_runner -> miles_core, miles_exec
+miles_ai     -> miles_common, miles_core
+miles_portal -> miles_ai, miles_common, miles_core, miles_exec
+miles_openapi-> miles_common, miles_core, miles_portal
+miles_admin  -> miles_common, miles_core, miles_portal
+miles_worker -> miles_ai, miles_common, miles_core, miles_portal
+miles_server -> miles_admin, miles_ai, miles_core, miles_openapi, miles_portal
+```
+
+唯一偏离 §2 硬判据的边是 `miles_runner → miles_core`（`app/runner/main.py:12` 取 `get_settings`），**非环**且已排期由 **Task 3.2**（`miles_runner` 自带 `RunnerSettings`）消除，不属 Phase 1 范围。Phase 1 退出闸门通过；Phase 2 起按计划执行。

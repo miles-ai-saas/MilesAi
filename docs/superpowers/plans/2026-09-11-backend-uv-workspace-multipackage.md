@@ -2222,6 +2222,8 @@ rg -n "分页|全局异常处理" app/common/__init__.py
 - `app/common/__init__.py` docstring 仍写「响应、异常、分页、全局异常处理」，但 `pagination` 与 `handlers` 已迁出。改为「跨模块公共能力：响应、异常与通用 schema。」（Phase 1 Task 1.2 的 scope 未授权改它，故留到这里。）
 - `app/models/__init__.py:6` 的域目录列表 `platform / kb / flow / model / media / meta / task / storage / agent / marketplace` 需补 `risk`（Task 1.3 新增 `app/models/risk.py`，其 scope 未授权改 docstring）。
 - `app/tenant/mcp/runner/__init__.py:1` docstring 仍写「MCP Runner 客户端与 RunSpec（API 侧）」，但 `RunSpec`/`validate_run_spec`/`build_run_spec` 已随 Task 1.4/1.7 迁至 `app/exec/mcp/spec.py` 与 `app/tenant/mcp/runner/spec_build.py`，需改写。
+- `app/apps/routers.py:1` docstring 仍写「汇总租户端（/api/v1）与运营端（/api/admin/v1）路由」，漏了 Task 1.8 新增的 `openapi_router`（开放面 `/api/v1/open/*`），需补。
+- `app/apps/application.py` 的 `create_app` docstring 仍写「挂载 api / admin 路由」，Task 1.8 后为 api / openapi / admin 三处，需补。
 
 > 后续任务若再发现同类过时 docstring，追加到本 Step 列表，不要就地偷偷扩大该任务 scope。
 
