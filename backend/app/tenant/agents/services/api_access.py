@@ -25,7 +25,7 @@ from app.tenant.agents.schemas.api_access import (
     AgentDebugTokenOut,
 )
 from app.tenant.agents.services.api_key_crypto import generate_agent_api_key_secret
-from app.tenant.auth.services import session_store
+from app.core.auth import session_store
 
 
 def _key_out(row: AgentApiKey) -> AgentApiKeyOut:

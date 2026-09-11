@@ -13,7 +13,7 @@ from app.models.platform.role import Role
 from app.models.platform.user import User
 from app.tenant.system.repositories.user import UserRepository
 from app.tenant.auth.schemas.auth import LoginRequest, TokenResponse, UserInfo, UserSessionOut
-from app.tenant.auth.services import session_store
+from app.core.auth import session_store
 from app.tenant.audit_log.services.audit_log import write_auth_login_audit
 from app.core.service import BaseService
 

@@ -16,7 +16,7 @@ from app.core.tenant import TenantContext
 from app.models.platform.role import Role
 from app.models.platform.user import User
 from app.common.schema import PageParams
-from app.tenant.auth.services import session_store
+from app.core.auth import session_store
 
 bearer_scheme = HTTPBearer(auto_error=False)
 
