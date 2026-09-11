@@ -102,7 +102,7 @@ L0 → L1 → L2 → L3 → L4
 
 ### 2.4 包边界（uv workspace）
 
-自 2026-09-11 的 uv workspace 重构起，后端由单包 `app/` 拆为 `backend/packages/` 下的 **10 个包**；源码位于 `backend/packages/<pkg>/src/<module>/`，`backend/app/`、`backend/cli.py`、`backend/scripts/` 均已不存在。
+自 2026-09-11 的 uv workspace 重构起，后端由单包 `app/` 拆为 `backend/packages/` 下的 **10 个包**；源码位于 `backend/packages/<pkg>/src/<module>/`，旧单包目录 `backend/app`、`backend/cli.py`、`backend/scripts/` 均已不存在。
 
 | 包 | 职责 | 层位 |
 |----|------|------|

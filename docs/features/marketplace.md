@@ -210,19 +210,19 @@ ui/workbench/components/marketplace/marketplace-manifest.ts
 ## 6. 后端文件清单
 
 ```
-backend/app/tenant/marketplace/models.py
-backend/app/tenant/marketplace/views/marketplace.py
-backend/app/tenant/marketplace/services/marketplace/
+backend/packages/miles-portal/src/miles_portal/tenant/marketplace/models.py
+backend/packages/miles-portal/src/miles_portal/tenant/marketplace/views/marketplace.py
+backend/packages/miles-portal/src/miles_portal/tenant/marketplace/services/marketplace/
     catalog.py      # 浏览、列表、详情
     publish.py      # 创建、打包、提交审核
     review.py       # 审核通过/驳回
     install.py      # 安装与安装记录
     upgrade.py      # 升级预览与 manifest 同步
-backend/app/tenant/marketplace/util/
+backend/packages/miles-portal/src/miles_portal/tenant/marketplace/util/
     __init__.py     # RAG 模板加载
     upgrade_diff.py # diff 纯函数
 backend/tests/test_upgrade_diff.py
-backend/scripts/seed/marketplace.py         # 预置 mkt_categories
+backend/packages/miles-server/src/miles_server/scripts/seed/marketplace.py   # 预置 mkt_categories
 ```
 
 ---

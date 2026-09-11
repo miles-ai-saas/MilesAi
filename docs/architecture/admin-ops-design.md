@@ -90,7 +90,7 @@ flowchart TB
 ### 2.2 后端结构（保持并扩展）
 
 ```
-backend/app/admin/
+backend/packages/miles-admin/src/miles_admin/
 ├── router.py                    # /api/admin/v1
 ├── app_sys/
 │   ├── views/auth.py

@@ -132,12 +132,12 @@ WS   /agents/{id}/chat/ws
 ## 7. 后端文件清单
 
 ```
-backend/app/models/agent.py
-backend/app/tenant/agents/services/agent/
-backend/app/tenant/agents/views/agents.py
-backend/app/integrations/deepagents/
-backend/app/integrations/langgraph/runner.py
-backend/app/tenant/a2a/invoke.py          # augment / host
+backend/packages/miles-core/src/miles_core/models/agent/agent.py
+backend/packages/miles-portal/src/miles_portal/tenant/agents/services/agent/
+backend/packages/miles-portal/src/miles_portal/tenant/agents/views/agents.py
+backend/packages/miles-ai/src/miles_ai/integrations/deepagents/
+backend/packages/miles-ai/src/miles_ai/integrations/langgraph/runner.py
+backend/packages/miles-portal/src/miles_portal/tenant/a2a/invoke.py          # augment / host
 ```
 
 ---
@@ -148,7 +148,7 @@ backend/app/tenant/a2a/invoke.py          # augment / host
 2. 绑 KB → RAG 命中 citations
 3. 绑 2 个子 agent → steps 含 subagent
 4. 绑 published_flow → 流程输出
-5. `pip install -e ".[agent-stack]"` 后 DeepAgents 路径
+5. `uv sync --all-packages --group dev` 后 DeepAgents 路径
 
 ---
 

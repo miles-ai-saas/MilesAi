@@ -132,10 +132,10 @@ Celery Worker
 
 ```bash
 # Worker（已有）
-python cli.py worker
+milesai worker
 
 # Beat
-python cli.py beat
+milesai beat
 ```
 
 Docker 全栈：`docker-compose.yml` 已含 `beat` 服务（与 `worker` 同镜像）。本地仅中间件时需手动起 Beat。
@@ -199,15 +199,15 @@ ui/workbench/components/agent/agent-workbench-tabs.ts
 ## 6. 后端文件清单
 
 ```
-backend/app/models/agent_schedule.py
-backend/app/common/cron.py
-backend/app/tenant/agents/schemas/schedule.py
-backend/app/tenant/agents/services/schedule.py
-backend/app/tenant/agents/views/agents.py      # 路由追加
-backend/app/workers/tasks/agent_schedule.py
-backend/app/workers/app.py                     # beat_schedule
-backend/app/deletion/cascade.py                # before_delete_agent
-backend/cli.py                                 # beat 子命令
+backend/packages/miles-core/src/miles_core/models/agent/schedule.py
+backend/packages/miles-common/src/miles_common/cron.py
+backend/packages/miles-portal/src/miles_portal/tenant/agents/schemas/schedule.py
+backend/packages/miles-portal/src/miles_portal/tenant/agents/services/schedule.py
+backend/packages/miles-portal/src/miles_portal/tenant/agents/views/agents.py      # 路由追加
+backend/packages/miles-worker/src/miles_worker/tasks/agent_schedule.py
+backend/packages/miles-worker/src/miles_worker/app.py                     # beat_schedule
+backend/packages/miles-portal/src/miles_portal/deletion/cascade.py                # before_delete_agent
+backend/packages/miles-server/src/miles_server/cli.py   # beat 子命令
 backend/tests/test_cron.py
 ```
 

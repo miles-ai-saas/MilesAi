@@ -14,10 +14,7 @@
 
 ```bash
 cd backend
-pip install -e ".[dev]"
-pip install -e ".[agent-stack]"       # 可选：deepagents
-pip install -e ".[parse-docling]"     # 可选：Docling PDF/Office
-pip install -e ".[multimodal]"        # 可选：图 OCR / 音 Whisper
+uv sync --all-packages --group dev    # 安装工作区 10 个包；解析 / 多模态等能力已无条件声明
 ```
 
 ## 目录（当前）

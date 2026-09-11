@@ -143,13 +143,13 @@ ui/workbench/app/workbench/hooks/page.tsx
 ## 7. 后端文件清单
 
 ```
-backend/app/tenant/hooks/models.py
-backend/app/tenant/hooks/views/hooks.py
-backend/app/tenant/hooks/services/hook_runner.py
-backend/app/tenant/hooks/services/hook_executor.py
-backend/app/tenant/agents/services/agent/
-backend/app/tenant/flows/services/flow.py
-backend/app/tenant/tools/invoke/
+backend/packages/miles-portal/src/miles_portal/tenant/hooks/models.py
+backend/packages/miles-portal/src/miles_portal/tenant/hooks/views/hooks.py
+backend/packages/miles-portal/src/miles_portal/tenant/hooks/services/runner.py
+backend/packages/miles-portal/src/miles_portal/tenant/hooks/services/executor/
+backend/packages/miles-portal/src/miles_portal/tenant/agents/services/agent/
+backend/packages/miles-portal/src/miles_portal/tenant/flows/services/flow.py
+backend/packages/miles-portal/src/miles_portal/tenant/tools/invoke/
 ```
 
 ---

@@ -41,7 +41,7 @@
 ```bash
 cp .env.example .env
 docker compose -f docker-compose.infra.yml -f docker-compose.yml up -d --build
-cd backend && python cli.py init-db
+cd backend && milesai init-db
 ```
 
 ### 2.2 仅中间件 + 本地开发
@@ -50,10 +50,10 @@ cd backend && python cli.py init-db
 docker compose -f docker-compose.infra.yml up -d
 cd backend
 cp .env.example .env   # POSTGRES_HOST=localhost
-python cli.py migrate && python cli.py init-db
-python cli.py serve    # API :8000
-python cli.py worker   # 另开终端
-python cli.py beat     # 定时任务，可选
+milesai migrate && milesai init-db
+milesai serve    # API :8000
+milesai worker   # 另开终端
+milesai beat     # 定时任务，可选
 ```
 
 前端：ui/workbench/、`ui/admin/` 各自 `npm run dev`。
@@ -95,8 +95,8 @@ make serve          # 本地启动 API（不经 Docker）
 
 | 进程 | Compose 服务 / 命令 | 队列 / 任务 |
 |------|---------------------|-------------|
-| Worker | `worker` · `python cli.py worker` | `default,parse,ocr,asr,embed` |
-| Beat | `beat` · `python cli.py beat` | 每 60s `tick_agent_schedules` |
+| Worker | `worker` · `milesai worker` | `default,parse,ocr,asr,embed` |
+| Beat | `beat` · `milesai beat` | 每 60s `tick_agent_schedules` |
 
 Worker 任务：`ingest_document`、`run_generative_*_job`、`run_agent_schedule`。  
 详见 [features/task-center.md](../features/task-center.md)、[features/agent-schedules.md](../features/agent-schedules.md)。
@@ -105,14 +105,11 @@ Worker 任务：`ingest_document`、`run_generative_*_job`、`run_agent_schedule
 
 ---
 
-## 5. Worker 可选依赖
+## 5. Worker 依赖
 
-| Extra | 能力 |
-|-------|------|
-| `[parse-docling]` | PDF/Office 版式解析 |
-| `[multimodal]` | 图 OCR、音 Whisper |
+解析 / 多模态等能力已按所属包（`miles-ai` / `miles-server`）无条件声明，随 `uv sync --all-packages` 一并安装，无需 extras。
 
-Docker：修改 `docker/images/worker/Dockerfile` 中 `pip install -e ".[…]"` 后重建。  
+Docker：镜像构建时执行 `uv sync --all-packages`，修改依赖声明后重建镜像。  
 见 [docker/README.md § Celery Worker](../../docker/README.md#celery-worker知识库入库)。
 
 ---

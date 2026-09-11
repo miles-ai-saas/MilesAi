@@ -26,7 +26,7 @@ backend/
     └── miles-runner/   → src/miles_runner/    # 沙箱 HTTP 服务（自带 settings）
 ```
 
-> `cli.py`、`scripts/`（db_ops、verify_db、seed/*、export_openapi）已迁入 `miles-server`；`backend/app/` 与 `backend/cli.py` 已不存在。包边界与 API 层归属见 [layering.md §2.4 / §2.5](../docs/architecture/layering.md)。
+> `cli.py`、`scripts/`（db_ops、verify_db、seed/*、export_openapi）已迁入 `miles-server`；旧单包目录 `backend/app` 与 `backend/cli.py` 已不存在。包边界与 API 层归属见 [layering.md §2.4 / §2.5](../docs/architecture/layering.md)。
 
 ## 安装与运行
 

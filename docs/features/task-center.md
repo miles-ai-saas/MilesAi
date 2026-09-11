@@ -172,18 +172,18 @@ ui/workbench/lib/api.ts                     # tasks + generative jobs CRUD
 ## 6. 后端文件清单
 
 ```
-backend/app/models/task.py
-backend/app/models/generative_job.py
-backend/app/tenant/tasks/views/tasks.py
-backend/app/tenant/tasks/services/task.py
-backend/app/tenant/tasks/services/sync.py
-backend/app/tenant/generative/views/jobs.py
-backend/app/tenant/generative/services/job.py
-backend/app/workers/tasks/ingest.py
-backend/app/workers/tasks/generative.py
-backend/app/workers/tasks/agent_schedule.py
-backend/app/workers/app.py              # beat_schedule + task_routes
-backend/app/integrations/generative/jobs/runner.py
+backend/packages/miles-core/src/miles_core/models/task/task_record.py
+backend/packages/miles-core/src/miles_core/models/model/generative_job.py
+backend/packages/miles-portal/src/miles_portal/tenant/tasks/views/tasks.py
+backend/packages/miles-portal/src/miles_portal/tenant/tasks/services/task.py
+backend/packages/miles-portal/src/miles_portal/tenant/tasks/services/sync.py
+backend/packages/miles-portal/src/miles_portal/tenant/generative/views/jobs.py
+backend/packages/miles-portal/src/miles_portal/tenant/generative/services/job.py
+backend/packages/miles-worker/src/miles_worker/tasks/ingest.py
+backend/packages/miles-worker/src/miles_worker/tasks/generative.py
+backend/packages/miles-worker/src/miles_worker/tasks/agent_schedule.py
+backend/packages/miles-worker/src/miles_worker/app.py              # beat_schedule + task_routes
+backend/packages/miles-portal/src/miles_portal/tenant/generative/services/job_execution.py
 ```
 
 ---

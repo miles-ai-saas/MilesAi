@@ -43,7 +43,7 @@ UI：列表可显示 `内部协同 · N 子智能体`；配置在创建/编辑�
 3. **强制平台**：`force_platform_planner: true`
 
 ```bash
-cd backend && pip install -e ".[agent-stack]"   # deepagents、langgraph>=1.2
+cd backend && uv sync --all-packages --group dev   # deepagents、langgraph>=1.2
 ```
 
 ### 对话实时通道

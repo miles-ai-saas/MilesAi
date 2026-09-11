@@ -126,14 +126,14 @@ GET/POST/PATCH/DELETE /sys-categories
 ## 6. 后端与前端文件清单
 
 ```
-backend/app/admin/
+backend/packages/miles-admin/src/miles_admin/
     router.py
     app_sys/views/auth.py
     app_sys/session_store.py
     app_ops/views/{admins,dashboard,tenants,billing,risk,audit,model_catalog,marketplace_review,sys_categories,marketplace_categories}.py
-    app_ops/services/{admins,dashboard,marketplace_review,risk_enforce,...}.py
-backend/app/middlewares/platform_risk.py
-backend/app/marketplace/{review_config,review_core}.py
+    app_ops/services/{admins,dashboard,marketplace_review,risk,...}.py
+backend/packages/miles-core/src/miles_core/web/middlewares/platform_risk.py
+backend/packages/miles-portal/src/miles_portal/marketplace/{review_config,review_core}.py
 
 ui/admin/
     app/{page.tsx,login/,tenants/,model-catalog/,marketplace-review/,billing/,risk/,audit/,admins/,profile/,...}

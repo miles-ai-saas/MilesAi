@@ -131,7 +131,7 @@ sequenceDiagram
     Note over A,H: 异常时 H: ON_ERROR 再抛出
 ```
 
-代码入口：`backend/app/tenant/agents/services/agent.py`、`backend/app/tenant/flows/services/flow.py`（`run`）。
+代码入口：`backend/packages/miles-portal/src/miles_portal/tenant/agents/services/agent/`、`backend/packages/miles-portal/src/miles_portal/tenant/flows/services/flow.py`（`run`）。
 
 ### 4.4 业务 payload（位于 envelope.payload 内）
 
@@ -378,7 +378,7 @@ embedding / rerank 的 `invoke_mode` 与 `extra` 字段对照见 **[model-config
 
 | 层级 | 位置 | 内容 |
 |------|------|------|
-| 文案源 | `backend/app/tenant/<module>/meta.py` | 模块 docstring：API 路径、返回字段、前端消费文件、`docs/guides/hooks.md` §9 |
+| 文案源 | `backend/packages/miles-portal/src/miles_portal/tenant/<module>/meta.py` | 模块 docstring：API 路径、返回字段、前端消费文件、`docs/guides/hooks.md` §9 |
 | 构建 | `*_meta_dict()` | 「供 *MetaOut.model_validate 与单测使用」 |
 | 服务 | `Service.get_meta()` | 「无 DB，文案来自 meta.py」 |
 | 路由 | `views` 的 `@router.get("/meta")` | 须在 `/{id}` 等路径参数路由**之前**注册 |

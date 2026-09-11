@@ -113,7 +113,7 @@ models / infra (PG、Redis)
 域包（保持现状并扩展）：
 
 ```
-backend/app/tenant/
+backend/packages/miles-portal/src/miles_portal/tenant/
 ├── auth/           # 登录、会话、令牌
 ├── system/         # 用户、角色、租户、配置
 └── audit_log/      # 审计查询 + 写入 helper
@@ -427,10 +427,10 @@ const SYSTEM_NAV = [
 
 | 类型 | 路径 |
 |------|------|
-| 租户认证 | `backend/app/tenant/auth/` |
-| 系统域 | `backend/app/tenant/system/` |
-| 审计 | `backend/app/tenant/audit_log/` |
-| 租户上下文 | `backend/app/core/tenant.py`、`deps.py` |
-| 权限种子 | `backend/scripts/seed/tenant.py` |
+| 租户认证 | `backend/packages/miles-portal/src/miles_portal/tenant/auth/` |
+| 系统域 | `backend/packages/miles-portal/src/miles_portal/tenant/system/` |
+| 审计 | `backend/packages/miles-portal/src/miles_portal/tenant/audit_log/` |
+| 租户上下文 | `backend/packages/miles-core/src/miles_core/tenant.py`、`backend/packages/miles-core/src/miles_core/deps.py` |
+| 权限种子 | `backend/packages/miles-server/src/miles_server/scripts/seed/tenant.py` |
 | 前端导航 | `ui/workbench/lib/nav-config.ts` |
 | 前端页面 | `ui/workbench/app/system/` |

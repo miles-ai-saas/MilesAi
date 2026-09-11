@@ -167,7 +167,7 @@ MARKETPLACE_REVIEW_TENANT_ID: ${PLATFORM_TENANT_ID}
 | `tenant` | 保留；仅赋给审核租户内角色 |
 | `off` | 可保留无影响 |
 
-`seed` 不强行改已有库；提供 `python cli.py seed marketplace-perms` 或文档说明升级步骤。
+`seed` 不强行改已有库；提供 `milesai seed marketplace-perms` 或文档说明升级步骤。
 
 ---
 

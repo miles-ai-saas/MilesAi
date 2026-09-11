@@ -200,7 +200,7 @@ MilesAi/
 - 权限：角色-权限表 `sys_roles` / `sys_permissions` / `role_permissions`；路由依赖 `require_permissions`。
 - 软删除：多数业务表 `deleted_at`（迁移 `004`）；删除智能体/KB 等走 `deletion/cascade.py`。
 
-默认种子（`backend/scripts/seed/`）：租户 `admin` / `admin123`；运营 `platform` / `admin123`（`scripts/seed/admin_ops.py`）。
+默认种子（`backend/packages/miles-server/src/miles_server/scripts/seed/`）：租户 `admin` / `admin123`；运营 `platform` / `admin123`（`backend/packages/miles-server/src/miles_server/scripts/seed/admin_ops.py`）。
 
 ---
 
@@ -621,7 +621,7 @@ flowchart TD
 
 ## 15. 配置与环境变量
 
-定义：`backend/app/core/config.py`、`backend/.env.example`、根 `.env.example`。
+定义：`backend/packages/miles-core/src/miles_core/config.py`、`backend/.env.example`、根 `.env.example`。
 
 | 类别 | 变量示例 | 层级（§6.5） |
 |------|----------|--------------|

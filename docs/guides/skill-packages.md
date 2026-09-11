@@ -323,7 +323,7 @@ description: ...
 ## 8. 代码结构（后端）
 
 ```
-backend/app/tenant/skills/
+backend/packages/miles-portal/src/miles_portal/tenant/skills/
 ├── models.py              # ORM
 ├── skill_md.py            # SKILL.md 解析/生成
 ├── skill_layout.py        # references/scripts 索引与 Prompt 块
@@ -349,9 +349,9 @@ backend/app/tenant/skills/
 
 ```bash
 cd backend
-python cli.py migrate          # alembic upgrade head（001）
-python cli.py seed categories  # 写入 skill 域默认分类
-python cli.py seed skills      # 示例技能包（SKILL.md + references/ + scripts/，可重复执行补全缺失文件）
+milesai migrate          # alembic upgrade head（001）
+milesai seed categories  # 写入 skill 域默认分类
+milesai seed skills      # 示例技能包（SKILL.md + references/ + scripts/，可重复执行补全缺失文件）
 ```
 
 生产建议：

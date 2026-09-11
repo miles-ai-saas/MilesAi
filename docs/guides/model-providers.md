@@ -49,7 +49,7 @@ api_base, api_key_encrypted, is_active, extra (JSONB), deleted_at
 | 目录元数据 | 无 `model_type`、简介、标签、`model_code`、是否「最新」等 |
 | 内置鉴权 | 内置记录若未配平台 Key，租户无法「填自己的 Key」覆盖 |
 | 租户 UI | 仍为简单列表卡片，无截图中的 **分类 + 来源** |
-| 种子数据 | 执行 `python cli.py init-db` 或 `python cli.py seed model-catalog` 预置内置模型目录 |
+| 种子数据 | 执行 `milesai init-db` 或 `milesai seed model-catalog` 预置内置模型目录 |
 
 ### 2.4 运行时（LiteLLM）
 
@@ -294,7 +294,7 @@ effective_api_base  = tenant_credentials.api_base ?? model_config.api_base
 
 ### 8.3 种子
 
-`scripts/seed/model_catalog.py`（通过 `python cli.py init-db` 或 `python cli.py seed model-catalog` 执行）：预置主流内置条目（**无 Key**，`credential_status=missing`），由部署方在运营后台补 Key。
+`backend/packages/miles-server/src/miles_server/scripts/seed/model_catalog.py`（通过 `milesai init-db` 或 `milesai seed model-catalog` 执行）：预置主流内置条目（**无 Key**，`credential_status=missing`），由部署方在运营后台补 Key。
 
 ---
 

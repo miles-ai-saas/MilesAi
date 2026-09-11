@@ -244,9 +244,9 @@ media_assets                      # 生成物目录 + promote-to-kb（图片）
 
 | 操作 | 命令 / 配置 |
 |------|-------------|
-| 历史生成物登记 | `python cli.py backfill-media-assets [--dry-run]` |
+| 历史生成物登记 | `milesai backfill-media-assets [--dry-run]` |
 | 生成日限额 | `system_config` → `generative.daily_limit_per_tenant`（0=不限） |
-| 迁移 | `python cli.py migrate`（含 `media_assets` 表） |
+| 迁移 | `milesai migrate`（含 `media_assets` 表） |
 
 ### 8.3 相关文档
 

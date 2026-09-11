@@ -136,12 +136,12 @@ ui/workbench/app/workbench/agents/chat/page.tsx
 ## 7. 后端文件清单
 
 ```
-backend/app/tenant/agents/ws/chat.py       # WebSocket 端点
-backend/app/tenant/agents/ws/protocol.py   # 帧类型与 envelope
-backend/app/tenant/agents/ws/auth.py       # JWT 解析 → TenantContext
-backend/app/tenant/agents/ws/job_watch.py  # 生成任务 watcher
-backend/app/tenant/agents/views/agents.py  # include_router(ws)
-backend/app/core/config.py                 # agent_chat_websocket_enabled
+backend/packages/miles-portal/src/miles_portal/tenant/agents/ws/chat.py       # WebSocket 端点
+backend/packages/miles-portal/src/miles_portal/tenant/agents/ws/protocol.py   # 帧类型与 envelope
+backend/packages/miles-portal/src/miles_portal/tenant/agents/ws/auth.py       # JWT 解析 → TenantContext
+backend/packages/miles-portal/src/miles_portal/tenant/agents/ws/job_watch.py  # 生成任务 watcher
+backend/packages/miles-portal/src/miles_portal/tenant/agents/views/agents.py  # include_router(ws)
+backend/packages/miles-core/src/miles_core/config.py                          # agent_chat_websocket_enabled
 ```
 
 ---

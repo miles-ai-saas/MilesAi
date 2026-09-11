@@ -176,10 +176,10 @@ GET /agents/{agent_id}/call-records/{call_id}
 ### 4.4 文件清单（待建）
 
 ```text
-backend/app/models/agent_chat_call.py
-backend/app/tenant/agents/schemas/call_records.py
-backend/app/tenant/agents/services/call_records.py
-backend/app/tenant/agents/views/call_records.py   # 或并入 agents.py
+backend/packages/miles-core/src/miles_core/models/agent/chat_call.py
+backend/packages/miles-portal/src/miles_portal/tenant/agents/schemas/call_records.py
+backend/packages/miles-portal/src/miles_portal/tenant/agents/services/call_records.py
+backend/packages/miles-portal/src/miles_portal/tenant/agents/views/agents.py   # 路由并入 agents.py
 
 ui/workbench/features/agents/components/AgentCallRecordsPanel.tsx
 ui/workbench/features/agents/components/AgentCallRecordDetailDialog.tsx

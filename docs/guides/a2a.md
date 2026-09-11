@@ -54,7 +54,7 @@ agt_agent_a2a_peer_refs # custom → peer
 
 custom 有 peer_refs：在 RAG/协同/流程结果上 `augment_response_with_a2a`。
 
-模块：`backend/app/tenant/a2a/`（`card_client.py`、`invoke.py`）。
+模块：`backend/packages/miles-portal/src/miles_portal/tenant/a2a/`（`card_client.py`、`invoke.py`）。
 
 ## UI
 
