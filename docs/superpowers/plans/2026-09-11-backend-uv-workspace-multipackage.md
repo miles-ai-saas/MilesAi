@@ -255,7 +255,7 @@ cd backend
 mkdir -p app/core/web/middlewares
 for f in __init__.py trace.py access_log.py platform_risk.py; do git mv app/middlewares/$f app/core/web/middlewares/$f; done
 rmdir app/middlewares 2>/dev/null || true
-sed -i '' 's/from app\.admin\.app_ops\.services\.risk_enforce import platform_risk_enforcer/from app.core.risk.enforce import platform_risk_enforcer/; s/from app\.admin\.models import RiskSeverity/from app.core.models.risk import RiskSeverity/' app/core/web/middlewares/platform_risk.py
+sed -i '' 's/from app\.admin\.app_ops\.services\.risk_enforce import platform_risk_enforcer/from app.core.risk.enforce import platform_risk_enforcer/; s/from app\.admin\.models import RiskSeverity/from app.models.risk import RiskSeverity/' app/core/web/middlewares/platform_risk.py
 sed -i '' 's/from app\.middlewares\.\(access_log\|platform_risk\|trace\)/from app.core.web.middlewares.\1/' app/core/web/middlewares/__init__.py
 ```
 
