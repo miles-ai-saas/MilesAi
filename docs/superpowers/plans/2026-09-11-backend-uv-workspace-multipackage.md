@@ -406,10 +406,28 @@ sed -i '' 's/from app\.tenant\.mcp\.\(constants\|rpc\) import/from app.exec.mcp.
 - [ ] **Step 4: 全量改写引用**
 
 ```bash
-rg -n "app\.tenant\.mcp\.(runner\.spec|constants|rpc|client)|app\.tenant\.tools\.script_validate|app\.runner\.(session|script_exec)" app tests -g '*.py'
+rg -n "app\.tenant\.mcp\.(runner\.spec|constants|rpc|client)|app\.tenant\.tools\.script_validate|app\.runner\.(session|script_exec)" app tests scripts -g '*.py'
 ```
 
-替换：`app.tenant.mcp.runner.spec`→`app.exec.mcp.spec`；`app.tenant.mcp.constants`→`app.exec.mcp.constants`；`app.tenant.mcp.rpc`→`app.exec.mcp.rpc`；`app.tenant.mcp.client._normalize_tools`→`app.exec.mcp.tools.normalize_tools`；`app.tenant.tools.script_validate`→`app.exec.sandbox.validate`；`app.runner.session`→`app.exec.sandbox.session`；`app.runner.script_exec`→`app.exec.sandbox.script_exec`。
+替换：`app.tenant.mcp.runner.spec`→`app.exec.mcp.spec`；`app.tenant.mcp.constants`→`app.exec.mcp.constants`；`app.tenant.mcp.rpc`→`app.exec.mcp.rpc`；`app.tenant.tools.script_validate`→`app.exec.sandbox.validate`；`app.runner.session`→`app.exec.sandbox.session`；`app.runner.script_exec`→`app.exec.sandbox.script_exec`。
+
+**已核实的完整引用面（穷举，勿漏）**：
+
+| 旧路径 | 引用点 |
+|--------|--------|
+| `app.tenant.mcp.runner.spec` | `tests/mcp/test_runner_spec.py:8`、`app/runner/main.py:18`、`app/runner/session.py:15`、`app/tenant/mcp/services/mcp.py:37`（`build_run_spec`）、`app/tenant/mcp/runner/client.py:12`、`app/tenant/mcp/runner/audit.py:12` |
+| `app.tenant.mcp.constants` | `app/runner/mcp_stdio.py:9`、`app/tenant/mcp/meta.py:10`、`app/tenant/mcp/services/mcp.py:38`、`app/tenant/mcp/sse_transport.py:33`、`app/tenant/mcp/client.py:31`、`app/tenant/mcp/transport.py:11` |
+| `app.tenant.mcp.rpc` | `tests/mcp/test_mcp_client.py:5`、`app/runner/main.py:17`、`app/runner/mcp_stdio.py:10`、`app/tenant/mcp/sse_transport.py:32`、`app/tenant/mcp/client.py:32` |
+| `app.tenant.tools.script_validate` | `tests/tenant/tools/test_script_validate.py:4`、`app/runner/main.py:19`、`app/runner/script_exec.py:17`、`app/tenant/skills/runtime.py:16`、`app/tenant/tools/invoke/custom.py:18`、`app/tenant/tools/services/tools.py:36` |
+| `app.runner.session` | `app/runner/main.py:15`、`app/runner/script_exec.py:16` |
+| `app.runner.script_exec` | `app/runner/main.py:14`、`tests/tenant/tools/test_script_stdlib.py:8`、`app/tenant/tools/builtins/code_exec.py:11`（+ docstring 第 4 行） |
+
+**`_normalize_tools` 的改名（codemod 覆盖不到，必须手工）**：两处测试用**私有名**导入，不是模块路径形式：
+
+- `tests/mcp/test_mcp_client.py:4`：`from app.tenant.mcp.client import _normalize_tools` → `from app.exec.mcp.tools import normalize_tools`，且同文件内 `_normalize_tools(` 调用（第 12 行等）改名。
+- `tests/mcp/test_mcp_function_calling.py:22`：同上改 import；第 88 行 `_normalize_tools(` 改名。
+
+另需注意：`app/tenant/mcp/client.py` **整体留在 tenant**（`fetch_mcp_tools` / `invoke_mcp_tool` 等不迁），只把 `_normalize_tools` 抽走并改 import；`app/tenant/mcp/views/mcp.py:5` 的 docstring 提到 `app.tenant.mcp.client` 保持不变（该模块仍在）。
 
 - [ ] **Step 5: 校验 exec 无重依赖**
 
@@ -1908,6 +1926,7 @@ rg -n "分页|全局异常处理" app/common/__init__.py
 ```
 
 - `app/common/__init__.py` docstring 仍写「响应、异常、分页、全局异常处理」，但 `pagination` 与 `handlers` 已迁出。改为「跨模块公共能力：响应、异常与通用 schema。」（Phase 1 Task 1.2 的 scope 未授权改它，故留到这里。）
+- `app/models/__init__.py:6` 的域目录列表 `platform / kb / flow / model / media / meta / task / storage / agent / marketplace` 需补 `risk`（Task 1.3 新增 `app/models/risk.py`，其 scope 未授权改 docstring）。
 
 > 后续任务若再发现同类过时 docstring，追加到本 Step 列表，不要就地偷偷扩大该任务 scope。
 
