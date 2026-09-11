@@ -38,15 +38,14 @@
 
 ```bash
 cp .env.example .env
-cd docker
 docker compose -f docker-compose.infra.yml -f docker-compose.yml up -d --build
-cd ../backend && python cli.py init-db
+cd backend && python cli.py init-db
 ```
 
 ### 2.2 仅中间件 + 本地开发
 
 ```bash
-cd docker && docker compose -f docker-compose.infra.yml up -d
+docker compose -f docker-compose.infra.yml up -d
 cd backend
 cp .env.example .env   # POSTGRES_HOST=localhost
 python cli.py migrate && python cli.py init-db
@@ -56,6 +55,21 @@ python cli.py beat     # 定时任务，可选
 ```
 
 前端：ui/workbench/、`ui/admin/` 各自 `npm run dev`。
+
+### 2.3 Makefile 快捷入口
+
+项目根 `Makefile` 已封装上述步骤（`make help` 查看全部）：
+
+```bash
+make env            # .env.example → .env
+make infra-up       # 仅中间件
+make up             # 构建并启动应用栈（api/worker/beat/mcp-runner）
+make up-dev         # 应用栈 + 挂载 ./backend 热重载
+make init-db        # 迁移 + 全量种子
+make serve          # 本地启动 API（不经 Docker）
+```
+
+镜像构建与推送：`make push-api` / `make push-worker` / `make push-mcp-runner`（可覆盖 `REGISTRY=`、`TAG=`、`PLATFORM=`）。
 
 ---
 

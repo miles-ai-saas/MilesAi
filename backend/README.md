@@ -239,6 +239,8 @@ tenant/tools/
 
 运维与启动统一入口；种子实现仍在 `scripts/seed/`（与 `app` 解耦）。API lifespan **只跑迁移**，不自动写种子。
 
+> 项目根 `Makefile` 已封装以下命令（`make help` 查看全部）：`make init-db`、`make serve`、`make worker`、`make beat`、`make check`、`make openapi-check` 等，会自动探测 `backend/.venv` 下的解释器与 ruff。
+
 ```bash
 cd backend
 python cli.py serve              # uvicorn（debug 默认 --reload）
@@ -272,6 +274,8 @@ python cli.py worker -Q parse,default
 | `python scripts/export_openapi.py --write` | 重写快照（改路由/Schema 后本地执行并提交） |
 
 脚本调用 `create_app().openapi()`，**无需启动 uvicorn**，也不依赖 Postgres/Redis 等中间件。
+
+等价 Makefile 目标：`make openapi-check`（校验）、`make openapi-write`（重写）。
 
 ```bash
 cd backend
