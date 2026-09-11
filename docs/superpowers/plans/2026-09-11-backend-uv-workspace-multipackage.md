@@ -2136,7 +2136,11 @@ layers =
     miles_portal
     miles_ai
     miles_core
-    miles_exec | miles_common
+    miles_exec
+    miles_common
+```
+
+> **务必把 `miles_exec` 与 `miles_common` 分成两层**（原稿写成 `miles_exec | miles_common` 同层会失败）。import-linter 的 `A | B` 语义是「同层**互相独立**」，而 `miles_exec -> miles_common` 有 5 处真实 import（`sandbox/validate.py:11`、`sandbox/session.py:13`、`mcp/rpc.py:12`、`mcp/stdio.py:8`、`mcp/spec.py:12`，均为 `BadRequestError`），同层写法实测报 5 条 broken。
 
 [importlinter:contract:no-ai-to-portal]
 name = L3/L2 不得依赖租户域
@@ -2196,27 +2200,39 @@ Expected: 6 个契约全部 `PASSED`（若失败，输出会指出具体 import 
       - name: Install backend (uv workspace)
         run: uv sync --all-packages --group dev
       - name: Ruff format check
-        run: uv run ruff format --check .
+        run: uv run --all-packages --group dev ruff format --check .
       - name: Ruff lint
-        run: uv run ruff check .
+        run: uv run --all-packages --group dev ruff check .
       - name: Package layering guard（import-linter）
-        run: uv run lint-imports
+        run: uv run --all-packages --group dev lint-imports
       - name: OpenAPI snapshot check
-        run: uv run python -m miles_server.scripts.export_openapi --check
+        run: uv run --all-packages --group dev python -m miles_server.scripts.export_openapi --check
       - name: Backend tests
-        run: uv run python -m pytest -q
+        run: uv run --all-packages --group dev python -m pytest -q
 ```
 
-（移除原 `pip install -e ".[dev]"`、`python -m pytest tests/test_l3_neutral_imports.py` 独立步。）
+（移除原 `pip install -e ".[dev]"`、`python scripts/export_openapi.py --check` 与 `python -m pytest tests/test_l3_neutral_imports.py` 独立步；该守卫测试仍在全量 `pytest` 内执行。）
+
+> **每个 `uv run` 都必须带 `--all-packages`**：根项目无 dependencies 与 `[build-system]`，不带该标志的 `uv run` 会先做一次「精确同步」，把 10 个 workspace 成员全部卸载，后续步骤将 import 不到 `miles_*`。
+
+`defaults.run.working-directory: backend` 保持不变。
 
 - [ ] **Step 4: Makefile 加分层门禁**
 
 ```make
 layers-check: ## 校验包分层契约（import-linter）
-	cd $(BACKEND) && uv run lint-imports
+	cd $(BACKEND) && $(IMPORTLINT)
 
 check: lint-backend format-check-backend layers-check openapi-check test-backend ## 复刻 CI 后端 job 的质量门禁
 ```
+
+在 Makefile 变量区（`RUFF ?=` 之后）补探测器，与既有 `PY`/`RUFF` 风格一致：
+
+```make
+IMPORTLINT ?= $(shell if [ -x "$(VENV)/bin/lint-imports" ]; then echo "$(VENV)/bin/lint-imports"; else echo lint-imports; fi)
+```
+
+并把 `layers-check` 加入 `.PHONY`。**不要用 `uv run lint-imports`**（同 CI 的陷阱，会裁剪成员）。
 
 - [ ] **Step 5: 跑全量门禁**
 

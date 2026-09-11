@@ -20,6 +20,7 @@ VENV := $(BACKEND)/.venv
 # 用绝对路径，保证 `cd backend` 后仍可执行；优先虚拟环境，其次 PATH 中的 python3
 PY ?= $(shell if [ -x "$(VENV)/bin/python" ]; then echo "$(VENV)/bin/python"; else echo python3; fi)
 RUFF ?= $(shell if [ -x "$(VENV)/bin/ruff" ]; then echo "$(VENV)/bin/ruff"; else echo ruff; fi)
+IMPORTLINT ?= $(shell if [ -x "$(VENV)/bin/lint-imports" ]; then echo "$(VENV)/bin/lint-imports"; else echo lint-imports; fi)
 
 COMPOSE ?= docker compose
 # 中间件与业务应用分属两套 Compose 文件（见 README「快速启动」）
@@ -44,7 +45,7 @@ endef
 	init-db migrate seed verify-db \
 	serve worker beat \
 	lint lint-backend lint-ui format format-check format-check-backend format-check-ui \
-	test test-backend test-ui openapi-check openapi-write check check-ui \
+	test test-backend test-ui openapi-check openapi-write check check-ui layers-check \
 	ui-dev ui-dev-admin ui-build ui-install \
 	build-api build-worker build-mcp-runner build-all \
 	push-api push-worker push-mcp-runner push-all \
@@ -146,6 +147,9 @@ format: ## 自动格式化（ruff format + prettier）
 format-check-backend: ## 校验后端格式（ruff format --check）
 	cd $(BACKEND) && $(RUFF) format --check .
 
+layers-check: ## 校验包分层契约（import-linter）
+	cd $(BACKEND) && $(IMPORTLINT)
+
 format-check-ui: ## 校验前端格式（prettier --check）
 	cd $(ROOT)/ui && npm run format:check
 
@@ -165,7 +169,7 @@ openapi-check: ## 校验 OpenAPI 快照无漂移
 openapi-write: ## 重写 OpenAPI 快照（改路由/Schema 后执行并提交）
 	cd $(BACKEND) && $(PY) -m miles_server.scripts.export_openapi --write
 
-check: lint-backend format-check-backend openapi-check test-backend ## 复刻 CI 后端 job 的质量门禁
+check: lint-backend format-check-backend layers-check openapi-check test-backend ## 复刻 CI 后端 job 的质量门禁
 
 check-ui: lint-ui format-check-ui ## 复刻 CI 前端 job 的质量门禁（需已安装依赖）
 

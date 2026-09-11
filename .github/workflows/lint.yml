@@ -16,18 +16,19 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Install backend
-        run: pip install -e ".[dev]"
+      - uses: astral-sh/setup-uv@v5
+      - name: Install backend (uv workspace)
+        run: uv sync --all-packages --group dev
       - name: Ruff format check
-        run: ruff format --check .
+        run: uv run --all-packages --group dev ruff format --check .
       - name: Ruff lint
-        run: ruff check .
+        run: uv run --all-packages --group dev ruff check .
+      - name: Package layering guard（import-linter）
+        run: uv run --all-packages --group dev lint-imports
       - name: OpenAPI snapshot check
-        run: python scripts/export_openapi.py --check
-      - name: L3 reverse-dependency guard（integrations/flow_runtime 不得 import tenant）
-        run: python -m pytest tests/test_l3_neutral_imports.py -q
+        run: uv run --all-packages --group dev python -m miles_server.scripts.export_openapi --check
       - name: Backend tests
-        run: python -m pytest -q
+        run: uv run --all-packages --group dev python -m pytest -q
 
   workbench:
     runs-on: ubuntu-latest
