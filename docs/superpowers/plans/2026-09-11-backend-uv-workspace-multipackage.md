@@ -640,17 +640,22 @@ async def _dispatch_job(self, job, *, celery_task_name: str, task_name: str) -> 
 - [ ] **Step 4: 校验业务侧（含 core）不再 import worker**
 
 ```bash
-rg -n "app\.workers" app -g '*.py' | rg -v "^app/workers/" || echo "OK: 业务侧零 worker 依赖"
+rg -n "^\s*(from|import)\s+app\.workers" app -g '*.py' | rg -v "^app/workers/" || echo "OK: 业务侧零 worker import"
 ```
 
-Expected: `OK: 业务侧零 worker 依赖`（**注意**：原计划只 grep `app/tenant app/deletion app/marketplace app/admin`，漏掉了 `app/core/utils/health_checks.py:128` 这条 `core → worker` 越界，故改为全 `app/` 减去 `app/workers/`。`tests/` 允许 import worker——`tests/infra/test_celery_config.py` 依赖 `app.workers.app` 的 conf。）
+Expected: `OK: 业务侧零 worker import`。
+
+> **不要用 `rg -n "app\.workers" app` 做本闸门**——`app/core/jobs/tasks.py` 的 `TASK_NAMES` 值与 `celery_app.py` 的 `task_routes` 模式**必须**保留 `app.workers.tasks.*` 字面量（在途消息的线级协议 + 路由模式），该模式会必然命中它们而无法打印 OK。判定依据是 **import 语义**，不是字符串出现。
+> 原计划只 grep `app/tenant app/deletion app/marketplace app/admin`，漏掉了 `app/core/utils/health_checks.py:128` 这条 `core → worker` 越界，故改为全 `app/` 减去 `app/workers/`。`tests/` 允许 import worker——`tests/infra/test_celery_config.py` 依赖 `app.workers.app` 的 conf。
 
 - [ ] **Step 5: 跑闸门（celery 配置 + 路由等价 + 全量）**
 
 ```bash
 .venv/bin/ruff check . && .venv/bin/ruff format --check . && .venv/bin/python -m pytest -q
-.venv/bin/python -m pytest tests/infra/test_celery_config.py tests/tenant/generative tests/tenant/kb tests/tenant/tasks -q
+.venv/bin/python -m pytest tests/infra/test_celery_config.py tests/tenant/generative tests/tenant/kb tests/api -q
 ```
+
+> `tests/tenant/tasks` **不存在**（`tests/tenant/` 下为 agents/attachments/compliance/flows/generative/hooks/kb/models/prompts/skills/tools）。任务重试的 HTTP 面在 `tests/api`，故用它替代。
 
 **路由等价闸门（投递侧行为不变的核心证据）**：
 
