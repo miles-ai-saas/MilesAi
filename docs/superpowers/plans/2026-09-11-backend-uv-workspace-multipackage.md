@@ -2248,6 +2248,14 @@ rg -n "分页|全局异常处理" packages/miles-common/src/miles_common/__init_
 - `backend/tools/rename_to_workspace.py` 的 `RULES` 仍留过时映射 `("app.workers.app", "miles_core.jobs.celery_app")`（正确应为 `miles_worker.app`；该工具已执行完毕，仅作为记录误导后来者）。要么修正该行，要么在文件头注明「一次性工具，`app.workers.app` 一条已由人工修正，勿直接重跑」。
 - `.github/workflows/lint.yml` 的 step 名称/注释仍按旧单包布局描述（按文件路径调用仍有效，属措辞过时）。
 - `packages/*/pyproject.toml` 的注释若含旧 `app/` 路径（如 miles-core 关于 `app/infra/db/sync.py` 的注释），改为新路径。
+- 代码内面向使用者的命令提示仍写旧的 `python cli.py <cmd>`，Task 3.1 引入 `milesai` 入口后应统一改为 `milesai <cmd>`（或 `python -m miles_server.cli <cmd>`）：
+  - `packages/miles-core/src/miles_core/web/handlers.py:75`（「请执行 python cli.py migrate 后重试」，用户可见报错）
+  - `packages/miles-portal/src/miles_portal/tenant/models/services/embedding_resolve.py:89`（「请执行: python cli.py seed model-catalog」，用户可见报错）
+  - `packages/miles-server/src/miles_server/scripts/export_openapi.py:45`（快照漂移提示里的 `python scripts/export_openapi.py --write` → `python -m miles_server.scripts.export_openapi --write`）
+  - `packages/miles-server/src/miles_server/scripts/verify_db.py:44`、`.../scripts/seed/{kb_advertising,flows,mcp,prompts,tools,categories,skills,hooks}.py` 的模块 docstring
+  - `packages/miles-server/src/miles_server/scripts/__init__.py:3` 与 `.../scripts/db_ops.py:1` 的「入口：backend/cli.py → scripts.*」说明
+  - `packages/miles-server/src/miles_server/apps/application.py:29` 注释「业务种子由 cli.py init-db 单独执行」
+- 根目录 `scripts/milesai.sh`、`scripts/init-db.sh` 已在 Task 3.1 补修（原转发给 Task 2.2 已删除的 `backend/cli.py`，属功能性断裂）：改为优先 `exec backend/.venv/bin/milesai`，否则 `python -m miles_server.cli`。README 第 143 行的引用因此重新有效，无需再改。
 
 > Task 2.5 已顺带修正 `packages/miles-server/.../apps/application.py` 的 `create_app` docstring（原 Task 1.8 登记的「漏 openapi」一项已随重构解决），无需在此重复。
 
