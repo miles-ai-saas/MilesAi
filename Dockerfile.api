@@ -15,10 +15,13 @@ COPY backend/packages/miles-openapi/pyproject.toml /app/backend/packages/miles-o
 COPY backend/packages/miles-server/pyproject.toml  /app/backend/packages/miles-server/pyproject.toml
 
 # 第三方依赖走 lock 导出（--no-emit-workspace：本地成员包不在此处安装）
+# aliyun 为主索引；个别 lock 锁定的新版本（如 psycopg2-binary 2.9.13）同步滞后，
+# 用 tsinghua（lock 本身即引用该源）作 extra-index 兜底，避免构建因镜像站同步延迟失败。
 RUN cd /app/backend \
  && uv export --frozen --no-dev --no-emit-workspace --package miles-server -o /tmp/req.txt \
  && uv pip install --system -r /tmp/req.txt \
-      -i https://mirrors.aliyun.com/pypi/simple --trusted-host mirrors.aliyun.com
+      -i https://mirrors.aliyun.com/pypi/simple --trusted-host mirrors.aliyun.com \
+      --extra-index-url https://pypi.tuna.tsinghua.edu.cn/simple
 
 # 最后复制代码
 COPY backend /app/backend
