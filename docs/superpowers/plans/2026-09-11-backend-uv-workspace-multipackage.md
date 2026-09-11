@@ -430,7 +430,7 @@ rg -n "app\.tenant\.mcp\.(runner\.spec|constants|rpc|client)|app\.tenant\.tools\
 
 另需注意：`app/tenant/mcp/client.py` **整体留在 tenant**（`fetch_mcp_tools` / `invoke_mcp_tool` 等不迁），只把 `_normalize_tools` 抽走并改 import；`app/tenant/mcp/views/mcp.py:5` 的 docstring 提到 `app.tenant.mcp.client` 保持不变（该模块仍在）。
 
-**`app/exec/mcp/spec.py` 的两处 TYPE_CHECKING 注解引用（Phase 2 需照旧映射）**：搬迁时 `TenantContext`（原为模块级运行期 import）被移入该文件**已有的** `if TYPE_CHECKING:` 块，与原本就在其中的 `McpService` 并列 —— 文件已 `from __future__ import annotations`，运行期不求值，故行为不变、runner 镜像无需装 core/portal。Phase 2 codemod 会把这行映射为 `from miles_core.tenant import TenantContext`、`from miles_portal.tenant.mcp.models import McpService`；这两条**必须**由 Task 3.4 的 `.importlinter` `exec-leaf` 契约 `ignore_imports` 豁免，否则分层校验会误报 `miles_exec → miles_core/miles_portal`。
+**`app/exec/mcp/spec.py` 的 TYPE_CHECKING 注解引用（Task 1.7 已迁走，此处仅留历史说明）**：搬迁时 `TenantContext`（原为模块级运行期 import）曾被移入该文件已有的 `if TYPE_CHECKING:` 块，与原本就在其中的 `McpService` 并列 —— 文件已 `from __future__ import annotations`，运行期不求值。**Task 1.7 已把 `build_run_spec`（唯一使用者）迁回 portal，这两个 TYPE_CHECKING 引用随之删除，exec 不再需要任何 import-linter 豁免。**
 
 - [ ] **Step 5: 校验 exec 无重依赖**
 
@@ -689,6 +689,235 @@ EOF
 
 ---
 
+### Task 1.6: 断 `infra.vector_store ↔ integrations.langchain.vector` 环（修 `core → ai`）
+
+**由来**：Phase 1 退出闸门（包级 import 图）发现的遗留违规边。`app/infra/vector_store/{weaviate,langchain_base,pgvector,milvus}.py` 从 `app.integrations.langchain.vector.documents` 导入转换工具，而 `documents.py` 反向导入 `app.infra.vector_store.base.ChunkVectorRecord` → `miles_core ↔ miles_ai` 环，Phase 3 分层校验必失败。
+
+**判断依据（已核实）**：`app/integrations/langchain/vector/documents.py` 的全部 import 只有 `langchain_core.documents.Document`、`app.core.config.get_settings`、`app.infra.vector_store.base.ChunkVectorRecord`——**并不依赖 `app.integrations`**。它是 infra 侧的 Document/hit 转换工具被错放进了 ai 层。`app/infra/vector_store/` 早已使用 `langchain_core`（`precomputed.py`、`milvus.py`），故下沉不引入新的第三方依赖面。
+
+**Files:**
+- Move: `backend/app/integrations/langchain/vector/documents.py` → `backend/app/infra/vector_store/documents.py`
+- Delete: `backend/app/integrations/langchain/vector/__init__.py`（该包仅剩这一个模块，整包移除）
+- Modify: `backend/app/infra/vector_store/{langchain_base,pgvector,weaviate,milvus}.py`、`backend/tests/infra/test_vector_store_langchain.py`
+
+- [ ] **Step 1: 搬迁**
+
+```bash
+git mv app/integrations/langchain/vector/documents.py app/infra/vector_store/documents.py
+git rm app/integrations/langchain/vector/__init__.py
+rmdir app/integrations/langchain/vector   # 应为空；若非空则停下核查
+```
+
+- [ ] **Step 2: 改写 import**
+
+```bash
+sed -i '' 's/from app\.integrations\.langchain\.vector\.documents import/from app.infra.vector_store.documents import/' \
+  app/infra/vector_store/langchain_base.py app/infra/vector_store/pgvector.py \
+  app/infra/vector_store/weaviate.py app/infra/vector_store/milvus.py \
+  tests/infra/test_vector_store_langchain.py
+```
+
+- [ ] **Step 3: 更新 prose 中的旧路径**
+
+`app/infra/vector_store/milvus.py:116` 注释、`app/rag/index/gateway.py:69`、`app/rag/generate/context.py:4` 的 docstring 提到 `integrations.langchain.vector.documents` → 改为 `infra.vector_store.documents`。
+
+- [ ] **Step 4: 残留与边界检查**
+
+```bash
+rg -n "app\.integrations\.langchain\.vector" app tests -g '*.py' || echo "OK: 旧路径无残留"
+rg -n "from app\.integrations|import app\.integrations" app/infra -g '*.py' || echo "OK: core 不再依赖 ai"
+```
+
+两条都必须打印 OK。
+
+- [ ] **Step 5: 闸门**
+
+```bash
+.venv/bin/ruff check . && .venv/bin/ruff format --check .
+.venv/bin/python -m pytest tests/infra -q
+.venv/bin/python -m pytest -q
+.venv/bin/python scripts/export_openapi.py --check
+```
+
+- [ ] **Step 6: 提交**
+
+```bash
+git add -A
+git commit -F - <<'EOF'
+refactor(infra): Document 转换工具下沉 infra，断 core→ai 环
+
+documents.py 不依赖 integrations，却被 vector_store 适配器反向依赖，
+形成 core↔ai 循环；归入 infra 后依赖方向单向。
+EOF
+```
+
+---
+
+### Task 1.7: `build_run_spec` 迁出 exec，exec 成为无豁免真叶子
+
+**由来**：Phase 1 退出闸门发现 `app/exec/mcp/spec.py:15,16` 以 `TYPE_CHECKING` 引用 `app.core.tenant.TenantContext` 与 `app.tenant.mcp.models.McpService` → `miles_exec → miles_core/miles_portal` 上向依赖（且加重 `exec ↔ portal` 环）。根源：`build_run_spec` 是**业务侧**的组装函数（吃 MCP 服务配置 + 租户上下文），不属运行器内核。把它迁回 portal 后，exec 无需任何 import-linter 豁免。
+
+**Files:**
+- Create: `backend/app/tenant/mcp/runner/spec_build.py`
+- Modify: `backend/app/exec/mcp/spec.py`（删 `build_run_spec` 与 `if TYPE_CHECKING:` 块）
+- Modify: `backend/app/tenant/mcp/services/mcp.py`（import 目标改为新模块）
+
+- [ ] **Step 1: 新建 `spec_build.py` 并原样搬运**
+
+把 `app/exec/mcp/spec.py` 中 `build_run_spec`（第 78 行起至文件末）**逐行原样**搬入 `app/tenant/mcp/runner/spec_build.py`，函数体、docstring、默认值、校验逻辑一律不改。头部改为：
+
+```python
+"""RunSpec 的业务侧构造：MCP 服务配置 + 租户上下文 → RunSpec。
+
+留在 portal 而非 exec：本函数依赖 McpService 与 TenantContext，属上层关注点；
+exec 只保留运行器消费的 RunSpec 与校验。
+"""
+
+from app.core.tenant import TenantContext
+from app.exec.mcp.spec import RunSpec
+from app.tenant.mcp.models import McpService
+```
+
+按实际引用补齐 import（如函数内用到 `NetworkMode`、`BadRequestError` 等，勿漏）。新模块路径 `app.tenant.mcp.runner.spec_build` 与既有规则 `app.tenant.mcp.runner.spec` **不冲突**：codemod 的正则后视前瞻为 `(?![\w])`，`_` 属 `\w`，故 `spec_build` 会正确落到通用 `app.tenant` → `miles_portal.tenant.mcp.runner.spec_build`。
+
+- [ ] **Step 2: 从 `spec.py` 删除已迁出的部分**
+
+删掉 `build_run_spec` 函数与 `if TYPE_CHECKING:` 块（连同 `TYPE_CHECKING` 的 import）；`RunSpec`、`NetworkMode`、`validate_run_spec` 留在原处。用 ruff 清理不再使用的 import（`UUID`、`Literal` 等按实际用量判断）。
+
+- [ ] **Step 3: 改调用方 import**
+
+`app/tenant/mcp/services/mcp.py:37`：
+
+```python
+from app.tenant.mcp.runner.spec_build import build_run_spec
+```
+
+第 202、268 行的调用点不改。
+
+- [ ] **Step 4: 叶子检查（两条都必须干净）**
+
+```bash
+rg -n "^from app\.|^import app\." app/exec -g '*.py'      # 只应出现 app.common.* 与 app.exec.*
+rg -n "TYPE_CHECKING|app\.core|app\.tenant|app\.integrations|app\.infra|app\.models" app/exec -g '*.py' || echo "OK: exec 无重依赖"
+```
+
+> 若第一条仍出现 `app.core`/`app.tenant`，停下核查——说明还有别的 exec 模块越界，不要就地新增豁免。
+
+- [ ] **Step 5: 闸门**
+
+```bash
+.venv/bin/ruff check . && .venv/bin/ruff format --check .
+.venv/bin/python -m pytest tests/mcp -q
+.venv/bin/python -m pytest -q
+.venv/bin/python scripts/export_openapi.py --check
+```
+
+- [ ] **Step 6: 提交**
+
+```bash
+git add -A
+git commit -F - <<'EOF'
+refactor(exec): build_run_spec 迁回 portal，exec 成为无豁免叶子
+
+该函数依赖 McpService/TenantContext，属业务侧组装；迁出后 exec 仅剩
+RunSpec 与校验，静态依赖只剩 common，无需 import-linter 豁免。
+EOF
+```
+
+---
+
+### Task 1.8: 断 `portal → openapi`（开放面路由改由装配层挂载）
+
+**由来**：Phase 1 退出闸门发现 `app/tenant/router.py`（portal）include 了 `app.tenant.agents.views.open_chat`（映射 miles_openapi），以及 `app/tenant/agents/views/agents.py:24` 从 `app.tenant.agents.deps_api_auth`（原映射 miles_openapi）取共享鉴权依赖 → `miles_portal → miles_openapi` 上向依赖，与 `openapi → portal` 构成环。
+
+**两处根因（分开处理）**：
+1. `deps_api_auth.py` 被 open_chat（openapi）与 `agents.py`（portal）**共用**，属共享依赖，应留在 portal，由上层 openapi 反向引用 → 修正 Phase 2 映射，删除 `("app.tenant.agents.deps_api_auth", "miles_openapi.deps_api_auth")` 规则。
+2. `open_chat` 的路由挂载属**装配层**职责，不该由 portal 的 router 汇总模块 include → 新增 `app/openapi/registration.py`，由 `app/apps/` 装配层挂载。
+
+**Files:**
+- Create: `backend/app/openapi/__init__.py`、`backend/app/openapi/registration.py`
+- Modify: `backend/app/tenant/router.py`、`backend/app/apps/routers.py`、`backend/app/apps/application.py`
+
+- [ ] **Step 1: 新建 openapi 装配模块**
+
+`app/openapi/__init__.py`：
+
+```python
+"""开放面（OpenAPI）路由装配；Phase 2 迁入 miles_openapi。"""
+```
+
+`app/openapi/registration.py`：
+
+```python
+"""开放面路由：与租户工作台同前缀 /api/v1，独立挂载以保持分层单向。
+
+openapi 位于 portal 之上，故此处可以 import portal 的视图与依赖。
+"""
+
+from fastapi import APIRouter
+
+from app.tenant.agents.views import open_chat as agents_open_chat
+
+openapi_router = APIRouter(prefix="/api/v1")
+openapi_router.include_router(agents_open_chat.router, prefix="/open", tags=["open-agents"])
+
+__all__ = ["openapi_router"]
+```
+
+- [ ] **Step 2: 从 `app/tenant/router.py` 摘除**
+
+删除 `from app.tenant.agents.views import open_chat as agents_open_chat` 与 `api_router.include_router(agents_open_chat.router, prefix="/open", tags=["open-agents"])` 两行；其余 include 与顺序不动。
+
+- [ ] **Step 3: 装配层挂载**
+
+`app/apps/routers.py` 增加导出：
+
+```python
+from app.openapi.registration import openapi_router
+
+__all__ = ["api_router", "admin_router", "openapi_router"]
+```
+
+`app/apps/application.py`：import 补 `openapi_router`，并在 `app.include_router(api_router)` 之后、`app.include_router(admin_router)` 之前插入 `app.include_router(openapi_router)`。
+
+> 顺序等价性：`/api/v1/open/*` 前缀唯一，无路由遮蔽；且 `export_openapi.py` 用 `json.dumps(..., sort_keys=True)`，路径注册顺序不影响 snapshot 字节。**snapshot 必须仍然 OK**——若报了漂移，说明路径或 schema 真的变了，停下核查。
+
+- [ ] **Step 4: 边界与路由存在性检查**
+
+```bash
+rg -n "open_chat|deps_api_auth" app/tenant/router.py || echo "OK: portal 路由汇总不再引用开放面"
+.venv/bin/python -c "
+from app.apps.application import create_app
+paths = {r.path for r in create_app().routes}
+want = '/api/v1/open/agents/{agent_id}/chat'
+assert want in paths, sorted(p for p in paths if 'open' in p)
+print('OK: /api/v1/open 路由仍在')
+"
+```
+
+- [ ] **Step 5: 闸门**
+
+```bash
+.venv/bin/ruff check . && .venv/bin/ruff format --check .
+.venv/bin/python -m pytest tests/api -q
+.venv/bin/python -m pytest -q
+.venv/bin/python scripts/export_openapi.py --check
+```
+
+- [ ] **Step 6: 提交**
+
+```bash
+git add -A
+git commit -F - <<'EOF'
+refactor(openapi): 开放面路由改由装配层挂载
+
+portal 的 router 不再 include open_chat，消除 portal→openapi 上向依赖；
+deps_api_auth 为 portal/openapi 共享依赖，归属留 portal。
+EOF
+```
+
+---
+
 ## Phase 2: 工作区与搬迁
 
 ### Task 2.1: 建立 uv workspace 骨架与 10 个包声明
@@ -878,7 +1107,11 @@ git mv scripts           $P/miles-server/src/miles_server/scripts
 # ── 开放面：本步即迁入 miles_openapi，保证 Task 2.3 的 codemod 目标路径已存在 ──
 mkdir -p $P/miles-openapi/src/miles_openapi/views
 git mv app/tenant/agents/views/open_chat.py $P/miles-openapi/src/miles_openapi/views/open_chat.py
-git mv app/tenant/agents/deps_api_auth.py   $P/miles-openapi/src/miles_openapi/deps_api_auth.py
+# Phase 1 Task 1.8 已建 app/openapi/{__init__,registration}.py（开放面装配模块），一并迁入
+git mv app/openapi/__init__.py     $P/miles-openapi/src/miles_openapi/__init__.py
+git mv app/openapi/registration.py $P/miles-openapi/src/miles_openapi/registration.py
+# 注意：app/tenant/agents/deps_api_auth.py **不迁 openapi**（Task 1.8：portal/openapi 共享依赖，留 portal），
+# 随 `git mv app/tenant ...` 整体进入 miles_portal/tenant/agents/
 ```
 
 - [ ] **Step 3: 剥离包装层**
@@ -910,7 +1143,7 @@ ls packages/miles-portal/src/miles_portal      # 期望：tenant/ deletion/ mark
 ls packages/miles-admin/src/miles_admin        # 期望：router.py models/ app_ops/ app_sys/（已剥离 admin 层）
 ls packages/miles-worker/src/miles_worker      # 期望：app.py tasks/
 ls packages/miles-runner/src/miles_runner      # 期望：main.py limits.py（已剥离 runner 层）
-ls packages/miles-openapi/src/miles_openapi    # 期望：views/open_chat.py deps_api_auth.py
+ls packages/miles-openapi/src/miles_openapi    # 期望：__init__.py registration.py views/open_chat.py（deps_api_auth 在 portal）
 ls packages/miles-server/src/miles_server      # 期望：main.py cli.py apps/ scripts/
 ```
 
@@ -951,7 +1184,9 @@ BACKEND = Path(__file__).resolve().parents[1]
 # 旧前缀 → 新前缀；按长度降序生效（最长优先，避免被短前缀截断）。
 RULES: list[tuple[str, str]] = [
     ("app.tenant.agents.views.open_chat", "miles_openapi.views.open_chat"),
-    ("app.tenant.agents.deps_api_auth", "miles_openapi.deps_api_auth"),
+    # 注意：app.tenant.agents.deps_api_auth **不映射到 openapi**——它是 portal 与
+    # openapi 共享的鉴权依赖，归属留 portal（Task 1.8 修正），走通用 app.tenant 规则。
+    ("app.openapi", "miles_openapi"),
     ("app.tenant.mcp.runner.spec", "miles_exec.mcp.spec"),
     ("app.tenant.mcp.constants", "miles_exec.mcp.constants"),
     ("app.tenant.mcp.rpc", "miles_exec.mcp.rpc"),
@@ -1313,7 +1548,8 @@ EOF
 **Files:**
 - Create: `packages/miles-portal/src/miles_portal/registration.py`
 - Create: `packages/miles-admin/src/miles_admin/registration.py`
-- Create: `packages/miles-openapi/src/miles_openapi/__init__.py`、`registration.py`、`views/open_chat.py`、`deps_api_auth.py`
+- Move: `app/openapi/{__init__.py,registration.py}` → `packages/miles-openapi/src/miles_openapi/`（Phase 1 Task 1.8 已建，此处只需改写 `register_open(app)` 形式）
+- Note: `deps_api_auth.py` **留在 portal**（Task 1.8 决定：它是 portal/openapi 共享鉴权依赖），不迁 openapi
 - Modify: `packages/miles-server/src/miles_server/apps/application.py`、`apps/routers.py`
 
 **Interfaces:**
@@ -1322,7 +1558,7 @@ EOF
 
 - [ ] **Step 1: 创建 openapi 包子模块与注册函数**
 
-`open_chat.py` 与 `deps_api_auth.py` 已在 Task 2.2 迁入 `packages/miles-openapi/src/miles_openapi/`，此处补 `__init__.py` 并修正内部 import：
+`open_chat.py` 已在 Task 2.2 迁入 `packages/miles-openapi/src/miles_openapi/views/`（`deps_api_auth.py` 按 Task 1.8 留在 portal），此处补 `views/__init__.py` 并核对内部 import：
 
 ```bash
 cd backend
@@ -1335,9 +1571,9 @@ printf '"""对外 API 面（/api/v1/open/*）：开放接口视图与 X-API-Key 
 """对外开放接口视图。"""
 ```
 
-`open_chat.py` 内 `from miles_portal.tenant.agents.deps_api_auth import require_agent_api_key` → `from miles_openapi.deps_api_auth import require_agent_api_key`（该文件已同迁 openapi 包）。其余对 portal 服务/仓储的引用保持不变（鉴权实现仍在 portal，openapi 只承载视图与依赖）。
+`open_chat.py` 的鉴权 import 保持指向 portal——`from miles_portal.tenant.agents.deps_api_auth import require_agent_api_key`（Task 1.8 已定：`deps_api_auth.py` 是 portal/openapi 共享依赖，**留在 portal**，openapi 在上层反向引用；Task 2.2 的通用 `app.tenant` 规则已把它映射到 `miles_portal.tenant.agents.deps_api_auth`，故 open_chat.py 无需再改）。其余对 portal 服务/仓储的引用保持不变。
 
-`packages/miles-openapi/src/miles_openapi/registration.py`：
+`packages/miles-openapi/src/miles_openapi/registration.py`（由 Phase 1 的 `app/openapi/registration.py` 改写；Phase 1 版本导出 `openapi_router` 并挂在 `application.py`，此处改为 `register_open(app)` 以统一装配风格）：
 
 ```python
 """对外 API 面（/api/v1/open/*）注册。路径保持不变，仅调整代码归属。"""
@@ -1354,9 +1590,13 @@ def register_open(app: FastAPI) -> None:
     app.include_router(open_chat.router, prefix="/api/v1/open", tags=["open-agents"])
 ```
 
-- [ ] **Step 2: 从 portal/router.py 摘除 open 路由**
+- [ ] **Step 2: 核对 portal/router.py 已无 open 路由**
 
-`packages/miles-portal/src/miles_portal/tenant/router.py`：删除 `include_router(agents_open_chat.router, prefix="/open", ...)` 一行及其 import，交由 `register_open` 挂载（URL 前缀合计仍为 `/api/v1/open`，`api_router` 的 prefix 是 `/api/v1`）。
+Phase 1 Task 1.8 已删除 `packages/miles-portal/src/miles_portal/tenant/router.py` 中的 `agents_open_chat` import 与 include（改由装配层挂载）。此处只需确认：
+
+```bash
+rg -n "open_chat" packages/miles-portal/src/miles_portal/tenant/router.py || echo "OK: portal 路由不再引用开放面"
+```
 
 - [ ] **Step 3: 加 `register_portal` / `register_admin`**
 
@@ -1866,28 +2106,9 @@ type = forbidden
 source_modules = miles_ai
 forbidden_modules = miles_portal
 
-# --- TYPE_CHECKING 注解豁免（Task 1.4 遗留，必须保留并附注释）---
-# miles_exec.mcp.spec 的 build_run_spec(service: McpService, ctx: TenantContext)
-# 只用注解引用租户域/core 类型；文件已 `from __future__ import annotations`，
-# 运行期不求值，runner 镜像无需装 core/portal。
-# import-linter 仍会静态计入这些 TYPE_CHECKING import，故显式豁免：
-[importlinter:contract:exec-leaf]
-name = miles_exec 仅在运行期是叶子（TYPE_CHECKING 注解除外）
-type = forbidden
-source_modules = miles_exec
-forbidden_modules =
-    miles_core
-    miles_ai
-    miles_portal
-    miles_admin
-    miles_openapi
-    miles_server
-    miles_worker
-    miles_runner
-ignore_imports =
-    # 注解专用；见上方说明
-    miles_exec.mcp.spec -> miles_core.tenant
-    miles_exec.mcp.spec -> miles_portal.tenant.mcp.models
+# miles_exec 是**无豁免**叶子（Task 1.7 已把 build_run_spec 迁回 portal）：
+# 见下方 layers 契约的 `miles_exec | miles_common` 尾层，无需 ignore_imports。
+# 若将来确实需要豁免注解型引用，必须在此处显式列出并写明原因。
 
 [importlinter:contract:openapi-no-admin]
 name = 开放面不得依赖运营面
@@ -1998,8 +2219,7 @@ rg -n "分页|全局异常处理" app/common/__init__.py
 
 - `app/common/__init__.py` docstring 仍写「响应、异常、分页、全局异常处理」，但 `pagination` 与 `handlers` 已迁出。改为「跨模块公共能力：响应、异常与通用 schema。」（Phase 1 Task 1.2 的 scope 未授权改它，故留到这里。）
 - `app/models/__init__.py:6` 的域目录列表 `platform / kb / flow / model / media / meta / task / storage / agent / marketplace` 需补 `risk`（Task 1.3 新增 `app/models/risk.py`，其 scope 未授权改 docstring）。
-- `app/tenant/mcp/runner/__init__.py:1` docstring 仍写「MCP Runner 客户端与 RunSpec（API 侧）」，但 `RunSpec`/`validate_run_spec`/`build_run_spec` 已随 Task 1.4 迁至 `app/exec/mcp/spec.py`，需改写。
-- `app/exec/__init__.py:1` docstring 的「零重依赖」措辞与 `spec.py` 的 TYPE_CHECKING 注解引用不符，改为「运行期零重依赖（注解型引用见 spec.py）」（Task 1.4 遗留）。
+- `app/tenant/mcp/runner/__init__.py:1` docstring 仍写「MCP Runner 客户端与 RunSpec（API 侧）」，但 `RunSpec`/`validate_run_spec`/`build_run_spec` 已随 Task 1.4/1.7 迁至 `app/exec/mcp/spec.py` 与 `app/tenant/mcp/runner/spec_build.py`，需改写。
 
 > 后续任务若再发现同类过时 docstring，追加到本 Step 列表，不要就地偷偷扩大该任务 scope。
 
@@ -2176,6 +2396,6 @@ git log --oneline main..HEAD
 **4. 已识别风险（执行时留意）**：
 - Task 2.2 的搬迁分两类（**剥离** vs **保留**包装层），是本次最易错处：`flatten` 仅对 `common/exec/core/admin/workers/runner` 执行；`infra/models/rag/integrations/flow_runtime/tenant/deletion/marketplace/apps/scripts` 必须保留目录名。Step 5 的目录形态校验是硬闸门，务必逐条比对。
 - Task 2.2 的 `flatten` 依赖 Step 1 先删占位 `__init__.py`（否则 `mv` 会因同名冲突失败）；若 Step 1 遗漏，重跑 Step 1 后再执行 Step 3。
-- `open_chat.py` / `deps_api_auth.py` 在 **Task 2.2** 就迁入 `miles_openapi`（而非 2.5），是为保证 Task 2.3 的 codemod 目标路径已存在——若放在 2.5，2.4 的提交点会处于"import 指向不存在的模块"的破损态。
+- `open_chat.py` 在 **Task 2.2** 就迁入 `miles_openapi`（而非 2.5），是为保证 Task 2.3 的 codemod 目标路径已存在——若放在 2.5，2.4 的提交点会处于"import 指向不存在的模块"的破损态。`deps_api_auth.py` 例外：按 Task 1.8 的决定**留 portal**（portal/openapi 共享鉴权依赖），故 Task 2.5 不再在 openapi 包内创建它。
 - Task 3.3 采用 `uv export --no-emit-workspace` + `--no-deps` 逐个安装本地包：若 `uv export` 在仅有 pyproject/lock 而无源码时失败，回退为 `COPY backend` 之后执行 `uv sync --package <pkg> --frozen --no-dev`，三处统一。
 - Task 3.1 的第三方依赖按包分配需逐个核对 import，避免漏声明（漏声明会在 `uv sync --package <pkg>` 或镜像 `import` 时暴露）。
