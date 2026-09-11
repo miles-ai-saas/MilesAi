@@ -20,6 +20,9 @@ dependencies = [
     "opentelemetry-instrumentation-fastapi>=0.49b0",
 ]
 
+[project.scripts]
+milesai = "miles_server.cli:main"
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"

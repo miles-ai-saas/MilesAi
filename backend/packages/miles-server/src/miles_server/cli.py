@@ -1,16 +1,17 @@
 #!/usr/bin/env python3
 """MilesAi 统一 CLI：API / Worker 启动与运维脚本。
 
-在 backend 目录执行:
-  python cli.py serve
-  python cli.py worker
-  python cli.py migrate
-  python cli.py init-db
-  python cli.py seed all
-  python cli.py verify-db
-  python cli.py backfill-media-assets [--dry-run] [--tenant-id UUID]
+工作区安装后入口为 ``milesai``:
+  milesai serve
+  milesai worker
+  milesai beat
+  milesai migrate
+  milesai init-db
+  milesai seed all
+  milesai verify-db
+  milesai backfill-media-assets [--dry-run] [--tenant-id UUID]
 
-安装 editable 后也可: milesai serve
+未安装 entry point 时也可: python -m miles_server.cli serve
 """
 
 from __future__ import annotations
@@ -32,7 +33,7 @@ def _seed_choices() -> list[str]:
     context_settings={"help_option_names": ["-h", "--help"]},
     invoke_without_command=True,
 )
-@click.version_option(package_name="milesai", prog_name="milesai")
+@click.version_option(package_name="miles-server", prog_name="milesai")
 @click.pass_context
 def cli(ctx: click.Context) -> None:
     """MilesAi 统一命令行入口（API、Worker、迁移与种子）。"""

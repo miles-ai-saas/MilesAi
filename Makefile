@@ -61,8 +61,8 @@ help: ## 显示全部可用命令
 env: ## 复制 .env.example → .env（仅在 .env 缺失时）
 	@if [ -f "$(ROOT)/.env" ]; then echo ".env 已存在，跳过"; else cp "$(ROOT)/.env.example" "$(ROOT)/.env" && echo "已生成 .env，请按需修改基础设施地址"; fi
 
-install-backend: ## 安装后端依赖（editable + dev extras）
-	cd $(BACKEND) && $(PY) -m pip install -e ".[dev]"
+install-backend: ## 安装后端工作区依赖（uv sync --all-packages）
+	cd $(BACKEND) && uv sync --all-packages --group dev
 
 install-ui: ## 安装前端依赖（shared → workbench → admin，npm ci）
 	cd $(ROOT)/ui/shared && npm ci
@@ -107,27 +107,27 @@ restart: down up ## 重启应用栈
 ##@ 数据库（需数据库可达）
 
 init-db: ## 迁移 + 全量种子（SEED 可覆盖范围）
-	cd $(BACKEND) && $(PY) cli.py init-db
+	cd $(BACKEND) && $(PY) -m miles_server.cli init-db
 
 migrate: ## 仅执行 Alembic 迁移（alembic upgrade head）
-	cd $(BACKEND) && $(PY) cli.py migrate
+	cd $(BACKEND) && $(PY) -m miles_server.cli migrate
 
 seed: ## 写入指定范围种子（默认 all）
-	cd $(BACKEND) && $(PY) cli.py seed $(SEED)
+	cd $(BACKEND) && $(PY) -m miles_server.cli seed $(SEED)
 
 verify-db: ## 校验核心表是否就绪
-	cd $(BACKEND) && $(PY) cli.py verify-db
+	cd $(BACKEND) && $(PY) -m miles_server.cli verify-db
 
 ##@ 本地运行（后端）
 
 serve: ## 启动 API（debug 时默认热重载）
-	cd $(BACKEND) && $(PY) cli.py serve
+	cd $(BACKEND) && $(PY) -m miles_server.cli serve
 
 worker: ## 启动 Celery Worker
-	cd $(BACKEND) && $(PY) cli.py worker
+	cd $(BACKEND) && $(PY) -m miles_server.cli worker
 
 beat: ## 启动 Celery Beat（智能体定时任务）
-	cd $(BACKEND) && $(PY) cli.py beat
+	cd $(BACKEND) && $(PY) -m miles_server.cli beat
 
 ##@ 代码质量
 
@@ -160,10 +160,10 @@ test-ui: ## 运行工作台前端单测（vitest）
 test: test-backend ## 运行后端测试（前端单测用 test-ui）
 
 openapi-check: ## 校验 OpenAPI 快照无漂移
-	cd $(BACKEND) && $(PY) scripts/export_openapi.py --check
+	cd $(BACKEND) && $(PY) -m miles_server.scripts.export_openapi --check
 
 openapi-write: ## 重写 OpenAPI 快照（改路由/Schema 后执行并提交）
-	cd $(BACKEND) && $(PY) scripts/export_openapi.py --write
+	cd $(BACKEND) && $(PY) -m miles_server.scripts.export_openapi --write
 
 check: lint-backend format-check-backend openapi-check test-backend ## 复刻 CI 后端 job 的质量门禁
 
