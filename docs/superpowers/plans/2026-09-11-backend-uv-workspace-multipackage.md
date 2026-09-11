@@ -2332,6 +2332,76 @@ EOF
 
 ---
 
+### Task 3.6: 文档路径收尾清扫（目录形式与旧命令）
+
+**背景**：Task 3.5 的残留检查用的是 dotted 形式正则（`app.tenant` 等），已全部清零。但各 feature/architecture/guides/operations 文档里还有大量**目录形式**的旧路径与旧命令，Task 3.5 未纳入范围（据实测统计）：
+
+- `backend/app/...` 目录/文件路径：**127 处 / 29 文件**（最多者 `docs/features/task-center.md` 12、`attachments-media-generative.md` 9、`system-management.md` 8、`agent-schedules.md` 8）
+- `python cli.py ...` 与 `pip install -e ...`：**38 处 / 12 文件**（最多者 `docs/operations/database-setup.md` 13、`deployment.md` 8）
+
+**Files:** `docs/**`（排除 `docs/superpowers/**`）、`README.md`、`backend/README.md`、`docker/README.md`
+
+**核心风险与要求**：叶子文件在 flatten 后**已改名或变目录**（例：`app/models/task.py` → `packages/miles-core/src/miles_core/models/task/`，`app/tenant/agents/views/open_chat.py` → `packages/miles-openapi/src/miles_openapi/views/open_chat.py`）。
+
+- [ ] **Step 1: 建立「旧路径 → 新路径」核对清单**
+
+先枚举全部命中，逐条确定目标：
+
+```bash
+rg -o --pcre2 "backend/app/[A-Za-z0-9_./-]+" docs README.md backend/README.md docker/README.md \
+  | rg -v "superpowers/" | sort -u
+```
+
+按 spec §4 映射表推导新路径，**必须逐个在磁盘上验证存在**（`ls` 或 `test -e`）。若某条映射到已不存在的叶子文件，回退到其最近的既有父目录或正确的新文件（例如批量迁移产生的目录化），并在报告中说明。
+
+- [ ] **Step 2: 替换目录/文件路径**
+
+逐文件替换 `backend/app/<x>/...` → `backend/packages/<pkg>/src/<module>/...`。注意：
+
+- 文档中的目录树要整体重排（不能只做前缀替换，层数变了）。
+- `app/` 作为 Docker 的 `/app/...` 路径时**不要**改。
+- 不要动 `docs/superpowers/**`。
+
+- [ ] **Step 3: 替换旧命令**
+
+```bash
+rg -n "python cli\.py|pip install -e|scripts/export_openapi\.py" docs README.md backend/README.md docker/README.md | rg -v superpowers/
+```
+
+- `python cli.py <cmd>` → `milesai <cmd>`（或 `python -m miles_server.cli <cmd>`）
+- `pip install -e ".[dev]"` → `uv sync --all-packages --group dev`
+- `python scripts/export_openapi.py --write` → `python -m miles_server.scripts.export_openapi --write`
+
+- [ ] **Step 4: 校验**
+
+```bash
+cd /Users/xiezhigang/Projects/miles/MilesAI
+echo "--- 旧目录路径 ---"
+rg -n "backend/app/" docs README.md backend/README.md docker/README.md | rg -v superpowers/ || echo "OK: 无旧目录路径"
+echo "--- 旧命令 ---"
+rg -n "python cli\.py|pip install -e|scripts/export_openapi\.py" docs README.md backend/README.md docker/README.md | rg -v superpowers/ || echo "OK: 无旧命令"
+echo "--- 新路径存在性抽检（对所有替换出的路径）---"
+rg -o --pcre2 "backend/packages/[A-Za-z0-9_./-]+" docs README.md backend/README.md docker/README.md \
+  | rg -v superpowers/ | sed 's/.*://' | sort -u | while read -r p; do [ -e "$p" ] || echo "MISSING: $p"; done; echo "存在性检查完成"
+```
+
+Expected：前两项 `OK`；第三项无 `MISSING`（或仅剩报告中已说明的白名单项）。
+
+- [ ] **Step 5: 提交**
+
+```bash
+git add -A
+git commit -F - <<'EOF'
+docs: 收敛文档中的旧目录路径与命令
+
+各 feature/guides/operations 仍按单包布局书写 backend/app/** 与
+python cli.py，改为 packages/ 新路径与 milesai 入口，
+并对替换出的每个路径做存在性校验。
+EOF
+```
+
+---
+
 ## Phase 4: 终验
 
 ### Task 4.1: 全量验证与收尾
