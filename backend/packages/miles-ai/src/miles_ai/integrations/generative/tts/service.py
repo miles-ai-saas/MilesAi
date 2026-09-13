@@ -7,10 +7,10 @@ TTS 语音合成厂商派发（``model_type=tts``）。
 
 from __future__ import annotations
 
-from miles_common.exceptions import BadRequestError
 from miles_ai.integrations.generative.constants import INVOKE_DASHSCOPE_TTS
 from miles_ai.integrations.generative.registry import resolve_invoke_mode
 from miles_ai.integrations.generative.tts.providers.dashscope_tts import generate_dashscope_tts
+from miles_common.exceptions import BadRequestError
 from miles_core.models.model import ModelConfig
 from miles_core.models.model.catalog import ModelCapabilityType
 

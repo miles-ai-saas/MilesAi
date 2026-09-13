@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import secrets
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 # RFC 9562 UUIDv7: 48 位毫秒时间戳 + 版本 7 + 12 位随机 + variant(10) + 62 位随机
 _VARIANT_10 = 0b10 << 62
@@ -16,7 +16,7 @@ def generate_id() -> str:
     生成 UUIDv7 格式的唯一 ID（时间有序）。
     返回 32 位小写十六进制字符串（无连字符）。
     """
-    timestamp_ms = int(datetime.now(timezone.utc).timestamp() * 1000) & ((1 << 48) - 1)
+    timestamp_ms = int(datetime.now(UTC).timestamp() * 1000) & ((1 << 48) - 1)
     rand_a = secrets.randbits(12)
     rand_b = secrets.randbits(62)
     uuid_int = (timestamp_ms << 80) | _VERSION_7 | (rand_a << 64) | _VARIANT_10 | rand_b

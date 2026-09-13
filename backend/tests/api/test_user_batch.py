@@ -1,8 +1,9 @@
 """用户批量操作请求体验证。"""
 
+from uuid import uuid4
+
 import pytest
 from pydantic import ValidationError
-from uuid import uuid4
 
 from miles_portal.tenant.system.schemas.user import UserBatchRequest
 

@@ -12,8 +12,8 @@ from miles_admin.app_ops.schemas.marketplace_category import (
 )
 from miles_common.exceptions import BadRequestError, ConflictError, NotFoundError
 from miles_common.slug import slugify
-from miles_core.soft_delete import is_marked_deleted, mark_deleted, not_deleted
 from miles_core.models.marketplace import AppCategory, MarketplaceApp
+from miles_core.soft_delete import is_marked_deleted, mark_deleted, not_deleted
 
 
 class AdminMarketplaceCategoryService:
@@ -67,9 +67,9 @@ class AdminMarketplaceCategoryService:
         """按需更新分类名称/slug/排序；slug 变更时校验唯一。"""
         row = await self._get_or_raise(category_id)
         data = body.model_dump(exclude_unset=True)
-        if "name" in data and data["name"]:
+        if data.get("name"):
             row.name = data["name"].strip()
-        if "slug" in data and data["slug"]:
+        if data.get("slug"):
             slug = data["slug"].strip()
             await self._ensure_slug_unique(slug, exclude_id=row.id)
             row.slug = slug

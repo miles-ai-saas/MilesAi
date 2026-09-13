@@ -5,9 +5,9 @@ from typing import Annotated, Any, TypedDict
 
 from miles_ai.flow_runtime.constants import TEXT_OUTPUT_NODE_TYPES
 from miles_ai.flow_runtime.types import FlowGraph
+from miles_ai.integrations.langgraph.compiler.report import resolve_node_type
 from miles_ai.integrations.langgraph.constants import RELEVANCE_NONE
 from miles_ai.integrations.langgraph.graph_analysis import GRADE_BRANCH_HANDLES, normalize_branch_handle
-from miles_ai.integrations.langgraph.compiler.report import resolve_node_type
 
 
 def merge_outputs(left: dict[str, Any], right: dict[str, Any]) -> dict[str, Any]:

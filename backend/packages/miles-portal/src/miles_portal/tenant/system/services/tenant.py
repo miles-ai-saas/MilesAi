@@ -4,12 +4,12 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from miles_core.tenant import TenantContext
-from miles_core.models.platform.tenant import Tenant
-from miles_portal.tenant.system.repositories.tenant import TenantRepository
 from miles_common.schema import PageParams, PageResult
-from miles_portal.tenant.system.schemas.tenant import TenantCreate, TenantOut, TenantUpdate
+from miles_core.models.platform.tenant import Tenant
 from miles_core.service import BaseService
+from miles_core.tenant import TenantContext
+from miles_portal.tenant.system.repositories.tenant import TenantRepository
+from miles_portal.tenant.system.schemas.tenant import TenantCreate, TenantOut, TenantUpdate
 
 
 class TenantService(BaseService):

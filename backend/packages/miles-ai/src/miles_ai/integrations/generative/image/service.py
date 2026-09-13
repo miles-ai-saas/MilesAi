@@ -7,7 +7,6 @@
 
 from __future__ import annotations
 
-from miles_common.exceptions import BadRequestError
 from miles_ai.integrations.generative.constants import (
     INVOKE_DASHSCOPE_T2I,
     INVOKE_OPENAI_IMAGES,
@@ -17,6 +16,7 @@ from miles_ai.integrations.generative.image.providers.dashscope_t2i import gener
 from miles_ai.integrations.generative.image.providers.openai_images import generate_openai_images
 from miles_ai.integrations.generative.image.providers.volcengine_image import generate_volcengine_image
 from miles_ai.integrations.generative.registry import resolve_invoke_mode
+from miles_common.exceptions import BadRequestError
 from miles_core.models.model import ModelConfig
 from miles_core.models.model.catalog import ModelCapabilityType
 

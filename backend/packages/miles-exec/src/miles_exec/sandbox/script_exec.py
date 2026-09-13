@@ -117,7 +117,7 @@ async def run_python_script(
             duration_ms=duration_ms,
             exit_code=proc.returncode,
         )
-    except asyncio.TimeoutError:
+    except TimeoutError:
         duration_ms = int((time.monotonic() - started) * 1000)
         if proc:
             await _kill(proc)

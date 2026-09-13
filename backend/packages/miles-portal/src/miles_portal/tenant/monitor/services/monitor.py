@@ -4,7 +4,7 @@ import asyncio
 import csv
 import io
 import smtplib
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
@@ -14,15 +14,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from miles_core.config import get_settings
 from miles_core.logging import get_logger
-from miles_core.service import BaseService
-from miles_core.soft_delete import append_not_deleted
-from miles_core.tenant import TenantContext, tenant_filters
 from miles_core.models.agent import Agent
 from miles_core.models.flow import Flow
 from miles_core.models.kb import Document, DocumentStatus, KnowledgeBase
 from miles_core.models.model.usage_log import ModelUsageLog
 from miles_core.models.platform.system import SystemConfig
 from miles_core.models.task.task_record import CeleryTaskRecord
+from miles_core.service import BaseService
+from miles_core.soft_delete import append_not_deleted
+from miles_core.tenant import TenantContext, tenant_filters
+from miles_core.utils.health_checks import collect_health_status
 from miles_portal.tenant.compliance.models import InterceptLog
 from miles_portal.tenant.marketplace.models import AppInstall
 from miles_portal.tenant.monitor.meta import monitor_meta_dict
@@ -37,7 +38,6 @@ from miles_portal.tenant.monitor.schemas.monitor import (
     TaskTrendPoint,
 )
 from miles_portal.tenant.tasks.schemas.task import TaskSummary
-from miles_core.utils.health_checks import collect_health_status
 
 logger = get_logger(__name__)
 
@@ -84,7 +84,7 @@ class MonitorService(BaseService):
         log_f = tenant_filters(self.ctx, InterceptLog.tenant_id)
         install_f = tenant_filters(self.ctx, AppInstall.tenant_id)
 
-        today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+        today_start = datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0)
 
         kbs = await self.db.scalar(select(func.count()).select_from(KnowledgeBase).where(*kb_f))
         docs = await self.db.scalar(select(func.count()).select_from(Document).where(*doc_f))
@@ -227,7 +227,7 @@ class MonitorService(BaseService):
                 "event": "test",
                 "tenant_id": str(self.ctx.tenant_id),
                 "message": "MilesAi 监控告警测试",
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
             }
             try:
                 async with httpx.AsyncClient(timeout=5.0) as client:
@@ -243,7 +243,7 @@ class MonitorService(BaseService):
             email_result = await self._send_alert_email(
                 body,
                 subject="告警测试",
-                message=f"租户 {self.ctx.tenant_id} 监控告警通道测试成功。\n时间: {datetime.now(timezone.utc).isoformat()}",
+                message=f"租户 {self.ctx.tenant_id} 监控告警通道测试成功。\n时间: {datetime.now(UTC).isoformat()}",
             )
             results["email"] = email_result
 
@@ -252,7 +252,7 @@ class MonitorService(BaseService):
     async def trends(self, *, days: int = 7) -> MonitorTrends:
         """按日聚合 Celery 任务与合规拦截趋势（最多 30 天）。"""
         days = max(1, min(days, 30))
-        start = datetime.now(timezone.utc) - timedelta(days=days - 1)
+        start = datetime.now(UTC) - timedelta(days=days - 1)
         task_f = append_not_deleted(
             tenant_filters(self.ctx, CeleryTaskRecord.tenant_id),
             CeleryTaskRecord,
@@ -303,7 +303,7 @@ class MonitorService(BaseService):
     async def model_usage(self, *, days: int = 7) -> ModelUsageReport:
         """按模型聚合 Token 用量（ModelUsageLog）。"""
         days = max(1, min(days, 30))
-        start = datetime.now(timezone.utc) - timedelta(days=days - 1)
+        start = datetime.now(UTC) - timedelta(days=days - 1)
         filters = tenant_filters(self.ctx, ModelUsageLog.tenant_id)
         filters.append(ModelUsageLog.created_at >= start)
         rows = await self.db.execute(
@@ -346,7 +346,7 @@ class MonitorService(BaseService):
             "tenant_id": str(self.ctx.tenant_id),
             "task_name": task_name,
             "fail_reason": fail_reason[:500],
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
         }
         try:
             async with httpx.AsyncClient(timeout=5.0) as client:

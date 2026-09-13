@@ -14,7 +14,7 @@ from typing import Any
 
 import httpx
 
-from miles_common.exceptions import AppError, BadRequestError
+from miles_ai.integrations.http_constants import HTTP_DEFAULT_TIMEOUT_SEC
 from miles_ai.integrations.rerank.constants import (
     DEFAULT_RERANK_INSTRUCT,
     RERANK_REQUEST_FORMAT_FLAT,
@@ -25,7 +25,7 @@ from miles_ai.integrations.rerank.model_meta import (
     resolve_rerank_endpoint,
 )
 from miles_ai.integrations.rerank.types import RerankHit
-from miles_ai.integrations.http_constants import HTTP_DEFAULT_TIMEOUT_SEC
+from miles_common.exceptions import AppError, BadRequestError
 from miles_core.models.model import ModelConfig
 
 

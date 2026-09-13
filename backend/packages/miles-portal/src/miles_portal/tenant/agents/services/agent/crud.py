@@ -13,13 +13,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from miles_common.exceptions import NotFoundError
 from miles_common.schema import PageParams, PageResult
+from miles_core.models.agent import Agent, AgentStatus, AgentSubAgentBinding, AgentType
+from miles_core.models.meta.category import CategoryDomain
+from miles_core.models.meta.tag import TagEntityType
 from miles_core.service import BaseService
 from miles_core.soft_delete import append_not_deleted, is_marked_deleted, mark_deleted
 from miles_core.tenant import TenantContext, assert_tenant_access, tenant_filters
 from miles_portal.deletion.cascade import before_delete_agent
-from miles_core.models.agent import Agent, AgentStatus, AgentSubAgentBinding, AgentType
-from miles_core.models.meta.category import CategoryDomain
-from miles_core.models.meta.tag import TagEntityType
 from miles_portal.tenant.a2a.services.host_bindings import (
     normalize_host_peers,
     validate_and_sync_host_peer_bindings,
@@ -98,6 +98,7 @@ class AgentCrudMixin(BaseService):
     ) -> PageResult[AgentOut]:
         """分页列出智能体，可按 agent_type、category_id 过滤。"""
         from sqlalchemy.orm import selectinload
+
         from miles_core.models.agent import Agent as AgentModel
 
         filters = append_not_deleted(
@@ -254,9 +255,10 @@ class AgentCrudMixin(BaseService):
         await before_delete_agent(self.db, agent.id)
         await mark_deleted(self.db, agent)
 
-    async def export_package(self, agent_id: UUID) -> "AgentPackage":
+    async def export_package(self, agent_id: UUID) -> AgentPackage:
         """导出智能体为可移植 JSON 包。"""
         from sqlalchemy import select
+
         from miles_core.models.agent import agent_kb_bindings
         from miles_portal.tenant.agents.schemas.agent import AgentPackage
 
@@ -278,6 +280,6 @@ class AgentCrudMixin(BaseService):
         )
         return AgentPackage(version="1.0", agent=body)
 
-    async def import_package(self, pkg: "AgentPackage") -> "AgentOut":
+    async def import_package(self, pkg: AgentPackage) -> AgentOut:
         """从 JSON 包导入智能体。"""
         return await self.create_agent(pkg.agent)

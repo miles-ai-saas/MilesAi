@@ -7,13 +7,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from miles_common.exceptions import BadRequestError, NotFoundError
 from miles_common.slug import slugify  # noqa: F401  # re-export：保持 L1 import 路径稳定
-from miles_core.tenant import TenantContext
 from miles_core.models.meta.category import CategoryDomain, SysCategory
+from miles_core.service import BaseService
+from miles_core.soft_delete import is_marked_deleted, not_deleted
+from miles_core.tenant import TenantContext
 from miles_portal.tenant.categories.meta import categories_meta_dict
 from miles_portal.tenant.categories.schemas.category import CategoryOut
 from miles_portal.tenant.categories.schemas.meta import CategoryMetaOut
-from miles_core.soft_delete import is_marked_deleted, not_deleted
-from miles_core.service import BaseService
 
 
 def _parse_domain(domain: str) -> CategoryDomain:

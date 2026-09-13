@@ -17,9 +17,9 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from miles_core.tenant import TenantContext
 from miles_core.infra.db import AsyncSessionLocal
 from miles_core.models.media.reader import AttachmentBytes
+from miles_core.tenant import TenantContext
 from miles_portal.tenant.attachments.services.attachment import AttachmentService
 
 

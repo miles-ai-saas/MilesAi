@@ -18,7 +18,6 @@ from miles_portal.tenant.hooks.models import (
     HookTrigger,
     HookType,
 )
-
 from miles_server.scripts.seed._helpers import list_tenant_ids
 
 # 每条 spec：一条钩子定义 + 至少一条 binding（可与 create_hook API 行为一致）

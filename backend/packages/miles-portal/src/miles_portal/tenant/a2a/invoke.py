@@ -18,6 +18,8 @@ import re
 from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
+from miles_ai.integrations.langchain.chat_models import ainvoke_chat
+from miles_core.models.agent import Agent
 from miles_portal.tenant.a2a.client import invoke_a2a_peer
 from miles_portal.tenant.a2a.models import (
     A2aInvokePolicy,
@@ -28,8 +30,6 @@ from miles_portal.tenant.a2a.models import (
 from miles_portal.tenant.a2a.services.host_bindings import list_host_peer_bindings
 from miles_portal.tenant.a2a.services.peer_refs import list_agent_a2a_peer_refs
 from miles_portal.tenant.agents.schemas.agent import ChatRequest, ChatResponse
-from miles_ai.integrations.langchain.chat_models import ainvoke_chat
-from miles_core.models.agent import Agent
 from miles_portal.tenant.models.services.model_resolve import resolve_model_for_invoke
 from miles_portal.tenant.models.services.usage import ChatUsageSink
 

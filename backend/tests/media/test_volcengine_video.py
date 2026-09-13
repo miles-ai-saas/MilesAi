@@ -5,8 +5,6 @@ from uuid import uuid4
 
 import pytest
 
-from miles_common.exceptions import BadRequestError
-from miles_core.tenant import TenantContext
 from miles_ai.integrations.generative.types import VideoGenerateResult
 from miles_ai.integrations.generative.video.providers.volcengine_video import (
     _build_request_body,
@@ -17,8 +15,10 @@ from miles_ai.integrations.generative.volcengine_client import (
     volcengine_poll_url,
     volcengine_submit_url,
 )
+from miles_common.exceptions import BadRequestError
 from miles_core.models.model import ModelConfig
 from miles_core.models.model.catalog import ModelCapabilityType, ModelVendor
+from miles_core.tenant import TenantContext
 
 
 def _doubao_video_model(**kwargs) -> ModelConfig:

@@ -15,9 +15,9 @@ from __future__ import annotations
 from collections.abc import Awaitable, Callable
 from typing import Any
 
-from miles_common.exceptions import AppError, BadRequestError
 from miles_ai.integrations.http_constants import HTTP_DEFAULT_TIMEOUT_SEC
 from miles_ai.integrations.litellm.usage_sink import UsageSink
+from miles_common.exceptions import AppError, BadRequestError
 from miles_core.models.model import ModelConfig
 from miles_core.models.model.catalog import (
     DEFAULT_API_BASES,

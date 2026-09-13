@@ -25,11 +25,11 @@ PARSING/EMBEDDING 在 Worker 内顺序更新，便于前端展示进度；
 
 from uuid import UUID
 
-from miles_portal.deletion.document import clear_document_derived_data_sync
+from miles_ai.rag.pipeline import IngestInput, run_ingest_pipeline
 from miles_core.infra.db import get_sync_db
 from miles_core.infra.storage import download_bytes
 from miles_core.models.kb import Document, DocumentStatus, KnowledgeBase
-from miles_ai.rag.pipeline import IngestInput, run_ingest_pipeline
+from miles_portal.deletion.document import clear_document_derived_data_sync
 from miles_portal.tenant.kb.services.embeddings import (
     embed_image_chunks_vectors_sync,
     embed_texts_for_kb_sync,

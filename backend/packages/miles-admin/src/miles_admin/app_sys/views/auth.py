@@ -5,6 +5,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from miles_admin.app_ops.services.audit import write_audit_log
 from miles_admin.app_sys.deps import AdminContext, get_platform_admin
 from miles_admin.app_sys.schemas.auth import (
     AdminLoginRequest,
@@ -12,7 +13,6 @@ from miles_admin.app_sys.schemas.auth import (
     PasswordChangeRequest,
 )
 from miles_admin.app_sys.services.auth import AdminAuthService
-from miles_admin.app_ops.services.audit import write_audit_log
 from miles_common.exceptions import ForbiddenError
 from miles_common.response import ok
 from miles_common.schema import ApiResponse

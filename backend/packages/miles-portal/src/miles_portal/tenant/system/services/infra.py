@@ -1,15 +1,15 @@
 """部署级基础设施只读状态与连接探测。"""
 
 from miles_core.service import BaseService
-from miles_portal.tenant.system.schemas.infra import (
-    InfraComponentStatusOut,
-    InfraStatusOut,
-    InfraTestConnectionOut,
-)
 from miles_core.utils.health_checks import (
     COMPONENT_IDS,
     collect_infra_status,
     probe_components,
+)
+from miles_portal.tenant.system.schemas.infra import (
+    InfraComponentStatusOut,
+    InfraStatusOut,
+    InfraTestConnectionOut,
 )
 
 

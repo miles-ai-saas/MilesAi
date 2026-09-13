@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from miles_core.repository import BaseRepository
 from miles_core.models.agent.api_key import AgentApiKey
+from miles_core.repository import BaseRepository
 
 
 class AgentApiKeyRepository(BaseRepository[AgentApiKey]):
@@ -55,5 +55,5 @@ class AgentApiKeyRepository(BaseRepository[AgentApiKey]):
 
     async def touch_last_used(self, key: AgentApiKey) -> None:
         """刷新密钥最后使用时间为当前 UTC（仅 flush，由调用方决定提交）。"""
-        key.last_used_at = datetime.now(timezone.utc)
+        key.last_used_at = datetime.now(UTC)
         await self.db.flush()

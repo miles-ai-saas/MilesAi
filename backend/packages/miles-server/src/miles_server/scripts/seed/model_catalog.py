@@ -11,7 +11,6 @@ from __future__ import annotations
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from miles_common.constants.model_extra import EXTRA_INVOKE_MODE
 from miles_ai.integrations.embeddings.constants import (
     EXTRA_EMBEDDING_BATCH_SIZE,
     EXTRA_EMBEDDING_DIMENSION,
@@ -23,6 +22,7 @@ from miles_ai.integrations.rerank.constants import (
     EXTRA_RERANK_REQUEST_FORMAT,
     INVOKE_MODE_DASHSCOPE,
 )
+from miles_common.constants.model_extra import EXTRA_INVOKE_MODE
 from miles_core.models.model import ModelConfig
 from miles_core.models.model.catalog import (
     DEFAULT_API_BASES,

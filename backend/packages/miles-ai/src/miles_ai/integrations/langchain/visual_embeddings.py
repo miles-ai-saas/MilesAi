@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from miles_common.exceptions import BadRequestError
 from miles_ai.integrations.embeddings.constants import INVOKE_MODE_CLIP
 from miles_ai.integrations.embeddings.model_meta import invoke_mode_from_model
-from miles_core.models.kb import KnowledgeBase
 from miles_ai.rag.parse.media import is_image_file
+from miles_common.exceptions import BadRequestError
+from miles_core.models.kb import KnowledgeBase
 
 
 def ensure_clip_model(model) -> None:

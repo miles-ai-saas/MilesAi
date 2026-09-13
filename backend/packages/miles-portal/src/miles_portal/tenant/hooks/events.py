@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
-from miles_portal.tenant.hooks.models import HookScope, HookTrigger
 from miles_common.idgen import generate_uuid
+from miles_portal.tenant.hooks.models import HookScope, HookTrigger
 
 SCHEMA_VERSION = "1"
 
@@ -57,7 +57,7 @@ def build_event_envelope(
     return {
         "schema_version": SCHEMA_VERSION,
         "event_id": str(event_id or generate_uuid()),
-        "occurred_at": datetime.now(timezone.utc).isoformat(),
+        "occurred_at": datetime.now(UTC).isoformat(),
         "tenant_id": str(tenant_id),
         "trace_id": trace_id,
         "trigger": trigger.value,

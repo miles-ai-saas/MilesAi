@@ -129,7 +129,7 @@ async def test_timeout_is_clamped_and_maps_to_bad_request(monkeypatch):
     async def fake_wait_for(coro, *, timeout):
         seen["timeout"] = timeout
         coro.close()
-        raise asyncio.TimeoutError
+        raise TimeoutError
 
     monkeypatch.setattr(flow_once.asyncio, "wait_for", fake_wait_for)
 

@@ -5,7 +5,6 @@ from __future__ import annotations
 import json
 from uuid import UUID
 
-from miles_common.exceptions import BadRequestError
 from miles_ai.integrations.chat.multimodal import build_user_message, messages_contain_image, resolve_media_refs
 from miles_ai.integrations.langchain.tool_agent.artifacts import artifacts_from_tool_output
 from miles_ai.integrations.langchain.tool_agent.litellm_tools import (
@@ -21,6 +20,7 @@ from miles_ai.integrations.langchain.tool_agent.tool_contract import ToolConfirm
 from miles_ai.integrations.langchain.tools import get_skill_bound_tools, select_agent_tools
 from miles_ai.integrations.litellm.adapter import extract_litellm_usage
 from miles_ai.integrations.litellm.usage_sink import UsageSink
+from miles_common.exceptions import BadRequestError
 from miles_core.models.agent import Agent
 from miles_core.models.agent.chat_io import (
     ChatArtifact,
@@ -324,7 +324,14 @@ async def run_tool_calling_chat(
                     }
                 )
                 return ChatResponse(
-                    answer=f"智能体尝试调用工具「{slug}」，但该工具未找到。\n\n可能原因：\n1. 工具 slug 配置有误\n2. 自定义工具已被删除或禁用\n3. 内置工具 slug 拼写错误\n\n请在智能体「能力」步骤中检查 tool_slugs 配置，并确认工具仍在「平台工具」中。",
+                    answer=(
+                        f"智能体尝试调用工具「{slug}」，但该工具未找到。\n\n"
+                        "可能原因：\n"
+                        "1. 工具 slug 配置有误\n"
+                        "2. 自定义工具已被删除或禁用\n"
+                        "3. 内置工具 slug 拼写错误\n\n"
+                        "请在智能体「能力」步骤中检查 tool_slugs 配置，并确认工具仍在「平台工具」中。"
+                    ),
                     steps=steps,
                     artifacts=artifacts,
                 )

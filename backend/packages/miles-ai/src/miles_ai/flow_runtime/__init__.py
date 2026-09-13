@@ -9,7 +9,7 @@
 与 RAG 关系：画布内检索走 ``nodes.rag_nodes``，不经过 Agent ``rag_qa`` LangGraph。
 """
 
-__all__ = ["get_flow_runtime", "RunContext", "RunResult", "FlowGraph"]
+__all__ = ["FlowGraph", "RunContext", "RunResult", "get_flow_runtime"]
 
 
 def __getattr__(name: str):

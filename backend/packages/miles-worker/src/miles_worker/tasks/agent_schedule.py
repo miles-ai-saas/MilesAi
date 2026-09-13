@@ -8,20 +8,20 @@ Beat 每分钟调用 ``tick_agent_schedules`` 扫描到期任务；
 from __future__ import annotations
 
 import asyncio
-from miles_core.logging import get_logger
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy import select
 
 from miles_common.cron import compute_next_run
+from miles_core.infra.db import get_sync_db, get_worker_session
 from miles_core.jobs.tasks import TASK_NAMES
-from miles_core.tenant import TenantContext
-from miles_core.infra.db import get_worker_session, get_sync_db
+from miles_core.logging import get_logger
 from miles_core.models.agent.schedule import AgentSchedule
 from miles_core.models.agent.schedule_run import AgentScheduleRun, AgentScheduleRunStatus
 from miles_core.models.platform.user import User
 from miles_core.soft_delete import not_deleted
+from miles_core.tenant import TenantContext
 from miles_portal.tenant.agents.schemas.agent import ChatRequest
 from miles_portal.tenant.agents.services.agent import AgentService
 from miles_worker.app import celery_app
@@ -30,7 +30,7 @@ logger = get_logger(__name__)
 
 
 async def _run_schedule_async(schedule_id: UUID) -> None:
-    started = datetime.now(timezone.utc)
+    started = datetime.now(UTC)
     async with get_worker_session() as db:
         schedule = await db.get(AgentSchedule, schedule_id)
         if not schedule or schedule.deleted_at is not None or not schedule.enabled:
@@ -63,11 +63,11 @@ async def _run_schedule_async(schedule_id: UUID) -> None:
                     conversation_id=f"schedule:{schedule.id}",
                 ),
             )
-            run.finished_at = datetime.now(timezone.utc)
+            run.finished_at = datetime.now(UTC)
             schedule.last_run_at = run.finished_at
         except Exception as exc:
             run.status = AgentScheduleRunStatus.FAILED.value
-            run.finished_at = datetime.now(timezone.utc)
+            run.finished_at = datetime.now(UTC)
             run.error_message = str(exc)[:2000]
             schedule.last_run_at = run.finished_at
             db.add(run)
@@ -91,7 +91,7 @@ def run_agent_schedule(schedule_id: str) -> str:
 @celery_app.task(name=TASK_NAMES["tick_agent_schedules"])
 def tick_agent_schedules() -> str:
     """扫描到期定时任务并派发执行。"""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     dispatched = 0
     with get_sync_db() as db:
         stmt = (

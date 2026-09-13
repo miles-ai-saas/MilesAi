@@ -6,7 +6,6 @@ from typing import Any
 
 import httpx
 
-from miles_common.exceptions import AppError, BadRequestError
 from miles_ai.integrations.generative.constants import (
     DEFAULT_POLL_INTERVAL_SEC,
     DEFAULT_POLL_TIMEOUT_SEC,
@@ -22,6 +21,7 @@ from miles_ai.integrations.generative.dashscope_client import (
     require_api_key,
 )
 from miles_ai.integrations.http_constants import HTTP_DEFAULT_TIMEOUT_SEC
+from miles_common.exceptions import AppError, BadRequestError
 from miles_core.models.model import ModelConfig
 
 

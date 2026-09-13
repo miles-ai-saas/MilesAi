@@ -1,6 +1,6 @@
 """运营端审计：管理员操作写库与分页查询。"""
 
-from datetime import date, datetime, time, timedelta, timezone
+from datetime import UTC, date, datetime, time, timedelta
 from uuid import UUID
 
 from fastapi import Request
@@ -13,7 +13,7 @@ from miles_common.schema import PageParams, PageResult
 
 
 def _day_start(d: date) -> datetime:
-    return datetime.combine(d, time.min, tzinfo=timezone.utc)
+    return datetime.combine(d, time.min, tzinfo=UTC)
 
 
 def _day_end_exclusive(d: date) -> datetime:

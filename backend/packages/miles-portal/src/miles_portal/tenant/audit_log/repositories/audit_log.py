@@ -4,8 +4,8 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from miles_portal.tenant.audit_log.models import TenantAuditLog
 from miles_core.repository import BaseRepository
+from miles_portal.tenant.audit_log.models import TenantAuditLog
 
 
 class TenantAuditLogRepository(BaseRepository[TenantAuditLog]):

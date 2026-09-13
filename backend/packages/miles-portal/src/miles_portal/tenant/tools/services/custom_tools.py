@@ -11,9 +11,9 @@ from __future__ import annotations
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from miles_ai.integrations.langchain.tools import CustomToolSpec, build_platform_tools
 from miles_core.soft_delete import append_not_deleted
 from miles_core.tenant import TenantContext, tenant_filters
-from miles_ai.integrations.langchain.tools import CustomToolSpec, build_platform_tools
 from miles_portal.tenant.tools.models import Tool, ToolType
 
 

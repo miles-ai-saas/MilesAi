@@ -28,7 +28,6 @@ from miles_ai.integrations.embeddings.model_meta import (
     invoke_mode_from_model,
 )
 from miles_common.exceptions import BadRequestError
-from miles_core.soft_delete import not_deleted
 from miles_core.models.model import ModelConfig
 from miles_core.models.model.catalog import (
     BUILTIN_EMBEDDING_DEFAULT_CODE,
@@ -36,6 +35,7 @@ from miles_core.models.model.catalog import (
     ModelPublishStatus,
 )
 from miles_core.models.model.tenant_credential import ModelTenantCredential
+from miles_core.soft_delete import not_deleted
 from miles_portal.tenant.models.services.model_resolve import load_tenant_credential
 
 

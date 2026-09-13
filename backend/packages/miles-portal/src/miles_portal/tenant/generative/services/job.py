@@ -10,29 +10,28 @@ from uuid import UUID
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from miles_common.exceptions import BadRequestError, NotFoundError
-from miles_common.schema import PageParams, PageResult
-from miles_core.tenant import tenant_filters
-from miles_core.config import get_settings
-from miles_core.logging import get_logger
-from miles_core.tenant import TenantContext
 from miles_ai.integrations.generative.jobs.progress import publish_generative_job_update
-from miles_portal.tenant.generative.services.job_execution import get_generative_job_for_tenant
 from miles_ai.integrations.generative.jobs.submit import (
     submit_image_generative_job,
     submit_video_generative_job,
 )
+from miles_common.exceptions import BadRequestError, NotFoundError
+from miles_common.schema import PageParams, PageResult
+from miles_core.config import get_settings
+from miles_core.jobs.celery_app import celery_app
+from miles_core.jobs.tasks import RUN_GENERATIVE_IMAGE_JOB, RUN_GENERATIVE_VIDEO_JOB
+from miles_core.logging import get_logger
 from miles_core.models.model.generative_job import GenerativeJob, GenerativeJobStatus
 from miles_core.models.task.task_record import CeleryTaskRecord, TaskStatus
+from miles_core.service import BaseService
+from miles_core.tenant import TenantContext, tenant_filters
 from miles_portal.tenant.generative.schemas.job import (
     GenerativeJobBatchCancelResult,
     GenerativeJobOut,
     ImageGenerativeJobCreate,
     VideoGenerativeJobCreate,
 )
-from miles_core.jobs.celery_app import celery_app
-from miles_core.jobs.tasks import RUN_GENERATIVE_IMAGE_JOB, RUN_GENERATIVE_VIDEO_JOB
-from miles_core.service import BaseService
+from miles_portal.tenant.generative.services.job_execution import get_generative_job_for_tenant
 from miles_portal.tenant.tasks.services.task import TaskService
 
 logger = get_logger(__name__)
@@ -339,8 +338,8 @@ class GenerativeJobService(BaseService):
         channel = None
 
         try:
-            from miles_core.infra.redis import get_redis
             from miles_common.redis_keys import RedisKeys
+            from miles_core.infra.redis import get_redis
 
             redis = get_redis()
             channel = RedisKeys.generative_job_progress(str(self.ctx.tenant_id), str(job_id))

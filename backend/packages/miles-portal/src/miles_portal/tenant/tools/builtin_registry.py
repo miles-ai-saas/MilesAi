@@ -108,7 +108,8 @@ BUILTIN_REGISTRY: list[dict] = [
     {
         "slug": "generate_image",
         "name": "生图",
-        "description": "根据文字描述生成图片；可选参考图实现图生图。n 为多张时表示多张独立单图（非组图拼贴）。默认 1 张，最多 4 张；≥3 张或高分辨率需用户确认。",
+        "description": "根据文字描述生成图片；可选参考图实现图生图。n 为多张时表示多张独立单图（非组图拼贴）。"
+        "默认 1 张，最多 4 张；≥3 张或高分辨率需用户确认。",
         "category_slug": "general",
         "version": "1.4.0",
         "require_confirmation": False,

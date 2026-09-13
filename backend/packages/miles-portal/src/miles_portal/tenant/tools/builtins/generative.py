@@ -105,9 +105,9 @@ async def handle_generate_video(
             model_config_id（可选）
     异步返回 generative_job_id；同步返回 attachment_id。
     """
-    from miles_portal.tenant.generative.services.orchestration import generate_video_for_model
     from miles_portal.tenant.generative.schemas.job import VideoGenerativeJobCreate
     from miles_portal.tenant.generative.services.job import GenerativeJobService
+    from miles_portal.tenant.generative.services.orchestration import generate_video_for_model
     from miles_portal.tenant.models.services.generative_model_resolve import resolve_video_gen_model
 
     prompt = str(params.get("prompt") or "")
@@ -199,7 +199,6 @@ async def handle_generate_image(
     params: prompt/description, size, n, image_attachment_id, model_config_id（可选）
     异步返回 generative_job_id；同步返回 attachment_id / attachment_ids。
     """
-    from miles_portal.tenant.generative.services.orchestration import generate_image_for_model
     from miles_ai.integrations.generative.image.prompt_guard import sanitize_image_prompt
     from miles_ai.integrations.generative.request_prefs import (
         get_request_allow_collage,
@@ -207,6 +206,7 @@ async def handle_generate_image(
     )
     from miles_portal.tenant.generative.schemas.job import ImageGenerativeJobCreate
     from miles_portal.tenant.generative.services.job import GenerativeJobService
+    from miles_portal.tenant.generative.services.orchestration import generate_image_for_model
     from miles_portal.tenant.models.services.generative_model_resolve import resolve_image_gen_model
 
     prompt = params.get("prompt") or params.get("description") or ""

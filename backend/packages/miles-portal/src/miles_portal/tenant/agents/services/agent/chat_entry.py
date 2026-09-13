@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from miles_common.exceptions import BadRequestError
 from miles_ai.flow_runtime.runtime_factory import get_flow_runtime
 from miles_ai.integrations.generative.image.prompt_guard import user_requests_image_collage
 from miles_ai.integrations.generative.request_prefs import (
@@ -12,6 +11,7 @@ from miles_ai.integrations.generative.request_prefs import (
     set_generative_request_prefs,
 )
 from miles_ai.integrations.langchain.chat_models import OnDelta
+from miles_common.exceptions import BadRequestError
 from miles_core.models.agent import AgentStatus, AgentType
 from miles_portal.tenant.a2a.services.peer_refs import list_agent_a2a_peer_refs
 from miles_portal.tenant.agents.schemas.agent import ChatRequest, ChatResponse

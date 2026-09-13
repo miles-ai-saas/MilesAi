@@ -6,8 +6,9 @@ from sqlalchemy import exists, func, or_, select
 from sqlalchemy.orm import selectinload
 
 from miles_common.exceptions import BadRequestError, NotFoundError
-from miles_core.models.meta.tag import EntityTagBinding, TagEntityType, TenantTag
 from miles_common.schema import PageParams, PageResult
+from miles_core.models.meta.tag import EntityTagBinding, TagEntityType, TenantTag
+from miles_core.soft_delete import not_deleted
 from miles_portal.tenant.marketplace.models import (
     AppCategory,
     AppInstall,
@@ -16,7 +17,6 @@ from miles_portal.tenant.marketplace.models import (
     MarketplaceAppStatus,
     MarketplaceAppVisibility,
 )
-from miles_core.soft_delete import not_deleted
 from miles_portal.tenant.marketplace.schemas.marketplace import (
     AppCategoryOut,
     AppRatingOut,

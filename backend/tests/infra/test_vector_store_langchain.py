@@ -2,6 +2,7 @@
 
 from uuid import uuid4
 
+from miles_core.infra.vector_store import get_vector_store
 from miles_core.infra.vector_store.base import ChunkVectorRecord
 from miles_core.infra.vector_store.documents import (
     METADATA_CHUNK_ID,
@@ -12,7 +13,6 @@ from miles_core.infra.vector_store.documents import (
     documents_to_hits,
     hit_to_document,
 )
-from miles_core.infra.vector_store import get_vector_store
 from miles_core.infra.vector_store.precomputed import PrecomputedEmbeddings
 
 

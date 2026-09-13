@@ -11,13 +11,12 @@ from __future__ import annotations
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from miles_core.soft_delete import not_deleted
 from miles_core.models.meta.category import CategoryDomain
+from miles_core.soft_delete import not_deleted
 from miles_portal.tenant.skills.models import SkillPackage
 from miles_portal.tenant.skills.skill_layout import build_layout_index, merge_layout_into_config
 from miles_portal.tenant.skills.skill_md import build_skill_md
 from miles_portal.tenant.skills.storage import skill_package_dir, write_file, write_skill_md
-
 from miles_server.scripts.seed._helpers import category_id_by_slug, list_tenant_ids
 
 SEED_SKILL_PACKAGES: list[dict] = [

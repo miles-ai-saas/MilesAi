@@ -1,7 +1,10 @@
 """
 画布生视频节点 ``VideoGenerate``。
 
-默认异步：经 ``RunContext.submit_generative_video``（L1 注入）提交 ``generative_jobs`` + Celery；未注入（异步未启用）或 ``generative_video_async=False`` 时同步轮询，同步分支经 ``RunContext.generate_video_sync``（L1 注入）。
+默认异步：经 ``RunContext.submit_generative_video``（L1 注入）提交
+``generative_jobs`` + Celery；未注入（异步未启用）或
+``generative_video_async=False`` 时同步轮询，同步分支经
+``RunContext.generate_video_sync``（L1 注入）。
 """
 
 from __future__ import annotations
@@ -9,12 +12,12 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID
 
-from miles_common.exceptions import BadRequestError
-from miles_common.trace import get_trace_id
 from miles_ai.flow_runtime.context_utils import tenant_context_from_run
 from miles_ai.flow_runtime.types import RunContext
-from miles_core.infra.db import AsyncSessionLocal
 from miles_ai.integrations.generative.constants import PURPOSE_FLOW_GENERATED
+from miles_common.exceptions import BadRequestError
+from miles_common.trace import get_trace_id
+from miles_core.infra.db import AsyncSessionLocal
 
 
 def _optional_uuid(raw: Any) -> UUID | None:

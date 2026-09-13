@@ -21,9 +21,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from miles_common.exceptions import BadRequestError, NotFoundError
+from miles_core.models.agent import Agent, AgentSubAgentBinding, AgentType
 from miles_core.soft_delete import is_marked_deleted
 from miles_core.tenant import TenantContext
-from miles_core.models.agent import Agent, AgentSubAgentBinding, AgentType
 from miles_portal.tenant.agents.constants import SUB_AGENT_ROLE_HINTS, AgentPlanner, AgentRuntimeMode
 
 MAX_SUB_AGENTS = 8

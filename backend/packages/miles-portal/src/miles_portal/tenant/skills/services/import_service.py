@@ -17,23 +17,23 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from miles_common.exceptions import BadRequestError
-from miles_core.tenant import TenantContext
 from miles_core.models.meta.category import CategoryDomain
+from miles_core.soft_delete import not_deleted
+from miles_core.tenant import TenantContext
 from miles_portal.tenant.categories.services.category import CategoryService
 from miles_portal.tenant.skills.models import SkillPackage
 from miles_portal.tenant.skills.schemas.skill import SkillImportResult
 from miles_portal.tenant.skills.skill_layout import build_layout_index, merge_layout_into_config
 from miles_portal.tenant.skills.skill_md import parse_skill_md
 from miles_portal.tenant.skills.storage import (
-    SKILL_MD_FILENAME,
     _MAX_ZIP_BYTES,
+    SKILL_MD_FILENAME,
     copy_skill_tree,
     discover_skill_dirs,
     resolve_import_path,
     skill_package_dir,
     skill_slug_from_folder,
 )
-from miles_core.soft_delete import not_deleted
 
 
 class SkillImportService:

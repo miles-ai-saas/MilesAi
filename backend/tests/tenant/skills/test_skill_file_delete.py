@@ -33,7 +33,7 @@ def test_delete_file_ok(skill_dir):
 
 def test_delete_skill_md_forbidden(skill_dir):
     tid, slug = skill_dir
-    with pytest.raises(ValueError, match="SKILL.md"):
+    with pytest.raises(ValueError, match=r"SKILL\.md"):
         delete_file(tid, slug, SKILL_MD_FILENAME)
 
 

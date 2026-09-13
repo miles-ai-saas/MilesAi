@@ -18,35 +18,35 @@ from uuid import UUID
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from miles_ai.integrations.langchain.tools import is_mcp_tool_name
 from miles_common.exceptions import BadRequestError, ConflictError, NotFoundError
-from miles_core.url_security import validate_outbound_url
-from miles_core.tenant import TenantContext, assert_tenant_access, tenant_filters
+from miles_common.schema import PageParams, PageResult
+from miles_core.config import get_settings
 from miles_core.models.meta.category import CategoryDomain
-from miles_portal.tenant.categories.services.category import CategoryService
 from miles_core.models.meta.tag import TagEntityType
+from miles_core.service import BaseService
+from miles_core.soft_delete import append_not_deleted, is_marked_deleted, mark_deleted, not_deleted
+from miles_core.tenant import TenantContext, assert_tenant_access, tenant_filters
+from miles_core.url_security import validate_outbound_url
+from miles_exec.sandbox.validate import validate_script_source
+from miles_portal.tenant.categories.services.category import CategoryService
 from miles_portal.tenant.tags.schemas.tag import TagRefOut
 from miles_portal.tenant.tags.services.tag import TagService
-from miles_ai.integrations.langchain.tools import is_mcp_tool_name
 from miles_portal.tenant.tools.builtin_registry import BUILTIN_REGISTRY, BUILTIN_SLUGS
 from miles_portal.tenant.tools.confirmation import ToolConfirmationRequired
 from miles_portal.tenant.tools.invoke import invoke_tool_with_context
 from miles_portal.tenant.tools.models import Tool, ToolInvocationLog, ToolType
-from miles_core.config import get_settings
 from miles_portal.tenant.tools.parameters import normalize_parameters
-from miles_exec.sandbox.validate import validate_script_source
-from miles_common.schema import PageParams, PageResult
 from miles_portal.tenant.tools.schemas.tools import (
+    PendingToolCall,
     ToolCatalogItem,
     ToolCreate,
+    ToolInvocationLogOut,
     ToolInvokeRequest,
     ToolInvokeResult,
-    ToolInvocationLogOut,
     ToolOut,
     ToolUpdate,
-    PendingToolCall,
 )
-from miles_core.soft_delete import append_not_deleted, is_marked_deleted, mark_deleted, not_deleted
-from miles_core.service import BaseService
 
 
 def _tool_source_of(name: str, *, has_tool_id: bool = False) -> str:
@@ -161,13 +161,13 @@ class ToolsService(BaseService):
         row = await self._get_or_raise(tool_id)
         data = body.model_dump(exclude_unset=True)
         tag_ids = data.pop("tag_ids", None)
-        if "slug" in data and data["slug"]:
+        if data.get("slug"):
             if data["slug"] in BUILTIN_SLUGS:
                 raise BadRequestError(f"slug「{data['slug']}」与内置工具冲突")
             await self._ensure_slug_unique(data["slug"], exclude_id=tool_id)
         if "parameters" in data and data["parameters"] is not None:
             data["parameters"] = normalize_parameters(data["parameters"])
-        if "category_id" in data and data["category_id"]:
+        if data.get("category_id"):
             await CategoryService(self.db, self.ctx).validate_category_for_domain(data["category_id"], CategoryDomain.TOOL)
         if "config" in data and data["config"] is not None:
             if row.tool_type == ToolType.SCRIPT or data.get("tool_type") == ToolType.SCRIPT:

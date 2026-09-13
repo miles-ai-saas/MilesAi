@@ -6,12 +6,12 @@ from miles_core.models.platform.tenant import Tenant, TenantStatus
 from miles_core.models.platform.user import User
 
 __all__ = [
-    "TenantStatus",
-    "Tenant",
-    "User",
-    "Role",
     "Permission",
-    "user_roles",
-    "role_permissions",
+    "Role",
     "SystemConfig",
+    "Tenant",
+    "TenantStatus",
+    "User",
+    "role_permissions",
+    "user_roles",
 ]

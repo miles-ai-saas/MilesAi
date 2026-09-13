@@ -67,7 +67,7 @@ class ChatRequest(BaseModel):
     )
 
     @model_validator(mode="after")
-    def validate_query_or_media(self) -> "ChatRequest":
+    def validate_query_or_media(self) -> ChatRequest:
         """query 与 media 至少一项非空，否则校验失败。"""
         if not self.query.strip() and not self.media:
             raise ValueError("query 与 media 不能同时为空")

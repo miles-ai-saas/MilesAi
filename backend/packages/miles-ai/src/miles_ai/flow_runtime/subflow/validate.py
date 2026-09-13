@@ -9,7 +9,6 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID
 
-from miles_core.soft_delete import is_marked_deleted
 from miles_ai.flow_runtime.constants import MAX_SUBFLOW_DEPTH
 from miles_ai.flow_runtime.subflow.contracts import FlowRepoLike
 from miles_ai.flow_runtime.subflow.resolve import (
@@ -18,6 +17,7 @@ from miles_ai.flow_runtime.subflow.resolve import (
     iter_subflow_nodes,
 )
 from miles_core.models.flow import Flow, FlowStatus
+from miles_core.soft_delete import is_marked_deleted
 
 
 def _compile_error(

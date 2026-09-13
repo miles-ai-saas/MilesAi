@@ -4,9 +4,10 @@ from fastapi import APIRouter, Depends, Request
 from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from miles_core.infra.db import get_db
-from miles_core.deps import bearer_scheme, get_tenant_context
 from miles_common.response import ok
+from miles_common.schema import ApiResponse
+from miles_core.deps import bearer_scheme, get_tenant_context
+from miles_core.infra.db import get_db
 from miles_core.tenant import TenantContext
 from miles_portal.tenant.auth.schemas.auth import (
     LoginRequest,
@@ -15,7 +16,6 @@ from miles_portal.tenant.auth.schemas.auth import (
     UserInfo,
     UserSessionOut,
 )
-from miles_common.schema import ApiResponse
 from miles_portal.tenant.auth.services.auth import AuthService
 
 router = APIRouter()

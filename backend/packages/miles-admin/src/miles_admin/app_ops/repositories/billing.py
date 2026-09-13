@@ -6,7 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from miles_admin.models import BillLineItem, BillingPlan, TenantBill
+from miles_admin.models import BillingPlan, BillLineItem, TenantBill
 from miles_core.repository import BaseRepository
 
 

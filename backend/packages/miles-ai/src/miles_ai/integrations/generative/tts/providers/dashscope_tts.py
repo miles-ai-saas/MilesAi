@@ -12,8 +12,8 @@ import base64
 
 import httpx
 
-from miles_common.exceptions import AppError, BadRequestError
 from miles_ai.integrations.http_constants import HTTP_DEFAULT_TIMEOUT_SEC
+from miles_common.exceptions import AppError, BadRequestError
 from miles_core.models.model import ModelConfig
 
 

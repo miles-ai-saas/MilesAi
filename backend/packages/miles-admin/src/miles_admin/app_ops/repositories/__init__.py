@@ -2,8 +2,8 @@
 
 from miles_admin.app_ops.repositories.audit import AuditLogRepository
 from miles_admin.app_ops.repositories.billing import (
-    BillLineItemRepository,
     BillingPlanRepository,
+    BillLineItemRepository,
     TenantBillRepository,
 )
 from miles_admin.app_ops.repositories.risk import (
@@ -16,10 +16,10 @@ from miles_admin.app_ops.repositories.tenant import AdminTenantRepository
 __all__ = [
     "AdminTenantRepository",
     "AuditLogRepository",
-    "BillingPlanRepository",
-    "TenantBillRepository",
     "BillLineItemRepository",
-    "RiskEventRepository",
+    "BillingPlanRepository",
     "IpBlacklistRepository",
     "RateLimitRuleRepository",
+    "RiskEventRepository",
+    "TenantBillRepository",
 ]

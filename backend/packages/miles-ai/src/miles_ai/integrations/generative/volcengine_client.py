@@ -8,7 +8,6 @@ from typing import Any
 
 import httpx
 
-from miles_common.exceptions import AppError, BadRequestError
 from miles_ai.integrations.generative.constants import (
     DEFAULT_POLL_INTERVAL_SEC,
     DEFAULT_POLL_TIMEOUT_SEC,
@@ -16,6 +15,7 @@ from miles_ai.integrations.generative.constants import (
     EXTRA_VIDEO_SUBMIT_PATH,
 )
 from miles_ai.integrations.http_constants import HTTP_DEFAULT_TIMEOUT_SEC
+from miles_common.exceptions import AppError, BadRequestError
 from miles_core.models.model import ModelConfig
 from miles_core.models.model.catalog import DEFAULT_API_BASES, ModelVendor
 

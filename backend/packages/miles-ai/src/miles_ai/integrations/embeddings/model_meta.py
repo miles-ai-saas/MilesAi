@@ -12,8 +12,6 @@
 
 from __future__ import annotations
 
-from miles_common.constants.model_extra import EXTRA_INVOKE_MODE
-from miles_common.exceptions import BadRequestError
 from miles_ai.integrations.embeddings.constants import (
     DASHSCOPE_EMBEDDING_BATCH_SIZE_MAX,
     EXTRA_EMBEDDING_BATCH_SIZE,
@@ -21,6 +19,8 @@ from miles_ai.integrations.embeddings.constants import (
     INVOKE_MODE_LITELLM,
     INVOKE_MODE_OPENAI_COMPATIBLE,
 )
+from miles_common.constants.model_extra import EXTRA_INVOKE_MODE
+from miles_common.exceptions import BadRequestError
 from miles_core.models.model import ModelConfig
 from miles_core.models.model.catalog import DEFAULT_API_BASES, ModelCapabilityType, ModelVendor
 

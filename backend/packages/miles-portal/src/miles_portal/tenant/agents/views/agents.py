@@ -10,10 +10,13 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from miles_core.infra.db import get_db
-from miles_core.deps import get_page_params, require_permissions
 from miles_common.response import ok, page_ok
+from miles_common.schema import ApiResponse, PageParams, PageResult
+from miles_core.deps import get_page_params, require_permissions
+from miles_core.infra.db import get_db
+from miles_core.models.agent import AgentType
 from miles_core.tenant import TenantContext
+from miles_portal.tenant.agents.deps_api_auth import require_agent_chat_auth
 from miles_portal.tenant.agents.schemas.agent import AgentCreate, AgentOut, AgentPackage, AgentUpdate, ChatRequest, ChatResponse
 from miles_portal.tenant.agents.schemas.api_access import (
     AgentApiKeyCreate,
@@ -21,24 +24,21 @@ from miles_portal.tenant.agents.schemas.api_access import (
     AgentApiKeyOut,
     AgentDebugTokenOut,
 )
-from miles_portal.tenant.agents.deps_api_auth import require_agent_chat_auth
-from miles_portal.tenant.agents.schemas.meta import AgentMetaOut
 from miles_portal.tenant.agents.schemas.architecture import AgentArchitectureOut
 from miles_portal.tenant.agents.schemas.call_records import AgentCallRecordDetailOut, AgentCallRecordOut
 from miles_portal.tenant.agents.schemas.chat_sessions import ChatSessionCreate, ChatSessionDetailOut, ChatSessionOut, ChatSessionUpdate
+from miles_portal.tenant.agents.schemas.meta import AgentMetaOut
 from miles_portal.tenant.agents.schemas.schedule import AgentScheduleCreate, AgentScheduleOut, AgentScheduleUpdate
 from miles_portal.tenant.agents.schemas.schedule_run import AgentScheduleRunOut
 from miles_portal.tenant.agents.schemas.stats import AgentStatsOut
-from miles_common.schema import ApiResponse, PageParams, PageResult
 from miles_portal.tenant.agents.services.agent import AgentService
 from miles_portal.tenant.agents.services.api_access import AgentApiAccessService
+from miles_portal.tenant.agents.services.architecture import AgentArchitectureService
 from miles_portal.tenant.agents.services.call_records import AgentCallRecordService, parse_call_record_datetime
 from miles_portal.tenant.agents.services.chat_sessions import AgentChatSessionService
-from miles_portal.tenant.agents.ws import agent_chat_ws_router
-from miles_portal.tenant.agents.services.architecture import AgentArchitectureService
 from miles_portal.tenant.agents.services.schedule import AgentScheduleService
 from miles_portal.tenant.agents.services.stats import AgentStatsService
-from miles_core.models.agent import AgentType
+from miles_portal.tenant.agents.ws import agent_chat_ws_router
 
 router = APIRouter()
 router.include_router(agent_chat_ws_router)

@@ -9,20 +9,25 @@ A2A Peer 登记用例（L2）：拉取 Agent Card、探测 RPC 与状态维护�
 对话 HTTP 不在本 Service，见 ``tenant.a2a.invoke`` + ``client.invoke_a2a_peer``。
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from miles_common.exceptions import BadRequestError, NotFoundError
+from miles_common.schema import PageParams, PageResult
+from miles_core.service import BaseService
+from miles_core.soft_delete import is_marked_deleted, mark_deleted, not_deleted
+from miles_core.tenant import TenantContext, assert_tenant_access, tenant_filters
 from miles_portal.tenant.a2a.card_client import (
     card_display_name,
     count_card_skills,
     fetch_agent_card,
     resolve_agent_card_url,
 )
-from miles_portal.tenant.a2a.models import A2aPeer, A2aPeerStatus
 from miles_portal.tenant.a2a.meta import a2a_meta_dict
+from miles_portal.tenant.a2a.models import A2aPeer, A2aPeerStatus
 from miles_portal.tenant.a2a.schemas.meta import A2aMetaOut
 from miles_portal.tenant.a2a.schemas.peer import (
     A2aPeerCreate,
@@ -31,11 +36,6 @@ from miles_portal.tenant.a2a.schemas.peer import (
     A2aPeerSyncResult,
     A2aPeerUpdate,
 )
-from miles_common.exceptions import BadRequestError, NotFoundError
-from miles_common.schema import PageParams, PageResult
-from miles_core.service import BaseService
-from miles_core.soft_delete import is_marked_deleted, mark_deleted, not_deleted
-from miles_core.tenant import TenantContext, assert_tenant_access, tenant_filters
 
 
 def _peer_out(row: A2aPeer) -> A2aPeerOut:
@@ -122,9 +122,9 @@ class A2aPeerService(BaseService):
         """更新名称/URL 等；base_url 变更时重算 agent_card_url。"""
         row = await self._get_peer_or_raise(peer_id)
         data = body.model_dump(exclude_unset=True)
-        if "name" in data and data["name"]:
+        if data.get("name"):
             data["name"] = data["name"].strip()
-        if "base_url" in data and data["base_url"]:
+        if data.get("base_url"):
             data["agent_card_url"] = resolve_agent_card_url(data["base_url"])
             data["base_url"] = data["base_url"].strip()
         for key, value in data.items():
@@ -143,7 +143,7 @@ class A2aPeerService(BaseService):
         source = row.base_url or row.agent_card_url
         try:
             card, card_url = await fetch_agent_card(source)
-            now = datetime.now(timezone.utc)
+            now = datetime.now(UTC)
             row.agent_card_json = card
             row.agent_card_url = card_url
             row.card_display_name = card_display_name(card)

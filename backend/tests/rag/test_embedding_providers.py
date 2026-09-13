@@ -5,7 +5,6 @@ from uuid import uuid4
 
 import pytest
 
-from miles_common.exceptions import BadRequestError
 from miles_ai.integrations.embeddings.constants import (
     EXTRA_EMBEDDING_DIMENSION,
     INVOKE_MODE_OPENAI_COMPATIBLE,
@@ -18,6 +17,7 @@ from miles_ai.integrations.embeddings.providers.openai_compatible import (
     OpenAICompatibleEmbeddingProvider,
 )
 from miles_ai.integrations.embeddings.registry import embed_texts_for_model, known_invoke_modes
+from miles_common.exceptions import BadRequestError
 from miles_core.models.model import ModelConfig
 from miles_core.models.model.catalog import ModelCapabilityType, ModelVendor
 

@@ -21,13 +21,13 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
-from miles_core.models.kb import KnowledgeBase
-from miles_core.models.model import ModelConfig
 from miles_ai.rag.retrieve.retriever import (
     resolve_retrieval_mode,
     search_kb_chunks,
     search_kb_chunks_sync,
 )
+from miles_core.models.kb import KnowledgeBase
+from miles_core.models.model import ModelConfig
 
 SearchLogHook = Callable[
     [AsyncSession, dict[str, Any]],

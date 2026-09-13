@@ -28,11 +28,11 @@ from uuid import UUID
 from sqlalchemy.orm import Session
 
 from miles_ai.integrations.langchain.visual_embeddings import should_use_visual_image_embedding
-from miles_core.models.kb import Document, DocumentChunk, KnowledgeBase, VectorRef
 from miles_ai.rag.chunk import chunk_documents
 from miles_ai.rag.index.gateway import upsert_chunk_vector
 from miles_ai.rag.parse import vector_type_for_document
 from miles_ai.rag.parse.loaders import load_documents_from_bytes
+from miles_core.models.kb import Document, DocumentChunk, KnowledgeBase, VectorRef
 
 
 class EmbedTextsForKb(Protocol):
@@ -110,7 +110,7 @@ def run_ingest_pipeline(
     vector_type = vector_type_for_document(data.filename, data.mime_type)
 
     # 逐分片事务：chunk.id 作为 Milvus/Weaviate 主键与 vector_ref 外键
-    for idx, (piece, vector) in enumerate(zip(chunks, vectors)):
+    for idx, (piece, vector) in enumerate(zip(chunks, vectors, strict=False)):
         chunk = DocumentChunk(
             tenant_id=doc.tenant_id,
             document_id=doc.id,

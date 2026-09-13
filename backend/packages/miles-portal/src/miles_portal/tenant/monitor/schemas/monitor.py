@@ -1,7 +1,8 @@
 """运行监控 API 响应模型（统计、趋势、告警、模型用量）。"""
 
-from pydantic import BaseModel, Field
 from uuid import UUID
+
+from pydantic import BaseModel, Field
 
 from miles_portal.tenant.tasks.schemas.task import TaskSummary
 

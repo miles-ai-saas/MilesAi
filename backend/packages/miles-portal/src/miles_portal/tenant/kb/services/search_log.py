@@ -18,8 +18,8 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from miles_core.models.kb.search_log import KbSearchLog
 from miles_ai.rag.retrieve.constants import RETRIEVAL_VECTOR
+from miles_core.models.kb.search_log import KbSearchLog
 
 _QUERY_MAX_LEN = 2000
 

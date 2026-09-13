@@ -8,8 +8,8 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from miles_portal.tenant.mcp.models import McpRunnerSession
 from miles_exec.mcp.spec import RunSpec
+from miles_portal.tenant.mcp.models import McpRunnerSession
 
 
 def _args_digest(args: list[str]) -> str:

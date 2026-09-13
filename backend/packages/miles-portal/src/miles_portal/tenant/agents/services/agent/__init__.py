@@ -28,7 +28,7 @@ from miles_portal.tenant.agents.services.agent.service import AgentService, _age
 
 __all__ = [
     "AgentService",
+    "_agent_out",
     "agent_out",
     "should_use_tools_with_kb",
-    "_agent_out",
 ]

@@ -1,6 +1,6 @@
 """生成日配额。"""
 
-from datetime import timezone
+from datetime import UTC
 from unittest.mock import AsyncMock
 from uuid import uuid4
 
@@ -48,5 +48,5 @@ def test_utc_day_start_used_in_count_query():
     from miles_portal.tenant.generative.services import quota as mod
 
     start = mod._utc_day_start()
-    assert start.tzinfo == timezone.utc
+    assert start.tzinfo == UTC
     assert start.hour == 0 and start.minute == 0

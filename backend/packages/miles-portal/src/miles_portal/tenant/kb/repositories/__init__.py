@@ -8,8 +8,8 @@ from miles_portal.tenant.kb.repositories.kb import (
 )
 
 __all__ = [
-    "KnowledgeBaseRepository",
-    "DocumentRepository",
     "DocumentChunkRepository",
+    "DocumentRepository",
+    "KnowledgeBaseRepository",
     "VectorRefRepository",
 ]

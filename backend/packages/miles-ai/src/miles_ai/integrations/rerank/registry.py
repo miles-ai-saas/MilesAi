@@ -14,9 +14,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from miles_common.exceptions import BadRequestError
 from miles_ai.integrations.rerank.model_meta import invoke_mode_from_model
 from miles_ai.integrations.rerank.types import RerankHit
+from miles_common.exceptions import BadRequestError
 from miles_core.models.model import ModelConfig
 
 if TYPE_CHECKING:

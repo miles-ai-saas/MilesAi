@@ -4,19 +4,18 @@ from fastapi import APIRouter
 
 from miles_portal.tenant.a2a.views import peers as a2a_peers
 from miles_portal.tenant.agents.views import agents
+from miles_portal.tenant.attachments.views import attachment
 from miles_portal.tenant.audit_log.views import audit_log
 from miles_portal.tenant.auth.views import auth
 from miles_portal.tenant.categories.views import categories
-from miles_portal.tenant.tags.views import tags
 from miles_portal.tenant.compliance.views import compliance
 from miles_portal.tenant.flows.views import flows
-from miles_portal.tenant.hooks.views import hooks
-from miles_portal.tenant.attachments.views import attachment
-from miles_portal.tenant.media_assets.views import media_asset
 from miles_portal.tenant.generative.views import jobs as generative_jobs
+from miles_portal.tenant.hooks.views import hooks
 from miles_portal.tenant.kb.views import kb
 from miles_portal.tenant.marketplace.views import marketplace
 from miles_portal.tenant.mcp.views import mcp
+from miles_portal.tenant.media_assets.views import media_asset
 from miles_portal.tenant.models.views import models as model_views
 from miles_portal.tenant.monitor.views import monitor
 from miles_portal.tenant.prompts.views import prompts
@@ -31,6 +30,7 @@ from miles_portal.tenant.system.views import (
     tenants,
     users,
 )
+from miles_portal.tenant.tags.views import tags
 from miles_portal.tenant.tasks.views import tasks
 from miles_portal.tenant.tools.views import tools
 from miles_portal.tenant.workbench.views import overview as workbench_overview

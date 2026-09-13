@@ -2,10 +2,10 @@
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from miles_core.tenant import TenantContext
 from miles_core.models.agent import Agent
 from miles_core.models.flow import Flow
 from miles_core.models.kb import KnowledgeBase
+from miles_core.tenant import TenantContext
 from miles_portal.tenant.agents.schemas.agent import AgentUpdate
 from miles_portal.tenant.agents.services.agent import AgentService
 from miles_portal.tenant.flows.schemas.flow import FlowSaveGraph, FlowUpdate

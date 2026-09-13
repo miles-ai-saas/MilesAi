@@ -1,6 +1,6 @@
 """全平台软删除：deleted_at 标记，查询默认排除已删记录。"""
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy import update
@@ -10,7 +10,7 @@ from sqlalchemy.sql.elements import ColumnElement
 
 def utc_now() -> datetime:
     """软删时间戳（UTC）。"""
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def has_soft_delete(model: type[Any]) -> bool:

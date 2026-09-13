@@ -12,11 +12,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from miles_common.exceptions import NotFoundError
+from miles_core.models.agent import Agent, AgentSubAgentBinding, agent_kb_bindings
+from miles_core.models.kb import KnowledgeBase
 from miles_core.repository import BaseRepository
 from miles_core.soft_delete import not_deleted
 from miles_portal.deletion.cascade import unlink_agent_kb_bindings
-from miles_core.models.agent import Agent, AgentSubAgentBinding, agent_kb_bindings
-from miles_core.models.kb import KnowledgeBase
 
 
 class AgentRepository(BaseRepository[Agent]):

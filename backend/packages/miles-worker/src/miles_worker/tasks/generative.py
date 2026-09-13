@@ -5,15 +5,15 @@ from __future__ import annotations
 import asyncio
 from uuid import UUID
 
+from miles_ai.integrations.generative.jobs.errors import GenerativeJobCancelled, GenerativeJobNotFound
+from miles_core.infra.redis import reset_redis
 from miles_core.jobs.tasks import TASK_NAMES
 from miles_core.logging import get_logger
-from miles_core.infra.redis import reset_redis
-from miles_ai.integrations.generative.jobs.errors import GenerativeJobCancelled, GenerativeJobNotFound
+from miles_core.models.task.task_record import TaskStatus
 from miles_portal.tenant.generative.services.job_execution import (
     run_generative_image_job_async,
     run_generative_video_job_async,
 )
-from miles_core.models.task.task_record import TaskStatus
 from miles_portal.tenant.tasks.services.sync import sync_task_by_celery_id
 from miles_worker.app import celery_app
 

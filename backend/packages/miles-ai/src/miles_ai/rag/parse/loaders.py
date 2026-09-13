@@ -18,12 +18,8 @@ LangChain Document 加载与解析后端路由。
 
 from __future__ import annotations
 
-from miles_core.logging import get_logger
-
 from langchain_core.documents import Document
 
-from miles_common.exceptions import BadRequestError
-from miles_core.config import get_settings
 from miles_ai.rag.parse.audio_parser import parse_audio
 from miles_ai.rag.parse.backends.docling import DOCLING_EXTENSIONS, docling_available, load_documents_with_docling
 from miles_ai.rag.parse.backends.pypdf import load_pdf_documents
@@ -32,6 +28,9 @@ from miles_ai.rag.parse.media import is_audio_file, is_image_file
 from miles_ai.rag.parse.text_parser import parse_text
 from miles_ai.rag.parse.upload_policy import OFFICE_EXTENSIONS
 from miles_ai.rag.parse.video_parser import parse_video
+from miles_common.exceptions import BadRequestError
+from miles_core.config import get_settings
+from miles_core.logging import get_logger
 
 logger = get_logger(__name__)
 

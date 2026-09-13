@@ -4,7 +4,6 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from miles_common.exceptions import BadRequestError, NotFoundError
 from miles_admin.app_ops.repositories.billing import BillingPlanRepository
 from miles_admin.app_ops.repositories.tenant import AdminTenantRepository
 from miles_admin.app_ops.schemas.tenant import (
@@ -15,8 +14,9 @@ from miles_admin.app_ops.schemas.tenant import (
     TenantQuotaUpdate,
     TenantUsageStats,
 )
-from miles_core.models.platform.tenant import Tenant, TenantStatus
+from miles_common.exceptions import BadRequestError, NotFoundError
 from miles_common.schema import PageParams, PageResult
+from miles_core.models.platform.tenant import Tenant, TenantStatus
 
 
 class AdminTenantService:

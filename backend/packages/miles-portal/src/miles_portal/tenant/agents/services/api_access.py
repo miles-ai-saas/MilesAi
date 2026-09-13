@@ -2,17 +2,18 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from miles_common.exceptions import BadRequestError, NotFoundError
+from miles_core.auth import session_store
 from miles_core.config import get_settings
+from miles_core.models.agent.api_key import AgentApiKey
 from miles_core.security import create_access_token
 from miles_core.service import BaseService
 from miles_core.tenant import TenantContext, assert_tenant_access
-from miles_core.models.agent.api_key import AgentApiKey
 from miles_portal.tenant.agents.repositories.agent import AgentRepository
 from miles_portal.tenant.agents.repositories.api_key import AgentApiKeyRepository
 from miles_portal.tenant.agents.schemas.api_access import (
@@ -25,7 +26,6 @@ from miles_portal.tenant.agents.schemas.api_access import (
     AgentDebugTokenOut,
 )
 from miles_portal.tenant.agents.services.api_key_crypto import generate_agent_api_key_secret
-from miles_core.auth import session_store
 
 
 def _key_out(row: AgentApiKey) -> AgentApiKeyOut:
@@ -66,7 +66,7 @@ class AgentApiAccessService(BaseService):
         settings = get_settings()
         ttl_hours = max(1, int(settings.agent_api_debug_token_ttl_hours))
         expires_delta = timedelta(hours=ttl_hours)
-        expires_at = datetime.now(timezone.utc) + expires_delta
+        expires_at = datetime.now(UTC) + expires_delta
         token = create_access_token(
             str(self.ctx.user_id),
             {
@@ -144,6 +144,6 @@ class AgentApiAccessService(BaseService):
             raise NotFoundError("密钥不存在")
         assert_tenant_access(self.ctx, row.tenant_id)
         if row.revoked_at is None:
-            row.revoked_at = datetime.now(timezone.utc)
+            row.revoked_at = datetime.now(UTC)
             await self.db.flush()
         return _key_out(row)

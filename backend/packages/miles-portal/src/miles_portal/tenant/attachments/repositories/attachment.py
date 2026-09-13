@@ -2,8 +2,8 @@
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from miles_core.repository import BaseRepository
 from miles_core.models.media.attachment import Attachment
+from miles_core.repository import BaseRepository
 
 
 class AttachmentRepository(BaseRepository[Attachment]):

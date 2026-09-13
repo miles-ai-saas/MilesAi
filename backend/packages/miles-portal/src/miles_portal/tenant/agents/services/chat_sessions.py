@@ -2,17 +2,18 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
-from sqlalchemy import func, select, delete
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from miles_common.exceptions import BadRequestError, NotFoundError
+from miles_common.schema import PageParams, PageResult
+from miles_core.models.agent.chat_session import AgentChatMessage, AgentChatSession
 from miles_core.service import BaseService
 from miles_core.soft_delete import is_marked_deleted
 from miles_core.tenant import TenantContext, assert_tenant_access, tenant_filters
-from miles_core.models.agent.chat_session import AgentChatMessage, AgentChatSession
 from miles_portal.tenant.agents.repositories.agent import AgentRepository
 from miles_portal.tenant.agents.schemas.agent import ChatRequest, ChatResponse
 from miles_portal.tenant.agents.schemas.chat_sessions import (
@@ -23,7 +24,6 @@ from miles_portal.tenant.agents.schemas.chat_sessions import (
     ChatSessionUpdate,
 )
 from miles_portal.tenant.agents.services.chat_artifact_sync import hydrate_chat_messages_artifacts
-from miles_common.schema import PageParams, PageResult
 
 MAX_SESSION_TITLE = 128
 TITLE_PREVIEW_LEN = 28
@@ -129,7 +129,7 @@ class AgentChatSessionService(BaseService):
             if existing.agent_id != agent_id:
                 raise BadRequestError("会话 ID 已被其他智能体使用")
             return await self._session_out(existing)
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         row = AgentChatSession(
             id=session_id,
             tenant_id=self.ctx.tenant_id,
@@ -188,7 +188,7 @@ class AgentChatSessionService(BaseService):
             raise NotFoundError("会话不存在")
         assert_tenant_access(self.ctx, row.tenant_id)
         row.title = body.title.strip()[:MAX_SESSION_TITLE]
-        row.updated_at = datetime.now(timezone.utc)
+        row.updated_at = datetime.now(UTC)
         await self.db.flush()
         return await self._session_out(row)
 
@@ -218,7 +218,7 @@ class AgentChatSessionService(BaseService):
             return
 
         row = await self.db.get(AgentChatSession, conversation_id)
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         if not row:
             row = AgentChatSession(
                 id=conversation_id,

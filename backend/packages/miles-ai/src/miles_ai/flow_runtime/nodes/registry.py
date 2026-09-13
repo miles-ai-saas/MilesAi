@@ -24,7 +24,6 @@ from miles_ai.flow_runtime.nodes import (
     control_nodes,
     grade_nodes,
     image_generate,
-    video_generate,
     io_nodes,
     llm_nodes,
     loop_nodes,
@@ -32,6 +31,7 @@ from miles_ai.flow_runtime.nodes import (
     rag_nodes,
     subflow_nodes,
     tool_nodes,
+    video_generate,
 )
 from miles_ai.flow_runtime.types import RunContext
 

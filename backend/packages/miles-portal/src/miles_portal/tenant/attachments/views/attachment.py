@@ -9,10 +9,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from miles_common.response import ok, page_ok
 from miles_common.schema import ApiResponse, PageParams, PageResult
 from miles_core.deps import get_page_params, require_permissions
-from miles_core.tenant import TenantContext
 from miles_core.infra.db import get_db
-from miles_portal.tenant.attachments.schemas.meta import AttachmentMetaOut
+from miles_core.tenant import TenantContext
 from miles_portal.tenant.attachments.schemas.attachment import AttachmentOut, AttachmentUploadMeta
+from miles_portal.tenant.attachments.schemas.meta import AttachmentMetaOut
 from miles_portal.tenant.attachments.services.attachment import AttachmentService
 
 router = APIRouter()

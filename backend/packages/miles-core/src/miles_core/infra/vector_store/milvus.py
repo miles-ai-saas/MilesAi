@@ -19,11 +19,12 @@ from functools import lru_cache
 from typing import Any
 from uuid import UUID
 
+from langchain_core.documents import Document
 from pymilvus import DataType, MilvusClient
 
+from miles_common.exceptions import AppError
 from miles_core.config import get_settings
 from miles_core.infra.vector_store.base import ChunkVectorRecord, validate_dimension
-from miles_common.exceptions import AppError
 from miles_core.infra.vector_store.documents import (
     METADATA_CHUNK_ID,
     METADATA_DOCUMENT_ID,
@@ -34,10 +35,9 @@ from miles_core.infra.vector_store.documents import (
     METADATA_TENANT_ID,
     TEXT_KEY,
     distance_pairs_to_hits,
-    milvus_filter_expr,
     known_embedding_dimensions,
+    milvus_filter_expr,
 )
-from langchain_core.documents import Document
 
 # 与 langchain_milvus 默认 collection 命名习惯对齐，后缀为维度整数
 COLLECTION_PREFIX = "document_chunk_"

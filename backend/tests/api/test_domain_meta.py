@@ -4,21 +4,21 @@ import pytest
 
 from miles_common.schemas.enum_meta import META_SCHEMA_VERSION
 from miles_portal.tenant.a2a.meta import a2a_meta_dict
-from miles_portal.tenant.audit_log.meta import audit_meta_dict
-from miles_portal.tenant.categories.meta import categories_meta_dict
 from miles_portal.tenant.agents.meta import agents_meta_dict
 from miles_portal.tenant.attachments.meta import attachments_meta_dict
+from miles_portal.tenant.audit_log.meta import audit_meta_dict
+from miles_portal.tenant.categories.meta import categories_meta_dict
 from miles_portal.tenant.compliance.meta import compliance_meta_dict
-from miles_portal.tenant.marketplace.meta import marketplace_meta_dict
-from miles_portal.tenant.mcp.meta import mcp_meta_dict
-from miles_portal.tenant.monitor.meta import monitor_meta_dict
-from miles_portal.tenant.skills.meta import skills_meta_dict
-from miles_portal.tenant.tags.meta import tags_meta_dict
-from miles_portal.tenant.tasks.meta import tasks_meta_dict
 from miles_portal.tenant.flows.meta import flow_meta_dict
 from miles_portal.tenant.hooks.meta import hook_meta_dict
 from miles_portal.tenant.kb.meta import kb_meta_dict
+from miles_portal.tenant.marketplace.meta import marketplace_meta_dict
+from miles_portal.tenant.mcp.meta import mcp_meta_dict
+from miles_portal.tenant.monitor.meta import monitor_meta_dict
 from miles_portal.tenant.prompts.meta import prompts_meta_dict
+from miles_portal.tenant.skills.meta import skills_meta_dict
+from miles_portal.tenant.tags.meta import tags_meta_dict
+from miles_portal.tenant.tasks.meta import tasks_meta_dict
 from miles_portal.tenant.tools.meta import tools_meta_dict
 
 _ALL_META_DICTS = [

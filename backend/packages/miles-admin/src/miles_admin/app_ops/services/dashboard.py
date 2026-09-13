@@ -1,6 +1,6 @@
 """运营控制台聚合统计。"""
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -18,7 +18,7 @@ class AdminDashboardService:
 
     async def get_summary(self) -> AdminDashboardSummaryOut:
         """聚合租户、风险、账单、审计与套餐的概览指标。"""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
         month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
 

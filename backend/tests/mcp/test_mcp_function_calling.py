@@ -8,7 +8,6 @@ from __future__ import annotations
 from types import SimpleNamespace
 from uuid import uuid4
 
-from miles_core.tenant import TenantContext
 from miles_ai.integrations.langchain.tools import (
     MCP_FUNCTION_PREFIX,
     McpToolSpec,
@@ -19,6 +18,7 @@ from miles_ai.integrations.langchain.tools import (
     mcp_param_alias,
     select_agent_tools,
 )
+from miles_core.tenant import TenantContext
 from miles_exec.mcp.tools import normalize_tools
 from miles_portal.tenant.tools.invoke import context as invoke_context
 from miles_portal.tenant.tools.services import mcp_tools
@@ -42,7 +42,7 @@ class _Result:
     def __init__(self, rows: list) -> None:
         self._rows = rows
 
-    def scalars(self) -> "_Result":
+    def scalars(self) -> _Result:
         return self
 
     def all(self) -> list:

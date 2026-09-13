@@ -9,10 +9,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from miles_core.service import BaseService
 from miles_core.tenant import TenantContext
+from miles_portal.marketplace.review_config import get_marketplace_review_mode
 from miles_portal.tenant.agents.repositories.agent import AgentRepository
 from miles_portal.tenant.flows.repositories.flow import FlowRepository
 from miles_portal.tenant.kb.repositories.kb import KnowledgeBaseRepository
-from miles_portal.marketplace.review_config import get_marketplace_review_mode
 from miles_portal.tenant.marketplace.meta import marketplace_meta_dict
 from miles_portal.tenant.marketplace.schemas.meta import MarketplaceMetaOut
 from miles_portal.tenant.marketplace.services.marketplace.catalog import MarketplaceCatalogMixin

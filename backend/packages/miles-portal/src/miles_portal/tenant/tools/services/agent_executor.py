@@ -14,8 +14,8 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from miles_core.tenant import TenantContext
 from miles_ai.integrations.langchain.tool_agent.tool_contract import ToolConfirmationSignal
+from miles_core.tenant import TenantContext
 from miles_portal.tenant.tools.confirmation import ToolConfirmationRequired, resolve_tool_meta
 from miles_portal.tenant.tools.invoke import invoke_tool_with_context
 

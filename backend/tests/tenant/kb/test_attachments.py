@@ -1,6 +1,6 @@
 """租户附件上传与删除。"""
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
@@ -24,7 +24,7 @@ async def test_upload_attachment_stores_object_and_updates_quota():
     file.read = AsyncMock(return_value=b"hello")
 
     att_id = uuid4()
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     created = SimpleNamespace(
         id=att_id,
         tenant_id=tenant_id,

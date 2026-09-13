@@ -1,5 +1,7 @@
 """Cron 工具单元测试。"""
 
+from datetime import UTC
+
 import pytest
 
 from miles_common.cron import compute_next_run, describe_cron, validate_cron
@@ -28,9 +30,9 @@ def test_describe_cron_weekday_morning():
 
 
 def test_compute_next_run_returns_future():
-    from datetime import datetime, timezone
+    from datetime import datetime
 
-    base = datetime(2026, 5, 25, 7, 30, tzinfo=timezone.utc)
+    base = datetime(2026, 5, 25, 7, 30, tzinfo=UTC)
     nxt = compute_next_run("0 8 * * *", base)
     assert nxt.hour == 8
     assert nxt > base

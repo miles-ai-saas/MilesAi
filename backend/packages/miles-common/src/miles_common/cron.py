@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from croniter import croniter
 
@@ -23,9 +23,9 @@ def validate_cron(cron: str) -> str:
 def compute_next_run(cron: str, base: datetime | None = None) -> datetime:
     """计算下次执行时间（UTC）。"""
     expr = validate_cron(cron)
-    ref = base or datetime.now(timezone.utc)
+    ref = base or datetime.now(UTC)
     if ref.tzinfo is None:
-        ref = ref.replace(tzinfo=timezone.utc)
+        ref = ref.replace(tzinfo=UTC)
     return croniter(expr, ref).get_next(datetime)
 
 

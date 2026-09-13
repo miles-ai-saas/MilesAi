@@ -1,16 +1,16 @@
 """智能体统计：从 agt_agent_chat_calls 按日聚合。"""
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 from sqlalchemy import Date, cast, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from miles_common.exceptions import NotFoundError
+from miles_core.models.agent.chat_call import AgentChatCall
 from miles_core.service import BaseService
 from miles_core.soft_delete import is_marked_deleted
 from miles_core.tenant import TenantContext, assert_tenant_access, tenant_filters
-from miles_core.models.agent.chat_call import AgentChatCall
 from miles_portal.tenant.agents.repositories.agent import AgentRepository
 from miles_portal.tenant.agents.schemas.stats import AgentStatsOut, AgentStatsPoint
 
@@ -24,7 +24,7 @@ def _normalize_days(days: int) -> int:
 
 
 def _day_range(days: int) -> list[str]:
-    end = datetime.now(timezone.utc).date()
+    end = datetime.now(UTC).date()
     start = end - timedelta(days=days - 1)
     out: list[str] = []
     cur = start
@@ -61,8 +61,8 @@ class AgentStatsService(BaseService):
         labels = _day_range(days)
         start_date = datetime.strptime(labels[0], "%Y-%m-%d").date()
         end_date = datetime.strptime(labels[-1], "%Y-%m-%d").date()
-        start_dt = datetime.combine(start_date, datetime.min.time(), tzinfo=timezone.utc)
-        end_dt = datetime.combine(end_date + timedelta(days=1), datetime.min.time(), tzinfo=timezone.utc)
+        start_dt = datetime.combine(start_date, datetime.min.time(), tzinfo=UTC)
+        end_dt = datetime.combine(end_date + timedelta(days=1), datetime.min.time(), tzinfo=UTC)
         return labels, start_dt, end_dt
 
     async def overview(self, agent_id: UUID, *, days: int) -> AgentStatsOut:

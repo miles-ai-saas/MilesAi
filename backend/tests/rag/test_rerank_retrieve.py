@@ -3,9 +3,9 @@
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
+from miles_ai.rag.retrieve.rerank import apply_rerank_to_hits, compute_rerank_fetch_limit
 from miles_core.models.model import ModelConfig
 from miles_core.models.model.catalog import ModelCapabilityType, ModelVendor
-from miles_ai.rag.retrieve.rerank import apply_rerank_to_hits, compute_rerank_fetch_limit
 
 
 def _rerank_model() -> ModelConfig:

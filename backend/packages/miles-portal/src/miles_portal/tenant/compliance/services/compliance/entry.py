@@ -1,7 +1,9 @@
 """租户级敏感词条（可多库关联）。"""
 
 from uuid import UUID
+
 from sqlalchemy import select
+
 from miles_common.exceptions import BadRequestError, NotFoundError
 from miles_core.soft_delete import is_marked_deleted, mark_deleted, not_deleted
 from miles_core.tenant import assert_tenant_access

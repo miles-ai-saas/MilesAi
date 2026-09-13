@@ -15,8 +15,8 @@ from uuid import UUID
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from miles_core.config import get_settings
 from miles_ai.flow_runtime.templates.registry import load_flow_template_graph
+from miles_core.config import get_settings
 from miles_core.models.meta.tag import EntityTagBinding, TagEntityType, TenantTag
 from miles_core.models.platform.tenant import Tenant
 from miles_portal.tenant.categories.services.category import slugify

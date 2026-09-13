@@ -7,11 +7,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from miles_common.exceptions import BadRequestError, NotFoundError
+from miles_common.schema import PageParams, PageResult
+from miles_core.models.platform.role import Permission, Role
+from miles_core.service import BaseService
 from miles_core.soft_delete import is_marked_deleted, mark_deleted, not_deleted
 from miles_core.tenant import TenantContext, assert_tenant_access, tenant_filters
-from miles_core.models.platform.role import Permission, Role
 from miles_portal.tenant.system.repositories.role import RoleRepository
-from miles_common.schema import PageParams, PageResult
 from miles_portal.tenant.system.schemas.role import (
     PermissionGroupOut,
     PermissionOut,
@@ -19,7 +20,6 @@ from miles_portal.tenant.system.schemas.role import (
     RoleOut,
     RoleUpdate,
 )
-from miles_core.service import BaseService
 
 
 def _role_out(role: Role) -> RoleOut:

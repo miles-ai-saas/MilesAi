@@ -9,8 +9,6 @@ from miles_admin.app_ops.repositories.risk import (
     RateLimitRuleRepository,
     RiskEventRepository,
 )
-from miles_core.risk.enforce import platform_risk_enforcer
-from miles_admin.models import IpBlacklist, RateLimitRule, RiskEvent, RiskSeverity
 from miles_admin.app_ops.schemas.risk import (
     IpBlacklistCreate,
     IpBlacklistOut,
@@ -19,7 +17,9 @@ from miles_admin.app_ops.schemas.risk import (
     RateLimitRuleUpdate,
     RiskEventOut,
 )
+from miles_admin.models import IpBlacklist, RateLimitRule, RiskEvent, RiskSeverity
 from miles_common.schema import PageParams, PageResult
+from miles_core.risk.enforce import platform_risk_enforcer
 
 
 class AdminRiskService:

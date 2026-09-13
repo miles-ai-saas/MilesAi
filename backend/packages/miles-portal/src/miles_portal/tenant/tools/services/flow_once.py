@@ -23,9 +23,9 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from miles_common.exceptions import BadRequestError, NotFoundError
+from miles_core.models.flow import FlowStatus
 from miles_core.soft_delete import is_marked_deleted
 from miles_core.tenant import TenantContext, assert_tenant_access
-from miles_core.models.flow import FlowStatus
 
 MAX_FLOW_ONCE_DEPTH = 2
 DEFAULT_TIMEOUT_SEC = 120
@@ -91,7 +91,7 @@ async def run_published_flow_once(
             FlowService(db, ctx).run(target, FlowRunRequest(inputs=merged_inputs)),
             timeout=timeout,
         )
-    except asyncio.TimeoutError as exc:
+    except TimeoutError as exc:
         raise BadRequestError(f"流程执行超时（{timeout}s）") from exc
     finally:
         _depth.reset(token)

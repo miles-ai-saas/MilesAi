@@ -23,8 +23,8 @@ from urllib.parse import urljoin, urlparse
 
 import httpx
 
-from miles_portal.tenant.a2a.models import A2aPeer
 from miles_common.exceptions import BadRequestError
+from miles_portal.tenant.a2a.models import A2aPeer
 
 JSONRPC_HEADERS = {"Content-Type": "application/json", "Accept": "application/json"}
 

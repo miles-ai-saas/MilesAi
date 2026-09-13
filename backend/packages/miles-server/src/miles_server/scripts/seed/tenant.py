@@ -4,9 +4,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from miles_core.config import get_settings
-from miles_core.security import hash_password
 from miles_core.models import Permission, Role, Tenant, User
 from miles_core.models.platform.role import role_permissions, user_roles
+from miles_core.security import hash_password
 
 DEFAULT_PERMISSIONS = [
     ("system:tenant:read", "查看租户", "system"),

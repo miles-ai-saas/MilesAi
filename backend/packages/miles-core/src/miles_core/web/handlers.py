@@ -10,9 +10,9 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import SQLAlchemyError
 
+from miles_common.exceptions import AppError
 from miles_core.config import get_settings
 from miles_core.logging import get_logger
-from miles_common.exceptions import AppError
 
 logger = get_logger(__name__)
 

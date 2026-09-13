@@ -18,8 +18,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
 from miles_common.exceptions import NotFoundError
-from miles_core.soft_delete import not_deleted
 from miles_core.models.kb import KnowledgeBase
+from miles_core.soft_delete import not_deleted
 
 
 async def load_kbs_for_tenant(

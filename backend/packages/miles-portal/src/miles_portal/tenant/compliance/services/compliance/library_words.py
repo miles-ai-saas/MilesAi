@@ -1,7 +1,9 @@
 """词库内词条绑定。"""
 
 from uuid import UUID
+
 from sqlalchemy import func, select
+
 from miles_common.exceptions import BadRequestError, NotFoundError
 from miles_common.schema import PageParams, PageResult
 from miles_core.soft_delete import is_marked_deleted, mark_deleted, not_deleted

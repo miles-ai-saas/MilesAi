@@ -5,8 +5,8 @@
 
 from miles_ai.integrations.embeddings.constants import (
     EXTRA_EMBEDDING_DIMENSION,
-    INVOKE_MODE_LOCAL,
     INVOKE_MODE_LITELLM,
+    INVOKE_MODE_LOCAL,
     INVOKE_MODE_OPENAI_COMPATIBLE,
 )
 from miles_ai.integrations.embeddings.model_meta import (
@@ -18,8 +18,8 @@ from miles_ai.integrations.embeddings.runtime import build_embeddings
 
 __all__ = [
     "EXTRA_EMBEDDING_DIMENSION",
-    "INVOKE_MODE_LOCAL",
     "INVOKE_MODE_LITELLM",
+    "INVOKE_MODE_LOCAL",
     "INVOKE_MODE_OPENAI_COMPATIBLE",
     "build_embeddings",
     "embed_texts_for_model",

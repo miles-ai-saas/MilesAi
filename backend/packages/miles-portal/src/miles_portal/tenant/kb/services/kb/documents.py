@@ -5,16 +5,16 @@ from uuid import UUID
 from fastapi import UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from miles_ai.rag.parse.upload_policy import is_kb_upload_allowed, kb_upload_allowed_hint
 from miles_common.exceptions import BadRequestError, NotFoundError
 from miles_common.schema import PageParams, PageResult
+from miles_core.infra.storage import build_object_key
+from miles_core.infra.storage.resolve import resolve_object_storage_async
 from miles_core.logging import get_logger
+from miles_core.models.kb import Document, DocumentChunk, DocumentStatus
 from miles_core.soft_delete import is_marked_deleted, mark_deleted
 from miles_core.tenant import TenantContext, assert_tenant_access
 from miles_portal.deletion.document import clear_document_derived_data_async
-from miles_core.infra.storage import build_object_key
-from miles_core.infra.storage.resolve import resolve_object_storage_async
-from miles_core.models.kb import Document, DocumentChunk, DocumentStatus
-from miles_ai.rag.parse.upload_policy import is_kb_upload_allowed, kb_upload_allowed_hint
 from miles_portal.tenant.kb.repositories.kb import DocumentChunkRepository, DocumentRepository
 from miles_portal.tenant.kb.schemas.kb import DocumentChunkOut, DocumentOut
 from miles_portal.tenant.kb.services.quota import apply_storage_delta, assert_can_upload_bytes

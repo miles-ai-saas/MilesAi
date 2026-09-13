@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import asyncio
 import json
-from miles_core.logging import get_logger
 from uuid import UUID
 
 from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
@@ -12,9 +11,10 @@ from pydantic import ValidationError
 
 from miles_common.exceptions import AppError, UnauthorizedError
 from miles_core.config import get_settings
-from miles_core.tenant import TenantContext
 from miles_core.infra.db import AsyncSessionLocal
+from miles_core.logging import get_logger
 from miles_core.models.model.generative_job import GenerativeJobStatus
+from miles_core.tenant import TenantContext
 from miles_portal.tenant.agents.schemas.agent import ChatMediaIn, ChatRequest, ChatResponse
 from miles_portal.tenant.agents.services.agent import AgentService
 from miles_portal.tenant.agents.ws import protocol as proto

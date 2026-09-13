@@ -165,8 +165,8 @@ def format_layout_prompt_blocks(layout: dict | None) -> list[str]:
 
 def scaffold_blank_layout(tenant_id, slug: str, *, name: str) -> None:
     """空白技能包：创建 references/、scripts/ 与示例文件。"""
-    from miles_portal.tenant.skills.storage import write_file, write_skill_md
     from miles_portal.tenant.skills.skill_md import build_skill_md
+    from miles_portal.tenant.skills.storage import write_file, write_skill_md
 
     base = skill_package_dir(tenant_id, slug)
     (base / REFERENCES_DIR).mkdir(parents=True, exist_ok=True)

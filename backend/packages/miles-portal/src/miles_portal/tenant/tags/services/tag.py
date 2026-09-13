@@ -16,10 +16,10 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from miles_common.exceptions import BadRequestError, ConflictError, NotFoundError
+from miles_core.models.meta.tag import EntityTagBinding, TagEntityType, TenantTag
 from miles_core.service import BaseService
 from miles_core.soft_delete import is_marked_deleted, mark_deleted, not_deleted
 from miles_core.tenant import TenantContext, assert_tenant_access, tenant_filters
-from miles_core.models.meta.tag import EntityTagBinding, TagEntityType, TenantTag
 from miles_portal.tenant.categories.services.category import slugify
 from miles_portal.tenant.tags.meta import tags_meta_dict
 from miles_portal.tenant.tags.schemas.meta import TagMetaOut

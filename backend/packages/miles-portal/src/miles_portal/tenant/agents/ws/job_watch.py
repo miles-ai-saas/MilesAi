@@ -3,19 +3,19 @@
 from __future__ import annotations
 
 import asyncio
-from miles_core.logging import get_logger
 from uuid import UUID
 
 from fastapi import WebSocket
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from miles_core.tenant import TenantContext
 from miles_core.infra.db import AsyncSessionLocal
+from miles_core.logging import get_logger
 from miles_core.models.model.generative_job import GenerativeJobStatus
+from miles_core.tenant import TenantContext
 from miles_portal.tenant.agents.ws import protocol as proto
-from miles_portal.tenant.generative.services.job_execution import get_generative_job_for_tenant
 from miles_portal.tenant.generative.schemas.job import GenerativeJobOut
 from miles_portal.tenant.generative.services.job import GenerativeJobService
+from miles_portal.tenant.generative.services.job_execution import get_generative_job_for_tenant
 
 logger = get_logger(__name__)
 

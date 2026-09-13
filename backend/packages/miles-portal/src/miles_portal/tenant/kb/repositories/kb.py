@@ -8,8 +8,8 @@ from uuid import UUID
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from miles_core.repository import BaseRepository
 from miles_core.models.kb import Document, DocumentChunk, KnowledgeBase, VectorRef
+from miles_core.repository import BaseRepository
 
 
 class KnowledgeBaseRepository(BaseRepository[KnowledgeBase]):

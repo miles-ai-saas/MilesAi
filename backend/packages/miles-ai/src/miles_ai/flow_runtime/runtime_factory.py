@@ -9,8 +9,8 @@
 
 from functools import lru_cache
 
-from miles_ai.integrations.langgraph.flow_runner import run_flow_graph
 from miles_ai.flow_runtime.types import RunContext, RunResult
+from miles_ai.integrations.langgraph.flow_runner import run_flow_graph
 
 
 class LangGraphFlowRuntime:

@@ -1,14 +1,14 @@
 """租户 JWT 与密码哈希（bcrypt）；运营端管理员令牌见 admin.app_sys.security。"""
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import uuid4
 
 import bcrypt
 from jose import JWTError, jwt
 
-from miles_core.config import get_settings
 from miles_common.exceptions import UnauthorizedError
+from miles_core.config import get_settings
 from miles_core.models.platform.user import User
 
 settings = get_settings()
@@ -40,7 +40,7 @@ def create_access_token(
     """签发 access JWT（type=access，含 tenant_id 等 extra）。"""
     if expires_delta is None:
         expires_delta = timedelta(minutes=settings.access_token_expire_minutes)
-    expire = datetime.now(timezone.utc) + expires_delta
+    expire = datetime.now(UTC) + expires_delta
     payload = {
         "sub": subject,
         "type": "access",
@@ -53,7 +53,7 @@ def create_access_token(
 
 def create_refresh_token(subject: str) -> str:
     """签发 refresh JWT（type=refresh，仅用于 /auth/refresh）。"""
-    expire = datetime.now(timezone.utc) + timedelta(days=settings.refresh_token_expire_days)
+    expire = datetime.now(UTC) + timedelta(days=settings.refresh_token_expire_days)
     payload = {"sub": subject, "type": "refresh", "exp": expire, "jti": str(uuid4())}
     return _encode(payload)
 

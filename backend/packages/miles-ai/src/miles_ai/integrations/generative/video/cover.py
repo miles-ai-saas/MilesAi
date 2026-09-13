@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-from miles_core.logging import get_logger
 import shutil
 import subprocess
 import tempfile
 from pathlib import Path
+
+from miles_core.logging import get_logger
 
 logger = get_logger(__name__)
 

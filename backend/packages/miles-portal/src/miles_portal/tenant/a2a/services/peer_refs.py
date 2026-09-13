@@ -16,11 +16,11 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from miles_portal.tenant.a2a.models import A2aInvokePolicy, A2aPeer, A2aPeerStatus, AgentA2aPeerRef
 from miles_common.exceptions import BadRequestError, NotFoundError
+from miles_core.models.agent import Agent, AgentType
 from miles_core.soft_delete import is_marked_deleted
 from miles_core.tenant import TenantContext
-from miles_core.models.agent import Agent, AgentType
+from miles_portal.tenant.a2a.models import A2aInvokePolicy, A2aPeer, A2aPeerStatus, AgentA2aPeerRef
 
 MAX_A2A_PEER_REFS = 4
 

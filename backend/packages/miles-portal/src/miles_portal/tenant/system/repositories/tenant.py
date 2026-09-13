@@ -2,8 +2,8 @@
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from miles_core.repository import BaseRepository
 from miles_core.models.platform.tenant import Tenant
+from miles_core.repository import BaseRepository
 
 
 class TenantRepository(BaseRepository[Tenant]):

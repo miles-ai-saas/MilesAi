@@ -5,9 +5,10 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from miles_core.infra.db import get_db
-from miles_core.deps import require_permissions
 from miles_common.response import ok
+from miles_common.schema import ApiResponse
+from miles_core.deps import require_permissions
+from miles_core.infra.db import get_db
 from miles_core.tenant import TenantContext
 from miles_portal.tenant.models.schemas.model import (
     ModelBuiltinCredentialsIn,
@@ -17,7 +18,6 @@ from miles_portal.tenant.models.schemas.model import (
     ModelConfigUpdate,
 )
 from miles_portal.tenant.models.services.model import ModelService
-from miles_common.schema import ApiResponse
 
 router = APIRouter()
 

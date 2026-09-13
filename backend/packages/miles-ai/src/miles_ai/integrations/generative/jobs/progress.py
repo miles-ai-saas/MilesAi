@@ -5,11 +5,11 @@ from __future__ import annotations
 import json
 from uuid import UUID
 
-from miles_core.logging import get_logger
-from miles_core.infra.db import generative_job_db_session
 from miles_ai.integrations.generative.jobs.errors import GenerativeJobCancelled
-from miles_core.models.model.generative_job import GenerativeJob, GenerativeJobStatus
 from miles_common.redis_keys import RedisKeys
+from miles_core.infra.db import generative_job_db_session
+from miles_core.logging import get_logger
+from miles_core.models.model.generative_job import GenerativeJob, GenerativeJobStatus
 
 logger = get_logger(__name__)
 

@@ -1,6 +1,7 @@
 """敏感词拦截日志查询。"""
 
 from sqlalchemy import func, select
+
 from miles_common.schema import PageParams, PageResult
 from miles_core.tenant import tenant_filters
 from miles_portal.tenant.compliance.models import InterceptLog

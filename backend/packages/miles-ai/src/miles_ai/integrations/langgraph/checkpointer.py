@@ -11,7 +11,6 @@ LangGraph Checkpointer：优先 Redis，不可用时回退内存。
 
 from __future__ import annotations
 
-from miles_core.logging import get_logger
 import warnings
 from contextlib import AsyncExitStack
 from typing import Any
@@ -19,6 +18,7 @@ from typing import Any
 from langgraph.checkpoint.memory import MemorySaver
 
 from miles_core.config import get_settings
+from miles_core.logging import get_logger
 
 logger = get_logger(__name__)
 

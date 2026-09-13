@@ -10,8 +10,8 @@ from __future__ import annotations
 import os
 import tempfile
 
-from langchain_core.documents import Document
 from langchain_community.document_loaders import PyPDFLoader
+from langchain_core.documents import Document
 
 
 def load_pdf_documents(data: bytes, filename: str) -> list[Document]:

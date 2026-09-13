@@ -1,7 +1,8 @@
 """tools 模块 GET */meta 响应体（与 tenant/tools/meta.py 字段一致）。"""
 
-from miles_common.schemas.enum_meta import META_SCHEMA_VERSION, EnumOption
 from pydantic import BaseModel, Field
+
+from miles_common.schemas.enum_meta import META_SCHEMA_VERSION, EnumOption
 
 
 class ToolsMetaOut(BaseModel):

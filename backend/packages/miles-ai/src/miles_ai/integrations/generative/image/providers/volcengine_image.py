@@ -7,7 +7,6 @@ from typing import Any
 
 import httpx
 
-from miles_common.exceptions import AppError, BadRequestError
 from miles_ai.integrations.generative.constants import DEFAULT_IMAGE_SIZE
 from miles_ai.integrations.generative.volcengine_client import (
     require_volcengine_api_key,
@@ -15,6 +14,7 @@ from miles_ai.integrations.generative.volcengine_client import (
     volcengine_headers,
 )
 from miles_ai.integrations.http_constants import HTTP_DEFAULT_TIMEOUT_SEC
+from miles_common.exceptions import AppError, BadRequestError
 from miles_core.models.model import ModelConfig
 
 

@@ -5,16 +5,16 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from miles_common.exceptions import BadRequestError, NotFoundError
-from miles_core.soft_delete import is_marked_deleted
-from miles_core.tenant import TenantContext, assert_tenant_access
-from miles_core.infra.storage.resolve import resolve_object_storage_async
-from miles_core.models.kb import DocumentStatus, KnowledgeBase
 from miles_ai.rag.parse import is_image_file, is_video_file
 from miles_ai.rag.parse.image_parser import parse_image
 from miles_ai.rag.parse.video_parser import parse_video
 from miles_ai.rag.retrieve import resolve_retrieval_mode, search_kb_chunks
 from miles_ai.rag.retrieve.media_filter import filter_hits_by_media_types_async
+from miles_common.exceptions import BadRequestError, NotFoundError
+from miles_core.infra.storage.resolve import resolve_object_storage_async
+from miles_core.models.kb import DocumentStatus, KnowledgeBase
+from miles_core.soft_delete import is_marked_deleted
+from miles_core.tenant import TenantContext, assert_tenant_access
 from miles_portal.tenant.kb.repositories.kb import DocumentChunkRepository, DocumentRepository
 from miles_portal.tenant.kb.schemas.kb import SearchHit, SearchRequest, SearchResponse
 from miles_portal.tenant.kb.services.embeddings import (

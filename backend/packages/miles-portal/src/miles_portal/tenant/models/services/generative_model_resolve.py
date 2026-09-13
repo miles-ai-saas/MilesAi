@@ -21,9 +21,9 @@ from sqlalchemy import case, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from miles_common.exceptions import BadRequestError
-from miles_core.tenant import TenantContext
 from miles_core.models.model import ModelConfig
 from miles_core.models.model.catalog import ModelCapabilityType, ModelVendor
+from miles_core.tenant import TenantContext
 from miles_portal.tenant.models.services.model_resolve import resolve_model_for_invoke
 
 # 未显式指定 model_config_id 时的厂商优先顺序：万相(qwen) → 豆包 → 其它

@@ -2,8 +2,8 @@
 
 from uuid import UUID
 
-from miles_core.infra.redis import get_redis
 from miles_common.redis_keys import RedisKeys
+from miles_core.infra.redis import get_redis
 
 
 async def validate_admin_session(admin_id: UUID, jti: str | None) -> bool:

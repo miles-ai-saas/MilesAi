@@ -8,7 +8,6 @@
 
 from __future__ import annotations
 
-from miles_common.exceptions import BadRequestError
 from miles_ai.integrations.generative.constants import (
     INVOKE_DASHSCOPE_T2V,
     INVOKE_VOLCENGINE_VIDEO,
@@ -16,6 +15,7 @@ from miles_ai.integrations.generative.constants import (
 from miles_ai.integrations.generative.registry import resolve_invoke_mode
 from miles_ai.integrations.generative.video.providers.dashscope_wan import generate_dashscope_video
 from miles_ai.integrations.generative.video.providers.volcengine_video import generate_volcengine_video
+from miles_common.exceptions import BadRequestError
 from miles_core.models.model import ModelConfig
 from miles_core.models.model.catalog import ModelCapabilityType
 

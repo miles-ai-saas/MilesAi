@@ -1,5 +1,5 @@
-from miles_portal.tenant.tools.confirmation import ToolConfirmationRequired
 from miles_portal.tenant.tools.builtin_registry import get_builtin
+from miles_portal.tenant.tools.confirmation import ToolConfirmationRequired
 
 
 def test_builtin_get_current_datetime_requires_no_confirmation():

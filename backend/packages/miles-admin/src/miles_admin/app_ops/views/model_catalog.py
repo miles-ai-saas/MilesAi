@@ -14,8 +14,8 @@ from miles_admin.app_ops.services.model_catalog import AdminModelCatalogService
 from miles_admin.app_sys.deps import AdminContext, get_platform_admin, require_admin_role
 from miles_common.response import ok, page_ok
 from miles_common.schema import PageParams
-from miles_core.infra.db import get_db
 from miles_core.deps import get_page_params
+from miles_core.infra.db import get_db
 
 router = APIRouter(prefix="/model-catalog")
 

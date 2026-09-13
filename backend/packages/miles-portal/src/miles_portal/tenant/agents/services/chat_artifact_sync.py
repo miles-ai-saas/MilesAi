@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy import String, cast, or_, select
@@ -173,7 +173,7 @@ async def sync_job_result_to_chat_messages(db: AsyncSession, job: GenerativeJob)
             sort_index=sort_index,
         )
     )
-    session.updated_at = datetime.now(timezone.utc)
+    session.updated_at = datetime.now(UTC)
     await db.flush()
     logger.info("appended chat message for orphan generative job %s into session %s", job_id, conversation_id)
     return 1

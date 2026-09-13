@@ -9,13 +9,13 @@
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from miles_core.infra.db import get_db
-from miles_core.deps import get_tenant_context
-from miles_common.response import ok
-from miles_core.tenant import TenantContext
-from miles_core.models.meta.category import CategoryDomain
 from miles_common.exceptions import BadRequestError
+from miles_common.response import ok
 from miles_common.schema import ApiResponse
+from miles_core.deps import get_tenant_context
+from miles_core.infra.db import get_db
+from miles_core.models.meta.category import CategoryDomain
+from miles_core.tenant import TenantContext
 from miles_portal.tenant.categories.schemas.category import CategoryOut
 from miles_portal.tenant.categories.schemas.meta import CategoryMetaOut
 from miles_portal.tenant.categories.services.category import CategoryService

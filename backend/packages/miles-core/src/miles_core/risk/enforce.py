@@ -9,9 +9,9 @@ from uuid import UUID
 
 from sqlalchemy import select
 
-from miles_core.models.risk import IpBlacklist, RateLimitRule, RiskEvent, RiskSeverity
 from miles_core.infra.db.async_session import AsyncSessionLocal
 from miles_core.infra.redis import get_redis
+from miles_core.models.risk import IpBlacklist, RateLimitRule, RiskEvent, RiskSeverity
 
 _CACHE_TTL_SEC = 30.0
 

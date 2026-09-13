@@ -21,8 +21,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field, model_validator
 
-from miles_core.models.kb import DocumentStatus
 from miles_ai.rag.retrieve.constants import RETRIEVAL_HYBRID, RETRIEVAL_VECTOR
+from miles_core.models.kb import DocumentStatus
 from miles_portal.tenant.kb.meta import SEARCH_MODE_DEFAULT
 
 RetrievalMode = Literal[RETRIEVAL_VECTOR, RETRIEVAL_HYBRID]

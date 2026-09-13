@@ -20,20 +20,20 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
-from miles_core.infra.vector_store.factory import get_vector_store
-from miles_core.models.kb import KnowledgeBase
-from miles_core.models.model import ModelConfig
 from miles_ai.rag.index.gateway import search_vectors
+from miles_ai.rag.retrieve.constants import (
+    RETRIEVAL_VECTOR,
+    VALID_RETRIEVAL_MODES,
+)
 from miles_ai.rag.retrieve.hybrid import rrf_fuse
 from miles_ai.rag.retrieve.keyword import (
     search_chunks_by_keyword,
     search_chunks_by_keyword_sync,
 )
-from miles_ai.rag.retrieve.constants import (
-    RETRIEVAL_VECTOR,
-    VALID_RETRIEVAL_MODES,
-)
 from miles_ai.rag.retrieve.rerank import apply_rerank_to_hits, compute_rerank_fetch_limit
+from miles_core.infra.vector_store.factory import get_vector_store
+from miles_core.models.kb import KnowledgeBase
+from miles_core.models.model import ModelConfig
 
 VALID_MODES = VALID_RETRIEVAL_MODES
 

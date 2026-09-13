@@ -11,9 +11,9 @@ from miles_common.exceptions import BadRequestError, NotFoundError
 from miles_core.config import get_settings
 from miles_core.soft_delete import is_marked_deleted
 from miles_core.tenant import TenantContext, assert_tenant_access
+from miles_exec.sandbox.validate import validate_script_source
 from miles_portal.tenant.skills.models import SkillPackage
 from miles_portal.tenant.skills.skill_layout import read_skill_resource, read_skill_script_source
-from miles_exec.sandbox.validate import validate_script_source
 
 
 async def resolve_bound_skill(
@@ -117,8 +117,8 @@ async def skill_run_script(
         else {k: v for k, v in params.items() if k not in ("path", "skill_package_id", "skill_slug", "params")}
     )
 
-    from miles_portal.tenant.mcp.runner.client import RunnerClient
     from miles_portal.tenant.mcp.runner.audit import write_script_runner_session
+    from miles_portal.tenant.mcp.runner.client import RunnerClient
 
     timeout_sec = min(max(int(params.get("timeout_sec") or 30), 1), 120)
     memory_mb = min(max(int(params.get("max_memory_mb") or 512), 128), 2048)

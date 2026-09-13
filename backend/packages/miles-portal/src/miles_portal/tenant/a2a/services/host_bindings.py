@@ -12,13 +12,13 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from miles_portal.tenant.agents.constants import AgentPlanner, AgentRuntimeMode
-from miles_portal.tenant.a2a.models import A2aInvokePolicy, A2aPeer, A2aPeerBinding, A2aPeerStatus
-from miles_portal.tenant.a2a.services.peer_refs import normalize_peer_refs
 from miles_common.exceptions import BadRequestError, NotFoundError
+from miles_core.models.agent import Agent, AgentType
 from miles_core.soft_delete import is_marked_deleted
 from miles_core.tenant import TenantContext
-from miles_core.models.agent import Agent, AgentType
+from miles_portal.tenant.a2a.models import A2aInvokePolicy, A2aPeer, A2aPeerBinding, A2aPeerStatus
+from miles_portal.tenant.a2a.services.peer_refs import normalize_peer_refs
+from miles_portal.tenant.agents.constants import AgentPlanner, AgentRuntimeMode
 
 MAX_HOST_PEERS = 8
 MIN_HOST_PEERS = 1

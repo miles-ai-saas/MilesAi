@@ -14,10 +14,10 @@ from zoneinfo import ZoneInfo
 import httpx
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from miles_common.exceptions import BadRequestError
-from miles_core.url_security import validate_outbound_url
-from miles_core.tenant import TenantContext
 from miles_ai.rag.generate import retrieve_hits
+from miles_common.exceptions import BadRequestError
+from miles_core.tenant import TenantContext
+from miles_core.url_security import validate_outbound_url
 from miles_portal.tenant.compliance.services.pipeline import CompliancePipeline
 from miles_portal.tenant.compliance.services.word_resolve import load_tenant_scan_words
 from miles_portal.tenant.kb.services.embeddings import build_kb_retrieval_bindings

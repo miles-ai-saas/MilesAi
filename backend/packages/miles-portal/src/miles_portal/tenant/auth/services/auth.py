@@ -7,15 +7,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from miles_common.exceptions import BadRequestError, UnauthorizedError
-from miles_core.security import decode_token, issue_tokens_for_user, verify_password
-from miles_core.tenant import TenantContext
+from miles_core.auth import session_store
 from miles_core.models.platform.role import Role
 from miles_core.models.platform.user import User
-from miles_portal.tenant.system.repositories.user import UserRepository
-from miles_portal.tenant.auth.schemas.auth import LoginRequest, TokenResponse, UserInfo, UserSessionOut
-from miles_core.auth import session_store
-from miles_portal.tenant.audit_log.services.audit_log import write_auth_login_audit
+from miles_core.security import decode_token, issue_tokens_for_user, verify_password
 from miles_core.service import BaseService
+from miles_core.tenant import TenantContext
+from miles_portal.tenant.audit_log.services.audit_log import write_auth_login_audit
+from miles_portal.tenant.auth.schemas.auth import LoginRequest, TokenResponse, UserInfo, UserSessionOut
+from miles_portal.tenant.system.repositories.user import UserRepository
 
 
 class AuthService(BaseService):

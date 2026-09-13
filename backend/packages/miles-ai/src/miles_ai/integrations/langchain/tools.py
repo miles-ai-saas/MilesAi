@@ -66,7 +66,7 @@ def compose_mcp_tool_name(service_name: str, tool_name: str) -> str:
     name = f"{MCP_FUNCTION_PREFIX}{svc}__{tool}"
     if len(name) <= _MAX_FUNCTION_NAME:
         return name
-    digest = hashlib.sha1(f"{service_name}\x00{tool_name}".encode("utf-8")).hexdigest()[:6]
+    digest = hashlib.sha1(f"{service_name}\x00{tool_name}".encode()).hexdigest()[:6]
     # prefix + svc + "__" + tool + "_" + digest ≤ 64
     budget = _MAX_FUNCTION_NAME - len(MCP_FUNCTION_PREFIX) - 2 - 1 - len(digest)
     svc_budget = min(len(svc), max(4, budget // 3))

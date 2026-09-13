@@ -2,4 +2,4 @@
 
 from miles_core.models.flow.flow import Flow, FlowStatus, FlowVersion
 
-__all__ = ["FlowStatus", "Flow", "FlowVersion"]
+__all__ = ["Flow", "FlowStatus", "FlowVersion"]

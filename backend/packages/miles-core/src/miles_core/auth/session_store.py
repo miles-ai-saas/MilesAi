@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import UUID
 
-from miles_core.security import safe_decode_token
-from miles_core.infra.redis import get_redis
 from miles_common.redis_keys import RedisKeys
+from miles_core.infra.redis import get_redis
+from miles_core.security import safe_decode_token
 
 SESSION_TTL_SECONDS = 60 * 60 * 24 * 7
 
@@ -36,7 +36,7 @@ async def register_session(
     if not jti:
         return
     redis = await get_redis()
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(UTC).isoformat()
     meta = {
         "jti": jti,
         "user_agent": (user_agent or "")[:512],
@@ -59,7 +59,7 @@ async def touch_session(user_id: UUID, jti: str) -> None:
         meta = json.loads(raw)
     except json.JSONDecodeError:
         return
-    meta["last_seen_at"] = datetime.now(timezone.utc).isoformat()
+    meta["last_seen_at"] = datetime.now(UTC).isoformat()
     ttl = await redis.ttl(_entry_key(user_id, jti))
     if ttl and ttl > 0:
         await redis.setex(_entry_key(user_id, jti), ttl, json.dumps(meta))
@@ -84,7 +84,7 @@ async def blacklist_token(access_token: str) -> None:
     exp = payload.get("exp")
     ttl = SESSION_TTL_SECONDS
     if isinstance(exp, (int, float)):
-        ttl = max(60, int(exp - datetime.now(timezone.utc).timestamp()))
+        ttl = max(60, int(exp - datetime.now(UTC).timestamp()))
     redis = await get_redis()
     await redis.setex(RedisKeys.token_blacklist(jti), ttl, "1")
 

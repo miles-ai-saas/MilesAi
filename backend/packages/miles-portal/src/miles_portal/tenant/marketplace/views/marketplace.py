@@ -5,12 +5,11 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from miles_core.infra.db import get_db
-from miles_core.deps import get_page_params, require_permissions
 from miles_common.response import ok, page_ok
-from miles_core.tenant import TenantContext
 from miles_common.schema import ApiResponse, PageParams, PageResult
-from miles_portal.tenant.marketplace.schemas.meta import MarketplaceMetaOut
+from miles_core.deps import get_page_params, require_permissions
+from miles_core.infra.db import get_db
+from miles_core.tenant import TenantContext
 from miles_portal.tenant.marketplace.schemas.marketplace import (
     AppCategoryOut,
     AppInstallOut,
@@ -28,6 +27,7 @@ from miles_portal.tenant.marketplace.schemas.marketplace import (
     MarketplaceAppOut,
     MarketplaceAppUpdate,
 )
+from miles_portal.tenant.marketplace.schemas.meta import MarketplaceMetaOut
 from miles_portal.tenant.marketplace.services.marketplace import MarketplaceService
 
 router = APIRouter()

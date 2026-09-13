@@ -8,10 +8,10 @@ from sqlalchemy.orm import selectinload
 
 from miles_common.exceptions import NotFoundError
 from miles_common.schema import PageParams, PageResult
-from miles_portal.marketplace.review_config import require_platform_review_allowed
-from miles_portal.marketplace.review_core import approve_marketplace_app, reject_marketplace_app
 from miles_core.models.marketplace import MarketplaceApp, MarketplaceAppStatus
 from miles_core.models.marketplace.dto import MarketplaceAppDetail, MarketplaceAppOut
+from miles_portal.marketplace.review_config import require_platform_review_allowed
+from miles_portal.marketplace.review_core import approve_marketplace_app, reject_marketplace_app
 
 
 class AdminMarketplaceReviewService:

@@ -2,4 +2,4 @@
 
 from miles_core.models.task.task_record import CeleryTaskRecord, TaskStatus
 
-__all__ = ["TaskStatus", "CeleryTaskRecord"]
+__all__ = ["CeleryTaskRecord", "TaskStatus"]

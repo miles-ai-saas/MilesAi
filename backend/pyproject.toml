@@ -18,6 +18,65 @@ dev = [
 [tool.ruff]
 line-length = 160
 target-version = "py311"
+# `.data`（技能运行期数据）与 import-linter 缓存非源码，不纳入 lint。
+# 用 extend-exclude 而非 exclude，以保留 ruff 默认排除项（.venv / node_modules 等）。
+extend-exclude = [".data", ".import_linter_cache"]
+
+[tool.ruff.lint]
+# ruff 默认仅启用 E4/E7/E9/F；显式开启 import 排序、bugbear 与 pyupgrade，
+# 让 `make lint-backend` 能拦住导入顺序、过时写法与常见陷阱。
+select = ["E", "F", "I", "B", "UP", "RUF"]
+ignore = [
+    # 中文注释 / 文案中的全角标点（，。：；「」等）非缺陷
+    "RUF001",
+    "RUF002",
+    "RUF003",
+    # 持久化枚举刻意保留 (str, Enum)；改 StrEnum 会影响落库语义，需单独评估
+    "UP042",
+    # 已登记技术债，留待后续批次逐处判断
+    "RUF005", # 集合字面量拼接
+    "RUF012", # 可变类属性（需配 ClassVar）
+    "RUF100", # 本批未启用 ARG / SIM，保留 # noqa 的说明作用
+]
+
+[tool.ruff.lint.flake8-bugbear]
+# FastAPI 依赖注入惯用法：Depends / Query 等作为默认参数值是官方推荐写法，不按 B008 报错。
+# 注意 B008 会递归检查 `Depends(...)` 参数内部，故项目内的依赖工厂也须一并豁免。
+extend-immutable-calls = [
+    "fastapi.Depends",
+    "fastapi.Query",
+    "fastapi.Path",
+    "fastapi.Body",
+    "fastapi.Header",
+    "fastapi.Cookie",
+    "fastapi.File",
+    "fastapi.Form",
+    "fastapi.Security",
+    # 项目内权限依赖工厂（miles_core.deps / miles_admin.app_sys.deps）
+    "miles_core.deps.require_permissions",
+    "miles_core.deps.require_superuser",
+    "miles_admin.app_sys.deps.require_admin_role",
+]
+
+[tool.ruff.lint.isort]
+# 显式声明 first-party，避免 ruff 把 miles_* 与第三方混排（与现有分组风格一致）
+known-first-party = [
+    "miles_common",
+    "miles_exec",
+    "miles_core",
+    "miles_ai",
+    "miles_portal",
+    "miles_admin",
+    "miles_openapi",
+    "miles_server",
+    "miles_worker",
+    "miles_runner",
+]
+
+[tool.ruff.lint.per-file-ignores]
+# 迁移版本文件是**冻结的历史记录**，不改写其内容（与 README 对 alembic 版本脚本的豁免口径一致）。
+# alembic 生成的模板本身即使用 typing.Union，故 UP035/UP007 在此目录整体豁免。
+"alembic/versions/*.py" = ["UP035", "UP007"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

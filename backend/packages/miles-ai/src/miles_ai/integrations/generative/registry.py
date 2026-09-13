@@ -9,7 +9,6 @@
 未指定 ``model_config_id`` 时默认模型由 L1 ``tenant.models.services.generative_model_resolve.pick_default_generative_model`` 选取
 """
 
-from miles_common.constants.model_extra import EXTRA_INVOKE_MODE
 from miles_ai.integrations.generative.constants import (
     INVOKE_DASHSCOPE_T2I,
     INVOKE_DASHSCOPE_T2V,
@@ -18,6 +17,7 @@ from miles_ai.integrations.generative.constants import (
     INVOKE_VOLCENGINE_IMAGE,
     INVOKE_VOLCENGINE_VIDEO,
 )
+from miles_common.constants.model_extra import EXTRA_INVOKE_MODE
 from miles_core.models.model import ModelConfig
 from miles_core.models.model.catalog import ModelCapabilityType, ModelVendor
 

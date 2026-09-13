@@ -9,14 +9,14 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from miles_core.infra.db import get_db
-from miles_common.exceptions import UnauthorizedError
-from miles_core.security import safe_decode_token
-from miles_core.tenant import TenantContext
-from miles_core.models.platform.role import Role
-from miles_core.models.platform.user import User
+from miles_common.exceptions import ForbiddenError, UnauthorizedError
 from miles_common.schema import PageParams
 from miles_core.auth import session_store
+from miles_core.infra.db import get_db
+from miles_core.models.platform.role import Role
+from miles_core.models.platform.user import User
+from miles_core.security import safe_decode_token
+from miles_core.tenant import TenantContext
 
 bearer_scheme = HTTPBearer(auto_error=False)
 
@@ -94,8 +94,6 @@ def require_superuser():
 
     async def checker(ctx: TenantContext = Depends(get_tenant_context)) -> TenantContext:
         if not ctx.is_superuser:
-            from miles_common.exceptions import ForbiddenError
-
             raise ForbiddenError("仅超级管理员可执行此操作")
         return ctx
 

@@ -14,11 +14,11 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from miles_common.exceptions import BadRequestError, ForbiddenError
-from miles_core.soft_delete import not_deleted
-from miles_core.models.media.attachment import Attachment
 from miles_core.models.kb import Document, KnowledgeBase
+from miles_core.models.media.attachment import Attachment
 from miles_core.models.platform.system import SystemConfig
 from miles_core.models.platform.tenant import Tenant
+from miles_core.soft_delete import not_deleted
 
 DEFAULT_MAX_FILE_MB = 50
 

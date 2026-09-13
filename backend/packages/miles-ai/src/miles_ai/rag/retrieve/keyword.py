@@ -15,8 +15,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
-from miles_core.soft_delete import not_deleted
 from miles_core.models.kb import Document, DocumentChunk
+from miles_core.soft_delete import not_deleted
 
 
 def _keyword_stmt(tenant_id: UUID, kb_id: UUID, pattern: str, limit: int):

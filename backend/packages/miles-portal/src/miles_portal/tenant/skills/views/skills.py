@@ -9,11 +9,11 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, File, Query, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from miles_core.infra.db import get_db
-from miles_core.deps import get_page_params, require_permissions
 from miles_common.response import ok, page_ok
-from miles_core.tenant import TenantContext
 from miles_common.schema import ApiResponse, PageParams, PageResult
+from miles_core.deps import get_page_params, require_permissions
+from miles_core.infra.db import get_db
+from miles_core.tenant import TenantContext
 from miles_portal.tenant.skills.schemas.meta import SkillMetaOut
 from miles_portal.tenant.skills.schemas.skill import (
     SkillFileContent,

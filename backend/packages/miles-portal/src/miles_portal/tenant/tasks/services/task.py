@@ -10,16 +10,16 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from miles_common.exceptions import BadRequestError, NotFoundError
+from miles_common.schema import PageParams, PageResult
 from miles_core.jobs.celery_app import celery_app
 from miles_core.jobs.tasks import INGEST_DOCUMENT
-from miles_core.tenant import TenantContext, assert_tenant_access, tenant_filters
+from miles_core.logging import get_logger
 from miles_core.models.task.task_record import CeleryTaskRecord, TaskStatus
-from miles_common.schema import PageParams, PageResult
+from miles_core.service import BaseService
+from miles_core.tenant import TenantContext, assert_tenant_access, tenant_filters
 from miles_portal.tenant.tasks.meta import tasks_meta_dict
 from miles_portal.tenant.tasks.schemas.meta import TaskMetaOut
 from miles_portal.tenant.tasks.schemas.task import TaskBatchCancelResult, TaskRecordOut
-from miles_core.logging import get_logger
-from miles_core.service import BaseService
 
 logger = get_logger(__name__)
 
@@ -162,7 +162,6 @@ class TaskService(BaseService):
             raise BadRequestError("任务运行中，请稍后再试")
 
         from miles_core.models.kb import Document, DocumentStatus
-
         from miles_core.soft_delete import is_marked_deleted
 
         doc = await self.db.get(Document, record.resource_id)

@@ -1,15 +1,16 @@
 """应用市场上架方：创建、编辑、提交审核。"""
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy import select
 
 from miles_common.exceptions import BadRequestError, NotFoundError
-from miles_portal.marketplace.review_config import get_marketplace_review_mode
 from miles_core.models.agent import Agent
 from miles_core.models.flow import Flow
 from miles_core.models.kb import KnowledgeBase
+from miles_core.models.meta.tag import TagEntityType
+from miles_portal.marketplace.review_config import get_marketplace_review_mode
 from miles_portal.tenant.marketplace.models import AppCategory, MarketplaceApp, MarketplaceAppStatus
 from miles_portal.tenant.marketplace.schemas.marketplace import (
     MarketplaceAppCreate,
@@ -17,7 +18,6 @@ from miles_portal.tenant.marketplace.schemas.marketplace import (
     MarketplaceAppOut,
     MarketplaceAppUpdate,
 )
-from miles_core.models.meta.tag import TagEntityType
 from miles_portal.tenant.marketplace.util import load_flow_template_graph
 from miles_portal.tenant.tags.services.tag import TagService
 
@@ -151,7 +151,7 @@ class MarketplacePublishMixin:
             raise BadRequestError("仅草稿或已驳回的应用可提交审核")
         self.validate_manifest(app.manifest or {})
         mode = await get_marketplace_review_mode(self.db)
-        app.submitted_at = datetime.now(timezone.utc)
+        app.submitted_at = datetime.now(UTC)
         app.review_note = None
         app.reviewed_at = None
         app.reviewed_by = None

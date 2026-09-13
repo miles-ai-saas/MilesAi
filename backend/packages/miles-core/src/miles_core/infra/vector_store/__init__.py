@@ -15,10 +15,10 @@ from miles_core.infra.vector_store.factory import get_vector_store
 
 __all__ = [
     "ChunkVectorRecord",
-    "VectorStore",
-    "WeaviateVectorStore",
     "MilvusVectorStore",
     "PgVectorStore",
+    "VectorStore",
+    "WeaviateVectorStore",
     "get_vector_store",
 ]
 

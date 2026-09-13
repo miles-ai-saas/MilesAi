@@ -21,7 +21,6 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import json
-from miles_core.logging import get_logger
 from typing import Any
 from urllib.parse import urljoin, urlparse
 
@@ -29,12 +28,13 @@ import httpx
 from httpx_sse import EventSource, aconnect_sse
 
 from miles_common.exceptions import BadRequestError
-from miles_exec.mcp.rpc import parse_jsonrpc_result
+from miles_core.logging import get_logger
 from miles_exec.mcp.constants import (
     MCP_CLIENT_INFO,
     MCP_PROTOCOL_VERSION,
     MCP_SESSION_HEADER,
 )
+from miles_exec.mcp.rpc import parse_jsonrpc_result
 from miles_portal.tenant.mcp.security import validate_mcp_endpoint_url
 
 logger = get_logger(__name__)
@@ -244,7 +244,7 @@ async def legacy_sse_json_rpc(
             raise BadRequestError(f"MCP POST {resp.status_code}: {snippet}")
         try:
             return await asyncio.wait_for(pending[rpc_id], timeout=timeout)
-        except asyncio.TimeoutError as e:
+        except TimeoutError as e:
             raise BadRequestError(f"MCP SSE 等待「{rpc_method}」响应超时（{timeout}s）") from e
         finally:
             pending.pop(rpc_id, None)
@@ -255,7 +255,7 @@ async def legacy_sse_json_rpc(
             reader = asyncio.create_task(sse_reader(client))
             try:
                 await asyncio.wait_for(endpoint_ready.wait(), timeout=connect_timeout)
-            except asyncio.TimeoutError as e:
+            except TimeoutError as e:
                 raise BadRequestError(
                     f"MCP SSE 未在 {connect_timeout}s 内收到 endpoint 事件；请确认 URL 为 SSE GET 入口（例如 /sse）",
                 ) from e

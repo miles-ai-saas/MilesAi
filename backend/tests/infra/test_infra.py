@@ -6,13 +6,13 @@ from uuid import uuid4
 import pytest
 
 from miles_core.tenant import TenantContext
-from miles_portal.tenant.system.services.infra import InfraService
 from miles_core.utils.health_checks import (
     COMPONENT_IDS,
     build_infra_settings_preview,
     probe_component,
     probe_components,
 )
+from miles_portal.tenant.system.services.infra import InfraService
 
 
 @pytest.mark.asyncio

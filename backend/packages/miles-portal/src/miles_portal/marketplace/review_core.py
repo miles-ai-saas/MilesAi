@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Literal
 from uuid import UUID
 
@@ -24,7 +24,7 @@ async def approve_marketplace_app(
     if app.status != MarketplaceAppStatus.PENDING_REVIEW:
         raise BadRequestError("仅待审核应用可通过")
     app.status = MarketplaceAppStatus.PUBLISHED
-    app.reviewed_at = datetime.now(timezone.utc)
+    app.reviewed_at = datetime.now(UTC)
     app.review_note = None
     app.reviewer_type = reviewer_type
     if reviewer_type == "tenant":
@@ -50,7 +50,7 @@ async def reject_marketplace_app(
     if app.status != MarketplaceAppStatus.PENDING_REVIEW:
         raise BadRequestError("仅待审核应用可驳回")
     app.status = MarketplaceAppStatus.REJECTED
-    app.reviewed_at = datetime.now(timezone.utc)
+    app.reviewed_at = datetime.now(UTC)
     app.review_note = (note or "").strip() or "未填写驳回原因"
     app.reviewer_type = reviewer_type
     if reviewer_type == "tenant":

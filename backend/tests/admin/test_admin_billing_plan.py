@@ -5,8 +5,8 @@ from uuid import uuid4
 
 import pytest
 
-from miles_common.exceptions import BadRequestError
 from miles_admin.app_ops.services.tenant import AdminTenantService
+from miles_common.exceptions import BadRequestError
 from miles_core.models.platform.tenant import Tenant
 
 

@@ -10,12 +10,12 @@ from miles_admin.app_ops.schemas.model_catalog import (
     ModelCatalogOut,
     ModelCatalogUpdate,
 )
+from miles_common.api_key import validate_api_key
 from miles_common.exceptions import BadRequestError, NotFoundError
 from miles_common.schema import PageParams, PageResult
-from miles_core.soft_delete import is_marked_deleted, mark_deleted, not_deleted
 from miles_core.models.model import ModelConfig
 from miles_core.models.model.catalog import ModelPublishStatus
-from miles_common.api_key import validate_api_key
+from miles_core.soft_delete import is_marked_deleted, mark_deleted, not_deleted
 
 
 def _admin_out(m: ModelConfig) -> ModelCatalogOut:

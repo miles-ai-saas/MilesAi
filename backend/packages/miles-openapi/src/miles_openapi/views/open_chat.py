@@ -7,8 +7,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from miles_common.response import ok
 from miles_common.schema import ApiResponse
-from miles_core.tenant import TenantContext
 from miles_core.infra.db import get_db
+from miles_core.tenant import TenantContext
 from miles_portal.tenant.agents.deps_api_auth import require_agent_api_key
 from miles_portal.tenant.agents.schemas.agent import ChatRequest, ChatResponse
 from miles_portal.tenant.agents.services.agent import AgentService

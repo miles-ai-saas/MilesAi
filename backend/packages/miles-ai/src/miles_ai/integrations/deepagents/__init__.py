@@ -10,4 +10,4 @@ DeepAgents 多子智能体编排（可选依赖 ``deepagents`` PyPI 包）。
 from miles_ai.integrations.deepagents.orchestrator import run_subagent_planned_chat
 from miles_ai.integrations.deepagents.runner import deepagents_importable
 
-__all__ = ["run_subagent_planned_chat", "deepagents_importable"]
+__all__ = ["deepagents_importable", "run_subagent_planned_chat"]

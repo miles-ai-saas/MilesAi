@@ -6,6 +6,18 @@ from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from miles_common.exceptions import BadRequestError, NotFoundError
+from miles_core.models.model import ModelConfig
+from miles_core.models.model.catalog import (
+    CATALOG_MODEL_TYPES,
+    MODEL_TYPE_LABELS,
+    VENDOR_LABELS,
+    ModelCapabilityType,
+    ModelPublishStatus,
+    ModelVendor,
+)
+from miles_core.models.model.tenant_credential import ModelTenantCredential
+from miles_core.service import BaseService
+from miles_core.soft_delete import is_marked_deleted, mark_deleted, not_deleted
 from miles_core.tenant import TenantContext, assert_tenant_access
 from miles_portal.tenant.models.repositories.model import ModelConfigRepository
 from miles_portal.tenant.models.schemas.model import (
@@ -17,23 +29,11 @@ from miles_portal.tenant.models.schemas.model import (
     ModelTypeOption,
     ModelVendorOption,
 )
+from miles_portal.tenant.models.services.api_key_validation import normalize_api_key, validate_api_key
 from miles_portal.tenant.models.services.model_resolve import (
     credential_status,
     load_tenant_credential,
 )
-from miles_core.soft_delete import is_marked_deleted, mark_deleted, not_deleted
-from miles_core.service import BaseService
-from miles_core.models.model import ModelConfig
-from miles_core.models.model.tenant_credential import ModelTenantCredential
-from miles_core.models.model.catalog import (
-    CATALOG_MODEL_TYPES,
-    MODEL_TYPE_LABELS,
-    ModelCapabilityType,
-    ModelPublishStatus,
-    ModelVendor,
-    VENDOR_LABELS,
-)
-from miles_portal.tenant.models.services.api_key_validation import normalize_api_key, validate_api_key
 
 SUPPORTED_VENDORS = (
     ModelVendor.DEEPSEEK,
@@ -157,8 +157,8 @@ class ModelService(BaseService):
                     raise BadRequestError(f"不支持的 invoke_mode: {mode}，可选: {', '.join(sorted(known_invoke_modes()))}")
         if body.model_type == ModelCapabilityType.RERANK.value:
             extra = body.extra or {}
-            from miles_common.constants.model_extra import EXTRA_INVOKE_MODE
             from miles_ai.integrations.rerank import known_invoke_modes as rerank_invoke_modes
+            from miles_common.constants.model_extra import EXTRA_INVOKE_MODE
 
             mode = extra.get(EXTRA_INVOKE_MODE)
             if isinstance(mode, str) and mode.strip():

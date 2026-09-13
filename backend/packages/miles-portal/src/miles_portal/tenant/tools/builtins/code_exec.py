@@ -5,8 +5,6 @@
 限制：30s 超时、256MB 内存、8000 字符 stdout 截断。
 """
 
-import asyncio
-
 from miles_common.exceptions import BadRequestError
 from miles_exec.sandbox.script_exec import run_python_script
 
@@ -35,7 +33,7 @@ def run(params):
             max_runtime_sec=min(timeout_sec, 120),
             max_memory_mb=min(max_memory_mb, 512),
         )
-    except asyncio.TimeoutError:
+    except TimeoutError:
         return {
             "exit_code": -1,
             "stdout": "",

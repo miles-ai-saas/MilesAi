@@ -5,8 +5,8 @@ from uuid import uuid4
 
 import pytest
 
-from miles_common.exceptions import BadRequestError
 from miles_ai.integrations.generative.image.providers.volcengine_image import generate_volcengine_image
+from miles_common.exceptions import BadRequestError
 from miles_core.models.model import ModelConfig
 from miles_core.models.model.catalog import ModelCapabilityType, ModelVendor
 

@@ -40,14 +40,14 @@ class FlowCompileReport:
 
     __slots__ = (
         "compilable",
+        "conditional_nodes",
         "engine",
+        "error_details",
+        "errors",
+        "execution_layers",
         "node_order",
         "node_types",
-        "execution_layers",
         "parallel_groups",
-        "conditional_nodes",
-        "errors",
-        "error_details",
     )
 
     def __init__(

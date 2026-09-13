@@ -2,11 +2,11 @@
 
 __all__ = [
     "ainvoke_chat",
-    "split_text",
     "rag_answer",
     "retrieve_hits",
     "run_rag_workflow",
     "should_use_langgraph_rag",
+    "split_text",
 ]
 
 

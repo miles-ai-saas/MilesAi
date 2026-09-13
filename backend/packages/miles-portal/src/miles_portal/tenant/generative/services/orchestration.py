@@ -16,8 +16,6 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from miles_common.exceptions import BadRequestError
-from miles_core.tenant import TenantContext
 from miles_ai.integrations.generative.constants import (
     DEFAULT_IMAGE_SIZE,
     EXTRA_IMAGE_SIZE,
@@ -26,16 +24,18 @@ from miles_ai.integrations.generative.constants import (
 )
 from miles_ai.integrations.generative.image.prompt_guard import sanitize_image_prompt
 from miles_ai.integrations.generative.image.service import generate_image_bytes
-from miles_portal.tenant.generative.services.quota import assert_generative_quota
 from miles_ai.integrations.generative.tts.service import generate_tts_bytes
 from miles_ai.integrations.generative.types import ImageGenerateResult, VideoGenerateResult
 from miles_ai.integrations.generative.video.cover import extract_video_cover_jpeg
 from miles_ai.integrations.generative.video.service import generate_video_bytes
+from miles_common.exceptions import BadRequestError
 from miles_core.models.compliance.constants import SCAN_MODULE_GENERATIVE
 from miles_core.models.model import ModelConfig
+from miles_core.tenant import TenantContext
 from miles_portal.tenant.attachments.services.attachment import AttachmentService
 from miles_portal.tenant.compliance.services.compliance import ComplianceService
 from miles_portal.tenant.generative.services.persist import persist_generated_bytes
+from miles_portal.tenant.generative.services.quota import assert_generative_quota
 from miles_portal.tenant.media_assets.services.media_asset import register_media_asset
 
 logger = logging.getLogger(__name__)

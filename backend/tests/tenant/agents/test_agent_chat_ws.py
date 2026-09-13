@@ -9,8 +9,8 @@ import pytest
 from miles_portal.tenant.agents.schemas.agent import ChatRequest, ChatResponse
 from miles_portal.tenant.agents.services.agent import AgentService
 from miles_portal.tenant.agents.ws import protocol as proto
-from miles_portal.tenant.agents.ws.chat import _build_chat_request, _run_chat_turn
 from miles_portal.tenant.agents.ws.auth import extract_bearer_token
+from miles_portal.tenant.agents.ws.chat import _build_chat_request, _run_chat_turn
 from tests.conftest import make_tenant_ctx
 
 

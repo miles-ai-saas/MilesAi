@@ -25,17 +25,17 @@ from uuid import UUID
 from langchain_core.runnables import RunnableConfig
 from langgraph.graph import END, START, StateGraph
 
-from miles_common.exceptions import BadRequestError
 from miles_ai.integrations.chat.multimodal import (
     build_invoke_messages_with_media,
     media_refs_from_items,
 )
 from miles_ai.integrations.langchain.chat_models import ainvoke_chat
-from miles_ai.rag.generate import build_rag_user_prompt, format_hits_context, retrieve_hits
-from miles_core.infra.db import AsyncSessionLocal
 from miles_ai.integrations.langgraph.constants import RELEVANCE_NONE, RELEVANCE_POOR
 from miles_ai.integrations.langgraph.grading import _score_grade, llm_grade_relevance
 from miles_ai.integrations.langgraph.state import RAGGraphState
+from miles_ai.rag.generate import build_rag_user_prompt, format_hits_context, retrieve_hits
+from miles_common.exceptions import BadRequestError
+from miles_core.infra.db import AsyncSessionLocal
 from miles_core.models.model import ModelConfig
 
 

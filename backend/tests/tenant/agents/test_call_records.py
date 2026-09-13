@@ -1,7 +1,8 @@
 """智能体对话调用记录辅助函数测试。"""
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
+from miles_common.exceptions import BadRequestError
 from miles_portal.tenant.agents.services.call_records import (
     build_steps_summary,
     correlation_window,
@@ -9,7 +10,6 @@ from miles_portal.tenant.agents.services.call_records import (
     is_compliance_block,
     preview_text,
 )
-from miles_common.exceptions import BadRequestError
 
 
 def test_preview_text_truncates():
@@ -38,7 +38,7 @@ def test_is_compliance_block():
 
 
 def test_correlation_window():
-    created = datetime(2026, 5, 29, 12, 0, 0, tzinfo=timezone.utc)
+    created = datetime(2026, 5, 29, 12, 0, 0, tzinfo=UTC)
     start, end = correlation_window(created, latency_ms=1200)
     assert start == created - timedelta(seconds=5)
     assert end == created + timedelta(milliseconds=1200) + timedelta(seconds=30)

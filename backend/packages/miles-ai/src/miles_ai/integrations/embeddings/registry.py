@@ -14,8 +14,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from miles_common.exceptions import BadRequestError
 from miles_ai.integrations.embeddings.model_meta import invoke_mode_from_model
+from miles_common.exceptions import BadRequestError
 from miles_core.models.model import ModelConfig
 
 if TYPE_CHECKING:

@@ -9,10 +9,10 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from miles_common.idgen import generate_uuid
 from miles_core.logging import get_logger
 from miles_portal.tenant.hooks.events import BEFORE_TRIGGERS, apply_modify, build_event_envelope, parse_hook_response
 from miles_portal.tenant.hooks.models import HookBinding, HookDefinition, HookScope, HookTrigger
-from miles_common.idgen import generate_uuid
 
 logger = get_logger(__name__)
 

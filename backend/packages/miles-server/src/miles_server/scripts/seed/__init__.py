@@ -3,32 +3,32 @@
 from miles_server.scripts.seed.admin_ops import seed_admin_ops
 from miles_server.scripts.seed.categories import seed_categories
 from miles_server.scripts.seed.compliance import seed_compliance
+from miles_server.scripts.seed.flows import seed_flows
+from miles_server.scripts.seed.hooks import seed_hooks
 from miles_server.scripts.seed.kb_advertising import seed_advertising_kb
 from miles_server.scripts.seed.marketplace import seed_marketplace
-from miles_server.scripts.seed.prompts import seed_prompts
-from miles_server.scripts.seed.model_catalog import seed_model_catalog
-from miles_server.scripts.seed.hooks import seed_hooks
-from miles_server.scripts.seed.skills import seed_skills
-from miles_server.scripts.seed.tools import seed_tools
 from miles_server.scripts.seed.mcp import seed_mcp
-from miles_server.scripts.seed.flows import seed_flows
+from miles_server.scripts.seed.model_catalog import seed_model_catalog
+from miles_server.scripts.seed.prompts import seed_prompts
+from miles_server.scripts.seed.skills import seed_skills
 from miles_server.scripts.seed.tenant import seed_tenant
+from miles_server.scripts.seed.tools import seed_tools
 
 __all__ = [
-    "seed_tenant",
-    "seed_categories",
-    "seed_compliance",
-    "seed_prompts",
-    "seed_marketplace",
     "seed_admin_ops",
-    "seed_model_catalog",
-    "seed_tools",
-    "seed_mcp",
-    "seed_skills",
-    "seed_hooks",
-    "seed_flows",
     "seed_advertising_kb",
     "seed_all",
+    "seed_categories",
+    "seed_compliance",
+    "seed_flows",
+    "seed_hooks",
+    "seed_marketplace",
+    "seed_mcp",
+    "seed_model_catalog",
+    "seed_prompts",
+    "seed_skills",
+    "seed_tenant",
+    "seed_tools",
 ]
 
 

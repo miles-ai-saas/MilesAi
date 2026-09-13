@@ -10,7 +10,6 @@
 
 from __future__ import annotations
 
-from miles_common.constants.model_extra import EXTRA_INVOKE_MODE
 from miles_ai.integrations.rerank.constants import (
     EXTRA_RERANK_INSTRUCT,
     EXTRA_RERANK_REQUEST_FORMAT,
@@ -18,6 +17,8 @@ from miles_ai.integrations.rerank.constants import (
     INVOKE_MODE_OPENAI_COMPATIBLE,
     RERANK_REQUEST_FORMAT_NESTED,
 )
+from miles_common.constants.model_extra import EXTRA_INVOKE_MODE
+from miles_common.exceptions import BadRequestError
 from miles_core.models.model import ModelConfig
 from miles_core.models.model.catalog import (
     DEFAULT_RERANK_API_ENDPOINTS,
@@ -25,7 +26,6 @@ from miles_core.models.model.catalog import (
     ModelCapabilityType,
     ModelVendor,
 )
-from miles_common.exceptions import BadRequestError
 
 _VENDOR_DEFAULT_INVOKE_MODE: dict[str, str] = {
     ModelVendor.QWEN.value: INVOKE_MODE_DASHSCOPE,

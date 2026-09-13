@@ -17,11 +17,11 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
-from miles_common.exceptions import BadRequestError
 from miles_ai.integrations.embeddings.constants import INVOKE_MODE_CLIP
 from miles_ai.integrations.embeddings.registry import get_embedding_provider
 from miles_ai.integrations.embeddings.runtime import build_embeddings
 from miles_ai.integrations.langchain.kb_retrieval import KbRetrievalBindings
+from miles_common.exceptions import BadRequestError
 from miles_portal.tenant.models.services.embedding_resolve import (
     resolve_embedding_model_by_id,
     resolve_embedding_model_sync,

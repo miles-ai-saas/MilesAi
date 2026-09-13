@@ -4,11 +4,11 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from miles_ai.integrations.generative.constants import PURPOSE_CHAT_GENERATED
 from miles_core.config import get_settings
-from miles_core.tenant import TenantContext
 from miles_core.infra.storage import build_attachment_object_key
 from miles_core.infra.storage.resolve import resolve_object_storage_async
-from miles_ai.integrations.generative.constants import PURPOSE_CHAT_GENERATED
+from miles_core.tenant import TenantContext
 from miles_portal.tenant.attachments.repositories.attachment import AttachmentRepository
 from miles_portal.tenant.kb.services.quota import apply_storage_delta, assert_can_upload_bytes
 

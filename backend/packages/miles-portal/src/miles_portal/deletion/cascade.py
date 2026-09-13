@@ -12,17 +12,16 @@
 from uuid import UUID
 
 from sqlalchemy import and_, delete, update
-
-from miles_core.soft_delete import mark_deleted_where, not_deleted
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from miles_portal.tenant.hooks.models import HookBinding, HookScope
-from miles_core.models.marketplace import AppInstall
 from miles_core.models.agent import Agent, AgentSubAgentBinding, agent_kb_bindings
 from miles_core.models.agent.chat_call import AgentChatCall
 from miles_core.models.agent.chat_session import AgentChatMessage, AgentChatSession
 from miles_core.models.agent.schedule import AgentSchedule
 from miles_core.models.flow import FlowVersion
+from miles_core.models.marketplace import AppInstall
+from miles_core.soft_delete import mark_deleted_where, not_deleted
+from miles_portal.tenant.hooks.models import HookBinding, HookScope
 
 
 async def unlink_sub_agent_bindings(

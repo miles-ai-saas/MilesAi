@@ -6,8 +6,8 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from miles_core.tenant import TenantContext
 from miles_core.models.model.generative_job import GenerativeJob, GenerativeJobStatus
+from miles_core.tenant import TenantContext
 
 
 async def submit_video_generative_job(

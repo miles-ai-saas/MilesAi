@@ -13,8 +13,8 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from miles_core.soft_delete import is_marked_deleted
 from miles_core.infra.db import AsyncSessionLocal
+from miles_core.soft_delete import is_marked_deleted
 from miles_portal.tenant.prompts.models import PromptTemplate
 
 

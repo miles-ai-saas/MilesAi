@@ -6,10 +6,10 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from miles_core.repository import BaseRepository
-from miles_core.soft_delete import not_deleted
 from miles_core.models.platform.role import Role
 from miles_core.models.platform.user import User
+from miles_core.repository import BaseRepository
+from miles_core.soft_delete import not_deleted
 
 
 class UserRepository(BaseRepository[User]):

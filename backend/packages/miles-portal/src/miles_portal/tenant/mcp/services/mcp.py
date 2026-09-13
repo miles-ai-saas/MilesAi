@@ -11,18 +11,26 @@ MCP 服务租户侧业务（L2）：CRUD、同步 tools_cache、试调用。
 """
 
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from miles_common.exceptions import BadRequestError, NotFoundError
+from miles_common.schema import PageParams, PageResult
 from miles_core.config import get_settings
+from miles_core.service import BaseService
+from miles_core.soft_delete import is_marked_deleted, mark_deleted, not_deleted
 from miles_core.tenant import TenantContext, assert_tenant_access, tenant_filters
-from miles_portal.tenant.mcp.models import McpService, McpStatus
+from miles_exec.mcp.constants import McpTransport
+from miles_portal.tenant.mcp.client import fetch_mcp_tools
+from miles_portal.tenant.mcp.client import invoke_mcp_tool as remote_invoke_mcp_tool
 from miles_portal.tenant.mcp.meta import mcp_meta_dict
-from miles_portal.tenant.mcp.schemas.meta import McpMetaOut
+from miles_portal.tenant.mcp.models import McpService, McpStatus
+from miles_portal.tenant.mcp.runner.audit import write_mcp_runner_session
+from miles_portal.tenant.mcp.runner.client import RunnerClient
+from miles_portal.tenant.mcp.runner.spec_build import build_run_spec
 from miles_portal.tenant.mcp.schemas.mcp import (
     McpServiceCreate,
     McpServiceOut,
@@ -31,15 +39,8 @@ from miles_portal.tenant.mcp.schemas.mcp import (
     McpToolInvokeRequest,
     McpToolInvokeResult,
 )
-from miles_portal.tenant.mcp.client import fetch_mcp_tools, invoke_mcp_tool as remote_invoke_mcp_tool
-from miles_portal.tenant.mcp.runner.audit import write_mcp_runner_session
-from miles_portal.tenant.mcp.runner.client import RunnerClient
-from miles_portal.tenant.mcp.runner.spec_build import build_run_spec
-from miles_exec.mcp.constants import McpTransport
+from miles_portal.tenant.mcp.schemas.meta import McpMetaOut
 from miles_portal.tenant.mcp.transport import normalize_transport, transport_filter_values
-from miles_common.schema import PageParams, PageResult
-from miles_core.soft_delete import is_marked_deleted, mark_deleted, not_deleted
-from miles_core.service import BaseService
 
 STDIO_RUNNER_DISABLED = "STDIO 需要启用 MCP Runner（MCP_RUNNER_ENABLED=true），请联系管理员"
 
@@ -169,7 +170,7 @@ class McpServiceManager(BaseService):
             row.status = McpStatus.ERROR
             await self.db.flush()
             raise
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         if not tools:
             # 保留占位工具，便于 UI 展示失败原因而非空列表
             row.sync_error = "端点未返回工具列表（请确认 MCP 服务支持 tools/list）"
@@ -224,7 +225,7 @@ class McpServiceManager(BaseService):
             await self.db.flush()
             raise
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         if not tools:
             row.sync_error = "STDIO MCP 未返回工具列表"
             row.status = McpStatus.ERROR

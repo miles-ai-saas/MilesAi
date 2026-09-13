@@ -3,19 +3,19 @@
 import os
 from collections.abc import AsyncIterator, Iterator
 from contextlib import contextmanager
+from unittest.mock import AsyncMock, patch
 from uuid import uuid4
 
 import pytest
 from httpx import ASGITransport, AsyncClient
-from unittest.mock import AsyncMock, patch
 
 # LiteLLM 在 import 时会尝试预加载 AWS Bedrock/SageMaker schema；未装 botocore 时会打 WARNING。
 os.environ.setdefault("LITELLM_LOG", "ERROR")
 
-from miles_server.apps.application import create_app
 from miles_core.deps import get_tenant_context
-from miles_core.tenant import TenantContext
 from miles_core.infra.db import get_db
+from miles_core.tenant import TenantContext
+from miles_server.apps.application import create_app
 
 
 def make_tenant_ctx(*, permissions: frozenset[str] | None = None, is_superuser: bool = True) -> TenantContext:

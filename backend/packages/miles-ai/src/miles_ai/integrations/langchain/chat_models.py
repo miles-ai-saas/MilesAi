@@ -17,14 +17,15 @@ from __future__ import annotations
 from collections.abc import Awaitable, Callable
 from typing import Any
 
-from miles_ai.integrations.litellm.adapter import litellm_chat_completion, litellm_chat_completion_stream
-from miles_ai.integrations.litellm.usage_sink import UsageSink
-from miles_core.models.model import ModelConfig
 from langchain_core.callbacks import AsyncCallbackManagerForLLMRun, CallbackManagerForLLMRun
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage
 from langchain_core.outputs import ChatGeneration, ChatResult
 from pydantic import ConfigDict
+
+from miles_ai.integrations.litellm.adapter import litellm_chat_completion, litellm_chat_completion_stream
+from miles_ai.integrations.litellm.usage_sink import UsageSink
+from miles_core.models.model import ModelConfig
 
 OnDelta = Callable[[str], Awaitable[None]]
 

@@ -8,14 +8,13 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from miles_core.soft_delete import not_deleted
 from miles_portal.tenant.mcp.models import McpService, McpStatus
-
 from miles_server.scripts.seed._helpers import list_tenant_ids
 
 # 与前端默认调试地址一致；用户可 PATCH 为实际端点
@@ -156,7 +155,7 @@ _TOOLS_KB = [
     },
 ]
 
-_NOW = datetime.now(timezone.utc)
+_NOW = datetime.now(UTC)
 
 
 def _cfg(**extra: object) -> dict:

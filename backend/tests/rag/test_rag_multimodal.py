@@ -5,12 +5,12 @@ from uuid import uuid4
 
 import pytest
 
-from miles_common.exceptions import BadRequestError
-from miles_common.schemas.media import MediaRefIn
 from miles_ai.integrations.chat.multimodal import build_invoke_messages_with_media
 from miles_ai.integrations.langgraph.graphs.rag_qa import _prompt_user_query, fallback, generate
 from miles_ai.integrations.langgraph.runner import run_rag_workflow
 from miles_ai.rag.generate.answer import rag_answer
+from miles_common.exceptions import BadRequestError
+from miles_common.schemas.media import MediaRefIn
 
 
 def test_prompt_user_query_prefers_prompt_query():

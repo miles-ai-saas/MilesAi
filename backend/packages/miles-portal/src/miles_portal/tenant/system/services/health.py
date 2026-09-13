@@ -1,8 +1,8 @@
 """聚合 DB / Redis / 向量库 / 对象存储健康探测。"""
 
-from miles_core.utils.health_checks import collect_health_status
 from miles_common.response import fail, ok
 from miles_common.schema import ApiResponse
+from miles_core.utils.health_checks import collect_health_status
 
 
 class HealthService:

@@ -6,11 +6,11 @@ from uuid import uuid4
 import pytest
 from httpx import ASGITransport, AsyncClient
 
-from miles_server.apps.application import create_app
 from miles_core.deps import get_tenant_context
-from miles_core.tenant import TenantContext
 from miles_core.infra.db import get_db
+from miles_core.tenant import TenantContext
 from miles_portal.tenant.flows.schemas.flow import FlowRunResponse
+from miles_server.apps.application import create_app
 from tests.conftest import disable_platform_risk, make_tenant_ctx
 
 

@@ -7,11 +7,12 @@ PDF / Office / 部分图片：Docling → LangChain Document（Markdown 导出�
 
 from __future__ import annotations
 
-from miles_core.logging import get_logger
 import tempfile
 from pathlib import Path
 
 from langchain_core.documents import Document
+
+from miles_core.logging import get_logger
 
 logger = get_logger(__name__)
 

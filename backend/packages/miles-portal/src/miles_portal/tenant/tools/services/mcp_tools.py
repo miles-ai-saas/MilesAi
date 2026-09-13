@@ -19,15 +19,15 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from miles_common.exceptions import NotFoundError
-from miles_core.soft_delete import not_deleted
-from miles_core.tenant import TenantContext, tenant_filters
 from miles_ai.integrations.langchain.tools import (
     McpToolSpec,
     compose_mcp_tool_name,
     is_mcp_tool_name,
     mcp_param_alias,
 )
+from miles_common.exceptions import NotFoundError
+from miles_core.soft_delete import not_deleted
+from miles_core.tenant import TenantContext, tenant_filters
 from miles_portal.tenant.mcp.models import McpService
 
 _PLACEHOLDER_SUFFIX = "_placeholder"

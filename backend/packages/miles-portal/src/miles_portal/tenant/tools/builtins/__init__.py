@@ -9,4 +9,4 @@ from miles_portal.tenant.tools.builtins.calculator import safe_calculate
 from miles_portal.tenant.tools.builtins.handlers import BUILTIN_HANDLERS
 from miles_portal.tenant.tools.builtins.template import apply_template
 
-__all__ = ["BUILTIN_HANDLERS", "safe_calculate", "apply_template"]
+__all__ = ["BUILTIN_HANDLERS", "apply_template", "safe_calculate"]

@@ -1,6 +1,7 @@
 """租户扫描词库绑定。"""
 
 from sqlalchemy import select
+
 from miles_common.exceptions import BadRequestError
 from miles_core.soft_delete import mark_deleted, not_deleted
 from miles_portal.tenant.compliance.models import (

@@ -5,6 +5,7 @@
 """
 
 import httpx
+
 from miles_core.url_security import validate_outbound_url
 
 _DDG_API = "https://api.duckduckgo.com/"

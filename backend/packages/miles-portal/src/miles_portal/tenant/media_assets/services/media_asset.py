@@ -6,25 +6,25 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy import ColumnElement
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from miles_ai.integrations.generative.constants import PURPOSE_FLOW_GENERATED
+from miles_ai.rag.parse.upload_policy import is_kb_upload_allowed, kb_upload_allowed_hint
 from miles_common.exceptions import BadRequestError, NotFoundError
 from miles_common.schema import PageParams, PageResult
 from miles_core.config import get_settings
+from miles_core.infra.storage import build_object_key
+from miles_core.infra.storage.resolve import resolve_object_storage_async
+from miles_core.models.kb import DocumentStatus
+from miles_core.models.media.attachment import Attachment
+from miles_core.models.media.media_asset import MediaAsset
 from miles_core.service import BaseService
 from miles_core.soft_delete import is_marked_deleted, mark_deleted, not_deleted
 from miles_core.tenant import TenantContext, assert_tenant_access
-from miles_core.infra.storage import build_object_key
-from miles_core.infra.storage.resolve import resolve_object_storage_async
-from miles_ai.integrations.generative.constants import PURPOSE_FLOW_GENERATED
-from miles_core.models.media.attachment import Attachment
-from miles_core.models.kb import DocumentStatus
-from miles_core.models.media.media_asset import MediaAsset
-from miles_ai.rag.parse.upload_policy import is_kb_upload_allowed, kb_upload_allowed_hint
 from miles_portal.tenant.attachments.repositories.attachment import AttachmentRepository
 from miles_portal.tenant.attachments.schemas.attachment import AttachmentOut
 from miles_portal.tenant.kb.repositories.kb import DocumentRepository, KnowledgeBaseRepository
@@ -235,7 +235,7 @@ class MediaAssetService(BaseService):
         await apply_storage_delta(self.db, kb.tenant_id, len(content))
         row.kb_id = kb.id
         row.kb_document_id = doc.id
-        row.promoted_at = datetime.now(timezone.utc)
+        row.promoted_at = datetime.now(UTC)
         await self.db.flush()
         await self.db.refresh(row)
         return await self._to_out(row)

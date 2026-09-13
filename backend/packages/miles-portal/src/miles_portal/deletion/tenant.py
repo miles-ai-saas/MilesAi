@@ -8,6 +8,21 @@ from uuid import UUID
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from miles_core.infra.storage.resolve import resolve_object_storage_async
+from miles_core.models.agent import Agent
+from miles_core.models.flow import Flow
+from miles_core.models.kb import Document, KnowledgeBase
+from miles_core.models.marketplace import AppInstall
+from miles_core.models.model import ModelConfig
+from miles_core.models.platform.role import Role, role_permissions, user_roles
+from miles_core.models.platform.user import User
+from miles_core.models.task.task_record import CeleryTaskRecord
+from miles_portal.deletion.cascade import (
+    before_delete_agent,
+    before_delete_flow,
+    before_delete_kb,
+)
+from miles_portal.deletion.document import clear_document_derived_data_async
 from miles_portal.tenant.audit_log.models import TenantAuditLog
 from miles_portal.tenant.compliance.models import (
     ComplianceLibraryBinding,
@@ -17,26 +32,11 @@ from miles_portal.tenant.compliance.models import (
     WordLibrary,
 )
 from miles_portal.tenant.hooks.models import HookBinding, HookDefinition, HookExecutionLog
-from miles_core.models.marketplace import AppInstall
 from miles_portal.tenant.mcp.models import McpRunnerSession, McpService
 from miles_portal.tenant.prompts.models import PromptTemplate
 from miles_portal.tenant.skills.models import SkillPackage
 from miles_portal.tenant.skills.storage import remove_tenant_skills
 from miles_portal.tenant.tools.models import Tool, ToolInvocationLog
-from miles_core.infra.storage.resolve import resolve_object_storage_async
-from miles_portal.deletion.cascade import (
-    before_delete_agent,
-    before_delete_flow,
-    before_delete_kb,
-)
-from miles_portal.deletion.document import clear_document_derived_data_async
-from miles_core.models.agent import Agent
-from miles_core.models.model import ModelConfig
-from miles_core.models.flow import Flow
-from miles_core.models.kb import Document, KnowledgeBase
-from miles_core.models.platform.role import Role, role_permissions, user_roles
-from miles_core.models.task.task_record import CeleryTaskRecord
-from miles_core.models.platform.user import User
 
 
 async def purge_tenant_data(db: AsyncSession, tenant_id: UUID) -> None:

@@ -11,9 +11,9 @@ from miles_admin.app_ops.schemas.sys_category import (
     SysCategoryAdminUpdate,
 )
 from miles_common.exceptions import BadRequestError, ConflictError, NotFoundError
-from miles_core.soft_delete import is_marked_deleted, mark_deleted, not_deleted
-from miles_core.models.meta.category import CategoryDomain, SysCategory
 from miles_common.slug import slugify
+from miles_core.models.meta.category import CategoryDomain, SysCategory
+from miles_core.soft_delete import is_marked_deleted, mark_deleted, not_deleted
 
 DOMAINS = [d.value for d in CategoryDomain]
 
@@ -63,9 +63,9 @@ class AdminSysCategoryService:
         """按需更新分类；slug 变更时校验同域唯一。"""
         row = await self._get_or_raise(category_id)
         data = body.model_dump(exclude_unset=True)
-        if "name" in data and data["name"]:
+        if data.get("name"):
             data["name"] = data["name"].strip()
-        if "slug" in data and data["slug"]:
+        if data.get("slug"):
             data["slug"] = data["slug"].strip()
             await self._ensure_slug_unique(data["slug"], row.domain, exclude_id=row.id)
         for k, v in data.items():

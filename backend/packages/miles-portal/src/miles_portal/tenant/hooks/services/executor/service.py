@@ -6,6 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from miles_common.idgen import generate_uuid
 from miles_common.trace import get_trace_id
 from miles_core.logging import get_logger
 from miles_core.soft_delete import not_deleted
@@ -15,7 +16,6 @@ from miles_portal.tenant.hooks.services.executor.http import HookHttpMixin
 from miles_portal.tenant.hooks.services.executor.log import HookLogMixin
 from miles_portal.tenant.hooks.services.executor.python import HookPythonMixin
 from miles_portal.tenant.hooks.services.result import HookRunResult
-from miles_common.idgen import generate_uuid
 
 logger = get_logger(__name__)
 

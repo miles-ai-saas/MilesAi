@@ -12,12 +12,11 @@ from __future__ import annotations
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from miles_core.soft_delete import mark_deleted, not_deleted
 from miles_core.models.meta.category import CategoryDomain
+from miles_core.soft_delete import mark_deleted, not_deleted
 from miles_portal.tenant.tools.builtin_registry import BUILTIN_SLUGS
 from miles_portal.tenant.tools.models import Tool, ToolType
 from miles_portal.tenant.tools.parameters import normalize_parameters
-
 from miles_server.scripts.seed._helpers import category_id_by_slug, list_tenant_ids
 
 SEED_VERSION = 2

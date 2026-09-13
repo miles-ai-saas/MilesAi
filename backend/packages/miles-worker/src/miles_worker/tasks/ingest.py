@@ -16,12 +16,12 @@ Celery 知识库文档入库任务。
 PENDING/PARSING/EMBEDDING 的文档标为 EMBED_FAILED。
 """
 
-from miles_worker.app import celery_app
 from miles_core.jobs.tasks import TASK_NAMES
 from miles_core.models.task.task_record import TaskStatus
 from miles_portal.tenant.kb.services.ingest import run_ingest
 from miles_portal.tenant.kb.services.ingest_failure import ensure_document_failure_if_still_processing
 from miles_portal.tenant.tasks.services.sync import sync_task_by_celery_id
+from miles_worker.app import celery_app
 
 # 与 max_retries=3 配合：最多 4 次执行（首次 + 3 次重试）
 INGEST_RETRY_COUNTDOWN_SEC = 30

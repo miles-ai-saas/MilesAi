@@ -2,15 +2,15 @@
 
 from __future__ import annotations
 
-from typing import Callable
+from collections.abc import Callable
 
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 
-from miles_core.risk.enforce import platform_risk_enforcer
-from miles_core.models.risk import RiskSeverity
 from miles_common.trace import get_trace_id
+from miles_core.models.risk import RiskSeverity
+from miles_core.risk.enforce import platform_risk_enforcer
 
 _SKIP_PREFIXES = ("/health", "/docs", "/redoc", "/openapi.json", "/favicon.ico")
 

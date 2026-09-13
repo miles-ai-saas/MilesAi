@@ -1,18 +1,18 @@
 """生视频集成（万相 / 豆包 HTTP）。"""
 
-from unittest.mock import AsyncMock, patch
 from types import SimpleNamespace
+from unittest.mock import AsyncMock, patch
 from uuid import uuid4
 
 import pytest
 
-from miles_core.tenant import TenantContext
 from miles_ai.integrations.generative.constants import INVOKE_DASHSCOPE_T2V, INVOKE_VOLCENGINE_VIDEO
 from miles_ai.integrations.generative.registry import resolve_invoke_mode
 from miles_ai.integrations.generative.types import VideoGenerateResult
 from miles_ai.integrations.langchain.tool_agent import artifacts_from_tool_output
 from miles_core.models.model import ModelConfig
 from miles_core.models.model.catalog import ModelCapabilityType, ModelVendor
+from miles_core.tenant import TenantContext
 
 
 def _video_model(**kwargs) -> ModelConfig:

@@ -20,8 +20,8 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID
 
-from miles_core.infra.vector_store.factory import get_vector_store
 from miles_core.infra.vector_store.base import ChunkVectorRecord
+from miles_core.infra.vector_store.factory import get_vector_store
 
 
 def upsert_chunk_vector(

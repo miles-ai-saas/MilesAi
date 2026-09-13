@@ -5,7 +5,6 @@ from uuid import uuid4
 
 import pytest
 
-from miles_common.exceptions import BadRequestError
 from miles_ai.integrations.rerank.constants import INVOKE_MODE_DASHSCOPE, INVOKE_MODE_OPENAI_COMPATIBLE
 from miles_ai.integrations.rerank.model_meta import (
     invoke_mode_from_model,
@@ -13,6 +12,7 @@ from miles_ai.integrations.rerank.model_meta import (
 )
 from miles_ai.integrations.rerank.providers.dashscope import DashScopeRerankProvider
 from miles_ai.integrations.rerank.registry import known_invoke_modes, rerank_documents_for_model
+from miles_common.exceptions import BadRequestError
 from miles_core.models.model import ModelConfig
 from miles_core.models.model.catalog import ModelCapabilityType, ModelVendor
 

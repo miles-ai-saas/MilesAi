@@ -19,10 +19,10 @@ tenant 模板模型。会话：KnowledgeSearch 节点内 ``AsyncSessionLocal`` �
 from typing import Any
 from uuid import UUID
 
-from miles_common.exceptions import BadRequestError
 from miles_ai.flow_runtime.types import RunContext
-from miles_core.infra.db import AsyncSessionLocal
 from miles_ai.rag.generate import format_hits_context, retrieve_hits
+from miles_common.exceptions import BadRequestError
+from miles_core.infra.db import AsyncSessionLocal
 
 _DEFAULT_PROMPT_TEMPLATE = "基于以下检索结果回答问题：\n\n{{检索结果}}\n\n问题：{{用户提问}}"
 

@@ -9,9 +9,9 @@ from __future__ import annotations
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from miles_core.soft_delete import not_deleted
 from miles_core.models.meta.category import CategoryDomain, SysCategory
 from miles_core.models.platform.tenant import Tenant
+from miles_core.soft_delete import not_deleted
 from miles_portal.tenant.prompts.models import PromptTemplate
 
 # category_slug 对应 sys_categories_defaults.json 中 prompt 域

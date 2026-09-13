@@ -11,13 +11,15 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from miles_common.exceptions import BadRequestError, ConflictError, NotFoundError
-from miles_core.tenant import TenantContext, assert_tenant_access, tenant_filters
+from miles_common.schema import PageParams, PageResult
 from miles_core.models.meta.category import CategoryDomain, SysCategory
 from miles_core.models.meta.tag import TagEntityType
+from miles_core.service import BaseService
+from miles_core.soft_delete import append_not_deleted, is_marked_deleted, mark_deleted, not_deleted
+from miles_core.tenant import TenantContext, assert_tenant_access, tenant_filters
 from miles_portal.tenant.categories.services.category import CategoryService
-from miles_portal.tenant.tags.services.tag import TagService
-from miles_portal.tenant.skills.models import SkillPackage
 from miles_portal.tenant.skills.meta import skills_meta_dict
+from miles_portal.tenant.skills.models import SkillPackage
 from miles_portal.tenant.skills.schemas.meta import SkillMetaOut
 from miles_portal.tenant.skills.schemas.skill import (
     SkillFileContent,
@@ -46,9 +48,7 @@ from miles_portal.tenant.skills.storage import (
     write_file,
     write_skill_md,
 )
-from miles_common.schema import PageParams, PageResult
-from miles_core.soft_delete import append_not_deleted, is_marked_deleted, mark_deleted, not_deleted
-from miles_core.service import BaseService
+from miles_portal.tenant.tags.services.tag import TagService
 
 
 def _slug_from_name(name: str) -> str:
@@ -166,7 +166,7 @@ class SkillService(BaseService):
         row = await self._get_or_raise(skill_id)
         data = body.model_dump(exclude_unset=True)
         tag_ids = data.pop("tag_ids", None)
-        if "category_id" in data and data["category_id"]:
+        if data.get("category_id"):
             await self._cat.validate_category_for_domain(data["category_id"], CategoryDomain.SKILL)
         for k, v in data.items():
             setattr(row, k, v)

@@ -6,13 +6,13 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
 from miles_admin.models import BillingPlan
-from miles_portal.tenant.system.repositories.tenant import TenantRepository
 from miles_common.schema import PageParams, PageResult
 from miles_core.models.agent import Agent
 from miles_core.models.flow import Flow
 from miles_core.models.kb import Document, KnowledgeBase
 from miles_core.models.platform.tenant import Tenant, TenantStatus
 from miles_core.models.platform.user import User
+from miles_portal.tenant.system.repositories.tenant import TenantRepository
 
 
 class AdminTenantRepository(TenantRepository):

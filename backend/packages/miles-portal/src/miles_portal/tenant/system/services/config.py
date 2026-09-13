@@ -4,16 +4,16 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from miles_core.config import get_settings
-from miles_core.tenant import TenantContext
 from miles_core.models.platform.system import SystemConfig
+from miles_core.service import BaseService
+from miles_core.tenant import TenantContext
+from miles_core.utils.health_checks import collect_health_status
 from miles_portal.tenant.system.schemas.config import (
     ConfigDefinitionOut,
     RuntimeInfoOut,
     SystemConfigOut,
     SystemConfigUpsert,
 )
-from miles_core.service import BaseService
-from miles_core.utils.health_checks import collect_health_status
 
 CONFIG_DEFINITIONS: list[dict] = [
     {

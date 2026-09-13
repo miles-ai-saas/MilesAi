@@ -5,9 +5,9 @@ from unittest.mock import patch
 import pytest
 from langchain_core.documents import Document
 
+from miles_ai.rag.parse.loaders import documents_to_plain_text, load_documents_from_bytes
 from miles_common.exceptions import BadRequestError
 from miles_core.config import get_settings
-from miles_ai.rag.parse.loaders import documents_to_plain_text, load_documents_from_bytes
 
 
 @pytest.fixture(autouse=True)
@@ -19,7 +19,7 @@ def _clear_settings_cache():
 
 def test_load_txt_unchanged(monkeypatch):
     monkeypatch.setenv("PARSE_PDF_BACKEND", "pypdf")
-    data = "你好，世界".encode("utf-8")
+    data = "你好，世界".encode()
     docs = load_documents_from_bytes(data, "a.txt", "text/plain")
     assert len(docs) == 1
     assert "你好" in docs[0].page_content

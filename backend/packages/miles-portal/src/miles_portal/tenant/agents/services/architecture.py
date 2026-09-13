@@ -6,12 +6,13 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from miles_ai.integrations.langgraph.runner import should_use_langgraph_rag
 from miles_common.exceptions import NotFoundError
+from miles_core.models.agent import Agent, AgentType
 from miles_core.service import BaseService
 from miles_core.soft_delete import is_marked_deleted
 from miles_core.tenant import TenantContext, assert_tenant_access
-from miles_ai.integrations.langgraph.runner import should_use_langgraph_rag
-from miles_core.models.agent import Agent, AgentType
+from miles_portal.tenant.a2a.services.peer_refs import list_agent_a2a_peer_refs
 from miles_portal.tenant.agents.repositories.agent import AgentRepository
 from miles_portal.tenant.agents.schemas.architecture import (
     PRIMARY_PATH_LABELS,
@@ -25,7 +26,6 @@ from miles_portal.tenant.agents.schemas.architecture import (
     ArchitectureSubAgentRef,
     PrimaryPath,
 )
-from miles_portal.tenant.a2a.services.peer_refs import list_agent_a2a_peer_refs
 from miles_portal.tenant.agents.services.sub_agents import list_sub_agent_bindings
 from miles_portal.tenant.flows.repositories.flow import FlowRepository
 

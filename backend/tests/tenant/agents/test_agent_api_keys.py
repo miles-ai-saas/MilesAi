@@ -1,6 +1,6 @@
 """智能体正式 API Key：crypto 与鉴权。"""
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
@@ -29,7 +29,7 @@ def test_generate_agent_api_key_secret_format():
 async def test_ctx_from_api_key_agent_mismatch():
     agent_id = uuid4()
     other = uuid4()
-    plain, _, digest = generate_agent_api_key_secret()
+    plain, _, _digest = generate_agent_api_key_secret()
     row = MagicMock()
     row.revoked_at = None
     row.agent_id = other
@@ -50,7 +50,7 @@ async def test_ctx_from_api_key_revoked():
     agent_id = uuid4()
     plain, _, _ = generate_agent_api_key_secret()
     row = MagicMock()
-    row.revoked_at = datetime.now(timezone.utc)
+    row.revoked_at = datetime.now(UTC)
     row.agent_id = agent_id
     db = AsyncMock()
     with patch(

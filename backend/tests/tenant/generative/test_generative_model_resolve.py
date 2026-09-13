@@ -3,6 +3,7 @@
 import asyncio
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
+from uuid import uuid4
 
 from miles_ai.integrations.generative.registry import (
     default_image_invoke_mode,
@@ -11,7 +12,6 @@ from miles_ai.integrations.generative.registry import (
 from miles_core.models.model import ModelConfig
 from miles_core.models.model.catalog import ModelCapabilityType, ModelVendor
 from miles_portal.tenant.models.services import generative_model_resolve as gm
-from uuid import uuid4
 
 
 def _model(vendor: str, model_type: str) -> ModelConfig:

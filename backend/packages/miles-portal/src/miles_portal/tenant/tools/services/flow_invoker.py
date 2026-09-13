@@ -12,9 +12,9 @@ from collections.abc import Awaitable, Callable
 from typing import Any
 from uuid import UUID
 
-from miles_core.tenant import TenantContext
 from miles_ai.flow_runtime.types import RunContext
 from miles_core.infra.db import AsyncSessionLocal
+from miles_core.tenant import TenantContext
 from miles_portal.tenant.tools.invoke import invoke_tool_with_context
 
 

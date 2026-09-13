@@ -11,10 +11,10 @@ from __future__ import annotations
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from miles_core.soft_delete import is_marked_deleted, not_deleted
 from miles_ai.flow_runtime.templates.registry import load_flow_template_graph
 from miles_core.models.flow import Flow, FlowStatus, FlowVersion
 from miles_core.models.platform.tenant import Tenant
+from miles_core.soft_delete import is_marked_deleted, not_deleted
 
 SEED_FLOW_SPECS: list[dict] = [
     {

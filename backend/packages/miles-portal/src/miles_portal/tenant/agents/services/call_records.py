@@ -3,24 +3,24 @@
 from __future__ import annotations
 
 import time
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from miles_common.exceptions import BadRequestError, NotFoundError
+from miles_common.schema import PageParams, PageResult
 from miles_common.trace import get_trace_id
+from miles_core.models.agent.chat_call import AgentChatCall
+from miles_core.models.platform.user import User
 from miles_core.service import BaseService
 from miles_core.soft_delete import is_marked_deleted
 from miles_core.tenant import TenantContext, assert_tenant_access, tenant_filters
-from miles_core.models.agent.chat_call import AgentChatCall
-from miles_core.models.platform.user import User
 from miles_portal.tenant.agents.repositories.agent import AgentRepository
 from miles_portal.tenant.agents.schemas.agent import ChatRequest, ChatResponse
 from miles_portal.tenant.agents.schemas.call_records import AgentCallRecordDetailOut, AgentCallRecordOut
 from miles_portal.tenant.agents.services.chat_sessions import persist_chat_turn
-from miles_common.schema import PageParams, PageResult
 from miles_portal.tenant.hooks.models import HookExecutionLog
 from miles_portal.tenant.hooks.schemas.execution import HookExecutionLogOut
 from miles_portal.tenant.models.services.usage import get_chat_usage_totals
@@ -76,7 +76,7 @@ def is_compliance_block(exc: Exception) -> bool:
 def correlation_window(created_at: datetime, latency_ms: int) -> tuple[datetime, datetime]:
     """调用记录关联工具日志的时间窗（created_at 前后缓冲）。"""
     if created_at.tzinfo is None:
-        created_at = created_at.replace(tzinfo=timezone.utc)
+        created_at = created_at.replace(tzinfo=UTC)
     start = created_at - timedelta(seconds=CORRELATION_PAD_BEFORE_SEC)
     end = created_at + timedelta(milliseconds=max(latency_ms, 0)) + timedelta(seconds=CORRELATION_PAD_AFTER_SEC)
     return start, end
@@ -328,5 +328,5 @@ def parse_call_record_datetime(value: str | None) -> datetime | None:
         text = f"{text}T00:00:00+00:00"
     dt = datetime.fromisoformat(text.replace("Z", "+00:00"))
     if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
+        dt = dt.replace(tzinfo=UTC)
     return dt

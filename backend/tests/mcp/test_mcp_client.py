@@ -3,8 +3,8 @@ import pytest
 from miles_common.exceptions import BadRequestError
 from miles_exec.mcp.rpc import normalize_tool_call_result
 from miles_exec.mcp.tools import normalize_tools
-from miles_portal.tenant.mcp.sse_transport import _assert_same_origin, _json_from_sse_data
 from miles_portal.tenant.mcp.security import validate_mcp_endpoint_url
+from miles_portal.tenant.mcp.sse_transport import _assert_same_origin, _json_from_sse_data
 
 
 def test_normalize_tools_from_list():

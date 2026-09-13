@@ -9,9 +9,9 @@ from miles_ai.integrations.chat.multimodal import build_user_message, resolve_me
 from miles_ai.integrations.generative.image.prompt_guard import user_requests_image_collage
 from miles_ai.integrations.langchain.chat_models import OnDelta, ainvoke_chat
 from miles_ai.integrations.langgraph.runner import run_rag_workflow, should_use_langgraph_rag
+from miles_ai.rag.generate import format_hits_context, rag_answer, retrieve_hits
 from miles_core.models.agent import Agent
 from miles_core.models.model import ModelConfig
-from miles_ai.rag.generate import format_hits_context, rag_answer, retrieve_hits
 from miles_portal.tenant.a2a.services.peer_refs import list_agent_a2a_peer_refs
 from miles_portal.tenant.agents.schemas.agent import ChatRequest, ChatResponse
 from miles_portal.tenant.agents.services.agent.serialization import should_use_tools_with_kb

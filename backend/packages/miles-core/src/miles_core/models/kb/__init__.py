@@ -10,10 +10,10 @@ from miles_core.models.kb.knowledge_base import (
 from miles_core.models.kb.search_log import KbSearchLog
 
 __all__ = [
-    "DocumentStatus",
-    "KnowledgeBase",
     "Document",
     "DocumentChunk",
-    "VectorRef",
+    "DocumentStatus",
     "KbSearchLog",
+    "KnowledgeBase",
+    "VectorRef",
 ]

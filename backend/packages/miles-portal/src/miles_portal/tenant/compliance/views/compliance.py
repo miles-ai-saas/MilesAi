@@ -5,12 +5,11 @@ from uuid import UUID
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from miles_core.infra.db import get_db
-from miles_core.deps import get_page_params, require_permissions
 from miles_common.response import ok, page_ok
-from miles_core.tenant import TenantContext
 from miles_common.schema import ApiResponse, PageParams, PageResult
-from miles_portal.tenant.compliance.schemas.meta import ComplianceMetaOut
+from miles_core.deps import get_page_params, require_permissions
+from miles_core.infra.db import get_db
+from miles_core.tenant import TenantContext
 from miles_portal.tenant.compliance.schemas.compliance import (
     ComplianceScanBindingsOut,
     ComplianceScanBindingsUpdate,
@@ -27,6 +26,7 @@ from miles_portal.tenant.compliance.schemas.compliance import (
     WordLibraryOut,
     WordLibraryUpdate,
 )
+from miles_portal.tenant.compliance.schemas.meta import ComplianceMetaOut
 from miles_portal.tenant.compliance.services.compliance import ComplianceService
 
 router = APIRouter()

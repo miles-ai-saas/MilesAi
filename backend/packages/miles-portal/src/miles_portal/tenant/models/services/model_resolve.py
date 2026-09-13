@@ -18,10 +18,10 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from miles_common.exceptions import BadRequestError
-from miles_core.soft_delete import not_deleted
 from miles_core.models.model import ModelConfig
 from miles_core.models.model.catalog import ModelPublishStatus
 from miles_core.models.model.tenant_credential import ModelTenantCredential
+from miles_core.soft_delete import not_deleted
 from miles_portal.tenant.models.services.api_key_validation import assert_usable_api_key
 
 

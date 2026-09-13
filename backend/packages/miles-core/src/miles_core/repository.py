@@ -8,8 +8,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.elements import ColumnElement
 
 from miles_common.exceptions import ConflictError, NotFoundError
-from miles_core.pagination import paginate
 from miles_common.schema import PageResult
+from miles_core.pagination import paginate
 from miles_core.soft_delete import append_not_deleted, has_soft_delete, is_marked_deleted, mark_deleted, not_deleted
 
 T = TypeVar("T")

@@ -22,9 +22,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
 from miles_ai.integrations.langchain.kb_retrieval import KbRetrievalBindings
-from miles_core.models.kb import KnowledgeBase
 from miles_ai.rag.retrieve.multi_kb import search_kb as _search_kb
 from miles_ai.rag.retrieve.multi_kb import search_multi_kb_async as _search_multi_kb_async
+from miles_core.models.kb import KnowledgeBase
 
 
 def search_kb(

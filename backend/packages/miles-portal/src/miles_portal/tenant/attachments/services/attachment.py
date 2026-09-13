@@ -3,26 +3,26 @@
 from uuid import UUID
 
 from fastapi import UploadFile
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import ColumnElement
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from miles_ai.rag.parse.media import is_image_file
 from miles_ai.rag.parse.upload_policy import is_kb_upload_allowed, kb_upload_allowed_hint
 from miles_common.exceptions import BadRequestError, NotFoundError
+from miles_common.schema import PageParams, PageResult
 from miles_core.config import get_settings
+from miles_core.infra.storage import build_attachment_object_key
+from miles_core.infra.storage.resolve import resolve_object_storage_async
+from miles_core.logging import get_logger
+from miles_core.models.media.attachment import Attachment
 from miles_core.service import BaseService
 from miles_core.soft_delete import is_marked_deleted, mark_deleted, not_deleted
 from miles_core.tenant import TenantContext, assert_tenant_access
-from miles_core.infra.storage import build_attachment_object_key
-from miles_core.infra.storage.resolve import resolve_object_storage_async
-from miles_ai.rag.parse.media import is_image_file
-from miles_core.models.media.attachment import Attachment
-from miles_core.logging import get_logger
-from miles_portal.tenant.attachments.repositories.attachment import AttachmentRepository
 from miles_portal.tenant.attachments.meta import attachments_meta_dict
-from miles_portal.tenant.attachments.schemas.meta import AttachmentMetaOut
+from miles_portal.tenant.attachments.repositories.attachment import AttachmentRepository
 from miles_portal.tenant.attachments.schemas.attachment import AttachmentOut, AttachmentUploadMeta
+from miles_portal.tenant.attachments.schemas.meta import AttachmentMetaOut
 from miles_portal.tenant.kb.services.quota import apply_storage_delta, assert_can_upload_bytes
-from miles_common.schema import PageParams, PageResult
 
 logger = get_logger(__name__)
 settings = get_settings()

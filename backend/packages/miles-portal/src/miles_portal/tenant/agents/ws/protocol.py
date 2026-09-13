@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import WebSocket
@@ -30,7 +30,7 @@ PONG = "pong"
 
 def utc_now_iso() -> str:
     """返回秒级精度的 UTC ISO8601 时间戳（``Z`` 结尾）。"""
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    return datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 
 def envelope(event_type: str, payload: dict[str, Any]) -> dict[str, Any]:

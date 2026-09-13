@@ -5,9 +5,9 @@
 - 约定：docs/guides/hooks.md §9
 """
 
+from miles_ai.rag.retrieve.constants import RETRIEVAL_HYBRID, RETRIEVAL_VECTOR
 from miles_common.schemas.enum_meta import META_SCHEMA_VERSION, enum_options, literal_options
 from miles_core.models.kb import DocumentStatus
-from miles_ai.rag.retrieve.constants import RETRIEVAL_HYBRID, RETRIEVAL_VECTOR
 
 RETRIEVAL_MODE_OPTIONS: list[tuple[str, str, str | None]] = [
     (RETRIEVAL_VECTOR, "纯语义向量", "基于 embedding 相似度"),

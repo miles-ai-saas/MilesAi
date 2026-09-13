@@ -34,6 +34,7 @@ _apply_template = apply_template
 
 __all__ = [
     "SCRIPT_RUNNER_DISABLED",
+    "_apply_template",
     "invoke_builtin",
     "invoke_custom_http",
     "invoke_custom_script",
@@ -41,5 +42,4 @@ __all__ = [
     "invoke_tool_with_context",
     "resolve_bound_skill_id_from_agent",
     "safe_calculate",
-    "_apply_template",
 ]

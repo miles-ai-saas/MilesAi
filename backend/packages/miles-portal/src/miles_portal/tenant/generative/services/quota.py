@@ -10,17 +10,17 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from miles_common.exceptions import ForbiddenError
-from miles_core.soft_delete import not_deleted
 from miles_ai.integrations.generative.constants import PURPOSE_CHAT_GENERATED, PURPOSE_FLOW_GENERATED
+from miles_common.exceptions import ForbiddenError
 from miles_core.models.media.attachment import Attachment
 from miles_core.models.platform.system import SystemConfig
+from miles_core.soft_delete import not_deleted
 
 _CONFIG_KEY = "generative.daily_limit_per_tenant"
 _GENERATED_PURPOSES = (PURPOSE_CHAT_GENERATED, PURPOSE_FLOW_GENERATED)
@@ -38,7 +38,7 @@ def _config_int(raw: object, default: int = 0) -> int:
 
 
 def _utc_day_start() -> datetime:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     return now.replace(hour=0, minute=0, second=0, microsecond=0)
 
 

@@ -84,7 +84,7 @@ async def run_mcp_session(
             duration_ms=duration_ms,
             exit_code=proc.returncode,
         )
-    except asyncio.TimeoutError:
+    except TimeoutError:
         duration_ms = int((time.monotonic() - started) * 1000)
         if proc:
             await _kill(proc)
@@ -136,7 +136,7 @@ async def _terminate(proc: asyncio.subprocess.Process) -> None:
     proc.terminate()
     try:
         await asyncio.wait_for(proc.wait(), timeout=2.0)
-    except asyncio.TimeoutError:
+    except TimeoutError:
         await _kill(proc)
 
 
@@ -149,5 +149,5 @@ async def _kill(proc: asyncio.subprocess.Process) -> None:
         proc.kill()
     try:
         await asyncio.wait_for(proc.wait(), timeout=3.0)
-    except asyncio.TimeoutError:
+    except TimeoutError:
         pass

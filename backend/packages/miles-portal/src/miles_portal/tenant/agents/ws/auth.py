@@ -8,10 +8,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from miles_common.exceptions import UnauthorizedError
-from miles_core.security import safe_decode_token
-from miles_core.tenant import TenantContext
 from miles_core.models.platform.role import Role
 from miles_core.models.platform.user import User
+from miles_core.security import safe_decode_token
+from miles_core.tenant import TenantContext
 
 
 def extract_bearer_token(websocket: WebSocket) -> str | None:

@@ -9,8 +9,8 @@ from __future__ import annotations
 from langchain_core.documents import Document
 from langchain_text_splitters import MarkdownHeaderTextSplitter, RecursiveCharacterTextSplitter
 
-from miles_core.config import get_settings
 from miles_ai.rag.chunk.types import TextChunk
+from miles_core.config import get_settings
 
 _MARKDOWN_HEADERS = [
     ("#", "h1"),

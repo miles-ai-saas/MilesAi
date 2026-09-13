@@ -1,6 +1,6 @@
 """智能体 API 对接调试：debug-token 与 JWT TTL。"""
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
@@ -8,14 +8,14 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 from jose import jwt
 
-from miles_server.apps.application import create_app
 from miles_core.config import get_settings
 from miles_core.deps import get_tenant_context
+from miles_core.infra.db import get_db
 from miles_core.security import create_access_token, safe_decode_token
 from miles_core.tenant import TenantContext
-from miles_core.infra.db import get_db
 from miles_portal.tenant.agents.schemas.api_access import AgentDebugTokenOut
 from miles_portal.tenant.agents.services.api_access import AgentApiAccessService
+from miles_server.apps.application import create_app
 from tests.conftest import disable_platform_risk, make_tenant_ctx
 
 
@@ -30,8 +30,8 @@ def test_create_access_token_respects_expires_delta():
     assert payload is not None
     assert payload["type"] == "access"
     assert payload["purpose"] == "agent_api_debug"
-    exp = datetime.fromtimestamp(payload["exp"], tz=timezone.utc)
-    delta = exp - datetime.now(timezone.utc)
+    exp = datetime.fromtimestamp(payload["exp"], tz=UTC)
+    delta = exp - datetime.now(UTC)
     assert timedelta(hours=23) < delta <= timedelta(hours=24, minutes=1)
     assert settings.access_token_expire_minutes == 60 or True
     raw = jwt.get_unverified_claims(token)
@@ -66,7 +66,7 @@ async def test_debug_token_success_shape():
         access_token="tok",
         token_type="bearer",
         expires_in=86400,
-        expires_at=datetime.now(timezone.utc),
+        expires_at=datetime.now(UTC),
         agent_id=agent_id,
         purpose="agent_api_debug",
         warning="x",
