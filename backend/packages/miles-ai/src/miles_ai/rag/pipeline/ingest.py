@@ -109,8 +109,10 @@ def run_ingest_pipeline(
         vectors = embed_texts(db, kb, chunks_text)
     vector_type = vector_type_for_document(data.filename, data.mime_type)
 
-    # 逐分片事务：chunk.id 作为 Milvus/Weaviate 主键与 vector_ref 外键
-    for idx, (piece, vector) in enumerate(zip(chunks, vectors, strict=False)):
+    # 逐分片事务：chunk.id 作为 Milvus/Weaviate 主键与 vector_ref 外键。
+    # strict=True：embedding 服务返回数量与分片数不一致时必须报错，否则会静默漏写分片
+    # （表现为「入库成功但部分内容检索不到」），比失败更难排查。
+    for idx, (piece, vector) in enumerate(zip(chunks, vectors, strict=True)):
         chunk = DocumentChunk(
             tenant_id=doc.tenant_id,
             document_id=doc.id,
