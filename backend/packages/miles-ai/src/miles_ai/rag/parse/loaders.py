@@ -36,6 +36,12 @@ logger = get_logger(__name__)
 
 _TEXT_EXTENSIONS = {".txt", ".md", ".markdown"}
 
+# 视频路由的扩展名集合**刻意不等同** ``media.VIDEO_EXTENSIONS``：.webm 在 media 中
+# 同属音频与视频，而本模块的音频判定会把 .webm 命中（见下方路由顺序），故此处不带
+# .webm，让其落到音频分支；mime 为 ``video/*`` 时仍由前缀判定进入视频分支。
+# 统一两者语义需先确认 .webm 的入库类型，现状由 tests/rag/test_parse_loaders.py 固化。
+_VIDEO_ROUTER_EXTENSIONS = {".mp4", ".mov", ".m4v", ".mkv"}
+
 
 def _raise_if_office_unparseable(ext: str) -> None:
     """Office 仅 docling 路径；pypdf 默认或缺依赖时给出可操作的 fail_reason 文案。"""
@@ -69,6 +75,27 @@ def _use_docling_for(ext: str, mime_type: str) -> bool:
     return False
 
 
+def _single_doc(text: str, filename: str, parser: str) -> list[Document]:
+    """单段文本 → 单个 Document；``metadata.parser`` 供 chunk 阶段选分片策略。"""
+    return [Document(page_content=text, metadata={"source": filename, "parser": parser})]
+
+
+def _try_docling(data: bytes, filename: str, ext: str, mime_type: str) -> list[Document] | None:
+    """Docling 可用时尝试解析；未启用、未安装或已按配置回退时返回 None 交给后续分支。"""
+    if not _use_docling_for(ext, mime_type):
+        return None
+    if not docling_available():
+        logger.warning("未安装 docling，回退 pypdf/跳过：pip install 'milesai[parse-docling]'")
+        return None
+    try:
+        return load_documents_with_docling(data, filename, ext or ".pdf")
+    except Exception as exc:
+        if not get_settings().parse_docling_fallback_pypdf:
+            raise BadRequestError(f"Docling 解析失败: {exc}") from exc
+        logger.warning("Docling 解析失败，回退 pypdf: filename=%s error=%s", filename, exc)
+        return None
+
+
 def load_documents_from_bytes(
     data: bytes,
     filename: str,
@@ -79,52 +106,21 @@ def load_documents_from_bytes(
 
     try:
         # 多模态：无 OCR/Whisper/ffmpeg 时 parse_* 仍返回占位文本，保证流程可走完
-        if mime_type.startswith("video/") or (_file_ext(filename) in {".mp4", ".mov", ".m4v", ".mkv"} and not mime_type.startswith("audio/")):
-            text = parse_video(data, filename)
-            return [
-                Document(
-                    page_content=text,
-                    metadata={"source": filename, "parser": "video"},
-                )
-            ]
+        if mime_type.startswith("video/") or (ext in _VIDEO_ROUTER_EXTENSIONS and not mime_type.startswith("audio/")):
+            return _single_doc(parse_video(data, filename), filename, "video")
 
         if is_image_file(filename, mime_type):
-            text = parse_image(data, filename)
-            return [
-                Document(
-                    page_content=text,
-                    metadata={"source": filename, "parser": "image"},
-                )
-            ]
+            return _single_doc(parse_image(data, filename), filename, "image")
 
         if is_audio_file(filename, mime_type):
-            text = parse_audio(data, filename)
-            return [
-                Document(
-                    page_content=text,
-                    metadata={"source": filename, "parser": "audio"},
-                )
-            ]
+            return _single_doc(parse_audio(data, filename), filename, "audio")
 
         if ext in _TEXT_EXTENSIONS or mime_type.startswith("text/"):
-            text = parse_text(data)
-            return [Document(page_content=text, metadata={"source": filename, "parser": "text"})]
+            return _single_doc(parse_text(data), filename, "text")
 
-        # Docling 未安装或失败时，仅 PDF 可继续落到下方 pypdf 分支
-        if _use_docling_for(ext, mime_type):
-            if not docling_available():
-                logger.warning("未安装 docling，回退 pypdf/跳过：pip install 'milesai[parse-docling]'")
-            else:
-                try:
-                    return load_documents_with_docling(data, filename, ext or ".pdf")
-                except Exception as exc:
-                    if not get_settings().parse_docling_fallback_pypdf:
-                        raise BadRequestError(f"Docling 解析失败: {exc}") from exc
-                    logger.warning(
-                        "Docling 解析失败，回退 pypdf: filename=%s error=%s",
-                        filename,
-                        exc,
-                    )
+        docs = _try_docling(data, filename, ext, mime_type)
+        if docs is not None:
+            return docs
 
         if ext == ".pdf" or mime_type == "application/pdf":
             docs = load_pdf_documents(data, filename)

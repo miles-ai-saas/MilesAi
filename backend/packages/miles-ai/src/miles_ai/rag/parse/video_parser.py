@@ -84,53 +84,62 @@ def _extract_audio_wav(data: bytes, ext: str) -> bytes | None:
             return None
 
 
+def _frame_timestamps(data: bytes, ext: str, max_frames: int) -> list[float]:
+    """均匀分布的时间点（步长下限 0.5s，末端夹在时长内）；时长未知时只取首帧。"""
+    duration = _probe_duration(data, ext)
+    if duration is None or duration <= 0:
+        return [0.0]
+    step = max(duration / max(max_frames, 1), 0.5)
+    return [min(i * step, max(duration - 0.1, 0)) for i in range(max_frames)]
+
+
+def _extract_frame(ffmpeg: str, inp: Path, out: Path, ts: float) -> bytes | None:
+    """抽取单个时间点的 JPEG 帧；失败、超时或帧过小返回 None。"""
+    try:
+        proc = subprocess.run(
+            [
+                ffmpeg,
+                "-y",
+                "-ss",
+                str(ts),
+                "-i",
+                str(inp),
+                "-vframes",
+                "1",
+                "-q:v",
+                "2",
+                "-f",
+                "image2",
+                str(out),
+            ],
+            capture_output=True,
+            timeout=120,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    if proc.returncode != 0 or not out.is_file():
+        return None
+    jpeg = out.read_bytes()
+    return jpeg if len(jpeg) > 100 else None
+
+
 def _extract_key_frames(data: bytes, ext: str, *, max_frames: int) -> list[bytes]:
     """均匀抽取关键帧 JPEG 字节列表。"""
     ffmpeg = shutil.which("ffmpeg")
     if not ffmpeg or not data or max_frames < 1:
         return []
 
-    duration = _probe_duration(data, ext)
-    if duration is None or duration <= 0:
-        timestamps = [0.0]
-    else:
-        step = max(duration / max(max_frames, 1), 0.5)
-        timestamps = [min(i * step, max(duration - 0.1, 0)) for i in range(max_frames)]
-
     frames: list[bytes] = []
     with tempfile.TemporaryDirectory() as tmp:
         tmp_path = Path(tmp)
         inp = tmp_path / f"input{ext}"
         inp.write_bytes(data)
-        for ts in timestamps:
+        for ts in _frame_timestamps(data, ext, max_frames):
             out = tmp_path / f"frame_{int(ts * 1000)}.jpg"
-            try:
-                proc = subprocess.run(
-                    [
-                        ffmpeg,
-                        "-y",
-                        "-ss",
-                        str(ts),
-                        "-i",
-                        str(inp),
-                        "-vframes",
-                        "1",
-                        "-q:v",
-                        "2",
-                        "-f",
-                        "image2",
-                        str(out),
-                    ],
-                    capture_output=True,
-                    timeout=120,
-                    check=False,
-                )
-                if proc.returncode == 0 and out.is_file():
-                    jpeg = out.read_bytes()
-                    if len(jpeg) > 100:
-                        frames.append(jpeg)
-            except (OSError, subprocess.TimeoutExpired):
-                continue
+            jpeg = _extract_frame(ffmpeg, inp, out, ts)
+            if jpeg is not None:
+                frames.append(jpeg)
     return frames
 
 
