@@ -12,6 +12,7 @@ from miles_ai.integrations.generative.request_prefs import (
 )
 from miles_ai.integrations.langchain.chat_models import OnDelta
 from miles_common.exceptions import BadRequestError
+from miles_core.logging import get_logger
 from miles_core.models.agent import Agent, AgentStatus, AgentType
 from miles_portal.tenant.a2a.services.peer_refs import list_agent_a2a_peer_refs
 from miles_portal.tenant.agents.schemas.agent import ChatRequest, ChatResponse
@@ -22,6 +23,8 @@ from miles_portal.tenant.compliance.services.compliance import ComplianceService
 from miles_portal.tenant.hooks.models import HookScope, HookTrigger
 from miles_portal.tenant.hooks.services.runner import HookRunner
 from miles_portal.tenant.models.services.usage import begin_chat_usage_accumulation, end_chat_usage_accumulation
+
+logger = get_logger(__name__)
 
 
 class AgentChatEntryMixin:
@@ -159,6 +162,15 @@ class AgentChatEntryMixin:
                 agent_id,
                 {**hook_payload, "error": str(exc)},
             )
+            # 失败审计必须自己落库：两个出口（``get_db`` 的 except 与 WS 侧
+            # ``_run_chat_turn`` 的 except）在异常时一律 rollback，会把刚 flush 的
+            # 调用记录与 ON_ERROR 日志一起撤销——于是 AgentChatCall 只会有 success
+            # 行，failed/blocked 永远查不到；出站合规拦截也就失去了留痕。
+            # commit 失败不能再掩盖原始异常，故只记日志后继续抛出 exc。
+            try:
+                await self.db.commit()
+            except Exception:
+                logger.exception("失败调用记录落库失败 agent_id=%s", agent_id)
             raise
         finally:
             clear_generative_request_prefs()

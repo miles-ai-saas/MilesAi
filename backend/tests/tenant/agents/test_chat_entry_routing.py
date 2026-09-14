@@ -89,6 +89,24 @@ class _FlowRepo:
         return self._version
 
 
+class _TxnDb:
+    """最小事务替身：只记录收尾调用，供断言「谁在什么时候提交」。
+
+    真实出口（``get_db`` 与 WS ``_run_chat_turn``）在异常时一律 rollback，
+    因此这里把 commit/rollback 分开计数，才能分辨「提交了」还是「等着被回滚」。
+    """
+
+    def __init__(self) -> None:
+        self.commits = 0
+        self.rollbacks = 0
+
+    async def commit(self) -> None:
+        self.commits += 1
+
+    async def rollback(self) -> None:
+        self.rollbacks += 1
+
+
 class _Entry(SimpleNamespace):
     """最小入口替身：承载被绑定的真实方法，外部依赖走 fake。"""
 
@@ -125,7 +143,7 @@ def _agent(**overrides):
 
 
 def _entry(*, agent=None, flow_repo=None, rag_response=None):
-    entry = _Entry(agent=agent or _agent(), db=object(), ctx=SimpleNamespace(tenant_id=uuid4()))
+    entry = _Entry(agent=agent or _agent(), db=_TxnDb(), ctx=SimpleNamespace(tenant_id=uuid4()))
     entry.augmented = 0
     entry.rag_args = None
     entry.flow_inputs = None
@@ -388,6 +406,52 @@ async def test_exception_records_failure_runs_on_error_hook_and_reraises(monkeyp
     on_error = [c for c in _Hooks.last.calls if c[0] is HookTrigger.ON_ERROR]
     assert len(on_error) == 1
     assert on_error[0][3]["error"] == "rag 崩了"
+
+
+async def test_failure_audit_is_committed_before_reraising(monkeypatch):
+    """回归：``record_failure`` 只 flush 不 commit，而两个出口在异常时都 rollback
+    （``get_db`` 的 except 与 WS ``_run_chat_turn`` 的 except），于是失败与合规拦截的
+    调用记录会被一起撤销——``AgentChatCall`` 里永远只有 success 行。失败审计必须
+    在抛出前自己落库。
+    """
+    entry = _entry()
+
+    async def boom(agent, body, kb_ids, top_k, agent_id, hooks, *, on_delta=None):  # noqa: ANN001
+        raise BadRequestError("包含敏感词")
+
+    entry.rag_chat = boom
+    with pytest.raises(BadRequestError, match="敏感词"):
+        await _bind(entry)(AGENT_ID, ChatRequest(query="q"))
+
+    assert _Recorder.last.failures  # 确实记了失败
+    assert entry.db.commits == 1  # 且必须提交，否则外层 rollback 会丢弃这条记录
+
+
+async def test_success_path_leaves_commit_to_the_caller(monkeypatch):
+    """成功路径不在 ``chat`` 内部提交：本轮落库仍由出口统一收尾成一个事务，
+    避免把「调用记录 + 会话轮次」拆成两次提交。"""
+    entry = _entry()
+    await _bind(entry)(AGENT_ID, ChatRequest(query="q"))
+
+    assert entry.db.commits == 0
+
+
+async def test_failure_audit_commit_error_does_not_mask_original_exception(monkeypatch):
+    """落库失败也不能换掉原始异常：调用方看到的原因必须是真实的业务失败。"""
+    entry = _entry()
+
+    class _BrokenDb(_TxnDb):
+        async def commit(self) -> None:
+            raise RuntimeError("连接已断")
+
+    entry.db = _BrokenDb()
+
+    async def boom(*args, **kwargs):  # noqa: ANN002, ANN003
+        raise BadRequestError("包含敏感词")
+
+    entry.rag_chat = boom
+    with pytest.raises(BadRequestError, match="敏感词"):
+        await _bind(entry)(AGENT_ID, ChatRequest(query="q"))
 
 
 async def test_generative_prefs_are_cleared_even_on_failure(monkeypatch):
