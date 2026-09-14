@@ -195,13 +195,17 @@ class _LegacySseSession:
         self.timeout = timeout
         self.post_url: str | None = None
         self.endpoint_ready = asyncio.Event()
+        # 读循环自身失败的原因（如 endpoint 不同源被拒）。读循环不抛异常——它还要唤醒
+        # 等待中的 RPC——故单独留痕，供主流程在 endpoint 就绪前快速失败。
+        self.failure: BaseException | None = None
         # 按 JSON-RPC id 等待 SSE message 事件中的对应响应
         self.pending: dict[int, asyncio.Future[dict]] = {}
 
     async def read_events(self, client: httpx.AsyncClient) -> None:
         """长连接读循环：解析 endpoint 与 message 事件。
 
-        读流失败时唤醒所有等待中的 RPC，避免调用方永久挂起。
+        读流失败时唤醒所有等待中的 RPC，避免调用方永久挂起；同时把失败记入
+        ``failure``——endpoint 事件本身被拒时没有任何 pending RPC 可唤醒。
         """
         try:
             async with aconnect_sse(client, "GET", self.sse_url, headers=self.get_headers) as event_source:
@@ -212,6 +216,7 @@ class _LegacySseSession:
                     elif sse.event in (None, "message"):
                         self._handle_message(sse)
         except Exception as e:
+            self.failure = e
             for fut in self.pending.values():
                 if not fut.done():
                     fut.set_exception(e)
@@ -246,17 +251,52 @@ class _LegacySseSession:
         """向 message URL POST 一条请求，并在 SSE 流上等待同 id 的响应。"""
         rpc_id = _next_rpc_id()
         self.pending[rpc_id] = asyncio.get_running_loop().create_future()
-        payload = {"jsonrpc": "2.0", "id": rpc_id, "method": rpc_method, "params": rpc_params}
-        resp = await client.post(post_url, json=payload, headers=self.post_headers)
-        if resp.status_code >= 400:
-            snippet = (resp.text or "")[:200]
-            raise BadRequestError(f"MCP POST {resp.status_code}: {snippet}")
         try:
-            return await asyncio.wait_for(self.pending[rpc_id], timeout=self.timeout)
-        except TimeoutError as e:
-            raise BadRequestError(f"MCP SSE 等待「{rpc_method}」响应超时（{self.timeout}s）") from e
+            payload = {"jsonrpc": "2.0", "id": rpc_id, "method": rpc_method, "params": rpc_params}
+            resp = await client.post(post_url, json=payload, headers=self.post_headers)
+            if resp.status_code >= 400:
+                snippet = (resp.text or "")[:200]
+                raise BadRequestError(f"MCP POST {resp.status_code}: {snippet}")
+            try:
+                return await asyncio.wait_for(self.pending[rpc_id], timeout=self.timeout)
+            except TimeoutError as e:
+                raise BadRequestError(f"MCP SSE 等待「{rpc_method}」响应超时（{self.timeout}s）") from e
         finally:
+            # 必须在 POST 之前就登记、在 finally 里统一回收：POST 抛错时若漏 pop，
+            # 这个 Future 会一直挂在 pending 上（读循环收尾时还会给它 set_exception）。
             self.pending.pop(rpc_id, None)
+
+
+async def _wait_endpoint_ready(
+    session: _LegacySseSession,
+    reader: asyncio.Task[None],
+    connect_timeout: float,
+) -> None:
+    """等 endpoint 事件就绪；读流先一步结束则直接抛出真实原因。
+
+    只等 ``endpoint_ready`` 是不够的：读循环把异常记进 ``session.failure`` 而不外抛
+    （它还要唤醒等待中的 RPC），于是 endpoint 被同源校验拒掉这类失败会退化成
+    「等待 endpoint 超时」，既看不出原因，还要白等满 ``connect_timeout``。
+    """
+    ready = asyncio.create_task(session.endpoint_ready.wait())
+    try:
+        done, _ = await asyncio.wait(
+            {reader, ready},
+            timeout=connect_timeout,
+            return_when=asyncio.FIRST_COMPLETED,
+        )
+    finally:
+        ready.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await ready
+
+    if ready in done:
+        return
+    if reader in done:
+        raise BadRequestError(f"MCP SSE 读流在 endpoint 就绪前结束: {session.failure or '无更多事件'}")
+    raise BadRequestError(
+        f"MCP SSE 未在 {connect_timeout}s 内收到 endpoint 事件；请确认 URL 为 SSE GET 入口（例如 /sse）",
+    )
 
 
 async def legacy_sse_json_rpc(
@@ -290,12 +330,7 @@ async def legacy_sse_json_rpc(
     try:
         async with httpx.AsyncClient(timeout=limits, follow_redirects=False) as client:
             reader = asyncio.create_task(session.read_events(client))
-            try:
-                await asyncio.wait_for(session.endpoint_ready.wait(), timeout=connect_timeout)
-            except TimeoutError as e:
-                raise BadRequestError(
-                    f"MCP SSE 未在 {connect_timeout}s 内收到 endpoint 事件；请确认 URL 为 SSE GET 入口（例如 /sse）",
-                ) from e
+            await _wait_endpoint_ready(session, reader, connect_timeout)
 
             post_url = session.post_url
             if not post_url:

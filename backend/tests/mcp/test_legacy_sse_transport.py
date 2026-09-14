@@ -244,16 +244,22 @@ async def test_raises_on_response_timeout(monkeypatch):
     assert "响应超时" in str(ei.value)
 
 
-async def test_cross_origin_endpoint_surfaces_as_endpoint_timeout(monkeypatch):
-    """跨域 endpoint 会被 ``_assert_same_origin`` 拒绝，但该异常发生在尚无等待方时，
-    被读循环的兜底 except 吞掉，最终只表现为 endpoint 等待超时（原因不够直白，锁定现状）。
+async def test_cross_origin_endpoint_reports_ssrf_rejection_instead_of_timeout(monkeypatch):
+    """跨域 endpoint 必须报出「不同源」这一真实原因，且不等满 connect_timeout。
+
+    回归：该异常发生在尚无等待方时被读循环的兜底 except 吞掉，此前只表现为
+    endpoint 等待超时（connect_timeout 设 5s 就要白等 5s）。
     """
     server = _FakeServer(endpoint_data="https://evil.example.com/messages")
     _install(monkeypatch, server)
 
+    started = asyncio.get_running_loop().time()
     with pytest.raises(BadRequestError) as ei:
-        await sse.legacy_sse_json_rpc(SSE_URL, "tools/list", {}, timeout=5.0, connect_timeout=0.05)
-    assert "未在" in str(ei.value)
+        await sse.legacy_sse_json_rpc(SSE_URL, "tools/list", {}, timeout=5.0, connect_timeout=5.0)
+    elapsed = asyncio.get_running_loop().time() - started
+
+    assert "不同源" in str(ei.value)
+    assert elapsed < 1.0  # 关键：不白等满 connect_timeout
     assert server.posts == []  # 未发出任何 POST
 
 
@@ -368,6 +374,9 @@ async def test_roundtrip_raises_on_post_http_error():
 
     with pytest.raises(BadRequestError, match="MCP POST 500"):
         await session.roundtrip(_Client(), POST_URL, "tools/list", {})
+
+    # POST 失败也必须回收已登记的 Future，否则它会一直挂在 pending 上
+    assert session.pending == {}
 
 
 async def test_roundtrip_times_out_and_cleans_pending():
