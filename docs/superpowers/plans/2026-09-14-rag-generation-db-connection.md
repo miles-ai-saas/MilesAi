@@ -1084,7 +1084,7 @@ from miles_ai.rag.generate import build_rag_prompt, generate_rag_answer
     answer = await generate_rag_answer(
         model=model,
         prompt=prompt,
-        media=media_refs,
+        media=media_refs or None,
         media_reader=_cfg_media_reader(config),
         temperature=float(state.get("temperature", 0.7)),
         on_delta=_cfg_on_delta(config),
@@ -1123,7 +1123,7 @@ from miles_ai.rag.generate import build_rag_prompt, generate_rag_answer
     answer = await generate_rag_answer(
         model=model,
         prompt=prompt,
-        media=media_refs,
+        media=media_refs or None,
         media_reader=_cfg_media_reader(config),
         temperature=float(state.get("temperature", 0.7)),
         on_delta=_cfg_on_delta(config),
@@ -1983,5 +1983,7 @@ EOF
 3. Task 1 改为「只诊断」：探针脚本放 `/tmp`（一次性脚本不进仓库），按结论二选一（修复 or 固化），**不提交**断言破损行为的测试。
 
 **执行中 errata（控制端，随 Task 3 记录）**：检索 hit 的正文键是 `content_preview`（`format_hits_context` 用 `h.get("content_preview", "")`），计划多处夹具原写 `{"content": ...}`——不会抛错但会让上下文为空、依赖正文的断言静默失效。已在 Task 1 探针、Task 3/4/5 夹具处统一改为 `content_preview`（Task 3 的实现测试已由实现者发现并修正）。
+
+**执行中 errata（控制端，随 Task 4 记录）**：Task 4 节点体原写 `media=media_refs`，但同一 Task 的测试断言 `media is None`（`media_refs_from_items(None)` 返回 `[]`）——计划自相矛盾。实现采用 `media=media_refs or None`：对 `generate_rag_answer`（内部 `if media:`）行为完全等价，且不改弱任何断言。计划文本已同步。
 
 **类型一致性**：`generate_rag_answer` 的签名在 Task 3 定义（`model/prompt/media/media_reader/temperature/on_delta/usage_sink`），Task 4、5、6、7 的调用与测试全部使用同名同形参；`build_rag_prompt(*, system_prompt, query, hits)` 在 Task 3 定义，Task 4/5/6 一致；`ChatUsageSink(*, tenant_id, model, source_id)` 在 Task 2 定义，3 处构造点一致。
