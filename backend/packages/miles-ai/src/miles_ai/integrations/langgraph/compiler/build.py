@@ -31,6 +31,101 @@ from miles_ai.integrations.langgraph.graph_analysis import (
 )
 
 
+def _run_context_from_state(state: dict[str, Any], node_id: str) -> RunContext:
+    """画布状态 → 节点执行上下文；``executing_node_id`` 为当前节点。
+
+    状态里携带的 L1 回调（``resolve_model`` / ``usage_sink_factory`` / 各
+    ``resolve_*`` / ``submit_*``）逐个透传，漏一个该能力就在画布内静默失效。
+    """
+    return replace(
+        RunContext(
+            tenant_id=state["tenant_id"],
+            inputs=state.get("inputs") or {},
+            kb_ids=state.get("kb_ids") or [],
+            model_config_id=state.get("model_config_id"),
+            system_prompt=state.get("system_prompt"),
+            user_id=state.get("user_id"),
+            permissions=frozenset(state.get("permissions") or []),
+            is_superuser=bool(state.get("is_superuser")),
+            agent_id=state.get("agent_id"),
+            agent_config=dict(state.get("agent_config") or {}),
+            media=list(state.get("media") or []),
+            current_flow_id=state.get("current_flow_id"),
+            subflow_depth=int(state.get("subflow_depth") or 0),
+        ),
+        executing_node_id=node_id,
+        resolve_model=state.get("resolve_model"),
+        usage_sink_factory=state.get("usage_sink_factory"),
+        kb_retrieval=state.get("kb_retrieval"),
+        resolve_generative_image=state.get("resolve_generative_image"),
+        resolve_generative_video=state.get("resolve_generative_video"),
+        submit_generative_image=state.get("submit_generative_image"),
+        submit_generative_video=state.get("submit_generative_video"),
+        invoke_platform_tool=state.get("invoke_platform_tool"),
+        resolve_prompt_template=state.get("resolve_prompt_template"),
+        load_scan_words=state.get("load_scan_words"),
+        load_subflow_graph=state.get("load_subflow_graph"),
+        media_reader=state.get("media_reader"),
+        generate_image_sync=state.get("generate_image_sync"),
+        generate_video_sync=state.get("generate_video_sync"),
+    )
+
+
+def _make_node_runner(node_id: str, node_map: dict[str, Any], incoming: dict[str, Any]):
+    """构造单个画布节点的 LangGraph 执行函数（闭包固定 node_id 与图结构）。"""
+
+    async def run_node(state: dict[str, Any], config: RunnableConfig) -> dict[str, Any]:
+        """LangGraph 节点函数：聚合入边 → execute_node → 写入 outputs/steps。"""
+        node = node_map[node_id]
+        node_data = node.get("data") or {}
+        if not isinstance(node_data, dict):
+            node_data = {}
+        ntype = resolve_node_type(node)
+        ctx = _run_context_from_state(state, node_id)
+        node_inputs = gather_node_inputs(node_id, incoming, state.get("outputs") or {})
+        result = await execute_node(ntype, node_data, node_inputs, ctx)
+        return {
+            "outputs": {node_id: result},
+            "steps": [
+                build_flow_node_step(
+                    node_id=node_id,
+                    node_type=ntype,
+                    result=result,
+                )
+            ],
+        }
+
+    return run_node
+
+
+def _add_conditional_edges(g, cond_id: str, node_map: dict[str, Any], outgoing: dict[str, Any]) -> None:
+    """条件节点的出边以分支表注册，而不是直连边。
+
+    两类句柄各自归一化：RelevanceGrade 取 good/poor/none，其余（Condition）取
+    true/false。未知句柄会被丢弃，因此分支表就是「实际可走的分支」。
+
+    注：Condition 节点当前过不了 LangGraph 编译校验（``validate_graph_for_compile``
+    报「暂不支持」），true/false 这条暂时走不到；保留以对齐两类条件节点的接线。
+    """
+    cond_type = resolve_node_type(node_map.get(cond_id, {}))
+    routes: dict[str, str] = {}
+    if cond_type == CanvasNodeType.RELEVANCE_GRADE:
+        for tgt, sh, _th in outgoing.get(cond_id, []):
+            branch = normalize_grade_handle(sh)
+            if branch in GRADE_BRANCH_HANDLES:
+                routes[branch] = tgt
+        if routes:
+            g.add_conditional_edges(cond_id, make_relevance_grade_router(cond_id), routes)
+        return
+
+    for tgt, sh, _th in outgoing.get(cond_id, []):
+        branch = normalize_branch_handle(sh)
+        if branch in ("true", "false"):
+            routes[branch] = tgt
+    if len(routes) >= 2:
+        g.add_conditional_edges(cond_id, make_condition_router(cond_id), routes)
+
+
 def build_canvas_graph(graph_json: dict[str, Any]):
     """
     将 ``graph_json`` 编译为未 compile 的 ``StateGraph``。
@@ -50,101 +145,22 @@ def build_canvas_graph(graph_json: dict[str, Any]):
     outgoing = build_outgoing(fg)
     condition_ids = {nid for nid in report.conditional_nodes}
 
-    def _make_node_runner(node_id: str):
-        """闭包：单画布节点 → ``execute_node``，写入 ``outputs[node_id]`` 与 ``steps``。"""
-
-        async def run_node(state: dict[str, Any], config: RunnableConfig) -> dict[str, Any]:
-            """LangGraph 节点函数：聚合入边 → execute_node → 写入 outputs/steps。"""
-            node = node_map[node_id]
-            node_data = node.get("data") or {}
-            if not isinstance(node_data, dict):
-                node_data = {}
-            ntype = resolve_node_type(node)
-            ctx = replace(
-                RunContext(
-                    tenant_id=state["tenant_id"],
-                    inputs=state.get("inputs") or {},
-                    kb_ids=state.get("kb_ids") or [],
-                    model_config_id=state.get("model_config_id"),
-                    system_prompt=state.get("system_prompt"),
-                    user_id=state.get("user_id"),
-                    permissions=frozenset(state.get("permissions") or []),
-                    is_superuser=bool(state.get("is_superuser")),
-                    agent_id=state.get("agent_id"),
-                    agent_config=dict(state.get("agent_config") or {}),
-                    media=list(state.get("media") or []),
-                    current_flow_id=state.get("current_flow_id"),
-                    subflow_depth=int(state.get("subflow_depth") or 0),
-                ),
-                executing_node_id=node_id,
-                resolve_model=state.get("resolve_model"),
-                usage_sink_factory=state.get("usage_sink_factory"),
-                kb_retrieval=state.get("kb_retrieval"),
-                resolve_generative_image=state.get("resolve_generative_image"),
-                resolve_generative_video=state.get("resolve_generative_video"),
-                submit_generative_image=state.get("submit_generative_image"),
-                submit_generative_video=state.get("submit_generative_video"),
-                invoke_platform_tool=state.get("invoke_platform_tool"),
-                resolve_prompt_template=state.get("resolve_prompt_template"),
-                load_scan_words=state.get("load_scan_words"),
-                load_subflow_graph=state.get("load_subflow_graph"),
-                media_reader=state.get("media_reader"),
-                generate_image_sync=state.get("generate_image_sync"),
-                generate_video_sync=state.get("generate_video_sync"),
-            )
-            node_inputs = gather_node_inputs(node_id, incoming, state.get("outputs") or {})
-            result = await execute_node(ntype, node_data, node_inputs, ctx)
-            return {
-                "outputs": {node_id: result},
-                "steps": [
-                    build_flow_node_step(
-                        node_id=node_id,
-                        node_type=ntype,
-                        result=result,
-                    )
-                ],
-            }
-
-        return run_node
-
     g = StateGraph(CanvasGraphState)
 
     for nid in node_map:
-        g.add_node(nid, _make_node_runner(nid))
+        g.add_node(nid, _make_node_runner(nid, node_map, incoming))
 
     for start_id in find_start_nodes(fg):
         g.add_edge(START, start_id)
 
     for edge in fg.edges:
-        src, tgt, sh, _th = edge.get("source"), edge.get("target"), edge.get("sourceHandle"), edge.get("targetHandle")
-        if not src or not tgt:
-            continue
-        if src in condition_ids:
+        src, tgt = edge.get("source"), edge.get("target")
+        if not src or not tgt or src in condition_ids:
             continue
         g.add_edge(src, tgt)
 
     for cond_id in condition_ids:
-        cond_node = node_map.get(cond_id, {})
-        cond_type = resolve_node_type(cond_node)
-        routes: dict[str, str] = {}
-        if cond_type == CanvasNodeType.RELEVANCE_GRADE:
-            for tgt, sh, _th in outgoing.get(cond_id, []):
-                branch = normalize_grade_handle(sh)
-                if branch in GRADE_BRANCH_HANDLES:
-                    routes[branch] = tgt
-            if routes:
-                g.add_conditional_edges(
-                    cond_id,
-                    make_relevance_grade_router(cond_id),
-                    routes,
-                )
-        else:
-            for tgt, sh, _th in outgoing.get(cond_id, []):
-                branch = normalize_branch_handle(sh)
-                if branch in ("true", "false"):
-                    routes[branch] = tgt
-            if len(routes) >= 2:
-                g.add_conditional_edges(cond_id, make_condition_router(cond_id), routes)
+        _add_conditional_edges(g, cond_id, node_map, outgoing)
 
     end_ids = find_end_nodes(fg, resolve_node_type)
     for end_id in end_ids:
