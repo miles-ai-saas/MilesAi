@@ -16,7 +16,6 @@ from miles_ai.integrations.langgraph.compiler.report import resolve_node_type
 from miles_ai.integrations.langgraph.compiler.state import (
     CanvasGraphState,
     gather_node_inputs,
-    make_condition_router,
     make_relevance_grade_router,
 )
 from miles_ai.integrations.langgraph.compiler.validate import validate_graph_for_compile
@@ -26,7 +25,6 @@ from miles_ai.integrations.langgraph.graph_analysis import (
     build_outgoing,
     find_end_nodes,
     find_start_nodes,
-    normalize_branch_handle,
     normalize_grade_handle,
 )
 
@@ -101,29 +99,25 @@ def _make_node_runner(node_id: str, node_map: dict[str, Any], incoming: dict[str
 def _add_conditional_edges(g, cond_id: str, node_map: dict[str, Any], outgoing: dict[str, Any]) -> None:
     """条件节点的出边以分支表注册，而不是直连边。
 
-    两类句柄各自归一化：RelevanceGrade 取 good/poor/none，其余（Condition）取
-    true/false。未知句柄会被丢弃，因此分支表就是「实际可走的分支」。
+    RelevanceGrade 的句柄归一化为 good/poor/none，未知句柄被丢弃，因此分支表就是
+    「实际可走的分支」。
 
-    注：Condition 节点当前过不了 LangGraph 编译校验（``validate_graph_for_compile``
-    报「暂不支持」），true/false 这条暂时走不到；保留以对齐两类条件节点的接线。
+    这里只处理 RelevanceGrade：Condition 节点虽有 true/false 分支，但
+    ``validate_graph_for_compile`` 判定其「暂不支持 LangGraph 编译」，构造
+    ``StateGraph`` 之前就已抛错，故无需在此处理（原先的 true/false 接线与
+    ``make_condition_router`` 因此不可达，已删）。若将来放开 Condition 编译，
+    需在此补 ``normalize_branch_handle`` 的分支表与对应 router。
     """
     cond_type = resolve_node_type(node_map.get(cond_id, {}))
-    routes: dict[str, str] = {}
-    if cond_type == CanvasNodeType.RELEVANCE_GRADE:
-        for tgt, sh, _th in outgoing.get(cond_id, []):
-            branch = normalize_grade_handle(sh)
-            if branch in GRADE_BRANCH_HANDLES:
-                routes[branch] = tgt
-        if routes:
-            g.add_conditional_edges(cond_id, make_relevance_grade_router(cond_id), routes)
+    if cond_type != CanvasNodeType.RELEVANCE_GRADE:
         return
-
+    routes: dict[str, str] = {}
     for tgt, sh, _th in outgoing.get(cond_id, []):
-        branch = normalize_branch_handle(sh)
-        if branch in ("true", "false"):
+        branch = normalize_grade_handle(sh)
+        if branch in GRADE_BRANCH_HANDLES:
             routes[branch] = tgt
-    if len(routes) >= 2:
-        g.add_conditional_edges(cond_id, make_condition_router(cond_id), routes)
+    if routes:
+        g.add_conditional_edges(cond_id, make_relevance_grade_router(cond_id), routes)
 
 
 def build_canvas_graph(graph_json: dict[str, Any]):
@@ -166,8 +160,5 @@ def build_canvas_graph(graph_json: dict[str, Any]):
     for end_id in end_ids:
         if end_id not in condition_ids:
             g.add_edge(end_id, END)
-
-    if not end_ids:
-        g.add_edge(report.node_order[-1], END)
 
     return g

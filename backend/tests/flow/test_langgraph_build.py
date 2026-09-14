@@ -216,3 +216,13 @@ def test_uncompilable_graph_raises_with_joined_errors():
 
     assert "[x]" in str(excinfo.value)
     assert "暂不支持" in str(excinfo.value)
+
+
+def test_empty_graph_never_reaches_end_wiring():
+    """空图由校验拦下，故 build 里无需「没有汇点就兜到最后一个节点」的兜底。
+
+    该兜底已删：DAG 必有汇点，而空图 / 全是出边的图都过不了 ``validate_graph_for_compile``
+    （「流程图为空」/ 环检测），走到 ``find_end_nodes`` 时 ``end_ids`` 必然非空。
+    """
+    with pytest.raises(ValueError, match="流程图为空"):
+        build_canvas_graph({"nodes": [], "edges": []})

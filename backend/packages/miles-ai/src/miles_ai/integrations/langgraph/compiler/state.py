@@ -7,7 +7,7 @@ from miles_ai.flow_runtime.constants import TEXT_OUTPUT_NODE_TYPES
 from miles_ai.flow_runtime.types import FlowGraph
 from miles_ai.integrations.langgraph.compiler.report import resolve_node_type
 from miles_ai.integrations.langgraph.constants import RELEVANCE_NONE
-from miles_ai.integrations.langgraph.graph_analysis import GRADE_BRANCH_HANDLES, normalize_branch_handle
+from miles_ai.integrations.langgraph.graph_analysis import GRADE_BRANCH_HANDLES
 
 
 def merge_outputs(left: dict[str, Any], right: dict[str, Any]) -> dict[str, Any]:
@@ -119,23 +119,6 @@ def resolve_final_output(fg: FlowGraph, outputs: dict[str, Any]) -> Any:
             return last["output"]
         return last
     return None
-
-
-def make_condition_router(condition_node_id: str):
-    """
-    条件节点路由：读取 ``ConditionBranch`` 输出的 ``branch`` 字段（``true``/``false``）。
-
-    画布须从该节点拉出两条边，``sourceHandle`` 分别为 ``true`` 与 ``false``，例如：
-    ``search_1`` → ``cond_1`` → (true) ``llm_ok`` / (false) ``fallback_prompt``。
-    """
-
-    def router(state: dict[str, Any]) -> str:
-        raw = (state.get("outputs") or {}).get(condition_node_id, {})
-        if isinstance(raw, dict):
-            return normalize_branch_handle(str(raw.get("branch", "false")))
-        return "false"
-
-    return router
 
 
 def make_relevance_grade_router(grade_node_id: str):
