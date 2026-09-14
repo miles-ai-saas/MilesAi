@@ -87,13 +87,16 @@ async def generate_volcengine_image(
             if reference_image_data_url:
                 body["image"] = reference_image_data_url
 
+            # 只记可安全观察的请求特征：Authorization 是凭据，body 里的 image 是
+            # 整段 base64 参考图（可达数 MB），二者都不得进日志。
             _log.info(
-                "豆包生图请求（%d/%d）→ POST %s\nheaders: %s\nbody: %s",
+                "豆包生图请求（%d/%d）→ POST %s model=%s size=%s has_reference=%s",
                 call_idx + 1,
                 n,
                 url,
-                {**req_headers, "Authorization": f"Bearer {api_key}"},
-                body,
+                model_name,
+                body["size"],
+                bool(reference_image_data_url),
             )
             resp = await client.post(url, headers=req_headers, json=body)
             if resp.status_code >= 400:

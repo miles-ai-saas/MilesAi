@@ -64,7 +64,8 @@ async def generate_dashscope_t2i(
     should_cancel = progress.is_cancelled if progress and hasattr(progress, "is_cancelled") else None
 
     async with httpx.AsyncClient(timeout=HTTP_DEFAULT_TIMEOUT_SEC) as client:
-        _log.info("万相生图请求 → POST %s\nheaders: %s\nbody: %s", url, {**headers, "Authorization": f"Bearer {api_key}"}, body)
+        # 只记可安全观察的请求特征：Authorization 是凭据，body 里可能带整段 base64 垫图。
+        _log.info("万相生图请求 → POST %s model=%s", url, wan_model)
         submit = await client.post(url, headers=headers, json=body)
         if submit.status_code >= 400:
             _log.warning("万相生图失败 (%s): %s", submit.status_code, submit.text[:1000])
