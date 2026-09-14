@@ -594,38 +594,17 @@ async def test_chat_usage_sink_accumulates_and_commits(monkeypatch):
     assert short.commits == 1
 ```
 
-在同文件顶部复用 Task 2 Step 1 里的 `_ShortSession` 与 `_cm`（**复制**这两个小类到本文件，不要跨测试文件 import，保持测试文件自持）：
+Step 1 里为 `test_chat_usage_sink_session.py` 写的 `_ShortSession` 与 `_cm` 两个替身
+**不再逐文件复制**，而是收敛到共享模块 `tests/tenant/models/_usage_doubles.py`；两个测试文件
+都以 `from tests.tenant.models._usage_doubles import _cm, _ShortSession` 引入。
 
-```python
-class _ShortSession:
-    """替身：记录 add 的行并记录 commit。"""
-
-    def __init__(self) -> None:
-        self.rows: list[object] = []
-        self.commits = 0
-
-    def add(self, row: object) -> None:
-        self.rows.append(row)
-
-    async def flush(self) -> None:
-        return None
-
-    async def commit(self) -> None:
-        self.commits += 1
-
-
-class _cm:
-    """最小 async context manager（AsyncSessionLocal 的替身）。"""
-
-    def __init__(self, session: object) -> None:
-        self._session = session
-
-    async def __aenter__(self) -> object:
-        return self._session
-
-    async def __aexit__(self, *exc: object) -> bool:
-        return False
-```
+> **2026-09-14 人工裁决**：本节原先要求「复制这两个小类到本文件，不要跨测试文件 import，
+> 保持测试文件自持」，现予撤销——逐字复制等于维护两份必须同步演进的替身。共享模块沿用仓库
+> 既有先例（`from tests.paths import ...`；`tests/` 下无 `__init__.py`，靠命名空间包解析）。
+> `_usage_doubles.py` 不匹配 `test_*.py`，pytest 不会把它当测试模块收集；文件名以下划线开头
+> 且落在 `models/` 目录内，不会与 `sys.path` 上其他模块撞名。
+> 另按 review 要求给 `_cm` 增加 `enters` 计数（`__aenter__` 自增），供
+> `test_record_zero_usage_does_not_open_session` 断言「零/负用量连会话都不开」。
 
 同时删掉不再使用的 `db_session` fixture（若 `ruff` 报未使用）。
 

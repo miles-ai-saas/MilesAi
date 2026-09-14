@@ -12,36 +12,7 @@ from miles_portal.tenant.models.services.usage import (
     end_chat_usage_accumulation,
     get_chat_usage_totals,
 )
-
-
-class _ShortSession:
-    """替身：记录 add 的行并记录 commit。"""
-
-    def __init__(self) -> None:
-        self.rows: list[object] = []
-        self.commits = 0
-
-    def add(self, row: object) -> None:
-        self.rows.append(row)
-
-    async def flush(self) -> None:
-        return None
-
-    async def commit(self) -> None:
-        self.commits += 1
-
-
-class _cm:
-    """最小 async context manager（AsyncSessionLocal 的替身）。"""
-
-    def __init__(self, session: object) -> None:
-        self._session = session
-
-    async def __aenter__(self) -> object:
-        return self._session
-
-    async def __aexit__(self, *exc: object) -> bool:
-        return False
+from tests.tenant.models._usage_doubles import _cm, _ShortSession
 
 
 def test_chat_usage_accumulation():

@@ -1,7 +1,9 @@
-"""ChatUsageSink 不得借用调用方会话。
+"""ChatUsageSink 自开短会话写入并提交。
 
-生成阶段要释放请求会话连接，前提是用量写入不再挂在调用方事务上。这里锁定两点：
-构造签名不含 db；record 自开短会话并提交，且完全不触碰调用方会话。
+生成阶段要释放请求会话连接，前提是用量写入不再挂在调用方事务上。**结构不变量**
+（构造签名不含 ``db``，因而不可能持有调用方会话）由
+``test_chat_usage_sink_has_no_db_parameter`` 锁定；本文件其余用例只做行为验证：
+``record`` 自开短会话、写入并提交一行 ``ModelUsageLog``，字段取自 sink 的构造参数。
 """
 
 import inspect
@@ -12,27 +14,11 @@ import pytest
 from miles_core.models.model import ModelConfig, ModelUsageLog
 from miles_portal.tenant.models.services import usage as usage_mod
 from miles_portal.tenant.models.services.usage import ChatUsageSink
+from tests.tenant.models._usage_doubles import _cm, _ShortSession
 
 
 def _model() -> ModelConfig:
     return ModelConfig(id=uuid4(), name="m", provider="openai", model_name="x")
-
-
-class _ShortSession:
-    """替身：记录 add 的行，并记录是否 commit。"""
-
-    def __init__(self) -> None:
-        self.rows: list[object] = []
-        self.commits = 0
-
-    def add(self, row: object) -> None:
-        self.rows.append(row)
-
-    async def flush(self) -> None:
-        return None
-
-    async def commit(self) -> None:
-        self.commits += 1
 
 
 def test_chat_usage_sink_has_no_db_parameter():
@@ -45,19 +31,6 @@ async def test_record_uses_its_own_session_and_commits(monkeypatch):
     short = _ShortSession()
     monkeypatch.setattr(usage_mod, "AsyncSessionLocal", lambda: _cm(short))
 
-    class _Caller:
-        """调用方会话替身：被碰一下就记账。"""
-
-        def __init__(self) -> None:
-            self.touched = 0
-
-        def add(self, row: object) -> None:
-            self.touched += 1
-
-        async def flush(self) -> None:
-            self.touched += 1
-
-    caller = _Caller()
     model = _model()
     source_id = uuid4()
 
@@ -71,17 +44,22 @@ async def test_record_uses_its_own_session_and_commits(monkeypatch):
     assert row.source == "chat"
     assert row.source_id == source_id
     assert short.commits == 1
-    assert caller.touched == 0, "不得触碰调用方会话"
 
 
-class _cm:
-    """最小 async context manager（AsyncSessionLocal 的替身）。"""
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("prompt_tokens", "completion_tokens"),
+    [(0, 0), (-1, -1), (0, -5)],
+)
+async def test_record_zero_usage_does_not_open_session(monkeypatch, prompt_tokens, completion_tokens):
+    """零/负用量直接返回：连会话都不开，这正是「生成期间不占连接」的最小保证。"""
+    short = _ShortSession()
+    cm = _cm(short)
+    monkeypatch.setattr(usage_mod, "AsyncSessionLocal", lambda: cm)
 
-    def __init__(self, session: object) -> None:
-        self._session = session
+    sink = ChatUsageSink(tenant_id=uuid4(), model=_model(), source_id=uuid4())
+    await sink.record(prompt_tokens=prompt_tokens, completion_tokens=completion_tokens)
 
-    async def __aenter__(self) -> object:
-        return self._session
-
-    async def __aexit__(self, *exc: object) -> bool:
-        return False
+    assert cm.enters == 0
+    assert short.rows == []
+    assert short.commits == 0
