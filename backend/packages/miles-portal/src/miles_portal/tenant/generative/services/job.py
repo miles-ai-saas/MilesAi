@@ -52,6 +52,12 @@ _RETRYABLE = frozenset(
 )
 
 
+def _sse_frame(job: GenerativeJob) -> str:
+    """把任务快照序列化为一条 SSE 数据帧（中文不转义，前端直接可读）。"""
+    payload = GenerativeJobOut.model_validate(job).model_dump(mode="json")
+    return f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
+
+
 class GenerativeJobService(BaseService):
     """生成任务应用服务：提交、查询、取消、重试与 SSE 进度推送。"""
 
@@ -327,15 +333,18 @@ class GenerativeJobService(BaseService):
         record_map = await self._celery_record_ids_for_jobs([job.id])
         return self._job_out(job, celery_task_record_id=record_map.get(job.id))
 
+    async def _reload(self, job_id: UUID) -> GenerativeJob:
+        """丢弃会话缓存后按租户重取任务：SSE 每一帧都必须是库中最新状态。"""
+        self.db.expire_all()
+        return await get_generative_job_for_tenant(self.db, self.ctx, job_id)
+
     async def stream_job_events(self, job_id: UUID) -> AsyncIterator[str]:
         """SSE：通过 Redis Pub/Sub 推送任务状态/进度，终态后结束。Redis 不可用时自动回退 DB 轮询。"""
         import time
 
         # 先推送当前状态
-        self.db.expire_all()
-        job = await get_generative_job_for_tenant(self.db, self.ctx, job_id)
-        payload = GenerativeJobOut.model_validate(job).model_dump(mode="json")
-        yield f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
+        job = await self._reload(job_id)
+        yield _sse_frame(job)
         if job.status in _TERMINAL:
             return
 
@@ -356,29 +365,23 @@ class GenerativeJobService(BaseService):
             while time.monotonic() - start < 120:
                 msg = await pubsub.get_message(timeout=1.0)
                 if msg and msg["type"] == "message":
-                    self.db.expire_all()
-                    job = await get_generative_job_for_tenant(self.db, self.ctx, job_id)
-                    payload = GenerativeJobOut.model_validate(job).model_dump(mode="json")
-                    yield f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
+                    job = await self._reload(job_id)
+                    yield _sse_frame(job)
                     if job.status in _TERMINAL:
                         terminal_yielded = True
                         break
             # 兜底：Pub/Sub 超时或消息丢失时，做一次最终 DB 查询避免前端永久等待
             if not terminal_yielded:
-                self.db.expire_all()
-                job = await get_generative_job_for_tenant(self.db, self.ctx, job_id)
+                job = await self._reload(job_id)
                 if job.status in _TERMINAL:
-                    payload = GenerativeJobOut.model_validate(job).model_dump(mode="json")
-                    yield f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
+                    yield _sse_frame(job)
         except Exception:
             # Redis 不可用时回退 DB 轮询
             logger.debug("Redis Pub/Sub 不可用，回退 DB 轮询 (job_id=%s)", job_id)
             idle_ticks = 0
             while idle_ticks < 120:
-                self.db.expire_all()
-                job = await get_generative_job_for_tenant(self.db, self.ctx, job_id)
-                payload = GenerativeJobOut.model_validate(job).model_dump(mode="json")
-                yield f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
+                job = await self._reload(job_id)
+                yield _sse_frame(job)
                 if job.status in _TERMINAL:
                     break
                 idle_ticks += 1

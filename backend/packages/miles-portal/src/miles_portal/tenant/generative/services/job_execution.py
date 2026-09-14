@@ -45,6 +45,67 @@ async def _sync_chat_after_job(db, job: GenerativeJob) -> None:
         logger.exception("sync chat artifacts for generative job %s failed", job.id)
 
 
+async def _publish_state(db, job: GenerativeJob, job_id: UUID, *, percent: int | None) -> None:
+    """提交当前 job 状态并推送一次进度通知。
+
+    ``percent`` 必填：终态取消/失败本就不公布进度，须显式传 ``None``；若一律读回
+    ``job.progress_percent``，会把停留的旧值（如运行中的 5）当终态进度推给前端。
+    """
+    await db.commit()
+    await publish_generative_job_update(
+        job.tenant_id,
+        job_id,
+        status=job.status.value,
+        percent=percent,
+        message=job.progress_message,
+    )
+
+
+async def _publish_state_and_sync(db, job: GenerativeJob, job_id: UUID, *, percent: int | None) -> None:
+    """推送终态后，再把结果写回对话消息。"""
+    await _publish_state(db, job, job_id, percent=percent)
+    await _sync_chat_after_job(db, job)
+
+
+async def _worker_context(db, job: GenerativeJob) -> TenantContext:
+    """按 job 创建者合成 worker 侧最小 TenantContext；查不到用户时回退 worker 身份。"""
+    user = await db.get(User, job.created_by) if job.created_by else None
+    return TenantContext(
+        user_id=job.created_by,
+        tenant_id=job.tenant_id,
+        username=user.username if user else "worker",
+        is_superuser=False,
+        permissions=frozenset(["attachment:read", "attachment:upload"]),
+    )
+
+
+async def _finalize_cancelled(db, job_id: UUID) -> None:
+    """用户取消：把尚未标记取消的任务落到 CANCELLED 并推送。"""
+    job = await db.get(GenerativeJob, job_id)
+    if job and job.status != GenerativeJobStatus.CANCELLED:
+        job.status = GenerativeJobStatus.CANCELLED
+        job.progress_message = "已取消"
+        await _publish_state_and_sync(db, job, job_id, percent=None)
+
+
+async def _finalize_failed(db, job_id: UUID, exc: Exception) -> bool:
+    """生成失败：把任务落到 FAILED 并推送；返回异常是否应继续向上抛。
+
+    返回 ``False`` 的唯一情形是任务在生成期间已被用户取消——此时不覆盖 CANCELLED
+    终态、也不推失败通知，调用方应静默返回（保持原行为）。
+    """
+    job = await db.get(GenerativeJob, job_id)
+    if job is None:
+        return True
+    if job.status == GenerativeJobStatus.CANCELLED:
+        return False
+    job.status = GenerativeJobStatus.FAILED
+    job.progress_message = "失败"
+    job.error_message = str(exc)[:2000]
+    await _publish_state_and_sync(db, job, job_id, percent=None)
+    return True
+
+
 async def run_generative_video_job_async(job_id: UUID) -> None:
     """Worker 内执行生视频任务：置运行中 → 生成 → 落库并推送终态。"""
     # Celery fork 后父进程的全局 engine 不可复用；用 get_worker_session 创建全新的 engine
@@ -55,26 +116,12 @@ async def run_generative_video_job_async(job_id: UUID) -> None:
         if job.status == GenerativeJobStatus.CANCELLED:
             return
 
-        user = await db.get(User, job.created_by) if job.created_by else None
-        ctx = TenantContext(
-            user_id=job.created_by,
-            tenant_id=job.tenant_id,
-            username=user.username if user else "worker",
-            is_superuser=False,
-            permissions=frozenset(["attachment:read", "attachment:upload"]),
-        )
+        ctx = await _worker_context(db, job)
 
         job.status = GenerativeJobStatus.RUNNING
         job.progress_message = "生成中"
         job.progress_percent = 5
-        await db.commit()
-        await publish_generative_job_update(
-            job.tenant_id,
-            job_id,
-            status=job.status.value,
-            percent=job.progress_percent,
-            message=job.progress_message,
-        )
+        await _publish_state(db, job, job_id, percent=job.progress_percent)
 
         params = job.params or {}
         purpose = PURPOSE_FLOW_GENERATED if job.source == "flow_node" else PURPOSE_CHAT_GENERATED
@@ -125,46 +172,13 @@ async def run_generative_video_job_async(job_id: UUID) -> None:
                 "media_asset_id": str(result.media_asset_id) if result.media_asset_id else None,
             }
             job.error_message = None
-            await db.commit()
-            await publish_generative_job_update(
-                job.tenant_id,
-                job_id,
-                status=job.status.value,
-                percent=job.progress_percent,
-                message=job.progress_message,
-            )
-            await _sync_chat_after_job(db, job)
+            await _publish_state_and_sync(db, job, job_id, percent=job.progress_percent)
         except GenerativeJobCancelled:
-            job = await db.get(GenerativeJob, job_id)
-            if job and job.status != GenerativeJobStatus.CANCELLED:
-                job.status = GenerativeJobStatus.CANCELLED
-                job.progress_message = "已取消"
-                await db.commit()
-                await publish_generative_job_update(
-                    job.tenant_id,
-                    job_id,
-                    status=job.status.value,
-                    message=job.progress_message,
-                )
-                await _sync_chat_after_job(db, job)
+            await _finalize_cancelled(db, job_id)
         except Exception as exc:
             logger.exception("generative video job %s failed", job_id)
-            job = await db.get(GenerativeJob, job_id)
-            if job:
-                if job.status == GenerativeJobStatus.CANCELLED:
-                    return
-                job.status = GenerativeJobStatus.FAILED
-                job.progress_message = "失败"
-                job.error_message = str(exc)[:2000]
-                await db.commit()
-                await publish_generative_job_update(
-                    job.tenant_id,
-                    job_id,
-                    status=job.status.value,
-                    message=job.progress_message,
-                )
-                await _sync_chat_after_job(db, job)
-            raise
+            if await _finalize_failed(db, job_id, exc):
+                raise
 
 
 async def run_generative_image_job_async(job_id: UUID) -> None:
@@ -177,26 +191,12 @@ async def run_generative_image_job_async(job_id: UUID) -> None:
         if job.status == GenerativeJobStatus.CANCELLED:
             return
 
-        user = await db.get(User, job.created_by) if job.created_by else None
-        ctx = TenantContext(
-            user_id=job.created_by,
-            tenant_id=job.tenant_id,
-            username=user.username if user else "worker",
-            is_superuser=False,
-            permissions=frozenset(["attachment:read", "attachment:upload"]),
-        )
+        ctx = await _worker_context(db, job)
 
         job.status = GenerativeJobStatus.RUNNING
         job.progress_message = "生图中"
         job.progress_percent = 5
-        await db.commit()
-        await publish_generative_job_update(
-            job.tenant_id,
-            job_id,
-            status=job.status.value,
-            percent=job.progress_percent,
-            message=job.progress_message,
-        )
+        await _publish_state(db, job, job_id, percent=job.progress_percent)
 
         params = job.params or {}
         purpose = PURPOSE_FLOW_GENERATED if job.source == "flow_node" else PURPOSE_CHAT_GENERATED
@@ -254,46 +254,13 @@ async def run_generative_image_job_async(job_id: UUID) -> None:
                 "mime_type": result.mime_type,
             }
             job.error_message = None
-            await db.commit()
-            await publish_generative_job_update(
-                job.tenant_id,
-                job_id,
-                status=job.status.value,
-                percent=job.progress_percent,
-                message=job.progress_message,
-            )
-            await _sync_chat_after_job(db, job)
+            await _publish_state_and_sync(db, job, job_id, percent=job.progress_percent)
         except GenerativeJobCancelled:
-            job = await db.get(GenerativeJob, job_id)
-            if job and job.status != GenerativeJobStatus.CANCELLED:
-                job.status = GenerativeJobStatus.CANCELLED
-                job.progress_message = "已取消"
-                await db.commit()
-                await publish_generative_job_update(
-                    job.tenant_id,
-                    job_id,
-                    status=job.status.value,
-                    message=job.progress_message,
-                )
-                await _sync_chat_after_job(db, job)
+            await _finalize_cancelled(db, job_id)
         except Exception as exc:
             logger.exception("generative image job %s failed", job_id)
-            job = await db.get(GenerativeJob, job_id)
-            if job:
-                if job.status == GenerativeJobStatus.CANCELLED:
-                    return
-                job.status = GenerativeJobStatus.FAILED
-                job.progress_message = "失败"
-                job.error_message = str(exc)[:2000]
-                await db.commit()
-                await publish_generative_job_update(
-                    job.tenant_id,
-                    job_id,
-                    status=job.status.value,
-                    message=job.progress_message,
-                )
-                await _sync_chat_after_job(db, job)
-            raise
+            if await _finalize_failed(db, job_id, exc):
+                raise
 
 
 async def get_generative_job_for_tenant(
