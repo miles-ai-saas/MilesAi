@@ -15,6 +15,7 @@ Weaviate 向量库实现（``VectorStore`` 协议 + ``search_hybrid``）。
 
 from __future__ import annotations
 
+import logging
 from functools import lru_cache
 from typing import Any
 from uuid import UUID
@@ -38,6 +39,9 @@ from miles_core.infra.vector_store.documents import (
 )
 from miles_core.infra.vector_store.langchain_base import upsert_add_texts
 from miles_core.infra.vector_store.precomputed import PrecomputedEmbeddings
+
+# 用 stdlib logger：infra 层不触发 miles_core.logging.setup_logging 副作用（与 infra/otel.py 一致）
+logger = logging.getLogger(__name__)
 
 # 全租户共用一个 collection，靠 tenant_id / kb_id 属性过滤（与 Milvus 分表策略不同）
 CLASS_NAME = "DocumentChunk"
@@ -210,6 +214,8 @@ class WeaviateVectorStore:
         try:
             self._store(get_settings().embedding_vector_dimension).delete(ids=chunk_ids)
         except Exception:
+            # 批量删除不可用（如维度不匹配/接口差异），降级为逐条删除。
+            logger.debug("Weaviate 批量删除失败，降级逐条删除: count=%d", len(chunk_ids), exc_info=True)
             if not _client().collections.exists(CLASS_NAME):
                 return
             col = _client().collections.get(CLASS_NAME)
@@ -217,7 +223,8 @@ class WeaviateVectorStore:
                 try:
                     col.data.delete_by_id(cid)
                 except Exception:
-                    pass
+                    # 逐条也失败会残留孤儿向量，导致检索命中已删除内容，必须留痕。
+                    logger.warning("Weaviate 删除向量失败，可能残留孤儿向量: chunk_id=%s", cid, exc_info=True)
 
     def health_check(self) -> bool:
         """请求 /v1/.well-known/ready 探测服务就绪。"""

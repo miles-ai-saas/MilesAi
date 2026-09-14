@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import os
 import resource
 import time
@@ -13,6 +14,8 @@ from typing import Any
 from miles_common.exceptions import BadRequestError
 from miles_exec.mcp.spec import RunSpec, validate_run_spec
 from miles_exec.mcp.stdio import McpStdioClient
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -38,6 +41,13 @@ def _build_env(spec: RunSpec) -> dict[str, str]:
 
 
 def _preexec(memory_mb: int) -> None:
+    """在 fork 后、exec 前设置限额与独立进程组。
+
+    注意：本函数运行在 ``preexec_fn`` 中，只能调用 **async-signal-safe** 接口。
+    因此这里**不能用 ``logger``**（其内部取锁，若 fork 时锁被其他线程持有会死锁），
+    限额设置失败时改用 ``os.write`` 直接写子进程 stderr；该内容会在会话失败时
+    被 ``run_mcp_session`` 收集进错误信息，避免「限额未生效」被完全吞掉。
+    """
     try:
         import signal
 
@@ -47,7 +57,11 @@ def _preexec(memory_mb: int) -> None:
         resource.setrlimit(resource.RLIMIT_CPU, (120, 120))
         signal.signal(signal.SIGINT, signal.SIG_DFL)
     except Exception:
-        pass
+        # fork 后上下文禁止使用 logging（见 docstring），只能写 fd 2。
+        try:
+            os.write(2, b"[miles-exec] warning: failed to apply sandbox rlimits\n")
+        except OSError:
+            pass
 
 
 async def run_mcp_session(
@@ -114,7 +128,8 @@ async def run_mcp_session(
                 stderr_bytes = await asyncio.wait_for(proc.stderr.read(), timeout=1.0)
                 stderr_text = stderr_bytes.decode("utf-8", errors="replace")[:500]
             except Exception:
-                pass
+                # 仅影响诊断信息完整度，不改变失败语义；留痕便于排查 stderr 读取卡住。
+                logger.debug("读取 MCP 子进程 stderr 失败", exc_info=True)
         if proc:
             await _kill(proc)
         msg = str(e)
@@ -150,4 +165,5 @@ async def _kill(proc: asyncio.subprocess.Process) -> None:
     try:
         await asyncio.wait_for(proc.wait(), timeout=3.0)
     except TimeoutError:
-        pass
+        # SIGKILL 后仍无法回收属于异常情况（僵尸进程风险），必须留痕。
+        logger.warning("子进程在 SIGKILL 后仍未被回收: pid=%s", proc.pid)

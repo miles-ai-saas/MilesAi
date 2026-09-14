@@ -99,8 +99,13 @@ class GenerativeJobService(BaseService):
                 await sync_job_result_to_chat_messages(self.db, job)
                 await self.db.flush()
             except Exception:
-                # 回写失败不影响任务详情查询
-                pass
+                # 回写失败不影响任务详情查询，但静默会让「任务中心有、会话没有」
+                # 的脏数据无迹可查，故留 warning（不重抛）。
+                logger.warning(
+                    "生成任务结果回写会话 artifacts 失败: job_id=%s",
+                    job.id,
+                    exc_info=True,
+                )
         record_map = await self._celery_record_ids_for_jobs([job.id])
         return self._job_out(job, celery_task_record_id=record_map.get(job.id))
 
@@ -383,7 +388,8 @@ class GenerativeJobService(BaseService):
                 try:
                     await pubsub.unsubscribe(channel)
                 except Exception:
-                    pass
+                    # finally 中的清理动作，失败不应影响 SSE 收尾，仅 debug 留痕。
+                    logger.debug("SSE 取消订阅 pubsub 失败: channel=%s", channel, exc_info=True)
 
     @staticmethod
     def video_async_enabled() -> bool:

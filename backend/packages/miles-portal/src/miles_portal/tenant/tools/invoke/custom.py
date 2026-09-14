@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from miles_common.exceptions import BadRequestError
 from miles_core.config import get_settings
+from miles_core.logging import get_logger
 from miles_core.tenant import TenantContext
 from miles_core.url_security import validate_outbound_url
 from miles_exec.sandbox.validate import validate_script_source
@@ -16,6 +17,8 @@ from miles_portal.tenant.mcp.runner.client import RunnerClient
 from miles_portal.tenant.tools.builtins.template import apply_template
 from miles_portal.tenant.tools.models import Tool
 from miles_portal.tenant.tools.parameters import validate_tool_params
+
+logger = get_logger(__name__)
 
 SCRIPT_RUNNER_DISABLED = "脚本工具需要启用 MCP Runner（MCP_RUNNER_ENABLED=true），请联系管理员"
 
@@ -74,7 +77,14 @@ async def invoke_custom_http(tool: Tool, params: dict) -> dict:
                 data = data[part]
             result["extracted"] = data
         except Exception:
-            pass
+            # 已配置 response_path 却取不到值，属工具配置错误：返回体仍可用，
+            # 但缺少 extracted 会静默影响下游，故留 warning 便于定位。
+            logger.warning(
+                "HTTP 工具 response_path 解析失败: tool_id=%s response_path=%s",
+                getattr(tool, "id", None),
+                path,
+                exc_info=True,
+            )
     return result
 
 
