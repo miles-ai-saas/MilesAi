@@ -15,6 +15,7 @@ from miles_ai.integrations.langgraph.graph_analysis import (
     GRADE_BRANCH_HANDLES,
     build_outgoing,
     compute_execution_layers,
+    dangling_edge_endpoints,
     find_start_nodes,
     has_cycle,
     normalize_branch_handle,
@@ -49,6 +50,10 @@ def validate_graph_for_compile(graph: dict[str, Any]) -> FlowCompileReport:
             errors=[_error_to_str(e) for e in error_details],
             error_details=error_details,
         )
+
+    # 连线引用未声明的节点要先报出来：拓扑排序对这类 id 会取不到 in_degree
+    for unknown in dangling_edge_endpoints(fg):
+        add_error("unknown_edge_endpoint", f"连线引用了不存在的节点: {unknown}", node_id=unknown)
 
     if has_cycle(fg):
         add_error("cycle", "流程图存在环，无法编译")

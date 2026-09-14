@@ -47,6 +47,22 @@ def build_incoming(fg: FlowGraph) -> dict[str, list[tuple[str, str, str]]]:
     return incoming
 
 
+def dangling_edge_endpoints(fg: FlowGraph) -> list[str]:
+    """被连线引用却未在 ``nodes`` 里声明的节点 id（去重、保持出现顺序）。
+
+    画布是前端可编辑的自由结构，连线可以先于节点出现；调用方应据此报结构化错误，
+    而不是让拓扑排序对未声明的 id 做 ``deps[child] -= 1``（会抛 ``KeyError``）。
+    """
+    node_ids = {n["id"] for n in fg.nodes}
+    unknown: dict[str, None] = {}
+    for edge in fg.edges:
+        src, tgt, _, _ = _edge_endpoints(edge)
+        for endpoint in (src, tgt):
+            if endpoint and endpoint not in node_ids:
+                unknown.setdefault(endpoint, None)
+    return list(unknown)
+
+
 def topo_order(fg: FlowGraph) -> list[str]:
     """Kahn 拓扑排序；有环时退回节点声明顺序。"""
     node_ids = {n["id"] for n in fg.nodes}
@@ -63,6 +79,9 @@ def topo_order(fg: FlowGraph) -> list[str]:
         nid = queue.pop(0)
         order.append(nid)
         for child in children.get(nid, []):
+            if child not in deps:
+                # 指向未声明的节点：忽略（由 dangling_edge_endpoints 报错）
+                continue
             deps[child] -= 1
             if deps[child] == 0:
                 queue.append(child)
@@ -99,6 +118,9 @@ def compute_execution_layers(fg: FlowGraph) -> list[list[str]]:
         next_queue: list[str] = []
         for nid in queue:
             for child in children.get(nid, []):
+                if child not in in_degree:
+                    # 指向未声明的节点：忽略（由 dangling_edge_endpoints 报错）
+                    continue
                 in_degree[child] -= 1
                 if in_degree[child] == 0:
                     next_queue.append(child)
