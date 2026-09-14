@@ -206,3 +206,29 @@ def test_graph_path_commits_before_workflow(monkeypatch):
     assert db.events == ["commit", "workflow"]
     reader = chat_rag_mod.run_rag_workflow.await_args.kwargs["media_reader"]
     assert isinstance(reader, FlowMediaReader)
+
+
+def test_direct_chat_commits_before_llm(monkeypatch):
+    db = _TxnDb()
+    svc = _svc(db)
+    captured: dict[str, object] = {}
+
+    async def fake_ainvoke(model, messages, **kwargs):
+        db.events.append("llm")
+        captured["messages"] = messages
+        return "答"
+
+    monkeypatch.setattr(chat_rag_mod, "ainvoke_chat", AsyncMock(side_effect=fake_ainvoke))
+
+    out = _run(
+        AgentChatRagMixin.direct_chat(
+            svc,
+            _agent(),
+            ChatRequest(query="问题"),
+            uuid4(),
+            _hooks(),
+        )
+    )
+
+    assert out.answer == "答"
+    assert db.events == ["commit", "llm"]

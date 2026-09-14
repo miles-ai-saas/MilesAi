@@ -198,6 +198,8 @@ class AgentChatRagMixin:
             user_msg = build_user_message(query=reasoning_query, media_parts=media_parts)
             model = await self.resolve_invoke_model(agent.model_config)
             usage_sink = self.chat_usage_sink(model, source_id=agent_id)
+            # 释放请求事务：模型解析会读租户凭据，随后是单次 LLM 调用，中间无需本会话。
+            await self.db.commit()
             answer = await ainvoke_chat(
                 model,
                 [
