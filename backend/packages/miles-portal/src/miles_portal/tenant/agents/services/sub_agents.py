@@ -85,14 +85,23 @@ async def _would_create_cycle(
     db: AsyncSession,
     parent_id: UUID,
     child_ids: list[UUID],
+    *,
+    tenant_id: UUID,
 ) -> bool:
-    """若添加 parent→child 边后存在环则返回 True。"""
+    """若添加 parent→child 边后存在环则返回 True。
+
+    绑定表没有 ``tenant_id`` 列，故按「父节点属于本租户」收窄：环只可能在本租户的
+    agent 之间形成，而原先无条件全表加载所有租户的边——既随租户/绑定总量线性变慢，
+    又把其他租户的协作关系读进内存。收窄后判定结果等价（agent id 为 UUID，不会跨
+    租户碰撞，DFS 也只会走本租户的连通分量）。
+    """
     if not child_ids:
         return False
+    tenant_agent_ids = select(Agent.id).where(Agent.tenant_id == tenant_id)
     stmt = select(
         AgentSubAgentBinding.parent_agent_id,
         AgentSubAgentBinding.child_agent_id,
-    )
+    ).where(AgentSubAgentBinding.parent_agent_id.in_(tenant_agent_ids))
     edges = (await db.execute(stmt)).all()
     adj: dict[UUID, list[UUID]] = {}
     for p, c in edges:
@@ -164,7 +173,7 @@ async def validate_and_sync_sub_agents(
     if parent.id in child_ids:
         raise BadRequestError("不能将智能体绑定为自身的子智能体")
 
-    if await _would_create_cycle(db, parent.id, child_ids):
+    if await _would_create_cycle(db, parent.id, child_ids, tenant_id=ctx.tenant_id):
         raise BadRequestError("子智能体绑定存在循环依赖")
 
     for cid in child_ids:
