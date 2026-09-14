@@ -19,26 +19,15 @@ from miles_core.models.media.attachment import Attachment
 from miles_core.models.platform.system import SystemConfig
 from miles_core.models.platform.tenant import Tenant
 from miles_core.soft_delete import not_deleted
+from miles_core.utils.config_value import system_config_int
 
 DEFAULT_MAX_FILE_MB = 50
-
-
-def _config_int(raw: object, default: int) -> int:
-    """从 system_config JSON 解析整数配置。"""
-    if raw is None:
-        return default
-    if isinstance(raw, dict) and "value" in raw:
-        raw = raw["value"]
-    try:
-        return max(1, int(raw))
-    except (TypeError, ValueError):
-        return default
 
 
 async def get_max_file_mb(db: AsyncSession) -> int:
     """单文件大小上限（MB），默认 50。"""
     row = await db.scalar(select(SystemConfig.value).where(SystemConfig.key == "ingest.max_file_mb"))
-    return _config_int(row, DEFAULT_MAX_FILE_MB)
+    return system_config_int(row, default=DEFAULT_MAX_FILE_MB, minimum=1)
 
 
 async def _load_tenant(db: AsyncSession, tenant_id: UUID) -> Tenant:

@@ -21,20 +21,10 @@ from miles_common.exceptions import ForbiddenError
 from miles_core.models.media.attachment import Attachment
 from miles_core.models.platform.system import SystemConfig
 from miles_core.soft_delete import not_deleted
+from miles_core.utils.config_value import system_config_int
 
 _CONFIG_KEY = "generative.daily_limit_per_tenant"
 _GENERATED_PURPOSES = (PURPOSE_CHAT_GENERATED, PURPOSE_FLOW_GENERATED)
-
-
-def _config_int(raw: object, default: int = 0) -> int:
-    if raw is None:
-        return default
-    if isinstance(raw, dict) and "value" in raw:
-        raw = raw["value"]
-    try:
-        return max(0, int(raw))
-    except (TypeError, ValueError):
-        return default
 
 
 def _utc_day_start() -> datetime:
@@ -43,9 +33,13 @@ def _utc_day_start() -> datetime:
 
 
 async def get_generative_daily_limit(db: AsyncSession) -> int:
-    """租户每日生成次数上限；0 表示不限。"""
+    """租户每日生成次数上限；0 表示不限。
+
+    0 同时是「未配置」与「配置值非法」的回落值：本模块以「未配置即不限」为准，
+    解析失败只记 warning（见 ``system_config_int``），不改变放行行为。
+    """
     row = await db.scalar(select(SystemConfig.value).where(SystemConfig.key == _CONFIG_KEY))
-    return _config_int(row, 0)
+    return system_config_int(row, default=0, minimum=0)
 
 
 async def count_generative_today(db: AsyncSession, tenant_id: UUID) -> int:
