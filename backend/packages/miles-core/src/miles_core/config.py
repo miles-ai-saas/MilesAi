@@ -46,6 +46,14 @@ class Settings(BaseSettings):
     postgres_password: str = "postgres"
     postgres_db: str = "milesai"
 
+    # 连接池（默认值即 SQLAlchemy 原默认，显式写出以便按环境调整）。
+    # 注意对话/生成链路的事务会跨越 LLM / 厂商 API 调用（可达数十秒），因此单个
+    # 并发请求会长时间占住一个连接；并发数接近 pool_size + max_overflow 时，后续
+    # 请求要等满 pool_timeout 才抛 TimeoutError（且与列表页等请求共用同一个池）。
+    db_pool_size: int = 5
+    db_max_overflow: int = 10
+    db_pool_timeout: float = 30.0
+
     redis_host: str = "localhost"
     redis_port: int = 6379
     redis_password: str = ""

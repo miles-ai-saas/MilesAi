@@ -4,17 +4,30 @@ from collections.abc import AsyncGenerator, AsyncIterator
 from contextlib import asynccontextmanager
 from contextvars import ContextVar, Token
 
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
 
-from miles_core.config import get_settings
+from miles_core.config import Settings, get_settings
 
 settings = get_settings()
 
-engine = create_async_engine(
-    settings.database_url,
-    echo=settings.debug,
-    pool_pre_ping=True,
-)
+
+def build_engine(settings: Settings) -> AsyncEngine:
+    """按 ``Settings`` 构造异步引擎。
+
+    抽成函数是为了可测：池参数的默认值恰好等于 SQLAlchemy 原默认，若只在模块级
+    内联构造，「接线正确」与「压根没传参」在默认配置下无法区分（行为完全一致）。
+    """
+    return create_async_engine(
+        settings.database_url,
+        echo=settings.debug,
+        pool_pre_ping=True,
+        pool_size=settings.db_pool_size,
+        max_overflow=settings.db_max_overflow,
+        pool_timeout=settings.db_pool_timeout,
+    )
+
+
+engine = build_engine(settings)
 
 AsyncSessionLocal = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
