@@ -205,6 +205,10 @@ class UserService(BaseService):
         if body.action == "assign_roles" and body.role_ids is not None:
             roles = await self.repo.load_roles(body.role_ids)
 
+        async def audit_user_update(user: User, detail: dict) -> None:
+            """enable/disable/assign_roles 三处都是同一动作，只让 detail 分化。"""
+            await self._audit(user, "user.update", request=request, detail=detail)
+
         for uid in body.user_ids:
             if uid == self.ctx.user_id and body.action in ("disable", "deactivate"):
                 skipped += 1
@@ -222,12 +226,7 @@ class UserService(BaseService):
             if body.action == "enable":
                 if not user.is_active:
                     user.is_active = True
-                    await self._audit(
-                        user,
-                        "user.update",
-                        request=request,
-                        detail={"batch": True, "is_active": True},
-                    )
+                    await audit_user_update(user, {"batch": True, "is_active": True})
                     processed += 1
                 else:
                     skipped += 1
@@ -235,23 +234,13 @@ class UserService(BaseService):
                 if user.is_active:
                     user.is_active = False
                     await AuthService(self.db, self.ctx).admin_revoke_user_sessions(user.id)
-                    await self._audit(
-                        user,
-                        "user.update",
-                        request=request,
-                        detail={"batch": True, "is_active": False},
-                    )
+                    await audit_user_update(user, {"batch": True, "is_active": False})
                     processed += 1
                 else:
                     skipped += 1
             elif body.action == "assign_roles" and roles is not None:
                 user.roles = list(roles)
-                await self._audit(
-                    user,
-                    "user.update",
-                    request=request,
-                    detail={"batch": True, "role_ids": [str(r) for r in body.role_ids or []]},
-                )
+                await audit_user_update(user, {"batch": True, "role_ids": [str(r) for r in body.role_ids or []]})
                 processed += 1
 
         await self.db.flush()
