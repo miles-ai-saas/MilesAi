@@ -88,22 +88,20 @@ async def _finalize_cancelled(db, job_id: UUID) -> None:
         await _publish_state_and_sync(db, job, job_id, percent=None)
 
 
-async def _finalize_failed(db, job_id: UUID, exc: Exception) -> bool:
-    """生成失败：把任务落到 FAILED 并推送；返回异常是否应继续向上抛。
+async def _finalize_failed(db, job_id: UUID, exc: Exception) -> None:
+    """生成失败：把任务落到 FAILED 并推送。
 
-    返回 ``False`` 的唯一情形是任务在生成期间已被用户取消——此时不覆盖 CANCELLED
-    终态、也不推失败通知，调用方应静默返回（保持原行为）。
+    唯一不改终态的情形是任务在生成期间已被用户取消——此时不覆盖 CANCELLED、也不推
+    失败通知。**但调用方仍须把异常向上抛**：曾因「已取消就静默返回」，异常只在
+    worker 日志里留痕，Celery 任务却上报成功，任务实际停在 CANCELLED，失败被完全吞掉。
     """
     job = await db.get(GenerativeJob, job_id)
-    if job is None:
-        return True
-    if job.status == GenerativeJobStatus.CANCELLED:
-        return False
+    if job is None or job.status == GenerativeJobStatus.CANCELLED:
+        return
     job.status = GenerativeJobStatus.FAILED
     job.progress_message = "失败"
     job.error_message = str(exc)[:2000]
     await _publish_state_and_sync(db, job, job_id, percent=None)
-    return True
 
 
 def _preset_positive_duration(agent_cfg: dict) -> int | None:
@@ -184,8 +182,8 @@ async def run_generative_video_job_async(job_id: UUID) -> None:
             await _finalize_cancelled(db, job_id)
         except Exception as exc:
             logger.exception("generative video job %s failed", job_id)
-            if await _finalize_failed(db, job_id, exc):
-                raise
+            await _finalize_failed(db, job_id, exc)
+            raise
 
 
 async def run_generative_image_job_async(job_id: UUID) -> None:
@@ -266,8 +264,8 @@ async def run_generative_image_job_async(job_id: UUID) -> None:
             await _finalize_cancelled(db, job_id)
         except Exception as exc:
             logger.exception("generative image job %s failed", job_id)
-            if await _finalize_failed(db, job_id, exc):
-                raise
+            await _finalize_failed(db, job_id, exc)
+            raise
 
 
 async def get_generative_job_for_tenant(

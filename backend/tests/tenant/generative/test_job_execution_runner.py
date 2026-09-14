@@ -219,11 +219,11 @@ async def test_video_failure_publishes_failed_and_reraises(env):  # noqa: ANN001
     assert len(records.syncs) == 1
 
 
-async def test_video_failure_after_external_cancel_is_swallowed_not_reraised(env):  # noqa: ANN001
-    """既有行为：生成期间被外部取消、随后又抛异常时，异常只记日志不重抛。
+async def test_video_failure_after_external_cancel_reraises_without_clobbering_status(env):  # noqa: ANN001
+    """生成期间被外部取消、随后又抛异常：不覆盖 CANCELLED，但异常必须上抛。
 
-    后果是 Celery 任务会看到正常返回（回写 SUCCESS/"ok"），而 job 停在 CANCELLED。
-    此处仅锁定现状，是否收敛另议。
+    曾因「已取消就静默返回」，异常只在 worker 日志留痕，Celery 任务却上报成功，
+    任务实际停在 CANCELLED——失败被完全吞掉。
     """
 
     async def _boom(*args, **kwargs):
@@ -233,11 +233,13 @@ async def test_video_failure_after_external_cancel_is_swallowed_not_reraised(env
     job = _job()
     records = env.build(job, video=_boom)
 
-    await job_execution.run_generative_video_job_async(job.id)  # 不抛出
+    with pytest.raises(RuntimeError, match="取消后仍报错"):
+        await job_execution.run_generative_video_job_async(job.id)
 
-    assert [p.status for p in records.publishes] == ["running"]
-    assert job.status == GenerativeJobStatus.CANCELLED
+    assert [p.status for p in records.publishes] == ["running"]  # 不推 failed
+    assert job.status == GenerativeJobStatus.CANCELLED  # 不覆盖终态
     assert records.syncs == []
+    assert job.error_message is None
 
 
 async def test_video_error_message_is_truncated_to_2000_chars(env):  # noqa: ANN001
@@ -443,6 +445,25 @@ async def test_image_failure_publishes_failed_and_reraises(env):  # noqa: ANN001
     assert records.publishes[-1].percent is None
     assert job.error_message == "内容审核拒绝"
     assert len(records.syncs) == 1
+
+
+async def test_image_failure_after_external_cancel_reraises_without_clobbering_status(env):  # noqa: ANN001
+    """生图侧同规格：外部取消后仍抛错 → 异常上抛、终态保持 CANCELLED、不推 failed。"""
+
+    async def _boom(*args, **kwargs):
+        job.status = GenerativeJobStatus.CANCELLED
+        raise RuntimeError("取消后仍报错")
+
+    job = _job(kind="image")
+    records = env.build(job, image=_boom)
+
+    with pytest.raises(RuntimeError, match="取消后仍报错"):
+        await job_execution.run_generative_image_job_async(job.id)
+
+    assert [p.status for p in records.publishes] == ["running"]
+    assert job.status == GenerativeJobStatus.CANCELLED
+    assert records.syncs == []
+    assert job.error_message is None
 
 
 async def test_image_job_not_found_raises(env):  # noqa: ANN001
