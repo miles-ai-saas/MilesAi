@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from miles_core.infra.db import AsyncSessionLocal
 from miles_core.logging import get_logger
-from miles_core.models.model.generative_job import GenerativeJobStatus
+from miles_core.models.model.generative_job import GenerativeJob, GenerativeJobStatus
 from miles_core.tenant import TenantContext
 from miles_portal.tenant.agents.ws import protocol as proto
 from miles_portal.tenant.generative.schemas.job import GenerativeJobOut
@@ -28,38 +28,51 @@ _TERMINAL = frozenset(
 )
 
 
+_MAX_IDLE_TICKS = 120
+
+
+def _snapshot_key(job: GenerativeJob) -> tuple:
+    """快照键：任一项变化即视为「有新进展」需推送（含 ``updated_at``）。"""
+    return (job.status, job.progress_percent, job.progress_message, job.updated_at)
+
+
+def _done_payload(job: GenerativeJob, payload: dict) -> dict:
+    """终态帧：展平字段（兼容既有前端）＋ 完整 ``job`` 快照。"""
+    return {
+        "id": str(job.id),
+        "status": job.status.value,
+        "result": payload.get("result"),
+        "error_message": payload.get("error_message"),
+        "job": payload,
+    }
+
+
 async def watch_generative_job(ws: WebSocket, ctx: TenantContext, job_id: UUID) -> None:
     """轮询 DB 并推送 generative_job.*，终态后结束。"""
     last_key: tuple | None = None
     idle_ticks = 0
-    while idle_ticks < 120:
+
+    async def push_if_changed(job: GenerativeJob, payload: dict) -> bool:
+        """快照变化才推送；返回是否已终态（终态紧接着推 ``done``）。"""
+        nonlocal last_key
+        key = _snapshot_key(job)
+        if key != last_key:
+            last_key = key
+            # queued 只在第一个 tick 推：之后转 pending 属于既有流程的正常回退
+            if job.status == GenerativeJobStatus.PENDING and idle_ticks == 0:
+                await proto.send_json(ws, proto.GENERATIVE_JOB_QUEUED, payload)
+            await proto.send_json(ws, proto.GENERATIVE_JOB_PROGRESS, payload)
+        if job.status not in _TERMINAL:
+            return False
+        await proto.send_json(ws, proto.GENERATIVE_JOB_DONE, _done_payload(job, payload))
+        return True
+
+    while idle_ticks < _MAX_IDLE_TICKS:
         try:
             async with AsyncSessionLocal() as db:
                 job = await get_generative_job_for_tenant(db, ctx, job_id)
                 payload = GenerativeJobOut.model_validate(job).model_dump(mode="json")
-                key = (
-                    job.status,
-                    job.progress_percent,
-                    job.progress_message,
-                    job.updated_at,
-                )
-                if key != last_key:
-                    last_key = key
-                    if job.status == GenerativeJobStatus.PENDING and idle_ticks == 0:
-                        await proto.send_json(ws, proto.GENERATIVE_JOB_QUEUED, payload)
-                    await proto.send_json(ws, proto.GENERATIVE_JOB_PROGRESS, payload)
-                if job.status in _TERMINAL:
-                    await proto.send_json(
-                        ws,
-                        proto.GENERATIVE_JOB_DONE,
-                        {
-                            "id": str(job.id),
-                            "status": job.status.value,
-                            "result": payload.get("result"),
-                            "error_message": payload.get("error_message"),
-                            "job": payload,
-                        },
-                    )
+                if await push_if_changed(job, payload):
                     break
                 await db.commit()
         except Exception:

@@ -134,6 +134,7 @@ def _entry(*, agent=None, flow_repo=None, rag_response=None):
     # 绑定真实的收尾与路由解析，让 chat 的编排逻辑被真实执行
     for name in ("_finish_chat_turn", "_resolve_rag_route", "_complete_chat_turn"):
         setattr(entry, name, getattr(AgentChatTurnMixin, name).__get__(entry, type(entry)))
+    entry._run_published_flow = AgentChatEntryMixin._run_published_flow.__get__(entry, type(entry))
     return entry
 
 
@@ -295,6 +296,25 @@ async def test_flow_placeholder_input_requires_hook_to_blank_the_query(monkeypat
     await _bind(entry)(AGENT_ID, ChatRequest(media=[{"attachment_id": uuid4()}]))
 
     assert entry.flow_inputs["query"] == "请根据附图回答。"
+
+
+async def test_flow_inputs_use_hook_rewritten_query(monkeypatch):
+    """流程入参的 query 必须是 BEFORE_CALL Hook 改写后的版本，而非原始 body.query。"""
+    flow_id = uuid4()
+    version = SimpleNamespace(graph_json={})
+    entry = _entry(flow_repo=_FlowRepo(flow=SimpleNamespace(id=flow_id, current_version=1), version=version))
+
+    class _Runtime:
+        async def run(self, graph, ctx):  # noqa: ANN001, ARG002
+            return SimpleNamespace(output="o", steps=[])
+
+    monkeypatch.setattr(entry_mod, "get_flow_runtime", lambda: _Runtime())
+    entry.agent.published_flow_id = flow_id
+    _Hooks.modified_query = "改写后的 query"
+
+    await _bind(entry)(AGENT_ID, ChatRequest(query="原始 query"))
+
+    assert entry.flow_inputs["query"] == "改写后的 query"
 
 
 async def test_no_kb_no_tools_routes_direct_llm(monkeypatch):

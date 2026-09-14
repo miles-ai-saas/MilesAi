@@ -12,7 +12,7 @@ from miles_ai.integrations.generative.request_prefs import (
 )
 from miles_ai.integrations.langchain.chat_models import OnDelta
 from miles_common.exceptions import BadRequestError
-from miles_core.models.agent import AgentStatus, AgentType
+from miles_core.models.agent import Agent, AgentStatus, AgentType
 from miles_portal.tenant.a2a.services.peer_refs import list_agent_a2a_peer_refs
 from miles_portal.tenant.agents.schemas.agent import ChatRequest, ChatResponse
 from miles_portal.tenant.agents.services.call_records import ChatCallRecorder
@@ -145,29 +145,10 @@ class AgentChatEntryMixin:
                 )
                 return await finish(route, response)
 
-            if agent.published_flow_id:
-                flow = await self.flow_repo.get_by_id(agent.published_flow_id)
-                if flow and flow.current_version > 0:
-                    version = await self.flow_repo.get_version(flow.id, flow.current_version)
-                    if version:
-                        flow_inputs = {"query": query, **chat_body.inputs}
-                        if not str(flow_inputs.get("query", "")).strip() and chat_body.media:
-                            flow_inputs["query"] = "请根据附图回答。"
-                        ctx = await self.flow_run_context(
-                            agent,
-                            agent_id=agent_id,
-                            inputs=flow_inputs,
-                            kb_ids=kb_ids,
-                            media=chat_body.media,
-                        )
-                        route = "flow"
-                        result = await get_flow_runtime().run(version.graph_json, ctx)
-                        response = ChatResponse(answer=str(result.output), steps=result.steps)
-                        response = await self.maybe_augment_a2a(agent, chat_body, response)
-                        return await finish(route, response)
-
-            route = self._resolve_rag_route(agent, kb_ids)
-            response = await self.rag_chat(agent, chat_body, kb_ids, top_k, agent_id, hooks, on_delta=on_delta)
+            response = await self._run_published_flow(agent, agent_id, chat_body, query=query, kb_ids=kb_ids)
+            route = "flow" if response is not None else self._resolve_rag_route(agent, kb_ids)
+            if response is None:
+                response = await self.rag_chat(agent, chat_body, kb_ids, top_k, agent_id, hooks, on_delta=on_delta)
             response = await self.maybe_augment_a2a(agent, chat_body, response)
             return await finish(route, response)
         except Exception as exc:
@@ -182,6 +163,42 @@ class AgentChatEntryMixin:
         finally:
             clear_generative_request_prefs()
             end_chat_usage_accumulation(usage_acc)
+
+    async def _run_published_flow(
+        self,
+        agent: Agent,
+        agent_id: UUID,
+        body: ChatRequest,
+        *,
+        query: str,
+        kb_ids: list[str],
+    ) -> ChatResponse | None:
+        """绑定了已发布流程则执行并返回响应，否则返回 ``None`` 交调用方兜底。
+
+        ``query`` 单独传入而不从 ``body`` 取：主入口会先经 BEFORE_CALL Hook 改写
+        query，子智能体工位则用原样 query，两者输入不同但执行流程一致。
+        """
+        if not agent.published_flow_id:
+            return None
+        flow = await self.flow_repo.get_by_id(agent.published_flow_id)
+        if not flow or flow.current_version <= 0:
+            return None
+        version = await self.flow_repo.get_version(flow.id, flow.current_version)
+        if not version:
+            return None
+
+        inputs = {"query": query, **body.inputs}
+        if not str(inputs.get("query", "")).strip() and body.media:
+            inputs["query"] = "请根据附图回答。"
+        ctx = await self.flow_run_context(
+            agent,
+            agent_id=agent_id,
+            inputs=inputs,
+            kb_ids=kb_ids,
+            media=body.media,
+        )
+        result = await get_flow_runtime().run(version.graph_json, ctx)
+        return ChatResponse(answer=str(result.output), steps=result.steps)
 
     async def chat_as_child_simple(
         self,
@@ -206,21 +223,8 @@ class AgentChatEntryMixin:
         hooks = HookRunner(self.db, self.ctx.tenant_id)
 
         if child.published_flow_id:
-            flow = await self.flow_repo.get_by_id(child.published_flow_id)
-            if flow and flow.current_version > 0:
-                version = await self.flow_repo.get_version(flow.id, flow.current_version)
-                if version:
-                    child_inputs = {"query": body.query, **body.inputs}
-                    if not str(child_inputs.get("query", "")).strip() and body.media:
-                        child_inputs["query"] = "请根据附图回答。"
-                    ctx = await self.flow_run_context(
-                        child,
-                        agent_id=child_id,
-                        inputs=child_inputs,
-                        kb_ids=kb_ids,
-                        media=body.media,
-                    )
-                    result = await get_flow_runtime().run(version.graph_json, ctx)
-                    return ChatResponse(answer=str(result.output), steps=result.steps)
+            flow_response = await self._run_published_flow(child, child_id, body, query=body.query, kb_ids=kb_ids)
+            if flow_response is not None:
+                return flow_response
 
         return await self.rag_chat(child, body, kb_ids, top_k, child_id, hooks)
