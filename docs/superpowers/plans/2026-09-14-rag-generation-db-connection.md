@@ -137,7 +137,7 @@ async def main() -> None:
         return "答案"
 
     rag_qa.AsyncSessionLocal = _ShortSession
-    rag_qa.retrieve_hits = AsyncMock(return_value=[{"content": "片段", "score": 0.9}])
+    rag_qa.retrieve_hits = AsyncMock(return_value=[{"content_preview": "片段", "score": 0.9}])
     rag_qa.ainvoke_chat = AsyncMock(side_effect=fake_ainvoke)
 
     initial = {
@@ -705,7 +705,9 @@ def test_build_rag_prompt_with_hits_includes_context():
     prompt = build_rag_prompt(
         system_prompt="你是助手",
         query="问题",
-        hits=[{"content": "片段", "score": 0.9}],
+        # 注意：hit 的正文键是 content_preview（format_hits_context 只读它），
+        # 用 content 会得到空上下文、断言静默失效
+        hits=[{"content_preview": "片段", "score": 0.9}],
     )
     assert "你是助手" in prompt
     assert "片段" in prompt
@@ -1004,7 +1006,7 @@ def _state(*, hits: list | None = None) -> dict:
         "system_prompt": "你是助手",
         "query": "检索词",
         "prompt_query": "生成问题",
-        "hits": hits if hits is not None else [{"content": "片段", "score": 0.9}],
+        "hits": hits if hits is not None else [{"content_preview": "片段", "score": 0.9}],
         "temperature": 0.7,
     }
 
@@ -1362,7 +1364,7 @@ def test_linear_path_retrieves_in_short_session_then_commits_before_generate(mon
 
     async def fake_retrieve(*args, **kwargs):
         captured["retrieve_db"] = kwargs["db"]
-        return [{"content": "片段", "score": 0.9}]
+        return [{"content_preview": "片段", "score": 0.9}]
 
     async def fake_generate(**kwargs):
         db.events.append("generate")
@@ -1979,5 +1981,7 @@ EOF
 1. 实施位置：worktree `.worktrees/rag-generation-db-connection`（分支 `feat/rag-generation-db-connection`），不在 `main` 上直接改。
 2. Task 7（直连 `direct_chat`）保留。
 3. Task 1 改为「只诊断」：探针脚本放 `/tmp`（一次性脚本不进仓库），按结论二选一（修复 or 固化），**不提交**断言破损行为的测试。
+
+**执行中 errata（控制端，随 Task 3 记录）**：检索 hit 的正文键是 `content_preview`（`format_hits_context` 用 `h.get("content_preview", "")`），计划多处夹具原写 `{"content": ...}`——不会抛错但会让上下文为空、依赖正文的断言静默失效。已在 Task 1 探针、Task 3/4/5 夹具处统一改为 `content_preview`（Task 3 的实现测试已由实现者发现并修正）。
 
 **类型一致性**：`generate_rag_answer` 的签名在 Task 3 定义（`model/prompt/media/media_reader/temperature/on_delta/usage_sink`），Task 4、5、6、7 的调用与测试全部使用同名同形参；`build_rag_prompt(*, system_prompt, query, hits)` 在 Task 3 定义，Task 4/5/6 一致；`ChatUsageSink(*, tenant_id, model, source_id)` 在 Task 2 定义，3 处构造点一致。
