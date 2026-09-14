@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-import base64
 from typing import Any
 
 import httpx
 
 from miles_ai.integrations.generative.constants import DEFAULT_IMAGE_SIZE
+from miles_ai.integrations.generative.image.providers._decoding import decode_b64_image
 from miles_ai.integrations.http_constants import HTTP_DEFAULT_TIMEOUT_SEC
 from miles_common.exceptions import AppError, BadRequestError
 from miles_core.models.model import ModelConfig
@@ -61,7 +61,9 @@ async def generate_openai_images(
     for item in items:
         b64 = item.get("b64_json")
         if b64:
-            out.append(base64.standard_b64decode(b64))
+            blob = decode_b64_image(b64)
+            if blob is not None:
+                out.append(blob)
             continue
         img_url = item.get("url")
         if img_url:

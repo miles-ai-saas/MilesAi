@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-import base64
 from typing import Any
 
 import httpx
 
 from miles_ai.integrations.generative.constants import DEFAULT_IMAGE_SIZE
+from miles_ai.integrations.generative.image.providers._decoding import decode_b64_image
 from miles_ai.integrations.generative.volcengine_client import (
     require_volcengine_api_key,
     volcengine_api_base,
@@ -29,12 +29,14 @@ def _volcengine_image_size(size: str | None, *, has_reference: bool) -> str:
 
 
 async def _decode_image_items(items: list[dict], client: httpx.AsyncClient) -> list[bytes]:
-    """从响应 data 数组中解码 b64_json / url 为 bytes。"""
+    """从响应 data 数组中解码 b64_json / url 为 bytes（脏 base64 跳过）。"""
     out: list[bytes] = []
     for item in items:
         b64 = item.get("b64_json")
         if b64:
-            out.append(base64.standard_b64decode(b64))
+            blob = decode_b64_image(b64)
+            if blob is not None:
+                out.append(blob)
             continue
         img_url = item.get("url")
         if img_url:
