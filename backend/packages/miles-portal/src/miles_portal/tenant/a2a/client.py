@@ -50,6 +50,61 @@ def _pick_rpc_url(peer: A2aPeer) -> str | None:
     return base.rstrip("/") if base else None
 
 
+_RESULT_TEXT_KEYS = ("text", "answer", "content", "message")
+_MESSAGE_TEXT_KEYS = ("text", "content", "parts")
+
+
+def _first_part_text(value: Any) -> str | None:
+    """``parts`` 形态（``[{"text": ...}]``）取首项文本；非该形态返回 None。"""
+    if not isinstance(value, list) or not value:
+        return None
+    first = value[0]
+    if isinstance(first, dict) and first.get("text"):
+        return str(first["text"]).strip()
+    return None
+
+
+def _text_from_keys(payload: dict[str, Any], keys: tuple[str, ...]) -> str | None:
+    """按 ``keys`` 顺序取首个非空字符串（全空白视为未命中）。"""
+    for key in keys:
+        value = payload.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return None
+
+
+def _text_or_parts_from_keys(payload: dict[str, Any], keys: tuple[str, ...]) -> str | None:
+    """按 ``keys`` 顺序取非空字符串；该项为 ``parts`` 形态时取首项文本。"""
+    for key in keys:
+        value = payload.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+        parts_text = _first_part_text(value)
+        if parts_text:
+            return parts_text
+    return None
+
+
+def _text_from_result_payload(result: dict[str, Any]) -> str | None:
+    """``result`` 字典 → 可读文本：常见文本键 → ``message`` 下钻 → ``artifacts`` 下钻。"""
+    text = _text_from_keys(result, _RESULT_TEXT_KEYS)
+    if text:
+        return text
+    message = result.get("message")
+    if isinstance(message, dict):
+        text = _text_or_parts_from_keys(message, _MESSAGE_TEXT_KEYS)
+        if text:
+            return text
+    artifacts = result.get("artifacts")
+    if isinstance(artifacts, list) and artifacts:
+        artifact = artifacts[0]
+        if isinstance(artifact, dict):
+            text = _first_part_text(artifact.get("parts"))
+            if text:
+                return text
+    return None
+
+
 def _extract_text_from_response(data: Any) -> str:
     """从 JSON-RPC / HTTP 响应中提取可读文本。"""
     if isinstance(data, str):
@@ -65,29 +120,9 @@ def _extract_text_from_response(data: Any) -> str:
     if isinstance(result, str):
         return result.strip()
     if isinstance(result, dict):
-        for key in ("text", "answer", "content", "message"):
-            val = result.get(key)
-            if isinstance(val, str) and val.strip():
-                return val.strip()
-        msg = result.get("message")
-        if isinstance(msg, dict):
-            for key in ("text", "content", "parts"):
-                val = msg.get(key)
-                if isinstance(val, str) and val.strip():
-                    return val.strip()
-                if isinstance(val, list) and val:
-                    first = val[0]
-                    if isinstance(first, dict) and first.get("text"):
-                        return str(first["text"]).strip()
-        artifacts = result.get("artifacts")
-        if isinstance(artifacts, list) and artifacts:
-            art = artifacts[0]
-            if isinstance(art, dict):
-                parts = art.get("parts")
-                if isinstance(parts, list) and parts:
-                    p0 = parts[0]
-                    if isinstance(p0, dict) and p0.get("text"):
-                        return str(p0["text"]).strip()
+        text = _text_from_result_payload(result)
+        if text:
+            return text
     return str(result)[:4000]
 
 
