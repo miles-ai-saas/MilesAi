@@ -110,11 +110,54 @@ async def invoke_tool_with_context(
 
     链路：resolve_tool_meta → 确认校验 → BEFORE_TOOL Hook → invoke_tool_by_name
     → 写 invocation_log → AFTER_TOOL Hook。
+
+    确认门槛有两道：工具元数据声明需要确认，以及生图工具的策略判定（如需选择
+    参考图）；两道都以 ``halt_for_confirmation`` 收尾（写 ``confirmation_required``
+    日志后抛 ``ToolConfirmationRequired``）。审计日志经 ``log_invocation`` 写入，
+    以统一 ``tenant_id`` / ``tool_id`` / ``source`` / ``trace_id`` 等身份字段。
     """
     meta = await resolve_tool_meta(db, ctx, name, tool_id=tool_id)
     slug = meta["slug"]
     resolved_tool_id = meta.get("tool_id") or tool_id
     tool_params = dict(params)
+    # 请求级 trace_id；本次调用的所有日志行共用同一个（不再逐次获取）
+    trace_id = get_trace_id()
+
+    async def log_invocation(
+        *,
+        status: str,
+        params: dict,
+        latency_ms: int = 0,
+        output: dict | None = None,
+        error_message: str | None = None,
+    ) -> None:
+        """写入本次调用的审计日志。
+
+        db / tenant_id / tool_slug / tool_id / source / actor_user_id / agent_id /
+        invoke_source / trace_id 对四条路径都相同，故在此固化；调用处只传随分支
+        变化的字段（status / params / output / latency_ms / error_message）。
+        """
+        await write_tool_invocation_log(
+            db,
+            tenant_id=ctx.tenant_id,
+            tool_slug=slug,
+            tool_id=resolved_tool_id,
+            source=meta["source"],
+            status=status,
+            params=params,
+            output=output,
+            latency_ms=latency_ms,
+            error_message=error_message,
+            actor_user_id=actor_user_id,
+            agent_id=agent_id,
+            invoke_source=invoke_source,
+            trace_id=trace_id,
+        )
+
+    async def halt_for_confirmation(description: str | None) -> None:
+        """记录待确认日志并抛出确认信号（两道确认门槛共用）。"""
+        await log_invocation(status="confirmation_required", params=tool_params)
+        raise ToolConfirmationRequired(slug, meta["name"], description, tool_params)
 
     # 生图：输入区张数覆盖 LLM 参数（须在确认门槛前生效）
     if slug == "generate_image":
@@ -123,20 +166,7 @@ async def invoke_tool_with_context(
         tool_params["n"] = resolve_image_n(tool_params.get("n"))
 
     if meta["require_confirmation"] and not confirmed:
-        await write_tool_invocation_log(
-            db,
-            tenant_id=ctx.tenant_id,
-            tool_slug=slug,
-            tool_id=resolved_tool_id,
-            source=meta["source"],
-            status="confirmation_required",
-            params=tool_params,
-            actor_user_id=actor_user_id,
-            agent_id=agent_id,
-            invoke_source=invoke_source,
-            trace_id=get_trace_id(),
-        )
-        raise ToolConfirmationRequired(slug, meta["name"], meta.get("description"), tool_params)
+        await halt_for_confirmation(meta.get("description"))
 
     if slug == "generate_image":
         from miles_ai.integrations.generative.policy import (
@@ -145,25 +175,7 @@ async def invoke_tool_with_context(
         )
 
         if needs_image_tool_confirmation(tool_params) and not confirmed:
-            await write_tool_invocation_log(
-                db,
-                tenant_id=ctx.tenant_id,
-                tool_slug=slug,
-                tool_id=resolved_tool_id,
-                source=meta["source"],
-                status="confirmation_required",
-                params=tool_params,
-                actor_user_id=actor_user_id,
-                agent_id=agent_id,
-                invoke_source=invoke_source,
-                trace_id=get_trace_id(),
-            )
-            raise ToolConfirmationRequired(
-                slug,
-                meta["name"],
-                image_tool_confirmation_message(tool_params),
-                tool_params,
-            )
+            await halt_for_confirmation(image_tool_confirmation_message(tool_params))
 
     bound_skill_id: UUID | None = None
     if slug in SKILL_BOUND_SLUGS:
@@ -202,21 +214,7 @@ async def invoke_tool_with_context(
             agent_id=agent_id,
         )
         latency_ms = int((time.monotonic() - started) * 1000)
-        await write_tool_invocation_log(
-            db,
-            tenant_id=ctx.tenant_id,
-            tool_slug=slug,
-            tool_id=resolved_tool_id,
-            source=meta["source"],
-            status="success",
-            params=tool_params,
-            output=output,
-            latency_ms=latency_ms,
-            actor_user_id=actor_user_id,
-            agent_id=agent_id,
-            invoke_source=invoke_source,
-            trace_id=get_trace_id(),
-        )
+        await log_invocation(status="success", params=tool_params, output=output, latency_ms=latency_ms)
         await hook_runner.run(
             HookTrigger.AFTER_TOOL,
             HookScope.TOOL,
@@ -234,19 +232,11 @@ async def invoke_tool_with_context(
         raise
     except Exception as exc:
         latency_ms = int((time.monotonic() - started) * 1000)
-        await write_tool_invocation_log(
-            db,
-            tenant_id=ctx.tenant_id,
-            tool_slug=slug,
-            tool_id=resolved_tool_id,
-            source=meta["source"],
+        # 错误路径记录调用方原始 params（而非 Hook 改写后的），便于回溯用户实际意图
+        await log_invocation(
             status="error",
             params=params,
-            error_message=str(exc)[:2000],
             latency_ms=latency_ms,
-            actor_user_id=actor_user_id,
-            agent_id=agent_id,
-            invoke_source=invoke_source,
-            trace_id=get_trace_id(),
+            error_message=str(exc)[:2000],
         )
         raise
