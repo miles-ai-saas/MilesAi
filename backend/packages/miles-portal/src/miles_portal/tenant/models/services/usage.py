@@ -14,25 +14,46 @@ from miles_core.infra.db import AsyncSessionLocal
 from miles_core.models.model import ModelConfig
 from miles_core.models.model.usage_log import ModelUsageLog
 
-_chat_usage_acc: ContextVar[tuple[int, int] | None] = ContextVar("_chat_usage_acc", default=None)
+
+@dataclass
+class ChatUsageAccumulator:
+    """单轮 chat 的 token 累计器。
+
+    刻意做成**可变对象**：``_chat_usage_acc`` 里存的是它的引用，记录用量时原地累加。
+    若沿用「存元组 + 每次 set() 新元组」，绑定只会写进当前 context——LangGraph 在
+    子 task 里执行节点时，父 context 读到的仍是初始值，``AgentChatCall`` 会恒记 0 token。
+    """
+
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+
+    def add(self, *, prompt_tokens: int, completion_tokens: int) -> None:
+        self.prompt_tokens += max(0, prompt_tokens)
+        self.completion_tokens += max(0, completion_tokens)
+
+    def totals(self) -> tuple[int, int]:
+        return self.prompt_tokens, self.completion_tokens
 
 
-def begin_chat_usage_accumulation() -> Token[tuple[int, int] | None]:
+_chat_usage_acc: ContextVar[ChatUsageAccumulator | None] = ContextVar("_chat_usage_acc", default=None)
+
+
+def begin_chat_usage_accumulation() -> Token[ChatUsageAccumulator | None]:
     """单轮 Agent chat 开始时重置 Token 累计（供调用记录写入）。"""
-    return _chat_usage_acc.set((0, 0))
+    return _chat_usage_acc.set(ChatUsageAccumulator())
 
 
-def end_chat_usage_accumulation(token: Token[tuple[int, int] | None]) -> None:
+def end_chat_usage_accumulation(token: Token[ChatUsageAccumulator | None]) -> None:
     """恢复到本轮 chat 累计前的上下文状态。"""
     _chat_usage_acc.reset(token)
 
 
 def get_chat_usage_totals() -> tuple[int, int]:
     """返回当前轮次累计的 (prompt_tokens, completion_tokens)。"""
-    val = _chat_usage_acc.get()
-    if val is None:
+    acc = _chat_usage_acc.get()
+    if acc is None:
         return (0, 0)
-    return val
+    return acc.totals()
 
 
 @dataclass(frozen=True)
@@ -59,8 +80,8 @@ async def record_model_usage(
     if ctx.source == "chat" and ctx.source_id is not None:
         acc = _chat_usage_acc.get()
         if acc is not None:
-            p, c = acc
-            _chat_usage_acc.set((p + max(0, prompt_tokens), c + max(0, completion_tokens)))
+            # 原地累加，不重新绑定：子 task 里的写入必须能被父 context 看见
+            acc.add(prompt_tokens=prompt_tokens, completion_tokens=completion_tokens)
     row = ModelUsageLog(
         tenant_id=ctx.tenant_id,
         model_config_id=ctx.model.id,

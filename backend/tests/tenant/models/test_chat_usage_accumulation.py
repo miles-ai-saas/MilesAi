@@ -26,7 +26,9 @@ async def db_session():
 def test_chat_usage_accumulation():
     token = begin_chat_usage_accumulation()
     try:
-        usage_mod._chat_usage_acc.set((120, 30))
+        acc = usage_mod._chat_usage_acc.get()
+        assert acc is not None
+        acc.add(prompt_tokens=120, completion_tokens=30)
         assert get_chat_usage_totals() == (120, 30)
     finally:
         end_chat_usage_accumulation(token)
