@@ -362,6 +362,25 @@ async def _execute_tool_call(
     return None
 
 
+def _assistant_tool_call_message(message, tool_calls: list) -> dict:
+    """模型返回的 assistant 消息 → 续接多轮所需的 OpenAI ``tool_calls`` 结构。"""
+    return {
+        "role": "assistant",
+        "content": message.content or "",
+        "tool_calls": [
+            {
+                "id": tc.id,
+                "type": "function",
+                "function": {
+                    "name": tc.function.name,
+                    "arguments": tc.function.arguments,
+                },
+            }
+            for tc in tool_calls
+        ],
+    }
+
+
 async def run_tool_calling_chat(
     agent: Agent,
     body: ChatRequest,
@@ -451,39 +470,24 @@ async def run_tool_calling_chat(
 
         if not tool_calls:
             content = getattr(message, "content", None) or ""
-            if not tool_sim_retried and _looks_like_tool_call_simulation(content, tool_names):
-                tool_sim_retried = True
-                recovered = await _recover_from_tool_simulation(
-                    content,
-                    tool_names=tool_names,
-                    tools_by_name=tools_by_name,
-                    tool_executor=tool_executor,
-                    messages=messages,
-                    steps=steps,
-                    body=body,
-                )
-                if recovered is not None:
-                    return recovered
-                continue
-            return ChatResponse(answer=str(content), steps=steps, artifacts=artifacts, sources=knowledge_hits)
+            # 模型偶尔把工具调用写进正文；仅在首次出现时尝试自救助，救不回来则按普通回复收束
+            if tool_sim_retried or not _looks_like_tool_call_simulation(content, tool_names):
+                return ChatResponse(answer=str(content), steps=steps, artifacts=artifacts, sources=knowledge_hits)
+            tool_sim_retried = True
+            recovered = await _recover_from_tool_simulation(
+                content,
+                tool_names=tool_names,
+                tools_by_name=tools_by_name,
+                tool_executor=tool_executor,
+                messages=messages,
+                steps=steps,
+                body=body,
+            )
+            if recovered is not None:
+                return recovered
+            continue
 
-        messages.append(
-            {
-                "role": "assistant",
-                "content": message.content or "",
-                "tool_calls": [
-                    {
-                        "id": tc.id,
-                        "type": "function",
-                        "function": {
-                            "name": tc.function.name,
-                            "arguments": tc.function.arguments,
-                        },
-                    }
-                    for tc in tool_calls
-                ],
-            }
-        )
+        messages.append(_assistant_tool_call_message(message, tool_calls))
 
         # 防重复：同一轮对话中 generate_image / generate_video 只执行首次调用
         for tc in _dedupe_generative_tool_calls(tool_calls, messages):

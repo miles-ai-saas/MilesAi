@@ -211,6 +211,35 @@ async def test_max_iterations_returns_retry_prompt(monkeypatch):
     assert resp.steps[-1] == {"type": "tool_agent", "error": "max_iterations"}
 
 
+# --- 续接多轮的消息结构 -------------------------------------------------------
+
+
+async def test_assistant_tool_call_message_shape(monkeypatch):
+    """写入 messages 的 assistant 条目须是 OpenAI tool_calls 结构，content 归一为字符串。"""
+    seen = _patch_litellm(
+        monkeypatch,
+        [
+            _Resp(_Message(None, tool_calls=[_ToolCall("calculator", '{"expression": "1+1"}', "call-9")])),
+            _Resp(_Message("结果是 2", tool_calls=[])),
+        ],
+    )
+    resp = await _run(ChatRequest(query="算一下"))
+
+    assert resp.answer == "结果是 2"
+    second = seen["calls"][1]
+    assistant = next(m for m in second if m["role"] == "assistant")
+    assert assistant["content"] == ""  # None → ""
+    assert assistant["tool_calls"] == [
+        {
+            "id": "call-9",
+            "type": "function",
+            "function": {"name": "calculator", "arguments": '{"expression": "1+1"}'},
+        }
+    ]
+    tool_msg = next(m for m in second if m["role"] == "tool")
+    assert tool_msg["tool_call_id"] == "call-9"
+
+
 # --- 文本模拟工具调用（自救助）-------------------------------------------------
 
 
@@ -238,6 +267,22 @@ async def test_tool_simulation_without_extractable_params_appends_correction(mon
     # 第二次请求应带上「纠正提示」的 user 消息
     second_messages = seen["calls"][1]
     assert any(m["role"] == "user" and "tool_use" in str(m.get("content", "")) for m in second_messages)
+
+
+async def test_tool_simulation_recovery_is_attempted_only_once(monkeypatch):
+    """自救助只试一次：第二轮再出现模拟调用文本时按普通回复收束，不无限纠正。"""
+    _patch_litellm(
+        monkeypatch,
+        [
+            _Resp(_Message("我来计算：calculator(foo)", tool_calls=[])),
+            _Resp(_Message("还是 calculator(foo)", tool_calls=[])),
+        ],
+    )
+    resp = await _run(ChatRequest(query="算一下"))
+
+    assert resp.answer == "还是 calculator(foo)"
+    assert [s.get("type") for s in resp.steps].count("tool_simulation_corrected") == 1
+    assert resp.steps[-1].get("error") != "max_iterations"
 
 
 # --- 生成工具重复调用去重 -----------------------------------------------------
