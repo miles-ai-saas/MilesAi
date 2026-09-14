@@ -34,7 +34,12 @@ class AgentChatEntryMixin:
         *,
         on_delta: OnDelta | None = None,
     ) -> ChatResponse:
-        """租户侧智能体对话入口：合规与 Hook 包裹整条调用链。"""
+        """租户侧智能体对话入口：合规与 Hook 包裹整条调用链。
+
+        按 a2a_host / subagent / a2a_augmented / flow / rag 五条路由分发；每条路由
+        都经 ``finish`` → ``_complete_chat_turn`` 做出站合规、AFTER_CALL Hook 与
+        调用记录收尾。异常统一走 ``recorder.record_failure`` + ON_ERROR Hook 后重抛。
+        """
         agent = await self.get_agent_or_raise(agent_id)
         if agent.status != AgentStatus.ENABLED:
             raise BadRequestError("智能体已禁用")
@@ -65,6 +70,22 @@ class AgentChatEntryMixin:
             video_duration=body.generative_video_duration,
         )
 
+        async def finish(selected_route: str, response: ChatResponse) -> ChatResponse:
+            """按本次命中的路由完成收尾。
+
+            recorder / compliance / hooks / agent_id / hook_payload 对五条路由都相同，
+            故在此固化；调用处只需给出路由名与该路由的响应。
+            """
+            return await self._complete_chat_turn(
+                recorder,
+                selected_route,
+                compliance=compliance,
+                hooks=hooks,
+                agent_id=agent_id,
+                hook_payload=hook_payload,
+                response=response,
+            )
+
         try:
             before_call = await hooks.run(
                 HookTrigger.BEFORE_CALL,
@@ -77,20 +98,15 @@ class AgentChatEntryMixin:
             chat_body = body.model_copy(update={"query": query}) if query != effective_query else body
             await compliance.check_input(query, module=SCAN_MODULE_AGENT_CHAT)
 
+            # KB / top_k 对 a2a_augmented、flow、rag 三条路由相同，提前算一次
+            kb_ids = [str(kb.id) for kb in agent.knowledge_bases]
+            top_k = int((agent.config or {}).get("top_k", 5))
+
             if agent.agent_type == AgentType.A2A:
                 from miles_portal.tenant.a2a.invoke import run_a2a_host_chat
 
                 route = "a2a_host"
-                response = await run_a2a_host_chat(self, agent, chat_body)
-                return await self._complete_chat_turn(
-                    recorder,
-                    route,
-                    compliance=compliance,
-                    hooks=hooks,
-                    agent_id=agent_id,
-                    hook_payload=hook_payload,
-                    response=response,
-                )
+                return await finish(route, await run_a2a_host_chat(self, agent, chat_body))
 
             bindings = await list_sub_agent_bindings(self.db, agent_id)
             peer_refs = await list_agent_a2a_peer_refs(self.db, agent_id)
@@ -112,21 +128,11 @@ class AgentChatEntryMixin:
                 response = ChatResponse(answer=result.answer, sources=[], steps=result.steps)
                 if peer_refs:
                     response = await self.maybe_augment_a2a(agent, chat_body, response)
-                return await self._complete_chat_turn(
-                    recorder,
-                    route,
-                    compliance=compliance,
-                    hooks=hooks,
-                    agent_id=agent_id,
-                    hook_payload=hook_payload,
-                    response=response,
-                )
+                return await finish(route, response)
 
             if peer_refs:
                 from miles_portal.tenant.a2a.invoke import run_a2a_augmented_chat
 
-                kb_ids = [str(kb.id) for kb in agent.knowledge_bases]
-                top_k = int((agent.config or {}).get("top_k", 5))
                 route = "a2a_augmented"
                 response = await run_a2a_augmented_chat(
                     self,
@@ -137,18 +143,7 @@ class AgentChatEntryMixin:
                     agent_id=agent_id,
                     hooks=hooks,
                 )
-                return await self._complete_chat_turn(
-                    recorder,
-                    route,
-                    compliance=compliance,
-                    hooks=hooks,
-                    agent_id=agent_id,
-                    hook_payload=hook_payload,
-                    response=response,
-                )
-
-            kb_ids = [str(kb.id) for kb in agent.knowledge_bases]
-            top_k = int((agent.config or {}).get("top_k", 5))
+                return await finish(route, response)
 
             if agent.published_flow_id:
                 flow = await self.flow_repo.get_by_id(agent.published_flow_id)
@@ -169,28 +164,12 @@ class AgentChatEntryMixin:
                         result = await get_flow_runtime().run(version.graph_json, ctx)
                         response = ChatResponse(answer=str(result.output), steps=result.steps)
                         response = await self.maybe_augment_a2a(agent, chat_body, response)
-                        return await self._complete_chat_turn(
-                            recorder,
-                            route,
-                            compliance=compliance,
-                            hooks=hooks,
-                            agent_id=agent_id,
-                            hook_payload=hook_payload,
-                            response=response,
-                        )
+                        return await finish(route, response)
 
             route = self._resolve_rag_route(agent, kb_ids)
             response = await self.rag_chat(agent, chat_body, kb_ids, top_k, agent_id, hooks, on_delta=on_delta)
             response = await self.maybe_augment_a2a(agent, chat_body, response)
-            return await self._complete_chat_turn(
-                recorder,
-                route,
-                compliance=compliance,
-                hooks=hooks,
-                agent_id=agent_id,
-                hook_payload=hook_payload,
-                response=response,
-            )
+            return await finish(route, response)
         except Exception as exc:
             await recorder.record_failure(exc, route=route)
             await hooks.run(
