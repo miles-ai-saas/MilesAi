@@ -414,7 +414,6 @@ class AgentChatRagMixin:
     ) -> ChatUsageSink:
         """构造注入引擎的用量记录器（chat 累计 + 落库）。"""
         return ChatUsageSink(
-            db=self.db,
             tenant_id=self.ctx.tenant_id,
             model=model,
             source_id=source_id,

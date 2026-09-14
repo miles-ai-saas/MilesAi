@@ -149,7 +149,6 @@ async def plan_a2a_peers(
     )
     model = await resolve_model_for_invoke(db, parent.model_config, tenant_id)
     usage_sink = ChatUsageSink(
-        db=db,
         tenant_id=tenant_id,
         model=model,
         source_id=parent.id,

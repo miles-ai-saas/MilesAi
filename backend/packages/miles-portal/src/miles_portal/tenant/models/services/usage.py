@@ -101,31 +101,40 @@ class ChatUsageSink:
 
     实现 L3 ``UsageSink`` 协议，由 L1 装配（如 AgentService、flow 运行入口）
     构造并注入引擎；``source_id`` 为对话 agent_id，用于 chat 用量累计。
+
+    ``record`` 自开短会话并提交，**不借用调用方会话**：生成阶段的 LLM 调用之间
+    会记录用量，若挂在请求事务上就等于整段生成期间占住一个连接。token 仍累加到
+    ``_chat_usage_acc`` ContextVar（与 Session 无关），供 ``AgentChatCall`` 汇总。
     """
 
     def __init__(
         self,
         *,
-        db: AsyncSession,
         tenant_id: UUID,
         model: ModelConfig,
         source_id: UUID | None = None,
     ) -> None:
-        self._ctx = UsageRecordContext(
-            db=db,
-            tenant_id=tenant_id,
-            model=model,
-            source="chat",
-            source_id=source_id,
-        )
+        self._tenant_id = tenant_id
+        self._model = model
+        self._source_id = source_id
 
     async def record(self, *, prompt_tokens: int = 0, completion_tokens: int = 0) -> None:
-        """实现 ``UsageSink`` 协议：写入 chat 来源用量（随调用方会话）。"""
-        await record_model_usage(
-            self._ctx,
-            prompt_tokens=prompt_tokens,
-            completion_tokens=completion_tokens,
-        )
+        """实现 ``UsageSink`` 协议：自开短会话写 chat 来源用量并提交。"""
+        if max(0, prompt_tokens) + max(0, completion_tokens) <= 0:
+            return
+        async with AsyncSessionLocal() as db:
+            await record_model_usage(
+                UsageRecordContext(
+                    db=db,
+                    tenant_id=self._tenant_id,
+                    model=self._model,
+                    source="chat",
+                    source_id=self._source_id,
+                ),
+                prompt_tokens=prompt_tokens,
+                completion_tokens=completion_tokens,
+            )
+            await db.commit()
 
 
 class FlowUsageSink:

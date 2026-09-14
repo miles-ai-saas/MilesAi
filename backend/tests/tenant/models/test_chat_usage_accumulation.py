@@ -1,6 +1,5 @@
 """模型用量累计 ContextVar 测试。"""
 
-from unittest.mock import AsyncMock, Mock
 from uuid import uuid4
 
 import pytest
@@ -15,12 +14,34 @@ from miles_portal.tenant.models.services.usage import (
 )
 
 
-@pytest.fixture
-async def db_session():
-    """无真实 DB 的 AsyncSession 替身：add 同步接收行，flush 可 await。"""
-    session = AsyncMock()
-    session.add = Mock()
-    return session
+class _ShortSession:
+    """替身：记录 add 的行并记录 commit。"""
+
+    def __init__(self) -> None:
+        self.rows: list[object] = []
+        self.commits = 0
+
+    def add(self, row: object) -> None:
+        self.rows.append(row)
+
+    async def flush(self) -> None:
+        return None
+
+    async def commit(self) -> None:
+        self.commits += 1
+
+
+class _cm:
+    """最小 async context manager（AsyncSessionLocal 的替身）。"""
+
+    def __init__(self, session: object) -> None:
+        self._session = session
+
+    async def __aenter__(self) -> object:
+        return self._session
+
+    async def __aexit__(self, *exc: object) -> bool:
+        return False
 
 
 def test_chat_usage_accumulation():
@@ -36,24 +57,26 @@ def test_chat_usage_accumulation():
 
 
 @pytest.mark.asyncio
-async def test_chat_usage_sink_accumulates_and_flushes(db_session):
+async def test_chat_usage_sink_accumulates_and_commits(monkeypatch):
+    short = _ShortSession()
+    monkeypatch.setattr(usage_mod, "AsyncSessionLocal", lambda: _cm(short))
+
     begin_chat_usage_accumulation()
     model_id = uuid4()
     source_id = uuid4()
     sink = ChatUsageSink(
-        db=db_session,
         tenant_id=uuid4(),
         model=ModelConfig(id=model_id, name="m", provider="openai", model_name="x"),
         source_id=source_id,
     )
     await sink.record(prompt_tokens=100, completion_tokens=20)
+
     assert get_chat_usage_totals() == (100, 20)
-    db_session.add.assert_called_once()
-    row = db_session.add.call_args[0][0]
+    row = short.rows[0]
     assert isinstance(row, ModelUsageLog)
     assert row.model_config_id == model_id
     assert row.source == "chat"
     assert row.source_id == source_id
     assert row.prompt_tokens == 100
     assert row.completion_tokens == 20
-    db_session.flush.assert_awaited_once()
+    assert short.commits == 1
