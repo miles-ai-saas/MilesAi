@@ -18,6 +18,9 @@ class AuditLog(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         Index("idx_adm_audit_logs_admin_id", "admin_id"),
         Index("idx_adm_audit_logs_tenant_id", "tenant_id"),
         Index("idx_adm_audit_logs_created_at", "created_at"),
+        # action 既是列表筛选条件（AuditLog.action == action），也是筛选元数据
+        # 的来源（SELECT DISTINCT action）；缺索引时两处都要全表扫 adm_audit_logs。
+        Index("idx_adm_audit_logs_action", "action"),
     )
 
     admin_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
