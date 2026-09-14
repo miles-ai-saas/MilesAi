@@ -10,6 +10,7 @@ from unittest.mock import AsyncMock
 from uuid import uuid4
 
 import miles_ai.integrations.langgraph.graphs.rag_qa as rag_qa
+import miles_ai.rag.generate.answer as answer_mod
 from miles_ai.integrations.langgraph.graphs.rag_qa import build_rag_qa_graph
 from miles_portal.tenant.models.services.usage import (
     UsageRecordContext,
@@ -74,7 +75,7 @@ async def test_graph_node_usage_reaches_caller_contextvar(monkeypatch):
 
     monkeypatch.setattr(rag_qa, "AsyncSessionLocal", _ShortSession)
     monkeypatch.setattr(rag_qa, "retrieve_hits", AsyncMock(return_value=[{"content": "片段", "score": 0.9}]))
-    monkeypatch.setattr(rag_qa, "ainvoke_chat", AsyncMock(side_effect=fake_ainvoke))
+    monkeypatch.setattr(answer_mod, "ainvoke_chat", AsyncMock(side_effect=fake_ainvoke))
 
     initial = {
         "query": "问题",

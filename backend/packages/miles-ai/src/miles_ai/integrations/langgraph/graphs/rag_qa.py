@@ -6,7 +6,7 @@ RAG 问答 LangGraph（Agent 默认 RAG 引擎）。
 START → retrieve（``retrieve_hits`` 多 KB；仅用 ``query`` 文本，不用附图）
      → grade_documents（分数阈值或 LLM 评判 good/poor/none）
      → route_after_grade
-         - good → generate（``build_rag_user_prompt`` + ``ainvoke_chat``，可带 media）
+         - good → generate（``build_rag_prompt`` / ``generate_rag_answer``，可带 media）
          - poor → prepare_retry（top_k×2，≤20）→ retrieve
          - none / 重试耗尽 → fallback（低相关或无命中话术）
 
@@ -25,16 +25,11 @@ from uuid import UUID
 from langchain_core.runnables import RunnableConfig
 from langgraph.graph import END, START, StateGraph
 
-from miles_ai.integrations.chat.multimodal import (
-    build_invoke_messages_with_media,
-    media_refs_from_items,
-)
-from miles_ai.integrations.langchain.chat_models import ainvoke_chat
+from miles_ai.integrations.chat.multimodal import media_refs_from_items
 from miles_ai.integrations.langgraph.constants import RELEVANCE_NONE, RELEVANCE_POOR
 from miles_ai.integrations.langgraph.grading import _score_grade, llm_grade_relevance
 from miles_ai.integrations.langgraph.state import RAGGraphState
-from miles_ai.rag.generate import build_rag_user_prompt, format_hits_context, retrieve_hits
-from miles_common.exceptions import BadRequestError
+from miles_ai.rag.generate import build_rag_prompt, format_hits_context, generate_rag_answer, retrieve_hits
 from miles_core.infra.db import AsyncSessionLocal
 from miles_core.models.model import ModelConfig
 
@@ -47,6 +42,21 @@ def _cfg_model(config: RunnableConfig | None) -> ModelConfig:
     if not model:
         raise ValueError("LangGraph 缺少 model 配置")
     return model
+
+
+def _cfg_on_delta(config: RunnableConfig | None) -> Any:
+    """从 RunnableConfig.configurable 取 on_delta（可为 None）。"""
+    return (config.get("configurable") or {}).get("on_delta") if config else None
+
+
+def _cfg_usage_sink(config: RunnableConfig | None) -> Any:
+    """从 RunnableConfig.configurable 取 usage_sink（可为 None）。"""
+    return (config.get("configurable") or {}).get("usage_sink") if config else None
+
+
+def _cfg_media_reader(config: RunnableConfig | None) -> Any:
+    """从 RunnableConfig.configurable 取 media_reader（可为 None）。"""
+    return (config.get("configurable") or {}).get("media_reader") if config else None
 
 
 async def retrieve(state: RAGGraphState, config: RunnableConfig) -> dict[str, Any]:
@@ -159,35 +169,16 @@ async def generate(state: RAGGraphState, config: RunnableConfig) -> dict[str, An
     model = _cfg_model(config)
     hits = state.get("hits") or []
     user_q = _prompt_user_query(state)
-    if hits:
-        prompt = build_rag_user_prompt(
-            system_prompt=state["system_prompt"],
-            query=user_q,
-            hits=hits,
-        )
-    else:
-        prompt = f"{state['system_prompt']}\n\n用户问题：{user_q}"
-
+    prompt = build_rag_prompt(system_prompt=state["system_prompt"], query=user_q, hits=hits)
     media_refs = media_refs_from_items(state.get("media"))
-    media_reader = config.get("configurable", {}).get("media_reader") if config else None
-    if media_refs:
-        if media_reader is None:
-            raise BadRequestError("媒体读取器未装配（media_reader），无法解析附图")
-        messages = await build_invoke_messages_with_media(
-            media_reader,
-            prompt_text=prompt,
-            media=media_refs,
-        )
-    else:
-        messages = [{"role": "user", "content": prompt}]
-    on_delta = config.get("configurable", {}).get("on_delta") if config else None
-    usage_sink = config.get("configurable", {}).get("usage_sink") if config else None
-    answer = await ainvoke_chat(
-        model,
-        messages,
+    answer = await generate_rag_answer(
+        model=model,
+        prompt=prompt,
+        media=media_refs or None,
+        media_reader=_cfg_media_reader(config),
         temperature=float(state.get("temperature", 0.7)),
-        usage_sink=usage_sink,
-        on_delta=on_delta,
+        on_delta=_cfg_on_delta(config),
+        usage_sink=_cfg_usage_sink(config),
     )
     return {
         "answer": answer,
@@ -218,25 +209,14 @@ async def fallback(state: RAGGraphState, config: RunnableConfig) -> dict[str, An
             f"并明确说明未命中企业知识库。\n\n用户问题：{_prompt_user_query(state)}"
         )
     media_refs = media_refs_from_items(state.get("media"))
-    media_reader = config.get("configurable", {}).get("media_reader") if config else None
-    if media_refs:
-        if media_reader is None:
-            raise BadRequestError("媒体读取器未装配（media_reader），无法解析附图")
-        messages = await build_invoke_messages_with_media(
-            media_reader,
-            prompt_text=prompt,
-            media=media_refs,
-        )
-    else:
-        messages = [{"role": "user", "content": prompt}]
-    on_delta = config.get("configurable", {}).get("on_delta") if config else None
-    usage_sink = config.get("configurable", {}).get("usage_sink") if config else None
-    answer = await ainvoke_chat(
-        model,
-        messages,
+    answer = await generate_rag_answer(
+        model=model,
+        prompt=prompt,
+        media=media_refs or None,
+        media_reader=_cfg_media_reader(config),
         temperature=float(state.get("temperature", 0.7)),
-        usage_sink=usage_sink,
-        on_delta=on_delta,
+        on_delta=_cfg_on_delta(config),
+        usage_sink=_cfg_usage_sink(config),
     )
     return {
         "answer": answer,

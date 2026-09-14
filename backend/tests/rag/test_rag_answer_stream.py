@@ -104,7 +104,7 @@ async def test_generate_node_forwards_on_delta():
     config = {"configurable": {"model": model, "on_delta": delta, "usage_sink": usage_sink}}
 
     with patch(
-        "miles_ai.integrations.langgraph.graphs.rag_qa.ainvoke_chat",
+        "miles_ai.rag.generate.answer.ainvoke_chat",
         new_callable=AsyncMock,
         return_value="答案",
     ) as mock_chat:
@@ -135,7 +135,7 @@ async def test_fallback_node_forwards_on_delta():
     config = {"configurable": {"model": model, "on_delta": delta, "usage_sink": usage_sink}}
 
     with patch(
-        "miles_ai.integrations.langgraph.graphs.rag_qa.ainvoke_chat",
+        "miles_ai.rag.generate.answer.ainvoke_chat",
         new_callable=AsyncMock,
         return_value="兜底",
     ) as mock_chat:

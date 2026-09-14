@@ -52,12 +52,12 @@ async def test_generate_node_with_media():
 
     with (
         patch(
-            "miles_ai.integrations.langgraph.graphs.rag_qa.build_invoke_messages_with_media",
+            "miles_ai.rag.generate.answer.build_invoke_messages_with_media",
             new_callable=AsyncMock,
             return_value=[{"role": "user", "content": [{"type": "text", "text": "x"}]}],
         ) as mock_build,
         patch(
-            "miles_ai.integrations.langgraph.graphs.rag_qa.ainvoke_chat",
+            "miles_ai.rag.generate.answer.ainvoke_chat",
             new_callable=AsyncMock,
             return_value="答案",
         ),
