@@ -9,6 +9,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import shutil
 import textwrap
 import time
 import uuid
@@ -48,6 +49,90 @@ _BOOTSTRAP = textwrap.dedent(
 ).strip()
 
 
+def _write_script_files(tmpdir: str, source: str) -> str:
+    """落盘用户脚本与 bootstrap，返回 bootstrap 入口路径。
+
+    用户脚本固定写为 ``user_script.py``：``_BOOTSTRAP`` 按该文件名加载。
+    """
+    script_path = os.path.join(tmpdir, "user_script.py")
+    bootstrap_path = os.path.join(tmpdir, "bootstrap.py")
+    with open(script_path, "w", encoding="utf-8") as f:
+        f.write(source)
+    with open(bootstrap_path, "w", encoding="utf-8") as f:
+        f.write(_BOOTSTRAP)
+    return bootstrap_path
+
+
+async def _spawn_script_process(
+    bootstrap_path: str,
+    tmpdir: str,
+    max_memory_mb: int,
+) -> asyncio.subprocess.Process:
+    """启动受限子进程：管道收发、cwd 与环境隔离在 tmpdir、``preexec`` 限内存。"""
+    return await asyncio.create_subprocess_exec(
+        "python3",
+        bootstrap_path,
+        stdin=asyncio.subprocess.PIPE,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+        cwd=tmpdir,
+        env={"PATH": os.environ.get("PATH", "/usr/bin:/bin"), "HOME": tmpdir, "TMPDIR": tmpdir},
+        preexec_fn=lambda: _preexec(max_memory_mb),
+    )
+
+
+def _session_result_from_output(
+    stdout: bytes,
+    stderr: bytes,
+    returncode: int,
+    duration_ms: int,
+) -> SessionResult:
+    """子进程输出 → SessionResult：非 0 退出码为 CRASH，stdout 非 JSON 为 INVALID_OUTPUT。"""
+    if returncode != 0:
+        err = stderr.decode("utf-8", errors="replace")[:2000]
+        return SessionResult(
+            ok=False,
+            error_code="PROCESS_CRASH",
+            message=err or f"脚本退出码 {returncode}",
+            duration_ms=duration_ms,
+            exit_code=returncode,
+        )
+    text = stdout.decode("utf-8", errors="replace").strip()
+    try:
+        data = json.loads(text) if text else {}
+    except json.JSONDecodeError:
+        return SessionResult(
+            ok=False,
+            error_code="INVALID_OUTPUT",
+            message=f"脚本须向 stdout 输出 JSON，收到: {text[:200]}",
+            duration_ms=duration_ms,
+            exit_code=returncode,
+        )
+    if not isinstance(data, dict):
+        data = {"result": data}
+    return SessionResult(
+        ok=True,
+        data=data,
+        duration_ms=duration_ms,
+        exit_code=returncode,
+    )
+
+
+def _elapsed_ms(started: float) -> int:
+    """自 ``started``（``time.monotonic()`` 取值）以来的毫秒数。"""
+    return int((time.monotonic() - started) * 1000)
+
+
+def _cleanup_tmpdir(tmpdir: str) -> None:
+    """整目录删除临时脚本；失败不抛（清理失败不该改变执行结果）。
+
+    不能用 ``os.remove`` + ``os.rmdir``：bootstrap 以 importlib 加载用户脚本时
+    会在 tmpdir 生成 ``__pycache__``，``os.rmdir`` 会因目录非空失败并被吞掉，
+    导致每次执行都残留一个目录。
+    """
+    shutil.rmtree(tmpdir, ignore_errors=True)
+
+
 async def run_python_script(
     source: str,
     params: dict,
@@ -58,7 +143,8 @@ async def run_python_script(
 ) -> SessionResult:
     """在受限子进程中执行用户脚本：校验源码、注入白名单 stdlib，限制内存 / CPU / 超时，stdout 须输出 JSON。
 
-    各类失败（超时、崩溃、输出非法）统一转为 ``SessionResult`` 返回，不向调用方抛异常。
+    各类失败（超时、崩溃、输出非法）统一转为 ``SessionResult`` 返回，不向调用方抛异常；
+    源码校验失败属调用方错误，按既有契约直接抛 ``BadRequestError``。
     """
     validate_script_source(source)
     started = time.monotonic()
@@ -66,85 +152,33 @@ async def run_python_script(
     tmpdir = os.path.join(work_dir, f"script-{uuid.uuid4().hex}")
     os.makedirs(tmpdir, mode=0o700, exist_ok=True)
     try:
-        script_path = os.path.join(tmpdir, "user_script.py")
-        bootstrap_path = os.path.join(tmpdir, "bootstrap.py")
-        with open(script_path, "w", encoding="utf-8") as f:
-            f.write(source)
-        with open(bootstrap_path, "w", encoding="utf-8") as f:
-            f.write(_BOOTSTRAP)
-
+        bootstrap_path = _write_script_files(tmpdir, source)
         payload = json.dumps(params or {}, ensure_ascii=False).encode("utf-8")
-        proc = await asyncio.create_subprocess_exec(
-            "python3",
-            bootstrap_path,
-            stdin=asyncio.subprocess.PIPE,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-            cwd=tmpdir,
-            env={"PATH": os.environ.get("PATH", "/usr/bin:/bin"), "HOME": tmpdir, "TMPDIR": tmpdir},
-            preexec_fn=lambda: _preexec(max_memory_mb),
-        )
+        proc = await _spawn_script_process(bootstrap_path, tmpdir, max_memory_mb)
         stdout, stderr = await asyncio.wait_for(
             proc.communicate(input=payload),
             timeout=max_runtime_sec,
         )
-        duration_ms = int((time.monotonic() - started) * 1000)
-        if proc.returncode != 0:
-            err = stderr.decode("utf-8", errors="replace")[:2000]
-            return SessionResult(
-                ok=False,
-                error_code="PROCESS_CRASH",
-                message=err or f"脚本退出码 {proc.returncode}",
-                duration_ms=duration_ms,
-                exit_code=proc.returncode,
-            )
-        text = stdout.decode("utf-8", errors="replace").strip()
-        try:
-            data = json.loads(text) if text else {}
-        except json.JSONDecodeError:
-            return SessionResult(
-                ok=False,
-                error_code="INVALID_OUTPUT",
-                message=f"脚本须向 stdout 输出 JSON，收到: {text[:200]}",
-                duration_ms=duration_ms,
-                exit_code=proc.returncode,
-            )
-        if not isinstance(data, dict):
-            data = {"result": data}
-        return SessionResult(
-            ok=True,
-            data=data,
-            duration_ms=duration_ms,
-            exit_code=proc.returncode,
-        )
+        return _session_result_from_output(stdout, stderr, proc.returncode, _elapsed_ms(started))
     except TimeoutError:
-        duration_ms = int((time.monotonic() - started) * 1000)
         if proc:
             await _kill(proc)
         return SessionResult(
             ok=False,
             error_code="RUNTIME_TIMEOUT",
             message=f"脚本执行超时（{max_runtime_sec}s）",
-            duration_ms=duration_ms,
+            duration_ms=_elapsed_ms(started),
             exit_code=-9,
         )
     except Exception as e:
-        duration_ms = int((time.monotonic() - started) * 1000)
         if proc:
             await _kill(proc)
         return SessionResult(
             ok=False,
             error_code="SCRIPT_ERROR",
             message=str(e)[:2000],
-            duration_ms=duration_ms,
+            duration_ms=_elapsed_ms(started),
             exit_code=proc.returncode if proc else None,
         )
     finally:
-        try:
-            for name in ("user_script.py", "bootstrap.py"):
-                path = os.path.join(tmpdir, name)
-                if os.path.exists(path):
-                    os.remove(path)
-            os.rmdir(tmpdir)
-        except OSError:
-            pass
+        _cleanup_tmpdir(tmpdir)
