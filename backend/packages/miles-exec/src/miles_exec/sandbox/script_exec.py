@@ -87,7 +87,11 @@ def _session_result_from_output(
     returncode: int,
     duration_ms: int,
 ) -> SessionResult:
-    """子进程输出 → SessionResult：非 0 退出码为 CRASH，stdout 非 JSON 为 INVALID_OUTPUT。"""
+    """子进程输出 → SessionResult：非 0 退出码为 CRASH，stdout 非 JSON 为 INVALID_OUTPUT。
+
+    解析成功必然得到 ``dict``：``_BOOTSTRAP`` 在打印前已把非 dict 结果包成
+    ``{"result": ...}``，故此处无需再兜一层。
+    """
     if returncode != 0:
         err = stderr.decode("utf-8", errors="replace")[:2000]
         return SessionResult(
@@ -108,8 +112,6 @@ def _session_result_from_output(
             duration_ms=duration_ms,
             exit_code=returncode,
         )
-    if not isinstance(data, dict):
-        data = {"result": data}
     return SessionResult(
         ok=True,
         data=data,
