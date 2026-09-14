@@ -10,7 +10,6 @@ MCP 服务租户侧业务（L2）：CRUD、同步 tools_cache、试调用。
 远程协议在 ``tenant.mcp.client`` / ``sse_transport``；STDIO 在 ``runner.client``。
 """
 
-import time
 from datetime import UTC, datetime
 from uuid import UUID
 
@@ -28,7 +27,7 @@ from miles_portal.tenant.mcp.client import fetch_mcp_tools
 from miles_portal.tenant.mcp.client import invoke_mcp_tool as remote_invoke_mcp_tool
 from miles_portal.tenant.mcp.meta import mcp_meta_dict
 from miles_portal.tenant.mcp.models import McpService, McpStatus
-from miles_portal.tenant.mcp.runner.audit import write_mcp_runner_session
+from miles_portal.tenant.mcp.runner.audit import record_runner_session, write_mcp_runner_session
 from miles_portal.tenant.mcp.runner.client import RunnerClient
 from miles_portal.tenant.mcp.runner.spec_build import build_run_spec
 from miles_portal.tenant.mcp.schemas.mcp import (
@@ -201,25 +200,10 @@ class McpServiceManager(BaseService):
             raise BadRequestError(STDIO_RUNNER_DISABLED)
 
         spec = build_run_spec(row, self.ctx, purpose="mcp_sync")
-        started = time.monotonic()
         try:
-            tools = await RunnerClient().list_tools(spec, row.connection_config or {})
-            duration_ms = int((time.monotonic() - started) * 1000)
-            await write_mcp_runner_session(
-                self.db,
-                spec=spec,
-                status="success",
-                duration_ms=duration_ms,
-            )
+            async with record_runner_session(write_mcp_runner_session, self.db, spec=spec):
+                tools = await RunnerClient().list_tools(spec, row.connection_config or {})
         except BadRequestError as e:
-            duration_ms = int((time.monotonic() - started) * 1000)
-            await write_mcp_runner_session(
-                self.db,
-                spec=spec,
-                status="error",
-                duration_ms=duration_ms,
-                error_message=e.message,
-            )
             row.sync_error = e.message
             row.status = McpStatus.ERROR
             await self.db.flush()
@@ -267,33 +251,18 @@ class McpServiceManager(BaseService):
             if not settings.mcp_runner_enabled:
                 raise BadRequestError(STDIO_RUNNER_DISABLED)
             spec = build_run_spec(row, self.ctx, purpose="mcp_invoke")
-            started = time.monotonic()
-            try:
+            async with record_runner_session(
+                write_mcp_runner_session,
+                self.db,
+                spec=spec,
+                tool_name=tool_name,
+            ):
                 output = await RunnerClient().call_tool(
                     spec,
                     tool_name,
                     body.params or {},
                     row.connection_config or {},
                 )
-                duration_ms = int((time.monotonic() - started) * 1000)
-                await write_mcp_runner_session(
-                    self.db,
-                    spec=spec,
-                    status="success",
-                    duration_ms=duration_ms,
-                    tool_name=tool_name,
-                )
-            except BadRequestError as e:
-                duration_ms = int((time.monotonic() - started) * 1000)
-                await write_mcp_runner_session(
-                    self.db,
-                    spec=spec,
-                    status="error",
-                    duration_ms=duration_ms,
-                    error_message=e.message,
-                    tool_name=tool_name,
-                )
-                raise
             return McpToolInvokeResult(
                 service_id=service_id,
                 tool_name=tool_name,

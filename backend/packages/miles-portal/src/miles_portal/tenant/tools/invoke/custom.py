@@ -1,6 +1,5 @@
 """自定义 HTTP / 脚本工具执行（``invoke_custom_http`` / ``invoke_custom_script``）。"""
 
-import time
 from uuid import UUID
 
 import httpx
@@ -12,7 +11,7 @@ from miles_core.logging import get_logger
 from miles_core.tenant import TenantContext
 from miles_core.url_security import validate_outbound_url
 from miles_exec.sandbox.validate import validate_script_source
-from miles_portal.tenant.mcp.runner.audit import write_script_runner_session
+from miles_portal.tenant.mcp.runner.audit import record_runner_session, write_script_runner_session
 from miles_portal.tenant.mcp.runner.client import RunnerClient
 from miles_portal.tenant.tools.builtins.template import apply_template
 from miles_portal.tenant.tools.models import Tool
@@ -107,8 +106,15 @@ async def invoke_custom_script(
     timeout_sec = min(max(int(cfg.get("timeout_sec") or 30), 1), 120)
     memory_mb = min(max(int(cfg.get("max_memory_mb") or 512), 128), 2048)
 
-    started = time.monotonic()
-    try:
+    async with record_runner_session(
+        write_script_runner_session,
+        db,
+        tenant_id=ctx.tenant_id,
+        tool_id=tool.id,
+        actor_user_id=actor_user_id,
+        source=source,
+        tool_name=tool.slug,
+    ):
         output = await RunnerClient().exec_script(
             tenant_id=ctx.tenant_id,
             source=source,
@@ -118,29 +124,4 @@ async def invoke_custom_script(
             max_runtime_sec=timeout_sec,
             max_memory_mb=memory_mb,
         )
-        duration_ms = int((time.monotonic() - started) * 1000)
-        await write_script_runner_session(
-            db,
-            tenant_id=ctx.tenant_id,
-            tool_id=tool.id,
-            actor_user_id=actor_user_id,
-            source=source,
-            status="success",
-            duration_ms=duration_ms,
-            tool_name=tool.slug,
-        )
-        return output
-    except BadRequestError as e:
-        duration_ms = int((time.monotonic() - started) * 1000)
-        await write_script_runner_session(
-            db,
-            tenant_id=ctx.tenant_id,
-            tool_id=tool.id,
-            actor_user_id=actor_user_id,
-            source=source,
-            status="error",
-            duration_ms=duration_ms,
-            error_message=e.message,
-            tool_name=tool.slug,
-        )
-        raise
+    return output

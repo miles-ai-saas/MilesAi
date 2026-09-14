@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import time
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -117,13 +116,20 @@ async def skill_run_script(
         else {k: v for k, v in params.items() if k not in ("path", "skill_package_id", "skill_slug", "params")}
     )
 
-    from miles_portal.tenant.mcp.runner.audit import write_script_runner_session
+    from miles_portal.tenant.mcp.runner.audit import record_runner_session, write_script_runner_session
     from miles_portal.tenant.mcp.runner.client import RunnerClient
 
     timeout_sec = min(max(int(params.get("timeout_sec") or 30), 1), 120)
     memory_mb = min(max(int(params.get("max_memory_mb") or 512), 128), 2048)
-    started = time.monotonic()
-    try:
+    async with record_runner_session(
+        write_script_runner_session,
+        db,
+        tenant_id=ctx.tenant_id,
+        tool_id=None,
+        actor_user_id=actor_user_id or ctx.user_id,
+        source=source,
+        tool_name=f"skill:{skill.slug}:{path}",
+    ):
         output = await RunnerClient().exec_script(
             tenant_id=ctx.tenant_id,
             source=source,
@@ -133,29 +139,4 @@ async def skill_run_script(
             max_runtime_sec=timeout_sec,
             max_memory_mb=memory_mb,
         )
-        duration_ms = int((time.monotonic() - started) * 1000)
-        await write_script_runner_session(
-            db,
-            tenant_id=ctx.tenant_id,
-            tool_id=None,
-            actor_user_id=actor_user_id or ctx.user_id,
-            source=source,
-            status="success",
-            duration_ms=duration_ms,
-            tool_name=f"skill:{skill.slug}:{path}",
-        )
-        return {"path": path, "output": output}
-    except BadRequestError as e:
-        duration_ms = int((time.monotonic() - started) * 1000)
-        await write_script_runner_session(
-            db,
-            tenant_id=ctx.tenant_id,
-            tool_id=None,
-            actor_user_id=actor_user_id or ctx.user_id,
-            source=source,
-            status="error",
-            duration_ms=duration_ms,
-            error_message=e.message,
-            tool_name=f"skill:{skill.slug}:{path}",
-        )
-        raise
+    return {"path": path, "output": output}
