@@ -338,12 +338,12 @@ from miles_core.infra.vector_store import get_vector_store
 
 ### 5.5 文档注释（类 / 方法 / 函数）
 
-**强制**：`backend/packages/*/src/` 业务代码中，每个 **模块**、**类（含 Mixin）**、**方法**、**模块级函数** 须有 **中文 docstring**（三引号字符串，紧接在定义下一行）。
+**强制**：`backend/packages/*/src/` 业务代码中，每个 **模块**、**类（含 Mixin）**、**方法**、**模块级函数** 须有 **中文说明**（docstring，三引号字符串紧接在定义下一行）；纯数据载体类（Pydantic DTO / `str, Enum`）允许用类上方**一行** `#` 注释替代——Pydantic 仅将 docstring 用于 OpenAPI `description`，故该约定不影响契约。
 
 | 类型 | 内容要点 |
 |------|----------|
 | 模块 | 职责范围；子包注明对外 import 路径 |
-| 类 | 聚合边界、与其它 Mixin 的关系 |
+| 类 | 聚合边界、与其它 Mixin 的关系；DTO / Enum 可简化为一句话 |
 | 公开方法 | 行为、入参语义、是否抛 ``BadRequestError`` / 写库 / 调外部 |
 | ``_`` 前缀 | 私有实现细节；有业务逻辑则完整说明，避免仅转发公开方法的 shim |
 

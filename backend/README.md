@@ -112,14 +112,17 @@ tenant/tools/
 
 ### 文档注释（类 / 方法 / 函数）
 
-`backend/packages/*/src/` 下业务代码须为 **模块、类、公开方法、模块级函数** 编写 **中文 docstring**（`"""..."""`），不写无意义的 `#` 行注释堆砌。
+`backend/packages/*/src/` 下业务代码须为 **模块、公开方法、模块级函数** 编写 **中文 docstring**（`"""..."""`），不写无意义的 `#` 行注释堆砌。
 
 | 对象 | 要求 |
 |------|------|
 | 模块 | 文件顶部说明职责；子包 `__init__.py` 说明对外 export |
-| 类 / Mixin | 一句话说明聚合职责 |
+| 类 / Mixin（有行为：service / 聚合 / 工具 / 节点） | docstring 一句话说明聚合职责 |
+| 数据载体类（Pydantic DTO / `str, Enum`） | 允许用类上方**一行** `#` 注释说明用途（现网统一约定）；说明多于一行或含行为时改用 docstring |
 | 方法 / 函数 | 说明做什么、关键副作用（抛错、写库、调外部） |
 | 私有 `_xxx` | 有独立业务逻辑则完整说明；避免无意义的公开方法转发 |
+
+> DTO 的 `#` 注释**不会**进入 OpenAPI：Pydantic v2 仅取类 docstring 作为该模型的 `description`。若把 DTO 注释改为 docstring，会新增 schema 描述，须执行 `make openapi-write` 更新快照。
 
 新增或拆出的子包代码 **合入前** 应补全 docstring；与 [layering.md](../docs/architecture/layering.md) §5.5 一致。
 
