@@ -89,7 +89,12 @@ class Settings(BaseSettings):
     # 工作台智能体对话 WebSocket（关闭时前端回退 HTTP POST /chat）
     agent_chat_websocket_enabled: bool = True
 
+    # CORS 来源白名单（逗号分隔，精确匹配）：同时用于 CORS 中间件与异常响应头，
+    # 生产部署务必包含所有前端地址（见 ui/admin/README.md）。
     cors_origins: str = "http://localhost:3000,http://127.0.0.1:3000,http://localhost:3001,http://127.0.0.1:3001,http://localhost:3002,http://127.0.0.1:3002"
+    # 是否允许跨域请求携带凭证（Cookie / TLS 客户端证书参与 CORS 凭证判定）。
+    # 本项目认证走 Bearer Header、不使用 Cookie，故默认关闭；开启前须先收窄 cors_origins。
+    cors_allow_credentials: bool = False
 
     # MCP 出站：生产建议 false，禁止连接本机/内网（防 SSRF）
     mcp_allow_private_hosts: bool = True

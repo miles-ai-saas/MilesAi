@@ -54,8 +54,12 @@ def create_app() -> FastAPI:
 
     app.add_middleware(
         CORSMiddleware,
-        allow_origin_regex=r".*",
-        allow_credentials=True,
+        # 白名单来自 CORS_ORIGINS（原先硬编码 r".*" 使该配置项失效，且与错误响应头
+        # （见 miles_core.web.handlers._cors_headers）行为不一致）。
+        allow_origins=settings.cors_origin_list,
+        # 认证走 Bearer Header、无 Cookie 流程，故默认不放开凭证（CORS_ALLOW_CREDENTIALS）；
+        # 若改回 True，务必同时收窄 cors_origins，否则任意来源均可发起带凭证的跨域请求。
+        allow_credentials=settings.cors_allow_credentials,
         allow_methods=["*"],
         allow_headers=["*"],
         expose_headers=["X-Trace-Id"],

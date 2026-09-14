@@ -33,13 +33,17 @@ def _format_validation_message(exc: RequestValidationError) -> str:
 
 
 def _cors_headers(request: Request) -> dict[str, str]:
+    """为异常响应补 CORS 头；来源与凭证开关均取全局配置，与 CORSMiddleware 保持一致。"""
+    settings = get_settings()
     origin = request.headers.get("origin")
-    if origin and origin in get_settings().cors_origin_list:
-        return {
+    if origin and origin in settings.cors_origin_list:
+        headers = {
             "Access-Control-Allow-Origin": origin,
-            "Access-Control-Allow-Credentials": "true",
             "Vary": "Origin",
         }
+        if settings.cors_allow_credentials:
+            headers["Access-Control-Allow-Credentials"] = "true"
+        return headers
     return {}
 
 
