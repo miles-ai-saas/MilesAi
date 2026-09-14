@@ -41,7 +41,7 @@ PRD 原文提及、现网已有替代路径，**不阻塞交付**。
 
 | 项 | 模块 | 现网替代 | 触发条件 |
 |----|------|----------|----------|
-| PaddleOCR（或等价高精度 OCR） | 6b | KB 图：`pytesseract`（`[multimodal]`）；对话：Vision；文档：Docling/pypdf | 有扫描件/票据/手写批量入库需求时再排 |
+| PaddleOCR（或等价高精度 OCR） | 6b | KB 图：`pytesseract`（随 miles-ai）；对话：Vision；文档：Docling/pypdf | 有扫描件/票据/手写批量入库需求时再排 |
 | 老格式 Office（`.doc`/`.xls`/`.ppt`） | 6 | Open XML（docx/xlsx/pptx）已支持 | 客户遗留 97-2003 文件批量迁移 |
 | 云 OCR API 接入 | 6b | 同上 | 私有化不想装 Paddle、可接受外呼 |
 

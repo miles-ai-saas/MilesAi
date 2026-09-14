@@ -271,8 +271,8 @@ query
 |------|------|------|
 | TXT/MD | `loaders` + `text_parser` | 内置 |
 | PDF | `backends/pypdf`（默认） | `langchain-community` PyPDFLoader |
-| PDF/Office 版式 | `backends/docling` | `[parse-docling]` + `PARSE_PDF_BACKEND=docling` |
-| 图片 / 音频 | `image_parser` / `audio_parser` | 入库已接入；OCR/ASR 需 `[multimodal]` |
+| PDF/Office 版式 | `backends/docling` | docling（随 miles-ai）+ `PARSE_PDF_BACKEND=docling` |
+| 图片 / 音频 | `image_parser` / `audio_parser` | 入库已接入；OCR/ASR 另需系统 `tesseract-ocr` / `ffmpeg` |
 | 分片 + 页码 | `chunk_documents`、`page_no` | Docling Markdown 标题切分 + pypdf 按页 |
 
 **上传白名单**（L1）：见 [knowledge-base.md](../guides/knowledge-base.md) §6.4。Office 扩展名需同步放开上传白名单后才可入库。

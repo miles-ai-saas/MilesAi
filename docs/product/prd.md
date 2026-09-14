@@ -16,10 +16,10 @@
 
 | PRD 表述 | 当前实现 | 备注 |
 |----------|----------|------|
-| Docling 文档解析 | `rag/parse/backends/docling.py` | 需 `[parse-docling]`，`PARSE_PDF_BACKEND=docling` |
+| Docling 文档解析 | `rag/parse/backends/docling.py` | docling 随 miles-ai，`PARSE_PDF_BACKEND=docling` |
 | PDF 解析 | 默认 `pypdf`（PyPDFLoader） | 无 docling 时兜底 |
-| PaddleOCR | 按需暂缓 | 现网：`pytesseract`（`[multimodal]`）+ Vision 识图；见 [backlog §按需](./backlog.md#按需--有场景再立项) |
-| Whisper 转写 | `rag/parse/audio_parser.py` | 需 `[multimodal]` |
+| PaddleOCR | 按需暂缓 | 现网：`pytesseract`（随 miles-ai）+ Vision 识图；见 [backlog §按需](./backlog.md#按需--有场景再立项) |
+| Whisper 转写 | `rag/parse/audio_parser.py` | openai-whisper 随 miles-ai |
 | 视频解析 | ✅ | `parse_video`：ffmpeg 抽音轨 + 关键帧 OCR；需 Worker 装 ffmpeg |
 | Word/Excel/PPT 上传 | ✅ | `.docx`/`.pptx`/`.xlsx` 已在 `upload_policy.py`；解析需 docling |
 | 文本/图/音/视频上传入库 | ✅ | loaders → chunk → embed |

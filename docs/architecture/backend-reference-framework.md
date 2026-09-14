@@ -37,7 +37,7 @@
 | 对象存储 | S3 兼容协议（MinIO 默认） | 门面 + 可切 OSS/AWS S3，见 §7.2 |
 | 向量库 | Weaviate / Milvus / pgvector | 门面 + 工厂，见 §7.3 |
 | 日志 | stdlib `logging.config` | 幂等 `setup_logging()`，见 §4.9 |
-| 可观测 | OpenTelemetry（可选 extra） | 默认关闭，`OTEL_ENABLED` 开关 |
+| 可观测 | OpenTelemetry | 依赖随 miles-server 安装；默认关闭，`OTEL_ENABLED` 开关 |
 
 > 若新项目**不需要**向量/RAG，可整段删除 `rag/` 层与向量库抽象，其余骨架不变——分层模型天然支持这种裁剪。
 

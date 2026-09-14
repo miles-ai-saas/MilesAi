@@ -1,4 +1,4 @@
-"""OpenTelemetry OTLP 导出（可选 ``milesai[otel]`` extra，默认关闭）。"""
+"""OpenTelemetry OTLP 导出（默认关闭；依赖在 miles-server 无条件声明，导入失败时 no-op）。"""
 
 from __future__ import annotations
 
@@ -44,7 +44,7 @@ def setup_otel(settings, app: FastAPI | None = None) -> None:
         from opentelemetry.sdk.trace.export import BatchSpanProcessor
     except ImportError:
         logger.warning(
-            "OTEL_ENABLED=true 但未安装 OpenTelemetry，请 pip install 'milesai[otel]'，跳过导出",
+            "OTEL_ENABLED=true 但未安装 OpenTelemetry（应由 miles-server 依赖提供），跳过导出",
         )
         return
 

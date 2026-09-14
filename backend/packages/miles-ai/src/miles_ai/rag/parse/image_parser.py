@@ -1,7 +1,7 @@
 """
 图片解析：Pillow 读图 + 可选 pytesseract OCR。
 
-无 OCR 时仍返回占位文本，保证 ingest 不失败（检索质量依赖后续安装 multimodal 依赖）。
+无 OCR 时仍返回占位文本，保证 ingest 不失败（检索质量依赖 pytesseract 与系统 tesseract-ocr）。
 供 ingest 入库与画布 ``OcrExtract`` / ``media_nodes`` 节点共用。
 """
 
@@ -25,7 +25,7 @@ def parse_image(data: bytes, filename: str) -> str:
         header = f"[图片 OCR · {filename} · {width}x{height}]"
         return f"{header}\n\n{ocr_text.strip()}"
 
-    # 占位文本仍可分片入库，避免 ingest 失败；检索质量依赖后续安装 [multimodal]
+    # 占位文本仍可分片入库，避免 ingest 失败；检索质量依赖 pytesseract 与系统 tesseract-ocr
     return f"[图片 · {filename} · {width}x{height} · {mode}]\n未能识别图中文字。可安装 pytesseract 启用 OCR，或上传含文字层的 PDF/文档。"
 
 

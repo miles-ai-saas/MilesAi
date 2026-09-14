@@ -27,7 +27,7 @@ def test_setup_otel_enabled_empty_endpoint_is_noop():
     otel.shutdown_otel()
 
 
-def test_setup_otel_enabled_missing_extra_is_noop(monkeypatch):
+def test_setup_otel_enabled_missing_dependency_is_noop(monkeypatch):
     settings = MagicMock(
         otel_enabled=True,
         otel_exporter_otlp_endpoint="http://localhost:4317",
@@ -40,7 +40,7 @@ def test_setup_otel_enabled_missing_extra_is_noop(monkeypatch):
 
     def fake_import(name, *args, **kwargs):
         if name.startswith("opentelemetry"):
-            raise ImportError("no otel extra")
+            raise ImportError("opentelemetry not installed")
         return real_import(name, *args, **kwargs)
 
     monkeypatch.setattr(builtins, "__import__", fake_import)

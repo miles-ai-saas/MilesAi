@@ -45,7 +45,7 @@ def parse_video(data: bytes, filename: str) -> str:
 
     return (
         f"[视频 · {filename}]\n"
-        "未能解析视频内容。请安装 ffmpeg；音轨转写需 openai-whisper（[multimodal]）；"
+        "未能解析视频内容。请安装 ffmpeg；音轨转写需 openai-whisper（随 miles-ai 声明）；"
         "画面文字识别需 pytesseract。也可先提取字幕/文稿为文本文件上传。"
     )
 

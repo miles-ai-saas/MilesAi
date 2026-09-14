@@ -103,7 +103,7 @@ POST /search
 | `VECTOR_STORE_BACKEND` | weaviate / milvus（部署级 L1） |
 | `embedding_profile` | 创建 KB 时选择，如 `local-bge-zh`(768)、`dashscope-v3`(1024)；可选 `clip-vit-b-32`(512) 作视觉模型 |
 | `PARSE_PDF_BACKEND` | `pypdf` \| `docling` |
-| `[parse-docling]` / `[multimodal]` | 可选依赖 |
+| docling / pytesseract / openai-whisper | 随 miles-ai 无条件声明 |
 
 ---
 

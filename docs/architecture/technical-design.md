@@ -446,7 +446,7 @@ ingest / search / delete
 | 生成 | `run_generative_image_job` / `run_generative_video_job`（队列 `default`；见 [features/task-center.md](../features/task-center.md)） |
 | 定时 | Beat 每 60s → `tick_agent_schedules` → `run_agent_schedule` → `AgentService.chat`（见 [features/agent-schedules.md](../features/agent-schedules.md)） |
 | 解析链 | `load_documents_from_bytes` → `chunk_documents` → `embed_texts_for_kb` → `upsert_chunk_vector` |
-| 可选依赖 | `[parse-docling]`：PDF/Office 版式；`[multimodal]`：图 OCR / 音 Whisper（未装则占位文本仍可入库） |
+| 解析依赖 | docling：PDF/Office 版式；pytesseract / openai-whisper：图 OCR / 音 Whisper（均随 miles-ai 声明；缺依赖或系统二进制时占位文本仍可入库） |
 
 **任务中心 UI** 聚合两类记录：`GET /tasks`（Celery `task_records`，主要是入库）与 `GET /generative/jobs`（`generative_jobs` 表）。详见 [features/task-center.md](../features/task-center.md)。
 

@@ -186,7 +186,7 @@ flowchart TB
 
 ### 5.3 支持格式（摘要）
 
-详见 [knowledge-base.md](../guides/knowledge-base.md)：TXT/PDF/常见图片/音频等；部分能力需 Worker 安装可选依赖 `[multimodal]`。
+详见 [knowledge-base.md](../guides/knowledge-base.md)：TXT/PDF/常见图片/音频等；部分能力需 Worker 具备系统 `tesseract-ocr` / `ffmpeg`。
 
 ### 5.4 与 PRD 差距（产品预期管理）
 

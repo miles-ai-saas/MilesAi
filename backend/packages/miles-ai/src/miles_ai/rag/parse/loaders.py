@@ -11,7 +11,7 @@ LangChain Document 加载与解析后端路由。
 2. 纯文本 .txt/.md 或 text/* → ``parse_text``
 3. Docling（``PARSE_PDF_BACKEND=docling`` 且扩展名支持）→ 失败可 ``parse_docling_fallback_pypdf`` 回退
 4. PDF → ``load_pdf_documents``（PyPDFLoader，按页 Document）
-5. Office 等 → 必须 docling；未配置则 ``BadRequestError`` 提示安装 parse-docling
+5. Office 等 → 必须 docling；未配置或缺依赖则 ``BadRequestError``
 
 输出 metadata.parser 供 ``chunk.chunk_documents`` 选择分片策略（docling/pypdf/...）。
 """
@@ -44,10 +44,10 @@ def _raise_if_office_unparseable(ext: str) -> None:
     backend = get_settings().parse_pdf_backend.strip().lower()
     if backend != "docling":
         raise BadRequestError(
-            "Office 文档解析需将 PARSE_PDF_BACKEND 设为 docling（当前为 pypdf）；API 与 Celery Worker 均需安装：pip install 'milesai[parse-docling]'"
+            "Office 文档解析需将 PARSE_PDF_BACKEND 设为 docling（当前为 pypdf）；API 与 Celery Worker 均需安装 docling（随 miles-ai 依赖提供）"
         )
     if not docling_available():
-        raise BadRequestError(f"Office 文档解析需要 docling（{ext}），请在 Worker 执行：pip install 'milesai[parse-docling]'")
+        raise BadRequestError(f"Office 文档解析需要 docling（{ext}），但当前环境未安装；docling 随 miles-ai 依赖提供，请确认 Worker 依赖完整")
 
 
 def _file_ext(filename: str) -> str:
@@ -79,7 +79,7 @@ def _try_docling(data: bytes, filename: str, ext: str, mime_type: str) -> list[D
     if not _use_docling_for(ext, mime_type):
         return None
     if not docling_available():
-        logger.warning("未安装 docling，回退 pypdf/跳过：pip install 'milesai[parse-docling]'")
+        logger.warning("未安装 docling，回退 pypdf/跳过；docling 随 miles-ai 依赖提供，请确认依赖完整")
         return None
     try:
         return load_documents_with_docling(data, filename, ext or ".pdf")

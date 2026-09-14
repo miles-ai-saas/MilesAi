@@ -244,10 +244,10 @@ OpenAPI：`/docs`（运行实例）。
 |------|--------|------|
 | 文本 | `.txt`、`.md`、`.markdown` | 直接解析 |
 | PDF | `.pdf` | 默认 `pypdf`；可选 `docling` |
-| 图片 | `.jpg`、`.jpeg`、`.png`、`.webp` | Pillow 必填；OCR 需 Worker 安装 `[multimodal]` |
+| 图片 | `.jpg`、`.jpeg`、`.png`、`.webp` | Pillow 必填；OCR 需 Worker 具备 pytesseract 与系统 `tesseract-ocr` |
 | 音频 | `.mp3`、`.wav`、`.m4a`、`.ogg`、`.webm` | 无 Whisper 时写入占位文本，仍可入库 |
 | 视频 | `.mp4`、`.mov`、`.m4v`、`.webm`、`.mkv` | ffmpeg 抽音轨（Whisper）+ 关键帧 OCR；无 ffmpeg 时占位文本 |
-| Office | `.docx`、`.pptx`、`.xlsx`、`.html`、`.htm` | **可上传**；解析需 `PARSE_PDF_BACKEND=docling` 且安装 `[parse-docling]` |
+| Office | `.docx`、`.pptx`、`.xlsx`、`.html`、`.htm` | **可上传**；解析需 `PARSE_PDF_BACKEND=docling` 且已安装 docling（随 miles-ai） |
 
 白名单实现：`backend/packages/miles-ai/src/miles_ai/rag/parse/upload_policy.py`（KB 与通用附件共用）。
 
@@ -266,7 +266,7 @@ cd backend && uv sync --all-packages   # 解析 / 多模态依赖已在 miles-ai
 
 `docling` 模式下除 PDF 外还可解析 `DOCLING_EXTENSIONS` 中的版式/图片扩展名；**API 上传白名单**已包含 Office（docx/pptx/xlsx）与多模态常用格式（见 `upload_policy.py`）。
 
-**图片 OCR**：默认无引擎；安装 `[multimodal]` 后使用 **pytesseract**（`chi_sim+eng`）。**PaddleOCR** 为 PRD 愿景，**按需立项**（扫描件/票据场景），见 [backlog.md §按需](../product/backlog.md#按需--有场景再立项)；实现位 `rag/parse/backends/*`，不改 ingest 主链。
+**图片 OCR**：默认无引擎；pytesseract 由 miles-ai 声明，另需系统 `tesseract-ocr`，之后使用 **pytesseract**（`chi_sim+eng`）。**PaddleOCR** 为 PRD 愿景，**按需立项**（扫描件/票据场景），见 [backlog.md §按需](../product/backlog.md#按需--有场景再立项)；实现位 `rag/parse/backends/*`，不改 ingest 主链。
 
 **分片（P1）**：Docling 导出 Markdown 后由 `MarkdownHeaderTextSplitter`（`#` / `##` / `###`）按标题切分，超长块再 `RecursiveCharacterTextSplitter`；分页通过 Docling `page_break_placeholder` 或按页导出写入 `DocumentChunk.page_no` 与向量 metadata。`pypdf` 多页 PDF 按页保留 `page_no`。
 
@@ -288,8 +288,8 @@ cd backend && uv sync --all-packages   # 解析 / 多模态依赖已在 miles-ai
 | 现象 | 排查 |
 |------|------|
 | 长期 `pending` | Celery Worker 是否消费 `embed` 队列；`ingest_document` 任务状态 |
-| `parse_failed` | 文件类型是否在白名单；`PARSE_PDF_BACKEND=docling` 时是否安装 `[parse-docling]` |
-| 图片/音频无内容 | 是否安装 `[multimodal]`（pytesseract / whisper）；无依赖时仅有占位说明，检索质量有限 |
+| `parse_failed` | 文件类型是否在白名单；`PARSE_PDF_BACKEND=docling` 时是否已安装 docling（随 miles-ai） |
+| 图片/音频无内容 | Worker 是否具备 pytesseract / whisper 与系统 `tesseract-ocr` / `ffmpeg`；缺失时仅有占位说明，检索质量有限 |
 | `embed_failed` | 向量维度与 KB 是否一致；LiteLLM Key；Weaviate/Milvus 连通 |
 | 检索无结果 | 文档是否 `ready`；`top_k`；查询与入库是否同一 KB |
 | 删文档后仍能搜到 | 向量库 `delete_by_document` 是否成功（Milvus 多 collection 按维度） |

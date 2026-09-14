@@ -151,12 +151,12 @@ class Settings(BaseSettings):
     # 技能包文件根目录（相对 backend 目录或绝对路径）
     skills_data_root: str = ".data/skills"
 
-    # 解析：pypdf（默认）| docling（需 milesai[parse-docling]）；见 miles_ai.rag.parse.loaders
+    # 解析：pypdf（默认）| docling（依赖随 miles-ai 声明）；见 miles_ai.rag.parse.loaders
     parse_pdf_backend: str = "pypdf"
     # docling 失败或未安装时，PDF 是否回退 pypdf（Office 无 docling 则直接报错）
     parse_docling_fallback_pypdf: bool = True
 
-    # OpenTelemetry OTLP 导出（需 pip install 'milesai[otel]' 且配置 endpoint）
+    # OpenTelemetry OTLP 导出（依赖由 miles-server 无条件声明；启用需配置 endpoint）
     otel_enabled: bool = False
     otel_exporter_otlp_endpoint: str = ""
     otel_service_name: str = "milesai-api"

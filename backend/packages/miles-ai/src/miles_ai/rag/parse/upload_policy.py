@@ -2,7 +2,7 @@
 知识库/附件上传白名单，与 ``parse.loaders`` 解析能力对齐。
 
 允许上传 ≠ 一定能解析：Office 允许进库，但解析需 ``PARSE_PDF_BACKEND=docling`` 且 Worker
-安装 parse-docling。Docling 本身还能读 TIFF/BMP（见 ``backends.docling.DOCLING_EXTENSIONS``），
+已安装 docling（随 miles-ai 依赖提供）。Docling 本身还能读 TIFF/BMP（见 ``backends.docling.DOCLING_EXTENSIONS``），
 但白名单**刻意不收**——``parse_image`` 只认 JPG/PNG/WebP，收了会变成「可上传但必解析失败」的坑。
 
 图/音/视频的扩展名与 MIME 复用 ``parse.media`` 单一来源（避免白名单与 ``is_*_file`` 判定漂移）；
