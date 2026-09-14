@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-from uuid import UUID
 
 from miles_ai.integrations.chat.multimodal import build_user_message, messages_contain_image, resolve_media_refs
 from miles_ai.integrations.langchain.tool_agent.artifacts import artifacts_from_tool_output
@@ -367,7 +366,6 @@ async def run_tool_calling_chat(
     agent: Agent,
     body: ChatRequest,
     *,
-    agent_id: UUID,
     system_prompt: str,
     model: ModelConfig,
     usage_sink: UsageSink | None = None,

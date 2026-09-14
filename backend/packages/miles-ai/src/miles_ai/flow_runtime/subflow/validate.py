@@ -52,11 +52,7 @@ async def _load_flow_graph_for_analysis(
     return (version.graph_json if version else None) or {"nodes": [], "edges": []}
 
 
-async def _direct_subflow_ids(
-    repo: FlowRepoLike,
-    flow: Flow,
-    graph: dict[str, Any],
-) -> set[str]:
+async def _direct_subflow_ids(graph: dict[str, Any]) -> set[str]:
     ids: set[str] = set()
     for _nid, data in iter_subflow_nodes(graph):
         sub_id = _sub_flow_id_from_data(data)
@@ -69,7 +65,6 @@ async def _max_chain_depth(
     repo: FlowRepoLike,
     tenant_id: UUID,
     start_flow_id: UUID,
-    start_graph: dict[str, Any],
     *,
     cache: dict[str, set[str]],
     visiting: set[str],
@@ -87,7 +82,7 @@ async def _max_chain_depth(
                 cache[key] = set()
             else:
                 graph = await _load_flow_graph_for_analysis(repo, flow)
-                cache[key] = await _direct_subflow_ids(repo, flow, graph)
+                cache[key] = await _direct_subflow_ids(graph)
         child_ids = cache[key]
         if not child_ids:
             return current_depth
@@ -101,7 +96,6 @@ async def _max_chain_depth(
                 repo,
                 tenant_id,
                 child_uuid,
-                {},
                 cache=cache,
                 visiting=visiting,
                 current_depth=current_depth + 1,
@@ -228,7 +222,6 @@ async def validate_subflow_references(
             repo,
             tenant_id,
             current_flow_id,
-            graph,
             cache=cache,
             visiting=set(),
             current_depth=0,

@@ -273,7 +273,6 @@ class AgentChatRagMixin:
         return await run_tool_calling_chat(
             agent,
             body,
-            agent_id=agent_id,
             system_prompt=f"{system_prompt}{hint}",
             model=model,
             usage_sink=usage_sink,

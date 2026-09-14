@@ -153,7 +153,6 @@ async def test_success_audit_uses_skill_tool_name_and_null_tool_id(env):  # noqa
     assert audit["status"] == "success"
     assert audit["duration_ms"] == 250
     assert audit["tool_name"] == "skill:demo-skill:scripts/a.py"
-    assert audit["tool_id"] is None  # 技能脚本不绑工具 ID
     assert audit["source"] == SOURCE
     assert audit["tenant_id"] == TENANT_ID
     assert audit.get("error_message") is None

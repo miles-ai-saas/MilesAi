@@ -96,7 +96,6 @@ async def _run(body, *, agent=None, executor=None, tools=None, kb_ids=None):
     return await loop_mod.run_tool_calling_chat(
         agent if agent is not None else _agent(),
         body,
-        agent_id=uuid4(),
         system_prompt="sys",
         model=_model(),
         tool_executor=executor if executor is not None else _Executor(),
@@ -344,7 +343,6 @@ async def test_multimodal_warning_only_for_non_vision_model(model_type, monkeypa
     resp = await loop_mod.run_tool_calling_chat(
         _agent(),
         body,
-        agent_id=uuid4(),
         system_prompt="sys",
         model=SimpleNamespace(model_type=model_type),
         tool_executor=_Executor(),

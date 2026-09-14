@@ -125,7 +125,6 @@ async def skill_run_script(
         write_script_runner_session,
         db,
         tenant_id=ctx.tenant_id,
-        tool_id=None,
         actor_user_id=actor_user_id or ctx.user_id,
         source=source,
         tool_name=f"skill:{skill.slug}:{path}",

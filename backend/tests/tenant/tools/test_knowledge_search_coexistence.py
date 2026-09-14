@@ -148,7 +148,6 @@ async def test_loop_backfills_sources_and_keeps_knowledge_search(monkeypatch):
     resp = await loop_mod.run_tool_calling_chat(
         agent,
         ChatRequest(query="知识库问题"),
-        agent_id=uuid4(),
         system_prompt="sys",
         model=model,
         tool_executor=_Executor(),

@@ -120,9 +120,10 @@ async def test_success_writes_single_audit_with_elapsed_and_tool_identity(env): 
     assert audit["duration_ms"] == 250
     assert audit.get("error_message") is None  # 成功路径省略该参数（下游默认 None）
     assert audit["tool_name"] == "my-script"
-    assert audit["tool_id"] == TOOL_ID
     assert audit["source"] == SOURCE
     assert audit["tenant_id"] == TENANT_ID
+    # 审计表无 tool_id 列；工具 UUID 由 tool_invocation_logs 记录，此处不传
+    assert "tool_id" not in audit
 
 
 async def test_success_audit_uses_caller_db(env):  # noqa: ANN001

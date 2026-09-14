@@ -54,7 +54,6 @@ async def write_script_runner_session(
     db: AsyncSession,
     *,
     tenant_id: UUID,
-    tool_id: UUID | None,
     actor_user_id: UUID | None,
     source: str,
     status: str,
@@ -63,7 +62,11 @@ async def write_script_runner_session(
     error_message: str | None = None,
     tool_name: str | None = None,
 ) -> None:
-    """脚本工具 Runner 执行审计（无 MCP service_id）。"""
+    """脚本工具 Runner 执行审计（无 MCP service_id）。
+
+    工具身份只落 ``tool_name``（slug）；工具 UUID 由同一链路上的
+    ``tool_invocation_logs.tool_id`` 记录，本表不再重复保存。
+    """
     digest = hashlib.sha256((source or "").encode()).hexdigest()[:32]
     row = McpRunnerSession(
         tenant_id=tenant_id,

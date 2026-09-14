@@ -110,7 +110,6 @@ async def invoke_custom_script(
         write_script_runner_session,
         db,
         tenant_id=ctx.tenant_id,
-        tool_id=tool.id,
         actor_user_id=actor_user_id,
         source=source,
         tool_name=tool.slug,

@@ -25,6 +25,12 @@ extend-exclude = [".data", ".import_linter_cache"]
 [tool.ruff.lint]
 # ruff 默认仅启用 E4/E7/E9/F；显式开启 import 排序、bugbear 与 pyupgrade，
 # 让 `make lint-backend` 能拦住导入顺序、过时写法与常见陷阱。
+#
+# ARG（未使用参数）经评估不启用：实测 80 处中绝大多数是接口契约——
+# FastAPI 注入的 ctx、LangGraph 节点签名 (state, config)、AST visitor 的 node、
+# LangChain 回调签名、内置工具的 schema 壳（`_run` 参数仅供 LLM 描述工具）。
+# 启用需为 views/ 等目录堆大量 per-file-ignores，噪声大于收益。
+# 借该线索找出的真缺陷（函数签名声明却静默丢弃的参数）已逐一移除。
 select = ["E", "F", "I", "B", "UP", "RUF"]
 ignore = [
     # 中文注释 / 文案中的全角标点（，。：；「」等）非缺陷
