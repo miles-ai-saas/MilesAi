@@ -269,6 +269,30 @@ async def test_tool_simulation_without_extractable_params_appends_correction(mon
     assert any(m["role"] == "user" and "tool_use" in str(m.get("content", "")) for m in second_messages)
 
 
+async def test_bare_generative_json_is_not_attributed_to_unrelated_tool(monkeypatch):
+    """正文里的裸生图参数 JSON 不得被硬塞给「第一个工具」。
+
+    回归：``_extract_tool_params_from_text`` 在没有任何工具的 name 命中 ``image``/``video``
+    时，会兜底 ``return tool_names[0]``。于是只会算数的 agent（tools=[calculator]）会拿
+    ``{"prompt": ..., "size": ...}`` 去调 calculator，产生一次误导性的失败重试。
+    """
+    _patch_litellm(
+        monkeypatch,
+        [
+            _Resp(_Message('好的，参数如下：{"prompt": "一只猫", "size": "1024x1024"}', tool_calls=[])),
+            _Resp(_Message("我无法生成图片", tool_calls=[])),
+        ],
+    )
+    executor = _Executor()
+
+    resp = await _run(ChatRequest(query="画一只猫"), executor=executor)
+
+    assert executor.invoked == []  # 不得把生图参数塞给 calculator
+    assert resp.answer == "我无法生成图片"
+    assert [s.get("type") for s in resp.steps].count("tool_simulation_corrected") == 1
+    assert not any(s.get("type") == "tool_simulation_extracted" for s in resp.steps)
+
+
 async def test_tool_simulation_recovery_is_attempted_only_once(monkeypatch):
     """自救助只试一次：第二轮再出现模拟调用文本时按普通回复收束，不无限纠正。"""
     _patch_litellm(

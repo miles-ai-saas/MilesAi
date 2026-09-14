@@ -234,7 +234,7 @@ def _extract_tool_params_from_text(
             params = inner if isinstance(inner, dict) else {k: v for k, v in parsed.items() if k != "function"}
             return func, _validate_and_clean(params, tools_by_name, func)
 
-        # 裸参数 → 按特征推断工具名
+        # 裸参数 → 按特征推断工具名（只认真正的生图/生视频工具，不猜）
         if any(k in parsed for k in _GENERATIVE_PARAM_KEYS):
             has_video = "duration" in parsed or "resolution" in parsed
             for n in tool_names:
@@ -242,6 +242,9 @@ def _extract_tool_params_from_text(
                     return n, _validate_and_clean(parsed, tools_by_name, n)
                 if not has_video and "image" in n and "video" not in n:
                     return n, _validate_and_clean(parsed, tools_by_name, n)
-            return tool_names[0], _validate_and_clean(parsed, tools_by_name, tool_names[0])
+            # 没有对应的生成工具就不认领这个 JSON，继续看下一个候选。
+            # 曾兜底 ``return tool_names[0]``：会把生图参数塞给 calculator 之类的工具，
+            # 白跑一次失败重试；tools 为空时还会 IndexError。
+            continue
 
     return None
