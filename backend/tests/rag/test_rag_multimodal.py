@@ -8,7 +8,6 @@ import pytest
 from miles_ai.integrations.chat.multimodal import build_invoke_messages_with_media
 from miles_ai.integrations.langgraph.graphs.rag_qa import _prompt_user_query, fallback, generate
 from miles_ai.integrations.langgraph.runner import run_rag_workflow
-from miles_ai.rag.generate.answer import rag_answer
 from miles_common.exceptions import BadRequestError
 from miles_common.schemas.media import MediaRefIn
 
@@ -132,22 +131,3 @@ async def test_fallback_node_with_media_without_reader_raises():
     state["hits"] = []
     with pytest.raises(BadRequestError, match="media_reader"):
         await fallback(state, config)
-
-
-@pytest.mark.asyncio
-async def test_rag_answer_media_without_reader_raises():
-    with patch(
-        "miles_ai.rag.generate.answer.retrieve_hits",
-        new_callable=AsyncMock,
-        return_value=[],
-    ):
-        with pytest.raises(BadRequestError, match="media_reader"):
-            await rag_answer(
-                model=MagicMock(),
-                system_prompt="sys",
-                query="q",
-                kb_ids=["kb1"],
-                tenant_id=uuid4(),
-                db=MagicMock(),
-                media=[MediaRefIn(attachment_id=uuid4())],
-            )

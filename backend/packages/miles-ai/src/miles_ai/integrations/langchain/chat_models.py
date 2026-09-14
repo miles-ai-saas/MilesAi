@@ -4,7 +4,7 @@ LangChain ChatModel 适配：平台 ModelConfig → LiteLLM 对话。
 业务入口（优先 ``ainvoke_chat``）
 -------------------------------
 - ``AgentService._direct_chat`` / ``_rag_chat`` / LangGraph ``generate`` / ``fallback``
-- ``rag.generate.rag_answer``
+- ``rag.generate.generate_rag_answer``
 - ``flow_runtime.nodes.llm_nodes.llm_call``
 - ``tool_agent`` 多轮 function calling
 

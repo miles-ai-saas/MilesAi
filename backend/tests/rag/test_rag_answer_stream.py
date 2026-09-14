@@ -7,16 +7,14 @@ import pytest
 
 from miles_ai.integrations.langgraph.graphs.rag_qa import fallback, generate
 from miles_ai.integrations.langgraph.runner import run_rag_workflow
-from miles_ai.rag.generate.answer import rag_answer
+from miles_ai.rag.generate.answer import generate_rag_answer
 from tests.infra.test_litellm_adapter import _model
 
 
 @pytest.mark.asyncio
-async def test_rag_answer_forwards_on_delta(monkeypatch):
+async def test_generate_rag_answer_forwards_on_delta():
     seen: dict[str, object] = {}
     model = _model()
-    tenant_id = uuid4()
-    db = MagicMock()
 
     async def fake_ainvoke(*args, **kwargs):
         seen["on_delta"] = kwargs.get("on_delta")
@@ -25,30 +23,14 @@ async def test_rag_answer_forwards_on_delta(monkeypatch):
     async def delta(_: str) -> None:
         pass
 
-    with (
-        patch(
-            "miles_ai.rag.generate.answer.retrieve_hits",
-            new_callable=AsyncMock,
-            return_value=[],
-        ),
-        patch(
-            "miles_ai.rag.generate.answer.ainvoke_chat",
-            new_callable=AsyncMock,
-            side_effect=fake_ainvoke,
-        ),
+    with patch(
+        "miles_ai.rag.generate.answer.ainvoke_chat",
+        new_callable=AsyncMock,
+        side_effect=fake_ainvoke,
     ):
-        answer, hits = await rag_answer(
-            model=model,
-            system_prompt="你是助手",
-            query="问题",
-            kb_ids=["kb1"],
-            tenant_id=tenant_id,
-            db=db,
-            on_delta=delta,
-        )
+        answer = await generate_rag_answer(model=model, prompt="p", on_delta=delta)
 
     assert answer == "ans"
-    assert hits == []
     assert seen["on_delta"] is delta
 
 

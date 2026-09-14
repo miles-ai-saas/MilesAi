@@ -4,7 +4,6 @@ __all__ = [
     "ainvoke_chat",
     "build_rag_prompt",
     "generate_rag_answer",
-    "rag_answer",
     "retrieve_hits",
     "run_rag_workflow",
     "should_use_langgraph_rag",
@@ -16,7 +15,6 @@ def __getattr__(name: str):
     if name in (
         "ainvoke_chat",
         "split_text",
-        "rag_answer",
         "retrieve_hits",
         "build_rag_prompt",
         "generate_rag_answer",
