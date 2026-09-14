@@ -344,6 +344,88 @@ async def test_ws_invalid_chat_request_reports_error():
     assert ws.payloads(proto.CHAT_ERROR)[0]["message"]
 
 
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("generative_image_n", "abc"),
+        ("generative_video_duration", "abc"),
+        ("generative_image_n", []),
+        ("generative_video_duration", {"a": 1}),
+    ],
+)
+async def test_ws_non_numeric_generative_field_reports_error_instead_of_crashing(field, value):
+    """回归：整数字段在 pydantic 校验之前先被强转，非法值会绕过 ``except ValidationError``。
+
+    ``int("abc")`` 抛 ValueError、``int([])`` 抛 TypeError，都不在原先只捕
+    ``ValidationError`` 的范围内，会穿透整个 ws 端点，让客户端只看到连接被异常关闭，
+    而不是像其它非法输入那样收到 ``chat.error``。
+    """
+    ws = _ScriptedWebSocket([_frame(proto.CHAT_SEND, {"query": "hi", field: value})])
+    with _connected():
+        await agent_chat_websocket(ws, uuid4(), conversation_id="c1")
+
+    assert ws.sent_types == [proto.CHAT_ERROR]
+    assert field in ws.payloads(proto.CHAT_ERROR)[0]["message"]
+    assert ws.closed == []  # 连接不该因此被异常关闭
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("inputs", "abc"),
+        ("pending_tool_params", "ab"),
+        ("inputs", [1, 2]),
+    ],
+)
+async def test_ws_non_object_dict_field_reports_error_instead_of_crashing(field, value):
+    """回归：``dict("abc")`` 抛的 ``dictionary update sequence element ...`` 既穿透端点又难懂。"""
+    ws = _ScriptedWebSocket([_frame(proto.CHAT_SEND, {"query": "hi", field: value})])
+    with _connected():
+        await agent_chat_websocket(ws, uuid4(), conversation_id="c1")
+
+    assert ws.sent_types == [proto.CHAT_ERROR]
+    assert field in ws.payloads(proto.CHAT_ERROR)[0]["message"]
+    assert ws.closed == []
+
+
+@pytest.mark.parametrize("field", ["generative_image_n", "generative_video_duration"])
+async def test_ws_null_generative_field_falls_back_to_default(field):
+    """显式传 null 视作「未提供」，沿用 ChatRequest 的 field default（非报错）。"""
+    seen: list[ChatRequest] = []
+
+    async def fake_turn(_ws, _ctx, _agent_id, body, _job_tasks):
+        seen.append(body)
+
+    ws = _ScriptedWebSocket([_frame(proto.CHAT_SEND, {"query": "hi", field: None})])
+    with (
+        _connected(),
+        patch("miles_portal.tenant.agents.ws.chat._run_chat_turn", fake_turn),
+    ):
+        await agent_chat_websocket(ws, uuid4(), conversation_id="c1")
+
+    assert len(seen) == 1
+    assert seen[0].generative_image_n == 1
+    assert seen[0].generative_video_duration == 5
+
+
+@pytest.mark.parametrize("field", ["inputs", "pending_tool_params"])
+async def test_ws_null_dict_field_becomes_empty_dict(field):
+    seen: list[ChatRequest] = []
+
+    async def fake_turn(_ws, _ctx, _agent_id, body, _job_tasks):
+        seen.append(body)
+
+    ws = _ScriptedWebSocket([_frame(proto.CHAT_SEND, {"query": "hi", field: None})])
+    with (
+        _connected(),
+        patch("miles_portal.tenant.agents.ws.chat._run_chat_turn", fake_turn),
+    ):
+        await agent_chat_websocket(ws, uuid4(), conversation_id="c1")
+
+    assert len(seen) == 1
+    assert getattr(seen[0], field) == {}
+
+
 async def test_ws_chat_send_dispatches_turn():
     seen: list[tuple] = []
 

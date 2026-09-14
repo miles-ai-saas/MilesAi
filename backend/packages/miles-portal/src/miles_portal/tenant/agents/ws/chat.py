@@ -43,6 +43,36 @@ def _pending_job_ids(response: ChatResponse) -> list[UUID]:
     return ids
 
 
+def _ws_int(payload: dict, field: str, default: int) -> int:
+    """取 WS payload 里的整数字段；缺失用 ``default``，非法值抛 ``ValueError``。
+
+    ``payload`` 是客户端直接给的裸 JSON，不要依赖 pydantic 兜底：``int("abc")`` 抛
+    ``ValueError``、``int(None)`` 抛 ``TypeError``，都发生在 ``ChatRequest`` 校验之前，
+    会绕过调用方的 ``except ValidationError`` 一路穿透 ws 端点。
+    """
+    raw = payload.get(field, default)
+    if raw is None:
+        return default
+    try:
+        return int(raw)
+    except (TypeError, ValueError) as e:
+        raise ValueError(f"{field} 须为整数") from e
+
+
+def _ws_dict(payload: dict, field: str) -> dict:
+    """取 WS payload 里的对象字段；缺失/为空用 ``{}``，非对象抛 ``ValueError``。
+
+    直接 ``dict("abc")`` 会抛 ``ValueError: dictionary update sequence element ...``，
+    这种报错对客户端毫无意义，故先做类型判定。
+    """
+    raw = payload.get(field)
+    if raw is None:
+        return {}
+    if not isinstance(raw, dict):
+        raise ValueError(f"{field} 须为对象")
+    return dict(raw)
+
+
 def _build_chat_request(
     payload: dict,
     *,
@@ -56,13 +86,13 @@ def _build_chat_request(
     return ChatRequest(
         query=str(payload.get("query") or ""),
         media=media,
-        inputs=dict(payload.get("inputs") or {}),
+        inputs=_ws_dict(payload, "inputs"),
         conversation_id=conversation_id,
         tool_confirmed=bool(payload.get("tool_confirmed")),
         pending_tool_slug=payload.get("pending_tool_slug"),
-        pending_tool_params=dict(payload.get("pending_tool_params") or {}),
-        generative_image_n=int(payload.get("generative_image_n", 1)),
-        generative_video_duration=int(payload.get("generative_video_duration", 5)),
+        pending_tool_params=_ws_dict(payload, "pending_tool_params"),
+        generative_image_n=_ws_int(payload, "generative_image_n", 1),
+        generative_video_duration=_ws_int(payload, "generative_video_duration", 5),
     )
 
 
@@ -234,6 +264,10 @@ async def agent_chat_websocket(
             except ValidationError as exc:
                 err = exc.errors()[0] if exc.errors() else {"msg": "校验失败"}
                 await proto.send_json(websocket, proto.CHAT_ERROR, {"message": err.get("msg")})
+                continue
+            except ValueError as exc:
+                # _ws_int / _ws_dict 抛出的字段级错误，消息已可读
+                await proto.send_json(websocket, proto.CHAT_ERROR, {"message": str(exc)})
                 continue
 
             await _run_chat_turn(websocket, ctx, agent_id, body, job_tasks)
