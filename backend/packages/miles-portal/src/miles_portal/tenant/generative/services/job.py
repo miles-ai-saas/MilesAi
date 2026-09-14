@@ -363,6 +363,8 @@ class GenerativeJobService(BaseService):
             start = time.monotonic()
             terminal_yielded = False
             while time.monotonic() - start < 120:
+                # 必须显式传 timeout：redis-py 仅在 timeout 非 None 时阻塞等待、超时返回 None；
+                # 省略时默认 0.0 为非阻塞，本循环会空转打满 CPU 直到 120s 上限。
                 msg = await pubsub.get_message(timeout=1.0)
                 if msg and msg["type"] == "message":
                     job = await self._reload(job_id)

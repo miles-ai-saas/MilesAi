@@ -6,14 +6,19 @@
 
 时钟说明
 --------
-Pub/Sub 循环 ``while time.monotonic() - start < 120`` 内**没有 sleep**：若客户端
-立刻返回空，会忙等到 120s。为让测试确定性退出，本文件的假 pubsub 每次 poll 后
-把时钟推到 1000s（``clock="frozen"``）；需要走 ``asyncio.sleep`` 的 DB 轮询用例
-则用 ``clock="advance"``，让每次取时钟都前进，使 sleep 立即返回。
+生产代码 ``get_message(timeout=1.0)`` 会**阻塞至多 1 秒、超时后返回 ``None``**
+（redis-py 的 ``Connection.read_response`` 在显式给定 timeout 时返回 ``None``
+而非抛错），因此该循环每秒轮询一次、**不会空转**，轮询次数被 ``< 120`` 上限
+约束为 120 次。
+
+本文件的假 pubsub 立即返回，故让**每轮 poll 把时钟推进 1.0s**，等价于「一次
+poll 对应一秒真实时间」，使上限在 120 次轮询后确定性到达，测试无需真实等待。
+另把 ``asyncio.sleep`` 置为直通，避免 DB 轮询回退路径真等到 2 分钟。
 """
 
 from __future__ import annotations
 
+import asyncio
 import json
 import time
 from datetime import UTC, datetime
@@ -27,7 +32,8 @@ from miles_core.models.model.generative_job import GenerativeJobStatus
 from miles_core.tenant import TenantContext
 from miles_portal.tenant.generative.services import job as job_module
 
-_CLOCK_JUMP = 1000.0
+# 一次 poll 推进 1.0s：与生产 get_message(timeout=1.0) 的阻塞时长一一对应。
+_POLL_SECONDS = 1.0
 
 
 def _sse_job(status: GenerativeJobStatus, **overrides) -> SimpleNamespace:
@@ -71,26 +77,31 @@ async def _collect(agen) -> list[str]:  # noqa: ANN001
 
 
 class _FakePubSub:
-    """假 pubsub：每次 poll 后推快时钟，并在空转超限时直接失败（而非挂死 120s）。"""
+    """假 pubsub：每次 poll 把时钟推进 1.0s，对应生产端阻塞 1 秒。
 
-    def __init__(self, messages, calls, clock, *, max_empty_polls=20):  # noqa: ANN001
+    ``get_message`` 记录收到的 ``timeout`` 供测试断言——这是本循环不空转的唯一
+    依据。此处不在方法内断言：异常会被 ``stream_job_events`` 的宽 except 吞掉并
+    回退 DB 轮询，反而掩盖问题；改为收集后由独立用例断言，失败才清晰。
+    """
+
+    def __init__(self, messages, calls, clock, *, max_polls=200):  # noqa: ANN001
         self._messages = list(messages)
         self._calls = calls
         self._clock = clock
-        self._max_empty_polls = max_empty_polls
-        self._empty_polls = 0
+        self._max_polls = max_polls
+        self.polls = 0
+        self.timeouts = []
 
     async def subscribe(self, channel) -> None:  # noqa: ANN001
         self._calls.append(("subscribe", channel))
 
     async def get_message(self, timeout=None):  # noqa: ANN001
-        self._clock["jump"] = _CLOCK_JUMP
-        if self._messages:
-            return self._messages.pop(0)
-        self._empty_polls += 1
-        if self._empty_polls > self._max_empty_polls:
-            raise AssertionError("Pub/Sub 空转超限：循环内无 sleep，测试未推快时钟")
-        return None
+        self.timeouts.append(timeout)
+        self.polls += 1
+        if self.polls > self._max_polls:
+            raise AssertionError(f"轮询次数超限（>{self._max_polls}）：循环未受上限约束")
+        self._clock["t"] += _POLL_SECONDS
+        return self._messages.pop(0) if self._messages else None
 
     async def unsubscribe(self, channel) -> None:  # noqa: ANN001
         self._calls.append(("unsubscribe", channel))
@@ -108,12 +119,12 @@ class _FakeRedis:
 def harness(monkeypatch):
     """装配 SSE 场景：可编排的 job 序列 + 可编排的 Redis + 可控时钟。"""
 
-    def build(jobs, *, redis="ok", pubsub_messages=(), unsubscribe_error=None, clock="frozen"):
+    def build(jobs, *, redis="ok", pubsub_messages=(), unsubscribe_error=None):
         state = SimpleNamespace(
             timeline=[],
             pubsub_calls=[],
             jobs=list(jobs),
-            clock={"base": 0.0, "jump": 0.0, "ticks": 0},
+            clock={"t": 0.0},
         )
 
         async def _get(db, ctx, job_id):  # noqa: ANN001
@@ -132,11 +143,11 @@ def harness(monkeypatch):
 
             pubsub.unsubscribe = _failing_unsubscribe
 
-        def _mono() -> float:
-            if clock == "advance":
-                state.clock["ticks"] += 1
-                return state.clock["base"] + 200.0 * state.clock["ticks"]
-            return state.clock["base"] + state.clock["jump"]
+        async def _no_sleep(_seconds):  # noqa: ANN001
+            """DB 轮询回退路径的 ``asyncio.sleep(1)`` 直接跳过。
+
+            该路径在 Redis 不可用或轮询异常时触发，若真等 1s×120 会让用例挂 2 分钟。
+            """
 
         def _get_redis():
             if redis == "raise":
@@ -145,7 +156,10 @@ def harness(monkeypatch):
 
         monkeypatch.setattr(job_module, "get_generative_job_for_tenant", _get)
         monkeypatch.setattr("miles_core.infra.redis.get_redis", _get_redis)
-        monkeypatch.setattr(time, "monotonic", _mono)
+        # 时钟只由假 pubsub 的每次轮询推进：使 ``< 120`` 上限在 120 次轮询后
+        # 确定性到达，不依赖真实等待。
+        monkeypatch.setattr(time, "monotonic", lambda: state.clock["t"])
+        monkeypatch.setattr(asyncio, "sleep", _no_sleep)
         state.pubsub = pubsub
         return state
 
@@ -258,6 +272,31 @@ async def test_fallback_final_query_does_not_yield_for_non_terminal_job(harness)
     assert [_status_of(f) for f in frames] == ["running"]
 
 
+async def test_poll_loop_is_bounded_to_120_seconds(harness):  # noqa: ANN001
+    """每次阻塞轮询 1s，``< 120`` 上限即 120 次：SSE 不会无限占用连接。"""
+    running = _sse_job(GenerativeJobStatus.RUNNING)
+    state = harness.build([running])
+
+    await _stream(state, _tenant_ctx(running.tenant_id), running.id)
+
+    assert state.pubsub.polls == 120
+
+
+async def test_every_poll_passes_a_blocking_timeout(harness):  # noqa: ANN001
+    """守住「不空转」的唯一依据：每次 get_message 都必须传非 0 timeout。
+
+    省略 timeout 时 redis-py 默认 0.0 为非阻塞，循环会立刻空转打满 CPU。
+    """
+    running = _sse_job(GenerativeJobStatus.RUNNING)
+    done = _sse_job(GenerativeJobStatus.SUCCESS, id=running.id, tenant_id=running.tenant_id)
+    state = harness.build([running, done], pubsub_messages=[{"type": "message"}])
+
+    await _stream(state, _tenant_ctx(running.tenant_id), running.id)
+
+    assert state.pubsub.timeouts
+    assert all(t for t in state.pubsub.timeouts), f"存在非阻塞轮询: {state.pubsub.timeouts}"
+
+
 # --------------------------------------------------------------------------- #
 # 路径 4：Redis 不可用 → DB 轮询
 # --------------------------------------------------------------------------- #
@@ -266,7 +305,7 @@ async def test_fallback_final_query_does_not_yield_for_non_terminal_job(harness)
 async def test_redis_unavailable_falls_back_to_db_polling(harness):  # noqa: ANN001
     running = _sse_job(GenerativeJobStatus.RUNNING)
     done = _sse_job(GenerativeJobStatus.SUCCESS, id=running.id, tenant_id=running.tenant_id)
-    state = harness.build([running, done], redis="raise", clock="advance")
+    state = harness.build([running, done], redis="raise")
 
     frames = await _stream(state, _tenant_ctx(running.tenant_id), running.id)
 
@@ -278,7 +317,7 @@ async def test_db_polling_emits_one_frame_per_reload(harness):  # noqa: ANN001
     pending = _sse_job(GenerativeJobStatus.PENDING)
     running = _sse_job(GenerativeJobStatus.RUNNING, id=pending.id, tenant_id=pending.tenant_id)
     done = _sse_job(GenerativeJobStatus.SUCCESS, id=pending.id, tenant_id=pending.tenant_id)
-    state = harness.build([pending, running, running, done], redis="raise", clock="advance")
+    state = harness.build([pending, running, running, done], redis="raise")
 
     frames = await _stream(state, _tenant_ctx(pending.tenant_id), pending.id)
 
