@@ -2,6 +2,8 @@
 
 __all__ = [
     "ainvoke_chat",
+    "build_rag_prompt",
+    "generate_rag_answer",
     "rag_answer",
     "retrieve_hits",
     "run_rag_workflow",
@@ -16,6 +18,8 @@ def __getattr__(name: str):
         "split_text",
         "rag_answer",
         "retrieve_hits",
+        "build_rag_prompt",
+        "generate_rag_answer",
     ):
         from miles_ai.integrations import langchain as lc
 

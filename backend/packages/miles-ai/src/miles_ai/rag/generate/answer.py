@@ -64,6 +64,49 @@ async def retrieve_hits(
     )
 
 
+def build_rag_prompt(*, system_prompt: str, query: str, hits: list[dict[str, Any]]) -> str:
+    """按是否有命中拼接生成用 prompt（无命中时不带参考片段）。"""
+    if not hits:
+        return f"{system_prompt}\n\n用户问题：{query}"
+    return build_rag_user_prompt(system_prompt=system_prompt, query=query, hits=hits)
+
+
+async def generate_rag_answer(
+    *,
+    model: ModelConfig,
+    prompt: str,
+    media: list[MediaRefIn] | None = None,
+    media_reader: MediaReader | None = None,
+    temperature: float = 0.7,
+    on_delta: OnDelta | None = None,
+    usage_sink: UsageSink | None = None,
+) -> str:
+    """生成阶段：附图解析 + ``ainvoke_chat``。**不接收 db**。
+
+    检索已由调用方（L1）在短会话内完成，hits 拼进 ``prompt``；本函数因此可以
+    在「连接已归还池」的状态下运行——这是「生成期间不持有连接」的结构性保证，
+    签名里没有 db 是刻意的，请勿为了方便再加回来。
+    """
+    messages: list[dict[str, Any]]
+    if media:
+        if media_reader is None:
+            raise BadRequestError("媒体读取器未装配（media_reader），无法解析附图")
+        messages = await build_invoke_messages_with_media(
+            media_reader,
+            prompt_text=prompt,
+            media=media,
+        )
+    else:
+        messages = [{"role": "user", "content": prompt}]
+    return await ainvoke_chat(
+        model,
+        messages,
+        temperature=temperature,
+        usage_sink=usage_sink,
+        on_delta=on_delta,
+    )
+
+
 async def rag_answer(
     *,
     model: ModelConfig,
@@ -100,31 +143,14 @@ async def rag_answer(
         top_k=top_k,
         bindings=bindings,
     )
-    if not hits:
-        prompt = f"{system_prompt}\n\n用户问题：{query}"
-    else:
-        prompt = build_rag_user_prompt(
-            system_prompt=system_prompt,
-            query=query,
-            hits=hits,
-        )
-    messages: list[dict[str, Any]]
-    if media:
-        if media_reader is None:
-            raise BadRequestError("媒体读取器未装配（media_reader），无法解析附图")
-        messages = await build_invoke_messages_with_media(
-            media_reader,
-            prompt_text=prompt,
-            media=media,
-        )
-    else:
-        messages = [{"role": "user", "content": prompt}]
-
-    answer = await ainvoke_chat(
-        model,
-        messages,
+    prompt = build_rag_prompt(system_prompt=system_prompt, query=query, hits=hits)
+    answer = await generate_rag_answer(
+        model=model,
+        prompt=prompt,
+        media=media,
+        media_reader=media_reader,
         temperature=temperature,
-        usage_sink=usage_sink,
         on_delta=on_delta,
+        usage_sink=usage_sink,
     )
     return answer, hits
