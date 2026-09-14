@@ -173,6 +173,92 @@ async def streamable_http_json_rpc(
         raise BadRequestError(f"MCP 连接失败: {e}") from e
 
 
+class _LegacySseSession:
+    """一次 legacy HTTP+SSE 会话的共享状态与两个协程。
+
+    原先 ``sse_reader`` / ``rpc_roundtrip`` 是 ``legacy_sse_json_rpc`` 内部的闭包，
+    承载了 endpoint 解析、id 配对、超时与 HTTP 错误处理等全部关键逻辑，却因被困在
+    闭包中而无法独立测试。抽为类后两者可单独构造并验证。
+    """
+
+    def __init__(
+        self,
+        *,
+        sse_url: str,
+        get_headers: dict[str, str],
+        post_headers: dict[str, str],
+        timeout: float,
+    ) -> None:
+        self.sse_url = sse_url
+        self.get_headers = get_headers
+        self.post_headers = post_headers
+        self.timeout = timeout
+        self.post_url: str | None = None
+        self.endpoint_ready = asyncio.Event()
+        # 按 JSON-RPC id 等待 SSE message 事件中的对应响应
+        self.pending: dict[int, asyncio.Future[dict]] = {}
+
+    async def read_events(self, client: httpx.AsyncClient) -> None:
+        """长连接读循环：解析 endpoint 与 message 事件。
+
+        读流失败时唤醒所有等待中的 RPC，避免调用方永久挂起。
+        """
+        try:
+            async with aconnect_sse(client, "GET", self.sse_url, headers=self.get_headers) as event_source:
+                event_source.response.raise_for_status()
+                async for sse in event_source.aiter_sse():
+                    if sse.event == "endpoint":
+                        self._handle_endpoint(sse)
+                    elif sse.event in (None, "message"):
+                        self._handle_message(sse)
+        except Exception as e:
+            for fut in self.pending.values():
+                if not fut.done():
+                    fut.set_exception(e)
+
+    def _handle_endpoint(self, sse) -> None:
+        """解析 endpoint 事件：同源校验通过后记录 POST URL 并放行主流程。"""
+        if not sse.data:
+            return
+        resolved = urljoin(self.sse_url, sse.data.strip())
+        _assert_same_origin(self.sse_url, resolved)
+        self.post_url = resolved
+        self.endpoint_ready.set()
+
+    def _handle_message(self, sse) -> None:
+        """把 message 事件投递给同 id 的等待方；无关 id 静默忽略。"""
+        if not sse.data:
+            return
+        message = _json_from_sse_data(sse.data)
+        rid = message.get("id")
+        if isinstance(rid, int) and rid in self.pending:
+            fut = self.pending[rid]
+            if not fut.done():
+                fut.set_result(message)
+
+    async def roundtrip(
+        self,
+        client: httpx.AsyncClient,
+        post_url: str,
+        rpc_method: str,
+        rpc_params: dict,
+    ) -> dict:
+        """向 message URL POST 一条请求，并在 SSE 流上等待同 id 的响应。"""
+        rpc_id = _next_rpc_id()
+        self.pending[rpc_id] = asyncio.get_running_loop().create_future()
+        payload = {"jsonrpc": "2.0", "id": rpc_id, "method": rpc_method, "params": rpc_params}
+        resp = await client.post(post_url, json=payload, headers=self.post_headers)
+        if resp.status_code >= 400:
+            snippet = (resp.text or "")[:200]
+            raise BadRequestError(f"MCP POST {resp.status_code}: {snippet}")
+        try:
+            return await asyncio.wait_for(self.pending[rpc_id], timeout=self.timeout)
+        except TimeoutError as e:
+            raise BadRequestError(f"MCP SSE 等待「{rpc_method}」响应超时（{self.timeout}s）") from e
+        finally:
+            self.pending.pop(rpc_id, None)
+
+
 async def legacy_sse_json_rpc(
     endpoint_url: str,
     method: str,
@@ -186,88 +272,38 @@ async def legacy_sse_json_rpc(
     Legacy HTTP+SSE 一次完整 RPC（含可选 initialize 握手）。
 
     endpoint_url 必须是 SSE GET 入口（如 /sse），不是 /messages POST 地址。
-    后台协程 sse_reader 与主流程 rpc_roundtrip 通过 pending[id] Future 配对响应。
+    后台协程 read_events 与主流程 roundtrip 通过 pending[id] Future 配对响应；
+    两者见 ``_LegacySseSession``。
     """
     sse_url = validate_mcp_endpoint_url(endpoint_url)
-    post_headers = _merge_headers(connection_config)
-    get_headers = _merge_headers(connection_config, sse_get=True)
-
     read_timeout = max(timeout, 30.0)
     limits = httpx.Timeout(connect_timeout, read=read_timeout, write=timeout, pool=connect_timeout)
 
-    endpoint_ready = asyncio.Event()
-    post_url_box: dict[str, str | None] = {"url": None}
-    # 按 JSON-RPC id 等待 SSE message 事件中的对应响应
-    pending: dict[int, asyncio.Future[dict]] = {}
-
-    async def sse_reader(client: httpx.AsyncClient) -> None:
-        """长连接读循环：解析 endpoint 与 message 事件。"""
-        try:
-            async with aconnect_sse(client, "GET", sse_url, headers=get_headers) as event_source:
-                event_source.response.raise_for_status()
-                async for sse in event_source.aiter_sse():
-                    if sse.event == "endpoint":
-                        if not sse.data:
-                            continue
-                        resolved = urljoin(sse_url, sse.data.strip())
-                        _assert_same_origin(sse_url, resolved)
-                        post_url_box["url"] = resolved
-                        endpoint_ready.set()
-                    elif sse.event in (None, "message"):
-                        if not sse.data:
-                            continue
-                        message = _json_from_sse_data(sse.data)
-                        rid = message.get("id")
-                        if isinstance(rid, int) and rid in pending:
-                            fut = pending[rid]
-                            if not fut.done():
-                                fut.set_result(message)
-        except Exception as e:
-            # 读流失败时唤醒所有等待中的 RPC
-            for fut in pending.values():
-                if not fut.done():
-                    fut.set_exception(e)
-
-    async def rpc_roundtrip(
-        client: httpx.AsyncClient,
-        post_url: str,
-        rpc_method: str,
-        rpc_params: dict,
-    ) -> dict:
-        """向 message URL POST 一条请求，并在 SSE 流上等待同 id 的响应。"""
-        rpc_id = _next_rpc_id()
-        pending[rpc_id] = asyncio.get_running_loop().create_future()
-        payload = {"jsonrpc": "2.0", "id": rpc_id, "method": rpc_method, "params": rpc_params}
-        resp = await client.post(post_url, json=payload, headers=post_headers)
-        if resp.status_code >= 400:
-            snippet = (resp.text or "")[:200]
-            raise BadRequestError(f"MCP POST {resp.status_code}: {snippet}")
-        try:
-            return await asyncio.wait_for(pending[rpc_id], timeout=timeout)
-        except TimeoutError as e:
-            raise BadRequestError(f"MCP SSE 等待「{rpc_method}」响应超时（{timeout}s）") from e
-        finally:
-            pending.pop(rpc_id, None)
+    session = _LegacySseSession(
+        sse_url=sse_url,
+        get_headers=_merge_headers(connection_config, sse_get=True),
+        post_headers=_merge_headers(connection_config),
+        timeout=timeout,
+    )
 
     reader: asyncio.Task[None] | None = None
     try:
         async with httpx.AsyncClient(timeout=limits, follow_redirects=False) as client:
-            reader = asyncio.create_task(sse_reader(client))
+            reader = asyncio.create_task(session.read_events(client))
             try:
-                await asyncio.wait_for(endpoint_ready.wait(), timeout=connect_timeout)
+                await asyncio.wait_for(session.endpoint_ready.wait(), timeout=connect_timeout)
             except TimeoutError as e:
                 raise BadRequestError(
                     f"MCP SSE 未在 {connect_timeout}s 内收到 endpoint 事件；请确认 URL 为 SSE GET 入口（例如 /sse）",
                 ) from e
 
-            post_url = post_url_box["url"]
+            post_url = session.post_url
             if not post_url:
                 raise BadRequestError("MCP SSE endpoint 事件缺少 POST URL")
 
             # 多数 MCP Server 要求先 initialize；可用 connection_config.mcp_initialize=false 跳过
-            do_init = (connection_config or {}).get("mcp_initialize", True)
-            if do_init:
-                init_msg = await rpc_roundtrip(
+            if (connection_config or {}).get("mcp_initialize", True):
+                init_msg = await session.roundtrip(
                     client,
                     post_url,
                     "initialize",
@@ -280,11 +316,11 @@ async def legacy_sse_json_rpc(
                 parse_jsonrpc_result(init_msg)
                 # 通知无 id，不等待 SSE 响应
                 notif = {"jsonrpc": "2.0", "method": "notifications/initialized", "params": {}}
-                notif_resp = await client.post(post_url, json=notif, headers=post_headers)
+                notif_resp = await client.post(post_url, json=notif, headers=session.post_headers)
                 if notif_resp.status_code >= 400:
                     logger.warning("MCP notifications/initialized 返回 %s", notif_resp.status_code)
 
-            message = await rpc_roundtrip(client, post_url, method, params)
+            message = await session.roundtrip(client, post_url, method, params)
             return parse_jsonrpc_result(message)
     except httpx.TimeoutException as e:
         raise BadRequestError("MCP SSE 连接超时") from e
