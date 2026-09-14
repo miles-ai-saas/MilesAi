@@ -6,6 +6,7 @@ import pytest
 from langchain_core.documents import Document
 
 from miles_ai.rag.parse.loaders import documents_to_plain_text, load_documents_from_bytes
+from miles_ai.rag.parse.media import VIDEO_EXTENSIONS, vector_type_for_document
 from miles_common.exceptions import BadRequestError
 from miles_core.config import get_settings
 
@@ -139,17 +140,51 @@ def test_any_video_mime_prefix_routes_to_video(monkeypatch):
     assert docs[0].metadata.get("parser") == "video"
 
 
-# 以下两项固化「loaders 路由」与「media.VIDEO_EXTENSIONS / is_video_file」的差异：
-# .webm 同时是 media 的音频与视频扩展名，而本路由的视频扩展名集合不含 .webm，
-# 故无 video/* mime 时落到音频分支。统一语义需先确认 .webm 的入库类型，故先锁现状。
+# .webm 归视频：入库路由与 media.VIDEO_EXTENSIONS / is_video_file 同源，
+# 与检索期 kb.search 的现场解析（is_video_file → parse_video）保持一致。
+# 显式 audio/webm mime 仍走音频分支。
 
 
-def test_webm_without_video_mime_routes_to_audio(monkeypatch):
+def test_webm_without_video_mime_routes_to_video(monkeypatch):
+    monkeypatch.setenv("PARSE_PDF_BACKEND", "pypdf")
+    with patch("miles_ai.rag.parse.loaders.parse_video", return_value="v") as mock_video:
+        docs = load_documents_from_bytes(b"\x00", "a.webm", "application/octet-stream")
+    mock_video.assert_called_once()
+    assert docs[0].metadata.get("parser") == "video"
+
+
+def test_webm_with_audio_mime_routes_to_audio(monkeypatch):
+    """``audio/webm`` 明确声明为音频，视频分支的 audio/* 守卫须让位。"""
     monkeypatch.setenv("PARSE_PDF_BACKEND", "pypdf")
     with patch("miles_ai.rag.parse.loaders.parse_audio", return_value="a") as mock_audio:
-        docs = load_documents_from_bytes(b"\x00", "a.webm", "application/octet-stream")
+        docs = load_documents_from_bytes(b"\x00", "a.webm", "audio/webm")
     mock_audio.assert_called_once()
     assert docs[0].metadata.get("parser") == "audio"
+
+
+@pytest.mark.parametrize("ext", sorted(VIDEO_EXTENSIONS))
+def test_every_video_extension_routes_to_video(ext, monkeypatch):
+    """护栏：入库路由的扩展名必须与 media.VIDEO_EXTENSIONS 完全一致（曾漏 .webm）。"""
+    monkeypatch.setenv("PARSE_PDF_BACKEND", "pypdf")
+    with patch("miles_ai.rag.parse.loaders.parse_video", return_value="v"):
+        docs = load_documents_from_bytes(b"\x00", f"a{ext}", "application/octet-stream")
+    assert docs[0].metadata.get("parser") == "video"
+
+
+@pytest.mark.parametrize(
+    ("filename", "mime", "expected"),
+    [
+        ("a.webm", "application/octet-stream", "video"),
+        ("a.webm", "video/webm", "video"),
+        ("a.webm", "audio/webm", "audio"),  # 显式声明音频
+        ("a.mp3", "audio/mpeg", "audio"),
+        ("a.mp4", "video/mp4", "video"),
+        ("a.txt", "text/plain", "text"),
+    ],
+)
+def test_vector_type_matches_ingest_routing(filename, mime, expected):
+    """``vector_type_for_document`` 与 loaders 路由必须对同一文件给出一致判定。"""
+    assert vector_type_for_document(filename, mime) == expected
 
 
 def test_mp4_with_audio_mime_is_unsupported(monkeypatch):

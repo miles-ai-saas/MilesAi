@@ -13,12 +13,16 @@ import tempfile
 from pathlib import Path
 
 from miles_ai.rag.parse.image_parser import parse_image
+from miles_ai.rag.parse.media import VIDEO_EXTENSIONS
 
 
 def parse_video(data: bytes, filename: str) -> str:
-    """合并音轨转写与关键帧 OCR 为可入库文本。"""
+    """合并音轨转写与关键帧 OCR 为可入库文本。
+
+    纯音频容器（如无视频轨的 .webm）也能解析：ffmpeg 抽音轨后与普通音频同样转写。
+    """
     ext = Path(filename).suffix.lower() or ".mp4"
-    if ext not in {".mp4", ".mov", ".m4v", ".webm", ".mkv"}:
+    if ext not in VIDEO_EXTENSIONS:
         ext = ".mp4"
 
     parts: list[str] = []

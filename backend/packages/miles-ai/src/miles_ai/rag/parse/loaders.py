@@ -24,7 +24,7 @@ from miles_ai.rag.parse.audio_parser import parse_audio
 from miles_ai.rag.parse.backends.docling import DOCLING_EXTENSIONS, docling_available, load_documents_with_docling
 from miles_ai.rag.parse.backends.pypdf import load_pdf_documents
 from miles_ai.rag.parse.image_parser import parse_image
-from miles_ai.rag.parse.media import is_audio_file, is_image_file
+from miles_ai.rag.parse.media import VIDEO_EXTENSIONS, is_audio_file, is_image_file
 from miles_ai.rag.parse.text_parser import parse_text
 from miles_ai.rag.parse.upload_policy import OFFICE_EXTENSIONS
 from miles_ai.rag.parse.video_parser import parse_video
@@ -35,12 +35,6 @@ from miles_core.logging import get_logger
 logger = get_logger(__name__)
 
 _TEXT_EXTENSIONS = {".txt", ".md", ".markdown"}
-
-# 视频路由的扩展名集合**刻意不等同** ``media.VIDEO_EXTENSIONS``：.webm 在 media 中
-# 同属音频与视频，而本模块的音频判定会把 .webm 命中（见下方路由顺序），故此处不带
-# .webm，让其落到音频分支；mime 为 ``video/*`` 时仍由前缀判定进入视频分支。
-# 统一两者语义需先确认 .webm 的入库类型，现状由 tests/rag/test_parse_loaders.py 固化。
-_VIDEO_ROUTER_EXTENSIONS = {".mp4", ".mov", ".m4v", ".mkv"}
 
 
 def _raise_if_office_unparseable(ext: str) -> None:
@@ -105,8 +99,10 @@ def load_documents_from_bytes(
     ext = _file_ext(filename)
 
     try:
-        # 多模态：无 OCR/Whisper/ffmpeg 时 parse_* 仍返回占位文本，保证流程可走完
-        if mime_type.startswith("video/") or (ext in _VIDEO_ROUTER_EXTENSIONS and not mime_type.startswith("audio/")):
+        # 多模态：无 OCR/Whisper/ffmpeg 时 parse_* 仍返回占位文本，保证流程可走完。
+        # 视频判定与 media.VIDEO_EXTENSIONS 同源（.webm 归视频）；显式 audio/* mime
+        # 的例外留给音频分支，与 vector_type_for_document 的判定保持一致。
+        if mime_type.startswith("video/") or (ext in VIDEO_EXTENSIONS and not mime_type.startswith("audio/")):
             return _single_doc(parse_video(data, filename), filename, "video")
 
         if is_image_file(filename, mime_type):

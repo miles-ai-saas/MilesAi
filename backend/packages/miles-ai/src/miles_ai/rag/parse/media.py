@@ -27,7 +27,7 @@ AUDIO_MIMES = frozenset(
         "audio/ogg",
     }
 )
-AUDIO_EXTENSIONS = frozenset({".mp3", ".wav", ".m4a", ".ogg", ".webm"})
+AUDIO_EXTENSIONS = frozenset({".mp3", ".wav", ".m4a", ".ogg"})
 
 VIDEO_MIMES = frozenset(
     {
@@ -37,6 +37,9 @@ VIDEO_MIMES = frozenset(
         "video/x-matroska",
     }
 )
+# .webm 为视频容器，故只出现在 VIDEO_EXTENSIONS 一侧（历史上两处都放了，
+# 导致入库按音频、检索期按视频解析）。纯音频 webm 由 parse_video 内的音轨
+# 转写兜住；显式 ``audio/webm`` mime 仍走音频（见 loaders 的 audio/* 守卫）。
 VIDEO_EXTENSIONS = frozenset({".mp4", ".mov", ".m4v", ".webm", ".mkv"})
 
 
