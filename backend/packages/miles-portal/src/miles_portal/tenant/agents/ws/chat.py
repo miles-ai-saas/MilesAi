@@ -125,6 +125,54 @@ async def _run_chat_turn(
     spawn_job_watchers(ws, ctx, _pending_job_ids(response), job_tasks)
 
 
+async def _authenticate_ws(websocket: WebSocket, token: str) -> TenantContext | None:
+    """校验 token 并返回租户上下文；失败按原因关闭连接并返回 None。"""
+    async with AsyncSessionLocal() as db:
+        try:
+            ctx = await resolve_tenant_context(db, token)
+            ctx.require_permission("agent:read")
+        except UnauthorizedError:
+            await websocket.close(code=4401, reason="Unauthorized")
+            return None
+        except Exception:
+            logger.exception("ws auth failed")
+            await websocket.close(code=4500, reason="Auth error")
+            return None
+    return ctx
+
+
+async def _handle_job_cancel(websocket: WebSocket, ctx: TenantContext, payload: dict) -> None:
+    """处理 ``generative_job.cancel``：参数非法或取消失败一律回 ``chat.error``。"""
+    raw_id = payload.get("job_id")
+    if not raw_id:
+        await proto.send_json(websocket, proto.CHAT_ERROR, {"message": "缺少 job_id"})
+        return
+    try:
+        job_id = UUID(str(raw_id))
+    except ValueError:
+        await proto.send_json(websocket, proto.CHAT_ERROR, {"message": "无效 job_id"})
+        return
+    async with AsyncSessionLocal() as db:
+        try:
+            out = await cancel_generative_job_ws(db, ctx, job_id)
+            await db.commit()
+            await proto.send_json(
+                websocket,
+                proto.GENERATIVE_JOB_PROGRESS,
+                out.model_dump(mode="json"),
+            )
+        except Exception as exc:
+            await db.rollback()
+            await proto.send_json(websocket, proto.CHAT_ERROR, {"message": str(exc)})
+
+
+async def _cancel_job_tasks(job_tasks: set[asyncio.Task]) -> None:
+    """连接结束时取消本连接派生的 job 监听任务，并等其收尾。"""
+    for task in list(job_tasks):
+        task.cancel()
+    await asyncio.gather(*job_tasks, return_exceptions=True)
+
+
 @router.websocket("/{agent_id}/chat/ws")
 async def agent_chat_websocket(
     websocket: WebSocket,
@@ -141,17 +189,9 @@ async def agent_chat_websocket(
         await websocket.close(code=4401, reason="Missing token")
         return
 
-    async with AsyncSessionLocal() as db:
-        try:
-            ctx = await resolve_tenant_context(db, token)
-            ctx.require_permission("agent:read")
-        except UnauthorizedError:
-            await websocket.close(code=4401, reason="Unauthorized")
-            return
-        except Exception:
-            logger.exception("ws auth failed")
-            await websocket.close(code=4500, reason="Auth error")
-            return
+    ctx = await _authenticate_ws(websocket, token)
+    if ctx is None:
+        return
 
     await websocket.accept()
     job_tasks: set[asyncio.Task] = set()
@@ -170,27 +210,7 @@ async def agent_chat_websocket(
                 continue
 
             if event_type == proto.GENERATIVE_JOB_CANCEL:
-                raw_id = payload.get("job_id")
-                if not raw_id:
-                    await proto.send_json(websocket, proto.CHAT_ERROR, {"message": "缺少 job_id"})
-                    continue
-                try:
-                    job_id = UUID(str(raw_id))
-                except ValueError:
-                    await proto.send_json(websocket, proto.CHAT_ERROR, {"message": "无效 job_id"})
-                    continue
-                async with AsyncSessionLocal() as db:
-                    try:
-                        out = await cancel_generative_job_ws(db, ctx, job_id)
-                        await db.commit()
-                        await proto.send_json(
-                            websocket,
-                            proto.GENERATIVE_JOB_PROGRESS,
-                            out.model_dump(mode="json"),
-                        )
-                    except Exception as exc:
-                        await db.rollback()
-                        await proto.send_json(websocket, proto.CHAT_ERROR, {"message": str(exc)})
+                await _handle_job_cancel(websocket, ctx, payload)
                 continue
 
             if event_type == proto.TOOL_CONFIRM:
@@ -221,6 +241,4 @@ async def agent_chat_websocket(
     except WebSocketDisconnect:
         pass
     finally:
-        for task in list(job_tasks):
-            task.cancel()
-        await asyncio.gather(*job_tasks, return_exceptions=True)
+        await _cancel_job_tasks(job_tasks)

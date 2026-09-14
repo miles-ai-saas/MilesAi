@@ -106,6 +106,18 @@ async def _finalize_failed(db, job_id: UUID, exc: Exception) -> bool:
     return True
 
 
+def _preset_positive_duration(agent_cfg: dict) -> int | None:
+    """``agent_config._generative_video_duration`` 预设时长；非正整数或不可解析视为未设。"""
+    raw = agent_cfg.get("_generative_video_duration")
+    if raw is None:
+        return None
+    try:
+        value = int(raw)
+    except (TypeError, ValueError):
+        return None
+    return value if value > 0 else None
+
+
 async def run_generative_video_job_async(job_id: UUID) -> None:
     """Worker 内执行生视频任务：置运行中 → 生成 → 落库并推送终态。"""
     # Celery fork 后父进程的全局 engine 不可复用；用 get_worker_session 创建全新的 engine
@@ -131,14 +143,9 @@ async def run_generative_video_job_async(job_id: UUID) -> None:
             prompt = str(params.get("prompt") or "").strip()
             agent_cfg = params.get("agent_config") if isinstance(params.get("agent_config"), dict) else {}
             duration = int(params.get("duration") or 5)
-            preset_dur = agent_cfg.get("_generative_video_duration")
+            preset_dur = _preset_positive_duration(agent_cfg)
             if preset_dur is not None:
-                try:
-                    preset_dur = int(preset_dur)
-                    if preset_dur > 0:
-                        duration = preset_dur
-                except (TypeError, ValueError):
-                    pass
+                duration = preset_dur
             model = await resolve_video_gen_model(
                 db,
                 ctx,
