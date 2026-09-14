@@ -39,6 +39,29 @@ class UserService(BaseService):
         super().__init__(db, ctx)
         self.repo = UserRepository(db)
 
+    async def _audit(
+        self,
+        user: User,
+        action: str,
+        *,
+        request: Request | None,
+        detail: dict | None = None,
+    ) -> None:
+        """写用户域审计：``resource_type``/``resource_id`` 恒由 ``user`` 推导。
+
+        这两项是审计检索依据，散落在 8 个调用点手写容易漂移（漏记或写错类型），
+        收敛到一处后各调用点只需给出 ``action`` 与可选 ``detail``。
+        """
+        await write_tenant_audit_log(
+            self.db,
+            self.ctx,
+            action=action,
+            resource_type="user",
+            resource_id=str(user.id),
+            request=request,
+            detail=detail,
+        )
+
     async def list_users(
         self,
         params: PageParams,
@@ -79,15 +102,7 @@ class UserService(BaseService):
             user.roles = await self.repo.load_roles(body.role_ids)
         await self.db.flush()
         await self.db.refresh(user, ["roles"])
-        await write_tenant_audit_log(
-            self.db,
-            self.ctx,
-            action="user.create",
-            resource_type="user",
-            resource_id=str(user.id),
-            request=request,
-            detail={"username": user.username},
-        )
+        await self._audit(user, "user.create", request=request, detail={"username": user.username})
         return to_user_out(user)
 
     async def update_user(self, user_id: UUID, body: UserUpdate, *, request: Request | None = None) -> UserOut:
@@ -103,12 +118,9 @@ class UserService(BaseService):
         if role_ids is not None:
             user.roles = await self.repo.load_roles(role_ids)
         await self.db.refresh(user, ["roles"])
-        await write_tenant_audit_log(
-            self.db,
-            self.ctx,
-            action="user.update",
-            resource_type="user",
-            resource_id=str(user.id),
+        await self._audit(
+            user,
+            "user.update",
             request=request,
             detail={"fields": list(body.model_dump(exclude_unset=True).keys())},
         )
@@ -125,14 +137,7 @@ class UserService(BaseService):
         user.hashed_password = hash_password(password)
         await self.db.flush()
         await AuthService(self.db, self.ctx).admin_revoke_user_sessions(user.id)
-        await write_tenant_audit_log(
-            self.db,
-            self.ctx,
-            action="user.reset_password",
-            resource_type="user",
-            resource_id=str(user.id),
-            request=request,
-        )
+        await self._audit(user, "user.reset_password", request=request)
         await self.db.refresh(user, ["roles"])
         return to_user_out(user)
 
@@ -158,14 +163,7 @@ class UserService(BaseService):
         user.email = f"deleted+{suffix}+{user.email}"
         await mark_deleted(self.db, user)
         await AuthService(self.db, self.ctx).admin_revoke_user_sessions(user.id)
-        await write_tenant_audit_log(
-            self.db,
-            self.ctx,
-            action="user.deactivate",
-            resource_type="user",
-            resource_id=str(user.id),
-            request=request,
-        )
+        await self._audit(user, "user.deactivate", request=request)
         await self.db.refresh(user, ["roles"])
         return to_user_out(user)
 
@@ -192,15 +190,7 @@ class UserService(BaseService):
             user.email = f"deleted+{suffix}+{user.email}"
             await mark_deleted(self.db, user)
             await AuthService(self.db, self.ctx).admin_revoke_user_sessions(user.id)
-            await write_tenant_audit_log(
-                self.db,
-                self.ctx,
-                action="user.deactivate",
-                resource_type="user",
-                resource_id=str(user.id),
-                request=request,
-                detail={"batch": True},
-            )
+            await self._audit(user, "user.deactivate", request=request, detail={"batch": True})
             deactivated += 1
         return {"deactivated": deactivated, "skipped": skipped}
 
@@ -232,12 +222,9 @@ class UserService(BaseService):
             if body.action == "enable":
                 if not user.is_active:
                     user.is_active = True
-                    await write_tenant_audit_log(
-                        self.db,
-                        self.ctx,
-                        action="user.update",
-                        resource_type="user",
-                        resource_id=str(user.id),
+                    await self._audit(
+                        user,
+                        "user.update",
                         request=request,
                         detail={"batch": True, "is_active": True},
                     )
@@ -248,12 +235,9 @@ class UserService(BaseService):
                 if user.is_active:
                     user.is_active = False
                     await AuthService(self.db, self.ctx).admin_revoke_user_sessions(user.id)
-                    await write_tenant_audit_log(
-                        self.db,
-                        self.ctx,
-                        action="user.update",
-                        resource_type="user",
-                        resource_id=str(user.id),
+                    await self._audit(
+                        user,
+                        "user.update",
                         request=request,
                         detail={"batch": True, "is_active": False},
                     )
@@ -262,12 +246,9 @@ class UserService(BaseService):
                     skipped += 1
             elif body.action == "assign_roles" and roles is not None:
                 user.roles = list(roles)
-                await write_tenant_audit_log(
-                    self.db,
-                    self.ctx,
-                    action="user.update",
-                    resource_type="user",
-                    resource_id=str(user.id),
+                await self._audit(
+                    user,
+                    "user.update",
                     request=request,
                     detail={"batch": True, "role_ids": [str(r) for r in body.role_ids or []]},
                 )

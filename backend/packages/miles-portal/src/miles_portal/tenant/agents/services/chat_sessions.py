@@ -239,25 +239,24 @@ class AgentChatSessionService(BaseService):
 
         sort = await self._next_sort_index(conversation_id)
         media = _media_payload(body)
-        self.db.add(
-            AgentChatMessage(
+
+        def _message(*, role: str, content: str, **row_fields) -> AgentChatMessage:
+            """构造会话消息：session/tenant/agent 恒由本回合给定，避免两条消息身份漂移。"""
+            return AgentChatMessage(
                 session_id=conversation_id,
                 tenant_id=self.ctx.tenant_id,
                 agent_id=agent_id,
-                role="user",
-                content=user_query,
-                media=media,
-                sort_index=sort,
+                role=role,
+                content=content,
+                **row_fields,
             )
-        )
+
+        self.db.add(_message(role="user", content=user_query, media=media, sort_index=sort))
 
         if response is not None:
             steps = response.steps or None
             self.db.add(
-                AgentChatMessage(
-                    session_id=conversation_id,
-                    tenant_id=self.ctx.tenant_id,
-                    agent_id=agent_id,
+                _message(
                     role="assistant",
                     content=response.answer,
                     artifacts=_artifacts_payload(response),

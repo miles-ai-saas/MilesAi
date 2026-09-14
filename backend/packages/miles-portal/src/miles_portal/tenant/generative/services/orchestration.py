@@ -216,29 +216,24 @@ async def generate_video_for_model(
     if progress:
         await progress.update(96, "保存生成物…")
 
-    att_id = await persist_generated_bytes(
-        db,
-        ctx,
-        data=video_bytes,
-        filename="generated.mp4",
-        mime_type="video/mp4",
-        purpose=purpose,
-        resource_type="agent" if agent_id else None,
-        resource_id=agent_id,
-    )
-    cover_att_id: UUID | None = None
-    cover_bytes = extract_video_cover_jpeg(video_bytes)
-    if cover_bytes:
-        cover_att_id = await persist_generated_bytes(
+    async def _persist(data: bytes, *, filename: str, mime_type: str) -> UUID:
+        """落库生成物：purpose 与来源标识由外层统一给定，视频本体与封面必须一致。"""
+        return await persist_generated_bytes(
             db,
             ctx,
-            data=cover_bytes,
-            filename="generated-cover.jpg",
-            mime_type="image/jpeg",
+            data=data,
+            filename=filename,
+            mime_type=mime_type,
             purpose=purpose,
             resource_type="agent" if agent_id else None,
             resource_id=agent_id,
         )
+
+    att_id = await _persist(video_bytes, filename="generated.mp4", mime_type="video/mp4")
+    cover_att_id: UUID | None = None
+    cover_bytes = extract_video_cover_jpeg(video_bytes)
+    if cover_bytes:
+        cover_att_id = await _persist(cover_bytes, filename="generated-cover.jpg", mime_type="image/jpeg")
 
     row = await register_media_asset(
         db,
