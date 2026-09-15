@@ -29,7 +29,7 @@
 
 ## 范围
 
-**修（13 处 / 10 文件）**——Celery 任务内可达：
+**修（12 处 / 10 文件）**——Celery 任务内可达：
 
 | 文件 | 行 | 站点 |
 |------|----|------|
@@ -55,13 +55,15 @@
 
 ---
 
-### Task 1: 13 处调用点改用 `short_db_session()`
+### Task 1: 12 处调用点改用 `short_db_session()`
 
-**Files:** 上表 10 个文件。
+**Files:**
+- Modify: 上表 10 个源文件
+- Modify: 6 个既有测试文件（见 Step 1b）
 
 **Interfaces:**
 - Consumes: `miles_core.infra.db.short_db_session`（已存在，`db/__init__.py` 已导出）
-- Produces: 这 10 个模块不再引用全局 `AsyncSessionLocal`
+- Produces: 这 10 个模块不再引用全局 `AsyncSessionLocal`；既有测试改为打桩 `short_db_session`
 
 - [ ] **Step 1: 逐个替换**
 
@@ -72,6 +74,34 @@
 
 `usage.py` 特殊：它已同时导入两者（`FlowUsageSink` 与 `ChatUsageSink`），
 本 Task 后 `AsyncSessionLocal` 不再被该文件使用 ⇒ 从 import 行删掉它。
+
+- [ ] **Step 1b: 迁移既有测试的打桩目标（控制端 errata，2026-09-15）**
+
+原计划只列了 10 个源文件，漏了这一点：6 个既有测试文件用**无 `raising=False`** 的
+`monkeypatch.setattr(mod, "AsyncSessionLocal", ...)` 注入假会话。源模块移除该符号后，
+它们会整齐抛 `AttributeError`（实测 16 failed / 1028 passed）。这些打桩的意图是
+「替换会话工厂」，故应指向模块现在使用的那一个。
+
+逐处把被替换的属性名由 `AsyncSessionLocal` 改为 `short_db_session`（`lambda:` /
+假上下文管理器工厂的形状不变——`short_db_session` 是 `@asynccontextmanager`，
+与 `AsyncSessionLocal()` 一样返回异步上下文管理器）：
+
+| 测试文件 | 打桩处数 | 被替换的模块 |
+|---|---|---|
+| `tests/flow/test_generative_nodes.py` | 6 | `image_node` / `video_node` |
+| `tests/tenant/prompts/test_template_loader.py` | 4 | `template_loader` |
+| `tests/tenant/models/test_flow_usage_sink.py` | 3 | `usage_mod` |
+| `tests/tenant/flows/test_subflow_loader.py` | 1 | `loader_mod` |
+| `tests/tenant/compliance/test_scan_words_loader.py` | 1 | `loader_mod` |
+| `tests/tenant/agents/test_rag_usage_accumulation.py` | 1 | `rag_qa` |
+
+连同各文件里描述该替身的 docstring/注释一并更新（如「假 AsyncSessionLocal」→
+「假 short_db_session」），避免注释与代码脱节。
+
+> 注意：**不要**动那些带 `raising=False` 的护栏（`test_short_db_session.py`、
+> `test_flow_media_reader.py`、`test_chat_usage_sink_session.py`、
+> `test_chat_usage_accumulation.py`、`test_chat_rag_connection_release.py`）——
+> 它们有意打桩「可能不存在的全局名」，正是为了在回退时炸出来。
 
 - [ ] **Step 2: 全仓确认这 10 个文件已无全局短会话**
 
@@ -110,7 +140,7 @@ Expected: 全绿。
 - [ ] **Step 5: Commit**
 
 ```bash
-git add <上表 10 个文件>
+git add <上表 10 个源文件> <Step 1b 的 6 个测试文件>
 git commit -F - <<'EOF'
 fix(worker): 流程与 RAG 节点短会话改走 short_db_session
 
