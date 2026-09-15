@@ -6,14 +6,34 @@ asyncpg 连接一旦复用即抛 ``RuntimeError: ... got Future attached to a di
 loop 的 engine，API/CLI 单 loop 进程回退全局）。
 
 逐站点的行为护栏在各自测试文件里（把全局会话换成「调用即炸」替身）；本文件是不变量
-底网：即便某个站点的行为用例被绕过或删掉，只要模块命名空间里又出现 ``AsyncSessionLocal``
+底网：即便某个站点的行为用例被绕过或删掉，只要模块**语法树里**又出现 ``AsyncSessionLocal``
 就会红。
 
 **这 13 个模块是怎么来的**：清单的判据是「因 Worker 可达而**必须**用
 ``short_db_session``」，而非「Task 1 改了哪 10 个文件」——若按后者维护，新出现
 （或当时被漏掉）的站点就永远进不了网，``progress.py`` 正是这样漏过一轮的。
-本文件的 ``test_list_matches_every_short_db_session_call_site`` 直接扫源码交叉核对，
-故后续新增站点会立刻以「清单缺项」的形态失败，而不是静默留在网外。
+
+三处数字口径不同，含义各异，别再混用：
+
+- **10 文件 / 12 处**：本分支 Task 1 实际改动（``git diff`` 口径）；
+- **11 文件 / 14 处**：spec §10.4 表枚举的 Worker 同险站点总数（含基点上即已安全的
+  ``progress.py`` 2 处）；
+- **13 模块**：必须受本文件护栏保护的 Worker 可达模块数（= Task 1 的 10 个 + 此前已是
+  ``short_db_session`` 的 ``progress.py`` / ``chat_rag`` / ``media_reader``）。
+
+本文件用 **AST** 交叉核对，两个方向都钉住：
+
+1. ``test_list_matches_every_short_db_session_call_site``——清单 = 全仓**引用**
+   ``short_db_session`` 的模块 − 有意排除的基础设施模块。新增（或漏记）的站点立刻以
+   「清单缺项」失败。
+2. ``test_only_registered_modules_may_touch_the_global_session``——「谁可以碰全局会话」必须
+   是**显式登记**的决定：全仓引用 ``AsyncSessionLocal`` 的模块集合必须恰好等于
+   ``EXCLUDED_INFRA_MODULES`` + ``EXCLUDED_SINGLE_LOOP_MODULES``。只扫 ``short_db_session(``
+   的旧实现看不见最危险的回归形态（新模块直接开全局会话），这里补齐。
+
+扫的是语法树而不是文本：注释、docstring、字符串字面量里的同名文本一律不计（正则时代
+「注释里提一句 ``short_db_session()``」会误报，``sync.py`` 实测中招）；函数/类**定义**名也
+不计入——定义处不是引用。
 
 各模块的 Worker 可达路径：
 
@@ -38,15 +58,17 @@ loop 的 engine，API/CLI 单 loop 进程回退全局）。
 - ``miles_core.infra.db`` —— 仅 re-export 的 barrel，不含会话逻辑。
 
 刻意**不在**清单里的单 loop 进程站点（``EXCLUDED_SINGLE_LOOP_MODULES``）：
-``miles_core.risk.enforce``、``miles_portal.tenant.agents.ws.chat``、
-``miles_portal.tenant.agents.ws.job_watch``（仅由 WebSocket 端点调用）、
-``miles_server.scripts.*``（CLI 脚本）。
+``miles_core.risk.enforce``（只被 Web 中间件与 Admin 服务调用）、
+``miles_portal.tenant.agents.ws.chat``、``miles_portal.tenant.agents.ws.job_watch``
+（仅由 WebSocket 端点调用）、``miles_server.scripts.backfill_media_assets`` /
+``miles_server.scripts.db_ops``（仅由 Typer CLI 调用）。这些是本文件扫出的**全部**剩余
+全局会话引用；任何新增引用都必须在此显式登记并说明其 loop 安全性。
 """
 
 from __future__ import annotations
 
+import ast
 import importlib
-import re
 from pathlib import Path
 
 import pytest
@@ -74,41 +96,60 @@ EXCLUDED_INFRA_MODULES: tuple[str, ...] = (
     "miles_core.infra.db",
 )
 
-# 有意留在全局会话上的单 loop 站点（不在 Worker 子树内）。
+# 有意留在全局会话上的单 loop 站点（不在 Worker 子树内，逐个追溯过调用方）。
 EXCLUDED_SINGLE_LOOP_MODULES: tuple[str, ...] = (
     "miles_core.risk.enforce",
     "miles_portal.tenant.agents.ws.chat",
     "miles_portal.tenant.agents.ws.job_watch",
+    "miles_server.scripts.backfill_media_assets",
+    "miles_server.scripts.db_ops",
 )
 
 _PKG_ROOT = Path(__file__).resolve().parents[2] / "packages"
-_SHORT_SESSION_CALL_SITE_RE = re.compile(r"\bshort_db_session\(")
 
 
-def _discover_short_session_call_sites() -> set[str]:
-    """扫源码找出所有出现 ``short_db_session(`` 的模块 dotted path。
+def _referenced_symbols(tree: ast.AST) -> set[str]:
+    """语法树里出现过的符号名：``ast.Name`` / 属性访问 ``.attr`` / import 别名。
 
-    匹配的是**文本**而不是语法树：``short_db_session(`` 出现在注释、docstring 或字符串
-    字面量里同样计入（``async def short_db_session(...)`` 的定义行也计入）。这是有意的
-    过近似——本函数的用途是「不让新站点静默留在网外」，而漏报才会造成那种后果；误报
-    只会在下面 ``missing`` 断言里多出一个模块名，确认后补进清单或改掉措辞即可。
-
-    ``__init__.py`` 归一化为其包路径（``a/b/__init__.py`` → ``a.b``），与
-    ``EXCLUDED_INFRA_MODULES`` 里 barrel 的拼法一致，避免两种拼法日后分叉。
-    被排除的基础设施模块由调用方剔除。
+    注释、docstring、字符串字面量都不是以上任何一种，故同名文本不会计入；函数/类定义名
+    （``ast.FunctionDef.name`` 等）同样不计——定义处是声明，不是引用。
     """
+    found: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Name):
+            found.add(node.id)
+        elif isinstance(node, ast.Attribute):
+            found.add(node.attr)
+        elif isinstance(node, ast.alias):
+            found.add(node.name.rsplit(".", 1)[-1])
+    return found
+
+
+def _module_dotted(path: Path) -> str:
+    """``packages/<pkg>/src/<a>/<b>/<mod>.py`` → ``<a>.<b>.<mod>``（``__init__`` 去尾）。"""
+    src_index = path.parts.index("src")
+    dotted = ".".join(path.parts[src_index + 1 :]).removesuffix(".py")
+    return dotted.removesuffix(".__init__")
+
+
+def _discover_modules_referencing(symbol: str) -> set[str]:
+    """扫 ``packages/*/src/**/*.py`` 的语法树，返回引用 ``symbol`` 的模块 dotted path。"""
     found: set[str] = set()
     for path in sorted(_PKG_ROOT.glob("*/src/**/*.py")):
         if "__pycache__" in path.parts:
             continue
-        text = path.read_text(encoding="utf-8")
-        if not _SHORT_SESSION_CALL_SITE_RE.search(text):
-            continue
-        # packages/<pkg>/src/<a>/<b>/<mod>.py → <a>.<b>.<mod>（__init__ 去尾）
-        src_index = path.parts.index("src")
-        dotted = ".".join(path.parts[src_index + 1 :]).removesuffix(".py")
-        found.add(dotted.removesuffix(".__init__"))
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        if symbol in _referenced_symbols(tree):
+            found.add(_module_dotted(path))
     return found
+
+
+def _discover_short_session_call_sites() -> set[str]:
+    """全仓引用 ``short_db_session`` 的模块（定义处不计，见 ``_referenced_symbols``）。
+
+    被排除的基础设施模块由调用方剔除。
+    """
+    return _discover_modules_referencing("short_db_session")
 
 
 @pytest.mark.parametrize("path", EXPECTED_SHORT_SESSION_MODULES)
@@ -128,7 +169,7 @@ def test_fallback_implementation_keeps_the_global_reference(path: str) -> None:
 
 
 def test_list_matches_every_short_db_session_call_site() -> None:
-    """清单必须等于「全仓所有 short_db_session 调用点」减去有意排除的基础设施模块。
+    """清单必须等于「全仓所有 short_db_session 引用点」减去有意排除的基础设施模块。
 
     这条交叉核对正是为了防止本文件重演「清单只抄 Task 1 触碰过的文件」而漏站点：
     新增（或漏记）的站点会在这里以清单缺项的形态失败，而不是静默留在网外。
@@ -142,9 +183,48 @@ def test_list_matches_every_short_db_session_call_site() -> None:
     assert not stale, f"清单里以下模块已不再调用 short_db_session，请移除或说明原因：{stale}"
 
 
+def test_only_registered_modules_may_touch_the_global_session() -> None:
+    """「谁可以碰全局会话」必须是显式登记的决定，不能靠惯例。
+
+    覆盖的正是最危险的回归形态：新增一个直接 ``async with AsyncSessionLocal()`` 的模块。
+    只看得见 ``short_db_session(`` 的旧实现对此完全无感（终审 Important-2 实测：加一个这样的
+    模块后整套仍 17 passed）；这里要求全仓引用集合恰好等于 allowlist，新模块要么改走
+    ``short_db_session``，要么被有意识地登记并接受 loop 安全性审查。
+    """
+    discovered = _discover_modules_referencing("AsyncSessionLocal")
+    allowed = set(EXCLUDED_INFRA_MODULES) | set(EXCLUDED_SINGLE_LOOP_MODULES)
+
+    unregistered = sorted(discovered - allowed)
+    stale = sorted(allowed - discovered)
+    assert not unregistered, (
+        "以下模块引用了全局 AsyncSessionLocal 却未登记。Worker 可达的改用 short_db_session()；"
+        "确实只跑在单 loop 进程里的，登记进 EXCLUDED_SINGLE_LOOP_MODULES（或 EXCLUDED_INFRA_MODULES）"
+        f"并写明其调用方为何不出现在 Celery 子树内（判据见 spec §10.4）：{unregistered}"
+    )
+    assert not stale, f"allowlist 里以下模块已不再引用 AsyncSessionLocal，请移除或说明原因：{stale}"
+
+
+def test_ast_discovery_ignores_comments_and_strings() -> None:
+    """注释/字符串里的同名文本不得算作引用。
+
+    回归锚点：正则实现会把 ``sync.py`` 里一句含 ``short_db_session()`` 的注释判成新站点，
+    于是**改文档就会 CI 红**。AST 必须对纯文本免疫。
+    """
+    tree = ast.parse(
+        '"""docstring 提及 short_db_session( 与 AsyncSessionLocal。"""\n'
+        "# 备注：异步路径请改用 short_db_session()，不要直接碰 AsyncSessionLocal\n"
+        'TEXT = "short_db_session() / AsyncSessionLocal"\n'
+    )
+    # 只有赋值目标 ``TEXT`` 是符号；两个会话符号都只作为文本出现在注释/字符串里。
+    assert _referenced_symbols(tree) == {"TEXT"}
+
+
 def test_expected_module_list_is_exactly_the_worker_sites() -> None:
     """清单互斥且计数明确：防止顺手把单 loop 站点拉进来，或漏掉多轮加入的站点。"""
     assert len(EXPECTED_SHORT_SESSION_MODULES) == 13
     assert len(set(EXPECTED_SHORT_SESSION_MODULES)) == 13
+    # allowlist 各段的规模也钉住：扩清单必须是有意识的动作，不能顺手加进去。
+    assert len(EXCLUDED_INFRA_MODULES) == 2
+    assert len(EXCLUDED_SINGLE_LOOP_MODULES) == 5
     excluded = set(EXCLUDED_SINGLE_LOOP_MODULES) | set(EXCLUDED_INFRA_MODULES)
     assert excluded.isdisjoint(EXPECTED_SHORT_SESSION_MODULES)
