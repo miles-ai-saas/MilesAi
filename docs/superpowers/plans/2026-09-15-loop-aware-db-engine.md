@@ -806,7 +806,10 @@ EOF
 **Files:**
 - Modify: `packages/miles-core/src/miles_core/infra/db/async_session.py`（删两个转发壳）
 - Modify: `packages/miles-core/src/miles_core/infra/db/__init__.py`
-- Modify（13 个模块，共 18 处调用点，见 Step 3 清单）
+- Modify（13 个模块，共 18 处 `short_db_session` 调用点，见 Step 2 清单）
+- Modify（3 个模块，共 4 处 `get_worker_session` 调用点：`agent_schedule.py:33`、
+  `model_health.py:27`、`job_execution.py:122`、`:192`——Task 2 按方案 B 把工厂切换顺延到了本
+  Task，见 Step 2b）
 - Modify（13 个测试文件，撤掉 `_Boom`/`short_db_session` 机件，见 Step 4 清单）
 - Delete: `backend/tests/infra/test_no_global_session_in_worker_paths.py`
 
@@ -822,9 +825,11 @@ Run:
 ```bash
 rg -n "short_db_session|get_worker_session" --type py packages/
 ```
-Expected: 只剩 18 处 `async with short_db_session()` 调用点与它们的 import；
-`get_worker_session` **应已零命中**（Task 2 已把 `agent_schedule` 改为 `AsyncSessionLocal`）。
-若 `get_worker_session` 仍有命中，**停下报告**——说明 Task 2 的迁移不完整。
+Expected: 18 处 `async with short_db_session()` 调用点与它们的 import；**另有 4 处
+`get_worker_session`**（`agent_schedule.py:33`、`model_health.py:27`、
+`job_execution.py:122`、`:192`），它们是 Task 2 方案 B 有意顺延到本 Task 的工厂切换——
+**不是**迁移不完整，按 Step 2b 一并处理。除此之外若还有别的 `get_worker_session` 命中，
+**停下报告**。
 
 Run:
 ```bash
@@ -863,6 +868,27 @@ import 由 `from miles_core.infra.db import short_db_session` 改为
 「与 ``FlowMediaReader``（自开 ``short_db_session``）互补」、
 `chat_rag.py:380` 的「短会话走 short_db_session」）：改述为「每调用新开会话，与调用方
 事务无关」，**保留**其「独立于调用方事务」的原意，不要顺手改行为。
+
+- [ ] **Step 2b: 回退 4 处 `get_worker_session` 调用点（Task 2 方案 B 顺延的部分）**
+
+`get_worker_session` 在 Task 1 之后已是 `async with AsyncSessionLocal()` 的纯转发，故与上一步
+等价；这一步只是把最后 4 处调用点也收回来，使 Step 3 能删壳。
+
+| 模块 | 站点 |
+|---|---|
+| `miles_worker/tasks/agent_schedule.py` | `:33` |
+| `miles_worker/tasks/model_health.py` | `:27` |
+| `miles_portal/tenant/generative/services/job_execution.py` | `:122`、`:192` |
+
+`job_execution.py` 两处站点上方各有一行注释：
+
+```python
+# Celery fork 后父进程的全局 engine 不可复用；用 get_worker_session 创建全新的 engine
+```
+
+**这行注释现在是错的，必须一并改掉**：engine 自 Task 1 起按**事件循环**持有，与「fork」无关，
+`get_worker_session()` 也不再「创建全新的 engine」（它只是转发）。改述为「engine 按事件循环
+持有，直接取 `AsyncSessionLocal()` 即与当前 loop 对齐」，不要保留 fork 措辞。
 
 - [ ] **Step 3: 删除两个已无人使用的转发壳**
 
@@ -911,6 +937,17 @@ git rm tests/infra/test_no_global_session_in_worker_paths.py
 | `tests/tenant/agents/test_job_watch.py` | 现有 `AsyncSessionLocal` 打桩，通常无需改 |
 | `tests/tenant/agents/test_agent_chat_ws.py` | 同上 |
 
+**另有 3 处与 `get_worker_session` 有关的测试机件**（Task 2 方案 B 的顺延物）：
+
+- `tests/tenant/generative/test_job_execution_runner.py:107` 用
+  `monkeypatch.setattr(job_execution, "get_worker_session", ...)` 注入假会话——打桩目标改成
+  `AsyncSessionLocal`（`job_execution` 模块级不再有 `get_worker_session` 这个名字，不改会
+  `AttributeError`）。
+- `tests/tenant/flows/test_run_context_session.py:4` 与
+  `tests/tenant/tools/test_flow_invoker_session.py:3` 的 docstring 用「在
+  ``get_worker_session()`` 子树内可达」描述可达性——改述为语义描述（「在 Worker 任务子树内
+  可达」），**断言不动**。
+
 **注意**：`test_chat_rag_connection_release.py` 与 `test_flow_media_reader.py` 里有用例
 断言「检索短会话在 commit 之前已退出」之类的**连接释放时序**——那属于前一个专项的
 不变量，**不要删**，只把打桩目标从 `short_db_session` 换成 `AsyncSessionLocal`。
@@ -925,6 +962,9 @@ Run:
 rg -n "short_db_session|get_worker_session" --type py packages/ tests/ docs/guides docs/features docs/architecture
 ```
 Expected: **零命中**（`docs/superpowers/` 的历史 spec/plan 除外，那些是历史记录，不动）。
+今日已知会在 Step 2/2b/4 改掉的命中：`packages/` 下 22 处调用点 + 3 个测试文件
+（`test_job_execution_runner.py:107`、`test_run_context_session.py:4`、
+`test_flow_invoker_session.py:3`）。
 
 > 若 `docs/` 下的现役文档有命中，一并改述（参照上一分支的做法：把机制名词替换为
 > 「每调用新开会话」的语义描述）。历史 spec/plan 保持原样。
@@ -938,6 +978,13 @@ uv run --all-packages --group dev python -m pytest -q
 Expected: 全绿，**测试数比 Task 2 结束时减少**（删掉 `test_no_global_session_in_worker_paths.py`、
 撤掉部分 `_Boom` 机件），**不得出现 warning 增多**。具体数量以实测为准，逐条确认失败都来自
 「已删符号」而非行为回归。
+
+本 Task 的 BASE 计数是 **1096**（Task 2 收口后），护栏文件现有 **19** 条用例 ⇒ 预期
+**1077**（撤机件只换打桩目标，不增删用例）。
+
+> ⚠️ 必须用 `python -m pytest`，**不要**用 console script `pytest`：后者不会把 CWD 注入
+> `sys.path`，`tests/` 又不是包，会以 `ModuleNotFoundError: No module named 'tests'` 在收集期
+> 炸掉 9 个模块——那是调用方式问题，不是代码回归。
 
 Run（其余四条）:
 ```bash
@@ -957,8 +1004,8 @@ refactor(db): 退役会话转发壳，调用点回归统一工厂
 
 Task 1 已让 AsyncSessionLocal 自身 loop 感知，get_worker_session / short_db_session
 随之塌缩为「async with AsyncSessionLocal()」的纯转发——这层间接已不携带任何信息。
-本步把 13 个模块 18 处调用点改回直接用 AsyncSessionLocal()，并删掉两个壳，使
-「会话从哪来」在全仓只有一个答案。
+本步把 16 个模块 22 处调用点（18 处 short_db_session + 4 处 get_worker_session）改回直接用
+AsyncSessionLocal()，并删掉两个壳，使「会话从哪来」在全仓只有一个答案。
 
 同时解散只服务于旧机制的结构不变量清单与 13 个测试文件里的「调用即炸」打桩机件：
 它们守护的概念（按站点选工厂）已不存在。各用例原有的业务断言保留，只把打桩目标
