@@ -980,7 +980,10 @@ Expected: 全绿，**测试数比 Task 2 结束时减少**（删掉 `test_no_glo
 「已删符号」而非行为回归。
 
 本 Task 的 BASE 计数是 **1096**（Task 2 收口后），护栏文件现有 **19** 条用例 ⇒ 预期
-**1077**（撤机件只换打桩目标，不增删用例）。
+**1076**（撤机件只换打桩目标，不增删用例）。实测为 1076 而非 1077：
+`tests/tenant/attachments/test_flow_media_reader.py::test_module_does_not_reference_global_session_factory`
+的断言 `not hasattr(media_reader_mod, "AsyncSessionLocal")` 被本 Task 必然证伪，已删除而非
+翻转为恒真断言（评审复核同意）——见 Task 3 报告与 Task 4 修订记录。
 
 > ⚠️ 必须用 `python -m pytest`，**不要**用 console script `pytest`：后者不会把 CWD 注入
 > `sys.path`，`tests/` 又不是包，会以 `ModuleNotFoundError: No module named 'tests'` 在收集期
@@ -1133,5 +1136,6 @@ asyncio loop 可弱引用，仓库未用 uvloop）。`import asyncio` 一律置�
 
 **测试数口径**：基线 1090（已实测确认）→ Task 1 后 **1090**（+7 −2 −4 −2 = 1089，修复轮
 把一条近恒真用例拆成两条 +1）→ Task 2 后 **1094**（+4）→ Task 2 修复轮 **1096**（+2）
-→ Task 3 后预期 **1077**（1096 − 19：删 `test_no_global_session_in_worker_paths.py`，实收 19 条）。
+→ Task 3 后 **1076**（1096 − 19：删 `test_no_global_session_in_worker_paths.py`，实收 19 条；
+再 − 1：`test_flow_media_reader.py` 一条恒假结构断言被删，见 Task 3 步 Step 6 说明）。
 若实测与预期不符，先查清差额来源，**不要直接改期望值**。
