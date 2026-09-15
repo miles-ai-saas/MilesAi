@@ -10,7 +10,7 @@ from typing import Literal
 from sqlalchemy import text
 
 from miles_core.config import get_settings
-from miles_core.infra.db import engine
+from miles_core.infra.db import get_engine
 from miles_core.infra.redis import get_redis
 from miles_core.infra.storage import get_object_storage
 from miles_core.infra.vector_store import get_vector_store
@@ -33,7 +33,7 @@ StatusValue = Literal["ok", "unavailable", "skipped"]
 async def check_postgres() -> bool:
     """SELECT 1 探测异步引擎连通性。"""
     try:
-        async with engine.connect() as conn:
+        async with get_engine().connect() as conn:
             await conn.execute(text("SELECT 1"))
         return True
     except Exception:

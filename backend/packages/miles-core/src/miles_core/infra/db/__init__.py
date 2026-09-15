@@ -5,8 +5,9 @@ FastAPI 依赖 get_db（异步）；Celery/ingest 使用 get_sync_db（同步）
 
 from miles_core.infra.db.async_session import (
     AsyncSessionLocal,
-    engine,
+    dispose_loop_engines,
     get_db,
+    get_engine,
     get_worker_session,
     short_db_session,
 )
@@ -17,8 +18,9 @@ __all__ = [
     "AsyncSessionLocal",
     "Base",
     "SyncSessionLocal",
-    "engine",
+    "dispose_loop_engines",
     "get_db",
+    "get_engine",
     "get_sync_db",
     "get_worker_session",
     "short_db_session",

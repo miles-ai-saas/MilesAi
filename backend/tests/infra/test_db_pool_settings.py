@@ -12,20 +12,22 @@
 import pytest
 
 from miles_core.config import Settings, get_settings
-from miles_core.infra.db import async_session as async_session_mod
-from miles_core.infra.db.async_session import build_engine, engine, get_worker_session
+from miles_core.infra.db.async_session import build_engine, get_engine
 
 
-def test_pool_size_follows_settings():
-    assert engine.pool.size() == get_settings().db_pool_size
+@pytest.mark.asyncio
+async def test_pool_size_follows_settings():
+    assert get_engine().pool.size() == get_settings().db_pool_size
 
 
-def test_max_overflow_follows_settings():
-    assert engine.pool._max_overflow == get_settings().db_max_overflow
+@pytest.mark.asyncio
+async def test_max_overflow_follows_settings():
+    assert get_engine().pool._max_overflow == get_settings().db_max_overflow
 
 
-def test_pool_timeout_follows_settings():
-    assert engine.pool._timeout == get_settings().db_pool_timeout
+@pytest.mark.asyncio
+async def test_pool_timeout_follows_settings():
+    assert get_engine().pool._timeout == get_settings().db_pool_timeout
 
 
 def test_defaults_keep_sqlalchemy_original_values():
@@ -50,71 +52,3 @@ async def test_build_engine_wires_non_default_pool_params(monkeypatch):
         assert eng.pool._timeout == 7.5
     finally:
         await eng.dispose()
-
-
-class _StubEngine:
-    """worker engine 替身：只记录 dispose。"""
-
-    def __init__(self) -> None:
-        self.disposed = 0
-
-    async def dispose(self) -> None:
-        self.disposed += 1
-
-
-class _StubSession:
-    async def __aenter__(self) -> "_StubSession":
-        return self
-
-    async def __aexit__(self, *exc: object) -> bool:
-        return False
-
-
-def _stub_maker(monkeypatch: pytest.MonkeyPatch) -> None:
-    """把 sessionmaker 换成不触真库的替身（engine 已被下面的用例替换）。"""
-    monkeypatch.setattr(async_session_mod, "async_sessionmaker", lambda engine, **kwargs: lambda: _StubSession())
-
-
-@pytest.mark.asyncio
-async def test_worker_engine_is_built_by_build_engine(monkeypatch):
-    """Worker engine 必须经 ``build_engine`` 构造，不能手搓（终审 Minor M1）。"""
-    calls: list[Settings] = []
-    stub = _StubEngine()
-    monkeypatch.setattr(async_session_mod, "build_engine", lambda s: (calls.append(s), stub)[1])
-    _stub_maker(monkeypatch)
-
-    async with get_worker_session():
-        pass
-
-    assert calls == [async_session_mod.settings], "Worker engine 必须复用 build_engine，否则配置会静默漂移"
-    assert stub.disposed == 1
-
-
-@pytest.mark.asyncio
-async def test_worker_engine_receives_configured_pool_params(monkeypatch):
-    """Worker engine 的池参数必须真的来自 ``Settings``。
-
-    漏传时行为与默认值完全一致（默认值恰等于 SQLAlchemy 原默认），所以只能断言「参数被传了」
-    ——这正是本用例用 ``captured[...]`` 而非比较池对象的原因。
-    """
-    captured: dict[str, object] = {}
-    stub = _StubEngine()
-
-    def _fake_create_async_engine(url: str, **kwargs: object) -> _StubEngine:
-        captured["url"] = url
-        captured.update(kwargs)
-        return stub
-
-    monkeypatch.setattr(async_session_mod, "create_async_engine", _fake_create_async_engine)
-    _stub_maker(monkeypatch)
-
-    async with get_worker_session():
-        pass
-
-    settings = get_settings()
-    assert captured["url"] == settings.database_url
-    assert captured["echo"] == settings.debug
-    assert captured["pool_pre_ping"] is True
-    assert captured["pool_size"] == settings.db_pool_size
-    assert captured["max_overflow"] == settings.db_max_overflow
-    assert captured["pool_timeout"] == settings.db_pool_timeout

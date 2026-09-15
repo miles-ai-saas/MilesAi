@@ -1,8 +1,15 @@
-"""异步 PostgreSQL 引擎与会话（FastAPI 主路径）。"""
+"""异步 PostgreSQL 引擎与会话（FastAPI 主路径）。
 
+引擎按**事件循环**持有：Celery 任务入口每次 ``asyncio.run`` 都新建 loop，若复用绑在
+旧 loop 上的连接池，会抛 ``got Future attached to a different loop``。以 loop 对象为
+键（``WeakKeyDictionary``，loop 回收即自动摘除）懒建 engine，使 ``AsyncSessionLocal()``
+对调用方而言与 loop 无关。
+"""
+
+import asyncio
 from collections.abc import AsyncGenerator, AsyncIterator
 from contextlib import asynccontextmanager
-from contextvars import ContextVar, Token
+from weakref import WeakKeyDictionary
 
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
 
@@ -27,26 +34,51 @@ def build_engine(settings: Settings) -> AsyncEngine:
     )
 
 
-engine = build_engine(settings)
-
-AsyncSessionLocal = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
-
-# Celery ``asyncio.run`` 任务内绑定的 sessionmaker（与当前 loop 同寿），
-# 供 ``short_db_session`` 开独立短会话，避免复用全局 AsyncSessionLocal。
-_worker_sessionmaker: ContextVar[async_sessionmaker[AsyncSession] | None] = ContextVar(
-    "milesai_worker_sessionmaker",
-    default=None,
-)
+# 每事件循环一份 (engine, sessionmaker)。键是 loop 对象本身而非 id(loop)：
+# id 在 loop 被回收后可能被新 loop 复用，会导致误用指向已关闭 loop 的 engine。
+_loop_engines: WeakKeyDictionary[asyncio.AbstractEventLoop, tuple[AsyncEngine, async_sessionmaker[AsyncSession]]] = WeakKeyDictionary()
 
 
-def _set_worker_sessionmaker(
-    maker: async_sessionmaker[AsyncSession] | None,
-) -> Token[async_sessionmaker[AsyncSession] | None]:
-    return _worker_sessionmaker.set(maker)
+def _loop_engine_and_maker() -> tuple[AsyncEngine, async_sessionmaker[AsyncSession]]:
+    """当前 loop 的 (engine, sessionmaker)；缺失则懒建并登记。
+
+    无运行中的事件循环时 ``get_running_loop()`` 抛 ``RuntimeError``——这是有意为之：
+    会话本就只能在 async 上下文里取用，早失败好过等到 await 时才炸。
+    """
+    loop = asyncio.get_running_loop()
+    entry = _loop_engines.get(loop)
+    if entry is None:
+        engine = build_engine(settings)
+        entry = (engine, async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False))
+        _loop_engines[loop] = entry
+    return entry
 
 
-def _reset_worker_sessionmaker(token: Token[async_sessionmaker[AsyncSession] | None]) -> None:
-    _worker_sessionmaker.reset(token)
+def get_engine() -> AsyncEngine:
+    """当前事件循环的 engine（懒建）。"""
+    return _loop_engine_and_maker()[0]
+
+
+def AsyncSessionLocal() -> AsyncSession:
+    """当前事件循环的会话。
+
+    签名与旧 ``sessionmaker`` 调用一致（返回 ``AsyncSession``，``expire_on_commit=False``），
+    故既有 ``async with AsyncSessionLocal() as session:`` 写法无需改动。
+    """
+    return _loop_engine_and_maker()[1]()
+
+
+async def dispose_loop_engines() -> None:
+    """释放**当前 loop** 的 engine（由 worker 边界在关闭 loop 之前调用）。
+
+    幂等：无条目或已释放时为空操作。释放后同一 loop 再取会话会在下次连接时惰性重建池。
+    必须在 loop 关闭前 await——``AsyncEngine.dispose()`` 是协程，loop 关了就无法执行；
+    而每次 ``asyncio.run`` 换 loop，不释放就会每个任务泄漏一池连接。
+    """
+    loop = asyncio.get_running_loop()
+    entry = _loop_engines.pop(loop, None)
+    if entry is not None:
+        await entry[0].dispose()
 
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
@@ -64,45 +96,18 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 async def get_worker_session() -> AsyncIterator[AsyncSession]:
     """Celery Worker 专用会话。
 
-    Celery 任务入口每次 ``asyncio.run`` 都新建事件循环，而全局 ``engine`` 的连接池里可能
-    仍留着上一个 loop 创建的 asyncpg 连接：新 loop 里**第一次**用全局会话复用该连接，即抛
-    ``got Future attached to a different loop``。实测同一进程连续 6 次 ``asyncio.run``，
-    第 2/4/6 次失败（约一半），与 fork 无关——fork 只是更早暴露这一现象。
-    本函数按当前 loop 新建 engine + session，并在任务生命周期内绑定 sessionmaker，
-    供 ``short_db_session`` 开独立短会话。
-
-    用法::
-
-        async with get_worker_session() as db:
-            ...
-            await db.commit()
+    引擎已按事件循环持有（见 ``_loop_engine_and_maker``），故不再需要另建 worker engine，
+    也无需把 sessionmaker 绑到 ContextVar：直接转发 ``AsyncSessionLocal()`` 即与当前 loop 对齐。
     """
-    # 必须走 build_engine：手搓 engine 会静默忽略 db_pool_size / db_max_overflow /
-    # db_pool_timeout（当前值恰为 SQLAlchemy 默认，所以只在调参时才会暴露）。
-    _engine = build_engine(settings)
-    _maker = async_sessionmaker(_engine, class_=AsyncSession, expire_on_commit=False)
-    token = _set_worker_sessionmaker(_maker)
-    try:
-        async with _maker() as session:
-            yield session
-    finally:
-        _reset_worker_sessionmaker(token)
-        await _engine.dispose()
+    async with AsyncSessionLocal() as session:
+        yield session
 
 
 @asynccontextmanager
 async def short_db_session() -> AsyncIterator[AsyncSession]:
     """开一个短独立会话（与调用方事务无关）。
 
-    - Worker：在当前任务绑定的 engine 上开（Celery 每次 ``asyncio.run`` 都是新 loop，
-      全局 engine 池里的连接属于上一个 loop，复用会抛
-      ``got Future attached to a different loop``）。
-    - API / 脚本：无 worker engine 绑定时回退全局 ``AsyncSessionLocal``。
+    引擎已按事件循环持有，故 Worker 与 API / 脚本走同一条路径。
     """
-    maker = _worker_sessionmaker.get()
-    if maker is not None:
-        async with maker() as session:
-            yield session
-        return
     async with AsyncSessionLocal() as session:
         yield session
