@@ -1,7 +1,7 @@
 """scan_words_loader 定向单测：短会话委托与 tenant 解析。
 
 monkeypatch 均打到 ``scan_words_loader`` 模块命名空间（from-import 绑定），
-AsyncSessionLocal 用假 async 上下文管理器替换，不落真实 DB。
+short_db_session 用假 async 上下文管理器替换，不落真实 DB。
 """
 
 import asyncio
@@ -13,7 +13,7 @@ from miles_portal.tenant.compliance.services.scan_words_loader import build_scan
 
 
 class _FakeSessionCtx:
-    """假 AsyncSessionLocal：__aenter__ 返回假 db，__aexit__ 返回 None。"""
+    """假 short_db_session：__aenter__ 返回假 db，__aexit__ 返回 None。"""
 
     def __init__(self, db):
         self._db = db
@@ -33,7 +33,7 @@ def test_loader_delegates_with_short_session_and_tenant(monkeypatch):
         calls.append((db, tenant_id))
         return [("foo", SensitiveAction.WARN)]
 
-    monkeypatch.setattr(loader_mod, "AsyncSessionLocal", lambda: _FakeSessionCtx(fake_db))
+    monkeypatch.setattr(loader_mod, "short_db_session", lambda: _FakeSessionCtx(fake_db))
     monkeypatch.setattr(loader_mod, "load_tenant_scan_words", fake_load_tenant_scan_words)
 
     tenant_uuid = uuid4()

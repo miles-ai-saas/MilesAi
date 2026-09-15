@@ -1,6 +1,6 @@
 """template_loader 定向单测：短会话加载启用中 PromptTemplate content。
 
-通过 monkeypatch AsyncSessionLocal 隔离真实 db；is_marked_deleted 仅查询
+通过 monkeypatch short_db_session 隔离真实 db；is_marked_deleted 仅查询
 ``deleted_at`` 属性（缺失即视为未删），故假行无需 deleted_at 字段。
 """
 
@@ -17,7 +17,7 @@ _TEMPLATE_UUID = UUID("22222222-2222-2222-2222-222222222222")
 
 
 class _RecordingSession:
-    """假 AsyncSessionLocal：__aenter__ 返回假 db，__aexit__ 收尾。"""
+    """假 short_db_session：__aenter__ 返回假 db，__aexit__ 收尾。"""
 
     def __init__(self, db, entered):
         self._db = db
@@ -75,7 +75,7 @@ def test_loader_returns_active_template_content(monkeypatch):
     tpl = _TrackingTemplate(tenant_id=_TENANT_UUID, content="系统提示词", is_active=True)
     db = _StubDb(tpl)
     entered = []
-    monkeypatch.setattr(template_loader, "AsyncSessionLocal", lambda: _RecordingSession(db, entered))
+    monkeypatch.setattr(template_loader, "short_db_session", lambda: _RecordingSession(db, entered))
 
     loader = build_prompt_template_loader()
     result = asyncio.run(loader(str(_TEMPLATE_UUID), str(_TENANT_UUID)))
@@ -91,7 +91,7 @@ def test_loader_invalid_uuid_returns_none_without_db(monkeypatch):
     def _boom_factory():
         raise AssertionError("UUID 非法时不应打开 db 会话")
 
-    monkeypatch.setattr(template_loader, "AsyncSessionLocal", _boom_factory)
+    monkeypatch.setattr(template_loader, "short_db_session", _boom_factory)
     loader = build_prompt_template_loader()
 
     assert asyncio.run(loader("not-a-uuid", "1")) is None
@@ -105,7 +105,7 @@ def test_loader_rejects_foreign_tenant_template(monkeypatch):
     )
     db = _StubDb(foreign)
     entered = []
-    monkeypatch.setattr(template_loader, "AsyncSessionLocal", lambda: _RecordingSession(db, entered))
+    monkeypatch.setattr(template_loader, "short_db_session", lambda: _RecordingSession(db, entered))
 
     loader = build_prompt_template_loader()
     result = asyncio.run(loader(str(_TEMPLATE_UUID), str(_TENANT_UUID)))
@@ -121,7 +121,7 @@ def test_build_loader_returns_callable(monkeypatch):
         is_active=True,
     )
     db = _StubDb(row)
-    monkeypatch.setattr(template_loader, "AsyncSessionLocal", lambda: _RecordingSession(db, []))
+    monkeypatch.setattr(template_loader, "short_db_session", lambda: _RecordingSession(db, []))
 
     loader = build_prompt_template_loader()
 

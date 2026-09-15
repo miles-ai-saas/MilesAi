@@ -17,7 +17,7 @@ def _run(coro):
 
 
 class _FakeSession:
-    """替代 AsyncSessionLocal 的假会话（同步分支自开会话处使用）。"""
+    """替代 short_db_session 的假会话（同步分支自开会话处使用）。"""
 
     async def __aenter__(self):
         return self
@@ -44,7 +44,7 @@ def test_video_generate_sync_without_resolver_raises():
 
 
 def test_image_generate_sync_with_injected_resolver(monkeypatch):
-    monkeypatch.setattr(image_node, "AsyncSessionLocal", _FakeSession)
+    monkeypatch.setattr(image_node, "short_db_session", _FakeSession)
 
     mid, att = uuid4(), uuid4()
 
@@ -71,7 +71,7 @@ def test_image_generate_sync_with_injected_resolver(monkeypatch):
 
 def test_image_generate_sync_without_orchestrator_raises(monkeypatch):
     """resolver 已装配但未注入 generate_image_sync ⇒ 报未装配。"""
-    monkeypatch.setattr(image_node, "AsyncSessionLocal", _FakeSession)
+    monkeypatch.setattr(image_node, "short_db_session", _FakeSession)
     mid = uuid4()
 
     async def fake_resolve(db, ctx, *, model_config_id, agent_model=None, agent_config=None):
@@ -90,7 +90,7 @@ def test_image_generate_sync_without_orchestrator_raises(monkeypatch):
 
 
 def test_video_generate_sync_with_injected_resolver(monkeypatch):
-    monkeypatch.setattr(video_node, "AsyncSessionLocal", _FakeSession)
+    monkeypatch.setattr(video_node, "short_db_session", _FakeSession)
 
     mid, att = uuid4(), uuid4()
 
@@ -115,7 +115,7 @@ def test_video_generate_sync_with_injected_resolver(monkeypatch):
 
 
 def test_video_generate_sync_without_orchestrator_raises(monkeypatch):
-    monkeypatch.setattr(video_node, "AsyncSessionLocal", _FakeSession)
+    monkeypatch.setattr(video_node, "short_db_session", _FakeSession)
     mid = uuid4()
 
     async def fake_resolve(db, ctx, *, model_config_id, agent_config=None):
@@ -133,7 +133,7 @@ def test_video_generate_sync_without_orchestrator_raises(monkeypatch):
 
 
 def test_image_generate_async_submits_via_callback(monkeypatch):
-    monkeypatch.setattr(image_node, "AsyncSessionLocal", _FakeSession)
+    monkeypatch.setattr(image_node, "short_db_session", _FakeSession)
 
     mid, job = uuid4(), uuid4()
 
@@ -160,7 +160,7 @@ def test_image_generate_async_submits_via_callback(monkeypatch):
 
 
 def test_video_generate_async_submits_via_callback(monkeypatch):
-    monkeypatch.setattr(video_node, "AsyncSessionLocal", _FakeSession)
+    monkeypatch.setattr(video_node, "short_db_session", _FakeSession)
 
     mid, job = uuid4(), uuid4()
 

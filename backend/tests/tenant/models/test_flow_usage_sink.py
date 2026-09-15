@@ -1,6 +1,6 @@
 """FlowUsageSink 定向单测：按解析后的模型构造 sink、以 source=flow 落库。
 
-``AsyncSessionLocal`` 用假 async 上下文管理器替换，不触真实 DB；断言画布用量
+``short_db_session`` 用假 async 上下文管理器替换，不触真实 DB；断言画布用量
 不被计入会话 token 累计（source 非 chat）。
 """
 
@@ -36,7 +36,7 @@ class _FakeSession:
 
 
 class _FakeSessionLocal:
-    """假 AsyncSessionLocal：每次调用返回同一假会话的上下文管理器。"""
+    """假 short_db_session：每次调用返回同一假会话的上下文管理器。"""
 
     def __init__(self, session: _FakeSession) -> None:
         self._session = session
@@ -57,7 +57,7 @@ class _FakeSessionLocal:
 @pytest.mark.asyncio
 async def test_flow_usage_sink_records_per_model_with_flow_source(monkeypatch):
     session = _FakeSession()
-    monkeypatch.setattr(usage_mod, "AsyncSessionLocal", _FakeSessionLocal(session))
+    monkeypatch.setattr(usage_mod, "short_db_session", _FakeSessionLocal(session))
 
     tenant_id = uuid4()
     source_id = uuid4()
@@ -86,7 +86,7 @@ async def test_flow_usage_sink_skips_zero_tokens(monkeypatch):
     def _boom():
         raise AssertionError("零用量不应打开会话")
 
-    monkeypatch.setattr(usage_mod, "AsyncSessionLocal", _boom)
+    monkeypatch.setattr(usage_mod, "short_db_session", _boom)
     sink = make_flow_usage_sink_factory(uuid4())(ModelConfig(id=uuid4(), name="m", provider="openai", model_name="x"))
     await sink.record(prompt_tokens=0, completion_tokens=0)
 
@@ -95,7 +95,7 @@ async def test_flow_usage_sink_skips_zero_tokens(monkeypatch):
 async def test_flow_usage_sink_does_not_accumulate_chat_tokens(monkeypatch):
     """source=flow 不参与会话 token 累计（累计仅对 chat 生效）。"""
     session = _FakeSession()
-    monkeypatch.setattr(usage_mod, "AsyncSessionLocal", _FakeSessionLocal(session))
+    monkeypatch.setattr(usage_mod, "short_db_session", _FakeSessionLocal(session))
 
     token = begin_chat_usage_accumulation()
     try:

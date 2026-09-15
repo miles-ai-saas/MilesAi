@@ -1,7 +1,7 @@
 """subflow_loader 适配层定向单测：短会话仓储构造与 tenant_id 解析。
 
 monkeypatch 均打到 ``subflow_loader`` 模块命名空间（from-import 绑定）；
-AsyncSessionLocal/FlowRepository/resolve_subflow_graph 用假实现替换，不触真实 DB。
+short_db_session/FlowRepository/resolve_subflow_graph 用假实现替换，不触真实 DB。
 """
 
 import asyncio
@@ -39,7 +39,7 @@ def test_build_subflow_graph_loader_delegates(monkeypatch):
         resolve_calls.append((repo, node_data, tid))
         return {"nodes": [], "edges": []}
 
-    monkeypatch.setattr(loader_mod, "AsyncSessionLocal", lambda: _FakeSession(fake_db))
+    monkeypatch.setattr(loader_mod, "short_db_session", lambda: _FakeSession(fake_db))
     monkeypatch.setattr(loader_mod, "FlowRepository", FakeRepo)
     monkeypatch.setattr(loader_mod, "resolve_subflow_graph", fake_resolve)
 
