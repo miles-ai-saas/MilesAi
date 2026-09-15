@@ -766,7 +766,8 @@ uv run --all-packages --group dev ruff check . && \
 uv run --all-packages --group dev lint-imports && \
 uv run --all-packages --group dev python -m miles_server.scripts.export_openapi --check
 ```
-Expected: **1093 passed, 2 warnings**（Task 1 结束时的 1089 + 4），其余四条通过。
+Expected: **1094 passed, 2 warnings**（Task 1 结束时为 1090——计划原本按 1089 推算，
+Task 1 修复轮把一条近恒真用例拆成两条而 +1；1090 + 4 = 1094），其余四条通过。
 
 - [ ] **Step 6: Commit**
 
@@ -1078,5 +1079,6 @@ EOF
 **开放风险**：spec §8 列出的「`WeakKeyDictionary` 以 loop 为键」已被实测确认（标准
 asyncio loop 可弱引用，仓库未用 uvloop）。`import asyncio` 一律置于模块顶层，无对冲写法。
 
-**测试数口径**：基线 1090（已实测确认）→ Task 1 后 1089（+7 −2 −4 −2）→ Task 2 后 1093（+4）
-→ Task 3 后以实测为准（只减不增）。若实测与预期不符，先查清差额来源，**不要直接改期望值**。
+**测试数口径**：基线 1090（已实测确认）→ Task 1 后 **1090**（+7 −2 −4 −2 = 1089，修复轮
+把一条近恒真用例拆成两条 +1）→ Task 2 后预期 **1094**（+4）→ Task 3 后以实测为准（只减不增）。
+若实测与预期不符，先查清差额来源，**不要直接改期望值**。
