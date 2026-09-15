@@ -2,8 +2,12 @@
 
 引擎按**事件循环**持有：Celery 任务入口每次 ``asyncio.run`` 都新建 loop，若复用绑在
 旧 loop 上的连接池，会抛 ``got Future attached to a different loop``。以 loop 对象为
-键（``WeakKeyDictionary``，loop 回收即自动摘除）懒建 engine，使 ``AsyncSessionLocal()``
-对调用方而言与 loop 无关。
+键（``WeakKeyDictionary``）懒建 engine，使 ``AsyncSessionLocal()`` 对调用方而言与 loop 无关。
+
+弱键**不提供**自动清理：asyncpg 连接强引用 loop、池又强持有连接，注册表的 value 反过来
+钉住 key，只要有存活连接条目就永不失效（见 ``dispose_loop_engines``）。条目只能由
+``dispose_loop_engines()`` 显式释放；用 loop 对象而非 ``id(loop)`` 的价值在于规避
+``id`` 复用时误指向已关闭 loop 的 engine。
 """
 
 import asyncio
@@ -36,6 +40,8 @@ def build_engine(settings: Settings) -> AsyncEngine:
 
 # 每事件循环一份 (engine, sessionmaker)。键是 loop 对象本身而非 id(loop)：
 # id 在 loop 被回收后可能被新 loop 复用，会导致误用指向已关闭 loop 的 engine。
+# 弱键并不等于自动回收：value 里的 engine 经池强引用连接、连接又强引用 loop（asyncpg
+# 的 ``self._loop``），故条目会被钉住，只能由 dispose_loop_engines() 显式摘除。
 _loop_engines: WeakKeyDictionary[asyncio.AbstractEventLoop, tuple[AsyncEngine, async_sessionmaker[AsyncSession]]] = WeakKeyDictionary()
 
 

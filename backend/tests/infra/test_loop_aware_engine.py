@@ -10,9 +10,11 @@
 from __future__ import annotations
 
 import asyncio
+import inspect
 from typing import Any
 
 import pytest
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from miles_core.infra.db import async_session as async_session_mod
 from miles_core.infra.db.async_session import (
@@ -129,9 +131,49 @@ def test_dispose_only_affects_current_loop_and_is_idempotent(monkeypatch: pytest
     assert second_engine[0].disposed == 0, "另一个 loop 的 engine 不得被别人的 dispose 波及"
 
 
-def test_async_session_local_is_a_plain_callable() -> None:
-    """形状不变量：``AsyncSessionLocal`` 必须仍是模块级名字（测试按属性名打桩依赖它）。"""
-    assert callable(AsyncSessionLocal)
+def test_async_session_local_is_module_function_returning_loop_session(monkeypatch: pytest.MonkeyPatch) -> None:
+    """新契约：``AsyncSessionLocal`` 是模块级函数，调用即返回本 loop maker 产出的会话。
+
+    旧实现是 ``sessionmaker`` 实例，``callable(...)`` 对实例与函数同样成立，守不住
+    「实例 → 函数」这次改动，故这里断言身份（``isfunction``）+ 行为（产物原样返回）。
+    """
+    assert inspect.isfunction(AsyncSessionLocal), "必须是模块级函数，而非 sessionmaker 实例"
+
+    sentinel = object()
+
+    monkeypatch.setattr(async_session_mod, "build_engine", lambda settings: _StubEngine())
+    monkeypatch.setattr(async_session_mod, "async_sessionmaker", lambda *a, **kw: lambda: sentinel)
+
+    async def _use() -> None:
+        assert AsyncSessionLocal() is sentinel, "必须返回本 loop maker 产出的会话"
+
+    asyncio.run(_use())
+
+
+def test_sessionmaker_receives_class_and_expire_on_commit(monkeypatch: pytest.MonkeyPatch) -> None:
+    """``class_=AsyncSession`` 与 ``expire_on_commit=False`` 必须原样传给 ``async_sessionmaker``。
+
+    ``expire_on_commit=False`` 是调用方的硬依赖：多处调用点在 commit 之后继续读实例属性
+    （如 ``get_db()`` 在 yield 后 commit），一旦漂回 SQLAlchemy 默认 ``True``，那些读取会
+    触发提交后的惰性刷新——在已超过会话生命周期的上下文里额外 await。
+    """
+    captured: dict[str, Any] = {}
+
+    def _recording_sessionmaker(engine: Any, **kwargs: Any) -> Any:
+        captured["engine"] = engine
+        captured.update(kwargs)
+        return lambda: None
+
+    monkeypatch.setattr(async_session_mod, "build_engine", lambda settings: _StubEngine())
+    monkeypatch.setattr(async_session_mod, "async_sessionmaker", _recording_sessionmaker)
+
+    async def _use() -> None:
+        get_engine()
+
+    asyncio.run(_use())
+
+    assert captured["class_"] is AsyncSession, "会话类必须显式为 AsyncSession"
+    assert captured["expire_on_commit"] is False, "调用方依赖 commit 后仍可读属性"
 
 
 def test_engine_is_built_by_build_engine(monkeypatch: pytest.MonkeyPatch) -> None:
