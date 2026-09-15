@@ -13,7 +13,7 @@ from typing import Any
 from uuid import UUID
 
 from miles_ai.flow_runtime.subflow.resolve import resolve_subflow_graph
-from miles_core.infra.db import short_db_session
+from miles_core.infra.db import AsyncSessionLocal
 from miles_portal.tenant.flows.repositories.flow import FlowRepository
 
 
@@ -22,7 +22,7 @@ def build_subflow_graph_loader() -> Callable[[dict[str, Any], str], Awaitable[di
 
     async def _loader(node_data: dict[str, Any], tenant_id: str) -> dict[str, Any]:
         tid = UUID(str(tenant_id))
-        async with short_db_session() as db:
+        async with AsyncSessionLocal() as db:
             return await resolve_subflow_graph(FlowRepository(db), node_data, tid)
 
     return _loader

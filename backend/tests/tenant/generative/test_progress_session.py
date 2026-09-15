@@ -1,14 +1,11 @@
-"""progress 护栏：生成任务进度读写只走 ``short_db_session``，不回退全局会话。
+"""progress 护栏：生成任务进度读写都在自开的一次会话内完成。
 
 ``miles_ai.integrations.generative.jobs.progress`` 在 Celery 生成任务（``asyncio.run``，
 每次新事件循环）内可达：``job_execution.run_generative_{video,image}_job_async`` 与
-``GenerativeJobService`` 都经它读写任务进度/取消状态。全局 engine 池里属于上一个 loop
-的连接复用即抛 ``RuntimeError: ... got Future attached to a different loop``。
+``GenerativeJobService`` 都经它读写任务进度/取消状态。engine 按事件循环持有
+（见 ``infra/db/async_session``），故任务内与请求内走同一条取会话路径。
 
-本文件把模块命名空间里的全局会话换成「调用即炸」替身，把「不得回退」钉成用例：
-回退时失败信息直指该站点，而不是在某个 worker 日志里偶发半个失败。``raising=False``
-是有意的——本模块不 import ``AsyncSessionLocal``，替换一个「不存在的名字」正是回退
-可被检出的原因。
+本文件把模块命名空间里的会话工厂换成假替身，断言每次读写都发生在那次自开会话里。
 """
 
 from __future__ import annotations
@@ -29,13 +26,6 @@ from miles_ai.integrations.generative.jobs.progress import (
 from miles_core.models.model.generative_job import GenerativeJob, GenerativeJobStatus
 
 
-class _Boom:
-    """全局会话替身：被调用即失败，用来钉住「本模块不得再用全局会话」。"""
-
-    def __call__(self, *args: object, **kwargs: object) -> object:
-        raise AssertionError("该站点必须走 short_db_session，不得回退全局 AsyncSessionLocal")
-
-
 class _StubDb:
     """假 AsyncSession：``get`` 记录入参并返回预设 job，``commit`` 计数。"""
 
@@ -53,7 +43,7 @@ class _StubDb:
 
 
 class _RecordingShortSession:
-    """假 short_db_session：交出可辨识的 db，并记录开合次数。"""
+    """假 AsyncSessionLocal：交出可辨识的 db，并记录开合次数。"""
 
     def __init__(self, db: _StubDb) -> None:
         self.db = db
@@ -84,9 +74,9 @@ def _job(status: GenerativeJobStatus, **overrides: object) -> SimpleNamespace:
 
 @pytest.fixture
 def guard(monkeypatch):
-    """装好护栏：短会话替身 + 全局会话调用即炸替身 + 可观察的 Redis 广播替身。
+    """装好护栏：自开会话替身 + 可观察的 Redis 广播替身。
 
-    ``guard.build(job)`` 返回本次装配的观测记录（假 db / 短会话 / 广播实参）。
+    ``guard.build(job)`` 返回本次装配的观测记录（假 db / 会话替身 / 广播实参）。
     """
 
     def build(job: object) -> SimpleNamespace:
@@ -105,8 +95,7 @@ def guard(monkeypatch):
                 )
             )
 
-        monkeypatch.setattr(progress_mod, "short_db_session", lambda: short, raising=False)
-        monkeypatch.setattr(progress_mod, "AsyncSessionLocal", _Boom(), raising=False)
+        monkeypatch.setattr(progress_mod, "AsyncSessionLocal", lambda: short)
         monkeypatch.setattr(progress_mod, "publish_generative_job_update", _publish, raising=False)
         return SimpleNamespace(db=db, short=short, publishes=publishes)
 
@@ -114,7 +103,7 @@ def guard(monkeypatch):
     return guard
 
 
-async def test_update_progress_never_falls_back_to_global_session(guard):  # noqa: ANN001
+async def test_update_progress_writes_and_publishes_on_its_own_session(guard):  # noqa: ANN001
     """进度写入：percent 夹取、message 截断、落库提交，且广播携带刚写入的值。"""
     job = _job(GenerativeJobStatus.RUNNING)
     state = guard.build(job)
@@ -131,7 +120,7 @@ async def test_update_progress_never_falls_back_to_global_session(guard):  # noq
     publish = state.publishes[0]
     assert (publish.tenant_id, publish.job_id) == (job.tenant_id, job.id)
     assert (publish.status, publish.percent, publish.message) == ("running", 100, "积" * 256)
-    # 且整段读写确实落在短会话里
+    # 且整段读写确实落在自开的那次会话里
     assert (state.short.entered, state.short.exited) == (1, 1)
 
 
@@ -148,7 +137,7 @@ async def test_update_progress_clamps_percent_within_short_session(guard, raw, e
 
 
 async def test_update_progress_missing_job_writes_nothing_and_publishes_nothing(guard):  # noqa: ANN001
-    """任务不存在：早退，不提交、不广播（仍必须是在短会话里查的）。"""
+    """任务不存在：早退，不提交、不广播（仍必须是在自开会话里查的）。"""
     state = guard.build(None)
 
     await update_generative_job_progress(uuid4(), percent=50, message="x")
@@ -158,8 +147,8 @@ async def test_update_progress_missing_job_writes_nothing_and_publishes_nothing(
     assert (state.short.entered, state.short.exited) == (1, 1)
 
 
-async def test_is_cancelled_never_falls_back_to_global_session(guard):  # noqa: ANN001
-    """取消检测：只有 CANCELLED 为真，任务不存在视为未取消——同一短会话口径。"""
+async def test_is_cancelled_reads_on_its_own_session(guard):  # noqa: ANN001
+    """取消检测：只有 CANCELLED 为真，任务不存在视为未取消——每次查询各开一次会话。"""
     cancelled = _job(GenerativeJobStatus.CANCELLED)
     state = guard.build(cancelled)
     assert await is_generative_job_cancelled(cancelled.id) is True
@@ -200,6 +189,6 @@ async def test_progress_facade_update_writes_then_publishes_via_short_session(gu
     assert (job.progress_percent, job.progress_message) == (30, "生成中")
     assert state.db.commit_calls == 1
     assert [(p.status, p.percent, p.message) for p in state.publishes] == [("running", 30, "生成中")]
-    # 两次短会话：一次取消检测、一次进度写入；无一次落到全局
+    # 两次自开会话：一次取消检测、一次进度写入
     assert (state.short.entered, state.short.exited) == (2, 2)
     assert state.db.get_calls == [(GenerativeJob, job.id), (GenerativeJob, job.id)]

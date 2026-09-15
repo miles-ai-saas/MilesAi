@@ -104,7 +104,7 @@ def env(monkeypatch):
             records.image_calls.append(SimpleNamespace(args=args, kwargs=kwargs))
             return await (image or _fake_image)(*args, **kwargs)
 
-        monkeypatch.setattr(job_execution, "get_worker_session", lambda: _session())
+        monkeypatch.setattr(job_execution, "AsyncSessionLocal", lambda: _session())
         monkeypatch.setattr(job_execution, "publish_generative_job_update", _publish)
         monkeypatch.setattr(job_execution, "_sync_chat_after_job", _sync)
         monkeypatch.setattr(job_execution, "generate_video_for_model", _video)

@@ -1,14 +1,11 @@
-"""flow_invoker 护栏：画布工具执行只走 ``short_db_session``，不回退全局会话。
+"""flow_invoker 护栏：画布工具执行在自开的一次会话内完成，不占用调用方会话。
 
-``build_flow_tool_invoker`` 的 ``_invoke`` 在 ``get_worker_session()`` 子树内可达
-（Agent 对话 / 定时任务跑画布流程）；Celery 任务每次 ``asyncio.run`` 都是新事件
-循环，全局 engine 池里属于上一个 loop 的连接复用即抛
-``RuntimeError: ... got Future attached to a different loop``。
+``build_flow_tool_invoker`` 的 ``_invoke`` 在 Worker 任务子树内可达
+（Agent 对话 / 定时任务跑画布流程）；engine 按事件循环持有
+（见 ``infra/db/async_session``），故 Worker 与 API / 脚本走同一条取会话路径。
 
-本用例把模块命名空间里的全局会话换成「调用即炸」替身，把「不得回退」钉成用例：
-一旦有人改回 ``AsyncSessionLocal()``，失败信息会直指该站点，而不是在某个定时任务里
-偶发半个失败。``raising=False`` 是有意的——Task 1 之后本模块不再 import
-``AsyncSessionLocal``，替换一个「不存在的名字」正是回退可被检出的原因。
+本用例把模块命名空间里的会话工厂换成假替身，断言工具执行确实发生在那次会话里，
+而不是借用了别的会话。
 """
 
 from uuid import UUID, uuid4
@@ -20,15 +17,8 @@ from miles_portal.tenant.tools.services import flow_invoker as invoker_mod
 from miles_portal.tenant.tools.services.flow_invoker import build_flow_tool_invoker
 
 
-class _Boom:
-    """全局会话替身：被调用即失败，用来钉住「本模块不得再用全局会话」。"""
-
-    def __call__(self, *args: object, **kwargs: object) -> object:
-        raise AssertionError("该站点必须走 short_db_session，不得回退全局 AsyncSessionLocal")
-
-
 class _RecordingShortSession:
-    """假 short_db_session：交出可辨识的 db，并记录开合次数。"""
+    """假 AsyncSessionLocal：交出可辨识的 db，并记录开合次数。"""
 
     def __init__(self) -> None:
         self.db = object()
@@ -45,11 +35,10 @@ class _RecordingShortSession:
 
 
 @pytest.mark.asyncio
-async def test_flow_tool_invoker_never_falls_back_to_global_session(monkeypatch):
-    """工具执行落在短会话上，且 TenantContext / invoke_source 归因不变。"""
+async def test_flow_tool_invoker_runs_on_its_own_session(monkeypatch):
+    """工具执行落在自开的一次会话上，且 TenantContext / invoke_source 归因不变。"""
     short = _RecordingShortSession()
-    monkeypatch.setattr(invoker_mod, "short_db_session", lambda: short, raising=False)
-    monkeypatch.setattr(invoker_mod, "AsyncSessionLocal", _Boom(), raising=False)
+    monkeypatch.setattr(invoker_mod, "AsyncSessionLocal", lambda: short)
 
     seen: list[tuple] = []
 
@@ -97,10 +86,9 @@ async def test_flow_tool_invoker_never_falls_back_to_global_session(monkeypatch)
 
 @pytest.mark.asyncio
 async def test_flow_tool_invoker_absent_ids_fall_back_to_nil_uuid(monkeypatch):
-    """无 user_id/agent_id 时仍走短会话，身份降级为 nil uuid / None。"""
+    """无 user_id/agent_id 时仍自开会话，身份降级为 nil uuid / None。"""
     short = _RecordingShortSession()
-    monkeypatch.setattr(invoker_mod, "short_db_session", lambda: short, raising=False)
-    monkeypatch.setattr(invoker_mod, "AsyncSessionLocal", _Boom(), raising=False)
+    monkeypatch.setattr(invoker_mod, "AsyncSessionLocal", lambda: short)
 
     seen: list[tuple] = []
 

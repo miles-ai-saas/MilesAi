@@ -1,13 +1,11 @@
-"""run_context 护栏：画布模型解析只走 ``short_db_session``，不回退全局会话。
+"""run_context 护栏：画布模型解析在自开的一次会话内完成，不占用调用方会话。
 
 ``make_flow_model_resolver`` 产出的回调是画布 LLM 节点按 ``model_config_id`` 解析
-模型的唯一入口，在 ``get_worker_session()`` 子树内可达（Agent 对话 / 定时任务跑画布
-流程）。Celery 任务每次 ``asyncio.run`` 都是新事件循环，全局 engine 池里属于上一个
-loop 的连接复用即抛 ``RuntimeError: ... got Future attached to a different loop``。
+模型的唯一入口，在 Worker 任务子树内可达（Agent 对话 / 定时任务跑画布流程）。
+engine 按事件循环持有（见 ``infra/db/async_session``），Worker 与 API / 脚本因此走
+同一条取会话路径。
 
-本用例把模块命名空间里的全局会话换成「调用即炸」替身，把「不得回退」钉成用例。
-``raising=False`` 是有意的——Task 1 之后本模块不再 import ``AsyncSessionLocal``，
-替换一个「不存在的名字」正是回退可被检出的原因。
+本用例把模块命名空间里的会话工厂换成假替身，断言解析确实发生在自开的那次会话里。
 """
 
 from uuid import UUID, uuid4
@@ -18,13 +16,6 @@ from miles_common.exceptions import BadRequestError
 from miles_core.models.model import ModelConfig
 from miles_portal.tenant.flows.services import run_context as run_context_mod
 from miles_portal.tenant.flows.services.run_context import make_flow_model_resolver
-
-
-class _Boom:
-    """全局会话替身：被调用即失败，用来钉住「本模块不得再用全局会话」。"""
-
-    def __call__(self, *args: object, **kwargs: object) -> object:
-        raise AssertionError("该站点必须走 short_db_session，不得回退全局 AsyncSessionLocal")
 
 
 class _StubResult:
@@ -50,7 +41,7 @@ class _StubDb:
 
 
 class _RecordingShortSession:
-    """假 short_db_session：交出可辨识的 db，并记录开合次数。"""
+    """假 AsyncSessionLocal：交出可辨识的 db，并记录开合次数。"""
 
     def __init__(self, db: object) -> None:
         self.db = db
@@ -67,13 +58,12 @@ class _RecordingShortSession:
 
 
 @pytest.mark.asyncio
-async def test_model_resolver_never_falls_back_to_global_session(monkeypatch):
-    """解析命中：查询与 ``resolve_model_for_invoke`` 都发生在短会话内。"""
+async def test_model_resolver_runs_inside_its_own_session(monkeypatch):
+    """解析命中：查询与 ``resolve_model_for_invoke`` 都发生在自开的那次会话内。"""
     model = ModelConfig(id=uuid4(), name="m", provider="openai", model_name="x")
     db = _StubDb(model)
     short = _RecordingShortSession(db)
-    monkeypatch.setattr(run_context_mod, "short_db_session", lambda: short, raising=False)
-    monkeypatch.setattr(run_context_mod, "AsyncSessionLocal", _Boom(), raising=False)
+    monkeypatch.setattr(run_context_mod, "AsyncSessionLocal", lambda: short)
 
     seen: list[tuple] = []
 
@@ -93,12 +83,11 @@ async def test_model_resolver_never_falls_back_to_global_session(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_model_resolver_missing_model_reports_bad_request_within_short_session(monkeypatch):
-    """解析未命中：在短会话内报「模型配置不存在或已禁用」，不触全局会话。"""
+async def test_model_resolver_missing_model_reports_bad_request_within_its_own_session(monkeypatch):
+    """解析未命中：在自开会话内报「模型配置不存在或已禁用」。"""
     db = _StubDb(None)
     short = _RecordingShortSession(db)
-    monkeypatch.setattr(run_context_mod, "short_db_session", lambda: short, raising=False)
-    monkeypatch.setattr(run_context_mod, "AsyncSessionLocal", _Boom(), raising=False)
+    monkeypatch.setattr(run_context_mod, "AsyncSessionLocal", lambda: short)
 
     async def _unexpected(*args: object, **kwargs: object) -> object:
         raise AssertionError("未命中模型时不应调用 resolve_model_for_invoke")

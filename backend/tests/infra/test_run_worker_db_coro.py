@@ -185,8 +185,7 @@ def test_worker_never_calls_bare_asyncio_run() -> None:
     守着，而人工守不住。裸 ``asyncio.run`` 无法在 loop 关闭前 await ``engine.dispose()``，
     于是每个任务泄漏一池连接——正是本任务要消灭的 bug。
 
-    用 AST 不用正则：注释/docstring 里的同名文本不得计入（理由同
-    ``test_no_global_session_in_worker_paths.py``）。扫描根今日对 ``asyncio`` 零命中，
+    用 AST 不用正则：注释/docstring 里的同名文本不得计入。扫描根今日对 ``asyncio`` 零命中，
     故无 allowlist；将来真需要放开某处，必须在此显式登记并说明它为何不需要释放。
     """
     # 探针自检：否则「零命中」无法区分「真的干净」与「探针坏了」。

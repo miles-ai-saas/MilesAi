@@ -1,6 +1,6 @@
 """RAG 生成阶段释放请求会话连接（编排级）。
 
-靠三件事达成：检索与附图解析走短会话、生成前 commit 请求会话、生成入口不含 db。
+靠三件事达成：检索与附图解析各自新开会话、生成前 commit 请求会话、生成入口不含 db。
 本文件从 L1 视角断言前两件（第三件见 tests/rag/test_generate_rag_answer.py）。
 """
 
@@ -29,7 +29,7 @@ class _TxnDb:
 
 
 class _ShortSession:
-    """``short_db_session`` 替身：记录被开过几次、是否已退出。
+    """``AsyncSessionLocal`` 替身：记录被开过几次、是否已退出。
 
     传入 ``events`` 时向共享事件流追加 ``short_enter`` / ``short_exit``，用于断言
     短会话没有把 LLM 调用包在里面（短会话包住生成 = 生成期间仍占一个连接）。
@@ -51,20 +51,6 @@ class _ShortSession:
         if self._events is not None:
             self._events.append("short_exit")
         return False
-
-
-def _boom(*args: object, **kwargs: object) -> None:
-    """全局 ``AsyncSessionLocal`` 替身：被调用即炸，让「回退全局」立刻暴露。"""
-    raise AssertionError("线性检索不得用全局 AsyncSessionLocal（Worker 下跨 loop 复用连接必失败）")
-
-
-def _forbid_global_session(monkeypatch) -> None:
-    """把模块里的全局会话工厂换成「调用即炸」的替身。
-
-    ``raising=False``：Step 4 后本模块不再导入 ``AsyncSessionLocal``，该替换是为了
-    在（万一）有人把全局会话加回来时立刻失败，而非依赖当前 import 存在。
-    """
-    monkeypatch.setattr(chat_rag_mod, "AsyncSessionLocal", _boom, raising=False)
 
 
 def _run(coro):
@@ -124,8 +110,7 @@ def test_linear_path_retrieves_in_short_session_then_commits_before_generate(mon
         captured["generate_kwargs"] = kwargs
         return "答"
 
-    monkeypatch.setattr(chat_rag_mod, "short_db_session", lambda: short, raising=False)
-    _forbid_global_session(monkeypatch)
+    monkeypatch.setattr(chat_rag_mod, "AsyncSessionLocal", lambda: short)
     monkeypatch.setattr(chat_rag_mod, "build_kb_retrieval_bindings", lambda: MagicMock())
     monkeypatch.setattr(chat_rag_mod, "should_use_tools_with_kb", lambda *a, **k: False)
     monkeypatch.setattr(chat_rag_mod, "should_use_langgraph_rag", lambda *a, **k: False)
@@ -160,8 +145,7 @@ def test_linear_path_retrieves_in_short_session_then_commits_before_generate(mon
 def test_linear_path_media_reader_is_short_session_reader(monkeypatch):
     db = _TxnDb()
     svc = _svc(db)
-    monkeypatch.setattr(chat_rag_mod, "short_db_session", lambda: _ShortSession(), raising=False)
-    _forbid_global_session(monkeypatch)
+    monkeypatch.setattr(chat_rag_mod, "AsyncSessionLocal", lambda: _ShortSession())
     monkeypatch.setattr(chat_rag_mod, "build_kb_retrieval_bindings", lambda: MagicMock())
     monkeypatch.setattr(chat_rag_mod, "should_use_tools_with_kb", lambda *a, **k: False)
     monkeypatch.setattr(chat_rag_mod, "should_use_langgraph_rag", lambda *a, **k: False)
@@ -193,8 +177,7 @@ def test_linear_path_keeps_retrieve_query_and_prompt_query_distinct(monkeypatch)
         captured["prompt_kwargs"] = kwargs
         return "拼好的 prompt"
 
-    monkeypatch.setattr(chat_rag_mod, "short_db_session", lambda: short, raising=False)
-    _forbid_global_session(monkeypatch)
+    monkeypatch.setattr(chat_rag_mod, "AsyncSessionLocal", lambda: short)
     monkeypatch.setattr(chat_rag_mod, "build_kb_retrieval_bindings", lambda: MagicMock())
     monkeypatch.setattr(chat_rag_mod, "should_use_tools_with_kb", lambda *a, **k: False)
     monkeypatch.setattr(chat_rag_mod, "should_use_langgraph_rag", lambda *a, **k: False)

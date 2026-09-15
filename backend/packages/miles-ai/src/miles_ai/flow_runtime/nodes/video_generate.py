@@ -17,7 +17,7 @@ from miles_ai.flow_runtime.types import RunContext
 from miles_ai.integrations.generative.constants import PURPOSE_FLOW_GENERATED
 from miles_common.exceptions import BadRequestError
 from miles_common.trace import get_trace_id
-from miles_core.infra.db import short_db_session
+from miles_core.infra.db import AsyncSessionLocal
 
 
 def _optional_uuid(raw: Any) -> UUID | None:
@@ -53,7 +53,7 @@ async def video_generate(
     submit = ctx.submit_generative_video
     if ctx.generative_video_async and submit is not None:
         # 异步入队：未显式配模型时交给 L1 回调 / resolve 取租户默认
-        async with short_db_session() as db:
+        async with AsyncSessionLocal() as db:
             tenant_ctx = tenant_context_from_run(ctx)
             job_id = await submit(
                 db,
@@ -83,7 +83,7 @@ async def video_generate(
     if generate is None:
         raise BadRequestError("生视频编排未装配（generate_video_sync），无法同步生视频")
 
-    async with short_db_session() as db:
+    async with AsyncSessionLocal() as db:
         tenant_ctx = tenant_context_from_run(ctx)
         model = await resolver(
             db,

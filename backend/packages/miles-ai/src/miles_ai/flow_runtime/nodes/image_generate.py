@@ -17,7 +17,7 @@ from miles_ai.flow_runtime.types import RunContext
 from miles_ai.integrations.generative.constants import PURPOSE_FLOW_GENERATED
 from miles_common.exceptions import BadRequestError
 from miles_common.trace import get_trace_id
-from miles_core.infra.db import short_db_session
+from miles_core.infra.db import AsyncSessionLocal
 
 
 def _optional_uuid(raw: Any) -> UUID | None:
@@ -52,7 +52,7 @@ async def image_generate(
 
     submit = ctx.submit_generative_image
     if ctx.generative_image_async and submit is not None:
-        async with short_db_session() as db:
+        async with AsyncSessionLocal() as db:
             tenant_ctx = tenant_context_from_run(ctx)
             job_id = await submit(
                 db,
@@ -81,7 +81,7 @@ async def image_generate(
     if generate is None:
         raise BadRequestError("生图编排未装配（generate_image_sync），无法同步生图")
 
-    async with short_db_session() as db:
+    async with AsyncSessionLocal() as db:
         tenant_ctx = tenant_context_from_run(ctx)
         model = await resolver(
             db,

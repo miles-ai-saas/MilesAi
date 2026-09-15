@@ -7,7 +7,7 @@ from datetime import UTC, datetime
 from sqlalchemy import select
 
 from miles_ai.integrations.litellm.adapter import CHAT_MODEL_TYPES, litellm_chat_completion
-from miles_core.infra.db import get_worker_session, run_worker_db_coro
+from miles_core.infra.db import AsyncSessionLocal, run_worker_db_coro
 from miles_core.jobs.tasks import TASK_NAMES
 from miles_core.logging import get_logger
 from miles_core.models.model import ModelConfig
@@ -24,7 +24,7 @@ async def _probe_models_async() -> str:
     checked = 0
     ok_count = 0
     now = datetime.now(UTC).isoformat()
-    async with get_worker_session() as db:
+    async with AsyncSessionLocal() as db:
         stmt = (
             select(ModelConfig)
             .where(

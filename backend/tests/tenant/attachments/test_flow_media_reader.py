@@ -1,13 +1,12 @@
-"""FlowMediaReader 定向单测：短会话装配、ctx 权限与 UUID 归一。
+"""FlowMediaReader 定向单测：会话装配、ctx 权限与 UUID 归一。
 
 monkeypatch 打到 ``media_reader`` 模块命名空间（from-import 绑定），
 用假 session 工厂与假 AttachmentService，不落真实 DB/对象存储。
 
-会话来源是本文件的核心不变量：两个读方法都必须走 ``short_db_session``，全局
-``AsyncSessionLocal`` 被换成「调用即炸」的替身。该读者在 Celery 内同样可达——
-来路是定时智能体对话（``agent_schedule`` → ``AgentService.chat``，其附图与流程
-分支都会构造本读取器）；画布运行本身走 HTTP 单 loop 进程。回退全局会跨 loop
-复用池内连接。
+会话来源是本文件的核心不变量：两个读方法都各自新开一次会话。该读者在 Celery 内
+同样可达——来路是定时智能体对话（``agent_schedule`` → ``AgentService.chat``，
+其附图与流程分支都会构造本读取器）；画布运行本身走 HTTP 单 loop 进程。engine 按
+事件循环持有（见 ``infra/db/async_session``），两条路径因此共用取会话的方式。
 """
 
 import asyncio
@@ -32,21 +31,12 @@ class _FakeSession:
         return None
 
 
-def _boom(*args: object, **kwargs: object) -> None:
-    """全局 ``AsyncSessionLocal`` 替身：被调用即炸。"""
-    raise AssertionError("FlowMediaReader 不得用全局 AsyncSessionLocal（Worker 下跨 loop 复用连接必失败）")
-
-
 def _install_fakes(monkeypatch):
-    """装配假短会话工厂与假 service，返回 (session_calls, service_calls)。
-
-    同时把全局 ``AsyncSessionLocal`` 换成「调用即炸」的替身：本文件所有用例因此
-    都兼作「未回退全局」的护栏。
-    """
+    """装配假会话工厂与假 service，返回 (session_calls, service_calls)。"""
     session_calls: list[object] = []
     service_calls: list[dict] = []
 
-    def fake_short_db_session() -> _FakeSession:
+    def fake_async_session_local() -> _FakeSession:
         db = object()
         session_calls.append(db)
         return _FakeSession(db)
@@ -61,17 +51,9 @@ def _install_fakes(monkeypatch):
         async def read_attachment_bytes(self, attachment_id):
             return b"aud", "audio/mpeg", "a.mp3"
 
-    # raising=False：Step 4 前本模块只有 AsyncSessionLocal、Step 4 后只有 short_db_session，
-    # 两个替换都要能装上，用例才会红在「走了哪个会话」而不是红在 monkeypatch 找不到属性。
-    monkeypatch.setattr(media_reader_mod, "short_db_session", fake_short_db_session, raising=False)
-    monkeypatch.setattr(media_reader_mod, "AsyncSessionLocal", _boom, raising=False)
+    monkeypatch.setattr(media_reader_mod, "AsyncSessionLocal", fake_async_session_local)
     monkeypatch.setattr(media_reader_mod, "AttachmentService", FakeAttachmentService)
     return session_calls, service_calls
-
-
-def test_module_does_not_reference_global_session_factory():
-    """结构不变量：模块已不持有全局会话工厂，从源头排除回退全局的可能。"""
-    assert not hasattr(media_reader_mod, "AsyncSessionLocal")
 
 
 def test_read_image_bytes_returns_bytes_and_builds_ctx(monkeypatch):

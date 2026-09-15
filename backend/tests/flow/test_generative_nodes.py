@@ -18,7 +18,7 @@ def _run(coro):
 
 
 class _FakeSession:
-    """替代 short_db_session 的假会话（同步分支自开会话处使用）。"""
+    """替代 AsyncSessionLocal 的假会话（同步分支自开会话处使用）。"""
 
     async def __aenter__(self):
         return self
@@ -28,13 +28,6 @@ class _FakeSession:
 
     async def commit(self):
         pass
-
-
-class _Boom:
-    """全局会话替身：被调用即失败，用来钉住「本模块不得再用全局会话」。"""
-
-    def __call__(self, *args: object, **kwargs: object) -> object:
-        raise AssertionError("该站点必须走 short_db_session，不得回退全局 AsyncSessionLocal")
 
 
 def test_image_generate_sync_without_resolver_raises():
@@ -52,7 +45,7 @@ def test_video_generate_sync_without_resolver_raises():
 
 
 def test_image_generate_sync_with_injected_resolver(monkeypatch):
-    monkeypatch.setattr(image_node, "short_db_session", _FakeSession)
+    monkeypatch.setattr(image_node, "AsyncSessionLocal", _FakeSession)
 
     mid, att = uuid4(), uuid4()
 
@@ -79,7 +72,7 @@ def test_image_generate_sync_with_injected_resolver(monkeypatch):
 
 def test_image_generate_sync_without_orchestrator_raises(monkeypatch):
     """resolver 已装配但未注入 generate_image_sync ⇒ 报未装配。"""
-    monkeypatch.setattr(image_node, "short_db_session", _FakeSession)
+    monkeypatch.setattr(image_node, "AsyncSessionLocal", _FakeSession)
     mid = uuid4()
 
     async def fake_resolve(db, ctx, *, model_config_id, agent_model=None, agent_config=None):
@@ -98,7 +91,7 @@ def test_image_generate_sync_without_orchestrator_raises(monkeypatch):
 
 
 def test_video_generate_sync_with_injected_resolver(monkeypatch):
-    monkeypatch.setattr(video_node, "short_db_session", _FakeSession)
+    monkeypatch.setattr(video_node, "AsyncSessionLocal", _FakeSession)
 
     mid, att = uuid4(), uuid4()
 
@@ -123,7 +116,7 @@ def test_video_generate_sync_with_injected_resolver(monkeypatch):
 
 
 def test_video_generate_sync_without_orchestrator_raises(monkeypatch):
-    monkeypatch.setattr(video_node, "short_db_session", _FakeSession)
+    monkeypatch.setattr(video_node, "AsyncSessionLocal", _FakeSession)
     mid = uuid4()
 
     async def fake_resolve(db, ctx, *, model_config_id, agent_config=None):
@@ -141,9 +134,7 @@ def test_video_generate_sync_without_orchestrator_raises(monkeypatch):
 
 
 def test_image_generate_async_submits_via_callback(monkeypatch):
-    monkeypatch.setattr(image_node, "short_db_session", _FakeSession)
-    # 异步提交分支同样钉住回退：全局会话被调用即炸（raising=False 见 _Boom 说明）
-    monkeypatch.setattr(image_node, "AsyncSessionLocal", _Boom(), raising=False)
+    monkeypatch.setattr(image_node, "AsyncSessionLocal", _FakeSession)
 
     mid, job = uuid4(), uuid4()
     seen_dbs = []
@@ -174,9 +165,7 @@ def test_image_generate_async_submits_via_callback(monkeypatch):
 
 
 def test_video_generate_async_submits_via_callback(monkeypatch):
-    monkeypatch.setattr(video_node, "short_db_session", _FakeSession)
-    # 异步提交分支同样钉住回退：全局会话被调用即炸（raising=False 见 _Boom 说明）
-    monkeypatch.setattr(video_node, "AsyncSessionLocal", _Boom(), raising=False)
+    monkeypatch.setattr(video_node, "AsyncSessionLocal", _FakeSession)
 
     mid, job = uuid4(), uuid4()
     seen_dbs = []
@@ -221,14 +210,9 @@ def test_image_generate_async_without_submitter_falls_back_to_sync():
         _run(image_node.image_generate(node, {}, ctx))
 
 
-def test_image_generate_sync_never_falls_back_to_global_session(monkeypatch):
-    """同步生图站点：全局会话换成调用即炸替身，解析与编排仍必须走短会话。
-
-    ``raising=False`` 是有意的：Task 1 之后本模块不再 import ``AsyncSessionLocal``，
-    把一个「不存在的名字」换成替身，正是回退时能被抓到的原因。
-    """
-    monkeypatch.setattr(image_node, "short_db_session", _FakeSession, raising=False)
-    monkeypatch.setattr(image_node, "AsyncSessionLocal", _Boom(), raising=False)
+def test_image_generate_sync_honours_injected_resolver_and_orchestrator(monkeypatch):
+    """同步生图：模型解析与编排在同一次新开会话上进行，且次序为 resolve → generate。"""
+    monkeypatch.setattr(image_node, "AsyncSessionLocal", _FakeSession)
 
     mid, att = uuid4(), uuid4()
     seen: list[tuple[str, object]] = []
@@ -265,14 +249,9 @@ def test_image_generate_sync_never_falls_back_to_global_session(monkeypatch):
     assert all(isinstance(db, _FakeSession) for _, db in seen)
 
 
-def test_video_generate_sync_never_falls_back_to_global_session(monkeypatch):
-    """同步生视频站点：全局会话换成调用即炸替身，解析与编排仍必须走短会话。
-
-    ``raising=False`` 是有意的：Task 1 之后本模块不再 import ``AsyncSessionLocal``，
-    把一个「不存在的名字」换成替身，正是回退时能被抓到的原因。
-    """
-    monkeypatch.setattr(video_node, "short_db_session", _FakeSession, raising=False)
-    monkeypatch.setattr(video_node, "AsyncSessionLocal", _Boom(), raising=False)
+def test_video_generate_sync_honours_injected_resolver_and_orchestrator(monkeypatch):
+    """同步生视频：模型解析与编排在同一次新开会话上进行，且次序为 resolve → generate。"""
+    monkeypatch.setattr(video_node, "AsyncSessionLocal", _FakeSession)
 
     mid, att = uuid4(), uuid4()
     seen: list[tuple[str, object]] = []

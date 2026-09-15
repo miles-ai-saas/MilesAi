@@ -35,7 +35,7 @@ class _FakeDb:
 
 
 class _ShortSession:
-    """short_db_session 替身：retrieve 节点会开短会话。"""
+    """AsyncSessionLocal 替身：retrieve 节点会开一次会话。"""
 
     async def __aenter__(self) -> "_ShortSession":
         return self
@@ -73,7 +73,7 @@ async def test_graph_node_usage_reaches_caller_contextvar(monkeypatch):
             await kwargs["usage_sink"].record(prompt_tokens=7, completion_tokens=3)
         return "答案"
 
-    monkeypatch.setattr(rag_qa, "short_db_session", _ShortSession)
+    monkeypatch.setattr(rag_qa, "AsyncSessionLocal", _ShortSession)
     monkeypatch.setattr(rag_qa, "retrieve_hits", AsyncMock(return_value=[{"content": "片段", "score": 0.9}]))
     monkeypatch.setattr(answer_mod, "ainvoke_chat", AsyncMock(side_effect=fake_ainvoke))
 

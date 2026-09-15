@@ -10,7 +10,7 @@ from miles_ai.integrations.generative.image.prompt_guard import user_requests_im
 from miles_ai.integrations.langchain.chat_models import OnDelta, ainvoke_chat
 from miles_ai.integrations.langgraph.runner import run_rag_workflow, should_use_langgraph_rag
 from miles_ai.rag.generate import build_rag_prompt, format_hits_context, generate_rag_answer, retrieve_hits
-from miles_core.infra.db import short_db_session
+from miles_core.infra.db import AsyncSessionLocal
 from miles_core.models.agent import Agent
 from miles_core.models.model import ModelConfig
 from miles_portal.tenant.a2a.services.peer_refs import list_agent_a2a_peer_refs
@@ -377,9 +377,10 @@ class AgentChatRagMixin:
             else:
                 # 检索必须在 L1 用短会话完成，否则它会在生成入口内部重新打开请求事务，
                 # 使「生成期间不占连接」失效。retrieve_query 用于检索、prompt_query 写入 prompt。
-                # 短会话走 short_db_session：本路径在 Celery（每次 asyncio.run 新 loop）内同样可达。
+                # 检索短会话每调用新开（AsyncSessionLocal，engine 按事件循环持有）：
+                # 本路径在 Celery（每次 asyncio.run 新 loop）内同样可达，且与调用方事务无关。
                 search_q = (retrieve_query if retrieve_query is not None else prompt_query).strip()
-                async with short_db_session() as search_db:
+                async with AsyncSessionLocal() as search_db:
                     linear_hits = await retrieve_hits(
                         search_q,
                         tenant_id=agent.tenant_id,

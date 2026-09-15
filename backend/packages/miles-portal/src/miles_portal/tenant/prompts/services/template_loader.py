@@ -13,7 +13,7 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from miles_core.infra.db import short_db_session
+from miles_core.infra.db import AsyncSessionLocal
 from miles_core.soft_delete import is_marked_deleted
 from miles_portal.tenant.prompts.models import PromptTemplate
 
@@ -39,7 +39,7 @@ def build_prompt_template_loader() -> Callable[[str, str], Awaitable[str | None]
             tenant_uuid = UUID(tenant_id)
         except (ValueError, TypeError):
             return None
-        async with short_db_session() as db:
+        async with AsyncSessionLocal() as db:
             return await _load_prompt_template(db, tid, tenant_uuid)
 
     return _loader

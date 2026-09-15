@@ -8,9 +8,7 @@ from miles_core.infra.db.async_session import (
     dispose_loop_engines,
     get_db,
     get_engine,
-    get_worker_session,
     run_worker_db_coro,
-    short_db_session,
 )
 from miles_core.infra.db.base import Base
 from miles_core.infra.db.sync import SyncSessionLocal, get_sync_db, sync_engine
@@ -23,8 +21,6 @@ __all__ = [
     "get_db",
     "get_engine",
     "get_sync_db",
-    "get_worker_session",
     "run_worker_db_coro",
-    "short_db_session",
     "sync_engine",
 ]

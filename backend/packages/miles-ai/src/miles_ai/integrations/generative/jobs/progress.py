@@ -7,7 +7,7 @@ from uuid import UUID
 
 from miles_ai.integrations.generative.jobs.errors import GenerativeJobCancelled
 from miles_common.redis_keys import RedisKeys
-from miles_core.infra.db import short_db_session
+from miles_core.infra.db import AsyncSessionLocal
 from miles_core.logging import get_logger
 from miles_core.models.model.generative_job import GenerativeJob, GenerativeJobStatus
 
@@ -51,7 +51,7 @@ async def update_generative_job_progress(
     message: str | None = None,
 ) -> None:
     """更新任务进度（percent 夹取到 0–100、message 截断 256 字符）并向 Redis 广播，供 SSE 即时感知。"""
-    async with short_db_session() as db:
+    async with AsyncSessionLocal() as db:
         job = await db.get(GenerativeJob, job_id)
         if not job:
             return
@@ -72,7 +72,7 @@ async def update_generative_job_progress(
 
 async def is_generative_job_cancelled(job_id: UUID) -> bool:
     """任务是否已被取消（任务不存在时视为未取消）。"""
-    async with short_db_session() as db:
+    async with AsyncSessionLocal() as db:
         job = await db.get(GenerativeJob, job_id)
         return job is not None and job.status == GenerativeJobStatus.CANCELLED
 

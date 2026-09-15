@@ -14,7 +14,7 @@ from miles_ai.integrations.generative.constants import PURPOSE_CHAT_GENERATED, P
 from miles_ai.integrations.generative.jobs.errors import GenerativeJobCancelled, GenerativeJobNotFound
 from miles_ai.integrations.generative.jobs.progress import publish_generative_job_update
 from miles_common.trace import get_trace_id
-from miles_core.infra.db import get_worker_session
+from miles_core.infra.db import AsyncSessionLocal
 from miles_core.logging import get_logger
 from miles_core.models.model.generative_job import GenerativeJob, GenerativeJobStatus
 from miles_core.models.platform.user import User
@@ -118,8 +118,8 @@ def _preset_positive_duration(agent_cfg: dict) -> int | None:
 
 async def run_generative_video_job_async(job_id: UUID) -> None:
     """Worker 内执行生视频任务：置运行中 → 生成 → 落库并推送终态。"""
-    # Celery fork 后父进程的全局 engine 不可复用；用 get_worker_session 创建全新的 engine
-    async with get_worker_session() as db:
+    # engine 按事件循环持有（见 infra/db/async_session），直接取 AsyncSessionLocal() 即与当前 loop 对齐
+    async with AsyncSessionLocal() as db:
         job = await db.get(GenerativeJob, job_id)
         if not job:
             raise GenerativeJobNotFound(job_id)
@@ -188,8 +188,8 @@ async def run_generative_video_job_async(job_id: UUID) -> None:
 
 async def run_generative_image_job_async(job_id: UUID) -> None:
     """Worker 内执行生图任务：置运行中 → 生成 → 落库并推送终态。"""
-    # Celery fork 后父进程的全局 engine 不可复用；用 get_worker_session 创建全新的 engine
-    async with get_worker_session() as db:
+    # engine 按事件循环持有（见 infra/db/async_session），直接取 AsyncSessionLocal() 即与当前 loop 对齐
+    async with AsyncSessionLocal() as db:
         job = await db.get(GenerativeJob, job_id)
         if not job:
             raise GenerativeJobNotFound(job_id)

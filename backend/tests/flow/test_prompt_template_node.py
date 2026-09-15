@@ -9,15 +9,8 @@ from miles_ai.flow_runtime.types import RunContext
 from miles_common.exceptions import BadRequestError
 
 
-class _Boom:
-    """全局会话替身：被调用即失败，用来钉住「本模块不得再用全局会话」。"""
-
-    def __call__(self, *args: object, **kwargs: object) -> object:
-        raise AssertionError("该站点必须走 short_db_session，不得回退全局 AsyncSessionLocal")
-
-
 class _RecordingShortSession:
-    """假 short_db_session：记录开合次数并交出可辨识的 db。"""
+    """假 AsyncSessionLocal：记录开合次数并交出可辨识的 db。"""
 
     def __init__(self) -> None:
         self.entered = 0
@@ -130,15 +123,10 @@ async def test_prompt_template_prepends_system_prompt():
 
 
 @pytest.mark.asyncio
-async def test_knowledge_search_never_falls_back_to_global_session(monkeypatch):
-    """KnowledgeSearch 站点：全局会话换成调用即炸替身，检索仍必须走短会话。
-
-    ``raising=False`` 是有意的：Task 1 之后本模块不再 import ``AsyncSessionLocal``，
-    把一个「不存在的名字」换成替身，正是回退时能被抓到的原因。
-    """
+async def test_knowledge_search_retrieves_on_its_own_session(monkeypatch):
+    """KnowledgeSearch 站点：检索在自开的一次会话上进行，参数与结果原样透出。"""
     short = _RecordingShortSession()
-    monkeypatch.setattr(rag_nodes, "short_db_session", lambda: short, raising=False)
-    monkeypatch.setattr(rag_nodes, "AsyncSessionLocal", _Boom(), raising=False)
+    monkeypatch.setattr(rag_nodes, "AsyncSessionLocal", lambda: short)
 
     seen = []
 

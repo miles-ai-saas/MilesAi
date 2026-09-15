@@ -13,7 +13,7 @@ from typing import Any
 from uuid import UUID
 
 from miles_ai.flow_runtime.types import RunContext
-from miles_core.infra.db import short_db_session
+from miles_core.infra.db import AsyncSessionLocal
 from miles_core.tenant import TenantContext
 from miles_portal.tenant.tools.invoke import invoke_tool_with_context
 
@@ -37,7 +37,7 @@ def build_flow_tool_invoker() -> Callable[..., Awaitable[dict[str, Any]]]:
             permissions=ctx.permissions,
         )
         agent_id = UUID(ctx.agent_id) if ctx.agent_id else None
-        async with short_db_session() as db:
+        async with AsyncSessionLocal() as db:
             return await invoke_tool_with_context(
                 db,
                 tenant_ctx,

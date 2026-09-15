@@ -13,7 +13,7 @@ from uuid import UUID
 from sqlalchemy import select
 
 from miles_common.cron import compute_next_run
-from miles_core.infra.db import get_sync_db, get_worker_session, run_worker_db_coro
+from miles_core.infra.db import AsyncSessionLocal, get_sync_db, run_worker_db_coro
 from miles_core.jobs.tasks import TASK_NAMES
 from miles_core.logging import get_logger
 from miles_core.models.agent.schedule import AgentSchedule
@@ -30,7 +30,7 @@ logger = get_logger(__name__)
 
 async def _run_schedule_async(schedule_id: UUID) -> None:
     started = datetime.now(UTC)
-    async with get_worker_session() as db:
+    async with AsyncSessionLocal() as db:
         schedule = await db.get(AgentSchedule, schedule_id)
         if not schedule or schedule.deleted_at is not None or not schedule.enabled:
             return

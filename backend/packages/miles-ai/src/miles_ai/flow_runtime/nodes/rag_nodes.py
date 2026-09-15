@@ -12,8 +12,8 @@
 2. 否则使用 ``RunContext.kb_ids``（Agent 发布流程对话时由 ``AgentService`` 注入）
 
 模板库 live 引用经 ``RunContext.resolve_prompt_template``（L1 注入）加载，节点层不再直接 import
-tenant 模板模型。会话：KnowledgeSearch 节点内 ``short_db_session`` 独立开库，避免与外层 HTTP
-事务纠缠。
+tenant 模板模型。会话：KnowledgeSearch 节点内每调用新开一个会话（``AsyncSessionLocal``），
+与调用方事务无关，避免与外层 HTTP 事务纠缠。
 """
 
 from typing import Any
@@ -22,7 +22,7 @@ from uuid import UUID
 from miles_ai.flow_runtime.types import RunContext
 from miles_ai.rag.generate import format_hits_context, retrieve_hits
 from miles_common.exceptions import BadRequestError
-from miles_core.infra.db import short_db_session
+from miles_core.infra.db import AsyncSessionLocal
 
 _DEFAULT_PROMPT_TEMPLATE = "基于以下检索结果回答问题：\n\n{{检索结果}}\n\n问题：{{用户提问}}"
 
@@ -45,7 +45,7 @@ async def knowledge_search(
         return []
     if ctx.kb_retrieval is None:
         raise BadRequestError("运行上下文未提供知识库检索绑定")
-    async with short_db_session() as db:
+    async with AsyncSessionLocal() as db:
         return await retrieve_hits(
             query,
             tenant_id=UUID(ctx.tenant_id),

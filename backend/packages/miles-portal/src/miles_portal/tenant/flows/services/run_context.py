@@ -13,7 +13,7 @@ from uuid import UUID
 from sqlalchemy import select
 
 from miles_common.exceptions import BadRequestError
-from miles_core.infra.db import short_db_session
+from miles_core.infra.db import AsyncSessionLocal
 from miles_core.models.model import ModelConfig
 from miles_portal.tenant.models.services.model_resolve import resolve_model_for_invoke
 
@@ -22,7 +22,7 @@ def make_flow_model_resolver(tenant_id: UUID) -> Callable[[str], Awaitable[Model
     """构造按 ``model_config_id`` 解析可用模型的回调（自开会话，合并 BYOK）。"""
 
     async def _resolve(model_id: str) -> ModelConfig:
-        async with short_db_session() as db:
+        async with AsyncSessionLocal() as db:
             model = (
                 await db.execute(
                     select(ModelConfig).where(

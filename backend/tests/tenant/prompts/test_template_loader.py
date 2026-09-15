@@ -1,6 +1,6 @@
 """template_loader 定向单测：短会话加载启用中 PromptTemplate content。
 
-通过 monkeypatch short_db_session 隔离真实 db；is_marked_deleted 仅查询
+通过 monkeypatch AsyncSessionLocal 隔离真实 db；is_marked_deleted 仅查询
 ``deleted_at`` 属性（缺失即视为未删），故假行无需 deleted_at 字段。
 """
 
@@ -17,7 +17,7 @@ _TEMPLATE_UUID = UUID("22222222-2222-2222-2222-222222222222")
 
 
 class _RecordingSession:
-    """假 short_db_session：__aenter__ 返回假 db，__aexit__ 收尾。"""
+    """假 AsyncSessionLocal：__aenter__ 返回假 db，__aexit__ 收尾。"""
 
     def __init__(self, db, entered):
         self._db = db
@@ -71,18 +71,11 @@ class _StubDb:
         return self.row
 
 
-class _Boom:
-    """全局会话替身：被调用即失败，用来钉住「本模块不得再用全局会话」。"""
-
-    def __call__(self, *args: object, **kwargs: object) -> object:
-        raise AssertionError("该站点必须走 short_db_session，不得回退全局 AsyncSessionLocal")
-
-
 def test_loader_returns_active_template_content(monkeypatch):
     tpl = _TrackingTemplate(tenant_id=_TENANT_UUID, content="系统提示词", is_active=True)
     db = _StubDb(tpl)
     entered = []
-    monkeypatch.setattr(template_loader, "short_db_session", lambda: _RecordingSession(db, entered))
+    monkeypatch.setattr(template_loader, "AsyncSessionLocal", lambda: _RecordingSession(db, entered))
 
     loader = build_prompt_template_loader()
     result = asyncio.run(loader(str(_TEMPLATE_UUID), str(_TENANT_UUID)))
@@ -98,7 +91,7 @@ def test_loader_invalid_uuid_returns_none_without_db(monkeypatch):
     def _boom_factory():
         raise AssertionError("UUID 非法时不应打开 db 会话")
 
-    monkeypatch.setattr(template_loader, "short_db_session", _boom_factory)
+    monkeypatch.setattr(template_loader, "AsyncSessionLocal", _boom_factory)
     loader = build_prompt_template_loader()
 
     assert asyncio.run(loader("not-a-uuid", "1")) is None
@@ -112,7 +105,7 @@ def test_loader_rejects_foreign_tenant_template(monkeypatch):
     )
     db = _StubDb(foreign)
     entered = []
-    monkeypatch.setattr(template_loader, "short_db_session", lambda: _RecordingSession(db, entered))
+    monkeypatch.setattr(template_loader, "AsyncSessionLocal", lambda: _RecordingSession(db, entered))
 
     loader = build_prompt_template_loader()
     result = asyncio.run(loader(str(_TEMPLATE_UUID), str(_TENANT_UUID)))
@@ -128,7 +121,7 @@ def test_build_loader_returns_callable(monkeypatch):
         is_active=True,
     )
     db = _StubDb(row)
-    monkeypatch.setattr(template_loader, "short_db_session", lambda: _RecordingSession(db, []))
+    monkeypatch.setattr(template_loader, "AsyncSessionLocal", lambda: _RecordingSession(db, []))
 
     loader = build_prompt_template_loader()
 
@@ -136,17 +129,12 @@ def test_build_loader_returns_callable(monkeypatch):
     assert asyncio.run(loader(str(_TEMPLATE_UUID), str(_TENANT_UUID))) == "工厂返回的可调用体结果"
 
 
-def test_loader_never_falls_back_to_global_session(monkeypatch):
-    """模板加载站点：全局会话换成调用即炸替身，live 引用仍必须加载成功。
-
-    ``raising=False`` 是有意的：Task 1 之后本模块不再 import ``AsyncSessionLocal``，
-    把一个「不存在的名字」换成替身，正是回退时能被抓到的原因。
-    """
+def test_loader_loads_live_reference_from_its_own_session(monkeypatch):
+    """模板加载站点：live 引用从自开的一次会话读出，query 与既有断言不变。"""
     tpl = _TrackingTemplate(tenant_id=_TENANT_UUID, content="护栏内容", is_active=True)
     db = _StubDb(tpl)
     entered = []
-    monkeypatch.setattr(template_loader, "short_db_session", lambda: _RecordingSession(db, entered), raising=False)
-    monkeypatch.setattr(template_loader, "AsyncSessionLocal", _Boom(), raising=False)
+    monkeypatch.setattr(template_loader, "AsyncSessionLocal", lambda: _RecordingSession(db, entered))
 
     loader = build_prompt_template_loader()
     result = asyncio.run(loader(str(_TEMPLATE_UUID), str(_TENANT_UUID)))

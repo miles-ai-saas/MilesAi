@@ -11,8 +11,7 @@
 """
 
 import asyncio
-from collections.abc import AsyncGenerator, AsyncIterator, Coroutine
-from contextlib import asynccontextmanager
+from collections.abc import AsyncGenerator, Coroutine
 from typing import Any
 from weakref import WeakKeyDictionary
 
@@ -119,24 +118,3 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
         except Exception:
             await session.rollback()
             raise
-
-
-@asynccontextmanager
-async def get_worker_session() -> AsyncIterator[AsyncSession]:
-    """Celery Worker 专用会话。
-
-    引擎已按事件循环持有（见 ``_loop_engine_and_maker``），故不再需要另建 worker engine，
-    也无需把 sessionmaker 绑到 ContextVar：直接转发 ``AsyncSessionLocal()`` 即与当前 loop 对齐。
-    """
-    async with AsyncSessionLocal() as session:
-        yield session
-
-
-@asynccontextmanager
-async def short_db_session() -> AsyncIterator[AsyncSession]:
-    """开一个短独立会话（与调用方事务无关）。
-
-    引擎已按事件循环持有，故 Worker 与 API / 脚本走同一条路径。
-    """
-    async with AsyncSessionLocal() as session:
-        yield session

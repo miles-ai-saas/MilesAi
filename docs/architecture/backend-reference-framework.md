@@ -418,7 +418,7 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
             raise
 ```
 
-**要点**：Service/Repository 只 `flush`，**不** `commit`；请求边界由 `get_db` 统一提交/回滚。**Worker 专用会话**需另建（Fork 后父进程 engine 的 asyncpg 连接会残留旧事件循环 Future，见 MilesAi `get_worker_session`）。
+**要点**：Service/Repository 只 `flush`，**不** `commit`；请求边界由 `get_db` 统一提交/回滚。**engine 按事件循环持有**（见 MilesAi `infra/db/async_session` 的 `_loop_engines`）：Celery 任务每次 `asyncio.run` 都换 loop，复用绑在旧 loop 上的连接池会抛 `got Future attached to a different loop`，故取会话一律走同一个 loop 感知的工厂，Worker 无需另建会话类型。
 
 ### 4.8 敏感字段加密（`core/field_crypto.py`）
 
@@ -673,7 +673,7 @@ celery_app.conf.update(
 **要点**：
 - 长任务（入库、生成）**必须**异步化，队列区分（`parse` / `default` / 预留扩展）。
 - 任务表（`task_records`）记录 Celery 状态，供「任务中心」查询/取消/重试。
-- 任务内用 `get_worker_session()` 开独立会话，复用全局 engine 会踩 event loop 坑。
+- 任务内直接取 loop 感知的会话工厂（engine 按事件循环持有），复用绑在旧 loop 上的 engine 会踩 event loop 坑。
 - Beat 是**独立进程**，不要与 Worker 混跑。
 
 ---
@@ -711,7 +711,7 @@ python -m miles_server.scripts.export_openapi --check                           
 - [ ] 2. uv workspace 根 `pyproject.toml` 声明 `[dependency-groups].dev` 与成员；`miles-server` 声明 `[project.scripts] milesai = "miles_server.cli:main"`。
 - [ ] 3. 落地 `miles_core`（config、security、deps、tenant、repository、service、soft_delete、field_crypto、logging）。
 - [ ] 4. 落地 `miles_common`（response、exceptions、schema、trace）+ `miles_core/`（`web/handlers.py`、`pagination.py`）。
-- [ ] 5. 落地 `infra/db`（engine + `get_db` + `get_worker_session`）。
+- [ ] 5. 落地 `infra/db`（loop 感知的 engine + `get_db`）。
 - [ ] 6. 落地 `models/`（base Mixin + 核心表）+ `miles_server/registry.py`。
 - [ ] 7. 落地 `miles_server/apps/`（`application.py` 工厂、`migrate.py`）+ `main.py`；域 API 经 `register_portal` / `register_admin` / `register_open` 装配；`miles_core/web/middlewares/`。
 - [ ] 8. `alembic` 初始化 + `001_initial_schema`；`milesai init-db` 写入种子账号。
@@ -970,7 +970,7 @@ async def api_client(api_app):
 
 | 反模式 | 后果 | 正确做法 |
 |--------|------|----------|
-| Worker 复用全局 async engine | `Future attached to a different loop` | 用 `get_worker_session()` 建独立 engine/session |
+| Worker 复用绑在旧 loop 上的 async engine | `Future attached to a different loop` | engine 按事件循环持有，Worker 与 API 共用同一个循环感知的会话工厂 |
 | Redis 客户端跨 event loop 缓存 | 同上 | `get_redis()` 按 `id(loop)` 判断重建 |
 | `debug=True` 传给 FastAPI | 明文 traceback 绕过统一信封 | `create_app` 固定 `debug=False` |
 | 忘 `tenant_filters` / `assert_tenant_access` | 水平越权 | 列表/详情查询两处都必须有 |
