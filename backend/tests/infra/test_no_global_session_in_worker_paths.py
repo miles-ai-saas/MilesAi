@@ -86,10 +86,16 @@ _SHORT_SESSION_CALL_SITE_RE = re.compile(r"\bshort_db_session\(")
 
 
 def _discover_short_session_call_sites() -> set[str]:
-    """扫源码找出所有调用 ``short_db_session(`` 的模块 dotted path。
+    """扫源码找出所有出现 ``short_db_session(`` 的模块 dotted path。
 
-    只看 ``short_db_session(``（含定义行），注释/文档里的提及不会计入；被排除的基础设施
-    模块由调用方剔除。
+    匹配的是**文本**而不是语法树：``short_db_session(`` 出现在注释、docstring 或字符串
+    字面量里同样计入（``async def short_db_session(...)`` 的定义行也计入）。这是有意的
+    过近似——本函数的用途是「不让新站点静默留在网外」，而漏报才会造成那种后果；误报
+    只会在下面 ``missing`` 断言里多出一个模块名，确认后补进清单或改掉措辞即可。
+
+    ``__init__.py`` 归一化为其包路径（``a/b/__init__.py`` → ``a.b``），与
+    ``EXCLUDED_INFRA_MODULES`` 里 barrel 的拼法一致，避免两种拼法日后分叉。
+    被排除的基础设施模块由调用方剔除。
     """
     found: set[str] = set()
     for path in sorted(_PKG_ROOT.glob("*/src/**/*.py")):
@@ -98,9 +104,10 @@ def _discover_short_session_call_sites() -> set[str]:
         text = path.read_text(encoding="utf-8")
         if not _SHORT_SESSION_CALL_SITE_RE.search(text):
             continue
-        # packages/<pkg>/src/<a>/<b>/<mod>.py → <a>.<b>.<mod>
+        # packages/<pkg>/src/<a>/<b>/<mod>.py → <a>.<b>.<mod>（__init__ 去尾）
         src_index = path.parts.index("src")
-        found.add(".".join(path.parts[src_index + 1 :]).removesuffix(".py"))
+        dotted = ".".join(path.parts[src_index + 1 :]).removesuffix(".py")
+        found.add(dotted.removesuffix(".__init__"))
     return found
 
 
