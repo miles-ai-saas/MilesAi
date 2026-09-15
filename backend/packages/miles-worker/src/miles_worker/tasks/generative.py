@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-import asyncio
 from uuid import UUID
 
 from miles_ai.integrations.generative.jobs.errors import GenerativeJobCancelled
+from miles_core.infra.db import run_worker_db_coro
 from miles_core.infra.redis import reset_redis
 from miles_core.jobs.tasks import TASK_NAMES
 from miles_core.logging import get_logger
@@ -21,9 +21,9 @@ logger = get_logger(__name__)
 
 
 def _run_coro(coro) -> None:
-    """在独立事件循环中跑异步任务，结束后丢弃 Redis 单例以免绑到已关闭的 loop。"""
+    """在独立事件循环中跑异步任务；DB engine 由包装在关闭 loop 前释放。"""
     try:
-        asyncio.run(coro)
+        run_worker_db_coro(coro)
     finally:
         reset_redis()
 

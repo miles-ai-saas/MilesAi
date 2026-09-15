@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
-import asyncio
 from datetime import UTC, datetime
 
 from sqlalchemy import select
 
 from miles_ai.integrations.litellm.adapter import CHAT_MODEL_TYPES, litellm_chat_completion
-from miles_core.infra.db import get_worker_session
+from miles_core.infra.db import get_worker_session, run_worker_db_coro
 from miles_core.jobs.tasks import TASK_NAMES
 from miles_core.logging import get_logger
 from miles_core.models.model import ModelConfig
@@ -68,7 +67,7 @@ async def _probe_models_async() -> str:
 def probe_models_health() -> str:
     """定时任务：探测活跃对话模型可用性并写回 ``ModelConfig.extra``，返回 ``checked=… ok=…`` 摘要。"""
     try:
-        return asyncio.run(_probe_models_async())
+        return run_worker_db_coro(_probe_models_async())
     except Exception:
         logger.exception("probe_models_health failed")
         raise

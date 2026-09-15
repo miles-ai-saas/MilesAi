@@ -7,14 +7,13 @@ Beat 每分钟调用 ``tick_agent_schedules`` 扫描到期任务；
 
 from __future__ import annotations
 
-import asyncio
 from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy import select
 
 from miles_common.cron import compute_next_run
-from miles_core.infra.db import get_sync_db, get_worker_session
+from miles_core.infra.db import get_sync_db, get_worker_session, run_worker_db_coro
 from miles_core.jobs.tasks import TASK_NAMES
 from miles_core.logging import get_logger
 from miles_core.models.agent.schedule import AgentSchedule
@@ -81,7 +80,7 @@ async def _run_schedule_async(schedule_id: UUID) -> None:
 def run_agent_schedule(schedule_id: str) -> str:
     """执行单条智能体定时任务。"""
     try:
-        asyncio.run(_run_schedule_async(UUID(schedule_id)))
+        run_worker_db_coro(_run_schedule_async(UUID(schedule_id)))
         return "ok"
     except Exception:
         logger.exception("run_agent_schedule failed: %s", schedule_id)

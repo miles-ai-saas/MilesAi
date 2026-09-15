@@ -11,8 +11,9 @@
 """
 
 import asyncio
-from collections.abc import AsyncGenerator, AsyncIterator
+from collections.abc import AsyncGenerator, AsyncIterator, Coroutine
 from contextlib import asynccontextmanager
+from typing import Any
 from weakref import WeakKeyDictionary
 
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
@@ -77,7 +78,8 @@ def AsyncSessionLocal() -> AsyncSession:
 async def dispose_loop_engines() -> None:
     """释放**当前 loop** 的 engine（由 worker 边界在关闭 loop 之前调用）。
 
-    幂等：无条目或已释放时为空操作。释放后同一 loop 再取会话会在下次连接时惰性重建池。
+    幂等：无条目或已释放时为空操作。释放是 ``pop`` 整条注册项，故同一 loop 再取会话会
+    **新建一个 engine**（新池、按 settings 重读），而不是复用已释放的旧池。
     必须在 loop 关闭前 await——``AsyncEngine.dispose()`` 是协程，loop 关了就无法执行；
     而每次 ``asyncio.run`` 换 loop，不释放就会每个任务泄漏一池连接。
     """
@@ -85,6 +87,27 @@ async def dispose_loop_engines() -> None:
     entry = _loop_engines.pop(loop, None)
     if entry is not None:
         await entry[0].dispose()
+
+
+def run_worker_db_coro(coro: Coroutine[Any, Any, Any]) -> Any:
+    """Worker 入口用：跑 ``coro`` 并在**关闭 loop 之前**释放本 loop 的 engine。
+
+    释放必须发生在 loop 关闭前——``AsyncEngine.dispose()`` 是协程，loop 关了就无法
+    await；而每次 ``asyncio.run`` 换 loop，不释放就会每个任务泄漏一池连接。因此这里
+    把释放放进 ``_main`` 的 ``finally``，**不能**改写为 ``asyncio.run(coro)`` 之后再
+    dispose（那时 loop 已关，dispose 根本 await 不到，等于没释放）。
+
+    只负责 DB：Redis 有自己的 ``get_redis()`` 自愈机制与 ``reset_redis()`` 清理，
+    语义不同（那个漏了也不错），不并入此处。
+    """
+
+    async def _main() -> Any:
+        try:
+            return await coro
+        finally:
+            await dispose_loop_engines()
+
+    return asyncio.run(_main())
 
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
