@@ -285,3 +285,75 @@ Task 2 的文件清单为「优先挂靠既有文件、无则新建」的二选�
 
 **开放风险**：本计划假设 spec §10.4 的站点清单完备。若 Task 1 Step 2 的扫查或 Task 2 的
 结构不变量测试暴露出清单外的 Worker 可达站点，**停下报告**并重新裁决范围。
+
+---
+
+### Task 4: 终审修复（guard 强度 + 生产缺陷 + 记述准确性）
+
+**来源：** 全分支终审（`.superpowers/sdd/final-review.md`）。判 Ready，无 Critical，但 3 条 Important
+中两条直指本分支自己的护栏强度，另有一条真实生产缺陷。控制端已逐条独立核实。
+
+- [ ] **Step 1（Important-2）交叉核对扩到「谁可以碰全局会话」**
+
+现状：`_discover_short_session_call_sites` 只看得见 `short_db_session(`，所以**新增**一个直接用
+`async with AsyncSessionLocal()` 的模块 → 交叉核对与不变量测试全绿（实测 17 passed）。而
+docstring 宣称「新增站点会立刻以清单缺项失败」——该保证对最危险的回归形态不成立。
+
+改为：用 `ast` 枚举 `packages/*/src/**/*.py` 中**引用** `AsyncSessionLocal` 的模块（import 或
+调用均为 `ast.Name`，故注释/字符串天然不算），断言该集合**恰好等于**一份显式 allowlist
+（`EXCLUDED_INFRA_MODULES` + `EXCLUDED_SINGLE_LOOP_MODULES`）。这样「谁可以碰全局会话」从
+隐式惯例变成必须显式登记的决策，新模块要么走 `short_db_session`，要么被有意识地列入
+allowlist（并在那里接受 loop 安全性审查）。
+
+- [ ] **Step 2（Important-1）补一条覆盖「组合」的已提交测试**
+
+现状：13 条站点护栏只断言「本模块引用了 `short_db_session`」，没有任何已提交测试断言
+「站点在 worker 块**内**运行时确实拿到 worker 工厂、在块**外**回退全局」。实测：注入
+「`get_worker_session()` 不再绑定 ContextVar」的回归后 **1081/1082 仍绿**（唯一失败的是既有
+helper 测试，不是任何一条新护栏）——即计划里标为「务必遵守」的前提只靠一个未提交的 `/tmp`
+探针兜着。
+
+新增 hermetic 测试：以 `get_worker_session()` 的块形态驱动一个**真实站点**（取
+`progress.update_generative_job_progress`），断言块内该站点拿到 worker 工厂；块外拿到全局。
+断言要落在「用了哪个工厂」上，而不是「没抛异常」。
+
+- [ ] **Step 3（Minor，真实缺陷）worker engine 走 `build_engine`**
+
+`packages/miles-core/src/miles_core/infra/db/async_session.py:79-82` 的 `get_worker_session()`
+用裸 `create_async_engine(settings.database_url, echo=..., pool_pre_ping=True)`，**绕过
+`build_engine`** ⇒ worker engine 静默忽略 `db_pool_size` / `db_max_overflow` / `db_pool_timeout`
+（当前值恰为默认值故无症状，一旦有人调参就会静默漂移）。改为经 `build_engine` 构造，并补测试
+断言 worker engine 的池参数与配置一致。
+
+- [ ] **Step 4（Minor）修正 `get_worker_session()` docstring 的归因**
+
+`:67` 现称「Fork 后父进程的全局 engine 内部 asyncpg 连接残留了旧事件循环的 Future」。实测
+机制是**同一进程内每次 `asyncio.run` 换新 loop**：连续 6 次调用在第 2/4/6 次失败，与 fork
+无关（fork 场景只是更早暴露）。改为如实描述 per-task loop churn。
+
+- [ ] **Step 5（Minor）修正 spec §10 的过度声明与计数不一致**
+
+spec `:270,:273,:377` 称本分支「已修」`progress.py`，但 **`progress.py` 在基点
+（`4ba6ce5f`）就已经是 `short_db_session`**（它是上一分支重命名时迁过去的），本分支对它的
+**生产代码零改动**，只补了护栏与清单登记。改为如实表述：本分支修的是「因 Worker 可达而
+**缺护栏**」的站点，其中 `progress.py` 属于「本就安全但漏了护栏与清单登记」。
+
+同时统一三处不一致的计数（计划 10/12、spec 11/14、测试清单 13）为同一口径，并说明各数字各自
+的含义（Task 1 触碰 12 处/10 文件；须受护栏保护的 Worker 可达模块 13 个）。
+
+- [ ] **Step 6（Minor）交叉核对改用 AST，消除注释假阳性**
+
+复现：`sync.py` 里一行含 `short_db_session()` 的**注释**即触发「清单缺项」。Task 3 选择「让
+docstring 如实描述」而非消除假阳性，终审判为仍留坑。Step 1 既然已改用 AST，此处一并对齐
+（注释/字符串不再计入）。
+
+- [ ] **Step 7：门禁 + 两次提交**
+
+五条门禁全绿（预期 1082 + 新增护栏数，warnings 仍恰为 2）。拆两枚提交：
+生产改动（Step 1–4 中涉及 `async_session.py` 的部分）与测试/文档改动分开。
+
+**不做（明确 defer，记入 spec）：** 终审 Important-3 建议在 Celery 边界做**结构性**修复——
+仓库已为 Redis 解决过同类问题（`get_redis()` 按 loop id 重建），DB 亦可仿此让 engine 随 loop
+重建，从而一次性覆盖全部站点（含既有排除项与未来新站点），而不必依赖「每处记得选对工厂」的
+惯例。该改动动核心基础设施（旧 engine/池的释放与生命周期），风险与本分支范围不符，另立专项；
+本分支的护栏可作为结构修复落地前的纵深防御。
