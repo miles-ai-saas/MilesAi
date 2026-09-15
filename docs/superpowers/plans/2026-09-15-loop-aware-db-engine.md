@@ -1050,7 +1050,8 @@ uv run --all-packages --group dev lint-imports && \
 uv run --all-packages --group dev python -m miles_server.scripts.export_openapi --check && \
 uv run --all-packages --group dev python -m pytest -q
 ```
-Expected: 全绿，warning 恰为 2（既有）。
+Expected: 全绿；warning 不写死（判据是「不得**新增**」，做对照时用相同的 `-W` 过滤器——
+默认过滤器下今日全量无 warnings summary，`-W default` 下有 5 条既有 ResourceWarning）。
 
 - [ ] **Step 3: 确认非目标未被误改**
 
@@ -1106,7 +1107,7 @@ EOF
 | §5.3 `run_worker_db_coro` + 3 个 Celery 入口 | Task 2 |
 | §5.3 Redis 不进该 helper | Task 2 Step 3/4、Task 4 Step 3 |
 | §5.3 CLI 脚本不改 | Task 3 未列入（正确） |
-| §6.1 18 处调用点回退 | Task 3 Step 2 |
+| §6.1 18 处调用点回退 + 4 处 `get_worker_session` 顺延切换 | Task 3 Step 2 + Step 2b |
 | §6.2 5 个既有站点自动变安全（无需改动） | Task 3 Step 7 提交信息说明；Task 4 无改动 |
 | §7 新不变量测试（跨 loop 不复用 / dispose 幂等 / 边界时序 / 真库端到端） | Task 1 Step 1、Task 2 Step 1、Task 4 Step 1 |
 | §7 旧护栏解散（三份文件） | Task 1 Step 5(b)（两份以旧机制为主题）+ Task 3 Step 4（结构不变量清单） |
@@ -1131,5 +1132,6 @@ EOF
 asyncio loop 可弱引用，仓库未用 uvloop）。`import asyncio` 一律置于模块顶层，无对冲写法。
 
 **测试数口径**：基线 1090（已实测确认）→ Task 1 后 **1090**（+7 −2 −4 −2 = 1089，修复轮
-把一条近恒真用例拆成两条 +1）→ Task 2 后预期 **1094**（+4）→ Task 3 后以实测为准（只减不增）。
+把一条近恒真用例拆成两条 +1）→ Task 2 后 **1094**（+4）→ Task 2 修复轮 **1096**（+2）
+→ Task 3 后预期 **1077**（1096 − 19：删 `test_no_global_session_in_worker_paths.py`，实收 19 条）。
 若实测与预期不符，先查清差额来源，**不要直接改期望值**。
