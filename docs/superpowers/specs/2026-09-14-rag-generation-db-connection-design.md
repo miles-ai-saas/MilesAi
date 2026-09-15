@@ -228,6 +228,7 @@ sequenceDiagram
 - 事务隔离级别、连接池容量（池参数已另行显式化）。
 - `rag_chat` 中「未配置大模型」的纯检索分支（无 LLM 调用，不存在长事务）。
 - 生成结果、用量计量口径、调用记录写入时机（除上一轮已修的失败审计）。
+- `direct_chat`（无 KB 直连）**不列为**非目标：它与两条 RAG 路径同形——事务由解析模型时的凭据读取开启，随后被单次 LLM 调用全程持有，故本轮经显式裁决一并处理（生成前 `commit`）。
 
 ---
 
@@ -252,4 +253,9 @@ sequenceDiagram
 
 ## 9. 修订记录
 
-本设计为首次提交，尚无实施后的修订。
+### 2026-09-14：实施落地
+
+1. **§4.2③ 收口**：原表述「`rag_answer` 新增可选 `hits`、`db` 变为可选」无法把「生成函数没有 db」落到签名上，改为「抽出无 db 的 `generate_rag_answer` + 删除组合入口 `rag_answer`」。
+2. **§8.1 结论**：探针确认 `_chat_usage_acc` 的写入**会**丢在 LangGraph 的独立 task 里（`AgentChatCall` 恒记 0 token）；已改为让 ContextVar 持有可变的 `ChatUsageAccumulator`、累加走**原地修改**，使子上下文的写入对调用方可见。回归测试：`tests/tenant/agents/test_rag_usage_accumulation.py`（该测试即结论载体）。
+3. **范围外补充**：`direct_chat`（无 KB 直连）同属「LLM 单次调用期间持有连接」，已一并处理，见 §7 非目标清单的边界说明。
+4. **附图读取处数**：实际改动 3 处（`resolve_chat_media_parts` 与两条生成分支），`_run_tool_agent` 未改。
