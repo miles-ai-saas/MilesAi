@@ -276,7 +276,7 @@ mcp__{service}__{tool_name}
 
 绑定 KB 且开启工具调用时走 `tool_agent`：`knowledge_search` 作为内置工具之一，
 由 LLM 自行决定是否检索（`kb_ids` 可省略，默认检索智能体绑定的全部知识库），
-命中片段回填 `ChatResponse.sources`。未开启工具调用时仍走 LangGraph / `rag_answer` 线性 RAG。
+命中片段回填 `ChatResponse.sources`。未开启工具调用时仍走 LangGraph / `generate_rag_answer` 线性 RAG。
 
 ### 4.4 与技能包
 

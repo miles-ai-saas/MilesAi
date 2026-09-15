@@ -136,7 +136,7 @@ flowchart TD
 
 | `Agent.config` | 默认 | 说明 |
 |----------------|------|------|
-| `use_langgraph_rag` | true | 关闭则线性 `rag_answer` |
+| `use_langgraph_rag` | true | 关闭则线性 `generate_rag_answer` |
 | `runtime_mode` | — | `legacy` 强制线性 RAG |
 | `relevance_threshold` | 0.35 | 低分重试/兜底阈值 |
 | `rag_max_retries` | 1 | 重试时 top_k 翻倍（上限 20） |

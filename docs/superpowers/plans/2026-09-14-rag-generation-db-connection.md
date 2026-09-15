@@ -12,13 +12,16 @@
 
 ## Global Constraints
 
-- 所有命令在 `backend/` 目录下执行。
+- **实施位置（用户已确认）**：worktree `.worktrees/rag-generation-db-connection`，分支 `feat/rag-generation-db-connection`（基线 `d1289bb3`，基线全绿：ruff clean / import-linter 6 kept / **1022 passed**）。**不得在 `main` 上直接改代码。**
+- 所有命令在 worktree 的 `backend/` 目录下执行。
+- 本仓库 `uv` 的坑：裸 `uv sync` / `uv run`（不带 `--all-packages`）会**卸载其余成员包**，所有命令一律带 `uv run --all-packages --group dev`。
 - Commit message **必须简体中文**，Conventional Commits：`<type>(<scope>): <中文简述>`。用 HEREDOC 传多行 message。
 - 每个 Task 结束必须全绿，门禁命令（CI 同款，缺一不可）：
   - `uv run --all-packages --group dev ruff format --check .`
   - `uv run --all-packages --group dev ruff check .`
   - `uv run --all-packages --group dev lint-imports`
   - `uv run --all-packages --group dev python -m pytest -q`
+- SDD 工作区 `.superpowers/sdd/` 由 `scripts/sdd-workspace` 初始化，自带内容为 `*` 的 `.gitignore`（自忽略）；任务简报/实现报告/评审包/进度 ledger 都放那里。一次性探针、草稿脚本放 `/tmp`，不要留在 `backend/` 或 `tests/` 里（会被误提交）。
 - 分层判据不得破坏：`miles_ai` ✗→ `miles_portal`；`miles_portal` ✗→ `miles_admin`；`miles_core` ✗→ `miles_ai`。
 - **不改对外契约**：不改 API 路由、不改响应字段、不改 OpenAPI 快照。
 - **不引入新依赖**。
@@ -38,34 +41,43 @@
 
 ---
 
-### Task 1: 探针——用量 ContextVar 是否能跨 RAG 图节点回到调用方
+### Task 1: 探针——用量累计是否能跨 RAG 图节点回到调用方（只诊断，不提交断言破损行为的测试）
 
-**为什么先做：** 设计 §8.1。`ChatUsageSink` 走 `_chat_usage_acc` ContextVar 累计 token 供 `AgentChatCall` 汇总。若 LangGraph 在独立 task 中跑节点，节点内写入不会回到调用方上下文，`AgentChatCall` 的 token 会恒为 0（而 `ModelUsageLog` 行正常）。这是**改造前就可能存在**的问题；先确认，后面 Task 2 才知道要不要一并修。
+**为什么先做：** 设计 §8.1。`ChatUsageSink` 走 `_chat_usage_acc` ContextVar 累计 token 供 `AgentChatCall` 汇总。若 LangGraph 在独立 task 中跑节点，节点内写入不会回到调用方上下文，`AgentChatCall` 的 token 会恒为 0（而 `ModelUsageLog` 行正常）。这是**改造前就可能存在**的问题。
+
+**用户已裁决（2026-09-14）：** 本 Task **只诊断**——探针脚本放 `/tmp`（一次性脚本不进仓库；SDD 工作区 `.superpowers/sdd/` 只放简报/报告/ledger），跑出真实结论后按结论二选一：
+- **丢失** ⇒ 当场按 Step 3A 修复（把累计从「重新绑定元组」改为「原地累加共享对象」）并提交修复 + 正向测试；
+- **未丢失** ⇒ 按 Step 3B 提交一条正向测试固化实测行为，并在报告里注明「当前依赖节点内联执行」这一脆弱前提。
+
+任一分支都**不得提交**「断言 totals == (0, 0)」这种把缺陷当基线的测试。
 
 **Files:**
-- Test: `backend/tests/tenant/agents/test_rag_usage_accumulation.py`（新建）
+- Probe（不提交，仓库外）: `/tmp/miles-probe-usage-contextvar.py`
+- Test: `backend/tests/tenant/agents/test_rag_usage_accumulation.py`（新建，按分支写正向断言）
+- Modify（仅 Step 3A 分支）: `backend/packages/miles-portal/src/miles_portal/tenant/models/services/usage.py`
+- Modify（仅 Step 3A 分支）: `backend/tests/tenant/models/test_chat_usage_accumulation.py`、`backend/tests/tenant/models/test_flow_usage_sink.py`
 
 **Interfaces:**
 - Consumes: `miles_ai.integrations.langgraph.graphs.rag_qa.build_rag_qa_graph`、`miles_portal.tenant.models.services.usage.{begin_chat_usage_accumulation, end_chat_usage_accumulation, get_chat_usage_totals, record_model_usage, UsageRecordContext}`
-- Produces: 一条结论（ContextVar 是否跨节点存活）。若断言失败 ⇒ 需要新增「修 ContextVar」任务，并在本 Task 的 PR 说明里报告。
+- Produces: 一条**带证据**的结论 + 一条正向回归测试（Step 3A 还产出 `ChatUsageAccumulator`：`usage.py` 中的可变累计器，`add(*, prompt_tokens, completion_tokens)` / `totals() -> tuple[int, int]`）。
 
-- [ ] **Step 1: 写测试（跑真实编译图，只替换会话工厂、检索与 LLM）**
+- [ ] **Step 1: 写探针脚本（仓库外，不提交）**
 
-创建 `backend/tests/tenant/agents/test_rag_usage_accumulation.py`：
+创建 `/tmp/miles-probe-usage-contextvar.py`：
 
 ```python
-"""回归探针：RAG 图节点内写入的用量累计，是否回到调用方上下文。
+"""探针：RAG 图节点内写入的用量累计，是否回到调用方上下文。
 
-``AgentChatCall`` 的 token 来自 ``_chat_usage_acc`` ContextVar；若图在独立 task
-中执行节点，节点内的写入属于另一个上下文副本，调用方取到的是 0——而
-``ModelUsageLog`` 行照常写入，症状会表现为「有日志、无汇总」，极难排查。
-本测试用真实编译图（只替换会话工厂、检索与 LLM）钉住这个行为。
+``AgentChatCall`` 的 token 来自 ``_chat_usage_acc`` ContextVar；若 LangGraph 在
+独立 task 中执行节点，节点内的写入属于另一个上下文副本，调用方取到的是 0——
+而 ``ModelUsageLog`` 行照常写入，症状会表现为「有日志、无汇总」，极难排查。
+
+只打印结论，不做断言：断言会把「当前行为」写成基线，而这里要的是事实。
 """
 
+import asyncio
 from unittest.mock import AsyncMock
 from uuid import uuid4
-
-import pytest
 
 import miles_ai.integrations.langgraph.graphs.rag_qa as rag_qa
 from miles_ai.integrations.langgraph.graphs.rag_qa import build_rag_qa_graph
@@ -79,7 +91,7 @@ from miles_portal.tenant.models.services.usage import (
 
 
 class _FakeDb:
-    """record_model_usage 只需要 add() 与 flush()，不需要真库。"""
+    """record_model_usage 只需要 add() 与 flush()。"""
 
     def __init__(self) -> None:
         self.rows: list[object] = []
@@ -101,8 +113,7 @@ class _ShortSession:
         return False
 
 
-@pytest.mark.asyncio
-async def test_graph_node_usage_reaches_caller_contextvar(monkeypatch):
+async def main() -> None:
     tenant_id = uuid4()
     db = _FakeDb()
     model = AsyncMock()
@@ -120,14 +131,14 @@ async def test_graph_node_usage_reaches_caller_contextvar(monkeypatch):
     sink.record = AsyncMock(side_effect=fake_record)
 
     async def fake_ainvoke(_model, _messages, **kwargs):
-        # 真实 adapter 在 LLM 返回后调 sink.record；这里必须复刻，否则探针失效
+        # 真实 adapter 在 LLM 返回后调 sink.record；必须复刻，否则探针无效
         if kwargs.get("usage_sink") is not None:
             await kwargs["usage_sink"].record(prompt_tokens=7, completion_tokens=3)
         return "答案"
 
-    monkeypatch.setattr(rag_qa, "AsyncSessionLocal", _ShortSession)
-    monkeypatch.setattr(rag_qa, "retrieve_hits", AsyncMock(return_value=[{"content": "片段", "score": 0.9}]))
-    monkeypatch.setattr(rag_qa, "ainvoke_chat", AsyncMock(side_effect=fake_ainvoke))
+    rag_qa.AsyncSessionLocal = _ShortSession
+    rag_qa.retrieve_hits = AsyncMock(return_value=[{"content_preview": "片段", "score": 0.9}])
+    rag_qa.ainvoke_chat = AsyncMock(side_effect=fake_ainvoke)
 
     initial = {
         "query": "问题",
@@ -155,25 +166,152 @@ async def test_graph_node_usage_reaches_caller_contextvar(monkeypatch):
     finally:
         end_chat_usage_accumulation(token)
 
-    # 图内的 sink 记录确实发生了（否则是 mock 没接上，测试无效）
-    assert db.rows, "sink.record 未被调用，探针无效"
-    assert totals == (0, 0), (
-        "ContextVar 未跨节点回到调用方：AgentChatCall 的 token 汇总会恒为 0。"
-        "需要新增任务修复（把累计改为随请求的显式对象，而非 ContextVar）。"
+    print(f"图内 sink 记录行数：{len(db.rows)}")
+    print(f"调用方读到的累计：{totals}")
+    print("结论：" + ("丢失（需按 Step 3A 修复）" if totals == (0, 0) else "未丢失（按 Step 3B 固化）"))
+
+
+asyncio.run(main())
+```
+
+> `rag_qa.AsyncSessionLocal` / `retrieve_hits` / `ainvoke_chat` 用**属性赋值**而非 `monkeypatch`：探针是独立脚本，没有 pytest fixture。
+
+- [ ] **Step 2: 跑探针，记录真实结论**
+
+Run: `uv run --all-packages --group dev python /tmp/miles-probe-usage-contextvar.py`
+
+Expected 输出形如：
+
+```text
+图内 sink 记录行数：1
+调用方读到的累计：(0, 0)   ← 或 (7, 3)
+结论：丢失（需按 Step 3A 修复）  ← 或 未丢失（按 Step 3B 固化）
+```
+
+把**原始输出**抄进报告。`图内 sink 记录行数` 必须 ≥ 1，否则是探针没接上（`sink.record` 未被调用），结论无效——此时先修探针再重跑。
+
+⚠️ 若 Python 路径下 `build_rag_qa_graph().compile()` 因缺 checkpointer 报错，改用 `from miles_ai.integrations.langgraph.checkpointer import get_compiled_rag_graph` 并调用 `get_compiled_rag_graph()`（它内部回退 `MemorySaver`）；把这一步的调整如实写进报告。
+
+- [ ] **Step 3A: 若结论为「丢失」——改为原地累加共享对象**
+
+**为什么这样修（不要改成「显式对象穿透」的重构）：** 根因是 `record_model_usage` 用 `ContextVar.set()` **重新绑定**元组，子 context 的绑定不回流父 context。把累计器换成**可变对象**、只 `set()` 一次（在 `begin`，父 context 里）之后一律**原地累加**，则子 context 与父 context 拿到的是同一个实例，写入天然可见。这既修掉跨 task 丢失，又不新增任何参数穿透、不改任何调用方签名。
+
+改 `usage.py`：
+
+```python
+@dataclass
+class ChatUsageAccumulator:
+    """单轮 chat 的 token 累计器。
+
+    刻意做成**可变对象**：``_chat_usage_acc`` 里存的是它的引用，记录用量时原地累加。
+    若沿用「存元组 + 每次 set() 新元组」，绑定只会写进当前 context——LangGraph 在
+    子 task 里执行节点时，父 context 读到的仍是初始值，``AgentChatCall`` 会恒记 0 token。
+    """
+
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+
+    def add(self, *, prompt_tokens: int, completion_tokens: int) -> None:
+        self.prompt_tokens += max(0, prompt_tokens)
+        self.completion_tokens += max(0, completion_tokens)
+
+    def totals(self) -> tuple[int, int]:
+        return self.prompt_tokens, self.completion_tokens
+
+
+_chat_usage_acc: ContextVar[ChatUsageAccumulator | None] = ContextVar("_chat_usage_acc", default=None)
+
+
+def begin_chat_usage_accumulation() -> Token[ChatUsageAccumulator | None]:
+    """单轮 Agent chat 开始时重置 Token 累计（供调用记录写入）。"""
+    return _chat_usage_acc.set(ChatUsageAccumulator())
+
+
+def end_chat_usage_accumulation(token: Token[ChatUsageAccumulator | None]) -> None:
+    """恢复到本轮 chat 累计前的上下文状态。"""
+    _chat_usage_acc.reset(token)
+
+
+def get_chat_usage_totals() -> tuple[int, int]:
+    """返回当前轮次累计的 (prompt_tokens, completion_tokens)。"""
+    acc = _chat_usage_acc.get()
+    if acc is None:
+        return (0, 0)
+    return acc.totals()
+```
+
+并把 `record_model_usage` 里的累加段：
+
+```python
+    if ctx.source == "chat" and ctx.source_id is not None:
+        acc = _chat_usage_acc.get()
+        if acc is not None:
+            p, c = acc
+            _chat_usage_acc.set((p + max(0, prompt_tokens), c + max(0, completion_tokens)))
+```
+
+改为：
+
+```python
+    if ctx.source == "chat" and ctx.source_id is not None:
+        acc = _chat_usage_acc.get()
+        if acc is not None:
+            # 原地累加，不重新绑定：子 task 里的写入必须能被父 context 看见
+            acc.add(prompt_tokens=prompt_tokens, completion_tokens=completion_tokens)
+```
+
+- [ ] **Step 3A-2: 迁移直接操作私有变量的既有测试**
+
+`tests/tenant/models/test_chat_usage_accumulation.py` 的 `test_chat_usage_accumulation` 当前直接 `usage_mod._chat_usage_acc.set((120, 30))`，元组形态已不存在，改为：
+
+```python
+def test_chat_usage_accumulation():
+    token = begin_chat_usage_accumulation()
+    try:
+        acc = usage_mod._chat_usage_acc.get()
+        assert acc is not None
+        acc.add(prompt_tokens=120, completion_tokens=30)
+        assert get_chat_usage_totals() == (120, 30)
+    finally:
+        end_chat_usage_accumulation(token)
+    assert get_chat_usage_totals() == (0, 0)
+```
+
+（`tests/tenant/models/test_flow_usage_sink.py:104` 断言 `get_chat_usage_totals() == (0, 0)`——`FlowUsageSink` 的 `source="flow"` 本就不参与 chat 累计，该断言不受影响，**不改**。）
+
+- [ ] **Step 3B: 若结论为「未丢失」——固化实测行为**
+
+跳过 Step 3A/3A-2，直接进 Step 4，测试断言**实测到的真实值**（例：`assert totals == (7, 3)`），并在 docstring 写明：
+
+```python
+"""回归：RAG 图节点内写入的用量累计必须回到调用方上下文。
+
+实测（2026-09-14 探针）：节点内 sink.record 的 token 能回到调用方——当前 LangGraph
+是内联 await 执行节点，未另开 task。本测试锁住该行为：一旦将来改为在独立 task 中
+执行节点，累计会静默丢失（AgentChatCall 恒记 0 token，而 ModelUsageLog 行照常），
+本测试即会失败。
+"""
+```
+
+同时把「当前依赖节点内联执行」这一脆弱前提写进报告与 Task 8 的 spec 修订记录。
+
+- [ ] **Step 4: 写正向回归测试（两个分支都要）**
+
+创建 `backend/tests/tenant/agents/test_rag_usage_accumulation.py`：内容与 Step 1 的探针脚本相同，但改成 pytest 形态——`monkeypatch.setattr(rag_qa, ...)` 替代属性赋值、把 `main()` 体搬进 `async def test_graph_node_usage_reaches_caller_contextvar(monkeypatch)`、末尾断言改为：
+
+```python
+    # 探针有效性：图内 sink 必须真的记录过，否则本测试不能证明任何事情
+    assert db.rows, "sink.record 未被调用，测试无效"
+    assert totals == (7, 3), (
+        "图节点内写入的 chat 用量必须回到调用方；若为 (0, 0)，说明累计又退回"
+        "「重新绑定 ContextVar」的写法（见 usage.py 的 ChatUsageAccumulator 说明）。"
     )
 ```
 
-> 说明：末行断言写的是**当前预期行为**（`(0, 0)`），目的是把现状钉住并使结论可证伪。若实际跑出非 `(0, 0)`，说明 ContextVar 能跨节点存活（更好）——把断言改成实际值并在 docstring 注明「已确认可跨节点，汇总正常」。图内 sink 记录写进 `db.rows`，无论 ContextVar 是否传递都会发生，因此 `assert db.rows` 是「探针有效性」而非结论。
+> Step 3A 分支：该断言在修复后为真（修复前为假），这正是修复的回归护栏。
+> Step 3B 分支：把 `(7, 3)` 换成实测值。
 
-- [ ] **Step 2: 跑测试，记录实际结论**
-
-Run: `uv run --all-packages --group dev python -m pytest tests/tenant/agents/test_rag_usage_accumulation.py -v`
-
-Expected: PASS。**同时记录真实结论**：
-- 若为 `(0, 0)`（断言通过）⇒ 确认丢失。**立即报告用户**，并在 Task 9 之后追加修复任务；本计划后续任务不受影响。
-- 若断言失败且实际值非 `(0, 0)` ⇒ 结论是「未丢失」，按 Step 1 的说明改断言后重跑至 PASS。
-
-- [ ] **Step 3: 跑门禁**
+- [ ] **Step 5: 门禁**
 
 Run:
 ```bash
@@ -183,19 +321,47 @@ uv run --all-packages --group dev python -m pytest -q
 ```
 Expected: 全绿。
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 6: 变异测试（仅 Step 3A 分支，证明护栏有效）**
+
+把 `record_model_usage` 的原地累加临时改回 `_chat_usage_acc.set((p + ..., c + ...))`（先 `acc.totals()` 取值），重跑：
+
+Run: `uv run --all-packages --group dev python -m pytest tests/tenant/agents/test_rag_usage_accumulation.py -q`
+
+Expected（变异态）：FAIL（`(0, 0) != (7, 3)`）。还原后 PASS。
+
+- [ ] **Step 7: Commit**
+
+Step 3A 分支：
+
+```bash
+git add backend/packages/miles-portal/src/miles_portal/tenant/models/services/usage.py \
+        backend/tests/tenant/models/test_chat_usage_accumulation.py \
+        backend/tests/tenant/agents/test_rag_usage_accumulation.py
+git commit -F - <<'EOF'
+fix(usage): chat 用量累计改为原地累加，修复跨 task 丢失
+
+累计原先存元组、每次记录都 ContextVar.set() 新元组，绑定只写进当前 context。
+LangGraph 在子 task 执行节点时，父 context 读到的仍是 begin 时的 (0, 0)，于是
+AgentChatCall 的 prompt/completion token 恒为 0，而 ModelUsageLog 行照常写入——
+「有日志、无汇总」，事后极难定位。
+
+改为存入可变累加器（ChatUsageAccumulator）并在记录时原地累加：父子 context 拿到
+同一实例，写入由此可见；begin 仍只 set() 一次，避免任何子 context 重绑定。
+EOF
+```
+
+Step 3B 分支：
 
 ```bash
 git add backend/tests/tenant/agents/test_rag_usage_accumulation.py
 git commit -F - <<'EOF'
-test(agents): 钉住 RAG 图节点的用量累计是否回到调用方
+test(usage): 钉住 RAG 图节点的用量累计能回到调用方
 
-AgentChatCall 的 token 汇总来自 _chat_usage_acc ContextVar，而 ModelUsageLog
-行由会话写入。若 LangGraph 在独立 task 中执行节点，节点内的写入不会回到调用方
-上下文——症状是「有日志、无汇总」，事后极难定位。
+AgentChatCall 的 token 来自 _chat_usage_acc ContextVar，而 ModelUsageLog 行由会话
+写入。实测当前 LangGraph 内联 await 执行节点，累计能正常回到调用方——但该结论
+依赖「不另开 task」这一前提，一旦改动就会静默退化为恒记 0 token。
 
-用真实编译图（仅 mock 检索与 LLM）把该行为固定下来，后续改用量写入策略时
-能立刻发现是否引入了汇总丢失。
+用真实编译图（仅替换会话工厂、检索与 LLM）把行为固定下来。
 EOF
 ```
 
@@ -428,38 +594,17 @@ async def test_chat_usage_sink_accumulates_and_commits(monkeypatch):
     assert short.commits == 1
 ```
 
-在同文件顶部复用 Task 2 Step 1 里的 `_ShortSession` 与 `_cm`（**复制**这两个小类到本文件，不要跨测试文件 import，保持测试文件自持）：
+Step 1 里为 `test_chat_usage_sink_session.py` 写的 `_ShortSession` 与 `_cm` 两个替身
+**不再逐文件复制**，而是收敛到共享模块 `tests/tenant/models/_usage_doubles.py`；两个测试文件
+都以 `from tests.tenant.models._usage_doubles import _cm, _ShortSession` 引入。
 
-```python
-class _ShortSession:
-    """替身：记录 add 的行并记录 commit。"""
-
-    def __init__(self) -> None:
-        self.rows: list[object] = []
-        self.commits = 0
-
-    def add(self, row: object) -> None:
-        self.rows.append(row)
-
-    async def flush(self) -> None:
-        return None
-
-    async def commit(self) -> None:
-        self.commits += 1
-
-
-class _cm:
-    """最小 async context manager（AsyncSessionLocal 的替身）。"""
-
-    def __init__(self, session: object) -> None:
-        self._session = session
-
-    async def __aenter__(self) -> object:
-        return self._session
-
-    async def __aexit__(self, *exc: object) -> bool:
-        return False
-```
+> **2026-09-14 人工裁决**：本节原先要求「复制这两个小类到本文件，不要跨测试文件 import，
+> 保持测试文件自持」，现予撤销——逐字复制等于维护两份必须同步演进的替身。共享模块沿用仓库
+> 既有先例（`from tests.paths import ...`；`tests/` 下无 `__init__.py`，靠命名空间包解析）。
+> `_usage_doubles.py` 不匹配 `test_*.py`，pytest 不会把它当测试模块收集；文件名以下划线开头
+> 且落在 `models/` 目录内，不会与 `sys.path` 上其他模块撞名。
+> 另按 review 要求给 `_cm` 增加 `enters` 计数（`__aenter__` 自增），供
+> `test_record_zero_usage_does_not_open_session` 断言「零/负用量连会话都不开」。
 
 同时删掉不再使用的 `db_session` fixture（若 `ruff` 报未使用）。
 
@@ -560,7 +705,9 @@ def test_build_rag_prompt_with_hits_includes_context():
     prompt = build_rag_prompt(
         system_prompt="你是助手",
         query="问题",
-        hits=[{"content": "片段", "score": 0.9}],
+        # 注意：hit 的正文键是 content_preview（format_hits_context 只读它），
+        # 用 content 会得到空上下文、断言静默失效
+        hits=[{"content_preview": "片段", "score": 0.9}],
     )
     assert "你是助手" in prompt
     assert "片段" in prompt
@@ -859,7 +1006,7 @@ def _state(*, hits: list | None = None) -> dict:
         "system_prompt": "你是助手",
         "query": "检索词",
         "prompt_query": "生成问题",
-        "hits": hits if hits is not None else [{"content": "片段", "score": 0.9}],
+        "hits": hits if hits is not None else [{"content_preview": "片段", "score": 0.9}],
         "temperature": 0.7,
     }
 
@@ -937,7 +1084,7 @@ from miles_ai.rag.generate import build_rag_prompt, generate_rag_answer
     answer = await generate_rag_answer(
         model=model,
         prompt=prompt,
-        media=media_refs,
+        media=media_refs or None,
         media_reader=_cfg_media_reader(config),
         temperature=float(state.get("temperature", 0.7)),
         on_delta=_cfg_on_delta(config),
@@ -976,7 +1123,7 @@ from miles_ai.rag.generate import build_rag_prompt, generate_rag_answer
     answer = await generate_rag_answer(
         model=model,
         prompt=prompt,
-        media=media_refs,
+        media=media_refs or None,
         media_reader=_cfg_media_reader(config),
         temperature=float(state.get("temperature", 0.7)),
         on_delta=_cfg_on_delta(config),
@@ -1217,7 +1364,7 @@ def test_linear_path_retrieves_in_short_session_then_commits_before_generate(mon
 
     async def fake_retrieve(*args, **kwargs):
         captured["retrieve_db"] = kwargs["db"]
-        return [{"content": "片段", "score": 0.9}]
+        return [{"content_preview": "片段", "score": 0.9}]
 
     async def fake_generate(**kwargs):
         db.events.append("generate")
@@ -1640,7 +1787,7 @@ EOF
 
 ### Task 7: 直连对话同样在生成前释放连接
 
-> **超出 spec 字面范围**（spec §7 未列此项，但同属「LLM 单次调用、边界清晰」形态，与本轮目标同一缺陷）。若评审认为不应纳入，删掉本 Task 即可，不影响其他 Task。
+> **范围说明（用户已裁决 2026-09-14：保留本 Task）**：本 Task 超出 spec 字面范围的「两条检索→生成路径」，但 `direct_chat` 是同一形态（单次 LLM 调用、边界清晰）、同一缺陷（`resolve_invoke_model` 读租户凭据已开事务，随后 LLM 期间一直占据一个连接）。用户已确认纳入。
 
 **为什么：** `direct_chat`（无 KB 直连）同样在 `ainvoke_chat` 期间持有请求事务：`resolve_invoke_model` 会读库（`load_tenant_credential`），事务已开。
 
@@ -1806,6 +1953,200 @@ EOF
 
 ---
 
+### Task 9: 短会话改走 worker-aware helper（helper 更名 `short_db_session`）
+
+> **来源**：Task 8 后的全分支终审发现（不变量 I1）——本分支把 agent 对话路径新引入了 3 处**全局** `AsyncSessionLocal()` 短会话，而该路径在 Celery Worker 内执行。
+
+**为什么：** Celery 任务用 `asyncio.run`，每次都是新 loop；全局 engine 的连接池里是**上一个 loop** 创建的 asyncpg 连接，复用即抛 `RuntimeError: ... got Future attached to a different loop`。独立复现（真库、同进程连续 6 次 `asyncio.run`，全局会话 vs `get_worker_session()`）：全局在第 **2/4/6** 次失败，worker 会话 **6/6** 正常。可达链路：`miles-worker/tasks/agent_schedule.py`（`asyncio.run`）→ `AgentService.chat` → 本分支新增的三处短会话。其中 `ChatUsageSink.record` 无 try/except，异常直接冒泡，故约一半定时任务会在生成中途失败。
+
+仓库已有为此而写的 helper（原名 `generative_job_db_session`：Worker 用 `get_worker_session` 绑定的当前 loop engine，API 回退全局），本 Task 只补接线。因它自此服务生成任务/chat 用量/媒体读取/检索四处，一并改名为语义中性的 `short_db_session`。
+
+**Files:**
+- Modify: `backend/packages/miles-core/src/miles_core/infra/db/async_session.py`
+- Modify: `backend/packages/miles-core/src/miles_core/infra/db/__init__.py`
+- Modify: `backend/packages/miles-ai/src/miles_ai/integrations/generative/jobs/progress.py`
+- Modify: `backend/packages/miles-portal/src/miles_portal/tenant/models/services/usage.py`
+- Modify: `backend/packages/miles-portal/src/miles_portal/tenant/agents/services/agent/chat_rag.py`
+- Modify: `backend/packages/miles-portal/src/miles_portal/tenant/attachments/services/media_reader.py`
+- New: `backend/tests/infra/test_short_db_session.py`
+- Modify: `backend/tests/tenant/models/test_chat_usage_sink_session.py`
+- Modify: `backend/tests/tenant/attachments/test_flow_media_reader.py`
+- Modify: `backend/tests/tenant/agents/test_chat_rag_connection_release.py`
+- Modify: `docs/superpowers/specs/2026-09-14-rag-generation-db-connection-design.md`（新增 §10 + §9 补一条）
+
+**Interfaces:**
+- Consumes: `_worker_sessionmaker` / `get_worker_session`（既有）
+- Produces: 符号 `generative_job_db_session` → `short_db_session`（旧名彻底消失，不留别名）；三处短会话不再触碰全局 `AsyncSessionLocal`
+
+- [ ] **Step 1: 改名（纯机械，先证明不改变行为）**
+
+`async_session.py`：把 `generative_job_db_session` 改名为 `short_db_session`，docstring 改为中性表述：
+
+```python
+@asynccontextmanager
+async def short_db_session() -> AsyncIterator[AsyncSession]:
+    """开一个短独立会话（与调用方事务无关）。
+
+    - Worker：在当前任务绑定的 engine 上开（Celery 每次 ``asyncio.run`` 都是新 loop，
+      全局 engine 池里的连接属于上一个 loop，复用会抛
+      ``got Future attached to a different loop``）。
+    - API / 脚本：无 worker engine 绑定时回退全局 ``AsyncSessionLocal``。
+    """
+    maker = _worker_sessionmaker.get()
+    if maker is not None:
+        async with maker() as session:
+            yield session
+        return
+    async with AsyncSessionLocal() as session:
+        yield session
+```
+
+同文件 `get_worker_session` docstring 里的「供 ``generative_job_db_session`` 开独立短会话」同步改为 `short_db_session`。
+
+`db/__init__.py`：import 名与 `__all__` 同步改名。
+`progress.py`：import 与 2 个调用点（`publish_generative_job_update`、`is_generative_job_cancelled`）同步改名。
+
+- [ ] **Step 2: 跑测试，证明改名无行为变化**
+
+Run: `uv run --all-packages --group dev python -m pytest tests/ -q`
+Expected: 全绿，**1041 passed**（与 Task 8 相同——纯改名）。
+
+- [ ] **Step 3: 写护栏测试（红）**
+
+先写「改回全局会话就会被抓到」的测试，再改三处实现。
+
+(a) helper 行为 — 新文件 `tests/infra/test_short_db_session.py`：绑定 worker maker 时，会话必须来自该 maker，且**不得**回退全局 `AsyncSessionLocal`（把 `AsyncSessionLocal` 换成调用即炸的替身）。用 `async_session._set_worker_sessionmaker(...)` 绑定、`finally` 里 reset。
+
+(b) `ChatUsageSink.record` — `tests/tenant/models/test_chat_usage_sink_session.py`：把 `usage.short_db_session` 换成记录用的替身、`usage.AsyncSessionLocal` 换成调用即炸的替身，断言非零用量走的是前者。
+
+(c) `FlowMediaReader` — `tests/tenant/attachments/test_flow_media_reader.py`：同形，patch `media_reader.short_db_session`，断言两个读方法都经过它。
+
+(d) 线性检索 — `tests/tenant/agents/test_chat_rag_connection_release.py`：把既有替身的 patch 目标由 `chat_rag_mod.AsyncSessionLocal` 改为 `chat_rag_mod.short_db_session`；**同时**给 `_ShortSession` 补 `__aexit__` 记录（`self.exited`），并把线性路径用例的断言由「只断 enter」加强为「检索短会话在 commit/generate 之前已 exited」——这正是 M17 指出的「短会话包住 LLM 调用」的护栏缺口。
+
+Run: `uv run --all-packages --group dev python -m pytest tests/infra/test_short_db_session.py tests/tenant/models/test_chat_usage_sink_session.py tests/tenant/attachments/test_flow_media_reader.py tests/tenant/agents/test_chat_rag_connection_release.py -v`
+Expected: helper 用例可能已过（改名后行为未变）；(b)(c) 与 (d) 的加强断言 **FAIL**（三处仍用全局会话）。
+
+- [ ] **Step 4: 三处改用 `short_db_session`**
+
+- `usage.py`：`ChatUsageSink.record` 里 `async with AsyncSessionLocal() as db:` → `async with short_db_session() as db:`；import 改为从 `miles_core.infra.db` 取 `short_db_session`（`FlowUsageSink` 仍用 `AsyncSessionLocal`，**本次不动**，见 Step 7）。
+- `chat_rag.py`：线性检索的短会话改用 `short_db_session()`；若 `AsyncSessionLocal` 因此不再被本文件使用，删掉其 import（`ruff check` 会报未使用）。
+- `media_reader.py`：`FlowMediaReader` 两个读方法改用 `short_db_session()`；`AsyncSessionLocal` 若不再使用则删 import，并同步类 docstring / 模块 docstring 里的措辞。
+
+- [ ] **Step 5: 跑测试确认通过**
+
+Run: `uv run --all-packages --group dev python -m pytest tests/ -q`
+Expected: 全绿（含 Step 3 新增护栏）。
+
+- [ ] **Step 6: 门禁**
+
+Run:
+```bash
+uv run --all-packages --group dev ruff format --check . && \
+uv run --all-packages --group dev ruff check . && \
+uv run --all-packages --group dev lint-imports && \
+uv run --all-packages --group dev python -m miles_server.scripts.export_openapi --check && \
+uv run --all-packages --group dev python -m pytest -q
+```
+Expected: 全绿、OpenAPI 零漂移。
+
+- [ ] **Step 7: 记录本次发现但未处理的既有隐患（用户裁决：本分支只修新增 3 处）**
+
+`spec` 新增一节（§10），并在 §9 加一条指向它。要点：机制、复现证据（真库、连续 6 次 `asyncio.run`，全局 2/4/6 失败、worker 6/6 正常）、已修 3 处、**未修**的既有同险站点清单（以符号位置为准，行号标注「改动前」）：`rag_qa.py` 的 LangGraph `retrieve` 节点、`usage.py` 的 `FlowUsageSink.record`、`flow_invoker.py`、`flows/services/run_context.py`、`subflow_loader.py`、`template_loader.py`、`scan_words_loader.py`、`flow_runtime/nodes/rag_nodes.py`、`image_generate.py`、`video_generate.py`；处理方式同本次（改用 `short_db_session()`）。
+
+- [ ] **Step 8: Commit**
+
+```bash
+git add backend/packages/miles-core/src/miles_core/infra/db/async_session.py \
+        backend/packages/miles-core/src/miles_core/infra/db/__init__.py \
+        backend/packages/miles-ai/src/miles_ai/integrations/generative/jobs/progress.py \
+        backend/packages/miles-portal/src/miles_portal/tenant/models/services/usage.py \
+        backend/packages/miles-portal/src/miles_portal/tenant/agents/services/agent/chat_rag.py \
+        backend/packages/miles-portal/src/miles_portal/tenant/attachments/services/media_reader.py \
+        backend/tests/infra/test_short_db_session.py \
+        backend/tests/tenant/models/test_chat_usage_sink_session.py \
+        backend/tests/tenant/attachments/test_flow_media_reader.py \
+        backend/tests/tenant/agents/test_chat_rag_connection_release.py \
+        docs/superpowers/specs/2026-09-14-rag-generation-db-connection-design.md
+git commit -F - <<'EOF'
+fix(agents): 新增短会话改走 worker-aware 短会话，修复 Celery 下必失败
+
+对话路径新引入的短会话原用全局 AsyncSessionLocal，而 Celery 任务每次
+asyncio.run 都是新 loop，池里属于上一个 loop 的连接复用即抛
+「got Future attached to a different loop」——定时智能体任务约一半会失败。
+
+改用已有的 worker-aware 短会话并更名为 short_db_session（现服务生成任务、
+chat 用量、媒体读取、检索四处）；既有同险站点清单记入 spec §10 另立专项。
+EOF
+```
+
+---
+
+### Task 10: 文档中 `rag_answer` 的入口引用改为 `generate_rag_answer`
+
+**为什么：** Task 6 已删除 `rag_answer`，代码层零残留，但 10 份文档仍有 12 处把它当作线性 RAG 入口，其中 `layering.md` 的 import 示例照抄即 `ImportError`。
+
+**Files:**
+- Modify: `docs/architecture/layering.md`（2 处，含可复制即报错的 import 示例）
+- Modify: `docs/architecture/technical-design.md`（2 处）
+- Modify: `docs/architecture/tools-runtime.md`
+- Modify: `docs/features/agent-chat-websocket.md`
+- Modify: `docs/features/kb-ingest-retrieval.md`
+- Modify: `docs/features/platform-agents.md`
+- Modify: `docs/guides/flows.md`
+- Modify: `docs/guides/hooks.md`
+- Modify: `docs/guides/knowledge-base.md`
+- Modify: `docs/guides/platform-agents.md`
+
+**Interfaces:**
+- Consumes: Task 6 的删除结果
+- Produces: 现役文档不再出现 `rag_answer`
+
+- [ ] **Step 1: 逐处替换，保持各文档原意**
+
+Run: `rg -n "rag_answer" docs/ | grep -v generate_rag_answer` 取当前全部命中后逐处改写：
+
+- 指「线性 RAG 入口」的，改为 `generate_rag_answer`；如上下文同时强调「检索已上移 L1」，可写成 `retrieve_hits` + `generate_rag_answer`。
+- `layering.md` 的 import 示例必须是**能跑通**的形式：`from miles_ai.rag.generate import format_hits_context, generate_rag_answer`。
+- `technical-design.md` 流程图节点 `LIN[legacy rag_answer / ainvoke_chat]` 改为 `LIN[generate_rag_answer / ainvoke_chat]`。
+- 措辞随文档语气微调，但不得改变该句原本要说明的事实。
+
+**不要改** `docs/superpowers/specs/2026-09-14-rag-generation-db-connection-design.md` 与 `docs/superpowers/plans/2026-09-14-rag-generation-db-connection.md`：它们记录的是**改造前**的设计与决策（如 spec 的「线性 `rag_answer`」是在描述现状），改写会伪造历史。
+
+- [ ] **Step 2: 确认只剩历史文档**
+
+Run: `rg -n "rag_answer" docs/ | grep -v generate_rag_answer`
+Expected: 仅剩 `docs/superpowers/specs/...` 与 `docs/superpowers/plans/...` 两个文件的命中，且都在描述改造前状态或决策过程。
+
+- [ ] **Step 3: 验证 import 示例真能跑**
+
+Run: `cd backend && uv run --all-packages --group dev python -c "from miles_ai.rag.generate import format_hits_context, generate_rag_answer; print('ok')"`
+Expected: `ok`。
+
+- [ ] **Step 4: 门禁**
+
+Run:
+```bash
+cd backend && uv run --all-packages --group dev ruff format --check . && \
+uv run --all-packages --group dev ruff check . && \
+uv run --all-packages --group dev python -m pytest -q
+```
+Expected: 全绿（仅文档改动，测试数不变）。
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add docs/architecture docs/features docs/guides
+git commit -F - <<'EOF'
+docs: 线性 RAG 入口改述为 generate_rag_answer
+
+rag_answer 已删除，文档仍有 12 处把它当线性入口，其中 layering.md 的
+import 示例照抄即报错。改为 generate_rag_answer（检索已上移 L1）；
+superpowers 下的设计与计划属历史记录，保持原样。
+EOF
+```
+
+---
+
 ## 自检记录
 
 **Spec 覆盖核对（逐节）**
@@ -1825,9 +2166,18 @@ EOF
 | §4.4 commit 失败不吞 | Task 5 不包 try/except（Step 4 代码即证据） |
 | §5 验收 1-8 | 分别落在 Task 2/3/5/6/4/8 |
 | §7 非目标（tool agent 不改） | Task 5 Step 3 注释显式说明 `_run_tool_agent` 保留 session reader |
-| §8.1 ContextVar | Task 1 |
+| §8.1 ContextVar | Task 1（只诊断；按结论二选一：原地累加修复 + 回归测试，或固化实测行为） |
 | §8.2 附图读两遍 | 文档已声明不承诺；无任务（符合 spec） |
 
 **占位符扫描**：无 TBD / TODO / 「类似 Task N」；每个改动步骤均给出完整代码。
+
+**执行前裁决（2026-09-14，用户确认）**：
+1. 实施位置：worktree `.worktrees/rag-generation-db-connection`（分支 `feat/rag-generation-db-connection`），不在 `main` 上直接改。
+2. Task 7（直连 `direct_chat`）保留。
+3. Task 1 改为「只诊断」：探针脚本放 `/tmp`（一次性脚本不进仓库），按结论二选一（修复 or 固化），**不提交**断言破损行为的测试。
+
+**执行中 errata（控制端，随 Task 3 记录）**：检索 hit 的正文键是 `content_preview`（`format_hits_context` 用 `h.get("content_preview", "")`），计划多处夹具原写 `{"content": ...}`——不会抛错但会让上下文为空、依赖正文的断言静默失效。已在 Task 1 探针、Task 3/4/5 夹具处统一改为 `content_preview`（Task 3 的实现测试已由实现者发现并修正）。
+
+**执行中 errata（控制端，随 Task 4 记录）**：Task 4 节点体原写 `media=media_refs`，但同一 Task 的测试断言 `media is None`（`media_refs_from_items(None)` 返回 `[]`）——计划自相矛盾。实现采用 `media=media_refs or None`：对 `generate_rag_answer`（内部 `if media:`）行为完全等价，且不改弱任何断言。计划文本已同步。
 
 **类型一致性**：`generate_rag_answer` 的签名在 Task 3 定义（`model/prompt/media/media_reader/temperature/on_delta/usage_sink`），Task 4、5、6、7 的调用与测试全部使用同名同形参；`build_rag_prompt(*, system_prompt, query, hits)` 在 Task 3 定义，Task 4/5/6 一致；`ChatUsageSink(*, tenant_id, model, source_id)` 在 Task 2 定义，3 处构造点一致。

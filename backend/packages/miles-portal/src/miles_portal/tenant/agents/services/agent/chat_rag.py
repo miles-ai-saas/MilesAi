@@ -9,13 +9,17 @@ from miles_ai.integrations.chat.multimodal import build_user_message, resolve_me
 from miles_ai.integrations.generative.image.prompt_guard import user_requests_image_collage
 from miles_ai.integrations.langchain.chat_models import OnDelta, ainvoke_chat
 from miles_ai.integrations.langgraph.runner import run_rag_workflow, should_use_langgraph_rag
-from miles_ai.rag.generate import format_hits_context, rag_answer, retrieve_hits
+from miles_ai.rag.generate import build_rag_prompt, format_hits_context, generate_rag_answer, retrieve_hits
+from miles_core.infra.db import short_db_session
 from miles_core.models.agent import Agent
 from miles_core.models.model import ModelConfig
 from miles_portal.tenant.a2a.services.peer_refs import list_agent_a2a_peer_refs
 from miles_portal.tenant.agents.schemas.agent import ChatRequest, ChatResponse
 from miles_portal.tenant.agents.services.agent.serialization import should_use_tools_with_kb
-from miles_portal.tenant.attachments.services.media_reader import build_session_media_reader
+from miles_portal.tenant.attachments.services.media_reader import (
+    build_flow_media_reader,
+    build_session_media_reader,
+)
 from miles_portal.tenant.compliance.constants import SCAN_MODULE_AGENT_CHAT
 from miles_portal.tenant.flows.repositories.flow import FlowRepository
 from miles_portal.tenant.flows.services.run_context import make_flow_model_resolver
@@ -147,12 +151,16 @@ class AgentChatRagMixin:
         return await augment_response_with_a2a(self, agent, body, response)
 
     async def resolve_chat_media_parts(self, agent: Agent, body: ChatRequest) -> tuple[str, list]:
-        """解析附图，返回生成用 query 文本与 multimodal content parts。"""
+        """解析附图，返回生成用 query 文本与 multimodal content parts。
+
+        用短会话读取器：本方法只读对象存储，不该借用请求会话——否则对象存储 I/O
+        期间请求事务一直开着（两条 RAG 路径与直连路径都会调用本方法）。
+        """
         max_media = int((agent.config or {}).get("max_media_per_turn", 10))
         parts: list = []
         if body.media:
             parts = await resolve_media_refs(
-                build_session_media_reader(self.db, self.ctx),
+                build_flow_media_reader(tenant_id=self.ctx.tenant_id, user_id=self.ctx.user_id),
                 body.media,
                 max_count=max_media,
             )
@@ -190,6 +198,8 @@ class AgentChatRagMixin:
             user_msg = build_user_message(query=reasoning_query, media_parts=media_parts)
             model = await self.resolve_invoke_model(agent.model_config)
             usage_sink = self.chat_usage_sink(model, source_id=agent_id)
+            # 释放请求事务：模型解析会读租户凭据，随后是单次 LLM 调用，中间无需本会话。
+            await self.db.commit()
             answer = await ainvoke_chat(
                 model,
                 [
@@ -297,7 +307,7 @@ class AgentChatRagMixin:
         知识库增强对话。
 
         - 无 ``kb_ids``：可选 tool calling，否则直连
-        - 有 KB + 大模型：LangGraph 或 ``rag_answer``
+        - 有 KB + 大模型：LangGraph 或线性 ``generate_rag_answer``
         - 有 KB 无大模型：仅检索摘要
         """
         kb_bindings = build_kb_retrieval_bindings()
@@ -344,6 +354,8 @@ class AgentChatRagMixin:
             model = await self.resolve_invoke_model(agent.model_config)
             usage_sink = self.chat_usage_sink(model, source_id=agent_id)
             if should_use_langgraph_rag(agent, kb_ids=kb_ids):
+                # 释放请求事务：检索由 retrieve 节点自开短会话完成，生成阶段不再需要本会话。
+                await self.db.commit()
                 answer, all_hits, steps = await run_rag_workflow(
                     model=model,
                     system_prompt=base,
@@ -360,25 +372,34 @@ class AgentChatRagMixin:
                     on_delta=on_delta,
                     usage_sink=usage_sink,
                     bindings=kb_bindings,
-                    media_reader=build_session_media_reader(self.db, self.ctx),
+                    media_reader=build_flow_media_reader(tenant_id=self.ctx.tenant_id, user_id=self.ctx.user_id),
                 )
             else:
-                answer, all_hits = await rag_answer(
+                # 检索必须在 L1 用短会话完成，否则它会在生成入口内部重新打开请求事务，
+                # 使「生成期间不占连接」失效。retrieve_query 用于检索、prompt_query 写入 prompt。
+                # 短会话走 short_db_session：本路径在 Celery（每次 asyncio.run 新 loop）内同样可达。
+                search_q = (retrieve_query if retrieve_query is not None else prompt_query).strip()
+                async with short_db_session() as search_db:
+                    linear_hits = await retrieve_hits(
+                        search_q,
+                        tenant_id=agent.tenant_id,
+                        kb_ids=kb_ids,
+                        db=search_db,
+                        top_k=top_k,
+                        bindings=kb_bindings,
+                    )
+                await self.db.commit()
+                prompt = build_rag_prompt(system_prompt=base, query=prompt_query, hits=linear_hits)
+                answer = await generate_rag_answer(
                     model=model,
-                    system_prompt=base,
-                    query=prompt_query,
-                    kb_ids=kb_ids,
-                    tenant_id=agent.tenant_id,
-                    db=self.db,
-                    top_k=top_k,
-                    temperature=temperature,
+                    prompt=prompt,
                     media=body.media or None,
-                    media_reader=build_session_media_reader(self.db, self.ctx),
-                    retrieve_query=retrieve_query,
+                    media_reader=build_flow_media_reader(tenant_id=self.ctx.tenant_id, user_id=self.ctx.user_id),
+                    temperature=temperature,
                     on_delta=on_delta,
                     usage_sink=usage_sink,
-                    bindings=kb_bindings,
                 )
+                all_hits = linear_hits
                 steps = [{"type": "rag_linear", "engine": "langchain"}]
             await hooks.run(
                 HookTrigger.AFTER_REASONING,
@@ -414,7 +435,6 @@ class AgentChatRagMixin:
     ) -> ChatUsageSink:
         """构造注入引擎的用量记录器（chat 累计 + 落库）。"""
         return ChatUsageSink(
-            db=self.db,
             tenant_id=self.ctx.tenant_id,
             model=model,
             source_id=source_id,

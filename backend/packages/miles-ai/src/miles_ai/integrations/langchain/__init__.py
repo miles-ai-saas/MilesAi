@@ -13,10 +13,11 @@ LangChain 统一 AI 能力层（L3，惰性 ``__getattr__`` 导出）。
 
 __all__ = [
     "ainvoke_chat",
+    "build_rag_prompt",
     "build_rag_user_prompt",
     "format_hits_context",
+    "generate_rag_answer",
     "get_chat_model",
-    "rag_answer",
     "retrieve_hits",
     "search_kb",
     "search_multi_kb_async",
@@ -44,7 +45,8 @@ def __getattr__(name: str):
         "retrieve_hits",
         "format_hits_context",
         "build_rag_user_prompt",
-        "rag_answer",
+        "build_rag_prompt",
+        "generate_rag_answer",
     ):
         from miles_ai.rag import generate as rag_gen
 

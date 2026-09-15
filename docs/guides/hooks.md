@@ -108,7 +108,7 @@ hook_bindings        挂载（hook_id, scope, target_id?, trigger, priority, is_
 在本版本中，**`before_reasoning` / `after_reasoning` 指：单次用户消息处理中，某条路径上「一次主要 LLM 调用」的前后**，而非每个 token、每个子 agent 或画布内每个 LLM 节点各触发一次。
 
 - **直连对话**（无 KB）：一次 `ainvoke_chat` 前后各 1 次。  
-- **RAG 路径**（LangGraph 或线性 `rag_answer`）：整段 RAG 生成 1 次前后。  
+- **RAG 路径**（LangGraph 或线性 `generate_rag_answer`）：整段 RAG 生成 1 次前后。  
 - **子智能体 / 多轮 tool calling**：当前 **不** 按子调用拆 reasoning 钩子（后续可扩展 `reasoning_id`）。
 
 ### 4.3 调用顺序（Agent `chat` 片段）

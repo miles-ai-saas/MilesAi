@@ -17,14 +17,14 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from miles_core.infra.db import AsyncSessionLocal
+from miles_core.infra.db import short_db_session
 from miles_core.models.media.reader import AttachmentBytes
 from miles_core.tenant import TenantContext
 from miles_portal.tenant.attachments.services.attachment import AttachmentService
 
 
 class FlowMediaReader:
-    """短会话媒体读取器（每调用新开 AsyncSessionLocal）。"""
+    """短会话媒体读取器（每调用新开 ``short_db_session``）。"""
 
     def __init__(self, *, tenant_id: UUID, user_id: UUID | None) -> None:
         self._tenant_id = tenant_id
@@ -41,13 +41,13 @@ class FlowMediaReader:
 
     async def read_image_bytes(self, attachment_id: UUID) -> AttachmentBytes:
         """自开短会话读取图片字节；脏数据由 ``AttachmentService`` 兜底占位图。"""
-        async with AsyncSessionLocal() as db:
+        async with short_db_session() as db:
             data, mime = await AttachmentService(db, self._ctx()).read_image_bytes(attachment_id)
         return AttachmentBytes(data=data, mime=mime)
 
     async def read_attachment_bytes(self, attachment_id: UUID) -> AttachmentBytes:
         """自开短会话读取任意附件字节（不做图片类型校验）。"""
-        async with AsyncSessionLocal() as db:
+        async with short_db_session() as db:
             data, mime, filename = await AttachmentService(db, self._ctx()).read_attachment_bytes(attachment_id)
         return AttachmentBytes(data=data, mime=mime, filename=filename)
 
@@ -68,7 +68,7 @@ class SessionMediaReader:
     """会话绑定的媒体读取器（复用调用方 ``db``/``ctx``，不再开短会话）。
 
     适用于请求/图节点已持有租户会话的场景（Agent 对话、RAG、工具循环），
-    与 ``FlowMediaReader``（自开 ``AsyncSessionLocal``）互补。
+    与 ``FlowMediaReader``（自开 ``short_db_session``）互补。
     """
 
     def __init__(self, *, db: AsyncSession, ctx: TenantContext) -> None:

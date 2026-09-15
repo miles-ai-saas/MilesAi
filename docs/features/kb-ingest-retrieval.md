@@ -92,7 +92,7 @@ POST /search
     → 写 kb_search_logs
 ```
 
-智能体/流程：`rag_answer` / `KnowledgeSearch` 节点共用检索门面。
+智能体/流程：`retrieve_hits` / `KnowledgeSearch` 节点共用检索门面。
 
 ---
 

@@ -7,7 +7,7 @@
 2. 子智能体绑定 → DeepAgents 规划
 3. A2A Peer 增强（有 peer 且无子 Agent 时）
 4. ``published_flow_id`` → 流程画布运行时
-5. 默认 **RAG**：``rag_chat`` → LangGraph 或线性 ``rag_answer``
+5. 默认 **RAG**：``rag_chat`` → LangGraph 或线性 ``generate_rag_answer``
 
 子模块见同目录 ``crud`` / ``chat`` / ``serialization``；包说明见 ``agent.__init__``。
 对外仅从此包导入 ``AgentService``（``from miles_portal.tenant.agents.services.agent import …``）。

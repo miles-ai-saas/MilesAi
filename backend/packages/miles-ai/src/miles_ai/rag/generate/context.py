@@ -30,7 +30,7 @@ def build_rag_user_prompt(
     """
     组装单次 RAG 对话的用户侧 prompt（非 Chat API 的 system role 分离）。
 
-    结构：system 指令 + 参考内容 + 用户问题；无 hit 时由 ``answer.rag_answer`` 仅用 system+问题。
+    结构：system 指令 + 参考内容 + 用户问题；无 hit 时由 ``answer.build_rag_prompt`` 仅用 system+问题。
     """
     context = format_hits_context(hits)
     return f"{system_prompt}\n\n参考内容：\n{context}\n\n用户问题：{query}"

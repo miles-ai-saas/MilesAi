@@ -74,7 +74,7 @@ async def check_media_safety(
 
     try:
         model = await resolve_model_for_invoke(db, model, ctx.tenant_id)
-        usage_sink = ChatUsageSink(db=db, tenant_id=ctx.tenant_id, model=model)
+        usage_sink = ChatUsageSink(tenant_id=ctx.tenant_id, model=model)
         raw = await ainvoke_chat(
             model,
             messages,

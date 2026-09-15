@@ -12,7 +12,7 @@ RAG 图
 - ``runtime_mode`` 为 ``legacy`` / ``autonomous``
 - ``use_langgraph_rag: false``
 
-否则默认走 LangGraph；线性路径见 ``rag.generate.rag_answer``。
+否则默认走 LangGraph；线性路径见 ``rag.generate.generate_rag_answer``。
 """
 
 from __future__ import annotations

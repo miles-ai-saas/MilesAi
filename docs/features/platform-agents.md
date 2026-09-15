@@ -55,7 +55,7 @@ POST /agents/{id}/chat
     → published_flow_id ? flow_runtime.run
     → 绑 KB + use_langgraph_rag ? run_rag_workflow
     → enable_tool_calling / 生图工具 ? tool_agent
-    → rag_answer / ainvoke_chat
+    → generate_rag_answer / ainvoke_chat
     → check_output + AFTER_CALL
 ```
 
