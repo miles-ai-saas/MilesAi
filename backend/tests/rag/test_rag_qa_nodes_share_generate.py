@@ -9,7 +9,32 @@ from uuid import uuid4
 
 import pytest
 
-from miles_ai.integrations.langgraph.graphs.rag_qa import fallback, generate
+import miles_ai.integrations.langgraph.graphs.rag_qa as rag_qa_mod
+from miles_ai.integrations.langgraph.graphs.rag_qa import fallback, generate, retrieve
+
+
+class _Boom:
+    """全局会话替身：被调用即失败，用来钉住「本模块不得再用全局会话」。"""
+
+    def __call__(self, *args: object, **kwargs: object) -> object:
+        raise AssertionError("该站点必须走 short_db_session，不得回退全局 AsyncSessionLocal")
+
+
+class _RecordingShortSession:
+    """假 short_db_session：记录开合次数并交出可辨识的 db。"""
+
+    def __init__(self) -> None:
+        self.db = object()
+        self.entered = 0
+        self.exited = 0
+
+    async def __aenter__(self) -> object:
+        self.entered += 1
+        return self.db
+
+    async def __aexit__(self, *exc: object) -> bool:
+        self.exited += 1
+        return False
 
 
 def _state(*, hits: list | None = None) -> dict:
@@ -69,3 +94,40 @@ async def test_generate_node_passes_hits_prompt_for_low_relevance_fallback():
 
     prompt = mock_gen.await_args.kwargs["prompt"]
     assert "相关性较低" in prompt
+
+
+@pytest.mark.asyncio
+async def test_retrieve_node_uses_short_session_not_global(monkeypatch):
+    """检索节点：全局会话被换成调用即炸的替身，检索必须落在短会话里。
+
+    ``raising=False`` 是有意的：Task 1 之后本模块不再 import ``AsyncSessionLocal``，
+    把一个「不存在的名字」换成替身，正是回退时能被抓到的原因。
+    """
+    short = _RecordingShortSession()
+    monkeypatch.setattr(rag_qa_mod, "short_db_session", lambda: short, raising=False)
+    monkeypatch.setattr(rag_qa_mod, "AsyncSessionLocal", _Boom(), raising=False)
+
+    seen: list[tuple[str, object]] = []
+
+    async def fake_retrieve_hits(query, *, tenant_id, kb_ids, db, top_k, bindings):
+        seen.append((query, db))
+        return [{"content_preview": "片段", "score": 0.9}]
+
+    monkeypatch.setattr(rag_qa_mod, "retrieve_hits", fake_retrieve_hits)
+
+    state = {
+        "tenant_id": str(uuid4()),
+        "query": "检索词",
+        "kb_ids": ["kb-1"],
+        "top_k": 5,
+    }
+    config = {"configurable": {"kb_retrieval": object()}}
+
+    out = await retrieve(state, config)
+
+    assert out["hits"] == [{"content_preview": "片段", "score": 0.9}]
+    assert out["steps"][0]["node"] == "retrieve"
+    assert out["steps"][0]["hit_count"] == 1
+    assert out["steps"][0]["top_score"] == 0.9
+    assert seen == [("检索词", short.db)]
+    assert (short.entered, short.exited) == (1, 1)

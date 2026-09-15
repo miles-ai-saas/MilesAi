@@ -54,6 +54,13 @@ class _FakeSessionLocal:
         return _Ctx()
 
 
+class _Boom:
+    """全局会话替身：被调用即失败，用来钉住「本模块不得再用全局会话」。"""
+
+    def __call__(self, *args: object, **kwargs: object) -> object:
+        raise AssertionError("该站点必须走 short_db_session，不得回退全局 AsyncSessionLocal")
+
+
 @pytest.mark.asyncio
 async def test_flow_usage_sink_records_per_model_with_flow_source(monkeypatch):
     session = _FakeSession()
@@ -104,3 +111,33 @@ async def test_flow_usage_sink_does_not_accumulate_chat_tokens(monkeypatch):
         assert get_chat_usage_totals() == (0, 0)
     finally:
         end_chat_usage_accumulation(token)
+
+
+@pytest.mark.asyncio
+async def test_flow_usage_sink_record_never_falls_back_to_global_session(monkeypatch):
+    """``FlowUsageSink.record`` 站点：全局会话换成调用即炸替身，落库仍必须成功。
+
+    ``raising=False`` 是有意的：Task 1 之后本模块不再 import ``AsyncSessionLocal``，
+    把一个「不存在的名字」换成替身，正是回退时能被抓到的原因。
+    """
+    session = _FakeSession()
+    monkeypatch.setattr(usage_mod, "short_db_session", _FakeSessionLocal(session), raising=False)
+    monkeypatch.setattr(usage_mod, "AsyncSessionLocal", _Boom(), raising=False)
+
+    tenant_id = uuid4()
+    source_id = uuid4()
+    model = ModelConfig(id=uuid4(), name="m", provider="openai", model_name="x")
+    sink = make_flow_usage_sink_factory(tenant_id, source_id=source_id)(model)
+
+    await sink.record(prompt_tokens=30, completion_tokens=12)
+
+    assert session.flush_calls == 1
+    assert session.commit_calls == 1
+    assert len(session.added) == 1
+    row = session.added[0]
+    assert isinstance(row, ModelUsageLog)
+    assert row.tenant_id == tenant_id
+    assert row.model_config_id == model.id
+    assert row.source == "flow"
+    assert row.source_id == source_id
+    assert row.total_tokens == 42

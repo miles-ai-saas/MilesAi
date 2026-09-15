@@ -71,6 +71,13 @@ class _StubDb:
         return self.row
 
 
+class _Boom:
+    """全局会话替身：被调用即失败，用来钉住「本模块不得再用全局会话」。"""
+
+    def __call__(self, *args: object, **kwargs: object) -> object:
+        raise AssertionError("该站点必须走 short_db_session，不得回退全局 AsyncSessionLocal")
+
+
 def test_loader_returns_active_template_content(monkeypatch):
     tpl = _TrackingTemplate(tenant_id=_TENANT_UUID, content="系统提示词", is_active=True)
     db = _StubDb(tpl)
@@ -127,3 +134,23 @@ def test_build_loader_returns_callable(monkeypatch):
 
     assert callable(loader)
     assert asyncio.run(loader(str(_TEMPLATE_UUID), str(_TENANT_UUID))) == "工厂返回的可调用体结果"
+
+
+def test_loader_never_falls_back_to_global_session(monkeypatch):
+    """模板加载站点：全局会话换成调用即炸替身，live 引用仍必须加载成功。
+
+    ``raising=False`` 是有意的：Task 1 之后本模块不再 import ``AsyncSessionLocal``，
+    把一个「不存在的名字」换成替身，正是回退时能被抓到的原因。
+    """
+    tpl = _TrackingTemplate(tenant_id=_TENANT_UUID, content="护栏内容", is_active=True)
+    db = _StubDb(tpl)
+    entered = []
+    monkeypatch.setattr(template_loader, "short_db_session", lambda: _RecordingSession(db, entered), raising=False)
+    monkeypatch.setattr(template_loader, "AsyncSessionLocal", _Boom(), raising=False)
+
+    loader = build_prompt_template_loader()
+    result = asyncio.run(loader(str(_TEMPLATE_UUID), str(_TENANT_UUID)))
+
+    assert result == "护栏内容"
+    assert db.get_calls == [(PromptTemplate, _TEMPLATE_UUID)]
+    assert entered == [True]
