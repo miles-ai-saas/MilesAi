@@ -259,10 +259,10 @@ sequenceDiagram
 2. **§8.1 结论**：探针确认 `_chat_usage_acc` 的写入**会**丢在 LangGraph 的独立 task 里（`AgentChatCall` 恒记 0 token）；已改为让 ContextVar 持有可变的 `ChatUsageAccumulator`、累加走**原地修改**，使子上下文的写入对调用方可见。回归测试：`tests/tenant/agents/test_rag_usage_accumulation.py`（该测试即结论载体）。
 3. **范围外补充**：`direct_chat`（无 KB 直连）同属「LLM 单次调用期间持有连接」，已一并处理，见 §7 非目标清单的边界说明。
 4. **附图读取处数**：实际改动 3 处（`resolve_chat_media_parts` 与两条生成分支），`_run_tool_agent` 未改。
-5. **§10 新增（Worker 短会话）**：本分支新增的三处短会话原用全局 `AsyncSessionLocal`，而该路径在
-   Celery 内可达，跨 loop 复用连接必失败；已改走 worker-aware 短会话，并把 helper 更名
-   `short_db_session`（现服务生成任务 / chat 用量 / 媒体读取 / 检索四处）。其余既有同险站点
-   经裁决不在本分支修复，清单与复现见 §10。
+5. **§10 新增（Worker 短会话）**：本分支在对话链路上新增的 3 个短会话**调用点**原用全局
+   `AsyncSessionLocal`，而该路径在 Celery 内可达，跨 loop 复用连接必失败；已改走 worker-aware
+   短会话，并把 helper 更名 `short_db_session`（现服务生成任务 / chat 用量 / 媒体读取 / 检索
+   四处）。其余既有同险站点经裁决不在本分支修复，清单与复现见 §10。
 
 ---
 
@@ -301,7 +301,11 @@ run#6 global -> FAIL        run#6 worker -> ok
 全局在第 2/4/6 次失败（约一半），worker 会话 6/6 正常。`ChatUsageSink.record` 无
 try/except，异常直接冒泡，故定时智能体任务约一半会在生成中途失败 —— 即本分支修掉的那个。
 
-### 10.3 本分支已修（3 处）
+### 10.3 本分支已修（3 个调用点）
+
+> 「3 处」指**调用点**，不是器件：`FlowMediaReader` 类本身在 `main` 上就有，且其中两处
+> `AsyncSessionLocal` 也是既有的；本分支新增的是它在 Agent 对话路径上的调用
+> （`chat_rag.py` 改用 `build_flow_media_reader`），以及另两个短会话调用点。
 
 | 站点 | 位置（改动前） |
 |------|----------------|
@@ -313,13 +317,15 @@ try/except，异常直接冒泡，故定时智能体任务约一半会在生成�
 
 ### 10.4 未修的既有同险站点
 
-机制同上、同样在 Worker 内可达，但属本分支范围外（裁决：只修本分支新增的 3 处）。
-行号为**改动前**（本分支未触碰这些文件，故即当前行号）。
+机制同上、同样在 Worker 内可达，但属本分支范围外（裁决：只修本分支新增的 3 个调用点）。
 
-| 站点 | 位置 |
-|------|------|
-| LangGraph `retrieve` 节点 | `miles-ai/.../integrations/langgraph/graphs/rag_qa.py:67` |
-| `FlowUsageSink.record` | `miles-portal/.../models/services/usage.py:167` |
+行号取自**改动前基线**（`main`）。本分支动过其中两个文件的其它位置，故它们的行号已漂移
+（表中以「→ 现」标出）。修复时**以符号名定位，不要照抄行号**。
+
+| 站点 | 位置（`main` → 现在） |
+|------|----------------------|
+| LangGraph `retrieve` 节点 | `miles-ai/.../integrations/langgraph/graphs/rag_qa.py:57` → 现 `:67` |
+| `FlowUsageSink.record` | `miles-portal/.../models/services/usage.py:134` → 现 `:167` |
 | flow 工具调用 | `miles-portal/.../tools/services/flow_invoker.py:40` |
 | flow `RunContext` 模型解析 | `miles-portal/.../flows/services/run_context.py:25` |
 | 子流程图加载 | `miles-portal/.../flows/services/subflow_loader.py:25` |
@@ -328,6 +334,16 @@ try/except，异常直接冒泡，故定时智能体任务约一半会在生成�
 | `KnowledgeSearch` 节点 | `miles-ai/.../flow_runtime/nodes/rag_nodes.py:48` |
 | 生图节点 | `miles-ai/.../flow_runtime/nodes/image_generate.py:55` / `:84` |
 | 生视频节点 | `miles-ai/.../flow_runtime/nodes/video_generate.py:56` / `:86` |
+
+表内未标注两个行号的文件本分支未改动，`main` 与当前一致。
+
+**为何其它 `AsyncSessionLocal()` 调用点不在上表**：判断依据是「能否在 Celery 任务内执行」，
+而非「是否用了全局会话」。全仓其余调用点只在单 loop 进程内运行，故无此风险：
+`miles-core/risk/enforce.py`（只被 Web 中间件 `web/middlewares/platform_risk.py` 与
+Admin 服务 `miles_admin/.../services/risk.py` 调用，均为独立单 loop 进程）、
+`agents/ws/chat.py` 与 `agents/ws/job_watch.py`（WebSocket 端点）、
+`miles-server` 的 CLI 脚本（`backfill_media_assets.py`、`db_ops.py`）。
+新增调用点时请沿用同一判据。
 
 **处理方式**（同 10.3）：把 `async with AsyncSessionLocal() as db:` 换成
 `async with short_db_session() as db:`；若该文件因此不再引用全局工厂，同步删除其 import。
