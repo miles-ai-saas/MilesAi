@@ -95,9 +95,9 @@ class _Doubles:
             return stub
 
         def _fake_async_sessionmaker(eng: object, **kwargs: object) -> _FakeMaker:
-            # worker 工厂由 get_worker_session() 现场构造，必须绑在它自己新建的 engine 上；
-            # 换成全局 engine 或全局 maker 都会在这里当场暴露。
-            assert eng in self.engines, "worker sessionmaker 必须绑定 get_worker_session() 新建的 engine"
+            # worker 工厂由 get_worker_session() 现场构造，必须绑在它**本次调用新建**的 engine
+            # 上；绑到进程全局 engine（或换用全局 maker）都会在这里当场暴露。
+            assert eng is self.engines[-1], "worker sessionmaker 必须绑定本次调用新建的 engine"
             return self.worker_maker
 
         monkeypatch.setattr(async_session_mod, "create_async_engine", _fake_create_async_engine)

@@ -35,6 +35,13 @@ loop 的 engine，API/CLI 单 loop 进程回退全局）。
 「注释里提一句 ``short_db_session()``」会误报，``sync.py`` 实测中招）；函数/类**定义**名也
 不计入——定义处不是引用。
 
+**AST 口径的边界**（有意如此，不是遗漏）：判据是「语法树里出现该符号名」，故
+① 属性访问或局部同名变量（``a.config.AsyncSessionLocal``、``AsyncSessionLocal = ...``）
+会被计入——方向偏保守，最坏是让无关改动变红后补一次登记；
+② 动态取用（``getattr(mod, "AsyncSessionLocal")``、kwargs 里的字符串键）不计入——真正的
+回归形态是普通的 import + 调用，会被抓住。另：扫描根为 ``packages/*/src/**/*.py``，
+今日全仓别处无生产引用；若将来有成员包用非 ``src`` 布局，需同步本扫描根。
+
 各模块的 Worker 可达路径：
 
 - ``miles_ai...rag_qa``：定时智能体走 LangGraph RAG 时的 ``retrieve`` 节点
