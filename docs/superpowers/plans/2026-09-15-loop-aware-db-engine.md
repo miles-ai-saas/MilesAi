@@ -361,7 +361,8 @@ def AsyncSessionLocal() -> AsyncSession:
 async def dispose_loop_engines() -> None:
     """释放**当前 loop** 的 engine（由 worker 边界在关闭 loop 之前调用）。
 
-    幂等：无条目或已释放时为空操作。释放后同一 loop 再取会话会在下次连接时惰性重建池。
+    幂等：无条目或已释放时为空操作。释放是 ``pop`` 整条注册项，故同一 loop 再取会话会
+    **新建一个 engine**（新池，并按 settings 重读），而不是复用已释放的旧池。
     必须在 loop 关闭前 await——``AsyncEngine.dispose()`` 是协程，loop 关了就无法执行；
     而每次 ``asyncio.run`` 换 loop，不释放就会每个任务泄漏一池连接。
     """

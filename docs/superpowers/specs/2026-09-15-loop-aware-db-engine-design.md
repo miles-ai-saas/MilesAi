@@ -105,7 +105,8 @@ def AsyncSessionLocal() -> AsyncSession:
 async def dispose_loop_engines() -> None:
     """释放**当前 loop** 的 engine（由 worker 边界在关闭 loop 前调用）。
 
-    幂等：无条目或已释放时为空操作。释放后同一 loop 再取会话会在下次连接时惰性重建池。
+    幂等：无条目或已释放时为空操作。释放是 ``pop`` 整条注册项，故同一 loop 再取会话会**新建一个
+    engine**（新池，并按 settings 重读），而不是复用已释放的旧池。
     """
 ```
 
@@ -237,8 +238,8 @@ Worker（每任务一个 loop）：
 
 1. **跨 loop 不复用**：loop A 取一次会话、loop B 再取一次，断言两者来自**不同** engine
    （打桩 `build_engine` 记录 `(loop_id, engine)`）。这是本 bug 的本质。
-2. **`dispose_loop_engines()`**：只释放**当前** loop、可重复调用；释放后同一 loop 再取会话仍可用
-   （SQLAlchemy 会在下一次连接时惰性重建池）。
+2. **`dispose_loop_engines()`**：只释放**当前** loop、可重复调用；释放后同一 loop 再取会话**仍可用**
+   ——释放是 `pop` 整条注册项，故下次取会话是**新建一个 engine**（新池、按 settings 重读），而非复用空池。
 3. **边界包装在 loop 关闭前完成释放**：以记录器替换 `dispose_loop_engines`，断言调用时**确有
    运行中的 loop**；异常路径同样释放，且异常照常传播。
 4. **真库端到端**：连续 6 次经包装跑真实的 DB 站点，断言 6/6 成功；并以「绕过注册表、固定复用
@@ -264,6 +265,7 @@ Worker（每任务一个 loop）：
 | uvicorn 单长命 loop 下条目常驻 | 正确行为（本就该复用）；该 loop 的 engine 由其自身生命周期覆盖，无需跨 loop 释放 |
 | 弱键不提供自动清理（实现阶段实测修正） | `asyncpg` 连接强引用 loop、池强持有连接，注册表持强引用的 engine 反钉 weak key ⇒ **只要有存活连接，条目永不失效**。故 `dispose_loop_engines()` 是唯一释放路径，不是可选优化；已同步改正第 5 节与代码 docstring |
 | 同一 loop 内 dispose 后再取会话 | `pop` 掉整条 `(engine, maker)` 后，下次 `AsyncSessionLocal()` 会**新建整个 engine**（含新池、重读 settings），而非复用空池 |
+| dispose 失败会顶掉任务异常（**已接受，不改代码**） | 现象：`finally: await dispose_loop_engines()` 若 dispose 自身抛错，它会替换 `try` 里的业务异常成为主异常，业务异常降级为 `__context__`。接受理由：调用方是 Celery 任务，「清理失败」让任务失败并暴露出来，比静默泄漏更容易被发现；信息未丢失（异常链上仍在），代价只是排查首因要多看一层。将来若确需改：在 `finally` 里 `try/except` 包住 dispose（清理失败只 `logger.exception` 记录，不顶掉业务异常）——会引入分支，收益与「dispose 自身抛错」这一低概率事件不匹配，故不做 |
 
 ## 9. 遗留
 
