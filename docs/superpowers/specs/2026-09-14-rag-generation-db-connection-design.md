@@ -349,6 +349,14 @@ Admin 服务 `miles_admin/.../services/risk.py` 调用，均为独立单 loop �
 `async with short_db_session() as db:`；若该文件因此不再引用全局工厂，同步删除其 import。
 `usage.py` 需在其 `FlowUsageSink` 也改完后才能删 import。
 
+> ⚠️ **前提：调用点必须落在 `get_worker_session()` 块内。**
+> `short_db_session()` 靠 `_worker_sessionmaker` ContextVar 判断是否有 worker engine，
+> 而该变量由 `get_worker_session()` 在 `__aenter__` 绑定、`__aexit__` **重置**。
+> 若在块外调用，它会**静默回退全局** `AsyncSessionLocal` —— 即等于没修。
+> `run_agent_schedule` 的结构是安全的（`svc.chat(...)` 在块内，见
+> `tasks/agent_schedule.py:34` 与 `:59`），但改造上表站点时需逐个确认这一点；
+> 真正跑在块外的调用点应按 worker 任务结构调整，而不是简单替换符号。
+
 ### 10.5 护栏覆盖现状
 
 本次为对话链路补的护栏（`tests/infra/test_short_db_session.py`、
