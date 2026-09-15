@@ -172,7 +172,7 @@ embed_query_for_kb(kb, query) → search_kb_chunks（Weaviate hybrid 或 向量+
 | 分片 | `rag/chunk/splitter.py` | `chunk_documents` → `TextChunk`（含 `page_no`） |
 | 索引 | `rag/index/gateway.py` | `upsert_chunk_vector`、`search_vectors` |
 | 检索 | `rag/retrieve/retriever.py`、`hybrid.py`、`multi_kb.py` | `search_kb_chunks`、RRF |
-| 生成 | `rag/generate/` | 上下文与 `rag_answer` |
+| 生成 | `rag/generate/` | 上下文与 `generate_rag_answer` |
 | 加载 | `rag/load/knowledge_bases.py` | 租户 KB 列表（Agent/流程用） |
 | 集成 | `integrations/langchain/embeddings.py`、`vectorstores.py` | 按 KB 维度 embed；`search_kb` 封装 |
 | 删除 | `miles_portal.deletion.document` / `cascade.before_delete_kb` | 衍生数据与引用 |

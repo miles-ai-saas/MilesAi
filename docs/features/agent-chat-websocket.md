@@ -32,7 +32,7 @@
 | 路径 | `chat.delta` 来源 |
 |------|-------------------|
 | 直连 LLM（`direct_chat`） | LiteLLM `stream=True` 真 token |
-| RAG 最终生成（`rag_answer`、LangGraph `generate`/`fallback`） | 同上 |
+| RAG 最终生成（`generate_rag_answer`、LangGraph `generate`/`fallback`） | 同上 |
 | tool_agent / pending_tool / flow / A2A | 整段 answer 后 `emit_answer_deltas` 切块 |
 
 HTTP `POST …/chat` 不传 `on_delta`，仍整包返回。合规改写后以 `chat.done.answer` 为准；前端 `applyChatResponse` 用 `res.answer` 覆盖气泡。

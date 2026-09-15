@@ -100,7 +100,7 @@ DeepAgents 默认注入 `general-purpose` 子智能体；本平台用占位 `Com
 |------|-------------|--------------|
 | 无 KB + `enable_tool_calling` | ✅ | ✅ |
 | 绑定 KB + `enable_tool_calling` | ✅ | ✅（`tool_agent` + `knowledge_search`） |
-| 绑定 KB（未开工具调用） | ✅ | ❌（走 LangGraph / `rag_answer` 检索增强） |
+| 绑定 KB（未开工具调用） | ✅ | ❌（走 LangGraph / `generate_rag_answer` 检索增强） |
 | 仅 `_direct_chat` | ✅ | ❌ |
 
 流程画布可使用 **PlatformTool** 节点（`data.tool_slug`）调用 `skill_read_reference` / `skill_run_script`；须由绑定技能包的智能体发布流程执行（注入 `agent_id`）。

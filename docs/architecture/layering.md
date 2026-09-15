@@ -213,7 +213,7 @@ backend/packages/
 | `rag.chunk` | `chunk_documents`、`split_text` | Docling→MarkdownHeader+Recursive；pypdf 按页；`TextChunk.page_no` |
 | `rag.index` | `upsert_chunk_vector`、`search_vectors` | 门面；业务代码直引 `miles_ai.rag.index.gateway` |
 | `rag.retrieve` | `search_kb_chunks`、`multi_kb`、RRF | vector / hybrid；PG 关键词回退 |
-| `rag.generate` | `format_hits_context`、`rag_answer` | Agent / 流程 RAG 上下文 |
+| `rag.generate` | `format_hits_context`、`generate_rag_answer` | Agent / 流程 RAG 上下文 |
 | `rag.pipeline` | `run_ingest_pipeline` | L1 `tenant.kb.ingest` 调用 |
 | `rag.load` | `load_knowledge_bases_for_tenant` | 解耦 `tenant.kb` 加载逻辑 |
 
@@ -304,7 +304,7 @@ from miles_ai.rag.parse.loaders import load_documents_from_bytes
 from miles_ai.rag.chunk import chunk_documents
 from miles_ai.rag.index.gateway import upsert_chunk_vector, search_vectors
 from miles_ai.rag.retrieve import search_kb_chunks, resolve_retrieval_mode
-from miles_ai.rag.generate import format_hits_context, rag_answer
+from miles_ai.rag.generate import format_hits_context, generate_rag_answer
 
 # L1/L3 检索（kb 域向量化 embed_query_for_kb；检索封装仍在 vectorstores 壳）
 from miles_portal.tenant.kb.services.embeddings import embed_query_for_kb

@@ -492,7 +492,7 @@ flowchart TD
     FLOW -->|是| FR[flow_runtime + LangGraph]
     FLOW -->|否| RAG{LangGraph RAG?}
     RAG -->|是| LGR[run_rag_workflow]
-    RAG -->|否| LIN[legacy rag_answer / ainvoke_chat]
+    RAG -->|否| LIN[generate_rag_answer / ainvoke_chat]
 ```
 
 | 路径 | 条件 | 实现 |
@@ -502,7 +502,7 @@ flowchart TD
 | 引用外部 | `agt_agent_a2a_peer_refs` | 先本地 RAG/流程/协同，再 `augment_response_with_a2a` |
 | 画布流程 | `published_flow_id` + 已发布版本 | `get_flow_runtime().run` |
 | RAG Graph | 绑 KB、`use_langgraph_rag` 未关闭 | `integrations.langgraph.runner` |
-| 线性 RAG | 上述否 | `rag_answer` / 直连 LLM |
+| 线性 RAG | 上述否 | `generate_rag_answer` / 直连 LLM |
 
 - 内部协同：[platform-agents.md](../guides/platform-agents.md)
 - A2A：[a2a.md](../guides/a2a.md)
