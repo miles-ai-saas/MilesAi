@@ -16,7 +16,8 @@
   —— 裸 `uv run` / `uv sync` 会卸载工作区其余成员包。
 - 提交前门禁（五条）：`ruff format --check .`、`ruff check .`、`lint-imports`、
   `python -m miles_server.scripts.export_openapi --check`、`python -m pytest -q`。
-  基线：**1090 passed, 2 warnings**（`Connection._cancel`，既有）。
+  基线：**1090 passed**；warning 数不在此写死——它随 `-W` 过滤器与用例改动而变
+  （默认过滤器下今日全量无 warnings summary，`-W default` 下另有若干既有 ResourceWarning）。
 - 测试输出保持干净：不得新增 warning。
 - commit message 用**简体中文** + Conventional Commits，HEREDOC 传递。
 - 分层约束：`miles_ai` ✗→ `miles_portal`；`miles_portal` ✗→ `miles_admin`；
@@ -362,7 +363,7 @@ async def dispose_loop_engines() -> None:
     """释放**当前 loop** 的 engine（由 worker 边界在关闭 loop 之前调用）。
 
     幂等：无条目或已释放时为空操作。释放是 ``pop`` 整条注册项，故同一 loop 再取会话会
-    **新建一个 engine**（新池，并按 settings 重读），而不是复用已释放的旧池。
+    **新建一个 engine**（新池，由同一 ``Settings`` 快照重建），而不是复用已释放的旧池。
     必须在 loop 关闭前 await——``AsyncEngine.dispose()`` 是协程，loop 关了就无法执行；
     而每次 ``asyncio.run`` 换 loop，不释放就会每个任务泄漏一池连接。
     """
@@ -767,8 +768,10 @@ uv run --all-packages --group dev ruff check . && \
 uv run --all-packages --group dev lint-imports && \
 uv run --all-packages --group dev python -m miles_server.scripts.export_openapi --check
 ```
-Expected: **1094 passed, 2 warnings**（Task 1 结束时为 1090——计划原本按 1089 推算，
+Expected: **1094 passed**（Task 1 结束时为 1090——计划原本按 1089 推算，
 Task 1 修复轮把一条近恒真用例拆成两条而 +1；1090 + 4 = 1094），其余四条通过。
+warning 不写死：判据是「不得**新增**」，做对照时用相同的 `-W` 过滤器，
+本 Task 实测默认过滤器下无 warnings summary（收口后全量为 1096，见 Task 2 修复轮）。
 
 - [ ] **Step 6: Commit**
 
