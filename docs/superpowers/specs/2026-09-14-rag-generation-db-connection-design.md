@@ -337,6 +337,11 @@ try/except，异常直接冒泡，故定时智能体任务约一半会在生成�
 
 表内未标注两个行号的文件本分支未改动，`main` 与当前一致。
 
+**这 10 处目前都落在 `get_worker_session()` 块内**（Celery 侧唯一入口 `agent_schedule` 的
+`svc.chat` 在块内，上表站点均在其调用子树中），因此「换成 `short_db_session()`」这一步即可
+生效，无需调整任务结构。将来若新增块**外**的 Worker 调用点，故障会静默复现（见上一条前提），
+届时需调整结构而非换符号。
+
 **为何其它 `AsyncSessionLocal()` 调用点不在上表**：判断依据是「能否在 Celery 任务内执行」，
 而非「是否用了全局会话」。全仓其余调用点只在单 loop 进程内运行，故无此风险：
 `miles-core/risk/enforce.py`（只被 Web 中间件 `web/middlewares/platform_risk.py` 与

@@ -4,8 +4,10 @@ monkeypatch 打到 ``media_reader`` 模块命名空间（from-import 绑定）�
 用假 session 工厂与假 AttachmentService，不落真实 DB/对象存储。
 
 会话来源是本文件的核心不变量：两个读方法都必须走 ``short_db_session``，全局
-``AsyncSessionLocal`` 被换成「调用即炸」的替身。该读者在 Celery 里同样可达
-（画布运行、定时智能体对话），回退全局会跨 loop 复用池内连接。
+``AsyncSessionLocal`` 被换成「调用即炸」的替身。该读者在 Celery 内同样可达——
+来路是定时智能体对话（``agent_schedule`` → ``AgentService.chat``，其附图与流程
+分支都会构造本读取器）；画布运行本身走 HTTP 单 loop 进程。回退全局会跨 loop
+复用池内连接。
 """
 
 import asyncio
