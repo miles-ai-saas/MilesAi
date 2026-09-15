@@ -32,7 +32,7 @@ engine = build_engine(settings)
 AsyncSessionLocal = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
 # Celery ``asyncio.run`` 任务内绑定的 sessionmaker（与当前 loop 同寿），
-# 供进度/取消检测开独立短会话，避免复用全局 AsyncSessionLocal。
+# 供 ``short_db_session`` 开独立短会话，避免复用全局 AsyncSessionLocal。
 _worker_sessionmaker: ContextVar[async_sessionmaker[AsyncSession] | None] = ContextVar(
     "milesai_worker_sessionmaker",
     default=None,
@@ -67,7 +67,7 @@ async def get_worker_session() -> AsyncIterator[AsyncSession]:
     Fork 后父进程的全局 engine 内部 asyncpg 连接残留了旧事件循环的 Future，
     任何 dispose/close 操作都会触发 ``got Future attached to a different loop``。
     本函数创建全新的 engine + session，并在任务生命周期内绑定 sessionmaker，
-    供 ``generative_job_db_session`` 开独立短会话。
+    供 ``short_db_session`` 开独立短会话。
 
     用法::
 
@@ -91,11 +91,13 @@ async def get_worker_session() -> AsyncIterator[AsyncSession]:
 
 
 @asynccontextmanager
-async def generative_job_db_session() -> AsyncIterator[AsyncSession]:
-    """进度/取消检测用会话。
+async def short_db_session() -> AsyncIterator[AsyncSession]:
+    """开一个短独立会话（与调用方事务无关）。
 
-    - Worker：在当前任务的 worker engine 上开独立短会话（同 loop、不共享主事务）
-    - API：回退到全局 ``AsyncSessionLocal``
+    - Worker：在当前任务绑定的 engine 上开（Celery 每次 ``asyncio.run`` 都是新 loop，
+      全局 engine 池里的连接属于上一个 loop，复用会抛
+      ``got Future attached to a different loop``）。
+    - API / 脚本：无 worker engine 绑定时回退全局 ``AsyncSessionLocal``。
     """
     maker = _worker_sessionmaker.get()
     if maker is not None:

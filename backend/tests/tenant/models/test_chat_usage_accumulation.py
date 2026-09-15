@@ -15,6 +15,11 @@ from miles_portal.tenant.models.services.usage import (
 from tests.tenant.models._usage_doubles import _cm, _ShortSession
 
 
+def _boom(*args: object, **kwargs: object) -> None:
+    """全局 ``AsyncSessionLocal`` 替身：被调用即炸，让「回退全局」立刻暴露。"""
+    raise AssertionError("ChatUsageSink.record 不得用全局 AsyncSessionLocal（Worker 下跨 loop 复用连接必失败）")
+
+
 def test_chat_usage_accumulation():
     token = begin_chat_usage_accumulation()
     try:
@@ -30,7 +35,10 @@ def test_chat_usage_accumulation():
 @pytest.mark.asyncio
 async def test_chat_usage_sink_accumulates_and_commits(monkeypatch):
     short = _ShortSession()
-    monkeypatch.setattr(usage_mod, "AsyncSessionLocal", lambda: _cm(short))
+    # 会话来源现在是 short_db_session（Worker 下绑到当前 loop 的 engine）；全局换成
+    # 「调用即炸」的替身，任何回退全局的改动都会在这里失败。
+    monkeypatch.setattr(usage_mod, "short_db_session", lambda: _cm(short), raising=False)
+    monkeypatch.setattr(usage_mod, "AsyncSessionLocal", _boom, raising=False)
 
     begin_chat_usage_accumulation()
     model_id = uuid4()

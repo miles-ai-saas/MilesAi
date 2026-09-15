@@ -259,3 +259,83 @@ sequenceDiagram
 2. **§8.1 结论**：探针确认 `_chat_usage_acc` 的写入**会**丢在 LangGraph 的独立 task 里（`AgentChatCall` 恒记 0 token）；已改为让 ContextVar 持有可变的 `ChatUsageAccumulator`、累加走**原地修改**，使子上下文的写入对调用方可见。回归测试：`tests/tenant/agents/test_rag_usage_accumulation.py`（该测试即结论载体）。
 3. **范围外补充**：`direct_chat`（无 KB 直连）同属「LLM 单次调用期间持有连接」，已一并处理，见 §7 非目标清单的边界说明。
 4. **附图读取处数**：实际改动 3 处（`resolve_chat_media_parts` 与两条生成分支），`_run_tool_agent` 未改。
+5. **§10 新增（Worker 短会话）**：本分支新增的三处短会话原用全局 `AsyncSessionLocal`，而该路径在
+   Celery 内可达，跨 loop 复用连接必失败；已改走 worker-aware 短会话，并把 helper 更名
+   `short_db_session`（现服务生成任务 / chat 用量 / 媒体读取 / 检索四处）。其余既有同险站点
+   经裁决不在本分支修复，清单与复现见 §10。
+
+---
+
+## 10. 遗留：Worker 内仍走全局会话的既有站点（本分支未修）
+
+> 本节记录分支终审（不变量 I1）发现、经裁决**不在本分支修复**的既有隐患，另立专项。
+> 机制与已修的三处（§10.3）完全相同，处理方式也相同。
+
+### 10.1 机制
+
+Celery 任务入口用 `asyncio.run(...)`（如 `miles-worker/.../tasks/agent_schedule.py:84`
+→ `AgentService.chat`），每次调用新建事件循环；而**全局** `engine` 的连接池持有上一个 loop
+创建的 asyncpg 连接，复用它即抛：
+
+```text
+RuntimeError: ... got Future attached to a different loop
+```
+
+`get_worker_session()`（`miles-core/.../infra/db/async_session.py`）在任务生命周期内把
+`_worker_sessionmaker` 绑定到当前 loop 的 engine；`short_db_session()` 优先用它，
+**无绑定时才**回退全局。因此「在 Worker 内打开的全局短会话」都是潜在故障点。
+
+### 10.2 复现证据（真库、同进程）
+
+连续 6 次 `asyncio.run`，每轮各跑一次全局会话与 `get_worker_session()`：
+
+```text
+run#1 global -> ok          run#1 worker -> ok
+run#2 global -> FAIL        run#2 worker -> ok
+run#3 global -> ok          run#3 worker -> ok
+run#4 global -> FAIL        run#4 worker -> ok
+run#5 global -> ok          run#5 worker -> ok
+run#6 global -> FAIL        run#6 worker -> ok
+```
+
+全局在第 2/4/6 次失败（约一半），worker 会话 6/6 正常。`ChatUsageSink.record` 无
+try/except，异常直接冒泡，故定时智能体任务约一半会在生成中途失败 —— 即本分支修掉的那个。
+
+### 10.3 本分支已修（3 处）
+
+| 站点 | 位置（改动前） |
+|------|----------------|
+| `ChatUsageSink.record` | `miles-portal/.../models/services/usage.py:128` |
+| 线性检索短会话 | `miles-portal/.../agents/services/agent/chat_rag.py:381` |
+| `FlowMediaReader.read_image_bytes` / `read_attachment_bytes` | `miles-portal/.../attachments/services/media_reader.py:44` / `:50` |
+
+`usage.py` 保留 `AsyncSessionLocal` 的 import：同文件的 `FlowUsageSink.record` 仍用之（见 10.4）。
+
+### 10.4 未修的既有同险站点
+
+机制同上、同样在 Worker 内可达，但属本分支范围外（裁决：只修本分支新增的 3 处）。
+行号为**改动前**（本分支未触碰这些文件，故即当前行号）。
+
+| 站点 | 位置 |
+|------|------|
+| LangGraph `retrieve` 节点 | `miles-ai/.../integrations/langgraph/graphs/rag_qa.py:67` |
+| `FlowUsageSink.record` | `miles-portal/.../models/services/usage.py:167` |
+| flow 工具调用 | `miles-portal/.../tools/services/flow_invoker.py:40` |
+| flow `RunContext` 模型解析 | `miles-portal/.../flows/services/run_context.py:25` |
+| 子流程图加载 | `miles-portal/.../flows/services/subflow_loader.py:25` |
+| 提示词模板加载 | `miles-portal/.../prompts/services/template_loader.py:42` |
+| 敏感词加载 | `miles-portal/.../compliance/services/scan_words_loader.py:24` |
+| `KnowledgeSearch` 节点 | `miles-ai/.../flow_runtime/nodes/rag_nodes.py:48` |
+| 生图节点 | `miles-ai/.../flow_runtime/nodes/image_generate.py:55` / `:84` |
+| 生视频节点 | `miles-ai/.../flow_runtime/nodes/video_generate.py:56` / `:86` |
+
+**处理方式**（同 10.3）：把 `async with AsyncSessionLocal() as db:` 换成
+`async with short_db_session() as db:`；若该文件因此不再引用全局工厂，同步删除其 import。
+`usage.py` 需在其 `FlowUsageSink` 也改完后才能删 import。
+
+### 10.5 护栏覆盖现状
+
+本次为对话链路补的护栏（`tests/infra/test_short_db_session.py`、
+`test_chat_usage_sink_session.py`、`test_flow_media_reader.py`、
+`test_chat_rag_connection_release.py`）**只覆盖 10.3 的三处**；10.4 的站点仍无护栏，
+修它们时应同形补「全局会话换成调用即炸替身」的用例。

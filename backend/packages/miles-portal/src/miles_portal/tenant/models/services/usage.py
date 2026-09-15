@@ -10,7 +10,7 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from miles_ai.integrations.litellm.usage_sink import UsageSink
-from miles_core.infra.db import AsyncSessionLocal
+from miles_core.infra.db import AsyncSessionLocal, short_db_session
 from miles_core.models.model import ModelConfig
 from miles_core.models.model.usage_log import ModelUsageLog
 
@@ -121,11 +121,11 @@ class ChatUsageSink:
     async def record(self, *, prompt_tokens: int = 0, completion_tokens: int = 0) -> None:
         """实现 ``UsageSink`` 协议：自开短会话写 chat 来源用量并提交。"""
         # 与 ``record_model_usage`` 内的零用量短路重复，但这里必须保留：只有在此处
-        # 提前返回，才不会执行 ``AsyncSessionLocal()`` 去**打开一个会话/连接**。
+        # 提前返回，才不会执行 ``short_db_session()`` 去**打开一个会话/连接**。
         # 删掉它会让空记录也占用一次连接，违背本类「生成期间不占用调用方连接」的初衷。
         if max(0, prompt_tokens) + max(0, completion_tokens) <= 0:
             return
-        async with AsyncSessionLocal() as db:
+        async with short_db_session() as db:
             await record_model_usage(
                 UsageRecordContext(
                     db=db,

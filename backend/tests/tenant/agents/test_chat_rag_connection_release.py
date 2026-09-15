@@ -29,17 +29,42 @@ class _TxnDb:
 
 
 class _ShortSession:
-    """AsyncSessionLocal 替身：记录被开过几次。"""
+    """``short_db_session`` 替身：记录被开过几次、是否已退出。
 
-    def __init__(self) -> None:
+    传入 ``events`` 时向共享事件流追加 ``short_enter`` / ``short_exit``，用于断言
+    短会话没有把 LLM 调用包在里面（短会话包住生成 = 生成期间仍占一个连接）。
+    """
+
+    def __init__(self, events: list[str] | None = None) -> None:
         self.entered = 0
+        self.exited = 0
+        self._events = events
 
     async def __aenter__(self) -> "_ShortSession":
         self.entered += 1
+        if self._events is not None:
+            self._events.append("short_enter")
         return self
 
     async def __aexit__(self, *exc: object) -> bool:
+        self.exited += 1
+        if self._events is not None:
+            self._events.append("short_exit")
         return False
+
+
+def _boom(*args: object, **kwargs: object) -> None:
+    """全局 ``AsyncSessionLocal`` 替身：被调用即炸，让「回退全局」立刻暴露。"""
+    raise AssertionError("线性检索不得用全局 AsyncSessionLocal（Worker 下跨 loop 复用连接必失败）")
+
+
+def _forbid_global_session(monkeypatch) -> None:
+    """把模块里的全局会话工厂换成「调用即炸」的替身。
+
+    ``raising=False``：Step 4 后本模块不再导入 ``AsyncSessionLocal``，该替换是为了
+    在（万一）有人把全局会话加回来时立刻失败，而非依赖当前 import 存在。
+    """
+    monkeypatch.setattr(chat_rag_mod, "AsyncSessionLocal", _boom, raising=False)
 
 
 def _run(coro):
@@ -86,7 +111,7 @@ def _hooks(*, payload: dict | None = None) -> SimpleNamespace:
 
 def test_linear_path_retrieves_in_short_session_then_commits_before_generate(monkeypatch):
     db = _TxnDb()
-    short = _ShortSession()
+    short = _ShortSession(events=db.events)
     svc = _svc(db)
     captured: dict[str, object] = {}
 
@@ -99,7 +124,8 @@ def test_linear_path_retrieves_in_short_session_then_commits_before_generate(mon
         captured["generate_kwargs"] = kwargs
         return "答"
 
-    monkeypatch.setattr(chat_rag_mod, "AsyncSessionLocal", lambda: short)
+    monkeypatch.setattr(chat_rag_mod, "short_db_session", lambda: short, raising=False)
+    _forbid_global_session(monkeypatch)
     monkeypatch.setattr(chat_rag_mod, "build_kb_retrieval_bindings", lambda: MagicMock())
     monkeypatch.setattr(chat_rag_mod, "should_use_tools_with_kb", lambda *a, **k: False)
     monkeypatch.setattr(chat_rag_mod, "should_use_langgraph_rag", lambda *a, **k: False)
@@ -122,8 +148,10 @@ def test_linear_path_retrieves_in_short_session_then_commits_before_generate(mon
     # 检索走的是短会话，不是请求会话
     assert captured["retrieve_db"] is short
     assert short.entered == 1
-    # 顺序：先 commit 请求会话，再进入生成
-    assert db.events == ["commit", "generate"]
+    assert short.exited == 1
+    # 顺序：短会话已退出 → 请求会话 commit → 才进入生成。
+    # 短会话若包住 LLM 调用，生成期间就仍占着一个连接（M17 指出的护栏缺口）。
+    assert db.events == ["short_enter", "short_exit", "commit", "generate"]
     # 生成入口拿到的是 hits，不拿 db
     assert captured["generate_kwargs"]["prompt"].endswith("问题")
     assert "db" not in captured["generate_kwargs"]
@@ -132,7 +160,8 @@ def test_linear_path_retrieves_in_short_session_then_commits_before_generate(mon
 def test_linear_path_media_reader_is_short_session_reader(monkeypatch):
     db = _TxnDb()
     svc = _svc(db)
-    monkeypatch.setattr(chat_rag_mod, "AsyncSessionLocal", lambda: _ShortSession())
+    monkeypatch.setattr(chat_rag_mod, "short_db_session", lambda: _ShortSession(), raising=False)
+    _forbid_global_session(monkeypatch)
     monkeypatch.setattr(chat_rag_mod, "build_kb_retrieval_bindings", lambda: MagicMock())
     monkeypatch.setattr(chat_rag_mod, "should_use_tools_with_kb", lambda *a, **k: False)
     monkeypatch.setattr(chat_rag_mod, "should_use_langgraph_rag", lambda *a, **k: False)
@@ -164,7 +193,8 @@ def test_linear_path_keeps_retrieve_query_and_prompt_query_distinct(monkeypatch)
         captured["prompt_kwargs"] = kwargs
         return "拼好的 prompt"
 
-    monkeypatch.setattr(chat_rag_mod, "AsyncSessionLocal", lambda: short)
+    monkeypatch.setattr(chat_rag_mod, "short_db_session", lambda: short, raising=False)
+    _forbid_global_session(monkeypatch)
     monkeypatch.setattr(chat_rag_mod, "build_kb_retrieval_bindings", lambda: MagicMock())
     monkeypatch.setattr(chat_rag_mod, "should_use_tools_with_kb", lambda *a, **k: False)
     monkeypatch.setattr(chat_rag_mod, "should_use_langgraph_rag", lambda *a, **k: False)
