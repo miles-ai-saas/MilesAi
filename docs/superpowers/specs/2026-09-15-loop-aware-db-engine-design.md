@@ -248,7 +248,8 @@ Worker（每任务一个 loop）：
 
 门禁同前：`ruff format --check .`、`ruff check .`、`lint-imports`、
 `python -m miles_server.scripts.export_openapi --check`、`python -m pytest -q`
-（当前基线 1090 passed / 2 既有 warning）。
+（main 基线 1090 passed；全量计数随本分支各任务推进递增，warning 数按最近一次全量 run 实测，不在此写死——
+不同 `-W` 过滤器下数字不同，写死只会制造假精确）。
 
 > 测试环境事实（已核查）：`pytest-asyncio` 为 `asyncio_mode = "auto"`，未配置 `loop_scope`
 > ⇒ 每个用例一个新 loop，因此「按 loop 缓存 engine」在测试里不会跨用例复用；`tests/conftest.py`
