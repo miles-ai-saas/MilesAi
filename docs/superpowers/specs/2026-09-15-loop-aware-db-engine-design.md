@@ -264,7 +264,8 @@ Worker（每任务一个 loop）：
 | `WeakKeyDictionary` 以 loop 为键 | 需确认常见 loop 实现（标准 asyncio、uvloop）可弱引用；实现阶段以一条小测试钉住，若不可弱引用则退化为按 `id(loop)` 加存活校验。**已确认**：标准 asyncio loop 可弱引用（仓内未用 uvloop） |
 | 删 `engine` 是破坏性导出变更 | 仓内唯一消费者 `health_checks.py` 已定位；实现时以 `rg` 复扫确认，并跑全量门禁。**已完成** |
 | uvicorn 单长命 loop 下条目常驻 | 正确行为（本就该复用）；该 loop 的 engine 由其自身生命周期覆盖，无需跨 loop 释放 |
-| 弱键不提供自动清理（实现阶段实测修正） | `asyncpg` 连接强引用 loop、池强持有连接，注册表持强引用的 engine 反钉 weak key ⇒ **只要有存活连接，条目永不失效**。故 `dispose_loop_engines()` 是唯一释放路径，不是可选优化；已同步改正第 5 节与代码 docstring |
+| 弱键不提供自动清理（实现阶段实测修正） | `asyncpg` 连接强引用 loop、池强持有连接，注册表持强引用的 engine 反钉 weak key ⇒ **只要有存活连接，条目永不失效**。故 `dispose_loop_engines()` 是唯一释放路径，不是可选优化；已同步改正第 5 节与代码 docstring。**终检实测**：漏掉释放时，6 次连续任务后注册表条目 0→6、数据库连接数 0→6（严格线性），同一批量在 `run_worker_db_coro` 下两项均为 0 |
+| 复用旧 loop 的 engine 不会被 `pool_pre_ping` 悄悄治愈（终检实测） | 对照实验把 engine 固定复用第一次 loop 那份（等价迁移前的模块级单例），6 次任务失败 3 次（第 2/4/6 次），异常为 `RuntimeError: Task ... got Future <Future pending ...> attached to a different loop`：抛出点是**池检出时的 pre-ping**（`sqlalchemy/pool/base.py:1309` → `asyncpg.py:825 _async_ping`），经 `util.safe_reraise()` 一路冒到 `progress.update_generative_job_progress` 的 `db.get()`——即 `build_engine()` 里那个 `pool_pre_ping=True` 并未把它判成普通断连后静默换连接。结论：该池开关不会掩盖本 bug，回归一旦发生是响的（不会退化成「偶发慢」这类软故障）；代价是失败的任务会在进程存活期间留下 `idle in transaction` 服务端连接（终检探针实测 3 次失败留下 2 条，即 `after_B=2`；进程退出后消失），且 asyncio 会为已关闭 loop 上的连接终止补打 `RuntimeError: Event loop is closed` 例外日志 |
 | 同一 loop 内 dispose 后再取会话 | `pop` 掉整条 `(engine, maker)` 后，下次 `AsyncSessionLocal()` 会**新建整个 engine**（含新池，由同一 `Settings` 快照重建），而非复用空池 |
 | dispose 失败会顶掉任务异常（**已接受，不改代码**） | 现象：`finally: await dispose_loop_engines()` 若 dispose 自身抛错，它会替换 `try` 里的业务异常成为主异常，业务异常降级为 `__context__`。接受理由：调用方是 Celery 任务，「清理失败」让任务失败并暴露出来，比静默泄漏更容易被发现；信息未丢失（异常链上仍在），代价只是排查首因要多看一层。将来若确需改：在 `finally` 里 `try/except` 包住 dispose（清理失败只 `logger.exception` 记录，不顶掉业务异常）——会引入分支，收益与「dispose 自身抛错」这一低概率事件不匹配，故不做 |
 
@@ -279,3 +280,95 @@ Worker（每任务一个 loop）：
 - 2026-09-15 首版：确立「单一 loop 感知工厂」终局形态；经用户确认——① 采「单一工厂」而非
   「分层保留」；② engine 释放归 Worker 边界统一包装（`run_worker_db_coro`）；③ 工厂以模块级
   **函数**实现；④ **DB 与 Redis 解耦**，Redis 不并入该 helper。
+
+- 2026-09-15 终检（Task 4，**不改任何代码**）：已实施并全量复验。五条门禁全绿
+  （`ruff format --check .` / `ruff check .` / `lint-imports`（6 contracts kept, 0 broken）/
+  `export_openapi --check` / `python -m pytest -q`）；全量 **1076 passed**，默认过滤器下无
+  warnings summary，同一 `-W default` 过滤器下 5 条既有 ResourceWarning（redis 连接未关 ×4、
+  loop 未关 ×1）与基线同数，**无新增**。真库端到端探针 6/6 成功、敏感性对照 3/6 失败、连接数
+  不随任务数增长（明细见下）。
+
+  **① 测试数口径为何是 1076 而非计划里的 1077。** Task 3 除计划内的两处删减外，还删掉了
+  `tests/tenant/attachments/test_flow_media_reader.py::test_module_does_not_reference_global_session_factory`
+  ——它的断言 `not hasattr(media_reader_mod, "AsyncSessionLocal")` 被「模块内必有该工厂」这一迁移
+  事实必然为假，删掉比反写成恒真式更诚实（Task 3 评审认可）。故实测比计划口径少 1。
+
+  **② Task 3 另有两处计划外但经评审认可的处置，如实补记。** (a) **退役整个**
+  `tests/infra/test_no_global_session_in_worker_paths.py`：6 个测试函数、参数化后 19 条，守护的
+  「13 模块清单 + AST allowlist」概念在 §6.3 之后不复存在，改写成新概念下的等价物即制造第二份
+  §7 清单，故解散。(b) **重命名 14 条仍在描述旧机制的护栏用例**（旧名里的
+  `never_falls_back_to_global_session` / `uses_short_session` / `within_short_session` 描述的是已经
+  删掉的「选错工厂」错误；断言本身已改为「在自己那份会话上跑」）。14 条逐条如下，写进修订记录是
+  为了让「改名」与「删测试」在后续 review 里可被区分，避免被误读为覆盖度下降：
+
+  | 文件 | 旧名 → 新名 |
+  |---|---|
+  | `tests/flow/test_generative_nodes.py` | `test_image_generate_sync_never_falls_back_to_global_session` → `test_image_generate_sync_honours_injected_resolver_and_orchestrator` |
+  | 同上 | `test_video_generate_sync_never_falls_back_to_global_session` → `test_video_generate_sync_honours_injected_resolver_and_orchestrator` |
+  | `tests/flow/test_prompt_template_node.py` | `test_knowledge_search_never_falls_back_to_global_session` → `test_knowledge_search_retrieves_on_its_own_session` |
+  | `tests/rag/test_rag_qa_nodes_share_generate.py` | `test_retrieve_node_uses_short_session_not_global` → `test_retrieve_node_retrieves_on_its_own_session` |
+  | `tests/tenant/compliance/test_scan_words_loader.py` | `test_loader_delegates_with_short_session_and_tenant` → `test_loader_delegates_with_own_session_and_tenant` |
+  | 同上 | `test_loader_never_falls_back_to_global_session` → `test_loader_reads_words_from_its_own_session` |
+  | `tests/tenant/flows/test_run_context_session.py` | `test_model_resolver_never_falls_back_to_global_session` → `test_model_resolver_runs_inside_its_own_session` |
+  | 同上 | `test_model_resolver_missing_model_reports_bad_request_within_short_session` → `test_model_resolver_missing_model_reports_bad_request_within_its_own_session` |
+  | `tests/tenant/flows/test_subflow_loader.py` | `test_subflow_loader_never_falls_back_to_global_session` → `test_subflow_loader_builds_repository_on_its_own_session` |
+  | `tests/tenant/generative/test_progress_session.py` | `test_update_progress_never_falls_back_to_global_session` → `test_update_progress_writes_and_publishes_on_its_own_session` |
+  | 同上 | `test_is_cancelled_never_falls_back_to_global_session` → `test_is_cancelled_reads_on_its_own_session` |
+  | `tests/tenant/models/test_flow_usage_sink.py` | `test_flow_usage_sink_record_never_falls_back_to_global_session` → `test_flow_usage_sink_record_writes_one_submitted_row` |
+  | `tests/tenant/prompts/test_template_loader.py` | `test_loader_never_falls_back_to_global_session` → `test_loader_loads_live_reference_from_its_own_session` |
+  | `tests/tenant/tools/test_flow_invoker_session.py` | `test_flow_tool_invoker_never_falls_back_to_global_session` → `test_flow_tool_invoker_runs_on_its_own_session` |
+
+  （14 条均已核对：旧名在 `HEAD` 的 `backend/tests` 里零命中、新名只在 `HEAD` 出现。）
+
+  **③ 真库端到端探针（`/tmp/task4_loop_probe.py`，不提交）三组结果。**
+
+  - **组 A（正例）**：连续 6 次 `run_worker_db_coro(...)`，每次在协程内跑 3 个真实站点——
+    `progress.update_generative_job_progress`（`AsyncSessionLocal()` + `db.get(GenerativeJob)` +
+    `commit`）、`langgraph/graphs/rag_qa.py::retrieve`（`AsyncSessionLocal()` + `kb_bases` 真实
+    SELECT + Milvus 检索）、`prompts/services/template_loader.py` 的 loader 闭包
+    （`db.get(PromptTemplate)`）。**6/6 成功**；6 个 loop 互不相同、6 个 engine 互不相同
+    （`distinct_loops=6`、`distinct_engines=6`），每次跑完注册表条目回到 0。
+  - **组 B（跨 loop 敏感性对照）**：把 `_loop_engine_and_maker` 换成「engine 建一次、所有 loop
+    复用」，等价迁移前的模块级单例。**3/6 失败，恰为第 2/4/6 次**，异常全部是
+    `RuntimeError: Task ... got Future <Future pending ...> attached to a different loop`；逐帧
+    traceback 显示抛出点是**池检出时的 pre-ping**（`sqlalchemy/pool/base.py:1309` →
+    `asyncpg.py:825 _async_ping` → `asyncpg/connection.py:354`），再经 `util.safe_reraise()`
+    冒到 `miles_ai/integrations/generative/jobs/progress.py:55` 的
+    `job = await db.get(GenerativeJob, job_id)`——即复用的连接在第一次 await 上炸，且该
+    `RuntimeError` **没有**被 `pool_pre_ping` 当成普通断连吞掉。没有这组，「6/6 成功」无法排除
+    「探针根本没触到跨 loop 路径」。
+  - **组 C（连接计数的敏感性对照）**：保留 loop 感知注册表，但用裸 `asyncio.run` 起 loop（等价
+    「忘了在 loop 关闭前释放」）。**6/6 成功，但注册表条目 0→6、连接数 0→6（严格线性）**——这既
+    给组 A 的「0 增长」提供了判别力证明（不是连接被别的东西顺手关掉了），也是 §8「弱键不自动
+    清理」那条的实测证据。
+  - **连接数口径**：`pg_stat_activity` 按 `datname = current_database()` + `usename = current_user`
+    过滤，排除计数器自身那条连接（`application_name = 'task4_probe_counter'`）。四个观测点：
+    `baseline = 0` → `after_A = 0` → `after_B = 2`（对照组 3 次失败留下 2 条 `idle in transaction`
+    残连，进程存活期间可见）→ `after_C = 6`；清理后 `final = 0`。**组 A 的增量是 0，不随任务数增长。**
+  - **夹具与清理（全部完成，可复核）**：探针插入 1 条 `generative_jobs`（`progress_percent` 复核为
+    60、`progress_message = 'task4 probe run 6'`，证明 6 次写入真的落到库里）与 1 条
+    `kb_bases`（探针专用，`retrieval_mode='vector'`、dim 1024）；`finally` 中按 id 删除，
+    `rowcount` 各 1、残留 0。探针在 Milvus 上创建的空 collection `document_chunk_1024` 用完即
+    drop（`before = []`、`after = []`）。组 B/C 造出的 6 条服务端连接用 `pg_terminate_backend`
+    掐掉（6/6 返回 True）。结束时库中无残留行、无残留 collection、连接数回到 baseline。
+  - **探针与生产的差异（如实记录，非「造假」）**：向量后端在 settings 里默认为 `weaviate`（本机
+    8080 未启动），探针进程内改用 `VECTOR_STORE_BACKEND=milvus`（docker 中真实在跑的后端）；
+    embedding 回调用固定向量替身（本机无 `DASHSCOPE_API_KEY`，`agt_model_tenant_credentials`
+    亦为空表，真实 provider 调用必失败），但**DB 路径本身（会话创建 + `kb_bases` 查询）未打桩**，
+    组 B 的失败点恰好落在 `db.get()` 上，可证跨 loop 路径确被触到。
+
+  **④ `WeakKeyDictionary` 修正（必须记录）。**
+
+  > 第 5 节原称「`WeakKeyDictionary` 的弱键让 loop 回收即自动摘除」——实施后实测证明该说法
+  > 错误（asyncpg 连接强引用 loop、池强持有连接、注册表强引用 engine ⇒ 条目被钉住，只要有存活
+> 连接就永不失效）。已改为「弱键只规避 `id(loop)` 复用，**唯一释放路径是显式
+> `dispose_loop_engines()`**」，§5 与 §8 均已同步；代码 docstring 同。
+
+  **⑤ 非目标复核（未误改）。** `git diff main...HEAD --stat` 共 45 个文件，全部落在 DB 会话、
+  Worker 入口、§6.1 的 18 处调用点与其测试、以及本 spec/plan 文档内：不含
+  `miles_core/infra/redis/` 任何文件（Redis 侧零改动）；`media_reader.py` 的差异只有
+  `short_db_session()` → `AsyncSessionLocal()` 与两处 docstring 措辞，`FlowMediaReader` /
+  `SessionMediaReader` 的「事务归属」区分未动；无 tool agent / a2a 路径文件；`get_db()` 形状
+  不变（仅会话来源变化）。`rg -n "from miles_core.infra.redis"
+  packages/miles-core/src/miles_core/infra/db/` 零命中，§4 的「DB 层不依赖 Redis」成立。
+  §8 新增一条「`pool_pre_ping` 不会悄悄治愈本 bug」的实测结论。
