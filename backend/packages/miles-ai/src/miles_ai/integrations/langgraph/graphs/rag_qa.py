@@ -30,7 +30,7 @@ from miles_ai.integrations.langgraph.constants import RELEVANCE_NONE, RELEVANCE_
 from miles_ai.integrations.langgraph.grading import _score_grade, llm_grade_relevance
 from miles_ai.integrations.langgraph.state import RAGGraphState
 from miles_ai.rag.generate import build_rag_prompt, format_hits_context, generate_rag_answer, retrieve_hits
-from miles_core.infra.db import AsyncSessionLocal
+from miles_core.infra.db import short_db_session
 from miles_core.models.model import ModelConfig
 
 
@@ -64,7 +64,7 @@ async def retrieve(state: RAGGraphState, config: RunnableConfig) -> dict[str, An
     tenant_id = UUID(state["tenant_id"])
     search_q = (state.get("query") or "").strip()
     kb_retrieval = config.get("configurable", {}).get("kb_retrieval") if config else None
-    async with AsyncSessionLocal() as db:
+    async with short_db_session() as db:
         hits = await retrieve_hits(
             search_q,
             tenant_id=tenant_id,

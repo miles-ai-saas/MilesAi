@@ -64,9 +64,11 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 async def get_worker_session() -> AsyncIterator[AsyncSession]:
     """Celery Worker 专用会话。
 
-    Fork 后父进程的全局 engine 内部 asyncpg 连接残留了旧事件循环的 Future，
-    任何 dispose/close 操作都会触发 ``got Future attached to a different loop``。
-    本函数创建全新的 engine + session，并在任务生命周期内绑定 sessionmaker，
+    Celery 任务入口每次 ``asyncio.run`` 都新建事件循环，而全局 ``engine`` 的连接池里可能
+    仍留着上一个 loop 创建的 asyncpg 连接：新 loop 里**第一次**用全局会话复用该连接，即抛
+    ``got Future attached to a different loop``。实测同一进程连续 6 次 ``asyncio.run``，
+    第 2/4/6 次失败（约一半），与 fork 无关——fork 只是更早暴露这一现象。
+    本函数按当前 loop 新建 engine + session，并在任务生命周期内绑定 sessionmaker，
     供 ``short_db_session`` 开独立短会话。
 
     用法::
@@ -75,11 +77,9 @@ async def get_worker_session() -> AsyncIterator[AsyncSession]:
             ...
             await db.commit()
     """
-    _engine = create_async_engine(
-        settings.database_url,
-        echo=settings.debug,
-        pool_pre_ping=True,
-    )
+    # 必须走 build_engine：手搓 engine 会静默忽略 db_pool_size / db_max_overflow /
+    # db_pool_timeout（当前值恰为 SQLAlchemy 默认，所以只在调参时才会暴露）。
+    _engine = build_engine(settings)
     _maker = async_sessionmaker(_engine, class_=AsyncSession, expire_on_commit=False)
     token = _set_worker_sessionmaker(_maker)
     try:

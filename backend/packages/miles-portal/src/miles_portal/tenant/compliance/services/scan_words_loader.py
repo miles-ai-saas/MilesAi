@@ -12,7 +12,7 @@ from collections.abc import Awaitable, Callable
 from typing import Any
 from uuid import UUID
 
-from miles_core.infra.db import AsyncSessionLocal
+from miles_core.infra.db import short_db_session
 from miles_portal.tenant.compliance.services.word_resolve import load_tenant_scan_words
 
 
@@ -21,7 +21,7 @@ def build_scan_words_loader() -> Callable[[str], Awaitable[Any]]:
 
     async def _loader(tenant_id: str) -> Any:
         tid = UUID(str(tenant_id))
-        async with AsyncSessionLocal() as db:
+        async with short_db_session() as db:
             return await load_tenant_scan_words(db, tid)
 
     return _loader

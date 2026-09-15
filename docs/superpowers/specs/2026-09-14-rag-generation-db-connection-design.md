@@ -262,14 +262,40 @@ sequenceDiagram
 5. **§10 新增（Worker 短会话）**：本分支在对话链路上新增的 3 个短会话**调用点**原用全局
    `AsyncSessionLocal`，而该路径在 Celery 内可达，跨 loop 复用连接必失败；已改走 worker-aware
    短会话，并把 helper 更名 `short_db_session`（现服务生成任务 / chat 用量 / 媒体读取 / 检索
-   四处）。其余既有同险站点经裁决不在本分支修复，清单与复现见 §10。
+   四处）。其余既有同险站点经裁决不在本分支修复，清单与复现见 §10（**2026-09-15 已修，见下条**）。
+
+### 2026-09-15：Worker 同险站点补齐（§10 收口）
+
+1. **§10.4 站点已修**：把 Celery 任务内可达、仍在用全局短会话的站点统一改用
+   `short_db_session()`（Task 1 改 **10 文件 12 处**），并删掉各文件因此不再使用的
+   `AsyncSessionLocal` import。注意 `progress.py` **不在这 12 处里**：它在基点（`4ba6ce5f`）
+   就已经是 `short_db_session`（上一分支更名时迁过去的），本分支对该文件的生产代码**零改动**。
+2. **清单漏项**：`miles_ai.integrations.generative.jobs.progress`（生成任务进度 / 取消）不
+   在初版 10 文件清单内，属「按 Task 1 触碰过的文件抄清单」造成的漏项。它本就是安全的
+   （见上条），本次补的不是它的代码，而是把它补进**必须受护栏保护的不变量清单**。为防同类
+   漏项重演，结构不变量测试改为与**源码交叉核对**（见 §10.5），同类漏项此后会立刻失败而非静默。
+3. **护栏补齐（§10.5）**：逐站点补「全局会话换成调用即炸替身」用例，并新增结构不变量
+   `tests/infra/test_no_global_session_in_worker_paths.py`（13 模块清单 + 基于 **AST** 的交叉
+   核对，且「谁可以碰全局会话」必须恰好等于显式 allowlist）；另补组合不变量
+   `tests/infra/test_worker_session_composition.py`（真实站点在 worker 块内/外各用哪个工厂）。
+4. **Worker engine 走 `build_engine`**：`get_worker_session()` 原为手搓 `create_async_engine`，
+   静默忽略 `db_pool_size` / `db_max_overflow` / `db_pool_timeout`，已改为复用 `build_engine`
+   并补接线测试（见 §10.5）。
+5. **端到端复跑（§10.2）**：真库探针按 Celery 形态连续 6 次 `asyncio.run`，块内依次调用
+   LangGraph `retrieve` 节点、`FlowUsageSink.record`、`progress.*`；worker 臂 **6/6 ok**，
+   对照臂（会话工厂换回全局）第 2/4/6 轮 FAIL 于
+   `got Future ... attached to a different loop`。
 
 ---
 
-## 10. 遗留：Worker 内仍走全局会话的既有站点（本分支未修）
+## 10. Worker 内曾走全局会话的既有站点（已修复）
 
-> 本节记录分支终审（不变量 I1）发现、经裁决**不在本分支修复**的既有隐患，另立专项。
-> 机制与已修的三处（§10.3）完全相同，处理方式也相同。
+> 本节记录分支终审（不变量 I1）发现、曾**另立专项**的既有隐患。机制与复现证据（§10.1 /
+> §10.2）保留在此：它们解释了「为什么 Worker 内必须用 `short_db_session`」，对后续新增
+> Worker 调用点仍是判据。
+>
+> **状态（2026-09-15）**：§10.4 列出的站点已**全部**改用 `short_db_session()`，并补齐逐站点
+> 护栏与结构不变量（§10.5）；修复后的对照探针见 §10.2 末段。
 
 ### 10.1 机制
 
@@ -301,7 +327,19 @@ run#6 global -> FAIL        run#6 worker -> ok
 全局在第 2/4/6 次失败（约一半），worker 会话 6/6 正常。`ChatUsageSink.record` 无
 try/except，异常直接冒泡，故定时智能体任务约一半会在生成中途失败 —— 即本分支修掉的那个。
 
-### 10.3 本分支已修（3 个调用点）
+**修复后复跑（2026-09-15，真库、同进程）**：同一形态连续 6 次 `asyncio.run`，块内依次调用
+LangGraph `retrieve` 节点、`FlowUsageSink.record`、`progress.update_generative_job_progress` /
+`is_generative_job_cancelled`：
+
+```text
+worker 臂（站点走 short_db_session）      -> 6/6 ok
+对照臂（同一批站点的会话工厂换回全局）    -> 第 2/4/6 轮 FAIL
+```
+
+对照臂的失败仍是 `RuntimeError: ... got Future ... attached to a different loop`，与上面同一
+形态；这说明上述「≈一半」不是探针自带抖动，而是全局会话在跨 loop 复用下的确定性行为。
+
+### 10.3 先期已修（3 个调用点）
 
 > 「3 处」指**调用点**，不是器件：`FlowMediaReader` 类本身在 `main` 上就有，且其中两处
 > `AsyncSessionLocal` 也是既有的；本分支新增的是它在 Agent 对话路径上的调用
@@ -313,16 +351,26 @@ try/except，异常直接冒泡，故定时智能体任务约一半会在生成�
 | 线性检索短会话 | `miles-portal/.../agents/services/agent/chat_rag.py:381` |
 | `FlowMediaReader.read_image_bytes` / `read_attachment_bytes` | `miles-portal/.../attachments/services/media_reader.py:44` / `:50` |
 
-`usage.py` 保留 `AsyncSessionLocal` 的 import：同文件的 `FlowUsageSink.record` 仍用之（见 10.4）。
+`usage.py` 的 import 已随 §10.4 一并收敛：其 `FlowUsageSink.record` 也改走短会话后，该文件不再
+引用全局工厂。
 
-### 10.4 未修的既有同险站点
+### 10.4 已修的既有同险站点
 
-机制同上、同样在 Worker 内可达，但属本分支范围外（裁决：只修本分支新增的 3 个调用点）。
+机制同上、同样在 Worker 内可达。原先按「只修本分支新增的 3 个调用点」裁决留在范围外，
+**2026-09-15 已全部改用 `short_db_session()`**。本分支 Task 1 实际改动为 **10 文件 12 处**。
 
-行号取自**改动前基线**（`main`）。本分支动过其中两个文件的其它位置，故它们的行号已漂移
-（表中以「→ 现」标出）。修复时**以符号名定位，不要照抄行号**。
+**计数口径**（三个数字常被混用，含义不同，不要再当作互相矛盾）：
 
-| 站点 | 位置（`main` → 现在） |
+| 数字 | 含义 |
+|------|------|
+| **10 文件 / 12 处** | 本分支 Task 1 实际改动（`git diff` 口径），也是 `-AsyncSessionLocal()` / `+short_db_session()` 的计数 |
+| **11 文件 / 14 处** | 本节下表枚举的 Worker 同险**站点**总数。其中 `progress.py` 的 2 处在基点即已是 `short_db_session`，本分支未改其生产代码，故 `git diff` 只有 10 文件 12 处 |
+| **13 模块** | 必须受 §10.5 结构护栏保护的 Worker 可达**模块**数 = Task 1 的 10 个 + 此前已是 `short_db_session` 的 `progress.py` / `chat_rag` / `media_reader` |
+
+行号取自**改动前基线**（`main`）；下表「→ 现」是**修复前**的当前值，修复后请**以符号名定位，
+不要照抄行号**。
+
+| 站点 | 位置（`main` → 修复前） |
 |------|----------------------|
 | LangGraph `retrieve` 节点 | `miles-ai/.../integrations/langgraph/graphs/rag_qa.py:57` → 现 `:67` |
 | `FlowUsageSink.record` | `miles-portal/.../models/services/usage.py:134` → 现 `:167` |
@@ -334,37 +382,87 @@ try/except，异常直接冒泡，故定时智能体任务约一半会在生成�
 | `KnowledgeSearch` 节点 | `miles-ai/.../flow_runtime/nodes/rag_nodes.py:48` |
 | 生图节点 | `miles-ai/.../flow_runtime/nodes/image_generate.py:55` / `:84` |
 | 生视频节点 | `miles-ai/.../flow_runtime/nodes/video_generate.py:56` / `:86` |
+| 生成任务进度 / 取消（**原清单漏记**） | `miles-ai/.../integrations/generative/jobs/progress.py:54` / `:75` |
 
-表内未标注两个行号的文件本分支未改动，`main` 与当前一致。
+表内未标注「→ 现」的文件，`main` 的行号与修复前一致（未受前一轮改动影响）。
 
-**这 10 处目前都落在 `get_worker_session()` 块内**（Celery 侧唯一入口 `agent_schedule` 的
-`svc.chat` 在块内，上表站点均在其调用子树中），因此「换成 `short_db_session()`」这一步即可
-生效，无需调整任务结构。将来若新增块**外**的 Worker 调用点，故障会静默复现（见上一条前提），
-届时需调整结构而非换符号。
+**原清单漏记的一处**：`miles_ai.integrations.generative.jobs.progress` 同样落在 Worker 调用
+子树内（生成任务 `job_execution` 的轮询分支读写进度 / 取消状态），但初版 10 文件清单没有它
+—— 这正是「按 Task 1 触碰过的文件抄清单」的漏项。它**在基点上就已经是安全的**
+（`4ba6ce5f` 即用 `short_db_session`，属上一分支更名时迁移的结果），本分支只补了护栏与清单
+登记、生产代码零改动；为防同类漏项重演，结构不变量测试改为与**源码交叉核对**清单
+（见 §10.5）：新增（或漏记）的站点会立刻以「清单缺项」失败，而不是静默留在网外。
+
+**下表这 11 文件 14 处都落在 `get_worker_session()` 块内**（Celery 侧唯一入口 `agent_schedule`
+的 `svc.chat` 在块内，表内站点均在其调用子树中），因此「换成 `short_db_session()`」这一步即可
+生效，无需调整任务结构。将来若新增块**外**的 Worker 调用点，故障会静默复现（见下一条前提），
+届时需调整结构而非换符号。这一「前提—组合」如今由已提交的
+`tests/infra/test_worker_session_composition.py` 守住：块内真实站点必须拿到 worker 工厂、
+块外必须回退全局。
 
 **为何其它 `AsyncSessionLocal()` 调用点不在上表**：判断依据是「能否在 Celery 任务内执行」，
 而非「是否用了全局会话」。全仓其余调用点只在单 loop 进程内运行，故无此风险：
 `miles-core/risk/enforce.py`（只被 Web 中间件 `web/middlewares/platform_risk.py` 与
 Admin 服务 `miles_admin/.../services/risk.py` 调用，均为独立单 loop 进程）、
 `agents/ws/chat.py` 与 `agents/ws/job_watch.py`（WebSocket 端点）、
-`miles-server` 的 CLI 脚本（`backfill_media_assets.py`、`db_ops.py`）。
+`miles-server` 的 CLI 脚本（`backfill_media_assets.py`、`db_ops.py`；每次进程调用只
+`asyncio.run` 一次，故同进程内不存在第二个 loop，且 Worker 子树 `miles_worker.tasks`
+从不 import `miles_server`）。
 新增调用点时请沿用同一判据。
 
+这份「谁可以碰全局会话」的名单是**显式登记**的，不是惯例：结构不变量测试用 AST 扫出全仓
+`AsyncSessionLocal` 引用集合，要求它恰好等于 `EXCLUDED_INFRA_MODULES` +
+`EXCLUDED_SINGLE_LOOP_MODULES`（上段列出的 5 个）。新增引用会在 CI 立刻红，必须在此处登记
+并接受 loop 安全性审查——这是为防「新增模块直接用全局会话」这一最危险的回归形态（旧测试
+只看得见 `short_db_session(`，对它无感）。
+
 **处理方式**（同 10.3）：把 `async with AsyncSessionLocal() as db:` 换成
-`async with short_db_session() as db:`；若该文件因此不再引用全局工厂，同步删除其 import。
-`usage.py` 需在其 `FlowUsageSink` 也改完后才能删 import。
+`async with short_db_session() as db:`；若该文件因此不再引用全局工厂，同步删除其 import
+（上表站点已完成，`usage.py` 的 import 亦随之删除）。
 
 > ⚠️ **前提：调用点必须落在 `get_worker_session()` 块内。**
 > `short_db_session()` 靠 `_worker_sessionmaker` ContextVar 判断是否有 worker engine，
 > 而该变量由 `get_worker_session()` 在 `__aenter__` 绑定、`__aexit__` **重置**。
 > 若在块外调用，它会**静默回退全局** `AsyncSessionLocal` —— 即等于没修。
 > `run_agent_schedule` 的结构是安全的（`svc.chat(...)` 在块内，见
-> `tasks/agent_schedule.py:34` 与 `:59`），但改造上表站点时需逐个确认这一点；
+> `tasks/agent_schedule.py:34` 与 `:59`），改造上表站点时已逐个确认这一点；
 > 真正跑在块外的调用点应按 worker 任务结构调整，而不是简单替换符号。
 
-### 10.5 护栏覆盖现状
+### 10.5 护栏覆盖现状（已补齐）
 
-本次为对话链路补的护栏（`tests/infra/test_short_db_session.py`、
+先前为对话链路补的护栏（`tests/infra/test_short_db_session.py`、
 `test_chat_usage_sink_session.py`、`test_flow_media_reader.py`、
-`test_chat_rag_connection_release.py`）**只覆盖 10.3 的三处**；10.4 的站点仍无护栏，
-修它们时应同形补「全局会话换成调用即炸替身」的用例。
+`test_chat_rag_connection_release.py`）**只覆盖 §10.3 的三处**。2026-09-15 已为 §10.4 的每个
+站点补上同形用例（用记录用替身替换 `short_db_session`，同时把 `AsyncSessionLocal` 换成
+`raising=False` 的「调用即炸」替身，钉住回退），并新增结构不变量
+`tests/infra/test_no_global_session_in_worker_paths.py`：
+
+- 13 个 Worker 可达模块的命名空间里**不得有** `AsyncSessionLocal`、**必须有**
+  `short_db_session`（回退或改名都会红）；
+- 反向断言：回退实现 `miles_core.infra.db.async_session` 与其 barrel `miles_core.infra.db`
+  两个符号都在（去掉全局引用会让 API / CLI 路径失效）；
+- 清单与**源码交叉核对**：`test_list_matches_every_short_db_session_call_site` 要求清单
+  等于「全仓所有 `short_db_session` 引用点 − 有意排除的基础设施模块」，故新增（或漏记）的站点
+  会立刻以「清单缺项」失败，而不会像 `progress.py` 那样静默漏过一轮；
+- `test_only_registered_modules_may_touch_the_global_session`：全仓 `AsyncSessionLocal` 引用
+  集合必须恰好等于显式 allowlist（见 §10.4 末段），把「谁可以碰全局会话」变成必须登记的决策；
+- 两处交叉核对都走 **AST**（符号引用），不是文本正则：注释 / docstring / 字符串里的同名文本
+  不再计入。正则实现曾让「在 `sync.py` 里写一句含 `short_db_session()` 的注释」直接 CI 红，
+  这是个真坑。
+
+**组合前提也已落测**：`tests/infra/test_worker_session_composition.py` 驱动真实站点
+（`progress.update_generative_job_progress`）在 `get_worker_session()` 块内 / 块外 / 块内
+spawn 的子任务中运行，断言**用了哪个工厂**（替身 sessionmaker 带标签），而不是「没抛异常」。
+没有这条测试时，「`get_worker_session()` 不再绑定 ContextVar」这一回归只会被
+`test_short_db_session.py` 的 helper 用例偶然看到。
+
+**Worker engine 的池参数**：`test_db_pool_settings.py` 断言 `get_worker_session()` 经
+`build_engine` 构造 engine、且 `pool_size` / `max_overflow` / `pool_timeout` /
+`pool_pre_ping` / `echo` 都来自 `Settings`（此前手搓 engine，这些参数被静默丢掉）。
+
+> **仍未覆盖（明确 defer）**：本分支是「每处记得选对工厂」的惯例 + 护栏，不是结构性修复；
+> 万一 LangGraph / anyio 内部把某个节点跑在与调用方**脱离**的上下文里，该站点会静默退化为
+> 全局会话，任何护栏都看不见（唯一症状是生产日志里的跨 loop `RuntimeError`）。结构性方案
+> 是在 Celery 边界做 loop-aware 的 sessionmaker 选择（仓库已为 Redis 这么做：`get_redis()`
+> 按 loop id 重建），那样连既有排除项与未来新站点也一并覆盖；该改动涉及核心基础设施
+> （旧 engine / 池的释放与生命周期），另立专项。
