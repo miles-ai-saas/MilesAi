@@ -51,6 +51,15 @@
 
 ### Task 1: loop 感知注册表 + 符号收敛
 
+> **实施期修正（已完成，勿再照抄本节内的旧措辞）**：原设计称「`WeakKeyDictionary` 的弱键让
+> loop 回收即自动摘除」。实施后实测确认该说法**错误**：`asyncpg/connection.py:65` 的
+> `self._loop = loop` 是强引用，池又强持有连接（`asyncpg/pool.py:343,454`），而注册表对 value
+> 持强引用，故「注册表 → engine → 池 → 连接 → loop」钉住 weak key —— 只要有存活连接，条目永不
+> 失效。**`dispose_loop_engines()` 是唯一释放路径**，不是可选优化。
+> 代码已按此改写（`async_session.py` 模块 docstring 与 `_loop_engines` 注释），spec §5/§8 亦已
+> 同步。下方 Step 3 的代码块已更新；本节 Step 7 的 commit message 保留了 `8582a5fb` 提交时的
+> 原文（含旧措辞），作为历史记录不再改动。
+
 **Files:**
 - Modify: `packages/miles-core/src/miles_core/infra/db/async_session.py`（见 Step 3）
 - Modify: `packages/miles-core/src/miles_core/infra/db/__init__.py`
@@ -281,8 +290,8 @@ Expected: collection error —— `ImportError: cannot import name 'get_engine'`
 
 引擎按**事件循环**持有：Celery 任务入口每次 ``asyncio.run`` 都新建 loop，若复用绑在
 旧 loop 上的连接池，会抛 ``got Future attached to a different loop``。以 loop 对象为
-键（``WeakKeyDictionary``，loop 回收即自动摘除）懒建 engine，使 ``AsyncSessionLocal()``
-对调用方而言与 loop 无关。
+键（``WeakKeyDictionary``；弱键只规避 id(loop) 复用，**不提供自动清理**——见下方「实施期修正」）懒建 engine，
+使 ``AsyncSessionLocal()`` 对调用方而言与 loop 无关。
 """
 
 import asyncio
@@ -789,7 +798,6 @@ EOF
 > 塌缩为 `async with AsyncSessionLocal()` 的纯转发，因此本 Task **没有行为变更**——它退掉的
 > 是一层已无信息的间接引用，以及只服务于旧机制的测试机件。正因如此，它的风险很低，评审重点
 > 应放在「调用点是否全部改到、护栏拆得是否干净且未误伤」。
-
 **Files:**
 - Modify: `packages/miles-core/src/miles_core/infra/db/async_session.py`（删两个转发壳）
 - Modify: `packages/miles-core/src/miles_core/infra/db/__init__.py`
@@ -1011,8 +1019,14 @@ Expected: 零命中（DB 层不得依赖 Redis，spec §4）。
 
 在 `docs/superpowers/specs/2026-09-15-loop-aware-db-engine-design.md` 的
 `## 10. 修订记录` 追加一条（日期 2026-09-15），如实记录：已实施、最终测试数、
-端到端探针结果（含对照组与连接数）、以及实施中与设计不符之处（若有）。若实现过程中
-发现了 spec 未预见的情况，同时补进 §8 风险表。
+端到端探针结果（含对照组与连接数）、以及实施中与设计不符之处。**必须包含**这条修正：
+
+> 第 5 节原称「`WeakKeyDictionary` 的弱键让 loop 回收即自动摘除」——实施后实测证明该说法
+> 错误（asyncpg 连接强引用 loop、池强持有连接、注册表强引用 engine ⇒ 条目被钉住，只要有存活
+> 连接就永不失效）。已改为「弱键只规避 `id(loop)` 复用，**唯一释放路径是显式
+> `dispose_loop_engines()`**」，§5 与 §8 均已同步；代码 docstring 同。
+
+若实现过程中还发现了 spec 未预见的情况，同时补进 §8 风险表。
 
 - [ ] **Step 5: Commit**
 

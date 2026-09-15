@@ -112,7 +112,12 @@ async def dispose_loop_engines() -> None:
 要点：
 
 - **键用 loop 对象本身（`WeakKeyDictionary`），不用 `id(loop)`**。这避免了 Redis 先例的 id 复用
-  隐患，且 loop 被回收时条目自动消失。
+  隐患——已释放 loop 的条目不可能被新 loop 误命中。
+  **注意：弱键不提供自动清理。** 实现阶段已实测确认：`asyncpg` 连接强引用 loop
+  （`asyncpg/connection.py:65` 的 `self._loop = loop`），池又强持有连接（`asyncpg/pool.py:343,454`），
+  而注册表对 value（engine）持强引用，故「注册表 → engine → 池 → 连接 → loop」会把 weak key 钉住：
+  只要池里还有存活连接，条目永不失效。因此**唯一的释放路径是显式 `dispose_loop_engines()`**，
+  由 Worker 边界（§5.3）与终检实测的泄漏观察一起兜住；不能把它当作可选优化。
 - **`AsyncSessionLocal()` 调用写法不变**（返回 `AsyncSession`、`expire_on_commit=False`），故
   既有测试里「按模块属性名打桩」的写法继续可用（新符号仍是模块级名字）。
 - **无运行 loop 时抛 `RuntimeError`**，比今天「等到 await 才炸」更早暴露。已核查仓内调用点全部
@@ -254,10 +259,11 @@ Worker（每任务一个 loop）：
 |---|---|
 | 每个任务新建 engine 的开销 | 与现状（`get_worker_session()` 每任务新建 engine）相同，不新增开销 |
 | 连接泄漏（忘记释放） | 由 `run_worker_db_coro` 集中保证；漏掉释放的入口会随任务数累积。列为 §7.3 的不变量测试；另在实现时实测「6 次连续任务后的连接数」 |
-| `WeakKeyDictionary` 以 loop 为键 | 需确认常见 loop 实现（标准 asyncio、uvloop）可弱引用；实现阶段以一条小测试钉住，若不可弱引用则退化为按 `id(loop)` 加存活校验 |
-| 删 `engine` 是破坏性导出变更 | 仓内唯一消费者 `health_checks.py` 已定位；实现时以 `rg` 复扫确认，并跑全量门禁 |
-| uvicorn 单长命 loop 下条目常驻 | 正确行为（本就该复用）；loop 回收后由弱引用自动清理 |
-| 同一 loop 关闭后条目短暂滞留（GC 前） | 仅影响稳态内存，量级为「一个已释放 engine 的包装对象」；由边界 `finally` 覆盖正常路径 |
+| `WeakKeyDictionary` 以 loop 为键 | 需确认常见 loop 实现（标准 asyncio、uvloop）可弱引用；实现阶段以一条小测试钉住，若不可弱引用则退化为按 `id(loop)` 加存活校验。**已确认**：标准 asyncio loop 可弱引用（仓内未用 uvloop） |
+| 删 `engine` 是破坏性导出变更 | 仓内唯一消费者 `health_checks.py` 已定位；实现时以 `rg` 复扫确认，并跑全量门禁。**已完成** |
+| uvicorn 单长命 loop 下条目常驻 | 正确行为（本就该复用）；该 loop 的 engine 由其自身生命周期覆盖，无需跨 loop 释放 |
+| 弱键不提供自动清理（实现阶段实测修正） | `asyncpg` 连接强引用 loop、池强持有连接，注册表持强引用的 engine 反钉 weak key ⇒ **只要有存活连接，条目永不失效**。故 `dispose_loop_engines()` 是唯一释放路径，不是可选优化；已同步改正第 5 节与代码 docstring |
+| 同一 loop 内 dispose 后再取会话 | `pop` 掉整条 `(engine, maker)` 后，下次 `AsyncSessionLocal()` 会**新建整个 engine**（含新池、重读 settings），而非复用空池 |
 
 ## 9. 遗留
 
