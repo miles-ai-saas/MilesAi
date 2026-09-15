@@ -1,8 +1,9 @@
 """Worker 边界包装：必须在**关闭 loop 之前**释放本 loop 的 engine。
 
 ``AsyncEngine.dispose()`` 是协程，一旦 loop 关闭就无法 await；而每次 ``asyncio.run``
-换 loop，不释放就会每个任务泄漏一池连接。故用「调用 dispose 时是否有运行中的 loop」
-钉住这个时序，而不是只看「最终是否调过」。
+换 loop，不释放就会每个任务泄漏一池连接。故用「调用 dispose 时 loop 仍在运行」且
+**「就是任务自己那个 loop」**两条性质一起钉住这个时序（只断言前者放得进错版实现），
+而不是只看「最终是否调过」。
 
 包装之外还有一条不变量底网：Worker 入口不得直接 ``asyncio.run``（回退它今日无任何
 用例会红），见 ``test_worker_never_calls_bare_asyncio_run``。
@@ -203,11 +204,17 @@ def test_worker_never_calls_bare_asyncio_run() -> None:
     assert len(_bare_asyncio_run_calls(probe)) == 3, "探针必须抓到属性访问/别名/裸名三种真实写法"
 
     violations: list[str] = []
+    scanned = 0
     for path in sorted(_WORKER_SRC_ROOT.glob("**/*.py")):
         if "__pycache__" in path.parts:
             continue
+        scanned += 1
         tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
         violations += [f"{path.relative_to(_WORKER_SRC_ROOT)}:{lineno} 调用 {form}" for lineno, form in _bare_asyncio_run_calls(tree)]
+
+    # 与上面的探针自检互补：探针保证「匹配器没坏」，这条保证「没扫到空目录」。少了它，
+    # 一旦扫描根改名/搬迁，glob 返回空集，护栏就会以「零违规」永远绿。
+    assert scanned >= 1, f"扫描根下没扫到任何 .py，护栏会空转：{_WORKER_SRC_ROOT}"
 
     assert not violations, (
         "Worker 入口不得直接 asyncio.run：它没法在 loop 关闭前 await AsyncEngine.dispose()，"
