@@ -10,7 +10,7 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from miles_ai.integrations.litellm.usage_sink import UsageSink
-from miles_core.infra.db import AsyncSessionLocal, short_db_session
+from miles_core.infra.db import short_db_session
 from miles_core.models.model import ModelConfig
 from miles_core.models.model.usage_log import ModelUsageLog
 
@@ -164,7 +164,7 @@ class FlowUsageSink:
         """实现 ``UsageSink`` 协议：自开短会话写 flow 来源用量并提交。"""
         if max(0, prompt_tokens) + max(0, completion_tokens) <= 0:
             return
-        async with AsyncSessionLocal() as db:
+        async with short_db_session() as db:
             await record_model_usage(
                 UsageRecordContext(
                     db=db,
