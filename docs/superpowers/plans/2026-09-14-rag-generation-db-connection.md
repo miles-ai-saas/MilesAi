@@ -1953,6 +1953,200 @@ EOF
 
 ---
 
+### Task 9: 短会话改走 worker-aware helper（helper 更名 `short_db_session`）
+
+> **来源**：Task 8 后的全分支终审发现（不变量 I1）——本分支把 agent 对话路径新引入了 3 处**全局** `AsyncSessionLocal()` 短会话，而该路径在 Celery Worker 内执行。
+
+**为什么：** Celery 任务用 `asyncio.run`，每次都是新 loop；全局 engine 的连接池里是**上一个 loop** 创建的 asyncpg 连接，复用即抛 `RuntimeError: ... got Future attached to a different loop`。独立复现（真库、同进程连续 6 次 `asyncio.run`，全局会话 vs `get_worker_session()`）：全局在第 **2/4/6** 次失败，worker 会话 **6/6** 正常。可达链路：`miles-worker/tasks/agent_schedule.py`（`asyncio.run`）→ `AgentService.chat` → 本分支新增的三处短会话。其中 `ChatUsageSink.record` 无 try/except，异常直接冒泡，故约一半定时任务会在生成中途失败。
+
+仓库已有为此而写的 helper（原名 `generative_job_db_session`：Worker 用 `get_worker_session` 绑定的当前 loop engine，API 回退全局），本 Task 只补接线。因它自此服务生成任务/chat 用量/媒体读取/检索四处，一并改名为语义中性的 `short_db_session`。
+
+**Files:**
+- Modify: `backend/packages/miles-core/src/miles_core/infra/db/async_session.py`
+- Modify: `backend/packages/miles-core/src/miles_core/infra/db/__init__.py`
+- Modify: `backend/packages/miles-ai/src/miles_ai/integrations/generative/jobs/progress.py`
+- Modify: `backend/packages/miles-portal/src/miles_portal/tenant/models/services/usage.py`
+- Modify: `backend/packages/miles-portal/src/miles_portal/tenant/agents/services/agent/chat_rag.py`
+- Modify: `backend/packages/miles-portal/src/miles_portal/tenant/attachments/services/media_reader.py`
+- New: `backend/tests/infra/test_short_db_session.py`
+- Modify: `backend/tests/tenant/models/test_chat_usage_sink_session.py`
+- Modify: `backend/tests/tenant/attachments/test_flow_media_reader.py`
+- Modify: `backend/tests/tenant/agents/test_chat_rag_connection_release.py`
+- Modify: `docs/superpowers/specs/2026-09-14-rag-generation-db-connection-design.md`（新增 §10 + §9 补一条）
+
+**Interfaces:**
+- Consumes: `_worker_sessionmaker` / `get_worker_session`（既有）
+- Produces: 符号 `generative_job_db_session` → `short_db_session`（旧名彻底消失，不留别名）；三处短会话不再触碰全局 `AsyncSessionLocal`
+
+- [ ] **Step 1: 改名（纯机械，先证明不改变行为）**
+
+`async_session.py`：把 `generative_job_db_session` 改名为 `short_db_session`，docstring 改为中性表述：
+
+```python
+@asynccontextmanager
+async def short_db_session() -> AsyncIterator[AsyncSession]:
+    """开一个短独立会话（与调用方事务无关）。
+
+    - Worker：在当前任务绑定的 engine 上开（Celery 每次 ``asyncio.run`` 都是新 loop，
+      全局 engine 池里的连接属于上一个 loop，复用会抛
+      ``got Future attached to a different loop``）。
+    - API / 脚本：无 worker engine 绑定时回退全局 ``AsyncSessionLocal``。
+    """
+    maker = _worker_sessionmaker.get()
+    if maker is not None:
+        async with maker() as session:
+            yield session
+        return
+    async with AsyncSessionLocal() as session:
+        yield session
+```
+
+同文件 `get_worker_session` docstring 里的「供 ``generative_job_db_session`` 开独立短会话」同步改为 `short_db_session`。
+
+`db/__init__.py`：import 名与 `__all__` 同步改名。
+`progress.py`：import 与 2 个调用点（`publish_generative_job_update`、`is_generative_job_cancelled`）同步改名。
+
+- [ ] **Step 2: 跑测试，证明改名无行为变化**
+
+Run: `uv run --all-packages --group dev python -m pytest tests/ -q`
+Expected: 全绿，**1041 passed**（与 Task 8 相同——纯改名）。
+
+- [ ] **Step 3: 写护栏测试（红）**
+
+先写「改回全局会话就会被抓到」的测试，再改三处实现。
+
+(a) helper 行为 — 新文件 `tests/infra/test_short_db_session.py`：绑定 worker maker 时，会话必须来自该 maker，且**不得**回退全局 `AsyncSessionLocal`（把 `AsyncSessionLocal` 换成调用即炸的替身）。用 `async_session._set_worker_sessionmaker(...)` 绑定、`finally` 里 reset。
+
+(b) `ChatUsageSink.record` — `tests/tenant/models/test_chat_usage_sink_session.py`：把 `usage.short_db_session` 换成记录用的替身、`usage.AsyncSessionLocal` 换成调用即炸的替身，断言非零用量走的是前者。
+
+(c) `FlowMediaReader` — `tests/tenant/attachments/test_flow_media_reader.py`：同形，patch `media_reader.short_db_session`，断言两个读方法都经过它。
+
+(d) 线性检索 — `tests/tenant/agents/test_chat_rag_connection_release.py`：把既有替身的 patch 目标由 `chat_rag_mod.AsyncSessionLocal` 改为 `chat_rag_mod.short_db_session`；**同时**给 `_ShortSession` 补 `__aexit__` 记录（`self.exited`），并把线性路径用例的断言由「只断 enter」加强为「检索短会话在 commit/generate 之前已 exited」——这正是 M17 指出的「短会话包住 LLM 调用」的护栏缺口。
+
+Run: `uv run --all-packages --group dev python -m pytest tests/infra/test_short_db_session.py tests/tenant/models/test_chat_usage_sink_session.py tests/tenant/attachments/test_flow_media_reader.py tests/tenant/agents/test_chat_rag_connection_release.py -v`
+Expected: helper 用例可能已过（改名后行为未变）；(b)(c) 与 (d) 的加强断言 **FAIL**（三处仍用全局会话）。
+
+- [ ] **Step 4: 三处改用 `short_db_session`**
+
+- `usage.py`：`ChatUsageSink.record` 里 `async with AsyncSessionLocal() as db:` → `async with short_db_session() as db:`；import 改为从 `miles_core.infra.db` 取 `short_db_session`（`FlowUsageSink` 仍用 `AsyncSessionLocal`，**本次不动**，见 Step 7）。
+- `chat_rag.py`：线性检索的短会话改用 `short_db_session()`；若 `AsyncSessionLocal` 因此不再被本文件使用，删掉其 import（`ruff check` 会报未使用）。
+- `media_reader.py`：`FlowMediaReader` 两个读方法改用 `short_db_session()`；`AsyncSessionLocal` 若不再使用则删 import，并同步类 docstring / 模块 docstring 里的措辞。
+
+- [ ] **Step 5: 跑测试确认通过**
+
+Run: `uv run --all-packages --group dev python -m pytest tests/ -q`
+Expected: 全绿（含 Step 3 新增护栏）。
+
+- [ ] **Step 6: 门禁**
+
+Run:
+```bash
+uv run --all-packages --group dev ruff format --check . && \
+uv run --all-packages --group dev ruff check . && \
+uv run --all-packages --group dev lint-imports && \
+uv run --all-packages --group dev python -m miles_server.scripts.export_openapi --check && \
+uv run --all-packages --group dev python -m pytest -q
+```
+Expected: 全绿、OpenAPI 零漂移。
+
+- [ ] **Step 7: 记录本次发现但未处理的既有隐患（用户裁决：本分支只修新增 3 处）**
+
+`spec` 新增一节（§10），并在 §9 加一条指向它。要点：机制、复现证据（真库、连续 6 次 `asyncio.run`，全局 2/4/6 失败、worker 6/6 正常）、已修 3 处、**未修**的既有同险站点清单（以符号位置为准，行号标注「改动前」）：`rag_qa.py` 的 LangGraph `retrieve` 节点、`usage.py` 的 `FlowUsageSink.record`、`flow_invoker.py`、`flows/services/run_context.py`、`subflow_loader.py`、`template_loader.py`、`scan_words_loader.py`、`flow_runtime/nodes/rag_nodes.py`、`image_generate.py`、`video_generate.py`；处理方式同本次（改用 `short_db_session()`）。
+
+- [ ] **Step 8: Commit**
+
+```bash
+git add backend/packages/miles-core/src/miles_core/infra/db/async_session.py \
+        backend/packages/miles-core/src/miles_core/infra/db/__init__.py \
+        backend/packages/miles-ai/src/miles_ai/integrations/generative/jobs/progress.py \
+        backend/packages/miles-portal/src/miles_portal/tenant/models/services/usage.py \
+        backend/packages/miles-portal/src/miles_portal/tenant/agents/services/agent/chat_rag.py \
+        backend/packages/miles-portal/src/miles_portal/tenant/attachments/services/media_reader.py \
+        backend/tests/infra/test_short_db_session.py \
+        backend/tests/tenant/models/test_chat_usage_sink_session.py \
+        backend/tests/tenant/attachments/test_flow_media_reader.py \
+        backend/tests/tenant/agents/test_chat_rag_connection_release.py \
+        docs/superpowers/specs/2026-09-14-rag-generation-db-connection-design.md
+git commit -F - <<'EOF'
+fix(agents): 新增短会话改走 worker-aware 短会话，修复 Celery 下必失败
+
+对话路径新引入的短会话原用全局 AsyncSessionLocal，而 Celery 任务每次
+asyncio.run 都是新 loop，池里属于上一个 loop 的连接复用即抛
+「got Future attached to a different loop」——定时智能体任务约一半会失败。
+
+改用已有的 worker-aware 短会话并更名为 short_db_session（现服务生成任务、
+chat 用量、媒体读取、检索四处）；既有同险站点清单记入 spec §10 另立专项。
+EOF
+```
+
+---
+
+### Task 10: 文档中 `rag_answer` 的入口引用改为 `generate_rag_answer`
+
+**为什么：** Task 6 已删除 `rag_answer`，代码层零残留，但 10 份文档仍有 12 处把它当作线性 RAG 入口，其中 `layering.md` 的 import 示例照抄即 `ImportError`。
+
+**Files:**
+- Modify: `docs/architecture/layering.md`（2 处，含可复制即报错的 import 示例）
+- Modify: `docs/architecture/technical-design.md`（2 处）
+- Modify: `docs/architecture/tools-runtime.md`
+- Modify: `docs/features/agent-chat-websocket.md`
+- Modify: `docs/features/kb-ingest-retrieval.md`
+- Modify: `docs/features/platform-agents.md`
+- Modify: `docs/guides/flows.md`
+- Modify: `docs/guides/hooks.md`
+- Modify: `docs/guides/knowledge-base.md`
+- Modify: `docs/guides/platform-agents.md`
+
+**Interfaces:**
+- Consumes: Task 6 的删除结果
+- Produces: 现役文档不再出现 `rag_answer`
+
+- [ ] **Step 1: 逐处替换，保持各文档原意**
+
+Run: `rg -n "rag_answer" docs/ | grep -v generate_rag_answer` 取当前全部命中后逐处改写：
+
+- 指「线性 RAG 入口」的，改为 `generate_rag_answer`；如上下文同时强调「检索已上移 L1」，可写成 `retrieve_hits` + `generate_rag_answer`。
+- `layering.md` 的 import 示例必须是**能跑通**的形式：`from miles_ai.rag.generate import format_hits_context, generate_rag_answer`。
+- `technical-design.md` 流程图节点 `LIN[legacy rag_answer / ainvoke_chat]` 改为 `LIN[generate_rag_answer / ainvoke_chat]`。
+- 措辞随文档语气微调，但不得改变该句原本要说明的事实。
+
+**不要改** `docs/superpowers/specs/2026-09-14-rag-generation-db-connection-design.md` 与 `docs/superpowers/plans/2026-09-14-rag-generation-db-connection.md`：它们记录的是**改造前**的设计与决策（如 spec 的「线性 `rag_answer`」是在描述现状），改写会伪造历史。
+
+- [ ] **Step 2: 确认只剩历史文档**
+
+Run: `rg -n "rag_answer" docs/ | grep -v generate_rag_answer`
+Expected: 仅剩 `docs/superpowers/specs/...` 与 `docs/superpowers/plans/...` 两个文件的命中，且都在描述改造前状态或决策过程。
+
+- [ ] **Step 3: 验证 import 示例真能跑**
+
+Run: `cd backend && uv run --all-packages --group dev python -c "from miles_ai.rag.generate import format_hits_context, generate_rag_answer; print('ok')"`
+Expected: `ok`。
+
+- [ ] **Step 4: 门禁**
+
+Run:
+```bash
+cd backend && uv run --all-packages --group dev ruff format --check . && \
+uv run --all-packages --group dev ruff check . && \
+uv run --all-packages --group dev python -m pytest -q
+```
+Expected: 全绿（仅文档改动，测试数不变）。
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add docs/architecture docs/features docs/guides
+git commit -F - <<'EOF'
+docs: 线性 RAG 入口改述为 generate_rag_answer
+
+rag_answer 已删除，文档仍有 12 处把它当线性入口，其中 layering.md 的
+import 示例照抄即报错。改为 generate_rag_answer（检索已上移 L1）；
+superpowers 下的设计与计划属历史记录，保持原样。
+EOF
+```
+
+---
+
 ## 自检记录
 
 **Spec 覆盖核对（逐节）**
