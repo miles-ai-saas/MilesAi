@@ -1044,6 +1044,10 @@ EOF
     from miles_ai.integrations.langchain.toolkit.catalog import get_platform_tools, make_builtin_tool
     from miles_ai.integrations.langchain.toolkit.naming import select_agent_tools
     ```
+    **并把过时的测试函数名改掉**（Task 2 评审 Minor）：该文件 `:165` 的
+    `test_make_knowledge_search_tool_schema_allows_kb_ids` 里的符号已不存在，改名如
+    `test_knowledge_search_tool_schema_allows_kb_ids`。改名会改测试节点 id，属预期，
+    不改断言。
 11. `backend/tests/tenant/skills/test_skill_runtime_integration.py:7`
     ```python
     from miles_ai.integrations.langchain.toolkit import catalog as lc_tools
