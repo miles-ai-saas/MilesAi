@@ -377,16 +377,21 @@ Run:
 ```bash
 cd backend && uv run --group dev python -c "
 import asyncio
-from miles_core.infra.db import engine
+from miles_core.infra.db import dispose_loop_engines, get_engine
+
 async def main():
-    async with engine.connect() as conn:
+    async with get_engine().connect() as conn:
         v = await conn.exec_driver_sql('select version()')
-        print('  PG:', v.scalar()[:40])
+        print('  PG:', str(v.scalar())[:50])
+    await dispose_loop_engines()
+
 asyncio.run(main())
 "
 ```
 
-Expected: 打印 PostgreSQL 版本。
+Expected: 打印 PostgreSQL 版本。**已在 2026-09-16 实测：`PostgreSQL 16.14` 可达**，故本任务走真库路径，下面的 sqlite 兜底不适用。
+
+> 两个易错点：引擎须经 `get_engine()` 取得（`miles_core.infra.db` **不导出** `engine`）；脚本结束前调 `dispose_loop_engines()`，否则循环关闭时连接池未释放会污染第 3 步的输出。
 
 > 若真库不可达（`POSTGRES_DB` 未配置或未启动），**不要**跳过验证：改为在 Step 2 用 `sqlite+aiosqlite` 的内存引擎做同一轮 bind/读回（SQLAlchemy 的枚举编解码层与方言无关），并在 spec §10 明确记录「以 sqlite 内存引擎替代真库」及其局限。禁止把「测试全绿」当作 DB 层已验证。
 
@@ -397,16 +402,17 @@ Expected: 打印 PostgreSQL 版本。
 ```python
 """真库探针：StrEnum 迁移后，枚举列的写入/读回与迁移前逐行一致。
 
-不进仓库。用法：uv run --group dev python /tmp/probe_enum_pg.py [--corrupt]
-``--corrupt`` 为敏感度对照：故意把期望值改错，探针必须报错。
+不进仓库。用法：`uv run --group dev python /tmp/probe_enum_pg.py [--corrupt]`
+`--corrupt` 为敏感度对照：故意把期望值改错，探针必须报错。
 """
 
 import asyncio
 import sys
+from uuid import uuid4
 
 from sqlalchemy import select
 
-from miles_core.infra.db import AsyncSessionLocal
+from miles_core.infra.db import AsyncSessionLocal, dispose_loop_engines
 from miles_core.models.agent.agent import Agent, AgentStatus, AgentType
 from miles_core.models.platform.tenant import Tenant, TenantStatus
 
@@ -414,41 +420,50 @@ CORRUPT = "--corrupt" in sys.argv
 
 
 async def main() -> None:
+    tag = uuid4().hex[:8]
+
     async with AsyncSessionLocal() as session:
-        tenant = Tenant(name="enum-probe", status=TenantStatus.ACTIVE)
+        tenant = Tenant(name=f"enum-probe-{tag}", status=TenantStatus.ACTIVE)
         session.add(tenant)
         await session.flush()
 
         agent = Agent(
             tenant_id=tenant.id,
-            name="enum-probe-agent",
+            name=f"enum-probe-agent-{tag}",
             agent_type=AgentType.CUSTOM,
             status=AgentStatus.ENABLED,
         )
         session.add(agent)
         await session.flush()
+        agent_id, tenant_id = agent.id, tenant.id
         await session.commit()
 
-        agent_id = agent.id
-        tenant_id = tenant.id
-
-    # 新会话读回，避免 identity map 掩盖真实 SQL 往返
-    async with AsyncSessionLocal() as session:
-        got = (await session.execute(select(Agent).where(Agent.id == agent_id))).scalar_one()
-        expected = "disabled" if CORRUPT else AgentStatus.ENABLED.value
-        print(f"  读回 status      = {got.status!r}   (期望 {expected!r})")
-        assert got.status == AgentStatus.ENABLED, "读回的枚举成员不对"
-        assert got.status.value == expected, f"读回的值不对：{got.status.value!r} != {expected!r}"
-        assert got.agent_type is AgentType.CUSTOM, "agent_type 读回不对"
-        print("  ✓ 写入/读回一致")
-
-        # 清理
-        await session.execute(Agent.__table__.delete().where(Agent.id == agent_id))
-        await session.execute(Tenant.__table__.delete().where(Tenant.id == tenant_id))
-        await session.commit()
+    try:
+        # 新会话读回，避免 identity map 掩盖真实的 SQL 往返
+        async with AsyncSessionLocal() as session:
+            got = (await session.execute(select(Agent).where(Agent.id == agent_id))).scalar_one()
+            expected = "disabled" if CORRUPT else AgentStatus.ENABLED.value
+            print(f"  读回 status      = {got.status!r}   (期望 {expected!r})")
+            assert got.status is AgentStatus.ENABLED, "读回的枚举成员不对"
+            assert got.status.value == expected, f"读回的值不对：{got.status.value!r} != {expected!r}"
+            assert got.agent_type is AgentType.CUSTOM, "agent_type 读回不对"
+            print("  ✓ 写入/读回一致")
+    finally:
+        async with AsyncSessionLocal() as session:
+            await session.execute(Agent.__table__.delete().where(Agent.id == agent_id))
+            await session.execute(Tenant.__table__.delete().where(Tenant.id == tenant_id))
+            await session.commit()
 
 
-asyncio.run(main())
+async def run() -> None:
+    try:
+        await main()
+    finally:
+        # 必须与 main 同 loop 释放，否则在下一个 loop 里调等于没释放
+        await dispose_loop_engines()
+
+
+asyncio.run(run())
 print("  probe OK")
 ```
 
@@ -459,7 +474,9 @@ Run:
 cd backend && uv run --group dev python /tmp/probe_enum_pg.py
 ```
 
-Expected: 打印读回值与 `✓ 写入/读回一致`，最后 `probe OK`。
+Expected: 输出中出现 `读回 status      = <AgentStatus.ENABLED: 'enabled'>   (期望 'enabled')`、`✓ 写入/读回一致`，最后 `probe OK`，退出码 0。
+
+> 开发配置打开了 SQLAlchemy 的 `echo`，故输出会夹杂大量 `INFO sqlalchemy.engine.Engine ...` 行——那是预期的调试日志，不是噪音或失败。看上面三个标记行即可。
 
 - [ ] **Step 4: 跑敏感度对照（必须失败）**
 
@@ -569,8 +586,12 @@ Task 2 提交后，派一个 fresh subagent 做**整分支终审**（独立重�
 | `ruff format --check` | — | 963 files ✓ |
 | 测试文件格式 | — | **FAIL：tuple 带 magic trailing comma**（计划誊写时手滑引入，与已实测代码不一致）→ 已去掉 |
 | Step 4 diff 行数 | 34 删 / 34 增（68 条） | **FAIL：实测 66 条**。我把「两条命令各改一次 import」相加成 4 行，但 `git diff` 看到的是净变化 → 已改为 33/33 |
-| Step 4 校验脚本的正则 | `...StrEnum))\$'` | **FAIL：`\$` 在正则里要求字面美元符**，会让全部行判为不符 → 已改为 `$` |
+| Step 4 校验脚本的正则 | `...StrEnum))\$'` | 判定失误（见下）。**`\$` 在 bash 双引号内会被折叠为 `$`**，脚本原样可跑；我断言「必然失败」是错的。仍改为 `$` 以免依赖 shell 转义，但**不是**原计划的缺陷 |
+| Task 2 探针的引擎 API | `from miles_core.infra.db import engine` | **FAIL：该包不导出 `engine`**（`ImportError`）→ 已改为 `get_engine()` 并补 `dispose_loop_engines()` |
+| Task 2 探针的可重入性 | 固定名 `enum-probe` | 固定名在失败残留时会撞唯一约束 → 已改为 `uuid4().hex[:8]` 后缀，且释放放进 `try/finally` |
 
-前六项由我在计划阶段的 dry run 抓出；后三项是**首次派发实施者时才暴露**的——尤其最后两项，是我在 dry run 之后又"推理"出来的数字与代码，**没有实测**。
+前六项由我在计划阶段的 dry run 抓出；中间三项是**首次派发实施者时才暴露**的；最后两项是**为 Task 2 做派发前预检**时抓到的（dry run 从未跑过 Task 2 的探针）。
 
-结论：dry run 只能校验「当时跑过的东西」。任何事后对计划的修改——哪怕只是一句"加 2 行"——都会让已获得的验证失效，必须重新跑一遍。这也是本次唯一一处被实施者拦下的计划缺陷，说明「按实测值而非推导值写预期」必须贯穿到计划的**每一次修改**。
+结论：dry run 只校验「当时跑过的东西」。Task 1 的三处问题全部源于我在 dry run 之后**凭推理**改动计划（加 2 行、断言 `\$` 必失败），而不是重跑一遍；Task 2 的两处则源于**探针从未被执行过**。本次已把 Task 2 的探针在任何派发之前先跑通（含 `--corrupt` 敏感度对照），并把结果回填为本计划的预期输出。
+
+> 关于 `\$`：我先前在提交信息与本节把它写成「会让脚本必然失败」。经实测 bash 会在双引号内折叠 `\$` → `$`，该判断不成立；实施者曾就此提出异议，其观察正确。保留 `$` 只是为去掉对 shell 转义的隐式依赖。
