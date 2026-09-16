@@ -2,8 +2,8 @@
 
 ``load_custom_tool_specs``：``Tool`` 表 HTTP/SCRIPT 行 → 中性 ``CustomToolSpec``；
 ``assemble_agent_tools``：specs + 内置/技能/生成壳（``build_platform_tools``）组装
-为对话工具 schema 列表。原 ``integrations/langchain/tools.load_tenant_custom_tools``
-的 DB 查询职责上移本模块，L3 只保留纯构造。
+为对话工具 schema 列表。原 ``integrations/langchain`` 侧 ``load_tenant_custom_tools`` 承担的
+DB 查询职责上移本模块（该模块其后拆为 ``toolkit/`` 子包），L3 只保留纯构造。
 """
 
 from __future__ import annotations

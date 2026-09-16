@@ -73,4 +73,4 @@ backend/packages/miles-core/src/miles_core/infra/vector_store/
 | `EMBEDDING_LITELLM_MODEL` | `dashscope/text-embedding-v4` | 仅 `litellm` |
 | `EMBEDDING_VECTOR_DIMENSION` | `768` | 新建 KB 维度 |
 
-扩展内置工具：在 `integrations/langchain/tools.py` 增加 `StructuredTool`，并在 `tools/invoke.py` 注册。
+扩展内置工具：在 `integrations/langchain/toolkit/catalog.py` 的 `_DECLS` 声明表加一行（schema 壳），并在 `tenant/tools/builtin_registry.py` 注册元数据、`tenant/tools/builtins/handlers.py` 实现执行 handler。

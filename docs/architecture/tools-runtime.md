@@ -168,7 +168,7 @@ system prompt 的内置工具摘要（`agents/services/context.py`）与 functio
 ```text
 BUILTIN_REGISTRY  （元数据 + schema）
        ↓
-integrations/langchain/tools.py  → StructuredTool（Agent）
+integrations/langchain/toolkit/catalog.py  → StructuredTool（Agent）
        ↓
     invoke_builtin(slug, params)    → 分发到各 Service
        ├─ knowledge_search      → rag.generate.retrieve_hits（多库 + 各库 hybrid/rerank）
@@ -357,7 +357,7 @@ MCP 工作台、**RAG 与 tool calling 共存**（绑定 KB 时 `knowledge_searc
 | 工具 Service / API | `backend/packages/miles-portal/src/miles_portal/tenant/tools/` |
 | 执行 | `tenant/tools/invoke.py` |
 | 内置复杂工具 | `tenant/tools/services/flow_once.py`、`tenant/tools/services/hook_once.py` |
-| LangChain 加载 | `integrations/langchain/tools.py`、`tool_agent.py` |
+| LangChain 加载 | `integrations/langchain/toolkit/catalog.py`、`tool_agent.py` |
 | 平台 Hook 执行 | `backend/packages/miles-portal/src/miles_portal/tenant/hooks/services/executor/` |
 | MCP | `backend/packages/miles-portal/src/miles_portal/tenant/mcp/` |
 | Runner | `backend/packages/miles-runner/src/miles_runner/`（MCP runner 进程）、`backend/packages/miles-exec/src/miles_exec/sandbox/`（工具沙箱） |
