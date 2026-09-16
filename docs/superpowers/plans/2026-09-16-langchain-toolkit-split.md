@@ -548,7 +548,6 @@ from .inputs import (
     SkillRunScriptInput,
     WebSearchInput,
 )
-from .naming import select_agent_tools
 from .specs import CustomToolSpec, McpToolSpec, json_schema_to_pydantic
 
 __all__ = [
@@ -563,7 +562,6 @@ __all__ = [
     "make_custom_http_tool",
     "make_custom_script_tool",
     "make_mcp_tool",
-    "select_agent_tools",
     "select_opt_in_builtin_tools",
 ]
 
@@ -768,7 +766,6 @@ from .toolkit.catalog import (
     make_mcp_tool,
     select_opt_in_builtin_tools,
 )
-from .toolkit.inputs import *  # noqa: F403
 from .toolkit.naming import (
     MCP_FUNCTION_PREFIX,
     compose_mcp_tool_name,
@@ -779,32 +776,40 @@ from .toolkit.naming import (
 from .toolkit.specs import CustomToolSpec, McpToolSpec, json_schema_to_pydantic, mcp_param_alias
 ```
 
-> `from .toolkit.inputs import *` 需要 `inputs.py` 定义 `__all__`（13 个 DTO 名），否则 ruff 的
-> `F403` / `F405` 会报。在 `inputs.py` 末尾显式加：
-> ```python
-> __all__ = [
->     "CalculatorInput", "CodeExecutionInput", "ComplianceCheckTextInput", "DateTimeInput",
->     "GenerateImageInput", "GenerateVideoInput", "HttpRequestInput", "InvokeTenantHookInput",
->     "KnowledgeSearchInput", "RunFlowOnceInput", "SkillReadReferenceInput", "SkillRunScriptInput",
->     "WebSearchInput",
-> ]
-> ```
+> 这份清单是**实测**出来的（`rg` 扫过全部调用点），不是照抄原文件：13 个静态工厂与
+> `_opt_in_marker` 均**不**在此列——它们被声明表取代。`make_knowledge_search_tool` 同样不在列，
+> 但其唯一消费者（`tests/tenant/tools/test_knowledge_search_coexistence.py`）需要在本步一并改掉，
+> 见 Step 7。没有调用点从本模块导入 13 个 DTO，故此处**不做** `import *`。
+
+- [ ] **Step 7: 迁移 `make_knowledge_search_tool` 的唯一消费者**
+
+`tests/tenant/tools/test_knowledge_search_coexistence.py` 是 `make_knowledge_search_tool` 在全仓的唯一消费者
+（实测；生产代码无引用）。工厂收敛后该符号消失，等价替换为 `make_builtin_tool("knowledge_search")`：
+
+- 第 13-17 行的 import：删去 `make_knowledge_search_tool`，加入 `make_builtin_tool`
+- 第 166 行：`schema = make_knowledge_search_tool().args_schema.model_json_schema()`
+  → `schema = make_builtin_tool("knowledge_search").args_schema.model_json_schema()`
+
+Run: `uv run --all-packages --group dev python -m pytest tests/tenant/tools/test_knowledge_search_coexistence.py -q`
+Expected: PASS
+
+- [ ] **Step 8: 跑测试确认全绿**
 
 Run: `uv run --all-packages --group dev python -m pytest tests/tenant/tools/test_toolkit_contract.py -q`
-Expected: PASS（契约全绿 ⇒ 收敛未改变对外行为）
+Expected: PASS（契约全绿 ⇒ 声明式收敛未改变对外行为）
 
 Run: `uv run --all-packages --group dev python -m pytest -q`
 Expected: **与 Task 1 结束时相同的通过数**，0 failed
 
-- [ ] **Step 7: 五道门禁**
+- [ ] **Step 9: 五道门禁**
 
 依次执行 Global Constraints 里的 5 条命令。
-Expected: 全部通过；`ruff check` 尤其要确认 `tools.py` 的星号导入已被 `__all__` 满足而不报 `F403`。
+Expected: 全部通过。`ruff check` 若报 `F401`，多半是 `tools.py` 再导出了未被任何调用点使用的符号——按 Step 6 的实测清单删掉即可，**不要**加 `# noqa`。
 
-- [ ] **Step 8: Commit**
+- [ ] **Step 10: Commit**
 
 ```bash
-git add backend/packages/miles-ai/src/miles_ai/integrations/langchain/
+git add backend/packages/miles-ai/src/miles_ai/integrations/langchain/ backend/tests/tenant/tools/test_knowledge_search_coexistence.py
 git commit -F - <<'EOF'
 refactor(toolkit): 拆出 naming/inputs/specs 并把工具工厂收敛为声明表
 
@@ -817,7 +822,9 @@ tools.py 617 行承担 6 类职责，且 13 个工具工厂是同一段代码抄
 决定哪个属性非空）。占位签名保持 **kwargs——make_mcp_tool 在 input_schema 为 None 时
 由 LangChain 从签名反推 schema，签名一变对外 schema 会静默改变。
 
-tools.py 暂降为再导出层，使既有 1079 条测试在本次搬迁中继续有效；随下一提交删除。
+tools.py 暂降为再导出层（符号清单由调用点实测得出，非照抄原文件），使既有 1079 条
+测试在本次搬迁中继续有效；随下一提交删除。make_knowledge_search_tool 的唯一消费者
+（测试）等价改用 make_builtin_tool("knowledge_search")。
 EOF
 ```
 
@@ -894,12 +901,12 @@ EOF
        select_opt_in_builtin_tools,
    )
    ```
-10. `backend/tests/tenant/tools/test_knowledge_search_coexistence.py:13-17`——注意 `select_agent_tools` 归 `naming`：
+10. `backend/tests/tenant/tools/test_knowledge_search_coexistence.py:13-17`——注意 `select_agent_tools` 归 `naming`
+    （`make_builtin_tool` 的替换已在 Task 2 Step 7 完成，此处**只改模块路径**）：
     ```python
     from miles_ai.integrations.langchain.toolkit.catalog import get_platform_tools, make_builtin_tool
     from miles_ai.integrations.langchain.toolkit.naming import select_agent_tools
     ```
-    并把该文件 `:164` 的 `make_knowledge_search_tool()` 改为 `make_builtin_tool("knowledge_search")`。
 11. `backend/tests/tenant/skills/test_skill_runtime_integration.py:7`
     ```python
     from miles_ai.integrations.langchain.toolkit import catalog as lc_tools
@@ -923,10 +930,15 @@ EOF
 git rm backend/packages/miles-ai/src/miles_ai/integrations/langchain/tools.py
 ```
 
-- [ ] **Step 4: 同步 docstring 里的旧路径**
+- [ ] **Step 4: 同步 docstring / 注释里的旧路径**
 
-`backend/packages/miles-core/src/miles_core/models/tool/__init__.py:4` 的 docstring 提到
-`L3 集成层 integrations.langchain.tools`，改为 `integrations.langchain.toolkit`。
+实测有 **2 处**非 import 的旧路径引用，一并改掉：
+
+1. `backend/packages/miles-core/src/miles_core/models/tool/__init__.py:4`
+   —— docstring 提到 `L3 集成层 integrations.langchain.tools`，改为 `integrations.langchain.toolkit`
+2. `backend/packages/miles-portal/src/miles_portal/tenant/tools/services/mcp_tools.py:12`
+   —— docstring 提到 ``integrations.langchain.tools.compose_mcp_tool_name``，
+   改为 ``integrations.langchain.toolkit.naming.compose_mcp_tool_name``
 
 Run: `rg -n "langchain\.tools" backend/packages backend/tests` → Expected: **零命中**
 
@@ -1019,6 +1031,7 @@ EOF
 | **占位扫描** | 无「TBD/TODO/补充测试」；Task 1 的期望值已**完整内联**（13 + 3 条），Step 2 只做比对不做填写——这是唯一无法机器保证的一步，已显式标注 |
 | **类型一致性** | `build_stub_tool(slug, description, args_schema, *, is_async)` 在 Task 2 定义、Task 4 复用于证伪；`make_builtin_tool(slug)` 在 Task 2 定义、Task 3 Step 2 第 10 项使用；`ToolDecl(description, args_schema, is_async=True)` 与 `_DECLS` 全部 13 条一致 |
 | **测试代码已实测** | Task 1 Step 3 的占位报错断言经实测修正：`tool.invoke({})` 会先抛 `ValidationError`（pydantic 必填校验），测不到占位体；改为直接调 `tool.func({})` / `tool.coroutine({})`，实测得到 `RuntimeError: 请通过 invoke_tool_with_context 执行 calculator` |
+| **调用面已实测** | 11 处 import + 2 处 docstring 引用由 `rg` 全仓核实（见 Task 3 Step 1/2/4 的行号）。据此发现并修掉了两个计划缺陷：(1) `make_knowledge_search_tool` 有唯一消费者（测试），原计划未安排其迁移，已移入 Task 2 Step 7；(2) 无任何调用点从 `tools.py` 导入 13 个 DTO，故临时再导出层不做 `import *`，`inputs.py` 也不需要 `__all__` |
 
 ## 与设计文档的两处刻意偏差（已记录，非疏漏）
 
