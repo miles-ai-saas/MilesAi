@@ -626,8 +626,9 @@ _INVALID_FIELD_CHARS = re.compile(r"\W")
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Any, Sequence
+from typing import Any
 
 from langchain_core.tools import StructuredTool
 from pydantic import BaseModel
@@ -1167,6 +1168,7 @@ EOF
 | **类型一致性** | `build_stub_tool(slug, description, args_schema, *, is_async)` 在 Task 2 定义、Task 4 复用于证伪；`make_builtin_tool(slug)` 在 Task 2 定义、Task 3 Step 2 第 10 项使用；`ToolDecl(description, args_schema, is_async=True)` 与 `_DECLS` 全部 13 条一致 |
 | **测试代码已实测** | Task 1 Step 3 的占位报错断言经两轮实测修正（见该步的两条勘误）：`tool.invoke({})` 会先抛 `ValidationError`（pydantic 必填校验），测不到占位体；而 `tool.coroutine({})` 对 `_opt_in_marker` / `make_mcp_tool` 的 `**kwargs` 型占位会先抛 `TypeError`（实测该类占位只收关键字）。最终以 `_call_stub` 按签名适配，断言与期望值未动，判别力由 Step 5 证伪实验独立验证 |
 | **lint 豁免已定** | 期望值行最长 1137 字符，超 `line-length = 160`；用户确认采用文件级 `# ruff: noqa: E501` + 数据块 `# fmt: off`（理由就近写在数据旁），不迁入 `pyproject.toml` 的 `per-file-ignores` |
+| **导入已实测** | 勘误 4：`catalog.py` 原稿写 `from typing import Any, Sequence`，实测触发 `UP035`（该规则在 `select` 列表内且未豁免）→ 已改为 `from collections.abc import Sequence` + `from typing import Any`。Task 2 若照原稿写会直接卡在 `ruff check` |
 | **调用面已实测** | 11 处 import + 2 处 docstring 引用由 `rg` 全仓核实（见 Task 3 Step 1/2/4 的行号）。据此发现并修掉了两个计划缺陷：(1) `make_knowledge_search_tool` 有唯一消费者（测试），原计划未安排其迁移，已移入 Task 2 Step 7；(2) 无任何调用点从 `tools.py` 导入 13 个 DTO，故临时再导出层不做 `import *`，`inputs.py` 也不需要 `__all__` |
 
 ## 与设计文档的两处刻意偏差（已记录，非疏漏）
