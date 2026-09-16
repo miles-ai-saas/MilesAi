@@ -876,6 +876,30 @@ from .toolkit.naming import (
     select_agent_tools,
 )
 from .toolkit.specs import CustomToolSpec, McpToolSpec, json_schema_to_pydantic, mcp_param_alias
+
+# 转发壳自身不使用这些 import：非 ``__init__`` 模块的裸转发会被 F401 全部报出，
+# 与「是否有调用点」无关（F401 只看本文件）。故显式声明再导出面。
+__all__ = [
+    "MCP_FUNCTION_PREFIX",
+    "CustomToolSpec",
+    "McpToolSpec",
+    "build_platform_tools",
+    "build_stub_tool",
+    "compose_mcp_tool_name",
+    "get_generative_tools",
+    "get_platform_tools",
+    "get_skill_bound_tools",
+    "is_mcp_tool_name",
+    "json_schema_to_pydantic",
+    "make_builtin_tool",
+    "make_custom_http_tool",
+    "make_custom_script_tool",
+    "make_mcp_tool",
+    "mcp_param_alias",
+    "sanitize_ident",
+    "select_agent_tools",
+    "select_opt_in_builtin_tools",
+]
 ```
 
 > 这份清单是**实测**出来的（`rg` 扫过全部调用点），不是照抄原文件：13 个静态工厂与
@@ -906,7 +930,18 @@ Expected: **与 Task 1 结束时相同的通过数**，0 failed
 - [ ] **Step 9: 五道门禁**
 
 依次执行 Global Constraints 里的 5 条命令。
-Expected: 全部通过。`ruff check` 若报 `F401`，多半是 `tools.py` 再导出了未被任何调用点使用的符号——按 Step 6 的实测清单删掉即可，**不要**加 `# noqa`。
+Expected: 全部通过。
+
+> **勘误 5（Task 2 实施时实测发现，已回写）**：本步原稿写「若 `ruff check` 报 `F401`，
+> 按实测清单删掉该符号，**不要**加 `# noqa`」——**这两句都是错的**。
+> `tools.py` 不是 `__init__.py`，其裸转发导入会被 F401 **全部**报出，与「有没有调用点」无关
+> （F401 只看本文件；实测：`build_platform_tools`、`get_platform_tools`、`McpToolSpec`
+> 三个确有调用点的符号一并被报）。按「删掉 F401 符号」执行会删空整个壳、1079 条测试全红。
+> 正解是在壳里显式声明 `__all__`（已补入 Step 6 的代码块）：无需抑制、语义化声明再导出面，
+> 且符合本步「不加 `# noqa`」的原意。
+> 仓库另有一处同类临时 shim（`miles_portal/tenant/tools/parameters.py:6`）用模块级
+> `# noqa: F401`，是可行替代；此处选 `__all__` 因为它不需要抑制、表达力更强，
+> 且该壳本身在 Task 3 即被删除。
 
 - [ ] **Step 10: Commit**
 
@@ -1169,6 +1204,7 @@ EOF
 | **测试代码已实测** | Task 1 Step 3 的占位报错断言经两轮实测修正（见该步的两条勘误）：`tool.invoke({})` 会先抛 `ValidationError`（pydantic 必填校验），测不到占位体；而 `tool.coroutine({})` 对 `_opt_in_marker` / `make_mcp_tool` 的 `**kwargs` 型占位会先抛 `TypeError`（实测该类占位只收关键字）。最终以 `_call_stub` 按签名适配，断言与期望值未动，判别力由 Step 5 证伪实验独立验证 |
 | **lint 豁免已定** | 期望值行最长 1137 字符，超 `line-length = 160`；用户确认采用文件级 `# ruff: noqa: E501` + 数据块 `# fmt: off`（理由就近写在数据旁），不迁入 `pyproject.toml` 的 `per-file-ignores` |
 | **导入已实测** | 勘误 4：`catalog.py` 原稿写 `from typing import Any, Sequence`，实测触发 `UP035`（该规则在 `select` 列表内且未豁免）→ 已改为 `from collections.abc import Sequence` + `from typing import Any`。Task 2 若照原稿写会直接卡在 `ruff check` |
+| **F401 判断已实测** | 勘误 5：原稿称「F401 说明该符号无人使用，删掉即可」——**错误**。`tools.py` 非 `__init__.py`，裸转发导入会被 F401 全部报出（实测含确有调用点者），照删会删空整个壳。正解是显式声明 `__all__`，已补入 Step 6 代码块 |
 | **调用面已实测** | 11 处 import + 2 处 docstring 引用由 `rg` 全仓核实（见 Task 3 Step 1/2/4 的行号）。据此发现并修掉了两个计划缺陷：(1) `make_knowledge_search_tool` 有唯一消费者（测试），原计划未安排其迁移，已移入 Task 2 Step 7；(2) 无任何调用点从 `tools.py` 导入 13 个 DTO，故临时再导出层不做 `import *`，`inputs.py` 也不需要 `__all__` |
 
 ## 与设计文档的两处刻意偏差（已记录，非疏漏）
