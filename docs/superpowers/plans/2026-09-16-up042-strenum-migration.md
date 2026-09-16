@@ -215,21 +215,24 @@ Expected:
 
 > 第 2 条**必需**：`miles_exec/mcp/spec.py` 原本 `from enum import Enum` 只服务于 `class NetworkMode(str, Enum)`；迁移为 `StrEnum` 后 `Enum` 即变为未使用，而 UP042 的 autofix **不会**顺手删除它（已在 dry run 中实测确认）。这是本次迁移**引入的唯一新 lint 错误**，若不清理，Step 8 的 `ruff check` 会失败。
 
-- [ ] **Step 4: 核对 diff 只含预期的 34 行**
+- [ ] **Step 4: 核对 diff 只含预期的 33 行**
 
 Run:
 ```bash
 cd backend && git diff -U0 | rg "^[+-](class |from enum)" | sort
 ```
 
-Expected: 34 行删除 + 34 行新增（32 个 class 声明 + `spec.py` 的 import 前后各一次改动），且**每一行**都匹配下列形态之一：
+Expected: **33 删 + 33 增 = 66 条变更行**，且每一行都匹配下列形态之一：
 
 ```
--class <Name>(str, enum.Enum):     →  +class <Name>(enum.StrEnum):     （31 处）
--class NetworkMode(str, Enum):     →  +class NetworkMode(StrEnum):      （1 处）
--from enum import Enum             →  +from enum import Enum, StrEnum  （autofix 产出）
--from enum import Enum, StrEnum    →  +from enum import StrEnum        （F401 收敛）
+-class <Name>(str, enum.Enum):   →  +class <Name>(enum.StrEnum):   （31 处 → 62 行）
+-class NetworkMode(str, Enum):   →  +class NetworkMode(StrEnum):    （1 处 → 2 行）
+-from enum import Enum           →  +from enum import StrEnum      （净变化 → 2 行）
 ```
+
+> **为什么 import 只贡献 1 删 + 1 增，而不是 2 组**：`spec.py` 的 import 确实被两条命令各改一次（先加 `StrEnum`，再由 F401 修复删掉 `Enum`），但 `git diff` 呈现的是**工作区相对 HEAD 的净变化**——中间态 `from enum import Enum, StrEnum` 从不出现在同一次 diff 里。
+>
+> 本计划初稿曾按「两次改动相加」写成 34 行 / 68 条，是**未经实测的推导**。实测值为 66 = 32 个类声明 × 2 行 + import 净变化 2 行；该错误在执行时被实施者正确拦下，未去凑数。
 
 用脚本严格校验（任何不符即失败）：
 
@@ -238,15 +241,15 @@ cd backend && uv run --group dev python -c "
 import subprocess, re, sys
 diff = subprocess.run(['git','diff','-U0'], capture_output=True, text=True).stdout
 changed = [l for l in diff.splitlines() if l.startswith(('+','-')) and not l.startswith(('+++','---'))]
-allowed = re.compile(r'^[+-](class \w+\((?:str, enum\.Enum|enum\.StrEnum|str, Enum|StrEnum)\):|from enum import (?:Enum|Enum, StrEnum|StrEnum))\$')
+allowed = re.compile(r'^[+-](class \w+\((?:str, enum\.Enum|enum\.StrEnum|str, Enum|StrEnum)\):|from enum import (?:Enum|StrEnum))$')
 bad = [l for l in changed if not allowed.match(l)]
-print(f'变更行 {len(changed)} 条（预期 68）；不符合预期 {len(bad)} 条')
+print(f'变更行 {len(changed)} 条（预期 66）；不符合预期 {len(bad)} 条')
 for l in bad: print('  ★', repr(l))
-sys.exit(1 if bad or len(changed) != 68 else 0)
-" && echo "  ✓ diff 仅含预期的 34 删 / 34 增"
+sys.exit(1 if bad or len(changed) != 66 else 0)
+" && echo "  ✓ diff 仅含预期的 33 删 / 33 增"
 ```
 
-> 期望 `len(changed) == 68`。若不符，**不要**手工修补，先 `git checkout .` 回到干净状态再排查 autofix 行为。
+> 期望 `len(changed) == 66`。若不符，**不要**手工修补 diff 去凑数，先 `git checkout .` 回到干净状态再排查 autofix 行为。
 
 - [ ] **Step 5: 确认 `spec.py` 的 import 已收敛**
 
@@ -345,7 +348,7 @@ str()/f-string 候选经逐处核对为 4 处走 .value 守卫分支、3 处误�
 任何测试断言该文案）。
 
 故迁移是机械替换：ruff 的 UP042 unsafe autofix 改 32 处类声明与 spec.py 的 import
-（diff 严格校验为 34 删 / 34 增），随后 ruff 的 F401 修复清掉迁移**引入**的未使用
+（diff 严格校验为 33 删 / 33 增），随后 ruff 的 F401 修复清掉迁移**引入**的未使用
 `Enum` import（spec.py 原本只用它做基类）。不改成员名、成员值、values_callable、
 列定义或任何迁移。
 
@@ -558,12 +561,16 @@ Task 2 提交后，派一个 fresh subagent 做**整分支终审**（独立重�
 | 项 | 计划原写 | 实测 |
 |---|---|---|
 | UP042 autofix 输出 | `Found 32 errors (32 fixed, 0 remaining).` | 一致 ✓ |
-| autofix 的 diff | 66 行（33 删 + 33 增） | 一致 ✓ |
 | 迁移后 `ruff check` | 预期全绿 | **FAIL：`spec.py` 报 F401**（`Enum` 变为未使用，autofix 不删）→ 已加 Step 3 第二条命令 |
 | 测试文件内 `"{}".format(member)` | 计划原写 `.format()` | **FAIL：ruff `UP032` 要求改 f-string** → 已改为内建 `format(member)`（同一 `__format__` 路径，且不触发该规则） |
 | 契约测试迁移前 | 2 红 2 绿 | 一致 ✓（失败信息正是 `'BillStatus.DRAFT' == 'draft'`） |
 | 契约测试迁移后 | 4 绿 | 一致 ✓ |
 | 全量 pytest | 1122 passed | 一致 ✓ |
 | `ruff format --check` | — | 963 files ✓ |
+| 测试文件格式 | — | **FAIL：tuple 带 magic trailing comma**（计划誊写时手滑引入，与已实测代码不一致）→ 已去掉 |
+| Step 4 diff 行数 | 34 删 / 34 增（68 条） | **FAIL：实测 66 条**。我把「两条命令各改一次 import」相加成 4 行，但 `git diff` 看到的是净变化 → 已改为 33/33 |
+| Step 4 校验脚本的正则 | `...StrEnum))\$'` | **FAIL：`\$` 在正则里要求字面美元符**，会让全部行判为不符 → 已改为 `$` |
 
-两处差异都是**会让计划执行失败**的缺陷，且第二处（UP032）是我自己写测试时引入的——说明「计划里的代码也必须先跑过」不是形式要求。
+前六项由我在计划阶段的 dry run 抓出；后三项是**首次派发实施者时才暴露**的——尤其最后两项，是我在 dry run 之后又"推理"出来的数字与代码，**没有实测**。
+
+结论：dry run 只能校验「当时跑过的东西」。任何事后对计划的修改——哪怕只是一句"加 2 行"——都会让已获得的验证失效，必须重新跑一遍。这也是本次唯一一处被实施者拦下的计划缺陷，说明「按实测值而非推导值写预期」必须贯穿到计划的**每一次修改**。
