@@ -1122,10 +1122,11 @@ git rm backend/packages/miles-ai/src/miles_ai/integrations/langchain/tools.py
 | `docs/architecture/tools-runtime.md:171` | 斜杠（架构图） | 修复轮改 |
 | `docs/architecture/tools-runtime.md:360` | 斜杠（路径表） | 修复轮改 |
 
-搜索必须覆盖两种形式：
+搜索必须覆盖**三种**形式（评审指出前两种之外还有 `import tools` 形式，而它正是
+迁移前 `test_skill_runtime_integration.py:7` 用过的那种，点号正则会漏掉）：
 
 ```bash
-rg -n "langchain[./]tools" backend/packages backend/tests docs
+rg -n "langchain[./]tools|langchain import tools" backend/packages backend/tests docs
 ```
 
 Expected: 仅命中**描述本次重构本身**的历史文档（`docs/superpowers/specs/2026-09-16-*`
@@ -1191,7 +1192,10 @@ Expected: `>1079 passed`，0 failed，无 warnings summary（与基线同）。�
 - [ ] **Step 4: 确认非目标未被触碰**
 
 Run: `git diff --stat main...HEAD -- backend/packages/miles-portal`
-Expected: 仅 6 个文件的 **import 行**改动（`mcp_tools.py` / `custom_tools.py` / `services/tools.py` / `confirmation.py` / `invoke/context.py` / `agents/services/context.py`），无逻辑改动。
+Expected: 仅 6 个文件改动（`mcp_tools.py` / `custom_tools.py` / `services/tools.py` / `confirmation.py` / `invoke/context.py` / `agents/services/context.py`），且除 import 行外**只有** `mcp_tools.py` 与 `custom_tools.py` 各一行 docstring 文案——无逻辑改动。
+
+Run: `rg -n "langchain[./]tools|langchain import tools" backend/packages backend/tests docs | rg -v "docs/superpowers/(specs|plans)/2026-09-16"`
+Expected: **零命中**（勘误 6：必须含斜杠形式与 `import tools` 形式）
 
 Run: `rg -n "short_db_session|get_worker_session" backend/packages` → Expected: 零命中（与本任务无关，确认没有回退破坏）
 
