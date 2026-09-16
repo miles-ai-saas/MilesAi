@@ -53,7 +53,7 @@ _UP042_ENUMS: dict[str, tuple[str, ...]] = {
 }
 
 
-def _iter_enum_classes() -> Iterator[tuple[str, Any]]:
+def _iter_enum_classes() -> Iterator[tuple[str, type[enum.Enum]]]:
     """遍历清单内全部枚举类，产出 ``(限定名, 枚举类)``。"""
     for module_name, class_names in _UP042_ENUMS.items():
         module = importlib.import_module(module_name)
@@ -96,24 +96,32 @@ def test_str_family_returns_member_value() -> None:
 
 
 def test_sqlalchemy_enum_columns_keep_same_values() -> None:
-    """真实 ORM 枚举列：``.enums``（DDL 值列表）与绑定值不因迁移改变。
+    """真实 ORM 枚举列：``.enums``（DDL 值列表）、绑定值与读回不因迁移改变。
 
     套件用 ``AsyncMock`` 顶替 DB、不跑真库，故这里直接对列的 SAEnum 做断言，
     不依赖数据库连接。
+
+    期望值一律**写字面量**，不从 ``enum_cls`` 派生：若写成
+    ``[m.value for m in enum_cls]``，断言两侧同源——有人把 ``AgentStatus.ENABLED``
+    的值改掉时两边同步变化、测试照旧全绿，而 DDL 值列表与落库字符串正是本次迁移
+    全部安全依据所在。字面量才能让这条护栏真的会失败。
     """
     from miles_core.models.agent.agent import Agent, AgentStatus, AgentType
     from miles_portal.tenant.tools.models import Tool, ToolType
 
-    cases: tuple[tuple[Any, str, Any], ...] = (
-        (Agent, "status", AgentStatus),
-        (Agent, "agent_type", AgentType),
-        (Tool, "tool_type", ToolType),
+    cases: tuple[tuple[Any, str, type[enum.Enum], list[str], str], ...] = (
+        (Agent, "status", AgentStatus, ["enabled", "disabled"], "enabled"),
+        (Agent, "agent_type", AgentType, ["custom", "a2a"], "custom"),
+        (Tool, "tool_type", ToolType, ["http", "script"], "http"),
     )
     dialect = postgresql.dialect()
-    for model, column_name, enum_cls in cases:
+    for model, column_name, enum_cls, expected_enums, sample in cases:
         col_type = model.__table__.c[column_name].type
         assert isinstance(col_type, SAEnum), f"{model.__name__}.{column_name} 应为 SAEnum"
-        assert col_type.enums == [m.value for m in enum_cls], f"{model.__name__}.{column_name} 的 DDL 值列表已变"
-        bind = col_type.bind_processor(dialect)
-        first = next(iter(enum_cls))
-        assert bind(first) == first.value, f"{model.__name__}.{column_name} 绑定值已变"
+        assert col_type.enums == expected_enums, f"{model.__name__}.{column_name} 的 DDL 值列表已变"
+        member = enum_cls(sample)
+        assert col_type.bind_processor(dialect)(member) == sample, f"{model.__name__}.{column_name} 绑定值已变"
+        # 读回：落库字符串 → 枚举成员（result_processor 是 ORM 读回用到的转换器）
+        read_back = col_type.result_processor(dialect, None)
+        assert read_back is not None, f"{model.__name__}.{column_name} 无读回转换器"
+        assert read_back(sample) is member, f"{model.__name__}.{column_name} 读回未还原为枚举成员"

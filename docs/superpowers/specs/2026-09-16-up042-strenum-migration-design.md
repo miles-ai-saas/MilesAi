@@ -55,16 +55,17 @@
 | `f"{x:>6}"` | `'   E.A'` | `'     a'` | **变** |
 | `f"{x!r}"` | `"<E.A: 'a'>"` | `"<E.A: 'a'>"` | 同 |
 | `"{}".format(x)` | `'E.A'` | `'a'` | **变** |
+| `"%s" % x` | `'E.A'` | `'a'` | **变** |
 | `repr(x)` | `"<E.A: 'a'>"` | `"<E.A: 'a'>"` | 同 |
 | `json.dumps(x)` | `'"a"'` | `'"a"'` | 同 |
 | `x == "a"` / `x in {"a"}` | `True` | `True` | 同 |
-| `len(x)` / `x.upper()` / `x.startswith("a")` / `"p" + x` / `x * 2` | 同 | 同 | 同 |
+| `len(x)` / `x.upper()` / `x.startswith("a")` / `"p" + x` / `x * 2` / `",".join([x])` | 同 | 同 | 同 |
 | `E("a")` / `sorted([x])` / dict 键查找 / `isinstance(x, str)` | 同 | 同 | 同 |
 | `.name` / `.value` | `'A'` / `'a'` | `'A'` / `'a'` | 同 |
 | Pydantic `model_dump_json()` | `'"a"'` | `'"a"'` | 同 |
 | Pydantic `json_schema()` | `{enum: ["a"], type: "string"}` | 同 | 同 |
 
-**结论：真实差异仅在 `str()` 家族**（`str()`、f-string、`format()` 及其格式说明符）。`repr()` 与其余全部一致。
+**结论：真实差异仅在 `str()` 家族**（`str()`、f-string、`format()` 及其格式说明符、`%s` 格式化）。`repr()` 与其余全部一致。
 
 > 勘误：首次探针曾报 `repr()` 有差异，系探针自身用了 `Old` / `New` 两个不同类名所致，同名重测后一致。此处记录以免后人重走。
 
@@ -74,6 +75,7 @@
 
 - **硬编码 `"Class.MEMBER"` 字符串字面量：0 处** → 无字符串比较会断。
 - `str()` / f-string / `format()` 作用于枚举实例的候选：**8 处**，逐一核对后：
+  - **复现方式**：以 `tests/models/test_enum_contract.py` 的 `_UP042_ENUMS`（22 模块 / 32 枚举）为清单，逐类名全仓 `rg -n "<类名>"` 取其使用点，再人工判读其中作用于**枚举实例**的 `str()` / f-string / `format()` 者。
   - **4 处**形如 `x.value if hasattr(x, "value") else str(x)`（`tools/services/tools.py:317`、`custom_tools.py:43`、`monitor/services/monitor.py:279`、`agents/services/architecture.py:240`）→ `StrEnum` 成员仍有 `.value`，走 `.value` 分支，**不受影响**；
   - **3 处误报**（`sys_category.py:24`、`categories/services/category.py:23`、`test_user_service.py:123`）→ 命中的 `domain` / `action` 是 `str` 型函数参数，非枚举实例；
   - **1 处不可达防御分支**（`tools/invoke/context.py:94`，报错文案 `f"暂不支持执行工具类型: {tool.tool_type}"`）→ `ToolType` 仅 `HTTP` / `SCRIPT` 两成员，第 90/92 行已穷尽，该行不可达；且**无任何测试断言此文案**。若将来新增成员使其可达，文案会由 `ToolType.X` 变为 `x`。
@@ -152,10 +154,14 @@
   真库探针写入/读回一致，敏感度对照（`--corrupt`）按期报错。§5.2 的结论已满足——但**其依据是结构性的，
   不是抽样归纳**：迁移只换了基类，`SAEnum.enums` 由 `[m.value for m in enum_cls]` 推出，而本次
   成员名/成员值零改动、`values_callable` 零改动、Alembic 文件零改动，故 DDL 与落库字符串对
-  **全部 32 处**由构造保证不变。§7.1 的真库探针（2 个代表列往返）与 §7.3 的 SAEnum 断言
-  （3 个代表列 `.enums`/绑定）是带敏感度对照的**抽样复核**，不构成该结论的归纳依据。
+  **全部 32 处**由构造保证不变。§7.1 的真库探针（2 个代表列往返，含 `--corrupt` 敏感度对照）与 §7.3 的 SAEnum 断言
+（3 个代表列的 `.enums` / 绑定 / 读回）是**抽样复核**，不构成该结论的归纳依据。
 - 2026-09-16 **§7.4 未取得结论**：本机 `alembic check` 报 `FAILED: Target database is not up to date.`
   （`alembic current` = `001`，`alembic heads` = `002`）。`002` 是本仓**更早**为 `adm_audit_logs.action`
   加索引的迁移，与枚举无关；本次迁移改动的 alembic 文件数为 0。属本地库预先存在的迁移滞后，
   未执行 `alembic upgrade head`（本任务约定不改 DDL/迁移），故 §7.4 在此环境**不可用**——
   即 schema 级 DDL 漂移**未经独立工具验证**，该结论由上一段的结构性论证承载，而非由本项承载。
+- 2026-09-16 **终审修复轮**：契约测试对「成员值漂移」原为同义反复（期望值两侧同源于生产枚举，
+  改成员值不会失败），已把三列的 DDL 值列表改为**字面量冻结**并补上 `result_processor` 读回断言；
+  spec §4 补 `%s`（属「变」的一侧）与 `join`（属「同」），§5.1 补 8 处候选的复现方式，
+  §10 敏感度对照的修饰语收归探针；`pyproject.toml` 的 UP042 留档注释移出 `ignore` 数组。

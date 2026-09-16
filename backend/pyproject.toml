@@ -39,16 +39,16 @@ extend-exclude = [".data", ".import_linter_cache"]
 # 噪声主要来自 tests/，启用即须写 per-file-ignores 逐块豁免，收益不抵成本，故不启用。
 # 借该线索找出的真缺陷（函数签名声明却静默丢弃的参数）已逐一移除。
 select = ["E", "F", "I", "B", "UP", "RUF"]
+# UP042 已于 2026-09-16 迁移完毕（32 处 (str, Enum) → StrEnum），故不再忽略。
+# 留档：当初以「影响落库语义」为由忽略是**说反了**——这些列一律以 values_callable
+# 取 .value，json.dumps、== 与 SQLAlchemy 的 .enums/绑定/读回实测均不受影响；
+# 唯一变化是 str()/f-string/format() 由 "Class.MEMBER" 变为成员值本身。
+# 契约见 tests/models/test_enum_contract.py。
 ignore = [
     # 中文注释 / 文案中的全角标点（，。：；「」等）非缺陷
     "RUF001",
     "RUF002",
     "RUF003",
-    # UP042 已于 2026-09-16 迁移完毕（32 处 (str, Enum) → StrEnum），故不再忽略。
-    # 留档：当初以「影响落库语义」为由忽略是**说反了**——这些列一律以 values_callable
-    # 取 .value，json.dumps、== 与 SQLAlchemy 的 .enums/绑定/读回实测均不受影响；
-    # 唯一变化是 str()/f-string/format() 由 "Class.MEMBER" 变为成员值本身。
-    # 契约见 tests/models/test_enum_contract.py。
     # 已登记技术债，留待后续批次逐处判断
     "RUF005",  # collection-literal-concatenation：集合字面量拼接
     "RUF012",  # mutable-class-default：类属性可变默认值（需配 ClassVar）
