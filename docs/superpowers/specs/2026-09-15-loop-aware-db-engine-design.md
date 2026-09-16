@@ -41,7 +41,9 @@ sessionmaker 绑到 `ContextVar`，13 个模块改用 `short_db_session()` 取�
 调用面（已核查）：
 
 - `short_db_session()` 使用者：**13 个模块 / 13 个文件 / 18 处调用点**（见 §6.1 逐处清单）。
-- `get_worker_session()` 使用者：1 处，`miles_worker/tasks/agent_schedule.py:34`。
+- `get_worker_session()` 使用者：**3 个模块 / 4 处调用点**——
+  `miles_portal/tenant/generative/services/job_execution.py:122`、`:192`、
+  `miles_worker/tasks/agent_schedule.py:34`、`miles_worker/tasks/model_health.py:28`。
 - `engine` 直接使用者：1 处，`miles_core/utils/health_checks.py:13`（`:36` 处 `engine.connect()`）。
 - Worker 侧异步入口（`asyncio.run`）共 3 个：
   `tasks/generative.py` 的 `_run_coro`（`:22` 定义，`:26` 的 `asyncio.run`）、
@@ -131,7 +133,7 @@ async def dispose_loop_engines() -> None:
 |---|---|
 | `engine` | **删除** → `get_engine()`；唯一消费者 `health_checks.py:13` 改用之，`infra/db/__init__.py` 的导入与 `__all__` 同步 |
 | `AsyncSessionLocal` | `sessionmaker` 实例 → 模块级**函数**；调用点写法不变 |
-| `get_worker_session()` | **删除**；`agent_schedule.py:34` 改用 `AsyncSessionLocal()` |
+| `get_worker_session()` | **删除**；3 个模块 / 4 处（`job_execution.py:122`、`:192`、`agent_schedule.py:34`、`model_health.py:28`）改用 `AsyncSessionLocal()` |
 | `short_db_session()` | **删除**；13 个模块改回 `AsyncSessionLocal()`（见 §6） |
 | `_worker_sessionmaker` / `_set_worker_sessionmaker` / `_reset_worker_sessionmaker` | **删除** |
 | `build_engine` / `get_db` | 保留，形状不变 |
@@ -274,6 +276,15 @@ Worker（每任务一个 loop）：
 - `get_redis()` 的 `id(loop)` 复用隐患（本设计不复制该做法，但不在本专项修）。
 - tool agent / a2a 路径持请求会话（另一专项）。
 - `SessionMediaReader` / `FlowMediaReader` 的并存（事务归属语义，保留）。
+- 非 Worker 的 `asyncio.run` 站点不在任何释放护栏的扫描根内：`miles_server` 的
+  `scripts/db_ops.py:86,90`、`scripts/verify_db.py:52`、`cli.py:153,171`（§5.3 已给过「CLI 单次
+  进程、退出即释放」的理由，此处只登记新失败形状）——这些脚本若改成长命进程，或被 CLI 之外的
+  路径复用，**漏了包装就是每 loop 一池**；`run_worker_db_coro` 的护栏只扫
+  `packages/miles-worker/src`（见 `tests/infra/test_run_worker_db_coro.py`），扫不到它们。
+- `miles_ai/integrations/langchain/chat_models.py:69-72` 的同步入口内部 `asyncio.run` **不是连接
+  泄漏**，只是白起一个 loop：该路径调 `litellm_chat_completion` 时不传 `usage_sink`，而 adapter 仅在
+  `usage_sink is not None` 时落库（`integrations/litellm/adapter.py:216,272`），故其 loop 内不取会话、
+  不建 engine。
 
 ## 10. 修订记录
 
@@ -372,3 +383,17 @@ Worker（每任务一个 loop）：
   不变（仅会话来源变化）。`rg -n "from miles_core.infra.redis"
   packages/miles-core/src/miles_core/infra/db/` 零命中，§4 的「DB 层不依赖 Redis」成立。
   §8 新增一条「`pool_pre_ping` 不会悄悄治愈本 bug」的实测结论。
+
+- 2026-09-16 终审修复轮（**只动测试与文档，未改生产代码**）：
+
+  **⑥ 调用面统计修正。** §2 与 §5.2 原称 `get_worker_session()` 使用者「1 处，
+  `agent_schedule.py:34`」，实为 **3 个模块 / 4 处**：`job_execution.py:122`、`:192`、
+  `agent_schedule.py:34`、`model_health.py:28`（`git grep` 于 merge-base `f4eb1418` 复核）。
+  该行原文带「已核查」标注，属误记，已改正。
+
+  **⑦ §7 不变量的补测与 I1 空转修正。** §7.5 的两条（barrel 导出面、`health_checks` 经
+  `get_engine()`）与 §7.2 的「dispose 后新建 engine」此前**无用例**，本轮补上（3 条，落在
+  `tests/infra/test_loop_aware_engine.py`）；同文件 I1 那条「不波及其它 loop」的半边原是空转
+  （第二个 engine 在 dispose **之后**才建，清空整表的错版照样绿），已改为「先在第二个 loop 建
+  engine 并持有该 loop，再回到第一个 loop dispose」，并以「清空整表」的错版实测变红。§9 另补记
+  非 Worker 的 `asyncio.run` 站点，与 `chat_models.py:69-72` 同步入口**非泄漏**的澄清。

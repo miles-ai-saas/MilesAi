@@ -405,8 +405,11 @@ class BaseService:
 ### 4.7 数据库会话（`infra/db/async_session.py`）
 
 ```python
-engine = create_async_engine(settings.database_url, echo=settings.debug, pool_pre_ping=True)
-AsyncSessionLocal = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+# infra/db/async_session.py —— engine 不暴露为模块级单例：由 loop 感知注册表（_loop_engines，
+# WeakKeyDictionary 以事件循环为键）内部按 loop 持有，调用方无需（也无法）自己拿 engine。
+def build_engine(settings: Settings) -> AsyncEngine: ...   # 池参数来自 Settings，注册表内部调用
+def get_engine() -> AsyncEngine: ...                       # 当前 loop 的 engine（缺失即懒建）
+def AsyncSessionLocal() -> AsyncSession: ...               # 当前 loop 的会话，写法与旧 sessionmaker 一致
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     async with AsyncSessionLocal() as session:

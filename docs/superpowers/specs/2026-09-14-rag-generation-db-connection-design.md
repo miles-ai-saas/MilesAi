@@ -4,6 +4,9 @@
 > 范围：`chat_rag.py` 的两条「检索→生成」路径（线性 `rag_answer` 与 LangGraph `run_rag_workflow`）
 > 非目标：tool agent 循环、子智能体规划、a2a 路径（见 §7）
 > 关联：[layering.md](../../architecture/layering.md)、`Settings.db_pool_*`
+> **已被取代（2026-09-15）**：本文 §10.5 要求的 `short_db_session()` 机制已由
+> [loop 感知的 DB 引擎与会话工厂](2026-09-15-loop-aware-db-engine-design.md) §5 取代（会话工厂自身
+> 按事件循环取值，「选对工厂」不再是调用点的责任）；本文作为历史设计保留。
 
 ---
 
