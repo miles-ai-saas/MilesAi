@@ -493,13 +493,19 @@ Expected: `AssertionError: 读回的值不对：'enabled' != 'disabled'`，且 `
 
 Run:
 ```bash
-cd backend && echo "=== 未改任何迁移 ===" && git diff --name-only HEAD~1 | rg "alembic" || echo "  ✓ 无迁移改动" && \
-echo "=== 未改 values_callable ===" && git diff HEAD~1 | rg "values_callable" || echo "  ✓ 无 values_callable 改动" && \
-echo "=== 枚举成员值未变 ===" && git diff HEAD~1 | rg "^[+-]\s+[A-Z_]+ = " || echo "  ✓ 无成员行改动" && \
-echo "=== 其余忽略项原样 ===" && rg -c "RUF001|RUF002|RUF003|RUF005|RUF012|RUF100" pyproject.toml | xargs echo "  仍保留条目数："
+cd backend && BASE=$(git merge-base main HEAD) && echo "基线：$(git rev-parse --short $BASE)" \
+  && printf "  1) alembic 迁移文件改动（预期 0）：" && (git diff --name-only "$BASE" HEAD | rg -c "alembic" || echo 0) \
+  && printf "  2) values_callable= 赋值改动（预期 0）：" && (git diff "$BASE" HEAD | rg -c "^[+-].*values_callable\s*=" || echo 0) \
+  && printf "  3) 枚举成员行改动（预期 0）：" && (git diff "$BASE" HEAD | rg -c "^[+-]\s+[A-Z_]+ = " || echo 0) \
+  && printf "  4) 其余忽略项保留条数（预期 6）：" && rg -o "RUF001|RUF002|RUF003|RUF005|RUF012|RUF100" pyproject.toml | sort -u | wc -l | xargs echo
 ```
 
-Expected: 前三条均打印 `✓`；最后一条为 `6`。
+Expected: `0` / `0` / `0` / `6`。
+
+> 三点说明（每条都是实测踩过的坑）：
+> 1. **不要用 `HEAD~1`**：本分支上有一个把 main 合并进来的合并提交，故 `HEAD~1` 指向 Task 1 的提交，`git diff HEAD~1` 比出的是 main 的计划文档变更，**不是**迁移。必须用 `git merge-base main HEAD` 作基线。
+> 2. **`values_callable` 的判据必须带 `=`**：`pyproject.toml` 的新旧注释都提到这个词，不带 `=` 会误报 2 条。
+> 3. **`rg` 无匹配时退出码为 1**，会中断 `&&` 链，故每项都包在 `( ... || echo 0 )` 里。
 
 - [ ] **Step 6: 回填 spec 修订记录**
 
@@ -589,6 +595,9 @@ Task 2 提交后，派一个 fresh subagent 做**整分支终审**（独立重�
 | Step 4 校验脚本的正则 | `...StrEnum))\$'` | 判定失误（见下）。**`\$` 在 bash 双引号内会被折叠为 `$`**，脚本原样可跑；我断言「必然失败」是错的。仍改为 `$` 以免依赖 shell 转义，但**不是**原计划的缺陷 |
 | Task 2 探针的引擎 API | `from miles_core.infra.db import engine` | **FAIL：该包不导出 `engine`**（`ImportError`）→ 已改为 `get_engine()` 并补 `dispose_loop_engines()` |
 | Task 2 探针的可重入性 | 固定名 `enum-probe` | 固定名在失败残留时会撞唯一约束 → 已改为 `uuid4().hex[:8]` 后缀，且释放放进 `try/finally` |
+| Task 2 Step 5 的基线 | `git diff HEAD~1` | **FAIL：本分支有合并提交，`HEAD~1` 指向 Task 1 提交**，比出的是 main 的计划文档变更 → 已改用 `git merge-base main HEAD` |
+| Task 2 Step 5 的 values_callable 判据 | `rg "values_callable"` | **FAIL：误报 2 条**（pyproject 新旧注释都含该词）→ 已收紧为 `^[+-].*values_callable\s*=` |
+| Task 2 Step 5 的 `rg` 退出码 | 裸 `&&` 串联 | `rg` 无匹配时退出码 1，会中断链 → 每项包进 `( ... || echo 0 )` |
 
 前六项由我在计划阶段的 dry run 抓出；中间三项是**首次派发实施者时才暴露**的；最后两项是**为 Task 2 做派发前预检**时抓到的（dry run 从未跑过 Task 2 的探针）。
 
