@@ -56,7 +56,8 @@
 - Consumes: 无（首个任务）
 - Produces:
   - `_UP042_ENUMS: dict[str, tuple[str, ...]]`（测试内私有常量；22 模块 → 类名元组）
-  - `_iter_members() -> Iterator[tuple[str, enum.Enum]]`（测试内私有 helper）
+  - `_iter_enum_classes() -> Iterator[tuple[str, Any]]`（测试内私有 helper，产出 `(限定名, 枚举类)`）
+  - `_iter_members() -> Iterator[tuple[str, enum.Enum]]`（测试内私有 helper，产出 `(限定名, 成员)`）
   - 4 个测试函数：`test_migration_checklist_is_complete`、`test_all_migrated_enums_are_strenum`、`test_str_family_returns_member_value`、`test_sqlalchemy_enum_columns_keep_same_values`
   - 迁移后的 32 个枚举均为 `enum.StrEnum` 子类（后续任务依赖此事实）
 
@@ -113,21 +114,26 @@ _UP042_ENUMS: dict[str, tuple[str, ...]] = {
     "miles_core.models.task.task_record": ("TaskStatus",),
     "miles_exec.mcp.constants": ("McpTransport",),
     "miles_exec.mcp.spec": ("NetworkMode",),
-    "miles_portal.tenant.a2a.models": ("A2aInvokePolicy", "A2aPeerStatus", "A2aPlanTrigger",),
+    "miles_portal.tenant.a2a.models": ("A2aInvokePolicy", "A2aPeerStatus", "A2aPlanTrigger"),
     "miles_portal.tenant.hooks.models": ("HookScope", "HookTrigger", "HookType"),
     "miles_portal.tenant.mcp.models": ("McpStatus",),
     "miles_portal.tenant.tools.models": ("ToolType",),
 }
 
 
-def _iter_members() -> Iterator[tuple[str, enum.Enum]]:
-    """遍历清单内全部枚举成员，产出 ``(限定名, 成员)``。"""
+def _iter_enum_classes() -> Iterator[tuple[str, Any]]:
+    """遍历清单内全部枚举类，产出 ``(限定名, 枚举类)``。"""
     for module_name, class_names in _UP042_ENUMS.items():
         module = importlib.import_module(module_name)
         for class_name in class_names:
-            enum_cls: Any = getattr(module, class_name)
-            for member in enum_cls:
-                yield f"{module_name}.{class_name}.{member.name}", member
+            yield f"{module_name}.{class_name}", getattr(module, class_name)
+
+
+def _iter_members() -> Iterator[tuple[str, enum.Enum]]:
+    """遍历清单内全部枚举成员，产出 ``(限定名, 成员)``。"""
+    for enum_label, enum_cls in _iter_enum_classes():
+        for member in enum_cls:
+            yield f"{enum_label}.{member.name}", member
 
 
 def test_migration_checklist_is_complete() -> None:
@@ -139,11 +145,8 @@ def test_migration_checklist_is_complete() -> None:
 
 def test_all_migrated_enums_are_strenum() -> None:
     """32 个枚举必须全部是 ``StrEnum`` 子类（迁移目标）。"""
-    for module_name, class_names in _UP042_ENUMS.items():
-        module = importlib.import_module(module_name)
-        for class_name in class_names:
-            enum_cls: Any = getattr(module, class_name)
-            assert issubclass(enum_cls, enum.StrEnum), f"{module_name}.{class_name} 尚未迁移为 StrEnum"
+    for enum_label, enum_cls in _iter_enum_classes():
+        assert issubclass(enum_cls, enum.StrEnum), f"{enum_label} 尚未迁移为 StrEnum"
 
 
 def test_str_family_returns_member_value() -> None:
