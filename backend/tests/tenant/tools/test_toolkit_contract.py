@@ -1,0 +1,232 @@
+"""toolkit 契约冻结：16 个工具的对外可观测面在「拆分 + 声明式收敛」前后必须逐字节一致。
+
+为什么必须存在：重构把 13 个工厂收敛为一张声明表，而 13 条 description 中有 7 条超过
+100 字符（最长 199），逐字搬运极易出错；`StructuredTool` 又会**静默接受**把同步工具
+写成异步（只是 `.func` 变空、`.coroutine` 非空，调用方看不出来）。本文件是这两类错误
+唯一的拦截手段，故在重构**之前**先跑绿。
+
+期望值来源：由重构前的实现实测导出（`args_schema.model_json_schema()` 经
+`json.dumps(..., sort_keys=True, separators=(",", ":"))` 归一化），非人工手写。
+"""
+
+# 本文件的期望值块是实测导出的长数据（最长一条 schema 逾 1100 字符），刻意保持
+# 「每个工具一行」以便与 Step 2 导出脚本的输出逐行 diff，故不拆行：整文件豁免
+# E501；两个数据块另以 fmt: off / fmt: on 关闭 formatter 拆行（见其上方注释）。
+# ruff: noqa: E501
+
+from __future__ import annotations
+
+import asyncio
+import inspect
+import json
+
+import pytest
+
+from miles_ai.integrations.langchain.tools import (
+    CustomToolSpec,
+    McpToolSpec,
+    build_platform_tools,
+    get_generative_tools,
+    get_platform_tools,
+    get_skill_bound_tools,
+    select_opt_in_builtin_tools,
+)
+
+_OPT_IN_SLUGS = ("web_search", "code_execution", "compliance_check_text", "run_flow_once", "invoke_tenant_hook")
+
+# 每个工具一行：slug -> (description, is_async, args_schema 的归一化 JSON)
+# 由重构前的实现实测导出（见 Step 2 的导出脚本），逐字复制，非人工手写。
+# 逐行对应导出脚本输出，禁止 formatter 拆行（`# fmt: off` 须独立成行、后无文字）。
+# fmt: off
+_EXPECTED_BUILTIN: dict[str, tuple[str, bool, str]] = {
+    "calculator": ("安全计算数学表达式", False, '{"properties":{"expression":{"description":"数学表达式，如 1+2*3","title":"Expression","type":"string"}},"required":["expression"],"title":"CalculatorInput","type":"object"}'),
+    "http_request": ("发起 HTTP 请求", False, '{"properties":{"method":{"default":"GET","title":"Method","type":"string"},"timeout":{"default":10.0,"title":"Timeout","type":"number"},"url":{"title":"Url","type":"string"}},"required":["url"],"title":"HttpRequestInput","type":"object"}'),
+    "get_current_datetime": ("获取当前的日期时间", False, '{"properties":{"timezone":{"anyOf":[{"type":"string"},{"type":"null"}],"default":null,"description":"IANA 时区，默认 UTC","title":"Timezone"}},"title":"DateTimeInput","type":"object"}'),
+    "knowledge_search": ("在指定知识库中语义检索", False, '{"properties":{"kb_id":{"anyOf":[{"type":"string"},{"type":"null"}],"default":null,"description":"单个知识库 ID（与 kb_ids 二选一；可省略用智能体已绑定知识库）","title":"Kb Id"},"kb_ids":{"anyOf":[{"items":{"type":"string"},"type":"array"},{"type":"null"}],"default":null,"description":"多个知识库 ID；多库检索时优先使用","title":"Kb Ids"},"limit":{"default":5,"description":"返回片段数","title":"Limit","type":"integer"},"query":{"description":"检索问题","title":"Query","type":"string"}},"required":["query"],"title":"KnowledgeSearchInput","type":"object"}'),
+    "web_search": ("使用 DuckDuckGo 搜索网页，返回摘要与相关链接", True, '{"properties":{"max_results":{"anyOf":[{"type":"integer"},{"type":"null"}],"default":null,"description":"返回条数，默认 5","title":"Max Results"},"query":{"description":"搜索关键词","title":"Query","type":"string"}},"required":["query"],"title":"WebSearchInput","type":"object"}'),
+    "code_execution": ("在 Runner 沙箱中执行 Python 代码片段（须符合安全校验）", True, '{"properties":{"code":{"description":"Python 代码片段（须定义 run(params) 语义的片段；禁止 import）","title":"Code","type":"string"},"memory":{"anyOf":[{"type":"integer"},{"type":"null"}],"default":null,"description":"内存上限 MB，默认 256","title":"Memory"},"timeout":{"anyOf":[{"type":"integer"},{"type":"null"}],"default":null,"description":"超时秒数，默认 30","title":"Timeout"}},"required":["code"],"title":"CodeExecutionInput","type":"object"}'),
+    "compliance_check_text": ("检测文本是否命中租户敏感词库，返回命中词与 warn/block 处置建议（只读）", True, '{"properties":{"text":{"description":"待检测文本","title":"Text","type":"string"}},"required":["text"],"title":"ComplianceCheckTextInput","type":"object"}'),
+    "run_flow_once": ("执行本租户一个已发布流程一次并返回其输出；仅限已发布流程，执行前需用户确认", True, '{"properties":{"flow_id":{"description":"已发布流程的 UUID","title":"Flow Id","type":"string"},"inputs":{"anyOf":[{"additionalProperties":true,"type":"object"},{"type":"null"}],"default":null,"description":"流程入口变量字典，如 {\\"query\\": \\"...\\"}","title":"Inputs"},"query":{"anyOf":[{"type":"string"},{"type":"null"}],"default":null,"description":"便捷传入流程 query 入口变量","title":"Query"},"timeout_sec":{"anyOf":[{"type":"integer"},{"type":"null"}],"default":null,"description":"执行超时秒数，默认 120，上限 300","title":"Timeout Sec"}},"required":["flow_id"],"title":"RunFlowOnceInput","type":"object"}'),
+    "invoke_tenant_hook": ("手动触发本租户已绑定的 HTTP 钩子（按触发时机与作用域），返回各钩子状态与改写后的载荷", True, '{"properties":{"payload":{"anyOf":[{"additionalProperties":true,"type":"object"},{"type":"null"}],"default":null,"description":"传给钩子的载荷，如 {\\"query\\": \\"...\\"}","title":"Payload"},"scope":{"anyOf":[{"type":"string"},{"type":"null"}],"default":null,"description":"作用域：global（默认）/ agent / flow / tool / app","title":"Scope"},"target_id":{"anyOf":[{"type":"string"},{"type":"null"}],"default":null,"description":"作用域目标 ID（非 global 时使用）","title":"Target Id"},"trigger":{"description":"触发时机：before_call / after_call / before_reasoning / after_reasoning / before_tool / after_tool / on_error","title":"Trigger","type":"string"}},"required":["trigger"],"title":"InvokeTenantHookInput","type":"object"}'),
+    "skill_read_reference": ("读取绑定技能包 references/ 或 assets/ 下的文本文件", True, '{"properties":{"max_chars":{"anyOf":[{"type":"integer"},{"type":"null"}],"default":null,"description":"最大读取字符数，默认 12000","title":"Max Chars"},"path":{"description":"相对技能根的路径，如 references/guide.md","title":"Path","type":"string"}},"required":["path"],"title":"SkillReadReferenceInput","type":"object"}'),
+    "skill_run_script": ("在沙箱中执行绑定技能包 scripts/ 下的 Python 脚本", True, '{"properties":{"max_memory_mb":{"anyOf":[{"type":"integer"},{"type":"null"}],"default":null,"description":"内存上限 MB，默认 512","title":"Max Memory Mb"},"params":{"additionalProperties":true,"description":"传入 run(params) 的参数字典","title":"Params","type":"object"},"path":{"description":"scripts/ 下脚本路径，如 scripts/example.py","title":"Path","type":"string"},"timeout_sec":{"anyOf":[{"type":"integer"},{"type":"null"}],"default":null,"description":"超时秒数，默认 30","title":"Timeout Sec"}},"required":["path"],"title":"SkillRunScriptInput","type":"object"}'),
+    "generate_image": ("生成图片（文生图/图生图）。直接通过 function calling 调用，传入 prompt 等参数即可，禁止在文字中描述调用过程。", True, '{"properties":{"image_attachment_id":{"anyOf":[{"type":"string"},{"type":"null"}],"default":null,"description":"参考图 attachment_id（如用户上传了图片并提供其 ID 时才填，通常不填）","title":"Image Attachment Id"},"model_config_id":{"anyOf":[{"type":"string"},{"type":"null"}],"default":null,"description":"生图模型 ID，留空自动使用默认模型，通常不需要填写","title":"Model Config Id"},"n":{"anyOf":[{"type":"integer"},{"type":"null"}],"default":null,"description":"独立单图张数 1–4（不是一张图里的格子数）；≥3 需用户确认","title":"N"},"prompt":{"description":"单幅完整画面描述。n>1 时仍写单图内容；除非用户明确要求组图/宫格/拼接，禁止四宫格或分镜拼贴","title":"Prompt","type":"string"},"size":{"anyOf":[{"type":"string"},{"type":"null"}],"default":null,"description":"如 1024x1024；≥1280 边长或多张需用户确认","title":"Size"}},"required":["prompt"],"title":"GenerateImageInput","type":"object"}'),
+    "generate_video": ("生成短视频（文/图生视频）。直接通过 function calling 调用，传入 prompt 等参数即可，禁止在文字中描述调用过程。耗时长，异步排队。", True, '{"properties":{"duration":{"anyOf":[{"type":"integer"},{"type":"null"}],"default":null,"description":"时长秒数，默认 5","title":"Duration"},"image_attachment_id":{"anyOf":[{"type":"string"},{"type":"null"}],"default":null,"description":"首帧图 attachment_id（如用户上传了图片并提供其 ID 时才填，通常不填）","title":"Image Attachment Id"},"last_frame_attachment_id":{"anyOf":[{"type":"string"},{"type":"null"}],"default":null,"description":"尾帧图 attachment_id（首尾帧生视频，须与首帧同传，通常不填）","title":"Last Frame Attachment Id"},"model_config_id":{"anyOf":[{"type":"string"},{"type":"null"}],"default":null,"description":"生视频模型 ID，留空自动使用默认模型，通常不需要填写","title":"Model Config Id"},"prompt":{"description":"视频描述","title":"Prompt","type":"string"},"resolution":{"anyOf":[{"type":"string"},{"type":"null"}],"default":null,"description":"720P 或 1080P","title":"Resolution"}},"required":["prompt"],"title":"GenerateVideoInput","type":"object"}'),
+}
+
+# spec 驱动：slug -> (description, is_async, schema JSON)
+_EXPECTED_SPEC_DRIVEN: dict[str, tuple[str, bool, str]] = {
+    "my_http": ("自定义 HTTP 工具", True, '{"properties":{"q":{"description":"查询词","title":"Q","type":"string"}},"required":["q"],"title":"ToolParams","type":"object"}'),
+    "my_script": ("My Script", True, '{"properties":{"n":{"default":null,"description":"次数","title":"N","type":"integer"}},"title":"ToolParams","type":"object"}'),
+    "mcp__github__create_issue": ("创建 issue", True, '{"properties":{"n":{"anyOf":[{"type":"integer"},{"type":"null"}],"default":3,"title":"N"},"title":{"description":"标题","title":"Title","type":"string"}},"required":["title"],"title":"McpToolParams","type":"object"}'),
+}
+# fmt: on
+
+
+def _normalized(tool) -> str:
+    """把 args_schema 归一化为可比字符串（键序固定、无多余空白）。"""
+    return json.dumps(tool.args_schema.model_json_schema(), sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+
+
+def _all_builtin() -> dict:
+    tools = [
+        *get_platform_tools(),
+        *select_opt_in_builtin_tools({"tool_slugs": list(_OPT_IN_SLUGS)}),
+        *get_skill_bound_tools(),
+        *get_generative_tools(),
+    ]
+    return {t.name: t for t in tools}
+
+
+@pytest.mark.parametrize("slug", sorted(_EXPECTED_BUILTIN))
+def test_builtin_tool_contract_frozen(slug: str) -> None:
+    """内置工具的 name / description / args_schema / 同步异步形状一字不变。"""
+    expected_desc, expected_async, expected_schema = _EXPECTED_BUILTIN[slug]
+    tool = _all_builtin()[slug]
+    assert tool.description == expected_desc, f"{slug} 的 description 被改动"
+    assert (tool.coroutine is not None) is expected_async, f"{slug} 的同步/异步形状被改动"
+    assert _normalized(tool) == expected_schema, f"{slug} 的 args_schema 被改动（LLM 可见，属对外行为）"
+
+
+def test_platform_tools_are_synchronous() -> None:
+    """4 个平台工具必须是同步 ``func``（现状如此，收敛时最易被一律写成 coroutine）。"""
+    for tool in get_platform_tools():
+        assert tool.func is not None, f"{tool.name} 应使用同步 func"
+        assert tool.coroutine is None, f"{tool.name} 不应被改成异步"
+
+
+def test_builtin_group_slugs_and_order() -> None:
+    """四个分组的成员与**顺序**（顺序即 function schema 顺序，属对外行为）。"""
+    assert [t.name for t in get_platform_tools()] == [
+        "calculator",
+        "http_request",
+        "get_current_datetime",
+        "knowledge_search",
+    ]
+    assert [t.name for t in select_opt_in_builtin_tools({"tool_slugs": list(_OPT_IN_SLUGS)})] == list(_OPT_IN_SLUGS)
+    assert [t.name for t in get_skill_bound_tools()] == ["skill_read_reference", "skill_run_script"]
+    assert [t.name for t in get_generative_tools()] == ["generate_image", "generate_video"]
+
+
+def test_opt_in_gate_unchanged() -> None:
+    """opt-in 工具未勾选不得注入；标量字符串与空配置的语义保持。"""
+    assert select_opt_in_builtin_tools({}) == []
+    assert select_opt_in_builtin_tools(None) == []
+    assert select_opt_in_builtin_tools({"tool_slugs": []}) == []
+    assert [t.name for t in select_opt_in_builtin_tools({"tool_slugs": "web_search"})] == ["web_search"]
+
+
+def test_build_platform_tools_gate_matrix() -> None:
+    """技能包 / 生成工具两个开关的四种组合（现状只覆盖技能那一半）。"""
+    skill = {"skill_package_id": "11111111-1111-1111-1111-111111111111"}
+    gen = {"enable_generative_tools": True}
+
+    def names(cfg: dict) -> set[str]:
+        return {t.name for t in build_platform_tools(cfg)}
+
+    neither = names({})
+    assert "skill_read_reference" not in neither and "generate_image" not in neither
+
+    only_skill = names(skill)
+    assert {"skill_read_reference", "skill_run_script"} <= only_skill
+    assert "generate_image" not in only_skill
+
+    only_gen = names(gen)
+    assert {"generate_image", "generate_video"} <= only_gen
+    assert "skill_read_reference" not in only_gen
+
+    both = names({**skill, **gen})
+    assert {"skill_read_reference", "skill_run_script", "generate_image", "generate_video"} <= both
+
+
+@pytest.mark.parametrize("slug", sorted(_EXPECTED_SPEC_DRIVEN))
+def test_spec_driven_tool_contract_frozen(slug: str) -> None:
+    """spec 驱动的 3 类工具（custom http / custom script / mcp）schema 与描述不变。"""
+    expected_desc, expected_async, expected_schema = _EXPECTED_SPEC_DRIVEN[slug]
+    tool = _spec_driven_tools()[slug]
+    assert tool.description == expected_desc
+    assert (tool.coroutine is not None) is expected_async
+    assert _normalized(tool) == expected_schema
+
+
+_CUSTOM_HTTP = CustomToolSpec(
+    slug="my_http",
+    name="My HTTP",
+    description="自定义 HTTP 工具",
+    tool_type="http",
+    parameters=[{"name": "q", "type": "string", "description": "查询词", "required": True}],
+)
+_CUSTOM_SCRIPT = CustomToolSpec(
+    slug="my_script",
+    name="My Script",
+    description=None,
+    tool_type="script",
+    parameters=[{"name": "n", "type": "integer", "description": "次数", "required": False}],
+)
+_MCP = McpToolSpec(
+    slug="mcp__github__create_issue",
+    tool_name="create_issue",
+    service_id="svc-1",
+    service_name="github",
+    description="创建 issue",
+    input_schema={
+        "type": "object",
+        "properties": {"title": {"type": "string", "description": "标题"}, "n": {"type": "integer", "default": 3}},
+        "required": ["title"],
+    },
+)
+
+
+def _spec_driven_tools() -> dict:
+    """构造 3 类 spec 驱动工具（custom http / custom script / mcp），按 slug 索引。"""
+    tools = [
+        *build_platform_tools({}, [_CUSTOM_HTTP]),
+        *build_platform_tools({}, [_CUSTOM_SCRIPT]),
+        *build_platform_tools({}, [], [_MCP]),
+    ]
+    return {t.name: t for t in tools if t.name in {"my_http", "my_script", "mcp__github__create_issue"}}
+
+
+_STUB_MESSAGE = "请通过 invoke_tool_with_context 执行 {slug}"
+
+
+def _call_stub(tool) -> None:
+    """调用占位函数本体（**不经** ``tool.invoke`` 的 pydantic 校验），让占位报错原样抛出。
+
+    占位有两种签名形状，须分别适配，否则会先抛 ``TypeError`` 而测不到占位报错：
+
+    - ``**kwargs`` 型（``_opt_in_marker`` / ``make_custom_*_tool`` / ``make_mcp_tool``）
+      只接受关键字，位置参数会被拒绝；
+    - 带具名必填参数的占位（``calculator`` / ``skill_*`` / ``generate_*``）需一个位置
+      参数才能进入函数体。
+    """
+    fn = tool.coroutine if tool.coroutine is not None else tool.func
+    accepts_positional = any(p.kind in (p.POSITIONAL_ONLY, p.POSITIONAL_OR_KEYWORD) for p in inspect.signature(fn).parameters.values())
+    args: tuple = ({},) if accepts_positional else ()
+    if tool.coroutine is not None:
+        asyncio.run(tool.coroutine(*args))
+    else:
+        fn(*args)
+
+
+@pytest.mark.parametrize("slug", sorted(_EXPECTED_BUILTIN))
+def test_builtin_stub_raises_instead_of_executing(slug: str) -> None:
+    """占位壳必须报错，不得静默返回（否则工具会「看起来能执行」）。
+
+    这条不变量原先在 13 个工厂里各抄一遍，任何一处漏写都无人发现——本用例是它的唯一护栏。
+
+    直接调用 ``tool.func`` / ``tool.coroutine``（即占位函数本体），**不经** ``tool.invoke``：
+    后者会先过 pydantic 校验，传空参会先抛 ``ValidationError`` 而非占位报错，从而测不到本意。
+    实测（重构前）：`calculator.invoke({})` → `ValidationError: Field required`；
+    `calculator.func({})` → `RuntimeError: 请通过 invoke_tool_with_context 执行 calculator`。
+    """
+    tool = _all_builtin()[slug]
+    with pytest.raises(RuntimeError, match=_STUB_MESSAGE.format(slug=slug)):
+        _call_stub(tool)
+
+
+@pytest.mark.parametrize("slug", sorted(_EXPECTED_SPEC_DRIVEN))
+def test_spec_driven_stub_raises_instead_of_executing(slug: str) -> None:
+    tool = _spec_driven_tools()[slug]
+    with pytest.raises(RuntimeError, match=_STUB_MESSAGE.format(slug=slug)):
+        _call_stub(tool)
