@@ -26,7 +26,7 @@
 - **分层约束**：`miles_ai` ✗→ `miles_portal`；`miles_portal` ✗→ `miles_admin`；`miles_core` ✗→ `miles_ai`。本计划只在 `miles_ai` 包内新增文件，不新增跨包依赖。
 - **不引入新依赖**；不改 import-linter 契约；不动 `miles_portal/tenant/tools/`。
 - **对外行为逐字节不变**：工具名、description、`args_schema` JSON、占位报错文案、装配顺序、门控判定。
-- **`toolkit/__init__.py` 必须为空**（不得构成再导出壳）。最终状态：仓库内**不存在指向旧模块的引用**——验证用 `rg -n "langchain[./]tools" backend/packages backend/tests docs`，只允许命中描述本次重构本身的历史文档（勘误 6：点号形式不足以证明这一点）。
+- **`toolkit/__init__.py` 必须为空**（不得构成再导出壳）。最终状态：仓库内**不存在指向旧模块的引用**——验证用 `rg -n "langchain[./]tools|langchain import tools" backend/packages backend/tests docs`，只允许命中描述本次重构本身的历史文档（勘误 6：点号形式 `langchain\.tools` **不足以**证明这一点——它看不见斜杠写法与 `import tools` 形式，实测正是因此漏掉 5 处，含一条教人往已删除文件里加工具的开发指南）。
 
 ---
 
