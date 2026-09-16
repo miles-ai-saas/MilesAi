@@ -12,7 +12,7 @@ import pytest
 from miles_ai.integrations.langchain.tool_agent import loop as loop_mod
 from miles_ai.integrations.langchain.tools import (
     get_platform_tools,
-    make_knowledge_search_tool,
+    make_builtin_tool,
     select_agent_tools,
 )
 from miles_core.models.agent.chat_io import ChatRequest
@@ -163,6 +163,6 @@ async def test_loop_backfills_sources_and_keeps_knowledge_search(monkeypatch):
 
 
 def test_make_knowledge_search_tool_schema_allows_kb_ids():
-    schema = make_knowledge_search_tool().args_schema.model_json_schema()
+    schema = make_builtin_tool("knowledge_search").args_schema.model_json_schema()
     assert "kb_ids" in schema["properties"]
     assert schema["required"] == ["query"]
