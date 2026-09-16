@@ -26,7 +26,7 @@
 - **分层约束**：`miles_ai` ✗→ `miles_portal`；`miles_portal` ✗→ `miles_admin`；`miles_core` ✗→ `miles_ai`。本计划只在 `miles_ai` 包内新增文件，不新增跨包依赖。
 - **不引入新依赖**；不改 import-linter 契约；不动 `miles_portal/tenant/tools/`。
 - **对外行为逐字节不变**：工具名、description、`args_schema` JSON、占位报错文案、装配顺序、门控判定。
-- **`toolkit/__init__.py` 必须为空**（不得构成再导出壳）。最终状态 `rg "langchain\.tools"` 在 `packages/` 与 `tests/` 下零命中。
+- **`toolkit/__init__.py` 必须为空**（不得构成再导出壳）。最终状态：仓库内**不存在指向旧模块的引用**——验证用 `rg -n "langchain[./]tools" backend/packages backend/tests docs`，只允许命中描述本次重构本身的历史文档（勘误 6：点号形式不足以证明这一点）。
 
 ---
 
@@ -1107,15 +1107,29 @@ git rm backend/packages/miles-ai/src/miles_ai/integrations/langchain/tools.py
 
 - [ ] **Step 4: 同步 docstring / 注释里的旧路径**
 
-实测有 **2 处**非 import 的旧路径引用，一并改掉：
+**勘误 6（Task 3 实施后发现，已修正本步的搜索方式）**：本步原稿只用
+`rg -n "langchain\.tools"`（点号形式）验证，**不足以**证明「没有旧路径残留」——
+斜杠形式 `langchain/tools`、以及不带包名前缀的 `toolkit 旧路径` 都不会命中。
+实测漏掉的引用（Task 3 已修其中 2 处，其余由修复轮处理）：
 
-1. `backend/packages/miles-core/src/miles_core/models/tool/__init__.py:4`
-   —— docstring 提到 `L3 集成层 integrations.langchain.tools`，改为 `integrations.langchain.toolkit`
-2. `backend/packages/miles-portal/src/miles_portal/tenant/tools/services/mcp_tools.py:12`
-   —— docstring 提到 ``integrations.langchain.tools.compose_mcp_tool_name``，
-   改为 ``integrations.langchain.toolkit.naming.compose_mcp_tool_name``
+| 位置 | 形式 | 处置 |
+|---|---|---|
+| `miles_core/models/tool/__init__.py:4` | 点号 | Task 3 已改 |
+| `miles_portal/.../tools/services/mcp_tools.py:12` | 点号 | Task 3 已改 |
+| `miles_core/models/tool/parameters.py:1` | 斜杠 | 修复轮改 |
+| `miles_portal/.../tools/services/custom_tools.py:5` | 斜杠（历史叙述） | 修复轮改 |
+| `docs/guides/ai-stack.md:76` | 斜杠（**可执行的开发指南**） | 修复轮改 |
+| `docs/architecture/tools-runtime.md:171` | 斜杠（架构图） | 修复轮改 |
+| `docs/architecture/tools-runtime.md:360` | 斜杠（路径表） | 修复轮改 |
 
-Run: `rg -n "langchain\.tools" backend/packages backend/tests` → Expected: **零命中**
+搜索必须覆盖两种形式：
+
+```bash
+rg -n "langchain[./]tools" backend/packages backend/tests docs
+```
+
+Expected: 仅命中**描述本次重构本身**的历史文档（`docs/superpowers/specs/2026-09-16-*`
+与 `docs/superpowers/plans/2026-09-16-*`），这些提到旧路径是在讲「做了什么」，属正确；其余零命中。
 
 - [ ] **Step 5: 跑测试与门禁**
 
@@ -1209,6 +1223,7 @@ EOF
 | **lint 豁免已定** | 期望值行最长 1137 字符，超 `line-length = 160`；用户确认采用文件级 `# ruff: noqa: E501` + 数据块 `# fmt: off`（理由就近写在数据旁），不迁入 `pyproject.toml` 的 `per-file-ignores` |
 | **导入已实测** | 勘误 4：`catalog.py` 原稿写 `from typing import Any, Sequence`，实测触发 `UP035`（该规则在 `select` 列表内且未豁免）→ 已改为 `from collections.abc import Sequence` + `from typing import Any`。Task 2 若照原稿写会直接卡在 `ruff check` |
 | **F401 判断已实测** | 勘误 5：原稿称「F401 说明该符号无人使用，删掉即可」——**错误**。`tools.py` 非 `__init__.py`，裸转发导入会被 F401 全部报出（实测含确有调用点者），照删会删空整个壳。正解是显式声明 `__all__`，已补入 Step 6 代码块 |
+| **旧路径搜索已修正** | 勘误 6：Task 3/4 原稿只用点号形式 `langchain\.tools` 验证「无残留」，**不足以**——斜杠形式 `langchain/tools` 不命中，实测漏掉 5 处（含 `docs/guides/ai-stack.md:76` 这条**可执行的开发指南**，它教人往已删除的文件里加工具）。已改为 `langchain[./]tools` 并列出全部漏网点 |
 | **调用面已实测** | 11 处 import + 2 处 docstring 引用由 `rg` 全仓核实（见 Task 3 Step 1/2/4 的行号）。据此发现并修掉了两个计划缺陷：(1) `make_knowledge_search_tool` 有唯一消费者（测试），原计划未安排其迁移，已移入 Task 2 Step 7；(2) 无任何调用点从 `tools.py` 导入 13 个 DTO，故临时再导出层不做 `import *`，`inputs.py` 也不需要 `__all__` |
 
 ## 与设计文档的两处刻意偏差（已记录，非疏漏）
