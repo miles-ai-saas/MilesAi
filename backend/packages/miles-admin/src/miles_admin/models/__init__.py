@@ -3,7 +3,7 @@
 from miles_admin.models.audit import AuditLog
 from miles_admin.models.billing import BillingPlan, BillLineItem, BillStatus, TenantBill
 from miles_admin.models.sys import PlatformAdmin
-from miles_core.models.risk import IpBlacklist, RateLimitRule, RiskEvent, RiskSeverity  # noqa: F401
+from miles_core.models.risk import IpBlacklist, RateLimitRule, RiskEvent, RiskSeverity
 
 __all__ = [
     "AuditLog",

@@ -23,13 +23,20 @@ target-version = "py311"
 extend-exclude = [".data", ".import_linter_cache"]
 
 [tool.ruff.lint]
-# ruff 默认仅启用 E4/E7/E9/F；显式开启 import 排序、bugbear 与 pyupgrade，
-# 让 `make lint-backend` 能拦住导入顺序、过时写法与常见陷阱。
+# 核验规则集：`ruff check --show-settings . | sed -n '/^linter.rules.enabled/,/^\]/p'`
+# 解析后共启用 188 条（E18 / F43 / I2 / B39 / UP44 / RUF42）。
+# 注意 `select` 是**替换**默认集而非在其上叠加：ruff 默认只有 E4/E7/E9/F，
+# 此处另纳入 E101、E501 与 import 排序(I)、bugbear(B)、pyupgrade(UP)、RUF，
+# 让 `make lint-backend` 能拦住制表符混用、行宽、导入顺序、过时写法与常见陷阱。
 #
-# ARG（未使用参数）经评估不启用：实测 80 处中绝大多数是接口契约——
-# FastAPI 注入的 ctx、LangGraph 节点签名 (state, config)、AST visitor 的 node、
-# LangChain 回调签名、内置工具的 schema 壳（`_run` 参数仅供 LLM 描述工具）。
-# 启用需为 views/ 等目录堆大量 per-file-ignores，噪声大于收益。
+# ARG（未使用参数）经评估不启用：实测 399 处
+# （ARG001 284 / ARG002 41 / ARG005 74；`ruff check --select ARG --statistics .`）
+# 其中 351 处（88%）落在 tests/（pytest fixture 与契约桩），生产侧仅 48 处，
+# 且已逐处核对，全属接口契约或有意忽略：FastAPI 注入的 ctx（26 处）、
+# LangGraph/AST/回调签名（state、config、node、run_manager、stop 等）、
+# handler 统一协议（bound_skill_id、actor_user_id）、工具 schema 占位壳（kwargs），
+# 以及文档已注明忽略入参的适配器（precomputed 向量、IP 全掩、示例钩子等）。
+# 噪声主要来自 tests/，启用即须写 per-file-ignores 逐块豁免，收益不抵成本，故不启用。
 # 借该线索找出的真缺陷（函数签名声明却静默丢弃的参数）已逐一移除。
 select = ["E", "F", "I", "B", "UP", "RUF"]
 ignore = [
@@ -37,12 +44,20 @@ ignore = [
     "RUF001",
     "RUF002",
     "RUF003",
-    # 持久化枚举刻意保留 (str, Enum)；改 StrEnum 会影响落库语义，需单独评估
+    # 枚举保留 (str, Enum) 而非 StrEnum（实测 32 处）。注意理由不是落库：这些列
+    # 一律以 values_callable 取 `.value`，json.dumps 与 == 实测亦一致，故三者都不受影响。
+    # 唯一差异在 str()/f-string/format() 的输出——(str, Enum) 得 "Class.MEMBER"，
+    # StrEnum 得成员值本身；该类枚举名被 f-string 插值处粗测仅 2 处，但仍须逐处确认
+    # 无日志/文案依赖后再改，故整体保留。
     "UP042",
     # 已登记技术债，留待后续批次逐处判断
-    "RUF005", # 集合字面量拼接
-    "RUF012", # 可变类属性（需配 ClassVar）
-    "RUF100", # 本批未启用 ARG / SIM，保留 # noqa 的说明作用
+    "RUF005",  # collection-literal-concatenation：集合字面量拼接
+    "RUF012",  # mutable-class-default：类属性可变默认值（需配 ClassVar）
+    # 保留本批未启用规则（以 ANN001 为主，另有 ARG 等）在 `# noqa` 中的说明作用。
+    # 注意 `miles_server/registry.py` 不可照此逐条清理：该副作用导入块 21 条
+    # `# noqa: F401` 中仅 3 条真正承载抑制（F401 只对同一根模块的最后一次绑定触发），
+    # 其余记录「有意导入」，删掉会让该块只剩零星 3 行带注解、形似遗漏。
+    "RUF100",
 ]
 
 [tool.ruff.lint.flake8-bugbear]
