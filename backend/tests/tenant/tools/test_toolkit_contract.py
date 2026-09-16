@@ -59,6 +59,7 @@ _EXPECTED_SPEC_DRIVEN: dict[str, tuple[str, bool, str]] = {
     "my_http": ("自定义 HTTP 工具", True, '{"properties":{"q":{"description":"查询词","title":"Q","type":"string"}},"required":["q"],"title":"ToolParams","type":"object"}'),
     "my_script": ("My Script", True, '{"properties":{"n":{"default":null,"description":"次数","title":"N","type":"integer"}},"title":"ToolParams","type":"object"}'),
     "mcp__github__create_issue": ("创建 issue", True, '{"properties":{"n":{"anyOf":[{"type":"integer"},{"type":"null"}],"default":3,"title":"N"},"title":{"description":"标题","title":"Title","type":"string"}},"required":["title"],"title":"McpToolParams","type":"object"}'),
+    "mcp__svc__nofields": ("svc · nofields", True, '{"properties":{"kwargs":{"additionalProperties":true,"default":null,"title":"Kwargs","type":"object"}},"title":"mcp__svc__nofields","type":"object"}'),
 }
 # fmt: on
 
@@ -90,7 +91,9 @@ def test_builtin_tool_contract_frozen(slug: str) -> None:
 
 def test_platform_tools_are_synchronous() -> None:
     """4 个平台工具必须是同步 ``func``（现状如此，收敛时最易被一律写成 coroutine）。"""
-    for tool in get_platform_tools():
+    platform_tools = get_platform_tools()
+    assert platform_tools, "平台工具列表为空，本用例会空跑通过"
+    for tool in platform_tools:
         assert tool.func is not None, f"{tool.name} 应使用同步 func"
         assert tool.coroutine is None, f"{tool.name} 不应被改成异步"
 
@@ -117,31 +120,44 @@ def test_opt_in_gate_unchanged() -> None:
 
 
 def test_build_platform_tools_gate_matrix() -> None:
-    """技能包 / 生成工具两个开关的四种组合（现状只覆盖技能那一半）。"""
+    """技能包 / 生成工具两个开关的四种组合（现状只覆盖技能那一半）。
+
+    断言用**精确有序列表**而非集合：装配顺序（platform → opt-in → skill → generative
+    → custom http/script → mcp）本身是本次重构「逐字节一致」的一部分，集合语义既看不出
+    顺序，也发现不了重复工具。
+    """
     skill = {"skill_package_id": "11111111-1111-1111-1111-111111111111"}
     gen = {"enable_generative_tools": True}
+    platform_slugs = ["calculator", "http_request", "get_current_datetime", "knowledge_search"]
 
-    def names(cfg: dict) -> set[str]:
-        return {t.name for t in build_platform_tools(cfg)}
+    def names(cfg: dict, custom=None, mcp=None) -> list[str]:
+        return [t.name for t in build_platform_tools(cfg, custom, mcp)]
 
-    neither = names({})
-    assert "skill_read_reference" not in neither and "generate_image" not in neither
+    assert names({}) == platform_slugs
 
     only_skill = names(skill)
-    assert {"skill_read_reference", "skill_run_script"} <= only_skill
-    assert "generate_image" not in only_skill
+    assert only_skill == [*platform_slugs, "skill_read_reference", "skill_run_script"]
 
     only_gen = names(gen)
-    assert {"generate_image", "generate_video"} <= only_gen
-    assert "skill_read_reference" not in only_gen
+    assert only_gen == [*platform_slugs, "generate_image", "generate_video"]
 
-    both = names({**skill, **gen})
-    assert {"skill_read_reference", "skill_run_script", "generate_image", "generate_video"} <= both
+    # custom（http 先于 script）与 mcp 均参与时的完整拼接顺序。
+    both_cfg = {**skill, **gen, "tool_slugs": list(_OPT_IN_SLUGS)}
+    assert names(both_cfg, [_CUSTOM_HTTP], [_MCP]) == [
+        *platform_slugs,
+        *_OPT_IN_SLUGS,
+        "skill_read_reference",
+        "skill_run_script",
+        "generate_image",
+        "generate_video",
+        "my_http",
+        "mcp__github__create_issue",
+    ]
 
 
 @pytest.mark.parametrize("slug", sorted(_EXPECTED_SPEC_DRIVEN))
 def test_spec_driven_tool_contract_frozen(slug: str) -> None:
-    """spec 驱动的 3 类工具（custom http / custom script / mcp）schema 与描述不变。"""
+    """spec 驱动的各类工具（custom http / custom script / mcp / mcp 无 schema）schema 与描述不变。"""
     expected_desc, expected_async, expected_schema = _EXPECTED_SPEC_DRIVEN[slug]
     tool = _spec_driven_tools()[slug]
     assert tool.description == expected_desc
@@ -175,16 +191,27 @@ _MCP = McpToolSpec(
         "required": ["title"],
     },
 )
+# 唯一 `input_schema is None` 的形态：`make_mcp_tool` 会整个省掉 args_schema，
+# LangChain 遂从占位函数签名（`**kwargs`）反推 schema，title 取工具名。
+_MCP_NONE = McpToolSpec(
+    slug="mcp__svc__nofields",
+    tool_name="nofields",
+    service_id="svc-1",
+    service_name="svc",
+    description=None,
+    input_schema=None,
+)
 
 
 def _spec_driven_tools() -> dict:
-    """构造 3 类 spec 驱动工具（custom http / custom script / mcp），按 slug 索引。"""
+    """构造 4 类 spec 驱动工具（custom http / custom script / mcp / mcp 无 schema），按 slug 索引。"""
     tools = [
         *build_platform_tools({}, [_CUSTOM_HTTP]),
         *build_platform_tools({}, [_CUSTOM_SCRIPT]),
         *build_platform_tools({}, [], [_MCP]),
+        *build_platform_tools({}, [], [_MCP_NONE]),
     ]
-    return {t.name: t for t in tools if t.name in {"my_http", "my_script", "mcp__github__create_issue"}}
+    return {t.name: t for t in tools if t.name in {"my_http", "my_script", "mcp__github__create_issue", "mcp__svc__nofields"}}
 
 
 _STUB_MESSAGE = "请通过 invoke_tool_with_context 执行 {slug}"
