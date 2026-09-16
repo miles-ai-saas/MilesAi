@@ -37,13 +37,13 @@ agent_kb_bindings = Table(
 
 
 # 智能体启用/停用状态。
-class AgentStatus(str, enum.Enum):
+class AgentStatus(enum.StrEnum):
     ENABLED = "enabled"
     DISABLED = "disabled"
 
 
 # 智能体类型：CUSTOM 本地编排 / A2A 远程。
-class AgentType(str, enum.Enum):
+class AgentType(enum.StrEnum):
     CUSTOM = "custom"
     A2A = "a2a"
 

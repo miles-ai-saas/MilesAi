@@ -12,7 +12,7 @@ from miles_core.models.base import TimestampMixin, UUIDPrimaryKeyMixin
 
 
 # 任务状态，与 Celery 任务状态映射。
-class TaskStatus(str, enum.Enum):
+class TaskStatus(enum.StrEnum):
     PENDING = "pending"
     RUNNING = "running"
     SUCCESS = "success"

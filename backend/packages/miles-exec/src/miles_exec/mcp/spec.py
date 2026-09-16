@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from enum import Enum
+from enum import StrEnum
 from typing import Literal
 from uuid import UUID
 
@@ -17,7 +17,7 @@ _DEFAULT_COMMAND_WHITELIST = frozenset({"npx", "node", "python", "python3"})
 
 
 # Runner 容器网络开关。
-class NetworkMode(str, Enum):
+class NetworkMode(StrEnum):
     DENY = "deny"
     ALLOW = "allow"
 

@@ -12,7 +12,7 @@ from miles_core.models.base import TimestampMixin, UUIDPrimaryKeyMixin
 
 
 # 异步生成任务状态。
-class GenerativeJobStatus(str, enum.Enum):
+class GenerativeJobStatus(enum.StrEnum):
     PENDING = "pending"
     RUNNING = "running"
     SUCCESS = "success"

@@ -5,7 +5,7 @@ from __future__ import annotations
 import enum
 
 
-class CanvasNodeType(str, enum.Enum):
+class CanvasNodeType(enum.StrEnum):
     """React Flow ``node.type`` 与 ``NODE_REGISTRY`` 键名。"""
 
     TEXT_INPUT = "TextInput"

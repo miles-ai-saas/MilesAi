@@ -4,7 +4,7 @@ import enum
 
 
 # 模型供应商。
-class ModelVendor(str, enum.Enum):
+class ModelVendor(enum.StrEnum):
     DEEPSEEK = "deepseek"
     DOUBAO = "doubao"
     QWEN = "qwen"
@@ -13,7 +13,7 @@ class ModelVendor(str, enum.Enum):
 
 
 # 模型能力类型（用于目录分类与筛选）。
-class ModelCapabilityType(str, enum.Enum):
+class ModelCapabilityType(enum.StrEnum):
     LLM = "llm"
     REASONING = "reasoning"
     VISION = "vision"
@@ -42,7 +42,7 @@ CATALOG_MODEL_TYPES: tuple[ModelCapabilityType, ...] = (
 
 
 # 模型发布状态。
-class ModelPublishStatus(str, enum.Enum):
+class ModelPublishStatus(enum.StrEnum):
     DRAFT = "draft"
     PUBLISHED = "published"
     DEPRECATED = "deprecated"

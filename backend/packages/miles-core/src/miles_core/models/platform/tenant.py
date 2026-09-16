@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 
 
 # 租户状态。
-class TenantStatus(str, enum.Enum):
+class TenantStatus(enum.StrEnum):
     ACTIVE = "active"
     SUSPENDED = "suspended"
     TRIAL = "trial"

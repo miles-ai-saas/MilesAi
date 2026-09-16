@@ -14,7 +14,7 @@ from miles_core.models.base import TimestampMixin, UUIDPrimaryKeyMixin
 
 
 # 工具类型：HTTP 出站调用或 Runner 沙箱脚本。
-class ToolType(str, enum.Enum):
+class ToolType(enum.StrEnum):
     HTTP = "http"
     SCRIPT = "script"  # v2：MCP Runner 沙箱执行
 

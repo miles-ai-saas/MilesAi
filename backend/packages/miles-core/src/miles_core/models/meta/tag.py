@@ -15,7 +15,7 @@ from miles_core.infra.db import Base
 from miles_core.models.base import TimestampMixin, UUIDPrimaryKeyMixin
 
 
-class TagEntityType(str, enum.Enum):
+class TagEntityType(enum.StrEnum):
     """绑定表 entity_type 取值，与各业务表主键对应。"""
 
     AGENT = "agent"

@@ -13,7 +13,7 @@ from miles_core.infra.db import Base
 from miles_core.models.base import TimestampMixin, UUIDPrimaryKeyMixin
 
 
-class McpStatus(str, enum.Enum):
+class McpStatus(enum.StrEnum):
     """同步与可用性状态，供工作台卡片展示。"""
 
     ACTIVE = "active"  # 最近一次 sync 成功且有工具列表

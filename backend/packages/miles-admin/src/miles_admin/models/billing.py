@@ -15,7 +15,7 @@ from miles_core.models.base import TimestampMixin, UUIDPrimaryKeyMixin
 
 
 # 账单状态：草稿 / 已出账 / 已支付 / 作废。
-class BillStatus(str, enum.Enum):
+class BillStatus(enum.StrEnum):
     DRAFT = "draft"
     ISSUED = "issued"
     PAID = "paid"

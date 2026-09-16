@@ -21,7 +21,7 @@ from miles_core.infra.db import Base
 from miles_core.models.base import TimestampMixin, UUIDPrimaryKeyMixin
 
 
-class DocumentStatus(str, enum.Enum):
+class DocumentStatus(enum.StrEnum):
     """入库流水线状态（PENDING → PARSING → EMBEDDING → READY）。"""
 
     PENDING = "pending"
