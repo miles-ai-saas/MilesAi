@@ -10,11 +10,8 @@ from uuid import uuid4
 import pytest
 
 from miles_ai.integrations.langchain.tool_agent import loop as loop_mod
-from miles_ai.integrations.langchain.tools import (
-    get_platform_tools,
-    make_builtin_tool,
-    select_agent_tools,
-)
+from miles_ai.integrations.langchain.toolkit.catalog import get_platform_tools, make_builtin_tool
+from miles_ai.integrations.langchain.toolkit.naming import select_agent_tools
 from miles_core.models.agent.chat_io import ChatRequest
 from miles_portal.tenant.tools.builtins import handlers as handlers_mod
 
@@ -162,7 +159,7 @@ async def test_loop_backfills_sources_and_keeps_knowledge_search(monkeypatch):
     assert resp.sources == [{"score": 0.8, "content_preview": "kb 片段"}]
 
 
-def test_make_knowledge_search_tool_schema_allows_kb_ids():
+def test_knowledge_search_tool_schema_allows_kb_ids():
     schema = make_builtin_tool("knowledge_search").args_schema.model_json_schema()
     assert "kb_ids" in schema["properties"]
     assert schema["required"] == ["query"]

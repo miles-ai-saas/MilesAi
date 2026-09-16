@@ -9,7 +9,7 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from miles_ai.integrations.langchain.tools import is_mcp_tool_name
+from miles_ai.integrations.langchain.toolkit.naming import is_mcp_tool_name
 from miles_common.exceptions import BadRequestError, NotFoundError
 from miles_common.trace import get_trace_id
 from miles_core.soft_delete import is_marked_deleted

@@ -22,15 +22,14 @@ import json
 
 import pytest
 
-from miles_ai.integrations.langchain.tools import (
-    CustomToolSpec,
-    McpToolSpec,
+from miles_ai.integrations.langchain.toolkit.catalog import (
     build_platform_tools,
     get_generative_tools,
     get_platform_tools,
     get_skill_bound_tools,
     select_opt_in_builtin_tools,
 )
+from miles_ai.integrations.langchain.toolkit.specs import CustomToolSpec, McpToolSpec
 
 _OPT_IN_SLUGS = ("web_search", "code_execution", "compliance_check_text", "run_flow_once", "invoke_tenant_hook")
 
@@ -220,20 +219,13 @@ _STUB_MESSAGE = "请通过 invoke_tool_with_context 执行 {slug}"
 def _call_stub(tool) -> None:
     """调用占位函数本体（**不经** ``tool.invoke`` 的 pydantic 校验），让占位报错原样抛出。
 
-    占位有两种签名形状，须分别适配，否则会先抛 ``TypeError`` 而测不到占位报错：
-
-    - ``**kwargs`` 型（``_opt_in_marker`` / ``make_custom_*_tool`` / ``make_mcp_tool``）
-      只接受关键字，位置参数会被拒绝；
-    - 带具名必填参数的占位（``calculator`` / ``skill_*`` / ``generate_*``）需一个位置
-      参数才能进入函数体。
+    占位统一为 ``**kwargs``，无位置参数可传；这也正是 ``tool.invoke({})`` 测不到本意
+    （会先抛 pydantic ``ValidationError``）的原因。
     """
-    fn = tool.coroutine if tool.coroutine is not None else tool.func
-    accepts_positional = any(p.kind in (p.POSITIONAL_ONLY, p.POSITIONAL_OR_KEYWORD) for p in inspect.signature(fn).parameters.values())
-    args: tuple = ({},) if accepts_positional else ()
     if tool.coroutine is not None:
-        asyncio.run(tool.coroutine(*args))
+        asyncio.run(tool.coroutine())
     else:
-        fn(*args)
+        tool.func()
 
 
 @pytest.mark.parametrize("slug", sorted(_EXPECTED_BUILTIN))
@@ -248,6 +240,9 @@ def test_builtin_stub_raises_instead_of_executing(slug: str) -> None:
     `calculator.func({})` → `RuntimeError: 请通过 invoke_tool_with_context 执行 calculator`。
     """
     tool = _all_builtin()[slug]
+    fn = tool.coroutine if tool.coroutine is not None else tool.func
+    positional = [p for p in inspect.signature(fn).parameters.values() if p.kind in (p.POSITIONAL_ONLY, p.POSITIONAL_OR_KEYWORD)]
+    assert not positional, f"{slug} 的占位不应接受位置参数（统一为 **kwargs）"
     with pytest.raises(RuntimeError, match=_STUB_MESSAGE.format(slug=slug)):
         _call_stub(tool)
 

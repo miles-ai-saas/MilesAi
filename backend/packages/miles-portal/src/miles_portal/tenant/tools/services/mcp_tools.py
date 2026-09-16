@@ -9,7 +9,7 @@
 - ``invoke_mcp_tool_by_slug``：按 slug 定位服务，把 LLM 参数还原为原始属性名后
   走 ``McpServiceManager.invoke_tool``（HTTP/SSE/STDIO 由既有链路处理）。
 
-命名规则见 ``integrations.langchain.tools.compose_mcp_tool_name``。
+命名规则见 ``integrations.langchain.toolkit.naming.compose_mcp_tool_name``。
 """
 
 from __future__ import annotations
@@ -19,12 +19,8 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from miles_ai.integrations.langchain.tools import (
-    McpToolSpec,
-    compose_mcp_tool_name,
-    is_mcp_tool_name,
-    mcp_param_alias,
-)
+from miles_ai.integrations.langchain.toolkit.naming import compose_mcp_tool_name, is_mcp_tool_name
+from miles_ai.integrations.langchain.toolkit.specs import McpToolSpec, mcp_param_alias
 from miles_common.exceptions import NotFoundError
 from miles_core.soft_delete import not_deleted
 from miles_core.tenant import TenantContext, tenant_filters

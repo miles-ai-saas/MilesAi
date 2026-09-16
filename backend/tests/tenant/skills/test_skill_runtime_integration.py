@@ -4,7 +4,7 @@ from uuid import uuid4
 
 import pytest
 
-from miles_ai.integrations.langchain import tools as lc_tools
+from miles_ai.integrations.langchain.toolkit import catalog as lc_tools
 from miles_core.tenant import TenantContext
 from miles_portal.tenant.agents.services.context import build_skill_mcp_prompt_block
 from miles_portal.tenant.skills.skill_layout import build_layout_index, merge_layout_into_config
