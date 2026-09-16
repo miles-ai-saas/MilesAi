@@ -22,6 +22,7 @@ import json
 
 import pytest
 
+from miles_ai.integrations.langchain.toolkit import catalog
 from miles_ai.integrations.langchain.toolkit.catalog import (
     build_platform_tools,
     get_generative_tools,
@@ -108,6 +109,38 @@ def test_builtin_group_slugs_and_order() -> None:
     assert [t.name for t in select_opt_in_builtin_tools({"tool_slugs": list(_OPT_IN_SLUGS)})] == list(_OPT_IN_SLUGS)
     assert [t.name for t in get_skill_bound_tools()] == ["skill_read_reference", "skill_run_script"]
     assert [t.name for t in get_generative_tools()] == ["generate_image", "generate_video"]
+
+
+def test_decl_registry_and_groups_are_in_bijection() -> None:
+    """``_DECLS`` 声明与四个分组必须双向一一对应（否则工具会**无征兆**地不可达）。
+
+    为什么必须存在：``_DECLS`` 只在 ``_DECLS[slug]`` 处被查表，**从不被遍历**——一个工具的
+    可见性完全取决于它是否落在 ``_PLATFORM_SLUGS`` / ``_OPT_IN_SLUGS`` / ``_SKILL_SLUGS`` /
+    ``_GENERATIVE_SLUGS`` 之一。于是故障是**不对称**的：只加声明不加分组 → 构造列表时取不到，
+    工具静默缺席且不报错；只加分组不加声明 → 构造时才 ``KeyError``。``docs/guides/ai-stack.md``
+    正是教贡献者新增工具的可执行指南，故此处钉住双向一致。本用例不与其他用例重复：
+    ``test_builtin_group_slugs_and_order`` 冻结的是四个分组的**当前内容**，
+    ``test_builtin_tool_contract_frozen`` 的参数化来自本文件的 ``_EXPECTED_BUILTIN``——
+    新增一条未归组的声明时，两者都会照旧通过。
+    """
+    assert catalog._DECLS, "声明表为空，本用例会空跑通过"
+    groups = {
+        "platform": catalog._PLATFORM_SLUGS,
+        "opt_in": catalog._OPT_IN_SLUGS,
+        "skill": catalog._SKILL_SLUGS,
+        "generative": catalog._GENERATIVE_SLUGS,
+    }
+    seen: dict[str, str] = {}
+    for group_name, slugs in groups.items():
+        for slug in slugs:
+            assert slug not in seen, f"{slug} 同时归入 {seen[slug]} 与 {group_name}，装配顺序将不确定"
+            seen[slug] = group_name
+
+    missing_group = sorted(set(catalog._DECLS) - set(seen))
+    missing_decl = sorted(set(seen) - set(catalog._DECLS))
+    assert not missing_group and not missing_decl, (
+        f"已声明但未归组（任何工具列表都取不到、且不报错）: {missing_group}；已归组但无声明（构造时 KeyError）: {missing_decl}"
+    )
 
 
 def test_opt_in_gate_unchanged() -> None:
