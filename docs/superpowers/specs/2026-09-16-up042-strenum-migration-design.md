@@ -122,7 +122,7 @@
 1. **真库探针**（`/tmp`，不入库）：对代表枚举列做 bind → 写 PostgreSQL → 读回，改前 / 改后比对输出必须一致；并做**敏感度对照**（故意改错值应能被探针发现），避免探针本身是空转。
 2. **固化 `str()` 差异**：在 `test_enum_contract.py` 断言 `str()` / f-string 输出为**成员值**（而非 `"Class.MEMBER"`），以显式记录本次迁移唯一的可观测行为变化。
 3. **锁住 SQLAlchemy 等价性**：对代表枚举列断言 `.enums`（DDL 值列表）在迁移前后一致、且绑定值与读回不变，作为回归护栏（§5.2 的差异已被勘误为不存在，此处护栏防止将来真出漂移）。
-4. 若数据库可达，加跑 `alembic check` 证无 DDL 漂移。
+4. 若数据库可达，加跑 `alembic check` 证无 DDL 漂移（本环境未取得结论，见 §10）。
 
 ## 8. 风险与对策
 
@@ -130,7 +130,7 @@
 |---|---|---|
 | R1 | 某处依赖 `str(枚举)` 旧输出（日志/文案/拼接） | §5.1 已全仓扫描：4 处走 `.value` 分支、3 处误报、1 处不可达；无硬编码字面量 |
 | R2 | 某处把 `str(枚举)` 当值传入 DB | §5.2 已穷举证明 SQLAlchemy 层无差异（未知字符串一律原样透传），该风险不存在 |
-| R3 | 真库路径回归而测试测不到 | §7.1 真库探针 + 敏感度对照；§7.4 `alembic check` |
+| R3 | 真库路径回归而测试测不到 | §7.1 真库探针 + 敏感度对照；§7.4 `alembic check`（本环境未取得结论，见 §10） |
 | R4 | SQLAlchemy 或 Alembic 对 `StrEnum` 支持差异 | §5.2 已实测内部结构；`.enums` 相同 ⇒ DDL 不变 |
 | R5 | 漏改文件或改错风格（31+1 两种） | 以 `ruff check --select UP042` 从 32 → 0 作为收敛判据 |
 | R6 | 将来某处依赖 `str()` 新输出，反向锁死 | §7.3 把新行为写成显式测试，使依赖可见 |
@@ -149,8 +149,13 @@
   契约测试 `tests/models/test_enum_contract.py`（4 条）全绿；五道门禁全绿（`ruff format --check`
   963 files already formatted、`ruff check` All checks passed!、`lint-imports` Contracts: 6 kept,
   0 broken.、`export_openapi --check` OpenAPI snapshot OK、`pytest` 1122 passed = 基线 1118 + 4）。
-  真库探针写入/读回一致，敏感度对照（`--corrupt`）按期报错。spec §5.2 的条件已满足：
-  迁移未产生任何 DB 层差异。
+  真库探针写入/读回一致，敏感度对照（`--corrupt`）按期报错。§5.2 的结论已满足——但**其依据是结构性的，
+  不是抽样归纳**：迁移只换了基类，`SAEnum.enums` 由 `[m.value for m in enum_cls]` 推出，而本次
+  成员名/成员值零改动、`values_callable` 零改动、Alembic 文件零改动，故 DDL 与落库字符串对
+  **全部 32 处**由构造保证不变。§7.1 的真库探针（2 个代表列往返）与 §7.3 的 SAEnum 断言
+  （3 个代表列 `.enums`/绑定）是带敏感度对照的**抽样复核**，不构成该结论的归纳依据。
 - 2026-09-16 **§7.4 未取得结论**：本机 `alembic check` 报 `FAILED: Target database is not up to date.`
-  （`alembic current` = `001`，`alembic heads` = `002`）——这是本地库预先存在的迁移滞后，与本次改动无关
-  （本次迁移改动的 alembic 文件数为 0），故 §7.4 在此环境不可用。§5.2 的结论由 §7.1 的真库探针独立支撑。
+  （`alembic current` = `001`，`alembic heads` = `002`）。`002` 是本仓**更早**为 `adm_audit_logs.action`
+  加索引的迁移，与枚举无关；本次迁移改动的 alembic 文件数为 0。属本地库预先存在的迁移滞后，
+  未执行 `alembic upgrade head`（本任务约定不改 DDL/迁移），故 §7.4 在此环境**不可用**——
+  即 schema 级 DDL 漂移**未经独立工具验证**，该结论由上一段的结构性论证承载，而非由本项承载。
