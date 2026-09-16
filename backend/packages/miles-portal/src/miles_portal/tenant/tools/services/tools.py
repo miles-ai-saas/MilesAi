@@ -18,7 +18,7 @@ from uuid import UUID
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from miles_ai.integrations.langchain.tools import is_mcp_tool_name
+from miles_ai.integrations.langchain.toolkit.naming import is_mcp_tool_name
 from miles_common.exceptions import BadRequestError, ConflictError, NotFoundError
 from miles_common.schema import PageParams, PageResult
 from miles_core.config import get_settings

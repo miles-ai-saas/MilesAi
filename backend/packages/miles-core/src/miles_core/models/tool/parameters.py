@@ -1,4 +1,5 @@
-"""工具输入参数 schema 中立规范——校验与动态 Pydantic 模型；L1 ``tenant.tools.parameters`` 为其 re-export shim，L3 ``langchain/tools`` 直接引用本模块。"""
+"""工具输入参数 schema 中立规范——校验与动态 Pydantic 模型；L1 ``tenant.tools.parameters`` 为其
+re-export shim，L3 ``langchain/toolkit/catalog`` 直接引用本模块。"""
 
 from __future__ import annotations
 

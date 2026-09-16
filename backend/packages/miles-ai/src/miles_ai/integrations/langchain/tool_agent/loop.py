@@ -16,7 +16,8 @@ from miles_ai.integrations.langchain.tool_agent.parse import (
     _looks_like_tool_call_simulation,
 )
 from miles_ai.integrations.langchain.tool_agent.tool_contract import ToolConfirmationSignal, ToolExecutor
-from miles_ai.integrations.langchain.tools import get_skill_bound_tools, select_agent_tools
+from miles_ai.integrations.langchain.toolkit.catalog import get_skill_bound_tools
+from miles_ai.integrations.langchain.toolkit.naming import select_agent_tools
 from miles_ai.integrations.litellm.adapter import extract_litellm_usage
 from miles_ai.integrations.litellm.usage_sink import UsageSink
 from miles_common.exceptions import BadRequestError

@@ -8,16 +8,14 @@ from __future__ import annotations
 from types import SimpleNamespace
 from uuid import uuid4
 
-from miles_ai.integrations.langchain.tools import (
+from miles_ai.integrations.langchain.toolkit.catalog import build_platform_tools
+from miles_ai.integrations.langchain.toolkit.naming import (
     MCP_FUNCTION_PREFIX,
-    McpToolSpec,
-    build_platform_tools,
     compose_mcp_tool_name,
     is_mcp_tool_name,
-    json_schema_to_pydantic,
-    mcp_param_alias,
     select_agent_tools,
 )
+from miles_ai.integrations.langchain.toolkit.specs import McpToolSpec, json_schema_to_pydantic, mcp_param_alias
 from miles_core.tenant import TenantContext
 from miles_exec.mcp.tools import normalize_tools
 from miles_portal.tenant.tools.invoke import context as invoke_context

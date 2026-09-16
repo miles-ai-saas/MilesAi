@@ -4,7 +4,7 @@
 
 **Goal:** 把 617 行的 `langchain/tools.py` 按职责拆为 `langchain/toolkit/` 4 模块，并把 13 个同形工具工厂收敛为「声明表 + 单一构造器」，对外行为逐字节不变。
 
-**Architecture:** 先写一条**契约冻结测试**钉住全部 16 个工具的 `name`/`description`/`args_schema`/占位报错文案/同步异步形状，再重构。重构分两步走，每步都保持全绿：先纯搬迁出 `naming`/`inputs`/`specs` 三个纯职责模块（`tools.py` 暂作再导出，使 1079 条既有测试继续有效），再建 `catalog.py` 做声明式收敛、删除 `tools.py`、迁移 11 处调用点。
+**Architecture:** 先写一条**契约冻结测试**钉住全部 17 个工具（13 内置 + 4 类 spec 驱动）的 `name`/`description`/`args_schema`/占位报错文案/同步异步形状，再重构。重构分两步走，每步都保持全绿：先纯搬迁出 `naming`/`inputs`/`specs` 三个纯职责模块（`tools.py` 暂作再导出，使 1079 条既有测试继续有效），再建 `catalog.py` 做声明式收敛、删除 `tools.py`、迁移 11 处调用点。
 
 **Tech Stack:** Python 3.11、LangChain `StructuredTool`、pydantic v2、pytest、ruff、import-linter。
 
@@ -26,7 +26,7 @@
 - **分层约束**：`miles_ai` ✗→ `miles_portal`；`miles_portal` ✗→ `miles_admin`；`miles_core` ✗→ `miles_ai`。本计划只在 `miles_ai` 包内新增文件，不新增跨包依赖。
 - **不引入新依赖**；不改 import-linter 契约；不动 `miles_portal/tenant/tools/`。
 - **对外行为逐字节不变**：工具名、description、`args_schema` JSON、占位报错文案、装配顺序、门控判定。
-- **`toolkit/__init__.py` 必须为空**（不得构成再导出壳）。最终状态 `rg "langchain\.tools"` 在 `packages/` 与 `tests/` 下零命中。
+- **`toolkit/__init__.py` 必须为空**（不得构成再导出壳）。最终状态：仓库内**不存在指向旧模块的引用**——验证用 `rg -n "langchain[./]tools|langchain import tools" backend/packages backend/tests docs`，只允许命中描述本次重构本身的历史文档（勘误 6：点号形式 `langchain\.tools` **不足以**证明这一点——它看不见斜杠写法与 `import tools` 形式，实测正是因此漏掉 5 处，含一条教人往已删除文件里加工具的开发指南）。
 
 ---
 
@@ -34,7 +34,7 @@
 
 | 文件 | 职责 | 动作 |
 |---|---|---|
-| `backend/tests/tenant/tools/test_toolkit_contract.py` | 契约冻结：16 个工具的对外可观测面 | **新建**（Task 1） |
+| `backend/tests/tenant/tools/test_toolkit_contract.py` | 契约冻结：17 个工具（13 内置 + 4 类 spec 驱动）的对外可观测面 | **新建**（Task 1） |
 | `backend/packages/miles-ai/src/miles_ai/integrations/langchain/toolkit/__init__.py` | 空文件（刻意无再导出） | **新建**（Task 2） |
 | `.../langchain/toolkit/naming.py` | MCP function name 约定 + 工具白名单过滤 | **新建**（Task 2，自 `tools.py:33-98` 搬迁） |
 | `.../langchain/toolkit/inputs.py` | 13 个入参 DTO（纯声明） | **新建**（Task 2，自 `tools.py:189-297` 搬迁） |
@@ -63,12 +63,12 @@
 - [ ] **Step 1: 写契约测试**
 
 ```python
-"""toolkit 契约冻结：16 个工具的对外可观测面在「拆分 + 声明式收敛」前后必须逐字节一致。
+"""toolkit 契约冻结：17 个工具（13 内置 + 4 类 spec 驱动）的对外可观测面在「拆分 + 声明式收敛」前后必须逐字节一致。
 
-为什么必须存在：重构把 13 个工厂收敛为一张声明表，而 13 条 description 中有 7 条超过
-100 字符（最长 199），逐字搬运极易出错；`StructuredTool` 又会**静默接受**把同步工具
-写成异步（只是 `.func` 变空、`.coroutine` 非空，调用方看不出来）。本文件是这两类错误
-唯一的拦截手段，故在重构**之前**先跑绿。
+为什么必须存在：重构把 13 个工厂收敛为一张声明表。13 条 description 全部是中文，最长 77
+字符（177 UTF-8 字节），最长一条冻结的 schema 字面量达 889 字符，逐字搬运极易出错；
+`StructuredTool` 又会**静默接受**把同步工具写成异步（只是 `.func` 变空、`.coroutine`
+非空，调用方看不出来）。本文件是这两类错误唯一的拦截手段，故在重构**之前**先跑绿。
 
 期望值来源：由重构前的实现实测导出（`args_schema.model_json_schema()` 经
 `json.dumps(..., sort_keys=True, separators=(",", ":"))` 归一化），非人工手写。
@@ -116,6 +116,8 @@ _EXPECTED_SPEC_DRIVEN: dict[str, tuple[str, bool, str]] = {
     "my_http": ("自定义 HTTP 工具", True, '{"properties":{"q":{"description":"查询词","title":"Q","type":"string"}},"required":["q"],"title":"ToolParams","type":"object"}'),
     "my_script": ("My Script", True, '{"properties":{"n":{"default":null,"description":"次数","title":"N","type":"integer"}},"title":"ToolParams","type":"object"}'),
     "mcp__github__create_issue": ("创建 issue", True, '{"properties":{"n":{"anyOf":[{"type":"integer"},{"type":"null"}],"default":3,"title":"N"},"title":{"description":"标题","title":"Title","type":"string"}},"required":["title"],"title":"McpToolParams","type":"object"}'),
+    # 勘误 3 新增：input_schema=None 时 args_schema 缺省，schema 由占位签名反推（title 取工具名）
+    "mcp__svc__nofields": ("svc · nofields", True, '{"properties":{"kwargs":{"additionalProperties":true,"default":null,"title":"Kwargs","type":"object"}},"title":"mcp__svc__nofields","type":"object"}'),
 }
 
 
@@ -146,9 +148,68 @@ def test_builtin_tool_contract_frozen(slug: str) -> None:
 
 def test_platform_tools_are_synchronous() -> None:
     """4 个平台工具必须是同步 ``func``（现状如此，收敛时最易被一律写成 coroutine）。"""
-    for tool in get_platform_tools():
+    tools = get_platform_tools()
+    assert tools, "平台工具不应为空——否则下面的循环会空跑通过（勘误 3）"
+    for tool in tools:
         assert tool.func is not None, f"{tool.name} 应使用同步 func"
         assert tool.coroutine is None, f"{tool.name} 不应被改成异步"
+
+
+def test_build_platform_tools_gate_matrix() -> None:
+    """技能包 / 生成工具两个开关的四种组合，以及**跨组装配顺序**。
+
+    勘误 3：原稿只用集合语义（``<=`` / ``not in``），既锁不住 ``build_platform_tools``
+    的拼接顺序（而这正是 Task 2 要重写的那段），也发现不了重复挂载。改为精确有序列表。
+    """
+    skill = {"skill_package_id": "11111111-1111-1111-1111-111111111111"}
+    gen = {"enable_generative_tools": True}
+
+    def names(cfg: dict) -> list[str]:
+        return [t.name for t in build_platform_tools(cfg)]
+
+    assert names({}) == ["calculator", "http_request", "get_current_datetime", "knowledge_search"]
+
+    assert names(skill) == [
+        "calculator",
+        "http_request",
+        "get_current_datetime",
+        "knowledge_search",
+        "skill_read_reference",
+        "skill_run_script",
+    ]
+
+    assert names(gen) == [
+        "calculator",
+        "http_request",
+        "get_current_datetime",
+        "knowledge_search",
+        "generate_image",
+        "generate_video",
+    ]
+
+    # 全组齐开 + 自定义工具 + MCP：完整拼接顺序 = 平台 → opt-in → 技能 → 生成 → 自定义 → MCP
+    full = {
+        "tool_slugs": list(_OPT_IN_SLUGS),
+        **skill,
+        **gen,
+    }
+    assert [t.name for t in build_platform_tools(full, [_CUSTOM_HTTP], [_MCP])] == [
+        "calculator",
+        "http_request",
+        "get_current_datetime",
+        "knowledge_search",
+        "web_search",
+        "code_execution",
+        "compliance_check_text",
+        "run_flow_once",
+        "invoke_tenant_hook",
+        "skill_read_reference",
+        "skill_run_script",
+        "generate_image",
+        "generate_video",
+        "my_http",
+        "mcp__github__create_issue",
+    ]
 
 
 def test_builtin_group_slugs_and_order() -> None:
@@ -172,29 +233,6 @@ def test_opt_in_gate_unchanged() -> None:
     assert [t.name for t in select_opt_in_builtin_tools({"tool_slugs": "web_search"})] == ["web_search"]
 
 
-def test_build_platform_tools_gate_matrix() -> None:
-    """技能包 / 生成工具两个开关的四种组合（现状只覆盖技能那一半）。"""
-    skill = {"skill_package_id": "11111111-1111-1111-1111-111111111111"}
-    gen = {"enable_generative_tools": True}
-
-    def names(cfg: dict) -> set[str]:
-        return {t.name for t in build_platform_tools(cfg)}
-
-    neither = names({})
-    assert "skill_read_reference" not in neither and "generate_image" not in neither
-
-    only_skill = names(skill)
-    assert {"skill_read_reference", "skill_run_script"} <= only_skill
-    assert "generate_image" not in only_skill
-
-    only_gen = names(gen)
-    assert {"generate_image", "generate_video"} <= only_gen
-    assert "skill_read_reference" not in only_gen
-
-    both = names({**skill, **gen})
-    assert {"skill_read_reference", "skill_run_script", "generate_image", "generate_video"} <= both
-
-
 @pytest.mark.parametrize("slug", sorted(_EXPECTED_SPEC_DRIVEN))
 def test_spec_driven_tool_contract_frozen(slug: str) -> None:
     """spec 驱动的 3 类工具（custom http / custom script / mcp）schema 与描述不变。"""
@@ -204,6 +242,15 @@ def test_spec_driven_tool_contract_frozen(slug: str) -> None:
     assert (tool.coroutine is not None) is expected_async
     assert _normalized(tool) == expected_schema
 ```
+
+> **勘误 10（终审实测修正）**：上文代码块是**测试文件的 docstring 原文**，已与仓库内文件
+> 逐字节对齐，请照抄。原先此处插在 docstring 内的勘误说明会污染原样复制，故移到块外。
+> 被修正的原始说法是「13 条 description 中 7 条超过 100 字符（最长 199）」——**该数字在任何
+> 度量下都不成立**：实测字符 9–77（**0 条**超 100）、UTF-8 字节 18–177（4 条超 100）、
+> 转义 ASCII 30–327（9 条超 100）。「最长 199」不对应任何度量，属凭空数字；冻结 schema
+> 字面量最长一条实测 **889** 字符（非「逾 1100」）。同类数字勘误还有一处：工具总数是
+> **17**（13 内置 + 4 类 spec 驱动），原写「16」系把 §2 的「13 个静态工厂 + 3 个 spec 驱动
+> 工厂」误当工具数——第 4 类 `mcp(input_schema=None)` 是测试用例，不是工厂。
 
 - [ ] **Step 2: 核对期望值（已内联，需比对而非填写）**
 
@@ -325,26 +372,61 @@ _MCP = McpToolSpec(
         "required": ["title"],
     },
 )
+# 勘误 3 新增：input_schema 为 None，make_mcp_tool 省略 args_schema，schema 由占位签名反推。
+_MCP_NONE = McpToolSpec(
+    slug="mcp__svc__nofields",
+    tool_name="nofields",
+    service_id="svc-1",
+    service_name="svc",
+    description=None,
+    input_schema=None,
+)
 
 
 def _spec_driven_tools() -> dict:
-    """构造 3 类 spec 驱动工具（custom http / custom script / mcp），按 slug 索引。"""
+    """构造 4 类 spec 驱动工具（custom http / custom script / mcp / mcp 无 schema），按 slug 索引。"""
     tools = [
         *build_platform_tools({}, [_CUSTOM_HTTP]),
         *build_platform_tools({}, [_CUSTOM_SCRIPT]),
         *build_platform_tools({}, [], [_MCP]),
+        *build_platform_tools({}, [], [_MCP_NONE]),
     ]
-    return {t.name: t for t in tools if t.name in {"my_http", "my_script", "mcp__github__create_issue"}}
+    return {
+        t.name: t
+        for t in tools
+        if t.name in {"my_http", "my_script", "mcp__github__create_issue", "mcp__svc__nofields"}
+    }
 ```
 
 > **粘贴后必须人工比对**：把粘贴的每一行与原 `tools.py` 的 description 原文对照。这是本任务唯一无法靠机器保证的一步。
 
 - [ ] **Step 3: 补占位报错文案的断言**
 
-现状**无用例**覆盖「占位必须报错」这条不变量。在测试文件末尾追加：
+现状**无用例**覆盖「占位必须报错」这条不变量。在测试文件末尾追加（**本步代码已修正，见下方勘误**）：
 
 ```python
 _STUB_MESSAGE = "请通过 invoke_tool_with_context 执行 {slug}"
+
+
+def _call_stub(tool) -> None:
+    """调用占位函数本体（**不经** ``tool.invoke`` 的 pydantic 校验），让占位报错原样抛出。
+
+    占位有两种签名形状，须分别适配，否则会先抛 ``TypeError`` 而测不到占位报错：
+
+    - ``**kwargs`` 型（``_opt_in_marker`` / ``make_custom_*_tool`` / ``make_mcp_tool``）
+      只接受关键字，位置参数会被拒绝；
+    - 带具名必填参数的占位（``calculator`` / ``skill_*`` / ``generate_*``）需一个位置
+      参数才能进入函数体。
+    """
+    fn = tool.coroutine if tool.coroutine is not None else tool.func
+    accepts_positional = any(
+        p.kind in (p.POSITIONAL_ONLY, p.POSITIONAL_OR_KEYWORD) for p in inspect.signature(fn).parameters.values()
+    )
+    args: tuple = ({},) if accepts_positional else ()
+    if tool.coroutine is not None:
+        asyncio.run(tool.coroutine(*args))
+    else:
+        fn(*args)
 
 
 @pytest.mark.parametrize("slug", sorted(_EXPECTED_BUILTIN))
@@ -360,23 +442,44 @@ def test_builtin_stub_raises_instead_of_executing(slug: str) -> None:
     """
     tool = _all_builtin()[slug]
     with pytest.raises(RuntimeError, match=_STUB_MESSAGE.format(slug=slug)):
-        if tool.coroutine is not None:
-            asyncio.run(tool.coroutine({}))
-        else:
-            tool.func({})
+        _call_stub(tool)
 
 
 @pytest.mark.parametrize("slug", sorted(_EXPECTED_SPEC_DRIVEN))
 def test_spec_driven_stub_raises_instead_of_executing(slug: str) -> None:
     tool = _spec_driven_tools()[slug]
     with pytest.raises(RuntimeError, match=_STUB_MESSAGE.format(slug=slug)):
-        asyncio.run(tool.coroutine({}))
+        _call_stub(tool)
 ```
+
+> **勘误 1（Task 1 实施时实测发现，已回写）**：本步最初的草稿是 `asyncio.run(tool.coroutine({}))`，
+> 是**错的**——`_opt_in_marker` 与 `make_mcp_tool` 的占位是 `async def _arun(**kwargs: Any)`，
+> **只接受关键字参数**，传位置参数会先抛 `TypeError`（8 条用例必红，与「Step 4 全绿」自相矛盾）。
+> 故引入 `_call_stub` 按实际签名适配。**这不是测试放宽**：断言与期望值一字未动，
+> 「占位必须抛 `RuntimeError`」的判别力由 Step 5 的证伪实验独立验证。
+
+> **勘误 2（同一轮实测发现，已回写）**：本文件的期望值块是实测导出的长数据（最长一条 1137 字符），
+> 超 `line-length = 160` 且会被 formatter 拆行，破坏「每个工具一行、可与导出脚本逐行 diff」的审计性。
+> 处置：整文件豁免 `E501`（文件头一行 `# ruff: noqa: E501`），两个数据块以 `# fmt: off` / `# fmt: on`
+> 关闭拆行，值为与版式一字未改。**用户已确认采用此形式**（而非移入 `pyproject.toml` 的
+> `per-file-ignores`），理由是豁免理由写在数据旁边，读文件即知为何不拆行。
 
 - [ ] **Step 4: 跑测试，必须全绿**
 
 Run: `uv run --all-packages --group dev python -m pytest tests/tenant/tools/test_toolkit_contract.py -q`
-Expected: PASS（约 40 条；`pytest.raises(match=...)` 用 `re.search`，slug 含 `_` 无正则元字符，安全）
+Expected: PASS（36 条；`pytest.raises(match=...)` 用 `re.search`，slug 含 `_` 无正则元字符，安全）
+
+> **勘误 3（任务级评审发现，已回写）**：评审指出三处可加固，均在 Task 2 重写
+> `build_platform_tools` 之前修掉：
+> 1. **跨组装配顺序未被冻结**（Important）。原稿 `test_build_platform_tools_gate_matrix`
+>    只用集合语义（`<=` / `not in`），既锁不住 `build_platform_tools:593-616` 的拼接顺序
+>    ——而那正是 Task 2 要重写的函数——也发现不了重复挂载；组内顺序虽由
+>    `test_builtin_group_slugs_and_order` 覆盖，跨组拼接无人把关。已改为精确有序列表。
+> 2. **`input_schema=None` 的 MCP 工具被排除在冻结之外**（少数情形下的唯一漏洞）。
+>    `make_mcp_tool` 在该情形下**省略** `args_schema`，schema 由占位签名反推（`title`
+>    取工具名）——这是唯一对外 schema 依赖占位签名的工具，也正是 13 个工厂收敛时最易
+>    静默改坏的一处。已补 `_MCP_NONE` 与 `mcp__svc__nofields` 契约（见上）。
+> 3. `test_platform_tools_are_synchronous` 加非空守卫，避免空列表时空跑通过（见上）。
 
 - [ ] **Step 5: 证伪实验——确认测试真的会红**
 
@@ -406,9 +509,9 @@ git commit -F - <<'EOF'
 test(toolkit): 冻结工具 schema 契约并补上占位报错断言
 
 拆分 tools.py 与收敛 13 个工厂之前，先用一条特征测试钉住对外可观测面：
-16 个工具的 description / args_schema / 同步异步形状 / 分组顺序 / 门控组合。
-期望值由当前实现实测导出后内联，非人工手写——13 条 description 有 7 条超 100
-字符（最长 199），逐字搬运是本次重构最易出错处。
+17 个工具（13 内置 + 4 类 spec 驱动）的 description / args_schema / 同步异步形状 / 分组顺序 / 门控组合。
+期望值由当前实现实测导出后内联，非人工手写——13 条 description 全部是中文、最长 77
+字符（177 UTF-8 字节），最长一条 schema 字面量 889 字符，逐字搬运是本次重构最易出错处。
 
 同时补上「占位必须报错」这条不变量：它原先在 13 个工厂里各抄一遍，任何一处漏写
 都会让该工具变成「看起来能执行、实际静默返回」的陷阱，而此前无用例覆盖。
@@ -432,7 +535,14 @@ EOF
   - `toolkit.specs`：`CustomToolSpec`、`McpToolSpec`、`mcp_param_alias(input_schema: dict | None) -> dict[str, str]`、`json_schema_to_pydantic(input_schema: dict | None, *, model_name: str = "McpToolParams") -> type[BaseModel] | None`
   - `toolkit.catalog`：`build_stub_tool(slug: str, description: str, args_schema: type[BaseModel] | None, *, is_async: bool) -> StructuredTool`、`make_builtin_tool(slug: str) -> StructuredTool`、`get_platform_tools()`、`select_opt_in_builtin_tools(agent_config: dict | None)`、`get_skill_bound_tools()`、`get_generative_tools()`、`make_custom_http_tool(spec)`、`make_custom_script_tool(spec)`、`make_mcp_tool(spec)`、`build_platform_tools(agent_config, custom_specs=None, mcp_specs=None)`
 
-> **本任务的收敛范围**：13 个静态工厂 → 声明表 + 构造器。`build_stub_tool` 的占位签名**必须**是 `**kwargs: Any`——实测：`make_mcp_tool` 在 `input_schema=None` 时 `args_schema` 缺省，LangChain 会**从占位函数签名反推 schema**（`title` 取工具名）。占位签名一变，该情形的对外 schema 会静默改变（Task 1 的 `mcp_none` 契约即为此设）。
+> **本任务的收敛范围**：13 个静态工厂 → 声明表 + 构造器。`build_stub_tool` 的占位签名**必须**是 `**kwargs: Any`——实测：`make_mcp_tool` 在 `input_schema=None` 时 `args_schema` 缺省，LangChain 会**从占位函数签名反推 schema**（`title` 取工具名）。占位签名一变，该情形的对外 schema 会静默改变（Task 1 的导出脚本里 `mcp_none` 一条即为盯住它）。
+>
+> 已核实现状（Task 1 实施时读码确认）：`make_mcp_tool:580` 与 `_opt_in_marker:300` 的占位本就是
+> `async def _arun(**kwargs: Any)`，故上述情形在本任务中**签名不变、schema 不变**；
+> 真正会被统一改动的是 `calculator` / `skill_*` / `generate_*` 等**带具名参数**的占位，
+> 而它们的 `args_schema` 均为显式传入——独立 probe 已实测「具名签名 → `**kwargs`」在显式
+> `args_schema` 下产出**逐字节相同**的 `StructuredTool` schema。Task 1 的 15 条异步契约断言
+> 会在本任务后继续把这条钉住。
 
 - [ ] **Step 1: 建空 `__init__.py`**
 
@@ -525,8 +635,9 @@ _INVALID_FIELD_CHARS = re.compile(r"\W")
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Any, Sequence
+from typing import Any
 
 from langchain_core.tools import StructuredTool
 from pydantic import BaseModel
@@ -739,7 +850,7 @@ def build_platform_tools(
     return tools
 ```
 
-> **逐字核对点**（`_DECLS` 的 description 必须与 `tools.py` 原文一字不差）：13 条中 7 条超 100 字符。
+> **逐字核对点**（`_DECLS` 的 description 必须与 `tools.py` 原文一字不差）：13 条全部是中文，最长 77 字符。
 > 若 Task 1 的契约测试在你写完 `catalog.py` 后仍全绿，说明抄写正确——这正是 Task 1 先行的意义。
 
 - [ ] **Step 6: `tools.py` 降为再导出，跑测试确认全绿**
@@ -774,6 +885,30 @@ from .toolkit.naming import (
     select_agent_tools,
 )
 from .toolkit.specs import CustomToolSpec, McpToolSpec, json_schema_to_pydantic, mcp_param_alias
+
+# 转发壳自身不使用这些 import：非 ``__init__`` 模块的裸转发会被 F401 全部报出，
+# 与「是否有调用点」无关（F401 只看本文件）。故显式声明再导出面。
+__all__ = [
+    "MCP_FUNCTION_PREFIX",
+    "CustomToolSpec",
+    "McpToolSpec",
+    "build_platform_tools",
+    "build_stub_tool",
+    "compose_mcp_tool_name",
+    "get_generative_tools",
+    "get_platform_tools",
+    "get_skill_bound_tools",
+    "is_mcp_tool_name",
+    "json_schema_to_pydantic",
+    "make_builtin_tool",
+    "make_custom_http_tool",
+    "make_custom_script_tool",
+    "make_mcp_tool",
+    "mcp_param_alias",
+    "sanitize_ident",
+    "select_agent_tools",
+    "select_opt_in_builtin_tools",
+]
 ```
 
 > 这份清单是**实测**出来的（`rg` 扫过全部调用点），不是照抄原文件：13 个静态工厂与
@@ -804,7 +939,18 @@ Expected: **与 Task 1 结束时相同的通过数**，0 failed
 - [ ] **Step 9: 五道门禁**
 
 依次执行 Global Constraints 里的 5 条命令。
-Expected: 全部通过。`ruff check` 若报 `F401`，多半是 `tools.py` 再导出了未被任何调用点使用的符号——按 Step 6 的实测清单删掉即可，**不要**加 `# noqa`。
+Expected: 全部通过。
+
+> **勘误 5（Task 2 实施时实测发现，已回写）**：本步原稿写「若 `ruff check` 报 `F401`，
+> 按实测清单删掉该符号，**不要**加 `# noqa`」——**这两句都是错的**。
+> `tools.py` 不是 `__init__.py`，其裸转发导入会被 F401 **全部**报出，与「有没有调用点」无关
+> （F401 只看本文件；实测：`build_platform_tools`、`get_platform_tools`、`McpToolSpec`
+> 三个确有调用点的符号一并被报）。按「删掉 F401 符号」执行会删空整个壳、1079 条测试全红。
+> 正解是在壳里显式声明 `__all__`（已补入 Step 6 的代码块）：无需抑制、语义化声明再导出面，
+> 且符合本步「不加 `# noqa`」的原意。
+> 仓库另有一处同类临时 shim（`miles_portal/tenant/tools/parameters.py:6`）用模块级
+> `# noqa: F401`，是可行替代；此处选 `__all__` 因为它不需要抑制、表达力更强，
+> 且该壳本身在 Task 3 即被删除。
 
 - [ ] **Step 10: Commit**
 
@@ -839,7 +985,7 @@ EOF
 
 **Interfaces:**
 - Consumes: Task 2 产出的 `toolkit.{naming,inputs,specs,catalog}` 全部符号
-- Produces: 最终状态——`rg "langchain\.tools"` 零命中
+- Produces: 最终状态——`rg "langchain[./]tools|langchain import tools"` 零命中（点号形式不足，勘误 6）
 
 > **本任务是纯机械迁移**：漏改的失败模式是导入期 `ImportError`（响亮、即时），不是静默降级。
 > 这正是「不留转发壳」的前提条件。
@@ -907,6 +1053,10 @@ EOF
     from miles_ai.integrations.langchain.toolkit.catalog import get_platform_tools, make_builtin_tool
     from miles_ai.integrations.langchain.toolkit.naming import select_agent_tools
     ```
+    **并把过时的测试函数名改掉**（Task 2 评审 Minor）：该文件 `:165` 的
+    `test_make_knowledge_search_tool_schema_allows_kb_ids` 里的符号已不存在，改名如
+    `test_knowledge_search_tool_schema_allows_kb_ids`。改名会改测试节点 id，属预期，
+    不改断言。
 11. `backend/tests/tenant/skills/test_skill_runtime_integration.py:7`
     ```python
     from miles_ai.integrations.langchain.toolkit import catalog as lc_tools
@@ -923,6 +1073,40 @@ EOF
     from miles_ai.integrations.langchain.toolkit.specs import CustomToolSpec, McpToolSpec
     ```
     > 本文件其余内容**一字不改**——期望值不变，是它作为契约的意义所在。
+    >
+    > **唯一例外**：`_call_stub` 里「按签名适配」的分支须在此简化掉。Task 2 已把全部占位
+    > 统一为 `**kwargs`，`accepts_positional` 恒为 False，那个分支成了死代码。改成直接调用：
+    > ```python
+    > def _call_stub(tool) -> None:
+    >     """调用占位函数本体（**不经** ``tool.invoke`` 的 pydantic 校验），让占位报错原样抛出。
+    >
+    >     占位统一为 ``**kwargs``，无位置参数可传；这也正是 ``tool.invoke({})`` 测不到本意
+    >     （会先抛 pydantic ``ValidationError``）的原因。
+    >     """
+    >     if tool.coroutine is not None:
+    >         asyncio.run(tool.coroutine())
+    >     else:
+    >         tool.func()
+    > ```
+    > 随之删掉不再使用的 `import inspect`（否则 ruff `F401` 会拦住门禁）。
+    > 期望值与断言仍**一字不改**。
+    >
+    > **同时补一条断言**（任务级评审建议）：占位统一为 `**kwargs` 后，
+    > 「占位不接受位置参数」应成为**显式期望**而非 `_call_stub` 默默适配的结果——
+    > 否则将来某个占位悄悄带着位置参数，测试仍会通过。在 `test_builtin_stub_raises_instead_of_executing`
+    > 内加：
+    > ```python
+    >     fn = tool.coroutine if tool.coroutine is not None else tool.func
+    >     positional = [
+    >         p
+    >         for p in inspect.signature(fn).parameters.values()
+    >         if p.kind in (p.POSITIONAL_ONLY, p.POSITIONAL_OR_KEYWORD)
+    >     ]
+    >     assert not positional, f"{slug} 的占位不应接受位置参数（统一为 **kwargs）"
+    > ```
+    > 注意：**这一条会重新需要 `import inspect`**。故顺序是——先把 `_call_stub` 简化掉、
+    > 保留 `import inspect` 供本断言使用（不要删），再补此断言。`ruff check` 会因
+    > `inspect` 仍被使用而放行。
 
 - [ ] **Step 3: 删除 `tools.py`**
 
@@ -932,15 +1116,30 @@ git rm backend/packages/miles-ai/src/miles_ai/integrations/langchain/tools.py
 
 - [ ] **Step 4: 同步 docstring / 注释里的旧路径**
 
-实测有 **2 处**非 import 的旧路径引用，一并改掉：
+**勘误 6（Task 3 实施后发现，已修正本步的搜索方式）**：本步原稿只用
+`rg -n "langchain\.tools"`（点号形式）验证，**不足以**证明「没有旧路径残留」——
+斜杠形式 `langchain/tools`、以及不带包名前缀的 `toolkit 旧路径` 都不会命中。
+实测漏掉的引用（Task 3 已修其中 2 处，其余由修复轮处理）：
 
-1. `backend/packages/miles-core/src/miles_core/models/tool/__init__.py:4`
-   —— docstring 提到 `L3 集成层 integrations.langchain.tools`，改为 `integrations.langchain.toolkit`
-2. `backend/packages/miles-portal/src/miles_portal/tenant/tools/services/mcp_tools.py:12`
-   —— docstring 提到 ``integrations.langchain.tools.compose_mcp_tool_name``，
-   改为 ``integrations.langchain.toolkit.naming.compose_mcp_tool_name``
+| 位置 | 形式 | 处置 |
+|---|---|---|
+| `miles_core/models/tool/__init__.py:4` | 点号 | Task 3 已改 |
+| `miles_portal/.../tools/services/mcp_tools.py:12` | 点号 | Task 3 已改 |
+| `miles_core/models/tool/parameters.py:1` | 斜杠 | 修复轮改 |
+| `miles_portal/.../tools/services/custom_tools.py:5` | 斜杠（历史叙述） | 修复轮改 |
+| `docs/guides/ai-stack.md:76` | 斜杠（**可执行的开发指南**） | 修复轮改 |
+| `docs/architecture/tools-runtime.md:171` | 斜杠（架构图） | 修复轮改 |
+| `docs/architecture/tools-runtime.md:360` | 斜杠（路径表） | 修复轮改 |
 
-Run: `rg -n "langchain\.tools" backend/packages backend/tests` → Expected: **零命中**
+搜索必须覆盖**三种**形式（评审指出前两种之外还有 `import tools` 形式，而它正是
+迁移前 `test_skill_runtime_integration.py:7` 用过的那种，点号正则会漏掉）：
+
+```bash
+rg -n "langchain[./]tools|langchain import tools" backend/packages backend/tests docs
+```
+
+Expected: 仅命中**描述本次重构本身**的历史文档（`docs/superpowers/specs/2026-09-16-*`
+与 `docs/superpowers/plans/2026-09-16-*`），这些提到旧路径是在讲「做了什么」，属正确；其余零命中。
 
 - [ ] **Step 5: 跑测试与门禁**
 
@@ -981,34 +1180,75 @@ EOF
 - [ ] **Step 1: 五道门禁全量重跑**
 
 依次执行 Global Constraints 的 5 条命令，记录原始输出。
-Expected: 全绿。特别注意 `export_openapi --check`——13 个 DTO 的 description 会进 function schema，若被改动快照会响。
+Expected: 全绿。
+
+> **勘误 7（写 Task 4 时实测发现，已修正本步理由）**：本步原稿称
+> 「特别注意 `export_openapi --check`——13 个 DTO 的 description 会进 function schema，
+> 若被改动快照会响」——**这个理由是错的**。实测快照
+> `backend/openapi/openapi.snapshot.json` 里对工具 DTO 与工具文案的痕迹为**零**
+> （`CalculatorInput` / `KnowledgeSearchInput` / `GenerateImageInput` / `ToolParams` /
+> `McpToolParams` / `安全计算数学表达式` 均 0 处；`web_search` 0 处；`mcp__` 的 5 处命中是
+> FastAPI 由 URL 段自动生成的 `operationId`，与 MCP 工具名无关）。
+> 即：**Gate 4 保护的是 HTTP API 契约，对工具 schema 的变化完全无感**，本步不能因它变绿
+> 就认为工具 schema 未被改动。工具 schema 的护栏只有契约测试（本任务 Step 3 正是重验它）。
+> Gate 4 仍要跑——它验证本分支没有意外触碰 HTTP 接口面，只是不要误当工具 schema 的凭据。
 
 - [ ] **Step 2: 记录测试计数**
 
 Run: `uv run --all-packages --group dev python -m pytest -q | tail -3`
-Expected: `>1079 passed`，0 failed，无 warnings summary（与基线同）。若数字与 Task 1 记录不符，**调查原因并报告**，不得直接接受。
+Expected: **1118 passed**，0 failed，无 warnings summary。若数字与 Task 3 记录不符，**调查原因并报告**，不得直接接受。
+（1117 = Task 3 结束时；+1 = 复评后补的 `test_decl_registry_and_groups_are_in_bijection`，见 Step 5 与勘误 8。）
 
-- [ ] **Step 3: 独立证伪——确认契约测试仍具判别力（在最终代码上重做一次）**
+- [ ] **Step 3: 独立证伪——确认契约测试在最终代码上仍具判别力**
 
-1. 在 `catalog.py` 里把 `generate_video` 的 description 末尾句号删掉：
+**这不是重复 Task 1 的证伪**：Task 1 时占位与 description 分散在 13 个工厂里，现在它们全部
+收敛到 `catalog.py` 的 `_DECLS` 声明表与 `build_stub_tool`——**变异目标变了**，故必须在最终
+代码上重验。三步各自针对一个不同的不变量：
+
+1. **抄写保真**：在 `catalog.py` 的 `_DECLS` 里把 `generate_video` 的 description 末尾句号删掉：
    Run: `uv run --all-packages --group dev python -m pytest tests/tenant/tools/test_toolkit_contract.py -q`
    Expected: **FAIL**，报 `generate_video 的 description 被改动`
-2. 还原后，把 `"calculator"` 声明的 `is_async=False` 删掉（落回默认 `True`）：
+2. **同步/异步形状**：还原后，把 `"calculator"` 声明的 `is_async=False` 删掉（落回默认 `True`）：
    Run: 同上 → Expected: **FAIL**（`test_platform_tools_are_synchronous` + 契约形状断言）
-3. 还原后，让 `build_stub_tool` 的异步占位改为 `return {}`（不报错）：
+3. **占位必须报错**：还原后，把 `build_stub_tool` 里异步占位的 `raise RuntimeError(message)`
+   改为 `return {}`：
    Run: 同上 → Expected: **FAIL**，报 `web_search`（等）未抛 `RuntimeError`
-4. 每步还原后 `git status --porcelain` 必须为空。
+
+每步之后 `git status --porcelain` 必须为空（确认已还原），最后再跑一次确认恢复全绿。
+三步的实际失败输出都要记进报告——**只说「已验证」不算证据**。
 
 - [ ] **Step 4: 确认非目标未被触碰**
 
 Run: `git diff --stat main...HEAD -- backend/packages/miles-portal`
-Expected: 仅 6 个文件的 **import 行**改动（`mcp_tools.py` / `custom_tools.py` / `services/tools.py` / `confirmation.py` / `invoke/context.py` / `agents/services/context.py`），无逻辑改动。
+Expected: **恰好 6 个文件**（`agents/services/context.py` / `tools/confirmation.py` / `tools/invoke/context.py` / `tools/services/custom_tools.py` / `tools/services/mcp_tools.py` / `tools/services/tools.py`）
 
-Run: `rg -n "short_db_session|get_worker_session" backend/packages` → Expected: 零命中（与本任务无关，确认没有回退破坏）
+> **勘误 9（写 Task 4 时实测修正）**：本步原稿还写「除 import 行外**只有** `mcp_tools.py`
+> 与 `custom_tools.py` 各**一行** docstring 文案」——**行数说法已过时**，按字面对会误报缺陷。
+> 实测 numstat：`custom_tools.py` 5+/3−（docstring 因路径变长重排为 3 行 + 2 行 import）、
+> `mcp_tools.py` 3+/7−（1 行 docstring + 4 行 import 并为 2 行）、其余四个文件各 1+/1−。
+> **判据改为「性质」而非行数**：逐个 `git diff main...HEAD -- <file>` 通读这 6 个文件的差异，
+> 确认只出现两类改动——(a) import 语句指向 `toolkit/*`，(b) docstring/注释里的路径文案；
+> **不得出现任何语句级逻辑变化**（函数体、条件、参数、返回值）。行数只作参考，不作判据。
+> 逐文件读 diff 是硬要求：若只比 `--stat` 的数字，正是这类「看起来对」的核对最容易漏。
+
+Run: `git diff --stat main...HEAD -- backend/packages/miles-core/src/miles_core/infra/db`
+Expected: **空**（本分支不应触碰 DB 会话层——前一个专项才动过它）
+
+Run: `rg -n "langchain[./]tools|langchain import tools" backend/packages backend/tests docs | rg -v "docs/superpowers/(specs|plans)/2026-09-16"`
+Expected: **零命中**（勘误 6：必须含斜杠形式与 `import tools` 形式）
+
+Run: `wc -c backend/packages/miles-ai/src/miles_ai/integrations/langchain/toolkit/__init__.py`
+Expected: `0`（设计硬约束：不得构成再导出壳）
 
 - [ ] **Step 5: 更新 spec 的修订记录**
 
 在 `docs/superpowers/specs/2026-09-16-langchain-toolkit-split-design.md` §10 追加一条实施记录（实测计数、遇到的偏差、与设计的任何出入）。若有与设计不符之处，同时修正正文对应章节。
+
+**必记（勘误 8）**：契约测试在本任务之外**多了一条**结构性用例——
+`test_decl_registry_and_groups_are_in_bijection`，断言 `_DECLS` 与四个分组元组双向一一
+对应。这是 §7.1 清单（5 条，全部只冻结「输出」）之外的**不变量**类断言，须在 §7 正文与
+§10 修订记录里都写明，否则 spec 与代码不一致。它来自复评 m1：`_DECLS` 从不被遍历，
+只加声明不加分组会**静默**缺席，而 `docs/guides/ai-stack.md` 教的正是这条路径。
 
 - [ ] **Step 6: Commit**
 
@@ -1030,7 +1270,14 @@ EOF
 | **Spec 覆盖** | §1 问题→Task 2/3；§3 目标 1-4→Task 2（4 模块 + 收敛）与 Task 3（按职责 import）；§4 非目标→Task 4 Step 4 核验；§5.1-5.4→Task 2/3；§7.1 全 5 条→Task 1；§7.2→Task 3 Step 5 与 Task 4；§8 R1-R7→Task 1（R1/R2 断言）、Task 3 Step 4（R4/R5）、门禁 `lint-imports`（R6） |
 | **占位扫描** | 无「TBD/TODO/补充测试」；Task 1 的期望值已**完整内联**（13 + 3 条），Step 2 只做比对不做填写——这是唯一无法机器保证的一步，已显式标注 |
 | **类型一致性** | `build_stub_tool(slug, description, args_schema, *, is_async)` 在 Task 2 定义、Task 4 复用于证伪；`make_builtin_tool(slug)` 在 Task 2 定义、Task 3 Step 2 第 10 项使用；`ToolDecl(description, args_schema, is_async=True)` 与 `_DECLS` 全部 13 条一致 |
-| **测试代码已实测** | Task 1 Step 3 的占位报错断言经实测修正：`tool.invoke({})` 会先抛 `ValidationError`（pydantic 必填校验），测不到占位体；改为直接调 `tool.func({})` / `tool.coroutine({})`，实测得到 `RuntimeError: 请通过 invoke_tool_with_context 执行 calculator` |
+| **测试代码已实测** | Task 1 Step 3 的占位报错断言经两轮实测修正（见该步的两条勘误）：`tool.invoke({})` 会先抛 `ValidationError`（pydantic 必填校验），测不到占位体；而 `tool.coroutine({})` 对 `_opt_in_marker` / `make_mcp_tool` 的 `**kwargs` 型占位会先抛 `TypeError`（实测该类占位只收关键字）。最终以 `_call_stub` 按签名适配，断言与期望值未动，判别力由 Step 5 证伪实验独立验证 |
+| **lint 豁免已定** | 期望值行最长 1137 字符，超 `line-length = 160`；用户确认采用文件级 `# ruff: noqa: E501` + 数据块 `# fmt: off`（理由就近写在数据旁），不迁入 `pyproject.toml` 的 `per-file-ignores` |
+| **导入已实测** | 勘误 4：`catalog.py` 原稿写 `from typing import Any, Sequence`，实测触发 `UP035`（该规则在 `select` 列表内且未豁免）→ 已改为 `from collections.abc import Sequence` + `from typing import Any`。Task 2 若照原稿写会直接卡在 `ruff check` |
+| **F401 判断已实测** | 勘误 5：原稿称「F401 说明该符号无人使用，删掉即可」——**错误**。`tools.py` 非 `__init__.py`，裸转发导入会被 F401 全部报出（实测含确有调用点者），照删会删空整个壳。正解是显式声明 `__all__`，已补入 Step 6 代码块 |
+| **旧路径搜索已修正** | 勘误 6：Task 3/4 原稿只用点号形式 `langchain\.tools` 验证「无残留」，**不足以**——斜杠形式 `langchain/tools` 不命中，实测漏掉 5 处（含 `docs/guides/ai-stack.md:76` 这条**可执行的开发指南**，它教人往已删除的文件里加工具）。已改为 `langchain[./]tools` 并列出全部漏网点 |
+| **门禁作用域已实测** | 勘误 7：Task 4 原稿称 `export_openapi --check` 能因工具 DTO 文案改动而报警——**错误**。实测快照对工具 DTO 与工具文案的痕迹为零（`mcp__` 的 5 处是 FastAPI 从 URL 段生成的 `operationId`）。该门禁只覆盖 HTTP API 契约，对工具 schema 完全无感；工具 schema 的唯一护栏是契约测试。已修正理由并重写 Task 4 Step 3 的证伪说明 |
+| **契约测试扩了一条不变量** | 勘误 8：复评 m1 揭出 `_DECLS` 从不被遍历，声明与分组不匹配会**静默**失效，而 `docs/guides/ai-stack.md` 教贡献者走的正是这条路径。已补 `test_decl_registry_and_groups_are_in_bijection`（声明 ↔ 分组双向一一对应、互不重复），并证伪确认既有用例抓不到该缺陷（加一条未归组声明 → 仅新用例失败）。它是 §7.1 输出冻结清单之外的**不变量**类断言，Task 4 Step 5 须在 spec 正文与修订记录中同步 |
+| **非目标核对改按性质判** | 勘误 9：Task 4 Step 4 原稿把「无逻辑改动」写成行数级判据（「各一行 docstring」），实测已过时（`custom_tools.py` 5+/3−、`mcp_tools.py` 3+/7−），按字面比对会**误报缺陷**。已改为逐文件通读 diff、按改动**性质**判定（只允许 import 指向变更与路径文案），行数仅作参考 |
 | **调用面已实测** | 11 处 import + 2 处 docstring 引用由 `rg` 全仓核实（见 Task 3 Step 1/2/4 的行号）。据此发现并修掉了两个计划缺陷：(1) `make_knowledge_search_tool` 有唯一消费者（测试），原计划未安排其迁移，已移入 Task 2 Step 7；(2) 无任何调用点从 `tools.py` 导入 13 个 DTO，故临时再导出层不做 `import *`，`inputs.py` 也不需要 `__all__` |
 
 ## 与设计文档的两处刻意偏差（已记录，非疏漏）
