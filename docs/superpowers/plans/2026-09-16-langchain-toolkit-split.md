@@ -1171,33 +1171,55 @@ EOF
 - [ ] **Step 1: 五道门禁全量重跑**
 
 依次执行 Global Constraints 的 5 条命令，记录原始输出。
-Expected: 全绿。特别注意 `export_openapi --check`——13 个 DTO 的 description 会进 function schema，若被改动快照会响。
+Expected: 全绿。
+
+> **勘误 7（写 Task 4 时实测发现，已修正本步理由）**：本步原稿称
+> 「特别注意 `export_openapi --check`——13 个 DTO 的 description 会进 function schema，
+> 若被改动快照会响」——**这个理由是错的**。实测快照
+> `backend/openapi/openapi.snapshot.json` 里对工具 DTO 与工具文案的痕迹为**零**
+> （`CalculatorInput` / `KnowledgeSearchInput` / `GenerateImageInput` / `ToolParams` /
+> `McpToolParams` / `安全计算数学表达式` 均 0 处；`web_search` 0 处；`mcp__` 的 5 处命中是
+> FastAPI 由 URL 段自动生成的 `operationId`，与 MCP 工具名无关）。
+> 即：**Gate 4 保护的是 HTTP API 契约，对工具 schema 的变化完全无感**，本步不能因它变绿
+> 就认为工具 schema 未被改动。工具 schema 的护栏只有契约测试（本任务 Step 3 正是重验它）。
+> Gate 4 仍要跑——它验证本分支没有意外触碰 HTTP 接口面，只是不要误当工具 schema 的凭据。
 
 - [ ] **Step 2: 记录测试计数**
 
 Run: `uv run --all-packages --group dev python -m pytest -q | tail -3`
-Expected: `>1079 passed`，0 failed，无 warnings summary（与基线同）。若数字与 Task 1 记录不符，**调查原因并报告**，不得直接接受。
+Expected: **1117 passed**，0 failed，无 warnings summary。若数字与 Task 3 记录不符，**调查原因并报告**，不得直接接受。
 
-- [ ] **Step 3: 独立证伪——确认契约测试仍具判别力（在最终代码上重做一次）**
+- [ ] **Step 3: 独立证伪——确认契约测试在最终代码上仍具判别力**
 
-1. 在 `catalog.py` 里把 `generate_video` 的 description 末尾句号删掉：
+**这不是重复 Task 1 的证伪**：Task 1 时占位与 description 分散在 13 个工厂里，现在它们全部
+收敛到 `catalog.py` 的 `_DECLS` 声明表与 `build_stub_tool`——**变异目标变了**，故必须在最终
+代码上重验。三步各自针对一个不同的不变量：
+
+1. **抄写保真**：在 `catalog.py` 的 `_DECLS` 里把 `generate_video` 的 description 末尾句号删掉：
    Run: `uv run --all-packages --group dev python -m pytest tests/tenant/tools/test_toolkit_contract.py -q`
    Expected: **FAIL**，报 `generate_video 的 description 被改动`
-2. 还原后，把 `"calculator"` 声明的 `is_async=False` 删掉（落回默认 `True`）：
+2. **同步/异步形状**：还原后，把 `"calculator"` 声明的 `is_async=False` 删掉（落回默认 `True`）：
    Run: 同上 → Expected: **FAIL**（`test_platform_tools_are_synchronous` + 契约形状断言）
-3. 还原后，让 `build_stub_tool` 的异步占位改为 `return {}`（不报错）：
+3. **占位必须报错**：还原后，把 `build_stub_tool` 里异步占位的 `raise RuntimeError(message)`
+   改为 `return {}`：
    Run: 同上 → Expected: **FAIL**，报 `web_search`（等）未抛 `RuntimeError`
-4. 每步还原后 `git status --porcelain` 必须为空。
+
+每步之后 `git status --porcelain` 必须为空（确认已还原），最后再跑一次确认恢复全绿。
+三步的实际失败输出都要记进报告——**只说「已验证」不算证据**。
 
 - [ ] **Step 4: 确认非目标未被触碰**
 
 Run: `git diff --stat main...HEAD -- backend/packages/miles-portal`
 Expected: 仅 6 个文件改动（`mcp_tools.py` / `custom_tools.py` / `services/tools.py` / `confirmation.py` / `invoke/context.py` / `agents/services/context.py`），且除 import 行外**只有** `mcp_tools.py` 与 `custom_tools.py` 各一行 docstring 文案——无逻辑改动。
 
+Run: `git diff --stat main...HEAD -- backend/packages/miles-core/src/miles_core/infra/db`
+Expected: **空**（本分支不应触碰 DB 会话层——前一个专项才动过它）
+
 Run: `rg -n "langchain[./]tools|langchain import tools" backend/packages backend/tests docs | rg -v "docs/superpowers/(specs|plans)/2026-09-16"`
 Expected: **零命中**（勘误 6：必须含斜杠形式与 `import tools` 形式）
 
-Run: `rg -n "short_db_session|get_worker_session" backend/packages` → Expected: 零命中（与本任务无关，确认没有回退破坏）
+Run: `wc -c backend/packages/miles-ai/src/miles_ai/integrations/langchain/toolkit/__init__.py`
+Expected: `0`（设计硬约束：不得构成再导出壳）
 
 - [ ] **Step 5: 更新 spec 的修订记录**
 
@@ -1228,6 +1250,7 @@ EOF
 | **导入已实测** | 勘误 4：`catalog.py` 原稿写 `from typing import Any, Sequence`，实测触发 `UP035`（该规则在 `select` 列表内且未豁免）→ 已改为 `from collections.abc import Sequence` + `from typing import Any`。Task 2 若照原稿写会直接卡在 `ruff check` |
 | **F401 判断已实测** | 勘误 5：原稿称「F401 说明该符号无人使用，删掉即可」——**错误**。`tools.py` 非 `__init__.py`，裸转发导入会被 F401 全部报出（实测含确有调用点者），照删会删空整个壳。正解是显式声明 `__all__`，已补入 Step 6 代码块 |
 | **旧路径搜索已修正** | 勘误 6：Task 3/4 原稿只用点号形式 `langchain\.tools` 验证「无残留」，**不足以**——斜杠形式 `langchain/tools` 不命中，实测漏掉 5 处（含 `docs/guides/ai-stack.md:76` 这条**可执行的开发指南**，它教人往已删除的文件里加工具）。已改为 `langchain[./]tools` 并列出全部漏网点 |
+| **门禁作用域已实测** | 勘误 7：Task 4 原稿称 `export_openapi --check` 能因工具 DTO 文案改动而报警——**错误**。实测快照对工具 DTO 与工具文案的痕迹为零（`mcp__` 的 5 处是 FastAPI 从 URL 段生成的 `operationId`）。该门禁只覆盖 HTTP API 契约，对工具 schema 完全无感；工具 schema 的唯一护栏是契约测试。已修正理由并重写 Task 4 Step 3 的证伪说明 |
 | **调用面已实测** | 11 处 import + 2 处 docstring 引用由 `rg` 全仓核实（见 Task 3 Step 1/2/4 的行号）。据此发现并修掉了两个计划缺陷：(1) `make_knowledge_search_tool` 有唯一消费者（测试），原计划未安排其迁移，已移入 Task 2 Step 7；(2) 无任何调用点从 `tools.py` 导入 13 个 DTO，故临时再导出层不做 `import *`，`inputs.py` 也不需要 `__all__` |
 
 ## 与设计文档的两处刻意偏差（已记录，非疏漏）
