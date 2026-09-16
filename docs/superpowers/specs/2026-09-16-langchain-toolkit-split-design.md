@@ -78,6 +78,10 @@
 ## 3. 目标
 
 1. 按职责拆为 `toolkit/` 子包 4 模块，每模块单一职责，均 <200 行。
+   > **实施修订**：`catalog.py` 实测 **226 行**（非空行 177，其中 49 空行 + 4 注释行），
+   > 超出本目标 26 行；其余三模块为 `inputs.py` 118 / `specs.py` 103 / `naming.py` 72。
+   > 超出来源是 `_DECLS` 声明块（13 条 description 中 7 条超 100 字符，必须**逐字**内联）
+   > 与模块 docstring；「单一职责」仍成立。此处保留原目标数值以便对照，偏差记入 §10。
 2. 13 个静态工厂收敛为**声明表 + 单一构造器**；新增内置工具 = 加一行数据。
 3. 占位报错文案与同步 / 异步分支**各只存一处**。
 4. 消除调用点对「一个 617 行模块」的整体依赖：按职责 import（`naming` / `inputs` / `specs` / `catalog`）。
@@ -117,11 +121,13 @@ miles_ai/integrations/langchain/
 ```python
 @dataclass(frozen=True)
 class ToolDecl:
-    slug: str
     description: str
     args_schema: type[BaseModel]
     is_async: bool = True   # 4 个平台工具为 False（现状即同步 func）
 ```
+
+> **实施修订**：`ToolDecl` **不设** `slug` 字段，slug 由声明表的键承载
+> （`_DECLS: dict[str, ToolDecl]`），省去 13 次重复书写。行为无差异，详见 §10。
 
 13 条声明按 §2 的四组排列，由**唯一**构造器产出：
 
@@ -216,27 +222,51 @@ build_platform_tools(cfg, custom_specs, mcp_specs)
    这一条是「声明表抄错一个字符」这类**最难靠人眼发现**的错误唯一的拦截手段——13 条 description 中
    有 **7 条超过 100 字符**（最长 199 字符，如 `generate_image` 的「…禁止四宫格或分镜拼贴」、
    `generate_video` 的「耗时长，异步排队」），逐字搬运极易出错。
-2. **3 个 spec 驱动工具的 schema**：各给一个样例 spec（custom-http / custom-script / mcp），
-   含 `make_mcp_tool` 在 `input_schema=None` 与可解析两种情形。
-3. **占位报错文案**：对代表各分组（平台/opt-in/技能/生成 + spec 驱动）的工具调用 `invoke` / `ainvoke`，
-   断言 `RuntimeError` 且文案为 `请通过 invoke_tool_with_context 执行 <slug>`。
+2. **spec 驱动工具的 schema**：各给一个样例 spec（custom-http / custom-script / mcp 可解析 /
+    mcp `input_schema=None` **共 4 类**），断言 description / 同步异步形状 / schema JSON 不变。
+    第 4 类（`input_schema=None`）是独立风险点：此时整个 `args_schema` kwarg 被省略，
+    LangChain 从占位签名反推 schema、`title` 取工具名，故占位签名不得改动。
+3. **占位报错文案**：对代表各分组（平台/opt-in/技能/生成 + spec 驱动）的工具**直接调用占位函数本体**
+   （`tool.func()` / `asyncio.run(tool.coroutine())`），断言 `RuntimeError` 且文案为
+   `请通过 invoke_tool_with_context 执行 <slug>`。
    **现状无用例覆盖这条不变量**，是本设计补上的第一个缺口。
+   注意**不能**用 `tool.invoke({})`：那会先过 pydantic 校验，空参先抛 `ValidationError`
+   （实测 `calculator.invoke({})` → `ValidationError: Field required`），测不到占位体；
+   占位统一为 `**kwargs`，`_call_stub` 据此按签名适配（详见 §10）。
 4. **同步 / 异步形状**：4 个平台工具断言 `tool.func is not None` 且 `tool.coroutine is None`；
    其余断言反向。这是单构造器若一律传 `coroutine=` 时**唯一会响**的用例（见 §8 R1）。
 5. **门控组合**：`build_platform_tools` 在「仅 `skill_package_id`」「仅 `enable_generative_tools`」
    「都给」「都不给」四种组合下的工具名集合。现状仅覆盖技能那一半。
+6. **声明表与分组双向一一对应（不变量类断言）**：`test_decl_registry_and_groups_are_in_bijection`
+   断言 `_DECLS` 的键集与四个分组元组（`_PLATFORM_SLUGS` / `_OPT_IN_SLUGS` / `_SKILL_SLUGS` /
+   `_GENERATIVE_SLUGS`）的并集**完全相等**，且任一 slug 不得同时归入两个分组。
+
+> 上述 1–5 条冻结的是**输出**（description、schema JSON、报错文案、同步异步形状、装配顺序与
+> 门控结果）；第 6 条是**不变量**断言，性质不同，故单列。理由：`_DECLS` 只在
+> `_DECLS[slug]` 处被查表、**从不被遍历**，一个工具的可见性完全取决于它是否落在某个分组元组里。
+> 于是故障是不对称的——**只加声明不加分组 → 工具静默缺席且不报错**（任何工具列表都取不到，
+> 调用方看不出异常）；只加分组不加声明 → 构造时才 `KeyError`（响亮）。1–5 条都抓不到前者：
+> 参数化来自本文件内联的 `_EXPECTED_BUILTIN`，新增声明不会被它覆盖。而
+> `docs/guides/ai-stack.md` 正是教贡献者新增内置工具的**可执行指南**，走的恰是「加声明」这条路径，
+> 故必须在此钉住。该用例来自复评 m1，属 §7.1 清单之外补入的护栏（见 §10）。
 
 ### 7.2 重构后
 
 - 上述特征测试**必须原样全绿**（不改期望值、不迁就实现）。
 - 既有 4 个测试文件仅改导入路径（与 §5.4 一一对应）。
-- 增量断言：`rg "langchain\.tools"` 在 `packages/` 与 `tests/` 归零。
+- 增量断言：`rg "langchain[./]tools|langchain import tools"` 在 `packages/`、`tests/`、`docs/`
+  归零（仅 `docs/superpowers/{specs,plans}/2026-09-16-*.md` 允许残留——那些描述本次重构自身）。
+  **必须含斜杠形式** `langchain/tools`：只查点号形式会漏掉 5 处（含 `docs/guides/ai-stack.md`
+  这条教人往已删除文件里加工具的可执行指南）。
 - 五道门禁：`ruff format --check`、`ruff check`、`lint-imports`（6 契约）、`export_openapi --check`、
-  `python -m pytest`（全量）。OpenAPI 快照尤其关键——13 个 DTO 的 description 会进 function schema，
-  若被改动，快照会响。
+  `python -m pytest`（全量）。
+  **注意 `export_openapi --check` 的作用域**：它只保护 **HTTP API 契约**，对工具 schema 完全无感
+  （实测快照对工具 DTO 与工具文案痕迹为零；`mcp__` 的少数命中是 FastAPI 由 URL 段生成的
+  `operationId`，与 MCP 工具名无关）。故**不得**因它变绿就认为工具 schema 未被改动——
+  工具 schema 的护栏**只有** §7.1 的契约测试。此门禁的价值在于确认本分支没有意外触碰 HTTP 接口面。
 
-预期计数：基线 **1079** → 新增 1 个测试文件（约 5–8 条用例）。实际数以实测为准并记录，
-**不为了对齐估计值而增删用例**。
+预期计数：基线 **1079** → 最终 **1118**（新增 `tests/tenant/tools/test_toolkit_contract.py` 共 39 条
+用例）。实际数以实测为准并记录，**不为了对齐估计值而增删用例**。
 
 ## 8. 风险
 
@@ -266,3 +296,87 @@ build_platform_tools(cfg, custom_specs, mcp_specs)
   与现状「带类型签名的占位」产出的 `name` / `description` / `args_schema` / `args` /
   `tool_call_schema` 及报错文案**逐字节相同**，故 §5.2 的收敛不改变对外行为。
   同时更正前序评审的一处估计：可归并的工厂为 **13 个静态 + 3 个 spec 驱动**，非「15 个」。
+
+### 2026-09-16 实施记录（Task 4 独立终检）
+
+**记数（实测）**
+- 基线 **1079** → 最终 **1118 passed**、0 failed、无 warnings summary
+  （`uv run --all-packages --group dev python -m pytest -q`）。
+- 增量 **39** 条全部来自新增 `tests/tenant/tools/test_toolkit_contract.py`：
+  内置契约冻结 13 + spec 驱动契约冻结 4 + 平台同步形状 1 + 分组内容与顺序 1 +
+  **声明↔分组双射 1** + opt-in 门控 1 + 装配门控矩阵 1 + 占位报错 13 + spec 驱动占位报错 4。
+  与设计预期「基线 1079」一致，未为对齐数字增删任何用例。
+
+**五道门禁（全绿，原始输出）**
+| 门禁 | 结果 |
+|---|---|
+| `ruff format --check .` | `962 files already formatted`，exit 0 |
+| `ruff check .` | `All checks passed!`，exit 0 |
+| `lint-imports` | `Analyzed 758 files, 2515 dependencies.` / 6 契约全 `KEPT` / `Contracts: 6 kept, 0 broken.`，exit 0 |
+| `python -m miles_server.scripts.export_openapi --check` | `OpenAPI snapshot OK`，exit 0（作用域见下 §7.2 修订） |
+| `python -m pytest -q` | `1118 passed in 12.55s`，exit 0 |
+
+**契约测试独立证伪（在最终代码上重验 3 个不同不变量）**
+变异目标已从 Task 1 时的 13 个分散工厂收敛到 `catalog.py`，故必须重验。
+每次变异后均以 `git checkout -- <path>` 还原，`git status --porcelain` 为空，还原后复跑
+`39 passed`；未提交任何变异，未改动 `test_toolkit_contract.py` 本身。
+
+1. **抄写保真**——`_DECLS` 中 `generate_video` 的 description 删去末尾 `。`
+   → **FAIL**：`test_builtin_tool_contract_frozen[generate_video]`，
+   `AssertionError: generate_video 的 description 被改动`（`test_toolkit_contract.py:87`）；
+   `1 failed, 38 passed`。
+2. **同步/异步形状**——删除 `"calculator"` 声明的 `is_async=False`（落回默认 `True`）
+   → **FAIL**：`test_builtin_tool_contract_frozen[calculator]`，
+   `AssertionError: calculator 的同步/异步形状被改动`（`:88`）；
+   且 `test_platform_tools_are_synchronous`，`AssertionError: calculator 应使用同步 func`（`:97`）；
+   `2 failed, 37 passed`。
+3. **占位必须报错**——`build_stub_tool` 异步占位 `raise RuntimeError(message)` 改为 `return {}`
+   → **FAIL**：13 条失败（`test_builtin_stub_raises_instead_of_executing` 9 条 +
+   `test_spec_driven_stub_raises_instead_of_executing` 4 条），
+   消息均为 `Failed: DID NOT RAISE <class 'RuntimeError'>`（`:279` / `:286`），
+   其中 `[web_search]` 为 `:279`；`13 failed, 26 passed`。
+
+结论：**契约测试在最终代码上仍具判别力**，三类不变量各有独立拦截点。
+
+**非目标核对（按改动「性质」判定，非行数）**
+- `miles-portal` 恰好 **6 文件**（numstat 1/1、1/1、1/1、5/3、3/7、1/1）。逐文件通读 diff：
+  只出现 (a) import 语句指向 `toolkit/*`、(b) docstring/注释中的路径文案两类改动；
+  **无任何语句级逻辑变化**（函数体、条件、参数、返回值均未动）。
+- `miles-core/src/miles_core/infra/db` 的 `main...HEAD` diff **为空**（未触碰 DB 会话层）。
+- `rg "langchain[./]tools|langchain import tools" backend/packages backend/tests docs`
+  （排除 `docs/superpowers/{specs,plans}/2026-09-16-*`）**零命中**，exit 1。
+- `toolkit/__init__.py` 为 **0 字节**（硬约束：未构成再导出壳）；旧 `tools.py`（617 行）已删除。
+
+**§7.1 清单之外的第六条断言：声明 ↔ 分组双射（不变量，勘误 8）**
+`test_decl_registry_and_groups_are_in_bijection` 断言 `_DECLS` 键集与四个分组元组
+（`_PLATFORM_SLUGS` / `_OPT_IN_SLUGS` / `_SKILL_SLUGS` / `_GENERATIVE_SLUGS`）的并集完全相等，
+且任一 slug 不得同时归入两个分组。§7.1 的 1–5 条**全部只冻结输出**，本条性质不同，故已作为
+第 6 条写入 §7.1 正文并在本节登记。理由：`_DECLS` 只在 `_DECLS[slug]` 处查表、**从不被遍历**，
+可见性完全取决于是否落在某个分组元组里——只加声明不加分组时工具**静默缺席且不报错**，
+1–5 条都抓不到；而 `docs/guides/ai-stack.md` 正是教贡献者新增内置工具的可执行指南，
+走的恰是「加声明」这条路径。该用例来自复评 m1，是本次补入的护栏。
+
+**与设计正文的偏差（均已同步修正正文对应章节）**
+1. §5.2：`ToolDecl` **不设** `slug` 字段，slug 由声明表的键承载（`_DECLS: dict[str, ToolDecl]`），
+   省去 13 次重复书写；行为无差异。
+2. §7.1.2：由「3 个 spec 驱动工具」改为「**4 类**样例」。第 4 类 `mcp(input_schema=None)`
+   会让整个 `args_schema` kwarg 被省略、由占位签名反推 schema，是独立风险点，已纳入
+   `_EXPECTED_SPEC_DRIVEN` 冻结。
+3. §7.1.3：占位报错断言**直接调用占位函数本体**（`_call_stub`：`tool.func()` /
+   `asyncio.run(tool.coroutine())`），**不用** `invoke` / `ainvoke`——后者会先过 pydantic 校验，
+   空参先抛 `ValidationError`（实测 `calculator.invoke({})` → `ValidationError: Field required`），
+   测不到占位体。占位统一为 `**kwargs`，故按签名适配。
+4. §7.2：更正 `export_openapi --check` 的作用域（勘误 7）。实测快照
+   `backend/openapi/openapi.snapshot.json` 对工具 DTO 与工具文案的痕迹为**零**，该门禁只覆盖
+   **HTTP API 契约**，对工具 schema **完全无感**；工具 schema 的**唯一**护栏是契约测试。
+   原稿「OpenAPI 快照尤其关键——13 个 DTO 的 description 会进 function schema」为错误断言，已删除。
+5. §7.2：收口判据由点号形式 `langchain\.tools` 改为 `langchain[./]tools|langchain import tools`
+   （勘误 6）——原形式漏掉斜杠形式与 `import tools` 形式共 5 处，其中包含
+   `docs/guides/ai-stack.md` 这条教人往已删除文件里加工具的可执行指南。
+6. §3 目标 1 的「均 <200 行」**未达成**：`catalog.py` 实测 **226 行**（非空行 177，
+   其中 49 空行 + 4 注释行），超出 26 行；`inputs.py` 118 / `specs.py` 103 / `naming.py` 72 达标。
+   超出来源是必须**逐字**内联的 `_DECLS` 声明块（13 条 description 中 7 条超 100 字符）与模块
+   docstring，「单一职责」仍成立。**未改代码、未改上表目标数值以使其通过**，偏差在此登记，
+   并已在 §3 目标 1 处以实施修订脚注标注实测值。
+
+**终检时的基线 HEAD**：`0047bbd6`（本记录随其后的 docs-only 提交落地）。
