@@ -279,9 +279,12 @@ _HEALTH_CHECKS_SRC = _BACKEND_ROOT / "packages" / "miles-core" / "src" / "miles_
 def _called_function_names(tree: ast.AST) -> set[str]:
     """语法树里所有被**调用**的函数名（裸名与属性访问都算）。
 
-    ``get_engine()`` 与 ``db.get_engine()`` 都记作 ``get_engine``，故「换成模块属性访问」不会误报；
-    改名/别名会让它变红——那就是真正的接线变更，本就该红。注释、docstring、字符串字面量都不是
-    ``ast.Call``，其中的同名文本天然免疫。
+    ``get_engine()`` 与 ``db.get_engine()`` 都记作 ``get_engine``，故「换成模块属性访问」不会误报。
+    判别力是**单向**的：本文件断言的是「``get_engine`` 出现在被调用名里」，故它只能证明「确实调了
+    这个函数名」，不能证明「调用就挂在 ``check_postgres`` 上」——留一个同名 shim 或别处顺手调一次
+    都能骗过它（要更严就得把调用与函数体绑定，成本不划算）。反向的改名/别名（`import get_engine
+    as ge`）会变红，那是**可接受的误报**：它确实是接线变动，改的人顺手同步本断言即可。注释、
+    docstring、字符串字面量都不是 ``ast.Call``，其中的同名文本天然免疫。
     """
     names: set[str] = set()
     for node in ast.walk(tree):

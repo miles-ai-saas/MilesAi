@@ -276,10 +276,13 @@ Worker（每任务一个 loop）：
 - `get_redis()` 的 `id(loop)` 复用隐患（本设计不复制该做法，但不在本专项修）。
 - tool agent / a2a 路径持请求会话（另一专项）。
 - `SessionMediaReader` / `FlowMediaReader` 的并存（事务归属语义，保留）。
-- 非 Worker 的 `asyncio.run` 站点不在任何释放护栏的扫描根内：`miles_server` 的
-  `scripts/db_ops.py:86,90`、`scripts/verify_db.py:52`、`cli.py:153,171`（§5.3 已给过「CLI 单次
-  进程、退出即释放」的理由，此处只登记新失败形状）——这些脚本若改成长命进程，或被 CLI 之外的
-  路径复用，**漏了包装就是每 loop 一池**；`run_worker_db_coro` 的护栏只扫
+- 非 Worker 的 `asyncio.run` 站点不在任何释放护栏的扫描根内。其中**会呈现**「漏了包装就每 loop
+  一池」这一失败形状的是走 `AsyncSessionLocal()`（即 loop 注册表）的 `miles_server` 站点：
+  `scripts/db_ops.py:86,90`（会话取自 `db_ops.py:69`）与 `cli.py:171`；这些脚本若改成长命进程、
+  或被 CLI 之外的路径复用，就会按 loop 累积无人释放的 engine。**不会**呈现该形状的是
+  `scripts/verify_db.py:52` 与 `cli.py:153`——它们走的是 `verify_db.py:31` 的**局部** engine，
+  且 `:36` 每次都 `await engine.dispose()`（§5.3 已给过「CLI 单次进程、退出即释放」的理由，
+  此处只登记新失败形状）。共同点是它们都在护栏之外：`run_worker_db_coro` 的护栏只扫
   `packages/miles-worker/src`（见 `tests/infra/test_run_worker_db_coro.py`），扫不到它们。
 - `miles_ai/integrations/langchain/chat_models.py:69-72` 的同步入口内部 `asyncio.run` **不是连接
   泄漏**，只是白起一个 loop：该路径调 `litellm_chat_completion` 时不传 `usage_sink`，而 adapter 仅在
@@ -389,7 +392,7 @@ Worker（每任务一个 loop）：
   **⑥ 调用面统计修正。** §2 与 §5.2 原称 `get_worker_session()` 使用者「1 处，
   `agent_schedule.py:34`」，实为 **3 个模块 / 4 处**：`job_execution.py:122`、`:192`、
   `agent_schedule.py:34`、`model_health.py:28`（`git grep` 于 merge-base `f4eb1418` 复核）。
-  该行原文带「已核查」标注，属误记，已改正。
+  该条原在 §2 的「调用面（已核查）」标注之下，属误记，已改正（§5.2 同）。
 
   **⑦ §7 不变量的补测与 I1 空转修正。** §7.5 的两条（barrel 导出面、`health_checks` 经
   `get_engine()`）与 §7.2 的「dispose 后新建 engine」此前**无用例**，本轮补上（3 条，落在
