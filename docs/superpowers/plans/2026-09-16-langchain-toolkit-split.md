@@ -341,10 +341,31 @@ def _spec_driven_tools() -> dict:
 
 - [ ] **Step 3: 补占位报错文案的断言**
 
-现状**无用例**覆盖「占位必须报错」这条不变量。在测试文件末尾追加：
+现状**无用例**覆盖「占位必须报错」这条不变量。在测试文件末尾追加（**本步代码已修正，见下方勘误**）：
 
 ```python
 _STUB_MESSAGE = "请通过 invoke_tool_with_context 执行 {slug}"
+
+
+def _call_stub(tool) -> None:
+    """调用占位函数本体（**不经** ``tool.invoke`` 的 pydantic 校验），让占位报错原样抛出。
+
+    占位有两种签名形状，须分别适配，否则会先抛 ``TypeError`` 而测不到占位报错：
+
+    - ``**kwargs`` 型（``_opt_in_marker`` / ``make_custom_*_tool`` / ``make_mcp_tool``）
+      只接受关键字，位置参数会被拒绝；
+    - 带具名必填参数的占位（``calculator`` / ``skill_*`` / ``generate_*``）需一个位置
+      参数才能进入函数体。
+    """
+    fn = tool.coroutine if tool.coroutine is not None else tool.func
+    accepts_positional = any(
+        p.kind in (p.POSITIONAL_ONLY, p.POSITIONAL_OR_KEYWORD) for p in inspect.signature(fn).parameters.values()
+    )
+    args: tuple = ({},) if accepts_positional else ()
+    if tool.coroutine is not None:
+        asyncio.run(tool.coroutine(*args))
+    else:
+        fn(*args)
 
 
 @pytest.mark.parametrize("slug", sorted(_EXPECTED_BUILTIN))
@@ -360,23 +381,32 @@ def test_builtin_stub_raises_instead_of_executing(slug: str) -> None:
     """
     tool = _all_builtin()[slug]
     with pytest.raises(RuntimeError, match=_STUB_MESSAGE.format(slug=slug)):
-        if tool.coroutine is not None:
-            asyncio.run(tool.coroutine({}))
-        else:
-            tool.func({})
+        _call_stub(tool)
 
 
 @pytest.mark.parametrize("slug", sorted(_EXPECTED_SPEC_DRIVEN))
 def test_spec_driven_stub_raises_instead_of_executing(slug: str) -> None:
     tool = _spec_driven_tools()[slug]
     with pytest.raises(RuntimeError, match=_STUB_MESSAGE.format(slug=slug)):
-        asyncio.run(tool.coroutine({}))
+        _call_stub(tool)
 ```
+
+> **勘误 1（Task 1 实施时实测发现，已回写）**：本步最初的草稿是 `asyncio.run(tool.coroutine({}))`，
+> 是**错的**——`_opt_in_marker` 与 `make_mcp_tool` 的占位是 `async def _arun(**kwargs: Any)`，
+> **只接受关键字参数**，传位置参数会先抛 `TypeError`（8 条用例必红，与「Step 4 全绿」自相矛盾）。
+> 故引入 `_call_stub` 按实际签名适配。**这不是测试放宽**：断言与期望值一字未动，
+> 「占位必须抛 `RuntimeError`」的判别力由 Step 5 的证伪实验独立验证。
+
+> **勘误 2（同一轮实测发现，已回写）**：本文件的期望值块是实测导出的长数据（最长一条 1137 字符），
+> 超 `line-length = 160` 且会被 formatter 拆行，破坏「每个工具一行、可与导出脚本逐行 diff」的审计性。
+> 处置：整文件豁免 `E501`（文件头一行 `# ruff: noqa: E501`），两个数据块以 `# fmt: off` / `# fmt: on`
+> 关闭拆行，值为与版式一字未改。**用户已确认采用此形式**（而非移入 `pyproject.toml` 的
+> `per-file-ignores`），理由是豁免理由写在数据旁边，读文件即知为何不拆行。
 
 - [ ] **Step 4: 跑测试，必须全绿**
 
 Run: `uv run --all-packages --group dev python -m pytest tests/tenant/tools/test_toolkit_contract.py -q`
-Expected: PASS（约 40 条；`pytest.raises(match=...)` 用 `re.search`，slug 含 `_` 无正则元字符，安全）
+Expected: PASS（36 条；`pytest.raises(match=...)` 用 `re.search`，slug 含 `_` 无正则元字符，安全）
 
 - [ ] **Step 5: 证伪实验——确认测试真的会红**
 
@@ -432,7 +462,14 @@ EOF
   - `toolkit.specs`：`CustomToolSpec`、`McpToolSpec`、`mcp_param_alias(input_schema: dict | None) -> dict[str, str]`、`json_schema_to_pydantic(input_schema: dict | None, *, model_name: str = "McpToolParams") -> type[BaseModel] | None`
   - `toolkit.catalog`：`build_stub_tool(slug: str, description: str, args_schema: type[BaseModel] | None, *, is_async: bool) -> StructuredTool`、`make_builtin_tool(slug: str) -> StructuredTool`、`get_platform_tools()`、`select_opt_in_builtin_tools(agent_config: dict | None)`、`get_skill_bound_tools()`、`get_generative_tools()`、`make_custom_http_tool(spec)`、`make_custom_script_tool(spec)`、`make_mcp_tool(spec)`、`build_platform_tools(agent_config, custom_specs=None, mcp_specs=None)`
 
-> **本任务的收敛范围**：13 个静态工厂 → 声明表 + 构造器。`build_stub_tool` 的占位签名**必须**是 `**kwargs: Any`——实测：`make_mcp_tool` 在 `input_schema=None` 时 `args_schema` 缺省，LangChain 会**从占位函数签名反推 schema**（`title` 取工具名）。占位签名一变，该情形的对外 schema 会静默改变（Task 1 的 `mcp_none` 契约即为此设）。
+> **本任务的收敛范围**：13 个静态工厂 → 声明表 + 构造器。`build_stub_tool` 的占位签名**必须**是 `**kwargs: Any`——实测：`make_mcp_tool` 在 `input_schema=None` 时 `args_schema` 缺省，LangChain 会**从占位函数签名反推 schema**（`title` 取工具名）。占位签名一变，该情形的对外 schema 会静默改变（Task 1 的导出脚本里 `mcp_none` 一条即为盯住它）。
+>
+> 已核实现状（Task 1 实施时读码确认）：`make_mcp_tool:580` 与 `_opt_in_marker:300` 的占位本就是
+> `async def _arun(**kwargs: Any)`，故上述情形在本任务中**签名不变、schema 不变**；
+> 真正会被统一改动的是 `calculator` / `skill_*` / `generate_*` 等**带具名参数**的占位，
+> 而它们的 `args_schema` 均为显式传入——独立 probe 已实测「具名签名 → `**kwargs`」在显式
+> `args_schema` 下产出**逐字节相同**的 `StructuredTool` schema。Task 1 的 15 条异步契约断言
+> 会在本任务后继续把这条钉住。
 
 - [ ] **Step 1: 建空 `__init__.py`**
 
@@ -923,6 +960,23 @@ EOF
     from miles_ai.integrations.langchain.toolkit.specs import CustomToolSpec, McpToolSpec
     ```
     > 本文件其余内容**一字不改**——期望值不变，是它作为契约的意义所在。
+    >
+    > **唯一例外**：`_call_stub` 里「按签名适配」的分支须在此简化掉。Task 2 已把全部占位
+    > 统一为 `**kwargs`，`accepts_positional` 恒为 False，那个分支成了死代码。改成直接调用：
+    > ```python
+    > def _call_stub(tool) -> None:
+    >     """调用占位函数本体（**不经** ``tool.invoke`` 的 pydantic 校验），让占位报错原样抛出。
+    >
+    >     占位统一为 ``**kwargs``，无位置参数可传；这也正是 ``tool.invoke({})`` 测不到本意
+    >     （会先抛 pydantic ``ValidationError``）的原因。
+    >     """
+    >     if tool.coroutine is not None:
+    >         asyncio.run(tool.coroutine())
+    >     else:
+    >         tool.func()
+    > ```
+    > 随之删掉不再使用的 `import inspect`（否则 ruff `F401` 会拦住门禁）。
+    > 期望值与断言仍**一字不改**。
 
 - [ ] **Step 3: 删除 `tools.py`**
 
@@ -1030,7 +1084,8 @@ EOF
 | **Spec 覆盖** | §1 问题→Task 2/3；§3 目标 1-4→Task 2（4 模块 + 收敛）与 Task 3（按职责 import）；§4 非目标→Task 4 Step 4 核验；§5.1-5.4→Task 2/3；§7.1 全 5 条→Task 1；§7.2→Task 3 Step 5 与 Task 4；§8 R1-R7→Task 1（R1/R2 断言）、Task 3 Step 4（R4/R5）、门禁 `lint-imports`（R6） |
 | **占位扫描** | 无「TBD/TODO/补充测试」；Task 1 的期望值已**完整内联**（13 + 3 条），Step 2 只做比对不做填写——这是唯一无法机器保证的一步，已显式标注 |
 | **类型一致性** | `build_stub_tool(slug, description, args_schema, *, is_async)` 在 Task 2 定义、Task 4 复用于证伪；`make_builtin_tool(slug)` 在 Task 2 定义、Task 3 Step 2 第 10 项使用；`ToolDecl(description, args_schema, is_async=True)` 与 `_DECLS` 全部 13 条一致 |
-| **测试代码已实测** | Task 1 Step 3 的占位报错断言经实测修正：`tool.invoke({})` 会先抛 `ValidationError`（pydantic 必填校验），测不到占位体；改为直接调 `tool.func({})` / `tool.coroutine({})`，实测得到 `RuntimeError: 请通过 invoke_tool_with_context 执行 calculator` |
+| **测试代码已实测** | Task 1 Step 3 的占位报错断言经两轮实测修正（见该步的两条勘误）：`tool.invoke({})` 会先抛 `ValidationError`（pydantic 必填校验），测不到占位体；而 `tool.coroutine({})` 对 `_opt_in_marker` / `make_mcp_tool` 的 `**kwargs` 型占位会先抛 `TypeError`（实测该类占位只收关键字）。最终以 `_call_stub` 按签名适配，断言与期望值未动，判别力由 Step 5 证伪实验独立验证 |
+| **lint 豁免已定** | 期望值行最长 1137 字符，超 `line-length = 160`；用户确认采用文件级 `# ruff: noqa: E501` + 数据块 `# fmt: off`（理由就近写在数据旁），不迁入 `pyproject.toml` 的 `per-file-ignores` |
 | **调用面已实测** | 11 处 import + 2 处 docstring 引用由 `rg` 全仓核实（见 Task 3 Step 1/2/4 的行号）。据此发现并修掉了两个计划缺陷：(1) `make_knowledge_search_tool` 有唯一消费者（测试），原计划未安排其迁移，已移入 Task 2 Step 7；(2) 无任何调用点从 `tools.py` 导入 13 个 DTO，故临时再导出层不做 `import *`，`inputs.py` 也不需要 `__all__` |
 
 ## 与设计文档的两处刻意偏差（已记录，非疏漏）
