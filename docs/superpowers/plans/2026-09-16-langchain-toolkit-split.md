@@ -4,7 +4,7 @@
 
 **Goal:** 把 617 行的 `langchain/tools.py` 按职责拆为 `langchain/toolkit/` 4 模块，并把 13 个同形工具工厂收敛为「声明表 + 单一构造器」，对外行为逐字节不变。
 
-**Architecture:** 先写一条**契约冻结测试**钉住全部 16 个工具的 `name`/`description`/`args_schema`/占位报错文案/同步异步形状，再重构。重构分两步走，每步都保持全绿：先纯搬迁出 `naming`/`inputs`/`specs` 三个纯职责模块（`tools.py` 暂作再导出，使 1079 条既有测试继续有效），再建 `catalog.py` 做声明式收敛、删除 `tools.py`、迁移 11 处调用点。
+**Architecture:** 先写一条**契约冻结测试**钉住全部 17 个工具（13 内置 + 4 类 spec 驱动）的 `name`/`description`/`args_schema`/占位报错文案/同步异步形状，再重构。重构分两步走，每步都保持全绿：先纯搬迁出 `naming`/`inputs`/`specs` 三个纯职责模块（`tools.py` 暂作再导出，使 1079 条既有测试继续有效），再建 `catalog.py` 做声明式收敛、删除 `tools.py`、迁移 11 处调用点。
 
 **Tech Stack:** Python 3.11、LangChain `StructuredTool`、pydantic v2、pytest、ruff、import-linter。
 
@@ -34,7 +34,7 @@
 
 | 文件 | 职责 | 动作 |
 |---|---|---|
-| `backend/tests/tenant/tools/test_toolkit_contract.py` | 契约冻结：16 个工具的对外可观测面 | **新建**（Task 1） |
+| `backend/tests/tenant/tools/test_toolkit_contract.py` | 契约冻结：17 个工具（13 内置 + 4 类 spec 驱动）的对外可观测面 | **新建**（Task 1） |
 | `backend/packages/miles-ai/src/miles_ai/integrations/langchain/toolkit/__init__.py` | 空文件（刻意无再导出） | **新建**（Task 2） |
 | `.../langchain/toolkit/naming.py` | MCP function name 约定 + 工具白名单过滤 | **新建**（Task 2，自 `tools.py:33-98` 搬迁） |
 | `.../langchain/toolkit/inputs.py` | 13 个入参 DTO（纯声明） | **新建**（Task 2，自 `tools.py:189-297` 搬迁） |
@@ -63,20 +63,15 @@
 - [ ] **Step 1: 写契约测试**
 
 ```python
-"""toolkit 契约冻结：16 个工具的对外可观测面在「拆分 + 声明式收敛」前后必须逐字节一致。
+"""toolkit 契约冻结：17 个工具（13 内置 + 4 类 spec 驱动）的对外可观测面在「拆分 + 声明式收敛」前后必须逐字节一致。
 
-为什么必须存在：重构把 13 个工厂收敛为一张声明表，而 13 条 description 全部是中文、
-最长 77 字符（177 UTF-8 字节），最长一条冻结的 schema 字面量达 889 字符，逐字搬运极易出错；`StructuredTool` 又会**静默接受**把同步工具
-写成异步（只是 `.func` 变空、`.coroutine` 非空，调用方看不出来）。本文件是这两类错误
-唯一的拦截手段，故在重构**之前**先跑绿。
+为什么必须存在：重构把 13 个工厂收敛为一张声明表。13 条 description 全部是中文，最长 77
+字符（177 UTF-8 字节），最长一条冻结的 schema 字面量达 889 字符，逐字搬运极易出错；
+`StructuredTool` 又会**静默接受**把同步工具写成异步（只是 `.func` 变空、`.coroutine`
+非空，调用方看不出来）。本文件是这两类错误唯一的拦截手段，故在重构**之前**先跑绿。
 
-> 期望值来源：由重构前的实现实测导出（`args_schema.model_json_schema()` 经
-> `json.dumps(..., sort_keys=True, separators=(",", ":"))` 归一化），非人工手写。
->
-> **勘误 10（终审实测修正）**：本节及设计文档原写「13 条 description 中 7 条超过 100 字符
-> （最长 199）」——**该数字在任何度量下都不成立**，实测：字符 9–77（**0 条**超 100）、
-> UTF-8 字节 18–177（4 条超 100）、转义 ASCII 30–327（9 条超 100）。「最长 199」无对应度量，
-> 属凭空数字。已改为实测值。冻结 schema 字面量最长一条实测 **889** 字符（非「逾 1100」）。
+期望值来源：由重构前的实现实测导出（`args_schema.model_json_schema()` 经
+`json.dumps(..., sort_keys=True, separators=(",", ":"))` 归一化），非人工手写。
 """
 
 from __future__ import annotations
@@ -247,6 +242,15 @@ def test_spec_driven_tool_contract_frozen(slug: str) -> None:
     assert (tool.coroutine is not None) is expected_async
     assert _normalized(tool) == expected_schema
 ```
+
+> **勘误 10（终审实测修正）**：上文代码块是**测试文件的 docstring 原文**，已与仓库内文件
+> 逐字节对齐，请照抄。原先此处插在 docstring 内的勘误说明会污染原样复制，故移到块外。
+> 被修正的原始说法是「13 条 description 中 7 条超过 100 字符（最长 199）」——**该数字在任何
+> 度量下都不成立**：实测字符 9–77（**0 条**超 100）、UTF-8 字节 18–177（4 条超 100）、
+> 转义 ASCII 30–327（9 条超 100）。「最长 199」不对应任何度量，属凭空数字；冻结 schema
+> 字面量最长一条实测 **889** 字符（非「逾 1100」）。同类数字勘误还有一处：工具总数是
+> **17**（13 内置 + 4 类 spec 驱动），原写「16」系把 §2 的「13 个静态工厂 + 3 个 spec 驱动
+> 工厂」误当工具数——第 4 类 `mcp(input_schema=None)` 是测试用例，不是工厂。
 
 - [ ] **Step 2: 核对期望值（已内联，需比对而非填写）**
 
@@ -505,7 +509,7 @@ git commit -F - <<'EOF'
 test(toolkit): 冻结工具 schema 契约并补上占位报错断言
 
 拆分 tools.py 与收敛 13 个工厂之前，先用一条特征测试钉住对外可观测面：
-16 个工具的 description / args_schema / 同步异步形状 / 分组顺序 / 门控组合。
+17 个工具（13 内置 + 4 类 spec 驱动）的 description / args_schema / 同步异步形状 / 分组顺序 / 门控组合。
 期望值由当前实现实测导出后内联，非人工手写——13 条 description 全部是中文、最长 77
 字符（177 UTF-8 字节），最长一条 schema 字面量 889 字符，逐字搬运是本次重构最易出错处。
 
