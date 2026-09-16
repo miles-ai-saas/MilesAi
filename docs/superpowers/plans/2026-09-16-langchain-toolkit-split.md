@@ -976,7 +976,7 @@ EOF
 
 **Interfaces:**
 - Consumes: Task 2 产出的 `toolkit.{naming,inputs,specs,catalog}` 全部符号
-- Produces: 最终状态——`rg "langchain\.tools"` 零命中
+- Produces: 最终状态——`rg "langchain[./]tools|langchain import tools"` 零命中（点号形式不足，勘误 6）
 
 > **本任务是纯机械迁移**：漏改的失败模式是导入期 `ImportError`（响亮、即时），不是静默降级。
 > 这正是「不留转发壳」的前提条件。

@@ -199,7 +199,8 @@ build_platform_tools(cfg, custom_specs, mcp_specs)
 
 **为什么不留转发壳**：上一专项（loop 感知 DB 引擎）已确立同一结论——转发壳会保留两条
 「同一件事的入口」，而漏改调用点的失败模式是**导入期 `ImportError`**（响亮、即时、无法忽略），
-不是静默降级。这也是不留壳的前提条件，`rg "langchain\.tools"` 归零即收口判据。
+不是静默降级。这也是不留壳的前提条件，`rg "langchain[./]tools|langchain import tools"` 归零即收口判据
+（**只查点号形式不足**，理由见 §7.2）。
 
 ## 6. 语义变化
 
@@ -236,7 +237,9 @@ build_platform_tools(cfg, custom_specs, mcp_specs)
 4. **同步 / 异步形状**：4 个平台工具断言 `tool.func is not None` 且 `tool.coroutine is None`；
    其余断言反向。这是单构造器若一律传 `coroutine=` 时**唯一会响**的用例（见 §8 R1）。
 5. **门控组合**：`build_platform_tools` 在「仅 `skill_package_id`」「仅 `enable_generative_tools`」
-   「都给」「都不给」四种组合下的工具名集合。现状仅覆盖技能那一半。
+   「都给」「都不给」四种组合下的工具名**精确有序列表**（非集合——装配顺序 platform → opt-in →
+   skill → generative → custom → mcp 本身是对外行为，集合语义既看不出顺序，也发现不了重复工具）。
+   现状仅覆盖技能那一半。
 6. **声明表与分组双向一一对应（不变量类断言）**：`test_decl_registry_and_groups_are_in_bijection`
    断言 `_DECLS` 的键集与四个分组元组（`_PLATFORM_SLUGS` / `_OPT_IN_SLUGS` / `_SKILL_SLUGS` /
    `_GENERATIVE_SLUGS`）的并集**完全相等**，且任一 slug 不得同时归入两个分组。
@@ -253,7 +256,11 @@ build_platform_tools(cfg, custom_specs, mcp_specs)
 ### 7.2 重构后
 
 - 上述特征测试**必须原样全绿**（不改期望值、不迁就实现）。
-- 既有 4 个测试文件仅改导入路径（与 §5.4 一一对应）。
+- 既有 4 个测试文件仅改导入路径（与 §5.4 一一对应），**除** `test_knowledge_search_coexistence.py`
+  另有一处函数改名（`test_make_knowledge_search_tool_schema_allows_kb_ids` →
+  `test_knowledge_search_tool_schema_allows_kb_ids`）与调用改写
+  （`make_knowledge_search_tool()` → `make_builtin_tool("knowledge_search")`）——
+  因 `make_knowledge_search_tool` 已随 13 个工厂收敛进 `make_builtin_tool`，该符号不再存在。
 - 增量断言：`rg "langchain[./]tools|langchain import tools"` 在 `packages/`、`tests/`、`docs/`
   归零（仅 `docs/superpowers/{specs,plans}/2026-09-16-*.md` 允许残留——那些描述本次重构自身）。
   **必须含斜杠形式** `langchain/tools`：只查点号形式会漏掉 5 处（含 `docs/guides/ai-stack.md`
@@ -275,7 +282,7 @@ build_platform_tools(cfg, custom_specs, mcp_specs)
 | R1 | 单构造器误把 4 个同步平台工具变异步（`StructuredTool` 会静默接受） | `ToolDecl.is_async` + §7.1.4 的方向性断言 |
 | R2 | 抄错 description / schema 绑定 | §7.1.1 的全量冻结测试，**重构前先绿** |
 | R3 | 漏写某个工具的占位报错体（原本抄 13 遍） | 结构上不可能：报错体只存于构造器一处 |
-| R4 | 漏改调用点 | 导入期 `ImportError`；且 `rg "langchain\.tools"` 归零作为收口判据 |
+| R4 | 漏改调用点 | 导入期 `ImportError`；且 `rg "langchain[./]tools\|langchain import tools"` 归零作为收口判据（**只查点号形式不足**——它看不见斜杠写法，实测漏掉 5 处，见 §7.2 与 §10） |
 | R5 | 文档 / docstring 里的旧路径 | 已定位 `miles_core/models/tool/__init__.py:4` 的 docstring 提到 `integrations.langchain.tools`，随改动同步 |
 | R6 | 子包内出现环 | `catalog → {inputs, specs, naming}` 单向；`lint-imports` 6 契约须仍全绿 |
 | R7 | 与 `miles_portal/tenant/tools/` 语义混淆 | 已在 §4 界定：前者是 schema 构造，后者是租户域 CRUD / 执行分发 |
@@ -378,5 +385,32 @@ build_platform_tools(cfg, custom_specs, mcp_specs)
    超出来源是必须**逐字**内联的 `_DECLS` 声明块（13 条 description 中 7 条超 100 字符）与模块
    docstring，「单一职责」仍成立。**未改代码、未改上表目标数值以使其通过**，偏差在此登记，
    并已在 §3 目标 1 处以实施修订脚注标注实测值。
+
+   **裁决（控制者，终检后）：接受该偏差，目标数值维持不改。** 三条理由——
+   (a) 「均 <200 行」是**手段**而非目的：它服务于「不再出现 617 行的 god module」这一意图，
+   226 行中实质代码 173 行已充分达成该意图；为 26 行改结构属**为对齐数字而改设计**，与本计划
+   既定的「不为了对齐估计值而增删用例」同源禁忌。
+   (b) `_DECLS` 是**审计对象**——一张表能一眼看全 13 个工具的定义；把声明块迁出以压行数，
+   会使「声明 ↔ 分组」的一致性更难人工核对，而该一致性正是本轮新增护栏
+   （§7.1 第 6 条）所保护的对象，属**负价值**。
+   (c) 226 行含 49 行空行 + 4 行注释，行数指标本身受排版影响，不适合作为硬门槛。
+
+### 2026-09-16 终检后的补充修正（控制者）
+
+Task 4 的 Step 5 只收到「必记勘误 8」一条，故其修订覆盖了我事后核对出的 8 处偏差中的 5 处。
+以下 3 处为**终检后由控制者补修**，均已实测确认与实现不符：
+
+1. **§7.1 第 5 条**：原写「工具名**集合**」——实现用的是**精确有序列表**（装配顺序本身是
+   对外行为，集合既看不出顺序也发现不了重复工具）。已改为有序并补上理由。
+2. **§8 风险表 R4**：仍用点号形式 `langchain\.tools` 作收口判据——同一勘误的第 3 个漏网点
+   （前两个是 §7.2 正文与 Global Constraints）。已改为三形式并标注为何点号形式不足。
+3. **§7.2「既有 4 个测试文件仅改导入路径」**：实测 `test_knowledge_search_coexistence.py`
+   另有一处**函数改名**与调用改写（`make_knowledge_search_tool()` →
+   `make_builtin_tool("knowledge_search")`，因该符号已随 13 个工厂收敛进 `make_builtin_tool`）。
+   措辞已放宽，避免后人据「仅改导入路径」误判该文件有多余改动。
+
+**教训（已记入计划的自检记录）**：勘误 6 的修正当时只落到 Task 3/4 的**步骤**上，未同步
+扫全文中同一形式的其他出现点（Global Constraints、§7.2、§8 R4）。**修正一条勘误时，必须
+按「形式」而非「位置」全仓扫一遍**——同类断言往往在多处复述。
 
 **终检时的基线 HEAD**：`0047bbd6`（本记录随其后的 docs-only 提交落地）。
