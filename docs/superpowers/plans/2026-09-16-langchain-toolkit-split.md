@@ -116,6 +116,8 @@ _EXPECTED_SPEC_DRIVEN: dict[str, tuple[str, bool, str]] = {
     "my_http": ("自定义 HTTP 工具", True, '{"properties":{"q":{"description":"查询词","title":"Q","type":"string"}},"required":["q"],"title":"ToolParams","type":"object"}'),
     "my_script": ("My Script", True, '{"properties":{"n":{"default":null,"description":"次数","title":"N","type":"integer"}},"title":"ToolParams","type":"object"}'),
     "mcp__github__create_issue": ("创建 issue", True, '{"properties":{"n":{"anyOf":[{"type":"integer"},{"type":"null"}],"default":3,"title":"N"},"title":{"description":"标题","title":"Title","type":"string"}},"required":["title"],"title":"McpToolParams","type":"object"}'),
+    # 勘误 3 新增：input_schema=None 时 args_schema 缺省，schema 由占位签名反推（title 取工具名）
+    "mcp__svc__nofields": ("svc · nofields", True, '{"properties":{"kwargs":{"additionalProperties":true,"default":null,"title":"Kwargs","type":"object"}},"title":"mcp__svc__nofields","type":"object"}'),
 }
 
 
@@ -146,9 +148,68 @@ def test_builtin_tool_contract_frozen(slug: str) -> None:
 
 def test_platform_tools_are_synchronous() -> None:
     """4 个平台工具必须是同步 ``func``（现状如此，收敛时最易被一律写成 coroutine）。"""
-    for tool in get_platform_tools():
+    tools = get_platform_tools()
+    assert tools, "平台工具不应为空——否则下面的循环会空跑通过（勘误 3）"
+    for tool in tools:
         assert tool.func is not None, f"{tool.name} 应使用同步 func"
         assert tool.coroutine is None, f"{tool.name} 不应被改成异步"
+
+
+def test_build_platform_tools_gate_matrix() -> None:
+    """技能包 / 生成工具两个开关的四种组合，以及**跨组装配顺序**。
+
+    勘误 3：原稿只用集合语义（``<=`` / ``not in``），既锁不住 ``build_platform_tools``
+    的拼接顺序（而这正是 Task 2 要重写的那段），也发现不了重复挂载。改为精确有序列表。
+    """
+    skill = {"skill_package_id": "11111111-1111-1111-1111-111111111111"}
+    gen = {"enable_generative_tools": True}
+
+    def names(cfg: dict) -> list[str]:
+        return [t.name for t in build_platform_tools(cfg)]
+
+    assert names({}) == ["calculator", "http_request", "get_current_datetime", "knowledge_search"]
+
+    assert names(skill) == [
+        "calculator",
+        "http_request",
+        "get_current_datetime",
+        "knowledge_search",
+        "skill_read_reference",
+        "skill_run_script",
+    ]
+
+    assert names(gen) == [
+        "calculator",
+        "http_request",
+        "get_current_datetime",
+        "knowledge_search",
+        "generate_image",
+        "generate_video",
+    ]
+
+    # 全组齐开 + 自定义工具 + MCP：完整拼接顺序 = 平台 → opt-in → 技能 → 生成 → 自定义 → MCP
+    full = {
+        "tool_slugs": list(_OPT_IN_SLUGS),
+        **skill,
+        **gen,
+    }
+    assert [t.name for t in build_platform_tools(full, [_CUSTOM_HTTP], [_MCP])] == [
+        "calculator",
+        "http_request",
+        "get_current_datetime",
+        "knowledge_search",
+        "web_search",
+        "code_execution",
+        "compliance_check_text",
+        "run_flow_once",
+        "invoke_tenant_hook",
+        "skill_read_reference",
+        "skill_run_script",
+        "generate_image",
+        "generate_video",
+        "my_http",
+        "mcp__github__create_issue",
+    ]
 
 
 def test_builtin_group_slugs_and_order() -> None:
@@ -170,29 +231,6 @@ def test_opt_in_gate_unchanged() -> None:
     assert select_opt_in_builtin_tools(None) == []
     assert select_opt_in_builtin_tools({"tool_slugs": []}) == []
     assert [t.name for t in select_opt_in_builtin_tools({"tool_slugs": "web_search"})] == ["web_search"]
-
-
-def test_build_platform_tools_gate_matrix() -> None:
-    """技能包 / 生成工具两个开关的四种组合（现状只覆盖技能那一半）。"""
-    skill = {"skill_package_id": "11111111-1111-1111-1111-111111111111"}
-    gen = {"enable_generative_tools": True}
-
-    def names(cfg: dict) -> set[str]:
-        return {t.name for t in build_platform_tools(cfg)}
-
-    neither = names({})
-    assert "skill_read_reference" not in neither and "generate_image" not in neither
-
-    only_skill = names(skill)
-    assert {"skill_read_reference", "skill_run_script"} <= only_skill
-    assert "generate_image" not in only_skill
-
-    only_gen = names(gen)
-    assert {"generate_image", "generate_video"} <= only_gen
-    assert "skill_read_reference" not in only_gen
-
-    both = names({**skill, **gen})
-    assert {"skill_read_reference", "skill_run_script", "generate_image", "generate_video"} <= both
 
 
 @pytest.mark.parametrize("slug", sorted(_EXPECTED_SPEC_DRIVEN))
@@ -325,16 +363,30 @@ _MCP = McpToolSpec(
         "required": ["title"],
     },
 )
+# 勘误 3 新增：input_schema 为 None，make_mcp_tool 省略 args_schema，schema 由占位签名反推。
+_MCP_NONE = McpToolSpec(
+    slug="mcp__svc__nofields",
+    tool_name="nofields",
+    service_id="svc-1",
+    service_name="svc",
+    description=None,
+    input_schema=None,
+)
 
 
 def _spec_driven_tools() -> dict:
-    """构造 3 类 spec 驱动工具（custom http / custom script / mcp），按 slug 索引。"""
+    """构造 4 类 spec 驱动工具（custom http / custom script / mcp / mcp 无 schema），按 slug 索引。"""
     tools = [
         *build_platform_tools({}, [_CUSTOM_HTTP]),
         *build_platform_tools({}, [_CUSTOM_SCRIPT]),
         *build_platform_tools({}, [], [_MCP]),
+        *build_platform_tools({}, [], [_MCP_NONE]),
     ]
-    return {t.name: t for t in tools if t.name in {"my_http", "my_script", "mcp__github__create_issue"}}
+    return {
+        t.name: t
+        for t in tools
+        if t.name in {"my_http", "my_script", "mcp__github__create_issue", "mcp__svc__nofields"}
+    }
 ```
 
 > **粘贴后必须人工比对**：把粘贴的每一行与原 `tools.py` 的 description 原文对照。这是本任务唯一无法靠机器保证的一步。
@@ -407,6 +459,18 @@ def test_spec_driven_stub_raises_instead_of_executing(slug: str) -> None:
 
 Run: `uv run --all-packages --group dev python -m pytest tests/tenant/tools/test_toolkit_contract.py -q`
 Expected: PASS（36 条；`pytest.raises(match=...)` 用 `re.search`，slug 含 `_` 无正则元字符，安全）
+
+> **勘误 3（任务级评审发现，已回写）**：评审指出三处可加固，均在 Task 2 重写
+> `build_platform_tools` 之前修掉：
+> 1. **跨组装配顺序未被冻结**（Important）。原稿 `test_build_platform_tools_gate_matrix`
+>    只用集合语义（`<=` / `not in`），既锁不住 `build_platform_tools:593-616` 的拼接顺序
+>    ——而那正是 Task 2 要重写的函数——也发现不了重复挂载；组内顺序虽由
+>    `test_builtin_group_slugs_and_order` 覆盖，跨组拼接无人把关。已改为精确有序列表。
+> 2. **`input_schema=None` 的 MCP 工具被排除在冻结之外**（少数情形下的唯一漏洞）。
+>    `make_mcp_tool` 在该情形下**省略** `args_schema`，schema 由占位签名反推（`title`
+>    取工具名）——这是唯一对外 schema 依赖占位签名的工具，也正是 13 个工厂收敛时最易
+>    静默改坏的一处。已补 `_MCP_NONE` 与 `mcp__svc__nofields` 契约（见上）。
+> 3. `test_platform_tools_are_synchronous` 加非空守卫，避免空列表时空跑通过（见上）。
 
 - [ ] **Step 5: 证伪实验——确认测试真的会红**
 
@@ -977,6 +1041,23 @@ EOF
     > ```
     > 随之删掉不再使用的 `import inspect`（否则 ruff `F401` 会拦住门禁）。
     > 期望值与断言仍**一字不改**。
+    >
+    > **同时补一条断言**（任务级评审建议）：占位统一为 `**kwargs` 后，
+    > 「占位不接受位置参数」应成为**显式期望**而非 `_call_stub` 默默适配的结果——
+    > 否则将来某个占位悄悄带着位置参数，测试仍会通过。在 `test_builtin_stub_raises_instead_of_executing`
+    > 内加：
+    > ```python
+    >     fn = tool.coroutine if tool.coroutine is not None else tool.func
+    >     positional = [
+    >         p
+    >         for p in inspect.signature(fn).parameters.values()
+    >         if p.kind in (p.POSITIONAL_ONLY, p.POSITIONAL_OR_KEYWORD)
+    >     ]
+    >     assert not positional, f"{slug} 的占位不应接受位置参数（统一为 **kwargs）"
+    > ```
+    > 注意：**这一条会重新需要 `import inspect`**。故顺序是——先把 `_call_stub` 简化掉、
+    > 保留 `import inspect` 供本断言使用（不要删），再补此断言。`ruff check` 会因
+    > `inspect` 仍被使用而放行。
 
 - [ ] **Step 3: 删除 `tools.py`**
 
