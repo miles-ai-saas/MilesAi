@@ -1211,7 +1211,16 @@ Expected: **1118 passed**，0 failed，无 warnings summary。若数字与 Task 
 - [ ] **Step 4: 确认非目标未被触碰**
 
 Run: `git diff --stat main...HEAD -- backend/packages/miles-portal`
-Expected: 仅 6 个文件改动（`mcp_tools.py` / `custom_tools.py` / `services/tools.py` / `confirmation.py` / `invoke/context.py` / `agents/services/context.py`），且除 import 行外**只有** `mcp_tools.py` 与 `custom_tools.py` 各一行 docstring 文案——无逻辑改动。
+Expected: **恰好 6 个文件**（`agents/services/context.py` / `tools/confirmation.py` / `tools/invoke/context.py` / `tools/services/custom_tools.py` / `tools/services/mcp_tools.py` / `tools/services/tools.py`）
+
+> **勘误 9（写 Task 4 时实测修正）**：本步原稿还写「除 import 行外**只有** `mcp_tools.py`
+> 与 `custom_tools.py` 各**一行** docstring 文案」——**行数说法已过时**，按字面对会误报缺陷。
+> 实测 numstat：`custom_tools.py` 5+/3−（docstring 因路径变长重排为 3 行 + 2 行 import）、
+> `mcp_tools.py` 3+/7−（1 行 docstring + 4 行 import 并为 2 行）、其余四个文件各 1+/1−。
+> **判据改为「性质」而非行数**：逐个 `git diff main...HEAD -- <file>` 通读这 6 个文件的差异，
+> 确认只出现两类改动——(a) import 语句指向 `toolkit/*`，(b) docstring/注释里的路径文案；
+> **不得出现任何语句级逻辑变化**（函数体、条件、参数、返回值）。行数只作参考，不作判据。
+> 逐文件读 diff 是硬要求：若只比 `--stat` 的数字，正是这类「看起来对」的核对最容易漏。
 
 Run: `git diff --stat main...HEAD -- backend/packages/miles-core/src/miles_core/infra/db`
 Expected: **空**（本分支不应触碰 DB 会话层——前一个专项才动过它）
@@ -1259,6 +1268,7 @@ EOF
 | **旧路径搜索已修正** | 勘误 6：Task 3/4 原稿只用点号形式 `langchain\.tools` 验证「无残留」，**不足以**——斜杠形式 `langchain/tools` 不命中，实测漏掉 5 处（含 `docs/guides/ai-stack.md:76` 这条**可执行的开发指南**，它教人往已删除的文件里加工具）。已改为 `langchain[./]tools` 并列出全部漏网点 |
 | **门禁作用域已实测** | 勘误 7：Task 4 原稿称 `export_openapi --check` 能因工具 DTO 文案改动而报警——**错误**。实测快照对工具 DTO 与工具文案的痕迹为零（`mcp__` 的 5 处是 FastAPI 从 URL 段生成的 `operationId`）。该门禁只覆盖 HTTP API 契约，对工具 schema 完全无感；工具 schema 的唯一护栏是契约测试。已修正理由并重写 Task 4 Step 3 的证伪说明 |
 | **契约测试扩了一条不变量** | 勘误 8：复评 m1 揭出 `_DECLS` 从不被遍历，声明与分组不匹配会**静默**失效，而 `docs/guides/ai-stack.md` 教贡献者走的正是这条路径。已补 `test_decl_registry_and_groups_are_in_bijection`（声明 ↔ 分组双向一一对应、互不重复），并证伪确认既有用例抓不到该缺陷（加一条未归组声明 → 仅新用例失败）。它是 §7.1 输出冻结清单之外的**不变量**类断言，Task 4 Step 5 须在 spec 正文与修订记录中同步 |
+| **非目标核对改按性质判** | 勘误 9：Task 4 Step 4 原稿把「无逻辑改动」写成行数级判据（「各一行 docstring」），实测已过时（`custom_tools.py` 5+/3−、`mcp_tools.py` 3+/7−），按字面比对会**误报缺陷**。已改为逐文件通读 diff、按改动**性质**判定（只允许 import 指向变更与路径文案），行数仅作参考 |
 | **调用面已实测** | 11 处 import + 2 处 docstring 引用由 `rg` 全仓核实（见 Task 3 Step 1/2/4 的行号）。据此发现并修掉了两个计划缺陷：(1) `make_knowledge_search_tool` 有唯一消费者（测试），原计划未安排其迁移，已移入 Task 2 Step 7；(2) 无任何调用点从 `tools.py` 导入 13 个 DTO，故临时再导出层不做 `import *`，`inputs.py` 也不需要 `__all__` |
 
 ## 与设计文档的两处刻意偏差（已记录，非疏漏）
