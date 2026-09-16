@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from langchain_core.tools import StructuredTool
 from pydantic import BaseModel
@@ -35,11 +35,16 @@ from .inputs import (
     SkillRunScriptInput,
     WebSearchInput,
 )
-from .specs import CustomToolSpec, McpToolSpec, json_schema_to_pydantic
+from .specs import json_schema_to_pydantic
+
+if TYPE_CHECKING:
+    # 仅用于本模块的函数签名注解（``from __future__ import annotations`` 下不求值）。
+    # 刻意**不**在 ``__all__`` 里再导出：设计要求按职责 import——需要这两个 DTO 的调用点
+    # 应直接 ``from ...toolkit.specs import ...``，否则 catalog 会变成第二条入口，与
+    # ``toolkit/__init__.py`` 必须为空是同一条约束。
+    from .specs import CustomToolSpec, McpToolSpec
 
 __all__ = [
-    "CustomToolSpec",
-    "McpToolSpec",
     "build_platform_tools",
     "build_stub_tool",
     "get_generative_tools",

@@ -80,7 +80,7 @@
 1. 按职责拆为 `toolkit/` 子包 4 模块，每模块单一职责，均 <200 行。
    > **实施修订**：`catalog.py` 实测 **226 行**（非空行 177，其中 49 空行 + 4 注释行），
    > 超出本目标 26 行；其余三模块为 `inputs.py` 118 / `specs.py` 103 / `naming.py` 72。
-   > 超出来源是 `_DECLS` 声明块（13 条 description 中 7 条超 100 字符，必须**逐字**内联）
+   > 超出来源是 `_DECLS` 声明块（13 条 description 最长 77 字符，必须**逐字**内联）
    > 与模块 docstring；「单一职责」仍成立。此处保留原目标数值以便对照，偏差记入 §10。
 2. 13 个静态工厂收敛为**声明表 + 单一构造器**；新增内置工具 = 加一行数据。
 3. 占位报错文案与同步 / 异步分支**各只存一处**。
@@ -91,8 +91,12 @@
 - **不改任何对外可观测行为**：工具名、description、`args_schema`、报错文案、装配顺序、
   门控逻辑（`tool_slugs` 白名单、`skill_package_id`、`enable_generative_tools`）逐字节不变。
 - 不改 `CustomToolSpec` / `McpToolSpec` 的字段（portal 的 L1 loader 依赖其形状）。
-- 不碰 `miles_portal/tenant/tools/`——那是租户域的 tools CRUD 与执行分发，与本文的
-  「工具 schema 构造」是两件事，`toolkit` 命名不与之共享语义。
+- 不改 `miles_portal/tenant/tools/` 的**业务语义**——那是租户域的 tools CRUD 与执行分发，
+  与本文的「工具 schema 构造」是两件事，`toolkit` 命名不与之共享语义。
+  本分支确实会触及该目录下 5 个文件（`confirmation.py`、`invoke/context.py`、
+  `services/custom_tools.py`、`services/mcp_tools.py`、`services/tools.py`），但**仅限**
+  import 语句指向 `toolkit/*` 与 docstring/注释里的路径文案，**不得有任何语句级逻辑变化**
+  （函数体、条件、参数、返回值）——该判据由 Task 4 Step 4 逐文件通读 diff 核验。
 - 不引入新依赖；不改 import-linter 契约（契约按包分层，包内拆子包不影响）。
 - 不动 13 个 DTO 的字段与 description（LLM 可见，属对外行为）。
 
@@ -220,9 +224,11 @@ build_platform_tools(cfg, custom_specs, mcp_specs)
 
 1. **13 个静态工具的 `name` / `description` / `args_schema` JSON**：期望值**内联**在测试文件内
    （由当前实现跑出后粘贴并人工审阅），不引入需维护的 fixture 文件。
-   这一条是「声明表抄错一个字符」这类**最难靠人眼发现**的错误唯一的拦截手段——13 条 description 中
-   有 **7 条超过 100 字符**（最长 199 字符，如 `generate_image` 的「…禁止四宫格或分镜拼贴」、
-   `generate_video` 的「耗时长，异步排队」），逐字搬运极易出错。
+   这一条是「声明表抄错一个字符」这类**最难靠人眼发现**的错误唯一的拦截手段——13 条 description
+   全部是中文，最长 **77 字符**（177 UTF-8 字节，如 `generate_video` 的「耗时长，异步排队」），
+   最长一条冻结的 schema 字面量达 **889 字符**，逐字搬运极易出错。
+   （**勘误 10（终审实测修正）**：原文写「7 条超过 100 字符（最长 199）」——该数字在任何度量下
+   都不成立，实测字符 9–77（0 条超 100）、UTF-8 字节 18–177、转义 ASCII 30–327。详见 §10。）
 2. **spec 驱动工具的 schema**：各给一个样例 spec（custom-http / custom-script / mcp 可解析 /
     mcp `input_schema=None` **共 4 类**），断言 description / 同步异步形状 / schema JSON 不变。
     第 4 类（`input_schema=None`）是独立风险点：此时整个 `args_schema` kwarg 被省略，
@@ -382,7 +388,7 @@ build_platform_tools(cfg, custom_specs, mcp_specs)
    `docs/guides/ai-stack.md` 这条教人往已删除文件里加工具的可执行指南。
 6. §3 目标 1 的「均 <200 行」**未达成**：`catalog.py` 实测 **226 行**（非空行 177，
    其中 49 空行 + 4 注释行），超出 26 行；`inputs.py` 118 / `specs.py` 103 / `naming.py` 72 达标。
-   超出来源是必须**逐字**内联的 `_DECLS` 声明块（13 条 description 中 7 条超 100 字符）与模块
+   超出来源是必须**逐字**内联的 `_DECLS` 声明块（13 条 description 最长 77 字符）与模块
    docstring，「单一职责」仍成立。**未改代码、未改上表目标数值以使其通过**，偏差在此登记，
    并已在 §3 目标 1 处以实施修订脚注标注实测值。
 

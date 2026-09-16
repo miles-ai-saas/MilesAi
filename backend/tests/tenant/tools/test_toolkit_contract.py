@@ -1,7 +1,8 @@
 """toolkit 契约冻结：16 个工具的对外可观测面在「拆分 + 声明式收敛」前后必须逐字节一致。
 
-为什么必须存在：重构把 13 个工厂收敛为一张声明表，而 13 条 description 中有 7 条超过
-100 字符（最长 199），逐字搬运极易出错；`StructuredTool` 又会**静默接受**把同步工具
+为什么必须存在：重构把 13 个工厂收敛为一张声明表，而 13 条 description 全部是中文、
+最长 77 字符（177 UTF-8 字节），最长一条冻结的 schema 字面量达 889 字符，逐字搬运极易
+出错；`StructuredTool` 又会**静默接受**把同步工具
 写成异步（只是 `.func` 变空、`.coroutine` 非空，调用方看不出来）。本文件是这两类错误
 唯一的拦截手段，故在重构**之前**先跑绿。
 
@@ -9,7 +10,7 @@
 `json.dumps(..., sort_keys=True, separators=(",", ":"))` 归一化），非人工手写。
 """
 
-# 本文件的期望值块是实测导出的长数据（最长一条 schema 逾 1100 字符），刻意保持
+# 本文件的期望值块是实测导出的长数据（最长一条 schema 889 字符），刻意保持
 # 「每个工具一行」以便与 Step 2 导出脚本的输出逐行 diff，故不拆行：整文件豁免
 # E501；两个数据块另以 fmt: off / fmt: on 关闭 formatter 拆行（见其上方注释）。
 # ruff: noqa: E501
@@ -274,6 +275,11 @@ def test_builtin_stub_raises_instead_of_executing(slug: str) -> None:
     """
     tool = _all_builtin()[slug]
     fn = tool.coroutine if tool.coroutine is not None else tool.func
+    # 注意：本条断言与上方「期望值均由重构前实现实测导出」不同——它是**新增不变量**，
+    # 不是冻结的旧行为。重构前平台/技能/生成工具的占位是带注解的具体签名（如
+    # `def _run(expression: str)`），`**kwargs` 统一是本次 §5.2 的收敛决定。
+    # 在此断言，是因为它同时挡两类回归：占位被改回带注解签名（会与 `input_schema=None`
+    # 时靠签名反推 schema 的路径耦合），以及 `_call_stub` 的前提被破坏。
     positional = [p for p in inspect.signature(fn).parameters.values() if p.kind in (p.POSITIONAL_ONLY, p.POSITIONAL_OR_KEYWORD)]
     assert not positional, f"{slug} 的占位不应接受位置参数（统一为 **kwargs）"
     with pytest.raises(RuntimeError, match=_STUB_MESSAGE.format(slug=slug)):
