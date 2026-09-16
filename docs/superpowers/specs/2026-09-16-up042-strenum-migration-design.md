@@ -1,7 +1,7 @@
 # 启用 UP042：32 处 `(str, Enum)` 迁移到 `StrEnum`
 
 - 日期：2026-09-16
-- 状态：待评审
+- 状态：已实施
 - 上游线索：`backend/pyproject.toml` 的 `UP042` 忽略项。其原注释理由（「改 StrEnum 会影响**落库**语义」）经实测**说反了**——落库恰是唯一不受影响的路径。修正注释时发现真实风险面远小于原注释暗示，故评估启用。
 
 ## 1. 问题
@@ -145,3 +145,12 @@
 - 2026-09-16 初稿。
 - 2026-09-16 **勘误 §5.2**：撤回「`_valid_lookup` 入参校验变严」的结论，改为「SQLAlchemy 层无可观测差异」。原结论源自探针用 `str()` 打印 `_valid_lookup` 的键，而 `str(member)` 正是本次要改变的操作，构成自我扰动；改用 `repr()` 并穷举绑定场景后确认为假差异。§1 目标、§7 验证项、§8 R2 已同步修正。
 - 2026-09-16 **补充 §6.4**：实施计划在临时 worktree 上 dry run 时发现，迁移会使 `spec.py` 的 `Enum` import 变为未使用（UP042 的 autofix 不负责删除），若不显式清理会让 `ruff check` 失败。已把该清理并入改动方案。
+- 2026-09-16 实施：32 处迁移完成，UP042 启用（`ruff check --select UP042 .` 收敛为 0）。
+  契约测试 `tests/models/test_enum_contract.py`（4 条）全绿；五道门禁全绿（`ruff format --check`
+  963 files already formatted、`ruff check` All checks passed!、`lint-imports` Contracts: 6 kept,
+  0 broken.、`export_openapi --check` OpenAPI snapshot OK、`pytest` 1122 passed = 基线 1118 + 4）。
+  真库探针写入/读回一致，敏感度对照（`--corrupt`）按期报错。spec §5.2 的条件已满足：
+  迁移未产生任何 DB 层差异。
+- 2026-09-16 **§7.4 未取得结论**：本机 `alembic check` 报 `FAILED: Target database is not up to date.`
+  （`alembic current` = `001`，`alembic heads` = `002`）——这是本地库预先存在的迁移滞后，与本次改动无关
+  （本次迁移改动的 alembic 文件数为 0），故 §7.4 在此环境不可用。§5.2 的结论由 §7.1 的真库探针独立支撑。
