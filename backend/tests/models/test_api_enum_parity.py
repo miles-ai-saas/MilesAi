@@ -14,6 +14,13 @@
 第二个不变量：不得对枚举成员做 ``is`` / ``is not`` 比较。两份声明是**不同类**；
 ``StrEnum`` 的 ``==`` / ``hash`` / ``str`` / ``format`` 都按值成立（实测，见设计 §3），
 唯独 ``is`` 跨类恒为 ``False`` —— 这是本设计唯一会静默出错的写法。
+
+第三个不变量：``views/`` / ``schemas/`` 只能从各域 ``*.schemas.enums`` 白名单模块引入这 21 个枚举名。
+``.importlinter`` 的 ``api-layer-no-orm`` 契约必须设 ``allow_indirect_imports = True``，否则 36 处
+``views`` / ``schemas`` 对 ``miles_core.deps`` 的引用会因 ``deps`` 自身 import ORM 而全成误报；
+代价是经中间模块的一跳借用（如 ``from ...agents.meta import AgentStatus``，而 ``meta`` 自己 import 了
+ORM 枚举）可绕开契约 —— 实测此时契约仍报 ``7 kept``。本守卫按「导入名 + 来源模块」判定、不依赖图边，
+正好补上契约拦不住的那一段；两者合起来才完整。
 """
 
 from __future__ import annotations
@@ -122,6 +129,31 @@ _BACKEND = Path(__file__).resolve().parents[2]
 _PACKAGES = _BACKEND / "packages"
 _ENUM_NAMES = frozenset(name for name, _, _ in CASES)
 
+# 这 21 个枚举名在 API 侧被允许的**引入来源模块**白名单（实测当前 19 个 (模块, 名) 组合全在其中）。
+# 前两个是跨端共用声明地，其余是本域 ``schemas/enums.py`` 声明；views/schemas 之外的文件不在扫描面内。
+_ENUM_IMPORT_ALLOWLIST = frozenset(
+    {
+        "miles_common.schemas.api_enums",
+        "miles_common.schemas.marketplace",
+        "miles_admin.app_ops.schemas.enums",
+        "miles_portal.tenant.a2a.schemas.enums",
+        "miles_portal.tenant.agents.schemas.enums",
+        "miles_portal.tenant.categories.schemas.enums",
+        "miles_portal.tenant.compliance.schemas.enums",
+        "miles_portal.tenant.flows.schemas.enums",
+        "miles_portal.tenant.generative.schemas.enums",
+        "miles_portal.tenant.hooks.schemas.enums",
+        "miles_portal.tenant.kb.schemas.enums",
+        "miles_portal.tenant.mcp.schemas.enums",
+        "miles_portal.tenant.tasks.schemas.enums",
+        "miles_portal.tenant.tools.schemas.enums",
+    }
+)
+
+# 契约 ``api-layer-no-orm`` 的目录级范围：这三个包下的 ``views/`` / ``schemas/`` 是 API 声明层。
+_API_PACKAGES = frozenset({"miles-admin", "miles-openapi", "miles-portal"})
+_API_DECL_DIRS = frozenset({"views", "schemas"})
+
 
 def _enum_class_of(operand: ast.expr) -> str | None:
     """若 ``operand`` 形如 ``<任意前缀>.ClassName.MEMBER`` 且 ``ClassName`` 是已知枚举类，返回它。
@@ -167,6 +199,66 @@ def test_no_identity_comparison_on_enum_members():
         for lineno, expr in _identity_comparisons(path):
             offenders.append(f"{path.relative_to(_PACKAGES)}:{lineno}: is 比较 {expr}")
     assert not offenders, "API 侧与 ORM 侧的枚举是不同类，`is` 比较跨类恒为 False（`==` / `in` 才按值成立）：\n" + "\n".join(offenders)
+
+
+def _module_and_package(path: Path) -> tuple[str, str]:
+    """由 ``.../<pkg>/src/a/b.py`` 推出 (模块全名 ``a.b``, 所在包名 ``a``)，用于解析相对 import。"""
+    parts = path.parts
+    dotted = ".".join(parts[parts.index("src") + 1 :])[: -len(".py")]
+    if dotted.endswith(".__init__"):
+        dotted = dotted[: -len(".__init__")]
+    return dotted, dotted.rsplit(".", 1)[0]
+
+
+def _resolve_import_from(path: Path, node: ast.ImportFrom) -> str:
+    """把 ``from ...x import y`` 的 ``.`` 前缀解析成绝对模块名，避免相对写法绕过白名单判定。"""
+    if node.level == 0:
+        return node.module or ""
+    package_parts = _module_and_package(path)[1].split(".")
+    up = node.level - 1
+    base = package_parts[: len(package_parts) - up] if up < len(package_parts) else []
+    return ".".join([*base, *([node.module] if node.module else [])])
+
+
+def _enum_name_imports(path: Path) -> list[tuple[int, str, str]]:
+    """返回该文件引入 21 个枚举名的 (行号, 来源模块, 名字)；来源模块为解析后的绝对名。"""
+    found: list[tuple[int, str, str]] = []
+    for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
+        if isinstance(node, ast.ImportFrom):
+            module = _resolve_import_from(path, node)
+            found.extend((node.lineno, module, alias.name) for alias in node.names if alias.name in _ENUM_NAMES)
+        elif isinstance(node, ast.Import):
+            for alias in node.names:
+                bound = alias.asname or alias.name.split(".")[0]
+                if bound in _ENUM_NAMES:
+                    found.append((node.lineno, alias.name, bound))
+    return found
+
+
+def test_enum_names_imported_only_from_allowlisted_modules():
+    """``views`` / ``schemas`` 只能从白名单声明模块引入这 21 个枚举名 —— 拦住经中间模块的一跳借用。
+
+    ``api-layer-no-orm`` 契约必须设 ``allow_indirect_imports = True``，只能判直接依赖：把
+    ``from ...agents.schemas.enums import AgentStatus`` 改成 ``from ...agents.meta import AgentStatus``
+    （``meta`` 自身 import 了该 ORM 枚举）时契约仍报 ``7 kept``、模块路径探测器仍报 0 —— 全绿而
+    ORM 耦合已回流。本守卫按导入名判定、不依赖图边，是那段空隙的唯一拦截面（详见模块 docstring）。
+    """
+    paths = [
+        p
+        for p in sorted(_PACKAGES.glob("*/src/**/*.py"))
+        if "__pycache__" not in p.parts and p.relative_to(_PACKAGES).parts[0] in _API_PACKAGES and _API_DECL_DIRS & set(p.parts)
+    ]
+    assert paths, f"未扫到任何 views/schemas 文件，扫描面已失效（目录改名？）：{_PACKAGES}"
+    offenders: list[str] = []
+    for path in paths:
+        for lineno, module, name in _enum_name_imports(path):
+            if module not in _ENUM_IMPORT_ALLOWLIST:
+                offenders.append(f"{path.relative_to(_PACKAGES)}:{lineno}: 从 {module} 引入枚举 {name}")
+    assert not offenders, (
+        "views/schemas 只能从各域 *.schemas.enums 白名单声明引入这 21 个持久化枚举；"
+        "从其它模块引入等于借道中转重新耦合 ORM —— 契约因 allow_indirect_imports 只拦直接依赖，"
+        "这一段由本守卫拦住：\n" + "\n".join(offenders)
+    )
 
 
 def test_parity_table_covers_exactly_21_enums():
