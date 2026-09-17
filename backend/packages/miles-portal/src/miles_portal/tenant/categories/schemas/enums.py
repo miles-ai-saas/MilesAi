@@ -9,6 +9,8 @@ import enum
 
 
 class CategoryDomain(enum.StrEnum):
+    """工作台资源域；与列表 Tab、校验时的 domain 参数一致。"""
+
     AGENT = "agent"
     PROMPT = "prompt"
     SKILL = "skill"

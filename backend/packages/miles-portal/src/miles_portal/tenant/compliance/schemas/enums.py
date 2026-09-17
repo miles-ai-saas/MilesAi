@@ -9,5 +9,7 @@ import enum
 
 
 class SensitiveAction(enum.StrEnum):
+    """敏感词处置动作。"""
+
     WARN = "warn"
     BLOCK = "block"

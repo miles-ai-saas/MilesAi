@@ -14,6 +14,8 @@ class HookType(enum.StrEnum):
 
 
 class HookTrigger(enum.StrEnum):
+    """挂载时机：调用、推理、工具、错误等关键节点。"""
+
     BEFORE_CALL = "before_call"
     AFTER_CALL = "after_call"
     BEFORE_REASONING = "before_reasoning"

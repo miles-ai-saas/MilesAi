@@ -2,7 +2,10 @@
 
 背景：API 声明层（``views/`` / ``schemas/``）不得 import ORM 包（``.importlinter``
 契约 ``api-layer-no-orm``），故 21 个持久化枚举在 API 侧各有一份**独立声明**。
-本模块把「两份定义逐字一致」变成可执行约束：成员名、成员顺序、成员值、基类四项全等。
+本模块把「两份定义逐字一致」变成可执行约束：基类、成员名、成员顺序、成员值、类 docstring
+五项全等。类 docstring 也在其列，因为 Pydantic 会把 enum 类 docstring 渲染成 schema 的
+``description`` —— 漏抄会静默漂移 ``openapi.snapshot.json``（Task 3 实测：5 个带 docstring
+的 ORM 枚举曾因此丢掉 description）。
 
 为什么不能只靠 OpenAPI 快照：快照漂移的失败信息是一整份 JSON diff，指不出是哪个枚举的
 哪个成员；本模块的失败信息能直接写成 ``AgentStatus.ENABLED 的 API 值 'enable' != ORM 值 'enabled'``。
@@ -78,7 +81,13 @@ CASES: list[tuple[str, type[enum.Enum], type[enum.Enum]]] = [
 
 
 def _mismatch_report(name: str, api: type[enum.Enum], orm: type[enum.Enum]) -> str:
-    """返回首个不一致的可读描述；完全一致时返回空串。"""
+    """返回首个不一致的可读描述；完全一致时返回空串。
+
+    按「基类 → 成员名/顺序 → 成员值 → 类 docstring」短路。四项都是 Pydantic 生成 schema 的
+    输入（类 docstring 渲染成 ``description``），故都必须逐字一致。
+    """
+    if api.__bases__ != orm.__bases__:
+        return f"{name} 的直接基类不一致：API={api.__bases__} ORM={orm.__bases__}"
     api_pairs = [(m.name, m.value) for m in api]
     orm_pairs = [(m.name, m.value) for m in orm]
     if [n for n, _ in api_pairs] != [n for n, _ in orm_pairs]:
@@ -87,6 +96,8 @@ def _mismatch_report(name: str, api: type[enum.Enum], orm: type[enum.Enum]) -> s
         orm_value = dict(orm_pairs)[member_name]
         if api_value != orm_value:
             return f"{name}.{member_name} 的 API 值 {api_value!r} != ORM 值 {orm_value!r}"
+    if api.__doc__ != orm.__doc__:
+        return f"{name} 的 API 类 docstring {api.__doc__!r} != ORM 类 docstring {orm.__doc__!r}"
     return ""
 
 
@@ -98,7 +109,10 @@ def test_api_enum_is_an_independent_declaration(name, api, orm):
 
 @pytest.mark.parametrize(("name", "api", "orm"), CASES, ids=[c[0] for c in CASES])
 def test_api_enum_matches_orm_verbatim(name, api, orm):
-    """成员名、成员顺序、成员值必须与 ORM 侧逐字一致（Pydantic 按定义顺序生成 enum 数组）。"""
+    """基类、成员名、成员顺序、成员值、类 docstring 必须与 ORM 侧逐字一致。
+
+    前四项决定 Pydantic 生成的 ``enum`` 数组，类 docstring 决定 ``description``。
+    """
     assert issubclass(api, enum.StrEnum), f"{name} 的 API 声明不是 enum.StrEnum"
     report = _mismatch_report(name, api, orm)
     assert not report, report
@@ -109,6 +123,25 @@ _PACKAGES = _BACKEND / "packages"
 _ENUM_NAMES = frozenset(name for name, _, _ in CASES)
 
 
+def _enum_class_of(operand: ast.expr) -> str | None:
+    """若 ``operand`` 形如 ``<任意前缀>.ClassName.MEMBER`` 且 ``ClassName`` 是已知枚举类，返回它。
+
+    覆盖 ``Name.MEMBER``、``alias.ClassName.MEMBER``、``pkg.mod.ClassName.MEMBER`` 三种写法
+    —— 后两种正是迁移后 ``from ...schemas import enums as X`` 的风格，旧判据（要求
+    ``operand.value`` 是 ``ast.Name``）会漏检。
+    """
+    if not isinstance(operand, ast.Attribute):
+        return None
+    parent = operand.value
+    if isinstance(parent, ast.Name):
+        class_name = parent.id
+    elif isinstance(parent, ast.Attribute):
+        class_name = parent.attr
+    else:
+        return None
+    return class_name if class_name in _ENUM_NAMES else None
+
+
 def _identity_comparisons(path: Path) -> list[tuple[int, str]]:
     """返回该文件里对枚举成员做 ``is`` / ``is not`` 比较的 (行号, 表达式)。"""
     found: list[tuple[int, str]] = []
@@ -116,8 +149,8 @@ def _identity_comparisons(path: Path) -> list[tuple[int, str]]:
         if not isinstance(node, ast.Compare) or not any(isinstance(op, (ast.Is, ast.IsNot)) for op in node.ops):
             continue
         for operand in [node.left, *node.comparators]:
-            if isinstance(operand, ast.Attribute) and isinstance(operand.value, ast.Name) and operand.value.id in _ENUM_NAMES:
-                found.append((node.lineno, f"{operand.value.id}.{operand.attr}"))
+            if _enum_class_of(operand):
+                found.append((node.lineno, ast.unparse(operand)))
     return found
 
 
@@ -127,10 +160,10 @@ def test_no_identity_comparison_on_enum_members():
     用 AST 判据而非文本匹配：注释与 docstring 里的说明性提及不应误伤（同 ``tests/test_l3_neutral_imports.py``
     的意图，但那里的目标是 import 语句、这里是比较表达式，故收紧为语法级）。
     """
+    paths = [p for p in sorted(_PACKAGES.glob("*/src/**/*.py")) if "__pycache__" not in p.parts]
+    assert paths, f"未扫到任何源码文件，扫描面已失效（目录改名？）：{_PACKAGES}"
     offenders: list[str] = []
-    for path in sorted(_PACKAGES.glob("*/src/**/*.py")):
-        if "__pycache__" in path.parts:
-            continue
+    for path in paths:
         for lineno, expr in _identity_comparisons(path):
             offenders.append(f"{path.relative_to(_PACKAGES)}:{lineno}: is 比较 {expr}")
     assert not offenders, "API 侧与 ORM 侧的枚举是不同类，`is` 比较跨类恒为 False（`==` / `in` 才按值成立）：\n" + "\n".join(offenders)

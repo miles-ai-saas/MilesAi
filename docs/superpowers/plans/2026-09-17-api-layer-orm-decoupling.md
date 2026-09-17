@@ -4,7 +4,7 @@
 
 **Goal:** 让 `views/`、`schemas/` 不再 import 任何承载 SQLAlchemy 实体的模块，并由 `.importlinter` 新增第 7 条契约硬禁这条依赖，同时保证 `openapi/openapi.snapshot.json` 逐字节不变。
 
-**Architecture:** 三步走。(1) 把嵌在 ORM 包内的 2 个纯 DTO 模块下沉到 `miles_common/schemas/`，旧路径转 re-export 壳，故 L2/L3 消费者零改动。(2) 为 21 个持久化枚举在 API 侧建立**独立声明**（逐字复制成员名/顺序/值，**不**转 re-export），再把 27 个文件的 import 指向新声明。(3) 加 `.importlinter` 契约与枚举平价测试把它锁死。
+**Architecture:** 三步走。(1) 把嵌在 ORM 包内的 2 个纯 DTO 模块下沉到 `miles_common/schemas/`，旧路径转 re-export 壳，故 L2/L3 消费者零改动。(2) 为 21 个持久化枚举在 API 侧建立**独立声明**（逐字复制成员名/顺序/值/类 docstring，**不**转 re-export），再把 27 个文件的 import 指向新声明。(3) 加 `.importlinter` 契约与枚举平价测试把它锁死。
 
 **Tech Stack:** Python 3.11、FastAPI + Pydantic v2、SQLAlchemy 2 + asyncpg、import-linter、Ruff、pytest、uv workspace。
 
@@ -14,7 +14,7 @@
 
 - **工作区**：仓库根 `git worktree add .worktrees/api-layer-orm-decoupling -b feat/api-layer-orm-decoupling`（自 `main` 切出）。**禁止直接在 `main` 上改**。所有命令在 `backend/` 下执行，除非另注。
 - **ORM 侧零改动**：`packages/miles-core/src/miles_core/models/**` 只允许 `agent/chat_io.py` 与 `marketplace/dto.py` 两个文件改成 re-export 壳。枚举定义、列类型、`values_callable`、`alembic/` 目录一律不动。
-- **API 侧枚举声明必须与 ORM 侧逐字一致**：成员名、成员顺序、成员值全等（Pydantic 按定义顺序生成 `enum` 数组）。统一用 `import enum` + `class X(enum.StrEnum)` 风格（与 ORM 侧同形）。
+- **API 侧枚举声明必须与 ORM 侧逐字一致**：基类、成员名、成员顺序、成员值、类 docstring 全等。前四项决定 Pydantic 生成的 `enum` 数组（按定义顺序）；类 docstring 会被 Pydantic 渲染进 schema 的 `description`——漏抄会漂移 `openapi.snapshot.json`（Task 3 实测），故 ORM 侧**有**类 docstring 的枚举必须逐字照抄，ORM 侧**没有**的不许添加。统一用 `import enum` + `class X(enum.StrEnum)` 风格（与 ORM 侧同形）。
 - **OpenAPI 快照逐字节不变**：`git diff --stat` 对 `backend/openapi/openapi.snapshot.json` 必须为空。
 - **门禁命令**（五道全绿才算完成；下文简称 FMT / CHECK / LINT / SNAP / TEST）：
   - FMT = `uv run --all-packages --group dev ruff format --check .`
@@ -123,7 +123,10 @@ Expected: 列出 28 行 import 并以 `TOTAL=28` 结尾。若数字不符，**�
 
 背景：API 声明层（``views/`` / ``schemas/``）不得 import ORM 包（``.importlinter``
 契约 ``api-layer-no-orm``），故 21 个持久化枚举在 API 侧各有一份**独立声明**。
-本模块把「两份定义逐字一致」变成可执行约束：成员名、成员顺序、成员值、基类四项全等。
+本模块把「两份定义逐字一致」变成可执行约束：基类、成员名、成员顺序、成员值、类 docstring
+五项全等。类 docstring 也在其列，因为 Pydantic 会把 enum 类 docstring 渲染成 schema 的
+``description`` —— 漏抄会静默漂移 ``openapi.snapshot.json``（Task 3 实测：5 个带 docstring
+的 ORM 枚举曾因此丢掉 description）。
 
 为什么不能只靠 OpenAPI 快照：快照漂移的失败信息是一整份 JSON diff，指不出是哪个枚举的
 哪个成员；本模块的失败信息能直接写成 ``AgentStatus.ENABLED 的 API 值 'enable' != ORM 值 'enabled'``。
@@ -172,7 +175,10 @@ def test_api_enum_is_an_independent_declaration(name, api, orm):
 
 @pytest.mark.parametrize(("name", "api", "orm"), CASES, ids=[c[0] for c in CASES])
 def test_api_enum_matches_orm_verbatim(name, api, orm):
-    """成员名、成员顺序、成员值必须与 ORM 侧逐字一致（Pydantic 按定义顺序生成 enum 数组）。"""
+    """基类、成员名、成员顺序、成员值、类 docstring 必须与 ORM 侧逐字一致。
+
+    前四项决定 Pydantic 生成的 ``enum`` 数组，类 docstring 决定 ``description``。
+    """
     assert issubclass(api, enum.StrEnum), f"{name} 的 API 声明不是 enum.StrEnum"
     report = _mismatch_report(name, api, orm)
     assert not report, report
@@ -263,7 +269,7 @@ class MarketplaceAppVisibility(enum.StrEnum):
 
 并在 import 段补 `import enum`（置于 `from datetime import datetime` 之前，与仓内「标准库 → 三方 → 本仓」分组一致）。
 
-**成员名/顺序/值必须与上表逐字相同**——这是本任务最容易出错的地方，Step 8 的平价测试会拦住。
+**成员名/顺序/值/类 docstring 必须与上表逐字相同**（类 docstring 仅 ORM 侧有的才抄，见 Task 2 Step 3 的说明）——这是本任务最容易出错的地方，Step 8 的平价测试会拦住。
 
 - [ ] **Step 5: 把旧 `chat_io.py` 改成 re-export 壳**
 
@@ -519,7 +525,7 @@ Expected: FAIL — 收集期 `ModuleNotFoundError`（19 个新模块尚不存在
 
 - [ ] **Step 3: 创建 13 个枚举声明文件**
 
-每个文件的**类体逐字照抄**下表（成员名、顺序、值三项都必须一致）。每个文件的模块 docstring 统一用：
+每个文件的**类体逐字照抄**下表（成员名、顺序、值三项都必须一致，外加 ORM 侧的类 docstring，见下方说明）。每个文件的模块 docstring 统一用：
 
 ```python
 """<域> API 侧枚举声明。
@@ -531,6 +537,12 @@ Expected: FAIL — 收集期 `ModuleNotFoundError`（19 个新模块尚不存在
 ```
 
 import 段统一为 `import enum`（其后空两行再接第一个类）。
+
+> **类 docstring（最易漏的一项）**：Pydantic 会把 enum 类 docstring 渲染成 schema 的 `description`，
+> 故 ORM 侧**有**类 docstring 的枚举必须逐字照抄，ORM 侧**没有**的不许凭空添加 —— 两者都会让
+> `openapi.snapshot.json` 漂移。21 个枚举中恰好 5 个有：`CategoryDomain`、`DocumentStatus`、
+> `HookTrigger`、`McpStatus`、`SensitiveAction`。Task 3 实测：漏抄这 5 条会让
+> `export_openapi --check` 报 drift（差值恰是 5 行 `"description"`）。
 
 | # | 新文件（`packages/` 下） | ORM 定义处（docstring 里引用） | 类体 |
 |---|---|---|---|
@@ -578,7 +590,7 @@ class ModelCapabilityType(enum.StrEnum):
     OTHER = "other"
 ```
 
-其余 18 个类的类体（逐字照抄；`enum.StrEnum` 的成员值一律双引号）：
+其余 18 个类的类体（逐字照抄；`enum.StrEnum` 的成员值一律双引号；ORM 侧带类 docstring 的 5 个类须连 docstring 一起照抄）：
 
 ```python
 class A2aPeerStatus(enum.StrEnum):
@@ -688,7 +700,7 @@ class BillStatus(enum.StrEnum):
     VOID = "void"
 ```
 
-> 复核方式：若对任一成员值有疑问，以 ORM 源为准逐字对照 ——
+> 复核方式：若对任一成员值或类 docstring 有疑问，以 ORM 源为准逐字对照 ——
 > `rg -n -A8 'class (A2aPeerStatus|AgentStatus|AgentType|BillStatus|CategoryDomain|DocumentStatus|FlowStatus|GenerativeJobStatus|HookScope|HookTrigger|HookType|MarketplaceAppStatus|MarketplaceAppVisibility|McpStatus|ModelCapabilityType|ModelVendor|RiskSeverity|SensitiveAction|TaskStatus|TenantStatus|ToolType)\(enum\.StrEnum\)' packages/*/src`
 
 - [ ] **Step 4: 运行测试确认通过**
@@ -714,9 +726,10 @@ git add -A
 git commit -F - <<'EOF'
 feat(api): 为 21 个持久化枚举建立 API 侧独立声明
 
-API 声明层不得依赖 ORM 包，故各域在 schemas/enums.py 独立声明枚举，成员名/顺序/
-值逐字复制 ORM 侧。跨端共用的 3 个（TenantStatus、ModelVendor、ModelCapabilityType）
-放 miles_common，因 portal 与 admin 互不可见。
+API 声明层不得依赖 ORM 包，故各域在 schemas/enums.py 独立声明枚举，基类/成员名/顺序/
+值/类 docstring 逐字复制 ORM 侧（类 docstring 会渲染进 schema description）。跨端共用
+的 3 个（TenantStatus、ModelVendor、ModelCapabilityType）放 miles_common，因 portal 与
+admin 互不可见。
 
 新增平价测试逐成员比对两份声明，并守卫「不得对枚举成员做 is 比较」——两份声明是
 不同类，str 语义下 == / hash / format 都按值成立，唯独 is 跨类恒为 False。
@@ -1042,7 +1055,7 @@ EOF
 |---|---|---|
 | `ModuleNotFoundError: No module named 'miles_core'` | 用了裸 `python -m pytest` | 改 `uv run --all-packages --group dev python -m pytest -q` |
 | 裸 `pytest` 收集期报 9 个错 | 本仓既存缺陷（无 `__init__.py` 与 `pythonpath` 配置），与本设计无关 | 用上面的 `python -m pytest` 形式；**不要**顺手修 pytest 配置 |
-| 平价测试报「成员名或顺序不一致」 | 声明时漏抄/错序 | 以 ORM 源为唯一准，逐字对照（Task 2 Step 3 的 `rg` 复核命令） |
+| 平价测试报「成员名或顺序不一致」/「类 docstring … != …」 | 声明时漏抄、错序，或漏抄 ORM 侧的类 docstring | 以 ORM 源为唯一准，逐字对照（Task 2 Step 3 的 `rg` 复核命令） |
 | `lint-imports` BROKEN 且指向没改过的文件 | 某处 import 被漏迁 | 按输出回到 Task 3 / Task 4 补；**不要**加 `ignore_imports` |
-| `export_openapi --check` 报 drift | 某枚举的值/顺序与 ORM 不一致（Pydantic 会塌成 `X__1` 组件名），或某 schema 字段类型被改 | 先跑平价测试定位到具体成员；快照**不要**用 `--write` 覆盖 |
+| `export_openapi --check` 报 drift | 某枚举的值/顺序与 ORM 不一致（Pydantic 会塌成 `X__1` 组件名）、漏抄/擅加枚举类 docstring（Pydantic 渲染成 `description`），或某 schema 字段类型被改 | 先跑平价测试定位到具体枚举；若差值恰是若干行 `"description"`，即为类 docstring 漏抄；快照**不要**用 `--write` 覆盖 |
 | `ruff check` 报 re-export 壳的 F401 | 壳缺 `__all__` | 按 Global Constraints 补 `__all__` |

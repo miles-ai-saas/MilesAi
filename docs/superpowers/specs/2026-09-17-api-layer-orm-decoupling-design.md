@@ -213,7 +213,7 @@ allow_indirect_imports = True
 
 ### 5.2 API 枚举归宿（21 个）
 
-命名与成员值必须与 ORM 侧**逐字相同**（含成员顺序，因为 Pydantic 以枚举定义顺序生成 `enum` 数组）。
+基类、命名、成员值、类 docstring 必须与 ORM 侧**逐字相同**（含成员顺序，因为 Pydantic 以枚举定义顺序生成 `enum` 数组；类 docstring 会被 Pydantic 渲染进 schema 的 `description`，漏抄会静默漂移 OpenAPI 快照——Task 3 实测 5 条 description）。
 
 | 归宿 | 数量 | 枚举 |
 |---|---|---|
@@ -274,11 +274,12 @@ def from_model(cls, entity) -> AgentScheduleRunOut:
 
 ### 6.1 枚举平价测试（新增）
 
-新增 `backend/tests/models/test_api_enum_parity.py`，对 21 对「API 声明 ↔ ORM 定义」逐成员比对（与既有 `tests/models/test_enum_contract.py` 同目录，便于集中发现枚举类护栏）：
+新增 `backend/tests/models/test_api_enum_parity.py`，对 21 对「API 声明 ↔ ORM 定义」逐项比对（与既有 `tests/models/test_enum_contract.py` 同目录，便于集中发现枚举类护栏）：
 
+- 基类一致（都是 `enum.StrEnum`）；
 - 成员名集合与顺序一致；
 - 成员值一致；
-- 基类为 `StrEnum`。
+- 类 docstring 一致（Pydantic 会把它渲染成 schema 的 `description`，故同属「逐字一致」的范畴）。
 
 选择测试而非依赖快照 diff 的原因：快照漂移的失败信息是一个巨大的 JSON diff，无法直指「哪个枚举的哪个成员漂移」；平价测试的失败信息可以写成 `AgentStatus.ENABLED 的 API 值 'enable' != ORM 值 'enabled'`。两者互补而非替代。
 

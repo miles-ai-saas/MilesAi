@@ -9,6 +9,8 @@ import enum
 
 
 class McpStatus(enum.StrEnum):
+    """同步与可用性状态，供工作台卡片展示。"""
+
     ACTIVE = "active"
     INACTIVE = "inactive"
     ERROR = "error"

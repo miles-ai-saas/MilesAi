@@ -9,6 +9,8 @@ import enum
 
 
 class DocumentStatus(enum.StrEnum):
+    """入库流水线状态（PENDING → PARSING → EMBEDDING → READY）。"""
+
     PENDING = "pending"
     PARSING = "parsing"
     EMBEDDING = "embedding"
