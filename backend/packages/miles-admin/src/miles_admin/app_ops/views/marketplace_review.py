@@ -10,9 +10,9 @@ from miles_admin.app_ops.services.marketplace_review import AdminMarketplaceRevi
 from miles_admin.app_sys.deps import AdminContext, get_platform_admin, require_admin_role
 from miles_common.response import ok, page_ok
 from miles_common.schema import PageParams
+from miles_common.schemas.marketplace import AppReviewBody
 from miles_core.deps import get_page_params
 from miles_core.infra.db import get_db
-from miles_core.models.marketplace.dto import AppReviewBody
 
 router = APIRouter()
 

@@ -3,7 +3,8 @@
 
 ``kb_ids`` 写入 ``agt_kb_bindings``；对话时转为字符串列表传入 RAG/流程 ``RunContext``。
 ``ChatRequest.conversation_id`` 参与 LangGraph ``thread_id``（多轮 checkpoint）。
-对话 IO 契约（Chat* 五类）定义已下沉 ``miles_core.models.agent.chat_io``，本处 re-export 保持 L1 import 路径。
+对话 IO 契约（Chat* 五类）定义已下沉 ``miles_common.schemas.chat_io``（经
+``miles_core.models.agent.chat_io`` re-export 壳），本处 re-export 保持 L1 import 路径。
 """
 
 from datetime import datetime
@@ -11,14 +12,14 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-from miles_core.models.agent import AgentStatus, AgentType
-from miles_core.models.agent.chat_io import (  # noqa: F401 — re-export（Chat* 五类）
+from miles_common.schemas.chat_io import (  # noqa: F401 — re-export（Chat* 五类）
     ChatArtifact,
     ChatMediaIn,
     ChatRequest,
     ChatResponse,
     PendingToolCall,
 )
+from miles_core.models.agent import AgentStatus, AgentType
 from miles_portal.tenant.tags.schemas.tag import TagRefOut
 
 
