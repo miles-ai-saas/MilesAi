@@ -29,7 +29,7 @@ Batch 3「函数实现与功能边界」清单中的项 11 原文是「解耦 `v
 ### 2.1 目标
 
 - G1 `views/` 与 `schemas/` 目录**不再 import 任何承载 SQLAlchemy 实体的模块**（含聚合 re-export 包）；
-- G2 该边界由新增的 import-linter 契约硬禁，且**新域、新文件自动纳入**（不依赖人工登记源文件）；
+- G2 该边界由新增的 import-linter 契约硬禁，且**新域、新文件自动纳入**（源文件通配自动覆盖；`miles_core` / `miles_admin` 的新增 ORM 模块因列的是父聚合也自动覆盖，仅新增 portal 域的 `models.py` 需登记）；
 - G3 **OpenAPI 快照逐字节不变**——本次改动对 API 消费者零可观测影响；
 - G4 21 个持久化枚举在 API 侧有自己的声明，与 ORM 侧的关系由**显式护栏**约束。
 
@@ -121,12 +121,19 @@ OpenAPI 快照 `components.schemas` 中含 `enum` 的组件共 **19 个**（另�
 
 ### 3.3 契约可表达性的四项实测结论
 
-四项结论均以临时契约在本仓实跑得到，是 §5.1 契约形状的直接依据：
+五项结论均以临时契约在隔离沙箱或本仓实跑得到，是 §5.1 契约形状的直接依据：
 
 1. **中缀通配符受支持**：`source_modules = miles_portal.tenant.*.views` 能解析出 `miles_portal.tenant.workbench.views` 等并正常判定。通配按 fnmatch 语义（`*` 可跨 `.`），故 `miles_portal.tenant.*.models` 不会误伤「模型目录」域（实测 `miles_portal.tenant.models.views` → 自家 `...models.schemas.model` 未被判违规，因为模式两端锚定：目标以 `.model` 结尾，不匹配以 `.models` 结尾的模式）。
 2. **必须列到聚合包层级**：`forbidden_modules = miles_core.models.agent.agent`（叶子）对 `from miles_core.models.agent import AgentType` **判定为 KEPT（漏网）**——该 import 的图边目标是包 `miles_core.models.agent`，即聚合 `__init__`，不是叶子模块。改列 `miles_core.models.agent` 后正确报出。
 3. **`allow_indirect_imports = True` 是必需的**：不加会沿 `views → miles_core.deps → miles_core.models.platform.user` 这类链误报（`miles_core.deps` 本身会拉到 models，但那是 deps 的职责，不是视图的违规）。
 4. **`TYPE_CHECKING` 与函数内 import 同样被判违规**：实测三种写法（模块顶层、`if TYPE_CHECKING:` 内、函数体内）全部报出。故类型注解**不是**逃逸口，§5.4 必须结构性改造。
+5. **必须列到最外层「胖聚合」包，否则被地道写法绕过**（§5.1 清单按此收敛）：
+   - `from miles_core.models.agent import AgentType`（图边 → `miles_core.models.agent`）：列子域包即被抓；
+   - `from miles_core.models import AgentStatus`（图边 → **`miles_core.models`**，取父包 `__init__` 自身 re-export 的名字）：只列子域包时**静默通过**；
+   - `from miles_core.models import agent`（先取子模块再取属性）：实测会解析到子模块边 `miles_core.models.agent`，**被抓**——故逃逸面仅限「父包自身属性」这一种。
+   `miles_core/models/__init__.py` 恰好是胖聚合（re-export 45 个名字，含 8 个持久化枚举，且带 `__all__`），而 `from miles_core.models import X` 正是本仓惯用写法，故这一条必须堵。
+   已核实收敛安全：对 `views/`、`schemas/` 做全量 AST 扫描，对 `miles_core.models.*` 的引用**恰好**是 §3.1 的 28 处，无任何「合法的非 ORM」引用会被误伤。
+   对照：portal 侧 9 个 ORM 入口全是 `models.py` **模块**（非包），且 `miles_portal/tenant/__init__.py` 无 re-export，故那边列到子域即可；admin 侧列 `miles_admin.models` 本身就是父包，spec 原本即正确。
 
 ### 3.4 既有约定与本设计的冲突点
 
@@ -171,21 +178,18 @@ source_modules =
     miles_openapi.views
 # 必须列到**聚合包**层级：from miles_core.models.agent import X 的图边目标是包
 # __init__ 而非叶子模块，只列叶子会漏网（实测）。
-# 也因此，包内的纯 DTO 会被一并禁止 —— 这就是 §5.3 下沉的来由。
+# 更要紧的是必须列到**最外层胖聚合**：miles_core/models/__init__.py 自身 re-export
+# 了 45 个名字（含 8 个持久化枚举）且带 __all__，故 from miles_core.models import
+# AgentStatus 的图边目标是 miles_core.models —— 只列子域包会静默放过（实测，见 §3.3 第 5 条）。
+# 也因此，被禁包内的纯 DTO 会被一并禁止 —— 这就是 §5.3 下沉的来由。
 forbidden_modules =
-    miles_core.models.agent
-    miles_core.models.compliance
-    miles_core.models.flow
-    miles_core.models.kb
-    miles_core.models.marketplace
-    miles_core.models.media
-    miles_core.models.meta
-    miles_core.models.model
-    miles_core.models.platform
-    miles_core.models.risk
-    miles_core.models.storage
-    miles_core.models.task
+    # 父聚合一条覆盖全部子域，含 __init__ 自身 re-export 的 45 个名字。
+    # 附带收益：miles_core.models 下新增模块自动被拦，无需登记（缓解 §7 R2）。
+    miles_core.models
+    # admin 侧列的就是父包（其 __init__ re-export BillStatus / RiskSeverity）。
     miles_admin.models
+    # portal 侧全部是 models.py 模块（非包），且 tenant/__init__.py 无 re-export，
+    # 故无父聚合逃逸面；新增 portal 域需在此登记。
     miles_portal.tenant.a2a.models
     miles_portal.tenant.audit_log.models
     miles_portal.tenant.compliance.models
@@ -199,10 +203,11 @@ forbidden_modules =
 allow_indirect_imports = True
 ```
 
-两处需要说明的清单成员：
+清单按「最外层聚合」收敛后的三点说明：
 
-- `miles_core.models.compliance` **本身不含 ORM 表**（只有 `constants.py` 枚举与 `pipeline.py`），但它是 `SensitiveAction` 的定义处、且被 `miles_portal.tenant.compliance.models` 再导出。若不列入，schema 仍可经 `miles_core.models.compliance.constants` 绕道引用持久化枚举，与本设计的 G4 相悖。
-- `miles_portal.tenant.prompts.models` / `skills.models` / `audit_log.models` 当前没有 `views/`/`schemas/` 引用它们，列入是为了边界的**完整性**（它们确实是 ORM），而非修复现存违规。
+- **`miles_core.models` 一条覆盖 12 个子域**（platform / kb / flow / model / media / meta / task / storage / agent / marketplace / risk / compliance）。这既堵住 §3.3 第 5 条的父包逃逸，又把清单从 20 条压到 10 条。
+- **代价是一条整包禁令**：`views/`/`schemas/` 因此也不得引用 `miles_core.models.base`（mixin）、`media.reader`、`tool.parameters` 等非 ORM 模块。已实测当前零引用，故无实际损失；若将来确需引用，正解是把该中立模块下沉 `miles_common`，而不是放宽契约——否则父包逃逸面会重新打开。
+- **`miles_portal.tenant.prompts.models` / `skills.models` / `audit_log.models`** 当前没有 `views/`/`schemas/` 引用它们，列入是为了边界的**完整性**（它们确实是 ORM），而非修复现存违规。
 
 `miles_openapi.views` 纳入的理由：它是对外开放面，公开契约的解耦在这里收益最大；当前它只引用 `miles_portal...schemas`，纳入属廉价保险。
 
@@ -294,6 +299,7 @@ def from_model(cls, entity) -> AgentScheduleRunOut:
 1. **契约敏感度**：临时把某个 API 枚举的 import 改回 ORM 路径 → `lint-imports` 必须报出该文件；还原后必须重新 `KEPT`。
 2. **快照敏感度**：临时把某个 API 枚举的某个值改错 → `export_openapi --check` 必须失败；还原后必须通过。
 3. **平价测试敏感度**：临时改错一个成员值（或删一个成员）→ 平价测试必须失败。
+4. **父聚合逃逸敏感度**：临时把某个 API 枚举的 import 改成父包属性写法 `from miles_core.models import <枚举>` → `lint-imports` 必须报出；还原后必须重新 `KEPT`。这一条专门验 §3.3 第 5 条的洞确实被 §5.1 的收敛清单堵住。
 
 ---
 
@@ -302,7 +308,7 @@ def from_model(cls, entity) -> AgentScheduleRunOut:
 | # | 风险 | 对策 |
 |---|---|---|
 | R1 | API 枚举与 ORM 枚举名字相同但内容漂移——Pydantic 会塌成 `xxx__1/__2` 组件名，正常能被 `--check` 抓到；但若漂移恰好发生在**未暴露**的 `.value` 默认值上，快照可能不报 | §6.1 的平价测试覆盖全部 21 对，含 2 个非对外枚举 |
-| R2 | 契约清单随新增 ORM 模块漂移（新增 `*.models` 未登记则边界有洞） | 契约内写明维护须知（§5.1 注释）；本设计不承诺自动发现，这是「逐条列举」方案的已知代价 |
+| R2 | 契约清单随新增 ORM 模块漂移（新增 `*.models` 未登记则边界有洞） | **已缩减**：`miles_core.models` 与 `miles_admin.models` 列的是父聚合，其下新增模块自动被拦；残余仅「新增 portal 域的 `models.py`」需登记（§5.1 注释）。仍不承诺自动发现 |
 | R3 | 新增契约误伤既有边（如源通配匹配到非预期包） | §6.3 敏感度对照 + 第 7 条 `KEPT` 时原 6 条亦须 `KEPT`；实施时需先实跑确认违规清单恰为 §3.1 的 27 个文件 |
 | R4 | re-export 壳与 `__all__` 触发 `F401` | 循 toolkit 拆分时已确立的做法：非 `__init__.py` 的 re-export 模块需显式 `__all__`，否则 `ruff` 报未使用导入（该文件级检测不认 `__all__` 之外的用途） |
 | R5 | `miles_common` 承载 API 契约枚举，定位从「基础原语」扩到「API 契约」 | 有 `tag.py` 先例支撑（同为跨域共用的中立模型）；若将来要独立成包，`miles_common/schemas/` 可整体迁出，成本可控 |
@@ -314,9 +320,9 @@ def from_model(cls, entity) -> AgentScheduleRunOut:
 ## 8. 验证判据（完成定义）
 
 1. §3.1 的 28 处 import 全部迁移；`views/`/`schemas/` 下对 ORM 模块的直接 import 为 **0**（以 §3.1 的 AST 复现脚本复算）；
-2. 第 7 条契约 `KEPT`，原 6 条契约仍 `KEPT`；
+2. 第 7 条契约 `KEPT`，原 6 条契约仍 `KEPT`；且 §6.3 的四项敏感度对照全部按期失败（含父聚合逃逸那一项）；
 3. `export_openapi --check` 通过，且快照文件**逐字节未变**（`git diff --stat` 对 `openapi/openapi.snapshot.json` 为空）；
-4. 21 对枚举的平价测试通过，且 §6.3 的三项敏感度对照全部按期失败；
+4. 21 对枚举的平价测试通过；
 5. 五道门禁全绿；
 6. ORM 侧零改动：`git diff` 中 `miles_core/models/**` 的改动只允许 `chat_io.py`、`marketplace/dto.py` 两个 re-export 壳，且 Alembic 目录零改动。
 
@@ -332,11 +338,17 @@ def from_model(cls, entity) -> AgentScheduleRunOut:
 
 ## 10. 修订记录
 
-- 2026-09-17 首稿。基于只读勘察与本仓实跑的探针：27 文件 / 28 处违规面、19 个对外枚举归属、四项契约可表达性结论（中缀通配受支持、必须列聚合包层级、`allow_indirect_imports` 必需、`TYPE_CHECKING` 同样被抓）、两个 DTO 模块的下沉方案、`from_model` 去注解的既有先例。
+- 2026-09-17 首稿。基于只读勘察与本仓实跑的探针：27 文件 / 28 处违规面、19 个对外枚举归属、契约可表达性结论（中缀通配受支持、必须列聚合包层级、`allow_indirect_imports` 必需、`TYPE_CHECKING` 同样被抓）、两个 DTO 模块的下沉方案、`from_model` 去注解的既有先例。
 - 2026-09-17 **自审修正**：初稿 §3.1 的分类计数（写成 17+2+4+1）、§5.2 的 `api_enums` 计数（写成 5）、portal 文件数（写成 12）、§5.5/§7 的新文件总数（写成 17）均有误，已改为机器复算值：枚举行 22 / 取值行 2 / DTO 行 3 / 实体行 1 = 28 处；去重后 17（作类型）+ 2（取值）+ 2（随 DTO 携带）= **21** 个枚举；新文件 **15** 个（11 portal + 3 `miles_common` + 1 admin）。复算脚本见 §3.1 的「复现方式」。
+- 2026-09-17 **契约漏洞修正（用户已确认收敛方案）**：写实施计划前的隔离沙箱探针发现，只列子域包时 `from miles_core.models import AgentStatus`（图边指向**父聚合自身**）会**静默通过**，而它正是本仓惯用写法（`miles_core/models/__init__.py` re-export 45 个名字含 8 个枚举）。故 §5.1 的 `forbidden_modules` 由 20 条收敛为 10 条：12 条 `miles_core.models.<子域>` → 1 条 `miles_core.models`。新增 §3.3 第 5 条记录该探针（含「`from miles_core.models import agent` 取子模块会被抓，故逃逸面仅限父包自身属性」这一区分），§6.3 增加第 4 项敏感度对照，§7 R2 相应缩减，§2.1 G2 与 §8 判据同步更新。收敛安全性已实测：views/schemas 对 `miles_core.models.*` 的引用恰好是 §3.1 的 28 处，无合法的非 ORM 引用被误伤。
 
 ---
 
 ## 11. 实施方式
 
-按本仓惯例，实施前需先决定是否在新 worktree + 特性分支上执行（与 `feat/langchain-toolkit-split`、`feat/up042-strenum` 同形），并经 `writing-plans` 生成逐任务实施计划。
+用户已确认：在**新 worktree + 特性分支**上执行（与 `feat/langchain-toolkit-split`、`feat/up042-strenum` 同形）：
+
+- worktree：`.worktrees/api-layer-orm-decoupling`
+- 分支：`feat/api-layer-orm-decoupling`（自 `main` 切出，禁止直接在 `main` 上改）
+
+逐任务实施计划见 `docs/superpowers/plans/2026-09-17-api-layer-orm-decoupling.md`（由 `writing-plans` 生成）。
