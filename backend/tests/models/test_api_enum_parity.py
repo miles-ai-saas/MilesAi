@@ -21,6 +21,10 @@
 代价是经中间模块的一跳借用（如 ``from ...agents.meta import AgentStatus``，而 ``meta`` 自己 import 了
 ORM 枚举）可绕开契约 —— 实测此时契约仍报 ``7 kept``。本守卫按「导入名 + 来源模块」判定、不依赖图边，
 正好补上契约拦不住的那一段；两者合起来才完整。
+
+第四个不变量：``CASES`` 的名字集合、``_ENUM_NAMES``、``_ENUM_IMPORT_ALLOWLIST`` 与 API 侧实际声明
+必须四向一致。这三个常量都是人工清单，任一漂移都会让守卫对着错误的名字集合工作（实测把表内两个名字
+改坏后全套 46 项仍通过），故以「按目录约定扫出的声明」为锚，而非再列一份硬编码清单。
 """
 
 from __future__ import annotations
@@ -157,12 +161,51 @@ _API_PACKAGES = frozenset({"miles-admin", "miles-openapi", "miles-portal"})
 _API_DECL_DIRS = frozenset({"views", "schemas"})
 
 
+def _scan_declaration_files() -> list[Path]:
+    """按目录约定列出 API 侧枚举的候选声明文件：各包 ``*/schemas/enums.py`` + ``miles_common/schemas/*.py``。"""
+    paths: list[Path] = []
+    for path in sorted(_PACKAGES.glob("*/src/**/*.py")):
+        if "__pycache__" in path.parts:
+            continue
+        rel = path.relative_to(_PACKAGES)
+        is_enums = path.name == "enums.py" and "schemas" in rel.parts
+        is_common = rel.parts[0] == "miles-common" and rel.parts[-2:-1] == ("schemas",)
+        if is_enums or is_common:
+            paths.append(path)
+    assert paths, f"未扫到任何声明文件，扫描面已失效（目录改名？）：{_PACKAGES}"
+    return paths
+
+
+def _declared_api_enums() -> dict[str, Path]:
+    """扫出 API 侧声明的枚举名 -> 声明文件（类名去重，取首次声明）。
+
+    扫描面是目录约定，与 ``_ENUM_IMPORT_ALLOWLIST`` 描述同一批「合法声明地」；两者的一致性由
+    ``test_enum_import_allowlist_matches_declaration_modules`` 绑定，避免本函数与白名单各自漂移。
+    """
+    found: dict[str, Path] = {}
+    for path in _scan_declaration_files():
+        for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
+            if not isinstance(node, ast.ClassDef):
+                continue
+            bases = {(base.id if isinstance(base, ast.Name) else getattr(base, "attr", None)) for base in node.bases}
+            if bases & {"StrEnum", "Enum"}:
+                found.setdefault(node.name, path)
+    return found
+
+
 def _enum_class_of(operand: ast.expr) -> str | None:
     """若 ``operand`` 形如 ``<任意前缀>.ClassName.MEMBER`` 且 ``ClassName`` 是已知枚举类，返回它。
 
     覆盖 ``Name.MEMBER``、``alias.ClassName.MEMBER``、``pkg.mod.ClassName.MEMBER`` 三种写法
     —— 后两种正是迁移后 ``from ...schemas import enums as X`` 的风格，旧判据（要求
     ``operand.value`` 是 ``ast.Name``）会漏检。
+
+    已核实的边界（当前仓均不存在，要堵需模块属性流分析，代价远超收益，有意接受）：
+
+    - **类被别名时漏检**：``from ... import McpStatus as S`` 再 ``S.ACTIVE is x`` —— 判据取属性名，
+      而这里属性名是 ``S``。模块别名（``import ... as X``）不受影响，因为被取属性名仍是类名。
+    - **非成员属性误报**：``X.McpStatus.<任意属性>`` 一律判为违规，如 ``X.McpStatus.__members__ is y``。
+      保守方向是「多报」而非「漏报」，可接受。
     """
     if not isinstance(operand, ast.Attribute):
         return None
@@ -281,18 +324,51 @@ def test_enum_names_imported_only_from_allowlisted_modules():
 
 
 def test_parity_table_covers_exactly_21_enums():
-    """防有人删表项「修好」测试：表必须恰好 21 项且无重名。"""
+    """平价表的名字集合必须逐字等于「声明模块里实际声明的枚举」——防改坏名字「修好」测试。
+
+    只查「项数 == 21 且无重名」挡不住把某项的**名字字符串**改错：实测把 ``ModelVendor`` /
+    ``ModelCapabilityType`` 改名后本文件仍 46 passed —— ``_ENUM_NAMES`` 随之少一个名字，名称级守卫
+    对该名失效，而 ``test_parity_table_covers_every_enum_in_openapi_snapshot`` 看不见未暴露于快照的
+    枚举（这两个恰好都不在快照内），三道护栏同时静默放行。故期望集合按目录约定推导而非硬编码：
+    声明了新枚举却没登记，这里同样会失败。
+    """
+    declared = _declared_api_enums()
+    names = [name for name, _, _ in CASES]
     assert len(CASES) == 21, f"平价表应恰有 21 项，实际 {len(CASES)}"
-    assert len({name for name, _, _ in CASES}) == 21
+    assert len(set(names)) == len(names), f"平价表有重名：{sorted({n for n in names if names.count(n) > 1})}"
+    missing = sorted(set(declared) - set(names))
+    extra = sorted(set(names) - set(declared))
+    assert not missing and not extra, (
+        f"平价表与 API 侧声明不一致：仅声明未登记 {missing}"
+        f"（声明于 {sorted(str(declared[n].relative_to(_PACKAGES)) for n in missing)}）；"
+        f"仅在表内 {extra}。新增 API 侧枚举需同步 CASES 与 _ENUM_IMPORT_ALLOWLIST，"
+        "否则名称级守卫认不得新名字"
+    )
+
+
+def test_enum_import_allowlist_matches_declaration_modules():
+    """``_ENUM_IMPORT_ALLOWLIST`` 必须逐字等于约定扫描到的声明模块 —— 两者描述同一批「合法声明地」。
+
+    多一项：名称级守卫放行了非声明模块（缺口）；少一项：真实声明模块被判定违规（误报）。两个方向
+    都要有人看一眼，故钉住相等而非包含。
+    """
+    declared_modules = {_module_and_package(path)[0] for path in _declared_api_enums().values()}
+    assert declared_modules == _ENUM_IMPORT_ALLOWLIST, (
+        f"白名单与声明模块不一致：仅白名单 {sorted(_ENUM_IMPORT_ALLOWLIST - declared_modules)}；仅声明模块 {sorted(declared_modules - _ENUM_IMPORT_ALLOWLIST)}"
+    )
 
 
 def test_parity_table_covers_every_enum_in_openapi_snapshot():
     """公开契约实际暴露的枚举必须都在平价表内 —— 堵住「新增枚举未登记」的静默放行。
 
+    本测试与 ``test_parity_table_covers_exactly_21_enums`` 的分工：后者以「API 侧实际声明」为锚，
+    覆盖全部 21 个（含未暴露于快照的 ``ModelVendor`` / ``ModelCapabilityType``），但看不见
+    「声明在扫描面之外的新模块」；本测试以快照（对外契约的实际产物）为锚，能抓到这类新增，
+    却看不见未暴露的枚举。两者互补，缺一即留静默放行段。
+
     ``CASES`` 是人工清单：新增一个对外持久化枚举时，契约（一跳借用形态）拦不住、名称级守卫
-    认不得新名字、``test_parity_table_covers_exactly_21_enums`` 只查项数（新增不违反它），
-    三道护栏同时 fail-open。本测试反向以快照（对外契约的实际产物）为准：Pydantic 把 ``StrEnum``
-    渲染成带 ``enum`` 键的组件，故凡带 ``enum`` 键的组件名都必须在 ``CASES`` 中。
+    认不得新名字，此时靠上述两道锚定断言失败。Pydantic 把 ``StrEnum`` 渲染成带 ``enum`` 键的
+    组件，故凡带 ``enum`` 键的组件名都必须在 ``CASES`` 中。
     """
     schemas = json.loads(_OPENAPI_SNAPSHOT.read_text(encoding="utf-8"))["components"]["schemas"]
     exposed = {name for name, schema in schemas.items() if isinstance(schema, dict) and "enum" in schema}
