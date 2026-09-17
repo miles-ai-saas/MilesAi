@@ -202,8 +202,12 @@ def test_no_identity_comparison_on_enum_members():
 
 
 def _module_and_package(path: Path) -> tuple[str, str]:
-    """由 ``.../<pkg>/src/a/b.py`` 推出 (模块全名 ``a.b``, 所在包名 ``a``)，用于解析相对 import。"""
-    parts = path.parts
+    """由 ``<pkg>/src/a/b.py`` 推出 (模块全名 ``a.b``, 所在包名 ``a``)，用于解析相对 import。
+
+    只取相对 ``_PACKAGES`` 的路径段：绝对路径若恰好含外层 ``src``（如检出在 ``~/src/...``），
+    ``parts.index("src")`` 会命中外层那个，相对 import 被解析成垃圾模块名而假失败。
+    """
+    parts = path.relative_to(_PACKAGES).parts
     dotted = ".".join(parts[parts.index("src") + 1 :])[: -len(".py")]
     if dotted.endswith(".__init__"):
         dotted = dotted[: -len(".__init__")]
@@ -228,6 +232,8 @@ def _enum_name_imports(path: Path) -> list[tuple[int, str, str]]:
             module = _resolve_import_from(path, node)
             found.extend((node.lineno, module, alias.name) for alias in node.names if alias.name in _ENUM_NAMES)
         elif isinstance(node, ast.Import):
+            # 兜底 ``import X as AgentStatus`` 这类把枚举名当绑定名的写法（实测 169 个文件零命中）：
+            # 删掉会让名称级判据在类型上不完整，故保留。
             for alias in node.names:
                 bound = alias.asname or alias.name.split(".")[0]
                 if bound in _ENUM_NAMES:
@@ -241,13 +247,21 @@ def test_enum_names_imported_only_from_allowlisted_modules():
     ``api-layer-no-orm`` 契约必须设 ``allow_indirect_imports = True``，只能判直接依赖：把
     ``from ...agents.schemas.enums import AgentStatus`` 改成 ``from ...agents.meta import AgentStatus``
     （``meta`` 自身 import 了该 ORM 枚举）时契约仍报 ``7 kept``、模块路径探测器仍报 0 —— 全绿而
-    ORM 耦合已回流。本守卫按导入名判定、不依赖图边，是那段空隙的唯一拦截面（详见模块 docstring）。
+    ORM 耦合已回流。本守卫按导入名判定、不依赖图边，覆盖其中
+    ``from <非白名单模块> import <枚举名>`` 形态（详见模块 docstring）。
+
+    已知边界（名称级判据挡不住的形态，均需模块属性流/图分析，有意不堵）：
+    - ``from ...agents.meta import meta`` 再 ``meta.AgentStatus``：导入的是模块名而非枚举名，判据不命中；
+    - ``import ...agents.meta as m`` 再 ``m.AgentStatus``：裸 import 的绑定名不是枚举名；
+    - ``from ...agents.schemas import enums`` 再 ``enums.AgentStatus`` 语义上就是引白名单模块本身，不算漏洞。
     """
-    paths = [
-        p
-        for p in sorted(_PACKAGES.glob("*/src/**/*.py"))
-        if "__pycache__" not in p.parts and p.relative_to(_PACKAGES).parts[0] in _API_PACKAGES and _API_DECL_DIRS & set(p.parts)
-    ]
+    paths = []
+    for candidate in sorted(_PACKAGES.glob("*/src/**/*.py")):
+        if "__pycache__" in candidate.parts:
+            continue
+        rel_parts = candidate.relative_to(_PACKAGES).parts
+        if rel_parts[0] in _API_PACKAGES and _API_DECL_DIRS & set(rel_parts):
+            paths.append(candidate)
     assert paths, f"未扫到任何 views/schemas 文件，扫描面已失效（目录改名？）：{_PACKAGES}"
     offenders: list[str] = []
     for path in paths:
