@@ -131,7 +131,7 @@ OpenAPI 快照 `components.schemas` 中含 `enum` 的组件共 **19 个**（另�
    - `from miles_core.models.agent import AgentType`（图边 → `miles_core.models.agent`）：列子域包即被抓；
    - `from miles_core.models import AgentStatus`（图边 → **`miles_core.models`**，取父包 `__init__` 自身 re-export 的名字）：只列子域包时**静默通过**；
    - `from miles_core.models import agent`（先取子模块再取属性）：实测会解析到子模块边 `miles_core.models.agent`，**被抓**——故逃逸面仅限「父包自身属性」这一种。
-   `miles_core/models/__init__.py` 恰好是胖聚合（re-export 45 个名字，含 8 个持久化枚举，且带 `__all__`），而 `from miles_core.models import X` 正是本仓惯用写法，故这一条必须堵。
+   `miles_core/models/__init__.py` 恰好是胖聚合（实测 `__all__` 43 个名字，含 8 个持久化枚举，且带 `__all__`），而 `from miles_core.models import X` 正是本仓惯用写法，故这一条必须堵。
    已核实收敛安全：对 `views/`、`schemas/` 做全量 AST 扫描，对 `miles_core.models.*` 的引用**恰好**是 §3.1 的 28 处，无任何「合法的非 ORM」引用会被误伤。
    对照：portal 侧 9 个 ORM 入口全是 `models.py` **模块**（非包），且 `miles_portal/tenant/__init__.py` 无 re-export，故那边列到子域即可；admin 侧列 `miles_admin.models` 本身就是父包，spec 原本即正确。
 
@@ -179,11 +179,11 @@ source_modules =
 # 必须列到**聚合包**层级：from miles_core.models.agent import X 的图边目标是包
 # __init__ 而非叶子模块，只列叶子会漏网（实测）。
 # 更要紧的是必须列到**最外层胖聚合**：miles_core/models/__init__.py 自身 re-export
-# 了 45 个名字（含 8 个持久化枚举）且带 __all__，故 from miles_core.models import
+# 了 43 个名字（含 8 个持久化枚举）且带 __all__，故 from miles_core.models import
 # AgentStatus 的图边目标是 miles_core.models —— 只列子域包会静默放过（实测，见 §3.3 第 5 条）。
 # 也因此，被禁包内的纯 DTO 会被一并禁止 —— 这就是 §5.3 下沉的来由。
 forbidden_modules =
-    # 父聚合一条覆盖全部子域，含 __init__ 自身 re-export 的 45 个名字。
+    # 父聚合一条覆盖全部子域，含 __init__ 自身 re-export 的 43 个名字。
     # 附带收益：miles_core.models 下新增模块自动被拦，无需登记（缓解 §7 R2）。
     miles_core.models
     # admin 侧列的就是父包（其 __init__ re-export BillStatus / RiskSeverity）。
@@ -341,7 +341,8 @@ def from_model(cls, entity) -> AgentScheduleRunOut:
 
 - 2026-09-17 首稿。基于只读勘察与本仓实跑的探针：27 文件 / 28 处违规面、19 个对外枚举归属、契约可表达性结论（中缀通配受支持、必须列聚合包层级、`allow_indirect_imports` 必需、`TYPE_CHECKING` 同样被抓）、两个 DTO 模块的下沉方案、`from_model` 去注解的既有先例。
 - 2026-09-17 **自审修正**：初稿 §3.1 的分类计数（写成 17+2+4+1）、§5.2 的 `api_enums` 计数（写成 5）、portal 文件数（写成 12）、§5.5/§7 的新文件总数（写成 17）均有误，已改为机器复算值：枚举行 22 / 取值行 2 / DTO 行 3 / 实体行 1 = 28 处；去重后 17（作类型）+ 2（取值）+ 2（随 DTO 携带）= **21** 个枚举；新文件 **15** 个（11 portal + 3 `miles_common` + 1 admin）。复算脚本见 §3.1 的「复现方式」。
-- 2026-09-17 **契约漏洞修正（用户已确认收敛方案）**：写实施计划前的隔离沙箱探针发现，只列子域包时 `from miles_core.models import AgentStatus`（图边指向**父聚合自身**）会**静默通过**，而它正是本仓惯用写法（`miles_core/models/__init__.py` re-export 45 个名字含 8 个枚举）。故 §5.1 的 `forbidden_modules` 由 20 条收敛为 10 条：12 条 `miles_core.models.<子域>` → 1 条 `miles_core.models`。新增 §3.3 第 5 条记录该探针（含「`from miles_core.models import agent` 取子模块会被抓，故逃逸面仅限父包自身属性」这一区分），§6.3 增加第 4 项敏感度对照，§7 R2 相应缩减，§2.1 G2 与 §8 判据同步更新。收敛安全性已实测：views/schemas 对 `miles_core.models.*` 的引用恰好是 §3.1 的 28 处，无合法的非 ORM 引用被误伤。
+- 2026-09-17 **契约漏洞修正（用户已确认收敛方案）**：写实施计划前的隔离沙箱探针发现，只列子域包时 `from miles_core.models import AgentStatus`（图边指向**父聚合自身**）会**静默通过**，而它正是本仓惯用写法（`miles_core/models/__init__.py` re-export 43 个名字含 8 个枚举）。故 §5.1 的 `forbidden_modules` 由 20 条收敛为 10 条：12 条 `miles_core.models.<子域>` → 1 条 `miles_core.models`。新增 §3.3 第 5 条记录该探针（含「`from miles_core.models import agent` 取子模块会被抓，故逃逸面仅限父包自身属性」这一区分），§6.3 增加第 4 项敏感度对照，§7 R2 相应缩减，§2.1 G2 与 §8 判据同步更新。收敛安全性已实测：views/schemas 对 `miles_core.models.*` 的引用恰好是 §3.1 的 28 处，无合法的非 ORM 引用被误伤。
+- 2026-09-17 **数字勘误（Task 5 执行期实测）**：`miles_core/models/__init__.py` 的 `__all__` 实为 **43** 个名字（此前 spec/plan 多处写 45，无任何度量依据）。同时订正两处执行细节：敏感度对照第 1 项的行号由 14 下移到 **22**（Task 1 docstring + Task 3 isort 变动所致，改为按内容定位）；第 2 项原写 `from miles_core.models import AgentStatus, AgentType`，但 **`AgentType` 未被父包 re-export**（8 个被 re-export 的枚举中不含它），该写法导入语义本身不成立，已改为只用 `AgentStatus`。
 
 ---
 

@@ -903,8 +903,11 @@ source_modules =
     miles_openapi.views
 # 必须列到**最外层胖聚合**：
 # 1) from miles_core.models.agent import X 的图边目标是包 __init__ 而非叶子模块，只列叶子会漏网；
-# 2) miles_core/models/__init__.py 自身 re-export 了 45 个名字（含 8 个持久化枚举）且带 __all__，
+# 2) miles_core/models/__init__.py 自身 re-export 了 43 个名字（含 8 个持久化枚举）且带 __all__，
 #    故 from miles_core.models import AgentStatus 的图边目标是 miles_core.models —— 只列子域包会静默放过。
+#    （数字实测：`len(miles_core.models.__all__)` == 43；被 re-export 的持久化枚举恰 8 个：
+#      AgentStatus / CategoryDomain / DocumentStatus / FlowStatus / GenerativeJobStatus /
+#      MarketplaceAppStatus / MarketplaceAppVisibility / TaskStatus。）
 #    （实测：from miles_core.models import agent 这种取子模块的写法会被解析到子模块边，故逃逸面仅限父包自身属性。）
 # 代价是整包禁令：views/schemas 也不得引用 miles_core.models.base / media.reader / tool.parameters 等
 # 非 ORM 模块。实测当前零引用；若将来确需引用，正解是把该中立模块下沉 miles_common，而不是放宽契约。
@@ -938,8 +941,8 @@ Expected: `Contracts: 7 kept, 0 broken.`
 
 门禁可能形同虚设，故必须证明它们**会失败**。四项都在临时改动后**完整还原**：
 
-1. **契约敏感度（子模块边）**：把 `packages/miles-portal/src/miles_portal/tenant/agents/schemas/agent.py` 第 14 行临时改回 `from miles_core.models.agent import AgentStatus, AgentType` → `lint-imports` 必须报出该文件；还原后重新 `7 kept`。
-2. **契约敏感度（父聚合属性边，本设计专门堵的那个洞）**：把同一行临时改为 `from miles_core.models import AgentStatus, AgentType`（注意两个枚举都在 `miles_core/models/__init__.py` 的 re-export 里）→ `lint-imports` **必须也报出**；还原后重新 `7 kept`。这一项失败即说明收敛清单没生效。
+1. **契约敏感度（子模块边）**：把 `packages/miles-portal/src/miles_portal/tenant/agents/schemas/agent.py` **第 22 行**（`from miles_portal.tenant.agents.schemas.enums import AgentStatus, AgentType`；行号在 Task 1/3 的 docstring 与 isort 变动后由 14 下移到 22，**按内容定位**）临时改回 `from miles_core.models.agent import AgentStatus, AgentType` → `lint-imports` 必须报出该文件；还原后重新 `7 kept`。
+2. **契约敏感度（父聚合属性边，本设计专门堵的那个洞）**：把同一行临时改为 **`from miles_core.models import AgentStatus`**（只用 `AgentStatus` —— 实测它是那 8 个被父包 re-export 的持久化枚举之一；**不要**用 `AgentStatus, AgentType`，`AgentType` **未被** `miles_core.models` 父包 re-export，那样写导入语义本身就不成立）→ `lint-imports` **必须也报出**；还原后重新 `7 kept`。这一项失败即说明收敛清单没生效。
 3. **快照敏感度**：把 `packages/miles-portal/src/miles_portal/tenant/agents/schemas/enums.py` 的 `ENABLED = "enabled"` 临时改为 `"enable"` → `python -m miles_server.scripts.export_openapi --check` 必须非零退出（报 snapshot drift）；还原后必须 `OpenAPI snapshot OK`。
 4. **平价测试敏感度**：再对 `packages/miles-portal/src/miles_portal/tenant/agents/schemas/enums.py` 做与第 3 项相同的临时改动（`ENABLED = "enable"`）→ `pytest tests/models/test_api_enum_parity.py -q` 必须失败，且失败信息**逐字包含** `AgentStatus.ENABLED 的 API 值 'enable' != ORM 值 'enabled'`；还原后必须通过。
 
@@ -972,7 +975,7 @@ app_ops/app_sys 与开放面。
 
 清单列到最外层胖聚合：写实施计划前的沙箱探针发现，只列子域包时
 from miles_core.models import AgentStatus 会静默通过，而它正是本仓惯用写法
-（该 __init__ re-export 了 45 个名字含 8 个枚举）。收敛后清单从 20 条降到 10 条，
+（该 __init__ re-export 了 43 个名字含 8 个枚举）。收敛后清单从 20 条降到 10 条，
 且 miles_core 下新增模块自动被拦。
 EOF
 ```
