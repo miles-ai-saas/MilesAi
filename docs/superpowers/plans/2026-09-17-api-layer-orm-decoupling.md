@@ -1014,7 +1014,7 @@ git diff "$BASE" -- packages/miles-core/src/miles_core/models/ \
 git diff "$BASE" -- pyproject.toml | (rg '^[+-].*values_callable\s*=' || echo 0)   # 期望 0
 
 # 5) 平价表覆盖数
-uv run --all-packages --group dev python -m pytest tests/models/test_api_enum_parity.py -q   # 期望 44 passed
+uv run --all-packages --group dev python -m pytest tests/models/test_api_enum_parity.py -q   # 期望 45 passed
 
 # 6) 五项门禁
 uv run --all-packages --group dev ruff format --check .
@@ -1024,17 +1024,33 @@ uv run --all-packages --group dev python -m miles_server.scripts.export_openapi 
 uv run --all-packages --group dev python -m pytest -q                     # 记录实测 passed 数
 ```
 
-- [ ] **Step 2: 回填 spec 修订记录**
+- [ ] **Step 2: 文档陈旧清扫（用户 2026-09-17 裁决「全做」，执行前逐条复核）**
+
+本计划的文档在 6 个任务推进中被反复回填，留下了一批与最终代码不符的陈述。**内嵌代码块必须可照抄执行**，否则后人抄下来会得到与 docstring 声明不符的实现。逐条处理：
+
+| # | 位置 | 问题 | 处置 |
+|---|---|---|---|
+| 1 | plan `~:143`、`~:190`、`~:200` | 内嵌的 `_IDENTITY_COMPARISON` 判据示例仍是**旧的 `import re` + 正则**版本，而实际代码已是 AST 判据（`_enum_class_of` 覆盖 `Name.MEMBER` / `alias.Class.MEMBER` / `pkg.mod.Class.MEMBER`） | 把示例同步为 `tests/models/test_api_enum_parity.py` 的实际实现，或删掉内嵌实现、改为指向真实文件 |
+| 2 | plan `~:85` | `marketpalce` 拼写（应为 `marketplace`） | 直接改 |
+| 3 | plan `~:157-167` | 同一代码块内：模块 docstring（`~:126-129`）与 `test_api_enum_matches_orm_verbatim` 的 docstring（`~:178-181`）已改成「五项全等」，但内嵌的 `_mismatch_report` 函数体仍是三项（无基类分支、无 docstring 分支） | 与第 1 条同法同步（或改为指向真实文件） |
+| 4 | `categories/schemas/enums.py:3`、`compliance/schemas/enums.py:3`、`hooks/schemas/enums.py:3`、`kb/schemas/enums.py:3`、`mcp/schemas/enums.py:3` | 模块 docstring 仍写「逐字同形（成员名/顺序/值）」，而这 5 个恰是补了类 docstring 的，描述偏低 | 5 处各补为「成员名/顺序/值/类 docstring」；并同步 plan 模板 `~:533` 的同句措辞（plan-mandated 陈旧的源头） |
+| 5 | plan `~:756` 与 spec `~:65` | 仍写 `agents/schemas/agent.py | 14`，而 Task 5 勘误只改了执行指引（plan `~:944` → 22）。同一文档同一行号出现 14/22 两个值 | 若这两处是「改造前审计快照」，加「（改造前快照）」消歧；否则一并勘误为 22 |
+| 6 | plan/spec 中所有「45 个名字」类表述 | Task 5 已勘误为 43 | 全支线 `rg` 复核，确认无残留 |
+
+**要求**：清扫后 plan 内的所有内嵌代码块必须与仓库实际文件一致（建议逐块 diff 比对，而不是凭记忆）；spec 同理。清扫产生的改动与 Step 3 的回填可放在同一次 docs 提交里。
+
+- [ ] **Step 3: 回填 spec 修订记录**
 
 在 `docs/superpowers/specs/2026-09-17-api-layer-orm-decoupling-design.md` 的 §10 追加一条实测记录，内容必须包含：
 
 - 实际新增文件数（设计 §5.5 预估 15 个：11 portal + 3 `miles_common` + 1 admin）；
 - 实际修改文件数（预估 27）；
-- `pytest` 实测 passed 数（基线 1122 + 新增平价/独立声明参数化例数）；
+- `pytest` 实测 passed 数（基线 1122；终态 **1167** = 1122 + 平价/独立声明参数化例 + Task 3 加固 + Task 5b 的名称级守卫）；
 - 终检 6 项的实测输出摘要（尤其 `TOTAL=0`、`7 kept`、快照 diff 为空、ORM 侧只有两个壳文件）；
+- **Task 5b 追加的两道互补门禁**：`import-linter` 契约 `api-layer-no-orm` 只能拦直接依赖（因其必须设 `allow_indirect_imports = True`），一跳借用由 `test_api_enum_parity.py::test_enum_names_imported_only_from_allowlisted_modules` 的名称级守卫补上；两者职责互补，缺一即有静默漏洞。附其已知边界（`from X import meta` 再 `meta.AgentStatus` 等形态不受覆盖）。
 - 与预估不符之处及其原因。
 
-- [ ] **Step 3: 提交**
+- [ ] **Step 4: 提交**
 
 ```bash
 git add -A
@@ -1046,7 +1062,7 @@ spec 停留在推算值。
 EOF
 ```
 
-- [ ] **Step 4: 终检后交付**
+- [ ] **Step 5: 终检后交付**
 
 向调用者报告：终检 6 项的实测输出、`TOTAL=0` 与 `7 kept` 的证据、快照 diff 为空、ORM 侧改动仅两壳，以及分支名供合并评审。**不要**自行合并到 `main`。
 
