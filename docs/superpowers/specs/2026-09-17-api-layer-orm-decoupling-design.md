@@ -351,6 +351,12 @@ def from_model(cls, entity) -> AgentScheduleRunOut:
   - **名称级守卫的已知边界（需模块属性流/图分析，有意不堵）**：`from X import meta` 再 `meta.AgentStatus`（导入的是模块名而非枚举名）、`import X as m` 再 `m.AgentStatus`（裸 `import` 的绑定名不是枚举名）均不受覆盖；`from X import enums` 再 `enums.AgentStatus` 引的就是白名单模块本身，不算漏洞。
   - **其余偏差**：前置专项 U042（`(str, Enum)` → `StrEnum` 迁移，§2.2 N5）无偏差 —— 本支线对 `models/` 的枚举基类/成员值/`values_callable` 改动为 0（见上「ORM 侧零改动」），U042 的等价性结论继续成立。除此之外与预估一致（新文件数、契约条数 6→7、快照逐字节不变）。
   - **同提交的文档陈旧清扫**（用户 2026-09-17 裁决「全做」）：plan 内嵌的正则版 `is` 判据与三项 `_mismatch_report` 删除并改为指向真实测试文件、记录判据要点（五项全等 / AST 判据 / 名称级守卫）；修 `marketpalce` 拼写；plan 模块 docstring 模板与 5 个带类 docstring 的声明文件补「类 docstring」；plan Task 3 表与 §3.1 表加「（改造前快照）」消歧（行号数值 14/15 保持原样、只声明其口径）；plan 内嵌 `.importlinter` 契约块补齐 Task 5b 的注释；plan 的 18 类内嵌块补回 5 个类 docstring。
+- 2026-09-17 **整支线终审后的收尾修补（用户裁决「修完 3 条再合并」，`cd588652` + 其后一次 docstring 提交）**：
+  - 终审结论：**可合并，无阻塞项**。独立复算确认 176 个 `views`/`schemas` 文件对 ORM 包的直接 import 归零；21 对枚举平价零差异；等价性在 SQLAlchemy `bind_processor` 绑定外来枚举、Pydantic 强转、`==`/`hash`/`in` 三处边界实测成立；唯一不等价的 `is` 在 `packages/` 下零命中。
+  - **修补 1（真实 bug）**：`_module_and_package` 对 `__init__.py` 少算一层 —— 模块 `a.b/__init__.py` 的 `__package__` 是 `a.b` 本身，旧实现再剥一层得 `a`，使 `schemas/__init__.py` 里的 `from .enums import X` 被解析成**不存在的** `...categories.enums`（真值 `...categories.schemas.enums` 在白名单内）→ **假失败**且报错指向不存在的模块。已按 `is_init` 区分修正（潜伏缺陷：仓内相对 import 当前为 0）。敏感性：临时造真实相对 import 触发点，旧逻辑报假失败、新逻辑通过。
+  - **修补 2（堵终审判定的最深风险）**：`CASES`/`_ENUM_NAMES` 是人工清单，**新增对外持久化枚举时三道护栏同时 fail-open**（契约拦不住一跳借用形态、名称级守卫认不得新名字、`test_parity_table_covers_exactly_21_enums` 只查项数）。新增 `test_parity_table_covers_every_enum_in_openapi_snapshot`：反向以快照为准，断言 `components.schemas` 中带 `enum` 键的组件名集合 ⊆ `CASES` 名字集合（实测 `19 ⊆ 21`）。敏感性：临时从 `CASES` 删 1 项 → 必须 FAILED 并报出缺失名。
+  - **修补 3（docstring 与代码不一致）**：`models/agent/chat_io.py` 壳曾声称 portal `agents/schemas/agent.py` 的 re-export 指向它，而后者已直连 `miles_common.schemas.chat_io`（必须如此，否则撞契约）；同步修正 plan 的同源句。另修 `agent.py` 头部 docstring 的反向陈述（原写「（经 ``miles_core.models.agent.chat_io`` re-export 壳）」，与修正后的壳 docstring 直接矛盾）与 `test_no_identity_comparison_on_enum_members` 的「全仓」措辞（实现只扫 `packages/`）。
+  - 终态：`Contracts: 7 kept, 0 broken.` / `OpenAPI snapshot OK` / `TOTAL=0` / `pytest -q` → **1168 passed**（1167 + 新增快照绑定用例）。
 
 ---
 

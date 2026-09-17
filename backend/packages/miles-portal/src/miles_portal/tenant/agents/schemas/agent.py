@@ -3,8 +3,8 @@
 
 ``kb_ids`` 写入 ``agt_kb_bindings``；对话时转为字符串列表传入 RAG/流程 ``RunContext``。
 ``ChatRequest.conversation_id`` 参与 LangGraph ``thread_id``（多轮 checkpoint）。
-对话 IO 契约（Chat* 五类）定义已下沉 ``miles_common.schemas.chat_io``（经
-``miles_core.models.agent.chat_io`` re-export 壳），本处 re-export 保持 L1 import 路径。
+对话 IO 契约（Chat* 五类）定义已下沉 ``miles_common.schemas.chat_io``，本处 re-export
+保持 L1 import 路径（旧路径 ``miles_core.models.agent.chat_io`` 保留为兼容壳，本处不经它）。
 """
 
 from datetime import datetime
