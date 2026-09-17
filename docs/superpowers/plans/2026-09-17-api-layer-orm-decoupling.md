@@ -4,7 +4,7 @@
 
 **Goal:** 让 `views/`、`schemas/` 不再 import 任何承载 SQLAlchemy 实体的模块，并由 `.importlinter` 新增第 7 条契约硬禁这条依赖，同时保证 `openapi/openapi.snapshot.json` 逐字节不变。
 
-**Architecture:** 三步走。(1) 把嵌在 ORM 包内的 2 个纯 DTO 模块下沉到 `miles_common/schemas/`，旧路径转 re-export 壳，故 L2/L3 消费者零改动。(2) 为 21 个持久化枚举在 API 侧建立**独立声明**（逐字复制成员名/顺序/值，**不**转 re-export），再把 27 个文件的 import 指向新声明。(3) 加 `.importlinter` 契约与枚举平价测试把它锁死。
+**Architecture:** 三步走。(1) 把嵌在 ORM 包内的 2 个纯 DTO 模块下沉到 `miles_common/schemas/`，旧路径转 re-export 壳，故 L2/L3 消费者零改动。(2) 为 21 个持久化枚举在 API 侧建立**独立声明**（逐字复制成员名/顺序/值/类 docstring，**不**转 re-export），再把 27 个文件的 import 指向新声明。(3) 加 `.importlinter` 契约与枚举平价测试把它锁死。
 
 **Tech Stack:** Python 3.11、FastAPI + Pydantic v2、SQLAlchemy 2 + asyncpg、import-linter、Ruff、pytest、uv workspace。
 
@@ -14,7 +14,7 @@
 
 - **工作区**：仓库根 `git worktree add .worktrees/api-layer-orm-decoupling -b feat/api-layer-orm-decoupling`（自 `main` 切出）。**禁止直接在 `main` 上改**。所有命令在 `backend/` 下执行，除非另注。
 - **ORM 侧零改动**：`packages/miles-core/src/miles_core/models/**` 只允许 `agent/chat_io.py` 与 `marketplace/dto.py` 两个文件改成 re-export 壳。枚举定义、列类型、`values_callable`、`alembic/` 目录一律不动。
-- **API 侧枚举声明必须与 ORM 侧逐字一致**：成员名、成员顺序、成员值全等（Pydantic 按定义顺序生成 `enum` 数组）。统一用 `import enum` + `class X(enum.StrEnum)` 风格（与 ORM 侧同形）。
+- **API 侧枚举声明必须与 ORM 侧逐字一致**：基类、成员名、成员顺序、成员值、类 docstring 全等。前四项决定 Pydantic 生成的 `enum` 数组（按定义顺序）；类 docstring 会被 Pydantic 渲染进 schema 的 `description`——漏抄会漂移 `openapi.snapshot.json`（Task 3 实测），故 ORM 侧**有**类 docstring 的枚举必须逐字照抄，ORM 侧**没有**的不许添加。统一用 `import enum` + `class X(enum.StrEnum)` 风格（与 ORM 侧同形）。
 - **OpenAPI 快照逐字节不变**：`git diff --stat` 对 `backend/openapi/openapi.snapshot.json` 必须为空。
 - **门禁命令**（五道全绿才算完成；下文简称 FMT / CHECK / LINT / SNAP / TEST）：
   - FMT = `uv run --all-packages --group dev ruff format --check .`
@@ -82,7 +82,7 @@ print(f"TOTAL={total}")
 **Files:**
 - Create: `backend/packages/miles-common/src/miles_common/schemas/chat_io.py`
 - Create: `backend/packages/miles-common/src/miles_common/schemas/marketplace.py`
-- Create: `backend/tests/models/test_api_enum_parity.py`（本任务先只含 2 对 marketpalce 枚举）
+- Create: `backend/tests/models/test_api_enum_parity.py`（本任务先只含 2 对 marketplace 枚举）
 - Modify: `backend/packages/miles-core/src/miles_core/models/agent/chat_io.py`（→ re-export 壳）
 - Modify: `backend/packages/miles-core/src/miles_core/models/marketplace/dto.py`（→ re-export 壳）
 - Modify: `backend/packages/miles-portal/src/miles_portal/tenant/agents/schemas/agent.py`（docstring + import 路径）
@@ -118,85 +118,19 @@ Expected: 列出 28 行 import 并以 `TOTAL=28` 结尾。若数字不符，**�
 
 创建 `backend/tests/models/test_api_enum_parity.py`：
 
-````python
-"""API 侧枚举声明与 ORM 侧的逐字一致护栏，以及「不得 `is` 比较枚举成员」的守卫。
-
-背景：API 声明层（``views/`` / ``schemas/``）不得 import ORM 包（``.importlinter``
-契约 ``api-layer-no-orm``），故 21 个持久化枚举在 API 侧各有一份**独立声明**。
-本模块把「两份定义逐字一致」变成可执行约束：成员名、成员顺序、成员值、基类四项全等。
-
-为什么不能只靠 OpenAPI 快照：快照漂移的失败信息是一整份 JSON diff，指不出是哪个枚举的
-哪个成员；本模块的失败信息能直接写成 ``AgentStatus.ENABLED 的 API 值 'enable' != ORM 值 'enabled'``。
-两者互补而非替代。
-
-第二个不变量：不得对枚举成员做 ``is`` / ``is not`` 比较。两份声明是**不同类**；
-``StrEnum`` 的 ``==`` / ``hash`` / ``str`` / ``format`` 都按值成立（实测，见设计 §3），
-唯独 ``is`` 跨类恒为 ``False`` —— 这是本设计唯一会静默出错的写法。
-"""
-
-from __future__ import annotations
-
-import enum
-import re
-from pathlib import Path
-
-import pytest
-
-from miles_common.schemas import marketplace as common_marketplace
-from miles_core.models.marketplace import models as orm_marketplace
-
-CASES: list[tuple[str, type[enum.Enum], type[enum.Enum]]] = [
-    ("MarketplaceAppStatus", common_marketplace.MarketplaceAppStatus, orm_marketplace.MarketplaceAppStatus),
-    ("MarketplaceAppVisibility", common_marketplace.MarketplaceAppVisibility, orm_marketplace.MarketplaceAppVisibility),
-]
-
-
-def _mismatch_report(name: str, api: type[enum.Enum], orm: type[enum.Enum]) -> str:
-    """返回首个不一致的可读描述；完全一致时返回空串。"""
-    api_pairs = [(m.name, m.value) for m in api]
-    orm_pairs = [(m.name, m.value) for m in orm]
-    if [n for n, _ in api_pairs] != [n for n, _ in orm_pairs]:
-        return f"{name} 的成员名或顺序不一致：API={[n for n, _ in api_pairs]} ORM={[n for n, _ in orm_pairs]}"
-    for member_name, api_value in api_pairs:
-        orm_value = dict(orm_pairs)[member_name]
-        if api_value != orm_value:
-            return f"{name}.{member_name} 的 API 值 {api_value!r} != ORM 值 {orm_value!r}"
-    return ""
-
-
-@pytest.mark.parametrize(("name", "api", "orm"), CASES, ids=[c[0] for c in CASES])
-def test_api_enum_is_an_independent_declaration(name, api, orm):
-    """API 侧必须是独立类；转 re-export 会字面满足契约而公开契约仍绑 ORM（设计 §4 已否决）。"""
-    assert api is not orm, f"{name} 在 API 侧是 ORM 枚举的 re-export，不是独立声明"
-
-
-@pytest.mark.parametrize(("name", "api", "orm"), CASES, ids=[c[0] for c in CASES])
-def test_api_enum_matches_orm_verbatim(name, api, orm):
-    """成员名、成员顺序、成员值必须与 ORM 侧逐字一致（Pydantic 按定义顺序生成 enum 数组）。"""
-    assert issubclass(api, enum.StrEnum), f"{name} 的 API 声明不是 enum.StrEnum"
-    report = _mismatch_report(name, api, orm)
-    assert not report, report
-
-
-_BACKEND = Path(__file__).resolve().parents[2]
-_PACKAGES = _BACKEND / "packages"
-_ENUM_NAMES = "|".join(sorted({name for name, _, _ in CASES}))
-_IDENTITY_COMPARISON = re.compile(rf"\bis(?:\s+not)?\s+(?:{_ENUM_NAMES})\.([A-Z][A-Z0-9_]*)\b")
-
-
-def test_no_identity_comparison_on_enum_members():
-    """两份声明是不同类，`is` 跨类恒为 False —— 全仓禁止该写法（逐行扫描，含缩进的惰性 import）。"""
-    offenders: list[str] = []
-    for path in sorted(_PACKAGES.glob("*/src/**/*.py")):
-        if "__pycache__" in path.parts:
-            continue
-        for lineno, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
-            if _IDENTITY_COMPARISON.search(line):
-                offenders.append(f"{path.relative_to(_PACKAGES)}:{lineno}: {line.strip()}")
-    assert not offenders, (
-        "API 侧与 ORM 侧的枚举是不同类，`is` 比较跨类恒为 False（`==` / `in` 才按值成立）：\n" + "\n".join(offenders)
-    )
-````
+> **实现以仓库文件为准，不在此内嵌副本**：该测试已落地为
+> `backend/tests/models/test_api_enum_parity.py`，骨架在 Task 2/3 中扩充到「21 对枚举 + 4 个不变量」。
+> 内嵌副本会随判据演进腐化（本段曾因判据从正则改为 AST 而与实现不符），故只记判据要点：
+>
+> - **五项全等**：基类、成员名、成员顺序、成员值、类 docstring —— 由 `_mismatch_report` 按此
+>   顺序短路。类 docstring 在列，因为 Pydantic 会把 enum 类 docstring 渲染成 schema 的
+>   `description`（漏抄会静默漂移 `openapi.snapshot.json`）。
+> - **「禁止 `is` 比较枚举成员」用 AST 判据**（`_enum_class_of` / `_identity_comparisons`），
+>   **不是**文本正则：覆盖 `Name.MEMBER`、`alias.Class.MEMBER`、`pkg.mod.Class.MEMBER` 三种写法
+>   （后两种是迁移后 `from ...schemas import enums as X` 的风格，正则版要求 `operand.value` 是
+>   `ast.Name` 会漏检），且注释/docstring 里的说明性提及不误伤。
+> - 另有**名称级白名单守卫**：`views/` / `schemas/` 只能从各域 `schemas/enums.py` 引入这 21 个
+>   枚举名，补 `api-layer-no-orm` 契约因 `allow_indirect_imports = True` 拦不住的一跳借用。
 
 - [ ] **Step 2: 运行测试确认失败**
 
@@ -263,7 +197,7 @@ class MarketplaceAppVisibility(enum.StrEnum):
 
 并在 import 段补 `import enum`（置于 `from datetime import datetime` 之前，与仓内「标准库 → 三方 → 本仓」分组一致）。
 
-**成员名/顺序/值必须与上表逐字相同**——这是本任务最容易出错的地方，Step 8 的平价测试会拦住。
+**成员名/顺序/值/类 docstring 必须与上表逐字相同**（类 docstring 仅 ORM 侧有的才抄，见 Task 2 Step 3 的说明）——这是本任务最容易出错的地方，Step 8 的平价测试会拦住。
 
 - [ ] **Step 5: 把旧 `chat_io.py` 改成 re-export 壳**
 
@@ -272,9 +206,9 @@ class MarketplaceAppVisibility(enum.StrEnum):
 ```python
 """智能体对话 IO 契约的兼容壳（真实定义已下沉 ``miles_common.schemas.chat_io``）。
 
-保留本路径与 ``__all__`` 以维持既有 import 稳定（``miles_ai`` 3 处、测试 3 处、portal
-``agents/schemas/agent.py`` 的 re-export 均指向此处）。新代码请直接 import
-``miles_common.schemas.chat_io``。
+保留本路径与 ``__all__`` 以维持既有 import 稳定（``miles_ai`` 3 处、测试 3 处均指向此处；
+portal 声明层 ``agents/schemas/agent.py`` 已直接指向 ``miles_common``，不经本壳）。
+新代码请直接 import ``miles_common.schemas.chat_io``。
 
 为何再下沉一层：本模块位于 ``miles_core.models.agent`` 包内，而该包整包被
 ``.importlinter`` 契约 ``api-layer-no-orm`` 禁止（按聚合包层级拦截，连带禁止包内纯 DTO）。
@@ -302,16 +236,16 @@ __all__ = [
 `packages/miles-core/src/miles_core/models/marketplace/dto.py` 全文替换为（`__all__` 必须与下方 17 个名字完全一致）：
 
 ```python
-"""应用市场 API DTO 的兼容壳（真实定义已下沉 ``miles_common.schemas.marketplace``）。
+r"""应用市场 API DTO 的兼容壳（真实定义已下沉 ``miles_common.schemas.marketplace``）。
 
 保留本路径与 ``__all__`` 以维持既有 import 稳定（admin services 1 处仍走本路径）。
 新代码请直接 import ``miles_common.schemas.marketplace``。
 
-**已知且经查证无消费者的表面变化**：原模块经 ``from .models import ...`` 顺带导出了
+**已知且经查证无消费者的表面变化**：原模块经 `from .models import ...` 顺带导出了
 ``MarketplaceAppStatus`` / ``MarketplaceAppVisibility``，本壳不再导出这两个 ORM 枚举
-（它们已改为在 ``miles_common.schemas.marketplace`` 独立声明）。实施时以
-``rg -n 'marketplace\.dto import .*(Status|Visibility)'`` 复核消费者为零；DTO 定义模块
-不得反向依赖 ORM 包。
+（它们已改为在 ``miles_common.schemas.marketplace`` 独立声明）。消费者为零已核实：
+``rg -n 'marketplace\.dto import .*(Status|Visibility)'`` 无输出。DTO 定义模块不得反向
+依赖 ORM 包。
 """
 
 from miles_common.schemas.marketplace import (
@@ -519,18 +453,24 @@ Expected: FAIL — 收集期 `ModuleNotFoundError`（19 个新模块尚不存在
 
 - [ ] **Step 3: 创建 13 个枚举声明文件**
 
-每个文件的**类体逐字照抄**下表（成员名、顺序、值三项都必须一致）。每个文件的模块 docstring 统一用：
+每个文件的**类体逐字照抄**下表（成员名、顺序、值三项都必须一致，外加 ORM 侧的类 docstring，见下方说明）。每个文件的模块 docstring 统一用：
 
 ```python
 """<域> API 侧枚举声明。
 
-与 ORM 侧 ``<ORM 模块>`` 逐字同形（成员名/顺序/值），因 API 声明层不得依赖 ORM 模块
+与 ORM 侧 ``<ORM 模块>`` 逐字同形（成员名/顺序/值/类 docstring），因 API 声明层不得依赖 ORM 模块
 （``.importlinter`` 契约 ``api-layer-no-orm``）而独立声明；两侧一致性由
 ``tests/models/test_api_enum_parity.py`` 守卫。
 """
 ```
 
 import 段统一为 `import enum`（其后空两行再接第一个类）。
+
+> **类 docstring（最易漏的一项）**：Pydantic 会把 enum 类 docstring 渲染成 schema 的 `description`，
+> 故 ORM 侧**有**类 docstring 的枚举必须逐字照抄，ORM 侧**没有**的不许凭空添加 —— 两者都会让
+> `openapi.snapshot.json` 漂移。21 个枚举中恰好 5 个有：`CategoryDomain`、`DocumentStatus`、
+> `HookTrigger`、`McpStatus`、`SensitiveAction`。Task 3 实测：漏抄这 5 条会让
+> `export_openapi --check` 报 drift（差值恰是 5 行 `"description"`）。
 
 | # | 新文件（`packages/` 下） | ORM 定义处（docstring 里引用） | 类体 |
 |---|---|---|---|
@@ -578,7 +518,7 @@ class ModelCapabilityType(enum.StrEnum):
     OTHER = "other"
 ```
 
-其余 18 个类的类体（逐字照抄；`enum.StrEnum` 的成员值一律双引号）：
+其余 18 个类的类体（逐字照抄；`enum.StrEnum` 的成员值一律双引号；ORM 侧带类 docstring 的 5 个类须连 docstring 一起照抄）：
 
 ```python
 class A2aPeerStatus(enum.StrEnum):
@@ -599,6 +539,8 @@ class AgentType(enum.StrEnum):
 
 
 class CategoryDomain(enum.StrEnum):
+    """工作台资源域；与列表 Tab、校验时的 domain 参数一致。"""
+
     AGENT = "agent"
     PROMPT = "prompt"
     SKILL = "skill"
@@ -606,6 +548,8 @@ class CategoryDomain(enum.StrEnum):
 
 
 class SensitiveAction(enum.StrEnum):
+    """敏感词处置动作。"""
+
     WARN = "warn"
     BLOCK = "block"
 
@@ -629,6 +573,8 @@ class HookType(enum.StrEnum):
 
 
 class HookTrigger(enum.StrEnum):
+    """挂载时机：调用、推理、工具、错误等关键节点。"""
+
     BEFORE_CALL = "before_call"
     AFTER_CALL = "after_call"
     BEFORE_REASONING = "before_reasoning"
@@ -647,6 +593,8 @@ class HookScope(enum.StrEnum):
 
 
 class DocumentStatus(enum.StrEnum):
+    """入库流水线状态（PENDING → PARSING → EMBEDDING → READY）。"""
+
     PENDING = "pending"
     PARSING = "parsing"
     EMBEDDING = "embedding"
@@ -656,6 +604,8 @@ class DocumentStatus(enum.StrEnum):
 
 
 class McpStatus(enum.StrEnum):
+    """同步与可用性状态，供工作台卡片展示。"""
+
     ACTIVE = "active"
     INACTIVE = "inactive"
     ERROR = "error"
@@ -688,7 +638,7 @@ class BillStatus(enum.StrEnum):
     VOID = "void"
 ```
 
-> 复核方式：若对任一成员值有疑问，以 ORM 源为准逐字对照 ——
+> 复核方式：若对任一成员值或类 docstring 有疑问，以 ORM 源为准逐字对照 ——
 > `rg -n -A8 'class (A2aPeerStatus|AgentStatus|AgentType|BillStatus|CategoryDomain|DocumentStatus|FlowStatus|GenerativeJobStatus|HookScope|HookTrigger|HookType|MarketplaceAppStatus|MarketplaceAppVisibility|McpStatus|ModelCapabilityType|ModelVendor|RiskSeverity|SensitiveAction|TaskStatus|TenantStatus|ToolType)\(enum\.StrEnum\)' packages/*/src`
 
 - [ ] **Step 4: 运行测试确认通过**
@@ -714,9 +664,10 @@ git add -A
 git commit -F - <<'EOF'
 feat(api): 为 21 个持久化枚举建立 API 侧独立声明
 
-API 声明层不得依赖 ORM 包，故各域在 schemas/enums.py 独立声明枚举，成员名/顺序/
-值逐字复制 ORM 侧。跨端共用的 3 个（TenantStatus、ModelVendor、ModelCapabilityType）
-放 miles_common，因 portal 与 admin 互不可见。
+API 声明层不得依赖 ORM 包，故各域在 schemas/enums.py 独立声明枚举，基类/成员名/顺序/
+值/类 docstring 逐字复制 ORM 侧（类 docstring 会渲染进 schema description）。跨端共用
+的 3 个（TenantStatus、ModelVendor、ModelCapabilityType）放 miles_common，因 portal 与
+admin 互不可见。
 
 新增平价测试逐成员比对两份声明，并守卫「不得对枚举成员做 is 比较」——两份声明是
 不同类，str 语义下 == / hash / format 都按值成立，唯独 is 跨类恒为 False。
@@ -737,7 +688,9 @@ EOF
 
 - [ ] **Step 1: 逐处替换 import**
 
-| 文件（`packages/miles-portal/src/miles_portal/tenant/`） | 行 | 旧 | 新 |
+下表「行」列是**改造前审计快照**（迁移动工前扫到的原始行号；如 `agents/schemas/agent.py` 的 14 在 Task 1 docstring + Task 3 isort 后已下移到 22）——**不要**拿它去当前文件里定位。
+
+| 文件（`packages/miles-portal/src/miles_portal/tenant/`） | 行（改造前快照） | 旧 | 新 |
 |---|---|---|---|
 | `a2a/schemas/peer.py` | 12 | `from miles_portal.tenant.a2a.models import A2aPeerStatus` | `from miles_portal.tenant.a2a.schemas.enums import A2aPeerStatus` |
 | `agents/schemas/agent.py` | 14 | `from miles_core.models.agent import AgentStatus, AgentType` | `from miles_portal.tenant.agents.schemas.enums import AgentStatus, AgentType` |
@@ -890,8 +843,11 @@ source_modules =
     miles_openapi.views
 # 必须列到**最外层胖聚合**：
 # 1) from miles_core.models.agent import X 的图边目标是包 __init__ 而非叶子模块，只列叶子会漏网；
-# 2) miles_core/models/__init__.py 自身 re-export 了 45 个名字（含 8 个持久化枚举）且带 __all__，
+# 2) miles_core/models/__init__.py 自身 re-export 了 43 个名字（含 8 个持久化枚举）且带 __all__，
 #    故 from miles_core.models import AgentStatus 的图边目标是 miles_core.models —— 只列子域包会静默放过。
+#    （数字实测：`len(miles_core.models.__all__)` == 43；被 re-export 的持久化枚举恰 8 个：
+#      AgentStatus / CategoryDomain / DocumentStatus / FlowStatus / GenerativeJobStatus /
+#      MarketplaceAppStatus / MarketplaceAppVisibility / TaskStatus。）
 #    （实测：from miles_core.models import agent 这种取子模块的写法会被解析到子模块边，故逃逸面仅限父包自身属性。）
 # 代价是整包禁令：views/schemas 也不得引用 miles_core.models.base / media.reader / tool.parameters 等
 # 非 ORM 模块。实测当前零引用；若将来确需引用，正解是把该中立模块下沉 miles_common，而不是放宽契约。
@@ -909,6 +865,9 @@ forbidden_modules =
     miles_portal.tenant.skills.models
     miles_portal.tenant.tools.models
 # 只判直接导入：不加会沿 views → miles_core.deps → miles_core.models.* 误报。
+# 代价：经中间模块的一跳借用（如 from ...agents.meta import AgentStatus）不被本契约拦截 ——
+# 那段由 tests/models/test_api_enum_parity.py::test_enum_names_imported_only_from_allowlisted_modules
+# 的名称级守卫补上（按「枚举名 + 来源模块白名单」判定，不依赖图边），两者合起来才完整。
 allow_indirect_imports = True
 ```
 
@@ -925,8 +884,8 @@ Expected: `Contracts: 7 kept, 0 broken.`
 
 门禁可能形同虚设，故必须证明它们**会失败**。四项都在临时改动后**完整还原**：
 
-1. **契约敏感度（子模块边）**：把 `packages/miles-portal/src/miles_portal/tenant/agents/schemas/agent.py` 第 14 行临时改回 `from miles_core.models.agent import AgentStatus, AgentType` → `lint-imports` 必须报出该文件；还原后重新 `7 kept`。
-2. **契约敏感度（父聚合属性边，本设计专门堵的那个洞）**：把同一行临时改为 `from miles_core.models import AgentStatus, AgentType`（注意两个枚举都在 `miles_core/models/__init__.py` 的 re-export 里）→ `lint-imports` **必须也报出**；还原后重新 `7 kept`。这一项失败即说明收敛清单没生效。
+1. **契约敏感度（子模块边）**：把 `packages/miles-portal/src/miles_portal/tenant/agents/schemas/agent.py` **第 22 行**（`from miles_portal.tenant.agents.schemas.enums import AgentStatus, AgentType`；行号在 Task 1/3 的 docstring 与 isort 变动后由 14 下移到 22，**按内容定位**）临时改回 `from miles_core.models.agent import AgentStatus, AgentType` → `lint-imports` 必须报出该文件；还原后重新 `7 kept`。
+2. **契约敏感度（父聚合属性边，本设计专门堵的那个洞）**：把同一行临时改为 **`from miles_core.models import AgentStatus`**（只用 `AgentStatus` —— 实测它是那 8 个被父包 re-export 的持久化枚举之一；**不要**用 `AgentStatus, AgentType`，`AgentType` **未被** `miles_core.models` 父包 re-export，那样写导入语义本身就不成立）→ `lint-imports` **必须也报出**；还原后重新 `7 kept`。这一项失败即说明收敛清单没生效。
 3. **快照敏感度**：把 `packages/miles-portal/src/miles_portal/tenant/agents/schemas/enums.py` 的 `ENABLED = "enabled"` 临时改为 `"enable"` → `python -m miles_server.scripts.export_openapi --check` 必须非零退出（报 snapshot drift）；还原后必须 `OpenAPI snapshot OK`。
 4. **平价测试敏感度**：再对 `packages/miles-portal/src/miles_portal/tenant/agents/schemas/enums.py` 做与第 3 项相同的临时改动（`ENABLED = "enable"`）→ `pytest tests/models/test_api_enum_parity.py -q` 必须失败，且失败信息**逐字包含** `AgentStatus.ENABLED 的 API 值 'enable' != ORM 值 'enabled'`；还原后必须通过。
 
@@ -959,7 +918,7 @@ app_ops/app_sys 与开放面。
 
 清单列到最外层胖聚合：写实施计划前的沙箱探针发现，只列子域包时
 from miles_core.models import AgentStatus 会静默通过，而它正是本仓惯用写法
-（该 __init__ re-export 了 45 个名字含 8 个枚举）。收敛后清单从 20 条降到 10 条，
+（该 __init__ re-export 了 43 个名字含 8 个枚举）。收敛后清单从 20 条降到 10 条，
 且 miles_core 下新增模块自动被拦。
 EOF
 ```
@@ -998,7 +957,7 @@ git diff "$BASE" -- packages/miles-core/src/miles_core/models/ \
 git diff "$BASE" -- pyproject.toml | (rg '^[+-].*values_callable\s*=' || echo 0)   # 期望 0
 
 # 5) 平价表覆盖数
-uv run --all-packages --group dev python -m pytest tests/models/test_api_enum_parity.py -q   # 期望 44 passed
+uv run --all-packages --group dev python -m pytest tests/models/test_api_enum_parity.py -q   # 期望 45 passed
 
 # 6) 五项门禁
 uv run --all-packages --group dev ruff format --check .
@@ -1008,17 +967,33 @@ uv run --all-packages --group dev python -m miles_server.scripts.export_openapi 
 uv run --all-packages --group dev python -m pytest -q                     # 记录实测 passed 数
 ```
 
-- [ ] **Step 2: 回填 spec 修订记录**
+- [ ] **Step 2: 文档陈旧清扫（用户 2026-09-17 裁决「全做」，执行前逐条复核）**
+
+本计划的文档在 6 个任务推进中被反复回填，留下了一批与最终代码不符的陈述。**内嵌代码块必须可照抄执行**，否则后人抄下来会得到与 docstring 声明不符的实现。逐条处理：
+
+| # | 位置 | 问题 | 处置 |
+|---|---|---|---|
+| 1 | plan `~:143`、`~:190`、`~:200` | 内嵌的 `_IDENTITY_COMPARISON` 判据示例仍是**旧的 `import re` + 正则**版本，而实际代码已是 AST 判据（`_enum_class_of` 覆盖 `Name.MEMBER` / `alias.Class.MEMBER` / `pkg.mod.Class.MEMBER`） | 把示例同步为 `tests/models/test_api_enum_parity.py` 的实际实现，或删掉内嵌实现、改为指向真实文件 |
+| 2 | plan `~:85` | `marketpalce` 拼写（应为 `marketplace`） | 直接改 |
+| 3 | plan `~:157-167` | 同一代码块内：模块 docstring（`~:126-129`）与 `test_api_enum_matches_orm_verbatim` 的 docstring（`~:178-181`）已改成「五项全等」，但内嵌的 `_mismatch_report` 函数体仍是三项（无基类分支、无 docstring 分支） | 与第 1 条同法同步（或改为指向真实文件） |
+| 4 | `categories/schemas/enums.py:3`、`compliance/schemas/enums.py:3`、`hooks/schemas/enums.py:3`、`kb/schemas/enums.py:3`、`mcp/schemas/enums.py:3` | 模块 docstring 仍写「逐字同形（成员名/顺序/值）」，而这 5 个恰是补了类 docstring 的，描述偏低 | 5 处各补为「成员名/顺序/值/类 docstring」；并同步 plan 模板 `~:533` 的同句措辞（plan-mandated 陈旧的源头） |
+| 5 | plan `~:756` 与 spec `~:65` | 仍写 `agents/schemas/agent.py | 14`，而 Task 5 勘误只改了执行指引（plan `~:944` → 22）。同一文档同一行号出现 14/22 两个值 | 若这两处是「改造前审计快照」，加「（改造前快照）」消歧；否则一并勘误为 22 |
+| 6 | plan/spec 中所有「45 个名字」类表述 | Task 5 已勘误为 43 | 全支线 `rg` 复核，确认无残留 |
+
+**要求**：清扫后 plan 内的所有内嵌代码块必须与仓库实际文件一致（建议逐块 diff 比对，而不是凭记忆）；spec 同理。清扫产生的改动与 Step 3 的回填可放在同一次 docs 提交里。
+
+- [ ] **Step 3: 回填 spec 修订记录**
 
 在 `docs/superpowers/specs/2026-09-17-api-layer-orm-decoupling-design.md` 的 §10 追加一条实测记录，内容必须包含：
 
 - 实际新增文件数（设计 §5.5 预估 15 个：11 portal + 3 `miles_common` + 1 admin）；
 - 实际修改文件数（预估 27）；
-- `pytest` 实测 passed 数（基线 1122 + 新增平价/独立声明参数化例数）；
+- `pytest` 实测 passed 数（基线 1122；终态 **1167** = 1122 + 平价/独立声明参数化例 + Task 3 加固 + Task 5b 的名称级守卫）；
 - 终检 6 项的实测输出摘要（尤其 `TOTAL=0`、`7 kept`、快照 diff 为空、ORM 侧只有两个壳文件）；
+- **Task 5b 追加的两道互补门禁**：`import-linter` 契约 `api-layer-no-orm` 只能拦直接依赖（因其必须设 `allow_indirect_imports = True`），一跳借用由 `test_api_enum_parity.py::test_enum_names_imported_only_from_allowlisted_modules` 的名称级守卫补上；两者职责互补，缺一即有静默漏洞。附其已知边界（`from X import meta` 再 `meta.AgentStatus` 等形态不受覆盖）。
 - 与预估不符之处及其原因。
 
-- [ ] **Step 3: 提交**
+- [ ] **Step 4: 提交**
 
 ```bash
 git add -A
@@ -1030,7 +1005,7 @@ spec 停留在推算值。
 EOF
 ```
 
-- [ ] **Step 4: 终检后交付**
+- [ ] **Step 5: 终检后交付**
 
 向调用者报告：终检 6 项的实测输出、`TOTAL=0` 与 `7 kept` 的证据、快照 diff 为空、ORM 侧改动仅两壳，以及分支名供合并评审。**不要**自行合并到 `main`。
 
@@ -1042,7 +1017,7 @@ EOF
 |---|---|---|
 | `ModuleNotFoundError: No module named 'miles_core'` | 用了裸 `python -m pytest` | 改 `uv run --all-packages --group dev python -m pytest -q` |
 | 裸 `pytest` 收集期报 9 个错 | 本仓既存缺陷（无 `__init__.py` 与 `pythonpath` 配置），与本设计无关 | 用上面的 `python -m pytest` 形式；**不要**顺手修 pytest 配置 |
-| 平价测试报「成员名或顺序不一致」 | 声明时漏抄/错序 | 以 ORM 源为唯一准，逐字对照（Task 2 Step 3 的 `rg` 复核命令） |
+| 平价测试报「成员名或顺序不一致」/「类 docstring … != …」 | 声明时漏抄、错序，或漏抄 ORM 侧的类 docstring | 以 ORM 源为唯一准，逐字对照（Task 2 Step 3 的 `rg` 复核命令） |
 | `lint-imports` BROKEN 且指向没改过的文件 | 某处 import 被漏迁 | 按输出回到 Task 3 / Task 4 补；**不要**加 `ignore_imports` |
-| `export_openapi --check` 报 drift | 某枚举的值/顺序与 ORM 不一致（Pydantic 会塌成 `X__1` 组件名），或某 schema 字段类型被改 | 先跑平价测试定位到具体成员；快照**不要**用 `--write` 覆盖 |
+| `export_openapi --check` 报 drift | 某枚举的值/顺序与 ORM 不一致（Pydantic 会塌成 `X__1` 组件名）、漏抄/擅加枚举类 docstring（Pydantic 渲染成 `description`），或某 schema 字段类型被改 | 先跑平价测试定位到具体枚举；若差值恰是若干行 `"description"`，即为类 docstring 漏抄；快照**不要**用 `--write` 覆盖 |
 | `ruff check` 报 re-export 壳的 F401 | 壳缺 `__all__` | 按 Global Constraints 补 `__all__` |

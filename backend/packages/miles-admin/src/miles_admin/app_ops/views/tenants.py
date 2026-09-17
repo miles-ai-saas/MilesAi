@@ -11,9 +11,9 @@ from miles_admin.app_ops.services.tenant import AdminTenantService
 from miles_admin.app_sys.deps import AdminContext, get_platform_admin, require_admin_role
 from miles_common.response import ok, page_ok
 from miles_common.schema import PageParams
+from miles_common.schemas.api_enums import TenantStatus
 from miles_core.deps import get_page_params
 from miles_core.infra.db import get_db
-from miles_core.models.platform.tenant import TenantStatus
 
 router = APIRouter()
 

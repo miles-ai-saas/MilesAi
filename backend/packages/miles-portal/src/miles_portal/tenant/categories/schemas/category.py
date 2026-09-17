@@ -5,7 +5,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-from miles_core.models.meta.category import CategoryDomain
+from miles_portal.tenant.categories.schemas.enums import CategoryDomain
 
 
 class CategoryOut(BaseModel):

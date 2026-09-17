@@ -5,7 +5,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-from miles_admin.models import RiskSeverity
+from miles_admin.app_ops.schemas.enums import RiskSeverity
 
 
 # 风险事件输出。

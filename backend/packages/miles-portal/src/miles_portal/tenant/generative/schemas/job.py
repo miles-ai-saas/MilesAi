@@ -5,7 +5,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-from miles_core.models.model.generative_job import GenerativeJobStatus
+from miles_portal.tenant.generative.schemas.enums import GenerativeJobStatus
 
 
 # 生成任务详情输出。

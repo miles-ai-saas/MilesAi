@@ -7,10 +7,10 @@ from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from miles_admin.app_ops.schemas import BillingPlanCreate, BillingPlanUpdate, TenantBillStatusUpdate
+from miles_admin.app_ops.schemas.enums import BillStatus
 from miles_admin.app_ops.services.audit import write_audit_log
 from miles_admin.app_ops.services.billing import AdminBillingService
 from miles_admin.app_sys.deps import AdminContext, get_platform_admin, require_admin_role
-from miles_admin.models import BillStatus
 from miles_common.response import ok, page_ok
 from miles_common.schema import PageParams
 from miles_core.deps import get_page_params

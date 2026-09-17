@@ -6,10 +6,10 @@ from fastapi import APIRouter, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from miles_admin.app_ops.schemas import IpBlacklistCreate, RateLimitRuleCreate, RateLimitRuleUpdate
+from miles_admin.app_ops.schemas.enums import RiskSeverity
 from miles_admin.app_ops.services.audit import write_audit_log
 from miles_admin.app_ops.services.risk import AdminRiskService
 from miles_admin.app_sys.deps import AdminContext, get_platform_admin, require_admin_role
-from miles_admin.models import RiskSeverity
 from miles_common.response import ok, page_ok
 from miles_common.schema import PageParams
 from miles_core.deps import get_page_params

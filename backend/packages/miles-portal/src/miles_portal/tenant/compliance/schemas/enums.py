@@ -1,0 +1,15 @@
+"""合规 API 侧枚举声明。
+
+与 ORM 侧 ``miles_core.models.compliance.constants`` 逐字同形（成员名/顺序/值/类 docstring），因 API 声明层不得依赖 ORM 模块
+（``.importlinter`` 契约 ``api-layer-no-orm``）而独立声明；两侧一致性由
+``tests/models/test_api_enum_parity.py`` 守卫。
+"""
+
+import enum
+
+
+class SensitiveAction(enum.StrEnum):
+    """敏感词处置动作。"""
+
+    WARN = "warn"
+    BLOCK = "block"

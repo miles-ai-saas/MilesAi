@@ -8,7 +8,7 @@ from uuid import UUID
 from pydantic import BaseModel, Field, field_validator
 
 from miles_portal.tenant.tags.schemas.tag import TagRefOut
-from miles_portal.tenant.tools.models import ToolType
+from miles_portal.tenant.tools.schemas.enums import ToolType
 
 SLUG_RE = re.compile(r"^[a-z][a-z0-9_]{0,62}$")
 

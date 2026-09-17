@@ -5,7 +5,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-from miles_core.models.platform.tenant import TenantStatus
+from miles_common.schemas.api_enums import TenantStatus
 
 
 # 创建租户入参。

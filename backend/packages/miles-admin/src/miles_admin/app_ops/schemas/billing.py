@@ -6,7 +6,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-from miles_admin.models import BillStatus
+from miles_admin.app_ops.schemas.enums import BillStatus
 
 
 # 计费套餐输出。
