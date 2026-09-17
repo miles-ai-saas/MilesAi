@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import ast
 import enum
+import json
 from pathlib import Path
 
 import pytest
@@ -127,6 +128,7 @@ def test_api_enum_matches_orm_verbatim(name, api, orm):
 
 _BACKEND = Path(__file__).resolve().parents[2]
 _PACKAGES = _BACKEND / "packages"
+_OPENAPI_SNAPSHOT = _BACKEND / "openapi" / "openapi.snapshot.json"
 _ENUM_NAMES = frozenset(name for name, _, _ in CASES)
 
 # 这 21 个枚举名在 API 侧被允许的**引入来源模块**白名单（实测当前 19 个 (模块, 名) 组合全在其中）。
@@ -187,7 +189,7 @@ def _identity_comparisons(path: Path) -> list[tuple[int, str]]:
 
 
 def test_no_identity_comparison_on_enum_members():
-    """两份声明是不同类，`is` 跨类恒为 False —— 全仓禁止该写法。
+    """两份声明是不同类，`is` 跨类恒为 False —— `packages/` 内生产代码禁止该写法。
 
     用 AST 判据而非文本匹配：注释与 docstring 里的说明性提及不应误伤（同 ``tests/test_l3_neutral_imports.py``
     的意图，但那里的目标是 import 语句、这里是比较表达式，故收紧为语法级）。
@@ -206,12 +208,15 @@ def _module_and_package(path: Path) -> tuple[str, str]:
 
     只取相对 ``_PACKAGES`` 的路径段：绝对路径若恰好含外层 ``src``（如检出在 ``~/src/...``），
     ``parts.index("src")`` 会命中外层那个，相对 import 被解析成垃圾模块名而假失败。
+    ``__init__.py`` 的 ``__package__`` 是去掉 ``.__init__`` 后的模块全名**本身**（``a.b``），
+    再剥一层会得到 ``a``，使 ``from .x import y`` 解析成不存在的 ``a.x`` 而假失败。
     """
     parts = path.relative_to(_PACKAGES).parts
     dotted = ".".join(parts[parts.index("src") + 1 :])[: -len(".py")]
-    if dotted.endswith(".__init__"):
+    is_init = path.name == "__init__.py"
+    if is_init:
         dotted = dotted[: -len(".__init__")]
-    return dotted, dotted.rsplit(".", 1)[0]
+    return dotted, (dotted if is_init else dotted.rsplit(".", 1)[0])
 
 
 def _resolve_import_from(path: Path, node: ast.ImportFrom) -> str:
@@ -279,3 +284,22 @@ def test_parity_table_covers_exactly_21_enums():
     """防有人删表项「修好」测试：表必须恰好 21 项且无重名。"""
     assert len(CASES) == 21, f"平价表应恰有 21 项，实际 {len(CASES)}"
     assert len({name for name, _, _ in CASES}) == 21
+
+
+def test_parity_table_covers_every_enum_in_openapi_snapshot():
+    """公开契约实际暴露的枚举必须都在平价表内 —— 堵住「新增枚举未登记」的静默放行。
+
+    ``CASES`` 是人工清单：新增一个对外持久化枚举时，契约（一跳借用形态）拦不住、名称级守卫
+    认不得新名字、``test_parity_table_covers_exactly_21_enums`` 只查项数（新增不违反它），
+    三道护栏同时 fail-open。本测试反向以快照（对外契约的实际产物）为准：Pydantic 把 ``StrEnum``
+    渲染成带 ``enum`` 键的组件，故凡带 ``enum`` 键的组件名都必须在 ``CASES`` 中。
+    """
+    schemas = json.loads(_OPENAPI_SNAPSHOT.read_text(encoding="utf-8"))["components"]["schemas"]
+    exposed = {name for name, schema in schemas.items() if isinstance(schema, dict) and "enum" in schema}
+    missing = sorted(exposed - _ENUM_NAMES)
+    assert not missing, (
+        f"OpenAPI 快照暴露了平价表未登记的枚举：{missing}。"
+        "新增对外（持久化）枚举时需同步 CASES 与 _ENUM_IMPORT_ALLOWLIST，"
+        "否则契约、名称级守卫与项数检查会同时静默放行"
+        f"（快照：{_OPENAPI_SNAPSHOT}）。"
+    )
