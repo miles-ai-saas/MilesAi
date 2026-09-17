@@ -57,9 +57,9 @@ Batch 3「函数实现与功能边界」清单中的项 11 原文是「解耦 `v
 | ORM 实体（`AgentScheduleRun`） | 1 | 1 个实体 | 结构性改造（§5.4） |
 | **合计** | **28** | **21 个枚举**（17 直接 + 2 取值 + 2 随 DTO 携带）+ 2 个 DTO 模块 + 1 个实体 | |
 
-明细（文件:行 → 被引用模块 → 名称）：
+明细（文件:行 → 被引用模块 → 名称）。**「行」列是改造前审计快照**（迁移动工前扫到的原始行号；如 `agents/schemas/agent.py` 的 14 在 Task 1 docstring + Task 3 isort 后已下移到 22），不要拿它去当前文件里定位：
 
-| # | 文件 | 行 | 被引用模块 | 名称 | 类别 |
+| # | 文件 | 行（改造前快照） | 被引用模块 | 名称 | 类别 |
 |---|---|---|---|---|---|
 | 1 | `miles-portal/.../a2a/schemas/peer.py` | 12 | `miles_portal.tenant.a2a.models` | `A2aPeerStatus` | 枚举 |
 | 2 | `miles-portal/.../agents/schemas/agent.py` | 14 | `miles_core.models.agent` | `AgentStatus`, `AgentType` | 枚举 |
@@ -343,6 +343,14 @@ def from_model(cls, entity) -> AgentScheduleRunOut:
 - 2026-09-17 **自审修正**：初稿 §3.1 的分类计数（写成 17+2+4+1）、§5.2 的 `api_enums` 计数（写成 5）、portal 文件数（写成 12）、§5.5/§7 的新文件总数（写成 17）均有误，已改为机器复算值：枚举行 22 / 取值行 2 / DTO 行 3 / 实体行 1 = 28 处；去重后 17（作类型）+ 2（取值）+ 2（随 DTO 携带）= **21** 个枚举；新文件 **15** 个（11 portal + 3 `miles_common` + 1 admin）。复算脚本见 §3.1 的「复现方式」。
 - 2026-09-17 **契约漏洞修正（用户已确认收敛方案）**：写实施计划前的隔离沙箱探针发现，只列子域包时 `from miles_core.models import AgentStatus`（图边指向**父聚合自身**）会**静默通过**，而它正是本仓惯用写法（`miles_core/models/__init__.py` re-export 43 个名字含 8 个枚举）。故 §5.1 的 `forbidden_modules` 由 20 条收敛为 10 条：12 条 `miles_core.models.<子域>` → 1 条 `miles_core.models`。新增 §3.3 第 5 条记录该探针（含「`from miles_core.models import agent` 取子模块会被抓，故逃逸面仅限父包自身属性」这一区分），§6.3 增加第 4 项敏感度对照，§7 R2 相应缩减，§2.1 G2 与 §8 判据同步更新。收敛安全性已实测：views/schemas 对 `miles_core.models.*` 的引用恰好是 §3.1 的 28 处，无合法的非 ORM 引用被误伤。
 - 2026-09-17 **数字勘误（Task 5 执行期实测）**：`miles_core/models/__init__.py` 的 `__all__` 实为 **43** 个名字（此前 spec/plan 多处写 45，无任何度量依据）。同时订正两处执行细节：敏感度对照第 1 项的行号由 14 下移到 **22**（Task 1 docstring + Task 3 isort 变动所致，改为按内容定位）；第 2 项原写 `from miles_core.models import AgentStatus, AgentType`，但 **`AgentType` 未被父包 re-export**（8 个被 re-export 的枚举中不含它），该写法导入语义本身不成立，已改为只用 `AgentStatus`。
+- 2026-09-17 **终检实测回填（Task 6，BASE = `a1e6e95a`，HEAD = 终检提交前 `40e06362`）**：
+  - 终检 6 项逐条实测：探测器 `scan_orm_sites.py` → `TOTAL=0`；`lint-imports` → `Contracts: 7 kept, 0 broken.`（analyzed 772 files / 2515 dependencies）；快照 → `git diff --stat $BASE -- openapi/openapi.snapshot.json` 空输出；ORM 侧零改动 → `models/` 下**恰好 2 个 re-export 壳**（`models/agent/chat_io.py`、`models/marketplace/dto.py`）、`alembic/` 空、`(enum.StrEnum)`/`values_callable`/`SAEnum` 改动行 `0`、`pyproject.toml` 的 `values_callable =` 改动 `0`；平价测试 `tests/models/test_api_enum_parity.py` → **`45 passed`**；五道门禁 → `ruff format --check .`（979 files already formatted）、`ruff check .`（All checks passed!）、`lint-imports`（7 kept）、`export_openapi --check`（OK）、`pytest -q` → **1167 passed in 12.54s**。
+  - **实际文件数 vs §5.5 预估**：新增 15 个如期（11 portal `schemas/enums.py` + 3 `miles_common` + 1 admin），另加 1 个新测试文件 `tests/models/test_api_enum_parity.py`（§5.5 单列）→ 共 16；修改 30 项如期（§3.1 的 27 个全部命中 + `.importlinter` + 2 个壳），另加 `tests/tenant/agents/test_agent_chat_io_shim.py`（Task 1 Step 8 补 `ChatRequest is common_chat_io.ChatRequest` 断言）→ 共 31，比预估多 1。
+  - **pytest 1167 = 基线 1122 + 45**，+45 恰为新平价测试文件全部用例：逐字比对 21 + 独立声明 21 + 表完整性 1 + `is` 比较守卫 1 + **名称级守卫 1（Task 5b 追加，故 Task 5 时的 1166/44 升为 1167/45）**。
+  - **Task 5b 的两道互补门禁（用户裁决方案 B）**：`api-layer-no-orm` 契约必须设 `allow_indirect_imports = True`（否则 36 处 `views`/`schemas` → `miles_core.deps` → ORM 的引用全成误报），故**只能拦直接依赖**；经中间模块的一跳借用（`from ...agents.meta import AgentStatus`，`meta` 自身 import 了该 ORM 枚举）实测契约仍报 `7 kept`、探测器仍 `TOTAL=0` —— 两道门全绿而耦合已回流。补位的是 `test_api_enum_parity.py::test_enum_names_imported_only_from_allowlisted_modules`：按「导入名 + 来源模块白名单」判定、不依赖图边，覆盖 `from <非白名单模块> import <枚举名>` 形态（含相对 import）。两者职责互补，**缺一即有静默漏洞**。
+  - **名称级守卫的已知边界（需模块属性流/图分析，有意不堵）**：`from X import meta` 再 `meta.AgentStatus`（导入的是模块名而非枚举名）、`import X as m` 再 `m.AgentStatus`（裸 `import` 的绑定名不是枚举名）均不受覆盖；`from X import enums` 再 `enums.AgentStatus` 引的就是白名单模块本身，不算漏洞。
+  - **其余偏差**：前置专项 U042（`(str, Enum)` → `StrEnum` 迁移，§2.2 N5）无偏差 —— 本支线对 `models/` 的枚举基类/成员值/`values_callable` 改动为 0（见上「ORM 侧零改动」），U042 的等价性结论继续成立。除此之外与预估一致（新文件数、契约条数 6→7、快照逐字节不变）。
+  - **同提交的文档陈旧清扫**（用户 2026-09-17 裁决「全做」）：plan 内嵌的正则版 `is` 判据与三项 `_mismatch_report` 删除并改为指向真实测试文件、记录判据要点（五项全等 / AST 判据 / 名称级守卫）；修 `marketpalce` 拼写；plan 模块 docstring 模板与 5 个带类 docstring 的声明文件补「类 docstring」；plan Task 3 表与 §3.1 表加「（改造前快照）」消歧（行号数值 14/15 保持原样、只声明其口径）；plan 内嵌 `.importlinter` 契约块补齐 Task 5b 的注释；plan 的 18 类内嵌块补回 5 个类 docstring。
 
 ---
 
