@@ -12,7 +12,7 @@ from miles_core.models.base import TimestampMixin, UUIDPrimaryKeyMixin
 
 
 # 流程发布状态：草稿 / 已发布。
-class FlowStatus(str, enum.Enum):
+class FlowStatus(enum.StrEnum):
     DRAFT = "draft"
     PUBLISHED = "published"
 

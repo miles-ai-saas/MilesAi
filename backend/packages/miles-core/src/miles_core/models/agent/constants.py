@@ -12,7 +12,7 @@
 import enum
 
 
-class AgentRuntimeMode(str, enum.Enum):
+class AgentRuntimeMode(enum.StrEnum):
     """``agent.config.runtime_mode``：RAG 与编排路径开关。"""
 
     LEGACY = "legacy"
@@ -20,7 +20,7 @@ class AgentRuntimeMode(str, enum.Enum):
     WORKFLOW = "workflow"
 
 
-class AgentPlanner(str, enum.Enum):
+class AgentPlanner(enum.StrEnum):
     """``agent.config.planner``：子智能体 / A2A 宿主编排引擎。"""
 
     DEEPAGENTS = "deepagents"
@@ -29,7 +29,7 @@ class AgentPlanner(str, enum.Enum):
 
 
 # 子智能体 role_hint 取值（用于校验与展示）。
-class SubAgentRoleHint(str, enum.Enum):
+class SubAgentRoleHint(enum.StrEnum):
     RETRIEVAL = "retrieval"
     OCR = "ocr"
     SUMMARY = "summary"

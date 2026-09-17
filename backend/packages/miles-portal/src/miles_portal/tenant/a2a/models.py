@@ -17,14 +17,14 @@ from miles_core.models.base import TimestampMixin, UUIDPrimaryKeyMixin
 
 
 # 外部对端连接状态：待同步、可用、同步失败、已停用。
-class A2aPeerStatus(str, enum.Enum):
+class A2aPeerStatus(enum.StrEnum):
     PENDING = "pending"
     ACTIVE = "active"
     ERROR = "error"
     INACTIVE = "inactive"
 
 
-class A2aInvokePolicy(str, enum.Enum):
+class A2aInvokePolicy(enum.StrEnum):
     """Agent ``config.a2a_invoke_policy`` 取值。"""
 
     RULES_THEN_PLAN = "rules_then_plan"
@@ -32,7 +32,7 @@ class A2aInvokePolicy(str, enum.Enum):
     PLAN_ONLY = "plan_only"
 
 
-class A2aPlanTrigger(str, enum.Enum):
+class A2aPlanTrigger(enum.StrEnum):
     """A2A 调用计划项来源：规则命中 vs 规划器。"""
 
     RULE = "rule"

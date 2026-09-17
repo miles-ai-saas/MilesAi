@@ -15,7 +15,7 @@ from miles_core.infra.db import Base
 from miles_core.models.base import TimestampMixin, UUIDPrimaryKeyMixin
 
 
-class CategoryDomain(str, enum.Enum):
+class CategoryDomain(enum.StrEnum):
     """工作台资源域；与列表 Tab、校验时的 domain 参数一致。"""
 
     AGENT = "agent"

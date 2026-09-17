@@ -14,7 +14,7 @@ from miles_core.models.base import TimestampMixin, UUIDPrimaryKeyMixin
 
 
 # 应用上架/审核状态。
-class MarketplaceAppStatus(str, enum.Enum):
+class MarketplaceAppStatus(enum.StrEnum):
     DRAFT = "draft"
     PENDING_REVIEW = "pending_review"
     PUBLISHED = "published"
@@ -23,7 +23,7 @@ class MarketplaceAppStatus(str, enum.Enum):
 
 
 # 应用可见范围：公开或仅指定租户。
-class MarketplaceAppVisibility(str, enum.Enum):
+class MarketplaceAppVisibility(enum.StrEnum):
     PUBLIC = "public"
     TENANT_ONLY = "tenant_only"
 

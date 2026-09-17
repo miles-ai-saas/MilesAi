@@ -15,7 +15,7 @@ from miles_core.models.base import AuditTimestampMixin, UUIDPrimaryKeyMixin
 
 
 # 单次定时任务的执行结果状态。
-class AgentScheduleRunStatus(str, enum.Enum):
+class AgentScheduleRunStatus(enum.StrEnum):
     SUCCESS = "success"
     FAILED = "failed"
 

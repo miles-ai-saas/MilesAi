@@ -7,7 +7,7 @@ MCP_SESSION_HEADER = "mcp-session-id"
 MCP_CLIENT_INFO = {"name": "milesai", "version": "0.1.0"}
 
 
-class McpTransport(str, enum.Enum):
+class McpTransport(enum.StrEnum):
     """MCP 连接传输类型（与 ``agt_mcp_services.transport`` 存库值一致）。"""
 
     HTTP = "http"

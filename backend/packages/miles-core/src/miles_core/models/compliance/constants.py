@@ -21,7 +21,7 @@ COMPLIANCE_SCAN_MODULES = frozenset(
 )
 
 
-class SensitiveAction(str, enum.Enum):
+class SensitiveAction(enum.StrEnum):
     """敏感词处置动作。"""
 
     WARN = "warn"

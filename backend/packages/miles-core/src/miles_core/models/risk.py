@@ -13,7 +13,7 @@ from miles_core.models.base import TimestampMixin, UUIDPrimaryKeyMixin
 
 
 # 风险事件严重级别。
-class RiskSeverity(str, enum.Enum):
+class RiskSeverity(enum.StrEnum):
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"

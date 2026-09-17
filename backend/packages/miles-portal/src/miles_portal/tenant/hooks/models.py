@@ -13,12 +13,12 @@ from miles_core.models.base import AuditTimestampMixin, TimestampMixin, UUIDPrim
 
 
 # 钩子实现类型：HTTP 回调或内置 Python 函数。
-class HookType(str, enum.Enum):
+class HookType(enum.StrEnum):
     HTTP = "http"
     PYTHON = "python"
 
 
-class HookTrigger(str, enum.Enum):
+class HookTrigger(enum.StrEnum):
     """挂载时机：调用、推理、工具、错误等关键节点。"""
 
     BEFORE_CALL = "before_call"
@@ -31,7 +31,7 @@ class HookTrigger(str, enum.Enum):
 
 
 # 钩子作用域：全局、智能体、流程、工具、应用。
-class HookScope(str, enum.Enum):
+class HookScope(enum.StrEnum):
     GLOBAL = "global"
     AGENT = "agent"
     FLOW = "flow"
