@@ -21,12 +21,59 @@ from pathlib import Path
 
 import pytest
 
+from miles_admin.app_ops.schemas import enums as admin_enums
+from miles_admin.models import billing as orm_admin_billing
+from miles_common.schemas import api_enums as common_enums
 from miles_common.schemas import marketplace as common_marketplace
+from miles_core.models import risk as orm_risk
+from miles_core.models.agent import agent as orm_agent
+from miles_core.models.compliance import constants as orm_compliance
+from miles_core.models.flow import flow as orm_flow
+from miles_core.models.kb import knowledge_base as orm_kb
 from miles_core.models.marketplace import models as orm_marketplace
+from miles_core.models.meta import category as orm_category
+from miles_core.models.model import catalog as orm_catalog
+from miles_core.models.model import generative_job as orm_generative_job
+from miles_core.models.platform import tenant as orm_tenant
+from miles_core.models.task import task_record as orm_task_record
+from miles_portal.tenant.a2a import models as orm_a2a
+from miles_portal.tenant.a2a.schemas import enums as a2a_enums
+from miles_portal.tenant.agents.schemas import enums as agents_enums
+from miles_portal.tenant.categories.schemas import enums as categories_enums
+from miles_portal.tenant.compliance.schemas import enums as compliance_enums
+from miles_portal.tenant.flows.schemas import enums as flows_enums
+from miles_portal.tenant.generative.schemas import enums as generative_enums
+from miles_portal.tenant.hooks import models as orm_hooks
+from miles_portal.tenant.hooks.schemas import enums as hooks_enums
+from miles_portal.tenant.kb.schemas import enums as kb_enums
+from miles_portal.tenant.mcp import models as orm_mcp
+from miles_portal.tenant.mcp.schemas import enums as mcp_enums
+from miles_portal.tenant.tasks.schemas import enums as tasks_enums
+from miles_portal.tenant.tools import models as orm_tools
+from miles_portal.tenant.tools.schemas import enums as tools_enums
 
 CASES: list[tuple[str, type[enum.Enum], type[enum.Enum]]] = [
+    ("A2aPeerStatus", a2a_enums.A2aPeerStatus, orm_a2a.A2aPeerStatus),
+    ("AgentStatus", agents_enums.AgentStatus, orm_agent.AgentStatus),
+    ("AgentType", agents_enums.AgentType, orm_agent.AgentType),
+    ("BillStatus", admin_enums.BillStatus, orm_admin_billing.BillStatus),
+    ("CategoryDomain", categories_enums.CategoryDomain, orm_category.CategoryDomain),
+    ("DocumentStatus", kb_enums.DocumentStatus, orm_kb.DocumentStatus),
+    ("FlowStatus", flows_enums.FlowStatus, orm_flow.FlowStatus),
+    ("GenerativeJobStatus", generative_enums.GenerativeJobStatus, orm_generative_job.GenerativeJobStatus),
+    ("HookScope", hooks_enums.HookScope, orm_hooks.HookScope),
+    ("HookTrigger", hooks_enums.HookTrigger, orm_hooks.HookTrigger),
+    ("HookType", hooks_enums.HookType, orm_hooks.HookType),
     ("MarketplaceAppStatus", common_marketplace.MarketplaceAppStatus, orm_marketplace.MarketplaceAppStatus),
     ("MarketplaceAppVisibility", common_marketplace.MarketplaceAppVisibility, orm_marketplace.MarketplaceAppVisibility),
+    ("McpStatus", mcp_enums.McpStatus, orm_mcp.McpStatus),
+    ("ModelCapabilityType", common_enums.ModelCapabilityType, orm_catalog.ModelCapabilityType),
+    ("ModelVendor", common_enums.ModelVendor, orm_catalog.ModelVendor),
+    ("RiskSeverity", admin_enums.RiskSeverity, orm_risk.RiskSeverity),
+    ("SensitiveAction", compliance_enums.SensitiveAction, orm_compliance.SensitiveAction),
+    ("TaskStatus", tasks_enums.TaskStatus, orm_task_record.TaskStatus),
+    ("TenantStatus", common_enums.TenantStatus, orm_tenant.TenantStatus),
+    ("ToolType", tools_enums.ToolType, orm_tools.ToolType),
 ]
 
 
@@ -87,3 +134,9 @@ def test_no_identity_comparison_on_enum_members():
         for lineno, expr in _identity_comparisons(path):
             offenders.append(f"{path.relative_to(_PACKAGES)}:{lineno}: is 比较 {expr}")
     assert not offenders, "API 侧与 ORM 侧的枚举是不同类，`is` 比较跨类恒为 False（`==` / `in` 才按值成立）：\n" + "\n".join(offenders)
+
+
+def test_parity_table_covers_exactly_21_enums():
+    """防有人删表项「修好」测试：表必须恰好 21 项且无重名。"""
+    assert len(CASES) == 21, f"平价表应恰有 21 项，实际 {len(CASES)}"
+    assert len({name for name, _, _ in CASES}) == 21
