@@ -5,7 +5,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-from miles_portal.tenant.compliance.models import SensitiveAction
+from miles_portal.tenant.compliance.schemas.enums import SensitiveAction
 
 # --- 词库 ---
 

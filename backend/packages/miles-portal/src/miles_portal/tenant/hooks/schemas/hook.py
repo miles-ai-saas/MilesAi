@@ -5,7 +5,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-from miles_portal.tenant.hooks.models import HookScope, HookTrigger, HookType
+from miles_portal.tenant.hooks.schemas.enums import HookScope, HookTrigger, HookType
 
 
 # 创建钩子定义；服务层会据此附带一条绑定。

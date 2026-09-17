@@ -19,7 +19,7 @@ from miles_common.schemas.chat_io import (  # noqa: F401 — re-export（Chat* �
     ChatResponse,
     PendingToolCall,
 )
-from miles_core.models.agent import AgentStatus, AgentType
+from miles_portal.tenant.agents.schemas.enums import AgentStatus, AgentType
 from miles_portal.tenant.tags.schemas.tag import TagRefOut
 
 

@@ -6,7 +6,7 @@ from uuid import UUID
 from pydantic import BaseModel, Field, model_validator
 
 from miles_common.schemas.media import MediaRefIn
-from miles_core.models.flow import FlowStatus
+from miles_portal.tenant.flows.schemas.enums import FlowStatus
 from miles_portal.tenant.tags.schemas.tag import TagRefOut
 
 

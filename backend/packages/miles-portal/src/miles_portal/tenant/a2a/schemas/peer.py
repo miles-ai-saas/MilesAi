@@ -9,7 +9,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-from miles_portal.tenant.a2a.models import A2aPeerStatus
+from miles_portal.tenant.a2a.schemas.enums import A2aPeerStatus
 
 
 # 创建外部 A2A 对端的入参。

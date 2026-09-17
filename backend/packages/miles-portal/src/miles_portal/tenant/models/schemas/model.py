@@ -5,7 +5,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-from miles_core.models.model.catalog import ModelCapabilityType, ModelVendor
+from miles_common.schemas.api_enums import ModelCapabilityType, ModelVendor
 
 
 # 创建自定义模型配置的入参。

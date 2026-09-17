@@ -5,7 +5,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-from miles_core.models.task.task_record import TaskStatus
+from miles_portal.tenant.tasks.schemas.enums import TaskStatus
 
 
 # 异步任务记录输出。

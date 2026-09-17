@@ -10,7 +10,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-from miles_portal.tenant.mcp.models import McpStatus
+from miles_portal.tenant.mcp.schemas.enums import McpStatus
 
 
 class McpServiceCreate(BaseModel):

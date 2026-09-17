@@ -7,8 +7,6 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-from miles_core.models.agent.schedule_run import AgentScheduleRun
-
 
 # 定时任务单次执行记录输出。
 class AgentScheduleRunOut(BaseModel):
@@ -23,6 +21,6 @@ class AgentScheduleRunOut(BaseModel):
     model_config = {"from_attributes": True}
 
     @classmethod
-    def from_model(cls, entity: AgentScheduleRun) -> AgentScheduleRunOut:
-        """由 ``AgentScheduleRun`` ORM 实体校验转换为输出模型。"""
+    def from_model(cls, entity) -> AgentScheduleRunOut:
+        """由 ORM 实体校验转换为输出模型；入参为 ORM 实体，不注解以避免 API 层依赖 ORM。"""
         return cls.model_validate(entity)
