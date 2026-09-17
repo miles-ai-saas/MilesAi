@@ -64,3 +64,43 @@ name = 基础设施/模型层不得依赖 AI 编排层
 type = forbidden
 source_modules = miles_core
 forbidden_modules = miles_ai
+
+# API 声明层的目录级约束：views/schemas 不得 import 承载 SQLAlchemy 实体或持久化枚举的模块。
+# 必要性：包分层方向契约管不到这条边（miles_portal 用 miles_core.models 是被允许的——
+# services/repositories 必须用 ORM 查询），故需要包内的目录级约束。
+[importlinter:contract:api-layer-no-orm]
+name = API 声明层不得依赖 ORM
+type = forbidden
+source_modules =
+    miles_portal.tenant.*.views
+    miles_portal.tenant.*.schemas
+    miles_admin.app_ops.views
+    miles_admin.app_ops.schemas
+    miles_admin.app_sys.views
+    miles_admin.app_sys.schemas
+    miles_openapi.views
+# 必须列到**最外层胖聚合**：
+# 1) from miles_core.models.agent import X 的图边目标是包 __init__ 而非叶子模块，只列叶子会漏网；
+# 2) miles_core/models/__init__.py 自身 re-export 了 43 个名字（含 8 个持久化枚举）且带 __all__，
+#    故 from miles_core.models import AgentStatus 的图边目标是 miles_core.models —— 只列子域包会静默放过。
+#    （数字实测：`len(miles_core.models.__all__)` == 43；被 re-export 的持久化枚举恰 8 个：
+#      AgentStatus / CategoryDomain / DocumentStatus / FlowStatus / GenerativeJobStatus /
+#      MarketplaceAppStatus / MarketplaceAppVisibility / TaskStatus。）
+#    （实测：from miles_core.models import agent 这种取子模块的写法会被解析到子模块边，故逃逸面仅限父包自身属性。）
+# 代价是整包禁令：views/schemas 也不得引用 miles_core.models.base / media.reader / tool.parameters 等
+# 非 ORM 模块。实测当前零引用；若将来确需引用，正解是把该中立模块下沉 miles_common，而不是放宽契约。
+# 因此被禁包内的纯 DTO 会被一并禁止 —— 这就是 chat_io / marketplace.dto 下沉的来由。
+forbidden_modules =
+    miles_core.models
+    miles_admin.models
+    miles_portal.tenant.a2a.models
+    miles_portal.tenant.audit_log.models
+    miles_portal.tenant.compliance.models
+    miles_portal.tenant.hooks.models
+    miles_portal.tenant.marketplace.models
+    miles_portal.tenant.mcp.models
+    miles_portal.tenant.prompts.models
+    miles_portal.tenant.skills.models
+    miles_portal.tenant.tools.models
+# 只判直接导入：不加会沿 views → miles_core.deps → miles_core.models.* 误报。
+allow_indirect_imports = True
