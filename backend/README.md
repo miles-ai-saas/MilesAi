@@ -167,7 +167,7 @@ tenant/tools/
 
 **主键 ID**：数据库主键与 Weaviate 对象 ID 均使用 **UUIDv7**（`miles_common/idgen.py`），时间有序，利于 B-tree / 向量库索引；JWT `jti`、HTTP `X-Trace-Id` 仍可用随机 UUID。
 
-**Alembic 模型登记**：勿在 `miles_core/models/__init__.py` 反向导入 `admin`（会循环引用）。新增 ORM 模块后，在 `miles_server/registry.py` 的 `load_all_models()` 中补一行 import。
+**Alembic 模型登记**：勿在 `miles_core/models/__init__.py` 反向导入 `admin`（会循环引用）。新增 ORM 模块后，把模块名加进 `miles_server/registry.py` 的 `_ORM_MODULES`（顺序无关）。漏加会被 `tests/models/test_orm_registry_completeness.py` 挡下——否则 `Base.metadata` 缺表，Alembic autogenerate 会把已有表判成待 DROP 的差异。
 
 **包 `__init__.py`**：各层目录均已补齐；`flow_runtime/templates/` 仅存放 JSON 模板，无需 `__init__.py`。顶层 `admin/`、`tenant/` 的 `__init__.py` 仅作文档，不在此 eager import 路由，避免循环依赖。
 

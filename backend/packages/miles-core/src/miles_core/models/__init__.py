@@ -1,7 +1,7 @@
 """核心 ORM 聚合导出（Alembic / FastAPI 启动时加载）。
 
 租户域表（``tenant/*/models``）不在此 re-export，避免循环引用；
-统一由 ``miles_server.registry.load_all_models`` 按序导入。
+统一由 ``miles_server.registry.load_all_models`` 导入（顺序无关）。
 
 域目录：platform / kb / flow / model / media / meta / task / storage / agent / marketplace / risk。
 """
