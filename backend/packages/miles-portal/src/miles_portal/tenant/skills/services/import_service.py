@@ -4,9 +4,15 @@
 同名 slug 由 overwrite_existing 决定覆盖或跳过（不计入 errors）。
 
 **阻塞调用一律离线**：``git clone`` 是外部进程（地址由用户提供，超时上限 300s），
-写包与解压上限 100MB（且解压后体积不受限），均经 ``asyncio.to_thread`` —— 否则
+写包与解压（上传上限 100MB、解压后上限 500MB）均经 ``asyncio.to_thread`` —— 否则
 单个挂起的远端或大包会阻塞整个事件循环
 （见 ``tests/test_no_blocking_calls_in_async.py``）。
+
+**ZIP 归档规模受限**：上传上限只约束压缩后大小，而文本技能包压缩比可达数十倍，
+故 ``_validate_zip_limits`` 另按中央目录的声明值校验解压后总体积与条目数，且**在
+解压前**执行（超限归档不落地任何文件）。损坏归档的 ``BadZipFile`` 转成 400 ——
+它不是 ``AppError``，不转换会以 500 返回。路径穿越与符号链接成员由 ``zipfile``
+自行净化，无需额外守卫。
 
 **Git 地址仅允许 http(s)**：经 ``validate_outbound_url`` 阻断 ``file://`` 等 scheme
 （``git clone`` 会识别它们，构成本地文件读取面）。内网 / link-local 拦截由
@@ -38,7 +44,6 @@ from miles_portal.tenant.skills.schemas.skill import SkillImportResult
 from miles_portal.tenant.skills.skill_layout import build_layout_index, merge_layout_into_config
 from miles_portal.tenant.skills.skill_md import parse_skill_md
 from miles_portal.tenant.skills.storage import (
-    _MAX_ZIP_BYTES,
     SKILL_MD_FILENAME,
     copy_skill_tree,
     discover_skill_dirs,
@@ -46,6 +51,33 @@ from miles_portal.tenant.skills.storage import (
     skill_package_dir,
     skill_slug_from_folder,
 )
+
+#: ZIP 上传体积上限（压缩后）。
+_MAX_ZIP_BYTES = 100 * 1024 * 1024
+
+#: ZIP 解压后**总体积**上限。上传上限只约束压缩后大小，而文本类技能包的压缩比可达
+#: 数十倍 —— 数百 KB 的包可膨胀到数十 GB 写满磁盘。取上传上限的 5 倍，既覆盖正常
+#: 文本压缩比，又给磁盘占用一个确定上界。
+_MAX_ZIP_UNCOMPRESSED_BYTES = 5 * _MAX_ZIP_BYTES
+
+#: ZIP 条目数上限（防 inode 耗尽）。技能包为文本文件，1 万条已远超实际需要。
+_MAX_ZIP_ENTRIES = 10_000
+
+
+def _validate_zip_limits(zf: zipfile.ZipFile) -> None:
+    """按中央目录的声明值校验归档规模；超限抛 ``BadRequestError``。
+
+    可以只信声明值：``zipfile`` 按声明的 ``file_size`` 截断读取，实际数据与之不符时
+    抛 ``BadZipFile``（CRC 校验），故谎报尺寸者会被拒绝而非绕过。校验在解压**之前**
+    执行，超限归档不会落地任何文件。
+    """
+    infos = zf.infolist()
+    if len(infos) > _MAX_ZIP_ENTRIES:
+        raise BadRequestError(f"压缩包内文件数超限（{len(infos)} > {_MAX_ZIP_ENTRIES}）")
+    total = sum(info.file_size for info in infos)
+    if total > _MAX_ZIP_UNCOMPRESSED_BYTES:
+        limit_mb = _MAX_ZIP_UNCOMPRESSED_BYTES // (1024 * 1024)
+        raise BadRequestError(f"压缩包解压后体积超限（{total // (1024 * 1024)}MB > {limit_mb}MB）")
 
 
 class SkillImportService:
@@ -93,8 +125,13 @@ class SkillImportService:
         try:
             zip_path = tmp / "upload.zip"
             await asyncio.to_thread(zip_path.write_bytes, file_bytes)
-            with zipfile.ZipFile(zip_path, "r") as zf:
-                await asyncio.to_thread(zf.extractall, tmp / "extracted")
+            try:
+                with zipfile.ZipFile(zip_path, "r") as zf:
+                    _validate_zip_limits(zf)
+                    await asyncio.to_thread(zf.extractall, tmp / "extracted")
+            except zipfile.BadZipFile as exc:
+                # BadZipFile 不是 AppError，不转换会以 500 返回（且丢失原因）
+                raise BadRequestError("压缩包不是有效的 zip 或已损坏") from exc
             extracted = tmp / "extracted"
             skills_root = extracted / "skills"
             if not skills_root.is_dir():

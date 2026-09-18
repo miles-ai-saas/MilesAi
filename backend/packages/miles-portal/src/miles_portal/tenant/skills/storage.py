@@ -15,7 +15,6 @@ from miles_core.config import get_settings
 
 SKILL_MD_FILENAME = "SKILL.md"
 _SLUG_RE = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_-]{0,127}$")
-_MAX_ZIP_BYTES = 100 * 1024 * 1024  # 与 import_zip 校验一致
 
 
 def skill_slug_from_folder(name: str) -> str:
