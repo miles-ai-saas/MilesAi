@@ -5,19 +5,28 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from types import SimpleNamespace
 from uuid import uuid4
+
+import pytest
 
 from miles_ai.integrations.langchain.toolkit.catalog import build_platform_tools
 from miles_ai.integrations.langchain.toolkit.naming import (
     MCP_FUNCTION_PREFIX,
     compose_mcp_tool_name,
+    ident_collision,
     is_mcp_tool_name,
     select_agent_tools,
+    service_ident,
 )
 from miles_ai.integrations.langchain.toolkit.specs import McpToolSpec, json_schema_to_pydantic, mcp_param_alias
+from miles_common.exceptions import BadRequestError
 from miles_core.tenant import TenantContext
 from miles_exec.mcp.tools import normalize_tools
+from miles_portal.tenant.mcp.models import McpService, McpStatus
+from miles_portal.tenant.mcp.schemas.mcp import McpServiceCreate, McpServiceUpdate
+from miles_portal.tenant.mcp.services.mcp import McpServiceManager
 from miles_portal.tenant.tools.invoke import context as invoke_context
 from miles_portal.tenant.tools.services import mcp_tools
 
@@ -48,13 +57,27 @@ class _Result:
 
 
 class _FakeDB:
-    """仅实现测试路径用到的 ``execute(...).scalars().all()``。"""
+    """仅实现测试路径用到的 DB 方法。"""
 
-    def __init__(self, rows: list) -> None:
+    def __init__(self, rows: list, *, get_row: object | None = None) -> None:
         self._rows = rows
+        self._get_row = get_row
+        self.added: list = []
 
     async def execute(self, _stmt) -> _Result:  # noqa: ANN001
         return _Result(self._rows)
+
+    def add(self, row) -> None:  # noqa: ANN001
+        self.added.append(row)
+
+    async def flush(self) -> None:
+        return None
+
+    async def refresh(self, _row) -> None:  # noqa: ANN001
+        return None
+
+    async def get(self, _model, _pk) -> object | None:  # noqa: ANN001
+        return self._get_row
 
 
 # --- 命名 ---
@@ -77,6 +100,65 @@ def test_compose_mcp_tool_name_is_stable_and_capped():
     name = compose_mcp_tool_name("x" * 100, "y" * 100)
     assert len(name) <= 64
     assert name == compose_mcp_tool_name("x" * 100, "y" * 100)
+
+
+# --- 服务 ident 唯一性（派发所依赖的不变量，由写入侧守住）---
+
+
+def test_service_ident_collision_is_deterministic_not_probabilistic():
+    """纯 ASCII 名走直通、不加摘要，故能**确定性地**撞上别人的 ident（不靠哈希运气）。
+
+    这正是「同租户内 ident 唯一」不能交给 ``service_ident`` 自我保证的原因；守点在写入侧，
+    见 ``test_create_service_guard_rejects_colliding_ident``。
+    """
+    victim = "MCP示例·知识检索"
+    attacker = service_ident(victim)  # 把服务名起成对手的 ident 即可
+    assert compose_mcp_tool_name(victim, "search") == compose_mcp_tool_name(attacker, "search")
+    assert ident_collision(attacker, [victim]) == victim
+
+
+def test_ident_collision_has_no_false_positive():
+    assert ident_collision("github", ["gitlab"]) is None
+    # 纯中文名清洗后都塌缩成 svc，仅靠 4 位摘要区分：摘要不同即不算冲突
+    assert service_ident("知识检索") != service_ident("待同步")
+    assert ident_collision("知识检索", ["待同步"]) is None
+    # 同名不算冲突（更新场景由调用方按 id 排除自身）
+    assert ident_collision("github", ["github"]) is None
+
+
+async def test_create_service_rejects_colliding_ident():
+    """走真实入口 ``create_service``：删掉那里的守卫调用本用例必须变红（避免同义反复）。"""
+    db = _FakeDB(["github", "MCP示例·知识检索"])
+    mgr = McpServiceManager(db, _ctx())
+    await mgr._assert_name_available("gitlab")  # 不冲突 → 放行
+    body = McpServiceCreate(name=service_ident("MCP示例·知识检索"), endpoint_url="https://example.com/mcp", transport="http")
+    with pytest.raises(BadRequestError, match="工具标识"):
+        await mgr.create_service(body)
+
+
+async def test_update_service_rejects_colliding_ident_but_allows_self():
+    """改名到冲突 ident 被拒；名字未变时不校验（否则存量冲突的服务无法再编辑）。"""
+    ctx = _ctx()
+    now = datetime.now(UTC)
+    row = McpService(
+        id=uuid4(),
+        name="旧名",
+        tenant_id=ctx.tenant_id,
+        endpoint_url="https://example.com/mcp",
+        transport="http",
+        connection_config={},
+        tools_cache=[],
+        status=McpStatus.ACTIVE,
+        created_at=now,
+        updated_at=now,
+    )
+    db = _FakeDB(["MCP示例·知识检索"], get_row=row)
+    mgr = McpServiceManager(db, ctx)
+
+    with pytest.raises(BadRequestError, match="工具标识"):
+        await mgr.update_service(row.id, McpServiceUpdate(name=service_ident("MCP示例·知识检索")))
+    updated = await mgr.update_service(row.id, McpServiceUpdate(name="旧名"))
+    assert updated.name == "旧名"
 
 
 # --- tools_cache 规范化 ---

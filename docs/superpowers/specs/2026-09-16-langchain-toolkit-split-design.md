@@ -34,7 +34,7 @@
 
 | 区块 | 行 | 内容 | 外部引用 |
 |---|---|---|---|
-| MCP 命名 | 43–98 | `MCP_FUNCTION_PREFIX`、`sanitize_ident`、`_service_ident`、`compose_mcp_tool_name`、`is_mcp_tool_name`、`select_agent_tools` | `naming` 部分被 4 处生产代码引用 |
+| MCP 命名 | 43–98 | `MCP_FUNCTION_PREFIX`、`sanitize_ident`、`service_ident`、`ident_collision`、`compose_mcp_tool_name`、`is_mcp_tool_name`、`select_agent_tools` | `naming` 部分被 4 处生产代码引用 |
 | 中性 spec | 100–121 | `CustomToolSpec`、`McpToolSpec` | 被 portal 的 L1 loader 引用 |
 | JSON Schema→pydantic | 123–188 | `_field_name`、`mcp_param_alias`、`json_schema_to_pydantic`、`_json_scalar_type` | 被测试引用 |
 | 入参 DTO | 189–297 | 13 个 `BaseModel` | 无（仅本模块内被 `args_schema=` 引用） |
@@ -295,8 +295,9 @@ build_platform_tools(cfg, custom_specs, mcp_specs)
 
 ## 9. 遗留
 
-- MCP 命名规则 `compose_mcp_tool_name` 的 64 字符截断 + 短哈希碰撞，当前靠「4 位十六进制」，
-  理论上存在碰撞（服务名极多时）。不在本次范围，此处仅登记。
+- ~~MCP 命名规则 `compose_mcp_tool_name` 的 64 字符截断 + 短哈希碰撞，当前靠「4 位十六进制」，
+  理论上存在碰撞（服务名极多时）。不在本次范围，此处仅登记。~~ → **已处置**（2026-09-18）：
+  核实后该条**不只是理论碰撞**，且后果比登记的更重；已在写入侧加守卫，见 §10 与下列更正。
 - `select_agent_tools` 的 `always_allow` 机制是「调用方记得传」，属与 loop 感知 DB 专项
   §1.2 同类形状（正确性依赖调用点）。不在本次范围。
 - 本次不动 `miles_portal/tenant/tools/` 下的同名概念（该目录 `services/tools.py` 365 行、
@@ -420,3 +421,30 @@ Task 4 的 Step 5 只收到「必记勘误 8」一条，故其修订覆盖了我
 按「形式」而非「位置」全仓扫一遍**——同类断言往往在多处复述。
 
 **终检时的基线 HEAD**：`0047bbd6`（本记录随其后的 docs-only 提交落地）。
+
+### 2026-09-18 更正并处置 §9 第 1 条（MCP 命名碰撞）
+
+原记录写「理论上存在碰撞（服务名极多时）」。实测**两点更正**：
+
+1. **不是纯概率问题**：`service_ident` 的直通路径（纯 ASCII 名）不加摘要，而清洗路径会追加
+   4 位摘要，两个命名空间不互斥 —— 所以每个被清洗的服务都存在一个**必然**撞上它的 ASCII 名字
+   （把新服务名起成对手的 ident 即可，无需哈希运气）。实测 `MCP示例·知识检索` → ident
+   `MCP_ba35`，再建名为 `MCP_ba35` 的服务即得到逐字节相同的 slug。真正纯概率的只有
+   4 位摘要之间的生日碰撞（清洗后同形者，如若干纯中文名都塌缩成 `svc`）。
+2. **后果比「碰撞」更重**：派发侧 `resolve_mcp_tool_meta` / `invoke_mcp_tool_by_slug` 都是
+   `load_tenant_mcp_services` → `find_mcp_tool` 取**首个**匹配，即按**全租户**服务列表比对 slug，
+   而非该智能体绑定的服务子集。故 ident 相同时，工具调用会静默落到先被遍历到的那个服务上，
+   且被误调的服务**可能根本未被该智能体绑定**。
+
+即：「同租户内服务 ident 唯一」是派发正确性所依赖的不变量，而此前无人在守。
+
+**处置（写入侧守卫，不改命名规则）**：`naming.service_ident`（由 `_service_ident` 提升为公开，
+因新增了跨模块消费者）+ 纯函数 `ident_collision`；`McpServiceManager._assert_name_available`
+在 `create_service` 与 `update_service`（仅当名字实际变化时）调用，冲突则 `BadRequestError`
+并指出与之冲突的服务名。选择写侧而非改命名规则的理由：命名改动会影响 LLM 可见的工具名，
+而写侧守卫的炸半径为零（ASCII 名逐字节不变，存量列表/调用不受影响）。读侧有意不动，
+故存量已冲突的数据仍可读、可改名修出来。
+
+**验证**：命名纯函数 2 例 + 真实入口 2 例（`create_service` / `update_service`，后者含
+「名字未变时不校验」的正向控制）；两处守卫调用各做一次删除注入，对应用例分别变红，确认接线
+（而非仅判据）被覆盖。

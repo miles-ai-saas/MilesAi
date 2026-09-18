@@ -16,6 +16,7 @@ from uuid import UUID
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from miles_ai.integrations.langchain.toolkit.naming import ident_collision
 from miles_common.exceptions import BadRequestError, NotFoundError
 from miles_common.schema import PageParams, PageResult
 from miles_core.config import get_settings
@@ -103,12 +104,30 @@ class McpServiceManager(BaseService):
             size=params.size,
         )
 
+    async def _assert_name_available(self, name: str, *, exclude_id: UUID | None = None) -> None:
+        """校验该名称的工具标识在租户内未被其它服务占用。
+
+        工具名（``mcp__{service}__{tool}``）是**运行期现算**的、不持久化，而派发按「重算 slug +
+        全租户比对、取首个匹配」定位服务，故「同租户内 ident 唯一」是派发正确性的不变量。
+        ident 由 ``service_ident`` 生成、本身不保证唯一（见其 docstring 的两处特性），
+        这里在写入侧守住，使冲突在用户可改的地方被明确拒绝，而不是留到运行期静默误派发。
+        """
+        filters = [*tenant_filters(self.ctx, McpService.tenant_id), not_deleted(McpService)]
+        if exclude_id is not None:
+            filters.append(McpService.id != exclude_id)
+        others = (await self.db.execute(select(McpService.name).where(*filters))).scalars().all()
+        clash = ident_collision(name, others)
+        if clash is not None:
+            raise BadRequestError(f"服务名「{name}」的工具标识与已有服务「{clash}」相同，会导致工具调用落到另一个服务上，请改用其它名称")
+
     async def create_service(self, body: McpServiceCreate) -> McpServiceOut:
         """创建服务；endpoint/transport/connection_config 由 ``_resolve_endpoint`` 归一化。"""
+        name = body.name.strip()
+        await self._assert_name_available(name)
         endpoint, transport, cfg = self._resolve_endpoint(body)
         row = McpService(
             tenant_id=self.ctx.tenant_id,
-            name=body.name.strip(),
+            name=name,
             endpoint_url=endpoint,
             transport=transport,
             description=(body.description or "").strip() or None,
@@ -127,7 +146,10 @@ class McpServiceManager(BaseService):
         assert_tenant_access(self.ctx, row.tenant_id)
 
         if body.name is not None:
-            row.name = body.name.strip()
+            new_name = body.name.strip()
+            if new_name != row.name:
+                await self._assert_name_available(new_name, exclude_id=service_id)
+                row.name = new_name
         if body.description is not None:
             row.description = body.description.strip() or None
         if body.transport is not None:
