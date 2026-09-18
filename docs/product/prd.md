@@ -93,7 +93,7 @@
 | 违规统计报表与导出 | 部分 | 拦截日志查询；专报表导出按需 |
 | HTTP 钩子（前后置/on_error） | ✅ | Event v1；Agent/Flow/Tool 挂载 |
 | Python 脚本钩子 | ✅ | `miles_portal.tenant.hooks.plugins.*` |
-| 数据脱敏、水印 | 未接线 | `desensitize.py` 仅有实现、全仓无调用方；导出水印未实现 —— 按需立项 |
+| 数据脱敏、水印 | 未实现 | 曾经 `desensitize.py` 实现但零调用方，已删除；导出水印未实现 —— 按需立项 |
 | 按智能体/流程/应用绑定钩子 | 部分 | scope 支持；`scope=tool` 绑定未接 |
 
 <a id="as-is-module-3"></a>

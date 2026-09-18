@@ -9,6 +9,7 @@ tests/
   test_l3_neutral_imports.py          # AST 守卫：L3 反向依赖 / server 自建 router
   test_no_blocking_calls_in_async.py  # AST 守卫：async 内不得直调阻塞调用
   test_no_silent_broad_except.py       # AST 守卫：宽泛 except 不得静默吞掉异常
+  test_no_unreferenced_modules.py      # AST 守卫：不得出现零引用模块（入口点白名单除外）
   api/                 # HTTP / meta / 壳层 smoke
   integration/         # 跨模块编排（编译 + 入库等）
   rag/                 # 解析、分片、检索、向量化
