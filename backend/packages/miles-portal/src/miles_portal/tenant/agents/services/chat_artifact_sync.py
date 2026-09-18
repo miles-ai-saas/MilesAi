@@ -76,11 +76,22 @@ def _replace_job_artifacts(existing: list | None, job_id: str, next_arts: list[d
     return [*prev, *next_arts]
 
 
+def conversation_id_from_job_params(params: object) -> str | None:
+    """从生成任务参数快照取会话标识（提交侧写入 ``agent_config._conversation_id``）。
+
+    单一判据：本模块的 ``trace_id`` 回退与 A2A ``tasks/get`` 的 ``Task.contextId`` 都走它，
+    免得两处各自解析同一约定而漂移。
+    """
+    if not isinstance(params, dict):
+        return None
+    agent_config = params.get("agent_config")
+    raw = params.get("conversation_id") or (agent_config.get("_conversation_id") if isinstance(agent_config, dict) else None)
+    return raw.strip() if isinstance(raw, str) and raw.strip() else None
+
+
 async def _resolve_conversation_id(db: AsyncSession, job: GenerativeJob) -> str | None:
-    params = job.params if isinstance(job.params, dict) else {}
-    raw = params.get("conversation_id") or (params.get("agent_config") or {}).get("_conversation_id")
-    if isinstance(raw, str) and raw.strip():
-        return raw.strip()
+    if conversation_id := conversation_id_from_job_params(job.params):
+        return conversation_id
     if not job.trace_id:
         return None
     call = await db.scalar(

@@ -15,16 +15,20 @@ from uuid import uuid4
 import pytest
 
 from miles_common.exceptions import BadRequestError, NotFoundError
+from miles_common.schemas.chat_io import ChatResponse
 from miles_core.models.agent import Agent, AgentStatus, AgentType
 from miles_portal.tenant.a2a import server as server_mod
 from miles_portal.tenant.a2a.server import (
     A2A_PUBLISH_FLAG,
+    build_a2a_task,
     build_agent_card,
     extract_message_context_id,
     extract_message_text,
+    is_active_generative_status,
     is_publish_enabled,
     jsonrpc_error,
     jsonrpc_result,
+    to_a2a_task_state,
 )
 from miles_portal.tenant.a2a.services import server as server_svc
 
@@ -149,6 +153,50 @@ def test_extract_message_context_id_rejects_overlong():
         extract_message_context_id({"message": {"parts": [], "contextId": "c" * 200}})
 
 
+def test_to_a2a_task_state_maps_platform_status():
+    """平台生成任务状态 → A2A ``TaskState``。"""
+    assert to_a2a_task_state("pending") == "submitted"
+    assert to_a2a_task_state("running") == "working"
+    assert to_a2a_task_state("success") == "completed"
+    assert to_a2a_task_state("failed") == "failed"
+    assert to_a2a_task_state("cancelled") == "canceled"
+
+
+def test_to_a2a_task_state_unknown_is_not_guessed():
+    """未知状态回 A2A 保留值 ``unknown``；猜成 ``completed`` 会让对端以为产物已就绪。"""
+    assert to_a2a_task_state("something-new") == "unknown"
+
+
+@pytest.mark.parametrize(
+    ("status", "expected"),
+    [("pending", True), ("running", True), ("success", False), ("failed", False), ("cancelled", False)],
+)
+def test_is_active_generative_status(status, expected):
+    """只有非终态任务才值得让对端轮询。"""
+    assert is_active_generative_status(status) is expected
+
+
+def test_unknown_generative_status_counts_as_active():
+    """未知状态不当作已结束：与 ``to_a2a_task_state`` 回 ``unknown``（而非 ``completed``）
+    同一原则 —— 宁可让对端多轮询一次，也不谎称产物已就绪。"""
+    assert is_active_generative_status("some-new-state") is True
+
+
+def test_build_a2a_task_shape():
+    task = build_a2a_task(task_id="j1", context_id="c1", state="working", timestamp="2026-09-18T00:00:00+00:00")
+
+    assert task["kind"] == "task"
+    assert task["id"] == "j1"
+    assert task["contextId"] == "c1"
+    assert task["status"] == {"state": "working", "timestamp": "2026-09-18T00:00:00+00:00"}
+
+
+def test_build_a2a_task_omits_absent_context_id():
+    """contextId 是可选字段：解析不到时省略，不塞空串冒充。"""
+    task = build_a2a_task(task_id="j1", context_id=None, state="completed", timestamp="t")
+    assert "contextId" not in task
+
+
 def test_jsonrpc_envelopes():
     assert jsonrpc_result("1", {"ok": True}) == {"jsonrpc": "2.0", "id": "1", "result": {"ok": True}}
     err = jsonrpc_error("1", server_mod.METHOD_NOT_FOUND, "不支持的方法")
@@ -260,7 +308,7 @@ async def test_resolve_default_published_agent_requires_unambiguous_match():
 async def test_handle_rpc_message_send_returns_agent_message(monkeypatch):  # noqa: ANN001
     async def fake_chat(_db, _ctx, _agent_id, text, conversation_id=None):  # noqa: ANN001
         assert text == "帮我查订单"
-        return "订单已发货"
+        return ChatResponse(answer="订单已发货")
 
     monkeypatch.setattr(server_svc, "run_published_agent_chat", fake_chat)
     payload = {
@@ -287,7 +335,7 @@ async def test_handle_rpc_forwards_context_id_as_conversation(monkeypatch):  # n
 
     async def fake_chat(_db, _ctx, _agent_id, text, conversation_id=None):  # noqa: ANN001
         captured["conversation_id"] = conversation_id
-        return "继续"
+        return ChatResponse(answer="继续")
 
     monkeypatch.setattr(server_svc, "run_published_agent_chat", fake_chat)
     payload = {
@@ -313,7 +361,7 @@ async def test_handle_rpc_assigns_context_id_when_absent(monkeypatch):  # noqa: 
 
     async def fake_chat(_db, _ctx, _agent_id, _text, conversation_id=None):  # noqa: ANN001
         captured["conversation_id"] = conversation_id
-        return "初次见面"
+        return ChatResponse(answer="初次见面")
 
     monkeypatch.setattr(server_svc, "run_published_agent_chat", fake_chat)
     payload = {
@@ -380,3 +428,142 @@ async def test_handle_rpc_maps_agent_failure_to_internal_error(monkeypatch):  # 
     envelope = await server_svc.handle_a2a_rpc(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, payload)
     assert envelope["error"]["code"] == server_mod.INTERNAL_ERROR
     assert "模型不可用" in envelope["error"]["message"]
+
+
+# --- 4. Task 生命周期 ---------------------------------------------------------
+
+
+def _job(status: str, *, params: dict | None = None, job_id=None):
+    return SimpleNamespace(id=job_id or uuid4(), status=SimpleNamespace(value=status), params=params or {})
+
+
+@pytest.mark.asyncio
+async def test_message_send_returns_task_while_generation_active(monkeypatch):  # noqa: ANN001
+    """产生异步生成任务时改回 A2A ``Task``，对端才可轮询/取消；同步回答仍回 ``Message``。"""
+
+    async def fake_chat(_db, _ctx, _agent_id, _text, conversation_id=None):  # noqa: ANN001
+        return ChatResponse(
+            answer="正在生成",
+            generative_jobs=[{"id": "job-1", "kind": "video", "status": "pending"}],
+        )
+
+    monkeypatch.setattr(server_svc, "run_published_agent_chat", fake_chat)
+    payload = {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "message/send",
+        "params": {"message": {"parts": [{"type": "text", "text": "生成一段视频"}], "contextId": "ctx-9"}},
+    }
+    envelope = await server_svc.handle_a2a_rpc(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, payload)
+
+    result = envelope["result"]
+    assert result["kind"] == "task"
+    assert result["id"] == "job-1"
+    # 状态照实映射：job 仍 pending（排队中）→ A2A submitted，而非一律 working
+    assert result["status"]["state"] == "submitted"
+    assert result["contextId"] == "ctx-9"
+
+
+@pytest.mark.asyncio
+async def test_message_send_ignores_terminal_generative_jobs(monkeypatch):  # noqa: ANN001
+    """已结束的生成任务无需轮询，仍按 ``Message`` 返回，避免对端多跑一次 tasks/get。"""
+
+    async def fake_chat(_db, _ctx, _agent_id, _text, conversation_id=None):  # noqa: ANN001
+        return ChatResponse(
+            answer="图已生成",
+            generative_jobs=[{"id": "job-1", "kind": "image", "status": "success"}],
+        )
+
+    monkeypatch.setattr(server_svc, "run_published_agent_chat", fake_chat)
+    payload = {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "message/send",
+        "params": {"message": {"parts": [{"type": "text", "text": "画张图"}]}},
+    }
+    envelope = await server_svc.handle_a2a_rpc(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, payload)
+
+    assert envelope["result"]["kind"] == "message"
+
+
+@pytest.mark.asyncio
+async def test_tasks_get_maps_job_state_and_context(monkeypatch):  # noqa: ANN001
+    job = _job("running", params={"conversation_id": "ctx-7"})
+
+    async def fake_get(_db, _ctx, _job_id):  # noqa: ANN001
+        return job
+
+    monkeypatch.setattr(server_svc, "get_generative_job_for_tenant", fake_get)
+    payload = {"jsonrpc": "2.0", "id": 1, "method": "tasks/get", "params": {"id": str(job.id)}}
+    envelope = await server_svc.handle_a2a_rpc(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, payload)
+
+    result = envelope["result"]
+    assert result["kind"] == "task"
+    assert result["id"] == str(job.id)
+    assert result["status"]["state"] == "working"
+    assert result["contextId"] == "ctx-7"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("params", [{}, {"id": ""}, {"id": "not-a-uuid"}])
+async def test_tasks_get_rejects_bad_id(params):
+    payload = {"jsonrpc": "2.0", "id": 1, "method": "tasks/get", "params": params}
+    envelope = await server_svc.handle_a2a_rpc(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, payload)
+    assert envelope["error"]["code"] == server_mod.INVALID_PARAMS
+
+
+@pytest.mark.asyncio
+async def test_tasks_get_maps_missing_job_to_task_not_found(monkeypatch):  # noqa: ANN001
+    async def fake_get(_db, _ctx, _job_id):  # noqa: ANN001
+        raise NotFoundError("生成任务不存在")
+
+    monkeypatch.setattr(server_svc, "get_generative_job_for_tenant", fake_get)
+    payload = {"jsonrpc": "2.0", "id": 1, "method": "tasks/get", "params": {"id": str(uuid4())}}
+    envelope = await server_svc.handle_a2a_rpc(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, payload)
+
+    assert envelope["error"]["code"] == server_mod.TASK_NOT_FOUND
+
+
+@pytest.mark.asyncio
+async def test_tasks_cancel_returns_canceled_task(monkeypatch):  # noqa: ANN001
+    job_id = uuid4()
+
+    class _FakeJobService:
+        def __init__(self, _db, _ctx) -> None:
+            pass
+
+        async def cancel_job(self, _job_id):
+            return SimpleNamespace(id=job_id, status=SimpleNamespace(value="cancelled"), params={"conversation_id": "c1"})
+
+    monkeypatch.setattr(server_svc, "GenerativeJobService", _FakeJobService)
+    payload = {"jsonrpc": "2.0", "id": 1, "method": "tasks/cancel", "params": {"id": str(job_id)}}
+    envelope = await server_svc.handle_a2a_rpc(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, payload)
+
+    result = envelope["result"]
+    assert result["kind"] == "task"
+    assert result["status"]["state"] == "canceled"
+    assert result["contextId"] == "c1"
+
+
+@pytest.mark.asyncio
+async def test_tasks_cancel_maps_terminal_job_to_not_cancelable(monkeypatch):  # noqa: ANN001
+    class _FakeJobService:
+        def __init__(self, _db, _ctx) -> None:
+            pass
+
+        async def cancel_job(self, _job_id):
+            raise BadRequestError("任务已结束，无法取消")
+
+    monkeypatch.setattr(server_svc, "GenerativeJobService", _FakeJobService)
+    payload = {"jsonrpc": "2.0", "id": 1, "method": "tasks/cancel", "params": {"id": str(uuid4())}}
+    envelope = await server_svc.handle_a2a_rpc(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, payload)
+
+    assert envelope["error"]["code"] == server_mod.TASK_NOT_CANCELABLE
+
+
+@pytest.mark.asyncio
+async def test_unimplemented_task_method_is_method_not_found():
+    """``tasks/resubscribe`` 等未实现方法一律方法未找到，不静默成功。"""
+    payload = {"jsonrpc": "2.0", "id": 1, "method": "tasks/resubscribe", "params": {"id": str(uuid4())}}
+    envelope = await server_svc.handle_a2a_rpc(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, payload)
+    assert envelope["error"]["code"] == server_mod.METHOD_NOT_FOUND

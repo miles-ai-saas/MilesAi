@@ -1,6 +1,6 @@
 # A2A 外部互联
 
-> 类型：智能体 | 状态：已实现（登记/引用/宿主 ✅；对外暴露 Card + `message/send` + `contextId` 多轮 ✅）  
+> 类型：智能体 | 状态：已实现（登记/引用/宿主 ✅；对外暴露 Card + `message/send` + `contextId` 多轮 + `tasks/*` ✅）  
 > **功能规格：** [features/a2a-interconnect.md](../features/a2a-interconnect.md)  
 > 协议：[A2A Protocol v1.0](https://a2a-protocol.org/v1.0.0/specification/) | 关联：[platform-agents.md](./platform-agents.md)
 
@@ -83,8 +83,20 @@ GET  /.well-known/agent-card.json                                     # 全平�
 
 - 开关：智能体 `config.a2a_publish = true`（必须同时 `agent_type=custom` 且 `status=enabled`；否则一律 404）
 - Card：`GET /api/v1/open/a2a/agents/{agent_id}/.well-known/agent-card.json`（**公开**，A2A 发现元数据）
-- 调用：`POST /api/v1/open/a2a/agents/{agent_id}`（JSON-RPC 2.0 `message/send`，**须带该智能体的 `X-API-Key`**）
+- 调用：`POST /api/v1/open/a2a/agents/{agent_id}`（JSON-RPC 2.0，**须带该智能体的 `X-API-Key`**）；支持的方法见下
 - 根别名：`GET /.well-known/agent-card.json` → 307 到按智能体路径；**仅当全平台唯一发布**时启用，命中 0 或 >1 返回 404（多租户根路径无法区分租户，不猜）
+
+JSON-RPC 方法：
+
+| 方法 | 行为 |
+|------|------|
+| `message/send` | 同步对话。无异步任务时回 `Message`；产生生成任务（生图/生视频）时回 `Task`（`id` 即平台 job id） |
+| `tasks/get` | `params.id` 查生成任务状态，映射为 A2A `TaskState` |
+| `tasks/cancel` | 取消未结束的生成任务；已结束回 `-32002`（Task not cancelable），不存在回 `-32001`（Task not found） |
+
+`message/stream`、`tasks/resubscribe`、`tasks/pushNotificationConfig/*` 未实现，一律回 `-32601`（不静默成功）。
+
+生成任务状态 → A2A `TaskState`：`pending→submitted`、`running→working`、`success→completed`、`failed→failed`、`cancelled→canceled`；未知状态回保留值 `unknown`（而非 `completed` —— 谎称就绪会让对端停止轮询）。
 
 Card 的 `supportedInterfaces[].url` 即调用端点；`url` 由请求的 scheme://host 推导，多环境无需新增配置项。绑定技能包会映射为 Card `skills`（无绑定时智能体自身为一个 skill）。`capabilities.streaming=false`，故不支持 `message/stream`。
 
@@ -99,6 +111,7 @@ Card 同时声明 `securitySchemes`（`apiKey` · `in: header` · `name: X-API-K
 ## 待做
 
 - `message/stream`（真 token 流式；现声明 `streaming=false`）
-- `tasks/*`（`tasks/get` / `tasks/cancel` / pushNotification 配置；现返回 `Message` 而非 `Task`）
+- `tasks/resubscribe` 与 `tasks/pushNotificationConfig/*`（现回方法未找到）
+- `Task.artifacts` 与产物下载：生成产物是平台附件，对端无凭证取回（`tasks/get` 现只报状态）
 - 多模态入站：`parts` 的 `file` / `data` 类型（现仅取 `text`）
 - A2A 专用审计维度（现复用通用访问日志与限流中间件）
