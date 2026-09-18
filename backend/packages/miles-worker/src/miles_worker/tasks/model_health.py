@@ -68,6 +68,7 @@ def probe_models_health() -> str:
     """定时任务：探测活跃对话模型可用性并写回 ``ModelConfig.extra``，返回 ``checked=… ok=…`` 摘要。"""
     try:
         return run_worker_db_coro(_probe_models_async())
-    except Exception:
-        logger.exception("probe_models_health failed")
+    except Exception as exc:
+        # 不带堆栈：原样重抛后由 Celery 记录完整堆栈，此处只留可 grep 的上下文。
+        logger.error("probe_models_health failed: %s", exc)
         raise

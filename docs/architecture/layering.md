@@ -168,6 +168,12 @@ flowchart LR
 | `tests/models/test_api_enum_parity.py` | API 侧枚举声明与 ORM 侧逐字节一致；API 层枚举 import 只可来自白名单模块 |
 | `tests/models/test_orm_registry_completeness.py` | 全仓 ORM 表（按 `__tablename__` / `Table(...)` 扫描）均可经 `load_all_models()` 登记到达 |
 
+**失败堆栈只打一次（边界原则）**：同一次失败只在**最外层边界**打印一份堆栈。Celery 任务的失败由 Celery 自己记录（`Task %(name)s[%(id)s] raised unexpected: %(exc)s` 且带 `exc_info`，见 `celery/app/trace.py` 的 `log_policy_unexpected`），HTTP 请求的未捕获异常由 uvicorn/Starlette 记录；因此 worker 任务链上各层、以及会被重抛的内层 handler 只记「可 grep 的上下文」（task 名、`job_id`、`agent_id`、原因一句话），**不重复打堆栈**——内层既打堆栈又重抛会让同一次失败产出多份相同堆栈，反而拖慢定位（生图/生视频任务曾一路三份：`job_execution` → `_run_generative_task` → Celery）。
+
+例外是内层日志承载了边界拿不到的信息：`web/middlewares/access_log.py` 能附 `method/path/trace_id`（uvicorn 的日志没有 trace_id），hook 执行器 `hooks/services/executor/http.py` 的 `return` 分支（AFTER_* 触发）没有上游边界承接，两者保留堆栈。
+
+对照的守卫是 `tests/test_no_silent_broad_except.py` 第三档：宽泛 `except` 若**打了日志却不重抛**，该日志必须带 `exc_info`（没有边界替你打，就得自己打）。
+
 **物理布局（`packages/<dist>/src/<module>/`）**：`packages/` 与 `src/` 两层**仅为物理组织，不进 `sys.path`**——映射由各包 wheel 的 `packages = ["src/miles_*"]` 决定，因此代码里的模块路径始终是 `miles_core.…` 这类形式，**与物理层数无关**；分层契约的 `root_packages` 同样只写模块名。`src/` 采用 PyPA 推荐的 src layout，用于阻止 cwd 影子导入、确保测试跑的是**已安装**的包（而非裸源码）。
 
 故文件路径偏长（最深如 `packages/miles-portal/src/miles_portal/tenant/marketplace/services/marketplace/upgrade.py`）属纯外观代价，**不要为缩短路径而合并层级**：`parents[N]` 已在 `miles_server/apps/migrate.py`、`miles_portal/tenant/skills/storage.py`、`miles_core/config.py` 中按此深度硬编码，改深度会静默改错这些路径推导。定位某模块的实际文件用：

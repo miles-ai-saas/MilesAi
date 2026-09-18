@@ -82,8 +82,11 @@ def run_agent_schedule(schedule_id: str) -> str:
     try:
         run_worker_db_coro(_run_schedule_async(UUID(schedule_id)))
         return "ok"
-    except Exception:
-        logger.exception("run_agent_schedule failed: %s", schedule_id)
+    except Exception as exc:
+        # 不带堆栈：本异常原样重抛，Celery 会以 "raised unexpected" 记完整堆栈
+        # （celery/app/trace.py 的 log_policy_unexpected），此处只留可 grep 的上下文，
+        # 否则同一次失败会出现两份相同堆栈。
+        logger.error("run_agent_schedule failed: %s: %s", schedule_id, exc)
         raise
 
 

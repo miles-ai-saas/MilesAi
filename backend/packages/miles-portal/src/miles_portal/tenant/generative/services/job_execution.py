@@ -182,7 +182,9 @@ async def run_generative_video_job_async(job_id: UUID) -> None:
         except GenerativeJobCancelled:
             await _finalize_cancelled(db, job_id)
         except Exception as exc:
-            logger.exception("generative video job %s failed", job_id)
+            # 不带堆栈：原样重抛后经 `_run_generative_task` 由 Celery 记录完整堆栈，
+            # 此处只留可 grep 的 job_id 与原因，否则同一堆栈会打三份。
+            logger.error("generative video job %s failed: %s", job_id, exc)
             await _finalize_failed(db, job_id, exc)
             raise
 
@@ -265,7 +267,8 @@ async def run_generative_image_job_async(job_id: UUID) -> None:
         except GenerativeJobCancelled:
             await _finalize_cancelled(db, job_id)
         except Exception as exc:
-            logger.exception("generative image job %s failed", job_id)
+            # 不带堆栈：同生视频路径 —— 堆栈由 Celery 记录，此处只留上下文。
+            logger.error("generative image job %s failed: %s", job_id, exc)
             await _finalize_failed(db, job_id, exc)
             raise
 

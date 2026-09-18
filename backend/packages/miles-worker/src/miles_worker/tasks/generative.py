@@ -43,7 +43,8 @@ def _run_generative_task(self, job_id: str, runner, task_name: str) -> str:
         return "cancelled"
     except Exception as exc:
         sync_task_by_celery_id(self.request.id, TaskStatus.FAILED, fail_reason=str(exc)[:2000])
-        logger.exception("%s failed: %s", task_name, job_id)
+        # 不带堆栈：与 docstring 一致 —— 原样重抛，堆栈交由 Celery 记录，此处只留上下文。
+        logger.error("%s failed: %s", task_name, job_id)
         raise
 
 
