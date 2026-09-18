@@ -88,10 +88,13 @@ def markdown_pages_to_documents(
             try:
                 page_md = dl_doc.export_to_markdown(page_no=page_one_based)  # type: ignore[union-attr]
             except Exception as exc:
+                # 这是 docling「page_no 有已知问题」的绕过路径，正需要堆栈区分「已知问题」与
+                # 新问题；后面紧跟 break，每篇文档最多记一次，不会刷屏。
                 logger.warning(
                     "Docling 按页导出失败 page=%s: %s",
                     page_one_based,
                     exc,
+                    exc_info=True,
                 )
                 break
             page_text = (page_md or "").strip()

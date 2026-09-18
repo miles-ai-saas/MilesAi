@@ -107,7 +107,9 @@ async def init_langgraph_checkpointer() -> str:
                 exc,
             )
         except Exception as exc:
-            logger.warning("LangGraph checkpointer: Redis 初始化失败 (%s)，使用 MemorySaver", exc)
+            # 退化到 MemorySaver 会让进程重启后会话状态全丢，属静默降级：仅记 str(exc)
+            # 时根因（连接被拒 / DNS / 认证 / asetup 版本不兼容）无从分辨，故留完整堆栈。
+            logger.warning("LangGraph checkpointer: Redis 初始化失败 (%s)，使用 MemorySaver", exc, exc_info=True)
 
     _checkpointer = saver
     _backend = backend

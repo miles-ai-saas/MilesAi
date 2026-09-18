@@ -94,7 +94,7 @@ async def check_media_safety(
             usage_sink=usage_sink,
         )
     except Exception as exc:
-        logger.warning("视觉审核调用失败: %s", exc)
+        logger.warning("视觉审核调用失败: %s", exc, exc_info=True)
         return {"safe": True, "category": "error", "reason": str(exc)[:100]}
 
     try:

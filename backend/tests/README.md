@@ -8,7 +8,7 @@ tests/
   paths.py             # 路径常量（勿在子目录内猜 backend 根）
   test_l3_neutral_imports.py          # AST 守卫：L3 反向依赖 / server 自建 router
   test_no_blocking_calls_in_async.py  # AST 守卫：async 内不得直调阻塞调用
-  test_no_silent_broad_except.py       # AST 守卫：宽泛 except 不得静默；窄类型静默须注明理由
+  test_no_silent_broad_except.py       # AST 守卫：宽泛 except 不得静默，且日志须带 exc_info
   test_no_unreferenced_modules.py      # AST 守卫：不得出现零引用模块（入口点白名单除外）
   api/                 # HTTP / meta / 壳层 smoke
   integration/         # 跨模块编排（编译 + 入库等）

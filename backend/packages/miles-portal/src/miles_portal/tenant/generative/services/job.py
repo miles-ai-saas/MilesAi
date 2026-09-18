@@ -377,9 +377,11 @@ class GenerativeJobService(BaseService):
                 job = await self._reload(job_id)
                 if job.status in _TERMINAL:
                     yield _sse_frame(job)
-        except Exception:
-            # Redis 不可用时回退 DB 轮询
-            logger.debug("Redis Pub/Sub 不可用，回退 DB 轮询 (job_id=%s)", job_id)
+        except Exception as exc:
+            # Redis 不可用时回退 DB 轮询。此处为宽泛捕获：若失败原因不是「Redis 不可用」
+            # （消息序列化错误、下游 bug 等），debug 级在生产不可见、也无消息与堆栈，
+            # 整条降级路径等于无据可查，故升为 warning 并带堆栈。
+            logger.warning("Redis Pub/Sub 不可用，回退 DB 轮询 (job_id=%s): %s", job_id, exc, exc_info=True)
             idle_ticks = 0
             while idle_ticks < 120:
                 job = await self._reload(job_id)

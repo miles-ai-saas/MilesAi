@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import time
 from uuid import UUID
 
@@ -149,8 +150,11 @@ class HookHttpMixin:
             if resp.content:
                 try:
                     parsed = parse_hook_response(resp.json())
-                except Exception:
-                    logger.debug("hook %s response is not JSON", hook.name)
+                except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+                    # 收窄：``parse_hook_response`` 自身已自校验 dict/version/action 而近乎全量，
+                    # 真实抛错只可能来自 ``resp.json()`` 的解码；用宽泛 ``except Exception``
+                    # 会把它将来新增的异常也一并当成「响应不是 JSON」而静默吃掉。
+                    logger.debug("hook %s response is not JSON: %s", hook.name, exc)
 
             response_action = parsed.action
             if parsed.action == "block" and trigger in BEFORE_TRIGGERS:

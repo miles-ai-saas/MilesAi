@@ -55,7 +55,7 @@ async def _probe_models_async() -> str:
             except Exception as exc:
                 extra["health_status"] = "down"
                 extra["health_message"] = str(exc)[:500]
-                logger.warning("model health probe failed: %s (%s)", model.name, exc)
+                logger.warning("model health probe failed: %s (%s)", model.name, exc, exc_info=True)
             extra["health_checked_at"] = now
             model.extra = extra
         if checked:
