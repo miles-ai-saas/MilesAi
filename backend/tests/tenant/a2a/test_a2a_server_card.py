@@ -387,12 +387,16 @@ class _Db:
     def __init__(self, agent=None, rows=None):
         self._agent = agent
         self._rows = rows or []
+        self.rolled_back = 0
 
     async def get(self, _model, _id):  # noqa: ANN001
         return self._agent
 
     async def execute(self, _stmt):  # noqa: ANN001
         return SimpleNamespace(scalars=lambda: iter(self._rows))
+
+    async def rollback(self):  # noqa: ANN001
+        self.rolled_back += 1
 
 
 @pytest.mark.asyncio
@@ -886,11 +890,17 @@ class _FakeSession:
     def __init__(self) -> None:
         self.committed = 0
         self.rolled_back = 0
+        self.closed = 0
 
     async def __aenter__(self) -> _FakeSession:
         return self
 
     async def __aexit__(self, *_exc: object) -> bool:
+        # 让出控制权一次再记 closed：真实 ``AsyncSession.close()`` 会 await，若调用方
+        # 在关闭期间 cancel 本任务（哨兵早于会话关闭入队时的真实时序），计数就不会增长
+        # —— 这样「成功回合的会话必被关掉」成了可断言的回归不变量。
+        await asyncio.sleep(0)
+        self.closed += 1
         return False
 
     async def commit(self) -> None:
@@ -962,7 +972,8 @@ async def test_open_stream_emits_task_then_increments_then_final(monkeypatch):  
         return ChatResponse(answer="甲乙")
 
     monkeypatch.setattr(server_svc, "run_published_agent_chat", fake_chat)
-    stream = await server_svc.open_a2a_stream(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, _stream_params(text="写点什么", context_id="ctx-7"))
+    db = _Db(agent=_agent())
+    stream = await server_svc.open_a2a_stream(db, SimpleNamespace(), AGENT_ID, _stream_params(text="写点什么", context_id="ctx-7"))
 
     frames = await _collect(stream)
     results = [f["result"] for f in frames]
@@ -985,6 +996,11 @@ async def test_open_stream_emits_task_then_increments_then_final(monkeypatch):  
     assert seen["text"] == "写点什么"
     assert seen["conversation_id"] == "ctx-7"
     assert session.committed == 1
+    # 成功回合的会话必须被正常关闭（回归：哨兵若早于 __aexit__ 入队，生成器会在
+    # close 让出控制权时 cancel 掉本任务，closed 就不会增长）
+    assert session.closed == 1
+    # 前置校验的读事务已主动结束：否则它会占着连接陪跑整条 SSE
+    assert db.rolled_back == 1
 
 
 @pytest.mark.asyncio
@@ -1108,3 +1124,77 @@ async def test_open_stream_cancels_chat_when_consumer_disconnects(monkeypatch): 
 
     await stream.aclose()
     await asyncio.wait_for(cancelled.wait(), timeout=1)
+
+
+@pytest.mark.asyncio
+async def test_run_published_agent_chat_forwards_on_delta(monkeypatch):  # noqa: ANN001
+    """``on_delta`` 必须一路透传到 ``AgentService.chat``。
+
+    整条真流链路就靠这一行透传；其余流式用例都 monkeypatch 掉了本函数，断了不会有人发现。
+    """
+    seen: dict = {}
+
+    class _FakeAgentService:
+        def __init__(self, _db, _ctx) -> None:  # noqa: ANN001
+            pass
+
+        async def chat(self, agent_id, body, *, on_delta=None):  # noqa: ANN001
+            seen["agent_id"] = agent_id
+            seen["body"] = body
+            seen["on_delta"] = on_delta
+            return ChatResponse(answer="好")
+
+    monkeypatch.setattr("miles_portal.tenant.agents.services.agent.AgentService", _FakeAgentService)
+
+    async def cb(_piece: str) -> None:  # noqa: ANN202
+        return None
+
+    response = await server_svc.run_published_agent_chat(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, "写点什么", conversation_id="ctx-1", on_delta=cb)
+
+    assert response.answer == "好"
+    assert seen["agent_id"] == AGENT_ID
+    assert seen["body"].query == "写点什么"
+    assert seen["body"].conversation_id == "ctx-1"
+    assert seen["on_delta"] is cb
+
+
+@pytest.mark.asyncio
+async def test_open_stream_increment_with_special_chars_stays_single_line(monkeypatch):  # noqa: ANN001
+    """增量含换行与引号时，SSE 帧仍须是单行合法 JSON —— 对端按行切帧，裸换行会截断。"""
+    _patch_session(monkeypatch, _FakeSession())
+    piece = '第一行\n第二行 "引号" \\ 反斜杠'
+
+    async def fake_chat(_db, _ctx, _agent_id, _text, conversation_id=None, on_delta=None):  # noqa: ANN001
+        await on_delta(piece)
+        return ChatResponse(answer=piece)
+
+    monkeypatch.setattr(server_svc, "run_published_agent_chat", fake_chat)
+    stream = await server_svc.open_a2a_stream(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, _stream_params())
+
+    raw = [frame async for frame in stream]
+    body = raw[1][len("data: ") : -2]
+
+    assert raw[1].startswith("data: ") and raw[1].endswith("\n\n")
+    # 正文里的换行必须被 JSON 转义：裸换行会让对端按行切帧时截断
+    assert "\n" not in body
+    assert json.loads(body)["result"]["status"]["message"]["parts"][0]["text"] == piece
+
+
+@pytest.mark.asyncio
+async def test_open_stream_skips_empty_delta_pieces(monkeypatch):  # noqa: ANN001
+    """空片不发帧（与 ws 侧同判定）：否则末帧前会多出若干个空文本增量帧。"""
+    _patch_session(monkeypatch, _FakeSession())
+
+    async def fake_chat(_db, _ctx, _agent_id, _text, conversation_id=None, on_delta=None):  # noqa: ANN001
+        await on_delta("")
+        await on_delta("甲")
+        await on_delta("")
+        return ChatResponse(answer="甲")
+
+    monkeypatch.setattr(server_svc, "run_published_agent_chat", fake_chat)
+    stream = await server_svc.open_a2a_stream(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, _stream_params())
+
+    results = [f["result"] for f in await _collect(stream)]
+
+    assert len(results) == 3  # Task + 一个增量帧 + 末帧
+    assert results[1]["status"]["message"]["parts"][0]["text"] == "甲"

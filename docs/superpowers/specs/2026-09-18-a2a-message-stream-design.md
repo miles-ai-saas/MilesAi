@@ -72,7 +72,7 @@ Card 声明 `protocolVersion: "1.0"`（`miles_portal/tenant/a2a/server.py:27`）
 
 | 项 | 现状 | 改为 |
 |---|---|---|
-| `A2A_PROTOCOL_VERSION` | `"1.0"` | `"0.3"`（Card 与 `supportedInterfaces[].protocolVersion` 同源，改一处即两处一致） |
+| `A2A_PROTOCOL_VERSION` | `"1.0"` | `"0.3"`（Card 与 `supportedInterfaces[].protocolVersion` 同源，改一处即两处一致）。粒度取 `"0.3"` 而非 `"0.3.0"`：A2A 官方文档自身的 Card 示例就写 `"0.3"`（v1.0 规范示例）与 `"0.2.9"`（v0.3 规范示例），非严格三段 semver |
 | `capabilities.streaming` | `False` | `True`（本批真的支持了） |
 | `server.py:45-50` TaskState 注释 | 标「（v1.0）」 | 标「（v0.3）」，并补 `TASK_STATE_REJECTED = "rejected"`（§3.6 要用） |
 | part 判别键（3 处） | `{"type":"text"}` / `{"type":"file"}` | `{"kind":"text"}` / `{"kind":"file"}` |
@@ -201,8 +201,11 @@ open_a2a_stream(db, ctx, agent_id, payload) -> dict | AsyncIterator[str]
 - 出站合规拦截时 token **已经出网**，不可追回。这是决策 2 明确接受的代价，与 WS 侧（先发 `chat.delta` 再
   在收尾跑 `check_output`）语义一致。拦截日志（`ComplianceInterceptLog`）与
   `AgentChatCall.status="blocked"` 照常落库，审计不缺。
-- 错误原因走 `str(exc)` 而非完整内部栈；栈只留在平台日志。
-- 终态帧里的文本是**已产出部分**（若有）还是空：保持已产出部分，便于对端展示「部分回答 + 被拦截」。
+- 错误原因走 `str(exc)` 而非完整内部栈；栈只留在平台日志。**注**：这与既有 `message/send` 的
+  `-32603` 文案一致（该行为已有测试固定）。若要收敛为「非 `BadRequestError` 一律回固定文案」，须两条
+  路径同批改，否则同一对端会在两个方法上看到不同精度。
+- 终态帧只带**失败/拦截原因**，不重发已产出部分：增量帧已把部分回答发给对端，而按 §3.3 对端把
+  `status.message` 当**新消息**处理，重发会让部分回答渲染两遍。
 
 `AFTER_CALL` Hook 与 `AgentChatCall` 调用记录仍在 `AgentService.chat` 的收尾路径 `_complete_chat_turn` 内落库
 （`chat_turn.py:52`），流式不改变该路径。

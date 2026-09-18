@@ -440,6 +440,9 @@ async def open_a2a_stream(
         context_id = extract_message_context_id(params) or str(uuid4())
     except (NotFoundError, BadRequestError) as exc:
         return jsonrpc_error(req_id, INVALID_PARAMS, str(exc))
+    # 结束请求级读事务：``yield`` 依赖的 teardown 要等整条响应发完才跑，而流可能持续
+    # 数分钟，不主动释放就会有一条连接陪跑（轮次自身还会另开一条）。
+    await db.rollback()
     return _stream_turn(ctx, agent_id, req_id, text, context_id)
 
 
@@ -452,30 +455,37 @@ async def _stream_turn(
 ) -> AsyncIterator[str]:
     """跑一轮对话并以 SSE 帧下发：首帧 Task、中间帧增量、末帧终态。"""
     task_id = str(uuid4())
-    queue: asyncio.Queue = asyncio.Queue(maxsize=STREAM_QUEUE_MAXSIZE)
-    outcome: dict = {}
+    queue: asyncio.Queue[object] = asyncio.Queue(maxsize=STREAM_QUEUE_MAXSIZE)
+    outcome: dict[str, object] = {}
     stopped = False
 
     async def on_delta(piece: str) -> None:
-        await queue.put(piece)
+        # 空片不发帧：与 ws/chat.on_delta 同判定，省掉无内容的帧（含空格的片照发，
+        # 它可能是词间分隔）。
+        if piece:
+            await queue.put(piece)
 
     async def run_turn() -> None:
         # 自开会话：整轮对话要跨流式多次读库并在末尾 commit，依赖 get_db 依赖的
         # 回收时序不可靠（与 ws/chat._run_chat_turn 同法）。
-        async with AsyncSessionLocal() as turn_db:
-            try:
-                outcome["response"] = await run_published_agent_chat(turn_db, ctx, agent_id, text, conversation_id=context_id, on_delta=on_delta)
-                await turn_db.commit()
-            except asyncio.CancelledError:
-                raise
-            except Exception as exc:
-                outcome["error"] = exc
-                # chat() 失败时已自 commit 过失败/拦截记录，此处 rollback 只为清掉残留。
-                await turn_db.rollback()
-                logger.exception("A2A message/stream 执行失败: agent_id=%s", agent_id)
-            finally:
-                if not stopped:
-                    await queue.put(_STREAM_DONE)
+        try:
+            async with AsyncSessionLocal() as turn_db:
+                try:
+                    outcome["response"] = await run_published_agent_chat(turn_db, ctx, agent_id, text, conversation_id=context_id, on_delta=on_delta)
+                    await turn_db.commit()
+                except asyncio.CancelledError:
+                    raise
+                except Exception as exc:
+                    outcome["error"] = exc
+                    # chat() 失败时已自 commit 过失败/拦截记录，此处 rollback 只为清掉残留。
+                    await turn_db.rollback()
+                    logger.exception("A2A message/stream 执行失败: agent_id=%s", agent_id)
+        finally:
+            # 哨兵必须等会话关闭之后才入队：``async with`` 的退出（``AsyncSession.close()``）
+            # 会让出控制权，若哨兵已经躺在队列里，生成器会在那一刻醒来并 ``cancel()`` 本任务，
+            # 把正在关闭的会话打断 —— 连接就只能等 GC 兜底归还连接池。
+            if not stopped:
+                await queue.put(_STREAM_DONE)
 
     turn = asyncio.create_task(run_turn())
     try:
