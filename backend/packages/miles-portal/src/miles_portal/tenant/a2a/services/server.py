@@ -440,9 +440,12 @@ async def open_a2a_stream(
         context_id = extract_message_context_id(params) or str(uuid4())
     except (NotFoundError, BadRequestError) as exc:
         return jsonrpc_error(req_id, INVALID_PARAMS, str(exc))
-    # 结束请求级读事务：``yield`` 依赖的 teardown 要等整条响应发完才跑，而流可能持续
-    # 数分钟，不主动释放就会有一条连接陪跑（轮次自身还会另开一条）。
-    await db.rollback()
+    # 结束请求级事务并归还连接：``yield`` 依赖的 teardown 要等整条响应发完才跑，而流可能
+    # 持续数分钟，不主动结束就会有一条连接陪跑（轮次自身还会另开一条）。
+    # 用 ``commit`` 而非 ``rollback``：同一会话里鉴权依赖已 ``flush`` 了 API Key 的
+    # ``last_used_at``（``touch_last_used`` 的契约就是「由调用方决定提交」），rollback 会把
+    # 这笔记账丢掉，让流式调用在「密钥最后使用时间」上永远不更新。
+    await db.commit()
     return _stream_turn(ctx, agent_id, req_id, text, context_id)
 
 
@@ -480,6 +483,13 @@ async def _stream_turn(
                     # chat() 失败时已自 commit 过失败/拦截记录，此处 rollback 只为清掉残留。
                     await turn_db.rollback()
                     logger.exception("A2A message/stream 执行失败: agent_id=%s", agent_id)
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+            # 连会话都开不起来（引擎/驱动问题）：也要记进 outcome，否则生成器只能靠
+            # 「error 与 response 都空」去推断，且任务异常无人 retrieve 会打噪音日志。
+            outcome["error"] = exc
+            logger.exception("A2A message/stream 无法建立会话: agent_id=%s", agent_id)
         finally:
             # 哨兵必须等会话关闭之后才入队：``async with`` 的退出（``AsyncSession.close()``）
             # 会让出控制权，若哨兵已经躺在队列里，生成器会在那一刻醒来并 ``cancel()`` 本任务，
@@ -543,7 +553,21 @@ async def _stream_turn(
         )
         return
     if response is None:
-        # 理论不可达：哨兵与 outcome 由同一函数写入。保持显式返回而非回空帧。
+        # 兜底：error 与 response 同时为空，只可能来自「任务在记录 outcome 之前就没了」。
+        # 回一帧 failed 终态，别让对端等到「流自然结束却没有终态帧」而只能超时。
+        yield _sse_frame(
+            jsonrpc_result(
+                req_id,
+                build_a2a_status_update(
+                    task_id=task_id,
+                    context_id=context_id,
+                    state=TASK_STATE_FAILED,
+                    timestamp=_now(),
+                    text="智能体执行失败",
+                    final=True,
+                ),
+            )
+        )
         return
     job = _first_active_job(response.generative_jobs)
     if job:

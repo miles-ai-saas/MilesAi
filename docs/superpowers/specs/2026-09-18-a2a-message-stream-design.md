@@ -212,12 +212,19 @@ open_a2a_stream(db, ctx, agent_id, payload) -> dict | AsyncIterator[str]
 
 ### 3.7 流式下的 DB 会话
 
-- 视图层用注入的 `db` 做**前置校验**（加载已发布智能体、解析参数）；
+- 视图层用注入的 `db` 做**前置校验**（加载已发布智能体、解析参数），校验通过后立刻 `commit()`
+  就地结束该事务并归还连接；
 - SSE 生成器内部**自开 `AsyncSessionLocal()`** 跑整轮对话（与 WS 侧 `agents/ws/chat.py:114` 的
   `_run_chat_turn` 同法）。
 
 理由：整轮对话要在流式期间反复读库，并在末尾 `commit`（成功收尾写调用记录、失败收尾写 blocked 记录）。
 依赖 `get_db` 的回收时序在流式响应下不可靠，而 `AsyncSessionLocal` 的生命周期由生成器自己控制。
+
+前置校验那条为什么要主动结束：`yield` 依赖的 teardown 在**整条响应发完之后**才跑（FastAPI 实测），
+流可持续数分钟，不主动结束就有一条连接陪跑。**必须用 `commit()` 而不是 `rollback()`**：认证依赖
+`require_agent_api_key` 与端点共用同一 `get_db` 会话，并在其中 `flush` 了 API Key 的 `last_used_at`
+（`touch_last_used` 的契约是「仅 flush，由调用方提交」，`repositories/api_key.py:57`）；rollback 会把
+这笔记账丢掉，导致**只有成功的流式调用**不更新密钥最后使用时间（失败分支与 `message/send` 都正常更新）。
 
 `TenantContext` 是纯数据（`UUID` / `frozenset` / `str`，见 `deps_api_auth.py:49-57`），跨会话使用安全。
 

@@ -387,6 +387,7 @@ class _Db:
     def __init__(self, agent=None, rows=None):
         self._agent = agent
         self._rows = rows or []
+        self.committed = 0
         self.rolled_back = 0
 
     async def get(self, _model, _id):  # noqa: ANN001
@@ -394,6 +395,9 @@ class _Db:
 
     async def execute(self, _stmt):  # noqa: ANN001
         return SimpleNamespace(scalars=lambda: iter(self._rows))
+
+    async def commit(self):  # noqa: ANN001
+        self.committed += 1
 
     async def rollback(self):  # noqa: ANN001
         self.rolled_back += 1
@@ -999,8 +1003,11 @@ async def test_open_stream_emits_task_then_increments_then_final(monkeypatch):  
     # 成功回合的会话必须被正常关闭（回归：哨兵若早于 __aexit__ 入队，生成器会在
     # close 让出控制权时 cancel 掉本任务，closed 就不会增长）
     assert session.closed == 1
-    # 前置校验的读事务已主动结束：否则它会占着连接陪跑整条 SSE
-    assert db.rolled_back == 1
+    # 前置校验的请求级事务已就地结束，不占着连接陪跑整条 SSE
+    assert db.committed == 1
+    # 必须是 commit 而非 rollback：鉴权依赖在同一会话里 flush 了 API Key 的
+    # last_used_at（touch_last_used 由调用方提交），rollback 会让流式调用永不更新该字段
+    assert db.rolled_back == 0
 
 
 @pytest.mark.asyncio
@@ -1198,3 +1205,20 @@ async def test_open_stream_skips_empty_delta_pieces(monkeypatch):  # noqa: ANN00
 
     assert len(results) == 3  # Task + 一个增量帧 + 末帧
     assert results[1]["status"]["message"]["parts"][0]["text"] == "甲"
+
+
+@pytest.mark.asyncio
+async def test_open_stream_reports_failed_when_session_cannot_open(monkeypatch):  # noqa: ANN001
+    """连会话都开不起来时也要回终态帧：否则对端只看到 Task 帧后流自然结束，只能等超时。"""
+
+    def boom():  # noqa: ANN202
+        raise RuntimeError("engine unavailable")
+
+    monkeypatch.setattr(server_svc, "AsyncSessionLocal", boom)
+
+    stream = await server_svc.open_a2a_stream(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, _stream_params())
+    results = [f["result"] for f in await _collect(stream)]
+
+    assert results[0]["kind"] == "task"
+    assert results[-1]["final"] is True
+    assert results[-1]["status"]["state"] == "failed"
