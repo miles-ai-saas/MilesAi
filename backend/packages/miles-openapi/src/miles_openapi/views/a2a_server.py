@@ -12,7 +12,7 @@ from urllib.parse import quote
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Request
-from fastapi.responses import JSONResponse, RedirectResponse, Response
+from fastapi.responses import JSONResponse, RedirectResponse, Response, StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from miles_common.exceptions import NotFoundError
@@ -26,10 +26,18 @@ from miles_portal.tenant.a2a.server import (
 from miles_portal.tenant.a2a.services.server import (
     build_agent_card_by_id,
     handle_a2a_rpc,
+    open_a2a_stream,
     read_task_artifact,
     resolve_default_published_agent_id,
 )
 from miles_portal.tenant.agents.deps_api_auth import require_agent_api_key
+
+#: SSE 响应头。``X-Accel-Buffering: no`` 关掉 Nginx 侧缓冲，否则帧会被攒到最后一起发。
+_SSE_HEADERS = {
+    "Cache-Control": "no-cache",
+    "Connection": "keep-alive",
+    "X-Accel-Buffering": "no",
+}
 
 router = APIRouter()
 well_known_router = APIRouter()
@@ -52,13 +60,23 @@ async def a2a_jsonrpc(
     request: Request,
     ctx: TenantContext = Depends(require_agent_api_key),
     db: AsyncSession = Depends(get_db),
-) -> JSONResponse:
-    """A2A JSON-RPC 端点（``message/send`` / ``tasks/*``）。请求体非 JSON 时回 -32700 信封。"""
+) -> Response:
+    """A2A JSON-RPC 端点（``message/send`` / ``message/stream`` / ``tasks/*``）。
+
+    ``message/stream`` 按 A2A 约定走 SSE，与其它方法共用同一 URL；请求体非 JSON 时回
+    -32700 信封。前置校验失败的流式请求回普通 JSON，不进入 SSE。
+    """
     try:
         payload = await request.json()
     except ValueError:
         return JSONResponse(jsonrpc_error(None, PARSE_ERROR, "请求体不是合法 JSON"))
-    return JSONResponse(await handle_a2a_rpc(db, ctx, agent_id, payload, base_url=str(request.base_url)))
+    base_url = str(request.base_url)
+    if isinstance(payload, dict) and payload.get("method") == "message/stream":
+        opened = await open_a2a_stream(db, ctx, agent_id, payload)
+        if isinstance(opened, dict):
+            return JSONResponse(opened)
+        return StreamingResponse(opened, media_type="text/event-stream", headers=_SSE_HEADERS)
+    return JSONResponse(await handle_a2a_rpc(db, ctx, agent_id, payload, base_url=base_url))
 
 
 @router.get("/a2a/agents/{agent_id}/tasks/{task_id}/artifacts/{attachment_id}")

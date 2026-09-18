@@ -7,6 +7,7 @@
 
 from __future__ import annotations
 
+import json
 from uuid import uuid4
 
 import pytest
@@ -174,3 +175,47 @@ async def test_well_known_root_404_when_ambiguous_or_absent(as_a2a, api_client, 
 
     resp = await api_client.get("/.well-known/agent-card.json")
     assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_stream_method_returns_event_stream(as_a2a, api_client, monkeypatch):
+    """message/stream 走 SSE：同一端点按 method 分流，响应体逐帧为 JSON-RPC 信封。"""
+    seen: dict = {}
+
+    async def fake_stream(_db, _ctx, _agent_id, payload):  # noqa: ANN001
+        seen["method"] = payload["method"]
+        seen["agent_id"] = _agent_id
+
+        async def frames():
+            yield 'data: {"jsonrpc": "2.0", "id": 1, "result": {"kind": "task"}}\n\n'
+            yield 'data: {"jsonrpc": "2.0", "id": 1, "result": {"kind": "status-update", "final": true}}\n\n'
+
+        return frames()
+
+    monkeypatch.setattr(view_mod, "open_a2a_stream", fake_stream)
+
+    resp = await api_client.post(RPC_PATH, json={"jsonrpc": "2.0", "id": 1, "method": "message/stream", "params": {}})
+
+    assert resp.status_code == 200
+    assert resp.headers["content-type"].startswith("text/event-stream")
+    data_lines = [line for line in resp.text.splitlines() if line.startswith("data: ")]
+    assert len(data_lines) == 2
+    assert json.loads(data_lines[0][len("data: ") :])["result"]["kind"] == "task"
+    assert seen["method"] == "message/stream"
+    assert seen["agent_id"] == AGENT_ID
+
+
+@pytest.mark.asyncio
+async def test_stream_preflight_error_keeps_json_content_type(as_a2a, api_client, monkeypatch):
+    """前置失败不进 SSE：错误以普通 JSON + JSON-RPC 信封返回，对端才好报错。"""
+
+    async def fake_stream(*_args, **_kwargs):  # noqa: ANN002, ANN003
+        return {"jsonrpc": "2.0", "id": 1, "error": {"code": -32602, "message": "A2A Server 不存在或未发布"}}
+
+    monkeypatch.setattr(view_mod, "open_a2a_stream", fake_stream)
+
+    resp = await api_client.post(RPC_PATH, json={"jsonrpc": "2.0", "id": 1, "method": "message/stream", "params": {}})
+
+    assert resp.status_code == 200
+    assert resp.headers["content-type"].startswith("application/json")
+    assert resp.json()["error"]["code"] == -32602

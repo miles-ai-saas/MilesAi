@@ -33559,7 +33559,7 @@
     },
     "/api/v1/open/a2a/agents/{agent_id}": {
       "post": {
-        "description": "A2A JSON-RPC 端点（``message/send`` / ``tasks/*``）。请求体非 JSON 时回 -32700 信封。",
+        "description": "A2A JSON-RPC 端点（``message/send`` / ``message/stream`` / ``tasks/*``）。\n\n``message/stream`` 按 A2A 约定走 SSE，与其它方法共用同一 URL；请求体非 JSON 时回\n-32700 信封。前置校验失败的流式请求回普通 JSON，不进入 SSE。",
         "operationId": "a2a_jsonrpc_api_v1_open_a2a_agents__agent_id__post",
         "parameters": [
           {
