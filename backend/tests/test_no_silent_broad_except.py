@@ -25,6 +25,9 @@
    ``# 静默可接受：<理由>``**。理由缺失即违规：否则读者无法区分「刻意设计」与「漏写
    处理」，注释也会随重构逐条流失。
 
+另：``contextlib.suppress(<宽泛异常>)`` 是 ``except <宽泛异常>: pass`` 的语法糖，故与第 1 档同判据 ——
+只扫 ``try/except`` 的话，一行改写即可绕过整个守卫。
+
 三档都只认「有没有留下痕迹/理由」，不评价其质量（长度、关键词等）—— 那是 code review
 的事，机器只保证「此处异常是被人想过的」。
 """
@@ -45,6 +48,9 @@ _SILENT_MARKER = "静默可接受"
 
 #: 视为「日志调用」的方法名（``logger.<level>(...)``）。
 _LOGGER_LEVELS: frozenset[str] = frozenset({"debug", "info", "warning", "warn", "error", "critical", "exception", "log"})
+
+#: ``contextlib.suppress`` 的点号名 —— 它是 ``try/except/pass`` 的语法糖，同一判据须一并覆盖。
+_SUPPRESS_NAMES: frozenset[str] = frozenset({"contextlib.suppress"})
 
 
 def _dotted(node: ast.expr) -> str | None:
@@ -141,6 +147,34 @@ def _traceability(body: list[ast.stmt]) -> str | None:
     return None
 
 
+def _suppress_aliases(tree: ast.Module) -> set[str]:
+    """模块内 ``from contextlib import suppress [as X]`` 引入的名字。
+
+    只认这个来源，是为了不把碰巧同名的无关函数（如自定义 ``suppress(...)``）误判成糖。
+    """
+    aliases = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ImportFrom) and node.module == "contextlib":
+            aliases.update(alias.asname or alias.name for alias in node.names if alias.name == "suppress")
+    return aliases
+
+
+def _broad_suppress(node: ast.With | ast.AsyncWith, names: set[str]) -> bool:
+    """``with [contextlib.]suppress(<宽泛异常>)`` —— 等价于 ``except <宽泛异常>: pass``。
+
+    逐个位置参数检查：``suppress(ValueError, OSError)`` 是多参数形式（不是元组）。
+    """
+    for item in node.items:
+        expr = item.context_expr
+        if not isinstance(expr, ast.Call) or _dotted(expr.func) not in names:
+            continue
+        for arg in expr.args:
+            exprs = arg.elts if isinstance(arg, ast.Tuple) else [arg]
+            if any(_dotted(e) in _BROAD_EXCEPTIONS for e in exprs):
+                return True
+    return False
+
+
 @dataclass
 class _Scan:
     """一次全仓扫描的结果。"""
@@ -160,6 +194,9 @@ class _Scan:
     narrow_unmarked: list[str] = field(default_factory=list)
     """窄类型、静默、且未注明理由 —— 违规。"""
 
+    broad_suppress: list[str] = field(default_factory=list)
+    """``contextlib.suppress(<宽泛异常>)`` —— 违规（``except`` 静默的语法糖写法）。"""
+
 
 def _scan() -> _Scan:
     """扫描全部包内文件，按两档规则收集违规位置。"""
@@ -168,7 +205,13 @@ def _scan() -> _Scan:
         rel = path.relative_to(PACKAGES).as_posix()
         source = path.read_text(encoding="utf-8", errors="replace")
         lines = source.splitlines()
-        for node in ast.walk(ast.parse(source)):
+        tree = ast.parse(source)
+        suppress_names = _suppress_aliases(tree) | _SUPPRESS_NAMES
+        for node in ast.walk(tree):
+            if isinstance(node, (ast.With, ast.AsyncWith)):
+                if _broad_suppress(node, suppress_names):
+                    result.broad_suppress.append(f"{rel}:{node.lineno}")
+                continue
             if not isinstance(node, ast.ExceptHandler):
                 continue
             silent = _is_silent(node.body)
@@ -196,6 +239,7 @@ def test_guard_surface_is_not_silently_empty():
     assert len(result.broad_silent) <= result.broad_handlers
     assert len(result.broad_untraceable) <= result.broad_handlers
     assert len(result.narrow_unmarked) <= result.narrow_silent
+    assert len(result.broad_suppress) <= result.broad_handlers
 
 
 def test_detector_flags_silent_and_spares_logging_narrow_and_reraise():
@@ -328,6 +372,60 @@ def structured_return():
         (False, "重抛"),  # 重抛无需日志
         (False, None),  # 无日志、结构化返回值承载诊断 —— 不在本档
     ]
+
+
+def test_broad_contextlib_suppress_is_also_a_silent_swallow():
+    """``contextlib.suppress(Exception)`` 是 ``except Exception: pass`` 的糖，同样不得用。
+
+    否则「宽泛 except 不得静默」的判据一行改写即可绕过。
+    """
+    violations = _scan().broad_suppress
+
+    assert not violations, (
+        "contextlib.suppress 吞掉宽泛异常，等价于静默 except：\n  "
+        + "\n  ".join(violations)
+        + "\n请收窄到具体异常类型，或改用 try/except 并记日志（带 exc_info）。"
+    )
+
+
+def test_broad_suppress_detector_needs_contextlib_origin():
+    """糖检测器自检：``contextlib.suppress`` 与 ``from contextlib import suppress`` 都认；
+    宽泛类型要报、窄类型放过；未被 contextlib 引入的同名函数不得误判。"""
+    source = """
+import contextlib
+from contextlib import suppress
+
+def dotted_broad():
+    with contextlib.suppress(Exception):
+        pass
+
+def imported_broad():
+    with suppress(BaseException):
+        pass
+
+def imported_narrow():
+    with suppress(asyncio.CancelledError):
+        pass
+
+def dotted_narrow():
+    with contextlib.suppress(ValueError, OSError):
+        pass
+"""
+    # 去掉 ``from contextlib import suppress`` 后，同名函数不得再被算作糖
+    unrelated = """
+def unrelated_same_name():
+    with suppress(Exception):
+        pass
+"""
+    assert _suppress_verdicts(source) == [True, True, False, False]
+    assert _suppress_verdicts(unrelated) == [False], "碰巧同名的无关函数被误判为 contextlib 糖"
+
+
+def _suppress_verdicts(source: str) -> list[bool]:
+    """对一段源码里的每个 ``with`` 判定是否为宽泛 suppress。"""
+    tree = ast.parse(source)
+    names = _suppress_aliases(tree) | _SUPPRESS_NAMES
+    return [_broad_suppress(n, names) for n in ast.walk(tree) if isinstance(n, (ast.With, ast.AsyncWith))]
 
 
 def test_broad_except_logging_must_carry_traceback():
