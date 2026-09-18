@@ -140,6 +140,17 @@ export function AgentFormStepCapabilitiesSection({ form, setForm, flows, skills,
         )}
       </div>
       <div className="rounded-lg border border-line-soft p-4 lg:col-span-2">
+        <label className="flex cursor-pointer items-center gap-2 text-sm font-medium text-ink">
+          <input type="checkbox" checked={form.a2a_publish} onChange={(e) => setForm((f) => ({ ...f, a2a_publish: e.target.checked }))} />
+          对外发布为 A2A Server
+        </label>
+        <p className="mt-1 text-xs text-ink-muted">
+          发布后外部 A2A 客户端可拉取 Agent Card 并调用 <code>message/send</code>。发现地址：
+          <code>/api/v1/open/a2a/agents/&#123;agent_id&#125;/.well-known/agent-card.json</code>
+          （Card 公开，调用须带该智能体的 X-API-Key）。仅 <code>custom</code> 且启用的智能体生效。
+        </p>
+      </div>
+      <div className="rounded-lg border border-line-soft p-4 lg:col-span-2">
         <p className="mb-1 text-xs font-medium text-ink-muted">MCP 服务（可多选，绑定后工具可 function calling 调用）</p>
         <p className="mb-2 text-xs text-ink-faint">MCP 与平台工具分离；绑定并同步后，其工具加入本智能体可调用集合（只读工具免确认，其余需用户确认）。</p>
         <div className="flex max-h-32 flex-wrap gap-2 overflow-y-auto">

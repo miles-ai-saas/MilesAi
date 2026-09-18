@@ -17,10 +17,14 @@ export function useA2aPeersPanel() {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [baseUrl, setBaseUrl] = useState("");
+  const [apiKey, setApiKey] = useState("");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
 
-  const list = usePagedList(useCallback((p, s) => api.listA2aPeers(p, s), []), { enabled: ready });
+  const list = usePagedList(
+    useCallback((p, s) => api.listA2aPeers(p, s), []),
+    { enabled: ready },
+  );
   const { requestConfirm, confirmDialog } = useConfirmAction();
 
   const filtered = useMemo(() => filterBySearch(list.items, search, (p) => `${p.name} ${p.description ?? ""} ${p.base_url ?? ""}`), [list.items, search]);
@@ -29,6 +33,7 @@ export function useA2aPeersPanel() {
     setName("");
     setDescription("");
     setBaseUrl("");
+    setApiKey("");
   };
 
   const onCreate = async () => {
@@ -40,6 +45,7 @@ export function useA2aPeersPanel() {
         name: name.trim(),
         description: description.trim() || undefined,
         base_url: baseUrl.trim(),
+        auth_config: apiKey.trim() ? { api_key: apiKey.trim() } : undefined,
       });
       setDialogOpen(false);
       resetForm();
@@ -106,6 +112,8 @@ export function useA2aPeersPanel() {
     setDescription,
     baseUrl,
     setBaseUrl,
+    apiKey,
+    setApiKey,
     busy,
     msg,
     list,

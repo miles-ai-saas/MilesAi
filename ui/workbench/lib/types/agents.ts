@@ -65,6 +65,8 @@ export interface AgentConfig {
   max_a2a_calls_per_turn?: number;
   a2a_peer_count?: number;
   a2a_host_peer_count?: number;
+  /** 对外发布为 A2A Server：Card 与 JSON-RPC message/send 端点可被外部拉取/调用。 */
+  a2a_publish?: boolean;
   /** 保留后端可能返回的未登记字段 */
   [key: string]: unknown;
 }

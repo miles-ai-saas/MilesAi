@@ -70,6 +70,14 @@ describe("agentToFormValues", () => {
     expect(agentToFormValues(agent).carry_forward_media).toBe(false);
   });
 
+  it("读取 config.a2a_publish 对外发布开关，缺省 false", () => {
+    const on = agentToFormValues(mockAgent({ config: { a2a_publish: true } as AgentConfig }));
+    expect(on.a2a_publish).toBe(true);
+
+    const off = agentToFormValues(mockAgent({ config: {} as AgentConfig }));
+    expect(off.a2a_publish).toBe(false);
+  });
+
   it("处理空 agent 描述和 prompt", () => {
     const agent = mockAgent({ description: null as unknown as string, system_prompt: null as unknown as string });
     const form = agentToFormValues(agent);
@@ -170,6 +178,14 @@ describe("buildAgentConfig", () => {
   it("skill_ids 为空时不写入", () => {
     const config = buildAgentConfig(emptyAgentForm(), undefined);
     expect(config.skill_ids).toBeUndefined();
+  });
+
+  it("a2a_publish=true 写入 config，false 时删除", () => {
+    const on = buildAgentConfig({ ...emptyAgentForm(), a2a_publish: true }, undefined);
+    expect(on.a2a_publish).toBe(true);
+
+    const off = buildAgentConfig(emptyAgentForm(), { a2a_publish: true } as AgentConfig);
+    expect(off.a2a_publish).toBeUndefined();
   });
 });
 

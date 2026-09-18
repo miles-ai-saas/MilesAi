@@ -652,7 +652,7 @@ flowchart TD
 | L2 内置工具扩充（合规检测、触发流程/钩子、列附件） | 🔶 | `compliance_check_text`、`run_flow_once`、`invoke_tenant_hook` ✅；列附件需先补会话/资源范围语义；见 [tools-runtime.md](./tools-runtime.md) §7 |
 | 对话 HTTP 整包流式；tool/flow/A2A 路径真 token 流式 | 🔶 | WS 直连/RAG 已真流式；见 [realtime-transport-design.md](./realtime-transport-design.md) |
 | WS 断线续传、服务端会话快照 | ⬜ | v2，见 [realtime-transport-design.md](./realtime-transport-design.md) |
-| A2A 对外暴露本平台 Agent Card | ⬜ | 现仅能拉取远端 Card；见 [a2a.md](../guides/a2a.md) |
+| A2A 对外 Server 多轮 / 流式 | 🔶 | Card 与 `message/send` ✅；`message/stream`、`message.contextId` 多轮待做；见 [a2a.md](../guides/a2a.md) |
 | 流程版本一键回滚 | ⬜ | 已有 `versions`/`publish`，缺 restore；可参照 marketplace `rollback.py` |
 | 内置 Redis 操作工具 | ⬜ | `builtin_registry.py` 无 redis 工具；现仅系统页只读 `/redis-info` |
 | HookScope.APP（应用级）派发 | ⬜ | `hooks/meta.py` 标「预留」；现仅 global/agent/flow/tool 有派发点 |

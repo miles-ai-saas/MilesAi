@@ -30,6 +30,8 @@ export type AgentFormValues = {
   generative_image_model_id: string;
   generative_video_model_id: string;
   carry_forward_media: boolean;
+  /** 对外发布为 A2A Server（Card 与 message/send 端点）。 */
+  a2a_publish: boolean;
 };
 
 export const AGENT_FORM_STEPS = [
@@ -68,6 +70,7 @@ export function emptyAgentForm(): AgentFormValues {
     generative_image_model_id: "",
     generative_video_model_id: "",
     carry_forward_media: true,
+    a2a_publish: false,
   };
 }
 
@@ -117,6 +120,7 @@ export function agentToFormValues(agent: Agent): AgentFormValues {
     generative_image_model_id: String(cfg.generative_image_model_id ?? ""),
     generative_video_model_id: String(cfg.generative_video_model_id ?? ""),
     carry_forward_media: cfg.carry_forward_media !== false,
+    a2a_publish: cfg.a2a_publish === true,
   };
 }
 
@@ -204,6 +208,10 @@ export function buildAgentConfig(form: AgentFormValues, baseConfig: AgentConfig 
   } else {
     delete config.carry_forward_media;
   }
+
+  // 对外 A2A Server：只写布尔 true，关闭时删除键（后端 is_publish_enabled 只认 True）
+  if (form.a2a_publish) config.a2a_publish = true;
+  else delete config.a2a_publish;
 
   return config;
 }

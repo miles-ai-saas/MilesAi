@@ -23,8 +23,9 @@
 
 ### 1.2 明确不做
 
-- 对外暴露本平台 Agent Card（A2A Server 待做）
 - 子智能体再绑子智能体（子节点须为叶子）
+
+> 对外暴露本平台 Agent Card（A2A Server）已在 [a2a-interconnect.md](./a2a-interconnect.md) §4.3 实现，见 [a2a.md](../guides/a2a.md)。
 
 ---
 

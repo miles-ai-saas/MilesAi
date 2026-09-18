@@ -124,7 +124,7 @@
 |----------|----------|------|
 | 自定义智能体（模型/KB/工具/流程/技能） | ✅ | `agent_type=custom` |
 | 内部协同 / 多智能体委派 | ✅ | DeepAgents + 平台规划降级 |
-| A2A 外部互联 | ✅ | Peer 登记 + 互联宿主 + custom 引用 |
+| A2A 外部互联 | ✅ | Peer 登记 + 互联宿主 + custom 引用；本平台亦作 Server 对外暴露 Card + `message/send` |
 | 对话 WebSocket + HTTP | ✅ | v1 已实现 |
 | 智能体定时任务（Cron） | ✅ | Celery Beat；Compose 含 `beat` 服务 |
 | 复制/导出/导入智能体 | ✅ | `GET /agents/{id}/export` · `POST /agents/import` |

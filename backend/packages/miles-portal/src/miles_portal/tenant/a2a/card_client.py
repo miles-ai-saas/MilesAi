@@ -14,6 +14,7 @@ from urllib.parse import urljoin, urlparse
 import httpx
 
 from miles_common.exceptions import BadRequestError
+from miles_portal.tenant.a2a.client import build_auth_headers
 
 WELL_KNOWN_CARD = "/.well-known/agent-card.json"
 
@@ -59,15 +60,21 @@ def count_card_skills(card: dict) -> int:
     return 0
 
 
-async def fetch_agent_card(base_or_card_url: str) -> tuple[dict, str]:
-    """HTTP GET Agent Card，返回 (card_json, 最终 card_url)。"""
+async def fetch_agent_card(
+    base_or_card_url: str,
+    *,
+    auth_config: dict | None = None,
+) -> tuple[dict, str]:
+    """HTTP GET Agent Card，返回 (card_json, 最终 card_url)。
+
+    ``auth_config`` 同 ``client.build_auth_headers``：部分外部 Agent 的 Card 也受保护，
+    已登记 Peer 的凭证须在此带上，否则 sync-card 会在 401 处失败。
+    """
     card_url = resolve_agent_card_url(base_or_card_url)
+    headers = {"Accept": "application/json", **build_auth_headers(auth_config)}
     try:
         async with httpx.AsyncClient(timeout=20.0, follow_redirects=True) as client:
-            resp = await client.get(
-                card_url,
-                headers={"Accept": "application/json"},
-            )
+            resp = await client.get(card_url, headers=headers)
             resp.raise_for_status()
             data = resp.json()
     except httpx.HTTPStatusError as e:

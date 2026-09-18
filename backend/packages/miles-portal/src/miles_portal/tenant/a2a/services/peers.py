@@ -142,7 +142,7 @@ class A2aPeerService(BaseService):
         row = await self._get_peer_or_raise(peer_id)
         source = row.base_url or row.agent_card_url
         try:
-            card, card_url = await fetch_agent_card(source)
+            card, card_url = await fetch_agent_card(source, auth_config=row.auth_config)
             now = datetime.now(UTC)
             row.agent_card_json = card
             row.agent_card_url = card_url

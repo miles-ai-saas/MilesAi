@@ -47,7 +47,7 @@
         "properties": {
           "auth_config": {
             "additionalProperties": true,
-            "description": "认证配置 JSON",
+            "description": "认证配置 JSON；支持 headers（任意头）/ api_key（X-API-Key）/ bearer_token",
             "title": "Auth Config",
             "type": "object"
           },
@@ -409,7 +409,7 @@
                 "type": "null"
               }
             ],
-            "description": "认证配置 JSON",
+            "description": "认证配置 JSON；支持 headers（任意头）/ api_key（X-API-Key）/ bearer_token",
             "title": "Auth Config"
           },
           "base_url": {
@@ -21484,6 +21484,26 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/.well-known/agent-card.json": {
+      "get": {
+        "description": "平台根路径别名：仅在全平台唯一发布时 307 到该智能体的 Card 路径。\n\n多租户下根路径无法区分租户，命中不唯一时返回 404 而非随意挑一个 —— 否则会把 A\n租户的 Card 发给 B 的对端。",
+        "operationId": "well_known_agent_card__well_known_agent_card_json_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Well Known Agent Card",
+        "tags": [
+          "open-a2a"
+        ]
+      }
+    },
     "/api/admin/v1/admins": {
       "get": {
         "operationId": "list_admins_api_admin_v1_admins_get",
@@ -33534,6 +33554,106 @@
         "summary": "Monitor Trends",
         "tags": [
           "monitor"
+        ]
+      }
+    },
+    "/api/v1/open/a2a/agents/{agent_id}": {
+      "post": {
+        "description": "A2A JSON-RPC 端点（``message/send``）。请求体非 JSON 时回 -32700 信封。",
+        "operationId": "a2a_jsonrpc_api_v1_open_a2a_agents__agent_id__post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "agent_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Agent Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "A2A Jsonrpc",
+        "tags": [
+          "open-a2a"
+        ]
+      }
+    },
+    "/api/v1/open/a2a/agents/{agent_id}/.well-known/agent-card.json": {
+      "get": {
+        "description": "公开 Agent Card；未发布的智能体与不存在的智能体同样返回 404。",
+        "operationId": "get_published_agent_card_api_v1_open_a2a_agents__agent_id___well_known_agent_card_json_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "agent_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Agent Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Published Agent Card",
+        "tags": [
+          "open-a2a"
         ]
       }
     },

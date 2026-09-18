@@ -1,6 +1,6 @@
 # A2A 外部互联
 
-**状态：** 部分实现（登记/引用/宿主 ✅；对外 Card 待做）  
+**状态：** 已实现（登记/引用/宿主 ✅；对外暴露 Card + `message/send` ✅）  
 **PRD 对照：** 模块4 A2A 互联智能体  
 **协议：** [A2A Protocol v1.0](https://a2a-protocol.org/v1.0.0/specification/) · [a2a.md](../guides/a2a.md)
 
@@ -26,9 +26,15 @@
 - `run_a2a_host_chat` / `augment_response_with_a2a`
 - 前端：A2A 互联 Tab（外部登记、互联宿主）
 
-### 1.2 明确不做
+### 1.2 交付范围（对外暴露）
 
-- 本平台对外 `/.well-known/agent-card.json`
+- 指定 `custom` 智能体 `config.a2a_publish=true` → 对外 Agent Card 与 JSON-RPC `message/send`
+- 多租户按智能体寻址；根 `/.well-known/agent-card.json` 仅在唯一发布时 307 别名
+- Card 公开（发现元数据），调用端点用该智能体的 X-API-Key
+
+### 1.3 明确不做
+
+- `message/stream` 真流式（Card 声明 `streaming=false`）
 - A2A 专用审计/限流（复用通用能力）
 
 ---
@@ -42,7 +48,7 @@
 | `agent_card_url` | Card 拉取地址 |
 | `agent_card_json` | 缓存 Card |
 | `base_url` | 调用基址 |
-| `auth_config` | 认证 JSON |
+| `auth_config` | 认证 JSON：`headers`（任意头）/ `api_key`（X-API-Key）/ `bearer_token`（Bearer），同步 Card 与调用时携带 |
 | `status` | pending / active / error / inactive |
 
 ### 2.2 表 `agt_a2a_peer_bindings`
@@ -105,6 +111,17 @@ POST /agents/{id}/chat            # 宿主或 custom 增强
 
 创建宿主：`agent_type=a2a`，绑定 peers 在 agent body 或专用表单。
 
+### 4.3 对外暴露（本平台作 Server，`/api/v1/open`）
+
+```
+GET  /a2a/agents/{agent_id}/.well-known/agent-card.json   # 公开，仅 config.a2a_publish=true 命中
+POST /a2a/agents/{agent_id}                               # JSON-RPC message/send，X-API-Key
+GET  /.well-known/agent-card.json                         # 全平台唯一发布时 307；否则 404
+```
+
+发布门槛：`agent_type=custom` + `status=enabled` + `config.a2a_publish=true`；未发布与不存在同回 404。
+JSON-RPC 协议级错误（解析 / 方法 / 参数）回 HTTP 200 + `error` 信封，执行异常回 `-32603`。
+
 ---
 
 ## 5. 前端
@@ -126,8 +143,11 @@ POST /agents/{id}/chat            # 宿主或 custom 增强
 backend/packages/miles-portal/src/miles_portal/tenant/a2a/models.py
 backend/packages/miles-portal/src/miles_portal/tenant/a2a/views/peers.py
 backend/packages/miles-portal/src/miles_portal/tenant/a2a/card_client.py
+backend/packages/miles-portal/src/miles_portal/tenant/a2a/server.py           # 对外 Card / JSON-RPC 纯逻辑
+backend/packages/miles-portal/src/miles_portal/tenant/a2a/services/server.py  # 发布门槛、Card 组装、RPC 分发
 backend/packages/miles-portal/src/miles_portal/tenant/a2a/invoke.py
 backend/packages/miles-portal/src/miles_portal/tenant/a2a/services/
+backend/packages/miles-openapi/src/miles_openapi/views/a2a_server.py          # 公开路由
 ```
 
 ---
@@ -138,6 +158,9 @@ backend/packages/miles-portal/src/miles_portal/tenant/a2a/services/
 2. 创建 a2a 宿主 + binding → chat 调外部（mock Card）
 3. custom + peer_refs + trigger_keywords 命中 → 强制 Peer
 4. inactive peer → 跳过或报错
+5. 对外 Card：未发布 404 / 已发布返回 `supportedInterfaces`；多技能包映射 `skills`
+6. 对外 RPC：`message/send` 正常回信封；缺文本 / 未知方法 / 非 JSON-RPC 各自错误码
+7. 根别名：唯一发布 307、0 或 >1 → 404
 
 ---
 

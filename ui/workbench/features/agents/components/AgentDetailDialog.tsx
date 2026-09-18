@@ -54,6 +54,7 @@ function formatAgentConfigSummary(cfg: Record<string, unknown>, subs: number, kb
   if (skillCount) lines.push(`技能包：${skillCount} 个`);
   if (cfg.enable_generative_tools) lines.push("生图/生视频工具：已开启");
   if (cfg.carry_forward_media === false) lines.push("多轮识图沿用附图：已关闭");
+  if (cfg.a2a_publish === true) lines.push("对外 A2A Server：已发布");
   if (lines.length === 0) return <span className="text-ink-muted">默认配置</span>;
   return (
     <ul className="list-inside list-disc space-y-0.5 text-ink-muted">
@@ -109,6 +110,18 @@ function AgentDetailDialogBody({ vm, onRenamed }: { vm: AgentDetailDialogVm; onR
         )}
       </AgentDetailRow>
       <AgentDetailRow label="技能包">{resolved.skillNames.length ? resolved.skillNames.join("、") : <span className="text-ink-muted">无</span>}</AgentDetailRow>
+      {agent.agent_type === "custom" && (
+        <AgentDetailRow label="对外 A2A">
+          {agent.config?.a2a_publish === true ? (
+            <span>
+              已发布为 Server
+              <code className="ml-2 break-all rounded bg-surface-muted px-1 text-xs">/api/v1/open/a2a/agents/{agent.id}/.well-known/agent-card.json</code>
+            </span>
+          ) : (
+            <span className="text-ink-muted">未发布</span>
+          )}
+        </AgentDetailRow>
+      )}
       <AgentDetailRow label="MCP 服务">
         {resolved.mcpNames.length > 0 ? (
           <ul className="list-inside list-disc">

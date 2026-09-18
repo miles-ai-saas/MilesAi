@@ -117,12 +117,22 @@ export function A2aPeersPanel() {
             />
           </label>
           <label className="block text-sm">
+            <span className="mb-1 block text-ink-muted">API Key（可选）</span>
+            <input
+              className="input-field w-full font-mono text-xs"
+              type="password"
+              value={vm.apiKey}
+              onChange={(e) => vm.setApiKey(e.target.value)}
+              placeholder="对方要求鉴权时填写，作为 X-API-Key 发送"
+            />
+          </label>
+          <label className="block text-sm">
             <span className="mb-1 block text-ink-muted">备注（可选）</span>
             <textarea className="input-field w-full resize-none" rows={2} value={vm.description} onChange={(e) => vm.setDescription(e.target.value)} />
           </label>
           <p className="text-xs text-ink-faint">
             将解析为 <code className="rounded bg-surface-muted px-1">/.well-known/agent-card.json</code>
-            ，与平台内「内部协同」无关。
+            ，与平台内「内部协同」无关；同步 Card 与调用时自动携带上述 API Key。
           </p>
         </div>
       </ResourceDialog>

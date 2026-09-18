@@ -1,6 +1,6 @@
 # A2A 外部互联
 
-> 类型：智能体 | 状态：部分实现（登记/引用/宿主 ✅；对外暴露 Card 待做）  
+> 类型：智能体 | 状态：已实现（登记/引用/宿主 ✅；对外暴露 Card + `message/send` ✅）  
 > **功能规格：** [features/a2a-interconnect.md](../features/a2a-interconnect.md)  
 > 协议：[A2A Protocol v1.0](https://a2a-protocol.org/v1.0.0/specification/) | 关联：[platform-agents.md](./platform-agents.md)
 
@@ -54,11 +54,11 @@ agt_agent_a2a_peer_refs # custom → peer
 
 custom 有 peer_refs：在 RAG/协同/流程结果上 `augment_response_with_a2a`。
 
-模块：`backend/packages/miles-portal/src/miles_portal/tenant/a2a/`（`card_client.py`、`invoke.py`）。
+模块：`backend/packages/miles-portal/src/miles_portal/tenant/a2a/`（`card_client.py` 拉 Card、`client.py` 调用、`invoke.py` 编排、`server.py` + `services/server.py` 对外暴露）。
 
 ## UI
 
-- **A2A 互联 Tab → 外部登记**：登记、探测、同步 Card
+- **A2A 互联 Tab → 外部登记**：登记、探测、同步 Card；`auth_config` 支持 `headers`（任意头）、`api_key`（→ `X-API-Key`）、`bearer_token`（→ `Authorization: Bearer`），同步 Card 与调用 `message/send` 时自动携带
 - **A2A 互联 Tab → 互联宿主**：创建/编辑 `agent_type=a2a`
 - **智能体 Tab**：可选引用外部 A2A（表单第 4 步）
 
@@ -70,9 +70,30 @@ POST       /api/v1/a2a/peers/probe
 POST       /api/v1/a2a/peers/{id}/sync-card
 GET        /api/v1/agents?agent_type=a2a
 POST       /api/v1/agents/{id}/chat    # 宿主或 custom 增强
+
+# 对外暴露（本平台作 Server）
+GET  /api/v1/open/a2a/agents/{agent_id}/.well-known/agent-card.json   # 公开
+POST /api/v1/open/a2a/agents/{agent_id}                               # JSON-RPC，X-API-Key
+GET  /.well-known/agent-card.json                                     # 全平台唯一发布时 307
 ```
+
+## 对外暴露（本平台作 Server）
+
+指定 `custom` 智能体对外发布后，外部 A2A 客户端可拉取 Card 并调用。
+
+- 开关：智能体 `config.a2a_publish = true`（必须同时 `agent_type=custom` 且 `status=enabled`；否则一律 404）
+- Card：`GET /api/v1/open/a2a/agents/{agent_id}/.well-known/agent-card.json`（**公开**，A2A 发现元数据）
+- 调用：`POST /api/v1/open/a2a/agents/{agent_id}`（JSON-RPC 2.0 `message/send`，**须带该智能体的 `X-API-Key`**）
+- 根别名：`GET /.well-known/agent-card.json` → 307 到按智能体路径；**仅当全平台唯一发布**时启用，命中 0 或 >1 返回 404（多租户根路径无法区分租户，不猜）
+
+Card 的 `supportedInterfaces[].url` 即调用端点；`url` 由请求的 scheme://host 推导，多环境无需新增配置项。绑定技能包会映射为 Card `skills`（无绑定时智能体自身为一个 skill）。`capabilities.streaming=false`，故不支持 `message/stream`。
+
+反向登记：把本平台发布的智能体登记为外部 Peer 时，在 `auth_config.api_key` 填入该智能体的 X-API-Key，客户端会在 Card 同步与 `message/send` 时自动携带。
+
+前端入口：智能体表单「工具与能力」→ 勾选「对外发布为 A2A Server」；详情对话框展示已发布状态与 Card 地址。
 
 ## 待做
 
-- 本平台对外 `/.well-known/agent-card.json`（指定 custom 暴露为 Server）
-- 审计、限流
+- `message/stream`（真 token 流式；现声明 `streaming=false`）
+- 多轮上下文：`message.contextId` → `ChatRequest.conversation_id`（现每次调用无状态）
+- A2A 专用审计维度（现复用通用访问日志与限流中间件）

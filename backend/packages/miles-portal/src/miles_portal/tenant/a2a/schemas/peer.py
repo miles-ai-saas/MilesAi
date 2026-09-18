@@ -22,7 +22,10 @@ class A2aPeerCreate(BaseModel):
         max_length=1024,
         description="外部 Agent 根地址或完整 Agent Card URL",
     )
-    auth_config: dict = Field(default_factory=dict, description="认证配置 JSON")
+    auth_config: dict = Field(
+        default_factory=dict,
+        description="认证配置 JSON；支持 headers（任意头）/ api_key（X-API-Key）/ bearer_token",
+    )
 
 
 # 更新外部 A2A 对端的入参；字段均可选。
@@ -40,7 +43,10 @@ class A2aPeerUpdate(BaseModel):
         max_length=1024,
         description="外部 Agent 根地址或 Agent Card URL",
     )
-    auth_config: dict | None = Field(default=None, description="认证配置 JSON")
+    auth_config: dict | None = Field(
+        default=None,
+        description="认证配置 JSON；支持 headers（任意头）/ api_key（X-API-Key）/ bearer_token",
+    )
     status: A2aPeerStatus | None = Field(default=None, description="连接状态")
 
 
