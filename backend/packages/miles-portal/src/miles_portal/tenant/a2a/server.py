@@ -265,6 +265,40 @@ def build_a2a_agent_message(*, text: str, context_id: str, task_id: str | None =
     return message
 
 
+def build_a2a_status_update(
+    *,
+    task_id: str,
+    context_id: str,
+    state: str,
+    timestamp: str,
+    text: str | None = None,
+    final: bool = False,
+    job_task_id: str | None = None,
+) -> dict:
+    """A2A ``TaskStatusUpdateEvent``（``message/stream`` 的帧载荷）。
+
+    ``final`` 表示「本流结束」，不等于「任务终态」—— 产生异步生成任务时以
+    ``working`` + ``final=True`` 收尾，对端再转向 ``tasks/get`` 轮询。
+
+    ``job_task_id`` 非空时写入嵌套消息的 ``metadata.a2aJobTaskId``：本流的 taskId 是
+    合成的（流开始时就得定），生成任务 id 只有跑完才知道，故不强行合一，改用该扩展位
+    把两者串起来。
+    """
+    status: dict = {"state": state, "timestamp": timestamp}
+    if text is not None:
+        message = build_a2a_agent_message(text=text, context_id=context_id, task_id=task_id)
+        if job_task_id:
+            message["metadata"] = {"a2aJobTaskId": job_task_id}
+        status["message"] = message
+    return {
+        "kind": "status-update",
+        "taskId": task_id,
+        "contextId": context_id,
+        "status": status,
+        "final": final,
+    }
+
+
 def artifact_ids_from_job_result(job_result: object) -> list[str]:
     """从生成任务 ``result`` 取产物附件 ID。
 

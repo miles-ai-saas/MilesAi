@@ -24,6 +24,7 @@ from miles_portal.tenant.a2a.server import (
     artifact_ids_from_job_result,
     build_a2a_agent_message,
     build_a2a_artifacts,
+    build_a2a_status_update,
     build_a2a_task,
     build_agent_card,
     extract_message_context_id,
@@ -283,6 +284,73 @@ def test_build_a2a_artifacts_part_kind_is_file():
     )
 
     assert artifacts[0]["parts"][0]["kind"] == "file"
+
+
+def test_build_a2a_status_update_increment_frame():
+    """中间帧：state=working、final=False，文本为本片增量，嵌套消息带 taskId/contextId。"""
+    frame = build_a2a_status_update(
+        task_id="t-1",
+        context_id="ctx-1",
+        state=server_mod.TASK_STATE_WORKING,
+        timestamp="2026-09-18T09:00:00+00:00",
+        text="甲",
+        final=False,
+    )
+
+    assert frame["kind"] == "status-update"
+    assert frame["taskId"] == "t-1"
+    assert frame["contextId"] == "ctx-1"
+    assert frame["final"] is False
+    assert frame["status"]["state"] == "working"
+    assert frame["status"]["timestamp"] == "2026-09-18T09:00:00+00:00"
+    assert frame["status"]["message"]["taskId"] == "t-1"
+    assert frame["status"]["message"]["contextId"] == "ctx-1"
+    assert frame["status"]["message"]["parts"] == [{"kind": "text", "text": "甲"}]
+
+
+def test_build_a2a_status_update_final_frame_carries_full_answer():
+    frame = build_a2a_status_update(
+        task_id="t-1",
+        context_id="ctx-1",
+        state=server_mod.TASK_STATE_COMPLETED,
+        timestamp="2026-09-18T09:00:01+00:00",
+        text="甲乙丙",
+        final=True,
+    )
+
+    assert frame["final"] is True
+    assert frame["status"]["state"] == "completed"
+    assert frame["status"]["message"]["parts"][0]["text"] == "甲乙丙"
+    assert "metadata" not in frame["status"]["message"]
+
+
+def test_build_a2a_status_update_exposes_job_task_id_in_metadata():
+    """本轮产生异步生成任务时，末帧给出真实 job id，对端才能转向 tasks/get 轮询产物。"""
+    frame = build_a2a_status_update(
+        task_id="t-1",
+        context_id="ctx-1",
+        state=server_mod.TASK_STATE_WORKING,
+        timestamp="2026-09-18T09:00:00+00:00",
+        text="正在生成",
+        final=True,
+        job_task_id="job-1",
+    )
+
+    assert frame["status"]["message"]["metadata"] == {"a2aJobTaskId": "job-1"}
+
+
+def test_build_a2a_status_update_omits_message_without_text():
+    """无文本终态不带 message（保留表达能力：终态可以只是状态）。"""
+    frame = build_a2a_status_update(
+        task_id="t-1",
+        context_id="ctx-1",
+        state=server_mod.TASK_STATE_FAILED,
+        timestamp="2026-09-18T09:00:00+00:00",
+        final=True,
+    )
+
+    assert "message" not in frame["status"]
+    assert "metadata" not in frame
 
 
 def test_jsonrpc_envelopes():
