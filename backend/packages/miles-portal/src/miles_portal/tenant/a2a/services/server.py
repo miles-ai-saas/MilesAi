@@ -30,6 +30,7 @@ from miles_portal.tenant.a2a.server import (
     INVALID_REQUEST,
     METHOD_NOT_FOUND,
     build_agent_card,
+    extract_message_context_id,
     extract_message_text,
     is_publish_enabled,
     jsonrpc_error,
@@ -134,8 +135,13 @@ async def run_published_agent_chat(
     ctx: TenantContext,
     agent_id: UUID,
     text: str,
+    *,
+    conversation_id: str | None = None,
 ) -> str:
     """入站 A2A 任务 → 平台对话链路，返回回答正文。
+
+    ``conversation_id`` 来自 A2A ``message.contextId``，作为同一会话的 ``thread_id``
+    后缀恢复 LangGraph checkpoint，从而支持多轮。
 
     函数内 import ``AgentService``：``agents.services.agent`` 依赖 ``a2a`` 域内的
     peer_refs / invoke，模块级互引会成环。
@@ -143,16 +149,20 @@ async def run_published_agent_chat(
     from miles_portal.tenant.agents.schemas.agent import ChatRequest
     from miles_portal.tenant.agents.services.agent import AgentService
 
-    response = await AgentService(db, ctx).chat(agent_id, ChatRequest(query=text))
+    response = await AgentService(db, ctx).chat(agent_id, ChatRequest(query=text, conversation_id=conversation_id))
     return response.answer
 
 
-def _agent_message(text: str) -> dict:
-    """A2A ``Message``（agent 角色）形态；``parts`` 带 ``text`` 以兼容各家解析。"""
+def _agent_message(text: str, context_id: str) -> dict:
+    """A2A ``Message``（agent 角色）形态；``parts`` 带 ``text`` 以兼容各家解析。
+
+    ``contextId`` 必须回显：对端据此把后续消息接回同一上下文，否则每轮都是新对话。
+    """
     return {
         "kind": "message",
         "role": "agent",
         "messageId": str(uuid4()),
+        "contextId": context_id,
         "parts": [{"type": "text", "text": text}],
     }
 
@@ -181,14 +191,16 @@ async def handle_a2a_rpc(
     try:
         await load_published_agent(db, agent_id)
         text = extract_message_text(params)
+        # 未带 contextId 时生成一个并回显：对端才有可复用的上下文标识，多轮才接得上。
+        context_id = extract_message_context_id(params) or str(uuid4())
     except (NotFoundError, BadRequestError) as exc:
         return jsonrpc_error(req_id, INVALID_PARAMS, str(exc))
 
     try:
-        answer = await run_published_agent_chat(db, ctx, agent_id, text)
+        answer = await run_published_agent_chat(db, ctx, agent_id, text, conversation_id=context_id)
     except Exception as exc:
         # 对端只拿到 JSON-RPC 错误信封；本平台侧必须留栈，否则线上无法定位。
         logger.exception("A2A message/send 执行失败: agent_id=%s", agent_id)
         return jsonrpc_error(req_id, INTERNAL_ERROR, f"智能体执行失败: {exc}")
 
-    return jsonrpc_result(req_id, _agent_message(answer))
+    return jsonrpc_result(req_id, _agent_message(answer, context_id))

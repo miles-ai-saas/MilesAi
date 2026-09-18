@@ -20,6 +20,7 @@ from miles_portal.tenant.a2a import server as server_mod
 from miles_portal.tenant.a2a.server import (
     A2A_PUBLISH_FLAG,
     build_agent_card,
+    extract_message_context_id,
     extract_message_text,
     is_publish_enabled,
     jsonrpc_error,
@@ -120,6 +121,32 @@ def test_extract_message_text_rejects_payload_without_text(params):
     """缺少文本属调用方参数错误；静默返回空串会让本平台空转一轮对话。"""
     with pytest.raises(BadRequestError):
         extract_message_text(params)
+
+
+def test_extract_message_context_id_reads_message_level_field():
+    """A2A 的 ``contextId`` 挂在 Message 顶层，用于把多轮串成同一上下文。"""
+    params = {"message": {"parts": [{"type": "text", "text": "hi"}], "contextId": "ctx-1"}}
+    assert extract_message_context_id(params) == "ctx-1"
+
+
+@pytest.mark.parametrize(
+    "params",
+    [
+        {},
+        {"message": {}},
+        {"message": {"parts": [], "contextId": "   "}},
+        {"message": {"parts": [], "contextId": 123}},
+    ],
+)
+def test_extract_message_context_id_absent_or_invalid_is_none(params):
+    """未提供或非法类型一律视为「无上下文」；不猜测、不报错（首轮调用本就没有）。"""
+    assert extract_message_context_id(params) is None
+
+
+def test_extract_message_context_id_rejects_overlong():
+    """超长 contextId 会被下游客话契约拒绝（→ 500）；在入口就判为参数错误更可诊断。"""
+    with pytest.raises(BadRequestError):
+        extract_message_context_id({"message": {"parts": [], "contextId": "c" * 200}})
 
 
 def test_jsonrpc_envelopes():
@@ -231,7 +258,7 @@ async def test_resolve_default_published_agent_requires_unambiguous_match():
 
 @pytest.mark.asyncio
 async def test_handle_rpc_message_send_returns_agent_message(monkeypatch):  # noqa: ANN001
-    async def fake_chat(_db, _ctx, _agent_id, text):  # noqa: ANN001
+    async def fake_chat(_db, _ctx, _agent_id, text, conversation_id=None):  # noqa: ANN001
         assert text == "帮我查订单"
         return "订单已发货"
 
@@ -251,6 +278,67 @@ async def test_handle_rpc_message_send_returns_agent_message(monkeypatch):  # no
     assert result["role"] == "agent"
     assert result["parts"][0]["text"] == "订单已发货"
     assert result["messageId"]
+
+
+@pytest.mark.asyncio
+async def test_handle_rpc_forwards_context_id_as_conversation(monkeypatch):  # noqa: ANN001
+    """``message.contextId`` → ``ChatRequest.conversation_id``，并在响应回显，多轮才成立。"""
+    captured: dict = {}
+
+    async def fake_chat(_db, _ctx, _agent_id, text, conversation_id=None):  # noqa: ANN001
+        captured["conversation_id"] = conversation_id
+        return "继续"
+
+    monkeypatch.setattr(server_svc, "run_published_agent_chat", fake_chat)
+    payload = {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "message/send",
+        "params": {"message": {"parts": [{"type": "text", "text": "接着说"}], "contextId": "ctx-42"}},
+    }
+    envelope = await server_svc.handle_a2a_rpc(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, payload)
+
+    assert captured["conversation_id"] == "ctx-42"
+    assert envelope["result"]["contextId"] == "ctx-42"
+
+
+@pytest.mark.asyncio
+async def test_handle_rpc_assigns_context_id_when_absent(monkeypatch):  # noqa: ANN001
+    """首轮未带 contextId 时生成一个，并同样作为 conversation_id 下传。
+
+    必须首轮就用它：否则第一轮 checkpoint 落在别的 thread，对端第二轮带上该
+    contextId 时模型并无上一轮记忆，「多轮」名不副实。
+    """
+    captured: dict = {}
+
+    async def fake_chat(_db, _ctx, _agent_id, _text, conversation_id=None):  # noqa: ANN001
+        captured["conversation_id"] = conversation_id
+        return "初次见面"
+
+    monkeypatch.setattr(server_svc, "run_published_agent_chat", fake_chat)
+    payload = {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "message/send",
+        "params": {"message": {"parts": [{"type": "text", "text": "你好"}]}},
+    }
+    envelope = await server_svc.handle_a2a_rpc(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, payload)
+
+    generated = envelope["result"]["contextId"]
+    assert generated
+    assert captured["conversation_id"] == generated
+
+
+@pytest.mark.asyncio
+async def test_handle_rpc_maps_overlong_context_id_to_invalid_params():
+    payload = {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "message/send",
+        "params": {"message": {"parts": [{"type": "text", "text": "hi"}], "contextId": "c" * 200}},
+    }
+    envelope = await server_svc.handle_a2a_rpc(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, payload)
+    assert envelope["error"]["code"] == server_mod.INVALID_PARAMS
 
 
 @pytest.mark.asyncio

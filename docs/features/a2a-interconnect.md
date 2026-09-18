@@ -1,6 +1,6 @@
 # A2A 外部互联
 
-**状态：** 已实现（登记/引用/宿主 ✅；对外暴露 Card + `message/send` ✅）  
+**状态：** 已实现（登记/引用/宿主 ✅；对外暴露 Card + `message/send` + `contextId` 多轮 ✅）  
 **PRD 对照：** 模块4 A2A 互联智能体  
 **协议：** [A2A Protocol v1.0](https://a2a-protocol.org/v1.0.0/specification/) · [a2a.md](../guides/a2a.md)
 
@@ -122,6 +122,7 @@ GET  /.well-known/agent-card.json                         # 全平台唯一发�
 发布门槛：`agent_type=custom` + `status=enabled` + `config.a2a_publish=true`；未发布与不存在同回 404。
 JSON-RPC 协议级错误（解析 / 方法 / 参数）回 HTTP 200 + `error` 信封，执行异常回 `-32603`。
 Card 含 `securitySchemes`（`apiKey` · `in: header` · `name: X-API-Key`）与 `security`，声明的是调用端点要求；Card GET 本身公开。
+多轮：`message.contextId` → `ChatRequest.conversation_id`（LangGraph `thread_id` 后缀），响应 `Message.contextId` 回显；未带时服务端生成。
 
 ---
 
@@ -162,6 +163,7 @@ backend/packages/miles-openapi/src/miles_openapi/views/a2a_server.py          # 
 5. 对外 Card：未发布 404 / 已发布返回 `supportedInterfaces`；多技能包映射 `skills`；声明 `securitySchemes` 且头名与实际鉴权一致
 6. 对外 RPC：`message/send` 正常回信封；缺文本 / 未知方法 / 非 JSON-RPC 各自错误码
 7. 根别名：唯一发布 307、0 或 >1 → 404
+8. 多轮：带 `contextId` → 作 `conversation_id` 并回显；缺省时生成；超长回 `-32602`
 
 ---
 

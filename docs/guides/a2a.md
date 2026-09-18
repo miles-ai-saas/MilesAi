@@ -1,6 +1,6 @@
 # A2A 外部互联
 
-> 类型：智能体 | 状态：已实现（登记/引用/宿主 ✅；对外暴露 Card + `message/send` ✅）  
+> 类型：智能体 | 状态：已实现（登记/引用/宿主 ✅；对外暴露 Card + `message/send` + `contextId` 多轮 ✅）  
 > **功能规格：** [features/a2a-interconnect.md](../features/a2a-interconnect.md)  
 > 协议：[A2A Protocol v1.0](https://a2a-protocol.org/v1.0.0/specification/) | 关联：[platform-agents.md](./platform-agents.md)
 
@@ -90,6 +90,8 @@ Card 的 `supportedInterfaces[].url` 即调用端点；`url` 由请求的 scheme
 
 Card 同时声明 `securitySchemes`（`apiKey` · `in: header` · `name: X-API-Key`）与 `security`，标准 A2A 客户端据此发现调用所需凭证，无需先撞一次 401。**Card 本身仍公开**（A2A 发现约定），声明的是调用端点的鉴权要求；头名取自 `miles_common.constants.AGENT_API_KEY_HEADER`，与实际鉴权（`require_agent_api_key`）同源，避免声明与实现漂移。
 
+**多轮上下文：** 请求 `message.contextId` → `ChatRequest.conversation_id`（作 LangGraph `thread_id` 后缀），响应 `Message.contextId` 原样回显，对端据此把后续消息接回同一会话。未带时服务端生成一个并回显（否则对端拿不到可复用的上下文标识）；超长（> `ChatRequest.conversation_id` 上限）回 `-32602` 而非撞下游校验变 500。
+
 反向登记：把本平台发布的智能体登记为外部 Peer 时，在 `auth_config.api_key` 填入该智能体的 X-API-Key，客户端会在 Card 同步与 `message/send` 时自动携带。
 
 前端入口：智能体表单「工具与能力」→ 勾选「对外发布为 A2A Server」；详情对话框展示已发布状态与 Card 地址。
@@ -97,5 +99,6 @@ Card 同时声明 `securitySchemes`（`apiKey` · `in: header` · `name: X-API-K
 ## 待做
 
 - `message/stream`（真 token 流式；现声明 `streaming=false`）
-- 多轮上下文：`message.contextId` → `ChatRequest.conversation_id`（现每次调用无状态）
+- `tasks/*`（`tasks/get` / `tasks/cancel` / pushNotification 配置；现返回 `Message` 而非 `Task`）
+- 多模态入站：`parts` 的 `file` / `data` 类型（现仅取 `text`）
 - A2A 专用审计维度（现复用通用访问日志与限流中间件）

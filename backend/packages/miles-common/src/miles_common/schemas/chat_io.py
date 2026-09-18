@@ -18,6 +18,10 @@ from pydantic import BaseModel, Field, model_validator
 
 from miles_common.schemas.media import MediaRefIn
 
+#: 会话标识长度上限；``ChatRequest.conversation_id`` 与 A2A ``message.contextId`` 共用，
+#: 入口侧据此提前判为参数错误，而非让下游 pydantic 校验失败退化成 500。
+CONVERSATION_ID_MAX_LENGTH = 128
+
 
 class ChatMediaIn(MediaRefIn):
     """智能体对话附图（与 ``MediaRefIn`` 同形）。"""
@@ -41,7 +45,7 @@ class ChatRequest(BaseModel):
     )
     conversation_id: str | None = Field(
         default=None,
-        max_length=128,
+        max_length=CONVERSATION_ID_MAX_LENGTH,
         description="同一会话 thread_id 后缀，用于 LangGraph checkpoint 多轮恢复",
     )
     tool_confirmed: bool = Field(

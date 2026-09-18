@@ -18,6 +18,7 @@ from uuid import UUID
 
 from miles_common.constants import AGENT_API_KEY_HEADER
 from miles_common.exceptions import BadRequestError
+from miles_common.schemas.chat_io import CONVERSATION_ID_MAX_LENGTH
 
 #: ``agent.config`` 中标记「对外暴露为 A2A Server」的键。
 A2A_PUBLISH_FLAG = "a2a_publish"
@@ -141,6 +142,27 @@ def extract_message_text(params: dict) -> str:
     if not texts:
         raise BadRequestError("message/send 的 parts 中没有文本内容")
     return "\n".join(texts)
+
+
+def extract_message_context_id(params: dict) -> str | None:
+    """取 A2A ``message/send`` 的 ``message.contextId``（多轮上下文标识）。
+
+    缺省或非字符串视为「无上下文」返回 ``None``：首轮调用本就不带，不能因此报错。
+    超长则抛 ``BadRequestError`` —— 它作为 ``conversation_id`` 会被下游契约的
+    ``max_length`` 拒绝并退化成 500，在入口判为参数错误更可诊断。
+    """
+    message = params.get("message")
+    if not isinstance(message, dict):
+        return None
+    raw = message.get("contextId")
+    if not isinstance(raw, str):
+        return None
+    context_id = raw.strip()
+    if not context_id:
+        return None
+    if len(context_id) > CONVERSATION_ID_MAX_LENGTH:
+        raise BadRequestError(f"message.contextId 过长（上限 {CONVERSATION_ID_MAX_LENGTH} 字符）")
+    return context_id
 
 
 def jsonrpc_result(req_id: object, result: dict) -> dict:
