@@ -41,6 +41,7 @@ async def resolve_bound_skill_id_from_agent(
     try:
         return UUID(str(raw))
     except ValueError:
+        # 静默可接受：agent.config 里的 skill_package_id 非 UUID，视为「未绑定技能」。
         return None
 
 

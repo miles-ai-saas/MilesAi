@@ -71,6 +71,7 @@ def safe_decode_token(token: str) -> dict[str, Any] | None:
     try:
         return jwt.decode(token, settings.secret_key, algorithms=[settings.jwt_algorithm])
     except JWTError:
+        # 静默可接受：解码失败即无效令牌，返回 None 交由 get_current_user 判 401（见 docstring）。
         return None
 
 

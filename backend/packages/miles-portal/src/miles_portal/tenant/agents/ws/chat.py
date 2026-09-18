@@ -273,6 +273,7 @@ async def agent_chat_websocket(
             await _run_chat_turn(websocket, ctx, agent_id, body, job_tasks)
 
     except WebSocketDisconnect:
+        # 静默可接受：客户端主动断开是正常终止，不是错误。
         pass
     finally:
         await _cancel_job_tasks(job_tasks)

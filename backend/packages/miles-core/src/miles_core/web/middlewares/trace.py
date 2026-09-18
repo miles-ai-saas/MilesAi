@@ -20,6 +20,7 @@ def _attach_trace_id_to_span(trace_id: str) -> None:
         if span.is_recording():
             span.set_attribute("miles.trace_id", trace_id)
     except ImportError:
+        # 静默可接受：opentelemetry 是可选依赖；未安装即不做 span 标注。
         pass
 
 

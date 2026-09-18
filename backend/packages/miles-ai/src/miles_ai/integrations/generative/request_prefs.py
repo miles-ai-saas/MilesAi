@@ -54,10 +54,12 @@ def resolve_image_n(llm_n: object | None, *, fallback: int = 1) -> int:
         try:
             return min(max(int(preset), 1), 4)
         except (TypeError, ValueError):
+            # 静默可接受：请求上下文里的张数可能被写成非数字；视为「未设置」，交给下一优先级。
             pass
     try:
         if llm_n is not None:
             return min(max(int(llm_n), 1), 4)
     except (TypeError, ValueError):
+        # 静默可接受：LLM 传入值不可控；非法即回退 fallback。
         pass
     return min(max(int(fallback), 1), 4)

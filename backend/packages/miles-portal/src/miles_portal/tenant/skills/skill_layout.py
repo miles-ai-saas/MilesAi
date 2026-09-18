@@ -47,6 +47,7 @@ def _scan_dir(base: Path, subdir: str, extensions: set[str]) -> list[dict]:
             try:
                 summary = _first_line_summary(path.read_text(encoding="utf-8")[:2000])
             except OSError:
+                # 静默可接受：仅取首行摘要，属尽力而为；读失败（权限/竞态）就让摘要留空。
                 pass
         items.append({"path": rel, "summary": summary})
     return items

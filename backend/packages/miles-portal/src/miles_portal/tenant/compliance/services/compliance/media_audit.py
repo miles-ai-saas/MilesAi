@@ -108,6 +108,7 @@ async def check_media_safety(
                 "reason": str(parsed.get("reason", "")),
             }
     except (json.JSONDecodeError, KeyError, ValueError):
+        # 静默可接受：模型输出不保证是 JSON；解析失败以 parse_error 占位返回，调用侧可据此区分「未审核」。
         pass
 
     return {"safe": True, "category": "parse_error", "reason": raw[:200]}

@@ -26,6 +26,7 @@ def _parse_optional_uuid(value: object) -> UUID | None:
     try:
         return UUID(str(value))
     except (ValueError, AttributeError):
+        # 静默可接受：无效 UUID 视为「未提供」（见 docstring）。
         return None
 
 
@@ -130,6 +131,7 @@ async def handle_generate_video(
             if preset_dur > 0:
                 duration = preset_dur
         except (TypeError, ValueError):
+            # 静默可接受：预设时长非正整数即忽略，保留 LLM/默认时长。
             pass
 
     if GenerativeJobService.video_async_enabled():

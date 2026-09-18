@@ -51,6 +51,7 @@ def parse_llm_grade_response(text: str) -> tuple[str, str]:
             if rel in (RELEVANCE_GOOD, RELEVANCE_POOR, RELEVANCE_NONE):
                 return rel, reason
     except json.JSONDecodeError:
+        # 静默可接受：模型输出不保证是 JSON；解析失败由调用方走默认降级。
         pass
     match = _GRADE_JSON_RE.search(text)
     if match:

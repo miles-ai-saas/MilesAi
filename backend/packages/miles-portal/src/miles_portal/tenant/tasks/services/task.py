@@ -62,6 +62,7 @@ class TaskService(BaseService):
         try:
             record = await self.db.get(CeleryTaskRecord, UUID(task_id))
         except ValueError:
+            # 静默可接受：不是 UUID 主键；改用 celery_task_id 查询 —— 此处 except 即控制流分支。
             pass
         if not record:
             record = await self.db.scalar(select(CeleryTaskRecord).where(CeleryTaskRecord.celery_task_id == task_id))

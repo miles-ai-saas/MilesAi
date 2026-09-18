@@ -150,6 +150,7 @@ async def sync_job_result_to_chat_messages(db: AsyncSession, job: GenerativeJob)
         try:
             agent_id = UUID(str(params["agent_id"]))
         except (ValueError, TypeError, AttributeError):
+            # 静默可接受：job.params 里历史遗留的 agent_id 可能非 UUID；非法则沿用 session.agent_id。
             pass
     elif job.source_ref_type == "agent" and job.source_ref_id:
         agent_id = job.source_ref_id

@@ -60,6 +60,7 @@ async def get_marketplace_review_tenant_id(db: AsyncSession | None = None) -> UU
         try:
             return UUID(settings.marketplace_review_tenant_id)
         except ValueError:
+            # 静默可接受：配置里的租户 ID 不是合法 UUID；视同未配置。
             return None
     if db is not None:
         row = await db.scalar(select(SystemConfig.value).where(SystemConfig.key == CONFIG_KEY_TENANT))
@@ -68,6 +69,7 @@ async def get_marketplace_review_tenant_id(db: AsyncSession | None = None) -> UU
             try:
                 return UUID(parsed)
             except ValueError:
+                # 静默可接受：DB 配置行里的租户 ID 不是合法 UUID；视同未配置。
                 return None
     return None
 

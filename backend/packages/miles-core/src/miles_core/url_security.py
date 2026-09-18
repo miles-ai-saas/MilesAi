@@ -47,6 +47,7 @@ def _reject_unsafe_host(host: str) -> None:
     try:
         addr = ipaddress.ip_address(host)
     except ValueError:
+        # 静默可接受：不是 IP 字面量（是域名）；继续走后续 DNS 解析后的校验。
         return
 
     if addr.is_private or addr.is_loopback or addr.is_link_local or addr.is_reserved or addr.is_multicast:

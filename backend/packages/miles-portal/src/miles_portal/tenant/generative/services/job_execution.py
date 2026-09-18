@@ -112,6 +112,7 @@ def _preset_positive_duration(agent_cfg: dict) -> int | None:
     try:
         value = int(raw)
     except (TypeError, ValueError):
+        # 静默可接受：预设时长非正整数或不可解析，即「未设置」（见 docstring）。
         return None
     return value if value > 0 else None
 
@@ -221,6 +222,7 @@ async def run_generative_image_job_async(job_id: UUID) -> None:
                 try:
                     n = min(max(int(preset_n), 1), 4)
                 except (TypeError, ValueError):
+                    # 静默可接受：用户输入区预设张数非正整数即「未设置」，保留 LLM/默认值。
                     pass
             model = await resolve_image_gen_model(
                 db,

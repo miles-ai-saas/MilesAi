@@ -38,6 +38,7 @@ def build_prompt_template_loader() -> Callable[[str, str], Awaitable[str | None]
             tid = UUID(str(prompt_template_id))
             tenant_uuid = UUID(tenant_id)
         except (ValueError, TypeError):
+            # 静默可接受：ID 非 UUID 即视为无该模板，回调按「无模板」返回 None。
             return None
         async with AsyncSessionLocal() as db:
             return await _load_prompt_template(db, tid, tenant_uuid)

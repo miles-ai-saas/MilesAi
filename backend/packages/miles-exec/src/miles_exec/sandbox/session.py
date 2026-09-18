@@ -61,6 +61,7 @@ def _preexec(memory_mb: int) -> None:
         try:
             os.write(2, b"[miles-exec] warning: failed to apply sandbox rlimits\n")
         except OSError:
+            # 静默可接受：fork 后上下文禁止 logging，只能写 fd 2；连 fd 2 都写不进时已无处可报。
             pass
 
 

@@ -58,6 +58,7 @@ async def touch_session(user_id: UUID, jti: str) -> None:
     try:
         meta = json.loads(raw)
     except json.JSONDecodeError:
+        # 静默可接受：Redis 里的会话元数据已损坏；按「无会话」处理，用户重新登录即可。
         return
     meta["last_seen_at"] = datetime.now(UTC).isoformat()
     ttl = await redis.ttl(_entry_key(user_id, jti))

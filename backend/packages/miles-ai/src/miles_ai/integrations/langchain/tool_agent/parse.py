@@ -102,6 +102,7 @@ def _looks_like_tool_call_simulation(content: Any, tool_names: list[str]) -> boo
             if isinstance(inner_args, dict) and any(k in inner_args for k in _GENERATIVE_PARAM_KEYS):
                 return True
         except (json.JSONDecodeError, TypeError):
+            # 静默可接受：本判据只是启发式之一，JSON 不合法即「不像工具调用模拟」，继续走其它判据。
             pass
 
     # 情况 C: 输出中包含"生成意图"短语（如"正在为您生成图片…"），但没有 JSON 参数
@@ -124,6 +125,7 @@ def _parse_as_python_kwargs(params_text: str) -> dict[str, Any] | None:
     try:
         tree = ast.parse(source)
     except SyntaxError:
+        # 静默可接受：不是合法的 Python 关键字参数形式；返回 None 交给下一种解析器。
         return None
     if not tree.body:
         return None
@@ -206,6 +208,7 @@ def _extract_tool_params_from_text(
             if isinstance(parsed, dict):
                 return name, _validate_and_clean(parsed, tools_by_name, name)
         except (json.JSONDecodeError, TypeError):
+            # 静默可接受：形似工具调用的文本里 JSON 不合法；交给后续 kwargs / 正则解析。
             pass
         # 回退 ast kwargs
         kwargs = _parse_as_python_kwargs(body)
