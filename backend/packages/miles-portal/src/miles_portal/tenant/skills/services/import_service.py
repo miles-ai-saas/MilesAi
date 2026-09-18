@@ -16,7 +16,7 @@
 
 **Git 地址仅允许 http(s)**：经 ``validate_outbound_url`` 阻断 ``file://`` 等 scheme
 （``git clone`` 会识别它们，构成本地文件读取面）。内网 / link-local 拦截由
-``mcp_allow_private_hosts`` 控制且**默认为 True**，即默认放行，属运维显式收紧后才
+``outbound_allow_private_hosts`` 控制且**默认为 True**，即默认放行，属运维显式收紧后才
 生效的深度防御。
 """
 

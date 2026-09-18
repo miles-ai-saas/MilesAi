@@ -104,8 +104,9 @@ class Settings(BaseSettings):
     # 本项目认证走 Bearer Header、不使用 Cookie，故默认关闭；开启前须先收窄 cors_origins。
     cors_allow_credentials: bool = False
 
-    # MCP 出站：生产建议 false，禁止连接本机/内网（防 SSRF）
-    mcp_allow_private_hosts: bool = True
+    # 出站「允许连接本机/内网」总开关，作用域为**所有出站路径**：MCP 端点、HTTP 工具、
+    # 技能包 Git 导入（见 miles_core/url_security.py）。生产建议 false，防 SSRF。
+    outbound_allow_private_hosts: bool = True
 
     # MCP Runner（STDIO 沙箱）：独立服务，API 不 subprocess 用户命令
     mcp_runner_enabled: bool = False

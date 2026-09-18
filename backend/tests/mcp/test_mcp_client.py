@@ -23,7 +23,7 @@ def test_normalize_tool_call_result_text():
 
 
 def test_validate_rejects_localhost_when_disabled(monkeypatch):
-    monkeypatch.setenv("MCP_ALLOW_PRIVATE_HOSTS", "false")
+    monkeypatch.setenv("OUTBOUND_ALLOW_PRIVATE_HOSTS", "false")
     from miles_core.config import get_settings
 
     get_settings.cache_clear()

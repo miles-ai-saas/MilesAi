@@ -141,7 +141,7 @@ POST /mcp/{id}/sync | .../invoke
 | JSON-RPC 客户端 | `backend/packages/miles-portal/src/miles_portal/tenant/mcp/client.py` | **降级链入口** `mcp_json_rpc` |
 | Legacy / Streamable SSE | `backend/packages/miles-portal/src/miles_portal/tenant/mcp/sse_transport.py` | 长连接与 Streamable POST |
 | JSON-RPC 解析 | `backend/packages/miles-exec/src/miles_exec/mcp/rpc.py` | `parse_jsonrpc_result` |
-| 连接安全 | `backend/packages/miles-portal/src/miles_portal/tenant/mcp/security.py` | SSRF、`MCP_ALLOW_PRIVATE_HOSTS` |
+| 连接安全 | `backend/packages/miles-portal/src/miles_portal/tenant/mcp/security.py` | SSRF、`OUTBOUND_ALLOW_PRIVATE_HOSTS` |
 | 业务 | `backend/packages/miles-portal/src/miles_portal/tenant/mcp/services/mcp.py` | sync / invoke 落库 |
 | 路由 | `backend/packages/miles-portal/src/miles_portal/tenant/mcp/views/mcp.py` | REST API |
 | 传输归一化 | `backend/packages/miles-portal/src/miles_portal/tenant/mcp/transport.py` | http / sse / stdio |
@@ -158,19 +158,31 @@ POST /mcp/{id}/sync | .../invoke
 
 ## 7. 连接安全（非沙箱）
 
-配置项：`MCP_ALLOW_PRIVATE_HOSTS`（默认 `true`，开发可连 `127.0.0.1`）。
+配置项：`OUTBOUND_ALLOW_PRIVATE_HOSTS`（默认 `true`，开发可连 `127.0.0.1`）。
 
-为 `false` 时：
+该开关是**所有出站路径**的总闸，不止 MCP：MCP 端点、HTTP 工具（`http_request`）、
+技能包 Git 导入都走同一判据（`miles_core/url_security.py`）。
 
-- 拒绝 `localhost`、`127.0.0.1` 及 RFC1918 等内网 IP
-- 仅允许 `http` / `https` scheme
-- HTTP 客户端 `follow_redirects=false`，降低开放重定向 SSRF
+判据分两层，生效条件**不同**：
+
+| 判据 | 生效条件 |
+|------|----------|
+| 仅允许 `http` / `https` scheme | **无条件生效**（拦截 `file://` / `ssh://` / `git://` 等） |
+| 拒绝 `localhost`、`127.0.0.1` 及 RFC1918 / link-local（云元数据）等 | 仅在开关为 `false` 时 |
+| HTTP 客户端 `follow_redirects=false` | 无条件生效（降低开放重定向 SSRF） |
+
+注意该判据**不解析域名**，故「域名解析到内网」不在拦截范围内（由 `httpx` 连接时解析）。
 
 生产部署建议在 `.env` 中设置：
 
 ```bash
-MCP_ALLOW_PRIVATE_HOSTS=false
+OUTBOUND_ALLOW_PRIVATE_HOSTS=false
 ```
+
+> **升级提示（破坏性变更）**：该开关原名为 `MCP_ALLOW_PRIVATE_HOSTS`，已重命名且
+> **不保留旧名兼容**。若旧部署曾设置 `MCP_ALLOW_PRIVATE_HOSTS=false` 收紧过内网，
+> 升级后该设置**不再生效**，会静默回到默认放行 —— 请改名为
+> `OUTBOUND_ALLOW_PRIVATE_HOSTS=false` 后再升级。
 
 更完整的进程隔离与命令执行约束见 [mcp-sandbox.md](../architecture/mcp-sandbox.md)。
 
@@ -327,7 +339,7 @@ docker exec milesai-api curl -s http://mcp-runner:8090/health
 |------|------|
 | 同步 0 工具 | 确认对端支持 `tools/list`；SSE 是否填 `/sse` 而非 `/messages` |
 | SSE 未收到 endpoint | URL 应为 GET SSE 入口；或改用 HTTP transport |
-| invoke 400 连接失败 | 网络、TLS、防火墙、`MCP_ALLOW_PRIVATE_HOSTS` |
+| invoke 400 连接失败 | 网络、TLS、防火墙、`OUTBOUND_ALLOW_PRIVATE_HOSTS` |
 | invoke 400 MCP 远程错误 | 对端 `error.message`；参数是否符合 tool schema |
 | STDIO 同步失败 | 确认 `MCP_RUNNER_ENABLED=true`、Runner 可达、command 在白名单；见 [§8 部署](#8-mcp-runner-部署stdio-沙箱) |
 | Runner 连接失败 | 本地查 `8090` 是否监听；Docker 查 `docker compose ps mcp-runner` 与 `MCP_RUNNER_TOKEN` 一致 |

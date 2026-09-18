@@ -118,7 +118,7 @@ docker compose up -d --build    # 含 milesai-api + milesai-mcp-runner
 ### 7.3 生产建议
 
 ```bash
-MCP_ALLOW_PRIVATE_HOSTS=false
+OUTBOUND_ALLOW_PRIVATE_HOSTS=false
 MCP_RUNNER_ENABLED=true
 MCP_RUNNER_TOKEN=<random-32-bytes>   # api 与 mcp-runner 相同
 MCP_RUNNER_MAX_CONCURRENT=20
@@ -133,7 +133,7 @@ MCP_RUNNER_MAX_CONCURRENT_PER_TENANT=3
 ```bash
 # 禁止 MCP 访问本机/内网（与 guides/mcp.md 一致）
 # 参考默认值为 true（即默认放行），此处为生产收紧；该开关同时约束技能的 Git 导入地址
-MCP_ALLOW_PRIVATE_HOSTS=false
+OUTBOUND_ALLOW_PRIVATE_HOSTS=false
 
 # Runner（详见 guides/mcp.md §8）
 MCP_RUNNER_ENABLED=true
@@ -155,7 +155,7 @@ MCP_RUNNER_MAX_CONCURRENT_PER_TENANT=3
 
 | 威胁 | HTTP/SSE 缓解 | STDIO 缓解 |
 |------|----------------|------------|
-| SSRF 打内网 | `MCP_ALLOW_PRIVATE_HOSTS=false` | Runner 无内网路由 |
+| SSRF 打内网 | `OUTBOUND_ALLOW_PRIVATE_HOSTS=false` | Runner 无内网路由 |
 | 命令注入 | 不适用 | `execve` 数组 + 白名单 |
 | 资源耗尽 | 超时、`timeout_sec` | cgroup / 容器 memory limit |
 | 数据泄露 | TLS、租户隔离 | 进程级文件系统只读根 |

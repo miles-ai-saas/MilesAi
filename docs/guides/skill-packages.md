@@ -275,7 +275,7 @@ your-skills.zip
 4. 地址**仅允许 `http(s)`**：经 `validate_outbound_url` 校验，`file://` / `ssh://` /
    `git://` 与 scp 风格（`git@host:org/repo.git`）一律拒绝 —— `git clone` 会识别这些
    scheme，放行即构成本地文件读取面。内网 / link-local 地址的拦截由
-   `MCP_ALLOW_PRIVATE_HOSTS` 控制，该项**默认为 true（默认放行内网）**；公开部署应置
+   `OUTBOUND_ALLOW_PRIVATE_HOSTS` 控制，该项默认 `true`（即默认放行内网）；公开部署应置
    `false` 以收紧（与 `guides/mcp.md` 同一开关，见 `architecture/mcp-sandbox.md`）。
 
 ## 6. 运行时：智能体注入

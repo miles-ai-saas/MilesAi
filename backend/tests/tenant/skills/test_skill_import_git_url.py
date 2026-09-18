@@ -7,7 +7,7 @@
 
 1. **scheme 限定**：只允许 ``http(s)``，**无条件生效**。这是本改动真正闭合的
    「本地文件读取」面（``file://``）。
-2. **内网 / link-local 拦截**：由 ``mcp_allow_private_hosts`` 控制，而该项
+2. **内网 / link-local 拦截**：由 ``outbound_allow_private_hosts`` 控制，而该项
    **默认 ``True``（即默认放行内网）**，为自托管场景连接内网 MCP / 存储所必需。
    故内网拦截属**运维显式收紧**后才生效的深度防御，非默认防护。
 
@@ -44,8 +44,8 @@ def service(monkeypatch):
 
 @pytest.fixture
 def reject_private_hosts(monkeypatch):
-    """显式收紧「禁止内网」（对应部署把 mcp_allow_private_hosts 设为 false）。"""
-    monkeypatch.setattr(url_security, "get_settings", lambda: SimpleNamespace(mcp_allow_private_hosts=False))
+    """显式收紧「禁止内网」（对应部署把 outbound_allow_private_hosts 设为 false）。"""
+    monkeypatch.setattr(url_security, "get_settings", lambda: SimpleNamespace(outbound_allow_private_hosts=False))
 
 
 @pytest.mark.parametrize(
@@ -74,14 +74,14 @@ async def test_import_git_rejects_non_http_scheme(service, url):
     ],
 )
 async def test_import_git_rejects_private_hosts_when_strictened(service, reject_private_hosts, url):
-    """把 mcp_allow_private_hosts 设为 false 后，内网 / link-local 亦被拒。"""
+    """把 outbound_allow_private_hosts 设为 false 后，内网 / link-local 亦被拒。"""
     with pytest.raises(BadRequestError, match="不允许连接"):
         await service.import_git(uuid4(), url, overwrite_existing=False)
 
 
 @pytest.mark.parametrize("url", ["http://127.0.0.1/repo.git", "http://localhost/repo.git"])
 async def test_import_git_private_hosts_allowed_by_default(service, url):
-    """钉住默认姿态：``mcp_allow_private_hosts`` 默认 True，内网地址会放行到 clone。
+    """钉住默认姿态：``outbound_allow_private_hosts`` 默认 True，内网地址会放行到 clone。
 
     此项**不是**期望行为，而是既有默认值的显式记录 —— 若将来把默认改为 false，
     本用例会失败，提醒同步更新文档与部署说明。

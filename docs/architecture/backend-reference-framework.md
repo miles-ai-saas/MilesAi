@@ -931,7 +931,7 @@ class PlatformRiskMiddleware(BaseHTTPMiddleware):
 |----|------|
 | 敏感字段加密 | Fernet（密钥派生自 `SECRET_KEY`）存模型 API Key / 对象存储 AK |
 | 响应脱敏 | `mask_secret(value, visible_tail=4)` 返回掩码 |
-| SSRF 防护 | MCP/HTTP 出站默认禁止连本机/内网（`MCP_ALLOW_PRIVATE_HOSTS=false` 生产） |
+| SSRF 防护 | MCP/HTTP 出站默认禁止连本机/内网（`OUTBOUND_ALLOW_PRIVATE_HOSTS=false` 生产） |
 | 越权防护 | 每个读/改操作必经 `assert_tenant_access` + `tenant_filters` |
 | 水平越权兜底 | `resolve_tenant_id` 非超管只能访问自身租户 |
 | 令牌失效 | jti 黑名单 + 多端会话可踢下线 |
