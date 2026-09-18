@@ -153,8 +153,18 @@ flowchart LR
 | 3 | `miles_portal` 不得 import `miles_admin` |
 | 4 | `miles_runner` 只依赖 `miles_exec` / `miles_common`（不得 import `miles_core` / `miles_ai` / `miles_portal` / `miles_admin` / `miles_openapi`） |
 | 5 | `miles_core` 不得 import `miles_ai` |
+| 6 | API 声明层（`views` / `schemas`）不得 import ORM 模型模块 |
 
-**强制机制**：上述 DAG 与硬判据由 `backend/.importlinter` 固化为 6 条契约（1 条 `layers` + 5 条 `forbidden`），在 CI 与本地经 `make layers-check`（即 `import-linter`）执行；`make check` 已包含该步。
+**强制机制**：上述 DAG 与硬判据由 `backend/.importlinter` 固化为 7 条契约（1 条 `layers` + 6 条 `forbidden`），在 CI 与本地经 `make layers-check`（即 `import-linter`）执行；`make check` 已包含该步。
+
+**AST 静态守卫（import-linter 覆盖不到的边界）**：部分判据无法用 import 图表达，改用 AST 扫描源码，与 `import-linter` 并列在 `make test-backend` 中执行：
+
+| 守卫 | 判据 |
+|------|------|
+| `tests/test_l3_neutral_imports.py` | `miles_ai` 不得 import `miles_portal`；`miles_server` 不得含 `views/`、不得自建 `APIRouter(` |
+| `tests/test_no_blocking_calls_in_async.py` | `async def` 内不得直调同步阻塞调用（同步对象存储方法 / 同步解析器 / `subprocess` 等），须经 `asyncio.to_thread` 离线 |
+| `tests/models/test_api_enum_parity.py` | API 侧枚举声明与 ORM 侧逐字节一致；API 层枚举 import 只可来自白名单模块 |
+| `tests/models/test_orm_registry_completeness.py` | 全仓 ORM 表（按 `__tablename__` / `Table(...)` 扫描）均可经 `load_all_models()` 登记到达 |
 
 **物理布局（`packages/<dist>/src/<module>/`）**：`packages/` 与 `src/` 两层**仅为物理组织，不进 `sys.path`**——映射由各包 wheel 的 `packages = ["src/miles_*"]` 决定，因此代码里的模块路径始终是 `miles_core.…` 这类形式，**与物理层数无关**；分层契约的 `root_packages` 同样只写模块名。`src/` 采用 PyPA 推荐的 src layout，用于阻止 cwd 影子导入、确保测试跑的是**已安装**的包（而非裸源码）。
 
@@ -366,6 +376,8 @@ from miles_core.infra.vector_store import get_vector_store
 backend/tests/
   conftest.py              # 全局 fixture
   paths.py                 # BACKEND_ROOT（子目录内引用资源路径）
+  test_l3_neutral_imports.py      # AST 守卫：L3 反向依赖 / server 自建 router
+  test_no_blocking_calls_in_async.py  # AST 守卫：async 内不得直调阻塞调用
   api/                     # HTTP / meta / smoke
   integration/             # 跨模块编排
   rag/                     # 解析、分片、检索、向量化

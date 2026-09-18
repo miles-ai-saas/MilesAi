@@ -2,10 +2,15 @@
 
 流程：校验分类 → 扫描 SKILL.md 目录 → copy_skill_tree → 插入/更新 ORM。
 同名 slug 由 overwrite_existing 决定覆盖或跳过（不计入 errors）。
+
+``git clone`` 为外部进程（用户提供的仓库地址，超时上限 300s），故经
+``asyncio.to_thread`` 离线 —— 否则单个挂起的远端会阻塞整个事件循环
+（见 ``tests/test_no_blocking_calls_in_async.py``）。
 """
 
 from __future__ import annotations
 
+import asyncio
 import shutil
 import subprocess
 import tempfile
@@ -110,7 +115,8 @@ class SkillImportService:
             raise BadRequestError("仓库地址不能为空")
         tmp = Path(tempfile.mkdtemp(prefix="skill_git_"))
         try:
-            proc = subprocess.run(
+            proc = await asyncio.to_thread(
+                subprocess.run,
                 ["git", "clone", "--depth", "1", url, str(tmp / "repo")],
                 capture_output=True,
                 text=True,

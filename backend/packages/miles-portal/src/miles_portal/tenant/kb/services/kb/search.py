@@ -1,5 +1,11 @@
-"""知识库检索（文本 / 视觉 / 混合）。"""
+"""知识库检索（文本 / 视觉 / 混合）。
 
+`query_document_id` 现场解析走同步解析器（OCR / ffmpeg / Whisper），对象存储亦为
+同步客户端，故经 ``asyncio.to_thread`` 离线，避免阻塞事件循环
+（见 ``tests/test_no_blocking_calls_in_async.py``）。
+"""
+
+import asyncio
 import time
 from uuid import UUID
 
@@ -59,13 +65,13 @@ class KnowledgeBaseSearchMixin:
             raise BadRequestError("文档对象尚未就绪")
 
         storage = await resolve_object_storage_async(doc.tenant_id, self.db)
-        data = storage.storage.download_bytes(doc.object_key, bucket=doc.object_bucket)
+        data = await asyncio.to_thread(storage.storage.download_bytes, doc.object_key, bucket=doc.object_bucket)
         if is_image_file(doc.filename, doc.mime_type):
-            derived = parse_image(data, doc.filename)
+            derived = await asyncio.to_thread(parse_image, data, doc.filename)
             if media_types is None:
                 media_types = ["image"]
         elif is_video_file(doc.filename, doc.mime_type) or doc.mime_type.startswith("video/"):
-            derived = parse_video(data, doc.filename)
+            derived = await asyncio.to_thread(parse_video, data, doc.filename)
             if media_types is None:
                 media_types = ["video"]
         else:
@@ -99,7 +105,7 @@ class KnowledgeBaseSearchMixin:
             if not is_image_file(doc.filename, doc.mime_type):
                 raise BadRequestError("视觉以图搜图仅支持图片文档")
             storage = await resolve_object_storage_async(doc.tenant_id, self.db)
-            data = storage.storage.download_bytes(doc.object_key, bucket=doc.object_bucket)
+            data = await asyncio.to_thread(storage.storage.download_bytes, doc.object_key, bucket=doc.object_bucket)
             vector = await embed_image_bytes_async(self.db, self.ctx.tenant_id, kb, data)
             query_text = query or f"[CLIP 以图搜图] {doc.filename}"
             return query_text, vector, media_types

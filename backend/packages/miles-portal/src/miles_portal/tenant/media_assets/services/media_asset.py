@@ -2,10 +2,14 @@
 
 登记链路：``persist_generated_bytes`` → ``register_media_asset``（生图/生视频/TTS 附件）。
 升格入库：图片/视频附件 → KB Document → 可选 ``ingest_document`` 解析入库。
+
+对象存储客户端为同步实现，故读写经 ``asyncio.to_thread`` 离线，避免阻塞事件循环
+（见 ``tests/test_no_blocking_calls_in_async.py``）。
 """
 
 from __future__ import annotations
 
+import asyncio
 from datetime import UTC, datetime
 from uuid import UUID
 
@@ -185,7 +189,7 @@ class MediaAssetService(BaseService):
             content, filename, mime = self._build_video_promote_document(row, att, body)
         else:
             storage = await resolve_object_storage_async(att.tenant_id, self.db)
-            content = storage.storage.download_bytes(att.object_key, att.object_bucket)
+            content = await asyncio.to_thread(storage.storage.download_bytes, att.object_key, att.object_bucket)
             filename = (body.filename or row.title or att.filename).strip()
             if not filename:
                 raise BadRequestError("文件名不能为空")
@@ -215,7 +219,7 @@ class MediaAssetService(BaseService):
         )
         object_key = build_object_key(str(kb.tenant_id), str(kb.id), str(doc.id), filename)
         doc.object_key = object_key
-        kb_storage.storage.upload_bytes(content, object_key, mime)
+        await asyncio.to_thread(kb_storage.storage.upload_bytes, content, object_key, mime)
         await self.db.flush()
 
         if body.run_parse:

@@ -1,5 +1,10 @@
-"""知识库文档上传、列表与删除。"""
+"""知识库文档上传、列表与删除。
 
+对象存储客户端为同步实现，故读写经 ``asyncio.to_thread`` 离线，避免阻塞事件循环
+（见 ``tests/test_no_blocking_calls_in_async.py``）。
+"""
+
+import asyncio
 from uuid import UUID
 
 from fastapi import UploadFile
@@ -109,7 +114,7 @@ class KnowledgeBaseDocumentMixin:
         )
         object_key = build_object_key(str(kb.tenant_id), str(kb.id), str(doc.id), file.filename)
         doc.object_key = object_key
-        storage.storage.upload_bytes(content, object_key, mime)
+        await asyncio.to_thread(storage.storage.upload_bytes, content, object_key, mime)
         await self.db.flush()
 
         from miles_core.jobs.celery_app import celery_app
@@ -194,7 +199,7 @@ class KnowledgeBaseDocumentMixin:
         if doc.object_key and doc.object_key != "pending":
             try:
                 storage = await resolve_object_storage_async(doc.tenant_id, self.db)
-                storage.storage.delete_object(doc.object_key, doc.object_bucket)
+                await asyncio.to_thread(storage.storage.delete_object, doc.object_key, doc.object_bucket)
             except Exception:
                 logger.warning(
                     "删除文档 OSS 对象失败 document_id=%s object_key=%s",

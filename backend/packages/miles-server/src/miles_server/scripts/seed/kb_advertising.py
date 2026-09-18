@@ -4,10 +4,14 @@
 依赖：``seed tenant``、``seed model-catalog``；对象存储与向量库需可用。
 
 幂等：按租户 + 知识库名「广告知识库」、文档文件名去重；已 READY 的文档跳过。
+
+对象存储为同步实现，故经 ``asyncio.to_thread`` 离线
+（见 ``tests/test_no_blocking_calls_in_async.py``）。
 """
 
 from __future__ import annotations
 
+import asyncio
 from pathlib import Path
 
 from sqlalchemy import select
@@ -143,7 +147,7 @@ async def _ensure_document(
     doc.object_key = object_key
     doc.file_size = len(content)
     doc.mime_type = mime_type
-    upload_bytes(content, object_key, mime_type, bucket=doc.object_bucket)
+    await asyncio.to_thread(upload_bytes, content, object_key, mime_type, bucket=doc.object_bucket)
     if is_new:
         await apply_storage_delta(session, kb.tenant_id, len(content))
     await session.flush()

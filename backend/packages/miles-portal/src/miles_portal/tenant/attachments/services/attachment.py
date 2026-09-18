@@ -1,5 +1,10 @@
-"""通用附件：不占知识库文档表，仍计入租户存储配额；key 与 KB 文档路径分离。"""
+"""通用附件：不占知识库文档表，仍计入租户存储配额；key 与 KB 文档路径分离。
 
+对象存储客户端为同步实现，故读写经 ``asyncio.to_thread`` 离线，避免阻塞事件循环
+（见 ``tests/test_no_blocking_calls_in_async.py``）。
+"""
+
+import asyncio
 from uuid import UUID
 
 from fastapi import UploadFile
@@ -105,7 +110,7 @@ class AttachmentService(BaseService):
         )
         object_key = build_attachment_object_key(str(self.ctx.tenant_id), str(att.id), file.filename)
         att.object_key = object_key
-        storage.storage.upload_bytes(content, object_key, mime)
+        await asyncio.to_thread(storage.storage.upload_bytes, content, object_key, mime)
         await apply_storage_delta(self.db, self.ctx.tenant_id, len(content))
         await self.db.flush()
         await self.db.refresh(att)
@@ -126,7 +131,7 @@ class AttachmentService(BaseService):
             raise BadRequestError("附件文件未就绪")
         try:
             storage = await resolve_object_storage_async(att.tenant_id, self.db)
-            data = storage.storage.download_bytes(att.object_key, att.object_bucket)
+            data = await asyncio.to_thread(storage.storage.download_bytes, att.object_key, att.object_bucket)
         except Exception:
             logger.warning(
                 "读取附件对象存储失败 attachment_id=%s object_key=%s",
@@ -150,7 +155,7 @@ class AttachmentService(BaseService):
         if not att.object_key or att.object_key == "pending":
             raise BadRequestError("附件文件未就绪")
         storage = await resolve_object_storage_async(att.tenant_id, self.db)
-        data = storage.storage.download_bytes(att.object_key, att.object_bucket)
+        data = await asyncio.to_thread(storage.storage.download_bytes, att.object_key, att.object_bucket)
         return data, att.mime_type or "application/octet-stream", att.filename
 
     async def delete(self, attachment_id: UUID) -> None:
@@ -159,7 +164,7 @@ class AttachmentService(BaseService):
         if att.object_key and att.object_key != "pending":
             try:
                 storage = await resolve_object_storage_async(att.tenant_id, self.db)
-                storage.storage.delete_object(att.object_key, att.object_bucket)
+                await asyncio.to_thread(storage.storage.delete_object, att.object_key, att.object_bucket)
             except Exception:
                 logger.warning(
                     "删除附件 OSS 对象失败 attachment_id=%s object_key=%s",

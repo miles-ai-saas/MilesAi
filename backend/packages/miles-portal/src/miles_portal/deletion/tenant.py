@@ -1,8 +1,12 @@
 """租户级数据清空（运营停用/删租户时调用）。
 
 注意：此处为物理硬删除，用于租户彻底清库；日常 API 删除走软删除（deleted_at）。
+
+对象存储客户端为同步实现，故删除经 ``asyncio.to_thread`` 离线，避免阻塞事件循环
+（见 ``tests/test_no_blocking_calls_in_async.py``）。
 """
 
+import asyncio
 from uuid import UUID
 
 from sqlalchemy import delete, select
@@ -52,7 +56,7 @@ async def purge_tenant_data(db: AsyncSession, tenant_id: UUID) -> None:
         for doc_id, object_key, object_bucket in doc_rows:
             await clear_document_derived_data_async(db, doc_id)
             if object_key and object_key != "pending":
-                storage.storage.delete_object(object_key, object_bucket)
+                await asyncio.to_thread(storage.storage.delete_object, object_key, object_bucket)
             doc = await db.get(Document, doc_id)
             if doc:
                 await db.delete(doc)

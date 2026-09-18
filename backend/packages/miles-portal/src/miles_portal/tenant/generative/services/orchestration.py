@@ -5,10 +5,14 @@ L3 ``integrations/generative`` 只保留纯厂商派发（``generate_{image,vide
 日配额仅由本模块调用（本模块是**调用点/编排点**），纯额度实现仍在同域
 ``tenant.generative.services.quota``（``assert_generative_quota``）。画布同步分支经
 ``RunContext.generate_{image,video}_sync``（即本模块 ``generate_{image,video}_for_model``）注入执行。
+
+同步阻塞调用（对象存储 / ffmpeg 抽封面）经 ``asyncio.to_thread`` 离线，避免阻塞事件循环
+（见 ``tests/test_no_blocking_calls_in_async.py``）。
 """
 
 from __future__ import annotations
 
+import asyncio
 import base64
 import hashlib
 import logging
@@ -231,7 +235,7 @@ async def generate_video_for_model(
 
     att_id = await _persist(video_bytes, filename="generated.mp4", mime_type="video/mp4")
     cover_att_id: UUID | None = None
-    cover_bytes = extract_video_cover_jpeg(video_bytes)
+    cover_bytes = await asyncio.to_thread(extract_video_cover_jpeg, video_bytes)
     if cover_bytes:
         cover_att_id = await _persist(cover_bytes, filename="generated-cover.jpg", mime_type="image/jpeg")
 

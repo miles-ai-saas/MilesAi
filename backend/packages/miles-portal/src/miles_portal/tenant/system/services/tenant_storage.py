@@ -1,4 +1,10 @@
-"""租户 L2 对象存储 BYOK 配置。"""
+"""租户 L2 对象存储 BYOK 配置。
+
+连通性探测调用同步存储客户端，故经 ``asyncio.to_thread`` 离线，避免阻塞事件循环
+（见 ``tests/test_no_blocking_calls_in_async.py``）。
+"""
+
+import asyncio
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -129,7 +135,7 @@ class TenantObjectStorageService(BaseService):
             client = resolved.storage
 
         try:
-            ok = client.health_check()
+            ok = await asyncio.to_thread(client.health_check)
         except Exception as exc:
             return TenantObjectStorageTestResult(ok=False, message=str(exc)[:500])
         if ok:

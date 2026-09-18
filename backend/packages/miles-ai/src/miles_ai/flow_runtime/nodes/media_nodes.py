@@ -5,11 +5,14 @@ AudioTranscribe — 读取音频附件 → Whisper 转写 → 返回纯文本
 
 媒体字节经 ``RunContext.media_reader``（L1 注入，实现见
 ``tenant.attachments.services.media_reader``）鉴权读取；OCR/音频解析仍委托
-``rag.parse`` 模块。可在流程画布中作为 LLMCall 的前置节点。
+``rag.parse`` 模块 —— 该模块为同步 CPU / 子进程密集实现，故经
+``asyncio.to_thread`` 离线，避免阻塞事件循环
+（见 ``tests/test_no_blocking_calls_in_async.py``）。可在流程画布中作为 LLMCall 的前置节点。
 """
 
 from __future__ import annotations
 
+import asyncio
 from typing import Any
 from uuid import UUID
 
@@ -34,7 +37,7 @@ async def ocr_extract(
     reader = _require_media_reader(ctx)
     att = await reader.read_image_bytes(UUID(attachment_id))
 
-    text = parse_image(att.data, f"ocr-{attachment_id}")
+    text = await asyncio.to_thread(parse_image, att.data, f"ocr-{attachment_id}")
 
     return {
         "output": text,
@@ -58,7 +61,7 @@ async def audio_transcribe(
     att = await reader.read_attachment_bytes(UUID(attachment_id))
 
     filename = att.filename or f"audio-{attachment_id}"
-    text = parse_audio(att.data, filename)
+    text = await asyncio.to_thread(parse_audio, att.data, filename)
 
     return {
         "output": text,

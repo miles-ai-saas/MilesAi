@@ -1,5 +1,10 @@
-"""生成物写入对象存储与 sys_attachments（L1）。"""
+"""生成物写入对象存储与 sys_attachments（L1）。
 
+对象存储客户端为同步实现，故写入经 ``asyncio.to_thread`` 离线，避免阻塞事件循环
+（见 ``tests/test_no_blocking_calls_in_async.py``）。
+"""
+
+import asyncio
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -44,7 +49,7 @@ async def persist_generated_bytes(
     )
     object_key = build_attachment_object_key(str(ctx.tenant_id), str(att.id), filename)
     att.object_key = object_key
-    storage.storage.upload_bytes(data, object_key, mime_type)
+    await asyncio.to_thread(storage.storage.upload_bytes, data, object_key, mime_type)
     await apply_storage_delta(db, ctx.tenant_id, len(data))
     await db.flush()
     await db.refresh(att)
