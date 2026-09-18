@@ -132,6 +132,7 @@ MCP_RUNNER_MAX_CONCURRENT_PER_TENANT=3
 
 ```bash
 # 禁止 MCP 访问本机/内网（与 guides/mcp.md 一致）
+# 参考默认值为 true（即默认放行），此处为生产收紧；该开关同时约束技能的 Git 导入地址
 MCP_ALLOW_PRIVATE_HOSTS=false
 
 # Runner（详见 guides/mcp.md §8）

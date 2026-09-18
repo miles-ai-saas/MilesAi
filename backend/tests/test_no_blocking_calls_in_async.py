@@ -51,6 +51,12 @@ _BLOCKING_STDLIB: frozenset[str] = frozenset(
     }
 )
 
+#: 无模块归属的阻塞实例方法（按叶子名匹配）。
+#: ``extractall`` 只属 ``zipfile.ZipFile``，解压量不受上传体积上限约束，名字无歧义。
+#: 刻意**不**收 ``write_bytes`` / ``read_bytes``：名字过于通用，小文件写入套 ``to_thread``
+#: 得不偿失，按通用名拦截会产生大量误报。
+_BLOCKING_METHODS: frozenset[str] = frozenset({"extractall"})
+
 #: 判定「已离线」的包装函数名：其调用实参内不作为直调处理。
 _OFFLOAD_CALLS: frozenset[str] = frozenset({"to_thread", "run_in_executor"})
 
@@ -145,6 +151,8 @@ class _BlockingCallVisitor(ast.NodeVisitor):
             return "同步对象存储方法"
         if leaf in self._declared:
             return "同步阻塞解析器"
+        if leaf in _BLOCKING_METHODS:
+            return "阻塞实例方法"
         return None
 
     def visit_Call(self, node: ast.Call) -> None:
@@ -190,7 +198,7 @@ def test_blocking_surface_is_not_silently_empty():
     declared = _module_declared_names()
     assert declared, "阻塞模块名单未解析出任何函数"
 
-    ambiguous = (storage | declared) & _async_defined_names()
+    ambiguous = (storage | declared | _BLOCKING_METHODS) & _async_defined_names()
     assert not ambiguous, f"以下名字既有同步阻塞实现又有 async 定义，按名字匹配会误伤/漏判，请改用限定名匹配：{sorted(ambiguous)}"
 
 

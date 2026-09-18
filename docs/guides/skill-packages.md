@@ -266,6 +266,11 @@ your-skills.zip
 1. `git clone --depth 1 <repo_url>`（需运行环境安装 `git`）。
 2. 若仓库存在 `skills/` 目录 → 从该目录扫描；否则从**仓库根**扫描。
 3. 超时 300s；失败返回 `400` 及 stderr 摘要。
+4. 地址**仅允许 `http(s)`**：经 `validate_outbound_url` 校验，`file://` / `ssh://` /
+   `git://` 与 scp 风格（`git@host:org/repo.git`）一律拒绝 —— `git clone` 会识别这些
+   scheme，放行即构成本地文件读取面。内网 / link-local 地址的拦截由
+   `MCP_ALLOW_PRIVATE_HOSTS` 控制，该项**默认为 true（默认放行内网）**；公开部署应置
+   `false` 以收紧（与 `guides/mcp.md` 同一开关，见 `architecture/mcp-sandbox.md`）。
 
 ## 6. 运行时：智能体注入
 
@@ -381,7 +386,10 @@ milesai seed skills      # 示例技能包（SKILL.md + references/ + scripts/�
 | 项 | 说明 |
 |----|------|
 | ZIP 导出 | 编辑器「创建技能包」尚未接后端打包 API |
-| Git SSH | 依赖系统 `git` 与宿主机 SSH 配置，未内置 Deploy Key 管理 |
+| Git SSH | **已不支持**：地址仅允许 `http(s)`（见 §5「Git」）。私有仓库请用带 token 的 https 地址 |
+| Git Deploy Key | 未内置，故无法以 ssh 方式拉取私有仓库 |
+| ZIP 解压体积 | 上传上限 100MB，但**解压后体积无上限**，存在写满磁盘的 DoS 面（未处置） |
+| Git 域名解析 | `validate_outbound_url` 不解析域名，故「域名解析到内网」不在拦截内（与 HTTP 工具同限） |
 | 本地路径安全 | 当前允许配置任意可读路径，生产可加白名单（仅允许 `skills_data_root` 下） |
 | 多技能绑定 | 智能体仅支持单个 `skill_package_id`；多技能需后续改为 ID 列表 |
 | Streamable Skill 协议 | 已支持 references/scripts 子集；frontmatter 扩展字段待补 |

@@ -3,9 +3,15 @@
 流程：校验分类 → 扫描 SKILL.md 目录 → copy_skill_tree → 插入/更新 ORM。
 同名 slug 由 overwrite_existing 决定覆盖或跳过（不计入 errors）。
 
-``git clone`` 为外部进程（用户提供的仓库地址，超时上限 300s），故经
-``asyncio.to_thread`` 离线 —— 否则单个挂起的远端会阻塞整个事件循环
+**阻塞调用一律离线**：``git clone`` 是外部进程（地址由用户提供，超时上限 300s），
+写包与解压上限 100MB（且解压后体积不受限），均经 ``asyncio.to_thread`` —— 否则
+单个挂起的远端或大包会阻塞整个事件循环
 （见 ``tests/test_no_blocking_calls_in_async.py``）。
+
+**Git 地址仅允许 http(s)**：经 ``validate_outbound_url`` 阻断 ``file://`` 等 scheme
+（``git clone`` 会识别它们，构成本地文件读取面）。内网 / link-local 拦截由
+``mcp_allow_private_hosts`` 控制且**默认为 True**，即默认放行，属运维显式收紧后才
+生效的深度防御。
 """
 
 from __future__ import annotations
@@ -25,6 +31,7 @@ from miles_common.exceptions import BadRequestError
 from miles_core.models.meta.category import CategoryDomain
 from miles_core.soft_delete import not_deleted
 from miles_core.tenant import TenantContext
+from miles_core.url_security import validate_outbound_url
 from miles_portal.tenant.categories.services.category import CategoryService
 from miles_portal.tenant.skills.models import SkillPackage
 from miles_portal.tenant.skills.schemas.skill import SkillImportResult
@@ -85,9 +92,9 @@ class SkillImportService:
         tmp = Path(tempfile.mkdtemp(prefix="skill_zip_"))
         try:
             zip_path = tmp / "upload.zip"
-            zip_path.write_bytes(file_bytes)
+            await asyncio.to_thread(zip_path.write_bytes, file_bytes)
             with zipfile.ZipFile(zip_path, "r") as zf:
-                zf.extractall(tmp / "extracted")
+                await asyncio.to_thread(zf.extractall, tmp / "extracted")
             extracted = tmp / "extracted"
             skills_root = extracted / "skills"
             if not skills_root.is_dir():
@@ -108,11 +115,18 @@ class SkillImportService:
         *,
         overwrite_existing: bool,
     ) -> SkillImportResult:
-        """子进程 git clone --depth 1；需镜像内安装 git 且能访问远端。"""
+        """子进程 git clone --depth 1；需镜像内安装 git 且能访问远端。
+
+        地址仅允许 ``http(s)``（经 ``validate_outbound_url``），阻断 ``file://`` /
+        ``ssh://`` / ``git://`` 等 scheme 与内网、link-local（云元数据）地址 ——
+        ``git clone`` 会真正发起出站连接并识别这些 scheme。注意该函数不解析域名 DNS，
+        故「域名解析到内网」不在拦截范围内（与 HTTP 工具同一限制）。
+        """
         await self._cat.validate_category_for_domain(category_id, CategoryDomain.SKILL)
         url = repo_url.strip()
         if not url:
             raise BadRequestError("仓库地址不能为空")
+        validate_outbound_url(url)
         tmp = Path(tempfile.mkdtemp(prefix="skill_git_"))
         try:
             proc = await asyncio.to_thread(
