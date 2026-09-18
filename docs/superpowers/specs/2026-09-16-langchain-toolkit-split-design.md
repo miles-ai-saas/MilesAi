@@ -422,6 +422,16 @@ Task 4 的 Step 5 只收到「必记勘误 8」一条，故其修订覆盖了我
 
 **终检时的基线 HEAD**：`0047bbd6`（本记录随其后的 docs-only 提交落地）。
 
+### 2026-09-18 后续：portal 侧 `tools/` 的名字消歧（本文档路径已过时）
+
+本 spec 的模块清单里出现的 `tools/services/custom_tools.py` 已更名为
+`tools/services/agent_tool_assembly.py`；`tools/builtins/` 已更名为 `tools/handlers/`
+（该包只放 handler，与内置/自定义无关的纯函数上浮为 `tools/primitives.py`）。
+原因与范围见该次提交：原三名 `builtin_registry.py` / `builtins/` / `invoke/builtin.py`
+各指「声明 / 实现 / 分发」，且 `custom_tools.py` 的主职责（`assemble_agent_tools`）
+聚合的是自定义 + MCP + 内置，名字只说 custom 属于以偏概全。此处仅保留历史叙述，
+不再回改正文。
+
 ### 2026-09-18 更正并处置 §9 第 1 条（MCP 命名碰撞）
 
 原记录写「理论上存在碰撞（服务名极多时）」。实测**两点更正**：

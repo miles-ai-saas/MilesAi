@@ -13,9 +13,9 @@ from miles_core.url_security import validate_outbound_url
 from miles_exec.sandbox.validate import validate_script_source
 from miles_portal.tenant.mcp.runner.audit import record_runner_session, write_script_runner_session
 from miles_portal.tenant.mcp.runner.client import RunnerClient
-from miles_portal.tenant.tools.builtins.template import apply_template
 from miles_portal.tenant.tools.models import Tool
 from miles_portal.tenant.tools.parameters import validate_tool_params
+from miles_portal.tenant.tools.primitives import apply_template
 
 logger = get_logger(__name__)
 

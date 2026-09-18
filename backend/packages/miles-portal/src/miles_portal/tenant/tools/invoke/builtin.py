@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from miles_common.exceptions import BadRequestError
 from miles_core.tenant import TenantContext
-from miles_portal.tenant.tools.builtins.handlers import BUILTIN_HANDLERS
+from miles_portal.tenant.tools.handlers.handlers import BUILTIN_HANDLERS
 
 
 async def invoke_builtin(

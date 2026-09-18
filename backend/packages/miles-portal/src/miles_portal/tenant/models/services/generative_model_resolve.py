@@ -7,7 +7,7 @@
 ``resolve_model_for_invoke`` 合并 BYOK 凭证。
 
 调用方：
-- ``tenant.tools.builtins.generative``（工具 handler）
+- ``tenant.tools.handlers.generative``（工具 handler）
 - ``tenant.generative.services.job_execution``（worker 编排，image/video）
 - 画布生图/生视频节点：经 ``RunContext.resolve_generative_image/video`` 注入本模块函数引用
 （见 ``flow_runtime/nodes/image_generate.py`` / ``video_generate.py``）。

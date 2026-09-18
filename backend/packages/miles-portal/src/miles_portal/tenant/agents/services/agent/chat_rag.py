@@ -246,7 +246,7 @@ class AgentChatRagMixin:
         """
         from miles_ai.integrations.langchain.tool_agent import run_tool_calling_chat
         from miles_portal.tenant.tools.services.agent_executor import build_agent_tool_executor
-        from miles_portal.tenant.tools.services.custom_tools import assemble_agent_tools
+        from miles_portal.tenant.tools.services.agent_tool_assembly import assemble_agent_tools
 
         cfg = agent.config if isinstance(agent.config, dict) else {}
         hint = _knowledge_tools_system_hint(list(kb_ids)) if kb_ids else ""

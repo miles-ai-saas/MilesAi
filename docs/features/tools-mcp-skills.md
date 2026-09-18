@@ -120,7 +120,8 @@ invoke_tool_with_context
 ```
 backend/packages/miles-portal/src/miles_portal/tenant/tools/
     builtin_registry.py
-    builtins/
+    handlers/
+    primitives.py
     invoke/
 backend/packages/miles-portal/src/miles_portal/tenant/mcp/
 backend/packages/miles-portal/src/miles_portal/tenant/skills/

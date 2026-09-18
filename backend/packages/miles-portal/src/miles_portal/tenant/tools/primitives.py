@@ -1,4 +1,9 @@
-"""内置 calculator 工具：AST 白名单运算，禁止函数调用与变量访问。"""
+"""工具域共用的纯函数，与「内置/自定义」无关。
+
+放在顶层而非 ``handlers/`` 下：``safe_calculate`` 供 calculator handler，``apply_template``
+供 ``invoke/custom.py``（租户 HTTP 工具的 URL/headers 模板）——后者不是内置工具路径，
+若留在 ``handlers/`` 会让「自定义」分支反向依赖「内置 handler」包。
+"""
 
 import ast
 import operator as op
@@ -27,3 +32,11 @@ def safe_calculate(expression: str) -> float:
     """解析并安全求值四则运算表达式，不支持函数与变量。"""
     tree = ast.parse(expression.strip(), mode="eval")
     return float(_eval_expr(tree.body))
+
+
+def apply_template(template: str, params: dict) -> str:
+    """将 ``{{key}}`` 占位符替换为 params；未提供的占位符保持原样。"""
+    out = template
+    for k, v in params.items():
+        out = out.replace(f"{{{{{k}}}}}", str(v))
+    return out

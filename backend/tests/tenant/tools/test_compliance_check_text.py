@@ -9,7 +9,7 @@ import pytest
 
 from miles_common.exceptions import BadRequestError
 from miles_core.models.compliance.constants import SensitiveAction
-from miles_portal.tenant.tools.builtins import handlers as handlers_mod
+from miles_portal.tenant.tools.handlers import handlers as handlers_mod
 
 
 def _ctx() -> SimpleNamespace:

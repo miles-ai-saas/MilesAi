@@ -22,16 +22,16 @@ from miles_portal.tenant.compliance.services.pipeline import CompliancePipeline
 from miles_portal.tenant.compliance.services.word_resolve import load_tenant_scan_words
 from miles_portal.tenant.kb.services.embeddings import build_kb_retrieval_bindings
 from miles_portal.tenant.skills.runtime import skill_read_reference, skill_run_script
-from miles_portal.tenant.tools.builtins.calculator import safe_calculate
-from miles_portal.tenant.tools.builtins.code_exec import DEFAULT_MAX_MEMORY_MB, DEFAULT_TIMEOUT_SEC, execute_code
-from miles_portal.tenant.tools.builtins.generative import handle_generate_image, handle_generate_speech, handle_generate_video
-from miles_portal.tenant.tools.builtins.web_search import search
+from miles_portal.tenant.tools.handlers.code_exec import DEFAULT_MAX_MEMORY_MB, DEFAULT_TIMEOUT_SEC, execute_code
+from miles_portal.tenant.tools.handlers.generative import handle_generate_image, handle_generate_speech, handle_generate_video
+from miles_portal.tenant.tools.handlers.web_search import search
+from miles_portal.tenant.tools.primitives import safe_calculate
 
 BuiltinHandler = Callable[..., Awaitable[dict]]
 
 
 async def handle_calculator(params: dict, **_: Any) -> dict:
-    """安全计算数学表达式；委托 ``calculator.safe_calculate``。"""
+    """安全计算数学表达式；委托 ``primitives.safe_calculate``。"""
     expr = params.get("expression") or params.get("expr") or params.get("query", "")
     if not expr:
         raise BadRequestError("calculator 需要 expression 参数")

@@ -13,7 +13,7 @@ from miles_ai.integrations.langchain.tool_agent import loop as loop_mod
 from miles_ai.integrations.langchain.toolkit.catalog import get_platform_tools, make_builtin_tool
 from miles_ai.integrations.langchain.toolkit.naming import select_agent_tools
 from miles_core.models.agent.chat_io import ChatRequest
-from miles_portal.tenant.tools.builtins import handlers as handlers_mod
+from miles_portal.tenant.tools.handlers import handlers as handlers_mod
 
 
 class _Tool:
