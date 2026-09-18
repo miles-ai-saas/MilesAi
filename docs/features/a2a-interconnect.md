@@ -1,8 +1,8 @@
 # A2A 外部互联
 
-**状态：** 已实现（登记/引用/宿主 ✅；对外暴露 Card + `message/send` + `contextId` 多轮 + `tasks/*` + 产物下载 ✅）  
+**状态：** 已实现（登记/引用/宿主 ✅；对外暴露 Card + `message/send` + `message/stream` 流式 + `contextId` 多轮 + `tasks/*` + 产物下载 ✅）  
 **PRD 对照：** 模块4 A2A 互联智能体  
-**协议：** [A2A Protocol v1.0](https://a2a-protocol.org/v1.0.0/specification/) · [a2a.md](../guides/a2a.md)
+**协议：** [A2A Protocol v0.3.0](https://a2a-protocol.org/v0.3.0/specification/) · [a2a.md](../guides/a2a.md)
 
 ---
 
@@ -29,14 +29,15 @@
 ### 1.2 交付范围（对外暴露）
 
 - 指定 `custom` 智能体 `config.a2a_publish=true` → 对外 Agent Card 与 JSON-RPC `message/send`
-- JSON-RPC 方法：`message/send`、`tasks/get`、`tasks/cancel`（生成任务的生命周期）
+- JSON-RPC 方法：`message/send`、`message/stream`（SSE 真流式）、`tasks/get`、`tasks/cancel`（生成任务的生命周期）
 - 多租户按智能体寻址；根 `/.well-known/agent-card.json` 仅在唯一发布时 307 别名
 - Card 公开（发现元数据），调用端点用该智能体的 X-API-Key；Card 内声明 `securitySchemes` / `security` 供对端发现鉴权要求
+- Card 声明 `protocolVersion=0.3` 与 `capabilities.streaming=true`，与线格式（`kind` 判别字段、小写 TaskState）一致
 
 ### 1.3 明确不做
 
-- `message/stream` 真流式（Card 声明 `streaming=false`）
 - `tasks/resubscribe`、`tasks/pushNotificationConfig/*`（现回方法未找到）
+- A2A v1.0 迁移（PascalCase 方法名 + 去 `kind` + `TASK_STATE_*` 取值）
 - A2A 专用审计/限流（复用通用能力）
 
 ---
@@ -117,7 +118,7 @@ POST /agents/{id}/chat            # 宿主或 custom 增强
 
 ```
 GET  /a2a/agents/{agent_id}/.well-known/agent-card.json   # 公开，仅 config.a2a_publish=true 命中
-POST /a2a/agents/{agent_id}                               # JSON-RPC message/send | tasks/get | tasks/cancel，X-API-Key
+POST /a2a/agents/{agent_id}                               # JSON-RPC message/send | message/stream | tasks/get | tasks/cancel，X-API-Key
 GET  /a2a/agents/{agent_id}/tasks/{task_id}/artifacts/{attachment_id}   # 任务产物，X-API-Key
 GET  /.well-known/agent-card.json                         # 全平台唯一发布时 307；否则 404
 ```
@@ -127,7 +128,8 @@ JSON-RPC 协议级错误（解析 / 方法 / 参数）回 HTTP 200 + `error` 信
 Card 含 `securitySchemes`（`apiKey` · `in: header` · `name: X-API-Key`）与 `security`，声明的是调用端点要求；Card GET 本身公开。
 多轮：`message.contextId` → `ChatRequest.conversation_id`（LangGraph `thread_id` 后缀），响应 `Message.contextId` 回显；未带时服务端生成。
 Task：`message/send` 产生生成任务时回 `Task`（`id` 即平台 job id，状态照实映射）；`tasks/get` 查状态并在成功时附 `Task.artifacts`、`tasks/cancel` 取消（不属于该智能体 / 不存在 `-32001`、已结束 `-32002`）。
-产物下载走鉴权端点（平台不暴露签名 URL），授权限「该智能体 · 该任务 · 该产物」。`message/stream` 与 `tasks/resubscribe` / `pushNotificationConfig/*` 未实现，回 `-32601`。
+产物下载走鉴权端点（平台不暴露签名 URL），授权限「该智能体 · 该任务 · 该产物」。`tasks/resubscribe` / `pushNotificationConfig/*` 未实现，回 `-32601`。
+流式：`message/stream` 与其余方法共用同一 URL，按 `method` 分流返回 `text/event-stream`。首帧 `Task(working)`、中间帧 `status-update` 增量、末帧 `status-update(final=true)` 带完整回答；合成 `taskId` 不落库（流已给终态，无需再 `tasks/get`），生成任务 id 经 `status.message.metadata.a2aJobTaskId` 交接；合规拦截 `rejected`、执行失败 `failed`。前置校验失败回普通 JSON，不进入 SSE。
 
 ---
 
@@ -171,6 +173,7 @@ backend/packages/miles-openapi/src/miles_openapi/views/a2a_server.py          # 
 8. 多轮：带 `contextId` → 作 `conversation_id` 并回显；缺省时生成；超长回 `-32602`
 9. Task：产生生成任务时 `message/send` 回 `Task`；`tasks/get` 映射状态；`tasks/cancel` 取消；不存在 / 已结束各自错误码
 10. 产物：`tasks/get` 成功时 `artifacts` 指向鉴权下载端点；跨智能体 / 非本任务产物一律 404
+11. 流式：首帧 `Task` + 中间帧增量 + 末帧 `completed` 带全文；非真流路由仅首帧 + 末帧；合规拦截 `rejected`、执行异常 `failed`；生成任务末帧 `working/final` 带 `metadata.a2aJobTaskId`；前置失败保持 `application/json`；客户端断连即取消对话任务
 
 ---
 
