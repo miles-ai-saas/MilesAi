@@ -34,7 +34,7 @@ extend-exclude = [".data", ".import_linter_cache"]
 # 其中 351 处（88%）落在 tests/（pytest fixture 与契约桩），生产侧仅 48 处，
 # 且已逐处核对，全属接口契约或有意忽略：FastAPI 注入的 ctx（26 处）、
 # LangGraph/AST/回调签名（state、config、node、run_manager、stop 等）、
-# handler 统一协议（bound_skill_id、actor_user_id）、工具 schema 占位壳（kwargs），
+# handler 统一协议（bound_skill_ids、actor_user_id）、工具 schema 占位壳（kwargs），
 # 以及文档已注明忽略入参的适配器（precomputed 向量、IP 全掩、示例钩子等）。
 # 噪声主要来自 tests/，启用即须写 per-file-ignores 逐块豁免，收益不抵成本，故不启用。
 # 借该线索找出的真缺陷（函数签名声明却静默丢弃的参数）已逐一移除。

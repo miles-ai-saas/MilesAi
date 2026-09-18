@@ -57,7 +57,7 @@ async def handle_generate_speech(
     db: AsyncSession,
     ctx: TenantContext,
     agent_id: UUID | None,
-    bound_skill_id: UUID | None = None,
+    bound_skill_ids: list[UUID] | None = None,
     actor_user_id: UUID | None = None,
 ) -> dict:
     """TTS 语音合成：text → WAV 附件。
@@ -97,7 +97,7 @@ async def handle_generate_video(
     db: AsyncSession,
     ctx: TenantContext,
     agent_id: UUID | None,
-    bound_skill_id: UUID | None = None,
+    bound_skill_ids: list[UUID] | None = None,
     actor_user_id: UUID | None = None,
 ) -> dict:
     """文/图生视频：提交异步任务或同步生成视频附件。
@@ -193,7 +193,7 @@ async def handle_generate_image(
     db: AsyncSession,
     ctx: TenantContext,
     agent_id: UUID | None,
-    bound_skill_id: UUID | None = None,
+    bound_skill_ids: list[UUID] | None = None,
     actor_user_id: UUID | None = None,
 ) -> dict:
     """文/图生图：提交异步任务或同步生成图片附件。

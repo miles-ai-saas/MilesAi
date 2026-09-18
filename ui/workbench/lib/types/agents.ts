@@ -40,6 +40,9 @@ export interface Agent {
 
 /** 智能体 config 字段（与 backend schemas/agent.py 对齐，所有字段可选以兼容增量更新）。 */
 export interface AgentConfig {
+  /** 绑定的技能包 ID 列表（多技能绑定）。 */
+  skill_ids?: string[];
+  /** @deprecated 旧版单技能键；后端仍兼容读取，保存时会迁移为 `skill_ids`。 */
   skill_package_id?: string;
   mcp_service_ids?: string[];
   a2a_invoke_policy?: "rules_then_plan" | "rules_only" | "plan_only";

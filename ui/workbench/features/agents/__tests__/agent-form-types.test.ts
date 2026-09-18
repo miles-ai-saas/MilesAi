@@ -51,13 +51,13 @@ describe("agentToFormValues", () => {
     expect(form.tag_ids).toEqual(["tag-1"]);
   });
 
-  it("处理 config.skill_package_id 和 mcp_service_ids", () => {
-    const agent = mockAgent({
-      config: { skill_package_id: "sk-1", mcp_service_ids: ["mcp-1", "mcp-2"] } as AgentConfig,
-    });
-    const form = agentToFormValues(agent);
-    expect(form.skill_package_id).toBe("sk-1");
-    expect(form.mcp_service_ids).toEqual(["mcp-1", "mcp-2"]);
+  it("读取 config.skill_ids 多技能绑定，并兼容旧版单值键", () => {
+    const listForm = agentToFormValues(mockAgent({ config: { skill_ids: ["sk-1", "sk-2"], mcp_service_ids: ["mcp-1", "mcp-2"] } as AgentConfig }));
+    expect(listForm.skill_ids).toEqual(["sk-1", "sk-2"]);
+    expect(listForm.mcp_service_ids).toEqual(["mcp-1", "mcp-2"]);
+
+    const legacyForm = agentToFormValues(mockAgent({ config: { skill_package_id: "sk-old" } as AgentConfig }));
+    expect(legacyForm.skill_ids).toEqual(["sk-old"]);
   });
 
   it("默认 carry_forward_media 为 true", () => {
@@ -158,6 +158,18 @@ describe("buildAgentConfig", () => {
     const config = buildAgentConfig(emptyAgentForm(), base);
     expect(config.custom_field).toBe("keep");
     expect(config.agent_tag).toBeUndefined();
+  });
+
+  it("skill_ids 非空时写入，并把旧版单值键迁移掉", () => {
+    const form = { ...emptyAgentForm(), skill_ids: ["sk-1", "sk-2"] };
+    const config = buildAgentConfig(form, { skill_package_id: "sk-old" } as AgentConfig);
+    expect(config.skill_ids).toEqual(["sk-1", "sk-2"]);
+    expect(config.skill_package_id).toBeUndefined();
+  });
+
+  it("skill_ids 为空时不写入", () => {
+    const config = buildAgentConfig(emptyAgentForm(), undefined);
+    expect(config.skill_ids).toBeUndefined();
   });
 });
 

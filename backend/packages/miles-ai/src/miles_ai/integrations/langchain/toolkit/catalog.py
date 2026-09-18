@@ -156,8 +156,29 @@ def get_platform_tools() -> list[StructuredTool]:
     return _tools_for(_PLATFORM_SLUGS)
 
 
+def bound_skill_ids(agent_config: dict | None) -> list[str]:
+    """读 ``agent.config`` 里绑定的技能包 ID 列表（去重、保序、容忍脏数据）。
+
+    ``skill_ids`` 是当前形态；``skill_package_id`` 是旧版单技能键，仍被读取以兼容
+    既有智能体，两键并存时合并（列表形态在前）。非字符串/空串项跳过 —— 与其它
+    config 绑定字段同一策略：容忍脏数据，合法项照常生效。
+    """
+    cfg = agent_config if isinstance(agent_config, dict) else {}
+    raw = cfg.get("skill_ids") or []
+    if isinstance(raw, str):
+        raw = [raw]
+    out: list[str] = []
+    for item in [*raw, cfg.get("skill_package_id")]:
+        if not isinstance(item, str):
+            continue
+        sid = item.strip()
+        if sid and sid not in out:
+            out.append(sid)
+    return out
+
+
 def get_skill_bound_tools() -> list[StructuredTool]:
-    """Agent 绑定 ``skill_package_id`` 时追加的技能工具对。"""
+    """Agent 绑定技能包（``skill_ids`` / 旧 ``skill_package_id``）时追加的技能工具对。"""
     return _tools_for(_SKILL_SLUGS)
 
 
@@ -217,7 +238,7 @@ def build_platform_tools(
     """
     cfg = agent_config if isinstance(agent_config, dict) else {}
     tools = [*get_platform_tools(), *select_opt_in_builtin_tools(cfg)]
-    if cfg.get("skill_package_id"):
+    if bound_skill_ids(cfg):
         tools = [*tools, *get_skill_bound_tools()]
     if cfg.get("enable_generative_tools"):
         tools = [*tools, *get_generative_tools()]

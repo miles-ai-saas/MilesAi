@@ -25,6 +25,13 @@ export function useAgentFormStepActions(form: AgentFormValues, setForm: Dispatch
     }));
   };
 
+  const toggleSkill = (id: string) => {
+    setForm((f) => ({
+      ...f,
+      skill_ids: f.skill_ids.includes(id) ? f.skill_ids.filter((x) => x !== id) : [...f.skill_ids, id],
+    }));
+  };
+
   const toggleToolSlug = (slug: string) => {
     setForm((f) => ({
       ...f,
@@ -89,6 +96,7 @@ export function useAgentFormStepActions(form: AgentFormValues, setForm: Dispatch
     imageGenModels,
     videoGenModels,
     toggleMcp,
+    toggleSkill,
     toggleToolSlug,
     toggleSubAgent,
     setSubRole,

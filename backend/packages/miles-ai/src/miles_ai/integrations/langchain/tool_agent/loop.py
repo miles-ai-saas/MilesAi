@@ -16,7 +16,7 @@ from miles_ai.integrations.langchain.tool_agent.parse import (
     _looks_like_tool_call_simulation,
 )
 from miles_ai.integrations.langchain.tool_agent.tool_contract import ToolConfirmationSignal, ToolExecutor
-from miles_ai.integrations.langchain.toolkit.catalog import get_skill_bound_tools
+from miles_ai.integrations.langchain.toolkit.catalog import bound_skill_ids, get_skill_bound_tools
 from miles_ai.integrations.langchain.toolkit.naming import select_agent_tools
 from miles_ai.integrations.litellm.adapter import extract_litellm_usage
 from miles_ai.integrations.litellm.usage_sink import UsageSink
@@ -419,7 +419,7 @@ async def run_tool_calling_chat(
     allowed = agent.config.get("tool_slugs") if isinstance(agent.config, dict) else None
     always_allow = {"knowledge_search"} if kb_ids else None
     tools = select_agent_tools(platform_tools, allowed, always_allow=always_allow)
-    if allowed and (agent.config or {}).get("skill_package_id"):
+    if allowed and bound_skill_ids(agent.config):
         for st in get_skill_bound_tools():
             if st.name not in {t.name for t in tools}:
                 tools.append(st)

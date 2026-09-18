@@ -8,6 +8,7 @@ import { ResourceDialog } from "@/components/resource/ResourceDialog";
 import { useAgentDetailDialog, type AgentDetailDialogVm } from "@/features/agents/hooks/use-agent-detail-dialog";
 import { agentPlannerLabel, agentRuntimeModeLabel } from "@/features/agents/lib/agent-labels";
 import { agentModeLabel, agentStatusLabel, agentTypeLabel, subAgentRoleLabel } from "@/features/agents/lib/agent-utils";
+import { skillIdsOf } from "@/features/agents/lib/agent-form-types";
 import type { Agent, AgentMeta } from "@/lib/types";
 
 type Props = {
@@ -49,7 +50,8 @@ function formatAgentConfigSummary(cfg: Record<string, unknown>, subs: number, kb
   }
   const mcp = cfg.mcp_service_ids as string[] | undefined;
   if (mcp?.length) lines.push(`MCP 服务：${mcp.length} 个`);
-  if (cfg.skill_package_id) lines.push("已绑定技能包");
+  const skillCount = skillIdsOf(cfg).length;
+  if (skillCount) lines.push(`技能包：${skillCount} 个`);
   if (cfg.enable_generative_tools) lines.push("生图/生视频工具：已开启");
   if (cfg.carry_forward_media === false) lines.push("多轮识图沿用附图：已关闭");
   if (lines.length === 0) return <span className="text-ink-muted">默认配置</span>;
@@ -106,7 +108,7 @@ function AgentDetailDialogBody({ vm, onRenamed }: { vm: AgentDetailDialogVm; onR
           <span className="text-ink-muted">未绑定</span>
         )}
       </AgentDetailRow>
-      <AgentDetailRow label="技能包">{resolved.skillName ?? <span className="text-ink-muted">无</span>}</AgentDetailRow>
+      <AgentDetailRow label="技能包">{resolved.skillNames.length ? resolved.skillNames.join("、") : <span className="text-ink-muted">无</span>}</AgentDetailRow>
       <AgentDetailRow label="MCP 服务">
         {resolved.mcpNames.length > 0 ? (
           <ul className="list-inside list-disc">
@@ -162,9 +164,7 @@ function AgentDetailDialogBody({ vm, onRenamed }: { vm: AgentDetailDialogVm; onR
           <span className="text-ink-muted">无</span>
         )}
       </AgentDetailRow>
-      <AgentDetailRow label="高级配置">
-        {formatAgentConfigSummary(resolved.cfg, agent.sub_agents?.length ?? 0, agent.kb_ids.length, agentMeta)}
-      </AgentDetailRow>
+      <AgentDetailRow label="高级配置">{formatAgentConfigSummary(resolved.cfg, agent.sub_agents?.length ?? 0, agent.kb_ids.length, agentMeta)}</AgentDetailRow>
     </dl>
   );
 }
@@ -221,14 +221,7 @@ export function AgentDetailDialog({ open, agentId, onClose, onEdit, onChat, onDe
       onClose={onClose}
       footer={
         vm.agent && vm.resolved ? (
-          <AgentDetailDialogFooter
-            agent={vm.agent}
-            disabled={vm.resolved.disabled}
-            onClose={onClose}
-            onEdit={onEdit}
-            onChat={onChat}
-            onDesign={onDesign}
-          />
+          <AgentDetailDialogFooter agent={vm.agent} disabled={vm.resolved.disabled} onClose={onClose} onEdit={onEdit} onChat={onChat} onDesign={onDesign} />
         ) : (
           <button type="button" className="btn-ghost" onClick={onClose}>
             关闭

@@ -7,6 +7,7 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Query, UploadFile
+from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from miles_common.response import ok, page_ok
@@ -159,6 +160,24 @@ async def list_skill_files(
     db: AsyncSession = Depends(get_db),
 ):
     return ok(await SkillService(db, ctx).list_files(skill_id))
+
+
+@router.get(
+    "/{skill_id}/export",
+    responses={200: {"content": {"application/zip": {}}, "description": "技能包 zip，路径为 skills/{slug}/"}},
+)
+async def export_skill_zip(
+    skill_id: UUID,
+    ctx: TenantContext = Depends(require_permissions("skill:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    """下载技能包 zip；归档可直接用 POST /import/zip 再导入（顶层含 skills/）。"""
+    filename, payload = await SkillService(db, ctx).export_zip(skill_id)
+    return Response(
+        content=payload,
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @router.get("/{skill_id}/file", response_model=ApiResponse[SkillFileContent])

@@ -99,7 +99,7 @@ def _install(
     monkeypatch.setattr(ctx_mod, "time", SimpleNamespace(monotonic=_Clock(*clock)))
     monkeypatch.setattr(ctx_mod, "invoke_tool_by_name", invoke or _default_invoke)
     # 技能包解析默认返回 None（避免真实实现用 object() 当 db 触发 AttributeError）
-    monkeypatch.setattr(ctx_mod, "resolve_bound_skill_id_from_agent", _async_ret(None))
+    monkeypatch.setattr(ctx_mod, "resolve_bound_skill_ids_from_agent", _async_ret([]))
     _Hooks.last = None
     _Hooks.rewrite_params = None
     return rows
@@ -223,7 +223,7 @@ async def test_skill_bound_slug_with_binding_passes(monkeypatch):
     binding_id = uuid4()
 
     async def fake_resolve_skill(db, agent_id):  # noqa: ANN001, ARG002
-        return binding_id
+        return [binding_id]
 
     captured: dict = {}
 
@@ -231,11 +231,11 @@ async def test_skill_bound_slug_with_binding_passes(monkeypatch):
         captured.update(kwargs)
         return {"ok": True}
 
-    monkeypatch.setattr(ctx_mod, "resolve_bound_skill_id_from_agent", fake_resolve_skill)
+    monkeypatch.setattr(ctx_mod, "resolve_bound_skill_ids_from_agent", fake_resolve_skill)
     monkeypatch.setattr(ctx_mod, "invoke_tool_by_name", spy_invoke)
 
     await invoke_tool_with_context(object(), _ctx(), "skill_tool", {}, agent_id=AGENT_ID)
-    assert captured["bound_skill_id"] == binding_id
+    assert captured["bound_skill_ids"] == [binding_id]
 
 
 # --- BEFORE / AFTER Hook ---------------------------------------------------

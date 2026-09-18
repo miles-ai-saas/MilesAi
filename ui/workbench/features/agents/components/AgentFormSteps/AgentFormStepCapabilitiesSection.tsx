@@ -3,29 +3,30 @@
 import type { AgentFormStepActions } from "@/features/agents/hooks/use-agent-form-step-actions";
 import type { AgentFormStepContentProps } from "@/features/agents/components/AgentFormStepContent";
 
-type Props = Pick<
-  AgentFormStepContentProps,
-  "form" | "setForm" | "flows" | "skills" | "mcps" | "toolCatalog" | "onOpenFlowCanvas"
-> & {
+type Props = Pick<AgentFormStepContentProps, "form" | "setForm" | "flows" | "skills" | "mcps" | "toolCatalog" | "onOpenFlowCanvas"> & {
   actions: AgentFormStepActions;
 };
 
 export function AgentFormStepCapabilitiesSection({ form, setForm, flows, skills, mcps, toolCatalog, onOpenFlowCanvas, actions }: Props) {
-  const { imageGenModels, videoGenModels, toggleMcp, toggleToolSlug } = actions;
+  const { imageGenModels, videoGenModels, toggleMcp, toggleSkill, toggleToolSlug } = actions;
 
   return (
     <div className="grid gap-5 lg:grid-cols-2">
-      <label className="block text-sm lg:col-span-2">
-        <span className="mb-1 block text-ink-muted">技能包</span>
-        <select className="input-field w-full" value={form.skill_package_id} onChange={(e) => setForm((f) => ({ ...f, skill_package_id: e.target.value }))}>
-          <option value="">无技能包</option>
+      <div className="block text-sm lg:col-span-2">
+        <p className="mb-1 text-ink-muted">技能包（可多选）</p>
+        <div className="flex max-h-32 flex-wrap gap-2 overflow-y-auto">
+          {skills.length === 0 && <span className="text-xs text-ink-faint">暂无技能包</span>}
           {skills.map((s) => (
-            <option key={s.id} value={s.id}>
+            <label key={s.id} className="flex cursor-pointer items-center gap-1 text-xs">
+              <input type="checkbox" checked={form.skill_ids.includes(s.id)} onChange={() => toggleSkill(s.id)} />
               {s.name}
-            </option>
+            </label>
           ))}
-        </select>
-      </label>
+        </div>
+        <p className="mt-1 text-xs text-ink-faint">
+          绑定后模型可用 skill_read_reference / skill_run_script 读取技能手册与执行脚本；绑定多个时模型会按 slug 指定所用技能包。
+        </p>
+      </div>
       <label className="block text-sm">
         <span className="mb-1 block text-ink-muted">已发布编排流程</span>
         <div className="flex gap-2">

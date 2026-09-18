@@ -137,6 +137,7 @@ function SkillEditorSidebar({ vm }: { vm: SkillEditorPageVm }) {
     creatingFile,
     onCreateFile,
     onCreatePack,
+    exporting,
   } = vm;
 
   return (
@@ -219,8 +220,13 @@ function SkillEditorSidebar({ vm }: { vm: SkillEditorPageVm }) {
           {creatingFile ? "创建中…" : "创建并打开"}
         </button>
       </div>
-      <button type="button" className="mt-6 w-full text-left text-xs text-red-600 hover:underline" onClick={onCreatePack}>
-        创建技能包
+      <button
+        type="button"
+        className="mt-6 w-full text-left text-xs text-brand hover:underline disabled:opacity-50"
+        disabled={exporting}
+        onClick={() => void onCreatePack()}
+      >
+        {exporting ? "导出中…" : "导出为 ZIP"}
       </button>
     </aside>
   );

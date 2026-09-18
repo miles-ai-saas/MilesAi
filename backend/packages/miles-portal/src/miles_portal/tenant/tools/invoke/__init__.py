@@ -20,7 +20,7 @@ from miles_portal.tenant.tools.invoke.builtin import invoke_builtin
 from miles_portal.tenant.tools.invoke.context import (
     invoke_tool_by_name,
     invoke_tool_with_context,
-    resolve_bound_skill_id_from_agent,
+    resolve_bound_skill_ids_from_agent,
 )
 from miles_portal.tenant.tools.invoke.custom import (
     SCRIPT_RUNNER_DISABLED,
@@ -36,6 +36,6 @@ __all__ = [
     "invoke_custom_script",
     "invoke_tool_by_name",
     "invoke_tool_with_context",
-    "resolve_bound_skill_id_from_agent",
+    "resolve_bound_skill_ids_from_agent",
     "safe_calculate",
 ]

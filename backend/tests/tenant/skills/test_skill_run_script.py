@@ -91,6 +91,8 @@ async def _run(*, env, params=None, actor_user_id=None, db=None):  # noqa: ANN00
         db if db is not None else object(),
         _ctx(),
         params if params is not None else {"path": "scripts/a.py"},
+        # 绑定集合在真实链路取自 agent.config.skill_ids；此处直接给定以聚焦脚本执行语义
+        bound_skill_ids=[SKILL_ID],
         actor_user_id=actor_user_id,
     )
 

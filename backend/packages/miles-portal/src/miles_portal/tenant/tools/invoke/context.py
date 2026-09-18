@@ -23,26 +23,30 @@ from miles_portal.tenant.tools.invoke.custom import invoke_custom_http, invoke_c
 from miles_portal.tenant.tools.models import Tool, ToolType
 
 
-async def resolve_bound_skill_id_from_agent(
+async def resolve_bound_skill_ids_from_agent(
     db: AsyncSession,
     agent_id: UUID | None,
-) -> UUID | None:
-    """从智能体 config 解析绑定的技能包 ID。"""
+) -> list[UUID]:
+    """从智能体 config 解析绑定的技能包 ID 列表（``skill_ids`` + 旧 ``skill_package_id``）。
+
+    非 UUID 项跳过 —— 与其它 config 绑定字段同一策略：容忍脏数据，合法项照常生效。
+    """
     if not agent_id:
-        return None
+        return []
+    from miles_ai.integrations.langchain.toolkit.catalog import bound_skill_ids
     from miles_core.models.agent import Agent
 
     agent = await db.get(Agent, agent_id)
-    if not agent or not isinstance(agent.config, dict):
-        return None
-    raw = agent.config.get("skill_package_id")
-    if not raw:
-        return None
-    try:
-        return UUID(str(raw))
-    except ValueError:
-        # 静默可接受：agent.config 里的 skill_package_id 非 UUID，视为「未绑定技能」。
-        return None
+    if not agent:
+        return []
+    out: list[UUID] = []
+    for raw in bound_skill_ids(agent.config):
+        try:
+            out.append(UUID(raw))
+        except ValueError:
+            # 静默可接受：agent.config 中非 UUID 的绑定项无法用于查库，跳过。
+            continue
+    return out
 
 
 async def invoke_tool_by_name(
@@ -53,7 +57,7 @@ async def invoke_tool_by_name(
     *,
     source: ToolSource,
     tool_id: UUID | None = None,
-    bound_skill_id: UUID | None = None,
+    bound_skill_ids: list[UUID] | None = None,
     actor_user_id: UUID | None = None,
     agent_id: UUID | None = None,
 ) -> dict:
@@ -74,7 +78,7 @@ async def invoke_tool_by_name(
             params,
             db=db,
             ctx=ctx,
-            bound_skill_id=bound_skill_id,
+            bound_skill_ids=bound_skill_ids,
             actor_user_id=actor_user_id,
             agent_id=agent_id,
         )
@@ -192,11 +196,11 @@ async def invoke_tool_with_context(
         if needs_image_tool_confirmation(tool_params) and not confirmed:
             await halt_for_confirmation(image_tool_confirmation_message(tool_params))
 
-    bound_skill_id: UUID | None = None
+    bound_skill_ids: list[UUID] | None = None
     if slug in SKILL_BOUND_SLUGS:
-        bound_skill_id = await resolve_bound_skill_id_from_agent(db, agent_id)
-        if not bound_skill_id:
-            raise BadRequestError("该工具需要智能体绑定技能包（config.skill_package_id）")
+        bound_skill_ids = await resolve_bound_skill_ids_from_agent(db, agent_id)
+        if not bound_skill_ids:
+            raise BadRequestError("该工具需要智能体绑定技能包（config.skill_ids）")
 
     hook_runner = HookRunner(db, ctx.tenant_id)
     tool_scope_id = resolved_tool_id
@@ -225,7 +229,7 @@ async def invoke_tool_with_context(
             tool_params,
             source=meta["source"],
             tool_id=resolved_tool_id,
-            bound_skill_id=bound_skill_id,
+            bound_skill_ids=bound_skill_ids,
             actor_user_id=actor_user_id or ctx.user_id,
             agent_id=agent_id,
         )

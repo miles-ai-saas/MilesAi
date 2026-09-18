@@ -122,6 +122,6 @@ async def test_invoke_skill_read_reference(skill_tree, monkeypatch):
         {"path": "references/guide.md"},
         db=None,
         ctx=ctx,
-        bound_skill_id=data["skill_id"],
+        bound_skill_ids=[data["skill_id"]],
     )
     assert "Guide" in out["content"]

@@ -15,7 +15,7 @@ async def invoke_builtin(
     *,
     db: AsyncSession,
     ctx: TenantContext,
-    bound_skill_id: UUID | None = None,
+    bound_skill_ids: list[UUID] | None = None,
     actor_user_id: UUID | None = None,
     agent_id: UUID | None = None,
 ) -> dict:
@@ -27,7 +27,7 @@ async def invoke_builtin(
         params,
         db=db,
         ctx=ctx,
-        bound_skill_id=bound_skill_id,
+        bound_skill_ids=bound_skill_ids,
         actor_user_id=actor_user_id,
         agent_id=agent_id,
     )

@@ -543,7 +543,7 @@ flowchart TD
 | 自定义 HTTP 工具 | `tool_tools` 表配置 |
 | MCP | `tools/list` 同步；HTTP/SSE **`tools/call` 真 invoke**；STDIO 经 `mcp-runner`；`custom` transport，见 [mcp.md](../guides/mcp.md)、[mcp-sandbox.md](./mcp-sandbox.md) |
 | 技能包 | `skl_skill_packages` + 磁盘 `SKILL.md`；导入与注入见 [skill-packages.md](../guides/skill-packages.md) |
-| 智能体配置 | `config.skill_package_id`、`config.mcp_service_ids` |
+| 智能体配置 | `config.skill_ids`（兼容旧 `config.skill_package_id`）、`config.mcp_service_ids` |
 
 ---
 
@@ -653,7 +653,9 @@ flowchart TD
 | 对话 HTTP 整包流式；tool/flow/A2A 路径真 token 流式 | 🔶 | WS 直连/RAG 已真流式；见 [realtime-transport-design.md](./realtime-transport-design.md) |
 | WS 断线续传、服务端会话快照 | ⬜ | v2，见 [realtime-transport-design.md](./realtime-transport-design.md) |
 | A2A 对外暴露本平台 Agent Card | ⬜ | 现仅能拉取远端 Card；见 [a2a.md](../guides/a2a.md) |
-| 技能包 ZIP 导出 / 后端打包 | ⬜ | 见 [skill-packages.md](../guides/skill-packages.md) |
+| 流程版本一键回滚 | ⬜ | 已有 `versions`/`publish`，缺 restore；可参照 marketplace `rollback.py` |
+| 内置 Redis 操作工具 | ⬜ | `builtin_registry.py` 无 redis 工具；现仅系统页只读 `/redis-info` |
+| HookScope.APP（应用级）派发 | ⬜ | `hooks/meta.py` 标「预留」；现仅 global/agent/flow/tool 有派发点 |
 | MCP STDIO 沙箱 MVP 收尾；预置模板/域名白名单 | 🔶 | 见 [mcp-sandbox.md](./mcp-sandbox.md) |
 | 视频逐帧 / 流式预览 | ⬜ | 见 [multimodal-capabilities.md](../product/multimodal-capabilities.md) |
 | 模型供应商 M4：批量导入、图标资源 | ⬜ | 见 [model-providers.md](../guides/model-providers.md) |

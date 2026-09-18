@@ -2,7 +2,7 @@
 
 **功能规格：** [features/tools-mcp-skills.md](../features/tools-mcp-skills.md) §技能包
 
-技能包（Skill Package）在 MilesAI 中用于管理 **Cursor 风格的 `SKILL.md` 技能目录**：元数据入库、文件落盘、分类筛选，并在智能体对话时通过 `config.skill_package_id` 将技能说明注入系统提示（System Prompt）。
+技能包（Skill Package）在 MilesAI 中用于管理 **Cursor 风格的 `SKILL.md` 技能目录**：元数据入库、文件落盘、分类筛选、ZIP 导入导出，并在智能体对话时通过 `config.skill_ids`（列表，兼容旧 `config.skill_package_id`）将技能说明注入系统提示（System Prompt）。
 
 与 **MCP**（远程工具服务）互补：技能包侧重「提示词/流程说明」类知识；MCP 侧重可调用远程工具。二者可同时绑定在同一智能体上。
 
@@ -16,10 +16,10 @@
 | 本地目录导入 | ✅ | 服务端可访问路径扫描 |
 | ZIP 导入 | ✅ | 须含 `skills/` 目录，≤100MB |
 | Git 克隆导入 | ✅ | `git clone --depth 1`，优先 `skills/` 子目录 |
-| 智能体绑定注入 | ✅ | 优先磁盘 `SKILL.md`，回退 `prompt_snippet` |
+| 智能体绑定注入 | ✅ | 多技能：`config.skill_ids` 列表（兼容旧 `skill_package_id`），逐包注入 Prompt |
 | references / scripts 索引 | ✅ | `config.layout` 索引注入 Prompt；按需 `skill_read_reference` |
 | 技能脚本沙箱执行 | ✅ | `skill_run_script`（需 `MCP_RUNNER_ENABLED`） |
-| 导出 ZIP / 打包发布 | 规划 | 编辑器「创建技能包」占位 |
+| 导出 ZIP | ✅ | `GET /skill-packages/{id}/export`，归档顶层 `skills/{slug}/`，可再导入 |
 | 兼容旧版「工具勾选 + 片段」 | ✅ | `POST /skill-packages` 仍保留 |
 
 ## 2. SKILL.md 规范
@@ -267,6 +267,15 @@ your-skills.zip
         └── SKILL.md
 ```
 
+#### 导出 ZIP
+
+`GET /skill-packages/{id}/export`（权限 `skill:read`）返回归档，顶层为
+`skills/{slug}/`，与 §5.4 ZIP 的「须含 `skills/`」前置约定对称 —— 故导出物可直接
+用 `POST /skill-packages/import/zip` 再导入。打包时跳过 `__pycache__`、点开头文件
+与 `.pyc/.pyo`（运行残留，带出去只会在再导入时污染技能内容）。
+
+前端入口：技能编辑器左栏「导出为 ZIP」。
+
 #### Git
 
 1. `git clone --depth 1 <repo_url>`（需运行环境安装 `git`）。
@@ -281,9 +290,9 @@ your-skills.zip
 ## 6. 运行时：智能体注入
 
 ```
-Agent.config.skill_package_id
+Agent.config.skill_ids[]            # 旧版单值 config.skill_package_id 仍兼容
   → build_skill_mcp_prompt_block (agents/services/context.py)
-  → 读取 SkillPackage（租户、未软删、is_active）
+  → 逐个读取 SkillPackage（租户、未软删、is_active；失效项跳过）
   → read_skill_md(tenant_id, slug) 优先
   → 否则 prompt_snippet
   → 追加 config.layout 索引块（references / scripts）
@@ -298,14 +307,16 @@ Agent.config.skill_package_id
 | `skill_read_reference` | 读取 `references/`、`assets/` 文本 |
 | `skill_run_script` | 沙箱执行 `scripts/*.py`（需确认 + MCP Runner） |
 
-工具自动绑定当前智能体的 `skill_package_id`，LLM 无需传技能 ID。
+技能包从智能体绑定集合解析，LLM 通常无需传技能 ID：绑定唯一时直接选用；绑定多个时须传
+`skill_slug` 消歧（参数在工具 schema 上；不传会报错并列出可选 slug，不会静默取第一个）。
 
-绑定入口：工作台智能体表单 `skill_package_id`（`ui/workbench/components/agent/AgentFormStepContent.tsx`）。
+绑定入口：工作台智能体表单「技能包（可多选）」（`ui/workbench/features/agents/components/AgentFormSteps/AgentFormStepCapabilitiesSection.tsx`），写入 `config.skill_ids`。
 
 注入块示例：
 
 ```text
 【技能包 · doGetCurrentTime】
+技能包 slug: doGetCurrentTime
 ---
 name: doGetCurrentTime
 description: ...
@@ -326,8 +337,8 @@ description: ...
 |------|------|
 | `ui/workbench/app/workbench/skills/page.tsx` | 列表与导入入口 |
 | `ui/workbench/app/workbench/skills/[id]/page.tsx` | 编辑器 |
-| `ui/workbench/components/skills/SkillImportDialogs.tsx` | 本地 / ZIP / Git 弹窗 |
-| `ui/workbench/components/skills/SkillCreateBlankDialog.tsx` | 空白创建 |
+| `ui/workbench/features/skills/components/SkillImportDialogs.tsx` | 本地 / ZIP / Git 弹窗 |
+| `ui/workbench/features/skills/hooks/use-skill-editor-page.ts` | 编辑器 VM（读写文件、导出 ZIP） |
 | `ui/workbench/lib/api.ts` | `listSkillPackages`、`importSkill*`、`putSkillFile` 等 |
 | `ui/workbench/components/category/useCategoryTabs.tsx` | `domain="skill"` |
 
@@ -381,7 +392,7 @@ milesai seed skills      # 示例技能包（SKILL.md + references/ + scripts/�
 
 | 机制 | 用途 | 智能体配置键 |
 |------|------|----------------|
-| 技能包 | `SKILL.md` 说明注入 | `skill_package_id` |
+| 技能包 | `SKILL.md` 说明注入（可多包） | `skill_ids`（旧 `skill_package_id`） |
 | MCP 服务 | 远程 `tools/list` / `tools/call` | `mcp_service_ids` |
 | 内置/自定义工具 | 平台工具目录与 invoke | `tool_names` 等（技能包 `tool_names` 为遗留展示） |
 
@@ -391,13 +402,11 @@ milesai seed skills      # 示例技能包（SKILL.md + references/ + scripts/�
 
 | 项 | 说明 |
 |----|------|
-| ZIP 导出 | 编辑器「创建技能包」尚未接后端打包 API |
 | Git SSH | **已不支持**：地址仅允许 `http(s)`（见 §5「Git」）。私有仓库请用带 token 的 https 地址 |
 | Git Deploy Key | 未内置，故无法以 ssh 方式拉取私有仓库 |
 | ZIP 解压体积 | 上传上限 100MB；解压后总体积上限 500MB、条目数上限 10000，均在解压前校验（§4 ZIP） |
 | Git 域名解析 | `validate_outbound_url` 不解析域名，故「域名解析到内网」不在拦截内（与 HTTP 工具同限） |
 | 本地路径安全 | 当前允许配置任意可读路径，生产可加白名单（仅允许 `skills_data_root` 下） |
-| 多技能绑定 | 智能体仅支持单个 `skill_package_id`；多技能需后续改为 ID 列表 |
 | Streamable Skill 协议 | 已支持 references/scripts 子集；frontmatter 扩展字段待补 |
 
 REST 字段以运行中 OpenAPI（`/docs`）为准。

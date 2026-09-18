@@ -6,8 +6,10 @@
 
 from __future__ import annotations
 
+import io
 import re
 import shutil
+import zipfile
 from pathlib import Path
 from uuid import UUID
 
@@ -15,6 +17,16 @@ from miles_core.config import get_settings
 
 SKILL_MD_FILENAME = "SKILL.md"
 _SLUG_RE = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_-]{0,127}$")
+
+#: 导出归档里技能目录的顶层容器名。与 ``SkillImportService.import_zip`` 的
+#: 「解压后须含 skills/」约定对称 —— 导出物因此可以直接再导入。
+EXPORT_ROOT_DIR = "skills"
+
+#: 导出时跳过的目录（运行残留，不是技能内容）。
+_EXPORT_SKIP_DIRS = frozenset({"__pycache__"})
+
+#: 导出时跳过的字节码后缀。
+_EXPORT_SKIP_SUFFIXES = frozenset({".pyc", ".pyo"})
 
 
 def skill_slug_from_folder(name: str) -> str:
@@ -85,6 +97,31 @@ def remove_tenant_skills(tenant_id: UUID) -> None:
     d = tenant_skills_root(tenant_id)
     if d.exists():
         shutil.rmtree(d, ignore_errors=True)
+
+
+def build_skill_zip(tenant_id: UUID, slug: str) -> bytes:
+    """把技能目录打包为 zip；路径为 ``skills/{slug}/<relative>``。
+
+    顶层 ``skills/`` 与 ``import_zip`` 的前置约定对称，故导出物可直接再导入。
+    ``__pycache__`` / 点开头文件（``.DS_Store``、``.git`` 等）与字节码后缀跳过 ——
+    它们是运行残留，带出去只在再导入时污染新版技能内容。目录不存在抛
+    ``FileNotFoundError``（调用方转 404）。
+    """
+    base = skill_package_dir(tenant_id, slug)
+    if not base.is_dir():
+        raise FileNotFoundError(slug)
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        for path in sorted(base.rglob("*")):
+            if not path.is_file():
+                continue
+            rel = path.relative_to(base)
+            if any(part.startswith(".") or part in _EXPORT_SKIP_DIRS for part in rel.parts):
+                continue
+            if path.suffix.lower() in _EXPORT_SKIP_SUFFIXES:
+                continue
+            zf.write(path, arcname=f"{EXPORT_ROOT_DIR}/{slug}/{rel.as_posix()}")
+    return buf.getvalue()
 
 
 def read_skill_md(tenant_id: UUID, slug: str) -> str:

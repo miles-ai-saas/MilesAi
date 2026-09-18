@@ -153,11 +153,11 @@ async def handle_skill_read_reference(
     *,
     db: AsyncSession,
     ctx: TenantContext,
-    bound_skill_id: UUID | None = None,
+    bound_skill_ids: list[UUID] | None = None,
     **_: Any,
 ) -> dict:
     """读取绑定技能包 references/assets 文本；委托 ``skill_read_reference``。"""
-    return await skill_read_reference(db, ctx, params, bound_skill_id=bound_skill_id)
+    return await skill_read_reference(db, ctx, params, bound_skill_ids=bound_skill_ids)
 
 
 async def handle_web_search(params: dict, **_: Any) -> dict:
@@ -275,7 +275,7 @@ async def handle_skill_run_script(
     *,
     db: AsyncSession,
     ctx: TenantContext,
-    bound_skill_id: UUID | None = None,
+    bound_skill_ids: list[UUID] | None = None,
     actor_user_id: UUID | None = None,
     **_: Any,
 ) -> dict:
@@ -284,7 +284,7 @@ async def handle_skill_run_script(
         db,
         ctx,
         params,
-        bound_skill_id=bound_skill_id,
+        bound_skill_ids=bound_skill_ids,
         actor_user_id=actor_user_id or ctx.user_id,
     )
 

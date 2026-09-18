@@ -94,7 +94,7 @@
 | HTTP 钩子（前后置/on_error） | ✅ | Event v1；Agent/Flow/Tool 挂载 |
 | Python 脚本钩子 | ✅ | `miles_portal.tenant.hooks.plugins.*` |
 | 数据脱敏、水印 | 未实现 | 曾经 `desensitize.py` 实现但零调用方，已删除；导出水印未实现 —— 按需立项 |
-| 按智能体/流程/应用绑定钩子 | 部分 | scope 支持；`scope=tool` 绑定未接 |
+| 按智能体/流程/应用绑定钩子 | 部分 | `scope=global/agent/flow/tool` 均已接线并在调用点派发（tool 见 `tools/invoke/context.py`）；`scope=app` 预留，`HookScope.APP` 无派发点 |
 
 <a id="as-is-module-3"></a>
 

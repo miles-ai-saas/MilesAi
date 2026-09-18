@@ -91,6 +91,7 @@ export function useSkillEditorPage(id: string) {
   const [saving, setSaving] = useState(false);
   const [reindexing, setReindexing] = useState(false);
   const [creatingFile, setCreatingFile] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [newFilePrefix, setNewFilePrefix] = useState<"references" | "scripts" | "assets">("references");
   const [newFileName, setNewFileName] = useState("");
   const [err, setErr] = useState("");
@@ -196,8 +197,22 @@ export function useSkillEditorPage(id: string) {
     }
   };
 
-  const onCreatePack = () => {
-    setErr("请在列表页通过「创建技能包」完成打包（后续可接后端打包 API）");
+  const onCreatePack = async () => {
+    setExporting(true);
+    setErr("");
+    try {
+      const blob = await api.exportSkillZipBlob(id);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${skill?.slug || id}.zip`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setErr(getApiErrorMessage(e));
+    } finally {
+      setExporting(false);
+    }
   };
 
   const selectPath = (path: string) => {
@@ -227,6 +242,7 @@ export function useSkillEditorPage(id: string) {
     indexSummary,
     reindexing,
     creatingFile,
+    exporting,
     newFilePrefix,
     setNewFilePrefix,
     newFileName,

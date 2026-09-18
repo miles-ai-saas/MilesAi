@@ -13,7 +13,7 @@ export type AgentFormValues = {
   published_flow_id: string;
   prompt_template_id: string;
   model_config_id: string;
-  skill_package_id: string;
+  skill_ids: string[];
   mcp_service_ids: string[];
   sub_agents: SubAgentBindingInput[];
   a2a_peers: A2aPeerRefInput[];
@@ -51,7 +51,7 @@ export function emptyAgentForm(): AgentFormValues {
     published_flow_id: "",
     prompt_template_id: "",
     model_config_id: "",
-    skill_package_id: "",
+    skill_ids: [],
     mcp_service_ids: [],
     sub_agents: [],
     a2a_peers: [],
@@ -71,6 +71,13 @@ export function emptyAgentForm(): AgentFormValues {
   };
 }
 
+/** 读 config 的技能包绑定 ID：优先 `skill_ids`，兼容旧版单值 `skill_package_id`。 */
+export function skillIdsOf(cfg: AgentConfig | undefined): string[] {
+  const ids = ((cfg?.skill_ids as string[] | undefined) ?? []).map(String).filter(Boolean);
+  if (ids.length) return ids;
+  return cfg?.skill_package_id ? [String(cfg.skill_package_id)] : [];
+}
+
 export function agentToFormValues(agent: Agent): AgentFormValues {
   const cfg = (agent.config ?? {}) as AgentConfig;
   return {
@@ -84,7 +91,8 @@ export function agentToFormValues(agent: Agent): AgentFormValues {
     published_flow_id: String(agent.published_flow_id ?? ""),
     prompt_template_id: String(agent.prompt_template_id ?? ""),
     model_config_id: String(agent.model_config_id ?? ""),
-    skill_package_id: String(cfg.skill_package_id ?? ""),
+    // 多技能绑定；兼容旧版单值键（保存时会迁移为 skill_ids）
+    skill_ids: skillIdsOf(cfg),
     mcp_service_ids: ((cfg.mcp_service_ids as string[]) ?? []).map(String),
     sub_agents: (agent.sub_agents ?? []).map((s) => ({
       child_agent_id: s.id,
@@ -121,8 +129,10 @@ export function formatAgentCode(agentId: string): string {
 export function buildAgentConfig(form: AgentFormValues, baseConfig: AgentConfig | undefined): Record<string, unknown> {
   const config: Record<string, unknown> = { ...(baseConfig ?? {}) };
   delete config.agent_tag;
-  if (form.skill_package_id) config.skill_package_id = form.skill_package_id;
-  else delete config.skill_package_id;
+  if (form.skill_ids.length) config.skill_ids = form.skill_ids;
+  else delete config.skill_ids;
+  // 旧版单值键在保存时迁移为 skill_ids，避免两套键并存引发歧义
+  delete config.skill_package_id;
   if (form.mcp_service_ids.length) config.mcp_service_ids = form.mcp_service_ids;
   else delete config.mcp_service_ids;
 

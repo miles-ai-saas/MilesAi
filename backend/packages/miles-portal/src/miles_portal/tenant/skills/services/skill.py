@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from uuid import UUID
 
 from sqlalchemy import func, select
@@ -38,6 +39,7 @@ from miles_portal.tenant.skills.skill_layout import (
 from miles_portal.tenant.skills.skill_md import build_skill_md, sync_meta_from_skill_md
 from miles_portal.tenant.skills.storage import (
     SKILL_MD_FILENAME,
+    build_skill_zip,
     delete_file,
     ensure_skill_md,
     list_file_tree,
@@ -182,6 +184,16 @@ class SkillService(BaseService):
         await TagService(self.db, self.ctx).clear_entity_tags(TagEntityType.SKILL, row.id)
         remove_skill_dir(self.ctx.tenant_id, row.slug)
         await mark_deleted(self.db, row)
+
+    async def export_zip(self, skill_id: UUID) -> tuple[str, bytes]:
+        """导出技能包为 zip，返回 ``(文件名, 内容)``。
+
+        归档路径为 ``skills/{slug}/...``，与 ``import_zip`` 的 ``skills/`` 前置约定对称，
+        故导出物可直接再次导入。打包含磁盘 IO，经 ``asyncio.to_thread`` 离线。
+        """
+        row = await self._get_or_raise(skill_id)
+        payload = await asyncio.to_thread(build_skill_zip, self.ctx.tenant_id, row.slug)
+        return f"{row.slug}.zip", payload
 
     async def list_files(self, skill_id: UUID) -> list[SkillFileNode]:
         """返回技能包磁盘文件树。"""

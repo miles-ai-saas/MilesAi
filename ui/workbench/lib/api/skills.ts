@@ -43,6 +43,12 @@ export const skillsApi = {
 
   listSkillFiles: (id: string) => get<import("../types").SkillFileNode[]>(`/skill-packages/${id}/files`),
 
+  /** 下载技能包 zip（顶层 skills/{slug}/，可直接再导入）。 */
+  exportSkillZipBlob: async (id: string) => {
+    const res = await http.get<Blob>(`/skill-packages/${id}/export`, { responseType: "blob" });
+    return res.data;
+  },
+
   getSkillFile: (id: string, path: string) => get<{ path: string; content: string }>(`/skill-packages/${id}/file?path=${encodeURIComponent(path)}`),
 
   putSkillFile: (id: string, payload: { path: string; content: string }) => put<{ path: string; content: string }>(`/skill-packages/${id}/file`, payload),

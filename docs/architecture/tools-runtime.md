@@ -134,7 +134,7 @@ MilesAI 是**企业级多租户 AI 中台**（RAG、流程编排、智能体、�
 |------|------|----------|
 | **基线** | `calculator`、`http_request`、`get_current_datetime`、`knowledge_search` | 始终 |
 | **opt-in** | `web_search`、`code_execution`、`compliance_check_text`、`run_flow_once`、`invoke_tenant_hook` | 出现在 `tool_slugs` 时 |
-| **技能壳** | `skill_read_reference`、`skill_run_script` | `config.skill_package_id` |
+| **技能壳** | `skill_read_reference`、`skill_run_script` | `config.skill_ids`（兼容旧 `skill_package_id`） |
 | **生成壳** | `generate_image/video/speech` | `config.enable_generative_tools` |
 | **MCP** | `mcp__{service}__{tool}` | `config.mcp_service_ids` |
 

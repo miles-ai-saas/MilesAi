@@ -77,7 +77,7 @@ DeepAgents 默认注入 `general-purpose` 子智能体；本平台用占位 `Com
 
 | 配置项 | 作用 |
 |--------|------|
-| `skill_package_id` | 绑定单个技能包；`SKILL.md` 全文 + `references/scripts` **索引**注入 system prompt |
+| `skill_ids` | 绑定技能包**列表**（旧单值键 `skill_package_id` 仍兼容）；逐个注入 `SKILL.md` 全文 + `references/scripts` **索引**到 system prompt |
 | `enable_tool_calling` | 开启 LiteLLM function calling 循环（`tool_agent`） |
 | `tool_slugs` | 可选白名单；未配置时使用全部内置 + 租户自定义工具（MCP、绑定 KB 的 `knowledge_search` 不受其约束） |
 | `mcp_service_ids` | 绑定 MCP 服务，其同步出的 tools 一并可 function calling |
@@ -85,14 +85,14 @@ DeepAgents 默认注入 `general-purpose` 子智能体；本平台用占位 `Com
 
 ### 技能运行时工具
 
-绑定 `skill_package_id` 且走 **无知识库** 的 tool calling 路径时，额外挂载：
+绑定技能包（`skill_ids`）且走 **无知识库** 的 tool calling 路径时，额外挂载：
 
 | 工具 | 说明 |
 |------|------|
 | `skill_read_reference` | 按需读取 `references/`、`assets/` 文本 |
 | `skill_run_script` | 沙箱执行 `scripts/*.py`（`run(params)`；默认需用户确认） |
 
-工具自动使用当前智能体的 `skill_package_id`，LLM 无需传技能 ID。直接 `POST /tools/invoke` 时须带 `agent_id`（或参数中显式 `skill_package_id`）。
+工具自动使用当前智能体绑定的技能包，LLM 通常无需传技能 ID：绑定唯一时直接选用；绑定多个时须传 `skill_slug` 消歧（不传会报错并列出可选 slug）。直接 `POST /tools/invoke` 时须带 `agent_id`（或参数中显式 `skill_package_id`）。
 
 ### 路径互斥说明
 

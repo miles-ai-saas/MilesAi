@@ -68,6 +68,7 @@ class DateTimeInput(BaseModel):
 class SkillReadReferenceInput(BaseModel):
     path: str = Field(..., description="相对技能根的路径，如 references/guide.md")
     max_chars: int | None = Field(None, description="最大读取字符数，默认 12000")
+    skill_slug: str | None = Field(None, description="智能体绑定多个技能包时，指定使用哪个（slug）")
 
 
 # ``skill_run_script`` 工具入参：脚本路径、参数与超时 / 内存限制。
@@ -76,6 +77,7 @@ class SkillRunScriptInput(BaseModel):
     params: dict = Field(default_factory=dict, description="传入 run(params) 的参数字典")
     timeout_sec: int | None = Field(None, description="超时秒数，默认 30")
     max_memory_mb: int | None = Field(None, description="内存上限 MB，默认 512")
+    skill_slug: str | None = Field(None, description="智能体绑定多个技能包时，指定使用哪个（slug）")
 
 
 # --- L2 opt-in 内置工具 schema（须在 agent.config.tool_slugs 显式勾选才注入）---

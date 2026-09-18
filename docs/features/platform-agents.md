@@ -79,7 +79,7 @@ POST /agents/{id}/chat
 | `max_plan_iterations` | 12 | DeepAgents recursion_limit |
 | `max_subagent_calls` | 20 | 平台规划上限 |
 | `subagent_parallel` | false | 平台规划并行 |
-| `skill_package_id` | — | SKILL.md 注入 |
+| `skill_ids` | — | SKILL.md 注入（列表，可多选） |
 | `enable_tool_calling` | false | LiteLLM tools 循环 |
 | `carry_forward_media` | false | 多轮识图沿用附图 |
 

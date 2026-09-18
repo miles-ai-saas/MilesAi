@@ -12,6 +12,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from miles_ai.integrations.langchain.toolkit.catalog import bound_skill_ids
 from miles_ai.integrations.langchain.toolkit.naming import compose_mcp_tool_name
 from miles_core.soft_delete import is_marked_deleted, not_deleted
 from miles_core.tenant import TenantContext, tenant_filters
@@ -52,7 +53,7 @@ async def _append_platform_tools_block(
     slug_filter = {str(s) for s in raw_slugs if s}
 
     lines: list[str] = []
-    skill_bound = bool(config.get("skill_package_id"))
+    skill_bound = bool(bound_skill_ids(config))
     generative_on = bool(config.get("enable_generative_tools"))
     for t in BUILTIN_REGISTRY:
         slug = t["slug"]
@@ -98,6 +99,29 @@ async def _append_platform_tools_block(
         parts.append("【平台工具 · 可 function calling 执行】\n" + "\n".join(lines[:24]))
 
 
+async def _resolve_bound_skills(
+    db: AsyncSession,
+    ctx: TenantContext,
+    config: dict,
+) -> list[SkillPackage]:
+    """按 ``config.skill_ids``（兼容旧 ``skill_package_id``）解析可用技能包。
+
+    失效项（非 UUID / 跨租户 / 停用 / 已软删）跳过 —— 与其它绑定字段同一策略：
+    容忍脏数据，合法项照常注入。
+    """
+    out: list[SkillPackage] = []
+    for raw in bound_skill_ids(config):
+        try:
+            sid = UUID(raw)
+        except ValueError:
+            # 静默可接受：config 里非 UUID 的绑定项无法查库，跳过。
+            continue
+        skill = await db.get(SkillPackage, sid)
+        if skill and skill.tenant_id == ctx.tenant_id and skill.is_active and not is_marked_deleted(skill):
+            out.append(skill)
+    return out
+
+
 async def build_skill_mcp_prompt_block(
     db: AsyncSession,
     ctx: TenantContext,
@@ -105,30 +129,24 @@ async def build_skill_mcp_prompt_block(
 ) -> str:
     """将 agent.config 中的技能包与 MCP 工具说明拼入 system prompt。"""
     parts: list[str] = []
-    # 单技能绑定：AgentForm 写入 config.skill_package_id
-    skill_id = config.get("skill_package_id")
-    if skill_id:
-        try:
-            sid = UUID(str(skill_id))
-        except ValueError:
-            sid = None
-        if sid:
-            skill = await db.get(SkillPackage, sid)
-            if skill and skill.tenant_id == ctx.tenant_id and skill.is_active and not is_marked_deleted(skill):
-                block = f"【技能包 · {skill.name}】"
-                # 优先磁盘 SKILL.md（与编辑器保存一致），无文件再回退 DB prompt_snippet
-                body = read_skill_md(ctx.tenant_id, skill.slug) if skill.slug else ""
-                if body.strip():
-                    block += f"\n{body.strip()}"
-                elif skill.prompt_snippet:
-                    block += f"\n{skill.prompt_snippet.strip()}"
-                if skill.tool_names:
-                    tools = ", ".join(skill.tool_names)
-                    block += f"\n可用工具: {tools}"
-                layout = (skill.config or {}).get("layout")
-                for extra in format_layout_prompt_blocks(layout if isinstance(layout, dict) else None):
-                    block += f"\n{extra}"
-                parts.append(block)
+    for skill in await _resolve_bound_skills(db, ctx, config):
+        block = f"【技能包 · {skill.name}】"
+        # 多绑定时 skill_* 工具需按 slug 消歧，故把 slug 一并交给模型
+        if skill.slug:
+            block += f"\n技能包 slug: {skill.slug}"
+        # 优先磁盘 SKILL.md（与编辑器保存一致），无文件再回退 DB prompt_snippet
+        body = read_skill_md(ctx.tenant_id, skill.slug) if skill.slug else ""
+        if body.strip():
+            block += f"\n{body.strip()}"
+        elif skill.prompt_snippet:
+            block += f"\n{skill.prompt_snippet.strip()}"
+        if skill.tool_names:
+            tools = ", ".join(skill.tool_names)
+            block += f"\n可用工具: {tools}"
+        layout = (skill.config or {}).get("layout")
+        for extra in format_layout_prompt_blocks(layout if isinstance(layout, dict) else None):
+            block += f"\n{extra}"
+        parts.append(block)
 
     raw_mcp = config.get("mcp_service_ids") or []
     if isinstance(raw_mcp, str):
