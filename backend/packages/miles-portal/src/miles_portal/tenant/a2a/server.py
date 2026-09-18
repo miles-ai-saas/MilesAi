@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from miles_common.constants import AGENT_API_KEY_HEADER
 from miles_common.exceptions import BadRequestError
@@ -24,7 +24,9 @@ from miles_common.schemas.chat_io import CONVERSATION_ID_MAX_LENGTH
 A2A_PUBLISH_FLAG = "a2a_publish"
 
 #: Agent Card 声明的协议版本与传输绑定。
-A2A_PROTOCOL_VERSION = "1.0"
+#: 取值 0.3：本模块产出的方法名（``message/*``、``tasks/*``）与线格式（``kind`` 判别字段、
+#: 小写 TaskState）都是 v0.3 形状。声明 1.0 会让对端按 PascalCase 方法名调用并撞 ``-32601``。
+A2A_PROTOCOL_VERSION = "0.3"
 A2A_PROTOCOL_BINDING = "JSONRPC"
 
 #: ``securitySchemes`` / ``security`` 中引用该方案的键名。
@@ -41,12 +43,13 @@ INTERNAL_ERROR = -32603
 TASK_NOT_FOUND = -32001
 TASK_NOT_CANCELABLE = -32002
 
-#: A2A ``TaskState``（v1.0）。
+#: A2A ``TaskState``（v0.3）。
 TASK_STATE_SUBMITTED = "submitted"
 TASK_STATE_WORKING = "working"
 TASK_STATE_COMPLETED = "completed"
 TASK_STATE_FAILED = "failed"
 TASK_STATE_CANCELED = "canceled"
+TASK_STATE_REJECTED = "rejected"
 TASK_STATE_UNKNOWN = "unknown"
 
 #: 平台生成任务状态（``GenerativeJobStatus``）→ A2A ``TaskState``。
@@ -144,7 +147,7 @@ def build_agent_card(
         "protocolVersion": A2A_PROTOCOL_VERSION,
         "preferredTransport": A2A_PROTOCOL_BINDING,
         "capabilities": {
-            "streaming": False,
+            "streaming": True,
             "pushNotifications": False,
             "stateTransitionHistory": False,
         },
@@ -243,6 +246,25 @@ def build_a2a_task(
     return task
 
 
+def build_a2a_agent_message(*, text: str, context_id: str, task_id: str | None = None) -> dict:
+    """A2A ``Message``（agent 角色）。
+
+    ``contextId`` 必须回显：对端据此把后续消息接回同一上下文，否则每轮都是新对话。
+    ``taskId`` 仅在该消息属于某个 Task 时带上（流式帧的嵌套消息带，``message/send``
+    的同步回答不带 —— 同步回答不产生任务）。
+    """
+    message: dict = {
+        "kind": "message",
+        "role": "agent",
+        "messageId": str(uuid4()),
+        "contextId": context_id,
+        "parts": [{"kind": "text", "text": text}],
+    }
+    if task_id:
+        message["taskId"] = task_id
+    return message
+
+
 def artifact_ids_from_job_result(job_result: object) -> list[str]:
     """从生成任务 ``result`` 取产物附件 ID。
 
@@ -290,7 +312,7 @@ def build_a2a_artifacts(
         artifacts.append(
             {
                 "artifactId": attachment_id,
-                "parts": [{"type": "file", "file": file}],
+                "parts": [{"kind": "file", "file": file}],
             }
         )
     return artifacts

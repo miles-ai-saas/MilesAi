@@ -22,6 +22,7 @@ from miles_portal.tenant.a2a.server import (
     A2A_PUBLISH_FLAG,
     a2a_task_artifact_path,
     artifact_ids_from_job_result,
+    build_a2a_agent_message,
     build_a2a_artifacts,
     build_a2a_task,
     build_agent_card,
@@ -232,13 +233,56 @@ def test_build_a2a_artifacts_points_at_authenticated_download_endpoint():
     assert len(artifacts) == 1
     assert artifacts[0]["artifactId"] == "att-1"
     part = artifacts[0]["parts"][0]
-    assert part["type"] == "file"
+    assert part["kind"] == "file"
     assert part["file"]["uri"] == f"{BASE}/api/v1/open/a2a/agents/{AGENT_ID}/tasks/task-1/artifacts/att-1"
     assert part["file"]["mimeType"] == "image/png"
 
 
 def test_build_a2a_artifacts_empty_without_result():
     assert build_a2a_artifacts(job_result=None, agent_id=AGENT_ID, task_id="t", base_url=BASE) == []
+
+
+def test_build_agent_card_declares_streaming_and_v03():
+    """声明必须与实现同版：方法名/payload 全是 0.3，Card 就不能标 1.0。"""
+    card = build_agent_card(agent_id=AGENT_ID, name="客服助手", description="D", base_url=BASE)
+
+    assert card["protocolVersion"] == "0.3"
+    assert card["capabilities"]["streaming"] is True
+    assert card["supportedInterfaces"][0]["protocolVersion"] == "0.3"
+
+
+def test_task_state_rejected_constant_exists():
+    """合规拦截要回 A2A ``rejected``（拒绝处理），不借用 ``failed``。"""
+    assert server_mod.TASK_STATE_REJECTED == "rejected"
+
+
+def test_build_a2a_agent_message_shape():
+    message = build_a2a_agent_message(text="订单已发货", context_id="ctx-1")
+
+    assert message["kind"] == "message"
+    assert message["role"] == "agent"
+    assert message["contextId"] == "ctx-1"
+    # 0.3 的 Part 判别键是 kind：发 type 会被严格的对端当未知 part 丢掉
+    assert message["parts"] == [{"kind": "text", "text": "订单已发货"}]
+    assert message["messageId"]
+    assert "taskId" not in message
+
+
+def test_build_a2a_agent_message_carries_task_id_when_given():
+    message = build_a2a_agent_message(text="增量", context_id="ctx-1", task_id="t-1")
+
+    assert message["taskId"] == "t-1"
+
+
+def test_build_a2a_artifacts_part_kind_is_file():
+    artifacts = build_a2a_artifacts(
+        job_result={"kind": "image", "attachment_ids": ["att-1"], "mime_type": "image/png"},
+        agent_id=AGENT_ID,
+        task_id=uuid4(),
+        base_url=BASE,
+    )
+
+    assert artifacts[0]["parts"][0]["kind"] == "file"
 
 
 def test_jsonrpc_envelopes():
