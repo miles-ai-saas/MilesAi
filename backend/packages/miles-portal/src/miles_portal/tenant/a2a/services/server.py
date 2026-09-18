@@ -12,15 +12,20 @@ Card GET 无鉴权，仅由 ``config.a2a_publish`` 门槛约束可见性；调�
 
 from __future__ import annotations
 
+import asyncio
+import json
+from collections.abc import AsyncIterator
 from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from miles_ai.integrations.langchain.chat_models import OnDelta
 from miles_ai.integrations.langchain.toolkit.catalog import bound_skill_ids
 from miles_common.exceptions import BadRequestError, NotFoundError
 from miles_common.schemas.chat_io import ChatResponse
+from miles_core.infra.db import AsyncSessionLocal
 from miles_core.logging import get_logger
 from miles_core.models.agent import Agent, AgentStatus, AgentType
 from miles_core.models.model.generative_job import GenerativeJob
@@ -34,8 +39,14 @@ from miles_portal.tenant.a2a.server import (
     METHOD_NOT_FOUND,
     TASK_NOT_CANCELABLE,
     TASK_NOT_FOUND,
+    TASK_STATE_COMPLETED,
+    TASK_STATE_FAILED,
+    TASK_STATE_REJECTED,
+    TASK_STATE_WORKING,
     artifact_ids_from_job_result,
+    build_a2a_agent_message,
     build_a2a_artifacts,
+    build_a2a_status_update,
     build_a2a_task,
     build_agent_card,
     extract_message_context_id,
@@ -150,11 +161,15 @@ async def run_published_agent_chat(
     text: str,
     *,
     conversation_id: str | None = None,
+    on_delta: OnDelta | None = None,
 ) -> ChatResponse:
     """入站 A2A 任务 → 平台对话链路，返回完整对话响应（含异步生成任务）。
 
     ``conversation_id`` 来自 A2A ``message.contextId``，作为同一会话的 ``thread_id``
     后缀恢复 LangGraph checkpoint，从而支持多轮。
+
+    ``on_delta`` 为真流回调（``message/stream`` 用）：逐 token 交给调用方下发；不传则
+    只在返回时一次性拿到完整回答（``message/send`` 与不支持真流的路由都走这条）。
 
     返回整个 ``ChatResponse`` 而非仅 ``answer``：产生异步生成任务时须据此回 A2A
     ``Task`` 供对端轮询。
@@ -165,7 +180,7 @@ async def run_published_agent_chat(
     from miles_portal.tenant.agents.schemas.agent import ChatRequest
     from miles_portal.tenant.agents.services.agent import AgentService
 
-    return await AgentService(db, ctx).chat(agent_id, ChatRequest(query=text, conversation_id=conversation_id))
+    return await AgentService(db, ctx).chat(agent_id, ChatRequest(query=text, conversation_id=conversation_id), on_delta=on_delta)
 
 
 def _context_id_from_job_params(params: object) -> str | None:
@@ -192,17 +207,8 @@ def _first_active_job(jobs: list[dict]) -> dict | None:
 
 
 def _agent_message(text: str, context_id: str) -> dict:
-    """A2A ``Message``（agent 角色）形态；``parts`` 带 ``text`` 以兼容各家解析。
-
-    ``contextId`` 必须回显：对端据此把后续消息接回同一上下文，否则每轮都是新对话。
-    """
-    return {
-        "kind": "message",
-        "role": "agent",
-        "messageId": str(uuid4()),
-        "contextId": context_id,
-        "parts": [{"type": "text", "text": text}],
-    }
+    """A2A ``Message``（agent 角色）。形状由纯逻辑模块单一维护，此处不再另抄一份。"""
+    return build_a2a_agent_message(text=text, context_id=context_id)
 
 
 async def _handle_message_send(
@@ -372,8 +378,11 @@ async def handle_a2a_rpc(
     ``base_url`` 由请求推导（与 Card 同源），用于把 ``Task.artifacts`` 的下载地址写成
     绝对地址。
 
-    ``message/stream``、``tasks/resubscribe``、``tasks/pushNotificationConfig/*`` 未实现，
-    一律 ``METHOD_NOT_FOUND``（不静默成功）。
+    ``message/stream`` 不在本函数内：它要回 SSE 而非单个 JSON，由 ``open_a2a_stream``
+    处理，视图层按 ``method`` 先行分流。
+
+    ``tasks/resubscribe``、``tasks/pushNotificationConfig/*`` 未实现，一律
+    ``METHOD_NOT_FOUND``（不静默成功）。
     """
     req_id: object = payload.get("id") if isinstance(payload, dict) else None
     if not isinstance(payload, dict) or "method" not in payload:
@@ -390,3 +399,178 @@ async def handle_a2a_rpc(
     if method == "tasks/cancel":
         return await _handle_tasks_cancel(db, ctx, agent_id, req_id, params)
     return await _handle_message_send(db, ctx, agent_id, req_id, params)
+
+
+#: SSE 帧之间的增量队列上限。满时 ``on_delta`` 会等待消费者 —— 对上游形成背压，
+#: 否则慢消费者 + 长回答会把队列撑成无界缓冲。
+STREAM_QUEUE_MAXSIZE = 64
+
+#: 与「产出一片空串」区分的收尾哨兵。
+_STREAM_DONE = object()
+
+
+def _sse_frame(payload: dict) -> str:
+    """单个 SSE 帧。``ensure_ascii=False`` 让中文按原样出网；JSON 转义保证单行。"""
+    return f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
+
+
+async def open_a2a_stream(
+    db: AsyncSession,
+    ctx: TenantContext,
+    agent_id: UUID,
+    payload: object,
+) -> dict | AsyncIterator[str]:
+    """``message/stream`` 入口：前置校验失败回 JSON-RPC 错误信封，通过则回 SSE 帧迭代器。
+
+    返回 ``dict`` 而非抛异常，是因为调用方（视图层）要据此决定**不进入 SSE**：一旦
+    响应头写成 ``text/event-stream``，HTTP 状态与 Content-Type 已定，错误只能塞进帧里，
+    对端解析反而更麻烦。
+    """
+    req_id: object = payload.get("id") if isinstance(payload, dict) else None
+    if not isinstance(payload, dict) or "method" not in payload:
+        return jsonrpc_error(req_id, INVALID_REQUEST, "非法 JSON-RPC 请求")
+    params = payload.get("params")
+    if not isinstance(params, dict):
+        return jsonrpc_error(req_id, INVALID_PARAMS, "message/stream 缺少 params")
+    try:
+        await load_published_agent(db, agent_id)
+        text = extract_message_text(params)
+        # 未带 contextId 时生成一个：首轮就得用它，否则第一轮 checkpoint 落在别的
+        # thread，对端第二轮带上该 id 时模型并无上一轮记忆。
+        context_id = extract_message_context_id(params) or str(uuid4())
+    except (NotFoundError, BadRequestError) as exc:
+        return jsonrpc_error(req_id, INVALID_PARAMS, str(exc))
+    return _stream_turn(ctx, agent_id, req_id, text, context_id)
+
+
+async def _stream_turn(
+    ctx: TenantContext,
+    agent_id: UUID,
+    req_id: object,
+    text: str,
+    context_id: str,
+) -> AsyncIterator[str]:
+    """跑一轮对话并以 SSE 帧下发：首帧 Task、中间帧增量、末帧终态。"""
+    task_id = str(uuid4())
+    queue: asyncio.Queue = asyncio.Queue(maxsize=STREAM_QUEUE_MAXSIZE)
+    outcome: dict = {}
+    stopped = False
+
+    async def on_delta(piece: str) -> None:
+        await queue.put(piece)
+
+    async def run_turn() -> None:
+        # 自开会话：整轮对话要跨流式多次读库并在末尾 commit，依赖 get_db 依赖的
+        # 回收时序不可靠（与 ws/chat._run_chat_turn 同法）。
+        async with AsyncSessionLocal() as turn_db:
+            try:
+                outcome["response"] = await run_published_agent_chat(turn_db, ctx, agent_id, text, conversation_id=context_id, on_delta=on_delta)
+                await turn_db.commit()
+            except asyncio.CancelledError:
+                raise
+            except Exception as exc:
+                outcome["error"] = exc
+                # chat() 失败时已自 commit 过失败/拦截记录，此处 rollback 只为清掉残留。
+                await turn_db.rollback()
+                logger.exception("A2A message/stream 执行失败: agent_id=%s", agent_id)
+            finally:
+                if not stopped:
+                    await queue.put(_STREAM_DONE)
+
+    turn = asyncio.create_task(run_turn())
+    try:
+        yield _sse_frame(
+            jsonrpc_result(
+                req_id,
+                build_a2a_task(
+                    task_id=task_id,
+                    context_id=context_id,
+                    state=TASK_STATE_WORKING,
+                    timestamp=_now(),
+                ),
+            )
+        )
+        while True:
+            item = await queue.get()
+            if item is _STREAM_DONE:
+                break
+            yield _sse_frame(
+                jsonrpc_result(
+                    req_id,
+                    build_a2a_status_update(
+                        task_id=task_id,
+                        context_id=context_id,
+                        state=TASK_STATE_WORKING,
+                        timestamp=_now(),
+                        text=item,
+                        final=False,
+                    ),
+                )
+            )
+    finally:
+        # 消费端提前退出（客户端断连）：必须取消对话任务，否则 LLM 调用会跑到底白烧 token。
+        # 先置 stopped 再取消：让 run_turn 的 finally 不再往无人消费的队列里塞哨兵。
+        stopped = True
+        if not turn.done():
+            turn.cancel()
+
+    error = outcome.get("error")
+    response = outcome.get("response")
+    if error is not None:
+        state = TASK_STATE_REJECTED if isinstance(error, BadRequestError) else TASK_STATE_FAILED
+        yield _sse_frame(
+            jsonrpc_result(
+                req_id,
+                build_a2a_status_update(
+                    task_id=task_id,
+                    context_id=context_id,
+                    state=state,
+                    timestamp=_now(),
+                    text=_failure_text(error),
+                    final=True,
+                ),
+            )
+        )
+        return
+    if response is None:
+        # 理论不可达：哨兵与 outcome 由同一函数写入。保持显式返回而非回空帧。
+        return
+    job = _first_active_job(response.generative_jobs)
+    if job:
+        # 产物未就绪：以 working + final 收尾（final 只表示本流结束），并给出真实
+        # job id —— 对端据此转向 tasks/get 轮询状态与产物。
+        yield _sse_frame(
+            jsonrpc_result(
+                req_id,
+                build_a2a_status_update(
+                    task_id=task_id,
+                    context_id=context_id,
+                    state=TASK_STATE_WORKING,
+                    timestamp=_now(),
+                    text=response.answer,
+                    final=True,
+                    job_task_id=str(job["id"]),
+                ),
+            )
+        )
+        return
+    yield _sse_frame(
+        jsonrpc_result(
+            req_id,
+            build_a2a_status_update(
+                task_id=task_id,
+                context_id=context_id,
+                state=TASK_STATE_COMPLETED,
+                timestamp=_now(),
+                text=response.answer,
+                final=True,
+            ),
+        )
+    )
+
+
+def _failure_text(error: Exception) -> str:
+    """失败终态给对端的可读原因：``BadRequestError`` 的 message 本就可读，其余统一前缀。"""
+    if isinstance(error, BadRequestError):
+        return error.message
+    return f"智能体执行失败: {error}"

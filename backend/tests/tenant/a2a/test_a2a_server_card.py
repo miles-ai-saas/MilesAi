@@ -8,7 +8,9 @@
 
 from __future__ import annotations
 
+import asyncio
 import inspect
+import json
 from types import SimpleNamespace
 from uuid import uuid4
 
@@ -481,6 +483,7 @@ async def test_handle_rpc_message_send_returns_agent_message(monkeypatch):  # no
     assert result["kind"] == "message"
     assert result["role"] == "agent"
     assert result["parts"][0]["text"] == "订单已发货"
+    assert result["parts"][0]["kind"] == "text"
     assert result["messageId"]
 
 
@@ -872,3 +875,236 @@ async def test_read_task_artifact_rejects_non_agent_task(monkeypatch):  # noqa: 
 
     with pytest.raises(NotFoundError):
         await server_svc.read_task_artifact(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, job.id, attachment_id)
+
+
+# --- 6. message/stream --------------------------------------------------------
+
+
+class _FakeSession:
+    """``AsyncSessionLocal()`` 替身：流式生成器内部自开会话，测试须替换掉真实连接。"""
+
+    def __init__(self) -> None:
+        self.committed = 0
+        self.rolled_back = 0
+
+    async def __aenter__(self) -> _FakeSession:
+        return self
+
+    async def __aexit__(self, *_exc: object) -> bool:
+        return False
+
+    async def commit(self) -> None:
+        self.committed += 1
+
+    async def rollback(self) -> None:
+        self.rolled_back += 1
+
+
+def _patch_session(monkeypatch, session: _FakeSession) -> None:  # noqa: ANN001
+    monkeypatch.setattr(server_svc, "AsyncSessionLocal", lambda: session)
+
+
+async def _collect(stream) -> list[dict]:  # noqa: ANN001
+    """把 SSE 帧解回 JSON 信封，便于断言形状。"""
+    frames: list[dict] = []
+    async for frame in stream:
+        assert frame.startswith("data: ")
+        assert frame.endswith("\n\n")
+        frames.append(json.loads(frame[len("data: ") : -2]))
+    return frames
+
+
+def _stream_params(text: str = "写点什么", context_id: str | None = None) -> dict:
+    message: dict = {"parts": [{"kind": "text", "text": text}]}
+    if context_id:
+        message["contextId"] = context_id
+    return {"jsonrpc": "2.0", "id": 1, "method": "message/stream", "params": {"message": message}}
+
+
+@pytest.mark.asyncio
+async def test_open_stream_preflight_failure_returns_error_envelope():
+    """未发布智能体必须在 SSE 开始前回普通 JSON：流一旦开始，错误只能塞进帧里。"""
+    opened = await server_svc.open_a2a_stream(_Db(agent=None), SimpleNamespace(), AGENT_ID, _stream_params())
+
+    assert isinstance(opened, dict)
+    assert opened["error"]["code"] == server_mod.INVALID_PARAMS
+
+
+@pytest.mark.asyncio
+async def test_open_stream_rejects_bad_params_before_streaming():
+    opened = await server_svc.open_a2a_stream(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, _stream_params(text="   "))
+
+    assert isinstance(opened, dict)
+    assert opened["error"]["code"] == server_mod.INVALID_PARAMS
+
+
+@pytest.mark.asyncio
+async def test_open_stream_rejects_missing_params_before_streaming():
+    payload = {"jsonrpc": "2.0", "id": 1, "method": "message/stream"}
+    opened = await server_svc.open_a2a_stream(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, payload)
+
+    assert isinstance(opened, dict)
+    assert opened["error"]["code"] == server_mod.INVALID_PARAMS
+
+
+@pytest.mark.asyncio
+async def test_open_stream_emits_task_then_increments_then_final(monkeypatch):  # noqa: ANN001
+    """真流路由：首帧 Task、中间帧逐片增量、末帧 completed 且带完整回答。"""
+    session = _FakeSession()
+    _patch_session(monkeypatch, session)
+    seen: dict = {}
+
+    async def fake_chat(_db, _ctx, _agent_id, text, conversation_id=None, on_delta=None):  # noqa: ANN001
+        seen["text"] = text
+        seen["conversation_id"] = conversation_id
+        await on_delta("甲")
+        await on_delta("乙")
+        return ChatResponse(answer="甲乙")
+
+    monkeypatch.setattr(server_svc, "run_published_agent_chat", fake_chat)
+    stream = await server_svc.open_a2a_stream(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, _stream_params(text="写点什么", context_id="ctx-7"))
+
+    frames = await _collect(stream)
+    results = [f["result"] for f in frames]
+
+    assert all(f["jsonrpc"] == "2.0" and f["id"] == 1 for f in frames)
+    assert results[0]["kind"] == "task"
+    assert results[0]["status"]["state"] == "working"
+    assert results[0]["contextId"] == "ctx-7"
+
+    mids = results[1:-1]
+    assert [m["status"]["message"]["parts"][0]["text"] for m in mids] == ["甲", "乙"]
+    assert all(m["final"] is False for m in mids)
+    assert all(m["taskId"] == results[0]["id"] for m in mids)
+
+    last = results[-1]
+    assert last["final"] is True
+    assert last["status"]["state"] == "completed"
+    assert last["status"]["message"]["parts"][0]["text"] == "甲乙"
+
+    assert seen["text"] == "写点什么"
+    assert seen["conversation_id"] == "ctx-7"
+    assert session.committed == 1
+
+
+@pytest.mark.asyncio
+async def test_open_stream_generates_context_id_when_absent(monkeypatch):  # noqa: ANN001
+    """首轮未带 contextId 时生成一个并作为 conversation_id 下传，多轮才接得上。"""
+    _patch_session(monkeypatch, _FakeSession())
+    seen: dict = {}
+
+    async def fake_chat(_db, _ctx, _agent_id, _text, conversation_id=None, on_delta=None):  # noqa: ANN001
+        seen["conversation_id"] = conversation_id
+        return ChatResponse(answer="好的")
+
+    monkeypatch.setattr(server_svc, "run_published_agent_chat", fake_chat)
+    stream = await server_svc.open_a2a_stream(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, _stream_params())
+
+    results = [f["result"] for f in await _collect(stream)]
+
+    assert seen["conversation_id"]
+    assert results[0]["contextId"] == seen["conversation_id"]
+
+
+@pytest.mark.asyncio
+async def test_open_stream_one_shot_route_only_has_final_frame(monkeypatch):  # noqa: ANN001
+    """不接 on_delta 的路由（flow/子智能体等）不产生中间帧，靠末帧一次给全。"""
+    _patch_session(monkeypatch, _FakeSession())
+
+    async def fake_chat(_db, _ctx, _agent_id, _text, conversation_id=None, on_delta=None):  # noqa: ANN001
+        return ChatResponse(answer="完整回答")
+
+    monkeypatch.setattr(server_svc, "run_published_agent_chat", fake_chat)
+    stream = await server_svc.open_a2a_stream(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, _stream_params())
+
+    results = [f["result"] for f in await _collect(stream)]
+
+    assert len(results) == 2
+    assert results[0]["kind"] == "task"
+    assert results[-1]["status"]["state"] == "completed"
+    assert results[-1]["status"]["message"]["parts"][0]["text"] == "完整回答"
+
+
+@pytest.mark.asyncio
+async def test_open_stream_maps_compliance_block_to_rejected(monkeypatch):  # noqa: ANN001
+    """输入/输出合规拦截回 rejected（拒绝处理），并把原因交给对端。"""
+    session = _FakeSession()
+    _patch_session(monkeypatch, session)
+
+    async def fake_chat(_db, _ctx, _agent_id, _text, conversation_id=None, on_delta=None):  # noqa: ANN001
+        await on_delta("部分")
+        raise BadRequestError("输出内容包含敏感词，已拦截：测试")
+
+    monkeypatch.setattr(server_svc, "run_published_agent_chat", fake_chat)
+    stream = await server_svc.open_a2a_stream(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, _stream_params())
+
+    results = [f["result"] for f in await _collect(stream)]
+    last = results[-1]
+
+    assert last["final"] is True
+    assert last["status"]["state"] == "rejected"
+    assert "敏感词" in last["status"]["message"]["parts"][0]["text"]
+    assert session.rolled_back == 1
+
+
+@pytest.mark.asyncio
+async def test_open_stream_maps_execution_failure_to_failed(monkeypatch):  # noqa: ANN001
+    _patch_session(monkeypatch, _FakeSession())
+
+    async def fake_chat(_db, _ctx, _agent_id, _text, conversation_id=None, on_delta=None):  # noqa: ANN001
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(server_svc, "run_published_agent_chat", fake_chat)
+    stream = await server_svc.open_a2a_stream(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, _stream_params())
+
+    last = [f["result"] for f in await _collect(stream)][-1]
+
+    assert last["final"] is True
+    assert last["status"]["state"] == "failed"
+    assert "boom" in last["status"]["message"]["parts"][0]["text"]
+
+
+@pytest.mark.asyncio
+async def test_open_stream_hands_off_job_id_via_metadata(monkeypatch):  # noqa: ANN001
+    """产生异步生成任务时以 working/final 收尾，并给出真实 job id 供对端轮询。"""
+    _patch_session(monkeypatch, _FakeSession())
+
+    async def fake_chat(_db, _ctx, _agent_id, _text, conversation_id=None, on_delta=None):  # noqa: ANN001
+        return ChatResponse(answer="正在生成", generative_jobs=[{"id": "job-1", "kind": "video", "status": "pending"}])
+
+    monkeypatch.setattr(server_svc, "run_published_agent_chat", fake_chat)
+    stream = await server_svc.open_a2a_stream(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, _stream_params())
+
+    last = [f["result"] for f in await _collect(stream)][-1]
+
+    assert last["final"] is True
+    assert last["status"]["state"] == "working"
+    assert last["status"]["message"]["metadata"] == {"a2aJobTaskId": "job-1"}
+
+
+@pytest.mark.asyncio
+async def test_open_stream_cancels_chat_when_consumer_disconnects(monkeypatch):  # noqa: ANN001
+    """客户端断连即取消对话任务：否则 LLM 调用会跑到底白烧 token。"""
+    _patch_session(monkeypatch, _FakeSession())
+    started = asyncio.Event()
+    cancelled = asyncio.Event()
+
+    async def fake_chat(_db, _ctx, _agent_id, _text, conversation_id=None, on_delta=None):  # noqa: ANN001
+        started.set()
+        try:
+            await asyncio.sleep(3600)
+        except asyncio.CancelledError:
+            cancelled.set()
+            raise
+        return ChatResponse(answer="不会到这里")
+
+    monkeypatch.setattr(server_svc, "run_published_agent_chat", fake_chat)
+    stream = await server_svc.open_a2a_stream(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, _stream_params())
+
+    # 只取首帧 Task 便退出 —— 模拟客户端拿到流后断开
+    first = await anext(stream)
+    assert json.loads(first[len("data: ") : -2])["result"]["kind"] == "task"
+    await started.wait()
+
+    await stream.aclose()
+    await asyncio.wait_for(cancelled.wait(), timeout=1)
