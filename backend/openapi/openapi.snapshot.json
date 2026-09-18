@@ -33559,7 +33559,7 @@
     },
     "/api/v1/open/a2a/agents/{agent_id}": {
       "post": {
-        "description": "A2A JSON-RPC 端点（``message/send``）。请求体非 JSON 时回 -32700 信封。",
+        "description": "A2A JSON-RPC 端点（``message/send`` / ``tasks/*``）。请求体非 JSON 时回 -32700 信封。",
         "operationId": "a2a_jsonrpc_api_v1_open_a2a_agents__agent_id__post",
         "parameters": [
           {
@@ -33652,6 +33652,84 @@
           }
         },
         "summary": "Get Published Agent Card",
+        "tags": [
+          "open-a2a"
+        ]
+      }
+    },
+    "/api/v1/open/a2a/agents/{agent_id}/tasks/{task_id}/artifacts/{attachment_id}": {
+      "get": {
+        "description": "任务产物下载（``Task.artifacts[].parts[].file.uri`` 指向此处，须带 ``X-API-Key``）。\n\n平台不暴露对象存储签名 URL；产物只能经由该鉴权端点取回，且限「该智能体该任务」。",
+        "operationId": "a2a_task_artifact_api_v1_open_a2a_agents__agent_id__tasks__task_id__artifacts__attachment_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "agent_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Agent Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "task_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Task Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "attachment_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Attachment Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "A2A Task Artifact",
         "tags": [
           "open-a2a"
         ]

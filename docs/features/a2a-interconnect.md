@@ -1,6 +1,6 @@
 # A2A 外部互联
 
-**状态：** 已实现（登记/引用/宿主 ✅；对外暴露 Card + `message/send` + `contextId` 多轮 + `tasks/*` ✅）  
+**状态：** 已实现（登记/引用/宿主 ✅；对外暴露 Card + `message/send` + `contextId` 多轮 + `tasks/*` + 产物下载 ✅）  
 **PRD 对照：** 模块4 A2A 互联智能体  
 **协议：** [A2A Protocol v1.0](https://a2a-protocol.org/v1.0.0/specification/) · [a2a.md](../guides/a2a.md)
 
@@ -37,7 +37,6 @@
 
 - `message/stream` 真流式（Card 声明 `streaming=false`）
 - `tasks/resubscribe`、`tasks/pushNotificationConfig/*`（现回方法未找到）
-- `Task.artifacts` 产物下载（产物是平台附件，对端无凭证取回）
 - A2A 专用审计/限流（复用通用能力）
 
 ---
@@ -119,6 +118,7 @@ POST /agents/{id}/chat            # 宿主或 custom 增强
 ```
 GET  /a2a/agents/{agent_id}/.well-known/agent-card.json   # 公开，仅 config.a2a_publish=true 命中
 POST /a2a/agents/{agent_id}                               # JSON-RPC message/send | tasks/get | tasks/cancel，X-API-Key
+GET  /a2a/agents/{agent_id}/tasks/{task_id}/artifacts/{attachment_id}   # 任务产物，X-API-Key
 GET  /.well-known/agent-card.json                         # 全平台唯一发布时 307；否则 404
 ```
 
@@ -126,7 +126,8 @@ GET  /.well-known/agent-card.json                         # 全平台唯一发�
 JSON-RPC 协议级错误（解析 / 方法 / 参数）回 HTTP 200 + `error` 信封，执行异常回 `-32603`。
 Card 含 `securitySchemes`（`apiKey` · `in: header` · `name: X-API-Key`）与 `security`，声明的是调用端点要求；Card GET 本身公开。
 多轮：`message.contextId` → `ChatRequest.conversation_id`（LangGraph `thread_id` 后缀），响应 `Message.contextId` 回显；未带时服务端生成。
-Task：`message/send` 产生生成任务时回 `Task`（`id` 即平台 job id，状态照实映射）；`tasks/get` 查状态、`tasks/cancel` 取消（不存在 `-32001`、已结束 `-32002`）。`message/stream` 与 `tasks/resubscribe` / `pushNotificationConfig/*` 未实现，回 `-32601`。
+Task：`message/send` 产生生成任务时回 `Task`（`id` 即平台 job id，状态照实映射）；`tasks/get` 查状态并在成功时附 `Task.artifacts`、`tasks/cancel` 取消（不属于该智能体 / 不存在 `-32001`、已结束 `-32002`）。
+产物下载走鉴权端点（平台不暴露签名 URL），授权限「该智能体 · 该任务 · 该产物」。`message/stream` 与 `tasks/resubscribe` / `pushNotificationConfig/*` 未实现，回 `-32601`。
 
 ---
 
@@ -169,6 +170,7 @@ backend/packages/miles-openapi/src/miles_openapi/views/a2a_server.py          # 
 7. 根别名：唯一发布 307、0 或 >1 → 404
 8. 多轮：带 `contextId` → 作 `conversation_id` 并回显；缺省时生成；超长回 `-32602`
 9. Task：产生生成任务时 `message/send` 回 `Task`；`tasks/get` 映射状态；`tasks/cancel` 取消；不存在 / 已结束各自错误码
+10. 产物：`tasks/get` 成功时 `artifacts` 指向鉴权下载端点；跨智能体 / 非本任务产物一律 404
 
 ---
 

@@ -8,10 +8,11 @@
 
 from __future__ import annotations
 
+from urllib.parse import quote
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Request
-from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.responses import JSONResponse, RedirectResponse, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from miles_common.exceptions import NotFoundError
@@ -25,6 +26,7 @@ from miles_portal.tenant.a2a.server import (
 from miles_portal.tenant.a2a.services.server import (
     build_agent_card_by_id,
     handle_a2a_rpc,
+    read_task_artifact,
     resolve_default_published_agent_id,
 )
 from miles_portal.tenant.agents.deps_api_auth import require_agent_api_key
@@ -51,12 +53,29 @@ async def a2a_jsonrpc(
     ctx: TenantContext = Depends(require_agent_api_key),
     db: AsyncSession = Depends(get_db),
 ) -> JSONResponse:
-    """A2A JSON-RPC 端点（``message/send``）。请求体非 JSON 时回 -32700 信封。"""
+    """A2A JSON-RPC 端点（``message/send`` / ``tasks/*``）。请求体非 JSON 时回 -32700 信封。"""
     try:
         payload = await request.json()
     except ValueError:
         return JSONResponse(jsonrpc_error(None, PARSE_ERROR, "请求体不是合法 JSON"))
-    return JSONResponse(await handle_a2a_rpc(db, ctx, agent_id, payload))
+    return JSONResponse(await handle_a2a_rpc(db, ctx, agent_id, payload, base_url=str(request.base_url)))
+
+
+@router.get("/a2a/agents/{agent_id}/tasks/{task_id}/artifacts/{attachment_id}")
+async def a2a_task_artifact(
+    agent_id: UUID,
+    task_id: UUID,
+    attachment_id: UUID,
+    ctx: TenantContext = Depends(require_agent_api_key),
+    db: AsyncSession = Depends(get_db),
+) -> Response:
+    """任务产物下载（``Task.artifacts[].parts[].file.uri`` 指向此处，须带 ``X-API-Key``）。
+
+    平台不暴露对象存储签名 URL；产物只能经由该鉴权端点取回，且限「该智能体该任务」。
+    """
+    data, mime, filename = await read_task_artifact(db, ctx, agent_id, task_id, attachment_id)
+    disposition = f"attachment; filename*=UTF-8''{quote(filename)}"
+    return Response(content=data, media_type=mime, headers={"Content-Disposition": disposition})
 
 
 @well_known_router.get("/.well-known/agent-card.json")

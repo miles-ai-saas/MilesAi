@@ -46,6 +46,7 @@ def as_a2a(api_app):
 
 CARD_PATH = f"/api/v1/open/a2a/agents/{AGENT_ID}/.well-known/agent-card.json"
 RPC_PATH = f"/api/v1/open/a2a/agents/{AGENT_ID}"
+ARTIFACT_PATH = "/api/v1/open/a2a/agents/{}/tasks/{}/artifacts/{}"
 
 
 @pytest.mark.asyncio
@@ -82,7 +83,7 @@ async def test_agent_card_endpoint_hides_unpublished_agent(as_a2a, api_client, m
 async def test_rpc_endpoint_returns_jsonrpc_envelope(as_a2a, api_client, monkeypatch):
     envelope = {"jsonrpc": "2.0", "id": "1", "result": {"parts": [{"type": "text", "text": "ok"}]}}
 
-    async def fake_rpc(_db, _ctx, _agent_id, payload):  # noqa: ANN001
+    async def fake_rpc(_db, _ctx, _agent_id, payload, *, base_url):  # noqa: ANN001
         assert payload["method"] == "message/send"
         return envelope
 
@@ -105,6 +106,50 @@ async def test_rpc_endpoint_reports_parse_error_as_jsonrpc(as_a2a, api_client):
     body = resp.json()
     assert body["jsonrpc"] == "2.0"
     assert body["error"]["code"] == -32700
+
+
+@pytest.mark.asyncio
+async def test_rpc_endpoint_passes_request_base_url(as_a2a, api_client, monkeypatch):
+    """Task 产物的下载 URI 必须是绝对地址，故服务层需要请求推导出的 base_url。"""
+    seen: dict = {}
+
+    async def fake_rpc(_db, _ctx, _agent_id, payload, *, base_url):  # noqa: ANN001
+        seen["base_url"] = base_url
+        return {"jsonrpc": "2.0", "id": "1", "result": {}}
+
+    monkeypatch.setattr(view_mod, "handle_a2a_rpc", fake_rpc)
+
+    resp = await api_client.post(RPC_PATH, json={"jsonrpc": "2.0", "id": "1", "method": "tasks/get", "params": {}})
+
+    assert resp.status_code == 200
+    assert seen["base_url"].startswith("http://test")
+
+
+@pytest.mark.asyncio
+async def test_task_artifact_endpoint_streams_bytes(as_a2a, api_client, monkeypatch):
+    task_id, attachment_id = uuid4(), uuid4()
+
+    async def fake_read(_db, _ctx, _agent_id, _task_id, _attachment_id):  # noqa: ANN001
+        return b"PNGDATA", "image/png", "a.png"
+
+    monkeypatch.setattr(view_mod, "read_task_artifact", fake_read)
+
+    resp = await api_client.get(ARTIFACT_PATH.format(AGENT_ID, task_id, attachment_id))
+
+    assert resp.status_code == 200
+    assert resp.content == b"PNGDATA"
+    assert resp.headers["content-type"] == "image/png"
+
+
+@pytest.mark.asyncio
+async def test_task_artifact_endpoint_404_for_foreign_task(as_a2a, api_client, monkeypatch):
+    async def fake_read(*_args, **_kwargs):  # noqa: ANN002, ANN003
+        raise NotFoundError("任务不存在")
+
+    monkeypatch.setattr(view_mod, "read_task_artifact", fake_read)
+
+    resp = await api_client.get(ARTIFACT_PATH.format(AGENT_ID, uuid4(), uuid4()))
+    assert resp.status_code == 404
 
 
 @pytest.mark.asyncio

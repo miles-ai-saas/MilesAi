@@ -23,6 +23,7 @@ from miles_common.exceptions import BadRequestError, NotFoundError
 from miles_common.schemas.chat_io import ChatResponse
 from miles_core.logging import get_logger
 from miles_core.models.agent import Agent, AgentStatus, AgentType
+from miles_core.models.model.generative_job import GenerativeJob
 from miles_core.soft_delete import is_marked_deleted, not_deleted
 from miles_core.tenant import TenantContext
 from miles_portal.tenant.a2a.server import (
@@ -33,6 +34,8 @@ from miles_portal.tenant.a2a.server import (
     METHOD_NOT_FOUND,
     TASK_NOT_CANCELABLE,
     TASK_NOT_FOUND,
+    artifact_ids_from_job_result,
+    build_a2a_artifacts,
     build_a2a_task,
     build_agent_card,
     extract_message_context_id,
@@ -43,6 +46,7 @@ from miles_portal.tenant.a2a.server import (
     jsonrpc_result,
     to_a2a_task_state,
 )
+from miles_portal.tenant.attachments.services.attachment import AttachmentService
 from miles_portal.tenant.generative.services.job import GenerativeJobService
 from miles_portal.tenant.generative.services.job_execution import get_generative_job_for_tenant
 from miles_portal.tenant.skills.models import SkillPackage
@@ -251,19 +255,60 @@ def _parse_task_id(params: dict) -> UUID:
         raise BadRequestError("params.id 不是合法的任务 ID") from exc
 
 
-async def _handle_tasks_get(db: AsyncSession, ctx: TenantContext, req_id: object, params: dict) -> dict:
-    """``tasks/get``：按任务 ID 查生成任务状态。
+async def _load_owned_agent_task(
+    db: AsyncSession,
+    ctx: TenantContext,
+    agent_id: UUID,
+    task_id: UUID,
+) -> GenerativeJob:
+    """取「该智能体自己发起」的生成任务；不存在或不属于它一律 ``NotFoundError``。
+
+    必须校验归属：只按租户取数会让同租户另一个智能体的 key 也能查/取消本智能体任务，
+    并据 ``task_id`` 推断其产物下载地址。回 404 而非 403 —— 不向对端确认任务是否存在。
+    """
+    job = await get_generative_job_for_tenant(db, ctx, task_id)
+    if job.source_ref_type != "agent" or job.source_ref_id != agent_id:
+        raise NotFoundError("生成任务不存在")
+    return job
+
+
+async def read_task_artifact(
+    db: AsyncSession,
+    ctx: TenantContext,
+    agent_id: UUID,
+    task_id: UUID,
+    attachment_id: UUID,
+) -> tuple[bytes, str, str]:
+    """下载某任务产物，返回 ``(data, mime_type, filename)``。
+
+    授权精确到「该智能体 · 该任务 · 该产物」：先验任务归属，再验附件确为该任务产物，
+    否则本租户任意附件都能被取走。
+    """
+    job = await _load_owned_agent_task(db, ctx, agent_id, task_id)
+    if str(attachment_id) not in artifact_ids_from_job_result(job.result):
+        raise NotFoundError("附件不是该任务的产物")
+    return await AttachmentService(db, ctx).read_attachment_bytes(attachment_id)
+
+
+async def _handle_tasks_get(
+    db: AsyncSession,
+    ctx: TenantContext,
+    agent_id: UUID,
+    req_id: object,
+    params: dict,
+    *,
+    base_url: str,
+) -> dict:
+    """``tasks/get``：查生成任务状态，成功时附产物下载地址。
 
     只读查询走 ORM 取数（不经 ``GenerativeJobService.get_job``，后者会回写会话
     artifacts —— 对外查询不应带写副作用）。
     """
     try:
         job_id = _parse_task_id(params)
+        job = await _load_owned_agent_task(db, ctx, agent_id, job_id)
     except BadRequestError as exc:
         return jsonrpc_error(req_id, INVALID_PARAMS, str(exc))
-
-    try:
-        job = await get_generative_job_for_tenant(db, ctx, job_id)
     except NotFoundError as exc:
         return jsonrpc_error(req_id, TASK_NOT_FOUND, str(exc))
 
@@ -274,21 +319,29 @@ async def _handle_tasks_get(db: AsyncSession, ctx: TenantContext, req_id: object
             context_id=_context_id_from_job_params(job.params),
             state=to_a2a_task_state(job.status.value),
             timestamp=_now(),
+            artifacts=build_a2a_artifacts(job_result=job.result, agent_id=agent_id, task_id=job.id, base_url=base_url),
         ),
     )
 
 
-async def _handle_tasks_cancel(db: AsyncSession, ctx: TenantContext, req_id: object, params: dict) -> dict:
+async def _handle_tasks_cancel(
+    db: AsyncSession,
+    ctx: TenantContext,
+    agent_id: UUID,
+    req_id: object,
+    params: dict,
+) -> dict:
     """``tasks/cancel``：取消未结束的生成任务；已结束回 ``TASK_NOT_CANCELABLE``。"""
     try:
         job_id = _parse_task_id(params)
+        await _load_owned_agent_task(db, ctx, agent_id, job_id)
     except BadRequestError as exc:
         return jsonrpc_error(req_id, INVALID_PARAMS, str(exc))
+    except NotFoundError as exc:
+        return jsonrpc_error(req_id, TASK_NOT_FOUND, str(exc))
 
     try:
         job = await GenerativeJobService(db, ctx).cancel_job(job_id)
-    except NotFoundError as exc:
-        return jsonrpc_error(req_id, TASK_NOT_FOUND, str(exc))
     except BadRequestError as exc:
         return jsonrpc_error(req_id, TASK_NOT_CANCELABLE, str(exc))
 
@@ -308,11 +361,16 @@ async def handle_a2a_rpc(
     ctx: TenantContext,
     agent_id: UUID,
     payload: object,
+    *,
+    base_url: str,
 ) -> dict:
     """JSON-RPC 2.0 分发：``message/send`` + ``tasks/get`` + ``tasks/cancel``。
 
     协议级错误一律回 HTTP 200 + ``error`` 信封（JSON-RPC over HTTP 惯例），使对端能从
     正文读到失败原因；抛异常只会让对端拿到无正文的 500。
+
+    ``base_url`` 由请求推导（与 Card 同源），用于把 ``Task.artifacts`` 的下载地址写成
+    绝对地址。
 
     ``message/stream``、``tasks/resubscribe``、``tasks/pushNotificationConfig/*`` 未实现，
     一律 ``METHOD_NOT_FOUND``（不静默成功）。
@@ -328,7 +386,7 @@ async def handle_a2a_rpc(
         return jsonrpc_error(req_id, INVALID_PARAMS, f"{method} 缺少 params")
 
     if method == "tasks/get":
-        return await _handle_tasks_get(db, ctx, req_id, params)
+        return await _handle_tasks_get(db, ctx, agent_id, req_id, params, base_url=base_url)
     if method == "tasks/cancel":
-        return await _handle_tasks_cancel(db, ctx, req_id, params)
+        return await _handle_tasks_cancel(db, ctx, agent_id, req_id, params)
     return await _handle_message_send(db, ctx, agent_id, req_id, params)

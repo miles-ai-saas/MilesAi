@@ -20,6 +20,9 @@ from miles_core.models.agent import Agent, AgentStatus, AgentType
 from miles_portal.tenant.a2a import server as server_mod
 from miles_portal.tenant.a2a.server import (
     A2A_PUBLISH_FLAG,
+    a2a_task_artifact_path,
+    artifact_ids_from_job_result,
+    build_a2a_artifacts,
     build_a2a_task,
     build_agent_card,
     extract_message_context_id,
@@ -197,6 +200,47 @@ def test_build_a2a_task_omits_absent_context_id():
     assert "contextId" not in task
 
 
+def test_a2a_task_artifact_path_shape():
+    assert a2a_task_artifact_path("a1", "t1", "att1") == "/api/v1/open/a2a/agents/a1/tasks/t1/artifacts/att1"
+
+
+def test_artifact_ids_from_job_result_reads_image_and_video():
+    """生图是多产物（``attachment_ids``），生视频单个（``attachment_id``）。"""
+    assert artifact_ids_from_job_result({"kind": "image", "attachment_ids": ["a", "b"]}) == ["a", "b"]
+    assert artifact_ids_from_job_result({"kind": "video", "attachment_id": "v"}) == ["v"]
+
+
+@pytest.mark.parametrize("result", [None, {}, {"attachment_ids": []}, {"attachment_ids": None}])
+def test_artifact_ids_from_job_result_empty_when_no_artifact(result):
+    assert artifact_ids_from_job_result(result) == []
+
+
+def test_artifact_ids_from_job_result_dedupes_and_drops_blanks():
+    """空串/None 不是附件 ID；重复 ID 不应产出两个一样的 artifact。"""
+    assert artifact_ids_from_job_result({"attachment_ids": ["a", "a", "", None, "b"]}) == ["a", "b"]
+
+
+def test_build_a2a_artifacts_points_at_authenticated_download_endpoint():
+    """产物 URI 指向本平台的开放下载端点（**需 X-API-Key**），非对象存储签名 URL。"""
+    artifacts = build_a2a_artifacts(
+        job_result={"kind": "image", "attachment_ids": ["att-1"], "mime_type": "image/png"},
+        agent_id=AGENT_ID,
+        task_id="task-1",
+        base_url=BASE,
+    )
+
+    assert len(artifacts) == 1
+    assert artifacts[0]["artifactId"] == "att-1"
+    part = artifacts[0]["parts"][0]
+    assert part["type"] == "file"
+    assert part["file"]["uri"] == f"{BASE}/api/v1/open/a2a/agents/{AGENT_ID}/tasks/task-1/artifacts/att-1"
+    assert part["file"]["mimeType"] == "image/png"
+
+
+def test_build_a2a_artifacts_empty_without_result():
+    assert build_a2a_artifacts(job_result=None, agent_id=AGENT_ID, task_id="t", base_url=BASE) == []
+
+
 def test_jsonrpc_envelopes():
     assert jsonrpc_result("1", {"ok": True}) == {"jsonrpc": "2.0", "id": "1", "result": {"ok": True}}
     err = jsonrpc_error("1", server_mod.METHOD_NOT_FOUND, "不支持的方法")
@@ -317,7 +361,7 @@ async def test_handle_rpc_message_send_returns_agent_message(monkeypatch):  # no
         "method": "message/send",
         "params": {"message": {"role": "user", "parts": [{"type": "text", "text": "帮我查订单"}]}},
     }
-    envelope = await server_svc.handle_a2a_rpc(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, payload)
+    envelope = await server_svc.handle_a2a_rpc(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, payload, base_url=BASE)
 
     assert envelope["jsonrpc"] == "2.0"
     assert envelope["id"] == "abc"
@@ -344,7 +388,7 @@ async def test_handle_rpc_forwards_context_id_as_conversation(monkeypatch):  # n
         "method": "message/send",
         "params": {"message": {"parts": [{"type": "text", "text": "接着说"}], "contextId": "ctx-42"}},
     }
-    envelope = await server_svc.handle_a2a_rpc(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, payload)
+    envelope = await server_svc.handle_a2a_rpc(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, payload, base_url=BASE)
 
     assert captured["conversation_id"] == "ctx-42"
     assert envelope["result"]["contextId"] == "ctx-42"
@@ -370,7 +414,7 @@ async def test_handle_rpc_assigns_context_id_when_absent(monkeypatch):  # noqa: 
         "method": "message/send",
         "params": {"message": {"parts": [{"type": "text", "text": "你好"}]}},
     }
-    envelope = await server_svc.handle_a2a_rpc(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, payload)
+    envelope = await server_svc.handle_a2a_rpc(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, payload, base_url=BASE)
 
     generated = envelope["result"]["contextId"]
     assert generated
@@ -385,13 +429,13 @@ async def test_handle_rpc_maps_overlong_context_id_to_invalid_params():
         "method": "message/send",
         "params": {"message": {"parts": [{"type": "text", "text": "hi"}], "contextId": "c" * 200}},
     }
-    envelope = await server_svc.handle_a2a_rpc(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, payload)
+    envelope = await server_svc.handle_a2a_rpc(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, payload, base_url=BASE)
     assert envelope["error"]["code"] == server_mod.INVALID_PARAMS
 
 
 @pytest.mark.asyncio
 async def test_handle_rpc_rejects_non_jsonrpc_payload():
-    envelope = await server_svc.handle_a2a_rpc(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, ["not", "a", "dict"])
+    envelope = await server_svc.handle_a2a_rpc(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, ["not", "a", "dict"], base_url=BASE)
     assert envelope["error"]["code"] == server_mod.INVALID_REQUEST
     assert "result" not in envelope
 
@@ -399,7 +443,7 @@ async def test_handle_rpc_rejects_non_jsonrpc_payload():
 @pytest.mark.asyncio
 async def test_handle_rpc_rejects_unsupported_method():
     payload = {"jsonrpc": "2.0", "id": 1, "method": "message/stream", "params": {}}
-    envelope = await server_svc.handle_a2a_rpc(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, payload)
+    envelope = await server_svc.handle_a2a_rpc(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, payload, base_url=BASE)
     assert envelope["error"]["code"] == server_mod.METHOD_NOT_FOUND
     assert "message/stream" in envelope["error"]["message"]
 
@@ -407,7 +451,7 @@ async def test_handle_rpc_rejects_unsupported_method():
 @pytest.mark.asyncio
 async def test_handle_rpc_maps_missing_text_to_invalid_params():
     payload = {"jsonrpc": "2.0", "id": 1, "method": "message/send", "params": {"message": {"parts": []}}}
-    envelope = await server_svc.handle_a2a_rpc(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, payload)
+    envelope = await server_svc.handle_a2a_rpc(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, payload, base_url=BASE)
     assert envelope["error"]["code"] == server_mod.INVALID_PARAMS
 
 
@@ -425,7 +469,7 @@ async def test_handle_rpc_maps_agent_failure_to_internal_error(monkeypatch):  # 
         "method": "message/send",
         "params": {"message": {"parts": [{"type": "text", "text": "hi"}]}},
     }
-    envelope = await server_svc.handle_a2a_rpc(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, payload)
+    envelope = await server_svc.handle_a2a_rpc(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, payload, base_url=BASE)
     assert envelope["error"]["code"] == server_mod.INTERNAL_ERROR
     assert "模型不可用" in envelope["error"]["message"]
 
@@ -433,8 +477,15 @@ async def test_handle_rpc_maps_agent_failure_to_internal_error(monkeypatch):  # 
 # --- 4. Task 生命周期 ---------------------------------------------------------
 
 
-def _job(status: str, *, params: dict | None = None, job_id=None):
-    return SimpleNamespace(id=job_id or uuid4(), status=SimpleNamespace(value=status), params=params or {})
+def _job(status: str, *, params: dict | None = None, job_id=None, result: dict | None = None, agent_id=None):
+    return SimpleNamespace(
+        id=job_id or uuid4(),
+        status=SimpleNamespace(value=status),
+        params=params or {},
+        result=result,
+        source_ref_type="agent" if agent_id else None,
+        source_ref_id=agent_id,
+    )
 
 
 @pytest.mark.asyncio
@@ -454,7 +505,7 @@ async def test_message_send_returns_task_while_generation_active(monkeypatch):  
         "method": "message/send",
         "params": {"message": {"parts": [{"type": "text", "text": "生成一段视频"}], "contextId": "ctx-9"}},
     }
-    envelope = await server_svc.handle_a2a_rpc(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, payload)
+    envelope = await server_svc.handle_a2a_rpc(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, payload, base_url=BASE)
 
     result = envelope["result"]
     assert result["kind"] == "task"
@@ -481,21 +532,21 @@ async def test_message_send_ignores_terminal_generative_jobs(monkeypatch):  # no
         "method": "message/send",
         "params": {"message": {"parts": [{"type": "text", "text": "画张图"}]}},
     }
-    envelope = await server_svc.handle_a2a_rpc(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, payload)
+    envelope = await server_svc.handle_a2a_rpc(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, payload, base_url=BASE)
 
     assert envelope["result"]["kind"] == "message"
 
 
 @pytest.mark.asyncio
 async def test_tasks_get_maps_job_state_and_context(monkeypatch):  # noqa: ANN001
-    job = _job("running", params={"conversation_id": "ctx-7"})
+    job = _job("running", params={"conversation_id": "ctx-7"}, agent_id=AGENT_ID)
 
     async def fake_get(_db, _ctx, _job_id):  # noqa: ANN001
         return job
 
     monkeypatch.setattr(server_svc, "get_generative_job_for_tenant", fake_get)
     payload = {"jsonrpc": "2.0", "id": 1, "method": "tasks/get", "params": {"id": str(job.id)}}
-    envelope = await server_svc.handle_a2a_rpc(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, payload)
+    envelope = await server_svc.handle_a2a_rpc(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, payload, base_url=BASE)
 
     result = envelope["result"]
     assert result["kind"] == "task"
@@ -508,7 +559,7 @@ async def test_tasks_get_maps_job_state_and_context(monkeypatch):  # noqa: ANN00
 @pytest.mark.parametrize("params", [{}, {"id": ""}, {"id": "not-a-uuid"}])
 async def test_tasks_get_rejects_bad_id(params):
     payload = {"jsonrpc": "2.0", "id": 1, "method": "tasks/get", "params": params}
-    envelope = await server_svc.handle_a2a_rpc(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, payload)
+    envelope = await server_svc.handle_a2a_rpc(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, payload, base_url=BASE)
     assert envelope["error"]["code"] == server_mod.INVALID_PARAMS
 
 
@@ -519,7 +570,7 @@ async def test_tasks_get_maps_missing_job_to_task_not_found(monkeypatch):  # noq
 
     monkeypatch.setattr(server_svc, "get_generative_job_for_tenant", fake_get)
     payload = {"jsonrpc": "2.0", "id": 1, "method": "tasks/get", "params": {"id": str(uuid4())}}
-    envelope = await server_svc.handle_a2a_rpc(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, payload)
+    envelope = await server_svc.handle_a2a_rpc(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, payload, base_url=BASE)
 
     assert envelope["error"]["code"] == server_mod.TASK_NOT_FOUND
 
@@ -527,6 +578,10 @@ async def test_tasks_get_maps_missing_job_to_task_not_found(monkeypatch):  # noq
 @pytest.mark.asyncio
 async def test_tasks_cancel_returns_canceled_task(monkeypatch):  # noqa: ANN001
     job_id = uuid4()
+    owned = _job("running", job_id=job_id, agent_id=AGENT_ID)
+
+    async def fake_get(_db, _ctx, _job_id):  # noqa: ANN001
+        return owned
 
     class _FakeJobService:
         def __init__(self, _db, _ctx) -> None:
@@ -535,9 +590,10 @@ async def test_tasks_cancel_returns_canceled_task(monkeypatch):  # noqa: ANN001
         async def cancel_job(self, _job_id):
             return SimpleNamespace(id=job_id, status=SimpleNamespace(value="cancelled"), params={"conversation_id": "c1"})
 
+    monkeypatch.setattr(server_svc, "get_generative_job_for_tenant", fake_get)
     monkeypatch.setattr(server_svc, "GenerativeJobService", _FakeJobService)
     payload = {"jsonrpc": "2.0", "id": 1, "method": "tasks/cancel", "params": {"id": str(job_id)}}
-    envelope = await server_svc.handle_a2a_rpc(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, payload)
+    envelope = await server_svc.handle_a2a_rpc(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, payload, base_url=BASE)
 
     result = envelope["result"]
     assert result["kind"] == "task"
@@ -547,6 +603,12 @@ async def test_tasks_cancel_returns_canceled_task(monkeypatch):  # noqa: ANN001
 
 @pytest.mark.asyncio
 async def test_tasks_cancel_maps_terminal_job_to_not_cancelable(monkeypatch):  # noqa: ANN001
+    job_id = uuid4()
+    owned = _job("success", job_id=job_id, agent_id=AGENT_ID)
+
+    async def fake_get(_db, _ctx, _job_id):  # noqa: ANN001
+        return owned
+
     class _FakeJobService:
         def __init__(self, _db, _ctx) -> None:
             pass
@@ -554,16 +616,147 @@ async def test_tasks_cancel_maps_terminal_job_to_not_cancelable(monkeypatch):  #
         async def cancel_job(self, _job_id):
             raise BadRequestError("任务已结束，无法取消")
 
+    monkeypatch.setattr(server_svc, "get_generative_job_for_tenant", fake_get)
     monkeypatch.setattr(server_svc, "GenerativeJobService", _FakeJobService)
-    payload = {"jsonrpc": "2.0", "id": 1, "method": "tasks/cancel", "params": {"id": str(uuid4())}}
-    envelope = await server_svc.handle_a2a_rpc(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, payload)
+    payload = {"jsonrpc": "2.0", "id": 1, "method": "tasks/cancel", "params": {"id": str(job_id)}}
+    envelope = await server_svc.handle_a2a_rpc(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, payload, base_url=BASE)
 
     assert envelope["error"]["code"] == server_mod.TASK_NOT_CANCELABLE
+
+
+@pytest.mark.asyncio
+async def test_tasks_cancel_hides_task_of_other_agent(monkeypatch):  # noqa: ANN001
+    """同租户另一个智能体的 key 不能取消本智能体任务。"""
+    job_id = uuid4()
+    foreign = _job("running", job_id=job_id, agent_id=uuid4())
+
+    async def fake_get(_db, _ctx, _job_id):  # noqa: ANN001
+        return foreign
+
+    monkeypatch.setattr(server_svc, "get_generative_job_for_tenant", fake_get)
+    payload = {"jsonrpc": "2.0", "id": 1, "method": "tasks/cancel", "params": {"id": str(job_id)}}
+    envelope = await server_svc.handle_a2a_rpc(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, payload, base_url=BASE)
+
+    assert envelope["error"]["code"] == server_mod.TASK_NOT_FOUND
 
 
 @pytest.mark.asyncio
 async def test_unimplemented_task_method_is_method_not_found():
     """``tasks/resubscribe`` 等未实现方法一律方法未找到，不静默成功。"""
     payload = {"jsonrpc": "2.0", "id": 1, "method": "tasks/resubscribe", "params": {"id": str(uuid4())}}
-    envelope = await server_svc.handle_a2a_rpc(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, payload)
+    envelope = await server_svc.handle_a2a_rpc(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, payload, base_url=BASE)
     assert envelope["error"]["code"] == server_mod.METHOD_NOT_FOUND
+
+
+@pytest.mark.asyncio
+async def test_tasks_get_exposes_artifacts_for_succeeded_job(monkeypatch):  # noqa: ANN001
+    """成功任务把产物映射为 ``Task.artifacts``，对端据此拿到（需鉴权的）下载地址。"""
+    job = _job(
+        "success",
+        params={"conversation_id": "c1"},
+        result={"kind": "image", "attachment_ids": ["att-1"], "mime_type": "image/png"},
+        agent_id=AGENT_ID,
+    )
+
+    async def fake_get(_db, _ctx, _job_id):  # noqa: ANN001
+        return job
+
+    monkeypatch.setattr(server_svc, "get_generative_job_for_tenant", fake_get)
+    payload = {"jsonrpc": "2.0", "id": 1, "method": "tasks/get", "params": {"id": str(job.id)}}
+    envelope = await server_svc.handle_a2a_rpc(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, payload, base_url=BASE)
+
+    result = envelope["result"]
+    assert result["status"]["state"] == "completed"
+    assert result["artifacts"][0]["parts"][0]["file"]["uri"].startswith(f"{BASE}/api/v1/open/a2a/agents/{AGENT_ID}/tasks/")
+
+
+@pytest.mark.asyncio
+async def test_tasks_get_omits_artifacts_while_running(monkeypatch):  # noqa: ANN001
+    job = _job("running", params={}, result=None, agent_id=AGENT_ID)
+
+    async def fake_get(_db, _ctx, _job_id):  # noqa: ANN001
+        return job
+
+    monkeypatch.setattr(server_svc, "get_generative_job_for_tenant", fake_get)
+    payload = {"jsonrpc": "2.0", "id": 1, "method": "tasks/get", "params": {"id": str(job.id)}}
+    envelope = await server_svc.handle_a2a_rpc(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, payload, base_url=BASE)
+
+    assert "artifacts" not in envelope["result"]
+
+
+# --- 5. 产物下载归属校验 ------------------------------------------------------
+
+
+def _artifact_job(*, agent_id, attachments=("att-1",)):
+    return _job(
+        "success",
+        job_id=uuid4(),
+        result={"kind": "image", "attachment_ids": list(attachments), "mime_type": "image/png"},
+        agent_id=agent_id,
+    )
+
+
+@pytest.mark.asyncio
+async def test_read_task_artifact_returns_bytes_for_own_task(monkeypatch):  # noqa: ANN001
+    attachment_id = uuid4()
+    job = _artifact_job(agent_id=AGENT_ID, attachments=(str(attachment_id),))
+
+    async def fake_get(_db, _ctx, _job_id):  # noqa: ANN001
+        return job
+
+    class _FakeAttachments:
+        def __init__(self, _db, _ctx) -> None:
+            pass
+
+        async def read_attachment_bytes(self, _attachment_id):  # noqa: ANN001
+            return b"PNGDATA", "image/png", "a.png"
+
+    monkeypatch.setattr(server_svc, "get_generative_job_for_tenant", fake_get)
+    monkeypatch.setattr(server_svc, "AttachmentService", _FakeAttachments)
+
+    data, mime, filename = await server_svc.read_task_artifact(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, job.id, attachment_id)
+    assert (data, mime, filename) == (b"PNGDATA", "image/png", "a.png")
+
+
+@pytest.mark.asyncio
+async def test_read_task_artifact_hides_task_of_other_agent(monkeypatch):  # noqa: ANN001
+    """跨智能体取产物必须 404（而非 403）：不向对端确认该任务是否存在。"""
+    attachment_id = uuid4()
+    job = _artifact_job(agent_id=uuid4(), attachments=(str(attachment_id),))
+
+    async def fake_get(_db, _ctx, _job_id):  # noqa: ANN001
+        return job
+
+    monkeypatch.setattr(server_svc, "get_generative_job_for_tenant", fake_get)
+
+    with pytest.raises(NotFoundError):
+        await server_svc.read_task_artifact(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, job.id, attachment_id)
+
+
+@pytest.mark.asyncio
+async def test_read_task_artifact_rejects_attachment_outside_task_result(monkeypatch):  # noqa: ANN001
+    """只有该任务的产物可下载：否则用户凭 key 能取同租户任意附件。"""
+    job = _artifact_job(agent_id=AGENT_ID, attachments=("att-1",))
+
+    async def fake_get(_db, _ctx, _job_id):  # noqa: ANN001
+        return job
+
+    monkeypatch.setattr(server_svc, "get_generative_job_for_tenant", fake_get)
+
+    with pytest.raises(NotFoundError):
+        await server_svc.read_task_artifact(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, job.id, uuid4())
+
+
+@pytest.mark.asyncio
+async def test_read_task_artifact_rejects_non_agent_task(monkeypatch):  # noqa: ANN001
+    """工作流节点等非智能体发起的任务不属于任何智能体，不对外暴露。"""
+    attachment_id = uuid4()
+    job = _job("success", job_id=uuid4(), result={"kind": "image", "attachment_ids": [str(attachment_id)]})
+
+    async def fake_get(_db, _ctx, _job_id):  # noqa: ANN001
+        return job
+
+    monkeypatch.setattr(server_svc, "get_generative_job_for_tenant", fake_get)
+
+    with pytest.raises(NotFoundError):
+        await server_svc.read_task_artifact(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, job.id, attachment_id)

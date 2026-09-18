@@ -1,6 +1,6 @@
 # A2A 外部互联
 
-> 类型：智能体 | 状态：已实现（登记/引用/宿主 ✅；对外暴露 Card + `message/send` + `contextId` 多轮 + `tasks/*` ✅）  
+> 类型：智能体 | 状态：已实现（登记/引用/宿主 ✅；对外暴露 Card + `message/send` + `contextId` 多轮 + `tasks/*` + 产物下载 ✅）  
 > **功能规格：** [features/a2a-interconnect.md](../features/a2a-interconnect.md)  
 > 协议：[A2A Protocol v1.0](https://a2a-protocol.org/v1.0.0/specification/) | 关联：[platform-agents.md](./platform-agents.md)
 
@@ -74,6 +74,7 @@ POST       /api/v1/agents/{id}/chat    # 宿主或 custom 增强
 # 对外暴露（本平台作 Server）
 GET  /api/v1/open/a2a/agents/{agent_id}/.well-known/agent-card.json   # 公开
 POST /api/v1/open/a2a/agents/{agent_id}                               # JSON-RPC，X-API-Key
+GET  /api/v1/open/a2a/agents/{agent_id}/tasks/{task_id}/artifacts/{attachment_id}   # 任务产物，X-API-Key
 GET  /.well-known/agent-card.json                                     # 全平台唯一发布时 307
 ```
 
@@ -91,10 +92,14 @@ JSON-RPC 方法：
 | 方法 | 行为 |
 |------|------|
 | `message/send` | 同步对话。无异步任务时回 `Message`；产生生成任务（生图/生视频）时回 `Task`（`id` 即平台 job id） |
-| `tasks/get` | `params.id` 查生成任务状态，映射为 A2A `TaskState` |
-| `tasks/cancel` | 取消未结束的生成任务；已结束回 `-32002`（Task not cancelable），不存在回 `-32001`（Task not found） |
+| `tasks/get` | `params.id` 查生成任务状态，映射为 A2A `TaskState`；成功时附 `Task.artifacts`（产物下载地址） |
+| `tasks/cancel` | 取消未结束的生成任务；已结束回 `-32002`（Task not cancelable），不属于该智能体回 `-32001`（Task not found） |
 
 `message/stream`、`tasks/resubscribe`、`tasks/pushNotificationConfig/*` 未实现，一律回 `-32601`（不静默成功）。
+
+任务归属：`tasks/get` / `tasks/cancel` / 产物下载都校验「该任务由本智能体发起」（job 的 `source_ref_type=agent` + `source_ref_id=agent_id`），不属于则回 404 / `-32001` 而非 403 —— 不向对端确认任务是否存在。若只按租户校验，同租户另一个智能体的 key 就能查/取消本智能体任务并猜到其产物地址。
+
+**产物下载：** `Task.artifacts[].parts[].file.uri` 指向 `GET /api/v1/open/a2a/agents/{agent_id}/tasks/{task_id}/artifacts/{attachment_id}`，**需带同一 `X-API-Key`**（平台刻意不暴露对象存储签名 URL）。授权精确到「该智能体 · 该任务 · 该产物」，非该任务产物一律 404，否则本租户任意附件都能被取走。
 
 生成任务状态 → A2A `TaskState`：`pending→submitted`、`running→working`、`success→completed`、`failed→failed`、`cancelled→canceled`；未知状态回保留值 `unknown`（而非 `completed` —— 谎称就绪会让对端停止轮询）。
 
@@ -112,6 +117,5 @@ Card 同时声明 `securitySchemes`（`apiKey` · `in: header` · `name: X-API-K
 
 - `message/stream`（真 token 流式；现声明 `streaming=false`）
 - `tasks/resubscribe` 与 `tasks/pushNotificationConfig/*`（现回方法未找到）
-- `Task.artifacts` 与产物下载：生成产物是平台附件，对端无凭证取回（`tasks/get` 现只报状态）
 - 多模态入站：`parts` 的 `file` / `data` 类型（现仅取 `text`）
 - A2A 专用审计维度（现复用通用访问日志与限流中间件）

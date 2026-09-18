@@ -103,6 +103,15 @@ def agent_card_well_known_path(agent_id: UUID | str) -> str:
     return f"{agent_card_rpc_path(agent_id)}/.well-known/agent-card.json"
 
 
+def a2a_task_artifact_path(agent_id: UUID | str, task_id: UUID | str, attachment_id: UUID | str) -> str:
+    """任务产物下载路径（``Task.artifacts[].parts[].file.uri`` 的 path 部分）。
+
+    与 Card 同理按智能体寻址，并额外绑定任务与附件 —— 授权范围精确到「该智能体该任务的
+    这个产物」，而非「本租户任意附件」。
+    """
+    return f"{agent_card_rpc_path(agent_id)}/tasks/{task_id}/artifacts/{attachment_id}"
+
+
 def build_agent_card(
     *,
     agent_id: UUID | str,
@@ -215,11 +224,12 @@ def build_a2a_task(
     context_id: str | None,
     state: str,
     timestamp: str,
+    artifacts: list[dict] | None = None,
 ) -> dict:
     """构造 A2A ``Task``。
 
-    ``contextId`` 可选：解析不到时省略而非塞空串；``history`` / ``artifacts`` 暂不产出
-    —— 产物是平台附件，对端无凭证下载（见文档「待做」）。
+    ``contextId`` / ``artifacts`` 均为可选：解析不到就省略而非塞空值；``history`` 暂不
+    产出（对端的原始消息本就在请求里）。
     """
     task: dict = {
         "kind": "task",
@@ -228,7 +238,62 @@ def build_a2a_task(
     }
     if context_id:
         task["contextId"] = context_id
+    if artifacts:
+        task["artifacts"] = artifacts
     return task
+
+
+def artifact_ids_from_job_result(job_result: object) -> list[str]:
+    """从生成任务 ``result`` 取产物附件 ID。
+
+    生图是多产物（``attachment_ids``），生视频单个（``attachment_id``）；去重并丢弃空值，
+    否则会产出指向 ``None`` 的下载地址。
+    """
+    if not isinstance(job_result, dict):
+        return []
+    raw = job_result.get("attachment_ids")
+    candidates = list(raw) if isinstance(raw, list) else []
+    single = job_result.get("attachment_id")
+    if single:
+        candidates.append(single)
+
+    ids: list[str] = []
+    for item in candidates:
+        if isinstance(item, str) and item.strip() and item not in ids:
+            ids.append(item)
+    return ids
+
+
+def build_a2a_artifacts(
+    *,
+    job_result: object,
+    agent_id: UUID | str,
+    task_id: UUID | str,
+    base_url: str,
+) -> list[dict]:
+    """生成任务产物 → A2A ``Artifact`` 列表。
+
+    ``file.uri`` 指向本平台的开放下载端点（**需 ``X-API-Key``**），而非对象存储签名 URL
+    —— 与平台「不以签名链接外泄文件」的既有取向一致。
+    """
+    if not isinstance(job_result, dict):
+        return []
+    mime_type = job_result.get("mime_type")
+    kind = job_result.get("kind")
+    artifacts: list[dict] = []
+    for index, attachment_id in enumerate(artifact_ids_from_job_result(job_result)):
+        file: dict = {"uri": f"{base_url.rstrip('/')}{a2a_task_artifact_path(agent_id, task_id, attachment_id)}"}
+        if isinstance(mime_type, str) and mime_type:
+            file["mimeType"] = mime_type
+        if isinstance(kind, str) and kind:
+            file["name"] = f"{kind}-{index + 1}"
+        artifacts.append(
+            {
+                "artifactId": attachment_id,
+                "parts": [{"type": "file", "file": file}],
+            }
+        )
+    return artifacts
 
 
 def jsonrpc_result(req_id: object, result: dict) -> dict:
