@@ -108,11 +108,14 @@ openapi 快照**不应变化**。若写 `JSONResponse | StreamingResponse` 联�
 为此用例层导出一个「可能是错误信封、可能是生成器」的入口：
 
 ```
-open_a2a_stream(db, ctx, agent_id, payload, *, base_url) -> dict | AsyncIterator[str]
+open_a2a_stream(db, ctx, agent_id, payload) -> dict | AsyncIterator[str]
 ```
 
 - 返回 `dict` = 前置校验失败，视图层按普通 JSON 返回；
 - 返回异步迭代器 = 校验通过，视图层包成 `StreamingResponse`。
+
+**不接 `base_url`**：流式帧里不含任何绝对地址（产物下载地址只出现在 `tasks/get`），拿了也不用 ——
+无用形参会让下一位读者误以为帧里要拼 URL。
 
 ### 3.3 事件序列
 
@@ -248,7 +251,7 @@ async def run_published_agent_chat(
 ) -> ChatResponse: ...
 
 async def open_a2a_stream(
-    db: AsyncSession, ctx: TenantContext, agent_id: UUID, payload: object, *, base_url: str
+    db: AsyncSession, ctx: TenantContext, agent_id: UUID, payload: object
 ) -> dict | AsyncIterator[str]: ...
 ```
 
