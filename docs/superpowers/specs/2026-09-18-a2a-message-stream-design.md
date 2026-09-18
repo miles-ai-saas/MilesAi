@@ -32,16 +32,25 @@ Card 声明 `protocolVersion: "1.0"`（`miles_portal/tenant/a2a/server.py:27`）
 | 维度 | v0.3.0 | v1.0.0 | 本仓库现状 |
 |---|---|---|---|
 | JSON-RPC 方法名 | `message/send` / `message/stream` / `tasks/get` / `tasks/cancel` | `SendMessage` / `SendStreamingMessage` / `GetTask` / `CancelTask` | v0.3 风格 |
-| 多态判别 | 对象内 `kind` 字段（`{"kind":"task"}`） | `kind` **已移除**（规范 A.2.1 写明「不应再发出」），改用成员名包装（`{"task":…}` / `{"statusUpdate":…}`） | v0.3 风格（`build_a2a_task` 产 `"kind": "task"`） |
-| 文本 part | `{"kind":"text","text":…}` | `{"text":…}` | v0.3 风格 |
-| 文件 part | `{"kind":"file","file":{…}}` | `{"raw":…,"filename":…,"mediaType":…}` 或 `{"url":…}` | v0.3 风格 |
+| 对象多态判别 | 对象内 `kind` 字段（`{"kind":"task"}`） | `kind` **已移除**（规范 A.2.1 写明「不应再发出」），改用成员名包装（`{"task":…}` / `{"statusUpdate":…}`） | v0.3 风格（`build_a2a_task` 产 `"kind": "task"`） |
+| **Part 判别键** | `{"kind":"text","text":…}` / `{"kind":"file","file":{…}}` | `{"text":…}` / `{"raw":…,"filename":…,"mediaType":…}` | **两版都不是**：出站发 `{"type":"text"}` / `{"type":"file"}`（`services/server.py:200`、`server.py:293`、`a2a/client.py:188`）。入站 `extract_message_text` 只读 `text`，故两版都能收 |
+| **Card 界面声明** | `preferredTransport` + `additionalInterfaces[{url,transport}]` | `supportedInterfaces[{url,protocolBinding,protocolVersion}]` | **混用**：`preferredTransport` 是 0.3 的，`supportedInterfaces` / `protocolBinding` 是 1.0 的 |
+| TaskState 取值 | 小写（`"working"`） | `TASK_STATE_*` 前缀（`"TASK_STATE_WORKING"`） | v0.3 风格（`server.py:45-50`；注释误标「v1.0」，见 §3.1） |
 
-问题不在于「选了哪一版」，而在于**声明的是 1.0、实现的是 0.3**：按 1.0 调用的客户端会拿 `-32601`，且会把
-`kind` 当未知字段。修一行常量即可让声明自洽；全面迁到 1.0 是另一批工作量（见 §5）。
+问题不在于「选了哪一版」，而在于**声明的是 1.0、实现是 0.3 混 `type`**：按 1.0 调用的客户端会拿
+`-32601`，且会把 `kind` 当未知字段、把 `TASK_STATE_*` 当未知状态。改一行常量 + 三个 part 判别键
+即可让声明自洽（见 §3.1）；全面迁到 1.0 是另一批工作量（见 §5）。
+
+**不在本批对齐的两项**（明确记录其后果）：
+
+- Card 的 `supportedInterfaces` / `protocolBinding`（v1.0 字段名）保持不动：v0.3 客户端会忽略该数组，
+  改用 Card 的 `url` + `preferredTransport` —— 这两项本就是 0.3 字段且已正确声明，功能不受影响。
+- TaskState 已是 0.3 取值，只需修掉误标 v1.0 的注释并补 `rejected`。
 
 ### 1.3 本批要解决的
 
-1. 声明修正为 `"0.3"`，使 `protocolVersion` 与实现一致。
+1. 声明修正为 `"0.3"`，并修掉让声明与实现不一致的三处细节：TaskState 注释误标、出站 part 判别键
+   `type` → `kind`、补 `TASK_STATE_REJECTED`。
 2. 新增 `message/stream`：同一端点、SSE 传输，`direct_llm` / `rag` / `rag_linear` 路由逐 token 下发，
    其余路由以终态帧一次性下发；Card 声明 `streaming=true`。
 
@@ -57,12 +66,22 @@ Card 声明 `protocolVersion: "1.0"`（`miles_portal/tenant/a2a/server.py:27`）
 
 ## 3. 设计
 
-### 3.1 协议版本声明修正
+### 3.1 协议版本声明修正与线格式对齐
 
-`A2A_PROTOCOL_VERSION` 由 `"1.0"` 改为 `"0.3"`。该常量同时喂给 Card 的 `protocolVersion` 与
-`supportedInterfaces[].protocolVersion`，改一处即两处一致。
+改动清单（全部是「让声明属实」，不引入新版能力）：
 
-不改方法名与 payload 形状（它们本就是 0.3）。理由是迁移到 1.0 会牵动**出站**侧（`a2a/client.py` 用
+| 项 | 现状 | 改为 |
+|---|---|---|
+| `A2A_PROTOCOL_VERSION` | `"1.0"` | `"0.3"`（Card 与 `supportedInterfaces[].protocolVersion` 同源，改一处即两处一致） |
+| `capabilities.streaming` | `False` | `True`（本批真的支持了） |
+| `server.py:45-50` TaskState 注释 | 标「（v1.0）」 | 标「（v0.3）」，并补 `TASK_STATE_REJECTED = "rejected"`（§3.6 要用） |
+| part 判别键（3 处） | `{"type":"text"}` / `{"type":"file"}` | `{"kind":"text"}` / `{"kind":"file"}` |
+
+三处 part 判别键：`services/server.py:200`（`_agent_message`，将被 §3.3 的纯函数取代）、
+`server.py:293`（`build_a2a_artifacts`）、`a2a/client.py:188`（出站请求）。入站 `extract_message_text`
+只读 `part["text"]`，对判别键无假设，故不改；现有断言也只校验 `parts[0]["text"]`，改动不破坏测试。
+
+不改方法名与 payload 结构（它们本就是 0.3）。理由是迁移到 1.0 会牵动**出站**侧（`a2a/client.py` 用
 `message/send`、`card_client.py` 解析 Card、`invoke.py`）以及全部 Card/事件/测试，与本批「把流式接上」正交，
 混做会让回滚粒度变粗。
 
@@ -205,14 +224,54 @@ open_a2a_stream(db, ctx, agent_id, payload, *, base_url) -> dict | AsyncIterator
 - `docs/architecture/technical-design.md`：技术栈表中 A2A 一行同步。
 - 前端本批不动（Card 展示无需改）。
 
+### 3.9 接口清单
+
+新增/变更的签名（供实施计划与后续任务对齐，避免命名漂移）：
+
+```python
+# miles_portal/tenant/a2a/server.py（纯逻辑，无 ORM / 无 DB）
+def build_a2a_agent_message(*, text: str, context_id: str, task_id: str | None = None) -> dict: ...
+def build_a2a_status_update(
+    *,
+    task_id: str,
+    context_id: str,
+    state: str,
+    timestamp: str,
+    text: str | None = None,
+    final: bool = False,
+    job_task_id: str | None = None,
+) -> dict: ...
+
+# miles_portal/tenant/a2a/services/server.py（用例层）
+async def run_published_agent_chat(
+    db, ctx, agent_id, text, *, conversation_id=None, on_delta=None
+) -> ChatResponse: ...
+
+async def open_a2a_stream(
+    db: AsyncSession, ctx: TenantContext, agent_id: UUID, payload: object, *, base_url: str
+) -> dict | AsyncIterator[str]: ...
+```
+
+`build_a2a_status_update` 的 `text=None` 表示终态帧不带回答文本（理论上不出现，保留以便表达「无文本终态」）；
+`job_task_id` 非空时才写入 `status.message.metadata.a2aJobTaskId`。
+
 ## 4. 测试
 
 **纯逻辑层**（`miles_portal/tenant/a2a/server.py`，无 DB）：
 
-- `build_a2a_stream_task(...)` / `build_a2a_status_update(...)` 的形状断言：
-  首帧 `kind="task"` + `state="working"`；中间帧 `final=False` 且 `status.message.parts[0].text` 为传入增量；
-  末帧 `final=True`；`metadata` 带/不带 `a2aJobTaskId` 两种。
+- `build_a2a_status_update(...)` 的形状断言：中间帧 `final=False` 且 `status.message.parts[0].text` 为传入增量；
+  末帧 `final=True`；`metadata` 带/不带 `a2aJobTaskId` 两种；嵌套 `Message` 带 `taskId` / `contextId`。
+- 开场帧**复用既有 `build_a2a_task`**（`state=TASK_STATE_WORKING`），不新增同类函数：`kind="task"`、
+  `status.state="working"`。
+- `TASK_STATE_REJECTED == "rejected"`（§3.6 终态用）。
 - JSON-RPC 信封：帧内 `id` 与原请求一致。
+- 判别键：`build_a2a_agent_message` 与 `build_a2a_artifacts` 的 `parts[0]["kind"]` 分别为 `"text"` / `"file"`
+  （`build_a2a_task` 已是 `kind="task"`）。
+- 入站兼容：既有 `{"type":"text"}` 夹具**不改**，正好证明 `extract_message_text` 对判别键无假设。
+
+**出站线格式**（`tests/tenant/agents/`，跟既有 A2A client 测试同处）：
+
+- `a2a/client.py` 发出的请求体 `params.message.parts[0]["kind"] == "text"`（原先断言不到判别键）。
 
 **用例层**（`open_a2a_stream`）：
 
@@ -243,7 +302,10 @@ open_a2a_stream(db, ctx, agent_id, payload, *, base_url) -> dict | AsyncIterator
 
 - `tasks/resubscribe`（续播已有任务；与 `message/stream` 共用 SSE 机制，但是独立方法）
 - `tasks/pushNotificationConfig/*`
-- **v1.0 迁移**：PascalCase 方法名、去 `kind` 换成员名包装、文本/文件 part 形状（新版规范 A.2.1 的破坏性变更）
+- **Card 界面字段名 0.3 化**：`supportedInterfaces` → `additionalInterfaces`、`protocolBinding` → `transport`
+  （v1.0 字段名；v0.3 客户端会忽略并按 `url` + `preferredTransport` 调用，故不影响功能，见 §1.2）
+- **v1.0 迁移**：PascalCase 方法名、去 `kind` 换成员名包装、文本/文件 part 形状、`TASK_STATE_*` 取值
+  （新版规范 A.2.1 的破坏性变更）
 - 多模态入站：`parts` 的 `file` / `data` 类型（现仅取 `text`）
 - 非真流路由（`tool_agent` / `flow` / 子智能体 / `a2a_augmented` / `a2a_host`）的逐 token 化
 - `MessageSendParams.configuration`（`blocking` / `acceptedOutputModes` 等）：请求里带了也忽略，不做语义
@@ -253,10 +315,11 @@ open_a2a_stream(db, ctx, agent_id, payload, *, base_url) -> dict | AsyncIterator
 
 | 文件 | 改动 |
 |---|---|
-| `miles_portal/tenant/a2a/server.py` | `A2A_PROTOCOL_VERSION` → `"0.3"`；`capabilities.streaming` → `True`；新增流式事件的纯构造函数 |
-| `miles_portal/tenant/a2a/services/server.py` | 新增 `open_a2a_stream`（前置校验 + 生成器）、事件编排、终态映射 |
+| `miles_portal/tenant/a2a/server.py` | `A2A_PROTOCOL_VERSION` → `"0.3"`；`capabilities.streaming` → `True`；TaskState 注释修正 + 补 `TASK_STATE_REJECTED`；`build_a2a_artifacts` 判别键 `type`→`kind`；新增流式事件的纯构造函数 |
+| `miles_portal/tenant/a2a/services/server.py` | 新增 `open_a2a_stream`（前置校验 + 生成器）、事件编排、终态映射；`_agent_message` 的 part 判别键 `type`→`kind`（或迁入纯模块） |
+| `miles_portal/tenant/a2a/client.py` | 出站请求 part 判别键 `type`→`kind` |
 | `miles_openapi/views/a2a_server.py` | `method` 分流；`message/stream` 返回 `StreamingResponse` |
-| `tests/tenant/a2a/test_a2a_server_card.py` | Card 两处断言 + 流式事件形状用例 |
+| `tests/tenant/a2a/test_a2a_server_card.py` | Card 两处断言 + 流式事件形状用例 + 判别键断言 |
 | `tests/api/test_a2a_server_api.py` | SSE 端到端用例 + `message/send` 回归 |
 | `docs/guides/a2a.md`、`docs/features/a2a-interconnect.md`、`docs/architecture/technical-design.md` | 见 §3.8 |
 
