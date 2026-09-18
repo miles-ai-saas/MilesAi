@@ -11,7 +11,7 @@ from types import SimpleNamespace
 import pytest
 
 from miles_portal.tenant.a2a.card_client import fetch_agent_card
-from miles_portal.tenant.a2a.client import build_auth_headers, invoke_a2a_peer
+from miles_portal.tenant.a2a.client import _pick_rpc_url, build_auth_headers, invoke_a2a_peer
 
 
 def test_api_key_variants_map_to_x_api_key_header():
@@ -74,8 +74,9 @@ class _FakeClient:
         self._captured["get"] = headers or {}
         return _FakeResponse(self._get_data)
 
-    async def post(self, _url: str, *, json: dict | None = None, headers: dict | None = None) -> _FakeResponse:
+    async def post(self, url: str, *, json: dict | None = None, headers: dict | None = None) -> _FakeResponse:
         self._captured["post"] = headers or {}
+        self._captured.setdefault("post_urls", []).append(url)
         return _FakeResponse(self._post_data)
 
 
@@ -101,6 +102,22 @@ async def test_fetch_agent_card_sends_configured_auth(monkeypatch):  # noqa: ANN
     assert captured["get"]["X-API-Key"] == "k-1"
 
 
+def test_pick_rpc_url_uses_declared_supported_interface_url():
+    """A2A v1.0 的 ``supportedInterfaces[].url`` 是端点，``protocolBinding`` 只是传输标签。
+
+    回归：此前先读 ``protocolBinding``（恒为 ``JSONRPC``、不以 http 开头），导致平台自己
+    产出的 Card 的 ``url`` 被忽略、退回 ``base_url``（通常只是 host 根），反向把本平台
+    发布的智能体登记为 Peer 时必然调不通。
+    """
+    peer = SimpleNamespace(
+        agent_card_json={"supportedInterfaces": [{"url": "https://peer.example.com/api/v1/open/a2a/agents/abc", "protocolBinding": "JSONRPC"}]},
+        base_url="https://peer.example.com",
+        agent_card_url="https://peer.example.com/.well-known/agent-card.json",
+    )
+
+    assert _pick_rpc_url(peer) == "https://peer.example.com/api/v1/open/a2a/agents/abc"
+
+
 @pytest.mark.asyncio
 async def test_invoke_a2a_peer_sends_configured_auth(monkeypatch):  # noqa: ANN001
     captured: dict = {}
@@ -109,7 +126,7 @@ async def test_invoke_a2a_peer_sends_configured_auth(monkeypatch):  # noqa: ANN0
     peer = SimpleNamespace(
         name="Peer",
         status=SimpleNamespace(value="active"),
-        agent_card_json={"supportedInterfaces": [{"protocolBinding": "https://peer.example.com"}]},
+        agent_card_json={"supportedInterfaces": [{"url": "https://peer.example.com/a2a", "protocolBinding": "JSONRPC"}]},
         agent_card_url="https://peer.example.com/.well-known/agent-card.json",
         base_url="https://peer.example.com",
         card_display_name="Peer",
@@ -121,3 +138,5 @@ async def test_invoke_a2a_peer_sends_configured_auth(monkeypatch):  # noqa: ANN0
     assert answer == "收到"
     assert captured["post"]["X-API-Key"] == "k-2"
     assert captured["post"]["Content-Type"] == "application/json"
+    # 必须打到 Card 声明的端点，而非 base_url（host 根）
+    assert captured["post_urls"][0] == "https://peer.example.com/a2a/message/send"
