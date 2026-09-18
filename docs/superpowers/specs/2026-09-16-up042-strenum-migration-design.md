@@ -139,7 +139,7 @@
 
 ## 9. 后续（不在本次范围）
 
-- `miles_server/registry.py` 的副作用导入块可改为 `importlib.import_module` 循环，从根上消除「F401 只报每组末行」的导入顺序依赖，从而删掉全部 21 条 `# noqa: F401`。已在上游注释中留档，另行处理。
+- ~~`miles_server/registry.py` 的副作用导入块可改为 `importlib.import_module` 循环，从根上消除「F401 只报每组末行」的导入顺序依赖，从而删掉全部 21 条 `# noqa: F401`。已在上游注释中留档，另行处理。~~ → **已完成**（2026-09-17，commit `58aed6e6`）：`load_all_models()` 改为遍历 `_ORM_MODULES` + `importlib.import_module`，21 条 noqa 归零；完整性由新增的 `tests/models/test_orm_registry_completeness.py` 守住。实测顺带证伪原 docstring 的「按依赖顺序导入…避免循环引用」——见 §10。
 - `ARG` 维持不启用（噪声主体 88% 在 tests，生产侧 48 处全为接口契约）。
 
 ## 10. 修订记录
@@ -165,3 +165,11 @@
   改成员值不会失败），已把三列的 DDL 值列表改为**字面量冻结**并补上 `result_processor` 读回断言；
   spec §4 补 `%s`（属「变」的一侧）与 `join`（属「同」），§5.1 补 8 处候选的复现方式，
   §10 敏感度对照的修饰语收归探针；`pyproject.toml` 的 UP042 留档注释移出 `ignore` 数组。
+- 2026-09-17 **闭合 §9 第 1 条**（commit `58aed6e6`）：`miles_server/registry.py` 的副作用导入块已改
+  `importlib.import_module` 循环，21 条 `# noqa: F401` 归零。**实测澄清两点**：① 该 docstring 所称
+  「按依赖顺序导入各域 models，避免循环引用」**不成立** —— 按清单原序 / 字母序 / 逆序导入，三者都成功
+  且都得到 65 张表，顺序不承重，已改为「顺序无关」并同步 `models/__init__.py` 与 `README.md:170`；
+  ② 清单过期是 fail-open 且后果为 Alembic 判出「待 DROP」差异，故新增
+  `tests/models/test_orm_registry_completeness.py`：期望值取源码 AST 扫描（`__tablename__` 与
+  `Table("<字面量>")` 两种形式，实测 65 张），真实值取**子进程**内的 `load_all_models()` 后 metadata，
+  双向断言相等（避免同会话先前 import 把漏登记遮蔽成假通过）。已用故障注入验证其会失败。
