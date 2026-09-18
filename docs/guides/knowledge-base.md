@@ -251,6 +251,8 @@ OpenAPI：`/docs`（运行实例）。
 
 白名单实现：`backend/packages/miles-ai/src/miles_ai/rag/parse/upload_policy.py`（KB 与通用附件共用）。
 
+多模态解析的降级是**可观测**的：依赖缺失（属预期形态）不记日志，占位文案提示安装；依赖**已安装但执行失败**（如 pip 包在而系统 `tesseract-ocr` 二进制缺、Whisper 模型下载失败、ffmpeg 编解码器缺失）会以 WARNING 记入日志并带堆栈，占位文案改为指向日志而非「安装」。两者分流由 `tests/rag/test_parse_degradation_diagnosability.py` 守卫。
+
 白名单与解析能力对齐：图/音/视频扩展名与 MIME 由 `backend/packages/miles-ai/src/miles_ai/rag/parse/media.py` 单一来源导出、`upload_policy.py` 复用；`OFFICE_EXTENSIONS ⊆ DOCLING_EXTENSIONS`、media 判定 ⊆ 白名单、白名单扩展名/MIME 往返可接受、前端 `accept` 全覆盖等不变式由 `tests/rag/test_upload_policy_alignment.py` 守卫。Docling 可读但白名单刻意不收的 TIFF/BMP 属「允许上传 ≠ 一定能解析」边界。
 
 | 配置 | 说明 |
@@ -289,7 +291,7 @@ cd backend && uv sync --all-packages   # 解析 / 多模态依赖已在 miles-ai
 |------|------|
 | 长期 `pending` | Celery Worker 是否消费 `embed` 队列；`ingest_document` 任务状态 |
 | `parse_failed` | 文件类型是否在白名单；`PARSE_PDF_BACKEND=docling` 时是否已安装 docling（随 miles-ai） |
-| 图片/音频无内容 | Worker 是否具备 pytesseract / whisper 与系统 `tesseract-ocr` / `ffmpeg`；缺失时仅有占位说明，检索质量有限 |
+| 图片/音频/视频无内容 | ① 先看 Worker 日志：依赖**已安装但执行失败**（如 `TesseractNotFoundError` —— pip 包在而系统二进制缺）会打 WARNING 带堆栈，占位文案亦指向日志；② 确未安装则检查 pytesseract / whisper 与系统 `tesseract-ocr` / `ffmpeg`（缺失时仅占位说明，检索质量有限） |
 | `embed_failed` | 向量维度与 KB 是否一致；LiteLLM Key；Weaviate/Milvus 连通 |
 | 检索无结果 | 文档是否 `ready`；`top_k`；查询与入库是否同一 KB |
 | 删文档后仍能搜到 | 向量库 `delete_by_document` 是否成功（Milvus 多 collection 按维度） |
