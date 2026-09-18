@@ -7,5 +7,6 @@ def parse_text(data: bytes) -> str:
         try:
             return data.decode(encoding)
         except UnicodeDecodeError:
+            # 静默可接受：该编码解不出即试下一种（末尾还有 errors="replace" 兜底），异常本身即控制流信号。
             continue
     return data.decode("utf-8", errors="replace")

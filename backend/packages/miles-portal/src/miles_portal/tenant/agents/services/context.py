@@ -138,6 +138,7 @@ async def build_skill_mcp_prompt_block(
         try:
             mcp_ids.append(UUID(str(item)))
         except ValueError:
+            # 静默可接受：agent.config 里 mcp_service_ids 的非法项跳过，合法项照常生效。
             continue
     if mcp_ids:
         filters = tenant_filters(ctx, McpService.tenant_id)

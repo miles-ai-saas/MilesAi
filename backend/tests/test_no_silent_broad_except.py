@@ -7,8 +7,10 @@
 失败、ffmpeg 编解码器缺失同理。详见 ``tests/rag/test_parse_degradation_diagnosability.py``。
 
 **判定「静默」**：handler 体仅由 ``pass`` / ``...`` / 字符串表达式（docstring）/
-``return None`` 组成 —— 既无日志、无重抛，也无任何补救动作，故「吞掉」不留痕迹。
-有日志（即使 ``debug``）、有 fd 兜底写入、有 return 非 None 值等，都**不算**静默。
+``return None`` / ``continue`` / ``break`` 组成 —— 既无日志、无重抛，也无任何补救动作，
+故「吞掉」不留痕迹。``continue`` 与 ``break`` 与 ``pass`` 等价：都是「跳过、不留痕」，
+把 ``pass`` 改写成 ``continue`` 不该能绕过本守卫。有日志（即使 ``debug``）、有 fd
+兜底写入、有 return 非 None 值等，都**不算**静默。
 
 **分三档**：
 
@@ -108,7 +110,9 @@ def _is_silent(body: list[ast.stmt]) -> bool:
 
     注意 ``raise`` **不属**静默 —— 重抛是把异常交出去，痕迹完整。判定采用
     「白名单式」穷举：只有全部语句都属于 ``pass`` / ``...`` / docstring /
-    ``return None`` 才算静默，任何其他语句（含 ``raise``）一律不算。
+    ``return None`` / ``continue`` / ``break`` 才算静默，任何其他语句（含 ``raise``）
+    一律不算。``continue`` / ``break`` 归入白名单，是因为它们与 ``pass`` 一样只是
+    「跳过、不留痕」——否则把 ``pass`` 改写成一个 ``continue`` 就能绕过守卫。
     """
     for stmt in body:
         if isinstance(stmt, ast.Pass):
@@ -116,6 +120,8 @@ def _is_silent(body: list[ast.stmt]) -> bool:
         if isinstance(stmt, ast.Expr) and isinstance(stmt.value, ast.Constant):
             continue  # docstring 或 ``...``
         if isinstance(stmt, ast.Return) and (stmt.value is None or (isinstance(stmt.value, ast.Constant) and stmt.value.value is None)):
+            continue
+        if isinstance(stmt, (ast.Continue, ast.Break)):
             continue
         return False
     return True
@@ -245,8 +251,9 @@ def test_guard_surface_is_not_silently_empty():
 def test_detector_flags_silent_and_spares_logging_narrow_and_reraise():
     """检测器自检：静默要报；记日志 / 窄类型 / 重抛都不报。
 
-    防两类退化：恒 False（守卫失效）与把 ``raise`` 误判为静默（会把全仓 8 处
-    ``except Exception as exc: raise ... from exc`` 全部误报）。
+    防三类退化：恒 False（守卫失效）、把 ``raise`` 误判为静默（会把全仓 8 处
+    ``except Exception as exc: raise ... from exc`` 全部误报）、以及漏把
+    ``continue`` / ``break`` 算作静默（那样把 ``pass`` 改成 ``continue`` 即可绕过）。
     """
     tree = ast.parse(
         """
@@ -273,6 +280,20 @@ def reraises():
         pass
     except Exception as exc:
         raise BadRequestError(str(exc)) from exc
+
+def skips_item():
+    for _ in items:
+        try:
+            pass
+        except Exception:
+            continue
+
+def breaks_loop():
+    for _ in items:
+        try:
+            pass
+        except Exception:
+            break
 """
     )
     verdicts = [(_is_broad(n), _is_silent(n.body)) for n in ast.walk(tree) if isinstance(n, ast.ExceptHandler)]
@@ -282,6 +303,8 @@ def reraises():
         (True, False),  # logged
         (False, True),  # narrowed
         (True, False),  # reraises
+        (True, True),  # continue：与 pass 等价，跳过不留痕
+        (True, True),  # break：同上
     ]
 
 

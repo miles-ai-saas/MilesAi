@@ -14,6 +14,9 @@ from miles_core.infra.vector_store.documents import (
     known_embedding_dimensions,
 )
 from miles_core.infra.vector_store.precomputed import PrecomputedEmbeddings
+from miles_core.logging import get_logger
+
+logger = get_logger(__name__)
 
 
 def upsert_add_texts(store: Any, record: ChunkVectorRecord, *, embedding_attr: str) -> str:
@@ -51,9 +54,19 @@ def foreach_dimension(
     get_store: Callable[[int], Any],
     fn: Callable[[Any], None],
 ) -> None:
-    """对已缓存 / 常见维度执行操作（删除等）。"""
+    """对已缓存 / 常见维度执行操作（删除等）。
+
+    两段 try 刻意分开：``get_store`` 取不到某维度（该维度未配置 / 未缓存）属预期，
+    记 debug 后跳过；``fn`` 自身失败则意味着该维度的操作**真的没做** —— 对删除路径
+    就是 orphan 向量残留（已删除内容仍可被检索），故记 warning 并带堆栈。
+    """
     for dim in known_embedding_dimensions():
         try:
-            fn(get_store(dim))
+            store = get_store(dim)
         except Exception:
+            logger.debug("维度 %s 无可用向量库，跳过", dim, exc_info=True)
             continue
+        try:
+            fn(store)
+        except Exception:
+            logger.warning("维度 %s 的向量库操作失败（删除路径下会残留 orphan 向量）", dim, exc_info=True)

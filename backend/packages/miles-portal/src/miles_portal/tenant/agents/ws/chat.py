@@ -39,6 +39,7 @@ def _pending_job_ids(response: ChatResponse) -> list[UUID]:
             try:
                 ids.append(UUID(str(raw)))
             except ValueError:
+                # 静默可接受：生成任务 id 非 UUID 即跳过该项（前端透传数据，不保证合法）。
                 continue
     return ids
 

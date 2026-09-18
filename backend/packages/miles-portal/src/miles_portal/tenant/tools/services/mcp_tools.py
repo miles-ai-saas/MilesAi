@@ -40,6 +40,7 @@ def _bound_service_ids(agent_config: dict | None) -> list[UUID]:
         try:
             ids.append(UUID(str(item)))
         except (ValueError, TypeError):
+            # 静默可接受：容忍 config 里的非法项（见 docstring「容忍 str / 非法项」），合法项照常解析。
             continue
     return ids
 

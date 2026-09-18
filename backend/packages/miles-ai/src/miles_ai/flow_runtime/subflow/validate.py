@@ -91,6 +91,7 @@ async def _max_chain_depth(
             try:
                 child_uuid = UUID(cid)
             except ValueError:
+                # 静默可接受：子流程 ID 非 UUID 即跳过该分支；节点级校验已另行登记该错误。
                 continue
             depth = await _max_chain_depth(
                 repo,
@@ -221,6 +222,7 @@ async def _cycle_errors(
         try:
             child_id = UUID(sub_raw)
         except ValueError:
+            # 静默可接受：sub_flow_id 不可解析的节点已在节点级校验记为错误，此处跳过即可（见本函数 docstring）。
             continue
         child = await repo.get_by_id(child_id)
         if not child or is_marked_deleted(child):

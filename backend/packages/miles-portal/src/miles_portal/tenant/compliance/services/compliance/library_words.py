@@ -88,6 +88,7 @@ class LibraryWordMixin:
             try:
                 out.append(await self.add_library_word(library_id, item))
             except BadRequestError:
+                # 静默可接受：BadRequestError 即「词条重复」，按本方法 docstring 跳过该项属预期。
                 continue
         return out
 

@@ -220,6 +220,7 @@ def _extract_tool_params_from_text(
         try:
             parsed = json.loads(candidate)
         except (json.JSONDecodeError, TypeError):
+            # 静默可接受：候选 JSON 片段不合法即试下一个；全部候选都失败才落到正则解析。
             continue
         if not isinstance(parsed, dict):
             continue

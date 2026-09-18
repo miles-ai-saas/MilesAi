@@ -103,6 +103,7 @@ async def list_sessions(user_id: UUID) -> list[dict]:
         try:
             out.append(json.loads(raw))
         except json.JSONDecodeError:
+            # 静默可接受：会话元数据已损坏；跳过该 jti（与 touch_session 一致，用户重新登录即可）。
             continue
     out.sort(key=lambda x: x.get("created_at") or "", reverse=True)
     return out

@@ -163,7 +163,7 @@ flowchart LR
 |------|------|
 | `tests/test_l3_neutral_imports.py` | `miles_ai` 不得 import `miles_portal`；`miles_server` 不得含 `views/`、不得自建 `APIRouter(` |
 | `tests/test_no_blocking_calls_in_async.py` | `async def` 内不得直调同步阻塞调用（同步对象存储方法 / 同步解析器 / `subprocess` 等），须经 `asyncio.to_thread` 离线 |
-| `tests/test_no_silent_broad_except.py` | 宽泛 `except`（bare / `Exception` / `BaseException`）不得静默；若打了日志却不重抛则须带 `exc_info`；窄类型允许静默，但须在体内注明 `# 静默可接受：<理由>`；`contextlib.suppress(<宽泛异常>)` 是同一判据（语法糖） |
+| `tests/test_no_silent_broad_except.py` | 宽泛 `except`（bare / `Exception` / `BaseException`）不得静默（`pass` / `continue` / `break` 同判）；若打了日志却不重抛则须带 `exc_info`；窄类型允许静默，但须在体内注明 `# 静默可接受：<理由>`；`contextlib.suppress(<宽泛异常>)` 是同一判据（语法糖） |
 | `tests/test_no_unreferenced_modules.py` | 包内不得出现零引用模块（生产侧无 import、亦非按名加载）；入口点与有意未接线者走显式白名单 |
 | `tests/models/test_api_enum_parity.py` | API 侧枚举声明与 ORM 侧逐字节一致；API 层枚举 import 只可来自白名单模块 |
 | `tests/models/test_orm_registry_completeness.py` | 全仓 ORM 表（按 `__tablename__` / `Table(...)` 扫描）均可经 `load_all_models()` 登记到达 |

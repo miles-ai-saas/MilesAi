@@ -79,6 +79,7 @@ class AdminAuthService:
                         )
                     )
             except ValueError:
+                # 静默可接受：会话记录里的 admin_id 非 UUID 即视为无效项跳过（历史脏数据），不影响其它会话。
                 continue
         return sessions
 

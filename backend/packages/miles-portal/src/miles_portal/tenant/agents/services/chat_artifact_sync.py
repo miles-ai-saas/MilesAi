@@ -203,6 +203,7 @@ async def hydrate_chat_messages_artifacts(db: AsyncSession, messages: list[Agent
                 seen.add(key)
                 job_ids.append(UUID(key))
             except (ValueError, TypeError, AttributeError):
+                # 静默可接受：artifact 里的 job id 非 UUID 即跳过该项，不影响其余 artifact 同步。
                 continue
 
     if not job_ids:

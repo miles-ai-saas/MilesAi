@@ -39,6 +39,7 @@ async def filter_hits_by_media_types_async(
             try:
                 chunk_ids.append(UUID(str(cid)))
             except ValueError:
+                # 静默可接受：hit 的 chunk_id 非 UUID 即跳过该项，不影响其余命中。
                 continue
     if not chunk_ids:
         return []
@@ -73,6 +74,7 @@ def filter_hits_by_media_types_sync(
             try:
                 chunk_ids.append(UUID(str(cid)))
             except ValueError:
+                # 静默可接受：同上：chunk_id 非 UUID 即跳过该项，不影响其余命中。
                 continue
     if not chunk_ids:
         return []
