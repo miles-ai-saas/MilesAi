@@ -24,12 +24,12 @@
 - 违规统计专报表与导出（拦截日志可查；报表按需）
 - 导出水印（按需）
 - 多模态 OCR 结果自动合规（需文本化后再扫；画布可用 `ComplianceCheck`）
+- **音视频 Vision 审核**与 **PII 脱敏**：`services/compliance/media_audit.py`、`desensitize.py`
+  **仅有实现、全仓无调用方**（自引入起从未 import），故运行时并不生效；按需立项接线
 
 ### 1.3 已增强（P2）
 
 - 词库 **CSV 批量导入** UI（`ComplianceLibraryDetail`）
-- **PII 脱敏** `compliance/desensitize.py`
-- **音视频 Vision 审核** `media_audit.py`
 
 ---
 
