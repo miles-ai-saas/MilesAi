@@ -8,6 +8,7 @@
 
 from __future__ import annotations
 
+import inspect
 from types import SimpleNamespace
 from uuid import uuid4
 
@@ -52,6 +53,35 @@ def test_build_agent_card_declares_rpc_interface_and_fallback_skill():
     # 未绑定技能包时，智能体自身即一个 skill（Card 不允许 skills 为空数组）
     assert [s["id"] for s in card["skills"]] == [str(AGENT_ID)]
     assert card["skills"][0]["name"] == "客服助手"
+
+
+def test_build_agent_card_declares_api_key_security_scheme():
+    """Card 须声明调用端点的鉴权方式，否则标准 A2A 客户端无从得知要带 ``X-API-Key``。"""
+    card = build_agent_card(agent_id=AGENT_ID, name="客服助手", description="D", base_url=BASE)
+
+    assert card["securitySchemes"] == {
+        "apiKey": {
+            "type": "apiKey",
+            "in": "header",
+            "name": "X-API-Key",
+            "description": "该智能体的 API Key，在智能体详情中创建",
+        }
+    }
+    assert card["security"] == [{"apiKey": []}]
+
+
+def test_declared_security_header_matches_actual_auth_header():
+    """Card 声明的头名必须与实际鉴权头一致 —— 二者漂移会让对端带着错误的头调用。
+
+    生产侧共用同一常量，本测试直接比对「Card 声明」与「FastAPI 依赖实际读取的 alias」。
+    """
+    from miles_portal.tenant.agents.deps_api_auth import require_agent_api_key
+
+    card = build_agent_card(agent_id=AGENT_ID, name="N", description=None, base_url=BASE)
+    declared = card["securitySchemes"]["apiKey"]["name"]
+
+    param = inspect.signature(require_agent_api_key).parameters["x_api_key"]
+    assert declared == param.default.alias
 
 
 def test_build_agent_card_base_url_trailing_slash_is_normalized():

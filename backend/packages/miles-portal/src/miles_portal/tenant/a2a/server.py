@@ -16,6 +16,7 @@ from __future__ import annotations
 
 from uuid import UUID
 
+from miles_common.constants import AGENT_API_KEY_HEADER
 from miles_common.exceptions import BadRequestError
 
 #: ``agent.config`` 中标记「对外暴露为 A2A Server」的键。
@@ -24,6 +25,9 @@ A2A_PUBLISH_FLAG = "a2a_publish"
 #: Agent Card 声明的协议版本与传输绑定。
 A2A_PROTOCOL_VERSION = "1.0"
 A2A_PROTOCOL_BINDING = "JSONRPC"
+
+#: ``securitySchemes`` / ``security`` 中引用该方案的键名。
+A2A_SECURITY_SCHEME = "apiKey"
 
 #: JSON-RPC 2.0 错误码（A2A 沿用）。
 PARSE_ERROR = -32700
@@ -100,6 +104,17 @@ def build_agent_card(
                 "protocolVersion": A2A_PROTOCOL_VERSION,
             }
         ],
+        # 调用端点（非 Card 本身）须带该智能体的 API Key；声明后标准 A2A 客户端才能
+        # 从 Card 发现鉴权要求，否则对端只会在 401 处才知道要凭证。
+        "securitySchemes": {
+            A2A_SECURITY_SCHEME: {
+                "type": "apiKey",
+                "in": "header",
+                "name": AGENT_API_KEY_HEADER,
+                "description": "该智能体的 API Key，在智能体详情中创建",
+            }
+        },
+        "security": [{A2A_SECURITY_SCHEME: []}],
     }
 
 

@@ -30,7 +30,7 @@
 
 - 指定 `custom` 智能体 `config.a2a_publish=true` → 对外 Agent Card 与 JSON-RPC `message/send`
 - 多租户按智能体寻址；根 `/.well-known/agent-card.json` 仅在唯一发布时 307 别名
-- Card 公开（发现元数据），调用端点用该智能体的 X-API-Key
+- Card 公开（发现元数据），调用端点用该智能体的 X-API-Key；Card 内声明 `securitySchemes` / `security` 供对端发现鉴权要求
 
 ### 1.3 明确不做
 
@@ -121,6 +121,7 @@ GET  /.well-known/agent-card.json                         # 全平台唯一发�
 
 发布门槛：`agent_type=custom` + `status=enabled` + `config.a2a_publish=true`；未发布与不存在同回 404。
 JSON-RPC 协议级错误（解析 / 方法 / 参数）回 HTTP 200 + `error` 信封，执行异常回 `-32603`。
+Card 含 `securitySchemes`（`apiKey` · `in: header` · `name: X-API-Key`）与 `security`，声明的是调用端点要求；Card GET 本身公开。
 
 ---
 
@@ -158,7 +159,7 @@ backend/packages/miles-openapi/src/miles_openapi/views/a2a_server.py          # 
 2. 创建 a2a 宿主 + binding → chat 调外部（mock Card）
 3. custom + peer_refs + trigger_keywords 命中 → 强制 Peer
 4. inactive peer → 跳过或报错
-5. 对外 Card：未发布 404 / 已发布返回 `supportedInterfaces`；多技能包映射 `skills`
+5. 对外 Card：未发布 404 / 已发布返回 `supportedInterfaces`；多技能包映射 `skills`；声明 `securitySchemes` 且头名与实际鉴权一致
 6. 对外 RPC：`message/send` 正常回信封；缺文本 / 未知方法 / 非 JSON-RPC 各自错误码
 7. 根别名：唯一发布 307、0 或 >1 → 404
 

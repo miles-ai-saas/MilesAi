@@ -23,6 +23,7 @@ from urllib.parse import urljoin, urlparse
 
 import httpx
 
+from miles_common.constants import AGENT_API_KEY_HEADER
 from miles_common.exceptions import BadRequestError
 from miles_portal.tenant.a2a.models import A2aPeer
 
@@ -52,7 +53,7 @@ def build_auth_headers(auth_config: dict | None) -> dict[str, str]:
     for key in ("api_key", "x_api_key"):
         value = auth_config.get(key)
         if isinstance(value, str) and value.strip():
-            headers["X-API-Key"] = value.strip()
+            headers[AGENT_API_KEY_HEADER] = value.strip()
             break
 
     bearer = auth_config.get("bearer_token")

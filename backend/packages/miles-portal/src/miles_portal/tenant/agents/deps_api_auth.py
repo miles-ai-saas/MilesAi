@@ -10,6 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from miles_common.constants import AGENT_API_KEY_HEADER
 from miles_common.exceptions import ForbiddenError, UnauthorizedError
 from miles_core.deps import get_current_user
 from miles_core.infra.db import get_db
@@ -57,7 +58,7 @@ async def _ctx_from_api_key(
 
 async def require_agent_api_key(
     agent_id: UUID,
-    x_api_key: str | None = Header(default=None, alias="X-API-Key"),
+    x_api_key: str | None = Header(default=None, alias=AGENT_API_KEY_HEADER),
     db: AsyncSession = Depends(get_db),
 ) -> TenantContext:
     """仅接受 X-API-Key（open 路由）。"""
@@ -68,7 +69,7 @@ async def require_agent_api_key(
 
 async def require_agent_chat_auth(
     agent_id: UUID,
-    x_api_key: str | None = Header(default=None, alias="X-API-Key"),
+    x_api_key: str | None = Header(default=None, alias=AGENT_API_KEY_HEADER),
     credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
     db: AsyncSession = Depends(get_db),
 ) -> TenantContext:
