@@ -18,7 +18,6 @@ from uuid import UUID
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from miles_ai.integrations.langchain.toolkit.naming import is_mcp_tool_name
 from miles_common.exceptions import BadRequestError, ConflictError, NotFoundError
 from miles_common.schema import PageParams, PageResult
 from miles_core.config import get_settings
@@ -33,7 +32,7 @@ from miles_portal.tenant.categories.services.category import CategoryService
 from miles_portal.tenant.tags.schemas.tag import TagRefOut
 from miles_portal.tenant.tags.services.tag import TagService
 from miles_portal.tenant.tools.builtin_registry import BUILTIN_REGISTRY, BUILTIN_SLUGS
-from miles_portal.tenant.tools.confirmation import ToolConfirmationRequired
+from miles_portal.tenant.tools.confirmation import ToolConfirmationRequired, resolve_tool_meta
 from miles_portal.tenant.tools.invoke import invoke_tool_with_context
 from miles_portal.tenant.tools.models import Tool, ToolInvocationLog, ToolType
 from miles_portal.tenant.tools.parameters import normalize_parameters
@@ -47,15 +46,6 @@ from miles_portal.tenant.tools.schemas.tools import (
     ToolOut,
     ToolUpdate,
 )
-
-
-def _tool_source_of(name: str, *, has_tool_id: bool = False) -> str:
-    """试调用结果来源标注：builtin / custom / mcp。"""
-    if is_mcp_tool_name(name):
-        return "mcp"
-    if name in BUILTIN_SLUGS and not has_tool_id:
-        return "builtin"
-    return "custom"
 
 
 class ToolsService(BaseService):
@@ -195,7 +185,12 @@ class ToolsService(BaseService):
         await mark_deleted(self.db, row)
 
     async def invoke(self, name: str, body: ToolInvokeRequest) -> ToolInvokeResult:
-        """试调用工具；需确认时返回 ``confirmation_required`` 与待确认信息，不实际执行。"""
+        """试调用工具；需确认时返回 ``confirmation_required`` 与待确认信息，不实际执行。
+
+        先解析一次元数据并把结果透传给 ``invoke_tool_with_context``：响应里的 ``source``
+        与审计日志的 ``source`` 因此取自同一份判定，而不是各猜一次。
+        """
+        meta = await resolve_tool_meta(self.db, self.ctx, name, tool_id=body.tool_id)
         try:
             output = await invoke_tool_with_context(
                 self.db,
@@ -206,12 +201,12 @@ class ToolsService(BaseService):
                 confirmed=body.confirmed,
                 actor_user_id=self.ctx.user_id,
                 invoke_source="api",
+                meta=meta,
             )
         except ToolConfirmationRequired as exc:
-            source = _tool_source_of(exc.slug)
             return ToolInvokeResult(
                 tool=exc.slug,
-                source=source,
+                source=meta["source"],
                 status="confirmation_required",
                 pending=PendingToolCall(
                     slug=exc.slug,
@@ -220,8 +215,7 @@ class ToolsService(BaseService):
                     params=exc.params,
                 ),
             )
-        source = _tool_source_of(name, has_tool_id=bool(body.tool_id))
-        return ToolInvokeResult(tool=name, source=source, status="success", output=output)
+        return ToolInvokeResult(tool=name, source=meta["source"], status="success", output=output)
 
     async def list_invocation_logs(self, params: PageParams, *, tool_slug: str | None = None) -> PageResult[ToolInvocationLogOut]:
         """分页查询调用日志，可按工具 slug 过滤，按创建时间倒序。"""

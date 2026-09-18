@@ -220,7 +220,7 @@ POST /tools/{slug}/invoke          # 试调用（工作台）
 invoke_tool_with_context(...)      # Agent tool_agent、确认流、日志
 ```
 
-### 3.2 分发逻辑（目标）
+### 3.2 分发逻辑
 
 ```text
 resolve_tool_meta(name, tool_id?)
@@ -231,6 +231,11 @@ resolve_tool_meta(name, tool_id?)
 require_confirmation? → pending / 用户确认后继续
 write_tool_invocation_log（+ MCP 时关联 runner session）
 ```
+
+`source` 由 `resolve_tool_meta` **单一判定**后显式透传给 `invoke_tool_by_name`；分发不得再从
+slug 形状（`mcp__` 前缀、是否在 `BUILTIN_REGISTRY`）反推，否则审计日志的 `source` 与实际执行的
+分支会出自两套判据。试调用 API 需要 `source` 做展示，故它先解析一次并把结果经
+`invoke_tool_with_context(meta=...)` 透传，避免同一次调用把判据跑两遍。
 
 ### 3.3 横切能力
 

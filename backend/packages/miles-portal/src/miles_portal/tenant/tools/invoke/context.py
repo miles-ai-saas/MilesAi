@@ -9,15 +9,14 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from miles_ai.integrations.langchain.toolkit.naming import is_mcp_tool_name
 from miles_common.exceptions import BadRequestError, NotFoundError
 from miles_common.trace import get_trace_id
 from miles_core.soft_delete import is_marked_deleted
 from miles_core.tenant import TenantContext
 from miles_portal.tenant.hooks.models import HookScope, HookTrigger
 from miles_portal.tenant.hooks.services.runner import HookRunner
-from miles_portal.tenant.tools.builtin_registry import BUILTIN_SLUGS, SKILL_BOUND_SLUGS
-from miles_portal.tenant.tools.confirmation import ToolConfirmationRequired, resolve_tool_meta
+from miles_portal.tenant.tools.builtin_registry import SKILL_BOUND_SLUGS
+from miles_portal.tenant.tools.confirmation import ToolConfirmationRequired, ToolSource, resolve_tool_meta
 from miles_portal.tenant.tools.invocation_log import write_tool_invocation_log
 from miles_portal.tenant.tools.invoke.builtin import invoke_builtin
 from miles_portal.tenant.tools.invoke.custom import invoke_custom_http, invoke_custom_script
@@ -51,18 +50,24 @@ async def invoke_tool_by_name(
     name: str,
     params: dict,
     *,
+    source: ToolSource,
     tool_id: UUID | None = None,
     bound_skill_id: UUID | None = None,
     actor_user_id: UUID | None = None,
     agent_id: UUID | None = None,
 ) -> dict:
-    """按 slug 执行；不含确认与日志（内部用）。"""
-    if is_mcp_tool_name(name):
+    """按 ``source`` 执行；不含确认与日志（内部用）。
+
+    ``source`` 必须来自 ``resolve_tool_meta`` 的判定结果——本函数**不再**从 slug 形状
+    反推种类，避免与审计日志的 ``source`` 出自两套判据。未知取值直接报错（不回落到
+    自定义工具，否则判据分歧会被静默吞掉）。
+    """
+    if source == "mcp":
         from miles_portal.tenant.tools.services.mcp_tools import invoke_mcp_tool_by_slug
 
         return await invoke_mcp_tool_by_slug(db, ctx, name, params)
 
-    if name in BUILTIN_SLUGS and not tool_id:
+    if source == "builtin":
         return await invoke_builtin(
             name,
             params,
@@ -72,6 +77,9 @@ async def invoke_tool_by_name(
             actor_user_id=actor_user_id,
             agent_id=agent_id,
         )
+
+    if source != "custom":
+        raise BadRequestError(f"未知的工具种类: {source}")
 
     if tool_id:
         tool = await db.get(Tool, tool_id)
@@ -105,18 +113,24 @@ async def invoke_tool_with_context(
     actor_user_id: UUID | None = None,
     agent_id: UUID | None = None,
     invoke_source: str = "api",
+    meta: dict | None = None,
 ) -> dict:
     """带确认策略、Hook 与审计日志的工具调用入口。
 
     链路：resolve_tool_meta → 确认校验 → BEFORE_TOOL Hook → invoke_tool_by_name
     → 写 invocation_log → AFTER_TOOL Hook。
 
+    ``meta``：调用方已解析的元数据（``resolve_tool_meta`` 的结果）。传入即复用它，
+    否则在本函数内解析——用于「调用方本就需要 ``source`` 做展示」的场景（如试调用 API），
+    避免同一次调用把判据跑两遍、并保证审计 ``source`` 与执行分支取自同一份判定。
+
     确认门槛有两道：工具元数据声明需要确认，以及生图工具的策略判定（如需选择
     参考图）；两道都以 ``halt_for_confirmation`` 收尾（写 ``confirmation_required``
     日志后抛 ``ToolConfirmationRequired``）。审计日志经 ``log_invocation`` 写入，
     以统一 ``tenant_id`` / ``tool_id`` / ``source`` / ``trace_id`` 等身份字段。
     """
-    meta = await resolve_tool_meta(db, ctx, name, tool_id=tool_id)
+    if meta is None:
+        meta = await resolve_tool_meta(db, ctx, name, tool_id=tool_id)
     slug = meta["slug"]
     resolved_tool_id = meta.get("tool_id") or tool_id
     tool_params = dict(params)
@@ -208,6 +222,7 @@ async def invoke_tool_with_context(
             ctx,
             slug,
             tool_params,
+            source=meta["source"],
             tool_id=resolved_tool_id,
             bound_skill_id=bound_skill_id,
             actor_user_id=actor_user_id or ctx.user_id,

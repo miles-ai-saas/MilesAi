@@ -1,5 +1,6 @@
 """工具确认策略与元数据解析。"""
 
+from typing import Literal
 from uuid import UUID
 
 from sqlalchemy import select
@@ -11,6 +12,11 @@ from miles_core.soft_delete import is_marked_deleted
 from miles_core.tenant import TenantContext
 from miles_portal.tenant.tools.builtin_registry import get_builtin
 from miles_portal.tenant.tools.models import Tool
+
+# 工具种类。**唯一判据是 ``resolve_tool_meta``**：调用方必须传递它的判定结果，
+# 不得再从 slug 形状（前缀/是否在 registry）反推，否则审计日志的 source 与实际执行
+# 的分支会出自两套判据，改一处漏一处。
+ToolSource = Literal["builtin", "custom", "mcp"]
 
 
 class ToolConfirmationRequired(BadRequestError):
@@ -31,7 +37,12 @@ async def resolve_tool_meta(
     *,
     tool_id: UUID | None = None,
 ) -> dict:
-    """返回 slug、name、description、require_confirmation、source、tool_id。"""
+    """返回 slug、name、description、require_confirmation、source、tool_id。
+
+    ``source``（``ToolSource``）由本函数**单一判定**，判据顺序为：
+    ``tool_id`` → 内置 registry → MCP 前缀 → 按 slug 查租户自定义工具。
+    调用方须把结果透传给执行路径（见 ``invoke_tool_by_name``），勿自行反推。
+    """
     if tool_id:
         tool = await db.get(Tool, tool_id)
         if not tool or is_marked_deleted(tool) or tool.tenant_id != ctx.tenant_id:

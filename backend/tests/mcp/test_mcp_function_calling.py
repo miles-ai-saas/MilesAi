@@ -320,6 +320,34 @@ async def test_invoke_tool_by_name_dispatches_mcp(monkeypatch):
         _ctx(),
         "mcp__github__create_issue",
         {"title": "t"},
+        source="mcp",
     )
     assert out == {"text": "ok"}
     assert calls == {"slug": "mcp__github__create_issue", "params": {"title": "t"}}
+
+
+async def test_invoke_tool_by_name_rejects_unknown_source():
+    """未知 ``source`` 必须报错，不得回落到自定义工具分支 —— 判据分歧要炸出来而不是被吞掉。"""
+    with pytest.raises(BadRequestError, match="未知的工具种类"):
+        await invoke_context.invoke_tool_by_name(
+            object(),
+            _ctx(),
+            "anything",
+            {},
+            source="whatever",  # type: ignore[arg-type]
+        )
+
+
+async def test_invoke_tool_by_name_does_not_guess_kind_from_name(monkeypatch):
+    """内置 slug 也必须按传入的 ``source`` 走：名字不再参与判种（旧实现会命中内置分支）。"""
+    calls: dict = {}
+
+    async def fake_invoke_builtin(slug, params, **kwargs) -> dict:  # noqa: ANN001
+        calls.update({"slug": slug})
+        return {"ok": True}
+
+    monkeypatch.setattr(invoke_context, "invoke_builtin", fake_invoke_builtin)
+
+    out = await invoke_context.invoke_tool_by_name(object(), _ctx(), "calculator", {}, source="builtin")
+    assert out == {"ok": True}
+    assert calls == {"slug": "calculator"}
