@@ -185,7 +185,7 @@ async def invoke_a2a_peer(peer: A2aPeer, task: str) -> str:
         "params": {
             "message": {
                 "role": "user",
-                "parts": [{"type": "text", "text": task}],
+                "parts": [{"kind": "text", "text": task}],
             }
         },
     }

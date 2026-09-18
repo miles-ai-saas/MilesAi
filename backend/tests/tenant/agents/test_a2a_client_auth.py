@@ -76,6 +76,7 @@ class _FakeClient:
 
     async def post(self, url: str, *, json: dict | None = None, headers: dict | None = None) -> _FakeResponse:
         self._captured["post"] = headers or {}
+        self._captured["post_body"] = json
         self._captured.setdefault("post_urls", []).append(url)
         return _FakeResponse(self._post_data)
 
@@ -140,3 +141,5 @@ async def test_invoke_a2a_peer_sends_configured_auth(monkeypatch):  # noqa: ANN0
     assert captured["post"]["Content-Type"] == "application/json"
     # 必须打到 Card 声明的端点，而非 base_url（host 根）
     assert captured["post_urls"][0] == "https://peer.example.com/a2a/message/send"
+    # 0.3 的 Part 判别键是 kind：发 type 会被严格的对端当未知 part 丢掉
+    assert captured["post_body"]["params"]["message"]["parts"] == [{"kind": "text", "text": "你好"}]
