@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
 from miles_common.constants import AGENT_API_KEY_HEADER
@@ -54,6 +55,7 @@ AUDIT_ACTION_MESSAGE_STREAM = "a2a.message.stream"
 AUDIT_ACTION_TASKS_GET = "a2a.tasks.get"
 AUDIT_ACTION_TASKS_CANCEL = "a2a.tasks.cancel"
 AUDIT_ACTION_ARTIFACT_DOWNLOAD = "a2a.artifact.download"
+AUDIT_ACTION_TASKS_RESUBSCRIBE = "a2a.tasks.resubscribe"
 
 #: 审计 ``detail.outcome`` 取值。
 AUDIT_OUTCOME_OK = "ok"
@@ -93,14 +95,21 @@ def to_a2a_task_state(job_status: str) -> str:
     return _JOB_STATUS_TO_TASK_STATE.get(job_status, TASK_STATE_UNKNOWN)
 
 
+def is_terminal_generative_status(status: object) -> bool:
+    """该生成任务是否已到终态（``success`` / ``failed`` / ``cancelled``）。
+
+    只认明确的终态字符串：未知状态视为**未**终态，与 ``to_a2a_task_state`` 对未知回
+    ``unknown``（而非 ``completed``）同一原则 —— 宁可让对端多轮询/多收一帧，也不谎称产物已就绪。
+    """
+    return isinstance(status, str) and status in _TERMINAL_JOB_STATUSES
+
+
 def is_active_generative_status(status: object) -> bool:
     """该生成任务是否「未到终态」，值得对外返回 ``Task`` 供轮询。
 
-    只排除明确终态（success/failed/cancelled）：未知状态一律视为进行中，与
-    ``to_a2a_task_state`` 对未知状态回 ``unknown``（而非 ``completed``）同一原则 ——
-    宁可让对端多轮询一次，也不谎称产物已就绪。
+    只是 ``is_terminal_generative_status`` 的反面，判据单一来源。
     """
-    return not (isinstance(status, str) and status in _TERMINAL_JOB_STATUSES)
+    return not is_terminal_generative_status(status)
 
 
 def is_publish_enabled(config: dict | None) -> bool:
@@ -242,6 +251,26 @@ def extract_message_context_id(params: dict) -> str | None:
     return context_id
 
 
+def now_iso() -> str:
+    """A2A ``TaskStatus.timestamp``（ISO 8601 / UTC）。"""
+    return datetime.now(UTC).isoformat()
+
+
+def progress_text(*, progress_message: object, percent: object) -> str | None:
+    """生成任务进度 → 一帧 ``status.message`` 的文本；无话可说时回 ``None``。
+
+    优先任务自带的 ``progress_message``（它通常已含百分比，如「45% 渲染中」），缺失时才用裸
+    百分比兜底。两者皆无回 ``None``：调用方据此**不附** ``status.message``，
+    而不是塞一个空串冒充进度。
+    """
+    if isinstance(progress_message, str) and progress_message.strip():
+        return progress_message.strip()
+    # ``isinstance(True, int)`` 为真：不挡布尔会拼出 "True%" 这种脏值。
+    if isinstance(percent, int) and not isinstance(percent, bool):
+        return f"{percent}%"
+    return None
+
+
 def build_a2a_task(
     *,
     task_id: str,
@@ -267,20 +296,21 @@ def build_a2a_task(
     return task
 
 
-def build_a2a_agent_message(*, text: str, context_id: str, task_id: str | None = None) -> dict:
+def build_a2a_agent_message(*, text: str, context_id: str | None, task_id: str | None = None) -> dict:
     """A2A ``Message``（agent 角色）。
 
-    ``contextId`` 必须回显：对端据此把后续消息接回同一上下文，否则每轮都是新对话。
-    ``taskId`` 仅在该消息属于某个 Task 时带上（流式帧的嵌套消息带，``message/send``
-    的同步回答不带 —— 同步回答不产生任务）。
+    ``contextId`` 能取到才回显：解析不到就省略该字段，不塞空串冒充一个假的上下文标识
+    （``Task.contextId`` 一贯如此，本函数与它对齐）。``taskId`` 仅在该消息属于某个 Task
+    时带上（流式帧的嵌套消息带，``message/send`` 的同步回答不带 —— 同步回答不产生任务）。
     """
     message: dict = {
         "kind": "message",
         "role": "agent",
         "messageId": str(uuid4()),
-        "contextId": context_id,
         "parts": [{"kind": "text", "text": text}],
     }
+    if context_id:
+        message["contextId"] = context_id
     if task_id:
         message["taskId"] = task_id
     return message
@@ -289,35 +319,45 @@ def build_a2a_agent_message(*, text: str, context_id: str, task_id: str | None =
 def build_a2a_status_update(
     *,
     task_id: str,
-    context_id: str,
+    context_id: str | None,
     state: str,
     timestamp: str,
     text: str | None = None,
     final: bool = False,
     job_task_id: str | None = None,
+    percent: object = None,
 ) -> dict:
-    """A2A ``TaskStatusUpdateEvent``（``message/stream`` 的帧载荷）。
+    """A2A ``TaskStatusUpdateEvent``（``message/stream`` 与 ``tasks/resubscribe`` 的帧载荷）。
 
     ``final`` 表示「本流结束」，不等于「任务终态」—— 产生异步生成任务时以
     ``working`` + ``final=True`` 收尾，对端再转向 ``tasks/get`` 轮询。
 
-    ``job_task_id`` 非空时写入嵌套消息的 ``metadata.a2aJobTaskId``：本流的 taskId 是
-    合成的（流开始时就得定），生成任务 id 只有跑完才知道，故不强行合一，改用该扩展位
-    把两者串起来。
+    ``job_task_id`` 非空时写入嵌套消息的 ``metadata.a2aJobTaskId``：``message/stream`` 的
+    taskId 是合成的（流开始时就得定），生成任务 id 只有跑完才知道，故不强行合一，改用该扩展位
+    把两者串起来。``percent`` 同理写进 ``metadata.percent``（订阅流的进度百分比）。
+
+    ``contextId`` 解析不到就省略（规范标必填，此处有意偏离，见设计 §3.8）。
     """
     status: dict = {"state": state, "timestamp": timestamp}
     if text is not None:
         message = build_a2a_agent_message(text=text, context_id=context_id, task_id=task_id)
+        metadata: dict = {}
         if job_task_id:
-            message["metadata"] = {"a2aJobTaskId": job_task_id}
+            metadata["a2aJobTaskId"] = job_task_id
+        if percent is not None:
+            metadata["percent"] = percent
+        if metadata:
+            message["metadata"] = metadata
         status["message"] = message
-    return {
+    event: dict = {
         "kind": "status-update",
         "taskId": task_id,
-        "contextId": context_id,
         "status": status,
         "final": final,
     }
+    if context_id:
+        event["contextId"] = context_id
+    return event
 
 
 def artifact_ids_from_job_result(job_result: object) -> list[str]:
@@ -371,6 +411,29 @@ def build_a2a_artifacts(
             }
         )
     return artifacts
+
+
+def build_a2a_artifact_update(
+    *,
+    task_id: str,
+    context_id: str | None,
+    artifact: dict,
+    last_chunk: bool = True,
+) -> dict:
+    """构造 A2A ``TaskArtifactUpdateEvent``（订阅流里「本次产出的新产物」帧）。
+
+    ``artifact`` 直接取 ``build_a2a_artifacts`` 的单项产出（其元素本就是完整的 ``Artifact``），
+    故 ``file.uri`` 的拼法仍只有那一处，这里不再重拼。
+    """
+    event: dict = {
+        "kind": "artifact-update",
+        "taskId": task_id,
+        "artifact": artifact,
+        "lastChunk": last_chunk,
+    }
+    if context_id:
+        event["contextId"] = context_id
+    return event
 
 
 def jsonrpc_result(req_id: object, result: dict) -> dict:

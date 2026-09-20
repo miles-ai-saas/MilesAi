@@ -12,6 +12,7 @@ import asyncio
 import contextlib
 import inspect
 import json
+from datetime import datetime, timedelta
 from types import SimpleNamespace
 from uuid import uuid4
 
@@ -27,6 +28,7 @@ from miles_portal.tenant.a2a.server import (
     a2a_task_artifact_path,
     artifact_ids_from_job_result,
     build_a2a_agent_message,
+    build_a2a_artifact_update,
     build_a2a_artifacts,
     build_a2a_status_update,
     build_a2a_task,
@@ -35,8 +37,11 @@ from miles_portal.tenant.a2a.server import (
     extract_message_text,
     is_active_generative_status,
     is_publish_enabled,
+    is_terminal_generative_status,
     jsonrpc_error,
     jsonrpc_result,
+    now_iso,
+    progress_text,
     to_a2a_task_state,
 )
 from miles_portal.tenant.a2a.services import server as server_svc
@@ -392,6 +397,82 @@ def test_jsonrpc_error_carries_optional_data():
 def test_rate_limited_code_is_in_implementation_defined_range():
     """``-32000`` 属规范保留给实现自定义的服务端错误区间（本实现已占 ``-32001`` / ``-32002``）。"""
     assert server_mod.RATE_LIMITED == -32000
+
+
+def test_is_terminal_generative_status_only_accepts_known_terminal():
+    """未知状态不当作已结束：与 ``to_a2a_task_state`` 回 ``unknown``（而非 ``completed``）同一原则。"""
+    assert is_terminal_generative_status("success") is True
+    assert is_terminal_generative_status("failed") is True
+    assert is_terminal_generative_status("cancelled") is True
+    assert is_terminal_generative_status("running") is False
+    assert is_terminal_generative_status("pending") is False
+    assert is_terminal_generative_status("some-new-state") is False
+    assert is_terminal_generative_status(None) is False
+
+
+def test_is_active_generative_status_is_the_negation_of_terminal():
+    """既有判据改为由 ``is_terminal`` 反推：语义逐字不变（含未知状态与 None）。"""
+    for status in ("success", "failed", "cancelled", "running", "pending", "some-new-state", None, 3):
+        assert is_active_generative_status(status) is (not is_terminal_generative_status(status))
+
+
+def test_progress_text_prefers_task_message_then_percent():
+    assert progress_text(progress_message="45% 渲染中", percent=45) == "45% 渲染中"
+    assert progress_text(progress_message="  45% 渲染中  ", percent=45) == "45% 渲染中"
+    assert progress_text(progress_message=None, percent=45) == "45%"
+    # 两者皆无回 None：调用方据此不附 status.message，而不是塞空串冒充进度
+    assert progress_text(progress_message=None, percent=None) is None
+    assert progress_text(progress_message="   ", percent=None) is None
+    # isinstance(True, int) 为真：不挡布尔会拼出 "True%" 这种脏值
+    assert progress_text(progress_message=None, percent=True) is None
+
+
+def test_build_a2a_artifact_update_shape():
+    artifact = {"artifactId": "a1", "parts": [{"kind": "file", "file": {"uri": "https://x/y"}}]}
+
+    event = build_a2a_artifact_update(task_id="t1", context_id="c1", artifact=artifact)
+
+    assert event["kind"] == "artifact-update"
+    assert event["taskId"] == "t1"
+    assert event["contextId"] == "c1"
+    assert event["artifact"] == artifact
+    assert event["lastChunk"] is True
+
+
+def test_build_a2a_artifact_update_omits_absent_context_id():
+    """contextId 解析不到就省略：塞空串会让对端拿到一个假的上下文标识（对规范必填要求的有意偏离）。"""
+    event = build_a2a_artifact_update(task_id="t1", context_id=None, artifact={"artifactId": "a1"}, last_chunk=False)
+
+    assert "contextId" not in event
+    assert event["lastChunk"] is False
+
+
+def test_build_a2a_status_update_omits_absent_context_id():
+    event = build_a2a_status_update(task_id="t1", context_id=None, state="working", timestamp="T", text="写点什么")
+
+    assert "contextId" not in event
+    assert "contextId" not in event["status"]["message"]
+
+
+def test_build_a2a_status_update_carries_percent_beside_job_task_id():
+    event = build_a2a_status_update(
+        task_id="t1",
+        context_id="c1",
+        state="working",
+        timestamp="T",
+        text="45%",
+        percent=45,
+        job_task_id="job-9",
+    )
+
+    assert event["status"]["message"]["metadata"] == {"a2aJobTaskId": "job-9", "percent": 45}
+
+
+def test_now_iso_is_utc_iso8601():
+    parsed = datetime.fromisoformat(now_iso())
+
+    assert parsed.tzinfo is not None
+    assert parsed.utcoffset() == timedelta(0)
 
 
 # --- 2. 服务：发布门槛 --------------------------------------------------------
