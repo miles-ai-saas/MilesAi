@@ -2864,6 +2864,7 @@ source = { virtual = "." }
 
 [package.dev-dependencies]
 dev = [
+    { name = "anyio" },
     { name = "import-linter" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
@@ -2874,6 +2875,7 @@ dev = [
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "anyio", specifier = ">=4" },
     { name = "import-linter", specifier = ">=2.0" },
     { name = "pytest", specifier = ">=8.3.0" },
     { name = "pytest-asyncio", specifier = ">=0.24.0" },

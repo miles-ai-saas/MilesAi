@@ -468,10 +468,12 @@ def _rpc_audit_detail(payload: object, envelope: object, *, started: float, meth
             detail["taskId"] = params["id"]
         message = params.get("message")
         if isinstance(message, dict) and isinstance(message.get("contextId"), str):
-            context_id = message["contextId"]
-            # 与 ``extract_message_context_id`` 同一上限：超长值本就过不了下游
-            # ``conversation_id`` 契约（会退化成 500），没有理由把它写进租户可见的 aud_logs。
-            if len(context_id) <= CONVERSATION_ID_MAX_LENGTH:
+            # 与 ``extract_message_context_id`` 同一口径（先 ``strip()`` 再比长度）：入口接受
+            # 的「首尾带空白但 strip 后不超限」的值，服务侧会正常用作 ``conversation_id``，
+            # 审计若按原样比长度就会把这条正常调用从租户可见面抹掉。超长值本就过不了下游
+            # ``conversation_id`` 契约（会退化成 500），没有理由写进租户可见的 aud_logs。
+            context_id = message["contextId"].strip()
+            if context_id and len(context_id) <= CONVERSATION_ID_MAX_LENGTH:
                 detail["contextId"] = context_id
     error = envelope.get("error") if isinstance(envelope, dict) else None
     if isinstance(error, dict):
@@ -544,7 +546,9 @@ def _sse_frame(payload: dict) -> str:
 
 
 async def _audit_stream_preflight(ctx: TenantContext, agent_id: UUID, error_code: int, started: float) -> None:
-    """``message/stream`` 前置失败的审计：与 ``message/send`` 的同类失败对称。
+    """``message/stream`` 前置失败的审计：与 send 侧**可达的**参数类失败对称（缺 ``params`` /
+    未发布智能体 / 非法 ``contextId`` 等）。send 侧对「无/未知 method」是不写流水的（没有
+    action 名可记），而那两个分支从视图不可达，故不在此列。
 
     不记就出现「同一个非法调用，``message/send`` 有迹、``message/stream`` 零痕迹」，
     探测式调用可以不留痕迹。口径用 ``failed`` 与 ``message/send`` 对齐（``_rpc_audit_outcome``
@@ -614,6 +618,10 @@ async def _stream_turn(
     outcome: dict[str, object] = {}
     stopped = False
     #: 终态帧的审计是否已落库：非终态退出（断连）不得再补一条，否则一次调用两条流水。
+    #: 守卫**当前不可达**：四处 ``terminal_frame`` 调用都在本生成器最后的顺序代码里，处于
+    #: 任何 ``try`` 之外 —— 「审计已写、又被抛入 ``CancelledError``」没有可达路径（被取消时
+    #: 生成器只可能挂在某个 ``await`` 上，而那时审计尚未写）。保留它守「一次调用一条流水」
+    #: 不变量：日后若把终态帧搬进 ``try``，它立刻变成承重件。
     audited = False
 
     async def terminal_frame(state: str, frame_text: str, *, job_task_id: str | None = None) -> str:

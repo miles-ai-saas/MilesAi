@@ -13,6 +13,9 @@ dev = [
     "pytest-asyncio>=0.24.0",
     "ruff==0.15.13",
     "import-linter>=2.0",
+    # 测试直接 import（真实取消作用域用例）；此前只靠 fastapi→starlette→anyio 的传递依赖，
+    # 上游一改就会在别处莫名 ImportError，故显式声明。
+    "anyio>=4",
 ]
 
 [tool.ruff]

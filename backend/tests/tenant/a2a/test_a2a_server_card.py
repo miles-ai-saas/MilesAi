@@ -1462,6 +1462,34 @@ async def test_handle_rpc_audit_omits_oversized_context_id(a2a_audit_recorder): 
     assert "contextId" not in a2a_audit_recorder[0]["detail"]
 
 
+@pytest.mark.asyncio
+async def test_handle_rpc_audit_keeps_padded_context_id_within_limit(a2a_audit_recorder, monkeypatch):  # noqa: ANN001
+    """闸口须先 ``strip()`` 再比长度，与入口校验同一口径。
+
+    ``extract_message_context_id`` 对「129 字符但首尾各 1 空格」strip 后判为 127 并正常接受
+    （会用作 ``conversation_id``）；审计若按原样比长度，就会把这条服务侧正常处理的调用从
+    租户可见面抹掉 —— 同一上限的判定，两处必须一致。
+    """
+
+    async def fake_chat(_db, _ctx, _agent_id, _text, conversation_id=None):  # noqa: ANN001
+        return ChatResponse(answer="收到")
+
+    monkeypatch.setattr(server_svc, "run_published_agent_chat", fake_chat)
+    raw = " " + "x" * 127 + " "
+    assert len(raw) == 129
+    payload = {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "message/send",
+        "params": {"message": {"contextId": raw, "parts": [{"kind": "text", "text": "你好"}]}},
+    }
+
+    envelope = await server_svc.handle_a2a_rpc(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, payload, base_url=BASE)
+
+    assert "error" not in envelope
+    assert a2a_audit_recorder[0]["detail"]["contextId"] == "x" * 127
+
+
 # --- 8. message/stream 前置失败留痕（与 message/send 对称） --------------------
 
 
