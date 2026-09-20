@@ -379,6 +379,19 @@ def test_jsonrpc_envelopes():
     assert "result" not in err
 
 
+def test_jsonrpc_error_carries_optional_data():
+    """超限要在 ``error.data`` 给结构化细节（规范允许），而既有调用形状必须逐字不变。"""
+    assert jsonrpc_error(1, -32602, "坏参数") == {"jsonrpc": "2.0", "id": 1, "error": {"code": -32602, "message": "坏参数"}}
+
+    with_data = jsonrpc_error(1, server_mod.RATE_LIMITED, "请求过于频繁，请稍后再试", data={"kind": "rate_limit", "retryAfterSeconds": 12})
+    assert with_data["error"]["data"] == {"kind": "rate_limit", "retryAfterSeconds": 12}
+
+
+def test_rate_limited_code_is_in_implementation_defined_range():
+    """``-32000`` 属规范保留给实现自定义的服务端错误区间（A2A 已占 -32001..-32007）。"""
+    assert server_mod.RATE_LIMITED == -32000
+
+
 # --- 2. 服务：发布门槛 --------------------------------------------------------
 
 

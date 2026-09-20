@@ -16,13 +16,17 @@ from fastapi.responses import JSONResponse, RedirectResponse, Response, Streamin
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from miles_common.exceptions import NotFoundError
+from miles_common.trace import get_trace_id
 from miles_core.infra.db import get_db
 from miles_core.tenant import TenantContext
+from miles_core.web.middlewares.platform_risk import client_ip
 from miles_portal.tenant.a2a.server import (
     PARSE_ERROR,
+    RATE_LIMITED,
     agent_card_well_known_path,
     jsonrpc_error,
 )
+from miles_portal.tenant.a2a.services.limits import check_a2a_rate_limit
 from miles_portal.tenant.a2a.services.server import (
     build_agent_card_by_id,
     handle_a2a_rpc,
@@ -38,6 +42,9 @@ _SSE_HEADERS = {
     "Connection": "keep-alive",
     "X-Accel-Buffering": "no",
 }
+
+#: 超限对端可见文案（与中间件 429 的 message 保持一致）。
+_RATE_LIMIT_MESSAGE = "请求过于频繁，请稍后再试"
 
 router = APIRouter()
 well_known_router = APIRouter()
@@ -65,11 +72,29 @@ async def a2a_jsonrpc(
 
     ``message/stream`` 按 A2A 约定走 SSE，与其它方法共用同一 URL；请求体非 JSON 时回
     -32700 信封。前置校验失败的流式请求回普通 JSON，不进入 SSE。
+
+    限流在鉴权之后、分发之前：维度取 API Key 行 id（见 ``services.limits``）。超限回
+    HTTP 429 + ``Retry-After``，正文仍是 JSON-RPC 错误信封（``-32000``）—— 外部客户端
+    按 JSON-RPC 解析，且只有它能把错误对回自己的 ``id``。流式请求也在这里被拦下，
+    避免响应头已写成 ``text/event-stream`` 后无处安放状态码。
     """
     try:
         payload = await request.json()
     except ValueError:
         return JSONResponse(jsonrpc_error(None, PARSE_ERROR, "请求体不是合法 JSON"))
+    req_id: object = payload.get("id") if isinstance(payload, dict) else None
+    hit = await check_a2a_rate_limit(ctx, agent_id, path=request.url.path, ip=client_ip(request))
+    if hit is not None:
+        return JSONResponse(
+            jsonrpc_error(
+                req_id,
+                RATE_LIMITED,
+                _RATE_LIMIT_MESSAGE,
+                data={"kind": "rate_limit", "retryAfterSeconds": hit.retry_after_seconds},
+            ),
+            status_code=429,
+            headers={"Retry-After": str(hit.retry_after_seconds)},
+        )
     base_url = str(request.base_url)
     if isinstance(payload, dict) and payload.get("method") == "message/stream":
         opened = await open_a2a_stream(db, ctx, agent_id, payload)
@@ -84,13 +109,22 @@ async def a2a_task_artifact(
     agent_id: UUID,
     task_id: UUID,
     attachment_id: UUID,
+    request: Request,
     ctx: TenantContext = Depends(require_agent_api_key),
     db: AsyncSession = Depends(get_db),
 ) -> Response:
     """任务产物下载（``Task.artifacts[].parts[].file.uri`` 指向此处，须带 ``X-API-Key``）。
 
     平台不暴露对象存储签名 URL；产物只能经由该鉴权端点取回，且限「该智能体该任务」。
+    超限走平台信封 429（本路由是普通 HTTP 下载、不是 JSON-RPC，形状与中间件一致）。
     """
+    hit = await check_a2a_rate_limit(ctx, agent_id, path=request.url.path, ip=client_ip(request))
+    if hit is not None:
+        return JSONResponse(
+            status_code=429,
+            content={"code": 429, "message": _RATE_LIMIT_MESSAGE, "data": None, "trace_id": get_trace_id()},
+            headers={"Retry-After": str(hit.retry_after_seconds)},
+        )
     data, mime, filename = await read_task_artifact(db, ctx, agent_id, task_id, attachment_id)
     disposition = f"attachment; filename*=UTF-8''{quote(filename)}"
     return Response(content=data, media_type=mime, headers={"Content-Disposition": disposition})

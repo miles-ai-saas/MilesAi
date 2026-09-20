@@ -43,6 +43,10 @@ INTERNAL_ERROR = -32603
 TASK_NOT_FOUND = -32001
 TASK_NOT_CANCELABLE = -32002
 
+#: 限流拒绝。规范把 -32000..-32099 留给实现自定义（A2A 已占 -32001..-32007），
+#: 并要求自定义码「清楚地记录」—— 故写入 docs/guides/a2a.md。
+RATE_LIMITED = -32000
+
 #: A2A ``TaskState``（v0.3）。
 TASK_STATE_SUBMITTED = "submitted"
 TASK_STATE_WORKING = "working"
@@ -360,6 +364,9 @@ def jsonrpc_result(req_id: object, result: dict) -> dict:
     return {"jsonrpc": "2.0", "id": req_id, "result": result}
 
 
-def jsonrpc_error(req_id: object, code: int, message: str) -> dict:
-    """JSON-RPC 2.0 错误信封。"""
-    return {"jsonrpc": "2.0", "id": req_id, "error": {"code": code, "message": message}}
+def jsonrpc_error(req_id: object, code: int, message: str, data: dict | None = None) -> dict:
+    """JSON-RPC 2.0 错误信封；``data`` 非空时附结构化细节（规范允许）。"""
+    error: dict = {"code": code, "message": message}
+    if data is not None:
+        error["data"] = data
+    return {"jsonrpc": "2.0", "id": req_id, "error": error}
