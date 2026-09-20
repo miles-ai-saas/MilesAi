@@ -980,6 +980,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 from types import SimpleNamespace
 from uuid import uuid4
 
@@ -1158,9 +1159,7 @@ async def test_preflight_rejects_foreign_or_missing_task_with_task_not_found(aud
 
     monkeypatch.setattr(server_svc, "get_generative_job_for_tenant", _missing)
 
-    missing = await subscription_svc.open_task_subscription(
-        _Db(agent=_agent()), _ctx(), AGENT_ID, _params(task_id=uuid4()), base_url=BASE
-    )
+    missing = await subscription_svc.open_task_subscription(_Db(agent=_agent()), _ctx(), AGENT_ID, _params(task_id=uuid4()), base_url=BASE)
     assert isinstance(missing, dict)
     assert missing["error"]["code"] == server_mod.TASK_NOT_FOUND
     assert len(audit_recorder) == 2
@@ -1285,6 +1284,26 @@ async def test_safety_cap_closes_with_real_state_and_final(monkeypatch, audit_re
     await audit_svc.drain_pending_audits()
     assert audit_recorder[0]["detail"]["endedBy"] == "safety-cap"
     assert audit_recorder[0]["outcome"] == server_mod.AUDIT_OUTCOME_OK
+
+
+@pytest.mark.asyncio
+async def test_safety_cap_logs_warning_for_diagnosability(monkeypatch, caplog, owned_job):  # noqa: ANN001
+    """30 分钟上限是对规范的有意偏离：审计行只在租户审计页可见，故日志侧也必须留痕，
+    否则「病态任务占住连接半小时」在运维侧完全不可见。"""
+    monkeypatch.setattr(subscription_svc, "watch_generative_job", _scripted([owned_job(_job("pending"))]))
+
+    with caplog.at_level(logging.WARNING, logger="miles_portal.tenant.a2a.services.subscription"):
+        opened = await subscription_svc.open_task_subscription(_Db(agent=_agent()), _ctx(), AGENT_ID, _params(), base_url=BASE)
+        await _json_frames(opened)
+
+    records = [r for r in caplog.records if r.name == "miles_portal.tenant.a2a.services.subscription"]
+    # 恰好一条：正常收流路径只此一处 warning，多一条就说明有新噪音
+    assert len(records) == 1
+    assert records[0].levelno == logging.WARNING
+    # 关键定位字段齐全（agent_id / task_id 至少要有）
+    assert str(AGENT_ID) in records[0].getMessage()
+    assert str(JOB_ID) in records[0].getMessage()
+    assert "安全上限" in records[0].getMessage()
 
 
 @pytest.mark.asyncio
@@ -1629,9 +1648,7 @@ async def _subscription_frames(
                     # 订阅时已终态：产物直接挂首帧（一帧讲完整段故事）；否则本次订阅期间产出的
                     # 走 artifact-update 帧，同一产物不在一条流里出现两次。
                     artifacts=(
-                        build_a2a_artifacts(job_result=first.result, agent_id=agent_id, task_id=job_id, base_url=base_url)
-                        if terminal_at_subscribe
-                        else None
+                        build_a2a_artifacts(job_result=first.result, agent_id=agent_id, task_id=job_id, base_url=base_url) if terminal_at_subscribe else None
                     ),
                 ),
             )
@@ -1692,6 +1709,15 @@ async def _subscription_frames(
             )
         # 循环结束仍未见终态：安全上限（设计 §3.5）。状态取断点时的**真实**映射值，
         # 不谎报成 completed —— 对端据此决定是否再订阅一次。
+        # 必须留 warning：30 分钟上限是对规范的有意偏离，审计行只在租户审计页可见，
+        # 不落日志就等于「病态任务占住连接半小时」在运维侧完全不可见。只记元数据。
+        logger.warning(
+            "A2A tasks/resubscribe 触达安全上限，按当前状态收流 (agent_id=%s task_id=%s state=%s max_seconds=%s)",
+            agent_id,
+            task_id,
+            latest_state,
+            SUBSCRIPTION_MAX_SECONDS,
+        )
         schedule_audit_once(AUDIT_OUTCOME_OK, ended_by="safety-cap", task_state=latest_state)
         yield status_frame(
             state=latest_state,
