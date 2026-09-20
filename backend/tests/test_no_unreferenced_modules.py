@@ -47,6 +47,7 @@ _ALLOWED_UNREFERENCED: dict[str, str] = {
     "miles_server.scripts.export_openapi": "Makefile 的 ``python -m miles_server.scripts.export_openapi``",
     "miles_portal.tenant.hooks.plugins.echo": "Python 钩子插件，模块名存租户配置后按名加载",
     "miles_portal.tenant.compliance.services.compliance.media_audit": ("有意保留未接线（接入属按需立项），见 docs/features/compliance.md §1.2"),
+    "miles_portal.tenant.a2a.services.audit": ("A2A 调用审计写入器，由 Task 6 接入 message/send、message/stream 与产物下载；接入后必须移出本白名单"),
 }
 
 _SEP = "/"

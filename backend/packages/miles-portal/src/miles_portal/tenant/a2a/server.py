@@ -47,6 +47,20 @@ TASK_NOT_CANCELABLE = -32002
 #: 并要求自定义码「清楚地记录」—— 故写入 docs/guides/a2a.md。
 RATE_LIMITED = -32000
 
+#: 租户审计 ``action``（落 ``aud_logs``）。只记「谁在何时以何结果调了什么」——
+#: ``aud_logs`` 是租户可见面，不写消息正文（正文可能含隐私内容）。
+AUDIT_ACTION_MESSAGE_SEND = "a2a.message.send"
+AUDIT_ACTION_MESSAGE_STREAM = "a2a.message.stream"
+AUDIT_ACTION_TASKS_GET = "a2a.tasks.get"
+AUDIT_ACTION_TASKS_CANCEL = "a2a.tasks.cancel"
+AUDIT_ACTION_ARTIFACT_DOWNLOAD = "a2a.artifact.download"
+
+#: 审计 ``detail.outcome`` 取值。
+AUDIT_OUTCOME_OK = "ok"
+AUDIT_OUTCOME_REJECTED = "rejected"
+AUDIT_OUTCOME_FAILED = "failed"
+AUDIT_OUTCOME_CANCELED = "canceled"
+
 #: A2A ``TaskState``（v0.3）。
 TASK_STATE_SUBMITTED = "submitted"
 TASK_STATE_WORKING = "working"
