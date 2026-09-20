@@ -222,15 +222,9 @@ tenant/tools/
 | `before_delete_agent` | agent_kb_bindings、应用安装引用、Agent 域 Hook |
 | `before_delete_kb` | 绑定表、应用安装 kb_id |
 | `before_delete_flow` | flow_versions、Agent.published_flow_id、应用安装 flow_id、Flow Hook |
-| `purge_tenant_data` | 租户下全部业务表（供运营删租户前调用，不删 tenants 行） |
+| `purge_tenant_data` | 租户下全部业务表（供运营删租户前调用，不删 tenants 行）；`AdminTenantService` 硬删时已调用 |
 
 流程删除 API：`DELETE /api/v1/flows/{flow_id}`。
-
-### 可选后续优化
-
-| 项 | 说明 |
-|----|------|
-| 运营删租户 | 在 `AdminTenantService` 中调用 `purge_tenant_data` 后再删租户记录 |
 
 ## 统一 CLI（`milesai` / `miles_server.cli`）
 

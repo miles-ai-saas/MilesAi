@@ -451,12 +451,19 @@ async def handle_a2a_rpc(
     except Exception:
         # 未捕获异常逸出（DB / 存储故障）：先留痕再**原样重抛**。这里是失败路径上唯一的
         # 留痕机会 —— 吞掉异常会把 500 变成 200，把故障伪装成成功。
+        # detail 走 ``_rpc_audit_detail``：``contextId`` 与正常路径同一长度闸口，避免兑底
+        # 路径把超长值写进租户可见面、或漏掉本可取到的会话标识。
         await write_a2a_audit(
             ctx=ctx,
             agent_id=agent_id,
             action=action,
             outcome=AUDIT_OUTCOME_FAILED,
-            detail={"method": method, "errorCode": INTERNAL_ERROR, "durationMs": _elapsed_ms(started)},
+            detail=_rpc_audit_detail(
+                payload,
+                {"error": {"code": INTERNAL_ERROR}},
+                started=started,
+                method=method,
+            ),
         )
         raise
     await write_a2a_audit(
@@ -565,10 +572,16 @@ def _schedule_audit(coro: Coroutine[Any, Any, None]) -> None:
 async def drain_pending_audits() -> None:
     """等在飞的审计 task 全部落地（测试断言与停机钩子用）。
 
-    取快照后循环到集合为空：审计 task 自身不再派生新 task，故不会自旋。
+    只 gather **未完成**的：``gather`` 对已 done 的 task 不会让出控制权；若集合里只剩
+    「已完成但 discard 回调尚未执行」的 task，纯靠 ``while 集合非空 + gather 全集`` 会
+    占满事件循环（连外层 ``wait_for`` 超时都触发不了）。未完成列表为空即返回 —— 已完成
+    的会由 done 回调自行从集合剔除，不必在此强清。
     """
-    while _PENDING_AUDITS:
-        await asyncio.gather(*list(_PENDING_AUDITS), return_exceptions=True)
+    while True:
+        pending = [t for t in _PENDING_AUDITS if not t.done()]
+        if not pending:
+            return
+        await asyncio.gather(*pending, return_exceptions=True)
 
 
 def _sse_frame(payload: dict) -> str:
@@ -807,6 +820,9 @@ async def _stream_turn(
     finally:
         # 消费端提前退出（客户端断连）：必须取消对话任务，否则 LLM 调用会跑到底白烧 token。
         # 先置 stopped 再取消：让 run_turn 的 finally 不再往无人消费的队列里塞哨兵。
+        # 注意：终态帧已在 ``try`` 内，正常走完时本 ``finally`` 会在终态 ``yield`` **之后**
+        # 执行（对话任务通常已 done，下面的 ``cancel`` 是空操作）；取消分支则在哨兵已置位
+        # 之后进入这里 —— 两种时序下都只需清场，不必再碰审计。
         stopped = True
         if not turn.done():
             turn.cancel()

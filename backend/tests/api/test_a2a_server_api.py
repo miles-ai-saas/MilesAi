@@ -24,7 +24,12 @@ AGENT_ID = uuid4()
 
 @pytest.fixture
 def as_a2a(api_app):
-    """装配 A2A 公开面测试：X-API-Key 鉴权替换为固定租户上下文，并清空 DB 替身。"""
+    """装配 A2A 公开面测试：X-API-Key 鉴权替换为固定租户上下文，并清空 DB 替身。
+
+    ``api_key_id`` 必须非空：生产里 X-API-Key 通道一定会带上凭证行 id（见
+    ``deps_api_auth.ctx_from_api_key``）。若默认成 ``None``，限流按 Key 维度永远不生效，
+    测试会把「限流不生效」写成默认态，掩盖真实接线缺陷。
+    """
     ctx = TenantContext(
         user_id=uuid4(),
         tenant_id=uuid4(),
@@ -32,6 +37,7 @@ def as_a2a(api_app):
         is_superuser=False,
         permissions=frozenset({"agent:read"}),
         auth_via="api_key",
+        api_key_id=uuid4(),
     )
 
     async def override_key() -> TenantContext:

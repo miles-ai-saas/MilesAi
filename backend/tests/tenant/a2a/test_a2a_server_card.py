@@ -1377,7 +1377,12 @@ async def test_handle_rpc_audits_unhandled_failure_then_reraises(a2a_audit_recor
         raise RuntimeError("engine unavailable")
 
     monkeypatch.setattr(server_svc, "load_published_agent", boom)
-    payload = {"jsonrpc": "2.0", "id": 1, "method": "message/send", "params": {"message": {"parts": [{"kind": "text", "text": "你好"}]}}}
+    payload = {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "message/send",
+        "params": {"message": {"contextId": "ctx-unhandled", "parts": [{"kind": "text", "text": "你好"}]}},
+    }
 
     with pytest.raises(RuntimeError):
         await server_svc.handle_a2a_rpc(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, payload, base_url=BASE)
@@ -1386,6 +1391,7 @@ async def test_handle_rpc_audits_unhandled_failure_then_reraises(a2a_audit_recor
     assert a2a_audit_recorder[0]["outcome"] == server_mod.AUDIT_OUTCOME_FAILED
     assert a2a_audit_recorder[0]["detail"]["errorCode"] == server_mod.INTERNAL_ERROR
     assert a2a_audit_recorder[0]["detail"]["method"] == "message/send"
+    assert a2a_audit_recorder[0]["detail"]["contextId"] == "ctx-unhandled"
 
 
 @pytest.mark.asyncio
@@ -1709,3 +1715,25 @@ async def test_stream_cancel_during_terminal_audit_keeps_exactly_one_record(monk
     await server_svc.drain_pending_audits()
 
     assert [r["outcome"] for r in recorded] == [server_mod.AUDIT_OUTCOME_OK]
+
+
+@pytest.mark.asyncio
+async def test_drain_pending_audits_returns_when_only_done_tasks_remain():
+    """集合里只剩「已完成、但 discard 回调尚未跑」的 task 时，drain 必须立刻返回。
+
+    ``asyncio.gather`` 对已 done 的 task **不会让出控制权**；若 ``while`` 仍以集合非空
+    为条件并 gather 全集，事件循环被占满，连外层 ``wait_for`` 超时都触发不了 —— CI 上
+    表现为本 suite 永久挂起。本用例把已完成 task 直接塞进集合（不挂 discard 回调，
+    模拟「回调还排在就绪队列」），断言 ``drain`` 在 1s 内返回。
+    """
+
+    async def _noop() -> None:
+        return None
+
+    done = asyncio.create_task(_noop())
+    await done
+    server_svc._PENDING_AUDITS.add(done)
+    try:
+        await asyncio.wait_for(server_svc.drain_pending_audits(), timeout=1)
+    finally:
+        server_svc._PENDING_AUDITS.discard(done)
