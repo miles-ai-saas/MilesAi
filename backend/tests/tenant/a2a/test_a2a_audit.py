@@ -176,3 +176,33 @@ async def test_audit_commit_error_never_breaks_caller(monkeypatch):  # noqa: ANN
     await audit_mod.write_a2a_audit(ctx=_ctx(), agent_id=AGENT_ID, action=server_mod.AUDIT_ACTION_TASKS_GET, outcome=server_mod.AUDIT_OUTCOME_OK)
 
     assert session.closed == 1
+
+
+@pytest.mark.asyncio
+async def test_audit_canonical_fields_win_over_detail(monkeypatch):  # noqa: ANN001
+    """``outcome`` / ``apiKeyId`` 由写入器自己决定：调用方塞进 ``detail`` 也不能覆盖。
+
+    否则「结果」这个审计口径可以被调用点随手改写，筛选出来的流水就没法信。
+    """
+    session = _FakeSession()
+    written: list[dict] = []
+    monkeypatch.setattr(audit_mod, "AsyncSessionLocal", lambda: session)
+
+    async def fake_write(_db, ctx, **kwargs):  # noqa: ANN001, ANN003
+        written.append({"ctx": ctx, **kwargs})
+
+    monkeypatch.setattr(audit_mod, "write_tenant_audit_log", fake_write)
+    ctx = _ctx()
+
+    await audit_mod.write_a2a_audit(
+        ctx=ctx,
+        agent_id=AGENT_ID,
+        action=server_mod.AUDIT_ACTION_MESSAGE_SEND,
+        outcome=server_mod.AUDIT_OUTCOME_FAILED,
+        detail={"outcome": "ok", "apiKeyId": "伪造", "method": "message/send"},
+    )
+
+    assert written[0]["detail"]["outcome"] == server_mod.AUDIT_OUTCOME_FAILED
+    assert written[0]["detail"]["apiKeyId"] == str(ctx.api_key_id)
+    # detail 里的业务字段仍要原样保留，只有 canonical 两个键受保护
+    assert written[0]["detail"]["method"] == "message/send"
