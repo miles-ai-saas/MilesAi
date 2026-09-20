@@ -326,7 +326,7 @@ EOF
 **Files:**
 - Create: `backend/packages/miles-portal/src/miles_portal/tenant/generative/services/job_watch.py`
 - Modify: `backend/packages/miles-portal/src/miles_portal/tenant/generative/services/job.py:344-399`
-- Test: `backend/tests/tenant/generative/test_job_watch.py`（新建）
+- Test: `backend/tests/tenant/generative/test_generative_job_watch.py`（新建）
 - 回归：`backend/tests/tenant/generative/test_job_stream_events.py`（**不改一行**）
 
 **Interfaces:**
@@ -344,7 +344,7 @@ cd backend && uv run python -m pytest -q tests/tenant/generative/test_job_stream
 
 - [ ] **Step 2: 写失败测试**
 
-新建 `backend/tests/tenant/generative/test_job_watch.py`：
+新建 `backend/tests/tenant/generative/test_generative_job_watch.py`：
 
 ```python
 """``watch_generative_job`` 单元测试：注入式接口（不碰真 Redis / 不碰真 DB）。
@@ -377,6 +377,16 @@ def _job(status: str, **overrides):  # noqa: ANN202
     return SimpleNamespace(**base)
 
 
+class _PollOverflow(BaseException):
+    """轮询次数超限的守卫异常。
+
+    必须继承 ``BaseException`` 而非 ``AssertionError``：``watch_generative_job`` 的宽
+    ``except Exception`` 是有意的 Redis 降级路径，``AssertionError``（``Exception`` 子类）
+    会被它吞掉并转入 DB 回退 —— 守卫实际变成「把 bug 变成降级路径」，用例仍会假通过
+    （例如 Pub/Sub 循环无界时，兜底终查兜住了本应失败的断言）。
+    """
+
+
 class _FakePubSub:
     """假 pubsub：每次 poll 把时钟推进 ``timeout`` 秒，等价于「一次阻塞轮询 = 那么长时间」。"""
 
@@ -395,7 +405,7 @@ class _FakePubSub:
         self.timeouts.append(timeout)
         self.polls += 1
         if self.polls > self._max_polls:
-            raise AssertionError(f"轮询次数超限（>{self._max_polls}）：循环未受上限约束")
+            raise _PollOverflow(f"轮询次数超限（>{self._max_polls}）：循环未受上限约束")
         self._clock["t"] += timeout or 0.0
         return self._messages.pop(0) if self._messages else None
 
@@ -552,7 +562,7 @@ async def test_unsubscribe_failure_is_swallowed(env):  # noqa: ANN001
 - [ ] **Step 3: 跑测试确认失败**
 
 ```bash
-cd backend && uv run python -m pytest -q tests/tenant/generative/test_job_watch.py
+cd backend && uv run python -m pytest -q tests/tenant/generative/test_generative_job_watch.py
 ```
 
 预期：`ModuleNotFoundError: No module named 'miles_portal.tenant.generative.services.job_watch'`。
@@ -722,7 +732,7 @@ from miles_portal.tenant.generative.services.job_watch import watch_generative_j
 cd backend && uv run python -m pytest -q tests/tenant/generative/
 ```
 
-预期：`test_job_watch.py` 与 `test_job_stream_events.py`（13 条，**未改动**）全绿。
+预期：`test_generative_job_watch.py` 与 `test_job_stream_events.py`（13 条，**未改动**）全绿。
 
 - [ ] **Step 7: 确认新模块被引用（守卫测试）**
 
@@ -735,7 +745,7 @@ cd backend && uv run python -m pytest -q tests/test_no_unreferenced_modules.py
 - [ ] **Step 8: 提交**
 
 ```bash
-cd backend && git add packages/miles-portal/src/miles_portal/tenant/generative/services/job_watch.py packages/miles-portal/src/miles_portal/tenant/generative/services/job.py tests/tenant/generative/test_job_watch.py
+cd backend && git add packages/miles-portal/src/miles_portal/tenant/generative/services/job_watch.py packages/miles-portal/src/miles_portal/tenant/generative/services/job.py tests/tenant/generative/test_generative_job_watch.py
 git commit -F - <<'EOF'
 refactor(generative): 抽出共用的生成任务订阅循环
 
@@ -962,7 +972,7 @@ EOF
 ```python
 """A2A ``tasks/resubscribe`` 服务层：帧序列、去重、安全上限、断连留痕。
 
-只覆盖订阅用例本身：订阅循环在 ``tests/tenant/generative/test_job_watch.py``，
+只覆盖订阅用例本身：订阅循环在 ``tests/tenant/generative/test_generative_job_watch.py``，
 纯逻辑在 ``test_a2a_server_card.py``。此处把 watcher 换成脚本化假实现，
 从而精确控制「第几帧发生什么」。
 """
@@ -971,6 +981,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 from types import SimpleNamespace
 from uuid import uuid4
 
@@ -1149,9 +1160,7 @@ async def test_preflight_rejects_foreign_or_missing_task_with_task_not_found(aud
 
     monkeypatch.setattr(server_svc, "get_generative_job_for_tenant", _missing)
 
-    missing = await subscription_svc.open_task_subscription(
-        _Db(agent=_agent()), _ctx(), AGENT_ID, _params(task_id=uuid4()), base_url=BASE
-    )
+    missing = await subscription_svc.open_task_subscription(_Db(agent=_agent()), _ctx(), AGENT_ID, _params(task_id=uuid4()), base_url=BASE)
     assert isinstance(missing, dict)
     assert missing["error"]["code"] == server_mod.TASK_NOT_FOUND
     assert len(audit_recorder) == 2
@@ -1276,6 +1285,26 @@ async def test_safety_cap_closes_with_real_state_and_final(monkeypatch, audit_re
     await audit_svc.drain_pending_audits()
     assert audit_recorder[0]["detail"]["endedBy"] == "safety-cap"
     assert audit_recorder[0]["outcome"] == server_mod.AUDIT_OUTCOME_OK
+
+
+@pytest.mark.asyncio
+async def test_safety_cap_logs_warning_for_diagnosability(monkeypatch, caplog, owned_job):  # noqa: ANN001
+    """30 分钟上限是对规范的有意偏离：审计行只在租户审计页可见，故日志侧也必须留痕，
+    否则「病态任务占住连接半小时」在运维侧完全不可见。"""
+    monkeypatch.setattr(subscription_svc, "watch_generative_job", _scripted([owned_job(_job("pending"))]))
+
+    with caplog.at_level(logging.WARNING, logger="miles_portal.tenant.a2a.services.subscription"):
+        opened = await subscription_svc.open_task_subscription(_Db(agent=_agent()), _ctx(), AGENT_ID, _params(), base_url=BASE)
+        await _json_frames(opened)
+
+    records = [r for r in caplog.records if r.name == "miles_portal.tenant.a2a.services.subscription"]
+    # 恰好一条：正常收流路径只此一处 warning，多一条就说明有新噪音
+    assert len(records) == 1
+    assert records[0].levelno == logging.WARNING
+    # 关键定位字段齐全（agent_id / task_id 至少要有）
+    assert str(AGENT_ID) in records[0].getMessage()
+    assert str(JOB_ID) in records[0].getMessage()
+    assert "安全上限" in records[0].getMessage()
 
 
 @pytest.mark.asyncio
@@ -1620,9 +1649,7 @@ async def _subscription_frames(
                     # 订阅时已终态：产物直接挂首帧（一帧讲完整段故事）；否则本次订阅期间产出的
                     # 走 artifact-update 帧，同一产物不在一条流里出现两次。
                     artifacts=(
-                        build_a2a_artifacts(job_result=first.result, agent_id=agent_id, task_id=job_id, base_url=base_url)
-                        if terminal_at_subscribe
-                        else None
+                        build_a2a_artifacts(job_result=first.result, agent_id=agent_id, task_id=job_id, base_url=base_url) if terminal_at_subscribe else None
                     ),
                 ),
             )
@@ -1683,6 +1710,15 @@ async def _subscription_frames(
             )
         # 循环结束仍未见终态：安全上限（设计 §3.5）。状态取断点时的**真实**映射值，
         # 不谎报成 completed —— 对端据此决定是否再订阅一次。
+        # 必须留 warning：30 分钟上限是对规范的有意偏离，审计行只在租户审计页可见，
+        # 不落日志就等于「病态任务占住连接半小时」在运维侧完全不可见。只记元数据。
+        logger.warning(
+            "A2A tasks/resubscribe 触达安全上限，按当前状态收流 (agent_id=%s task_id=%s state=%s max_seconds=%s)",
+            agent_id,
+            task_id,
+            latest_state,
+            SUBSCRIPTION_MAX_SECONDS,
+        )
         schedule_audit_once(AUDIT_OUTCOME_OK, ended_by="safety-cap", task_state=latest_state)
         yield status_frame(
             state=latest_state,
@@ -1723,6 +1759,10 @@ cd backend && uv run python -m pytest -q tests/tenant/a2a/test_a2a_task_resubscr
 @pytest.mark.asyncio
 async def test_first_item_tick_closes_stream_with_failed_audit(monkeypatch, audit_recorder, owned_job):  # noqa: ANN001
     """契约被改坏（首产出竟是空闲刻度）时按失败收尾：不成空流、不变成 500。"""
+    # ``owned_job`` 是工厂式 fixture：不调用就只是**声明**了它，归属校验的 patch 不会落下，
+    # 前置校验会拿假 DB 去撞真实取数。此处调用只为让前置校验通过（该任务快照本身用不到，
+    # 脚本第一个产出是空闲刻度）。
+    owned_job(_job("running"))
     monkeypatch.setattr(subscription_svc, "watch_generative_job", _scripted([None]))
 
     opened = await subscription_svc.open_task_subscription(_Db(agent=_agent()), _ctx(), AGENT_ID, _params(), base_url=BASE)
@@ -1764,7 +1804,7 @@ EOF
 - Modify: `backend/packages/miles-portal/src/miles_portal/tenant/audit_log/meta.py:42`
 - Modify: `backend/tests/tenant/a2a/test_a2a_audit.py`（两处动作集合）
 - Test: `backend/tests/api/test_a2a_server_api.py`
-- Modify: `backend/openapi.snapshot.json`（视图 docstring 变更导致快照漂移）
+- Modify: `backend/openapi/openapi.snapshot.json`（视图 docstring 变更导致快照漂移）
 
 **Interfaces:**
 - Consumes: Task 4 的 `open_task_subscription`、Task 1 的 `AUDIT_ACTION_TASKS_RESUBSCRIBE`
@@ -1957,10 +1997,10 @@ cd backend && uv run python -m miles_server.scripts.export_openapi --check
 预期：报漂移（`a2a_jsonrpc` 的 docstring 进了 OpenAPI description）。确认漂移只涉及该路由的描述后重写：
 
 ```bash
-cd backend && uv run python -m miles_server.scripts.export_openapi --write && git diff --stat openapi.snapshot.json
+cd backend && uv run python -m miles_server.scripts.export_openapi --write && git diff --stat openapi/openapi.snapshot.json
 ```
 
-预期：只有 `openapi.snapshot.json` 变更，且 diff 只含 `a2a_jsonrpc` 描述文字。
+预期：只有 `openapi/openapi.snapshot.json` 变更，且 diff 只含 `a2a_jsonrpc` 描述文字。
 
 - [ ] **Step 7: 全后端回归 + 提交**
 
@@ -1971,7 +2011,7 @@ cd backend && uv run python -m pytest -q && uv run ruff check . && uv run ruff f
 预期：全绿、无 lint / 格式问题。
 
 ```bash
-cd backend && git add packages/miles-openapi/src/miles_openapi/views/a2a_server.py packages/miles-portal/src/miles_portal/tenant/audit_log/meta.py tests/api/test_a2a_server_api.py tests/tenant/a2a/test_a2a_audit.py openapi.snapshot.json
+cd backend && git add packages/miles-openapi/src/miles_openapi/views/a2a_server.py packages/miles-portal/src/miles_portal/tenant/audit_log/meta.py tests/api/test_a2a_server_api.py tests/tenant/a2a/test_a2a_audit.py openapi/openapi.snapshot.json
 git commit -F - <<'EOF'
 feat(a2a): 接线 tasks/resubscribe 并登记审计动作
 
@@ -2111,3 +2151,21 @@ EOF
 - [ ] 一次调用恰好一条审计流水（终态 / 上限 / 断连 / 前置失败各覆盖）
 - [ ] `test_job_stream_events.py` 13 条一字未改仍全绿
 - [ ] 五道质量门全绿；`docs/` 无过期的「未实现」表述
+
+---
+
+## 终审遗留（有意不在本支线处理）
+
+全支线终审判定为「无 Critical」。以下两项是**既有**问题，本支线只修掉了它的订阅侧，其余留待排期——写在这里以免只存在于评审记录里。
+
+### 1. `tasks/get` / `tasks/cancel` 仍以平台信封 403 逃逸
+
+三个同族方法都走 `load_owned_agent_task` → `assert_tenant_access`，外租户 job id 会抛 `ForbiddenError`。本支线只把 `tasks/resubscribe` 收敛成 `-32001` + 留痕，另两个仍回非 JSON-RPC 的 HTTP 403：既违背本端点「协议级错误一律回 JSON-RPC 信封」的契约，又让 403 与 `-32001` 可区分，等于留了一个「任务是否存在」的探测 oracle（它们至少经 `handle_a2a_rpc` 兜底留痕）。
+
+**代价与取舍**：`tasks/resubscribe` 若不收敛，对端在**开流前**拿到 403、解析器无从把错误对回 `id`，且当时零审计，比另两个更重，故本支线只收了它。收口另两个时请一并处理，避免同族方法口径继续分裂。
+
+### 2. 30 分钟上限只有时长维度，没有并发上限
+
+限流是**每分钟**粒度，没有任何「同时开着几条订阅流」的约束：单 API Key 只要按额度持续重连，就能长期挂住任意多条流——每条 = 1 个 Redis Pub/Sub 连接 + 每 2s 一次短开短关的 DB 查询（1800 条 ≈ 900 QPS），量级是 `message/stream`（120s 上限）不存在的。
+
+**加固方向**：在风控里加一条按 API Key 的**并发流**上限（不要靠缩短 30 分钟——那会削掉本特性「续播长任务」的价值），或在运维指南写明建议上限。设计 §6「连接占用」只覆盖了 DB 连接，未覆盖并发流的累积。

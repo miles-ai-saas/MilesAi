@@ -33585,7 +33585,7 @@
     },
     "/api/v1/open/a2a/agents/{agent_id}": {
       "post": {
-        "description": "A2A JSON-RPC 端点（``message/send`` / ``message/stream`` / ``tasks/*``）。\n\n``message/stream`` 按 A2A 约定走 SSE，与其它方法共用同一 URL；请求体非 JSON 时回\n-32700 信封。前置校验失败的流式请求回普通 JSON，不进入 SSE。\n\n限流在鉴权之后、分发之前：维度取 API Key 行 id（见 ``services.limits``）。超限回\nHTTP 429 + ``Retry-After``，正文仍是 JSON-RPC 错误信封（``-32000``）—— 外部客户端\n按 JSON-RPC 解析，且只有它能把错误对回自己的 ``id``。流式请求也在这里被拦下，\n避免响应头已写成 ``text/event-stream`` 后无处安放状态码。",
+        "description": "A2A JSON-RPC 端点（``message/send`` / ``message/stream`` / ``tasks/*``）。\n\n``message/stream`` 与 ``tasks/resubscribe`` 按 A2A 约定走 SSE，与其它方法共用同一 URL；\n请求体非 JSON 时回 -32700 信封。前置校验失败的流式请求回普通 JSON，不进入 SSE。\n\n限流在鉴权之后、分发之前：维度取 API Key 行 id（见 ``services.limits``）。超限回\nHTTP 429 + ``Retry-After``，正文仍是 JSON-RPC 错误信封（``-32000``）—— 外部客户端\n按 JSON-RPC 解析，且只有它能把错误对回自己的 ``id``。流式请求也在这里被拦下，\n避免响应头已写成 ``text/event-stream`` 后无处安放状态码。",
         "operationId": "a2a_jsonrpc_api_v1_open_a2a_agents__agent_id__post",
         "parameters": [
           {

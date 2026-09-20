@@ -95,8 +95,9 @@ JSON-RPC 方法：
 | `message/stream` | 流式对话（响应 `Content-Type: text/event-stream`）。首帧 `Task(working)`，中间帧 `status-update` 携增量文本，末帧 `status-update` 带 `final=true` 与完整回答 |
 | `tasks/get` | `params.id` 查生成任务状态，映射为 A2A `TaskState`；成功时附 `Task.artifacts`（产物下载地址） |
 | `tasks/cancel` | 取消未结束的生成任务；已结束回 `-32002`（Task not cancelable），不属于该智能体回 `-32001`（Task not found） |
+| `tasks/resubscribe` | 续播未结束生成任务的进度（SSE）。首帧 `Task`、其后只在状态/进度变化时发 `status-update`，空闲发保活注释帧，终态前补 `artifact-update`。`params.id` 必须是真的生成任务 id |
 
-`tasks/resubscribe`、`tasks/pushNotificationConfig/*` 未实现，一律回 `-32601`（不静默成功）。
+`tasks/pushNotificationConfig/*` 未实现，回 `-32601`（不静默成功）。
 
 任务归属：`tasks/get` / `tasks/cancel` / 产物下载都校验「该任务由本智能体发起」（job 的 `source_ref_type=agent` + `source_ref_id=agent_id`），不属于则回 404 / `-32001` 而非 403 —— 不向对端确认任务是否存在。若只按租户校验，同租户另一个智能体的 key 就能查/取消本智能体任务并猜到其产物地址。
 
@@ -117,6 +118,20 @@ Card 同时声明 `securitySchemes`（`apiKey` · `in: header` · `name: X-API-K
 **流式语义（`message/stream`）：** 每帧是完整 JSON-RPC 成功信封，`result` 依次是 `Task` → `status-update`（`final=false`，`status.message.parts[].text` 为本片增量）→ `status-update`（`final=true`，`status.message` 带完整回答，便于对端从丢帧中补全）。`final=true` 只表示本流结束，**不等于**任务终态。
 
 流式任务的 `taskId` 是合成的、不落库：`final=true` 已给出终态，之后无需再 `tasks/get`（拿该 id 去查会回 `-32001`）。本轮若产生异步生成任务，末帧以 `working` + `final=true` 收尾，并在 `status.message.metadata.a2aJobTaskId` 给出**真实 job id** —— 对端据此转向 `tasks/get` 轮询状态与产物。
+
+**订阅语义（`tasks/resubscribe`）：** 用于对端断连后接回未结束的生成任务。`params.id` 只接受
+真的生成任务 id（`message/stream` 的合成 `taskId` 不落库，拿它来订阅回 `-32001`）。
+
+帧序列：首帧 `Task`（即当前快照）→ 状态或进度变化时的 `status-update`（`final=false`，
+进度文字在 `status.message.parts[].text`、百分比在 `status.message.metadata.percent`）→
+任务转入终态时先逐条 `artifact-update`、再一帧 `final=true` 收流。订阅时任务**已**终态则产物
+直接挂在首帧上，不发 `artifact-update`。
+
+- **空闲即保活**：没有新状态时下发的也是 `status-update` 之外的 SSE 注释帧 `: ping`，约每 2 秒一次。
+- **不回填断连期间的事件**：只发订阅之后的新事件；首帧快照足以让对端对齐当前进度（规范把「是否回填」留给实现自定）。
+- **安全上限 30 分钟**：逾期仍未终态则以任务当前**真实状态** + `final=true` 收流（规范要求流在 interrupted/terminal 结束，此处是有意偏离）—— 对端可据此再订阅一次。
+- **`contextId` 可能缺失**：规范把 `TaskStatusUpdateEvent.contextId` 标为必填，本平台沿用 `Task.contextId` 的既有口径（解析不到就省略，不塞空串冒充标识），故对端必须容忍无该字段的帧。
+- **审计**：`detail.endedBy` 为 `terminal` / `safety-cap` / `disconnect` / `failed`；`detail.taskState` 为收流时的 A2A 状态（任务被取消时是 `canceled`，此时 `outcome` 仍是 `ok` —— `canceled` 这一 outcome 专指对端断连）。
 
 **对端消费方式（重要）：** 中间帧的 `status.message` 是**增量**（每帧 `messageId` 都不同，不做聚合去重），用于逐字渲染；末帧 `status.message` 是**完整回答**，用于纠偏 —— 别把末帧全文再当一条新消息追加，否则回答会渲染两遍。`rejected` / `failed` 终态帧只带原因、不带已产出部分：此时应**保留**先前增量已渲染的部分回答，把错误原因另起一行展示（不要用原因替换掉它）。
 
@@ -172,6 +187,7 @@ Retry-After: 12
 | `a2a.message.stream` | `message/stream`：终态、对端断连、或前置校验失败（`failed`，不开流）各记一次 |
 | `a2a.tasks.get` | `tasks/get` |
 | `a2a.tasks.cancel` | `tasks/cancel` |
+| `a2a.tasks.resubscribe` | `tasks/resubscribe`：终态收流、30 分钟上限、对端断连、前置校验失败各记一次 |
 | `a2a.artifact.download` | 产物下载 |
 
 记录内容为「谁（`apiKeyId`）在何时以何结果（`outcome`：`ok` / `rejected` / `failed` /
@@ -184,6 +200,6 @@ Retry-After: 12
 
 ## 待做
 
-- `tasks/resubscribe` 与 `tasks/pushNotificationConfig/*`（现回方法未找到）
+- `tasks/pushNotificationConfig/*`（现回方法未找到）
 - 多模态入站：`parts` 的 `file` / `data` 类型（现仅取 `text`）
 - A2A v1.0 迁移：PascalCase 方法名、去 `kind` 换成员名包装、`TASK_STATE_*` 取值

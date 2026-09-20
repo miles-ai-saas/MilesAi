@@ -12,6 +12,7 @@ import asyncio
 import contextlib
 import inspect
 import json
+from datetime import datetime, timedelta
 from types import SimpleNamespace
 from uuid import uuid4
 
@@ -27,6 +28,7 @@ from miles_portal.tenant.a2a.server import (
     a2a_task_artifact_path,
     artifact_ids_from_job_result,
     build_a2a_agent_message,
+    build_a2a_artifact_update,
     build_a2a_artifacts,
     build_a2a_status_update,
     build_a2a_task,
@@ -35,11 +37,16 @@ from miles_portal.tenant.a2a.server import (
     extract_message_text,
     is_active_generative_status,
     is_publish_enabled,
+    is_terminal_generative_status,
     jsonrpc_error,
     jsonrpc_result,
+    now_iso,
+    progress_text,
     to_a2a_task_state,
 )
+from miles_portal.tenant.a2a.services import audit as audit_svc
 from miles_portal.tenant.a2a.services import server as server_svc
+from miles_portal.tenant.a2a.services import streaming as streaming_svc
 
 AGENT_ID = uuid4()
 BASE = "https://miles.example.com"
@@ -392,6 +399,82 @@ def test_jsonrpc_error_carries_optional_data():
 def test_rate_limited_code_is_in_implementation_defined_range():
     """``-32000`` 属规范保留给实现自定义的服务端错误区间（本实现已占 ``-32001`` / ``-32002``）。"""
     assert server_mod.RATE_LIMITED == -32000
+
+
+def test_is_terminal_generative_status_only_accepts_known_terminal():
+    """未知状态不当作已结束：与 ``to_a2a_task_state`` 回 ``unknown``（而非 ``completed``）同一原则。"""
+    assert is_terminal_generative_status("success") is True
+    assert is_terminal_generative_status("failed") is True
+    assert is_terminal_generative_status("cancelled") is True
+    assert is_terminal_generative_status("running") is False
+    assert is_terminal_generative_status("pending") is False
+    assert is_terminal_generative_status("some-new-state") is False
+    assert is_terminal_generative_status(None) is False
+
+
+def test_is_active_generative_status_is_the_negation_of_terminal():
+    """既有判据改为由 ``is_terminal`` 反推：语义逐字不变（含未知状态与 None）。"""
+    for status in ("success", "failed", "cancelled", "running", "pending", "some-new-state", None, 3):
+        assert is_active_generative_status(status) is (not is_terminal_generative_status(status))
+
+
+def test_progress_text_prefers_task_message_then_percent():
+    assert progress_text(progress_message="45% 渲染中", percent=45) == "45% 渲染中"
+    assert progress_text(progress_message="  45% 渲染中  ", percent=45) == "45% 渲染中"
+    assert progress_text(progress_message=None, percent=45) == "45%"
+    # 两者皆无回 None：调用方据此不附 status.message，而不是塞空串冒充进度
+    assert progress_text(progress_message=None, percent=None) is None
+    assert progress_text(progress_message="   ", percent=None) is None
+    # isinstance(True, int) 为真：不挡布尔会拼出 "True%" 这种脏值
+    assert progress_text(progress_message=None, percent=True) is None
+
+
+def test_build_a2a_artifact_update_shape():
+    artifact = {"artifactId": "a1", "parts": [{"kind": "file", "file": {"uri": "https://x/y"}}]}
+
+    event = build_a2a_artifact_update(task_id="t1", context_id="c1", artifact=artifact)
+
+    assert event["kind"] == "artifact-update"
+    assert event["taskId"] == "t1"
+    assert event["contextId"] == "c1"
+    assert event["artifact"] == artifact
+    assert event["lastChunk"] is True
+
+
+def test_build_a2a_artifact_update_omits_absent_context_id():
+    """contextId 解析不到就省略：塞空串会让对端拿到一个假的上下文标识（对规范必填要求的有意偏离）。"""
+    event = build_a2a_artifact_update(task_id="t1", context_id=None, artifact={"artifactId": "a1"}, last_chunk=False)
+
+    assert "contextId" not in event
+    assert event["lastChunk"] is False
+
+
+def test_build_a2a_status_update_omits_absent_context_id():
+    event = build_a2a_status_update(task_id="t1", context_id=None, state="working", timestamp="T", text="写点什么")
+
+    assert "contextId" not in event
+    assert "contextId" not in event["status"]["message"]
+
+
+def test_build_a2a_status_update_carries_percent_beside_job_task_id():
+    event = build_a2a_status_update(
+        task_id="t1",
+        context_id="c1",
+        state="working",
+        timestamp="T",
+        text="45%",
+        percent=45,
+        job_task_id="job-9",
+    )
+
+    assert event["status"]["message"]["metadata"] == {"a2aJobTaskId": "job-9", "percent": 45}
+
+
+def test_now_iso_is_utc_iso8601():
+    parsed = datetime.fromisoformat(now_iso())
+
+    assert parsed.tzinfo is not None
+    assert parsed.utcoffset() == timedelta(0)
 
 
 # --- 2. 服务：发布门槛 --------------------------------------------------------
@@ -814,8 +897,8 @@ async def test_tasks_cancel_hides_task_of_other_agent(monkeypatch):  # noqa: ANN
 
 @pytest.mark.asyncio
 async def test_unimplemented_task_method_is_method_not_found():
-    """``tasks/resubscribe`` 等未实现方法一律方法未找到，不静默成功。"""
-    payload = {"jsonrpc": "2.0", "id": 1, "method": "tasks/resubscribe", "params": {"id": str(uuid4())}}
+    """``tasks/pushNotificationConfig/get`` 等未实现方法一律方法未找到，不静默成功。"""
+    payload = {"jsonrpc": "2.0", "id": 1, "method": "tasks/pushNotificationConfig/get", "params": {"id": str(uuid4())}}
     envelope = await server_svc.handle_a2a_rpc(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, payload, base_url=BASE)
     assert envelope["error"]["code"] == server_mod.METHOD_NOT_FOUND
 
@@ -1117,7 +1200,7 @@ async def test_open_stream_maps_compliance_block_to_rejected(a2a_audit_recorder,
     assert last["status"]["state"] == "rejected"
     assert "敏感词" in last["status"]["message"]["parts"][0]["text"]
     assert session.rolled_back == 1
-    await server_svc.drain_pending_audits()
+    await audit_svc.drain_pending_audits()
     assert [r["outcome"] for r in a2a_audit_recorder] == [server_mod.AUDIT_OUTCOME_REJECTED]
 
 
@@ -1266,7 +1349,7 @@ async def test_open_stream_emits_heartbeat_while_waiting_for_first_delta(monkeyp
     这正是这条的必要性所在，对端拿不到心跳只能判定连接已死。
     """
     _patch_session(monkeypatch, _FakeSession())
-    monkeypatch.setattr(server_svc, "SSE_HEARTBEAT_SECONDS", 0.01, raising=False)
+    monkeypatch.setattr(streaming_svc, "SSE_HEARTBEAT_SECONDS", 0.01)
 
     async def fake_chat(_db, _ctx, _agent_id, _text, conversation_id=None, on_delta=None):  # noqa: ANN001
         await asyncio.sleep(0.05)
@@ -1357,7 +1440,7 @@ async def test_handle_rpc_audits_failure_with_error_code(a2a_audit_recorder):  #
 @pytest.mark.asyncio
 async def test_handle_rpc_does_not_audit_unsupported_method(a2a_audit_recorder):  # noqa: ANN001
     """不支持的方法没有对应动作名，不编造流水。"""
-    payload = {"jsonrpc": "2.0", "id": 1, "method": "tasks/resubscribe", "params": {}}
+    payload = {"jsonrpc": "2.0", "id": 1, "method": "tasks/pushNotificationConfig/get", "params": {}}
 
     await server_svc.handle_a2a_rpc(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, payload, base_url=BASE)
 
@@ -1405,7 +1488,7 @@ async def test_stream_final_frame_audits_completed(a2a_audit_recorder, monkeypat
     stream = await server_svc.open_a2a_stream(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, _stream_params())
     await _collect(stream)
     # 审计调度是同步的，但写入跑在独立 task 里：断言前必须让它落地，不可用裸 ``sleep``。
-    await server_svc.drain_pending_audits()
+    await audit_svc.drain_pending_audits()
 
     assert [r["action"] for r in a2a_audit_recorder] == [server_mod.AUDIT_ACTION_MESSAGE_STREAM]
     assert a2a_audit_recorder[0]["outcome"] == server_mod.AUDIT_OUTCOME_OK
@@ -1429,7 +1512,7 @@ async def test_stream_disconnect_audits_canceled(a2a_audit_recorder, monkeypatch
     assert await anext(stream)  # 首帧 Task
     assert await anext(stream)  # 增量帧
     await stream.aclose()
-    await server_svc.drain_pending_audits()
+    await audit_svc.drain_pending_audits()
 
     assert [r["outcome"] for r in a2a_audit_recorder] == [server_mod.AUDIT_OUTCOME_CANCELED]
     assert a2a_audit_recorder[0]["action"] == server_mod.AUDIT_ACTION_MESSAGE_STREAM
@@ -1580,7 +1663,7 @@ async def test_stream_consumer_task_cancel_audits_canceled(a2a_audit_recorder, m
         await consumer
 
     # 留痕由脱离取消作用域的独立 task 写，完成时刻晚于 cancel()，故等它落地。
-    await server_svc.drain_pending_audits()
+    await audit_svc.drain_pending_audits()
     assert [r["outcome"] for r in a2a_audit_recorder] == [server_mod.AUDIT_OUTCOME_CANCELED]
     assert a2a_audit_recorder[0]["action"] == server_mod.AUDIT_ACTION_MESSAGE_STREAM
     assert a2a_audit_recorder[0]["detail"]["method"] == "message/stream"
@@ -1617,7 +1700,7 @@ async def test_stream_cancel_audit_survives_repeated_cancellation(a2a_audit_reco
         await asyncio.sleep(0)
 
     assert consumer.cancelled()
-    await server_svc.drain_pending_audits()
+    await audit_svc.drain_pending_audits()
     assert [r["outcome"] for r in a2a_audit_recorder] == [server_mod.AUDIT_OUTCOME_CANCELED]
 
 
@@ -1650,7 +1733,7 @@ async def test_stream_disconnect_under_cancel_scope_audits_canceled(a2a_audit_re
         task_group.cancel_scope.cancel()
 
     # 留痕由脱离取消作用域的独立 task 写，完成时刻晚于取消，故等它落地。
-    await server_svc.drain_pending_audits()
+    await audit_svc.drain_pending_audits()
     assert [r["outcome"] for r in a2a_audit_recorder] == [server_mod.AUDIT_OUTCOME_CANCELED]
     assert a2a_audit_recorder[0]["action"] == server_mod.AUDIT_ACTION_MESSAGE_STREAM
 
@@ -1669,7 +1752,7 @@ async def test_stream_terminal_frame_then_aclose_is_not_double_audited(a2a_audit
     assert await anext(stream)  # 首帧 Task
     assert await anext(stream)  # 终态帧：审计已调度，生成器仍挂在这个 yield 上
     await stream.aclose()
-    await server_svc.drain_pending_audits()
+    await audit_svc.drain_pending_audits()
 
     assert [r["outcome"] for r in a2a_audit_recorder] == [server_mod.AUDIT_OUTCOME_OK]
 
@@ -1712,7 +1795,7 @@ async def test_stream_cancel_during_terminal_audit_keeps_exactly_one_record(monk
         await consumer
 
     release.set()
-    await server_svc.drain_pending_audits()
+    await audit_svc.drain_pending_audits()
 
     assert [r["outcome"] for r in recorded] == [server_mod.AUDIT_OUTCOME_OK]
 
@@ -1732,8 +1815,8 @@ async def test_drain_pending_audits_returns_when_only_done_tasks_remain():
 
     done = asyncio.create_task(_noop())
     await done
-    server_svc._PENDING_AUDITS.add(done)
+    audit_svc._PENDING_AUDITS.add(done)
     try:
-        await asyncio.wait_for(server_svc.drain_pending_audits(), timeout=1)
+        await asyncio.wait_for(audit_svc.drain_pending_audits(), timeout=1)
     finally:
-        server_svc._PENDING_AUDITS.discard(done)
+        audit_svc._PENDING_AUDITS.discard(done)

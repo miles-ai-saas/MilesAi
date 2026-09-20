@@ -8,6 +8,9 @@
 
 from __future__ import annotations
 
+import asyncio
+from collections.abc import Coroutine
+from typing import Any
 from uuid import UUID
 
 from miles_core.infra.db import AsyncSessionLocal
@@ -46,3 +49,31 @@ async def write_a2a_audit(
             await db.commit()
     except Exception:
         logger.exception("A2A 审计写入失败: action=%s agent_id=%s", action, agent_id)
+
+
+#: 脱离取消作用域的审计写入 task 的强引用。
+#: 审计必须跑在独立 task 里（理由见 ``services/server.py`` 的 ``_stream_turn``）；不持有强引用
+#: 的话，task 可能在落库前被 GC 回收，留痕静默丢失。
+_PENDING_AUDITS: set[asyncio.Task] = set()
+
+
+def schedule_audit(coro: Coroutine[Any, Any, None]) -> None:
+    """把一次审计写入交给脱离调用方取消作用域的独立 task。**同步**，不 ``await``。"""
+    task = asyncio.create_task(coro)
+    _PENDING_AUDITS.add(task)
+    task.add_done_callback(_PENDING_AUDITS.discard)
+
+
+async def drain_pending_audits() -> None:
+    """等在飞的审计 task 全部落地（测试断言用）。
+
+    只 gather **未完成**的：``gather`` 对已 done 的 task 不会让出控制权；若集合里只剩
+    「已完成但 discard 回调尚未执行」的 task，纯靠 ``while 集合非空 + gather 全集`` 会占满
+    事件循环（连外层 ``wait_for`` 超时都触发不了）。未完成列表为空即返回 —— 已完成的会由
+    done 回调自行从集合剔除，不必在此强清。
+    """
+    while True:
+        pending = [t for t in _PENDING_AUDITS if not t.done()]
+        if not pending:
+            return
+        await asyncio.gather(*pending, return_exceptions=True)

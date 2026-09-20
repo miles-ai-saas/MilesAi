@@ -40,6 +40,7 @@ ACTION_FILTER_OPTIONS: list[tuple[str, str, str | None]] = [
     ("a2a.tasks.get", "A2A 查询任务", None),
     ("a2a.tasks.cancel", "A2A 取消任务", None),
     ("a2a.artifact.download", "A2A 下载任务产物", None),
+    ("a2a.tasks.resubscribe", "A2A 订阅任务更新", None),
     ("auth.login", "用户登录", None),
     ("user.create", "创建用户", None),
     ("user.update", "更新用户", None),
