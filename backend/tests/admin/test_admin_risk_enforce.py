@@ -1,5 +1,6 @@
 """平台风控运行时单元测试。"""
 
+import time
 from types import SimpleNamespace
 from uuid import uuid4
 
@@ -51,6 +52,16 @@ def _enforcer(monkeypatch, rules: list[object], redis: _FakeRedis) -> PlatformRi
     return PlatformRiskEnforcer()
 
 
+def _freeze_time(monkeypatch, now: float) -> None:  # noqa: ANN001
+    """冻结 ``enforce`` 用到的时钟。
+
+    整体换成只带 ``time`` 的 ``SimpleNamespace`` 会砸掉 ``_ensure_cache`` 的
+    ``time.monotonic()``（AttributeError），故补齐实际用到的两个成员，且只替换
+    ``enforce`` 模块持有的 ``time`` 名字、不动全局 ``time`` 模块。
+    """
+    monkeypatch.setattr(enforce_mod, "time", SimpleNamespace(time=lambda: now, monotonic=time.monotonic))
+
+
 def test_match_path_wildcard():
     enforcer = PlatformRiskEnforcer()
     assert enforcer._match_path("/api/v1/*", "/api/v1/auth/login") is True
@@ -82,6 +93,36 @@ async def test_api_key_scope_returns_hit_with_retry_after(monkeypatch):  # noqa:
     assert hit.limit_per_minute == 2
     # 固定窗口剩余秒数：至少 1 —— 回 0 等于让对端立刻重试，比不回更糟
     assert 1 <= hit.retry_after_seconds <= 60
+
+
+@pytest.mark.parametrize(
+    ("now", "expected_retry_after"),
+    [
+        # 窗口首刻：整个窗口都还没走，剩余即整窗 60 秒
+        (60.0, 60),
+        # 窗口中段：ceil(120 - 100.5) = 20
+        (100.5, 20),
+        # 窗口末刻：不足 1 秒也回 1 —— 回 0 等于让对端立刻重试，比不回更糟
+        (119.999, 1),
+    ],
+)
+@pytest.mark.asyncio
+async def test_retry_after_seconds_follows_window_boundary(monkeypatch, now, expected_retry_after):  # noqa: ANN001
+    """``retry_after_seconds`` 必须是「距窗口结束的剩余秒数」，而不是某个常量。
+
+    区间断言（``1 <= x <= 60``）区分不了真实计算与 ``x=30`` 之类的硬编码，故这里冻结
+    时钟取窗口首刻 / 中段 / 末刻三个精确值：任何不随窗口边界变化的取值都会失败。
+    """
+    _freeze_time(monkeypatch, now)
+    rule = _rule(scope="api_key", limit=1)
+    enforcer = _enforcer(monkeypatch, [rule], _FakeRedis())
+
+    path = "/api/v1/open/a2a/agents/x"
+    assert await enforcer.check_rate_limit(path, "key:k1", scope=RateLimitScope.API_KEY) is None
+    hit = await enforcer.check_rate_limit(path, "key:k1", scope=RateLimitScope.API_KEY)
+
+    assert hit is not None
+    assert hit.retry_after_seconds == expected_retry_after
 
 
 @pytest.mark.asyncio
