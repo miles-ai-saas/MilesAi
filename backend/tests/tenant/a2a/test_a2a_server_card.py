@@ -44,7 +44,9 @@ from miles_portal.tenant.a2a.server import (
     progress_text,
     to_a2a_task_state,
 )
+from miles_portal.tenant.a2a.services import audit as audit_svc
 from miles_portal.tenant.a2a.services import server as server_svc
+from miles_portal.tenant.a2a.services import streaming as streaming_svc
 
 AGENT_ID = uuid4()
 BASE = "https://miles.example.com"
@@ -1198,7 +1200,7 @@ async def test_open_stream_maps_compliance_block_to_rejected(a2a_audit_recorder,
     assert last["status"]["state"] == "rejected"
     assert "敏感词" in last["status"]["message"]["parts"][0]["text"]
     assert session.rolled_back == 1
-    await server_svc.drain_pending_audits()
+    await audit_svc.drain_pending_audits()
     assert [r["outcome"] for r in a2a_audit_recorder] == [server_mod.AUDIT_OUTCOME_REJECTED]
 
 
@@ -1347,7 +1349,7 @@ async def test_open_stream_emits_heartbeat_while_waiting_for_first_delta(monkeyp
     这正是这条的必要性所在，对端拿不到心跳只能判定连接已死。
     """
     _patch_session(monkeypatch, _FakeSession())
-    monkeypatch.setattr(server_svc, "SSE_HEARTBEAT_SECONDS", 0.01, raising=False)
+    monkeypatch.setattr(streaming_svc, "SSE_HEARTBEAT_SECONDS", 0.01)
 
     async def fake_chat(_db, _ctx, _agent_id, _text, conversation_id=None, on_delta=None):  # noqa: ANN001
         await asyncio.sleep(0.05)
@@ -1486,7 +1488,7 @@ async def test_stream_final_frame_audits_completed(a2a_audit_recorder, monkeypat
     stream = await server_svc.open_a2a_stream(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, _stream_params())
     await _collect(stream)
     # 审计调度是同步的，但写入跑在独立 task 里：断言前必须让它落地，不可用裸 ``sleep``。
-    await server_svc.drain_pending_audits()
+    await audit_svc.drain_pending_audits()
 
     assert [r["action"] for r in a2a_audit_recorder] == [server_mod.AUDIT_ACTION_MESSAGE_STREAM]
     assert a2a_audit_recorder[0]["outcome"] == server_mod.AUDIT_OUTCOME_OK
@@ -1510,7 +1512,7 @@ async def test_stream_disconnect_audits_canceled(a2a_audit_recorder, monkeypatch
     assert await anext(stream)  # 首帧 Task
     assert await anext(stream)  # 增量帧
     await stream.aclose()
-    await server_svc.drain_pending_audits()
+    await audit_svc.drain_pending_audits()
 
     assert [r["outcome"] for r in a2a_audit_recorder] == [server_mod.AUDIT_OUTCOME_CANCELED]
     assert a2a_audit_recorder[0]["action"] == server_mod.AUDIT_ACTION_MESSAGE_STREAM
@@ -1661,7 +1663,7 @@ async def test_stream_consumer_task_cancel_audits_canceled(a2a_audit_recorder, m
         await consumer
 
     # 留痕由脱离取消作用域的独立 task 写，完成时刻晚于 cancel()，故等它落地。
-    await server_svc.drain_pending_audits()
+    await audit_svc.drain_pending_audits()
     assert [r["outcome"] for r in a2a_audit_recorder] == [server_mod.AUDIT_OUTCOME_CANCELED]
     assert a2a_audit_recorder[0]["action"] == server_mod.AUDIT_ACTION_MESSAGE_STREAM
     assert a2a_audit_recorder[0]["detail"]["method"] == "message/stream"
@@ -1698,7 +1700,7 @@ async def test_stream_cancel_audit_survives_repeated_cancellation(a2a_audit_reco
         await asyncio.sleep(0)
 
     assert consumer.cancelled()
-    await server_svc.drain_pending_audits()
+    await audit_svc.drain_pending_audits()
     assert [r["outcome"] for r in a2a_audit_recorder] == [server_mod.AUDIT_OUTCOME_CANCELED]
 
 
@@ -1731,7 +1733,7 @@ async def test_stream_disconnect_under_cancel_scope_audits_canceled(a2a_audit_re
         task_group.cancel_scope.cancel()
 
     # 留痕由脱离取消作用域的独立 task 写，完成时刻晚于取消，故等它落地。
-    await server_svc.drain_pending_audits()
+    await audit_svc.drain_pending_audits()
     assert [r["outcome"] for r in a2a_audit_recorder] == [server_mod.AUDIT_OUTCOME_CANCELED]
     assert a2a_audit_recorder[0]["action"] == server_mod.AUDIT_ACTION_MESSAGE_STREAM
 
@@ -1750,7 +1752,7 @@ async def test_stream_terminal_frame_then_aclose_is_not_double_audited(a2a_audit
     assert await anext(stream)  # 首帧 Task
     assert await anext(stream)  # 终态帧：审计已调度，生成器仍挂在这个 yield 上
     await stream.aclose()
-    await server_svc.drain_pending_audits()
+    await audit_svc.drain_pending_audits()
 
     assert [r["outcome"] for r in a2a_audit_recorder] == [server_mod.AUDIT_OUTCOME_OK]
 
@@ -1793,7 +1795,7 @@ async def test_stream_cancel_during_terminal_audit_keeps_exactly_one_record(monk
         await consumer
 
     release.set()
-    await server_svc.drain_pending_audits()
+    await audit_svc.drain_pending_audits()
 
     assert [r["outcome"] for r in recorded] == [server_mod.AUDIT_OUTCOME_OK]
 
@@ -1813,8 +1815,8 @@ async def test_drain_pending_audits_returns_when_only_done_tasks_remain():
 
     done = asyncio.create_task(_noop())
     await done
-    server_svc._PENDING_AUDITS.add(done)
+    audit_svc._PENDING_AUDITS.add(done)
     try:
-        await asyncio.wait_for(server_svc.drain_pending_audits(), timeout=1)
+        await asyncio.wait_for(audit_svc.drain_pending_audits(), timeout=1)
     finally:
-        server_svc._PENDING_AUDITS.discard(done)
+        audit_svc._PENDING_AUDITS.discard(done)

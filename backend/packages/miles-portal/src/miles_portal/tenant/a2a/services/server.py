@@ -13,11 +13,8 @@ Card GET 无鉴权，仅由 ``config.a2a_publish`` 门槛约束可见性；调�
 from __future__ import annotations
 
 import asyncio
-import json
 import time
-from collections.abc import AsyncIterator, Coroutine
-from datetime import UTC, datetime
-from typing import Any
+from collections.abc import AsyncIterator
 from uuid import UUID, uuid4
 
 from sqlalchemy import select
@@ -66,9 +63,11 @@ from miles_portal.tenant.a2a.server import (
     is_publish_enabled,
     jsonrpc_error,
     jsonrpc_result,
+    now_iso,
     to_a2a_task_state,
 )
-from miles_portal.tenant.a2a.services.audit import write_a2a_audit
+from miles_portal.tenant.a2a.services import streaming
+from miles_portal.tenant.a2a.services.audit import schedule_audit, write_a2a_audit
 from miles_portal.tenant.attachments.services.attachment import AttachmentService
 from miles_portal.tenant.generative.services.job import GenerativeJobService
 from miles_portal.tenant.generative.services.job_execution import get_generative_job_for_tenant
@@ -195,7 +194,7 @@ async def run_published_agent_chat(
     return await AgentService(db, ctx).chat(agent_id, ChatRequest(query=text, conversation_id=conversation_id), on_delta=on_delta)
 
 
-def _context_id_from_job_params(params: object) -> str | None:
+def context_id_from_job_params(params: object) -> str | None:
     """从生成任务参数快照取会话标识，作为 ``Task.contextId`` 回给对端。
 
     委托 ``chat_artifact_sync`` 的同一解析（键约定只有一个来源），取不到则省略该字段。
@@ -203,11 +202,6 @@ def _context_id_from_job_params(params: object) -> str | None:
     from miles_portal.tenant.agents.services.chat_artifact_sync import conversation_id_from_job_params
 
     return conversation_id_from_job_params(params)
-
-
-def _now() -> str:
-    """A2A ``TaskStatus.timestamp``（ISO 8601 / UTC）。"""
-    return datetime.now(UTC).isoformat()
 
 
 def _first_active_job(jobs: list[dict]) -> dict | None:
@@ -256,13 +250,13 @@ async def _handle_message_send(
                 task_id=str(job.get("id")),
                 context_id=context_id,
                 state=to_a2a_task_state(str(job.get("status"))),
-                timestamp=_now(),
+                timestamp=now_iso(),
             ),
         )
     return jsonrpc_result(req_id, _agent_message(response.answer, context_id))
 
 
-def _parse_task_id(params: dict) -> UUID:
+def parse_task_id(params: dict) -> UUID:
     """取 ``tasks/*`` 的 ``params.id`` 并解析为 UUID；非法一律 ``BadRequestError``。"""
     raw = params.get("id")
     if not isinstance(raw, str) or not raw.strip():
@@ -273,7 +267,7 @@ def _parse_task_id(params: dict) -> UUID:
         raise BadRequestError("params.id 不是合法的任务 ID") from exc
 
 
-async def _load_owned_agent_task(
+async def load_owned_agent_task(
     db: AsyncSession,
     ctx: TenantContext,
     agent_id: UUID,
@@ -304,7 +298,7 @@ async def read_task_artifact(
     """
     started = time.monotonic()
     try:
-        job = await _load_owned_agent_task(db, ctx, agent_id, task_id)
+        job = await load_owned_agent_task(db, ctx, agent_id, task_id)
         if str(attachment_id) not in artifact_ids_from_job_result(job.result):
             raise NotFoundError("附件不是该任务的产物")
         data, mime, filename = await AttachmentService(db, ctx).read_attachment_bytes(attachment_id)
@@ -314,7 +308,7 @@ async def read_task_artifact(
             agent_id=agent_id,
             action=AUDIT_ACTION_ARTIFACT_DOWNLOAD,
             outcome=AUDIT_OUTCOME_FAILED,
-            detail={"taskId": str(task_id), "errorCode": TASK_NOT_FOUND, "durationMs": _elapsed_ms(started)},
+            detail={"taskId": str(task_id), "errorCode": TASK_NOT_FOUND, "durationMs": streaming.elapsed_ms(started)},
         )
         raise
     await write_a2a_audit(
@@ -322,7 +316,7 @@ async def read_task_artifact(
         agent_id=agent_id,
         action=AUDIT_ACTION_ARTIFACT_DOWNLOAD,
         outcome=AUDIT_OUTCOME_OK,
-        detail={"taskId": str(task_id), "durationMs": _elapsed_ms(started)},
+        detail={"taskId": str(task_id), "durationMs": streaming.elapsed_ms(started)},
     )
     return data, mime, filename
 
@@ -342,8 +336,8 @@ async def _handle_tasks_get(
     artifacts —— 对外查询不应带写副作用）。
     """
     try:
-        job_id = _parse_task_id(params)
-        job = await _load_owned_agent_task(db, ctx, agent_id, job_id)
+        job_id = parse_task_id(params)
+        job = await load_owned_agent_task(db, ctx, agent_id, job_id)
     except BadRequestError as exc:
         return jsonrpc_error(req_id, INVALID_PARAMS, str(exc))
     except NotFoundError as exc:
@@ -353,9 +347,9 @@ async def _handle_tasks_get(
         req_id,
         build_a2a_task(
             task_id=str(job.id),
-            context_id=_context_id_from_job_params(job.params),
+            context_id=context_id_from_job_params(job.params),
             state=to_a2a_task_state(job.status.value),
-            timestamp=_now(),
+            timestamp=now_iso(),
             artifacts=build_a2a_artifacts(job_result=job.result, agent_id=agent_id, task_id=job.id, base_url=base_url),
         ),
     )
@@ -370,8 +364,8 @@ async def _handle_tasks_cancel(
 ) -> dict:
     """``tasks/cancel``：取消未结束的生成任务；已结束回 ``TASK_NOT_CANCELABLE``。"""
     try:
-        job_id = _parse_task_id(params)
-        await _load_owned_agent_task(db, ctx, agent_id, job_id)
+        job_id = parse_task_id(params)
+        await load_owned_agent_task(db, ctx, agent_id, job_id)
     except BadRequestError as exc:
         return jsonrpc_error(req_id, INVALID_PARAMS, str(exc))
     except NotFoundError as exc:
@@ -386,9 +380,9 @@ async def _handle_tasks_cancel(
         req_id,
         build_a2a_task(
             task_id=str(job.id),
-            context_id=_context_id_from_job_params(job.params),
+            context_id=context_id_from_job_params(job.params),
             state=to_a2a_task_state(job.status.value),
-            timestamp=_now(),
+            timestamp=now_iso(),
         ),
     )
 
@@ -411,18 +405,13 @@ _STREAM_OUTCOME_BY_STATE = {
 }
 
 
-def _elapsed_ms(started: float) -> int:
-    """自 ``started``（``time.monotonic()``）起的毫秒数。"""
-    return int((time.monotonic() - started) * 1000)
-
-
 def _stream_audit_detail(*, started: float, context_id: str, task_id: str) -> dict:
     """``message/stream`` 中途（终态帧 / 断连）审计的 ``detail``。
 
     只含元数据，**绝不含消息正文**（``aud_logs`` 是租户可见面）；三处调用点共用它，
     形状与口径只在这里维护一次。
     """
-    return {"method": "message/stream", "contextId": context_id, "taskId": task_id, "durationMs": _elapsed_ms(started)}
+    return {"method": "message/stream", "contextId": context_id, "taskId": task_id, "durationMs": streaming.elapsed_ms(started)}
 
 
 async def handle_a2a_rpc(
@@ -483,7 +472,7 @@ def _rpc_audit_outcome(envelope: object) -> str:
 
 def _rpc_audit_detail(payload: object, envelope: object, *, started: float, method: str) -> dict:
     """审计细节：方法、耗时，以及能低成本取到的任务/会话标识与错误码。"""
-    detail: dict = {"method": method, "durationMs": _elapsed_ms(started)}
+    detail: dict = {"method": method, "durationMs": streaming.elapsed_ms(started)}
     params = payload.get("params") if isinstance(payload, dict) else None
     if isinstance(params, dict):
         if isinstance(params.get("id"), str):
@@ -549,45 +538,6 @@ STREAM_QUEUE_MAXSIZE = 64
 #: 与「产出一片空串」区分的收尾哨兵。
 _STREAM_DONE = object()
 
-#: 等待增量的上限（秒）。超时就发一个 SSE 注释帧保活 —— 一次性路由（tool_agent / flow /
-#: 子智能体）在末帧之前可能几分钟不产出任何字节，对端与中间代理会按 idle 超时把连接掐掉。
-SSE_HEARTBEAT_SECONDS = 15.0
-
-#: 保活帧：SSE 规范规定的注释行，客户端解析器一律忽略。
-SSE_HEARTBEAT_FRAME = ": ping\n\n"
-
-#: 脱离取消作用域的审计写入 task 的强引用。
-#: 审计必须跑在独立 task 里（理由见 ``_stream_turn.schedule_stream_audit``）；不持有强引用的话，
-#: task 可能在落库前被 GC 回收，留痕静默丢失。
-_PENDING_AUDITS: set[asyncio.Task] = set()
-
-
-def _schedule_audit(coro: Coroutine[Any, Any, None]) -> None:
-    """把一次审计写入交给脱离调用方取消作用域的独立 task。**同步**，不 ``await``。"""
-    task = asyncio.create_task(coro)
-    _PENDING_AUDITS.add(task)
-    task.add_done_callback(_PENDING_AUDITS.discard)
-
-
-async def drain_pending_audits() -> None:
-    """等在飞的审计 task 全部落地（测试断言与停机钩子用）。
-
-    只 gather **未完成**的：``gather`` 对已 done 的 task 不会让出控制权；若集合里只剩
-    「已完成但 discard 回调尚未执行」的 task，纯靠 ``while 集合非空 + gather 全集`` 会
-    占满事件循环（连外层 ``wait_for`` 超时都触发不了）。未完成列表为空即返回 —— 已完成
-    的会由 done 回调自行从集合剔除，不必在此强清。
-    """
-    while True:
-        pending = [t for t in _PENDING_AUDITS if not t.done()]
-        if not pending:
-            return
-        await asyncio.gather(*pending, return_exceptions=True)
-
-
-def _sse_frame(payload: dict) -> str:
-    """单个 SSE 帧。``ensure_ascii=False`` 让中文按原样出网；JSON 转义保证单行。"""
-    return f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
-
 
 async def _audit_stream_preflight(ctx: TenantContext, agent_id: UUID, error_code: int, started: float) -> None:
     """``message/stream`` 前置失败的审计：与 send 侧**可达的**参数类失败对称（缺 ``params`` /
@@ -603,7 +553,7 @@ async def _audit_stream_preflight(ctx: TenantContext, agent_id: UUID, error_code
         agent_id=agent_id,
         action=AUDIT_ACTION_MESSAGE_STREAM,
         outcome=AUDIT_OUTCOME_FAILED,
-        detail={"method": "message/stream", "errorCode": error_code, "durationMs": _elapsed_ms(started)},
+        detail={"method": "message/stream", "errorCode": error_code, "durationMs": streaming.elapsed_ms(started)},
     )
 
 
@@ -673,14 +623,14 @@ async def _stream_turn(
            「终态已定」与「已调度」之间 —— ``ok`` 与 ``canceled`` 都写不成，一次调用零流水。
         2. **幂等**：终态帧与取消分支争的是「一次调用恰一条流水」；哨兵同步置位，后到者直接返回。
            置位若放在写入 ``await`` 之后，就会出现「``ok`` 已落库、取消又补一条」的双流水。
-        3. **脱离取消作用域**：写入交 ``_schedule_audit`` 起独立 task。取消作用域（Starlette /
+        3. **脱离取消作用域**：写入交 ``services.audit.schedule_audit`` 起独立 task。取消作用域（Starlette /
            anyio 走的正是它）会在任务真正结束前反复取消，直接 ``await write_a2a_audit`` 会被
            立刻再次取消，流水同样丢失。
         """
         if audit_state:
             return
         audit_state["outcome"] = audit_outcome
-        _schedule_audit(
+        schedule_audit(
             write_a2a_audit(
                 ctx=ctx,
                 agent_id=agent_id,
@@ -697,14 +647,14 @@ async def _stream_turn(
         这次调用都已经有流水在飞了。
         """
         schedule_stream_audit(_STREAM_OUTCOME_BY_STATE[state])
-        return _sse_frame(
+        return streaming.sse_frame(
             jsonrpc_result(
                 req_id,
                 build_a2a_status_update(
                     task_id=task_id,
                     context_id=context_id,
                     state=state,
-                    timestamp=_now(),
+                    timestamp=now_iso(),
                     text=frame_text,
                     final=True,
                     job_task_id=job_task_id,
@@ -749,34 +699,34 @@ async def _stream_turn(
 
     turn = asyncio.create_task(run_turn())
     try:
-        yield _sse_frame(
+        yield streaming.sse_frame(
             jsonrpc_result(
                 req_id,
                 build_a2a_task(
                     task_id=task_id,
                     context_id=context_id,
                     state=TASK_STATE_WORKING,
-                    timestamp=_now(),
+                    timestamp=now_iso(),
                 ),
             )
         )
         while True:
             try:
-                item = await asyncio.wait_for(queue.get(), timeout=SSE_HEARTBEAT_SECONDS)
+                item = await asyncio.wait_for(queue.get(), timeout=streaming.SSE_HEARTBEAT_SECONDS)
             except TimeoutError:
                 # 保活：注释帧不进入 JSON 序列，对端解析器忽略它，只用于维持连接。
-                yield SSE_HEARTBEAT_FRAME
+                yield streaming.SSE_HEARTBEAT_FRAME
                 continue
             if item is _STREAM_DONE:
                 break
-            yield _sse_frame(
+            yield streaming.sse_frame(
                 jsonrpc_result(
                     req_id,
                     build_a2a_status_update(
                         task_id=task_id,
                         context_id=context_id,
                         state=TASK_STATE_WORKING,
-                        timestamp=_now(),
+                        timestamp=now_iso(),
                         text=item,
                         final=False,
                     ),
