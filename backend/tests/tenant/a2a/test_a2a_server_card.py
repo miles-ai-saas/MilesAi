@@ -390,7 +390,7 @@ def test_jsonrpc_error_carries_optional_data():
 
 
 def test_rate_limited_code_is_in_implementation_defined_range():
-    """``-32000`` 属规范保留给实现自定义的服务端错误区间（A2A 已占 -32001..-32007）。"""
+    """``-32000`` 属规范保留给实现自定义的服务端错误区间（本实现已占 ``-32001`` / ``-32002``）。"""
     assert server_mod.RATE_LIMITED == -32000
 
 

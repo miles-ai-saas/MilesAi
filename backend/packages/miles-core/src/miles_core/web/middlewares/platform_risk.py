@@ -14,6 +14,10 @@ from miles_core.risk.enforce import platform_risk_enforcer
 
 _SKIP_PREFIXES = ("/health", "/docs", "/redoc", "/openapi.json", "/favicon.ico")
 
+#: 超限对端可见文案。模块级单一来源：平台中间件的 IP 维度 429 与 A2A 端点的 Key 维度 429
+#: 用的是同一句话，两处各写一份必然会漂移。
+RATE_LIMIT_MESSAGE = "请求过于频繁，请稍后再试"
+
 
 def client_ip(request: Request) -> str:
     """请求来源 IP：优先 ``X-Forwarded-For`` 首段（经代理时 ``request.client`` 是代理地址）。"""
@@ -77,7 +81,7 @@ class PlatformRiskMiddleware(BaseHTTPMiddleware):
                     status_code=429,
                     content={
                         "code": 429,
-                        "message": "请求过于频繁，请稍后再试",
+                        "message": RATE_LIMIT_MESSAGE,
                         "data": None,
                         "trace_id": get_trace_id(),
                     },

@@ -230,7 +230,6 @@ tenant/tools/
 
 | 项 | 说明 |
 |----|------|
-| 中间件落地 | trace / access_log / platform_risk（IP 黑名单 + 按 `scope` 维度的限流）已在 `middlewares/` |
 | 运营删租户 | 在 `AdminTenantService` 中调用 `purge_tenant_data` 后再删租户记录 |
 
 ## 统一 CLI（`milesai` / `miles_server.cli`）

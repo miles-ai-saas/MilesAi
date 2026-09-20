@@ -19,7 +19,7 @@ from miles_common.exceptions import NotFoundError
 from miles_common.trace import get_trace_id
 from miles_core.infra.db import get_db
 from miles_core.tenant import TenantContext
-from miles_core.web.middlewares.platform_risk import client_ip
+from miles_core.web.middlewares.platform_risk import RATE_LIMIT_MESSAGE, client_ip
 from miles_portal.tenant.a2a.server import (
     PARSE_ERROR,
     RATE_LIMITED,
@@ -42,9 +42,6 @@ _SSE_HEADERS = {
     "Connection": "keep-alive",
     "X-Accel-Buffering": "no",
 }
-
-#: 超限对端可见文案（与中间件 429 的 message 保持一致）。
-_RATE_LIMIT_MESSAGE = "请求过于频繁，请稍后再试"
 
 router = APIRouter()
 well_known_router = APIRouter()
@@ -89,7 +86,7 @@ async def a2a_jsonrpc(
             jsonrpc_error(
                 req_id,
                 RATE_LIMITED,
-                _RATE_LIMIT_MESSAGE,
+                RATE_LIMIT_MESSAGE,
                 data={"kind": "rate_limit", "retryAfterSeconds": hit.retry_after_seconds},
             ),
             status_code=429,
@@ -122,7 +119,7 @@ async def a2a_task_artifact(
     if hit is not None:
         return JSONResponse(
             status_code=429,
-            content={"code": 429, "message": _RATE_LIMIT_MESSAGE, "data": None, "trace_id": get_trace_id()},
+            content={"code": 429, "message": RATE_LIMIT_MESSAGE, "data": None, "trace_id": get_trace_id()},
             headers={"Retry-After": str(hit.retry_after_seconds)},
         )
     data, mime, filename = await read_task_artifact(db, ctx, agent_id, task_id, attachment_id)

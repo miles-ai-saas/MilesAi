@@ -19,6 +19,7 @@ const DETAIL_KEY_LABELS: Record<string, string> = {
   event_id: "事件 ID",
   path_pattern: "路径规则",
   limit_per_minute: "限流阈值",
+  scope: "计量维度",
   is_active: "启用状态",
   reason: "原因",
   period_start: "周期开始",
