@@ -22,6 +22,7 @@ class TenantContext:
     permissions: frozenset[str]
     token_jti: str | None = None
     auth_via: str | None = None  # workbench | debug_token | api_key
+    api_key_id: UUID | None = None  # X-API-Key 通道的凭证行 id（供按 Key 限流/审计）；JWT 通道为 None
 
     def has_permission(self, *codes: str) -> bool:
         """是否拥有全部给定 permission code。"""
