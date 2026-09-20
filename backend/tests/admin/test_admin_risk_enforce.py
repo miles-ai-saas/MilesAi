@@ -95,6 +95,28 @@ async def test_api_key_scope_returns_hit_with_retry_after(monkeypatch):  # noqa:
     assert 1 <= hit.retry_after_seconds <= 60
 
 
+@pytest.mark.asyncio
+async def test_ip_scope_returns_hit_with_retry_after(monkeypatch):  # noqa: ANN001
+    """``ip`` 维度必须真的能命中 —— 承载平台全局限流的那一处调用点用的就是它。
+
+    没有这条正向用例时，``ip`` 规则只会出现在「反向」断言里（``ip`` 规则不参与 ``api_key``
+    计数），于是「``ip`` 维度永远不命中」这种故障全仓没有任何用例会变红。它与
+    ``test_scope_filters_rules_by_dimension`` 一正一反，共同把维度语义钉住。
+    """
+    rule = _rule(scope="ip", limit=2)
+    enforcer = _enforcer(monkeypatch, [rule], _FakeRedis())
+
+    path = "/api/v1/open/a2a/agents/x"
+    assert await enforcer.check_rate_limit(path, "203.0.113.7", scope=RateLimitScope.IP) is None
+    assert await enforcer.check_rate_limit(path, "203.0.113.7", scope=RateLimitScope.IP) is None
+    hit = await enforcer.check_rate_limit(path, "203.0.113.7", scope=RateLimitScope.IP)
+
+    assert hit is not None
+    assert hit.rule_id == rule.id
+    assert hit.limit_per_minute == 2
+    assert 1 <= hit.retry_after_seconds <= 60
+
+
 @pytest.mark.parametrize(
     ("now", "expected_retry_after"),
     [
