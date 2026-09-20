@@ -110,3 +110,69 @@ def test_audit_actions_are_namespaced():
             server_mod.AUDIT_ACTION_ARTIFACT_DOWNLOAD,
         )
     )
+
+
+@pytest.mark.asyncio
+async def test_audit_api_key_id_is_none_without_key_identity(monkeypatch):  # noqa: ANN001
+    """JWT 通道没有 API Key 身份：``apiKeyId`` 必须是 ``None`` 而非字串 ``"None"``。
+
+    既有用例的 ``_ctx()`` 恒传 uuid，这条分支零覆盖 —— 恒 ``str()`` 的变异能穿过它们。
+    """
+    session = _FakeSession()
+    written: list[dict] = []
+    monkeypatch.setattr(audit_mod, "AsyncSessionLocal", lambda: session)
+
+    async def fake_write(_db, ctx, **kwargs):  # noqa: ANN001, ANN003
+        written.append({"ctx": ctx, **kwargs})
+
+    monkeypatch.setattr(audit_mod, "write_tenant_audit_log", fake_write)
+    ctx = TenantContext(
+        user_id=uuid4(),
+        tenant_id=uuid4(),
+        username="jwt-user",
+        is_superuser=False,
+        permissions=frozenset(),
+        auth_via="workbench",
+        api_key_id=None,
+    )
+
+    await audit_mod.write_a2a_audit(ctx=ctx, agent_id=AGENT_ID, action=server_mod.AUDIT_ACTION_TASKS_GET, outcome=server_mod.AUDIT_OUTCOME_OK)
+
+    assert written[0]["detail"]["apiKeyId"] is None
+
+
+@pytest.mark.asyncio
+async def test_audit_write_error_never_breaks_caller(monkeypatch):  # noqa: ANN001
+    """``write_tenant_audit_log`` 抛错时只记日志：审计不得把业务调用带崩。"""
+    session = _FakeSession()
+    monkeypatch.setattr(audit_mod, "AsyncSessionLocal", lambda: session)
+
+    async def boom(*_args, **_kwargs):  # noqa: ANN002, ANN003
+        raise RuntimeError("write failed")
+
+    monkeypatch.setattr(audit_mod, "write_tenant_audit_log", boom)
+
+    await audit_mod.write_a2a_audit(ctx=_ctx(), agent_id=AGENT_ID, action=server_mod.AUDIT_ACTION_TASKS_GET, outcome=server_mod.AUDIT_OUTCOME_OK)
+
+    assert session.closed == 1
+
+
+@pytest.mark.asyncio
+async def test_audit_commit_error_never_breaks_caller(monkeypatch):  # noqa: ANN001
+    """``commit`` 抛错时只记日志；会话仍须被关闭（``async with`` 的退出不受影响）。"""
+
+    class _CommitBoomSession(_FakeSession):
+        async def commit(self) -> None:
+            raise RuntimeError("commit failed")
+
+    session = _CommitBoomSession()
+    monkeypatch.setattr(audit_mod, "AsyncSessionLocal", lambda: session)
+
+    async def fake_write(*_args, **_kwargs):  # noqa: ANN002, ANN003
+        return None
+
+    monkeypatch.setattr(audit_mod, "write_tenant_audit_log", fake_write)
+
+    await audit_mod.write_a2a_audit(ctx=_ctx(), agent_id=AGENT_ID, action=server_mod.AUDIT_ACTION_TASKS_GET, outcome=server_mod.AUDIT_OUTCOME_OK)
+
+    assert session.closed == 1

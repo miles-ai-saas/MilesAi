@@ -395,6 +395,22 @@ def test_rate_limited_code_is_in_implementation_defined_range():
 # --- 2. 服务：发布门槛 --------------------------------------------------------
 
 
+@pytest.fixture(autouse=True)
+def a2a_audit_recorder(monkeypatch):  # noqa: ANN001
+    """审计走独立会话；单测不连库，故默认替换为记录器，专测再从返回值断言。
+
+    与本文件既有的 ``_patch_session`` 不冲突：那条替换的是 ``server_svc.AsyncSessionLocal``
+    （轮次会话），审计用的是 ``services.audit`` 里的同名对象。
+    """
+    recorded: list[dict] = []
+
+    async def fake_write(**kwargs):  # noqa: ANN003
+        recorded.append(kwargs)
+
+    monkeypatch.setattr(server_svc, "write_a2a_audit", fake_write)
+    return recorded
+
+
 def _agent(**overrides):
     agent = Agent()
     agent.id = AGENT_ID
@@ -1077,7 +1093,7 @@ async def test_open_stream_one_shot_route_only_has_final_frame(monkeypatch):  # 
 
 
 @pytest.mark.asyncio
-async def test_open_stream_maps_compliance_block_to_rejected(monkeypatch):  # noqa: ANN001
+async def test_open_stream_maps_compliance_block_to_rejected(a2a_audit_recorder, monkeypatch):  # noqa: ANN001
     """输入/输出合规拦截回 rejected（拒绝处理），并把原因交给对端。"""
     session = _FakeSession()
     _patch_session(monkeypatch, session)
@@ -1096,6 +1112,7 @@ async def test_open_stream_maps_compliance_block_to_rejected(monkeypatch):  # no
     assert last["status"]["state"] == "rejected"
     assert "敏感词" in last["status"]["message"]["parts"][0]["text"]
     assert session.rolled_back == 1
+    assert [r["outcome"] for r in a2a_audit_recorder] == [server_mod.AUDIT_OUTCOME_REJECTED]
 
 
 @pytest.mark.asyncio
@@ -1277,3 +1294,135 @@ async def test_open_stream_reports_failed_when_session_cannot_open(monkeypatch):
     assert results[0]["kind"] == "task"
     assert results[-1]["final"] is True
     assert results[-1]["status"]["state"] == "failed"
+
+
+# --- 7. 审计接入三个调用点 ----------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_handle_rpc_audits_message_send(a2a_audit_recorder, monkeypatch):  # noqa: ANN001
+    """一次调用一条流水，outcome 由最终信封决定：审计不该散在各 _handle_* 里重复判定。"""
+
+    async def fake_chat(_db, _ctx, _agent_id, _text, conversation_id=None):  # noqa: ANN001
+        return ChatResponse(answer="收到")
+
+    monkeypatch.setattr(server_svc, "run_published_agent_chat", fake_chat)
+    payload = {"jsonrpc": "2.0", "id": 1, "method": "message/send", "params": {"message": {"contextId": "ctx-1", "parts": [{"kind": "text", "text": "你好"}]}}}
+
+    await server_svc.handle_a2a_rpc(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, payload, base_url=BASE)
+
+    assert [r["action"] for r in a2a_audit_recorder] == [server_mod.AUDIT_ACTION_MESSAGE_SEND]
+    record = a2a_audit_recorder[0]
+    assert record["outcome"] == server_mod.AUDIT_OUTCOME_OK
+    assert record["agent_id"] == AGENT_ID
+    assert record["detail"]["method"] == "message/send"
+    assert record["detail"]["contextId"] == "ctx-1"
+    # 审计不写正文：用户输入与智能体回复都不得出现在 detail 里（aud_logs 是租户可见面）
+    serialized = json.dumps(record["detail"], ensure_ascii=False)
+    assert "你好" not in serialized
+    assert "收到" not in serialized
+
+
+@pytest.mark.asyncio
+async def test_handle_rpc_audits_failure_with_error_code(a2a_audit_recorder):  # noqa: ANN001
+    """失败也要留痕，并带上错误码：失败恰恰是最需要留痕的时候。"""
+    payload = {"jsonrpc": "2.0", "id": 1, "method": "tasks/get", "params": {}}
+
+    await server_svc.handle_a2a_rpc(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, payload, base_url=BASE)
+
+    assert a2a_audit_recorder[0]["action"] == server_mod.AUDIT_ACTION_TASKS_GET
+    assert a2a_audit_recorder[0]["outcome"] == server_mod.AUDIT_OUTCOME_FAILED
+    assert a2a_audit_recorder[0]["detail"]["errorCode"] == server_mod.INVALID_PARAMS
+
+
+@pytest.mark.asyncio
+async def test_handle_rpc_does_not_audit_unsupported_method(a2a_audit_recorder):  # noqa: ANN001
+    """不支持的方法没有对应动作名，不编造流水。"""
+    payload = {"jsonrpc": "2.0", "id": 1, "method": "tasks/resubscribe", "params": {}}
+
+    await server_svc.handle_a2a_rpc(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, payload, base_url=BASE)
+
+    assert a2a_audit_recorder == []
+
+
+@pytest.mark.asyncio
+async def test_stream_final_frame_audits_completed(a2a_audit_recorder, monkeypatch):  # noqa: ANN001
+    _patch_session(monkeypatch, _FakeSession())
+
+    async def fake_chat(_db, _ctx, _agent_id, _text, conversation_id=None, on_delta=None):  # noqa: ANN001
+        return ChatResponse(answer="好了")
+
+    monkeypatch.setattr(server_svc, "run_published_agent_chat", fake_chat)
+    stream = await server_svc.open_a2a_stream(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, _stream_params())
+    await _collect(stream)
+
+    assert [r["action"] for r in a2a_audit_recorder] == [server_mod.AUDIT_ACTION_MESSAGE_STREAM]
+    assert a2a_audit_recorder[0]["outcome"] == server_mod.AUDIT_OUTCOME_OK
+    assert a2a_audit_recorder[0]["detail"]["method"] == "message/stream"
+    assert isinstance(a2a_audit_recorder[0]["detail"]["durationMs"], int)
+
+
+@pytest.mark.asyncio
+async def test_stream_disconnect_audits_canceled(a2a_audit_recorder, monkeypatch):  # noqa: ANN001
+    """对端断连是最需要留痕的一种「调用」：没有终态帧，但必须有一条 canceled 流水。"""
+    _patch_session(monkeypatch, _FakeSession())
+
+    async def fake_chat(_db, _ctx, _agent_id, _text, conversation_id=None, on_delta=None):  # noqa: ANN001
+        await on_delta("半")
+        await asyncio.sleep(5)
+        return ChatResponse(answer="不该到这里")
+
+    monkeypatch.setattr(server_svc, "run_published_agent_chat", fake_chat)
+    stream = await server_svc.open_a2a_stream(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, _stream_params())
+
+    assert await anext(stream)  # 首帧 Task
+    assert await anext(stream)  # 增量帧
+    await stream.aclose()
+
+    assert [r["outcome"] for r in a2a_audit_recorder] == [server_mod.AUDIT_OUTCOME_CANCELED]
+    assert a2a_audit_recorder[0]["action"] == server_mod.AUDIT_ACTION_MESSAGE_STREAM
+
+
+@pytest.mark.asyncio
+async def test_task_artifact_read_audits_download(a2a_audit_recorder, monkeypatch):  # noqa: ANN001
+    """产物下载也要留痕：否则「谁把产物取走了」查不到。"""
+    attachment_id = uuid4()
+    job = _artifact_job(agent_id=AGENT_ID, attachments=(str(attachment_id),))
+
+    async def fake_get(_db, _ctx, _job_id):  # noqa: ANN001
+        return job
+
+    class _FakeAttachments:
+        def __init__(self, _db, _ctx) -> None:
+            pass
+
+        async def read_attachment_bytes(self, _attachment_id):  # noqa: ANN001
+            return b"DATA", "image/png", "a.png"
+
+    monkeypatch.setattr(server_svc, "get_generative_job_for_tenant", fake_get)
+    monkeypatch.setattr(server_svc, "AttachmentService", _FakeAttachments)
+
+    data, _mime, _name = await server_svc.read_task_artifact(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, job.id, attachment_id)
+
+    assert data == b"DATA"
+    assert [r["action"] for r in a2a_audit_recorder] == [server_mod.AUDIT_ACTION_ARTIFACT_DOWNLOAD]
+    assert a2a_audit_recorder[0]["outcome"] == server_mod.AUDIT_OUTCOME_OK
+    assert a2a_audit_recorder[0]["detail"]["taskId"] == str(job.id)
+
+
+@pytest.mark.asyncio
+async def test_task_artifact_failure_is_audited(a2a_audit_recorder, monkeypatch):  # noqa: ANN001
+    """取不到也要留痕：越权尝试（404）本身就是排查线索，不能只在成功时记。"""
+    job = _artifact_job(agent_id=AGENT_ID)
+
+    async def fake_get(_db, _ctx, _job_id):  # noqa: ANN001
+        return job
+
+    monkeypatch.setattr(server_svc, "get_generative_job_for_tenant", fake_get)
+
+    with pytest.raises(NotFoundError):
+        await server_svc.read_task_artifact(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, job.id, uuid4())
+
+    assert [r["action"] for r in a2a_audit_recorder] == [server_mod.AUDIT_ACTION_ARTIFACT_DOWNLOAD]
+    assert a2a_audit_recorder[0]["outcome"] == server_mod.AUDIT_OUTCOME_FAILED
+    assert a2a_audit_recorder[0]["detail"]["errorCode"] == server_mod.TASK_NOT_FOUND

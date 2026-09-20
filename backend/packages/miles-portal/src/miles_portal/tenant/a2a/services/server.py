@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import time
 from collections.abc import AsyncIterator
 from datetime import UTC, datetime
 from uuid import UUID, uuid4
@@ -33,6 +34,15 @@ from miles_core.soft_delete import is_marked_deleted, not_deleted
 from miles_core.tenant import TenantContext
 from miles_portal.tenant.a2a.server import (
     A2A_PUBLISH_FLAG,
+    AUDIT_ACTION_ARTIFACT_DOWNLOAD,
+    AUDIT_ACTION_MESSAGE_SEND,
+    AUDIT_ACTION_MESSAGE_STREAM,
+    AUDIT_ACTION_TASKS_CANCEL,
+    AUDIT_ACTION_TASKS_GET,
+    AUDIT_OUTCOME_CANCELED,
+    AUDIT_OUTCOME_FAILED,
+    AUDIT_OUTCOME_OK,
+    AUDIT_OUTCOME_REJECTED,
     INTERNAL_ERROR,
     INVALID_PARAMS,
     INVALID_REQUEST,
@@ -57,6 +67,7 @@ from miles_portal.tenant.a2a.server import (
     jsonrpc_result,
     to_a2a_task_state,
 )
+from miles_portal.tenant.a2a.services.audit import write_a2a_audit
 from miles_portal.tenant.attachments.services.attachment import AttachmentService
 from miles_portal.tenant.generative.services.job import GenerativeJobService
 from miles_portal.tenant.generative.services.job_execution import get_generative_job_for_tenant
@@ -288,12 +299,31 @@ async def read_task_artifact(
     """下载某任务产物，返回 ``(data, mime_type, filename)``。
 
     授权精确到「该智能体 · 该任务 · 该产物」：先验任务归属，再验附件确为该任务产物，
-    否则本租户任意附件都能被取走。
+    否则本租户任意附件都能被取走。成败都留一条审计流水（「谁把产物取走了」要查得到）。
     """
-    job = await _load_owned_agent_task(db, ctx, agent_id, task_id)
-    if str(attachment_id) not in artifact_ids_from_job_result(job.result):
-        raise NotFoundError("附件不是该任务的产物")
-    return await AttachmentService(db, ctx).read_attachment_bytes(attachment_id)
+    started = time.monotonic()
+    try:
+        job = await _load_owned_agent_task(db, ctx, agent_id, task_id)
+        if str(attachment_id) not in artifact_ids_from_job_result(job.result):
+            raise NotFoundError("附件不是该任务的产物")
+        data, mime, filename = await AttachmentService(db, ctx).read_attachment_bytes(attachment_id)
+    except NotFoundError:
+        await write_a2a_audit(
+            ctx=ctx,
+            agent_id=agent_id,
+            action=AUDIT_ACTION_ARTIFACT_DOWNLOAD,
+            outcome=AUDIT_OUTCOME_FAILED,
+            detail={"taskId": str(task_id), "errorCode": TASK_NOT_FOUND, "durationMs": _elapsed_ms(started)},
+        )
+        raise
+    await write_a2a_audit(
+        ctx=ctx,
+        agent_id=agent_id,
+        action=AUDIT_ACTION_ARTIFACT_DOWNLOAD,
+        outcome=AUDIT_OUTCOME_OK,
+        detail={"taskId": str(task_id), "durationMs": _elapsed_ms(started)},
+    )
+    return data, mime, filename
 
 
 async def _handle_tasks_get(
@@ -362,7 +392,81 @@ async def _handle_tasks_cancel(
     )
 
 
+#: JSON-RPC 方法 → 租户审计 ``action``。``message/stream`` 不在此表：它的 outcome 只有
+#: 终态帧才知道，由 ``_stream_turn`` 自己写。不支持的方法没有对应动作名，不编造流水。
+_AUDIT_ACTION_BY_METHOD = {
+    "message/send": AUDIT_ACTION_MESSAGE_SEND,
+    "tasks/get": AUDIT_ACTION_TASKS_GET,
+    "tasks/cancel": AUDIT_ACTION_TASKS_CANCEL,
+}
+
+#: 流式终态 → 审计 ``outcome``。``working`` 是「本流结束但任务还在跑」（对端转
+#: ``tasks/get`` 轮询），对审计而言属正常完成。
+_STREAM_OUTCOME_BY_STATE = {
+    TASK_STATE_COMPLETED: AUDIT_OUTCOME_OK,
+    TASK_STATE_WORKING: AUDIT_OUTCOME_OK,
+    TASK_STATE_FAILED: AUDIT_OUTCOME_FAILED,
+    TASK_STATE_REJECTED: AUDIT_OUTCOME_REJECTED,
+}
+
+
+def _elapsed_ms(started: float) -> int:
+    """自 ``started``（``time.monotonic()``）起的毫秒数。"""
+    return int((time.monotonic() - started) * 1000)
+
+
 async def handle_a2a_rpc(
+    db: AsyncSession,
+    ctx: TenantContext,
+    agent_id: UUID,
+    payload: object,
+    *,
+    base_url: str,
+) -> dict:
+    """JSON-RPC 2.0 分发入口：分发并统一留租户审计。
+
+    审计放在这一层而非各 ``_handle_*`` 内：一次调用只该有一条流水，且 ``outcome`` 由最终
+    信封决定（有 ``error`` 即失败），不必在各处重复判定。
+    """
+    started = time.monotonic()
+    envelope = await _dispatch_a2a_rpc(db, ctx, agent_id, payload, base_url=base_url)
+    method = payload.get("method") if isinstance(payload, dict) else None
+    action = _AUDIT_ACTION_BY_METHOD.get(method) if isinstance(method, str) else None
+    # ``action`` 非空只可能来自「``method`` 是表内键」，此处重判一次让 ``method`` 收窄为
+    # ``str``，不给调用点留下「靠运气成立」的类型不一致。
+    if action is not None and isinstance(method, str):
+        await write_a2a_audit(
+            ctx=ctx,
+            agent_id=agent_id,
+            action=action,
+            outcome=_rpc_audit_outcome(envelope),
+            detail=_rpc_audit_detail(payload, envelope, started=started, method=method),
+        )
+    return envelope
+
+
+def _rpc_audit_outcome(envelope: object) -> str:
+    """按最终信封判定结果：有 ``error`` 即失败（协议级错误也不例外）。"""
+    return AUDIT_OUTCOME_FAILED if isinstance(envelope, dict) and "error" in envelope else AUDIT_OUTCOME_OK
+
+
+def _rpc_audit_detail(payload: object, envelope: object, *, started: float, method: str) -> dict:
+    """审计细节：方法、耗时，以及能低成本取到的任务/会话标识与错误码。"""
+    detail: dict = {"method": method, "durationMs": _elapsed_ms(started)}
+    params = payload.get("params") if isinstance(payload, dict) else None
+    if isinstance(params, dict):
+        if isinstance(params.get("id"), str):
+            detail["taskId"] = params["id"]
+        message = params.get("message")
+        if isinstance(message, dict) and isinstance(message.get("contextId"), str):
+            detail["contextId"] = message["contextId"]
+    error = envelope.get("error") if isinstance(envelope, dict) else None
+    if isinstance(error, dict):
+        detail["errorCode"] = error.get("code")
+    return detail
+
+
+async def _dispatch_a2a_rpc(
     db: AsyncSession,
     ctx: TenantContext,
     agent_id: UUID,
@@ -464,10 +568,35 @@ async def _stream_turn(
     context_id: str,
 ) -> AsyncIterator[str]:
     """跑一轮对话并以 SSE 帧下发：首帧 Task、中间帧增量、末帧终态。"""
+    started = time.monotonic()
     task_id = str(uuid4())
     queue: asyncio.Queue[object] = asyncio.Queue(maxsize=STREAM_QUEUE_MAXSIZE)
     outcome: dict[str, object] = {}
     stopped = False
+
+    async def terminal_frame(state: str, text: str, *, job_task_id: str | None = None) -> str:
+        """终态帧 + 审计：``message/stream`` 的 outcome 只有走到终态才知道。"""
+        await write_a2a_audit(
+            ctx=ctx,
+            agent_id=agent_id,
+            action=AUDIT_ACTION_MESSAGE_STREAM,
+            outcome=_STREAM_OUTCOME_BY_STATE[state],
+            detail={"method": "message/stream", "contextId": context_id, "taskId": task_id, "durationMs": _elapsed_ms(started)},
+        )
+        return _sse_frame(
+            jsonrpc_result(
+                req_id,
+                build_a2a_status_update(
+                    task_id=task_id,
+                    context_id=context_id,
+                    state=state,
+                    timestamp=_now(),
+                    text=text,
+                    final=True,
+                    job_task_id=job_task_id,
+                ),
+            )
+        )
 
     async def on_delta(piece: str) -> None:
         # 空片不发帧：与 ws/chat.on_delta 同判定，省掉无内容的帧（含空格的片照发，
@@ -539,6 +668,17 @@ async def _stream_turn(
                     ),
                 )
             )
+    except GeneratorExit:
+        # 对端断连：``aclose()`` 抛出 GeneratorExit，后面的终态帧不会再发，但留痕要在这里
+        # 补上 —— 「谁中途掐了连接」正是审计要回答的问题之一。此处只能 await、不能再 yield。
+        await write_a2a_audit(
+            ctx=ctx,
+            agent_id=agent_id,
+            action=AUDIT_ACTION_MESSAGE_STREAM,
+            outcome=AUDIT_OUTCOME_CANCELED,
+            detail={"method": "message/stream", "contextId": context_id, "taskId": task_id, "durationMs": _elapsed_ms(started)},
+        )
+        raise
     finally:
         # 消费端提前退出（客户端断连）：必须取消对话任务，否则 LLM 调用会跑到底白烧 token。
         # 先置 stopped 再取消：让 run_turn 的 finally 不再往无人消费的队列里塞哨兵。
@@ -550,69 +690,20 @@ async def _stream_turn(
     response = outcome.get("response")
     if error is not None:
         state = TASK_STATE_REJECTED if isinstance(error, BadRequestError) else TASK_STATE_FAILED
-        yield _sse_frame(
-            jsonrpc_result(
-                req_id,
-                build_a2a_status_update(
-                    task_id=task_id,
-                    context_id=context_id,
-                    state=state,
-                    timestamp=_now(),
-                    text=_failure_text(error),
-                    final=True,
-                ),
-            )
-        )
+        yield await terminal_frame(state, _failure_text(error))
         return
     if response is None:
         # 兜底：error 与 response 同时为空，只可能来自「任务在记录 outcome 之前就没了」。
         # 回一帧 failed 终态，别让对端等到「流自然结束却没有终态帧」而只能超时。
-        yield _sse_frame(
-            jsonrpc_result(
-                req_id,
-                build_a2a_status_update(
-                    task_id=task_id,
-                    context_id=context_id,
-                    state=TASK_STATE_FAILED,
-                    timestamp=_now(),
-                    text="智能体执行失败",
-                    final=True,
-                ),
-            )
-        )
+        yield await terminal_frame(TASK_STATE_FAILED, "智能体执行失败")
         return
     job = _first_active_job(response.generative_jobs)
     if job:
         # 产物未就绪：以 working + final 收尾（final 只表示本流结束），并给出真实
         # job id —— 对端据此转向 tasks/get 轮询状态与产物。
-        yield _sse_frame(
-            jsonrpc_result(
-                req_id,
-                build_a2a_status_update(
-                    task_id=task_id,
-                    context_id=context_id,
-                    state=TASK_STATE_WORKING,
-                    timestamp=_now(),
-                    text=response.answer,
-                    final=True,
-                    job_task_id=str(job["id"]),
-                ),
-            )
-        )
+        yield await terminal_frame(TASK_STATE_WORKING, response.answer, job_task_id=str(job["id"]))
         return
-    yield _sse_frame(
-        jsonrpc_result(
-            req_id,
-            build_a2a_status_update(
-                task_id=task_id,
-                context_id=context_id,
-                state=TASK_STATE_COMPLETED,
-                timestamp=_now(),
-                text=response.answer,
-                final=True,
-            ),
-        )
-    )
+    yield await terminal_frame(TASK_STATE_COMPLETED, response.answer)
 
 
 def _failure_text(error: Exception) -> str:

@@ -26,10 +26,13 @@ async def write_a2a_audit(
     outcome: str,
     detail: dict | None = None,
 ) -> None:
-    """写一条 A2A 调用流水；失败只记日志，绝不影响业务返回（审计是旁路）。"""
-    payload: dict = {"outcome": outcome, "apiKeyId": str(ctx.api_key_id) if ctx.api_key_id else None}
-    if detail:
-        payload.update(detail)
+    """写一条 A2A 调用流水；失败只记日志，绝不影响业务返回（审计是旁路）。
+
+    ``detail`` 只传元数据（``method`` / ``contextId`` / ``taskId`` / ``durationMs`` /
+    ``errorCode`` 等），**不得传消息正文、智能体回复或 token** —— ``aud_logs`` 是租户
+    可见面，正文可能含隐私内容。
+    """
+    payload: dict = {**(detail or {}), "outcome": outcome, "apiKeyId": str(ctx.api_key_id) if ctx.api_key_id else None}
     try:
         async with AsyncSessionLocal() as db:
             await write_tenant_audit_log(
