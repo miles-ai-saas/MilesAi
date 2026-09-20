@@ -17440,6 +17440,16 @@
             "description": "路径匹配模式",
             "title": "Path Pattern",
             "type": "string"
+          },
+          "scope": {
+            "default": "ip",
+            "description": "计量维度：ip 按来源 IP，api_key 按调用方 API Key",
+            "enum": [
+              "ip",
+              "api_key"
+            ],
+            "title": "Scope",
+            "type": "string"
           }
         },
         "required": [
@@ -17512,6 +17522,22 @@
             ],
             "description": "路径匹配模式",
             "title": "Path Pattern"
+          },
+          "scope": {
+            "anyOf": [
+              {
+                "enum": [
+                  "ip",
+                  "api_key"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "计量维度：ip 按来源 IP，api_key 按调用方 API Key",
+            "title": "Scope"
           }
         },
         "title": "RateLimitRuleUpdate",

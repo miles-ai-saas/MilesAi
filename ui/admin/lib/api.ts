@@ -328,6 +328,7 @@ export interface RateLimitRule {
   name: string;
   path_pattern: string;
   limit_per_minute: number;
+  scope: "ip" | "api_key";
   is_active: boolean;
   description?: string | null;
 }

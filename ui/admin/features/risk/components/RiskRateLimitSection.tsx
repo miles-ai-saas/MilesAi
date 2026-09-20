@@ -2,6 +2,7 @@
 
 import { ListFooter } from "@/components/list/ListFooter";
 import type { RiskPageVm } from "@/features/risk/hooks/use-risk-page";
+import { RATE_LIMIT_SCOPE_LABELS } from "@/features/risk/lib/risk-page-shared";
 
 export function RiskRateLimitSection({ vm }: { vm: RiskPageVm }) {
   const { rules, showRuleForm, setShowRuleForm, ruleForm, setRuleForm, onCreateRule, openEditRule, onToggleRule } = vm;
@@ -15,7 +16,8 @@ export function RiskRateLimitSection({ vm }: { vm: RiskPageVm }) {
         </button>
       </div>
       <p className="mt-1 text-xs text-ink-muted">
-        路径支持通配符（如 <span className="cell-mono">/api/v1/auth/*</span>），命中后按 IP 滑动窗口限流。
+        路径支持通配符（如 <span className="cell-mono">/api/v1/auth/*</span>）。计量维度选「按来源 IP」走平台通用限流；选「按 API Key」用于 A2A
+        等按对端计量的场景。
       </p>
 
       {showRuleForm && (
@@ -27,6 +29,10 @@ export function RiskRateLimitSection({ vm }: { vm: RiskPageVm }) {
             value={ruleForm.path_pattern}
             onChange={(e) => setRuleForm((f) => ({ ...f, path_pattern: e.target.value }))}
           />
+          <select className="input-field" value={ruleForm.scope} onChange={(e) => setRuleForm((f) => ({ ...f, scope: e.target.value as "ip" | "api_key" }))}>
+            <option value="ip">按来源 IP</option>
+            <option value="api_key">按 API Key</option>
+          </select>
           <input
             className="input-field"
             type="number"
@@ -57,6 +63,7 @@ export function RiskRateLimitSection({ vm }: { vm: RiskPageVm }) {
                 <tr>
                   <th>名称</th>
                   <th>路径</th>
+                  <th>维度</th>
                   <th className="col-center col-numeric">上限</th>
                   <th className="col-center">状态</th>
                   <th className="col-actions">操作</th>
@@ -65,7 +72,7 @@ export function RiskRateLimitSection({ vm }: { vm: RiskPageVm }) {
               <tbody>
                 {rules.items.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="py-8 text-center cell-muted">
+                    <td colSpan={6} className="py-8 text-center cell-muted">
                       暂无限流规则
                     </td>
                   </tr>
@@ -74,6 +81,7 @@ export function RiskRateLimitSection({ vm }: { vm: RiskPageVm }) {
                   <tr key={r.id}>
                     <td className="cell-primary">{r.name}</td>
                     <td className="cell-mono cell-muted">{r.path_pattern}</td>
+                    <td className="cell-muted">{RATE_LIMIT_SCOPE_LABELS[r.scope] ?? r.scope}</td>
                     <td className="col-center col-numeric cell-numeric">{r.limit_per_minute}/min</td>
                     <td className="col-center">
                       {r.is_active ? <span className="text-emerald-600">启用</span> : <span className="text-amber-600">停用</span>}

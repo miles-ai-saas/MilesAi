@@ -148,3 +148,13 @@ def test_scope_column_defaults_to_ip_for_backward_compatibility():
     assert column.nullable is False
     assert column.default is not None and column.default.arg == "ip"
     assert column.server_default is not None
+
+
+def test_rate_limit_rule_dto_carries_scope():
+    """``scope`` 必须能被创建/更新，且默认 ``ip`` —— 后台建规则时不该被迫选维度。"""
+    from miles_admin.app_ops.schemas.risk import RateLimitRuleCreate, RateLimitRuleUpdate
+
+    assert RateLimitRuleCreate(name="r", path_pattern="/api/v1/*").model_dump()["scope"] == "ip"
+    assert RateLimitRuleCreate(name="r", path_pattern="/api/v1/*", scope="api_key").model_dump()["scope"] == "api_key"
+    # 更新用 exclude_unset：只传 scope 时不得顺手把别的字段写成默认值
+    assert RateLimitRuleUpdate(scope="api_key").model_dump(exclude_unset=True) == {"scope": "api_key"}
