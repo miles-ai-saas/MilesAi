@@ -314,6 +314,15 @@ async def _subscription_frames(
             )
         # 循环结束仍未见终态：安全上限（设计 §3.5）。状态取断点时的**真实**映射值，
         # 不谎报成 completed —— 对端据此决定是否再订阅一次。
+        # 必须留 warning：30 分钟上限是对规范的有意偏离，审计行只在租户审计页可见，
+        # 不落日志就等于「病态任务占住连接半小时」在运维侧完全不可见。只记元数据。
+        logger.warning(
+            "A2A tasks/resubscribe 触达安全上限，按当前状态收流 (agent_id=%s task_id=%s state=%s max_seconds=%s)",
+            agent_id,
+            task_id,
+            latest_state,
+            SUBSCRIPTION_MAX_SECONDS,
+        )
         schedule_audit_once(AUDIT_OUTCOME_OK, ended_by="safety-cap", task_state=latest_state)
         yield status_frame(
             state=latest_state,
