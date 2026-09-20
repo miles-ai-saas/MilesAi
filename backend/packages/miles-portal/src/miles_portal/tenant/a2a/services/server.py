@@ -15,8 +15,9 @@ from __future__ import annotations
 import asyncio
 import json
 import time
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Coroutine
 from datetime import UTC, datetime
+from typing import Any
 from uuid import UUID, uuid4
 
 from sqlalchemy import select
@@ -438,19 +439,33 @@ async def handle_a2a_rpc(
     信封决定（有 ``error`` 即失败），不必在各处重复判定。
     """
     started = time.monotonic()
-    envelope = await _dispatch_a2a_rpc(db, ctx, agent_id, payload, base_url=base_url)
     method = payload.get("method") if isinstance(payload, dict) else None
     action = _AUDIT_ACTION_BY_METHOD.get(method) if isinstance(method, str) else None
     # ``action`` 非空只可能来自「``method`` 是表内键」，此处重判一次让 ``method`` 收窄为
     # ``str``，不给调用点留下「靠运气成立」的类型不一致。
-    if action is not None and isinstance(method, str):
+    if action is None or not isinstance(method, str):
+        # 不支持的方法没有对应动作名，不编造流水。
+        return await _dispatch_a2a_rpc(db, ctx, agent_id, payload, base_url=base_url)
+    try:
+        envelope = await _dispatch_a2a_rpc(db, ctx, agent_id, payload, base_url=base_url)
+    except Exception:
+        # 未捕获异常逸出（DB / 存储故障）：先留痕再**原样重抛**。这里是失败路径上唯一的
+        # 留痕机会 —— 吞掉异常会把 500 变成 200，把故障伪装成成功。
         await write_a2a_audit(
             ctx=ctx,
             agent_id=agent_id,
             action=action,
-            outcome=_rpc_audit_outcome(envelope),
-            detail=_rpc_audit_detail(payload, envelope, started=started, method=method),
+            outcome=AUDIT_OUTCOME_FAILED,
+            detail={"method": method, "errorCode": INTERNAL_ERROR, "durationMs": _elapsed_ms(started)},
         )
+        raise
+    await write_a2a_audit(
+        ctx=ctx,
+        agent_id=agent_id,
+        action=action,
+        outcome=_rpc_audit_outcome(envelope),
+        detail=_rpc_audit_detail(payload, envelope, started=started, method=method),
+    )
     return envelope
 
 
@@ -535,9 +550,25 @@ SSE_HEARTBEAT_SECONDS = 15.0
 SSE_HEARTBEAT_FRAME = ": ping\n\n"
 
 #: 脱离取消作用域的审计写入 task 的强引用。
-#: 真实断连时只能在 ``except asyncio.CancelledError`` 里 ``create_task``（不能直接 await，
-#: 见 ``_stream_turn``）；不持有强引用的话，task 可能在落库前被 GC 回收，留痕静默丢失。
+#: 审计必须跑在独立 task 里（理由见 ``_stream_turn.schedule_stream_audit``）；不持有强引用的话，
+#: task 可能在落库前被 GC 回收，留痕静默丢失。
 _PENDING_AUDITS: set[asyncio.Task] = set()
+
+
+def _schedule_audit(coro: Coroutine[Any, Any, None]) -> None:
+    """把一次审计写入交给脱离调用方取消作用域的独立 task。**同步**，不 ``await``。"""
+    task = asyncio.create_task(coro)
+    _PENDING_AUDITS.add(task)
+    task.add_done_callback(_PENDING_AUDITS.discard)
+
+
+async def drain_pending_audits() -> None:
+    """等在飞的审计 task 全部落地（测试断言与停机钩子用）。
+
+    取快照后循环到集合为空：审计 task 自身不再派生新 task，故不会自旋。
+    """
+    while _PENDING_AUDITS:
+        await asyncio.gather(*list(_PENDING_AUDITS), return_exceptions=True)
 
 
 def _sse_frame(payload: dict) -> str:
@@ -617,24 +648,42 @@ async def _stream_turn(
     queue: asyncio.Queue[object] = asyncio.Queue(maxsize=STREAM_QUEUE_MAXSIZE)
     outcome: dict[str, object] = {}
     stopped = False
-    #: 终态帧的审计是否已落库：非终态退出（断连）不得再补一条，否则一次调用两条流水。
-    #: 守卫**当前不可达**：四处 ``terminal_frame`` 调用都在本生成器最后的顺序代码里，处于
-    #: 任何 ``try`` 之外 —— 「审计已写、又被抛入 ``CancelledError``」没有可达路径（被取消时
-    #: 生成器只可能挂在某个 ``await`` 上，而那时审计尚未写）。保留它守「一次调用一条流水」
-    #: 不变量：日后若把终态帧搬进 ``try``，它立刻变成承重件。
-    audited = False
+    #: 本次调用的审计是否已调度（终态或取消）。只作幂等哨兵，值本身不参与判定；因为它在
+    #: 任何 ``await`` 之前就同步置位，「取消」与「终态」不可能各调度一次。
+    audit_state: dict[str, str] = {}
+
+    def schedule_stream_audit(audit_outcome: str) -> None:
+        """调度本次 ``message/stream`` 调用的审计。同步、幂等、脱离取消作用域。
+
+        三条缺一不可（每条都对应一次实测到的坏结果）：
+        1. **同步**：必须在调用点任何 ``await`` 之前完成。调度若含 ``await``，取消就能插进
+           「终态已定」与「已调度」之间 —— ``ok`` 与 ``canceled`` 都写不成，一次调用零流水。
+        2. **幂等**：终态帧与取消分支争的是「一次调用恰一条流水」；哨兵同步置位，后到者直接返回。
+           置位若放在写入 ``await`` 之后，就会出现「``ok`` 已落库、取消又补一条」的双流水。
+        3. **脱离取消作用域**：写入交 ``_schedule_audit`` 起独立 task。取消作用域（Starlette /
+           anyio 走的正是它）会在任务真正结束前反复取消，直接 ``await write_a2a_audit`` 会被
+           立刻再次取消，流水同样丢失。
+        """
+        if audit_state:
+            return
+        audit_state["outcome"] = audit_outcome
+        _schedule_audit(
+            write_a2a_audit(
+                ctx=ctx,
+                agent_id=agent_id,
+                action=AUDIT_ACTION_MESSAGE_STREAM,
+                outcome=audit_outcome,
+                detail=_stream_audit_detail(started=started, context_id=context_id, task_id=task_id),
+            )
+        )
 
     async def terminal_frame(state: str, frame_text: str, *, job_task_id: str | None = None) -> str:
-        """终态帧 + 审计：``message/stream`` 的 outcome 只有走到终态才知道。"""
-        nonlocal audited
-        await write_a2a_audit(
-            ctx=ctx,
-            agent_id=agent_id,
-            action=AUDIT_ACTION_MESSAGE_STREAM,
-            outcome=_STREAM_OUTCOME_BY_STATE[state],
-            detail=_stream_audit_detail(started=started, context_id=context_id, task_id=task_id),
-        )
-        audited = True
+        """终态帧 + 审计：``message/stream`` 的 outcome 只有走到终态才知道。
+
+        审计的调度是**本函数第一件事**（见 ``schedule_stream_audit``）：此后无论对端怎么断，
+        这次调用都已经有流水在飞了。
+        """
+        schedule_stream_audit(_STREAM_OUTCOME_BY_STATE[state])
         return _sse_frame(
             jsonrpc_result(
                 req_id,
@@ -720,38 +769,40 @@ async def _stream_turn(
                     ),
                 )
             )
+        # 终态帧也留在 ``try`` 内：它是「已调度审计」之后唯一还可能被抛入取消的 `yield``。
+        # 搬进来之后取消分支才有机会看到已置位的哨兵，``audit_state`` 由兜底变为承重件（见
+        # ``schedule_stream_audit`` 第 2 条）：终态已调度时再被取消，恰好不会再补一条 canceled。
+        error = outcome.get("error")
+        response = outcome.get("response")
+        if error is not None:
+            state = TASK_STATE_REJECTED if isinstance(error, BadRequestError) else TASK_STATE_FAILED
+            yield await terminal_frame(state, _failure_text(error))
+            return
+        if response is None:
+            # 兜底：error 与 response 同时为空，只可能来自「任务在记录 outcome 之前就没了」。
+            # 回一帧 failed 终态，别让对端等到「流自然结束却没有终态帧」而只能超时。
+            yield await terminal_frame(TASK_STATE_FAILED, "智能体执行失败")
+            return
+        job = _first_active_job(response.generative_jobs)
+        if job:
+            # 产物未就绪：以 working + final 收尾（final 只表示本流结束），并给出真实
+            # job id —— 对端据此转向 tasks/get 轮询状态与产物。
+            yield await terminal_frame(TASK_STATE_WORKING, response.answer, job_task_id=str(job["id"]))
+            return
+        yield await terminal_frame(TASK_STATE_COMPLETED, response.answer)
     except GeneratorExit:
         # 对端断连（``aclose()``）：生成器被抛入 GeneratorExit，后面的终态帧不会再发，但留痕
-        # 要在这里补上 —— 「谁中途掐了连接」正是审计要回答的问题之一。此处只能 ``await``、
-        # 不能再 ``yield``；``aclose()`` 路径下 await 能正常完成。
-        if not audited:
-            await write_a2a_audit(
-                ctx=ctx,
-                agent_id=agent_id,
-                action=AUDIT_ACTION_MESSAGE_STREAM,
-                outcome=AUDIT_OUTCOME_CANCELED,
-                detail=_stream_audit_detail(started=started, context_id=context_id, task_id=task_id),
-            )
+        # 要在这里补上 —— 「谁中途掐了连接」正是审计要回答的问题之一。这里只能同步调度、
+        # 不能再 ``yield``；调度本身不 ``await``，故 ``aclose()`` 路径下也能完成。
+        schedule_stream_audit(AUDIT_OUTCOME_CANCELED)
         raise
     except asyncio.CancelledError:
         # 真实断连走的是这一条：客户端断连时 Starlette 取消的正是「``async for`` 迭代本生成器」
         # 那个任务，``CancelledError`` 直接抛在生成器长期挂着的 ``await``（等下一个增量）处，
         # ``GeneratorExit`` 根本不会触发 —— 只处理后者会让最常见的断连永久零痕迹。
-        # 这里**不能**直接 ``await write_a2a_audit``：取消作用域会立刻再次取消它，await 拿不回来
-        # （实测：直接 await → 立刻 CancelledError，流水丢失）。故交给脱离取消作用域的独立 task，
-        # 并用模块级强引用 ``_PENDING_AUDITS`` 防止它在落库前被 GC。
-        if not audited:
-            audit_task = asyncio.create_task(
-                write_a2a_audit(
-                    ctx=ctx,
-                    agent_id=agent_id,
-                    action=AUDIT_ACTION_MESSAGE_STREAM,
-                    outcome=AUDIT_OUTCOME_CANCELED,
-                    detail=_stream_audit_detail(started=started, context_id=context_id, task_id=task_id),
-                )
-            )
-            _PENDING_AUDITS.add(audit_task)
-            audit_task.add_done_callback(_PENDING_AUDITS.discard)
+        # 两条分支行为一致（调度 canceled 后 ``raise``），但都必须保留：它们由不同的异常类型
+        # 触发，``except (GeneratorExit, CancelledError)`` 一旦被后人合并再改错也未必看得出。
+        schedule_stream_audit(AUDIT_OUTCOME_CANCELED)
         raise
     finally:
         # 消费端提前退出（客户端断连）：必须取消对话任务，否则 LLM 调用会跑到底白烧 token。
@@ -759,25 +810,6 @@ async def _stream_turn(
         stopped = True
         if not turn.done():
             turn.cancel()
-
-    error = outcome.get("error")
-    response = outcome.get("response")
-    if error is not None:
-        state = TASK_STATE_REJECTED if isinstance(error, BadRequestError) else TASK_STATE_FAILED
-        yield await terminal_frame(state, _failure_text(error))
-        return
-    if response is None:
-        # 兜底：error 与 response 同时为空，只可能来自「任务在记录 outcome 之前就没了」。
-        # 回一帧 failed 终态，别让对端等到「流自然结束却没有终态帧」而只能超时。
-        yield await terminal_frame(TASK_STATE_FAILED, "智能体执行失败")
-        return
-    job = _first_active_job(response.generative_jobs)
-    if job:
-        # 产物未就绪：以 working + final 收尾（final 只表示本流结束），并给出真实
-        # job id —— 对端据此转向 tasks/get 轮询状态与产物。
-        yield await terminal_frame(TASK_STATE_WORKING, response.answer, job_task_id=str(job["id"]))
-        return
-    yield await terminal_frame(TASK_STATE_COMPLETED, response.answer)
 
 
 def _failure_text(error: Exception) -> str:
