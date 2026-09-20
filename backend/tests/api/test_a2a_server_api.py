@@ -8,15 +8,20 @@
 from __future__ import annotations
 
 import json
+from types import SimpleNamespace
 from uuid import uuid4
 
 import pytest
 
 from miles_common.exceptions import NotFoundError
 from miles_core.deps import get_db
+from miles_core.models.agent import Agent, AgentStatus, AgentType
 from miles_core.tenant import TenantContext
 from miles_openapi.views import a2a_server as view_mod
-from miles_portal.tenant.a2a.server import agent_card_well_known_path
+from miles_portal.tenant.a2a.server import A2A_PUBLISH_FLAG, agent_card_well_known_path
+from miles_portal.tenant.a2a.services import audit as audit_svc
+from miles_portal.tenant.a2a.services import server as a2a_svc
+from miles_portal.tenant.a2a.services import subscription as subscription_svc
 from miles_portal.tenant.agents.deps_api_auth import require_agent_api_key
 
 AGENT_ID = uuid4()
@@ -277,6 +282,105 @@ async def test_resubscribe_preflight_error_keeps_json_content_type(as_a2a, api_c
     assert resp.status_code == 200
     assert resp.headers["content-type"].startswith("application/json")
     assert resp.json()["error"]["code"] == -32001
+
+
+@pytest.mark.asyncio
+async def test_resubscribe_end_to_end_real_service_through_http(as_a2a, api_client, monkeypatch):
+    """唯一把「真实前置校验 + 真实帧编码 + 真实 StreamingResponse」串起来跑的用例。
+
+    上面的路由用例把 ``open_task_subscription`` 整个换掉，服务层用例又把
+    ``watch_generative_job`` 换掉：两道缝各自成立，但它们的**组合**从未跑过。这里只换
+    watcher 这个 I/O 出口，其余全真，让请求真的经 ASGI 走完一次订阅。
+    """
+    attachment_id = uuid4()
+    job_id = uuid4()
+    agent = Agent()
+    agent.id = AGENT_ID
+    agent.agent_type = AgentType.CUSTOM
+    agent.status = AgentStatus.ENABLED
+    agent.config = {A2A_PUBLISH_FLAG: True}
+    agent.deleted_at = None
+
+    class _Db:
+        """最小 DB 替身：服务层只用 ``get``（取智能体）与 ``commit``（结束请求级事务）。"""
+
+        def __init__(self):  # noqa: ANN204
+            self.committed = 0
+
+        async def get(self, _model, _id):  # noqa: ANN001
+            return agent
+
+        async def commit(self):  # noqa: ANN201
+            self.committed += 1
+
+    db = _Db()
+
+    async def override_db():  # noqa: ANN202
+        yield db
+
+    as_a2a.dependency_overrides[get_db] = override_db
+
+    def _job(status, **overrides):  # noqa: ANN001, ANN202
+        base = dict(
+            id=job_id,
+            tenant_id=uuid4(),
+            status=SimpleNamespace(value=status),
+            progress_message=None,
+            progress_percent=None,
+            result=None,
+            params={},
+            source_ref_type="agent",
+            source_ref_id=AGENT_ID,
+        )
+        base.update(overrides)
+        return SimpleNamespace(**base)
+
+    running = _job("running", progress_message="渲染中", progress_percent=20)
+    done = _job(
+        "success",
+        progress_message="已完成",
+        progress_percent=100,
+        result={"attachment_id": str(attachment_id), "mime_type": "image/png", "kind": "image"},
+    )
+
+    async def _owned(_db, _ctx, _task_id):  # noqa: ANN001
+        return running
+
+    async def _watcher(**_kwargs):  # noqa: ANN003
+        yield running
+        yield None  # 空闲刻度：真实路径要把它变成保活注释帧
+        yield done
+
+    recorded: list[dict] = []
+
+    async def _write(**kwargs):  # noqa: ANN003
+        recorded.append(kwargs)
+
+    monkeypatch.setattr(a2a_svc, "get_generative_job_for_tenant", _owned)
+    monkeypatch.setattr(subscription_svc, "watch_generative_job", _watcher)
+    monkeypatch.setattr(subscription_svc, "write_a2a_audit", _write)
+
+    resp = await api_client.post(
+        RPC_PATH,
+        json={"jsonrpc": "2.0", "id": 7, "method": "tasks/resubscribe", "params": {"id": str(job_id)}},
+    )
+
+    assert resp.status_code == 200
+    assert resp.headers["content-type"].startswith("text/event-stream")
+    results = [json.loads(line[len("data: ") :])["result"] for line in resp.text.splitlines() if line.startswith("data: ")]
+    assert [r["kind"] for r in results] == ["task", "artifact-update", "status-update"]
+    # 产物 URI 的 base_url 由请求推导：绝对地址一旦退化成相对路径，对端就取不到产物
+    assert results[1]["artifact"]["parts"][0]["file"]["uri"] == f"http://test/api/v1/open/a2a/agents/{AGENT_ID}/tasks/{job_id}/artifacts/{attachment_id}"
+    assert results[-1]["final"] is True and results[-1]["status"]["state"] == "completed"
+    # 保活注释帧经真实编码路径原样透传（对端与中间代理靠它判断连接还活着）
+    assert ": ping" in resp.text
+    # 30 分钟的订阅不能陪跑一条请求级连接：进流之前就该结束事务
+    assert db.committed == 1
+
+    await audit_svc.drain_pending_audits()
+    assert len(recorded) == 1
+    assert recorded[0]["detail"]["endedBy"] == "terminal"
+    assert recorded[0]["detail"]["taskId"] == str(job_id)
 
 
 @pytest.mark.asyncio

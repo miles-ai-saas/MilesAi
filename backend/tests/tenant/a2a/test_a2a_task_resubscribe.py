@@ -15,7 +15,7 @@ from uuid import uuid4
 
 import pytest
 
-from miles_common.exceptions import NotFoundError
+from miles_common.exceptions import ForbiddenError, NotFoundError
 from miles_core.models.agent import Agent, AgentStatus, AgentType
 from miles_core.tenant import TenantContext
 from miles_portal.tenant.a2a import server as server_mod
@@ -85,10 +85,16 @@ def _params(*, task_id=JOB_ID, method="tasks/resubscribe") -> dict:
     return {"jsonrpc": "2.0", "id": 1, "method": method, "params": {"id": str(task_id)}}
 
 
-def _scripted(script):  # noqa: ANN001, ANN202
-    """把「任务快照 / None / 异常」的脚本变成假的 ``watch_generative_job``。"""
+def _scripted(script, recorded=None):  # noqa: ANN001, ANN202
+    """把「任务快照 / None / 异常」的脚本变成假的 ``watch_generative_job``。
 
-    async def fake(**_kwargs):  # noqa: ANN003
+    ``recorded`` 传入一个 dict 时，把接线参数记进去 —— 否则「保活开关被删掉」这类回归
+    在测试里完全不可见（假实现若丢弃 kwargs，删掉 ``emit_ticks=True`` 仍然是全绿）。
+    """
+
+    async def fake(**kwargs):  # noqa: ANN003
+        if recorded is not None:
+            recorded.update(kwargs)
         for item in script:
             if isinstance(item, Exception):
                 raise item
@@ -195,6 +201,31 @@ async def test_preflight_rejects_foreign_or_missing_task_with_task_not_found(aud
     assert audit_recorder[1]["detail"]["method"] == "tasks/resubscribe"
 
 
+@pytest.mark.asyncio
+async def test_preflight_rejects_foreign_tenant_task_without_leaking_existence(audit_recorder, monkeypatch):  # noqa: ANN001
+    """外租户 id：``assert_tenant_access`` 抛的 403 必须收敛成 ``-32001`` 并留痕。
+
+    逸出会变成平台信封的 HTTP 403 —— 既违背本端点「协议级错误回 JSON-RPC 信封」的契约
+    （对端无从把错误对回自己的 ``id``），又让 403 与 ``-32001`` 可区分，等于送出一个
+    「任务是否存在」的探测 oracle；而探测式调用当时不留任何痕迹。
+    """
+
+    async def _foreign(_db, _ctx, _job_id):  # noqa: ANN001
+        raise ForbiddenError("无权访问该租户资源")
+
+    monkeypatch.setattr(server_svc, "get_generative_job_for_tenant", _foreign)
+
+    opened = await subscription_svc.open_task_subscription(_Db(agent=_agent()), _ctx(), AGENT_ID, _params(), base_url=BASE)
+
+    assert isinstance(opened, dict)
+    assert opened["error"]["code"] == server_mod.TASK_NOT_FOUND
+    # 文案固定：不回显「无权访问该租户资源」这类内部措辞
+    assert "租户" not in opened["error"]["message"]
+    assert len(audit_recorder) == 1
+    assert audit_recorder[0]["outcome"] == server_mod.AUDIT_OUTCOME_FAILED
+    assert audit_recorder[0]["detail"]["errorCode"] == server_mod.TASK_NOT_FOUND
+
+
 # --- 帧序列 ----------------------------------------------------------------- #
 
 
@@ -245,6 +276,27 @@ async def test_frames_follow_deduped_task_status_artifact_terminal(monkeypatch, 
     assert audit_recorder[0]["outcome"] == server_mod.AUDIT_OUTCOME_OK
     assert audit_recorder[0]["detail"]["taskId"] == str(JOB_ID)
     assert audit_recorder[0]["detail"]["contextId"] == "ctx-7"
+
+
+@pytest.mark.asyncio
+async def test_watcher_wiring_pins_keepalive_contract(monkeypatch, owned_job):  # noqa: ANN001
+    """接线参数必须被断言锁死，而不是「假实现顺手丢掉」。
+
+    ``emit_ticks=True`` 是整个订阅的保活前提：删掉它之后流仍能跑完（测试全绿），但空闲期
+    再无任何字节下发，连接会被中间代理按 idle 超时掐断 —— 退化成订阅本要取代的轮询。
+    """
+    seen: dict = {}
+    ctx = _ctx()
+    monkeypatch.setattr(subscription_svc, "watch_generative_job", _scripted([owned_job(_job("running"))], recorded=seen))
+
+    opened = await subscription_svc.open_task_subscription(_Db(agent=_agent()), ctx, AGENT_ID, _params(), base_url=BASE)
+    await _raw_frames(opened)
+
+    assert seen["job_id"] == JOB_ID
+    assert seen["tenant_id"] == ctx.tenant_id
+    assert seen["emit_ticks"] is True
+    assert seen["poll_interval"] == subscription_svc.SUBSCRIPTION_POLL_SECONDS
+    assert seen["max_seconds"] == subscription_svc.SUBSCRIPTION_MAX_SECONDS
 
 
 @pytest.mark.asyncio

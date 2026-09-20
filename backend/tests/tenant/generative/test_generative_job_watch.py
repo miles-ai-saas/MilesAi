@@ -92,6 +92,10 @@ def env(monkeypatch):  # noqa: ANN001
 
         async def _sleep(seconds):  # noqa: ANN001
             state.sleeps.append(seconds)
+            # 与 ``_FakePubSub.get_message`` 同理的守卫：降级路径若被改成无界，用例会在
+            # 这里**失败**，而不是把测试机挂住（``asyncio.sleep`` 被换成了直通，墙钟不推进）。
+            if len(state.sleeps) > 1000:
+                raise _PollOverflow("降级轮询次数超限（>1000）：回退循环未受上限约束")
 
         def _get_redis():  # noqa: ANN202
             if redis == "raise":
