@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import json
 from collections.abc import AsyncIterator
 from uuid import UUID
@@ -32,6 +31,7 @@ from miles_portal.tenant.generative.schemas.job import (
     VideoGenerativeJobCreate,
 )
 from miles_portal.tenant.generative.services.job_execution import get_generative_job_for_tenant
+from miles_portal.tenant.generative.services.job_watch import watch_generative_job
 from miles_portal.tenant.tasks.services.task import TaskService
 
 logger = get_logger(__name__)
@@ -50,6 +50,10 @@ _RETRYABLE = frozenset(
         GenerativeJobStatus.CANCELLED,
     }
 )
+
+#: 平台 SSE 的订阅上限与轮询间隔（秒）。与重构前的硬编码值一致 —— 本批只做等价重构。
+STREAM_MAX_SECONDS = 120.0
+STREAM_POLL_SECONDS = 1.0
 
 
 def _sse_frame(job: GenerativeJob) -> str:
@@ -339,64 +343,25 @@ class GenerativeJobService(BaseService):
         return await get_generative_job_for_tenant(self.db, self.ctx, job_id)
 
     async def stream_job_events(self, job_id: UUID) -> AsyncIterator[str]:
-        """SSE：通过 Redis Pub/Sub 推送任务状态/进度，终态后结束。Redis 不可用时自动回退 DB 轮询。"""
-        import time
+        """SSE：通过 Redis Pub/Sub 推送任务状态/进度，终态后结束。Redis 不可用时自动回退 DB 轮询。
 
-        # 先推送当前状态
-        job = await self._reload(job_id)
-        yield _sse_frame(job)
-        if job.status in _TERMINAL:
-            return
-
-        pubsub = None
-        channel = None
-
-        try:
-            from miles_common.redis_keys import RedisKeys
-            from miles_core.infra.redis import get_redis
-
-            redis = get_redis()
-            channel = RedisKeys.generative_job_progress(str(self.ctx.tenant_id), str(job_id))
-            pubsub = redis.pubsub()
-            await pubsub.subscribe(channel)
-
-            start = time.monotonic()
-            terminal_yielded = False
-            while time.monotonic() - start < 120:
-                # 必须显式传 timeout：redis-py 仅在 timeout 非 None 时阻塞等待、超时返回 None；
-                # 省略时默认 0.0 为非阻塞，本循环会空转打满 CPU 直到 120s 上限。
-                msg = await pubsub.get_message(timeout=1.0)
-                if msg and msg["type"] == "message":
-                    job = await self._reload(job_id)
-                    yield _sse_frame(job)
-                    if job.status in _TERMINAL:
-                        terminal_yielded = True
-                        break
-            # 兜底：Pub/Sub 超时或消息丢失时，做一次最终 DB 查询避免前端永久等待
-            if not terminal_yielded:
-                job = await self._reload(job_id)
-                if job.status in _TERMINAL:
-                    yield _sse_frame(job)
-        except Exception as exc:
-            # Redis 不可用时回退 DB 轮询。此处为宽泛捕获：若失败原因不是「Redis 不可用」
-            # （消息序列化错误、下游 bug 等），debug 级在生产不可见、也无消息与堆栈，
-            # 整条降级路径等于无据可查，故升为 warning 并带堆栈。
-            logger.warning("Redis Pub/Sub 不可用，回退 DB 轮询 (job_id=%s): %s", job_id, exc, exc_info=True)
-            idle_ticks = 0
-            while idle_ticks < 120:
-                job = await self._reload(job_id)
-                yield _sse_frame(job)
-                if job.status in _TERMINAL:
-                    break
-                idle_ticks += 1
-                await asyncio.sleep(1)
-        finally:
-            if pubsub is not None and channel is not None:
-                try:
-                    await pubsub.unsubscribe(channel)
-                except Exception:
-                    # finally 中的清理动作，失败不应影响 SSE 收尾，仅 debug 留痕。
-                    logger.debug("SSE 取消订阅 pubsub 失败: channel=%s", channel, exc_info=True)
+        订阅循环本身（含 Pub/Sub 兜底终查与 Redis 不可用的 DB 回退）在
+        ``job_watch.watch_generative_job``：平台 SSE 与 A2A ``tasks/resubscribe`` 共用同一份，
+        差别只在注入的重取方式、超时与是否产空闲刻度。
+        """
+        async for job in watch_generative_job(
+            job_id=job_id,
+            tenant_id=self.ctx.tenant_id,
+            reload=lambda: self._reload(job_id),
+            is_terminal=lambda job: job.status in _TERMINAL,
+            max_seconds=STREAM_MAX_SECONDS,
+            poll_interval=STREAM_POLL_SECONDS,
+        ):
+            # 本调用未打开 emit_ticks，这里不会收到 None；仍显式挡一道，防后人打开刻度后
+            # 静默发出空帧。
+            if job is None:
+                continue
+            yield _sse_frame(job)
 
     @staticmethod
     def video_async_enabled() -> bool:
