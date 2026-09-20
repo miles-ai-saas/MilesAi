@@ -111,9 +111,11 @@ def build_a2a_artifact_update(
 ```
 
 产出规范 §7.2.3 的 `TaskArtifactUpdateEvent`：`kind="artifact-update"`、`taskId`、
-`contextId`（可选）、`artifact`、`lastChunk`。`artifact` 由既有
-`build_a2a_artifacts` 的单项产出（需把它的「单个产物构造」抽成 `build_a2a_artifact`，
-供 `build_a2a_artifacts` 与新函数共用，避免两处各自拼 `file.uri`）。
+`contextId`（可选）、`artifact`、`lastChunk`。
+
+`artifact` 直接吃既有 `build_a2a_artifacts` 的**单项产出** —— 它返回的每个元素本就是完整的
+`Artifact`，故无需再抽 `build_a2a_artifact`：调用方遍历该列表、逐个包一层事件即可，
+`file.uri` 的拼法仍只有一处。
 
 ```python
 def progress_text(*, progress_message: str | None, percent: int | None) -> str | None
@@ -122,10 +124,29 @@ def progress_text(*, progress_message: str | None, percent: int | None) -> str |
 进度文案：`progress_message` 非空则用它（它通常已含百分比，如「45% 渲染中」）；
 否则仅有 `percent` 时回 `"{percent}%"`；两者皆无回 `None`（不附 `text`）。
 
+```python
+def now_iso() -> str   # 自 services/server.py 的 _now 上移
+```
+
+`TaskStatus.timestamp` 是协议字段，其取值属纯逻辑层；上移后订阅模块不必为取个时间戳去
+import 用例模块。
+
 **既有构造函数的签名放宽**：`build_a2a_status_update`（及其嵌套的
 `build_a2a_agent_message`）当前要求 `context_id: str`。为支持 §3.8 的「解析不到则省略」，
 把二者的 `context_id` 放宽为 `str | None` 并在为空时省略该字段 —— 与 `build_a2a_task`
 既有的「解析不到就省略、不塞空串冒充」同法。对现有调用方（总是传实值）行为不变。
+
+`build_a2a_status_update` 另加 `percent: int | None = None`：非空时写进
+`status.message.metadata.percent`。它复用既有的 `metadata.a2aJobTaskId` 那一层
+（`message["metadata"]`），两者都在时合并。
+
+```python
+def is_terminal_generative_status(status: object) -> bool
+```
+
+「该状态是否已终态」，由既有 `is_active_generative_status` 反推而来（后者改为
+`not is_terminal_generative_status(...)`，语义与既有测试一字不变）。订阅循环需要正向判据
+（`is_terminal` 注入点），用「非 active」表达会把否定藏进参数名里。
 
 ### 3.4 共用 watcher
 
@@ -134,54 +155,71 @@ def progress_text(*, progress_message: str | None, percent: int | None) -> str |
 ```python
 async def watch_generative_job(
     *,
-    channel: str,
+    job_id: UUID,
+    tenant_id: UUID,
     reload: Callable[[], Awaitable[GenerativeJob]],
     is_terminal: Callable[[GenerativeJob], bool],
     max_seconds: float,
     poll_interval: float = 1.0,
-) -> AsyncIterator[GenerativeJob]
+    emit_ticks: bool = False,
+) -> AsyncIterator[GenerativeJob | None]
 ```
 
-接口刻意收窄到**与 SSE、JSON、A2A 全无关**，只吐 `GenerativeJob`；四个注入点正是两个消费方
+接口刻意收窄到**与 SSE、JSON、A2A 全无关**，只吐 `GenerativeJob` 快照；注入点正是两个消费方
 唯一不同的地方：
 
 | 参数 | 平台 SSE（`stream_job_events`） | A2A 订阅 |
 |---|---|---|
-| `channel` | `RedisKeys.generative_job_progress(tenant, job)` | 同 |
+| `job_id` / `tenant_id` | 入参与 `ctx.tenant_id` | 同（频道名由二者拼出，两处同用一个 `RedisKeys` 约定） |
 | `reload` | 请求作用域 `db` + `_reload`（`expire_all` 后重取） | `AsyncSessionLocal()` 短开短关 |
-| `is_terminal` | `status in _TERMINAL` | 同 |
+| `is_terminal` | 平台 `_TERMINAL` 枚举集 | `is_terminal_generative_status`（纯逻辑层） |
 | `max_seconds` | `120`（原样） | `1800` |
 | `poll_interval` | `1.0`（原样） | `2.0` |
+| `emit_ticks` | `False`（原样：不产刻度） | `True` |
+
+**`None` 刻度（`emit_ticks`）**：为真时，一次「没等到消息」的轮询会产出一个 `None`。
+这是订阅侧能发保活帧的**唯一**可行做法：消费方的 `async for` 会一直挂在
+`__anext__` 上，若不在空闲时给它一个产出点，它就没有执行机会。之所以不用
+`asyncio.wait_for(anext(agen), timeout=…)` 来「超时发心跳」，是因为 `wait_for` 超时会
+**取消**那次 `anext`，`CancelledError` 被打进生成器内部、生成器就此关闭 —— 之后再也拿不到
+任务更新。
+
+平台侧令 `emit_ticks=False`：它不需要心跳（`message/stream` 的心跳在它自己的轮次循环里做，
+`stream_job_events` 只负责发任务帧），且不产刻度才能保证既有 13 条断言逐帧不变。
 
 **顺序严格照搬既有实现**（这是既有测试能原样通过的前提）：
 
 1. `job = await reload()` → `yield job`；
 2. 若 `is_terminal(job)` 则**直接结束，不订阅**；
-3. 订阅 `channel`；
+3. 订阅频道（名由 `RedisKeys.generative_job_progress(tenant_id, job_id)` 拼出）；
 4. 循环：`msg = await pubsub.get_message(timeout=poll_interval)`；
    - **`timeout` 必须显式传非 0 值**：redis-py 省略时默认 `0.0` 为非阻塞，循环会立刻空转
      打满 CPU（既有测试 `test_every_poll_passes_a_blocking_timeout` 守着这条）；
    - `msg` 为 `message` 类型才 `reload()` 并 yield；
+   - 否则若 `emit_ticks` 则 yield `None`；
    - 总时长达 `max_seconds` 退出循环；
 5. **兜底终查**：退出循环后若从未 yield 过终态，再 `reload()` 一次，终态则 yield
    （防 Pub/Sub 消息丢失让对端永久等待）；
-6. `finally`：取消订阅，失败只记 debug（不影响收尾）。
+6. `except Exception`：记 warning + **降级为 DB 轮询**，上限 `max_seconds / poll_interval` 次
+   （平台 120 次、A2A 900 次，与既有行为一致），每轮 `reload()` 后 yield 一次快照；
+7. `finally`：取消订阅，失败只记 debug（不影响收尾）。
 
-`poll_interval` 对 A2A 取 2.0 而非 1.0：Pub/Sub 有消息时 `get_message` 会立即返回，
-该值只决定**空闲等待上限**与 **DB 回退轮询**的频率；30 分钟上限下 2.0 把回退路径的
-DB 查询量减半（Redis 不可用时 900 次而非 1800 次）。
+`get_redis` 必须在**函数体内** import：既有测试用
+`monkeypatch.setattr("miles_core.infra.redis.get_redis", …)` 替换源模块属性，模块级
+`from … import get_redis` 会把替换前的引用固化进来，替换失效后单测会去连真 Redis。
 
-`poll_interval` 需传进 DB 回退路径的 `asyncio.sleep`（既有实现里硬编码为 `1`）。DB 回退路径
-同时受 `max_seconds` 约束。
-
-**平台侧 `stream_job_events` 改为该 watcher 的薄封装**：保留其签名与 4 条路径行为，
-既有 `test_job_stream_events.py` 的 13 条断言必须**原样全绿**（本批不做行为变更）。
+**平台侧 `stream_job_events` 改为该 watcher 的薄封装**：保留其签名与 4 条路径行为
+（含「DB 回退路径每轮都发帧、不产刻度」），既有 `test_job_stream_events.py` 的 13 条断言
+必须**原样全绿**（本批不做行为变更）。
 
 ### 3.5 流结束条件与安全上限
 
 规范的结束条件是「任务进入 interrupted 或 terminal 状态」。本批据此**不设短上限**：
-任务未终态就继续推，靠 SSE 心跳（`SSE_HEARTBEAT_FRAME = ": ping\n\n"`、
-`SSE_HEARTBEAT_SECONDS = 15.0`，与 `message/stream` 共用）保活。
+任务未终态就继续推，靠保活帧撑住连接 —— 空闲轮询产出一个刻度（见 §3.4）时，消费方下发
+`SSE_HEARTBEAT_FRAME = ": ping\n\n"`（与 `message/stream` 共用该常量）；一次「快照无变化」
+的产出同样回一个保活帧，而不是重复帧。**保活节奏即订阅的轮询间隔（2s）**，比
+`message/stream` 的 15s 更密 —— 订阅可能持续半小时，连接更不能被中间层掐断，
+而代价只是每 2 秒 8 字节。
 
 另设 **30 分钟安全上限**：到点仍未终态则发一帧 `final=true` 的 `status-update` 结束流，
 审计 `detail.endedBy="safety-cap"` 并记 warning。该帧的 `state` 取任务当前的**真实映射值**
@@ -204,6 +242,12 @@ A2A 侧**不持有请求作用域的 `db`**：
 - 订阅期间由 watcher 的 `reload` 闭包用 `AsyncSessionLocal()` **短开短关**：30 分钟上限下
   绝不能让一条连接陪跑整段流。
 
+订阅期间若发生非预期异常（典型：任务在流中途被删，租户取数失败），回一帧 `failed` 终态
+再收流，并记 `outcome=failed` / `endedBy="failed"` 的流水 —— 与 `message/stream` 的
+「error 与 response 同时为空也要回一帧 failed」同一姿态：**绝不让对端等到「流突然断掉却
+没有终态帧」**，也绝不让留痕在这条罕见路径上丢失。取消类异常（`GeneratorExit` /
+`CancelledError`）必须原样重抛、不进这条兜底，否则会把断连伪装成执行失败。
+
 ### 3.7 审计与限流
 
 - **限流**：同一端点在**开流之前**判定，复用既有 `check_a2a_rate_limit`；超限回
@@ -220,7 +264,10 @@ A2A 侧**不持有请求作用域的 `db`**：
     终态为 `completed` → `outcome=ok`、`failed` → `outcome=failed`；
     对端断连 → `outcome=canceled`。（`rejected` 不适用于本方法 ——
     生成任务不会进入 `rejected` 状态，见 §3.2。）
-  - `detail.endedBy`：`"terminal"` / `"safety-cap"` / `"disconnect"`。
+  - `detail.endedBy`：`"terminal"`（任务终态）/ `"safety-cap"`（30 分钟上限）/
+    `"disconnect"`（对端断连）/ `"failed"`（订阅中途的非预期异常，见 §3.6 末）。
+  - `detail.taskState`：收流时映射出的 A2A 状态（断连时为「断连前最后一次已知状态」，
+    未知则 `unknown`）。
   - **任务被取消（`canceled` 终态）记 `ok`**，`detail.taskState="canceled"` —— 这是合法终态、
     订阅正常走完；`canceled` 这一 outcome 在本设计里专指「对端断连」，混用会让两者不可区分。
 - **一处小重构**：把上述审计调度机制从 `a2a/services/server.py` 移到
@@ -247,29 +294,33 @@ A2A 侧**不持有请求作用域的 `db`**：
 # miles_portal/tenant/a2a/server.py（纯逻辑，无 ORM / 无 DB）
 + build_a2a_artifact_update(...) -> dict          # 规范 §7.2.3
 + progress_text(...) -> str | None
-  build_a2a_artifacts(...)                         # 抽出单项构造 build_a2a_artifact 共用
-~ build_a2a_status_update(..., context_id: str | None)
++ is_terminal_generative_status(...) -> bool
++ now_iso() -> str                                 # 自 services/server.py 的 _now 上移
+~ is_active_generative_status(...)                # 改为 is_terminal 的取反
+~ build_a2a_status_update(..., context_id: str | None, percent: int | None)
 ~ build_a2a_agent_message(..., context_id: str | None)
 
 # miles_portal/tenant/generative/services/job_watch.py（新增）
-+ watch_generative_job(...) -> AsyncIterator[GenerativeJob]
++ watch_generative_job(...) -> AsyncIterator[GenerativeJob | None]
 
 # miles_portal/tenant/generative/services/job.py
 ~ stream_job_events(job_id)                        # 改为 watcher 薄封装，行为不变
 
-# miles_portal/tenant/a2a/services/streaming.py（新增：SSE 帧原语，两个消费方共用）
-+ sse_frame(payload) / now_iso()
+# miles_portal/tenant/a2a/services/streaming.py（新增：流式公共原语）
++ sse_frame(payload) / elapsed_ms(started)
 + SSE_HEARTBEAT_FRAME / SSE_HEARTBEAT_SECONDS      # 自 server.py 迁入，按模块属性引用
 
 # miles_portal/tenant/a2a/services/audit.py
 + _PENDING_AUDITS / schedule_audit() / drain_pending_audits()   # 自 server.py 迁入
 
 # miles_portal/tenant/a2a/services/subscription.py（新增）
-+ open_task_subscription(db, ctx, agent_id, payload) -> dict | AsyncIterator[str]
++ open_task_subscription(db, ctx, agent_id, payload, *, base_url) -> dict | AsyncIterator[str]
 
 # miles_portal/tenant/a2a/services/server.py
 - _PENDING_AUDITS / _schedule_audit / drain_pending_audits      # 迁出至 audit.py
-- sse_frame / now_iso / SSE_HEARTBEAT_*                         # 迁出至 streaming.py
+- _sse_frame / _now / SSE_HEARTBEAT_* / _elapsed_ms             # 迁出至 streaming.py
+~ _parse_task_id / _load_owned_agent_task / _context_id_from_job_params
+                                                   # 去掉下划线：订阅模块要用
 ~ _AUDIT_ACTION_BY_METHOD                          # 不含 tasks/resubscribe（不经 _dispatch）
 
 # miles_portal/tenant/audit_log/meta.py
