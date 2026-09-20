@@ -61,7 +61,7 @@ def test_build_agent_card_declares_rpc_interface_and_fallback_skill():
     assert card["description"] == "解答售后问题"
     rpc_url = f"{BASE}/api/v1/open/a2a/agents/{AGENT_ID}"
     assert card["url"] == rpc_url
-    assert card["supportedInterfaces"] == [{"url": rpc_url, "protocolBinding": "JSONRPC", "protocolVersion": server_mod.A2A_PROTOCOL_VERSION}]
+    assert card["additionalInterfaces"] == [{"url": rpc_url, "transport": "JSONRPC"}]
     # 未绑定技能包时，智能体自身即一个 skill（Card 不允许 skills 为空数组）
     assert [s["id"] for s in card["skills"]] == [str(AGENT_ID)]
     assert card["skills"][0]["name"] == "客服助手"
@@ -250,8 +250,23 @@ def test_build_agent_card_declares_streaming_and_v03():
     card = build_agent_card(agent_id=AGENT_ID, name="客服助手", description="D", base_url=BASE)
 
     assert card["protocolVersion"] == "0.3"
+    assert card["preferredTransport"] == "JSONRPC"
     assert card["capabilities"]["streaming"] is True
-    assert card["supportedInterfaces"][0]["protocolVersion"] == "0.3"
+
+
+def test_build_agent_card_uses_v03_interface_field_names():
+    """声明 0.3，接口数组就必须是 0.3 的 ``additionalInterfaces`` / ``transport``。
+
+    ``supportedInterfaces`` / ``protocolBinding`` 是 v1.0 的字段名：混用会让按声明办事的
+    0.3 客户端读到一对它不认识的键，只能退回 ``url`` + ``preferredTransport`` —— 能跑，
+    但等于声明白写；而 v1.0 客户端又会把 ``preferredTransport`` 当陌生字段。
+    """
+    card = build_agent_card(agent_id=AGENT_ID, name="N", description=None, base_url=BASE)
+
+    assert "supportedInterfaces" not in card
+    assert all("protocolBinding" not in item for item in card["additionalInterfaces"])
+    # 主 url 的接口也须出现在 additionalInterfaces 里（v0.3 §5.6.4 的完整性要求）
+    assert {"url": card["url"], "transport": card["preferredTransport"]} in card["additionalInterfaces"]
 
 
 def test_task_state_rejected_constant_exists():

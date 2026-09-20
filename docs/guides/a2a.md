@@ -104,7 +104,9 @@ JSON-RPC 方法：
 
 生成任务状态 → A2A `TaskState`：`pending→submitted`、`running→working`、`success→completed`、`failed→failed`、`cancelled→canceled`；未知状态回保留值 `unknown`（而非 `completed` —— 谎称就绪会让对端停止轮询）。
 
-Card 的 `supportedInterfaces[].url` 即调用端点；`url` 由请求的 scheme://host 推导，多环境无需新增配置项。绑定技能包会映射为 Card `skills`（无绑定时智能体自身为一个 skill）。
+Card 的 `url` 即调用端点（同时以 0.3 形状在 `additionalInterfaces[{url, transport}]` 里列出，满足规范 §5.6.4 的完整性要求）；`url` 由请求的 scheme://host 推导，多环境无需新增配置项。绑定技能包会映射为 Card `skills`（无绑定时智能体自身为一个 skill）。
+
+反向（把外部对端登记为 Peer）时，客户端认两种接口数组形状：0.3 的 `additionalInterfaces[{url, transport}]` 与 v1.0 的 `supportedInterfaces[{url, protocolBinding, protocolVersion}]`，并都以其中的 `url` 为端点。
 
 Card 声明的 `protocolVersion` 为 **0.3**：本平台产出的方法名（`message/*`、`tasks/*`）与线格式（`kind` 判别字段、小写 `TaskState`）都是 v0.3 形状。声明 1.0 会让对端按 PascalCase 方法名调用并撞 `-32601`。Card 的 `capabilities.streaming=true`。
 
@@ -135,5 +137,4 @@ Card 同时声明 `securitySchemes`（`apiKey` · `in: header` · `name: X-API-K
 - `tasks/resubscribe` 与 `tasks/pushNotificationConfig/*`（现回方法未找到）
 - 多模态入站：`parts` 的 `file` / `data` 类型（现仅取 `text`）
 - A2A 专用审计维度（现复用通用访问日志与限流中间件）
-- Card 界面字段名 0.3 化：`supportedInterfaces` → `additionalInterfaces`、`protocolBinding` → `transport`
 - A2A v1.0 迁移：PascalCase 方法名、去 `kind` 换成员名包装、`TASK_STATE_*` 取值

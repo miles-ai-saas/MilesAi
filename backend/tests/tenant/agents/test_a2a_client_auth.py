@@ -12,6 +12,7 @@ import pytest
 
 from miles_portal.tenant.a2a.card_client import fetch_agent_card
 from miles_portal.tenant.a2a.client import _pick_rpc_url, build_auth_headers, invoke_a2a_peer
+from miles_portal.tenant.a2a.server import build_agent_card
 
 
 def test_api_key_variants_map_to_x_api_key_header():
@@ -104,7 +105,7 @@ async def test_fetch_agent_card_sends_configured_auth(monkeypatch):  # noqa: ANN
 
 
 def test_pick_rpc_url_uses_declared_supported_interface_url():
-    """A2A v1.0 的 ``supportedInterfaces[].url`` 是端点，``protocolBinding`` 只是传输标签。
+    """v1.0 对端的 ``supportedInterfaces[].url`` 是端点，``protocolBinding`` 只是传输标签。
 
     回归：此前先读 ``protocolBinding``（恒为 ``JSONRPC``、不以 http 开头），导致平台自己
     产出的 Card 的 ``url`` 被忽略、退回 ``base_url``（通常只是 host 根），反向把本平台
@@ -117,6 +118,33 @@ def test_pick_rpc_url_uses_declared_supported_interface_url():
     )
 
     assert _pick_rpc_url(peer) == "https://peer.example.com/api/v1/open/a2a/agents/abc"
+
+
+def test_pick_rpc_url_reads_v03_additional_interfaces():
+    """0.3 对端的接口数组叫 ``additionalInterfaces``，传输标签是 ``transport``。"""
+    peer = SimpleNamespace(
+        agent_card_json={"additionalInterfaces": [{"url": "https://peer.example.com/a2a", "transport": "JSONRPC"}]},
+        base_url="https://peer.example.com",
+        agent_card_url="https://peer.example.com/.well-known/agent-card.json",
+    )
+
+    assert _pick_rpc_url(peer) == "https://peer.example.com/a2a"
+
+
+def test_pick_rpc_url_consumes_our_own_emitted_card():
+    """自家产出的 Card 必须能被自家客户端解析出端点。
+
+    否则「发布智能体 → 反向登记为 Peer」这条自环路径会静默退回 ``base_url``（host 根），
+    调不通却没有任何报错。
+    """
+    card = build_agent_card(agent_id="abc", name="客服助手", description=None, base_url="https://miles.example.com")
+    peer = SimpleNamespace(
+        agent_card_json=card,
+        base_url="https://miles.example.com",
+        agent_card_url="https://miles.example.com/.well-known/agent-card.json",
+    )
+
+    assert _pick_rpc_url(peer) == "https://miles.example.com/api/v1/open/a2a/agents/abc"
 
 
 @pytest.mark.asyncio

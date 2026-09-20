@@ -6,7 +6,8 @@
 ``A2aPeerService.sync`` → ``resolve_agent_card_url`` → ``fetch_agent_card``
 → 写入 ``A2aPeer.agent_card_json``，供 ``invoke_a2a_peer`` 解析 RPC 端点。
 
-``supportedInterfaces`` / ``base_url`` 决定 ``client._pick_rpc_url`` 能否真实 HTTP 调用。
+``additionalInterfaces``（0.3）/ ``supportedInterfaces``（v1.0）里的 ``url`` / ``base_url`` 决定
+``client._pick_rpc_url`` 能否真实 HTTP 调用。
 """
 
 from urllib.parse import urljoin, urlparse

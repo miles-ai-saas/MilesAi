@@ -34,17 +34,22 @@ Card 声明 `protocolVersion: "1.0"`（`miles_portal/tenant/a2a/server.py:27`）
 | JSON-RPC 方法名 | `message/send` / `message/stream` / `tasks/get` / `tasks/cancel` | `SendMessage` / `SendStreamingMessage` / `GetTask` / `CancelTask` | v0.3 风格 |
 | 对象多态判别 | 对象内 `kind` 字段（`{"kind":"task"}`） | `kind` **已移除**（规范 A.2.1 写明「不应再发出」），改用成员名包装（`{"task":…}` / `{"statusUpdate":…}`） | v0.3 风格（`build_a2a_task` 产 `"kind": "task"`） |
 | **Part 判别键** | `{"kind":"text","text":…}` / `{"kind":"file","file":{…}}` | `{"text":…}` / `{"raw":…,"filename":…,"mediaType":…}` | **两版都不是**：出站发 `{"type":"text"}` / `{"type":"file"}`（`services/server.py:200`、`server.py:293`、`a2a/client.py:188`）。入站 `extract_message_text` 只读 `text`，故两版都能收 |
-| **Card 界面声明** | `preferredTransport` + `additionalInterfaces[{url,transport}]` | `supportedInterfaces[{url,protocolBinding,protocolVersion}]` | **混用**：`preferredTransport` 是 0.3 的，`supportedInterfaces` / `protocolBinding` 是 1.0 的 |
+| **Card 界面声明** | `preferredTransport` + `additionalInterfaces[{url,transport}]` | `supportedInterfaces[{url,protocolBinding,protocolVersion}]` | **混用**（本表为设计时快照）：`preferredTransport` 是 0.3 的，`supportedInterfaces` / `protocolBinding` 是 1.0 的。后续已按 §1.2 收掉 |
 | TaskState 取值 | 小写（`"working"`） | `TASK_STATE_*` 前缀（`"TASK_STATE_WORKING"`） | v0.3 风格（`server.py:45-50`；注释误标「v1.0」，见 §3.1） |
 
 问题不在于「选了哪一版」，而在于**声明的是 1.0、实现是 0.3 混 `type`**：按 1.0 调用的客户端会拿
 `-32601`，且会把 `kind` 当未知字段、把 `TASK_STATE_*` 当未知状态。改一行常量 + 三个 part 判别键
 即可让声明自洽（见 §3.1）；全面迁到 1.0 是另一批工作量（见 §5）。
 
-**不在本批对齐的两项**（明确记录其后果）：
+**本批对齐后补做的一项**（原记为「保持不动」，后按「声明与实现不得混版」同一原则收掉）：
 
-- Card 的 `supportedInterfaces` / `protocolBinding`（v1.0 字段名）保持不动：v0.3 客户端会忽略该数组，
-  改用 Card 的 `url` + `preferredTransport` —— 这两项本就是 0.3 字段且已正确声明，功能不受影响。
+- Card 的接口数组改为 0.3 形状 `additionalInterfaces[{url, transport}]`（原 `supportedInterfaces[{url,
+  protocolBinding, protocolVersion}]` 是 v1.0 字段名）。原判断「v0.3 客户端会忽略该数组、改用 `url` +
+  `preferredTransport`，功能不受影响」在**功能**上成立，但等于接口声明白写，且 v1.0 已取消顶层 `url`，
+  「两版都发」不可能长期维持。客户端侧 `_pick_rpc_url` 同时认两种形状（见 §3.1）。
+
+**不在本批对齐的一项**：
+
 - TaskState 已是 0.3 取值，只需修掉误标 v1.0 的注释并补 `rejected`。
 
 ### 1.3 本批要解决的
@@ -72,7 +77,7 @@ Card 声明 `protocolVersion: "1.0"`（`miles_portal/tenant/a2a/server.py:27`）
 
 | 项 | 现状 | 改为 |
 |---|---|---|
-| `A2A_PROTOCOL_VERSION` | `"1.0"` | `"0.3"`（Card 与 `supportedInterfaces[].protocolVersion` 同源，改一处即两处一致）。粒度取 `"0.3"` 而非 `"0.3.0"`：A2A 官方文档自身的 Card 示例就写 `"0.3"`（v1.0 规范示例）与 `"0.2.9"`（v0.3 规范示例），非严格三段 semver |
+| `A2A_PROTOCOL_VERSION` | `"1.0"` | `"0.3"`（当时 Card 顶层与 `supportedInterfaces[].protocolVersion` 同源，改一处即两处一致；接口数组随后已换 0.3 形状，见 §1.2）。粒度取 `"0.3"` 而非 `"0.3.0"`：A2A 官方文档自身的 Card 示例就写 `"0.3"`（v1.0 规范示例）与 `"0.2.9"`（v0.3 规范示例），非严格三段 semver |
 | `capabilities.streaming` | `False` | `True`（本批真的支持了） |
 | `server.py:45-50` TaskState 注释 | 标「（v1.0）」 | 标「（v0.3）」，并补 `TASK_STATE_REJECTED = "rejected"`（§3.6 要用） |
 | part 判别键（3 处） | `{"type":"text"}` / `{"type":"file"}` | `{"kind":"text"}` / `{"kind":"file"}` |
@@ -311,7 +316,7 @@ async def open_a2a_stream(
 **Card 层**：
 
 - `capabilities.streaming is True`；
-- `protocolVersion == "0.3"`（Card 与 `supportedInterfaces[0]` 两处）。
+- `protocolVersion == "0.3"`（Card 顶层；0.3 的接口项不带 `protocolVersion`，见 §1.2 的后续项）。
 
 **质量门**：`make lint-backend format-check-backend layers-check openapi-check test-backend`。
 预期 openapi 快照**无变化**（不新增路由与 schema）——若变化即说明返回类型标注引入了推断，须回到 `-> Response`。
@@ -320,8 +325,6 @@ async def open_a2a_stream(
 
 - `tasks/resubscribe`（续播已有任务；与 `message/stream` 共用 SSE 机制，但是独立方法）
 - `tasks/pushNotificationConfig/*`
-- **Card 界面字段名 0.3 化**：`supportedInterfaces` → `additionalInterfaces`、`protocolBinding` → `transport`
-  （v1.0 字段名；v0.3 客户端会忽略并按 `url` + `preferredTransport` 调用，故不影响功能，见 §1.2）
 - **v1.0 迁移**：PascalCase 方法名、去 `kind` 换成员名包装、文本/文件 part 形状、`TASK_STATE_*` 取值
   （新版规范 A.2.1 的破坏性变更）
 - 多模态入站：`parts` 的 `file` / `data` 类型（现仅取 `text`）

@@ -167,7 +167,7 @@ backend/packages/miles-openapi/src/miles_openapi/views/a2a_server.py          # 
 2. 创建 a2a 宿主 + binding → chat 调外部（mock Card）
 3. custom + peer_refs + trigger_keywords 命中 → 强制 Peer
 4. inactive peer → 跳过或报错
-5. 对外 Card：未发布 404 / 已发布返回 `supportedInterfaces`；多技能包映射 `skills`；声明 `securitySchemes` 且头名与实际鉴权一致
+5. 对外 Card：未发布 404 / 已发布返回 `additionalInterfaces`（0.3 形状，含主 `url` 的接口项）；多技能包映射 `skills`；声明 `securitySchemes` 且头名与实际鉴权一致
 6. 对外 RPC：`message/send` 正常回信封；缺文本 / 未知方法 / 非 JSON-RPC 各自错误码
 7. 根别名：唯一发布 307、0 或 >1 → 404
 8. 多轮：带 `contextId` → 作 `conversation_id` 并回显；缺省时生成；超长回 `-32602`

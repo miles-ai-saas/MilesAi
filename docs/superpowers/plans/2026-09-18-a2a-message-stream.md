@@ -46,7 +46,7 @@ def test_build_agent_card_declares_streaming_and_v03():
 
     assert card["protocolVersion"] == "0.3"
     assert card["capabilities"]["streaming"] is True
-    assert card["supportedInterfaces"][0]["protocolVersion"] == "0.3"
+    assert card["additionalInterfaces"] == [{"url": rpc_url, "transport": "JSONRPC"}]
 
 
 def test_task_state_rejected_constant_exists():
@@ -170,7 +170,7 @@ def build_a2a_agent_message(*, text: str, context_id: str, task_id: str | None =
 cd backend && uv run python -m pytest -q tests/tenant/a2a/test_a2a_server_card.py
 ```
 Expected: PASS（全文件）。注意既有 `test_build_agent_card_declares_rpc_interface_and_fallback_skill` 断言
-`card["supportedInterfaces"] == [{..., "protocolVersion": server_mod.A2A_PROTOCOL_VERSION}]`，它读常量故自动跟随。
+`card["additionalInterfaces"] == [{"url": rpc_url, "transport": "JSONRPC"}]`。
 
 - [ ] **Step 5: 提交**
 
@@ -1137,7 +1137,6 @@ Card 的 `capabilities.streaming=true`：`direct_llm` / `rag` 路由逐 token �
 - `tasks/resubscribe` 与 `tasks/pushNotificationConfig/*`（现回方法未找到）
 - 多模态入站：`parts` 的 `file` / `data` 类型（现仅取 `text`）
 - A2A 专用审计维度（现复用通用访问日志与限流中间件）
-- Card 界面字段名 0.3 化：`supportedInterfaces` → `additionalInterfaces`、`protocolBinding` → `transport`
 - A2A v1.0 迁移：PascalCase 方法名、去 `kind` 换成员名包装、`TASK_STATE_*` 取值
 ```
 
@@ -1230,6 +1229,6 @@ EOF
 
 - `tasks/resubscribe`、`tasks/pushNotificationConfig/*`
 - A2A v1.0 迁移（PascalCase 方法名 / 去 `kind` / `TASK_STATE_*`）
-- Card 界面字段名 0.3 化（`additionalInterfaces` / `transport`）
+- Card 界面字段名 0.3 化（`additionalInterfaces` / `transport`）—— 本批未做，后续单独一批已补上
 - 多模态入站 parts、非真流路由的逐 token 化、A2A 专用审计与限流
 - `MessageSendParams.configuration`（`blocking` 等）的语义

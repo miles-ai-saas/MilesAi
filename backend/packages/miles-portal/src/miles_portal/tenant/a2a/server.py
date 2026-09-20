@@ -6,7 +6,7 @@
 ----------
 平台多租户共用域名，根路径 ``/.well-known/agent-card.json`` 无法区分租户，故 Card 按
 智能体寻址：``/api/v1/open/a2a/agents/{agent_id}/.well-known/agent-card.json``；调用端点
-为该路径去掉 ``.well-known`` 后缀（``supportedInterfaces[].url`` 声明的正是它）。根路径
+为该路径去掉 ``.well-known`` 后缀（``additionalInterfaces[].url`` 声明的正是它）。根路径
 仅在「全平台唯一发布」时提供 302 别名，见 ``services/server.resolve_default_published_agent_id``。
 
 本模块为纯函数（无 ORM / 无 DB），可被 API 声明层安全 import。
@@ -97,7 +97,7 @@ def is_publish_enabled(config: dict | None) -> bool:
 
 
 def agent_card_rpc_path(agent_id: UUID | str) -> str:
-    """对外 JSON-RPC 端点路径（Card ``url`` / ``supportedInterfaces[].url``）。"""
+    """对外 JSON-RPC 端点路径（Card ``url`` / ``additionalInterfaces[].url``）。"""
     return f"/api/v1/open/a2a/agents/{agent_id}"
 
 
@@ -154,11 +154,14 @@ def build_agent_card(
         "defaultInputModes": ["text"],
         "defaultOutputModes": ["text"],
         "skills": card_skills,
-        "supportedInterfaces": [
+        # 0.3 的接口数组：``additionalInterfaces[{url, transport}]``（v1.0 改名为
+        # ``supportedInterfaces[{url, protocolBinding, protocolVersion}]``）。每项不带
+        # ``protocolVersion`` —— 版本由 Card 顶层字段统一声明，接口项只描述「哪个 URL 说哪个传输」。
+        # 主 url 的接口也要在这里出现（v0.3 §5.6.4 的完整性要求）。
+        "additionalInterfaces": [
             {
                 "url": rpc_url,
-                "protocolBinding": A2A_PROTOCOL_BINDING,
-                "protocolVersion": A2A_PROTOCOL_VERSION,
+                "transport": A2A_PROTOCOL_BINDING,
             }
         ],
         # 调用端点（非 Card 本身）须带该智能体的 API Key；声明后标准 A2A 客户端才能
