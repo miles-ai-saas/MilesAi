@@ -53,6 +53,7 @@ async def _ctx_from_api_key(
         is_superuser=user.is_superuser,
         permissions=frozenset({"agent:read"}),
         auth_via="api_key",
+        api_key_id=row.id,
     )
 
 

@@ -42,6 +42,7 @@ export function useRiskPage() {
         name: ruleForm.name.trim(),
         path_pattern: ruleForm.path_pattern.trim(),
         limit_per_minute: Number(ruleForm.limit_per_minute) || 60,
+        scope: ruleForm.scope,
         description: ruleForm.description.trim() || undefined,
       });
       setShowRuleForm(false);
@@ -59,6 +60,7 @@ export function useRiskPage() {
       name: rule.name,
       path_pattern: rule.path_pattern,
       limit_per_minute: String(rule.limit_per_minute),
+      scope: rule.scope,
       description: rule.description ?? "",
     });
     setRuleErr("");
@@ -72,6 +74,7 @@ export function useRiskPage() {
         name: editForm.name.trim(),
         path_pattern: editForm.path_pattern.trim(),
         limit_per_minute: Number(editForm.limit_per_minute) || 60,
+        scope: editForm.scope,
         description: editForm.description.trim() || null,
       });
       setEditRule(null);

@@ -132,9 +132,58 @@ Card 同时声明 `securitySchemes`（`apiKey` · `in: header` · `name: X-API-K
 
 前端入口：智能体表单「工具与能力」→ 勾选「对外发布为 A2A Server」；详情对话框展示已发布状态与 Card 地址。
 
+## 限流
+
+调用端点按 **API Key** 限流（维度 = 单个对端集成；轮换 Key 即换桶）。阈值来自运营后台
+「安全合规 → 风控中心 → 限流配置」里 `scope = api_key` 的规则，路径模式按端点路径匹配（如
+`/api/v1/open/a2a/*`）。
+
+超限返回 **HTTP 429**：
+
+```
+Retry-After: 12
+```
+
+```json
+{"jsonrpc": "2.0", "id": "9", "error": {"code": -32000, "message": "请求过于频繁，请稍后再试", "data": {"kind": "rate_limit", "retryAfterSeconds": 12}}}
+```
+
+- `-32000` 落在 A2A 规范留给实现自定义的服务端错误区间（`-32000..-32099`）。
+- 产物下载端点同为 429 + `Retry-After`，但正文是平台信封 `{code,message,data,trace_id}`（它是普通
+  HTTP 下载、不是 JSON-RPC；`trace_id` 用于把对端回报的 429 对回服务端日志）。
+- `message/stream` 的超限在**开流之前**判出，故回普通 JSON 而非 SSE 帧 —— 对端按状态码
+  处理即可，不必解析半条流。
+- 命中会记一条平台风控事件（`a2a_rate_limit`，含 `apiKeyId`）。
+
+上面这些是**按 Key 维度**（`scope = api_key`）的规则。平台中间件的 **IP 维度**规则（含存量
+默认的 `/api/v1/*` 全局限流，`scope = ip`）**仍独立生效**，且先于本端点执行：对端撞上它时
+拿到的是平台信封 429（`{code,message,data,trace_id}`，**无** `Retry-After`、无 JSON-RPC 错误码），
+形状与上面的 JSON-RPC 429 不同 —— 客户端的重试与解析要能同时吃下两种。
+
+## 审计
+
+每次调用在租户审计流水（`aud_logs`）留一条，可在工作台「系统设置 → 审计日志」按动作筛选。
+窄窗例外：若对端在 `message/stream` **首帧发出前**就断连（生成器体从未进入），该次调用
+**零流水** —— 既有边界，非本批引入。
+
+| 动作 | 触发 |
+|---|---|
+| `a2a.message.send` | `message/send` |
+| `a2a.message.stream` | `message/stream`：终态、对端断连、或前置校验失败（`failed`，不开流）各记一次 |
+| `a2a.tasks.get` | `tasks/get` |
+| `a2a.tasks.cancel` | `tasks/cancel` |
+| `a2a.artifact.download` | 产物下载 |
+
+记录内容为「谁（`apiKeyId`）在何时以何结果（`outcome`：`ok` / `rejected` / `failed` /
+`canceled`）调用了哪个智能体的哪个方法」，**不含消息正文**。被限流拒绝的请求只记风控事件、
+不记审计流水。
+
+同一个合规拦截在两个方法上的 `outcome` 并不一致：`message/send` 侧记为 `failed`（异常被
+`message/send` 的既有错误映射统一译成信封 `-32603`），`message/stream` 侧记为 `rejected`
+（终态帧）。差异来自 send 侧的错误码映射，本次只如实记录、不改码。
+
 ## 待做
 
 - `tasks/resubscribe` 与 `tasks/pushNotificationConfig/*`（现回方法未找到）
 - 多模态入站：`parts` 的 `file` / `data` 类型（现仅取 `text`）
-- A2A 专用审计维度（现复用通用访问日志与限流中间件）
 - A2A v1.0 迁移：PascalCase 方法名、去 `kind` 换成员名包装、`TASK_STATE_*` 取值

@@ -40,7 +40,9 @@ def disable_platform_risk() -> Iterator[None]:
         patch(
             "miles_core.web.middlewares.platform_risk.platform_risk_enforcer.check_rate_limit",
             new_callable=AsyncMock,
-            return_value=(False, None),
+            # ``check_rate_limit`` 现在回 ``RateLimitHit | None``：回 ``(False, None)`` 这种
+            # 非空元组会被判成「命中」，把所有 API 测试变成 429。
+            return_value=None,
         ),
     ):
         yield

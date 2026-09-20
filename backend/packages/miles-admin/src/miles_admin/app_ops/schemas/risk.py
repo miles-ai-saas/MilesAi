@@ -1,6 +1,7 @@
 """运营端风控 DTO：风险事件、黑名单与限流规则。"""
 
 from datetime import datetime
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -45,6 +46,7 @@ class RateLimitRuleCreate(BaseModel):
     name: str = Field(description="规则名称")
     path_pattern: str = Field(description="路径匹配模式")
     limit_per_minute: int = Field(60, ge=1, le=10000, description="每分钟请求上限")
+    scope: Literal["ip", "api_key"] = Field("ip", description="计量维度：ip 按来源 IP，api_key 按调用方 API Key")
     description: str | None = Field(None, description="规则描述")
 
 
@@ -53,6 +55,7 @@ class RateLimitRuleUpdate(BaseModel):
     name: str | None = Field(None, description="规则名称")
     path_pattern: str | None = Field(None, description="路径匹配模式")
     limit_per_minute: int | None = Field(None, ge=1, le=10000, description="每分钟请求上限")
+    scope: Literal["ip", "api_key"] | None = Field(None, description="计量维度：ip 按来源 IP，api_key 按调用方 API Key")
     is_active: bool | None = Field(None, description="是否启用")
     description: str | None = Field(None, description="规则描述")
 
@@ -63,6 +66,7 @@ class RateLimitRuleOut(BaseModel):
     name: str = Field(description="规则名称")
     path_pattern: str = Field(description="路径匹配模式")
     limit_per_minute: int = Field(description="每分钟请求上限")
+    scope: Literal["ip", "api_key"] = Field(description="计量维度：ip 按来源 IP，api_key 按调用方 API Key")
     is_active: bool = Field(description="是否启用")
     description: str | None = Field(description="规则描述")
 

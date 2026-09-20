@@ -20,6 +20,14 @@ class RiskSeverity(enum.StrEnum):
     CRITICAL = "critical"
 
 
+# 限流计量维度：一条规则只对同维度的流量生效。
+# 刻意**不**用 SAEnum：本列只有两个取值、校验在应用层做，而 PG 原生枚举要 CREATE TYPE
+# 并让 downgrade 变复杂；`RiskSeverity` 用 SAEnum 是因为它先于本列存在。
+class RateLimitScope(enum.StrEnum):
+    IP = "ip"
+    API_KEY = "api_key"
+
+
 class RiskEvent(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     """平台风险事件记录。"""
 
@@ -63,6 +71,7 @@ class RateLimitRule(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
     name: Mapped[str] = mapped_column(String(128), nullable=False)
     path_pattern: Mapped[str] = mapped_column(String(255), nullable=False)
+    scope: Mapped[str] = mapped_column(String(16), default=RateLimitScope.IP.value, server_default="ip", nullable=False)
     limit_per_minute: Mapped[int] = mapped_column(Integer, default=60, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)

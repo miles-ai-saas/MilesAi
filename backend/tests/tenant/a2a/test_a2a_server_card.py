@@ -9,11 +9,13 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import inspect
 import json
 from types import SimpleNamespace
 from uuid import uuid4
 
+import anyio
 import pytest
 
 from miles_common.exceptions import BadRequestError, NotFoundError
@@ -379,7 +381,39 @@ def test_jsonrpc_envelopes():
     assert "result" not in err
 
 
+def test_jsonrpc_error_carries_optional_data():
+    """超限要在 ``error.data`` 给结构化细节（规范允许），而既有调用形状必须逐字不变。"""
+    assert jsonrpc_error(1, -32602, "坏参数") == {"jsonrpc": "2.0", "id": 1, "error": {"code": -32602, "message": "坏参数"}}
+
+    with_data = jsonrpc_error(1, server_mod.RATE_LIMITED, "请求过于频繁，请稍后再试", data={"kind": "rate_limit", "retryAfterSeconds": 12})
+    assert with_data["error"]["data"] == {"kind": "rate_limit", "retryAfterSeconds": 12}
+
+
+def test_rate_limited_code_is_in_implementation_defined_range():
+    """``-32000`` 属规范保留给实现自定义的服务端错误区间（本实现已占 ``-32001`` / ``-32002``）。"""
+    assert server_mod.RATE_LIMITED == -32000
+
+
 # --- 2. 服务：发布门槛 --------------------------------------------------------
+
+
+@pytest.fixture(autouse=True)
+def a2a_audit_recorder(monkeypatch):  # noqa: ANN001
+    """审计走独立会话；单测不连库，故默认替换为记录器，专测再从返回值断言。
+
+    与本文件既有的 ``_patch_session`` 不冲突：那条替换的是 ``server_svc.AsyncSessionLocal``
+    （轮次会话），审计用的是 ``services.audit`` 里的同名对象。
+    """
+    recorded: list[dict] = []
+
+    async def fake_write(**kwargs):  # noqa: ANN003
+        # 让出一次控制权：真实写库（开会话 + commit）必然挂起，审计对取消的时序敏感性
+        # 只有这样才测得出来 —— 纯同步返回的替身会让「取消时是否还能把留痕写出去」永远为真。
+        await asyncio.sleep(0)
+        recorded.append(kwargs)
+
+    monkeypatch.setattr(server_svc, "write_a2a_audit", fake_write)
+    return recorded
 
 
 def _agent(**overrides):
@@ -1064,7 +1098,7 @@ async def test_open_stream_one_shot_route_only_has_final_frame(monkeypatch):  # 
 
 
 @pytest.mark.asyncio
-async def test_open_stream_maps_compliance_block_to_rejected(monkeypatch):  # noqa: ANN001
+async def test_open_stream_maps_compliance_block_to_rejected(a2a_audit_recorder, monkeypatch):  # noqa: ANN001
     """输入/输出合规拦截回 rejected（拒绝处理），并把原因交给对端。"""
     session = _FakeSession()
     _patch_session(monkeypatch, session)
@@ -1083,6 +1117,8 @@ async def test_open_stream_maps_compliance_block_to_rejected(monkeypatch):  # no
     assert last["status"]["state"] == "rejected"
     assert "敏感词" in last["status"]["message"]["parts"][0]["text"]
     assert session.rolled_back == 1
+    await server_svc.drain_pending_audits()
+    assert [r["outcome"] for r in a2a_audit_recorder] == [server_mod.AUDIT_OUTCOME_REJECTED]
 
 
 @pytest.mark.asyncio
@@ -1264,3 +1300,440 @@ async def test_open_stream_reports_failed_when_session_cannot_open(monkeypatch):
     assert results[0]["kind"] == "task"
     assert results[-1]["final"] is True
     assert results[-1]["status"]["state"] == "failed"
+
+
+# --- 7. 审计接入三个调用点 ----------------------------------------------------
+
+
+async def _wait_until(predicate, *, attempts: int = 200) -> None:  # noqa: ANN001
+    """有上限地等条件成立：等生成器进入「挂在某个 ``await`` 上」或等后台审计 task 落地。
+
+    不用裸 ``sleep``：轮次上限保证条件不成立时立即报错，而不是把用例挂死。
+    """
+    for _ in range(attempts):
+        if predicate():
+            return
+        await asyncio.sleep(0)
+    raise AssertionError("条件未在限定轮次内成立")
+
+
+@pytest.mark.asyncio
+async def test_handle_rpc_audits_message_send(a2a_audit_recorder, monkeypatch):  # noqa: ANN001
+    """一次调用一条流水，outcome 由最终信封决定：审计不该散在各 _handle_* 里重复判定。"""
+
+    async def fake_chat(_db, _ctx, _agent_id, _text, conversation_id=None):  # noqa: ANN001
+        return ChatResponse(answer="收到")
+
+    monkeypatch.setattr(server_svc, "run_published_agent_chat", fake_chat)
+    payload = {"jsonrpc": "2.0", "id": 1, "method": "message/send", "params": {"message": {"contextId": "ctx-1", "parts": [{"kind": "text", "text": "你好"}]}}}
+
+    await server_svc.handle_a2a_rpc(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, payload, base_url=BASE)
+
+    assert [r["action"] for r in a2a_audit_recorder] == [server_mod.AUDIT_ACTION_MESSAGE_SEND]
+    record = a2a_audit_recorder[0]
+    assert record["outcome"] == server_mod.AUDIT_OUTCOME_OK
+    assert record["agent_id"] == AGENT_ID
+    assert record["detail"]["method"] == "message/send"
+    assert record["detail"]["contextId"] == "ctx-1"
+    # 审计不写正文：用户输入与智能体回复都不得出现在 detail 里（aud_logs 是租户可见面）
+    serialized = json.dumps(record["detail"], ensure_ascii=False)
+    assert "你好" not in serialized
+    assert "收到" not in serialized
+    assert isinstance(record["detail"]["durationMs"], int)
+
+
+@pytest.mark.asyncio
+async def test_handle_rpc_audits_failure_with_error_code(a2a_audit_recorder):  # noqa: ANN001
+    """失败也要留痕，并带上错误码：失败恰恰是最需要留痕的时候。"""
+    payload = {"jsonrpc": "2.0", "id": 1, "method": "tasks/get", "params": {}}
+
+    await server_svc.handle_a2a_rpc(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, payload, base_url=BASE)
+
+    assert a2a_audit_recorder[0]["action"] == server_mod.AUDIT_ACTION_TASKS_GET
+    assert a2a_audit_recorder[0]["outcome"] == server_mod.AUDIT_OUTCOME_FAILED
+    assert a2a_audit_recorder[0]["detail"]["errorCode"] == server_mod.INVALID_PARAMS
+
+
+@pytest.mark.asyncio
+async def test_handle_rpc_does_not_audit_unsupported_method(a2a_audit_recorder):  # noqa: ANN001
+    """不支持的方法没有对应动作名，不编造流水。"""
+    payload = {"jsonrpc": "2.0", "id": 1, "method": "tasks/resubscribe", "params": {}}
+
+    await server_svc.handle_a2a_rpc(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, payload, base_url=BASE)
+
+    assert a2a_audit_recorder == []
+
+
+@pytest.mark.asyncio
+async def test_handle_rpc_audits_unhandled_failure_then_reraises(a2a_audit_recorder, monkeypatch):  # noqa: ANN001
+    """分发里逸出的未捕获异常（DB / 存储故障）也要留痕，且异常必须原样重抛。
+
+    异常若直接冲出 ``handle_a2a_rpc``，对端拿到 500、审计零流水 —— 故障现场既没有状态码
+    也没有流水，事后无从查起。这里只补一条 ``failed`` 流水，500 保持不变：吞掉异常会把
+    故障伪装成 200，比丢流水更糟。
+    """
+
+    async def boom(*_args, **_kwargs):  # noqa: ANN002, ANN003
+        raise RuntimeError("engine unavailable")
+
+    monkeypatch.setattr(server_svc, "load_published_agent", boom)
+    payload = {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "message/send",
+        "params": {"message": {"contextId": "ctx-unhandled", "parts": [{"kind": "text", "text": "你好"}]}},
+    }
+
+    with pytest.raises(RuntimeError):
+        await server_svc.handle_a2a_rpc(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, payload, base_url=BASE)
+
+    assert [r["action"] for r in a2a_audit_recorder] == [server_mod.AUDIT_ACTION_MESSAGE_SEND]
+    assert a2a_audit_recorder[0]["outcome"] == server_mod.AUDIT_OUTCOME_FAILED
+    assert a2a_audit_recorder[0]["detail"]["errorCode"] == server_mod.INTERNAL_ERROR
+    assert a2a_audit_recorder[0]["detail"]["method"] == "message/send"
+    assert a2a_audit_recorder[0]["detail"]["contextId"] == "ctx-unhandled"
+
+
+@pytest.mark.asyncio
+async def test_stream_final_frame_audits_completed(a2a_audit_recorder, monkeypatch):  # noqa: ANN001
+    _patch_session(monkeypatch, _FakeSession())
+
+    async def fake_chat(_db, _ctx, _agent_id, _text, conversation_id=None, on_delta=None):  # noqa: ANN001
+        return ChatResponse(answer="好了")
+
+    monkeypatch.setattr(server_svc, "run_published_agent_chat", fake_chat)
+    stream = await server_svc.open_a2a_stream(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, _stream_params())
+    await _collect(stream)
+    # 审计调度是同步的，但写入跑在独立 task 里：断言前必须让它落地，不可用裸 ``sleep``。
+    await server_svc.drain_pending_audits()
+
+    assert [r["action"] for r in a2a_audit_recorder] == [server_mod.AUDIT_ACTION_MESSAGE_STREAM]
+    assert a2a_audit_recorder[0]["outcome"] == server_mod.AUDIT_OUTCOME_OK
+    assert a2a_audit_recorder[0]["detail"]["method"] == "message/stream"
+    assert isinstance(a2a_audit_recorder[0]["detail"]["durationMs"], int)
+
+
+@pytest.mark.asyncio
+async def test_stream_disconnect_audits_canceled(a2a_audit_recorder, monkeypatch):  # noqa: ANN001
+    """对端断连是最需要留痕的一种「调用」：没有终态帧，但必须有一条 canceled 流水。"""
+    _patch_session(monkeypatch, _FakeSession())
+
+    async def fake_chat(_db, _ctx, _agent_id, _text, conversation_id=None, on_delta=None):  # noqa: ANN001
+        await on_delta("半")
+        await asyncio.sleep(5)
+        return ChatResponse(answer="不该到这里")
+
+    monkeypatch.setattr(server_svc, "run_published_agent_chat", fake_chat)
+    stream = await server_svc.open_a2a_stream(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, _stream_params())
+
+    assert await anext(stream)  # 首帧 Task
+    assert await anext(stream)  # 增量帧
+    await stream.aclose()
+    await server_svc.drain_pending_audits()
+
+    assert [r["outcome"] for r in a2a_audit_recorder] == [server_mod.AUDIT_OUTCOME_CANCELED]
+    assert a2a_audit_recorder[0]["action"] == server_mod.AUDIT_ACTION_MESSAGE_STREAM
+
+
+@pytest.mark.asyncio
+async def test_task_artifact_read_audits_download(a2a_audit_recorder, monkeypatch):  # noqa: ANN001
+    """产物下载也要留痕：否则「谁把产物取走了」查不到。"""
+    attachment_id = uuid4()
+    job = _artifact_job(agent_id=AGENT_ID, attachments=(str(attachment_id),))
+
+    async def fake_get(_db, _ctx, _job_id):  # noqa: ANN001
+        return job
+
+    class _FakeAttachments:
+        def __init__(self, _db, _ctx) -> None:
+            pass
+
+        async def read_attachment_bytes(self, _attachment_id):  # noqa: ANN001
+            return b"DATA", "image/png", "a.png"
+
+    monkeypatch.setattr(server_svc, "get_generative_job_for_tenant", fake_get)
+    monkeypatch.setattr(server_svc, "AttachmentService", _FakeAttachments)
+
+    data, _mime, _name = await server_svc.read_task_artifact(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, job.id, attachment_id)
+
+    assert data == b"DATA"
+    assert [r["action"] for r in a2a_audit_recorder] == [server_mod.AUDIT_ACTION_ARTIFACT_DOWNLOAD]
+    assert a2a_audit_recorder[0]["outcome"] == server_mod.AUDIT_OUTCOME_OK
+    assert a2a_audit_recorder[0]["detail"]["taskId"] == str(job.id)
+
+
+@pytest.mark.asyncio
+async def test_task_artifact_failure_is_audited(a2a_audit_recorder, monkeypatch):  # noqa: ANN001
+    """取不到也要留痕：越权尝试（404）本身就是排查线索，不能只在成功时记。"""
+    job = _artifact_job(agent_id=AGENT_ID)
+
+    async def fake_get(_db, _ctx, _job_id):  # noqa: ANN001
+        return job
+
+    monkeypatch.setattr(server_svc, "get_generative_job_for_tenant", fake_get)
+
+    with pytest.raises(NotFoundError):
+        await server_svc.read_task_artifact(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, job.id, uuid4())
+
+    assert [r["action"] for r in a2a_audit_recorder] == [server_mod.AUDIT_ACTION_ARTIFACT_DOWNLOAD]
+    assert a2a_audit_recorder[0]["outcome"] == server_mod.AUDIT_OUTCOME_FAILED
+    assert a2a_audit_recorder[0]["detail"]["errorCode"] == server_mod.TASK_NOT_FOUND
+
+
+@pytest.mark.asyncio
+async def test_handle_rpc_audit_omits_oversized_context_id(a2a_audit_recorder):  # noqa: ANN001
+    """超长 contextId 不写进 aud_logs：它连下游 conversation_id 契约都过不了，没有收进租户可见面的理由。"""
+    payload = {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "message/send",
+        "params": {"message": {"contextId": "x" * 500, "parts": [{"kind": "text", "text": "你好"}]}},
+    }
+
+    envelope = await server_svc.handle_a2a_rpc(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, payload, base_url=BASE)
+
+    assert envelope["error"]["code"] == server_mod.INVALID_PARAMS
+    assert a2a_audit_recorder[0]["outcome"] == server_mod.AUDIT_OUTCOME_FAILED
+    assert "contextId" not in a2a_audit_recorder[0]["detail"]
+
+
+@pytest.mark.asyncio
+async def test_handle_rpc_audit_keeps_padded_context_id_within_limit(a2a_audit_recorder, monkeypatch):  # noqa: ANN001
+    """闸口须先 ``strip()`` 再比长度，与入口校验同一口径。
+
+    ``extract_message_context_id`` 对「129 字符但首尾各 1 空格」strip 后判为 127 并正常接受
+    （会用作 ``conversation_id``）；审计若按原样比长度，就会把这条服务侧正常处理的调用从
+    租户可见面抹掉 —— 同一上限的判定，两处必须一致。
+    """
+
+    async def fake_chat(_db, _ctx, _agent_id, _text, conversation_id=None):  # noqa: ANN001
+        return ChatResponse(answer="收到")
+
+    monkeypatch.setattr(server_svc, "run_published_agent_chat", fake_chat)
+    raw = " " + "x" * 127 + " "
+    assert len(raw) == 129
+    payload = {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "message/send",
+        "params": {"message": {"contextId": raw, "parts": [{"kind": "text", "text": "你好"}]}},
+    }
+
+    envelope = await server_svc.handle_a2a_rpc(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, payload, base_url=BASE)
+
+    assert "error" not in envelope
+    assert a2a_audit_recorder[0]["detail"]["contextId"] == "x" * 127
+
+
+# --- 8. message/stream 前置失败留痕（与 message/send 对称） --------------------
+
+
+@pytest.mark.asyncio
+async def test_open_stream_preflight_failure_is_audited(a2a_audit_recorder):  # noqa: ANN001
+    """流式前置失败也要留痕：否则同一个非法调用，``message/send`` 有迹、``message/stream`` 零痕迹。"""
+    opened = await server_svc.open_a2a_stream(_Db(agent=None), SimpleNamespace(), AGENT_ID, _stream_params())
+
+    assert isinstance(opened, dict)
+    assert [r["action"] for r in a2a_audit_recorder] == [server_mod.AUDIT_ACTION_MESSAGE_STREAM]
+    assert a2a_audit_recorder[0]["outcome"] == server_mod.AUDIT_OUTCOME_FAILED
+    assert a2a_audit_recorder[0]["detail"]["errorCode"] == server_mod.INVALID_PARAMS
+    assert isinstance(a2a_audit_recorder[0]["detail"]["durationMs"], int)
+
+
+@pytest.mark.asyncio
+async def test_open_stream_invalid_request_is_audited(a2a_audit_recorder):  # noqa: ANN001
+    """非法 JSON-RPC 请求（缺 method）同样是一条 failed 流水，而不是零痕迹。"""
+    opened = await server_svc.open_a2a_stream(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, {"jsonrpc": "2.0", "id": 1})
+
+    assert opened["error"]["code"] == server_mod.INVALID_REQUEST
+    assert a2a_audit_recorder[0]["detail"]["errorCode"] == server_mod.INVALID_REQUEST
+
+
+# --- 9. 真实断连（取消消费任务，而非 aclose） --------------------------------
+
+
+@pytest.mark.asyncio
+async def test_stream_consumer_task_cancel_audits_canceled(a2a_audit_recorder, monkeypatch):  # noqa: ANN001
+    """真实断连是「取消正在消费流的任务」，不是 ``aclose()``。
+
+    此时 ``CancelledError`` 直接抛在生成器长期挂着的 ``await`` 处（等下一个增量），
+    ``GeneratorExit`` 分支根本不会触发 —— 这条路径上留痕曾永久丢失。
+    """
+    _patch_session(monkeypatch, _FakeSession())
+
+    async def fake_chat(_db, _ctx, _agent_id, _text, conversation_id=None, on_delta=None):  # noqa: ANN001
+        await on_delta("半")
+        await asyncio.sleep(5)
+        return ChatResponse(answer="不该到这里")
+
+    monkeypatch.setattr(server_svc, "run_published_agent_chat", fake_chat)
+    stream = await server_svc.open_a2a_stream(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, _stream_params())
+
+    assert await anext(stream)  # 首帧 Task
+    assert await anext(stream)  # 增量帧
+    # 第三次取值让生成器停在「等待下一个增量」的 await 上，再取消它 ——
+    # 这正是真实断连时生成器所处的状态。
+    consumer = asyncio.create_task(anext(stream))
+    await _wait_until(lambda: stream.ag_running)
+    consumer.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await consumer
+
+    # 留痕由脱离取消作用域的独立 task 写，完成时刻晚于 cancel()，故等它落地。
+    await server_svc.drain_pending_audits()
+    assert [r["outcome"] for r in a2a_audit_recorder] == [server_mod.AUDIT_OUTCOME_CANCELED]
+    assert a2a_audit_recorder[0]["action"] == server_mod.AUDIT_ACTION_MESSAGE_STREAM
+    assert a2a_audit_recorder[0]["detail"]["method"] == "message/stream"
+
+
+@pytest.mark.asyncio
+async def test_stream_cancel_audit_survives_repeated_cancellation(a2a_audit_recorder, monkeypatch):  # noqa: ANN001
+    """留痕必须扛住「取消作用域反复取消」。
+
+    Starlette/uvicorn 走的正是取消作用域：它会在任务真正结束前反复 ``cancel()``。若在取消
+    分支里直接 ``await write_a2a_audit``，await 会被立刻再次取消、流水丢失（实测），
+    故实现改为脱离作用域的独立 task；本用例用「反复取消」模拟该语义来守住这一点。
+    """
+    _patch_session(monkeypatch, _FakeSession())
+
+    async def fake_chat(_db, _ctx, _agent_id, _text, conversation_id=None, on_delta=None):  # noqa: ANN001
+        await on_delta("半")
+        await asyncio.sleep(5)
+        return ChatResponse(answer="不该到这里")
+
+    monkeypatch.setattr(server_svc, "run_published_agent_chat", fake_chat)
+    stream = await server_svc.open_a2a_stream(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, _stream_params())
+
+    async def consume():  # noqa: ANN202
+        async for _frame in stream:
+            pass
+
+    consumer = asyncio.create_task(consume())
+    await _wait_until(lambda: stream.ag_running)  # 生成器已挂在等增量处
+    for _ in range(50):
+        if consumer.done():
+            break
+        consumer.cancel()
+        await asyncio.sleep(0)
+
+    assert consumer.cancelled()
+    await server_svc.drain_pending_audits()
+    assert [r["outcome"] for r in a2a_audit_recorder] == [server_mod.AUDIT_OUTCOME_CANCELED]
+
+
+@pytest.mark.asyncio
+async def test_stream_disconnect_under_cancel_scope_audits_canceled(a2a_audit_recorder, monkeypatch):  # noqa: ANN001
+    """用真实取消作用域（anyio）复现断连：Starlette/uvicorn 走的正是它。
+
+    与 ``consumer.cancel()`` 的区别是：取消作用域会**反复**取消直到任务真正结束 —— 这正是
+    「取消分支里不能直接 ``await write_a2a_audit``」的原因，也是本用例的判别力所在。
+    """
+    _patch_session(monkeypatch, _FakeSession())
+
+    async def fake_chat(_db, _ctx, _agent_id, _text, conversation_id=None, on_delta=None):  # noqa: ANN001
+        await on_delta("半")
+        await asyncio.sleep(5)
+        return ChatResponse(answer="不该到这里")
+
+    monkeypatch.setattr(server_svc, "run_published_agent_chat", fake_chat)
+    stream = await server_svc.open_a2a_stream(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, _stream_params())
+
+    consuming = asyncio.Event()
+
+    async def consume() -> None:
+        async for _frame in stream:
+            consuming.set()
+
+    async with anyio.create_task_group() as task_group:
+        task_group.start_soon(consume)
+        await _wait_until(consuming.is_set)
+        task_group.cancel_scope.cancel()
+
+    # 留痕由脱离取消作用域的独立 task 写，完成时刻晚于取消，故等它落地。
+    await server_svc.drain_pending_audits()
+    assert [r["outcome"] for r in a2a_audit_recorder] == [server_mod.AUDIT_OUTCOME_CANCELED]
+    assert a2a_audit_recorder[0]["action"] == server_mod.AUDIT_ACTION_MESSAGE_STREAM
+
+
+@pytest.mark.asyncio
+async def test_stream_terminal_frame_then_aclose_is_not_double_audited(a2a_audit_recorder, monkeypatch):  # noqa: ANN001
+    """已发终态帧（审计已调度）后再 ``aclose()``：不得再补一条 canceled —— 一次调用只该有一条流水。"""
+    _patch_session(monkeypatch, _FakeSession())
+
+    async def fake_chat(_db, _ctx, _agent_id, _text, conversation_id=None, on_delta=None):  # noqa: ANN001
+        return ChatResponse(answer="好了")
+
+    monkeypatch.setattr(server_svc, "run_published_agent_chat", fake_chat)
+    stream = await server_svc.open_a2a_stream(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, _stream_params())
+
+    assert await anext(stream)  # 首帧 Task
+    assert await anext(stream)  # 终态帧：审计已调度，生成器仍挂在这个 yield 上
+    await stream.aclose()
+    await server_svc.drain_pending_audits()
+
+    assert [r["outcome"] for r in a2a_audit_recorder] == [server_mod.AUDIT_OUTCOME_OK]
+
+
+@pytest.mark.asyncio
+async def test_stream_cancel_during_terminal_audit_keeps_exactly_one_record(monkeypatch):  # noqa: ANN001
+    """取消打在「终态审计写入中途」时，仍必须恰好一条流水。
+
+    最刁的一种时序：终态已定、审计正在写库（真实 DB 往返必然挂起），此刻对端断连。
+    - 审计若 ``await`` 着写（或幂等哨兵在 ``await`` 之前 / 之后才置位）：取消把它整个吞掉 →
+      ``ok`` 与 ``canceled`` **都不写**，一次调用零流水；
+    - 若哨兵在 ``await`` 之后置位：``ok`` 已落库、取消分支又补一条 → **两条**。
+
+    正解是「同步幂等调度 + 脱离取消作用域执行」。本用例用一个撑住写入的替身把时序钉死。
+    """
+    _patch_session(monkeypatch, _FakeSession())
+    entered = asyncio.Event()
+    release = asyncio.Event()
+    recorded: list[dict] = []
+
+    async def blocking_write(**kwargs):  # noqa: ANN003
+        entered.set()
+        await release.wait()  # 撑住写入：模拟真实写库的挂起
+        recorded.append(kwargs)
+
+    async def fake_chat(_db, _ctx, _agent_id, _text, conversation_id=None, on_delta=None):  # noqa: ANN001
+        return ChatResponse(answer="好了")
+
+    monkeypatch.setattr(server_svc, "write_a2a_audit", blocking_write)
+    monkeypatch.setattr(server_svc, "run_published_agent_chat", fake_chat)
+    stream = await server_svc.open_a2a_stream(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, _stream_params())
+
+    assert await anext(stream)  # 首帧 Task
+    consumer = asyncio.create_task(anext(stream))  # 终态帧：审计写入被撑住
+    await _wait_until(entered.is_set)  # 确认已进入写入 —— 此刻取消才打在写入中间
+    consumer.cancel()
+    # 同步调度下消费者可能已拿到终态帧（取消落在「已调度」之后，本就该无操作）。
+    # 两种时序都可接受：本用例只锁「恰好一条、且是终态那条」。
+    with contextlib.suppress(asyncio.CancelledError):
+        await consumer
+
+    release.set()
+    await server_svc.drain_pending_audits()
+
+    assert [r["outcome"] for r in recorded] == [server_mod.AUDIT_OUTCOME_OK]
+
+
+@pytest.mark.asyncio
+async def test_drain_pending_audits_returns_when_only_done_tasks_remain():
+    """集合里只剩「已完成、但 discard 回调尚未跑」的 task 时，drain 必须立刻返回。
+
+    ``asyncio.gather`` 对已 done 的 task **不会让出控制权**；若 ``while`` 仍以集合非空
+    为条件并 gather 全集，事件循环被占满，连外层 ``wait_for`` 超时都触发不了 —— CI 上
+    表现为本 suite 永久挂起。本用例把已完成 task 直接塞进集合（不挂 discard 回调，
+    模拟「回调还排在就绪队列」），断言 ``drain`` 在 1s 内返回。
+    """
+
+    async def _noop() -> None:
+        return None
+
+    done = asyncio.create_task(_noop())
+    await done
+    server_svc._PENDING_AUDITS.add(done)
+    try:
+        await asyncio.wait_for(server_svc.drain_pending_audits(), timeout=1)
+    finally:
+        server_svc._PENDING_AUDITS.discard(done)

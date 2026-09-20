@@ -67,8 +67,10 @@ async def test_ctx_from_api_key_success():
     agent_id = uuid4()
     tenant_id = uuid4()
     user_id = uuid4()
+    key_row_id = uuid4()
     plain, _, _ = generate_agent_api_key_secret()
     row = MagicMock()
+    row.id = key_row_id
     row.revoked_at = None
     row.agent_id = agent_id
     row.tenant_id = tenant_id
@@ -99,3 +101,6 @@ async def test_ctx_from_api_key_success():
     assert ctx.auth_via == "api_key"
     assert ctx.user_id == user_id
     assert "agent:read" in ctx.permissions
+    # 凭证行 id 必须一路带到 ctx：限流按 Key 维度分桶、审计 ``apiKeyId`` 都只认它。
+    # 丢了这一行不会让任何业务报错，只表现为「限流永远不生效、审计恒 null」，故在此锁死。
+    assert ctx.api_key_id == key_row_id

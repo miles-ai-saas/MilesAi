@@ -9,13 +9,18 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 
 from miles_common.trace import get_trace_id
-from miles_core.models.risk import RiskSeverity
+from miles_core.models.risk import RateLimitScope, RiskSeverity
 from miles_core.risk.enforce import platform_risk_enforcer
 
 _SKIP_PREFIXES = ("/health", "/docs", "/redoc", "/openapi.json", "/favicon.ico")
 
+#: 超限对端可见文案。模块级单一来源：平台中间件的 IP 维度 429 与 A2A 端点的 Key 维度 429
+#: 用的是同一句话，两处各写一份必然会漂移。
+RATE_LIMIT_MESSAGE = "请求过于频繁，请稍后再试"
 
-def _client_ip(request: Request) -> str:
+
+def client_ip(request: Request) -> str:
+    """请求来源 IP：优先 ``X-Forwarded-For`` 首段（经代理时 ``request.client`` 是代理地址）。"""
     forwarded = request.headers.get("x-forwarded-for")
     if forwarded:
         return forwarded.split(",")[0].strip()
@@ -39,7 +44,7 @@ class PlatformRiskMiddleware(BaseHTTPMiddleware):
         if _should_skip(path):
             return await call_next(request)
 
-        ip = _client_ip(request)
+        ip = client_ip(request)
 
         if await platform_risk_enforcer.is_ip_blocked(ip):
             await platform_risk_enforcer.record_event(
@@ -59,8 +64,8 @@ class PlatformRiskMiddleware(BaseHTTPMiddleware):
             )
 
         if path.startswith("/api/v1"):
-            limited, rule_id = await platform_risk_enforcer.check_rate_limit(path, ip)
-            if limited:
+            hit = await platform_risk_enforcer.check_rate_limit(path, ip, scope=RateLimitScope.IP)
+            if hit:
                 await platform_risk_enforcer.record_event(
                     event_type="rate_limit",
                     severity=RiskSeverity.MEDIUM,
@@ -69,14 +74,14 @@ class PlatformRiskMiddleware(BaseHTTPMiddleware):
                         "kind": "rate_limit",
                         "path": path,
                         "ip": ip,
-                        "rule_id": str(rule_id) if rule_id else None,
+                        "rule_id": str(hit.rule_id),
                     },
                 )
                 return JSONResponse(
                     status_code=429,
                     content={
                         "code": 429,
-                        "message": "请求过于频繁，请稍后再试",
+                        "message": RATE_LIMIT_MESSAGE,
                         "data": None,
                         "trace_id": get_trace_id(),
                     },

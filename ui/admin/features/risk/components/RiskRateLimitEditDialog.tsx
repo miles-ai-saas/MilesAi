@@ -18,6 +18,10 @@ export function RiskRateLimitEditDialog({ vm }: { vm: RiskPageVm }) {
             value={editForm.path_pattern}
             onChange={(e) => setEditForm((f) => ({ ...f, path_pattern: e.target.value }))}
           />
+          <select className="input-field" value={editForm.scope} onChange={(e) => setEditForm((f) => ({ ...f, scope: e.target.value as "ip" | "api_key" }))}>
+            <option value="ip">按来源 IP</option>
+            <option value="api_key">按 API Key</option>
+          </select>
           <input
             className="input-field"
             type="number"

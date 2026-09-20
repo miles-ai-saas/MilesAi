@@ -14,8 +14,10 @@ from __future__ import annotations
 
 import asyncio
 import json
-from collections.abc import AsyncIterator
+import time
+from collections.abc import AsyncIterator, Coroutine
 from datetime import UTC, datetime
+from typing import Any
 from uuid import UUID, uuid4
 
 from sqlalchemy import select
@@ -24,7 +26,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from miles_ai.integrations.langchain.chat_models import OnDelta
 from miles_ai.integrations.langchain.toolkit.catalog import bound_skill_ids
 from miles_common.exceptions import BadRequestError, NotFoundError
-from miles_common.schemas.chat_io import ChatResponse
+from miles_common.schemas.chat_io import CONVERSATION_ID_MAX_LENGTH, ChatResponse
 from miles_core.infra.db import AsyncSessionLocal
 from miles_core.logging import get_logger
 from miles_core.models.agent import Agent, AgentStatus, AgentType
@@ -33,6 +35,15 @@ from miles_core.soft_delete import is_marked_deleted, not_deleted
 from miles_core.tenant import TenantContext
 from miles_portal.tenant.a2a.server import (
     A2A_PUBLISH_FLAG,
+    AUDIT_ACTION_ARTIFACT_DOWNLOAD,
+    AUDIT_ACTION_MESSAGE_SEND,
+    AUDIT_ACTION_MESSAGE_STREAM,
+    AUDIT_ACTION_TASKS_CANCEL,
+    AUDIT_ACTION_TASKS_GET,
+    AUDIT_OUTCOME_CANCELED,
+    AUDIT_OUTCOME_FAILED,
+    AUDIT_OUTCOME_OK,
+    AUDIT_OUTCOME_REJECTED,
     INTERNAL_ERROR,
     INVALID_PARAMS,
     INVALID_REQUEST,
@@ -57,6 +68,7 @@ from miles_portal.tenant.a2a.server import (
     jsonrpc_result,
     to_a2a_task_state,
 )
+from miles_portal.tenant.a2a.services.audit import write_a2a_audit
 from miles_portal.tenant.attachments.services.attachment import AttachmentService
 from miles_portal.tenant.generative.services.job import GenerativeJobService
 from miles_portal.tenant.generative.services.job_execution import get_generative_job_for_tenant
@@ -288,12 +300,31 @@ async def read_task_artifact(
     """下载某任务产物，返回 ``(data, mime_type, filename)``。
 
     授权精确到「该智能体 · 该任务 · 该产物」：先验任务归属，再验附件确为该任务产物，
-    否则本租户任意附件都能被取走。
+    否则本租户任意附件都能被取走。成败都留一条审计流水（「谁把产物取走了」要查得到）。
     """
-    job = await _load_owned_agent_task(db, ctx, agent_id, task_id)
-    if str(attachment_id) not in artifact_ids_from_job_result(job.result):
-        raise NotFoundError("附件不是该任务的产物")
-    return await AttachmentService(db, ctx).read_attachment_bytes(attachment_id)
+    started = time.monotonic()
+    try:
+        job = await _load_owned_agent_task(db, ctx, agent_id, task_id)
+        if str(attachment_id) not in artifact_ids_from_job_result(job.result):
+            raise NotFoundError("附件不是该任务的产物")
+        data, mime, filename = await AttachmentService(db, ctx).read_attachment_bytes(attachment_id)
+    except NotFoundError:
+        await write_a2a_audit(
+            ctx=ctx,
+            agent_id=agent_id,
+            action=AUDIT_ACTION_ARTIFACT_DOWNLOAD,
+            outcome=AUDIT_OUTCOME_FAILED,
+            detail={"taskId": str(task_id), "errorCode": TASK_NOT_FOUND, "durationMs": _elapsed_ms(started)},
+        )
+        raise
+    await write_a2a_audit(
+        ctx=ctx,
+        agent_id=agent_id,
+        action=AUDIT_ACTION_ARTIFACT_DOWNLOAD,
+        outcome=AUDIT_OUTCOME_OK,
+        detail={"taskId": str(task_id), "durationMs": _elapsed_ms(started)},
+    )
+    return data, mime, filename
 
 
 async def _handle_tasks_get(
@@ -362,7 +393,117 @@ async def _handle_tasks_cancel(
     )
 
 
+#: JSON-RPC 方法 → 租户审计 ``action``。``message/stream`` 不在此表：它的 outcome 只有
+#: 终态帧才知道，由 ``_stream_turn`` 自己写。不支持的方法没有对应动作名，不编造流水。
+_AUDIT_ACTION_BY_METHOD = {
+    "message/send": AUDIT_ACTION_MESSAGE_SEND,
+    "tasks/get": AUDIT_ACTION_TASKS_GET,
+    "tasks/cancel": AUDIT_ACTION_TASKS_CANCEL,
+}
+
+#: 流式终态 → 审计 ``outcome``。``working`` 是「本流结束但任务还在跑」（对端转
+#: ``tasks/get`` 轮询），对审计而言属正常完成。
+_STREAM_OUTCOME_BY_STATE = {
+    TASK_STATE_COMPLETED: AUDIT_OUTCOME_OK,
+    TASK_STATE_WORKING: AUDIT_OUTCOME_OK,
+    TASK_STATE_FAILED: AUDIT_OUTCOME_FAILED,
+    TASK_STATE_REJECTED: AUDIT_OUTCOME_REJECTED,
+}
+
+
+def _elapsed_ms(started: float) -> int:
+    """自 ``started``（``time.monotonic()``）起的毫秒数。"""
+    return int((time.monotonic() - started) * 1000)
+
+
+def _stream_audit_detail(*, started: float, context_id: str, task_id: str) -> dict:
+    """``message/stream`` 中途（终态帧 / 断连）审计的 ``detail``。
+
+    只含元数据，**绝不含消息正文**（``aud_logs`` 是租户可见面）；三处调用点共用它，
+    形状与口径只在这里维护一次。
+    """
+    return {"method": "message/stream", "contextId": context_id, "taskId": task_id, "durationMs": _elapsed_ms(started)}
+
+
 async def handle_a2a_rpc(
+    db: AsyncSession,
+    ctx: TenantContext,
+    agent_id: UUID,
+    payload: object,
+    *,
+    base_url: str,
+) -> dict:
+    """JSON-RPC 2.0 分发入口：分发并统一留租户审计。
+
+    审计放在这一层而非各 ``_handle_*`` 内：一次调用只该有一条流水，且 ``outcome`` 由最终
+    信封决定（有 ``error`` 即失败），不必在各处重复判定。
+    """
+    started = time.monotonic()
+    method = payload.get("method") if isinstance(payload, dict) else None
+    action = _AUDIT_ACTION_BY_METHOD.get(method) if isinstance(method, str) else None
+    # ``action`` 非空只可能来自「``method`` 是表内键」，此处重判一次让 ``method`` 收窄为
+    # ``str``，不给调用点留下「靠运气成立」的类型不一致。
+    if action is None or not isinstance(method, str):
+        # 不支持的方法没有对应动作名，不编造流水。
+        return await _dispatch_a2a_rpc(db, ctx, agent_id, payload, base_url=base_url)
+    try:
+        envelope = await _dispatch_a2a_rpc(db, ctx, agent_id, payload, base_url=base_url)
+    except Exception:
+        # 未捕获异常逸出（DB / 存储故障）：先留痕再**原样重抛**。这里是失败路径上唯一的
+        # 留痕机会 —— 吞掉异常会把 500 变成 200，把故障伪装成成功。
+        # detail 走 ``_rpc_audit_detail``：``contextId`` 与正常路径同一长度闸口，避免兑底
+        # 路径把超长值写进租户可见面、或漏掉本可取到的会话标识。
+        await write_a2a_audit(
+            ctx=ctx,
+            agent_id=agent_id,
+            action=action,
+            outcome=AUDIT_OUTCOME_FAILED,
+            detail=_rpc_audit_detail(
+                payload,
+                {"error": {"code": INTERNAL_ERROR}},
+                started=started,
+                method=method,
+            ),
+        )
+        raise
+    await write_a2a_audit(
+        ctx=ctx,
+        agent_id=agent_id,
+        action=action,
+        outcome=_rpc_audit_outcome(envelope),
+        detail=_rpc_audit_detail(payload, envelope, started=started, method=method),
+    )
+    return envelope
+
+
+def _rpc_audit_outcome(envelope: object) -> str:
+    """按最终信封判定结果：有 ``error`` 即失败（协议级错误也不例外）。"""
+    return AUDIT_OUTCOME_FAILED if isinstance(envelope, dict) and "error" in envelope else AUDIT_OUTCOME_OK
+
+
+def _rpc_audit_detail(payload: object, envelope: object, *, started: float, method: str) -> dict:
+    """审计细节：方法、耗时，以及能低成本取到的任务/会话标识与错误码。"""
+    detail: dict = {"method": method, "durationMs": _elapsed_ms(started)}
+    params = payload.get("params") if isinstance(payload, dict) else None
+    if isinstance(params, dict):
+        if isinstance(params.get("id"), str):
+            detail["taskId"] = params["id"]
+        message = params.get("message")
+        if isinstance(message, dict) and isinstance(message.get("contextId"), str):
+            # 与 ``extract_message_context_id`` 同一口径（先 ``strip()`` 再比长度）：入口接受
+            # 的「首尾带空白但 strip 后不超限」的值，服务侧会正常用作 ``conversation_id``，
+            # 审计若按原样比长度就会把这条正常调用从租户可见面抹掉。超长值本就过不了下游
+            # ``conversation_id`` 契约（会退化成 500），没有理由写进租户可见的 aud_logs。
+            context_id = message["contextId"].strip()
+            if context_id and len(context_id) <= CONVERSATION_ID_MAX_LENGTH:
+                detail["contextId"] = context_id
+    error = envelope.get("error") if isinstance(envelope, dict) else None
+    if isinstance(error, dict):
+        detail["errorCode"] = error.get("code")
+    return detail
+
+
+async def _dispatch_a2a_rpc(
     db: AsyncSession,
     ctx: TenantContext,
     agent_id: UUID,
@@ -415,10 +556,55 @@ SSE_HEARTBEAT_SECONDS = 15.0
 #: 保活帧：SSE 规范规定的注释行，客户端解析器一律忽略。
 SSE_HEARTBEAT_FRAME = ": ping\n\n"
 
+#: 脱离取消作用域的审计写入 task 的强引用。
+#: 审计必须跑在独立 task 里（理由见 ``_stream_turn.schedule_stream_audit``）；不持有强引用的话，
+#: task 可能在落库前被 GC 回收，留痕静默丢失。
+_PENDING_AUDITS: set[asyncio.Task] = set()
+
+
+def _schedule_audit(coro: Coroutine[Any, Any, None]) -> None:
+    """把一次审计写入交给脱离调用方取消作用域的独立 task。**同步**，不 ``await``。"""
+    task = asyncio.create_task(coro)
+    _PENDING_AUDITS.add(task)
+    task.add_done_callback(_PENDING_AUDITS.discard)
+
+
+async def drain_pending_audits() -> None:
+    """等在飞的审计 task 全部落地（测试断言与停机钩子用）。
+
+    只 gather **未完成**的：``gather`` 对已 done 的 task 不会让出控制权；若集合里只剩
+    「已完成但 discard 回调尚未执行」的 task，纯靠 ``while 集合非空 + gather 全集`` 会
+    占满事件循环（连外层 ``wait_for`` 超时都触发不了）。未完成列表为空即返回 —— 已完成
+    的会由 done 回调自行从集合剔除，不必在此强清。
+    """
+    while True:
+        pending = [t for t in _PENDING_AUDITS if not t.done()]
+        if not pending:
+            return
+        await asyncio.gather(*pending, return_exceptions=True)
+
 
 def _sse_frame(payload: dict) -> str:
     """单个 SSE 帧。``ensure_ascii=False`` 让中文按原样出网；JSON 转义保证单行。"""
     return f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
+
+
+async def _audit_stream_preflight(ctx: TenantContext, agent_id: UUID, error_code: int, started: float) -> None:
+    """``message/stream`` 前置失败的审计：与 send 侧**可达的**参数类失败对称（缺 ``params`` /
+    未发布智能体 / 非法 ``contextId`` 等）。send 侧对「无/未知 method」是不写流水的（没有
+    action 名可记），而那两个分支从视图不可达，故不在此列。
+
+    不记就出现「同一个非法调用，``message/send`` 有迹、``message/stream`` 零痕迹」，
+    探测式调用可以不留痕迹。口径用 ``failed`` 与 ``message/send`` 对齐（``_rpc_audit_outcome``
+    只看信封有没有 ``error``）—— ``rejected`` 专指智能体/合规拒绝处理，不是协议级错误。
+    """
+    await write_a2a_audit(
+        ctx=ctx,
+        agent_id=agent_id,
+        action=AUDIT_ACTION_MESSAGE_STREAM,
+        outcome=AUDIT_OUTCOME_FAILED,
+        detail={"method": "message/stream", "errorCode": error_code, "durationMs": _elapsed_ms(started)},
+    )
 
 
 async def open_a2a_stream(
@@ -432,12 +618,17 @@ async def open_a2a_stream(
     返回 ``dict`` 而非抛异常，是因为调用方（视图层）要据此决定**不进入 SSE**：一旦
     响应头写成 ``text/event-stream``，HTTP 状态与 Content-Type 已定，错误只能塞进帧里，
     对端解析反而更麻烦。
+
+    前置失败一律先留一条审计再回信封：这些调用没有 SSE 流，终态帧的审计路径不会走到。
     """
+    started = time.monotonic()
     req_id: object = payload.get("id") if isinstance(payload, dict) else None
     if not isinstance(payload, dict) or "method" not in payload:
+        await _audit_stream_preflight(ctx, agent_id, INVALID_REQUEST, started)
         return jsonrpc_error(req_id, INVALID_REQUEST, "非法 JSON-RPC 请求")
     params = payload.get("params")
     if not isinstance(params, dict):
+        await _audit_stream_preflight(ctx, agent_id, INVALID_PARAMS, started)
         return jsonrpc_error(req_id, INVALID_PARAMS, "message/stream 缺少 params")
     try:
         await load_published_agent(db, agent_id)
@@ -446,6 +637,7 @@ async def open_a2a_stream(
         # thread，对端第二轮带上该 id 时模型并无上一轮记忆。
         context_id = extract_message_context_id(params) or str(uuid4())
     except (NotFoundError, BadRequestError) as exc:
+        await _audit_stream_preflight(ctx, agent_id, INVALID_PARAMS, started)
         return jsonrpc_error(req_id, INVALID_PARAMS, str(exc))
     # 结束请求级事务并归还连接：``yield`` 依赖的 teardown 要等整条响应发完才跑，而流可能
     # 持续数分钟，不主动结束就会有一条连接陪跑（轮次自身还会另开一条）。
@@ -464,10 +656,61 @@ async def _stream_turn(
     context_id: str,
 ) -> AsyncIterator[str]:
     """跑一轮对话并以 SSE 帧下发：首帧 Task、中间帧增量、末帧终态。"""
+    started = time.monotonic()
     task_id = str(uuid4())
     queue: asyncio.Queue[object] = asyncio.Queue(maxsize=STREAM_QUEUE_MAXSIZE)
     outcome: dict[str, object] = {}
     stopped = False
+    #: 本次调用的审计是否已调度（终态或取消）。只作幂等哨兵，值本身不参与判定；因为它在
+    #: 任何 ``await`` 之前就同步置位，「取消」与「终态」不可能各调度一次。
+    audit_state: dict[str, str] = {}
+
+    def schedule_stream_audit(audit_outcome: str) -> None:
+        """调度本次 ``message/stream`` 调用的审计。同步、幂等、脱离取消作用域。
+
+        三条缺一不可（每条都对应一次实测到的坏结果）：
+        1. **同步**：必须在调用点任何 ``await`` 之前完成。调度若含 ``await``，取消就能插进
+           「终态已定」与「已调度」之间 —— ``ok`` 与 ``canceled`` 都写不成，一次调用零流水。
+        2. **幂等**：终态帧与取消分支争的是「一次调用恰一条流水」；哨兵同步置位，后到者直接返回。
+           置位若放在写入 ``await`` 之后，就会出现「``ok`` 已落库、取消又补一条」的双流水。
+        3. **脱离取消作用域**：写入交 ``_schedule_audit`` 起独立 task。取消作用域（Starlette /
+           anyio 走的正是它）会在任务真正结束前反复取消，直接 ``await write_a2a_audit`` 会被
+           立刻再次取消，流水同样丢失。
+        """
+        if audit_state:
+            return
+        audit_state["outcome"] = audit_outcome
+        _schedule_audit(
+            write_a2a_audit(
+                ctx=ctx,
+                agent_id=agent_id,
+                action=AUDIT_ACTION_MESSAGE_STREAM,
+                outcome=audit_outcome,
+                detail=_stream_audit_detail(started=started, context_id=context_id, task_id=task_id),
+            )
+        )
+
+    async def terminal_frame(state: str, frame_text: str, *, job_task_id: str | None = None) -> str:
+        """终态帧 + 审计：``message/stream`` 的 outcome 只有走到终态才知道。
+
+        审计的调度是**本函数第一件事**（见 ``schedule_stream_audit``）：此后无论对端怎么断，
+        这次调用都已经有流水在飞了。
+        """
+        schedule_stream_audit(_STREAM_OUTCOME_BY_STATE[state])
+        return _sse_frame(
+            jsonrpc_result(
+                req_id,
+                build_a2a_status_update(
+                    task_id=task_id,
+                    context_id=context_id,
+                    state=state,
+                    timestamp=_now(),
+                    text=frame_text,
+                    final=True,
+                    job_task_id=job_task_id,
+                ),
+            )
+        )
 
     async def on_delta(piece: str) -> None:
         # 空片不发帧：与 ws/chat.on_delta 同判定，省掉无内容的帧（含空格的片照发，
@@ -539,80 +782,50 @@ async def _stream_turn(
                     ),
                 )
             )
+        # 终态帧也留在 ``try`` 内：它是「已调度审计」之后唯一还可能被抛入取消的 `yield``。
+        # 搬进来之后取消分支才有机会看到已置位的哨兵，``audit_state`` 由兜底变为承重件（见
+        # ``schedule_stream_audit`` 第 2 条）：终态已调度时再被取消，恰好不会再补一条 canceled。
+        error = outcome.get("error")
+        response = outcome.get("response")
+        if error is not None:
+            state = TASK_STATE_REJECTED if isinstance(error, BadRequestError) else TASK_STATE_FAILED
+            yield await terminal_frame(state, _failure_text(error))
+            return
+        if response is None:
+            # 兜底：error 与 response 同时为空，只可能来自「任务在记录 outcome 之前就没了」。
+            # 回一帧 failed 终态，别让对端等到「流自然结束却没有终态帧」而只能超时。
+            yield await terminal_frame(TASK_STATE_FAILED, "智能体执行失败")
+            return
+        job = _first_active_job(response.generative_jobs)
+        if job:
+            # 产物未就绪：以 working + final 收尾（final 只表示本流结束），并给出真实
+            # job id —— 对端据此转向 tasks/get 轮询状态与产物。
+            yield await terminal_frame(TASK_STATE_WORKING, response.answer, job_task_id=str(job["id"]))
+            return
+        yield await terminal_frame(TASK_STATE_COMPLETED, response.answer)
+    except GeneratorExit:
+        # 对端断连（``aclose()``）：生成器被抛入 GeneratorExit，后面的终态帧不会再发，但留痕
+        # 要在这里补上 —— 「谁中途掐了连接」正是审计要回答的问题之一。这里只能同步调度、
+        # 不能再 ``yield``；调度本身不 ``await``，故 ``aclose()`` 路径下也能完成。
+        schedule_stream_audit(AUDIT_OUTCOME_CANCELED)
+        raise
+    except asyncio.CancelledError:
+        # 真实断连走的是这一条：客户端断连时 Starlette 取消的正是「``async for`` 迭代本生成器」
+        # 那个任务，``CancelledError`` 直接抛在生成器长期挂着的 ``await``（等下一个增量）处，
+        # ``GeneratorExit`` 根本不会触发 —— 只处理后者会让最常见的断连永久零痕迹。
+        # 两条分支行为一致（调度 canceled 后 ``raise``），但都必须保留：它们由不同的异常类型
+        # 触发，``except (GeneratorExit, CancelledError)`` 一旦被后人合并再改错也未必看得出。
+        schedule_stream_audit(AUDIT_OUTCOME_CANCELED)
+        raise
     finally:
         # 消费端提前退出（客户端断连）：必须取消对话任务，否则 LLM 调用会跑到底白烧 token。
         # 先置 stopped 再取消：让 run_turn 的 finally 不再往无人消费的队列里塞哨兵。
+        # 注意：终态帧已在 ``try`` 内，正常走完时本 ``finally`` 会在终态 ``yield`` **之后**
+        # 执行（对话任务通常已 done，下面的 ``cancel`` 是空操作）；取消分支则在哨兵已置位
+        # 之后进入这里 —— 两种时序下都只需清场，不必再碰审计。
         stopped = True
         if not turn.done():
             turn.cancel()
-
-    error = outcome.get("error")
-    response = outcome.get("response")
-    if error is not None:
-        state = TASK_STATE_REJECTED if isinstance(error, BadRequestError) else TASK_STATE_FAILED
-        yield _sse_frame(
-            jsonrpc_result(
-                req_id,
-                build_a2a_status_update(
-                    task_id=task_id,
-                    context_id=context_id,
-                    state=state,
-                    timestamp=_now(),
-                    text=_failure_text(error),
-                    final=True,
-                ),
-            )
-        )
-        return
-    if response is None:
-        # 兜底：error 与 response 同时为空，只可能来自「任务在记录 outcome 之前就没了」。
-        # 回一帧 failed 终态，别让对端等到「流自然结束却没有终态帧」而只能超时。
-        yield _sse_frame(
-            jsonrpc_result(
-                req_id,
-                build_a2a_status_update(
-                    task_id=task_id,
-                    context_id=context_id,
-                    state=TASK_STATE_FAILED,
-                    timestamp=_now(),
-                    text="智能体执行失败",
-                    final=True,
-                ),
-            )
-        )
-        return
-    job = _first_active_job(response.generative_jobs)
-    if job:
-        # 产物未就绪：以 working + final 收尾（final 只表示本流结束），并给出真实
-        # job id —— 对端据此转向 tasks/get 轮询状态与产物。
-        yield _sse_frame(
-            jsonrpc_result(
-                req_id,
-                build_a2a_status_update(
-                    task_id=task_id,
-                    context_id=context_id,
-                    state=TASK_STATE_WORKING,
-                    timestamp=_now(),
-                    text=response.answer,
-                    final=True,
-                    job_task_id=str(job["id"]),
-                ),
-            )
-        )
-        return
-    yield _sse_frame(
-        jsonrpc_result(
-            req_id,
-            build_a2a_status_update(
-                task_id=task_id,
-                context_id=context_id,
-                state=TASK_STATE_COMPLETED,
-                timestamp=_now(),
-                text=response.answer,
-                final=True,
-            ),
-        )
-    )
 
 
 def _failure_text(error: Exception) -> str:

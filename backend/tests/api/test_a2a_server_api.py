@@ -24,7 +24,12 @@ AGENT_ID = uuid4()
 
 @pytest.fixture
 def as_a2a(api_app):
-    """装配 A2A 公开面测试：X-API-Key 鉴权替换为固定租户上下文，并清空 DB 替身。"""
+    """装配 A2A 公开面测试：X-API-Key 鉴权替换为固定租户上下文，并清空 DB 替身。
+
+    ``api_key_id`` 必须非空：生产里 X-API-Key 通道一定会带上凭证行 id（见
+    ``deps_api_auth.ctx_from_api_key``）。若默认成 ``None``，限流按 Key 维度永远不生效，
+    测试会把「限流不生效」写成默认态，掩盖真实接线缺陷。
+    """
     ctx = TenantContext(
         user_id=uuid4(),
         tenant_id=uuid4(),
@@ -32,6 +37,7 @@ def as_a2a(api_app):
         is_superuser=False,
         permissions=frozenset({"agent:read"}),
         auth_via="api_key",
+        api_key_id=uuid4(),
     )
 
     async def override_key() -> TenantContext:
@@ -219,3 +225,77 @@ async def test_stream_preflight_error_keeps_json_content_type(as_a2a, api_client
     assert resp.status_code == 200
     assert resp.headers["content-type"].startswith("application/json")
     assert resp.json()["error"]["code"] == -32602
+
+
+@pytest.mark.asyncio
+async def test_rpc_endpoint_rate_limited_returns_429_with_jsonrpc_body(as_a2a, api_client, monkeypatch):
+    """超限必须让对端能退避：429 + Retry-After，且正文仍是它读得懂的 JSON-RPC 信封。"""
+    from miles_core.risk.enforce import RateLimitHit
+
+    seen: dict = {}
+
+    async def fake_limit(*_args, **kwargs):  # noqa: ANN002, ANN003
+        seen["path"] = kwargs["path"]
+        return RateLimitHit(rule_id=uuid4(), limit_per_minute=5, retry_after_seconds=7)
+
+    monkeypatch.setattr(view_mod, "check_a2a_rate_limit", fake_limit)
+
+    resp = await api_client.post(RPC_PATH, json={"jsonrpc": "2.0", "id": "9", "method": "message/send", "params": {}})
+
+    assert resp.status_code == 429
+    assert resp.headers["Retry-After"] == "7"
+    body = resp.json()
+    assert body["jsonrpc"] == "2.0" and body["id"] == "9"
+    assert body["error"]["code"] == -32000
+    assert body["error"]["data"]["retryAfterSeconds"] == 7
+    # 风控规则按 path_pattern 匹配 path：若视图传了 base_url / 带查询串 / 漏了 /api/v1 前缀，
+    # 限流会静默失效且状态码断言看不出 —— 故锁定实际入参。
+    assert seen["path"] == RPC_PATH
+
+
+@pytest.mark.asyncio
+async def test_stream_method_rate_limited_before_sse(as_a2a, api_client, monkeypatch):
+    """流式请求超限必须在开流前拦下：一旦响应头写成 text/event-stream，429 就塞不进去了。"""
+    from miles_core.risk.enforce import RateLimitHit
+
+    seen: dict = {}
+
+    async def fake_limit(*_args, **kwargs):  # noqa: ANN002, ANN003
+        seen["path"] = kwargs["path"]
+        return RateLimitHit(rule_id=uuid4(), limit_per_minute=5, retry_after_seconds=3)
+
+    def fail_stream(*_args, **_kwargs):  # noqa: ANN002, ANN003
+        raise AssertionError("超限时不应进入 SSE 生成器")
+
+    monkeypatch.setattr(view_mod, "check_a2a_rate_limit", fake_limit)
+    monkeypatch.setattr(view_mod, "open_a2a_stream", fail_stream)
+
+    resp = await api_client.post(RPC_PATH, json={"jsonrpc": "2.0", "id": 1, "method": "message/stream", "params": {}})
+
+    assert resp.status_code == 429
+    assert resp.headers["content-type"].startswith("application/json")
+    assert seen["path"] == RPC_PATH
+
+
+@pytest.mark.asyncio
+async def test_artifact_endpoint_rate_limited_uses_platform_envelope(as_a2a, api_client, monkeypatch):
+    """产物下载是普通 HTTP 下载而非 JSON-RPC，超限形状与中间件 429 一致（平台信封）。"""
+    from miles_core.risk.enforce import RateLimitHit
+
+    task_id, attachment_id = uuid4(), uuid4()
+    path = ARTIFACT_PATH.format(AGENT_ID, task_id, attachment_id)
+    seen: dict = {}
+
+    async def fake_limit(*_args, **kwargs):  # noqa: ANN002, ANN003
+        seen["path"] = kwargs["path"]
+        return RateLimitHit(rule_id=uuid4(), limit_per_minute=5, retry_after_seconds=4)
+
+    monkeypatch.setattr(view_mod, "check_a2a_rate_limit", fake_limit)
+
+    resp = await api_client.get(path)
+
+    assert resp.status_code == 429
+    assert resp.headers["Retry-After"] == "4"
+    assert resp.json()["code"] == 429
+    assert resp.json()["message"] == "请求过于频繁，请稍后再试"
+    assert seen["path"] == path
