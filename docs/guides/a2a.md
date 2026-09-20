@@ -120,6 +120,8 @@ Card 同时声明 `securitySchemes`（`apiKey` · `in: header` · `name: X-API-K
 
 逐 token 与否取决于路由：`direct_llm` / `rag` 逐片下发，`tool_agent` / `flow` / 子智能体 / `a2a_augmented` 等尚未接 `on_delta` 的路由只在末帧一次性给完整回答（对端渲染方式一致，差别只在是否逐字到达）。
 
+**保活：** 等待增量超过 15 秒时会插入一个 SSE 注释帧 `: ping`（不带 `data:`，标准客户端解析器一律忽略）。一次性路由在末帧前可能几分钟不产出任何字节，没有心跳的话对端与中间代理会按 idle 超时掐断连接。
+
 前置校验失败（未发布 / `parts` 无文本 / 缺 `params` / `contextId` 超长）**不进入 SSE**，仍以普通 JSON + JSON-RPC 错误信封返回 —— 流一旦开始，错误只能塞进帧里，对端解析更麻烦。
 
 合规拦截以 `rejected` 收尾（拒绝处理该任务），其余执行异常以 `failed` 收尾。与工作台 WS 一致：token 先出网、出站合规事后扫，命中拦截时已出网内容不可追回。

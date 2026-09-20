@@ -1208,6 +1208,33 @@ async def test_open_stream_skips_empty_delta_pieces(monkeypatch):  # noqa: ANN00
 
 
 @pytest.mark.asyncio
+async def test_open_stream_emits_heartbeat_while_waiting_for_first_delta(monkeypatch):  # noqa: ANN001
+    """长时间无增量时发 SSE 注释帧：否则对端与中间代理会在 idle 超时后掐断连接。
+
+    一次性路由（tool_agent / flow / 子智能体）在末帧之前可能几分钟不产出任何字节 ——
+    这正是这条的必要性所在，对端拿不到心跳只能判定连接已死。
+    """
+    _patch_session(monkeypatch, _FakeSession())
+    monkeypatch.setattr(server_svc, "SSE_HEARTBEAT_SECONDS", 0.01, raising=False)
+
+    async def fake_chat(_db, _ctx, _agent_id, _text, conversation_id=None, on_delta=None):  # noqa: ANN001
+        await asyncio.sleep(0.05)
+        return ChatResponse(answer="慢回答")
+
+    monkeypatch.setattr(server_svc, "run_published_agent_chat", fake_chat)
+    stream = await server_svc.open_a2a_stream(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, _stream_params())
+
+    raw = [frame async for frame in stream]
+
+    assert any(frame.startswith(":") for frame in raw)
+    # 心跳不改变数据帧序列：仍是「首帧 Task + 末帧终态」，且心跳不得混进 JSON 帧
+    data = [json.loads(f[len("data: ") : -2]) for f in raw if f.startswith("data: ")]
+    assert data[0]["result"]["kind"] == "task"
+    assert data[-1]["result"]["final"] is True
+    assert data[-1]["result"]["status"]["state"] == "completed"
+
+
+@pytest.mark.asyncio
 async def test_open_stream_reports_failed_when_session_cannot_open(monkeypatch):  # noqa: ANN001
     """连会话都开不起来时也要回终态帧：否则对端只看到 Task 帧后流自然结束，只能等超时。"""
 

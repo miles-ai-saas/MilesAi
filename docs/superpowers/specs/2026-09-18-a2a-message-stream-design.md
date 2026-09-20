@@ -168,6 +168,11 @@ open_a2a_stream(db, ctx, agent_id, payload) -> dict | AsyncIterator[str]
 
 - 队列要有界（如 `maxsize=64`）并让 `cb` 在满时 `await`（即对上游形成背压），否则对端慢消费 + 长回答会让
   队列无界增长。
+- 出帧侧等待增量用 `asyncio.wait_for(queue.get(), timeout=SSE_HEARTBEAT_SECONDS)`（15s），超时发一个 SSE
+  注释帧 `: ping`。必要性：`tool_agent` / `flow` / 子智能体这些一次性路由在末帧之前可能几分钟不产出任何
+  字节，对端与中间代理会按 idle 超时掐断连接 —— 而恰恰是该场景最需要保活。注释帧不进 JSON、对端解析器
+  忽略，故不影响数据帧语义。`wait_for` 超时会取消内层 `queue.get()`，`asyncio.Queue` 自身会摘除并补位
+  等待者，不会丢元素。
 - `chat` 抛异常时，生成器捕获并出**终态帧**（见 §3.6），不把异常抛给 ASGI 层（那时响应头已发出，只会得到断流）。
 - 客户端断连：`StreamingResponse` 被取消时，须 `cancel()` 该 `asyncio.Task`，否则对话任务与 LLM 调用会继续
   跑到结束才释放（白烧 token）。

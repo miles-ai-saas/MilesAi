@@ -408,6 +408,13 @@ STREAM_QUEUE_MAXSIZE = 64
 #: 与「产出一片空串」区分的收尾哨兵。
 _STREAM_DONE = object()
 
+#: 等待增量的上限（秒）。超时就发一个 SSE 注释帧保活 —— 一次性路由（tool_agent / flow /
+#: 子智能体）在末帧之前可能几分钟不产出任何字节，对端与中间代理会按 idle 超时把连接掐掉。
+SSE_HEARTBEAT_SECONDS = 15.0
+
+#: 保活帧：SSE 规范规定的注释行，客户端解析器一律忽略。
+SSE_HEARTBEAT_FRAME = ": ping\n\n"
+
 
 def _sse_frame(payload: dict) -> str:
     """单个 SSE 帧。``ensure_ascii=False`` 让中文按原样出网；JSON 转义保证单行。"""
@@ -511,7 +518,12 @@ async def _stream_turn(
             )
         )
         while True:
-            item = await queue.get()
+            try:
+                item = await asyncio.wait_for(queue.get(), timeout=SSE_HEARTBEAT_SECONDS)
+            except TimeoutError:
+                # 保活：注释帧不进入 JSON 序列，对端解析器忽略它，只用于维持连接。
+                yield SSE_HEARTBEAT_FRAME
+                continue
             if item is _STREAM_DONE:
                 break
             yield _sse_frame(
