@@ -63,8 +63,8 @@ async def get_published_agent_card(
 def _stream_or_json(opened: dict | AsyncIterator[str]) -> Response:
     """流式入口的两种返回：前置失败回普通 JSON，通过则回 SSE。
 
-    前置失败不能进 SSE —— 响应头一旦写成 ``text/event-stream``，HTTP 状态码与
-    ``Retry-After`` 就没处放了，对端只能从半条流里猜。
+    前置失败不能进 SSE —— 响应头一旦写成 ``text/event-stream``，HTTP 状态码就没处放了，
+    对端只能从半条流里猜。（限流不经过这里：它在更前面就返回了带状态码的普通响应。）
     """
     if isinstance(opened, dict):
         return JSONResponse(opened)
