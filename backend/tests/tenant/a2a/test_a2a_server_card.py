@@ -897,8 +897,8 @@ async def test_tasks_cancel_hides_task_of_other_agent(monkeypatch):  # noqa: ANN
 
 @pytest.mark.asyncio
 async def test_unimplemented_task_method_is_method_not_found():
-    """``tasks/resubscribe`` 等未实现方法一律方法未找到，不静默成功。"""
-    payload = {"jsonrpc": "2.0", "id": 1, "method": "tasks/resubscribe", "params": {"id": str(uuid4())}}
+    """``tasks/pushNotificationConfig/get`` 等未实现方法一律方法未找到，不静默成功。"""
+    payload = {"jsonrpc": "2.0", "id": 1, "method": "tasks/pushNotificationConfig/get", "params": {"id": str(uuid4())}}
     envelope = await server_svc.handle_a2a_rpc(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, payload, base_url=BASE)
     assert envelope["error"]["code"] == server_mod.METHOD_NOT_FOUND
 
@@ -1440,7 +1440,7 @@ async def test_handle_rpc_audits_failure_with_error_code(a2a_audit_recorder):  #
 @pytest.mark.asyncio
 async def test_handle_rpc_does_not_audit_unsupported_method(a2a_audit_recorder):  # noqa: ANN001
     """不支持的方法没有对应动作名，不编造流水。"""
-    payload = {"jsonrpc": "2.0", "id": 1, "method": "tasks/resubscribe", "params": {}}
+    payload = {"jsonrpc": "2.0", "id": 1, "method": "tasks/pushNotificationConfig/get", "params": {}}
 
     await server_svc.handle_a2a_rpc(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, payload, base_url=BASE)
 

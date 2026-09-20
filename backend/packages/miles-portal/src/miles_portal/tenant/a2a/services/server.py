@@ -508,11 +508,10 @@ async def _dispatch_a2a_rpc(
     ``base_url`` 由请求推导（与 Card 同源），用于把 ``Task.artifacts`` 的下载地址写成
     绝对地址。
 
-    ``message/stream`` 不在本函数内：它要回 SSE 而非单个 JSON，由 ``open_a2a_stream``
-    处理，视图层按 ``method`` 先行分流。
+    ``message/stream``、``tasks/resubscribe`` 不在本函数内：它们要回 SSE 而非单个 JSON，
+    分别由 ``open_a2a_stream`` / ``open_task_subscription`` 处理，视图层按 ``method`` 先行分流。
 
-    ``tasks/resubscribe``、``tasks/pushNotificationConfig/*`` 未实现，一律
-    ``METHOD_NOT_FOUND``（不静默成功）。
+    ``tasks/pushNotificationConfig/get`` 等未实现方法一律 ``METHOD_NOT_FOUND``（不静默成功）。
     """
     req_id: object = payload.get("id") if isinstance(payload, dict) else None
     if not isinstance(payload, dict) or "method" not in payload:

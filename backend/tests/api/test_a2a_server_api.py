@@ -228,6 +228,86 @@ async def test_stream_preflight_error_keeps_json_content_type(as_a2a, api_client
 
 
 @pytest.mark.asyncio
+async def test_resubscribe_routes_to_sse_stream(as_a2a, api_client, monkeypatch):
+    """tasks/resubscribe 与 message/stream 共用端点，按 method 分流为 SSE。"""
+    seen: dict = {}
+
+    async def fake_subscribe(_db, _ctx, _agent_id, payload, *, base_url):  # noqa: ANN001
+        seen["method"] = payload["method"]
+        seen["base_url"] = base_url
+
+        async def frames():  # noqa: ANN202
+            yield 'data: {"jsonrpc": "2.0", "id": 1, "result": {"kind": "task"}}\n\n'
+            yield ": ping\n\n"
+            yield 'data: {"jsonrpc": "2.0", "id": 1, "result": {"kind": "status-update", "final": true}}\n\n'
+
+        return frames()
+
+    monkeypatch.setattr(view_mod, "open_task_subscription", fake_subscribe)
+
+    resp = await api_client.post(
+        RPC_PATH,
+        json={"jsonrpc": "2.0", "id": 1, "method": "tasks/resubscribe", "params": {"id": str(uuid4())}},
+    )
+
+    assert resp.status_code == 200
+    assert resp.headers["content-type"].startswith("text/event-stream")
+    data_lines = [line for line in resp.text.splitlines() if line.startswith("data: ")]
+    assert len(data_lines) == 2
+    assert json.loads(data_lines[-1][len("data: ") :])["result"]["final"] is True
+    assert seen["method"] == "tasks/resubscribe"
+    # 产物下载地址是绝对地址，故服务层需要请求推导出的 base_url
+    assert seen["base_url"].startswith("http://test")
+
+
+@pytest.mark.asyncio
+async def test_resubscribe_preflight_error_keeps_json_content_type(as_a2a, api_client, monkeypatch):
+    """前置失败（任务不存在 / 不属于该智能体 / 合成 id）不进 SSE，仍回 JSON-RPC 信封。"""
+
+    async def fake_subscribe(*_args, **_kwargs):  # noqa: ANN002, ANN003
+        return {"jsonrpc": "2.0", "id": 1, "error": {"code": -32001, "message": "生成任务不存在"}}
+
+    monkeypatch.setattr(view_mod, "open_task_subscription", fake_subscribe)
+
+    resp = await api_client.post(
+        RPC_PATH,
+        json={"jsonrpc": "2.0", "id": 1, "method": "tasks/resubscribe", "params": {"id": str(uuid4())}},
+    )
+
+    assert resp.status_code == 200
+    assert resp.headers["content-type"].startswith("application/json")
+    assert resp.json()["error"]["code"] == -32001
+
+
+@pytest.mark.asyncio
+async def test_resubscribe_rate_limited_before_sse(as_a2a, api_client, monkeypatch):
+    """订阅可能开 30 分钟，超限更要在开流前拦下（否则 429 无处安放）。"""
+    from miles_core.risk.enforce import RateLimitHit
+
+    seen: dict = {}
+
+    async def fake_limit(*_args, **kwargs):  # noqa: ANN002, ANN003
+        seen["path"] = kwargs["path"]
+        return RateLimitHit(rule_id=uuid4(), limit_per_minute=5, retry_after_seconds=3)
+
+    def fail_subscribe(*_args, **_kwargs):  # noqa: ANN002, ANN003
+        raise AssertionError("超限时不应进入订阅生成器")
+
+    monkeypatch.setattr(view_mod, "check_a2a_rate_limit", fake_limit)
+    monkeypatch.setattr(view_mod, "open_task_subscription", fail_subscribe)
+
+    resp = await api_client.post(
+        RPC_PATH,
+        json={"jsonrpc": "2.0", "id": 1, "method": "tasks/resubscribe", "params": {"id": str(uuid4())}},
+    )
+
+    assert resp.status_code == 429
+    assert resp.headers["Retry-After"] == "3"
+    assert resp.json()["error"]["code"] == -32000
+    assert seen["path"] == RPC_PATH
+
+
+@pytest.mark.asyncio
 async def test_rpc_endpoint_rate_limited_returns_429_with_jsonrpc_body(as_a2a, api_client, monkeypatch):
     """超限必须让对端能退避：429 + Retry-After，且正文仍是它读得懂的 JSON-RPC 信封。"""
     from miles_core.risk.enforce import RateLimitHit

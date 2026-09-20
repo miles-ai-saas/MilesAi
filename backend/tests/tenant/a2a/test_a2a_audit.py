@@ -94,6 +94,7 @@ def test_a2a_audit_actions_are_registered_in_audit_meta():
         server_mod.AUDIT_ACTION_TASKS_GET,
         server_mod.AUDIT_ACTION_TASKS_CANCEL,
         server_mod.AUDIT_ACTION_ARTIFACT_DOWNLOAD,
+        server_mod.AUDIT_ACTION_TASKS_RESUBSCRIBE,
     }
     assert expected <= registered, f"未登记：{sorted(expected - registered)}"
 
@@ -108,6 +109,7 @@ def test_audit_actions_are_namespaced():
             server_mod.AUDIT_ACTION_TASKS_GET,
             server_mod.AUDIT_ACTION_TASKS_CANCEL,
             server_mod.AUDIT_ACTION_ARTIFACT_DOWNLOAD,
+            server_mod.AUDIT_ACTION_TASKS_RESUBSCRIBE,
         )
     )
 

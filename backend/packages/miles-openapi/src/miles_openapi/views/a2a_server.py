@@ -8,6 +8,7 @@
 
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
 from urllib.parse import quote
 from uuid import UUID
 
@@ -34,6 +35,7 @@ from miles_portal.tenant.a2a.services.server import (
     read_task_artifact,
     resolve_default_published_agent_id,
 )
+from miles_portal.tenant.a2a.services.subscription import open_task_subscription
 from miles_portal.tenant.agents.deps_api_auth import require_agent_api_key
 
 #: SSE 响应头。``X-Accel-Buffering: no`` 关掉 Nginx 侧缓冲，否则帧会被攒到最后一起发。
@@ -58,6 +60,17 @@ async def get_published_agent_card(
     return JSONResponse(card)
 
 
+def _stream_or_json(opened: dict | AsyncIterator[str]) -> Response:
+    """流式入口的两种返回：前置失败回普通 JSON，通过则回 SSE。
+
+    前置失败不能进 SSE —— 响应头一旦写成 ``text/event-stream``，HTTP 状态码与
+    ``Retry-After`` 就没处放了，对端只能从半条流里猜。
+    """
+    if isinstance(opened, dict):
+        return JSONResponse(opened)
+    return StreamingResponse(opened, media_type="text/event-stream", headers=_SSE_HEADERS)
+
+
 @router.post("/a2a/agents/{agent_id}")
 async def a2a_jsonrpc(
     agent_id: UUID,
@@ -67,8 +80,8 @@ async def a2a_jsonrpc(
 ) -> Response:
     """A2A JSON-RPC 端点（``message/send`` / ``message/stream`` / ``tasks/*``）。
 
-    ``message/stream`` 按 A2A 约定走 SSE，与其它方法共用同一 URL；请求体非 JSON 时回
-    -32700 信封。前置校验失败的流式请求回普通 JSON，不进入 SSE。
+    ``message/stream`` 与 ``tasks/resubscribe`` 按 A2A 约定走 SSE，与其它方法共用同一 URL；
+    请求体非 JSON 时回 -32700 信封。前置校验失败的流式请求回普通 JSON，不进入 SSE。
 
     限流在鉴权之后、分发之前：维度取 API Key 行 id（见 ``services.limits``）。超限回
     HTTP 429 + ``Retry-After``，正文仍是 JSON-RPC 错误信封（``-32000``）—— 外部客户端
@@ -93,11 +106,11 @@ async def a2a_jsonrpc(
             headers={"Retry-After": str(hit.retry_after_seconds)},
         )
     base_url = str(request.base_url)
-    if isinstance(payload, dict) and payload.get("method") == "message/stream":
-        opened = await open_a2a_stream(db, ctx, agent_id, payload)
-        if isinstance(opened, dict):
-            return JSONResponse(opened)
-        return StreamingResponse(opened, media_type="text/event-stream", headers=_SSE_HEADERS)
+    method = payload.get("method") if isinstance(payload, dict) else None
+    if method == "message/stream":
+        return _stream_or_json(await open_a2a_stream(db, ctx, agent_id, payload))
+    if method == "tasks/resubscribe":
+        return _stream_or_json(await open_task_subscription(db, ctx, agent_id, payload, base_url=base_url))
     return JSONResponse(await handle_a2a_rpc(db, ctx, agent_id, payload, base_url=base_url))
 
 
