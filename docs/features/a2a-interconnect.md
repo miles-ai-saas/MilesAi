@@ -33,12 +33,12 @@
 - 多租户按智能体寻址；根 `/.well-known/agent-card.json` 仅在唯一发布时 307 别名
 - Card 公开（发现元数据），调用端点用该智能体的 X-API-Key；Card 内声明 `securitySchemes` / `security` 供对端发现鉴权要求
 - Card 声明 `protocolVersion=0.3` 与 `capabilities.streaming=true`，与线格式（`kind` 判别字段、小写 TaskState）一致
+- 对外调用：按 API Key 限流（429 + `Retry-After` + JSON-RPC `-32000`）；每次调用落租户审计 `a2a.*`，超限另落风控事件 `a2a_rate_limit`
 
 ### 1.3 明确不做
 
 - `tasks/resubscribe`、`tasks/pushNotificationConfig/*`（现回方法未找到）
 - A2A v1.0 迁移（PascalCase 方法名 + 去 `kind` + `TASK_STATE_*` 取值）
-- A2A 专用审计/限流（复用通用能力）
 
 ---
 
