@@ -28,6 +28,16 @@ def _job(status: str, **overrides):  # noqa: ANN202
     return SimpleNamespace(**base)
 
 
+class _PollOverflow(BaseException):
+    """轮询次数超限的守卫异常。
+
+    必须继承 ``BaseException`` 而非 ``AssertionError``：``watch_generative_job`` 的宽
+    ``except Exception`` 是有意的 Redis 降级路径，``AssertionError``（``Exception`` 子类）
+    会被它吞掉并转入 DB 回退 —— 守卫实际变成「把 bug 变成降级路径」，用例仍会假通过
+    （例如 Pub/Sub 循环无界时，兜底终查兜住了本应失败的断言）。
+    """
+
+
 class _FakePubSub:
     """假 pubsub：每次 poll 把时钟推进 ``timeout`` 秒，等价于「一次阻塞轮询 = 那么长时间」。"""
 
@@ -46,7 +56,7 @@ class _FakePubSub:
         self.timeouts.append(timeout)
         self.polls += 1
         if self.polls > self._max_polls:
-            raise AssertionError(f"轮询次数超限（>{self._max_polls}）：循环未受上限约束")
+            raise _PollOverflow(f"轮询次数超限（>{self._max_polls}）：循环未受上限约束")
         self._clock["t"] += timeout or 0.0
         return self._messages.pop(0) if self._messages else None
 
