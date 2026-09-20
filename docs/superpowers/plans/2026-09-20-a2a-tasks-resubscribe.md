@@ -326,7 +326,7 @@ EOF
 **Files:**
 - Create: `backend/packages/miles-portal/src/miles_portal/tenant/generative/services/job_watch.py`
 - Modify: `backend/packages/miles-portal/src/miles_portal/tenant/generative/services/job.py:344-399`
-- Test: `backend/tests/tenant/generative/test_job_watch.py`（新建）
+- Test: `backend/tests/tenant/generative/test_generative_job_watch.py`（新建）
 - 回归：`backend/tests/tenant/generative/test_job_stream_events.py`（**不改一行**）
 
 **Interfaces:**
@@ -344,7 +344,7 @@ cd backend && uv run python -m pytest -q tests/tenant/generative/test_job_stream
 
 - [ ] **Step 2: 写失败测试**
 
-新建 `backend/tests/tenant/generative/test_job_watch.py`：
+新建 `backend/tests/tenant/generative/test_generative_job_watch.py`：
 
 ```python
 """``watch_generative_job`` 单元测试：注入式接口（不碰真 Redis / 不碰真 DB）。
@@ -382,7 +382,8 @@ class _PollOverflow(BaseException):
 
     必须继承 ``BaseException`` 而非 ``AssertionError``：``watch_generative_job`` 的宽
     ``except Exception`` 是有意的 Redis 降级路径，``AssertionError``（``Exception`` 子类）
-    会被它吞掉并转入 DB 回退 —— 守卫实际变成「把 bug 变成降级路径」，用例仍会假通过。
+    会被它吞掉并转入 DB 回退 —— 守卫实际变成「把 bug 变成降级路径」，用例仍会假通过
+    （例如 Pub/Sub 循环无界时，兜底终查兜住了本应失败的断言）。
     """
 
 
@@ -561,7 +562,7 @@ async def test_unsubscribe_failure_is_swallowed(env):  # noqa: ANN001
 - [ ] **Step 3: 跑测试确认失败**
 
 ```bash
-cd backend && uv run python -m pytest -q tests/tenant/generative/test_job_watch.py
+cd backend && uv run python -m pytest -q tests/tenant/generative/test_generative_job_watch.py
 ```
 
 预期：`ModuleNotFoundError: No module named 'miles_portal.tenant.generative.services.job_watch'`。
@@ -731,7 +732,7 @@ from miles_portal.tenant.generative.services.job_watch import watch_generative_j
 cd backend && uv run python -m pytest -q tests/tenant/generative/
 ```
 
-预期：`test_job_watch.py` 与 `test_job_stream_events.py`（13 条，**未改动**）全绿。
+预期：`test_generative_job_watch.py` 与 `test_job_stream_events.py`（13 条，**未改动**）全绿。
 
 - [ ] **Step 7: 确认新模块被引用（守卫测试）**
 
@@ -744,7 +745,7 @@ cd backend && uv run python -m pytest -q tests/test_no_unreferenced_modules.py
 - [ ] **Step 8: 提交**
 
 ```bash
-cd backend && git add packages/miles-portal/src/miles_portal/tenant/generative/services/job_watch.py packages/miles-portal/src/miles_portal/tenant/generative/services/job.py tests/tenant/generative/test_job_watch.py
+cd backend && git add packages/miles-portal/src/miles_portal/tenant/generative/services/job_watch.py packages/miles-portal/src/miles_portal/tenant/generative/services/job.py tests/tenant/generative/test_generative_job_watch.py
 git commit -F - <<'EOF'
 refactor(generative): 抽出共用的生成任务订阅循环
 
@@ -971,7 +972,7 @@ EOF
 ```python
 """A2A ``tasks/resubscribe`` 服务层：帧序列、去重、安全上限、断连留痕。
 
-只覆盖订阅用例本身：订阅循环在 ``tests/tenant/generative/test_job_watch.py``，
+只覆盖订阅用例本身：订阅循环在 ``tests/tenant/generative/test_generative_job_watch.py``，
 纯逻辑在 ``test_a2a_server_card.py``。此处把 watcher 换成脚本化假实现，
 从而精确控制「第几帧发生什么」。
 """
@@ -1758,6 +1759,10 @@ cd backend && uv run python -m pytest -q tests/tenant/a2a/test_a2a_task_resubscr
 @pytest.mark.asyncio
 async def test_first_item_tick_closes_stream_with_failed_audit(monkeypatch, audit_recorder, owned_job):  # noqa: ANN001
     """契约被改坏（首产出竟是空闲刻度）时按失败收尾：不成空流、不变成 500。"""
+    # ``owned_job`` 是工厂式 fixture：不调用就只是**声明**了它，归属校验的 patch 不会落下，
+    # 前置校验会拿假 DB 去撞真实取数。此处调用只为让前置校验通过（该任务快照本身用不到，
+    # 脚本第一个产出是空闲刻度）。
+    owned_job(_job("running"))
     monkeypatch.setattr(subscription_svc, "watch_generative_job", _scripted([None]))
 
     opened = await subscription_svc.open_task_subscription(_Db(agent=_agent()), _ctx(), AGENT_ID, _params(), base_url=BASE)
@@ -1799,7 +1804,7 @@ EOF
 - Modify: `backend/packages/miles-portal/src/miles_portal/tenant/audit_log/meta.py:42`
 - Modify: `backend/tests/tenant/a2a/test_a2a_audit.py`（两处动作集合）
 - Test: `backend/tests/api/test_a2a_server_api.py`
-- Modify: `backend/openapi.snapshot.json`（视图 docstring 变更导致快照漂移）
+- Modify: `backend/openapi/openapi.snapshot.json`（视图 docstring 变更导致快照漂移）
 
 **Interfaces:**
 - Consumes: Task 4 的 `open_task_subscription`、Task 1 的 `AUDIT_ACTION_TASKS_RESUBSCRIBE`
@@ -1992,10 +1997,10 @@ cd backend && uv run python -m miles_server.scripts.export_openapi --check
 预期：报漂移（`a2a_jsonrpc` 的 docstring 进了 OpenAPI description）。确认漂移只涉及该路由的描述后重写：
 
 ```bash
-cd backend && uv run python -m miles_server.scripts.export_openapi --write && git diff --stat openapi.snapshot.json
+cd backend && uv run python -m miles_server.scripts.export_openapi --write && git diff --stat openapi/openapi.snapshot.json
 ```
 
-预期：只有 `openapi.snapshot.json` 变更，且 diff 只含 `a2a_jsonrpc` 描述文字。
+预期：只有 `openapi/openapi.snapshot.json` 变更，且 diff 只含 `a2a_jsonrpc` 描述文字。
 
 - [ ] **Step 7: 全后端回归 + 提交**
 
@@ -2006,7 +2011,7 @@ cd backend && uv run python -m pytest -q && uv run ruff check . && uv run ruff f
 预期：全绿、无 lint / 格式问题。
 
 ```bash
-cd backend && git add packages/miles-openapi/src/miles_openapi/views/a2a_server.py packages/miles-portal/src/miles_portal/tenant/audit_log/meta.py tests/api/test_a2a_server_api.py tests/tenant/a2a/test_a2a_audit.py openapi.snapshot.json
+cd backend && git add packages/miles-openapi/src/miles_openapi/views/a2a_server.py packages/miles-portal/src/miles_portal/tenant/audit_log/meta.py tests/api/test_a2a_server_api.py tests/tenant/a2a/test_a2a_audit.py openapi/openapi.snapshot.json
 git commit -F - <<'EOF'
 feat(a2a): 接线 tasks/resubscribe 并登记审计动作
 
