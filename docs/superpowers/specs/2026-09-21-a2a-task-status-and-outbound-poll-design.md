@@ -1,4 +1,4 @@
-# A2A 出站任务轮询与 Task 状态准确性（Client 认 `Task` + `timestamp`/`status.message`）Design
+# A2A 出站任务轮询与 Task 状态准确性（Client 响应分类 / `timestamp` / `status.message`）Design
 
 **日期**：2026-09-21
 **范围**：`backend/packages/miles-portal/src/miles_portal/tenant/a2a/`、文档
@@ -10,7 +10,9 @@
 
 本批修两件事，它们同属「A2A 对外面的正确性」，且 (B) 直接决定 (A) 的可用性。
 
-### 1.1 出站 Client 会把 `Task` 当成「回答」
+### 1.1 出站 Client 会把非回答当成「回答」（两个形态）
+
+**形态一：纯 `Task` → 原始 JSON。**
 
 本平台自己的 Server 在**生成任务未就绪**时回的就是 `Task`（`services/server.py:250-262`）：
 
@@ -42,7 +44,23 @@ return str(result)[:4000]
 
 **一段原始 JSON 被当作外部智能体的「回答」**，经 `invoke.py:189-199` 写进 `steps[].output_preview`，并以 `【外部 A2A · {name}】\n{answer}` 合入主模型的汇总素材（`invoke.py:200`）。
 
-可达性：**必然**。两个 MilesAI 实例互联、且对方产生了生成任务（生图 / 生视频）时，对方回的正是 `Task`。这是本次全量清点里唯一「本平台咬到自己」的缺口。
+可达性：**必然**。两个 MilesAI 实例互联、且对方产生了生成任务（生图 / 生视频）时，对方回的正是 `Task`。
+
+**形态二：JSON-RPC `error` → 错误消息冒充回答。**
+
+`_extract_text_from_response` 刻意让 `error` 优先于 `result`（`client.py:161-164`），并由特征化测试锁定。该测试文件自述「重构前先在此锁定每种形状的取值、键序优先级与兜底行为」，其中一节的标题就是「**error 优先于 result**」：
+
+```python
+assert _extract_text_from_response({"error": {"message": "boom"}, "result": "r"}) == "boom"
+assert _extract_text_from_response({"error": {"code": 1}}) == str({"code": 1})
+assert _extract_text_from_response({"error": "plain"}) == "plain"
+```
+
+于是 `invoke_a2a_peer` 的 `if text: return text` 会把对端的**错误消息**当成功回答返回：`invoke.py:189-199` 记为 `steps[].type = "a2a_peer"`（**成功类型**），并作为 `【外部 A2A · {name}】\nboom` 进入主模型素材。
+
+可达性：**宽**。A2A 协议级错误的标准形态正是 HTTP 200 + JSON-RPC `error`（`-32601` 方法未找到、`-32602` 参数错误、`-32603` 内部错误、`-32000` 限流、`-32001` 任务不存在、`-32002` 不可取消）—— 对端任何一个参数错误或内部错误，都会被我方读成「它回答了这句话」。
+
+**这一行为是有意设计**（有专门的测试锁定），本批**不动 `_extract_text_from_response`**（§3.1）。要修的是 `invoke_a2a_peer` 的协议分类：它不该把「本次调用成功还是失败」这个判断交给一个「尽可能榨出文本」的函数。
 
 ### 1.2 Task 的 `timestamp` 与进度在入站侧也失真
 
@@ -67,6 +85,8 @@ return str(result)[:4000]
 
 (A) 修好后，Client 会轮询 `tasks/get`。如果 (B) 不做，轮询拿到的每个 `Task` 都没有进度文案、`timestamp` 还每 2 秒变一次 —— Client 既无法向用户交代「卡在哪一步」，也无法据 `timestamp` 判断是否真有进展。**两件事分开做，(A) 的体感仍是「转 60 秒然后说还在跑」。**
 
+三块工作都落在 `invoke_a2a_peer` 的**同一段响应处理代码**上（§3.1 的分流链）：Task 分流、`error` 分层、以及 §3.5 的 `tasks/cancel` 能力（只补不调用）。同一处代码、同一类取向，合成一个 spec。
+
 ---
 
 ## 2. 已确认的决策
@@ -77,6 +97,8 @@ return str(result)[:4000]
 4. **`message/send` 的 Task 时间戳保持 `now_iso()`**：其来源 dict 只有 `{id, kind, status}`（`miles_ai/integrations/langchain/tool_agent/loop.py:40-42`），拿不到真实时间；为一条语义信息在写路径上加一次 DB 读不划算。该响应本就是「提交快照」，权威状态由随后 `tasks/get` 给出，故语义上可解释为「本快照生成时刻」。
 5. **`message/stream` 首帧保持 `now_iso()`**：它的 `taskId` 是合成的（流开始就得定，生成任务 id 只有跑完才知道），没有真实对象可依。
 6. **实现采用 Client 侧内聚**：轮询作 `client.py` 的私有 helper，`invoke_a2a_peer` 保持「返回 `str`」契约不变 —— 消费方 `invoke.py` 零改动。
+7. **出站 `tasks/cancel` 只补能力、不自动调用**：新增 `cancel_a2a_peer_task`，但本批**不在任何路径调用它**。超时 ≠ 放弃 —— 自动取消会销毁对端租户即将到手的产物，而对端任务的产物属于对端用户（§3.5、§5 第 2 条）。
+8. **「对端返回 `error`」采用分层修法**：在 `invoke_a2a_peer` 里先判顶层 `error` 即抛 `BadRequestError`；`_extract_text_from_response` 的 `error` 分支与其特征化测试**一字不动**（§3.1）。
 
 ---
 
@@ -103,10 +125,15 @@ def _task_state(task: dict) -> str | None:
     return state if isinstance(state, str) else None
 ```
 
-分流的插入点在 `invoke_a2a_peer` 的 `data = resp.json()` 之后、`_extract_text_from_response(data)` 之前：
+分流插在 `invoke_a2a_peer` 的 `data = resp.json()` 之后、`_extract_text_from_response(data)` 之前，**顺序固定为 error → task → text**：
 
 ```python
 data = resp.json()
+#: 三者互斥。判断「本次调用成功还是失败」是本层的职责，不交给榨文本函数（§1.1 形态二）。
+err = _jsonrpc_error(data)
+if err is not None:
+    # 对端已按 JSON-RPC 应答，说明 endpoint 形态已匹配：不再探测下一个，直接抛。
+    raise BadRequestError(f"调用外部 A2A Agent「{peer.name}」失败：对端返回错误 {err[0]} {err[1]}")
 if _looks_like_task(data):
     return await _resolve_agent_task(client, tasks_get_endpoints[index], data["result"], headers)
 text = _extract_text_from_response(data)
@@ -114,9 +141,27 @@ if text:
     return text
 ```
 
-`_extract_text_from_response` 与 `_text_from_result_payload` **保持不动**：它们服务于 `Message` 响应与旧版松散形状，Task 分流是前置的一层。
+```python
+def _jsonrpc_error(data: object) -> tuple[object, str] | None:
+    """顶层 ``error`` → ``(code, message)``；无 ``error`` 返回 ``None``。"""
+    if not isinstance(data, dict) or "error" not in data:
+        return None
+    err = data["error"]
+    if isinstance(err, dict):
+        return err.get("code"), str(err.get("message") or err)
+    return None, str(err)
+```
+
+两个必须保持的取向：
+
+- **先判 `error`**：JSON-RPC 里 `error` 与 `result` 互斥。把「失败与否」交给 `_extract_text_from_response`，会让协议级失败被读成回答（`steps[].type = "a2a_peer"`）并进入主模型素材。
+- **收到 JSON-RPC `error` 不再探测下一个 endpoint**：结构正确的 `error` 恰恰证明 endpoint 形态已匹配（对端解析并应答了请求）。这与既有「HTTP ≥ 400 → `continue`」的取向**有意不同** —— HTTP 层失败可能只是路径不对，协议级应答则说明找对了地方。
+
+`_extract_text_from_response` 与 `_text_from_result_payload` **保持不动**：它们服务于 `Message` 响应与旧版松散形状，是前置分流之后的一层。其 `error` 分支从此在 `invoke_a2a_peer` 路径上不可达，但仍是该 helper 面向其他调用方的兼容能力。
 
 **分流必须落在 `for url in message_endpoints` 循环的 `try` 之外**（或等价地保证 `_resolve_agent_task` 不向外抛 `httpx.RequestError` / `ValueError`）。否则外层 `except httpx.RequestError` / `except ValueError` 会把整段（最多 60s）的轮询结果丢掉，判为 `last_err` 后**再对第二个 endpoint 重跑一遍轮询** —— 最坏情况变成 120s 且用户拿不到任何结论。本设计靠 `_resolve_agent_task` 自己捕获这两类异常来满足该约束（§3.2），实现时不得把分流挪进 `try`。
+
+相对地，`raise BadRequestError` 本身**可以**位于 `try` 内 —— 现有 `except (httpx.RequestError, ValueError)` 不会捕获它。但若实现时改动了该 `except` 子句（例如放宽成 `except Exception`），上面这条约束与 `_resolve_agent_task` 的异常处理都要重新审视。
 
 ### 3.2 Client 侧：有限轮询 `_resolve_agent_task`
 
@@ -250,7 +295,25 @@ for index, url in enumerate(message_endpoints):
 
 **第一轮探测出可用 endpoint 后固定使用**（由索引传递实现），避免每 2s 打两次请求。轮询复用同一个 `httpx.AsyncClient`（连接池复用已在 `async with` 作用域内）。
 
-### 3.5 Server 侧：抽出 `build_a2a_task_status`
+### 3.5 Client 侧：出站 `tasks/cancel` 能力（只补，不自动调用）
+
+```python
+async def cancel_a2a_peer_task(peer: A2aPeer, task_id: str) -> None:
+    """请对端取消一个异步任务。成功返回；被拒或不可达抛 ``BadRequestError``。"""
+```
+
+- **前置校验**与 `invoke_a2a_peer` 一致：peer `status == active` 且 `agent_card_json` 非空，否则 `BadRequestError`
+- **endpoint 对称探测**：`[urljoin(rpc_base + "/", "tasks/cancel"), rpc_base]`
+- **请求体**：`{"jsonrpc": "2.0", "id": str(uuid.uuid4()), "method": "tasks/cancel", "params": {"id": task_id}}`，认证复用 `build_auth_headers(peer.auth_config)`
+- **成功判据**：HTTP < 400 **且**响应顶层无 `error`。成功后返回 `None` —— 取消没有信息量需要回报，失败一律走模块既有的异常契约（与 `invoke_a2a_peer` 全失败即 `BadRequestError` 同口径）
+- **失败处理**：
+  - 收到 JSON-RPC `error`（尤其 `-32002` 任务不可取消、`-32001` 不存在）→ **立即停止探测**（对端已应答，形态已匹配），抛 `BadRequestError` 带码与消息
+  - HTTP ≥ 400 或网络异常 → 记录后试下一个 endpoint；全败抛 `BadRequestError`
+- **本批不在任何路径调用它**（决策 7）：超时路径不碰。这个函数是为「上游将来出现明确的放弃语义」预留的能力（§5 第 2 条）
+
+**为什么不自动调用**：对端任务的产物落在**对端租户**，属于对端用户。而 `invoke_a2a_peer` 是同步阻塞的，调用方没有「我放弃这个任务」这个信号 —— 60s 超时只表达「我不想再等了」。此时取消，很可能把一个再过几秒就完成的任务连同产物一起销毁。
+
+### 3.6 Server 侧：抽出 `build_a2a_task_status`
 
 `status` 的形状（含 `message` / `metadata.percent` / `metadata.a2aJobTaskId`）目前只在 `build_a2a_status_update` 里维护。`build_a2a_task` 也要产出同样的形状，抽成单一维护点：
 
@@ -301,7 +364,7 @@ def build_a2a_task(
 
 **已知边界（保持现状）**：`percent` 写在 `status.message` 上，故 `text` 为空时 `percent` 会被丢弃。既有行为，本批不改。
 
-### 3.6 Server 侧：`timestamp_iso` 与 5 个调用点
+### 3.7 Server 侧：`timestamp_iso` 与 5 个调用点
 
 ```python
 def timestamp_iso(value: datetime | None) -> str:
@@ -321,7 +384,7 @@ def timestamp_iso(value: datetime | None) -> str:
 
 三处对象都已确认携带所需字段：`load_owned_agent_task` 返回 ORM `GenerativeJob`（`services/server.py:277-282`，带 `TimestampMixin` 的 `updated_at`、`progress_message`、`progress_percent`）；`GenerativeJobOut` 字段齐全（`generative/schemas/job.py:12-31`）；`subscription` 的 `first` 来自 `watch_generative_job` 的 ORM 对象。
 
-### 3.7 测试
+### 3.8 测试
 
 **Client 单元**（`backend/tests/tenant/agents/test_a2a_client_auth.py`，或同目录新建文件）：
 
@@ -336,6 +399,11 @@ def timestamp_iso(value: datetime | None) -> str:
 | 轮询中网络异常 | 停止轮询；回答含「网络异常」，且**不**触发第二个 endpoint 重跑 |
 | Task 无 `id` | 不发轮询；回答含「未给出任务 ID」 |
 | 轮询请求形状 | method=`tasks/get`、`params.id` 正确、endpoint 与 `message/send` 的探测结果对称 |
+| 对端返回 JSON-RPC `error` | 抛 `BadRequestError`，文案含 `code` 与 `message`；**不**再探测第二个 endpoint；经 `invoke.py` 记为 `a2a_error` 而**非** `a2a_peer` |
+| `tasks/cancel` 成功 | 返回 `None`；请求 method=`tasks/cancel`、`params.id` 正确 |
+| `tasks/cancel` 回 `-32002` | 抛 `BadRequestError` 带对端码与消息；**不**再探测第二个 endpoint |
+| `tasks/cancel` HTTP 500 / 网络异常 | 依次尝试两个 endpoint，全败抛 `BadRequestError` |
+| 回归：`_extract_text_from_response` | 其 error / result 特征化测试**全部通过且一字未改** |
 | 回归：`Message` 响应 | 行为与改动前一致（不被 Task 分流误捕） |
 
 **Server 纯逻辑**（`backend/tests/tenant/a2a/test_a2a_server_card.py`）：
@@ -353,11 +421,11 @@ def timestamp_iso(value: datetime | None) -> str:
 
 **反证要求**：Client 侧的 Task 分流必须可被反证 —— 临时移除 `if _looks_like_task(data):` 分支后，「已是终态」与「轮询到 completed」两条用例必须转 RED；`build_a2a_task` 的 `text` 透传必须可被反证 —— 移除 `build_a2a_task_status` 调用后，纯逻辑与集成用例必须转 RED。
 
-### 3.8 文档
+### 3.9 文档
 
-- `docs/guides/a2a.md`：出站（「平台内引用外部（custom）」）段补「Client 收到 `Task` 后会以 2s 间隔轮询 `tasks/get`，至多 60s；超时回状态快照 + `taskId`，不下载产物」；`tasks/get` 段补 `status.timestamp` 与 `status.message` 的语义（真实状态时间 + 进度）
+- `docs/guides/a2a.md`：出站（「平台内引用外部（custom）」）段补「Client 收到 `Task` 后会以 2s 间隔轮询 `tasks/get`，至多 60s；超时回状态快照 + `taskId`，不下载产物」，并补「对端返回 JSON-RPC `error` 视为调用失败（记 `a2a_error`），不再把错误消息当回答」；`tasks/get` 段补 `status.timestamp` 与 `status.message` 的语义（真实状态时间 + 进度）
 - `docs/features/a2a-interconnect.md`：同步出站行为
-- 本次清点中「出站无 `tasks/get` 轮询」与「`tasks/get` 的 `status.timestamp` 用请求时刻」「`tasks/get` 不返回 `status.message`」三条标记为已关闭
+- 本次清点中「出站无 `tasks/get` 轮询」与「`tasks/get` 的 `status.timestamp` 用请求时刻」「`tasks/get` 不返回 `status.message`」三条标记为已关闭；新增「对端错误冒充回答」一条标记为已关闭
 
 ---
 
@@ -374,12 +442,12 @@ def timestamp_iso(value: datetime | None) -> str:
 ## 5. 明确不做 / 已知残余
 
 1. **出站 `message/stream`**：Client 仍只有 `message/send` + `tasks/get`，无逐 token 流式。
-2. **出站 `tasks/cancel`**：轮询超时后 Client 不会替对端取消任务（取消是调用方语义，不该由传输层代劳）。
+2. **出站 `tasks/cancel` 不自动调用**：能力已补（`cancel_a2a_peer_task`，§3.5），但本批**不在任何路径调用** —— 超时不等于放弃（§3.5 末段）。待上游出现明确的放弃语义（如用户中止）时再接。
 3. **出站 push notification 注册**：`tasks/pushNotificationConfig/*` 未实现（既有的 P2 缺口，Card 已诚实声明 `pushNotifications: false`）。
 4. **不下载产物内容**：只给 `uri`（决策 2）。文本类产物也不内联。
 5. **不重试**：轮询期间的 HTTP / 网络失败一律终止轮询并回退快照（§3.2）。对端持续 429 时 Client 不做退避重试。
 6. **`message/send` 的 Task 时间戳仍是请求时刻**（决策 4），与 `tasks/get` 的「真实时间」在语义上不同。已在文档写明这是「提交快照生成时刻」。
-7. **`percent` 无 `text` 时被丢弃**（§3.5 已知边界，既有行为）。
+7. **`percent` 无 `text` 时被丢弃**（§3.6 已知边界，既有行为）。
 8. **`tasks/get` 的 `historyLength` 与 `Task.history` 仍不产出**（既有 P2 残余）。
 9. **多模态入站（`file` / `data` part）仍被忽略**（既有 P1 缺口）。
 10. **轮询参数不可配置**（决策 3）。若日后需要按 peer 调参，需在 `A2aPeer` 上新增字段并设计运营面。
@@ -400,5 +468,8 @@ def timestamp_iso(value: datetime | None) -> str:
 - [ ] `tasks/get` 与 `tasks/resubscribe` 首帧都带 `status.message`（进度文案）
 - [ ] `build_a2a_task` 与 `build_a2a_status_update` 的 `status` 形状逐键等价（单一维护点）
 - [ ] `Message` 响应的既有解析行为无回归
+- [ ] 对端返回 JSON-RPC `error` 时**抛异常**（经 `invoke.py` 记为 `a2a_error`），不再冒充回答
+- [ ] `_extract_text_from_response` 的特征化测试**未改动**且全绿
+- [ ] `cancel_a2a_peer_task` 具备对称 endpoint 探测与明确的失败契约；代码中**无调用方**（可 grep 验证）
 - [ ] 文档三处同步，清点中三条缺口标记关闭
 - [ ] 五道质量门全过（`pytest` / `ruff check` / `ruff format` / `make layers-check` / `make openapi-check`）
