@@ -1338,6 +1338,97 @@ async def test_read_task_artifact_rejects_non_agent_task(monkeypatch):  # noqa: 
         await server_svc.read_task_artifact(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, job.id, attachment_id)
 
 
+# --- 5.1 产物下载的失败留痕与跨租户不确认存在性（治 E1） ---------------------- #
+
+
+def _artifact_getter(job):  # noqa: ANN001, ANN202
+    """把 ``get_generative_job_for_tenant`` 换成返回指定 job 的替身。"""
+
+    async def _get(_db, _ctx, _job_id):  # noqa: ANN001
+        return job
+
+    return _get
+
+
+def _failing_attachments(exc: Exception):  # noqa: ANN202
+    """把 ``AttachmentService`` 换成「读字节即抛」的替身。"""
+
+    class _FakeAttachments:
+        def __init__(self, _db, _ctx) -> None:
+            pass
+
+        async def read_attachment_bytes(self, _attachment_id):  # noqa: ANN001
+            raise exc
+
+    return _FakeAttachments
+
+
+@pytest.mark.asyncio
+async def test_read_task_artifact_audits_not_ready_attachment_exactly_once(monkeypatch, a2a_audit_recorder):  # noqa: ANN001
+    """附件未就绪（400）此前**零流水**，与 docstring 的「成败都留一条」相矛盾。
+
+    判别力点：本用例断言 `len(...) == 1`。若在 `except` 块里 `raise` 新异常时被同一
+    `try` 的后续 `except` 二次捕获，就会变成两条 —— 这是本段唯一容易写错的地方。
+    """
+    attachment_id = uuid4()
+    job = _artifact_job(agent_id=AGENT_ID, attachments=(str(attachment_id),))
+    monkeypatch.setattr(server_svc, "get_generative_job_for_tenant", _artifact_getter(job))
+    monkeypatch.setattr(server_svc, "AttachmentService", _failing_attachments(BadRequestError("附件文件未就绪")))
+
+    with pytest.raises(BadRequestError):
+        await server_svc.read_task_artifact(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, job.id, attachment_id)
+
+    assert len(a2a_audit_recorder) == 1
+    assert [r["action"] for r in a2a_audit_recorder] == [server_mod.AUDIT_ACTION_ARTIFACT_DOWNLOAD]
+    assert a2a_audit_recorder[0]["outcome"] == server_mod.AUDIT_OUTCOME_FAILED
+    assert a2a_audit_recorder[0]["detail"]["errorCode"] == server_mod.INVALID_PARAMS
+    assert a2a_audit_recorder[0]["detail"]["errorType"] == "BadRequestError"
+    assert a2a_audit_recorder[0]["detail"]["errorStatus"] == 400
+    assert a2a_audit_recorder[0]["detail"]["taskId"] == str(job.id)
+
+
+@pytest.mark.asyncio
+async def test_read_task_artifact_normalizes_foreign_attachment_to_not_found(monkeypatch, a2a_audit_recorder):  # noqa: ANN001
+    """跨租户附件对外 404 而非 403：403 会向对端确认「该附件存在于别的租户」。
+
+    `AttachmentService` 不改语义（跨租户仍抛 `ForbiddenError`，它对内部调用方是对的）——
+    「不确认存在性」是 A2A 对外面自己的职责。
+    """
+    attachment_id = uuid4()
+    job = _artifact_job(agent_id=AGENT_ID, attachments=(str(attachment_id),))
+    monkeypatch.setattr(server_svc, "get_generative_job_for_tenant", _artifact_getter(job))
+    monkeypatch.setattr(server_svc, "AttachmentService", _failing_attachments(ForbiddenError("无权访问该租户资源")))
+
+    with pytest.raises(NotFoundError) as exc:
+        await server_svc.read_task_artifact(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, job.id, attachment_id)
+
+    assert str(exc.value) == "附件不存在"
+    # ``from None``：不把「无权访问该租户资源」这类内部措辞串进上下文
+    assert exc.value.__cause__ is None and exc.value.__suppress_context__ is True
+    assert len(a2a_audit_recorder) == 1
+    assert a2a_audit_recorder[0]["outcome"] == server_mod.AUDIT_OUTCOME_FAILED
+    assert a2a_audit_recorder[0]["detail"]["errorCode"] == server_mod.TASK_NOT_FOUND
+    # 对外被压成 404 后，租户可见面上仍能读出真实原因是越租户
+    assert a2a_audit_recorder[0]["detail"]["errorType"] == "ForbiddenError"
+    assert a2a_audit_recorder[0]["detail"]["errorStatus"] == 403
+
+
+@pytest.mark.asyncio
+async def test_read_task_artifact_audits_storage_failure_and_reraises(monkeypatch, a2a_audit_recorder):  # noqa: ANN001
+    """存储/DB 故障此前零流水；原样重抛不变（仍由全局处理器给 500）。"""
+    attachment_id = uuid4()
+    job = _artifact_job(agent_id=AGENT_ID, attachments=(str(attachment_id),))
+    monkeypatch.setattr(server_svc, "get_generative_job_for_tenant", _artifact_getter(job))
+    monkeypatch.setattr(server_svc, "AttachmentService", _failing_attachments(RuntimeError("oss 不可用")))
+
+    with pytest.raises(RuntimeError):
+        await server_svc.read_task_artifact(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, job.id, attachment_id)
+
+    assert len(a2a_audit_recorder) == 1
+    assert a2a_audit_recorder[0]["detail"]["errorCode"] == server_mod.INTERNAL_ERROR
+    assert "errorType" not in a2a_audit_recorder[0]["detail"]
+
+
 # --- 6. message/stream --------------------------------------------------------
 
 

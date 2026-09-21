@@ -311,7 +311,8 @@ async def read_task_artifact(
     """下载某任务产物，返回 ``(data, mime_type, filename)``。
 
     授权精确到「该智能体 · 该任务 · 该产物」：先验任务归属，再验附件确为该任务产物，
-    否则本租户任意附件都能被取走。成败都留一条审计流水（「谁把产物取走了」要查得到）。
+    否则本租户任意附件都能被取走。成败都留一条审计流水（「谁把产物取走了」要查得到）；
+    跨租户附件对外归一为「附件不存在」（404），不确认存在性。
     """
     started = time.monotonic()
     try:
@@ -320,13 +321,21 @@ async def read_task_artifact(
             raise NotFoundError("附件不是该任务的产物")
         data, mime, filename = await AttachmentService(db, ctx).read_attachment_bytes(attachment_id)
     except NotFoundError:
-        await write_a2a_audit(
-            ctx=ctx,
-            agent_id=agent_id,
-            action=AUDIT_ACTION_ARTIFACT_DOWNLOAD,
-            outcome=AUDIT_OUTCOME_FAILED,
-            detail={"taskId": str(task_id), "errorCode": TASK_NOT_FOUND, "durationMs": streaming.elapsed_ms(started)},
-        )
+        # 含 load_owned_agent_task 的各种「不存在」与「非本任务产物」
+        await _audit_artifact_failure(ctx, agent_id, task_id, started, TASK_NOT_FOUND)
+        raise
+    except ForbiddenError as exc:
+        # 跨租户附件：与「非本任务产物」同口径回 404，不向对端确认存在性。归一放在 A2A
+        # 对外面而非 AttachmentService —— 后者对内部调用方（工作台附件列表等）是对的。
+        await _audit_artifact_failure(ctx, agent_id, task_id, started, TASK_NOT_FOUND, origin=exc)
+        raise NotFoundError("附件不存在") from None
+    except AppError as exc:
+        # 如「附件文件未就绪」（400）。状态码由全局处理器给，此处只补留痕。
+        await _audit_artifact_failure(ctx, agent_id, task_id, started, INVALID_PARAMS, origin=exc)
+        raise
+    except Exception:
+        # 存储 / DB 故障：留痕后原样重抛 → HTTP 500 平台信封（与 RPC 层口径一致）。
+        await _audit_artifact_failure(ctx, agent_id, task_id, started, INTERNAL_ERROR)
         raise
     await write_a2a_audit(
         ctx=ctx,
@@ -336,6 +345,34 @@ async def read_task_artifact(
         detail={"taskId": str(task_id), "durationMs": streaming.elapsed_ms(started)},
     )
     return data, mime, filename
+
+
+async def _audit_artifact_failure(
+    ctx: TenantContext,
+    agent_id: UUID,
+    task_id: UUID,
+    started: float,
+    error_code: int,
+    *,
+    origin: AppError | None = None,
+) -> None:
+    """产物下载失败留痕：越权尝试与存储故障都是排查线索，不能只在成功时记。
+
+    ``origin`` 非空时额外记原始异常类型与 HTTP status —— 对外的 ``errorCode`` 已被压平
+    （跨租户与「非本任务产物」都回 ``TASK_NOT_FOUND``），这是租户可见面上唯一能读出真实
+    原因的出口。只记类型与状态码，不记 message。
+    """
+    detail: dict = {"taskId": str(task_id), "errorCode": error_code, "durationMs": streaming.elapsed_ms(started)}
+    if origin is not None:
+        detail["errorType"] = type(origin).__name__
+        detail["errorStatus"] = origin.status_code
+    await write_a2a_audit(
+        ctx=ctx,
+        agent_id=agent_id,
+        action=AUDIT_ACTION_ARTIFACT_DOWNLOAD,
+        outcome=AUDIT_OUTCOME_FAILED,
+        detail=detail,
+    )
 
 
 async def _handle_tasks_get(
