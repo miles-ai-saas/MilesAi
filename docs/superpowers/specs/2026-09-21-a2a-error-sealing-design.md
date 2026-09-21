@@ -16,7 +16,7 @@
 |---|---|---|---|
 | **E1** | `a2a/services/server.py::read_task_artifact`（产物下载） | 只捕 `NotFoundError`。同一 `try` 内 `AttachmentService.read_attachment_bytes` 会抛 `BadRequestError("附件文件未就绪")`（`attachment.py:155-156`）、跨租户附件抛 `ForbiddenError`（`attachment.py:183` 的 `assert_tenant_access`）、存储下载故障抛任意异常 —— 三类全部逸出成平台信封**且零审计**，与它自己 docstring 的「成败都留一条审计流水」相矛盾 | 附件上传窗口 / OSS 故障，可达 |
 | **E2** | `_handle_tasks_cancel` 第二段 `try` | 只捕 `BadRequestError`。`cancel_job` 先 `get_generative_job_for_tenant` 再取消（`job.py:253`），load 与 cancel 之间任务消失则抛 `NotFoundError`；Redis `publish_generative_job_update`、Celery `revoke`、DB 异常亦可逸出 → `handle_a2a_rpc` 兜底记成 `-32603` 平台信封 | 竞态窄，基础设施故障可达 |
-| **E3** | `_handle_message_send` 第二段 | `except Exception` 把所有异常译成 `-32603`。配额命中时 `run_published_agent_chat` 抛 `ForbiddenError`，被误标成「服务端内部错误」 | 配额命中即可达 |
+| **E3** | `_handle_message_send` 第二段 | `except Exception` 把所有异常译成 `-32603`。**合规拦截**抛 `BadRequestError("输入内容包含敏感词，已拦截：…")`（`compliance/intercept.py:67`）、配额命中抛 `ForbiddenError` —— 两者都被误标成「服务端内部错误」。指南的审计段**已经如实记录**了这个不一致（`message/send` 侧 `-32603` vs `message/stream` 侧 `rejected`），但当时决定「只如实记录、不改码」 | 合规拦截即可达 |
 
 `tasks/get`、`tasks/resubscribe`（前置与流内）经逐条核查**是干净的**，不在本批范围。
 
@@ -173,6 +173,7 @@ def app_error_envelope(method: str | None, req_id: object, exc: AppError) -> dic
 2. 任务归属段末句「（请求体无法解析、被限流、附件尚未就绪这三类前置失败除外）」改为「（请求体无法解析、被限流这两类前置失败除外）」—— 附件未就绪从此也留痕。
 3. 产物下载段补：跨租户附件同样 404，且各类失败（未就绪 / 非本任务产物 / 存储故障）都留痕。
 4. `## 审计` 段补：审计 `detail` 在兜底层会多出 `errorType` / `errorStatus`（只记类型与状态码，不记 message）。
+5. **改写 `## 审计` 段末尾那段「同一合规拦截在两个方法上 outcome 不一致」**：它说「差异来自 send 侧的错误码映射，本次只如实记录、不改码」—— 本批**正是在改那个码**（合规拦截的 `BadRequestError` 从误标的 `-32603` 变为 `-32602`）。改写为：`outcome` 的差异（`failed` vs `rejected`）来自两个方法各自的判据（send 按信封有无 `error`、stream 按终态帧状态），与错误码无关；并指出 send 侧码已不再是「内部错误」。
 
 `docs/superpowers/specs/2026-09-20-a2a-task-lookup-tenant-boundary-design.md` §5：把残余 #1（`tasks/cancel` 竞态）与 #2（`message/send` 误标 `-32603`）标注为**已由本批关闭**；I2（跨租户探测在内部不再可区分）保持不变。
 
@@ -182,7 +183,7 @@ def app_error_envelope(method: str | None, req_id: object, exc: AppError) -> dic
 |---|---|
 | 纯函数 | `app_error_envelope` 参数化映射表（`tasks/get` 域的 404/403 → `-32001`；其它域 404 → `-32602`；400 → `-32602`；409 → `-32603`；`method=None` 时的归属） |
 | `handle_a2a_rpc`（兜底，治漏捕） | **E2 复现**：`tasks/cancel` 里 `cancel_job` 抛 `NotFoundError` → HTTP 200 + `-32001` + 审计 `errorCode == -32001`；另造一个「handler 完全没捕」的 `BadRequestError` → `-32602` + 审计；`RuntimeError` → **仍重抛** + 审计 `-32603`（钉住 §3.4 不变） |
-| `_handle_message_send`（治 E3 的截获） | 配额类 `ForbiddenError` → `-32602` 且审计 `errorType == "ForbiddenError"`、`errorStatus == 403`；**判别力点**：去掉新增的 `except AppError: raise` 后应变回 `-32603` 且无 `errorType`（RED 取证） |
+| `_handle_message_send`（治 E3 的截获） | 合规拦截（`BadRequestError`）→ `-32602` 且审计 `errorType == "BadRequestError"`、`errorStatus == 400`；配额类 `ForbiddenError` → `-32602` 且 `errorType == "ForbiddenError"`、`errorStatus == 403`。**判别力点**：去掉新增的 `except AppError: raise` 后两条都应变回 `-32603` 且无 `errorType`（RED 取证） |
 | `read_task_artifact`（逐点，治 E1） | `BadRequestError`（附件未就绪）→ 留痕 + 重抛，**恰好一条**；`ForbiddenError` → `NotFoundError("附件不存在")` + 留痕；`RuntimeError` → 留痕 + 重抛；成功路径仍一条 `ok` |
 | HTTP 面（`tests/api/test_a2a_server_api.py`） | 产物下载「附件未就绪」→ 400 平台信封 **且有**审计；跨租户附件 → 404 平台信封 **且有**审计；`tasks/cancel` 竞态 → HTTP 200 + `-32001` 信封 |
 
@@ -209,6 +210,7 @@ def app_error_envelope(method: str | None, req_id: object, exc: AppError) -> dic
 3. **`except Exception` 兜底路径不记 `errorType`**：现行只记 `-32603`，诊断依赖全局处理器的堆栈日志。本批不动（YAGNI）。
 4. **`tasks/resubscribe` 的并发上限**：30 分钟长流的并发保护仍是设计级残余（上一批登记），不在本批范围。
 5. **跨租户探测在内部不再可区分**：上一批登记的 I2，本批不改变其状态。
+6. **合规拦截的文案会带回命中的敏感词**：`BadRequestError(f"输入内容包含敏感词，已拦截：{first.word}")` 的 message 经 `app_error_envelope` 原样发给对端（`message/send` 现状是 `f"智能体执行失败: {exc}"`，**同样包含**）。本批不改这个行为（对端本就是消息发送方），若要脱敏需单开一单。
 
 ---
 
@@ -217,11 +219,12 @@ def app_error_envelope(method: str | None, req_id: object, exc: AppError) -> dic
 - [ ] `read_task_artifact` 的 `BadRequestError` / `ForbiddenError` / `Exception` 三条路径都留痕，且各恰好一条
 - [ ] 跨租户附件对外 **404**（不是 403），文案 `附件不存在`
 - [ ] `tasks/cancel` 竞态 → HTTP 200 + JSON-RPC `-32001`（不再是 500 / `-32603` 平台信封）—— 由**兜底**修复
-- [ ] `message/send` 配额类 `ForbiddenError` → `-32602`（不再是 `-32603`），审计记 `errorType` —— 由**「停止截获」+ 兜底**共同修复（兜底单独存在时它仍被 handler 吞掉）
+- [ ] `message/send` 合规拦截（`BadRequestError`）→ `-32602`（不再是 `-32603`），审计记 `errorType` —— 由**「停止截获」+ 兜底**共同修复（兜底单独存在时它仍被 handler 吞掉）
+- [ ] `message/send` 配额类 `ForbiddenError` → `-32602`（不再是 `-32603`），审计记 `errorType` —— 同上
 - [ ] 非 `AppError` 异常**仍**重抛 → HTTP 500（回归不变）
 - [ ] `app_error_envelope` 纯函数映射表逐格有测试
 - [ ] `attachment.py` docstring 与代码一致，且与四个兄弟服务措辞同构
-- [ ] 指南：映射表、留痕例外收窄为两条、产物下载段、审计段
+- [ ] 指南：映射表、留痕例外收窄为两条、产物下载段、审计段（含**改写**那段「合规拦截 outcome 不一致」）
 - [ ] 设计 §5 残余 #1/#2 标注为已关闭
 - [ ] 五道质量门全绿（`pytest` / `ruff check` / `ruff format --check` / `make layers-check` / `make openapi-check`）
 - [ ] 视图层兜底**不**改 `a2a_jsonrpc` 的 docstring → `openapi-check` **不应**漂移；若实施中确需补一句说明，必须同批用 `make openapi-update` 更新快照并在提交说明里点出
