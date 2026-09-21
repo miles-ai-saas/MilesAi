@@ -6,7 +6,7 @@
 但白名单**刻意不收**——``parse_image`` 只认 JPG/PNG/WebP，收了会变成「可上传但必解析失败」的坑。
 
 图/音/视频的扩展名与 MIME 复用 ``parse.media`` 单一来源（避免白名单与 ``is_*_file`` 判定漂移）；
-Office 扩展名 ⊆ ``DOCLING_EXTENSIONS`` 由 ``tests/rag/test_upload_policy_alignment.py`` 守卫。
+Office 扩展名 ⊆ ``DOCLING_EXTENSIONS`` 由 ``tests/miles_ai/rag/test_upload_policy_alignment.py`` 守卫。
 前端 ``accept`` / 失败提示由本模块统一生成，避免与后端路由不一致。
 """
 

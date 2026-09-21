@@ -315,7 +315,7 @@ def test_health_checks_uses_loop_aware_engine_factory() -> None:
 
     这是删掉模块级 ``engine`` 单例后唯一被点名的消费者接线点。若它退回单例、或自己
     ``create_async_engine``，「脚本 / 长命进程里每 loop 一池」这条失败形状就重新出现，而
-    **没有任何行为用例会红**：``tests/infra/test_infra.py`` 打桩的是 ``check_postgres`` 本身，
+    **没有任何行为用例会红**：``tests/miles_portal/tenant/system/test_infra.py`` 打桩的是 ``check_postgres`` 本身，
     看不见它内部的取引擎方式。
 
     用 AST 而非「patch + 断言被调用」：后者要么需要真连库（打桩落空还会静默退化成恒真断言），

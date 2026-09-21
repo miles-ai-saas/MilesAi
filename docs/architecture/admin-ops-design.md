@@ -147,7 +147,7 @@ admin:session:{admin_id}   → jti（当前实现仅存字符串，鉴权未读�
 
 ### 2.5 与 PRD / 文档差距
 
-当前无阻断项；审计 / 日志导出经产品确认**不立项**（保留在线查询）。专项测试见 `backend/tests/admin/`。
+当前无阻断项；审计 / 日志导出经产品确认**不立项**（保留在线查询）。专项测试见 `backend/tests/miles_admin/`。
 
 ---
 
@@ -301,7 +301,7 @@ draft → issued → paid
 
 ## 5. 测试
 
-`backend/tests/admin/`：`test_admin_auth.py`、`test_admin_admins.py`、`test_admin_billing_plan.py`、`test_admin_risk_enforce.py`。
+`backend/tests/miles_admin/`：`test_admin_auth.py`、`test_admin_admins.py`、`test_admin_billing_plan.py`、`test_admin_risk_enforce.py`。
 
 **验收要点：** 登出 / 吊销后旧 token 401；UI 完成「建套餐 → 生成账单 → 标记 paid」闭环；黑名单 IP 403、超限 429 且写入 RiskEvent；租户 JWT 访问 `/api/admin/v1` 恒 401/403。
 

@@ -223,7 +223,7 @@ def _frame(event_type: str, payload: dict | None = None) -> str:
 def _connected(ctx=None):  # noqa: ANN001
     """已通过鉴权的连接环境；yield 出可检视的 session。
 
-    令牌解析另有 tests/tenant/agents/test_agent_chat_ws.py 中的
+    令牌解析另有 tests/miles_portal/tenant/agents/test_agent_chat_ws.py 中的
     test_extract_bearer_from_query / _header 覆盖，此处直接给定结果。
     """
     session = _RecordingSession()

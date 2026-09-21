@@ -1,6 +1,6 @@
 """A2A ``tasks/resubscribe`` 服务层：帧序列、去重、安全上限、断连留痕。
 
-只覆盖订阅用例本身：订阅循环在 ``tests/tenant/generative/test_generative_job_watch.py``，
+只覆盖订阅用例本身：订阅循环在 ``tests/miles_portal/tenant/generative/test_generative_job_watch.py``，
 纯逻辑在 ``test_a2a_server_card.py``。此处把 watcher 换成脚本化假实现，
 从而精确控制「第几帧发生什么」。
 """

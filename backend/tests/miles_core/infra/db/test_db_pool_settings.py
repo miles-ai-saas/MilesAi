@@ -17,7 +17,7 @@ from miles_core.infra.db.async_session import build_engine, dispose_loop_engines
 
 # 下面三个用例的局限：断言值恰等于 SQLAlchemy 原默认（5 / 10 / 30s），故「接线正确」与
 # 「压根没传参」行为完全一致，无法区分。真正能证伪接线的是
-# tests/infra/test_loop_aware_engine.py::test_engine_receives_configured_pool_params
+# tests/miles_core/infra/db/test_loop_aware_engine.py::test_engine_receives_configured_pool_params
 # 与本文件下方 test_build_engine_wires_non_default_pool_params（走非默认值）。
 # 另外它们各自会构建真 engine：注册表的 value 强引用 engine，必须显式 dispose，
 # 否则条目连同 loop 一起被钉住（弱键救不了，见 async_session.py 模块 docstring）。

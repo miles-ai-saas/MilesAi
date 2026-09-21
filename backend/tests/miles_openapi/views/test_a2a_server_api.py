@@ -1,6 +1,6 @@
 """A2A 对外暴露的 HTTP 面：按智能体的 Card 发现端点、JSON-RPC 调用端点、根路径别名。
 
-服务层逻辑已在 ``tests/tenant/a2a/test_a2a_server_card.py`` 覆盖；本文件只锁定路由
+服务层逻辑已在 ``tests/miles_portal/tenant/a2a/test_a2a_server_card.py`` 覆盖；本文件只锁定路由
 装配、状态码与响应形态（Card 用 A2A 原始 JSON、调用用 JSON-RPC 信封，均不套
 ``{code,message,data}`` 平台信封，否则外部 A2A 客户端解析不了）。
 """

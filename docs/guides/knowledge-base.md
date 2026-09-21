@@ -251,9 +251,9 @@ OpenAPI：`/docs`（运行实例）。
 
 白名单实现：`backend/packages/miles-ai/src/miles_ai/rag/parse/upload_policy.py`（KB 与通用附件共用）。
 
-多模态解析的降级是**可观测**的：依赖缺失（属预期形态）不记日志，占位文案提示安装；依赖**已安装但执行失败**（如 pip 包在而系统 `tesseract-ocr` 二进制缺、Whisper 模型下载失败、ffmpeg 编解码器缺失）会以 WARNING 记入日志并带堆栈，占位文案改为指向日志而非「安装」。两者分流由 `tests/rag/test_parse_degradation_diagnosability.py` 守卫。
+多模态解析的降级是**可观测**的：依赖缺失（属预期形态）不记日志，占位文案提示安装；依赖**已安装但执行失败**（如 pip 包在而系统 `tesseract-ocr` 二进制缺、Whisper 模型下载失败、ffmpeg 编解码器缺失）会以 WARNING 记入日志并带堆栈，占位文案改为指向日志而非「安装」。两者分流由 `tests/miles_ai/rag/test_parse_degradation_diagnosability.py` 守卫。
 
-白名单与解析能力对齐：图/音/视频扩展名与 MIME 由 `backend/packages/miles-ai/src/miles_ai/rag/parse/media.py` 单一来源导出、`upload_policy.py` 复用；`OFFICE_EXTENSIONS ⊆ DOCLING_EXTENSIONS`、media 判定 ⊆ 白名单、白名单扩展名/MIME 往返可接受、前端 `accept` 全覆盖等不变式由 `tests/rag/test_upload_policy_alignment.py` 守卫。Docling 可读但白名单刻意不收的 TIFF/BMP 属「允许上传 ≠ 一定能解析」边界。
+白名单与解析能力对齐：图/音/视频扩展名与 MIME 由 `backend/packages/miles-ai/src/miles_ai/rag/parse/media.py` 单一来源导出、`upload_policy.py` 复用；`OFFICE_EXTENSIONS ⊆ DOCLING_EXTENSIONS`、media 判定 ⊆ 白名单、白名单扩展名/MIME 往返可接受、前端 `accept` 全覆盖等不变式由 `tests/miles_ai/rag/test_upload_policy_alignment.py` 守卫。Docling 可读但白名单刻意不收的 TIFF/BMP 属「允许上传 ≠ 一定能解析」边界。
 
 | 配置 | 说明 |
 |------|------|

@@ -538,7 +538,7 @@ api_router.include_router(items.router, prefix="/{domain}", tags=["{domain}"])
 5. `tenant/router.py` include。
 6. `meta.py` 提供枚举字典（若需要 `GET /{domain}/meta`）。
 7. 种子写入 `scripts/seed/`。
-8. 补 `tests/tenant/{domain}/`。
+8. 补 `tests/miles_portal/tenant/{domain}/`。
 
 ---
 

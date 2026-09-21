@@ -21,7 +21,7 @@ class CanvasGraphState(TypedDict, total=False):
     ``total=False``：初始 state 与节点返回值都是局部更新，缺键即缺省。
     但**凡需跨节点传递的键必须在此声明**——LangGraph 只按本 TypedDict 注解建立通道，
     未声明的键在 ``ainvoke`` 时会被**静默丢弃**（不报错，读取端得 ``None``）。
-    新增 ``RunContext`` 透传字段时需同步登记，`tests/infra/test_canvas_state_contract.py`
+    新增 ``RunContext`` 透传字段时需同步登记，`tests/miles_ai/integrations/langgraph/test_canvas_state_contract.py`
     会锁死「初始 state / 节点读取键 ⊆ 本声明」这一不变式。
     """
 

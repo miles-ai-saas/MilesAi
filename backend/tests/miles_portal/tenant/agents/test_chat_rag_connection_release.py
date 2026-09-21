@@ -1,7 +1,7 @@
 """RAG 生成阶段释放请求会话连接（编排级）。
 
 靠三件事达成：检索与附图解析各自新开会话、生成前 commit 请求会话、生成入口不含 db。
-本文件从 L1 视角断言前两件（第三件见 tests/rag/test_generate_rag_answer.py）。
+本文件从 L1 视角断言前两件（第三件见 tests/miles_ai/rag/test_generate_rag_answer.py）。
 """
 
 import asyncio
