@@ -17,6 +17,8 @@ Peer ``status=active`` 且已同步 Agent Card；否则 ``BadRequestError`` 或�
 
 from __future__ import annotations
 
+import asyncio
+import time
 import uuid
 from typing import Any
 from urllib.parse import urljoin, urlparse
@@ -268,6 +270,57 @@ def _render_agent_task(task: dict, *, note: str | None = None) -> str:
     return "\n".join(lines)
 
 
+#: 轮询间隔与总上限。不设为配置项：60s 与 ``invoke_a2a_peer`` 的 httpx 单请求超时同量级，
+#: 且单次调用上限直接等于「用户为这个外部 peer 多等多久」，按 peer 调参是另一个量级的运营面。
+TASK_POLL_INTERVAL_SECONDS = 2.0
+TASK_POLL_TIMEOUT_SECONDS = 60.0
+
+
+def _tasks_get_payload(task_id: str) -> dict:
+    """``tasks/get`` 的 JSON-RPC 请求体。"""
+    return {"jsonrpc": "2.0", "id": str(uuid.uuid4()), "method": "tasks/get", "params": {"id": task_id}}
+
+
+async def _resolve_agent_task(client: httpx.AsyncClient, url: str, task: dict, headers: dict[str, str]) -> str:
+    """把一个 ``Task`` 响应变成回答：已是停止轮询态就直接渲染，否则轮询到停止轮询态。
+
+    **本函数不得向上抛 ``httpx.RequestError`` / ``ValueError``**：调用它的位置在
+    ``invoke_a2a_peer`` 的 endpoint 循环内，那层的 ``except`` 会把这里的结果丢掉并对第二个
+    endpoint 重跑一遍（最坏 120s 且用户拿不到任何结论）。
+    """
+    task_id = task.get("id")
+    if not isinstance(task_id, str) or not task_id:
+        return _render_agent_task(task, note="对端未给出任务 ID，无法继续查询")
+    if _task_state(task) in STOP_POLLING_TASK_STATES:
+        return _render_agent_task(task)
+
+    deadline = time.monotonic() + TASK_POLL_TIMEOUT_SECONDS
+    latest = task
+    while True:
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            break
+        # 先睡再查：首响应已是「刚提交」，立刻重查只会打一个空转请求。
+        await asyncio.sleep(min(TASK_POLL_INTERVAL_SECONDS, remaining))
+        try:
+            resp = await client.post(url, json=_tasks_get_payload(task_id), headers=headers)
+            if resp.status_code >= 400:
+                return _render_agent_task(latest, note=f"继续查询失败（HTTP {resp.status_code}）")
+            data = resp.json()
+        except (httpx.RequestError, ValueError):
+            return _render_agent_task(latest, note="继续查询失败（网络异常）")
+        err = _jsonrpc_error(data)
+        if err is not None:
+            return _render_agent_task(latest, note=f"对端不支持继续查询（{err[0]} {err[1]}）")
+        if not _looks_like_task(data):
+            # 形状不认识不是失败信号：保留最后一次已知状态，继续等。
+            continue
+        latest = data["result"]
+        if _task_state(latest) in STOP_POLLING_TASK_STATES:
+            return _render_agent_task(latest)
+    return _render_agent_task(latest, note=f"已等待 {int(TASK_POLL_TIMEOUT_SECONDS)} 秒")
+
+
 def _extract_text_from_response(data: Any) -> str:
     """从 JSON-RPC / HTTP 响应中提取可读文本。"""
     if isinstance(data, str):
@@ -311,13 +364,19 @@ async def invoke_a2a_peer(peer: A2aPeer, task: str) -> str:
         },
     }
     headers = {**JSONRPC_HEADERS, **build_auth_headers(peer.auth_config)}
-    endpoints = [
+    message_endpoints = [
         urljoin(rpc_base + "/", "message/send"),
+        rpc_base,
+    ]
+    #: 与 message_endpoints 逐位对称：探到哪一种部署形态，tasks/get 就打对应的那一个
+    #: （否则每轮轮询都要先打一个必然 404 的请求，对端限流下等于白烧配额）。
+    tasks_get_endpoints = [
+        urljoin(rpc_base + "/", "tasks/get"),
         rpc_base,
     ]
     last_err: str | None = None
     async with httpx.AsyncClient(timeout=60.0, follow_redirects=True) as client:
-        for url in endpoints:
+        for index, url in enumerate(message_endpoints):
             try:
                 resp = await client.post(url, json=payload, headers=headers)
                 if resp.status_code >= 400:
@@ -331,6 +390,8 @@ async def invoke_a2a_peer(peer: A2aPeer, task: str) -> str:
                     # 对端已按 JSON-RPC 应答，说明 endpoint 形态已匹配：不再探测下一个，
                     # 直接抛。HTTP ≥ 400 仍走上面的 ``continue`` —— 那可能只是路径不对。
                     raise BadRequestError(f"调用外部 A2A Agent「{peer.name}」失败：对端返回错误 {err[0]} {err[1]}")
+                if _looks_like_task(data):
+                    return await _resolve_agent_task(client, tasks_get_endpoints[index], data["result"], headers)
                 text = _extract_text_from_response(data)
                 if text:
                     return text

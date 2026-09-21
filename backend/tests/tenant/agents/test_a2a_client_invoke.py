@@ -175,3 +175,170 @@ def test_stop_polling_states_cover_terminal_and_interrupted():
     assert "input-required" in client_mod.STOP_POLLING_TASK_STATES
     assert "auth-required" in client_mod.STOP_POLLING_TASK_STATES
     assert "working" not in client_mod.STOP_POLLING_TASK_STATES
+
+
+def _fast_poll(monkeypatch) -> None:  # noqa: ANN001
+    """把轮询压到亚毫秒级：测试不该真的睡 60 秒。
+
+    ``_resolve_agent_task`` 在运行时读模块常量，故 monkeypatch 生效。
+    """
+    monkeypatch.setattr(client_mod, "TASK_POLL_INTERVAL_SECONDS", 0.001)
+    monkeypatch.setattr(client_mod, "TASK_POLL_TIMEOUT_SECONDS", 0.02)
+
+
+@pytest.mark.asyncio
+async def test_terminal_task_is_not_polled(monkeypatch):  # noqa: ANN001
+    """对端可能同步就绪：已是终态时一次多余请求都不发。"""
+    captured = _patch(monkeypatch, [{"jsonrpc": "2.0", "id": "1", "result": _task("completed", artifacts=[_artifact()])}])
+    monkeypatch.setattr(client_mod, "TASK_POLL_INTERVAL_SECONDS", 2.0)
+
+    answer = await client_mod.invoke_a2a_peer(_peer(), "生成一张图")
+
+    assert "外部任务已完成" in answer
+    assert len(captured) == 1
+
+
+@pytest.mark.asyncio
+async def test_polls_until_completed_and_reports_artifacts(monkeypatch):  # noqa: ANN001
+    _fast_poll(monkeypatch)
+    captured = _patch(
+        monkeypatch,
+        [
+            {"jsonrpc": "2.0", "id": "1", "result": _task("working")},
+            {"jsonrpc": "2.0", "id": "2", "result": _task("working", progress="45% 渲染中", percent=45)},
+            {"jsonrpc": "2.0", "id": "3", "result": _task("completed", artifacts=[_artifact(name="封面", mime="image/png")])},
+        ],
+    )
+
+    answer = await client_mod.invoke_a2a_peer(_peer(), "生成一张图")
+
+    assert "外部任务已完成" in answer
+    assert "封面" in answer and "image/png" in answer
+    # 首次 message/send + 两次 tasks/get
+    assert len(captured) == 3
+    assert captured[1]["body"]["method"] == "tasks/get"
+    assert captured[1]["body"]["params"] == {"id": "j1"}
+
+
+@pytest.mark.asyncio
+async def test_polls_with_symmetric_endpoint(monkeypatch):  # noqa: ANN001
+    """``message/send`` 探到哪个形态，``tasks/get`` 就打对应的那一个。"""
+    _fast_poll(monkeypatch)
+    captured = _patch(
+        monkeypatch,
+        [
+            {"jsonrpc": "2.0", "id": "1", "result": _task("working")},
+            {"jsonrpc": "2.0", "id": "2", "result": _task("completed")},
+        ],
+    )
+
+    await client_mod.invoke_a2a_peer(_peer(), "生成一张图")
+
+    assert captured[0]["url"] == "https://peer.example.com/a2a/message/send"
+    assert captured[1]["url"] == "https://peer.example.com/a2a/tasks/get"
+
+
+@pytest.mark.asyncio
+async def test_timeout_returns_snapshot_with_task_id(monkeypatch):  # noqa: ANN001
+    _fast_poll(monkeypatch)
+    _patch(monkeypatch, [{"jsonrpc": "2.0", "id": "1", "result": _task("working", progress="45% 渲染中")}])
+
+    answer = await client_mod.invoke_a2a_peer(_peer(), "生成一张图")
+
+    assert answer.splitlines()[0] == "外部任务仍在进行（状态：working）"
+    assert "任务 ID：j1" in answer
+    assert "已等待" in answer
+
+
+@pytest.mark.asyncio
+async def test_input_required_stops_polling(monkeypatch):  # noqa: ANN001
+    """中断态不再轮询：对端在等我们补输入，白等到超时毫无意义。"""
+    _fast_poll(monkeypatch)
+    captured = _patch(
+        monkeypatch,
+        [
+            {"jsonrpc": "2.0", "id": "1", "result": _task("working")},
+            {"jsonrpc": "2.0", "id": "2", "result": _task("input-required", progress="请补充视频时长")},
+        ],
+    )
+
+    answer = await client_mod.invoke_a2a_peer(_peer(), "生成一段视频")
+
+    assert answer.splitlines()[0] == "外部任务需要补充输入"
+    assert "请补充视频时长" in answer
+    assert len(captured) == 2
+
+
+@pytest.mark.asyncio
+async def test_poll_jsonrpc_error_falls_back_to_snapshot(monkeypatch):  # noqa: ANN001
+    """对端不支持 tasks/get（``-32601``）时回退到最后一次已知状态，而不是抛给上层。"""
+    _fast_poll(monkeypatch)
+    _patch(
+        monkeypatch,
+        [
+            {"jsonrpc": "2.0", "id": "1", "result": _task("working")},
+            {"jsonrpc": "2.0", "id": "2", "error": {"code": -32601, "message": "不支持的方法"}},
+        ],
+    )
+
+    answer = await client_mod.invoke_a2a_peer(_peer(), "生成一张图")
+
+    assert "对端不支持继续查询" in answer
+    assert "-32601" in answer
+    assert "任务 ID：j1" in answer
+
+
+@pytest.mark.asyncio
+async def test_poll_network_error_does_not_retry_second_endpoint(monkeypatch):  # noqa: ANN001
+    """轮询内部异常不得冒泡到 endpoint 循环 —— 否则会对第二个端点重跑一遍整段轮询。"""
+    _fast_poll(monkeypatch)
+    captured: list[dict] = []
+
+    class _Boom(_SeqClient):
+        async def post(self, url: str, *, json: dict | None = None, headers: dict | None = None) -> _Resp:
+            captured.append({"url": url, "body": json})
+            if len(captured) == 1:
+                return _Resp({"jsonrpc": "2.0", "id": "1", "result": _task("working")})
+            raise client_mod.httpx.RequestError("boom")
+
+    monkeypatch.setattr(client_mod.httpx, "AsyncClient", lambda **_kwargs: _Boom([], captured))
+
+    answer = await client_mod.invoke_a2a_peer(_peer(), "生成一张图")
+
+    assert "继续查询失败（网络异常）" in answer
+    # 只有 message/send + 一次 tasks/get：第二个端点未被重试
+    assert [item["url"] for item in captured] == [
+        "https://peer.example.com/a2a/message/send",
+        "https://peer.example.com/a2a/tasks/get",
+    ]
+
+
+@pytest.mark.asyncio
+async def test_task_without_id_is_not_polled(monkeypatch):  # noqa: ANN001
+    _fast_poll(monkeypatch)
+    captured = _patch(monkeypatch, [{"jsonrpc": "2.0", "id": "1", "result": _task("working", task_id=None)}])
+
+    answer = await client_mod.invoke_a2a_peer(_peer(), "生成一张图")
+
+    assert "对端未给出任务 ID" in answer
+    assert len(captured) == 1
+
+
+@pytest.mark.asyncio
+async def test_message_response_is_not_treated_as_task(monkeypatch):  # noqa: ANN001
+    """回归：``Message`` 响应不被 Task 分流误捕，抽取行为与改动前逐字一致。
+
+    plan 原文此处断言 ``answer == "收到"``。但 ``_extract_text_from_response`` 并不认识
+    「顶层 ``Message`` 的 ``parts``」这一形状（它只认 ``result`` 的四个文本键与
+    ``result.message.parts``），BASE 上该形状的既有输出就是 ``str(result)``。spec §3.1
+    明确本批**冻结**该函数，§6 又要求「``Message`` 响应的既有解析行为无回归」，故这里锁定
+    改动前的真实行为；「顶层 ``Message`` 抽不出文本」是既有缺口，不在本任务范围。
+    """
+    result = {"kind": "message", "role": "agent", "parts": [{"kind": "text", "text": "收到"}]}
+    captured = _patch(monkeypatch, [{"jsonrpc": "2.0", "id": "1", "result": result}])
+
+    answer = await client_mod.invoke_a2a_peer(_peer(), "你好")
+
+    # 不是 Task 渲染结果：若被 Task 分流误捕，这里会变成「外部任务状态未知（状态：unknown）」
+    assert answer == str(result)
+    assert len(captured) == 1
