@@ -33,7 +33,7 @@ from miles_portal.tenant.a2a.server import (
     build_a2a_artifacts,
     build_a2a_status_update,
     build_a2a_task,
-    build_a2a_task_status,  # noqa: F401  (本文件经 build_a2a_task / build_a2a_status_update 间接覆盖其形状)
+    build_a2a_task_status,
     build_agent_card,
     extract_message_context_id,
     extract_message_text,
@@ -948,9 +948,9 @@ async def test_tasks_cancel_returns_canceled_task(monkeypatch):  # noqa: ANN001
                 id=job_id,
                 status=SimpleNamespace(value="cancelled"),
                 params={"conversation_id": "c1"},
-                # tasks/cancel 的成功路径同样走 build_a2a_task
-                progress_message=None,
-                progress_percent=None,
+                # tasks/cancel 的成功路径同样走 build_a2a_task，且同样携带真实进度/时间
+                progress_message="已取消生成",
+                progress_percent=100,
                 updated_at=datetime(2026, 1, 2, 3, 4, 5, tzinfo=UTC),
             )
 
@@ -963,6 +963,11 @@ async def test_tasks_cancel_returns_canceled_task(monkeypatch):  # noqa: ANN001
     assert result["kind"] == "task"
     assert result["status"]["state"] == "canceled"
     assert result["contextId"] == "c1"
+    # 精确等值：now_iso() 也是合法 ISO 串，只有等值能钉住「取 job.updated_at 而非请求时刻」
+    assert result["status"]["timestamp"] == "2026-01-02T03:04:05+00:00"
+    # 该站点同样透传进度：把 text/percent 去电后这两条即转 RED
+    assert result["status"]["message"]["parts"] == [{"kind": "text", "text": "已取消生成"}]
+    assert result["status"]["message"]["metadata"] == {"percent": 100}
 
 
 @pytest.mark.asyncio
@@ -2282,6 +2287,31 @@ def test_build_a2a_task_status_is_the_single_source_of_shape():
     )["status"]
 
     assert _without_message_id(status_from_task) == _without_message_id(status_from_update)
+
+
+def test_build_a2a_task_status_directly_pins_job_task_id_branch():
+    """直接调用形状维护点：钉住 ``job_task_id`` → ``metadata.a2aJobTaskId`` 分支。
+
+    该分支此前只经 ``build_a2a_status_update`` 间接可见，而本函数自身从未被直接调用
+    （import 长期挂着 ``# noqa: F401``）。直接调用还顺带钉住 ``message_task_id`` 与
+    ``text is None`` 时的最小形状。
+    """
+    status = build_a2a_task_status(
+        state="working",
+        timestamp="2026-09-18T00:00:00+00:00",
+        context_id="c1",
+        text="正在生成",
+        message_task_id="t-1",
+        job_task_id="job-1",
+    )
+
+    assert status["state"] == "working"
+    assert status["message"]["taskId"] == "t-1"
+    assert status["message"]["contextId"] == "c1"
+    assert status["message"]["metadata"] == {"a2aJobTaskId": "job-1"}
+
+    # ``text`` 为空即不附 ``status.message``：``percent`` 一并丢弃是既有边界
+    assert build_a2a_task_status(state="working", timestamp="t", percent=45) == {"state": "working", "timestamp": "t"}
 
 
 def test_build_a2a_task_omits_status_message_without_text():

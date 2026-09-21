@@ -134,6 +134,8 @@ def test_render_artifact_without_uri_is_marked():
     out = client_mod._render_agent_task(_task("completed", artifacts=[_artifact(uri=None)]))
 
     assert "无下载地址" in out
+    # 判别力点：无 uri 时绝不能把字面量 ``None`` 渲染成下载地址
+    assert "None" not in out
 
 
 def test_render_uses_artifact_id_when_name_absent():
@@ -162,6 +164,16 @@ def test_render_failed_task_shows_progress_text():
 )
 def test_render_headline_by_state(state, headline):  # noqa: ANN001
     assert client_mod._render_agent_task(_task(state)).splitlines()[0] == headline
+
+
+@pytest.mark.parametrize("task", [{}, {"status": {}}])
+def test_render_missing_or_unreadable_state_collapses_to_unknown_headline(task):  # noqa: ANN001
+    """``status.state`` 缺失（``{}``）或不可读（``{"status": {}}``）时，仍走 ``unknown`` 首行。
+
+    ``_task_state(task) or "unknown"`` 的收敛点：此前的参数化用例只喂显式 ``"unknown"``，
+    把该分支改成另一句文案不会有任何用例转红。
+    """
+    assert client_mod._render_agent_task(task).splitlines()[0] == "外部任务状态未知（状态：unknown）"
 
 
 def test_render_appends_note_when_present():
@@ -240,15 +252,51 @@ async def test_polls_with_symmetric_endpoint(monkeypatch):  # noqa: ANN001
 
 
 @pytest.mark.asyncio
+async def test_polls_with_symmetric_endpoint_after_first_probe_fails(monkeypatch):  # noqa: ANN001
+    """第一个 ``message/send`` 形态 404 后，``tasks/get`` 必须打第二个形态（与成功的那个同索引）。
+
+    既有 ``test_polls_with_symmetric_endpoint`` 只覆盖 index 0（``urljoin(rpc_base + "/", …)``），
+    把 ``tasks_get_endpoints[index]`` 硬编码成 ``tasks_get_endpoints[0]`` 时它仍然全绿。本用例
+    让 index 0 在 HTTP 层失败、由 index 1 成功，从而把「逐位对称」变成可反证的契约。
+    """
+    _fast_poll(monkeypatch)
+    captured: list[dict] = []
+
+    class _First404(_SeqClient):
+        async def post(self, url: str, *, json: dict | None = None, headers: dict | None = None) -> _Resp:
+            captured.append({"url": url, "body": json})
+            if len(captured) == 1:
+                # 第一个形态路径不对：HTTP 层失败，探测落到第二个形态
+                return _Resp({}, status_code=404)
+            if len(captured) == 2:
+                return _Resp({"jsonrpc": "2.0", "id": "2", "result": _task("working")})
+            return _Resp({"jsonrpc": "2.0", "id": "3", "result": _task("completed")})
+
+    monkeypatch.setattr(client_mod.httpx, "AsyncClient", lambda **_kwargs: _First404([], captured))
+
+    answer = await client_mod.invoke_a2a_peer(_peer(), "生成一张图")
+
+    assert "外部任务已完成" in answer
+    # message/send 由第二个形态（rpc_base）应答
+    assert captured[1]["url"] == "https://peer.example.com/a2a"
+    assert captured[1]["body"]["method"] == "message/send"
+    # tasks/get 必须与成功的 message/send 同索引，而不是退回 index 0
+    assert captured[2]["body"]["method"] == "tasks/get"
+    assert captured[2]["url"] == "https://peer.example.com/a2a"
+
+
+@pytest.mark.asyncio
 async def test_timeout_returns_snapshot_with_task_id(monkeypatch):  # noqa: ANN001
     _fast_poll(monkeypatch)
-    _patch(monkeypatch, [{"jsonrpc": "2.0", "id": "1", "result": _task("working", progress="45% 渲染中")}])
+    captured = _patch(monkeypatch, [{"jsonrpc": "2.0", "id": "1", "result": _task("working", progress="45% 渲染中")}])
 
     answer = await client_mod.invoke_a2a_peer(_peer(), "生成一张图")
 
     assert answer.splitlines()[0] == "外部任务仍在进行（状态：working）"
     assert "任务 ID：j1" in answer
     assert "已等待" in answer
+    # 首次 message/send + 至少一次 tasks/get：跳过轮询直接回「已等待」快照的实现不得蒙混过关
+    assert len(captured) > 1
 
 
 @pytest.mark.asyncio
@@ -287,6 +335,33 @@ async def test_poll_jsonrpc_error_falls_back_to_snapshot(monkeypatch):  # noqa: 
     assert "继续查询失败" in answer
     assert "-32601" in answer and "不支持的方法" in answer
     assert "任务 ID：j1" in answer
+
+
+@pytest.mark.asyncio
+async def test_poll_unrecognized_shape_keeps_polling(monkeypatch):  # noqa: ANN001
+    """轮询拿到「不是 Task」的合法 JSON-RPC 响应时继续等，而不是就此收流。
+
+    这是绑定契约：形状不认识**不是**失败信号。把 ``_resolve_agent_task`` 里的 ``continue``
+    换成 ``return _render_agent_task(latest, …)`` 时，本用例必须转 RED（第三帧的 completed 到不了）。
+    """
+    _fast_poll(monkeypatch)
+    message = {"kind": "message", "role": "agent", "messageId": "m1", "parts": [{"kind": "text", "text": "稍等"}]}
+    captured = _patch(
+        monkeypatch,
+        [
+            {"jsonrpc": "2.0", "id": "1", "result": _task("working")},
+            # 合法 JSON-RPC 信封，但不是 Task（顶层 Message）：保留已知状态继续等
+            {"jsonrpc": "2.0", "id": "2", "result": message},
+            {"jsonrpc": "2.0", "id": "3", "result": _task("completed")},
+        ],
+    )
+
+    answer = await client_mod.invoke_a2a_peer(_peer(), "生成一张图")
+
+    assert answer.splitlines()[0] == "外部任务已完成"
+    # 未在第二帧收流：第三帧的 tasks/get 确实发出
+    assert len(captured) == 3
+    assert captured[2]["body"]["method"] == "tasks/get"
 
 
 @pytest.mark.asyncio
@@ -382,7 +457,10 @@ async def test_message_response_is_not_treated_as_task(monkeypatch):  # noqa: AN
 
     answer = await client_mod.invoke_a2a_peer(_peer(), "你好")
 
-    # 不是 Task 渲染结果：若被 Task 分流误捕，这里会变成「外部任务状态未知（状态：unknown）」
+    # === TRACKED GAP (a2a/top-level-message-parts) ===
+    # 下面锁的是**既有缺口**，不是期望：``_extract_text_from_response`` 不认识顶层 ``Message``
+    # 的 ``parts``，故输出退化为 ``str(result)``。修复该函数后，本断言与 docstring 必须一并更新；
+    # 在此之前请勿把「answer == str(result)」误读成规范行为。
     assert answer == str(result)
     assert len(captured) == 1
 
@@ -434,8 +512,17 @@ async def test_cancel_peer_task_tries_both_endpoints_before_giving_up(monkeypatc
 
 @pytest.mark.asyncio
 async def test_cancel_peer_task_rejects_inactive_peer(monkeypatch):  # noqa: ANN001
+    """未激活 peer 在发出任何请求前就被拒。
+
+    判别力点：删掉 ``cancel_a2a_peer_task`` 的 ``peer.status`` 守卫后，控制流会落到真实的
+    ``httpx`` POST（此处传输已 stub，故不会真发网络请求），本用例必须因此转 RED。
+    """
     peer = _peer()
     peer.status = SimpleNamespace(value="inactive")
+    captured = _patch(monkeypatch, [{"jsonrpc": "2.0", "id": "1", "result": {}}])
 
     with pytest.raises(BadRequestError):
         await client_mod.cancel_a2a_peer_task(peer, "j1")
+
+    # 未尝试任何请求：守卫被删时这里立刻非空
+    assert captured == []

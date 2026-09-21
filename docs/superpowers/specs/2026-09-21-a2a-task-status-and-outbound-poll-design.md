@@ -226,6 +226,12 @@ async def _resolve_agent_task(
     return _render_agent_task(latest, note=f"已等待 {int(TASK_POLL_TIMEOUT_SECONDS)} 秒")
 ```
 
+> **实现期修正**：上面的伪代码里 deadline **只约束 `sleep`**。实现改为用
+> `async with asyncio.timeout(remaining)` 把同一次 `tasks/get` 也纳入该预算 —— 否则请求自身
+> 还能再吃掉 httpx 的 60s 单请求超时，一轮最坏约 120s，文档承诺的 60s 总上限形同虚设。
+> 预算耗尽抛内置 `TimeoutError`，与 `httpx.RequestError`（真实网络故障）天然分开，故仍落到
+> 「已等待」快照而不会误报成「网络异常」。
+
 要点：
 
 - **总时长由 `time.monotonic()` 的 deadline 控制**，与 `httpx` 的 `timeout=60.0` 无关 —— 后者是**单请求**的连接/读/写超时。这一点必须在实现时保持正确，否则 60s 上限形同虚设。

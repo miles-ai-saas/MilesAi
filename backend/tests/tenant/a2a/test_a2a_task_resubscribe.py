@@ -487,10 +487,13 @@ async def test_first_frame_carries_progress_and_true_time(monkeypatch, owned_job
     重连都看到「刚刚更新」，据此判断新鲜度会误判。
     """
     job = owned_job(_job("running", progress_message="45% 渲染中", progress_percent=45))
+    # 第二帧取**不同且终态**的快照：与首帧逐字节相同的重复帧会被指纹去重成保活帧，脚本随即
+    # 耗尽并走安全上限分支，白白吐一条与本用例本意无关的 warning（本用例只断言首帧）。
+    done = _job("success", progress_message="已完成", progress_percent=100)
     monkeypatch.setattr(
         subscription_svc,
         "watch_generative_job",
-        _scripted([job, _job("running", progress_message="45% 渲染中", progress_percent=45)]),
+        _scripted([job, done]),
     )
 
     opened = await subscription_svc.open_task_subscription(_Db(agent=_agent()), _ctx(), AGENT_ID, _params(), base_url=BASE)
