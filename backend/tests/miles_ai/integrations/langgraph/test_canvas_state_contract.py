@@ -13,12 +13,13 @@ LangGraph 只按 State TypedDict 的注解建立通道；未声明的键在 ``ai
 from __future__ import annotations
 
 import ast
-from pathlib import Path
 
 from miles_ai.integrations.langgraph.compiler.state import CanvasGraphState
+from tests.paths import BACKEND_ROOT
 
-# tests/infra/<this> → backend/（显式路径单跑时 ``tests.paths`` 不可导入，故本地推导）
-_BACKEND_DIR = Path(__file__).resolve().parents[2]
+# 路径常量统一来自 ``tests.paths``（本文件已搬到 tests/miles_ai/integrations/langgraph/，
+# 目录深度变化后 ``parents`` 不再可靠）。
+_BACKEND_DIR = BACKEND_ROOT
 _COMPILER_DIR = _BACKEND_DIR / "packages" / "miles-ai" / "src" / "miles_ai" / "integrations" / "langgraph" / "compiler"
 
 

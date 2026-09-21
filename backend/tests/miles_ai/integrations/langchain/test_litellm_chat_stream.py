@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from miles_ai.integrations.litellm.adapter import litellm_chat_completion_stream
-from tests.infra.test_litellm_adapter import _model
+from tests.miles_ai.integrations.litellm.test_litellm_adapter import _model
 
 
 class Delta:
