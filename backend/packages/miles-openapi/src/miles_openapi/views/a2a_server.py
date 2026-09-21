@@ -16,7 +16,7 @@ from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse, RedirectResponse, Response, StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from miles_common.exceptions import NotFoundError
+from miles_common.exceptions import AppError, NotFoundError
 from miles_common.trace import get_trace_id
 from miles_core.infra.db import get_db
 from miles_core.tenant import TenantContext
@@ -25,6 +25,7 @@ from miles_portal.tenant.a2a.server import (
     PARSE_ERROR,
     RATE_LIMITED,
     agent_card_well_known_path,
+    app_error_envelope,
     jsonrpc_error,
 )
 from miles_portal.tenant.a2a.services.limits import check_a2a_rate_limit
@@ -107,11 +108,18 @@ async def a2a_jsonrpc(
         )
     base_url = str(request.base_url)
     method = payload.get("method") if isinstance(payload, dict) else None
-    if method == "message/stream":
-        return _stream_or_json(await open_a2a_stream(db, ctx, agent_id, payload))
-    if method == "tasks/resubscribe":
-        return _stream_or_json(await open_task_subscription(db, ctx, agent_id, payload, base_url=base_url))
-    return JSONResponse(await handle_a2a_rpc(db, ctx, agent_id, payload, base_url=base_url))
+    try:
+        if method == "message/stream":
+            return _stream_or_json(await open_a2a_stream(db, ctx, agent_id, payload))
+        if method == "tasks/resubscribe":
+            return _stream_or_json(await open_task_subscription(db, ctx, agent_id, payload, base_url=base_url))
+        envelope = await handle_a2a_rpc(db, ctx, agent_id, payload, base_url=base_url)
+    except AppError as exc:
+        # 纵深防御：服务层已按 ``method`` 逐点映射并在 RPC 层兜底，两个流式入口也各自消化了
+        # 可预期的业务异常，故当前没有可达的逸出点。这段只是让「未来新增流式方法时漏捕」
+        # 自动受保护 —— 三个分发点都只在回 JSON 之前抛，故统一回 JSON 信封是安全的。
+        return JSONResponse(app_error_envelope(method, req_id, exc))
+    return JSONResponse(envelope)
 
 
 @router.get("/a2a/agents/{agent_id}/tasks/{task_id}/artifacts/{attachment_id}")
