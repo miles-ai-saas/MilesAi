@@ -497,3 +497,4 @@ EOF
 
 1. `_handle_tasks_cancel` 第二个 `try` 里 `cancel_job` 的竞态 `NotFoundError`、以及 Redis `publish` 故障，仍会以平台信封返回（需要 `handle_a2a_rpc` 的通用 `AppError` 兜底才能覆盖，本批明确不做）。
 2. `_handle_message_send` 的 `except Exception` 会把配额类 `ForbiddenError` 误标为 `-32603`（不逸出，属展示层误报）。
+3. **跨租户探测在内部也不再可区分**：收口后，审计 `errorCode` 与 access log 状态码均与「随便编一个 UUID」完全相同（`tasks/get` / `tasks/cancel` 从 403 变 200，产物下载从 403 变 404），`from None` 也让 403 不进日志 —— 我方因此失去了「有人在扫别的租户任务 UUID」的唯一信号。这是「对端不得获得存在性 oracle」的必然代价，本批有意接受。若日后要恢复内部可观测性，需从抛出点把标记一路传到审计写点（`errorCode` 是从最终信封推导的，不是一行改动），单开一单。
