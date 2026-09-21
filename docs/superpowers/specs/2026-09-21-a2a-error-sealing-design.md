@@ -86,7 +86,7 @@ def app_error_envelope(method: str | None, req_id: object, exc: AppError) -> dic
 
    归位于 `handle_a2a_rpc` 尾部那条审计，故 E3 的审计 `errorCode` 会从 `-32603` 变为映射后的码，并带上 `errorType`。
 
-3. **视图 `a2a_jsonrpc`**：三处分流（`message/stream`、`tasks/resubscribe`、`handle_a2a_rpc`）包进 `try/except AppError`，把漏网的译成信封。**说明**：这是纵深防御 —— 两个流式入口当前**无具体可达**的 `AppError` 逸出点（它们的 `try` 只覆盖会在内部消化 `NotFoundError`/`BadRequestError` 的调用，`db.commit()` 抛的是 SQLAlchemy 异常），本批**没有**可证伪它的 RED 用例；其价值在于未来新增流式方法时自动受保护。此点需在测试里明确标注，避免把「无判别力的绿」当成证据。
+3. **视图 `a2a_jsonrpc`**：三处分流（`message/stream`、`tasks/resubscribe`、`handle_a2a_rpc`）包进 `try/except AppError`，把漏网的译成信封。**说明**：这是纵深防御 —— 两个流式入口当前**无具体可达**的 `AppError` 逸出点（它们的 `try` 只覆盖会在内部消化 `NotFoundError`/`BadRequestError` 的调用，`db.commit()` 抛的是 SQLAlchemy 异常），本批**没有**能反映真实缺陷的 RED 用例；其价值在于未来新增流式方法时自动受保护。用例只能注入式锁定（见 §3.7），不得称其为缺陷回归闸门。
 
 4. **`read_task_artifact`**（修 **E1**，兜底治不了）：不用上面的信封（返回文件流，非 JSON-RPC），见 §3.3。
 
@@ -157,13 +157,17 @@ def app_error_envelope(method: str | None, req_id: object, exc: AppError) -> dic
 
 `AttachmentService._get_or_raise` 现 docstring：`"""按 ID 取未删附件并校验租户归属；缺失或跨租户均抛 ``NotFoundError``。"""`
 
-改为与代码一致、且与四个兄弟服务（`skills` / `tools` / `prompts` / `models` 的 `_get_or_raise` 均为「缺失/已删 → `NotFoundError`，跨租户 → `assert_tenant_access` 的 `ForbiddenError`」）对齐：
+但代码后半段是 `assert_tenant_access(self.ctx, att.tenant_id)`，跨租户实际抛 `ForbiddenError`。**这是本仓里唯一一处会撒谎的 `_get_or_raise` docstring** —— 其余兄弟服务（`skills` / `tools` / `prompts` / `models` / `media_assets` / `categories`）要么不写这句话、要么只写「校验租户归属」，**都不做断言，故不存在同类问题**。
+
+改为与代码一致：
 
 ```
 """按 ID 取未删附件并校验租户归属；缺失或已删抛 ``NotFoundError``，跨租户抛 ``ForbiddenError``。"""
 ```
 
 并在其下加一行说明：A2A 对外面会把跨租户压成 404（见 `a2a/services/server.read_task_artifact`），本服务不改这一语义。
+
+**口径**：只求「不说谎」，不追求与兄弟服务措辞统一（它们对此沉默）。
 
 ### 3.6 文档
 
@@ -187,7 +191,7 @@ def app_error_envelope(method: str | None, req_id: object, exc: AppError) -> dic
 | `read_task_artifact`（逐点，治 E1） | `BadRequestError`（附件未就绪）→ 留痕 + 重抛，**恰好一条**；`ForbiddenError` → `NotFoundError("附件不存在")` + 留痕；`RuntimeError` → 留痕 + 重抛；成功路径仍一条 `ok` |
 | HTTP 面（`tests/api/test_a2a_server_api.py`） | 产物下载「附件未就绪」→ 400 平台信封 **且有**审计；跨租户附件 → 404 平台信封 **且有**审计；`tasks/cancel` 竞态 → HTTP 200 + `-32001` 信封 |
 
-**判别力要求**：E1/E2/E3 的每条用例都要先 RED。视图层兜底（§3.1 第 3 点）**无判别力**，不得宣称其为回归闸门 —— 写成用例时必须在 docstring 里注明它是纵深防御、无对应 RED。
+**判别力要求**：E1/E2/E3 的每条用例都要先 RED。视图层兜底（§3.1 第 3 点）**当前无可达的 `AppError` 逸出点**，故它的用例只能是**注入式机制锁定**（monkeypatch 三个分发点之一抛 `AppError`，断言仍回 JSON-RPC 信封），作用是防止未来重构把这段兜底悄悄删掉；它**不是**缺陷回归闸门，docstring 必须写明「注入式，不代表当前有可达逸出点」。
 
 ---
 
@@ -223,8 +227,9 @@ def app_error_envelope(method: str | None, req_id: object, exc: AppError) -> dic
 - [ ] `message/send` 配额类 `ForbiddenError` → `-32602`（不再是 `-32603`），审计记 `errorType` —— 同上
 - [ ] 非 `AppError` 异常**仍**重抛 → HTTP 500（回归不变）
 - [ ] `app_error_envelope` 纯函数映射表逐格有测试
-- [ ] `attachment.py` docstring 与代码一致，且与四个兄弟服务措辞同构
+- [ ] `attachment.py` docstring 不再声称跨租户抛 `NotFoundError`（全仓唯一一处撒谎的 `_get_or_raise`；兄弟服务对此沉默，不追求措辞统一）
 - [ ] 指南：映射表、留痕例外收窄为两条、产物下载段、审计段（含**改写**那段「合规拦截 outcome 不一致」）
 - [ ] 设计 §5 残余 #1/#2 标注为已关闭
 - [ ] 五道质量门全绿（`pytest` / `ruff check` / `ruff format --check` / `make layers-check` / `make openapi-check`）
 - [ ] 视图层兜底**不**改 `a2a_jsonrpc` 的 docstring → `openapi-check` **不应**漂移；若实施中确需补一句说明，必须同批用 `make openapi-update` 更新快照并在提交说明里点出
+- [ ] 视图层兜底有注入式锁定用例（docstring 写明「不代表当前有可达逸出点」）
