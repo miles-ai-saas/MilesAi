@@ -770,6 +770,60 @@ async def test_handle_rpc_maps_agent_failure_to_internal_error(monkeypatch):  # 
     assert "模型不可用" in envelope["error"]["message"]
 
 
+# --- 3.1 message/send 的业务异常不再被 handler 吞成内部错误（治 E3） ----------- #
+
+
+@pytest.mark.asyncio
+async def test_message_send_maps_compliance_block_to_invalid_params(monkeypatch, a2a_audit_recorder):  # noqa: ANN001
+    """合规拦截曾被误标成 `-32603`「服务端内部错误」，对端据此会去重试。
+
+    真实来源：`compliance/intercept.py` 对命中敏感词的入站消息抛
+    `BadRequestError("输入内容包含敏感词，已拦截：…")`。
+    """
+
+    async def fake_chat(*_args, **_kwargs):  # noqa: ANN002, ANN003
+        raise BadRequestError("输入内容包含敏感词，已拦截：某词")
+
+    monkeypatch.setattr(server_svc, "run_published_agent_chat", fake_chat)
+    payload = {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "message/send",
+        "params": {"message": {"parts": [{"kind": "text", "text": "你好"}]}},
+    }
+
+    envelope = await server_svc.handle_a2a_rpc(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, payload, base_url=BASE)
+
+    assert envelope["error"]["code"] == server_mod.INVALID_PARAMS
+    assert "拦截" in envelope["error"]["message"]
+    assert len(a2a_audit_recorder) == 1
+    assert a2a_audit_recorder[0]["detail"]["errorCode"] == server_mod.INVALID_PARAMS
+    assert a2a_audit_recorder[0]["detail"]["errorType"] == "BadRequestError"
+    assert a2a_audit_recorder[0]["detail"]["errorStatus"] == 400
+
+
+@pytest.mark.asyncio
+async def test_message_send_maps_quota_forbidden_to_invalid_params(monkeypatch, a2a_audit_recorder):  # noqa: ANN001
+    """配额/权限类 `ForbiddenError` 同理：不再是「内部错误」，但对外也读不出真实原因（已知取舍）。"""
+
+    async def fake_chat(*_args, **_kwargs):  # noqa: ANN002, ANN003
+        raise ForbiddenError("本月配额已用尽")
+
+    monkeypatch.setattr(server_svc, "run_published_agent_chat", fake_chat)
+    payload = {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "message/send",
+        "params": {"message": {"parts": [{"kind": "text", "text": "你好"}]}},
+    }
+
+    envelope = await server_svc.handle_a2a_rpc(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, payload, base_url=BASE)
+
+    assert envelope["error"]["code"] == server_mod.INVALID_PARAMS
+    assert a2a_audit_recorder[0]["detail"]["errorType"] == "ForbiddenError"
+    assert a2a_audit_recorder[0]["detail"]["errorStatus"] == 403
+
+
 # --- 4. Task 生命周期 ---------------------------------------------------------
 
 

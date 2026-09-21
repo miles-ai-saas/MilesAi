@@ -236,6 +236,12 @@ async def _handle_message_send(
 
     try:
         response = await run_published_agent_chat(db, ctx, agent_id, text, conversation_id=context_id)
+    except AppError:
+        # 业务异常（合规拦截的 BadRequestError、配额的 ForbiddenError …）不在此处译码：交给
+        # ``handle_a2a_rpc`` 的统一兜底 —— 既拿到一致的域映射（都在 ``message/send`` 域，故为
+        # -32602），也让审计能记下原始 ``errorType``/``errorStatus``。若在这里吞成 -32603，
+        # 「配额用尽」「命中敏感词」都会被报成「服务端内部错误」，对端会去重试。
+        raise
     except Exception as exc:
         # 对端只拿到 JSON-RPC 错误信封；本平台侧必须留栈，否则线上无法定位。
         logger.exception("A2A message/send 执行失败: agent_id=%s", agent_id)
