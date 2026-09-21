@@ -114,9 +114,9 @@ backend/tests/
 | 批 | 内容 | 文件数 |
 |---|---|---|
 | 1 | `miles_common`、`miles_exec`、`miles_worker`、`miles_server`、`miles_openapi`（含 `infra/`、`mcp/`、`tenant/tools/` 里的散件） | 19 |
-| 2 | `miles_core`（`infra/{db,vector_store}`、`models/`、`web/`、`utils/` + 包根单模块） | 17 |
+| 2 | `miles_core`（`infra/{db,vector_store}`、`models/`、`web/`、`utils/` + 包根单模块） | 19 |
 | 3 | `miles_ai`（`rag/`、`flow_runtime/`、`integrations/*`） | 57 |
-| 4 | `miles_portal`（`tenant/*`、`marketplace/`、`deletion/`） | 100 |
+| 4 | `miles_portal`（`tenant/*`、`marketplace/`、`deletion/`） | 98 |
 | 5 | `miles_admin/` 5 + 守卫上移到根 4 + `test_module_smoke` 移入 `integration/` 1 + 文档 + 新增结构守卫 | 10 |
 
 合计搬迁 203 个文件，驻留原位 5 个，源文件总数 209（其中 `test_p1_features.py` 按 §4.2 拆为 2 个文件）。
@@ -152,25 +152,28 @@ backend/tests/
 
 把「结构」固化成可执行契约，避免再次漂移：
 
-1. `tests/` 一级目录 ∈ `{conftest.py, paths.py, integration, test_*.py, miles_common, miles_exec, miles_core,
+1. `tests/` 一级目录 ∈ `{README.md, conftest.py, paths.py, test_*.py, integration, miles_common, miles_exec, miles_core,
    miles_ai, miles_portal, miles_admin, miles_openapi, miles_server, miles_worker, miles_runner}`；
-2. `tests/miles_<pkg>/**` 下每个 `test_*.py` 至少 import 一个 `miles_<pkg>` 下的模块（宽松版：只判包前缀，
-   不判到具体目录，避免把跨域用例判死）；
+2. `tests/miles_<pkg>/**` 下每个 `test_*.py` 至少有一条 import 语句 import 了该包（宽松版：只判包前缀，
+   不判到具体目录，避免把跨域用例判死）。**唯一登记例外**：`miles_server/scripts/seed/test_model_catalog_seed.py`
+   以路径读取被测源码做文本断言，无 import —— 走守卫内显式豁免集合并注明理由；
 3. 全仓 `test_*.py` 基名唯一（无 `__init__.py` 时 pytest `prepend` 模式的硬约束）。
 
 ### 4.5 文档同步
 
 - `backend/tests/README.md`：目录树与运行示例；
 - `docs/architecture/layering.md` §7「测试布局」：目录树与守卫清单；
-- `backend/README.md` 目录结构表（`tests/` 一行说明改为「按包镜像」）。
+- `backend/README.md` 目录结构表（`tests/` 一行说明改为「按包镜像」）；
+- **活引用**（约 25 处）：测试 docstring（7 处）、`packages/` 源码注释（18 处）、`docs/guides/*` 与 `docs/architecture/*`、`backend/pyproject.toml` 里的旧测试路径文字，一并更正为迁移后的路径；
+  历史留档（`docs/superpowers/specs/**`、`.superpowers/**`、一次性 codemod `backend/tools/rename_to_workspace.py`）**不改**，同 alembic 版本脚本的冻结口径。
 
 ### 4.6 验证口径
 
 | 检查 | 判据 |
 |---|---|
-| 用例集合不变 | 迁移前后 `pytest --collect-only -q` 的用例 ID **集合**（去掉路径前缀后按函数名比对）逐条一致，总数 1513 |
-| 全量通过 | `cd backend && python -m pytest -q` 全绿 |
-| 基名唯一 | 守卫 3；迁移前已校验一次（208 个搬迁文件目标无重名） |
+| 用例集合不变 | 迁移前后 `pytest --collect-only -q` 的用例 ID **集合**（去掉路径前缀后按函数名比对）逐条一致：总数 1513 + 本次新增守卫 3 = 1516，`diff` 只允许出现这 3 个新名字 |
+| 全量通过 | `cd backend && python -m pytest -q` 全绿（1516 passed） |
+| 基名唯一 | 守卫 3；迁移前已校验一次（205 个目标无重名，`test_p1_features` 拆分为 2 个不同基名） |
 | 无硬编码深度 | `rg 'parents\[' backend/tests` 只剩 `paths.py` |
 | 包前缀自洽 | 守卫 2 |
 
@@ -252,7 +255,8 @@ tests/tenant/compliance/ (1)                         → tests/miles_portal/tena
 tests/tenant/flows/ (2)                              → tests/miles_portal/tenant/flows/     test_run_context_session, test_subflow_loader
 tests/tenant/generative/ (16)
   → tests/miles_ai/integrations/generative/ (5)        test_generative_model_resolve, test_generative_policy, test_image_prompt_guard, test_job_execution_runner, test_progress_session
-  → tests/miles_portal/tenant/generative/ (11)         test_generative_image, test_generative_image_async, test_generative_job_cancel, test_generative_job_list, test_generative_job_retry, test_generative_job_watch, test_generative_jobs, test_generative_quota, test_generative_video, test_job_execution_submitters, test_job_stream_events
+  → tests/miles_core/models/ (2)                       test_generative_job_cancel, test_generative_jobs
+  → tests/miles_portal/tenant/generative/ (9)          test_generative_image, test_generative_image_async, test_generative_job_list, test_generative_job_retry, test_generative_job_watch, test_generative_quota, test_generative_video, test_job_execution_submitters, test_job_stream_events
 tests/tenant/hooks/ (7)
   → tests/miles_common/ (1)                            test_cron
   → tests/miles_portal/tenant/hooks/ (6)               test_hook_events, test_hook_http_executor, test_hook_meta, test_hook_python_executor, test_invoke_tenant_hook, test_python_hook
@@ -292,3 +296,4 @@ tests/worker/ (1)                                    → tests/miles_worker/task
 | `infra/test_celery_*.py` (2) | 被测是 Celery app 与任务名（`miles_worker`） |
 | `infra/test_audit_log_models.py` | 被测是 ORM 定义（`miles_core.models`） |
 | `rag/test_rerank_retrieve.py` | 被测是 `miles_ai.rag.retrieve`，最深 import 命中的是 `miles_core.models.model.catalog` |
+| `tenant/generative/test_generative_job_cancel.py`、`test_generative_jobs.py` | 名称像生成任务 API，实际只 import `miles_core.models.model.generative_job` 并断言枚举值，按 R1 归 `tests/miles_core/models/` |
