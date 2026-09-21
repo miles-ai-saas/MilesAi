@@ -214,7 +214,7 @@ def app_error_envelope(method: str | None, req_id: object, exc: AppError) -> dic
 3. **`except Exception` 兜底路径不记 `errorType`**：现行只记 `-32603`，诊断依赖全局处理器的堆栈日志。本批不动（YAGNI）。
 4. **`tasks/resubscribe` 的并发上限**：30 分钟长流的并发保护仍是设计级残余（上一批登记），不在本批范围。
 5. **跨租户探测在内部不再可区分**：上一批登记的 I2，本批不改变其状态。
-6. **`AppError` 的文案会原样回对端**：`app_error_envelope` 直接取 `exc.message` 发给对端，故**所有** `AppError` 的文案都会进 JSON-RPC 错误信封，不只合规拦截。举例：合规拦截带回命中的敏感词（`BadRequestError(f"输入内容包含敏感词，已拦截：{first.word}")`，`compliance/intercept.py`）；`HookBlockedError` 带 hook 名（`hooks/services/executor/http.py:136` 的 `f"钩子 {hook.name} 调用失败（HTTP …）"`、`:210` 的 `f"钩子 {hook.name} 调用异常"`）；`integrations/litellm/adapter.py:197` 带上游错误文案；`integrations/generative/volcengine_client.py:105` 带上游响应正文（截断 300 字符）；`infra/storage/s3.py:96` 带存储细节。**这不是本批新引入**：改动前 `message/send` 的 `except Exception` 用 `f"智能体执行失败: {str(exc)}"`（`services/server.py`），内容一字不差。本批不改这个行为（对端本就是消息发送方），若要脱敏需单开一单。
+6. **`AppError` 的文案会原样回对端**：`app_error_envelope` 直接取 `exc.message` 发给对端，故**所有** `AppError` 的文案都会原样回对端，不只合规拦截 —— 只是**渠道不同**：RPC 面（经兜底或逐点映射）进 JSON-RPC 错误信封，流式方法（`message/stream` / `tasks/resubscribe`）进终态帧的 `status.message` 文案，产物下载进平台信封。举例：合规拦截带回命中的敏感词（`BadRequestError(f"输入内容包含敏感词，已拦截：{first.word}")`，`compliance/intercept.py`）；`HookBlockedError` 带 hook 名（`hooks/services/executor/http.py:136` 的 `f"钩子 {hook.name} 调用失败（HTTP …）"`、`:210` 的 `f"钩子 {hook.name} 调用异常"`）；`integrations/litellm/adapter.py:197` 带上游错误文案；`integrations/generative/volcengine_client.py:105` 带上游响应正文（截断 300 字符）；`infra/storage/s3.py:96` 带存储细节。**这不是本批新引入**：改动前 `message/send` 的 `except Exception` 用 `f"智能体执行失败: {str(exc)}"`（`services/server.py`），其中 `AppError` 的 `message` 子串逐字相同（只是丢了前缀、码从 `-32603` 改 `-32602`）。本批不改这个行为（对端本就是消息发送方），若要脱敏需单开一单。
 
 ---
 
