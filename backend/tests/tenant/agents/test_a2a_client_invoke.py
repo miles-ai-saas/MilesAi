@@ -92,3 +92,86 @@ async def test_jsonrpc_error_raises_instead_of_masquerading_as_answer(monkeypatc
     assert "参数错误" in str(excinfo.value)
     # 收到结构正确的 JSON-RPC error 说明 endpoint 形态已匹配：不得再探测第二个
     assert len(captured) == 1
+
+
+def _artifact(name: str | None = "image-1", mime: str | None = "image/png", uri: str | None = "https://peer.example.com/dl/a1") -> dict:
+    file: dict = {}
+    if name is not None:
+        file["name"] = name
+    if mime is not None:
+        file["mimeType"] = mime
+    if uri is not None:
+        file["uri"] = uri
+    return {"artifactId": "att-1", "parts": [{"kind": "file", "file": file}]}
+
+
+def test_task_state_reads_nested_state():
+    assert client_mod._task_state({"status": {"state": "working"}}) == "working"
+    assert client_mod._task_state({"status": {}}) is None
+    assert client_mod._task_state({"status": "not-a-dict"}) is None
+    assert client_mod._task_state({}) is None
+
+
+def test_looks_like_task_uses_structure_not_kind():
+    """老 peer 不一定带 ``kind``，判据必须落在 ``status.state`` 上。"""
+    assert client_mod._looks_like_task({"result": {"status": {"state": "working"}}}) is True
+    assert client_mod._looks_like_task({"result": {"kind": "task"}}) is False
+    assert client_mod._looks_like_task({"result": {"text": "hi"}}) is False
+    assert client_mod._looks_like_task("plain") is False
+
+
+def test_render_completed_task_lists_artifact_refs():
+    out = client_mod._render_agent_task(_task("completed", artifacts=[_artifact()]))
+
+    assert out.splitlines()[0] == "外部任务已完成"
+    assert "image-1" in out and "image/png" in out
+    assert "https://peer.example.com/dl/a1" in out
+    assert "任务 ID：j1" in out
+
+
+def test_render_artifact_without_uri_is_marked():
+    out = client_mod._render_agent_task(_task("completed", artifacts=[_artifact(uri=None)]))
+
+    assert "无下载地址" in out
+
+
+def test_render_uses_artifact_id_when_name_absent():
+    out = client_mod._render_agent_task(_task("completed", artifacts=[_artifact(name=None)]))
+
+    assert "att-1" in out
+
+
+def test_render_failed_task_shows_progress_text():
+    out = client_mod._render_agent_task(_task("failed", progress="模型拒绝生成"))
+
+    assert out.splitlines()[0] == "外部任务失败"
+    assert "进展：模型拒绝生成" in out
+
+
+@pytest.mark.parametrize(
+    ("state", "headline"),
+    [
+        ("canceled", "外部任务已取消"),
+        ("rejected", "外部任务被拒绝"),
+        ("input-required", "外部任务需要补充输入"),
+        ("auth-required", "外部任务需要鉴权"),
+        ("working", "外部任务仍在进行（状态：working）"),
+        ("unknown", "外部任务状态未知（状态：unknown）"),
+    ],
+)
+def test_render_headline_by_state(state, headline):  # noqa: ANN001
+    assert client_mod._render_agent_task(_task(state)).splitlines()[0] == headline
+
+
+def test_render_appends_note_when_present():
+    out = client_mod._render_agent_task(_task("working"), note="已等待 60 秒")
+
+    assert out.splitlines()[-1] == "已等待 60 秒"
+
+
+def test_stop_polling_states_cover_terminal_and_interrupted():
+    """中断态必须停止轮询：对端在等我们补输入/凭证，继续轮询只会白等。"""
+    assert client_mod.STOP_POLLING_TASK_STATES == client_mod.TERMINAL_TASK_STATES | client_mod.INTERRUPTED_TASK_STATES
+    assert "input-required" in client_mod.STOP_POLLING_TASK_STATES
+    assert "auth-required" in client_mod.STOP_POLLING_TASK_STATES
+    assert "working" not in client_mod.STOP_POLLING_TASK_STATES

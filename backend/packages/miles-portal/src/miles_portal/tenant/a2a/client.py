@@ -165,6 +165,109 @@ def _jsonrpc_error(data: object) -> tuple[object, str] | None:
     return None, str(err)
 
 
+#: 终态：任务不再推进，且已有最终结果。
+TERMINAL_TASK_STATES = frozenset({"completed", "failed", "canceled", "rejected"})
+#: 中断态：规范里 ``input-required`` / ``auth-required`` 同样「不再自行推进」——对端在等
+#: 我们补输入或凭证。继续轮询只会白等，应停止并如实回报（尤其是 ``input-required``：
+#: 对端的提问通常就写在 ``status.message`` 里，正是我们该带回给上层的东西）。
+INTERRUPTED_TASK_STATES = frozenset({"input-required", "auth-required"})
+#: 停止轮询的状态集。
+STOP_POLLING_TASK_STATES = TERMINAL_TASK_STATES | INTERRUPTED_TASK_STATES
+
+#: 任务状态 → 回答首行。未列出的（含缺失）按「仍在进行 / 状态未知」处理。
+_TASK_HEADLINES = {
+    "completed": "外部任务已完成",
+    "failed": "外部任务失败",
+    "canceled": "外部任务已取消",
+    "rejected": "外部任务被拒绝",
+    "input-required": "外部任务需要补充输入",
+    "auth-required": "外部任务需要鉴权",
+}
+
+
+def _task_state(task: dict) -> str | None:
+    """``Task.status.state``；缺失或非字符串返回 ``None``。"""
+    status = task.get("status")
+    if not isinstance(status, dict):
+        return None
+    state = status.get("state")
+    return state if isinstance(state, str) else None
+
+
+def _looks_like_task(data: object) -> bool:
+    """JSON-RPC 响应是否是一个 ``Task``。
+
+    用 ``status.state`` 判定而非 ``kind``：0.3 规范里 ``Task.kind`` 是必填，但本模块一直
+    兼容不带 ``kind`` 的松散形状，判据不能建立在它上面。
+    """
+    if not isinstance(data, dict):
+        return False
+    result = data.get("result")
+    return isinstance(result, dict) and _task_state(result) is not None
+
+
+def _artifact_lines(artifacts: object) -> list[str]:
+    """``Task.artifacts`` → 逐条可读引用（只给地址，绝不下载内容）。"""
+    if not isinstance(artifacts, list):
+        return []
+    lines: list[str] = []
+    for artifact in artifacts:
+        if not isinstance(artifact, dict):
+            continue
+        label = str(artifact.get("artifactId") or "产物")
+        parts = artifact.get("parts")
+        file_obj: dict | None = None
+        if isinstance(parts, list):
+            for part in parts:
+                if isinstance(part, dict) and isinstance(part.get("file"), dict):
+                    file_obj = part["file"]
+                    break
+        if file_obj is None:
+            lines.append(f"- {label}（无下载地址）")
+            continue
+        uri = file_obj.get("uri")
+        if not (isinstance(uri, str) and uri):
+            # ``file`` 存在但没有 ``uri`` 同样给不出下载地址：此前会渲染成字面量
+            # ``None``，既不能读也误导上层。
+            lines.append(f"- {label}（无下载地址）")
+            continue
+        name = file_obj.get("name") or label
+        mime = file_obj.get("mimeType")
+        suffix = f"（{mime}）" if isinstance(mime, str) and mime else ""
+        lines.append(f"- {name}{suffix}：{uri}")
+    return lines
+
+
+def _render_agent_task(task: dict, *, note: str | None = None) -> str:
+    """``Task`` → 给上层（与主模型）读的多行文本。
+
+    不带 peer 名：调用方 ``invoke.py`` 已用 ``【外部 A2A · {name}】`` 包过，重复无益。
+    """
+    state = _task_state(task) or "unknown"
+    if state in _TASK_HEADLINES:
+        lines = [_TASK_HEADLINES[state]]
+    elif state == "unknown":
+        lines = ["外部任务状态未知（状态：unknown）"]
+    else:
+        lines = [f"外部任务仍在进行（状态：{state}）"]
+    status = task.get("status")
+    message = status.get("message") if isinstance(status, dict) else None
+    progress = _first_part_text(message.get("parts")) if isinstance(message, dict) else None
+    if progress:
+        lines.append(f"进展：{progress}")
+    artifacts = task.get("artifacts")
+    artifact_lines = _artifact_lines(artifacts)
+    if artifact_lines:
+        lines.append(f"产物（{len(artifact_lines)} 个）：")
+        lines.extend(artifact_lines)
+    the_id = task.get("id")
+    if isinstance(the_id, str) and the_id:
+        lines.append(f"任务 ID：{the_id}")
+    if note:
+        lines.append(note)
+    return "\n".join(lines)
+
+
 def _extract_text_from_response(data: Any) -> str:
     """从 JSON-RPC / HTTP 响应中提取可读文本。"""
     if isinstance(data, str):
