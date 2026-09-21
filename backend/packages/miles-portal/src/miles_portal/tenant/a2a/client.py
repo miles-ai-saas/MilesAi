@@ -150,6 +150,21 @@ def _text_from_result_payload(result: dict[str, Any]) -> str | None:
     return None
 
 
+def _jsonrpc_error(data: object) -> tuple[object, str] | None:
+    """顶层 ``error`` → ``(code, message)``；无 ``error`` 返回 ``None``。
+
+    JSON-RPC 里 ``error`` 与 ``result`` 互斥，故本函数是「本次调用成功还是失败」的判据。
+    此前这个判断被交给 ``_extract_text_from_response``（它刻意让 error 优先于 result 并
+    把消息榨成文本，见其特征化测试），结果是协议级失败被当成对端的「回答」写进主模型素材。
+    """
+    if not isinstance(data, dict) or "error" not in data:
+        return None
+    err = data["error"]
+    if isinstance(err, dict):
+        return err.get("code"), str(err.get("message") or err)
+    return None, str(err)
+
+
 def _extract_text_from_response(data: Any) -> str:
     """从 JSON-RPC / HTTP 响应中提取可读文本。"""
     if isinstance(data, str):
@@ -206,6 +221,13 @@ async def invoke_a2a_peer(peer: A2aPeer, task: str) -> str:
                     last_err = f"HTTP {resp.status_code}"
                     continue
                 data = resp.json()
+                # 顺序固定 error → task → text（三者互斥）。判断「成功还是失败」是本层的
+                # 职责，不交给榨文本函数：否则对端错误会被当成回答交上去。
+                err = _jsonrpc_error(data)
+                if err is not None:
+                    # 对端已按 JSON-RPC 应答，说明 endpoint 形态已匹配：不再探测下一个，
+                    # 直接抛。HTTP ≥ 400 仍走上面的 ``continue`` —— 那可能只是路径不对。
+                    raise BadRequestError(f"调用外部 A2A Agent「{peer.name}」失败：对端返回错误 {err[0]} {err[1]}")
                 text = _extract_text_from_response(data)
                 if text:
                     return text
