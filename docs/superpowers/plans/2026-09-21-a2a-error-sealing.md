@@ -19,6 +19,7 @@
 
 - **权威口径**：`docs/superpowers/specs/2026-09-21-a2a-error-sealing-design.md`。本计划与它冲突时以它为准；发现冲突要报告，不要擅自改设计。
 - **对外错误码**（`miles-portal/.../tenant/a2a/server.py:38-49`，**不要发明新码**）：`PARSE_ERROR=-32700`、`INVALID_REQUEST=-32600`、`METHOD_NOT_FOUND=-32601`、`INVALID_PARAMS=-32602`、`INTERNAL_ERROR=-32603`、`RATE_LIMITED=-32000`、`TASK_NOT_FOUND=-32001`、`TASK_NOT_CANCELABLE=-32002`。
+- **`except` 顺序子类在前**，且**删掉中间某一档不会「零流水」，而是下沉到更宽的下一档并被错分类** —— 例如 Task 4 删 `except AppError` 后，`BadRequestError` 会落进 `except Exception` 记成 `-32603`（Task 2 删兜底后则是逸出重抛）。证伪时按此预期，别把「错分类」误判成「没修好」。
 - **协议契约**：JSON-RPC 端点的协议级错误一律 **HTTP 200 + JSON-RPC 信封**（`{"jsonrpc":"2.0","id":…,"error":{"code":…,"message":…}}`），**不得**回平台信封 `{code,message,data,trace_id}`。唯一例外见「未预期异常」一条。
 - **未预期异常口径不变**：非 `AppError` 仍「审计 `INTERNAL_ERROR` 后原样重抛」→ HTTP 500 平台信封。**不要**顺手改成回信封。
 - **审计规则**：`detail` 只含元数据，**绝不**含消息正文（`aud_logs` 是租户可见面）。新增 `errorType`（异常类名）/`errorStatus`（HTTP status）**只记类型与状态码**，不记 `exc.message`。
@@ -793,7 +794,7 @@ cd backend && uv run python -m pytest tests/tenant/a2a tests/api -q
 
 - [ ] **Step 5: 证伪（必须做，记录输出）**
 
-把 `except ForbiddenError as exc:` 分支整体注释掉，重跑 Step 2。预期 `test_read_task_artifact_normalizes_foreign_attachment_to_not_found` 变 RED（抛 `ForbiddenError` 而非 `NotFoundError`）。恢复后再把 `except AppError as exc:` 分支注释掉，重跑，预期 `..._audits_not_ready_attachment_exactly_once` 变 RED（零流水）。两次都恢复并确认 Step 4 全绿。
+把 `except ForbiddenError as exc:` 分支整体注释掉，重跑 Step 2。预期 `test_read_task_artifact_normalizes_foreign_attachment_to_not_found` 变 RED（抛 `ForbiddenError` 而非 `NotFoundError`）。恢复后再把 `except AppError as exc:` 分支注释掉，重跑，预期 `..._audits_not_ready_attachment_exactly_once` 变 RED —— **注意红因是「记成 `-32603`」而非「零流水」**（`BadRequestError` 会落到更宽的 `except Exception`；本计划的初稿漏看了这一层，实测已纠正）。两次都恢复并确认 Step 4 全绿。
 
 - [ ] **Step 6: 提交**
 
