@@ -18,7 +18,7 @@ import pytest
 from miles_core.models.model import ModelConfig, ModelUsageLog
 from miles_portal.tenant.models.services import usage as usage_mod
 from miles_portal.tenant.models.services.usage import ChatUsageSink
-from tests.tenant.models._usage_doubles import _cm, _ShortSession
+from tests.miles_portal.tenant.models._usage_doubles import _cm, _ShortSession
 
 
 def _model() -> ModelConfig:

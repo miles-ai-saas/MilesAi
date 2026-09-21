@@ -12,7 +12,7 @@ from miles_portal.tenant.models.services.usage import (
     end_chat_usage_accumulation,
     get_chat_usage_totals,
 )
-from tests.tenant.models._usage_doubles import _cm, _ShortSession
+from tests.miles_portal.tenant.models._usage_doubles import _cm, _ShortSession
 
 
 def test_chat_usage_accumulation():
