@@ -82,7 +82,7 @@ GET  /.well-known/agent-card.json                                     # 全平�
 
 指定 `custom` 智能体对外发布后，外部 A2A 客户端可拉取 Card 并调用。
 
-- 开关：智能体 `config.a2a_publish = true`（必须同时 `agent_type=custom` 且 `status=enabled`；否则一律 404）
+- 开关：智能体 `config.a2a_publish = true`（必须同时 `agent_type=custom` 且 `status=enabled`）。该开关管的是 **Card 可见性**：未发布时 Card GET 与根别名回 404（与「不存在」不可区分）；调用端点不按它回 404 —— `message/send` / `message/stream` / `tasks/resubscribe` 在各自的前置校验里回 **HTTP 200 + `-32602`**，而 `tasks/get` / `tasks/cancel` 根本不经发布门槛（只校验任务归属）
 - Card：`GET /api/v1/open/a2a/agents/{agent_id}/.well-known/agent-card.json`（**公开**，A2A 发现元数据）
 - 调用：`POST /api/v1/open/a2a/agents/{agent_id}`（JSON-RPC 2.0，**须带该智能体的 `X-API-Key`**）；支持的方法见下
 - 根别名：`GET /.well-known/agent-card.json` → 307 到按智能体路径；**仅当全平台唯一发布**时启用，命中 0 或 >1 返回 404（多租户根路径无法区分租户，不猜）
@@ -154,20 +154,37 @@ Card 同时声明 `securitySchemes`（`apiKey` · `in: header` · `name: X-API-K
 
 | `error.code` | 含义 | 触发 |
 |---|---|---|
-| `-32700` / `-32600` | 解析错误 / 非法请求 | 请求体不是合法 JSON |
+| `-32700` | 解析错误 | 请求体不是合法 JSON |
+| `-32600` | 非法请求 | 请求体是合法 JSON 但不是对象，或缺 `method` |
 | `-32601` | 方法未找到 | 未实现的方法（如 `tasks/pushNotificationConfig/*`） |
-| `-32602` | 参数错误 | `message/*` 域的业务异常（含合规拦截、配额/权限拒绝）、非法 `params.id`、超长 `contextId` |
-| `-32603` | 内部错误 | `tasks/*` 域的冲突类业务异常；状态码 5xx 的业务异常（非业务异常见下） |
+| `-32602` | 参数错误 | `message/send` 域的业务异常（含合规拦截、配额/权限拒绝）；状态码 400 或非 `tasks/*` 域的 401/403/404；非法 `params.id`、超长 `contextId`、未发布智能体 |
+| `-32603` | 内部错误 | 状态码既非 400/401/403/404 的业务异常（含 409 冲突与 5xx）；`message/send` 的未预期故障（见下） |
 | `-32000` | 限流 | 超限；HTTP 429 + `Retry-After` |
 | `-32001` | 任务不存在 | 不属于该智能体的任务（含**其他租户**的任务）、`tasks/*` 域的 401/403/404 |
 | `-32002` | 任务不可取消 | 任务已结束 |
 
-**权限与冲突会被压平**：除 `tasks/*` 之外，业务异常的状态码不进入 `error.code`
-（401/403/404 与 400 一律 `-32602`，409 与 5xx 一律 `-32603`），对端读不出真实原因 ——
+`message/stream` / `tasks/resubscribe` 一旦开流，**流内**业务失败就不产 `error.code` ——
+信号是终态帧的 `status.state`（合规拦截 `rejected`、其余执行异常 `failed`）。上表的错误码
+只覆盖它们**开流前**的前置校验失败。
+
+**权限与冲突会被压平**：业务异常的状态码不进入 `error.code` —— 只有 `tasks/*` 域的
+401/403/404 被单独压成 `-32001`（不确认任务是否存在，含跨租户）；其余一律 `-32602`
+（状态码 400，或非 `tasks/*` 域的 401/403/404）或 `-32603`（409 与 5xx），对端读不出真实原因。
 这是为了不给出探测资源存在性的 oracle。原因记在租户审计的 `errorType` / `errorStatus`。
 
-**例外**：未预期故障（DB / 对象存储等非业务异常）回 **HTTP 500 平台信封**，不保证
-JSON-RPC 形状。对端须能按 HTTP 状态码兜底处理这一类。
+**未预期故障不是「一律 500」**，按方法分三种口径：
+
+- **`tasks/*`（RPC 路径）与产物下载**：非 `AppError` 故障（DB / Redis 等）回 **HTTP 500
+  平台信封** `{code,message,data,trace_id}`，不保证 JSON-RPC 形状 —— 对端须能按 HTTP 状态码
+  兜底处理这一类。
+- **`message/send`**：因历史原因，其 `except Exception` 仍把非 `AppError` 吞成
+  **HTTP 200 + `-32603`**。这是本批未改的**旧口径**，属已知的不一致，不是「设计如此」。
+- **`message/stream`**：流开始后的故障不开错误信封，以 `failed` 终态帧收流（合规拦截为
+  `rejected`）；流内没有 `error.code` 可读。
+
+> 注意别把 `AppError` 当未预期故障：上表里由业务异常映射出的码（`-32602` / `-32603` /
+> `-32001` / `-32002`）都来自 `AppError`。例如对象存储读取失败被包成
+> `AppError(status_code=500)`，走 RPC 路径时按状态码译为 `-32603`，而不是 500 平台信封。
 
 ## 限流
 
@@ -217,8 +234,9 @@ Retry-After: 12
 不记审计流水。
 
 当某次调用的业务异常由 RPC 层兜底译码时，`detail` 会额外带 `errorType`（异常类名）与
-`errorStatus`（HTTP 状态码）—— 对外错误码被压平后，这是租户可见面上唯一能读出真实原因的
-出口。同样**只记类型与状态码，不记 message**。
+`errorStatus`（HTTP 状态码）；产物下载的失败留痕（`_audit_artifact_failure`）同样会写这两键
+—— 对外错误码被压平后，这是租户可见面上唯一能读出真实原因的出口。同样**只记类型与状态码，
+不记 message**。
 
 同一个合规拦截在两个方法上的 `outcome` 并不一致：`message/send` 侧记为 `failed`、
 `message/stream` 侧记为 `rejected`。差异来自两个方法各自的判据 —— send 按最终信封**有无
