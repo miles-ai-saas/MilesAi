@@ -387,15 +387,15 @@ cd backend && uv run python -m pytest -q tests/api/test_a2a_server_api.py::test_
 
 - [ ] **Step 4: 证伪 —— 确认这条用例真的能抓到回归**
 
-临时把 Task 1 的收口撤掉，跑这条用例，确认它变红，再恢复：
+临时把 Task 1 的收口撤掉，跑这条用例，确认它变红，再恢复。**注意不能用 `git stash`**：Task 1 已经 commit 了，stash 只捕获未提交改动，会打印 `No local changes to save` 然后给你一个**假绿**。要按 commit 回退：
 
 ```bash
-git stash push -- backend/packages/miles-portal/src/miles_portal/tenant/a2a/services/server.py
+git checkout 7110ee7e^ -- backend/packages/miles-portal/src/miles_portal/tenant/a2a/services/server.py
 cd backend && uv run python -m pytest -q tests/api/test_a2a_server_api.py::test_tasks_get_foreign_tenant_returns_jsonrpc_not_platform_envelope 2>&1 | tail -8
-cd .. && git stash pop
+cd .. && git checkout HEAD -- backend/packages/miles-portal/src/miles_portal/tenant/a2a/services/server.py
 ```
 
-预期：撤掉收口后 **FAIL**，断言失败在 `resp.status_code == 200`（实际是 403）。恢复后重新跑一次应为 PASS。
+预期：撤掉收口后 **FAIL**，断言失败在 `resp.status_code == 200`（实际是 403），并伴随一条 `POST … 403` 的 access log。恢复后 `git diff` 应为空，重新跑一次为 PASS。
 
 **若撤掉收口后仍然 PASS**，说明这条用例没有判别力（例如被 `as_a2a` 的某个 override 短路了）—— 停下来查明原因，不要带着假通过的用例提交。
 
@@ -497,3 +497,4 @@ EOF
 
 1. `_handle_tasks_cancel` 第二个 `try` 里 `cancel_job` 的竞态 `NotFoundError`、以及 Redis `publish` 故障，仍会以平台信封返回（需要 `handle_a2a_rpc` 的通用 `AppError` 兜底才能覆盖，本批明确不做）。
 2. `_handle_message_send` 的 `except Exception` 会把配额类 `ForbiddenError` 误标为 `-32603`（不逸出，属展示层误报）。
+3. **跨租户探测在内部也不再可区分**：收口后，审计 `errorCode` 与 access log 状态码均与「随便编一个 UUID」完全相同（`tasks/get` / `tasks/cancel` 从 403 变 200，产物下载从 403 变 404），`from None` 也让 403 不进日志 —— 我方因此失去了「有人在扫别的租户任务 UUID」的唯一信号。这是「对端不得获得存在性 oracle」的必然代价，本批有意接受。若日后要恢复内部可观测性，需从抛出点把标记一路传到审计写点（`errorCode` 是从最终信封推导的，不是一行改动），单开一单。

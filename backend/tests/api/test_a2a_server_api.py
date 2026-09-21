@@ -13,7 +13,7 @@ from uuid import uuid4
 
 import pytest
 
-from miles_common.exceptions import NotFoundError
+from miles_common.exceptions import ForbiddenError, NotFoundError
 from miles_core.deps import get_db
 from miles_core.models.agent import Agent, AgentStatus, AgentType
 from miles_core.tenant import TenantContext
@@ -381,6 +381,69 @@ async def test_resubscribe_end_to_end_real_service_through_http(as_a2a, api_clie
     assert len(recorded) == 1
     assert recorded[0]["detail"]["endedBy"] == "terminal"
     assert recorded[0]["detail"]["taskId"] == str(job_id)
+
+
+@pytest.mark.asyncio
+async def test_tasks_get_foreign_tenant_returns_jsonrpc_not_platform_envelope(as_a2a, api_client, monkeypatch):
+    """外租户 id 必须收敛为 HTTP 200 + JSON-RPC ``-32001``，而不是平台信封的 403。
+
+    服务层单测直接 ``await handle_a2a_rpc``，看不到 HTTP 状态码与 Content-Type —— 而本缺陷
+    的可观测面恰在两者之间（协议契约要求 HTTP 200 + JSON-RPC 正文）。这里只替换 I/O 出口
+    （取任务 = 抛外租户 403、审计 = 记录），其余全真，让请求经 ASGI 走完一次分发。
+    """
+    agent = Agent()
+    agent.id = AGENT_ID
+    agent.agent_type = AgentType.CUSTOM
+    agent.status = AgentStatus.ENABLED
+    agent.config = {A2A_PUBLISH_FLAG: True}
+    agent.deleted_at = None
+
+    class _Db:
+        """最小 DB 替身：本路径只用到 ``get``（取智能体）。"""
+
+        async def get(self, _model, _id):  # noqa: ANN001
+            return agent
+
+        async def commit(self):  # noqa: ANN201
+            pass
+
+    async def override_db():  # noqa: ANN202
+        yield _Db()
+
+    async def _foreign(_db, _ctx, _job_id):  # noqa: ANN001
+        raise ForbiddenError("无权访问该租户资源")
+
+    recorded: list[dict] = []
+
+    async def _write(**kwargs):  # noqa: ANN003
+        recorded.append(kwargs)
+
+    as_a2a.dependency_overrides[get_db] = override_db
+    monkeypatch.setattr(a2a_svc, "get_generative_job_for_tenant", _foreign)
+    monkeypatch.setattr(a2a_svc, "write_a2a_audit", _write)
+
+    resp = await api_client.post(
+        RPC_PATH,
+        json={"jsonrpc": "2.0", "id": 5, "method": "tasks/get", "params": {"id": str(uuid4())}},
+    )
+
+    assert resp.status_code == 200
+    # 只保证正文是 JSON（防 SSE 串线把 text/event-stream 写出来）：JSON-RPC 信封与平台信封
+    # 都是 ``JSONResponse``，故这条对「403 是否逸出」零判别力，判别交给下面的键集断言。
+    assert resp.headers["content-type"].startswith("application/json")
+    body = resp.json()
+    assert body["jsonrpc"] == "2.0"
+    assert body["id"] == 5
+    assert body["error"]["code"] == -32001
+    # 平台信封是 ``{code, message, data, trace_id}``：键集不等即说明 403 逸出到了全局处理器。
+    # 单看 ``trace_id`` 只是单键指纹，且它的判别力从未被 RED 覆盖过。
+    assert set(body) == {"jsonrpc", "id", "error"}
+    # 探测式调用必须留痕，且错误码不再是兜底路径误标的 -32603
+    assert len(recorded) == 1
+    assert recorded[0]["outcome"] == "failed"
+    assert recorded[0]["detail"]["errorCode"] == -32001
+    # 审计 ``detail`` 绝不含正文：键集等值把这条全局约束从「顺带成立」变成可执行断言
+    assert set(recorded[0]["detail"]) == {"method", "taskId", "errorCode", "durationMs"}
 
 
 @pytest.mark.asyncio
