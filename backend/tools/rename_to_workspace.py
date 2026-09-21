@@ -84,13 +84,13 @@ _RE = re.compile(rf"(?<![\w.])(?:{_ALT})(?![\w])")
 #    路径。codemod 把 `app.workers.tasks.*` 一致改成 `miles_worker.tasks.*` 后，投递
 #    方与注册方仍自洽（故全量 pytest 绿灯），但 broker 中在途消息全部
 #    `KeyError: 'app.workers.tasks...'`。此后任务名已统一为与目录无关的
-#    `milesai.tasks.*` 并由 tests/infra/test_celery_task_names.py 冻结。
+#    `milesai.tasks.*` 并由 tests/miles_worker/test_celery_task_names.py 冻结。
 #    **本工具为一次性 codemod，已完成使命，勿再重跑**；如确需重跑，务必先把
 #    `milesai.tasks.*` 与其它协议字符串加入白名单，勿让其进入 regex 射程。
 
 # 本工具自身（backend/tools/）必须排除：RULES 里全是 app.* 字面量，否则会把自己改烂。
 # 注意：只能排除 backend 顶层的 tools/，不能按目录名全局排除——业务目录里也有
-# `tools/`（如 miles_portal/tenant/tools、tests/tenant/tools），那些必须改写。
+# `tools/`（如 miles_portal/tenant/tools、tests/miles_portal/tenant/tools），那些必须改写。
 SKIP_PARTS = {".venv", "__pycache__", "milesai.egg-info", ".ruff_cache", ".pytest_cache", "node_modules", "tools"}
 
 # 真正对所有层级生效的忽略目录（不含 "tools"）。

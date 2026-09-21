@@ -396,6 +396,6 @@ backend/tests/                     # 一级目录 = 被测包（与 packages/ �
 
 单测 `rag` 模块时 **不启动** FastAPI；向量库测试 mock `get_vector_store`。
 归属规则与逐文件映射见
-[docs/superpowers/specs/2026-09-21-tests-structure-design.md](.../superpowers/specs/2026-09-21-tests-structure-design.md)；
+[docs/superpowers/specs/2026-09-21-tests-structure-design.md](../superpowers/specs/2026-09-21-tests-structure-design.md)；
 运行方式见 [tests/README.md](../../backend/tests/README.md)。
 
