@@ -99,9 +99,9 @@ JSON-RPC 方法：
 
 `tasks/pushNotificationConfig/*` 未实现，回 `-32601`（不静默成功）。
 
-任务归属：`tasks/get` / `tasks/cancel` / `tasks/resubscribe` / 产物下载都校验「该任务由本智能体发起」（job 的 `source_ref_type=agent` + `source_ref_id=agent_id`），不属于则回 `-32001` / 404 而非 403 —— 不向对端确认任务是否存在。「不属于」含两种情形，对端**无从区分**：同租户另一个智能体的任务（`-32001`），以及**其他租户**的任务（同样 `-32001`，不因越租户而改成 403）。若只按租户校验，同租户另一个智能体的 key 就能查/取消本智能体任务并猜到其产物地址。产物下载是普通 HTTP 端点（非 JSON-RPC），同一语义以 **404 状态码**表达；这四种调用无论成败都会在审计流水留痕（请求体无法解析、被限流、附件尚未就绪这三类前置失败除外）。
+任务归属：`tasks/get` / `tasks/cancel` / `tasks/resubscribe` / 产物下载都校验「该任务由本智能体发起」（job 的 `source_ref_type=agent` + `source_ref_id=agent_id`），不属于则回 `-32001` / 404 而非 403 —— 不向对端确认任务是否存在。「不属于」含两种情形，对端**无从区分**：同租户另一个智能体的任务（`-32001`），以及**其他租户**的任务（同样 `-32001`，不因越租户而改成 403）。若只按租户校验，同租户另一个智能体的 key 就能查/取消本智能体任务并猜到其产物地址。产物下载是普通 HTTP 端点（非 JSON-RPC），同一语义以 **404 状态码**表达；这四种调用无论成败都会在审计流水留痕（请求体无法解析、被限流这两类前置失败除外）。
 
-**产物下载：** `Task.artifacts[].parts[].file.uri` 指向 `GET /api/v1/open/a2a/agents/{agent_id}/tasks/{task_id}/artifacts/{attachment_id}`，**需带同一 `X-API-Key`**（平台刻意不暴露对象存储签名 URL）。授权精确到「该智能体 · 该任务 · 该产物」，非该任务产物一律 404，否则本租户任意附件都能被取走。
+**产物下载：** `Task.artifacts[].parts[].file.uri` 指向 `GET /api/v1/open/a2a/agents/{agent_id}/tasks/{task_id}/artifacts/{attachment_id}`，**需带同一 `X-API-Key`**（平台刻意不暴露对象存储签名 URL）。授权精确到「该智能体 · 该任务 · 该产物」，非该任务产物一律 404，否则本租户任意附件都能被取走。非该任务产物、**跨租户的附件**、附件尚未就绪、以及存储读取故障都回 404/400/500 并**各留一条流水**；跨租户与「非该任务产物」不可区分（同为 404）。
 
 生成任务状态 → A2A `TaskState`：`pending→submitted`、`running→working`、`success→completed`、`failed→failed`、`cancelled→canceled`；未知状态回保留值 `unknown`（而非 `completed` —— 谎称就绪会让对端停止轮询）。
 
@@ -146,6 +146,28 @@ Card 同时声明 `securitySchemes`（`apiKey` · `in: header` · `name: X-API-K
 反向登记：把本平台发布的智能体登记为外部 Peer 时，在 `auth_config.api_key` 填入该智能体的 X-API-Key，客户端会在 Card 同步与 `message/send` 时自动携带。
 
 前端入口：智能体表单「工具与能力」→ 勾选「对外发布为 A2A Server」；详情对话框展示已发布状态与 Card 地址。
+
+### 错误与信封
+
+调用端点的协议级错误一律回 **HTTP 200 + JSON-RPC 信封**（`{"jsonrpc":"2.0","id":…,"error":{"code":…,"message":…}}`），
+对端据此把错误对回自己的 `id`。**不要**按平台信封 `{code,message,data,trace_id}` 解析。
+
+| `error.code` | 含义 | 触发 |
+|---|---|---|
+| `-32700` / `-32600` | 解析错误 / 非法请求 | 请求体不是合法 JSON |
+| `-32601` | 方法未找到 | 未实现的方法（如 `tasks/pushNotificationConfig/*`） |
+| `-32602` | 参数错误 | `message/*` 域的业务异常（含合规拦截、配额/权限拒绝）、非法 `params.id`、超长 `contextId` |
+| `-32603` | 内部错误 | `tasks/*` 域的冲突类业务异常；状态码 5xx 的业务异常（非业务异常见下） |
+| `-32000` | 限流 | 超限；HTTP 429 + `Retry-After` |
+| `-32001` | 任务不存在 | 不属于该智能体的任务（含**其他租户**的任务）、`tasks/*` 域的 401/403/404 |
+| `-32002` | 任务不可取消 | 任务已结束 |
+
+**权限与冲突会被压平**：除 `tasks/*` 之外，业务异常的状态码不进入 `error.code`
+（401/403/404 与 400 一律 `-32602`，409 与 5xx 一律 `-32603`），对端读不出真实原因 ——
+这是为了不给出探测资源存在性的 oracle。原因记在租户审计的 `errorType` / `errorStatus`。
+
+**例外**：未预期故障（DB / 对象存储等非业务异常）回 **HTTP 500 平台信封**，不保证
+JSON-RPC 形状。对端须能按 HTTP 状态码兜底处理这一类。
 
 ## 限流
 
@@ -194,9 +216,15 @@ Retry-After: 12
 `canceled`）调用了哪个智能体的哪个方法」，**不含消息正文**。被限流拒绝的请求只记风控事件、
 不记审计流水。
 
-同一个合规拦截在两个方法上的 `outcome` 并不一致：`message/send` 侧记为 `failed`（异常被
-`message/send` 的既有错误映射统一译成信封 `-32603`），`message/stream` 侧记为 `rejected`
-（终态帧）。差异来自 send 侧的错误码映射，本次只如实记录、不改码。
+当某次调用的业务异常由 RPC 层兜底译码时，`detail` 会额外带 `errorType`（异常类名）与
+`errorStatus`（HTTP 状态码）—— 对外错误码被压平后，这是租户可见面上唯一能读出真实原因的
+出口。同样**只记类型与状态码，不记 message**。
+
+同一个合规拦截在两个方法上的 `outcome` 并不一致：`message/send` 侧记为 `failed`、
+`message/stream` 侧记为 `rejected`。差异来自两个方法各自的判据 —— send 按最终信封**有无
+`error`** 判定，stream 按**终态帧状态**判定 —— 与错误码无关。本次真正变的只是 send 侧的
+错误码：合规拦截不再被宽 `except` 误标为 `-32603`（内部错误），现为 `-32602`（参数错误）；
+stream 侧本就无可谈的错误码，它走的是 `rejected` 终态帧。
 
 ## 待做
 

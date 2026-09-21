@@ -146,19 +146,23 @@ handle_a2a_rpc`）看不到状态码。
 
 ## 5. 明确不做 / 已知残余
 
-1. **不做 `handle_a2a_rpc` 的 `AppError` 通用兜底。** 因此以下路径仍会以平台信封返回，
-   作为已知残余记录：
-   - `_handle_tasks_cancel` 第二个 `try` 里 `cancel_job` 的**竞态** `NotFoundError`（job 在
-     `load_owned_agent_task` 之后、`cancel_job` 之前被删）与 Redis `publish` 故障；
-   - `_handle_message_send` 的 `except Exception` 会把 `ForbiddenError`（如配额超限）误标为
-     `-32603`（不逸出，故不在本批范围）。
+1. ~~不做 `handle_a2a_rpc` 的 `AppError` 通用兜底。~~ **已由
+   `2026-09-21-a2a-error-sealing-design.md` 关闭**：RPC 层已加兜底，下列两条不再以平台
+   信封返回。
+   - ~~`_handle_tasks_cancel` 第二个 `try` 里 `cancel_job` 的**竞态** `NotFoundError`（job 在
+     `load_owned_agent_task` 之后、`cancel_job` 之前被删）与 Redis `publish` 故障；~~
+     **已关闭**：竞态 `NotFoundError` 现回 HTTP 200 + `-32001`（Redis `publish` 故障仍按
+     非业务异常重抛 500）。
+   - ~~`_handle_message_send` 的 `except Exception` 会把 `ForbiddenError`（如配额超限）
+     误标为 `-32603`（不逸出，故不在本批范围）。~~ **已关闭**：现回 `-32602` 并在审计里记
+     `errorType`。
 2. **不改鉴权层**：`UnauthorizedError`（缺 / 无效 API Key）与
    `ForbiddenError("API Key 与目标智能体不匹配")` 是 HTTP 层认证语义，继续走平台信封与 401/403。
 3. **不动 `get_generative_job_for_tenant` 本身**：它是跨功能共用的租户作用域取数，`ForbiddenError`
    对其内部调用方（workbench 页面等）是正确的；归一化只发生在 A2A 对外边界。
 4. **不为 `load_owned_agent_task` 引入新的异常类型**：契约要的就是「不确认存在性」，
    `NotFoundError` 已是既有对外语义。
-5. **跨租户探测在内部也不再可区分**：收口后，审计 `errorCode` 与 access log 状态码均与「随便编一个 UUID」完全相同（`tasks/get` / `tasks/cancel` 从 403 变 200，产物下载从 403 变 404），`from None` 也让 403 不进日志 —— 我方因此失去了「有人在扫别的租户任务 UUID」的唯一信号。这是「对端不得获得存在性 oracle」的必然代价，本批有意接受。若日后要恢复内部可观测性，需从抛出点把标记一路传到审计写点（`errorCode` 是从最终信封推导的，不是一行改动），单开一单。
+5. **跨租户探测在内部也不再可区分**：收口后，审计 `errorCode` 与 access log 状态码均与「随便编一个 UUID」完全相同（`tasks/get` / `tasks/cancel` 从 403 变 200，产物下载从 403 变 404），`from None` 也让 403 不进日志 —— 我方因此失去了「有人在扫别的租户任务 UUID」的唯一信号。这是「对端不得获得存在性 oracle」的必然代价，本批有意接受。若日后要恢复内部可观测性，需从抛出点把标记一路传到审计写点（`errorCode` 是从最终信封推导的，不是一行改动），单开一单。**本批不改变其状态。**
 
 ## 6. 验收清单
 

@@ -220,16 +220,16 @@ def app_error_envelope(method: str | None, req_id: object, exc: AppError) -> dic
 
 ## 6. 验收清单
 
-- [ ] `read_task_artifact` 的 `BadRequestError` / `ForbiddenError` / `Exception` 三条路径都留痕，且各恰好一条
-- [ ] 跨租户附件对外 **404**（不是 403），文案 `附件不存在`
-- [ ] `tasks/cancel` 竞态 → HTTP 200 + JSON-RPC `-32001`（不再是 500 / `-32603` 平台信封）—— 由**兜底**修复
-- [ ] `message/send` 合规拦截（`BadRequestError`）→ `-32602`（不再是 `-32603`），审计记 `errorType` —— 由**「停止截获」+ 兜底**共同修复（兜底单独存在时它仍被 handler 吞掉）
-- [ ] `message/send` 配额类 `ForbiddenError` → `-32602`（不再是 `-32603`），审计记 `errorType` —— 同上
-- [ ] 非 `AppError` 异常**仍**重抛 → HTTP 500（回归不变）
-- [ ] `app_error_envelope` 纯函数映射表逐格有测试
-- [ ] `attachment.py` docstring 不再声称跨租户抛 `NotFoundError`（全仓唯一一处撒谎的 `_get_or_raise`；兄弟服务对此沉默，不追求措辞统一）
-- [ ] 指南：映射表、留痕例外收窄为两条、产物下载段、审计段（含**改写**那段「合规拦截 outcome 不一致」）
-- [ ] 设计 §5 残余 #1/#2 标注为已关闭
-- [ ] 五道质量门全绿（`pytest` / `ruff check` / `ruff format --check` / `make layers-check` / `make openapi-check`）
-- [ ] 视图层兜底**不**改 `a2a_jsonrpc` 的 docstring → `openapi-check` **不应**漂移；若实施中确需补一句说明，必须同批用 `make openapi-update` 更新快照并在提交说明里点出
-- [ ] 视图层兜底有注入式锁定用例（docstring 写明「不代表当前有可达逸出点」）
+- [x] `read_task_artifact` 的 `BadRequestError` / `ForbiddenError` / `Exception` 三条路径都留痕，且各恰好一条
+- [x] 跨租户附件对外 **404**（不是 403），文案 `附件不存在`
+- [x] `tasks/cancel` 竞态 → HTTP 200 + JSON-RPC `-32001`（不再是 500 / `-32603` 平台信封）—— 由**兜底**修复
+- [x] `message/send` 合规拦截（`BadRequestError`）→ `-32602`（不再是 `-32603`），审计记 `errorType` —— 由**「停止截获」+ 兜底**共同修复（兜底单独存在时它仍被 handler 吞掉）
+- [x] `message/send` 配额类 `ForbiddenError` → `-32602`（不再是 `-32603`），审计记 `errorType` —— 同上
+- [x] 非 `AppError` 异常**仍**重抛 → HTTP 500（回归不变）
+- [x] `app_error_envelope` 纯函数映射表逐格有测试
+- [x] `attachment.py` docstring 不再声称跨租户抛 `NotFoundError`（全仓唯一一处撒谎的 `_get_or_raise`；兄弟服务对此沉默，不追求措辞统一）
+- [x] 指南：映射表、留痕例外收窄为两条、产物下载段、审计段（含**改写**那段「合规拦截 outcome 不一致」）
+- [x] 设计 §5 残余 #1/#2 标注为已关闭
+- [x] 五道质量门全绿（`pytest` / `ruff check` / `ruff format --check` / `make layers-check` / `make openapi-check`）
+- [x] 视图层兜底**不**改 `a2a_jsonrpc` 的 docstring → `openapi-check` **不应**漂移；若实施中确需补一句说明，必须同批用 `make openapi-update` 更新快照并在提交说明里点出
+- [x] 视图层兜底有注入式锁定用例（docstring 写明「不代表当前有可达逸出点」）

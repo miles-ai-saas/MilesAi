@@ -124,7 +124,7 @@ GET  /.well-known/agent-card.json                         # 全平台唯一发�
 ```
 
 发布门槛：`agent_type=custom` + `status=enabled` + `config.a2a_publish=true`；未发布与不存在同回 404。
-JSON-RPC 协议级错误（解析 / 方法 / 参数）回 HTTP 200 + `error` 信封，执行异常回 `-32603`。
+JSON-RPC 协议级错误（解析 / 方法 / 参数）回 HTTP 200 + `error` 信封；业务异常按域映射（`tasks/*` 的 401/403/404 → `-32001`，其余与 400 → `-32602`，409/5xx → `-32603`），未预期故障仍回 HTTP 500 平台信封。
 Card 含 `securitySchemes`（`apiKey` · `in: header` · `name: X-API-Key`）与 `security`，声明的是调用端点要求；Card GET 本身公开。
 多轮：`message.contextId` → `ChatRequest.conversation_id`（LangGraph `thread_id` 后缀），响应 `Message.contextId` 回显；未带时服务端生成。
 Task：`message/send` 产生生成任务时回 `Task`（`id` 即平台 job id，状态照实映射）；`tasks/get` 查状态并在成功时附 `Task.artifacts`、`tasks/cancel` 取消（不属于该智能体 / 不存在 `-32001`、已结束 `-32002`）。
