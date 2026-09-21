@@ -1105,6 +1105,107 @@ async def test_read_task_artifact_normalizes_foreign_tenant_and_audits(monkeypat
     assert a2a_audit_recorder[0]["detail"]["errorCode"] == server_mod.TASK_NOT_FOUND
 
 
+# --- 4.2 RPC 层兜底：漏捕的 AppError 不再逸出（治 E2 的竞态） ------------------ #
+
+
+@pytest.mark.asyncio
+async def test_tasks_cancel_race_maps_not_found_at_rpc_layer(monkeypatch, a2a_audit_recorder):  # noqa: ANN001
+    """E2 复现：`cancel_job` 的竞态 `NotFoundError` 不再逸出成平台信封 / `-32603`。
+
+    `_handle_tasks_cancel` 第二个 `try` 只捕 `BadRequestError`；job 在
+    `load_owned_agent_task` 之后、`cancel_job` 之前被删时，`NotFoundError` 会直接逸出到
+    `handle_a2a_rpc`。修复前它撞 `except Exception` → 审计 `-32603` 后重抛 → HTTP 500。
+    """
+    job_id = uuid4()
+    owned = _job("running", job_id=job_id, agent_id=AGENT_ID)
+
+    async def fake_get(_db, _ctx, _job_id):  # noqa: ANN001
+        return owned
+
+    class _RacedJobService:
+        """模拟 load 与 cancel 之间任务消失。"""
+
+        def __init__(self, _db, _ctx) -> None:
+            pass
+
+        async def cancel_job(self, _job_id):  # noqa: ANN001
+            raise NotFoundError("生成任务不存在")
+
+    monkeypatch.setattr(server_svc, "get_generative_job_for_tenant", fake_get)
+    monkeypatch.setattr(server_svc, "GenerativeJobService", _RacedJobService)
+    payload = {"jsonrpc": "2.0", "id": 1, "method": "tasks/cancel", "params": {"id": str(job_id)}}
+
+    envelope = await server_svc.handle_a2a_rpc(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, payload, base_url=BASE)
+
+    # 键集等值即「没有逸出到全局处理器」：平台信封是 {code,message,data,trace_id}
+    assert set(envelope) == {"jsonrpc", "id", "error"}
+    assert envelope["id"] == 1
+    assert envelope["error"]["code"] == server_mod.TASK_NOT_FOUND
+    assert len(a2a_audit_recorder) == 1
+    assert a2a_audit_recorder[0]["outcome"] == server_mod.AUDIT_OUTCOME_FAILED
+    assert a2a_audit_recorder[0]["detail"]["errorCode"] == server_mod.TASK_NOT_FOUND
+    # 原始类型与 status 落进租户可见面：对外码被压平后，这是唯一能读出真实原因的出口
+    assert a2a_audit_recorder[0]["detail"]["errorType"] == "NotFoundError"
+    assert a2a_audit_recorder[0]["detail"]["errorStatus"] == 404
+    assert a2a_audit_recorder[0]["detail"]["taskId"] == str(job_id)
+
+
+@pytest.mark.asyncio
+async def test_rpc_layer_maps_uncaptured_app_error(monkeypatch, a2a_audit_recorder):  # noqa: ANN001
+    """兜底本身：把分发层换成「直接抛」的替身，模拟某个 handler 忘了逐点映射。
+
+    **注入式用例**：当前没有可达的漏捕点（E2 已由上面那条覆盖），本用例锁的是兜底机制
+    不被重构删掉，不得当作缺陷回归闸门。用例从 `_dispatch_a2a_rpc` 起替换，故「handler
+    自己就漏捕」这一层也被覆盖到。
+    """
+
+    async def _boom(*_args, **_kwargs):  # noqa: ANN002, ANN003
+        raise BadRequestError("参数里有个东西不合法")
+
+    monkeypatch.setattr(server_svc, "_dispatch_a2a_rpc", _boom)
+    payload = {"jsonrpc": "2.0", "id": 9, "method": "tasks/get", "params": {"id": str(uuid4())}}
+
+    envelope = await server_svc.handle_a2a_rpc(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, payload, base_url=BASE)
+
+    assert envelope["error"]["code"] == server_mod.INVALID_PARAMS
+    assert a2a_audit_recorder[0]["detail"]["errorType"] == "BadRequestError"
+    assert a2a_audit_recorder[0]["detail"]["errorStatus"] == 400
+
+
+@pytest.mark.asyncio
+async def test_rpc_layer_still_reraises_unexpected_exception(monkeypatch, a2a_audit_recorder):  # noqa: ANN001
+    """口径不变：非 `AppError` 仍原样重抛（→ HTTP 500 平台信封），且照旧留痕。
+
+    这条是钉住设计 §3.4「不改口径」的回归闸门 —— 若有人顺手把兜底写成「一律回信封」，
+    这里会立刻红。
+    """
+    job_id = uuid4()
+    owned = _job("running", job_id=job_id, agent_id=AGENT_ID)
+
+    async def fake_get(_db, _ctx, _job_id):  # noqa: ANN001
+        return owned
+
+    class _BoomJobService:
+        def __init__(self, _db, _ctx) -> None:
+            pass
+
+        async def cancel_job(self, _job_id):  # noqa: ANN001
+            raise RuntimeError("redis 不可用")
+
+    monkeypatch.setattr(server_svc, "get_generative_job_for_tenant", fake_get)
+    monkeypatch.setattr(server_svc, "GenerativeJobService", _BoomJobService)
+    payload = {"jsonrpc": "2.0", "id": 1, "method": "tasks/cancel", "params": {"id": str(job_id)}}
+
+    with pytest.raises(RuntimeError):
+        await server_svc.handle_a2a_rpc(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, payload, base_url=BASE)
+
+    assert len(a2a_audit_recorder) == 1
+    assert a2a_audit_recorder[0]["outcome"] == server_mod.AUDIT_OUTCOME_FAILED
+    assert a2a_audit_recorder[0]["detail"]["errorCode"] == server_mod.INTERNAL_ERROR
+    # 未预期异常不带 errorType：`detail` 的键集是对外契约的一部分，顺手加键会漂移
+    assert "errorType" not in a2a_audit_recorder[0]["detail"]
+
+
 # --- 5. 产物下载归属校验 ------------------------------------------------------
 
 

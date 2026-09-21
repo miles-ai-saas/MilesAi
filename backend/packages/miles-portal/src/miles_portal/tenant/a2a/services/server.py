@@ -22,7 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from miles_ai.integrations.langchain.chat_models import OnDelta
 from miles_ai.integrations.langchain.toolkit.catalog import bound_skill_ids
-from miles_common.exceptions import BadRequestError, ForbiddenError, NotFoundError
+from miles_common.exceptions import AppError, BadRequestError, ForbiddenError, NotFoundError
 from miles_common.schemas.chat_io import CONVERSATION_ID_MAX_LENGTH, ChatResponse
 from miles_core.infra.db import AsyncSessionLocal
 from miles_core.logging import get_logger
@@ -51,6 +51,7 @@ from miles_portal.tenant.a2a.server import (
     TASK_STATE_FAILED,
     TASK_STATE_REJECTED,
     TASK_STATE_WORKING,
+    app_error_envelope,
     artifact_ids_from_job_result,
     build_a2a_agent_message,
     build_a2a_artifacts,
@@ -436,17 +437,36 @@ async def handle_a2a_rpc(
 
     审计放在这一层而非各 ``_handle_*`` 内：一次调用只该有一条流水，且 ``outcome`` 由最终
     信封决定（有 ``error`` 即失败），不必在各处重复判定。
+
+    ``AppError`` 在这一层收口：各 ``_handle_*`` 的逐点映射是第一道（语义更精确），但只要
+    某个 handler 漏捕、或捕得比业务异常更宽，异常就会落到 ``except AppError`` 被译成
+    JSON-RPC 信封 —— 对端拿到的形状与逐点映射一致，且尾部那条统一审计能把原始类型与
+    状态码记进 ``detail.errorType`` / ``detail.errorStatus``。
     """
     started = time.monotonic()
     method = payload.get("method") if isinstance(payload, dict) else None
+    req_id = payload.get("id") if isinstance(payload, dict) else None
     action = _AUDIT_ACTION_BY_METHOD.get(method) if isinstance(method, str) else None
     # ``action`` 非空只可能来自「``method`` 是表内键」，此处重判一次让 ``method`` 收窄为
     # ``str``，不给调用点留下「靠运气成立」的类型不一致。
     if action is None or not isinstance(method, str):
         # 不支持的方法没有对应动作名，不编造流水。
         return await _dispatch_a2a_rpc(db, ctx, agent_id, payload, base_url=base_url)
+    #: 被兜底接住的业务异常。非空时把原始类型与 status 记进审计（对外码已被压平）。
+    origin: AppError | None = None
     try:
         envelope = await _dispatch_a2a_rpc(db, ctx, agent_id, payload, base_url=base_url)
+    except AppError as exc:
+        # 只有 handler 漏捕或捕得更宽才会走到这里 —— 是「映射归属」漏了，值得可查。
+        origin = exc
+        logger.warning(
+            "A2A 业务异常经兜底译码: method=%s agent_id=%s errorType=%s status=%s",
+            method,
+            agent_id,
+            type(exc).__name__,
+            exc.status_code,
+        )
+        envelope = app_error_envelope(method, req_id, exc)
     except Exception:
         # 未捕获异常逸出（DB / 存储故障）：先留痕再**原样重抛**。这里是失败路径上唯一的
         # 留痕机会 —— 吞掉异常会把 500 变成 200，把故障伪装成成功。
@@ -470,7 +490,7 @@ async def handle_a2a_rpc(
         agent_id=agent_id,
         action=action,
         outcome=_rpc_audit_outcome(envelope),
-        detail=_rpc_audit_detail(payload, envelope, started=started, method=method),
+        detail=_rpc_audit_detail(payload, envelope, started=started, method=method, origin=origin),
     )
     return envelope
 
@@ -480,8 +500,13 @@ def _rpc_audit_outcome(envelope: object) -> str:
     return AUDIT_OUTCOME_FAILED if isinstance(envelope, dict) and "error" in envelope else AUDIT_OUTCOME_OK
 
 
-def _rpc_audit_detail(payload: object, envelope: object, *, started: float, method: str) -> dict:
-    """审计细节：方法、耗时，以及能低成本取到的任务/会话标识与错误码。"""
+def _rpc_audit_detail(payload: object, envelope: object, *, started: float, method: str, origin: AppError | None = None) -> dict:
+    """审计细节：方法、耗时，以及能低成本取到的任务/会话标识与错误码。
+
+    ``origin`` 非空表示该次调用由兜底译码：额外记原始异常类型与 HTTP status。对外码已被
+    域规则压平（权限读不出真实原因），这两项是租户可见面上唯一的补偿。**只记类型与状态码**
+    —— ``AppError`` 文案可能夹内部实现细节，`aud_logs` 是租户可见面。
+    """
     detail: dict = {"method": method, "durationMs": streaming.elapsed_ms(started)}
     params = payload.get("params") if isinstance(payload, dict) else None
     if isinstance(params, dict):
@@ -499,6 +524,9 @@ def _rpc_audit_detail(payload: object, envelope: object, *, started: float, meth
     error = envelope.get("error") if isinstance(envelope, dict) else None
     if isinstance(error, dict):
         detail["errorCode"] = error.get("code")
+    if origin is not None:
+        detail["errorType"] = type(origin).__name__
+        detail["errorStatus"] = origin.status_code
     return detail
 
 
