@@ -18,7 +18,7 @@ from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
 from miles_common.constants import AGENT_API_KEY_HEADER
-from miles_common.exceptions import BadRequestError
+from miles_common.exceptions import AppError, BadRequestError
 from miles_common.schemas.chat_io import CONVERSATION_ID_MAX_LENGTH
 
 #: ``agent.config`` 中标记「对外暴露为 A2A Server」的键。
@@ -47,6 +47,11 @@ TASK_NOT_CANCELABLE = -32002
 #: 限流拒绝。规范把 -32000..-32099 留给实现自定义（本实现已占 `-32001` / `-32002`），
 #: 并要求自定义码「清楚地记录」—— 故写入 docs/guides/a2a.md。
 RATE_LIMITED = -32000
+
+#: 归属 ``tasks/*`` 域的方法前缀。该域的 401/403/404 压成 ``TASK_NOT_FOUND``，
+#: 否则跨租户任务回 ``-32602``（参数错）会与「任务不存在」可区分 —— 存在性 oracle
+#: 会从另一条路放回来（上一批刚收口掉的那个问题）。
+_TASKS_METHOD_PREFIX = "tasks/"
 
 #: 租户审计 ``action``（落 ``aud_logs``）。只记「谁在何时以何结果调了什么」——
 #: ``aud_logs`` 是租户可见面，不写消息正文（正文可能含隐私内容）。
@@ -447,3 +452,23 @@ def jsonrpc_error(req_id: object, code: int, message: str, data: dict | None = N
     if data is not None:
         error["data"] = data
     return {"jsonrpc": "2.0", "id": req_id, "error": error}
+
+
+def app_error_envelope(method: str | None, req_id: object, exc: AppError) -> dict:
+    """把 ``AppError`` 译成 JSON-RPC 错误信封；A2A 对外面不接受平台信封。
+
+    逐点映射（各 ``_handle_*`` 里的 ``except``）仍是第一道，语义更精确；本函数是
+    「handler 漏捕或捕得太宽」时的统一归属，保证对外形状一致。
+
+    ``tasks/*`` 域的 401/403/404 压成 ``TASK_NOT_FOUND``：延续「对端不得获得存在性
+    oracle」的不变式。其余域的权限/冲突问题压成 ``INVALID_PARAMS`` / ``INTERNAL_ERROR``，
+    对端读不出真实原因 —— 这是已知取舍，由审计的 ``errorType``/``errorStatus`` 补偿。
+    """
+    status = exc.status_code
+    if isinstance(method, str) and method.startswith(_TASKS_METHOD_PREFIX) and status in (401, 403, 404):
+        code = TASK_NOT_FOUND
+    elif status in (400, 401, 403, 404):
+        code = INVALID_PARAMS
+    else:
+        code = INTERNAL_ERROR
+    return jsonrpc_error(req_id, code, exc.message)

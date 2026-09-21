@@ -13,7 +13,7 @@ from uuid import uuid4
 
 import pytest
 
-from miles_common.exceptions import ForbiddenError, NotFoundError
+from miles_common.exceptions import BadRequestError, ForbiddenError, NotFoundError
 from miles_core.deps import get_db
 from miles_core.models.agent import Agent, AgentStatus, AgentType
 from miles_core.tenant import TenantContext
@@ -546,3 +546,212 @@ async def test_artifact_endpoint_rate_limited_uses_platform_envelope(as_a2a, api
     assert resp.json()["code"] == 429
     assert resp.json()["message"] == "请求过于频繁，请稍后再试"
     assert seen["path"] == path
+
+
+# --- 错误封口：业务异常不得逸出成平台信封 ------------------------------------- #
+
+
+def _published_agent():  # noqa: ANN202
+    """已发布 custom 智能体：`message/send` 的前置门槛要求它。"""
+    agent = Agent()
+    agent.id = AGENT_ID
+    agent.agent_type = AgentType.CUSTOM
+    agent.status = AgentStatus.ENABLED
+    agent.config = {A2A_PUBLISH_FLAG: True}
+    agent.deleted_at = None
+    return agent
+
+
+class _AgentDb:
+    """本组用例只用到 ``get``（取智能体）。注意 `load_published_agent` 里是 `await db.get(...)`。"""
+
+    async def get(self, _model, _id):  # noqa: ANN001
+        return _published_agent()
+
+    async def commit(self):  # noqa: ANN201
+        pass
+
+
+def _use_agent_db(app):  # noqa: ANN001, ANN202
+    """把 `get_db` 覆盖成 `_AgentDb`（`as_a2a` 默认给的是 `object()`）。"""
+
+    async def override_db():  # noqa: ANN202
+        yield _AgentDb()
+
+    app.dependency_overrides[get_db] = override_db
+
+
+@pytest.mark.asyncio
+async def test_tasks_cancel_race_returns_jsonrpc_not_platform_envelope(as_a2a, api_client, monkeypatch):
+    """E2 的 HTTP 面：`cancel_job` 竞态 `NotFoundError` → HTTP 200 + `-32001`，不是 404 平台信封。
+
+    `tasks/cancel` 不查智能体发布状态，故本用例只需替换「取任务 / 取消 / 审计」三个 I/O 出口。
+    修复前该异常逸出到全局 `AppError` 专属处理器，回 **404 平台信封**（审计误记 `-32603`）；
+    HTTP 500 只留给非 `AppError`。
+    """
+    job = SimpleNamespace(
+        id=uuid4(),
+        status=SimpleNamespace(value="running"),
+        params={},
+        result=None,
+        source_ref_type="agent",
+        source_ref_id=AGENT_ID,
+    )
+
+    async def _owned(_db, _ctx, _job_id):  # noqa: ANN001
+        return job
+
+    class _Raced:
+        def __init__(self, _db, _ctx) -> None:
+            pass
+
+        async def cancel_job(self, _job_id):  # noqa: ANN001
+            raise NotFoundError("生成任务不存在")
+
+    recorded: list[dict] = []
+
+    async def _write(**kwargs):  # noqa: ANN003
+        recorded.append(kwargs)
+
+    monkeypatch.setattr(a2a_svc, "get_generative_job_for_tenant", _owned)
+    monkeypatch.setattr(a2a_svc, "GenerativeJobService", _Raced)
+    monkeypatch.setattr(a2a_svc, "write_a2a_audit", _write)
+
+    resp = await api_client.post(
+        RPC_PATH,
+        json={"jsonrpc": "2.0", "id": 4, "method": "tasks/cancel", "params": {"id": str(job.id)}},
+    )
+
+    assert resp.status_code == 200
+    body = resp.json()
+    # 键集等值即「没有逸出到全局处理器」：平台信封是 {code,message,data,trace_id}
+    assert set(body) == {"jsonrpc", "id", "error"}
+    assert body["id"] == 4
+    assert body["error"]["code"] == -32001
+    assert len(recorded) == 1
+    assert recorded[0]["detail"]["errorType"] == "NotFoundError"
+    assert recorded[0]["detail"]["errorStatus"] == 404
+
+
+@pytest.mark.asyncio
+async def test_message_send_compliance_block_returns_invalid_params(as_a2a, api_client, monkeypatch):
+    """E3 的 HTTP 面：合规拦截（`BadRequestError`）→ HTTP 200 + `-32602`，不是 `-32603`。"""
+
+    async def _blocked(*_args, **_kwargs):  # noqa: ANN002, ANN003
+        raise BadRequestError("输入内容包含敏感词，已拦截：某词")
+
+    recorded: list[dict] = []
+
+    async def _write(**kwargs):  # noqa: ANN003
+        recorded.append(kwargs)
+
+    _use_agent_db(as_a2a)
+    monkeypatch.setattr(a2a_svc, "run_published_agent_chat", _blocked)
+    monkeypatch.setattr(a2a_svc, "write_a2a_audit", _write)
+
+    resp = await api_client.post(
+        RPC_PATH,
+        json={
+            "jsonrpc": "2.0",
+            "id": 6,
+            "method": "message/send",
+            "params": {"message": {"parts": [{"kind": "text", "text": "你好"}]}},
+        },
+    )
+
+    assert resp.status_code == 200
+    body = resp.json()
+    assert set(body) == {"jsonrpc", "id", "error"}
+    assert body["error"]["code"] == -32602
+    assert len(recorded) == 1
+    assert recorded[0]["detail"]["errorType"] == "BadRequestError"
+    assert recorded[0]["detail"]["errorStatus"] == 400
+
+
+@pytest.mark.parametrize(
+    ("exc", "expected_status", "expected_code", "expected_type"),
+    [
+        # 跨租户附件：修复前是 **403**（等于向对端确认「该附件存在于别的租户」），且零流水
+        (ForbiddenError("无权访问该租户资源"), 404, -32001, "ForbiddenError"),
+        # 附件未就绪：修复前是 400 但**零流水**（与 docstring 的「成败都留一条」相矛盾）
+        (BadRequestError("附件文件未就绪"), 400, -32602, "BadRequestError"),
+    ],
+)
+@pytest.mark.asyncio
+async def test_artifact_endpoint_failure_maps_status_and_audits(  # noqa: ANN001
+    as_a2a, api_client, monkeypatch, exc, expected_status, expected_code, expected_type
+):
+    """E1 的 HTTP 面：该端点是普通 HTTP 下载，形状本来就是平台信封 —— 要验的是**状态码**与**留痕**。
+
+    非 ``AppError``（存储故障）→ 500 的情形不在本用例：``ASGITransport`` 默认
+    ``raise_app_exceptions=True``，应用层重抛的异常会在测试客户端里直接抛出，拿不到响应。
+    该情形由服务层用例（`test_read_task_artifact_audits_storage_failure_and_reraises`）锁定。
+    """
+    attachment_id, task_id = uuid4(), uuid4()
+    job = SimpleNamespace(
+        id=task_id,
+        status=SimpleNamespace(value="success"),
+        params={},
+        result={"kind": "image", "attachment_ids": [str(attachment_id)], "mime_type": "image/png"},
+        source_ref_type="agent",
+        source_ref_id=AGENT_ID,
+    )
+
+    async def _owned(_db, _ctx, _job_id):  # noqa: ANN001
+        return job
+
+    class _FailingAttachments:
+        def __init__(self, _db, _ctx) -> None:
+            pass
+
+        async def read_attachment_bytes(self, _attachment_id):  # noqa: ANN001
+            raise exc
+
+    recorded: list[dict] = []
+
+    async def _write(**kwargs):  # noqa: ANN003
+        recorded.append(kwargs)
+
+    # 本路由只用这三个 I/O 出口（取任务 / 读字节 / 审计），其余全真，让请求经 ASGI 走完一次分发
+    monkeypatch.setattr(a2a_svc, "get_generative_job_for_tenant", _owned)
+    monkeypatch.setattr(a2a_svc, "AttachmentService", _FailingAttachments)
+    monkeypatch.setattr(a2a_svc, "write_a2a_audit", _write)
+
+    resp = await api_client.get(ARTIFACT_PATH.format(AGENT_ID, task_id, attachment_id))
+
+    assert resp.status_code == expected_status
+    body = resp.json()
+    assert set(body) == {"code", "message", "data", "trace_id"}
+    # 平台信封的 ``code`` 与 HTTP 状态码同值（全局处理器 ``_error_envelope`` 用 ``exc.code``，
+    # 即 ``status_code``；本路由的 429 分支亦为 ``"code": 429``）。审计里的 ``errorCode`` 才是
+    # A2A 域码（见下方断言），两者不可混为一谈。
+    assert body["code"] == expected_status
+    assert len(recorded) == 1
+    assert recorded[0]["action"] == "a2a.artifact.download"
+    assert recorded[0]["outcome"] == "failed"
+    assert recorded[0]["detail"]["errorCode"] == expected_code
+    assert recorded[0]["detail"]["errorType"] == expected_type
+
+
+@pytest.mark.asyncio
+async def test_rpc_view_converts_escaped_app_error_to_envelope(as_a2a, api_client, monkeypatch):
+    """视图层兜底（纵深防御）：分发点逸出的 `AppError` 仍回 JSON-RPC 信封。
+
+    **注入式用例**：两个流式入口当前无可达的 `AppError` 逸出点，故这里用替身直接把异常
+    从分发点抛出 —— 它锁的是「这段兜底不被重构悄悄删掉」，**不是**缺陷回归闸门。
+    """
+
+    async def _escape(*_args, **_kwargs):  # noqa: ANN002, ANN003
+        raise ForbiddenError("配额已用尽")
+
+    monkeypatch.setattr(view_mod, "handle_a2a_rpc", _escape)
+
+    resp = await api_client.post(
+        RPC_PATH,
+        json={"jsonrpc": "2.0", "id": 11, "method": "message/send", "params": {}},
+    )
+
+    assert resp.status_code == 200
+    body = resp.json()
+    assert set(body) == {"jsonrpc", "id", "error"}
+    assert body["error"]["code"] == -32602

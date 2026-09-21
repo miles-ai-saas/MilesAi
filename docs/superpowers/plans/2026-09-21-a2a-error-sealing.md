@@ -19,8 +19,10 @@
 
 - **权威口径**：`docs/superpowers/specs/2026-09-21-a2a-error-sealing-design.md`。本计划与它冲突时以它为准；发现冲突要报告，不要擅自改设计。
 - **对外错误码**（`miles-portal/.../tenant/a2a/server.py:38-49`，**不要发明新码**）：`PARSE_ERROR=-32700`、`INVALID_REQUEST=-32600`、`METHOD_NOT_FOUND=-32601`、`INVALID_PARAMS=-32602`、`INTERNAL_ERROR=-32603`、`RATE_LIMITED=-32000`、`TASK_NOT_FOUND=-32001`、`TASK_NOT_CANCELABLE=-32002`。
+- **`except` 顺序子类在前**，且**删掉中间某一档不会「零流水」，而是下沉到更宽的下一档并被错分类** —— 例如 Task 4 删 `except AppError` 后，`BadRequestError` 会落进 `except Exception` 记成 `-32603`（Task 2 删兜底后则是逸出重抛）。证伪时按此预期，别把「错分类」误判成「没修好」。
 - **协议契约**：JSON-RPC 端点的协议级错误一律 **HTTP 200 + JSON-RPC 信封**（`{"jsonrpc":"2.0","id":…,"error":{"code":…,"message":…}}`），**不得**回平台信封 `{code,message,data,trace_id}`。唯一例外见「未预期异常」一条。
 - **未预期异常口径不变**：非 `AppError` 仍「审计 `INTERNAL_ERROR` 后原样重抛」→ HTTP 500 平台信封。**不要**顺手改成回信封。
+- **两套「码」不要混为一谈**：JSON-RPC 信封的 `error.code` 用 A2A 域码（`-32001` 等）；而**平台信封**的 `code` 恒等于 HTTP 状态码 —— `AppError.code` 默认取 `status_code`（`miles_common/exceptions.py`），全局处理器 `app_error_handler` 按 `exc.code` 出信封（`miles_core/web/handlers.py:90-97`）。故普通 HTTP 路由（产物下载）失败时，响应体里的 `code` 是 404/400，**不是** `-32001`/`-32602`；A2A 域码只出现在审计的 `detail.errorCode`。
 - **审计规则**：`detail` 只含元数据，**绝不**含消息正文（`aud_logs` 是租户可见面）。新增 `errorType`（异常类名）/`errorStatus`（HTTP status）**只记类型与状态码**，不记 `exc.message`。
 - **不改动**：`AttachmentService` 的异常语义（跨租户仍抛 `ForbiddenError`，只改 docstring）；鉴权依赖 `deps_api_auth`（401/403 是 HTTP 层认证语义）；`get_generative_job_for_tenant` 本身；限流与流内错误的既有处理（`limits.py`、`audit.py` 的 fail-open，`server.py:690/:697` 与 `subscription.py:338` 的流内帧协议）。
 - **`except` 顺序**：子类在前。`NotFoundError` / `ForbiddenError` / `BadRequestError` 都是 `AppError` 子类，宽分支必须排在最后。
@@ -182,7 +184,7 @@ cd backend && uv run python -m pytest tests/tenant/a2a tests/api -q
 - [ ] **Step 6: 提交**
 
 ```bash
-cd /Users/xiezhigang/Projects/miles/MilesAI && git add -A && git commit -F - <<'EOF'
+cd /Users/xiezhigang/Projects/miles/MilesAI/.worktrees/a2a-error-sealing && git add -A && git commit -F - <<'EOF'
 feat(a2a): 新增 AppError → JSON-RPC 信封的纯映射函数
 
 把「业务异常译成对外错误码」这件事从各 handler 的散点记忆收归一处：tasks/* 域的
@@ -206,6 +208,11 @@ EOF
 - [ ] **Step 1: 写 3 条失败用例**
 
 在 `backend/tests/tenant/a2a/test_a2a_server_card.py` 的 `# --- 5. 产物下载归属校验`（第 1068 行）**之前**插入整段：
+
+> **回填修正（终审 Minor #3）**：下面 docstring 里的「修复前它撞 `except Exception` → 审计 `-32603` 后重抛 → HTTP 500」**失实**。
+> `AppError` 有专属全局处理器（`miles_core/web/handlers.py` 的 `app_error_handler`，装配于 `miles-server` 的 `create_app`），
+> Starlette 按 MRO 命中它 —— 修复前回的是 **HTTP 404 平台信封**（`message="生成任务不存在"`），只有非 `AppError` 才落 500。
+> 实际交付的测试 docstring 已按此改写；此处保留原文并更正。
 
 ```python
 # --- 4.2 RPC 层兜底：漏捕的 AppError 不再逸出（治 E2 的竞态） ------------------ #
@@ -446,7 +453,7 @@ cd backend && uv run python -m pytest tests/tenant/a2a tests/api -q
 - [ ] **Step 6: 提交**
 
 ```bash
-cd /Users/xiezhigang/Projects/miles/MilesAI && git add -A && git commit -F - <<'EOF'
+cd /Users/xiezhigang/Projects/miles/MilesAI/.worktrees/a2a-error-sealing && git add -A && git commit -F - <<'EOF'
 fix(a2a): RPC 层兜底 AppError，修掉 tasks/cancel 竞态的 500 逃逸
 
 _handle_tasks_cancel 第二个 try 只捕 BadRequestError，任务在归属校验之后、取消之前
@@ -581,7 +588,7 @@ cd backend && rg -n "32603" tests/tenant/a2a/test_a2a_server_card.py tests/api/t
 - [ ] **Step 6: 提交**
 
 ```bash
-cd /Users/xiezhigang/Projects/miles/MilesAI && git add -A && git commit -F - <<'EOF'
+cd /Users/xiezhigang/Projects/miles/MilesAI/.worktrees/a2a-error-sealing && git add -A && git commit -F - <<'EOF'
 fix(a2a): message/send 不再把业务异常吞成 -32603
 
 合规拦截抛 BadRequestError、配额命中抛 ForbiddenError，二者原先被 message/send 的宽
@@ -793,12 +800,12 @@ cd backend && uv run python -m pytest tests/tenant/a2a tests/api -q
 
 - [ ] **Step 5: 证伪（必须做，记录输出）**
 
-把 `except ForbiddenError as exc:` 分支整体注释掉，重跑 Step 2。预期 `test_read_task_artifact_normalizes_foreign_attachment_to_not_found` 变 RED（抛 `ForbiddenError` 而非 `NotFoundError`）。恢复后再把 `except AppError as exc:` 分支注释掉，重跑，预期 `..._audits_not_ready_attachment_exactly_once` 变 RED（零流水）。两次都恢复并确认 Step 4 全绿。
+把 `except ForbiddenError as exc:` 分支整体注释掉，重跑 Step 2。预期 `test_read_task_artifact_normalizes_foreign_attachment_to_not_found` 变 RED（抛 `ForbiddenError` 而非 `NotFoundError`）。恢复后再把 `except AppError as exc:` 分支注释掉，重跑，预期 `..._audits_not_ready_attachment_exactly_once` 变 RED —— **注意红因是「记成 `-32603`」而非「零流水」**（`BadRequestError` 会落到更宽的 `except Exception`；本计划的初稿漏看了这一层，实测已纠正）。两次都恢复并确认 Step 4 全绿。
 
 - [ ] **Step 6: 提交**
 
 ```bash
-cd /Users/xiezhigang/Projects/miles/MilesAI && git add -A && git commit -F - <<'EOF'
+cd /Users/xiezhigang/Projects/miles/MilesAI/.worktrees/a2a-error-sealing && git add -A && git commit -F - <<'EOF'
 fix(a2a): 产物下载补齐失败留痕，跨租户附件对外归一为 404
 
 read_task_artifact 只捕 NotFoundError，附件未就绪（400）、跨租户附件（403）与存储
@@ -832,6 +839,9 @@ from miles_common.exceptions import BadRequestError, ForbiddenError, NotFoundErr
 ```
 
 在文件末尾（`test_artifact_endpoint_rate_limited_uses_platform_envelope` 之后）追加：
+
+> **回填修正（终审 Minor #3）**：下面 `test_tasks_cancel_race_returns_jsonrpc_not_platform_envelope` 的 docstring「不是 500」同样失实 ——
+> 修复前该异常逸出后回 **HTTP 404 平台信封**（500 只留给非 `AppError`）；实际交付的 docstring 已按此改写。
 
 ```python
 # --- 错误封口：业务异常不得逸出成平台信封 ------------------------------------- #
@@ -1006,7 +1016,7 @@ async def test_artifact_endpoint_failure_maps_status_and_audits(  # noqa: ANN001
     assert resp.status_code == expected_status
     body = resp.json()
     assert set(body) == {"code", "message", "data", "trace_id"}
-    assert body["code"] == expected_code
+    assert body["code"] == expected_status  # 平台信封的 code 恒等于 HTTP 状态码：`AppError.code` 默认取 `status_code`（`miles_common/exceptions.py`），全局处理器按 `exc.code` 出信封。A2A 域码（`-32001`…）**只**留在审计的 `errorCode`，不出现在本路由的响应体里。
     assert len(recorded) == 1
     assert recorded[0]["action"] == "a2a.artifact.download"
     assert recorded[0]["outcome"] == "failed"
@@ -1048,6 +1058,9 @@ async def test_artifact_endpoint_failure_maps_status_and_audits(  # noqa: ANN001
 ```
 
 **约束**：这是纯去重，**不得**改动该用例的断言、docstring 或其余任何一行；改完该用例必须仍然单测通过。若它变红，说明新 helper 与旧替身**不等价**（最可能是 `_AgentDb` 未提供某个被调用的方法）——此时**修 helper**，不要去改那条既有用例。
+> **回填（终审 Minor #4）**：本步骤原写「参数改名 `expected_audit_code`」，但该改名**未落地** —— 代码里仍是
+> `expected_code`（`backend/tests/api/test_a2a_server_api.py:670,680,730`）。上面代码块已改回与代码一致；
+> 参数名与信封 `code` 的语义混淆保留为已知项，**不为迁就命名去改测试代码**。
 
 - [ ] **Step 2: 写视图层兜底的注入式用例**
 
@@ -1082,7 +1095,7 @@ async def test_rpc_view_converts_escaped_app_error_to_envelope(as_a2a, api_clien
 cd backend && uv run python -m pytest tests/api/test_a2a_server_api.py -q -k "race_returns or compliance_block or artifact_endpoint_failure or escaped_app_error"
 ```
 
-预期：只有 `test_rpc_view_converts_escaped_app_error_to_envelope` **必然**红（视图层尚无兜底，`ForbiddenError` 逸出到全局处理器 → 403 平台信封）。其余三条是 Task 2/3/4 已修好行为的**跨层复验**：若它们已绿，是那三个任务的功劳，**如实记录**，不要当成 RED 证据。若 `escaped_app_error` 那条没红，说明异常根本没从视图抛出去，先停下排查。
+预期：只有 `test_rpc_view_converts_escaped_app_error_to_envelope` **必然**红（视图层尚无兜底，`ForbiddenError` 逸出到全局处理器 → 403 平台信封）。其余四条是 Task 2/3/4 已修好行为的**跨层复验**：若它们已绿，是那三个任务的功劳，**如实记录**，不要当成 RED 证据。（实测：四条全绿，唯一真 RED 即注入式那条；产物下载 400/404 两条也在其中。）若 `escaped_app_error` 那条没红，说明异常根本没从视图抛出去，先停下排查。
 
 - [ ] **Step 4: 实现视图层兜底**
 
@@ -1133,12 +1146,14 @@ from miles_portal.tenant.a2a.server import (
 cd backend && uv run python -m pytest tests/api/test_a2a_server_api.py -q && cd .. && make openapi-check
 ```
 
-预期：全绿且 `openapi-check` **不漂移**。若漂移，检查是否误改了 docstring；若确实必须改，则用 `make openapi-update` 更新 `backend/openapi/openapi.snapshot.json` 并在提交说明里点出。
+预期：**24 passed** 且 `openapi-check` **不漂移**。若漂移，检查是否误改了 docstring；若确实必须改，则用 `make openapi-update` 更新 `backend/openapi/openapi.snapshot.json` 并在提交说明里点出。
+
+实测补充（回填）：本步之外还应跑 `uv run python -m pytest -q`（全量，实测 1465 passed）与 `make layers-check`（实测 7 kept / 0 broken），仅跑 `tests/api` 不足以充当质量门。
 
 - [ ] **Step 6: 提交**
 
 ```bash
-cd /Users/xiezhigang/Projects/miles/MilesAI && git add -A && git commit -F - <<'EOF'
+cd /Users/xiezhigang/Projects/miles/MilesAI/.worktrees/a2a-error-sealing && git add -A && git commit -F - <<'EOF'
 fix(a2a): 视图层为三处分流加 AppError 兜底并补 HTTP 面用例
 
 服务层已在 RPC 层收口，视图层这一道是纵深防御：两个流式入口当前无可达逸出点，用例
@@ -1193,7 +1208,7 @@ EOF
 | `-32700` / `-32600` | 解析错误 / 非法请求 | 请求体不是合法 JSON |
 | `-32601` | 方法未找到 | 未实现的方法（如 `tasks/pushNotificationConfig/*`） |
 | `-32602` | 参数错误 | `message/*` 域的业务异常（含合规拦截、配额/权限拒绝）、非法 `params.id`、超长 `contextId` |
-| `-32603` | 内部错误 | `tasks/*` 域的冲突类业务异常；未预期故障（见下） |
+| `-32603` | 内部错误 | `tasks/*` 域的冲突类业务异常；状态码 5xx 的业务异常（非业务异常见下） |
 | `-32000` | 限流 | 超限；HTTP 429 + `Retry-After` |
 | `-32001` | 任务不存在 | 不属于该智能体的任务（含**其他租户**的任务）、`tasks/*` 域的 401/403/404 |
 | `-32002` | 任务不可取消 | 任务已结束 |
@@ -1206,6 +1221,13 @@ EOF
 JSON-RPC 形状。对端须能按 HTTP 状态码兜底处理这一类。
 ```
 
+实测补充（回填）：上表 `-32603` 触发原写「未预期故障（见下）」，与下一段的「例外」自相矛盾 ——
+非业务异常（DB / 对象存储）经 `handle_a2a_rpc` 的 `except Exception` **原样重抛** → HTTP 500
+平台信封，**没有** `error.code` 可言（`services/server.py:511-530`）；`app_error_envelope`
+只把「非 400/401/403/404 的 `AppError`（409 与 5xx）」译成 `-32603`
+（`a2a/server.py:457-474`）。故改为「状态码 5xx 的业务异常（非业务异常见下）」，表格由此与
+`app_error_envelope` 逐格一致。
+
 - [ ] **Step 3: 收窄留痕例外并补产物下载段**
 
 1. 第 102 行任务归属段的末句：
@@ -1214,6 +1236,10 @@ JSON-RPC 形状。对端须能按 HTTP 状态码兜底处理这一类。
    - 改为：`（请求体无法解析、被限流这两类前置失败除外）`
 
 2. 第 104 行产物下载段末句补：
+
+   > **回填修正（终审 I-1）**：下面这句「跨租户与「非该任务产物」不可区分（同为 404）」**字面不真** —— 两者平台信封 `message` 不同
+   > （「附件不存在」vs「附件不是该任务的产物」）。真正同码同文案的是「跨租户附件」与「本任务产物里已缺失的附件」；
+   > 「非该任务产物」只与「随手编的 id」同 404 同文案，不构成租户 oracle。实际交付的指南末句已按此改写。
 
    ```markdown
    非该任务产物、**跨租户的附件**、附件尚未就绪、以及存储读取故障都回 404/400/500 并**各留一条流水**；
@@ -1235,16 +1261,25 @@ JSON-RPC 形状。对端须能按 HTTP 状态码兜底处理这一类。
    ```markdown
    同一个合规拦截在两个方法上的 `outcome` 并不一致：`message/send` 侧记为 `failed`、
    `message/stream` 侧记为 `rejected`。差异来自两个方法各自的判据 —— send 按最终信封**有无
-   `error`** 判定，stream 按**终态帧状态**判定 —— 与错误码无关。两侧错误码现已一致：合规拦截
-   在 send 侧是 `-32602`（参数错误），不再是早前被宽 except 误标的 `-32603`（内部错误）。
+   `error`** 判定，stream 按**终态帧状态**判定 —— 与错误码无关。本次真正变的只是 send 侧的
+   错误码：合规拦截不再被宽 `except` 误标为 `-32603`（内部错误），现为 `-32602`（参数错误）；
+   stream 侧本就无可谈的错误码，它走的是 `rejected` 终态帧。
    ```
+
+   > 实测补充（回填）：上段原写「两侧错误码现已一致：合规拦截在 send 侧是 `-32602`」，会误导
+   > 读者以为 stream 侧也回 `-32602`。实际 **stream 侧的审计根本不记 `errorCode`** ——
+   > `terminal_frame`（`services/server.py:723-743`）只按终态调
+   > `schedule_stream_audit(_STREAM_OUTCOME_BY_STATE[state])`，不带 detail；SSE 也没有错误
+   > 信封，它的信号是 `rejected` **终态帧状态**（`:821`：`TASK_STATE_REJECTED if isinstance(error,
+   > BadRequestError) else TASK_STATE_FAILED`）。故改为「只改 send 侧、stream 侧无错误码可谈」。
 
 - [ ] **Step 5: 更新功能规格与上一批设计的残余**
 
 1. `docs/features/a2a-interconnect.md` 第 127 行：
 
    - 原文：`JSON-RPC 协议级错误（解析 / 方法 / 参数）回 HTTP 200 + error 信封，执行异常回 -32603。`
-   - 改为：`JSON-RPC 协议级错误（解析 / 方法 / 参数）回 HTTP 200 + error 信封；业务异常按域映射（tasks/* 的 401/403/404 → -32001，其余与 400 → -32602，409/5xx → -32603），未预期故障仍回 HTTP 500 平台信封。`
+   - 改为：`JSON-RPC 协议级错误（解析 / 方法 / 参数）回 HTTP 200 + \`error\` 信封；业务异常按域映射（\`tasks/*\` 的 401/403/404 → \`-32001\`，其余与 400 → \`-32602\`，409/5xx → \`-32603\`），未预期故障仍回 HTTP 500 平台信封。`
+   - **回填修正（执行时发现上面这句本身有误，实际交付文案为）**：`其余与 400` 措辞不精确（可读成「其余状态码」），应为「其余域的 401/403/404 与 400 → `-32602`」；且句尾「未预期故障仍回 HTTP 500 平台信封」对 `message/send` **不成立**（它仍被吞成 HTTP 200 + `-32603`，见 `services/server.py:245-248`），实际交付改为按方法分三口径（`tasks/*` 与产物下载 → 500；`message/send` → 200 + `-32603`；`message/stream` → `failed` 终态帧）。
 
 2. `docs/superpowers/specs/2026-09-20-a2a-task-lookup-tenant-boundary-design.md` §5 残余 #1 的两条子项改为已关闭：
 
@@ -1252,11 +1287,20 @@ JSON-RPC 形状。对端须能按 HTTP 状态码兜底处理这一类。
    1. ~~不做 `handle_a2a_rpc` 的 `AppError` 通用兜底。~~ **已由
       `2026-09-21-a2a-error-sealing-design.md` 关闭**：RPC 层已加兜底，下列两条不再以平台
       信封返回。
-      - ~~`_handle_tasks_cancel` 第二个 `try` 里 `cancel_job` 的**竞态** `NotFoundError`…~~
-        **已关闭**：现回 HTTP 200 + `-32001`。
-      - ~~`_handle_message_send` 的 `except Exception` 会把 `ForbiddenError`（如配额超限）
-        误标为 `-32603`…~~ **已关闭**：现回 `-32602` 并在审计里记 `errorType`。
+   - ~~`_handle_tasks_cancel` 第二个 `try` 里 `cancel_job` 的**竞态** `NotFoundError`（job 在
+     `load_owned_agent_task` 之后、`cancel_job` 之前被删）与 Redis `publish` 故障；~~
+     **已关闭**：竞态 `NotFoundError` 现回 HTTP 200 + `-32001`（Redis `publish` 故障仍按
+     非业务异常重抛 500）。
+   - ~~`_handle_message_send` 的 `except Exception` 会把 `ForbiddenError`（如配额超限）
+     误标为 `-32603`…~~ **已关闭**：现回 `-32602` 并在审计里记 `errorType`。
    ```
+
+   > 实测补充（回填）：上面第一条不能整条划掉 —— 原型同时把「竞态 `NotFoundError`」与
+   > 「Redis `publish` 故障」写进同一子项，但只有前者被兜底关闭。Redis `publish`
+   > （`publish_generative_job_update`）抛的不是 `AppError`，仍走 `handle_a2a_rpc` 的
+   > `except Exception` → 审计 `-32603` 后原样重抛 → HTTP 500 平台信封
+   > （`services/server.py:511-530`）。故保留该子项原文并注明「竞态已关闭、Redis 故障仍
+   > 重抛」，不整条划除。
 
    残余 #5（I2，跨租户探测内部不可区分）**保持不变**，并在其后补一句「本批不改变其状态」。
 
@@ -1275,7 +1319,7 @@ cd backend && uv run python -m pytest -q && uv run ruff check . && uv run ruff f
 - [ ] **Step 8: 提交**
 
 ```bash
-cd /Users/xiezhigang/Projects/miles/MilesAI && git add -A && git commit -F - <<'EOF'
+cd /Users/xiezhigang/Projects/miles/MilesAI/.worktrees/a2a-error-sealing && git add -A && git commit -F - <<'EOF'
 docs(a2a): 同步错误封口口径并修正 attachment 的 docstring 谎言
 
 指南新增「错误与信封」映射表（含「权限被压平」「500 不保证 JSON-RPC 形状」两条例外），

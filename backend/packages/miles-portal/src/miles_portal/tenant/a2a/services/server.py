@@ -22,7 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from miles_ai.integrations.langchain.chat_models import OnDelta
 from miles_ai.integrations.langchain.toolkit.catalog import bound_skill_ids
-from miles_common.exceptions import BadRequestError, ForbiddenError, NotFoundError
+from miles_common.exceptions import AppError, BadRequestError, ForbiddenError, NotFoundError
 from miles_common.schemas.chat_io import CONVERSATION_ID_MAX_LENGTH, ChatResponse
 from miles_core.infra.db import AsyncSessionLocal
 from miles_core.logging import get_logger
@@ -51,6 +51,7 @@ from miles_portal.tenant.a2a.server import (
     TASK_STATE_FAILED,
     TASK_STATE_REJECTED,
     TASK_STATE_WORKING,
+    app_error_envelope,
     artifact_ids_from_job_result,
     build_a2a_agent_message,
     build_a2a_artifacts,
@@ -235,6 +236,12 @@ async def _handle_message_send(
 
     try:
         response = await run_published_agent_chat(db, ctx, agent_id, text, conversation_id=context_id)
+    except AppError:
+        # 业务异常（合规拦截的 BadRequestError、配额的 ForbiddenError …）不在此处译码：交给
+        # ``handle_a2a_rpc`` 的统一兜底 —— 既拿到一致的域映射（都在 ``message/send`` 域，故为
+        # -32602），也让审计能记下原始 ``errorType``/``errorStatus``。若在这里吞成 -32603，
+        # 「配额用尽」「命中敏感词」都会被报成「服务端内部错误」，对端会去重试。
+        raise
     except Exception as exc:
         # 对端只拿到 JSON-RPC 错误信封；本平台侧必须留栈，否则线上无法定位。
         logger.exception("A2A message/send 执行失败: agent_id=%s", agent_id)
@@ -304,7 +311,8 @@ async def read_task_artifact(
     """下载某任务产物，返回 ``(data, mime_type, filename)``。
 
     授权精确到「该智能体 · 该任务 · 该产物」：先验任务归属，再验附件确为该任务产物，
-    否则本租户任意附件都能被取走。成败都留一条审计流水（「谁把产物取走了」要查得到）。
+    否则本租户任意附件都能被取走。成败都留一条审计流水（「谁把产物取走了」要查得到）；
+    跨租户附件对外归一为「附件不存在」（404），不确认存在性。
     """
     started = time.monotonic()
     try:
@@ -313,13 +321,21 @@ async def read_task_artifact(
             raise NotFoundError("附件不是该任务的产物")
         data, mime, filename = await AttachmentService(db, ctx).read_attachment_bytes(attachment_id)
     except NotFoundError:
-        await write_a2a_audit(
-            ctx=ctx,
-            agent_id=agent_id,
-            action=AUDIT_ACTION_ARTIFACT_DOWNLOAD,
-            outcome=AUDIT_OUTCOME_FAILED,
-            detail={"taskId": str(task_id), "errorCode": TASK_NOT_FOUND, "durationMs": streaming.elapsed_ms(started)},
-        )
+        # 含 load_owned_agent_task 的各种「不存在」与「非本任务产物」
+        await _audit_artifact_failure(ctx, agent_id, task_id, started, TASK_NOT_FOUND)
+        raise
+    except ForbiddenError as exc:
+        # 跨租户附件：与「非本任务产物」同口径回 404，不向对端确认存在性。归一放在 A2A
+        # 对外面而非 AttachmentService —— 后者对内部调用方（工作台附件列表等）是对的。
+        await _audit_artifact_failure(ctx, agent_id, task_id, started, TASK_NOT_FOUND, origin=exc)
+        raise NotFoundError("附件不存在") from None
+    except AppError as exc:
+        # 如「附件文件未就绪」（400）。状态码由全局处理器给，此处只补留痕。
+        await _audit_artifact_failure(ctx, agent_id, task_id, started, INVALID_PARAMS, origin=exc)
+        raise
+    except Exception:
+        # 存储 / DB 故障：留痕后原样重抛 → HTTP 500 平台信封（与 RPC 层口径一致）。
+        await _audit_artifact_failure(ctx, agent_id, task_id, started, INTERNAL_ERROR)
         raise
     await write_a2a_audit(
         ctx=ctx,
@@ -329,6 +345,34 @@ async def read_task_artifact(
         detail={"taskId": str(task_id), "durationMs": streaming.elapsed_ms(started)},
     )
     return data, mime, filename
+
+
+async def _audit_artifact_failure(
+    ctx: TenantContext,
+    agent_id: UUID,
+    task_id: UUID,
+    started: float,
+    error_code: int,
+    *,
+    origin: AppError | None = None,
+) -> None:
+    """产物下载失败留痕：越权尝试与存储故障都是排查线索，不能只在成功时记。
+
+    ``origin`` 非空时额外记原始异常类型与 HTTP status —— 对外的 ``errorCode`` 已被压平
+    （跨租户与「非本任务产物」都回 ``TASK_NOT_FOUND``），这是租户可见面上唯一能读出真实
+    原因的出口。只记类型与状态码，不记 message。
+    """
+    detail: dict = {"taskId": str(task_id), "errorCode": error_code, "durationMs": streaming.elapsed_ms(started)}
+    if origin is not None:
+        detail["errorType"] = type(origin).__name__
+        detail["errorStatus"] = origin.status_code
+    await write_a2a_audit(
+        ctx=ctx,
+        agent_id=agent_id,
+        action=AUDIT_ACTION_ARTIFACT_DOWNLOAD,
+        outcome=AUDIT_OUTCOME_FAILED,
+        detail=detail,
+    )
 
 
 async def _handle_tasks_get(
@@ -436,17 +480,36 @@ async def handle_a2a_rpc(
 
     审计放在这一层而非各 ``_handle_*`` 内：一次调用只该有一条流水，且 ``outcome`` 由最终
     信封决定（有 ``error`` 即失败），不必在各处重复判定。
+
+    ``AppError`` 在这一层收口：各 ``_handle_*`` 的逐点映射是第一道（语义更精确），但只要
+    某个 handler 漏捕、或捕得比业务异常更宽，异常就会落到 ``except AppError`` 被译成
+    JSON-RPC 信封 —— 对端拿到的形状与逐点映射一致，且尾部那条统一审计能把原始类型与
+    状态码记进 ``detail.errorType`` / ``detail.errorStatus``。
     """
     started = time.monotonic()
     method = payload.get("method") if isinstance(payload, dict) else None
+    req_id = payload.get("id") if isinstance(payload, dict) else None
     action = _AUDIT_ACTION_BY_METHOD.get(method) if isinstance(method, str) else None
     # ``action`` 非空只可能来自「``method`` 是表内键」，此处重判一次让 ``method`` 收窄为
     # ``str``，不给调用点留下「靠运气成立」的类型不一致。
     if action is None or not isinstance(method, str):
         # 不支持的方法没有对应动作名，不编造流水。
         return await _dispatch_a2a_rpc(db, ctx, agent_id, payload, base_url=base_url)
+    #: 被兜底接住的业务异常。非空时把原始类型与 status 记进审计（对外码已被压平）。
+    origin: AppError | None = None
     try:
         envelope = await _dispatch_a2a_rpc(db, ctx, agent_id, payload, base_url=base_url)
+    except AppError as exc:
+        # 只有 handler 漏捕或捕得更宽才会走到这里 —— 是「映射归属」漏了，值得可查。
+        origin = exc
+        logger.warning(
+            "A2A 业务异常经兜底译码: method=%s agent_id=%s errorType=%s status=%s",
+            method,
+            agent_id,
+            type(exc).__name__,
+            exc.status_code,
+        )
+        envelope = app_error_envelope(method, req_id, exc)
     except Exception:
         # 未捕获异常逸出（DB / 存储故障）：先留痕再**原样重抛**。这里是失败路径上唯一的
         # 留痕机会 —— 吞掉异常会把 500 变成 200，把故障伪装成成功。
@@ -470,7 +533,7 @@ async def handle_a2a_rpc(
         agent_id=agent_id,
         action=action,
         outcome=_rpc_audit_outcome(envelope),
-        detail=_rpc_audit_detail(payload, envelope, started=started, method=method),
+        detail=_rpc_audit_detail(payload, envelope, started=started, method=method, origin=origin),
     )
     return envelope
 
@@ -480,8 +543,13 @@ def _rpc_audit_outcome(envelope: object) -> str:
     return AUDIT_OUTCOME_FAILED if isinstance(envelope, dict) and "error" in envelope else AUDIT_OUTCOME_OK
 
 
-def _rpc_audit_detail(payload: object, envelope: object, *, started: float, method: str) -> dict:
-    """审计细节：方法、耗时，以及能低成本取到的任务/会话标识与错误码。"""
+def _rpc_audit_detail(payload: object, envelope: object, *, started: float, method: str, origin: AppError | None = None) -> dict:
+    """审计细节：方法、耗时，以及能低成本取到的任务/会话标识与错误码。
+
+    ``origin`` 非空表示该次调用由兜底译码：额外记原始异常类型与 HTTP status。对外码已被
+    域规则压平（权限读不出真实原因），这两项是租户可见面上唯一的补偿。**只记类型与状态码**
+    —— ``AppError`` 文案可能夹内部实现细节，`aud_logs` 是租户可见面。
+    """
     detail: dict = {"method": method, "durationMs": streaming.elapsed_ms(started)}
     params = payload.get("params") if isinstance(payload, dict) else None
     if isinstance(params, dict):
@@ -499,6 +567,9 @@ def _rpc_audit_detail(payload: object, envelope: object, *, started: float, meth
     error = envelope.get("error") if isinstance(envelope, dict) else None
     if isinstance(error, dict):
         detail["errorCode"] = error.get("code")
+    if origin is not None:
+        detail["errorType"] = type(origin).__name__
+        detail["errorStatus"] = origin.status_code
     return detail
 
 

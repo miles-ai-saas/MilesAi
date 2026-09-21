@@ -19,7 +19,7 @@ from uuid import uuid4
 import anyio
 import pytest
 
-from miles_common.exceptions import BadRequestError, ForbiddenError, NotFoundError
+from miles_common.exceptions import BadRequestError, ConflictError, ForbiddenError, NotFoundError, UnauthorizedError
 from miles_common.schemas.chat_io import ChatResponse
 from miles_core.models.agent import Agent, AgentStatus, AgentType
 from miles_core.tenant import TenantContext
@@ -402,6 +402,46 @@ def test_rate_limited_code_is_in_implementation_defined_range():
     assert server_mod.RATE_LIMITED == -32000
 
 
+@pytest.mark.parametrize(
+    ("method", "exc", "expected"),
+    [
+        # ``tasks/*`` 域：401/403/404 一律压成 -32001，以免与「任务不存在」可区分
+        ("tasks/get", NotFoundError("生成任务不存在"), server_mod.TASK_NOT_FOUND),
+        ("tasks/cancel", ForbiddenError("无权访问该租户资源"), server_mod.TASK_NOT_FOUND),
+        ("tasks/resubscribe", UnauthorizedError("未授权"), server_mod.TASK_NOT_FOUND),
+        # 其它域：401/403/404 与 400 同压 -32602（与既有逐点映射一致）
+        ("message/send", BadRequestError("输入内容包含敏感词，已拦截：某词"), server_mod.INVALID_PARAMS),
+        ("message/send", ForbiddenError("配额已用尽"), server_mod.INVALID_PARAMS),
+        ("message/send", NotFoundError("生成任务不存在"), server_mod.INVALID_PARAMS),
+        (None, BadRequestError("坏参数"), server_mod.INVALID_PARAMS),
+        # ``tasks/*`` 域的 400 不受域规则影响：它本来就是「参数错」，不是存在性 oracle
+        ("tasks/get", BadRequestError("id 不是合法 UUID"), server_mod.INVALID_PARAMS),
+        # 其它状态（含 409）归内部错误：`INTERNAL_ERROR` 的保留语义不被稀释
+        ("tasks/get", ConflictError("任务冲突"), server_mod.INTERNAL_ERROR),
+        ("message/send", ConflictError("任务冲突"), server_mod.INTERNAL_ERROR),
+    ],
+)
+def test_app_error_envelope_maps_status_and_domain(method, exc, expected):  # noqa: ANN001
+    """逐格钉住映射表：域判定只对 401/403/404 生效，400 与 409 与域无关。"""
+    envelope = server_mod.app_error_envelope(method, 7, exc)
+
+    assert set(envelope) == {"jsonrpc", "id", "error"}
+    assert envelope["jsonrpc"] == "2.0"
+    assert envelope["id"] == 7
+    assert envelope["error"]["code"] == expected
+    # 文案原样透传：它是对端唯一能读到的失败原因，压缩它等于让对端无法排查
+    assert envelope["error"]["message"] == str(exc)
+    assert "result" not in envelope
+
+
+def test_app_error_envelope_never_emits_platform_envelope():
+    """对端必须能把错误对回自己的 ``id``：平台信封的四个键一个都不能出现。"""
+    envelope = server_mod.app_error_envelope("message/send", None, BadRequestError("坏参数"))
+
+    assert set(envelope) == {"jsonrpc", "id", "error"}
+    assert not ({"code", "data", "trace_id", "message"} & set(envelope))
+
+
 def test_is_terminal_generative_status_only_accepts_known_terminal():
     """未知状态不当作已结束：与 ``to_a2a_task_state`` 回 ``unknown``（而非 ``completed``）同一原则。"""
     assert is_terminal_generative_status("success") is True
@@ -728,6 +768,60 @@ async def test_handle_rpc_maps_agent_failure_to_internal_error(monkeypatch):  # 
     envelope = await server_svc.handle_a2a_rpc(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, payload, base_url=BASE)
     assert envelope["error"]["code"] == server_mod.INTERNAL_ERROR
     assert "模型不可用" in envelope["error"]["message"]
+
+
+# --- 3.1 message/send 的业务异常不再被 handler 吞成内部错误（治 E3） ----------- #
+
+
+@pytest.mark.asyncio
+async def test_message_send_maps_compliance_block_to_invalid_params(monkeypatch, a2a_audit_recorder):  # noqa: ANN001
+    """合规拦截曾被误标成 `-32603`「服务端内部错误」，对端据此会去重试。
+
+    真实来源：`compliance/intercept.py` 对命中敏感词的入站消息抛
+    `BadRequestError("输入内容包含敏感词，已拦截：…")`。
+    """
+
+    async def fake_chat(*_args, **_kwargs):  # noqa: ANN002, ANN003
+        raise BadRequestError("输入内容包含敏感词，已拦截：某词")
+
+    monkeypatch.setattr(server_svc, "run_published_agent_chat", fake_chat)
+    payload = {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "message/send",
+        "params": {"message": {"parts": [{"kind": "text", "text": "你好"}]}},
+    }
+
+    envelope = await server_svc.handle_a2a_rpc(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, payload, base_url=BASE)
+
+    assert envelope["error"]["code"] == server_mod.INVALID_PARAMS
+    assert "拦截" in envelope["error"]["message"]
+    assert len(a2a_audit_recorder) == 1
+    assert a2a_audit_recorder[0]["detail"]["errorCode"] == server_mod.INVALID_PARAMS
+    assert a2a_audit_recorder[0]["detail"]["errorType"] == "BadRequestError"
+    assert a2a_audit_recorder[0]["detail"]["errorStatus"] == 400
+
+
+@pytest.mark.asyncio
+async def test_message_send_maps_quota_forbidden_to_invalid_params(monkeypatch, a2a_audit_recorder):  # noqa: ANN001
+    """配额/权限类 `ForbiddenError` 同理：不再是「内部错误」，但对外也读不出真实原因（已知取舍）。"""
+
+    async def fake_chat(*_args, **_kwargs):  # noqa: ANN002, ANN003
+        raise ForbiddenError("本月配额已用尽")
+
+    monkeypatch.setattr(server_svc, "run_published_agent_chat", fake_chat)
+    payload = {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "message/send",
+        "params": {"message": {"parts": [{"kind": "text", "text": "你好"}]}},
+    }
+
+    envelope = await server_svc.handle_a2a_rpc(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, payload, base_url=BASE)
+
+    assert envelope["error"]["code"] == server_mod.INVALID_PARAMS
+    assert a2a_audit_recorder[0]["detail"]["errorType"] == "ForbiddenError"
+    assert a2a_audit_recorder[0]["detail"]["errorStatus"] == 403
 
 
 # --- 4. Task 生命周期 ---------------------------------------------------------
@@ -1065,6 +1159,109 @@ async def test_read_task_artifact_normalizes_foreign_tenant_and_audits(monkeypat
     assert a2a_audit_recorder[0]["detail"]["errorCode"] == server_mod.TASK_NOT_FOUND
 
 
+# --- 4.2 RPC 层兜底：漏捕的 AppError 不再逸出（治 E2 的竞态） ------------------ #
+
+
+@pytest.mark.asyncio
+async def test_tasks_cancel_race_maps_not_found_at_rpc_layer(monkeypatch, a2a_audit_recorder):  # noqa: ANN001
+    """E2 复现：`cancel_job` 的竞态 `NotFoundError` 不再逸出成平台信封 / `-32603`。
+
+    `_handle_tasks_cancel` 第二个 `try` 只捕 `BadRequestError`；job 在
+    `load_owned_agent_task` 之后、`cancel_job` 之前被删时，`NotFoundError` 会直接逸出到
+    `handle_a2a_rpc`。修复前它被 `except Exception` 记成审计 `-32603` 后原样重抛，再被全局
+    `AppError` 专属处理器接住 → **HTTP 404 平台信封**（`message="生成任务不存在"`），**不是**
+    HTTP 500 —— 500 只留给非 `AppError`。
+    """
+    job_id = uuid4()
+    owned = _job("running", job_id=job_id, agent_id=AGENT_ID)
+
+    async def fake_get(_db, _ctx, _job_id):  # noqa: ANN001
+        return owned
+
+    class _RacedJobService:
+        """模拟 load 与 cancel 之间任务消失。"""
+
+        def __init__(self, _db, _ctx) -> None:
+            pass
+
+        async def cancel_job(self, _job_id):  # noqa: ANN001
+            raise NotFoundError("生成任务不存在")
+
+    monkeypatch.setattr(server_svc, "get_generative_job_for_tenant", fake_get)
+    monkeypatch.setattr(server_svc, "GenerativeJobService", _RacedJobService)
+    payload = {"jsonrpc": "2.0", "id": 1, "method": "tasks/cancel", "params": {"id": str(job_id)}}
+
+    envelope = await server_svc.handle_a2a_rpc(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, payload, base_url=BASE)
+
+    # 键集等值即「没有逸出到全局处理器」：平台信封是 {code,message,data,trace_id}
+    assert set(envelope) == {"jsonrpc", "id", "error"}
+    assert envelope["id"] == 1
+    assert envelope["error"]["code"] == server_mod.TASK_NOT_FOUND
+    assert len(a2a_audit_recorder) == 1
+    assert a2a_audit_recorder[0]["outcome"] == server_mod.AUDIT_OUTCOME_FAILED
+    assert a2a_audit_recorder[0]["detail"]["errorCode"] == server_mod.TASK_NOT_FOUND
+    # 原始类型与 status 落进租户可见面：对外码被压平后，这是唯一能读出真实原因的出口
+    assert a2a_audit_recorder[0]["detail"]["errorType"] == "NotFoundError"
+    assert a2a_audit_recorder[0]["detail"]["errorStatus"] == 404
+    assert a2a_audit_recorder[0]["detail"]["taskId"] == str(job_id)
+
+
+@pytest.mark.asyncio
+async def test_rpc_layer_maps_uncaptured_app_error(monkeypatch, a2a_audit_recorder):  # noqa: ANN001
+    """兜底本身：把分发层换成「直接抛」的替身，模拟某个 handler 忘了逐点映射。
+
+    **注入式用例**：当前没有可达的漏捕点（E2 已由上面那条覆盖），本用例锁的是兜底机制
+    不被重构删掉，不得当作缺陷回归闸门。用例从 `_dispatch_a2a_rpc` 起替换，故「handler
+    自己就漏捕」这一层也被覆盖到。
+    """
+
+    async def _boom(*_args, **_kwargs):  # noqa: ANN002, ANN003
+        raise BadRequestError("参数里有个东西不合法")
+
+    monkeypatch.setattr(server_svc, "_dispatch_a2a_rpc", _boom)
+    payload = {"jsonrpc": "2.0", "id": 9, "method": "tasks/get", "params": {"id": str(uuid4())}}
+
+    envelope = await server_svc.handle_a2a_rpc(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, payload, base_url=BASE)
+
+    assert envelope["error"]["code"] == server_mod.INVALID_PARAMS
+    assert a2a_audit_recorder[0]["detail"]["errorType"] == "BadRequestError"
+    assert a2a_audit_recorder[0]["detail"]["errorStatus"] == 400
+
+
+@pytest.mark.asyncio
+async def test_rpc_layer_still_reraises_unexpected_exception(monkeypatch, a2a_audit_recorder):  # noqa: ANN001
+    """口径不变：非 `AppError` 仍原样重抛（→ HTTP 500 平台信封），且照旧留痕。
+
+    这条是钉住设计 §3.4「不改口径」的回归闸门 —— 若有人顺手把兜底写成「一律回信封」，
+    这里会立刻红。
+    """
+    job_id = uuid4()
+    owned = _job("running", job_id=job_id, agent_id=AGENT_ID)
+
+    async def fake_get(_db, _ctx, _job_id):  # noqa: ANN001
+        return owned
+
+    class _BoomJobService:
+        def __init__(self, _db, _ctx) -> None:
+            pass
+
+        async def cancel_job(self, _job_id):  # noqa: ANN001
+            raise RuntimeError("redis 不可用")
+
+    monkeypatch.setattr(server_svc, "get_generative_job_for_tenant", fake_get)
+    monkeypatch.setattr(server_svc, "GenerativeJobService", _BoomJobService)
+    payload = {"jsonrpc": "2.0", "id": 1, "method": "tasks/cancel", "params": {"id": str(job_id)}}
+
+    with pytest.raises(RuntimeError):
+        await server_svc.handle_a2a_rpc(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, payload, base_url=BASE)
+
+    assert len(a2a_audit_recorder) == 1
+    assert a2a_audit_recorder[0]["outcome"] == server_mod.AUDIT_OUTCOME_FAILED
+    assert a2a_audit_recorder[0]["detail"]["errorCode"] == server_mod.INTERNAL_ERROR
+    # 未预期异常不带 errorType：`detail` 的键集是对外契约的一部分，顺手加键会漂移
+    assert "errorType" not in a2a_audit_recorder[0]["detail"]
+
+
 # --- 5. 产物下载归属校验 ------------------------------------------------------
 
 
@@ -1141,6 +1338,97 @@ async def test_read_task_artifact_rejects_non_agent_task(monkeypatch):  # noqa: 
 
     with pytest.raises(NotFoundError):
         await server_svc.read_task_artifact(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, job.id, attachment_id)
+
+
+# --- 5.1 产物下载的失败留痕与跨租户不确认存在性（治 E1） ---------------------- #
+
+
+def _artifact_getter(job):  # noqa: ANN001, ANN202
+    """把 ``get_generative_job_for_tenant`` 换成返回指定 job 的替身。"""
+
+    async def _get(_db, _ctx, _job_id):  # noqa: ANN001
+        return job
+
+    return _get
+
+
+def _failing_attachments(exc: Exception):  # noqa: ANN202
+    """把 ``AttachmentService`` 换成「读字节即抛」的替身。"""
+
+    class _FakeAttachments:
+        def __init__(self, _db, _ctx) -> None:
+            pass
+
+        async def read_attachment_bytes(self, _attachment_id):  # noqa: ANN001
+            raise exc
+
+    return _FakeAttachments
+
+
+@pytest.mark.asyncio
+async def test_read_task_artifact_audits_not_ready_attachment_exactly_once(monkeypatch, a2a_audit_recorder):  # noqa: ANN001
+    """附件未就绪（400）此前**零流水**，与 docstring 的「成败都留一条」相矛盾。
+
+    判别力点：本用例断言 `len(...) == 1`。若在 `except` 块里 `raise` 新异常时被同一
+    `try` 的后续 `except` 二次捕获，就会变成两条 —— 这是本段唯一容易写错的地方。
+    """
+    attachment_id = uuid4()
+    job = _artifact_job(agent_id=AGENT_ID, attachments=(str(attachment_id),))
+    monkeypatch.setattr(server_svc, "get_generative_job_for_tenant", _artifact_getter(job))
+    monkeypatch.setattr(server_svc, "AttachmentService", _failing_attachments(BadRequestError("附件文件未就绪")))
+
+    with pytest.raises(BadRequestError):
+        await server_svc.read_task_artifact(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, job.id, attachment_id)
+
+    assert len(a2a_audit_recorder) == 1
+    assert [r["action"] for r in a2a_audit_recorder] == [server_mod.AUDIT_ACTION_ARTIFACT_DOWNLOAD]
+    assert a2a_audit_recorder[0]["outcome"] == server_mod.AUDIT_OUTCOME_FAILED
+    assert a2a_audit_recorder[0]["detail"]["errorCode"] == server_mod.INVALID_PARAMS
+    assert a2a_audit_recorder[0]["detail"]["errorType"] == "BadRequestError"
+    assert a2a_audit_recorder[0]["detail"]["errorStatus"] == 400
+    assert a2a_audit_recorder[0]["detail"]["taskId"] == str(job.id)
+
+
+@pytest.mark.asyncio
+async def test_read_task_artifact_normalizes_foreign_attachment_to_not_found(monkeypatch, a2a_audit_recorder):  # noqa: ANN001
+    """跨租户附件对外 404 而非 403：403 会向对端确认「该附件存在于别的租户」。
+
+    `AttachmentService` 不改语义（跨租户仍抛 `ForbiddenError`，它对内部调用方是对的）——
+    「不确认存在性」是 A2A 对外面自己的职责。
+    """
+    attachment_id = uuid4()
+    job = _artifact_job(agent_id=AGENT_ID, attachments=(str(attachment_id),))
+    monkeypatch.setattr(server_svc, "get_generative_job_for_tenant", _artifact_getter(job))
+    monkeypatch.setattr(server_svc, "AttachmentService", _failing_attachments(ForbiddenError("无权访问该租户资源")))
+
+    with pytest.raises(NotFoundError) as exc:
+        await server_svc.read_task_artifact(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, job.id, attachment_id)
+
+    assert str(exc.value) == "附件不存在"
+    # ``from None``：不把「无权访问该租户资源」这类内部措辞串进上下文
+    assert exc.value.__cause__ is None and exc.value.__suppress_context__ is True
+    assert len(a2a_audit_recorder) == 1
+    assert a2a_audit_recorder[0]["outcome"] == server_mod.AUDIT_OUTCOME_FAILED
+    assert a2a_audit_recorder[0]["detail"]["errorCode"] == server_mod.TASK_NOT_FOUND
+    # 对外被压成 404 后，租户可见面上仍能读出真实原因是越租户
+    assert a2a_audit_recorder[0]["detail"]["errorType"] == "ForbiddenError"
+    assert a2a_audit_recorder[0]["detail"]["errorStatus"] == 403
+
+
+@pytest.mark.asyncio
+async def test_read_task_artifact_audits_storage_failure_and_reraises(monkeypatch, a2a_audit_recorder):  # noqa: ANN001
+    """存储/DB 故障此前零流水；原样重抛不变（仍由全局处理器给 500）。"""
+    attachment_id = uuid4()
+    job = _artifact_job(agent_id=AGENT_ID, attachments=(str(attachment_id),))
+    monkeypatch.setattr(server_svc, "get_generative_job_for_tenant", _artifact_getter(job))
+    monkeypatch.setattr(server_svc, "AttachmentService", _failing_attachments(RuntimeError("oss 不可用")))
+
+    with pytest.raises(RuntimeError):
+        await server_svc.read_task_artifact(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, job.id, attachment_id)
+
+    assert len(a2a_audit_recorder) == 1
+    assert a2a_audit_recorder[0]["detail"]["errorCode"] == server_mod.INTERNAL_ERROR
+    assert "errorType" not in a2a_audit_recorder[0]["detail"]
 
 
 # --- 6. message/stream --------------------------------------------------------

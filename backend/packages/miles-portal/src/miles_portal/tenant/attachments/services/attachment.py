@@ -176,7 +176,11 @@ class AttachmentService(BaseService):
         await apply_storage_delta(self.db, att.tenant_id, 0)
 
     async def _get_or_raise(self, attachment_id: UUID) -> Attachment:
-        """按 ID 取未删附件并校验租户归属；缺失或跨租户均抛 ``NotFoundError``。"""
+        """按 ID 取未删附件并校验租户归属；缺失或已删抛 ``NotFoundError``，跨租户抛 ``ForbiddenError``。
+
+        A2A 对外面会把跨租户压成 404（见 ``a2a.services.server.read_task_artifact``）——
+        「不向对端确认存在性」是那一层自己的职责，本服务不改这一语义。
+        """
         att = await self.repo.get_by_id(attachment_id)
         if not att or is_marked_deleted(att):
             raise NotFoundError("附件不存在")

@@ -82,7 +82,7 @@ GET  /.well-known/agent-card.json                                     # 全平�
 
 指定 `custom` 智能体对外发布后，外部 A2A 客户端可拉取 Card 并调用。
 
-- 开关：智能体 `config.a2a_publish = true`（必须同时 `agent_type=custom` 且 `status=enabled`；否则一律 404）
+- 开关：智能体 `config.a2a_publish = true`（必须同时 `agent_type=custom` 且 `status=enabled`）。该开关管的是 **Card 可见性**：未发布时 Card GET 回 404（与「不存在」不可区分）；**根别名不按某个智能体判可见性**，而是只看候选集合 —— `resolve_default_published_agent_id` 的过滤条件里就有 `config.a2a_publish`，只有 `a2a_publish=true` 的智能体才入候选，恰一个才 307、否则 404（见下）。调用端点也不按它回 404 —— `message/send` / `message/stream` / `tasks/resubscribe` 在各自的前置校验里回 **HTTP 200 + `-32602`**，而 `tasks/get` / `tasks/cancel` 根本不经发布门槛（只校验任务归属）
 - Card：`GET /api/v1/open/a2a/agents/{agent_id}/.well-known/agent-card.json`（**公开**，A2A 发现元数据）
 - 调用：`POST /api/v1/open/a2a/agents/{agent_id}`（JSON-RPC 2.0，**须带该智能体的 `X-API-Key`**）；支持的方法见下
 - 根别名：`GET /.well-known/agent-card.json` → 307 到按智能体路径；**仅当全平台唯一发布**时启用，命中 0 或 >1 返回 404（多租户根路径无法区分租户，不猜）
@@ -99,9 +99,11 @@ JSON-RPC 方法：
 
 `tasks/pushNotificationConfig/*` 未实现，回 `-32601`（不静默成功）。
 
-任务归属：`tasks/get` / `tasks/cancel` / `tasks/resubscribe` / 产物下载都校验「该任务由本智能体发起」（job 的 `source_ref_type=agent` + `source_ref_id=agent_id`），不属于则回 `-32001` / 404 而非 403 —— 不向对端确认任务是否存在。「不属于」含两种情形，对端**无从区分**：同租户另一个智能体的任务（`-32001`），以及**其他租户**的任务（同样 `-32001`，不因越租户而改成 403）。若只按租户校验，同租户另一个智能体的 key 就能查/取消本智能体任务并猜到其产物地址。产物下载是普通 HTTP 端点（非 JSON-RPC），同一语义以 **404 状态码**表达；这四种调用无论成败都会在审计流水留痕（请求体无法解析、被限流、附件尚未就绪这三类前置失败除外）。
+任务归属：`tasks/get` / `tasks/cancel` / `tasks/resubscribe` / 产物下载都校验「该任务由本智能体发起」（job 的 `source_ref_type=agent` + `source_ref_id=agent_id`），不属于则回 `-32001` / 404 而非 403 —— 不向对端确认任务是否存在。「不属于」含两种情形，对端**无从区分**：同租户另一个智能体的任务（`-32001`），以及**其他租户**的任务（同样 `-32001`，不因越租户而改成 403）。若只按租户校验，同租户另一个智能体的 key 就能查/取消本智能体任务并猜到其产物地址。产物下载是普通 HTTP 端点（非 JSON-RPC），同一语义以 **404 状态码**表达；这四种调用无论成败都会在审计流水留痕（请求体无法解析、被限流这两类前置失败除外）。
 
-**产物下载：** `Task.artifacts[].parts[].file.uri` 指向 `GET /api/v1/open/a2a/agents/{agent_id}/tasks/{task_id}/artifacts/{attachment_id}`，**需带同一 `X-API-Key`**（平台刻意不暴露对象存储签名 URL）。授权精确到「该智能体 · 该任务 · 该产物」，非该任务产物一律 404，否则本租户任意附件都能被取走。
+**产物下载：** `Task.artifacts[].parts[].file.uri` 指向 `GET /api/v1/open/a2a/agents/{agent_id}/tasks/{task_id}/artifacts/{attachment_id}`，**需带同一 `X-API-Key`**（平台刻意不暴露对象存储签名 URL）。授权精确到「该智能体 · 该任务 · 该产物」，非该任务产物一律 404，否则本租户任意附件都能被取走。非该任务产物、**跨租户的附件**、附件尚未就绪、以及存储读取故障都回 404/400/500 并**各留一条流水**。
+
+真正「**同码同文案**、对端不可区分」的是**跨租户附件**与**本任务产物里已缺失的附件**：两者都回 404、信封 `message` 同为「附件不存在」（前者由 `services/server.py` 的跨租户分支归一，后者来自 `attachments/services/attachment.py` 的「附件行缺失或已删」）。而「**非该任务产物**」是另一种 404 —— 它的 `message` 是「附件不是该任务的产物」。它并不因此构成租户 oracle：判据只是「该 id 在不在本任务的产物列表里」，随手编一个 id 得到的是**同一个** 404 与同一句文案，对端同样读不出该编号是否存在。
 
 生成任务状态 → A2A `TaskState`：`pending→submitted`、`running→working`、`success→completed`、`failed→failed`、`cancelled→canceled`；未知状态回保留值 `unknown`（而非 `completed` —— 谎称就绪会让对端停止轮询）。
 
@@ -146,6 +148,52 @@ Card 同时声明 `securitySchemes`（`apiKey` · `in: header` · `name: X-API-K
 反向登记：把本平台发布的智能体登记为外部 Peer 时，在 `auth_config.api_key` 填入该智能体的 X-API-Key，客户端会在 Card 同步与 `message/send` 时自动携带。
 
 前端入口：智能体表单「工具与能力」→ 勾选「对外发布为 A2A Server」；详情对话框展示已发布状态与 Card 地址。
+
+### 错误与信封
+
+调用端点的**协议级错误**（解析 / 方法 / 参数）回 **HTTP 200 + JSON-RPC 信封**（`{"jsonrpc":"2.0","id":…,"error":{"code":…,"message":…}}`），
+对端据此把错误对回自己的 `id`。但**并非所有响应都是这个形状**，对端必须两种都吃下：IP 维度限流
+（平台中间件，先于本端点执行）回**平台信封** 429（`{code,message,data,trace_id}`，无 `id`、无 `Retry-After`）；
+鉴权失败（`require_agent_api_key`：缺 / 无效 Key → 401，Key 与目标智能体不匹配 → 403）同样是平台信封，
+响应里根本没有 `id` 可对。按 Key 维度的限流虽也是 429，正文仍是 JSON-RPC 信封（见下文「限流」）。
+
+| `error.code` | 含义 | 触发 |
+|---|---|---|
+| `-32700` | 解析错误 | 请求体不是合法 JSON |
+| `-32600` | 非法请求 | 请求体是合法 JSON 但不是对象，或缺 `method` |
+| `-32601` | 方法未找到 | 未实现的方法（如 `tasks/pushNotificationConfig/*`） |
+| `-32602` | 参数错误 | `message/send` 域的业务异常（含合规拦截、配额/权限拒绝）；状态码 400 或非 `tasks/*` 域的 401/403/404；非法 `params.id`、超长 `contextId`、未发布智能体 |
+| `-32603` | 内部错误 | 状态码既非 400/401/403/404 的业务异常（含 409 冲突与 5xx）；`message/send` 的未预期故障（见下） |
+| `-32000` | 限流 | 超限；HTTP 429 + `Retry-After` |
+| `-32001` | 任务不存在 | 不属于该智能体的任务（含**其他租户**的任务）、`tasks/*` 域的 401/403/404 |
+| `-32002` | 任务不可取消 | 任务已结束 |
+
+`message/stream` / `tasks/resubscribe` 一旦开流，**流内**业务失败就不产 `error.code` ——
+信号是终态帧的 `status.state`（合规拦截 `rejected`、其余执行异常 `failed`）。上表的错误码
+只覆盖它们**开流前**的前置校验失败。
+
+**权限与冲突会被压平**：业务异常的状态码不进入 `error.code` —— 只有 `tasks/*` 域的
+401/403/404 被单独压成 `-32001`（不确认任务是否存在，含跨租户）；其余一律 `-32602`
+（状态码 400，或非 `tasks/*` 域的 401/403/404）或 `-32603`（409 与 5xx），对端读不出真实原因。
+这是为了不给出探测资源存在性的 oracle。原因记在租户审计的 `errorType` / `errorStatus`。
+
+**未预期故障不是「一律 500」**，按方法分三种口径：
+
+- **`tasks/get` / `tasks/cancel`（RPC 路径）与产物下载**：非 `AppError` 故障（DB / Redis 等）回
+  **HTTP 500 平台信封** `{code,message,data,trace_id}`，不保证 JSON-RPC 形状 —— 对端须能按 HTTP
+  状态码兜底处理这一类。
+- **`message/send`**：因历史原因，其 `except Exception` 仍把 **`run_published_agent_chat` 抛出的**
+  非 `AppError` 吞成 **HTTP 200 + `-32603`**。这是本批未改的**旧口径**，属已知的不一致，不是
+  「设计如此」。该 `try` 只包住这一次调用：前置（如 `load_published_agent` 的 `db.get` 抛 SQLAlchemy
+  异常）与信封组装阶段的非 `AppError` 不在其中，会逸出到 `handle_a2a_rpc` 后仍重抛 → 500 平台信封。
+- **`message/stream` 与 `tasks/resubscribe`**：流开始后的故障不开错误信封，以 **`failed` 终态帧**
+  收流（`message/stream` 的合规拦截为 `rejected`）；流内没有 `error.code` 可读。`tasks/resubscribe`
+  流内的非预期异常由 `services/subscription.py` 吞下，回一帧 `failed` 终态 + 一条 `failed` 审计，
+  同样**不是 500**。
+
+> 注意别把 `AppError` 当未预期故障：上表里由业务异常映射出的码（`-32602` / `-32603` /
+> `-32001` / `-32002`）都来自 `AppError`。例如对象存储读取失败被包成
+> `AppError(status_code=500)`，走 RPC 路径时按状态码译为 `-32603`，而不是 500 平台信封。
 
 ## 限流
 
@@ -194,9 +242,18 @@ Retry-After: 12
 `canceled`）调用了哪个智能体的哪个方法」，**不含消息正文**。被限流拒绝的请求只记风控事件、
 不记审计流水。
 
-同一个合规拦截在两个方法上的 `outcome` 并不一致：`message/send` 侧记为 `failed`（异常被
-`message/send` 的既有错误映射统一译成信封 `-32603`），`message/stream` 侧记为 `rejected`
-（终态帧）。差异来自 send 侧的错误码映射，本次只如实记录、不改码。
+当某次调用的业务异常由 RPC 层兜底译码时，`detail` 会额外带 `errorType`（异常类名）与
+`errorStatus`（HTTP 状态码）。产物下载的失败留痕（`_audit_artifact_failure`）同理，但**只在
+拿得到原始异常时才写**这两键（跨租户 `ForbiddenError`、其它 `AppError`）；`NotFoundError`
+「不是该任务的产物」与存储故障两档不写，只有 `errorCode`
+—— 对外错误码被压平后，这是租户可见面上唯一能读出真实原因的出口。同样**只记类型与状态码，
+不记 message**。
+
+同一个合规拦截在两个方法上的 `outcome` 并不一致：`message/send` 侧记为 `failed`、
+`message/stream` 侧记为 `rejected`。差异来自两个方法各自的判据 —— send 按最终信封**有无
+`error`** 判定，stream 按**终态帧状态**判定 —— 与错误码无关。本次真正变的只是 send 侧的
+错误码：合规拦截不再被宽 `except` 误标为 `-32603`（内部错误），现为 `-32602`（参数错误）；
+stream 侧本就无可谈的错误码，它走的是 `rejected` 终态帧。
 
 ## 待做
 
