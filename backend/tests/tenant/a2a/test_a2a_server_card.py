@@ -1168,7 +1168,9 @@ async def test_tasks_cancel_race_maps_not_found_at_rpc_layer(monkeypatch, a2a_au
 
     `_handle_tasks_cancel` 第二个 `try` 只捕 `BadRequestError`；job 在
     `load_owned_agent_task` 之后、`cancel_job` 之前被删时，`NotFoundError` 会直接逸出到
-    `handle_a2a_rpc`。修复前它撞 `except Exception` → 审计 `-32603` 后重抛 → HTTP 500。
+    `handle_a2a_rpc`。修复前它被 `except Exception` 记成审计 `-32603` 后原样重抛，再被全局
+    `AppError` 专属处理器接住 → **HTTP 404 平台信封**（`message="生成任务不存在"`），**不是**
+    HTTP 500 —— 500 只留给非 `AppError`。
     """
     job_id = uuid4()
     owned = _job("running", job_id=job_id, agent_id=AGENT_ID)

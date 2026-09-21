@@ -161,7 +161,7 @@ handle_a2a_rpc`）看不到状态码。
    对其内部调用方（workbench 页面等）是正确的；归一化只发生在 A2A 对外边界。
 4. **不为 `load_owned_agent_task` 引入新的异常类型**：契约要的就是「不确认存在性」，
    `NotFoundError` 已是既有对外语义。
-5. **跨租户探测在内部也不再可区分**：收口后，审计 `errorCode` 与 access log 状态码均与「随便编一个 UUID」完全相同（`tasks/get` / `tasks/cancel` 从 403 变 200，产物下载从 403 变 404），`from None` 也让 403 不进日志 —— 我方因此失去了「有人在扫别的租户任务 UUID」的唯一信号。这是「对端不得获得存在性 oracle」的必然代价，本批有意接受。若日后要恢复内部可观测性，需从抛出点把标记一路传到审计写点（`errorCode` 是从最终信封推导的，不是一行改动），单开一单。**本批不改变其状态**：A2A 任务/RPC 面仍无区分信号（`tasks/get` / `tasks/cancel` 的审计 `errorCode` 与 access log 状态码与「随便编一个 UUID」完全相同）；但**产物下载面**的跨租户**附件**失败已因本批的 `errorType=ForbiddenError` / `errorStatus=403`（`services/server.py` 的 `_audit_artifact_failure`）而在审计 `detail` 上可与「随手编的 UUID」区分。
+5. **跨租户探测在内部也不再可区分**：收口后，审计 `errorCode` 与 access log 状态码均与「随便编一个 UUID」完全相同（`tasks/get` / `tasks/cancel` 从 403 变 200，产物下载从 403 变 404），`from None` 也让 403 不进日志 —— 我方因此失去了「有人在扫别的租户任务 UUID」的唯一信号。这是「对端不得获得存在性 oracle」的必然代价，本批有意接受。若日后要恢复内部可观测性，需从抛出点把标记一路传到审计写点（`errorCode` 是从最终信封推导的，不是一行改动），单开一单。**本批不改变其状态**：A2A 任务/RPC 面仍无区分信号（`tasks/get` / `tasks/cancel` 的审计 `errorCode` 与 access log 状态码与「随便编一个 UUID」完全相同）；但**产物下载面**的跨租户**附件**失败，**前提是该附件 id 已通过产物成员校验**（即它确实在本任务的 `artifact_ids` 里），已因本批的 `errorType=ForbiddenError` / `errorStatus=403`（`services/server.py` 的 `_audit_artifact_failure`）而在审计 `detail` 上可与「随手编的 UUID」区分 —— 随手编的 id 先命中 `NotFoundError("附件不是该任务的产物")` 分支，那条**不写** `errorType`。
 
 ## 6. 验收清单
 

@@ -33,7 +33,7 @@
 
 ### 1.3 附带的口径分裂
 
-同一个端点上，未预期异常有两种口径：`message/send` 吞成 `-32603` 信封，而 `handle_a2a_rpc` 的兜底是「审计 `-32603` 后原样重抛」→ HTTP 500 平台信封。二者不可能都对。
+同一个端点上，未预期异常有两种口径：`message/send` 吞成 `-32603` 信封，而 `handle_a2a_rpc` 的兜底是「审计 `-32603` 后原样重抛」。重抛出的 `AppError` 会被 `miles_core/web/handlers.py` 的专属处理器（`app_error_handler`，装配于 `miles-server` 的 `create_app`）接住 —— Starlette 按 MRO 命中它，故修复前 `tasks/cancel` 竞态那条回的是 **HTTP 404 平台信封**（`NotFoundError`，`message="生成任务不存在"`），只有非 `AppError`（Redis / DB 故障）才落 500 平台信封。二者不可能都对。
 
 ---
 
@@ -214,7 +214,7 @@ def app_error_envelope(method: str | None, req_id: object, exc: AppError) -> dic
 3. **`except Exception` 兜底路径不记 `errorType`**：现行只记 `-32603`，诊断依赖全局处理器的堆栈日志。本批不动（YAGNI）。
 4. **`tasks/resubscribe` 的并发上限**：30 分钟长流的并发保护仍是设计级残余（上一批登记），不在本批范围。
 5. **跨租户探测在内部不再可区分**：上一批登记的 I2，本批不改变其状态。
-6. **合规拦截的文案会带回命中的敏感词**：`BadRequestError(f"输入内容包含敏感词，已拦截：{first.word}")` 的 message 经 `app_error_envelope` 原样发给对端（`message/send` 现状是 `f"智能体执行失败: {exc}"`，**同样包含**）。本批不改这个行为（对端本就是消息发送方），若要脱敏需单开一单。
+6. **`AppError` 的文案会原样回对端**：`app_error_envelope` 直接取 `exc.message` 发给对端，故**所有** `AppError` 的文案都会进 JSON-RPC 错误信封，不只合规拦截。举例：合规拦截带回命中的敏感词（`BadRequestError(f"输入内容包含敏感词，已拦截：{first.word}")`，`compliance/intercept.py`）；`HookBlockedError` 带 hook 名（`hooks/services/executor/http.py:136` 的 `f"钩子 {hook.name} 调用失败（HTTP …）"`、`:210` 的 `f"钩子 {hook.name} 调用异常"`）；`integrations/litellm/adapter.py:197` 带上游错误文案；`integrations/generative/volcengine_client.py:105` 带上游响应正文（截断 300 字符）；`infra/storage/s3.py:96` 带存储细节。**这不是本批新引入**：改动前 `message/send` 的 `except Exception` 用 `f"智能体执行失败: {str(exc)}"`（`services/server.py`），内容一字不差。本批不改这个行为（对端本就是消息发送方），若要脱敏需单开一单。
 
 ---
 
@@ -222,7 +222,7 @@ def app_error_envelope(method: str | None, req_id: object, exc: AppError) -> dic
 
 - [x] `read_task_artifact` 的 `BadRequestError` / `ForbiddenError` / `Exception` 三条路径都留痕，且各恰好一条
 - [x] 跨租户附件对外 **404**（不是 403），文案 `附件不存在`
-- [x] `tasks/cancel` 竞态 → HTTP 200 + JSON-RPC `-32001`（不再是 500 / `-32603` 平台信封）—— 由**兜底**修复
+- [x] `tasks/cancel` 竞态 → HTTP 200 + JSON-RPC `-32001`（修复前回 404 平台信封、审计误记 `-32603`；**不是** 500 —— 500 只留给非 `AppError`）—— 由**兜底**修复
 - [x] `message/send` 合规拦截（`BadRequestError`）→ `-32602`（不再是 `-32603`），审计记 `errorType` —— 由**「停止截获」+ 兜底**共同修复（兜底单独存在时它仍被 handler 吞掉）
 - [x] `message/send` 配额类 `ForbiddenError` → `-32602`（不再是 `-32603`），审计记 `errorType` —— 同上
 - [x] 非 `AppError` 异常**仍**重抛 → HTTP 500（回归不变）

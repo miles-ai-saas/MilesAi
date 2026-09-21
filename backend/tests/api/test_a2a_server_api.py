@@ -583,9 +583,11 @@ def _use_agent_db(app):  # noqa: ANN001, ANN202
 
 @pytest.mark.asyncio
 async def test_tasks_cancel_race_returns_jsonrpc_not_platform_envelope(as_a2a, api_client, monkeypatch):
-    """E2 的 HTTP 面：`cancel_job` 竞态 `NotFoundError` → HTTP 200 + `-32001`，不是 500。
+    """E2 的 HTTP 面：`cancel_job` 竞态 `NotFoundError` → HTTP 200 + `-32001`，不是 404 平台信封。
 
     `tasks/cancel` 不查智能体发布状态，故本用例只需替换「取任务 / 取消 / 审计」三个 I/O 出口。
+    修复前该异常逸出到全局 `AppError` 专属处理器，回 **404 平台信封**（审计误记 `-32603`）；
+    HTTP 500 只留给非 `AppError`。
     """
     job = SimpleNamespace(
         id=uuid4(),

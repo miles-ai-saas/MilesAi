@@ -209,6 +209,11 @@ EOF
 
 在 `backend/tests/tenant/a2a/test_a2a_server_card.py` 的 `# --- 5. 产物下载归属校验`（第 1068 行）**之前**插入整段：
 
+> **回填修正（终审 Minor #3）**：下面 docstring 里的「修复前它撞 `except Exception` → 审计 `-32603` 后重抛 → HTTP 500」**失实**。
+> `AppError` 有专属全局处理器（`miles_core/web/handlers.py` 的 `app_error_handler`，装配于 `miles-server` 的 `create_app`），
+> Starlette 按 MRO 命中它 —— 修复前回的是 **HTTP 404 平台信封**（`message="生成任务不存在"`），只有非 `AppError` 才落 500。
+> 实际交付的测试 docstring 已按此改写；此处保留原文并更正。
+
 ```python
 # --- 4.2 RPC 层兜底：漏捕的 AppError 不再逸出（治 E2 的竞态） ------------------ #
 
@@ -835,6 +840,9 @@ from miles_common.exceptions import BadRequestError, ForbiddenError, NotFoundErr
 
 在文件末尾（`test_artifact_endpoint_rate_limited_uses_platform_envelope` 之后）追加：
 
+> **回填修正（终审 Minor #3）**：下面 `test_tasks_cancel_race_returns_jsonrpc_not_platform_envelope` 的 docstring「不是 500」同样失实 ——
+> 修复前该异常逸出后回 **HTTP 404 平台信封**（500 只留给非 `AppError`）；实际交付的 docstring 已按此改写。
+
 ```python
 # --- 错误封口：业务异常不得逸出成平台信封 ------------------------------------- #
 
@@ -955,7 +963,7 @@ async def test_message_send_compliance_block_returns_invalid_params(as_a2a, api_
 
 
 @pytest.mark.parametrize(
-    ("exc", "expected_status", "expected_audit_code", "expected_type"),
+    ("exc", "expected_status", "expected_code", "expected_type"),
     [
         # 跨租户附件：修复前是 **403**（等于向对端确认「该附件存在于别的租户」），且零流水
         (ForbiddenError("无权访问该租户资源"), 404, -32001, "ForbiddenError"),
@@ -965,7 +973,7 @@ async def test_message_send_compliance_block_returns_invalid_params(as_a2a, api_
 )
 @pytest.mark.asyncio
 async def test_artifact_endpoint_failure_maps_status_and_audits(  # noqa: ANN001
-    as_a2a, api_client, monkeypatch, exc, expected_status, expected_audit_code, expected_type
+    as_a2a, api_client, monkeypatch, exc, expected_status, expected_code, expected_type
 ):
     """E1 的 HTTP 面：该端点是普通 HTTP 下载，形状本来就是平台信封 —— 要验的是**状态码**与**留痕**。
 
@@ -1012,9 +1020,13 @@ async def test_artifact_endpoint_failure_maps_status_and_audits(  # noqa: ANN001
     assert len(recorded) == 1
     assert recorded[0]["action"] == "a2a.artifact.download"
     assert recorded[0]["outcome"] == "failed"
-    assert recorded[0]["detail"]["errorCode"] == expected_audit_code
+    assert recorded[0]["detail"]["errorCode"] == expected_code
     assert recorded[0]["detail"]["errorType"] == expected_type
 ```
+
+> **回填（终审 Minor #4）**：本步骤原写「参数改名 `expected_audit_code`」，但该改名**未落地** —— 代码里仍是
+> `expected_code`（`backend/tests/api/test_a2a_server_api.py:670,680,730`）。上面代码块已改回与代码一致；
+> 参数名与信封 `code` 的语义混淆保留为已知项，**不为迁就命名去改测试代码**。
 
 - [ ] **Step 2: 写视图层兜底的注入式用例**
 
@@ -1190,6 +1202,10 @@ JSON-RPC 形状。对端须能按 HTTP 状态码兜底处理这一类。
    - 改为：`（请求体无法解析、被限流这两类前置失败除外）`
 
 2. 第 104 行产物下载段末句补：
+
+   > **回填修正（终审 I-1）**：下面这句「跨租户与「非该任务产物」不可区分（同为 404）」**字面不真** —— 两者平台信封 `message` 不同
+   > （「附件不存在」vs「附件不是该任务的产物」）。真正同码同文案的是「跨租户附件」与「本任务产物里已缺失的附件」；
+   > 「非该任务产物」只与「随手编的 id」同 404 同文案，不构成租户 oracle。实际交付的指南末句已按此改写。
 
    ```markdown
    非该任务产物、**跨租户的附件**、附件尚未就绪、以及存储读取故障都回 404/400/500 并**各留一条流水**；
