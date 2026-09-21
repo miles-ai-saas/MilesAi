@@ -231,6 +231,14 @@ async def _resolve_agent_task(
 > 还能再吃掉 httpx 的 60s 单请求超时，一轮最坏约 120s，文档承诺的 60s 总上限形同虚设。
 > 预算耗尽抛内置 `TimeoutError`，与 `httpx.RequestError`（真实网络故障）天然分开，故仍落到
 > 「已等待」快照而不会误报成「网络异常」。
+>
+> 同块另有两处实现期修正（同上，只标注不改写伪代码）：伪代码把 `except (httpx.RequestError,
+> ValueError)` 合并成一条 note「继续查询失败（网络异常）」，实现拆成两条 —— `RequestError`
+> 仍为「网络异常」，新增 `except ValueError` 走「继续查询失败（响应非 JSON）」，因为「响应体
+> 解析不出来」（如代理回 200 + HTML）不是网络故障，合并会让上层误判成因。伪代码的 JSON-RPC
+> `error` note 写作「对端不支持继续查询（{code} {message}）」，实现改为「继续查询失败（对端
+> 返回错误 {code} {message}）」：任意 `error` 都回退，`-32601` 只是「不支持 tasks/get」最
+> 典型的一种，note 不应替对端推断成因。
 
 要点：
 

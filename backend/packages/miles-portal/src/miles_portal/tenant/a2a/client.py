@@ -320,6 +320,9 @@ async def _resolve_agent_task(client: httpx.AsyncClient, url: str, task: dict, h
                 data = resp.json()
         except TimeoutError:
             # 静默可接受：预算耗尽是预期控制流（非故障），落到循环外走「已等待」快照。
+            # 本 arm 只负责 ``asyncio.timeout`` 的预算耗尽。httpx 自己的超时不会打到这里：
+            # ``httpx.TimeoutException`` 是 ``RequestError`` 的子类，与内置 ``TimeoutError``
+            # 无继承关系（故它照旧落到下面的 ``RequestError`` arm，被如实报成网络故障）。
             break
         except httpx.RequestError:
             return _render_agent_task(latest, note="继续查询失败（网络异常）")

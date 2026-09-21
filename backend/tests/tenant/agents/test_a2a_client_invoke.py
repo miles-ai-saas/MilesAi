@@ -8,6 +8,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 from types import SimpleNamespace
 
 import pytest
@@ -23,6 +24,13 @@ class _Resp:
 
     def json(self) -> dict:  # noqa: D102
         return self._data
+
+
+class _NonJsonResp(_Resp):
+    """``.json()`` 抛 ``JSONDecodeError``（``ValueError`` 子类）：对端 200 + HTML 的实际形态。"""
+
+    def json(self) -> dict:  # noqa: D102
+        raise json.JSONDecodeError("Expecting value", "<html></html>", 0)
 
 
 class _SeqClient:
@@ -130,12 +138,29 @@ def test_render_completed_task_lists_artifact_refs():
     assert "任务 ID：j1" in out
 
 
-def test_render_artifact_without_uri_is_marked():
-    out = client_mod._render_agent_task(_task("completed", artifacts=[_artifact(uri=None)]))
+@pytest.mark.parametrize(
+    "artifacts",
+    [
+        pytest.param([{"artifactId": "att-1", "parts": [{"kind": "text", "text": "hi"}]}], id="no-file-part"),
+        pytest.param([_artifact(uri=None)], id="uri-missing"),
+        pytest.param([_artifact(uri="")], id="uri-empty"),
+        pytest.param([_artifact(uri=123)], id="uri-non-string"),
+    ],
+)
+def test_render_artifact_without_usable_uri_is_marked(artifacts):  # noqa: ANN001
+    """``file`` 缺失，或 ``uri`` 缺失/空串/非字符串：三者都渲染不出下载地址。
 
-    assert "无下载地址" in out
-    # 判别力点：无 uri 时绝不能把字面量 ``None`` 渲染成下载地址
-    assert "None" not in out
+    锁的是 ``_artifact_lines`` 的合并判据 ``isinstance(uri, str) and uri``：只覆盖
+    ``uri is None`` 时，把空串或非字符串放行成下载地址不会有任何用例转红。
+    """
+    out = client_mod._render_agent_task(_task("completed", artifacts=artifacts))
+    artifact_lines = [line for line in out.splitlines() if line.startswith("- ")]
+
+    assert artifact_lines
+    assert all("无下载地址" in line for line in artifact_lines)
+    # 判别力点：退化的 uri 绝不能把字面量 ``None`` 渲染成下载地址。只扫产物行——
+    # 未来 fixture 的 artifact name / progress / task id 里出现 ``None`` 不该误伤本断言。
+    assert all("None" not in line for line in artifact_lines)
 
 
 def test_render_uses_artifact_id_when_name_absent():
@@ -332,8 +357,7 @@ async def test_poll_jsonrpc_error_falls_back_to_snapshot(monkeypatch):  # noqa: 
 
     answer = await client_mod.invoke_a2a_peer(_peer(), "生成一张图")
 
-    assert "继续查询失败" in answer
-    assert "-32601" in answer and "不支持的方法" in answer
+    assert "继续查询失败（对端返回错误 -32601 不支持的方法）" in answer
     assert "任务 ID：j1" in answer
 
 
@@ -420,6 +444,33 @@ async def test_poll_network_error_does_not_retry_second_endpoint(monkeypatch):  
 
 
 @pytest.mark.asyncio
+async def test_poll_non_json_response_is_not_reported_as_network_error(monkeypatch):  # noqa: ANN001
+    """200 + 非 JSON（代理回 HTML）走「响应非 JSON」，不得冒充「网络异常」。
+
+    判别力点：两条 note 必须**互斥可分辨**。把 ``except ValueError`` 并回
+    ``except httpx.RequestError``（或反之）时，本用例必须转 RED —— 只断言「出现了某条
+    继续查询失败」不足以锁住这个区分。
+    """
+    _fast_poll(monkeypatch)
+    captured: list[dict] = []
+
+    class _HtmlOnPoll(_SeqClient):
+        async def post(self, url: str, *, json: dict | None = None, headers: dict | None = None) -> _Resp:
+            captured.append({"url": url, "body": json})
+            if len(captured) == 1:
+                return _Resp({"jsonrpc": "2.0", "id": "1", "result": _task("working")})
+            return _NonJsonResp({})
+
+    monkeypatch.setattr(client_mod.httpx, "AsyncClient", lambda **_kwargs: _HtmlOnPoll([], captured))
+
+    answer = await client_mod.invoke_a2a_peer(_peer(), "生成一张图")
+
+    assert "继续查询失败（响应非 JSON）" in answer
+    assert "网络异常" not in answer
+    assert "任务 ID：j1" in answer
+
+
+@pytest.mark.asyncio
 async def test_task_without_id_is_not_polled(monkeypatch):  # noqa: ANN001
     _fast_poll(monkeypatch)
     captured = _patch(monkeypatch, [{"jsonrpc": "2.0", "id": "1", "result": _task("working", task_id=None)}])
@@ -457,10 +508,11 @@ async def test_message_response_is_not_treated_as_task(monkeypatch):  # noqa: AN
 
     answer = await client_mod.invoke_a2a_peer(_peer(), "你好")
 
-    # === TRACKED GAP (a2a/top-level-message-parts) ===
-    # 下面锁的是**既有缺口**，不是期望：``_extract_text_from_response`` 不认识顶层 ``Message``
-    # 的 ``parts``，故输出退化为 ``str(result)``。修复该函数后，本断言与 docstring 必须一并更新；
-    # 在此之前请勿把「answer == str(result)」误读成规范行为。
+    # === TRACKED GAP ===
+    # 决策：本批只锁定缺口，**不在** ``_extract_text_from_response`` 内加兼容分支
+    # （spec §3.1 冻结该函数，改它需先修订 spec）。缺口修复的判据是
+    # ``_extract_text_from_response(result) == "收到"``；届时把下面这行断言改成
+    # ``answer == "收到"``，并与 docstring 一并更新。
     assert answer == str(result)
     assert len(captured) == 1
 
