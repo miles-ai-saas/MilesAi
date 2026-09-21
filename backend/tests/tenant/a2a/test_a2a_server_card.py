@@ -19,7 +19,7 @@ from uuid import uuid4
 import anyio
 import pytest
 
-from miles_common.exceptions import BadRequestError, NotFoundError
+from miles_common.exceptions import BadRequestError, ForbiddenError, NotFoundError
 from miles_common.schemas.chat_io import ChatResponse
 from miles_core.models.agent import Agent, AgentStatus, AgentType
 from miles_portal.tenant.a2a import server as server_mod
@@ -937,6 +937,81 @@ async def test_tasks_get_omits_artifacts_while_running(monkeypatch):  # noqa: AN
     envelope = await server_svc.handle_a2a_rpc(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, payload, base_url=BASE)
 
     assert "artifacts" not in envelope["result"]
+
+
+# --- 4.1 任务寻址的租户边界归一（跨租户 403 → 对外 404） ---------------------- #
+
+
+def _foreign_tenant_getter(message: str = "无权访问该租户资源"):  # noqa: ANN202
+    """把 ``get_generative_job_for_tenant`` 换成「抛外租户 403」的替身。
+
+    真实实现是 ``db.get`` → ``assert_tenant_access(ctx, job.tenant_id)``，后者的
+    ``ForbiddenError`` 只在**非超管访问外租户资源**时抛出。
+    """
+
+    async def _get(_db, _ctx, _job_id):  # noqa: ANN001
+        raise ForbiddenError(message)
+
+    return _get
+
+
+@pytest.mark.asyncio
+async def test_load_owned_agent_task_normalizes_foreign_tenant_to_not_found(monkeypatch):  # noqa: ANN001
+    """瓶颈处把外租户 403 归一为 ``NotFoundError``，兑现本函数 docstring 的既有承诺。
+
+    403 逸出会同时打破两条对外契约：对端拿到平台信封（无从把错误对回自己的 ``id``），
+    且 403 与 ``-32001`` 可区分 —— 等于给出探测「该 UUID 是否存在于别的租户」的 oracle。
+    """
+    monkeypatch.setattr(server_svc, "get_generative_job_for_tenant", _foreign_tenant_getter())
+
+    with pytest.raises(NotFoundError) as exc:
+        await server_svc.load_owned_agent_task(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, uuid4())
+
+    # 固定文案：不把「无权访问该租户资源」这类内部措辞回显给对端
+    assert "租户" not in str(exc.value)
+
+
+@pytest.mark.asyncio
+async def test_tasks_get_normalizes_foreign_tenant_as_task_not_found(monkeypatch, a2a_audit_recorder):  # noqa: ANN001
+    """``tasks/get`` 外租户 id：JSON-RPC ``-32001``，而不是平台信封 403。"""
+    monkeypatch.setattr(server_svc, "get_generative_job_for_tenant", _foreign_tenant_getter())
+    payload = {"jsonrpc": "2.0", "id": 1, "method": "tasks/get", "params": {"id": str(uuid4())}}
+
+    envelope = await server_svc.handle_a2a_rpc(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, payload, base_url=BASE)
+
+    assert "result" not in envelope
+    assert envelope["error"]["code"] == server_mod.TASK_NOT_FOUND
+    # 附带收益：兜底留痕不再把外租户探测误记成「服务端内部错误」
+    assert a2a_audit_recorder[0]["detail"]["errorCode"] == server_mod.TASK_NOT_FOUND
+
+
+@pytest.mark.asyncio
+async def test_tasks_cancel_normalizes_foreign_tenant_as_task_not_found(monkeypatch):  # noqa: ANN001
+    """``tasks/cancel`` 外租户 id：与 ``tasks/get`` 同口径。"""
+    monkeypatch.setattr(server_svc, "get_generative_job_for_tenant", _foreign_tenant_getter())
+    payload = {"jsonrpc": "2.0", "id": 1, "method": "tasks/cancel", "params": {"id": str(uuid4())}}
+
+    envelope = await server_svc.handle_a2a_rpc(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, payload, base_url=BASE)
+
+    assert envelope["error"]["code"] == server_mod.TASK_NOT_FOUND
+
+
+@pytest.mark.asyncio
+async def test_read_task_artifact_normalizes_foreign_tenant_and_audits(monkeypatch, a2a_audit_recorder):  # noqa: ANN001
+    """产物下载外租户 id：抛 ``NotFoundError``（视图回 404）**且**留一条失败流水。
+
+    修复前 ``ForbiddenError`` 会逸出本函数，而它的 ``except NotFoundError`` 分支不覆盖
+    403 —— 于是这条探测式调用在审计页上零痕迹。
+    """
+    monkeypatch.setattr(server_svc, "get_generative_job_for_tenant", _foreign_tenant_getter())
+
+    with pytest.raises(NotFoundError):
+        await server_svc.read_task_artifact(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, uuid4(), uuid4())
+
+    assert len(a2a_audit_recorder) == 1
+    assert a2a_audit_recorder[0]["action"] == server_mod.AUDIT_ACTION_ARTIFACT_DOWNLOAD
+    assert a2a_audit_recorder[0]["outcome"] == server_mod.AUDIT_OUTCOME_FAILED
+    assert a2a_audit_recorder[0]["detail"]["errorCode"] == server_mod.TASK_NOT_FOUND
 
 
 # --- 5. 产物下载归属校验 ------------------------------------------------------

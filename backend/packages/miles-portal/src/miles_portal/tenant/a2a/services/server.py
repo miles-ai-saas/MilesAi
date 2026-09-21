@@ -22,7 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from miles_ai.integrations.langchain.chat_models import OnDelta
 from miles_ai.integrations.langchain.toolkit.catalog import bound_skill_ids
-from miles_common.exceptions import BadRequestError, NotFoundError
+from miles_common.exceptions import BadRequestError, ForbiddenError, NotFoundError
 from miles_common.schemas.chat_io import CONVERSATION_ID_MAX_LENGTH, ChatResponse
 from miles_core.infra.db import AsyncSessionLocal
 from miles_core.logging import get_logger
@@ -277,8 +277,18 @@ async def load_owned_agent_task(
 
     必须校验归属：只按租户取数会让同租户另一个智能体的 key 也能查/取消本智能体任务，
     并据 ``task_id`` 推断其产物下载地址。回 404 而非 403 —— 不向对端确认任务是否存在。
+
+    外租户 id 由下层 ``get_generative_job_for_tenant`` 的 ``ForbiddenError`` 表达，此处
+    一并归一为 ``NotFoundError``：A2A 对外面不接受以 403 区分「存在但越权」与「不存在」。
     """
-    job = await get_generative_job_for_tenant(db, ctx, task_id)
+    try:
+        job = await get_generative_job_for_tenant(db, ctx, task_id)
+    except ForbiddenError:
+        # 外租户 id：下层 ``assert_tenant_access`` 抛 403。若让它逸出，对端会拿到平台信封的
+        # HTTP 403 —— 既破坏本端点「协议级错误一律回 JSON-RPC 信封」的契约（对端无从把错误
+        # 对回自己的 ``id``），又让 403 与 ``-32001`` 可区分，等于给出探测「该任务是否存在于
+        # 别的租户」的 oracle。故与「不属于本智能体」同口径归一；文案固定，不回显内部措辞。
+        raise NotFoundError("生成任务不存在") from None
     if job.source_ref_type != "agent" or job.source_ref_id != agent_id:
         raise NotFoundError("生成任务不存在")
     return job
