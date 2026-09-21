@@ -1014,6 +1014,41 @@ async def test_artifact_endpoint_failure_maps_status_and_audits(  # noqa: ANN001
     assert recorded[0]["detail"]["errorType"] == expected_type
 ```
 
+- [ ] **Step 1b: 用新 helper 收掉同文件里已有的同一段构造（避免逐字重复）**
+
+`test_tasks_get_foreign_tenant_returns_jsonrpc_not_platform_envelope`（本文件第 387 行起）里内联了同一段「构造已发布 custom 智能体 + 最小 `_Db` + 覆盖 `get_db`」。把它的这段：
+
+```python
+    agent = Agent()
+    agent.id = AGENT_ID
+    agent.agent_type = AgentType.CUSTOM
+    agent.status = AgentStatus.ENABLED
+    agent.config = {A2A_PUBLISH_FLAG: True}
+    agent.deleted_at = None
+
+    class _Db:
+        """最小 DB 替身：本路径只用到 ``get``（取智能体）。"""
+
+        async def get(self, _model, _id):  # noqa: ANN001
+            return agent
+
+        async def commit(self):  # noqa: ANN201
+            pass
+
+    async def override_db():  # noqa: ANN202
+        yield _Db()
+
+    as_a2a.dependency_overrides[get_db] = override_db
+```
+
+换成：
+
+```python
+    _use_agent_db(as_a2a)
+```
+
+**约束**：这是纯去重，**不得**改动该用例的断言、docstring 或其余任何一行；改完该用例必须仍然单测通过。若它变红，说明新 helper 与旧替身**不等价**（最可能是 `_AgentDb` 未提供某个被调用的方法）——此时**修 helper**，不要去改那条既有用例。
+
 - [ ] **Step 2: 写视图层兜底的注入式用例**
 
 ```python
