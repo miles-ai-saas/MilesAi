@@ -381,12 +381,12 @@ from miles_core.infra.vector_store import get_vector_store
 ## 7. 测试布局
 
 ```text
-backend/tests/                     # 一级目录 = 被测包（与 packages/ 一一对应）
+backend/tests/                     # 一级目录 = 被测包（与 packages/ 对齐；miles_runner 无直接用例）
   conftest.py  paths.py
   test_l3_neutral_imports.py       # AST 守卫：L3 反向依赖 / server 自建 router
-  test_no_blocking_calls_in_async.py
-  test_no_silent_broad_except.py
-  test_no_unreferenced_modules.py
+  test_no_blocking_calls_in_async.py  # AST 守卫：async 内不得直调阻塞调用
+  test_no_silent_broad_except.py      # AST 守卫：宽泛 except / suppress 不得静默（日志须带 exc_info）
+  test_no_unreferenced_modules.py     # AST 守卫：零引用模块（入口点白名单除外）
   test_domain_meta.py  test_api_enum_parity.py  test_enum_contract.py
   test_orm_registry_completeness.py  test_tests_layout.py
   integration/                     # 跨包编排

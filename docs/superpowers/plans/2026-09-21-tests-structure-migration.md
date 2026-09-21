@@ -199,10 +199,13 @@ _HEALTH_CHECKS_SRC = _BACKEND_ROOT / "packages" / "miles-core" / "src" / "miles_
 
 ```python
 # 路径常量统一来自 ``tests.paths``：本文件在 ``tests/miles_core/infra/db/``，深度已变，
-# 不能再靠 ``parents[N]`` 猜仓库根（N 会随目录层级漂移）。
+# 不能再靠 ``parents`` 猜仓库根（层级会随目录漂移）。
 _BACKEND_ROOT = BACKEND_ROOT
 _HEALTH_CHECKS_SRC = _BACKEND_ROOT / "packages" / "miles-core" / "src" / "miles_core" / "utils" / "health_checks.py"
 ```
+
+> 注：注释刻意不写字面量 `parents[N]`——Task 3 Step 4 与 Task 8 Step 3 的验收命令是
+> `rg "parents\[" tests/miles_ai` / `rg "parents\[" tests`，写全会让验收命中该注释。
 
 并在 import 区的第一方分组里加（紧挨现有的 `from miles_core…` 那几行、与它们同组且不加空行——ruff isort 视 `tests` 与 `miles_*` 为同一组，见 `tests/models/test_orm_registry_completeness.py` 的写法）：
 
@@ -359,7 +362,7 @@ _COMPILER_DIR = _BACKEND_DIR / "packages" / "miles-ai" / "src" / "miles_ai" / "i
 
 ```python
 # 路径常量统一来自 ``tests.paths``（本文件已搬到 tests/miles_ai/integrations/langgraph/，
-# 目录深度变化后 ``parents[N]`` 不再可靠）。
+# 目录深度变化后 ``parents`` 推导不再可靠）。
 _BACKEND_DIR = BACKEND_ROOT
 _COMPILER_DIR = _BACKEND_DIR / "packages" / "miles-ai" / "src" / "miles_ai" / "integrations" / "langgraph" / "compiler"
 ```
@@ -965,8 +968,8 @@ MSG
 ````markdown
 # 后端测试目录
 
-与 [packages/](../packages/) 的包边界一一对应：**一级目录 = 被测包**，深层 = 该包内的模块目录；
-用例文件的位置 ⇔ 被测模块的位置。归属规则与逐文件映射见
+与 [packages/](../packages/) 的包边界对齐：**一级目录 = 被测包**，深层 = 该包内的模块目录；
+用例文件的位置 ⇔ 被测模块的位置（`miles_runner` 当前无直接用例，能力经 `miles_exec` 覆盖，故无对应目录）。归属规则与逐文件映射见
 [docs/superpowers/specs/2026-09-21-tests-structure-design.md](../../docs/superpowers/specs/2026-09-21-tests-structure-design.md)。
 
 ```text
@@ -1005,7 +1008,7 @@ python -m pytest -q tests/miles_server/apps/test_api_e2e.py
 ## 7. 测试布局
 
 ```text
-backend/tests/                     # 一级目录 = 被测包（与 packages/ 一一对应）
+backend/tests/                     # 一级目录 = 被测包（与 packages/ 对齐；miles_runner 无直接用例）
   conftest.py  paths.py
   test_l3_neutral_imports.py       # AST 守卫：L3 反向依赖 / server 自建 router
   test_no_blocking_calls_in_async.py
@@ -1103,8 +1106,12 @@ rg -n "tests/(infra|flow|rag|media|mcp|models|tenant|admin|worker|api|marketplac
 - `docs/guides/{knowledge-base,ai-stack}.md`
 - `docs/architecture/{layering,admin-ops-design,backend-reference-framework,engine-di-convergence}.md`
 
-不改（历史/一次性工具留档）：`backend/tools/rename_to_workspace.py` 一类一次性 codemod 的注释块、
-`docs/superpowers/specs/**`、`.superpowers/**`。
+不改（历史留档）：`docs/superpowers/specs/**`、`.superpowers/**`。
+
+> **实施期修正**：原计划把 `backend/tools/rename_to_workspace.py`（一次性 codemod，文件内已注明
+> 「已完成使命，勿再重跑」）也列入「不改」，但它与 Step 6 的「全仓无输出」互斥。用户裁定**两者都做**：
+> 该文件注释里指路的 `tests/infra/test_celery_task_names.py`、`tests/tenant/tools` 已一并更正为
+> 迁移后的路径（只动注释文字，工具行为未动），使 Step 6 的核验严格为空。
 
 > 这些改动全部落在注释与文档字符串里的路径文字上，不触碰任何表达式；`tests/` 侧的文件仅改 docstring，`packages/` 侧仅改 `#` 注释与模块 docstring（后者会进 OpenAPI 描述，若某个 docstring 被改动需执行 `make openapi-write` —— 本步只改**注释行**，故预期 `make openapi-check` 仍为 OK；若 Step 7 的门禁报快照差异，则说明误改了 docstring，回退该处改为 `#` 注释）。
 
@@ -1180,7 +1187,11 @@ cd /Users/xiezhigang/Projects/miles/MilesAI/backend
 rg -n "parents\[" tests
 ```
 
-Expected: 只出现 `tests/paths.py` 里说明「勿用 `parents[N]` 猜 backend 根」的那一行（即 `tests/paths.py:1`），再无其他命中。
+Expected: 只出现说明性命中——`tests/paths.py:1,3` 的 docstring（解释「勿用 `parents[N]` 猜 backend 根」）与
+`tests/miles_core/infra/db/test_loop_aware_engine.py:274` 的注释（说明为何不再用深度推导）；
+`tests/test_l3_neutral_imports.py:18` 的 `_PKG = Path(__file__).resolve().parents[1] / "packages"` 是该文件
+**留在 `tests/` 根**时的正确推导（`parents[1]` 即 `backend/`），不在本次改造范围，允许保留。
+除上述两类外不得出现其余命中——尤其不得出现「子目录内靠 `parents[N]` 猜 backend 根」的代码。
 
 - [ ] **Step 3b: 旧测试路径引用已归零（文档）+ 跨用例导入已归零（代码）**
 
@@ -1246,3 +1257,29 @@ Expected: `lint.yml` 的 pytest 步骤通过（与本地一致）
   跨用例导入恰好 4 处、`git mv` 干跑无缺目录/无覆盖、守卫代码通过 `ruff check` 与 `ruff format --check`。
 - 无占位符：每个搬迁步骤都给出完整命令；每处内容改动都给出改前/改后代码。
 - 类型一致：`TESTS_ROOT` / `BACKEND_ROOT` / `PACKAGES` 在 Task 6 定义，Task 2/3/5 与 Task 6 一致使用同名常量。
+
+---
+
+## 实施期修正（执行时发现，计划已按此回填）
+
+| # | 计划原文 | 实际执行 | 原因 |
+|---|---|---|---|
+| 1 | Task 2/3 的「改后」注释写 `` `parents[N]` `` | 写 `` `parents` `` | 与 Task 3 Step 4 / Task 8 Step 3 的 `rg "parents\["` 验收互斥：写全会让验收命中该注释 |
+| 2 | Task 8 Step 3 预期「只剩 `paths.py:1` 一行」 | 允许两类说明性命中（`paths.py:1,3` docstring、`test_loop_aware_engine.py:274` 注释）+ `test_l3_neutral_imports.py:18` 的根级 `parents[1]` | 前者是解释为何不再用深度推导；后者留在 `tests/` 根时 `parents[1]` 即 `backend/`，本就正确，不在改造范围 |
+| 3 | Task 4 只搬 98 个文件 | 99 个（+ `tests/tenant/models/_usage_doubles.py`） | 该共享辅助模块被两个用例 import，不与用例同批搬走会立刻断链 |
+| 4 | 未提跨用例 import | Task 3 Step 2b / Task 4 Step 2b 新增 4 处导入路径改写 | 同上：`tests.infra.test_litellm_adapter` 2 处、`tests.tenant.models._usage_doubles` 2 处 |
+| 5 | Task 5 预期 `130 passed` | `114 passed` | 130 把根级 4 个 AST 守卫的 16 个用例也算进了该批命令，但那些文件不在命令的参数里 |
+| 6 | Task 8 预期 `1513 passed` | `1516 passed` | 未计入 Task 6 新增的 3 个守卫用例；比对方式改为「`diff` 只允许 3 行 `>` 新增」 |
+| 7 | Task 6 的 `_ALLOWED_ROOT_FILES` 只有 `conftest.py`/`paths.py` | 加 `README.md` | 否则守卫在 `tests/` 根见到 `README.md` 就会红 |
+| 8 | Task 7 Step 5 把 `backend/tools/rename_to_workspace.py` 列入「不改」，Step 6 又要求全仓无输出 | 两者都做（用户裁定）：改该文件 2 处注释，验收严格为空 | 前后两条互斥 |
+| 9 | Task 7 Step 2 的 `layering.md` 链接写成 `(.../superpowers/...)` | `(../superpowers/specs/2026-09-21-tests-structure-design.md)` | 占位式写法从 `docs/architecture/` 解析不到 |
+| 10 | 未提旧域空目录残留 | Task 5 同批 `rm -rf` 掉 11 个只剩 `__pycache__` 的旧域目录 | 搬完后它们未跟踪、内容已空，留着会污染目录形态复核 |
+| 11 | Task 6 由实现者提交 | 实现者子代理在提交前被中断；改动已落盘且达标，由控制器完成验证与提交 | 见 `.superpowers/sdd/task-6-report.md`；未重做任何实现工作 |
+| 12 | 文档写「与 packages/ 的包边界一一对应」 | 改为「对齐」并注明 `miles_runner` 无直接用例 | packages 有 10 个包，`tests/` 只有 9 个目录 |
+
+## 执行结果（2026-09-21，分支 `refactor/tests-by-package`）
+
+- 迁移前后用例集合逐条一致：1513（基线）→ 1516（+ Task 6 的 3 个守卫用例），`diff` 无 `<` 行。
+- 全量 `1516 passed`；`make check` 五门全绿（ruff check / format --check / `Contracts: 7 kept, 0 broken.` / `OpenAPI snapshot OK` / pytest）。
+- 全仓旧测试路径引用归零（`backend`、`docs`、`.github`、`Makefile`，排除历史 spec/plan 与 `.superpowers`）。
+- 目录形态：`tests/` = 9 个包目录 + `integration/` + 根级守卫/基础设施文件，旧域目录已全部清除。
