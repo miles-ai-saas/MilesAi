@@ -90,6 +90,18 @@ POST /agents/{a2a_host_id}/chat
 
 Peer 须 `status=active` 且 Card 有效。
 
+### 3.3 出站行为（Client → 外部 Peer）
+
+`invoke_a2a_peer` 发 `message/send`，响应按 **`error` → `Task` → 文本** 的固定顺序判读：
+
+- 顶层 JSON-RPC `error` → **调用失败**（抛 `BadRequestError`，`steps[].type = "a2a_error"`），错误消息不再冒充回答；HTTP ≥ 400 才继续试下一个 endpoint 形态，一旦对端按 JSON-RPC 应答即停止探测。
+- `result.status.state` 存在（`Task`）→ **有限轮询** `tasks/get`：间隔 2s、总上限 60s（常量，不设配置项），先睡再查；端点与 `message/send` 逐位对称探测。
+- 已是「停止轮询态」→ 直接渲染，**不发任何 `tasks/get`**。停止轮询态 = 终态 `completed` / `failed` / `canceled` / `rejected` ∪ 中断态 `input-required` / `auth-required`（对端在等补输入或凭证，继续等只是白等；`input-required` 的提问在 `status.message` 里，一并带回）。
+- 终态产物只渲染**引用清单**（`artifactId` / `name` / `mimeType` / `uri`），**不下载内容**；缺 `uri` 写「（无下载地址）」。
+- 失败信号一律终止轮询并回退「最后一次已知状态 + `taskId`」快照（不重试）：超时、HTTP ≥ 400、网络异常 / 非 JSON、对端返回 JSON-RPC `error`（`-32601` 是最典型的「不支持 `tasks/get`」，但实际是**任意** `error` 都回退）；「响应形状不认识」不算失败，继续等。
+- 轮询会给对端带来额外负载（每次 Task 响应最多约 30 次 `tasks/get`），受对端 `scope = api_key` 限流约束；Client 不主动降频。
+- 出站 `tasks/cancel`（`cancel_a2a_peer_task`）**只补能力、不自动调用**：超时 ≠ 放弃，产物属对端用户。
+
 ---
 
 ## 4. API
@@ -127,7 +139,7 @@ GET  /.well-known/agent-card.json                         # 全平台唯一发�
 JSON-RPC 协议级错误（解析 / 方法 / 参数）回 HTTP 200 + `error` 信封；业务异常按域映射（`tasks/*` 的 401/403/404 → `-32001`，其余域的 401/403/404 与 400 → `-32602`，409/5xx → `-32603`）。未预期故障按方法分口径：`tasks/get` / `tasks/cancel`（RPC 路径）回 HTTP 500 平台信封，`message/send` 中 `run_published_agent_chat` 抛出的非 `AppError` 仍被吞成 HTTP 200 + `-32603`（旧口径；该 `try` 之外的前置与信封组装阶段的非 `AppError` 逸出后仍是 500），`message/stream` 与 `tasks/resubscribe` 的流内故障以终态帧收流。未发布智能体在 `message/send` / `message/stream` / `tasks/resubscribe` 的前置校验里回 HTTP 200 + `-32602`，不是 404。
 Card 含 `securitySchemes`（`apiKey` · `in: header` · `name: X-API-Key`）与 `security`，声明的是调用端点要求；Card GET 本身公开。
 多轮：`message.contextId` → `ChatRequest.conversation_id`（LangGraph `thread_id` 后缀），响应 `Message.contextId` 回显；未带时服务端生成。
-Task：`message/send` 产生生成任务时回 `Task`（`id` 即平台 job id，状态照实映射）；`tasks/get` 查状态并在成功时附 `Task.artifacts`、`tasks/cancel` 取消（不属于该智能体 / 不存在 `-32001`、已结束 `-32002`）。
+Task：`message/send` 产生生成任务时回 `Task`（`id` 即平台 job id，状态照实映射；产物未就绪时这条是**提交快照**，`status.timestamp` 用请求时刻，因上游只给出 `{id, kind, status}`）；`tasks/get` 查状态并在成功时附 `Task.artifacts`，其 `status.timestamp` 取任务 `updated_at` 的**真实状态时间**、`status.message` 带进度文案与 `metadata.percent`（无进展可说则不附该键）；`tasks/cancel` 取消（不属于该智能体 / 不存在 `-32001`、已结束 `-32002`）。
 产物下载走鉴权端点（平台不暴露签名 URL），授权限「该智能体 · 该任务 · 该产物」。`tasks/resubscribe` 以真实生成任务 id 续播进度流（首帧 `Task`、变化帧 `status-update`、终态前 `artifact-update`、空闲保活帧、30 分钟安全上限）；`pushNotificationConfig/*` 未实现，回 `-32601`。
 流式：`message/stream` 与其余方法共用同一 URL，按 `method` 分流返回 `text/event-stream`。首帧 `Task(working)`、中间帧 `status-update` 增量、末帧 `status-update(final=true)` 带完整回答；合成 `taskId` 不落库（流已给终态，无需再 `tasks/get`），生成任务 id 经 `status.message.metadata.a2aJobTaskId` 交接；合规拦截 `rejected`、执行失败 `failed`。前置校验失败回普通 JSON，不进入 SSE。
 

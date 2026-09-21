@@ -38,6 +38,32 @@ flowchart LR
   4. `invoke_a2a_peer` 后由主模型汇总
 - `max_a2a_calls_per_turn` 默认 2；Peer 须登记且 `active`
 
+### 出站行为（Client → 外部 Peer）
+
+`invoke_a2a_peer` 发 `message/send`，响应按 **`error` → `Task` → 文本**的固定顺序判读（三者互斥，判「本次调用成功还是失败」是这一层的职责）：
+
+- **顶层 `error` → 调用失败**：抛 `BadRequestError`，经 `invoke.py` 记为 `steps[].type = "a2a_error"`。对端的错误消息**不再冒充回答**。HTTP ≥ 400 仍视为「endpoint 形态不符」而试下一个；一旦对端按 JSON-RPC 应答（拿到 `error` 或 `result`），即说明形态已匹配，不再探测。
+- **`result` 有 `status.state`（`Task`）**：进入下面的有限轮询。
+- **否则**：按既有形状抽文本作为回答。
+
+**有限轮询 `tasks/get`。** 间隔 2s、总上限 60s（模块常量 `TASK_POLL_INTERVAL_SECONDS` / `TASK_POLL_TIMEOUT_SECONDS`，不设配置项）。**先睡再查** —— 首响应本就是「刚提交」，立刻重查只会打一个空转请求。停止轮询的状态集是**终态** `completed` / `failed` / `canceled` / `rejected` 与**中断态** `input-required` / `auth-required` 的并集：
+
+- 把中断态也算「停止轮询」是有意的：对端在等我们补输入或凭证，继续轮询只是白等。`input-required` 时对端的提问通常写在 `status.message` 里，会一并带回（渲染为「进展：」一行）。
+- 首响应**已是**停止轮询态：直接渲染，**一次 `tasks/get` 都不发**。
+- 终态渲染把产物列成引用清单：只给 `artifactId` / `name` / `mimeType` / `uri`，**绝不下载内容**；`file` 缺 `uri` 时写「（无下载地址）」（不渲染字面量 `None`）。
+- 失败信号一律**终止轮询**并回退为「最后一次已知状态 + `taskId`」快照，**不重试**：
+  - 超时 → note「已等待 60 秒」；
+  - HTTP ≥ 400 → note 带状态码；
+  - 网络异常 / 响应非 JSON → note「网络异常」；
+  - 对端返回 JSON-RPC `error` → note「对端不支持继续查询（`{code}` `{message}`）」。注意这里是**任意** `error` 都回退，`-32601`（方法未找到）只是其中最典型的「对端不支持 `tasks/get`」情形。
+- 「响应形状不认识」**不是**失败信号：保留最后一次已知状态继续等。
+- 任务 ID 缺失时不做任何轮询，回答注明「对端未给出任务 ID，无法继续查询」。
+- `tasks/get` 端点与 `message/send` 逐位对称探测（`{base}/tasks/get` 与 `{base}`），探到哪种部署形态就打对应那一个 —— 否则每轮都要先撞一个必然 404 的请求。
+
+**轮询负载：** 每次 Task 响应最多约 30 次 `tasks/get`（60s / 2s），会给对端带来额外压力，受对端自己 `scope = api_key` 的限流约束；Client 侧不主动降频、不重试。
+
+**出站 `tasks/cancel` 是预留能力、不自动调用：** `cancel_a2a_peer_task` 已实现（对称 endpoint 探测 + 对端拒绝即抛错、HTTP 失败才试下一个形态），但**本批没有任何调用方**。超时 ≠ 放弃 —— 对端任务的产物落在对端租户、属于对端用户，自动取消会把一个即将完成的任务连同产物一起销毁。待上游出现明确的中止语义（如用户显式中止）时再接。
+
 ## 数据模型
 
 ```text
@@ -93,7 +119,7 @@ JSON-RPC 方法：
 |------|------|
 | `message/send` | 同步对话。无异步任务时回 `Message`；产生生成任务（生图/生视频）时回 `Task`（`id` 即平台 job id） |
 | `message/stream` | 流式对话（响应 `Content-Type: text/event-stream`）。首帧 `Task(working)`，中间帧 `status-update` 携增量文本，末帧 `status-update` 带 `final=true` 与完整回答 |
-| `tasks/get` | `params.id` 查生成任务状态，映射为 A2A `TaskState`；成功时附 `Task.artifacts`（产物下载地址） |
+| `tasks/get` | `params.id` 查生成任务状态，映射为 A2A `TaskState`；成功时附 `Task.artifacts`（产物下载地址）。`status.timestamp` 是该状态被记录的**真实时间**（任务 `updated_at`）而非请求时刻；`status.message` 带进度文案（百分比在 `status.message.metadata.percent`），无进展可说时**不附**该键 |
 | `tasks/cancel` | 取消未结束的生成任务；已结束回 `-32002`（Task not cancelable），不属于该智能体回 `-32001`（Task not found） |
 | `tasks/resubscribe` | 续播未结束生成任务的进度（SSE）。首帧 `Task`、其后只在状态/进度变化时发 `status-update`，空闲发保活注释帧，终态前补 `artifact-update`。`params.id` 必须是真的生成任务 id |
 
@@ -105,7 +131,7 @@ JSON-RPC 方法：
 
 真正「**同码同文案**、对端不可区分」的是**跨租户附件**与**本任务产物里已缺失的附件**：两者都回 404、信封 `message` 同为「附件不存在」（前者由 `services/server.py` 的跨租户分支归一，后者来自 `attachments/services/attachment.py` 的「附件行缺失或已删」）。而「**非该任务产物**」是另一种 404 —— 它的 `message` 是「附件不是该任务的产物」。它并不因此构成租户 oracle：判据只是「该 id 在不在本任务的产物列表里」，随手编一个 id 得到的是**同一个** 404 与同一句文案，对端同样读不出该编号是否存在。
 
-生成任务状态 → A2A `TaskState`：`pending→submitted`、`running→working`、`success→completed`、`failed→failed`、`cancelled→canceled`；未知状态回保留值 `unknown`（而非 `completed` —— 谎称就绪会让对端停止轮询）。
+生成任务状态 → A2A `TaskState`：`pending→submitted`、`running→working`、`success→completed`、`failed→failed`、`cancelled→canceled`；未知状态回保留值 `unknown`（而非 `completed` —— 谎称就绪会让对端停止轮询）。**例外**：`message/send` 在产物未就绪时回的那条 `Task` 是**提交快照**，其 `status.timestamp` 用请求时刻（`now_iso()`）而非任务真实时间 —— 上游只给出 `{id, kind, status}`，拿不到真实时间；权威状态由随后 `tasks/get` 给出。`tasks/cancel` 的响应同样用 `updated_at`。
 
 Card 的 `url` 即调用端点（同时以 0.3 形状在 `additionalInterfaces[{url, transport}]` 里列出，满足规范 §5.6.4 的完整性要求）；`url` 由请求的 scheme://host 推导，多环境无需新增配置项。绑定技能包会映射为 Card `skills`（无绑定时智能体自身为一个 skill）。
 
