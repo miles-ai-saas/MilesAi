@@ -544,7 +544,8 @@ async def test_first_frame_carries_progress_and_true_time(monkeypatch, owned_job
 
 Run: `uv run python -m pytest tests/api/test_a2a_server_api.py -q -k "true_status_time or omits_status_message" tests/tenant/a2a/test_a2a_task_resubscribe.py -q`
 
-Expected: FAIL —— `assert '2026-09-21T...' == '2026-01-02T03:04:05+00:00'`（时间戳仍是请求时刻），以及 `KeyError: 'message'`（无进度）
+Expected: FAIL —— `assert '2026-09-21T...' == '2026-01-02T03:04:05+00:00'`（时间戳仍是请求时刻）。
+仅此一条为 RED。另一条 `test_tasks_get_omits_status_message_without_progress` **在接线前就已通过** —— 它是「无进度时不得凭空造 `status.message`」的 None 路径回归门，不是 RED 用例（实现前的预测把 `KeyError: 'message'` 记成了它的失败，实际从未发生）。
 
 - [ ] **Step 5: 接线 `tasks/get`**
 
@@ -765,6 +766,7 @@ async def test_jsonrpc_error_raises_instead_of_masquerading_as_answer(monkeypatc
 ```
 
 import 块需要 `from miles_common.exceptions import BadRequestError`。
+> 注：上面 import 块里的 `from uuid import uuid4` 未被本文件任何用例引用，`ruff` 的 F401 门会强制实现者删除它。
 
 - [ ] **Step 2: 运行测试确认失败**
 
@@ -864,6 +866,8 @@ EOF
 - [ ] **Step 1: 写失败测试**
 
 追加到 `backend/tests/tenant/agents/test_a2a_client_invoke.py`：
+
+> 注：沿用 Task 3 Step 1 的文件头时，`from uuid import uuid4` 仍无引用，需随本步一并删除（F401）；本步新增用例不引用它。
 
 ```python
 def _artifact(name: str | None = "image-1", mime: str | None = "image/png", uri: str | None = "https://peer.example.com/dl/a1") -> dict:
@@ -1412,6 +1416,8 @@ EOF
 - [ ] **Step 1: 写失败测试**
 
 追加到 `backend/tests/tenant/agents/test_a2a_client_invoke.py`：
+
+> 注：本步用例同样不引用 `from uuid import uuid4`，`ruff` 的 F401 门会要求删掉这行 import。
 
 ```python
 @pytest.mark.asyncio

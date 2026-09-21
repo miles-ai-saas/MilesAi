@@ -46,18 +46,18 @@ flowchart LR
 - **`result` 有 `status.state`（`Task`）**：进入下面的有限轮询。
 - **否则**：按既有形状抽文本作为回答。
 
-**有限轮询 `tasks/get`。** 间隔 2s、总上限 60s（模块常量 `TASK_POLL_INTERVAL_SECONDS` / `TASK_POLL_TIMEOUT_SECONDS`，不设配置项）。**先睡再查** —— 首响应本就是「刚提交」，立刻重查只会打一个空转请求。停止轮询的状态集是**终态** `completed` / `failed` / `canceled` / `rejected` 与**中断态** `input-required` / `auth-required` 的并集：
+**有限轮询 `tasks/get`。** 间隔 2s、总上限 60s（模块常量 `TASK_POLL_INTERVAL_SECONDS` / `TASK_POLL_TIMEOUT_SECONDS`，不设配置项）。**先睡再查** —— 首响应本就是「刚提交」，立刻重查只会打一个空转请求。60s 上限约束的**整段轮询**：既 cap 睡眠，也 cap 单次 `tasks/get`（预算耗尽即回退快照），故一轮不会叠上 httpx 自己的 60s。停止轮询的状态集是**终态** `completed` / `failed` / `canceled` / `rejected` 与**中断态** `input-required` / `auth-required` 的并集：
 
 - 把中断态也算「停止轮询」是有意的：对端在等我们补输入或凭证，继续轮询只是白等。`input-required` 时对端的提问通常写在 `status.message` 里，会一并带回（渲染为「进展：」一行）。
 - 首响应**已是**停止轮询态：直接渲染，**一次 `tasks/get` 都不发**。
 - 终态渲染把产物列成引用清单：只给 `artifactId` / `name` / `mimeType` / `uri`，**绝不下载内容**；`file` 缺 `uri` 时写「（无下载地址）」（不渲染字面量 `None`）。
 - 失败信号一律**终止轮询**并回退为「最后一次已知状态 + `taskId`」快照，**不重试**：
-  - 超时 → note「已等待 60 秒」；
-  - HTTP ≥ 400 → note 带状态码；
-  - 网络异常 / 响应非 JSON → note「网络异常」；
-  - 对端返回 JSON-RPC `error` → note「对端不支持继续查询（`{code}` `{message}`）」。注意这里是**任意** `error` 都回退，`-32601`（方法未找到）只是其中最典型的「对端不支持 `tasks/get`」情形。
+  - 预算耗尽（含单次 `tasks/get` 超过剩余预算）→ note「已等待 60 秒」；
+  - HTTP ≥ 400 → note「继续查询失败（HTTP {状态码}）」；
+  - 传输层 `RequestError` → note「继续查询失败（网络异常）」；响应体不是 JSON（如代理回 200 + HTML）→ note「继续查询失败（响应非 JSON）」—— 解析失败不冒充网络故障；
+  - 对端返回 JSON-RPC `error` → note「继续查询失败（对端返回错误 `{code}` `{message}`）」。这里是**任意** `error` 都回退，只如实转述对端给出的码与消息，**不推断成因**（`-32601`（方法未找到）只是最典型的一种）。
 - 「响应形状不认识」**不是**失败信号：保留最后一次已知状态继续等。
-- 任务 ID 缺失时不做任何轮询，回答注明「对端未给出任务 ID，无法继续查询」。
+- 任务 ID 缺失时不做任何轮询，回答注明「对端未给出任务 ID，无法继续查询」；已是停止轮询态的任务本就不需要继续查询，缺 ID 也正常渲染、不报该 note。
 - `tasks/get` 端点与 `message/send` 逐位对称探测（`{base}/tasks/get` 与 `{base}`），探到哪种部署形态就打对应那一个 —— 否则每轮都要先撞一个必然 404 的请求。
 
 **轮询负载：** 每次 Task 响应最多约 30 次 `tasks/get`（60s / 2s），会给对端带来额外压力，受对端自己 `scope = api_key` 的限流约束；Client 侧不主动降频、不重试。

@@ -95,10 +95,10 @@ Peer 须 `status=active` 且 Card 有效。
 `invoke_a2a_peer` 发 `message/send`，响应按 **`error` → `Task` → 文本** 的固定顺序判读：
 
 - 顶层 JSON-RPC `error` → **调用失败**（抛 `BadRequestError`，`steps[].type = "a2a_error"`），错误消息不再冒充回答；HTTP ≥ 400 才继续试下一个 endpoint 形态，一旦对端按 JSON-RPC 应答即停止探测。
-- `result.status.state` 存在（`Task`）→ **有限轮询** `tasks/get`：间隔 2s、总上限 60s（常量，不设配置项），先睡再查；端点与 `message/send` 逐位对称探测。
+- `result.status.state` 存在（`Task`）→ **有限轮询** `tasks/get`：间隔 2s、总上限 60s（常量，不设配置项），先睡再查；60s 约束整段轮询，**也约束单次 `tasks/get`**（预算耗尽即回退快照）；端点与 `message/send` 逐位对称探测。
 - 已是「停止轮询态」→ 直接渲染，**不发任何 `tasks/get`**。停止轮询态 = 终态 `completed` / `failed` / `canceled` / `rejected` ∪ 中断态 `input-required` / `auth-required`（对端在等补输入或凭证，继续等只是白等；`input-required` 的提问在 `status.message` 里，一并带回）。
 - 终态产物只渲染**引用清单**（`artifactId` / `name` / `mimeType` / `uri`），**不下载内容**；缺 `uri` 写「（无下载地址）」。
-- 失败信号一律终止轮询并回退「最后一次已知状态 + `taskId`」快照（不重试）：超时、HTTP ≥ 400、网络异常 / 非 JSON、对端返回 JSON-RPC `error`（`-32601` 是最典型的「不支持 `tasks/get`」，但实际是**任意** `error` 都回退）；「响应形状不认识」不算失败，继续等。
+- 失败信号一律终止轮询并回退「最后一次已知状态 + `taskId`」快照（不重试）：预算耗尽（含单次 `tasks/get` 超预算）、HTTP ≥ 400、传输层错误（note「网络异常」）、响应非 JSON（note「响应非 JSON」，解析失败不冒充网络故障）、对端返回 JSON-RPC `error`（note 如实转述对端给出的码与消息、**不推断成因**，`-32601` 只是最典型的一种）；「响应形状不认识」不算失败，继续等。已是停止轮询态的任务无需 `taskId` 也正常渲染。
 - 轮询会给对端带来额外负载（每次 Task 响应最多约 30 次 `tasks/get`），受对端 `scope = api_key` 限流约束；Client 不主动降频。
 - 出站 `tasks/cancel`（`cancel_a2a_peer_task`）**只补能力、不自动调用**：超时 ≠ 放弃，产物属对端用户。
 

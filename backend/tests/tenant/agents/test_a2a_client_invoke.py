@@ -7,6 +7,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from types import SimpleNamespace
 
 import pytest
@@ -283,8 +284,38 @@ async def test_poll_jsonrpc_error_falls_back_to_snapshot(monkeypatch):  # noqa: 
 
     answer = await client_mod.invoke_a2a_peer(_peer(), "生成一张图")
 
-    assert "对端不支持继续查询" in answer
-    assert "-32601" in answer
+    assert "继续查询失败" in answer
+    assert "-32601" in answer and "不支持的方法" in answer
+    assert "任务 ID：j1" in answer
+
+
+@pytest.mark.asyncio
+async def test_poll_request_longer_than_remaining_budget_returns_waited_snapshot(monkeypatch):  # noqa: ANN001
+    """单次 ``tasks/get`` 也受剩余预算约束：请求慢于预算 → 「已等待」快照，而非网络异常或挂死。
+
+    预算只 cap 睡眠的话，请求自身还能再吃掉 httpx 的 60s，一轮最坏 ~120s。
+    """
+    _fast_poll(monkeypatch)
+    captured: list[dict] = []
+    completed: list[bool] = []
+
+    class _Slow(_SeqClient):
+        async def post(self, url: str, *, json: dict | None = None, headers: dict | None = None) -> _Resp:
+            captured.append({"url": url, "body": json})
+            if len(captured) > 1:
+                # 预算 ~0.02s，请求睡 0.05s：只有被预算取消，这行之后才走不到。
+                await asyncio.sleep(0.05)
+                completed.append(True)
+            return _Resp({"jsonrpc": "2.0", "id": "1", "result": _task("working")})
+
+    monkeypatch.setattr(client_mod.httpx, "AsyncClient", lambda **_kwargs: _Slow([], captured))
+
+    answer = await client_mod.invoke_a2a_peer(_peer(), "生成一张图")
+
+    assert completed == []
+    assert "已等待" in answer
+    assert "网络异常" not in answer
+    assert "响应非 JSON" not in answer
     assert "任务 ID：j1" in answer
 
 
@@ -321,6 +352,18 @@ async def test_task_without_id_is_not_polled(monkeypatch):  # noqa: ANN001
     answer = await client_mod.invoke_a2a_peer(_peer(), "生成一张图")
 
     assert "对端未给出任务 ID" in answer
+    assert len(captured) == 1
+
+
+@pytest.mark.asyncio
+async def test_terminal_task_without_id_is_not_told_it_cannot_be_polled(monkeypatch):  # noqa: ANN001
+    """已停止轮询态缺 ``id`` 不该报「无法继续查询」：本就不需要继续查询。"""
+    captured = _patch(monkeypatch, [{"jsonrpc": "2.0", "id": "1", "result": _task("completed", task_id=None)}])
+
+    answer = await client_mod.invoke_a2a_peer(_peer(), "生成一张图")
+
+    assert answer.splitlines()[0] == "外部任务已完成"
+    assert "对端未给出任务 ID" not in answer
     assert len(captured) == 1
 
 

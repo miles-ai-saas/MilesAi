@@ -224,13 +224,10 @@ def _artifact_lines(artifacts: object) -> list[str]:
                 if isinstance(part, dict) and isinstance(part.get("file"), dict):
                     file_obj = part["file"]
                     break
-        if file_obj is None:
-            lines.append(f"- {label}（无下载地址）")
-            continue
-        uri = file_obj.get("uri")
+        uri = file_obj.get("uri") if file_obj is not None else None
         if not (isinstance(uri, str) and uri):
-            # ``file`` 存在但没有 ``uri`` 同样给不出下载地址：此前会渲染成字面量
-            # ``None``，既不能读也误导上层。
+            # ``file`` 缺失、或存在却给不出 ``uri``，两者都渲染不出下载地址：此前只处理
+            # 前者，后者会渲染成字面量 ``None``，既不能读也误导上层。
             lines.append(f"- {label}（无下载地址）")
             continue
         name = file_obj.get("name") or label
@@ -287,12 +284,17 @@ async def _resolve_agent_task(client: httpx.AsyncClient, url: str, task: dict, h
     **本函数不得向上抛 ``httpx.RequestError`` / ``ValueError``**：调用它的位置在
     ``invoke_a2a_peer`` 的 endpoint 循环内，那层的 ``except`` 会把这里的结果丢掉并对第二个
     endpoint 重跑一遍（最坏 120s 且用户拿不到任何结论）。
+
+    ``TASK_POLL_TIMEOUT_SECONDS`` 是**整段轮询**的上限：它既 cap 睡眠，也 cap 单次
+    ``tasks/get``（见下），故一轮不会叠上 httpx 自己的 60s。
     """
+    # 先判停止轮询态再看 ``id``：终态/中断态本就不需要继续查询，缺 ``id`` 也不该被
+    # 报「无法继续查询」——那是一个从未发生的需求。
+    if _task_state(task) in STOP_POLLING_TASK_STATES:
+        return _render_agent_task(task)
     task_id = task.get("id")
     if not isinstance(task_id, str) or not task_id:
         return _render_agent_task(task, note="对端未给出任务 ID，无法继续查询")
-    if _task_state(task) in STOP_POLLING_TASK_STATES:
-        return _render_agent_task(task)
 
     deadline = time.monotonic() + TASK_POLL_TIMEOUT_SECONDS
     latest = task
@@ -302,16 +304,33 @@ async def _resolve_agent_task(client: httpx.AsyncClient, url: str, task: dict, h
             break
         # 先睡再查：首响应已是「刚提交」，立刻重查只会打一个空转请求。
         await asyncio.sleep(min(TASK_POLL_INTERVAL_SECONDS, remaining))
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            break
         try:
-            resp = await client.post(url, json=_tasks_get_payload(task_id), headers=headers)
-            if resp.status_code >= 400:
-                return _render_agent_task(latest, note=f"继续查询失败（HTTP {resp.status_code}）")
-            data = resp.json()
-        except (httpx.RequestError, ValueError):
+            # 预算同时约束这一次 ``tasks/get``：只 cap 睡眠的话，请求自身还能再吃掉
+            # httpx 的 60s，一轮最坏 ~120s，文档承诺的 60s 上限就是空话。
+            # 选 ``asyncio.timeout``：它把「预算耗尽」变成内置 ``TimeoutError``，与外层
+            # ``httpx.RequestError``（真实网络故障）天然分开，故预算用完仍走「已等待」快照，
+            # 不会误报成「网络异常」。
+            async with asyncio.timeout(remaining):
+                resp = await client.post(url, json=_tasks_get_payload(task_id), headers=headers)
+                if resp.status_code >= 400:
+                    return _render_agent_task(latest, note=f"继续查询失败（HTTP {resp.status_code}）")
+                data = resp.json()
+        except TimeoutError:
+            # 静默可接受：预算耗尽是预期控制流（非故障），落到循环外走「已等待」快照。
+            break
+        except httpx.RequestError:
             return _render_agent_task(latest, note="继续查询失败（网络异常）")
+        except ValueError:
+            # 解析失败不是网络故障：代理回 200 + HTML 就落在这里。
+            return _render_agent_task(latest, note="继续查询失败（响应非 JSON）")
         err = _jsonrpc_error(data)
         if err is not None:
-            return _render_agent_task(latest, note=f"对端不支持继续查询（{err[0]} {err[1]}）")
+            # 只如实转述对端给出的码与消息，不推断成因：任意 ``error`` 都回退，``-32601``
+            # 只是「对端不支持 tasks/get」最典型的那一种，不是唯一可能。
+            return _render_agent_task(latest, note=f"继续查询失败（对端返回错误 {err[0]} {err[1]}）")
         if not _looks_like_task(data):
             # 形状不认识不是失败信号：保留最后一次已知状态，继续等。
             continue
