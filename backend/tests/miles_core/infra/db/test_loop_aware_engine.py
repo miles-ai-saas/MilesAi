@@ -12,7 +12,6 @@ from __future__ import annotations
 import ast
 import asyncio
 import inspect
-from pathlib import Path
 from typing import Any
 
 import pytest
@@ -25,6 +24,7 @@ from miles_core.infra.db.async_session import (
     dispose_loop_engines,
     get_engine,
 )
+from tests.paths import BACKEND_ROOT
 
 
 class _StubEngine:
@@ -270,9 +270,9 @@ def test_engine_receives_configured_pool_params(monkeypatch: pytest.MonkeyPatch)
     assert captured["pool_timeout"] == settings.db_pool_timeout
 
 
-# 由本文件位置推导仓库根，与 ``test_run_worker_db_coro.py`` 的 ``_WORKER_SRC_ROOT`` 同法（不写
-# 死绝对路径）。``tests/infra/`` 的 parents[2] 即 ``backend/``。
-_BACKEND_ROOT = Path(__file__).resolve().parents[2]
+# 路径常量统一来自 ``tests.paths``：本文件在 ``tests/miles_core/infra/db/``，深度已变，
+# 不能再靠 ``parents[N]`` 猜仓库根（N 会随目录层级漂移）。
+_BACKEND_ROOT = BACKEND_ROOT
 _HEALTH_CHECKS_SRC = _BACKEND_ROOT / "packages" / "miles-core" / "src" / "miles_core" / "utils" / "health_checks.py"
 
 

@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import ast
 import asyncio
-from pathlib import Path
 from typing import Any
 
 import pytest
@@ -24,6 +23,7 @@ from miles_core.infra.db.async_session import (
     get_engine,
     run_worker_db_coro,
 )
+from tests.paths import PACKAGES
 
 
 def test_releases_while_loop_still_running(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -136,7 +136,7 @@ def test_real_dispose_releases_the_current_loop_entry() -> None:
     assert captured["engine"].pool is not captured["pool"], "真 dispose 会换掉整个池；池对象没变说明只 pop 了字典、没真 await dispose()"
 
 
-_WORKER_SRC_ROOT = Path(__file__).resolve().parents[2] / "packages" / "miles-worker" / "src"
+_WORKER_SRC_ROOT = PACKAGES / "miles-worker" / "src"
 
 # 直接起事件循环、绕过包装的两个入口调用（``run`` 是 ``asyncio.run`` 的本名）。
 _ASYNC_RUN_CALLS = ("run", "run_until_complete")
