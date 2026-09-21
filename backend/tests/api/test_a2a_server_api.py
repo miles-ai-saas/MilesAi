@@ -8,6 +8,7 @@
 from __future__ import annotations
 
 import json
+from datetime import UTC, datetime
 from types import SimpleNamespace
 from uuid import uuid4
 
@@ -331,6 +332,7 @@ async def test_resubscribe_end_to_end_real_service_through_http(as_a2a, api_clie
             params={},
             source_ref_type="agent",
             source_ref_id=AGENT_ID,
+            updated_at=datetime(2026, 1, 2, 3, 4, 5, tzinfo=UTC),
         )
         base.update(overrides)
         return SimpleNamespace(**base)
@@ -755,3 +757,115 @@ async def test_rpc_view_converts_escaped_app_error_to_envelope(as_a2a, api_clien
     body = resp.json()
     assert set(body) == {"jsonrpc", "id", "error"}
     assert body["error"]["code"] == -32602
+
+
+@pytest.mark.asyncio
+async def test_tasks_get_reports_true_status_time_and_progress(as_a2a, api_client, monkeypatch):
+    """``status.timestamp`` 必须是任务真实更新时间，``status.message`` 必须带进度。
+
+    用请求时刻会让对端每次查询都看到「刚刚更新」；而缺 ``status.message`` 会让对端轮询
+    时读不到任何进展（订阅流却读得到）。
+    """
+    job_id = uuid4()
+    updated_at = datetime(2026, 1, 2, 3, 4, 5, tzinfo=UTC)
+
+    agent = Agent()
+    agent.id = AGENT_ID
+    agent.agent_type = AgentType.CUSTOM
+    agent.status = AgentStatus.ENABLED
+    agent.config = {A2A_PUBLISH_FLAG: True}
+    agent.deleted_at = None
+
+    class _Db:
+        async def get(self, _model, _id):  # noqa: ANN001
+            return agent
+
+        async def commit(self):  # noqa: ANN201
+            pass
+
+    async def override_db():  # noqa: ANN202
+        yield _Db()
+
+    job = SimpleNamespace(
+        id=job_id,
+        tenant_id=uuid4(),
+        status=SimpleNamespace(value="running"),
+        progress_message="45% 渲染中",
+        progress_percent=45,
+        result=None,
+        params={},
+        source_ref_type="agent",
+        source_ref_id=AGENT_ID,
+        updated_at=updated_at,
+    )
+
+    async def _get(_db, _ctx, _job_id):  # noqa: ANN001
+        return job
+
+    async def _write(**_kwargs):  # noqa: ANN003
+        return None
+
+    as_a2a.dependency_overrides[get_db] = override_db
+    monkeypatch.setattr(a2a_svc, "get_generative_job_for_tenant", _get)
+    monkeypatch.setattr(a2a_svc, "write_a2a_audit", _write)
+
+    resp = await api_client.post(RPC_PATH, json={"jsonrpc": "2.0", "id": 1, "method": "tasks/get", "params": {"id": str(job_id)}})
+
+    assert resp.status_code == 200
+    status = resp.json()["result"]["status"]
+    assert status["state"] == "working"
+    # 精确等值：这是「不是 now_iso()」唯一有判别力的断言（now_iso() 也是合法 ISO 串）
+    assert status["timestamp"] == updated_at.isoformat()
+    assert status["message"]["parts"] == [{"kind": "text", "text": "45% 渲染中"}]
+    assert status["message"]["metadata"] == {"percent": 45}
+
+
+@pytest.mark.asyncio
+async def test_tasks_get_omits_status_message_without_progress(as_a2a, api_client, monkeypatch):
+    """任务没进度可说时，``status.message`` 必须缺席 —— 不塞空串冒充进展。"""
+    job_id = uuid4()
+
+    agent = Agent()
+    agent.id = AGENT_ID
+    agent.agent_type = AgentType.CUSTOM
+    agent.status = AgentStatus.ENABLED
+    agent.config = {A2A_PUBLISH_FLAG: True}
+    agent.deleted_at = None
+
+    class _Db:
+        async def get(self, _model, _id):  # noqa: ANN001
+            return agent
+
+        async def commit(self):  # noqa: ANN201
+            pass
+
+    async def override_db():  # noqa: ANN202
+        yield _Db()
+
+    job = SimpleNamespace(
+        id=job_id,
+        tenant_id=uuid4(),
+        status=SimpleNamespace(value="pending"),
+        progress_message=None,
+        progress_percent=None,
+        result=None,
+        params={},
+        source_ref_type="agent",
+        source_ref_id=AGENT_ID,
+        updated_at=datetime(2026, 1, 2, 3, 4, 5, tzinfo=UTC),
+    )
+
+    async def _get(_db, _ctx, _job_id):  # noqa: ANN001
+        return job
+
+    async def _write(**_kwargs):  # noqa: ANN003
+        return None
+
+    as_a2a.dependency_overrides[get_db] = override_db
+    monkeypatch.setattr(a2a_svc, "get_generative_job_for_tenant", _get)
+    monkeypatch.setattr(a2a_svc, "write_a2a_audit", _write)
+
+    resp = await api_client.post(RPC_PATH, json={"jsonrpc": "2.0", "id": 1, "method": "tasks/get", "params": {"id": str(job_id)}})
+
+    assert resp.status_code == 200
+    assert set(resp.json()["result"]["status"]) == {"state", "timestamp"}

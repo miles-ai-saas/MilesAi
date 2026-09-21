@@ -65,6 +65,8 @@ from miles_portal.tenant.a2a.server import (
     jsonrpc_error,
     jsonrpc_result,
     now_iso,
+    progress_text,
+    timestamp_iso,
     to_a2a_task_state,
 )
 from miles_portal.tenant.a2a.services import streaming
@@ -403,8 +405,10 @@ async def _handle_tasks_get(
             task_id=str(job.id),
             context_id=context_id_from_job_params(job.params),
             state=to_a2a_task_state(job.status.value),
-            timestamp=now_iso(),
+            timestamp=timestamp_iso(job.updated_at),
             artifacts=build_a2a_artifacts(job_result=job.result, agent_id=agent_id, task_id=job.id, base_url=base_url),
+            text=progress_text(progress_message=job.progress_message, percent=job.progress_percent),
+            percent=job.progress_percent,
         ),
     )
 
@@ -436,7 +440,9 @@ async def _handle_tasks_cancel(
             task_id=str(job.id),
             context_id=context_id_from_job_params(job.params),
             state=to_a2a_task_state(job.status.value),
-            timestamp=now_iso(),
+            timestamp=timestamp_iso(job.updated_at),
+            text=progress_text(progress_message=job.progress_message, percent=job.progress_percent),
+            percent=job.progress_percent,
         ),
     )
 

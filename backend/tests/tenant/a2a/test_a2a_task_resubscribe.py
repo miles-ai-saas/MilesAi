@@ -10,6 +10,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+from datetime import UTC, datetime
 from types import SimpleNamespace
 from uuid import uuid4
 
@@ -28,6 +29,7 @@ AGENT_ID = uuid4()
 ATTACHMENT_ID = uuid4()
 BASE = "https://miles.example.com"
 JOB_ID = uuid4()
+JOB_UPDATED_AT = datetime(2026, 1, 2, 3, 4, 5, tzinfo=UTC)
 
 
 def _ctx() -> TenantContext:
@@ -78,6 +80,7 @@ def _job(status: str, *, progress_message=None, progress_percent=None, result=No
         progress_percent=progress_percent,
         result=result,
         params=params if params is not None else {},
+        updated_at=JOB_UPDATED_AT,
     )
 
 
@@ -474,3 +477,26 @@ async def test_commit_releases_request_scoped_connection(monkeypatch, owned_job)
     await subscription_svc.open_task_subscription(db, _ctx(), AGENT_ID, _params(), base_url=BASE)
 
     assert db.committed == 1
+
+
+@pytest.mark.asyncio
+async def test_first_frame_carries_progress_and_true_time(monkeypatch, owned_job):  # noqa: ANN001
+    """订阅首帧就要给出订阅时刻的进度，且时间戳取任务真实更新时间。
+
+    首帧缺进度会让对端在订阅后的第一段静默里什么都看不到；时间戳若用请求时刻，对端每次
+    重连都看到「刚刚更新」，据此判断新鲜度会误判。
+    """
+    job = owned_job(_job("running", progress_message="45% 渲染中", progress_percent=45))
+    monkeypatch.setattr(
+        subscription_svc,
+        "watch_generative_job",
+        _scripted([job, _job("running", progress_message="45% 渲染中", progress_percent=45)]),
+    )
+
+    opened = await subscription_svc.open_task_subscription(_Db(agent=_agent()), _ctx(), AGENT_ID, _params(), base_url=BASE)
+    results = [f["result"] for f in await _json_frames(opened)]
+
+    assert results[0]["kind"] == "task"
+    assert results[0]["status"]["timestamp"] == JOB_UPDATED_AT.isoformat()
+    assert results[0]["status"]["message"]["parts"][0]["text"] == "45% 渲染中"
+    assert results[0]["status"]["message"]["metadata"] == {"percent": 45}

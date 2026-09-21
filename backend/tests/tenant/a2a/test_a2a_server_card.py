@@ -837,6 +837,10 @@ def _job(status: str, *, params: dict | None = None, job_id=None, result: dict |
         result=result,
         source_ref_type="agent" if agent_id else None,
         source_ref_id=agent_id,
+        # 接线后 tasks/get 会读这三个字段：替身补齐，别让缺字段掩盖真实断言
+        progress_message=None,
+        progress_percent=None,
+        updated_at=datetime(2026, 1, 2, 3, 4, 5, tzinfo=UTC),
     )
 
 
@@ -940,7 +944,15 @@ async def test_tasks_cancel_returns_canceled_task(monkeypatch):  # noqa: ANN001
             pass
 
         async def cancel_job(self, _job_id):
-            return SimpleNamespace(id=job_id, status=SimpleNamespace(value="cancelled"), params={"conversation_id": "c1"})
+            return SimpleNamespace(
+                id=job_id,
+                status=SimpleNamespace(value="cancelled"),
+                params={"conversation_id": "c1"},
+                # tasks/cancel 的成功路径同样走 build_a2a_task
+                progress_message=None,
+                progress_percent=None,
+                updated_at=datetime(2026, 1, 2, 3, 4, 5, tzinfo=UTC),
+            )
 
     monkeypatch.setattr(server_svc, "get_generative_job_for_tenant", fake_get)
     monkeypatch.setattr(server_svc, "GenerativeJobService", _FakeJobService)

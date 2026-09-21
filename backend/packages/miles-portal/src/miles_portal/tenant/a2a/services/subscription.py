@@ -44,6 +44,7 @@ from miles_portal.tenant.a2a.server import (
     jsonrpc_result,
     now_iso,
     progress_text,
+    timestamp_iso,
     to_a2a_task_state,
 )
 from miles_portal.tenant.a2a.services import streaming
@@ -249,12 +250,14 @@ async def _subscription_frames(
                     task_id=task_id,
                     context_id=context_id,
                     state=latest_state,
-                    timestamp=now_iso(),
+                    timestamp=timestamp_iso(first.updated_at),
                     # 订阅时已终态：产物直接挂首帧（一帧讲完整段故事）；否则本次订阅期间产出的
                     # 走 artifact-update 帧，同一产物不在一条流里出现两次。
                     artifacts=(
                         build_a2a_artifacts(job_result=first.result, agent_id=agent_id, task_id=job_id, base_url=base_url) if terminal_at_subscribe else None
                     ),
+                    text=progress_text(progress_message=first.progress_message, percent=first.progress_percent),
+                    percent=first.progress_percent,
                 ),
             )
         )
