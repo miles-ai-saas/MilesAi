@@ -22,6 +22,7 @@
 - **`except` 顺序子类在前**，且**删掉中间某一档不会「零流水」，而是下沉到更宽的下一档并被错分类** —— 例如 Task 4 删 `except AppError` 后，`BadRequestError` 会落进 `except Exception` 记成 `-32603`（Task 2 删兜底后则是逸出重抛）。证伪时按此预期，别把「错分类」误判成「没修好」。
 - **协议契约**：JSON-RPC 端点的协议级错误一律 **HTTP 200 + JSON-RPC 信封**（`{"jsonrpc":"2.0","id":…,"error":{"code":…,"message":…}}`），**不得**回平台信封 `{code,message,data,trace_id}`。唯一例外见「未预期异常」一条。
 - **未预期异常口径不变**：非 `AppError` 仍「审计 `INTERNAL_ERROR` 后原样重抛」→ HTTP 500 平台信封。**不要**顺手改成回信封。
+- **两套「码」不要混为一谈**：JSON-RPC 信封的 `error.code` 用 A2A 域码（`-32001` 等）；而**平台信封**的 `code` 恒等于 HTTP 状态码 —— `AppError.code` 默认取 `status_code`（`miles_common/exceptions.py`），全局处理器 `app_error_handler` 按 `exc.code` 出信封（`miles_core/web/handlers.py:90-97`）。故普通 HTTP 路由（产物下载）失败时，响应体里的 `code` 是 404/400，**不是** `-32001`/`-32602`；A2A 域码只出现在审计的 `detail.errorCode`。
 - **审计规则**：`detail` 只含元数据，**绝不**含消息正文（`aud_logs` 是租户可见面）。新增 `errorType`（异常类名）/`errorStatus`（HTTP status）**只记类型与状态码**，不记 `exc.message`。
 - **不改动**：`AttachmentService` 的异常语义（跨租户仍抛 `ForbiddenError`，只改 docstring）；鉴权依赖 `deps_api_auth`（401/403 是 HTTP 层认证语义）；`get_generative_job_for_tenant` 本身；限流与流内错误的既有处理（`limits.py`、`audit.py` 的 fail-open，`server.py:690/:697` 与 `subscription.py:338` 的流内帧协议）。
 - **`except` 顺序**：子类在前。`NotFoundError` / `ForbiddenError` / `BadRequestError` 都是 `AppError` 子类，宽分支必须排在最后。
@@ -183,7 +184,7 @@ cd backend && uv run python -m pytest tests/tenant/a2a tests/api -q
 - [ ] **Step 6: 提交**
 
 ```bash
-cd /Users/xiezhigang/Projects/miles/MilesAI && git add -A && git commit -F - <<'EOF'
+cd /Users/xiezhigang/Projects/miles/MilesAI/.worktrees/a2a-error-sealing && git add -A && git commit -F - <<'EOF'
 feat(a2a): 新增 AppError → JSON-RPC 信封的纯映射函数
 
 把「业务异常译成对外错误码」这件事从各 handler 的散点记忆收归一处：tasks/* 域的
@@ -447,7 +448,7 @@ cd backend && uv run python -m pytest tests/tenant/a2a tests/api -q
 - [ ] **Step 6: 提交**
 
 ```bash
-cd /Users/xiezhigang/Projects/miles/MilesAI && git add -A && git commit -F - <<'EOF'
+cd /Users/xiezhigang/Projects/miles/MilesAI/.worktrees/a2a-error-sealing && git add -A && git commit -F - <<'EOF'
 fix(a2a): RPC 层兜底 AppError，修掉 tasks/cancel 竞态的 500 逃逸
 
 _handle_tasks_cancel 第二个 try 只捕 BadRequestError，任务在归属校验之后、取消之前
@@ -582,7 +583,7 @@ cd backend && rg -n "32603" tests/tenant/a2a/test_a2a_server_card.py tests/api/t
 - [ ] **Step 6: 提交**
 
 ```bash
-cd /Users/xiezhigang/Projects/miles/MilesAI && git add -A && git commit -F - <<'EOF'
+cd /Users/xiezhigang/Projects/miles/MilesAI/.worktrees/a2a-error-sealing && git add -A && git commit -F - <<'EOF'
 fix(a2a): message/send 不再把业务异常吞成 -32603
 
 合规拦截抛 BadRequestError、配额命中抛 ForbiddenError，二者原先被 message/send 的宽
@@ -799,7 +800,7 @@ cd backend && uv run python -m pytest tests/tenant/a2a tests/api -q
 - [ ] **Step 6: 提交**
 
 ```bash
-cd /Users/xiezhigang/Projects/miles/MilesAI && git add -A && git commit -F - <<'EOF'
+cd /Users/xiezhigang/Projects/miles/MilesAI/.worktrees/a2a-error-sealing && git add -A && git commit -F - <<'EOF'
 fix(a2a): 产物下载补齐失败留痕，跨租户附件对外归一为 404
 
 read_task_artifact 只捕 NotFoundError，附件未就绪（400）、跨租户附件（403）与存储
@@ -954,7 +955,7 @@ async def test_message_send_compliance_block_returns_invalid_params(as_a2a, api_
 
 
 @pytest.mark.parametrize(
-    ("exc", "expected_status", "expected_code", "expected_type"),
+    ("exc", "expected_status", "expected_audit_code", "expected_type"),
     [
         # 跨租户附件：修复前是 **403**（等于向对端确认「该附件存在于别的租户」），且零流水
         (ForbiddenError("无权访问该租户资源"), 404, -32001, "ForbiddenError"),
@@ -964,7 +965,7 @@ async def test_message_send_compliance_block_returns_invalid_params(as_a2a, api_
 )
 @pytest.mark.asyncio
 async def test_artifact_endpoint_failure_maps_status_and_audits(  # noqa: ANN001
-    as_a2a, api_client, monkeypatch, exc, expected_status, expected_code, expected_type
+    as_a2a, api_client, monkeypatch, exc, expected_status, expected_audit_code, expected_type
 ):
     """E1 的 HTTP 面：该端点是普通 HTTP 下载，形状本来就是平台信封 —— 要验的是**状态码**与**留痕**。
 
@@ -1007,11 +1008,11 @@ async def test_artifact_endpoint_failure_maps_status_and_audits(  # noqa: ANN001
     assert resp.status_code == expected_status
     body = resp.json()
     assert set(body) == {"code", "message", "data", "trace_id"}
-    assert body["code"] == expected_code
+    assert body["code"] == expected_status  # 平台信封的 code 恒等于 HTTP 状态码：`AppError.code` 默认取 `status_code`（`miles_common/exceptions.py`），全局处理器按 `exc.code` 出信封。A2A 域码（`-32001`…）**只**留在审计的 `errorCode`，不出现在本路由的响应体里。
     assert len(recorded) == 1
     assert recorded[0]["action"] == "a2a.artifact.download"
     assert recorded[0]["outcome"] == "failed"
-    assert recorded[0]["detail"]["errorCode"] == expected_code
+    assert recorded[0]["detail"]["errorCode"] == expected_audit_code
     assert recorded[0]["detail"]["errorType"] == expected_type
 ```
 
@@ -1048,7 +1049,7 @@ async def test_rpc_view_converts_escaped_app_error_to_envelope(as_a2a, api_clien
 cd backend && uv run python -m pytest tests/api/test_a2a_server_api.py -q -k "race_returns or compliance_block or artifact_endpoint_failure or escaped_app_error"
 ```
 
-预期：只有 `test_rpc_view_converts_escaped_app_error_to_envelope` **必然**红（视图层尚无兜底，`ForbiddenError` 逸出到全局处理器 → 403 平台信封）。其余三条是 Task 2/3/4 已修好行为的**跨层复验**：若它们已绿，是那三个任务的功劳，**如实记录**，不要当成 RED 证据。若 `escaped_app_error` 那条没红，说明异常根本没从视图抛出去，先停下排查。
+预期：只有 `test_rpc_view_converts_escaped_app_error_to_envelope` **必然**红（视图层尚无兜底，`ForbiddenError` 逸出到全局处理器 → 403 平台信封）。其余四条是 Task 2/3/4 已修好行为的**跨层复验**：若它们已绿，是那三个任务的功劳，**如实记录**，不要当成 RED 证据。（实测：四条全绿，唯一真 RED 即注入式那条；产物下载 400/404 两条也在其中。）若 `escaped_app_error` 那条没红，说明异常根本没从视图抛出去，先停下排查。
 
 - [ ] **Step 4: 实现视图层兜底**
 
@@ -1099,12 +1100,14 @@ from miles_portal.tenant.a2a.server import (
 cd backend && uv run python -m pytest tests/api/test_a2a_server_api.py -q && cd .. && make openapi-check
 ```
 
-预期：全绿且 `openapi-check` **不漂移**。若漂移，检查是否误改了 docstring；若确实必须改，则用 `make openapi-update` 更新 `backend/openapi/openapi.snapshot.json` 并在提交说明里点出。
+预期：**24 passed** 且 `openapi-check` **不漂移**。若漂移，检查是否误改了 docstring；若确实必须改，则用 `make openapi-update` 更新 `backend/openapi/openapi.snapshot.json` 并在提交说明里点出。
+
+实测补充（回填）：本步之外还应跑 `uv run python -m pytest -q`（全量，实测 1465 passed）与 `make layers-check`（实测 7 kept / 0 broken），仅跑 `tests/api` 不足以充当质量门。
 
 - [ ] **Step 6: 提交**
 
 ```bash
-cd /Users/xiezhigang/Projects/miles/MilesAI && git add -A && git commit -F - <<'EOF'
+cd /Users/xiezhigang/Projects/miles/MilesAI/.worktrees/a2a-error-sealing && git add -A && git commit -F - <<'EOF'
 fix(a2a): 视图层为三处分流加 AppError 兜底并补 HTTP 面用例
 
 服务层已在 RPC 层收口，视图层这一道是纵深防御：两个流式入口当前无可达逸出点，用例
@@ -1241,7 +1244,7 @@ cd backend && uv run python -m pytest -q && uv run ruff check . && uv run ruff f
 - [ ] **Step 8: 提交**
 
 ```bash
-cd /Users/xiezhigang/Projects/miles/MilesAI && git add -A && git commit -F - <<'EOF'
+cd /Users/xiezhigang/Projects/miles/MilesAI/.worktrees/a2a-error-sealing && git add -A && git commit -F - <<'EOF'
 docs(a2a): 同步错误封口口径并修正 attachment 的 docstring 谎言
 
 指南新增「错误与信封」映射表（含「权限被压平」「500 不保证 JSON-RPC 形状」两条例外），
