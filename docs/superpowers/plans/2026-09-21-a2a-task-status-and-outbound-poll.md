@@ -1033,9 +1033,12 @@ def _render_agent_task(task: dict, *, note: str | None = None) -> str:
     不带 peer 名：调用方 ``invoke.py`` 已用 ``【外部 A2A · {name}】`` 包过，重复无益。
     """
     state = _task_state(task) or "unknown"
-    lines = [_TASK_HEADLINES.get(state, f"外部任务仍在进行（状态：{state}）")]
-    if state == "unknown":
-        lines[0] = "外部任务状态未知（状态：unknown）"
+    if state in _TASK_HEADLINES:
+        lines = [_TASK_HEADLINES[state]]
+    elif state == "unknown":
+        lines = ["外部任务状态未知（状态：unknown）"]
+    else:
+        lines = [f"外部任务仍在进行（状态：{state}）"]
     status = task.get("status")
     message = status.get("message") if isinstance(status, dict) else None
     progress = _first_part_text(message.get("parts")) if isinstance(message, dict) else None
