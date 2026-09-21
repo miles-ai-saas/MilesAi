@@ -66,6 +66,7 @@ from miles_portal.tenant.mcp.schemas import enums as mcp_enums
 from miles_portal.tenant.tasks.schemas import enums as tasks_enums
 from miles_portal.tenant.tools import models as orm_tools
 from miles_portal.tenant.tools.schemas import enums as tools_enums
+from tests.paths import BACKEND_ROOT, PACKAGES
 
 CASES: list[tuple[str, type[enum.Enum], type[enum.Enum]]] = [
     ("A2aPeerStatus", a2a_enums.A2aPeerStatus, orm_a2a.A2aPeerStatus),
@@ -130,8 +131,8 @@ def test_api_enum_matches_orm_verbatim(name, api, orm):
     assert not report, report
 
 
-_BACKEND = Path(__file__).resolve().parents[2]
-_PACKAGES = _BACKEND / "packages"
+_BACKEND = BACKEND_ROOT
+_PACKAGES = PACKAGES
 _OPENAPI_SNAPSHOT = _BACKEND / "openapi" / "openapi.snapshot.json"
 _ENUM_NAMES = frozenset(name for name, _, _ in CASES)
 
