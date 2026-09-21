@@ -342,3 +342,57 @@ async def test_message_response_is_not_treated_as_task(monkeypatch):  # noqa: AN
     # 不是 Task 渲染结果：若被 Task 分流误捕，这里会变成「外部任务状态未知（状态：unknown）」
     assert answer == str(result)
     assert len(captured) == 1
+
+
+@pytest.mark.asyncio
+async def test_cancel_peer_task_sends_tasks_cancel(monkeypatch):  # noqa: ANN001
+    captured = _patch(monkeypatch, [{"jsonrpc": "2.0", "id": "1", "result": _task("canceled")}])
+
+    await client_mod.cancel_a2a_peer_task(_peer(), "j1")
+
+    assert len(captured) == 1
+    assert captured[0]["url"] == "https://peer.example.com/a2a/tasks/cancel"
+    assert captured[0]["body"]["method"] == "tasks/cancel"
+    assert captured[0]["body"]["params"] == {"id": "j1"}
+
+
+@pytest.mark.asyncio
+async def test_cancel_peer_task_raises_on_not_cancelable(monkeypatch):  # noqa: ANN001
+    """对端明确拒绝时抛错，且不再探测第二个 endpoint（它已应答，形态已匹配）。"""
+    captured = _patch(monkeypatch, [{"jsonrpc": "2.0", "id": "1", "error": {"code": -32002, "message": "任务已结束"}}])
+
+    with pytest.raises(BadRequestError) as excinfo:
+        await client_mod.cancel_a2a_peer_task(_peer(), "j1")
+
+    assert "-32002" in str(excinfo.value)
+    assert len(captured) == 1
+
+
+@pytest.mark.asyncio
+async def test_cancel_peer_task_tries_both_endpoints_before_giving_up(monkeypatch):  # noqa: ANN001
+    """HTTP 层失败可能只是路径不对：两个形态都试过才认输。"""
+    captured: list[dict] = []
+
+    class _AllFail(_SeqClient):
+        async def post(self, url: str, *, json: dict | None = None, headers: dict | None = None) -> _Resp:
+            captured.append({"url": url, "body": json})
+            return _Resp({}, status_code=500)
+
+    monkeypatch.setattr(client_mod.httpx, "AsyncClient", lambda **_kwargs: _AllFail([], captured))
+
+    with pytest.raises(BadRequestError):
+        await client_mod.cancel_a2a_peer_task(_peer(), "j1")
+
+    assert [item["url"] for item in captured] == [
+        "https://peer.example.com/a2a/tasks/cancel",
+        "https://peer.example.com/a2a",
+    ]
+
+
+@pytest.mark.asyncio
+async def test_cancel_peer_task_rejects_inactive_peer(monkeypatch):  # noqa: ANN001
+    peer = _peer()
+    peer.status = SimpleNamespace(value="inactive")
+
+    with pytest.raises(BadRequestError):
+        await client_mod.cancel_a2a_peer_task(peer, "j1")

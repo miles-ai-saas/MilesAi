@@ -401,3 +401,44 @@ async def invoke_a2a_peer(peer: A2aPeer, task: str) -> str:
                 last_err = "响应非 JSON"
 
     raise BadRequestError(f"调用外部 A2A Agent「{peer.name}」失败" + (f"：{last_err}" if last_err else ""))
+
+
+async def cancel_a2a_peer_task(peer: A2aPeer, task_id: str) -> None:
+    """请对端取消一个异步任务。成功返回；被拒或不可达抛 ``BadRequestError``。
+
+    **本批没有任何调用方**：``invoke_a2a_peer`` 的轮询超时不会调用它。超时只表达「我不想
+    再等了」，不等于「放弃这个任务」——而对端任务的产物落在对端租户、属于对端用户，贸然
+    取消会把一个再过几秒就完成的任务连同产物一起销毁。这个函数是为「上游将来出现明确的
+    放弃语义」（如用户显式中止）预留的能力。
+    """
+    if peer.status.value != "active" or not (peer.agent_card_json or {}):
+        raise BadRequestError(f"外部 Agent「{peer.name}」尚未同步 Agent Card 或未连通")
+    rpc_base = _pick_rpc_url(peer)
+    if not rpc_base:
+        raise BadRequestError(f"外部 Agent「{peer.name}」的 Card 未声明可调用的 JSON-RPC 端点")
+
+    payload = {"jsonrpc": "2.0", "id": str(uuid.uuid4()), "method": "tasks/cancel", "params": {"id": task_id}}
+    headers = {**JSONRPC_HEADERS, **build_auth_headers(peer.auth_config)}
+    endpoints = [urljoin(rpc_base + "/", "tasks/cancel"), rpc_base]
+    last_err: str | None = None
+    async with httpx.AsyncClient(timeout=60.0, follow_redirects=True) as client:
+        for url in endpoints:
+            try:
+                resp = await client.post(url, json=payload, headers=headers)
+            except httpx.RequestError as exc:
+                last_err = str(exc)
+                continue
+            if resp.status_code >= 400:
+                last_err = f"HTTP {resp.status_code}"
+                continue
+            try:
+                data = resp.json()
+            except ValueError:
+                last_err = "响应非 JSON"
+                continue
+            err = _jsonrpc_error(data)
+            if err is not None:
+                # 对端已按 JSON-RPC 应答，说明端点形态已匹配：不再试下一个。
+                raise BadRequestError(f"取消外部 A2A Agent「{peer.name}」的任务失败：对端返回错误 {err[0]} {err[1]}")
+            return
+    raise BadRequestError(f"取消外部 A2A Agent「{peer.name}」的任务失败" + (f"：{last_err}" if last_err else ""))
