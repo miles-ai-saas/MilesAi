@@ -82,7 +82,7 @@ GET  /.well-known/agent-card.json                                     # 全平�
 
 指定 `custom` 智能体对外发布后，外部 A2A 客户端可拉取 Card 并调用。
 
-- 开关：智能体 `config.a2a_publish = true`（必须同时 `agent_type=custom` 且 `status=enabled`）。该开关管的是 **Card 可见性**：未发布时 Card GET 与根别名回 404（与「不存在」不可区分）；调用端点不按它回 404 —— `message/send` / `message/stream` / `tasks/resubscribe` 在各自的前置校验里回 **HTTP 200 + `-32602`**，而 `tasks/get` / `tasks/cancel` 根本不经发布门槛（只校验任务归属）
+- 开关：智能体 `config.a2a_publish = true`（必须同时 `agent_type=custom` 且 `status=enabled`）。该开关管的是 **Card 可见性**：未发布时 Card GET 回 404（与「不存在」不可区分）；**根别名不受它管** —— 它是平台级端点、不按智能体寻址，只在全平台唯一发布时 307，否则 404（见下）。调用端点也不按它回 404 —— `message/send` / `message/stream` / `tasks/resubscribe` 在各自的前置校验里回 **HTTP 200 + `-32602`**，而 `tasks/get` / `tasks/cancel` 根本不经发布门槛（只校验任务归属）
 - Card：`GET /api/v1/open/a2a/agents/{agent_id}/.well-known/agent-card.json`（**公开**，A2A 发现元数据）
 - 调用：`POST /api/v1/open/a2a/agents/{agent_id}`（JSON-RPC 2.0，**须带该智能体的 `X-API-Key`**）；支持的方法见下
 - 根别名：`GET /.well-known/agent-card.json` → 307 到按智能体路径；**仅当全平台唯一发布**时启用，命中 0 或 >1 返回 404（多租户根路径无法区分租户，不猜）
@@ -234,7 +234,9 @@ Retry-After: 12
 不记审计流水。
 
 当某次调用的业务异常由 RPC 层兜底译码时，`detail` 会额外带 `errorType`（异常类名）与
-`errorStatus`（HTTP 状态码）；产物下载的失败留痕（`_audit_artifact_failure`）同样会写这两键
+`errorStatus`（HTTP 状态码）。产物下载的失败留痕（`_audit_artifact_failure`）同理，但**只在
+拿得到原始异常时才写**这两键（跨租户 `ForbiddenError`、其它 `AppError`）；`NotFoundError`
+「不是该任务的产物」与存储故障两档不写，只有 `errorCode`
 —— 对外错误码被压平后，这是租户可见面上唯一能读出真实原因的出口。同样**只记类型与状态码，
 不记 message**。
 

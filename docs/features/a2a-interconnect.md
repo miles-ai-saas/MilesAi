@@ -123,7 +123,7 @@ GET  /a2a/agents/{agent_id}/tasks/{task_id}/artifacts/{attachment_id}   # 任务
 GET  /.well-known/agent-card.json                         # 全平台唯一发布时 307；否则 404
 ```
 
-发布门槛：`agent_type=custom` + `status=enabled` + `config.a2a_publish=true`；未发布的智能体，Card GET / 根别名与「不存在」同回 404（该门槛只管 Card 可见性，调用端点的未发布行为见下句）。
+发布门槛：`agent_type=custom` + `status=enabled` + `config.a2a_publish=true`；未发布的智能体，Card GET 与「不存在」同回 404（该门槛只管 Card 可见性；根别名是平台级端点、不受它管，只在全平台唯一发布时 307，否则 404；调用端点的未发布行为见下句）。
 JSON-RPC 协议级错误（解析 / 方法 / 参数）回 HTTP 200 + `error` 信封；业务异常按域映射（`tasks/*` 的 401/403/404 → `-32001`，其余域的 401/403/404 与 400 → `-32602`，409/5xx → `-32603`）。未预期故障按方法分口径：`tasks/*` 回 HTTP 500 平台信封，`message/send` 仍被吞成 HTTP 200 + `-32603`（旧口径），`message/stream` 以 `failed` 终态帧收流。未发布智能体在 `message/send` / `message/stream` / `tasks/resubscribe` 的前置校验里回 HTTP 200 + `-32602`，不是 404。
 Card 含 `securitySchemes`（`apiKey` · `in: header` · `name: X-API-Key`）与 `security`，声明的是调用端点要求；Card GET 本身公开。
 多轮：`message.contextId` → `ChatRequest.conversation_id`（LangGraph `thread_id` 后缀），响应 `Message.contextId` 回显；未带时服务端生成。
