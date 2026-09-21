@@ -12,7 +12,7 @@ import asyncio
 import contextlib
 import inspect
 import json
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 from uuid import uuid4
 
@@ -33,6 +33,7 @@ from miles_portal.tenant.a2a.server import (
     build_a2a_artifacts,
     build_a2a_status_update,
     build_a2a_task,
+    build_a2a_task_status,  # noqa: F401  (本文件经 build_a2a_task / build_a2a_status_update 间接覆盖其形状)
     build_agent_card,
     extract_message_context_id,
     extract_message_text,
@@ -43,6 +44,7 @@ from miles_portal.tenant.a2a.server import (
     jsonrpc_result,
     now_iso,
     progress_text,
+    timestamp_iso,
     to_a2a_task_state,
 )
 from miles_portal.tenant.a2a.services import audit as audit_svc
@@ -2234,3 +2236,71 @@ async def test_drain_pending_audits_returns_when_only_done_tasks_remain():
         await asyncio.wait_for(audit_svc.drain_pending_audits(), timeout=1)
     finally:
         audit_svc._PENDING_AUDITS.discard(done)
+
+
+def _without_message_id(status: dict) -> dict:
+    """剔除每次构造都会新生成的 ``messageId``。
+
+    ``build_a2a_agent_message`` 用 ``uuid4()`` 生成 ``messageId``（消息身份，不是形状），
+    两次构造必然不同；要比的是**形状**，不是身份。
+    """
+    message = status.get("message")
+    if not isinstance(message, dict):
+        return status
+    return {**status, "message": {k: v for k, v in message.items() if k != "messageId"}}
+
+
+def test_build_a2a_task_status_is_the_single_source_of_shape():
+    """Task 与 status-update 的 ``status`` 必须逐键等价 —— 形状只在一处维护。"""
+    status_from_task = build_a2a_task(
+        task_id="j1",
+        context_id="c1",
+        state="working",
+        timestamp="2026-09-18T00:00:00+00:00",
+        text="45% 渲染中",
+        percent=45,
+    )["status"]
+    status_from_update = build_a2a_status_update(
+        task_id="j1",
+        context_id="c1",
+        state="working",
+        timestamp="2026-09-18T00:00:00+00:00",
+        text="45% 渲染中",
+        percent=45,
+    )["status"]
+
+    assert _without_message_id(status_from_task) == _without_message_id(status_from_update)
+
+
+def test_build_a2a_task_omits_status_message_without_text():
+    """无进度可说时不附 ``status.message``，也不塞空串。"""
+    task = build_a2a_task(task_id="j1", context_id=None, state="working", timestamp="t")
+
+    assert task["status"] == {"state": "working", "timestamp": "t"}
+
+
+def test_build_a2a_task_status_message_carries_task_id_and_percent():
+    task = build_a2a_task(task_id="j1", context_id="c1", state="working", timestamp="t", text="45%", percent=45)
+
+    message = task["status"]["message"]
+    assert message["parts"] == [{"kind": "text", "text": "45%"}]
+    assert message["taskId"] == "j1"
+    assert message["contextId"] == "c1"
+    assert message["metadata"] == {"percent": 45}
+
+
+def test_build_a2a_task_status_omits_percent_metadata_when_absent():
+    """``percent`` 为 None 时不写 ``metadata.percent``；无其它 metadata 时整个键都省掉。"""
+    task = build_a2a_task(task_id="j1", context_id=None, state="working", timestamp="t", text="渲染中")
+
+    assert "metadata" not in task["status"]["message"]
+
+
+def test_timestamp_iso_formats_aware_datetime():
+    assert timestamp_iso(datetime(2026, 1, 2, 3, 4, 5, tzinfo=UTC)) == "2026-01-02T03:04:05+00:00"
+
+
+def test_timestamp_iso_falls_back_to_now_when_absent(monkeypatch):  # noqa: ANN001
+    monkeypatch.setattr("miles_portal.tenant.a2a.server.now_iso", lambda: "FIXED")
+
+    assert timestamp_iso(None) == "FIXED"

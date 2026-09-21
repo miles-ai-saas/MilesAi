@@ -276,6 +276,50 @@ def progress_text(*, progress_message: object, percent: object) -> str | None:
     return None
 
 
+def timestamp_iso(value: datetime | None) -> str:
+    """``datetime`` → A2A ``TaskStatus.timestamp``；非 ``datetime`` 回退当前时刻。
+
+    任务的真实状态时间（``TimestampMixin.updated_at``）优先：用请求时刻会让对端每次都看到
+    「刚刚更新」，据它判断新鲜度、超时或去重都会误判。``message/stream`` 的合成 taskId 与
+    ``message/send`` 的提交快照无真实对象可依，调用点自行传 ``now_iso()``。
+    """
+    return value.isoformat() if isinstance(value, datetime) else now_iso()
+
+
+def build_a2a_task_status(
+    *,
+    state: str,
+    timestamp: str,
+    context_id: str | None = None,
+    text: str | None = None,
+    percent: object = None,
+    message_task_id: str | None = None,
+    job_task_id: str | None = None,
+) -> dict:
+    """A2A ``TaskStatus``：``Task.status`` 与 ``TaskStatusUpdateEvent.status`` 共用一份形状。
+
+    ``text`` 与 ``percent`` 成对描述进度：``text`` 渲染成嵌套消息的文本 part，``percent``
+    写进该消息的 ``metadata.percent``。``text`` 为空则**不附** ``status.message`` —— 与其
+    塞一个空串冒充「有进度」，不如让对端明确知道本帧没有进展可说。
+
+    ``job_task_id`` 非空时写入 ``metadata.a2aJobTaskId``：``message/stream`` 的 taskId 是
+    合成的（流开始时就得定），生成任务 id 只有跑完才知道，故不强行合一，改用该扩展位串起来。
+    """
+    status: dict = {"state": state, "timestamp": timestamp}
+    if text is None:
+        return status
+    message = build_a2a_agent_message(text=text, context_id=context_id, task_id=message_task_id)
+    metadata: dict = {}
+    if job_task_id:
+        metadata["a2aJobTaskId"] = job_task_id
+    if percent is not None:
+        metadata["percent"] = percent
+    if metadata:
+        message["metadata"] = metadata
+    status["message"] = message
+    return status
+
+
 def build_a2a_task(
     *,
     task_id: str,
@@ -283,16 +327,28 @@ def build_a2a_task(
     state: str,
     timestamp: str,
     artifacts: list[dict] | None = None,
+    text: str | None = None,
+    percent: object = None,
 ) -> dict:
     """构造 A2A ``Task``。
 
-    ``contextId`` / ``artifacts`` 均为可选：解析不到就省略而非塞空值；``history`` 暂不
-    产出（对端的原始消息本就在请求里）。
+    ``contextId`` / ``artifacts`` / ``status.message`` 均为可选：解析不到就省略而非塞空值；
+    ``history`` 暂不产出（对端的原始消息本就在请求里）。
+
+    ``text`` / ``percent`` 与 ``build_a2a_status_update`` 同名同义，透传给
+    ``build_a2a_task_status`` —— ``status`` 的形状只在那一个函数里维护。
     """
     task: dict = {
         "kind": "task",
         "id": task_id,
-        "status": {"state": state, "timestamp": timestamp},
+        "status": build_a2a_task_status(
+            state=state,
+            timestamp=timestamp,
+            context_id=context_id,
+            text=text,
+            percent=percent,
+            message_task_id=task_id,
+        ),
     }
     if context_id:
         task["contextId"] = context_id
@@ -343,17 +399,15 @@ def build_a2a_status_update(
 
     ``contextId`` 解析不到就省略（规范标必填，此处有意偏离，见设计 §3.8）。
     """
-    status: dict = {"state": state, "timestamp": timestamp}
-    if text is not None:
-        message = build_a2a_agent_message(text=text, context_id=context_id, task_id=task_id)
-        metadata: dict = {}
-        if job_task_id:
-            metadata["a2aJobTaskId"] = job_task_id
-        if percent is not None:
-            metadata["percent"] = percent
-        if metadata:
-            message["metadata"] = metadata
-        status["message"] = message
+    status = build_a2a_task_status(
+        state=state,
+        timestamp=timestamp,
+        context_id=context_id,
+        text=text,
+        percent=percent,
+        message_task_id=task_id,
+        job_task_id=job_task_id,
+    )
     event: dict = {
         "kind": "status-update",
         "taskId": task_id,
