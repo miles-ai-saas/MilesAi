@@ -18,7 +18,7 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from miles_common.exceptions import BadRequestError, ForbiddenError, NotFoundError
+from miles_common.exceptions import BadRequestError, NotFoundError
 from miles_core.infra.db import AsyncSessionLocal
 from miles_core.logging import get_logger
 from miles_core.models.model.generative_job import GenerativeJob
@@ -119,17 +119,10 @@ async def open_task_subscription(
         await _audit_failure(ctx, agent_id, INVALID_PARAMS, started)
         return jsonrpc_error(req_id, INVALID_PARAMS, str(exc))
     except NotFoundError as exc:
-        # 不区分「不存在 / 不属于该智能体 / 是合成的流式 id」：一律按任务不存在回，不向对端
-        # 确认任务是否存在。
+        # 不区分「不存在 / 不属于该智能体 / 是合成的流式 id / 属于外租户」：一律按任务不存在
+        # 回，不向对端确认任务是否存在。外租户那一路由 load_owned_agent_task 归一（见其注释）。
         await _audit_failure(ctx, agent_id, TASK_NOT_FOUND, started)
         return jsonrpc_error(req_id, TASK_NOT_FOUND, str(exc))
-    except ForbiddenError:
-        # 外租户 id：``assert_tenant_access`` 抛的是 403。若让它逸出，对端会拿到平台信封的
-        # HTTP 403 —— 既破坏了本端点「协议级错误一律回 JSON-RPC 信封」的契约，又让「403」
-        # 与「-32001」可区分，等于给了一个探测任务是否存在的 oracle（且当时不留任何痕迹）。
-        # 故与 NotFoundError 同口径收敛；文案固定，不回显内部措辞。
-        await _audit_failure(ctx, agent_id, TASK_NOT_FOUND, started)
-        return jsonrpc_error(req_id, TASK_NOT_FOUND, "生成任务不存在")
     # 结束请求级事务并归还连接：订阅最长 30 分钟，不主动结束就会有一条连接陪跑。
     # 用 ``commit`` 而非 ``rollback``：鉴权依赖在同一会话里 flush 了 API Key 的
     # ``last_used_at``（``touch_last_used`` 的契约就是「由调用方提交」），rollback 会把
