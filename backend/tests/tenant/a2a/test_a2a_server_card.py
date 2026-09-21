@@ -19,7 +19,7 @@ from uuid import uuid4
 import anyio
 import pytest
 
-from miles_common.exceptions import BadRequestError, ForbiddenError, NotFoundError
+from miles_common.exceptions import BadRequestError, ConflictError, ForbiddenError, NotFoundError, UnauthorizedError
 from miles_common.schemas.chat_io import ChatResponse
 from miles_core.models.agent import Agent, AgentStatus, AgentType
 from miles_core.tenant import TenantContext
@@ -400,6 +400,46 @@ def test_jsonrpc_error_carries_optional_data():
 def test_rate_limited_code_is_in_implementation_defined_range():
     """``-32000`` 属规范保留给实现自定义的服务端错误区间（本实现已占 ``-32001`` / ``-32002``）。"""
     assert server_mod.RATE_LIMITED == -32000
+
+
+@pytest.mark.parametrize(
+    ("method", "exc", "expected"),
+    [
+        # ``tasks/*`` 域：401/403/404 一律压成 -32001，以免与「任务不存在」可区分
+        ("tasks/get", NotFoundError("生成任务不存在"), server_mod.TASK_NOT_FOUND),
+        ("tasks/cancel", ForbiddenError("无权访问该租户资源"), server_mod.TASK_NOT_FOUND),
+        ("tasks/resubscribe", UnauthorizedError("未授权"), server_mod.TASK_NOT_FOUND),
+        # 其它域：401/403/404 与 400 同压 -32602（与既有逐点映射一致）
+        ("message/send", BadRequestError("输入内容包含敏感词，已拦截：某词"), server_mod.INVALID_PARAMS),
+        ("message/send", ForbiddenError("配额已用尽"), server_mod.INVALID_PARAMS),
+        ("message/send", NotFoundError("生成任务不存在"), server_mod.INVALID_PARAMS),
+        (None, BadRequestError("坏参数"), server_mod.INVALID_PARAMS),
+        # ``tasks/*`` 域的 400 不受域规则影响：它本来就是「参数错」，不是存在性 oracle
+        ("tasks/get", BadRequestError("id 不是合法 UUID"), server_mod.INVALID_PARAMS),
+        # 其它状态（含 409）归内部错误：`INTERNAL_ERROR` 的保留语义不被稀释
+        ("tasks/get", ConflictError("任务冲突"), server_mod.INTERNAL_ERROR),
+        ("message/send", ConflictError("任务冲突"), server_mod.INTERNAL_ERROR),
+    ],
+)
+def test_app_error_envelope_maps_status_and_domain(method, exc, expected):  # noqa: ANN001
+    """逐格钉住映射表：域判定只对 401/403/404 生效，400 与 409 与域无关。"""
+    envelope = server_mod.app_error_envelope(method, 7, exc)
+
+    assert set(envelope) == {"jsonrpc", "id", "error"}
+    assert envelope["jsonrpc"] == "2.0"
+    assert envelope["id"] == 7
+    assert envelope["error"]["code"] == expected
+    # 文案原样透传：它是对端唯一能读到的失败原因，压缩它等于让对端无法排查
+    assert envelope["error"]["message"] == str(exc)
+    assert "result" not in envelope
+
+
+def test_app_error_envelope_never_emits_platform_envelope():
+    """对端必须能把错误对回自己的 ``id``：平台信封的四个键一个都不能出现。"""
+    envelope = server_mod.app_error_envelope("message/send", None, BadRequestError("坏参数"))
+
+    assert set(envelope) == {"jsonrpc", "id", "error"}
+    assert not ({"code", "data", "trace_id", "message"} & set(envelope))
 
 
 def test_is_terminal_generative_status_only_accepts_known_terminal():
