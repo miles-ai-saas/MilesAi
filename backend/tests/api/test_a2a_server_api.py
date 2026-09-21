@@ -428,17 +428,22 @@ async def test_tasks_get_foreign_tenant_returns_jsonrpc_not_platform_envelope(as
     )
 
     assert resp.status_code == 200
+    # 只保证正文是 JSON（防 SSE 串线把 text/event-stream 写出来）：JSON-RPC 信封与平台信封
+    # 都是 ``JSONResponse``，故这条对「403 是否逸出」零判别力，判别交给下面的键集断言。
     assert resp.headers["content-type"].startswith("application/json")
     body = resp.json()
     assert body["jsonrpc"] == "2.0"
     assert body["id"] == 5
     assert body["error"]["code"] == -32001
-    # 平台信封的指纹是这几个键：出现即说明 403 逸出到了全局处理器
-    assert "trace_id" not in body
+    # 平台信封是 ``{code, message, data, trace_id}``：键集不等即说明 403 逸出到了全局处理器。
+    # 单看 ``trace_id`` 只是单键指纹，且它的判别力从未被 RED 覆盖过。
+    assert set(body) == {"jsonrpc", "id", "error"}
     # 探测式调用必须留痕，且错误码不再是兜底路径误标的 -32603
     assert len(recorded) == 1
     assert recorded[0]["outcome"] == "failed"
     assert recorded[0]["detail"]["errorCode"] == -32001
+    # 审计 ``detail`` 绝不含正文：键集等值把这条全局约束从「顺带成立」变成可执行断言
+    assert set(recorded[0]["detail"]) == {"method", "taskId", "errorCode", "durationMs"}
 
 
 @pytest.mark.asyncio

@@ -22,6 +22,7 @@ import pytest
 from miles_common.exceptions import BadRequestError, ForbiddenError, NotFoundError
 from miles_common.schemas.chat_io import ChatResponse
 from miles_core.models.agent import Agent, AgentStatus, AgentType
+from miles_core.tenant import TenantContext
 from miles_portal.tenant.a2a import server as server_mod
 from miles_portal.tenant.a2a.server import (
     A2A_PUBLISH_FLAG,
@@ -956,6 +957,52 @@ def _foreign_tenant_getter(message: str = "无权访问该租户资源"):  # noq
 
 
 @pytest.mark.asyncio
+async def test_load_owned_agent_task_real_cross_tenant_premise_raises_not_found():
+    """不 mock 下层：真实的 ``assert_tenant_access`` 确实以 ``ForbiddenError`` 拒绝外租户。
+
+    其余用例都把 ``get_generative_job_for_tenant`` 换成「直接抛 403」的替身，只锁住「映射」；
+    若下层哪天改用别的异常类型（或改成租户过滤查询），收口分支会静默变死代码 —— 那些用例
+    仍会全绿。这条用真实 ``_Db`` + 真实 ``TenantContext`` 把「前提」也变成可执行契约。
+    """
+    own_tenant, foreign_tenant = uuid4(), uuid4()
+    job = _job("running", agent_id=AGENT_ID)
+    job.tenant_id = foreign_tenant
+    ctx = TenantContext(
+        user_id=uuid4(),
+        tenant_id=own_tenant,
+        username="tester",
+        is_superuser=False,
+        permissions=frozenset(),
+    )
+
+    with pytest.raises(NotFoundError) as exc:
+        await server_svc.load_owned_agent_task(_Db(agent=job), ctx, AGENT_ID, job.id)
+
+    assert str(exc.value) == "生成任务不存在"
+
+
+@pytest.mark.asyncio
+async def test_load_owned_agent_task_real_superuser_keeps_cross_tenant_access():
+    """超管放行不变：真实 ``assert_tenant_access`` 对超管直接返回，故外租户任务仍可取到。
+
+    与上一条配对：若有人把收口误写成「先查租户再看归属」的硬拒，这条会变红。
+    """
+    job = _job("running", agent_id=AGENT_ID)
+    job.tenant_id = uuid4()
+    ctx = TenantContext(
+        user_id=uuid4(),
+        tenant_id=uuid4(),
+        username="root",
+        is_superuser=True,
+        permissions=frozenset(),
+    )
+
+    loaded = await server_svc.load_owned_agent_task(_Db(agent=job), ctx, AGENT_ID, job.id)
+
+    assert loaded is job
+
+
+@pytest.mark.asyncio
 async def test_load_owned_agent_task_normalizes_foreign_tenant_to_not_found(monkeypatch):  # noqa: ANN001
     """瓶颈处把外租户 403 归一为 ``NotFoundError``，兑现本函数 docstring 的既有承诺。
 
@@ -967,8 +1014,11 @@ async def test_load_owned_agent_task_normalizes_foreign_tenant_to_not_found(monk
     with pytest.raises(NotFoundError) as exc:
         await server_svc.load_owned_agent_task(_Db(agent=_agent()), SimpleNamespace(), AGENT_ID, uuid4())
 
-    # 固定文案：不把「无权访问该租户资源」这类内部措辞回显给对端
-    assert "租户" not in str(exc.value)
+    # 文案由本批 Global Constraints 钉死为这一句：等值断言既兑现「不回显
+    # 「无权访问该租户资源」这类内部措辞」，也守住对外文案不得漂移。
+    assert str(exc.value) == "生成任务不存在"
+    # ``from None`` 是刻意切断上下文：不带这行，``from exc`` 也能让本用例通过
+    assert exc.value.__cause__ is None and exc.value.__suppress_context__ is True
 
 
 @pytest.mark.asyncio
@@ -982,6 +1032,7 @@ async def test_tasks_get_normalizes_foreign_tenant_as_task_not_found(monkeypatch
     assert "result" not in envelope
     assert envelope["error"]["code"] == server_mod.TASK_NOT_FOUND
     # 附带收益：兜底留痕不再把外租户探测误记成「服务端内部错误」
+    assert len(a2a_audit_recorder) == 1
     assert a2a_audit_recorder[0]["detail"]["errorCode"] == server_mod.TASK_NOT_FOUND
 
 
