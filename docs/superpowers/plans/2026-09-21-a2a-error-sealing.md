@@ -1162,7 +1162,7 @@ EOF
 | `-32700` / `-32600` | 解析错误 / 非法请求 | 请求体不是合法 JSON |
 | `-32601` | 方法未找到 | 未实现的方法（如 `tasks/pushNotificationConfig/*`） |
 | `-32602` | 参数错误 | `message/*` 域的业务异常（含合规拦截、配额/权限拒绝）、非法 `params.id`、超长 `contextId` |
-| `-32603` | 内部错误 | `tasks/*` 域的冲突类业务异常；未预期故障（见下） |
+| `-32603` | 内部错误 | `tasks/*` 域的冲突类业务异常；状态码 5xx 的业务异常（非业务异常见下） |
 | `-32000` | 限流 | 超限；HTTP 429 + `Retry-After` |
 | `-32001` | 任务不存在 | 不属于该智能体的任务（含**其他租户**的任务）、`tasks/*` 域的 401/403/404 |
 | `-32002` | 任务不可取消 | 任务已结束 |
@@ -1174,6 +1174,13 @@ EOF
 **例外**：未预期故障（DB / 对象存储等非业务异常）回 **HTTP 500 平台信封**，不保证
 JSON-RPC 形状。对端须能按 HTTP 状态码兜底处理这一类。
 ```
+
+实测补充（回填）：上表 `-32603` 触发原写「未预期故障（见下）」，与下一段的「例外」自相矛盾 ——
+非业务异常（DB / 对象存储）经 `handle_a2a_rpc` 的 `except Exception` **原样重抛** → HTTP 500
+平台信封，**没有** `error.code` 可言（`services/server.py:511-530`）；`app_error_envelope`
+只把「非 400/401/403/404 的 `AppError`（409 与 5xx）」译成 `-32603`
+（`a2a/server.py:457-474`）。故改为「状态码 5xx 的业务异常（非业务异常见下）」，表格由此与
+`app_error_envelope` 逐格一致。
 
 - [ ] **Step 3: 收窄留痕例外并补产物下载段**
 
@@ -1204,16 +1211,24 @@ JSON-RPC 形状。对端须能按 HTTP 状态码兜底处理这一类。
    ```markdown
    同一个合规拦截在两个方法上的 `outcome` 并不一致：`message/send` 侧记为 `failed`、
    `message/stream` 侧记为 `rejected`。差异来自两个方法各自的判据 —— send 按最终信封**有无
-   `error`** 判定，stream 按**终态帧状态**判定 —— 与错误码无关。两侧错误码现已一致：合规拦截
-   在 send 侧是 `-32602`（参数错误），不再是早前被宽 except 误标的 `-32603`（内部错误）。
+   `error`** 判定，stream 按**终态帧状态**判定 —— 与错误码无关。本次真正变的只是 send 侧的
+   错误码：合规拦截不再被宽 `except` 误标为 `-32603`（内部错误），现为 `-32602`（参数错误）；
+   stream 侧本就无可谈的错误码，它走的是 `rejected` 终态帧。
    ```
+
+   > 实测补充（回填）：上段原写「两侧错误码现已一致：合规拦截在 send 侧是 `-32602`」，会误导
+   > 读者以为 stream 侧也回 `-32602`。实际 **stream 侧的审计根本不记 `errorCode`** ——
+   > `terminal_frame`（`services/server.py:723-743`）只按终态调
+   > `schedule_stream_audit(_STREAM_OUTCOME_BY_STATE[state])`，不带 detail；SSE 也没有错误
+   > 信封，它的信号是 `rejected` **终态帧状态**（`:821`：`TASK_STATE_REJECTED if isinstance(error,
+   > BadRequestError) else TASK_STATE_FAILED`）。故改为「只改 send 侧、stream 侧无错误码可谈」。
 
 - [ ] **Step 5: 更新功能规格与上一批设计的残余**
 
 1. `docs/features/a2a-interconnect.md` 第 127 行：
 
    - 原文：`JSON-RPC 协议级错误（解析 / 方法 / 参数）回 HTTP 200 + error 信封，执行异常回 -32603。`
-   - 改为：`JSON-RPC 协议级错误（解析 / 方法 / 参数）回 HTTP 200 + error 信封；业务异常按域映射（tasks/* 的 401/403/404 → -32001，其余与 400 → -32602，409/5xx → -32603），未预期故障仍回 HTTP 500 平台信封。`
+   - 改为：`JSON-RPC 协议级错误（解析 / 方法 / 参数）回 HTTP 200 + \`error\` 信封；业务异常按域映射（\`tasks/*\` 的 401/403/404 → \`-32001\`，其余与 400 → \`-32602\`，409/5xx → \`-32603\`），未预期故障仍回 HTTP 500 平台信封。`
 
 2. `docs/superpowers/specs/2026-09-20-a2a-task-lookup-tenant-boundary-design.md` §5 残余 #1 的两条子项改为已关闭：
 
@@ -1221,11 +1236,20 @@ JSON-RPC 形状。对端须能按 HTTP 状态码兜底处理这一类。
    1. ~~不做 `handle_a2a_rpc` 的 `AppError` 通用兜底。~~ **已由
       `2026-09-21-a2a-error-sealing-design.md` 关闭**：RPC 层已加兜底，下列两条不再以平台
       信封返回。
-      - ~~`_handle_tasks_cancel` 第二个 `try` 里 `cancel_job` 的**竞态** `NotFoundError`…~~
-        **已关闭**：现回 HTTP 200 + `-32001`。
-      - ~~`_handle_message_send` 的 `except Exception` 会把 `ForbiddenError`（如配额超限）
-        误标为 `-32603`…~~ **已关闭**：现回 `-32602` 并在审计里记 `errorType`。
+   - ~~`_handle_tasks_cancel` 第二个 `try` 里 `cancel_job` 的**竞态** `NotFoundError`（job 在
+     `load_owned_agent_task` 之后、`cancel_job` 之前被删）与 Redis `publish` 故障；~~
+     **已关闭**：竞态 `NotFoundError` 现回 HTTP 200 + `-32001`（Redis `publish` 故障仍按
+     非业务异常重抛 500）。
+   - ~~`_handle_message_send` 的 `except Exception` 会把 `ForbiddenError`（如配额超限）
+     误标为 `-32603`…~~ **已关闭**：现回 `-32602` 并在审计里记 `errorType`。
    ```
+
+   > 实测补充（回填）：上面第一条不能整条划掉 —— 原型同时把「竞态 `NotFoundError`」与
+   > 「Redis `publish` 故障」写进同一子项，但只有前者被兜底关闭。Redis `publish`
+   > （`publish_generative_job_update`）抛的不是 `AppError`，仍走 `handle_a2a_rpc` 的
+   > `except Exception` → 审计 `-32603` 后原样重抛 → HTTP 500 平台信封
+   > （`services/server.py:511-530`）。故保留该子项原文并注明「竞态已关闭、Redis 故障仍
+   > 重抛」，不整条划除。
 
    残余 #5（I2，跨租户探测内部不可区分）**保持不变**，并在其后补一句「本批不改变其状态」。
 
