@@ -159,6 +159,8 @@ flowchart LR
 | 5 | `miles_core` 不得 import `miles_ai` |
 | 6 | API 声明层（`views` / `schemas`）不得 import ORM 模型模块 |
 
+公开 API 使用的枚举在声明层自持（与 ORM `StrEnum` 值通过 `test_api_enum_parity` 对齐）；改 ORM 枚举不会无声改 OpenAPI。契约名：`api-layer-no-orm`。
+
 **包内分层（`miles_ai`）**：`flow_runtime → rag` 单向，由 `.importlinter` 的 `ai-internal-layers` 契约强制；`rag` 不得 import `flow_runtime`。L3 已拆为独立包 `miles_integrations`，跨包方向 `miles_ai → miles_integrations → miles_core` 由包级 `layers` 契约强制。
 
 **强制机制**：上述 DAG 与硬判据由 `backend/.importlinter` 固化为 8 条契约（2 条 `layers`——包级 `layers` + 包内 `ai-internal-layers`——+ 6 条 `forbidden`），在 CI 与本地经 `make layers-check`（即 `import-linter`）执行；`make check` 已包含该步。
@@ -406,7 +408,5 @@ backend/tests/                     # 一级目录 = 被测包（与 packages/ �
 ```
 
 单测 `rag` 模块时 **不启动** FastAPI；向量库测试 mock `get_vector_store`。
-归属规则与逐文件映射见
-[docs/superpowers/specs/2026-09-21-tests-structure-design.md](../superpowers/specs/2026-09-21-tests-structure-design.md)；
-运行方式见 [tests/README.md](../../backend/tests/README.md)。
+归属规则与运行方式见 [tests/README.md](../../backend/tests/README.md)。
 

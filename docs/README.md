@@ -34,7 +34,8 @@ docs/
 │   ├── marketplace.md
 │   └── …
 ├── operations/               # 运维与部署
-└── guides/                   # 功能专题（实现说明）
+├── guides/                   # 功能专题（实现说明）
+└── superpowers/              # 实施中的 design/plan（合入后删除，说明进 guides）
 
 ui/                           # 前端应用源码（与 docs/ 并列，见仓库根目录）
 ├── workbench/                # 租户端：AI 工作台 + 组织设置 :3000
@@ -123,6 +124,7 @@ ui/                           # 前端应用源码（与 docs/ 并列，见仓�
 | [skill-packages.md](./guides/skill-packages.md) | **技能包**：SKILL.md、导入（本地/ZIP/Git）、分类、智能体注入 |
 | [compliance-word-libraries.md](./guides/compliance-word-libraries.md) | **合规敏感词库**：多库、扫描绑定、`GET /compliance/meta` |
 | [hooks.md](./guides/hooks.md) | **智能体钩子**：切面扩展、Event v1、**全站 `/meta` 枚举字典约定** |
+| [async-db.md](./guides/async-db.md) | **异步 DB**：loop 感知 engine / 会话工厂、Worker `run_worker_db_coro` |
 
 部署拓扑与 Celery 进程见 [operations/deployment.md](./operations/deployment.md)；Compose 细节与 **Worker / RAG 可选依赖** 见 [../docker/README.md](../docker/README.md)；后端 [../backend/README.md](../backend/README.md)。
 

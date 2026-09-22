@@ -38,18 +38,19 @@ backend/packages/miles-ai/src/miles_ai/rag/
 
 backend/packages/miles-integrations/src/miles_integrations/
 ├── langchain/
-│   ├── embeddings.py
-│   ├── vectorstores.py         # → rag.retrieve.multi_kb
-│   └── vector/documents.py
-├── langgraph/
+│   ├── chat_models.py
+│   ├── tool_agent/             # 工具调用循环
+│   └── toolkit/                # 内置工具 schema 壳（_DECLS）
+├── langgraph/                  # checkpointer
 ├── litellm/
-└── deepagents/
+├── embeddings/ / rerank/ / generative/ / chat/ / deepagents/
+└── http_constants.py
 
 backend/packages/miles-core/src/miles_core/infra/vector_store/
 ├── factory.py                  # get_vector_store()
-├── base.py
-├── weaviate|milvus|pgvector.py # import integrations.langchain.vector.documents
-└── __init__.py                 # get_vector_store、Store 实现类
+├── documents.py                # ChunkVectorRecord ↔ LangChain Document
+├── langchain_base.py / precomputed.py
+└── weaviate|milvus|pgvector.py
 ```
 
 ## 调用链
