@@ -4,6 +4,7 @@ root_packages =
     miles_exec
     miles_core
     miles_ai
+    miles_integrations
     miles_portal
     miles_admin
     miles_openapi
@@ -22,6 +23,7 @@ layers =
     miles_openapi | miles_admin
     miles_portal
     miles_ai
+    miles_integrations
     miles_core
     miles_exec
     miles_common
@@ -29,7 +31,9 @@ layers =
 [importlinter:contract:no-ai-to-portal]
 name = L3/L2 不得依赖租户域
 type = forbidden
-source_modules = miles_ai
+source_modules =
+    miles_ai
+    miles_integrations
 forbidden_modules = miles_portal
 
 # miles_exec 是**无豁免**叶子（Task 1.7 已把 build_run_spec 迁回 portal）：
@@ -55,6 +59,7 @@ source_modules = miles_runner
 forbidden_modules =
     miles_core
     miles_ai
+    miles_integrations
     miles_portal
     miles_admin
     miles_openapi
@@ -63,7 +68,9 @@ forbidden_modules =
 name = 基础设施/模型层不得依赖 AI 编排层
 type = forbidden
 source_modules = miles_core
-forbidden_modules = miles_ai
+forbidden_modules =
+    miles_ai
+    miles_integrations
 
 # API 声明层的目录级约束：views/schemas 不得 import 承载 SQLAlchemy 实体或持久化枚举的模块。
 # 必要性：包分层方向契约管不到这条边（miles_portal 用 miles_core.models 是被允许的——
@@ -108,15 +115,12 @@ forbidden_modules =
 # 的名称级守卫补上（按「枚举名 + 来源模块白名单」判定，不依赖图边），两者合起来才完整。
 allow_indirect_imports = True
 
-# miles_ai 包内分层：编排（flow_runtime）在上、RAG（rag）居中、第三方适配（integrations）在下。
-# 必要性：包级 `layers` 契约只看到 miles_ai 一个节点，管不到包内三个子包的方向；
-# 而 integrations 曾长期反向依赖 rag / flow_runtime（实测 13 文件 21 条 import，2026-09-22 归位）。
-# 选择 layers 而非两条 forbidden：它额外冻结 `rag ✗→ flow_runtime`。
-# 该边当前实测为 0，且是真实约束——flow_runtime 依赖 rag，反向必成环。
+# miles_ai 包内分层：编排（flow_runtime）在上、RAG（rag）在下。
+# 原第三层 integrations 已拆为独立包 miles_integrations（2026-09-22），由包级 layers 约束。
+# 本契约额外冻结 rag ✗→ flow_runtime（该边为 0，反向必成环）。
 [importlinter:contract:ai-internal-layers]
-name = miles_ai 内部分层（编排在上，适配在下）
+name = miles_ai 内部分层（编排在上，RAG 在下）
 type = layers
 layers =
     miles_ai.flow_runtime
     miles_ai.rag
-    miles_ai.integrations
