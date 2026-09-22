@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from uuid import UUID
 
 from sqlalchemy import select
 
@@ -20,10 +21,8 @@ logger = get_logger(__name__)
 PROBE_MESSAGE = [{"role": "user", "content": "ping"}]
 
 
-async def _probe_models_async() -> str:
-    checked = 0
-    ok_count = 0
-    now = datetime.now(UTC).isoformat()
+async def _load_models_for_probe() -> list[ModelConfig]:
+    """短会话加载待探测模型；退出 with 后连接释放，ORM 实例可作只读快照。"""
     async with AsyncSessionLocal() as db:
         stmt = (
             select(ModelConfig)
@@ -35,31 +34,61 @@ async def _probe_models_async() -> str:
             .order_by(ModelConfig.sort_order.desc(), ModelConfig.created_at.desc())
             .limit(30)
         )
-        models = (await db.execute(stmt)).scalars().all()
+        models = list((await db.execute(stmt)).scalars().all())
+        to_probe: list[ModelConfig] = []
         for model in models:
             if model.tenant_id is None and model.publish_status != ModelPublishStatus.PUBLISHED.value:
                 continue
-            checked += 1
-            extra = dict(model.extra or {})
-            try:
-                await litellm_chat_completion(
-                    model,
-                    PROBE_MESSAGE,
-                    temperature=0,
-                    max_tokens=8,
-                    timeout=20,
-                )
-                extra["health_status"] = "ok"
-                extra["health_message"] = None
-                ok_count += 1
-            except Exception as exc:
-                extra["health_status"] = "down"
-                extra["health_message"] = str(exc)[:500]
-                logger.warning("model health probe failed: %s (%s)", model.name, exc, exc_info=True)
-            extra["health_checked_at"] = now
-            model.extra = extra
-        if checked:
-            await db.commit()
+            to_probe.append(model)
+        # expire_on_commit=False：expunge 后列属性仍可读，供会话外 litellm 使用。
+        for model in to_probe:
+            db.expunge(model)
+        return to_probe
+
+
+async def _write_health_extras(updates: list[tuple[UUID, dict]]) -> None:
+    """短会话按 id 写回 health_* 到 ModelConfig.extra。"""
+    if not updates:
+        return
+    async with AsyncSessionLocal() as db:
+        for model_id, extra in updates:
+            row = await db.get(ModelConfig, model_id)
+            if row is None:
+                continue
+            row.extra = extra
+        await db.commit()
+
+
+async def _probe_models_async() -> str:
+    checked = 0
+    ok_count = 0
+    now = datetime.now(UTC).isoformat()
+
+    to_probe = await _load_models_for_probe()
+
+    updates: list[tuple[UUID, dict]] = []
+    for model in to_probe:
+        checked += 1
+        extra = dict(model.extra or {})
+        try:
+            await litellm_chat_completion(
+                model,
+                PROBE_MESSAGE,
+                temperature=0,
+                max_tokens=8,
+                timeout=20,
+            )
+            extra["health_status"] = "ok"
+            extra["health_message"] = None
+            ok_count += 1
+        except Exception as exc:
+            extra["health_status"] = "down"
+            extra["health_message"] = str(exc)[:500]
+            logger.warning("model health probe failed: %s (%s)", model.name, exc, exc_info=True)
+        extra["health_checked_at"] = now
+        updates.append((model.id, extra))
+
+    await _write_health_extras(updates)
     return f"checked={checked} ok={ok_count}"
 
 
