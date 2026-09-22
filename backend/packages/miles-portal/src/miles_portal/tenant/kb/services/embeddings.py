@@ -34,6 +34,7 @@ if TYPE_CHECKING:
 def embed_texts_for_kb_sync(db: Session, kb: KnowledgeBase, texts: list[str]) -> list[list[float]]:
     """同步批量向量化分片文本（Celery 入库 pipeline 注入）。"""
     model = resolve_embedding_model_sync(db, kb.embedding_model_config_id, kb.tenant_id)
+    db.commit()
     return build_embeddings(model).embed_documents(texts)
 
 
@@ -72,6 +73,7 @@ def _embed_image_bytes_sync(db: Session, kb: KnowledgeBase, raw: bytes) -> list[
         raise BadRequestError("知识库未配置视觉向量化模型")
     model = resolve_embedding_model_sync(db, kb.visual_embedding_model_config_id, kb.tenant_id)
     _ensure_clip(model)
+    db.commit()
     provider = get_embedding_provider(INVOKE_MODE_CLIP)
     return provider.embed_images(model, [raw])[0]
 
