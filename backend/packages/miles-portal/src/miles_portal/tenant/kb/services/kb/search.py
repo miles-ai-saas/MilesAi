@@ -65,6 +65,7 @@ class KnowledgeBaseSearchMixin:
             raise BadRequestError("文档对象尚未就绪")
 
         storage = await resolve_object_storage_async(doc.tenant_id, self.db)
+        await self.db.commit()  # 释放连接：随后 S3/OCR 可能较慢
         data = await asyncio.to_thread(storage.storage.download_bytes, doc.object_key, bucket=doc.object_bucket)
         if is_image_file(doc.filename, doc.mime_type):
             derived = await asyncio.to_thread(parse_image, data, doc.filename)
@@ -105,6 +106,7 @@ class KnowledgeBaseSearchMixin:
             if not is_image_file(doc.filename, doc.mime_type):
                 raise BadRequestError("视觉以图搜图仅支持图片文档")
             storage = await resolve_object_storage_async(doc.tenant_id, self.db)
+            await self.db.commit()  # 释放连接：随后 S3 / CLIP embed
             data = await asyncio.to_thread(storage.storage.download_bytes, doc.object_key, bucket=doc.object_bucket)
             vector = await embed_image_bytes_async(self.db, self.ctx.tenant_id, kb, data)
             query_text = query or f"[CLIP 以图搜图] {doc.filename}"
@@ -112,6 +114,7 @@ class KnowledgeBaseSearchMixin:
 
         if not query:
             raise BadRequestError("视觉文本搜图需填写 query")
+        await self.db.commit()  # 释放连接：随后 CLIP embed
         vector = await embed_query_visual_async(self.db, self.ctx.tenant_id, kb, query)
         return query, vector, media_types
 
@@ -132,6 +135,7 @@ class KnowledgeBaseSearchMixin:
             rerank_model = None
         else:
             query_text, media_types = await self._resolve_search_query(kb_id, body)
+            await self.db.commit()  # 释放连接：随后厂商 embed / 向量后端
             vector = await embed_query_for_kb(self.db, self.ctx.tenant_id, kb, query_text)
             rerank_model = None
             if kb.rerank_model_config_id:
