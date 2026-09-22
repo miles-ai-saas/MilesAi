@@ -27,12 +27,12 @@
 | A2A 宿主 | `miles_portal/.../a2a/invoke.py`（`run_a2a_host_chat`：Peer HTTP / 编排 LLM 前） |
 | A2A 规划 LLM | 同上 `plan_a2a_peers`（`resolve_model_for_invoke` 后、`ainvoke_chat` 前；`db is None` 时跳过 commit） |
 | 工作台 KB 检索 API | `miles_portal/.../kb/services/kb/search.py`（`search` / `_search_visual`：embed、向量后端、S3/OCR 等慢 IO 前） |
+| 工作台 KB ingest（Celery） | `miles_portal/.../kb/services/ingest.py`（多段 `get_sync_db`：PARSING/EMBEDDING 状态可见；S3/parse 与会话外；`miles_ai/.../rag/pipeline/ingest.py` 清旧后 commit；`embeddings.py` resolve 后 commit 再厂商 embed；失败另开会话 `persist_document_ingest_failure`） |
 | 生成编排厂商 HTTP | `miles_portal/.../generative/services/orchestration.py`（配额校验后、`generate_*_bytes` 厂商 HTTP 前） |
 | 模型健康探测 | `miles_worker/.../model_health.py`（load 会话关闭 / 释放连接后探测，写回另开会话） |
 
 **尚未对齐**（仍可能在长 IO 期间持有同一会话）：
 
-- KB ingest（embedding / 向量写入等分阶段事务；见 `miles_portal/.../kb/services/ingest.py` 与 `miles_ai/rag/pipeline/ingest.py`）
 - 生成物落盘（可选）：`generative/services/persist.py` 的 `persist_generated_bytes` 在对象存储 `upload_bytes` 期间仍可能占用同一 DB 会话
 
 更完整的骨架说明见 [backend-reference-framework.md](../architecture/backend-reference-framework.md) 中 `infra/db` 段落。
