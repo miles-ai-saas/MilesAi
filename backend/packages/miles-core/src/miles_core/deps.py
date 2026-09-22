@@ -3,7 +3,7 @@
 租户 API 通过 require_permissions 声明 RBAC；运营端使用 admin.app_sys.deps。
 """
 
-from fastapi import Depends, Query
+from fastapi import Depends, Query, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -30,6 +30,7 @@ async def get_page_params(
 
 
 async def get_current_user(
+    request: Request,
     credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
     db: AsyncSession = Depends(get_db),
 ) -> User:
@@ -45,37 +46,38 @@ async def get_current_user(
     jti = payload.get("jti")
     if jti and await session_store.is_token_blacklisted(str(jti)):
         raise UnauthorizedError("令牌已失效，请重新登录")
-    result = await db.execute(select(User).where(User.id == user_id, User.is_active.is_(True)).options(selectinload(User.roles).selectinload(Role.permissions)))
+    result = await db.execute(
+        select(User)
+        .where(User.id == user_id, User.is_active.is_(True))
+        .options(selectinload(User.roles).selectinload(Role.permissions))
+    )
     user = result.scalar_one_or_none()
     if not user:
         raise UnauthorizedError("用户不存在或已禁用")
-    if jti:
-        await session_store.touch_session(user.id, str(jti))
+    access_jti = str(jti) if jti else None
+    request.state.access_jti = access_jti
+    if access_jti:
+        await session_store.touch_session(user.id, access_jti)
     return user
 
 
 async def get_tenant_context(
+    request: Request,
     user: User = Depends(get_current_user),
-    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
 ) -> TenantContext:
     """聚合用户角色权限为 TenantContext（/auth/me 与业务 API 共用）。"""
     permissions: set[str] = set()
     for role in user.roles:
         for perm in role.permissions:
             permissions.add(perm.code)
-    token_jti: str | None = None
-    if credentials:
-        payload = safe_decode_token(credentials.credentials)
-        if payload:
-            jti = payload.get("jti")
-            token_jti = str(jti) if jti else None
+    token_jti = getattr(request.state, "access_jti", None)
     return TenantContext(
         user_id=user.id,
         tenant_id=user.tenant_id,
         username=user.username,
         is_superuser=user.is_superuser,
         permissions=frozenset(permissions),
-        token_jti=token_jti,
+        token_jti=str(token_jti) if token_jti else None,
     )
 
 
