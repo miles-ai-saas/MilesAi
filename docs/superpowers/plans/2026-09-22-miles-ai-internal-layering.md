@@ -776,13 +776,15 @@ from miles_ai.rag.retrieve.bindings import KbRetrievalBindings
 ```bash
 cd /Users/xiezhigang/Projects/miles/MilesAI/backend
 rg -n "integrations\.langchain\.(kb_retrieval|vectorstores)" packages tests; echo "--- 期望：无输出"
-rg -n "miles_ai\.(rag|flow_runtime)" packages/miles-ai/src/miles_ai/integrations -g '*.py'
+rg -n --no-heading '^\s*(from|import)\s+miles_ai\.(rag|flow_runtime)' -g '**/integrations/**' packages; echo "--- 期望：恰 1 条（visual_embeddings.py）"
 .venv/bin/ruff check . && .venv/bin/ruff format --check . && .venv/bin/lint-imports | tail -3
 .venv/bin/python -m pytest -q
 .venv/bin/python -m miles_server.scripts.export_openapi --check
 ```
 
-Expected: 前两条只剩 `integrations/langchain/visual_embeddings.py`（Task 5 处理）与 `integrations/langgraph/checkpointer.py`（imports `miles_core`，不涉 rag）；pytest `1517 passed`。
+Expected: 第一条无输出（`miles_portal/.../kb/services/embeddings.py:23`、`rag/generate/answer.py:26-27`、`rag/graph/runner.py:27`、被删的 `vectorstores.py:24` 与重写的 `langchain/__init__.py:41` 已全部处理；`tests/` 下无引用）。第二条**恰 1 条**反向边 —— `integrations/langchain/visual_embeddings.py:7`（Task 5 处理）；`integrations/langgraph/` 下 **0 条**（`checkpointer.py` 只 import `miles_core` 与 `langgraph`，不涉 rag；其残留的 2 条 `integrations.langgraph.graphs.rag_qa` 惰性 import 是包内路径，不属反向边）。6 − 5 = 1。pytest `1517 passed`；OpenAPI 零漂移。
+
+> 第二条务必用**锚定**口径：未锚定写法会把 Step 5 新写入 `integrations/langchain/__init__.py` docstring 的三处路径提及（`rag.retrieve.multi_kb`、`rag.generate`、`rag.retrieve.bindings`）也算进来。
 
 ```bash
 cd /Users/xiezhigang/Projects/miles/MilesAI
