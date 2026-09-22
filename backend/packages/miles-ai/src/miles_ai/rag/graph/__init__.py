@@ -10,7 +10,7 @@ Agent RAG 的 LangGraph 引擎（L2）。
 - ``state``：``RAGGraphState``
 
 画布 ``graph_json`` 的编译与运行见 ``miles_ai.flow_runtime``，与本子包为两套独立编译产物；
-多轮状态持久化后端见 ``miles_ai.integrations.langgraph.checkpointer``。
+多轮状态持久化后端见 ``miles_integrations.langgraph.checkpointer``。
 """
 
 __all__ = [

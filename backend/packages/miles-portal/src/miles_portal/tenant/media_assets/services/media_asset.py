@@ -16,7 +16,6 @@ from uuid import UUID
 from sqlalchemy import ColumnElement
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from miles_ai.integrations.generative.constants import PURPOSE_FLOW_GENERATED
 from miles_ai.rag.parse.upload_policy import is_kb_upload_allowed, kb_upload_allowed_hint
 from miles_common.exceptions import BadRequestError, NotFoundError
 from miles_common.schema import PageParams, PageResult
@@ -29,6 +28,7 @@ from miles_core.models.media.media_asset import MediaAsset
 from miles_core.service import BaseService
 from miles_core.soft_delete import is_marked_deleted, mark_deleted, not_deleted
 from miles_core.tenant import TenantContext, assert_tenant_access
+from miles_integrations.generative.constants import PURPOSE_FLOW_GENERATED
 from miles_portal.tenant.attachments.repositories.attachment import AttachmentRepository
 from miles_portal.tenant.attachments.schemas.attachment import AttachmentOut
 from miles_portal.tenant.kb.repositories.kb import DocumentRepository, KnowledgeBaseRepository

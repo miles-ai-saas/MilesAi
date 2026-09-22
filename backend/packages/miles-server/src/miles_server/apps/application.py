@@ -18,12 +18,12 @@ from miles_server.apps.migrate import run_migrations
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """应用生命周期钩子：启动时初始化日志 / OTel、执行 schema 迁移并建 LangGraph checkpointer，关闭时逆序释放。"""
-    from miles_ai.integrations.langgraph.checkpointer import (
+    from miles_ai.rag.graph.compiled import bind_rag_graph, unbind_rag_graph
+    from miles_core.infra.otel import setup_otel, shutdown_otel
+    from miles_integrations.langgraph.checkpointer import (
         init_langgraph_checkpointer,
         shutdown_langgraph_checkpointer,
     )
-    from miles_ai.rag.graph.compiled import bind_rag_graph, unbind_rag_graph
-    from miles_core.infra.otel import setup_otel, shutdown_otel
 
     setup_logging()
     setup_otel(get_settings(), app=app)

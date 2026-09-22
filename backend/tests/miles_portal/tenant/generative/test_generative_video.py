@@ -7,13 +7,13 @@ from uuid import uuid4
 
 import pytest
 
-from miles_ai.integrations.generative.constants import INVOKE_DASHSCOPE_T2V, INVOKE_VOLCENGINE_VIDEO
-from miles_ai.integrations.generative.registry import resolve_invoke_mode
-from miles_ai.integrations.generative.types import VideoGenerateResult
-from miles_ai.integrations.langchain.tool_agent import artifacts_from_tool_output
 from miles_core.models.model import ModelConfig
 from miles_core.models.model.catalog import ModelCapabilityType, ModelVendor
 from miles_core.tenant import TenantContext
+from miles_integrations.generative.constants import INVOKE_DASHSCOPE_T2V, INVOKE_VOLCENGINE_VIDEO
+from miles_integrations.generative.registry import resolve_invoke_mode
+from miles_integrations.generative.types import VideoGenerateResult
+from miles_integrations.langchain.tool_agent import artifacts_from_tool_output
 
 
 def _video_model(**kwargs) -> ModelConfig:
@@ -75,7 +75,7 @@ async def test_generate_video_for_model_persists():
             new_callable=AsyncMock,
         ),
         patch(
-            "miles_ai.integrations.generative.video.service.generate_dashscope_video",
+            "miles_integrations.generative.video.service.generate_dashscope_video",
             new_callable=AsyncMock,
             return_value=b"\x00\x00\x00\x18ftypmp42",
         ),

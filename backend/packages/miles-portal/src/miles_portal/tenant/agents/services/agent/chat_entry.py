@@ -5,15 +5,15 @@ from __future__ import annotations
 from uuid import UUID
 
 from miles_ai.flow_runtime.runtime_factory import get_flow_runtime
-from miles_ai.integrations.generative.image.prompt_guard import user_requests_image_collage
-from miles_ai.integrations.generative.request_prefs import (
-    clear_generative_request_prefs,
-    set_generative_request_prefs,
-)
-from miles_ai.integrations.langchain.chat_models import OnDelta
 from miles_common.exceptions import BadRequestError
 from miles_core.logging import get_logger
 from miles_core.models.agent import Agent, AgentStatus, AgentType
+from miles_integrations.generative.image.prompt_guard import user_requests_image_collage
+from miles_integrations.generative.request_prefs import (
+    clear_generative_request_prefs,
+    set_generative_request_prefs,
+)
+from miles_integrations.langchain.chat_models import OnDelta
 from miles_portal.tenant.a2a.services.peer_refs import list_agent_a2a_peer_refs
 from miles_portal.tenant.agents.schemas.agent import ChatRequest, ChatResponse
 from miles_portal.tenant.agents.services.call_records import ChatCallRecorder
@@ -114,8 +114,8 @@ class AgentChatEntryMixin:
             bindings = await list_sub_agent_bindings(self.db, agent_id)
             peer_refs = await list_agent_a2a_peer_refs(self.db, agent_id)
             if bindings:
-                from miles_ai.integrations.deepagents.io import ParentChatInput
-                from miles_ai.integrations.deepagents.orchestrator import run_subagent_planned_chat
+                from miles_integrations.deepagents.io import ParentChatInput
+                from miles_integrations.deepagents.orchestrator import run_subagent_planned_chat
 
                 route = "subagent"
                 result = await run_subagent_planned_chat(

@@ -6,12 +6,12 @@ from uuid import uuid4
 import numpy as np
 import pytest
 
-from miles_ai.integrations.embeddings.constants import EXTRA_EMBEDDING_DIMENSION
-from miles_ai.integrations.embeddings.model_meta import embedding_dimension_from_model
-from miles_ai.integrations.embeddings.runtime import build_embeddings
 from miles_core.models.kb import KnowledgeBase
 from miles_core.models.model import ModelConfig
 from miles_core.models.model.catalog import ModelCapabilityType
+from miles_integrations.embeddings.constants import EXTRA_EMBEDDING_DIMENSION
+from miles_integrations.embeddings.model_meta import embedding_dimension_from_model
+from miles_integrations.embeddings.runtime import build_embeddings
 from miles_portal.tenant.kb.schemas.kb import KnowledgeBaseUpdate
 from miles_portal.tenant.kb.services.embeddings import embed_query_for_kb_sync
 

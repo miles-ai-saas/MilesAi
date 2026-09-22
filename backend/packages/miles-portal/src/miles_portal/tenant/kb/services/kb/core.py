@@ -5,8 +5,6 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from miles_ai.integrations.embeddings.model_meta import embedding_dimension_from_model
-from miles_ai.integrations.embeddings.policy import ensure_clip_model
 from miles_common.exceptions import NotFoundError
 from miles_common.schema import PageParams, PageResult
 from miles_core.models.kb import Document, KnowledgeBase
@@ -14,6 +12,8 @@ from miles_core.models.kb.search_log import KbSearchLog
 from miles_core.models.model import ModelConfig
 from miles_core.soft_delete import is_marked_deleted, mark_deleted, not_deleted
 from miles_core.tenant import TenantContext, assert_tenant_access, tenant_filters
+from miles_integrations.embeddings.model_meta import embedding_dimension_from_model
+from miles_integrations.embeddings.policy import ensure_clip_model
 from miles_portal.deletion.cascade import before_delete_kb
 from miles_portal.tenant.kb.repositories.kb import KnowledgeBaseRepository
 from miles_portal.tenant.kb.schemas.kb import (

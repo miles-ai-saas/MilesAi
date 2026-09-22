@@ -28,10 +28,10 @@ from uuid import UUID
 
 from sqlalchemy import select
 
-from miles_ai.integrations.langchain.chat_models import ainvoke_chat
 from miles_core.logging import get_logger
 from miles_core.models.model import ModelConfig
 from miles_core.models.model.catalog import ModelCapabilityType
+from miles_integrations.langchain.chat_models import ainvoke_chat
 from miles_portal.tenant.attachments.services.attachment import AttachmentService
 from miles_portal.tenant.models.services.model_resolve import resolve_model_for_invoke
 from miles_portal.tenant.models.services.usage import ChatUsageSink

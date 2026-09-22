@@ -9,7 +9,7 @@ from uuid import uuid4
 
 import pytest
 
-from miles_ai.integrations.langchain.tool_agent.tool_contract import ToolConfirmationSignal
+from miles_integrations.langchain.tool_agent.tool_contract import ToolConfirmationSignal
 from miles_portal.tenant.tools.confirmation import ToolConfirmationRequired
 from miles_portal.tenant.tools.services import agent_executor as executor_mod
 from miles_portal.tenant.tools.services.agent_executor import AgentToolExecutor

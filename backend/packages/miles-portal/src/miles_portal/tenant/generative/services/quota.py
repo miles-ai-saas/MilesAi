@@ -16,12 +16,12 @@ from uuid import UUID
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from miles_ai.integrations.generative.constants import PURPOSE_CHAT_GENERATED, PURPOSE_FLOW_GENERATED
 from miles_common.exceptions import ForbiddenError
 from miles_core.models.media.attachment import Attachment
 from miles_core.models.platform.system import SystemConfig
 from miles_core.soft_delete import not_deleted
 from miles_core.utils.config_value import system_config_int
+from miles_integrations.generative.constants import PURPOSE_CHAT_GENERATED, PURPOSE_FLOW_GENERATED
 
 _CONFIG_KEY = "generative.daily_limit_per_tenant"
 _GENERATED_PURPOSES = (PURPOSE_CHAT_GENERATED, PURPOSE_FLOW_GENERATED)

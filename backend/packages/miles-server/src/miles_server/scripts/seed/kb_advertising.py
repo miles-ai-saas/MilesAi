@@ -17,7 +17,6 @@ from pathlib import Path
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from miles_ai.integrations.embeddings.model_meta import embedding_dimension_from_model
 from miles_core.config import get_settings
 from miles_core.infra.storage import build_object_key, upload_bytes
 from miles_core.models.kb import Document, DocumentStatus, KnowledgeBase
@@ -25,6 +24,7 @@ from miles_core.models.model import ModelConfig
 from miles_core.models.model.catalog import ModelCapabilityType
 from miles_core.models.platform.tenant import Tenant
 from miles_core.soft_delete import mark_deleted, not_deleted
+from miles_integrations.embeddings.model_meta import embedding_dimension_from_model
 from miles_portal.deletion.cascade import before_delete_kb
 from miles_portal.tenant.kb.services.ingest import run_ingest
 from miles_portal.tenant.kb.services.quota import apply_storage_delta

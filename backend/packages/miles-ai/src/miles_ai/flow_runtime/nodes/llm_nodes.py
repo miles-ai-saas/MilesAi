@@ -18,10 +18,10 @@ from typing import Any
 
 from miles_ai.flow_runtime.context_utils import media_refs_from_run
 from miles_ai.flow_runtime.types import RunContext
-from miles_ai.integrations.chat.multimodal import build_user_message, resolve_media_refs
-from miles_ai.integrations.langchain.chat_models import ainvoke_chat
 from miles_common.exceptions import BadRequestError
 from miles_common.schemas.media import MediaRefIn
+from miles_integrations.chat.multimodal import build_user_message, resolve_media_refs
+from miles_integrations.langchain.chat_models import ainvoke_chat
 
 
 async def llm_call(

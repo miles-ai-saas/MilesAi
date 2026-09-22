@@ -14,10 +14,10 @@ from uuid import uuid4
 
 import pytest
 
-from miles_ai.integrations.langchain.toolkit import catalog as lc_tools
-from miles_ai.integrations.langchain.toolkit.catalog import bound_skill_ids
 from miles_common.exceptions import BadRequestError
 from miles_core.tenant import TenantContext
+from miles_integrations.langchain.toolkit import catalog as lc_tools
+from miles_integrations.langchain.toolkit.catalog import bound_skill_ids
 from miles_portal.tenant.agents.services import context as agent_context_mod
 from miles_portal.tenant.agents.services.context import build_skill_mcp_prompt_block
 from miles_portal.tenant.skills import runtime as runtime_mod

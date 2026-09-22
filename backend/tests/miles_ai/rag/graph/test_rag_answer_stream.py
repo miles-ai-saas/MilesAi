@@ -8,7 +8,7 @@ import pytest
 from miles_ai.rag.generate.answer import generate_rag_answer
 from miles_ai.rag.graph.rag_qa import fallback, generate
 from miles_ai.rag.graph.runner import run_rag_workflow
-from tests.miles_ai.integrations.litellm.test_litellm_adapter import _model
+from tests.miles_integrations.litellm.test_litellm_adapter import _model
 
 
 @pytest.mark.asyncio

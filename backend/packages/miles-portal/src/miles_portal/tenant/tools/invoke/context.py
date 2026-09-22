@@ -33,8 +33,8 @@ async def resolve_bound_skill_ids_from_agent(
     """
     if not agent_id:
         return []
-    from miles_ai.integrations.langchain.toolkit.catalog import bound_skill_ids
     from miles_core.models.agent import Agent
+    from miles_integrations.langchain.toolkit.catalog import bound_skill_ids
 
     agent = await db.get(Agent, agent_id)
     if not agent:
@@ -180,7 +180,7 @@ async def invoke_tool_with_context(
 
     # 生图：输入区张数覆盖 LLM 参数（须在确认门槛前生效）
     if slug == "generate_image":
-        from miles_ai.integrations.generative.request_prefs import resolve_image_n
+        from miles_integrations.generative.request_prefs import resolve_image_n
 
         tool_params["n"] = resolve_image_n(tool_params.get("n"))
 
@@ -188,7 +188,7 @@ async def invoke_tool_with_context(
         await halt_for_confirmation(meta.get("description"))
 
     if slug == "generate_image":
-        from miles_ai.integrations.generative.policy import (
+        from miles_integrations.generative.policy import (
             image_tool_confirmation_message,
             needs_image_tool_confirmation,
         )

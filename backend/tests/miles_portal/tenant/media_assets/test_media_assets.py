@@ -1,6 +1,6 @@
 """媒体资产登记与升格规则。"""
 
-from miles_ai.integrations.generative.constants import PURPOSE_CHAT_GENERATED, PURPOSE_FLOW_GENERATED
+from miles_integrations.generative.constants import PURPOSE_CHAT_GENERATED, PURPOSE_FLOW_GENERATED
 from miles_portal.tenant.media_assets.services.media_asset import (
     SOURCE_AGENT_TOOL,
     SOURCE_FLOW_NODE,

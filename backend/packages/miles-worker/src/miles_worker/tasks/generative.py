@@ -4,12 +4,12 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from miles_ai.integrations.generative.jobs.errors import GenerativeJobCancelled
 from miles_core.infra.db import run_worker_db_coro
 from miles_core.infra.redis import reset_redis
 from miles_core.jobs.tasks import TASK_NAMES
 from miles_core.logging import get_logger
 from miles_core.models.task.task_record import TaskStatus
+from miles_integrations.generative.jobs.errors import GenerativeJobCancelled
 from miles_portal.tenant.generative.services.job_execution import (
     run_generative_image_job_async,
     run_generative_video_job_async,

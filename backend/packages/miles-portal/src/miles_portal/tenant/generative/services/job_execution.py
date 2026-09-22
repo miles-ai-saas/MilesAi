@@ -10,15 +10,15 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from miles_ai.integrations.generative.constants import PURPOSE_CHAT_GENERATED, PURPOSE_FLOW_GENERATED
-from miles_ai.integrations.generative.jobs.errors import GenerativeJobCancelled, GenerativeJobNotFound
-from miles_ai.integrations.generative.jobs.progress import publish_generative_job_update
 from miles_common.trace import get_trace_id
 from miles_core.infra.db import AsyncSessionLocal
 from miles_core.logging import get_logger
 from miles_core.models.model.generative_job import GenerativeJob, GenerativeJobStatus
 from miles_core.models.platform.user import User
 from miles_core.tenant import TenantContext
+from miles_integrations.generative.constants import PURPOSE_CHAT_GENERATED, PURPOSE_FLOW_GENERATED
+from miles_integrations.generative.jobs.errors import GenerativeJobCancelled, GenerativeJobNotFound
+from miles_integrations.generative.jobs.progress import publish_generative_job_update
 from miles_portal.tenant.generative.services.orchestration import generate_image_for_model, generate_video_for_model
 from miles_portal.tenant.models.services.generative_model_resolve import (
     resolve_image_gen_model,

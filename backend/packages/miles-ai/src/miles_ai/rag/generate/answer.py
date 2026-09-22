@@ -21,9 +21,6 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from miles_ai.integrations.chat.multimodal import build_invoke_messages_with_media
-from miles_ai.integrations.langchain.chat_models import OnDelta, ainvoke_chat
-from miles_ai.integrations.litellm.usage_sink import UsageSink
 from miles_ai.rag.generate.context import build_rag_user_prompt
 from miles_ai.rag.load import load_kbs_for_tenant
 from miles_ai.rag.retrieve.bindings import KbRetrievalBindings
@@ -32,6 +29,9 @@ from miles_common.exceptions import BadRequestError
 from miles_common.schemas.media import MediaRefIn
 from miles_core.models.media.reader import MediaReader
 from miles_core.models.model import ModelConfig
+from miles_integrations.chat.multimodal import build_invoke_messages_with_media
+from miles_integrations.langchain.chat_models import OnDelta, ainvoke_chat
+from miles_integrations.litellm.usage_sink import UsageSink
 
 
 async def retrieve_hits(

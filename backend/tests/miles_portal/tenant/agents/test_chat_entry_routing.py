@@ -234,7 +234,7 @@ async def test_subagent_bindings_take_precedence_over_peers(monkeypatch):
     monkeypatch.setattr(entry_mod, "list_sub_agent_bindings", _async_ret([object()]))
     monkeypatch.setattr(entry_mod, "list_agent_a2a_peer_refs", _async_ret([object()]))
 
-    import miles_ai.integrations.deepagents.orchestrator as orch_mod
+    import miles_integrations.deepagents.orchestrator as orch_mod
 
     async def fake_planned(service, agent, bindings, parent_input):  # noqa: ANN001
         return SimpleNamespace(answer="sub", steps=[{"s": 1}])

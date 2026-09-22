@@ -17,11 +17,11 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
-from miles_ai.integrations.embeddings.constants import INVOKE_MODE_CLIP
-from miles_ai.integrations.embeddings.registry import get_embedding_provider
-from miles_ai.integrations.embeddings.runtime import build_embeddings
 from miles_ai.rag.retrieve.bindings import KbRetrievalBindings
 from miles_common.exceptions import BadRequestError
+from miles_integrations.embeddings.constants import INVOKE_MODE_CLIP
+from miles_integrations.embeddings.registry import get_embedding_provider
+from miles_integrations.embeddings.runtime import build_embeddings
 from miles_portal.tenant.models.services.embedding_resolve import (
     resolve_embedding_model_by_id,
     resolve_embedding_model_sync,
@@ -51,7 +51,7 @@ async def embed_query_for_kb(db: AsyncSession, tenant_id: UUID, kb: KnowledgeBas
 
 def _ensure_clip(model) -> None:
     """视觉模型必须为 CLIP（复用 L3 纯校验，避免重复实现）。"""
-    from miles_ai.integrations.embeddings.policy import ensure_clip_model
+    from miles_integrations.embeddings.policy import ensure_clip_model
 
     ensure_clip_model(model)
 

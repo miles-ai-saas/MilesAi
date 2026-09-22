@@ -31,6 +31,7 @@ _ALLOWED_TOP_LEVEL = frozenset(
         "miles_exec",
         "miles_core",
         "miles_ai",
+        "miles_integrations",
         "miles_portal",
         "miles_admin",
         "miles_openapi",

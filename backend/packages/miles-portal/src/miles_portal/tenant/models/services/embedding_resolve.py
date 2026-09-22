@@ -22,11 +22,6 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
-from miles_ai.integrations.embeddings.constants import INVOKE_MODE_LOCAL
-from miles_ai.integrations.embeddings.model_meta import (
-    ensure_embedding_model_type,
-    invoke_mode_from_model,
-)
 from miles_common.exceptions import BadRequestError
 from miles_core.models.model import ModelConfig
 from miles_core.models.model.catalog import (
@@ -36,6 +31,11 @@ from miles_core.models.model.catalog import (
 )
 from miles_core.models.model.tenant_credential import ModelTenantCredential
 from miles_core.soft_delete import not_deleted
+from miles_integrations.embeddings.constants import INVOKE_MODE_LOCAL
+from miles_integrations.embeddings.model_meta import (
+    ensure_embedding_model_type,
+    invoke_mode_from_model,
+)
 from miles_portal.tenant.models.services.model_resolve import load_tenant_credential
 
 

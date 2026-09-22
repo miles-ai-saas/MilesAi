@@ -7,11 +7,11 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from miles_ai.integrations.generative.constants import PURPOSE_CHAT_GENERATED, PURPOSE_FLOW_GENERATED
 from miles_core.models.media.attachment import Attachment
 from miles_core.models.media.media_asset import MediaAsset
 from miles_core.soft_delete import is_marked_deleted, not_deleted
 from miles_core.tenant import TenantContext
+from miles_integrations.generative.constants import PURPOSE_CHAT_GENERATED, PURPOSE_FLOW_GENERATED
 from miles_portal.tenant.media_assets.repositories.media_asset import MediaAssetRepository
 from miles_portal.tenant.media_assets.services.media_asset import register_media_asset
 

@@ -9,4 +9,5 @@ TESTS_ROOT = Path(__file__).resolve().parent
 BACKEND_ROOT = TESTS_ROOT.parent
 PACKAGES = BACKEND_ROOT / "packages"
 MILES_AI = PACKAGES / "miles-ai" / "src" / "miles_ai"
+MILES_INTEGRATIONS = PACKAGES / "miles-integrations" / "src" / "miles_integrations"
 MILES_SERVER = PACKAGES / "miles-server" / "src" / "miles_server"

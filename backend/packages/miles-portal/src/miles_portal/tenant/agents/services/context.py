@@ -12,10 +12,10 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from miles_ai.integrations.langchain.toolkit.catalog import bound_skill_ids
-from miles_ai.integrations.langchain.toolkit.naming import compose_mcp_tool_name
 from miles_core.soft_delete import is_marked_deleted, not_deleted
 from miles_core.tenant import TenantContext, tenant_filters
+from miles_integrations.langchain.toolkit.catalog import bound_skill_ids
+from miles_integrations.langchain.toolkit.naming import compose_mcp_tool_name
 from miles_portal.tenant.mcp.models import McpService
 from miles_portal.tenant.skills.models import SkillPackage
 from miles_portal.tenant.skills.skill_layout import format_layout_prompt_blocks

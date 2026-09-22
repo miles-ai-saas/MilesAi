@@ -6,13 +6,13 @@ from datetime import UTC, datetime
 
 from sqlalchemy import select
 
-from miles_ai.integrations.litellm.adapter import CHAT_MODEL_TYPES, litellm_chat_completion
 from miles_core.infra.db import AsyncSessionLocal, run_worker_db_coro
 from miles_core.jobs.tasks import TASK_NAMES
 from miles_core.logging import get_logger
 from miles_core.models.model import ModelConfig
 from miles_core.models.model.catalog import ModelPublishStatus
 from miles_core.soft_delete import not_deleted
+from miles_integrations.litellm.adapter import CHAT_MODEL_TYPES, litellm_chat_completion
 from miles_worker.app import celery_app
 
 logger = get_logger(__name__)

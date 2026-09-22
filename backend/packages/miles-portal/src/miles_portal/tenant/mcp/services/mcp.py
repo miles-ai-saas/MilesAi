@@ -16,7 +16,6 @@ from uuid import UUID
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from miles_ai.integrations.langchain.toolkit.naming import ident_collision
 from miles_common.exceptions import BadRequestError, NotFoundError
 from miles_common.schema import PageParams, PageResult
 from miles_core.config import get_settings
@@ -24,6 +23,7 @@ from miles_core.service import BaseService
 from miles_core.soft_delete import is_marked_deleted, mark_deleted, not_deleted
 from miles_core.tenant import TenantContext, assert_tenant_access, tenant_filters
 from miles_exec.mcp.constants import McpTransport
+from miles_integrations.langchain.toolkit.naming import ident_collision
 from miles_portal.tenant.mcp.client import fetch_mcp_tools
 from miles_portal.tenant.mcp.client import invoke_mcp_tool as remote_invoke_mcp_tool
 from miles_portal.tenant.mcp.meta import mcp_meta_dict

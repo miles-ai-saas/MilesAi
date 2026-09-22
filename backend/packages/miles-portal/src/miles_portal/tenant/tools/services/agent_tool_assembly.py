@@ -12,10 +12,10 @@ from __future__ import annotations
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from miles_ai.integrations.langchain.toolkit.catalog import build_platform_tools
-from miles_ai.integrations.langchain.toolkit.specs import CustomToolSpec
 from miles_core.soft_delete import append_not_deleted
 from miles_core.tenant import TenantContext, tenant_filters
+from miles_integrations.langchain.toolkit.catalog import build_platform_tools
+from miles_integrations.langchain.toolkit.specs import CustomToolSpec
 from miles_portal.tenant.tools.models import Tool, ToolType
 
 

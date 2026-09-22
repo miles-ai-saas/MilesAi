@@ -19,12 +19,12 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
-from miles_ai.integrations.rerank.model_meta import ensure_rerank_model_type
 from miles_common.exceptions import BadRequestError
 from miles_core.models.model import ModelConfig
 from miles_core.models.model.catalog import ModelPublishStatus
 from miles_core.models.model.tenant_credential import ModelTenantCredential
 from miles_core.soft_delete import not_deleted
+from miles_integrations.rerank.model_meta import ensure_rerank_model_type
 from miles_portal.tenant.models.services.model_resolve import load_tenant_credential
 
 

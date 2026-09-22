@@ -9,10 +9,10 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from miles_ai.integrations.litellm.usage_sink import UsageSink
 from miles_core.infra.db import AsyncSessionLocal
 from miles_core.models.model import ModelConfig
 from miles_core.models.model.usage_log import ModelUsageLog
+from miles_integrations.litellm.usage_sink import UsageSink
 
 
 @dataclass

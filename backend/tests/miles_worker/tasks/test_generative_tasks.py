@@ -12,8 +12,8 @@ from uuid import uuid4
 
 import pytest
 
-from miles_ai.integrations.generative.jobs.errors import GenerativeJobCancelled, GenerativeJobNotFound
 from miles_core.models.task.task_record import TaskStatus
+from miles_integrations.generative.jobs.errors import GenerativeJobCancelled, GenerativeJobNotFound
 from miles_worker.tasks import generative as worker_generative
 
 TASKS = {

@@ -5,6 +5,7 @@ description = "租户 AI 平台域（/api/v1）"
 requires-python = ">=3.11"
 dependencies = [
     "miles-ai",
+    "miles-integrations",
     "miles-core",
     "miles-common",
     "miles-exec",
@@ -27,6 +28,7 @@ packages = ["src/miles_portal"]
 
 [tool.uv.sources]
 miles-ai = { workspace = true }
+miles-integrations = { workspace = true }
 miles-core = { workspace = true }
 miles-common = { workspace = true }
 miles-exec = { workspace = true }

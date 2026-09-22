@@ -20,8 +20,6 @@ from uuid import UUID, uuid4
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from miles_ai.integrations.langchain.chat_models import OnDelta
-from miles_ai.integrations.langchain.toolkit.catalog import bound_skill_ids
 from miles_common.exceptions import AppError, BadRequestError, ForbiddenError, NotFoundError
 from miles_common.schemas.chat_io import CONVERSATION_ID_MAX_LENGTH, ChatResponse
 from miles_core.infra.db import AsyncSessionLocal
@@ -30,6 +28,8 @@ from miles_core.models.agent import Agent, AgentStatus, AgentType
 from miles_core.models.model.generative_job import GenerativeJob
 from miles_core.soft_delete import is_marked_deleted, not_deleted
 from miles_core.tenant import TenantContext
+from miles_integrations.langchain.chat_models import OnDelta
+from miles_integrations.langchain.toolkit.catalog import bound_skill_ids
 from miles_portal.tenant.a2a.server import (
     A2A_PUBLISH_FLAG,
     AUDIT_ACTION_ARTIFACT_DOWNLOAD,

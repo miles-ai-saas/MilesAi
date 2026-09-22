@@ -5,7 +5,7 @@
 ``bind_rag_graph()`` 绑定；未绑定时 ``get_compiled_rag_graph()`` 回退
 ``build_rag_qa_graph().compile(MemorySaver())``（**不缓存**回退实例，与拆分前一致）。
 
-多轮状态后端的选择与释放见 ``miles_ai.integrations.langgraph.checkpointer``。
+多轮状态后端的选择与释放见 ``miles_integrations.langgraph.checkpointer``。
 """
 
 from __future__ import annotations
@@ -30,7 +30,7 @@ def bind_rag_graph() -> None:
     """用当前 checkpointer 编译并缓存 RAG 图；由应用 lifespan 在 checkpointer 初始化后调用。"""
     global _compiled_rag_graph
 
-    from miles_ai.integrations.langgraph.checkpointer import get_checkpointer
+    from miles_integrations.langgraph.checkpointer import get_checkpointer
 
     _compiled_rag_graph = build_rag_qa_graph().compile(checkpointer=get_checkpointer())
 

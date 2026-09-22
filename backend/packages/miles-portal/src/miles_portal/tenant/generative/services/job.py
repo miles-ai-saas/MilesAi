@@ -9,11 +9,6 @@ from uuid import UUID
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from miles_ai.integrations.generative.jobs.progress import publish_generative_job_update
-from miles_ai.integrations.generative.jobs.submit import (
-    submit_image_generative_job,
-    submit_video_generative_job,
-)
 from miles_common.exceptions import BadRequestError, NotFoundError
 from miles_common.schema import PageParams, PageResult
 from miles_core.config import get_settings
@@ -24,6 +19,11 @@ from miles_core.models.model.generative_job import GenerativeJob, GenerativeJobS
 from miles_core.models.task.task_record import CeleryTaskRecord, TaskStatus
 from miles_core.service import BaseService
 from miles_core.tenant import TenantContext, tenant_filters
+from miles_integrations.generative.jobs.progress import publish_generative_job_update
+from miles_integrations.generative.jobs.submit import (
+    submit_image_generative_job,
+    submit_video_generative_job,
+)
 from miles_portal.tenant.generative.schemas.job import (
     GenerativeJobBatchCancelResult,
     GenerativeJobOut,

@@ -34,7 +34,7 @@ _BLOCKING_MODULES: dict[str, str] = {
     "miles-ai/src/miles_ai/rag/parse/audio_parser.py": "openai-whisper 模型加载与转写",
     "miles-ai/src/miles_ai/rag/parse/video_parser.py": "ffmpeg 抽帧抽音（subprocess）",
     "miles-ai/src/miles_ai/rag/parse/loaders.py": "多模态解析总入口，逐类转交同步解析器",
-    "miles-ai/src/miles_ai/integrations/generative/video/cover.py": "ffmpeg 抽封面（subprocess）",
+    "miles-integrations/src/miles_integrations/generative/video/cover.py": "ffmpeg 抽封面（subprocess）",
 }
 
 #: stdlib 阻塞原语（点号全名）。

@@ -41,9 +41,9 @@ async def load_tenant_credential(db: AsyncSession, tenant_id: UUID, model_config
 
 def credential_status(model: ModelConfig, cred: ModelTenantCredential | None) -> str:
     """返回 platform / tenant / missing，供模型列表 UI 展示。"""
-    from miles_ai.integrations.embeddings.constants import INVOKE_MODE_LOCAL
-    from miles_ai.integrations.embeddings.model_meta import invoke_mode_from_model
     from miles_core.models.model.catalog import ModelCapabilityType
+    from miles_integrations.embeddings.constants import INVOKE_MODE_LOCAL
+    from miles_integrations.embeddings.model_meta import invoke_mode_from_model
 
     if model.model_type == ModelCapabilityType.EMBEDDING.value:
         if invoke_mode_from_model(model) == INVOKE_MODE_LOCAL:

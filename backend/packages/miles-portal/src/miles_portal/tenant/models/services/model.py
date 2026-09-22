@@ -148,8 +148,8 @@ class ModelService(BaseService):
             extra = body.extra or {}
             if not extra.get("embedding_dimension"):
                 raise BadRequestError("向量化模型须在 extra 中配置 embedding_dimension（整数）")
-            from miles_ai.integrations.embeddings import known_invoke_modes
             from miles_common.constants.model_extra import EXTRA_INVOKE_MODE
+            from miles_integrations.embeddings import known_invoke_modes
 
             mode = extra.get(EXTRA_INVOKE_MODE)
             if isinstance(mode, str) and mode.strip():
@@ -157,8 +157,8 @@ class ModelService(BaseService):
                     raise BadRequestError(f"不支持的 invoke_mode: {mode}，可选: {', '.join(sorted(known_invoke_modes()))}")
         if body.model_type == ModelCapabilityType.RERANK.value:
             extra = body.extra or {}
-            from miles_ai.integrations.rerank import known_invoke_modes as rerank_invoke_modes
             from miles_common.constants.model_extra import EXTRA_INVOKE_MODE
+            from miles_integrations.rerank import known_invoke_modes as rerank_invoke_modes
 
             mode = extra.get(EXTRA_INVOKE_MODE)
             if isinstance(mode, str) and mode.strip():

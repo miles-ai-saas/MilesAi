@@ -32,6 +32,7 @@ _ROOTS: tuple[str, ...] = (
     "miles_core",
     "miles_common",
     "miles_ai",
+    "miles_integrations",
     "miles_portal",
     "miles_admin",
     "miles_exec",

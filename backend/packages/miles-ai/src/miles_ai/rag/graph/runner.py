@@ -1,6 +1,6 @@
 """
 LangGraph 运行入口（Agent RAG，L2）。
-状态图定义见 ``rag.graph.rag_qa``；多轮状态后端见 ``miles_ai.integrations.langgraph.checkpointer``。
+状态图定义见 ``rag.graph.rag_qa``；多轮状态后端见 ``miles_integrations.langgraph.checkpointer``。
 
 RAG 图
 ------
@@ -23,9 +23,6 @@ from uuid import UUID
 
 from langgraph.checkpoint.memory import MemorySaver
 
-from miles_ai.integrations.langchain.chat_models import OnDelta
-from miles_ai.integrations.langgraph.checkpointer import checkpoint_backend
-from miles_ai.integrations.litellm.usage_sink import UsageSink
 from miles_ai.rag.graph.compiled import get_compiled_rag_graph
 from miles_ai.rag.graph.rag_qa import build_rag_qa_graph
 from miles_ai.rag.retrieve.bindings import KbRetrievalBindings
@@ -34,6 +31,9 @@ from miles_core.models.agent import Agent
 from miles_core.models.agent.constants import AgentRuntimeMode
 from miles_core.models.media.reader import MediaReader
 from miles_core.models.model import ModelConfig
+from miles_integrations.langchain.chat_models import OnDelta
+from miles_integrations.langgraph.checkpointer import checkpoint_backend
+from miles_integrations.litellm.usage_sink import UsageSink
 
 
 def should_use_langgraph_rag(agent: Agent, *, kb_ids: list[str]) -> bool:

@@ -5,14 +5,14 @@ from __future__ import annotations
 from uuid import UUID
 
 from miles_ai.flow_runtime.types import RunContext
-from miles_ai.integrations.chat.multimodal import build_user_message, resolve_media_refs
-from miles_ai.integrations.generative.image.prompt_guard import user_requests_image_collage
-from miles_ai.integrations.langchain.chat_models import OnDelta, ainvoke_chat
 from miles_ai.rag.generate import build_rag_prompt, format_hits_context, generate_rag_answer, retrieve_hits
 from miles_ai.rag.graph.runner import run_rag_workflow, should_use_langgraph_rag
 from miles_core.infra.db import AsyncSessionLocal
 from miles_core.models.agent import Agent
 from miles_core.models.model import ModelConfig
+from miles_integrations.chat.multimodal import build_user_message, resolve_media_refs
+from miles_integrations.generative.image.prompt_guard import user_requests_image_collage
+from miles_integrations.langchain.chat_models import OnDelta, ainvoke_chat
 from miles_portal.tenant.a2a.services.peer_refs import list_agent_a2a_peer_refs
 from miles_portal.tenant.agents.schemas.agent import ChatRequest, ChatResponse
 from miles_portal.tenant.agents.services.agent.serialization import should_use_tools_with_kb
@@ -244,7 +244,7 @@ class AgentChatRagMixin:
         以及在绑定 KB 时注入 ``_bound_kb_ids`` / ``_bound_kb_top_k``，
         供 ``knowledge_search`` 省略 kb 与条数参数时回退。
         """
-        from miles_ai.integrations.langchain.tool_agent import run_tool_calling_chat
+        from miles_integrations.langchain.tool_agent import run_tool_calling_chat
         from miles_portal.tenant.tools.services.agent_executor import build_agent_tool_executor
         from miles_portal.tenant.tools.services.agent_tool_assembly import assemble_agent_tools
 

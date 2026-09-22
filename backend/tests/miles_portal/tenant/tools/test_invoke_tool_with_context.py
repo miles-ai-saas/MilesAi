@@ -165,8 +165,8 @@ async def test_confirmed_bypasses_confirmation_gate(monkeypatch):
 
 
 async def test_generate_image_policy_requires_confirmation(monkeypatch):
-    import miles_ai.integrations.generative.policy as policy_mod
-    import miles_ai.integrations.generative.request_prefs as prefs_mod
+    import miles_integrations.generative.policy as policy_mod
+    import miles_integrations.generative.request_prefs as prefs_mod
 
     rows = _install(monkeypatch, meta={"slug": "generate_image", "name": "生图"})
     monkeypatch.setattr(prefs_mod, "resolve_image_n", lambda n: 1)
@@ -181,8 +181,8 @@ async def test_generate_image_policy_requires_confirmation(monkeypatch):
 
 
 async def test_generate_image_skips_policy_gate_when_not_needed(monkeypatch):
-    import miles_ai.integrations.generative.policy as policy_mod
-    import miles_ai.integrations.generative.request_prefs as prefs_mod
+    import miles_integrations.generative.policy as policy_mod
+    import miles_integrations.generative.request_prefs as prefs_mod
 
     rows = _install(monkeypatch, meta={"slug": "generate_image"})
     monkeypatch.setattr(prefs_mod, "resolve_image_n", lambda n: 1)
@@ -195,8 +195,8 @@ async def test_generate_image_skips_policy_gate_when_not_needed(monkeypatch):
 
 async def test_generate_image_n_is_overridden_before_confirmation_gate(monkeypatch):
     """输入区张数覆盖必须在确认门槛前生效，否则用户确认的 n 与实际执行不一致。"""
-    import miles_ai.integrations.generative.policy as policy_mod
-    import miles_ai.integrations.generative.request_prefs as prefs_mod
+    import miles_integrations.generative.policy as policy_mod
+    import miles_integrations.generative.request_prefs as prefs_mod
 
     _install(monkeypatch, meta={"slug": "generate_image", "require_confirmation": True})
     monkeypatch.setattr(prefs_mod, "resolve_image_n", lambda n: 3)

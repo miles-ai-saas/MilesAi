@@ -23,6 +23,7 @@ members = [
     "miles-common",
     "miles-core",
     "miles-exec",
+    "miles-integrations",
     "miles-openapi",
     "miles-portal",
     "miles-runner",
@@ -712,9 +713,9 @@ dependencies = [
     { name = "click" },
     { name = "prompt-toolkit" },
 ]
-sdist = { url = "https://pypi.tuna.tsinghua.edu.cn/packages/cb/a2/57f4ac79838cfae6912f997b4d1a64a858fb0c86d7fcaae6f7b58d267fca/click-repl-0.3.0.tar.gz", hash = "sha256:17849c23dba3d667247dc4defe1757fff98694e90fe37474f3feebb69ced26a9" }
+sdist = { url = "https://pypi.tuna.tsinghua.edu.cn/packages/cb/a2/57f4ac79838cfae6912f997b4d1a64a858fb0c86d7fcaae6f7b58d267fca/click-repl-0.3.0.tar.gz", hash = "sha256:17849c23dba3d667247dc4defe1757fff98694e90fe37474f3feebb69ced26a9", size = 10449, upload-time = "2023-06-15T12:43:51.141Z" }
 wheels = [
-    { url = "https://pypi.tuna.tsinghua.edu.cn/packages/52/40/9d857001228658f0d59e97ebd4c346fe73e138c6de1bce61dc568a57c7f8/click_repl-0.3.0-py3-none-any.whl", hash = "sha256:fb7e06deb8da8de86180a33a9da97ac316751c094c6899382da7feeeeb51b812" },
+    { url = "https://pypi.tuna.tsinghua.edu.cn/packages/52/40/9d857001228658f0d59e97ebd4c346fe73e138c6de1bce61dc568a57c7f8/click_repl-0.3.0-py3-none-any.whl", hash = "sha256:fb7e06deb8da8de86180a33a9da97ac316751c094c6899382da7feeeeb51b812", size = 10289, upload-time = "2023-06-15T12:43:48.626Z" },
 ]
 
 [[package]]
@@ -1527,6 +1528,8 @@ wheels = [
     { url = "https://pypi.tuna.tsinghua.edu.cn/packages/69/f5/7af1dd74b9608a85274414fc423a7162844492b198ece3fe31f4e1f88237/grimp-3.17-cp313-cp313-win32.whl", hash = "sha256:34369739ed293accbb674494ae932351516b316e8e85d1d333d4c51796af846a", size = 1874244, upload-time = "2026-09-04T11:29:21.693Z" },
     { url = "https://pypi.tuna.tsinghua.edu.cn/packages/8b/d4/af497adddfcf11f9bd4ab273625a49022bf5ba4f5fc389589f4e6edc67b9/grimp-3.17-cp313-cp313-win_amd64.whl", hash = "sha256:d21b859c50418bdb48b403a84450650fa7aab3102f3212d00d3c21c76a982167", size = 1998225, upload-time = "2026-09-04T11:29:10.5Z" },
     { url = "https://pypi.tuna.tsinghua.edu.cn/packages/e2/2a/07fd537997281049af2390fc8641de5ae063ae4972cb6fcec85873674595/grimp-3.17-cp313-cp313-win_arm64.whl", hash = "sha256:206cd9f7c757b97934f48ba2b8ec6d649725fd6314d6b182dd327b19b4f35707", size = 1922071, upload-time = "2026-09-04T11:28:58.34Z" },
+    { url = "https://pypi.tuna.tsinghua.edu.cn/packages/39/e0/e11ea5aeb62534c9706e17952d142aa844ce5659e2d66b4b8ba9377407d6/grimp-3.17-cp314-cp314-macosx_10_12_x86_64.whl", hash = "sha256:0100ff6f08067c8eb8a77dd1433af5e173aea8dbf6a6b76f5372a3b49f2e0a43", size = 2161696, upload-time = "2026-09-11T10:36:49.104Z" },
+    { url = "https://pypi.tuna.tsinghua.edu.cn/packages/4b/d6/ddf82f4428d8bdc54ced0db244cbf5d8e5638490c3ed6a8b9f5db55dfa51/grimp-3.17-cp314-cp314-macosx_11_0_arm64.whl", hash = "sha256:67ada40a5c1cf4321183c0b0cd0393658ccd04b845caed002ac81dc2fdef828e", size = 2107301, upload-time = "2026-09-11T10:36:46.459Z" },
     { url = "https://pypi.tuna.tsinghua.edu.cn/packages/86/1a/1dd0d9d2751e8078547e1cb7131e13d9624a2ea60700d926b3d624c15825/grimp-3.17-cp314-cp314-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:baa385915a4c17948bfb25f77509cbbfb33795f321d1c5ca7cc602e34ed58e99", size = 2278433, upload-time = "2026-09-04T11:27:03.075Z" },
     { url = "https://pypi.tuna.tsinghua.edu.cn/packages/58/71/3768fd253e7455a83d668193055691c82d3a4d434047116c572a27d2bd39/grimp-3.17-cp314-cp314-manylinux_2_17_armv7l.manylinux2014_armv7l.whl", hash = "sha256:8322a435b5ee97ff3db823df36cbefea569faec505cc0ca66223c27b4b44cca6", size = 2221152, upload-time = "2026-09-04T11:27:12.642Z" },
     { url = "https://pypi.tuna.tsinghua.edu.cn/packages/b4/4f/907a130e87554d57be14c2a7cedeb818d0ef519064877297d19636735f6b/grimp-3.17-cp314-cp314-manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:cb953c21beb6ac85a59b5b54128be7fdddd89396d34b3c5705cf59829a85b431", size = 2371546, upload-time = "2026-09-04T11:27:41.195Z" },
@@ -2130,20 +2133,6 @@ wheels = [
 ]
 
 [[package]]
-name = "langchain-openai"
-version = "1.2.1"
-source = { registry = "https://pypi.tuna.tsinghua.edu.cn/simple" }
-dependencies = [
-    { name = "langchain-core" },
-    { name = "openai" },
-    { name = "tiktoken" },
-]
-sdist = { url = "https://pypi.tuna.tsinghua.edu.cn/packages/9a/0e/d8e16c28aa67106d285e63b8ffc04c5af68341e345ce24a0751dbf2e167e/langchain_openai-1.2.1.tar.gz", hash = "sha256:ee4480b787706361b7125fad46930589a624df87aa158c6986ef1fad10d10675", size = 1146092, upload-time = "2026-04-24T19:46:43.328Z" }
-wheels = [
-    { url = "https://pypi.tuna.tsinghua.edu.cn/packages/dc/55/2865b18ee3a3dd11160b8c4b2cf37e75bf2a4a8d1d38868ffffc7b7cc180/langchain_openai-1.2.1-py3-none-any.whl", hash = "sha256:a80732185030d4f453dda6c25feef46f645f665423fdffe38ae3edf1ac3c6c4d", size = 98626, upload-time = "2026-04-24T19:46:41.971Z" },
-]
-
-[[package]]
 name = "langchain-protocol"
 version = "0.0.15"
 source = { registry = "https://pypi.tuna.tsinghua.edu.cn/simple" }
@@ -2593,47 +2582,37 @@ name = "miles-ai"
 version = "0.1.0"
 source = { editable = "packages/miles-ai" }
 dependencies = [
-    { name = "deepagents" },
     { name = "docling" },
-    { name = "httpx" },
     { name = "langchain-community" },
     { name = "langchain-core" },
-    { name = "langchain-openai" },
     { name = "langchain-text-splitters" },
     { name = "langgraph" },
-    { name = "langgraph-checkpoint-redis" },
-    { name = "litellm" },
     { name = "miles-common" },
     { name = "miles-core" },
+    { name = "miles-integrations" },
     { name = "openai-whisper" },
     { name = "pillow" },
     { name = "pydantic" },
     { name = "pypdf" },
     { name = "pytesseract" },
-    { name = "sentence-transformers" },
     { name = "sqlalchemy", extra = ["asyncio"] },
 ]
 
 [package.metadata]
 requires-dist = [
-    { name = "deepagents", specifier = ">=0.5.0" },
     { name = "docling", specifier = ">=2.0.0" },
-    { name = "httpx", specifier = ">=0.28.0" },
     { name = "langchain-community", specifier = ">=0.3.0" },
     { name = "langchain-core", specifier = ">=0.3.0" },
-    { name = "langchain-openai", specifier = ">=0.2.0" },
     { name = "langchain-text-splitters", specifier = ">=0.3.0" },
     { name = "langgraph", specifier = ">=1.2.0" },
-    { name = "langgraph-checkpoint-redis", specifier = ">=0.4.0" },
-    { name = "litellm", specifier = ">=1.85.1" },
     { name = "miles-common", editable = "packages/miles-common" },
     { name = "miles-core", editable = "packages/miles-core" },
+    { name = "miles-integrations", editable = "packages/miles-integrations" },
     { name = "openai-whisper", specifier = ">=20231117" },
     { name = "pillow", specifier = ">=10.0.0" },
     { name = "pydantic", specifier = ">=2.10.0" },
     { name = "pypdf", specifier = ">=5.1.0" },
     { name = "pytesseract", specifier = ">=0.3.10" },
-    { name = "sentence-transformers", specifier = ">=3.3.0" },
     { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.0.36" },
 ]
 
@@ -2719,6 +2698,41 @@ requires-dist = [
 ]
 
 [[package]]
+name = "miles-integrations"
+version = "0.1.0"
+source = { editable = "packages/miles-integrations" }
+dependencies = [
+    { name = "deepagents" },
+    { name = "httpx" },
+    { name = "langchain-core" },
+    { name = "langgraph" },
+    { name = "langgraph-checkpoint-redis" },
+    { name = "litellm" },
+    { name = "miles-common" },
+    { name = "miles-core" },
+    { name = "pillow" },
+    { name = "pydantic" },
+    { name = "sentence-transformers" },
+    { name = "sqlalchemy", extra = ["asyncio"] },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "deepagents", specifier = ">=0.5.0" },
+    { name = "httpx", specifier = ">=0.28.0" },
+    { name = "langchain-core", specifier = ">=0.3.0" },
+    { name = "langgraph", specifier = ">=1.2.0" },
+    { name = "langgraph-checkpoint-redis", specifier = ">=0.4.0" },
+    { name = "litellm", specifier = ">=1.85.1" },
+    { name = "miles-common", editable = "packages/miles-common" },
+    { name = "miles-core", editable = "packages/miles-core" },
+    { name = "pillow", specifier = ">=10.0.0" },
+    { name = "pydantic", specifier = ">=2.10.0" },
+    { name = "sentence-transformers", specifier = ">=3.3.0" },
+    { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.0.36" },
+]
+
+[[package]]
 name = "miles-openapi"
 version = "0.1.0"
 source = { editable = "packages/miles-openapi" }
@@ -2755,6 +2769,7 @@ dependencies = [
     { name = "miles-common" },
     { name = "miles-core" },
     { name = "miles-exec" },
+    { name = "miles-integrations" },
     { name = "pydantic" },
     { name = "python-multipart" },
     { name = "sqlalchemy", extra = ["asyncio"] },
@@ -2771,6 +2786,7 @@ requires-dist = [
     { name = "miles-common", editable = "packages/miles-common" },
     { name = "miles-core", editable = "packages/miles-core" },
     { name = "miles-exec", editable = "packages/miles-exec" },
+    { name = "miles-integrations", editable = "packages/miles-integrations" },
     { name = "pydantic", specifier = ">=2.10.0" },
     { name = "python-multipart", specifier = ">=0.0.12" },
     { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.0.36" },
@@ -2808,6 +2824,7 @@ dependencies = [
     { name = "miles-ai" },
     { name = "miles-common" },
     { name = "miles-core" },
+    { name = "miles-integrations" },
     { name = "miles-openapi" },
     { name = "miles-portal" },
     { name = "opentelemetry-api" },
@@ -2826,6 +2843,7 @@ requires-dist = [
     { name = "miles-ai", editable = "packages/miles-ai" },
     { name = "miles-common", editable = "packages/miles-common" },
     { name = "miles-core", editable = "packages/miles-core" },
+    { name = "miles-integrations", editable = "packages/miles-integrations" },
     { name = "miles-openapi", editable = "packages/miles-openapi" },
     { name = "miles-portal", editable = "packages/miles-portal" },
     { name = "opentelemetry-api", specifier = ">=1.28.0" },
@@ -2844,6 +2862,7 @@ dependencies = [
     { name = "miles-ai" },
     { name = "miles-common" },
     { name = "miles-core" },
+    { name = "miles-integrations" },
     { name = "miles-portal" },
     { name = "sqlalchemy", extra = ["asyncio"] },
 ]
@@ -2853,6 +2872,7 @@ requires-dist = [
     { name = "miles-ai", editable = "packages/miles-ai" },
     { name = "miles-common", editable = "packages/miles-common" },
     { name = "miles-core", editable = "packages/miles-core" },
+    { name = "miles-integrations", editable = "packages/miles-integrations" },
     { name = "miles-portal", editable = "packages/miles-portal" },
     { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.0.36" },
 ]

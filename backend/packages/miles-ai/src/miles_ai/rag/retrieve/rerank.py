@@ -16,8 +16,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from miles_ai.integrations.rerank.registry import rerank_documents_for_model
 from miles_core.models.model import ModelConfig
+from miles_integrations.rerank.registry import rerank_documents_for_model
 
 # KB 未配置 rerank_candidate_k 时的默认候选池上限
 DEFAULT_CANDIDATE_K = 50

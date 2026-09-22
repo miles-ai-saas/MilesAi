@@ -201,8 +201,8 @@ async def handle_generate_image(
     params: prompt/description, size, n, image_attachment_id, model_config_id（可选）
     异步返回 generative_job_id；同步返回 attachment_id / attachment_ids。
     """
-    from miles_ai.integrations.generative.image.prompt_guard import sanitize_image_prompt
-    from miles_ai.integrations.generative.request_prefs import (
+    from miles_integrations.generative.image.prompt_guard import sanitize_image_prompt
+    from miles_integrations.generative.request_prefs import (
         get_request_allow_collage,
         resolve_image_n,
     )

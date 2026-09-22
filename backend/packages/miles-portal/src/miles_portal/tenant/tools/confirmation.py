@@ -6,10 +6,10 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from miles_ai.integrations.langchain.toolkit.naming import is_mcp_tool_name
 from miles_common.exceptions import BadRequestError
 from miles_core.soft_delete import is_marked_deleted
 from miles_core.tenant import TenantContext
+from miles_integrations.langchain.toolkit.naming import is_mcp_tool_name
 from miles_portal.tenant.tools.builtin_registry import get_builtin
 from miles_portal.tenant.tools.models import Tool
 

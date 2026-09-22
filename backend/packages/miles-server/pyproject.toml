@@ -8,6 +8,7 @@ dependencies = [
     "miles-portal",
     "miles-admin",
     "miles-ai",
+    "miles-integrations",
     "miles-core",
     "miles-common",
     "uvicorn[standard]>=0.32.0",
@@ -35,5 +36,6 @@ miles-openapi = { workspace = true }
 miles-portal = { workspace = true }
 miles-admin = { workspace = true }
 miles-ai = { workspace = true }
+miles-integrations = { workspace = true }
 miles-core = { workspace = true }
 miles-common = { workspace = true }

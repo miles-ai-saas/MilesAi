@@ -6,6 +6,7 @@ requires-python = ">=3.11"
 dependencies = [
     "miles-portal",
     "miles-ai",
+    "miles-integrations",
     "miles-core",
     "miles-common",
     "sqlalchemy[asyncio]>=2.0.36",
@@ -21,5 +22,6 @@ packages = ["src/miles_worker"]
 [tool.uv.sources]
 miles-portal = { workspace = true }
 miles-ai = { workspace = true }
+miles-integrations = { workspace = true }
 miles-core = { workspace = true }
 miles-common = { workspace = true }

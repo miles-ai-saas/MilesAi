@@ -14,10 +14,10 @@ from uuid import UUID
 
 from miles_ai.flow_runtime.context_utils import tenant_context_from_run
 from miles_ai.flow_runtime.types import RunContext
-from miles_ai.integrations.generative.constants import PURPOSE_FLOW_GENERATED
 from miles_common.exceptions import BadRequestError
 from miles_common.trace import get_trace_id
 from miles_core.infra.db import AsyncSessionLocal
+from miles_integrations.generative.constants import PURPOSE_FLOW_GENERATED
 
 
 def _optional_uuid(raw: Any) -> UUID | None:

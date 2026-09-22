@@ -6,13 +6,13 @@ from uuid import uuid4
 
 import pytest
 
-from miles_ai.integrations.chat.multimodal import (
+from miles_common.exceptions import BadRequestError
+from miles_common.schemas.media import MediaRefIn
+from miles_integrations.chat.multimodal import (
     build_user_message,
     messages_contain_image,
     resolve_media_refs,
 )
-from miles_common.exceptions import BadRequestError
-from miles_common.schemas.media import MediaRefIn
 
 
 def test_build_user_message_text_only():
@@ -77,8 +77,8 @@ async def test_resolve_media_refs_builds_data_url():
 
 @pytest.mark.asyncio
 async def test_resolve_media_refs_rejects_oversize_image():
-    from miles_ai.integrations.chat.multimodal import MAX_IMAGE_BYTES
     from miles_core.models.media.reader import AttachmentBytes
+    from miles_integrations.chat.multimodal import MAX_IMAGE_BYTES
 
     class FakeReader:
         async def read_image_bytes(self, attachment_id):

@@ -25,13 +25,13 @@ from uuid import UUID
 from langchain_core.runnables import RunnableConfig
 from langgraph.graph import END, START, StateGraph
 
-from miles_ai.integrations.chat.multimodal import media_refs_from_items
 from miles_ai.rag.generate import build_rag_prompt, format_hits_context, generate_rag_answer, retrieve_hits
 from miles_ai.rag.graph.constants import RELEVANCE_NONE, RELEVANCE_POOR
 from miles_ai.rag.graph.grading import _score_grade, llm_grade_relevance
 from miles_ai.rag.graph.state import RAGGraphState
 from miles_core.infra.db import AsyncSessionLocal
 from miles_core.models.model import ModelConfig
+from miles_integrations.chat.multimodal import media_refs_from_items
 
 
 def _cfg_model(config: RunnableConfig | None) -> ModelConfig:

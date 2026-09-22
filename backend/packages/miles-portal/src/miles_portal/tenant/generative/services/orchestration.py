@@ -20,22 +20,22 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from miles_ai.integrations.generative.constants import (
+from miles_common.exceptions import BadRequestError
+from miles_core.models.compliance.constants import SCAN_MODULE_GENERATIVE
+from miles_core.models.model import ModelConfig
+from miles_core.tenant import TenantContext
+from miles_integrations.generative.constants import (
     DEFAULT_IMAGE_SIZE,
     EXTRA_IMAGE_SIZE,
     MAX_IMAGES_PER_REQUEST,
     PURPOSE_CHAT_GENERATED,
 )
-from miles_ai.integrations.generative.image.prompt_guard import sanitize_image_prompt
-from miles_ai.integrations.generative.image.service import generate_image_bytes
-from miles_ai.integrations.generative.tts.service import generate_tts_bytes
-from miles_ai.integrations.generative.types import ImageGenerateResult, VideoGenerateResult
-from miles_ai.integrations.generative.video.cover import extract_video_cover_jpeg
-from miles_ai.integrations.generative.video.service import generate_video_bytes
-from miles_common.exceptions import BadRequestError
-from miles_core.models.compliance.constants import SCAN_MODULE_GENERATIVE
-from miles_core.models.model import ModelConfig
-from miles_core.tenant import TenantContext
+from miles_integrations.generative.image.prompt_guard import sanitize_image_prompt
+from miles_integrations.generative.image.service import generate_image_bytes
+from miles_integrations.generative.tts.service import generate_tts_bytes
+from miles_integrations.generative.types import ImageGenerateResult, VideoGenerateResult
+from miles_integrations.generative.video.cover import extract_video_cover_jpeg
+from miles_integrations.generative.video.service import generate_video_bytes
 from miles_portal.tenant.attachments.services.attachment import AttachmentService
 from miles_portal.tenant.compliance.services.compliance import ComplianceService
 from miles_portal.tenant.generative.services.persist import persist_generated_bytes
@@ -118,7 +118,7 @@ async def generate_image_for_model(
 
     job_progress = None
     if generative_job_id:
-        from miles_ai.integrations.generative.jobs.progress import GenerativeJobProgress
+        from miles_integrations.generative.jobs.progress import GenerativeJobProgress
 
         job_progress = GenerativeJobProgress(generative_job_id)
         await job_progress.update(10, "调用生图 API")
@@ -202,7 +202,7 @@ async def generate_video_for_model(
 
     progress = None
     if generative_job_id:
-        from miles_ai.integrations.generative.jobs.progress import GenerativeJobProgress
+        from miles_integrations.generative.jobs.progress import GenerativeJobProgress
 
         progress = GenerativeJobProgress(generative_job_id)
         await progress.update(8, "已提交厂商任务")

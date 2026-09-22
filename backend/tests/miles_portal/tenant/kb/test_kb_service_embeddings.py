@@ -5,10 +5,10 @@ from uuid import uuid4
 
 import numpy as np
 
-from miles_ai.integrations.embeddings.constants import EXTRA_EMBEDDING_DIMENSION
 from miles_core.models.kb import KnowledgeBase
 from miles_core.models.model import ModelConfig
 from miles_core.models.model.catalog import ModelCapabilityType
+from miles_integrations.embeddings.constants import EXTRA_EMBEDDING_DIMENSION
 from miles_portal.tenant.kb.services.embeddings import (
     build_kb_retrieval_bindings,
     embed_query_for_kb_sync,

@@ -6,17 +6,17 @@ from uuid import uuid4
 
 import pytest
 
-from miles_ai.integrations.generative.constants import (
+from miles_core.models.model import ModelConfig
+from miles_core.models.model.catalog import ModelCapabilityType, ModelVendor
+from miles_core.tenant import TenantContext
+from miles_integrations.generative.constants import (
     INVOKE_DASHSCOPE_T2I,
     INVOKE_OPENAI_IMAGES,
     INVOKE_VOLCENGINE_IMAGE,
 )
-from miles_ai.integrations.generative.registry import resolve_invoke_mode
-from miles_ai.integrations.generative.types import ImageGenerateResult
-from miles_ai.integrations.langchain.tool_agent import artifacts_from_tool_output
-from miles_core.models.model import ModelConfig
-from miles_core.models.model.catalog import ModelCapabilityType, ModelVendor
-from miles_core.tenant import TenantContext
+from miles_integrations.generative.registry import resolve_invoke_mode
+from miles_integrations.generative.types import ImageGenerateResult
+from miles_integrations.langchain.tool_agent import artifacts_from_tool_output
 
 
 def _image_model(**kwargs) -> ModelConfig:
