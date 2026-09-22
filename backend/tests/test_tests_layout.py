@@ -10,6 +10,10 @@
    （判据 2 只管到一级，深层漂移靠这条兜住）；
 4. 全仓 ``test_*.py`` 基名唯一——``tests/`` 无 ``__init__.py``，pytest 的 ``prepend``
    导入模式要求基名唯一，否则报 import file mismatch。
+
+约定（判据 1 无法机器判定的部分）：根级 ``test_*.py`` 仅限**跨包**守卫/契约
+（R3，如 AST 守卫、枚举契约、ORM 登记），单个包的用例一律落到 ``miles_<pkg>/`` 下
+——把单域用例放到根级会绕过判据 2/3，别这么做。
 """
 
 from __future__ import annotations
