@@ -12,7 +12,7 @@ import importlib
 #
 # 清单过期是 fail-open：新增 ORM 模块而漏加一项，``Base.metadata`` 就缺表，而
 # Alembic autogenerate 会把线上已有表判成待 DROP 的差异。完整性由
-# ``tests/models/test_orm_registry_completeness.py`` 守住——漏加时该测试会失败。
+# ``tests/test_orm_registry_completeness.py`` 守住——漏加时该测试会失败。
 _ORM_MODULES: tuple[str, ...] = (
     "miles_admin.models",
     "miles_core.models",  # 聚合 re-export（不新增表）

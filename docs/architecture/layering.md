@@ -165,8 +165,8 @@ flowchart LR
 | `tests/test_no_blocking_calls_in_async.py` | `async def` 内不得直调同步阻塞调用（同步对象存储方法 / 同步解析器 / `subprocess` 等），须经 `asyncio.to_thread` 离线 |
 | `tests/test_no_silent_broad_except.py` | 宽泛 `except`（bare / `Exception` / `BaseException`）不得静默（`pass` / `continue` / `break` 同判）；若打了日志却不重抛则须带 `exc_info`；窄类型允许静默，但须在体内注明 `# 静默可接受：<理由>`；`contextlib.suppress(<宽泛异常>)` 是同一判据（语法糖） |
 | `tests/test_no_unreferenced_modules.py` | 包内不得出现零引用模块（生产侧无 import、亦非按名加载）；入口点与有意未接线者走显式白名单 |
-| `tests/models/test_api_enum_parity.py` | API 侧枚举声明与 ORM 侧逐字节一致；API 层枚举 import 只可来自白名单模块 |
-| `tests/models/test_orm_registry_completeness.py` | 全仓 ORM 表（按 `__tablename__` / `Table(...)` 扫描）均可经 `load_all_models()` 登记到达 |
+| `tests/test_api_enum_parity.py` | API 侧枚举声明与 ORM 侧逐字节一致；API 层枚举 import 只可来自白名单模块 |
+| `tests/test_orm_registry_completeness.py` | 全仓 ORM 表（按 `__tablename__` / `Table(...)` 扫描）均可经 `load_all_models()` 登记到达 |
 
 **失败堆栈只打一次（边界原则）**：同一次失败只在**最外层边界**打印一份堆栈。Celery 任务的失败由 Celery 自己记录（`Task %(name)s[%(id)s] raised unexpected: %(exc)s` 且带 `exc_info`，见 `celery/app/trace.py` 的 `log_policy_unexpected`），HTTP 请求的未捕获异常由 uvicorn/Starlette 记录；因此 worker 任务链上各层、以及会被重抛的内层 handler 只记「可 grep 的上下文」（task 名、`job_id`、`agent_id`、原因一句话），**不重复打堆栈**——内层既打堆栈又重抛会让同一次失败产出多份相同堆栈，反而拖慢定位（生图/生视频任务曾一路三份：`job_execution` → `_run_generative_task` → Celery）。
 
@@ -381,19 +381,21 @@ from miles_core.infra.vector_store import get_vector_store
 ## 7. 测试布局
 
 ```text
-backend/tests/
-  conftest.py              # 全局 fixture
-  paths.py                 # BACKEND_ROOT（子目录内引用资源路径）
-  test_l3_neutral_imports.py      # AST 守卫：L3 反向依赖 / server 自建 router
+backend/tests/                     # 一级目录 = 被测包（与 packages/ 对齐；miles_runner 无直接用例）
+  conftest.py  paths.py
+  test_l3_neutral_imports.py       # AST 守卫：L3 反向依赖 / server 自建 router
   test_no_blocking_calls_in_async.py  # AST 守卫：async 内不得直调阻塞调用
-  api/                     # HTTP / meta / smoke
-  integration/             # 跨模块编排
-  rag/                     # 解析、分片、检索、向量化
-  flow/                    # LangGraph 编译与流程
-  tenant/
-    agents/ kb/ tools/ skills/ hooks/ generative/
-  mcp/ admin/ infra/ marketplace/ media/
+  test_no_silent_broad_except.py      # AST 守卫：宽泛 except / suppress 不得静默（日志须带 exc_info）
+  test_no_unreferenced_modules.py     # AST 守卫：零引用模块（入口点白名单除外）
+  test_domain_meta.py  test_api_enum_parity.py  test_enum_contract.py
+  test_orm_registry_completeness.py  test_tests_layout.py
+  integration/                     # 跨包编排
+  miles_common/ miles_exec/ miles_core/ miles_ai/ miles_portal/
+  miles_admin/ miles_openapi/ miles_server/ miles_worker/
 ```
 
-单测 `rag` 模块时 **不启动** FastAPI；向量库测试 mock `get_vector_store`。详见 [tests/README.md](../../backend/tests/README.md)。
+单测 `rag` 模块时 **不启动** FastAPI；向量库测试 mock `get_vector_store`。
+归属规则与逐文件映射见
+[docs/superpowers/specs/2026-09-21-tests-structure-design.md](../superpowers/specs/2026-09-21-tests-structure-design.md)；
+运行方式见 [tests/README.md](../../backend/tests/README.md)。
 

@@ -46,7 +46,7 @@ select = ["E", "F", "I", "B", "UP", "RUF"]
 # 留档：当初以「影响落库语义」为由忽略是**说反了**——这些列一律以 values_callable
 # 取 .value，json.dumps、== 与 SQLAlchemy 的 .enums/绑定/读回实测均不受影响；
 # 唯一变化是 str()/f-string/format() 由 "Class.MEMBER" 变为成员值本身。
-# 契约见 tests/models/test_enum_contract.py。
+# 契约见 tests/test_enum_contract.py。
 ignore = [
     # 中文注释 / 文案中的全角标点（，。：；「」等）非缺陷
     "RUF001",

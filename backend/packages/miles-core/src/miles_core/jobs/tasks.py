@@ -9,7 +9,7 @@
 codemod 改掉了）。故改用与目录无关的 ``milesai.tasks.*`` 命名空间并冻结。
 
 **修改本文件的任何值都属破坏性协议变更**：需先排空 broker 在途消息（或注册旧名
-别名）再部署，并同步更新 ``tests/infra/test_celery_task_names.py`` 中冻结的字面量。
+别名）再部署，并同步更新 ``tests/miles_worker/test_celery_task_names.py`` 中冻结的字面量。
 """
 
 # 协议命名空间：与包 / 模块布局解耦，永不变更

@@ -199,12 +199,15 @@ _HEALTH_CHECKS_SRC = _BACKEND_ROOT / "packages" / "miles-core" / "src" / "miles_
 
 ```python
 # 路径常量统一来自 ``tests.paths``：本文件在 ``tests/miles_core/infra/db/``，深度已变，
-# 不能再靠 ``parents[N]`` 猜仓库根（N 会随目录层级漂移）。
+# 不能再靠 ``parents`` 猜仓库根（层级会随目录漂移）。
 _BACKEND_ROOT = BACKEND_ROOT
 _HEALTH_CHECKS_SRC = _BACKEND_ROOT / "packages" / "miles-core" / "src" / "miles_core" / "utils" / "health_checks.py"
 ```
 
-并在 import 区的第一方分组里加（紧挨现有的 `from miles_core…` 那几行、与它们同组且不加空行——ruff isort 视 `tests` 与 `miles_*` 为同一组，见 `tests/models/test_orm_registry_completeness.py` 的写法）：
+> 注：注释刻意不写字面量 `parents[N]`——Task 3 Step 4 与 Task 8 Step 3 的验收命令是
+> `rg "parents\[" tests/miles_ai` / `rg "parents\[" tests`，写全会让验收命中该注释。
+
+并在 import 区的第一方分组里加（紧挨现有的 `from miles_core…` 那几行、与它们同组且不加空行——ruff isort 视 `tests` 与 `miles_*` 为同一组，见 `tests/test_orm_registry_completeness.py` 的写法）：
 
 ```python
 from tests.paths import BACKEND_ROOT
@@ -299,6 +302,7 @@ git mv tests/flow/test_langgraph_compiler.py tests/miles_ai/integrations/langgra
 git mv tests/flow/test_langgraph_grading.py tests/miles_ai/integrations/langgraph/test_langgraph_grading.py
 git mv tests/flow/test_langgraph_parallel.py tests/miles_ai/integrations/langgraph/test_langgraph_parallel.py
 git mv tests/flow/test_langgraph_rag.py tests/miles_ai/integrations/langgraph/test_langgraph_rag.py
+git mv tests/flow/test_flow_multimodal.py tests/miles_ai/flow_runtime/test_flow_multimodal.py
 git mv tests/flow/test_media_nodes.py tests/miles_ai/flow_runtime/test_media_nodes.py
 git mv tests/flow/test_platform_tool_node.py tests/miles_ai/flow_runtime/test_platform_tool_node.py
 git mv tests/flow/test_prompt_template_node.py tests/miles_ai/flow_runtime/test_prompt_template_node.py
@@ -359,7 +363,7 @@ _COMPILER_DIR = _BACKEND_DIR / "packages" / "miles-ai" / "src" / "miles_ai" / "i
 
 ```python
 # 路径常量统一来自 ``tests.paths``（本文件已搬到 tests/miles_ai/integrations/langgraph/，
-# 目录深度变化后 ``parents[N]`` 不再可靠）。
+# 目录深度变化后 ``parents`` 推导不再可靠）。
 _BACKEND_DIR = BACKEND_ROOT
 _COMPILER_DIR = _BACKEND_DIR / "packages" / "miles-ai" / "src" / "miles_ai" / "integrations" / "langgraph" / "compiler"
 ```
@@ -457,7 +461,6 @@ mkdir -p tests/miles_portal/deletion tests/miles_portal/marketplace \
          tests/miles_portal/tenant/system tests/miles_portal/tenant/tasks tests/miles_portal/tenant/tools
 git mv tests/api/test_system_management.py tests/miles_portal/tenant/system/test_system_management.py
 git mv tests/api/test_user_batch.py tests/miles_portal/tenant/system/test_user_batch.py
-git mv tests/flow/test_flow_multimodal.py tests/miles_portal/tenant/flows/test_flow_multimodal.py
 git mv tests/flow/test_flow_run_request.py tests/miles_portal/tenant/flows/test_flow_run_request.py
 git mv tests/flow/test_flow_tags.py tests/miles_portal/tenant/flows/test_flow_tags.py
 git mv tests/flow/test_flow_versions_api.py tests/miles_portal/tenant/flows/test_flow_versions_api.py
@@ -965,8 +968,8 @@ MSG
 ````markdown
 # 后端测试目录
 
-与 [packages/](../packages/) 的包边界一一对应：**一级目录 = 被测包**，深层 = 该包内的模块目录；
-用例文件的位置 ⇔ 被测模块的位置。归属规则与逐文件映射见
+与 [packages/](../packages/) 的包边界对齐：**一级目录 = 被测包**，深层 = 该包内的模块目录；
+用例文件的位置 ⇔ 被测模块的位置（`miles_runner` 当前无直接用例，能力经 `miles_exec` 覆盖，故无对应目录）。归属规则与逐文件映射见
 [docs/superpowers/specs/2026-09-21-tests-structure-design.md](../../docs/superpowers/specs/2026-09-21-tests-structure-design.md)。
 
 ```text
@@ -1005,7 +1008,7 @@ python -m pytest -q tests/miles_server/apps/test_api_e2e.py
 ## 7. 测试布局
 
 ```text
-backend/tests/                     # 一级目录 = 被测包（与 packages/ 一一对应）
+backend/tests/                     # 一级目录 = 被测包（与 packages/ 对齐；miles_runner 无直接用例）
   conftest.py  paths.py
   test_l3_neutral_imports.py       # AST 守卫：L3 反向依赖 / server 自建 router
   test_no_blocking_calls_in_async.py
@@ -1069,8 +1072,8 @@ Expected: 无输出
 
 ```bash
 cd /Users/xiezhigang/Projects/miles/MilesAI
-rg -n "tests/(infra|flow|rag|media|mcp|models|tenant|admin|worker|api|marketplace)/" \
-   backend docs .github Makefile --glob '!**/__pycache__/**' --glob '!docs/superpowers/**' --glob '!.superpowers/**'
+rg -n --hidden "tests/(infra|flow|rag|media|mcp|models|tenant|admin|worker|api|marketplace)/" \
+   backend docs .github Makefile --glob '!**/__pycache__/**' --glob '!docs/superpowers/**' --glob '!.superpowers/**' --glob '!.git/**'
 ```
 
 替换映射（一律只改路径文字，**不改任何代码逻辑**）：
@@ -1078,7 +1081,7 @@ rg -n "tests/(infra|flow|rag|media|mcp|models|tenant|admin|worker|api|marketplac
 | 旧路径 | 新路径 |
 |---|---|
 | `tests/models/test_api_enum_parity.py` | `tests/test_api_enum_parity.py` |
-| `tests/models/test_orm_registry_completeness.py` | `tests/test_orm_registry_completeness.py` |
+| `tests/test_orm_registry_completeness.py` | `tests/test_orm_registry_completeness.py` |
 | `tests/models/test_enum_contract.py` | `tests/test_enum_contract.py` |
 | `tests/infra/test_canvas_state_contract.py` | `tests/miles_ai/integrations/langgraph/test_canvas_state_contract.py` |
 | `tests/infra/test_celery_task_names.py` | `tests/miles_worker/test_celery_task_names.py` |
@@ -1103,8 +1106,12 @@ rg -n "tests/(infra|flow|rag|media|mcp|models|tenant|admin|worker|api|marketplac
 - `docs/guides/{knowledge-base,ai-stack}.md`
 - `docs/architecture/{layering,admin-ops-design,backend-reference-framework,engine-di-convergence}.md`
 
-不改（历史/一次性工具留档）：`backend/tools/rename_to_workspace.py` 一类一次性 codemod 的注释块、
-`docs/superpowers/specs/**`、`.superpowers/**`。
+不改（历史留档）：`docs/superpowers/specs/**`、`.superpowers/**`。
+
+> **实施期修正**：原计划把 `backend/tools/rename_to_workspace.py`（一次性 codemod，文件内已注明
+> 「已完成使命，勿再重跑」）也列入「不改」，但它与 Step 6 的「全仓无输出」互斥。用户裁定**两者都做**：
+> 该文件注释里指路的 `tests/infra/test_celery_task_names.py`、`tests/tenant/tools` 已一并更正为
+> 迁移后的路径（只动注释文字，工具行为未动），使 Step 6 的核验严格为空。
 
 > 这些改动全部落在注释与文档字符串里的路径文字上，不触碰任何表达式；`tests/` 侧的文件仅改 docstring，`packages/` 侧仅改 `#` 注释与模块 docstring（后者会进 OpenAPI 描述，若某个 docstring 被改动需执行 `make openapi-write` —— 本步只改**注释行**，故预期 `make openapi-check` 仍为 OK；若 Step 7 的门禁报快照差异，则说明误改了 docstring，回退该处改为 `#` 注释）。
 
@@ -1154,10 +1161,11 @@ wc -l /tmp/tests-names-after.txt
 diff /tmp/tests-names-before.txt /tmp/tests-names-after.txt
 ```
 
-Expected: `1516 /tmp/tests-names-after.txt`（1513 基线 + Task 6 新增 3 个守卫用例）；`diff` 输出**只有** 3 行 `>`，即：
+Expected: `1517 /tmp/tests-names-after.txt`（1513 基线 + Task 6 新增 4 个守卫用例）；`diff` 输出**只有** 4 行 `>`，即：
 
 ```text
 > test_package_prefixed_tests_import_their_package
+> test_package_subdirs_mirror_source_modules
 > test_test_file_basenames_are_unique
 > test_top_level_dirs_are_package_or_integration
 ```
@@ -1171,7 +1179,7 @@ cd /Users/xiezhigang/Projects/miles/MilesAI/backend
 .venv/bin/python -m pytest -q
 ```
 
-Expected: `1516 passed`
+Expected: `1517 passed`
 
 - [ ] **Step 3: 无硬编码深度残留**
 
@@ -1180,18 +1188,25 @@ cd /Users/xiezhigang/Projects/miles/MilesAI/backend
 rg -n "parents\[" tests
 ```
 
-Expected: 只出现 `tests/paths.py` 里说明「勿用 `parents[N]` 猜 backend 根」的那一行（即 `tests/paths.py:1`），再无其他命中。
+Expected: 只出现说明性命中——`tests/paths.py:1,3` 的 docstring（解释「勿用 `parents[N]` 猜 backend 根」）与
+`tests/miles_core/infra/db/test_loop_aware_engine.py:274` 的注释（说明为何不再用深度推导）；
+`tests/test_l3_neutral_imports.py:18` 的 `_PKG = Path(__file__).resolve().parents[1] / "packages"` 是该文件
+**留在 `tests/` 根**时的正确推导（`parents[1]` 即 `backend/`），不在本次改造范围，允许保留。
+除上述两类外不得出现其余命中——尤其不得出现「子目录内靠 `parents[N]` 猜 backend 根」的代码。
 
 - [ ] **Step 3b: 旧测试路径引用已归零（文档）+ 跨用例导入已归零（代码）**
 
 ```bash
 cd /Users/xiezhigang/Projects/miles/MilesAI
-rg -n "tests/(infra|flow|rag|media|mcp|models|tenant|admin|worker|api|marketplace)/" \
-   backend docs .github Makefile --glob '!**/__pycache__/**' --glob '!docs/superpowers/**' --glob '!.superpowers/**'
+rg -n --hidden "tests/(infra|flow|rag|media|mcp|models|tenant|admin|worker|api|marketplace)/" \
+   backend docs .github Makefile --glob '!**/__pycache__/**' --glob '!docs/superpowers/**' --glob '!.superpowers/**' --glob '!.git/**'
 cd backend && rg -n "from tests\.(infra|flow|rag|media|mcp|models|tenant|admin|worker|api|marketplace)" tests
 ```
 
 Expected: 两条命令均无输出
+
+> `--hidden` 不可省：`rg` 默认跳过点文件，`backend/.importlinter` 里就藏着一处旧路径
+> （`tests/models/test_api_enum_parity.py`），初版命令漏扫过它。
 
 - [ ] **Step 3c: OpenAPI 快照未漂移（Task 7 若误改 DTO docstring 会在此暴露）**
 
@@ -1221,7 +1236,7 @@ make check
 
 `make check` = `lint-backend`（ruff check）+ `format-check-backend`（ruff format --check）+ `layers-check`（import-linter）+ `openapi-check` + `test-backend`（全量 pytest）。
 
-Expected: 五步均退出码 0、`1516 passed`。本计划只搬路径、新增一个守卫文件，未动 `packages/` 源码与 `.importlinter`；若 `ruff check` 报 I001（导入顺序），说明 `from tests.paths import …` 放错了分组——按同目录既有文件（如 `tests/models/test_orm_registry_completeness.py`）把 `tests.paths` 与 `miles_*` 放同一组、不加空行。
+Expected: 五步均退出码 0、`1517 passed`。本计划只搬路径、新增一个守卫文件，未动 `packages/` 源码与 `.importlinter`；若 `ruff check` 报 I001（导入顺序），说明 `from tests.paths import …` 放错了分组——按同目录既有文件（如 `tests/test_orm_registry_completeness.py`）把 `tests.paths` 与 `miles_*` 放同一组、不加空行。
 
 - [ ] **Step 6（可选）: 让 CI 跑一次**
 
@@ -1246,3 +1261,33 @@ Expected: `lint.yml` 的 pytest 步骤通过（与本地一致）
   跨用例导入恰好 4 处、`git mv` 干跑无缺目录/无覆盖、守卫代码通过 `ruff check` 与 `ruff format --check`。
 - 无占位符：每个搬迁步骤都给出完整命令；每处内容改动都给出改前/改后代码。
 - 类型一致：`TESTS_ROOT` / `BACKEND_ROOT` / `PACKAGES` 在 Task 6 定义，Task 2/3/5 与 Task 6 一致使用同名常量。
+
+---
+
+## 实施期修正（执行时发现，计划已按此回填）
+
+| # | 计划原文 | 实际执行 | 原因 |
+|---|---|---|---|
+| 1 | Task 2/3 的「改后」注释写 `` `parents[N]` `` | 写 `` `parents` `` | 与 Task 3 Step 4 / Task 8 Step 3 的 `rg "parents\["` 验收互斥：写全会让验收命中该注释 |
+| 2 | Task 8 Step 3 预期「只剩 `paths.py:1` 一行」 | 允许两类说明性命中（`paths.py:1,3` docstring、`test_loop_aware_engine.py:274` 注释）+ `test_l3_neutral_imports.py:18` 的根级 `parents[1]` | 前者是解释为何不再用深度推导；后者留在 `tests/` 根时 `parents[1]` 即 `backend/`，本就正确，不在改造范围 |
+| 3 | Task 4 只搬 98 个文件 | 99 个（+ `tests/tenant/models/_usage_doubles.py`） | 该共享辅助模块被两个用例 import，不与用例同批搬走会立刻断链 |
+| 4 | 未提跨用例 import | Task 3 Step 2b / Task 4 Step 2b 新增 4 处导入路径改写 | 同上：`tests.infra.test_litellm_adapter` 2 处、`tests.tenant.models._usage_doubles` 2 处 |
+| 5 | Task 5 预期 `130 passed` | `114 passed` | 130 把根级 4 个 AST 守卫的 16 个用例也算进了该批命令，但那些文件不在命令的参数里 |
+| 6 | Task 8 预期 `1513 passed` | `1517 passed` | 未计入 Task 6 新增的守卫用例（初版 3 条，终审后加固为 4 条）；比对方式改为「`diff` 只允许 4 行 `>` 新增」 |
+| 7 | Task 6 的 `_ALLOWED_ROOT_FILES` 只有 `conftest.py`/`paths.py` | 加 `README.md` | 否则守卫在 `tests/` 根见到 `README.md` 就会红 |
+| 8 | Task 7 Step 5 把 `backend/tools/rename_to_workspace.py` 列入「不改」，Step 6 又要求全仓无输出 | 两者都做（用户裁定）：改该文件 2 处注释，验收严格为空 | 前后两条互斥 |
+| 9 | Task 7 Step 2 的 `layering.md` 链接写成 `(.../superpowers/...)` | `(../superpowers/specs/2026-09-21-tests-structure-design.md)` | 占位式写法从 `docs/architecture/` 解析不到 |
+| 10 | 未提旧域空目录残留 | Task 5 同批 `rm -rf` 掉 11 个只剩 `__pycache__` 的旧域目录 | 搬完后它们未跟踪、内容已空，留着会污染目录形态复核 |
+| 11 | Task 6 由实现者提交 | 实现者子代理在提交前被中断；改动已落盘且达标，由控制器完成验证与提交 | 见 `.superpowers/sdd/task-6-report.md`；未重做任何实现工作 |
+| 12 | 文档写「与 packages/ 的包边界一一对应」 | 改为「对齐」并注明 `miles_runner` 无直接用例 | packages 有 10 个包，`tests/` 只有 9 个目录 |
+| 13 | Task 3 把 `test_flow_multimodal.py` 归 `tests/miles_portal/tenant/flows/` | 改归 `tests/miles_ai/flow_runtime/` | 终审以设计 §2 R1 复核：8 个用例里 6 个（含全部 `patch` 目标）打 `miles_ai.flow_runtime`，只有 2 个碰 portal 的 `FlowRunRequest`；同类混合用例 `test_media_nodes.py` 早已按此裁定 |
+| 14 | 结构性守卫只判「一级目录 + 包前缀」 | Task 6 后追加第 4 条判据 `test_package_subdirs_mirror_source_modules` + `_iter_tests()` 扫描面哨兵（下界 200） | 终审实测：把用例 `git mv` 进 `tests/miles_portal/totally_fake_domain/` 或搬到根级，守卫均为 `3 passed` —— 核心约定「深层 = 包内模块」当时并未被守 |
+| 15 | Task 7 Step 6 的 `rg` 门禁未带 `--hidden` | 补 `--hidden`（+ `--glob '!.git/**'`），并修正 `backend/.importlinter:107` 的过期引用 | `rg` 默认跳过点文件，`.importlinter` 因而漏扫；账本原先「旧路径引用已归零」的断言严格来说不成立 |
+| 16 | `docs/architecture/admin-ops-design.md` §5 只写到包级目录 | 补到模块级（3 个在 `app_ops/`、1 个在 `app_sys/`、1 个在 `models/`） | 原文把 5 个文件写成 `miles_admin/` 的直接子文件，读者 grep 会失败 |
+
+## 执行结果（2026-09-21，分支 `refactor/tests-by-package`）
+
+- 迁移前后用例集合逐条一致：1513（基线）→ 1517（+ Task 6 的 4 个守卫用例），`diff` 无 `<` 行。
+- 全量 `1517 passed`；`make check` 五门全绿（ruff check / format --check / `Contracts: 7 kept, 0 broken.` / `OpenAPI snapshot OK` / pytest）。
+- 全仓旧测试路径引用归零（`backend`、`docs`、`.github`、`Makefile`，排除历史 spec/plan 与 `.superpowers`）。
+- 目录形态：`tests/` = 9 个包目录 + `integration/` + 根级守卫/基础设施文件，旧域目录已全部清除。

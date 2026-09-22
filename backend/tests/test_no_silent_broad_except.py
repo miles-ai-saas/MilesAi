@@ -4,7 +4,7 @@
 装前者。此时 ``image_to_string`` 抛 ``TesseractNotFoundError``（``OSError`` 子类），
 曾被 ``except Exception`` 静默吞掉 —— 零日志，且占位文案还让人去「安装 pytesseract」，
 把排查方向指反；占位文本又会被当作正文索引入库，检索质量静默下降。Whisper 模型下载
-失败、ffmpeg 编解码器缺失同理。详见 ``tests/rag/test_parse_degradation_diagnosability.py``。
+失败、ffmpeg 编解码器缺失同理。详见 ``tests/miles_ai/rag/test_parse_degradation_diagnosability.py``。
 
 **判定「静默」**：handler 体仅由 ``pass`` / ``...`` / 字符串表达式（docstring）/
 ``return None`` / ``continue`` / ``break`` 组成 —— 既无日志、无重抛，也无任何补救动作，

@@ -7,7 +7,7 @@
 
 ``MarketplaceAppStatus`` / ``MarketplaceAppVisibility`` 在此**独立声明**（不再从
 ``miles_core.models.marketplace.models`` re-export），与 ORM 侧逐字同形，一致性由
-``tests/models/test_api_enum_parity.py`` 守卫。
+``tests/test_api_enum_parity.py`` 守卫。
 """
 
 import enum

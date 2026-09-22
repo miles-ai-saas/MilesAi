@@ -53,7 +53,7 @@ from miles_portal.tenant.tools.invoke import invoke_tool_with_context
 | `media_reader` | 媒体节点读附件字节 | `attachments/services/media_reader.py::build_flow_media_reader` | OCR/ASR 节点报错 |
 | `generate_image_sync/video_sync` | 同步生成编排 | `generative/services/orchestration.py::generate_{image,video}_for_model` | 同步分支报错 |
 
-> `submit_generative_*` 按 `settings.generative_{image,video}_async` 门控注入或 `None`，该不变式由 `tests/tenant/agents/test_agent_chat_rag_flow_context.py` 固化。
+> `submit_generative_*` 按 `settings.generative_{image,video}_async` 门控注入或 `None`，该不变式由 `tests/miles_portal/tenant/agents/test_agent_chat_rag_flow_context.py` 固化。
 
 ## 4. 装配点与透传链
 

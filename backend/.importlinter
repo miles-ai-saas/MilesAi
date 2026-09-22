@@ -104,6 +104,6 @@ forbidden_modules =
     miles_portal.tenant.tools.models
 # 只判直接导入：不加会沿 views → miles_core.deps → miles_core.models.* 误报。
 # 代价：经中间模块的一跳借用（如 from ...agents.meta import AgentStatus）不被本契约拦截 ——
-# 那段由 tests/models/test_api_enum_parity.py::test_enum_names_imported_only_from_allowlisted_modules
+# 那段由 tests/test_api_enum_parity.py::test_enum_names_imported_only_from_allowlisted_modules
 # 的名称级守卫补上（按「枚举名 + 来源模块白名单」判定，不依赖图边），两者合起来才完整。
 allow_indirect_imports = True
