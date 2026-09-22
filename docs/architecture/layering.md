@@ -109,7 +109,7 @@ L0 → L1 → L2 → L3 → L4
 | `miles_common` | 跨模块公共能力：响应 / 异常 / 通用 schema、`idgen`、`redis_keys`、`cron`、`slug` | 最底层 |
 | `miles_exec` | 沙箱与 MCP 协议内核（`mcp.spec/constants/rpc`、`sandbox.session/script_exec`） | 叶子 |
 | `miles_core` | L4 基础设施 + 核心 ORM + 配置 / 安全 / 租户上下文 + `web/`（通用 Web 管道）+ `risk/` + `jobs/` | L4 |
-| `miles_ai` | L2 RAG + L3 集成（LangChain / LangGraph / LiteLLM / DeepAgents）+ `flow_runtime` | L2/L3 |
+| `miles_ai` | L2 RAG（含 `rag/graph/` Agent RAG 图引擎）+ L2 `flow_runtime`（含 `compiler/` 画布编译器）+ L3 集成（LangChain / LangGraph / LiteLLM / DeepAgents） | L2/L3 |
 | `miles_portal` | L0/L1 租户域（`tenant/`）+ `deletion/` + `marketplace/` + 域 API 注册 | L0/L1 |
 | `miles_admin` | L0/L1 运营域（`admin/`）+ 域 API 注册 | L0/L1 |
 | `miles_openapi` | 对外开放面 `/api/v1/open/*` 的视图与鉴权依赖 | L0 |
@@ -154,6 +154,8 @@ flowchart LR
 | 4 | `miles_runner` 只依赖 `miles_exec` / `miles_common`（不得 import `miles_core` / `miles_ai` / `miles_portal` / `miles_admin` / `miles_openapi`） |
 | 5 | `miles_core` 不得 import `miles_ai` |
 | 6 | API 声明层（`views` / `schemas`）不得 import ORM 模型模块 |
+
+**包内分层（`miles_ai`）**：`flow_runtime → rag → integrations` 单向，由 `.importlinter` 的 `ai-internal-layers` 契约强制；`integrations` 不得 import `rag` / `flow_runtime`，`rag` 不得 import `flow_runtime`。
 
 **强制机制**：上述 DAG 与硬判据由 `backend/.importlinter` 固化为 7 条契约（1 条 `layers` + 6 条 `forbidden`），在 CI 与本地经 `make layers-check`（即 `import-linter`）执行；`make check` 已包含该步。
 
@@ -210,8 +212,9 @@ backend/packages/
 │
 ├── miles-ai/src/miles_ai/               # L2/L3
 │   ├── rag/                             # parse / chunk / index / retrieve / generate / load / pipeline
-│   ├── integrations/                    # langchain / langgraph / litellm / deepagents
-│   └── flow_runtime/                    # 流程节点 → 调 rag / integrations
+│   │   └── graph/                       # Agent RAG LangGraph 引擎（rag_qa / runner / grading / compiled）
+│   ├── integrations/                    # langchain / langgraph(checkpointer) / litellm / deepagents / generative / embeddings / rerank / chat
+│   └── flow_runtime/                    # 流程节点 + compiler/（画布 LangGraph 编译器）+ graph_runner
 │
 ├── miles-portal/src/miles_portal/       # L0/L1：tenant/ + deletion/ + marketplace/ + register_portal
 ├── miles-admin/src/miles_admin/         # L0/L1：admin/ + register_admin
@@ -234,6 +237,8 @@ backend/packages/
 | `rag.generate` | `format_hits_context`、`generate_rag_answer` | Agent / 流程 RAG 上下文 |
 | `rag.pipeline` | `run_ingest_pipeline` | L1 `tenant.kb.ingest` 调用 |
 | `rag.load` | `load_knowledge_bases_for_tenant` | 解耦 `tenant.kb` 加载逻辑 |
+
+`rag.graph` 子包职责见 specs/2026-09-22-miles-ai-internal-layering-design.md。
 
 ### 3.2 `infra/vector_store/` 瘦身目标
 
@@ -324,9 +329,9 @@ from miles_ai.rag.index.gateway import upsert_chunk_vector, search_vectors
 from miles_ai.rag.retrieve import search_kb_chunks, resolve_retrieval_mode
 from miles_ai.rag.generate import format_hits_context, generate_rag_answer
 
-# L1/L3 检索（kb 域向量化 embed_query_for_kb；检索封装仍在 vectorstores 壳）
+# L1 检索（kb 域向量化；检索绑定注入 rag.retrieve）
 from miles_portal.tenant.kb.services.embeddings import embed_query_for_kb
-from miles_ai.integrations.langchain.vectorstores import search_kb
+from miles_ai.rag.retrieve.bindings import KbRetrievalBindings
 
 # L4（仅向量库客户端，不含 upsert/search 门面）
 from miles_core.infra.vector_store import get_vector_store

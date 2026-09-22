@@ -62,7 +62,7 @@ async def loop_node(
     if run_subflow is None:
         from miles_ai.flow_runtime.runtime_factory import get_flow_runtime
 
-        run_subflow = get_flow_runtime().run  # pragma: no cover — 兜底路径（正常由 flow_runner 注入）
+        run_subflow = get_flow_runtime().run  # pragma: no cover — 兜底路径（正常由 graph_runner 注入）
 
     for iteration in range(1, max_iterations + 1):
         child_ctx = build_child_context(

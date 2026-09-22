@@ -3,7 +3,7 @@
  *
  * 须与后端保持一致：
  * - ``flow_runtime.nodes.registry.NODE_REGISTRY``
- * - ``integrations.langgraph.compiler.SUPPORTED_CANVAS_NODE_TYPES``
+ * - ``flow_runtime.compiler.SUPPORTED_CANVAS_NODE_TYPES``
  *
  * Handle 约定（与 compiler._gather_node_inputs 对齐）：
  * - TextInput output → query / input

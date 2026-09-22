@@ -337,6 +337,14 @@ layers =
 
 ## 14. 修订记录
 
+### 2026-09-22：已实施
+
+Task 1–7 落地。与本文的两处偏差已按实施结论修正：
+1. `integrations/langchain/__init__.py` **不删除**，改为仅 re-export 本子包 `chat_models`——删除会使该目录退化为 namespace package，且与 `integrations/*/__init__.py` 的既有 re-export 约定不一致。
+2. `should_use_visual_image_embedding` 落在 `rag/pipeline/visual_policy.py`（非 §4.3 所写的 `rag/parse/upload_policy.py`）：它是入库时的视觉向量化决策，唯一消费者是 `rag/pipeline/ingest.py`，与「上传白名单」语义不同。
+
+新增（本文未预见的必要产物）：`rag/graph/compiled.py` 与 `rag/pipeline/visual_policy.py` 两个模块；`.importlinter` 契约名 `ai-internal-layers`。
+
 ### 2026-09-22：收窄范围，以「归位 + 契约」替代「建第 11 包」
 
 对 `2026-09-11` 文档 §11 的排序修订：§11 的目标（②③ 归位）保留，新增 distribution 的步骤推迟并写明触发条件（§9）。实测依据：反向边 13 文件 / 21 条 import 全部集中在 `langchain/`、`langgraph/` 两个子包；`langchain/__init__.py` 门面与 `vectorstores.search_kb` 均零消费者；`miles_server` 全包仅 5 处引用。

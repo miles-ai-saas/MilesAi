@@ -42,7 +42,7 @@ React Flow → PUT /flows/{id}/graph → flow_versions
 | 前端创建/插入 | `GET /flows/templates` ← `flow_runtime/templates/registry.py` |
 | 市场种子 | `tenant.marketplace.util.load_rag_graph_template()` |
 
-编译执行见 `integrations.langgraph.compiler`（`build_canvas_graph` / `run_compiled_canvas`），**不同于**下文 Agent LangGraph RAG 图。
+编译执行见 `flow_runtime.compiler`（`build_canvas_graph` / `run_compiled_canvas`），**不同于**下文 Agent LangGraph RAG 图。
 
 ### ConditionBranch（`data.mode`）
 
@@ -65,7 +65,7 @@ React Flow → PUT /flows/{id}/graph → flow_versions
 
 ### RelevanceGrade（`data.relevance_threshold`）
 
-复用 `integrations.langgraph.grading.evaluate_relevance`，输出 `relevance`: `good` | `poor` | `none`。  
+复用 `rag.graph.grading.evaluate_relevance`，输出 `relevance`: `good` | `poor` | `none`。  
 出边 `sourceHandle` 须为 **good** / **poor** / **none**（编译校验三支齐全）。
 
 | 字段 | 默认 | 说明 |

@@ -147,7 +147,7 @@ embed_query_for_kb(kb, query) → search_kb_chunks（Weaviate hybrid 或 向量+
 按 chunk_id 回表 kb_document_chunks + kb_documents → SearchHit[]
 ```
 
-智能体 / 流程 RAG：`search_kb` / `search_multi_kb`（`miles_ai.integrations.langchain.vectorstores`），多库时 **每个 KB 独立生成查询向量** 后合并按 score 排序。
+智能体 / 流程 RAG：多库合并排序见 `miles_ai.rag.retrieve.multi_kb`；多库时 **每个 KB 独立生成查询向量** 后合并按 score 排序。
 
 ### 3.4 删除编排
 

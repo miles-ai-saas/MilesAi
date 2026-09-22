@@ -89,7 +89,7 @@ POST /flows/{id}/compile            # DAG / 并行层报告
 PUT /graph → flow_versions.graph_json
 POST /run  → get_flow_runtime().run()
     → flow_runtime.runtime_factory
-    → integrations.langgraph.flow_runner
+    → flow_runtime.graph_runner
     → 节点 handler → rag / integrations / tools
 POST /compile → 校验环、未知节点、ParallelJoin 层
 ```

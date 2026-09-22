@@ -110,7 +110,7 @@ async def embed_image_bytes_async(
 
 
 def build_kb_retrieval_bindings() -> KbRetrievalBindings:
-    """构造 L3 ``vectorstores`` 检索注入的 KB 检索能力载体。"""
+    """构造供 ``rag.retrieve`` 注入的 KB 检索能力载体。"""
     return KbRetrievalBindings(
         embed_query_sync=embed_query_for_kb_sync,
         resolve_rerank_sync=_resolve_rerank_sync,

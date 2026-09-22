@@ -458,7 +458,7 @@ ingest / search / delete
 
 ```
 React Flow 画布 → PUT /flows/{id}/graph → flow_versions.graph_json
-执行：`get_flow_runtime().run()` → `flow_runtime.runtime_factory` → `integrations.langgraph.flow_runner`
+执行：`get_flow_runtime().run()` → `flow_runtime.runtime_factory` → `flow_runtime.graph_runner`
 节点：`flow_runtime/nodes/registry.py`
 ```
 
@@ -501,7 +501,7 @@ flowchart TD
 | 内部协同 | `agt_sub_agent_bindings` 非空 | DeepAgents 或平台 JSON 规划 → `chat_as_child` |
 | 引用外部 | `agt_agent_a2a_peer_refs` | 先本地 RAG/流程/协同，再 `augment_response_with_a2a` |
 | 画布流程 | `published_flow_id` + 已发布版本 | `get_flow_runtime().run` |
-| RAG Graph | 绑 KB、`use_langgraph_rag` 未关闭 | `integrations.langgraph.runner` |
+| RAG Graph | 绑 KB、`use_langgraph_rag` 未关闭 | `rag.graph.runner` |
 | 线性 RAG | 上述否 | `generate_rag_answer` / 直连 LLM |
 
 - 内部协同：[platform-agents.md](../guides/platform-agents.md)

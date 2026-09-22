@@ -57,7 +57,7 @@ class RunContext:
     parent_node_id: str | None = None  # SubFlow 父节点 ID
     subflow_depth: int = 0  # 子流程嵌套深度
     executing_node_id: str | None = None  # 当前执行节点（运行时注入）
-    run_subflow: Callable[[dict[str, Any], "RunContext"], Awaitable["RunResult"]] | None = None  # 子流程执行回调（由 flow_runner 注入，避免节点层循环引用）
+    run_subflow: Callable[[dict[str, Any], "RunContext"], Awaitable["RunResult"]] | None = None  # 子流程执行回调（由 graph_runner 注入，避免节点层循环引用）
     # 画布 LLM 节点按 model_config_id 解析可用模型的回调（L1 注入；None 表示不支持）
     resolve_model: Callable[[str], Awaitable[ModelConfig]] | None = None
     # 画布 LLM 调用用量记录工厂（L1 注入；签名 (ModelConfig) -> UsageSink；None 表示不记录）。

@@ -1,5 +1,5 @@
 """
-React Flow ``graph_json`` → LangGraph ``StateGraph`` 编译器（画布流程 L3）。
+React Flow ``graph_json`` → LangGraph ``StateGraph`` 编译器（画布流程 L2）。
 
 目录职责
 --------

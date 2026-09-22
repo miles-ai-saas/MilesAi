@@ -1,5 +1,5 @@
 """
-画布流程 LangGraph 执行入口（L3）。
+画布流程 LangGraph 执行入口（L2）。
 
 流程
 ----
@@ -7,7 +7,7 @@
 → 各层并行/条件边 → ``execute_node`` → ``NODE_REGISTRY`` handler。
 
 SubFlow / LoopNode 通过 ``ctx.run_subflow`` 递归本函数，避免节点层循环 import。
-RAG 节点不经过 Agent LangGraph RAG 图（``graphs/rag_qa``），仅在画布内 ``retrieve_hits``。
+RAG 节点不经过 Agent LangGraph RAG 图（``rag.graph.rag_qa``），仅在画布内 ``retrieve_hits``。
 """
 
 from __future__ import annotations
