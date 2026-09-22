@@ -4,7 +4,8 @@
 职责
 ----
 - 业务（ingest、删除文档、检索）**只**应 import 本模块的 ``upsert_chunk_vector`` /
-  ``search_vectors`` / ``delete_*``，不要直接 ``from miles_core.infra.vector_store import ...``。
+  ``upsert_chunk_vectors`` / ``search_vectors`` / ``delete_*``，不要直接
+  ``from miles_core.infra.vector_store import ...``。
 - 底层实现由 ``VECTOR_STORE_BACKEND`` 切换：weaviate | milvus | pgvector（见 factory）。
 - ``ChunkVectorRecord`` 在此组装，屏蔽各后端参数差异。
 
@@ -17,11 +18,48 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Any
 from uuid import UUID
 
 from miles_core.infra.vector_store.base import ChunkVectorRecord
 from miles_core.infra.vector_store.factory import get_vector_store
+
+
+@dataclass(frozen=True)
+class ChunkVectorWrite:
+    """gateway 批量写入入参（与 ``upsert_chunk_vector`` 关键字一致）。"""
+
+    vector: list[float]
+    tenant_id: UUID
+    kb_id: UUID
+    document_id: UUID
+    chunk_id: UUID
+    content_preview: str
+    object_key: str
+    page_no: int | None = None
+    vector_id: str | None = None
+
+
+def upsert_chunk_vectors(items: list[ChunkVectorWrite]) -> list[str]:
+    """批量写入分片向量。每个 item 的字段与 ``upsert_chunk_vector`` 关键字参数一致。"""
+    if not items:
+        return []
+    records = [
+        ChunkVectorRecord(
+            vector=i.vector,
+            tenant_id=i.tenant_id,
+            kb_id=i.kb_id,
+            document_id=i.document_id,
+            chunk_id=i.chunk_id,
+            content_preview=i.content_preview,
+            object_key=i.object_key,
+            page_no=i.page_no,
+            external_id=i.vector_id,
+        )
+        for i in items
+    ]
+    return get_vector_store().upsert_chunks(records)
 
 
 def upsert_chunk_vector(
@@ -42,18 +80,21 @@ def upsert_chunk_vector(
     由 ``miles_ai.rag.pipeline.ingest`` 在分片 embedding 完成后调用。
     返回值写入 PG ``kb_vector_refs.vector_id``，供后续按 id 删除或对账。
     """
-    record = ChunkVectorRecord(
-        vector=vector,
-        tenant_id=tenant_id,
-        kb_id=kb_id,
-        document_id=document_id,
-        chunk_id=chunk_id,
-        content_preview=content_preview,
-        object_key=object_key,
-        page_no=page_no,
-        external_id=vector_id,
-    )
-    return get_vector_store().upsert_chunk(record)
+    return upsert_chunk_vectors(
+        [
+            ChunkVectorWrite(
+                vector=vector,
+                tenant_id=tenant_id,
+                kb_id=kb_id,
+                document_id=document_id,
+                chunk_id=chunk_id,
+                content_preview=content_preview,
+                object_key=object_key,
+                page_no=page_no,
+                vector_id=vector_id,
+            )
+        ]
+    )[0]
 
 
 def search_vectors(
