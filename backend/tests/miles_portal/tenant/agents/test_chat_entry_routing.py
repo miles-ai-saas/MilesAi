@@ -289,6 +289,41 @@ async def test_published_flow_with_version_routes_to_flow(monkeypatch):
     assert entry.augmented == 1
 
 
+async def test_run_published_flow_commits_before_runtime_run(monkeypatch):
+    """跑图前必须 commit：图执行含节点 LLM/HTTP，与 RAG 路径一致不长时间占连接。"""
+    flow_id = uuid4()
+    version = SimpleNamespace(graph_json={"nodes": []})
+    entry = _entry(flow_repo=_FlowRepo(flow=SimpleNamespace(id=flow_id, current_version=1), version=version))
+    entry.agent.published_flow_id = flow_id
+    order: list[str] = []
+
+    async def tracking_commit() -> None:
+        order.append("commit")
+        entry.db.commits += 1
+
+    entry.db.commit = tracking_commit  # type: ignore[method-assign]
+
+    class _Runtime:
+        async def run(self, graph, ctx):  # noqa: ANN001, ARG002
+            order.append("run")
+            return SimpleNamespace(output="ok", steps=[])
+
+    monkeypatch.setattr(entry_mod, "get_flow_runtime", lambda: _Runtime())
+
+    resp = await entry._run_published_flow(
+        entry.agent,
+        AGENT_ID,
+        ChatRequest(query="q"),
+        query="q",
+        kb_ids=[],
+    )
+
+    assert resp is not None
+    assert resp.answer == "ok"
+    assert order == ["commit", "run"]
+    assert entry.db.commits == 1
+
+
 async def test_flow_without_version_falls_back_to_rag(monkeypatch):
     entry = _entry(flow_repo=_FlowRepo(flow=None, version=None))
     entry.agent.published_flow_id = uuid4()

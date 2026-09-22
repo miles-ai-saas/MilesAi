@@ -209,6 +209,8 @@ class AgentChatEntryMixin:
             kb_ids=kb_ids,
             media=body.media,
         )
+        # 释放请求事务：图执行含节点 LLM/HTTP，与 RAG 路径一致不长时间占连接。
+        await self.db.commit()
         result = await get_flow_runtime().run(version.graph_json, ctx)
         return ChatResponse(answer=str(result.output), steps=result.steps)
 
