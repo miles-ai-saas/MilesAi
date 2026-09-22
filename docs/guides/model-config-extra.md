@@ -13,7 +13,7 @@
 | 跨类型共用键 | `backend/packages/miles-common/src/miles_common/constants/model_extra.py` | `EXTRA_INVOKE_MODE`（值 `"invoke_mode"`） |
 | 向量化 | `backend/packages/miles-integrations/src/miles_integrations/embeddings/constants.py` | `INVOKE_MODE_*`、`EXTRA_EMBEDDING_*` |
 | 重排序 | `backend/packages/miles-integrations/src/miles_integrations/rerank/constants.py` | `INVOKE_MODE_*`、`EXTRA_RERANK_*` |
-| 解析默认值 | `integrations/embeddings/model_meta.py`、`integrations/rerank/model_meta.py` | 按 `vendor` 推断默认 `invoke_mode` |
+| 解析默认值 | `miles_integrations/embeddings/model_meta.py`、`miles_integrations/rerank/model_meta.py` | 按 `vendor` 推断默认 `invoke_mode` |
 | 创建校验 | `tenant/models/services/model.py` | embedding/rerank 创建时校验 `invoke_mode` 是否在 registry 内 |
 | 种子数据 | `scripts/seed/model_catalog.py` | 内置目录 `extra` 使用上述常量 |
 
@@ -37,7 +37,7 @@
 | `INVOKE_MODE_OPENAI_COMPATIBLE` | `openai_compatible` | `OpenAICompatibleEmbeddingProvider` | DashScope 兼容端点、vLLM/TEI 等 OpenAI 形状网关 |
 | `INVOKE_MODE_LITELLM` | `litellm` | `LiteLLMEmbeddingProvider` | 经 LiteLLM 统一多厂商 |
 
-注册与分发：`integrations/embeddings/registry.py` → `known_invoke_modes()`。
+注册与分发：`miles_integrations/embeddings/registry.py` → `known_invoke_modes()`。
 
 ### 3.2 其他 extra 键
 
@@ -74,7 +74,7 @@
 | `INVOKE_MODE_DASHSCOPE` | `dashscope` | `DashScopeRerankProvider` | 阿里云原生 text-rerank |
 | `INVOKE_MODE_OPENAI_COMPATIBLE` | `openai_compatible` | `OpenAICompatibleRerankProvider` | `POST …/reranks` 形状网关 |
 
-注册：`integrations/rerank/registry.py` → `known_invoke_modes()`。
+注册：`miles_integrations/rerank/registry.py` → `known_invoke_modes()`。
 
 ### 4.2 其他 extra 键
 
@@ -108,5 +108,5 @@ embedding/rerank **不要**与 LLM 混用同一套 `invoke_mode` 枚举；创建
 
 ## 6. HTTP 超时
 
-集成层出站 HTTP 默认超时：`integrations/http_constants.HTTP_DEFAULT_TIMEOUT_SEC`（120s），用于 embedding/rerank OpenAI 兼容客户端与 LiteLLM adapter。
+集成层出站 HTTP 默认超时：`miles_integrations/http_constants.HTTP_DEFAULT_TIMEOUT_SEC`（120s），用于 embedding/rerank OpenAI 兼容客户端与 LiteLLM adapter。
 

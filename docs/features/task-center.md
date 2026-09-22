@@ -116,7 +116,7 @@ Worker → rag.pipeline.run_ingest_pipeline
 Agent 工具 / Flow 节点 / POST /generative/jobs/*
     → GenerativeJobService 写 generative_jobs (pending)
     → run_generative_{image|video}_job.delay(job_id)
-Worker → integrations/generative/jobs/runner
+Worker → miles_integrations/generative/jobs/runner
     → 写 attachment + media_asset
     → sync_task_by_celery_id
 ```

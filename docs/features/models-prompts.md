@@ -75,8 +75,8 @@ GET /kb/embedding-profiles      # 创建 KB 时选 embedding_profile
 
 ## 4. 运行时
 
-- 对话：`integrations/litellm` → `acompletion`
-- 向量：`integrations/langchain/embeddings` → `get_embeddings_for_kb(kb)`
+- 对话：`miles_integrations/litellm` → `acompletion`
+- 向量：`miles_integrations/langchain/embeddings` → `get_embeddings_for_kb(kb)`
 - Rerank：KB 级 `rerank_model_config_id`（可选）
 
 API Key **加密存库**，非环境变量（部署级默认 embedding 除外）。

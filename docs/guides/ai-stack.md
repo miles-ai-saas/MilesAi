@@ -14,7 +14,7 @@
 
 ```bash
 cd backend
-uv sync --all-packages --group dev    # 安装工作区 10 个包；解析 / 多模态等能力已无条件声明
+uv sync --all-packages --group dev    # 安装工作区 11 个包；解析 / 多模态等能力已无条件声明
 ```
 
 ## 目录（当前）

@@ -347,7 +347,7 @@ Hook 出站 POST body          GET /hooks/meta 响应
 
 ### 9.2 `ModelConfig.extra` 键名
 
-embedding / rerank 的 `invoke_mode` 与 `extra` 字段对照见 **[model-config-extra.md](./model-config-extra.md)**（`EXTRA_INVOKE_MODE` 等在 `common/constants/model_extra.py` 与 `integrations/*/constants.py`）。
+embedding / rerank 的 `invoke_mode` 与 `extra` 字段对照见 **[model-config-extra.md](./model-config-extra.md)**（`EXTRA_INVOKE_MODE` 等在 `common/constants/model_extra.py` 与 `miles_integrations/*/constants.py`）。
 
 **全站 `/meta` 约定**（`backend/packages/miles-common/src/miles_common/schemas/enum_meta.py` 的 `EnumOption`）：
 

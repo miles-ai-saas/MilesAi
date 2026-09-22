@@ -166,9 +166,10 @@ curl -s -X POST http://localhost:8000/api/v1/auth/login \
 ```
 MilesAi/
 ├── backend/                 # FastAPI（uv workspace）
-│   ├── packages/            # 10 个包：miles-common/exec/core/ai/portal/admin/openapi/server/worker/runner
+│   ├── packages/            # 11 个包：miles-common/exec/core/ai/integrations/portal/admin/openapi/server/worker/runner
 │   │   ├── miles-portal/    # 租户 API（kb、agents、flows…）+ deletion + marketplace
-│   │   ├── miles-ai/        # L2 rag / L3 integrations / flow_runtime
+│   │   ├── miles-ai/        # L2：rag/、flow_runtime/
+│   │   ├── miles-integrations/  # L3：LangChain / LangGraph / LiteLLM 等
 │   │   ├── miles-core/      # L4 infra + models + web
 │   │   └── miles-server/    # 装配根：apps、main、cli、scripts
 │   ├── alembic/
@@ -185,7 +186,7 @@ MilesAi/
 └── docs/                    # → docs/README.md
 ```
 
-**分层**：`miles_portal/tenant/*/views` → `services` → `miles_ai/rag`（RAG）/ `miles_ai/integrations`（模型与图）→ `miles_core/infra`（详见 [docs/architecture/layering.md](docs/architecture/layering.md)）。
+**分层**：`miles_portal/tenant/*/views` → `services` → `miles_ai/rag`（RAG）/ `miles_integrations`（模型与图）→ `miles_core/infra`（详见 [docs/architecture/layering.md](docs/architecture/layering.md)）。
 
 ---
 

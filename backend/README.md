@@ -13,11 +13,12 @@ backend/
 ├── openapi/openapi.snapshot.json
 ├── tests/                   # 单一测试套件（一级目录 = 被测包，见 tests/README.md）
 ├── tools/                   # 一次性 codemod（rename_to_workspace.py）
-└── packages/                # 10 个 uv workspace 包，源码在 <pkg>/src/<module>/
+└── packages/                # 11 个 uv workspace 包，源码在 <pkg>/src/<module>/
     ├── miles-common/   → src/miles_common/    # 跨模块公共能力：响应/异常/schema、idgen、redis_keys
     ├── miles-exec/     → src/miles_exec/      # 沙箱 + MCP 协议内核
     ├── miles-core/     → src/miles_core/      # L4：infra/、models/、web/、risk/、jobs/、utils/
-    ├── miles-ai/       → src/miles_ai/        # L2/L3：rag/、integrations/、flow_runtime/
+    ├── miles-ai/       → src/miles_ai/        # L2：rag/、flow_runtime/
+    ├── miles-integrations/ → src/miles_integrations/  # L3：LangChain / LangGraph / LiteLLM / DeepAgents 等
     ├── miles-portal/   → src/miles_portal/    # L0/L1：tenant/、deletion/、marketplace/ + register_portal
     ├── miles-admin/    → src/miles_admin/     # L0/L1：admin/ + register_admin
     ├── miles-openapi/  → src/miles_openapi/   # /api/v1/open/* + register_open
@@ -34,7 +35,7 @@ backend/
 
 ```bash
 cd backend
-uv sync --all-packages --group dev          # 安装 10 个包 + dev 依赖（pytest / ruff / import-linter）
+uv sync --all-packages --group dev          # 安装 11 个包 + dev 依赖（pytest / ruff / import-linter）
 uv run milesai migrate                      # alembic upgrade head
 uv run milesai init-db                      # 迁移 + 全量种子
 uv run milesai serve                        # 启动 API（debug 默认热重载）
@@ -61,7 +62,7 @@ uv run milesai verify-db                    # 检查核心表
 
 ### 单文件体量（强制）
 
-适用于 `backend/packages/*/src/` 下 **Python 业务与集成代码**（如 `miles_portal` 的 `tenant/*`、`miles_ai` 的 `rag/` 与 `integrations/`、`miles_ai/flow_runtime/` 等；测试文件、`alembic/` 版本脚本除外）。
+适用于 `backend/packages/*/src/` 下 **Python 业务与集成代码**（如 `miles_portal` 的 `tenant/*`、`miles_ai` 的 `rag/` 与 `flow_runtime/`、`miles_integrations/` 等；测试文件、`alembic/` 版本脚本除外）。
 
 | 阈值 | 要求 |
 |------|------|
@@ -126,7 +127,7 @@ tenant/tools/
 
 新增或拆出的子包代码 **合入前** 应补全 docstring；与 [layering.md](../docs/architecture/layering.md) §5.5 一致。
 
-**常量分家**（勿建全局 `constants/` 包）：`models.Enum` 为持久化真源；`tenant/*/meta.py` 仅 label/hint；`integrations/*/constants.py` 为协议与 `ModelConfig.extra` 键；跨模型 extra 键见 `miles_common/constants/model_extra.py`；Redis 键见 `miles_common/redis_keys.py`。
+**常量分家**（勿建全局 `constants/` 包）：`models.Enum` 为持久化真源；`tenant/*/meta.py` 仅 label/hint；`miles_integrations/*/constants.py` 为协议与 `ModelConfig.extra` 键；跨模型 extra 键见 `miles_common/constants/model_extra.py`；Redis 键见 `miles_common/redis_keys.py`。
 
 - Hook Event `schema_version`（`hooks/events.SCHEMA_VERSION`）与 `GET */meta` 的 `META_SCHEMA_VERSION` 为两套契约，见 [docs/guides/hooks.md](../docs/guides/hooks.md) §9.1。
 - embedding/rerank 的 `extra` 键对照见 [docs/guides/model-config-extra.md](../docs/guides/model-config-extra.md)。

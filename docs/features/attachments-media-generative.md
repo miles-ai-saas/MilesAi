@@ -103,7 +103,7 @@ DELETE /media-assets/{id}
 
 ```
 用户上传 → POST /attachments (purpose=chat_upload)
-ChatRequest.media → integrations/chat/multimodal
+ChatRequest.media → miles_integrations/chat/multimodal
     → GET attachment content → data URL / 厂商 API
 ```
 
@@ -115,7 +115,7 @@ generate_image / generate_video 工具
 或 POST /generative/jobs/{image|video}
     → generative_jobs (pending)
     → Celery run_generative_{image|video}_job
-    → integrations/generative/* 调厂商 API
+    → miles_integrations/generative/* 调厂商 API
     → persist: sys_attachments + media_assets
     → SSE 进度 / 对话轮询展示 artifact
 ```
@@ -170,7 +170,7 @@ backend/packages/miles-server/src/miles_server/cli.py   # backfill-media-assets�
 | 项 | 说明 |
 |----|------|
 | `generative.daily_limit_per_tenant` | 生成日配额（sys_configs） |
-| 模型 | 万相生图、豆包 `volcengine_video` 等，见 `integrations/generative/` |
+| 模型 | 万相生图、豆包 `volcengine_video` 等，见 `miles_integrations/generative/` |
 | ffmpeg | 视频封面抽帧（未安装则跳过） |
 
 ---
