@@ -593,7 +593,7 @@ __all__ = [
 
 `Agent 默认多轮 RAG 图见 ``integrations.langgraph.graphs.rag_qa``，非本包。` → `Agent 默认多轮 RAG 图见 ``rag.graph.rag_qa``，非本包。`
 
-- [ ] **Step 11: 改写 5 个测试文件的 import（目录留到 Task 6 再搬）**
+- [ ] **Step 11: 改写 7 个测试文件的 import（目录留到 Task 6 再搬）**
 
 | 文件:行 | 原文 | 改为 |
 |---|---|---|
@@ -625,14 +625,16 @@ __all__ = [
 
 ```bash
 cd /Users/xiezhigang/Projects/miles/MilesAI/backend
-rg -n "integrations\.langgraph\.(constants|state|grading|graphs|runner)\b" packages tests; echo "--- 期望：无输出"
+rg -n "integrations\.langgraph\.(constants|state|grading|graphs|runner)\b" packages tests; echo "--- 期望：仅 checkpointer.py 两处惰性 import（见下）"
 rg -n --no-heading '^\s*(from|import)\s+miles_ai\.(rag|flow_runtime)' -g '**/integrations/**' packages; echo "--- 期望：恰 6 条，全在 integrations/langchain/"
 .venv/bin/ruff check . && .venv/bin/ruff format --check . && .venv/bin/lint-imports | tail -3
 .venv/bin/python -m pytest -q
 .venv/bin/python -m miles_server.scripts.export_openapi --check
 ```
 
-Expected: 第一条无输出；第二条**恰 6 条**反向边 —— `langchain/__init__.py` 2 条、`langchain/vectorstores.py` 2 条、`langchain/kb_retrieval.py` 1 条、`langchain/visual_embeddings.py` 1 条；`integrations/langgraph/` 下 **0 条**（`checkpointer.py` 不 import rag，本任务迁走的 `grading.py`/`graphs/rag_qa.py` 各消 1 条，8 − 2 = 6）。剩余的 `langchain` 4 文件由 Task 3 / Task 5 处理。pytest `1517 passed`；OpenAPI 零漂移。
+Expected: 第一条**恰 2 条命中**，都在 `integrations/langgraph/checkpointer.py`（第 64、84 行的函数内惰性 `from miles_ai.integrations.langgraph.graphs.rag_qa import build_rag_qa_graph`），`tests/` 下 0 条；第二条**恰 6 条**反向边 —— `langchain/__init__.py` 2 条、`langchain/vectorstores.py` 2 条、`langchain/kb_retrieval.py` 1 条、`langchain/visual_embeddings.py` 1 条；`integrations/langgraph/` 下 **0 条**（`checkpointer.py` 不 import rag，本任务迁走的 `grading.py`/`graphs/rag_qa.py` 各消 1 条，8 − 2 = 6）。剩余的 `langchain` 4 文件由 Task 3 / Task 5 处理。pytest `1517 passed`；OpenAPI 零漂移。
+
+> **为什么 `checkpointer.py` 那 2 条不在本任务改**：本任务是**纯搬迁**，而 `checkpointer.py` 的 `get_compiled_rag_graph` 要到 Task 4 才拆出去。若在本任务顺手把这两条路径改成 `miles_ai.rag.graph.rag_qa`，就会临时制造一条 `integrations → rag` 的反向边（第二条检查变 7），与本任务「清空 `integrations/langgraph` 反向依赖」的目标相抵。故选留 2 条指向已迁走模块的**函数内惰性 import**：无测试触达该路径（相关用例都 `monkeypatch` 掉了 `runner.get_compiled_rag_graph`），Task 4 拆分时整段删除。中间态不保证这条死路径可调用，终态（Task 4 后）零残留。
 
 > 与 Task 1 同理，务必用**锚定**口径计数。未锚定写法（如 `rg -n "miles_ai\.(rag|flow_runtime)" packages/miles-ai/src/miles_ai/integrations`）会把 Step 8 新写入 `integrations/langgraph/__init__.py` docstring 的两处路径提及（`miles_ai.rag.graph`、`miles_ai.flow_runtime`）也算进来，得 8 而非 6。
 
