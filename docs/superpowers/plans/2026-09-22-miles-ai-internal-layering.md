@@ -16,7 +16,7 @@
 
 - 所有命令在 `/Users/xiezhigang/Projects/miles/MilesAI/backend` 下执行。
 - 测试一律用 `.venv/bin/python -m pytest`：`tests.paths` / `tests.conftest` 依赖 `backend/` 在 `sys.path`。
-- 基线（2026-09-22，main `3de8a44d`）：`1517 tests collected`；`lint-imports` = **7 kept, 0 broken**。
+- 基线（2026-09-22，本支线起点 `4df97f99` = 当时 main）：`1517 tests collected`；`lint-imports` = **7 kept, 0 broken**；反向边 **21 条**（13 条指向 `flow_runtime` + 8 条指向 `rag`，锚定口径 `^\s*(from|import)`）。
 - **纯搬迁：禁止改逻辑、断言、fixture、函数签名。** 唯一的代码改写是 import 语句、模块 docstring 里的路径提及，以及本计划明确列举的例外：Task 4 与 Task 5 的两处「文件内手术」（拆分 `checkpointer.py`、拆除 `visual_embeddings.py`）和四处新增模块（`rag/graph/__init__.py`、`rag/graph/compiled.py`、`rag/pipeline/visual_policy.py`、`integrations/embeddings/policy.py`）。除此外不得增删任何函数或分支。
 - `git mv` 保留 rename 历史；每个 Task 一个提交，message 用简体中文 Conventional Commits（`refactor(ai): …`）。
 - **import 顺序**：`ruff` 已启用 `I`（isort），`select = ["E", "F", "I", "B", "UP", "RUF"]`。每个 Task 改完 import 后先跑 `.venv/bin/ruff check --select I --fix .` 自动排序，再跑 `.venv/bin/ruff format .`；不要手工猜顺序。本计划给出的 import 块已按 isort 排好，若与 `--fix` 结果冲突以 `--fix` 为准。
@@ -344,7 +344,7 @@ rg -n "integrations\.langgraph\.(compiler|flow_runner|graph_analysis)" packages 
 echo "=== 反向边剩余（锚定口径，与 Task 0 基线同定义）==="
 rg -n "^\s*(from|import)\s+miles_ai\.(rag|flow_runtime)" packages/miles-ai/src/miles_ai/integrations -g '*.py' | wc -l
 .venv/bin/ruff check . && .venv/bin/ruff format --check .
-.venv/bin/import-linter 2>/dev/null || .venv/bin/lint-imports | tail -3
+.venv/bin/lint-imports | tail -3
 .venv/bin/python -m pytest -q tests/miles_ai/flow_runtime tests/integration tests/miles_ai/integrations
 ```
 
