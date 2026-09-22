@@ -1,8 +1,8 @@
 """并行与条件分支编译分析。"""
 
+from miles_ai.flow_runtime.compiler import validate_graph_for_compile
+from miles_ai.flow_runtime.graph_analysis import compute_execution_layers
 from miles_ai.flow_runtime.types import FlowGraph
-from miles_ai.integrations.langgraph.compiler import validate_graph_for_compile
-from miles_ai.integrations.langgraph.graph_analysis import compute_execution_layers
 
 PARALLEL_FANOUT = {
     "nodes": [

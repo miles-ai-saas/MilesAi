@@ -8,18 +8,15 @@ from typing import Any
 from langchain_core.runnables import RunnableConfig
 from langgraph.graph import END, START, StateGraph
 
-from miles_ai.flow_runtime.constants import CanvasNodeType
-from miles_ai.flow_runtime.nodes.registry import execute_node
-from miles_ai.flow_runtime.step_record import build_flow_node_step
-from miles_ai.flow_runtime.types import FlowGraph, RunContext
-from miles_ai.integrations.langgraph.compiler.report import resolve_node_type
-from miles_ai.integrations.langgraph.compiler.state import (
+from miles_ai.flow_runtime.compiler.report import resolve_node_type
+from miles_ai.flow_runtime.compiler.state import (
     CanvasGraphState,
     gather_node_inputs,
     make_relevance_grade_router,
 )
-from miles_ai.integrations.langgraph.compiler.validate import validate_graph_for_compile
-from miles_ai.integrations.langgraph.graph_analysis import (
+from miles_ai.flow_runtime.compiler.validate import validate_graph_for_compile
+from miles_ai.flow_runtime.constants import CanvasNodeType
+from miles_ai.flow_runtime.graph_analysis import (
     GRADE_BRANCH_HANDLES,
     build_incoming,
     build_outgoing,
@@ -27,6 +24,9 @@ from miles_ai.integrations.langgraph.graph_analysis import (
     find_start_nodes,
     normalize_grade_handle,
 )
+from miles_ai.flow_runtime.nodes.registry import execute_node
+from miles_ai.flow_runtime.step_record import build_flow_node_step
+from miles_ai.flow_runtime.types import FlowGraph, RunContext
 
 
 def _run_context_from_state(state: dict[str, Any], node_id: str) -> RunContext:

@@ -14,11 +14,11 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from miles_ai.flow_runtime.compiler import validate_graph_for_compile
 from miles_ai.flow_runtime.runtime_factory import get_flow_runtime
 from miles_ai.flow_runtime.subflow.validate import validate_subflow_references
 from miles_ai.flow_runtime.templates.registry import list_flow_templates
 from miles_ai.flow_runtime.types import RunContext
-from miles_ai.integrations.langgraph.compiler import validate_graph_for_compile
 from miles_common.exceptions import BadRequestError, NotFoundError
 from miles_common.schema import PageParams, PageResult
 from miles_core.models.flow import Flow, FlowStatus, FlowVersion
@@ -336,7 +336,7 @@ class FlowService(BaseService):
             current_flow_id=flow.id,
         )
         if sub_errors:
-            from miles_ai.integrations.langgraph.compiler import FlowCompileReport, _error_to_str
+            from miles_ai.flow_runtime.compiler import FlowCompileReport, _error_to_str
 
             merged_details = list(report.error_details) + sub_errors
             merged_errors = report.errors + [_error_to_str(e) for e in sub_errors]

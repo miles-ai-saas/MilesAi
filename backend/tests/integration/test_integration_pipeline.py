@@ -7,8 +7,8 @@ from uuid import uuid4
 
 import pytest
 
+from miles_ai.flow_runtime.compiler import run_compiled_canvas, validate_graph_for_compile
 from miles_ai.flow_runtime.types import RunContext
-from miles_ai.integrations.langgraph.compiler import run_compiled_canvas, validate_graph_for_compile
 from miles_core.models.kb import Document, DocumentStatus, KnowledgeBase
 from miles_portal.tenant.kb.services.ingest import run_ingest
 

@@ -14,13 +14,12 @@ from __future__ import annotations
 
 import ast
 
-from miles_ai.integrations.langgraph.compiler.state import CanvasGraphState
-from tests.paths import BACKEND_ROOT
+from miles_ai.flow_runtime.compiler.state import CanvasGraphState
+from tests.paths import MILES_AI
 
-# 路径常量统一来自 ``tests.paths``（本文件已搬到 tests/miles_ai/integrations/langgraph/，
+# 路径常量统一来自 ``tests.paths``（本文件已搬到 tests/miles_ai/flow_runtime/（Task 6），
 # 目录深度变化后 ``parents`` 不再可靠）。
-_BACKEND_DIR = BACKEND_ROOT
-_COMPILER_DIR = _BACKEND_DIR / "packages" / "miles-ai" / "src" / "miles_ai" / "integrations" / "langgraph" / "compiler"
+_COMPILER_DIR = MILES_AI / "flow_runtime" / "compiler"
 
 
 def _declared_keys() -> set[str]:

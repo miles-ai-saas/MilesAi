@@ -2,10 +2,10 @@
 
 from uuid import uuid4
 
+from miles_ai.flow_runtime.compiler import validate_graph_for_compile
 from miles_ai.flow_runtime.constants import MAX_SUBFLOW_DEPTH
 from miles_ai.flow_runtime.subflow.resolve import build_child_context, iter_subflow_nodes
 from miles_ai.flow_runtime.types import RunContext
-from miles_ai.integrations.langgraph.compiler import validate_graph_for_compile
 
 
 def test_validate_graph_subflow_missing_id():

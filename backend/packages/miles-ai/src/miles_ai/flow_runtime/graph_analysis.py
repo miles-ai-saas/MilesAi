@@ -1,7 +1,7 @@
 """
 画布 ``graph_json`` 结构分析（环检测、并行层、条件边）。
 
-供 ``integrations.langgraph.compiler`` 在编译前校验拓扑：
+供 ``flow_runtime.compiler`` 在编译前校验拓扑：
 - ``has_cycle`` / ``topo_order``：可否 DAG 编译
 - ``compute_execution_layers``：同层节点可并行（报告 ``parallel_groups``）
 - ``normalize_branch_handle``：ConditionBranch 的 sourceHandle → true/false

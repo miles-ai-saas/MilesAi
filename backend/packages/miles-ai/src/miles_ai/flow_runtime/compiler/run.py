@@ -2,10 +2,10 @@
 
 from typing import Any
 
+from miles_ai.flow_runtime.compiler.build import build_canvas_graph
+from miles_ai.flow_runtime.compiler.state import resolve_final_output
+from miles_ai.flow_runtime.compiler.validate import validate_graph_for_compile
 from miles_ai.flow_runtime.types import FlowGraph, RunContext
-from miles_ai.integrations.langgraph.compiler.build import build_canvas_graph
-from miles_ai.integrations.langgraph.compiler.state import resolve_final_output
-from miles_ai.integrations.langgraph.compiler.validate import validate_graph_for_compile
 
 
 async def run_compiled_canvas(

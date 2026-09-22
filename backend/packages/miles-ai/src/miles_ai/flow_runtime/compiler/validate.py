@@ -2,16 +2,15 @@
 
 from typing import Any
 
-from miles_ai.flow_runtime.constants import CanvasNodeType
-from miles_ai.flow_runtime.types import FlowGraph
-from miles_ai.integrations.langgraph.compiler.report import (
+from miles_ai.flow_runtime.compiler.report import (
     SUPPORTED_CANVAS_NODE_TYPES,
     FlowCompileReport,
     _compile_error,
     _error_to_str,
     resolve_node_type,
 )
-from miles_ai.integrations.langgraph.graph_analysis import (
+from miles_ai.flow_runtime.constants import CanvasNodeType
+from miles_ai.flow_runtime.graph_analysis import (
     GRADE_BRANCH_HANDLES,
     build_outgoing,
     compute_execution_layers,
@@ -22,6 +21,7 @@ from miles_ai.integrations.langgraph.graph_analysis import (
     normalize_grade_handle,
     topo_order,
 )
+from miles_ai.flow_runtime.types import FlowGraph
 
 
 def validate_graph_for_compile(graph: dict[str, Any]) -> FlowCompileReport:

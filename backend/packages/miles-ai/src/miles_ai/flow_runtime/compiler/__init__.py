@@ -14,18 +14,18 @@ React Flow ``graph_json`` → LangGraph ``StateGraph`` 编译器（画布流程 
 
 对外::
 
-    from miles_ai.integrations.langgraph.compiler import build_canvas_graph, validate_graph_for_compile
+    from miles_ai.flow_runtime.compiler import build_canvas_graph, validate_graph_for_compile
 """
 
-from miles_ai.integrations.langgraph.compiler.build import build_canvas_graph
-from miles_ai.integrations.langgraph.compiler.report import (
+from miles_ai.flow_runtime.compiler.build import build_canvas_graph
+from miles_ai.flow_runtime.compiler.report import (
     SUPPORTED_CANVAS_NODE_TYPES,
     FlowCompileReport,
     _error_to_str,
     resolve_node_type,
 )
-from miles_ai.integrations.langgraph.compiler.run import run_compiled_canvas
-from miles_ai.integrations.langgraph.compiler.validate import can_compile_flow_graph, validate_graph_for_compile
+from miles_ai.flow_runtime.compiler.run import run_compiled_canvas
+from miles_ai.flow_runtime.compiler.validate import can_compile_flow_graph, validate_graph_for_compile
 
 __all__ = [
     "SUPPORTED_CANVAS_NODE_TYPES",

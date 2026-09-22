@@ -12,8 +12,8 @@ RAG 节点不经过 Agent LangGraph RAG 图（``graphs/rag_qa``），仅在画�
 
 from __future__ import annotations
 
+from miles_ai.flow_runtime.compiler import run_compiled_canvas, validate_graph_for_compile
 from miles_ai.flow_runtime.types import RunContext, RunResult
-from miles_ai.integrations.langgraph.compiler import run_compiled_canvas, validate_graph_for_compile
 from miles_common.exceptions import BadRequestError
 
 

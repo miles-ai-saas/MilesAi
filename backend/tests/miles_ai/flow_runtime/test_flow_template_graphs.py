@@ -2,8 +2,8 @@
 
 import pytest
 
+from miles_ai.flow_runtime.compiler import validate_graph_for_compile
 from miles_ai.flow_runtime.templates.registry import FLOW_TEMPLATE_REGISTRY, load_flow_template_graph
-from miles_ai.integrations.langgraph.compiler import validate_graph_for_compile
 
 
 @pytest.mark.parametrize(

@@ -1,6 +1,6 @@
 """编译报告 error_details 与 node_id。"""
 
-from miles_ai.integrations.langgraph.compiler import validate_graph_for_compile
+from miles_ai.flow_runtime.compiler import validate_graph_for_compile
 
 
 def test_unknown_node_error_detail_has_node_id():

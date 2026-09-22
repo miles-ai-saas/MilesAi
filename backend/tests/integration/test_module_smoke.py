@@ -1,6 +1,6 @@
 """拆分后模块 import smoke：KB 服务与 LangGraph 编译器。"""
 
-from miles_ai.integrations.langgraph.compiler import (
+from miles_ai.flow_runtime.compiler import (
     FlowCompileReport,
     build_canvas_graph,
     validate_graph_for_compile,

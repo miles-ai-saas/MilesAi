@@ -6,10 +6,10 @@ from uuid import uuid4
 
 import pytest
 
+from miles_ai.flow_runtime.compiler import run_compiled_canvas
 from miles_ai.flow_runtime.context_utils import media_refs_from_run
 from miles_ai.flow_runtime.nodes.llm_nodes import llm_call
 from miles_ai.flow_runtime.types import RunContext
-from miles_ai.integrations.langgraph.compiler import run_compiled_canvas
 from miles_common.exceptions import BadRequestError
 from miles_common.schemas.media import MediaRefIn
 from miles_core.models.model import ModelConfig

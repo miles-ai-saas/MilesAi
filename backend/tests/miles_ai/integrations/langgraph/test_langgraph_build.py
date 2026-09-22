@@ -11,7 +11,7 @@ import json
 
 import pytest
 
-from miles_ai.integrations.langgraph.compiler.build import (
+from miles_ai.flow_runtime.compiler.build import (
     _run_context_from_state,
     build_canvas_graph,
 )
