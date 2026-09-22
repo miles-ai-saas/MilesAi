@@ -6,8 +6,8 @@
 - kb 服务检索入口 ``app/tenant/kb/services/kb/search.py`` 的
   ``KnowledgeBaseService.search``（source=api）
 
-B-2b 收敛后，L3 ``vectorstores`` 检索壳与 L2 ``multi_kb`` 不再承担
-``kb_search_logs`` 写入；当前写表统一收敛在 kb 服务检索入口。
+B-2b 收敛后，L2 ``rag.retrieve.multi_kb`` 不再承担 ``kb_search_logs`` 写入
+（原 L3 ``vectorstores`` 转发壳已删除）；当前写表统一收敛在 kb 服务检索入口。
 
 用于监控检索延迟、命中数、实际 retrieval_mode（含 +rerank 后缀）。
 """

@@ -30,7 +30,7 @@ __all__ = [
 
 
 def __getattr__(name: str):
-    """延迟导出，避免 import 环（``rag.graph`` ↔ ``integrations.langgraph``）。"""
+    """延迟导出，避免包导入期拉起 ``runner`` / ``rag_qa``（及其对 checkpointer 的依赖）。"""
     if name in ("RELEVANCE_GOOD", "RELEVANCE_NONE", "RELEVANCE_POOR", "GRADE_BRANCH_HANDLES"):
         from miles_ai.rag.graph import constants
 
