@@ -83,7 +83,8 @@ def run_ingest(document_id: str) -> None:
                 return
             kb = db.get(KnowledgeBase, doc.kb_id)
             if not kb or kb.deleted_at is not None:
-                return
+                # PARSING 已提交：KB 消失须写失败态，避免文档永久卡在 PARSING
+                raise ValueError("知识库不存在或已删除")
             doc.status = DocumentStatus.EMBEDDING
             phase = DocumentStatus.EMBEDDING
 
@@ -93,7 +94,8 @@ def run_ingest(document_id: str) -> None:
                 return
             kb = db.get(KnowledgeBase, doc.kb_id)
             if not kb or kb.deleted_at is not None:
-                return
+                # EMBEDDING 已提交：同上，避免永久卡在 EMBEDDING
+                raise ValueError("知识库不存在或已删除")
 
             run_ingest_pipeline(
                 db,

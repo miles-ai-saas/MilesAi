@@ -205,3 +205,62 @@ def test_run_ingest_download_failure_stays_parsing():
             run_ingest(str(doc.id))
 
     assert phases == [DocumentStatus.PARSING]
+
+
+def test_run_ingest_kb_missing_after_parsing_persists_failure():
+    """PARSING 已提交后若 KB 消失，须 persist 失败态，不得静默 return 导致永久卡住。"""
+    doc, kb = _sample_doc_kb()
+    phases: list[DocumentStatus] = []
+    entries: list[dict] = []
+
+    def _get(model, pk):
+        if model is Document and pk == doc.id:
+            return doc
+        if model is KnowledgeBase and pk == kb.id:
+            # 首段会话内仍可见；PARSING 提交后（status 已是 PARSING）再取则视为删除
+            if doc.status == DocumentStatus.PARSING:
+                return None
+            return kb
+        return None
+
+    @contextmanager
+    def _fake_sync_db():
+        db = MagicMock()
+        db.get.side_effect = _get
+        entry = {
+            "db_id": id(db),
+            "status_on_enter": doc.status,
+            "status_on_exit": None,
+            "committed": False,
+        }
+        entries.append(entry)
+        try:
+            yield db
+            entry["status_on_exit"] = doc.status
+            entry["committed"] = True
+        except Exception:
+            entry["status_on_exit"] = doc.status
+            entry["committed"] = False
+            raise
+
+    def _persist(_db, _doc, *, phase, exc):
+        phases.append(phase)
+        assert "知识库不存在或已删除" in str(exc)
+
+    with (
+        patch("miles_portal.tenant.kb.services.ingest.get_sync_db", _fake_sync_db),
+        _patch_storage_download(),
+        patch(
+            "miles_portal.tenant.kb.services.ingest.run_ingest_pipeline",
+            side_effect=AssertionError("KB 已消失不应进入 pipeline"),
+        ),
+        patch(
+            "miles_portal.tenant.kb.services.ingest.persist_document_ingest_failure",
+            side_effect=_persist,
+        ),
+    ):
+        with pytest.raises(ValueError, match="知识库不存在或已删除"):
+            run_ingest(str(doc.id))
+
+    assert phases == [DocumentStatus.PARSING]
+    assert DocumentStatus.PARSING in [e["status_on_exit"] for e in entries if e["committed"]]
