@@ -121,3 +121,49 @@ def test_delete_by_chunk_ids(mock_client_fn):
 def test_health_check(mock_client_cls):
     mock_client_cls.return_value.list_collections.return_value = []
     assert MilvusVectorStore().health_check() is True
+
+
+@patch("miles_core.infra.vector_store.milvus._client")
+@patch("miles_core.infra.vector_store.milvus._ensure_collection")
+def test_upsert_chunks_batch_insert(mock_ensure, mock_client_fn):
+    client = MagicMock()
+    mock_client_fn.return_value = client
+    mock_ensure.return_value = "document_chunk_384"
+    r1, r2 = _sample_record(external_id="a"), _sample_record(external_id="b")
+    client.insert.return_value = {"ids": ["a", "b"]}
+
+    ids = MilvusVectorStore().upsert_chunks([r1, r2])
+
+    assert ids == ["a", "b"]
+    client.insert.assert_called_once()
+    assert len(client.insert.call_args.kwargs["data"]) == 2
+
+
+@patch("miles_core.infra.vector_store.milvus._client")
+@patch("miles_core.infra.vector_store.milvus._ensure_collection")
+def test_upsert_chunks_empty(mock_ensure, mock_client_fn):
+    assert MilvusVectorStore().upsert_chunks([]) == []
+    mock_client_fn.assert_not_called()
+
+
+@patch("miles_core.infra.vector_store.milvus._client")
+@patch("miles_core.infra.vector_store.milvus._ensure_collection")
+def test_upsert_chunk_delegates_to_batch(mock_ensure, mock_client_fn):
+    client = MagicMock()
+    mock_client_fn.return_value = client
+    mock_ensure.return_value = "document_chunk_384"
+    client.insert.return_value = {"ids": ["vec-1"]}
+    record = _sample_record(external_id="vec-1")
+    assert MilvusVectorStore().upsert_chunk(record) == "vec-1"
+
+
+def test_ensure_collection_skips_second_load(monkeypatch):
+    from miles_core.infra.vector_store import milvus as m
+
+    m._loaded_collections.clear()
+    client = MagicMock()
+    client.has_collection.return_value = True
+    client.list_indexes.return_value = ["idx"]
+    m._ensure_collection(client, 384)
+    m._ensure_collection(client, 384)
+    assert client.load_collection.call_count == 1

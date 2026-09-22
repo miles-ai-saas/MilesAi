@@ -53,6 +53,9 @@ _SEARCH_OUTPUT_FIELDS = [
     METADATA_KB_ID,
 ]
 
+# 已 load 的 collection，避免热路径重复 load_collection
+_loaded_collections: set[str] = set()
+
 
 def collection_name_for_dimension(dimension: int) -> str:
     """按 embedding 维度分 collection，避免混维写入。"""
@@ -112,6 +115,8 @@ def _assert_row_matches_schema(client: MilvusClient, collection_name: str, row: 
 def _ensure_collection(client: MilvusClient, dimension: int) -> str:
     """确保 collection 存在、已建索引并 load（与 langchain_milvus 字段一致）。"""
     name = collection_name_for_dimension(dimension)
+    if name in _loaded_collections and client.has_collection(name):
+        return name
     if not client.has_collection(name):
         # 关闭 dynamic_field，字段集与 infra.vector_store.documents 常量一致
         schema = client.create_schema(auto_id=False, enable_dynamic_field=False)
@@ -159,6 +164,7 @@ def _ensure_collection(client: MilvusClient, dimension: int) -> str:
         client.create_index(collection_name=name, index_params=index_params)
 
     client.load_collection(collection_name=name)
+    _loaded_collections.add(name)
     return name
 
 
@@ -194,16 +200,28 @@ class MilvusVectorStore:
         """确保对应维度的 collection、索引已创建并 load。"""
         _ensure_collection(_client(), validate_dimension(dimension))
 
+    def upsert_chunks(self, records: list[ChunkVectorRecord]) -> list[str]:
+        """批量插入分片向量；同一批次维度必须一致。"""
+        if not records:
+            return []
+        dims = {validate_dimension(len(r.vector)) for r in records}
+        if len(dims) != 1:
+            raise ValueError(f"同一批次向量维度必须一致，收到: {sorted(dims)}")
+        dim = next(iter(dims))
+        client = _client()
+        name = _ensure_collection(client, dim)
+        rows = [_record_to_row(r) for r in records]
+        for row in rows:
+            _assert_row_matches_schema(client, name, row)
+        res = client.insert(collection_name=name, data=rows)
+        ids = res.get("ids") or []
+        if ids and len(ids) == len(rows):
+            return [str(i) for i in ids]
+        return [str(row[PRIMARY_FIELD]) for row in rows]
+
     def upsert_chunk(self, record: ChunkVectorRecord) -> str:
         """插入一条分片向量，主键默认 chunk_id。"""
-        client = _client()
-        dim = validate_dimension(len(record.vector))
-        name = _ensure_collection(client, dim)
-        row = _record_to_row(record)
-        _assert_row_matches_schema(client, name, row)
-        res = client.insert(collection_name=name, data=[row])
-        ids = res.get("ids") or []
-        return str(ids[0]) if ids else str(row[PRIMARY_FIELD])
+        return self.upsert_chunks([record])[0]
 
     def search(
         self,
