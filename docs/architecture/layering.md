@@ -157,7 +157,7 @@ flowchart LR
 
 **包内分层（`miles_ai`）**：`flow_runtime → rag → integrations` 单向，由 `.importlinter` 的 `ai-internal-layers` 契约强制；`integrations` 不得 import `rag` / `flow_runtime`，`rag` 不得 import `flow_runtime`。
 
-**强制机制**：上述 DAG 与硬判据由 `backend/.importlinter` 固化为 7 条契约（1 条 `layers` + 6 条 `forbidden`），在 CI 与本地经 `make layers-check`（即 `import-linter`）执行；`make check` 已包含该步。
+**强制机制**：上述 DAG 与硬判据由 `backend/.importlinter` 固化为 8 条契约（2 条 `layers`——包级 `layers` + 包内 `ai-internal-layers`——+ 6 条 `forbidden`），在 CI 与本地经 `make layers-check`（即 `import-linter`）执行；`make check` 已包含该步。
 
 **AST 静态守卫（import-linter 覆盖不到的边界）**：部分判据无法用 import 图表达，改用 AST 扫描源码，与 `import-linter` 并列在 `make test-backend` 中执行：
 
