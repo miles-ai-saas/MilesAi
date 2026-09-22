@@ -301,7 +301,7 @@ draft → issued → paid
 
 ## 5. 测试
 
-`backend/tests/miles_admin/`：`test_admin_auth.py`、`test_admin_admins.py`、`test_admin_billing_plan.py`、`test_admin_risk_enforce.py`。
+`backend/tests/miles_admin/`：`app_sys/test_admin_auth.py`、`app_ops/test_admin_admins.py`、`app_ops/test_admin_billing_plan.py`、`app_ops/test_admin_risk_enforce.py`、`models/test_audit_log_indexes.py`。
 
 **验收要点：** 登出 / 吊销后旧 token 401；UI 完成「建套餐 → 生成账单 → 标记 paid」闭环；黑名单 IP 403、超限 429 且写入 RiskEvent；租户 JWT 访问 `/api/admin/v1` 恒 401/403。
 

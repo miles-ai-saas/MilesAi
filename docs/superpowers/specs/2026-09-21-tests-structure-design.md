@@ -206,9 +206,9 @@ tests/api/ (12)
   → tests/miles_server/ (1)                            test_health
   → tests/miles_server/apps/ (4)                       test_access_log_middleware, test_api_e2e, test_cors, test_exception_handlers
 tests/flow/ (24)
-  → tests/miles_ai/flow_runtime/ (14)                  test_compliance_node, test_control_nodes, test_flow_runtime_constants, test_flow_step_artifact, test_flow_template_graphs, test_flow_templates, test_generative_nodes, test_media_nodes, test_platform_tool_node, test_prompt_template_node, test_relevance_grade_flow, test_subflow, test_subflow_runtime, test_subflow_validate
+  → tests/miles_ai/flow_runtime/ (15)                  test_compliance_node, test_control_nodes, test_flow_multimodal, test_flow_runtime_constants, test_flow_step_artifact, test_flow_template_graphs, test_flow_templates, test_generative_nodes, test_media_nodes, test_platform_tool_node, test_prompt_template_node, test_relevance_grade_flow, test_subflow, test_subflow_runtime, test_subflow_validate
   → tests/miles_ai/integrations/langgraph/ (6)         test_compile_error_details, test_langgraph_build, test_langgraph_compiler, test_langgraph_grading, test_langgraph_parallel, test_langgraph_rag
-  → tests/miles_portal/tenant/flows/ (4)               test_flow_multimodal, test_flow_run_request, test_flow_tags, test_flow_versions_api
+  → tests/miles_portal/tenant/flows/ (3)               test_flow_run_request, test_flow_tags, test_flow_versions_api
 tests/infra/ (26)
   → tests/miles_ai/integrations/{langchain,langgraph,litellm}/ (3)  test_litellm_chat_stream, test_canvas_state_contract, test_litellm_adapter
   → tests/miles_ai/rag/ (1)                            test_upload_policy
@@ -292,6 +292,8 @@ tests/worker/ (1)                                    → tests/miles_worker/task
 | `tenant/agents/test_a2a_*.py` (5) | 被测是 `tenant/a2a` 的出站客户端，从 agents 域纠偏到 a2a 域 |
 | `tenant/kb/test_attachment*.py` (2) | 被测是 `tenant/attachments`，从 kb 域纠偏 |
 | `flow/test_compliance_node.py`、`flow/test_media_nodes.py` | 被测是 flow_runtime 的画布节点，非 core 的模型/常量 |
+| `flow/test_flow_multimodal.py` | 8 个用例里 6 个（含全部 `patch` 目标）打 `miles_ai.flow_runtime` 的 `llm_call` / `media_refs_from_run` / `run_compiled_canvas`，只有 2 个碰 portal 的 `FlowRunRequest`；按 R1 归最深 import（终审纠偏，初版误归 `tenant/flows`） |
+| `tenant/media_assets/test_video_cover.py` | 5:5 混合（`miles_ai.integrations.video.cover.extract_video_cover_jpeg` vs portal `MediaAssetOut`），无明显更深一侧，就近归 media_assets |
 | `flow/test_relevance_grade_flow.py`、`flow/test_subflow.py` | 被测是 flow_runtime 的节点与子流，非 langgraph 编译层 |
 | `infra/test_celery_*.py` (2) | 被测是 Celery app 与任务名（`miles_worker`） |
 | `infra/test_audit_log_models.py` | 被测是 ORM 定义（`miles_core.models`） |

@@ -17,7 +17,7 @@ tests/
   test_api_enum_parity.py             # API 枚举声明与 ORM 逐字节一致
   test_enum_contract.py               # StrEnum 迁移契约
   test_orm_registry_completeness.py   # 全仓 ORM 表登记可达
-  test_tests_layout.py                # 结构守卫：一级目录白名单 / 包前缀自洽 / 基名唯一
+  test_tests_layout.py                # 结构守卫：一级目录白名单 / 包前缀自洽 / 深层目录镜像源码 / 基名唯一
   integration/                        # 跨包编排（≥2 个包协作）
   miles_common/ miles_exec/ miles_core/ miles_ai/
   miles_portal/ miles_admin/ miles_openapi/ miles_server/ miles_worker/
