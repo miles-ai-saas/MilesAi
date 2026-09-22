@@ -14,13 +14,13 @@
 
 状态说明
 --------
-PARSING/EMBEDDING 在 Worker 内顺序更新，便于前端展示进度；
+PARSING/EMBEDDING 分独立短事务 commit，便于前端展示进度；
 实际 parse+chunk+embed 均在 pipeline 一次调用内完成，并非两个独立 Celery 子任务。
 
 失败处理
 ----------
-异常时 ``persist_document_ingest_failure`` **必须先 commit**，否则 ``get_sync_db``
-上下文退出 rollback 会吞掉 PARSE_FAILED/EMBED_FAILED 状态。
+异常时在**新** ``get_sync_db`` 会话上 ``persist_document_ingest_failure``（内部已 commit），
+避免在可能已脏的 index 会话上写失败态。
 """
 
 from uuid import UUID
@@ -41,26 +41,39 @@ def run_ingest(document_id: str) -> None:
     """
     同步执行单文档入库（仅由 Celery Worker 调用，HTTP 不直连）。
 
+    分阶段：PARSING commit → EMBEDDING commit → pipeline + READY。
     ``on_before_index=clear_document_derived_data_sync``：覆盖/重试入库前删除旧分片与向量。
     """
-    with get_sync_db() as db:
-        doc = db.get(Document, UUID(document_id))
-        if not doc or doc.deleted_at is not None:
-            return
-        kb = db.get(KnowledgeBase, doc.kb_id)
-        if not kb or kb.deleted_at is not None:
-            return
-
-        current_phase = DocumentStatus.PARSING
-        try:
+    phase = DocumentStatus.PARSING
+    doc_uuid = UUID(document_id)
+    try:
+        with get_sync_db() as db:
+            doc = db.get(Document, doc_uuid)
+            if not doc or doc.deleted_at is not None:
+                return
+            kb = db.get(KnowledgeBase, doc.kb_id)
+            if not kb or kb.deleted_at is not None:
+                return
             doc.status = DocumentStatus.PARSING
             doc.fail_reason = None
-            db.flush()
 
-            # 进入 EMBEDDING 阶段（向量化+写向量库均在 pipeline 内完成）
-            current_phase = DocumentStatus.EMBEDDING
+        with get_sync_db() as db:
+            doc = db.get(Document, doc_uuid)
+            if not doc or doc.deleted_at is not None:
+                return
+            kb = db.get(KnowledgeBase, doc.kb_id)
+            if not kb or kb.deleted_at is not None:
+                return
             doc.status = DocumentStatus.EMBEDDING
-            db.flush()
+            phase = DocumentStatus.EMBEDDING
+
+        with get_sync_db() as db:
+            doc = db.get(Document, doc_uuid)
+            if not doc or doc.deleted_at is not None:
+                return
+            kb = db.get(KnowledgeBase, doc.kb_id)
+            if not kb or kb.deleted_at is not None:
+                return
 
             run_ingest_pipeline(
                 db,
@@ -82,7 +95,9 @@ def run_ingest(document_id: str) -> None:
 
             doc.status = DocumentStatus.READY
             doc.fail_reason = None
-            db.flush()
-        except Exception as exc:
-            persist_document_ingest_failure(db, doc, phase=current_phase, exc=exc)
-            raise
+    except Exception as exc:
+        with get_sync_db() as db:
+            doc = db.get(Document, doc_uuid)
+            if doc and doc.deleted_at is None:
+                persist_document_ingest_failure(db, doc, phase=phase, exc=exc)
+        raise
