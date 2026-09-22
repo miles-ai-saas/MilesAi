@@ -22,6 +22,7 @@ async def lifespan(app: FastAPI):
         init_langgraph_checkpointer,
         shutdown_langgraph_checkpointer,
     )
+    from miles_ai.rag.graph.compiled import bind_rag_graph, unbind_rag_graph
     from miles_core.infra.otel import setup_otel, shutdown_otel
 
     setup_logging()
@@ -30,7 +31,10 @@ async def lifespan(app: FastAPI):
     run_migrations()
     # 初始化 RAG / DeepAgents 共用 checkpointer（redis | memory），见 langgraph.checkpointer
     app.state.langgraph_checkpoint = await init_langgraph_checkpointer()
+    # 用该 checkpointer 编译并缓存 Agent RAG 图，见 rag.graph.compiled
+    bind_rag_graph()
     yield
+    unbind_rag_graph()
     await shutdown_langgraph_checkpointer()
     shutdown_otel()
 

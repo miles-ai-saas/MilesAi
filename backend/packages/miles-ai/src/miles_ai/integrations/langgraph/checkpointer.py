@@ -3,10 +3,11 @@ LangGraph Checkpointer：优先 Redis，不可用时回退内存。
 
 用途
 ----
-- Agent RAG 图（``get_compiled_rag_graph``）：``thread_id = tenant:agent:conversation_id``
+- Agent RAG 图（``rag.graph.compiled.get_compiled_rag_graph``）：``thread_id = tenant:agent:conversation_id``
 - DeepAgents / 其它需多轮状态恢复的 LangGraph 应用
 
-应用启动时 ``init_checkpointer``；未初始化时 ``get_checkpointer()`` 回退 ``MemorySaver``。
+应用启动时 ``init_langgraph_checkpointer``；未初始化时 ``get_checkpointer()`` 回退 ``MemorySaver``。
+RAG 编译图单例不在此模块，见 ``miles_ai.rag.graph.compiled``。
 """
 
 from __future__ import annotations
@@ -31,7 +32,6 @@ warnings.filterwarnings(
 )
 
 _checkpointer: Any = None
-_compiled_rag_graph: Any = None  # 进程内单例，随 checkpointer 后端初始化
 _exit_stack: AsyncExitStack | None = None
 _backend: str = "memory"
 
@@ -53,20 +53,6 @@ def get_checkpointer() -> Any:
     return _checkpointer
 
 
-def get_compiled_rag_graph() -> Any:
-    """
-    带 checkpointer 的 RAG QA 编译图单例。
-
-    由 ``init_langgraph_checkpointer`` 在启动时绑定 Redis/Memory；
-    未 init 时回退 ``build_rag_qa_graph().compile(MemorySaver())``。
-    """
-    if _compiled_rag_graph is None:
-        from miles_ai.integrations.langgraph.graphs.rag_qa import build_rag_qa_graph
-
-        return build_rag_qa_graph().compile(checkpointer=MemorySaver())
-    return _compiled_rag_graph
-
-
 def checkpoint_backend() -> str:
     """当前后端：redis 或 memory。"""
     return _backend
@@ -79,9 +65,7 @@ async def init_langgraph_checkpointer() -> str:
     受 ``Settings.langgraph_redis_checkpoint`` 与 Redis 健康检查控制；
     失败时降级 MemorySaver 并打日志，不阻塞进程启动。
     """
-    global _checkpointer, _compiled_rag_graph, _exit_stack, _backend
-
-    from miles_ai.integrations.langgraph.graphs.rag_qa import build_rag_qa_graph
+    global _checkpointer, _exit_stack, _backend
 
     settings = get_settings()
     saver: Any = MemorySaver()
@@ -113,16 +97,14 @@ async def init_langgraph_checkpointer() -> str:
 
     _checkpointer = saver
     _backend = backend
-    _compiled_rag_graph = build_rag_qa_graph().compile(checkpointer=saver)
     return backend
 
 
 async def shutdown_langgraph_checkpointer() -> None:
     """应用关闭时释放 Redis checkpointer 连接。"""
-    global _checkpointer, _compiled_rag_graph, _exit_stack, _backend
+    global _checkpointer, _exit_stack, _backend
     if _exit_stack is not None:
         await _exit_stack.aclose()
         _exit_stack = None
     _checkpointer = None
-    _compiled_rag_graph = None
     _backend = "memory"

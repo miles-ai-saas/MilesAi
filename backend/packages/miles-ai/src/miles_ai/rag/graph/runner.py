@@ -5,7 +5,7 @@ LangGraph 运行入口（Agent RAG，L2）。
 RAG 图
 ------
 ``build_rag_qa_graph``：retrieve → grade → generate | retry | fallback。
-编译实例由 ``get_compiled_rag_graph()`` 提供，checkpointer 见 ``checkpointer`` 模块。
+编译实例由 ``rag.graph.compiled.get_compiled_rag_graph()`` 提供，多轮状态后端见 ``integrations.langgraph.checkpointer``。
 
 ``should_use_langgraph_rag`` 关闭条件（``agent.config``）
 -------------------------------------------------------
@@ -24,8 +24,9 @@ from uuid import UUID
 from langgraph.checkpoint.memory import MemorySaver
 
 from miles_ai.integrations.langchain.chat_models import OnDelta
-from miles_ai.integrations.langgraph.checkpointer import checkpoint_backend, get_compiled_rag_graph
+from miles_ai.integrations.langgraph.checkpointer import checkpoint_backend
 from miles_ai.integrations.litellm.usage_sink import UsageSink
+from miles_ai.rag.graph.compiled import get_compiled_rag_graph
 from miles_ai.rag.graph.rag_qa import build_rag_qa_graph
 from miles_ai.rag.retrieve.bindings import KbRetrievalBindings
 from miles_common.schemas.media import MediaRefIn
