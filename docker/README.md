@@ -145,7 +145,7 @@ cd backend && uv run milesai init-db
 
 ### RAG / 多模态依赖（Worker 镜像）
 
-`Dockerfile.worker` 按 `miles-worker` 的依赖闭包安装：先 `uv export --package miles-worker` + `uv pip install -r`，再以 editable 安装本地成员包（`miles-common` / `miles-exec` / `miles-core` / `miles-ai` / `miles-portal` / `miles-worker`）。解析与多模态依赖（`pypdf`、`docling`、`pytesseract`、`openai-whisper`）已在 `miles-ai` 中无条件声明，无需 extras；**API 与 Worker 的依赖应保持一致**。
+`Dockerfile.worker` 按 `miles-worker` 的依赖闭包安装：先 `uv export --package miles-worker` + `uv pip install -r`，再以 editable 安装本地成员包（`miles-common` / `miles-exec` / `miles-core` / `miles-ai` / `miles-portal` / `miles-worker`）。解析与多模态依赖（`pypdf`、`docling`、`pytesseract`、`openai-whisper`）已在 `miles-ai` 中无条件声明；向量后端为 `miles-core` optional extras，并由 `miles-worker` / `miles-server` / `miles-ai` 的 `miles-core[vector]` 拉齐。**API 与 Worker 的依赖应保持一致**。
 
 `.env` 解析相关变量见 `backend/.env.example`（`PARSE_PDF_BACKEND`、`PARSE_DOCLING_FALLBACK_PYPDF`）。
 

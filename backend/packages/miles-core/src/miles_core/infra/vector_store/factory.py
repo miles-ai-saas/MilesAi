@@ -24,16 +24,24 @@ def get_vector_store() -> VectorStore:
     name = get_settings().vector_store_backend.strip().lower()
     if name not in _BACKENDS:
         raise ValueError(f"不支持的 VECTOR_STORE_BACKEND={name!r}，可选: {', '.join(sorted(_BACKENDS))}")
-    # 延迟 import，避免未启用后端时加载对应客户端 SDK
+    # 延迟 import：未安装对应 extras（miles-core[milvus|weaviate|pgvector]）时给出明确提示
     if name == "weaviate":
-        from miles_core.infra.vector_store.weaviate import WeaviateVectorStore
+        try:
+            from miles_core.infra.vector_store.weaviate import WeaviateVectorStore
+        except ImportError as exc:
+            raise ImportError("Weaviate 后端需要安装 miles-core[weaviate]") from exc
 
         return WeaviateVectorStore()
     if name == "pgvector":
-        from miles_core.infra.vector_store.pgvector import PgVectorStore
+        try:
+            from miles_core.infra.vector_store.pgvector import PgVectorStore
+        except ImportError as exc:
+            raise ImportError("pgvector 后端需要安装 miles-core[pgvector]") from exc
 
         return PgVectorStore()
-    # 默认 milvus：MilvusClient 直连，不经 LangChain ORM
-    from miles_core.infra.vector_store.milvus import MilvusVectorStore
+    try:
+        from miles_core.infra.vector_store.milvus import MilvusVectorStore
+    except ImportError as exc:
+        raise ImportError("Milvus 后端需要安装 miles-core[milvus]") from exc
 
     return MilvusVectorStore()

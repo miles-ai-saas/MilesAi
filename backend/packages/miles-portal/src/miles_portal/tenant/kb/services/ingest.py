@@ -15,7 +15,7 @@
 状态说明
 --------
 PARSING commit → 短会话 resolve storage → 会话外 download/parse/chunk →
-EMBEDDING commit → pipeline（清旧后 commit 再 embed）+ READY。
+EMBEDDING commit → pipeline（先 embed 再清旧写入，避免重复 parse）+ READY。
 失败相位：S3/parse 空文本为 PARSING；进 pipeline 后为 EMBEDDING。
 
 失败处理
@@ -112,6 +112,7 @@ def run_ingest(document_id: str) -> None:
                 embed_texts=embed_texts_for_kb_sync,
                 embed_visual_chunks=embed_image_chunks_vectors_sync,
                 raw=raw,
+                chunks=chunks,
                 on_before_index=clear_document_derived_data_sync,
             )
 

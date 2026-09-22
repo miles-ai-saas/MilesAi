@@ -7,7 +7,7 @@ dependencies = [
     "miles-portal",
     "miles-ai",
     "miles-integrations",
-    "miles-core",
+    "miles-core[vector]",
     "miles-common",
     "sqlalchemy[asyncio]>=2.0.36",
 ]

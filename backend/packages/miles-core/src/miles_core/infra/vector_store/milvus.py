@@ -21,6 +21,7 @@ from uuid import UUID
 
 from langchain_core.documents import Document
 from pymilvus import DataType, MilvusClient
+from pymilvus.client.types import LoadState
 
 from miles_common.exceptions import AppError
 from miles_core.config import get_settings
@@ -112,11 +113,26 @@ def _assert_row_matches_schema(client: MilvusClient, collection_name: str, row: 
         )
 
 
+def _collection_is_loaded(client: MilvusClient, name: str) -> bool:
+    """查询 Milvus 侧真实 load 状态（进程缓存可能因外部 unload 过期）。"""
+    try:
+        state = client.get_load_state(collection_name=name)
+    except Exception:
+        return False
+    return state.get("state") == LoadState.Loaded
+
+
+def mark_collection_unloaded(name: str) -> None:
+    """外部 unload / drop 后丢弃进程内 load 缓存，避免误跳过 load_collection。"""
+    _loaded_collections.discard(name)
+
+
 def _ensure_collection(client: MilvusClient, dimension: int) -> str:
     """确保 collection 存在、已建索引并 load（与 langchain_milvus 字段一致）。"""
     name = collection_name_for_dimension(dimension)
-    if name in _loaded_collections and client.has_collection(name):
+    if name in _loaded_collections and client.has_collection(name) and _collection_is_loaded(client, name):
         return name
+    _loaded_collections.discard(name)
     if not client.has_collection(name):
         # 关闭 dynamic_field，字段集与 infra.vector_store.documents 常量一致
         schema = client.create_schema(auto_id=False, enable_dynamic_field=False)

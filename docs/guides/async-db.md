@@ -27,7 +27,7 @@
 | A2A 宿主 | `miles_portal/.../a2a/invoke.py`（`run_a2a_host_chat`：Peer HTTP / 编排 LLM 前） |
 | A2A 规划 LLM | 同上 `plan_a2a_peers`（`resolve_model_for_invoke` 后、`ainvoke_chat` 前；`db is None` 时跳过 commit） |
 | 工作台 KB 检索 API | `miles_portal/.../kb/services/kb/search.py`（`search` / `_search_visual`：embed、向量后端、S3/OCR 等慢 IO 前） |
-| 工作台 KB ingest（Celery） | `miles_portal/.../kb/services/ingest.py`（多段 `get_sync_db`：PARSING/EMBEDDING 状态可见；S3/parse 与会话外；`miles_ai/.../rag/pipeline/ingest.py` 清旧后 commit；`embeddings.py` resolve 后 commit 再厂商 embed；失败另开会话 `persist_document_ingest_failure`） |
+| 工作台 KB ingest（Celery） | `miles_portal/.../kb/services/ingest.py`（多段 `get_sync_db`：PARSING/EMBEDDING 状态可见；S3/parse 会话外且 L1 传入 `chunks` 避免重复 parse；`pipeline/ingest.py` 先 embed 再清旧写入以缩短检索空窗；`embeddings.py` resolve 后 commit 再厂商 embed；失败另开会话 `persist_document_ingest_failure`） |
 | 生成编排厂商 HTTP | `miles_portal/.../generative/services/orchestration.py`（配额校验后、`generate_*_bytes` 厂商 HTTP 前） |
 | 生成物落盘 | `miles_portal/.../generative/services/persist.py`（`persist_generated_bytes`：附件 `pending` 落库后 commit，再 `upload_bytes`；成功后写最终 object_key 与配额） |
 | 模型健康探测 | `miles_worker/.../model_health.py`（load 会话关闭 / 释放连接后探测，写回另开会话） |

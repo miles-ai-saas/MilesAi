@@ -9,7 +9,7 @@ dependencies = [
     "miles-admin",
     "miles-ai",
     "miles-integrations",
-    "miles-core",
+    "miles-core[vector]",
     "miles-common",
     "uvicorn[standard]>=0.32.0",
     "click>=8.1.0",

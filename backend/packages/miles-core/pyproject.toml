@@ -7,15 +7,12 @@ dependencies = [
     "miles-common",
     "sqlalchemy[asyncio]>=2.0.36",
     "asyncpg>=0.30.0",
-    # packages/miles-core/src/miles_core/infra/db/sync.py 在模块级 create_engine 同步引擎，导入即需要 psycopg2
+    # sync 会话延迟 import；Worker/脚本用 get_sync_db 时仍需驱动
     "psycopg2-binary>=2.9.10",
     "alembic>=1.14.0",
     "pydantic-settings>=2.6.0",
     "celery>=5.4.0",
     "minio>=7.2.0",
-    "weaviate-client>=4.9.0",
-    "pymilvus>=2.5.0",
-    "pgvector>=0.3.0",
     "fastapi>=0.115.0",
     "pydantic>=2.10.0",
     "redis>=5.2.0",
@@ -24,8 +21,13 @@ dependencies = [
     "httpx>=0.28.0",
     "langchain-core>=0.3.0",
     "langchain-community>=0.3.0",
-    "langchain-weaviate>=0.0.6",
 ]
+
+[project.optional-dependencies]
+milvus = ["pymilvus>=2.5.0"]
+weaviate = ["weaviate-client>=4.9.0", "langchain-weaviate>=0.0.6"]
+pgvector = ["pgvector>=0.3.0"]
+vector = ["miles-core[milvus,weaviate,pgvector]"]
 
 [build-system]
 requires = ["hatchling"]

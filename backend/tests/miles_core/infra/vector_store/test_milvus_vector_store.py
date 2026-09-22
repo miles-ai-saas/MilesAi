@@ -158,12 +158,37 @@ def test_upsert_chunk_delegates_to_batch(mock_ensure, mock_client_fn):
 
 
 def test_ensure_collection_skips_second_load(monkeypatch):
+    from pymilvus.client.types import LoadState
+
     from miles_core.infra.vector_store import milvus as m
 
     m._loaded_collections.clear()
     client = MagicMock()
     client.has_collection.return_value = True
     client.list_indexes.return_value = ["idx"]
+    client.get_load_state.return_value = {"state": LoadState.Loaded}
     m._ensure_collection(client, 384)
     m._ensure_collection(client, 384)
     assert client.load_collection.call_count == 1
+
+
+def test_ensure_collection_reloads_after_unload():
+    """进程缓存命中但 Milvus 侧已 unload 时须重新 load。"""
+    from pymilvus.client.types import LoadState
+
+    from miles_core.infra.vector_store import milvus as m
+
+    m._loaded_collections.clear()
+    client = MagicMock()
+    client.has_collection.return_value = True
+    client.list_indexes.return_value = ["idx"]
+    # 首次：尚未 load → 走 load_collection
+    client.get_load_state.return_value = {"state": LoadState.NotLoad}
+    m._ensure_collection(client, 768)
+    assert client.load_collection.call_count == 1
+    assert "document_chunk_768" in m._loaded_collections
+
+    # 模拟外部 unload：缓存仍在，但状态变为 NotLoad
+    client.get_load_state.return_value = {"state": LoadState.NotLoad}
+    m._ensure_collection(client, 768)
+    assert client.load_collection.call_count == 2

@@ -149,8 +149,8 @@ def test_run_ingest_pipeline_rejects_vector_count_mismatch():
         )
 
 
-def test_run_ingest_pipeline_commits_after_clear_before_embed():
-    """清旧 on_before_index 后须 commit，再调 embedding（释放长事务）。"""
+def test_run_ingest_pipeline_embeds_before_clear():
+    """先 embedding，再清旧写入，缩短清旧后的检索空窗。"""
     doc = MagicMock()
     doc.id = uuid4()
     doc.tenant_id = uuid4()
@@ -166,8 +166,6 @@ def test_run_ingest_pipeline_commits_after_clear_before_embed():
     def embed(_db, _kb, texts):
         order.append("embed")
         return [[0.1, 0.2] for _ in texts]
-
-    db.commit.side_effect = lambda: order.append("commit")
 
     with patch(
         "miles_ai.rag.pipeline.ingest.upsert_chunk_vectors",
@@ -190,7 +188,50 @@ def test_run_ingest_pipeline_commits_after_clear_before_embed():
             on_before_index=on_before,
         )
 
-    assert order[:3] == ["clear", "commit", "embed"]
+    assert order[:2] == ["embed", "clear"]
+
+
+def test_run_ingest_pipeline_skips_parse_when_chunks_provided():
+    """L1 已分片时不再 load_documents / chunk。"""
+    from miles_ai.rag.chunk import TextChunk
+
+    doc = MagicMock()
+    doc.id = uuid4()
+    doc.tenant_id = uuid4()
+    doc.kb_id = uuid4()
+    kb = MagicMock()
+    db = MagicMock()
+    _assign_chunk_ids_on_flush(db)
+
+    with (
+        patch("miles_ai.rag.pipeline.ingest.load_documents_from_bytes") as mock_load,
+        patch("miles_ai.rag.pipeline.ingest.chunk_documents") as mock_chunk,
+        patch(
+            "miles_ai.rag.pipeline.ingest.upsert_chunk_vectors",
+            side_effect=lambda items: [f"vec-{i}" for i in range(len(items))],
+        ),
+    ):
+        result = run_ingest_pipeline(
+            db,
+            doc=doc,
+            kb=kb,
+            data=IngestInput(
+                filename="note.txt",
+                mime_type="text/plain",
+                object_key="k/o",
+                object_bucket="bkt",
+                chunk_size=50,
+                chunk_overlap=5,
+            ),
+            embed_texts=lambda _db, _kb, texts: [[0.1, 0.2] for _ in texts],
+            raw=b"ignored-when-chunks",
+            chunks=[TextChunk(content="preparsed-a"), TextChunk(content="preparsed-b")],
+        )
+
+    mock_load.assert_not_called()
+    mock_chunk.assert_not_called()
+    assert result.chunk_count == 2
+    assert result.chunks_text == ["preparsed-a", "preparsed-b"]
 
 
 def test_run_ingest_pipeline_accepts_raw_without_load_bytes():
