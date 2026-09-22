@@ -1,6 +1,8 @@
 """向量存储抽象（L4）。
 
 业务代码请经 miles_ai.rag.index.gateway 读写，勿直接依赖具体 Milvus/pgvector 实现。
+
+单条 ``upsert_chunk`` 的实现可委托 ``upsert_chunks([record])[0]``。
 """
 
 from __future__ import annotations
@@ -47,6 +49,10 @@ class VectorStore(Protocol):
 
     def upsert_chunk(self, record: ChunkVectorRecord) -> str:
         """返回外部向量 ID（写入 PG `kb_vector_refs`）。"""
+        ...
+
+    def upsert_chunks(self, records: list[ChunkVectorRecord]) -> list[str]:
+        """批量写入；返回与 records 等长的 external id 列表。空列表返回 []。"""
         ...
 
     def search(
