@@ -111,3 +111,102 @@ def test_invoke_converts_confirmation_required_to_signal(monkeypatch):
     assert exc.tool_name == "计算器"
     assert exc.tool_description is None
     assert exc.params == {"a": 1}
+
+
+class _RecordingShortSession:
+    """假 AsyncSessionLocal：记录开合与 commit/rollback。"""
+
+    def __init__(self) -> None:
+        self.entered = 0
+        self.exited = 0
+        self.events: list[str] = []
+
+    async def commit(self) -> None:
+        self.events.append("commit")
+
+    async def rollback(self) -> None:
+        self.events.append("rollback")
+
+    async def __aenter__(self) -> "_RecordingShortSession":
+        self.entered += 1
+        return self
+
+    async def __aexit__(self, *exc: object) -> bool:
+        self.exited += 1
+        return False
+
+
+def test_short_session_invoke_commits_on_success(monkeypatch):
+    from miles_portal.tenant.tools.services.agent_executor import (
+        ShortSessionAgentToolExecutor,
+        build_short_session_agent_tool_executor,
+    )
+
+    short = _RecordingShortSession()
+    monkeypatch.setattr(executor_mod, "AsyncSessionLocal", lambda: short)
+
+    seen: list[object] = []
+
+    async def fake_invoke(db, ctx, name, params, **kwargs):
+        seen.append(db)
+        return {"ok": True}
+
+    monkeypatch.setattr(executor_mod, "invoke_tool_with_context", fake_invoke)
+
+    ctx = object()
+    executor = build_short_session_agent_tool_executor(
+        ctx, agent_id=None, actor_user_id=None, invoke_source="agent"
+    )
+    assert isinstance(executor, ShortSessionAgentToolExecutor)
+
+    out = asyncio.run(executor.invoke("calc", {"a": 1}))
+
+    assert out == {"ok": True}
+    assert seen == [short]
+    assert (short.entered, short.exited) == (1, 1)
+    assert short.events == ["commit"]
+
+
+def test_short_session_invoke_rollbacks_on_confirmation(monkeypatch):
+    from miles_portal.tenant.tools.services.agent_executor import ShortSessionAgentToolExecutor
+
+    short = _RecordingShortSession()
+    monkeypatch.setattr(executor_mod, "AsyncSessionLocal", lambda: short)
+
+    async def fake_invoke(*args, **kwargs):
+        raise ToolConfirmationRequired("calc", "计算器", None, {"a": 1})
+
+    monkeypatch.setattr(executor_mod, "invoke_tool_with_context", fake_invoke)
+
+    executor = ShortSessionAgentToolExecutor(
+        object(), agent_id=None, actor_user_id=None, invoke_source="agent"
+    )
+
+    with pytest.raises(ToolConfirmationSignal) as exc_info:
+        asyncio.run(executor.invoke("calc", {"a": 1}))
+
+    assert exc_info.value.slug == "calc"
+    assert short.events == ["rollback"]
+    assert (short.entered, short.exited) == (1, 1)
+
+
+def test_short_session_meta_uses_own_session(monkeypatch):
+    from miles_portal.tenant.tools.services.agent_executor import ShortSessionAgentToolExecutor
+
+    short = _RecordingShortSession()
+    monkeypatch.setattr(executor_mod, "AsyncSessionLocal", lambda: short)
+
+    async def fake_resolve(db, ctx, slug, *, tool_id=None):
+        assert db is short
+        return {"slug": slug}
+
+    monkeypatch.setattr(executor_mod, "resolve_tool_meta", fake_resolve)
+
+    executor = ShortSessionAgentToolExecutor(
+        object(), agent_id=None, actor_user_id=None
+    )
+    out = asyncio.run(executor.meta("calc"))
+
+    assert out == {"slug": "calc"}
+    assert short.events == ["commit"]
+    assert (short.entered, short.exited) == (1, 1)

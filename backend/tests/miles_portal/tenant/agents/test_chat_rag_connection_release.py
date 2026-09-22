@@ -245,3 +245,88 @@ def test_direct_chat_commits_before_llm(monkeypatch):
 
     assert out.answer == "答"
     assert db.events == ["commit", "llm"]
+
+
+def _tool_agent() -> SimpleNamespace:
+    return SimpleNamespace(
+        tenant_id=uuid4(),
+        model_config_id=uuid4(),
+        model_config=MagicMock(),
+        config={"enable_tool_calling": True},
+    )
+
+
+def test_tool_agent_commits_before_run_tool_calling_chat(monkeypatch):
+    """装配完成后 commit 请求会话，再进入 tool_agent 循环（LLM/工具慢 IO）。"""
+    db = _TxnDb()
+    svc = _svc(db)
+    captured: dict[str, object] = {}
+
+    async def fake_assemble(*args, **kwargs):
+        db.events.append("assemble")
+        return []
+
+    async def fake_run_tool_calling_chat(*args, **kwargs):
+        db.events.append("tool_loop")
+        captured["kwargs"] = kwargs
+        return MagicMock(answer="答", sources=[], steps=[])
+
+    monkeypatch.setattr(
+        "miles_portal.tenant.tools.services.agent_tool_assembly.assemble_agent_tools",
+        fake_assemble,
+    )
+    monkeypatch.setattr(
+        "miles_integrations.langchain.tool_agent.run_tool_calling_chat",
+        fake_run_tool_calling_chat,
+    )
+
+    out = _run(
+        AgentChatRagMixin._run_tool_agent(
+            svc,
+            _tool_agent(),
+            ChatRequest(query="问题"),
+            agent_id=uuid4(),
+            system_prompt="sys",
+        )
+    )
+
+    assert out.answer == "答"
+    assert db.events == ["assemble", "commit", "tool_loop"]
+
+
+def test_tool_agent_uses_flow_media_reader_and_short_session_executor(monkeypatch):
+    """tool_agent 循环用 FlowMediaReader + 短会话 executor，不占用请求会话。"""
+    from miles_portal.tenant.tools.services.agent_executor import ShortSessionAgentToolExecutor
+
+    db = _TxnDb()
+    svc = _svc(db)
+    captured: dict[str, object] = {}
+
+    async def fake_assemble(*args, **kwargs):
+        return []
+
+    async def fake_run_tool_calling_chat(*args, **kwargs):
+        captured["kwargs"] = kwargs
+        return MagicMock(answer="答", sources=[], steps=[])
+
+    monkeypatch.setattr(
+        "miles_portal.tenant.tools.services.agent_tool_assembly.assemble_agent_tools",
+        fake_assemble,
+    )
+    monkeypatch.setattr(
+        "miles_integrations.langchain.tool_agent.run_tool_calling_chat",
+        fake_run_tool_calling_chat,
+    )
+
+    _run(
+        AgentChatRagMixin._run_tool_agent(
+            svc,
+            _tool_agent(),
+            ChatRequest(query="问题"),
+            agent_id=uuid4(),
+            system_prompt="sys",
+        )
+    )
+
+    assert isinstance(captured["kwargs"]["media_reader"], FlowMediaReader)
+    assert isinstance(captured["kwargs"]["tool_executor"], ShortSessionAgentToolExecutor)

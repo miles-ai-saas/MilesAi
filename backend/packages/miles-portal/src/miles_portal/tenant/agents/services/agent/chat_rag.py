@@ -18,7 +18,6 @@ from miles_portal.tenant.agents.schemas.agent import ChatRequest, ChatResponse
 from miles_portal.tenant.agents.services.agent.serialization import should_use_tools_with_kb
 from miles_portal.tenant.attachments.services.media_reader import (
     build_flow_media_reader,
-    build_session_media_reader,
 )
 from miles_portal.tenant.compliance.constants import SCAN_MODULE_AGENT_CHAT
 from miles_portal.tenant.flows.repositories.flow import FlowRepository
@@ -245,7 +244,9 @@ class AgentChatRagMixin:
         供 ``knowledge_search`` 省略 kb 与条数参数时回退。
         """
         from miles_integrations.langchain.tool_agent import run_tool_calling_chat
-        from miles_portal.tenant.tools.services.agent_executor import build_agent_tool_executor
+        from miles_portal.tenant.tools.services.agent_executor import (
+            build_short_session_agent_tool_executor,
+        )
         from miles_portal.tenant.tools.services.agent_tool_assembly import assemble_agent_tools
 
         cfg = agent.config if isinstance(agent.config, dict) else {}
@@ -273,8 +274,8 @@ class AgentChatRagMixin:
         model = await self.resolve_invoke_model(agent.model_config)
         usage_sink = self.chat_usage_sink(model, source_id=agent_id)
         platform_tools = await assemble_agent_tools(self.db, self.ctx, agent.config or {})
-        tool_executor = build_agent_tool_executor(
-            self.db,
+        await self.db.commit()  # 释放请求会话；后续 LLM/工具用短会话
+        tool_executor = build_short_session_agent_tool_executor(
             self.ctx,
             agent_id=agent_id,
             actor_user_id=self.ctx.user_id,
@@ -288,7 +289,9 @@ class AgentChatRagMixin:
             usage_sink=usage_sink,
             platform_tools=platform_tools,
             tool_executor=tool_executor,
-            media_reader=build_session_media_reader(self.db, self.ctx),
+            media_reader=build_flow_media_reader(
+                tenant_id=self.ctx.tenant_id, user_id=self.ctx.user_id
+            ),
             kb_ids=list(kb_ids) if kb_ids else None,
         )
 
