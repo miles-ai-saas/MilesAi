@@ -6,7 +6,7 @@
   ``attachment:read`` 权限的 TenantContext；装配点为 chat_rag.flow_run_context
   与 flows flow debug-run。
 - ``SessionMediaReader``：复用调用方 ``db``/``ctx``，适用于已持有租户会话的
-  请求/图节点场景（Agent 对话、RAG、工具循环）。
+  请求/图节点场景（RAG、图节点等）；tool_agent 循环改用 ``FlowMediaReader``。
 
 两者均委托 ``AttachmentService`` 完成租户鉴权 + 对象存储读取。
 """
@@ -67,8 +67,8 @@ def build_flow_media_reader(
 class SessionMediaReader:
     """会话绑定的媒体读取器（复用调用方 ``db``/``ctx``，不再开短会话）。
 
-    适用于请求/图节点已持有租户会话的场景（Agent 对话、RAG、工具循环），
-    与 ``FlowMediaReader``（每调用新开会话）互补。
+    适用于请求/图节点已持有租户会话的场景（RAG、图节点等）；
+    tool_agent 循环装配 ``FlowMediaReader``（每调用新开会话）。
     """
 
     def __init__(self, *, db: AsyncSession, ctx: TenantContext) -> None:
@@ -87,5 +87,5 @@ class SessionMediaReader:
 
 
 def build_session_media_reader(db: AsyncSession, ctx: TenantContext) -> SessionMediaReader:
-    """构造复用既有会话的 ``MediaReader``（装配点：chat_rag / RAG / 工具循环）。"""
+    """构造复用既有会话的 ``MediaReader``（装配点：仍持请求会话的 RAG/图节点）。"""
     return SessionMediaReader(db=db, ctx=ctx)

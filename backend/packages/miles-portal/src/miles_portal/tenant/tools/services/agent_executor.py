@@ -7,7 +7,8 @@
 ``tool_agent.loop.run_tool_calling_chat`` 经 ``tool_executor`` 参数注入使用。
 
 ``ShortSessionAgentToolExecutor`` 每 meta/invoke 自开 ``AsyncSessionLocal``，成功
-commit、确认信号/异常 rollback，使 tool_agent 循环期间不占用请求会话连接。
+或确认信号（需持久化 ``confirmation_required`` 审计日志）时 commit，仅真实
+执行异常 rollback，使 tool_agent 循环期间不占用请求会话连接。
 """
 
 from __future__ import annotations
@@ -111,7 +112,7 @@ class ShortSessionAgentToolExecutor:
         confirmed: bool = False,
         tool_id: UUID | None = None,
     ) -> dict[str, Any]:
-        """短会话执行工具；确认信号不 commit 半写入。"""
+        """短会话执行工具；确认路径 commit 审计日志后再抛 Signal。"""
         async with AsyncSessionLocal() as db:
             try:
                 result = await invoke_tool_with_context(
@@ -128,7 +129,8 @@ class ShortSessionAgentToolExecutor:
                 await db.commit()
                 return result
             except ToolConfirmationRequired as exc:
-                await db.rollback()
+                # halt_for_confirmation 已写入 confirmation_required 审计日志，须提交
+                await db.commit()
                 raise ToolConfirmationSignal(
                     exc.slug,
                     exc.tool_name,

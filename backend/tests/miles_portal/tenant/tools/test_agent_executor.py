@@ -167,7 +167,8 @@ def test_short_session_invoke_commits_on_success(monkeypatch):
     assert short.events == ["commit"]
 
 
-def test_short_session_invoke_rollbacks_on_confirmation(monkeypatch):
+def test_short_session_invoke_commits_on_confirmation(monkeypatch):
+    """确认路径须 commit，以持久化 confirmation_required 审计日志。"""
     from miles_portal.tenant.tools.services.agent_executor import ShortSessionAgentToolExecutor
 
     short = _RecordingShortSession()
@@ -186,6 +187,28 @@ def test_short_session_invoke_rollbacks_on_confirmation(monkeypatch):
         asyncio.run(executor.invoke("calc", {"a": 1}))
 
     assert exc_info.value.slug == "calc"
+    assert short.events == ["commit"]
+    assert (short.entered, short.exited) == (1, 1)
+
+
+def test_short_session_invoke_rollbacks_on_exception(monkeypatch):
+    from miles_portal.tenant.tools.services.agent_executor import ShortSessionAgentToolExecutor
+
+    short = _RecordingShortSession()
+    monkeypatch.setattr(executor_mod, "AsyncSessionLocal", lambda: short)
+
+    async def fake_invoke(*args, **kwargs):
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(executor_mod, "invoke_tool_with_context", fake_invoke)
+
+    executor = ShortSessionAgentToolExecutor(
+        object(), agent_id=None, actor_user_id=None, invoke_source="agent"
+    )
+
+    with pytest.raises(RuntimeError, match="boom"):
+        asyncio.run(executor.invoke("calc", {"a": 1}))
+
     assert short.events == ["rollback"]
     assert (short.entered, short.exited) == (1, 1)
 
