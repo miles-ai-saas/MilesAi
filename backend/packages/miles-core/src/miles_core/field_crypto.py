@@ -9,22 +9,27 @@ from cryptography.fernet import Fernet, InvalidToken
 
 from miles_core.config import get_settings
 
+_fernet_singleton: Fernet | None = None
 
-def _fernet() -> Fernet:
-    digest = hashlib.sha256(get_settings().secret_key.encode("utf-8")).digest()
-    key = base64.urlsafe_b64encode(digest)
-    return Fernet(key)
+
+def _get_fernet() -> Fernet:
+    global _fernet_singleton
+    if _fernet_singleton is None:
+        digest = hashlib.sha256(get_settings().secret_key.encode("utf-8")).digest()
+        key = base64.urlsafe_b64encode(digest)
+        _fernet_singleton = Fernet(key)
+    return _fernet_singleton
 
 
 def encrypt_secret(plain: str) -> str:
     """Fernet 加密明文，返回可入库的 ASCII 密文。"""
-    return _fernet().encrypt(plain.encode("utf-8")).decode("ascii")
+    return _get_fernet().encrypt(plain.encode("utf-8")).decode("ascii")
 
 
 def decrypt_secret(cipher: str) -> str:
     """解密 Fernet 密文；密钥不匹配或密文损坏时抛 ``ValueError``。"""
     try:
-        return _fernet().decrypt(cipher.encode("ascii")).decode("utf-8")
+        return _get_fernet().decrypt(cipher.encode("ascii")).decode("utf-8")
     except InvalidToken as exc:
         raise ValueError("密钥解密失败") from exc
 
