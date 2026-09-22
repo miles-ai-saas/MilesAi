@@ -74,7 +74,7 @@ Expected: `21 /tmp/ai-graph-before.txt`；`git status --porcelain` 输出为空�
 
 ### Task 1: ② 画布流程引擎迁入 `flow_runtime`
 
-把 `compiler/`（6 文件）、`flow_runner.py`、`graph_analysis.py` 搬到 `flow_runtime/`，并改写全部引用。搬完后 `compiler/*` 内的 `flow_runtime.*` 引用变成包内引用，`integrations → flow_runtime` 的 13 条边里的 11 条消失。
+把 `compiler/`（6 文件）、`flow_runner.py`、`graph_analysis.py` 搬到 `flow_runtime/`，并改写全部引用。搬完后 `compiler/*` 内的 `flow_runtime.*` 引用变成包内引用，`integrations → flow_runtime` 的 **13 条边全部消失**（剩余 8 条反向边全部指向 `rag`，属 Task 2/3/5）。
 
 **Files:**
 - Move: `packages/miles-ai/src/miles_ai/integrations/langgraph/compiler/` → `packages/miles-ai/src/miles_ai/flow_runtime/compiler/`（`__init__.py`, `report.py`, `validate.py`, `state.py`, `build.py`, `run.py`）
@@ -319,18 +319,38 @@ def get_flow_runtime() -> LangGraphFlowRuntime:
 
 > `tests/miles_ai/flow_runtime/test_relevance_grade_flow.py` 用 `monkeypatch.setattr(grade_nodes_module, "evaluate_relevance", fake_evaluate)`，本条不改（`grade_nodes` 的 import 属 ③ 桶，Task 2 处理）；monkeypatch 打的是模块属性，搬迁不影响。
 
+**另有 1 处非 import 的路径引用必须一并改** —— `tests/miles_ai/integrations/langgraph/test_canvas_state_contract.py` 是**源码扫描型守卫**（它 AST 解析 `compiler/*.py` 与 `compiler/run.py` 来锁死 `CanvasGraphState` 通道契约），第 22-23 行用字面量拼出编译器目录：
+
+```python
+_BACKEND_DIR = BACKEND_ROOT
+_COMPILER_DIR = _BACKEND_DIR / "packages" / "miles-ai" / "src" / "miles_ai" / "integrations" / "langgraph" / "compiler"
+```
+
+改为（复用 `tests.paths.MILES_AI`，与仓内其余源码扫描守卫同风格；同时删掉 `_BACKEND_DIR` 与不再需要的 `BACKEND_ROOT` import，改为 import `MILES_AI`）：
+
+```python
+_COMPILER_DIR = MILES_AI / "flow_runtime" / "compiler"
+```
+
+并把该常量上方注释里的「已搬到 tests/miles_ai/integrations/langgraph/」改为「已搬到 tests/miles_ai/flow_runtime/（Task 6）」。三个用例的断言**逐字不变**（`_COMPILER_DIR.glob("*.py")` 的文件集合在搬迁前后都是 `__init__/build/report/run/state/validate`）。
+
+> 全仓同类「路径字面量」引用已实测只有这 1 处（`rg -n '"(integrations|langchain|langgraph|compiler|flow_runner|kb_retrieval|vectorstores|visual_embeddings|grading|graphs|constants|runner|state)"\s*/' packages tests --glob '*.py'` 仅命中本行），其余 `MILES_AI / ...` 用法都指向未搬迁的 `flow_runtime/templates/*.json`。
+
 - [ ] **Step 12: 验证**
 
 ```bash
 cd /Users/xiezhigang/Projects/miles/MilesAI/backend
 rg -n "integrations\.langgraph\.(compiler|flow_runner|graph_analysis)" packages tests; echo "--- 期望：无输出"
-rg -c "miles_ai\.(rag|flow_runtime)" packages/miles-ai/src/miles_ai/integrations -g '*.py' | awk -F: '{s+=$2} END {print "反向边剩余:", s+0}'
+echo "=== 反向边剩余（锚定口径，与 Task 0 基线同定义）==="
+rg -n "^\s*(from|import)\s+miles_ai\.(rag|flow_runtime)" packages/miles-ai/src/miles_ai/integrations -g '*.py' | wc -l
 .venv/bin/ruff check . && .venv/bin/ruff format --check .
-.venv/bin/lint-imports | tail -3
-.venv/bin/python -m pytest -q tests/miles_ai/flow_runtime tests/integration
+.venv/bin/import-linter 2>/dev/null || .venv/bin/lint-imports | tail -3
+.venv/bin/python -m pytest -q tests/miles_ai/flow_runtime tests/integration tests/miles_ai/integrations
 ```
 
-Expected: 第一条无输出；`反向边剩余: 10`（21 - 11）；`Contract` 全绿；pytest 全 passed。
+Expected: 第一条无输出；**反向边剩余 `8`**（基线 21 条 = 13 条 `miles_ai.flow_runtime.*`〔全部落在本次搬迁的 `compiler/*`、`graph_analysis.py`、`flow_runner.py` 内〕+ 8 条 `miles_ai.rag.*`〔属 ③ 桶，Task 2/3/5 处理〕，本次消掉全部 13 条）；lint-imports 全绿；pytest 全 passed。
+
+> 不要用 `rg -c "miles_ai\.(rag|flow_runtime)"` 这种**未锚定**写法来数反向边：它会把 docstring 里的路径提及也算进去（本次 Step 10 写入的 `integrations/langgraph/__init__.py` docstring 就会 +1，得 9），与基线的 `^\s*(from|import)` 口径不一致。收尾验收与 Task 0 基线都用锚定口径。
 
 - [ ] **Step 13: 全量验证并提交**
 
@@ -349,8 +369,8 @@ refactor(ai): 画布流程引擎由 integrations 归位到 flow_runtime
 
 integrations/langgraph 按技术名建包，把用 LangGraph 写的画布流程编译器
 也塞进了 L3 适配层，使 integrations 反向依赖 flow_runtime 达 13 条。
-compiler、graph_runner、graph_analysis 迁入 flow_runtime 后，其中 11 条
-成为包内引用，剩余 2 条属暂未归位的 Agent RAG 图引擎。
+compiler、graph_runner、graph_analysis 迁入 flow_runtime 后，这 13 条全部
+成为包内引用；剩余 8 条反向边全部指向 rag，属暂未归位的 Agent RAG 图引擎。
 
 纯搬迁，不改逻辑；对外 import 路径仅 flow_runtime 与 portal flows 服务受影响。
 EOF
