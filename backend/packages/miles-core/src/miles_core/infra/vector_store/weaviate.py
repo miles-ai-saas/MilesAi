@@ -37,7 +37,7 @@ from miles_core.infra.vector_store.documents import (
     TEXT_KEY,
     scored_pairs_to_hits,
 )
-from miles_core.infra.vector_store.langchain_base import upsert_add_texts
+from miles_core.infra.vector_store.langchain_base import upsert_add_texts_many
 from miles_core.infra.vector_store.precomputed import PrecomputedEmbeddings
 
 # 用 stdlib logger：infra 层不触发 miles_core.logging.setup_logging 副作用（与 infra/otel.py 一致）
@@ -142,11 +142,24 @@ class WeaviateVectorStore:
         _ensure_collection()
         self._store(dimension)
 
+    def upsert_chunks(self, records: list[ChunkVectorRecord]) -> list[str]:
+        """批量预计算向量 + 一次 add_texts；同一批次维度必须一致。"""
+        if not records:
+            return []
+        dims = {validate_dimension(len(r.vector)) for r in records}
+        if len(dims) != 1:
+            raise ValueError(f"同一批次向量维度必须一致，收到: {sorted(dims)}")
+        dim = next(iter(dims))
+        self.ensure_schema(dim)
+        return upsert_add_texts_many(
+            self._store(dim),
+            records,
+            embedding_attr="_embedding",
+        )
+
     def upsert_chunk(self, record: ChunkVectorRecord) -> str:
         """预计算向量 + add_texts 写入，返回 chunk 主键。"""
-        dim = validate_dimension(len(record.vector))
-        self.ensure_schema(dim)
-        return upsert_add_texts(self._store(dim), record, embedding_attr="_embedding")
+        return self.upsert_chunks([record])[0]
 
     def search(
         self,

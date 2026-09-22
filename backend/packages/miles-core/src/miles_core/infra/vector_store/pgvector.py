@@ -24,7 +24,10 @@ from miles_core.infra.vector_store.documents import (
     distance_pairs_to_hits,
     pg_metadata_filter,
 )
-from miles_core.infra.vector_store.langchain_base import foreach_dimension, upsert_add_embeddings
+from miles_core.infra.vector_store.langchain_base import (
+    foreach_dimension,
+    upsert_add_embeddings_many,
+)
 from miles_core.infra.vector_store.precomputed import PrecomputedEmbeddings
 
 COLLECTION_PREFIX = "milesai_kb_"
@@ -58,11 +61,20 @@ class PgVectorStore:
         """触发 PGVector 建表/扩展（幂等）。"""
         self._store(validate_dimension(dimension))
 
+    def upsert_chunks(self, records: list[ChunkVectorRecord]) -> list[str]:
+        """批量写入预计算向量；同一批次维度必须一致。"""
+        if not records:
+            return []
+        dims = {validate_dimension(len(r.vector)) for r in records}
+        if len(dims) != 1:
+            raise ValueError(f"同一批次向量维度必须一致，收到: {sorted(dims)}")
+        dim = next(iter(dims))
+        self.ensure_schema(dim)
+        return upsert_add_embeddings_many(self._store(dim), records)
+
     def upsert_chunk(self, record: ChunkVectorRecord) -> str:
         """写入预计算向量与元数据，返回 external id。"""
-        dim = validate_dimension(len(record.vector))
-        self.ensure_schema(dim)
-        return upsert_add_embeddings(self._store(dim), record)
+        return self.upsert_chunks([record])[0]
 
     def search(
         self,

@@ -25,29 +25,61 @@ def upsert_add_texts(store: Any, record: ChunkVectorRecord, *, embedding_attr: s
 
     embedding_attr 多为 ``_embedding``；单次写入只绑定向量列表 [record.vector]。
     """
-    validate_dimension(len(record.vector))
-    doc = chunk_record_to_document(record)
-    setattr(store, embedding_attr, PrecomputedEmbeddings([record.vector]))
-    obj_id = doc.id or str(record.chunk_id)
-    return store.add_texts(
-        texts=[doc.page_content],
-        metadatas=[doc.metadata],
-        ids=[obj_id],
-    )[0]
+    return upsert_add_texts_many(store, [record], embedding_attr=embedding_attr)[0]
+
+
+def upsert_add_texts_many(
+    store: Any,
+    records: list[ChunkVectorRecord],
+    *,
+    embedding_attr: str,
+) -> list[str]:
+    """
+    Weaviate 真批量：一次 PrecomputedEmbeddings(全部向量) + 一次 add_texts。
+
+    embedding_attr 多为 ``_embedding``；与 texts 一一对应注入预计算向量。
+    """
+    if not records:
+        return []
+    docs = [chunk_record_to_document(r) for r in records]
+    vectors = [r.vector for r in records]
+    for v in vectors:
+        validate_dimension(len(v))
+    setattr(store, embedding_attr, PrecomputedEmbeddings(vectors))
+    ids = [doc.id or str(r.chunk_id) for doc, r in zip(docs, records, strict=True)]
+    result = store.add_texts(
+        texts=[doc.page_content for doc in docs],
+        metadatas=[doc.metadata for doc in docs],
+        ids=ids,
+    )
+    if result and len(result) == len(records):
+        return [str(i) for i in result]
+    return ids
 
 
 def upsert_add_embeddings(store: Any, record: ChunkVectorRecord) -> str:
     """pgvector：直接 add_embeddings，不经过 embed_documents 调模型。"""
-    validate_dimension(len(record.vector))
-    doc = chunk_record_to_document(record)
-    obj_id = doc.id or str(record.chunk_id)
-    store.add_embeddings(
-        texts=[doc.page_content],
-        embeddings=[record.vector],
-        metadatas=[doc.metadata],
-        ids=[obj_id],
+    return upsert_add_embeddings_many(store, [record])[0]
+
+
+def upsert_add_embeddings_many(store: Any, records: list[ChunkVectorRecord]) -> list[str]:
+    """pgvector 真批量：一次 add_embeddings(texts/embeddings/metadatas/ids 列表)。"""
+    if not records:
+        return []
+    docs = [chunk_record_to_document(r) for r in records]
+    embeddings = [r.vector for r in records]
+    for emb in embeddings:
+        validate_dimension(len(emb))
+    ids = [doc.id or str(r.chunk_id) for doc, r in zip(docs, records, strict=True)]
+    result = store.add_embeddings(
+        texts=[doc.page_content for doc in docs],
+        embeddings=embeddings,
+        metadatas=[doc.metadata for doc in docs],
+        ids=ids,
     )
-    return obj_id
+    if result and len(result) == len(records):
+        return [str(i) for i in result]
+    return ids
 
 
 def foreach_dimension(
