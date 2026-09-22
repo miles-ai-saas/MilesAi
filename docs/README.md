@@ -162,7 +162,7 @@ ui/                           # 前端应用源码（与 docs/ 并列，见仓�
 
 ## 命名约定
 
-画布编排：**React Flow** 编辑 `graph_json`，**flow_runtime** 注册节点，**integrations.langgraph** 编译执行。
+画布编排：**React Flow** 编辑 `graph_json`，**flow_runtime** 注册节点并编译执行。
 
 ## 代码入口
 

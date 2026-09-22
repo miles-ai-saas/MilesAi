@@ -8,7 +8,7 @@
 backend/
 ├── pyproject.toml           # uv workspace 根（成员 packages/*，收敛 ruff/pytest 配置）
 ├── uv.lock                  # 工作区唯一锁文件
-├── .importlinter            # 6 条包分层契约（make layers-check）
+├── .importlinter            # 8 条包分层契约（make layers-check）
 ├── alembic/                 # 迁移（env.py 引用 miles_core）
 ├── openapi/openapi.snapshot.json
 ├── tests/                   # 单一测试套件（一级目录 = 被测包，见 tests/README.md）

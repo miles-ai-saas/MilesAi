@@ -1,28 +1,30 @@
-"""LangChain / LangGraph / DeepAgents 集成（渐进落地）。"""
+"""LangChain / LangGraph / LiteLLM / DeepAgents 集成（L3）。
+
+包根仅惰性转发仍留在本包的公开符号；RAG / 画布编排见 ``miles_ai.rag`` /
+``miles_ai.flow_runtime``。
+"""
 
 __all__ = [
     "ainvoke_chat",
-    "build_rag_prompt",
-    "generate_rag_answer",
-    "retrieve_hits",
-    "run_rag_workflow",
-    "should_use_langgraph_rag",
-    "split_text",
+    "get_chat_model",
+    "checkpoint_backend",
+    "get_checkpointer",
+    "init_langgraph_checkpointer",
+    "shutdown_langgraph_checkpointer",
 ]
 
 
 def __getattr__(name: str):
-    if name in (
-        "ainvoke_chat",
-        "split_text",
-        "retrieve_hits",
-        "build_rag_prompt",
-        "generate_rag_answer",
-    ):
+    if name in ("ainvoke_chat", "get_chat_model"):
         from miles_integrations import langchain as lc
 
         return getattr(lc, name)
-    if name in ("run_rag_workflow", "should_use_langgraph_rag"):
+    if name in (
+        "checkpoint_backend",
+        "get_checkpointer",
+        "init_langgraph_checkpointer",
+        "shutdown_langgraph_checkpointer",
+    ):
         from miles_integrations import langgraph as lg
 
         return getattr(lg, name)

@@ -11,6 +11,10 @@
 
 注意：本脚本为一次性 codemod，已在 Task 2.2 执行完毕；`app.workers.app`
 一条当时为人工修正（映射到 `miles_worker.app`），保留此处仅为记录，**勿直接重跑**。
+
+其后（2026-09-22）`miles_ai.integrations` 已拆为独立包 `miles_integrations`；
+下方 `app.integrations → miles_ai.integrations` 仍是当时 workspace 改名的历史映射，
+不是现行路径，勿据此再改现码。
 """
 
 from __future__ import annotations

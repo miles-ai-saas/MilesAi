@@ -252,7 +252,7 @@ backend/packages/
 
 - `base.py`：`VectorStore` Protocol、`ChunkVectorRecord`（存储 DTO，带 tenant/kb/chunk 主键）
 - `weaviate.py` / `milvus.py` / `pgvector.py`：后端适配
-- `langchain_base.py`、`precomputed.py`：LC 向量库桥接；Document 映射在 `miles_integrations.langchain.vector.documents`
+- `langchain_base.py`、`precomputed.py`：LC 向量库桥接；Document 映射在 `miles_core.infra.vector_store.documents`
 - `get_vector_store()` 工厂
 
 **已迁出到 `rag/`**：

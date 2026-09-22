@@ -8,7 +8,7 @@
 
 ## 1. 背景与目标
 
-**React Flow** 画布编辑 `graph_json`，**flow_runtime** 注册节点处理器，**integrations.langgraph** 编译为 LangGraph 执行。流程可发布版本、调试运行、编译诊断；智能体绑定 `published_flow_id` 后对话走同一执行链。
+**React Flow** 画布编辑 `graph_json`，**flow_runtime** 注册节点处理器并编译为 LangGraph 执行。流程可发布版本、调试运行、编译诊断；智能体绑定 `published_flow_id` 后对话走同一执行链。
 
 ### 1.1 交付范围
 
