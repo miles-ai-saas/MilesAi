@@ -27,11 +27,11 @@ from uuid import UUID
 
 from sqlalchemy.orm import Session
 
-from miles_ai.integrations.langchain.visual_embeddings import should_use_visual_image_embedding
 from miles_ai.rag.chunk import chunk_documents
 from miles_ai.rag.index.gateway import upsert_chunk_vector
 from miles_ai.rag.parse import vector_type_for_document
 from miles_ai.rag.parse.loaders import load_documents_from_bytes
+from miles_ai.rag.pipeline.visual_policy import should_use_visual_image_embedding
 from miles_core.models.kb import Document, DocumentChunk, KnowledgeBase, VectorRef
 
 

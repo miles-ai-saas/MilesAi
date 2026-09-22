@@ -7,12 +7,8 @@ import numpy as np
 import pytest
 
 from miles_ai.integrations.embeddings.constants import EXTRA_EMBEDDING_DIMENSION, INVOKE_MODE_CLIP
+from miles_ai.integrations.embeddings.policy import ensure_clip_model
 from miles_ai.integrations.embeddings.providers.clip import ClipEmbeddingProvider
-from miles_ai.integrations.langchain.visual_embeddings import (
-    ensure_clip_model,
-    should_use_visual_image_embedding,
-)
-from miles_core.models.kb import KnowledgeBase
 from miles_core.models.model import ModelConfig
 from miles_core.models.model.catalog import ModelCapabilityType
 
@@ -27,18 +23,6 @@ def _clip_model() -> ModelConfig:
         model_type=ModelCapabilityType.EMBEDDING.value,
         extra={"invoke_mode": INVOKE_MODE_CLIP, EXTRA_EMBEDDING_DIMENSION: 512},
     )
-
-
-def test_should_use_visual_image_embedding():
-    kb = KnowledgeBase(
-        id=uuid4(),
-        tenant_id=uuid4(),
-        name="kb",
-        embedding_model_config_id=uuid4(),
-        visual_embedding_model_config_id=uuid4(),
-    )
-    assert should_use_visual_image_embedding(kb, "photo.jpg", "image/jpeg") is True
-    assert should_use_visual_image_embedding(kb, "doc.pdf", "application/pdf") is False
 
 
 def test_ensure_clip_model_rejects_text_embedding():

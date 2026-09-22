@@ -51,7 +51,7 @@ async def embed_query_for_kb(db: AsyncSession, tenant_id: UUID, kb: KnowledgeBas
 
 def _ensure_clip(model) -> None:
     """视觉模型必须为 CLIP（复用 L3 纯校验，避免重复实现）。"""
-    from miles_ai.integrations.langchain.visual_embeddings import ensure_clip_model
+    from miles_ai.integrations.embeddings.policy import ensure_clip_model
 
     ensure_clip_model(model)
 

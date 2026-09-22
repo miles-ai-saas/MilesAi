@@ -6,7 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from miles_ai.integrations.embeddings.model_meta import embedding_dimension_from_model
-from miles_ai.integrations.langchain.visual_embeddings import ensure_clip_model
+from miles_ai.integrations.embeddings.policy import ensure_clip_model
 from miles_common.exceptions import NotFoundError
 from miles_common.schema import PageParams, PageResult
 from miles_core.models.kb import Document, KnowledgeBase
