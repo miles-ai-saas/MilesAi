@@ -6,8 +6,8 @@ from miles_ai.flow_runtime.constants import (
     CanvasNodeType,
 )
 from miles_ai.flow_runtime.nodes.registry import NODE_REGISTRY
-from miles_ai.integrations.langgraph import constants as lg_constants
-from miles_ai.integrations.langgraph.constants import GRADE_BRANCH_HANDLES
+from miles_ai.rag.graph import constants as lg_constants
+from miles_ai.rag.graph.constants import GRADE_BRANCH_HANDLES
 from miles_portal.tenant.compliance.constants import COMPLIANCE_SCAN_MODULES
 
 

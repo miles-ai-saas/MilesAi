@@ -5,9 +5,9 @@ from uuid import uuid4
 
 import pytest
 
-from miles_ai.integrations.langgraph.graphs.rag_qa import fallback, generate
-from miles_ai.integrations.langgraph.runner import run_rag_workflow
 from miles_ai.rag.generate.answer import generate_rag_answer
+from miles_ai.rag.graph.rag_qa import fallback, generate
+from miles_ai.rag.graph.runner import run_rag_workflow
 from tests.miles_ai.integrations.litellm.test_litellm_adapter import _model
 
 
@@ -49,7 +49,7 @@ async def test_run_rag_workflow_forwards_on_delta_to_config():
     )
 
     with patch(
-        "miles_ai.integrations.langgraph.runner.get_compiled_rag_graph",
+        "miles_ai.rag.graph.runner.get_compiled_rag_graph",
         return_value=mock_graph,
     ):
         await run_rag_workflow(
@@ -131,7 +131,7 @@ async def test_fallback_node_forwards_on_delta():
 @pytest.mark.asyncio
 async def test_llm_grade_does_not_forward_on_delta():
     """grade 节点 LLM 评判不应透传 on_delta。"""
-    from miles_ai.integrations.langgraph.graphs.rag_qa import grade_documents
+    from miles_ai.rag.graph.rag_qa import grade_documents
 
     tenant_id = uuid4()
     model = _model()
@@ -150,7 +150,7 @@ async def test_llm_grade_does_not_forward_on_delta():
     config = {"configurable": {"model": model, "on_delta": delta}}
 
     with patch(
-        "miles_ai.integrations.langgraph.graphs.rag_qa.llm_grade_relevance",
+        "miles_ai.rag.graph.rag_qa.llm_grade_relevance",
         new_callable=AsyncMock,
         return_value=("good", "ok"),
     ) as mock_grade:

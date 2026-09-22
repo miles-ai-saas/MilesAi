@@ -8,8 +8,8 @@ from miles_ai.flow_runtime.types import RunContext
 from miles_ai.integrations.chat.multimodal import build_user_message, resolve_media_refs
 from miles_ai.integrations.generative.image.prompt_guard import user_requests_image_collage
 from miles_ai.integrations.langchain.chat_models import OnDelta, ainvoke_chat
-from miles_ai.integrations.langgraph.runner import run_rag_workflow, should_use_langgraph_rag
 from miles_ai.rag.generate import build_rag_prompt, format_hits_context, generate_rag_answer, retrieve_hits
+from miles_ai.rag.graph.runner import run_rag_workflow, should_use_langgraph_rag
 from miles_core.infra.db import AsyncSessionLocal
 from miles_core.models.agent import Agent
 from miles_core.models.model import ModelConfig

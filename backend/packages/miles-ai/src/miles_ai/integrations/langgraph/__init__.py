@@ -1,22 +1,22 @@
 """
-LangGraph 集成包。
+LangGraph 集成包（L3）：仅保留 checkpointer 生命周期。
 
-子模块
-------
-- ``runner``：Agent RAG 图执行（``run_rag_workflow``）
-- ``graphs.rag_qa``：检索→评分→生成/重试/兜底
-- ``checkpointer``：Redis/内存多轮状态
+RAG 图引擎已归位 ``miles_ai.rag.graph``，画布流程引擎已归位 ``miles_ai.flow_runtime``；
+本包不再 re-export 上层编排，避免 L3 反向依赖 L2。
 
-画布 ``graph_json`` 编译与运行见 ``miles_ai.flow_runtime.{compiler,graph_runner,graph_analysis}``。
+应用启动时经 ``init_langgraph_checkpointer`` 绑定 Redis/Memory，关闭时 ``shutdown_langgraph_checkpointer``。
 """
 
-__all__ = ["run_rag_workflow", "should_use_langgraph_rag"]
+from miles_ai.integrations.langgraph.checkpointer import (
+    checkpoint_backend,
+    get_checkpointer,
+    init_langgraph_checkpointer,
+    shutdown_langgraph_checkpointer,
+)
 
-
-def __getattr__(name: str):
-    """延迟导出 runner，避免 import 环。"""
-    if name in __all__:
-        from miles_ai.integrations.langgraph.runner import run_rag_workflow, should_use_langgraph_rag
-
-        return {"run_rag_workflow": run_rag_workflow, "should_use_langgraph_rag": should_use_langgraph_rag}[name]
-    raise AttributeError(name)
+__all__ = [
+    "checkpoint_backend",
+    "get_checkpointer",
+    "init_langgraph_checkpointer",
+    "shutdown_langgraph_checkpointer",
+]

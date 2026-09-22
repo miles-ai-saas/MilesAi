@@ -17,8 +17,8 @@ import re
 from typing import Any
 
 from miles_ai.integrations.langchain.chat_models import ainvoke_chat
-from miles_ai.integrations.langgraph.constants import RELEVANCE_GOOD, RELEVANCE_NONE, RELEVANCE_POOR
 from miles_ai.rag.generate import format_hits_context
+from miles_ai.rag.graph.constants import RELEVANCE_GOOD, RELEVANCE_NONE, RELEVANCE_POOR
 from miles_core.models.model import ModelConfig
 
 _GRADE_VALUES = "|".join(re.escape(v) for v in (RELEVANCE_GOOD, RELEVANCE_POOR, RELEVANCE_NONE))

@@ -13,7 +13,7 @@ START → retrieve（``retrieve_hits`` 多 KB；仅用 ``query`` 文本，不用
 ``query`` 用于检索；``prompt_query`` 写入生成 prompt（Agent 附图场景可与 query 不同）。
 有附图（``state.media``）但 configurable 缺 ``media_reader`` 时显式报错，避免静默丢图。
 
-状态字段见 ``integrations.langgraph.state.RAGGraphState``；
+状态字段见 ``rag.graph.state.RAGGraphState``；
 ``agent.config`` 可设 ``rag_max_retries``、``relevance_threshold``、``use_llm_grade``。
 """
 
@@ -26,10 +26,10 @@ from langchain_core.runnables import RunnableConfig
 from langgraph.graph import END, START, StateGraph
 
 from miles_ai.integrations.chat.multimodal import media_refs_from_items
-from miles_ai.integrations.langgraph.constants import RELEVANCE_NONE, RELEVANCE_POOR
-from miles_ai.integrations.langgraph.grading import _score_grade, llm_grade_relevance
-from miles_ai.integrations.langgraph.state import RAGGraphState
 from miles_ai.rag.generate import build_rag_prompt, format_hits_context, generate_rag_answer, retrieve_hits
+from miles_ai.rag.graph.constants import RELEVANCE_NONE, RELEVANCE_POOR
+from miles_ai.rag.graph.grading import _score_grade, llm_grade_relevance
+from miles_ai.rag.graph.state import RAGGraphState
 from miles_core.infra.db import AsyncSessionLocal
 from miles_core.models.model import ModelConfig
 

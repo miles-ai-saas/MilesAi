@@ -6,7 +6,7 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from miles_ai.integrations.langgraph.runner import should_use_langgraph_rag
+from miles_ai.rag.graph.runner import should_use_langgraph_rag
 from miles_common.exceptions import NotFoundError
 from miles_core.models.agent import Agent, AgentType
 from miles_core.service import BaseService

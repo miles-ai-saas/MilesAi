@@ -7,7 +7,7 @@ RAG 生成子包（L2，线性路径）。
 - ``build_rag_prompt`` / ``generate_rag_answer``：拼 prompt + 生成（生成阶段无 db）
 - ``format_hits_context`` / ``build_rag_user_prompt``：拼 LLM 输入
 
-Agent 默认多轮 RAG 图见 ``integrations.langgraph.graphs.rag_qa``，非本包。
+Agent 默认多轮 RAG 图见 ``rag.graph.rag_qa``，非本包。
 """
 
 from miles_ai.rag.generate.answer import (

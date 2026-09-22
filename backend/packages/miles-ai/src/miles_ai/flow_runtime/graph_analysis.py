@@ -15,7 +15,7 @@ from typing import Any
 
 from miles_ai.flow_runtime.constants import TEXT_OUTPUT_NODE_TYPES
 from miles_ai.flow_runtime.types import FlowGraph
-from miles_ai.integrations.langgraph.constants import GRADE_BRANCH_HANDLES
+from miles_ai.rag.graph.constants import GRADE_BRANCH_HANDLES
 
 
 def _edge_endpoints(edge: dict[str, Any]) -> tuple[str | None, str | None, str, str]:

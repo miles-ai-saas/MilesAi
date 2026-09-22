@@ -6,8 +6,8 @@ from uuid import uuid4
 import pytest
 
 from miles_ai.integrations.chat.multimodal import build_invoke_messages_with_media
-from miles_ai.integrations.langgraph.graphs.rag_qa import _prompt_user_query, fallback, generate
-from miles_ai.integrations.langgraph.runner import run_rag_workflow
+from miles_ai.rag.graph.rag_qa import _prompt_user_query, fallback, generate
+from miles_ai.rag.graph.runner import run_rag_workflow
 from miles_common.exceptions import BadRequestError
 from miles_common.schemas.media import MediaRefIn
 
@@ -82,7 +82,7 @@ async def test_run_rag_workflow_passes_media_in_initial():
     reader = object()
 
     with patch(
-        "miles_ai.integrations.langgraph.runner.get_compiled_rag_graph",
+        "miles_ai.rag.graph.runner.get_compiled_rag_graph",
         return_value=mock_graph,
     ):
         await run_rag_workflow(

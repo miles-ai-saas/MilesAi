@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from miles_ai.integrations.langgraph.runner import should_use_langgraph_rag
+from miles_ai.rag.graph.runner import should_use_langgraph_rag
 from miles_core.models.agent import Agent
 from miles_portal.tenant.agents.schemas.agent import ChatResponse
 from miles_portal.tenant.agents.services.agent.serialization import should_use_tools_with_kb

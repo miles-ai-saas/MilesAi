@@ -9,9 +9,9 @@
 from unittest.mock import AsyncMock
 from uuid import uuid4
 
-import miles_ai.integrations.langgraph.graphs.rag_qa as rag_qa
 import miles_ai.rag.generate.answer as answer_mod
-from miles_ai.integrations.langgraph.graphs.rag_qa import build_rag_qa_graph
+import miles_ai.rag.graph.rag_qa as rag_qa
+from miles_ai.rag.graph.rag_qa import build_rag_qa_graph
 from miles_portal.tenant.models.services.usage import (
     UsageRecordContext,
     begin_chat_usage_accumulation,

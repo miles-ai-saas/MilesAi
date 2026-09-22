@@ -9,8 +9,8 @@ from uuid import uuid4
 
 import pytest
 
-import miles_ai.integrations.langgraph.graphs.rag_qa as rag_qa_mod
-from miles_ai.integrations.langgraph.graphs.rag_qa import fallback, generate, retrieve
+import miles_ai.rag.graph.rag_qa as rag_qa_mod
+from miles_ai.rag.graph.rag_qa import fallback, generate, retrieve
 
 
 class _RecordingShortSession:
@@ -45,7 +45,7 @@ def _state(*, hits: list | None = None) -> dict:
 async def test_generate_node_uses_generate_rag_answer():
     config = {"configurable": {"model": MagicMock()}}
     with patch(
-        "miles_ai.integrations.langgraph.graphs.rag_qa.generate_rag_answer",
+        "miles_ai.rag.graph.rag_qa.generate_rag_answer",
         new_callable=AsyncMock,
         return_value="答案",
     ) as mock_gen:
@@ -62,7 +62,7 @@ async def test_generate_node_uses_generate_rag_answer():
 async def test_fallback_node_uses_generate_rag_answer():
     config = {"configurable": {"model": MagicMock()}}
     with patch(
-        "miles_ai.integrations.langgraph.graphs.rag_qa.generate_rag_answer",
+        "miles_ai.rag.graph.rag_qa.generate_rag_answer",
         new_callable=AsyncMock,
         return_value="兜底",
     ) as mock_gen:
@@ -79,7 +79,7 @@ async def test_generate_node_passes_hits_prompt_for_low_relevance_fallback():
     """fallback 有命中时用「相关性较低」话术（与 generate 的正常 prompt 区分）。"""
     config = {"configurable": {"model": MagicMock()}}
     with patch(
-        "miles_ai.integrations.langgraph.graphs.rag_qa.generate_rag_answer",
+        "miles_ai.rag.graph.rag_qa.generate_rag_answer",
         new_callable=AsyncMock,
         return_value="兜底",
     ) as mock_gen:
