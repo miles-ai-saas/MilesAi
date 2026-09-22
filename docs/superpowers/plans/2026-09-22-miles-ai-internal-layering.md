@@ -17,7 +17,7 @@
 - 所有命令在 `/Users/xiezhigang/Projects/miles/MilesAI/backend` 下执行。
 - 测试一律用 `.venv/bin/python -m pytest`：`tests.paths` / `tests.conftest` 依赖 `backend/` 在 `sys.path`。
 - 基线（2026-09-22，main `3de8a44d`）：`1517 tests collected`；`lint-imports` = **7 kept, 0 broken**。
-- **纯搬迁：禁止改逻辑、断言、fixture、函数签名。** 唯一的代码改写是 import 语句、模块 docstring 里的路径提及，以及 §Task 4 / Task 5 明确规定的两个「文件内手术」与一个新增模块。
+- **纯搬迁：禁止改逻辑、断言、fixture、函数签名。** 唯一的代码改写是 import 语句、模块 docstring 里的路径提及，以及本计划明确列举的例外：Task 4 与 Task 5 的两处「文件内手术」（拆分 `checkpointer.py`、拆除 `visual_embeddings.py`）和四处新增模块（`rag/graph/__init__.py`、`rag/graph/compiled.py`、`rag/pipeline/visual_policy.py`、`integrations/embeddings/policy.py`）。除此外不得增删任何函数或分支。
 - `git mv` 保留 rename 历史；每个 Task 一个提交，message 用简体中文 Conventional Commits（`refactor(ai): …`）。
 - **import 顺序**：`ruff` 已启用 `I`（isort），`select = ["E", "F", "I", "B", "UP", "RUF"]`。每个 Task 改完 import 后先跑 `.venv/bin/ruff check --select I --fix .` 自动排序，再跑 `.venv/bin/ruff format .`；不要手工猜顺序。本计划给出的 import 块已按 isort 排好，若与 `--fix` 结果冲突以 `--fix` 为准。
 - 每个 Task 结束必须全绿：`.venv/bin/ruff check .`、`.venv/bin/ruff format --check .`、`.venv/bin/lint-imports`、`.venv/bin/python -m pytest -q`、`.venv/bin/python -m miles_server.scripts.export_openapi --check`。
@@ -955,9 +955,10 @@ echo "--- 期望：仅 rag/graph/compiled.py 定义处 + rag/graph/runner.py 使
 rg -n "miles_ai\.(rag|flow_runtime)" packages/miles-ai/src/miles_ai/integrations -g '*.py'; echo "--- 期望：仅 visual_embeddings.py（Task 5 处理）"
 .venv/bin/ruff check . && .venv/bin/ruff format --check . && .venv/bin/lint-imports | tail -3
 .venv/bin/python -m pytest -q
+.venv/bin/python -m miles_server.scripts.export_openapi --check
 ```
 
-Expected: pytest `1517 passed`（checkpointer 相关用例与 lifespan 冒烟一并通过）。
+Expected: pytest `1517 passed`（checkpointer 相关用例与 lifespan 冒烟一并通过）；OpenAPI 零漂移。
 
 ```bash
 cd /Users/xiezhigang/Projects/miles/MilesAI/backend
