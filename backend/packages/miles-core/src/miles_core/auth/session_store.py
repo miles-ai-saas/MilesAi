@@ -45,9 +45,12 @@ async def register_session(
         "created_at": now,
         "last_seen_at": now,
     }
-    await redis.setex(_entry_key(user_id, jti), SESSION_TTL_SECONDS, json.dumps(meta))
-    await redis.sadd(_index_key(user_id), jti)
-    await redis.expire(_index_key(user_id), SESSION_TTL_SECONDS)
+    index_key = _index_key(user_id)
+    pipe = redis.pipeline(transaction=False)
+    pipe.setex(_entry_key(user_id, jti), SESSION_TTL_SECONDS, json.dumps(meta))
+    pipe.sadd(index_key, jti)
+    pipe.expire(index_key, SESSION_TTL_SECONDS)
+    await pipe.execute()
 
 
 async def touch_session(
@@ -113,18 +116,33 @@ async def blacklist_token(access_token: str) -> None:
 async def list_sessions(user_id: UUID) -> list[dict]:
     """列出用户会话元数据（按创建时间倒序），顺带清理索引中已失效的 jti。"""
     redis = await get_redis()
-    jtis = await redis.smembers(_index_key(user_id))
+    index_key = _index_key(user_id)
+    jtis = list(await redis.smembers(index_key))
+    if not jtis:
+        return []
+
+    keys = [_entry_key(user_id, jti) for jti in jtis]
+    raws = await redis.mget(keys)
+
     out: list[dict] = []
-    for jti in sorted(jtis):
-        raw = await redis.get(_entry_key(user_id, jti))
+    stale: list[str] = []
+    for jti, raw in zip(jtis, raws, strict=True):
         if not raw:
-            await redis.srem(_index_key(user_id), jti)
+            stale.append(jti)
             continue
         try:
             out.append(json.loads(raw))
         except json.JSONDecodeError:
             # 静默可接受：会话元数据已损坏；跳过该 jti（与 touch_session 一致，用户重新登录即可）。
+            stale.append(jti)
             continue
+
+    if stale:
+        pipe = redis.pipeline(transaction=False)
+        for jti in stale:
+            pipe.srem(index_key, jti)
+        await pipe.execute()
+
     out.sort(key=lambda x: x.get("created_at") or "", reverse=True)
     return out
 
@@ -132,24 +150,29 @@ async def list_sessions(user_id: UUID) -> list[dict]:
 async def revoke_session(user_id: UUID, jti: str, *, access_token: str | None = None) -> None:
     """吊销单会话；传入 access_token 时按其原过期时间加黑名单。"""
     redis = await get_redis()
+    pipe = redis.pipeline(transaction=False)
     if access_token:
         await blacklist_token(access_token)
     else:
-        await redis.setex(RedisKeys.token_blacklist(jti), SESSION_TTL_SECONDS, "1")
-    await redis.delete(_entry_key(user_id, jti))
-    await redis.srem(_index_key(user_id), jti)
+        pipe.setex(RedisKeys.token_blacklist(jti), SESSION_TTL_SECONDS, "1")
+    pipe.delete(_entry_key(user_id, jti))
+    pipe.srem(_index_key(user_id), jti)
+    await pipe.execute()
 
 
 async def revoke_all_sessions(user_id: UUID, *, keep_jti: str | None = None) -> int:
-    """吊销用户全部会话（可保留 keep_jti），逐个加入黑名单并返回吊销数。"""
+    """吊销用户全部会话（可保留 keep_jti），pipeline 批量加黑名单并返回吊销数。"""
     redis = await get_redis()
-    jtis = await redis.smembers(_index_key(user_id))
-    revoked = 0
-    for jti in jtis:
-        if keep_jti and jti == keep_jti:
-            continue
-        await redis.setex(RedisKeys.token_blacklist(jti), SESSION_TTL_SECONDS, "1")
-        await redis.delete(_entry_key(user_id, jti))
-        await redis.srem(_index_key(user_id), jti)
-        revoked += 1
-    return revoked
+    index_key = _index_key(user_id)
+    jtis = await redis.smembers(index_key)
+    targets = [jti for jti in jtis if not (keep_jti and jti == keep_jti)]
+    if not targets:
+        return 0
+
+    pipe = redis.pipeline(transaction=False)
+    for jti in targets:
+        pipe.setex(RedisKeys.token_blacklist(jti), SESSION_TTL_SECONDS, "1")
+        pipe.delete(_entry_key(user_id, jti))
+        pipe.srem(index_key, jti)
+    await pipe.execute()
+    return len(targets)
