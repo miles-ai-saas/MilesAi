@@ -70,6 +70,16 @@ def _tracking_sync_db_factory(doc: Document, kb: KnowledgeBase):
     return _fake_sync_db, entries
 
 
+def _patch_storage_download(raw: bytes = b"hello world " * 20):
+    storage = MagicMock()
+    storage.download_bytes.return_value = raw
+    resolved = MagicMock(storage=storage)
+    return patch(
+        "miles_portal.tenant.kb.services.ingest.resolve_object_storage_sync",
+        return_value=resolved,
+    )
+
+
 def test_run_ingest_commits_parsing_and_embedding_before_pipeline():
     doc, kb = _sample_doc_kb()
     fake_sync_db, entries = _tracking_sync_db_factory(doc, kb)
@@ -79,10 +89,13 @@ def test_run_ingest_commits_parsing_and_embedding_before_pipeline():
         statuses_committed_before_pipeline[:] = [
             e["status_on_exit"] for e in entries if e["committed"]
         ]
+        assert _kwargs.get("raw") is not None
+        assert _kwargs.get("load_bytes") is None
         return MagicMock(chunk_count=1)
 
     with (
         patch("miles_portal.tenant.kb.services.ingest.get_sync_db", fake_sync_db),
+        _patch_storage_download(),
         patch(
             "miles_portal.tenant.kb.services.ingest.run_ingest_pipeline",
             side_effect=_pipeline,
@@ -113,6 +126,7 @@ def test_run_ingest_failure_uses_fresh_session_for_persist():
 
     with (
         patch("miles_portal.tenant.kb.services.ingest.get_sync_db", fake_sync_db),
+        _patch_storage_download(),
         patch(
             "miles_portal.tenant.kb.services.ingest.run_ingest_pipeline",
             side_effect=_pipeline,
@@ -125,9 +139,69 @@ def test_run_ingest_failure_uses_fresh_session_for_persist():
         with pytest.raises(RuntimeError, match="embed failed"):
             run_ingest(str(doc.id))
 
-    # PARSING + EMBEDDING + pipeline(失败回滚) + 失败会话
+    # PARSING + resolve storage + EMBEDDING + pipeline(失败回滚) + 失败会话
     assert len(entries) >= 4
     assert entries[-1]["committed"] is True
     assert len(persist_db_ids) == 1
     assert persist_db_ids[0] == entries[-1]["db_id"]
     assert persist_db_ids[0] not in pipeline_db_ids
+
+
+def test_run_ingest_empty_text_fails_as_parsing():
+    """会话外 parse 空文本须以 phase=PARSING 失败（PARSE_FAILED），不得进 EMBEDDING。"""
+    doc, kb = _sample_doc_kb()
+    fake_sync_db, entries = _tracking_sync_db_factory(doc, kb)
+    phases: list[DocumentStatus] = []
+
+    def _persist(_db, _doc, *, phase, exc):
+        phases.append(phase)
+        assert "未能提取有效文本" in str(exc)
+
+    with (
+        patch("miles_portal.tenant.kb.services.ingest.get_sync_db", fake_sync_db),
+        _patch_storage_download(raw=b"   \n\t  "),
+        patch(
+            "miles_portal.tenant.kb.services.ingest.run_ingest_pipeline",
+            side_effect=AssertionError("空文本不应进入 pipeline"),
+        ),
+        patch(
+            "miles_portal.tenant.kb.services.ingest.persist_document_ingest_failure",
+            side_effect=_persist,
+        ),
+    ):
+        with pytest.raises(ValueError, match="未能提取有效文本"):
+            run_ingest(str(doc.id))
+
+    assert phases == [DocumentStatus.PARSING]
+    assert DocumentStatus.EMBEDDING not in [e["status_on_exit"] for e in entries if e["committed"]]
+
+
+def test_run_ingest_download_failure_stays_parsing():
+    """S3 下载失败发生在 EMBEDDING 之前，phase 保持 PARSING。"""
+    doc, kb = _sample_doc_kb()
+    fake_sync_db, _entries = _tracking_sync_db_factory(doc, kb)
+    phases: list[DocumentStatus] = []
+
+    storage = MagicMock()
+    storage.download_bytes.side_effect = RuntimeError("s3 down")
+    resolved = MagicMock(storage=storage)
+
+    def _persist(_db, _doc, *, phase, exc):
+        phases.append(phase)
+        assert "s3 down" in str(exc)
+
+    with (
+        patch("miles_portal.tenant.kb.services.ingest.get_sync_db", fake_sync_db),
+        patch(
+            "miles_portal.tenant.kb.services.ingest.resolve_object_storage_sync",
+            return_value=resolved,
+        ),
+        patch(
+            "miles_portal.tenant.kb.services.ingest.persist_document_ingest_failure",
+            side_effect=_persist,
+        ),
+    ):
+        with pytest.raises(RuntimeError, match="s3 down"):
+            run_ingest(str(doc.id))
+
+    assert phases == [DocumentStatus.PARSING]

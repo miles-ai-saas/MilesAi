@@ -147,3 +147,106 @@ def test_run_ingest_pipeline_rejects_vector_count_mismatch():
             embed_texts=embed,
             load_bytes=lambda _key, _bucket: b"hello world " * 20,
         )
+
+
+def test_run_ingest_pipeline_commits_after_clear_before_embed():
+    """清旧 on_before_index 后须 commit，再调 embedding（释放长事务）。"""
+    doc = MagicMock()
+    doc.id = uuid4()
+    doc.tenant_id = uuid4()
+    doc.kb_id = uuid4()
+    kb = MagicMock()
+    db = MagicMock()
+    _assign_chunk_ids_on_flush(db)
+    order: list[str] = []
+
+    def on_before(_session, _doc_id):
+        order.append("clear")
+
+    def embed(_db, _kb, texts):
+        order.append("embed")
+        return [[0.1, 0.2] for _ in texts]
+
+    db.commit.side_effect = lambda: order.append("commit")
+
+    with patch(
+        "miles_ai.rag.pipeline.ingest.upsert_chunk_vectors",
+        side_effect=lambda items: [f"vec-{i}" for i in range(len(items))],
+    ):
+        run_ingest_pipeline(
+            db,
+            doc=doc,
+            kb=kb,
+            data=IngestInput(
+                filename="note.txt",
+                mime_type="text/plain",
+                object_key="k/o",
+                object_bucket="bkt",
+                chunk_size=50,
+                chunk_overlap=5,
+            ),
+            embed_texts=embed,
+            raw=b"hello world " * 20,
+            on_before_index=on_before,
+        )
+
+    assert order[:3] == ["clear", "commit", "embed"]
+
+
+def test_run_ingest_pipeline_accepts_raw_without_load_bytes():
+    """预加载 raw 时跳过 load_bytes（L1 会话外下载）。"""
+    doc = MagicMock()
+    doc.id = uuid4()
+    doc.tenant_id = uuid4()
+    doc.kb_id = uuid4()
+    kb = MagicMock()
+    db = MagicMock()
+    _assign_chunk_ids_on_flush(db)
+    load_called = False
+
+    def load_bytes(_k, _b):
+        nonlocal load_called
+        load_called = True
+        raise AssertionError("不应调用 load_bytes")
+
+    with patch(
+        "miles_ai.rag.pipeline.ingest.upsert_chunk_vectors",
+        side_effect=lambda items: [f"vec-{i}" for i in range(len(items))],
+    ):
+        result = run_ingest_pipeline(
+            db,
+            doc=doc,
+            kb=kb,
+            data=IngestInput(
+                filename="note.txt",
+                mime_type="text/plain",
+                object_key="k/o",
+                object_bucket="bkt",
+                chunk_size=50,
+                chunk_overlap=5,
+            ),
+            embed_texts=lambda _db, _kb, texts: [[0.1, 0.2] for _ in texts],
+            raw=b"hello world " * 20,
+            load_bytes=load_bytes,
+        )
+
+    assert result.chunk_count >= 1
+    assert load_called is False
+
+
+def test_run_ingest_pipeline_requires_raw_or_load_bytes():
+    with pytest.raises(ValueError, match="raw 与 load_bytes"):
+        run_ingest_pipeline(
+            MagicMock(),
+            doc=MagicMock(),
+            kb=MagicMock(),
+            data=IngestInput(
+                filename="note.txt",
+                mime_type="text/plain",
+                object_key="k/o",
+                object_bucket="bkt",
+                chunk_size=50,
+                chunk_overlap=5,
+            ),
+            embed_texts=lambda *_a, **_k: [],
+        )

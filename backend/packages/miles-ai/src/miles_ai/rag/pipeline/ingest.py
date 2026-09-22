@@ -8,9 +8,9 @@
 
 顺序与一致性
 ------------
-1. 从对象存储读字节 → ``load_documents_from_bytes``（按 mime/扩展名选 parser）
+1. 从对象存储读字节（或接受预加载 ``raw``）→ ``load_documents_from_bytes``（按 mime/扩展名选 parser）
 2. ``chunk_documents`` 分片（chunk_size/overlap 来自 KB）
-3. 可选 ``on_before_index``：删旧 PG chunk、vector_ref 及向量库记录（覆盖入库）
+3. 可选 ``on_before_index``：删旧 PG chunk、vector_ref 及向量库记录（覆盖入库）；随后 ``db.commit`` 释放清旧事务
 4. 向量化（**唯一**调 embedding API 的环节）：文本走 ``embed_texts``；图片（CLIP 视觉 KB）
    走注入的 ``embed_visual_chunks`` 回调——按 KB 绑定的 CLIP 模型向量化图片字节
 5. 全部分片：一次 flush 拿 chunk.id → ``gateway.upsert_chunk_vectors`` → 再写 ``VectorRef``
@@ -81,16 +81,21 @@ def run_ingest_pipeline(
     data: IngestInput,
     embed_texts: EmbedTextsForKb,
     embed_visual_chunks: EmbedVisualChunks | None = None,
-    load_bytes: LoadObjectBytes,
+    load_bytes: LoadObjectBytes | None = None,
+    raw: bytes | None = None,
     on_before_index: Callable[[Session, UUID], None] | None = None,
 ) -> IngestResult:
     """
     同步执行入库管道（不含文档状态机）。
-    load_bytes：从对象存储读取原始文件（通常为 download_bytes）。
+    raw：预加载的原始文件字节（L1 可在会话外下载后传入）；与 load_bytes 须提供其一。
+    load_bytes：从对象存储读取原始文件（通常为 download_bytes）；未传 raw 时必填。
     embed_visual_chunks：图片（CLIP 视觉 KB）入库时的视觉向量化回调，由 L1 注入。
     on_before_index：写入新分片前清理旧 chunk/向量（通常为 clear_document_derived_data_sync）。
     """
-    raw = load_bytes(data.object_key, data.object_bucket)
+    if raw is None:
+        if load_bytes is None:
+            raise ValueError("raw 与 load_bytes 须提供其一")
+        raw = load_bytes(data.object_key, data.object_bucket)
     docs = load_documents_from_bytes(raw, data.filename, data.mime_type)
     chunks = chunk_documents(docs, data.chunk_size, data.chunk_overlap)
     if not chunks:
@@ -99,6 +104,8 @@ def run_ingest_pipeline(
     # 重试/覆盖入库：先删旧 chunk、vector_ref 与向量库记录
     if on_before_index is not None:
         on_before_index(db, doc.id)
+    # 释放清旧事务；随后 embedding HTTP / 向量 IO 不长时间占连接
+    db.commit()
 
     chunks_text = [c.content for c in chunks]
     if should_use_visual_image_embedding(kb, data.filename, data.mime_type):

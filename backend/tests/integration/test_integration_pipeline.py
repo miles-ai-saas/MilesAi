@@ -114,6 +114,16 @@ class _FakeIngestResult:
     chunk_count: int
 
 
+def _patch_ingest_storage(raw: bytes = b"hello world " * 20):
+    storage = MagicMock()
+    storage.download_bytes.return_value = raw
+    resolved = MagicMock(storage=storage)
+    return patch(
+        "miles_portal.tenant.kb.services.ingest.resolve_object_storage_sync",
+        return_value=resolved,
+    )
+
+
 def test_run_ingest_orchestration_marks_ready():
     doc, kb = _sample_doc_kb()
     db = MagicMock()
@@ -133,6 +143,7 @@ def test_run_ingest_orchestration_marks_ready():
 
     with (
         patch("miles_portal.tenant.kb.services.ingest.get_sync_db", _fake_sync_db),
+        _patch_ingest_storage(),
         patch("miles_portal.tenant.kb.services.ingest.run_ingest_pipeline", return_value=_FakeIngestResult(chunk_count=2)) as pipeline,
     ):
         run_ingest(str(doc.id))
@@ -143,6 +154,7 @@ def test_run_ingest_orchestration_marks_ready():
     _, kwargs = pipeline.call_args
     assert kwargs["data"].filename == "note.txt"
     assert kwargs["data"].chunk_size == 500
+    assert kwargs["raw"] is not None
 
 
 def test_run_ingest_orchestration_persists_failure():
@@ -164,6 +176,7 @@ def test_run_ingest_orchestration_persists_failure():
 
     with (
         patch("miles_portal.tenant.kb.services.ingest.get_sync_db", _fake_sync_db),
+        _patch_ingest_storage(),
         patch("miles_portal.tenant.kb.services.ingest.run_ingest_pipeline", side_effect=RuntimeError("embed failed")),
         patch("miles_portal.tenant.kb.services.ingest.persist_document_ingest_failure") as persist,
     ):
