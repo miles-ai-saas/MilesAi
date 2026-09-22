@@ -29,10 +29,9 @@
 | 工作台 KB 检索 API | `miles_portal/.../kb/services/kb/search.py`（`search` / `_search_visual`：embed、向量后端、S3/OCR 等慢 IO 前） |
 | 工作台 KB ingest（Celery） | `miles_portal/.../kb/services/ingest.py`（多段 `get_sync_db`：PARSING/EMBEDDING 状态可见；S3/parse 与会话外；`miles_ai/.../rag/pipeline/ingest.py` 清旧后 commit；`embeddings.py` resolve 后 commit 再厂商 embed；失败另开会话 `persist_document_ingest_failure`） |
 | 生成编排厂商 HTTP | `miles_portal/.../generative/services/orchestration.py`（配额校验后、`generate_*_bytes` 厂商 HTTP 前） |
+| 生成物落盘 | `miles_portal/.../generative/services/persist.py`（`persist_generated_bytes`：附件 `pending` 落库后 commit，再 `upload_bytes`；成功后写最终 object_key 与配额） |
 | 模型健康探测 | `miles_worker/.../model_health.py`（load 会话关闭 / 释放连接后探测，写回另开会话） |
 
-**尚未对齐**（仍可能在长 IO 期间持有同一会话）：
-
-- 生成物落盘（可选）：`generative/services/persist.py` 的 `persist_generated_bytes` 在对象存储 `upload_bytes` 期间仍可能占用同一 DB 会话
+**尚未对齐**：主要 commit-before-IO 路径已收敛；若发现新的「长 IO 占会话」热点，按上表模式补齐并回写本盘点。
 
 更完整的骨架说明见 [backend-reference-framework.md](../architecture/backend-reference-framework.md) 中 `infra/db` 段落。

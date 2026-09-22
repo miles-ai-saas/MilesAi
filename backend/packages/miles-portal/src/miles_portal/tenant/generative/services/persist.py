@@ -2,6 +2,9 @@
 
 对象存储客户端为同步实现，故写入经 ``asyncio.to_thread`` 离线，避免阻塞事件循环
 （见 ``tests/test_no_blocking_calls_in_async.py``）。
+
+上传前 ``await db.commit()``：附件行以 ``object_key=pending`` 落库后释放连接，
+避免 OSS 上传期间 idle-in-transaction；上传成功后再写最终 key 与配额增量。
 """
 
 import asyncio
@@ -47,9 +50,12 @@ async def persist_generated_bytes(
         resource_type=resource_type,
         resource_id=resource_id,
     )
+    await db.flush()
     object_key = build_attachment_object_key(str(ctx.tenant_id), str(att.id), filename)
-    att.object_key = object_key
+    # 释放事务：随后 OSS 上传可能数秒；失败时附件仍为 pending，可后续清理。
+    await db.commit()
     await asyncio.to_thread(storage.storage.upload_bytes, data, object_key, mime_type)
+    att.object_key = object_key
     await apply_storage_delta(db, ctx.tenant_id, len(data))
     await db.flush()
     await db.refresh(att)
