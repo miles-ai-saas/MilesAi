@@ -5,7 +5,7 @@
 | 层级 | 路径 | 技术 | 职责 |
 |------|------|------|------|
 | L2 | `backend/packages/miles-ai/src/miles_ai/rag/` | — | Parse / Chunk / Index / Retrieve / Generate |
-| L3 | `backend/packages/miles-ai/src/miles_ai/integrations/` | LangChain、LangGraph、LiteLLM、DeepAgents | 模型调用、图编排、工具 |
+| L3 | `backend/packages/miles-integrations/src/miles_integrations/` | LangChain、LangGraph、LiteLLM、DeepAgents | 模型调用、图编排、工具 |
 | L4 | `backend/packages/miles-core/src/miles_core/infra/` | DB、S3、向量库客户端 | 外部系统原语 |
 
 分层与依赖规则见 [layering.md](../architecture/layering.md)。**不含** RAG-Anything / MinerU。
@@ -36,7 +36,7 @@ backend/packages/miles-ai/src/miles_ai/rag/
 ├── load/knowledge_bases.py
 └── pipeline/ingest.py          # run_ingest_pipeline
 
-backend/packages/miles-ai/src/miles_ai/integrations/
+backend/packages/miles-integrations/src/miles_integrations/
 ├── langchain/
 │   ├── embeddings.py
 │   ├── vectorstores.py         # → rag.retrieve.multi_kb
@@ -73,4 +73,4 @@ backend/packages/miles-core/src/miles_core/infra/vector_store/
 | `EMBEDDING_LITELLM_MODEL` | `dashscope/text-embedding-v4` | 仅 `litellm` |
 | `EMBEDDING_VECTOR_DIMENSION` | `768` | 新建 KB 维度 |
 
-扩展内置工具：在 `integrations/langchain/toolkit/catalog.py` 的 `_DECLS` 声明表加一行（schema 壳），**并归入同文件的 `_PLATFORM_SLUGS` / `_OPT_IN_SLUGS` / `_SKILL_SLUGS` / `_GENERATIVE_SLUGS` 之一**——`_DECLS` 只被按 slug 查表、**从不被遍历**，未归组的声明不会出现在任何工具列表里，且**不报错**；随后在 `tenant/tools/builtin_registry.py` 注册元数据、`tenant/tools/handlers/handlers.py` 实现执行 handler。声明与分组的双向一致性由 `tests/miles_ai/integrations/langchain/test_toolkit_contract.py` 钉住。
+扩展内置工具：在 `miles_integrations/langchain/toolkit/catalog.py` 的 `_DECLS` 声明表加一行（schema 壳），**并归入同文件的 `_PLATFORM_SLUGS` / `_OPT_IN_SLUGS` / `_SKILL_SLUGS` / `_GENERATIVE_SLUGS` 之一**——`_DECLS` 只被按 slug 查表、**从不被遍历**，未归组的声明不会出现在任何工具列表里，且**不报错**；随后在 `tenant/tools/builtin_registry.py` 注册元数据、`tenant/tools/handlers/handlers.py` 实现执行 handler。声明与分组的双向一致性由 `tests/miles_integrations/langchain/test_toolkit_contract.py` 钉住。

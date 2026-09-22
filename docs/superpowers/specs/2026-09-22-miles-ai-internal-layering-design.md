@@ -329,7 +329,7 @@ layers =
 
 ## 13. 后续项
 
-- **拆分 `miles_integration`（第 11 包）**：见 §9 触发条件。本设计完成后，该工作的剩余量为纯机械步骤（改包名 + 380 处引用 + 1 个 pyproject）。
+- **拆分 `miles_integration`（第 11 包）**：见 §9 触发条件；**已由** [2026-09-22-miles-integrations-package-split-design.md](./2026-09-22-miles-integrations-package-split-design.md) **落地（已实施）**。
 - `2026-09-11` 文档 §9 列出的其余后续项（对外 API 路径策略、`miles_openapi` DTO 精简、独立版本号、`tests/` 下沉各包）不受本次影响。
 - `miles_ai` 是否拆为 `miles-rag` / `miles-flow` 两个 distribution：本次未评估，归入 §9 同类判据。
 
@@ -338,6 +338,8 @@ layers =
 ## 14. 修订记录
 
 ### 2026-09-22：已实施
+
+第 11 包拆分见 [2026-09-22-miles-integrations-package-split-design.md](./2026-09-22-miles-integrations-package-split-design.md)（已实施）。
 
 Task 1–7 落地。与本文的两处偏差已按实施结论修正：
 1. `integrations/langchain/__init__.py` **不删除**，改为仅 re-export 本子包 `chat_models`——删除会使该目录退化为 namespace package，且与 `integrations/*/__init__.py` 的既有 re-export 约定不一致。

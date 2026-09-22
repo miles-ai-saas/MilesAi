@@ -1,6 +1,6 @@
 # 拆出 `miles-integrations`（第 11 包）设计
 
-> 状态：**待评审**
+> 状态：**已实施**
 > 关联：[layering.md](../../architecture/layering.md)、[2026-09-22-miles-ai-internal-layering-design.md](./2026-09-22-miles-ai-internal-layering-design.md)（**已实施**，本设计的严格前置）、[2026-09-11-backend-uv-workspace-multipackage-design.md](./2026-09-11-backend-uv-workspace-multipackage-design.md) §11
 > 目标形态：新建 workspace 包 `miles-integrations`，承接原 `miles_ai.integrations`；包级 layers 变为 `portal → miles_ai → miles_integrations → miles_core`；硬切换、不留兼容层。
 
@@ -216,3 +216,8 @@ layers =
 ### 2026-09-22：初稿
 
 协作确认：目标 = 依赖隔离 + 包边界；硬切换；包名 `miles-integrations` / `miles_integrations`；上层可继续直连 L3；方案 = 整包抽出并插入 layers。
+
+### 2026-09-22：已实施
+
+Task 1–3 落地。与本文无偏差。验收：全仓无 `miles_ai.integrations` 生产 import；
+`lint-imports` 全绿；pytest collect-only 与基线一致。

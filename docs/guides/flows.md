@@ -6,14 +6,14 @@
 > **编排增强 / 子流程 SubFlow（已实现）：** 见 [features/flow-orchestration.md](../features/flow-orchestration.md)  
 > **多模态（已实现）：** 产品与技术说明 [multimodal-capabilities.md](../product/multimodal-capabilities.md)
 
-画布 `graph_json` **仅由 LangGraph 编译执行**；`flow_runtime` 提供节点 handler，编译与执行在 `integrations.langgraph`。
+画布 `graph_json` **仅由 LangGraph 编译执行**；`flow_runtime` 提供节点 handler，编译与执行在 `miles_ai.flow_runtime.compiler`（L3 checkpointer 等在 `miles_integrations.langgraph`）。
 
 ## 命名与数据流
 
 | 名称 | 路径 |
 |------|------|
 | flow_runtime | `backend/packages/miles-ai/src/miles_ai/flow_runtime/` |
-| LangGraph 编译/执行 | `backend/packages/miles-ai/src/miles_ai/integrations/langgraph/` |
+| LangGraph 编译/执行 | `backend/packages/miles-ai/src/miles_ai/flow_runtime/compiler/` |
 | 前端画布 | `@xyflow/react` |
 
 ```

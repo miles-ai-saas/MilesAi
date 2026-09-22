@@ -1009,7 +1009,7 @@ async def api_client(api_app):
 | 风控中间件 | `backend/packages/miles-core/src/miles_core/web/middlewares/platform_risk.py` |
 | Redis Key 集中管理 | `backend/packages/miles-common/src/miles_common/redis_keys.py` |
 | 大服务 Mixin 门面 | `backend/packages/miles-portal/src/miles_portal/tenant/agents/services/agent/{service,__init__}.py` |
-| 可选能力降级 | `backend/packages/miles-ai/src/miles_ai/integrations/langgraph/checkpointer.py` |
+| 可选能力降级 | `backend/packages/miles-integrations/src/miles_integrations/langgraph/checkpointer.py` |
 | 测试 fixture | `backend/tests/conftest.py` |
 | 分层规范原文 | `docs/architecture/layering.md` |
 | As-Is 架构总纲 | `docs/architecture/technical-design.md` |

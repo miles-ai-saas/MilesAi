@@ -11,8 +11,8 @@
 | 范围 | 路径 | 内容 |
 |------|------|------|
 | 跨类型共用键 | `backend/packages/miles-common/src/miles_common/constants/model_extra.py` | `EXTRA_INVOKE_MODE`（值 `"invoke_mode"`） |
-| 向量化 | `backend/packages/miles-ai/src/miles_ai/integrations/embeddings/constants.py` | `INVOKE_MODE_*`、`EXTRA_EMBEDDING_*` |
-| 重排序 | `backend/packages/miles-ai/src/miles_ai/integrations/rerank/constants.py` | `INVOKE_MODE_*`、`EXTRA_RERANK_*` |
+| 向量化 | `backend/packages/miles-integrations/src/miles_integrations/embeddings/constants.py` | `INVOKE_MODE_*`、`EXTRA_EMBEDDING_*` |
+| 重排序 | `backend/packages/miles-integrations/src/miles_integrations/rerank/constants.py` | `INVOKE_MODE_*`、`EXTRA_RERANK_*` |
 | 解析默认值 | `integrations/embeddings/model_meta.py`、`integrations/rerank/model_meta.py` | 按 `vendor` 推断默认 `invoke_mode` |
 | 创建校验 | `tenant/models/services/model.py` | embedding/rerank 创建时校验 `invoke_mode` 是否在 registry 内 |
 | 种子数据 | `scripts/seed/model_catalog.py` | 内置目录 `extra` 使用上述常量 |

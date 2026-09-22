@@ -136,8 +136,8 @@ WS   /agents/{id}/chat/ws
 backend/packages/miles-core/src/miles_core/models/agent/agent.py
 backend/packages/miles-portal/src/miles_portal/tenant/agents/services/agent/
 backend/packages/miles-portal/src/miles_portal/tenant/agents/views/agents.py
-backend/packages/miles-ai/src/miles_ai/integrations/deepagents/
-backend/packages/miles-ai/src/miles_ai/integrations/langgraph/runner.py
+backend/packages/miles-integrations/src/miles_integrations/deepagents/
+backend/packages/miles-ai/src/miles_ai/rag/graph/runner.py
 backend/packages/miles-portal/src/miles_portal/tenant/a2a/invoke.py          # augment / host
 ```
 

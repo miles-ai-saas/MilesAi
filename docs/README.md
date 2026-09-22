@@ -171,11 +171,11 @@ ui/                           # 前端应用源码（与 docs/ 并列，见仓�
 | 租户 API（AI + 组织） | `backend/packages/miles-portal/src/miles_portal/tenant/` |
 | 智能体对话 | `tenant/agents/services/agent.py` |
 | A2A | `tenant/a2a/` |
-| 流程 | `miles_ai/flow_runtime/`（节点、[templates/rag_flow.json](../backend/packages/miles-ai/src/miles_ai/flow_runtime/templates/rag_flow.json)）、`miles_ai/integrations/langgraph/`（画布 compiler、Agent RAG 图） |
+| 流程 | `miles_ai/flow_runtime/`（节点与画布 compiler、[templates/rag_flow.json](../backend/packages/miles-ai/src/miles_ai/flow_runtime/templates/rag_flow.json)）、`miles_ai/rag/graph/`（Agent RAG 图）、`miles_integrations/langgraph/`（checkpointer 等 L3） |
 | RAG 入库 | `backend/packages/miles-ai/src/miles_ai/rag/pipeline/ingest.py` ← `tenant/kb/services/ingest.py` |
 | RAG 能力 | `backend/packages/miles-ai/src/miles_ai/rag/`（parse / chunk / index / retrieve / generate / load） |
 | 技能包 | `tenant/skills/`（存储 `storage.py`、导入 `import_service.py`） |
 | 钩子 | `tenant/hooks/`（`HookRunner` / `HookExecutor`） |
-| AI 集成 | `backend/packages/miles-ai/src/miles_ai/integrations/langchain/`、`backend/packages/miles-ai/src/miles_ai/integrations/deepagents/` |
+| AI 集成 | `backend/packages/miles-integrations/src/miles_integrations/langchain/`、`backend/packages/miles-integrations/src/miles_integrations/deepagents/` |
 
 REST 以运行中 OpenAPI（`/docs`）为准。

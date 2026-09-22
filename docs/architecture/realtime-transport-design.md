@@ -249,7 +249,7 @@ backend/packages/miles-portal/src/miles_portal/tenant/agents/ws/           # 新
 backend/packages/miles-portal/src/miles_portal/tenant/generative/          # 保持
   views/jobs.py                 # SSE + REST（任务中心）
 
-backend/packages/miles-ai/src/miles_ai/integrations/generative/jobs/
+backend/packages/miles-integrations/src/miles_integrations/generative/jobs/
   notify.py                     # 可选：job 更新时 publish（DB→WS 桥接）
 ```
 

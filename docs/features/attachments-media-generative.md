@@ -157,8 +157,8 @@ backend/packages/miles-core/src/miles_core/models/model/generative_job.py
 backend/packages/miles-portal/src/miles_portal/tenant/attachments/
 backend/packages/miles-portal/src/miles_portal/tenant/media_assets/
 backend/packages/miles-portal/src/miles_portal/tenant/generative/
-backend/packages/miles-ai/src/miles_ai/integrations/chat/multimodal.py
-backend/packages/miles-ai/src/miles_ai/integrations/generative/
+backend/packages/miles-integrations/src/miles_integrations/chat/multimodal.py
+backend/packages/miles-integrations/src/miles_integrations/generative/
 backend/packages/miles-worker/src/miles_worker/tasks/generative.py
 backend/packages/miles-server/src/miles_server/cli.py   # backfill-media-assets（历史回填）
 ```

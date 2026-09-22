@@ -99,8 +99,8 @@ backend/packages/miles-core/src/miles_core/models/model/
 backend/packages/miles-core/src/miles_core/models/model/tenant_credential.py
 backend/packages/miles-portal/src/miles_portal/tenant/models/
 backend/packages/miles-portal/src/miles_portal/tenant/prompts/
-backend/packages/miles-ai/src/miles_ai/integrations/litellm/
-backend/packages/miles-ai/src/miles_ai/integrations/embeddings/
+backend/packages/miles-integrations/src/miles_integrations/litellm/
+backend/packages/miles-integrations/src/miles_integrations/embeddings/
 ```
 
 ---

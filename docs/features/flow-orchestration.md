@@ -116,7 +116,7 @@ ui/workbench/components/flow/FlowCanvas.tsx
 backend/packages/miles-core/src/miles_core/models/flow/flow.py
 backend/packages/miles-portal/src/miles_portal/tenant/flows/
 backend/packages/miles-ai/src/miles_ai/flow_runtime/
-backend/packages/miles-ai/src/miles_ai/integrations/langgraph/
+backend/packages/miles-integrations/src/miles_integrations/langgraph/
 backend/packages/miles-ai/src/miles_ai/flow_runtime/templates/rag_flow.json
 ```
 

@@ -63,7 +63,7 @@ cd backend && uv sync --all-packages --group dev   # deepagents、langgraph>=1.2
 
 `steps` 类型：`planner`、`subagent_dispatch`、`subagent`、`planner_fallback`。
 
-模块：`backend/packages/miles-ai/src/miles_ai/integrations/deepagents/orchestrator.py`、`runner.py`、`subagent_graphs.py`。
+模块：`backend/packages/miles-integrations/src/miles_integrations/deepagents/orchestrator.py`、`runner.py`、`subagent_graphs.py`。
 
 `ChatRequest.conversation_id` 用于 DeepAgents `thread_id`（前缀 `deep:`，与 RAG checkpoint 隔离）。
 

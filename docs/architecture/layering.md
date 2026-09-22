@@ -11,7 +11,7 @@
 
 1. **RAG 能力**集中在 `miles_ai.rag`（Parse → Chunk → Index → Retrieve → Generate）。
 2. **`infra/`** 只对接外部系统原语（DB、S3、向量库客户端）。
-3. **`integrations/`**（L3）只封装 LangChain / LangGraph / LiteLLM / DeepAgents。
+3. **`miles_integrations/`**（L3 包 `miles-integrations`）只封装 LangChain / LangGraph / LiteLLM / DeepAgents。
 4. **`tenant/`** 承载 AI 平台与组织设置 API，为 L0/L1，挂载 `/api/v1`。
 5. 依赖单向：**L0 → L1 → L2 → L3 → L4**，禁止反向。
 
@@ -39,7 +39,7 @@ flowchart TB
         R --> G
     end
 
-    subgraph L3["L3 集成 — miles_ai/integrations/"]
+    subgraph L3["L3 集成 — miles_integrations/"]
         LC[langchain]
         LG[langgraph]
         LLM[litellm]
@@ -66,7 +66,7 @@ flowchart TB
 | **L0** | `miles_portal/tenant/*/views`、`schemas` | 路由、校验、响应 | 解析 PDF、拼向量 Filter |
 | **L1** | `miles_portal/tenant/*/services` | 事务、软删、配额、调 `rag`、业务状态机 | 直接 `PyPDFLoader` |
 | **L2** | `miles_ai/rag/` | 文档解析、分片、向量索引门面、检索策略、RAG prompt/answer | FastAPI、HTTP |
-| **L3** | `miles_ai/integrations/` | LC Loader/Splitter 封装、LangGraph 图、LiteLLM | `tenant_id` 业务规则 |
+| **L3** | `miles_integrations/`（包 `miles-integrations`） | LC Loader/Splitter 封装、LangGraph checkpointer、LiteLLM | `tenant_id` 业务规则 |
 | **L4** | `miles_core/infra/` | 连接池、S3 put/get、向量库 upsert/search/delete | `hybrid_alpha`、RRF、KB 状态机 |
 
 ### 2.2 依赖规则（强制）
@@ -78,10 +78,10 @@ L0 → L1 → L2 → L3 → L4
 | 禁止 | 说明 |
 |------|------|
 | `infra` → `tenant` / `rag` | 基础设施不得了解业务 |
-| `integrations` → `tenant` | 集成层通过 L2 传入参数，不 import 用例 |
+| `miles_integrations` → `tenant` | 集成层通过 L2 传入参数，不 import 用例 |
 | `rag` → `tenant` | RAG 层可 import `models`、可用 `AsyncSession` 做 PG 关键词检索，但 **不** import `tenant.kb.services.kb` |
 
-**允许**：`rag` → `models`、`core`、`infra`、`integrations`（仅 L3 技术封装）。
+**允许**：`rag` → `models`、`core`、`infra`、`miles_integrations`（L3 技术封装，经包级 layers：`miles_ai` → `miles_integrations` → `miles_core`）。
 
 ### 2.3 运营后台（`admin/`）访问租户域
 
@@ -102,14 +102,15 @@ L0 → L1 → L2 → L3 → L4
 
 ### 2.4 包边界（uv workspace）
 
-自 2026-09-11 的 uv workspace 重构起，后端由单包 `app/` 拆为 `backend/packages/` 下的 **10 个包**；源码位于 `backend/packages/<pkg>/src/<module>/`，旧单包目录 `backend/app`、`backend/cli.py`、`backend/scripts/` 均已不存在。
+自 2026-09-11 的 uv workspace 重构起，后端由单包 `app/` 拆为 `backend/packages/` 下的 workspace 包；2026-09-22 拆出第 **11** 包 `miles-integrations`（L3）。源码位于 `backend/packages/<pkg>/src/<module>/`，旧单包目录 `backend/app`、`backend/cli.py`、`backend/scripts/` 均已不存在。
 
 | 包 | 职责 | 层位 |
 |----|------|------|
 | `miles_common` | 跨模块公共能力：响应 / 异常 / 通用 schema、`idgen`、`redis_keys`、`cron`、`slug` | 最底层 |
 | `miles_exec` | 沙箱与 MCP 协议内核（`mcp.spec/constants/rpc`、`sandbox.session/script_exec`） | 叶子 |
 | `miles_core` | L4 基础设施 + 核心 ORM + 配置 / 安全 / 租户上下文 + `web/`（通用 Web 管道）+ `risk/` + `jobs/` | L4 |
-| `miles_ai` | L2 RAG（含 `rag/graph/` Agent RAG 图引擎）+ L2 `flow_runtime`（含 `compiler/` 画布编译器）+ L3 集成（LangChain / LangGraph / LiteLLM / DeepAgents） | L2/L3 |
+| `miles_integrations` | L3 适配：LangChain / LangGraph（checkpointer）/ LiteLLM / DeepAgents / embeddings / generative / rerank / chat | L3 |
+| `miles_ai` | L2 RAG（含 `rag/graph/` Agent RAG 图引擎）+ L2 `flow_runtime`（含 `compiler/` 画布 LangGraph 编译器） | L2 |
 | `miles_portal` | L0/L1 租户域（`tenant/`）+ `deletion/` + `marketplace/` + 域 API 注册 | L0/L1 |
 | `miles_admin` | L0/L1 运营域（`admin/`）+ 域 API 注册 | L0/L1 |
 | `miles_openapi` | 对外开放面 `/api/v1/open/*` 的视图与鉴权依赖 | L0 |
@@ -125,6 +126,7 @@ flowchart LR
     exec[miles_exec]
     core[miles_core]
     ai[miles_ai]
+    integrations[miles_integrations]
     portal[miles_portal]
     admin[miles_admin]
     openapi[miles_openapi]
@@ -134,7 +136,9 @@ flowchart LR
 
     exec --> common
     core --> common
+    ai --> integrations
     ai --> core
+    integrations --> core
     portal --> ai
     admin --> portal
     openapi --> portal
@@ -155,7 +159,7 @@ flowchart LR
 | 5 | `miles_core` 不得 import `miles_ai` |
 | 6 | API 声明层（`views` / `schemas`）不得 import ORM 模型模块 |
 
-**包内分层（`miles_ai`）**：`flow_runtime → rag → integrations` 单向，由 `.importlinter` 的 `ai-internal-layers` 契约强制；`integrations` 不得 import `rag` / `flow_runtime`，`rag` 不得 import `flow_runtime`。
+**包内分层（`miles_ai`）**：`flow_runtime → rag` 单向，由 `.importlinter` 的 `ai-internal-layers` 契约强制；`rag` 不得 import `flow_runtime`。L3 已拆为独立包 `miles_integrations`，跨包方向 `miles_ai → miles_integrations → miles_core` 由包级 `layers` 契约强制。
 
 **强制机制**：上述 DAG 与硬判据由 `backend/.importlinter` 固化为 8 条契约（2 条 `layers`——包级 `layers` + 包内 `ai-internal-layers`——+ 6 条 `forbidden`），在 CI 与本地经 `make layers-check`（即 `import-linter`）执行；`make check` 已包含该步。
 
@@ -210,11 +214,13 @@ backend/packages/
 │   ├── web/                             # 通用 Web 管道（异常处理、中间件）
 │   ├── risk/  jobs/  utils/
 │
-├── miles-ai/src/miles_ai/               # L2/L3
+├── miles-ai/src/miles_ai/               # L2
 │   ├── rag/                             # parse / chunk / index / retrieve / generate / load / pipeline
 │   │   └── graph/                       # Agent RAG LangGraph 引擎（rag_qa / runner / grading / compiled）
-│   ├── integrations/                    # langchain / langgraph(checkpointer) / litellm / deepagents / generative / embeddings / rerank / chat
 │   └── flow_runtime/                    # 流程节点 + compiler/（画布 LangGraph 编译器）+ graph_runner
+│
+├── miles-integrations/src/miles_integrations/  # L3
+│   └── langchain / langgraph(checkpointer) / litellm / deepagents / generative / embeddings / rerank / chat
 │
 ├── miles-portal/src/miles_portal/       # L0/L1：tenant/ + deletion/ + marketplace/ + register_portal
 ├── miles-admin/src/miles_admin/         # L0/L1：admin/ + register_admin
@@ -246,7 +252,7 @@ backend/packages/
 
 - `base.py`：`VectorStore` Protocol、`ChunkVectorRecord`（存储 DTO，带 tenant/kb/chunk 主键）
 - `weaviate.py` / `milvus.py` / `pgvector.py`：后端适配
-- `langchain_base.py`、`precomputed.py`：LC 向量库桥接；Document 映射在 `integrations.langchain.vector.documents`
+- `langchain_base.py`、`precomputed.py`：LC 向量库桥接；Document 映射在 `miles_integrations.langchain.vector.documents`
 - `get_vector_store()` 工厂
 
 **已迁出到 `rag/`**：
@@ -269,7 +275,7 @@ backend/packages/
 OSS bytes
   → rag.parse.load_documents_from_bytes（pypdf | docling | text | image | audio）
   → rag.chunk.chunk_documents(kb.chunk_size, kb.chunk_overlap)
-  → integrations: embed_texts_for_kb（KB 绑定向量模型）
+  → miles_integrations：embed_texts_for_kb（KB 绑定向量模型）
   → rag.index.upsert_chunk_vector（含 page_no）
   → PG: kb_document_chunks + kb_vector_refs
 ```
@@ -280,10 +286,10 @@ OSS bytes
 
 ```
 query
-  → embed_query_for_kb（integrations）
+  → embed_query_for_kb（miles_integrations）
   → rag.retrieve.search_kb_chunks
   →（可选）rag.generate.build_rag_user_prompt
-  → integrations: ainvoke_chat / LangGraph rag_qa
+  → miles_integrations：ainvoke_chat / LangGraph rag_qa（图定义在 `miles_ai.rag.graph`）
 ```
 
 入口：`KbService.search`（L1）、`AgentService.chat`、`flow_runtime.rag_nodes`。
@@ -314,7 +320,7 @@ query
 | 领域服务 | `*Service` | `KbIngestService`（L1） |
 | 管道步骤 | 动词短语 | `load_documents_from_bytes`、`chunk_documents` |
 | 模块级常量 | `UPPER_SNAKE` | `RETRIEVAL_HYBRID` |
-| 禁止 | 无逻辑 re-export 包 | 业务代码应 `import miles_ai.rag.*`，勿在 `tenant`/`integrations` 再套一层转发 |
+| 禁止 | 无逻辑 re-export 包 | 业务代码应 `import miles_ai.rag.*` / `miles_integrations.*`，勿在 `tenant` 再套一层转发 |
 
 ### 5.2 Import 示例
 
@@ -355,7 +361,7 @@ from miles_core.infra.vector_store import get_vector_store
 | 共享代码 | 多聚合共用的模块留在 `services/` 根（如 `context.py`、`pipeline.py`） |
 | import | 对外路径保持稳定，例如 `from miles_portal.tenant.agents.services.agent import AgentService` |
 | 拆分后体量 | 每个子文件宜 **300–400 行**；仍 ≥500 则继续按职责切文件 |
-| 其它路径 | `integrations/`、`flow_runtime/`、`rag/` 大文件同理：按子包或子模块拆，不引入 `tenant` 依赖 |
+| 其它路径 | `miles_integrations/`、`flow_runtime/`、`rag/` 大文件同理：按子包或子模块拆，不引入 `tenant` 依赖 |
 
 **参考实现**：`tenant/agents/services/agent/`、`tenant/compliance/services/compliance/`、`tenant/marketplace/services/marketplace/`、`tenant/tools/invoke/` + `tenant/tools/handlers/`。
 
@@ -379,7 +385,7 @@ from miles_core.infra.vector_store import get_vector_store
 | 包 | 职责 |
 |----|------|
 | `miles_ai.rag` | L2：Parse / Chunk / Index / Retrieve / Generate / pipeline |
-| `miles_ai.integrations` | L3：LangChain、LangGraph、LiteLLM、DeepAgents |
+| `miles_integrations` | L3：LangChain、LangGraph（checkpointer）、LiteLLM、DeepAgents |
 
 ---
 
@@ -395,7 +401,7 @@ backend/tests/                     # 一级目录 = 被测包（与 packages/ �
   test_domain_meta.py  test_api_enum_parity.py  test_enum_contract.py
   test_orm_registry_completeness.py  test_tests_layout.py
   integration/                     # 跨包编排
-  miles_common/ miles_exec/ miles_core/ miles_ai/ miles_portal/
+  miles_common/ miles_exec/ miles_core/ miles_ai/ miles_integrations/ miles_portal/
   miles_admin/ miles_openapi/ miles_server/ miles_worker/
 ```
 

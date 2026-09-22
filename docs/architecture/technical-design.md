@@ -384,7 +384,7 @@ ingest / search / delete
 
 | 项 | 说明 |
 |----|------|
-| 包路径 | `app/integrations/langchain/embeddings.py`、`backend/packages/miles-ai/src/miles_ai/integrations/litellm/`（对话，非向量） |
+| 包路径 | `backend/packages/miles-integrations/src/miles_integrations/embeddings/`、`backend/packages/miles-integrations/src/miles_integrations/litellm/`（对话，非向量） |
 | 全局默认 | `EMBEDDING_BACKEND=local` \| `litellm`；`EMBEDDING_MODEL_NAME` / `EMBEDDING_LITELLM_*` |
 | 新建 KB | 请求体 `embedding_profile`（默认见 `default_embedding_profile_id()`）；目录 `GET /api/v1/kb/embedding-profiles` |
 | 规格目录 | `app/integrations/embedding_profiles.py`：`local-bge-zh`（768）、`dashscope-v3`（1024） |
