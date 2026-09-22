@@ -6,6 +6,7 @@ from uuid import uuid4
 from langchain_core.documents import Document
 
 from miles_ai.rag.pipeline.ingest import IngestInput, run_ingest_pipeline
+from miles_core.models.kb import DocumentChunk
 
 
 def test_ingest_sets_page_no_on_chunk_and_vector():
@@ -22,7 +23,7 @@ def test_ingest_sets_page_no_on_chunk_and_vector():
 
     db = MagicMock()
     added_chunks = []
-    vector_calls = []
+    vector_writes = []
 
     def capture_add(obj):
         if hasattr(obj, "page_no"):
@@ -30,8 +31,19 @@ def test_ingest_sets_page_no_on_chunk_and_vector():
 
     db.add.side_effect = capture_add
 
+    def flush():
+        for obj in added_chunks:
+            if isinstance(obj, DocumentChunk) and obj.id is None:
+                obj.id = uuid4()
+
+    db.flush.side_effect = flush
+
     def embed(_db, _kb, texts):
         return [[0.1] for _ in texts]
+
+    def fake_upsert(items):
+        vector_writes.extend(items)
+        return [f"vec-{i}" for i in range(len(items))]
 
     with (
         patch(
@@ -39,8 +51,8 @@ def test_ingest_sets_page_no_on_chunk_and_vector():
             return_value=fake_docs,
         ),
         patch(
-            "miles_ai.rag.pipeline.ingest.upsert_chunk_vector",
-            side_effect=lambda **kw: vector_calls.append(kw) or "vec-1",
+            "miles_ai.rag.pipeline.ingest.upsert_chunk_vectors",
+            side_effect=fake_upsert,
         ),
     ):
         result = run_ingest_pipeline(
@@ -61,4 +73,4 @@ def test_ingest_sets_page_no_on_chunk_and_vector():
 
     assert result.chunk_count >= 1
     assert any(c.page_no is not None for c in added_chunks)
-    assert any(kw.get("page_no") is not None for kw in vector_calls)
+    assert any(w.page_no is not None for w in vector_writes)

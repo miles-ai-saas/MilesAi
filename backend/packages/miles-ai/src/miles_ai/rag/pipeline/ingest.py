@@ -13,7 +13,7 @@
 3. 可选 ``on_before_index``：删旧 PG chunk、vector_ref 及向量库记录（覆盖入库）
 4. 向量化（**唯一**调 embedding API 的环节）：文本走 ``embed_texts``；图片（CLIP 视觉 KB）
    走注入的 ``embed_visual_chunks`` 回调——按 KB 绑定的 CLIP 模型向量化图片字节
-5. 每个分片：**先 flush PG 拿 chunk.id** → ``gateway.upsert_chunk_vector`` → 写 ``VectorRef``
+5. 全部分片：一次 flush 拿 chunk.id → ``gateway.upsert_chunk_vectors`` → 再写 ``VectorRef``
 
 向量库侧不再重复 embedding（见 ``PrecomputedEmbeddings``）。
 """
@@ -28,7 +28,7 @@ from uuid import UUID
 from sqlalchemy.orm import Session
 
 from miles_ai.rag.chunk import chunk_documents
-from miles_ai.rag.index.gateway import upsert_chunk_vector
+from miles_ai.rag.index.gateway import ChunkVectorWrite, upsert_chunk_vectors
 from miles_ai.rag.parse import vector_type_for_document
 from miles_ai.rag.parse.loaders import load_documents_from_bytes
 from miles_ai.rag.pipeline.visual_policy import should_use_visual_image_embedding
@@ -109,10 +109,12 @@ def run_ingest_pipeline(
         vectors = embed_texts(db, kb, chunks_text)
     vector_type = vector_type_for_document(data.filename, data.mime_type)
 
-    # 逐分片事务：chunk.id 作为 Milvus/Weaviate 主键与 vector_ref 外键。
+    # 批量：先 flush 全部分片拿 chunk.id，再一次 upsert 向量，最后写 VectorRef。
     # strict=True：embedding 服务返回数量与分片数不一致时必须报错，否则会静默漏写分片
     # （表现为「入库成功但部分内容检索不到」），比失败更难排查。
-    for idx, (piece, vector) in enumerate(zip(chunks, vectors, strict=True)):
+    # 向量批量失败则整批不写 VectorRef（依赖外层事务 rollback）。
+    chunk_rows: list[DocumentChunk] = []
+    for idx, (piece, _) in enumerate(zip(chunks, vectors, strict=True)):
         chunk = DocumentChunk(
             tenant_id=doc.tenant_id,
             document_id=doc.id,
@@ -122,9 +124,12 @@ def run_ingest_pipeline(
             page_no=piece.page_no,
         )
         db.add(chunk)
-        db.flush()  # 需要 chunk.id 再写向量库
+        chunk_rows.append(chunk)
 
-        ext_vector_id = upsert_chunk_vector(
+    db.flush()
+
+    writes = [
+        ChunkVectorWrite(
             vector=vector,
             tenant_id=doc.tenant_id,
             kb_id=doc.kb_id,
@@ -134,6 +139,13 @@ def run_ingest_pipeline(
             object_key=data.object_key,
             page_no=piece.page_no,
         )
+        for chunk, (piece, vector) in zip(chunk_rows, zip(chunks, vectors, strict=True), strict=True)
+    ]
+    ext_ids = upsert_chunk_vectors(writes)
+    if len(ext_ids) != len(chunk_rows):
+        raise ValueError(f"向量写入数量与分片不一致: {len(ext_ids)} != {len(chunk_rows)}")
+
+    for chunk, ext_vector_id in zip(chunk_rows, ext_ids, strict=True):
         db.add(
             VectorRef(
                 tenant_id=doc.tenant_id,
