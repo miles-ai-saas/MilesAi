@@ -47,15 +47,19 @@ async def _load_models_for_probe() -> list[ModelConfig]:
 
 
 async def _write_health_extras(updates: list[tuple[UUID, dict]]) -> None:
-    """短会话按 id 写回 health_* 到 ModelConfig.extra。"""
+    """短会话按 id 合并写回 health_*，保留 extra 中其它键。"""
     if not updates:
         return
     async with AsyncSessionLocal() as db:
-        for model_id, extra in updates:
+        for model_id, health in updates:
             row = await db.get(ModelConfig, model_id)
             if row is None:
                 continue
-            row.extra = extra
+            merged = dict(row.extra or {})
+            for key in ("health_status", "health_message", "health_checked_at"):
+                if key in health:
+                    merged[key] = health[key]
+            row.extra = merged
         await db.commit()
 
 
@@ -69,7 +73,7 @@ async def _probe_models_async() -> str:
     updates: list[tuple[UUID, dict]] = []
     for model in to_probe:
         checked += 1
-        extra = dict(model.extra or {})
+        health: dict = {"health_checked_at": now}
         try:
             await litellm_chat_completion(
                 model,
@@ -78,15 +82,14 @@ async def _probe_models_async() -> str:
                 max_tokens=8,
                 timeout=20,
             )
-            extra["health_status"] = "ok"
-            extra["health_message"] = None
+            health["health_status"] = "ok"
+            health["health_message"] = None
             ok_count += 1
         except Exception as exc:
-            extra["health_status"] = "down"
-            extra["health_message"] = str(exc)[:500]
+            health["health_status"] = "down"
+            health["health_message"] = str(exc)[:500]
             logger.warning("model health probe failed: %s (%s)", model.name, exc, exc_info=True)
-        extra["health_checked_at"] = now
-        updates.append((model.id, extra))
+        updates.append((model.id, health))
 
     await _write_health_extras(updates)
     return f"checked={checked} ok={ok_count}"

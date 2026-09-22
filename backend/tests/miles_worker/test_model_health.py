@@ -121,3 +121,39 @@ async def test_litellm_not_called_while_session_active(monkeypatch: pytest.Monke
     assert len(opened) == 2, "须拆成 load 会话与 write 会话"
     assert sessions[-1].committed is True
     assert write_model.extra["health_status"] == "ok"
+
+
+@pytest.mark.asyncio
+async def test_write_health_extras_merges_into_existing_extra(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """写回只合并 health_*，保留探测窗口内其它 extra 键（如 litellm_model）。"""
+    active = [0]
+    opened: list[int] = []
+    load_model = _chat_model(extra={"litellm_model": "openai/gpt-stale"})
+    write_model = _chat_model(
+        id=load_model.id,
+        extra={"litellm_model": "openai/gpt-fresh", "other_key": 1},
+    )
+
+    def _session_factory() -> _TrackingSession:
+        return _TrackingSession(
+            active=active,
+            opened=opened,
+            load_rows=[load_model],
+            write_row=write_model,
+        )
+
+    async def _fake_litellm(_model: object, _messages: object, **_kwargs: object) -> str:
+        return "pong"
+
+    monkeypatch.setattr(model_health, "AsyncSessionLocal", _session_factory)
+    monkeypatch.setattr(model_health, "litellm_chat_completion", _fake_litellm)
+
+    await model_health._probe_models_async()
+
+    assert write_model.extra["litellm_model"] == "openai/gpt-fresh"
+    assert write_model.extra["other_key"] == 1
+    assert write_model.extra["health_status"] == "ok"
+    assert write_model.extra["health_message"] is None
+    assert "health_checked_at" in write_model.extra

@@ -24,7 +24,7 @@
 | Agent 直连 / RAG | `miles_portal/.../agent/chat_rag.py`（`direct_chat`、RAG 检索后 `ainvoke_chat` 前） |
 | 发布 Flow 跑图 | `miles_portal/.../agent/chat_entry.py`（`_run_published_flow`，`flow_run_context` 后、`run` 前） |
 | A2A 宿主 | `miles_portal/.../a2a/invoke.py`（`run_a2a_host_chat`：Peer HTTP / 编排 LLM 前） |
-| 模型健康探测 | `miles_worker/.../model_health.py`（`litellm` 探测前 commit，写回另开会话） |
+| 模型健康探测 | `miles_worker/.../model_health.py`（load 会话关闭 / 释放连接后探测，写回另开会话） |
 
 **尚未对齐**（仍可能在长 IO 期间持有同一会话）：
 
