@@ -6,10 +6,22 @@ from contextlib import contextmanager
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
-from miles_core.config import get_settings
+from miles_core.config import Settings, get_settings
+
+
+def build_sync_engine(settings: Settings):
+    """按 ``Settings`` 构造同步引擎（与 async ``build_engine`` 同源池参数）。"""
+    return create_engine(
+        settings.database_url_sync,
+        pool_pre_ping=True,
+        pool_size=settings.db_pool_size,
+        max_overflow=settings.db_max_overflow,
+        pool_timeout=settings.db_pool_timeout,
+    )
+
 
 settings = get_settings()
-sync_engine = create_engine(settings.database_url_sync, pool_pre_ping=True)
+sync_engine = build_sync_engine(settings)
 SyncSessionLocal = sessionmaker(bind=sync_engine, autocommit=False, autoflush=False)
 
 
