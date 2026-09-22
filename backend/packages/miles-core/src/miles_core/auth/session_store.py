@@ -11,6 +11,7 @@ from miles_core.infra.redis import get_redis
 from miles_core.security import safe_decode_token
 
 SESSION_TTL_SECONDS = 60 * 60 * 24 * 7
+TOUCH_INTERVAL_SECONDS = 300  # 5 分钟内不重复刷新 last_seen
 
 
 def _entry_key(user_id: UUID | str, jti: str) -> str:
@@ -49,21 +50,40 @@ async def register_session(
     await redis.expire(_index_key(user_id), SESSION_TTL_SECONDS)
 
 
-async def touch_session(user_id: UUID, jti: str) -> None:
-    """请求通过鉴权时刷新 last_seen（轻量）。"""
+async def touch_session(
+    user_id: UUID,
+    jti: str,
+    *,
+    now: datetime | None = None,
+) -> bool:
+    """请求通过鉴权时刷新 last_seen；默认 5 分钟内节流，避免每请求 SETEX。"""
     redis = await get_redis()
     raw = await redis.get(_entry_key(user_id, jti))
     if not raw:
-        return
+        return False
     try:
         meta = json.loads(raw)
     except json.JSONDecodeError:
-        # 静默可接受：Redis 里的会话元数据已损坏；按「无会话」处理，用户重新登录即可。
-        return
-    meta["last_seen_at"] = datetime.now(UTC).isoformat()
+        return False
+
+    current = now or datetime.now(UTC)
+    last_raw = meta.get("last_seen_at")
+    if last_raw:
+        try:
+            last = datetime.fromisoformat(last_raw)
+            if last.tzinfo is None:
+                last = last.replace(tzinfo=UTC)
+            if (current - last).total_seconds() < TOUCH_INTERVAL_SECONDS:
+                return False
+        except ValueError:
+            pass
+
+    meta["last_seen_at"] = current.isoformat()
     ttl = await redis.ttl(_entry_key(user_id, jti))
     if ttl and ttl > 0:
         await redis.setex(_entry_key(user_id, jti), ttl, json.dumps(meta))
+        return True
+    return False
 
 
 async def is_token_blacklisted(jti: str) -> bool:
