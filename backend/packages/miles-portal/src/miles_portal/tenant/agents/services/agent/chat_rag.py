@@ -274,6 +274,8 @@ class AgentChatRagMixin:
         model = await self.resolve_invoke_model(agent.model_config)
         usage_sink = self.chat_usage_sink(model, source_id=agent_id)
         platform_tools = await assemble_agent_tools(self.db, self.ctx, agent.config or {})
+        # assemble 仍需 agent 附着会话；之后 expunge，避免 ephemeral config 被 commit flush 入库
+        self.db.expunge(agent)
         await self.db.commit()  # 释放请求会话；后续 LLM/工具用短会话
         tool_executor = build_short_session_agent_tool_executor(
             self.ctx,

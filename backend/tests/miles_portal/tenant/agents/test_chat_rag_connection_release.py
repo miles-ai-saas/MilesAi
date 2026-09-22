@@ -21,6 +21,9 @@ class _TxnDb:
     def __init__(self) -> None:
         self.events: list[str] = []
 
+    def expunge(self, obj: object) -> None:
+        self.events.append("expunge")
+
     async def commit(self) -> None:
         self.events.append("commit")
 
@@ -257,17 +260,19 @@ def _tool_agent() -> SimpleNamespace:
 
 
 def test_tool_agent_commits_before_run_tool_calling_chat(monkeypatch):
-    """装配完成后 commit 请求会话，再进入 tool_agent 循环（LLM/工具慢 IO）。"""
+    """装配完成后 expunge 再 commit，避免 ephemeral config flush；再进入 tool 循环。"""
     db = _TxnDb()
     svc = _svc(db)
+    agent = _tool_agent()
     captured: dict[str, object] = {}
 
     async def fake_assemble(*args, **kwargs):
         db.events.append("assemble")
         return []
 
-    async def fake_run_tool_calling_chat(*args, **kwargs):
+    async def fake_run_tool_calling_chat(agent_arg, *args, **kwargs):
         db.events.append("tool_loop")
+        captured["agent"] = agent_arg
         captured["kwargs"] = kwargs
         return MagicMock(answer="答", sources=[], steps=[])
 
@@ -283,15 +288,22 @@ def test_tool_agent_commits_before_run_tool_calling_chat(monkeypatch):
     out = _run(
         AgentChatRagMixin._run_tool_agent(
             svc,
-            _tool_agent(),
-            ChatRequest(query="问题"),
+            agent,
+            ChatRequest(query="问题", conversation_id="conv-1"),
             agent_id=uuid4(),
             system_prompt="sys",
+            kb_ids=["kb1"],
+            kb_top_k=3,
         )
     )
 
     assert out.answer == "答"
-    assert db.events == ["assemble", "commit", "tool_loop"]
+    assert db.events == ["assemble", "expunge", "commit", "tool_loop"]
+    # 内存对象仍带 ephemeral keys，供 run_tool_calling_chat 使用
+    assert captured["agent"] is agent
+    assert agent.config.get("_conversation_id") == "conv-1"
+    assert agent.config.get("_bound_kb_ids") == ["kb1"]
+    assert agent.config.get("_bound_kb_top_k") == 3
 
 
 def test_tool_agent_uses_flow_media_reader_and_short_session_executor(monkeypatch):
