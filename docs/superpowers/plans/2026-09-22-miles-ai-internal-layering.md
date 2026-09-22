@@ -626,13 +626,15 @@ __all__ = [
 ```bash
 cd /Users/xiezhigang/Projects/miles/MilesAI/backend
 rg -n "integrations\.langgraph\.(constants|state|grading|graphs|runner)\b" packages tests; echo "--- 期望：无输出"
-rg -n "miles_ai\.(rag|flow_runtime)" packages/miles-ai/src/miles_ai/integrations -g '*.py' | awk -F: '{print $3}' | sort | uniq -c
+rg -n --no-heading '^\s*(from|import)\s+miles_ai\.(rag|flow_runtime)' -g '**/integrations/**' packages; echo "--- 期望：恰 6 条，全在 integrations/langchain/"
 .venv/bin/ruff check . && .venv/bin/ruff format --check . && .venv/bin/lint-imports | tail -3
 .venv/bin/python -m pytest -q
 .venv/bin/python -m miles_server.scripts.export_openapi --check
 ```
 
-Expected: 第一条无输出；剩余反向边只有 `langchain/{__init__,kb_retrieval,vectorstores,visual_embeddings}.py` 与 `langgraph/checkpointer.py` 相关（`checkpointer.py` 本身不 import rag）；pytest `1517 passed`；OpenAPI 零漂移。
+Expected: 第一条无输出；第二条**恰 6 条**反向边 —— `langchain/__init__.py` 2 条、`langchain/vectorstores.py` 2 条、`langchain/kb_retrieval.py` 1 条、`langchain/visual_embeddings.py` 1 条；`integrations/langgraph/` 下 **0 条**（`checkpointer.py` 不 import rag，本任务迁走的 `grading.py`/`graphs/rag_qa.py` 各消 1 条，8 − 2 = 6）。剩余的 `langchain` 4 文件由 Task 3 / Task 5 处理。pytest `1517 passed`；OpenAPI 零漂移。
+
+> 与 Task 1 同理，务必用**锚定**口径计数。未锚定写法（如 `rg -n "miles_ai\.(rag|flow_runtime)" packages/miles-ai/src/miles_ai/integrations`）会把 Step 8 新写入 `integrations/langgraph/__init__.py` docstring 的两处路径提及（`miles_ai.rag.graph`、`miles_ai.flow_runtime`）也算进来，得 8 而非 6。
 
 ```bash
 cd /Users/xiezhigang/Projects/miles/MilesAI
@@ -641,8 +643,8 @@ git commit -F- <<'EOF'
 refactor(ai): Agent RAG 图引擎由 integrations 归位到 rag/graph
 
 RAG 问答的 LangGraph 引擎（常量、状态、评分、执行入口、rag_qa 图）按分层
-应属 L2，先前因按技术名建包而落在 L3 的 integrations/langgraph 内，形成
-integrations 反向依赖 rag 的 8 条边。
+应属 L2，先前因按技术名建包而落在 L3 的 integrations/langgraph 内，是
+integrations 反向依赖 rag 的 8 条边中的 2 条（余 6 条在 integrations/langchain）。
 
 新子包 rag/graph 采用惰性 __getattr__ barrel，避免与
 integrations.langgraph.checkpointer 互引成环；integrations/langgraph 门面
@@ -1363,6 +1365,28 @@ rg -n "integrations\.(langgraph\.(compiler|flow_runner|graph_analysis|grading|gr
 ```
 
 > 前端改动仅注释文本，不触发 `prettier` 差异；改后跑 `make check-ui` 里的 `format-check-ui` 确认（若本机未装 UI 依赖可跳过，该步在 CI 覆盖）。
+
+- [ ] **Step 5b: 清理 Task 1 搬迁遗留的层标签与旧模块名（Task 1 评审 Minor）**
+
+Task 1 评审记录了 4 条 Minor 文档漂移，其中 5 处落在 Task 1 已搬入 `flow_runtime` 的文件里，且**不属于** Task 1 brief 允许的改写类别（当时只允许改 import 与 docstring 中的**路径提及**），故未在 Task 1 处理，归到本步骤一并清掉。**纯 docstring / 注释文本，不改逻辑。**
+
+| 文件 | 原文 | 改为 |
+|---|---|---|
+| `packages/miles-ai/src/miles_ai/flow_runtime/compiler/__init__.py`（docstring 首行） | `编译器（画布流程 L3）` | `编译器（画布流程 L2）` |
+| `packages/miles-ai/src/miles_ai/flow_runtime/graph_runner.py`（docstring 首行） | `执行入口（L3）` | `执行入口（L2）` |
+| `packages/miles-ai/src/miles_ai/flow_runtime/graph_runner.py`（docstring 末段） | `（``graphs/rag_qa``）` | `（``rag.graph.rag_qa``）` |
+| `packages/miles-ai/src/miles_ai/flow_runtime/types.py`（`run_subflow` 字段注释） | `由 flow_runner 注入` | `由 graph_runner 注入` |
+| `packages/miles-ai/src/miles_ai/flow_runtime/nodes/loop_nodes.py`（兜底路径注释） | `正常由 flow_runner 注入` | `正常由 graph_runner 注入` |
+
+行号仅为定位提示（其它任务可能已改动这些文件），以文本为准。验证：
+
+```bash
+cd /Users/xiezhigang/Projects/miles/MilesAI
+rg -n 'flow_runner' backend/packages backend/tests; echo "--- 期望：无输出"
+rg -n '画布流程 L3|执行入口（L3）' backend/packages; echo "--- 期望：无输出"
+```
+
+> 另两条 Task 1 评审 Minor **不在此处理**：`integrations/langgraph/__init__.py` 的 docstring 提示句已在 Task 2 Step 8 整文件重写（Minor 自然消失）；`tests/miles_ai/integrations/langgraph/test_canvas_state_contract.py` 注释里的「已搬到 …（Task 6）」在 Task 6 真正搬迁该文件后即为事实。
 
 - [ ] **Step 6: spec 补「已实施」记录**
 
