@@ -15,9 +15,10 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-_PKG = Path(__file__).resolve().parents[1] / "packages"
-_MILES_AI = _PKG / "miles-ai" / "src" / "miles_ai"
-_MILES_SERVER = _PKG / "miles-server" / "src" / "miles_server"
+from tests.paths import PACKAGES
+
+_MILES_AI = PACKAGES / "miles-ai" / "src" / "miles_ai"
+_MILES_SERVER = PACKAGES / "miles-server" / "src" / "miles_server"
 
 # 仅匹配真正的 import 语句（含缩进的惰性/TYPE_CHECKING import），不匹配 docstring 提及。
 _MILES_PORTAL_IMPORT_RE = re.compile(r"^\s*(?:from|import)\s+.*\bmiles_portal\b")
@@ -31,19 +32,26 @@ def _iter_py_files(target: Path) -> list[Path]:
 
 def test_multi_package_layout_guard():
     """miles-ai 不得依赖 miles_portal；miles-server 只装配、不自建 views/router。"""
+    ai_files = _iter_py_files(_MILES_AI)
+    server_files = _iter_py_files(_MILES_SERVER)
+    # 守卫自身防呆：下面三条断言都是 `assert not offenders` 形式，扫描面一旦为空即恒真而静默通过
+    # （例如本文件被挪出 tests/ 根、或 paths.py 的常量写错）。实测 miles-ai 153 / miles-server 27。
+    assert len(ai_files) >= 100, f"miles-ai 只扫到 {len(ai_files)} 个 .py，扫描面疑似失效：{_MILES_AI}"
+    assert len(server_files) >= 20, f"miles-server 只扫到 {len(server_files)} 个 .py，扫描面疑似失效：{_MILES_SERVER}"
+
     offenders: list[str] = []
-    for path in _iter_py_files(_MILES_AI):
+    for path in ai_files:
         for lineno, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
             if _MILES_PORTAL_IMPORT_RE.match(line):
-                offenders.append(f"miles-ai→portal {path.relative_to(_PKG)}:{lineno}: {line.strip()}")
+                offenders.append(f"miles-ai→portal {path.relative_to(PACKAGES)}:{lineno}: {line.strip()}")
     assert not offenders, "miles-ai 出现 miles_portal import：\n" + "\n".join(offenders)
 
-    views_dirs = sorted(str(p.relative_to(_PKG)) for p in _MILES_SERVER.rglob("views") if p.is_dir())
+    views_dirs = sorted(str(p.relative_to(PACKAGES)) for p in _MILES_SERVER.rglob("views") if p.is_dir())
     assert not views_dirs, "miles-server 下不应有 views/ 目录：\n" + "\n".join(views_dirs)
 
     offenders = []
-    for path in _iter_py_files(_MILES_SERVER):
+    for path in server_files:
         for lineno, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
             if "APIRouter(" in line:
-                offenders.append(f"{path.relative_to(_PKG)}:{lineno}: {line.strip()}")
+                offenders.append(f"{path.relative_to(PACKAGES)}:{lineno}: {line.strip()}")
     assert not offenders, "miles-server 不应直接构造 APIRouter：\n" + "\n".join(offenders)

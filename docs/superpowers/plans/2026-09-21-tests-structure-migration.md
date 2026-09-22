@@ -1189,10 +1189,10 @@ rg -n "parents\[" tests
 ```
 
 Expected: 只出现说明性命中——`tests/paths.py:1,3` 的 docstring（解释「勿用 `parents[N]` 猜 backend 根」）与
-`tests/miles_core/infra/db/test_loop_aware_engine.py:274` 的注释（说明为何不再用深度推导）；
-`tests/test_l3_neutral_imports.py:18` 的 `_PKG = Path(__file__).resolve().parents[1] / "packages"` 是该文件
-**留在 `tests/` 根**时的正确推导（`parents[1]` 即 `backend/`），不在本次改造范围，允许保留。
-除上述两类外不得出现其余命中——尤其不得出现「子目录内靠 `parents[N]` 猜 backend 根」的代码。
+`tests/miles_core/infra/db/test_loop_aware_engine.py:274` 的注释（说明为何不再用深度推导）。
+除上述说明性文字外不得出现其余命中——尤其不得出现「靠 `parents[N]` 猜仓库根」的**代码**
+（含根级文件：`tests/test_l3_neutral_imports.py` 原以 `parents[1]` 取 `backend/packages`，
+因该写法一离开 `tests/` 根就静默指向不存在的 `tests/packages`，已一并改为 `tests.paths.PACKAGES`）。
 
 - [ ] **Step 3b: 旧测试路径引用已归零（文档）+ 跨用例导入已归零（代码）**
 
@@ -1269,7 +1269,7 @@ Expected: `lint.yml` 的 pytest 步骤通过（与本地一致）
 | # | 计划原文 | 实际执行 | 原因 |
 |---|---|---|---|
 | 1 | Task 2/3 的「改后」注释写 `` `parents[N]` `` | 写 `` `parents` `` | 与 Task 3 Step 4 / Task 8 Step 3 的 `rg "parents\["` 验收互斥：写全会让验收命中该注释 |
-| 2 | Task 8 Step 3 预期「只剩 `paths.py:1` 一行」 | 允许两类说明性命中（`paths.py:1,3` docstring、`test_loop_aware_engine.py:274` 注释）+ `test_l3_neutral_imports.py:18` 的根级 `parents[1]` | 前者是解释为何不再用深度推导；后者留在 `tests/` 根时 `parents[1]` 即 `backend/`，本就正确，不在改造范围 |
+| 2 | Task 8 Step 3 预期「只剩 `paths.py:1` 一行」 | 允许两类说明性命中（`paths.py:1,3` docstring、`test_loop_aware_engine.py:274` 注释） | 它们是解释为何不再用深度推导的说明文字 |
 | 3 | Task 4 只搬 98 个文件 | 99 个（+ `tests/tenant/models/_usage_doubles.py`） | 该共享辅助模块被两个用例 import，不与用例同批搬走会立刻断链 |
 | 4 | 未提跨用例 import | Task 3 Step 2b / Task 4 Step 2b 新增 4 处导入路径改写 | 同上：`tests.infra.test_litellm_adapter` 2 处、`tests.tenant.models._usage_doubles` 2 处 |
 | 5 | Task 5 预期 `130 passed` | `114 passed` | 130 把根级 4 个 AST 守卫的 16 个用例也算进了该批命令，但那些文件不在命令的参数里 |
