@@ -6,7 +6,7 @@
   resolve ``ModelConfig``（含 BYOK 合并），再调用 L3 纯编排
   ``integrations.embeddings.runtime.build_embeddings`` / CLIP provider。
 - L3 ``integrations/langchain/embeddings.py`` 不再承载这些解析（B-2b 后仅存纯层）。
-- ``build_kb_retrieval_bindings`` 构造供 L3 ``vectorstores`` 检索注入的中立载体。
+- ``build_kb_retrieval_bindings`` 构造供 ``rag.retrieve`` 检索注入的中立载体（``rag.retrieve.bindings.KbRetrievalBindings``）。
 """
 
 from __future__ import annotations
@@ -20,7 +20,7 @@ from sqlalchemy.orm import Session
 from miles_ai.integrations.embeddings.constants import INVOKE_MODE_CLIP
 from miles_ai.integrations.embeddings.registry import get_embedding_provider
 from miles_ai.integrations.embeddings.runtime import build_embeddings
-from miles_ai.integrations.langchain.kb_retrieval import KbRetrievalBindings
+from miles_ai.rag.retrieve.bindings import KbRetrievalBindings
 from miles_common.exceptions import BadRequestError
 from miles_portal.tenant.models.services.embedding_resolve import (
     resolve_embedding_model_by_id,

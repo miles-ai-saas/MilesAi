@@ -1,54 +1,14 @@
 """
-LangChain 统一 AI 能力层（L3，惰性 ``__getattr__`` 导出）。
+LangChain 集成包（L3，仅本子包内容）。
 
-分层对应
---------
-- embeddings 解析/向量化：L1 ``tenant.kb.services.embeddings``（按 KB 绑定模型 resolve 后调 L3 纯 provider）
-- vectorstores：检索 → rag.retrieve
-- chat_models：对话生成
-- generate.*：简单 RAG 问答（re-export）
+- ``chat_models``：``ainvoke_chat`` / ``get_chat_model``
+- ``tool_agent``：工具调用循环与契约
+- ``toolkit``：平台工具 → LangChain 工具适配
 
-避免在业务代码中深层 import 未使用的子模块，缩短冷启动。
+检索、RAG 生成、KB 检索绑定分别见 ``rag.retrieve.multi_kb``、``rag.generate``、
+``rag.retrieve.bindings``；本包不再 re-export 上层 L2 内容。
 """
 
-__all__ = [
-    "ainvoke_chat",
-    "build_rag_prompt",
-    "build_rag_user_prompt",
-    "format_hits_context",
-    "generate_rag_answer",
-    "get_chat_model",
-    "retrieve_hits",
-    "search_kb",
-    "search_multi_kb_async",
-    "split_text",
-]
+from miles_ai.integrations.langchain.chat_models import ainvoke_chat, get_chat_model
 
-
-def __getattr__(name: str):
-    if name in ("ainvoke_chat", "get_chat_model"):
-        from miles_ai.integrations.langchain.chat_models import ainvoke_chat, get_chat_model
-
-        return {"ainvoke_chat": ainvoke_chat, "get_chat_model": get_chat_model}[name]
-    if name == "split_text":
-        from miles_ai.rag.chunk import split_text
-
-        return split_text
-    if name in (
-        "search_kb",
-        "search_multi_kb_async",
-    ):
-        from miles_ai.integrations.langchain import vectorstores as vs
-
-        return getattr(vs, name)
-    if name in (
-        "retrieve_hits",
-        "format_hits_context",
-        "build_rag_user_prompt",
-        "build_rag_prompt",
-        "generate_rag_answer",
-    ):
-        from miles_ai.rag import generate as rag_gen
-
-        return getattr(rag_gen, name)
-    raise AttributeError(name)
+__all__ = ["ainvoke_chat", "get_chat_model"]

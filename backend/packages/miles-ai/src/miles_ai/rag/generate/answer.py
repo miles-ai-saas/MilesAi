@@ -4,11 +4,11 @@ RAG 检索增强生成（线性路径，无 LangGraph）。
 适用场景
 --------
 - 简单「多 KB 问答」API 或脚本：retrieve → 拼 prompt → ``ainvoke_chat``。
-- 复杂 Agent / 流程画布走 ``integrations.langchain`` / LangGraph，不经过本模块。
+- 复杂 Agent / 流程画布走 ``rag.graph`` / ``flow_runtime``，不经过本模块。
 
 依赖
 ----
-- 检索：``integrations.langchain.vectorstores.search_multi_kb_async`` → ``rag.retrieve.multi_kb``。
+- 检索：``rag.retrieve.multi_kb.search_multi_kb_async``。
 - 上下文：``generate.context.build_rag_user_prompt``。
 
 有附图但未传 ``media_reader`` 时显式 ``BadRequestError``，避免静默丢图。
@@ -23,11 +23,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from miles_ai.integrations.chat.multimodal import build_invoke_messages_with_media
 from miles_ai.integrations.langchain.chat_models import OnDelta, ainvoke_chat
-from miles_ai.integrations.langchain.kb_retrieval import KbRetrievalBindings
-from miles_ai.integrations.langchain.vectorstores import search_multi_kb_async
 from miles_ai.integrations.litellm.usage_sink import UsageSink
 from miles_ai.rag.generate.context import build_rag_user_prompt
 from miles_ai.rag.load import load_kbs_for_tenant
+from miles_ai.rag.retrieve.bindings import KbRetrievalBindings
+from miles_ai.rag.retrieve.multi_kb import search_multi_kb_async
 from miles_common.exceptions import BadRequestError
 from miles_common.schemas.media import MediaRefIn
 from miles_core.models.media.reader import MediaReader

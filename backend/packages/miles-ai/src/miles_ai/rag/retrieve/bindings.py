@@ -1,7 +1,7 @@
-"""KB 检索绑定载体（L3 中立，不依赖 tenant 域）。
+"""KB 检索绑定载体（L2，不依赖 tenant 域）。
 
-供 L1 kb 域 ``tenant.kb.services.embeddings`` 构造、``vectorstores`` 检索函数
-注入到 L2 ``rag.retrieve.multi_kb``；类型别名直接复用 multi_kb 的回调签名。
+供 L1 kb 域 ``tenant.kb.services.embeddings`` 构造，注入 ``rag.retrieve.multi_kb``
+与 ``rag.graph.runner``；类型别名直接复用 multi_kb 的回调签名。
 """
 
 from __future__ import annotations

@@ -7,8 +7,8 @@ KB 检索实现（L2）：同步单 KB ``search_kb``、异步多 KB ``search_mul
 - 每个 KB 调用 ``search_kb_chunks``（vector/hybrid/rerank 按 KB 配置）。
 - 合并所有 hit 后按 ``score`` 全局降序，截断 ``top_k``。
 
-同步 ``search_kb`` 由 L3 ``vectorstores`` 壳转发（内置工具用）；
-异步 ``search_multi_kb_async`` 经 L3 壳注入 bindings 供问答/检索链路用。
+同步 ``search_kb`` 供内置工具体同步路径直接调用；
+异步 ``search_multi_kb_async`` 由调用方经 ``rag.retrieve.bindings`` 注入 embed/rerank 回调。
 """
 
 from __future__ import annotations
