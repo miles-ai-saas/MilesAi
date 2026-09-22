@@ -3,7 +3,7 @@
 from typing import Any, Generic, TypeVar
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import exists, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.elements import ColumnElement
 
@@ -52,8 +52,12 @@ class BaseRepository(Generic[T]):
         return (await self.db.execute(stmt)).scalar_one_or_none()
 
     async def exists(self, *filters: ColumnElement[bool]) -> bool:
-        """是否存在满足条件的未删除记录。"""
-        return (await self.get_one(*filters)) is not None
+        """是否存在满足条件的未删除记录（不加载实体）。"""
+        where = self._apply_not_deleted(list(filters))
+        stmt = select(exists(select(1).select_from(self.model).where(*where))) if where else select(
+            exists(select(1).select_from(self.model))
+        )
+        return bool((await self.db.execute(stmt)).scalar())
 
     async def list_page(
         self,
@@ -109,12 +113,13 @@ class BaseRepository(Generic[T]):
 
         软删行不参与校验，``exclude_id`` 用于更新时排除自身。
         """
-        stmt = select(self.model).where(field == value)
+        clauses: list[ColumnElement[bool]] = [field == value]
         if has_soft_delete(self.model):
-            stmt = stmt.where(not_deleted(self.model))
+            clauses.append(not_deleted(self.model))
         if exclude_id is not None:
             id_col = getattr(self.model, "id", None)
             if id_col is not None:
-                stmt = stmt.where(id_col != exclude_id)
-        if (await self.db.execute(stmt)).scalar_one_or_none():
+                clauses.append(id_col != exclude_id)
+        stmt = select(exists(select(1).select_from(self.model).where(*clauses)))
+        if (await self.db.execute(stmt)).scalar():
             raise ConflictError(message)
