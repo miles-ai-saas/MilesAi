@@ -107,7 +107,7 @@
 
 Run:
 ```bash
-rg -n "AsyncSessionLocal\(\)" packages/miles-ai/src/miles_ai/integrations/langgraph/graphs/rag_qa.py \
+rg -n "AsyncSessionLocal\(\)" packages/miles-integrations/src/miles_ai/rag/graph/rag_qa.py \
   packages/miles-portal/src/miles_portal/tenant/models/services/usage.py \
   packages/miles-portal/src/miles_portal/tenant/tools/services/flow_invoker.py \
   packages/miles-portal/src/miles_portal/tenant/flows/services/run_context.py \

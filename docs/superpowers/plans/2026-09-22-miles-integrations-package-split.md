@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** 将纯 L3 的 `miles_ai.integrations` 整树拆为独立 workspace 包 `miles-integrations`（import 根 `miles_integrations`），硬切换、不留兼容层，并用包级 layers 冻结 `miles_ai → miles_integrations → miles_core`。
+**Goal:** 将 `miles_ai` 包内纯 L3 的 `integrations/` 整树拆为独立 workspace 包 `miles-integrations`（import 根 `miles_integrations`），硬切换、不留兼容层，并用包级 layers 冻结 `miles_ai → miles_integrations → miles_core`。
 
 **Architecture:** 前置内部分层归位已清零 `integrations → rag/flow_runtime`。本计划做物理迁移动 + 全仓 import 改写 + 依赖归属 + 契约升级；不改业务逻辑。
 
@@ -16,7 +16,7 @@
 - 测试一律 `.venv/bin/python -m pytest`（`tests.paths` 依赖 `backend/` 在 `sys.path`）。
 - 基线（支线起点，实施前以 Task 0 实测为准；写计划时 HEAD=`119f1ac4`）：**1517 tests collected**；`lint-imports` = **8 kept, 0 broken**；`integrations → rag/flow_runtime` 反向边 = **0**。
 - **纯搬迁：禁止改逻辑、断言、fixture、函数签名。** 唯一代码改写是 import / 模块路径字符串（含 monkeypatch）与 docstring 中的旧路径提及；以及本计划明确给出的新文件（包骨架 `__init__.py`、pyproject、契约、文档）。
-- **硬切换：禁止保留 `miles_ai.integrations` 兼容壳或 re-export。**
+- **硬切换：禁止在 `miles_ai` 下保留旧 L3 兼容壳或 re-export。**
 - `git mv` 保留 rename 历史；每个 Task **一个**提交，message 用简体中文 Conventional Commits。
 - **import 顺序**：ruff 已启用 `I`（isort）。改完 import 后跑 `.venv/bin/ruff check --select I --fix .`，再 `.venv/bin/ruff format .`；与 `--fix` 冲突时以 `--fix` 为准。
 - 每个 Task 结束必须全绿：`ruff check .`、`ruff format --check .`、`lint-imports`、`pytest -q`、`export_openapi --check`（Task 0 除外）。
@@ -27,7 +27,7 @@
 ### 实施前必读的现状事实（已实测，勿再重复调研）
 
 - 锚定口径下 `^\s*(from|import)\s+miles_ai\.integrations` 约 **278** 条（packages + tests）；包内自引用约 **118** 处文本提及。
-- monkeypatch / 字符串路径含 `miles_ai.integrations.` 的测试文件至少 **8** 个文件、**100+** 处——批量替换必须覆盖字符串，不只改 `from/import` 行。
+- monkeypatch / 字符串路径含旧 L3 模块前缀的测试文件至少 **8** 个文件、**100+** 处——批量替换必须覆盖字符串，不只改 `from/import` 行。
 - `langchain-openai` 在 `miles-ai` 的 pyproject 中声明，但源码**零引用**——迁出后从 `miles-ai` **删除**，**不必**加入 `miles-integrations`（除非迁移后实测需要）。
 - `Pillow`：`rag/parse/image_parser.py` 与 `embeddings/providers/clip.py` 都用 → **两边都声明**。
 - `httpx`：仅 integrations 内使用（portal 已自有）→ 归 `miles-integrations`；`miles-ai` 可删（若迁后无残留）。
@@ -64,14 +64,14 @@ Expected: `lint-imports` 末行 `Contracts: 8 kept, 0 broken.`；用例名文件
 **Files:**
 - Create: `packages/miles-integrations/pyproject.toml`
 - Create: `packages/miles-integrations/src/miles_integrations/__init__.py`（随后被 git mv 覆盖目录——见步骤说明）
-- Move: `packages/miles-ai/src/miles_ai/integrations/**` → `packages/miles-integrations/src/miles_integrations/**`
-- Move: `tests/miles_ai/integrations/**` → `tests/miles_integrations/**`
+- Move: `packages/miles-integrations/src/miles_integrations/**` → `packages/miles-integrations/src/miles_integrations/**`
+- Move: `tests/miles_integrations/**` → `tests/miles_integrations/**`
 - Modify: `packages/miles-ai/pyproject.toml`
 - Modify: `packages/miles-portal/pyproject.toml`
 - Modify: `packages/miles-server/pyproject.toml`
 - Modify: `packages/miles-worker/pyproject.toml`
 - Modify: `tests/paths.py`（增加 `MILES_INTEGRATIONS`）
-- Modify: 全仓凡含 `miles_ai.integrations` 的 `.py` / 文档内代码路径字符串（批量替换）
+- Modify: 全仓凡含 `miles_integrations` 的 `.py` / 文档内代码路径字符串（批量替换）
 
 **Interfaces:**
 - Produces: 可 import 的 `miles_integrations.*`；`miles_ai` 仅含 `rag/` + `flow_runtime/`
@@ -132,14 +132,14 @@ cd /Users/xiezhigang/Projects/miles/MilesAI
 # 去掉占位，让出目录给 git mv
 rm -f backend/packages/miles-integrations/src/miles_integrations/__init__.py
 # 把 integrations 目录下所有内容迁到新包（含 __init__.py）
-git mv backend/packages/miles-ai/src/miles_ai/integrations/__init__.py \
+git mv backend/packages/miles-integrations/src/miles_integrations/__init__.py \
        backend/packages/miles-integrations/src/miles_integrations/__init__.py
 for name in chat deepagents embeddings generative http_constants.py langchain langgraph litellm rerank; do
-  git mv "backend/packages/miles-ai/src/miles_ai/integrations/$name" \
+  git mv "backend/packages/miles-integrations/src/miles_integrations/$name" \
          "backend/packages/miles-integrations/src/miles_integrations/$name"
 done
-rmdir backend/packages/miles-ai/src/miles_ai/integrations 2>/dev/null || \
-  rm -rf backend/packages/miles-ai/src/miles_ai/integrations
+rmdir backend/packages/miles-ai/src/miles_integrations 2>/dev/null || \
+  rm -rf backend/packages/miles-ai/src/miles_integrations
 ls backend/packages/miles-ai/src/miles_ai/
 ls backend/packages/miles-integrations/src/miles_integrations/
 ```
@@ -151,13 +151,13 @@ Expected: `miles_ai` 下列出 `flow_runtime`、`rag`、`__init__.py`（无 `int
 ```bash
 cd /Users/xiezhigang/Projects/miles/MilesAI/backend
 mkdir -p tests/miles_integrations
-git mv tests/miles_ai/integrations/deepagents tests/miles_integrations/deepagents
-git mv tests/miles_ai/integrations/embeddings tests/miles_integrations/embeddings
-git mv tests/miles_ai/integrations/generative tests/miles_integrations/generative
-git mv tests/miles_ai/integrations/langchain tests/miles_integrations/langchain
-git mv tests/miles_ai/integrations/litellm tests/miles_integrations/litellm
-git mv tests/miles_ai/integrations/rerank tests/miles_integrations/rerank
-rmdir tests/miles_ai/integrations 2>/dev/null || rm -rf tests/miles_ai/integrations
+git mv tests/miles_integrations/deepagents tests/miles_integrations/deepagents
+git mv tests/miles_integrations/embeddings tests/miles_integrations/embeddings
+git mv tests/miles_integrations/generative tests/miles_integrations/generative
+git mv tests/miles_integrations/langchain tests/miles_integrations/langchain
+git mv tests/miles_integrations/litellm tests/miles_integrations/litellm
+git mv tests/miles_integrations/rerank tests/miles_integrations/rerank
+rmdir tests/miles_integrations 2>/dev/null || rm -rf tests/miles_integrations
 ls tests/miles_ai/
 ls tests/miles_integrations/
 ```
@@ -253,7 +253,7 @@ refactor(ai): 拆出 miles-integrations 并硬切换全仓 import
 
 将纯 L3 的 integrations 整树迁入第 11 个 workspace 包，import 根改为
 miles_integrations；litellm / deepagents / sentence-transformers 等仅 L3
-依赖随包迁出。不留 miles_ai.integrations 兼容壳。
+依赖随包迁出。不在 miles_ai 下保留旧 L3 兼容壳。
 EOF
 git log --oneline -1
 ```
@@ -378,7 +378,7 @@ git log --oneline -1
 ### Task 3: 同步文档与 spec「已实施」
 
 **Files:**
-- Modify: `docs/architecture/layering.md`（凡写 `miles_ai/integrations` 或 `miles_ai.integrations` 处）
+- Modify: `docs/architecture/layering.md`（凡写 `miles_integrations` 或 `miles_integrations` 处）
 - Modify: `docs/superpowers/specs/2026-09-22-miles-integrations-package-split-design.md`（§10 补已实施）
 - Modify: `docs/superpowers/specs/2026-09-22-miles-ai-internal-layering-design.md`（§9 后续项标注已由本拆包完成——一行交叉引用即可）
 
@@ -388,7 +388,7 @@ git log --oneline -1
 
 ```bash
 cd /Users/xiezhigang/Projects/miles/MilesAI
-rg -n 'miles_ai\.integrations|miles_ai/integrations|integrations/' docs/architecture/layering.md
+rg -n 'miles_ai\.integrations|miles_integrations|integrations/' docs/architecture/layering.md
 ```
 
 按下列原则逐条改（以文本为准，行号可能漂移）：
@@ -418,7 +418,7 @@ rg -n 'miles_ai\.integrations' --glob '!docs/superpowers/plans/**' --glob '!docs
 ```markdown
 ### 2026-09-22：已实施
 
-Task 1–3 落地。与本文无偏差。验收：全仓无 `miles_ai.integrations` 生产 import；
+Task 1–3 落地。与本文无偏差。验收：全仓无旧 L3 import 根（见下方 `rg`）；
 `lint-imports` 全绿；pytest collect-only 与基线一致。
 ```
 

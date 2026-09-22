@@ -49,7 +49,7 @@
 
 1. `integrations/` 恢复为纯适配层（只含 ① 桶），对 `rag` / `flow_runtime` 的依赖为 **0**。
 2. `miles_ai` 内部方向固定为 `flow_runtime → rag → integrations`，由 `.importlinter` 的 `layers` 契约强制。
-3. **消费者可见 import 路径零变化**（`miles_ai.integrations.{generative,embeddings,...}` 全部不动）。
+3. **消费者可见 L3 import 路径零变化**（当时仍在 `miles_ai` 包内 `integrations/`；后续第 11 包拆分见拆包 design）。
 4. 不新增 distribution：无新 `pyproject.toml`、无 CI / Dockerfile / compose 改动。
 5. 行为不变：全量 `pytest` 通过、OpenAPI 快照零漂移。
 
@@ -116,12 +116,12 @@ flowchart LR
 
 ### 4.1 ② 画布流程引擎 → `flow_runtime`（8 文件）
 
-| 现模块路径 | 新模块路径 |
+| 迁前（`miles_ai` 包内相对路径） | 现行路径 |
 |------------|-----------|
-| `miles_ai.integrations.langgraph.compiler`（包） | `miles_ai.flow_runtime.compiler` |
+| `integrations/langgraph/compiler`（包） | `miles_ai.flow_runtime.compiler` |
 | ↳ `.compiler.report` / `.validate` / `.state` / `.build` / `.run` / `.__init__` | 同名平移 |
-| `miles_ai.integrations.langgraph.flow_runner` | `miles_ai.flow_runtime.graph_runner` |
-| `miles_ai.integrations.langgraph.graph_analysis` | `miles_ai.flow_runtime.graph_analysis` |
+| `integrations/langgraph/flow_runner` | `miles_ai.flow_runtime.graph_runner` |
+| `integrations/langgraph/graph_analysis` | `miles_ai.flow_runtime.graph_analysis` |
 
 平移后 `compiler/*` 内 `from miles_ai.flow_runtime.* import …` 变为包内引用，不再构成反向边。
 
@@ -129,17 +129,17 @@ flowchart LR
 
 ③ 桶本体 6 个文件，另附 3 项同批处理的删除/搬迁：
 
-| 现模块路径 | 新模块路径 |
+| 迁前（`miles_ai` 包内相对路径） | 现行路径 |
 |------------|-----------|
-| `miles_ai.integrations.langgraph.constants` | `miles_ai.rag.graph.constants` |
-| `miles_ai.integrations.langgraph.state` | `miles_ai.rag.graph.state` |
-| `miles_ai.integrations.langgraph.grading` | `miles_ai.rag.graph.grading` |
-| `miles_ai.integrations.langgraph.graphs.rag_qa` | `miles_ai.rag.graph.rag_qa` |
-| `miles_ai.integrations.langgraph.runner` | `miles_ai.rag.graph.runner` |
-| `miles_ai.integrations.langgraph.graphs`（`__init__`，10 行） | 并入 `rag/graph/__init__.py` |
-| `miles_ai.integrations.langchain.kb_retrieval` | `miles_ai.rag.retrieve.bindings` |
-| `miles_ai.integrations.langchain.vectorstores` | **删除**（见 §4.4） |
-| `miles_ai.integrations.langchain.__init__` | **删除**（见 §4.5） |
+| `integrations/langgraph/constants` | `miles_ai.rag.graph.constants` |
+| `integrations/langgraph/state` | `miles_ai.rag.graph.state` |
+| `integrations/langgraph/grading` | `miles_ai.rag.graph.grading` |
+| `integrations/langgraph/graphs/rag_qa` | `miles_ai.rag.graph.rag_qa` |
+| `integrations/langgraph/runner` | `miles_ai.rag.graph.runner` |
+| `integrations/langgraph/graphs`（`__init__`，10 行） | 并入 `rag/graph/__init__.py` |
+| `integrations/langchain/kb_retrieval` | `miles_ai.rag.retrieve.bindings` |
+| `integrations/langchain/vectorstores` | **删除**（见 §4.4） |
+| `integrations/langchain/__init__` | **剥离跨层 re-export**（见 §4.5；后随第 11 包迁入 `miles_integrations`） |
 
 `rag/generate/answer.py` 原经 `vectorstores` 间接 import `rag.retrieve.multi_kb`；删除后改为**直接** import 同一模块，绕过 `rag/retrieve/__init__.py` 的惰性 `__getattr__`，与拆分前的实际解析路径逐字一致，不新增循环 import。
 
@@ -151,14 +151,14 @@ flowchart LR
 
 | 现符号 | 新归属 | 理由 |
 |--------|--------|------|
-| `ensure_clip_model` | `miles_ai.integrations.embeddings.policy` | 纯模型类型校验，只依赖 `integrations.embeddings.{constants,model_meta}`；与既有 `integrations/generative/policy.py` 同构 |
+| `ensure_clip_model` | `miles_integrations.embeddings.policy` | 纯模型类型校验，只依赖 `integrations.embeddings.{constants,model_meta}`；与既有 `integrations/generative/policy.py` 同构 |
 | `should_use_visual_image_embedding` | `miles_ai.rag.parse.upload_policy` | 入库策略，依赖 `miles_core.models.kb` ORM + `rag.parse.media.is_image_file`，属 L2 |
 
 **`integrations/langgraph/checkpointer.py`（128 行，职责混装）→ 拆分**
 
 | 现符号 | 新归属 | 理由 |
 |--------|--------|------|
-| `get_checkpointer`、`checkpoint_backend`、`shutdown_langgraph_checkpointer`、`_import_async_redis_saver`、`_checkpointer` / `_backend` / `_exit_stack` 三个全局 | 留 `miles_ai.integrations.langgraph.checkpointer` | 通用 LangGraph 基础设施；`integrations/deepagents/runner.py` 与 `miles_server` lifespan 均在消费 |
+| `get_checkpointer`、`checkpoint_backend`、`shutdown_langgraph_checkpointer`、`_import_async_redis_saver`、`_checkpointer` / `_backend` / `_exit_stack` 三个全局 | 留 `miles_integrations.langgraph.checkpointer` | 通用 LangGraph 基础设施；`integrations/deepagents/runner.py` 与 `miles_server` lifespan 均在消费 |
 | `_compiled_rag_graph` 单例、`get_compiled_rag_graph`，以及 `init_langgraph_checkpointer` 内**仅**负责 RAG 图编译的那条语句 | 新增 `miles_ai.rag.graph.compiled` | RAG 图编译是 ③ 的职责；改后方向为 `rag → integrations`（合法） |
 
 `init_langgraph_checkpointer` 本身留在 `integrations`，但**只**保留 checkpointer 生命周期（Redis 探测、降级 MemorySaver、日志），不再编译 RAG 图。`rag/graph/compiled.py` 通过 `integrations.langgraph.checkpointer.get_checkpointer()` 取后端，因此 `integrations` 不再持有任何 `rag` 引用。`miles_server` lifespan 需在现有调用之后追加一次 `rag.graph.compiled` 的绑定调用（见 §6）。
@@ -173,7 +173,7 @@ flowchart LR
 
 ### 4.5 `langchain/__init__.py` 惰性门面 → 删除
 
-删除前已实测：**全仓零消费者**（无任何 `from miles_ai.integrations.langchain import …` 形式的调用），因此不需要迁移调用方。
+删除前已实测：**全仓零消费者**（无任何 `from miles_integrations.langchain import …` 形式的调用），因此不需要迁移调用方。
 
 该门面 re-export 的 11 个名字按新归属收敛到各自真源：`ainvoke_chat` / `get_chat_model` → `integrations.langchain.chat_models`；`split_text` → `rag.chunk`；`retrieve_hits` 等 5 个 → `rag.generate`；`search_kb` / `search_multi_kb_async` → 随 §4.4 消失。
 
@@ -234,7 +234,7 @@ type = layers
 layers =
     miles_ai.flow_runtime
     miles_ai.rag
-    miles_ai.integrations
+    miles_integrations
 ```
 
 选 `layers` 而非两条 `forbidden` 的理由：它额外冻结 `rag ✗→ flow_runtime`，而这条是**真实约束**（`flow_runtime` 依赖 `rag`，反向必成环），当前实测为 0，值得一并锁住。
@@ -249,7 +249,7 @@ layers =
 
 | 现位置 | 去向 | 依据 |
 |--------|------|------|
-| `tests/miles_ai/integrations/langgraph/test_canvas_state_contract.py` | `tests/miles_ai/flow_runtime/` | 测 `compiler.state` |
+| `tests/miles_integrations/langgraph/test_canvas_state_contract.py` | `tests/miles_ai/flow_runtime/` | 测 `compiler.state` |
 | `…/test_compile_error_details.py` | `tests/miles_ai/flow_runtime/` | 测 `compiler.validate` |
 | `…/test_langgraph_build.py` | `tests/miles_ai/flow_runtime/` | 测 `compiler.build` |
 | `…/test_langgraph_compiler.py` | `tests/miles_ai/flow_runtime/` | 测 `compiler` |
@@ -259,7 +259,7 @@ layers =
 | `…/test_rag_answer_stream.py` | `tests/miles_ai/rag/graph/` | 测 `rag_qa`/`runner` |
 | `…/test_rag_multimodal.py` | `tests/miles_ai/rag/graph/` | 测 `rag_qa`/`runner` |
 | `…/test_rag_qa_nodes_share_generate.py` | `tests/miles_ai/rag/graph/` | 测 `rag_qa` |
-| `tests/miles_ai/integrations/embeddings/test_clip_visual_search.py` | **拆**：`should_use_visual_image_embedding` 的用例迁 `tests/miles_ai/rag/`，其余留原处 | 源文件被拆（§4.3） |
+| `tests/miles_integrations/embeddings/test_clip_visual_search.py` | **拆**：`should_use_visual_image_embedding` 的用例迁 `tests/miles_ai/rag/`，其余留原处 | 源文件被拆（§4.3） |
 | `tests/miles_ai/flow_runtime/{test_flow_templates,test_relevance_grade_flow,test_subflow,test_flow_template_graphs,test_flow_multimodal,test_flow_runtime_constants}.py` | 原地不动，仅改 import 路径（其中 `test_flow_runtime_constants.py` 改为从 `rag.graph.constants` 取 `GRADE_BRANCH_HANDLES`） | 已在正确目录 |
 | `tests/integration/{test_module_smoke,test_integration_pipeline}.py` | 原地不动，仅改 import 路径 | 跨包集成 |
 | `tests/miles_portal/tenant/agents/test_rag_usage_accumulation.py` | 原地不动，仅改 import 路径 | 已镜像源码位置 |
@@ -268,7 +268,7 @@ layers =
 
 - `tests/miles_ai/rag/graph/` 目录须在源码 `rag/graph/` 存在之后创建，否则判据 3 失败；
 - 全仓 `test_*.py` **基名唯一**（已实测当前无冲突，搬迁不得引入重名）；
-- 已实测待迁文件共 10 个，搬迁后 `tests/miles_ai/integrations/langgraph/` 目录整体消失。
+- 已实测待迁文件共 10 个，搬迁后 `tests/miles_integrations/langgraph/` 目录整体消失。
 
 ---
 
@@ -305,7 +305,7 @@ layers =
 1. `import-linter` 新增的 `layers` 契约全绿；原有 6 条硬判据仍全绿。
 2. 实测 `integrations → rag` 与 `integrations → flow_runtime` 的 import 计数为 **0**。
 3. 全仓 `grep -rn "integrations\.\(langgraph\.\(compiler\|flow_runner\|graph_analysis\|grading\|graphs\|runner\|constants\|state\)\|langchain\.\(kb_retrieval\|vectorstores\|visual_embeddings\)\)"` 仅命中历史文档说明。
-4. `miles_ai.integrations.{generative,embeddings,rerank,deepagents,litellm,chat,langchain}` 的**对外路径不变**（消费者 import 无需改动，`miles_portal` 仅 §5 清单中的 5 个文件受影响）。
+4. 当时 L3 子树（`generative`/`embeddings`/`rerank`/`deepagents`/`litellm`/`chat`/`langchain`）的**对外路径不变**（消费者 import 无需改动，`miles_portal` 仅 §5 清单中的 5 个文件受影响；后随第 11 包迁至 `miles_integrations`）。
 5. 全量 `pytest` 通过；`ruff check` / `ruff format --check` 通过。
 6. `scripts/export_openapi.py --check` **零漂移**。
 7. `miles_ai` 单文件 500 行上限未被新增文件突破（`rag/graph/rag_qa.py` 257 行、`compiler/build.py` 164 行，均在上限内）。

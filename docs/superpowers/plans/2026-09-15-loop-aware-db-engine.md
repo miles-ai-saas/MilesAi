@@ -848,8 +848,8 @@ import 由 `from miles_core.infra.db import short_db_session` 改为
 
 | 模块 | 站点 |
 |---|---|
-| `miles_ai/integrations/langgraph/graphs/rag_qa.py` | `:67` |
-| `miles_ai/integrations/generative/jobs/progress.py` | `:54`、`:75` |
+| `miles_ai/rag/graph/rag_qa.py` | `:67` |
+| `miles_integrations/generative/jobs/progress.py` | `:54`、`:75` |
 | `miles_ai/flow_runtime/nodes/rag_nodes.py` | `:48` |
 | `miles_ai/flow_runtime/nodes/image_generate.py` | `:55`、`:84` |
 | `miles_ai/flow_runtime/nodes/video_generate.py` | `:56`、`:86` |

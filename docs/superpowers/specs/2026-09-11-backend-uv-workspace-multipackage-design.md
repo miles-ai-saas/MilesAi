@@ -229,7 +229,7 @@ from app.admin.models import RiskSeverity
 | `app.infra.*` | `miles_core.infra.*` |
 | `app.models.*` | `miles_core.models.*` |
 | `app.rag.*` | `miles_ai.rag.*` |
-| `app.integrations.*` | `miles_ai.integrations.*` |
+| `app.integrations.*` | `miles_integrations.*` |
 | `app.flow_runtime.*` | `miles_ai.flow_runtime.*` |
 | `app.tenant.*` | `miles_portal.tenant.*` |
 | `app.deletion.*` | `miles_portal.deletion.*` |

@@ -76,7 +76,7 @@ miles_portal/tenant/a2a/invoke.py:151
 
 另有：
 
-- **协议声明 1 处**：`miles_ai/integrations/deepagents/io.py:57` 的 `chat_usage_sink`（L3 契约，不构造 sink）
+- **协议声明 1 处**：`miles_integrations/deepagents/io.py:57` 的 `chat_usage_sink`（L3 契约，不构造 sink）
 - **经方法的调用点 8 处**：`chat_rag.py:192/264/345`、`a2a/invoke.py:319/381/403`、`deepagents/orchestrator.py:90/173`——这些**不传 `db`**，故不受签名变更影响，但**会受会话策略变更影响**（用量行变为即写即提交）
 
 **改动此 sink 的会话策略会影响全部对话类用量写入**（含不在本次范围内的 tool agent 与 a2a），这是本设计最大的影响面，§4.4 单列。
@@ -273,7 +273,7 @@ sequenceDiagram
    `short_db_session()`（Task 1 改 **10 文件 12 处**），并删掉各文件因此不再使用的
    `AsyncSessionLocal` import。注意 `progress.py` **不在这 12 处里**：它在基点（`4ba6ce5f`）
    就已经是 `short_db_session`（上一分支更名时迁过去的），本分支对该文件的生产代码**零改动**。
-2. **清单漏项**：`miles_ai.integrations.generative.jobs.progress`（生成任务进度 / 取消）不
+2. **清单漏项**：`miles_integrations.generative.jobs.progress`（生成任务进度 / 取消）不
    在初版 10 文件清单内，属「按 Task 1 触碰过的文件抄清单」造成的漏项。它本就是安全的
    （见上条），本次补的不是它的代码，而是把它补进**必须受护栏保护的不变量清单**。为防同类
    漏项重演，结构不变量测试改为与**源码交叉核对**（见 §10.5），同类漏项此后会立刻失败而非静默。
@@ -389,7 +389,7 @@ worker 臂（站点走 short_db_session）      -> 6/6 ok
 
 表内未标注「→ 现」的文件，`main` 的行号与修复前一致（未受前一轮改动影响）。
 
-**原清单漏记的一处**：`miles_ai.integrations.generative.jobs.progress` 同样落在 Worker 调用
+**原清单漏记的一处**：`miles_integrations.generative.jobs.progress` 同样落在 Worker 调用
 子树内（生成任务 `job_execution` 的轮询分支读写进度 / 取消状态），但初版 10 文件清单没有它
 —— 这正是「按 Task 1 触碰过的文件抄清单」的漏项。它**在基点上就已经是安全的**
 （`4ba6ce5f` 即用 `short_db_session`，属上一分支更名时迁移的结果），本分支只补了护栏与清单

@@ -94,7 +94,7 @@ assert _extract_text_from_response({"error": "plain"}) == "plain"
 1. **Client 采用有限轮询**：收到 `Task` 后用 `tasks/get` 轮询至终态，间隔 **2s**、总上限 **60s**；超时则回诚实文案 + `taskId`，交由对端自行继续查询。
 2. **终态产物只给引用**：渲染 `artifactId` / `name` / `mimeType` / `uri`，**不下载**、不在 Client 侧透传凭证、不做二进制处理。
 3. **不新增配置项**：轮询间隔与上限为模块常量。60s 与现有 `httpx.AsyncClient(timeout=60.0)` 同量级。
-4. **`message/send` 的 Task 时间戳保持 `now_iso()`**：其来源 dict 只有 `{id, kind, status}`（`miles_ai/integrations/langchain/tool_agent/loop.py:40-42`），拿不到真实时间；为一条语义信息在写路径上加一次 DB 读不划算。该响应本就是「提交快照」，权威状态由随后 `tasks/get` 给出，故语义上可解释为「本快照生成时刻」。
+4. **`message/send` 的 Task 时间戳保持 `now_iso()`**：其来源 dict 只有 `{id, kind, status}`（`miles_integrations/langchain/tool_agent/loop.py:40-42`），拿不到真实时间；为一条语义信息在写路径上加一次 DB 读不划算。该响应本就是「提交快照」，权威状态由随后 `tasks/get` 给出，故语义上可解释为「本快照生成时刻」。
 5. **`message/stream` 首帧保持 `now_iso()`**：它的 `taskId` 是合成的（流开始就得定，生成任务 id 只有跑完才知道），没有真实对象可依。
 6. **实现采用 Client 侧内聚**：轮询作 `client.py` 的私有 helper，`invoke_a2a_peer` 保持「返回 `str`」契约不变 —— 消费方 `invoke.py` 零改动。
 7. **出站 `tasks/cancel` 只补能力、不自动调用**：新增 `cancel_a2a_peer_task`，但本批**不在任何路径调用它**。超时 ≠ 放弃 —— 自动取消会销毁对端租户即将到手的产物，而对端任务的产物属于对端用户（§3.5、§5 第 2 条）。

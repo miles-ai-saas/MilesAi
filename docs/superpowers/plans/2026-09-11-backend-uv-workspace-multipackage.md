@@ -1120,7 +1120,7 @@ git mv app/runner        $P/miles-runner/src/miles_runner/runner
 git mv app/infra         $P/miles-core/src/miles_core/infra
 git mv app/models        $P/miles-core/src/miles_core/models
 git mv app/rag           $P/miles-ai/src/miles_ai/rag
-git mv app/integrations  $P/miles-ai/src/miles_ai/integrations
+git mv app/integrations  $P/miles-ai/src/miles_integrations
 git mv app/flow_runtime  $P/miles-ai/src/miles_ai/flow_runtime
 git mv app/tenant        $P/miles-portal/src/miles_portal/tenant
 git mv app/deletion      $P/miles-portal/src/miles_portal/deletion
@@ -1231,7 +1231,7 @@ RULES: list[tuple[str, str]] = [
     ("app.runner.limits", "miles_runner.limits"),
     ("app.runner.main", "miles_runner.main"),
     ("app.flow_runtime", "miles_ai.flow_runtime"),
-    ("app.integrations", "miles_ai.integrations"),
+    ("app.integrations", "miles_integrations"),
     ("app.middlewares", "miles_core.web.middlewares"),
     ("app.marketplace", "miles_portal.marketplace"),
     ("app.deletion", "miles_portal.deletion"),
@@ -1692,7 +1692,7 @@ from miles_server.apps.migrate import run_migrations
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """应用生命周期钩子：启动时初始化日志 / OTel、执行 schema 迁移并建 LangGraph checkpointer，关闭时逆序释放。"""
-    from miles_ai.integrations.langgraph.checkpointer import (
+    from miles_integrations.langgraph.checkpointer import (
         init_langgraph_checkpointer,
         shutdown_langgraph_checkpointer,
     )

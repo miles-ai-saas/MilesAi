@@ -715,7 +715,7 @@ docstring 补一句：
     ``on_delta`` 为真流回调（``message/stream`` 用）：逐 token 交给调用方下发；不传则
     只在返回时一次性拿到完整回答（``message/send`` 与不支持真流的路由都走这条）。
 ```
-import 段补：`from miles_ai.integrations.langchain.chat_models import OnDelta`。
+import 段补：`from miles_integrations.langchain.chat_models import OnDelta`。
 
 (d) 文件末尾（`handle_a2a_rpc` 之后）新增：
 

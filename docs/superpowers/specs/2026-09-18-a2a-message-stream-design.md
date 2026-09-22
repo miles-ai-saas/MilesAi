@@ -17,8 +17,8 @@ A2A Server 现支持 `message/send` / `tasks/get` / `tasks/cancel`（`miles_port
 
 | 环节 | 位置 | 现状 |
 |---|---|---|
-| 增量回调类型 | `miles_ai/integrations/langchain/chat_models.py:30` | `OnDelta = Callable[[str], Awaitable[None]]` |
-| 逐 chunk 触发 | `miles_ai/integrations/litellm/adapter.py:199-208` | `on_delta(piece)`，`piece` 是**本片增量**（不聚合） |
+| 增量回调类型 | `miles_integrations/langchain/chat_models.py:30` | `OnDelta = Callable[[str], Awaitable[None]]` |
+| 逐 chunk 触发 | `miles_integrations/litellm/adapter.py:199-208` | `on_delta(piece)`，`piece` 是**本片增量**（不聚合） |
 | 对话入口 | `miles_portal/tenant/agents/services/agent/chat_entry.py:33-37` | `AgentService.chat(..., on_delta=...)` 已支持 |
 | 已接的路由 | `chat_rag.py:211`（`direct_chat`）、`chat_rag.py:372/400`（`rag` / `rag_linear`） | 真流 |
 | 未接的路由 | `tool_agent` / `flow` / 子智能体 / `a2a_augmented` / `a2a_host` | 忽略 `on_delta` |

@@ -22,7 +22,7 @@
 - **import 顺序**：`ruff` 已启用 `I`（isort），`select = ["E", "F", "I", "B", "UP", "RUF"]`。每个 Task 改完 import 后先跑 `.venv/bin/ruff check --select I --fix .` 自动排序，再跑 `.venv/bin/ruff format .`；不要手工猜顺序。本计划给出的 import 块已按 isort 排好，若与 `--fix` 结果冲突以 `--fix` 为准。
 - 每个 Task 结束必须全绿：`.venv/bin/ruff check .`、`.venv/bin/ruff format --check .`、`.venv/bin/lint-imports`、`.venv/bin/python -m pytest -q`、`.venv/bin/python -m miles_server.scripts.export_openapi --check`。
 - 单文件 ≤ 500 行（`backend/packages/*/src/`）；新增模块须有中文 docstring（模块 / 类 / 函数）。
-- 搬迁后 `miles_ai.integrations.{generative,embeddings,rerank,deepagents,litellm,chat}` 与 `integrations/langchain/{chat_models,tool_agent,toolkit}` 的路径**不得变化**。
+- 搬迁后 `miles_integrations.{generative,embeddings,rerank,deepagents,litellm,chat}` 与 `integrations/langchain/{chat_models,tool_agent,toolkit}` 的路径**不得变化**。
 - 新增文件/目录的路径名严格按本计划给出的字面量，不得自创。
 
 ### 本计划对 spec 的两处收紧修正
@@ -34,7 +34,7 @@
 
 - 反向边 **13 文件 / 21 条 import**，全在 `integrations/langchain/`（4 文件）与 `integrations/langgraph/`（9 文件）。
 - `integrations/langchain/__init__.py` 惰性门面**全仓零消费者**；`integrations/langchain/vectorstores.py` 的同步版 `search_kb` **零调用**。
-- `tests/miles_ai/flow_runtime/test_flow_runtime_constants.py:9` 用了裸门面写法 `from miles_ai.integrations.langgraph import constants as lg_constants`；`integrations/langgraph/__init__.py` 的 `__getattr__` 会被这条触发。
+- `tests/miles_ai/flow_runtime/test_flow_runtime_constants.py:9` 用了裸门面写法 `from miles_integrations.langgraph import constants as lg_constants`；`integrations/langgraph/__init__.py` 的 `__getattr__` 会被这条触发。
 - `compile_rag_graph_for_tests()`（`integrations/langgraph/runner.py:141`）是既有死函数（零调用）。**本次保持原样搬迁，不清理**（清理属独立立项）。
 - `integrations/langgraph/checkpointer.py` 被 `integrations/deepagents/runner.py`、`miles_server/apps/application.py`、`rag/graph/runner.py` 三处消费。
 
@@ -63,7 +63,7 @@ Expected: `1517 /tmp/ai-names-before.txt`
 ```bash
 cd /Users/xiezhigang/Projects/miles/MilesAI/backend
 rg -n "^\s*(from|import)\s+miles_ai\.(rag|flow_runtime)" \
-  packages/miles-ai/src/miles_ai/integrations > /tmp/ai-graph-before.txt
+  packages/miles-ai/src/miles_integrations > /tmp/ai-graph-before.txt
 wc -l /tmp/ai-graph-before.txt
 git status --porcelain
 ```
@@ -77,12 +77,12 @@ Expected: `21 /tmp/ai-graph-before.txt`；`git status --porcelain` 输出为空�
 把 `compiler/`（6 文件）、`flow_runner.py`、`graph_analysis.py` 搬到 `flow_runtime/`，并改写全部引用。搬完后 `compiler/*` 内的 `flow_runtime.*` 引用变成包内引用，`integrations → flow_runtime` 的 **13 条边全部消失**（剩余 8 条反向边全部指向 `rag`，属 Task 2/3/5）。
 
 **Files:**
-- Move: `packages/miles-ai/src/miles_ai/integrations/langgraph/compiler/` → `packages/miles-ai/src/miles_ai/flow_runtime/compiler/`（`__init__.py`, `report.py`, `validate.py`, `state.py`, `build.py`, `run.py`）
-- Move: `packages/miles-ai/src/miles_ai/integrations/langgraph/flow_runner.py` → `packages/miles-ai/src/miles_ai/flow_runtime/graph_runner.py`
-- Move: `packages/miles-ai/src/miles_ai/integrations/langgraph/graph_analysis.py` → `packages/miles-ai/src/miles_ai/flow_runtime/graph_analysis.py`
+- Move: `packages/miles-integrations/src/miles_ai/flow_runtime/compiler/` → `packages/miles-ai/src/miles_ai/flow_runtime/compiler/`（`__init__.py`, `report.py`, `validate.py`, `state.py`, `build.py`, `run.py`）
+- Move: `packages/miles-integrations/src/miles_ai/flow_runtime/graph_runner.py` → `packages/miles-ai/src/miles_ai/flow_runtime/graph_runner.py`
+- Move: `packages/miles-integrations/src/miles_ai/flow_runtime/graph_analysis.py` → `packages/miles-ai/src/miles_ai/flow_runtime/graph_analysis.py`
 - Modify: `packages/miles-ai/src/miles_ai/flow_runtime/runtime_factory.py`
 - Modify: `packages/miles-portal/src/miles_portal/tenant/flows/services/flow.py:21,339`
-- Modify: `packages/miles-ai/src/miles_ai/integrations/langgraph/__init__.py`（docstring 里的子模块清单）
+- Modify: `packages/miles-integrations/src/miles_integrations/langgraph/__init__.py`（docstring 里的子模块清单）
 - Test: 12 个文件仅改 import（Task 6 再搬目录）
 
 **Interfaces:**
@@ -92,11 +92,11 @@ Expected: `21 /tmp/ai-graph-before.txt`；`git status --porcelain` 输出为空�
 
 ```bash
 cd /Users/xiezhigang/Projects/miles/MilesAI/backend
-git mv packages/miles-ai/src/miles_ai/integrations/langgraph/compiler \
+git mv packages/miles-integrations/src/miles_ai/flow_runtime/compiler \
        packages/miles-ai/src/miles_ai/flow_runtime/compiler
-git mv packages/miles-ai/src/miles_ai/integrations/langgraph/flow_runner.py \
+git mv packages/miles-integrations/src/miles_ai/flow_runtime/graph_runner.py \
        packages/miles-ai/src/miles_ai/flow_runtime/graph_runner.py
-git mv packages/miles-ai/src/miles_ai/integrations/langgraph/graph_analysis.py \
+git mv packages/miles-integrations/src/miles_ai/flow_runtime/graph_analysis.py \
        packages/miles-ai/src/miles_ai/flow_runtime/graph_analysis.py
 git status --porcelain
 ```
@@ -119,7 +119,7 @@ from miles_ai.flow_runtime.compiler.run import run_compiled_canvas
 from miles_ai.flow_runtime.compiler.validate import can_compile_flow_graph, validate_graph_for_compile
 ```
 
-同时把模块 docstring 里的 `from miles_ai.integrations.langgraph.compiler import build_canvas_graph, validate_graph_for_compile` 改为：
+同时把模块 docstring 里的 `from miles_ai.flow_runtime.compiler import build_canvas_graph, validate_graph_for_compile` 改为：
 
 ```
     from miles_ai.flow_runtime.compiler import build_canvas_graph, validate_graph_for_compile
@@ -139,10 +139,10 @@ from miles_ai.flow_runtime.compiler.report import resolve_node_type
 from miles_ai.flow_runtime.constants import TEXT_OUTPUT_NODE_TYPES
 from miles_ai.flow_runtime.graph_analysis import GRADE_BRANCH_HANDLES
 from miles_ai.flow_runtime.types import FlowGraph
-from miles_ai.integrations.langgraph.constants import RELEVANCE_NONE
+from miles_ai.rag.graph.constants import RELEVANCE_NONE
 ```
 
-> `miles_ai.integrations.langgraph.constants` 本次**不动**（属 ③ 桶，Task 2 才迁）。
+> `miles_ai.rag.graph.constants` 本次**不动**（属 ③ 桶，Task 2 才迁）。
 
 - [ ] **Step 4: 改写 `flow_runtime/compiler/build.py` 的 import 块**
 
@@ -283,7 +283,7 @@ def get_flow_runtime() -> LangGraphFlowRuntime:
 
 - [ ] **Step 10: 更新 `integrations/langgraph/__init__.py` 的 docstring**
 
-`packages/miles-ai/src/miles_ai/integrations/langgraph/__init__.py` 的 docstring 子模块清单中，删除 `compiler` / `flow_runner` 两行，改为：
+`packages/miles-integrations/src/miles_integrations/langgraph/__init__.py` 的 docstring 子模块清单中，删除 `compiler` / `flow_runner` 两行，改为：
 
 ```
 子模块
@@ -303,23 +303,23 @@ def get_flow_runtime() -> LangGraphFlowRuntime:
 
 | 文件:行 | 原文 | 改为 |
 |---|---|---|
-| `tests/integration/test_integration_pipeline.py:11` | `from miles_ai.integrations.langgraph.compiler import run_compiled_canvas, validate_graph_for_compile` | `from miles_ai.flow_runtime.compiler import run_compiled_canvas, validate_graph_for_compile` |
-| `tests/integration/test_module_smoke.py:3` | `from miles_ai.integrations.langgraph.compiler import (` | `from miles_ai.flow_runtime.compiler import (` |
-| `tests/miles_ai/flow_runtime/test_flow_multimodal.py:12` | `from miles_ai.integrations.langgraph.compiler import run_compiled_canvas` | `from miles_ai.flow_runtime.compiler import run_compiled_canvas` |
-| `tests/miles_ai/flow_runtime/test_flow_template_graphs.py:6` | `from miles_ai.integrations.langgraph.compiler import validate_graph_for_compile` | `from miles_ai.flow_runtime.compiler import validate_graph_for_compile` |
-| `tests/miles_ai/flow_runtime/test_flow_templates.py:12` | `from miles_ai.integrations.langgraph.compiler import validate_graph_for_compile` | `from miles_ai.flow_runtime.compiler import validate_graph_for_compile` |
-| `tests/miles_ai/flow_runtime/test_relevance_grade_flow.py:10` | `from miles_ai.integrations.langgraph.compiler import validate_graph_for_compile` | `from miles_ai.flow_runtime.compiler import validate_graph_for_compile` |
-| `tests/miles_ai/flow_runtime/test_subflow.py:8` | `from miles_ai.integrations.langgraph.compiler import validate_graph_for_compile` | `from miles_ai.flow_runtime.compiler import validate_graph_for_compile` |
-| `tests/miles_ai/integrations/langgraph/test_canvas_state_contract.py:17` | `from miles_ai.integrations.langgraph.compiler.state import CanvasGraphState` | `from miles_ai.flow_runtime.compiler.state import CanvasGraphState` |
-| `tests/miles_ai/integrations/langgraph/test_compile_error_details.py:3` | `from miles_ai.integrations.langgraph.compiler import validate_graph_for_compile` | `from miles_ai.flow_runtime.compiler import validate_graph_for_compile` |
-| `tests/miles_ai/integrations/langgraph/test_langgraph_build.py:14` | `from miles_ai.integrations.langgraph.compiler.build import (` | `from miles_ai.flow_runtime.compiler.build import (` |
-| `tests/miles_ai/integrations/langgraph/test_langgraph_compiler.py:7` | `from miles_ai.integrations.langgraph.compiler import can_compile_flow_graph, validate_graph_for_compile` | `from miles_ai.flow_runtime.compiler import can_compile_flow_graph, validate_graph_for_compile` |
-| `tests/miles_ai/integrations/langgraph/test_langgraph_parallel.py:4` | `from miles_ai.integrations.langgraph.compiler import validate_graph_for_compile` | `from miles_ai.flow_runtime.compiler import validate_graph_for_compile` |
-| `tests/miles_ai/integrations/langgraph/test_langgraph_parallel.py:5` | `from miles_ai.integrations.langgraph.graph_analysis import compute_execution_layers` | `from miles_ai.flow_runtime.graph_analysis import compute_execution_layers` |
+| `tests/integration/test_integration_pipeline.py:11` | `from miles_ai.flow_runtime.compiler import run_compiled_canvas, validate_graph_for_compile` | `from miles_ai.flow_runtime.compiler import run_compiled_canvas, validate_graph_for_compile` |
+| `tests/integration/test_module_smoke.py:3` | `from miles_ai.flow_runtime.compiler import (` | `from miles_ai.flow_runtime.compiler import (` |
+| `tests/miles_ai/flow_runtime/test_flow_multimodal.py:12` | `from miles_ai.flow_runtime.compiler import run_compiled_canvas` | `from miles_ai.flow_runtime.compiler import run_compiled_canvas` |
+| `tests/miles_ai/flow_runtime/test_flow_template_graphs.py:6` | `from miles_ai.flow_runtime.compiler import validate_graph_for_compile` | `from miles_ai.flow_runtime.compiler import validate_graph_for_compile` |
+| `tests/miles_ai/flow_runtime/test_flow_templates.py:12` | `from miles_ai.flow_runtime.compiler import validate_graph_for_compile` | `from miles_ai.flow_runtime.compiler import validate_graph_for_compile` |
+| `tests/miles_ai/flow_runtime/test_relevance_grade_flow.py:10` | `from miles_ai.flow_runtime.compiler import validate_graph_for_compile` | `from miles_ai.flow_runtime.compiler import validate_graph_for_compile` |
+| `tests/miles_ai/flow_runtime/test_subflow.py:8` | `from miles_ai.flow_runtime.compiler import validate_graph_for_compile` | `from miles_ai.flow_runtime.compiler import validate_graph_for_compile` |
+| `tests/miles_integrations/langgraph/test_canvas_state_contract.py:17` | `from miles_ai.flow_runtime.compiler.state import CanvasGraphState` | `from miles_ai.flow_runtime.compiler.state import CanvasGraphState` |
+| `tests/miles_integrations/langgraph/test_compile_error_details.py:3` | `from miles_ai.flow_runtime.compiler import validate_graph_for_compile` | `from miles_ai.flow_runtime.compiler import validate_graph_for_compile` |
+| `tests/miles_integrations/langgraph/test_langgraph_build.py:14` | `from miles_ai.flow_runtime.compiler.build import (` | `from miles_ai.flow_runtime.compiler.build import (` |
+| `tests/miles_integrations/langgraph/test_langgraph_compiler.py:7` | `from miles_ai.flow_runtime.compiler import can_compile_flow_graph, validate_graph_for_compile` | `from miles_ai.flow_runtime.compiler import can_compile_flow_graph, validate_graph_for_compile` |
+| `tests/miles_integrations/langgraph/test_langgraph_parallel.py:4` | `from miles_ai.flow_runtime.compiler import validate_graph_for_compile` | `from miles_ai.flow_runtime.compiler import validate_graph_for_compile` |
+| `tests/miles_integrations/langgraph/test_langgraph_parallel.py:5` | `from miles_ai.flow_runtime.graph_analysis import compute_execution_layers` | `from miles_ai.flow_runtime.graph_analysis import compute_execution_layers` |
 
 > `tests/miles_ai/flow_runtime/test_relevance_grade_flow.py` 用 `monkeypatch.setattr(grade_nodes_module, "evaluate_relevance", fake_evaluate)`，本条不改（`grade_nodes` 的 import 属 ③ 桶，Task 2 处理）；monkeypatch 打的是模块属性，搬迁不影响。
 
-**另有 1 处非 import 的路径引用必须一并改** —— `tests/miles_ai/integrations/langgraph/test_canvas_state_contract.py` 是**源码扫描型守卫**（它 AST 解析 `compiler/*.py` 与 `compiler/run.py` 来锁死 `CanvasGraphState` 通道契约），第 22-23 行用字面量拼出编译器目录：
+**另有 1 处非 import 的路径引用必须一并改** —— `tests/miles_integrations/langgraph/test_canvas_state_contract.py` 是**源码扫描型守卫**（它 AST 解析 `compiler/*.py` 与 `compiler/run.py` 来锁死 `CanvasGraphState` 通道契约），第 22-23 行用字面量拼出编译器目录：
 
 ```python
 _BACKEND_DIR = BACKEND_ROOT
@@ -332,7 +332,7 @@ _COMPILER_DIR = _BACKEND_DIR / "packages" / "miles-ai" / "src" / "miles_ai" / "i
 _COMPILER_DIR = MILES_AI / "flow_runtime" / "compiler"
 ```
 
-并把该常量上方注释里的「已搬到 tests/miles_ai/integrations/langgraph/」改为「已搬到 tests/miles_ai/flow_runtime/（Task 6）」。三个用例的断言**逐字不变**（`_COMPILER_DIR.glob("*.py")` 的文件集合在搬迁前后都是 `__init__/build/report/run/state/validate`）。
+并把该常量上方注释里的「已搬到 tests/miles_integrations/langgraph/」改为「已搬到 tests/miles_ai/flow_runtime/（Task 6）」。三个用例的断言**逐字不变**（`_COMPILER_DIR.glob("*.py")` 的文件集合在搬迁前后都是 `__init__/build/report/run/state/validate`）。
 
 > 全仓同类「路径字面量」引用已实测只有这 1 处（`rg -n '"(integrations|langchain|langgraph|compiler|flow_runner|kb_retrieval|vectorstores|visual_embeddings|grading|graphs|constants|runner|state)"\s*/' packages tests --glob '*.py'` 仅命中本行），其余 `MILES_AI / ...` 用法都指向未搬迁的 `flow_runtime/templates/*.json`。
 
@@ -342,10 +342,10 @@ _COMPILER_DIR = MILES_AI / "flow_runtime" / "compiler"
 cd /Users/xiezhigang/Projects/miles/MilesAI/backend
 rg -n "integrations\.langgraph\.(compiler|flow_runner|graph_analysis)" packages tests; echo "--- 期望：无输出"
 echo "=== 反向边剩余（锚定口径，与 Task 0 基线同定义）==="
-rg -n "^\s*(from|import)\s+miles_ai\.(rag|flow_runtime)" packages/miles-ai/src/miles_ai/integrations -g '*.py' | wc -l
+rg -n "^\s*(from|import)\s+miles_ai\.(rag|flow_runtime)" packages/miles-ai/src/miles_integrations -g '*.py' | wc -l
 .venv/bin/ruff check . && .venv/bin/ruff format --check .
 .venv/bin/lint-imports | tail -3
-.venv/bin/python -m pytest -q tests/miles_ai/flow_runtime tests/integration tests/miles_ai/integrations
+.venv/bin/python -m pytest -q tests/miles_ai/flow_runtime tests/integration tests/miles_integrations
 ```
 
 Expected: 第一条无输出；**反向边剩余 `8`**（基线 21 条 = 13 条 `miles_ai.flow_runtime.*`〔全部落在本次搬迁的 `compiler/*`、`graph_analysis.py`、`flow_runner.py` 内〕+ 8 条 `miles_ai.rag.*`〔属 ③ 桶，Task 2/3/5 处理〕，本次消掉全部 13 条）；lint-imports 全绿；pytest 全 passed。
@@ -390,7 +390,7 @@ git log --oneline -1
 - Move: `integrations/langgraph/grading.py` → `rag/graph/grading.py`
 - Move: `integrations/langgraph/runner.py` → `rag/graph/runner.py`
 - Move: `integrations/langgraph/graphs/rag_qa.py` → `rag/graph/rag_qa.py`（然后删掉空目录 `graphs/`）
-- Modify: `packages/miles-ai/src/miles_ai/integrations/langgraph/__init__.py`
+- Modify: `packages/miles-integrations/src/miles_integrations/langgraph/__init__.py`
 - Modify: `packages/miles-ai/src/miles_ai/flow_runtime/nodes/grade_nodes.py`
 - Modify: `packages/miles-ai/src/miles_ai/flow_runtime/graph_analysis.py`
 - Modify: `packages/miles-ai/src/miles_ai/flow_runtime/compiler/state.py`
@@ -406,19 +406,19 @@ git log --oneline -1
 ```bash
 cd /Users/xiezhigang/Projects/miles/MilesAI/backend
 mkdir -p packages/miles-ai/src/miles_ai/rag/graph
-git mv packages/miles-ai/src/miles_ai/integrations/langgraph/constants.py \
+git mv packages/miles-integrations/src/miles_ai/rag/graph/constants.py \
        packages/miles-ai/src/miles_ai/rag/graph/constants.py
-git mv packages/miles-ai/src/miles_ai/integrations/langgraph/state.py \
+git mv packages/miles-integrations/src/miles_ai/rag/graph/state.py \
        packages/miles-ai/src/miles_ai/rag/graph/state.py
-git mv packages/miles-ai/src/miles_ai/integrations/langgraph/grading.py \
+git mv packages/miles-integrations/src/miles_ai/rag/graph/grading.py \
        packages/miles-ai/src/miles_ai/rag/graph/grading.py
-git mv packages/miles-ai/src/miles_ai/integrations/langgraph/runner.py \
+git mv packages/miles-integrations/src/miles_ai/rag/graph/runner.py \
        packages/miles-ai/src/miles_ai/rag/graph/runner.py
-git mv packages/miles-ai/src/miles_ai/integrations/langgraph/graphs/rag_qa.py \
+git mv packages/miles-integrations/src/miles_ai/rag/graph/rag_qa.py \
        packages/miles-ai/src/miles_ai/rag/graph/rag_qa.py
-git rm -q packages/miles-ai/src/miles_ai/integrations/langgraph/graphs/__init__.py
-rmdir packages/miles-ai/src/miles_ai/integrations/langgraph/graphs
-ls packages/miles-ai/src/miles_ai/integrations/langgraph/
+git rm -q packages/miles-integrations/src/miles_ai/rag/graph/__init__.py
+rmdir packages/miles-integrations/src/miles_ai/rag/graph
+ls packages/miles-integrations/src/miles_integrations/langgraph/
 ```
 
 Expected: 最后一条列出 `__init__.py`、`checkpointer.py`（`grading.py` 等已不在）。
@@ -440,7 +440,7 @@ Agent RAG 的 LangGraph 引擎（L2）。
 - ``state``：``RAGGraphState``
 
 画布 ``graph_json`` 的编译与运行见 ``miles_ai.flow_runtime``，与本子包为两套独立编译产物；
-多轮状态持久化后端见 ``miles_ai.integrations.langgraph.checkpointer``。
+多轮状态持久化后端见 ``miles_integrations.langgraph.checkpointer``。
 """
 
 __all__ = [
@@ -501,7 +501,7 @@ from miles_ai.rag.graph.constants import RELEVANCE_GOOD, RELEVANCE_NONE, RELEVAN
 - 把第 29-36 行的 import 块整体替换为（isort 序：`integrations.chat` < `rag.generate` < `rag.graph.*` < `miles_core.*`）：
 
 ```python
-from miles_ai.integrations.chat.multimodal import media_refs_from_items
+from miles_integrations.chat.multimodal import media_refs_from_items
 from miles_ai.rag.generate import build_rag_prompt, format_hits_context, generate_rag_answer, retrieve_hits
 from miles_ai.rag.graph.constants import RELEVANCE_NONE, RELEVANCE_POOR
 from miles_ai.rag.graph.grading import _score_grade, llm_grade_relevance
@@ -523,10 +523,10 @@ from miles_core.models.model import ModelConfig
 ```python
 from langgraph.checkpoint.memory import MemorySaver
 
-from miles_ai.integrations.langchain.chat_models import OnDelta
-from miles_ai.integrations.langchain.kb_retrieval import KbRetrievalBindings
-from miles_ai.integrations.langgraph.checkpointer import checkpoint_backend, get_compiled_rag_graph
-from miles_ai.integrations.litellm.usage_sink import UsageSink
+from miles_integrations.langchain.chat_models import OnDelta
+from miles_ai.rag.retrieve.bindings import KbRetrievalBindings
+from miles_integrations.langgraph.checkpointer import checkpoint_backend, get_compiled_rag_graph
+from miles_integrations.litellm.usage_sink import UsageSink
 from miles_ai.rag.graph.rag_qa import build_rag_qa_graph
 from miles_common.schemas.media import MediaRefIn
 from miles_core.models.agent import Agent
@@ -536,7 +536,7 @@ from miles_core.models.model import ModelConfig
 ```
 
 > `runner.py` 新 docstring 首行改为 `LangGraph 运行入口（Agent RAG，L2）。`，并在首行下补一行：
-> `状态图定义见 ``rag.graph.rag_qa``；多轮状态后端见 ``miles_ai.integrations.langgraph.checkpointer``。`
+> `状态图定义见 ``rag.graph.rag_qa``；多轮状态后端见 ``miles_integrations.langgraph.checkpointer``。`
 
 - [ ] **Step 6: 改写 `flow_runtime/nodes/grade_nodes.py`**
 
@@ -548,11 +548,11 @@ from miles_core.models.model import ModelConfig
 - [ ] **Step 7: 改写 `flow_runtime/graph_analysis.py` 与 `flow_runtime/compiler/state.py`**
 
 - `packages/miles-ai/src/miles_ai/flow_runtime/graph_analysis.py` 第 18 行 → `from miles_ai.rag.graph.constants import GRADE_BRANCH_HANDLES`
-- `packages/miles-ai/src/miles_ai/flow_runtime/compiler/state.py` 的 `from miles_ai.integrations.langgraph.constants import RELEVANCE_NONE` → `from miles_ai.rag.graph.constants import RELEVANCE_NONE`
+- `packages/miles-ai/src/miles_ai/flow_runtime/compiler/state.py` 的 `from miles_ai.rag.graph.constants import RELEVANCE_NONE` → `from miles_ai.rag.graph.constants import RELEVANCE_NONE`
 
 - [ ] **Step 8: 重写 `integrations/langgraph/__init__.py`（去跨层 re-export）**
 
-`packages/miles-ai/src/miles_ai/integrations/langgraph/__init__.py` 全文替换为：
+`packages/miles-integrations/src/miles_integrations/langgraph/__init__.py` 全文替换为：
 
 ```python
 """
@@ -564,7 +564,7 @@ RAG 图引擎已归位 ``miles_ai.rag.graph``，画布流程引擎已归位 ``mi
 应用启动时经 ``init_langgraph_checkpointer`` 绑定 Redis/Memory，关闭时 ``shutdown_langgraph_checkpointer``。
 """
 
-from miles_ai.integrations.langgraph.checkpointer import (
+from miles_integrations.langgraph.checkpointer import (
     checkpoint_backend,
     get_checkpointer,
     init_langgraph_checkpointer,
@@ -583,9 +583,9 @@ __all__ = [
 
 | 文件 | 改动 |
 |---|---|
-| `packages/miles-portal/src/miles_portal/tenant/agents/services/architecture.py:9` | `from miles_ai.integrations.langgraph.runner import should_use_langgraph_rag` → `from miles_ai.rag.graph.runner import should_use_langgraph_rag` |
-| `packages/miles-portal/src/miles_portal/tenant/agents/services/agent/chat_rag.py:11` | `from miles_ai.integrations.langgraph.runner import run_rag_workflow, should_use_langgraph_rag` → `from miles_ai.rag.graph.runner import run_rag_workflow, should_use_langgraph_rag` |
-| `packages/miles-portal/src/miles_portal/tenant/agents/services/agent/chat_turn.py:7` | `from miles_ai.integrations.langgraph.runner import should_use_langgraph_rag` → `from miles_ai.rag.graph.runner import should_use_langgraph_rag` |
+| `packages/miles-portal/src/miles_portal/tenant/agents/services/architecture.py:9` | `from miles_ai.rag.graph.runner import should_use_langgraph_rag` → `from miles_ai.rag.graph.runner import should_use_langgraph_rag` |
+| `packages/miles-portal/src/miles_portal/tenant/agents/services/agent/chat_rag.py:11` | `from miles_ai.rag.graph.runner import run_rag_workflow, should_use_langgraph_rag` → `from miles_ai.rag.graph.runner import run_rag_workflow, should_use_langgraph_rag` |
+| `packages/miles-portal/src/miles_portal/tenant/agents/services/agent/chat_turn.py:7` | `from miles_ai.rag.graph.runner import should_use_langgraph_rag` → `from miles_ai.rag.graph.runner import should_use_langgraph_rag` |
 
 - [ ] **Step 10: 改写 `rag/generate/__init__.py` 的 docstring**
 
@@ -597,27 +597,27 @@ __all__ = [
 
 | 文件:行 | 原文 | 改为 |
 |---|---|---|
-| `tests/miles_ai/flow_runtime/test_flow_runtime_constants.py:9` | `from miles_ai.integrations.langgraph import constants as lg_constants` | `from miles_ai.rag.graph import constants as lg_constants` |
-| `tests/miles_ai/flow_runtime/test_flow_runtime_constants.py:10` | `from miles_ai.integrations.langgraph.constants import GRADE_BRANCH_HANDLES` | `from miles_ai.rag.graph.constants import GRADE_BRANCH_HANDLES` |
-| `tests/miles_ai/integrations/langgraph/test_langgraph_grading.py:3` | `from miles_ai.integrations.langgraph.constants import RELEVANCE_POOR` | `from miles_ai.rag.graph.constants import RELEVANCE_POOR` |
-| `tests/miles_ai/integrations/langgraph/test_langgraph_grading.py:4` | `from miles_ai.integrations.langgraph.grading import parse_llm_grade_response` | `from miles_ai.rag.graph.grading import parse_llm_grade_response` |
-| `tests/miles_ai/integrations/langgraph/test_langgraph_rag.py:5` | `from miles_ai.integrations.langgraph.constants import RELEVANCE_GOOD, RELEVANCE_NONE, RELEVANCE_POOR` | `from miles_ai.rag.graph.constants import RELEVANCE_GOOD, RELEVANCE_NONE, RELEVANCE_POOR` |
-| `tests/miles_ai/integrations/langgraph/test_langgraph_rag.py:6` | `from miles_ai.integrations.langgraph.grading import _score_grade, parse_llm_grade_response` | `from miles_ai.rag.graph.grading import _score_grade, parse_llm_grade_response` |
-| `tests/miles_ai/integrations/langgraph/test_langgraph_rag.py:7` | `from miles_ai.integrations.langgraph.graphs.rag_qa import route_after_grade` | `from miles_ai.rag.graph.rag_qa import route_after_grade` |
-| `tests/miles_ai/integrations/langgraph/test_langgraph_rag.py:8` | `from miles_ai.integrations.langgraph.runner import build_rag_thread_id, should_use_langgraph_rag` | `from miles_ai.rag.graph.runner import build_rag_thread_id, should_use_langgraph_rag` |
-| `tests/miles_ai/integrations/langgraph/test_rag_answer_stream.py:8` | `from miles_ai.integrations.langgraph.graphs.rag_qa import fallback, generate` | `from miles_ai.rag.graph.rag_qa import fallback, generate` |
-| `tests/miles_ai/integrations/langgraph/test_rag_answer_stream.py:9` | `from miles_ai.integrations.langgraph.runner import run_rag_workflow` | `from miles_ai.rag.graph.runner import run_rag_workflow` |
-| `tests/miles_ai/integrations/langgraph/test_rag_answer_stream.py:52` | `"miles_ai.integrations.langgraph.runner.get_compiled_rag_graph"` | `"miles_ai.rag.graph.runner.get_compiled_rag_graph"` |
-| `tests/miles_ai/integrations/langgraph/test_rag_answer_stream.py:134` | `from miles_ai.integrations.langgraph.graphs.rag_qa import grade_documents` | `from miles_ai.rag.graph.rag_qa import grade_documents` |
-| `tests/miles_ai/integrations/langgraph/test_rag_answer_stream.py:153` | `"miles_ai.integrations.langgraph.graphs.rag_qa.llm_grade_relevance"` | `"miles_ai.rag.graph.rag_qa.llm_grade_relevance"` |
-| `tests/miles_ai/integrations/langgraph/test_rag_multimodal.py:9` | `from miles_ai.integrations.langgraph.graphs.rag_qa import _prompt_user_query, fallback, generate` | `from miles_ai.rag.graph.rag_qa import _prompt_user_query, fallback, generate` |
-| `tests/miles_ai/integrations/langgraph/test_rag_multimodal.py:10` | `from miles_ai.integrations.langgraph.runner import run_rag_workflow` | `from miles_ai.rag.graph.runner import run_rag_workflow` |
-| `tests/miles_ai/integrations/langgraph/test_rag_multimodal.py:85` | `"miles_ai.integrations.langgraph.runner.get_compiled_rag_graph"` | `"miles_ai.rag.graph.runner.get_compiled_rag_graph"` |
-| `tests/miles_ai/integrations/langgraph/test_rag_qa_nodes_share_generate.py:12` | `import miles_ai.integrations.langgraph.graphs.rag_qa as rag_qa_mod` | `import miles_ai.rag.graph.rag_qa as rag_qa_mod` |
-| `tests/miles_ai/integrations/langgraph/test_rag_qa_nodes_share_generate.py:13` | `from miles_ai.integrations.langgraph.graphs.rag_qa import fallback, generate, retrieve` | `from miles_ai.rag.graph.rag_qa import fallback, generate, retrieve` |
-| `tests/miles_ai/integrations/langgraph/test_rag_qa_nodes_share_generate.py:48,65,82` | `"miles_ai.integrations.langgraph.graphs.rag_qa.generate_rag_answer"`（3 处） | `"miles_ai.rag.graph.rag_qa.generate_rag_answer"` |
-| `tests/miles_portal/tenant/agents/test_rag_usage_accumulation.py:12` | `import miles_ai.integrations.langgraph.graphs.rag_qa as rag_qa` | `import miles_ai.rag.graph.rag_qa as rag_qa` |
-| `tests/miles_portal/tenant/agents/test_rag_usage_accumulation.py:14` | `from miles_ai.integrations.langgraph.graphs.rag_qa import build_rag_qa_graph` | `from miles_ai.rag.graph.rag_qa import build_rag_qa_graph` |
+| `tests/miles_ai/flow_runtime/test_flow_runtime_constants.py:9` | `from miles_integrations.langgraph import constants as lg_constants` | `from miles_ai.rag.graph import constants as lg_constants` |
+| `tests/miles_ai/flow_runtime/test_flow_runtime_constants.py:10` | `from miles_ai.rag.graph.constants import GRADE_BRANCH_HANDLES` | `from miles_ai.rag.graph.constants import GRADE_BRANCH_HANDLES` |
+| `tests/miles_integrations/langgraph/test_langgraph_grading.py:3` | `from miles_ai.rag.graph.constants import RELEVANCE_POOR` | `from miles_ai.rag.graph.constants import RELEVANCE_POOR` |
+| `tests/miles_integrations/langgraph/test_langgraph_grading.py:4` | `from miles_ai.rag.graph.grading import parse_llm_grade_response` | `from miles_ai.rag.graph.grading import parse_llm_grade_response` |
+| `tests/miles_integrations/langgraph/test_langgraph_rag.py:5` | `from miles_ai.rag.graph.constants import RELEVANCE_GOOD, RELEVANCE_NONE, RELEVANCE_POOR` | `from miles_ai.rag.graph.constants import RELEVANCE_GOOD, RELEVANCE_NONE, RELEVANCE_POOR` |
+| `tests/miles_integrations/langgraph/test_langgraph_rag.py:6` | `from miles_ai.rag.graph.grading import _score_grade, parse_llm_grade_response` | `from miles_ai.rag.graph.grading import _score_grade, parse_llm_grade_response` |
+| `tests/miles_integrations/langgraph/test_langgraph_rag.py:7` | `from miles_ai.rag.graph.rag_qa import route_after_grade` | `from miles_ai.rag.graph.rag_qa import route_after_grade` |
+| `tests/miles_integrations/langgraph/test_langgraph_rag.py:8` | `from miles_ai.rag.graph.runner import build_rag_thread_id, should_use_langgraph_rag` | `from miles_ai.rag.graph.runner import build_rag_thread_id, should_use_langgraph_rag` |
+| `tests/miles_integrations/langgraph/test_rag_answer_stream.py:8` | `from miles_ai.rag.graph.rag_qa import fallback, generate` | `from miles_ai.rag.graph.rag_qa import fallback, generate` |
+| `tests/miles_integrations/langgraph/test_rag_answer_stream.py:9` | `from miles_ai.rag.graph.runner import run_rag_workflow` | `from miles_ai.rag.graph.runner import run_rag_workflow` |
+| `tests/miles_integrations/langgraph/test_rag_answer_stream.py:52` | `"miles_ai.rag.graph.runner.get_compiled_rag_graph"` | `"miles_ai.rag.graph.runner.get_compiled_rag_graph"` |
+| `tests/miles_integrations/langgraph/test_rag_answer_stream.py:134` | `from miles_ai.rag.graph.rag_qa import grade_documents` | `from miles_ai.rag.graph.rag_qa import grade_documents` |
+| `tests/miles_integrations/langgraph/test_rag_answer_stream.py:153` | `"miles_ai.rag.graph.rag_qa.llm_grade_relevance"` | `"miles_ai.rag.graph.rag_qa.llm_grade_relevance"` |
+| `tests/miles_integrations/langgraph/test_rag_multimodal.py:9` | `from miles_ai.rag.graph.rag_qa import _prompt_user_query, fallback, generate` | `from miles_ai.rag.graph.rag_qa import _prompt_user_query, fallback, generate` |
+| `tests/miles_integrations/langgraph/test_rag_multimodal.py:10` | `from miles_ai.rag.graph.runner import run_rag_workflow` | `from miles_ai.rag.graph.runner import run_rag_workflow` |
+| `tests/miles_integrations/langgraph/test_rag_multimodal.py:85` | `"miles_ai.rag.graph.runner.get_compiled_rag_graph"` | `"miles_ai.rag.graph.runner.get_compiled_rag_graph"` |
+| `tests/miles_integrations/langgraph/test_rag_qa_nodes_share_generate.py:12` | `import miles_ai.rag.graph.rag_qa as rag_qa_mod` | `import miles_ai.rag.graph.rag_qa as rag_qa_mod` |
+| `tests/miles_integrations/langgraph/test_rag_qa_nodes_share_generate.py:13` | `from miles_ai.rag.graph.rag_qa import fallback, generate, retrieve` | `from miles_ai.rag.graph.rag_qa import fallback, generate, retrieve` |
+| `tests/miles_integrations/langgraph/test_rag_qa_nodes_share_generate.py:48,65,82` | `"miles_ai.rag.graph.rag_qa.generate_rag_answer"`（3 处） | `"miles_ai.rag.graph.rag_qa.generate_rag_answer"` |
+| `tests/miles_portal/tenant/agents/test_rag_usage_accumulation.py:12` | `import miles_ai.rag.graph.rag_qa as rag_qa` | `import miles_ai.rag.graph.rag_qa as rag_qa` |
+| `tests/miles_portal/tenant/agents/test_rag_usage_accumulation.py:14` | `from miles_ai.rag.graph.rag_qa import build_rag_qa_graph` | `from miles_ai.rag.graph.rag_qa import build_rag_qa_graph` |
 
 > `test_rag_multimodal.py` / `test_rag_answer_stream.py` 里的 `_prompt_user_query`、`route_after_grade`、`fallback`、`generate`、`grade_documents` 都是 `rag_qa` 的模块级函数，搬迁后仍在同一模块，符号名不变。
 
@@ -632,11 +632,11 @@ rg -n --no-heading '^\s*(from|import)\s+miles_ai\.(rag|flow_runtime)' -g '**/int
 .venv/bin/python -m miles_server.scripts.export_openapi --check
 ```
 
-Expected: 第一条**恰 2 条命中**，都在 `integrations/langgraph/checkpointer.py`（第 64、84 行的函数内惰性 `from miles_ai.integrations.langgraph.graphs.rag_qa import build_rag_qa_graph`），`tests/` 下 0 条；第二条**恰 6 条**反向边 —— `langchain/__init__.py` 2 条、`langchain/vectorstores.py` 2 条、`langchain/kb_retrieval.py` 1 条、`langchain/visual_embeddings.py` 1 条；`integrations/langgraph/` 下 **0 条**（`checkpointer.py` 不 import rag，本任务迁走的 `grading.py`/`graphs/rag_qa.py` 各消 1 条，8 − 2 = 6）。剩余的 `langchain` 4 文件由 Task 3 / Task 5 处理。pytest `1517 passed`；OpenAPI 零漂移。
+Expected: 第一条**恰 2 条命中**，都在 `integrations/langgraph/checkpointer.py`（第 64、84 行的函数内惰性 `from miles_ai.rag.graph.rag_qa import build_rag_qa_graph`），`tests/` 下 0 条；第二条**恰 6 条**反向边 —— `langchain/__init__.py` 2 条、`langchain/vectorstores.py` 2 条、`langchain/kb_retrieval.py` 1 条、`langchain/visual_embeddings.py` 1 条；`integrations/langgraph/` 下 **0 条**（`checkpointer.py` 不 import rag，本任务迁走的 `grading.py`/`graphs/rag_qa.py` 各消 1 条，8 − 2 = 6）。剩余的 `langchain` 4 文件由 Task 3 / Task 5 处理。pytest `1517 passed`；OpenAPI 零漂移。
 
 > **为什么 `checkpointer.py` 那 2 条不在本任务改**：本任务是**纯搬迁**，而 `checkpointer.py` 的 `get_compiled_rag_graph` 要到 Task 4 才拆出去。若在本任务顺手把这两条路径改成 `miles_ai.rag.graph.rag_qa`，就会临时制造一条 `integrations → rag` 的反向边（第二条检查变 7），与本任务「清空 `integrations/langgraph` 反向依赖」的目标相抵。故选留 2 条指向已迁走模块的**函数内惰性 import**：无测试触达该路径（相关用例都 `monkeypatch` 掉了 `runner.get_compiled_rag_graph`），Task 4 拆分时整段删除。中间态不保证这条死路径可调用，终态（Task 4 后）零残留。
 
-> 与 Task 1 同理，务必用**锚定**口径计数。未锚定写法（如 `rg -n "miles_ai\.(rag|flow_runtime)" packages/miles-ai/src/miles_ai/integrations`）会把 Step 8 新写入 `integrations/langgraph/__init__.py` docstring 的两处路径提及（`miles_ai.rag.graph`、`miles_ai.flow_runtime`）也算进来，得 8 而非 6。
+> 与 Task 1 同理，务必用**锚定**口径计数。未锚定写法（如 `rg -n "miles_ai\.(rag|flow_runtime)" packages/miles-ai/src/miles_integrations`）会把 Step 8 新写入 `integrations/langgraph/__init__.py` docstring 的两处路径提及（`miles_ai.rag.graph`、`miles_ai.flow_runtime`）也算进来，得 8 而非 6。
 
 ```bash
 cd /Users/xiezhigang/Projects/miles/MilesAI
@@ -662,9 +662,9 @@ git log --oneline -1
 ### Task 3: `kb_retrieval` 归位、删除 `vectorstores` 转发壳、清理 `langchain` 门面
 
 **Files:**
-- Move: `packages/miles-ai/src/miles_ai/integrations/langchain/kb_retrieval.py` → `packages/miles-ai/src/miles_ai/rag/retrieve/bindings.py`
-- Delete: `packages/miles-ai/src/miles_ai/integrations/langchain/vectorstores.py`
-- Modify: `packages/miles-ai/src/miles_ai/integrations/langchain/__init__.py`
+- Move: `packages/miles-integrations/src/miles_ai/rag/retrieve/bindings.py` → `packages/miles-ai/src/miles_ai/rag/retrieve/bindings.py`
+- Delete: `packages/miles-integrations/src/miles_ai/rag/retrieve/bindings.py`
+- Modify: `packages/miles-integrations/src/miles_integrations/langchain/__init__.py`
 - Modify: `packages/miles-ai/src/miles_ai/rag/generate/answer.py`
 - Modify: `packages/miles-ai/src/miles_ai/rag/graph/runner.py`
 - Modify: `packages/miles-ai/src/miles_ai/rag/retrieve/multi_kb.py`（docstring）
@@ -672,16 +672,16 @@ git log --oneline -1
 
 **Interfaces:**
 - Consumes: Task 2 产出的 `miles_ai.rag.graph.runner`
-- Produces: `miles_ai.rag.retrieve.bindings.KbRetrievalBindings`（原 `miles_ai.integrations.langchain.kb_retrieval.KbRetrievalBindings`，字段不变：`embed_query_sync`、`embed_query`、`resolve_rerank_sync`、`resolve_rerank`）
+- Produces: `miles_ai.rag.retrieve.bindings.KbRetrievalBindings`（原 `miles_ai.rag.retrieve.bindings.KbRetrievalBindings`，字段不变：`embed_query_sync`、`embed_query`、`resolve_rerank_sync`、`resolve_rerank`）
 
 - [ ] **Step 1: `git mv` 并删除转发壳**
 
 ```bash
 cd /Users/xiezhigang/Projects/miles/MilesAI/backend
-git mv packages/miles-ai/src/miles_ai/integrations/langchain/kb_retrieval.py \
+git mv packages/miles-integrations/src/miles_ai/rag/retrieve/bindings.py \
        packages/miles-ai/src/miles_ai/rag/retrieve/bindings.py
-git rm -q packages/miles-ai/src/miles_ai/integrations/langchain/vectorstores.py
-ls packages/miles-ai/src/miles_ai/integrations/langchain/
+git rm -q packages/miles-integrations/src/miles_ai/rag/retrieve/bindings.py
+ls packages/miles-integrations/src/miles_integrations/langchain/
 ```
 
 Expected: 列出 `__init__.py`、`chat_models.py`、`tool_agent`、`toolkit`、`visual_embeddings.py`。
@@ -717,11 +717,11 @@ from miles_ai.rag.retrieve.multi_kb import search_multi_kb_async
 
 - [ ] **Step 4: 改写 `rag/graph/runner.py` 的 bindings import**
 
-`packages/miles-ai/src/miles_ai/rag/graph/runner.py` 的 `from miles_ai.integrations.langchain.kb_retrieval import KbRetrievalBindings` → `from miles_ai.rag.retrieve.bindings import KbRetrievalBindings`
+`packages/miles-ai/src/miles_ai/rag/graph/runner.py` 的 `from miles_ai.rag.retrieve.bindings import KbRetrievalBindings` → `from miles_ai.rag.retrieve.bindings import KbRetrievalBindings`
 
 - [ ] **Step 5: 重写 `integrations/langchain/__init__.py`**
 
-`packages/miles-ai/src/miles_ai/integrations/langchain/__init__.py` 全文替换为：
+`packages/miles-integrations/src/miles_integrations/langchain/__init__.py` 全文替换为：
 
 ```python
 """
@@ -735,7 +735,7 @@ LangChain 集成包（L3，仅本子包内容）。
 ``rag.retrieve.bindings``；本包不再 re-export 上层 L2 内容。
 """
 
-from miles_ai.integrations.langchain.chat_models import ainvoke_chat, get_chat_model
+from miles_integrations.langchain.chat_models import ainvoke_chat, get_chat_model
 
 __all__ = ["ainvoke_chat", "get_chat_model"]
 ```
@@ -808,12 +808,12 @@ git log --oneline -1
 
 **Files:**
 - Create: `packages/miles-ai/src/miles_ai/rag/graph/compiled.py`
-- Modify: `packages/miles-ai/src/miles_ai/integrations/langgraph/checkpointer.py`
+- Modify: `packages/miles-integrations/src/miles_integrations/langgraph/checkpointer.py`
 - Modify: `packages/miles-ai/src/miles_ai/rag/graph/runner.py`
 - Modify: `packages/miles-server/src/miles_server/apps/application.py:18-35`
 
 **Interfaces:**
-- Consumes: `miles_ai.integrations.langgraph.checkpointer.get_checkpointer()`、`miles_ai.rag.graph.rag_qa.build_rag_qa_graph`
+- Consumes: `miles_integrations.langgraph.checkpointer.get_checkpointer()`、`miles_ai.rag.graph.rag_qa.build_rag_qa_graph`
 - Produces: `miles_ai.rag.graph.compiled.get_compiled_rag_graph() -> Any`、`miles_ai.rag.graph.compiled.bind_rag_graph() -> None`、`miles_ai.rag.graph.compiled.unbind_rag_graph() -> None`
 
 - [ ] **Step 1: 新建 `rag/graph/compiled.py`**
@@ -828,7 +828,7 @@ git log --oneline -1
 ``bind_rag_graph()`` 绑定；未绑定时 ``get_compiled_rag_graph()`` 回退
 ``build_rag_qa_graph().compile(MemorySaver())``（**不缓存**回退实例，与拆分前一致）。
 
-多轮状态后端的选择与释放见 ``miles_ai.integrations.langgraph.checkpointer``。
+多轮状态后端的选择与释放见 ``miles_integrations.langgraph.checkpointer``。
 """
 
 from __future__ import annotations
@@ -853,7 +853,7 @@ def bind_rag_graph() -> None:
     """用当前 checkpointer 编译并缓存 RAG 图；由应用 lifespan 在 checkpointer 初始化后调用。"""
     global _compiled_rag_graph
 
-    from miles_ai.integrations.langgraph.checkpointer import get_checkpointer
+    from miles_integrations.langgraph.checkpointer import get_checkpointer
 
     _compiled_rag_graph = build_rag_qa_graph().compile(checkpointer=get_checkpointer())
 
@@ -868,7 +868,7 @@ def unbind_rag_graph() -> None:
 
 - [ ] **Step 2: 改写 `integrations/langgraph/checkpointer.py`**
 
-`packages/miles-ai/src/miles_ai/integrations/langgraph/checkpointer.py` 做四处改动：
+`packages/miles-integrations/src/miles_integrations/langgraph/checkpointer.py` 做四处改动：
 
 1. 模块 docstring 改为：
 
@@ -917,16 +917,16 @@ async def shutdown_langgraph_checkpointer() -> None:
     _backend = "memory"
 ```
 
-> 注意：`global` 声明里必须去掉 `_compiled_rag_graph`；原函数的 `_compiled_rag_graph = build_rag_qa_graph().compile(checkpointer=saver)` 一行删除；原 `from miles_ai.integrations.langgraph.graphs.rag_qa import build_rag_qa_graph` 的两处惰性 import（原第 64、84 行）一并删除。函数体其余部分（Redis 探测、`AsyncRedisSaver` 上下文、三处日志、`except ImportError` / `except Exception` 分支）**逐字保留**。
+> 注意：`global` 声明里必须去掉 `_compiled_rag_graph`；原函数的 `_compiled_rag_graph = build_rag_qa_graph().compile(checkpointer=saver)` 一行删除；原 `from miles_ai.rag.graph.rag_qa import build_rag_qa_graph` 的两处惰性 import（原第 64、84 行）一并删除。函数体其余部分（Redis 探测、`AsyncRedisSaver` 上下文、三处日志、`except ImportError` / `except Exception` 分支）**逐字保留**。
 
 - [ ] **Step 3: 改写 `rag/graph/runner.py` 的 compiled import**
 
 `packages/miles-ai/src/miles_ai/rag/graph/runner.py` 的 import 块改为（`integrations.langgraph.checkpointer` 只留 `checkpoint_backend`；`get_compiled_rag_graph` 改从 `rag.graph.compiled` 取，落在 `rag.graph.rag_qa` 之前；`KbRetrievalBindings` 已在 Task 3 归位到 `rag.retrieve.bindings`，**不要**再写回旧的 `integrations.langchain.kb_retrieval`）：
 
 ```python
-from miles_ai.integrations.langchain.chat_models import OnDelta
-from miles_ai.integrations.langgraph.checkpointer import checkpoint_backend
-from miles_ai.integrations.litellm.usage_sink import UsageSink
+from miles_integrations.langchain.chat_models import OnDelta
+from miles_integrations.langgraph.checkpointer import checkpoint_backend
+from miles_integrations.litellm.usage_sink import UsageSink
 from miles_ai.rag.graph.compiled import get_compiled_rag_graph
 from miles_ai.rag.graph.rag_qa import build_rag_qa_graph
 from miles_ai.rag.retrieve.bindings import KbRetrievalBindings
@@ -952,7 +952,7 @@ from miles_core.models.model import ModelConfig
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """应用生命周期钩子：启动时初始化日志 / OTel、执行 schema 迁移并建 LangGraph checkpointer，关闭时逆序释放。"""
-    from miles_ai.integrations.langgraph.checkpointer import (
+    from miles_integrations.langgraph.checkpointer import (
         init_langgraph_checkpointer,
         shutdown_langgraph_checkpointer,
     )
@@ -1033,28 +1033,28 @@ git log --oneline -1
 该文件把「CLIP 模型类型校验」（L3 适配）与「KB 视觉向量化入库策略」（L2）装在一起，是最后一个 `integrations → rag` 引用来源。
 
 **Files:**
-- Create: `packages/miles-ai/src/miles_ai/integrations/embeddings/policy.py`
+- Create: `packages/miles-integrations/src/miles_integrations/embeddings/policy.py`
 - Create: `packages/miles-ai/src/miles_ai/rag/pipeline/visual_policy.py`
-- Delete: `packages/miles-ai/src/miles_ai/integrations/langchain/visual_embeddings.py`
+- Delete: `packages/miles-integrations/src/miles_integrations/langchain/visual_embeddings.py`
 - Modify: `packages/miles-ai/src/miles_ai/rag/pipeline/ingest.py:30`
 - Modify: `packages/miles-portal/src/miles_portal/tenant/kb/services/embeddings.py:54`
 - Modify: `packages/miles-portal/src/miles_portal/tenant/kb/services/kb/core.py:9`
 
 **Interfaces:**
-- Consumes: `miles_ai.integrations.embeddings.constants.INVOKE_MODE_CLIP`、`miles_ai.integrations.embeddings.model_meta.invoke_mode_from_model`、`miles_ai.rag.parse.media.is_image_file`、`miles_core.models.kb.KnowledgeBase`
-- Produces: `miles_ai.integrations.embeddings.policy.ensure_clip_model(model) -> None`、`miles_ai.rag.pipeline.visual_policy.should_use_visual_image_embedding(kb, filename, mime_type) -> bool`
+- Consumes: `miles_integrations.embeddings.constants.INVOKE_MODE_CLIP`、`miles_integrations.embeddings.model_meta.invoke_mode_from_model`、`miles_ai.rag.parse.media.is_image_file`、`miles_core.models.kb.KnowledgeBase`
+- Produces: `miles_integrations.embeddings.policy.ensure_clip_model(model) -> None`、`miles_ai.rag.pipeline.visual_policy.should_use_visual_image_embedding(kb, filename, mime_type) -> bool`
 
 - [ ] **Step 1: 新建 `integrations/embeddings/policy.py`**
 
-`packages/miles-ai/src/miles_ai/integrations/embeddings/policy.py`：
+`packages/miles-integrations/src/miles_integrations/embeddings/policy.py`：
 
 ```python
 """向量化模型调用策略（模型类型校验）。"""
 
 from __future__ import annotations
 
-from miles_ai.integrations.embeddings.constants import INVOKE_MODE_CLIP
-from miles_ai.integrations.embeddings.model_meta import invoke_mode_from_model
+from miles_integrations.embeddings.constants import INVOKE_MODE_CLIP
+from miles_integrations.embeddings.model_meta import invoke_mode_from_model
 from miles_common.exceptions import BadRequestError
 
 
@@ -1090,7 +1090,7 @@ def should_use_visual_image_embedding(
 
 ```bash
 cd /Users/xiezhigang/Projects/miles/MilesAI/backend
-git rm -q packages/miles-ai/src/miles_ai/integrations/langchain/visual_embeddings.py
+git rm -q packages/miles-integrations/src/miles_integrations/langchain/visual_embeddings.py
 ```
 
 - `packages/miles-ai/src/miles_ai/rag/pipeline/ingest.py` 第 29-35 行的 import 块整体替换为（`rag.pipeline.*` 必须排在 `rag.parse.*` **之后**，不可原地替换第 30 行）：
@@ -1107,20 +1107,20 @@ from miles_core.models.kb import Document, DocumentChunk, KnowledgeBase, VectorR
 ```
 
 - `packages/miles-portal/src/miles_portal/tenant/kb/services/embeddings.py:54`（`_ensure_clip` 函数内 import）：
-  `from miles_ai.integrations.langchain.visual_embeddings import ensure_clip_model`
-  → `from miles_ai.integrations.embeddings.policy import ensure_clip_model`
+  `from miles_integrations.langchain.visual_embeddings import ensure_clip_model`
+  → `from miles_integrations.embeddings.policy import ensure_clip_model`
 - `packages/miles-portal/src/miles_portal/tenant/kb/services/kb/core.py:9`（原地替换即可，`embeddings.model_meta` < `embeddings.policy`，序仍正确）：
-  `from miles_ai.integrations.langchain.visual_embeddings import ensure_clip_model`
-  → `from miles_ai.integrations.embeddings.policy import ensure_clip_model`
+  `from miles_integrations.langchain.visual_embeddings import ensure_clip_model`
+  → `from miles_integrations.embeddings.policy import ensure_clip_model`
 
-- [ ] **Step 4: 改写 `tests/miles_ai/integrations/embeddings/test_clip_visual_search.py`**
+- [ ] **Step 4: 改写 `tests/miles_integrations/embeddings/test_clip_visual_search.py`**
 
 该文件的 3 个用例中，`test_should_use_visual_image_embedding` 随源码迁往 `tests/miles_ai/rag/test_visual_embedding_policy.py`（Task 6 Step 3）。本步先把该用例从本文件删除，并把 import 改为：
 
 ```python
-from miles_ai.integrations.embeddings.constants import EXTRA_EMBEDDING_DIMENSION, INVOKE_MODE_CLIP
-from miles_ai.integrations.embeddings.policy import ensure_clip_model
-from miles_ai.integrations.embeddings.providers.clip import ClipEmbeddingProvider
+from miles_integrations.embeddings.constants import EXTRA_EMBEDDING_DIMENSION, INVOKE_MODE_CLIP
+from miles_integrations.embeddings.policy import ensure_clip_model
+from miles_integrations.embeddings.providers.clip import ClipEmbeddingProvider
 from miles_core.models.model import ModelConfig
 from miles_core.models.model.catalog import ModelCapabilityType
 ```
@@ -1135,7 +1135,7 @@ from miles_core.models.model.catalog import ModelCapabilityType
 cd /Users/xiezhigang/Projects/miles/MilesAI/backend
 rg -n "integrations\.langchain\.(visual_embeddings|kb_retrieval|vectorstores)" packages tests; echo "--- 期望：无输出"
 echo "=== 反向边（必须为 0） ==="
-rg -n "^\s*(from|import)\s+miles_ai\.(rag|flow_runtime)" packages/miles-ai/src/miles_ai/integrations; echo "--- 期望：无输出"
+rg -n "^\s*(from|import)\s+miles_ai\.(rag|flow_runtime)" packages/miles-ai/src/miles_integrations; echo "--- 期望：无输出"
 .venv/bin/ruff check . && .venv/bin/ruff format --check . && .venv/bin/lint-imports | tail -3
 .venv/bin/python -m pytest -q
 .venv/bin/python -m miles_server.scripts.export_openapi --check
@@ -1165,16 +1165,16 @@ git log --oneline -1
 源码归位后，测试目录须跟随（`tests/test_tests_layout.py` 判据 3 要求 `tests/miles_ai/<a>/…/<z>/` 对应真实源码目录）。**纯 `git mv` + import 路径改写，禁止改用例逻辑与断言。**
 
 **Files:**
-- Move: `tests/miles_ai/integrations/langgraph/test_canvas_state_contract.py` → `tests/miles_ai/flow_runtime/`
-- Move: `tests/miles_ai/integrations/langgraph/test_compile_error_details.py` → `tests/miles_ai/flow_runtime/`
-- Move: `tests/miles_ai/integrations/langgraph/test_langgraph_build.py` → `tests/miles_ai/flow_runtime/`
-- Move: `tests/miles_ai/integrations/langgraph/test_langgraph_compiler.py` → `tests/miles_ai/flow_runtime/`
-- Move: `tests/miles_ai/integrations/langgraph/test_langgraph_parallel.py` → `tests/miles_ai/flow_runtime/`
-- Move: `tests/miles_ai/integrations/langgraph/test_langgraph_grading.py` → `tests/miles_ai/rag/graph/`
-- Move: `tests/miles_ai/integrations/langgraph/test_langgraph_rag.py` → `tests/miles_ai/rag/graph/`
-- Move: `tests/miles_ai/integrations/langgraph/test_rag_answer_stream.py` → `tests/miles_ai/rag/graph/`
-- Move: `tests/miles_ai/integrations/langgraph/test_rag_multimodal.py` → `tests/miles_ai/rag/graph/`
-- Move: `tests/miles_ai/integrations/langgraph/test_rag_qa_nodes_share_generate.py` → `tests/miles_ai/rag/graph/`
+- Move: `tests/miles_integrations/langgraph/test_canvas_state_contract.py` → `tests/miles_ai/flow_runtime/`
+- Move: `tests/miles_integrations/langgraph/test_compile_error_details.py` → `tests/miles_ai/flow_runtime/`
+- Move: `tests/miles_integrations/langgraph/test_langgraph_build.py` → `tests/miles_ai/flow_runtime/`
+- Move: `tests/miles_integrations/langgraph/test_langgraph_compiler.py` → `tests/miles_ai/flow_runtime/`
+- Move: `tests/miles_integrations/langgraph/test_langgraph_parallel.py` → `tests/miles_ai/flow_runtime/`
+- Move: `tests/miles_integrations/langgraph/test_langgraph_grading.py` → `tests/miles_ai/rag/graph/`
+- Move: `tests/miles_integrations/langgraph/test_langgraph_rag.py` → `tests/miles_ai/rag/graph/`
+- Move: `tests/miles_integrations/langgraph/test_rag_answer_stream.py` → `tests/miles_ai/rag/graph/`
+- Move: `tests/miles_integrations/langgraph/test_rag_multimodal.py` → `tests/miles_ai/rag/graph/`
+- Move: `tests/miles_integrations/langgraph/test_rag_qa_nodes_share_generate.py` → `tests/miles_ai/rag/graph/`
 - Create: `tests/miles_ai/rag/test_visual_embedding_policy.py`
 
 **Interfaces:**
@@ -1187,30 +1187,30 @@ cd /Users/xiezhigang/Projects/miles/MilesAI/backend
 mkdir -p tests/miles_ai/rag/graph
 for f in test_canvas_state_contract.py test_compile_error_details.py test_langgraph_build.py \
          test_langgraph_compiler.py test_langgraph_parallel.py; do
-  git mv "tests/miles_ai/integrations/langgraph/$f" "tests/miles_ai/flow_runtime/$f"
+  git mv "tests/miles_integrations/langgraph/$f" "tests/miles_ai/flow_runtime/$f"
 done
 for f in test_langgraph_grading.py test_langgraph_rag.py test_rag_answer_stream.py \
          test_rag_multimodal.py test_rag_qa_nodes_share_generate.py; do
-  git mv "tests/miles_ai/integrations/langgraph/$f" "tests/miles_ai/rag/graph/$f"
+  git mv "tests/miles_integrations/langgraph/$f" "tests/miles_ai/rag/graph/$f"
 done
-rmdir tests/miles_ai/integrations/langgraph 2>/dev/null
-ls tests/miles_ai/integrations/ tests/miles_ai/rag/graph/
+rmdir tests/miles_integrations/langgraph 2>/dev/null
+ls tests/miles_integrations/ tests/miles_ai/rag/graph/
 ```
 
-Expected: `tests/miles_ai/integrations/` 只剩 `deepagents/ embeddings/ generative/ langchain/ litellm/ rerank/`（`langgraph/` 已消失）；`tests/miles_ai/rag/graph/` 列出 5 个文件。
+Expected: `tests/miles_integrations/` 只剩 `deepagents/ embeddings/ generative/ langchain/ litellm/ rerank/`（`langgraph/` 已消失）；`tests/miles_ai/rag/graph/` 列出 5 个文件。
 
 - [ ] **Step 2: 修正搬迁后测试文件里的跨文件引用与路径**
 
 | 文件 | 检查项 | 处理 |
 |---|---|---|
 | 全部 10 个 | `from tests.paths import MILES_AI` / `from tests.` 开头的 import | **不改**（`tests.` 绝对路径与文件所在层无关） |
-| `tests/miles_ai/rag/graph/test_rag_answer_stream.py:11` | `from tests.miles_ai.integrations.litellm.test_litellm_adapter import _model` | **不改**（目标文件未移动） |
+| `tests/miles_ai/rag/graph/test_rag_answer_stream.py:11` | `from tests.miles_integrations.litellm.test_litellm_adapter import _model` | **不改**（目标文件未移动） |
 
 无需改动的项：10 个文件的 import 已在 Task 1/2 改写完毕；`MILES_AI` 路径读取的是 `flow_runtime/templates/*.json`，模板未移动。
 
 - [ ] **Step 3: 新建 `tests/miles_ai/rag/test_visual_embedding_policy.py`**
 
-把 `tests/miles_ai/integrations/embeddings/test_clip_visual_search.py` 中 `test_should_use_visual_image_embedding` 的用例体**逐字**搬入：
+把 `tests/miles_integrations/embeddings/test_clip_visual_search.py` 中 `test_should_use_visual_image_embedding` 的用例体**逐字**搬入：
 
 ```python
 """KB 视觉向量化入库策略测试（rag.pipeline.visual_policy）。"""
@@ -1290,7 +1290,7 @@ type = layers
 layers =
     miles_ai.flow_runtime
     miles_ai.rag
-    miles_ai.integrations
+    miles_integrations
 ```
 
 - [ ] **Step 2: 红测 —— 证明契约能拦住违规**
@@ -1299,13 +1299,13 @@ layers =
 
 ```bash
 cd /Users/xiezhigang/Projects/miles/MilesAI/backend
-printf '\nfrom miles_ai.rag.chunk import split_text  # noqa: F401\n' >> packages/miles-ai/src/miles_ai/integrations/langchain/chat_models.py
+printf '\nfrom miles_ai.rag.chunk import split_text  # noqa: F401\n' >> packages/miles-integrations/src/miles_integrations/langchain/chat_models.py
 .venv/bin/lint-imports | tail -14
-git checkout -- packages/miles-ai/src/miles_ai/integrations/langchain/chat_models.py
+git checkout -- packages/miles-integrations/src/miles_integrations/langchain/chat_models.py
 git status --porcelain; echo "--- 期望：空（违规已撤销）"
 ```
 
-Expected: 输出含 `miles_ai 内部分层（编排在上，适配在下） BROKEN` 且指明 `miles_ai.integrations.langchain.chat_models` 违规；末行 `Contracts: 7 kept, 1 broken.`
+Expected: 输出含 `miles_ai 内部分层（编排在上，适配在下） BROKEN` 且指明 `miles_integrations.langchain.chat_models` 违规；末行 `Contracts: 7 kept, 1 broken.`
 
 > 契约不能是空转的：若本步仍显示 `8 kept`，说明 `layers` 的模块路径写错（例如漏了 `miles_ai.` 前缀会命中空集合），必须修正后再继续。
 
@@ -1346,7 +1346,7 @@ Expected: 8 条契约全部 `KEPT`，末行 `Contracts: 8 kept, 0 broken.`
 
 4. §3.1 表下追加一行：`rag.graph` 子包职责见 specs/2026-09-22-miles-ai-internal-layering-design.md。
 
-5. §5.2 的 import 示例块中，把 `from miles_ai.integrations.langchain.vectorstores import search_kb` 一行删除，并把 `from miles_ai.integrations.langchain.kb_retrieval import ...`（若有）改为 `from miles_ai.rag.retrieve.bindings import KbRetrievalBindings`；把 `from miles_ai.integrations.langgraph.compiler import ...`（若出现在该节）改为 `from miles_ai.flow_runtime.compiler import ...`。
+5. §5.2 的 import 示例块中，把 `from miles_ai.rag.retrieve.bindings import search_kb` 一行删除，并把 `from miles_ai.rag.retrieve.bindings import ...`（若有）改为 `from miles_ai.rag.retrieve.bindings import KbRetrievalBindings`；把 `from miles_ai.flow_runtime.compiler import ...`（若出现在该节）改为 `from miles_ai.flow_runtime.compiler import ...`。
 
 > 改前先 `rg -n "integrations\.(langchain|langgraph)" docs/architecture/layering.md` 列出全部待改行，逐行核对后再改；该文件其他章节（§1/§2.1/§2.2/§4）涉及 `integrations` 作为 L3 的通用描述**不需要改**。
 
@@ -1356,7 +1356,7 @@ Expected: 8 条契约全部 `KEPT`，末行 `Contracts: 8 kept, 0 broken.`
 
 | 文件:行 | 原文片段 | 改为 |
 |---|---|---|
-| `docs/guides/knowledge-base.md:150` | `miles_ai.integrations.langchain.vectorstores` | `miles_ai.rag.retrieve.multi_kb`（并删去该行对 `search_multi_kb` 壳的表述，改为直接描述多库合并排序） |
+| `docs/guides/knowledge-base.md:150` | `miles_ai.rag.retrieve.bindings` | `miles_ai.rag.retrieve.multi_kb`（并删去该行对 `search_multi_kb` 壳的表述，改为直接描述多库合并排序） |
 | `docs/architecture/technical-design.md:461` | `integrations.langgraph.flow_runner` | `flow_runtime.graph_runner` |
 | `docs/architecture/technical-design.md:504` | `integrations.langgraph.runner` | `rag.graph.runner` |
 | `docs/guides/flows.md:45` | `integrations.langgraph.compiler` | `flow_runtime.compiler` |
@@ -1395,7 +1395,7 @@ rg -n 'flow_runner' backend/packages backend/tests; echo "--- 期望：无输出
 rg -n '画布流程 L3|执行入口（L3）' backend/packages; echo "--- 期望：无输出"
 ```
 
-> 另两条 Task 1 评审 Minor **不在此处理**：`integrations/langgraph/__init__.py` 的 docstring 提示句已在 Task 2 Step 8 整文件重写（Minor 自然消失）；`tests/miles_ai/integrations/langgraph/test_canvas_state_contract.py` 注释里的「已搬到 …（Task 6）」在 Task 6 真正搬迁该文件后即为事实。
+> 另两条 Task 1 评审 Minor **不在此处理**：`integrations/langgraph/__init__.py` 的 docstring 提示句已在 Task 2 Step 8 整文件重写（Minor 自然消失）；`tests/miles_integrations/langgraph/test_canvas_state_contract.py` 注释里的「已搬到 …（Task 6）」在 Task 6 真正搬迁该文件后即为事实。
 
 - [ ] **Step 6: spec 补「已实施」记录**
 
@@ -1443,9 +1443,9 @@ git log --oneline -1
 ## 收尾验收（对照 spec §11）
 
 - [ ] `.venv/bin/lint-imports` → `Contracts: 8 kept, 0 broken.`
-- [ ] `rg -n "^\s*(from|import)\s+miles_ai\.(rag|flow_runtime)" packages/miles-ai/src/miles_ai/integrations` → 无输出
+- [ ] `rg -n "^\s*(from|import)\s+miles_ai\.(rag|flow_runtime)" packages/miles-ai/src/miles_integrations` → 无输出
 - [ ] 全仓 `rg -n "integrations\.(langgraph\.(compiler|flow_runner|graph_analysis|grading|graphs|runner|constants|state)|langchain\.(kb_retrieval|vectorstores|visual_embeddings))" --glob '!docs/superpowers/**' .` → **无输出**（`docs/superpowers/` 下的 spec/plan 属历史记录，保留原文不提改动）
 - [ ] `make check` 全绿；`1517 passed`；OpenAPI 零漂移
-- [ ] `miles_ai.integrations.{generative,embeddings,rerank,deepagents,litellm,chat,langchain}` 对外路径未变：`rg -c "miles_ai\.integrations\.(generative|embeddings|rerank|deepagents|litellm|chat|langchain)\." packages tests | awk -F: '{s+=$2} END {print s}'` 与基线一致
-- [ ] 新增文件均 ≤ 500 行且带中文 docstring：`wc -l packages/miles-ai/src/miles_ai/rag/graph/*.py packages/miles-ai/src/miles_ai/rag/pipeline/visual_policy.py packages/miles-ai/src/miles_ai/integrations/embeddings/policy.py`
+- [ ] `miles_integrations.{generative,embeddings,rerank,deepagents,litellm,chat,langchain}` 对外路径未变：`rg -c "miles_ai\.integrations\.(generative|embeddings|rerank|deepagents|litellm|chat|langchain)\." packages tests | awk -F: '{s+=$2} END {print s}'` 与基线一致
+- [ ] 新增文件均 ≤ 500 行且带中文 docstring：`wc -l packages/miles-ai/src/miles_ai/rag/graph/*.py packages/miles-ai/src/miles_ai/rag/pipeline/visual_policy.py packages/miles-integrations/src/miles_integrations/embeddings/policy.py`
 - [ ] 手工冒烟：Agent RAG 对话（绑定 KB 的智能体发起一次对话，确认走 LangGraph 且多轮 `thread_id` 生效）；画布流程调试运行（`FlowService.run` 或工作台流程调试，确认编译预览与执行正常）

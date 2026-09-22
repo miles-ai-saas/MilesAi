@@ -2,7 +2,7 @@
 
 > 状态：**已实施**
 > 关联：[layering.md](../../architecture/layering.md)、[2026-09-22-miles-ai-internal-layering-design.md](./2026-09-22-miles-ai-internal-layering-design.md)（**已实施**，本设计的严格前置）、[2026-09-11-backend-uv-workspace-multipackage-design.md](./2026-09-11-backend-uv-workspace-multipackage-design.md) §11
-> 目标形态：新建 workspace 包 `miles-integrations`，承接原 `miles_ai.integrations`；包级 layers 变为 `portal → miles_ai → miles_integrations → miles_core`；硬切换、不留兼容层。
+> 目标形态：新建 workspace 包 `miles-integrations`，承接原位于 `miles_ai` 包内的 L3 `integrations/` 整树；包级 layers 变为 `portal → miles_ai → miles_integrations → miles_core`；硬切换、不留兼容层。
 
 ---
 
@@ -14,7 +14,7 @@
 
 - `integrations → rag / flow_runtime` 反向边 = **0**
 - `integrations/` 已是纯 L3（langchain / langgraph(checkpointer) / litellm / deepagents / embeddings / generative / rerank / chat）
-- 上层（portal / server / worker）仍大量直连 `miles_ai.integrations`（约 278 条 `from/import`）
+- 上层（portal / server / worker）仍大量直连 L3（约 278 条 `from/import`，拆包前经 `miles_ai` 内 `integrations/`）
 
 此时拆第 11 包不再有环依赖障碍，可以落地依赖隔离与包级边界。
 
@@ -31,14 +31,14 @@
 ### 目标
 
 1. 新建 `packages/miles-integrations`，Python 包名 `miles_integrations`。
-2. 原 `miles_ai/integrations/**` 整树迁入；import 根由 `miles_ai.integrations` 硬改为 `miles_integrations`。
+2. 将 `miles_ai` 包内 `integrations/**` 整树迁入新包；import 根硬改为 `miles_integrations`。
 3. 包级 layers 插入 `miles_integrations`（位于 `miles_ai` 与 `miles_core` 之间）。
-4. 上层（portal / server / worker）**继续允许**直连 `miles_integrations`（与今日直连 L3 一致）。
+4. 上层（portal / server / worker）**继续允许**直连 `miles_integrations`（与拆包前直连 L3 一致）。
 5. 行为不变：全量 pytest 用例集合与 OpenAPI 快照零漂移。
 
 ### 非目标
 
-- 不留 `miles_ai.integrations` 兼容 re-export / 转发壳。
+- 不在 `miles_ai` 下保留 L3 兼容 re-export / 转发壳。
 - 不把 `rag` / `flow_runtime` 再挪包。
 - 不重构 tool_agent / deepagents / generative 内部实现。
 - 不追求「`miles-ai` 零 langchain」——L2 图引擎与 parse/chunk 仍直接依赖 LC/LG 核心（见 §4）。
@@ -61,13 +61,13 @@ miles_exec
 miles_common
 ```
 
-### 物理落点
+### 物理落点（已实施）
 
-| 现在 | 之后 |
+| 落点 | 说明 |
 |------|------|
-| `packages/miles-ai/src/miles_ai/integrations/` | `packages/miles-integrations/src/miles_integrations/` |
-| `from miles_ai.integrations.X` | `from miles_integrations.X` |
-| `tests/miles_ai/integrations/` | `tests/miles_integrations/` |
+| `packages/miles-integrations/src/miles_integrations/` | 原 `miles_ai` 包内 `integrations/` 整树 |
+| `from miles_integrations.X` | 全仓硬切换后的 import 根 |
+| `tests/miles_integrations/` | 测试镜像目录 |
 
 子目录结构**原样保留**：`chat/`、`deepagents/`、`embeddings/`、`generative/`、`langchain/`、`langgraph/`、`litellm/`、`rerank/`、`http_constants.py`。
 
@@ -165,8 +165,8 @@ layers =
 ## 6. 迁移步骤
 
 1. **建包骨架**：`packages/miles-integrations/`（`pyproject.toml` + `src/miles_integrations`），加入 workspace。
-2. **`git mv` 整树**：源码与 `tests/miles_ai/integrations/**` → `tests/miles_integrations/**`。
-3. **全仓硬改 import**：`miles_ai.integrations` → `miles_integrations`（含 monkeypatch 路径字符串）。
+2. **`git mv` 整树**：`miles_ai` 包内 `integrations/**` → 新包；`tests` 下同名镜像目录一并迁入 `tests/miles_integrations/**`。
+3. **全仓硬改 import**：旧 L3 import 根 → `miles_integrations`（含 monkeypatch 路径字符串）。
 4. **依赖归属**：按 §4 调整各 `pyproject.toml`；`uv sync`。
 5. **契约**：改 `.importlinter`；红/绿双向证明。
 6. **文档**：同步 `layering.md` 等；本 spec 补「已实施」。
@@ -219,5 +219,5 @@ layers =
 
 ### 2026-09-22：已实施
 
-Task 1–3 落地。与本文无偏差。验收：全仓无 `miles_ai.integrations` 生产 import；
+Task 1–3 落地。与本文无偏差。验收：全仓无旧 L3 import 根（见 §7 正则）；
 `lint-imports` 全绿；pytest collect-only 与基线一致。

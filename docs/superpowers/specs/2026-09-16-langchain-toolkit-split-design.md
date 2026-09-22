@@ -7,7 +7,7 @@
 
 ## 1. 问题
 
-`miles_ai/integrations/langchain/tools.py` 一个文件承担 **6 类互不相干**的职责，且其中 13 个
+`miles_integrations/langchain/tools.py` 一个文件承担 **6 类互不相干**的职责，且其中 13 个
 工厂函数是**同一段代码抄 13 遍**：
 
 1. MCP function name 的命名约定（`sanitize_ident` / `compose_mcp_tool_name` / `is_mcp_tool_name`）；
@@ -66,7 +66,7 @@
 | 生产 | `miles_portal/tenant/tools/confirmation.py:8` | 1 |
 | 生产 | `miles_portal/tenant/tools/invoke/context.py:12` | 1 |
 | 生产 | `miles_portal/tenant/agents/services/context.py:15` | 1 |
-| 生产 | `miles_ai/integrations/langchain/tool_agent/loop.py:19` | 2 |
+| 生产 | `miles_integrations/langchain/tool_agent/loop.py:19` | 2 |
 | 测试 | `tests/mcp/test_mcp_function_calling.py:11` | 8 |
 | 测试 | `tests/tenant/tools/test_builtin_opt_in.py:5` | 3 |
 | 测试 | `tests/tenant/tools/test_knowledge_search_coexistence.py:13` | 3 |
@@ -105,7 +105,7 @@
 ### 5.1 目录与模块划分
 
 ```
-miles_ai/integrations/langchain/
+miles_integrations/langchain/
 ├── toolkit/
 │   ├── __init__.py   # 空 —— 刻意不构成再导出壳
 │   ├── naming.py     # MCP function name 约定

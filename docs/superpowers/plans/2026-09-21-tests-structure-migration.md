@@ -274,7 +274,7 @@ MSG
 
 **Files:**
 - Modify（重命名）：见 Step 1
-- Modify（内容）：`tests/miles_ai/integrations/langgraph/test_canvas_state_contract.py:9,20`
+- Modify（内容）：`tests/miles_integrations/langgraph/test_canvas_state_contract.py:9,20`
 
 **Interfaces:**
 - Consumes: Task 2 的提交
@@ -285,11 +285,11 @@ MSG
 ```bash
 cd /Users/xiezhigang/Projects/miles/MilesAI/backend
 mkdir -p tests/miles_ai/flow_runtime tests/miles_ai/rag \
-         tests/miles_ai/integrations/deepagents tests/miles_ai/integrations/embeddings \
-         tests/miles_ai/integrations/generative tests/miles_ai/integrations/langchain \
-         tests/miles_ai/integrations/langgraph tests/miles_ai/integrations/litellm \
-         tests/miles_ai/integrations/rerank
-git mv tests/flow/test_compile_error_details.py tests/miles_ai/integrations/langgraph/test_compile_error_details.py
+         tests/miles_integrations/deepagents tests/miles_integrations/embeddings \
+         tests/miles_integrations/generative tests/miles_integrations/langchain \
+         tests/miles_integrations/langgraph tests/miles_integrations/litellm \
+         tests/miles_integrations/rerank
+git mv tests/flow/test_compile_error_details.py tests/miles_integrations/langgraph/test_compile_error_details.py
 git mv tests/flow/test_compliance_node.py tests/miles_ai/flow_runtime/test_compliance_node.py
 git mv tests/flow/test_control_nodes.py tests/miles_ai/flow_runtime/test_control_nodes.py
 git mv tests/flow/test_flow_runtime_constants.py tests/miles_ai/flow_runtime/test_flow_runtime_constants.py
@@ -297,11 +297,11 @@ git mv tests/flow/test_flow_step_artifact.py tests/miles_ai/flow_runtime/test_fl
 git mv tests/flow/test_flow_template_graphs.py tests/miles_ai/flow_runtime/test_flow_template_graphs.py
 git mv tests/flow/test_flow_templates.py tests/miles_ai/flow_runtime/test_flow_templates.py
 git mv tests/flow/test_generative_nodes.py tests/miles_ai/flow_runtime/test_generative_nodes.py
-git mv tests/flow/test_langgraph_build.py tests/miles_ai/integrations/langgraph/test_langgraph_build.py
-git mv tests/flow/test_langgraph_compiler.py tests/miles_ai/integrations/langgraph/test_langgraph_compiler.py
-git mv tests/flow/test_langgraph_grading.py tests/miles_ai/integrations/langgraph/test_langgraph_grading.py
-git mv tests/flow/test_langgraph_parallel.py tests/miles_ai/integrations/langgraph/test_langgraph_parallel.py
-git mv tests/flow/test_langgraph_rag.py tests/miles_ai/integrations/langgraph/test_langgraph_rag.py
+git mv tests/flow/test_langgraph_build.py tests/miles_integrations/langgraph/test_langgraph_build.py
+git mv tests/flow/test_langgraph_compiler.py tests/miles_integrations/langgraph/test_langgraph_compiler.py
+git mv tests/flow/test_langgraph_grading.py tests/miles_integrations/langgraph/test_langgraph_grading.py
+git mv tests/flow/test_langgraph_parallel.py tests/miles_integrations/langgraph/test_langgraph_parallel.py
+git mv tests/flow/test_langgraph_rag.py tests/miles_integrations/langgraph/test_langgraph_rag.py
 git mv tests/flow/test_flow_multimodal.py tests/miles_ai/flow_runtime/test_flow_multimodal.py
 git mv tests/flow/test_media_nodes.py tests/miles_ai/flow_runtime/test_media_nodes.py
 git mv tests/flow/test_platform_tool_node.py tests/miles_ai/flow_runtime/test_platform_tool_node.py
@@ -310,48 +310,48 @@ git mv tests/flow/test_relevance_grade_flow.py tests/miles_ai/flow_runtime/test_
 git mv tests/flow/test_subflow.py tests/miles_ai/flow_runtime/test_subflow.py
 git mv tests/flow/test_subflow_runtime.py tests/miles_ai/flow_runtime/test_subflow_runtime.py
 git mv tests/flow/test_subflow_validate.py tests/miles_ai/flow_runtime/test_subflow_validate.py
-git mv tests/infra/test_canvas_state_contract.py tests/miles_ai/integrations/langgraph/test_canvas_state_contract.py
-git mv tests/infra/test_litellm_adapter.py tests/miles_ai/integrations/litellm/test_litellm_adapter.py
-git mv tests/infra/test_litellm_chat_stream.py tests/miles_ai/integrations/langchain/test_litellm_chat_stream.py
+git mv tests/infra/test_canvas_state_contract.py tests/miles_integrations/langgraph/test_canvas_state_contract.py
+git mv tests/infra/test_litellm_adapter.py tests/miles_integrations/litellm/test_litellm_adapter.py
+git mv tests/infra/test_litellm_chat_stream.py tests/miles_integrations/langchain/test_litellm_chat_stream.py
 git mv tests/infra/test_upload_policy.py tests/miles_ai/rag/test_upload_policy.py
-git mv tests/mcp/test_mcp_function_calling.py tests/miles_ai/integrations/langchain/test_mcp_function_calling.py
-git mv tests/media/test_dashscope_t2i.py tests/miles_ai/integrations/generative/test_dashscope_t2i.py
-git mv tests/media/test_dashscope_video_frames.py tests/miles_ai/integrations/generative/test_dashscope_video_frames.py
-git mv tests/media/test_image_b64_decoding.py tests/miles_ai/integrations/generative/test_image_b64_decoding.py
-git mv tests/media/test_volcengine_image.py tests/miles_ai/integrations/generative/test_volcengine_image.py
-git mv tests/media/test_volcengine_video.py tests/miles_ai/integrations/generative/test_volcengine_video.py
+git mv tests/mcp/test_mcp_function_calling.py tests/miles_integrations/langchain/test_mcp_function_calling.py
+git mv tests/media/test_dashscope_t2i.py tests/miles_integrations/generative/test_dashscope_t2i.py
+git mv tests/media/test_dashscope_video_frames.py tests/miles_integrations/generative/test_dashscope_video_frames.py
+git mv tests/media/test_image_b64_decoding.py tests/miles_integrations/generative/test_image_b64_decoding.py
+git mv tests/media/test_volcengine_image.py tests/miles_integrations/generative/test_volcengine_image.py
+git mv tests/media/test_volcengine_video.py tests/miles_integrations/generative/test_volcengine_video.py
 git mv tests/rag/test_chunk_splitter.py tests/miles_ai/rag/test_chunk_splitter.py
-git mv tests/rag/test_clip_visual_search.py tests/miles_ai/integrations/embeddings/test_clip_visual_search.py
-git mv tests/rag/test_embedding_providers.py tests/miles_ai/integrations/embeddings/test_embedding_providers.py
+git mv tests/rag/test_clip_visual_search.py tests/miles_integrations/embeddings/test_clip_visual_search.py
+git mv tests/rag/test_embedding_providers.py tests/miles_integrations/embeddings/test_embedding_providers.py
 git mv tests/rag/test_generate_rag_answer.py tests/miles_ai/rag/test_generate_rag_answer.py
 git mv tests/rag/test_hybrid_retrieval.py tests/miles_ai/rag/test_hybrid_retrieval.py
 git mv tests/rag/test_ingest_page_no.py tests/miles_ai/rag/test_ingest_page_no.py
 git mv tests/rag/test_parse_degradation_diagnosability.py tests/miles_ai/rag/test_parse_degradation_diagnosability.py
 git mv tests/rag/test_parse_loaders.py tests/miles_ai/rag/test_parse_loaders.py
-git mv tests/rag/test_rag_answer_stream.py tests/miles_ai/integrations/langgraph/test_rag_answer_stream.py
-git mv tests/rag/test_rag_multimodal.py tests/miles_ai/integrations/langgraph/test_rag_multimodal.py
+git mv tests/rag/test_rag_answer_stream.py tests/miles_integrations/langgraph/test_rag_answer_stream.py
+git mv tests/rag/test_rag_multimodal.py tests/miles_integrations/langgraph/test_rag_multimodal.py
 git mv tests/rag/test_rag_pipeline_ingest.py tests/miles_ai/rag/test_rag_pipeline_ingest.py
-git mv tests/rag/test_rag_qa_nodes_share_generate.py tests/miles_ai/integrations/langgraph/test_rag_qa_nodes_share_generate.py
-git mv tests/rag/test_rerank_providers.py tests/miles_ai/integrations/rerank/test_rerank_providers.py
+git mv tests/rag/test_rag_qa_nodes_share_generate.py tests/miles_integrations/langgraph/test_rag_qa_nodes_share_generate.py
+git mv tests/rag/test_rerank_providers.py tests/miles_integrations/rerank/test_rerank_providers.py
 git mv tests/rag/test_rerank_retrieve.py tests/miles_ai/rag/test_rerank_retrieve.py
 git mv tests/rag/test_upload_policy_alignment.py tests/miles_ai/rag/test_upload_policy_alignment.py
 git mv tests/rag/test_video_frames.py tests/miles_ai/rag/test_video_frames.py
 git mv tests/rag/test_video_ingest.py tests/miles_ai/rag/test_video_ingest.py
-git mv tests/tenant/agents/test_deepagents_orchestrator.py tests/miles_ai/integrations/deepagents/test_deepagents_orchestrator.py
-git mv tests/tenant/generative/test_generative_model_resolve.py tests/miles_ai/integrations/generative/test_generative_model_resolve.py
-git mv tests/tenant/generative/test_generative_policy.py tests/miles_ai/integrations/generative/test_generative_policy.py
-git mv tests/tenant/generative/test_image_prompt_guard.py tests/miles_ai/integrations/generative/test_image_prompt_guard.py
-git mv tests/tenant/generative/test_job_execution_runner.py tests/miles_ai/integrations/generative/test_job_execution_runner.py
-git mv tests/tenant/generative/test_progress_session.py tests/miles_ai/integrations/generative/test_progress_session.py
-git mv tests/tenant/tools/test_builtin_opt_in.py tests/miles_ai/integrations/langchain/test_builtin_opt_in.py
-git mv tests/tenant/tools/test_knowledge_search_coexistence.py tests/miles_ai/integrations/langchain/test_knowledge_search_coexistence.py
-git mv tests/tenant/tools/test_tool_agent_loop.py tests/miles_ai/integrations/langchain/test_tool_agent_loop.py
-git mv tests/tenant/tools/test_toolkit_contract.py tests/miles_ai/integrations/langchain/test_toolkit_contract.py
+git mv tests/tenant/agents/test_deepagents_orchestrator.py tests/miles_integrations/deepagents/test_deepagents_orchestrator.py
+git mv tests/tenant/generative/test_generative_model_resolve.py tests/miles_integrations/generative/test_generative_model_resolve.py
+git mv tests/tenant/generative/test_generative_policy.py tests/miles_integrations/generative/test_generative_policy.py
+git mv tests/tenant/generative/test_image_prompt_guard.py tests/miles_integrations/generative/test_image_prompt_guard.py
+git mv tests/tenant/generative/test_job_execution_runner.py tests/miles_integrations/generative/test_job_execution_runner.py
+git mv tests/tenant/generative/test_progress_session.py tests/miles_integrations/generative/test_progress_session.py
+git mv tests/tenant/tools/test_builtin_opt_in.py tests/miles_integrations/langchain/test_builtin_opt_in.py
+git mv tests/tenant/tools/test_knowledge_search_coexistence.py tests/miles_integrations/langchain/test_knowledge_search_coexistence.py
+git mv tests/tenant/tools/test_tool_agent_loop.py tests/miles_integrations/langchain/test_tool_agent_loop.py
+git mv tests/tenant/tools/test_toolkit_contract.py tests/miles_integrations/langchain/test_toolkit_contract.py
 ```
 
 - [ ] **Step 2: 改写 `test_canvas_state_contract.py` 的路径推导**
 
-原文（`tests/miles_ai/integrations/langgraph/test_canvas_state_contract.py` 第 18–21 行）：
+原文（`tests/miles_integrations/langgraph/test_canvas_state_contract.py` 第 18–21 行）：
 
 ```python
 # tests/infra/<this> → backend/（显式路径单跑时 ``tests.paths`` 不可导入，故本地推导）
@@ -362,13 +362,13 @@ _COMPILER_DIR = _BACKEND_DIR / "packages" / "miles-ai" / "src" / "miles_ai" / "i
 替换为：
 
 ```python
-# 路径常量统一来自 ``tests.paths``（本文件已搬到 tests/miles_ai/integrations/langgraph/，
+# 路径常量统一来自 ``tests.paths``（本文件已搬到 tests/miles_integrations/langgraph/，
 # 目录深度变化后 ``parents`` 推导不再可靠）。
 _BACKEND_DIR = BACKEND_ROOT
 _COMPILER_DIR = _BACKEND_DIR / "packages" / "miles-ai" / "src" / "miles_ai" / "integrations" / "langgraph" / "compiler"
 ```
 
-并把 import 区的 `from miles_ai.integrations.langgraph.compiler.state import CanvasGraphState` 之后加一行（同一分组，不加空行）：
+并把 import 区的 `from miles_ai.flow_runtime.compiler.state import CanvasGraphState` 之后加一行（同一分组，不加空行）：
 
 ```python
 from tests.paths import BACKEND_ROOT
@@ -387,8 +387,8 @@ rg -n "from tests\.infra\.test_litellm_adapter" tests
 
 预期命中 2 处：
 
-- `tests/miles_ai/integrations/langchain/test_litellm_chat_stream.py:8`
-- `tests/miles_ai/integrations/langgraph/test_rag_answer_stream.py:11`
+- `tests/miles_integrations/langchain/test_litellm_chat_stream.py:8`
+- `tests/miles_integrations/langgraph/test_rag_answer_stream.py:11`
 
 两处都由
 
@@ -399,10 +399,10 @@ from tests.infra.test_litellm_adapter import _model
 改为
 
 ```python
-from tests.miles_ai.integrations.litellm.test_litellm_adapter import _model
+from tests.miles_integrations.litellm.test_litellm_adapter import _model
 ```
 
-（共用桩函数 `_model` 的提供方同批搬到 `tests/miles_ai/integrations/litellm/`。基名 `test_litellm_adapter` 全仓唯一，pytest 不会因该导入把同一文件重复收集。）
+（共用桩函数 `_model` 的提供方同批搬到 `tests/miles_integrations/litellm/`。基名 `test_litellm_adapter` 全仓唯一，pytest 不会因该导入把同一文件重复收集。）
 
 - [ ] **Step 3: 跑该批目标目录**
 
@@ -1083,11 +1083,11 @@ rg -n --hidden "tests/(infra|flow|rag|media|mcp|models|tenant|admin|worker|api|m
 | `tests/models/test_api_enum_parity.py` | `tests/test_api_enum_parity.py` |
 | `tests/test_orm_registry_completeness.py` | `tests/test_orm_registry_completeness.py` |
 | `tests/models/test_enum_contract.py` | `tests/test_enum_contract.py` |
-| `tests/infra/test_canvas_state_contract.py` | `tests/miles_ai/integrations/langgraph/test_canvas_state_contract.py` |
+| `tests/infra/test_canvas_state_contract.py` | `tests/miles_integrations/langgraph/test_canvas_state_contract.py` |
 | `tests/infra/test_celery_task_names.py` | `tests/miles_worker/test_celery_task_names.py` |
 | `tests/rag/test_upload_policy_alignment.py` | `tests/miles_ai/rag/test_upload_policy_alignment.py` |
 | `tests/rag/test_parse_degradation_diagnosability.py` | `tests/miles_ai/rag/test_parse_degradation_diagnosability.py` |
-| `tests/tenant/tools/test_toolkit_contract.py` | `tests/miles_ai/integrations/langchain/test_toolkit_contract.py` |
+| `tests/tenant/tools/test_toolkit_contract.py` | `tests/miles_integrations/langchain/test_toolkit_contract.py` |
 | `tests/tenant/agents/test_agent_chat_rag_flow_context.py` | `tests/miles_portal/tenant/agents/test_agent_chat_rag_flow_context.py` |
 | `tests/tenant/{domain}/` | `tests/miles_portal/tenant/{domain}/` |
 | `backend/tests/admin/` | `backend/tests/miles_admin/` |
@@ -1100,7 +1100,7 @@ rg -n --hidden "tests/(infra|flow|rag|media|mcp|models|tenant|admin|worker|api|m
 - `backend/packages/miles-admin/src/miles_admin/app_ops/schemas/enums.py`
 - `backend/packages/miles-portal/src/miles_portal/tenant/*/schemas/enums.py`（11 个域）
 - `backend/packages/miles-server/src/miles_server/registry.py`
-- `backend/packages/miles-ai/src/miles_ai/integrations/langgraph/compiler/state.py`
+- `backend/packages/miles-integrations/src/miles_ai/flow_runtime/compiler/state.py`
 - `backend/packages/miles-ai/src/miles_ai/rag/parse/upload_policy.py`
 - `backend/packages/miles-core/src/miles_core/jobs/tasks.py`
 - `docs/guides/{knowledge-base,ai-stack}.md`

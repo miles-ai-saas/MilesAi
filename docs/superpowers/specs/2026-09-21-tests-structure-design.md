@@ -207,10 +207,10 @@ tests/api/ (12)
   → tests/miles_server/apps/ (4)                       test_access_log_middleware, test_api_e2e, test_cors, test_exception_handlers
 tests/flow/ (24)
   → tests/miles_ai/flow_runtime/ (15)                  test_compliance_node, test_control_nodes, test_flow_multimodal, test_flow_runtime_constants, test_flow_step_artifact, test_flow_template_graphs, test_flow_templates, test_generative_nodes, test_media_nodes, test_platform_tool_node, test_prompt_template_node, test_relevance_grade_flow, test_subflow, test_subflow_runtime, test_subflow_validate
-  → tests/miles_ai/integrations/langgraph/ (6)         test_compile_error_details, test_langgraph_build, test_langgraph_compiler, test_langgraph_grading, test_langgraph_parallel, test_langgraph_rag
+  → tests/miles_integrations/langgraph/ (6)         test_compile_error_details, test_langgraph_build, test_langgraph_compiler, test_langgraph_grading, test_langgraph_parallel, test_langgraph_rag
   → tests/miles_portal/tenant/flows/ (3)               test_flow_run_request, test_flow_tags, test_flow_versions_api
 tests/infra/ (26)
-  → tests/miles_ai/integrations/{langchain,langgraph,litellm}/ (3)  test_litellm_chat_stream, test_canvas_state_contract, test_litellm_adapter
+  → tests/miles_integrations/{langchain,langgraph,litellm}/ (3)  test_litellm_chat_stream, test_canvas_state_contract, test_litellm_adapter
   → tests/miles_ai/rag/ (1)                            test_upload_policy
   → tests/miles_common/ (1)                            test_idgen
   → tests/miles_core/ (4)                              test_field_crypto, test_logging, test_object_storage_settings, test_outbound_private_hosts_config
@@ -228,33 +228,33 @@ tests/infra/ (26)
 tests/integration/ (1)                               → tests/integration/                  test_integration_pipeline
 tests/marketplace/ (2)                               → tests/miles_portal/{marketplace,tenant/marketplace}/  test_marketplace_review_mode, test_upgrade_diff
 tests/mcp/ (6)
-  → tests/miles_ai/integrations/langchain/ (1)         test_mcp_function_calling
+  → tests/miles_integrations/langchain/ (1)         test_mcp_function_calling
   → tests/miles_exec/mcp/ (2)                          test_runner_mcp_stdio, test_runner_spec
   → tests/miles_portal/tenant/mcp/ (2)                 test_legacy_sse_transport, test_mcp_client
   → tests/miles_server/scripts/seed/ (1)               test_seed_mcp
 tests/media/ (7)
-  → tests/miles_ai/integrations/generative/ (5)        test_dashscope_t2i, test_dashscope_video_frames, test_image_b64_decoding, test_volcengine_image, test_volcengine_video
+  → tests/miles_integrations/generative/ (5)        test_dashscope_t2i, test_dashscope_video_frames, test_image_b64_decoding, test_volcengine_image, test_volcengine_video
   → tests/miles_portal/tenant/media_assets/ (2)        test_media_assets, test_video_cover
 tests/models/ (4)
   → tests/ (3)                                         test_api_enum_parity, test_enum_contract, test_orm_registry_completeness
   → tests/miles_core/models/ (1)                       test_compliance_pipeline
 tests/rag/ (22)
   → tests/miles_ai/rag/ (11)                           test_chunk_splitter, test_generate_rag_answer, test_hybrid_retrieval, test_ingest_page_no, test_parse_degradation_diagnosability, test_parse_loaders, test_rag_pipeline_ingest, test_rerank_retrieve, test_upload_policy_alignment, test_video_frames, test_video_ingest
-  → tests/miles_ai/integrations/embeddings/ (2)        test_clip_visual_search, test_embedding_providers
-  → tests/miles_ai/integrations/langgraph/ (3)         test_rag_answer_stream, test_rag_multimodal, test_rag_qa_nodes_share_generate
-  → tests/miles_ai/integrations/rerank/ (1)            test_rerank_providers
+  → tests/miles_integrations/embeddings/ (2)        test_clip_visual_search, test_embedding_providers
+  → tests/miles_integrations/langgraph/ (3)         test_rag_answer_stream, test_rag_multimodal, test_rag_qa_nodes_share_generate
+  → tests/miles_integrations/rerank/ (1)            test_rerank_providers
   → tests/miles_portal/deletion/ (1)                   test_document_cleanup
   → tests/miles_portal/tenant/kb/ (4)                  test_embedding_models, test_ingest_failure, test_kb_document_delete, test_kb_service_embeddings
 tests/tenant/a2a/ (4)                                → tests/miles_portal/tenant/a2a/      test_a2a_audit, test_a2a_rate_limit, test_a2a_server_card, test_a2a_task_resubscribe
 tests/tenant/agents/ (25)
-  → tests/miles_ai/integrations/deepagents/ (1)        test_deepagents_orchestrator
+  → tests/miles_integrations/deepagents/ (1)        test_deepagents_orchestrator
   → tests/miles_portal/tenant/a2a/ (5)                 test_a2a_card_client, test_a2a_client_auth, test_a2a_client_invoke, test_a2a_extract_text, test_a2a_invoke_rules
   → tests/miles_portal/tenant/agents/ (19)             test_agent_api_keys, test_agent_chat_io_shim, test_agent_chat_rag_flow_context, test_agent_chat_ws, test_agent_skill_kb_routing, test_agent_stats, test_api_access, test_call_records, test_chat_artifact_sync, test_chat_as_child, test_chat_as_child_simple, test_chat_entry_routing, test_chat_rag_connection_release, test_chat_sessions, test_chat_sessions_persist_turn, test_job_watch, test_multimodal_chat, test_rag_usage_accumulation, test_sub_agents_cycle
 tests/tenant/attachments/ (3)                        → tests/miles_portal/tenant/attachments/  test_attachment_read_bytes, test_flow_media_reader, test_session_media_reader
 tests/tenant/compliance/ (1)                         → tests/miles_portal/tenant/compliance/   test_scan_words_loader
 tests/tenant/flows/ (2)                              → tests/miles_portal/tenant/flows/     test_run_context_session, test_subflow_loader
 tests/tenant/generative/ (16)
-  → tests/miles_ai/integrations/generative/ (5)        test_generative_model_resolve, test_generative_policy, test_image_prompt_guard, test_job_execution_runner, test_progress_session
+  → tests/miles_integrations/generative/ (5)        test_generative_model_resolve, test_generative_policy, test_image_prompt_guard, test_job_execution_runner, test_progress_session
   → tests/miles_core/models/ (2)                       test_generative_job_cancel, test_generative_jobs
   → tests/miles_portal/tenant/generative/ (9)          test_generative_image, test_generative_image_async, test_generative_job_list, test_generative_job_retry, test_generative_job_watch, test_generative_quota, test_generative_video, test_job_execution_submitters, test_job_stream_events
 tests/tenant/hooks/ (7)
@@ -269,7 +269,7 @@ tests/tenant/prompts/ (1)                            → tests/miles_portal/tena
 tests/tenant/skills/ (9)                             → tests/miles_portal/tenant/skills/    test_agent_multi_skill_binding, test_skill_export_zip, test_skill_file_delete, test_skill_import_git_url, test_skill_import_zip_limits, test_skill_layout, test_skill_md, test_skill_run_script, test_skill_runtime_integration
 tests/tenant/system/ (1)                             → tests/miles_portal/tenant/system/    test_user_service
 tests/tenant/tools/ (18)
-  → tests/miles_ai/integrations/langchain/ (4)         test_builtin_opt_in, test_knowledge_search_coexistence, test_tool_agent_loop, test_toolkit_contract
+  → tests/miles_integrations/langchain/ (4)         test_builtin_opt_in, test_knowledge_search_coexistence, test_tool_agent_loop, test_toolkit_contract
   → tests/miles_core/ (1)                              test_url_security
   → tests/miles_exec/sandbox/ (3)                      test_script_exec, test_script_stdlib, test_script_validate
   → tests/miles_portal/tenant/tools/ (10)              test_agent_executor, test_compliance_check_text, test_flow_invoker_session, test_invoke_custom_script, test_invoke_tool_with_context, test_run_flow_once, test_tools_catalog, test_tools_confirmation, test_tools_invoke, test_tools_parameters
@@ -293,7 +293,7 @@ tests/worker/ (1)                                    → tests/miles_worker/task
 | `tenant/kb/test_attachment*.py` (2) | 被测是 `tenant/attachments`，从 kb 域纠偏 |
 | `flow/test_compliance_node.py`、`flow/test_media_nodes.py` | 被测是 flow_runtime 的画布节点，非 core 的模型/常量 |
 | `flow/test_flow_multimodal.py` | 8 个用例里 6 个（含全部 `patch` 目标）打 `miles_ai.flow_runtime` 的 `llm_call` / `media_refs_from_run` / `run_compiled_canvas`，只有 2 个碰 portal 的 `FlowRunRequest`；按 R1 归最深 import（终审纠偏，初版误归 `tenant/flows`） |
-| `tenant/media_assets/test_video_cover.py` | 5:5 混合（`miles_ai.integrations.video.cover.extract_video_cover_jpeg` vs portal `MediaAssetOut`），无明显更深一侧，就近归 media_assets |
+| `tenant/media_assets/test_video_cover.py` | 5:5 混合（`miles_integrations.video.cover.extract_video_cover_jpeg` vs portal `MediaAssetOut`），无明显更深一侧，就近归 media_assets |
 | `flow/test_relevance_grade_flow.py`、`flow/test_subflow.py` | 被测是 flow_runtime 的节点与子流，非 langgraph 编译层 |
 | `infra/test_celery_*.py` (2) | 被测是 Celery app 与任务名（`miles_worker`） |
 | `infra/test_audit_log_models.py` | 被测是 ORM 定义（`miles_core.models`） |

@@ -33,10 +33,10 @@
 |------|------|----------------|
 | `packages/miles-portal/src/miles_portal/tenant/models/services/usage.py` | 模型用量记录（sink） | `ChatUsageSink` 改为自开短会话，删 `db` 参数 |
 | `packages/miles-ai/src/miles_ai/rag/generate/answer.py` | 线性 RAG：检索 + 生成 | 抽出 `build_rag_prompt` / `generate_rag_answer`（无 `db`）；删除组合入口 `rag_answer` |
-| `packages/miles-ai/src/miles_ai/integrations/langgraph/graphs/rag_qa.py` | RAG 图节点 | `generate` / `fallback` 复用 `generate_rag_answer` |
+| `packages/miles-integrations/src/miles_ai/rag/graph/rag_qa.py` | RAG 图节点 | `generate` / `fallback` 复用 `generate_rag_answer` |
 | `packages/miles-portal/src/miles_portal/tenant/agents/services/agent/chat_rag.py` | L1 编排 | 检索移到 L1（短会话）、生成前 commit、`media_reader` 换短会话实现 |
 | `packages/miles-ai/src/miles_ai/rag/generate/__init__.py` | 子包 barrel | 导出调整 |
-| `packages/miles-ai/src/miles_ai/integrations/__init__.py`、`integrations/langchain/__init__.py` | 惰性 shim | 导出名同步 |
+| `packages/miles-integrations/src/miles_integrations/__init__.py`、`integrations/langchain/__init__.py` | 惰性 shim | 导出名同步 |
 | `tests/...` | 测试 | 新增 5 个测试文件（Task 1/2/3/4/5），迁移 3 个既有文件（`test_chat_usage_accumulation`、`test_rag_answer_stream`、`test_rag_multimodal`） |
 
 ---
@@ -58,7 +58,7 @@
 - Modify（仅 Step 3A 分支）: `backend/tests/tenant/models/test_chat_usage_accumulation.py`、`backend/tests/tenant/models/test_flow_usage_sink.py`
 
 **Interfaces:**
-- Consumes: `miles_ai.integrations.langgraph.graphs.rag_qa.build_rag_qa_graph`、`miles_portal.tenant.models.services.usage.{begin_chat_usage_accumulation, end_chat_usage_accumulation, get_chat_usage_totals, record_model_usage, UsageRecordContext}`
+- Consumes: `miles_ai.rag.graph.rag_qa.build_rag_qa_graph`、`miles_portal.tenant.models.services.usage.{begin_chat_usage_accumulation, end_chat_usage_accumulation, get_chat_usage_totals, record_model_usage, UsageRecordContext}`
 - Produces: 一条**带证据**的结论 + 一条正向回归测试（Step 3A 还产出 `ChatUsageAccumulator`：`usage.py` 中的可变累计器，`add(*, prompt_tokens, completion_tokens)` / `totals() -> tuple[int, int]`）。
 
 - [ ] **Step 1: 写探针脚本（仓库外，不提交）**
@@ -79,8 +79,8 @@ import asyncio
 from unittest.mock import AsyncMock
 from uuid import uuid4
 
-import miles_ai.integrations.langgraph.graphs.rag_qa as rag_qa
-from miles_ai.integrations.langgraph.graphs.rag_qa import build_rag_qa_graph
+import miles_ai.rag.graph.rag_qa as rag_qa
+from miles_ai.rag.graph.rag_qa import build_rag_qa_graph
 from miles_portal.tenant.models.services.usage import (
     UsageRecordContext,
     begin_chat_usage_accumulation,
@@ -190,7 +190,7 @@ Expected 输出形如：
 
 把**原始输出**抄进报告。`图内 sink 记录行数` 必须 ≥ 1，否则是探针没接上（`sink.record` 未被调用），结论无效——此时先修探针再重跑。
 
-⚠️ 若 Python 路径下 `build_rag_qa_graph().compile()` 因缺 checkpointer 报错，改用 `from miles_ai.integrations.langgraph.checkpointer import get_compiled_rag_graph` 并调用 `get_compiled_rag_graph()`（它内部回退 `MemorySaver`）；把这一步的调整如实写进报告。
+⚠️ 若 Python 路径下 `build_rag_qa_graph().compile()` 因缺 checkpointer 报错，改用 `from miles_integrations.langgraph.checkpointer import get_compiled_rag_graph` 并调用 `get_compiled_rag_graph()`（它内部回退 `MemorySaver`）；把这一步的调整如实写进报告。
 
 - [ ] **Step 3A: 若结论为「丢失」——改为原地累加共享对象**
 
@@ -656,12 +656,12 @@ EOF
 **Files:**
 - Modify: `backend/packages/miles-ai/src/miles_ai/rag/generate/answer.py`
 - Modify: `backend/packages/miles-ai/src/miles_ai/rag/generate/__init__.py`
-- Modify: `backend/packages/miles-ai/src/miles_ai/integrations/langchain/__init__.py`
-- Modify: `backend/packages/miles-ai/src/miles_ai/integrations/__init__.py`
+- Modify: `backend/packages/miles-integrations/src/miles_integrations/langchain/__init__.py`
+- Modify: `backend/packages/miles-integrations/src/miles_integrations/__init__.py`
 - Test: `backend/tests/rag/test_generate_rag_answer.py`（新建）
 
 **Interfaces:**
-- Consumes: `build_rag_user_prompt`（同包 `context.py`）、`build_invoke_messages_with_media`（`miles_ai.integrations.chat.multimodal`）、`ainvoke_chat`、`MediaRefIn`、`MediaReader`、`OnDelta`、`UsageSink`、`ModelConfig`
+- Consumes: `build_rag_user_prompt`（同包 `context.py`）、`build_invoke_messages_with_media`（`miles_integrations.chat.multimodal`）、`ainvoke_chat`、`MediaRefIn`、`MediaReader`、`OnDelta`、`UsageSink`、`ModelConfig`
 - Produces（后续 Task 依赖的精确签名）：
   - `def build_rag_prompt(*, system_prompt: str, query: str, hits: list[dict[str, Any]]) -> str`
   - `async def generate_rag_answer(*, model: ModelConfig, prompt: str, media: list[MediaRefIn] | None = None, media_reader: MediaReader | None = None, temperature: float = 0.7, on_delta: OnDelta | None = None, usage_sink: UsageSink | None = None) -> str`
@@ -928,7 +928,7 @@ __all__ = [
         "build_rag_prompt",
         "generate_rag_answer",
     ):
-        from miles_ai.integrations import langchain as lc
+        from miles_integrations import langchain as lc
 
         return getattr(lc, name)
 ```
@@ -949,8 +949,8 @@ Expected: 全绿。
 ```bash
 git add backend/packages/miles-ai/src/miles_ai/rag/generate/answer.py \
         backend/packages/miles-ai/src/miles_ai/rag/generate/__init__.py \
-        backend/packages/miles-ai/src/miles_ai/integrations/langchain/__init__.py \
-        backend/packages/miles-ai/src/miles_ai/integrations/__init__.py \
+        backend/packages/miles-integrations/src/miles_integrations/langchain/__init__.py \
+        backend/packages/miles-integrations/src/miles_integrations/__init__.py \
         backend/tests/rag/test_generate_rag_answer.py
 git commit -F - <<'EOF'
 refactor(rag): 抽出无 db 的生成入口 generate_rag_answer
@@ -971,7 +971,7 @@ EOF
 **为什么：** 消除与 `answer.py` 逐字重复的 prompt 构造与附图处理。
 
 **Files:**
-- Modify: `backend/packages/miles-ai/src/miles_ai/integrations/langgraph/graphs/rag_qa.py`
+- Modify: `backend/packages/miles-integrations/src/miles_ai/rag/graph/rag_qa.py`
 - Modify: `backend/tests/rag/test_rag_multimodal.py`（patch 目标重定向）
 - Modify: `backend/tests/rag/test_rag_answer_stream.py`（patch 目标重定向）
 - Modify: `backend/tests/tenant/agents/test_rag_usage_accumulation.py`（patch 目标重定向，见 Step 5）
@@ -997,7 +997,7 @@ from uuid import uuid4
 
 import pytest
 
-from miles_ai.integrations.langgraph.graphs.rag_qa import fallback, generate
+from miles_ai.rag.graph.rag_qa import fallback, generate
 
 
 def _state(*, hits: list | None = None) -> dict:
@@ -1015,7 +1015,7 @@ def _state(*, hits: list | None = None) -> dict:
 async def test_generate_node_uses_generate_rag_answer():
     config = {"configurable": {"model": MagicMock()}}
     with patch(
-        "miles_ai.integrations.langgraph.graphs.rag_qa.generate_rag_answer",
+        "miles_ai.rag.graph.rag_qa.generate_rag_answer",
         new_callable=AsyncMock,
         return_value="答案",
     ) as mock_gen:
@@ -1032,7 +1032,7 @@ async def test_generate_node_uses_generate_rag_answer():
 async def test_fallback_node_uses_generate_rag_answer():
     config = {"configurable": {"model": MagicMock()}}
     with patch(
-        "miles_ai.integrations.langgraph.graphs.rag_qa.generate_rag_answer",
+        "miles_ai.rag.graph.rag_qa.generate_rag_answer",
         new_callable=AsyncMock,
         return_value="兜底",
     ) as mock_gen:
@@ -1049,7 +1049,7 @@ async def test_generate_node_passes_hits_prompt_for_low_relevance_fallback():
     """fallback 有命中时用「相关性较低」话术（与 generate 的正常 prompt 区分）。"""
     config = {"configurable": {"model": MagicMock()}}
     with patch(
-        "miles_ai.integrations.langgraph.graphs.rag_qa.generate_rag_answer",
+        "miles_ai.rag.graph.rag_qa.generate_rag_answer",
         new_callable=AsyncMock,
         return_value="兜底",
     ) as mock_gen:
@@ -1170,7 +1170,7 @@ Expected: PASS。
 
 - [ ] **Step 5: 重定向既有测试的 patch 目标**
 
-节点内部的 LLM 调用现在发生在 `answer` 模块，`patch("miles_ai.integrations.langgraph.graphs.rag_qa.ainvoke_chat")` 不再能拦截，必须改成 `patch("miles_ai.rag.generate.answer.ainvoke_chat")`。
+节点内部的 LLM 调用现在发生在 `answer` 模块，`patch("miles_ai.rag.graph.rag_qa.ainvoke_chat")` 不再能拦截，必须改成 `patch("miles_ai.rag.generate.answer.ainvoke_chat")`。
 
 `tests/rag/test_rag_multimodal.py` 的 `test_generate_node_with_media` 中：
 
@@ -1190,7 +1190,7 @@ Expected: PASS。
         out = await generate(state, config)
 ```
 
-`tests/rag/test_rag_answer_stream.py` 的 `test_generate_node_forwards_on_delta` 与 `test_fallback_node_forwards_on_delta`：把 `patch("miles_ai.integrations.langgraph.graphs.rag_qa.ainvoke_chat", ...)` 改成 `patch("miles_ai.rag.generate.answer.ainvoke_chat", ...)`。
+`tests/rag/test_rag_answer_stream.py` 的 `test_generate_node_forwards_on_delta` 与 `test_fallback_node_forwards_on_delta`：把 `patch("miles_ai.rag.graph.rag_qa.ainvoke_chat", ...)` 改成 `patch("miles_ai.rag.generate.answer.ainvoke_chat", ...)`。
 
 `tests/tenant/agents/test_rag_usage_accumulation.py`（Task 1）：节点不再调用 `rag_qa.ainvoke_chat`（该名字已从模块移除，`monkeypatch.setattr` 会因属性不存在直接报错）。把 import 段加入
 
@@ -1234,7 +1234,7 @@ Expected（变异态）：FAIL。还原后 PASS。
 - [ ] **Step 8: Commit**
 
 ```bash
-git add backend/packages/miles-ai/src/miles_ai/integrations/langgraph/graphs/rag_qa.py \
+git add backend/packages/miles-integrations/src/miles_ai/rag/graph/rag_qa.py \
         backend/tests/rag/test_rag_qa_nodes_share_generate.py \
         backend/tests/rag/test_rag_multimodal.py \
         backend/tests/rag/test_rag_answer_stream.py \
@@ -1645,13 +1645,13 @@ EOF
 **Files:**
 - Modify: `backend/packages/miles-ai/src/miles_ai/rag/generate/answer.py`
 - Modify: `backend/packages/miles-ai/src/miles_ai/rag/generate/__init__.py`
-- Modify: `backend/packages/miles-ai/src/miles_ai/integrations/langchain/__init__.py`
-- Modify: `backend/packages/miles-ai/src/miles_ai/integrations/__init__.py`
+- Modify: `backend/packages/miles-integrations/src/miles_integrations/langchain/__init__.py`
+- Modify: `backend/packages/miles-integrations/src/miles_integrations/__init__.py`
 - Modify: `backend/tests/rag/test_rag_answer_stream.py`
 - Modify: `backend/tests/rag/test_rag_multimodal.py`
 - Modify: `backend/packages/miles-ai/src/miles_ai/rag/generate/context.py`（docstring 提及）
-- Modify: `backend/packages/miles-ai/src/miles_ai/integrations/langchain/chat_models.py`（docstring 提及）
-- Modify: `backend/packages/miles-ai/src/miles_ai/integrations/langgraph/runner.py`（docstring 提及）
+- Modify: `backend/packages/miles-integrations/src/miles_integrations/langchain/chat_models.py`（docstring 提及）
+- Modify: `backend/packages/miles-integrations/src/miles_ai/rag/graph/runner.py`（docstring 提及）
 
 **Interfaces:**
 - Consumes: `retrieve_hits` + `build_rag_prompt` + `generate_rag_answer`（Task 3）
@@ -1767,10 +1767,10 @@ Expected: 全绿。
 git add backend/packages/miles-ai/src/miles_ai/rag/generate/answer.py \
         backend/packages/miles-ai/src/miles_ai/rag/generate/__init__.py \
         backend/packages/miles-ai/src/miles_ai/rag/generate/context.py \
-        backend/packages/miles-ai/src/miles_ai/integrations/__init__.py \
-        backend/packages/miles-ai/src/miles_ai/integrations/langchain/__init__.py \
-        backend/packages/miles-ai/src/miles_ai/integrations/langchain/chat_models.py \
-        backend/packages/miles-ai/src/miles_ai/integrations/langgraph/runner.py \
+        backend/packages/miles-integrations/src/miles_integrations/__init__.py \
+        backend/packages/miles-integrations/src/miles_integrations/langchain/__init__.py \
+        backend/packages/miles-integrations/src/miles_integrations/langchain/chat_models.py \
+        backend/packages/miles-integrations/src/miles_ai/rag/graph/runner.py \
         backend/tests/rag/test_rag_answer_stream.py \
         backend/tests/rag/test_rag_multimodal.py
 git commit -F - <<'EOF'
@@ -1964,7 +1964,7 @@ EOF
 **Files:**
 - Modify: `backend/packages/miles-core/src/miles_core/infra/db/async_session.py`
 - Modify: `backend/packages/miles-core/src/miles_core/infra/db/__init__.py`
-- Modify: `backend/packages/miles-ai/src/miles_ai/integrations/generative/jobs/progress.py`
+- Modify: `backend/packages/miles-integrations/src/miles_integrations/generative/jobs/progress.py`
 - Modify: `backend/packages/miles-portal/src/miles_portal/tenant/models/services/usage.py`
 - Modify: `backend/packages/miles-portal/src/miles_portal/tenant/agents/services/agent/chat_rag.py`
 - Modify: `backend/packages/miles-portal/src/miles_portal/tenant/attachments/services/media_reader.py`
@@ -2058,7 +2058,7 @@ Expected: 全绿、OpenAPI 零漂移。
 ```bash
 git add backend/packages/miles-core/src/miles_core/infra/db/async_session.py \
         backend/packages/miles-core/src/miles_core/infra/db/__init__.py \
-        backend/packages/miles-ai/src/miles_ai/integrations/generative/jobs/progress.py \
+        backend/packages/miles-integrations/src/miles_integrations/generative/jobs/progress.py \
         backend/packages/miles-portal/src/miles_portal/tenant/models/services/usage.py \
         backend/packages/miles-portal/src/miles_portal/tenant/agents/services/agent/chat_rag.py \
         backend/packages/miles-portal/src/miles_portal/tenant/attachments/services/media_reader.py \

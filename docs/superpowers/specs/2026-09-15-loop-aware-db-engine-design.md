@@ -193,8 +193,8 @@ Worker（每任务一个 loop）：
 
 | 模块 | 站点 |
 |---|---|
-| `miles_ai/integrations/langgraph/graphs/rag_qa.py` | `:67` |
-| `miles_ai/integrations/generative/jobs/progress.py` | `:54`、`:75` |
+| `miles_ai/rag/graph/rag_qa.py` | `:67` |
+| `miles_integrations/generative/jobs/progress.py` | `:54`、`:75` |
 | `miles_ai/flow_runtime/nodes/rag_nodes.py` | `:48` |
 | `miles_ai/flow_runtime/nodes/image_generate.py` | `:55`、`:84` |
 | `miles_ai/flow_runtime/nodes/video_generate.py` | `:56`、`:86` |
@@ -290,7 +290,7 @@ Worker（每任务一个 loop）：
   且 `:36` 每次都 `await engine.dispose()`（§5.3 已给过「CLI 单次进程、退出即释放」的理由，
   此处只登记新失败形状）。共同点是它们都在护栏之外：`run_worker_db_coro` 的护栏只扫
   `packages/miles-worker/src`（见 `tests/infra/test_run_worker_db_coro.py`），扫不到它们。
-- `miles_ai/integrations/langchain/chat_models.py:69-72` 的同步入口内部 `asyncio.run` **不是连接
+- `miles_integrations/langchain/chat_models.py:69-72` 的同步入口内部 `asyncio.run` **不是连接
   泄漏**，只是白起一个 loop：该路径调 `litellm_chat_completion` 时不传 `usage_sink`，而 adapter 仅在
   `usage_sink is not None` 时落库（`integrations/litellm/adapter.py:216,272`），故其 loop 内不取会话、
   不建 engine。
@@ -353,7 +353,7 @@ Worker（每任务一个 loop）：
     `RuntimeError: Task ... got Future <Future pending ...> attached to a different loop`；逐帧
     traceback 显示抛出点是**池检出时的 pre-ping**（`sqlalchemy/pool/base.py:1309` →
     `asyncpg.py:825 _async_ping` → `asyncpg/connection.py:354`），再经 `util.safe_reraise()`
-    冒到 `miles_ai/integrations/generative/jobs/progress.py:55` 的
+    冒到 `miles_integrations/generative/jobs/progress.py:55` 的
     `job = await db.get(GenerativeJob, job_id)`——即复用的连接在第一次 await 上炸，且该
     `RuntimeError` **没有**被 `pool_pre_ping` 当成普通断连吞掉。没有这组，「6/6 成功」无法排除
     「探针根本没触到跨 loop 路径」。

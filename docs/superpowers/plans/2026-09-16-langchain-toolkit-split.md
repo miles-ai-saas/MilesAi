@@ -35,7 +35,7 @@
 | 文件 | 职责 | 动作 |
 |---|---|---|
 | `backend/tests/tenant/tools/test_toolkit_contract.py` | 契约冻结：17 个工具（13 内置 + 4 类 spec 驱动）的对外可观测面 | **新建**（Task 1） |
-| `backend/packages/miles-ai/src/miles_ai/integrations/langchain/toolkit/__init__.py` | 空文件（刻意无再导出） | **新建**（Task 2） |
+| `backend/packages/miles-integrations/src/miles_integrations/langchain/toolkit/__init__.py` | 空文件（刻意无再导出） | **新建**（Task 2） |
 | `.../langchain/toolkit/naming.py` | MCP function name 约定 + 工具白名单过滤 | **新建**（Task 2，自 `tools.py:33-98` 搬迁） |
 | `.../langchain/toolkit/inputs.py` | 13 个入参 DTO（纯声明） | **新建**（Task 2，自 `tools.py:189-297` 搬迁） |
 | `.../langchain/toolkit/specs.py` | 中性 spec + JSON Schema → pydantic | **新建**（Task 2，自 `tools.py:39,100-188` 搬迁） |
@@ -55,7 +55,7 @@
 - Test: 该文件自身
 
 **Interfaces:**
-- Consumes: `miles_ai.integrations.langchain.tools` 的**现状**公开面（`get_platform_tools` / `select_opt_in_builtin_tools` / `get_skill_bound_tools` / `get_generative_tools` / `build_platform_tools` / `CustomToolSpec` / `McpToolSpec`）。
+- Consumes: `miles_integrations.langchain.tools` 的**现状**公开面（`get_platform_tools` / `select_opt_in_builtin_tools` / `get_skill_bound_tools` / `get_generative_tools` / `build_platform_tools` / `CustomToolSpec` / `McpToolSpec`）。
 - Produces: 无（纯测试）。本任务**不改任何生产代码**。
 
 > **本任务是「重构前先冻结」的一半。** 期望值是当前实现的**实测产物**（下方已内联，含逐字中文文案与完整 JSON Schema）。重构后这些值**一字不得改**——若重构后需要改期望值才能变绿，说明行为变了，是 bug 而非测试问题。
@@ -81,7 +81,7 @@ import json
 
 import pytest
 
-from miles_ai.integrations.langchain.tools import (
+from miles_integrations.langchain.tools import (
     CustomToolSpec,
     McpToolSpec,
     build_platform_tools,
@@ -265,7 +265,7 @@ from __future__ import annotations
 
 import json
 
-from miles_ai.integrations.langchain.tools import (
+from miles_integrations.langchain.tools import (
     CustomToolSpec,
     McpToolSpec,
     build_platform_tools,
@@ -523,7 +523,7 @@ EOF
 ### Task 2: 建 `toolkit/` 四个模块并做声明式收敛（`tools.py` 暂作再导出）
 
 **Files:**
-- Create: `backend/packages/miles-ai/src/miles_ai/integrations/langchain/toolkit/__init__.py`（空）
+- Create: `backend/packages/miles-integrations/src/miles_integrations/langchain/toolkit/__init__.py`（空）
 - Create: `.../toolkit/naming.py`、`.../toolkit/inputs.py`、`.../toolkit/specs.py`、`.../toolkit/catalog.py`
 - Modify: `.../langchain/tools.py` → 降为再导出（下一任务删除）
 
@@ -547,8 +547,8 @@ EOF
 - [ ] **Step 1: 建空 `__init__.py`**
 
 ```bash
-mkdir -p backend/packages/miles-ai/src/miles_ai/integrations/langchain/toolkit
-touch backend/packages/miles-ai/src/miles_ai/integrations/langchain/toolkit/__init__.py
+mkdir -p backend/packages/miles-integrations/src/miles_integrations/langchain/toolkit
+touch backend/packages/miles-integrations/src/miles_integrations/langchain/toolkit/__init__.py
 ```
 
 文件**必须为空**（0 字节）。不得写 `__all__`、不得再导出——本设计刻意不留转发壳。
@@ -955,7 +955,7 @@ Expected: 全部通过。
 - [ ] **Step 10: Commit**
 
 ```bash
-git add backend/packages/miles-ai/src/miles_ai/integrations/langchain/ backend/tests/tenant/tools/test_knowledge_search_coexistence.py
+git add backend/packages/miles-integrations/src/miles_integrations/langchain/ backend/tests/tenant/tools/test_knowledge_search_coexistence.py
 git commit -F - <<'EOF'
 refactor(toolkit): 拆出 naming/inputs/specs 并把工具工厂收敛为声明表
 
@@ -979,7 +979,7 @@ EOF
 ### Task 3: 删除 `tools.py`、迁移 11 处调用点、收口
 
 **Files:**
-- Delete: `backend/packages/miles-ai/src/miles_ai/integrations/langchain/tools.py`
+- Delete: `backend/packages/miles-integrations/src/miles_integrations/langchain/tools.py`
 - Modify: 生产 7 处 + 测试 5 处（含 Task 1 新增的契约测试）
 - Modify: `backend/packages/miles-core/src/miles_core/models/tool/__init__.py:4`（docstring）
 
@@ -996,52 +996,52 @@ EOF
 
 1. `backend/packages/miles-portal/src/miles_portal/tenant/tools/services/mcp_tools.py:22-27`
    ```python
-   from miles_ai.integrations.langchain.toolkit.naming import compose_mcp_tool_name, is_mcp_tool_name
-   from miles_ai.integrations.langchain.toolkit.specs import McpToolSpec, mcp_param_alias
+   from miles_integrations.langchain.toolkit.naming import compose_mcp_tool_name, is_mcp_tool_name
+   from miles_integrations.langchain.toolkit.specs import McpToolSpec, mcp_param_alias
    ```
 2. `backend/packages/miles-portal/src/miles_portal/tenant/tools/services/custom_tools.py:14`
    ```python
-   from miles_ai.integrations.langchain.toolkit.catalog import build_platform_tools
-   from miles_ai.integrations.langchain.toolkit.specs import CustomToolSpec
+   from miles_integrations.langchain.toolkit.catalog import build_platform_tools
+   from miles_integrations.langchain.toolkit.specs import CustomToolSpec
    ```
 3. `backend/packages/miles-portal/src/miles_portal/tenant/tools/services/tools.py:21`
    ```python
-   from miles_ai.integrations.langchain.toolkit.naming import is_mcp_tool_name
+   from miles_integrations.langchain.toolkit.naming import is_mcp_tool_name
    ```
 4. `backend/packages/miles-portal/src/miles_portal/tenant/tools/confirmation.py:8`
    ```python
-   from miles_ai.integrations.langchain.toolkit.naming import is_mcp_tool_name
+   from miles_integrations.langchain.toolkit.naming import is_mcp_tool_name
    ```
 5. `backend/packages/miles-portal/src/miles_portal/tenant/tools/invoke/context.py:12`
    ```python
-   from miles_ai.integrations.langchain.toolkit.naming import is_mcp_tool_name
+   from miles_integrations.langchain.toolkit.naming import is_mcp_tool_name
    ```
 6. `backend/packages/miles-portal/src/miles_portal/tenant/agents/services/context.py:15`
    ```python
-   from miles_ai.integrations.langchain.toolkit.naming import compose_mcp_tool_name
+   from miles_integrations.langchain.toolkit.naming import compose_mcp_tool_name
    ```
-7. `backend/packages/miles-ai/src/miles_ai/integrations/langchain/tool_agent/loop.py:19`
+7. `backend/packages/miles-integrations/src/miles_integrations/langchain/tool_agent/loop.py:19`
    ```python
-   from miles_ai.integrations.langchain.toolkit.catalog import get_skill_bound_tools
-   from miles_ai.integrations.langchain.toolkit.naming import select_agent_tools
+   from miles_integrations.langchain.toolkit.catalog import get_skill_bound_tools
+   from miles_integrations.langchain.toolkit.naming import select_agent_tools
    ```
 
 - [ ] **Step 2: 迁移测试 5 处**
 
 8. `backend/tests/mcp/test_mcp_function_calling.py:11-20`
    ```python
-   from miles_ai.integrations.langchain.toolkit.catalog import build_platform_tools
-   from miles_ai.integrations.langchain.toolkit.naming import (
+   from miles_integrations.langchain.toolkit.catalog import build_platform_tools
+   from miles_integrations.langchain.toolkit.naming import (
        MCP_FUNCTION_PREFIX,
        compose_mcp_tool_name,
        is_mcp_tool_name,
        select_agent_tools,
    )
-   from miles_ai.integrations.langchain.toolkit.specs import McpToolSpec, json_schema_to_pydantic, mcp_param_alias
+   from miles_integrations.langchain.toolkit.specs import McpToolSpec, json_schema_to_pydantic, mcp_param_alias
    ```
 9. `backend/tests/tenant/tools/test_builtin_opt_in.py:5-9`
    ```python
-   from miles_ai.integrations.langchain.toolkit.catalog import (
+   from miles_integrations.langchain.toolkit.catalog import (
        build_platform_tools,
        get_platform_tools,
        select_opt_in_builtin_tools,
@@ -1050,8 +1050,8 @@ EOF
 10. `backend/tests/tenant/tools/test_knowledge_search_coexistence.py:13-17`——注意 `select_agent_tools` 归 `naming`
     （`make_builtin_tool` 的替换已在 Task 2 Step 7 完成，此处**只改模块路径**）：
     ```python
-    from miles_ai.integrations.langchain.toolkit.catalog import get_platform_tools, make_builtin_tool
-    from miles_ai.integrations.langchain.toolkit.naming import select_agent_tools
+    from miles_integrations.langchain.toolkit.catalog import get_platform_tools, make_builtin_tool
+    from miles_integrations.langchain.toolkit.naming import select_agent_tools
     ```
     **并把过时的测试函数名改掉**（Task 2 评审 Minor）：该文件 `:165` 的
     `test_make_knowledge_search_tool_schema_allows_kb_ids` 里的符号已不存在，改名如
@@ -1059,18 +1059,18 @@ EOF
     不改断言。
 11. `backend/tests/tenant/skills/test_skill_runtime_integration.py:7`
     ```python
-    from miles_ai.integrations.langchain.toolkit import catalog as lc_tools
+    from miles_integrations.langchain.toolkit import catalog as lc_tools
     ```
 12. `backend/tests/tenant/tools/test_toolkit_contract.py`（Task 1 新建）
     ```python
-    from miles_ai.integrations.langchain.toolkit.catalog import (
+    from miles_integrations.langchain.toolkit.catalog import (
         build_platform_tools,
         get_generative_tools,
         get_platform_tools,
         get_skill_bound_tools,
         select_opt_in_builtin_tools,
     )
-    from miles_ai.integrations.langchain.toolkit.specs import CustomToolSpec, McpToolSpec
+    from miles_integrations.langchain.toolkit.specs import CustomToolSpec, McpToolSpec
     ```
     > 本文件其余内容**一字不改**——期望值不变，是它作为契约的意义所在。
     >
@@ -1111,7 +1111,7 @@ EOF
 - [ ] **Step 3: 删除 `tools.py`**
 
 ```bash
-git rm backend/packages/miles-ai/src/miles_ai/integrations/langchain/tools.py
+git rm backend/packages/miles-integrations/src/miles_integrations/langchain/tools.py
 ```
 
 - [ ] **Step 4: 同步 docstring / 注释里的旧路径**
@@ -1237,7 +1237,7 @@ Expected: **空**（本分支不应触碰 DB 会话层——前一个专项才�
 Run: `rg -n "langchain[./]tools|langchain import tools" backend/packages backend/tests docs | rg -v "docs/superpowers/(specs|plans)/2026-09-16"`
 Expected: **零命中**（勘误 6：必须含斜杠形式与 `import tools` 形式）
 
-Run: `wc -c backend/packages/miles-ai/src/miles_ai/integrations/langchain/toolkit/__init__.py`
+Run: `wc -c backend/packages/miles-integrations/src/miles_integrations/langchain/toolkit/__init__.py`
 Expected: `0`（设计硬约束：不得构成再导出壳）
 
 - [ ] **Step 5: 更新 spec 的修订记录**
