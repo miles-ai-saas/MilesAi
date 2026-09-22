@@ -8,34 +8,36 @@
 from __future__ import annotations
 
 import pytest
-from starlette.requests import Request
-from starlette.responses import PlainTextResponse, Response
 
 from miles_core.models.risk import RateLimitScope
 from miles_core.risk import enforce as enforce_mod
 from miles_core.web.middlewares.platform_risk import PlatformRiskMiddleware
 
 
-def _request(path: str, *, client: tuple[str, int] = ("203.0.113.7", 51234)) -> Request:
-    """最小 ASGI scope 的 ``Request``：``dispatch`` 只用到 path / headers / client。"""
-    return Request(
-        {
-            "type": "http",
-            "method": "GET",
-            "path": path,
-            "query_string": b"",
-            "headers": [],
-            "client": client,
-            "scheme": "http",
-            "server": ("testserver", 80),
-            "root_path": "",
-        }
-    )
+def _http_scope(path: str, *, client: tuple[str, int] = ("203.0.113.7", 51234)) -> dict:
+    return {
+        "type": "http",
+        "asgi": {"version": "3.0"},
+        "http_version": "1.1",
+        "method": "GET",
+        "path": path,
+        "raw_path": path.encode(),
+        "query_string": b"",
+        "headers": [],
+        "client": client,
+        "server": ("testserver", 80),
+        "scheme": "http",
+        "root_path": "",
+    }
 
 
-async def _ok(_request: Request) -> Response:
-    """放行替身：证明未命中时中间件不改变调用链。"""
-    return PlainTextResponse("ok")
+async def _ok_app(scope, receive, send):  # noqa: ANN001
+    await send({"type": "http.response.start", "status": 200, "headers": []})
+    await send({"type": "http.response.body", "body": b"ok"})
+
+
+async def _empty_receive():
+    return {"type": "http.disconnect"}
 
 
 @pytest.mark.asyncio
@@ -53,9 +55,15 @@ async def test_middleware_checks_rate_limit_on_ip_dimension(monkeypatch):  # noq
     monkeypatch.setattr(enforce_mod.platform_risk_enforcer, "check_rate_limit", fake_check)
     monkeypatch.setattr(enforce_mod.platform_risk_enforcer, "is_ip_blocked", not_blocked)
 
-    response = await PlatformRiskMiddleware(app=None).dispatch(_request("/api/v1/chat"), _ok)
+    messages: list[dict] = []
 
-    assert response.status_code == 200
+    async def capture_send(message):  # noqa: ANN001
+        messages.append(message)
+
+    await PlatformRiskMiddleware(_ok_app)(_http_scope("/api/v1/chat"), _empty_receive, capture_send)
+
+    assert messages[0]["type"] == "http.response.start"
+    assert messages[0]["status"] == 200
     assert seen["path"] == "/api/v1/chat"
     # 计数键必须是来源 IP，而非某个租户/Key 标识：否则同一 NAT 出口下的两个对端会互相连坐
     assert seen["client_key"] == "203.0.113.7"

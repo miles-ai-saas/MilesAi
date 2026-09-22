@@ -3,11 +3,10 @@
 from __future__ import annotations
 
 import uuid
-from collections.abc import Callable
 
-from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.datastructures import MutableHeaders
 from starlette.requests import Request
-from starlette.responses import Response
+from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from miles_common.trace import reset_trace_id, set_trace_id
 
@@ -24,18 +23,38 @@ def _attach_trace_id_to_span(trace_id: str) -> None:
         pass
 
 
-class TraceMiddleware(BaseHTTPMiddleware):
+def _header_value(scope: Scope, name: bytes) -> str | None:
+    for key, value in scope.get("headers") or ():
+        if key.lower() == name:
+            return value.decode("latin-1")
+    return None
+
+
+class TraceMiddleware:
     """为每个请求生成 / 透传 trace_id，写入 state 与 ContextVar，并在响应头回写 ``X-Trace-Id``。"""
 
-    async def dispatch(self, request: Request, call_next: Callable) -> Response:
-        """解析或生成 trace_id，注入 OTel span / request.state / ContextVar，响应结束后重置 ContextVar。"""
-        trace_id = request.headers.get("X-Trace-Id") or str(uuid.uuid4())
+    def __init__(self, app: ASGIApp) -> None:
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        trace_id = _header_value(scope, b"x-trace-id") or str(uuid.uuid4())
+        request = Request(scope, receive)
         request.state.trace_id = trace_id
         _attach_trace_id_to_span(trace_id)
         token = set_trace_id(trace_id)
+
+        async def send_wrapper(message: Message) -> None:
+            if message["type"] == "http.response.start":
+                headers = MutableHeaders(raw=list(message.get("headers") or []))
+                headers["X-Trace-Id"] = trace_id
+                message = {**message, "headers": headers.raw}
+            await send(message)
+
         try:
-            response = await call_next(request)
-            response.headers["X-Trace-Id"] = trace_id
-            return response
+            await self.app(scope, receive, send_wrapper)
         finally:
             reset_trace_id(token)

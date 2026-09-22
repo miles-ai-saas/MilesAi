@@ -3,11 +3,9 @@
 from __future__ import annotations
 
 import time
-from collections.abc import Callable
 
-from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
-from starlette.responses import Response
+from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from miles_common.trace import get_trace_id
 from miles_core.config import get_settings
@@ -41,25 +39,47 @@ def _client_host(request: Request) -> str:
     return "-"
 
 
-class AccessLogMiddleware(BaseHTTPMiddleware):
+def _resolve_trace_id(request: Request) -> str | None:
+    state_id = getattr(request.state, "trace_id", None)
+    if state_id:
+        return str(state_id)
+    ctx_id = get_trace_id()
+    return str(ctx_id) if ctx_id else None
+
+
+class AccessLogMiddleware:
     """记录 method、path、status、耗时、client、trace_id；不记录 Authorization / body。"""
 
-    async def dispatch(self, request: Request, call_next: Callable) -> Response:
-        """记录 method/path/status/耗时/client/trace_id；被跳过路径直接透传，异常记日志后原样抛出。"""
+    def __init__(self, app: ASGIApp) -> None:
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
         settings = get_settings()
         if not settings.log_http_access:
-            return await call_next(request)
+            await self.app(scope, receive, send)
+            return
 
+        request = Request(scope, receive)
         path = request.url.path
         if _should_skip(path):
-            return await call_next(request)
+            await self.app(scope, receive, send)
+            return
 
         start = time.perf_counter()
         status_code = 500
+
+        async def send_wrapper(message: Message) -> None:
+            nonlocal status_code
+            if message["type"] == "http.response.start":
+                status_code = int(message["status"])
+            await send(message)
+
         try:
-            response = await call_next(request)
-            status_code = response.status_code
-            return response
+            await self.app(scope, receive, send_wrapper)
         except Exception:
             logger.exception(
                 "request failed method=%s path=%s trace_id=%s",
@@ -82,11 +102,3 @@ class AccessLogMiddleware(BaseHTTPMiddleware):
                 _client_host(request),
                 trace_id or "-",
             )
-
-
-def _resolve_trace_id(request: Request) -> str | None:
-    state_id = getattr(request.state, "trace_id", None)
-    if state_id:
-        return str(state_id)
-    ctx_id = get_trace_id()
-    return str(ctx_id) if ctx_id else None

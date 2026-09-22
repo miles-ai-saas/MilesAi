@@ -2,11 +2,9 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
-
-from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
-from starlette.responses import JSONResponse, Response
+from starlette.responses import JSONResponse
+from starlette.types import ASGIApp, Receive, Scope, Send
 
 from miles_common.trace import get_trace_id
 from miles_core.models.risk import RateLimitScope, RiskSeverity
@@ -35,14 +33,22 @@ def _should_skip(path: str) -> bool:
     return any(path == p or path.startswith(p + "/") for p in _SKIP_PREFIXES)
 
 
-class PlatformRiskMiddleware(BaseHTTPMiddleware):
+class PlatformRiskMiddleware:
     """进入路由前拦截黑名单 IP，并对 ``/api/v1`` 做租户限流，命中即返回 403 / 429。"""
 
-    async def dispatch(self, request: Request, call_next: Callable) -> Response:
-        """执行 IP 封禁与限流检查；命中时记录风控事件并直接返回统一信封的 JSON 响应。"""
+    def __init__(self, app: ASGIApp) -> None:
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        request = Request(scope, receive)
         path = request.url.path
         if _should_skip(path):
-            return await call_next(request)
+            await self.app(scope, receive, send)
+            return
 
         ip = client_ip(request)
 
@@ -53,7 +59,7 @@ class PlatformRiskMiddleware(BaseHTTPMiddleware):
                 ip_address=ip,
                 detail={"kind": "ip_blocked", "path": path, "ip": ip},
             )
-            return JSONResponse(
+            response = JSONResponse(
                 status_code=403,
                 content={
                     "code": 403,
@@ -62,6 +68,8 @@ class PlatformRiskMiddleware(BaseHTTPMiddleware):
                     "trace_id": get_trace_id(),
                 },
             )
+            await response(scope, receive, send)
+            return
 
         if path.startswith("/api/v1"):
             hit = await platform_risk_enforcer.check_rate_limit(path, ip, scope=RateLimitScope.IP)
@@ -77,7 +85,7 @@ class PlatformRiskMiddleware(BaseHTTPMiddleware):
                         "rule_id": str(hit.rule_id),
                     },
                 )
-                return JSONResponse(
+                response = JSONResponse(
                     status_code=429,
                     content={
                         "code": 429,
@@ -86,5 +94,7 @@ class PlatformRiskMiddleware(BaseHTTPMiddleware):
                         "trace_id": get_trace_id(),
                     },
                 )
+                await response(scope, receive, send)
+                return
 
-        return await call_next(request)
+        await self.app(scope, receive, send)
