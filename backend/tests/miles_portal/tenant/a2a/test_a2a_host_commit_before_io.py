@@ -59,6 +59,76 @@ def _binding() -> SimpleNamespace:
     )
 
 
+def test_plan_a2a_peers_commits_before_planning_llm(monkeypatch):
+    db = _TxnDb()
+    peer_id = uuid4()
+    parent = SimpleNamespace(id=uuid4(), model_config=MagicMock())
+    refs = [
+        SimpleNamespace(
+            peer=SimpleNamespace(
+                id=peer_id,
+                name="peer",
+                card_display_name="Peer",
+            ),
+            trigger_keywords=[],
+            role_hint=None,
+        )
+    ]
+
+    monkeypatch.setattr(
+        invoke_mod,
+        "resolve_model_for_invoke",
+        AsyncMock(return_value=MagicMock()),
+    )
+
+    async def fake_ainvoke(*_a, **_k):
+        db.events.append("llm")
+        return '{"a2a_steps":[]}'
+
+    monkeypatch.setattr(invoke_mod, "ainvoke_chat", AsyncMock(side_effect=fake_ainvoke))
+
+    _run(
+        invoke_mod.plan_a2a_peers(
+            parent,
+            refs,
+            "需要外部协助吗？",
+            db=db,
+            tenant_id=uuid4(),
+        )
+    )
+
+    assert db.events == ["commit", "llm"]
+
+
+def test_plan_a2a_peers_skips_commit_when_db_none(monkeypatch):
+    parent = SimpleNamespace(id=uuid4(), model_config=MagicMock())
+    peer_id = uuid4()
+    refs = [
+        SimpleNamespace(
+            peer=SimpleNamespace(
+                id=peer_id,
+                name="peer",
+                card_display_name="Peer",
+            ),
+            trigger_keywords=[],
+            role_hint=None,
+        )
+    ]
+    monkeypatch.setattr(
+        invoke_mod,
+        "resolve_model_for_invoke",
+        AsyncMock(return_value=MagicMock()),
+    )
+    monkeypatch.setattr(
+        invoke_mod,
+        "ainvoke_chat",
+        AsyncMock(return_value='{"a2a_steps":[]}'),
+    )
+
+    out = _run(invoke_mod.plan_a2a_peers(parent, refs, "q", db=None, tenant_id=uuid4()))
+    assert out == []
+
+
 def test_host_no_plan_commits_before_llm(monkeypatch):
     db = _TxnDb()
     svc = _svc(db)

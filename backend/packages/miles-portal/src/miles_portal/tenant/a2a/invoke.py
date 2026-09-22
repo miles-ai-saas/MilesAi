@@ -153,6 +153,8 @@ async def plan_a2a_peers(
         model=model,
         source_id=parent.id,
     )
+    if db is not None:
+        await db.commit()
     raw = await ainvoke_chat(
         model,
         [{"role": "user", "content": prompt}],
