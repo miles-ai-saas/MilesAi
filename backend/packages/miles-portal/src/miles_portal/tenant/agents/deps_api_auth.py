@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from fastapi import Depends, Header
+from fastapi import Depends, Header, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -70,6 +70,7 @@ async def require_agent_api_key(
 
 async def require_agent_chat_auth(
     agent_id: UUID,
+    request: Request,
     x_api_key: str | None = Header(default=None, alias=AGENT_API_KEY_HEADER),
     credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
     db: AsyncSession = Depends(get_db),
@@ -78,27 +79,24 @@ async def require_agent_chat_auth(
     if x_api_key and x_api_key.strip():
         return await _ctx_from_api_key(api_key=x_api_key, agent_id=agent_id, db=db)
 
-    user = await get_current_user(credentials=credentials, db=db)
+    user = await get_current_user(request=request, credentials=credentials, db=db)
     permissions: set[str] = set()
     for role in user.roles:
         for perm in role.permissions:
             permissions.add(perm.code)
-    token_jti: str | None = None
+    token_jti = getattr(request.state, "access_jti", None)
     auth_via = "workbench"
     if credentials:
         payload = safe_decode_token(credentials.credentials)
-        if payload:
-            jti = payload.get("jti")
-            token_jti = str(jti) if jti else None
-            if payload.get("purpose") == "agent_api_debug":
-                auth_via = "debug_token"
+        if payload and payload.get("purpose") == "agent_api_debug":
+            auth_via = "debug_token"
     ctx = TenantContext(
         user_id=user.id,
         tenant_id=user.tenant_id,
         username=user.username,
         is_superuser=user.is_superuser,
         permissions=frozenset(permissions),
-        token_jti=token_jti,
+        token_jti=str(token_jti) if token_jti else None,
         auth_via=auth_via,
     )
     ctx.require_permission("agent:read")
