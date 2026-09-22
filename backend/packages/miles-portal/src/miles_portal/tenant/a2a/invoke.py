@@ -369,19 +369,24 @@ async def run_a2a_host_chat(
     plan_items, pre = await resolve_a2a_plan_items(agent, bindings, body.query, db=svc.db, tenant_id=svc.ctx.tenant_id)
     steps.extend(pre)
 
+    system_prompt = await svc.resolve_system_prompt(agent)
+    model = await svc.resolve_invoke_model(agent.model_config)
+    usage_sink = svc.chat_usage_sink(model, source_id=agent.id)
+    temperature = float((agent.config or {}).get("temperature", 0.7))
+    # 释放请求事务：Peer HTTP / 编排 LLM 期间不长时间占连接（对齐 RAG）。
+    await svc.db.commit()
+
     if not plan_items:
         prompt = (
-            f"{await svc.resolve_system_prompt(agent)}\n\n"
+            f"{system_prompt}\n\n"
             f"用户问题：{body.query}\n\n"
             "当前未命中外部调用规则，且规划器未选择外部 Agent。"
             "请根据你的编排提示，直接回答或说明需要用户补充信息。"
         )
-        model = await svc.resolve_invoke_model(agent.model_config)
-        usage_sink = svc.chat_usage_sink(model, source_id=agent.id)
         answer = await ainvoke_chat(
             model,
             [{"role": "user", "content": prompt}],
-            temperature=float((agent.config or {}).get("temperature", 0.7)),
+            temperature=temperature,
             usage_sink=usage_sink,
         )
         return ChatResponse(answer=answer, steps=steps)
@@ -394,16 +399,14 @@ async def run_a2a_host_chat(
         )
 
     synth = (
-        f"{await svc.resolve_system_prompt(agent)}\n\n"
+        f"{system_prompt}\n\n"
         f"用户问题：{body.query}\n\n"
         "各外部 A2A 智能体结果：\n" + "\n\n---\n\n".join(blocks) + "\n\n请综合以上外部结果，给用户完整、简洁的最终回答。"
     )
-    model = await svc.resolve_invoke_model(agent.model_config)
-    usage_sink = svc.chat_usage_sink(model, source_id=agent.id)
     final = await ainvoke_chat(
         model,
         [{"role": "user", "content": synth}],
-        temperature=float((agent.config or {}).get("temperature", 0.7)),
+        temperature=temperature,
         usage_sink=usage_sink,
     )
     return ChatResponse(answer=final, sources=[], steps=steps)
