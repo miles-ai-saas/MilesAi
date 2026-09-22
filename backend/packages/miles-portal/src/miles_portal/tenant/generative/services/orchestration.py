@@ -123,6 +123,8 @@ async def generate_image_for_model(
         job_progress = GenerativeJobProgress(generative_job_id)
         await job_progress.update(10, "调用生图 API")
 
+    # 释放连接：随后厂商 HTTP 可能长达数十秒～数分钟
+    await db.commit()
     blobs = await generate_image_bytes(
         model,
         prompt=prompt,
@@ -207,6 +209,8 @@ async def generate_video_for_model(
         progress = GenerativeJobProgress(generative_job_id)
         await progress.update(8, "已提交厂商任务")
 
+    # 释放连接：随后厂商 HTTP 可能长达数十秒～数分钟
+    await db.commit()
     video_bytes = await generate_video_bytes(
         model,
         prompt=prompt,
@@ -271,6 +275,8 @@ async def generate_speech_for_model(
     agent_id: UUID | None = None,
 ) -> dict:
     """调用 TTS 模型生成语音，持久化为附件并返回结果。"""
+    # 释放连接：随后厂商 HTTP 可能长达数十秒
+    await db.commit()
     audio_bytes = await generate_tts_bytes(
         model,
         text=text,
