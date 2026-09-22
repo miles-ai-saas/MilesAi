@@ -921,15 +921,15 @@ async def shutdown_langgraph_checkpointer() -> None:
 
 - [ ] **Step 3: 改写 `rag/graph/runner.py` 的 compiled import**
 
-`packages/miles-ai/src/miles_ai/rag/graph/runner.py` 的 import 块改为（`integrations.langgraph.checkpointer` 只留 `checkpoint_backend`；`get_compiled_rag_graph` 改从 `rag.graph.compiled` 取，落在 `rag.graph.rag_qa` 之前）：
+`packages/miles-ai/src/miles_ai/rag/graph/runner.py` 的 import 块改为（`integrations.langgraph.checkpointer` 只留 `checkpoint_backend`；`get_compiled_rag_graph` 改从 `rag.graph.compiled` 取，落在 `rag.graph.rag_qa` 之前；`KbRetrievalBindings` 已在 Task 3 归位到 `rag.retrieve.bindings`，**不要**再写回旧的 `integrations.langchain.kb_retrieval`）：
 
 ```python
 from miles_ai.integrations.langchain.chat_models import OnDelta
-from miles_ai.integrations.langchain.kb_retrieval import KbRetrievalBindings
 from miles_ai.integrations.langgraph.checkpointer import checkpoint_backend
 from miles_ai.integrations.litellm.usage_sink import UsageSink
 from miles_ai.rag.graph.compiled import get_compiled_rag_graph
 from miles_ai.rag.graph.rag_qa import build_rag_qa_graph
+from miles_ai.rag.retrieve.bindings import KbRetrievalBindings
 from miles_common.schemas.media import MediaRefIn
 from miles_core.models.agent import Agent
 from miles_core.models.agent.constants import AgentRuntimeMode
@@ -937,9 +937,12 @@ from miles_core.models.media.reader import MediaReader
 from miles_core.models.model import ModelConfig
 ```
 
-- docstring 第 6 行 `编译实例由 ``get_compiled_rag_graph()`` 提供，checkpointer 见 ``checkpointer`` 模块。` → `编译实例由 ``rag.graph.compiled.get_compiled_rag_graph()`` 提供，多轮状态后端见 ``integrations.langgraph.checkpointer``。`
+> isort 序：`integrations.langchain` < `integrations.langgraph` < `integrations.litellm` < `rag.graph.compiled` < `rag.graph.rag_qa` < `rag.retrieve.bindings` < `miles_common` < `miles_core`。`from __future__` / `typing` / `uuid` / `langgraph.checkpoint.memory.MemorySaver` 块保持原样（`MemorySaver` 仍被末尾的 `compile_rag_graph_for_tests()` 使用）。
+
+- docstring 第 8 行 `编译实例由 ``get_compiled_rag_graph()`` 提供，checkpointer 见 ``checkpointer`` 模块。` → `编译实例由 ``rag.graph.compiled.get_compiled_rag_graph()`` 提供，多轮状态后端见 ``integrations.langgraph.checkpointer``。`
 
 - `compile_rag_graph_for_tests()`（文件末尾）保持不变。
+- **测试 patch 字符串不要改**：`test_rag_answer_stream.py:52` / `test_rag_multimodal.py:85` 打的是 `"miles_ai.rag.graph.runner.get_compiled_rag_graph"`；runner 仍从 `compiled` import 该名到本模块命名空间，patch 路径继续有效。
 
 - [ ] **Step 4: 调整 `miles_server` lifespan**
 
@@ -978,13 +981,14 @@ async def lifespan(app: FastAPI):
 cd /Users/xiezhigang/Projects/miles/MilesAI/backend
 rg -n "get_compiled_rag_graph" packages tests
 echo "--- 期望：仅 rag/graph/compiled.py 定义处 + rag/graph/runner.py 使用/import + 2 个测试的 patch 字符串"
-rg -n "miles_ai\.(rag|flow_runtime)" packages/miles-ai/src/miles_ai/integrations -g '*.py'; echo "--- 期望：仅 visual_embeddings.py（Task 5 处理）"
+rg -n "integrations\.langgraph\.graphs\.rag_qa" packages tests; echo "--- 期望：无输出（本任务删掉 checkpointer 里两处死惰性 import）"
+rg -n --no-heading '^\s*(from|import)\s+miles_ai\.(rag|flow_runtime)' -g '**/integrations/**' packages; echo "--- 期望：恰 1 条（visual_embeddings.py:7；与 Task 3 收尾相同，本任务不消反向边）"
 .venv/bin/ruff check . && .venv/bin/ruff format --check . && .venv/bin/lint-imports | tail -3
 .venv/bin/python -m pytest -q
 .venv/bin/python -m miles_server.scripts.export_openapi --check
 ```
 
-Expected: pytest `1517 passed`（checkpointer 相关用例与 lifespan 冒烟一并通过）；OpenAPI 零漂移。
+Expected: 第一条仅 `compiled.py`（定义）+ `runner.py`（import/调用）+ 2 个测试的 patch 字符串；第二条无输出（Task 2 留下的中间态清掉）；第三条恰 1 条反向边（本任务不改反向边计数——`checkpointer` 原先也没有 top-level `from miles_ai.rag`，只是包内死路径）；pytest `1517 passed`；OpenAPI 零漂移。
 
 ```bash
 cd /Users/xiezhigang/Projects/miles/MilesAI/backend
@@ -1381,6 +1385,7 @@ Task 1 评审记录了 4 条 Minor 文档漂移，其中 5 处落在 Task 1 已�
 | `packages/miles-ai/src/miles_ai/flow_runtime/graph_runner.py`（docstring 末段） | `（``graphs/rag_qa``）` | `（``rag.graph.rag_qa``）` |
 | `packages/miles-ai/src/miles_ai/flow_runtime/types.py`（`run_subflow` 字段注释） | `由 flow_runner 注入` | `由 graph_runner 注入` |
 | `packages/miles-ai/src/miles_ai/flow_runtime/nodes/loop_nodes.py`（兜底路径注释） | `正常由 flow_runner 注入` | `正常由 graph_runner 注入` |
+| `packages/miles-portal/src/miles_portal/tenant/kb/services/embeddings.py`（`build_kb_retrieval_bindings` 函数 docstring） | `构造 L3 ``vectorstores`` 检索注入的 KB 检索能力载体。` | `构造供 ``rag.retrieve`` 注入的 KB 检索能力载体。` |
 
 行号仅为定位提示（其它任务可能已改动这些文件），以文本为准。验证：
 
