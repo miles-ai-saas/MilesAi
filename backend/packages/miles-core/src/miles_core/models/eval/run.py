@@ -42,6 +42,8 @@ class EvalRun(UUIDPrimaryKeyMixin, Base):
     status: Mapped[str] = mapped_column(String(16), nullable=False, default=EvalRunStatus.PENDING.value)
     # rules | llm_judge | auto（有 expected 规则优先，否则尝试 rubric）
     scoring_mode: Mapped[str] = mapped_column(String(32), nullable=False, default="auto")
+    #: 可选扩展：``judge_model_config_id`` 等（LLM Judge 覆盖智能体默认模型）
+    options: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
     created_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

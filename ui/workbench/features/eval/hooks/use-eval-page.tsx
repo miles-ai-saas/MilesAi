@@ -201,6 +201,7 @@ export function useEvalPage() {
     dataset_id: string;
     agent_id: string;
     scoring_mode: EvalScoringMode;
+    judge_model_config_id?: string | null;
   }) => {
     const run = await api.createEvalRun(payload);
     await runsList.reload();

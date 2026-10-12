@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { ResourceDialog } from "@/components/resource/ResourceDialog";
 import { api } from "@/lib/api";
 import { EVAL_SCORING_MODE_OPTIONS } from "@/features/eval/lib/eval-labels";
-import type { Agent, EvalDataset, EvalScoringMode } from "@/lib/types";
+import type { Agent, EvalDataset, EvalScoringMode, ModelConfig } from "@/lib/types";
 
 type Props = {
   open: boolean;
@@ -14,6 +14,7 @@ type Props = {
     dataset_id: string;
     agent_id: string;
     scoring_mode: EvalScoringMode;
+    judge_model_config_id?: string | null;
   }) => Promise<unknown>;
 };
 
@@ -21,7 +22,9 @@ export function EvalRunCreateDialog({ open, datasets, onClose, onCreate }: Props
   const [datasetId, setDatasetId] = useState("");
   const [agentId, setAgentId] = useState("");
   const [scoringMode, setScoringMode] = useState<EvalScoringMode>("auto");
+  const [judgeModelId, setJudgeModelId] = useState("");
   const [agents, setAgents] = useState<Agent[]>([]);
+  const [models, setModels] = useState<ModelConfig[]>([]);
   const [agentsLoading, setAgentsLoading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -30,27 +33,34 @@ export function EvalRunCreateDialog({ open, datasets, onClose, onCreate }: Props
     if (!open) return;
     setError("");
     setScoringMode("auto");
+    setJudgeModelId("");
     setDatasetId(datasets[0]?.id ?? "");
     setAgentId("");
     setAgentsLoading(true);
-    void api
-      .listAgents(1, 100)
-      .then((page) => {
+    void Promise.all([api.listAgents(1, 100), api.listModelConfigs()])
+      .then(([page, modelList]) => {
         setAgents(page.items);
         setAgentId(page.items[0]?.id ?? "");
+        setModels(Array.isArray(modelList) ? modelList : []);
       })
-      .catch((e) => setError(e instanceof Error ? e.message : "加载智能体失败"))
+      .catch((e) => setError(e instanceof Error ? e.message : "加载失败"))
       .finally(() => setAgentsLoading(false));
   }, [open, datasets]);
 
   const canSubmit = !!datasetId && !!agentId;
+  const needsJudge = scoringMode === "llm_judge" || scoringMode === "auto";
 
   const submit = async () => {
     if (!canSubmit) return;
     setBusy(true);
     setError("");
     try {
-      await onCreate({ dataset_id: datasetId, agent_id: agentId, scoring_mode: scoringMode });
+      await onCreate({
+        dataset_id: datasetId,
+        agent_id: agentId,
+        scoring_mode: scoringMode,
+        judge_model_config_id: needsJudge && judgeModelId ? judgeModelId : null,
+      });
     } catch (e) {
       setError(e instanceof Error ? e.message : "创建失败");
     } finally {
@@ -124,12 +134,30 @@ export function EvalRunCreateDialog({ open, datasets, onClose, onCreate }: Props
             ))}
           </select>
         </label>
-        {scoringMode === "llm_judge" || scoringMode === "auto" ? (
-          <p className="text-xs text-ink-muted">
-            {scoringMode === "llm_judge"
-              ? "LLM Judge 会按用例的「评分标准（rubric）」打分；未配置时使用默认标准。"
-              : "自动模式：有 exact/contains 时走规则；否则若有 rubric 且智能体已配模型，则走 LLM Judge。"}
-          </p>
+        {needsJudge ? (
+          <>
+            <p className="text-xs text-ink-muted">
+              {scoringMode === "llm_judge"
+                ? "LLM Judge 会按用例的「评分标准（rubric）」打分；未配置时使用默认标准。"
+                : "自动模式：有 exact/contains 时走规则；否则若有 rubric 且已配模型，则走 LLM Judge。"}
+            </p>
+            <label className="block space-y-1.5">
+              <span className="text-sm font-medium text-ink">Judge 模型（可选）</span>
+              <select
+                className="input-field w-full"
+                value={judgeModelId}
+                onChange={(e) => setJudgeModelId(e.target.value)}
+              >
+                <option value="">使用智能体绑定模型</option>
+                {models.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.name}
+                    {m.model_type ? ` · ${m.model_type}` : ""}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </>
         ) : (
           <p className="text-xs text-ink-muted">规则模式仅使用 exact / contains，忽略 rubric。</p>
         )}

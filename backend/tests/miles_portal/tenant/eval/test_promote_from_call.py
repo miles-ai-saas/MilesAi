@@ -7,7 +7,6 @@ from uuid import uuid4
 
 import pytest
 
-from miles_common.exceptions import BadRequestError
 from miles_portal.tenant.eval.services.promote_from_call import promote_case_from_call, resolve_turn_texts
 
 
@@ -30,25 +29,40 @@ async def test_resolve_turn_texts_falls_back_to_preview():
 
 
 @pytest.mark.asyncio
-async def test_promote_rejects_non_success():
+async def test_promote_allows_failed_without_answer():
     ctx = SimpleNamespace(tenant_id=uuid4(), user_id=uuid4(), is_superuser=False)
+    agent_id = uuid4()
+    call_id = uuid4()
     call = MagicMock()
+    call.id = call_id
     call.status = "failed"
     call.tenant_id = ctx.tenant_id
+    call.agent_id = agent_id
+    call.query_preview = "失败场景问题"
+    call.answer_preview = ""
+    call.conversation_id = None
+    call.trace_id = None
+    call.created_at = datetime.now(UTC)
 
     db = AsyncMock()
     result = MagicMock()
     result.scalar_one_or_none.return_value = call
     db.execute = AsyncMock(return_value=result)
+    db.scalar = AsyncMock(return_value=-1)
+    db.add = MagicMock()
+    db.flush = AsyncMock()
 
-    with pytest.raises(BadRequestError, match="成功调用"):
-        await promote_case_from_call(
-            db,
-            ctx,
-            dataset_id=uuid4(),
-            agent_id=uuid4(),
-            call_id=uuid4(),
-        )
+    row = await promote_case_from_call(
+        db,
+        ctx,
+        dataset_id=uuid4(),
+        agent_id=agent_id,
+        call_id=call_id,
+    )
+    assert row.query == "失败场景问题"
+    assert "contains" not in row.expected
+    assert row.expected["_source"]["call_status"] == "failed"
+    assert row.name.startswith("[failed]")
 
 
 @pytest.mark.asyncio

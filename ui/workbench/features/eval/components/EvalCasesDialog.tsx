@@ -45,6 +45,7 @@ export function EvalCasesDialog({ open, dataset, onClose, onChanged }: Props) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<CaseForm>(emptyForm);
   const [busy, setBusy] = useState(false);
+  const [importHint, setImportHint] = useState("");
 
   const loadCases = useCallback(async () => {
     if (!dataset) return;
@@ -142,12 +143,30 @@ export function EvalCasesDialog({ open, dataset, onClose, onChanged }: Props) {
     });
   };
 
+  const onImportCsv = async (file: File | null) => {
+    if (!dataset || !file) return;
+    setBusy(true);
+    setError("");
+    setImportHint("");
+    try {
+      const text = await file.text();
+      const result = await api.importEvalCasesCsv(dataset.id, text);
+      setImportHint(`已导入 ${result.created} 条用例`);
+      await loadCases();
+      await onChanged?.();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "CSV 导入失败");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <>
       <ResourceDialog
         open={open}
         title={dataset ? `管理用例 · ${dataset.name}` : "管理用例"}
-        description="期望支持精确匹配、包含子串或评分标准（rubric，配合运行侧 auto / LLM Judge）。"
+        description="期望支持精确匹配、包含子串或评分标准（rubric，配合运行侧 auto / LLM Judge）。支持 CSV 批量导入。"
         size="lg"
         onClose={onClose}
         footer={
@@ -157,6 +176,27 @@ export function EvalCasesDialog({ open, dataset, onClose, onChanged }: Props) {
         }
       >
         <div className="space-y-6">
+          <section className="space-y-2 rounded-lg border border-dashed border-line p-3">
+            <p className="text-xs text-ink-muted">
+              CSV 表头：<span className="font-mono">query,name,expected_mode,expected_value</span>
+              （mode=exact/contains/contains_all/rubric；contains_all 用 | 分隔）
+            </p>
+            <label className="btn-ghost inline-flex cursor-pointer items-center text-xs">
+              上传 CSV
+              <input
+                type="file"
+                accept=".csv,.txt,text/csv"
+                className="hidden"
+                disabled={busy || !dataset}
+                onChange={(e) => {
+                  const f = e.target.files?.[0] ?? null;
+                  e.target.value = "";
+                  void onImportCsv(f);
+                }}
+              />
+            </label>
+            {importHint ? <p className="text-xs text-green-700">{importHint}</p> : null}
+          </section>
           <section className="space-y-3 rounded-lg border border-line p-4">
             <div className="flex items-center justify-between gap-2">
               <h3 className="text-sm font-medium text-ink">{editingId ? "编辑用例" : "新建用例"}</h3>

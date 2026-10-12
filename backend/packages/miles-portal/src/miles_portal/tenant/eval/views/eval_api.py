@@ -12,6 +12,8 @@ from miles_core.infra.db import get_db
 from miles_core.tenant import TenantContext
 from miles_portal.tenant.eval.schemas.eval import (
     EvalCaseCreate,
+    EvalCaseCsvImport,
+    EvalCaseImportResult,
     EvalCaseOut,
     EvalCasePromoteFromCallCreate,
     EvalCaseUpdate,
@@ -103,8 +105,19 @@ async def promote_case_from_call_record(
     ctx: TenantContext = Depends(require_permissions("agent:write")),
     db: AsyncSession = Depends(get_db),
 ):
-    """从成功调用记录升格为评测用例（默认 expected.contains=助手答案）。"""
+    """从调用记录升格用例（成功/失败均可；默认 expected.contains=助手答案）。"""
     return ok(await EvalService(db, ctx).promote_case_from_call_record(dataset_id, body))
+
+
+@router.post("/datasets/{dataset_id}/cases/import-csv", response_model=ApiResponse[EvalCaseImportResult])
+async def import_cases_csv(
+    dataset_id: UUID,
+    body: EvalCaseCsvImport,
+    ctx: TenantContext = Depends(require_permissions("agent:write")),
+    db: AsyncSession = Depends(get_db),
+):
+    """CSV 批量导入用例（表头含 query；可选 name / expected_mode / expected_value）。"""
+    return ok(await EvalService(db, ctx).import_cases_csv(dataset_id, body))
 
 
 @router.patch("/datasets/{dataset_id}/cases/{case_id}", response_model=ApiResponse[EvalCaseOut])

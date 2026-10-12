@@ -1,4 +1,11 @@
-import type { EvalCase, EvalDataset, EvalRun, EvalRunItem, EvalScoringMode } from "../types/eval";
+import type {
+  EvalCase,
+  EvalCaseImportResult,
+  EvalDataset,
+  EvalRun,
+  EvalRunItem,
+  EvalScoringMode,
+} from "../types/eval";
 import { buildPageQuery, DEFAULT_PAGE_SIZE } from "../pagination";
 import { get, getPage, http, patch, post } from "./client";
 
@@ -33,6 +40,9 @@ export const evalApi = {
     },
   ) => post<EvalCase>(`/eval/datasets/${datasetId}/cases/from-call-record`, payload),
 
+  importEvalCasesCsv: (datasetId: string, csvText: string) =>
+    post<EvalCaseImportResult>(`/eval/datasets/${datasetId}/cases/import-csv`, { csv_text: csvText }),
+
   updateEvalCase: (
     datasetId: string,
     caseId: string,
@@ -53,8 +63,12 @@ export const evalApi = {
     return getPage<EvalRun>(`/eval/runs?${q}`);
   },
 
-  createEvalRun: (payload: { dataset_id: string; agent_id: string; scoring_mode?: EvalScoringMode }) =>
-    post<EvalRun>("/eval/runs", payload),
+  createEvalRun: (payload: {
+    dataset_id: string;
+    agent_id: string;
+    scoring_mode?: EvalScoringMode;
+    judge_model_config_id?: string | null;
+  }) => post<EvalRun>("/eval/runs", payload),
 
   getEvalRun: (runId: string) => get<EvalRun>(`/eval/runs/${runId}`),
 

@@ -72,7 +72,7 @@ export function EvalPromoteFromCallDialog({
     <ResourceDialog
       open={open}
       title="升格为评测用例"
-      description="仅成功调用可升格；默认 expected.contains=助手答案，并写入来源 call_id。"
+      description="成功或失败调用均可升格；有答案时默认 expected.contains=助手答案，并写入来源 call_id / call_status。"
       size="md"
       onClose={onClose}
       footer={

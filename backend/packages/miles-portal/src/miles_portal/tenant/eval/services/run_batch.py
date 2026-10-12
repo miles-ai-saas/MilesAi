@@ -72,9 +72,19 @@ async def run_eval_batch_async(run_id: UUID) -> None:
         )
 
         judge_model = None
-        if run.scoring_mode in ("auto", "llm_judge") and agent.model_config is not None:
+        if run.scoring_mode in ("auto", "llm_judge"):
+            opts = run.options if isinstance(run.options, dict) else {}
+            raw_judge_id = opts.get("judge_model_config_id")
             try:
-                judge_model = await resolve_model_for_invoke(db, agent.model_config, run.tenant_id)
+                if raw_judge_id:
+                    from miles_core.models.model import ModelConfig
+                    from miles_portal.tenant.models.services.model_resolve import resolve_model_by_id
+
+                    judge_cfg = await db.get(ModelConfig, UUID(str(raw_judge_id)))
+                    if judge_cfg is not None and not is_marked_deleted(judge_cfg):
+                        judge_model = await resolve_model_by_id(db, judge_cfg.id, run.tenant_id)
+                elif agent.model_config is not None:
+                    judge_model = await resolve_model_for_invoke(db, agent.model_config, run.tenant_id)
             except Exception:
                 judge_model = None
 

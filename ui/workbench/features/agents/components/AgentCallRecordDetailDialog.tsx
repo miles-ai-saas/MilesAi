@@ -18,7 +18,7 @@ type Props = {
   onClose: () => void;
   onOpenTrace?: () => void;
   onOpenTraceFromRecord?: (sessionId: string) => void | Promise<void>;
-  /** 成功调用时可升格为评测用例；由调用方挂载升格对话框。 */
+  /** 有用户问题时可升格为评测用例（成功/失败均可）；由调用方挂载升格对话框。 */
   onPromote?: (detail: AgentCallRecordDetail) => void;
   promoteHint?: string;
 };
@@ -71,7 +71,7 @@ export function AgentCallRecordDetailDialog({
 
   if (!callId) return null;
 
-  const canPromote = Boolean(onPromote && detail?.status === "success");
+  const canPromote = Boolean(onPromote && detail && detail.query_preview);
 
   const canOpenTraceLocal = Boolean(
     onOpenTrace && detail?.conversation_id && conversationId && detail.conversation_id === conversationId,

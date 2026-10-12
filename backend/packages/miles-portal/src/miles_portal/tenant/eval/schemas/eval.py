@@ -44,7 +44,7 @@ class EvalCaseUpdate(BaseModel):
 
 
 class EvalCasePromoteFromCallCreate(BaseModel):
-    """从智能体调用记录升格用例。"""
+    """从智能体调用记录升格用例（成功 / 失败均可）。"""
 
     agent_id: UUID
     call_id: UUID
@@ -54,6 +54,12 @@ class EvalCasePromoteFromCallCreate(BaseModel):
         default=True,
         description="优先从会话消息取全文；否则用调用记录 preview",
     )
+
+
+class EvalCaseCsvImport(BaseModel):
+    """CSV 文本导入用例。"""
+
+    csv_text: str = Field(min_length=1, description="含表头的 CSV 文本")
 
 
 class EvalCaseOut(BaseModel):
@@ -68,10 +74,19 @@ class EvalCaseOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class EvalCaseImportResult(BaseModel):
+    created: int
+    items: list[EvalCaseOut] = Field(default_factory=list)
+
+
 class EvalRunCreate(BaseModel):
     dataset_id: UUID
     agent_id: UUID
     scoring_mode: str = Field(default="auto", pattern="^(auto|rules|llm_judge)$")
+    judge_model_config_id: UUID | None = Field(
+        default=None,
+        description="LLM Judge 所用模型；空则回退智能体绑定模型",
+    )
 
 
 class EvalRunOut(BaseModel):
@@ -81,6 +96,7 @@ class EvalRunOut(BaseModel):
     agent_id: UUID
     status: str
     scoring_mode: str
+    options: dict = Field(default_factory=dict)
     started_at: datetime | None
     finished_at: datetime | None
     error_message: str | None

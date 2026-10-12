@@ -105,15 +105,21 @@ async def promote_case_from_call(
         raise NotFoundError("调用记录不存在")
     assert_tenant_access(ctx, call.tenant_id)
 
-    if call.status != "success":
-        raise BadRequestError("仅支持从成功调用升格用例")
+    # success / failed / blocked / error 均可升格（失败场景用于回归「应如何回答」）
+    status = (call.status or "").strip().lower() or "unknown"
 
     query, answer, _used = await resolve_turn_texts(db, call=call, prefer_session_text=prefer_session_text)
     if not query:
         raise BadRequestError("调用记录缺少可用的用户问题文本")
 
     if expected is None:
-        expected = {"contains": answer} if answer else None
+        if answer:
+            expected = {"contains": answer}
+        elif status != "success":
+            # 失败且无答案：留给人工补 expected / rubric
+            expected = None
+        else:
+            expected = None
 
     sort_index = int(
         await db.scalar(
@@ -127,7 +133,9 @@ async def promote_case_from_call(
 
     case_name = (name or "").strip() or None
     if not case_name:
-        case_name = (query[:48] + "…") if len(query) > 48 else query
+        prefix = "" if status == "success" else f"[{status}] "
+        base = (query[:48] + "…") if len(query) > 48 else query
+        case_name = (prefix + base)[:128]
 
     # lineage 写入 expected 旁路键，打分逻辑只认 exact/contains/contains_all/rubric
     expected_payload = dict(expected) if expected else {}
@@ -135,6 +143,7 @@ async def promote_case_from_call(
         "call_id": str(call.id),
         "agent_id": str(call.agent_id),
         "trace_id": call.trace_id,
+        "call_status": status,
     }
 
     row = EvalCase(

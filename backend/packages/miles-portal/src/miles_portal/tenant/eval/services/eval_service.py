@@ -17,6 +17,8 @@ from miles_core.soft_delete import append_not_deleted, is_marked_deleted, mark_d
 from miles_core.tenant import TenantContext, assert_tenant_access, tenant_filters
 from miles_portal.tenant.eval.schemas.eval import (
     EvalCaseCreate,
+    EvalCaseCsvImport,
+    EvalCaseImportResult,
     EvalCaseOut,
     EvalCasePromoteFromCallCreate,
     EvalCaseUpdate,
@@ -27,6 +29,7 @@ from miles_portal.tenant.eval.schemas.eval import (
     EvalRunItemOut,
     EvalRunOut,
 )
+from miles_portal.tenant.eval.services.csv_import import parse_eval_cases_csv
 from miles_portal.tenant.eval.services.promote_from_call import promote_case_from_call
 from miles_worker.app import celery_app
 
@@ -163,6 +166,37 @@ class EvalService(BaseService):
         )
         return EvalCaseOut.model_validate(row)
 
+    async def import_cases_csv(self, dataset_id: UUID, body: EvalCaseCsvImport) -> EvalCaseImportResult:
+        await self._get_dataset(dataset_id)
+        drafts = parse_eval_cases_csv(body.csv_text)
+        sort_index = int(
+            await self.db.scalar(
+                select(func.coalesce(func.max(EvalCase.sort_index), -1)).where(
+                    EvalCase.dataset_id == dataset_id,
+                    EvalCase.tenant_id == self.ctx.tenant_id,
+                )
+            )
+            or -1
+        )
+        created: list[EvalCase] = []
+        for draft in drafts:
+            sort_index += 1
+            row = EvalCase(
+                tenant_id=self.ctx.tenant_id,
+                dataset_id=dataset_id,
+                name=draft.get("name"),
+                query=draft["query"],
+                expected=draft.get("expected"),
+                sort_index=sort_index,
+            )
+            self.db.add(row)
+            created.append(row)
+        await self.db.flush()
+        return EvalCaseImportResult(
+            created=len(created),
+            items=[EvalCaseOut.model_validate(r) for r in created],
+        )
+
     # --- run ---
 
     async def create_run(self, body: EvalRunCreate) -> EvalRunOut:
@@ -180,12 +214,24 @@ class EvalService(BaseService):
         if not case_count:
             raise BadRequestError("数据集没有用例")
 
+        options: dict = {}
+        if body.judge_model_config_id is not None:
+            from miles_core.models.model import ModelConfig
+
+            judge = await self.db.get(ModelConfig, body.judge_model_config_id)
+            if not judge or is_marked_deleted(judge):
+                raise NotFoundError("Judge 模型不存在")
+            if judge.tenant_id is not None:
+                assert_tenant_access(self.ctx, judge.tenant_id)
+            options["judge_model_config_id"] = str(body.judge_model_config_id)
+
         run = EvalRun(
             tenant_id=self.ctx.tenant_id,
             dataset_id=body.dataset_id,
             agent_id=body.agent_id,
             status=EvalRunStatus.PENDING.value,
             scoring_mode=body.scoring_mode,
+            options=options,
             created_by=self.ctx.user_id,
             summary={},
         )

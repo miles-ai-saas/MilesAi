@@ -28,11 +28,17 @@ export interface EvalRun {
   agent_id: string;
   status: string;
   scoring_mode: string;
+  options?: Record<string, unknown>;
   started_at?: string | null;
   finished_at?: string | null;
   error_message?: string | null;
   summary: Record<string, unknown>;
   created_at: string;
+}
+
+export interface EvalCaseImportResult {
+  created: number;
+  items: EvalCase[];
 }
 
 export interface EvalRunItem {
