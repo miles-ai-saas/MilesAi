@@ -140,6 +140,12 @@ describe("buildAgentConfig", () => {
     expect(config.a2a_intent_router).toEqual({ enabled: true });
   });
 
+  it("启用顶层意图识别时写入 chat_intent_router.enabled", () => {
+    const form = { ...emptyAgentForm(), chat_intent_router_enabled: true };
+    const config = buildAgentConfig(form, undefined);
+    expect(config.chat_intent_router).toEqual({ enabled: true });
+  });
+
   it("有 published_flow_id 时设置 workflow 模式", () => {
     const form = { ...emptyAgentForm(), published_flow_id: "flow-1" };
     const config = buildAgentConfig(form, undefined);

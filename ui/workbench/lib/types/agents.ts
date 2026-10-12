@@ -51,6 +51,11 @@ export interface AgentConfig {
     enabled?: boolean;
     model_config_id?: string;
   };
+  /** 开启后对话入口先做顶层意图识别，再分发 subagent / A2A / 本地路径。 */
+  chat_intent_router?: {
+    enabled?: boolean;
+    model_config_id?: string;
+  };
   /** 跨会话用户记忆（摘要/偏好）；默认关闭。 */
   user_memory?: {
     enabled?: boolean;

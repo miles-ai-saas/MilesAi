@@ -19,6 +19,7 @@ export type AgentFormValues = {
   a2a_peers: A2aPeerRefInput[];
   a2a_invoke_policy: "rules_then_plan" | "rules_only" | "plan_only";
   a2a_intent_router_enabled: boolean;
+  chat_intent_router_enabled: boolean;
   user_memory_enabled: boolean;
   use_langgraph_rag: boolean;
   use_llm_grade: boolean;
@@ -61,6 +62,7 @@ export function emptyAgentForm(): AgentFormValues {
     a2a_peers: [],
     a2a_invoke_policy: "rules_then_plan",
     a2a_intent_router_enabled: false,
+    chat_intent_router_enabled: false,
     user_memory_enabled: false,
     use_langgraph_rag: true,
     use_llm_grade: false,
@@ -114,6 +116,9 @@ export function agentToFormValues(agent: Agent): AgentFormValues {
     a2a_invoke_policy: (cfg.a2a_invoke_policy as AgentFormValues["a2a_invoke_policy"]) || "rules_then_plan",
     a2a_intent_router_enabled: Boolean(
       cfg.a2a_intent_router && typeof cfg.a2a_intent_router === "object" && cfg.a2a_intent_router.enabled,
+    ),
+    chat_intent_router_enabled: Boolean(
+      cfg.chat_intent_router && typeof cfg.chat_intent_router === "object" && cfg.chat_intent_router.enabled,
     ),
     user_memory_enabled: Boolean(cfg.user_memory && typeof cfg.user_memory === "object" && cfg.user_memory.enabled),
     use_langgraph_rag: cfg.use_langgraph_rag !== false,
@@ -237,6 +242,16 @@ export function buildAgentConfig(form: AgentFormValues, baseConfig: AgentConfig 
     config.user_memory = { ...prev, enabled: true };
   } else {
     delete config.user_memory;
+  }
+
+  if (form.chat_intent_router_enabled) {
+    const prev =
+      baseConfig?.chat_intent_router && typeof baseConfig.chat_intent_router === "object"
+        ? { ...baseConfig.chat_intent_router }
+        : {};
+    config.chat_intent_router = { ...prev, enabled: true };
+  } else {
+    delete config.chat_intent_router;
   }
 
   return config;

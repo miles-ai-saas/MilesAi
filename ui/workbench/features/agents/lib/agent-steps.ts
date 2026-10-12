@@ -136,6 +136,15 @@ function titleForStep(type: string, step: Record<string, unknown>): { title: str
       };
     case "a2a_rules":
       return { title: "A2A 规则匹配", detail: undefined };
+    case "intent_router": {
+      const intent = asStr(step.intent) || "auto";
+      const ms = step.latency_ms != null ? `${step.latency_ms} ms` : undefined;
+      const reason = asStr(step.reason);
+      return {
+        title: "意图识别",
+        detail: [intent, reason || undefined, ms].filter(Boolean).join(" · ") || undefined,
+      };
+    }
     case "a2a_intent_router": {
       const n = Array.isArray(step.selected_peer_ids) ? step.selected_peer_ids.length : 0;
       const ms = step.latency_ms != null ? `${step.latency_ms} ms` : undefined;

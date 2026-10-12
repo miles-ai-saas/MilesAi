@@ -8,6 +8,20 @@ export function AgentFormStepAdvancedSection({ form, setForm, designMode }: Prop
   return (
     <div className={`mx-auto ${agentFormStepWidth(designMode)} space-y-5`}>
       <div className="rounded-lg border border-line-soft p-4">
+        <p className="mb-1 text-xs font-medium text-ink">顶层意图识别</p>
+        <p className="mb-2 text-xs text-ink-muted">
+          开启后，对话入口先用一次 LLM 判断 direct / rag / tools / flow / subagent / a2a，再分发路由（默认关闭，不影响现网优先级）。
+        </p>
+        <label className="flex cursor-pointer items-center gap-2 text-xs">
+          <input
+            type="checkbox"
+            checked={form.chat_intent_router_enabled}
+            onChange={(e) => setForm((f) => ({ ...f, chat_intent_router_enabled: e.target.checked }))}
+          />
+          启用独立意图识别层
+        </label>
+      </div>
+      <div className="rounded-lg border border-line-soft p-4">
         <p className="mb-1 text-xs font-medium text-ink">跨会话记忆</p>
         <p className="mb-2 text-xs text-ink-muted">
           开启后，成功对话会异步抽取用户摘要/偏好，并在直连、工具与 RAG 路径注入 system（默认关闭）。

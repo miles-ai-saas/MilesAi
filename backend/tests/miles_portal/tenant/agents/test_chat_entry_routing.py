@@ -269,6 +269,36 @@ async def test_subagent_bindings_take_precedence_over_peers(monkeypatch):
     assert entry.augmented == 1  # 有 peer_refs 时追加 a2a 增强
 
 
+async def test_chat_intent_router_can_skip_subagent_for_local(monkeypatch):
+    """启用顶层意图且判为 rag 时，即使有子智能体绑定也走 local/rag。"""
+    monkeypatch.setattr(entry_mod, "list_sub_agent_bindings", _async_ret([object()]))
+    monkeypatch.setattr(entry_mod, "list_agent_a2a_peer_refs", _async_ret([]))
+
+    import miles_portal.tenant.agents.services.intent_router as intent_mod
+
+    async def fake_recognize(agent, query, *, catalog, db, tenant_id, model_override=None):  # noqa: ANN001, ARG001
+        return "rag", {"engine": "intent_llm", "intent": "rag", "latency_ms": 1}
+
+    monkeypatch.setattr(intent_mod, "recognize_chat_intent", fake_recognize)
+    monkeypatch.setattr(intent_mod, "resolve_intent_model", _async_ret(None))
+
+    kb_id = uuid4()
+    entry = _entry(
+        agent=_agent(
+            knowledge_bases=[SimpleNamespace(id=kb_id)],
+            model_config_id=uuid4(),
+            config={"chat_intent_router": {"enabled": True}},
+        ),
+        rag_response=SimpleNamespace(answer="local-rag", sources=[], steps=[{"type": "retrieve"}]),
+    )
+    resp = await _bind(entry)(AGENT_ID, ChatRequest(query="查知识库"))
+
+    assert resp.answer == "local-rag"
+    assert resp.steps[0]["type"] == "intent_router"
+    assert resp.steps[0]["intent"] == "rag"
+    assert _Recorder.last.routes == ["rag"]
+
+
 async def test_peers_without_bindings_route_to_a2a_augmented(monkeypatch):
     monkeypatch.setattr(entry_mod, "list_agent_a2a_peer_refs", _async_ret([object()]))
     called: dict = {}

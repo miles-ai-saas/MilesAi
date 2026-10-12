@@ -115,6 +115,7 @@ class AgentChatEntryMixin:
             # KB / top_k 对 a2a_augmented、flow、rag 三条路由相同，提前算一次
             kb_ids = [str(kb.id) for kb in agent.knowledge_bases]
             top_k = int((agent.config or {}).get("top_k", 5))
+            cfg = agent.config or {}
 
             if agent.agent_type == AgentType.A2A:
                 from miles_portal.tenant.a2a.invoke import run_a2a_host_chat
@@ -124,7 +125,56 @@ class AgentChatEntryMixin:
 
             bindings = await list_sub_agent_bindings(self.db, agent_id)
             peer_refs = await list_agent_a2a_peer_refs(self.db, agent_id)
-            if bindings:
+
+            # 顶层意图识别（可选）：影响是否强制走子智能体 / A2A / 本地路径
+            intent_step: dict | None = None
+            preferred: str | None = None
+            from miles_portal.tenant.agents.services.intent_router import (
+                build_capability_catalog,
+                chat_intent_router_enabled,
+                pick_top_level_route,
+                recognize_chat_intent,
+                resolve_intent_model,
+                should_skip_published_flow,
+            )
+
+            if chat_intent_router_enabled(agent):
+                tools_on = bool(cfg.get("enable_tool_calling") or cfg.get("enable_generative_tools"))
+                catalog = build_capability_catalog(
+                    has_model=bool(agent.model_config_id),
+                    has_kb=bool(kb_ids),
+                    tools_enabled=tools_on and bool(agent.model_config_id),
+                    has_flow=bool(agent.published_flow_id),
+                    has_subagents=bool(bindings),
+                    has_a2a_peers=bool(peer_refs),
+                )
+                intent_model = await resolve_intent_model(self.db, agent, tenant_id=self.ctx.tenant_id)
+                preferred, intent_meta = await recognize_chat_intent(
+                    agent,
+                    query,
+                    catalog=catalog,
+                    db=self.db,
+                    tenant_id=self.ctx.tenant_id,
+                    model_override=intent_model,
+                )
+                intent_step = {"type": "intent_router", **intent_meta}
+
+            top = pick_top_level_route(
+                preferred=preferred,
+                has_bindings=bool(bindings),
+                has_peer_refs=bool(peer_refs),
+            )
+
+            def _with_intent(response: ChatResponse) -> ChatResponse:
+                if intent_step is None:
+                    return response
+                steps = [intent_step, *(getattr(response, "steps", None) or [])]
+                if hasattr(response, "model_copy"):
+                    return response.model_copy(update={"steps": steps})
+                response.steps = steps  # 测试替身 SimpleNamespace
+                return response
+
+            if top == "subagent" and bindings:
                 from miles_integrations.deepagents.io import ParentChatInput
                 from miles_integrations.deepagents.orchestrator import run_subagent_planned_chat
 
@@ -154,9 +204,9 @@ class AgentChatEntryMixin:
                 response = ChatResponse(answer=result.answer, sources=[], steps=result.steps)
                 if peer_refs:
                     response = await self.maybe_augment_a2a(agent, chat_body, response)
-                return await finish(route, response)
+                return await finish(route, _with_intent(response))
 
-            if peer_refs:
+            if top == "a2a_augmented" and peer_refs:
                 from miles_portal.tenant.a2a.invoke import run_a2a_augmented_chat
 
                 route = "a2a_augmented"
@@ -169,16 +219,19 @@ class AgentChatEntryMixin:
                     agent_id=agent_id,
                     hooks=hooks,
                 )
-                return await finish(route, response)
+                return await finish(route, _with_intent(response))
 
-            response = await self._run_published_flow(
-                agent, agent_id, chat_body, query=query, kb_ids=kb_ids, on_delta=on_delta
-            )
+            # local：流程 → RAG/工具/直连
+            response = None
+            if not should_skip_published_flow(preferred):
+                response = await self._run_published_flow(
+                    agent, agent_id, chat_body, query=query, kb_ids=kb_ids, on_delta=on_delta
+                )
             route = "flow" if response is not None else self._resolve_rag_route(agent, kb_ids)
             if response is None:
                 response = await self.rag_chat(agent, chat_body, kb_ids, top_k, agent_id, hooks, on_delta=on_delta)
             response = await self.maybe_augment_a2a(agent, chat_body, response)
-            return await finish(route, response)
+            return await finish(route, _with_intent(response))
         except Exception as exc:
             await recorder.record_failure(exc, route=route)
             await hooks.run_resource(

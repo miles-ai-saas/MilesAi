@@ -51,22 +51,24 @@
 POST /agents/{id}/chat
     → BEFORE_CALL 钩子 + check_input 合规
     → agent_type == a2a ? run_a2a_host_chat
-    → 有 sub_agent_bindings ? run_subagent_planned_chat
-        → (可选) augment_response_with_a2a
-    → 仅有 peer_refs ? run_a2a_augmented_chat
-    → published_flow_id ? flow_runtime.run
-    → 绑 KB + use_langgraph_rag ? run_rag_workflow
-    → enable_tool_calling / 生图工具 ? tool_agent
-    → generate_rag_answer / ainvoke_chat
+    → [可选] chat_intent_router：LLM 选 intent → 顶层闸 subagent / a2a_augmented / local
+    → 默认优先级（intent=auto 或未开启）：
+        有 sub_agent_bindings ? run_subagent_planned_chat
+            → (可选) augment_response_with_a2a
+        仅有 peer_refs ? run_a2a_augmented_chat
+        local: published_flow → RAG / tool_agent / 直连
     → check_output + AFTER_CALL
 ```
 
 | 路径 | 条件 |
 |------|------|
-| 内部协同 | `agt_sub_agent_bindings` 非空 |
-| 画布流程 | `published_flow_id` + 已发布版本 |
+| 意图识别 | `config.chat_intent_router.enabled`；step `intent_router`；intent ∈ direct/rag/tools/flow/subagent/a2a/auto |
+| 内部协同 | 绑定非空，且意图未强制 local |
+| 画布流程 | `published_flow_id` + 已发布版本（意图为 tools/rag/direct 时可跳过） |
 | RAG Graph | 绑 KB、`use_langgraph_rag` 未关 |
 | tool_agent | `enable_tool_calling` 或 KB+生图工具等 |
+
+**与 A2A `a2a_intent_router` 的区别：** 顶层 `chat_intent_router` 决定走哪条主路径；A2A 意图路由仅在 A2A 规划阶段选 Peer（见 [a2a-interconnect.md](./a2a-interconnect.md)）。
 
 ---
 
@@ -78,6 +80,7 @@ POST /agents/{id}/chat
 
 | `config` 键 | 默认 | 说明 |
 |-------------|------|------|
+| `chat_intent_router` | 关 | `{enabled, model_config_id?}` 顶层意图识别 |
 | `max_plan_iterations` | 12 | DeepAgents recursion_limit |
 | `max_subagent_calls` | 20 | 平台规划上限 |
 | `subagent_parallel` | false | 平台规划并行 |
