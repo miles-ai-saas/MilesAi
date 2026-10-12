@@ -7,7 +7,9 @@ Agent 聚合：CRUD + 对话编排。
 - ``crud.py``：元数据、列表/创建/更新/删除、``resolve_system_prompt``。
 - ``chat.py``：``AgentChatMixin`` 组合门面。
 - ``chat_entry.py``：``chat`` / ``chat_as_child`` 入口。
-- ``chat_rag.py``：``rag_chat`` / ``direct_chat`` / 流程 RunContext / A2A 增强。
+- ``chat_rag.py``：``rag_chat`` / 流程 RunContext（组合 Direct Mixin）。
+- ``chat_direct.py``：``direct_chat`` / tool_agent / A2A 增强。
+- ``chat_hints.py``：生图/知识库工具协议提示。
 - ``chat_turn.py``：单轮收尾、RAG 路由解析、调用记录。
 - ``serialization.py``：``agent_out``、``should_use_tools_with_kb``。
 

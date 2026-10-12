@@ -15,8 +15,6 @@ LIMIT = 500
 #: 相对 ``backend/`` 的路径。拆分后应从本表移除。
 ALLOWLIST: frozenset[str] = frozenset(
     {
-        # 对话 RAG 编排仍厚；下一批拆分。
-        "packages/miles-portal/src/miles_portal/tenant/agents/services/agent/chat_rag.py",
         # 种子目录数据偏长，按脚本豁免口径保留。
         "packages/miles-server/src/miles_server/scripts/seed/model_catalog.py",
     }

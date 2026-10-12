@@ -10,6 +10,7 @@ from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
 from miles_portal.tenant.agents.schemas.agent import ChatRequest
+from miles_portal.tenant.agents.services.agent import chat_direct as chat_direct_mod
 from miles_portal.tenant.agents.services.agent import chat_rag as chat_rag_mod
 from miles_portal.tenant.agents.services.agent.chat_rag import AgentChatRagMixin
 from miles_portal.tenant.attachments.services.media_reader import FlowMediaReader
@@ -305,9 +306,9 @@ def test_direct_chat_commits_before_llm(monkeypatch):
         captured["messages"] = messages
         return "答"
 
-    monkeypatch.setattr(chat_rag_mod, "ainvoke_chat", AsyncMock(side_effect=fake_ainvoke))
+    monkeypatch.setattr(chat_direct_mod, "ainvoke_chat", AsyncMock(side_effect=fake_ainvoke))
     monkeypatch.setattr(
-        chat_rag_mod,
+        chat_direct_mod,
         "load_chat_history_messages",
         AsyncMock(return_value=[{"role": "user", "content": "上一轮"}]),
     )
@@ -365,7 +366,7 @@ def test_tool_agent_commits_before_run_tool_calling_chat(monkeypatch):
         fake_run_tool_calling_chat,
     )
     monkeypatch.setattr(
-        chat_rag_mod,
+        chat_direct_mod,
         "load_chat_history_messages",
         AsyncMock(return_value=[{"role": "assistant", "content": "先前答复"}]),
     )
@@ -415,7 +416,7 @@ def test_tool_agent_uses_flow_media_reader_and_short_session_executor(monkeypatc
         "miles_integrations.langchain.tool_agent.run_tool_calling_chat",
         fake_run_tool_calling_chat,
     )
-    monkeypatch.setattr(chat_rag_mod, "load_chat_history_messages", AsyncMock(return_value=[]))
+    monkeypatch.setattr(chat_direct_mod, "load_chat_history_messages", AsyncMock(return_value=[]))
 
     _run(
         AgentChatRagMixin._run_tool_agent(

@@ -35,9 +35,13 @@ class _Compliance:
         _Compliance.last = self
         self.checked_in: list[str] = []
         self.checked_out: list[str] = []
+        self.checked_media: list = []
 
     async def check_input(self, text, *, module):  # noqa: ANN001, ARG002
         self.checked_in.append(text)
+
+    async def check_media_input(self, media, *, module, max_images=5):  # noqa: ANN001, ARG002
+        self.checked_media.append(media)
 
     async def check_output(self, text, *, module):  # noqa: ANN001, ARG002
         self.checked_out.append(text)
