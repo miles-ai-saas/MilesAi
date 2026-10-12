@@ -163,7 +163,9 @@ class AgentChatEntryMixin:
                 )
                 return await finish(route, response)
 
-            response = await self._run_published_flow(agent, agent_id, chat_body, query=query, kb_ids=kb_ids)
+            response = await self._run_published_flow(
+                agent, agent_id, chat_body, query=query, kb_ids=kb_ids, on_delta=on_delta
+            )
             route = "flow" if response is not None else self._resolve_rag_route(agent, kb_ids)
             if response is None:
                 response = await self.rag_chat(agent, chat_body, kb_ids, top_k, agent_id, hooks, on_delta=on_delta)
@@ -199,11 +201,13 @@ class AgentChatEntryMixin:
         *,
         query: str,
         kb_ids: list[str],
+        on_delta: OnDelta | None = None,
     ) -> ChatResponse | None:
         """绑定了已发布流程则执行并返回响应，否则返回 ``None`` 交调用方兜底。
 
         ``query`` 单独传入而不从 ``body`` 取：主入口会先经 BEFORE_CALL Hook 改写
         query，子智能体工位则用原样 query，两者输入不同但执行流程一致。
+        ``on_delta`` 注入 ``RunContext``，供答案产出 LLMCall 真 token 流式。
         """
         if not agent.published_flow_id:
             return None
@@ -234,6 +238,7 @@ class AgentChatEntryMixin:
             inputs=inputs,
             kb_ids=kb_ids,
             media=body.media,
+            on_delta=on_delta,
         )
         # 长期 → 近期，与 RAG 路径一致。
         suffix = f"{long_term}{history_block}"

@@ -3,8 +3,10 @@
 from typing import Any
 
 from miles_ai.flow_runtime.compiler.build import build_canvas_graph
+from miles_ai.flow_runtime.compiler.report import resolve_node_type
 from miles_ai.flow_runtime.compiler.state import resolve_final_output
 from miles_ai.flow_runtime.compiler.validate import validate_graph_for_compile
+from miles_ai.flow_runtime.graph_analysis import find_answer_stream_llm_nodes
 from miles_ai.flow_runtime.types import FlowGraph, RunContext
 
 
@@ -21,6 +23,11 @@ async def run_compiled_canvas(
     fg = FlowGraph.from_dict(graph_json)
     report = validate_graph_for_compile(graph_json)
     compiled = build_canvas_graph(graph_json).compile()
+    stream_ids = (
+        find_answer_stream_llm_nodes(fg, resolve_node_type)
+        if ctx.on_delta is not None
+        else None
+    )
     initial: dict[str, Any] = {
         "tenant_id": ctx.tenant_id,
         "inputs": dict(ctx.inputs),
@@ -49,6 +56,8 @@ async def run_compiled_canvas(
         "media_reader": ctx.media_reader,
         "generate_image_sync": ctx.generate_image_sync,
         "generate_video_sync": ctx.generate_video_sync,
+        "on_delta": ctx.on_delta,
+        "answer_stream_node_ids": stream_ids,
         "outputs": {},
         "steps": [
             {

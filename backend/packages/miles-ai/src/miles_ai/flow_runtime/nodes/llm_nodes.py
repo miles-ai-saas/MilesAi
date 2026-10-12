@@ -70,10 +70,16 @@ async def llm_call(
     messages.append(user_msg)
 
     usage_sink = ctx.usage_sink_factory(model) if ctx.usage_sink_factory is not None else None
+    on_delta = None
+    if ctx.on_delta is not None:
+        allowed = ctx.answer_stream_node_ids
+        if allowed is None or (ctx.executing_node_id and ctx.executing_node_id in allowed):
+            on_delta = ctx.on_delta
     return await ainvoke_chat(
         model,
         messages,
         temperature=temperature,
         max_tokens=max_tokens,
         usage_sink=usage_sink,
+        on_delta=on_delta,
     )

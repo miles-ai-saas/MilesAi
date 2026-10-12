@@ -61,6 +61,9 @@ class CanvasGraphState(TypedDict, total=False):
     # L1 注入的同步生成编排回调（随 ctx 透传）
     generate_image_sync: Any
     generate_video_sync: Any
+    # 对话 WS/A2A 真 token 流式（仅答案产出 LLM 节点使用）
+    on_delta: Any
+    answer_stream_node_ids: Any
     outputs: Annotated[dict[str, Any], merge_outputs]
     steps: Annotated[list[dict[str, Any]], operator.add]
     answer: Any

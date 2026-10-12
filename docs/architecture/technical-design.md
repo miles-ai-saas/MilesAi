@@ -650,7 +650,7 @@ flowchart TD
 | 能力 | 状态 | 说明 / 文档 |
 |------|------|-------------|
 | L2 内置工具扩充（合规检测、触发流程/钩子、列附件） | ✅ | `compliance_check_text`、`run_flow_once`、`invoke_tenant_hook`、`list_attachments`（资源范围护栏）；见 [tools-runtime.md](./tools-runtime.md) §7 |
-| 对话 HTTP 整包流式；tool/flow/子智能体路径真 token 流式 | 🔶 | WS 直连/RAG/tool_agent 已真流式；HTTP 仍整包；flow/子智能体仍切块/末帧；见 [realtime-transport-design.md](./realtime-transport-design.md) |
+| 对话 HTTP 整包流式；子智能体路径真 token 流式 | 🔶 | WS 直连/RAG/tool_agent/flow 答案 LLM 已真流式；HTTP 仍整包；子智能体仍切块/末帧；见 [realtime-transport-design.md](./realtime-transport-design.md) |
 | WS 断线续传、服务端会话快照 | ⬜ | v2，见 [realtime-transport-design.md](./realtime-transport-design.md) |
 | A2A 对外 Server 流式 | 🔶 | Card（`protocolVersion=0.3`、`streaming=true`）、`message/send`、`message/stream` SSE 流式、`contextId` 多轮、`tasks/get` / `tasks/cancel`、`tasks/resubscribe` 续播、产物下载 ✅；`pushNotificationConfig/*` 待做；见 [a2a.md](../guides/a2a.md) |
 | 流程版本一键回滚 | ✅ | `POST …/versions/{n}/restore` 拷贝 graph 另存新版本；工作台版本历史调用该 API |

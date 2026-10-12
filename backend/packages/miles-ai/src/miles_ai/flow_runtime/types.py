@@ -102,6 +102,10 @@ class RunContext:
     # 须随 resolve_generative_* 一并注入（见 chat_rag/flow debug-run）。
     generate_image_sync: Callable[..., Awaitable[Any]] | None = None
     generate_video_sync: Callable[..., Awaitable[Any]] | None = None
+    # 对话 WS/A2A 注入：LLMCall 真 token 流式回调（仅答案产出节点使用，见 answer_stream_node_ids）
+    on_delta: Callable[[str], Awaitable[None]] | None = None
+    # 允许推送 on_delta 的节点 id（通常为终点 LLM 或喂入 TextOutput 的 LLM）；None 表示不限制
+    answer_stream_node_ids: frozenset[str] | None = None
 
 
 @dataclass

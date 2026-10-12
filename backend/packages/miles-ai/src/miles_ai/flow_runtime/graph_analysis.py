@@ -162,3 +162,29 @@ def find_end_nodes(fg: FlowGraph, resolve_type) -> list[str]:
     if ends:
         return ends
     return [n["id"] for n in fg.nodes if resolve_type(n) in TEXT_OUTPUT_NODE_TYPES]
+
+
+def find_answer_stream_llm_nodes(fg: FlowGraph, resolve_type) -> frozenset[str]:
+    """可对 ``on_delta`` 推送的 LLM 节点：终点 LLM，或直接喂入 TextOutput 的 LLM。
+
+    避免中间 LLMCall 污染对话气泡；找不到则返回空集（该次运行不流式）。
+    """
+    from miles_ai.flow_runtime.constants import CanvasNodeType
+
+    node_map = {n["id"]: n for n in fg.nodes if n.get("id")}
+    ends = find_end_nodes(fg, resolve_type)
+    llm_ends = {
+        nid for nid in ends if nid in node_map and resolve_type(node_map[nid]) == CanvasNodeType.LLM_CALL
+    }
+    if llm_ends:
+        return frozenset(llm_ends)
+
+    incoming = build_incoming(fg)
+    feeders: set[str] = set()
+    for eid in ends:
+        if eid not in node_map or resolve_type(node_map[eid]) not in TEXT_OUTPUT_NODE_TYPES:
+            continue
+        for src, _, _ in incoming.get(eid, []):
+            if src in node_map and resolve_type(node_map[src]) == CanvasNodeType.LLM_CALL:
+                feeders.add(src)
+    return frozenset(feeders)

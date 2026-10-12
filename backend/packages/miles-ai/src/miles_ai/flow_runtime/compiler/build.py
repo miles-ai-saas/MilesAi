@@ -66,6 +66,8 @@ def _run_context_from_state(state: dict[str, Any], node_id: str) -> RunContext:
         media_reader=state.get("media_reader"),
         generate_image_sync=state.get("generate_image_sync"),
         generate_video_sync=state.get("generate_video_sync"),
+        on_delta=state.get("on_delta"),
+        answer_stream_node_ids=state.get("answer_stream_node_ids"),
     )
 
 

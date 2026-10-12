@@ -97,8 +97,12 @@ class AgentChatRagMixin:
         inputs: dict,
         kb_ids: list[str],
         media: list | None = None,
+        on_delta: OnDelta | None = None,
     ) -> RunContext:
-        """构造流程画布 ``RunContext``（含 system_prompt、KB、附图 payload）。"""
+        """构造流程画布 ``RunContext``（含 system_prompt、KB、附图 payload）。
+
+        ``on_delta`` 由对话 WS/A2A 注入，供答案产出 LLMCall 真 token 流式。
+        """
         from miles_portal.tenant.attachments.services.media_reader import build_flow_media_reader
         from miles_portal.tenant.compliance.services.scan_words_loader import build_scan_words_loader
         from miles_portal.tenant.flows.services.subflow_loader import build_subflow_graph_loader
@@ -143,6 +147,7 @@ class AgentChatRagMixin:
             media_reader=build_flow_media_reader(tenant_id=str(self.ctx.tenant_id), user_id=self.ctx.user_id),
             generate_image_sync=generate_image_for_model,
             generate_video_sync=generate_video_for_model,
+            on_delta=on_delta,
         )
 
     async def maybe_augment_a2a(self, agent: Agent, body: ChatRequest, response: ChatResponse) -> ChatResponse:

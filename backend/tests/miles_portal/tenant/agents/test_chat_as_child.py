@@ -48,10 +48,11 @@ class _Entry(SimpleNamespace):
     async def get_agent_or_raise(self, child_id):  # noqa: ANN001, ARG002
         return self.child
 
-    async def flow_run_context(self, agent, *, agent_id, inputs, kb_ids, media):  # noqa: ANN001, ARG002
+    async def flow_run_context(self, agent, *, agent_id, inputs, kb_ids, media, on_delta=None):  # noqa: ANN001, ARG002
         self.flow_inputs = inputs
         self.flow_ctx_args = (agent_id, kb_ids, media)
-        return {"inputs": inputs}
+        self.flow_on_delta = on_delta
+        return SimpleNamespace(system_prompt="", inputs=inputs)
 
     async def rag_chat(self, agent, body, kb_ids, top_k, agent_id, hooks):  # noqa: ANN001, ARG002
         self.rag_args = (kb_ids, top_k, agent_id)
@@ -71,14 +72,17 @@ def _child(**overrides):
 
 
 def _entry(*, child=None, flow_repo=None):
+    from unittest.mock import AsyncMock
+
     entry = _Entry(
         child=child or _child(),
-        db=object(),
-        ctx=SimpleNamespace(tenant_id=uuid4()),
+        db=SimpleNamespace(commit=AsyncMock()),
+        ctx=SimpleNamespace(tenant_id=uuid4(), user_id=uuid4()),
     )
     entry.flow_repo = flow_repo or _FlowRepo()
     entry.flow_inputs = None
     entry.flow_ctx_args = None
+    entry.flow_on_delta = None
     entry.rag_args = None
     entry.rag_response = SimpleNamespace(answer="rag-answer", steps=[])
     # 绑定真实的流程执行，让 chat_as_child 的编排逻辑被真实执行
@@ -112,7 +116,18 @@ def _flow_entry(*, flow_id=None, version=1, kb_ids=()):
 
 @pytest.fixture(autouse=True)
 def _patch_hooks(monkeypatch):
+    from unittest.mock import AsyncMock
+
+    async def _empty_history(*args, **kwargs):  # noqa: ANN001, ARG001
+        return []
+
     monkeypatch.setattr(entry_mod, "HookRunner", _Hooks)
+    monkeypatch.setattr(entry_mod, "load_chat_history_messages", _empty_history)
+    monkeypatch.setattr(
+        entry_mod.UserMemoryService,
+        "load_for_inject",
+        AsyncMock(return_value=([], "")),
+    )
 
 
 # --- 前置校验 ---------------------------------------------------------------

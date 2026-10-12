@@ -122,9 +122,10 @@ class _Entry(SimpleNamespace):
         self.on_delta = on_delta
         return self.rag_response
 
-    async def flow_run_context(self, agent, *, agent_id, inputs, kb_ids, media):  # noqa: ANN001, ARG002
+    async def flow_run_context(self, agent, *, agent_id, inputs, kb_ids, media, on_delta=None):  # noqa: ANN001, ARG002
         self.flow_inputs = inputs
-        return {"inputs": inputs}
+        self.flow_on_delta = on_delta
+        return SimpleNamespace(system_prompt="", inputs=inputs)
 
 
 def _agent(**overrides):
@@ -143,10 +144,15 @@ def _agent(**overrides):
 
 
 def _entry(*, agent=None, flow_repo=None, rag_response=None):
-    entry = _Entry(agent=agent or _agent(), db=_TxnDb(), ctx=SimpleNamespace(tenant_id=uuid4()))
+    entry = _Entry(
+        agent=agent or _agent(),
+        db=_TxnDb(),
+        ctx=SimpleNamespace(tenant_id=uuid4(), user_id=uuid4()),
+    )
     entry.augmented = 0
     entry.rag_args = None
     entry.flow_inputs = None
+    entry.flow_on_delta = None
     entry.rag_response = rag_response or SimpleNamespace(answer="rag-answer")
     entry.flow_repo = flow_repo or _FlowRepo()
     # 绑定真实的收尾与路由解析，让 chat 的编排逻辑被真实执行
@@ -163,6 +169,8 @@ def _bind(entry):
 @pytest.fixture(autouse=True)
 def _patch_services(monkeypatch):
     """替换外部服务；每个用例复位类级配置，避免相互污染。"""
+    from unittest.mock import AsyncMock
+
     _Hooks.modified_query = None
     _Hooks.last = None
     _Recorder.last = None
@@ -176,6 +184,13 @@ def _patch_services(monkeypatch):
     monkeypatch.setattr(entry_mod, "user_requests_image_collage", lambda q: False)
     monkeypatch.setattr(entry_mod, "list_sub_agent_bindings", _async_ret([]))
     monkeypatch.setattr(entry_mod, "list_agent_a2a_peer_refs", _async_ret([]))
+    monkeypatch.setattr(entry_mod, "assert_tokens_monthly", _async_ret(None))
+    monkeypatch.setattr(entry_mod, "load_chat_history_messages", _async_ret([]))
+    monkeypatch.setattr(
+        entry_mod.UserMemoryService,
+        "load_for_inject",
+        AsyncMock(return_value=([], "")),
+    )
 
 
 def _async_ret(value):
