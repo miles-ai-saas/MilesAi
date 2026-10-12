@@ -261,12 +261,14 @@ class AgentChatRagMixin:
         system_prompt: str,
         kb_ids: list[str] | None = None,
         kb_top_k: int | None = None,
+        on_delta: OnDelta | None = None,
     ) -> ChatResponse:
         """装配并运行 tool_agent（RAG 与 tool calling 共存路径）。
 
         注入运行时默认值到 ``agent.config``：输入区生图/时长偏好、会话 id，
         以及在绑定 KB 时注入 ``_bound_kb_ids`` / ``_bound_kb_top_k``，
         供 ``knowledge_search`` 省略 kb 与条数参数时回退。
+        ``on_delta`` 透传至 ``run_tool_calling_chat``，供 WS/A2A 最终回答真 token 流式。
         """
         from miles_integrations.langchain.tool_agent import run_tool_calling_chat
         from miles_portal.tenant.tools.services.agent_executor import (
@@ -331,6 +333,7 @@ class AgentChatRagMixin:
             ),
             kb_ids=list(kb_ids) if kb_ids else None,
             history_messages=history,
+            on_delta=on_delta,
         )
 
     async def rag_chat(
@@ -356,7 +359,9 @@ class AgentChatRagMixin:
             cfg = agent.config if isinstance(agent.config, dict) else {}
             if (cfg.get("enable_tool_calling") or cfg.get("enable_generative_tools")) and agent.model_config_id:
                 base = await self.resolve_system_prompt(agent)
-                return await self._run_tool_agent(agent, body, agent_id=agent_id, system_prompt=base)
+                return await self._run_tool_agent(
+                    agent, body, agent_id=agent_id, system_prompt=base, on_delta=on_delta
+                )
             return await self.direct_chat(agent, body, agent_id, hooks, on_delta=on_delta)
 
         if should_use_tools_with_kb(agent, kb_ids):
@@ -368,6 +373,7 @@ class AgentChatRagMixin:
                 system_prompt=base,
                 kb_ids=kb_ids,
                 kb_top_k=top_k,
+                on_delta=on_delta,
             )
 
         base = await self.resolve_system_prompt(agent)

@@ -83,9 +83,10 @@ def _patch_litellm(monkeypatch, responses):
     """按顺序返回预设响应，并记录每次调用收到的 messages / tools。"""
     seen: dict = {"calls": [], "tools": None}
 
-    async def fake(model, messages, tools, *, temperature):  # noqa: ANN001
+    async def fake(model, messages, tools, *, temperature, on_delta=None):  # noqa: ANN001
         seen["calls"].append(messages)
         seen["tools"] = tools
+        seen["on_delta"] = on_delta
         return responses.pop(0)
 
     monkeypatch.setattr(loop_mod, "_litellm_with_tools", fake)

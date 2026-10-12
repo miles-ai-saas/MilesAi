@@ -20,6 +20,7 @@ from miles_integrations.langchain.tool_agent.litellm_tools import (
     _litellm_with_tools,
     _tools_to_openai_schema,
 )
+from miles_integrations.litellm.adapter import OnDelta
 from miles_integrations.langchain.tool_agent.parse import (
     _GENERATIVE_INTENT_PHRASES,
     _extract_tool_params_from_text,
@@ -394,6 +395,7 @@ async def run_tool_calling_chat(
     media_reader: MediaReader,
     kb_ids: list[str] | None = None,
     history_messages: list[dict] | None = None,
+    on_delta: OnDelta | None = None,
 ) -> ChatResponse:
     """
     LiteLLM 多轮 function calling 主循环。
@@ -411,6 +413,8 @@ async def run_tool_calling_chat(
     ``kb_ids``：绑定知识库；非空时强制保留 ``knowledge_search`` 工具（不受 ``tool_slugs``
     白名单约束），并把命中片段回填 ``ChatResponse.sources``，实现 RAG 与 tool calling 共存。
     ``history_messages``：服务端从 PG 加载并截断后的跨轮 user/assistant（不含本轮）。
+    ``on_delta``：非空时每轮 LLM 走流式；最终回答 content token 真推送（WS/A2A）；
+    tool_call 轮通常无正文。
 
     具体职责已下沉：用户确认续接见 ``_resume_confirmed_tool``，正文模拟调用的自救助见
     ``_recover_from_tool_simulation``，单个 tool_call 执行见 ``_execute_tool_call``。
@@ -473,7 +477,13 @@ async def run_tool_calling_chat(
         )
 
     for _ in range(max_iter):
-        response = await _litellm_with_tools(model, messages, openai_tools, temperature=temperature)
+        response = await _litellm_with_tools(
+            model,
+            messages,
+            openai_tools,
+            temperature=temperature,
+            on_delta=on_delta,
+        )
         if usage_sink is not None:
             p, c, _ = extract_litellm_usage(response)
             await usage_sink.record(prompt_tokens=p, completion_tokens=c)

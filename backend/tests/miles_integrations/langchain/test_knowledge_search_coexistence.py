@@ -129,7 +129,7 @@ async def test_loop_backfills_sources_and_keeps_knowledge_search(monkeypatch):
         _Resp(_Message("依据片段作答。", tool_calls=[])),
     ]
 
-    async def fake_litellm(model, messages, tools, *, temperature):  # noqa: ANN001
+    async def fake_litellm(model, messages, tools, *, temperature, on_delta=None):  # noqa: ANN001
         captured["tools"] = tools
         return responses.pop(0)
 
