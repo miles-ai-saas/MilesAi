@@ -7,6 +7,20 @@ type Props = Pick<AgentFormStepContentProps, "form" | "setForm" | "designMode">;
 export function AgentFormStepAdvancedSection({ form, setForm, designMode }: Props) {
   return (
     <div className={`mx-auto ${agentFormStepWidth(designMode)} space-y-5`}>
+      <div className="rounded-lg border border-line-soft p-4">
+        <p className="mb-1 text-xs font-medium text-ink">跨会话记忆</p>
+        <p className="mb-2 text-xs text-ink-muted">
+          开启后，成功对话会异步抽取用户摘要/偏好，并在直连、工具与 RAG 路径注入 system（默认关闭）。
+        </p>
+        <label className="flex cursor-pointer items-center gap-2 text-xs">
+          <input
+            type="checkbox"
+            checked={form.user_memory_enabled}
+            onChange={(e) => setForm((f) => ({ ...f, user_memory_enabled: e.target.checked }))}
+          />
+          启用长期记忆（摘要 / 偏好）
+        </label>
+      </div>
       {form.sub_agents.length > 0 ? (
         <div className="rounded-lg border border-line-soft p-4">
           <p className="mb-2 text-xs font-medium text-ink">内部协同规划</p>

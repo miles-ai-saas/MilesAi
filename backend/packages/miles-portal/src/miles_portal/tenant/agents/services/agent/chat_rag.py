@@ -20,6 +20,7 @@ from miles_portal.tenant.agents.services.chat_memory import (
     format_history_block,
     load_chat_history_messages,
 )
+from miles_portal.tenant.agents.services.user_memory import UserMemoryService
 from miles_portal.tenant.attachments.services.media_reader import (
     build_flow_media_reader,
 )
@@ -205,6 +206,11 @@ class AgentChatRagMixin:
                 agent_id=agent_id,
                 conversation_id=body.conversation_id,
             )
+            memory_rows, long_term = await UserMemoryService(self.db, self.ctx).load_for_inject(
+                agent=agent,
+                user_id=self.ctx.user_id,
+            )
+            system_content = f"{base}{long_term}"
             model = await self.resolve_invoke_model(agent.model_config)
             usage_sink = self.chat_usage_sink(model, source_id=agent_id)
             # 释放请求事务：模型解析会读租户凭据，随后是单次 LLM 调用，中间无需本会话。
@@ -212,7 +218,7 @@ class AgentChatRagMixin:
             answer = await ainvoke_chat(
                 model,
                 [
-                    {"role": "system", "content": base},
+                    {"role": "system", "content": system_content},
                     *history,
                     user_msg,
                 ],
@@ -235,6 +241,8 @@ class AgentChatRagMixin:
                     "history_messages": len(history),
                 }
             ]
+            if long_term:
+                steps.append({"type": "user_memory", "items": len(memory_rows), "chars": len(long_term)})
             if body_media_count > 0 and agent.model_config.model_type != "vision" and media_parts:
                 steps.append({"type": "multimodal_warning", "message": f"当前模型类型为 {agent.model_config.model_type}（非 vision），图片可能无法被模型识别"})
             return ChatResponse(answer=answer, sources=[], steps=steps)
@@ -297,6 +305,10 @@ class AgentChatRagMixin:
             agent_id=agent_id,
             conversation_id=body.conversation_id,
         )
+        _, long_term = await UserMemoryService(self.db, self.ctx).load_for_inject(
+            agent=agent,
+            user_id=self.ctx.user_id,
+        )
         # assemble 仍需 agent 附着会话；之后 expunge，避免 ephemeral config 被 commit flush 入库
         self.db.expunge(agent)
         await self.db.commit()  # 释放请求会话；后续 LLM/工具用短会话
@@ -309,7 +321,7 @@ class AgentChatRagMixin:
         return await run_tool_calling_chat(
             agent,
             body,
-            system_prompt=f"{system_prompt}{hint}",
+            system_prompt=f"{system_prompt}{hint}{long_term}",
             model=model,
             usage_sink=usage_sink,
             platform_tools=platform_tools,
@@ -386,8 +398,12 @@ class AgentChatRagMixin:
                 agent_id=agent_id,
                 conversation_id=body.conversation_id,
             )
-            # 历史仅拼进生成用 system；检索仍用本轮 retrieve_query
-            gen_system = f"{base}{format_history_block(history)}"
+            memory_rows, long_term = await UserMemoryService(self.db, self.ctx).load_for_inject(
+                agent=agent,
+                user_id=self.ctx.user_id,
+            )
+            # 长期 → 近期；检索仍用本轮 retrieve_query
+            gen_system = f"{base}{long_term}{format_history_block(history)}"
             model = await self.resolve_invoke_model(agent.model_config)
             usage_sink = self.chat_usage_sink(model, source_id=agent_id)
             if should_use_langgraph_rag(agent, kb_ids=kb_ids):
@@ -455,6 +471,8 @@ class AgentChatRagMixin:
                 agent_id,
                 {"module": SCAN_MODULE_AGENT_CHAT, "agent_id": str(agent_id), "text": answer[:500]},
             )
+            if long_term:
+                steps = [*list(steps or []), {"type": "user_memory", "items": len(memory_rows), "chars": len(long_term)}]
         else:
             all_hits = await retrieve_hits(
                 body.query,

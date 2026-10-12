@@ -19,6 +19,7 @@ export type AgentFormValues = {
   a2a_peers: A2aPeerRefInput[];
   a2a_invoke_policy: "rules_then_plan" | "rules_only" | "plan_only";
   a2a_intent_router_enabled: boolean;
+  user_memory_enabled: boolean;
   use_langgraph_rag: boolean;
   use_llm_grade: boolean;
   relevance_threshold: number;
@@ -60,6 +61,7 @@ export function emptyAgentForm(): AgentFormValues {
     a2a_peers: [],
     a2a_invoke_policy: "rules_then_plan",
     a2a_intent_router_enabled: false,
+    user_memory_enabled: false,
     use_langgraph_rag: true,
     use_llm_grade: false,
     relevance_threshold: 0.35,
@@ -113,6 +115,7 @@ export function agentToFormValues(agent: Agent): AgentFormValues {
     a2a_intent_router_enabled: Boolean(
       cfg.a2a_intent_router && typeof cfg.a2a_intent_router === "object" && cfg.a2a_intent_router.enabled,
     ),
+    user_memory_enabled: Boolean(cfg.user_memory && typeof cfg.user_memory === "object" && cfg.user_memory.enabled),
     use_langgraph_rag: cfg.use_langgraph_rag !== false,
     relevance_threshold: Number(cfg.relevance_threshold ?? 0.35),
     rag_max_retries: Number(cfg.rag_max_retries ?? 1),
@@ -227,6 +230,14 @@ export function buildAgentConfig(form: AgentFormValues, baseConfig: AgentConfig 
   // 对外 A2A Server：只写布尔 true，关闭时删除键（后端 is_publish_enabled 只认 True）
   if (form.a2a_publish) config.a2a_publish = true;
   else delete config.a2a_publish;
+
+  if (form.user_memory_enabled) {
+    const prev =
+      baseConfig?.user_memory && typeof baseConfig.user_memory === "object" ? { ...baseConfig.user_memory } : {};
+    config.user_memory = { ...prev, enabled: true };
+  } else {
+    delete config.user_memory;
+  }
 
   return config;
 }

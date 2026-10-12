@@ -31,6 +31,7 @@ from miles_portal.tenant.agents.schemas.meta import AgentMetaOut
 from miles_portal.tenant.agents.schemas.schedule import AgentScheduleCreate, AgentScheduleOut, AgentScheduleUpdate
 from miles_portal.tenant.agents.schemas.schedule_run import AgentScheduleRunOut
 from miles_portal.tenant.agents.schemas.stats import AgentStatsOut
+from miles_portal.tenant.agents.schemas.user_memory import UserMemoryItemOut, UserMemoryListOut
 from miles_portal.tenant.agents.services.agent import AgentService
 from miles_portal.tenant.agents.services.api_access import AgentApiAccessService
 from miles_portal.tenant.agents.services.architecture import AgentArchitectureService
@@ -38,6 +39,7 @@ from miles_portal.tenant.agents.services.call_records import AgentCallRecordServ
 from miles_portal.tenant.agents.services.chat_sessions import AgentChatSessionService
 from miles_portal.tenant.agents.services.schedule import AgentScheduleService
 from miles_portal.tenant.agents.services.stats import AgentStatsService
+from miles_portal.tenant.agents.services.user_memory import UserMemoryService
 from miles_portal.tenant.agents.ws import agent_chat_ws_router
 
 router = APIRouter()
@@ -46,6 +48,10 @@ router.include_router(agent_chat_ws_router)
 
 def _svc(db: AsyncSession, ctx: TenantContext) -> AgentService:
     return AgentService(db, ctx)
+
+
+def _user_memory_svc(db: AsyncSession, ctx: TenantContext) -> UserMemoryService:
+    return UserMemoryService(db, ctx)
 
 
 def _api_access_svc(db: AsyncSession, ctx: TenantContext) -> AgentApiAccessService:
@@ -238,6 +244,37 @@ async def delete_agent_chat_session(
 ):
     await _chat_session_svc(db, ctx).delete_session(agent_id, session_id)
     return ok(message="已删除")
+
+
+@router.get("/{agent_id}/user-memories", response_model=ApiResponse[UserMemoryListOut])
+async def list_agent_user_memories(
+    agent_id: UUID,
+    ctx: TenantContext = Depends(require_permissions("agent:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    """当前登录用户在该智能体下的跨会话记忆（summary / preference）。"""
+    return ok(await _user_memory_svc(db, ctx).list_mine(agent_id))
+
+
+@router.get("/{agent_id}/user-memories/{kind}", response_model=ApiResponse[UserMemoryItemOut])
+async def get_agent_user_memory(
+    agent_id: UUID,
+    kind: str,
+    ctx: TenantContext = Depends(require_permissions("agent:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    return ok(await _user_memory_svc(db, ctx).get_mine(agent_id, kind))
+
+
+@router.delete("/{agent_id}/user-memories", response_model=ApiResponse[dict])
+async def clear_agent_user_memories(
+    agent_id: UUID,
+    ctx: TenantContext = Depends(require_permissions("agent:write")),
+    db: AsyncSession = Depends(get_db),
+):
+    """一键清空当前用户在该智能体下的全部长期记忆。"""
+    deleted = await _user_memory_svc(db, ctx).clear_mine(agent_id)
+    return ok({"deleted": deleted}, message="已清空")
 
 
 @router.get("/{agent_id}/architecture", response_model=ApiResponse[AgentArchitectureOut])

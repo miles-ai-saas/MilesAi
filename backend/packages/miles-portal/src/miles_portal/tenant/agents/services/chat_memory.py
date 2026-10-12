@@ -2,6 +2,8 @@
 
 直连 / tool_agent 以 messages 列表注入；RAG（线性与 LangGraph）以文本块拼进 system_prompt。
 检索 query 仍用本轮问题，避免历史污染向量检索。Flow / A2A 本批未接入。
+
+跨会话长期记忆见 ``user_memory.py``（``agt_user_agent_memories``），与短程并列注入 system。
 """
 
 from __future__ import annotations

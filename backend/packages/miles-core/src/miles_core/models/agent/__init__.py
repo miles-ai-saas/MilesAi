@@ -15,6 +15,7 @@ from miles_core.models.agent.chat_call import AgentChatCall
 from miles_core.models.agent.chat_session import AgentChatMessage, AgentChatSession
 from miles_core.models.agent.schedule import AgentSchedule
 from miles_core.models.agent.schedule_run import AgentScheduleRun, AgentScheduleRunStatus
+from miles_core.models.agent.user_memory import AgentUserMemory
 
 __all__ = [
     "Agent",
@@ -28,5 +29,6 @@ __all__ = [
     "AgentStatus",
     "AgentSubAgentBinding",
     "AgentType",
+    "AgentUserMemory",
     "agent_kb_bindings",
 ]

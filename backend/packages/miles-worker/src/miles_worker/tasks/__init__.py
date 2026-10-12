@@ -6,6 +6,7 @@ from miles_worker.tasks.generative import run_generative_image_job, run_generati
 from miles_worker.tasks.health import ping
 from miles_worker.tasks.ingest import ingest_document
 from miles_worker.tasks.model_health import probe_models_health
+from miles_worker.tasks.user_memory import run_user_memory_extract
 
 __all__ = [
     "ingest_document",
@@ -15,5 +16,6 @@ __all__ = [
     "run_eval_batch",
     "run_generative_image_job",
     "run_generative_video_job",
+    "run_user_memory_extract",
     "tick_agent_schedules",
 ]

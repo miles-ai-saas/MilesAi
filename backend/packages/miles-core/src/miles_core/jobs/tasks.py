@@ -26,10 +26,12 @@ TASK_NAMES = {
     "run_agent_schedule": "milesai.tasks.agent_schedule.run_agent_schedule",
     "tick_agent_schedules": "milesai.tasks.agent_schedule.tick_agent_schedules",
     "run_eval_batch": "milesai.tasks.eval.run_eval_batch",
+    "run_user_memory_extract": "milesai.tasks.memory.run_user_memory_extract",
     "ping": "milesai.tasks.health.ping",
 }
 
 RUN_EVAL_BATCH = TASK_NAMES["run_eval_batch"]
+RUN_USER_MEMORY_EXTRACT = TASK_NAMES["run_user_memory_extract"]
 
 INGEST_DOCUMENT = TASK_NAMES["ingest_document"]
 RUN_GENERATIVE_VIDEO_JOB = TASK_NAMES["run_generative_video_job"]

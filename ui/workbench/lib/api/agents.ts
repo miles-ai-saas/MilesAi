@@ -98,6 +98,15 @@ export const agentsApi = {
   deleteAgentChatSession: (agentId: string, sessionId: string) =>
     http.delete(`/agents/${agentId}/chat-sessions/${sessionId}`).then(() => undefined),
 
+  listAgentUserMemories: (agentId: string) =>
+    get<{ items: import("../types").AgentUserMemoryItem[] }>(`/agents/${agentId}/user-memories`),
+
+  getAgentUserMemory: (agentId: string, kind: string) =>
+    get<import("../types").AgentUserMemoryItem>(`/agents/${agentId}/user-memories/${kind}`),
+
+  clearAgentUserMemories: (agentId: string) =>
+    http.delete(`/agents/${agentId}/user-memories`).then(() => undefined),
+
   createAgent: (payload: {
     agent_type?: import("../types").AgentType;
     category_id?: string | null;

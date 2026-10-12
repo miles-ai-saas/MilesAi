@@ -20,12 +20,16 @@ from miles_core.tenant import TenantContext, assert_tenant_access, tenant_filter
 from miles_portal.tenant.agents.repositories.agent import AgentRepository
 from miles_portal.tenant.agents.schemas.agent import ChatRequest, ChatResponse
 from miles_portal.tenant.agents.schemas.call_records import AgentCallRecordDetailOut, AgentCallRecordOut
+from miles_core.jobs.tasks import RUN_USER_MEMORY_EXTRACT
+from miles_core.models.agent import Agent
 from miles_portal.tenant.agents.services.chat_sessions import persist_chat_turn
+from miles_portal.tenant.agents.services.user_memory import user_memory_enabled
 from miles_portal.tenant.hooks.models import HookExecutionLog
 from miles_portal.tenant.hooks.schemas.execution import HookExecutionLogOut
 from miles_portal.tenant.models.services.usage import get_chat_usage_totals
 from miles_portal.tenant.tools.models import ToolInvocationLog
 from miles_portal.tenant.tools.schemas.tools import ToolInvocationLogOut
+from miles_worker.app import celery_app
 
 PREVIEW_MAX_LEN = 200
 RELATED_LOG_LIMIT = 20
@@ -41,6 +45,14 @@ _TOOL_STEP_TYPES = frozenset(
         "knowledge_search",
     },
 )
+
+
+# 一期长期记忆仅覆盖直连 / tool / RAG；其余路由跳过抽取。
+_USER_MEMORY_ROUTES = frozenset({"direct_llm", "tool_agent", "rag"})
+
+
+def route_allows_user_memory(route: str) -> bool:
+    return route in _USER_MEMORY_ROUTES
 
 
 def preview_text(text: str, *, max_len: int = PREVIEW_MAX_LEN) -> str:
@@ -156,6 +168,32 @@ class ChatCallRecorder:
             trace_id=get_trace_id(),
             user_query=self.user_query,
         )
+        await self._maybe_enqueue_user_memory(response, route=route)
+
+    async def _maybe_enqueue_user_memory(self, response: ChatResponse, *, route: str) -> None:
+        """成功回合后异步抽取长期记忆；任务携带本轮快照，避免 commit 竞态。"""
+        if not self.ctx.user_id or not self.conversation_id:
+            return
+        if not route_allows_user_memory(route):
+            return
+        agent = await self.db.get(Agent, self.agent_id)
+        if not agent or not user_memory_enabled(agent):
+            return
+        try:
+            celery_app.send_task(
+                RUN_USER_MEMORY_EXTRACT,
+                args=[
+                    str(self.ctx.tenant_id),
+                    str(self.ctx.user_id),
+                    str(self.agent_id),
+                    self.user_query or "",
+                    response.answer or "",
+                    get_trace_id(),
+                ],
+            )
+        except Exception:
+            # 抽取失败不影响对话主路径
+            pass
 
     async def record_failure(
         self,

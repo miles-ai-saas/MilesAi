@@ -26,6 +26,7 @@ FROZEN_TASK_NAMES = {
     "run_agent_schedule": "milesai.tasks.agent_schedule.run_agent_schedule",
     "tick_agent_schedules": "milesai.tasks.agent_schedule.tick_agent_schedules",
     "run_eval_batch": "milesai.tasks.eval.run_eval_batch",
+    "run_user_memory_extract": "milesai.tasks.memory.run_user_memory_extract",
     "ping": "milesai.tasks.health.ping",
 }
 

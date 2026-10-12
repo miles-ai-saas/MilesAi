@@ -51,6 +51,11 @@ export interface AgentConfig {
     enabled?: boolean;
     model_config_id?: string;
   };
+  /** 跨会话用户记忆（摘要/偏好）；默认关闭。 */
+  user_memory?: {
+    enabled?: boolean;
+    max_inject_chars?: number;
+  };
   use_langgraph_rag?: boolean;
   relevance_threshold?: number;
   rag_max_retries?: number;
@@ -74,6 +79,15 @@ export interface AgentConfig {
   a2a_publish?: boolean;
   /** 保留后端可能返回的未登记字段 */
   [key: string]: unknown;
+}
+
+export interface AgentUserMemoryItem {
+  id: string;
+  kind: string;
+  content: string;
+  source_trace_id?: string | null;
+  updated_at: string;
+  created_at: string;
 }
 
 export interface AgentStatsPoint {
