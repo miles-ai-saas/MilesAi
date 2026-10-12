@@ -235,12 +235,17 @@ def test_direct_chat_commits_before_llm(monkeypatch):
         return "答"
 
     monkeypatch.setattr(chat_rag_mod, "ainvoke_chat", AsyncMock(side_effect=fake_ainvoke))
+    monkeypatch.setattr(
+        chat_rag_mod,
+        "load_chat_history_messages",
+        AsyncMock(return_value=[{"role": "user", "content": "上一轮"}]),
+    )
 
     out = _run(
         AgentChatRagMixin.direct_chat(
             svc,
             _agent(),
-            ChatRequest(query="问题"),
+            ChatRequest(query="问题", conversation_id="conv-1"),
             uuid4(),
             _hooks(),
         )
@@ -248,6 +253,10 @@ def test_direct_chat_commits_before_llm(monkeypatch):
 
     assert out.answer == "答"
     assert db.events == ["commit", "llm"]
+    roles = [m["role"] for m in captured["messages"]]
+    assert roles == ["system", "user", "user"]
+    assert captured["messages"][1]["content"] == "上一轮"
+    assert out.steps[0].get("history_messages") == 1
 
 
 def _tool_agent() -> SimpleNamespace:
@@ -284,6 +293,11 @@ def test_tool_agent_commits_before_run_tool_calling_chat(monkeypatch):
         "miles_integrations.langchain.tool_agent.run_tool_calling_chat",
         fake_run_tool_calling_chat,
     )
+    monkeypatch.setattr(
+        chat_rag_mod,
+        "load_chat_history_messages",
+        AsyncMock(return_value=[{"role": "assistant", "content": "先前答复"}]),
+    )
 
     out = _run(
         AgentChatRagMixin._run_tool_agent(
@@ -304,6 +318,7 @@ def test_tool_agent_commits_before_run_tool_calling_chat(monkeypatch):
     assert agent.config.get("_conversation_id") == "conv-1"
     assert agent.config.get("_bound_kb_ids") == ["kb1"]
     assert agent.config.get("_bound_kb_top_k") == 3
+    assert captured["kwargs"]["history_messages"] == [{"role": "assistant", "content": "先前答复"}]
 
 
 def test_tool_agent_uses_flow_media_reader_and_short_session_executor(monkeypatch):
@@ -329,6 +344,7 @@ def test_tool_agent_uses_flow_media_reader_and_short_session_executor(monkeypatc
         "miles_integrations.langchain.tool_agent.run_tool_calling_chat",
         fake_run_tool_calling_chat,
     )
+    monkeypatch.setattr(chat_rag_mod, "load_chat_history_messages", AsyncMock(return_value=[]))
 
     _run(
         AgentChatRagMixin._run_tool_agent(

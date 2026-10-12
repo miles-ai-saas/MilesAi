@@ -398,6 +398,29 @@ async def test_kb_binding_keeps_knowledge_search_tool(monkeypatch):
     assert resp.answer == "直接回答"
 
 
+async def test_history_messages_prepended_before_current_user(monkeypatch):
+    seen = _patch_litellm(monkeypatch, [_Resp(_Message("ok", tool_calls=[]))])
+    resp = await loop_mod.run_tool_calling_chat(
+        _agent(),
+        ChatRequest(query="本轮"),
+        system_prompt="sys",
+        model=_model(),
+        tool_executor=_Executor(),
+        platform_tools=[_Tool("calculator")],
+        media_reader=None,
+        history_messages=[
+            {"role": "user", "content": "上一轮问"},
+            {"role": "assistant", "content": "上一轮答"},
+        ],
+    )
+    messages = seen["calls"][0]
+    roles = [m["role"] for m in messages]
+    assert roles[:4] == ["system", "user", "assistant", "user"]
+    assert messages[1]["content"] == "上一轮问"
+    assert messages[-1]["content"] == "本轮"
+    assert resp.steps[0].get("history_messages") == 2
+
+
 @pytest.mark.parametrize("model_type", ["chat", "vision"])
 async def test_multimodal_warning_only_for_non_vision_model(model_type, monkeypatch):
     _patch_litellm(monkeypatch, [_Resp(_Message("回答", tool_calls=[]))])

@@ -393,6 +393,7 @@ async def run_tool_calling_chat(
     platform_tools: list,
     media_reader: MediaReader,
     kb_ids: list[str] | None = None,
+    history_messages: list[dict] | None = None,
 ) -> ChatResponse:
     """
     LiteLLM 多轮 function calling 主循环。
@@ -409,6 +410,7 @@ async def run_tool_calling_chat(
     用于把本轮附图解析为 ``data URL`` multimodal content parts。
     ``kb_ids``：绑定知识库；非空时强制保留 ``knowledge_search`` 工具（不受 ``tool_slugs``
     白名单约束），并把命中片段回填 ``ChatResponse.sources``，实现 RAG 与 tool calling 共存。
+    ``history_messages``：服务端从 PG 加载并截断后的跨轮 user/assistant（不含本轮）。
 
     具体职责已下沉：用户确认续接见 ``_resume_confirmed_tool``，正文模拟调用的自救助见
     ``_recover_from_tool_simulation``，单个 tool_call 执行见 ``_execute_tool_call``。
@@ -442,13 +444,22 @@ async def run_tool_calling_chat(
     media_parts = await resolve_media_refs(media_reader, body.media, max_count=max_media) if body.media else []
     chat_query = body.query.strip() or ("请根据附图回答。" if media_parts else body.query)
     user_msg = build_user_message(query=chat_query, media_parts=media_parts)
+    prior = list(history_messages or [])
     messages: list[dict] = [
         {"role": "system", "content": system_prompt},
+        *prior,
         user_msg,
     ]
     max_iter = int((agent.config or {}).get("max_tool_iterations", 5))
     steps: list[dict] = [
-        {"type": "tool_agent", "engine": "litellm_tools", "media_count": body_media_count, "media_resolved": len(media_parts), "model_type": model.model_type}
+        {
+            "type": "tool_agent",
+            "engine": "litellm_tools",
+            "media_count": body_media_count,
+            "media_resolved": len(media_parts),
+            "model_type": model.model_type,
+            "history_messages": len(prior),
+        }
     ]
     artifacts: list[ChatArtifact] = []
     knowledge_hits: list[dict] = []

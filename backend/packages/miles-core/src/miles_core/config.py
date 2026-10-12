@@ -96,6 +96,9 @@ class Settings(BaseSettings):
 
     # 工作台智能体对话 WebSocket（关闭时前端回退 HTTP POST /chat）
     agent_chat_websocket_enabled: bool = True
+    # 直连 / tool_agent：从 PG 会话注入历史时的字符预算与条数上限（粗估 token ≈ chars/2）
+    agent_chat_history_max_chars: int = 8000
+    agent_chat_history_max_messages: int = 40
 
     # CORS 来源白名单（逗号分隔，精确匹配）：同时用于 CORS 中间件与异常响应头，
     # 生产部署务必包含所有前端地址（见 ui/admin/README.md）。

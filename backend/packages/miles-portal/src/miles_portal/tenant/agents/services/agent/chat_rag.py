@@ -16,6 +16,7 @@ from miles_integrations.langchain.chat_models import OnDelta, ainvoke_chat
 from miles_portal.tenant.a2a.services.peer_refs import list_agent_a2a_peer_refs
 from miles_portal.tenant.agents.schemas.agent import ChatRequest, ChatResponse
 from miles_portal.tenant.agents.services.agent.serialization import should_use_tools_with_kb
+from miles_portal.tenant.agents.services.chat_memory import load_chat_history_messages
 from miles_portal.tenant.attachments.services.media_reader import (
     build_flow_media_reader,
 )
@@ -195,6 +196,12 @@ class AgentChatRagMixin:
                 reasoning_query = chat_query
             body_media_count = len(body.media) if body.media else 0
             user_msg = build_user_message(query=reasoning_query, media_parts=media_parts)
+            history = await load_chat_history_messages(
+                self.db,
+                tenant_id=self.ctx.tenant_id,
+                agent_id=agent_id,
+                conversation_id=body.conversation_id,
+            )
             model = await self.resolve_invoke_model(agent.model_config)
             usage_sink = self.chat_usage_sink(model, source_id=agent_id)
             # 释放请求事务：模型解析会读租户凭据，随后是单次 LLM 调用，中间无需本会话。
@@ -203,6 +210,7 @@ class AgentChatRagMixin:
                 model,
                 [
                     {"role": "system", "content": base},
+                    *history,
                     user_msg,
                 ],
                 temperature=float((agent.config or {}).get("temperature", 0.7)),
@@ -216,7 +224,13 @@ class AgentChatRagMixin:
                 {"module": SCAN_MODULE_AGENT_CHAT, "agent_id": str(agent_id), "text": answer[:500]},
             )
             steps: list[dict] = [
-                {"type": "direct_chat", "media_count": body_media_count, "media_resolved": len(media_parts), "model_type": agent.model_config.model_type}
+                {
+                    "type": "direct_chat",
+                    "media_count": body_media_count,
+                    "media_resolved": len(media_parts),
+                    "model_type": agent.model_config.model_type,
+                    "history_messages": len(history),
+                }
             ]
             if body_media_count > 0 and agent.model_config.model_type != "vision" and media_parts:
                 steps.append({"type": "multimodal_warning", "message": f"当前模型类型为 {agent.model_config.model_type}（非 vision），图片可能无法被模型识别"})
@@ -274,6 +288,12 @@ class AgentChatRagMixin:
         model = await self.resolve_invoke_model(agent.model_config)
         usage_sink = self.chat_usage_sink(model, source_id=agent_id)
         platform_tools = await assemble_agent_tools(self.db, self.ctx, agent.config or {})
+        history = await load_chat_history_messages(
+            self.db,
+            tenant_id=self.ctx.tenant_id,
+            agent_id=agent_id,
+            conversation_id=body.conversation_id,
+        )
         # assemble 仍需 agent 附着会话；之后 expunge，避免 ephemeral config 被 commit flush 入库
         self.db.expunge(agent)
         await self.db.commit()  # 释放请求会话；后续 LLM/工具用短会话
@@ -295,6 +315,7 @@ class AgentChatRagMixin:
                 tenant_id=self.ctx.tenant_id, user_id=self.ctx.user_id
             ),
             kb_ids=list(kb_ids) if kb_ids else None,
+            history_messages=history,
         )
 
     async def rag_chat(
