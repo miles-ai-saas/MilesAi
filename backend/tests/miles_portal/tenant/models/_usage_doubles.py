@@ -9,14 +9,18 @@
 
 
 class _ShortSession:
-    """替身：记录 add 的行，并记录是否 commit。"""
+    """替身：记录 add 的行，并记录是否 commit / execute。"""
 
     def __init__(self) -> None:
         self.rows: list[object] = []
         self.commits = 0
+        self.executes = 0
 
     def add(self, row: object) -> None:
         self.rows.append(row)
+
+    async def execute(self, *_args: object, **_kwargs: object) -> None:
+        self.executes += 1
 
     async def flush(self) -> None:
         return None

@@ -7,11 +7,13 @@ from contextvars import ContextVar, Token
 from dataclasses import dataclass
 from uuid import UUID
 
+from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from miles_core.infra.db import AsyncSessionLocal
 from miles_core.models.model import ModelConfig
 from miles_core.models.model.usage_log import ModelUsageLog
+from miles_core.models.platform.tenant import Tenant
 from miles_integrations.litellm.usage_sink import UsageSink
 
 
@@ -67,13 +69,24 @@ class UsageRecordContext:
     source_id: UUID | None = None
 
 
+async def _bump_tokens_used_month(db: AsyncSession, tenant_id: UUID, delta: int) -> None:
+    """原子累加 ``sys_tenants.tokens_used_month``（短会话与请求会话并发安全）。"""
+    if delta <= 0:
+        return
+    await db.execute(
+        update(Tenant)
+        .where(Tenant.id == tenant_id)
+        .values(tokens_used_month=Tenant.tokens_used_month + int(delta))
+    )
+
+
 async def record_model_usage(
     ctx: UsageRecordContext,
     *,
     prompt_tokens: int = 0,
     completion_tokens: int = 0,
 ) -> None:
-    """写 ``ModelUsageLog`` 并 flush；chat 来源同时累加到上下文变量。"""
+    """写 ``ModelUsageLog`` 并 flush；chat 来源同时累加到上下文变量；累加租户月度 Token。"""
     total = max(0, prompt_tokens) + max(0, completion_tokens)
     if total <= 0:
         return
@@ -93,6 +106,7 @@ async def record_model_usage(
         total_tokens=total,
     )
     ctx.db.add(row)
+    await _bump_tokens_used_month(ctx.db, ctx.tenant_id, total)
     await ctx.db.flush()
 
 

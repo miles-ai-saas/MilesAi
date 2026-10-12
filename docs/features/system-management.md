@@ -139,6 +139,12 @@ GET /system/quota    # 本租户 KB/存储/智能体/流程/Token/生成日次�
 
 配额上限修改仅在运营后台；租户侧无写接口。
 
+**本月 Token（已接线）**
+
+- 用量：`record_model_usage` 写 `agt_model_usage_logs` 时原子累加 `sys_tenants.tokens_used_month`
+- 预检：`POST …/agents/{id}/chat` 在合规通过后调用 `assert_tokens_monthly`；`max_tokens_monthly <= 0` 表示不限
+- 与「今日生成次数」分列；月初自动清零 / 自动选模为本批非目标
+
 ### 3.8 用户扩展
 
 ```

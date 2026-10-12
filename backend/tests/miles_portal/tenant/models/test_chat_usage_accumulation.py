@@ -51,3 +51,4 @@ async def test_chat_usage_sink_accumulates_and_commits(monkeypatch):
     assert row.prompt_tokens == 100
     assert row.completion_tokens == 20
     assert short.commits == 1
+    assert short.executes == 1  # tokens_used_month 原子累加

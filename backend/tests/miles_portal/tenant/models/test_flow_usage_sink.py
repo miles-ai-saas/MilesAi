@@ -20,13 +20,17 @@ from miles_portal.tenant.models.services.usage import (
 
 
 class _FakeSession:
-    """假会话：add 同步收集行，flush/commit 可 await 并计数。"""
+    """假会话：add 同步收集行，flush/commit/execute 可 await 并计数。"""
 
     def __init__(self) -> None:
         self.added: list[object] = []
         self.add = Mock(side_effect=self.added.append)
         self.flush_calls = 0
         self.commit_calls = 0
+        self.execute_calls = 0
+
+    async def execute(self, *_args: object, **_kwargs: object) -> None:
+        self.execute_calls += 1
 
     async def flush(self) -> None:
         self.flush_calls += 1

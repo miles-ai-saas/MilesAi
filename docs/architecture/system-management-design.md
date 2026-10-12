@@ -251,20 +251,20 @@ GET /system/quota          # 本租户汇总：KB/存储/Agent/Flow/Token/生成
 
 - 不在租户 `/system` 暴露 `PATCH /tenants/{id}` 的 `max_*` 字段；若保留超管租户 API，Service 层应拒绝非运营上下文写入配额字段。
 
-**配额 enforcement（P1，后端）**
+**配额 enforcement（后端）**
 
-统一 `QuotaService`（创建/上传/调用时校验，与 UI 只读无关）：
+| 校验 | 状态 | 挂载 |
+|------|------|------|
+| KB / 存储 | ✅ | KB 创建、附件上传 |
+| Agent / Flow 数量 | ✅ | 创建前 |
+| 生成日次数 | ✅ | 厂商 HTTP 前 |
+| **本月 Token** | ✅ | `assert_tokens_monthly` → Agent `chat`；`record_model_usage` 原子累加 `tokens_used_month` |
 
 ```python
-class QuotaService:
-    async def assert_can_create_kb(tenant_id: UUID) -> None: ...
-    async def assert_storage_mb(tenant_id: UUID, delta_mb: int) -> None: ...
-    async def assert_tokens_monthly(tenant_id: UUID, delta: int) -> None: ...
-    async def assert_can_create_agent(tenant_id: UUID) -> None: ...
-    async def assert_can_create_flow(tenant_id: UUID) -> None: ...
+# 实现位于 miles_portal.tenant.system.services.quota / models.services.usage
+async def assert_tokens_monthly(db, tenant_id) -> None: ...  # max<=0 不限；used>=max 拒绝新一轮 chat
 ```
 
-**挂载点**：KB 创建、附件上传、Agent / Flow 创建。  
 **用量更新**：入库完成、`agt_model_usage_logs` 写入时累加 `storage_used_mb` / `tokens_used_month`。
 
 **前端**（`/system/quota`，P1）

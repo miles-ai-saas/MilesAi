@@ -59,6 +59,20 @@ async def assert_can_create_flow(db: AsyncSession, tenant_id: UUID) -> None:
         raise ForbiddenError(f"流程数量已达上限（{tenant.max_flows}），请联系平台管理员提升配额")
 
 
+async def assert_tokens_monthly(db: AsyncSession, tenant_id: UUID) -> None:
+    """校验本月 Token 配额；``max_tokens_monthly <= 0`` 表示不限。
+
+    Chat 无法在调用前预估精确用量：已达上限则拒绝新一轮对话（对齐生成日配额「调用前校验」）。
+    """
+    tenant = await _load_tenant(db, tenant_id)
+    limit = int(tenant.max_tokens_monthly)
+    if limit <= 0:
+        return
+    used = int(tenant.tokens_used_month)
+    if used >= limit:
+        raise ForbiddenError(f"本月 Token 已达上限（{used}/{limit}），请联系平台管理员提升配额")
+
+
 async def get_tenant_quota_out(db: AsyncSession, tenant_id: UUID) -> TenantQuotaOut:
     """汇总知识库/存储/智能体/流程/Token/生图各项配额用量。"""
     tenant = await _load_tenant(db, tenant_id)
@@ -81,5 +95,6 @@ async def get_tenant_quota_out(db: AsyncSession, tenant_id: UUID) -> TenantQuota
 __all__ = [
     "assert_can_create_agent",
     "assert_can_create_flow",
+    "assert_tokens_monthly",
     "get_tenant_quota_out",
 ]

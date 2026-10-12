@@ -24,6 +24,7 @@ from miles_portal.tenant.compliance.services.compliance import ComplianceService
 from miles_portal.tenant.hooks.models import HookScope, HookTrigger
 from miles_portal.tenant.hooks.services.runner import HookRunner
 from miles_portal.tenant.models.services.usage import begin_chat_usage_accumulation, end_chat_usage_accumulation
+from miles_portal.tenant.system.services.quota import assert_tokens_monthly
 
 logger = get_logger(__name__)
 
@@ -101,6 +102,7 @@ class AgentChatEntryMixin:
             query = str(hook_payload.get("query", effective_query))
             chat_body = body.model_copy(update={"query": query}) if query != effective_query else body
             await compliance.check_input(query, module=SCAN_MODULE_AGENT_CHAT)
+            await assert_tokens_monthly(self.db, self.ctx.tenant_id)
 
             # KB / top_k 对 a2a_augmented、flow、rag 三条路由相同，提前算一次
             kb_ids = [str(kb.id) for kb in agent.knowledge_bases]
