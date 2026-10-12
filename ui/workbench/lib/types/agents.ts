@@ -46,6 +46,11 @@ export interface AgentConfig {
   skill_package_id?: string;
   mcp_service_ids?: string[];
   a2a_invoke_policy?: "rules_then_plan" | "rules_only" | "plan_only";
+  /** 开启后 A2A 规划阶段改用意图路由 LLM（规则层仍按 policy 生效）。 */
+  a2a_intent_router?: {
+    enabled?: boolean;
+    model_config_id?: string;
+  };
   use_langgraph_rag?: boolean;
   relevance_threshold?: number;
   rag_max_retries?: number;

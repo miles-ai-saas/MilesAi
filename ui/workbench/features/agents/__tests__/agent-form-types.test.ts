@@ -129,6 +129,17 @@ describe("buildAgentConfig", () => {
     expect(config.max_a2a_calls_per_turn).toBe(2);
   });
 
+  it("启用意图路由时写入 a2a_intent_router.enabled", () => {
+    const form = {
+      ...emptyAgentForm(),
+      a2a_peers: [{ peer_id: "peer-1", enabled: true }],
+      a2a_invoke_policy: "rules_then_plan" as const,
+      a2a_intent_router_enabled: true,
+    };
+    const config = buildAgentConfig(form, undefined);
+    expect(config.a2a_intent_router).toEqual({ enabled: true });
+  });
+
   it("有 published_flow_id 时设置 workflow 模式", () => {
     const form = { ...emptyAgentForm(), published_flow_id: "flow-1" };
     const config = buildAgentConfig(form, undefined);

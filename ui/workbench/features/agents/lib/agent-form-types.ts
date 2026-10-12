@@ -18,6 +18,7 @@ export type AgentFormValues = {
   sub_agents: SubAgentBindingInput[];
   a2a_peers: A2aPeerRefInput[];
   a2a_invoke_policy: "rules_then_plan" | "rules_only" | "plan_only";
+  a2a_intent_router_enabled: boolean;
   use_langgraph_rag: boolean;
   use_llm_grade: boolean;
   relevance_threshold: number;
@@ -58,6 +59,7 @@ export function emptyAgentForm(): AgentFormValues {
     sub_agents: [],
     a2a_peers: [],
     a2a_invoke_policy: "rules_then_plan",
+    a2a_intent_router_enabled: false,
     use_langgraph_rag: true,
     use_llm_grade: false,
     relevance_threshold: 0.35,
@@ -108,6 +110,9 @@ export function agentToFormValues(agent: Agent): AgentFormValues {
       enabled: p.enabled !== false,
     })),
     a2a_invoke_policy: (cfg.a2a_invoke_policy as AgentFormValues["a2a_invoke_policy"]) || "rules_then_plan",
+    a2a_intent_router_enabled: Boolean(
+      cfg.a2a_intent_router && typeof cfg.a2a_intent_router === "object" && cfg.a2a_intent_router.enabled,
+    ),
     use_langgraph_rag: cfg.use_langgraph_rag !== false,
     relevance_threshold: Number(cfg.relevance_threshold ?? 0.35),
     rag_max_retries: Number(cfg.rag_max_retries ?? 1),
@@ -191,10 +196,20 @@ export function buildAgentConfig(form: AgentFormValues, baseConfig: AgentConfig 
   if (form.a2a_peers.length > 0) {
     config.a2a_invoke_policy = form.a2a_invoke_policy;
     config.max_a2a_calls_per_turn = Number(config.max_a2a_calls_per_turn ?? 2);
+    if (form.a2a_intent_router_enabled) {
+      const prev =
+        baseConfig?.a2a_intent_router && typeof baseConfig.a2a_intent_router === "object"
+          ? { ...baseConfig.a2a_intent_router }
+          : {};
+      config.a2a_intent_router = { ...prev, enabled: true };
+    } else {
+      delete config.a2a_intent_router;
+    }
   } else {
     delete config.a2a_invoke_policy;
     delete config.max_a2a_calls_per_turn;
     delete config.a2a_peer_count;
+    delete config.a2a_intent_router;
   }
 
   if (form.published_flow_id) {

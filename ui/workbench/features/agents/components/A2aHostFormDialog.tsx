@@ -139,6 +139,16 @@ function A2aHostFormPeersStep({
           ))}
         </select>
       </label>
+      {form.a2a_invoke_policy !== "rules_only" ? (
+        <label className="flex cursor-pointer items-center gap-2 text-xs text-ink-muted">
+          <input
+            type="checkbox"
+            checked={form.a2a_intent_router_enabled}
+            onChange={(e) => setForm((f) => ({ ...f, a2a_intent_router_enabled: e.target.checked }))}
+          />
+          <span>启用意图路由（规划阶段用意图分类 LLM）</span>
+        </label>
+      ) : null}
       <p className="text-xs text-ink-muted">至少选择 1 个已在「外部登记」中同步 Card 的 Agent。规则关键词命中则必调该成员。</p>
       <div className="max-h-64 space-y-2 overflow-y-auto">
         {a2aPeers.length === 0 && <p className="text-xs text-ink-faint">请先在 A2A Tab → 外部登记 中添加并同步 Card。</p>}

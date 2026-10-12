@@ -33,10 +33,11 @@ class A2aInvokePolicy(enum.StrEnum):
 
 
 class A2aPlanTrigger(enum.StrEnum):
-    """A2A 调用计划项来源：规则命中 vs 规划器。"""
+    """A2A 调用计划项来源：规则命中 / 通用规划 / 意图路由。"""
 
     RULE = "rule"
     PLAN = "plan"
+    INTENT = "intent"
 
 
 class A2aPeer(UUIDPrimaryKeyMixin, TimestampMixin, Base):

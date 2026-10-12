@@ -15,6 +15,7 @@ export type A2aHostFormValues = {
   model_config_id: string;
   a2a_peers: A2aPeerRefInput[];
   a2a_invoke_policy: "rules_then_plan" | "rules_only" | "plan_only";
+  a2a_intent_router_enabled: boolean;
 };
 
 export const AGENT_HOST_FORM_STEPS = [
@@ -34,6 +35,7 @@ export function emptyHostAgentForm(): A2aHostFormValues {
     model_config_id: "",
     a2a_peers: [],
     a2a_invoke_policy: "rules_then_plan",
+    a2a_intent_router_enabled: false,
   };
 }
 
@@ -52,17 +54,30 @@ export function agentToHostFormValues(agent: Agent): A2aHostFormValues {
       enabled: p.enabled !== false,
     })),
     a2a_invoke_policy: (cfg.a2a_invoke_policy as A2aHostFormValues["a2a_invoke_policy"]) || "rules_then_plan",
+    a2a_intent_router_enabled: Boolean(
+      cfg.a2a_intent_router && typeof cfg.a2a_intent_router === "object" && cfg.a2a_intent_router.enabled,
+    ),
   };
 }
 
 export function buildHostAgentConfig(form: A2aHostFormValues, base: Record<string, unknown>): Record<string, unknown> {
-  return {
+  const next: Record<string, unknown> = {
     ...base,
     a2a_invoke_policy: form.a2a_invoke_policy,
     max_a2a_calls_per_turn: Number(base.max_a2a_calls_per_turn ?? 3),
     runtime_mode: AGENT_RUNTIME_MODE.AUTONOMOUS,
     planner: AGENT_PLANNER.A2A_ORCHESTRATOR,
   };
+  if (form.a2a_intent_router_enabled && form.a2a_invoke_policy !== "rules_only") {
+    const prev =
+      base.a2a_intent_router && typeof base.a2a_intent_router === "object"
+        ? { ...(base.a2a_intent_router as Record<string, unknown>) }
+        : {};
+    next.a2a_intent_router = { ...prev, enabled: true };
+  } else {
+    delete next.a2a_intent_router;
+  }
+  return next;
 }
 
 type Params = {

@@ -23,8 +23,9 @@
 - Peer CRUD、probe、sync-card
 - 宿主智能体创建/绑定、trigger_keywords
 - custom 智能体 peer_refs + `a2a_invoke_policy`
+- 可选 **意图路由**：`config.a2a_intent_router.enabled`（规划阶段用意图分类 LLM，替代通用 `plan_a2a_peers`；规则层仍按 policy）
 - `run_a2a_host_chat` / `augment_response_with_a2a`
-- 前端：A2A 互联 Tab（外部登记、互联宿主）
+- 前端：A2A 互联 Tab（外部登记、互联宿主）；表单开关「启用意图路由」
 
 ### 1.2 交付范围（对外暴露）
 
@@ -86,9 +87,11 @@ POST /agents/{a2a_host_id}/chat
     → config.a2a_invoke_policy:
         rules_then_plan | plan_only | rules_only
     → max_a2a_calls_per_turn (默认 2)
+    → 可选 a2a_intent_router.enabled：规划阶段走意图路由 LLM
+      （steps: a2a_intent_router；trigger=intent）
 ```
 
-Peer 须 `status=active` 且 Card 有效。
+Peer 须 `status=active` 且 Card 有效。一期意图路由**仅**影响 A2A Peer 选择，不改顶层 chat / 子智能体编排。
 
 ### 3.3 出站行为（Client → 外部 Peer）
 

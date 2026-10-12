@@ -9,6 +9,7 @@
 - ``run_a2a_host_chat``：``agent_type=a2a`` 宿主，**不走**本地 KB/流程，仅编排外部 Peer
 
 策略 ``config.a2a_invoke_policy``：``rules_only`` | ``rules_then_plan`` | ``plan_only``。
+可选 ``config.a2a_intent_router.enabled``：规划阶段改用意图路由 LLM（见 ``intent_router``）。
 """
 
 from __future__ import annotations
@@ -21,6 +22,7 @@ from uuid import UUID
 from miles_core.models.agent import Agent
 from miles_integrations.langchain.chat_models import ainvoke_chat
 from miles_portal.tenant.a2a.client import invoke_a2a_peer
+from miles_portal.tenant.a2a.intent_router import intent_router_enabled, route_a2a_peers_by_intent
 from miles_portal.tenant.a2a.models import (
     A2aInvokePolicy,
     A2aPeerBinding,
@@ -263,21 +265,38 @@ async def resolve_a2a_plan_items(
         return plan_items[:max_calls], pre_steps
 
     if policy in (A2aInvokePolicy.RULES_THEN_PLAN, A2aInvokePolicy.PLAN_ONLY) and (policy == A2aInvokePolicy.PLAN_ONLY or len(plan_items) < max_calls):
-        planned = await plan_a2a_peers(
-            agent,
-            refs,
-            query,
-            exclude_peer_ids=rule_ids if policy == A2aInvokePolicy.RULES_THEN_PLAN else None,
-            db=db,
-            tenant_id=tenant_id,
-        )
-        if planned:
-            pre_steps.append({"type": "a2a_plan", "steps": planned})
+        exclude = rule_ids if policy == A2aInvokePolicy.RULES_THEN_PLAN else None
+        use_intent = intent_router_enabled(agent)
+        if use_intent:
+            planned, intent_meta = await route_a2a_peers_by_intent(
+                agent,
+                refs,
+                query,
+                exclude_peer_ids=exclude,
+                db=db,
+                tenant_id=tenant_id,
+                peer_catalog_fn=_peer_catalog,
+                parse_plan_fn=_parse_a2a_plan,
+            )
+            pre_steps.append({"type": "a2a_intent_router", **intent_meta, "steps": planned})
+            trigger = A2aPlanTrigger.INTENT.value
+        else:
+            planned = await plan_a2a_peers(
+                agent,
+                refs,
+                query,
+                exclude_peer_ids=exclude,
+                db=db,
+                tenant_id=tenant_id,
+            )
+            if planned:
+                pre_steps.append({"type": "a2a_plan", "steps": planned})
+            trigger = A2aPlanTrigger.PLAN.value
         for p in planned:
             if len(plan_items) >= max_calls:
                 break
             if not any(x.get("peer_id") == p.get("peer_id") for x in plan_items):
-                plan_items.append({**p, "trigger": A2aPlanTrigger.PLAN.value})
+                plan_items.append({**p, "trigger": trigger})
 
     return plan_items[:max_calls], pre_steps
 

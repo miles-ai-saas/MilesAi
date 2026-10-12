@@ -61,25 +61,37 @@ export function AgentFormStepBindingsSection({ form, setForm, kbs, allAgents, a2
           在保持本地能力的前提下，按规则或规划调用「A2A 互联 → 外部登记」中的 Agent。若需纯外部编排，请创建「A2A 互联宿主」。
         </p>
         {form.a2a_peers.length > 0 && (
-          <label className="mb-3 block text-xs">
-            <span className="mb-1 block text-ink-muted">外部调用策略</span>
-            <select
-              className="input-field w-full max-w-xs py-1.5 text-xs"
-              value={form.a2a_invoke_policy}
-              onChange={(e) =>
-                setForm((f) => ({
-                  ...f,
-                  a2a_invoke_policy: e.target.value as typeof f.a2a_invoke_policy,
-                }))
-              }
-            >
-              {invokePolicies.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
-          </label>
+          <div className="mb-3 space-y-2">
+            <label className="block text-xs">
+              <span className="mb-1 block text-ink-muted">外部调用策略</span>
+              <select
+                className="input-field w-full max-w-xs py-1.5 text-xs"
+                value={form.a2a_invoke_policy}
+                onChange={(e) =>
+                  setForm((f) => ({
+                    ...f,
+                    a2a_invoke_policy: e.target.value as typeof f.a2a_invoke_policy,
+                  }))
+                }
+              >
+                {invokePolicies.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {form.a2a_invoke_policy !== "rules_only" ? (
+              <label className="flex cursor-pointer items-center gap-2 text-xs text-ink-muted">
+                <input
+                  type="checkbox"
+                  checked={form.a2a_intent_router_enabled}
+                  onChange={(e) => setForm((f) => ({ ...f, a2a_intent_router_enabled: e.target.checked }))}
+                />
+                <span>启用意图路由（规划阶段用意图分类 LLM，替代通用任务规划）</span>
+              </label>
+            ) : null}
+          </div>
         )}
         <div className="max-h-56 space-y-2 overflow-y-auto">
           {a2aPeers.length === 0 && <span className="text-xs text-ink-faint">请先在智能体列表 A2A Tab 登记外部 Agent 并同步 Card。</span>}

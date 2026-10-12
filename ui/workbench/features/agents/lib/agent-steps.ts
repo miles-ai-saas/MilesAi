@@ -123,6 +123,14 @@ function titleForStep(type: string, step: Record<string, unknown>): { title: str
       return { title: "A2A 宿主路由", detail: asStr(step.engine) || undefined };
     case "a2a_rules":
       return { title: "A2A 规则匹配", detail: undefined };
+    case "a2a_intent_router": {
+      const n = Array.isArray(step.selected_peer_ids) ? step.selected_peer_ids.length : 0;
+      const ms = step.latency_ms != null ? `${step.latency_ms} ms` : undefined;
+      return {
+        title: "A2A 意图路由",
+        detail: n > 0 ? `${n} 个 Peer${ms ? ` · ${ms}` : ""}` : ms || asStr(step.empty_reason) || undefined,
+      };
+    }
     case "a2a_plan": {
       const n = Array.isArray(step.steps) ? step.steps.length : 0;
       return { title: "A2A 执行计划", detail: n > 0 ? `${n} 个 Peer` : undefined };
