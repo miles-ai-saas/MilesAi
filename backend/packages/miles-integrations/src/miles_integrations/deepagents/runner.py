@@ -115,7 +115,12 @@ async def run_deepagents_chat(
     if not parent.model_config:
         raise ValueError("DeepAgents 需要主智能体配置大模型")
 
-    subagents = build_compiled_subagents(svc, bindings)
+    subagents = build_compiled_subagents(
+        svc,
+        bindings,
+        conversation_id=body.conversation_id,
+        inputs=body.inputs,
+    )
     if not subagents:
         raise ValueError("无可用子智能体绑定")
 
@@ -131,6 +136,8 @@ async def run_deepagents_chat(
         "不要编造子智能体未返回的内容。\n"
         f"可用子智能体（task 的 subagent_type 使用 name 字段）：\n{catalog}"
     )
+    if body.history_block:
+        system_prompt = f"{system_prompt}{body.history_block}"
 
     llm = get_chat_model(
         parent.model_config,
@@ -160,4 +167,13 @@ async def run_deepagents_chat(
         answer = "DeepAgents 未产生有效回答，请检查子智能体配置与模型。"
 
     steps = _extract_steps(messages, bindings)
+    if body.history_message_count:
+        steps.append(
+            {
+                "type": "chat_memory",
+                "history_messages": body.history_message_count,
+                "route": "subagent",
+                "engine": AgentPlanner.DEEPAGENTS.value,
+            }
+        )
     return SubAgentPlanResult(answer=answer, steps=steps)

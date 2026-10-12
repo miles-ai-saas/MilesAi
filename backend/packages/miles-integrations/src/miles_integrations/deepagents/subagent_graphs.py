@@ -54,7 +54,13 @@ def _description(binding: AgentSubAgentBinding) -> str:
     return "；".join(parts)
 
 
-def _make_child_node(svc: AgentServiceLike, child_id: UUID):
+def _make_child_node(
+    svc: AgentServiceLike,
+    child_id: UUID,
+    *,
+    conversation_id: str | None = None,
+    inputs: dict | None = None,
+):
     """单节点图：HumanMessage → chat_as_child_simple → AIMessage。"""
 
     async def _run(state: MessagesState) -> dict[str, Any]:
@@ -70,6 +76,8 @@ def _make_child_node(svc: AgentServiceLike, child_id: UUID):
         resp = await svc.chat_as_child_simple(
             child_id,
             query=query or "请根据上下文完成任务",
+            inputs=inputs,
+            conversation_id=conversation_id,
         )
         return {"messages": [AIMessage(content=resp.answer)]}
 
@@ -105,6 +113,9 @@ def _build_general_purpose_guard(
 def build_compiled_subagents(
     svc: AgentServiceLike,
     bindings: list[AgentSubAgentBinding],
+    *,
+    conversation_id: str | None = None,
+    inputs: dict | None = None,
 ) -> list[dict[str, Any]]:
     """DeepAgents CompiledSubAgent 列表。"""
     if CompiledSubAgent is None:
@@ -118,7 +129,15 @@ def build_compiled_subagents(
         if not b.child_agent:
             continue
         graph = StateGraph(MessagesState)
-        graph.add_node("work", _make_child_node(svc, b.child_agent_id))
+        graph.add_node(
+            "work",
+            _make_child_node(
+                svc,
+                b.child_agent_id,
+                conversation_id=conversation_id,
+                inputs=inputs,
+            ),
+        )
         graph.add_edge(START, "work")
         graph.add_edge("work", END)
         runnable = graph.compile()

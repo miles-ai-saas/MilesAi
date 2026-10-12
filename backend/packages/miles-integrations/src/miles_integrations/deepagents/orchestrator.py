@@ -71,6 +71,7 @@ async def _platform_plan(
     query: str,
     *,
     svc: AgentServiceLike,
+    history_block: str = "",
 ) -> list[dict]:
     """平台 JSON 规划器：主模型输出 sub_agent_id + task 列表。"""
     if not parent.model_config:
@@ -81,10 +82,13 @@ async def _platform_plan(
             }
         ]
     catalog = _catalog_text(bindings)
+    history_section = f"{history_block}\n" if history_block else ""
     prompt = (
         "你是任务规划器。根据用户问题，从下列子智能体中选择要调用的一个或多个，并给出每个子任务说明。\n"
         '仅输出 JSON：{"steps":[{"sub_agent_id":"uuid","task":"子任务描述"}]}\n\n'
-        f"子智能体列表：\n{catalog}\n\n用户问题：{query}"
+        f"子智能体列表：\n{catalog}\n"
+        f"{history_section}"
+        f"用户问题：{query}"
     )
     model = await svc.resolve_invoke_model(parent.model_config)
     usage_sink = svc.chat_usage_sink(model, source_id=parent.id)
@@ -114,8 +118,23 @@ async def _run_platform_planned(
             "mode": "json_plan",
         }
     ]
+    if body.history_message_count:
+        steps.append(
+            {
+                "type": "chat_memory",
+                "history_messages": body.history_message_count,
+                "route": "subagent",
+                "engine": AgentPlanner.PLATFORM.value,
+            }
+        )
     allowed = {str(b.child_agent_id) for b in bindings}
-    plan = await _platform_plan(parent, bindings, body.query, svc=svc)
+    plan = await _platform_plan(
+        parent,
+        bindings,
+        body.query,
+        svc=svc,
+        history_block=body.history_block,
+    )
     steps.append({"type": "plan", "steps": plan})
 
     parallel = bool((parent.config or {}).get("subagent_parallel", False))
@@ -130,7 +149,12 @@ async def _run_platform_planned(
                 None,
             )
         task = item.get("task", body.query)
-        child_resp = await svc.chat_as_child_simple(UUID(sid), query=task, inputs=body.inputs)
+        child_resp = await svc.chat_as_child_simple(
+            UUID(sid),
+            query=task,
+            inputs=body.inputs,
+            conversation_id=body.conversation_id,
+        )
         binding = next((b for b in bindings if str(b.child_agent_id) == sid), None)
         name = binding.child_agent.name if binding and binding.child_agent else sid
         step = {
@@ -164,8 +188,11 @@ async def _run_platform_planned(
         )
 
     if parent.model_config:
+        parent_prompt = await svc.resolve_system_prompt(parent)
+        if body.history_block:
+            parent_prompt = f"{parent_prompt}{body.history_block}"
         synth_prompt = (
-            f"{await svc.resolve_system_prompt(parent)}\n\n"
+            f"{parent_prompt}\n\n"
             f"用户问题：{body.query}\n\n"
             "各子智能体结果：\n" + "\n\n---\n\n".join(sub_answers) + "\n\n请综合以上结果，给用户一个完整、简洁的最终回答。"
         )

@@ -16,7 +16,7 @@
 
 - 智能体 CRUD、架构预览、统计、标签/分类
 - 对话路由：A2A 宿主 / 内部协同 / 外部 Peer 增强 / 画布流程 / LangGraph RAG / 直连 LLM / tool_agent
-- **短程对话记忆**：`conversation_id` → `agt_chat_messages`；直连/tool/RAG/Flow/A2A 宿主注入（见 `chat_memory.py`）
+- **短程对话记忆**：`conversation_id` → `agt_chat_messages`；直连/tool/RAG/Flow/A2A 宿主/内部协同（subagent）注入（见 `chat_memory.py`）
 - DeepAgents 可选依赖 + 平台规划降级
 - 技能包注入、MCP/工具 function calling
 - 对话工作台、架构拓扑图、执行时间线
@@ -85,9 +85,9 @@ POST /agents/{id}/chat
 | `enable_tool_calling` | false | LiteLLM tools 循环 |
 | `carry_forward_media` | false | 多轮识图沿用附图 |
 
-`steps` 类型：`planner`、`subagent_dispatch`、`subagent`、`planner_fallback`。
+`steps` 类型：`planner`、`subagent_dispatch`、`subagent`、`planner_fallback`、`chat_memory`。
 
-`conversation_id`：DeepAgents 用 `deep:{id}` 前缀，与 RAG checkpoint 隔离。
+短程记忆：L1 加载父会话历史 → `ParentChatInput.history_block` 注入 DeepAgents system / 平台规划与综合 prompt；`conversation_id` 下传到子工位（利于子 Flow/RAG checkpoint）。DeepAgents 另有 `deep:{tenant}:{agent}:{cid}` checkpointer，与 PG 文本块并存（同 Flow/RAG 模式）。
 
 ---
 

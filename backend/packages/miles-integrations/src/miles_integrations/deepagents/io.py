@@ -18,11 +18,14 @@ from miles_core.models.model import ModelConfig
 
 @dataclass
 class ParentChatInput:
-    """父对话输入的 L3 最小视图：query / inputs / conversation_id。"""
+    """父对话输入的 L3 最小视图：query / inputs / conversation_id / 预格式化短程记忆。"""
 
     query: str
     inputs: dict = field(default_factory=dict)
     conversation_id: str | None = None
+    # L1 从 agt_chat_messages 加载后格式化为【近期对话】块；L3 只拼接，不读库。
+    history_block: str = ""
+    history_message_count: int = 0
 
 
 @dataclass
@@ -42,6 +45,7 @@ class AgentServiceLike(Protocol):
         *,
         query: str,
         inputs: dict | None = None,
+        conversation_id: str | None = None,
     ) -> ChatResponse:
         """子智能体工位简化入口（内部委托 ``chat_as_child``）。"""
         ...

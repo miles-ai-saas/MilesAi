@@ -45,3 +45,15 @@ def test_chat_as_child_simple_defaults_inputs_empty():
     _run(bound(uuid4(), query="hi"))
     (_child, body) = entry.calls[0]
     assert body.inputs == {}
+    assert body.conversation_id is None
+
+
+def test_chat_as_child_simple_passes_conversation_id():
+    from miles_portal.tenant.agents.services.agent.chat_entry import AgentChatEntryMixin
+
+    entry = _ChildEntry()
+    entry.calls = []
+    bound = AgentChatEntryMixin.chat_as_child_simple.__get__(entry, type(entry))
+    _run(bound(uuid4(), query="hi", conversation_id="sess-9"))
+    (_child, body) = entry.calls[0]
+    assert body.conversation_id == "sess-9"

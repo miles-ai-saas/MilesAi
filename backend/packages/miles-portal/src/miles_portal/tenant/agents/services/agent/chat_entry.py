@@ -119,6 +119,15 @@ class AgentChatEntryMixin:
                 from miles_integrations.deepagents.orchestrator import run_subagent_planned_chat
 
                 route = "subagent"
+                history = await load_chat_history_messages(
+                    self.db,
+                    tenant_id=self.ctx.tenant_id,
+                    agent_id=agent_id,
+                    conversation_id=chat_body.conversation_id,
+                )
+                history_block = format_history_block(history)
+                # 释放请求事务：DeepAgents / 子工位含多轮 LLM，不长时间占连接。
+                await self.db.commit()
                 result = await run_subagent_planned_chat(
                     self,
                     agent,
@@ -127,6 +136,8 @@ class AgentChatEntryMixin:
                         query=chat_body.query,
                         inputs=chat_body.inputs,
                         conversation_id=chat_body.conversation_id,
+                        history_block=history_block,
+                        history_message_count=len(history),
                     ),
                 )
                 response = ChatResponse(answer=result.answer, sources=[], steps=result.steps)
@@ -233,11 +244,12 @@ class AgentChatEntryMixin:
         *,
         query: str,
         inputs: dict | None = None,
+        conversation_id: str | None = None,
     ) -> ChatResponse:
         """子智能体工位简化入口：免构造 ``ChatRequest``（供 L3 deepagents 契约调用）。"""
         return await self.chat_as_child(
             child_id,
-            ChatRequest(query=query, inputs=inputs or {}),
+            ChatRequest(query=query, inputs=inputs or {}, conversation_id=conversation_id),
         )
 
     async def chat_as_child(self, child_id: UUID, body: ChatRequest) -> ChatResponse:
