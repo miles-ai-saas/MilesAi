@@ -3,6 +3,7 @@
 import { AdminDetailHeader } from "@/components/layout/AdminDetailHeader";
 import { ModelCatalogEditor } from "@/features/model-catalog/components/ModelCatalogEditor";
 import { ModelCatalogDetailAside } from "@/features/model-catalog/components/ModelCatalogDetailAside";
+import { VendorIcon } from "@/features/model-catalog/components/VendorIcon";
 import { STATUS_LABEL, statusBadgeClass, TYPE_LABEL, VENDOR_LABEL } from "@/features/model-catalog/lib/form-utils";
 import type { ModelCatalogDetailPageVm } from "@/features/model-catalog/hooks/use-model-catalog-detail-page";
 
@@ -28,17 +29,20 @@ export function ModelCatalogDetailPageView({ vm }: { vm: ModelCatalogDetailPageV
           </>
         }
         description={
-          <>
-            {VENDOR_LABEL[model.vendor] ?? model.vendor}
-            <span className="mx-2 text-ink-faint">·</span>
-            {TYPE_LABEL[model.model_type] ?? model.model_type}
-            {modelId && (
-              <>
-                <span className="mx-2 text-ink-faint">·</span>
-                <span className="font-mono text-xs">{modelId}</span>
-              </>
-            )}
-          </>
+          <span className="inline-flex flex-wrap items-center gap-2">
+            <VendorIcon vendor={model.vendor} icon={model.icon} size="sm" />
+            <span>
+              {VENDOR_LABEL[model.vendor] ?? model.vendor}
+              <span className="mx-2 text-ink-faint">·</span>
+              {TYPE_LABEL[model.model_type] ?? model.model_type}
+              {modelId && (
+                <>
+                  <span className="mx-2 text-ink-faint">·</span>
+                  <span className="font-mono text-xs">{modelId}</span>
+                </>
+              )}
+            </span>
+          </span>
         }
         action={
           <button type="button" className="btn-primary" disabled={saving} onClick={() => void onSave()}>

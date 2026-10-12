@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { VendorIcon } from "@/features/model-catalog/components/VendorIcon";
 import { STATUS_LABEL, statusBadgeClass, TYPE_LABEL, VENDOR_LABEL } from "@/features/model-catalog/lib/form-utils";
 import { ListFooter } from "@/components/list/ListFooter";
 import type { ModelCatalogPageVm } from "@/features/model-catalog/hooks/use-model-catalog-page";
@@ -63,14 +64,19 @@ export function ModelCatalogTableSection({ vm }: { vm: ModelCatalogPageVm }) {
               return (
                 <tr key={m.id}>
                   <td className="cell-stack">
-                    <Link href={`/model-catalog/detail?id=${m.id}`} className="cell-stack-title hover:text-brand">
-                      {m.name}
-                    </Link>
-                    {modelId && (
-                      <div className="cell-stack-sub" title={modelId}>
-                        {modelId}
+                    <div className="flex items-start gap-2">
+                      <VendorIcon vendor={m.vendor} icon={m.icon} size="sm" className="mt-0.5" />
+                      <div className="min-w-0">
+                        <Link href={`/model-catalog/detail?id=${m.id}`} className="cell-stack-title hover:text-brand">
+                          {m.name}
+                        </Link>
+                        {modelId && (
+                          <div className="cell-stack-sub" title={modelId}>
+                            {modelId}
+                          </div>
+                        )}
                       </div>
-                    )}
+                    </div>
                   </td>
                   <td className="col-compact cell-muted whitespace-nowrap">{VENDOR_LABEL[m.vendor] ?? m.vendor}</td>
                   <td className="col-compact cell-muted whitespace-nowrap">{TYPE_LABEL[m.model_type] ?? m.model_type}</td>

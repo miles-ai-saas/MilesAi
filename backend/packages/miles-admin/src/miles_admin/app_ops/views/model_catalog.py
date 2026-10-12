@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from miles_admin.app_ops.schemas.model_catalog import (
     ModelCatalogCreate,
+    ModelCatalogImportBody,
     ModelCatalogUpdate,
 )
 from miles_admin.app_ops.services.audit import write_audit_log
@@ -52,6 +53,32 @@ async def create_model_catalog(
     return ok(model)
 
 
+@router.post("/import")
+async def import_model_catalog(
+    body: ModelCatalogImportBody,
+    request: Request,
+    ctx: AdminContext = Depends(require_admin_role("ops")),
+    db: AsyncSession = Depends(get_db),
+):
+    """批量导入内置模型 JSON（按 model_code upsert）。"""
+    result = await AdminModelCatalogService(db).import_catalog(body)
+    await write_audit_log(
+        db,
+        admin_id=ctx.admin_id,
+        action="model.import",
+        resource_type="model_catalog",
+        resource_id=None,
+        request=request,
+        detail={
+            "created": result.created,
+            "updated": result.updated,
+            "skipped": result.skipped,
+            "error_count": len(result.errors),
+        },
+    )
+    return ok(result)
+
+
 @router.get("/{model_id}")
 async def get_model_catalog(
     model_id: UUID,
@@ -59,6 +86,16 @@ async def get_model_catalog(
     db: AsyncSession = Depends(get_db),
 ):
     return ok(await AdminModelCatalogService(db).get(model_id))
+
+
+@router.get("/{model_id}/references")
+async def model_catalog_references(
+    model_id: UUID,
+    ctx: AdminContext = Depends(get_platform_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """下架前查看引用该模型的智能体/知识库数量。"""
+    return ok(await AdminModelCatalogService(db).reference_counts(model_id))
 
 
 @router.patch("/{model_id}")
@@ -105,10 +142,11 @@ async def publish_model_catalog(
 async def deprecate_model_catalog(
     model_id: UUID,
     request: Request,
+    force: bool = Query(False, description="仍有引用时强制下架"),
     ctx: AdminContext = Depends(require_admin_role("ops")),
     db: AsyncSession = Depends(get_db),
 ):
-    model = await AdminModelCatalogService(db).deprecate(model_id)
+    model = await AdminModelCatalogService(db).deprecate(model_id, force=force)
     await write_audit_log(
         db,
         admin_id=ctx.admin_id,
@@ -116,6 +154,7 @@ async def deprecate_model_catalog(
         resource_type="model_catalog",
         resource_id=str(model_id),
         request=request,
+        detail={"force": force},
     )
     return ok(model)
 

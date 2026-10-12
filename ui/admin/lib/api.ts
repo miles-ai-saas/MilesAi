@@ -160,7 +160,12 @@ export const adminApi = {
   createModelCatalog: (body: Record<string, unknown>) => post<AdminModelCatalog>("/model-catalog", body),
   updateModelCatalog: (id: string, body: Record<string, unknown>) => patch<AdminModelCatalog>(`/model-catalog/${id}`, body),
   publishModelCatalog: (id: string) => post<AdminModelCatalog>(`/model-catalog/${id}/publish`),
-  deprecateModelCatalog: (id: string) => post<AdminModelCatalog>(`/model-catalog/${id}/deprecate`),
+  getModelCatalogReferences: (id: string) =>
+    get<{ agents: number; knowledge_bases: number; total: number }>(`/model-catalog/${id}/references`),
+  deprecateModelCatalog: (id: string, force = false) =>
+    post<AdminModelCatalog>(`/model-catalog/${id}/deprecate?force=${force ? "true" : "false"}`),
+  importModelCatalog: (body: { items: Record<string, unknown>[]; upsert?: boolean }) =>
+    post<{ created: number; updated: number; skipped: number; errors: string[] }>("/model-catalog/import", body),
   deleteModelCatalog: (id: string) => http.delete(`/model-catalog/${id}`).then(() => undefined),
 
   listMarketplaceCategories: () => get<AdminMarketplaceCategory[]>("/marketplace-categories"),
@@ -238,6 +243,7 @@ export interface AdminModelCatalog {
   description: string | null;
   context_window: string | null;
   badge: string | null;
+  icon?: string | null;
   publish_status: string;
   is_active: boolean;
   is_featured: boolean;

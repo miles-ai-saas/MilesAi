@@ -61,14 +61,29 @@ export function useModelCatalogDetailPage(id: string) {
   };
 
   const onDeprecate = async () => {
-    if (!confirm("确定下架该模型？租户将无法再新绑定。")) return;
     setActionBusy(true);
     setErr("");
     try {
-      const updated = await adminApi.deprecateModelCatalog(id);
+      let force = false;
+      try {
+        const refs = await adminApi.getModelCatalogReferences(id);
+        if (refs.total > 0) {
+          const ok = confirm(
+            `仍有 ${refs.agents} 个智能体、${refs.knowledge_bases} 个知识库引用该模型。\n` +
+              `下架后新绑定将不可用，已绑定需自行改绑。\n\n仍要强制下架？`,
+          );
+          if (!ok) return;
+          force = true;
+        } else if (!confirm("确定下架该模型？租户将无法再新绑定。")) {
+          return;
+        }
+      } catch {
+        if (!confirm("无法拉取引用统计。仍要尝试下架？")) return;
+      }
+      const updated = await adminApi.deprecateModelCatalog(id, force);
       setModel(updated);
       setForm(fromRow(updated));
-      setMsg("已下架");
+      setMsg(force ? "已强制下架" : "已下架");
     } catch (e) {
       setErr(e instanceof Error ? e.message : "下架失败");
     } finally {

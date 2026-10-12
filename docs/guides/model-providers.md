@@ -259,7 +259,7 @@ effective_api_base  = tenant_credentials.api_base ?? model_config.api_base
 - 表格/卡片管理内置目录；
 - 发布/下架；
 - 配置平台默认 `api_base` + Key；
-- 种子/批量导入 JSON（运维友好）。
+- 种子 / `POST /model-catalog/import` 批量导入 JSON（运维友好）。
 
 ### 6.3 智能体表单
 
@@ -298,10 +298,12 @@ effective_api_base  = tenant_credentials.api_base ?? model_config.api_base
 
 ---
 
-## 9. 后续（M4）
+## 9. M4（已交付）
 
-| 阶段 | 交付 | 验收 |
-|------|------|------|
-| **M4 强化** | 下架校验（智能体引用检查）、批量导入、图标资源 | 下架内置已引用时提示 |
+| 交付 | 说明 |
+|------|------|
+| **下架引用校验** | `GET /model-catalog/{id}/references`；`POST …/deprecate` 在有智能体/知识库引用时默认 409，`force=true` 可强制 |
+| **批量导入** | `POST /model-catalog/import`，JSON `items[]` 按 `model_code` upsert（不覆盖已有 Key）；运营列表页「批量导入」 |
+| **图标** | `icon` 字段（存 `extra.icon`）：厂商键或 https URL；列表/详情 `VendorIcon` 字标或图片 |
 
-M1–M3（运营 CRUD + publish、租户目录 UI、BYOK）均已交付。
+M1–M3（运营 CRUD + publish、租户目录 UI、BYOK）与 M4 均已交付。

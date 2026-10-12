@@ -47,6 +47,7 @@ export type ModelCatalogFormValues = {
   api_key: string;
   clear_api_key: boolean;
   badge: string;
+  icon: string;
   sort_order: number;
   is_featured: boolean;
   is_active: boolean;
@@ -65,6 +66,7 @@ export function emptyForm(vendor = "deepseek"): ModelCatalogFormValues {
     api_key: "",
     clear_api_key: false,
     badge: "",
+    icon: "",
     sort_order: 0,
     is_featured: false,
     is_active: true,
@@ -84,6 +86,7 @@ export function fromRow(m: AdminModelCatalog): ModelCatalogFormValues {
     api_key: "",
     clear_api_key: false,
     badge: m.badge ?? "",
+    icon: m.icon ?? "",
     sort_order: m.sort_order,
     is_featured: m.is_featured,
     is_active: m.is_active,
@@ -100,6 +103,7 @@ export function toPayload(v: ModelCatalogFormValues, isCreate: boolean) {
     context_window: v.context_window.trim() || null,
     api_base: v.api_base.trim() || null,
     badge: v.badge.trim() || null,
+    icon: v.icon.trim() || null,
     sort_order: v.sort_order,
     is_featured: v.is_featured,
     is_active: v.is_active,

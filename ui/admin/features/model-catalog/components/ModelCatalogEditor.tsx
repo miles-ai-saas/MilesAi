@@ -79,6 +79,14 @@ export function ModelCatalogEditor({ form, onChange, isCreate, model }: Props) {
             <input className="input-field" value={form.badge} onChange={(e) => set({ badge: e.target.value })} />
           </Field>
         </div>
+        <Field label="图标" hint="厂商键 deepseek/doubao/qwen，或 https 图片 URL；空则按服务商默认字标">
+          <input
+            className="input-field font-mono text-xs"
+            value={form.icon}
+            onChange={(e) => set({ icon: e.target.value })}
+            placeholder="deepseek 或 https://…"
+          />
+        </Field>
         <Field label="排序权重" hint="数值越小越靠前">
           <input
             type="number"
