@@ -162,7 +162,7 @@ flowchart TB
 - 在普通 LLM 节点里「一句话顺带出图」（须走生成工具或专用节点）。
 - 生成结果 **默认不入库**（须在「生成素材」中手动升格；图片为原图入库，视频为 **描述文档** 入库供 RAG，原 mp4 仍在附件）。
 - 视频 **逐帧/流式** 预览。
-- **LLM 真 token 流式**（📋）：WS v1 已上线（[features/agent-chat-websocket.md](../features/agent-chat-websocket.md)），`chat.delta` 仍为整段模拟；生成任务进度用 SSE。
+- **LLM 真 token 流式**（✅）：WS v1 + HTTP `…/chat/stream` SSE；直连/RAG/tool_agent/flow/子智能体综合/DeepAgents 真 token；见 [features/agent-chat-websocket.md](../features/agent-chat-websocket.md)。
 - **视频封面**：生成视频后若环境有 `ffmpeg` 会抽首帧写入 `cover_attachment_id`，供「生成素材」列表缩略图。
 
 ### 4.6 视频升格知识库（产品说明）
@@ -212,7 +212,7 @@ flowchart TB
 
 | 阶段 | 用户可见能力 | 状态 |
 |------|----------------|------|
-| **后续** | LLM 真 token 流式、视频逐帧预览 | 📋 [realtime-transport-design.md](../architecture/realtime-transport-design.md)（WS v1 见 [features/agent-chat-websocket.md](../features/agent-chat-websocket.md)） |
+| **后续** | 视频逐帧预览 | 📋 [realtime-transport-design.md](../architecture/realtime-transport-design.md)；LLM 真 token 流式已完成（见 [features/agent-chat-websocket.md](../features/agent-chat-websocket.md)） |
 
 生文、多模态入库、识图、生图/生视频、媒体资产、生成任务、TTS 等均已上线。
 
