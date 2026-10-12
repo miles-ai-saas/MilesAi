@@ -23,6 +23,7 @@ from miles_portal.tenant.agents.services.user_memory import UserMemoryService
 from miles_portal.tenant.compliance.constants import SCAN_MODULE_AGENT_CHAT
 from miles_portal.tenant.compliance.services.compliance import ComplianceService
 from miles_portal.tenant.hooks.models import HookScope, HookTrigger
+from miles_portal.tenant.hooks.services.app_scope import resolve_install_app_id
 from miles_portal.tenant.hooks.services.runner import HookRunner
 from miles_portal.tenant.models.services.usage import begin_chat_usage_accumulation, end_chat_usage_accumulation
 from miles_portal.tenant.system.services.quota import assert_tokens_monthly
@@ -52,6 +53,7 @@ class AgentChatEntryMixin:
 
         compliance = ComplianceService(self.db, self.ctx)
         hooks = HookRunner(self.db, self.ctx.tenant_id)
+        app_id = await resolve_install_app_id(self.db, self.ctx.tenant_id, agent_id=agent_id)
         effective_query = body.query.strip() or ("[附图]" if body.media else "")
         hook_payload = {
             "module": SCAN_MODULE_AGENT_CHAT,
@@ -60,6 +62,8 @@ class AgentChatEntryMixin:
             "media_count": len(body.media),
             "attachment_ids": [str(m.attachment_id) for m in body.media],
         }
+        if app_id is not None:
+            hook_payload["app_id"] = str(app_id)
         recorder = ChatCallRecorder(
             self.db,
             self.ctx,
@@ -90,14 +94,17 @@ class AgentChatEntryMixin:
                 agent_id=agent_id,
                 hook_payload=hook_payload,
                 response=response,
+                app_id=app_id,
             )
 
         try:
-            before_call = await hooks.run(
+            before_call = await hooks.run_resource(
                 HookTrigger.BEFORE_CALL,
                 HookScope.AGENT,
                 agent_id,
                 {**hook_payload, "direction": "in"},
+                app_id=app_id,
+                phase="before",
             )
             hook_payload = before_call.payload
             query = str(hook_payload.get("query", effective_query))
@@ -174,11 +181,13 @@ class AgentChatEntryMixin:
             return await finish(route, response)
         except Exception as exc:
             await recorder.record_failure(exc, route=route)
-            await hooks.run(
+            await hooks.run_resource(
                 HookTrigger.ON_ERROR,
                 HookScope.AGENT,
                 agent_id,
                 {**hook_payload, "error": str(exc)},
+                app_id=app_id,
+                phase="error",
             )
             # 失败审计必须自己落库：两个出口（``get_db`` 的 except 与 WS 侧
             # ``_run_chat_turn`` 的 except）在异常时一律 rollback，会把刚 flush 的

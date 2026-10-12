@@ -58,6 +58,10 @@ class _Hooks:
             return SimpleNamespace(payload={**payload, "query": _Hooks.modified_query})
         return SimpleNamespace(payload=payload)
 
+    async def run_resource(self, trigger, resource_scope, resource_id, payload, *, app_id=None, phase="before"):  # noqa: ANN001, ARG002
+        """测试替身：无市场应用时与 ``run`` 等价。"""
+        return await self.run(trigger, resource_scope, resource_id, payload)
+
 
 class _Recorder:
     def __init__(self, db, ctx, *, agent_id, body, user_query, media_count=0) -> None:  # noqa: ARG002
@@ -176,6 +180,7 @@ def _patch_services(monkeypatch):
     _Recorder.last = None
     monkeypatch.setattr(entry_mod, "ComplianceService", _Compliance)
     monkeypatch.setattr(entry_mod, "HookRunner", _Hooks)
+    monkeypatch.setattr(entry_mod, "resolve_install_app_id", _async_ret(None))
     monkeypatch.setattr(entry_mod, "ChatCallRecorder", _Recorder)
     monkeypatch.setattr(entry_mod, "begin_chat_usage_accumulation", lambda: "acc")
     monkeypatch.setattr(entry_mod, "end_chat_usage_accumulation", lambda acc: None)
@@ -251,7 +256,7 @@ async def test_subagent_bindings_take_precedence_over_peers(monkeypatch):
 
     import miles_integrations.deepagents.orchestrator as orch_mod
 
-    async def fake_planned(service, agent, bindings, parent_input):  # noqa: ANN001
+    async def fake_planned(service, agent, bindings, parent_input, **_kwargs):  # noqa: ANN001
         return SimpleNamespace(answer="sub", steps=[{"s": 1}])
 
     monkeypatch.setattr(orch_mod, "run_subagent_planned_chat", fake_planned)

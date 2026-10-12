@@ -52,6 +52,7 @@ from miles_portal.tenant.generative.services.job_execution import (
     submit_generative_video_job,
 )
 from miles_portal.tenant.hooks.models import HookScope, HookTrigger
+from miles_portal.tenant.hooks.services.app_scope import resolve_install_app_id
 from miles_portal.tenant.hooks.services.runner import HookRunner
 from miles_portal.tenant.kb.services.embeddings import build_kb_retrieval_bindings
 from miles_portal.tenant.models.services.generative_model_resolve import (
@@ -273,6 +274,7 @@ class FlowService(BaseService):
             query_text = "[附图]"
         compliance = ComplianceService(self.db, self.ctx)
         hooks = HookRunner(self.db, self.ctx.tenant_id)
+        app_id = await resolve_install_app_id(self.db, self.ctx.tenant_id, flow_id=flow_id)
         hook_payload = {
             "module": SCAN_MODULE_FLOW_RUN,
             "flow_id": str(flow_id),
@@ -280,12 +282,16 @@ class FlowService(BaseService):
             "media_count": len(body.media),
             "attachment_ids": [str(m.attachment_id) for m in body.media],
         }
+        if app_id is not None:
+            hook_payload["app_id"] = str(app_id)
         try:
-            before = await hooks.run(
+            before = await hooks.run_resource(
                 HookTrigger.BEFORE_CALL,
                 HookScope.FLOW,
                 flow_id,
                 {**hook_payload, "direction": "in", "query": query_text},
+                app_id=app_id,
+                phase="before",
             )
             hook_payload = before.payload
             query_text = str(hook_payload.get("query", query_text))
@@ -333,19 +339,23 @@ class FlowService(BaseService):
                 output = str(output)
             if isinstance(output, str) and output:
                 await compliance.check_output(output, module=SCAN_MODULE_FLOW_RUN)
-            await hooks.run(
+            await hooks.run_resource(
                 HookTrigger.AFTER_CALL,
                 HookScope.FLOW,
                 flow_id,
                 {**hook_payload, "direction": "out", "output": output},
+                app_id=app_id,
+                phase="after",
             )
             return FlowRunResponse(output=output, steps=result.steps)
         except Exception as exc:
-            await hooks.run(
+            await hooks.run_resource(
                 HookTrigger.ON_ERROR,
                 HookScope.FLOW,
                 flow_id,
                 {**hook_payload, "error": str(exc)},
+                app_id=app_id,
+                phase="error",
             )
             raise
 

@@ -26,14 +26,17 @@ class AgentChatTurnMixin:
         agent_id: UUID,
         hook_payload: dict,
         response: ChatResponse,
+        app_id: UUID | None = None,
     ) -> ChatResponse:
-        """单轮对话收尾：出站合规校验 + ``AFTER_CALL`` Hook。"""
+        """单轮对话收尾：出站合规校验 + ``AFTER_CALL`` Hook（含市场应用外层）。"""
         await compliance.check_output(response.answer, module=SCAN_MODULE_AGENT_CHAT)
-        await hooks.run(
+        await hooks.run_resource(
             HookTrigger.AFTER_CALL,
             HookScope.AGENT,
             agent_id,
             {**hook_payload, "direction": "out", "text": response.answer},
+            app_id=app_id,
+            phase="after",
         )
         return response
 
@@ -59,6 +62,7 @@ class AgentChatTurnMixin:
         agent_id: UUID,
         hook_payload: dict,
         response: ChatResponse,
+        app_id: UUID | None = None,
     ) -> ChatResponse:
         """出站合规 + Hook 收尾，并写入调用记录。"""
         recorder.set_route(route)
@@ -69,6 +73,7 @@ class AgentChatTurnMixin:
                 agent_id=agent_id,
                 hook_payload=hook_payload,
                 response=response,
+                app_id=app_id,
             )
             await recorder.record_success(finished, route=route)
             return finished

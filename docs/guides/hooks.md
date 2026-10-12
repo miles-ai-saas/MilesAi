@@ -75,8 +75,8 @@ hook_bindings        挂载（hook_id, scope, target_id?, trigger, priority, is_
 | `global` | 忽略 | 租户内该 trigger 下全部命中 |
 | `agent` | 智能体 UUID | 与运行时 `HookScope.AGENT` + `agent_id` 一致 |
 | `flow` | 流程 UUID | 与 `HookScope.FLOW` + `flow_id` 一致 |
-| `tool` | 工具 UUID | 与 `HookScope.TOOL` + `tool_id` 一致（**执行点未接**） |
-| `app` | 应用 UUID | 预留（市场安装应用级） |
+| `tool` | 工具 UUID | 与 `HookScope.TOOL` + `tool_id` 一致（`tools/invoke/context.py`） |
+| `app` | 应用 UUID | 市场安装应用；`mkt_installs` 关联的 agent/flow 在 call 生命周期外包派发 |
 
 匹配逻辑（`HookExecutor._load_bindings`）：
 
@@ -93,13 +93,13 @@ hook_bindings        挂载（hook_id, scope, target_id?, trigger, priority, is_
 
 | trigger | Agent `chat` | Agent `chat_as_child` | Flow `run` | Tool invoke | 备注 |
 |---------|:------------:|:---------------------:|:----------:|:-------------:|------|
-| `before_call` | ✅ | ❌ | ✅ | — | Agent：`HookScope.AGENT` |
-| `after_call` | ✅ | ❌ | ✅ | — | 各分支成功返回前 |
-| `before_reasoning` | ✅* | ✅* | ❌ | — | 仅直连 LLM / RAG 路径，见下 |
+| `before_call` | ✅ | ❌ | ✅ | — | 资源 `AGENT`/`FLOW`（含 GLOBAL）；安装资源另包 `APP` |
+| `after_call` | ✅ | ❌ | ✅ | — | 同上（after：资源 → `APP`） |
+| `before_reasoning` | ✅* | ✅* | ❌ | — | 仅直连 LLM / RAG；不跑 `APP` |
 | `after_reasoning` | ✅* | ✅* | ❌ | — | `after` payload 含 `text` 前 500 字 |
 | `before_tool` | ✅ | ✅ | ❌ | ✅ | `tools/invoke.invoke_tool_with_context` |
 | `after_tool` | ✅ | ✅ | ❌ | ✅ | 同上（成功路径） |
-| `on_error` | ✅ | ❌ | ✅ | — | `chat` / `flow.run` 的 `except` 中，之后 **re-raise** |
+| `on_error` | ✅ | ❌ | ✅ | — | 与 before 相同外包；之后 **re-raise** |
 
 \* 未覆盖：A2A 宿主、子智能体规划、画布 flow run（在 `before_call`/`after_call` 层包裹，图内节点无独立 reasoning 钩子）、`enable_tool_calling` 的 tool agent 路径。
 

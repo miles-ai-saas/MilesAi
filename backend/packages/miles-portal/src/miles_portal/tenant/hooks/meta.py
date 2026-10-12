@@ -37,7 +37,7 @@ _SCOPE_LABELS: dict[HookScope, tuple[str, str]] = {
     HookScope.AGENT: ("智能体", "指定 agent_id"),
     HookScope.FLOW: ("流程", "指定 flow_id"),
     HookScope.TOOL: ("工具", "指定 tool_id"),
-    HookScope.APP: ("应用", "预留，市场应用级"),
+    HookScope.APP: ("应用", "市场安装应用；对话/流程 run 时按安装记录派发"),
 }
 
 ON_FAILURE_OPTIONS: list[tuple[str, str, str | None]] = [

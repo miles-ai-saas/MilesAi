@@ -62,7 +62,7 @@ BEFORE_CALL → 合规 check_input → … 推理/工具/流程 …
 
 ### 2.3 scope
 
-`global` | `agent` | `flow` | `tool`（未接）| `app`（预留）
+`global` | `agent` | `flow` | `tool` | `app`（市场安装，对话/流程 call 外包）
 
 ---
 
