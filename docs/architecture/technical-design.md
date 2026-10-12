@@ -650,7 +650,7 @@ flowchart TD
 | 能力 | 状态 | 说明 / 文档 |
 |------|------|-------------|
 | L2 内置工具扩充（合规检测、触发流程/钩子、列附件） | ✅ | `compliance_check_text`、`run_flow_once`、`invoke_tenant_hook`、`list_attachments`（资源范围护栏）；见 [tools-runtime.md](./tools-runtime.md) §7 |
-| 对话 HTTP SSE 流式；DeepAgents 库路径真 token 流式 | 🔶 | `POST …/chat/stream` SSE（事件对齐 WS）✅；`POST …/chat` 仍整包；DeepAgents 库路径仍切块；见 [realtime-transport-design.md](./realtime-transport-design.md) |
+| 对话 HTTP SSE 流式；DeepAgents 库路径真 token 流式 | ✅ | `POST …/chat/stream` SSE（事件对齐 WS）✅；DeepAgents：`PlatformChatModel._astream` + `astream` → `on_delta`；`POST …/chat` 仍整包；见 [realtime-transport-design.md](./realtime-transport-design.md) |
 | WS 断线续传、服务端会话快照 | ⬜ | v2，见 [realtime-transport-design.md](./realtime-transport-design.md) |
 | A2A 对外 Server 流式 | 🔶 | Card（`protocolVersion=0.3`、`streaming=true`）、`message/send`、`message/stream` SSE 流式、`contextId` 多轮、`tasks/get` / `tasks/cancel`、`tasks/resubscribe` 续播、产物下载 ✅；`pushNotificationConfig/*` 待做；见 [a2a.md](../guides/a2a.md) |
 | 流程版本一键回滚 | ✅ | `POST …/versions/{n}/restore` 拷贝 graph 另存新版本；工作台版本历史调用该 API |

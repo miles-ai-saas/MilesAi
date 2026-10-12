@@ -1,6 +1,6 @@
 # 智能体对话 WebSocket
 
-**状态：** v1 已实现（工作台）；直连/RAG/tool_agent/flow/子智能体综合 真 token 流式 ✅；HTTP `POST …/chat/stream` SSE ✅；DeepAgents 库路径仍切块；`POST …/chat` 仍整包
+**状态：** v1 已实现（工作台）；直连/RAG/tool_agent/flow/子智能体综合/DeepAgents 库路径 真 token 流式 ✅；HTTP `POST …/chat/stream` SSE ✅；`POST …/chat` 仍整包
 **PRD 对照：** 模块4 智能体对话  
 **架构：** [realtime-transport-design.md](../architecture/realtime-transport-design.md) · [technical-design.md §10](../architecture/technical-design.md#10-智能体对话)
 
@@ -24,7 +24,7 @@
 ### 1.2 明确不做（v1）
 
 - 对外 OpenAPI 第三方集成的 WS（仅工作台）
-- DeepAgents 库路径 / pending_tool 确认后路径的真 token 流（仍走 `emit_answer_deltas` 切块兜底）
+- pending_tool 确认后路径的真 token 流（仍走 `emit_answer_deltas` 切块兜底）
 - 全站统一 WebSocket 网关
 
 ### 1.3 流式现状
@@ -36,7 +36,8 @@
 | tool_agent（最终回答） | 带 tools 的 LiteLLM `stream=True` → `on_delta` 真 token |
 | flow（答案产出 LLMCall） | `RunContext.on_delta` → 终点/喂入 TextOutput 的 LLM 真 token |
 | 子智能体（平台规划最终综合） | 综合轮 `ainvoke_chat` → `on_delta` 真 token |
-| pending_tool / DeepAgents 库路径 | 整段 answer 后 `emit_answer_deltas` 切块 |
+| DeepAgents 库路径 | `PlatformChatModel._astream` + `astream(messages)` → 主模型 content → `on_delta`（跳过 tool_call 片） |
+| pending_tool 确认后 | 整段 answer 后 `emit_answer_deltas` 切块 |
 
 HTTP `POST …/chat` 不传 `on_delta`，仍整包返回。`POST …/chat/stream`（租户与 OpenAPI）以 SSE 推送同名事件（`chat.delta` / `chat.done` / `chat.error`），内部复用 `on_delta`。合规改写后以 `chat.done.answer` 为准；工作台 `applyChatResponse` 用 `res.answer` 覆盖气泡。
 
@@ -83,7 +84,7 @@ Header: Authorization: Bearer {jwt}
 |------|------|
 | `chat.step` | 编排步骤（与 HTTP `steps` 一致） |
 | `tool.confirm_required` | 待用户确认的工具 |
-| `chat.delta` | 回答文本片段（直连/RAG/tool_agent/flow/子智能体综合为真 token；DeepAgents 库等为切块兜底） |
+| `chat.delta` | 回答文本片段（直连/RAG/tool_agent/flow/子智能体综合/DeepAgents 库为真 token；pending_tool 等为切块兜底） |
 | `chat.done` | 完整 `ChatResponse` JSON |
 | `generative_job.progress` / `generative_job.done` | job watcher 推送 |
 | `chat.error` | 业务或校验错误 |
@@ -100,8 +101,8 @@ Header: Authorization: Bearer {jwt}
     → tool.confirm_required? → 等待 tool.confirm
     → chat.step × N
     → chat.delta × N
-        · 直连/RAG/tool_agent/flow/子智能体综合：LiteLLM stream → on_delta → chat.delta（真 token）
-        · DeepAgents 库等：无 on_delta → emit_answer_deltas 切块
+        · 直连/RAG/tool_agent/flow/子智能体综合/DeepAgents：stream → on_delta → chat.delta（真 token）
+        · pending_tool 等：无 on_delta → emit_answer_deltas 切块
     → chat.done（含最终 answer；合规后可能与 delta 累计略有差异）
     → spawn_job_watchers(pending generative_job ids)
 ```

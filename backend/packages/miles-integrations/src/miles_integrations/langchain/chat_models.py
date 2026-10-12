@@ -14,17 +14,26 @@ LangChain ChatModel 适配：平台 ModelConfig → LiteLLM 对话。
 
 from __future__ import annotations
 
-from collections.abc import Awaitable, Callable
+from collections.abc import AsyncIterator, Awaitable, Callable
 from typing import Any
 
 from langchain_core.callbacks import AsyncCallbackManagerForLLMRun, CallbackManagerForLLMRun
 from langchain_core.language_models.chat_models import BaseChatModel
-from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage
-from langchain_core.outputs import ChatGeneration, ChatResult
+from langchain_core.messages import AIMessage, AIMessageChunk, BaseMessage, HumanMessage, SystemMessage
+from langchain_core.outputs import ChatGeneration, ChatGenerationChunk, ChatResult
 from pydantic import ConfigDict
 
+from miles_common.exceptions import AppError, BadRequestError
 from miles_core.models.model import ModelConfig
-from miles_integrations.litellm.adapter import litellm_chat_completion, litellm_chat_completion_stream
+from miles_integrations.litellm.adapter import (
+    _ensure_messages_valid_for_chat,
+    _extract_stream_delta_content,
+    _litellm_error_message,
+    _resolve_api_base,
+    litellm_chat_completion,
+    litellm_chat_completion_stream,
+    resolve_litellm_model,
+)
 from miles_integrations.litellm.usage_sink import UsageSink
 
 OnDelta = Callable[[str], Awaitable[None]]
@@ -88,6 +97,45 @@ class PlatformChatModel(BaseChatModel):
         )
         gen = ChatGeneration(message=AIMessage(content=content))
         return ChatResult(generations=[gen])
+
+    async def _astream(
+        self,
+        messages: list[BaseMessage],
+        stop: list[str] | None = None,
+        run_manager: AsyncCallbackManagerForLLMRun | None = None,
+        **kwargs: Any,
+    ) -> AsyncIterator[ChatGenerationChunk]:
+        """LangChain 异步流式：LiteLLM ``stream=True``，供 DeepAgents / LangGraph ``astream``。"""
+        import litellm
+
+        openai_msgs = _messages_to_openai(messages)
+        _ensure_messages_valid_for_chat(self.model_row, openai_msgs)
+        call_kw: dict[str, Any] = {
+            "model": resolve_litellm_model(self.model_row),
+            "messages": openai_msgs,
+            "temperature": self.temperature,
+            "max_tokens": self.max_tokens,
+            "stream": True,
+        }
+        if self.model_row.api_key_encrypted:
+            call_kw["api_key"] = self.model_row.api_key_encrypted
+        api_base = _resolve_api_base(self.model_row)
+        if api_base:
+            call_kw["api_base"] = api_base
+        try:
+            response = await litellm.acompletion(**call_kw)
+        except BadRequestError:
+            raise
+        except Exception as exc:
+            raise AppError(_litellm_error_message(exc), status_code=502) from exc
+
+        async for chunk in response:
+            piece = _extract_stream_delta_content(chunk)
+            if not piece:
+                continue
+            if run_manager:
+                await run_manager.on_llm_new_token(piece)
+            yield ChatGenerationChunk(message=AIMessageChunk(content=piece))
 
 
 def get_chat_model(

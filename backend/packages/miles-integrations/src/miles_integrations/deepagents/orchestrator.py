@@ -236,11 +236,11 @@ async def run_subagent_planned_chat(
 ) -> SubAgentPlanResult:
     """有子智能体绑定时，由 DeepAgents 或平台规划器拆解并委派子智能体。
 
-    ``on_delta`` 透传至平台规划最终综合；DeepAgents 库路径本切片仍整段返回（WS 切块兜底）。
+    ``on_delta`` 透传至平台规划最终综合，以及 DeepAgents 库路径的主模型流式片断。
     """
     if _should_use_deepagents(parent) and parent.model_config:
         try:
-            return await run_deepagents_chat(svc, parent, bindings, body)
+            return await run_deepagents_chat(svc, parent, bindings, body, on_delta=on_delta)
         except Exception as exc:
             steps = [
                 {

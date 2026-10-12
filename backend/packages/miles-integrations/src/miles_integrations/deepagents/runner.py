@@ -14,13 +14,13 @@ from __future__ import annotations
 
 from typing import Any
 
-from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
+from langchain_core.messages import AIMessage, AIMessageChunk, HumanMessage, ToolMessage
 
 from miles_core.models.agent import Agent, AgentSubAgentBinding
 from miles_core.models.agent.constants import AgentPlanner
 from miles_integrations.deepagents.io import AgentServiceLike, ParentChatInput, SubAgentPlanResult
 from miles_integrations.deepagents.subagent_graphs import _slug_for_binding, build_compiled_subagents
-from miles_integrations.langchain.chat_models import get_chat_model
+from miles_integrations.langchain.chat_models import OnDelta, get_chat_model
 from miles_integrations.langgraph.checkpointer import get_checkpointer
 
 try:
@@ -38,6 +38,27 @@ def _thread_id(parent: Agent, body: ParentChatInput) -> str:
     """DeepAgents checkpointer 线程 id。"""
     suffix = (body.conversation_id or "default").strip()[:128] or "default"
     return f"deep:{parent.tenant_id}:{parent.id}:{suffix}"
+
+
+def _chunk_text(content: Any) -> str:
+    """把 AIMessageChunk.content（str 或 part 列表）压成纯文本。"""
+    if content is None:
+        return ""
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        parts: list[str] = []
+        for item in content:
+            if isinstance(item, str):
+                parts.append(item)
+            elif isinstance(item, dict) and item.get("type") == "text":
+                parts.append(str(item.get("text") or ""))
+            else:
+                text = getattr(item, "text", None)
+                if text:
+                    parts.append(str(text))
+        return "".join(parts)
+    return str(content)
 
 
 def _extract_answer(messages: list[Any]) -> str:
@@ -95,17 +116,54 @@ def _extract_steps(messages: list[Any], bindings: list[AgentSubAgentBinding]) ->
     return steps
 
 
+async def _run_deepagents_astream(
+    agent: Any,
+    *,
+    query: str,
+    config: dict[str, Any],
+    on_delta: OnDelta,
+) -> list[Any]:
+    """``astream(messages+values)``：主模型 content 片断经 ``on_delta``；跳过 tool_call 片。"""
+    messages: list[Any] = []
+    async for item in agent.astream(
+        {"messages": [HumanMessage(content=query)]},
+        config=config,
+        stream_mode=["messages", "values"],
+    ):
+        # LangGraph：list stream_mode → (mode, payload)
+        if not isinstance(item, tuple) or len(item) != 2:
+            continue
+        mode, payload = item
+        if mode == "messages":
+            msg = payload[0] if isinstance(payload, tuple) else payload
+            if not isinstance(msg, AIMessageChunk):
+                continue
+            if getattr(msg, "tool_call_chunks", None):
+                continue
+            text = _chunk_text(msg.content)
+            if text:
+                await on_delta(text)
+        elif mode == "values" and isinstance(payload, dict):
+            messages = list(payload.get("messages") or messages)
+    return messages
+
+
 async def run_deepagents_chat(
     svc: AgentServiceLike,
     parent: Agent,
     bindings: list[AgentSubAgentBinding],
     body: ParentChatInput,
+    *,
+    on_delta: OnDelta | None = None,
 ) -> SubAgentPlanResult:
     """
     DeepAgents 主循环：主模型通过 ``task`` 工具委派 ``CompiledSubAgent``。
 
     ``body`` 为 L1 ``chat_entry`` 从 ``ChatRequest`` 解包的中性输入；
     返回 ``SubAgentPlanResult``，由 L1 包回 ``ChatResponse``。
+
+    ``on_delta`` 非空时走 ``astream``，把主模型 content token 推给调用方
+    （tool_call 片断跳过；子工位内部仍整段）。
 
     ``recursion_limit`` 来自 ``config.max_plan_iterations``（默认 12）。
     """
@@ -153,15 +211,22 @@ async def run_deepagents_chat(
 
     max_iter = int((parent.config or {}).get("max_plan_iterations", 12))
     thread_id = _thread_id(parent, body)
-    result = await agent.ainvoke(
-        {"messages": [HumanMessage(content=body.query)]},
-        config={
-            "configurable": {"thread_id": thread_id},
-            "recursion_limit": max(max_iter, 4),
-        },
-    )
+    config: dict[str, Any] = {
+        "configurable": {"thread_id": thread_id},
+        "recursion_limit": max(max_iter, 4),
+    }
 
-    messages = result.get("messages") or []
+    if on_delta is not None:
+        messages = await _run_deepagents_astream(
+            agent, query=body.query, config=config, on_delta=on_delta
+        )
+    else:
+        result = await agent.ainvoke(
+            {"messages": [HumanMessage(content=body.query)]},
+            config=config,
+        )
+        messages = result.get("messages") or []
+
     answer = _extract_answer(messages)
     if not answer:
         answer = "DeepAgents 未产生有效回答，请检查子智能体配置与模型。"

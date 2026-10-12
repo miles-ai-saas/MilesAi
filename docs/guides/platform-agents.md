@@ -51,9 +51,10 @@ cd backend && uv sync --all-packages --group dev   # deepagents、langgraph>=1.2
 | 通道 | 状态 | 说明 |
 |------|------|------|
 | `POST /agents/{id}/chat` | ✅ | HTTP 整包返回 |
-| `POST /agents/{id}/chat/stream` | ✅ | SSE 真 token（事件对齐 WS）；OpenAPI 同路径 || `WS …/chat/ws` | ✅ v1 | 会话级事件总线（delta 模拟、工具确认、job 进度）；见 [features/agent-chat-websocket.md](../features/agent-chat-websocket.md) |
+| `POST /agents/{id}/chat/stream` | ✅ | SSE 真 token（事件对齐 WS）；OpenAPI 同路径 |
+| `WS …/chat/ws` | ✅ v1 | 会话级事件总线（真 token delta、工具确认、job 进度）；见 [features/agent-chat-websocket.md](../features/agent-chat-websocket.md) |
 | 生成任务 SSE | ✅ | `GET /generative/jobs/{id}/stream`；任务中心仍用 REST + SSE |
-| LLM 真 token 流式 | 📋 | 见 [realtime-transport-design.md](../architecture/realtime-transport-design.md) |
+| LLM 真 token 流式 | ✅ | 直连/RAG/tool_agent/flow/子智能体综合/DeepAgents；见 [realtime-transport-design.md](../architecture/realtime-transport-design.md) |
 
 | `Agent.config` | 默认 | 说明 |
 |----------------|------|------|
