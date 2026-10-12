@@ -235,7 +235,6 @@ Authorization: Bearer <token>
 
 - 全租户任务广播 WS。
 - 用 WS 替代任务中心列表拉取。
-- 视频逐帧预览（独立能力）。
 
 ---
 

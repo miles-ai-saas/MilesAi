@@ -155,15 +155,15 @@ flowchart TB
 - **生视频** 工具默认 **直接入队** 执行（开启生视频即同意调用）；确认卡片不再出现；进行中任务可取消。
 - **生图** 默认可直接执行；尺寸单边 ≥1280px、总像素大于 1024² 或一次 ≥3 张时 **需用户确认**。
 - 生成 prompt 走合规扫描（`generative` 场景，与对话词库绑定可配置）；租户日配额：`generative.daily_limit_per_tenant`（0 为不限）。
-- **进行中任务** 可在详情中 **取消**；进度通过 SSE 或轮询更新（非逐帧视频预览）。
+- **进行中任务** 可在详情中 **取消**；进度通过 SSE 或轮询更新。
 
 ### 4.5 未包含（生成 v1）
 
 - 在普通 LLM 节点里「一句话顺带出图」（须走生成工具或专用节点）。
 - 生成结果 **默认不入库**（须在「生成素材」中手动升格；图片为原图入库，视频为 **描述文档** 入库供 RAG，原 mp4 仍在附件）。
-- 视频 **逐帧/流式** 预览。
-- **LLM 真 token 流式**（✅）：WS v1 + HTTP `…/chat/stream` SSE；直连/RAG/tool_agent/flow/子智能体综合/DeepAgents 真 token；见 [features/agent-chat-websocket.md](../features/agent-chat-websocket.md)。
 - **视频封面**：生成视频后若环境有 `ffmpeg` 会抽首帧写入 `cover_attachment_id`，供「生成素材」列表缩略图。
+
+对话侧 **LLM 真 token 流式** 已上线（WS + HTTP `…/chat/stream` SSE）；见 [features/agent-chat-websocket.md](../features/agent-chat-websocket.md)。
 
 ### 4.6 视频升格知识库（产品说明）
 
@@ -208,13 +208,9 @@ flowchart TB
 
 ---
 
-## 7. 后续
+## 7. 状态
 
-| 阶段 | 用户可见能力 | 状态 |
-|------|----------------|------|
-| **后续** | 视频逐帧预览 | 📋 [realtime-transport-design.md](../architecture/realtime-transport-design.md)；LLM 真 token 流式已完成（见 [features/agent-chat-websocket.md](../features/agent-chat-websocket.md)） |
-
-生文、多模态入库、识图、生图/生视频、媒体资产、生成任务、TTS 等均已上线。
+生文、多模态入库、识图、生图/生视频、媒体资产、生成任务、TTS、对话真 token 流式等均已上线；生成任务进度以 SSE / 轮询为准，成片后再播放。
 
 技术定位、代码域与运维命令见 §8。
 
