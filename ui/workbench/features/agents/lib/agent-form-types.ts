@@ -23,6 +23,11 @@ export type AgentFormValues = {
   user_memory_enabled: boolean;
   user_memory_scope: "per_agent" | "tenant_user";
   user_memory_recall_mode: "all" | "relevant";
+  /** 0 = 不限 */
+  limit_chat_per_minute: number;
+  limit_chat_per_day: number;
+  limit_tool_per_minute: number;
+  max_tool_iterations: number;
 
   use_langgraph_rag: boolean;
   use_llm_grade: boolean;
@@ -45,7 +50,7 @@ export const AGENT_FORM_STEPS = [
   { title: "模型与提示词", subtitle: "选择模型和提示词模版" },
   { title: "工具与能力", subtitle: "配置技能包、平台工具、编排流程与 MCP 服务" },
   { title: "知识库与内部协同", subtitle: "知识库、内部协同与外部 A2A 引用（规则触发 + 自动规划）" },
-  { title: "高级设置", subtitle: "配置 RAG 工作流与内部协同规划选项" },
+  { title: "高级设置", subtitle: "RAG、记忆、限流配额与规划选项" },
 ] as const;
 
 export function emptyAgentForm(): AgentFormValues {
@@ -69,6 +74,10 @@ export function emptyAgentForm(): AgentFormValues {
     user_memory_enabled: false,
     user_memory_scope: "per_agent",
     user_memory_recall_mode: "all",
+    limit_chat_per_minute: 0,
+    limit_chat_per_day: 0,
+    limit_tool_per_minute: 0,
+    max_tool_iterations: 5,
 
     use_langgraph_rag: true,
     use_llm_grade: false,
@@ -135,6 +144,18 @@ export function agentToFormValues(agent: Agent): AgentFormValues {
       cfg.user_memory && typeof cfg.user_memory === "object" && cfg.user_memory.recall_mode === "relevant"
         ? "relevant"
         : "all",
+    limit_chat_per_minute: Number(
+      (cfg.limits && typeof cfg.limits === "object" ? cfg.limits.chat_per_minute : 0) ?? 0,
+    ),
+    limit_chat_per_day: Number((cfg.limits && typeof cfg.limits === "object" ? cfg.limits.chat_per_day : 0) ?? 0),
+    limit_tool_per_minute: Number(
+      (cfg.limits && typeof cfg.limits === "object" ? cfg.limits.tool_per_minute : 0) ?? 0,
+    ),
+    max_tool_iterations: Number(
+      (cfg.limits && typeof cfg.limits === "object" && cfg.limits.max_tool_iterations != null
+        ? cfg.limits.max_tool_iterations
+        : cfg.max_tool_iterations) ?? 5,
+    ),
 
     use_langgraph_rag: cfg.use_langgraph_rag !== false,
     relevance_threshold: Number(cfg.relevance_threshold ?? 0.35),
@@ -262,6 +283,21 @@ export function buildAgentConfig(form: AgentFormValues, baseConfig: AgentConfig 
     };
   } else {
     delete config.user_memory;
+  }
+
+  const limits: Record<string, number> = {};
+  if (form.limit_chat_per_minute > 0) limits.chat_per_minute = Math.floor(form.limit_chat_per_minute);
+  if (form.limit_chat_per_day > 0) limits.chat_per_day = Math.floor(form.limit_chat_per_day);
+  if (form.limit_tool_per_minute > 0) limits.tool_per_minute = Math.floor(form.limit_tool_per_minute);
+  const toolIters = Math.max(1, Math.floor(form.max_tool_iterations || 5));
+  if (toolIters !== 5) limits.max_tool_iterations = toolIters;
+  if (Object.keys(limits).length) {
+    config.limits = limits;
+    config.max_tool_iterations = toolIters;
+  } else {
+    delete config.limits;
+    if (toolIters !== 5) config.max_tool_iterations = toolIters;
+    else delete config.max_tool_iterations;
   }
 
   if (form.chat_intent_router_enabled) {

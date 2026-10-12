@@ -72,6 +72,82 @@ export function AgentFormStepAdvancedSection({ form, setForm, designMode }: Prop
           </div>
         ) : null}
       </div>
+      <div className="rounded-lg border border-line-soft p-4">
+        <p className="mb-1 text-xs font-medium text-ink">调用限流与工具配额</p>
+        <p className="mb-3 text-xs text-ink-muted">
+          按当前用户 + 本智能体计数；填 0 表示不限。超限返回 429。运营侧全局限流仍独立生效。
+        </p>
+        <div className="grid grid-cols-2 gap-3">
+          <label className="text-xs text-ink-muted">
+            对话次数 / 分钟
+            <input
+              type="number"
+              min={0}
+              max={10000}
+              step={1}
+              className="input-field mt-1 w-full"
+              value={form.limit_chat_per_minute}
+              onChange={(e) =>
+                setForm((f) => ({
+                  ...f,
+                  limit_chat_per_minute: Math.max(0, Number(e.target.value) || 0),
+                }))
+              }
+            />
+          </label>
+          <label className="text-xs text-ink-muted">
+            对话次数 / 日（UTC）
+            <input
+              type="number"
+              min={0}
+              max={100000}
+              step={1}
+              className="input-field mt-1 w-full"
+              value={form.limit_chat_per_day}
+              onChange={(e) =>
+                setForm((f) => ({
+                  ...f,
+                  limit_chat_per_day: Math.max(0, Number(e.target.value) || 0),
+                }))
+              }
+            />
+          </label>
+          <label className="text-xs text-ink-muted">
+            工具调用 / 分钟
+            <input
+              type="number"
+              min={0}
+              max={10000}
+              step={1}
+              className="input-field mt-1 w-full"
+              value={form.limit_tool_per_minute}
+              onChange={(e) =>
+                setForm((f) => ({
+                  ...f,
+                  limit_tool_per_minute: Math.max(0, Number(e.target.value) || 0),
+                }))
+              }
+            />
+          </label>
+          <label className="text-xs text-ink-muted">
+            单轮工具循环上限
+            <input
+              type="number"
+              min={1}
+              max={50}
+              step={1}
+              className="input-field mt-1 w-full"
+              value={form.max_tool_iterations}
+              onChange={(e) =>
+                setForm((f) => ({
+                  ...f,
+                  max_tool_iterations: Math.max(1, Number(e.target.value) || 5),
+                }))
+              }
+            />
+          </label>
+        </div>
+      </div>
       {form.sub_agents.length > 0 ? (
         <div className="rounded-lg border border-line-soft p-4">
           <p className="mb-2 text-xs font-medium text-ink">内部协同规划</p>
@@ -138,7 +214,9 @@ export function AgentFormStepAdvancedSection({ form, setForm, designMode }: Prop
           </div>
         </div>
       ) : (
-        <p className="text-sm text-ink-muted">未绑定知识库或子智能体，本步无额外配置。可在上一步添加知识库或子智能体后再调整 RAG / 规划选项。</p>
+        <p className="text-sm text-ink-muted">
+          未绑定知识库或子智能体时，上方限流/记忆/意图配置仍生效；可在上一步添加后再调整 RAG / 规划选项。
+        </p>
       )}
     </div>
   );

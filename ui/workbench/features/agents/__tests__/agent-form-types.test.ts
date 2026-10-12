@@ -161,6 +161,24 @@ describe("buildAgentConfig", () => {
     });
   });
 
+  it("写入智能体限流与工具配额", () => {
+    const form = {
+      ...emptyAgentForm(),
+      limit_chat_per_minute: 20,
+      limit_chat_per_day: 200,
+      limit_tool_per_minute: 40,
+      max_tool_iterations: 8,
+    };
+    const config = buildAgentConfig(form, undefined);
+    expect(config.limits).toEqual({
+      chat_per_minute: 20,
+      chat_per_day: 200,
+      tool_per_minute: 40,
+      max_tool_iterations: 8,
+    });
+    expect(config.max_tool_iterations).toBe(8);
+  });
+
   it("有 published_flow_id 时设置 workflow 模式", () => {
     const form = { ...emptyAgentForm(), published_flow_id: "flow-1" };
     const config = buildAgentConfig(form, undefined);

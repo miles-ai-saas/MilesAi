@@ -50,3 +50,11 @@ class ConflictError(AppError):
 
     def __init__(self, message: str = "资源冲突") -> None:
         super().__init__(message, status_code=409)
+
+
+class RateLimitError(AppError):
+    """调用频率或配额超限（HTTP 429）。"""
+
+    def __init__(self, message: str = "请求过于频繁，请稍后重试", *, retry_after: int | None = None) -> None:
+        super().__init__(message, status_code=429)
+        self.retry_after = retry_after

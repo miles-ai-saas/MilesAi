@@ -128,7 +128,7 @@
 | 对话 WebSocket + HTTP | ✅ | v1 已实现 |
 | 智能体定时任务（Cron） | ✅ | Celery Beat；Compose 含 `beat` 服务 |
 | 复制/导出/导入智能体 | ✅ | `GET /agents/{id}/export` · `POST /agents/import` |
-| 调用限流、会话上限 UI | 部分 | 风控在运营侧；智能体级限流简化 |
+| 调用限流、会话上限 UI | ✅ | 运营侧路径限流 + 智能体 `config.limits`（对话/工具分钟与日配额、单轮工具循环）工作台可配 |
 | React Flow 画布（无 iframe） | ✅ | `/workbench/flows/[id]/edit` |
 | 核心节点（LLM/RAG/分支/工具/生图生视频） | ✅ | 含 SubFlow / 循环 / 合规 / OCR / 转写等 |
 | PaddleOCR/Whisper 专用画布节点 | ✅ | `OcrExtract` · `AudioTranscribe`（KB 链仍用入库解析） |

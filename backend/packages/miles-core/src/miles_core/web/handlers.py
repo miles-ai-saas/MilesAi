@@ -89,12 +89,16 @@ async def validation_error_handler(request: Request, exc: RequestValidationError
 
 async def app_error_handler(request: Request, exc: AppError) -> JSONResponse:
     """业务异常：沿用异常自带的 status_code / code 输出统一信封。"""
-    return _error_envelope(
+    resp = _error_envelope(
         request,
         status_code=exc.status_code,
         code=exc.code,
         message=exc.message,
     )
+    retry_after = getattr(exc, "retry_after", None)
+    if retry_after is not None and int(retry_after) > 0:
+        resp.headers["Retry-After"] = str(int(retry_after))
+    return resp
 
 
 async def sqlalchemy_error_handler(request: Request, exc: SQLAlchemyError) -> JSONResponse:

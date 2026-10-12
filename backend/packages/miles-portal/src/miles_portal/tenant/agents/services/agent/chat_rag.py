@@ -290,7 +290,10 @@ class AgentChatRagMixin:
                 video_duration=body.generative_video_duration,
             )
 
+        from miles_portal.tenant.agents.services.agent_limits import resolve_max_tool_iterations
+
         agent_config_with_defaults = dict(cfg)
+        agent_config_with_defaults["max_tool_iterations"] = resolve_max_tool_iterations(agent_config_with_defaults)
         if body.conversation_id:
             agent_config_with_defaults["_conversation_id"] = body.conversation_id
         # 始终注入输入区张数（含 1），供 generate_image 强制覆盖 LLM 的 n
@@ -326,6 +329,7 @@ class AgentChatRagMixin:
             agent_id=agent_id,
             actor_user_id=self.ctx.user_id,
             invoke_source="agent",
+            agent_config=agent_config_with_defaults,
         )
         return await run_tool_calling_chat(
             agent,

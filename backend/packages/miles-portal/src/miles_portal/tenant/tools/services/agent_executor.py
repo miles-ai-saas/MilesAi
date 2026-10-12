@@ -36,12 +36,14 @@ class AgentToolExecutor:
         agent_id: UUID | None,
         actor_user_id: UUID | None,
         invoke_source: str = "agent",
+        agent_config: dict[str, Any] | None = None,
     ) -> None:
         self._db = db
         self._ctx = ctx
         self._agent_id = agent_id
         self._actor_user_id = actor_user_id
         self._invoke_source = invoke_source
+        self._agent_config = agent_config
 
     async def meta(self, slug: str, *, tool_id: UUID | None = None) -> dict[str, Any]:
         """解析工具元信息（内置/custom/MCP 统一结构），委托 ``resolve_tool_meta``。"""
@@ -56,6 +58,14 @@ class AgentToolExecutor:
         tool_id: UUID | None = None,
     ) -> dict[str, Any]:
         """执行工具；需确认时把 ``ToolConfirmationRequired`` 转 L3 中性信号。"""
+        if self._agent_id is not None and self._actor_user_id is not None:
+            from miles_portal.tenant.agents.services.agent_limits import assert_agent_tool_limits
+
+            await assert_agent_tool_limits(
+                agent_id=self._agent_id,
+                user_id=self._actor_user_id,
+                agent_config=self._agent_config,
+            )
         try:
             return await invoke_tool_with_context(
                 self._db,
@@ -87,11 +97,13 @@ class ShortSessionAgentToolExecutor:
         agent_id: UUID | None,
         actor_user_id: UUID | None,
         invoke_source: str = "agent",
+        agent_config: dict[str, Any] | None = None,
     ) -> None:
         self._ctx = ctx
         self._agent_id = agent_id
         self._actor_user_id = actor_user_id
         self._invoke_source = invoke_source
+        self._agent_config = agent_config
 
     async def meta(self, slug: str, *, tool_id: UUID | None = None) -> dict[str, Any]:
         """短会话解析工具元信息。"""
@@ -113,6 +125,14 @@ class ShortSessionAgentToolExecutor:
         tool_id: UUID | None = None,
     ) -> dict[str, Any]:
         """短会话执行工具；确认路径 commit 审计日志后再抛 Signal。"""
+        if self._agent_id is not None and self._actor_user_id is not None:
+            from miles_portal.tenant.agents.services.agent_limits import assert_agent_tool_limits
+
+            await assert_agent_tool_limits(
+                agent_id=self._agent_id,
+                user_id=self._actor_user_id,
+                agent_config=self._agent_config,
+            )
         async with AsyncSessionLocal() as db:
             try:
                 result = await invoke_tool_with_context(
@@ -149,6 +169,7 @@ def build_agent_tool_executor(
     agent_id: UUID | None,
     actor_user_id: UUID | None,
     invoke_source: str = "agent",
+    agent_config: dict[str, Any] | None = None,
 ) -> AgentToolExecutor:
     """构造会话绑定的对话工具执行器（兼容仍需复用请求会话的调用方）。"""
     return AgentToolExecutor(
@@ -157,6 +178,7 @@ def build_agent_tool_executor(
         agent_id=agent_id,
         actor_user_id=actor_user_id,
         invoke_source=invoke_source,
+        agent_config=agent_config,
     )
 
 
@@ -166,6 +188,7 @@ def build_short_session_agent_tool_executor(
     agent_id: UUID | None,
     actor_user_id: UUID | None,
     invoke_source: str = "agent",
+    agent_config: dict[str, Any] | None = None,
 ) -> ShortSessionAgentToolExecutor:
     """构造短会话对话工具执行器（tool_agent 循环装配点）。"""
     return ShortSessionAgentToolExecutor(
@@ -173,4 +196,5 @@ def build_short_session_agent_tool_executor(
         agent_id=agent_id,
         actor_user_id=actor_user_id,
         invoke_source=invoke_source,
+        agent_config=agent_config,
     )

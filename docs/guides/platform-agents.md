@@ -61,6 +61,9 @@ cd backend && uv sync --all-packages --group dev   # deepagents、langgraph>=1.2
 | `max_plan_iterations` | 12 | DeepAgents recursion_limit |
 | `max_subagent_calls` | 20 | 平台规划上限 |
 | `subagent_parallel` | false | 平台规划是否并行 |
+| `limits.chat_per_minute` / `chat_per_day` | 0（不限） | 按用户+智能体对话限流（429） |
+| `limits.tool_per_minute` | 0（不限） | 工具调用分钟配额 |
+| `limits.max_tool_iterations` / `max_tool_iterations` | 5 | 单轮 tool_agent 循环上限 |
 
 `steps` 类型：`planner`、`subagent_dispatch`、`subagent`、`planner_fallback`、`chat_memory`。
 

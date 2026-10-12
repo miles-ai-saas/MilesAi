@@ -334,8 +334,8 @@ mcp__{service}__{tool_name}
 | 项 | 说明 |
 |----|------|
 | 内置复杂工具（扩展） | ✅ `run_flow_once`、`invoke_tenant_hook`、`list_attachments`、`redis_kv`（租户键前缀隔离） |
-| 租户套餐级 builtin 开关 | `tenant_toggle` / 套餐位 |
-| 调用限流 | 租户级 QPS / 复杂工具配额 |
+| 租户套餐级 builtin 开关 | `tenant_toggle` / 套餐位（仍演进） |
+| 调用限流 | ✅ 智能体 `config.limits`（对话/工具分钟与日配额）；运营侧路径限流仍独立 |
 | 流程节点 | 复用同一 Runtime |
 
 ### 明确不做（短期）

@@ -65,6 +65,15 @@ export interface AgentConfig {
     /** all（默认）| relevant（按本轮 query 相关性排序截断） */
     recall_mode?: "all" | "relevant";
   };
+  /** 智能体级限流 / 工具配额；0 或不设表示不限。 */
+  limits?: {
+    chat_per_minute?: number;
+    chat_per_day?: number;
+    tool_per_minute?: number;
+    max_tool_iterations?: number;
+  };
+  /** 单轮工具循环上限（与 limits.max_tool_iterations 二选一，后者优先）。 */
+  max_tool_iterations?: number;
   use_langgraph_rag?: boolean;
   relevance_threshold?: number;
   rag_max_retries?: number;
