@@ -648,7 +648,7 @@ async def test_resolve_default_published_agent_requires_unambiguous_match():
 
 @pytest.mark.asyncio
 async def test_handle_rpc_message_send_returns_agent_message(monkeypatch):  # noqa: ANN001
-    async def fake_chat(_db, _ctx, _agent_id, text, conversation_id=None):  # noqa: ANN001
+    async def fake_chat(_db, _ctx, _agent_id, text, conversation_id=None, media=None):  # noqa: ANN001
         assert text == "帮我查订单"
         return ChatResponse(answer="订单已发货")
 
@@ -676,7 +676,7 @@ async def test_handle_rpc_forwards_context_id_as_conversation(monkeypatch):  # n
     """``message.contextId`` → ``ChatRequest.conversation_id``，并在响应回显，多轮才成立。"""
     captured: dict = {}
 
-    async def fake_chat(_db, _ctx, _agent_id, text, conversation_id=None):  # noqa: ANN001
+    async def fake_chat(_db, _ctx, _agent_id, text, conversation_id=None, media=None):  # noqa: ANN001
         captured["conversation_id"] = conversation_id
         return ChatResponse(answer="继续")
 
@@ -702,7 +702,7 @@ async def test_handle_rpc_assigns_context_id_when_absent(monkeypatch):  # noqa: 
     """
     captured: dict = {}
 
-    async def fake_chat(_db, _ctx, _agent_id, _text, conversation_id=None):  # noqa: ANN001
+    async def fake_chat(_db, _ctx, _agent_id, _text, conversation_id=None, media=None):  # noqa: ANN001
         captured["conversation_id"] = conversation_id
         return ChatResponse(answer="初次见面")
 
@@ -849,7 +849,7 @@ def _job(status: str, *, params: dict | None = None, job_id=None, result: dict |
 async def test_message_send_returns_task_while_generation_active(monkeypatch):  # noqa: ANN001
     """产生异步生成任务时改回 A2A ``Task``，对端才可轮询/取消；同步回答仍回 ``Message``。"""
 
-    async def fake_chat(_db, _ctx, _agent_id, _text, conversation_id=None):  # noqa: ANN001
+    async def fake_chat(_db, _ctx, _agent_id, _text, conversation_id=None, media=None):  # noqa: ANN001
         return ChatResponse(
             answer="正在生成",
             generative_jobs=[{"id": "job-1", "kind": "video", "status": "pending"}],
@@ -876,7 +876,7 @@ async def test_message_send_returns_task_while_generation_active(monkeypatch):  
 async def test_message_send_ignores_terminal_generative_jobs(monkeypatch):  # noqa: ANN001
     """已结束的生成任务无需轮询，仍按 ``Message`` 返回，避免对端多跑一次 tasks/get。"""
 
-    async def fake_chat(_db, _ctx, _agent_id, _text, conversation_id=None):  # noqa: ANN001
+    async def fake_chat(_db, _ctx, _agent_id, _text, conversation_id=None, media=None):  # noqa: ANN001
         return ChatResponse(
             answer="图已生成",
             generative_jobs=[{"id": "job-1", "kind": "image", "status": "success"}],
@@ -1534,7 +1534,7 @@ async def test_open_stream_emits_task_then_increments_then_final(monkeypatch):  
     _patch_session(monkeypatch, session)
     seen: dict = {}
 
-    async def fake_chat(_db, _ctx, _agent_id, text, conversation_id=None, on_delta=None):  # noqa: ANN001
+    async def fake_chat(_db, _ctx, _agent_id, text, conversation_id=None, media=None, on_delta=None):  # noqa: ANN001
         seen["text"] = text
         seen["conversation_id"] = conversation_id
         await on_delta("甲")
@@ -1582,7 +1582,7 @@ async def test_open_stream_generates_context_id_when_absent(monkeypatch):  # noq
     _patch_session(monkeypatch, _FakeSession())
     seen: dict = {}
 
-    async def fake_chat(_db, _ctx, _agent_id, _text, conversation_id=None, on_delta=None):  # noqa: ANN001
+    async def fake_chat(_db, _ctx, _agent_id, _text, conversation_id=None, media=None, on_delta=None):  # noqa: ANN001
         seen["conversation_id"] = conversation_id
         return ChatResponse(answer="好的")
 
@@ -1600,7 +1600,7 @@ async def test_open_stream_one_shot_route_only_has_final_frame(monkeypatch):  # 
     """不接 on_delta 的路由（flow/子智能体等）不产生中间帧，靠末帧一次给全。"""
     _patch_session(monkeypatch, _FakeSession())
 
-    async def fake_chat(_db, _ctx, _agent_id, _text, conversation_id=None, on_delta=None):  # noqa: ANN001
+    async def fake_chat(_db, _ctx, _agent_id, _text, conversation_id=None, media=None, on_delta=None):  # noqa: ANN001
         return ChatResponse(answer="完整回答")
 
     monkeypatch.setattr(server_svc, "run_published_agent_chat", fake_chat)
@@ -1620,7 +1620,7 @@ async def test_open_stream_maps_compliance_block_to_rejected(a2a_audit_recorder,
     session = _FakeSession()
     _patch_session(monkeypatch, session)
 
-    async def fake_chat(_db, _ctx, _agent_id, _text, conversation_id=None, on_delta=None):  # noqa: ANN001
+    async def fake_chat(_db, _ctx, _agent_id, _text, conversation_id=None, media=None, on_delta=None):  # noqa: ANN001
         await on_delta("部分")
         raise BadRequestError("输出内容包含敏感词，已拦截：测试")
 
@@ -1642,7 +1642,7 @@ async def test_open_stream_maps_compliance_block_to_rejected(a2a_audit_recorder,
 async def test_open_stream_maps_execution_failure_to_failed(monkeypatch):  # noqa: ANN001
     _patch_session(monkeypatch, _FakeSession())
 
-    async def fake_chat(_db, _ctx, _agent_id, _text, conversation_id=None, on_delta=None):  # noqa: ANN001
+    async def fake_chat(_db, _ctx, _agent_id, _text, conversation_id=None, media=None, on_delta=None):  # noqa: ANN001
         raise RuntimeError("boom")
 
     monkeypatch.setattr(server_svc, "run_published_agent_chat", fake_chat)
@@ -1660,7 +1660,7 @@ async def test_open_stream_hands_off_job_id_via_metadata(monkeypatch):  # noqa: 
     """产生异步生成任务时以 working/final 收尾，并给出真实 job id 供对端轮询。"""
     _patch_session(monkeypatch, _FakeSession())
 
-    async def fake_chat(_db, _ctx, _agent_id, _text, conversation_id=None, on_delta=None):  # noqa: ANN001
+    async def fake_chat(_db, _ctx, _agent_id, _text, conversation_id=None, media=None, on_delta=None):  # noqa: ANN001
         return ChatResponse(answer="正在生成", generative_jobs=[{"id": "job-1", "kind": "video", "status": "pending"}])
 
     monkeypatch.setattr(server_svc, "run_published_agent_chat", fake_chat)
@@ -1680,7 +1680,7 @@ async def test_open_stream_cancels_chat_when_consumer_disconnects(monkeypatch): 
     started = asyncio.Event()
     cancelled = asyncio.Event()
 
-    async def fake_chat(_db, _ctx, _agent_id, _text, conversation_id=None, on_delta=None):  # noqa: ANN001
+    async def fake_chat(_db, _ctx, _agent_id, _text, conversation_id=None, media=None, on_delta=None):  # noqa: ANN001
         started.set()
         try:
             await asyncio.sleep(3600)
@@ -1739,7 +1739,7 @@ async def test_open_stream_increment_with_special_chars_stays_single_line(monkey
     _patch_session(monkeypatch, _FakeSession())
     piece = '第一行\n第二行 "引号" \\ 反斜杠'
 
-    async def fake_chat(_db, _ctx, _agent_id, _text, conversation_id=None, on_delta=None):  # noqa: ANN001
+    async def fake_chat(_db, _ctx, _agent_id, _text, conversation_id=None, media=None, on_delta=None):  # noqa: ANN001
         await on_delta(piece)
         return ChatResponse(answer=piece)
 
@@ -1760,7 +1760,7 @@ async def test_open_stream_skips_empty_delta_pieces(monkeypatch):  # noqa: ANN00
     """空片不发帧（与 ws 侧同判定）：否则末帧前会多出若干个空文本增量帧。"""
     _patch_session(monkeypatch, _FakeSession())
 
-    async def fake_chat(_db, _ctx, _agent_id, _text, conversation_id=None, on_delta=None):  # noqa: ANN001
+    async def fake_chat(_db, _ctx, _agent_id, _text, conversation_id=None, media=None, on_delta=None):  # noqa: ANN001
         await on_delta("")
         await on_delta("甲")
         await on_delta("")
@@ -1785,7 +1785,7 @@ async def test_open_stream_emits_heartbeat_while_waiting_for_first_delta(monkeyp
     _patch_session(monkeypatch, _FakeSession())
     monkeypatch.setattr(streaming_svc, "SSE_HEARTBEAT_SECONDS", 0.01)
 
-    async def fake_chat(_db, _ctx, _agent_id, _text, conversation_id=None, on_delta=None):  # noqa: ANN001
+    async def fake_chat(_db, _ctx, _agent_id, _text, conversation_id=None, media=None, on_delta=None):  # noqa: ANN001
         await asyncio.sleep(0.05)
         return ChatResponse(answer="慢回答")
 
@@ -1838,7 +1838,7 @@ async def _wait_until(predicate, *, attempts: int = 200) -> None:  # noqa: ANN00
 async def test_handle_rpc_audits_message_send(a2a_audit_recorder, monkeypatch):  # noqa: ANN001
     """一次调用一条流水，outcome 由最终信封决定：审计不该散在各 _handle_* 里重复判定。"""
 
-    async def fake_chat(_db, _ctx, _agent_id, _text, conversation_id=None):  # noqa: ANN001
+    async def fake_chat(_db, _ctx, _agent_id, _text, conversation_id=None, media=None):  # noqa: ANN001
         return ChatResponse(answer="收到")
 
     monkeypatch.setattr(server_svc, "run_published_agent_chat", fake_chat)
@@ -1915,7 +1915,7 @@ async def test_handle_rpc_audits_unhandled_failure_then_reraises(a2a_audit_recor
 async def test_stream_final_frame_audits_completed(a2a_audit_recorder, monkeypatch):  # noqa: ANN001
     _patch_session(monkeypatch, _FakeSession())
 
-    async def fake_chat(_db, _ctx, _agent_id, _text, conversation_id=None, on_delta=None):  # noqa: ANN001
+    async def fake_chat(_db, _ctx, _agent_id, _text, conversation_id=None, media=None, on_delta=None):  # noqa: ANN001
         return ChatResponse(answer="好了")
 
     monkeypatch.setattr(server_svc, "run_published_agent_chat", fake_chat)
@@ -1935,7 +1935,7 @@ async def test_stream_disconnect_audits_canceled(a2a_audit_recorder, monkeypatch
     """对端断连是最需要留痕的一种「调用」：没有终态帧，但必须有一条 canceled 流水。"""
     _patch_session(monkeypatch, _FakeSession())
 
-    async def fake_chat(_db, _ctx, _agent_id, _text, conversation_id=None, on_delta=None):  # noqa: ANN001
+    async def fake_chat(_db, _ctx, _agent_id, _text, conversation_id=None, media=None, on_delta=None):  # noqa: ANN001
         await on_delta("半")
         await asyncio.sleep(5)
         return ChatResponse(answer="不该到这里")
@@ -2023,7 +2023,7 @@ async def test_handle_rpc_audit_keeps_padded_context_id_within_limit(a2a_audit_r
     租户可见面抹掉 —— 同一上限的判定，两处必须一致。
     """
 
-    async def fake_chat(_db, _ctx, _agent_id, _text, conversation_id=None):  # noqa: ANN001
+    async def fake_chat(_db, _ctx, _agent_id, _text, conversation_id=None, media=None):  # noqa: ANN001
         return ChatResponse(answer="收到")
 
     monkeypatch.setattr(server_svc, "run_published_agent_chat", fake_chat)
@@ -2078,7 +2078,7 @@ async def test_stream_consumer_task_cancel_audits_canceled(a2a_audit_recorder, m
     """
     _patch_session(monkeypatch, _FakeSession())
 
-    async def fake_chat(_db, _ctx, _agent_id, _text, conversation_id=None, on_delta=None):  # noqa: ANN001
+    async def fake_chat(_db, _ctx, _agent_id, _text, conversation_id=None, media=None, on_delta=None):  # noqa: ANN001
         await on_delta("半")
         await asyncio.sleep(5)
         return ChatResponse(answer="不该到这里")
@@ -2113,7 +2113,7 @@ async def test_stream_cancel_audit_survives_repeated_cancellation(a2a_audit_reco
     """
     _patch_session(monkeypatch, _FakeSession())
 
-    async def fake_chat(_db, _ctx, _agent_id, _text, conversation_id=None, on_delta=None):  # noqa: ANN001
+    async def fake_chat(_db, _ctx, _agent_id, _text, conversation_id=None, media=None, on_delta=None):  # noqa: ANN001
         await on_delta("半")
         await asyncio.sleep(5)
         return ChatResponse(answer="不该到这里")
@@ -2147,7 +2147,7 @@ async def test_stream_disconnect_under_cancel_scope_audits_canceled(a2a_audit_re
     """
     _patch_session(monkeypatch, _FakeSession())
 
-    async def fake_chat(_db, _ctx, _agent_id, _text, conversation_id=None, on_delta=None):  # noqa: ANN001
+    async def fake_chat(_db, _ctx, _agent_id, _text, conversation_id=None, media=None, on_delta=None):  # noqa: ANN001
         await on_delta("半")
         await asyncio.sleep(5)
         return ChatResponse(answer="不该到这里")
@@ -2177,7 +2177,7 @@ async def test_stream_terminal_frame_then_aclose_is_not_double_audited(a2a_audit
     """已发终态帧（审计已调度）后再 ``aclose()``：不得再补一条 canceled —— 一次调用只该有一条流水。"""
     _patch_session(monkeypatch, _FakeSession())
 
-    async def fake_chat(_db, _ctx, _agent_id, _text, conversation_id=None, on_delta=None):  # noqa: ANN001
+    async def fake_chat(_db, _ctx, _agent_id, _text, conversation_id=None, media=None, on_delta=None):  # noqa: ANN001
         return ChatResponse(answer="好了")
 
     monkeypatch.setattr(server_svc, "run_published_agent_chat", fake_chat)
@@ -2212,7 +2212,7 @@ async def test_stream_cancel_during_terminal_audit_keeps_exactly_one_record(monk
         await release.wait()  # 撑住写入：模拟真实写库的挂起
         recorded.append(kwargs)
 
-    async def fake_chat(_db, _ctx, _agent_id, _text, conversation_id=None, on_delta=None):  # noqa: ANN001
+    async def fake_chat(_db, _ctx, _agent_id, _text, conversation_id=None, media=None, on_delta=None):  # noqa: ANN001
         return ChatResponse(answer="好了")
 
     monkeypatch.setattr(server_svc, "write_a2a_audit", blocking_write)

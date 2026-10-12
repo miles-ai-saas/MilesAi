@@ -197,7 +197,8 @@ def build_agent_card(
             "pushNotifications": True,
             "stateTransitionHistory": False,
         },
-        "defaultInputModes": ["text"],
+        # 入站已支持 text + image file parts；输出仍以文本（产物下载另走 artifacts URI）。
+        "defaultInputModes": ["text", "image"],
         "defaultOutputModes": ["text"],
         "skills": card_skills,
         # 0.3 的接口数组：``additionalInterfaces[{url, transport}]``（v1.0 改名为

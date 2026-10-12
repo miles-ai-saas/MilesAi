@@ -21,7 +21,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from miles_common.exceptions import AppError, BadRequestError, ForbiddenError, NotFoundError
-from miles_common.schemas.chat_io import CONVERSATION_ID_MAX_LENGTH, ChatResponse
+from miles_common.schemas.chat_io import CONVERSATION_ID_MAX_LENGTH, ChatMediaIn, ChatResponse
 from miles_core.infra.db import AsyncSessionLocal
 from miles_core.logging import get_logger
 from miles_core.models.agent import Agent, AgentStatus, AgentType
@@ -64,7 +64,6 @@ from miles_portal.tenant.a2a.server import (
     build_a2a_task,
     build_agent_card,
     extract_message_context_id,
-    extract_message_text,
     is_active_generative_status,
     is_publish_enabled,
     jsonrpc_error,
@@ -76,6 +75,7 @@ from miles_portal.tenant.a2a.server import (
 )
 from miles_portal.tenant.a2a.services import streaming
 from miles_portal.tenant.a2a.services.audit import schedule_audit, write_a2a_audit
+from miles_portal.tenant.a2a.services.inbound_parts import resolve_inbound_chat_input
 from miles_portal.tenant.attachments.services.attachment import AttachmentService
 from miles_portal.tenant.generative.services.job import GenerativeJobService
 from miles_portal.tenant.generative.services.job_execution import get_generative_job_for_tenant
@@ -179,6 +179,7 @@ async def run_published_agent_chat(
     agent_id: UUID,
     text: str,
     *,
+    media: list[ChatMediaIn] | None = None,
     conversation_id: str | None = None,
     on_delta: OnDelta | None = None,
 ) -> ChatResponse:
@@ -186,6 +187,8 @@ async def run_published_agent_chat(
 
     ``conversation_id`` 来自 A2A ``message.contextId``，作为同一会话的 ``thread_id``
     后缀恢复 LangGraph checkpoint，从而支持多轮。
+
+    ``media`` 来自入站 ``file`` parts（图片已落库为附件）；与平台 Chat 同源。
 
     ``on_delta`` 为真流回调（``message/stream`` 用）：逐 token 交给调用方下发；不传则
     只在返回时一次性拿到完整回答（``message/send`` 与不支持真流的路由都走这条）。
@@ -199,7 +202,11 @@ async def run_published_agent_chat(
     from miles_portal.tenant.agents.schemas.agent import ChatRequest
     from miles_portal.tenant.agents.services.agent import AgentService
 
-    return await AgentService(db, ctx).chat(agent_id, ChatRequest(query=text, conversation_id=conversation_id), on_delta=on_delta)
+    return await AgentService(db, ctx).chat(
+        agent_id,
+        ChatRequest(query=text, media=list(media or []), conversation_id=conversation_id),
+        on_delta=on_delta,
+    )
 
 
 def context_id_from_job_params(params: object) -> str | None:
@@ -235,14 +242,21 @@ async def _handle_message_send(
     """``message/send``：执行对话；产生异步生成任务则回 ``Task``，否则回 ``Message``。"""
     try:
         await load_published_agent(db, agent_id)
-        text = extract_message_text(params)
+        inbound = await resolve_inbound_chat_input(db, ctx, params, agent_id=agent_id)
         # 未带 contextId 时生成一个并回显：对端才有可复用的上下文标识，多轮才接得上。
         context_id = extract_message_context_id(params) or str(uuid4())
     except (NotFoundError, BadRequestError) as exc:
         return jsonrpc_error(req_id, INVALID_PARAMS, str(exc))
 
     try:
-        response = await run_published_agent_chat(db, ctx, agent_id, text, conversation_id=context_id)
+        response = await run_published_agent_chat(
+            db,
+            ctx,
+            agent_id,
+            inbound.query,
+            media=inbound.media,
+            conversation_id=context_id,
+        )
     except AppError:
         # 业务异常（合规拦截的 BadRequestError、配额的 ForbiddenError …）不在此处译码：交给
         # ``handle_a2a_rpc`` 的统一兜底 —— 既拿到一致的域映射（都在 ``message/send`` 域，故为
@@ -682,7 +696,7 @@ async def open_a2a_stream(
         return jsonrpc_error(req_id, INVALID_PARAMS, "message/stream 缺少 params")
     try:
         await load_published_agent(db, agent_id)
-        text = extract_message_text(params)
+        inbound = await resolve_inbound_chat_input(db, ctx, params, agent_id=agent_id)
         # 未带 contextId 时生成一个：首轮就得用它，否则第一轮 checkpoint 落在别的
         # thread，对端第二轮带上该 id 时模型并无上一轮记忆。
         context_id = extract_message_context_id(params) or str(uuid4())
@@ -694,8 +708,16 @@ async def open_a2a_stream(
     # 用 ``commit`` 而非 ``rollback``：同一会话里鉴权依赖已 ``flush`` 了 API Key 的
     # ``last_used_at``（``touch_last_used`` 的契约就是「由调用方决定提交」），rollback 会把
     # 这笔记账丢掉，让流式调用在「密钥最后使用时间」上永远不更新。
+    # 入站附件也已在本事务落库，须一并 commit，否则流式轮次读不到刚上传的图。
     await db.commit()
-    return _stream_turn(ctx, agent_id, req_id, text, context_id)
+    return _stream_turn(
+        ctx,
+        agent_id,
+        req_id,
+        inbound.query,
+        context_id,
+        media=inbound.media,
+    )
 
 
 async def _stream_turn(
@@ -704,6 +726,8 @@ async def _stream_turn(
     req_id: object,
     text: str,
     context_id: str,
+    *,
+    media: list[ChatMediaIn] | None = None,
 ) -> AsyncIterator[str]:
     """跑一轮对话并以 SSE 帧下发：首帧 Task、中间帧增量、末帧终态。"""
     started = time.monotonic()
@@ -774,7 +798,15 @@ async def _stream_turn(
         try:
             async with AsyncSessionLocal() as turn_db:
                 try:
-                    outcome["response"] = await run_published_agent_chat(turn_db, ctx, agent_id, text, conversation_id=context_id, on_delta=on_delta)
+                    outcome["response"] = await run_published_agent_chat(
+                        turn_db,
+                        ctx,
+                        agent_id,
+                        text,
+                        media=media,
+                        conversation_id=context_id,
+                        on_delta=on_delta,
+                    )
                     await turn_db.commit()
                 except asyncio.CancelledError:
                     raise

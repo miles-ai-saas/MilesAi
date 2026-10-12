@@ -147,6 +147,16 @@ Card 同时声明 `securitySchemes`（`apiKey` · `in: header` · `name: X-API-K
 
 **多轮上下文：** 请求 `message.contextId` → `ChatRequest.conversation_id`（作 LangGraph `thread_id` 后缀），响应 `Message.contextId` 原样回显，对端据此把后续消息接回同一会话。未带时服务端生成一个并回显（否则对端拿不到可复用的上下文标识）；超长（> `ChatRequest.conversation_id` 上限）回 `-32602` 而非撞下游校验变 500。
 
+**入站多模态 parts：** `message.parts` 支持 `text` / `file` / `data`（`kind` 与历史误写的 `type` 均接受）。
+
+| part | 行为 |
+|------|------|
+| `text` | 多段以换行拼进 `ChatRequest.query` |
+| `file`（`file.bytes` base64，或 `file.uri` 为 `data:` URL） | 落库为附件（`purpose=a2a_inbound`）；**图片**进 `ChatRequest.media` 走识图；非图片以 `[附件: … attachment_id=…]` 说明拼进 query |
+| `data` | JSON/文本序列化后以 `[结构化数据]` 块拼进 query（超长截断） |
+
+远程 `http(s)` 的 `file.uri` **不拉取**（防 SSRF），回 `-32602`。仅图片、无文本时 `query` 可空（与平台 Chat 一致）。Card `defaultInputModes` 声明 `text` + `image`。`message/send` 与 `message/stream` 共用同一解析路径。
+
 **流式语义（`message/stream`）：** 每帧是完整 JSON-RPC 成功信封，`result` 依次是 `Task` → `status-update`（`final=false`，`status.message.parts[].text` 为本片增量）→ `status-update`（`final=true`，`status.message` 带完整回答，便于对端从丢帧中补全）。`final=true` 只表示本流结束，**不等于**任务终态。
 
 流式任务的 `taskId` 是合成的、不落库：`final=true` 已给出终态，之后无需再 `tasks/get`（拿该 id 去查会回 `-32001`）。本轮若产生异步生成任务，末帧以 `working` + `final=true` 收尾，并在 `status.message.metadata.a2aJobTaskId` 给出**真实 job id** —— 对端据此转向 `tasks/get` 轮询状态与产物。
@@ -171,7 +181,7 @@ Card 同时声明 `securitySchemes`（`apiKey` · `in: header` · `name: X-API-K
 
 **保活：** 等待增量超过 15 秒时会插入一个 SSE 注释帧 `: ping`（不带 `data:`，标准客户端解析器一律忽略）。一次性路由在末帧前可能几分钟不产出任何字节，没有心跳的话对端与中间代理会按 idle 超时掐断连接。
 
-前置校验失败（未发布 / `parts` 无文本 / 缺 `params` / `contextId` 超长）**不进入 SSE**，仍以普通 JSON + JSON-RPC 错误信封返回 —— 流一旦开始，错误只能塞进帧里，对端解析更麻烦。
+前置校验失败（未发布 / `parts` 无可用 text/file/data / 缺 `params` / `contextId` 超长）**不进入 SSE**，仍以普通 JSON + JSON-RPC 错误信封返回 —— 流一旦开始，错误只能塞进帧里，对端解析更麻烦。
 
 合规拦截以 `rejected` 收尾（拒绝处理该任务），其余执行异常以 `failed` 收尾。与工作台 WS 一致：token 先出网、出站合规事后扫，命中拦截时已出网内容不可追回。
 
@@ -288,5 +298,5 @@ stream 侧本就无可谈的错误码，它走的是 `rejected` 终态帧。
 
 ## 待做
 
-- 多模态入站：`parts` 的 `file` / `data` 类型（现仅取 `text`）
 - A2A v1.0 迁移：PascalCase 方法名、去 `kind` 换成员名包装、`TASK_STATE_*` 取值
+- 入站 `file.uri` 远程拉取（需安全白名单 / 防 SSRF；当前仅 `bytes` 与 `data:`）
