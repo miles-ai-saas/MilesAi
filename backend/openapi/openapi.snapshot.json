@@ -27696,6 +27696,79 @@
         ]
       }
     },
+    "/api/v1/agents/{agent_id}/chat/stream": {
+      "post": {
+        "description": "HTTP SSE 对话流：事件类型与 WS 对齐（``chat.delta`` / ``chat.done`` / ``chat.error``）。\n\n工作台优先 WS；本端点供 API/脚本/无法升级 WebSocket 的客户端使用。\n请求体与 ``POST …/chat`` 相同；响应为 ``text/event-stream``。",
+        "operationId": "chat_agent_stream_api_v1_agents__agent_id__chat_stream_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "agent_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Agent Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Chat Agent Stream",
+        "tags": [
+          "agents"
+        ]
+      }
+    },
     "/api/v1/agents/{agent_id}/export": {
       "get": {
         "description": "导出智能体配置为 JSON 包（可跨租户导入）。",
@@ -36503,6 +36576,74 @@
           }
         },
         "summary": "Open Agent Chat",
+        "tags": [
+          "open-agents"
+        ]
+      }
+    },
+    "/api/v1/open/agents/{agent_id}/chat/stream": {
+      "post": {
+        "description": "开放调用 SSE 对话流（``X-API-Key``）；事件类型与租户 ``POST …/chat/stream`` 一致。",
+        "operationId": "open_agent_chat_stream_api_v1_open_agents__agent_id__chat_stream_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "agent_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Agent Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Open Agent Chat Stream",
         "tags": [
           "open-agents"
         ]

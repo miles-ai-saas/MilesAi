@@ -1,6 +1,6 @@
 # 实时通道技术设计 — 对话 WebSocket + 资源 SSE
 
-**状态：** 部分已实施（工作台 WS v1 ✅；直连/RAG/tool_agent/flow/子智能体综合 真 token 流式 ✅；DeepAgents 库路径仍切块；HTTP 整包流式仍待做）  
+**状态：** 部分已实施（工作台 WS v1 ✅；直连/RAG/tool_agent/flow/子智能体综合 真 token 流式 ✅；HTTP `POST …/chat/stream` SSE ✅；DeepAgents 库路径仍切块；`POST …/chat` 仍整包）  
 **As-Is 规格：** [features/agent-chat-websocket.md](../features/agent-chat-websocket.md)  
 **关联：** [multimodal-capabilities.md](../product/multimodal-capabilities.md)、[platform-agents.md](../guides/platform-agents.md)、[technical-design.md](./technical-design.md)
 
@@ -12,7 +12,7 @@ MilesAI 已具备两类「实时」需求：
 
 | 需求 | 现状（As-Is） | 痛点 |
 |------|----------------|------|
-| **智能体对话** | WS 直连/RAG/tool_agent/flow/子智能体综合 真 token 流式；HTTP `POST …/chat` 仍一次性返回 | HTTP 无 token 流式；DeepAgents 库路径仍切块；工具确认、异步生成物靠 WS 或 HTTP + SSE 拼装 |
+| **智能体对话** | WS 真 token 流式；HTTP `POST …/chat/stream` SSE 同事件；`POST …/chat` 仍整包 | DeepAgents 库路径仍切块；工具确认、异步生成物靠 WS 或 HTTP + SSE 拼装 |
 | **生成任务进度** | `GET /generative/jobs/{id}/stream`（SSE）+ `POST cancel/retry` | 模型清晰；对话内每个 job 可能再开 SSE，与轮询兜底并存 |
 | **任务中心 / 流程调试** | 列表 HTTP 分页 + 手动刷新；详情 SSE | 合理；不宜绑到某一条「对话连接」 |
 
@@ -296,7 +296,8 @@ hooks/use-generative-job-poll.ts # 仅非对话场景使用
 
 | 项目 | 策略 |
 |------|------|
-| `POST /agents/{id}/chat` | **保留** 至 R2 稳定；Feature flag 切换 WS |
+| `POST /agents/{id}/chat` | **保留**整包；流式用 `POST …/chat/stream`（SSE）或工作台 WS |
+| `POST /agents/{id}/chat/stream` | SSE：`chat.delta` / `chat.done` / `chat.error`（与 WS type 对齐） |
 | 现有 SSE job stream | **不删除**；任务中心、流程调试依赖 |
 | 移动端/第三方 API | 继续 REST；WS 仅工作台对话 |
 

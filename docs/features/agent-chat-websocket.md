@@ -1,6 +1,6 @@
 # 智能体对话 WebSocket
 
-**状态：** v1 已实现（工作台）；直连/RAG/tool_agent/flow/子智能体综合 真 token 流式 ✅；DeepAgents 库路径仍切块；HTTP 整包仍待做  
+**状态：** v1 已实现（工作台）；直连/RAG/tool_agent/flow/子智能体综合 真 token 流式 ✅；HTTP `POST …/chat/stream` SSE ✅；DeepAgents 库路径仍切块；`POST …/chat` 仍整包
 **PRD 对照：** 模块4 智能体对话  
 **架构：** [realtime-transport-design.md](../architecture/realtime-transport-design.md) · [technical-design.md §10](../architecture/technical-design.md#10-智能体对话)
 
@@ -38,7 +38,7 @@
 | 子智能体（平台规划最终综合） | 综合轮 `ainvoke_chat` → `on_delta` 真 token |
 | pending_tool / DeepAgents 库路径 | 整段 answer 后 `emit_answer_deltas` 切块 |
 
-HTTP `POST …/chat` 不传 `on_delta`，仍整包返回。合规改写后以 `chat.done.answer` 为准；前端 `applyChatResponse` 用 `res.answer` 覆盖气泡。
+HTTP `POST …/chat` 不传 `on_delta`，仍整包返回。`POST …/chat/stream`（租户与 OpenAPI）以 SSE 推送同名事件（`chat.delta` / `chat.done` / `chat.error`），内部复用 `on_delta`。合规改写后以 `chat.done.answer` 为准；工作台 `applyChatResponse` 用 `res.answer` 覆盖气泡。
 
 ---
 
