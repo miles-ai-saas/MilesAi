@@ -30,6 +30,7 @@ from .inputs import (
     HttpRequestInput,
     InvokeTenantHookInput,
     KnowledgeSearchInput,
+    ListAttachmentsInput,
     RunFlowOnceInput,
     SkillReadReferenceInput,
     SkillRunScriptInput,
@@ -107,7 +108,14 @@ def build_stub_tool(
 # --- 声明表：新增内置工具 = 加一行 -------------------------------------------------
 
 _PLATFORM_SLUGS: tuple[str, ...] = ("calculator", "http_request", "get_current_datetime", "knowledge_search")
-_OPT_IN_SLUGS: tuple[str, ...] = ("web_search", "code_execution", "compliance_check_text", "run_flow_once", "invoke_tenant_hook")
+_OPT_IN_SLUGS: tuple[str, ...] = (
+    "web_search",
+    "code_execution",
+    "compliance_check_text",
+    "run_flow_once",
+    "invoke_tenant_hook",
+    "list_attachments",
+)
 _SKILL_SLUGS: tuple[str, ...] = ("skill_read_reference", "skill_run_script")
 _GENERATIVE_SLUGS: tuple[str, ...] = ("generate_image", "generate_video")
 
@@ -123,6 +131,10 @@ _DECLS: dict[str, ToolDecl] = {
     "compliance_check_text": ToolDecl("检测文本是否命中租户敏感词库，返回命中词与 warn/block 处置建议（只读）", ComplianceCheckTextInput),
     "run_flow_once": ToolDecl("执行本租户一个已发布流程一次并返回其输出；仅限已发布流程，执行前需用户确认", RunFlowOnceInput),
     "invoke_tenant_hook": ToolDecl("手动触发本租户已绑定的 HTTP 钩子（按触发时机与作用域），返回各钩子状态与改写后的载荷", InvokeTenantHookInput),
+    "list_attachments": ToolDecl(
+        "按资源范围列出本租户附件元数据（默认绑定当前智能体）；不返回文件内容",
+        ListAttachmentsInput,
+    ),
     # 技能包绑定 / 生成开关
     "skill_read_reference": ToolDecl("读取绑定技能包 references/ 或 assets/ 下的文本文件", SkillReadReferenceInput),
     "skill_run_script": ToolDecl("在沙箱中执行绑定技能包 scripts/ 下的 Python 脚本", SkillRunScriptInput),

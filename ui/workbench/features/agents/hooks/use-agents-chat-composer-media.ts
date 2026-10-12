@@ -8,12 +8,13 @@ import { CHAT_ATTACHMENT_MAX_COUNT, filterChatUploadFiles } from "@/features/age
 import { lastUserMessageMedia } from "@/features/agents/lib/chat-media-forward";
 
 type Params = {
+  agentId?: string;
   messages: ChatMessage[];
   carryForwardMedia: boolean;
   onError?: (message: string) => void;
 };
 
-export function useAgentsChatComposerMedia({ messages, carryForwardMedia, onError }: Params) {
+export function useAgentsChatComposerMedia({ agentId, messages, carryForwardMedia, onError }: Params) {
   const [pendingMedia, setPendingMedia] = useState<PendingChatMedia[]>([]);
   const [uploadingMedia, setUploadingMedia] = useState(false);
 
@@ -40,7 +41,10 @@ export function useAgentsChatComposerMedia({ messages, carryForwardMedia, onErro
     try {
       const next: PendingChatMedia[] = [];
       for (const file of picked) {
-        const att = await api.uploadAttachment(file, { purpose: "chat" });
+        const att = await api.uploadAttachment(file, {
+          purpose: "chat",
+          ...(agentId ? { resource_type: "agent", resource_id: agentId } : {}),
+        });
         const local_preview = URL.createObjectURL(file);
         next.push({
           attachment_id: att.id,

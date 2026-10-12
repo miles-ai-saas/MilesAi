@@ -28,6 +28,7 @@ export type FlowRunPendingMedia = {
 };
 
 export type FlowRunPanelProps = {
+  flowId?: string;
   kbs: KnowledgeBase[];
   selectedKbIds: string[];
   onKbIdsChange: (ids: string[]) => void;
@@ -51,6 +52,7 @@ export type FlowRunPanelProps = {
 };
 
 export function FlowRunPanel({
+  flowId,
   kbs,
   selectedKbIds,
   onKbIdsChange,
@@ -72,7 +74,7 @@ export function FlowRunPanel({
   pendingMedia = [],
   onPendingMediaChange,
 }: FlowRunPanelProps) {
-  const { uploadingMedia } = useFlowRunPanelMedia(pendingMedia, onPendingMediaChange);
+  const { uploadingMedia } = useFlowRunPanelMedia(pendingMedia, onPendingMediaChange, flowId);
 
   const runArtifacts = useMemo(() => {
     const base = extractFlowRunArtifacts(runState?.steps);
@@ -125,6 +127,7 @@ export function FlowRunPanel({
       </div>
 
       <FlowRunPanelInputs
+        flowId={flowId}
         kbs={kbs}
         selectedKbIds={selectedKbIds}
         onKbIdsChange={onKbIdsChange}

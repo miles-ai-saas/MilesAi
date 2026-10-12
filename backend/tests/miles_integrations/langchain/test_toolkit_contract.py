@@ -1,4 +1,4 @@
-"""toolkit 契约冻结：17 个工具（13 内置 + 4 类 spec 驱动）的对外可观测面在「拆分 + 声明式收敛」前后必须逐字节一致。
+"""toolkit 契约冻结：18 个工具（14 内置 + 4 类 spec 驱动）的对外可观测面在「拆分 + 声明式收敛」前后必须逐字节一致。
 
 为什么必须存在：重构把 13 个工厂收敛为一张声明表。13 条 description 全部是中文，最长 77
 字符（177 UTF-8 字节），最长一条冻结的 schema 字面量达 889 字符，逐字搬运极易出错；
@@ -32,7 +32,14 @@ from miles_integrations.langchain.toolkit.catalog import (
 )
 from miles_integrations.langchain.toolkit.specs import CustomToolSpec, McpToolSpec
 
-_OPT_IN_SLUGS = ("web_search", "code_execution", "compliance_check_text", "run_flow_once", "invoke_tenant_hook")
+_OPT_IN_SLUGS = (
+    "web_search",
+    "code_execution",
+    "compliance_check_text",
+    "run_flow_once",
+    "invoke_tenant_hook",
+    "list_attachments",
+)
 
 # 每个工具一行：slug -> (description, is_async, args_schema 的归一化 JSON)
 # 由重构前的实现实测导出（见 Step 2 的导出脚本），逐字复制，非人工手写。
@@ -48,6 +55,7 @@ _EXPECTED_BUILTIN: dict[str, tuple[str, bool, str]] = {
     "compliance_check_text": ("检测文本是否命中租户敏感词库，返回命中词与 warn/block 处置建议（只读）", True, '{"properties":{"text":{"description":"待检测文本","title":"Text","type":"string"}},"required":["text"],"title":"ComplianceCheckTextInput","type":"object"}'),
     "run_flow_once": ("执行本租户一个已发布流程一次并返回其输出；仅限已发布流程，执行前需用户确认", True, '{"properties":{"flow_id":{"description":"已发布流程的 UUID","title":"Flow Id","type":"string"},"inputs":{"anyOf":[{"additionalProperties":true,"type":"object"},{"type":"null"}],"default":null,"description":"流程入口变量字典，如 {\\"query\\": \\"...\\"}","title":"Inputs"},"query":{"anyOf":[{"type":"string"},{"type":"null"}],"default":null,"description":"便捷传入流程 query 入口变量","title":"Query"},"timeout_sec":{"anyOf":[{"type":"integer"},{"type":"null"}],"default":null,"description":"执行超时秒数，默认 120，上限 300","title":"Timeout Sec"}},"required":["flow_id"],"title":"RunFlowOnceInput","type":"object"}'),
     "invoke_tenant_hook": ("手动触发本租户已绑定的 HTTP 钩子（按触发时机与作用域），返回各钩子状态与改写后的载荷", True, '{"properties":{"payload":{"anyOf":[{"additionalProperties":true,"type":"object"},{"type":"null"}],"default":null,"description":"传给钩子的载荷，如 {\\"query\\": \\"...\\"}","title":"Payload"},"scope":{"anyOf":[{"type":"string"},{"type":"null"}],"default":null,"description":"作用域：global（默认）/ agent / flow / tool / app","title":"Scope"},"target_id":{"anyOf":[{"type":"string"},{"type":"null"}],"default":null,"description":"作用域目标 ID（非 global 时使用）","title":"Target Id"},"trigger":{"description":"触发时机：before_call / after_call / before_reasoning / after_reasoning / before_tool / after_tool / on_error","title":"Trigger","type":"string"}},"required":["trigger"],"title":"InvokeTenantHookInput","type":"object"}'),
+    "list_attachments": ("按资源范围列出本租户附件元数据（默认绑定当前智能体）；不返回文件内容", True, '{"properties":{"page":{"anyOf":[{"type":"integer"},{"type":"null"}],"default":null,"description":"页码，从 1 开始，默认 1","title":"Page"},"purpose":{"anyOf":[{"type":"string"},{"type":"null"}],"default":null,"description":"用途过滤：general / chat / agent / flow / chat_generated / flow_generated","title":"Purpose"},"resource_id":{"anyOf":[{"type":"string"},{"type":"null"}],"default":null,"description":"资源 UUID（须与 resource_type 成对）","title":"Resource Id"},"resource_type":{"anyOf":[{"type":"string"},{"type":"null"}],"default":null,"description":"资源类型：agent / flow / session（须与 resource_id 成对；省略则默认当前智能体）","title":"Resource Type"},"size":{"anyOf":[{"type":"integer"},{"type":"null"}],"default":null,"description":"每页条数，默认 10，上限 20","title":"Size"}},"title":"ListAttachmentsInput","type":"object"}'),
     "skill_read_reference": ("读取绑定技能包 references/ 或 assets/ 下的文本文件", True, '{"properties":{"max_chars":{"anyOf":[{"type":"integer"},{"type":"null"}],"default":null,"description":"最大读取字符数，默认 12000","title":"Max Chars"},"path":{"description":"相对技能根的路径，如 references/guide.md","title":"Path","type":"string"},"skill_slug":{"anyOf":[{"type":"string"},{"type":"null"}],"default":null,"description":"智能体绑定多个技能包时，指定使用哪个（slug）","title":"Skill Slug"}},"required":["path"],"title":"SkillReadReferenceInput","type":"object"}'),
     "skill_run_script": ("在沙箱中执行绑定技能包 scripts/ 下的 Python 脚本", True, '{"properties":{"max_memory_mb":{"anyOf":[{"type":"integer"},{"type":"null"}],"default":null,"description":"内存上限 MB，默认 512","title":"Max Memory Mb"},"params":{"additionalProperties":true,"description":"传入 run(params) 的参数字典","title":"Params","type":"object"},"path":{"description":"scripts/ 下脚本路径，如 scripts/example.py","title":"Path","type":"string"},"skill_slug":{"anyOf":[{"type":"string"},{"type":"null"}],"default":null,"description":"智能体绑定多个技能包时，指定使用哪个（slug）","title":"Skill Slug"},"timeout_sec":{"anyOf":[{"type":"integer"},{"type":"null"}],"default":null,"description":"超时秒数，默认 30","title":"Timeout Sec"}},"required":["path"],"title":"SkillRunScriptInput","type":"object"}'),
     "generate_image": ("生成图片（文生图/图生图）。直接通过 function calling 调用，传入 prompt 等参数即可，禁止在文字中描述调用过程。", True, '{"properties":{"image_attachment_id":{"anyOf":[{"type":"string"},{"type":"null"}],"default":null,"description":"参考图 attachment_id（如用户上传了图片并提供其 ID 时才填，通常不填）","title":"Image Attachment Id"},"model_config_id":{"anyOf":[{"type":"string"},{"type":"null"}],"default":null,"description":"生图模型 ID，留空自动使用默认模型，通常不需要填写","title":"Model Config Id"},"n":{"anyOf":[{"type":"integer"},{"type":"null"}],"default":null,"description":"独立单图张数 1–4（不是一张图里的格子数）；≥3 需用户确认","title":"N"},"prompt":{"description":"单幅完整画面描述。n>1 时仍写单图内容；除非用户明确要求组图/宫格/拼接，禁止四宫格或分镜拼贴","title":"Prompt","type":"string"},"size":{"anyOf":[{"type":"string"},{"type":"null"}],"default":null,"description":"如 1024x1024；≥1280 边长或多张需用户确认","title":"Size"}},"required":["prompt"],"title":"GenerateImageInput","type":"object"}'),

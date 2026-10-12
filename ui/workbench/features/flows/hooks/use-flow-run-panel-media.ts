@@ -4,7 +4,11 @@ import { useRef, useState } from "react";
 import { api } from "@/lib/api";
 import type { FlowRunPendingMedia } from "@/features/flows/components/FlowRunPanel";
 
-export function useFlowRunPanelMedia(pendingMedia: FlowRunPendingMedia[], onPendingMediaChange?: (items: FlowRunPendingMedia[]) => void) {
+export function useFlowRunPanelMedia(
+  pendingMedia: FlowRunPendingMedia[],
+  onPendingMediaChange?: (items: FlowRunPendingMedia[]) => void,
+  flowId?: string,
+) {
   const [uploadingMedia, setUploadingMedia] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -15,7 +19,10 @@ export function useFlowRunPanelMedia(pendingMedia: FlowRunPendingMedia[], onPend
       const next: FlowRunPendingMedia[] = [];
       for (const file of Array.from(files)) {
         if (!file.type.startsWith("image/")) continue;
-        const att = await api.uploadAttachment(file, { purpose: "flow" });
+        const att = await api.uploadAttachment(file, {
+          purpose: "flow",
+          ...(flowId ? { resource_type: "flow", resource_id: flowId } : {}),
+        });
         next.push({
           attachment_id: att.id,
           filename: att.filename,

@@ -65,6 +65,7 @@ export default function FlowEditPage({ id }: { id: string }) {
       </div>
 
       <FlowRunPanel
+        flowId={vm.id || undefined}
         kbs={vm.kbs}
         selectedKbIds={vm.selectedKbIds}
         onKbIdsChange={vm.setSelectedKbIds}

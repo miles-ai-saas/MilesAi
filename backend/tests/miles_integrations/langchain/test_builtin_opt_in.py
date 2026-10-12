@@ -8,7 +8,14 @@ from miles_integrations.langchain.toolkit.catalog import (
     select_opt_in_builtin_tools,
 )
 
-_OPT_IN = {"web_search", "code_execution", "compliance_check_text", "run_flow_once", "invoke_tenant_hook"}
+_OPT_IN = {
+    "web_search",
+    "code_execution",
+    "compliance_check_text",
+    "run_flow_once",
+    "invoke_tenant_hook",
+    "list_attachments",
+}
 _BASELINE = {"calculator", "http_request", "get_current_datetime", "knowledge_search"}
 
 

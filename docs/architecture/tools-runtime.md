@@ -57,7 +57,7 @@ MilesAI 是**企业级多租户 AI 中台**（RAG、流程编排、智能体、�
 | **执行** | `invoke_builtin` → 复用现有 `tenant/*` Service（RAG、合规、附件等） |
 | **扩展** | 发版新增；租户**不可改实现**，可按租户/智能体**启用** |
 | **租户使用** | 与自定义工具相同：`tool_slugs` 白名单、试调用、调用日志、`require_confirmation` |
-| **现状 slug** | L1 轻量：`calculator`、`http_request`、`get_current_datetime`、`web_search`；L2 复杂：`knowledge_search`、`compliance_check_text`、`code_execution`、`run_flow_once`、`invoke_tenant_hook`、`generate_*`、`skill_read_reference` / `skill_run_script` |
+| **现状 slug** | L1 轻量：`calculator`、`http_request`、`get_current_datetime`、`web_search`；L2 复杂：`knowledge_search`、`compliance_check_text`、`code_execution`、`run_flow_once`、`invoke_tenant_hook`、`list_attachments`、`generate_*`、`skill_read_reference` / `skill_run_script` |
 
 **推荐方向：系统内置一批「复杂工具」（L2）**，把已在平台内实现的能力（多库检索、合规检测、附件查询等）封装为 Agent 可调用的 builtin，租户**直接选用**即可，无需每个租户重复配 HTTP 或写脚本。
 
@@ -95,8 +95,8 @@ MilesAI 是**企业级多租户 AI 中台**（RAG、流程编排、智能体、�
 | ✅ | `compliance_check_text` | 敏感词检测（只读，不写拦截审计） | `CompliancePipeline` + `load_tenant_scan_words` | 否 |
 | ✅ | `run_flow_once` | 触发本租户**已发布**流程一次 | `FlowService.run` + 递归/超时护栏 | **是** |
 | ✅ | `invoke_tenant_hook` | 手动触发已绑定 **HTTP** 钩子链 | `HookExecutor.run_manual_http` | **是** |
+| ✅ | `list_attachments` | 按资源范围列附件元数据（默认当前智能体） | `AttachmentService.list_attachments` | 否 |
 | 不做 | `list_knowledge_bases` | 列出本租户 KB | — | — （绑定 KB 的 `kb_ids` 已注入 system prompt，工具冗余） |
-| 缓做 | `get_attachment_meta` | 附件元数据 | `tenant/attachments` | 否（需先有「当前会话/资源范围」语义，否则会列出整租户附件） |
 | P3 | `http_request` | 通用外呼（SSRF 防护） | 已有；建议弱化宣传 | 可选 |
 
 `run_flow_once` 的护栏（实现于 `tenant/tools/services/flow_once.py`）：
@@ -133,7 +133,7 @@ MilesAI 是**企业级多租户 AI 中台**（RAG、流程编排、智能体、�
 | 集合 | 内容 | 注入条件 |
 |------|------|----------|
 | **基线** | `calculator`、`http_request`、`get_current_datetime`、`knowledge_search` | 始终 |
-| **opt-in** | `web_search`、`code_execution`、`compliance_check_text`、`run_flow_once`、`invoke_tenant_hook` | 出现在 `tool_slugs` 时 |
+| **opt-in** | `web_search`、`code_execution`、`compliance_check_text`、`run_flow_once`、`invoke_tenant_hook`、`list_attachments` | 出现在 `tool_slugs` 时 |
 | **技能壳** | `skill_read_reference`、`skill_run_script` | `config.skill_ids`（兼容旧 `skill_package_id`） |
 | **生成壳** | `generate_image/video/speech` | `config.enable_generative_tools` |
 | **MCP** | `mcp__{service}__{tool}` | `config.mcp_service_ids` |
@@ -332,7 +332,7 @@ mcp__{service}__{tool_name}
 
 | 项 | 说明 |
 |----|------|
-| 内置复杂工具（扩展） | ✅ `run_flow_once`、`invoke_tenant_hook` 已实现；附件类需先补「会话/资源范围」语义 |
+| 内置复杂工具（扩展） | ✅ `run_flow_once`、`invoke_tenant_hook`、`list_attachments`（须 `resource_type`+`resource_id`，对话默认绑定当前智能体） |
 | 租户套餐级 builtin 开关 | `tenant_toggle` / 套餐位 |
 | 调用限流 | 租户级 QPS / 复杂工具配额 |
 | 流程节点 | 复用同一 Runtime |
@@ -350,7 +350,8 @@ mcp__{service}__{tool_name}
 MCP 工作台、**RAG 与 tool calling 共存**（绑定 KB 时 `knowledge_search` 由 LLM 自行调用，命中回填 `sources`）、
 **L2 内置 `compliance_check_text`**（复用租户词库，只读不写审计）、
 **L2 内置 `run_flow_once`**（仅已发布流程 + 确认 + 递归/超时护栏）、
-**L2 内置 `invoke_tenant_hook`**（仅 HTTP 钩子 + 确认 + 手动触发结果回传），
+**L2 内置 `invoke_tenant_hook`**（仅 HTTP 钩子 + 确认 + 手动触发结果回传）、
+**L2 内置 `list_attachments`**（须资源范围；对话默认绑定当前智能体；只读元数据），
 **opt-in 内置工具机制**（`tool_slugs` 显式勾选才注入，基线与 opt-in 分离），以及
 **MCP → Agent function calling**（`mcp__{service}__{tool}`，审计 `source=mcp`）；见 [guides/tools.md](../guides/tools.md)。
 未尽项见 §7 演进路线。

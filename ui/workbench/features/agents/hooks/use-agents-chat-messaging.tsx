@@ -54,7 +54,12 @@ export function useAgentsChatMessaging({
 
   const { wsEnabled, wsReady, client: wsClientRef } = useAgentChatWs(selectedAgent, conversationId);
 
-  const media = useAgentsChatComposerMedia({ messages, carryForwardMedia, onError: setApiError });
+  const media = useAgentsChatComposerMedia({
+    agentId: selectedAgent || undefined,
+    messages,
+    carryForwardMedia,
+    onError: setApiError,
+  });
   const generative = useAgentsChatGenerativeStatus({
     setMessages,
     wsClientRef,

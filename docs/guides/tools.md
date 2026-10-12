@@ -34,6 +34,7 @@ MilesAI **工具模块**管理租户可用的**平台内置工具**（含 **L2 �
 | `compliance_check_text` | 租户敏感词检测（只读，不写拦截审计；opt-in） |
 | `run_flow_once` | 触发本租户已发布流程一次（需确认，带递归/超时护栏；opt-in） |
 | `invoke_tenant_hook` | 手动触发已绑定 HTTP 钩子链（需确认，仅 HTTP；opt-in） |
+| `list_attachments` | 按资源范围列附件元数据（默认当前智能体；opt-in） |
 | `generate_image` / `generate_video` / `generate_speech` | 生成物（`generative_only`） |
 | `skill_read_reference` / `skill_run_script` | 技能包引用与脚本（`skill_bound_only`） |
 
@@ -96,7 +97,7 @@ Agent 启用条件（`backend/packages/miles-portal/src/miles_portal/tenant/agen
 - 已配置大模型
 - 可选 `config.tool_slugs` 白名单；未配置则加载**基线** builtin（`calculator`/`http_request`/`get_current_datetime`/`knowledge_search`）
   + 活跃 custom（HTTP + script）；配置后按白名单过滤
-  - **opt-in 内置**（`web_search` / `code_execution` / `compliance_check_text` / `run_flow_once` / `invoke_tenant_hook`）
+  - **opt-in 内置**（`web_search` / `code_execution` / `compliance_check_text` / `run_flow_once` / `invoke_tenant_hook` / `list_attachments`）
     仅在白名单显式勾选时注入，未勾选不进入 function schema（system prompt 摘要同集合）
 - 可选 `config.mcp_service_ids`：绑定 MCP 服务的 tools 一并可调用
 - **绑定知识库时与 RAG 共存**：`knowledge_search` 强制加入工具集（不受白名单约束），

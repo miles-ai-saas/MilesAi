@@ -270,6 +270,20 @@ async def handle_invoke_tenant_hook(
     )
 
 
+async def handle_list_attachments(
+    params: dict,
+    *,
+    db: AsyncSession,
+    ctx: TenantContext,
+    agent_id: UUID | None = None,
+    **_: Any,
+) -> dict:
+    """按资源范围列出附件元数据；委托 ``list_attachments.list_scoped_attachments``。"""
+    from miles_portal.tenant.tools.services.list_attachments import list_scoped_attachments
+
+    return await list_scoped_attachments(db, ctx, params, agent_id=agent_id)
+
+
 async def handle_skill_run_script(
     params: dict,
     *,
@@ -300,6 +314,7 @@ BUILTIN_HANDLERS: dict[str, BuiltinHandler] = {
     "code_execution": handle_code_execution,  # Runner 沙箱
     "run_flow_once": handle_run_flow_once,  # 触发已发布流程（需确认）
     "invoke_tenant_hook": handle_invoke_tenant_hook,  # 触发已注册 HTTP 钩子（需确认）
+    "list_attachments": handle_list_attachments,  # 按资源范围列附件元数据（只读）
     "generate_speech": handle_generate_speech,  # P2: CosyVoice
     "generate_video": handle_generate_video,
     "generate_image": handle_generate_image,

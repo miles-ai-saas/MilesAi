@@ -190,6 +190,7 @@ export function FlowRunPanelCollapsedBar({
 }
 
 export function FlowRunPanelInputs({
+  flowId,
   kbs,
   selectedKbIds,
   onKbIdsChange,
@@ -208,6 +209,7 @@ export function FlowRunPanelInputs({
   canRun,
 }: Pick<
   FlowRunPanelProps,
+  | "flowId"
   | "kbs"
   | "selectedKbIds"
   | "onKbIdsChange"
@@ -224,7 +226,11 @@ export function FlowRunPanelInputs({
   | "pendingMedia"
   | "onPendingMediaChange"
 > & { canRun: boolean }) {
-  const { uploadingMedia, fileInputRef, onPickImages, removePending } = useFlowRunPanelMedia(pendingMedia ?? [], onPendingMediaChange);
+  const { uploadingMedia, fileInputRef, onPickImages, removePending } = useFlowRunPanelMedia(
+    pendingMedia ?? [],
+    onPendingMediaChange,
+    flowId,
+  );
 
   const toggleKb = (id: string) => {
     if (selectedKbIds.includes(id)) {

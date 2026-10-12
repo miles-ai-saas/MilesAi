@@ -118,3 +118,18 @@ class InvokeTenantHookInput(BaseModel):
     payload: dict | None = Field(None, description='传给钩子的载荷，如 {"query": "..."}')
     scope: str | None = Field(None, description="作用域：global（默认）/ agent / flow / tool / app")
     target_id: str | None = Field(None, description="作用域目标 ID（非 global 时使用）")
+
+
+# ``list_attachments`` 工具入参：资源范围与分页。
+class ListAttachmentsInput(BaseModel):
+    purpose: str | None = Field(
+        None,
+        description="用途过滤：general / chat / agent / flow / chat_generated / flow_generated",
+    )
+    resource_type: str | None = Field(
+        None,
+        description="资源类型：agent / flow / session（须与 resource_id 成对；省略则默认当前智能体）",
+    )
+    resource_id: str | None = Field(None, description="资源 UUID（须与 resource_type 成对）")
+    page: int | None = Field(None, description="页码，从 1 开始，默认 1")
+    size: int | None = Field(None, description="每页条数，默认 10，上限 20")

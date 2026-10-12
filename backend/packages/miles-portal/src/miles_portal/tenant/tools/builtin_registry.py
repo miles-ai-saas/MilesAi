@@ -260,6 +260,38 @@ BUILTIN_REGISTRY: list[dict] = [
             {"name": "target_id", "type": "string", "description": "作用域目标 ID（非 global 时使用）", "required": False},
         ],
     },
+    # P2: 列附件 — 须资源范围（默认当前智能体）；只读元数据
+    {
+        "slug": "list_attachments",
+        "name": "列附件",
+        "description": "按资源范围列出本租户附件元数据（默认绑定当前智能体）；不返回文件内容",
+        "category_slug": "general",
+        "version": "1.0.0",
+        "require_confirmation": False,
+        "opt_in": True,
+        "parameters": [
+            {
+                "name": "purpose",
+                "type": "string",
+                "description": "用途过滤：general / chat / agent / flow / chat_generated / flow_generated",
+                "required": False,
+            },
+            {
+                "name": "resource_type",
+                "type": "string",
+                "description": "资源类型：agent / flow / session（须与 resource_id 成对；省略则默认当前智能体）",
+                "required": False,
+            },
+            {
+                "name": "resource_id",
+                "type": "string",
+                "description": "资源 UUID（须与 resource_type 成对）",
+                "required": False,
+            },
+            {"name": "page", "type": "integer", "description": "页码，从 1 开始", "required": False},
+            {"name": "size", "type": "integer", "description": "每页条数，默认 10，上限 20", "required": False},
+        ],
+    },
     {
         "slug": "skill_read_reference",
         "name": "读取技能参考",

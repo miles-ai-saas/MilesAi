@@ -44,7 +44,7 @@ kb_documents        → 可选「升格入库」后的 RAG 语料
 | `filename` / `mime_type` / `file_size` | 文件信息 |
 | `object_bucket` / `object_key` | MinIO 路径（含 `tenant_id` 前缀） |
 | `purpose` | `general` / `chat_upload` / `chat_generated` / `flow_generated` 等 |
-| `resource_type` / `resource_id` | 可选关联智能体、流程等 |
+| `resource_type` / `resource_id` | 可选关联智能体、流程等；对话上传绑定 `agent`，流程调试上传绑定 `flow`（供 `list_attachments` 工具按范围检索） |
 
 ### 2.2 表 `media_assets`
 
