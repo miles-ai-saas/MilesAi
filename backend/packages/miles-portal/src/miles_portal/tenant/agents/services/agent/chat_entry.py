@@ -142,6 +142,7 @@ class AgentChatEntryMixin:
                         history_block=history_block,
                         history_message_count=len(history),
                     ),
+                    on_delta=on_delta,
                 )
                 response = ChatResponse(answer=result.answer, sources=[], steps=result.steps)
                 if peer_refs:
@@ -278,7 +279,9 @@ class AgentChatEntryMixin:
         hooks = HookRunner(self.db, self.ctx.tenant_id)
 
         if child.published_flow_id:
-            flow_response = await self._run_published_flow(child, child_id, body, query=body.query, kb_ids=kb_ids)
+            flow_response = await self._run_published_flow(
+                child, child_id, body, query=body.query, kb_ids=kb_ids
+            )
             if flow_response is not None:
                 return flow_response
 

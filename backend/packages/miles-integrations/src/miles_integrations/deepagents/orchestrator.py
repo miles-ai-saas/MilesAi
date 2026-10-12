@@ -25,7 +25,7 @@ from miles_core.models.agent import Agent, AgentSubAgentBinding
 from miles_core.models.agent.constants import AgentPlanner
 from miles_integrations.deepagents.io import AgentServiceLike, ParentChatInput, SubAgentPlanResult
 from miles_integrations.deepagents.runner import deepagents_importable, run_deepagents_chat
-from miles_integrations.langchain.chat_models import ainvoke_chat
+from miles_integrations.langchain.chat_models import OnDelta, ainvoke_chat
 
 
 def _catalog_text(bindings: list[AgentSubAgentBinding]) -> str:
@@ -109,8 +109,13 @@ async def _run_platform_planned(
     parent: Agent,
     bindings: list[AgentSubAgentBinding],
     body: ParentChatInput,
+    *,
+    on_delta: OnDelta | None = None,
 ) -> SubAgentPlanResult:
-    """按规划依次 chat_as_child_simple，最后主模型综合子回答。"""
+    """按规划依次 chat_as_child_simple，最后主模型综合子回答。
+
+    ``on_delta`` 仅用于最终综合 ``ainvoke_chat``（子工位与规划轮不流式，避免污染气泡）。
+    """
     steps: list[dict] = [
         {
             "type": "planner",
@@ -203,6 +208,7 @@ async def _run_platform_planned(
             [{"role": "user", "content": synth_prompt}],
             temperature=float((parent.config or {}).get("temperature", 0.7)),
             usage_sink=usage_sink,
+            on_delta=on_delta,
         )
     else:
         final = "\n\n---\n\n".join(sub_answers)
@@ -225,8 +231,13 @@ async def run_subagent_planned_chat(
     parent: Agent,
     bindings: list[AgentSubAgentBinding],
     body: ParentChatInput,
+    *,
+    on_delta: OnDelta | None = None,
 ) -> SubAgentPlanResult:
-    """有子智能体绑定时，由 DeepAgents 或平台规划器拆解并委派子智能体。"""
+    """有子智能体绑定时，由 DeepAgents 或平台规划器拆解并委派子智能体。
+
+    ``on_delta`` 透传至平台规划最终综合；DeepAgents 库路径本切片仍整段返回（WS 切块兜底）。
+    """
     if _should_use_deepagents(parent) and parent.model_config:
         try:
             return await run_deepagents_chat(svc, parent, bindings, body)
@@ -238,8 +249,8 @@ async def run_subagent_planned_chat(
                     "error": str(exc)[:300],
                 }
             ]
-            resp = await _run_platform_planned(svc, parent, bindings, body)
+            resp = await _run_platform_planned(svc, parent, bindings, body, on_delta=on_delta)
             resp.steps = steps + resp.steps
             return resp
 
-    return await _run_platform_planned(svc, parent, bindings, body)
+    return await _run_platform_planned(svc, parent, bindings, body, on_delta=on_delta)
