@@ -194,6 +194,9 @@ async def run_deepagents_chat(
         "不要编造子智能体未返回的内容。\n"
         f"可用子智能体（task 的 subagent_type 使用 name 字段）：\n{catalog}"
     )
+    # 长期 → 近期，与平台规划 / RAG 一致。
+    if body.long_term_block:
+        system_prompt = f"{system_prompt}{body.long_term_block}"
     if body.history_block:
         system_prompt = f"{system_prompt}{body.history_block}"
 
@@ -232,6 +235,15 @@ async def run_deepagents_chat(
         answer = "DeepAgents 未产生有效回答，请检查子智能体配置与模型。"
 
     steps = _extract_steps(messages, bindings)
+    if body.long_term_item_count or body.long_term_block:
+        steps.append(
+            {
+                "type": "user_memory",
+                "items": body.long_term_item_count,
+                "chars": len(body.long_term_block or ""),
+                "route": "subagent",
+            }
+        )
     if body.history_message_count:
         steps.append(
             {

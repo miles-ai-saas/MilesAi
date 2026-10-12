@@ -402,6 +402,7 @@ async def run_a2a_host_chat(
     memory_rows, long_term = await UserMemoryService(svc.db, svc.ctx).load_for_inject(
         agent=agent,
         user_id=svc.ctx.user_id,
+        query=body.query,
     )
     if long_term:
         steps.append({"type": "user_memory", "items": len(memory_rows), "chars": len(long_term)})

@@ -60,6 +60,10 @@ export interface AgentConfig {
   user_memory?: {
     enabled?: boolean;
     max_inject_chars?: number;
+    /** per_agent（默认）| tenant_user（同租户跨智能体画像） */
+    scope?: "per_agent" | "tenant_user";
+    /** all（默认）| relevant（按本轮 query 相关性排序截断） */
+    recall_mode?: "all" | "relevant";
   };
   use_langgraph_rag?: boolean;
   relevance_threshold?: number;

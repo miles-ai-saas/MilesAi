@@ -214,6 +214,7 @@ class AgentChatRagMixin:
             memory_rows, long_term = await UserMemoryService(self.db, self.ctx).load_for_inject(
                 agent=agent,
                 user_id=self.ctx.user_id,
+                query=reasoning_query,
             )
             system_content = f"{base}{long_term}"
             model = await self.resolve_invoke_model(agent.model_config)
@@ -315,6 +316,7 @@ class AgentChatRagMixin:
         _, long_term = await UserMemoryService(self.db, self.ctx).load_for_inject(
             agent=agent,
             user_id=self.ctx.user_id,
+            query=body.query,
         )
         # assemble 仍需 agent 附着会话；之后 expunge，避免 ephemeral config 被 commit flush 入库
         self.db.expunge(agent)
@@ -412,6 +414,7 @@ class AgentChatRagMixin:
             memory_rows, long_term = await UserMemoryService(self.db, self.ctx).load_for_inject(
                 agent=agent,
                 user_id=self.ctx.user_id,
+                query=prompt_query or retrieve_query,
             )
             # 长期 → 近期；检索仍用本轮 retrieve_query
             gen_system = f"{base}{long_term}{format_history_block(history)}"

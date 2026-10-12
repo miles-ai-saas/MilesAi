@@ -1,4 +1,4 @@
-"""Subagent 短程记忆：平台规划路径注入 history_block，并向下传递 conversation_id。"""
+"""Subagent 记忆：平台规划路径注入 history / long_term，并向下传递 conversation_id。"""
 
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
@@ -49,6 +49,8 @@ async def test_platform_plan_injects_history_and_passes_conversation_id():
         conversation_id="sess-1",
         history_block="\n\n【近期对话】\n用户：历史问\n助手：历史答",
         history_message_count=2,
+        long_term_block="\n\n【关于该用户的长期记忆】\n- 偏好：喜欢简洁",
+        long_term_item_count=1,
     )
 
     llm_calls: list[str] = []
@@ -68,11 +70,14 @@ async def test_platform_plan_injects_history_and_passes_conversation_id():
         result = await _run_platform_planned(svc, parent, [binding], body)
 
     assert result.answer == "综合答"
+    assert any(s.get("type") == "user_memory" and s.get("route") == "subagent" for s in result.steps)
     assert any(s.get("type") == "chat_memory" and s.get("route") == "subagent" for s in result.steps)
     assert captured["conversation_id"] == "sess-1"
     assert captured["child_id"] == child_id
+    assert "【关于该用户的长期记忆】" in llm_calls[0]
     assert "【近期对话】" in llm_calls[0]
     assert "历史问" in llm_calls[0]
+    assert "【关于该用户的长期记忆】" in llm_calls[1]
     assert "【近期对话】" in llm_calls[1]
     assert "本轮问" in llm_calls[1]
 

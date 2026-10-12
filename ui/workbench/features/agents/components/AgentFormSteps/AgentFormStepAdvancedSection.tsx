@@ -24,9 +24,10 @@ export function AgentFormStepAdvancedSection({ form, setForm, designMode }: Prop
       <div className="rounded-lg border border-line-soft p-4">
         <p className="mb-1 text-xs font-medium text-ink">跨会话记忆</p>
         <p className="mb-2 text-xs text-ink-muted">
-          开启后，成功对话会异步抽取用户摘要/偏好，并在直连、工具与 RAG 路径注入 system（默认关闭）。
+          开启后，成功对话会异步抽取用户摘要/偏好，并在直连、工具、RAG、Flow、A2A 与子智能体编排路径注入
+          system（默认关闭）。
         </p>
-        <label className="flex cursor-pointer items-center gap-2 text-xs">
+        <label className="mb-3 flex cursor-pointer items-center gap-2 text-xs">
           <input
             type="checkbox"
             checked={form.user_memory_enabled}
@@ -34,6 +35,42 @@ export function AgentFormStepAdvancedSection({ form, setForm, designMode }: Prop
           />
           启用长期记忆（摘要 / 偏好）
         </label>
+        {form.user_memory_enabled ? (
+          <div className="space-y-3 border-t border-line-soft pt-3">
+            <label className="block text-xs text-ink-muted">
+              记忆范围
+              <select
+                className="input-field mt-1 w-full"
+                value={form.user_memory_scope}
+                onChange={(e) =>
+                  setForm((f) => ({
+                    ...f,
+                    user_memory_scope: e.target.value === "tenant_user" ? "tenant_user" : "per_agent",
+                  }))
+                }
+              >
+                <option value="per_agent">仅本智能体</option>
+                <option value="tenant_user">同租户用户跨智能体画像</option>
+              </select>
+            </label>
+            <label className="block text-xs text-ink-muted">
+              召回方式
+              <select
+                className="input-field mt-1 w-full"
+                value={form.user_memory_recall_mode}
+                onChange={(e) =>
+                  setForm((f) => ({
+                    ...f,
+                    user_memory_recall_mode: e.target.value === "relevant" ? "relevant" : "all",
+                  }))
+                }
+              >
+                <option value="all">全量注入（按字符上限截断）</option>
+                <option value="relevant">按本轮问题相关性排序</option>
+              </select>
+            </label>
+          </div>
+        ) : null}
       </div>
       {form.sub_agents.length > 0 ? (
         <div className="rounded-lg border border-line-soft p-4">

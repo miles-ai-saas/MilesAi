@@ -17,6 +17,7 @@
 - 智能体 CRUD、架构预览、统计、标签/分类
 - 对话路由：A2A 宿主 / 内部协同 / 外部 Peer 增强 / 画布流程 / LangGraph RAG / 直连 LLM / tool_agent
 - **短程对话记忆**：`conversation_id` → `agt_chat_messages`；直连/tool/RAG/Flow/A2A 宿主/内部协同（subagent）注入（见 `chat_memory.py`）
+- **跨会话长期记忆**：可选 `config.user_memory`（scope / 相关性召回 / subagent 注入），见 [agent-user-memory.md](./agent-user-memory.md)
 - DeepAgents 可选依赖 + 平台规划降级
 - 技能包注入、MCP/工具 function calling
 - 对话工作台、架构拓扑图、执行时间线

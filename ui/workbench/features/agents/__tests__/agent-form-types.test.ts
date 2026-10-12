@@ -146,6 +146,21 @@ describe("buildAgentConfig", () => {
     expect(config.chat_intent_router).toEqual({ enabled: true });
   });
 
+  it("启用长期记忆时写入 scope 与 recall_mode", () => {
+    const form = {
+      ...emptyAgentForm(),
+      user_memory_enabled: true,
+      user_memory_scope: "tenant_user" as const,
+      user_memory_recall_mode: "relevant" as const,
+    };
+    const config = buildAgentConfig(form, undefined);
+    expect(config.user_memory).toEqual({
+      enabled: true,
+      scope: "tenant_user",
+      recall_mode: "relevant",
+    });
+  });
+
   it("有 published_flow_id 时设置 workflow 模式", () => {
     const form = { ...emptyAgentForm(), published_flow_id: "flow-1" };
     const config = buildAgentConfig(form, undefined);

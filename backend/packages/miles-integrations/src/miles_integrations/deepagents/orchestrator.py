@@ -72,6 +72,7 @@ async def _platform_plan(
     *,
     svc: AgentServiceLike,
     history_block: str = "",
+    long_term_block: str = "",
 ) -> list[dict]:
     """平台 JSON 规划器：主模型输出 sub_agent_id + task 列表。"""
     if not parent.model_config:
@@ -82,12 +83,13 @@ async def _platform_plan(
             }
         ]
     catalog = _catalog_text(bindings)
-    history_section = f"{history_block}\n" if history_block else ""
+    # 长期 → 近期，与 RAG / Flow 一致。
+    memory_section = f"{long_term_block}{history_block}\n" if (long_term_block or history_block) else ""
     prompt = (
         "你是任务规划器。根据用户问题，从下列子智能体中选择要调用的一个或多个，并给出每个子任务说明。\n"
         '仅输出 JSON：{"steps":[{"sub_agent_id":"uuid","task":"子任务描述"}]}\n\n'
         f"子智能体列表：\n{catalog}\n"
-        f"{history_section}"
+        f"{memory_section}"
         f"用户问题：{query}"
     )
     model = await svc.resolve_invoke_model(parent.model_config)
@@ -123,6 +125,15 @@ async def _run_platform_planned(
             "mode": "json_plan",
         }
     ]
+    if body.long_term_item_count or body.long_term_block:
+        steps.append(
+            {
+                "type": "user_memory",
+                "items": body.long_term_item_count,
+                "chars": len(body.long_term_block or ""),
+                "route": "subagent",
+            }
+        )
     if body.history_message_count:
         steps.append(
             {
@@ -139,6 +150,7 @@ async def _run_platform_planned(
         body.query,
         svc=svc,
         history_block=body.history_block,
+        long_term_block=body.long_term_block,
     )
     steps.append({"type": "plan", "steps": plan})
 
@@ -194,6 +206,9 @@ async def _run_platform_planned(
 
     if parent.model_config:
         parent_prompt = await svc.resolve_system_prompt(parent)
+        # 长期 → 近期
+        if body.long_term_block:
+            parent_prompt = f"{parent_prompt}{body.long_term_block}"
         if body.history_block:
             parent_prompt = f"{parent_prompt}{body.history_block}"
         synth_prompt = (

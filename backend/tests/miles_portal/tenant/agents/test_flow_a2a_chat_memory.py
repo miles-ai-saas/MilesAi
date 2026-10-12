@@ -14,7 +14,7 @@ from miles_portal.tenant.agents.services.call_records import route_allows_user_m
 def test_route_allows_user_memory_includes_flow_a2a():
     assert route_allows_user_memory("flow")
     assert route_allows_user_memory("a2a_host")
-    assert not route_allows_user_memory("subagent")
+    assert route_allows_user_memory("subagent")
 
 
 @pytest.mark.asyncio

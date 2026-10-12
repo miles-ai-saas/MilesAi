@@ -21,6 +21,9 @@ export type AgentFormValues = {
   a2a_intent_router_enabled: boolean;
   chat_intent_router_enabled: boolean;
   user_memory_enabled: boolean;
+  user_memory_scope: "per_agent" | "tenant_user";
+  user_memory_recall_mode: "all" | "relevant";
+
   use_langgraph_rag: boolean;
   use_llm_grade: boolean;
   relevance_threshold: number;
@@ -64,6 +67,9 @@ export function emptyAgentForm(): AgentFormValues {
     a2a_intent_router_enabled: false,
     chat_intent_router_enabled: false,
     user_memory_enabled: false,
+    user_memory_scope: "per_agent",
+    user_memory_recall_mode: "all",
+
     use_langgraph_rag: true,
     use_llm_grade: false,
     relevance_threshold: 0.35,
@@ -121,6 +127,15 @@ export function agentToFormValues(agent: Agent): AgentFormValues {
       cfg.chat_intent_router && typeof cfg.chat_intent_router === "object" && cfg.chat_intent_router.enabled,
     ),
     user_memory_enabled: Boolean(cfg.user_memory && typeof cfg.user_memory === "object" && cfg.user_memory.enabled),
+    user_memory_scope:
+      cfg.user_memory && typeof cfg.user_memory === "object" && cfg.user_memory.scope === "tenant_user"
+        ? "tenant_user"
+        : "per_agent",
+    user_memory_recall_mode:
+      cfg.user_memory && typeof cfg.user_memory === "object" && cfg.user_memory.recall_mode === "relevant"
+        ? "relevant"
+        : "all",
+
     use_langgraph_rag: cfg.use_langgraph_rag !== false,
     relevance_threshold: Number(cfg.relevance_threshold ?? 0.35),
     rag_max_retries: Number(cfg.rag_max_retries ?? 1),
@@ -239,7 +254,12 @@ export function buildAgentConfig(form: AgentFormValues, baseConfig: AgentConfig 
   if (form.user_memory_enabled) {
     const prev =
       baseConfig?.user_memory && typeof baseConfig.user_memory === "object" ? { ...baseConfig.user_memory } : {};
-    config.user_memory = { ...prev, enabled: true };
+    config.user_memory = {
+      ...prev,
+      enabled: true,
+      scope: form.user_memory_scope,
+      recall_mode: form.user_memory_recall_mode,
+    };
   } else {
     delete config.user_memory;
   }

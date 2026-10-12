@@ -48,7 +48,7 @@ _TOOL_STEP_TYPES = frozenset(
 
 
 # 长期记忆读/写覆盖：直连 / tool / RAG / Flow / A2A 宿主（subagent 仍排除）。
-_USER_MEMORY_ROUTES = frozenset({"direct_llm", "tool_agent", "rag", "flow", "a2a_host"})
+_USER_MEMORY_ROUTES = frozenset({"direct_llm", "tool_agent", "rag", "flow", "a2a_host", "subagent"})
 
 
 def route_allows_user_memory(route: str) -> bool:

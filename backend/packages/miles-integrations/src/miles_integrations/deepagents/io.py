@@ -18,7 +18,7 @@ from miles_core.models.model import ModelConfig
 
 @dataclass
 class ParentChatInput:
-    """父对话输入的 L3 最小视图：query / inputs / conversation_id / 预格式化短程记忆。"""
+    """父对话输入的 L3 最小视图：query / inputs / conversation_id / 预格式化记忆。"""
 
     query: str
     inputs: dict = field(default_factory=dict)
@@ -26,6 +26,9 @@ class ParentChatInput:
     # L1 从 agt_chat_messages 加载后格式化为【近期对话】块；L3 只拼接，不读库。
     history_block: str = ""
     history_message_count: int = 0
+    # L1 ``UserMemoryService.load_for_inject`` 预格式化【关于该用户的长期记忆】。
+    long_term_block: str = ""
+    long_term_item_count: int = 0
 
 
 @dataclass

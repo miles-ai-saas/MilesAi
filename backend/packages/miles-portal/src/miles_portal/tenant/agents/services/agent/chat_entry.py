@@ -186,6 +186,11 @@ class AgentChatEntryMixin:
                     conversation_id=chat_body.conversation_id,
                 )
                 history_block = format_history_block(history)
+                memory_rows, long_term = await UserMemoryService(self.db, self.ctx).load_for_inject(
+                    agent=agent,
+                    user_id=self.ctx.user_id,
+                    query=chat_body.query,
+                )
                 # 释放请求事务：DeepAgents / 子工位含多轮 LLM，不长时间占连接。
                 await self.db.commit()
                 result = await run_subagent_planned_chat(
@@ -198,6 +203,8 @@ class AgentChatEntryMixin:
                         conversation_id=chat_body.conversation_id,
                         history_block=history_block,
                         history_message_count=len(history),
+                        long_term_block=long_term,
+                        long_term_item_count=len(memory_rows),
                     ),
                     on_delta=on_delta,
                 )
@@ -294,6 +301,7 @@ class AgentChatEntryMixin:
         memory_rows, long_term = await UserMemoryService(self.db, self.ctx).load_for_inject(
             agent=agent,
             user_id=self.ctx.user_id,
+            query=query,
         )
         ctx = await self.flow_run_context(
             agent,
