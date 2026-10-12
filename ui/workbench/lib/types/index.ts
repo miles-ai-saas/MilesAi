@@ -10,6 +10,7 @@ export type * from "./audit";
 export type * from "./auth";
 export type * from "./common";
 export type * from "./compliance";
+export type * from "./eval";
 export type * from "./flows";
 export type * from "./generative";
 export type * from "./hooks";

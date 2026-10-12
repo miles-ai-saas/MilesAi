@@ -48,6 +48,7 @@ ui/workbench/features/<域>/
 - `features/skills/`
 - `features/prompts/`
 - `features/tasks/`
+- `features/eval/`
 - `features/system-users/`
 - `features/monitor/`
 - `features/attachments/`

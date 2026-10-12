@@ -8,6 +8,7 @@ import { attachmentsApi } from "./attachments";
 import { auditApi } from "./audit";
 import { authApi } from "./auth";
 import { complianceApi } from "./compliance";
+import { evalApi } from "./eval";
 import { flowsApi } from "./flows";
 import { generativeApi } from "./generative";
 import { hooksApi } from "./hooks";
@@ -33,6 +34,7 @@ export const api = {
   ...monitorApi,
   ...auditApi,
   ...complianceApi,
+  ...evalApi,
   ...tagsApi,
   ...promptsApi,
   ...modelsApi,
