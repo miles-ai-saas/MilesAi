@@ -22,6 +22,17 @@ export const evalApi = {
     payload: { query: string; name?: string; expected?: Record<string, unknown> | null; sort_index?: number },
   ) => post<EvalCase>(`/eval/datasets/${datasetId}/cases`, payload),
 
+  promoteEvalCaseFromCallRecord: (
+    datasetId: string,
+    payload: {
+      agent_id: string;
+      call_id: string;
+      name?: string | null;
+      expected?: Record<string, unknown> | null;
+      prefer_session_text?: boolean;
+    },
+  ) => post<EvalCase>(`/eval/datasets/${datasetId}/cases/from-call-record`, payload),
+
   updateEvalCase: (
     datasetId: string,
     caseId: string,

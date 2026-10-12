@@ -43,6 +43,19 @@ class EvalCaseUpdate(BaseModel):
     sort_index: int | None = None
 
 
+class EvalCasePromoteFromCallCreate(BaseModel):
+    """从智能体调用记录升格用例。"""
+
+    agent_id: UUID
+    call_id: UUID
+    name: str | None = Field(default=None, max_length=128)
+    expected: dict | None = None
+    prefer_session_text: bool = Field(
+        default=True,
+        description="优先从会话消息取全文；否则用调用记录 preview",
+    )
+
+
 class EvalCaseOut(BaseModel):
     id: UUID
     dataset_id: UUID

@@ -1,5 +1,8 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import { AgentCallRecordDetailDialog } from "@/features/agents";
+import { EvalPromoteFromCallDialog } from "@/features/eval/components/EvalPromoteFromCallDialog";
 import type { EvalPageVm } from "@/features/eval/hooks/use-eval-page";
 import {
   evalRunStatusLabel,
@@ -7,6 +10,7 @@ import {
   formatRunSummary,
   isEvalRunActive,
 } from "@/features/eval/lib/eval-labels";
+import type { AgentCallRecordDetail } from "@/lib/types";
 
 export function EvalRunDetailTab({ vm }: { vm: EvalPageVm }) {
   const {
@@ -20,6 +24,20 @@ export function EvalRunDetailTab({ vm }: { vm: EvalPageVm }) {
     runDetailError,
     startRun,
   } = vm;
+  const [callDetailId, setCallDetailId] = useState<string | null>(null);
+  const [promoteDetail, setPromoteDetail] = useState<AgentCallRecordDetail | null>(null);
+  const [promoteHint, setPromoteHint] = useState("");
+
+  useEffect(() => {
+    if (!promoteHint) return;
+    const t = window.setTimeout(() => setPromoteHint(""), 2500);
+    return () => window.clearTimeout(t);
+  }, [promoteHint]);
+
+  useEffect(() => {
+    setPromoteDetail(null);
+    setPromoteHint("");
+  }, [callDetailId]);
 
   if (!selectedRunId) {
     return (
@@ -129,7 +147,18 @@ export function EvalRunDetailTab({ vm }: { vm: EvalPageVm }) {
                       {item.answer_preview || item.error_message || "—"}
                     </td>
                     <td className="px-3 py-2 font-mono text-[11px] text-ink-faint">
-                      {item.call_id || "—"}
+                      {item.call_id ? (
+                        <button
+                          type="button"
+                          className="text-left text-brand hover:underline"
+                          title="查看调用详情"
+                          onClick={() => setCallDetailId(item.call_id!)}
+                        >
+                          {item.call_id}
+                        </button>
+                      ) : (
+                        "—"
+                      )}
                     </td>
                   </tr>
                 ))
@@ -161,6 +190,23 @@ export function EvalRunDetailTab({ vm }: { vm: EvalPageVm }) {
           </div>
         ) : null}
       </section>
+
+      <AgentCallRecordDetailDialog
+        agentId={runDetail.agent_id}
+        callId={callDetailId}
+        onClose={() => setCallDetailId(null)}
+        onPromote={setPromoteDetail}
+        promoteHint={promoteHint}
+      />
+
+      <EvalPromoteFromCallDialog
+        open={!!promoteDetail}
+        agentId={runDetail.agent_id}
+        callId={promoteDetail?.id ?? ""}
+        defaultName={promoteDetail?.query_preview}
+        onClose={() => setPromoteDetail(null)}
+        onPromoted={() => setPromoteHint("已写入评测数据集")}
+      />
     </div>
   );
 }

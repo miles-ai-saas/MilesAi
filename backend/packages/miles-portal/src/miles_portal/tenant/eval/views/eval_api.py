@@ -1,4 +1,4 @@
-"""Agent 评测 HTTP API（后端 MVP，无工作台 UI）。"""
+"""Agent 评测 HTTP API。"""
 
 from uuid import UUID
 
@@ -13,6 +13,7 @@ from miles_core.tenant import TenantContext
 from miles_portal.tenant.eval.schemas.eval import (
     EvalCaseCreate,
     EvalCaseOut,
+    EvalCasePromoteFromCallCreate,
     EvalCaseUpdate,
     EvalDatasetCreate,
     EvalDatasetOut,
@@ -93,6 +94,17 @@ async def create_case(
     db: AsyncSession = Depends(get_db),
 ):
     return ok(await EvalService(db, ctx).create_case(dataset_id, body))
+
+
+@router.post("/datasets/{dataset_id}/cases/from-call-record", response_model=ApiResponse[EvalCaseOut])
+async def promote_case_from_call_record(
+    dataset_id: UUID,
+    body: EvalCasePromoteFromCallCreate,
+    ctx: TenantContext = Depends(require_permissions("agent:write")),
+    db: AsyncSession = Depends(get_db),
+):
+    """从成功调用记录升格为评测用例（默认 expected.contains=助手答案）。"""
+    return ok(await EvalService(db, ctx).promote_case_from_call_record(dataset_id, body))
 
 
 @router.patch("/datasets/{dataset_id}/cases/{case_id}", response_model=ApiResponse[EvalCaseOut])

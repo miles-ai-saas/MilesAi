@@ -18,6 +18,7 @@ from miles_core.tenant import TenantContext, assert_tenant_access, tenant_filter
 from miles_portal.tenant.eval.schemas.eval import (
     EvalCaseCreate,
     EvalCaseOut,
+    EvalCasePromoteFromCallCreate,
     EvalCaseUpdate,
     EvalDatasetCreate,
     EvalDatasetOut,
@@ -26,6 +27,7 @@ from miles_portal.tenant.eval.schemas.eval import (
     EvalRunItemOut,
     EvalRunOut,
 )
+from miles_portal.tenant.eval.services.promote_from_call import promote_case_from_call
 from miles_worker.app import celery_app
 
 
@@ -142,6 +144,24 @@ class EvalService(BaseService):
         row = await self._get_case(dataset_id, case_id)
         await self.db.delete(row)
         await self.db.flush()
+
+    async def promote_case_from_call_record(
+        self,
+        dataset_id: UUID,
+        body: EvalCasePromoteFromCallCreate,
+    ) -> EvalCaseOut:
+        await self._get_dataset(dataset_id)
+        row = await promote_case_from_call(
+            self.db,
+            self.ctx,
+            dataset_id=dataset_id,
+            agent_id=body.agent_id,
+            call_id=body.call_id,
+            name=body.name,
+            expected=body.expected,
+            prefer_session_text=body.prefer_session_text,
+        )
+        return EvalCaseOut.model_validate(row)
 
     # --- run ---
 

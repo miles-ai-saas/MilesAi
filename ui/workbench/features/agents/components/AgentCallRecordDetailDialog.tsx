@@ -1,15 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { api } from "@/lib/api";
+import Link from "next/link";
 import {
   agentCallRouteLabel,
   agentCallStatusLabel,
   formatCallRecordTime,
   hookTriggerLabel,
 } from "@/features/agents/lib/agent-call-record-labels";
+import { api } from "@/lib/api";
 import type { AgentCallRecordDetail } from "@/lib/types";
-import Link from "next/link";
 
 type Props = {
   agentId: string;
@@ -18,6 +18,9 @@ type Props = {
   onClose: () => void;
   onOpenTrace?: () => void;
   onOpenTraceFromRecord?: (sessionId: string) => void | Promise<void>;
+  /** 成功调用时可升格为评测用例；由调用方挂载升格对话框。 */
+  onPromote?: (detail: AgentCallRecordDetail) => void;
+  promoteHint?: string;
 };
 
 export function AgentCallRecordDetailDialog({
@@ -27,6 +30,8 @@ export function AgentCallRecordDetailDialog({
   onClose,
   onOpenTrace,
   onOpenTraceFromRecord,
+  onPromote,
+  promoteHint,
 }: Props) {
   const [detail, setDetail] = useState<AgentCallRecordDetail | null>(null);
   const [loading, setLoading] = useState(false);
@@ -65,6 +70,8 @@ export function AgentCallRecordDetailDialog({
   }, [copyHint]);
 
   if (!callId) return null;
+
+  const canPromote = Boolean(onPromote && detail?.status === "success");
 
   const canOpenTraceLocal = Boolean(
     onOpenTrace && detail?.conversation_id && conversationId && detail.conversation_id === conversationId,
@@ -232,7 +239,13 @@ export function AgentCallRecordDetailDialog({
           )}
         </div>
 
-        <footer className="flex shrink-0 justify-end gap-2 border-t border-line-soft px-5 py-3">
+        <footer className="flex shrink-0 flex-wrap items-center justify-end gap-2 border-t border-line-soft px-5 py-3">
+          {promoteHint ? <span className="mr-auto text-xs text-green-700">{promoteHint}</span> : null}
+          {canPromote && detail ? (
+            <button type="button" className="btn-sm-outline" onClick={() => onPromote?.(detail)}>
+              升格为评测用例
+            </button>
+          ) : null}
           {(canOpenTraceLocal || canOpenTraceFromServer) && detail?.conversation_id && (
             <button
               type="button"

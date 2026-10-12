@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { FilterChip } from "@/components/ui/FilterChip";
 import { ResourceListFooter } from "@/components/resource/ResourceListFooter";
 import { AgentCallRecordDetailDialog } from "@/features/agents/components/AgentCallRecordDetailDialog";
@@ -11,7 +12,8 @@ import {
   shortenTraceId,
 } from "@/features/agents/lib/agent-call-record-labels";
 import type { AgentCallRecordsPanelVm } from "@/features/agents/hooks/use-agent-call-records-panel";
-import type { AgentCallRecord } from "@/lib/types";
+import { EvalPromoteFromCallDialog } from "@/features/eval/components/EvalPromoteFromCallDialog";
+import type { AgentCallRecord, AgentCallRecordDetail } from "@/lib/types";
 
 function StatusBadge({ status }: { status: string }) {
   const ok = status === "success";
@@ -35,6 +37,19 @@ type Props = {
 
 export function AgentCallRecordsPanel({ agentId, conversationId, vm, onOpenTrace, onOpenTraceFromRecord }: Props) {
   const { list, draft, setDraft, applyFilters, resetFilters, setStatusFilter, hasActiveFilters, selectedId, setSelectedId, filters } = vm;
+  const [promoteDetail, setPromoteDetail] = useState<AgentCallRecordDetail | null>(null);
+  const [promoteHint, setPromoteHint] = useState("");
+
+  useEffect(() => {
+    if (!promoteHint) return;
+    const t = window.setTimeout(() => setPromoteHint(""), 2500);
+    return () => window.clearTimeout(t);
+  }, [promoteHint]);
+
+  useEffect(() => {
+    setPromoteDetail(null);
+    setPromoteHint("");
+  }, [selectedId]);
 
   if (list.loading && list.items.length === 0) {
     return <div className="flex flex-1 items-center justify-center p-6 text-sm text-ink-muted">加载中…</div>;
@@ -166,6 +181,17 @@ export function AgentCallRecordsPanel({ agentId, conversationId, vm, onOpenTrace
         conversationId={conversationId}
         onOpenTrace={onOpenTrace ? () => onOpenTrace() : undefined}
         onOpenTraceFromRecord={onOpenTraceFromRecord}
+        onPromote={setPromoteDetail}
+        promoteHint={promoteHint}
+      />
+
+      <EvalPromoteFromCallDialog
+        open={!!promoteDetail}
+        agentId={agentId}
+        callId={promoteDetail?.id ?? ""}
+        defaultName={promoteDetail?.query_preview}
+        onClose={() => setPromoteDetail(null)}
+        onPromoted={() => setPromoteHint("已写入评测数据集")}
       />
     </div>
   );

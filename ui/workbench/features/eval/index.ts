@@ -6,3 +6,4 @@ export { EvalPageLayout } from "./components/EvalPageLayout";
 export { EvalDatasetsTab } from "./components/EvalDatasetsTab";
 export { EvalRunsTab } from "./components/EvalRunsTab";
 export { EvalRunDetailTab } from "./components/EvalRunDetailTab";
+export { EvalPromoteFromCallDialog } from "./components/EvalPromoteFromCallDialog";
