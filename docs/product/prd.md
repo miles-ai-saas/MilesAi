@@ -146,7 +146,7 @@
 | PRD 表述 | 当前实现 | 备注 |
 |----------|----------|------|
 | 内置工具（计算器、HTTP、KB 检索、生图/生视频等） | ✅ | `BUILTIN_REGISTRY` |
-| 网页搜索、代码执行、Redis 操作 | 部分 | `web_search` · `code_execution` ✅；Redis 操作未内置 |
+| 网页搜索、代码执行、Redis 操作 | ✅ | `web_search` · `code_execution` · `redis_kv`（租户隔离 KV，opt-in） |
 | 自定义 HTTP 工具 + 参数 schema | ✅ | `tool_tools` |
 | 本地脚本工具 | 部分 | 经 mcp-runner / 演进中 |
 | 工具调用日志 | ✅ | `tool_invocation_logs` |

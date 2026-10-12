@@ -133,3 +133,12 @@ class ListAttachmentsInput(BaseModel):
     resource_id: str | None = Field(None, description="资源 UUID（须与 resource_type 成对）")
     page: int | None = Field(None, description="页码，从 1 开始，默认 1")
     size: int | None = Field(None, description="每页条数，默认 10，上限 20")
+
+
+# ``redis_kv`` 工具入参：租户隔离 KV 操作。
+class RedisKvInput(BaseModel):
+    op: str = Field(..., description="操作：get / set / delete / exists / incr")
+    key: str = Field(..., description="相对键名（字母数字与 ._:/ -，最长 128）")
+    value: str | None = Field(None, description="set 时写入的值（最长 64KB）")
+    ttl_sec: int | None = Field(None, description="过期秒数；set 默认 86400，上限 30 天；incr 可选")
+    amount: int | None = Field(None, description="incr 步长，默认 1")

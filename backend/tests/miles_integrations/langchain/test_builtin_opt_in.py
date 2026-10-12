@@ -15,6 +15,7 @@ _OPT_IN = {
     "run_flow_once",
     "invoke_tenant_hook",
     "list_attachments",
+    "redis_kv",
 }
 _BASELINE = {"calculator", "http_request", "get_current_datetime", "knowledge_search"}
 

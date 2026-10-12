@@ -292,6 +292,48 @@ BUILTIN_REGISTRY: list[dict] = [
             {"name": "size", "type": "integer", "description": "每页条数，默认 10，上限 20", "required": False},
         ],
     },
+    # P2: 租户隔离 Redis KV — 仅 agent_kv:{tenant}:*，无 KEYS/FLUSH
+    {
+        "slug": "redis_kv",
+        "name": "租户 Redis KV",
+        "description": "在本租户隔离命名空间读写简易键值（get/set/delete/exists/incr）；不可访问平台其它 Redis 键",
+        "category_slug": "data",
+        "version": "1.0.0",
+        "require_confirmation": False,
+        "opt_in": True,
+        "parameters": [
+            {
+                "name": "op",
+                "type": "string",
+                "description": "操作：get / set / delete / exists / incr",
+                "required": True,
+            },
+            {
+                "name": "key",
+                "type": "string",
+                "description": "相对键名（字母数字与 ._:/ -，最长 128）",
+                "required": True,
+            },
+            {
+                "name": "value",
+                "type": "string",
+                "description": "set 时写入的值（最长 64KB）",
+                "required": False,
+            },
+            {
+                "name": "ttl_sec",
+                "type": "integer",
+                "description": "过期秒数；set 默认 86400，上限 30 天；incr 可选",
+                "required": False,
+            },
+            {
+                "name": "amount",
+                "type": "integer",
+                "description": "incr 步长，默认 1",
+                "required": False,
+            },
+        ],
+    },
     {
         "slug": "skill_read_reference",
         "name": "读取技能参考",

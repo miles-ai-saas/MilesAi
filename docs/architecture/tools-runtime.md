@@ -57,7 +57,7 @@ MilesAI 是**企业级多租户 AI 中台**（RAG、流程编排、智能体、�
 | **执行** | `invoke_builtin` → 复用现有 `tenant/*` Service（RAG、合规、附件等） |
 | **扩展** | 发版新增；租户**不可改实现**，可按租户/智能体**启用** |
 | **租户使用** | 与自定义工具相同：`tool_slugs` 白名单、试调用、调用日志、`require_confirmation` |
-| **现状 slug** | L1 轻量：`calculator`、`http_request`、`get_current_datetime`、`web_search`；L2 复杂：`knowledge_search`、`compliance_check_text`、`code_execution`、`run_flow_once`、`invoke_tenant_hook`、`list_attachments`、`generate_*`、`skill_read_reference` / `skill_run_script` |
+| **现状 slug** | L1 轻量：`calculator`、`http_request`、`get_current_datetime`、`web_search`；L2 复杂：`knowledge_search`、`compliance_check_text`、`code_execution`、`run_flow_once`、`invoke_tenant_hook`、`list_attachments`、`redis_kv`、`generate_*`、`skill_read_reference` / `skill_run_script` |
 
 **推荐方向：系统内置一批「复杂工具」（L2）**，把已在平台内实现的能力（多库检索、合规检测、附件查询等）封装为 Agent 可调用的 builtin，租户**直接选用**即可，无需每个租户重复配 HTTP 或写脚本。
 
@@ -96,6 +96,7 @@ MilesAI 是**企业级多租户 AI 中台**（RAG、流程编排、智能体、�
 | ✅ | `run_flow_once` | 触发本租户**已发布**流程一次 | `FlowService.run` + 递归/超时护栏 | **是** |
 | ✅ | `invoke_tenant_hook` | 手动触发已绑定 **HTTP** 钩子链 | `HookExecutor.run_manual_http` | **是** |
 | ✅ | `list_attachments` | 按资源范围列附件元数据（默认当前智能体） | `AttachmentService.list_attachments` | 否 |
+| ✅ | `redis_kv` | 租户隔离 Redis KV（get/set/delete/exists/incr） | `tools/services/redis_kv.py` + `RedisKeys.agent_kv` | 否 |
 | 不做 | `list_knowledge_bases` | 列出本租户 KB | — | — （绑定 KB 的 `kb_ids` 已注入 system prompt，工具冗余） |
 | P3 | `http_request` | 通用外呼（SSRF 防护） | 已有；建议弱化宣传 | 可选 |
 
@@ -133,7 +134,7 @@ MilesAI 是**企业级多租户 AI 中台**（RAG、流程编排、智能体、�
 | 集合 | 内容 | 注入条件 |
 |------|------|----------|
 | **基线** | `calculator`、`http_request`、`get_current_datetime`、`knowledge_search` | 始终 |
-| **opt-in** | `web_search`、`code_execution`、`compliance_check_text`、`run_flow_once`、`invoke_tenant_hook`、`list_attachments` | 出现在 `tool_slugs` 时 |
+| **opt-in** | `web_search`、`code_execution`、`compliance_check_text`、`run_flow_once`、`invoke_tenant_hook`、`list_attachments`、`redis_kv` | 出现在 `tool_slugs` 时 |
 | **技能壳** | `skill_read_reference`、`skill_run_script` | `config.skill_ids`（兼容旧 `skill_package_id`） |
 | **生成壳** | `generate_image/video/speech` | `config.enable_generative_tools` |
 | **MCP** | `mcp__{service}__{tool}` | `config.mcp_service_ids` |
@@ -332,7 +333,7 @@ mcp__{service}__{tool_name}
 
 | 项 | 说明 |
 |----|------|
-| 内置复杂工具（扩展） | ✅ `run_flow_once`、`invoke_tenant_hook`、`list_attachments`（须 `resource_type`+`resource_id`，对话默认绑定当前智能体） |
+| 内置复杂工具（扩展） | ✅ `run_flow_once`、`invoke_tenant_hook`、`list_attachments`、`redis_kv`（租户键前缀隔离） |
 | 租户套餐级 builtin 开关 | `tenant_toggle` / 套餐位 |
 | 调用限流 | 租户级 QPS / 复杂工具配额 |
 | 流程节点 | 复用同一 Runtime |

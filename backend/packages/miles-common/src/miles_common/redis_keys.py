@@ -67,6 +67,11 @@ class RedisKeys:
         return f"a2a:pushcfg:{tenant_id}:{task_id}"
 
     @staticmethod
+    def agent_kv(tenant_id: UUID | str, key: str) -> str:
+        """智能体内置 ``redis_kv`` 工具的租户隔离键（相对 key 已校验）。"""
+        return f"agent_kv:{tenant_id}:{key}"
+
+    @staticmethod
     def tokens_month_reset(period_yyyy_mm: str) -> str:
         """本月 Token 清零幂等标记（UTC ``YYYY-MM``）。"""
         return f"quota:tokens_month_reset:{period_yyyy_mm}"

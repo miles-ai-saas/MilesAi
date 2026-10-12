@@ -284,6 +284,18 @@ async def handle_list_attachments(
     return await list_scoped_attachments(db, ctx, params, agent_id=agent_id)
 
 
+async def handle_redis_kv(
+    params: dict,
+    *,
+    ctx: TenantContext,
+    **_: Any,
+) -> dict:
+    """租户隔离 Redis KV；委托 ``redis_kv.run_redis_kv``。"""
+    from miles_portal.tenant.tools.services.redis_kv import run_redis_kv
+
+    return await run_redis_kv(ctx.tenant_id, params)
+
+
 async def handle_skill_run_script(
     params: dict,
     *,
@@ -315,6 +327,7 @@ BUILTIN_HANDLERS: dict[str, BuiltinHandler] = {
     "run_flow_once": handle_run_flow_once,  # 触发已发布流程（需确认）
     "invoke_tenant_hook": handle_invoke_tenant_hook,  # 触发已注册 HTTP 钩子（需确认）
     "list_attachments": handle_list_attachments,  # 按资源范围列附件元数据（只读）
+    "redis_kv": handle_redis_kv,  # 租户隔离 Redis KV
     "generate_speech": handle_generate_speech,  # P2: CosyVoice
     "generate_video": handle_generate_video,
     "generate_image": handle_generate_image,

@@ -31,6 +31,7 @@ from .inputs import (
     InvokeTenantHookInput,
     KnowledgeSearchInput,
     ListAttachmentsInput,
+    RedisKvInput,
     RunFlowOnceInput,
     SkillReadReferenceInput,
     SkillRunScriptInput,
@@ -115,6 +116,7 @@ _OPT_IN_SLUGS: tuple[str, ...] = (
     "run_flow_once",
     "invoke_tenant_hook",
     "list_attachments",
+    "redis_kv",
 )
 _SKILL_SLUGS: tuple[str, ...] = ("skill_read_reference", "skill_run_script")
 _GENERATIVE_SLUGS: tuple[str, ...] = ("generate_image", "generate_video")
@@ -134,6 +136,10 @@ _DECLS: dict[str, ToolDecl] = {
     "list_attachments": ToolDecl(
         "按资源范围列出本租户附件元数据（默认绑定当前智能体）；不返回文件内容",
         ListAttachmentsInput,
+    ),
+    "redis_kv": ToolDecl(
+        "在本租户隔离命名空间读写简易键值（get/set/delete/exists/incr）；不可访问平台其它 Redis 键",
+        RedisKvInput,
     ),
     # 技能包绑定 / 生成开关
     "skill_read_reference": ToolDecl("读取绑定技能包 references/ 或 assets/ 下的文本文件", SkillReadReferenceInput),
