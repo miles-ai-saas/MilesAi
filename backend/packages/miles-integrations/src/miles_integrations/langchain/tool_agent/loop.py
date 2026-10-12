@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+from dataclasses import dataclass, field
+from typing import Any
 
 from miles_common.exceptions import BadRequestError
 from miles_core.models.agent import Agent
@@ -34,6 +36,8 @@ from miles_integrations.litellm.usage_sink import UsageSink
 
 # 同轮内允许多次调用的生成类工具（其余工具按需重复调用是合法的）
 _GENERATIVE_SLUGS = frozenset({"generate_image", "generate_video"})
+# 确认续接时合成的 tool_call id（供后续 assistant/tool 消息配对）
+_CONFIRM_TOOL_CALL_ID = "pending_confirm_1"
 
 
 def _pending_job_entry(job_id: object, kind: object) -> dict:
@@ -41,11 +45,55 @@ def _pending_job_entry(job_id: object, kind: object) -> dict:
     return {"id": job_id, "kind": kind, "status": "pending"}
 
 
-async def _resume_confirmed_tool(body: ChatRequest, tool_executor: ToolExecutor) -> ChatResponse | None:
+@dataclass
+class _ConfirmedToolSeed:
+    """确认后续接：工具已执行，需注入 messages 后继续 LLM（可经 on_delta 真流）。"""
+
+    slug: str
+    params: dict
+    output: Any
+    artifacts: list[ChatArtifact] = field(default_factory=list)
+    steps: list[dict] = field(default_factory=list)
+    knowledge_hits: list[dict] = field(default_factory=list)
+
+
+def _seed_confirmed_tool_messages(messages: list[dict], seed: _ConfirmedToolSeed) -> None:
+    """把确认执行的工具结果写成 assistant tool_calls + tool，供下一轮 LLM 综合。"""
+    args = json.dumps(seed.params, ensure_ascii=False)
+    messages.append(
+        {
+            "role": "assistant",
+            "content": "",
+            "tool_calls": [
+                {
+                    "id": _CONFIRM_TOOL_CALL_ID,
+                    "type": "function",
+                    "function": {"name": seed.slug, "arguments": args},
+                }
+            ],
+        }
+    )
+    if isinstance(seed.output, (dict, list)):
+        content = json.dumps(seed.output, ensure_ascii=False)
+    else:
+        content = str(seed.output)
+    messages.append(
+        {
+            "role": "tool",
+            "tool_call_id": _CONFIRM_TOOL_CALL_ID,
+            "content": content,
+        }
+    )
+
+
+async def _resume_confirmed_tool(
+    body: ChatRequest, tool_executor: ToolExecutor
+) -> ChatResponse | _ConfirmedToolSeed | None:
     """处理「用户点击确认后」的续接请求。
 
-    非续接请求返回 ``None``（调用方继续走正常多轮循环）；续接请求一律返回响应：
-    执行成功回结果与产出物，执行异常转为失败响应（不向外抛）。
+    - 非续接 → ``None``
+    - 执行失败 / 异步生成 pending → 终态 ``ChatResponse``（短答，无 LLM）
+    - 同步成功 → ``_ConfirmedToolSeed``，由主循环注入 messages 后继续 LLM（``on_delta`` 真流）
     """
     if not (body.tool_confirmed and body.pending_tool_slug):
         return None
@@ -58,24 +106,53 @@ async def _resume_confirmed_tool(body: ChatRequest, tool_executor: ToolExecutor)
 
             confirm_params["n"] = resolve_image_n(confirm_params.get("n"))
         output = await tool_executor.invoke(slug, confirm_params, confirmed=True)
-        confirm_artifacts = artifacts_from_tool_output(output) if isinstance(output, dict) else []
-        confirm_message = str(output.get("message") if isinstance(output, dict) else output)
-        confirm_jobs = (
-            [_pending_job_entry(output.get("generative_job_id", ""), output.get("kind", "image"))]
-            if isinstance(output, dict) and output.get("status") == "pending"
-            else []
-        )
-        return ChatResponse(
-            answer=confirm_message or f"工具 `{slug}` 已执行。",
-            steps=[{"type": "tool_execute", "slug": slug, "status": "success"}],
-            artifacts=confirm_artifacts,
-            generative_jobs=confirm_jobs,
-        )
     except Exception as exc:
         return ChatResponse(
             answer=f"工具执行失败：{exc}",
             steps=[{"type": "tool_execute", "slug": slug, "status": "error", "error": str(exc)}],
         )
+
+    confirm_artifacts = artifacts_from_tool_output(output) if isinstance(output, dict) else []
+    if isinstance(output, dict) and output.get("status") == "pending" and output.get("generative_job_id"):
+        job_kind = str(output.get("kind") or "image")
+        confirm_message = str(output.get("message") or "")
+        default_msg = (
+            "图片生成任务已提交，完成后将自动展示预览。"
+            if job_kind == "image"
+            else "视频生成任务已提交，完成后将自动展示预览。"
+        )
+        return ChatResponse(
+            answer=confirm_message or default_msg,
+            steps=[
+                {
+                    "type": "tool_execute",
+                    "slug": slug,
+                    "status": "success",
+                },
+                {
+                    "type": "generative_job",
+                    "slug": slug,
+                    "job_id": output.get("generative_job_id"),
+                    "kind": job_kind,
+                    "status": "pending",
+                },
+            ],
+            artifacts=confirm_artifacts,
+            generative_jobs=[_pending_job_entry(output.get("generative_job_id", ""), job_kind)],
+        )
+
+    knowledge_hits: list[dict] = []
+    if slug == "knowledge_search" and isinstance(output, dict) and isinstance(output.get("hits"), list):
+        knowledge_hits.extend(output["hits"])
+
+    return _ConfirmedToolSeed(
+        slug=slug,
+        params=confirm_params,
+        output=output,
+        artifacts=confirm_artifacts,
+        steps=[{"type": "tool_execute", "slug": slug, "status": "success"}],
+        knowledge_hits=knowledge_hits,
+    )
 
 
 async def _recover_from_tool_simulation(
@@ -416,8 +493,9 @@ async def run_tool_calling_chat(
     ``on_delta``：非空时每轮 LLM 走流式；最终回答 content token 真推送（WS/A2A）；
     tool_call 轮通常无正文。
 
-    具体职责已下沉：用户确认续接见 ``_resume_confirmed_tool``，正文模拟调用的自救助见
-    ``_recover_from_tool_simulation``，单个 tool_call 执行见 ``_execute_tool_call``。
+    具体职责已下沉：用户确认续接见 ``_resume_confirmed_tool``（同步成功后注入 messages
+    继续 LLM，``on_delta`` 真流），正文模拟调用的自救助见 ``_recover_from_tool_simulation``，
+    单个 tool_call 执行见 ``_execute_tool_call``。
     """
     if not agent.model_config:
         raise ValueError("工具调用需要配置大模型")
@@ -436,9 +514,9 @@ async def run_tool_calling_chat(
             steps=[{"type": "tool_agent", "error": "no_tools"}],
         )
 
-    # 用户确认后继续执行挂起的工具
+    # 用户确认后：终态（失败 / 异步 job）直接返回；同步成功则 seed 后进入下方 LLM 循环
     resumed = await _resume_confirmed_tool(body, tool_executor)
-    if resumed is not None:
+    if isinstance(resumed, ChatResponse):
         return resumed
 
     openai_tools = _tools_to_openai_schema(tools)
@@ -467,6 +545,11 @@ async def run_tool_calling_chat(
     ]
     artifacts: list[ChatArtifact] = []
     knowledge_hits: list[dict] = []
+    if isinstance(resumed, _ConfirmedToolSeed):
+        artifacts.extend(resumed.artifacts)
+        knowledge_hits.extend(resumed.knowledge_hits)
+        steps.extend(resumed.steps)
+        _seed_confirmed_tool_messages(messages, resumed)
     tool_sim_retried = False
     tool_names = [t.name for t in tools]
     tools_by_name = {t.name: t for t in tools}

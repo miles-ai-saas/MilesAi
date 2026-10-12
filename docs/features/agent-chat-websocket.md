@@ -24,7 +24,6 @@
 ### 1.2 明确不做 / 限制
 
 - 对外 OpenAPI 第三方集成的 WS（仅工作台）
-- pending_tool 确认后路径的真 token 流（仍走 `emit_answer_deltas` 切块兜底）
 - 全站统一 WebSocket 网关
 - Redis 不可用时回落本机环缓；`gap=true` 时仍回退本地历史 / HTTP
 
@@ -38,7 +37,8 @@
 | flow（答案产出 LLMCall） | `RunContext.on_delta` → 终点/喂入 TextOutput 的 LLM 真 token |
 | 子智能体（平台规划最终综合） | 综合轮 `ainvoke_chat` → `on_delta` 真 token |
 | DeepAgents 库路径 | `PlatformChatModel._astream` + `astream(messages)` → 主模型 content → `on_delta`（跳过 tool_call 片） |
-| pending_tool 确认后 | 整段 answer 后 `emit_answer_deltas` 切块 |
+| pending_tool 确认后（同步工具） | 执行工具后继续 LLM 综合 → `on_delta` 真 token |
+| pending_tool 确认后（异步生成 job / 执行失败） | 短答终态；无 `on_delta` 时 `emit_answer_deltas` 切块兜底 |
 
 HTTP `POST …/chat` 不传 `on_delta`，仍整包返回。`POST …/chat/stream`（租户与 OpenAPI）以 SSE 推送同名事件（`chat.delta` / `chat.done` / `chat.error`），内部复用 `on_delta`。合规改写后以 `chat.done.answer` 为准；工作台 `applyChatResponse` 用 `res.answer` 覆盖气泡。
 
@@ -96,7 +96,7 @@ Header: Authorization: Bearer {jwt}
 | `chat.sync` | 握手后首帧；续传结果（`replayed` / `gap`） |
 | `chat.step` | 编排步骤（与 HTTP `steps` 一致） |
 | `tool.confirm_required` | 待用户确认的工具 |
-| `chat.delta` | 回答文本片段（直连/RAG/tool_agent/flow/子智能体综合/DeepAgents 库为真 token；pending_tool 等为切块兜底） |
+| `chat.delta` | 回答文本片段（含 pending_tool 确认后同步工具的 LLM 综合为真 token；异步 job/失败短答等无流时切块兜底） |
 | `chat.done` | 完整 `ChatResponse` JSON |
 | `generative_job.progress` / `generative_job.done` | job watcher 推送 |
 | `chat.error` | 业务或校验错误 |
@@ -113,8 +113,8 @@ Header: Authorization: Bearer {jwt}
     → tool.confirm_required? → 等待 tool.confirm
     → chat.step × N
     → chat.delta × N
-        · 直连/RAG/tool_agent/flow/子智能体综合/DeepAgents：stream → on_delta → chat.delta（真 token）
-        · pending_tool 等：无 on_delta → emit_answer_deltas 切块
+        · 直连/RAG/tool_agent/flow/子智能体综合/DeepAgents/pending 确认后 LLM：stream → on_delta → chat.delta（真 token）
+        · 无 on_delta 的短答终态（如异步 job 提交）：emit_answer_deltas 切块
     → chat.done（含最终 answer；合规后可能与 delta 累计略有差异）
     → spawn_job_watchers(pending generative_job ids)
 ```

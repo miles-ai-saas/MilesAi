@@ -93,7 +93,7 @@ def _patch_litellm(monkeypatch, responses):
     return seen
 
 
-async def _run(body, *, agent=None, executor=None, tools=None, kb_ids=None):
+async def _run(body, *, agent=None, executor=None, tools=None, kb_ids=None, on_delta=None):
     return await loop_mod.run_tool_calling_chat(
         agent if agent is not None else _agent(),
         body,
@@ -103,6 +103,7 @@ async def _run(body, *, agent=None, executor=None, tools=None, kb_ids=None):
         platform_tools=tools if tools is not None else [_Tool("calculator")],
         media_reader=None,
         kb_ids=kb_ids,
+        on_delta=on_delta,
     )
 
 
@@ -118,20 +119,41 @@ async def test_no_tools_returns_guidance():
 # --- 用户确认后继续执行 -------------------------------------------------------
 
 
-async def test_confirmed_tool_resume_returns_execution_result():
-    executor = _Executor(invoke=lambda slug, params, confirmed: {"message": "计算完成"})
+@pytest.mark.asyncio
+async def test_confirmed_tool_resume_continues_llm_with_on_delta(monkeypatch):
+    """同步工具确认后注入 tool 结果，再走 LLM；on_delta 透传以支持真 token 流。"""
+    seen = _patch_litellm(monkeypatch, [_Resp(_Message("根据工具结果：答案是 2"))])
+    executor = _Executor(invoke=lambda slug, params, confirmed: {"message": "计算完成", "value": 2})
+    deltas: list[str] = []
+
+    async def on_delta(text: str) -> None:
+        deltas.append(text)
+
     resp = await _run(
-        ChatRequest(query="继续", tool_confirmed=True, pending_tool_slug="calculator", pending_tool_params={"expression": "1+1"}),
+        ChatRequest(
+            query="继续",
+            tool_confirmed=True,
+            pending_tool_slug="calculator",
+            pending_tool_params={"expression": "1+1"},
+        ),
         executor=executor,
+        on_delta=on_delta,
     )
-    assert resp.answer == "计算完成"
+    assert resp.answer == "根据工具结果：答案是 2"
     assert executor.invoked == [("calculator", {"expression": "1+1"}, True)]
-    assert resp.steps == [{"type": "tool_execute", "slug": "calculator", "status": "success"}]
-    assert resp.artifacts == []
-    assert resp.generative_jobs == []
+    assert any(s.get("type") == "tool_execute" and s.get("slug") == "calculator" for s in resp.steps)
+    assert seen["on_delta"] is on_delta
+    assert len(seen["calls"]) == 1
+    roles = [m.get("role") for m in seen["calls"][0]]
+    assert "tool" in roles
+    assert any(
+        m.get("role") == "assistant" and m.get("tool_calls") for m in seen["calls"][0]
+    )
 
 
+@pytest.mark.asyncio
 async def test_confirmed_tool_resume_surfaces_pending_job():
+    """异步生成 job 仍终态返回（无 LLM），短答可由 WS/SSE 切块兜底。"""
     executor = _Executor(
         invoke=lambda slug, params, confirmed: {
             "status": "pending",
@@ -150,6 +172,7 @@ async def test_confirmed_tool_resume_surfaces_pending_job():
     assert resp.artifacts[0].job_id == "job-9"
 
 
+@pytest.mark.asyncio
 async def test_confirmed_tool_resume_failure_is_reported():
     def boom(slug, params, confirmed):
         raise RuntimeError("kaboom")
