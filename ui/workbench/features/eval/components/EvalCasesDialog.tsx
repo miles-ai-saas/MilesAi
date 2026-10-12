@@ -5,6 +5,7 @@ import { ResourceDialog } from "@/components/resource/ResourceDialog";
 import { api } from "@/lib/api";
 import { useConfirmAction } from "@/hooks/use-confirm-action";
 import {
+  EXPECTED_MODE_OPTIONS,
   buildExpectedPayload,
   formatExpectedPreview,
   parseExpectedForm,
@@ -24,6 +25,8 @@ type CaseForm = {
   query: string;
   expectedMode: ExpectedMode;
   expectedValue: string;
+  /** 编辑时保留原 expected（含 _source） */
+  previousExpected: Record<string, unknown> | null;
 };
 
 const emptyForm = (): CaseForm => ({
@@ -31,6 +34,7 @@ const emptyForm = (): CaseForm => ({
   query: "",
   expectedMode: "contains",
   expectedValue: "",
+  previousExpected: null,
 });
 
 export function EvalCasesDialog({ open, dataset, onClose, onChanged }: Props) {
@@ -76,15 +80,24 @@ export function EvalCasesDialog({ open, dataset, onClose, onChanged }: Props) {
       query: c.query,
       expectedMode: parsed.mode === "none" ? "contains" : parsed.mode,
       expectedValue: parsed.value,
+      previousExpected: c.expected ?? null,
     });
   };
 
   const saveCase = async () => {
     if (!dataset || !form.query.trim()) return;
+    if (form.expectedMode !== "none" && !form.expectedValue.trim()) {
+      setError(form.expectedMode === "rubric" ? "请填写评分标准" : "请填写期望值");
+      return;
+    }
     setBusy(true);
     setError("");
     try {
-      const expected = buildExpectedPayload(form.expectedMode, form.expectedValue);
+      const expected = buildExpectedPayload(
+        form.expectedMode,
+        form.expectedValue,
+        form.previousExpected,
+      );
       const payload = {
         query: form.query.trim(),
         name: form.name.trim() || undefined,
@@ -134,7 +147,7 @@ export function EvalCasesDialog({ open, dataset, onClose, onChanged }: Props) {
       <ResourceDialog
         open={open}
         title={dataset ? `管理用例 · ${dataset.name}` : "管理用例"}
-        description="用例定义查询与期望答案；一期支持精确匹配或包含子串。"
+        description="期望支持精确匹配、包含子串或评分标准（rubric，配合运行侧 auto / LLM Judge）。"
         size="lg"
         onClose={onClose}
         footer={
@@ -171,22 +184,37 @@ export function EvalCasesDialog({ open, dataset, onClose, onChanged }: Props) {
                 placeholder="发送给智能体的用户问题"
               />
             </label>
-            <div className="grid gap-3 sm:grid-cols-3">
-              <label className="block space-y-1 sm:col-span-1">
-                <span className="text-xs text-ink-muted">期望类型</span>
-                <select
-                  className="input-field w-full"
-                  value={form.expectedMode}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, expectedMode: e.target.value as ExpectedMode }))
-                  }
-                >
-                  <option value="exact">精确匹配</option>
-                  <option value="contains">包含子串</option>
-                  <option value="none">不校验</option>
-                </select>
+            <label className="block space-y-1">
+              <span className="text-xs text-ink-muted">期望类型</span>
+              <select
+                className="input-field w-full"
+                value={form.expectedMode}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, expectedMode: e.target.value as ExpectedMode }))
+                }
+              >
+                {EXPECTED_MODE_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {form.expectedMode === "rubric" ? (
+              <label className="block space-y-1">
+                <span className="text-xs text-ink-muted">评分标准</span>
+                <textarea
+                  className="input-field min-h-[96px] w-full resize-y"
+                  value={form.expectedValue}
+                  onChange={(e) => setForm((f) => ({ ...f, expectedValue: e.target.value }))}
+                  placeholder="例如：回答应包含退款时效，语气礼貌，不得编造政策"
+                />
+                <span className="text-[11px] text-ink-faint">
+                  运行请选「自动」或「LLM Judge」；纯「规则」模式不会调用 Judge。
+                </span>
               </label>
-              <label className="block space-y-1 sm:col-span-2">
+            ) : (
+              <label className="block space-y-1">
                 <span className="text-xs text-ink-muted">期望值</span>
                 <input
                   className="input-field w-full"
@@ -196,7 +224,7 @@ export function EvalCasesDialog({ open, dataset, onClose, onChanged }: Props) {
                   placeholder={form.expectedMode === "exact" ? "完整答案" : "须包含的片段"}
                 />
               </label>
-            </div>
+            )}
             <div className="flex justify-end">
               <button
                 type="button"

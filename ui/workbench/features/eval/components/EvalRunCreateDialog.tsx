@@ -124,6 +124,15 @@ export function EvalRunCreateDialog({ open, datasets, onClose, onCreate }: Props
             ))}
           </select>
         </label>
+        {scoringMode === "llm_judge" || scoringMode === "auto" ? (
+          <p className="text-xs text-ink-muted">
+            {scoringMode === "llm_judge"
+              ? "LLM Judge 会按用例的「评分标准（rubric）」打分；未配置时使用默认标准。"
+              : "自动模式：有 exact/contains 时走规则；否则若有 rubric 且智能体已配模型，则走 LLM Judge。"}
+          </p>
+        ) : (
+          <p className="text-xs text-ink-muted">规则模式仅使用 exact / contains，忽略 rubric。</p>
+        )}
         {error ? <p className="text-sm text-red-600">{error}</p> : null}
       </div>
     </ResourceDialog>

@@ -1,6 +1,6 @@
 /** Eval 展示文案与 expected 表单转换。 */
 
-export type ExpectedMode = "exact" | "contains" | "none";
+export type ExpectedMode = "exact" | "contains" | "rubric" | "none";
 
 export const EVAL_RUN_STATUS_LABELS: Record<string, string> = {
   pending: "待启动",
@@ -22,6 +22,13 @@ export const EVAL_SCORING_MODE_OPTIONS = [
   { value: "llm_judge", label: "LLM Judge" },
 ] as const;
 
+export const EXPECTED_MODE_OPTIONS = [
+  { value: "exact", label: "精确匹配" },
+  { value: "contains", label: "包含子串" },
+  { value: "rubric", label: "评分标准（LLM Judge）" },
+  { value: "none", label: "不校验" },
+] as const;
+
 export function evalRunStatusLabel(status: string): string {
   return EVAL_RUN_STATUS_LABELS[status] || status;
 }
@@ -34,7 +41,7 @@ export function isEvalRunActive(status: string): boolean {
   return status === "pending" || status === "running";
 }
 
-/** 从后端 expected JSON 解析为一期表单（仅 exact / contains）。 */
+/** 从后端 expected JSON 解析为表单（exact / contains / rubric）。 */
 export function parseExpectedForm(expected?: Record<string, unknown> | null): {
   mode: ExpectedMode;
   value: string;
@@ -48,20 +55,39 @@ export function parseExpectedForm(expected?: Record<string, unknown> | null): {
   if (typeof expected.contains === "string") {
     return { mode: "contains", value: expected.contains };
   }
+  if (typeof expected.rubric === "string") {
+    return { mode: "rubric", value: expected.rubric };
+  }
   return { mode: "none", value: "" };
 }
 
-export function buildExpectedPayload(mode: ExpectedMode, value: string): Record<string, unknown> | null {
+/**
+ * 构造 expected 写回载荷。
+ * 编辑时保留 `_source`（升格溯源），避免更新 exact/contains/rubric 时冲掉 lineage。
+ */
+export function buildExpectedPayload(
+  mode: ExpectedMode,
+  value: string,
+  previous?: Record<string, unknown> | null,
+): Record<string, unknown> | null {
   const v = value.trim();
-  if (mode === "none" || !v) return null;
-  if (mode === "exact") return { exact: v };
-  return { contains: v };
+  let base: Record<string, unknown> | null = null;
+  if (mode !== "none" && v) {
+    if (mode === "exact") base = { exact: v };
+    else if (mode === "contains") base = { contains: v };
+    else if (mode === "rubric") base = { rubric: v };
+  }
+  const source = previous && typeof previous._source === "object" ? previous._source : null;
+  if (!base) return null;
+  if (source) return { ...base, _source: source };
+  return base;
 }
 
 export function formatExpectedPreview(expected?: Record<string, unknown> | null): string {
   const { mode, value } = parseExpectedForm(expected);
   if (mode === "none" || !value) return "—";
-  const label = mode === "exact" ? "精确匹配" : "包含";
+  const label =
+    mode === "exact" ? "精确匹配" : mode === "contains" ? "包含" : mode === "rubric" ? "评分标准" : "期望";
   const short = value.length > 40 ? `${value.slice(0, 40)}…` : value;
   return `${label}: ${short}`;
 }

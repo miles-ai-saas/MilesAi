@@ -1,6 +1,6 @@
 # Agent 评测（Eval）
 
-> 类型：功能说明 | 状态：已实现（API + Workbench UI，含二期升格） | 代码：`miles_portal.tenant.eval` / `ui/workbench/features/eval`
+> 类型：功能说明 | 状态：已实现（含二期升格 · 三期 rubric UI） | 代码：`miles_portal.tenant.eval` / `ui/workbench/features/eval`
 
 ## 能力
 
@@ -10,6 +10,7 @@
 - 结果关联 `call_id` / `trace_id`；`summary` 聚合 passed/failed/errored
 - 工作台 `/workbench/eval`：数据集 · 运行 · 运行详情（`?run=`）；运行中自动轮询
 - **二期**：从成功调用记录升格用例；运行详情 `call_id` 深链打开调用详情
+- **三期**：用例表单暴露 `rubric`（评分标准）；运行创建提示与打分模式对齐
 
 ## API（`/api/v1/eval`）
 
@@ -36,10 +37,11 @@ Body：`agent_id`、`call_id`；可选 `name`、`expected`、`prefer_session_tex
 ## UI
 
 - 单页三 Tab；观测导航「评测」
-- Cases 表单仅暴露 `exact` / `contains`（不编辑 JSON）
+- Cases 表单：`exact` / `contains` / `rubric` / 不校验（不编辑原始 JSON）；编辑时保留 `_source`
+- 新建运行：打分模式说明（规则 vs auto / LLM Judge）
 - 智能体调用详情：成功记录可「升格为评测用例」
 - 运行详情 Items：`call_id` 可点击打开调用详情对话框
 
 ## 非目标（本批）
 
-确定性 replay、跨 Agent 大盘、CSV 导入、LLM judge 高级配置 UI、失败调用升格。
+确定性 replay、跨 Agent 大盘、CSV 导入、LLM judge 高级配置（独立 judge 模型 / temperature / 模板库）、失败调用升格。
