@@ -5,6 +5,8 @@
   celery -A miles_worker.app worker -Q parse,default
 """
 
+from celery.schedules import crontab
+
 from miles_core.config import get_settings
 from miles_core.jobs.celery_app import celery_app
 from miles_core.jobs.tasks import TASK_NAMES
@@ -32,6 +34,11 @@ celery_app.conf.update(
     beat_schedule={
         "tick-agent-schedules": {"task": TASK_NAMES["tick_agent_schedules"], "schedule": 60.0},
         "probe-models-health": {"task": TASK_NAMES["probe_models_health"], "schedule": 900.0},
+        # 每日 UTC 00:05 检查账期；同月 Redis 幂等，避免仅排在 1 号时 Beat 漏跑。
+        "reset-tokens-used-month": {
+            "task": TASK_NAMES["reset_tokens_used_month"],
+            "schedule": crontab(minute=5, hour=0),
+        },
     },
 )
 

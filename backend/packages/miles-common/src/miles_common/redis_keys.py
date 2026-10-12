@@ -60,3 +60,8 @@ class RedisKeys:
     def generative_job_progress(tenant_id: UUID | str, job_id: UUID | str) -> str:
         """生成任务进度 Pub/Sub 频道（租户隔离）。"""
         return f"generative:job:{tenant_id}:{job_id}"
+
+    @staticmethod
+    def tokens_month_reset(period_yyyy_mm: str) -> str:
+        """本月 Token 清零幂等标记（UTC ``YYYY-MM``）。"""
+        return f"quota:tokens_month_reset:{period_yyyy_mm}"

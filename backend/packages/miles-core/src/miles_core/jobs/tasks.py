@@ -23,12 +23,15 @@ TASK_NAMES = {
     "run_generative_image_job": "milesai.tasks.generative.run_generative_image_job",
     # 定时 / 健康探测
     "probe_models_health": "milesai.tasks.model_health.probe_models_health",
+    "reset_tokens_used_month": "milesai.tasks.quota.reset_tokens_used_month",
     "run_agent_schedule": "milesai.tasks.agent_schedule.run_agent_schedule",
     "tick_agent_schedules": "milesai.tasks.agent_schedule.tick_agent_schedules",
     "run_eval_batch": "milesai.tasks.eval.run_eval_batch",
     "run_user_memory_extract": "milesai.tasks.memory.run_user_memory_extract",
     "ping": "milesai.tasks.health.ping",
 }
+
+RESET_TOKENS_USED_MONTH = TASK_NAMES["reset_tokens_used_month"]
 
 RUN_EVAL_BATCH = TASK_NAMES["run_eval_batch"]
 RUN_USER_MEMORY_EXTRACT = TASK_NAMES["run_user_memory_extract"]

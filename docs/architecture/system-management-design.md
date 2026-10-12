@@ -258,7 +258,7 @@ GET /system/quota          # 本租户汇总：KB/存储/Agent/Flow/Token/生成
 | KB / 存储 | ✅ | KB 创建、附件上传 |
 | Agent / Flow 数量 | ✅ | 创建前 |
 | 生成日次数 | ✅ | 厂商 HTTP 前 |
-| **本月 Token** | ✅ | `assert_tokens_monthly` → Agent `chat`；`record_model_usage` 原子累加 `tokens_used_month` |
+| **本月 Token** | ✅ | `assert_tokens_monthly` → Agent `chat`；`record_model_usage` 原子累加；Beat `reset_tokens_used_month`（UTC 账期） |
 
 ```python
 # 实现位于 miles_portal.tenant.system.services.quota / models.services.usage

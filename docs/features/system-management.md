@@ -143,7 +143,8 @@ GET /system/quota    # 本租户 KB/存储/智能体/流程/Token/生成日次�
 
 - 用量：`record_model_usage` 写 `agt_model_usage_logs` 时原子累加 `sys_tenants.tokens_used_month`
 - 预检：`POST …/agents/{id}/chat` 在合规通过后调用 `assert_tokens_monthly`；`max_tokens_monthly <= 0` 表示不限
-- 与「今日生成次数」分列；月初自动清零 / 自动选模为本批非目标
+- 清零：Celery Beat 每日 **UTC 00:05** 跑 `reset_tokens_used_month`；按 UTC `YYYY-MM` Redis 幂等，同月只清一次
+- 与「今日生成次数」分列；自动选模为本批非目标
 
 ### 3.8 用户扩展
 
