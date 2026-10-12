@@ -15,7 +15,7 @@
 | 重排序 | `backend/packages/miles-integrations/src/miles_integrations/rerank/constants.py` | `INVOKE_MODE_*`、`EXTRA_RERANK_*` |
 | 解析默认值 | `miles_integrations/embeddings/model_meta.py`、`miles_integrations/rerank/model_meta.py` | 按 `vendor` 推断默认 `invoke_mode` |
 | 创建校验 | `tenant/models/services/model.py` | embedding/rerank 创建时校验 `invoke_mode` 是否在 registry 内 |
-| 种子数据 | `scripts/seed/model_catalog.py` | 内置目录 `extra` 使用上述常量 |
+| 种子数据 | `scripts/seed/model_catalog/` | 内置目录 `extra` 使用上述常量 |
 
 ---
 

@@ -216,7 +216,7 @@ OpenAPI：`/docs`（运行实例）。
 
 ### 6.1 向量化模型（模型目录）
 
-内置种子（`scripts/seed/model_catalog.py`，`model_type=embedding`）：
+内置种子（`scripts/seed/model_catalog/`，`model_type=embedding`）：
 
 | model_code | 维度 | invoke_mode | 说明 |
 |------------|------|-------------|------|

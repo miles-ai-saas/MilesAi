@@ -12,13 +12,8 @@ from pathlib import Path
 
 LIMIT = 500
 
-#: 相对 ``backend/`` 的路径。拆分后应从本表移除。
-ALLOWLIST: frozenset[str] = frozenset(
-    {
-        # 种子目录数据偏长，按脚本豁免口径保留。
-        "packages/miles-server/src/miles_server/scripts/seed/model_catalog.py",
-    }
-)
+#: 相对 ``backend/`` 的路径。拆分后应从本表移除；当前无存量豁免。
+ALLOWLIST: frozenset[str] = frozenset()
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -30,7 +25,7 @@ def main() -> int:
 
     for path in sorted(ROOT.glob("packages/*/src/**/*.py")):
         rel = path.relative_to(ROOT).as_posix()
-        # 与 README 一致：版本脚本不扫；种子数据文件可在 allowlist。
+        # 与 README 一致：版本脚本不扫。
         if "/alembic/" in rel:
             continue
         lines = sum(1 for _ in path.open(encoding="utf-8", errors="replace"))

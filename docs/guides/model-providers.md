@@ -294,7 +294,7 @@ effective_api_base  = tenant_credentials.api_base ?? model_config.api_base
 
 ### 8.3 种子
 
-`backend/packages/miles-server/src/miles_server/scripts/seed/model_catalog.py`（通过 `milesai init-db` 或 `milesai seed model-catalog` 执行）：预置主流内置条目（**无 Key**，`credential_status=missing`），由部署方在运营后台补 Key。
+`backend/packages/miles-server/src/miles_server/scripts/seed/model_catalog/`（通过 `milesai init-db` 或 `milesai seed model-catalog` 执行）：预置主流内置条目（**无 Key**，`credential_status=missing`），由部署方在运营后台补 Key。
 
 ---
 
