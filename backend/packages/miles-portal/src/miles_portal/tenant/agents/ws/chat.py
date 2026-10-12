@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
@@ -19,7 +20,9 @@ from miles_portal.tenant.agents.schemas.agent import ChatMediaIn, ChatRequest, C
 from miles_portal.tenant.agents.services.agent import AgentService
 from miles_portal.tenant.agents.ws import protocol as proto
 from miles_portal.tenant.agents.ws.auth import extract_bearer_token, resolve_tenant_context
+from miles_portal.tenant.agents.ws.event_buffer import get_session_buffer, session_key
 from miles_portal.tenant.agents.ws.job_watch import cancel_generative_job_ws, spawn_job_watchers
+from miles_portal.tenant.agents.ws.outbound import WsOutbound, reset_outbound, set_outbound
 
 logger = get_logger(__name__)
 
@@ -204,13 +207,41 @@ async def _cancel_job_tasks(job_tasks: set[asyncio.Task]) -> None:
     await asyncio.gather(*job_tasks, return_exceptions=True)
 
 
+async def _replay_missed(
+    outbound: WsOutbound,
+    *,
+    last_event_id: str | None,
+) -> None:
+    """握手后按 ``last_event_id`` 重放环缓缺口，并推送 ``chat.sync``。"""
+    missed, gap = outbound.buffer.events_after(last_event_id)
+    # sync 不入环缓，避免重连再次重放
+    await outbound.send(
+        proto.CHAT_SYNC,
+        {
+            "replayed": len(missed),
+            "gap": gap,
+            "buffer_size": len(outbound.buffer.events),
+            "last_event_id": outbound.buffer.last_event_id,
+        },
+        record=False,
+    )
+    if gap or not missed:
+        return
+    for env in missed:
+        await outbound.send_recorded(env)
+
+
 @router.websocket("/{agent_id}/chat/ws")
 async def agent_chat_websocket(
     websocket: WebSocket,
     agent_id: UUID,
-    conversation_id: str = Query(..., min_length=1, max_length=128),
+    conversation_id: Annotated[str, Query(min_length=1, max_length=128)],
+    last_event_id: Annotated[str | None, Query(max_length=64)] = None,
 ):
-    """工作台对话 WebSocket：chat.send / tool.confirm / generative_job.cancel。"""
+    """工作台对话 WebSocket：chat.send / tool.confirm / generative_job.cancel。
+
+    可选 ``last_event_id``：重连后重放环缓中该 id 之后的事件（见 ``chat.sync``）。
+    """
     if not get_settings().agent_chat_websocket_enabled:
         await websocket.close(code=4403, reason="WebSocket disabled")
         return
@@ -226,8 +257,21 @@ async def agent_chat_websocket(
 
     await websocket.accept()
     job_tasks: set[asyncio.Task] = set()
+    buf = get_session_buffer(
+        session_key(
+            tenant_id=ctx.tenant_id,
+            user_id=ctx.user_id,
+            agent_id=agent_id,
+            conversation_id=conversation_id,
+        )
+    )
+    outbound = WsOutbound(websocket, buf)
+    token_cv = set_outbound(outbound)
 
     try:
+        resume_id = (last_event_id or "").strip() or None
+        await _replay_missed(outbound, last_event_id=resume_id)
+
         while True:
             raw = await websocket.receive_text()
             try:
@@ -275,6 +319,7 @@ async def agent_chat_websocket(
 
     except WebSocketDisconnect:
         # 静默可接受：客户端主动断开是正常终止，不是错误。
-        pass
+        outbound.alive = False
     finally:
+        reset_outbound(token_cv)
         await _cancel_job_tasks(job_tasks)

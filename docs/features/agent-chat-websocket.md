@@ -1,6 +1,6 @@
 # 智能体对话 WebSocket
 
-**状态：** v1 已实现（工作台）；直连/RAG/tool_agent/flow/子智能体综合/DeepAgents 库路径 真 token 流式 ✅；HTTP `POST …/chat/stream` SSE ✅；`POST …/chat` 仍整包
+**状态：** v1 + 断线续传 MVP（工作台）；真 token 流式 ✅；HTTP `POST …/chat/stream` SSE ✅；`last_event_id` 环缓重放 ✅；`POST …/chat` 仍整包
 **PRD 对照：** 模块4 智能体对话  
 **架构：** [realtime-transport-design.md](../architecture/realtime-transport-design.md) · [technical-design.md §10](../architecture/technical-design.md#10-智能体对话)
 
@@ -14,18 +14,19 @@
 
 ### 1.1 交付范围
 
-- 端点：`WS /api/v1/agents/{agent_id}/chat/ws?conversation_id=`
+- 端点：`WS /api/v1/agents/{agent_id}/chat/ws?conversation_id=&last_event_id=`
 - 帧协议：Event v1 信封（`type` + `id` + `ts` + `payload`）
 - 客户端事件：`chat.send`、`tool.confirm`、`generative_job.cancel`、`ping`
-- 服务端事件：`chat.delta`、`chat.step`、`tool.confirm_required`、`generative_job.*`、`chat.done`、`chat.error`
-- 配置：`AGENT_CHAT_WEBSOCKET_ENABLED`（默认 true）
-- 前端：`useAgentChatWs` + `AgentChatWsClient`，对话页优先 WS、HTTP 降级
+- 服务端事件：`chat.sync`、`chat.delta`、`chat.step`、`tool.confirm_required`、`generative_job.*`、`chat.done`、`chat.error`
+- 配置：`AGENT_CHAT_WEBSOCKET_ENABLED`；环缓 `AGENT_CHAT_WS_EVENT_BUFFER_SIZE` / `_TTL_SEC`
+- 前端：`useAgentChatWs` + `AgentChatWsClient`（记 `lastEventId`、重连带 query、按 id 去重）
 
-### 1.2 明确不做（v1）
+### 1.2 明确不做 / 限制
 
 - 对外 OpenAPI 第三方集成的 WS（仅工作台）
 - pending_tool 确认后路径的真 token 流（仍走 `emit_answer_deltas` 切块兜底）
-- 全站统一 WebSocket 网关
+- 全站统一 WebSocket 网关；跨 worker 共享环缓（当前单进程内存；`gap=true` 时回退本地历史）
+- 跨机房持久会话快照（Redis）— 后续可选
 
 ### 1.3 流式现状
 
@@ -46,13 +47,22 @@ HTTP `POST …/chat` 不传 `on_delta`，仍整包返回。`POST …/chat/stream
 ## 2. 连接与鉴权
 
 ```
-wss://{host}/api/v1/agents/{agent_id}/chat/ws?conversation_id={uuid}
+wss://{host}/api/v1/agents/{agent_id}/chat/ws?conversation_id={uuid}&last_event_id={optional}
 Header: Authorization: Bearer {jwt}
 ```
 
 - Query `conversation_id` 必填（1–128 字符），与 LangGraph checkpoint 隔离一致
+- Query `last_event_id` 可选：重连时携带客户端已收的最后事件 `id`，服务端重放其后事件
 - 鉴权失败：`4401`；功能关闭：`4403`（`agent_chat_websocket_enabled=false`）
 - 权限：`agent:read`
+
+### 2.1 断线续传（MVP）
+
+1. 下行业务事件经 `WsOutbound` **先写入**会话环缓再发送（发送失败仍保留，便于重放）。
+2. 握手成功后首帧 `chat.sync`：`{ replayed, gap, buffer_size, last_event_id }`。
+3. `gap=false` 且 `replayed>0`：紧接着重放遗漏帧（不再二次入缓）。
+4. `gap=true`：环缓已滚出或过期，客户端依赖本地气泡 / 后续 HTTP；不盲目重放全量。
+5. 键：`tenant:user:agent:conversation`；默认容量 256、TTL 600s（见配置）。
 
 ---
 
@@ -82,13 +92,14 @@ Header: Authorization: Bearer {jwt}
 
 | type | 说明 |
 |------|------|
+| `chat.sync` | 握手后首帧；续传结果（`replayed` / `gap`） |
 | `chat.step` | 编排步骤（与 HTTP `steps` 一致） |
 | `tool.confirm_required` | 待用户确认的工具 |
 | `chat.delta` | 回答文本片段（直连/RAG/tool_agent/flow/子智能体综合/DeepAgents 库为真 token；pending_tool 等为切块兜底） |
 | `chat.done` | 完整 `ChatResponse` JSON |
 | `generative_job.progress` / `generative_job.done` | job watcher 推送 |
 | `chat.error` | 业务或校验错误 |
-| `pong` | 心跳响应 |
+| `pong` | 心跳响应（不入环缓） |
 
 ---
 
@@ -116,8 +127,10 @@ Job watcher 轮询 `generative_jobs` 状态，经 WS 推送 progress/done；客�
 | 变量 | 默认 | 说明 |
 |------|------|------|
 | `AGENT_CHAT_WEBSOCKET_ENABLED` | `true` | 关闭后 WS 握手 4403 |
+| `AGENT_CHAT_WS_EVENT_BUFFER_SIZE` | `256` | 每会话环缓最大事件数 |
+| `AGENT_CHAT_WS_EVENT_BUFFER_TTL_SEC` | `600` | 空闲环缓 TTL（秒） |
 
-前端：`NEXT_PUBLIC_AGENT_CHAT_WS_ENABLED`（`isAgentChatWsEnabled()`）与后端独立，便于灰度。
+前端：`NEXT_PUBLIC_AGENT_CHAT_WS`（`isAgentChatWsEnabled()`）与后端独立，便于灰度。
 
 ---
 
@@ -130,9 +143,8 @@ Job watcher 轮询 `generative_jobs` 状态，经 WS 推送 progress/done；客�
 ### 6.2 文件清单
 
 ```
-ui/workbench/hooks/use-agent-chat-ws.ts
-ui/workbench/lib/agent-chat-ws.ts           # URL 构建、AgentChatWsClient
-ui/workbench/app/workbench/agents/chat/page.tsx
+ui/workbench/features/agents/hooks/use-agent-chat-ws.ts
+ui/workbench/features/agents/lib/agent-chat-ws.ts   # URL、lastEventId、去重、AgentChatWsClient
 ```
 
 ---
@@ -140,23 +152,25 @@ ui/workbench/app/workbench/agents/chat/page.tsx
 ## 7. 后端文件清单
 
 ```
-backend/packages/miles-portal/src/miles_portal/tenant/agents/ws/chat.py       # WebSocket 端点
-backend/packages/miles-portal/src/miles_portal/tenant/agents/ws/protocol.py   # 帧类型与 envelope
-backend/packages/miles-portal/src/miles_portal/tenant/agents/ws/auth.py       # JWT 解析 → TenantContext
-backend/packages/miles-portal/src/miles_portal/tenant/agents/ws/job_watch.py  # 生成任务 watcher
-backend/packages/miles-portal/src/miles_portal/tenant/agents/views/agents.py  # include_router(ws)
-backend/packages/miles-core/src/miles_core/config.py                          # agent_chat_websocket_enabled
+backend/packages/miles-portal/src/miles_portal/tenant/agents/ws/chat.py         # WebSocket 端点 + 重放
+backend/packages/miles-portal/src/miles_portal/tenant/agents/ws/protocol.py     # 帧类型与 envelope
+backend/packages/miles-portal/src/miles_portal/tenant/agents/ws/event_buffer.py # 会话环缓
+backend/packages/miles-portal/src/miles_portal/tenant/agents/ws/outbound.py     # 先缓后发
+backend/packages/miles-portal/src/miles_portal/tenant/agents/ws/auth.py
+backend/packages/miles-portal/src/miles_portal/tenant/agents/ws/job_watch.py
+backend/packages/miles-core/src/miles_core/config.py
 ```
 
 ---
 
 ## 8. 测试计划
 
-1. 带 JWT 连接 → ping/pong → chat.send → 收到 step + delta + done
+1. 带 JWT 连接 → `chat.sync` → ping/pong → chat.send → 收到 step + delta + done
 2. 触发需确认工具 → `tool.confirm_required` → tool.confirm → 继续
 3. 触发异步生图 → job watcher progress → done；cancel 生效
 4. 无 token / 错误 token → 4401；disabled → 4403
 5. HTTP 与 WS 同一 conversation_id checkpoint 行为一致
+6. 环缓写入后以 `last_event_id` 重连 → `chat.sync.replayed>0` 并重放；未知 id → `gap=true`
 
 ---
 

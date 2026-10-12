@@ -25,6 +25,7 @@ GENERATIVE_JOB_PROGRESS = "generative_job.progress"
 GENERATIVE_JOB_DONE = "generative_job.done"
 CHAT_DONE = "chat.done"
 CHAT_ERROR = "chat.error"
+CHAT_SYNC = "chat.sync"
 PONG = "pong"
 
 
@@ -43,8 +44,26 @@ def envelope(event_type: str, payload: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-async def send_json(ws: WebSocket, event_type: str, payload: dict[str, Any]) -> None:
-    """按统一事件包格式向 WebSocket 发送一次 JSON。"""
+async def send_json(
+    ws: WebSocket,
+    event_type: str,
+    payload: dict[str, Any],
+    *,
+    record: bool | None = None,
+) -> None:
+    """按统一事件包格式向 WebSocket 发送一次 JSON。
+
+    若当前任务已绑定 ``WsOutbound``（见 ``outbound``），则经环缓发送，
+    便于断线后续传；否则直接 ``ws.send_json``。
+    ``pong`` / ``chat.sync`` 默认不入环缓。
+    """
+    from miles_portal.tenant.agents.ws.outbound import get_outbound
+
+    out = get_outbound()
+    if out is not None:
+        should_record = record if record is not None else event_type not in {PONG, CHAT_SYNC}
+        await out.send(event_type, payload, record=should_record)
+        return
     await ws.send_json(envelope(event_type, payload))
 
 

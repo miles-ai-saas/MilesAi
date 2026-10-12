@@ -4,7 +4,7 @@
  */
 
 import { getAccessToken } from "@/lib/auth-store";
-import type { ChatArtifact, ChatMediaIn, ChatResponse, GenerativeJobOut } from "@/lib/types";
+import type { ChatMediaIn, ChatResponse, GenerativeJobOut } from "@/lib/types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 const WS_ENABLED = process.env.NEXT_PUBLIC_AGENT_CHAT_WS !== "false";
@@ -25,6 +25,8 @@ export type AgentChatWsCallbacks = {
   onToolConfirmRequired?: (tool: { slug: string; name: string; description?: string | null; params: Record<string, unknown> }) => void;
   onGenerativeJob?: (job: GenerativeJobOut, phase: "queued" | "progress" | "done") => void;
   onError?: (message: string) => void;
+  /** 重连后服务端报告环缓缺口（需依赖本地历史 / HTTP） */
+  onSyncGap?: () => void;
 };
 
 type WsEnvelope = {
@@ -44,13 +46,18 @@ export function isAgentChatWsEnabled(): boolean {
   return WS_ENABLED;
 }
 
-export function buildAgentChatWsUrl(agentId: string, conversationId: string): string {
+export function buildAgentChatWsUrl(
+  agentId: string,
+  conversationId: string,
+  lastEventId?: string | null,
+): string {
   const token = getAccessToken();
   const wsBase = apiBaseToWs(API_BASE.replace(/\/$/, ""));
   const q = new URLSearchParams({
     conversation_id: conversationId,
   });
   if (token) q.set("token", token);
+  if (lastEventId) q.set("last_event_id", lastEventId);
   return `${wsBase}/agents/${agentId}/chat/ws?${q.toString()}`;
 }
 
@@ -63,6 +70,10 @@ export class AgentChatWsClient {
   private pendingCallbacks: AgentChatWsCallbacks | null = null;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private intentionalClose = false;
+  /** 最近一条已处理服务端事件 id，供重连续传 */
+  private lastEventId: string | null = null;
+  private seenEventIds = new Set<string>();
+  private static readonly SEEN_CAP = 512;
 
   constructor(
     private readonly agentId: string,
@@ -75,7 +86,7 @@ export class AgentChatWsClient {
     if (this.ws?.readyState === WebSocket.OPEN || this.ws?.readyState === WebSocket.CONNECTING) {
       return;
     }
-    const url = buildAgentChatWsUrl(this.agentId, this.conversationId);
+    const url = buildAgentChatWsUrl(this.agentId, this.conversationId, this.lastEventId);
     const socket = new WebSocket(url);
     this.ws = socket;
     socket.onopen = () => {
@@ -86,16 +97,12 @@ export class AgentChatWsClient {
     };
     socket.onmessage = (ev) => this.handleMessage(ev.data);
     socket.onerror = () => {
-      if (this.pending) {
-        this.pending.reject(new Error("WebSocket 连接异常"));
-        this.pending = null;
-        this.pendingCallbacks = null;
-      }
+      // 断线续传依赖 onclose 重连；此处不立刻 reject pending，避免吞掉随后重放的 chat.done
     };
     socket.onclose = () => {
       this.ws = null;
       if (!this.intentionalClose && WS_ENABLED) {
-        this.reconnectTimer = setTimeout(() => this.connect(), 3000);
+        this.reconnectTimer = setTimeout(() => this.connect(), 1500);
       }
     };
   }
@@ -160,6 +167,16 @@ export class AgentChatWsClient {
     );
   }
 
+  private rememberEventId(id: string | undefined) {
+    if (!id) return;
+    this.lastEventId = id;
+    this.seenEventIds.add(id);
+    if (this.seenEventIds.size > AgentChatWsClient.SEEN_CAP) {
+      const first = this.seenEventIds.values().next().value;
+      if (first) this.seenEventIds.delete(first);
+    }
+  }
+
   private handleMessage(raw: string) {
     let frame: WsEnvelope;
     try {
@@ -167,10 +184,21 @@ export class AgentChatWsClient {
     } catch {
       return;
     }
-    const { type, payload } = frame;
+    const { type, payload, id } = frame;
+    if (id && this.seenEventIds.has(id)) {
+      return;
+    }
+    this.rememberEventId(id);
+
     const cb = this.pendingCallbacks;
 
     switch (type) {
+      case "chat.sync": {
+        if (payload.gap === true) {
+          cb?.onSyncGap?.();
+        }
+        break;
+      }
       case "chat.delta": {
         const text = String(payload.text ?? "");
         cb?.onDelta?.(text);

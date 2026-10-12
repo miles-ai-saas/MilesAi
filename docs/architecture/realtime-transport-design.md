@@ -1,6 +1,6 @@
 # 实时通道技术设计 — 对话 WebSocket + 资源 SSE
 
-**状态：** 部分已实施（工作台 WS v1 ✅；直连/RAG/tool_agent/flow/子智能体综合/DeepAgents 库路径 真 token 流式 ✅；HTTP `POST …/chat/stream` SSE ✅；`POST …/chat` 仍整包）  
+**状态：** 部分已实施（工作台 WS v1 + 断线续传 MVP ✅；真 token 流式 ✅；HTTP `POST …/chat/stream` SSE ✅；`POST …/chat` 仍整包）  
 **As-Is 规格：** [features/agent-chat-websocket.md](../features/agent-chat-websocket.md)  
 **关联：** [multimodal-capabilities.md](../product/multimodal-capabilities.md)、[platform-agents.md](../guides/platform-agents.md)、[technical-design.md](./technical-design.md)
 
@@ -12,7 +12,7 @@ MilesAI 已具备两类「实时」需求：
 
 | 需求 | 现状（As-Is） | 痛点 |
 |------|----------------|------|
-| **智能体对话** | WS 真 token 流式（含 DeepAgents 库路径）；HTTP `POST …/chat/stream` SSE 同事件；`POST …/chat` 仍整包 | pending_tool 确认后仍切块；工具确认、异步生成物靠 WS 或 HTTP + SSE 拼装 |
+| **智能体对话** | WS 真 token 流式（含 DeepAgents）；`last_event_id` 环缓重放；HTTP `POST …/chat/stream` SSE；`POST …/chat` 仍整包 | 环缓单进程；`gap` 时回退本地；跨 worker Redis 快照未做 |
 | **生成任务进度** | `GET /generative/jobs/{id}/stream`（SSE）+ `POST cancel/retry` | 模型清晰；对话内每个 job 可能再开 SSE，与轮询兜底并存 |
 | **任务中心 / 流程调试** | 列表 HTTP 分页 + 手动刷新；详情 SSE | 合理；不宜绑到某一条「对话连接」 |
 
@@ -148,7 +148,7 @@ Authorization: Bearer <token>
 }
 ```
 
-- `id`：服务端事件序号或 UUID，供客户端去重与断线续传（v2）。
+- `id`：服务端事件 UUID，供客户端去重与断线续传（重连带 `last_event_id`）。
 - 客户端上行帧可省略 `id`/`ts`。
 
 ### 4.3 客户端 → 服务端（上行）
@@ -164,6 +164,7 @@ Authorization: Bearer <token>
 
 | type | payload | 说明 |
 |------|---------|------|
+| `chat.sync` | `{ "replayed", "gap", "buffer_size", "last_event_id"? }` | 握手后首帧；续传结果 |
 | `chat.delta` | `{ "text": "片段" }` | LLM 流式 token |
 | `chat.step` | `{ "type", "slug?", … }` | 对齐现有 `steps[]` 单项 |
 | `tool.confirm_required` | `{ "slug", "params", "display_name"? }` | 待确认工具 |
@@ -183,7 +184,7 @@ Authorization: Bearer <token>
 | `api.chatAgent()` → `ChatResponse` | `chat.send` → `chat.delta*` + `chat.step*` + `chat.done` |
 | `useGenerativeJobPoll` + SSE | 对话页改听 `generative_job.*`；移除 per-job SSE |
 | `pending_tool` + 确认后再 POST | `tool.confirm_required` + `tool.confirm` |
-| 本地 `chat-sessions` 存历史 | 仍本地优先；断线后可 `chat.sync`（v2）或保留 REST 拉取 |
+| 本地 `chat-sessions` 存历史 | 仍本地优先；重连 `chat.sync` + 环缓重放；`gap` 时依赖本地 / REST |
 
 ---
 
@@ -226,9 +227,9 @@ Authorization: Bearer <token>
 | 阶段 | 内容 | 说明 |
 |------|------|------|
 | **R3** | 工具确认：`tool.confirm_required` / `tool.confirm` 走 WS | 现为替代确认轮 POST |
-| **R5** | 断线续传、`last_event_id`、服务端会话快照（可选） | v2 |
+| **R5b** | 跨 worker Redis 会话快照 | 可选；当前单进程环缓 MVP 已覆盖短断线 |
 
-已实施：R1 对话 WS 基础设施（`GET …/agents/{id}/chat/ws`）、R2 直连/RAG/tool_agent/flow/子智能体综合/DeepAgents 库路径 真 token 流式、R4 对话内 `generative_job.*` 走 WS；HTTP `POST …/chat/stream` SSE。
+已实施：R1 对话 WS；R2 真 token 流式（含 DeepAgents）；R4 `generative_job.*`；R5 MVP（`last_event_id` + `chat.sync` + 进程内环缓）；HTTP `POST …/chat/stream` SSE。
 
 **不做（v1）：**
 

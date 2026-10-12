@@ -17,6 +17,7 @@ from miles_portal.tenant.agents.services.agent import AgentService
 from miles_portal.tenant.agents.ws import protocol as proto
 from miles_portal.tenant.agents.ws.auth import extract_bearer_token
 from miles_portal.tenant.agents.ws.chat import _build_chat_request, _run_chat_turn, agent_chat_websocket
+from miles_portal.tenant.agents.ws.event_buffer import clear_session_buffers
 from tests.conftest import make_tenant_ctx
 
 
@@ -165,7 +166,9 @@ async def test_run_chat_turn_skips_emit_answer_deltas_when_streamed():
 @pytest.fixture(autouse=True)
 def _clear_settings_cache():
     get_settings.cache_clear()
+    clear_session_buffers()
     yield
+    clear_session_buffers()
     get_settings.cache_clear()
 
 
@@ -295,7 +298,8 @@ async def test_ws_ping_replies_pong():
         await agent_chat_websocket(ws, uuid4(), conversation_id="c1")
 
     assert ws.accepted is True
-    assert ws.sent_types == [proto.PONG]
+    assert ws.sent_types == [proto.CHAT_SYNC, proto.PONG]
+    assert ws.payloads(proto.CHAT_SYNC)[0]["gap"] is False
     assert ws.closed == []
 
 
@@ -304,7 +308,8 @@ async def test_ws_invalid_frame_reports_error():
     with _connected():
         await agent_chat_websocket(ws, uuid4(), conversation_id="c1")
 
-    assert ws.sent_types == [proto.CHAT_ERROR]
+    assert ws.sent_types[0] == proto.CHAT_SYNC
+    assert proto.CHAT_ERROR in ws.sent_types
     assert ws.payloads(proto.CHAT_ERROR)
 
 
@@ -332,7 +337,7 @@ async def test_ws_tool_confirm_is_dispatched_as_chat_send():
     assert len(seen) == 1
     assert seen[0].tool_confirmed is True
     assert seen[0].query == "确认执行工具"
-    assert ws.sent_types == []
+    assert ws.sent_types == [proto.CHAT_SYNC]
 
 
 async def test_ws_invalid_chat_request_reports_error():
@@ -364,7 +369,8 @@ async def test_ws_non_numeric_generative_field_reports_error_instead_of_crashing
     with _connected():
         await agent_chat_websocket(ws, uuid4(), conversation_id="c1")
 
-    assert ws.sent_types == [proto.CHAT_ERROR]
+    assert ws.sent_types[0] == proto.CHAT_SYNC
+    assert proto.CHAT_ERROR in ws.sent_types
     assert field in ws.payloads(proto.CHAT_ERROR)[0]["message"]
     assert ws.closed == []  # 连接不该因此被异常关闭
 
@@ -383,7 +389,8 @@ async def test_ws_non_object_dict_field_reports_error_instead_of_crashing(field,
     with _connected():
         await agent_chat_websocket(ws, uuid4(), conversation_id="c1")
 
-    assert ws.sent_types == [proto.CHAT_ERROR]
+    assert ws.sent_types[0] == proto.CHAT_SYNC
+    assert proto.CHAT_ERROR in ws.sent_types
     assert field in ws.payloads(proto.CHAT_ERROR)[0]["message"]
     assert ws.closed == []
 

@@ -96,6 +96,9 @@ class Settings(BaseSettings):
 
     # 工作台智能体对话 WebSocket（关闭时前端回退 HTTP POST /chat）
     agent_chat_websocket_enabled: bool = True
+    # 对话 WS 断线续传：每会话事件环缓条数与空闲 TTL（秒，单进程内存）
+    agent_chat_ws_event_buffer_size: int = 256
+    agent_chat_ws_event_buffer_ttl_sec: int = 600
     # 直连 / tool_agent：从 PG 会话注入历史时的字符预算与条数上限（粗估 token ≈ chars/2）
     agent_chat_history_max_chars: int = 8000
     agent_chat_history_max_messages: int = 40
