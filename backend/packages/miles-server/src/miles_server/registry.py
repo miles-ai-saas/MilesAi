@@ -17,6 +17,7 @@ _ORM_MODULES: tuple[str, ...] = (
     "miles_admin.models",
     "miles_core.models",  # 聚合 re-export（不新增表）
     "miles_core.models.agent",  # agt_* 智能体
+    "miles_core.models.eval",  # eval_* Agent 评测
     "miles_core.models.flow",  # flow_*
     "miles_core.models.kb",  # kb_*
     "miles_core.models.marketplace",  # mkt_* 市场（admin/tenant 共读）

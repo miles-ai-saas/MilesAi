@@ -25,8 +25,11 @@ TASK_NAMES = {
     "probe_models_health": "milesai.tasks.model_health.probe_models_health",
     "run_agent_schedule": "milesai.tasks.agent_schedule.run_agent_schedule",
     "tick_agent_schedules": "milesai.tasks.agent_schedule.tick_agent_schedules",
+    "run_eval_batch": "milesai.tasks.eval.run_eval_batch",
     "ping": "milesai.tasks.health.ping",
 }
+
+RUN_EVAL_BATCH = TASK_NAMES["run_eval_batch"]
 
 INGEST_DOCUMENT = TASK_NAMES["ingest_document"]
 RUN_GENERATIVE_VIDEO_JOB = TASK_NAMES["run_generative_video_job"]

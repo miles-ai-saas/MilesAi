@@ -25,6 +25,7 @@ FROZEN_TASK_NAMES = {
     "probe_models_health": "milesai.tasks.model_health.probe_models_health",
     "run_agent_schedule": "milesai.tasks.agent_schedule.run_agent_schedule",
     "tick_agent_schedules": "milesai.tasks.agent_schedule.tick_agent_schedules",
+    "run_eval_batch": "milesai.tasks.eval.run_eval_batch",
     "ping": "milesai.tasks.health.ping",
 }
 

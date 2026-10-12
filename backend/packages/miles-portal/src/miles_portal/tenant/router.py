@@ -9,6 +9,7 @@ from miles_portal.tenant.audit_log.views import audit_log
 from miles_portal.tenant.auth.views import auth
 from miles_portal.tenant.categories.views import categories
 from miles_portal.tenant.compliance.views import compliance
+from miles_portal.tenant.eval.views import eval_api
 from miles_portal.tenant.flows.views import flows
 from miles_portal.tenant.generative.views import jobs as generative_jobs
 from miles_portal.tenant.hooks.views import hooks
@@ -57,6 +58,7 @@ api_router.include_router(compliance.router, prefix="/compliance", tags=["compli
 api_router.include_router(prompts.router, prefix="/prompt-templates", tags=["prompt-templates"])
 api_router.include_router(model_views.router, prefix="/models", tags=["models"])
 api_router.include_router(agents.router, prefix="/agents", tags=["agents"])
+api_router.include_router(eval_api.router, prefix="/eval", tags=["eval"])
 api_router.include_router(a2a_peers.router, prefix="/a2a/peers", tags=["a2a-peers"])
 api_router.include_router(hooks.router, prefix="/hooks", tags=["hooks"])
 api_router.include_router(tools.router, prefix="/tools", tags=["tools"])
