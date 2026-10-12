@@ -200,8 +200,11 @@ STDIO 的 sync / invoke 依赖独立 **mcp-runner** 进程。API **不会**在�
 | `MCP_RUNNER_MAX_CONCURRENT_PER_TENANT` | `3` | 租户并发 STDIO 会话上限 |
 | `MCP_RUNNER_MAX_CONCURRENT` | `20` | Runner 全局并发上限（仅 Runner 进程读取） |
 | `MCP_RUNNER_COMMAND_WHITELIST` | `npx,node,python,python3` | 允许的 command |
+| `MCP_RUNNER_NPX_PACKAGE_WHITELIST` | 官方 `@modelcontextprotocol/server-*` 若干 | `npx` 允许的 npm 包名（逗号分隔）；空回落默认；`*` 放行任意包 |
 
 生产务必设置足够长的随机 `MCP_RUNNER_TOKEN`，且 Runner **不要**映射到公网端口。
+
+创建 STDIO 时可选用 `GET /mcp/meta` 返回的 `stdio_templates` 预填 command/args；写入侧与 Runner 均会校验命令与 npx 包白名单。
 
 ### 8.2 方式一：本地开发（推荐日常调试）
 
@@ -327,8 +330,8 @@ docker exec milesai-api curl -s http://mcp-runner:8090/health
 
 | 键 | 说明 |
 |----|------|
-| `command` | 必填；须在白名单内 |
-| `args` | 字符串数组或换行分隔；禁止 shell 元字符 |
+| `command` | 必填；须在命令白名单内（可用 `stdio_templates` 预填） |
+| `args` | 字符串数组或换行分隔；禁止 shell 元字符；`npx` 包名须在包白名单内 |
 | `env` | 环境变量；键须 `[A-Z_][A-Z0-9_]*` |
 | `timeout_sec` | 单次会话超时，1–120 |
 | `network_mode` | `deny`（默认）或 `allow`（允许 npx 拉包等出站） |
@@ -341,7 +344,8 @@ docker exec milesai-api curl -s http://mcp-runner:8090/health
 | SSE 未收到 endpoint | URL 应为 GET SSE 入口；或改用 HTTP transport |
 | invoke 400 连接失败 | 网络、TLS、防火墙、`OUTBOUND_ALLOW_PRIVATE_HOSTS` |
 | invoke 400 MCP 远程错误 | 对端 `error.message`；参数是否符合 tool schema |
-| STDIO 同步失败 | 确认 `MCP_RUNNER_ENABLED=true`、Runner 可达、command 在白名单；见 [§8 部署](#8-mcp-runner-部署stdio-沙箱) |
+| STDIO 同步失败 | 确认 `MCP_RUNNER_ENABLED=true`、Runner 可达、command / npx 包在白名单；见 [§8 部署](#8-mcp-runner-部署stdio-沙箱) |
+| 创建 STDIO 报包不在白名单 | 改用官方包或扩 `MCP_RUNNER_NPX_PACKAGE_WHITELIST`（开发可用 `*`） |
 | Runner 连接失败 | 本地查 `8090` 是否监听；Docker 查 `docker compose ps mcp-runner` 与 `MCP_RUNNER_TOKEN` 一致 |
 | npx 超时 / 拉包失败 | 默认 `network_mode=deny`；改 `allow` 或换预装命令 |
 

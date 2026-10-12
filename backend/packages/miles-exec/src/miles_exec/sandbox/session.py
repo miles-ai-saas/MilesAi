@@ -70,10 +70,15 @@ async def run_mcp_session(
     handler: Callable[[McpStdioClient], Awaitable[Any]],
     *,
     command_whitelist: frozenset[str],
+    npx_package_whitelist: frozenset[str] | None = None,
     work_dir: str = "/tmp",
 ) -> SessionResult:
     """启动 MCP 子进程并跑完 ``handler``：设置内存 / CPU 限额与独立进程组，超时或崩溃转为失败结果返回。"""
-    validate_run_spec(spec, command_whitelist=command_whitelist)
+    validate_run_spec(
+        spec,
+        command_whitelist=command_whitelist,
+        npx_package_whitelist=npx_package_whitelist,
+    )
     started = time.monotonic()
     proc: asyncio.subprocess.Process | None = None
     try:

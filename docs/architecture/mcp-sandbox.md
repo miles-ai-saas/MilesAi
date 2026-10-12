@@ -1,6 +1,6 @@
 # MCP 沙箱与执行隔离方案
 
-**状态：** HTTP/SSE 与 STDIO 沙箱已落地；Phase 4 规划中  
+**状态：** HTTP/SSE 与 STDIO 沙箱已落地；Phase 4（预置模板 + npx 包白名单）已落地  
 **As-Is 规格：** [features/tools-mcp-skills.md](../features/tools-mcp-skills.md) · **实现指南：** [guides/mcp.md](../guides/mcp.md)
 
 本文描述 **STDIO 传输**、**平台内执行用户命令**、以及 **高敏感工具调用** 所需的隔离边界。  
@@ -69,9 +69,10 @@
 
 校验规则：
 
-1. `command` 必须在平台白名单（如 `npx`、`node`、`python`）或租户预置模板 ID。
-2. `args` 不得含 `;`、`|`、`$()`、重定向等 shell 元字符（**不经过 shell**，`execve` 数组形式）。
-3. 租户级并发上限（同时运行的 STDIO 会话数）。
+1. `command` 必须在平台白名单（如 `npx`、`node`、`python`）；创建时可选用 `GET /mcp/meta` 的 `stdio_templates` 填入 command/args。
+2. `command=npx` 时，包名须在 `MCP_RUNNER_NPX_PACKAGE_WHITELIST`（默认官方 `@modelcontextprotocol/*`；`*` 放行任意包）。
+3. `args` 不得含 `;`、`|`、`$()`、重定向等 shell 元字符（**不经过 shell**，`execve` 数组形式）。
+4. 租户级并发上限（同时运行的 STDIO 会话数）。
 
 ## 5. 与现有表字段的关系
 
@@ -82,13 +83,13 @@
 | `endpoint_url=stdio://...` | 占位，不参与 HTTP 客户端 |
 | `tools_cache` | 由 Runner 完成 `tools/list` 后写回 |
 
-## 6. 待落地
+## 6. 阶段状态
 
 | 阶段 | 内容 | 状态 |
 |------|------|------|
-| **Phase 4** | 预置市场 MCP 模板、npx 域名白名单、script v2 | 规划中 |
+| **Phase 4** | 预置 STDIO 模板（`GET /mcp/meta.stdio_templates`）、npx **包名**白名单（非 DNS）、script v2 | ✅ |
 
-已落地：HTTP/SSE `tools/call` + `security.py`；Runner 独立服务 + STDIO sync + invoke。
+已落地：HTTP/SSE `tools/call` + `security.py`；Runner 独立服务 + STDIO sync + invoke；创建/更新与 Runner 双侧校验命令与 npx 包。
 
 部署与运行详见 [guides/mcp.md §8](../guides/mcp.md#8-mcp-runner-部署stdio-沙箱)。
 
@@ -159,7 +160,7 @@ MCP_RUNNER_MAX_CONCURRENT_PER_TENANT=3
 | 命令注入 | 不适用 | `execve` 数组 + 白名单 |
 | 资源耗尽 | 超时、`timeout_sec` | cgroup / 容器 memory limit |
 | 数据泄露 | TLS、租户隔离 | 进程级文件系统只读根 |
-| 供应链恶意包 | 不适用 | 模板审批 + 可选镜像固定版本 |
+| 供应链恶意包 | 不适用 | npx 包白名单 + 预置模板 + 可选镜像固定版本 |
 
 ## 11. 代码入口
 

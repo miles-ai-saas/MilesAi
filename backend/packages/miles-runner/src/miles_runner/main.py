@@ -25,6 +25,7 @@ limits = RunnerLimits(
 )
 WORK_DIR = os.environ.get("MCP_RUNNER_WORK_DIR", "/tmp")
 COMMAND_WHITELIST = settings.mcp_runner_command_whitelist_set
+NPX_PACKAGE_WHITELIST = settings.mcp_runner_npx_package_whitelist_set
 
 app = FastAPI(title="MilesAI MCP Runner", docs_url=None, redoc_url=None)
 
@@ -126,7 +127,11 @@ async def list_tools(
     """在沙箱会话中执行 MCP ``tools/list``；spec 非法时返回 ``INVALID_SPEC``。"""
     spec = body.run_spec
     try:
-        validate_run_spec(spec, command_whitelist=COMMAND_WHITELIST)
+        validate_run_spec(
+            spec,
+            command_whitelist=COMMAND_WHITELIST,
+            npx_package_whitelist=NPX_PACKAGE_WHITELIST,
+        )
     except Exception as e:
         return ListToolsResponse(ok=False, error_code="INVALID_SPEC", message=str(e))
 
@@ -141,6 +146,7 @@ async def list_tools(
             spec,
             handler,
             command_whitelist=COMMAND_WHITELIST,
+            npx_package_whitelist=NPX_PACKAGE_WHITELIST,
             work_dir=WORK_DIR,
         )
     finally:
@@ -164,7 +170,11 @@ async def call_tool(
     spec = body.run_spec
     spec.purpose = "mcp_invoke"
     try:
-        validate_run_spec(spec, command_whitelist=COMMAND_WHITELIST)
+        validate_run_spec(
+            spec,
+            command_whitelist=COMMAND_WHITELIST,
+            npx_package_whitelist=NPX_PACKAGE_WHITELIST,
+        )
     except Exception as e:
         return CallToolResponse(ok=False, error_code="INVALID_SPEC", message=str(e))
 
@@ -184,6 +194,7 @@ async def call_tool(
             spec,
             handler,
             command_whitelist=COMMAND_WHITELIST,
+            npx_package_whitelist=NPX_PACKAGE_WHITELIST,
             work_dir=WORK_DIR,
         )
     finally:

@@ -72,11 +72,21 @@ export interface MarketplaceMeta {
 
 /** GET /mcp/meta */
 
+export interface McpStdioTemplate {
+  id: string;
+  label: string;
+  hint?: string | null;
+  command: string;
+  args: string[];
+  network_mode?: string;
+}
+
 export interface McpMeta {
   statuses: EnumOption[];
   transport_filters: EnumOption[];
   transport_types: EnumOption[];
   sync_displays: EnumOption[];
+  stdio_templates?: McpStdioTemplate[];
   schema_version: string;
 }
 

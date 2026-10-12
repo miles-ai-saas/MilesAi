@@ -120,6 +120,7 @@ function McpServiceDialogForm({
   endpointUrl,
   stdioCommand,
   stdioArgs,
+  mcpMeta,
   onNameChange,
   onDescriptionChange,
   onEndpointUrlChange,
@@ -132,6 +133,7 @@ function McpServiceDialogForm({
   endpointUrl: string;
   stdioCommand: string;
   stdioArgs: string;
+  mcpMeta?: McpMeta | null;
   onNameChange: (v: string) => void;
   onDescriptionChange: (v: string) => void;
   onEndpointUrlChange: (v: string) => void;
@@ -139,6 +141,7 @@ function McpServiceDialogForm({
   onStdioArgsChange: (v: string) => void;
 }) {
   const isStdio = transport === "stdio";
+  const templates = mcpMeta?.stdio_templates ?? [];
 
   return (
     <>
@@ -161,6 +164,29 @@ function McpServiceDialogForm({
       <McpDialogSection title={isStdio ? "STDIO 启动" : "端点连接"} hint={MCP_TRANSPORT_HINTS[transport]}>
         {isStdio ? (
           <>
+            {templates.length > 0 ? (
+              <label className="block text-xs">
+                <span className="mb-1 block text-ink-muted">预置模板</span>
+                <select
+                  className="input-field w-full"
+                  defaultValue=""
+                  onChange={(e) => {
+                    const id = e.target.value;
+                    const tpl = templates.find((t) => t.id === id);
+                    if (!tpl) return;
+                    onStdioCommandChange(tpl.command);
+                    onStdioArgsChange((tpl.args ?? []).join("\n"));
+                  }}
+                >
+                  <option value="">手动填写或选择模板…</option>
+                  {templates.map((tpl) => (
+                    <option key={tpl.id} value={tpl.id} title={tpl.hint ?? undefined}>
+                      {tpl.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
             <label className="block text-xs">
               <span className="mb-1 block text-ink-muted">启动命令 *</span>
               <input className="input-field w-full font-mono text-sm" placeholder="npx" value={stdioCommand} onChange={(e) => onStdioCommandChange(e.target.value)} />
@@ -175,8 +201,8 @@ function McpServiceDialogForm({
               />
             </label>
             <p className="text-xs text-amber-800">
-              预装示例可用 <code className="font-mono text-[11px]">mcp-server-everything</code>
-              ；npx 在线拉包需 Runner 配置 <code className="font-mono text-[11px]">network_mode=allow</code>。
+              npx 包须在平台白名单内；在线拉包需 <code className="font-mono text-[11px]">network_mode=allow</code>
+              ，或使用 Runner 镜像预装包。
             </p>
           </>
         ) : (
@@ -290,6 +316,7 @@ export function McpServiceDialog({
           endpointUrl={endpointUrl}
           stdioCommand={stdioCommand}
           stdioArgs={stdioArgs}
+          mcpMeta={mcpMeta}
           onNameChange={onNameChange}
           onDescriptionChange={onDescriptionChange}
           onEndpointUrlChange={onEndpointUrlChange}

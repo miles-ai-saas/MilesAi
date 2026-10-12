@@ -656,7 +656,7 @@ flowchart TD
 | 流程版本一键回滚 | ✅ | `POST …/versions/{n}/restore` 拷贝 graph 另存新版本；工作台版本历史调用该 API |
 | 内置 Redis 操作工具 | ✅ | opt-in `redis_kv`（租户键前缀 `agent_kv:{tenant}:*`；get/set/delete/exists/incr）；系统页 `/redis-info` 仍为运维只读 |
 | HookScope.APP（应用级）派发 | ✅ | 按 `mkt_installs` 解析 app_id；agent/flow 的 before/after/on_error 外包 `APP`；见 [hooks.md](../guides/hooks.md) |
-| MCP STDIO 沙箱 MVP 收尾；预置模板/域名白名单 | 🔶 | 见 [mcp-sandbox.md](./mcp-sandbox.md) |
+| MCP STDIO 沙箱 MVP 收尾；预置模板 / npx 包白名单 | ✅ | 见 [mcp-sandbox.md](./mcp-sandbox.md) |
 | 视频逐帧 / 流式预览 | ⬜ | 见 [multimodal-capabilities.md](../product/multimodal-capabilities.md) |
 | 模型供应商 M4：批量导入、图标资源 | ⬜ | 见 [model-providers.md](../guides/model-providers.md) |
 | 离线 OpenAPI 导出 / 离线部署手册 | ⬜ | 文档待补充 |

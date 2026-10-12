@@ -1,6 +1,7 @@
 """MCP 枚举展示元数据（GET /mcp/meta）。
 
 - statuses / transport_filters / transport_types / sync_displays
+- stdio_templates：预置 STDIO 启动模板（填入 connection_config）
 - sync_displays 由 sync_error、tools_cache 推导，与 ORM status 互补
 - 前端：lib/mcp-labels.ts、hooks/use-mcp-meta.ts
 - 约定：docs/guides/hooks.md §9
@@ -36,6 +37,50 @@ SYNC_DISPLAY_OPTIONS: list[tuple[str, str, str | None]] = [
     ("sync_failed", "同步失败", "sync_error 非空"),
 ]
 
+#: 预置 STDIO 模板；包名须落在 MCP_RUNNER_NPX_PACKAGE_WHITELIST（默认官方包）
+STDIO_TEMPLATES: list[dict] = [
+    {
+        "id": "mcp-filesystem",
+        "label": "官方 Filesystem",
+        "hint": "读写指定目录；默认 deny 网络",
+        "command": "npx",
+        "args": ["-y", "@modelcontextprotocol/server-filesystem", "/tmp/milesai-mcp-demo"],
+        "network_mode": "deny",
+    },
+    {
+        "id": "mcp-memory",
+        "label": "官方 Memory",
+        "hint": "知识图谱记忆；适合多轮演示",
+        "command": "npx",
+        "args": ["-y", "@modelcontextprotocol/server-memory"],
+        "network_mode": "deny",
+    },
+    {
+        "id": "mcp-everything",
+        "label": "官方 Everything",
+        "hint": "协议全量演示；npx 拉包需 network_mode=allow 或镜像预装",
+        "command": "npx",
+        "args": ["-y", "@modelcontextprotocol/server-everything"],
+        "network_mode": "allow",
+    },
+    {
+        "id": "mcp-fetch",
+        "label": "官方 Fetch",
+        "hint": "HTTP 抓取；需 allow 出站",
+        "command": "npx",
+        "args": ["-y", "@modelcontextprotocol/server-fetch"],
+        "network_mode": "allow",
+    },
+    {
+        "id": "mcp-sequential-thinking",
+        "label": "官方 Sequential Thinking",
+        "hint": "分步推理工具",
+        "command": "npx",
+        "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"],
+        "network_mode": "deny",
+    },
+]
+
 
 def mcp_meta_dict() -> dict:
     """构建 meta 响应 dict，供 *MetaOut.model_validate 与单测使用。"""
@@ -44,5 +89,6 @@ def mcp_meta_dict() -> dict:
         "transport_filters": literal_options(TRANSPORT_OPTIONS),
         "transport_types": literal_options(TRANSPORT_TYPE_OPTIONS),
         "sync_displays": literal_options(SYNC_DISPLAY_OPTIONS),
+        "stdio_templates": list(STDIO_TEMPLATES),
         "schema_version": META_SCHEMA_VERSION,
     }

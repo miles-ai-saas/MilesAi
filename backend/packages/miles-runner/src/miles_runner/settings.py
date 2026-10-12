@@ -23,11 +23,25 @@ class RunnerSettings(BaseSettings):
     mcp_runner_token: str = ""
     mcp_runner_max_concurrent_per_tenant: int = 3
     mcp_runner_command_whitelist: str = "npx,node,python,python3"
+    mcp_runner_npx_package_whitelist: str = (
+        "@modelcontextprotocol/server-filesystem,"
+        "@modelcontextprotocol/server-memory,"
+        "@modelcontextprotocol/server-everything,"
+        "@modelcontextprotocol/server-fetch,"
+        "@modelcontextprotocol/server-sequential-thinking"
+    )
 
     @property
     def mcp_runner_command_whitelist_set(self) -> frozenset[str]:
         """命令白名单集合（逗号分隔，忽略空白）。"""
         return frozenset(item.strip() for item in self.mcp_runner_command_whitelist.split(",") if item.strip())
+
+    @property
+    def mcp_runner_npx_package_whitelist_set(self) -> frozenset[str]:
+        """npx 包白名单；空配置回落官方默认包列表。"""
+        from miles_exec.mcp.spec import parse_npx_package_whitelist
+
+        return parse_npx_package_whitelist(self.mcp_runner_npx_package_whitelist)
 
 
 @lru_cache

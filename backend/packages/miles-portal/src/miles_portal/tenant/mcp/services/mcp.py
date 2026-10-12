@@ -11,7 +11,7 @@ MCP 服务租户侧业务（L2）：CRUD、同步 tools_cache、试调用。
 """
 
 from datetime import UTC, datetime
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -23,6 +23,7 @@ from miles_core.service import BaseService
 from miles_core.soft_delete import is_marked_deleted, mark_deleted, not_deleted
 from miles_core.tenant import TenantContext, assert_tenant_access, tenant_filters
 from miles_exec.mcp.constants import McpTransport
+from miles_exec.mcp.spec import NetworkMode, RunSpec, validate_run_spec
 from miles_integrations.langchain.toolkit.naming import ident_collision
 from miles_portal.tenant.mcp.client import fetch_mcp_tools
 from miles_portal.tenant.mcp.client import invoke_mcp_tool as remote_invoke_mcp_tool
@@ -55,15 +56,47 @@ class McpServiceManager(BaseService):
         """返回枚举展示字典（无 DB 查询，文案来自 tenant/*/meta.py）。"""
         return McpMetaOut.model_validate(mcp_meta_dict())
 
+    def _validate_stdio_cfg(self, cfg: dict) -> None:
+        """创建/更新时提前校验 command 白名单与 npx 包白名单（与 Runner 一致）。"""
+        settings = get_settings()
+        command = str(cfg.get("command") or "").strip()
+        if not command:
+            raise BadRequestError("STDIO 需填写启动命令")
+        args_raw = cfg.get("args") or []
+        if isinstance(args_raw, str):
+            args = [a for a in args_raw.split("\n") if a.strip()]
+        elif isinstance(args_raw, list):
+            args = [str(a) for a in args_raw]
+        else:
+            raise BadRequestError("STDIO args 须为字符串数组")
+        env_raw = cfg.get("env") or {}
+        if env_raw and not isinstance(env_raw, dict):
+            raise BadRequestError("STDIO env 须为对象")
+        timeout = int(cfg.get("timeout_sec") or 30)
+        network_raw = str(cfg.get("network_mode") or "deny").lower()
+        network_mode = NetworkMode.ALLOW if network_raw == "allow" else NetworkMode.DENY
+        validate_run_spec(
+            RunSpec(
+                tenant_id=self.ctx.tenant_id,
+                service_id=uuid4(),
+                actor_user_id=self.ctx.user_id,
+                command=command,
+                args=args,
+                env={str(k): str(v) for k, v in dict(env_raw).items()},
+                max_runtime_sec=min(max(timeout, 1), 120),
+                network_mode=network_mode,
+            ),
+            command_whitelist=settings.mcp_runner_command_whitelist_set,
+            npx_package_whitelist=settings.mcp_runner_npx_package_whitelist_set,
+        )
+
     def _resolve_endpoint(self, body: McpServiceCreate) -> tuple[str, str, dict]:
         """创建时解析 endpoint_url、归一化 transport 与 connection_config。"""
         transport = normalize_transport(body.transport)
         cfg = dict(body.connection_config or {})
         endpoint = (body.endpoint_url or "").strip()
         if transport == McpTransport.STDIO:
-            command = str(cfg.get("command") or "").strip()
-            if not command:
-                raise BadRequestError("STDIO 需填写启动命令")
+            self._validate_stdio_cfg(cfg)
             if not endpoint:
                 endpoint = f"stdio://{body.name.strip()}"
             return endpoint, transport.value, cfg
@@ -161,9 +194,7 @@ class McpServiceManager(BaseService):
 
         transport = normalize_transport(row.transport)
         if transport == McpTransport.STDIO:
-            command = str((row.connection_config or {}).get("command") or "").strip()
-            if not command:
-                raise BadRequestError("STDIO 需填写启动命令")
+            self._validate_stdio_cfg(dict(row.connection_config or {}))
             if not row.endpoint_url or row.endpoint_url.startswith("http"):
                 row.endpoint_url = f"stdio://{row.name}"
         elif not row.endpoint_url:

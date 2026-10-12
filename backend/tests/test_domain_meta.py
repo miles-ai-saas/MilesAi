@@ -113,6 +113,10 @@ def test_mcp_meta():
     data = mcp_meta_dict()
     assert {s.value for s in data["statuses"]} == {"active", "inactive", "error"}
     assert any(t.value == "sse" for t in data["transport_types"])
+    templates = data["stdio_templates"]
+    assert len(templates) >= 3
+    assert {t["id"] for t in templates} >= {"mcp-filesystem", "mcp-memory", "mcp-everything"}
+    assert all(t["command"] and isinstance(t["args"], list) for t in templates)
 
 
 def test_attachments_meta():
