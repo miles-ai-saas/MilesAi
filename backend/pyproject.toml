@@ -105,3 +105,5 @@ known-first-party = [
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+# 允许 ``from tests.…`` 跨用例复用测试辅助（如 a2a push ↔ server_card）。
+pythonpath = ["."]

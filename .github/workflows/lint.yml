@@ -25,6 +25,8 @@ jobs:
         run: uv run --all-packages --group dev ruff check .
       - name: Package layering guard（import-linter）
         run: uv run --all-packages --group dev lint-imports
+      - name: Source file line limit（≥500 禁止合入）
+        run: uv run --all-packages --group dev python tools/check_src_line_limit.py
       - name: OpenAPI snapshot check
         run: uv run --all-packages --group dev python -m miles_server.scripts.export_openapi --check
       - name: Backend tests

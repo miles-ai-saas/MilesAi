@@ -45,7 +45,7 @@ endef
 	init-db migrate seed verify-db \
 	serve worker beat \
 	lint lint-backend lint-ui format format-check format-check-backend format-check-ui \
-	test test-backend test-ui openapi-check openapi-write openapi-export check check-ui layers-check \
+	test test-backend test-ui openapi-check openapi-write openapi-export check check-ui layers-check check-line-limit \
 	ui-dev ui-dev-admin ui-build ui-install \
 	build-api build-worker build-mcp-runner build-all \
 	push-api push-worker push-mcp-runner push-all \
@@ -150,6 +150,9 @@ format-check-backend: ## 校验后端格式（ruff format --check）
 layers-check: ## 校验包分层契约（import-linter）
 	cd $(BACKEND) && $(IMPORTLINT)
 
+check-line-limit: ## 校验 packages/*/src 单文件不超过 500 行
+	cd $(BACKEND) && $(PY) tools/check_src_line_limit.py
+
 format-check-ui: ## 校验前端格式（prettier --check）
 	cd $(ROOT)/ui && npm run format:check
 
@@ -172,7 +175,7 @@ openapi-write: ## 重写 OpenAPI 快照（改路由/Schema 后执行并提交）
 openapi-export: ## 导出 OpenAPI 到 OUT=（默认 /tmp/milesai-openapi.json；离线交付）
 	cd $(BACKEND) && $(PY) -m miles_server.scripts.export_openapi --out "$(or $(OUT),/tmp/milesai-openapi.json)"
 
-check: lint-backend format-check-backend layers-check openapi-check test-backend ## 复刻 CI 后端 job 的质量门禁
+check: lint-backend format-check-backend layers-check check-line-limit openapi-check test-backend ## 复刻 CI 后端 job 的质量门禁
 
 check-ui: lint-ui format-check-ui ## 复刻 CI 前端 job 的质量门禁（需已安装依赖）
 

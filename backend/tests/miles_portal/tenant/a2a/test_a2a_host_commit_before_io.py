@@ -32,7 +32,7 @@ def _svc(db: _TxnDb) -> SimpleNamespace:
 
     return SimpleNamespace(
         db=db,
-        ctx=SimpleNamespace(tenant_id=uuid4()),
+        ctx=SimpleNamespace(tenant_id=uuid4(), user_id=uuid4()),
         resolve_system_prompt=resolve_system_prompt,
         resolve_invoke_model=resolve_invoke_model,
         chat_usage_sink=lambda model, source_id=None: MagicMock(),
@@ -129,12 +129,27 @@ def test_plan_a2a_peers_skips_commit_when_db_none(monkeypatch):
     assert out == []
 
 
+def _patch_host_memory(monkeypatch) -> None:
+    """宿主路径会注入 chat/user memory；本文件只断言 commit 时序，记忆一律空。"""
+
+    class _Mem:
+        def __init__(self, *_a, **_k) -> None:  # noqa: ANN002, ANN003
+            pass
+
+        async def load_for_inject(self, **_k):  # noqa: ANN003
+            return [], ""
+
+    monkeypatch.setattr(invoke_mod, "load_chat_history_messages", AsyncMock(return_value=[]))
+    monkeypatch.setattr(invoke_mod, "UserMemoryService", _Mem)
+
+
 def test_host_no_plan_commits_before_llm(monkeypatch):
     db = _TxnDb()
     svc = _svc(db)
     agent = _agent()
     binding = _binding()
 
+    _patch_host_memory(monkeypatch)
     monkeypatch.setattr(invoke_mod, "list_host_peer_bindings", AsyncMock(return_value=[binding]))
     monkeypatch.setattr(
         invoke_mod,
@@ -161,6 +176,7 @@ def test_host_with_plan_commits_before_peer_http(monkeypatch):
     binding = _binding()
     plan = [{"peer_id": str(binding.peer_id), "task": "t"}]
 
+    _patch_host_memory(monkeypatch)
     monkeypatch.setattr(invoke_mod, "list_host_peer_bindings", AsyncMock(return_value=[binding]))
     monkeypatch.setattr(
         invoke_mod,

@@ -70,7 +70,7 @@ uv run milesai verify-db                    # 检查核心表
 | **400–499 行** | 新增逻辑时优先拆文件或子包，避免继续膨胀 |
 | **拆分后** | 单个子模块宜 **300–400 行**；仍超 500 则继续按职责切分 |
 
-自检：在 `backend/` 目录执行 `find packages -path '*/src/*' -name '*.py' -exec wc -l {} + | awk '$1 >= 500'`。
+自检 / CI：`make check-line-limit`（`tools/check_src_line_limit.py`；≥500 禁止合入，存量超标见脚本 `ALLOWLIST`）。
 
 ### `services/` 子包（按聚合拆分）
 
