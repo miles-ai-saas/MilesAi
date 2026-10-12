@@ -12341,6 +12341,30 @@
         "title": "FlowOut",
         "type": "object"
       },
+      "FlowRestoreVersion": {
+        "properties": {
+          "publish": {
+            "default": false,
+            "description": "若当前为草稿，恢复后是否一并发布",
+            "title": "Publish",
+            "type": "boolean"
+          },
+          "remark": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "版本备注；默认「恢复自 vN」",
+            "title": "Remark"
+          }
+        },
+        "title": "FlowRestoreVersion",
+        "type": "object"
+      },
       "FlowRunRequest": {
         "properties": {
           "async_generative": {
@@ -31544,6 +31568,81 @@
           }
         ],
         "summary": "Get Flow Version",
+        "tags": [
+          "flows"
+        ]
+      }
+    },
+    "/api/v1/flows/{flow_id}/versions/{version}/restore": {
+      "post": {
+        "description": "从历史版本拷贝画布另存为新版本（不删除旧记录）。",
+        "operationId": "restore_flow_version_api_v1_flows__flow_id__versions__version__restore_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "flow_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Flow Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "version",
+            "required": true,
+            "schema": {
+              "title": "Version",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/FlowRestoreVersion"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_FlowVersionOut_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Restore Flow Version",
         "tags": [
           "flows"
         ]

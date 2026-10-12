@@ -134,7 +134,7 @@
 | PaddleOCR/Whisper 专用画布节点 | ✅ | `OcrExtract` · `AudioTranscribe`（KB 链仍用入库解析） |
 | 循环节点、敏感词/审核画布节点 | ✅ | `LoopNode` · `ComplianceCheck` |
 | 子流程 SubFlow | ✅ | SubFlow 节点嵌套 run |
-| 流程版本快照/回滚/对比 | 部分 | 版本列表 + 发布 + diff UI；无一键回滚 |
+| 流程版本快照/回滚/对比 | ✅ | 版本列表 + 发布 + diff UI + `restore` 一键回滚（拷贝为新版本） |
 | 识图输入（对话/流程 LLM） | ✅ | Vision + `RunContext.media` |
 
 <a id="as-is-module-5"></a>

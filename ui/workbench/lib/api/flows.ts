@@ -29,6 +29,12 @@ export const flowsApi = {
 
   getFlowVersion: (flowId: string, version: number) => get<FlowVersion>(`/flows/${flowId}/versions/${version}`),
 
+  restoreFlowVersion: (flowId: string, version: number, opts?: { remark?: string; publish?: boolean }) =>
+    post<FlowVersion>(`/flows/${flowId}/versions/${version}/restore`, {
+      remark: opts?.remark ?? null,
+      publish: opts?.publish ?? false,
+    }),
+
   saveFlowGraph: (flowId: string, graph_json: FlowGraph, remark?: string) => put<FlowVersion>(`/flows/${flowId}/graph`, { graph_json, remark }),
 
   publishFlow: (flowId: string) => post<Flow>(`/flows/${flowId}/publish`),

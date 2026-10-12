@@ -34,6 +34,12 @@ class FlowSaveGraph(BaseModel):
     remark: str | None = Field(default=None, description="版本备注")
 
 
+# 从历史版本恢复：拷贝 graph 另存为新版本（不改指针、不删历史）。
+class FlowRestoreVersion(BaseModel):
+    remark: str | None = Field(default=None, description="版本备注；默认「恢复自 vN」")
+    publish: bool = Field(default=False, description="若当前为草稿，恢复后是否一并发布")
+
+
 # 流程版本摘要（不含 graph_json）。
 class FlowVersionSummaryOut(BaseModel):
     id: UUID = Field(description="版本记录 ID")

@@ -91,11 +91,11 @@ export function useFlowVersionHistory({ flowId, open, currentVersion, onClose, o
   }, [open, flowId, selected]);
 
   const restore = async () => {
-    if (selected === null || !previewGraph) return;
+    if (selected === null) return;
     setRestoring(true);
     setError("");
     try {
-      const saved = await api.saveFlowGraph(flowId, previewGraph, `恢复自 v${selected}`);
+      const saved = await api.restoreFlowVersion(flowId, selected);
       onRestored(saved.graph_json, saved.version);
       onClose();
     } catch (e) {
@@ -105,7 +105,7 @@ export function useFlowVersionHistory({ flowId, open, currentVersion, onClose, o
     }
   };
 
-  const canRestore = !restoring && selected !== null && previewGraph !== null && selected !== currentVersion;
+  const canRestore = !restoring && selected !== null && selected !== currentVersion;
 
   const loadDiffGraph = async (v: number) => {
     setDiffTarget(v);

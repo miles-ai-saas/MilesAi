@@ -14,6 +14,7 @@ from miles_portal.tenant.flows.schemas.flow import (
     FlowCompileReport,
     FlowCreate,
     FlowOut,
+    FlowRestoreVersion,
     FlowRunRequest,
     FlowRunResponse,
     FlowSaveGraph,
@@ -118,6 +119,21 @@ async def get_flow_version(
     db: AsyncSession = Depends(get_db),
 ):
     return ok(await _svc(db, ctx).get_version_graph(flow_id, version))
+
+
+@router.post(
+    "/{flow_id}/versions/{version}/restore",
+    response_model=ApiResponse[FlowVersionOut],
+)
+async def restore_flow_version(
+    flow_id: UUID,
+    version: int,
+    body: FlowRestoreVersion | None = None,
+    ctx: TenantContext = Depends(require_permissions("flow:write")),
+    db: AsyncSession = Depends(get_db),
+):
+    """从历史版本拷贝画布另存为新版本（不删除旧记录）。"""
+    return ok(await _svc(db, ctx).restore_version(flow_id, version, body))
 
 
 @router.get("/{flow_id}/subflow-deps", response_model=ApiResponse[dict])

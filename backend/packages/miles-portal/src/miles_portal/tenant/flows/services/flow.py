@@ -10,6 +10,7 @@
 不经过本 Service 的调试 API。
 """
 
+import copy
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -34,6 +35,7 @@ from miles_portal.tenant.flows.repositories.flow import FlowRepository, FlowVers
 from miles_portal.tenant.flows.schemas.flow import (
     FlowCreate,
     FlowOut,
+    FlowRestoreVersion,
     FlowRunRequest,
     FlowRunResponse,
     FlowSaveGraph,
@@ -203,6 +205,29 @@ class FlowService(BaseService):
         if not row:
             raise NotFoundError("流程版本不存在")
         return FlowVersionOut.model_validate(row)
+
+    async def restore_version(
+        self,
+        flow_id: UUID,
+        version: int,
+        body: FlowRestoreVersion | None = None,
+    ) -> FlowVersionOut:
+        """从历史版本拷贝 ``graph_json`` 另存为新版本（对齐市场回滚：不改指针、不删历史）。"""
+        body = body or FlowRestoreVersion()
+        flow = await self._get_flow_or_raise(flow_id)
+        if version == flow.current_version:
+            raise BadRequestError("所选已是当前版本，无需恢复")
+        row = await self.repo.get_version(flow.id, version)
+        if not row:
+            raise NotFoundError("流程版本不存在")
+        remark = (body.remark or "").strip() or f"恢复自 v{version}"
+        new_ver = await self._save_version(flow, copy.deepcopy(row.graph_json), remark)
+        if body.publish and flow.status != FlowStatus.PUBLISHED:
+            if flow.current_version == 0:
+                raise BadRequestError("请先保存流程图")
+            flow.status = FlowStatus.PUBLISHED
+            await self.db.flush()
+        return FlowVersionOut.model_validate(new_ver)
 
     async def delete_flow(self, flow_id: UUID) -> None:
         """软删除流程：先清标签与级联依赖，再打删除标记。"""

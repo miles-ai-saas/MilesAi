@@ -12,7 +12,7 @@
 
 ### 1.1 交付范围
 
-- 流程 CRUD、保存画布、版本列表、发布
+- 流程 CRUD、保存画布、版本列表、发布、历史版本一键恢复（拷贝为新版本）
 - `POST …/run` 调试、`POST …/compile` DAG 校验
 - 17 类节点（含 SubFlow / Loop / 合规 / 媒体 / 生图·生视频）
 - 流程模板 `GET /flows/templates`
@@ -76,6 +76,7 @@ GET  /flows/{id}/graph              # 当前版本 graph
 PUT  /flows/{id}/graph              # 保存 → 新版本或覆盖草稿
 GET  /flows/{id}/versions
 GET  /flows/{id}/versions/{n}
+POST /flows/{id}/versions/{n}/restore   # 拷贝历史 graph 另存为新版本（可选 publish）
 POST /flows/{id}/publish
 POST /flows/{id}/run                # FlowRunRequest
 POST /flows/{id}/compile            # DAG / 并行层报告
