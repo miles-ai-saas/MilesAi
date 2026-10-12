@@ -17,6 +17,7 @@
 - 健康报告 + CSV 导出
 - 告警配置：阈值 + Webhook URL，支持 test
 - **模型用量**：`agt_model_usage_logs` 分模型报表
+- **Agent SLA**：`agt_agent_chat_calls` 成功率、P50/P95 延迟、Token/次；按路由 / 智能体 / 按日
 - **多模态处理量**：MonitorStats 图/音/视频计数
 - **基础设施探测**：`GET /system/infra/status`（PG/Redis/MinIO 等 latency）
 - **SMTP 邮件告警**：`email_notify_to` 配置
@@ -54,6 +55,8 @@
 GET  /monitor/meta
 GET  /monitor/stats
 GET  /monitor/trends?days=7
+GET  /monitor/model-usage?days=7
+GET  /monitor/agent-sla?days=7&agent_id=<optional>
 GET  /monitor/report
 GET  /monitor/report/export     # CSV download
 GET  /monitor/health

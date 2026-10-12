@@ -1,5 +1,7 @@
 """运行监控 HTTP API：统计、趋势、健康报告与告警配置。"""
 
+from uuid import UUID
+
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import PlainTextResponse
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -9,6 +11,7 @@ from miles_common.schema import ApiResponse
 from miles_core.deps import require_permissions
 from miles_core.infra.db import get_db
 from miles_core.tenant import TenantContext
+from miles_portal.tenant.monitor.schemas.agent_sla import AgentSlaReport
 from miles_portal.tenant.monitor.schemas.meta import MonitorMetaOut
 from miles_portal.tenant.monitor.schemas.monitor import (
     AlertConfig,
@@ -17,6 +20,7 @@ from miles_portal.tenant.monitor.schemas.monitor import (
     MonitorStats,
     MonitorTrends,
 )
+from miles_portal.tenant.monitor.services.agent_sla import AgentSlaService
 from miles_portal.tenant.monitor.services.monitor import MonitorService
 
 router = APIRouter()
@@ -55,6 +59,17 @@ async def monitor_model_usage(
     db: AsyncSession = Depends(get_db),
 ):
     return ok(await MonitorService(db, ctx).model_usage(days=days))
+
+
+@router.get("/agent-sla", response_model=ApiResponse[AgentSlaReport])
+async def monitor_agent_sla(
+    days: int = Query(7, ge=1, le=30),
+    agent_id: UUID | None = Query(None),
+    ctx: TenantContext = Depends(require_permissions("monitor:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Agent 对话 SLA：成功率、P50/P95 延迟、Token/次；可按智能体过滤。"""
+    return ok(await AgentSlaService(db, ctx).report(days=days, agent_id=agent_id))
 
 
 @router.get("/report", response_model=ApiResponse[MonitorReport])

@@ -3,6 +3,7 @@
 /** 监控大盘（链路 §14）：统计/趋势/健康 + `useMonitorMeta`。 */
 
 import {
+  MonitorAgentSlaTab,
   MonitorAlertsTab,
   MonitorHealthTab,
   MonitorOverviewTab,
@@ -20,7 +21,10 @@ function TabLoading() {
 export default function MonitorPage() {
   const vm = useMonitorPage();
 
-  const headerAction = vm.tab === "trends" ? <MonitorTrendsHeaderAction vm={vm} /> : undefined;
+  const headerAction =
+    vm.tab === "trends" || vm.tab === "usage" || vm.tab === "sla" ? (
+      <MonitorTrendsHeaderAction vm={vm} />
+    ) : undefined;
 
   const isTabLoading = vm.tabLoading[vm.tab] ?? false;
 
@@ -33,6 +37,7 @@ export default function MonitorPage() {
           {vm.tab === "overview" && vm.report ? <MonitorOverviewTab vm={vm} /> : null}
           {vm.tab === "trends" && vm.report && vm.trends ? <MonitorTrendsTab vm={vm} /> : null}
           {vm.tab === "usage" ? <MonitorUsageTab vm={vm} /> : null}
+          {vm.tab === "sla" ? <MonitorAgentSlaTab vm={vm} /> : null}
           {vm.tab === "health" ? <MonitorHealthTab vm={vm} /> : null}
           {vm.tab === "alerts" ? <MonitorAlertsTab vm={vm} /> : null}
         </>

@@ -74,3 +74,41 @@ export interface ModelUsageReport {
   rows: ModelUsageRow[];
   total_tokens: number;
 }
+
+export interface AgentSlaMetrics {
+  call_count: number;
+  success_count: number;
+  failed_count: number;
+  blocked_count: number;
+  success_rate: number;
+  latency_avg_ms: number;
+  latency_p50_ms: number;
+  latency_p95_ms: number;
+  tokens_per_call_avg: number;
+  total_tokens: number;
+}
+
+export interface AgentSlaRouteRow extends AgentSlaMetrics {
+  route: string;
+}
+
+export interface AgentSlaAgentRow extends AgentSlaMetrics {
+  agent_id: string;
+  agent_name?: string | null;
+}
+
+export interface AgentSlaDailyPoint {
+  date: string;
+  call_count: number;
+  success_rate: number;
+  latency_avg_ms: number;
+}
+
+export interface AgentSlaReport {
+  days: number;
+  agent_id?: string | null;
+  overview: AgentSlaMetrics;
+  by_route: AgentSlaRouteRow[];
+  by_agent: AgentSlaAgentRow[];
+  by_day: AgentSlaDailyPoint[];
+}

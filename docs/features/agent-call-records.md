@@ -41,7 +41,7 @@
 - **CSV 导出**
 - 每个编排节点各自写调用记录表（避免与 Trace、工具日志重复）
 - 完整 `steps` 默认落 PG（体积大、含敏感内容）
-- 跨智能体全局调用大盘（归属监控域 `/monitor`）
+- 跨智能体全局调用大盘的**明细流水导出**（聚合大盘见监控域 `GET /monitor/agent-sla` · 工作台「Agent SLA」Tab）
 - **OpenTelemetry 接入**（见 §8；后续有需要再立项）
 - OpenAPI 第三方 WS 调用流水（WS 仅工作台，见 agent-chat-websocket）
 

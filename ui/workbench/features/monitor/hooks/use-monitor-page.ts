@@ -5,9 +5,9 @@ import { api } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth-store";
 import { useKbMeta } from "@/features/kb";
 import { useMonitorMeta } from "@/features/monitor/hooks/use-monitor-meta";
-import type { AlertConfig, ModelUsageReport, MonitorReport, MonitorTrends } from "@/lib/types";
+import type { AgentSlaReport, AlertConfig, ModelUsageReport, MonitorReport, MonitorTrends } from "@/lib/types";
 
-export type MonitorTab = "overview" | "trends" | "usage" | "health" | "alerts";
+export type MonitorTab = "overview" | "trends" | "usage" | "sla" | "health" | "alerts";
 
 export type MonitorHealthPayload = {
   healthy?: boolean;
@@ -29,6 +29,7 @@ export function useMonitorPage() {
   const [report, setReport] = useState<MonitorReport | null>(null);
   const [trends, setTrends] = useState<MonitorTrends | null>(null);
   const [modelUsage, setModelUsage] = useState<ModelUsageReport | null>(null);
+  const [agentSla, setAgentSla] = useState<AgentSlaReport | null>(null);
   const [health, setHealth] = useState<MonitorHealthPayload | null>(null);
   const [alerts, setAlerts] = useState<AlertConfig>({
     enabled: false,
@@ -90,6 +91,18 @@ export function useMonitorPage() {
     }
   }, [trendDays]);
 
+  const loadSla = useCallback(async () => {
+    if (loaded.current.has("sla")) return;
+    setTabLoading((p) => ({ ...p, sla: true }));
+    try {
+      const s = await api.getMonitorAgentSla(trendDays);
+      setAgentSla(s);
+      loaded.current.add("sla");
+    } finally {
+      setTabLoading((p) => ({ ...p, sla: false }));
+    }
+  }, [trendDays]);
+
   const loadHealth = useCallback(async () => {
     if (loaded.current.has("health")) return;
     setTabLoading((p) => ({ ...p, health: true }));
@@ -143,6 +156,9 @@ export function useMonitorPage() {
       case "usage":
         void loadUsage();
         break;
+      case "sla":
+        void loadSla();
+        break;
       case "health":
         void loadHealth();
         break;
@@ -150,19 +166,21 @@ export function useMonitorPage() {
         void loadAlerts();
         break;
     }
-  }, [ready, tab, loadOverview, loadTrends, loadUsage, loadHealth, loadAlerts]);
+  }, [ready, tab, loadOverview, loadTrends, loadUsage, loadSla, loadHealth, loadAlerts]);
 
-  // 趋势天数变化：只刷新 trends 和 modelUsage（如果对应 Tab 已加载过）
+  // 趋势天数变化：只刷新 trends / modelUsage / sla（如果对应 Tab 已加载过）
   useEffect(() => {
     if (!ready) return;
     // 标记对应 Tab 为未加载，下次切换时会自动刷新
     loaded.current.delete("overview");
     loaded.current.delete("trends");
     loaded.current.delete("usage");
+    loaded.current.delete("sla");
     // 如果当前正在看这些 Tab，立即刷新
     if (tab === "overview") void loadOverview();
     else if (tab === "trends") void loadTrends();
     else if (tab === "usage") void loadUsage();
+    else if (tab === "sla") void loadSla();
   }, [trendDays]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // 手动刷新：重置所有标记，重新加载当前 Tab
@@ -191,6 +209,12 @@ export function useMonitorPage() {
             const u = await api.getMonitorModelUsage(trendDays);
             setModelUsage(u);
             loaded.current.add("usage");
+            break;
+          }
+          case "sla": {
+            const s = await api.getMonitorAgentSla(trendDays);
+            setAgentSla(s);
+            loaded.current.add("sla");
             break;
           }
           case "health": {
@@ -262,6 +286,7 @@ export function useMonitorPage() {
     report,
     trends,
     modelUsage,
+    agentSla,
     health,
     alerts,
     setAlerts,

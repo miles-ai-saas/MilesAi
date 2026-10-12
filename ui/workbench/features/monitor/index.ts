@@ -7,5 +7,6 @@ export { MonitorPageLayout } from "./components/MonitorPageLayout";
 export { MonitorOverviewTab } from "./components/MonitorOverviewTab";
 export { MonitorTrendsTab, MonitorTrendsHeaderAction } from "./components/MonitorTrendsTab";
 export { MonitorUsageTab } from "./components/MonitorUsageTab";
+export { MonitorAgentSlaTab } from "./components/MonitorAgentSlaTab";
 export { MonitorHealthTab } from "./components/MonitorHealthTab";
 export { MonitorAlertsTab } from "./components/MonitorAlertsTab";
