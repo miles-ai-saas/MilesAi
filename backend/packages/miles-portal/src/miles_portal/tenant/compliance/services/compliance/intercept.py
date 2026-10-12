@@ -1,22 +1,32 @@
-"""入出站敏感词检测与试跑扫描。
+"""入出站敏感词检测、媒体审核与试跑扫描。
 
-Agent 对话链：``AgentChatMixin.chat`` → ``check_input`` / ``check_output``；
+Agent 对话链：``AgentChatMixin.chat`` → ``check_input`` / ``check_media_input`` / ``check_output``；
 画布 ``ComplianceCheck`` 节点走 ``CompliancePipeline`` 但不写 InterceptLog。
 """
 
+from __future__ import annotations
+
+from typing import Sequence
+from uuid import UUID
+
 from miles_common.exceptions import BadRequestError
+from miles_common.schemas.media import MediaRefIn
 from miles_portal.tenant.compliance.models import InterceptLog, SensitiveAction
 from miles_portal.tenant.compliance.schemas.compliance import (
     ComplianceScanMatch,
     ComplianceScanRequest,
     ComplianceScanResult,
 )
+from miles_portal.tenant.compliance.services.compliance.media_audit import (
+    DEFAULT_MAX_MEDIA_AUDIT,
+    check_media_safety,
+)
 from miles_portal.tenant.compliance.services.pipeline import CompliancePipeline
 from miles_portal.tenant.compliance.services.word_resolve import load_tenant_scan_words
 
 
 class ComplianceInterceptMixin:
-    """入出站敏感词检测、试跑扫描与拦截日志写入。"""
+    """入出站敏感词检测、入站图片视觉审核、试跑扫描与拦截日志写入。"""
 
     async def compliance_pipeline(self) -> CompliancePipeline | None:
         """按租户已绑定词库构建扫描 Pipeline；无词时返回 None。"""
@@ -66,6 +76,59 @@ class ComplianceInterceptMixin:
             if result.has_block:
                 raise BadRequestError(f"输入内容包含敏感词，已拦截：{first.word}")
         return text
+
+    async def check_media_input(
+        self,
+        media: Sequence[MediaRefIn] | Sequence[UUID] | None,
+        *,
+        module: str,
+        max_images: int = DEFAULT_MAX_MEDIA_AUDIT,
+    ) -> None:
+        """入站附图视觉审核；``safe=False`` 记拦截日志并抛 ``BadRequestError``。
+
+        仅审核图片；音/视频跳过。无 Vision/LLM 或调用失败 fail-open。
+        同一请求最多审核 ``max_images`` 张（默认 5）。
+        """
+        if not media:
+            return
+        ids: list[UUID] = []
+        for item in media:
+            if isinstance(item, UUID):
+                ids.append(item)
+            else:
+                aid = getattr(item, "attachment_id", None)
+                if aid is not None:
+                    ids.append(aid if isinstance(aid, UUID) else UUID(str(aid)))
+        if not ids:
+            return
+
+        audited = 0
+        limit = max(0, int(max_images))
+        for aid in ids:
+            if audited >= limit:
+                break
+            result = await check_media_safety(aid, self.db, self.ctx)
+            reason = str(result.get("reason") or "")
+            # 非图片跳过；无模型则整批放行（避免对每张图重复探测）
+            if result.get("category") == "none" and result.get("safe", True):
+                if "非图片" in reason:
+                    continue
+                if "无可用模型" in reason:
+                    return
+            audited += 1
+            if result.get("safe", True):
+                continue
+            category = str(result.get("category") or "违规")[:128]
+            snippet = f"[media:{aid}] {category}: {reason[:400]}"
+            await self.log_intercept(
+                module=module,
+                direction="in",
+                matched_word=category,
+                action=SensitiveAction.BLOCK,
+                content=snippet,
+            )
+            detail = f"（{reason}）" if reason else ""
+            raise BadRequestError(f"附图未通过内容安全审核，已拦截：{category}{detail}")
 
     async def check_output(self, text: str, *, module: str) -> str:
         """出站文本扫描；命中 block 时抛 ``BadRequestError``。"""

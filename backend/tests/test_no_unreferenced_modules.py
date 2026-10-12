@@ -1,10 +1,7 @@
 """守卫：包内不得出现「零引用模块」（入口点与有意未接线者除外）。
 
-背景：`compliance/desensitize.py`、`services/compliance/media_audit.py` 自引入起从未被
-任何模块 import，文档却按「已交付」记录（见 `docs/features/compliance.md` §1.2）；两个
-`generative/jobs/*_params.py` 更是与生产侧内联构造逐字段重复、只被自己的测试引用。
-这类模块不会让任何测试变红，只会静默腐化并误导文档，故设此守卫把「有没有人用」
-从「靠偶尔想不起来去查」变为「可执行」。
+背景：曾有 `compliance/desensitize.py`（已删）与未接线模块静默腐化、文档误导；
+另有仅被测试引用的重复参数模块。本守卫把「有没有人用」变为可执行检查。
 
 判据说明（两个来源缺一不可）：
 
@@ -47,7 +44,6 @@ _ALLOWED_UNREFERENCED: dict[str, str] = {
     "miles_server.cli": "console script（`[project.scripts]`）与 Makefile 的 ``python -m miles_server.cli``",
     "miles_server.scripts.export_openapi": "Makefile 的 ``python -m miles_server.scripts.export_openapi``",
     "miles_portal.tenant.hooks.plugins.echo": "Python 钩子插件，模块名存租户配置后按名加载",
-    "miles_portal.tenant.compliance.services.compliance.media_audit": ("有意保留未接线（接入属按需立项），见 docs/features/compliance.md §1.2"),
 }
 
 _SEP = "/"

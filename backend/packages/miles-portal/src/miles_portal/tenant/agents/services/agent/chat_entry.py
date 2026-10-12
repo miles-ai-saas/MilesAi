@@ -110,6 +110,7 @@ class AgentChatEntryMixin:
             query = str(hook_payload.get("query", effective_query))
             chat_body = body.model_copy(update={"query": query}) if query != effective_query else body
             await compliance.check_input(query, module=SCAN_MODULE_AGENT_CHAT)
+            await compliance.check_media_input(chat_body.media, module=SCAN_MODULE_AGENT_CHAT)
             await assert_tokens_monthly(self.db, self.ctx.tenant_id)
 
             # KB / top_k 对 a2a_augmented、flow、rag 三条路由相同，提前算一次

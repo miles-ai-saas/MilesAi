@@ -297,6 +297,7 @@ class FlowService(BaseService):
             query_text = str(hook_payload.get("query", query_text))
             if query_text:
                 await compliance.check_input(query_text, module=SCAN_MODULE_FLOW_RUN)
+            await compliance.check_media_input(body.media, module=SCAN_MODULE_FLOW_RUN)
 
             run_inputs = dict(body.inputs)
             if query_text:

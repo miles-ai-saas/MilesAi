@@ -24,11 +24,16 @@
 - 违规统计专报表与导出（拦截日志可查；报表按需）
 - 导出水印（按需）
 - 多模态 OCR 结果自动合规（需文本化后再扫；画布可用 `ComplianceCheck`）
-- **PII 脱敏**与**音视频 Vision 审核**均未生效：`desensitize.py`（PII 掩码）曾实现但全仓
-  零调用方，已删除；`services/compliance/media_audit.py` 保留实现但仍无调用方，且只覆盖
-  `image/*`（音/视频走「非图片附件 ⇒ safe」短路）。两者按需立项后再实现/接线
+- **PII 脱敏**未生效（`desensitize.py` 曾实现但零调用方，已删除）
+- **音/视频帧抽帧审核**：入站媒体审核仅覆盖 `image/*`；音/视频跳过（fail-open）
 
-### 1.3 已增强（P2）
+### 1.3 入站图片视觉审核（已接线）
+
+- 入口：智能体对话 / 流程运行，在文本 `check_input` 之后调用 `check_media_input`
+- 实现：`media_audit.check_media_safety`（Vision 优先，否则 LLM）；`safe=False` → 写拦截日志并 `BadRequestError`
+- 无可用模型或调用/解析失败：**fail-open**（不拦）；单次最多审核 5 张图
+
+### 1.4 已增强（P2）
 
 - 词库 **CSV 批量导入** UI（`ComplianceLibraryDetail`）
 
@@ -75,7 +80,7 @@ GET  /compliance/logs
 
 ```
 AgentService.chat
-    → check_input(query) → 执行 → check_output(answer)
+    → check_input(query) → check_media_input(media) → 执行 → check_output(answer)
 FlowService.run
     → 同上（按 agent/flow 配置）
 ```

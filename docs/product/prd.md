@@ -89,7 +89,7 @@
 | 敏感词 CRUD、分类、warn/block | ✅ | 多词库 + 库内词条 + 租户扫描绑定 |
 | Excel 批量导入敏感词 | ✅ | 词库详情 CSV 批量导入 UI |
 | 拦截范围（对话/流程文本） | ✅ | `ComplianceService` 入参/出参 |
-| OCR/音视频内容安全检测 | 未接线 | `media_audit.py` 仅有实现、全仓无调用方（自引入起从未 import）；且只审核 `image/*`，音/视频走「非图片附件 ⇒ safe」短路，OCR 合规亦无实现 —— 按需立项 |
+| OCR/音视频内容安全检测 | 部分 | 入站图片 Vision 审核已接线（对话/流程 `check_media_input`）；音/视频抽帧与 OCR 文本合规仍按需 |
 | 违规统计报表与导出 | 部分 | 拦截日志查询；专报表导出按需 |
 | HTTP 钩子（前后置/on_error） | ✅ | Event v1；Agent/Flow/Tool 挂载 |
 | Python 脚本钩子 | ✅ | `miles_portal.tenant.hooks.plugins.*` |
