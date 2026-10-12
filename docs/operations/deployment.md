@@ -128,12 +128,13 @@ Docker：镜像构建时执行 `uv sync --all-packages`，修改依赖声明后�
 
 - 镜像需预拉或使用内网 registry；模型 API Key 由租户工作台配置（BYOK）。
 - 向量化模型、对话模型可走 LiteLLM 兼容端点或本地 Ollama（见 [model-providers.md](../guides/model-providers.md)）。
-- **离线 OpenAPI 导出 / 完整离线手册**：尚未单独文档化（technical-design §16 ⬜）。
+- **完整步骤、OpenAPI 离线导出与交付物清单**：见 [offline-deployment.md](./offline-deployment.md)。
 
 ---
 
 ## 8. 相关文档
 
+- [offline-deployment.md](./offline-deployment.md) — 离线 / 私有化手册与 OpenAPI 导出
 - [database-setup.md](./database-setup.md) — 迁移与种子
 - [features/admin-ops.md](../features/admin-ops.md) — 运营后台
 - [docker/README.md](../../docker/README.md) — Compose 细节

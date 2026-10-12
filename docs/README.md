@@ -107,6 +107,7 @@ ui/                           # 前端应用源码（与 docs/ 并列，见仓�
 |------|------|
 | [database-setup.md](./operations/database-setup.md) | PostgreSQL 建库、Alembic、种子数据 |
 | [deployment.md](./operations/deployment.md) | Compose 全栈、Beat/Worker、Milvus 默认、mcp-runner |
+| [offline-deployment.md](./operations/offline-deployment.md) | 离线/私有化：OpenAPI 导出、镜像交付、启动清单 |
 
 ## 专题指南 (`guides/`)
 

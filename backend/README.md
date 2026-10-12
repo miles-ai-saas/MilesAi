@@ -264,6 +264,7 @@ uv run milesai worker -Q parse,default
 |------|------|
 | `python -m miles_server.scripts.export_openapi --check` | 与 `openapi/openapi.snapshot.json` 比对（**默认**；CI 同款） |
 | `python -m miles_server.scripts.export_openapi --write` | 重写快照（改路由/Schema 后本地执行并提交） |
+| `python -m miles_server.scripts.export_openapi --out PATH` | 导出到任意路径（离线交付，不改仓库快照） |
 
 脚本调用 `create_app().openapi()`，**无需启动 uvicorn**，也不依赖 Postgres/Redis 等中间件。
 

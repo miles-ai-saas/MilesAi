@@ -45,7 +45,7 @@ endef
 	init-db migrate seed verify-db \
 	serve worker beat \
 	lint lint-backend lint-ui format format-check format-check-backend format-check-ui \
-	test test-backend test-ui openapi-check openapi-write check check-ui layers-check \
+	test test-backend test-ui openapi-check openapi-write openapi-export check check-ui layers-check \
 	ui-dev ui-dev-admin ui-build ui-install \
 	build-api build-worker build-mcp-runner build-all \
 	push-api push-worker push-mcp-runner push-all \
@@ -168,6 +168,9 @@ openapi-check: ## 校验 OpenAPI 快照无漂移
 
 openapi-write: ## 重写 OpenAPI 快照（改路由/Schema 后执行并提交）
 	cd $(BACKEND) && $(PY) -m miles_server.scripts.export_openapi --write
+
+openapi-export: ## 导出 OpenAPI 到 OUT=（默认 /tmp/milesai-openapi.json；离线交付）
+	cd $(BACKEND) && $(PY) -m miles_server.scripts.export_openapi --out "$(or $(OUT),/tmp/milesai-openapi.json)"
 
 check: lint-backend format-check-backend layers-check openapi-check test-backend ## 复刻 CI 后端 job 的质量门禁
 
