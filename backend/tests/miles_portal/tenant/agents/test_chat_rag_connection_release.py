@@ -98,6 +98,14 @@ def _hooks(*, payload: dict | None = None) -> SimpleNamespace:
     return SimpleNamespace(run=AsyncMock(return_value=SimpleNamespace(payload=payload or {})))
 
 
+def _patch_chat_memory(monkeypatch, history=None):  # noqa: ANN001
+    monkeypatch.setattr(
+        chat_rag_mod,
+        "load_chat_history_messages",
+        AsyncMock(return_value=history if history is not None else []),
+    )
+
+
 def test_linear_path_retrieves_in_short_session_then_commits_before_generate(monkeypatch):
     db = _TxnDb()
     short = _ShortSession(events=db.events)
@@ -113,6 +121,7 @@ def test_linear_path_retrieves_in_short_session_then_commits_before_generate(mon
         captured["generate_kwargs"] = kwargs
         return "答"
 
+    _patch_chat_memory(monkeypatch)
     monkeypatch.setattr(chat_rag_mod, "AsyncSessionLocal", lambda: short)
     monkeypatch.setattr(chat_rag_mod, "build_kb_retrieval_bindings", lambda: MagicMock())
     monkeypatch.setattr(chat_rag_mod, "should_use_tools_with_kb", lambda *a, **k: False)
@@ -148,6 +157,7 @@ def test_linear_path_retrieves_in_short_session_then_commits_before_generate(mon
 def test_linear_path_media_reader_is_short_session_reader(monkeypatch):
     db = _TxnDb()
     svc = _svc(db)
+    _patch_chat_memory(monkeypatch)
     monkeypatch.setattr(chat_rag_mod, "AsyncSessionLocal", lambda: _ShortSession())
     monkeypatch.setattr(chat_rag_mod, "build_kb_retrieval_bindings", lambda: MagicMock())
     monkeypatch.setattr(chat_rag_mod, "should_use_tools_with_kb", lambda *a, **k: False)
@@ -180,6 +190,7 @@ def test_linear_path_keeps_retrieve_query_and_prompt_query_distinct(monkeypatch)
         captured["prompt_kwargs"] = kwargs
         return "拼好的 prompt"
 
+    _patch_chat_memory(monkeypatch)
     monkeypatch.setattr(chat_rag_mod, "AsyncSessionLocal", lambda: short)
     monkeypatch.setattr(chat_rag_mod, "build_kb_retrieval_bindings", lambda: MagicMock())
     monkeypatch.setattr(chat_rag_mod, "should_use_tools_with_kb", lambda *a, **k: False)
@@ -212,16 +223,76 @@ def test_graph_path_commits_before_workflow(monkeypatch):
         db.events.append("workflow")
         return "答", [], []
 
+    _patch_chat_memory(
+        monkeypatch,
+        history=[{"role": "user", "content": "上次问了什么"}],
+    )
     monkeypatch.setattr(chat_rag_mod, "build_kb_retrieval_bindings", lambda: MagicMock())
     monkeypatch.setattr(chat_rag_mod, "should_use_tools_with_kb", lambda *a, **k: False)
     monkeypatch.setattr(chat_rag_mod, "should_use_langgraph_rag", lambda *a, **k: True)
     monkeypatch.setattr(chat_rag_mod, "run_rag_workflow", AsyncMock(side_effect=fake_workflow))
 
-    _run(AgentChatRagMixin.rag_chat(svc, _agent(), ChatRequest(query="问题"), ["kb1"], 5, uuid4(), _hooks()))
+    out = _run(
+        AgentChatRagMixin.rag_chat(
+            svc,
+            _agent(),
+            ChatRequest(query="问题", conversation_id="conv-rag"),
+            ["kb1"],
+            5,
+            uuid4(),
+            _hooks(),
+        )
+    )
 
     assert db.events == ["commit", "workflow"]
-    reader = chat_rag_mod.run_rag_workflow.await_args.kwargs["media_reader"]
-    assert isinstance(reader, FlowMediaReader)
+    kwargs = chat_rag_mod.run_rag_workflow.await_args.kwargs
+    assert "【近期对话】" in kwargs["system_prompt"]
+    assert "上次问了什么" in kwargs["system_prompt"]
+    assert isinstance(kwargs["media_reader"], FlowMediaReader)
+    assert any(s.get("type") == "chat_memory" and s.get("history_messages") == 1 for s in out.steps)
+
+
+def test_linear_path_injects_history_into_system_prompt(monkeypatch):
+    db = _TxnDb()
+    short = _ShortSession()
+    svc = _svc(db)
+    captured: dict[str, object] = {}
+
+    def fake_build_prompt(**kwargs):
+        captured["prompt_kwargs"] = kwargs
+        return "拼好的 prompt"
+
+    _patch_chat_memory(
+        monkeypatch,
+        history=[
+            {"role": "user", "content": "上一轮"},
+            {"role": "assistant", "content": "上一答"},
+        ],
+    )
+    monkeypatch.setattr(chat_rag_mod, "AsyncSessionLocal", lambda: short)
+    monkeypatch.setattr(chat_rag_mod, "build_kb_retrieval_bindings", lambda: MagicMock())
+    monkeypatch.setattr(chat_rag_mod, "should_use_tools_with_kb", lambda *a, **k: False)
+    monkeypatch.setattr(chat_rag_mod, "should_use_langgraph_rag", lambda *a, **k: False)
+    monkeypatch.setattr(chat_rag_mod, "retrieve_hits", AsyncMock(return_value=[]))
+    monkeypatch.setattr(chat_rag_mod, "build_rag_prompt", fake_build_prompt)
+    monkeypatch.setattr(chat_rag_mod, "generate_rag_answer", AsyncMock(return_value="答"))
+
+    out = _run(
+        AgentChatRagMixin.rag_chat(
+            svc,
+            _agent(),
+            ChatRequest(query="本轮", conversation_id="conv-1"),
+            ["kb1"],
+            5,
+            uuid4(),
+            _hooks(),
+        )
+    )
+
+    system = captured["prompt_kwargs"]["system_prompt"]
+    assert "【近期对话】" in system
+    assert "上一轮" in system
+    assert out.steps[0].get("history_messages") == 2
 
 
 def test_direct_chat_commits_before_llm(monkeypatch):

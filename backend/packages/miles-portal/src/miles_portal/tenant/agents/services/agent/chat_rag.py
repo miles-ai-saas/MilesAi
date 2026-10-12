@@ -16,7 +16,10 @@ from miles_integrations.langchain.chat_models import OnDelta, ainvoke_chat
 from miles_portal.tenant.a2a.services.peer_refs import list_agent_a2a_peer_refs
 from miles_portal.tenant.agents.schemas.agent import ChatRequest, ChatResponse
 from miles_portal.tenant.agents.services.agent.serialization import should_use_tools_with_kb
-from miles_portal.tenant.agents.services.chat_memory import load_chat_history_messages
+from miles_portal.tenant.agents.services.chat_memory import (
+    format_history_block,
+    load_chat_history_messages,
+)
 from miles_portal.tenant.attachments.services.media_reader import (
     build_flow_media_reader,
 )
@@ -377,6 +380,14 @@ class AgentChatRagMixin:
             chat_query, _ = await self.resolve_chat_media_parts(agent, body)
             prompt_query = reasoning_query.strip() or chat_query
             temperature = float((agent.config or {}).get("temperature", 0.7))
+            history = await load_chat_history_messages(
+                self.db,
+                tenant_id=self.ctx.tenant_id,
+                agent_id=agent_id,
+                conversation_id=body.conversation_id,
+            )
+            # 历史仅拼进生成用 system；检索仍用本轮 retrieve_query
+            gen_system = f"{base}{format_history_block(history)}"
             model = await self.resolve_invoke_model(agent.model_config)
             usage_sink = self.chat_usage_sink(model, source_id=agent_id)
             if should_use_langgraph_rag(agent, kb_ids=kb_ids):
@@ -384,7 +395,7 @@ class AgentChatRagMixin:
                 await self.db.commit()
                 answer, all_hits, steps = await run_rag_workflow(
                     model=model,
-                    system_prompt=base,
+                    system_prompt=gen_system,
                     query=retrieve_query,
                     prompt_query=prompt_query,
                     kb_ids=kb_ids,
@@ -400,6 +411,10 @@ class AgentChatRagMixin:
                     bindings=kb_bindings,
                     media_reader=build_flow_media_reader(tenant_id=self.ctx.tenant_id, user_id=self.ctx.user_id),
                 )
+                steps = [
+                    *list(steps or []),
+                    {"type": "chat_memory", "history_messages": len(history)},
+                ]
             else:
                 # 检索必须在 L1 用短会话完成，否则它会在生成入口内部重新打开请求事务，
                 # 使「生成期间不占连接」失效。retrieve_query 用于检索、prompt_query 写入 prompt。
@@ -416,7 +431,7 @@ class AgentChatRagMixin:
                         bindings=kb_bindings,
                     )
                 await self.db.commit()
-                prompt = build_rag_prompt(system_prompt=base, query=prompt_query, hits=linear_hits)
+                prompt = build_rag_prompt(system_prompt=gen_system, query=prompt_query, hits=linear_hits)
                 answer = await generate_rag_answer(
                     model=model,
                     prompt=prompt,
@@ -427,7 +442,13 @@ class AgentChatRagMixin:
                     usage_sink=usage_sink,
                 )
                 all_hits = linear_hits
-                steps = [{"type": "rag_linear", "engine": "langchain"}]
+                steps = [
+                    {
+                        "type": "rag_linear",
+                        "engine": "langchain",
+                        "history_messages": len(history),
+                    }
+                ]
             await hooks.run(
                 HookTrigger.AFTER_REASONING,
                 HookScope.AGENT,

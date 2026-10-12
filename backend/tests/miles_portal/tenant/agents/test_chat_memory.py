@@ -9,9 +9,26 @@ from uuid import uuid4
 import pytest
 
 from miles_portal.tenant.agents.services.chat_memory import (
+    format_history_block,
     load_chat_history_messages,
     truncate_messages_by_chars,
 )
+
+
+def test_format_history_block_empty():
+    assert format_history_block([]) == ""
+
+
+def test_format_history_block_labels():
+    block = format_history_block(
+        [
+            {"role": "user", "content": "问"},
+            {"role": "assistant", "content": "答"},
+        ]
+    )
+    assert "【近期对话】" in block
+    assert "用户：问" in block
+    assert "助手：答" in block
 
 
 def test_truncate_keeps_newest_within_budget():

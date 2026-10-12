@@ -1,6 +1,7 @@
 """服务端对话记忆：从 PG 会话加载近期 user/assistant，按字符预算截断后供 LLM 注入。
 
-第一期仅直连 / tool_agent 使用；RAG / Flow / A2A 仍本轮独立。
+直连 / tool_agent 以 messages 列表注入；RAG（线性与 LangGraph）以文本块拼进 system_prompt。
+检索 query 仍用本轮问题，避免历史污染向量检索。Flow / A2A 本批未接入。
 """
 
 from __future__ import annotations
@@ -15,6 +16,23 @@ from miles_core.config import get_settings
 from miles_core.models.agent.chat_session import AgentChatMessage, AgentChatSession
 
 _HISTORY_ROLES = frozenset({"user", "assistant"})
+
+
+def format_history_block(messages: list[dict[str, Any]]) -> str:
+    """将历史格式化为可拼进 system_prompt 的文本块；空列表返回空串。"""
+    if not messages:
+        return ""
+    lines: list[str] = []
+    for msg in messages:
+        role = str(msg.get("role") or "")
+        content = str(msg.get("content") or "").strip()
+        if not content or role not in _HISTORY_ROLES:
+            continue
+        label = "用户" if role == "user" else "助手"
+        lines.append(f"{label}：{content}")
+    if not lines:
+        return ""
+    return "\n\n【近期对话】\n" + "\n".join(lines)
 
 
 def truncate_messages_by_chars(
