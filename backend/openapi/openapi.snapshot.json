@@ -1966,6 +1966,324 @@
         "title": "AgentScheduleUpdate",
         "type": "object"
       },
+      "AgentSlaAgentRow": {
+        "properties": {
+          "agent_id": {
+            "description": "智能体 ID",
+            "format": "uuid",
+            "title": "Agent Id",
+            "type": "string"
+          },
+          "agent_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "智能体名称",
+            "title": "Agent Name"
+          },
+          "blocked_count": {
+            "default": 0,
+            "description": "合规拦截次数",
+            "title": "Blocked Count",
+            "type": "integer"
+          },
+          "call_count": {
+            "description": "调用次数",
+            "title": "Call Count",
+            "type": "integer"
+          },
+          "failed_count": {
+            "default": 0,
+            "description": "失败次数",
+            "title": "Failed Count",
+            "type": "integer"
+          },
+          "latency_avg_ms": {
+            "default": 0.0,
+            "description": "平均延迟（毫秒）",
+            "title": "Latency Avg Ms",
+            "type": "number"
+          },
+          "latency_p50_ms": {
+            "default": 0.0,
+            "description": "P50 延迟（毫秒）",
+            "title": "Latency P50 Ms",
+            "type": "number"
+          },
+          "latency_p95_ms": {
+            "default": 0.0,
+            "description": "P95 延迟（毫秒）",
+            "title": "Latency P95 Ms",
+            "type": "number"
+          },
+          "success_count": {
+            "default": 0,
+            "description": "成功次数",
+            "title": "Success Count",
+            "type": "integer"
+          },
+          "success_rate": {
+            "default": 0.0,
+            "description": "成功率（0–100）",
+            "title": "Success Rate",
+            "type": "number"
+          },
+          "tokens_per_call_avg": {
+            "default": 0.0,
+            "description": "平均 Token/次",
+            "title": "Tokens Per Call Avg",
+            "type": "number"
+          },
+          "total_tokens": {
+            "default": 0,
+            "description": "Token 合计",
+            "title": "Total Tokens",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "call_count",
+          "agent_id"
+        ],
+        "title": "AgentSlaAgentRow",
+        "type": "object"
+      },
+      "AgentSlaDailyPoint": {
+        "properties": {
+          "call_count": {
+            "default": 0,
+            "description": "当日调用次数",
+            "title": "Call Count",
+            "type": "integer"
+          },
+          "date": {
+            "description": "日期 YYYY-MM-DD",
+            "title": "Date",
+            "type": "string"
+          },
+          "latency_avg_ms": {
+            "default": 0.0,
+            "description": "当日平均延迟",
+            "title": "Latency Avg Ms",
+            "type": "number"
+          },
+          "success_rate": {
+            "default": 0.0,
+            "description": "当日成功率（0–100）",
+            "title": "Success Rate",
+            "type": "number"
+          }
+        },
+        "required": [
+          "date"
+        ],
+        "title": "AgentSlaDailyPoint",
+        "type": "object"
+      },
+      "AgentSlaMetrics": {
+        "description": "一组调用的 SLA 指标。",
+        "properties": {
+          "blocked_count": {
+            "default": 0,
+            "description": "合规拦截次数",
+            "title": "Blocked Count",
+            "type": "integer"
+          },
+          "call_count": {
+            "description": "调用次数",
+            "title": "Call Count",
+            "type": "integer"
+          },
+          "failed_count": {
+            "default": 0,
+            "description": "失败次数",
+            "title": "Failed Count",
+            "type": "integer"
+          },
+          "latency_avg_ms": {
+            "default": 0.0,
+            "description": "平均延迟（毫秒）",
+            "title": "Latency Avg Ms",
+            "type": "number"
+          },
+          "latency_p50_ms": {
+            "default": 0.0,
+            "description": "P50 延迟（毫秒）",
+            "title": "Latency P50 Ms",
+            "type": "number"
+          },
+          "latency_p95_ms": {
+            "default": 0.0,
+            "description": "P95 延迟（毫秒）",
+            "title": "Latency P95 Ms",
+            "type": "number"
+          },
+          "success_count": {
+            "default": 0,
+            "description": "成功次数",
+            "title": "Success Count",
+            "type": "integer"
+          },
+          "success_rate": {
+            "default": 0.0,
+            "description": "成功率（0–100）",
+            "title": "Success Rate",
+            "type": "number"
+          },
+          "tokens_per_call_avg": {
+            "default": 0.0,
+            "description": "平均 Token/次",
+            "title": "Tokens Per Call Avg",
+            "type": "number"
+          },
+          "total_tokens": {
+            "default": 0,
+            "description": "Token 合计",
+            "title": "Total Tokens",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "call_count"
+        ],
+        "title": "AgentSlaMetrics",
+        "type": "object"
+      },
+      "AgentSlaReport": {
+        "properties": {
+          "agent_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "可选智能体过滤",
+            "title": "Agent Id"
+          },
+          "by_agent": {
+            "description": "按智能体 Top N",
+            "items": {
+              "$ref": "#/components/schemas/AgentSlaAgentRow"
+            },
+            "title": "By Agent",
+            "type": "array"
+          },
+          "by_day": {
+            "description": "按日趋势",
+            "items": {
+              "$ref": "#/components/schemas/AgentSlaDailyPoint"
+            },
+            "title": "By Day",
+            "type": "array"
+          },
+          "by_route": {
+            "description": "按路由聚合",
+            "items": {
+              "$ref": "#/components/schemas/AgentSlaRouteRow"
+            },
+            "title": "By Route",
+            "type": "array"
+          },
+          "days": {
+            "description": "统计窗口天数",
+            "title": "Days",
+            "type": "integer"
+          },
+          "overview": {
+            "$ref": "#/components/schemas/AgentSlaMetrics",
+            "description": "窗口总览"
+          }
+        },
+        "required": [
+          "days",
+          "overview"
+        ],
+        "title": "AgentSlaReport",
+        "type": "object"
+      },
+      "AgentSlaRouteRow": {
+        "properties": {
+          "blocked_count": {
+            "default": 0,
+            "description": "合规拦截次数",
+            "title": "Blocked Count",
+            "type": "integer"
+          },
+          "call_count": {
+            "description": "调用次数",
+            "title": "Call Count",
+            "type": "integer"
+          },
+          "failed_count": {
+            "default": 0,
+            "description": "失败次数",
+            "title": "Failed Count",
+            "type": "integer"
+          },
+          "latency_avg_ms": {
+            "default": 0.0,
+            "description": "平均延迟（毫秒）",
+            "title": "Latency Avg Ms",
+            "type": "number"
+          },
+          "latency_p50_ms": {
+            "default": 0.0,
+            "description": "P50 延迟（毫秒）",
+            "title": "Latency P50 Ms",
+            "type": "number"
+          },
+          "latency_p95_ms": {
+            "default": 0.0,
+            "description": "P95 延迟（毫秒）",
+            "title": "Latency P95 Ms",
+            "type": "number"
+          },
+          "route": {
+            "description": "路由（如 rag / tool_agent / flow）",
+            "title": "Route",
+            "type": "string"
+          },
+          "success_count": {
+            "default": 0,
+            "description": "成功次数",
+            "title": "Success Count",
+            "type": "integer"
+          },
+          "success_rate": {
+            "default": 0.0,
+            "description": "成功率（0–100）",
+            "title": "Success Rate",
+            "type": "number"
+          },
+          "tokens_per_call_avg": {
+            "default": 0.0,
+            "description": "平均 Token/次",
+            "title": "Tokens Per Call Avg",
+            "type": "number"
+          },
+          "total_tokens": {
+            "default": 0,
+            "description": "Token 合计",
+            "title": "Total Tokens",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "call_count",
+          "route"
+        ],
+        "title": "AgentSlaRouteRow",
+        "type": "object"
+      },
       "AgentStatsOut": {
         "properties": {
           "active_users_by_day": {
@@ -2290,6 +2608,20 @@
             "description": "任务失败时通知",
             "title": "Notify On Task Failed",
             "type": "boolean"
+          },
+          "notify_on_tokens_monthly_threshold": {
+            "default": true,
+            "description": "本月 Token 用量达到告警阈值时通知",
+            "title": "Notify On Tokens Monthly Threshold",
+            "type": "boolean"
+          },
+          "tokens_monthly_warn_percent": {
+            "default": 80,
+            "description": "本月 Token 告警阈值百分比（相对 max_tokens_monthly）",
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Tokens Monthly Warn Percent",
+            "type": "integer"
           },
           "webhook_url": {
             "default": "",
@@ -2914,6 +3246,47 @@
           }
         },
         "title": "ApiResponse[AgentScheduleOut]",
+        "type": "object"
+      },
+      "ApiResponse_AgentSlaReport_": {
+        "properties": {
+          "code": {
+            "default": 0,
+            "description": "业务状态码，0 表示成功",
+            "title": "Code",
+            "type": "integer"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AgentSlaReport"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "响应载荷"
+          },
+          "message": {
+            "default": "ok",
+            "description": "提示信息",
+            "title": "Message",
+            "type": "string"
+          },
+          "trace_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "请求追踪 ID（错误时便于排查）",
+            "title": "Trace Id"
+          }
+        },
+        "title": "ApiResponse[AgentSlaReport]",
         "type": "object"
       },
       "ApiResponse_AgentStatsOut_": {
@@ -3693,6 +4066,129 @@
           }
         },
         "title": "ApiResponse[DocumentOut]",
+        "type": "object"
+      },
+      "ApiResponse_EvalCaseOut_": {
+        "properties": {
+          "code": {
+            "default": 0,
+            "description": "业务状态码，0 表示成功",
+            "title": "Code",
+            "type": "integer"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EvalCaseOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "响应载荷"
+          },
+          "message": {
+            "default": "ok",
+            "description": "提示信息",
+            "title": "Message",
+            "type": "string"
+          },
+          "trace_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "请求追踪 ID（错误时便于排查）",
+            "title": "Trace Id"
+          }
+        },
+        "title": "ApiResponse[EvalCaseOut]",
+        "type": "object"
+      },
+      "ApiResponse_EvalDatasetOut_": {
+        "properties": {
+          "code": {
+            "default": 0,
+            "description": "业务状态码，0 表示成功",
+            "title": "Code",
+            "type": "integer"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EvalDatasetOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "响应载荷"
+          },
+          "message": {
+            "default": "ok",
+            "description": "提示信息",
+            "title": "Message",
+            "type": "string"
+          },
+          "trace_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "请求追踪 ID（错误时便于排查）",
+            "title": "Trace Id"
+          }
+        },
+        "title": "ApiResponse[EvalDatasetOut]",
+        "type": "object"
+      },
+      "ApiResponse_EvalRunOut_": {
+        "properties": {
+          "code": {
+            "default": 0,
+            "description": "业务状态码，0 表示成功",
+            "title": "Code",
+            "type": "integer"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EvalRunOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "响应载荷"
+          },
+          "message": {
+            "default": "ok",
+            "description": "提示信息",
+            "title": "Message",
+            "type": "string"
+          },
+          "trace_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "请求追踪 ID（错误时便于排查）",
+            "title": "Trace Id"
+          }
+        },
+        "title": "ApiResponse[EvalRunOut]",
         "type": "object"
       },
       "ApiResponse_FlowCompileReport_": {
@@ -5573,6 +6069,170 @@
           }
         },
         "title": "ApiResponse[PageResult[DocumentOut]]",
+        "type": "object"
+      },
+      "ApiResponse_PageResult_EvalCaseOut__": {
+        "properties": {
+          "code": {
+            "default": 0,
+            "description": "业务状态码，0 表示成功",
+            "title": "Code",
+            "type": "integer"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PageResult_EvalCaseOut_"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "响应载荷"
+          },
+          "message": {
+            "default": "ok",
+            "description": "提示信息",
+            "title": "Message",
+            "type": "string"
+          },
+          "trace_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "请求追踪 ID（错误时便于排查）",
+            "title": "Trace Id"
+          }
+        },
+        "title": "ApiResponse[PageResult[EvalCaseOut]]",
+        "type": "object"
+      },
+      "ApiResponse_PageResult_EvalDatasetOut__": {
+        "properties": {
+          "code": {
+            "default": 0,
+            "description": "业务状态码，0 表示成功",
+            "title": "Code",
+            "type": "integer"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PageResult_EvalDatasetOut_"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "响应载荷"
+          },
+          "message": {
+            "default": "ok",
+            "description": "提示信息",
+            "title": "Message",
+            "type": "string"
+          },
+          "trace_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "请求追踪 ID（错误时便于排查）",
+            "title": "Trace Id"
+          }
+        },
+        "title": "ApiResponse[PageResult[EvalDatasetOut]]",
+        "type": "object"
+      },
+      "ApiResponse_PageResult_EvalRunItemOut__": {
+        "properties": {
+          "code": {
+            "default": 0,
+            "description": "业务状态码，0 表示成功",
+            "title": "Code",
+            "type": "integer"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PageResult_EvalRunItemOut_"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "响应载荷"
+          },
+          "message": {
+            "default": "ok",
+            "description": "提示信息",
+            "title": "Message",
+            "type": "string"
+          },
+          "trace_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "请求追踪 ID（错误时便于排查）",
+            "title": "Trace Id"
+          }
+        },
+        "title": "ApiResponse[PageResult[EvalRunItemOut]]",
+        "type": "object"
+      },
+      "ApiResponse_PageResult_EvalRunOut__": {
+        "properties": {
+          "code": {
+            "default": 0,
+            "description": "业务状态码，0 表示成功",
+            "title": "Code",
+            "type": "integer"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PageResult_EvalRunOut_"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "响应载荷"
+          },
+          "message": {
+            "default": "ok",
+            "description": "提示信息",
+            "title": "Message",
+            "type": "string"
+          },
+          "trace_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "请求追踪 ID（错误时便于排查）",
+            "title": "Trace Id"
+          }
+        },
+        "title": "ApiResponse[PageResult[EvalRunOut]]",
         "type": "object"
       },
       "ApiResponse_PageResult_FlowOut__": {
@@ -7500,6 +8160,88 @@
           }
         },
         "title": "ApiResponse[UserInfo]",
+        "type": "object"
+      },
+      "ApiResponse_UserMemoryItemOut_": {
+        "properties": {
+          "code": {
+            "default": 0,
+            "description": "业务状态码，0 表示成功",
+            "title": "Code",
+            "type": "integer"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/UserMemoryItemOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "响应载荷"
+          },
+          "message": {
+            "default": "ok",
+            "description": "提示信息",
+            "title": "Message",
+            "type": "string"
+          },
+          "trace_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "请求追踪 ID（错误时便于排查）",
+            "title": "Trace Id"
+          }
+        },
+        "title": "ApiResponse[UserMemoryItemOut]",
+        "type": "object"
+      },
+      "ApiResponse_UserMemoryListOut_": {
+        "properties": {
+          "code": {
+            "default": 0,
+            "description": "业务状态码，0 表示成功",
+            "title": "Code",
+            "type": "integer"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/UserMemoryListOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "响应载荷"
+          },
+          "message": {
+            "default": "ok",
+            "description": "提示信息",
+            "title": "Message",
+            "type": "string"
+          },
+          "trace_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "请求追踪 ID（错误时便于排查）",
+            "title": "Trace Id"
+          }
+        },
+        "title": "ApiResponse[UserMemoryListOut]",
         "type": "object"
       },
       "ApiResponse_UserOut_": {
@@ -10806,6 +11548,550 @@
           "label"
         ],
         "title": "EnumOption",
+        "type": "object"
+      },
+      "EvalCaseCreate": {
+        "properties": {
+          "expected": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "query": {
+            "minLength": 1,
+            "title": "Query",
+            "type": "string"
+          },
+          "sort_index": {
+            "default": 0,
+            "title": "Sort Index",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "title": "EvalCaseCreate",
+        "type": "object"
+      },
+      "EvalCaseOut": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "dataset_id": {
+            "format": "uuid",
+            "title": "Dataset Id",
+            "type": "string"
+          },
+          "expected": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "query": {
+            "title": "Query",
+            "type": "string"
+          },
+          "sort_index": {
+            "title": "Sort Index",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "dataset_id",
+          "name",
+          "query",
+          "expected",
+          "sort_index",
+          "created_at"
+        ],
+        "title": "EvalCaseOut",
+        "type": "object"
+      },
+      "EvalCasePromoteFromCallCreate": {
+        "description": "从智能体调用记录升格用例。",
+        "properties": {
+          "agent_id": {
+            "format": "uuid",
+            "title": "Agent Id",
+            "type": "string"
+          },
+          "call_id": {
+            "format": "uuid",
+            "title": "Call Id",
+            "type": "string"
+          },
+          "expected": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "prefer_session_text": {
+            "default": true,
+            "description": "优先从会话消息取全文；否则用调用记录 preview",
+            "title": "Prefer Session Text",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "agent_id",
+          "call_id"
+        ],
+        "title": "EvalCasePromoteFromCallCreate",
+        "type": "object"
+      },
+      "EvalCaseUpdate": {
+        "properties": {
+          "expected": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "query": {
+            "anyOf": [
+              {
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Query"
+          },
+          "sort_index": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sort Index"
+          }
+        },
+        "title": "EvalCaseUpdate",
+        "type": "object"
+      },
+      "EvalDatasetCreate": {
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "name": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "EvalDatasetCreate",
+        "type": "object"
+      },
+      "EvalDatasetOut": {
+        "properties": {
+          "case_count": {
+            "default": 0,
+            "title": "Case Count",
+            "type": "integer"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "tenant_id": {
+            "format": "uuid",
+            "title": "Tenant Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "tenant_id",
+          "name",
+          "description",
+          "created_at"
+        ],
+        "title": "EvalDatasetOut",
+        "type": "object"
+      },
+      "EvalDatasetUpdate": {
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          }
+        },
+        "title": "EvalDatasetUpdate",
+        "type": "object"
+      },
+      "EvalRunCreate": {
+        "properties": {
+          "agent_id": {
+            "format": "uuid",
+            "title": "Agent Id",
+            "type": "string"
+          },
+          "dataset_id": {
+            "format": "uuid",
+            "title": "Dataset Id",
+            "type": "string"
+          },
+          "scoring_mode": {
+            "default": "auto",
+            "pattern": "^(auto|rules|llm_judge)$",
+            "title": "Scoring Mode",
+            "type": "string"
+          }
+        },
+        "required": [
+          "dataset_id",
+          "agent_id"
+        ],
+        "title": "EvalRunCreate",
+        "type": "object"
+      },
+      "EvalRunItemOut": {
+        "properties": {
+          "answer_preview": {
+            "title": "Answer Preview",
+            "type": "string"
+          },
+          "call_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Call Id"
+          },
+          "case_id": {
+            "format": "uuid",
+            "title": "Case Id",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "error_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Message"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "latency_ms": {
+            "title": "Latency Ms",
+            "type": "integer"
+          },
+          "passed": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Passed"
+          },
+          "run_id": {
+            "format": "uuid",
+            "title": "Run Id",
+            "type": "string"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score"
+          },
+          "score_detail": {
+            "additionalProperties": true,
+            "title": "Score Detail",
+            "type": "object"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "trace_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trace Id"
+          }
+        },
+        "required": [
+          "id",
+          "run_id",
+          "case_id",
+          "status",
+          "answer_preview",
+          "score",
+          "passed",
+          "latency_ms",
+          "call_id",
+          "trace_id",
+          "error_message",
+          "score_detail",
+          "created_at"
+        ],
+        "title": "EvalRunItemOut",
+        "type": "object"
+      },
+      "EvalRunOut": {
+        "properties": {
+          "agent_id": {
+            "format": "uuid",
+            "title": "Agent Id",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "dataset_id": {
+            "format": "uuid",
+            "title": "Dataset Id",
+            "type": "string"
+          },
+          "error_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Message"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "scoring_mode": {
+            "title": "Scoring Mode",
+            "type": "string"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "summary": {
+            "additionalProperties": true,
+            "title": "Summary",
+            "type": "object"
+          },
+          "tenant_id": {
+            "format": "uuid",
+            "title": "Tenant Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "tenant_id",
+          "dataset_id",
+          "agent_id",
+          "status",
+          "scoring_mode",
+          "started_at",
+          "finished_at",
+          "error_message",
+          "summary",
+          "created_at"
+        ],
+        "title": "EvalRunOut",
         "type": "object"
       },
       "FlowCompileErrorDetail": {
@@ -16124,6 +17410,146 @@
         "title": "PageResult[DocumentOut]",
         "type": "object"
       },
+      "PageResult_EvalCaseOut_": {
+        "properties": {
+          "items": {
+            "description": "当前页数据",
+            "items": {
+              "$ref": "#/components/schemas/EvalCaseOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "description": "当前页码",
+            "title": "Page",
+            "type": "integer"
+          },
+          "size": {
+            "description": "每页条数",
+            "title": "Size",
+            "type": "integer"
+          },
+          "total": {
+            "description": "总记录数",
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "page",
+          "size"
+        ],
+        "title": "PageResult[EvalCaseOut]",
+        "type": "object"
+      },
+      "PageResult_EvalDatasetOut_": {
+        "properties": {
+          "items": {
+            "description": "当前页数据",
+            "items": {
+              "$ref": "#/components/schemas/EvalDatasetOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "description": "当前页码",
+            "title": "Page",
+            "type": "integer"
+          },
+          "size": {
+            "description": "每页条数",
+            "title": "Size",
+            "type": "integer"
+          },
+          "total": {
+            "description": "总记录数",
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "page",
+          "size"
+        ],
+        "title": "PageResult[EvalDatasetOut]",
+        "type": "object"
+      },
+      "PageResult_EvalRunItemOut_": {
+        "properties": {
+          "items": {
+            "description": "当前页数据",
+            "items": {
+              "$ref": "#/components/schemas/EvalRunItemOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "description": "当前页码",
+            "title": "Page",
+            "type": "integer"
+          },
+          "size": {
+            "description": "每页条数",
+            "title": "Size",
+            "type": "integer"
+          },
+          "total": {
+            "description": "总记录数",
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "page",
+          "size"
+        ],
+        "title": "PageResult[EvalRunItemOut]",
+        "type": "object"
+      },
+      "PageResult_EvalRunOut_": {
+        "properties": {
+          "items": {
+            "description": "当前页数据",
+            "items": {
+              "$ref": "#/components/schemas/EvalRunOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "description": "当前页码",
+            "title": "Page",
+            "type": "integer"
+          },
+          "size": {
+            "description": "每页条数",
+            "title": "Size",
+            "type": "integer"
+          },
+          "total": {
+            "description": "总记录数",
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "page",
+          "size"
+        ],
+        "title": "PageResult[EvalRunOut]",
+        "type": "object"
+      },
       "PageResult_FlowOut_": {
         "properties": {
           "items": {
@@ -20967,6 +22393,67 @@
           "permissions"
         ],
         "title": "UserInfo",
+        "type": "object"
+      },
+      "UserMemoryItemOut": {
+        "properties": {
+          "content": {
+            "title": "Content",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "description": "summary | preference",
+            "title": "Kind",
+            "type": "string"
+          },
+          "source_trace_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Trace Id"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "content",
+          "updated_at",
+          "created_at"
+        ],
+        "title": "UserMemoryItemOut",
+        "type": "object"
+      },
+      "UserMemoryListOut": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/UserMemoryItemOut"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "title": "UserMemoryListOut",
         "type": "object"
       },
       "UserOut": {
@@ -26636,6 +28123,159 @@
         ]
       }
     },
+    "/api/v1/agents/{agent_id}/user-memories": {
+      "delete": {
+        "description": "一键清空当前用户在该智能体下的全部长期记忆。",
+        "operationId": "clear_agent_user_memories_api_v1_agents__agent_id__user_memories_delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "agent_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Agent Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_dict_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Clear Agent User Memories",
+        "tags": [
+          "agents"
+        ]
+      },
+      "get": {
+        "description": "当前登录用户在该智能体下的跨会话记忆（summary / preference）。",
+        "operationId": "list_agent_user_memories_api_v1_agents__agent_id__user_memories_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "agent_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Agent Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_UserMemoryListOut_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Agent User Memories",
+        "tags": [
+          "agents"
+        ]
+      }
+    },
+    "/api/v1/agents/{agent_id}/user-memories/{kind}": {
+      "get": {
+        "operationId": "get_agent_user_memory_api_v1_agents__agent_id__user_memories__kind__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "agent_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Agent Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "kind",
+            "required": true,
+            "schema": {
+              "title": "Kind",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_UserMemoryItemOut_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Agent User Memory",
+        "tags": [
+          "agents"
+        ]
+      }
+    },
     "/api/v1/attachments": {
       "get": {
         "operationId": "list_attachments_api_v1_attachments_get",
@@ -28292,6 +29932,876 @@
         "summary": "Scan Text",
         "tags": [
           "compliance"
+        ]
+      }
+    },
+    "/api/v1/eval/datasets": {
+      "get": {
+        "operationId": "list_datasets_api_v1_eval_datasets_get",
+        "parameters": [
+          {
+            "description": "页码，从 1 开始",
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "description": "页码，从 1 开始",
+              "minimum": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "每页条数，最大 100",
+            "in": "query",
+            "name": "size",
+            "required": false,
+            "schema": {
+              "default": 10,
+              "description": "每页条数，最大 100",
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Size",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_PageResult_EvalDatasetOut__"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Datasets",
+        "tags": [
+          "eval"
+        ]
+      },
+      "post": {
+        "operationId": "create_dataset_api_v1_eval_datasets_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EvalDatasetCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_EvalDatasetOut_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Create Dataset",
+        "tags": [
+          "eval"
+        ]
+      }
+    },
+    "/api/v1/eval/datasets/{dataset_id}": {
+      "delete": {
+        "operationId": "delete_dataset_api_v1_eval_datasets__dataset_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "dataset_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Dataset Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_NoneType_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Delete Dataset",
+        "tags": [
+          "eval"
+        ]
+      },
+      "get": {
+        "operationId": "get_dataset_api_v1_eval_datasets__dataset_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "dataset_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Dataset Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_EvalDatasetOut_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Dataset",
+        "tags": [
+          "eval"
+        ]
+      },
+      "patch": {
+        "operationId": "update_dataset_api_v1_eval_datasets__dataset_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "dataset_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Dataset Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EvalDatasetUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_EvalDatasetOut_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Update Dataset",
+        "tags": [
+          "eval"
+        ]
+      }
+    },
+    "/api/v1/eval/datasets/{dataset_id}/cases": {
+      "get": {
+        "operationId": "list_cases_api_v1_eval_datasets__dataset_id__cases_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "dataset_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Dataset Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "页码，从 1 开始",
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "description": "页码，从 1 开始",
+              "minimum": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "每页条数，最大 100",
+            "in": "query",
+            "name": "size",
+            "required": false,
+            "schema": {
+              "default": 10,
+              "description": "每页条数，最大 100",
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Size",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_PageResult_EvalCaseOut__"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Cases",
+        "tags": [
+          "eval"
+        ]
+      },
+      "post": {
+        "operationId": "create_case_api_v1_eval_datasets__dataset_id__cases_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "dataset_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Dataset Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EvalCaseCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_EvalCaseOut_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Create Case",
+        "tags": [
+          "eval"
+        ]
+      }
+    },
+    "/api/v1/eval/datasets/{dataset_id}/cases/from-call-record": {
+      "post": {
+        "description": "从成功调用记录升格为评测用例（默认 expected.contains=助手答案）。",
+        "operationId": "promote_case_from_call_record_api_v1_eval_datasets__dataset_id__cases_from_call_record_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "dataset_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Dataset Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EvalCasePromoteFromCallCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_EvalCaseOut_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Promote Case From Call Record",
+        "tags": [
+          "eval"
+        ]
+      }
+    },
+    "/api/v1/eval/datasets/{dataset_id}/cases/{case_id}": {
+      "delete": {
+        "operationId": "delete_case_api_v1_eval_datasets__dataset_id__cases__case_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "dataset_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Dataset Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "case_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Case Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_NoneType_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Delete Case",
+        "tags": [
+          "eval"
+        ]
+      },
+      "patch": {
+        "operationId": "update_case_api_v1_eval_datasets__dataset_id__cases__case_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "dataset_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Dataset Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "case_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Case Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EvalCaseUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_EvalCaseOut_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Update Case",
+        "tags": [
+          "eval"
+        ]
+      }
+    },
+    "/api/v1/eval/runs": {
+      "get": {
+        "operationId": "list_runs_api_v1_eval_runs_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "dataset_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Dataset Id"
+            }
+          },
+          {
+            "description": "页码，从 1 开始",
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "description": "页码，从 1 开始",
+              "minimum": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "每页条数，最大 100",
+            "in": "query",
+            "name": "size",
+            "required": false,
+            "schema": {
+              "default": 10,
+              "description": "每页条数，最大 100",
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Size",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_PageResult_EvalRunOut__"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Runs",
+        "tags": [
+          "eval"
+        ]
+      },
+      "post": {
+        "operationId": "create_run_api_v1_eval_runs_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EvalRunCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_EvalRunOut_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Create Run",
+        "tags": [
+          "eval"
+        ]
+      }
+    },
+    "/api/v1/eval/runs/{run_id}": {
+      "get": {
+        "operationId": "get_run_api_v1_eval_runs__run_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_EvalRunOut_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Run",
+        "tags": [
+          "eval"
+        ]
+      }
+    },
+    "/api/v1/eval/runs/{run_id}/items": {
+      "get": {
+        "operationId": "list_run_items_api_v1_eval_runs__run_id__items_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Run Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "页码，从 1 开始",
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "description": "页码，从 1 开始",
+              "minimum": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "每页条数，最大 100",
+            "in": "query",
+            "name": "size",
+            "required": false,
+            "schema": {
+              "default": 10,
+              "description": "每页条数，最大 100",
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Size",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_PageResult_EvalRunItemOut__"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Run Items",
+        "tags": [
+          "eval"
+        ]
+      }
+    },
+    "/api/v1/eval/runs/{run_id}/start": {
+      "post": {
+        "operationId": "start_run_api_v1_eval_runs__run_id__start_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_EvalRunOut_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Start Run",
+        "tags": [
+          "eval"
         ]
       }
     },
@@ -33236,6 +35746,74 @@
         "summary": "Update Model Config",
         "tags": [
           "models"
+        ]
+      }
+    },
+    "/api/v1/monitor/agent-sla": {
+      "get": {
+        "description": "Agent 对话 SLA：成功率、P50/P95 延迟、Token/次；可按智能体过滤。",
+        "operationId": "monitor_agent_sla_api_v1_monitor_agent_sla_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "days",
+            "required": false,
+            "schema": {
+              "default": 7,
+              "maximum": 30,
+              "minimum": 1,
+              "title": "Days",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "agent_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Agent Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_AgentSlaReport_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Monitor Agent Sla",
+        "tags": [
+          "monitor"
         ]
       }
     },

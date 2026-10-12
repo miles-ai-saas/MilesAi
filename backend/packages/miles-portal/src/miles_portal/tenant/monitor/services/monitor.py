@@ -7,6 +7,7 @@ import smtplib
 from datetime import UTC, datetime, timedelta
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from uuid import UUID
 
 import httpx
 from sqlalchemy import Date, cast, func, select
@@ -41,7 +42,13 @@ from miles_portal.tenant.tasks.schemas.task import TaskSummary
 
 logger = get_logger(__name__)
 
+# 旧全局键（无租户隔离）；读写时优先租户键，读侧兼容回落。
 ALERT_CONFIG_KEY = "monitor.alert"
+
+
+def alert_config_key(tenant_id: UUID) -> str:
+    """租户级告警配置键。"""
+    return f"{ALERT_CONFIG_KEY}:{tenant_id}"
 
 
 class MonitorService(BaseService):
@@ -161,22 +168,26 @@ class MonitorService(BaseService):
         return await collect_health_status()
 
     async def get_alert_config(self) -> AlertConfig:
-        """读取租户级 monitor.alert 系统配置。"""
-        row = await self.db.scalar(select(SystemConfig).where(SystemConfig.key == ALERT_CONFIG_KEY))
+        """读取租户级 monitor.alert 配置（兼容旧全局键）。"""
+        key = alert_config_key(self.ctx.tenant_id)
+        row = await self.db.scalar(select(SystemConfig).where(SystemConfig.key == key))
+        if (not row or not row.value) and key != ALERT_CONFIG_KEY:
+            row = await self.db.scalar(select(SystemConfig).where(SystemConfig.key == ALERT_CONFIG_KEY))
         if not row or not row.value:
             return AlertConfig()
         return AlertConfig.model_validate(row.value)
 
     async def save_alert_config(self, body: AlertConfig) -> AlertConfig:
-        """写入或更新 monitor.alert 配置。"""
-        row = await self.db.scalar(select(SystemConfig).where(SystemConfig.key == ALERT_CONFIG_KEY))
+        """写入或更新当前租户的 monitor.alert 配置。"""
+        key = alert_config_key(self.ctx.tenant_id)
+        row = await self.db.scalar(select(SystemConfig).where(SystemConfig.key == key))
         if row:
             row.value = body.model_dump()
         else:
             row = SystemConfig(
-                key=ALERT_CONFIG_KEY,
+                key=key,
                 value=body.model_dump(),
-                description="监控告警 Webhook 配置",
+                description="监控告警 Webhook 配置（租户级）",
             )
             self.db.add(row)
         await self.db.flush()
@@ -336,6 +347,21 @@ class MonitorService(BaseService):
             )
         return ModelUsageReport(days=days, rows=items, total_tokens=total_tokens)
 
+    async def _post_alert_webhook(self, cfg: AlertConfig, payload: dict) -> None:
+        """向配置的 Webhook 发送 JSON；失败仅记日志。"""
+        if not cfg.webhook_url:
+            return
+        try:
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                await client.post(cfg.webhook_url, json=payload)
+        except Exception:
+            logger.warning(
+                "告警 Webhook 发送失败 tenant_id=%s event=%s",
+                self.ctx.tenant_id,
+                payload.get("event"),
+                exc_info=True,
+            )
+
     async def notify_task_failed(self, task_name: str, fail_reason: str) -> None:
         """Celery 任务失败时按配置推送 Webhook（静默忽略发送错误）。"""
         cfg = await self.get_alert_config()
@@ -348,13 +374,38 @@ class MonitorService(BaseService):
             "fail_reason": fail_reason[:500],
             "timestamp": datetime.now(UTC).isoformat(),
         }
-        try:
-            async with httpx.AsyncClient(timeout=5.0) as client:
-                await client.post(cfg.webhook_url, json=payload)
-        except Exception:
-            logger.warning(
-                "任务失败告警 Webhook 发送失败 tenant_id=%s task_name=%s",
-                self.ctx.tenant_id,
-                task_name,
-                exc_info=True,
-            )
+        await self._post_alert_webhook(cfg, payload)
+
+    async def notify_tokens_monthly_threshold(
+        self,
+        *,
+        used: int,
+        limit: int,
+        percent: int,
+        warn_percent: int,
+        cfg: AlertConfig | None = None,
+    ) -> None:
+        """本月 Token 达阈值时推送 Webhook / 邮件（静默忽略发送错误）。"""
+        cfg = cfg or await self.get_alert_config()
+        if not cfg.enabled or not cfg.notify_on_tokens_monthly_threshold:
+            return
+        if not cfg.webhook_url and not cfg.email_notify_to:
+            return
+        now = datetime.now(UTC).isoformat()
+        message = (
+            f"租户 {self.ctx.tenant_id} 本月 Token 已用 {used}/{limit}（{percent}%），"
+            f"达到告警阈值 {warn_percent}%。"
+        )
+        payload = {
+            "event": "tokens_monthly_threshold",
+            "tenant_id": str(self.ctx.tenant_id),
+            "tokens_used": used,
+            "tokens_max": limit,
+            "percent": percent,
+            "warn_percent": warn_percent,
+            "message": message,
+            "timestamp": now,
+        }
+        await self._post_alert_webhook(cfg, payload)
+        if cfg.email_notify_to:
+            await self._send_alert_email(cfg, subject="本月 Token 用量告警", message=f"{message}\n时间: {now}")

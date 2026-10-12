@@ -31,12 +31,16 @@ export function useMonitorPage() {
   const [modelUsage, setModelUsage] = useState<ModelUsageReport | null>(null);
   const [agentSla, setAgentSla] = useState<AgentSlaReport | null>(null);
   const [health, setHealth] = useState<MonitorHealthPayload | null>(null);
-  const [alerts, setAlerts] = useState<AlertConfig>({
+  const defaultAlerts: AlertConfig = {
     enabled: false,
     webhook_url: "",
+    email_notify_to: "",
     notify_on_task_failed: true,
     notify_on_health_degraded: true,
-  });
+    notify_on_tokens_monthly_threshold: true,
+    tokens_monthly_warn_percent: 80,
+  };
+  const [alerts, setAlerts] = useState<AlertConfig>(defaultAlerts);
   const [alertMsg, setAlertMsg] = useState("");
   const [redisInfo, setRedisInfo] = useState<Record<string, unknown> | null>(null);
   const [workerInfo, setWorkerInfo] = useState<Record<string, unknown> | null>(null);
@@ -128,7 +132,7 @@ export function useMonitorPage() {
     setTabLoading((p) => ({ ...p, alerts: true }));
     try {
       const a = await api.getAlertConfig();
-      setAlerts(a);
+      setAlerts({ ...defaultAlerts, ...a });
       loaded.current.add("alerts");
     } finally {
       setTabLoading((p) => ({ ...p, alerts: false }));
@@ -227,7 +231,7 @@ export function useMonitorPage() {
           }
           case "alerts": {
             const a = await api.getAlertConfig();
-            setAlerts(a);
+            setAlerts({ ...defaultAlerts, ...a });
             loaded.current.add("alerts");
             break;
           }

@@ -56,8 +56,11 @@ export interface TaskRecord {
 export interface AlertConfig {
   enabled: boolean;
   webhook_url: string;
+  email_notify_to: string;
   notify_on_task_failed: boolean;
   notify_on_health_degraded: boolean;
+  notify_on_tokens_monthly_threshold: boolean;
+  tokens_monthly_warn_percent: number;
 }
 
 export interface ModelUsageRow {

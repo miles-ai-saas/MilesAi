@@ -39,6 +39,11 @@ celery_app.conf.update(
             "task": TASK_NAMES["reset_tokens_used_month"],
             "schedule": crontab(minute=5, hour=0),
         },
+        # 每小时检查本月 Token 阈值告警（与清零错开）。
+        "check-tokens-monthly-threshold": {
+            "task": TASK_NAMES["check_tokens_monthly_threshold"],
+            "schedule": 3600.0,
+        },
     },
 )
 

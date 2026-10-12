@@ -38,6 +38,16 @@ class AlertConfig(BaseModel):
     email_notify_to: str = Field(default="", description="告警邮件接收人（逗号分隔）")
     notify_on_task_failed: bool = Field(default=True, description="任务失败时通知")
     notify_on_health_degraded: bool = Field(default=True, description="健康检查降级时通知")
+    notify_on_tokens_monthly_threshold: bool = Field(
+        default=True,
+        description="本月 Token 用量达到告警阈值时通知",
+    )
+    tokens_monthly_warn_percent: int = Field(
+        default=80,
+        ge=1,
+        le=100,
+        description="本月 Token 告警阈值百分比（相对 max_tokens_monthly）",
+    )
 
 
 # 单日任务状态分布。

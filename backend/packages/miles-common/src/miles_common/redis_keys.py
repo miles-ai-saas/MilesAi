@@ -65,3 +65,8 @@ class RedisKeys:
     def tokens_month_reset(period_yyyy_mm: str) -> str:
         """本月 Token 清零幂等标记（UTC ``YYYY-MM``）。"""
         return f"quota:tokens_month_reset:{period_yyyy_mm}"
+
+    @staticmethod
+    def tokens_threshold_alert(tenant_id: UUID | str, period_yyyy_mm: str, warn_percent: int) -> str:
+        """本月 Token 阈值告警幂等标记（每租户每账期每阈值一次）。"""
+        return f"quota:tokens_threshold_alert:{tenant_id}:{period_yyyy_mm}:{int(warn_percent)}"

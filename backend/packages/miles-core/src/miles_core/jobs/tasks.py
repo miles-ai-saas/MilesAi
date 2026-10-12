@@ -24,6 +24,7 @@ TASK_NAMES = {
     # 定时 / 健康探测
     "probe_models_health": "milesai.tasks.model_health.probe_models_health",
     "reset_tokens_used_month": "milesai.tasks.quota.reset_tokens_used_month",
+    "check_tokens_monthly_threshold": "milesai.tasks.quota.check_tokens_monthly_threshold",
     "run_agent_schedule": "milesai.tasks.agent_schedule.run_agent_schedule",
     "tick_agent_schedules": "milesai.tasks.agent_schedule.tick_agent_schedules",
     "run_eval_batch": "milesai.tasks.eval.run_eval_batch",

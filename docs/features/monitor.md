@@ -15,7 +15,7 @@
 - 统计卡片：智能体/KB/流程/任务等 COUNT 聚合
 - 趋势：近 N 日调用量（默认 7 天）
 - 健康报告 + CSV 导出
-- 告警配置：阈值 + Webhook URL，支持 test
+- 告警配置：Webhook / 邮件；任务失败、健康降级、**本月 Token 阈值**；支持 test
 - **模型用量**：`agt_model_usage_logs` 分模型报表
 - **Agent SLA**：`agt_agent_chat_calls` 成功率、P50/P95 延迟、Token/次；按路由 / 智能体 / 按日
 - **多模态处理量**：MonitorStats 图/音/视频计数
@@ -29,6 +29,7 @@
 - 进程级 CPU/磁盘 APM（依赖外部运维）
 - PDF/Excel 专报表模板
 - 短信告警
+- Token 告警与 chat 硬阻断无关（阻断见 `assert_tokens_monthly`）
 
 ---
 
@@ -41,7 +42,8 @@
 | 任务统计 | `task_records`、`generative_jobs` |
 | 健康检查 | API 侧探测 DB/Redis 等（简化） |
 
-告警配置持久化：`sys_configs` 或 MonitorService 专用 key（见实现）。
+告警配置：`sys_configs` 键 `monitor.alert:{tenant_id}`（读侧兼容旧全局 `monitor.alert`）。  
+本月 Token 阈值：Beat 每小时 `check_tokens_monthly_threshold`；Redis 幂等 `quota:tokens_threshold_alert:{tenant}:{YYYY-MM}:{percent}`；Webhook `event=tokens_monthly_threshold`。
 
 ---
 
