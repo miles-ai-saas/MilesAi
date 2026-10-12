@@ -17,6 +17,7 @@ from miles_integrations.langchain.chat_models import OnDelta
 from miles_portal.tenant.a2a.services.peer_refs import list_agent_a2a_peer_refs
 from miles_portal.tenant.agents.schemas.agent import ChatRequest, ChatResponse
 from miles_portal.tenant.agents.services.call_records import ChatCallRecorder
+from miles_portal.tenant.agents.services.chat_memory import format_history_block, load_chat_history_messages
 from miles_portal.tenant.agents.services.sub_agents import list_sub_agent_bindings
 from miles_portal.tenant.compliance.constants import SCAN_MODULE_AGENT_CHAT
 from miles_portal.tenant.compliance.services.compliance import ComplianceService
@@ -202,6 +203,13 @@ class AgentChatEntryMixin:
         inputs = {"query": query, **body.inputs}
         if not str(inputs.get("query", "")).strip() and body.media:
             inputs["query"] = "请根据附图回答。"
+        history = await load_chat_history_messages(
+            self.db,
+            tenant_id=self.ctx.tenant_id,
+            agent_id=agent_id,
+            conversation_id=body.conversation_id,
+        )
+        history_block = format_history_block(history)
         ctx = await self.flow_run_context(
             agent,
             agent_id=agent_id,
@@ -209,10 +217,15 @@ class AgentChatEntryMixin:
             kb_ids=kb_ids,
             media=body.media,
         )
+        if history_block:
+            ctx.system_prompt = f"{ctx.system_prompt or ''}{history_block}"
         # 释放请求事务：图执行含节点 LLM/HTTP，与 RAG 路径一致不长时间占连接。
         await self.db.commit()
         result = await get_flow_runtime().run(version.graph_json, ctx)
-        return ChatResponse(answer=str(result.output), steps=result.steps)
+        steps = list(result.steps or [])
+        if history:
+            steps.append({"type": "chat_memory", "history_messages": len(history), "route": "flow"})
+        return ChatResponse(answer=str(result.output), steps=steps)
 
     async def chat_as_child_simple(
         self,

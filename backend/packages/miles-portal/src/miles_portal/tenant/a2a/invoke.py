@@ -32,6 +32,7 @@ from miles_portal.tenant.a2a.models import (
 from miles_portal.tenant.a2a.services.host_bindings import list_host_peer_bindings
 from miles_portal.tenant.a2a.services.peer_refs import list_agent_a2a_peer_refs
 from miles_portal.tenant.agents.schemas.agent import ChatRequest, ChatResponse
+from miles_portal.tenant.agents.services.chat_memory import format_history_block, load_chat_history_messages
 from miles_portal.tenant.models.services.model_resolve import resolve_model_for_invoke
 from miles_portal.tenant.models.services.usage import ChatUsageSink
 
@@ -390,7 +391,19 @@ async def run_a2a_host_chat(
     plan_items, pre = await resolve_a2a_plan_items(agent, bindings, body.query, db=svc.db, tenant_id=svc.ctx.tenant_id)
     steps.extend(pre)
 
+    history = await load_chat_history_messages(
+        svc.db,
+        tenant_id=svc.ctx.tenant_id,
+        agent_id=agent.id,
+        conversation_id=body.conversation_id,
+    )
+    history_block = format_history_block(history)
+    if history:
+        steps.append({"type": "chat_memory", "history_messages": len(history), "route": "a2a_host"})
+
     system_prompt = await svc.resolve_system_prompt(agent)
+    if history_block:
+        system_prompt = f"{system_prompt}{history_block}"
     model = await svc.resolve_invoke_model(agent.model_config)
     usage_sink = svc.chat_usage_sink(model, source_id=agent.id)
     temperature = float((agent.config or {}).get("temperature", 0.7))

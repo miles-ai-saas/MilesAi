@@ -121,6 +121,14 @@ function titleForStep(type: string, step: Record<string, unknown>): { title: str
       if (step.error === "no_peers") return { title: "A2A 宿主", detail: "未配置外部 Agent" };
       if (step.error === "no_model") return { title: "A2A 宿主", detail: "未配置模型" };
       return { title: "A2A 宿主路由", detail: asStr(step.engine) || undefined };
+    case "chat_memory": {
+      const n = step.history_messages != null ? Number(step.history_messages) : 0;
+      const route = asStr(step.route);
+      return {
+        title: "近期对话记忆",
+        detail: n > 0 ? `${n} 条${route ? ` · ${route}` : ""}` : route || undefined,
+      };
+    }
     case "user_memory":
       return {
         title: "长期记忆注入",

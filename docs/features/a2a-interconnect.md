@@ -74,9 +74,10 @@ custom 智能体 → Peer：`trigger_keywords`、`role_hint`。
 ```
 POST /agents/{a2a_host_id}/chat
     → run_a2a_host_chat
-    → 规则/规划选 Peer
+    → 规则/规划选 Peer（可选意图路由）
+    → 短程记忆：conversation_id → chat_memory 拼入编排 prompt
     → invoke_a2a_peer (JSON-RPC message/send)
-    → steps: type=a2a_peer
+    → steps: type=a2a_peer / chat_memory
 ```
 
 ### 3.2 custom + peer_refs

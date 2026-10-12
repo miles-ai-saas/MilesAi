@@ -17,5 +17,5 @@
 
 ## 非目标（本批）
 
-- 向量召回、写入 KB、Flow / A2A / subagent 主路径
+- 向量召回、写入 KB、Flow / A2A / subagent 主路径的**长期**注入（上述路径已有**短程** `chat_memory`）
 - 同步 chat 路径抽取、跨 Agent 全局画像、Admin 运营台

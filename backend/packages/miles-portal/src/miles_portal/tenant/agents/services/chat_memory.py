@@ -1,9 +1,10 @@
 """服务端对话记忆：从 PG 会话加载近期 user/assistant，按字符预算截断后供 LLM 注入。
 
-直连 / tool_agent 以 messages 列表注入；RAG（线性与 LangGraph）以文本块拼进 system_prompt。
-检索 query 仍用本轮问题，避免历史污染向量检索。Flow / A2A 本批未接入。
+直连 / tool_agent 以 messages 列表注入；RAG / Flow / A2A 宿主以文本块拼进 system_prompt。
+检索 query 仍用本轮问题，避免历史污染向量检索。
 
-跨会话长期记忆见 ``user_memory.py``（``agt_user_agent_memories``），与短程并列注入 system。
+跨会话长期记忆见 ``user_memory.py``（``agt_user_agent_memories``），与短程并列注入
+直连 / tool / RAG（Flow / A2A 宿主一期仅短程）。
 """
 
 from __future__ import annotations
