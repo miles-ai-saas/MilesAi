@@ -1,6 +1,6 @@
 # A2A 外部互联
 
-**状态：** 已实现（登记/引用/宿主 ✅；对外暴露 Card + `message/send` + `message/stream` 流式 + `contextId` 多轮 + `tasks/*` + 产物下载 ✅）  
+**状态：** 已实现（登记/引用/宿主 ✅；对外暴露 Card + `message/send` + `message/stream` + `tasks/*` + `pushNotificationConfig/*` + 产物下载 ✅）
 **PRD 对照：** 模块4 A2A 互联智能体  
 **协议：** [A2A Protocol v0.3.0](https://a2a-protocol.org/v0.3.0/specification/) · [a2a.md](../guides/a2a.md)
 
@@ -30,15 +30,14 @@
 ### 1.2 交付范围（对外暴露）
 
 - 指定 `custom` 智能体 `config.a2a_publish=true` → 对外 Agent Card 与 JSON-RPC `message/send`
-- JSON-RPC 方法：`message/send`、`message/stream`（SSE 真流式）、`tasks/get`、`tasks/cancel`、`tasks/resubscribe`（续播生成任务进度）
+- JSON-RPC 方法：`message/send`、`message/stream`（SSE 真流式）、`tasks/get`、`tasks/cancel`、`tasks/resubscribe`、`tasks/pushNotificationConfig/*`
 - 多租户按智能体寻址；根 `/.well-known/agent-card.json` 仅在唯一发布时 307 别名
 - Card 公开（发现元数据），调用端点用该智能体的 X-API-Key；Card 内声明 `securitySchemes` / `security` 供对端发现鉴权要求
-- Card 声明 `protocolVersion=0.3` 与 `capabilities.streaming=true`，与线格式（`kind` 判别字段、小写 TaskState）一致
+- Card 声明 `protocolVersion=0.3`、`capabilities.streaming=true`、`capabilities.pushNotifications=true`
 - 对外调用：按 API Key 限流（429 + `Retry-After` + JSON-RPC `-32000`）；每次调用落租户审计 `a2a.*`，超限另落风控事件 `a2a_rate_limit`
 
 ### 1.3 明确不做
 
-- `tasks/pushNotificationConfig/*`（现回方法未找到）
 - A2A v1.0 迁移（PascalCase 方法名 + 去 `kind` + `TASK_STATE_*` 取值）
 
 ---
@@ -144,7 +143,7 @@ JSON-RPC 协议级错误（解析 / 方法 / 参数）回 HTTP 200 + `error` 信
 Card 含 `securitySchemes`（`apiKey` · `in: header` · `name: X-API-Key`）与 `security`，声明的是调用端点要求；Card GET 本身公开。
 多轮：`message.contextId` → `ChatRequest.conversation_id`（LangGraph `thread_id` 后缀），响应 `Message.contextId` 回显；未带时服务端生成。
 Task：`message/send` 产生生成任务时回 `Task`（`id` 即平台 job id，状态照实映射；产物未就绪时这条是**提交快照**，`status.timestamp` 用请求时刻，因上游只给出 `{id, kind, status}`）；`tasks/get` 查状态并在成功时附 `Task.artifacts`，其 `status.timestamp` 取任务 `updated_at` 的**真实状态时间**、`status.message` 带进度文案与 `metadata.percent`（无进展可说则不附该键）；`tasks/cancel` 取消（不属于该智能体 / 不存在 `-32001`、已结束 `-32002`）。
-产物下载走鉴权端点（平台不暴露签名 URL），授权限「该智能体 · 该任务 · 该产物」。`tasks/resubscribe` 以真实生成任务 id 续播进度流（首帧 `Task`、变化帧 `status-update`、终态前 `artifact-update`、空闲保活帧、30 分钟安全上限）；`pushNotificationConfig/*` 未实现，回 `-32601`。
+产物下载走鉴权端点（平台不暴露签名 URL），授权限「该智能体 · 该任务 · 该产物」。`tasks/resubscribe` 以真实生成任务 id 续播进度流；`pushNotificationConfig/*` 配置存 Redis，进度变更时 best-effort POST `Task` 到 webhook。
 流式：`message/stream` 与其余方法共用同一 URL，按 `method` 分流返回 `text/event-stream`。首帧 `Task(working)`、中间帧 `status-update` 增量、末帧 `status-update(final=true)` 带完整回答；合成 `taskId` 不落库（流已给终态，无需再 `tasks/get`），生成任务 id 经 `status.message.metadata.a2aJobTaskId` 交接；合规拦截 `rejected`、执行失败 `failed`。前置校验失败回普通 JSON，不进入 SSE。
 
 ---

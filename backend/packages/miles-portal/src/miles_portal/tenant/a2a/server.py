@@ -61,6 +61,20 @@ AUDIT_ACTION_TASKS_GET = "a2a.tasks.get"
 AUDIT_ACTION_TASKS_CANCEL = "a2a.tasks.cancel"
 AUDIT_ACTION_ARTIFACT_DOWNLOAD = "a2a.artifact.download"
 AUDIT_ACTION_TASKS_RESUBSCRIBE = "a2a.tasks.resubscribe"
+AUDIT_ACTION_PUSH_CONFIG_SET = "a2a.tasks.pushNotificationConfig.set"
+AUDIT_ACTION_PUSH_CONFIG_GET = "a2a.tasks.pushNotificationConfig.get"
+AUDIT_ACTION_PUSH_CONFIG_LIST = "a2a.tasks.pushNotificationConfig.list"
+AUDIT_ACTION_PUSH_CONFIG_DELETE = "a2a.tasks.pushNotificationConfig.delete"
+
+#: ``tasks/pushNotificationConfig/*`` 四方法。
+PUSH_NOTIFICATION_METHODS = frozenset(
+    {
+        "tasks/pushNotificationConfig/set",
+        "tasks/pushNotificationConfig/get",
+        "tasks/pushNotificationConfig/list",
+        "tasks/pushNotificationConfig/delete",
+    }
+)
 
 #: 审计 ``detail.outcome`` 取值。
 AUDIT_OUTCOME_OK = "ok"
@@ -180,7 +194,7 @@ def build_agent_card(
         "preferredTransport": A2A_PROTOCOL_BINDING,
         "capabilities": {
             "streaming": True,
-            "pushNotifications": False,
+            "pushNotifications": True,
             "stateTransitionHistory": False,
         },
         "defaultInputModes": ["text"],

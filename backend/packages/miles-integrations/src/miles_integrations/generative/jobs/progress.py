@@ -43,6 +43,14 @@ async def publish_generative_job_update(
     except Exception:
         logger.debug("Redis 发布 job %s 进度通知失败", job_id, exc_info=True)
 
+    # A2A webhook：portal 可选依赖；Worker 已装 portal，本地单测无 portal 时跳过
+    try:
+        from miles_portal.tenant.a2a.services.push_notify import schedule_notify_job_push_configs
+
+        schedule_notify_job_push_configs(tenant_id, job_id)
+    except Exception:
+        logger.debug("schedule a2a push notify failed job=%s", job_id, exc_info=True)
+
 
 async def update_generative_job_progress(
     job_id: UUID,

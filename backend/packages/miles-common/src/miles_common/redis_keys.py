@@ -62,6 +62,11 @@ class RedisKeys:
         return f"generative:job:{tenant_id}:{job_id}"
 
     @staticmethod
+    def a2a_push_notification_configs(tenant_id: UUID | str, task_id: UUID | str) -> str:
+        """A2A 任务推送配置 HASH（field=configId, value=JSON）。"""
+        return f"a2a:pushcfg:{tenant_id}:{task_id}"
+
+    @staticmethod
     def tokens_month_reset(period_yyyy_mm: str) -> str:
         """本月 Token 清零幂等标记（UTC ``YYYY-MM``）。"""
         return f"quota:tokens_month_reset:{period_yyyy_mm}"

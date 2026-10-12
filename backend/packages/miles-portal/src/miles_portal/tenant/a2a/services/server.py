@@ -35,9 +35,14 @@ from miles_portal.tenant.a2a.server import (
     AUDIT_ACTION_ARTIFACT_DOWNLOAD,
     AUDIT_ACTION_MESSAGE_SEND,
     AUDIT_ACTION_MESSAGE_STREAM,
+    AUDIT_ACTION_PUSH_CONFIG_DELETE,
+    AUDIT_ACTION_PUSH_CONFIG_GET,
+    AUDIT_ACTION_PUSH_CONFIG_LIST,
+    AUDIT_ACTION_PUSH_CONFIG_SET,
     AUDIT_ACTION_TASKS_CANCEL,
     AUDIT_ACTION_TASKS_GET,
     AUDIT_OUTCOME_CANCELED,
+    PUSH_NOTIFICATION_METHODS,
     AUDIT_OUTCOME_FAILED,
     AUDIT_OUTCOME_OK,
     AUDIT_OUTCOME_REJECTED,
@@ -453,6 +458,10 @@ _AUDIT_ACTION_BY_METHOD = {
     "message/send": AUDIT_ACTION_MESSAGE_SEND,
     "tasks/get": AUDIT_ACTION_TASKS_GET,
     "tasks/cancel": AUDIT_ACTION_TASKS_CANCEL,
+    "tasks/pushNotificationConfig/set": AUDIT_ACTION_PUSH_CONFIG_SET,
+    "tasks/pushNotificationConfig/get": AUDIT_ACTION_PUSH_CONFIG_GET,
+    "tasks/pushNotificationConfig/list": AUDIT_ACTION_PUSH_CONFIG_LIST,
+    "tasks/pushNotificationConfig/delete": AUDIT_ACTION_PUSH_CONFIG_DELETE,
 }
 
 #: 流式终态 → 审计 ``outcome``。``working`` 是「本流结束但任务还在跑」（对端转
@@ -598,18 +607,23 @@ async def _dispatch_a2a_rpc(
     ``message/stream``、``tasks/resubscribe`` 不在本函数内：它们要回 SSE 而非单个 JSON，
     分别由 ``open_a2a_stream`` / ``open_task_subscription`` 处理，视图层按 ``method`` 先行分流。
 
-    ``tasks/pushNotificationConfig/get`` 等未实现方法一律 ``METHOD_NOT_FOUND``（不静默成功）。
+    ``tasks/pushNotificationConfig/*`` 四方法见 ``push_rpc``；其余未知方法 ``METHOD_NOT_FOUND``。
     """
     req_id: object = payload.get("id") if isinstance(payload, dict) else None
     if not isinstance(payload, dict) or "method" not in payload:
         return jsonrpc_error(req_id, INVALID_REQUEST, "非法 JSON-RPC 请求")
     method = str(payload.get("method"))
-    if method not in {"message/send", "tasks/get", "tasks/cancel"}:
+    supported = {"message/send", "tasks/get", "tasks/cancel"} | set(PUSH_NOTIFICATION_METHODS)
+    if method not in supported:
         return jsonrpc_error(req_id, METHOD_NOT_FOUND, f"不支持的方法: {method}")
     params = payload.get("params")
     if not isinstance(params, dict):
         return jsonrpc_error(req_id, INVALID_PARAMS, f"{method} 缺少 params")
 
+    if method in PUSH_NOTIFICATION_METHODS:
+        from miles_portal.tenant.a2a.services.push_rpc import handle_push_notification_rpc
+
+        return await handle_push_notification_rpc(db, ctx, agent_id, method, req_id, params)
     if method == "tasks/get":
         return await _handle_tasks_get(db, ctx, agent_id, req_id, params, base_url=base_url)
     if method == "tasks/cancel":

@@ -1,6 +1,6 @@
 # A2A 外部互联
 
-> 类型：智能体 | 状态：已实现（登记/引用/宿主 ✅；对外暴露 Card + `message/send` + `message/stream` 真流式 + `contextId` 多轮 + `tasks/*` + 产物下载 ✅）  
+> 类型：智能体 | 状态：已实现（登记/引用/宿主 ✅；对外暴露 Card + `message/send` + `message/stream` + `tasks/*` + `pushNotificationConfig/*` + 产物下载 ✅）
 > **功能规格：** [features/a2a-interconnect.md](../features/a2a-interconnect.md)  
 > 协议：[A2A Protocol v0.3.0](https://a2a-protocol.org/v0.3.0/specification/) | 关联：[platform-agents.md](./platform-agents.md)
 
@@ -122,10 +122,14 @@ JSON-RPC 方法：
 | `tasks/get` | `params.id` 查生成任务状态，映射为 A2A `TaskState`；成功时附 `Task.artifacts`（产物下载地址）。`status.timestamp` 是该状态被记录的**真实时间**（任务 `updated_at`）而非请求时刻；`status.message` 带进度文案（百分比在 `status.message.metadata.percent`），无进展可说时**不附**该键 |
 | `tasks/cancel` | 取消未结束的生成任务；已结束回 `-32002`（Task not cancelable），不属于该智能体回 `-32001`（Task not found） |
 | `tasks/resubscribe` | 续播未结束生成任务的进度（SSE）。首帧 `Task`、其后只在状态/进度变化时发 `status-update`，空闲发保活注释帧，终态前补 `artifact-update`。`params.id` 必须是真的生成任务 id |
+| `tasks/pushNotificationConfig/set` | 登记任务 webhook（`params.taskId` + `pushNotificationConfig`）；配置存 Redis，TTL 7 天 |
+| `tasks/pushNotificationConfig/get` | 取配置（`params.id` + 可选 `pushNotificationConfigId`） |
+| `tasks/pushNotificationConfig/list` | 列出该任务全部推送配置 |
+| `tasks/pushNotificationConfig/delete` | 删除配置（`pushNotificationConfigId` 必填；幂等） |
 
-`tasks/pushNotificationConfig/*` 未实现，回 `-32601`（不静默成功）。
+进度变更时 best-effort POST `Task` JSON 到登记的 webhook（`validate_outbound_url` 防 SSRF；Bearer/Basic + `X-A2A-Notification-Token`）。推送体不含产物绝对 URL，对端可用 `tasks/get` 取完整 Task。Card 声明 `capabilities.pushNotifications=true`。
 
-任务归属：`tasks/get` / `tasks/cancel` / `tasks/resubscribe` / 产物下载都校验「该任务由本智能体发起」（job 的 `source_ref_type=agent` + `source_ref_id=agent_id`），不属于则回 `-32001` / 404 而非 403 —— 不向对端确认任务是否存在。「不属于」含两种情形，对端**无从区分**：同租户另一个智能体的任务（`-32001`），以及**其他租户**的任务（同样 `-32001`，不因越租户而改成 403）。若只按租户校验，同租户另一个智能体的 key 就能查/取消本智能体任务并猜到其产物地址。产物下载是普通 HTTP 端点（非 JSON-RPC），同一语义以 **404 状态码**表达；这四种调用无论成败都会在审计流水留痕（请求体无法解析、被限流这两类前置失败除外）。
+任务归属：`tasks/get` / `tasks/cancel` / `tasks/resubscribe` / `pushNotificationConfig/*` / 产物下载都校验「该任务由本智能体发起」（job 的 `source_ref_type=agent` + `source_ref_id=agent_id`），不属于则回 `-32001` / 404 而非 403 —— 不向对端确认任务是否存在。「不属于」含两种情形，对端**无从区分**：同租户另一个智能体的任务（`-32001`），以及**其他租户**的任务（同样 `-32001`，不因越租户而改成 403）。若只按租户校验，同租户另一个智能体的 key 就能查/取消本智能体任务并猜到其产物地址。产物下载是普通 HTTP 端点（非 JSON-RPC），同一语义以 **404 状态码**表达；这四种调用无论成败都会在审计流水留痕（请求体无法解析、被限流这两类前置失败除外）。
 
 **产物下载：** `Task.artifacts[].parts[].file.uri` 指向 `GET /api/v1/open/a2a/agents/{agent_id}/tasks/{task_id}/artifacts/{attachment_id}`，**需带同一 `X-API-Key`**（平台刻意不暴露对象存储签名 URL）。授权精确到「该智能体 · 该任务 · 该产物」，非该任务产物一律 404，否则本租户任意附件都能被取走。非该任务产物、**跨租户的附件**、附件尚未就绪、以及存储读取故障都回 404/400/500 并**各留一条流水**。
 
@@ -137,7 +141,7 @@ Card 的 `url` 即调用端点（同时以 0.3 形状在 `additionalInterfaces[{
 
 反向（把外部对端登记为 Peer）时，客户端认两种接口数组形状：0.3 的 `additionalInterfaces[{url, transport}]` 与 v1.0 的 `supportedInterfaces[{url, protocolBinding, protocolVersion}]`，并都以其中的 `url` 为端点。
 
-Card 声明的 `protocolVersion` 为 **0.3**：本平台产出的方法名（`message/*`、`tasks/*`）与线格式（`kind` 判别字段、小写 `TaskState`）都是 v0.3 形状。声明 1.0 会让对端按 PascalCase 方法名调用并撞 `-32601`。Card 的 `capabilities.streaming=true`。
+Card 声明的 `protocolVersion` 为 **0.3**：本平台产出的方法名（`message/*`、`tasks/*`）与线格式（`kind` 判别字段、小写 `TaskState`）都是 v0.3 形状。声明 1.0 会让对端按 PascalCase 方法名调用并撞 `-32601`。Card 的 `capabilities.streaming=true`、`pushNotifications=true`。
 
 Card 同时声明 `securitySchemes`（`apiKey` · `in: header` · `name: X-API-Key`）与 `security`，标准 A2A 客户端据此发现调用所需凭证，无需先撞一次 401。**Card 本身仍公开**（A2A 发现约定），声明的是调用端点的鉴权要求；头名取自 `miles_common.constants.AGENT_API_KEY_HEADER`，与实际鉴权（`require_agent_api_key`）同源，避免声明与实现漂移。
 
@@ -187,7 +191,7 @@ Card 同时声明 `securitySchemes`（`apiKey` · `in: header` · `name: X-API-K
 |---|---|---|
 | `-32700` | 解析错误 | 请求体不是合法 JSON |
 | `-32600` | 非法请求 | 请求体是合法 JSON 但不是对象，或缺 `method` |
-| `-32601` | 方法未找到 | 未实现的方法（如 `tasks/pushNotificationConfig/*`） |
+| `-32601` | 方法未找到 | 未实现的方法 |
 | `-32602` | 参数错误 | `message/send` 域的业务异常（含合规拦截、配额/权限拒绝）；状态码 400 或非 `tasks/*` 域的 401/403/404；非法 `params.id`、超长 `contextId`、未发布智能体 |
 | `-32603` | 内部错误 | 状态码既非 400/401/403/404 的业务异常（含 409 冲突与 5xx）；`message/send` 的未预期故障（见下） |
 | `-32000` | 限流 | 超限；HTTP 429 + `Retry-After` |
@@ -262,6 +266,7 @@ Retry-After: 12
 | `a2a.tasks.get` | `tasks/get` |
 | `a2a.tasks.cancel` | `tasks/cancel` |
 | `a2a.tasks.resubscribe` | `tasks/resubscribe`：终态收流、30 分钟上限、对端断连、前置校验失败各记一次 |
+| `a2a.tasks.pushNotificationConfig.*` | `set` / `get` / `list` / `delete` |
 | `a2a.artifact.download` | 产物下载 |
 
 记录内容为「谁（`apiKeyId`）在何时以何结果（`outcome`：`ok` / `rejected` / `failed` /
@@ -283,6 +288,5 @@ stream 侧本就无可谈的错误码，它走的是 `rejected` 终态帧。
 
 ## 待做
 
-- `tasks/pushNotificationConfig/*`（现回方法未找到）
 - 多模态入站：`parts` 的 `file` / `data` 类型（现仅取 `text`）
 - A2A v1.0 迁移：PascalCase 方法名、去 `kind` 换成员名包装、`TASK_STATE_*` 取值
