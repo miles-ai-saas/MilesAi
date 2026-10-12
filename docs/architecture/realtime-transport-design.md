@@ -12,7 +12,7 @@ MilesAI 已具备两类「实时」需求：
 
 | 需求 | 现状（As-Is） | 痛点 |
 |------|----------------|------|
-| **智能体对话** | WS 真 token 流式（含 DeepAgents）；`last_event_id` 环缓重放；HTTP `POST …/chat/stream` SSE；`POST …/chat` 仍整包 | 环缓单进程；`gap` 时回退本地；跨 worker Redis 快照未做 |
+| **智能体对话** | WS 真 token 流式（含 DeepAgents）；`last_event_id` 环缓重放；HTTP `POST …/chat/stream` SSE；`POST …/chat` 仍整包 | 本机环缓 + Redis LIST 镜像（R5b）；`gap` 时回退本地 |
 | **生成任务进度** | `GET /generative/jobs/{id}/stream`（SSE）+ `POST cancel/retry` | 模型清晰；对话内每个 job 可能再开 SSE，与轮询兜底并存 |
 | **任务中心 / 流程调试** | 列表 HTTP 分页 + 手动刷新；详情 SSE | 合理；不宜绑到某一条「对话连接」 |
 
@@ -227,9 +227,9 @@ Authorization: Bearer <token>
 | 阶段 | 内容 | 说明 |
 |------|------|------|
 | **R3** | 工具确认：`tool.confirm_required` / `tool.confirm` 走 WS | 现为替代确认轮 POST |
-| **R5b** | 跨 worker Redis 会话快照 | 可选；当前单进程环缓 MVP 已覆盖短断线 |
+| **R5b** | 跨 worker Redis 会话快照 | ✅ `AGENT_CHAT_WS_REDIS_SNAPSHOT_ENABLED`；LIST 镜像 + 回填 |
 
-已实施：R1 对话 WS；R2 真 token 流式（含 DeepAgents）；R4 `generative_job.*`；R5 MVP（`last_event_id` + `chat.sync` + 进程内环缓）；HTTP `POST …/chat/stream` SSE。
+已实施：R1 对话 WS；R2 真 token 流式（含 DeepAgents）；R4 `generative_job.*`；R5 MVP（`last_event_id` + `chat.sync` + 进程内环缓）；R5b Redis 快照；HTTP `POST …/chat/stream` SSE。
 
 **不做（v1）：**
 

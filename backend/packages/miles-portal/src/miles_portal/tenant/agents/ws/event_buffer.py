@@ -1,7 +1,8 @@
-"""对话 WebSocket 会话事件环缓（单进程内存，供断线续传）。
+"""对话 WebSocket 会话事件环缓（本机 + 可选 Redis 镜像）。
 
-按 ``tenant:user:agent:conversation`` 隔离；多 worker 不共享，gap 时由客户端
-回退本地历史 / HTTP。TTL 到期清空，避免泄漏。
+按 ``tenant:user:agent:conversation`` 隔离。本机 dict 为热路径；启用
+``AGENT_CHAT_WS_REDIS_SNAPSHOT_ENABLED`` 时写入 Redis LIST，其它 worker 在本地无缓冲时回填。
+TTL 到期清空本机项；Redis 侧靠 EXPIRE。
 """
 
 from __future__ import annotations
@@ -28,6 +29,14 @@ class SessionEventBuffer:
         self.events.append(envelope)
         while len(self.events) > self.max_size:
             self.events.popleft()
+        self.updated_at = time.monotonic()
+
+    def hydrate(self, envelopes: list[dict[str, Any]]) -> None:
+        """用外部快照替换内容（不二次写 Redis）。"""
+        self.events.clear()
+        for env in envelopes[-self.max_size :]:
+            if isinstance(env, dict):
+                self.events.append(env)
         self.updated_at = time.monotonic()
 
     def events_after(self, last_event_id: str | None) -> tuple[list[dict[str, Any]], bool]:
@@ -77,8 +86,8 @@ def _purge_expired(now: float, ttl: float) -> None:
         _buffers.pop(k, None)
 
 
-def get_session_buffer(key: str) -> SessionEventBuffer:
-    """取或创建会话缓冲；顺带清理过期项。"""
+async def get_session_buffer(key: str) -> SessionEventBuffer:
+    """取或创建会话缓冲；新建时空缓冲时尝试从 Redis 回填。"""
     settings = get_settings()
     max_size = max(8, int(settings.agent_chat_ws_event_buffer_size))
     ttl = max(30.0, float(settings.agent_chat_ws_event_buffer_ttl_sec))
@@ -88,6 +97,11 @@ def get_session_buffer(key: str) -> SessionEventBuffer:
     if buf is None:
         buf = SessionEventBuffer(max_size=max_size)
         _buffers[key] = buf
+        from miles_portal.tenant.agents.ws.redis_snapshot import load_events
+
+        remote = await load_events(key)
+        if remote:
+            buf.hydrate(remote)
     else:
         buf.max_size = max_size
         buf.updated_at = now
@@ -95,5 +109,5 @@ def get_session_buffer(key: str) -> SessionEventBuffer:
 
 
 def clear_session_buffers() -> None:
-    """测试用：清空全局缓冲。"""
+    """测试用：清空全局本机缓冲。"""
     _buffers.clear()

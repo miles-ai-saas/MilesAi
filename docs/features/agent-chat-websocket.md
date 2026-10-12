@@ -1,6 +1,6 @@
 # 智能体对话 WebSocket
 
-**状态：** v1 + 断线续传 MVP（工作台）；真 token 流式 ✅；HTTP `POST …/chat/stream` SSE ✅；`last_event_id` 环缓重放 ✅；`POST …/chat` 仍整包
+**状态：** v1 + 断线续传（工作台）；真 token 流式 ✅；HTTP `POST …/chat/stream` SSE ✅；`last_event_id` 环缓重放 ✅；跨 worker Redis 快照 ✅；`POST …/chat` 仍整包
 **PRD 对照：** 模块4 智能体对话  
 **架构：** [realtime-transport-design.md](../architecture/realtime-transport-design.md) · [technical-design.md §10](../architecture/technical-design.md#10-智能体对话)
 
@@ -18,15 +18,15 @@
 - 帧协议：Event v1 信封（`type` + `id` + `ts` + `payload`）
 - 客户端事件：`chat.send`、`tool.confirm`、`generative_job.cancel`、`ping`
 - 服务端事件：`chat.sync`、`chat.delta`、`chat.step`、`tool.confirm_required`、`generative_job.*`、`chat.done`、`chat.error`
-- 配置：`AGENT_CHAT_WEBSOCKET_ENABLED`；环缓 `AGENT_CHAT_WS_EVENT_BUFFER_SIZE` / `_TTL_SEC`
+- 配置：`AGENT_CHAT_WEBSOCKET_ENABLED`；环缓 `AGENT_CHAT_WS_EVENT_BUFFER_SIZE` / `_TTL_SEC`；`AGENT_CHAT_WS_REDIS_SNAPSHOT_ENABLED`（默认 true）
 - 前端：`useAgentChatWs` + `AgentChatWsClient`（记 `lastEventId`、重连带 query、按 id 去重）
 
 ### 1.2 明确不做 / 限制
 
 - 对外 OpenAPI 第三方集成的 WS（仅工作台）
 - pending_tool 确认后路径的真 token 流（仍走 `emit_answer_deltas` 切块兜底）
-- 全站统一 WebSocket 网关；跨 worker 共享环缓（当前单进程内存；`gap=true` 时回退本地历史）
-- 跨机房持久会话快照（Redis）— 后续可选
+- 全站统一 WebSocket 网关
+- Redis 不可用时回落本机环缓；`gap=true` 时仍回退本地历史 / HTTP
 
 ### 1.3 流式现状
 
@@ -63,6 +63,7 @@ Header: Authorization: Bearer {jwt}
 3. `gap=false` 且 `replayed>0`：紧接着重放遗漏帧（不再二次入缓）。
 4. `gap=true`：环缓已滚出或过期，客户端依赖本地气泡 / 后续 HTTP；不盲目重放全量。
 5. 键：`tenant:user:agent:conversation`；默认容量 256、TTL 600s（见配置）。
+6. **R5b**：入缓事件镜像 Redis LIST（`ws:chat:events:{session_key}`）；其它 worker 新建本机缓冲时 LRANGE 回填，跨实例重连可重放。
 
 ---
 

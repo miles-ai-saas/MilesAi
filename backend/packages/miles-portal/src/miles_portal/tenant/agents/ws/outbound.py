@@ -1,4 +1,4 @@
-"""WebSocket 下行：先写入会话环缓再尝试发送（断线后仍可重放）。"""
+"""WebSocket 下行：先写入会话环缓（及可选 Redis）再尝试发送。"""
 
 from __future__ import annotations
 
@@ -10,6 +10,7 @@ from fastapi import WebSocket
 from miles_core.logging import get_logger
 from miles_portal.tenant.agents.ws.event_buffer import SessionEventBuffer
 from miles_portal.tenant.agents.ws.protocol import envelope
+from miles_portal.tenant.agents.ws.redis_snapshot import persist_event
 
 logger = get_logger(__name__)
 
@@ -19,16 +20,24 @@ _current_outbound: ContextVar["WsOutbound | None"] = ContextVar("ws_outbound", d
 class WsOutbound:
     """绑定一条连接的发送器：缓冲优先，发送失败则标记断开。"""
 
-    def __init__(self, ws: WebSocket, buffer: SessionEventBuffer) -> None:
+    def __init__(
+        self,
+        ws: WebSocket,
+        buffer: SessionEventBuffer,
+        *,
+        session_key: str = "",
+    ) -> None:
         self.ws = ws
         self.buffer = buffer
+        self.session_key = session_key
         self.alive = True
 
     async def send(self, event_type: str, payload: dict[str, Any], *, record: bool = True) -> dict[str, Any]:
-        """构造事件包；``record=True`` 时写入环缓，再尽力推给当前套接字。"""
+        """构造事件包；``record=True`` 时写入环缓（及 Redis），再尽力推给当前套接字。"""
         env = envelope(event_type, payload)
         if record:
             self.buffer.append(env)
+            await persist_event(self.session_key, env)
         if not self.alive:
             return env
         try:

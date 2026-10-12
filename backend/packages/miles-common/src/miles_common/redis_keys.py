@@ -72,6 +72,14 @@ class RedisKeys:
         return f"agent_kv:{tenant_id}:{key}"
 
     @staticmethod
+    def agent_chat_ws_events(session_key: str) -> str:
+        """对话 WS 断线续传事件环缓（LIST，跨 worker 共享）。
+
+        ``session_key`` 形如 ``tenant:user:agent:conversation``。
+        """
+        return f"ws:chat:events:{session_key}"
+
+    @staticmethod
     def tokens_month_reset(period_yyyy_mm: str) -> str:
         """本月 Token 清零幂等标记（UTC ``YYYY-MM``）。"""
         return f"quota:tokens_month_reset:{period_yyyy_mm}"

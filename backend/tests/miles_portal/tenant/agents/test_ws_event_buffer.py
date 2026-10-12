@@ -1,5 +1,6 @@
 """对话 WS 事件环缓与断线重放。"""
 
+from unittest.mock import AsyncMock, patch
 from uuid import uuid4
 
 import pytest
@@ -22,6 +23,18 @@ def _clear_buffers():
     clear_session_buffers()
     yield
     clear_session_buffers()
+
+
+@pytest.fixture(autouse=True)
+def _no_redis_hydrate():
+    with patch(
+        "miles_portal.tenant.agents.ws.redis_snapshot.load_events",
+        new=AsyncMock(return_value=[]),
+    ), patch(
+        "miles_portal.tenant.agents.ws.redis_snapshot.persist_event",
+        new=AsyncMock(),
+    ):
+        yield
 
 
 def test_events_after_replay_and_gap():
@@ -64,7 +77,7 @@ async def test_ws_reconnect_replays_after_last_event_id():
         agent_id=agent_id,
         conversation_id="conv-resume",
     )
-    buf = get_session_buffer(key)
+    buf = await get_session_buffer(key)
     e1 = proto.envelope(proto.CHAT_DELTA, {"text": "已收"})
     e2 = proto.envelope(proto.CHAT_DELTA, {"text": "续"})
     e3 = proto.envelope(proto.CHAT_DONE, {"answer": "已收续"})
@@ -100,7 +113,7 @@ async def test_ws_reconnect_reports_gap_when_id_missing():
         agent_id=agent_id,
         conversation_id="conv-gap",
     )
-    buf = get_session_buffer(key)
+    buf = await get_session_buffer(key)
     buf.append(proto.envelope(proto.CHAT_DELTA, {"text": "x"}))
 
     ws = _ScriptedWebSocket()

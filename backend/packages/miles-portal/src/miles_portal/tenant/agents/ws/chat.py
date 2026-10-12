@@ -257,15 +257,14 @@ async def agent_chat_websocket(
 
     await websocket.accept()
     job_tasks: set[asyncio.Task] = set()
-    buf = get_session_buffer(
-        session_key(
-            tenant_id=ctx.tenant_id,
-            user_id=ctx.user_id,
-            agent_id=agent_id,
-            conversation_id=conversation_id,
-        )
+    sk = session_key(
+        tenant_id=ctx.tenant_id,
+        user_id=ctx.user_id,
+        agent_id=agent_id,
+        conversation_id=conversation_id,
     )
-    outbound = WsOutbound(websocket, buf)
+    buf = await get_session_buffer(sk)
+    outbound = WsOutbound(websocket, buf, session_key=sk)
     token_cv = set_outbound(outbound)
 
     try:

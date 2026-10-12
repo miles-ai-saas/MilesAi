@@ -651,7 +651,7 @@ flowchart TD
 |------|------|-------------|
 | L2 内置工具扩充（合规检测、触发流程/钩子、列附件、Redis KV） | ✅ | `compliance_check_text`、`run_flow_once`、`invoke_tenant_hook`、`list_attachments`、`redis_kv`；见 [tools-runtime.md](./tools-runtime.md) §7 |
 | 对话 HTTP SSE 流式；DeepAgents 库路径真 token 流式 | ✅ | `POST …/chat/stream` SSE（事件对齐 WS）✅；DeepAgents：`PlatformChatModel._astream` + `astream` → `on_delta`；`POST …/chat` 仍整包；见 [realtime-transport-design.md](./realtime-transport-design.md) |
-| WS 断线续传、服务端会话快照 | 🔶 | 进程内环缓 + `last_event_id` / `chat.sync` ✅；跨 worker Redis 快照待选；见 [realtime-transport-design.md](./realtime-transport-design.md) |
+| WS 断线续传、服务端会话快照 | ✅ | 进程内环缓 + `last_event_id` / `chat.sync`；R5b Redis LIST 镜像（`AGENT_CHAT_WS_REDIS_SNAPSHOT_ENABLED`）；见 [realtime-transport-design.md](./realtime-transport-design.md) |
 | A2A 对外 Server 流式 | ✅ | Card（`protocolVersion=0.3`、`streaming`/`pushNotifications`）、`message/send`、`message/stream`、`tasks/*`、`pushNotificationConfig/*`、产物下载；见 [a2a.md](../guides/a2a.md) |
 | 流程版本一键回滚 | ✅ | `POST …/versions/{n}/restore` 拷贝 graph 另存新版本；工作台版本历史调用该 API |
 | 内置 Redis 操作工具 | ✅ | opt-in `redis_kv`（租户键前缀 `agent_kv:{tenant}:*`；get/set/delete/exists/incr）；系统页 `/redis-info` 仍为运维只读 |
