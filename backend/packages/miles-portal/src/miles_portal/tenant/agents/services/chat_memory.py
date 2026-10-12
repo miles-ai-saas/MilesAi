@@ -4,7 +4,7 @@
 检索 query 仍用本轮问题，避免历史污染向量检索。
 
 跨会话长期记忆见 ``user_memory.py``（``agt_user_agent_memories``），与短程并列注入
-直连 / tool / RAG（Flow / A2A 宿主一期仅短程）。
+直连 / tool / RAG / Flow / A2A 宿主（subagent 编排路径仍仅短程）。
 """
 
 from __future__ import annotations

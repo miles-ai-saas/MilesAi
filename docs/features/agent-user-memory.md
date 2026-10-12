@@ -5,8 +5,8 @@
 ## 能力
 
 - 粒度：`(tenant_id, user_id, agent_id, kind)`，`kind` ∈ `summary` | `preference`
-- **读**：直连 / tool_agent / RAG 的 system 注入「关于该用户的长期记忆」块（默认关闭）
-- **写**：对话成功后 Celery `run_user_memory_extract`，任务携带本轮快照（避免 commit 竞态）
+- **读**：直连 / tool_agent / RAG / Flow / A2A 宿主 的 system 注入「关于该用户的长期记忆」块（默认关闭；顺序：长期 → 近期短程）
+- **写**：上述路由对话成功后 Celery `run_user_memory_extract`，任务携带本轮快照（避免 commit 竞态）
 - **管理**：`GET/DELETE /agents/{id}/user-memories`（当前用户）；表单开关 `config.user_memory.enabled`
 
 ## 配置
@@ -17,5 +17,5 @@
 
 ## 非目标（本批）
 
-- 向量召回、写入 KB、Flow / A2A / subagent 主路径的**长期**注入（上述路径已有**短程** `chat_memory`）
+- 向量召回、写入 KB、**subagent** 编排主路径的长期注入（subagent 仍仅短程 `chat_memory`）
 - 同步 chat 路径抽取、跨 Agent 全局画像、Admin 运营台
