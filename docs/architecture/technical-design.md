@@ -659,7 +659,8 @@ flowchart TD
 | MCP STDIO 沙箱 MVP 收尾；预置模板 / npx 包白名单 | ✅ | 见 [mcp-sandbox.md](./mcp-sandbox.md) |
 | 模型供应商 M4：批量导入、图标资源、下架引用校验 | ✅ | 见 [model-providers.md](../guides/model-providers.md) §9 |
 | 离线 OpenAPI 导出 / 离线部署手册 | ✅ | [offline-deployment.md](../operations/offline-deployment.md)；`export_openapi --out` / `make openapi-write` |
-| 按需延后：短信告警、PDF/Excel 报表、违规统计报表、导出水印、提示词模板 A/B、智能体导出包 | 🔜 | 见 [backlog.md](../product/backlog.md) |
+| 智能体 JSON 导出/导入包 | ✅ | `GET /agents/{id}/export` · `POST /agents/import`；见 [prd.md](../product/prd.md) |
+| 按需延后：短信告警、PDF/Excel 报表、违规统计报表、导出水印、提示词模板 A/B | 🔜 | 见 [backlog.md](../product/backlog.md) |
 | 按需立项：PaddleOCR / 云 OCR、老格式 Office | 按需 | 见 [backlog.md](../product/backlog.md) |
 
 **后端测试**（`backend/tests/`）：按域分子目录（api / rag / flow / tenant / admin / infra / mcp / a2a 等），详见 [tests/README.md](../../backend/tests/README.md)。
