@@ -44,11 +44,11 @@ async def test_create_flow_with_tags(monkeypatch):
     replace = AsyncMock()
     get_refs = AsyncMock(return_value={flow_id: [TagRefOut(id=tag_id, name="客服", slug="kefu")]})
     monkeypatch.setattr(
-        "miles_portal.tenant.flows.services.flow.TagService.replace_entity_tags",
+        "miles_portal.tenant.flows.services.flow.crud.TagService.replace_entity_tags",
         replace,
     )
     monkeypatch.setattr(
-        "miles_portal.tenant.flows.services.flow.TagService.get_refs_map",
+        "miles_portal.tenant.flows.services.flow.crud.TagService.get_refs_map",
         get_refs,
     )
     monkeypatch.setattr(
@@ -91,11 +91,11 @@ async def test_update_flow_replaces_tags(monkeypatch):
     replace = AsyncMock()
     get_refs = AsyncMock(return_value={flow_id: []})
     monkeypatch.setattr(
-        "miles_portal.tenant.flows.services.flow.TagService.replace_entity_tags",
+        "miles_portal.tenant.flows.services.flow.crud.TagService.replace_entity_tags",
         replace,
     )
     monkeypatch.setattr(
-        "miles_portal.tenant.flows.services.flow.TagService.get_refs_map",
+        "miles_portal.tenant.flows.services.flow.crud.TagService.get_refs_map",
         get_refs,
     )
 
