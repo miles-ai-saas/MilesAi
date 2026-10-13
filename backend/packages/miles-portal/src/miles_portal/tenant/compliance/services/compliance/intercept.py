@@ -1,12 +1,12 @@
 """入出站敏感词检测、媒体审核与试跑扫描。
 
-Agent 对话链：``AgentChatMixin.chat`` → ``check_input`` / ``check_media_input`` / ``check_output``；
+Agent 对话链：``AgentService.chat`` → ``check_input`` / ``check_media_input`` / ``check_output``；
 画布 ``ComplianceCheck`` 节点走 ``CompliancePipeline`` 但不写 InterceptLog。
 """
 
 from __future__ import annotations
 
-from typing import Sequence
+from collections.abc import Sequence
 from uuid import UUID
 
 from miles_common.exceptions import BadRequestError

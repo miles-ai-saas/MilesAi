@@ -9,7 +9,7 @@
 4. ``published_flow_id`` → 流程画布运行时
 5. 默认 **RAG**：``rag_chat`` → LangGraph 或线性 ``generate_rag_answer``
 
-子模块见同目录 ``crud`` / ``chat`` / ``serialization``；包说明见 ``agent.__init__``。
+子模块见同目录 ``crud`` / ``chat_*`` / ``serialization``；包说明见 ``agent.__init__``。
 对外仅从此包导入 ``AgentService``（``from miles_portal.tenant.agents.services.agent import …``）。
 """
 
@@ -18,12 +18,14 @@ from __future__ import annotations
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from miles_core.tenant import TenantContext
-from miles_portal.tenant.agents.services.agent.chat import AgentChatMixin
+from miles_portal.tenant.agents.services.agent.chat_entry import AgentChatEntryMixin
+from miles_portal.tenant.agents.services.agent.chat_rag import AgentChatRagMixin
+from miles_portal.tenant.agents.services.agent.chat_turn import AgentChatTurnMixin
 from miles_portal.tenant.agents.services.agent.crud import AgentCrudMixin
 from miles_portal.tenant.flows.repositories.flow import FlowRepository
 
 
-class AgentService(AgentChatMixin, AgentCrudMixin):
+class AgentService(AgentChatEntryMixin, AgentChatRagMixin, AgentChatTurnMixin, AgentCrudMixin):
     """智能体 CRUD；chat 按类型路由 A2A/子 Agent/流程/RAG。"""
 
     def __init__(self, db: AsyncSession, ctx: TenantContext) -> None:

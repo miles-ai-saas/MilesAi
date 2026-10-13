@@ -4,7 +4,7 @@ import { useCallback, useState } from "react";
 import { api } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth-store";
 import { usePagedList } from "@/hooks/use-paged-list";
-import { useAuditMeta } from "@/hooks/use-audit-meta";
+import { useAuditMeta } from "@/features/system-audit/hooks/use-audit-meta";
 import { auditActionFilterOptions, auditResourceTypeFilterOptions } from "@/features/system-audit/lib/audit-labels";
 
 export function useSystemAuditPage() {

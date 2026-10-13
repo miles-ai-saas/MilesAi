@@ -6,7 +6,7 @@ import { useRequireAuth } from "@/lib/auth-store";
 import { filterBySearch } from "@/lib/filter-search";
 import { usePagedList } from "@/hooks/use-paged-list";
 import { useConfirmAction } from "@/hooks/use-confirm-action";
-import { useA2aMeta } from "@/hooks/use-a2a-meta";
+import { useA2aMeta } from "@/features/agents/hooks/use-a2a-meta";
 import type { A2aPeer } from "@/lib/types";
 
 export function useA2aPeersPanel() {

@@ -5,7 +5,6 @@ Agent 聚合：CRUD + 对话编排。
 --------
 - ``service.py``：``AgentService`` 门面（组合 CRUD / 对话 Mixin）。
 - ``crud.py``：元数据、列表/创建/更新/删除、``resolve_system_prompt``。
-- ``chat.py``：``AgentChatMixin`` 组合门面。
 - ``chat_entry.py``：``chat`` / ``chat_as_child`` 入口。
 - ``chat_rag.py``：``rag_chat`` / 流程 RunContext（组合 Direct Mixin）。
 - ``chat_direct.py``：``direct_chat`` / tool_agent / A2A 增强。
@@ -22,14 +21,10 @@ Agent 聚合：CRUD + 对话编排。
     from miles_portal.tenant.agents.services.agent import AgentService, should_use_tools_with_kb
 """
 
-from miles_portal.tenant.agents.services.agent.serialization import (
-    agent_out,
-    should_use_tools_with_kb,
-)
+from miles_portal.tenant.agents.services.agent.serialization import should_use_tools_with_kb
 from miles_portal.tenant.agents.services.agent.service import AgentService
 
 __all__ = [
     "AgentService",
-    "agent_out",
     "should_use_tools_with_kb",
 ]

@@ -71,11 +71,6 @@ def _a2a_peers_out_from_rows(refs: list) -> list[A2aPeerRefOut]:
     return out
 
 
-def _bindings_to_a2a_out(bindings: list) -> list[A2aPeerRefOut]:
-    """Host 模式 peer 绑定列表 → API 输出（与 ``_a2a_peers_out_from_rows`` 同形）。"""
-    return _a2a_peers_out_from_rows(bindings)
-
-
 async def agent_out(
     svc: AgentService,
     agent: Agent,
@@ -86,7 +81,7 @@ async def agent_out(
     """组装 ``AgentOut``（含分类名、标签、KB、子 Agent、A2A peer）。"""
     if agent.agent_type == AgentType.A2A:
         bindings = await list_host_peer_bindings(svc.db, agent.id)
-        a2a_out = _bindings_to_a2a_out(bindings)
+        a2a_out = _a2a_peers_out_from_rows(bindings)
     else:
         refs = await list_all_agent_a2a_peer_refs(svc.db, agent.id)
         a2a_out = _a2a_peers_out_from_rows(refs)

@@ -61,7 +61,6 @@ class AgentChatRagMixin(AgentChatDirectMixin):
 
         ``on_delta`` 由对话 WS/A2A 注入，供答案产出 LLMCall 真 token 流式。
         """
-        from miles_portal.tenant.attachments.services.media_reader import build_flow_media_reader
         from miles_portal.tenant.compliance.services.scan_words_loader import build_scan_words_loader
         from miles_portal.tenant.flows.services.subflow_loader import build_subflow_graph_loader
         from miles_portal.tenant.generative.services.orchestration import (

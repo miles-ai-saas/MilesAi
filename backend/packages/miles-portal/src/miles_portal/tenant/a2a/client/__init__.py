@@ -22,13 +22,8 @@ from __future__ import annotations
 
 import httpx
 
-from miles_portal.tenant.a2a.client.auth import JSONRPC_HEADERS, build_auth_headers
-from miles_portal.tenant.a2a.client.parse import (
-    _extract_text_from_response,
-    _first_part_text,
-    _jsonrpc_error,
-    _text_from_result_payload,
-)
+from miles_portal.tenant.a2a.client.auth import build_auth_headers
+from miles_portal.tenant.a2a.client.parse import _extract_text_from_response, _jsonrpc_error
 from miles_portal.tenant.a2a.client.rpc import cancel_a2a_peer_task, invoke_a2a_peer
 from miles_portal.tenant.a2a.client.task import (
     INTERRUPTED_TASK_STATES,
@@ -41,25 +36,21 @@ from miles_portal.tenant.a2a.client.task import (
     _resolve_agent_task,
     _task_state,
 )
-from miles_portal.tenant.a2a.client.url import _base_from_card_url, _pick_rpc_url
+from miles_portal.tenant.a2a.client.url import _pick_rpc_url
 
 __all__ = [
     "INTERRUPTED_TASK_STATES",
-    "JSONRPC_HEADERS",
     "STOP_POLLING_TASK_STATES",
     "TASK_POLL_INTERVAL_SECONDS",
     "TASK_POLL_TIMEOUT_SECONDS",
     "TERMINAL_TASK_STATES",
-    "_base_from_card_url",
     "_extract_text_from_response",
-    "_first_part_text",
     "_jsonrpc_error",
     "_looks_like_task",
     "_pick_rpc_url",
     "_render_agent_task",
     "_resolve_agent_task",
     "_task_state",
-    "_text_from_result_payload",
     "build_auth_headers",
     "cancel_a2a_peer_task",
     "httpx",

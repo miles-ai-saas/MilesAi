@@ -27,14 +27,10 @@ from miles_portal.tenant.a2a.invoke.chat import (
 from miles_portal.tenant.a2a.invoke.execute import execute_a2a_calls
 from miles_portal.tenant.a2a.invoke.plan import (
     _parse_a2a_plan,
-    _peer_catalog,
     plan_a2a_peers,
     resolve_a2a_plan_items,
 )
-from miles_portal.tenant.a2a.invoke.rules import (
-    build_rule_plan_items,
-    evaluate_rule_triggered_peers,
-)
+from miles_portal.tenant.a2a.invoke.rules import evaluate_rule_triggered_peers
 from miles_portal.tenant.a2a.services.host_bindings import list_host_peer_bindings
 from miles_portal.tenant.a2a.services.peer_refs import list_agent_a2a_peer_refs
 from miles_portal.tenant.agents.services.chat_memory import format_history_block, load_chat_history_messages
@@ -46,10 +42,8 @@ __all__ = [
     "ChatUsageSink",
     "UserMemoryService",
     "_parse_a2a_plan",
-    "_peer_catalog",
     "ainvoke_chat",
     "augment_response_with_a2a",
-    "build_rule_plan_items",
     "evaluate_rule_triggered_peers",
     "execute_a2a_calls",
     "format_history_block",
