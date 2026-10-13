@@ -26,11 +26,10 @@ from miles_portal.tenant.agents.services.agent.serialization import (
     agent_out,
     should_use_tools_with_kb,
 )
-from miles_portal.tenant.agents.services.agent.service import AgentService, _agent_out
+from miles_portal.tenant.agents.services.agent.service import AgentService
 
 __all__ = [
     "AgentService",
-    "_agent_out",
     "agent_out",
     "should_use_tools_with_kb",
 ]

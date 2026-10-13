@@ -20,7 +20,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from miles_core.tenant import TenantContext
 from miles_portal.tenant.agents.services.agent.chat import AgentChatMixin
 from miles_portal.tenant.agents.services.agent.crud import AgentCrudMixin
-from miles_portal.tenant.agents.services.agent.serialization import agent_out
 from miles_portal.tenant.flows.repositories.flow import FlowRepository
 
 
@@ -31,6 +30,3 @@ class AgentService(AgentChatMixin, AgentCrudMixin):
         """组合 CRUD/对话 Mixin，并注入流程版本仓库。"""
         AgentCrudMixin.__init__(self, db, ctx)
         self.flow_repo = FlowRepository(db)
-
-
-_agent_out = agent_out
