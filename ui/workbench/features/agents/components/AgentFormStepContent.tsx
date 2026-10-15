@@ -71,6 +71,7 @@ export function AgentFormStepContent({
           mcps={mcps}
           toolCatalog={toolCatalog}
           onOpenFlowCanvas={onOpenFlowCanvas}
+          designMode={designMode}
           actions={actions}
         />
       );
