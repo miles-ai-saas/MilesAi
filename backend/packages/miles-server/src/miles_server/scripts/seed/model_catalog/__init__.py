@@ -6,11 +6,12 @@
 
 from __future__ import annotations
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from miles_core.models.model import ModelConfig
 from miles_core.models.model.catalog import DEFAULT_API_BASES, ModelPublishStatus
+from miles_core.models.model.tenant_credential import ModelTenantCredential
 from miles_server.scripts.seed.model_catalog.deepseek import ENTRIES as _DEEPSEEK
 from miles_server.scripts.seed.model_catalog.doubao import ENTRIES as _DOUBAO
 from miles_server.scripts.seed.model_catalog.embedding import ENTRIES as _EMBEDDING
@@ -24,8 +25,37 @@ BUILTIN_CATALOG: list[dict] = [
     *_QWEN,
 ]
 
-_RETIRED_BUILTIN_MODEL_CODES = frozenset({"deepseek-reasoner", "deepseek-chat"})
-_RETIRED_MODEL_DESCRIPTION = "已退役；请迁移至 deepseek-v4-flash（对话/思考）或 deepseek-v4-pro（复杂推理）。"
+# 已移出种子的内置 model_code：seed 时物理删除（含租户 BYOK 覆盖），不留 deprecated 行
+_RETIRED_BUILTIN_MODEL_CODES = frozenset(
+    {
+        # DeepSeek
+        "deepseek-reasoner",
+        "deepseek-chat",
+        "deepseek-v4-flash",
+        # 豆包 Seed 1.6 / 经典系列
+        "doubao-seed-1-6-251015",
+        "doubao-seed-1-6-thinking-251015",
+        "doubao-seed-1-6-flash-251015",
+        "doubao-seed-1-6-lite-251015",
+        "doubao-pro-32k",
+        "doubao-lite-32k",
+        "doubao-1-5-vision-pro-32k-250115",
+        "doubao-seedream-4-0-250828",
+        "doubao-seededit-3-0-i2i-250628",
+        # 通义旧旗舰 / 万相 2.2
+        "qwen3-max",
+        "qwen3.5-plus",
+        "qwen3.5-flash",
+        "qwen-turbo",
+        "qwen3-235b-a22b-instruct-2507",
+        "qwen3-235b-a22b-thinking-2507",
+        "qwen-vl-max",
+        "qwen-vl-plus",
+        "wan2.2-t2i-flash",
+        "wan2.2-s2v",
+        "wan2.2-i2v-plus",
+    }
+)
 
 _UPDATABLE = (
     "name",
@@ -43,8 +73,8 @@ _UPDATABLE = (
 )
 
 
-async def _deprecate_retired_catalog_models(session: AsyncSession) -> int:
-    """将已移出种子的内置模型标记为 deprecated（保留行以免租户引用断裂）。"""
+async def _purge_retired_catalog_models(session: AsyncSession) -> int:
+    """物理删除已移出种子的内置模型及其租户 BYOK 覆盖。"""
     rows = (
         (
             await session.execute(
@@ -57,16 +87,19 @@ async def _deprecate_retired_catalog_models(session: AsyncSession) -> int:
         .scalars()
         .all()
     )
+    if not rows:
+        return 0
+    ids = [row.id for row in rows]
+    await session.execute(
+        delete(ModelTenantCredential).where(ModelTenantCredential.model_config_id.in_(ids))
+    )
     for row in rows:
-        row.publish_status = ModelPublishStatus.DEPRECATED.value
-        row.is_active = False
-        row.is_featured = False
-        row.description = _RETIRED_MODEL_DESCRIPTION
+        await session.delete(row)
     return len(rows)
 
 
 async def seed_model_catalog(session: AsyncSession) -> None:
-    """插入或更新内置目录（按 model_code 幂等）。"""
+    """插入或更新内置目录（按 model_code 幂等）；旧型号直接删除。"""
     for item in BUILTIN_CATALOG:
         code = item["model_code"]
         existing = (
@@ -108,9 +141,9 @@ async def seed_model_catalog(session: AsyncSession) -> None:
                 **values,
             )
         )
-    retired = await _deprecate_retired_catalog_models(session)
-    if retired:
-        print(f">>> model catalog: deprecated {retired} retired builtin model(s)")
+    purged = await _purge_retired_catalog_models(session)
+    if purged:
+        print(f">>> model catalog: purged {purged} retired builtin model(s)")
 
 
 __all__ = ["BUILTIN_CATALOG", "seed_model_catalog"]

@@ -11,7 +11,20 @@ def test_catalog_excludes_retired_deepseek_compat():
     codes = _codes()
     assert "deepseek-reasoner" not in codes
     assert "deepseek-chat" not in codes
-    assert "deepseek-v4-flash" in codes
+    assert "deepseek-v4-flash" not in codes
+    assert "deepseek-flash" in codes
+    assert "deepseek-v4-pro" in codes
+
+
+def test_catalog_contains_latest_vendor_flagships():
+    codes = _codes()
+    assert "doubao-seed-evolving" in codes
+    assert "doubao-seed-2-1-pro-260915" in codes
+    assert "doubao-seedream-5-0-pro-260628" in codes
+    assert "qwen3.8-max" in codes
+    assert "qwen3.7-plus" in codes
+    assert "wan2.7-image-pro" in codes
+    assert "wan3.0-video" in codes
 
 
 def test_catalog_contains_rerank_models():
